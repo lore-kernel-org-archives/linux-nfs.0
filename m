@@ -1,67 +1,144 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:51763 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1756750Ab1DGDCq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Apr 2011 23:02:46 -0400
-Message-ID: <4D9D29A5.7000507@cn.fujitsu.com>
-Date: Thu, 07 Apr 2011 11:04:05 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: Rob Landley <rlandley@parallels.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: What's nlmsvc_proc_share() for?
-References: <4D9C7916.5030907@parallels.com>
-In-Reply-To: <4D9C7916.5030907@parallels.com>
+Received: from mx2.netapp.com ([216.240.18.37]:29608 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756188Ab1DFSda (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Apr 2011 14:33:30 -0400
+Message-ID: <4D9CB1F8.4060708@netapp.com>
+Date: Wed, 06 Apr 2011 14:33:28 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Dan Carpenter <error27@gmail.com>
+Subject: NFS: Fix a signed vs. unsigned secinfo bug
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+rpc_authflavor_t is cast from an unsigned int, but the
+initial code tried to use it as a signed int.  I fix
+this by passing an rpc_authflavor_t pointer around, and
+returning signed integers from functions.
 
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Reported-by: Dan Carpenter <error27@gmail.com>
 
-Rob Landley:
-> I'm reading through the fs/lockd code, and I read grace.c and svcshare.c
-> and code such as nlmsvc_share_file() only seems to get called from
-> nlmsvc_proc_share() (and its cut-and-paste twin nlm4svc_proc_share())...
-> 
-> And as far as I can grep, those last two functions are never called from
-> anywhere in the kernel source.
-> 
-> The comments say this is for "DOS shares", which presumably doesn't mean
-> what I think it means because DOS used netbios, not NFS...
-> 
-> What's this code for, and where does it get used?  Is it something out
-> of tree, or some header #define that's glued##together that I'm not
-> picking up via grep...?
-
-  Maybe you can get some info from the following code at fs/lockd/svc4proc.c:
-
- 462 
- 463 #define PROC(name, xargt, xrest, argt, rest, respsize)  \
- 464  { .pc_func     = (svc_procfunc) nlm4svc_proc_##name,   \
- 465    .pc_decode   = (kxdrproc_t) nlm4svc_decode_##xargt,  \
- 466    .pc_encode   = (kxdrproc_t) nlm4svc_encode_##xrest,  \
- 467    .pc_release  = NULL,                                 \
- 468    .pc_argsize  = sizeof(struct nlm_##argt),            \
- 469    .pc_ressize  = sizeof(struct nlm_##rest),            \
- 470    .pc_xdrressize = respsize,                           \
- 471  }
- 472 #define Ck      (1+XDR_QUADLEN(NLM_MAXCOOKIELEN))       /* cookie */
- 473 #define No      (1+1024/4)                              /* netobj */
- 474 #define St      1                                       /* status */
- 475 #define Rg      4                                       /* range (offset + length) */
- 476 struct svc_procedure            nlmsvc_procedures4[] = {
- 477   PROC(null,            void,           void,           void,   void, 1),
-     .. ... 
- 497   PROC(none,            void,           void,           void,   void, 0),
- 498   PROC(share,           shareargs,      shareres,       args,   res, Ck+St+1),
- 499   PROC(unshare,         shareargs,      shareres,       args,   res, Ck+St+1),
- 500   PROC(nm_lock,         lockargs,       res,            args,   res, Ck+St),
- 501   PROC(free_all,        notify,         void,           args,   void, 1),
- 502 
- 503 };
-
--- 
-----
-thanks
-Mi Jinlong
-
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index 9166fcb..89fc160 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -148,67 +148,64 @@ static rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors,
+ 	return pseudoflavor;
+ }
+ 
+-static rpc_authflavor_t nfs_negotiate_security(const struct dentry *parent, const struct dentry *dentry)
++static int nfs_negotiate_security(const struct dentry *parent,
++				  const struct dentry *dentry,
++				  rpc_authflavor_t *flavor)
+ {
+-	int status = 0;
+ 	struct page *page;
+ 	struct nfs4_secinfo_flavors *flavors;
+ 	int (*secinfo)(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
+-	rpc_authflavor_t flavor = RPC_AUTH_UNIX;
++	int ret = -EPERM;
+ 
+ 	secinfo = NFS_PROTO(parent->d_inode)->secinfo;
+ 	if (secinfo != NULL) {
+ 		page = alloc_page(GFP_KERNEL);
+ 		if (!page) {
+-			status = -ENOMEM;
++			ret = -ENOMEM;
+ 			goto out;
+ 		}
+ 		flavors = page_address(page);
+-		status = secinfo(parent->d_inode, &dentry->d_name, flavors);
+-		flavor = nfs_find_best_sec(flavors, dentry->d_inode);
++		ret = secinfo(parent->d_inode, &dentry->d_name, flavors);
++		*flavor = nfs_find_best_sec(flavors, dentry->d_inode);
+ 		put_page(page);
+ 	}
+ 
+-	return flavor;
+-
+ out:
+-	status = -ENOMEM;
+-	return status;
++	return ret;
+ }
+ 
+-static rpc_authflavor_t nfs_lookup_with_sec(struct nfs_server *server, struct dentry *parent,
+-				     struct dentry *dentry, struct path *path,
+-				     struct nfs_fh *fh, struct nfs_fattr *fattr)
++static int nfs_lookup_with_sec(struct nfs_server *server, struct dentry *parent,
++			       struct dentry *dentry, struct path *path,
++			       struct nfs_fh *fh, struct nfs_fattr *fattr,
++			       rpc_authflavor_t *flavor)
+ {
+-	rpc_authflavor_t flavor;
+ 	struct rpc_clnt *clone;
+ 	struct rpc_auth *auth;
+ 	int err;
+ 
+-	flavor = nfs_negotiate_security(parent, path->dentry);
+-	if (flavor < 0)
++	err = nfs_negotiate_security(parent, path->dentry, flavor);
++	if (err < 0)
+ 		goto out;
+ 	clone  = rpc_clone_client(server->client);
+-	auth   = rpcauth_create(flavor, clone);
++	auth   = rpcauth_create(*flavor, clone);
+ 	if (!auth) {
+-		flavor = -EIO;
++		err = -EIO;
+ 		goto out_shutdown;
+ 	}
+ 	err = server->nfs_client->rpc_ops->lookup(clone, parent->d_inode,
+ 						  &path->dentry->d_name,
+ 						  fh, fattr);
+-	if (err < 0)
+-		flavor = err;
+ out_shutdown:
+ 	rpc_shutdown_client(clone);
+ out:
+-	return flavor;
++	return err;
+ }
+ #else /* CONFIG_NFS_V4 */
+-static inline rpc_authflavor_t nfs_lookup_with_sec(struct nfs_server *server,
+-				     struct dentry *parent, struct dentry *dentry,
+-				     struct path *path, struct nfs_fh *fh,
+-				     struct nfs_fattr *fattr)
++static inline int nfs_lookup_with_sec(struct nfs_server *server,
++				      struct dentry *parent, struct dentry *dentry,
++				      struct path *path, struct nfs_fh *fh,
++				      struct nfs_fattr *fattr,
++				      rpc_authflavor_t *flavor)
+ {
+ 	return -EPERM;
+ }
+@@ -234,7 +231,7 @@ struct vfsmount *nfs_d_automount(struct path *path)
+ 	struct nfs_fh *fh = NULL;
+ 	struct nfs_fattr *fattr = NULL;
+ 	int err;
+-	rpc_authflavor_t flavor = 1;
++	rpc_authflavor_t flavor = RPC_AUTH_UNIX;
+ 
+ 	dprintk("--> nfs_d_automount()\n");
+ 
+@@ -255,13 +252,8 @@ struct vfsmount *nfs_d_automount(struct path *path)
+ 	err = server->nfs_client->rpc_ops->lookup(server->client, parent->d_inode,
+ 						  &path->dentry->d_name,
+ 						  fh, fattr);
+-	if (err == -EPERM) {
+-		flavor = nfs_lookup_with_sec(server, parent, path->dentry, path, fh, fattr);
+-		if (flavor < 0)
+-			err = flavor;
+-		else
+-			err = 0;
+-	}
++	if (err == -EPERM && NFS_PROTO(parent->d_inode)->secinfo != NULL)
++		err = nfs_lookup_with_sec(server, parent, path->dentry, path, fh, fattr, &flavor);
+ 	dput(parent);
+ 	if (err != 0) {
+ 		mnt = ERR_PTR(err);
