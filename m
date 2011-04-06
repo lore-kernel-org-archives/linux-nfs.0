@@ -1,70 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.parknet.co.jp ([210.171.160.6]:50020 "EHLO
-	mail.parknet.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755417Ab1DRQK3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Apr 2011 12:10:29 -0400
-From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, Greg KH <gregkh@suse.de>,
-        linux-kernel@vger.kernel.org, stable@kernel.org,
-        akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
-Subject: Re: [105/105] nfsd4: fix oops on lock failure
-References: <20110412143559.186613198@clark.kroah.org>
-	<87pqokx6lr.fsf@devron.myhome.or.jp>
-	<BANLkTimN6L80e_oiJ_uqbLde2Cdnw5p45Q@mail.gmail.com>
-	<20110418153236.GC20935@pad.home.fieldses.org>
-	<87ipubwnj3.fsf@devron.myhome.or.jp>
-Date: Tue, 19 Apr 2011 01:10:26 +0900
-In-Reply-To: <87ipubwnj3.fsf@devron.myhome.or.jp> (OGAWA Hirofumi's message of
-	"Tue, 19 Apr 2011 01:08:00 +0900")
-Message-ID: <8762qbwnf1.fsf@devron.myhome.or.jp>
-Content-Type: text/plain
+Received: from fieldses.org ([174.143.236.118]:39851 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756968Ab1DFXGd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Apr 2011 19:06:33 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/7] SUNRPC: requeue tcp socket less frequently
+Date: Wed,  6 Apr 2011 19:06:20 -0400
+Message-Id: <1302131186-6578-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1302131186-6578-1-git-send-email-bfields@redhat.com>
+References: <1302131186-6578-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-OGAWA Hirofumi <hirofumi@mail.parknet.co.jp> writes:
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-> "J. Bruce Fields" <bfields@redhat.com> writes:
->
->> On Sun, Apr 17, 2011 at 09:10:12AM -0700, Linus Torvalds wrote:
->>> On Sun, Apr 17, 2011 at 8:03 AM, OGAWA Hirofumi
->>> <hirofumi@mail.parknet.co.jp> wrote:
->>> >
->>> > I'm looking filp leak on recent kernel. Well, anyway,
->>
->> Does this fix it?
->
-> It seems to be no, unfortunately. filp leak is not so fast, and obvious
-> reproduce process is not known yet. Well, sigh, I'm starting to add
-> debugging code for it...
+Don't requeue the socket in some cases where we know it's unnecessary.
 
-Ah, I was missing patch itself. I'll see.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/svcsock.c |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
 
-> commit 5152c8a947359758862d4631863e68e83ec01048
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Fri Apr 15 18:08:26 2011 -0400
-> 
->     nfsd4: fix struct file leak on delegation
->     
->     Introduced by acfdf5c383b38f7f4dddae41b97c97f1ae058f49.
->     
->     Cc: stable@kernel.org
->     Reported-by: Gerhard Heift <ml-nfs-linux-20110412-ef47@gheift.de>
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index aa309aa..c79a983 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -258,6 +258,7 @@ static void nfs4_put_deleg_lease(struct nfs4_file *fp)
->  	if (atomic_dec_and_test(&fp->fi_delegees)) {
->  		vfs_setlease(fp->fi_deleg_file, F_UNLCK, &fp->fi_lease);
->  		fp->fi_lease = NULL;
-> +		fput(fp->fi_deleg_file);
->  		fp->fi_deleg_file = NULL;
->  	}
->  }
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index d802e94..29b31df 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -959,7 +959,6 @@ static int svc_tcp_recv_record(struct svc_sock *svsk, struct svc_rqst *rqstp)
+ 		goto err_again;	/* record not complete */
+ 	}
+ 	len = svsk->sk_reclen;
+-	set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 
+ 	return len;
+  error:
+@@ -1109,6 +1108,10 @@ out:
+ 	/* Reset TCP read info */
+ 	svsk->sk_reclen = 0;
+ 	svsk->sk_tcplen = 0;
++	/* If we have more data, signal svc_xprt_enqueue() to try again */
++	if (svc_recv_available(svsk) > sizeof(rpc_fraghdr))
++		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
++
+ 
+ 	svc_xprt_copy_addrs(rqstp, &svsk->sk_xprt);
+ 	if (serv->sv_stats)
 -- 
-OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+1.7.1
+
