@@ -1,31 +1,47 @@
-From: "Kirill A. Shutemov" <kas@openvz.org>
-Subject: Re: [PATCH v3, RESEND 00/16] make rpc_pipefs be mountable multiple
- time
-Date: Wed, 6 Apr 2011 03:55:51 +0300
-Message-ID: <20110406005551.GA28120__33609.3472120867$1302051364$gmane$org@shutemov.name>
-References: <1297190527-19925-1-git-send-email-kas@openvz.org>
- <20110302170622.GA4143@shutemov.name>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/3] Three short subjects for nfs-utils
+Date: Wed, 06 Apr 2011 11:10:01 -0400
+Message-ID: <4D9C8249.8070906@RedHat.com>
+References: <20110325213559.27166.71461.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	"Kirill A. Shutemov" <kas@openvz.org>, Neil Brown <neilb@suse.de>,
-	Pavel Emelyanov <xemul@paral
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:52508 "EHLO shutemov.name"
+Received: from mx1.redhat.com ([209.132.183.28]:28271 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752102Ab1DFAzw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Apr 2011 20:55:52 -0400
-In-Reply-To: <20110302170622.GA4143-oKw7cIdHH8eLwutG50LtGA@public.gmane.org>
+	id S1755952Ab1DFPKE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Apr 2011 11:10:04 -0400
+In-Reply-To: <20110325213559.27166.71461.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 02, 2011 at 07:06:22PM +0200, Kirill A. Shutemov wrote:
-> Any chanse to get it in .39?
 
-What about .40? ;)
 
-Should I rebase it?
+On 03/25/2011 05:37 PM, Chuck Lever wrote:
+> Hi Steve-
+> 
+> Here are two minor bug fixes, and a mountd clean up that will help out
+> with FedFS down the road.  No hurry.
+> 
+> ---
+> 
+> Chuck Lever (2):
+>       statd: Remove vestigial "-w" option from man page synopsis
+>       mount.nfs: Don't leak socket in nfs_ca_sockname()
+> 
+> Trond Myklebust (1):
+>       exports: add a configurable time-to-live for the kernel cache entries
+> 
+> 
+>  support/include/exportfs.h |    1 +
+>  support/include/nfslib.h   |    1 +
+>  support/nfs/exports.c      |    1 +
+>  utils/mount/network.c      |   28 +++++++++++++---------------
+>  utils/mountd/cache.c       |   15 ++++++++-------
+>  utils/statd/statd.man      |    2 +-
+>  6 files changed, 25 insertions(+), 23 deletions(-)
+> 
+All three patches committed...
 
--- 
- Kirill A. Shutemov
+steved.
