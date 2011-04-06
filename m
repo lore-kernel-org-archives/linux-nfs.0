@@ -1,39 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57147 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755296Ab1DTR1o (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 13:27:44 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [RFC 11/27] pnfs: per mount layout driver private data
-Date: Wed, 20 Apr 2011 20:27:41 +0300
-Message-Id: <1303320461-21369-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DAF0DE1.6020609@panasas.com>
-References: <4DAF0DE1.6020609@panasas.com>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:59442 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755535Ab1DFRgd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Apr 2011 13:36:33 -0400
+Date: Wed, 6 Apr 2011 13:36:31 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Olga Kornievskaia <aglo@citi.umich.edu>, Joe Perches <joe@perches.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: rc4-hmac-md5 mount failure
+Message-ID: <20110406173631.GA8741@merit.edu>
+References: <AANLkTikRJad_vR1qxL1Wr4AO0OfP32oCYj4X0cTnVwv+@mail.gmail.com>
+ <1302110267.7020.8.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1302110267.7020.8.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- include/linux/nfs_fs_sb.h |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
+Trond Myklebust wrote:
 
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 216cea5..c5b3fd0 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -142,6 +142,9 @@ struct nfs_server {
- 						   filesystem */
- 	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
- 	struct rpc_wait_queue	roc_rpcwaitq;
-+	void			       *pnfs_ld_data; /* Per-mount data */
-+	unsigned int			ds_rsize;  /* Data server read size */
-+	unsigned int			ds_wsize;  /* Data server write size */
- 
- 	/* the following fields are protected by nfs_client->cl_lock */
- 	struct rb_root		state_owners;
--- 
-1.7.3.4
+  > diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_
+  > index 0326446..8a4d083c 100644
+  > --- a/net/sunrpc/auth_gss/gss_krb5_mech.c
+  > +++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+  > @@ -422,7 +422,7 @@ static int
+  >  context_derive_keys_rc4(struct krb5_ctx *ctx)
+  >  {
+  >        struct crypto_hash *hmac;
+  > -       char sigkeyconstant[] = "signaturekey";
+  > +       static const char sigkeyconstant[] = "signaturekey";
+  >        int slen = strlen(sigkeyconstant) + 1;  /* include null terminator */
+  >        struct hash_desc desc;
+  >        struct scatterlist sg[1];
+  > 
+  > Solution: if this commit is undone, rc4-based mount works without
+  > issues. verified with linux and windows clients.
+  
+  Hi Olga,
+  
+  Thanks for the report! I'll revert this commit in upstream and the
+  stable kernels.
 
+But why does this fix it?
