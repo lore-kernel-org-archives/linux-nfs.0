@@ -1,60 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:35298 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751493Ab1D0EuS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Apr 2011 00:50:18 -0400
-Message-ID: <4DB7A084.2060009@panasas.com>
-Date: Wed, 27 Apr 2011 07:50:12 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsstat: reorder nfs4 stats for 2.6.38 and up
-References: <1303461980-6731-1-git-send-email-bhalevy@panasas.com> <23EF6F61-46F2-431B-8A44-A3E941688D65@oracle.com>
-In-Reply-To: <23EF6F61-46F2-431B-8A44-A3E941688D65@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:39841 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756826Ab1DFXGc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Apr 2011 19:06:32 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/7] svcrpc: note network-order types in svc_process_calldir
+Date: Wed,  6 Apr 2011 19:06:22 -0400
+Message-Id: <1302131186-6578-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1302131186-6578-1-git-send-email-bfields@redhat.com>
+References: <1302131186-6578-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-04-25 17:11, Chuck Lever wrote:
-> Hey all-
-> 
-> So what are we going to do when adding NFSv4.2 to this mix?  Will we
-> then have to freeze both the NFSv4.1 and NFSv4.0 procedure API in the
-> kernel?  Seems painful.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/svcsock.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-Good question.
-How about changing the stat pseudo-file format to include an op
-identifier along with its respective counter, printing a line per op?
-
-Benny
-
-> 
-> On Apr 22, 2011, at 4:46 AM, Benny Halevy wrote:
-> 
->> match order in 2.6.38, 2.6.39 (-rc3) and development tree while at
->> it, get rid of obsolete ds_write and ds_commit
->> 
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com> --- 
->> utils/nfsstat/nfsstat.c |    5 +---- 1 files changed, 1
->> insertions(+), 4 deletions(-)
->> 
->> git://linux-nfs.org/~bhalevy/pnfs-nfs-utils.git updated
->> respectively
->> 
->> diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c 
->> index f31bb81..a4a8034 100644 --- a/utils/nfsstat/nfsstat.c +++
->> b/utils/nfsstat/nfsstat.c @@ -126,14 +126,11 @@ static const char *
->> nfscltproc4name[CLTPROC4_SZ] = { "sequence", "get_lease_t", 
->> "reclaim_comp", +	"getdevinfo", "layoutget", "layoutcommit", 
->> "layoutreturn", "getdevlist", -	"getdevinfo", -	/* nfsv4.1 pnfs
->> client ops to data server only */ -	"ds_write", -	"ds_commit", };
->> 
->> static const char *     nfssrvproc4opname[SRVPROC4OPS_SZ] = { -- 
->> 1.7.3.4
->> 
->> -- To unsubscribe from this list: send the line "unsubscribe
->> linux-nfs" in the body of a message to majordomo@vger.kernel.org 
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 828fff7..2053259 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -976,9 +976,9 @@ static int svc_process_calldir(struct svc_sock *svsk, struct svc_rqst *rqstp,
+ 			       struct rpc_rqst **reqpp, struct kvec *vec)
+ {
+ 	struct rpc_rqst *req = NULL;
+-	u32 *p;
+-	u32 xid;
+-	u32 calldir;
++	__be32 *p;
++	__be32 xid;
++	__be32 calldir;
+ 	int len;
+ 
+ 	len = svc_recvfrom(rqstp, vec, 1, 8);
+-- 
+1.7.1
 
