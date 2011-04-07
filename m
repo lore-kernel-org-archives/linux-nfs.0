@@ -1,65 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57120 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754093Ab1DTR1E (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 13:27:04 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [RFC 06/27] pnfs: encode_layoutreturn
-Date: Wed, 20 Apr 2011 20:26:58 +0300
-Message-Id: <1303320418-21181-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DAF0DE1.6020609@panasas.com>
-References: <4DAF0DE1.6020609@panasas.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:59323 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751335Ab1DGOBN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2011 10:01:13 -0400
+Subject: Re: Prioritizing readdirplus/getattr/lookup
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <747262.60831.qm@web65410.mail.ac4.yahoo.com>
+Date: Thu, 7 Apr 2011 10:00:58 -0400
+Cc: Benny Halevy <bhalevy@panasas.com>, Jim Rees <rees@umich.edu>,
+        Garth Gibson <garth@cs.cmu.edu>, linux-nfs@vger.kernel.org
+Message-Id: <56C8986A-3C8B-46C7-8C98-61C62FBC6BF8@oracle.com>
+References: <747262.60831.qm@web65410.mail.ac4.yahoo.com>
+To: Andrew Klaassen <clawsoon@yahoo.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[fixup layout header pointer for encode_layoutreturn]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4xdr.c |    9 +++++++--
- fs/nfs/pnfs.h    |    4 ++++
- 2 files changed, 11 insertions(+), 2 deletions(-)
+On Apr 6, 2011, at 3:25 PM, Andrew Klaassen wrote:
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 53ea3e5..6b64dd8 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1927,8 +1927,13 @@ encode_layoutreturn(struct xdr_stream *xdr,
- 		spin_unlock(&args->inode->i_lock);
- 		p = xdr_encode_opaque_fixed(p, &stateid.data,
- 					    NFS4_STATEID_SIZE);
--		p = reserve_space(xdr, 4);
--		*p = cpu_to_be32(0);
-+		if (NFS_SERVER(args->inode)->pnfs_curr_ld->encode_layoutreturn) {
-+			NFS_SERVER(args->inode)->pnfs_curr_ld->encode_layoutreturn(
-+				NFS_I(args->inode)->layout, xdr, args);
-+		} else {
-+			p = reserve_space(xdr, 4);
-+			*p = cpu_to_be32(0);
-+		}
- 	}
- 	hdr->nops++;
- 	hdr->replen += decode_layoutreturn_maxsz;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index c315109..51dcbc1 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -98,6 +98,10 @@ struct pnfs_layoutdriver_type {
- 
- 	/* device notification methods */
- 	void (*delete_deviceid)(struct nfs4_deviceid *);
-+
-+	void (*encode_layoutreturn) (struct pnfs_layout_hdr *layoutid,
-+				     struct xdr_stream *xdr,
-+				     const struct nfs4_layoutreturn_args *args);
- };
- 
- struct pnfs_layout_hdr {
+> I have, for now, hacked my way around my problem by splitting the server's uplink into two separate bonds.  This seems to have moderated the transaction rate of the HPC farm and allowed the "ls -l" calls to be served at an acceptable rate.
+
+Have you created enough nfsd threads on your Linux NFS servers?
+
 -- 
-1.7.3.4
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
