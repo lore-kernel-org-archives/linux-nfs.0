@@ -1,46 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:36588 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753317Ab1DHXad (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Apr 2011 19:30:33 -0400
-Received: by fxm17 with SMTP id 17so2629941fxm.19
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Apr 2011 16:30:32 -0700 (PDT)
-Date: Fri, 8 Apr 2011 16:30:32 -0700
-Message-ID: <BANLkTintp8Hx-D46L0WC6-+JJK=jDvz1KQ@mail.gmail.com>
-Subject: linux / automount not respecting sec=sys parameter when NFS server
- supports sys:krb5
-From: Myles Uyema <mlists@uyema.net>
-To: linux-nfs <linux-nfs@vger.kernel.org>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:37868 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751777Ab1DGGmX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2011 02:42:23 -0400
+Message-ID: <4D9D5CC9.2040002@suse.cz>
+Date: Thu, 07 Apr 2011 08:42:17 +0200
+From: Jiri Slaby <jslaby@suse.cz>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Jiri Slaby <jirislaby@gmail.com>, linux-kernel@vger.kernel.org,
+        akpm@linux-foundation.org, mm-commits@vger.kernel.org,
+        ML netdev <netdev@vger.kernel.org>, linux-nfs@vger.kernel.org
+Subject: Re: nfs client doesn't work [was: mmotm 2011-03-31-14-48 uploaded]
+References: <201103312224.p2VMOA5g000983@imap1.linux-foundation.org> <4D96E4C5.2080302@suse.cz> <1302122693.16786.0.camel@lade.trondhjem.org>
+In-Reply-To: <1302122693.16786.0.camel@lade.trondhjem.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We have a Netapp filer (8.0.1) exporting NFSv3 homedirs with -sec=sys:krb5,rw
-We have automount using LDAP for homedir mounts, explicitly specifying
-sec=sys for all users, except for the krb5 beta testers.
+On 04/06/2011 10:44 PM, Myklebust, Trond wrote:
+> On Sat, 2011-04-02 at 10:56 +0200, Jiri Slaby wrote:
+>> On 03/31/2011 11:48 PM, akpm@linux-foundation.org wrote:
+>> > The mm-of-the-moment snapshot 2011-03-31-14-48 has been uploaded to
+>>
+>> Hi, nfs client is defunct in this kernel. Tcpdump says:
+>> 10:51:55.489717 IP 10.20.11.33.759945860 > 10.20.3.2.2049: 132 getattr
+>> fh 0,0/24
+>> 10:51:55.515927 IP 10.20.3.2.2049 > 10.20.11.33.759945860: reply ok 44
+>> getattr ERROR: Operation not permitted
+>> 10:51:55.515949 IP 10.20.11.33.921 > 10.20.3.2.2049: Flags [.], ack
+>> 3569361440, win 115, options [nop,nop,TS val 599750 ecr 255058541],
+> length 0
+>> 10:52:04.130310 IP 10.20.11.33.793500292 > 10.20.3.2.2049: 76 getattr fh
+>> 0,0/24
+>> 10:52:04.152178 IP 10.20.3.2.2049 > 10.20.11.33.793500292: reply ok 44
+>> getattr ERROR: Operation not permitted
+>>
+>> If I run the same mount command (mount -oro,intr host:dir mountpoint)
+>> from within a virtual machine with 2.6.38.2 there, everything mounts OK.
+> 
+> Does the attached patch help?
 
-We are rolling out users with kerberos slowly across our linux
-machines. However, when a krb5 beta tester accessing any homedir,
-Linux and automount will choose to mount that homedir using sec=krb5.
-It's quite apparent that /etc/mtab shows the mount parameter as
-sec=sys, but /proc/mounts shows the same mount as sec=krb5
+No, still the operation not permitted in the tcpdump output and no mount.
 
-/etc/mtab
-nfstest101:/vol/krbtest01/testuser /home/testuser nfs
-rw,hard,intr,sec=sys,addr=10.21.127.101 0 0
-
-/proc/mounts
-nfstest101:/vol/krbtest01/testuser /home/testuser nfs
-rw,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=krb5,addr=10.21.127.101
-0 0
-
-If testuser then logs in (without a kerberos ticket) they cannot
-access their own home directory.
-
-Why is linux/automount ignoring our explicit sec=sys parameter?
-
-Linux 2.6.20 kernel CentOS 5.x
-Autofs 5.0.1
-mount (util-linux 2.13-pre7)
-MIT-Kerberos 5
+thanks,
+-- 
+js
+suse labs
