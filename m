@@ -1,50 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:59366 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751576Ab1DGO3y convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2011 10:29:54 -0400
-Subject: Re: [PATCH v2 1/2] nfs-utils: mountd: Use a dynamic buffer for storing lists of gid's
+Received: from fieldses.org ([174.143.236.118]:51075 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756565Ab1DGTuH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Apr 2011 15:50:07 -0400
+Date: Thu, 7 Apr 2011 15:50:05 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd41: make sure nfs server process OPEN with
+ EXCLUSIVE4_1 correcttly
+Message-ID: <20110407195005.GC11806@fieldses.org>
+References: <4D9C2CB2.7000101@cn.fujitsu.com>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <A50602A820F61543B29992A418BB321B66E18F8A5E@seldmbx01.corpusers.net>
-Date: Thu, 7 Apr 2011 10:29:39 -0400
-Cc: "rees@umich.edu" <rees@umich.edu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-Message-Id: <5964B39E-ADFD-496C-98BE-D77920239E1B@oracle.com>
-References: <20110405233552.GB27961@fieldses.org> <1302160948-5628-1-git-send-email-sean.finney@sonyericsson.com> <20110407122218.GA11897@merit.edu> <A50602A820F61543B29992A418BB321B66E18F8A5E@seldmbx01.corpusers.net>
-To: "Finney, Sean" <Sean.Finney@sonyericsson.com>
+In-Reply-To: <4D9C2CB2.7000101@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, Apr 06, 2011 at 05:04:50PM +0800, Mi Jinlong wrote:
+> At the recent kernel(2.6.39-rc1),
 
-On Apr 7, 2011, at 10:15 AM, Finney, Sean wrote:
+(But this is not a regression, right?  This has been a problem all
+along.)
 
-> Hi Jim,
+> NFS server can't process OPEN with EXCLUSIVE4_1,
+> because NFS server call nfsd_create_v3 to create file instead implement a separate
+> one. But nfsd_create_v3 can't process createmode is EXCLUSIVE4_1.
+
+Is our handling of the attributes correct in this case?  (See e.g. the
+op_bmval[1] assignment a few lines down.)
+
+--b.
+
 > 
-> On Thu, 2011-04-07 at 08:22 -0400, Jim Rees wrote:
+> According to RFC5661, at nfsd_create_v3, EXCLUSIVE4_1 should be processed as 
+> EXCLUSIVE4.
 > 
->> I was going to suggest you first call getgrouplist with groups set to 0 so
->> you can always alloc() the correct size list, but then I found this in the
->> man page:
->> 
->> BUGS
->>       In  glibc  versions  before  2.3.3, the implementation of this function
->>       contains a buffer-overrun bug: it returns the complete list  of  groups
->>       for  user  in  the array groups, even when the number of groups exceeds
->>       *ngroups.
+> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> ---
+>  fs/nfsd/nfs4proc.c |   11 ++++++++---
+>  1 files changed, 8 insertions(+), 3 deletions(-)
 > 
-> Yuck.  The function is also not in POSIX or any other standards, so
-> maybe it's worth discussing at a later point whether getgroups(2) would
-> be a better interface to use, even if it means an extra step or two.
-
-The standard RPC library function authunix_create_default() uses getgroups(2).  Take a look at the glibc version of this function to see the preferred method for using getgroups(2).
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 5fcb139..5325490 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -173,7 +173,7 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
+>  {
+>  	struct svc_fh resfh;
+>  	__be32 status;
+> -	int created = 0;
+> +	int created = 0, createmode = 0;
+>  
+>  	fh_init(&resfh, NFS4_FHSIZE);
+>  	open->op_truncate = 0;
+> @@ -196,11 +196,16 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
+>  
+>  		/*
+>  		 * Note: create modes (UNCHECKED,GUARDED...) are the same
+> -		 * in NFSv4 as in v3.
+> +		 * in NFSv4 as in v3 except EXCLUSIVE4_1.
+>  		 */
+> +		if (open->op_createmode == NFS4_CREATE_EXCLUSIVE4_1)
+> +			createmode = NFS4_CREATE_EXCLUSIVE;
+> +		else
+> +			createmode = open->op_createmode;
+> +
+>  		status = nfsd_create_v3(rqstp, current_fh, open->op_fname.data,
+>  					open->op_fname.len, &open->op_iattr,
+> -					&resfh, open->op_createmode,
+> +					&resfh, createmode,
+>  					(u32 *)open->op_verf.data,
+>  					&open->op_truncate, &created);
+>  
+> -- 
+> 1.7.4.1
+> 
+> 
+> 
