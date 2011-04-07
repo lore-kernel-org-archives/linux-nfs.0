@@ -1,43 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41210 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752472Ab1D0SJ4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Apr 2011 14:09:56 -0400
-Date: Wed, 27 Apr 2011 14:09:39 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: don't lose MS_SYNCHRONOUS on remount of noac mount
-Message-ID: <20110427140939.69ea0d9a@tlielax.poochiereds.net>
-In-Reply-To: <1303927307.13195.20.camel@lade.trondhjem.org>
-References: <1303919349-30207-1-git-send-email-jlayton@redhat.com>
-	<1303927307.13195.20.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from rcsinet10.oracle.com ([148.87.113.121]:43851 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756890Ab1DGUZZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2011 16:25:25 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Subject: [ANNOUNCE] fedfs-utils for Linux
+Date: Thu, 7 Apr 2011 16:24:29 -0400
+Message-Id: <AB0460DE-A056-47AA-B387-156D35334E04@oracle.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        autofs@linux.kernel.org, util-linux-ng@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 27 Apr 2011 14:01:47 -0400
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+Announcing public availability of fedfs-utils for Linux
 
-> On Wed, 2011-04-27 at 11:49 -0400, Jeff Layton wrote:
-> > On a remount, the VFS layer will clear the MS_SYNCHRONOUS bit on the
-> > assumption that the flags on the mount syscall will have it set if the
-> > remounted fs is supposed to keep it.
-> > 
-> > In the case of "noac" though, MS_SYNCHRONOUS is implied. A remount of
-> > such a mount will lose the MS_SYNCHRONOUS flag since "sync" isn't part
-> > of the mount options.
-> > 
-> > Reported-by: Max Matveev <makc@redhat.com>
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> 
-> Should this be 'Cc: stable@kernel.org'?
+RFC 5716 introduces the Federated File System (FedFS, for short). FedFS is an extensible standardized mechanism by which system administrators construct a coherent namespace across multiple file servers using file system referrals.
 
-Yes, it wouldn't hurt. Not an extremely critical bug, but it's a
-fairly straightforward fix. Can you add that, or would you rather I
-resend?
+The "fedfs-utils" package is an implementation of the user space components that provide FedFS features on Linux. The package is released under GPL version 2.
 
-Thanks,
+The current release is 0.6.1.  This is a very early alpha release for technology preview.  Administrative, programming, and command line interfaces will change as this package evolves, and must not be relied on.
+
+See http://oss.oracle.com/projects/fedfs-utils for more information and source code downloads.  Two mailman mailing lists are also available:
+
+  fedfs-utils-announce@oss.oracle.com
+  fedfs-utils-devel@oss.oracle.com
+
+Future release announcements will occur only on fedfs-utils-announce.
+
 -- 
-Jeff Layton <jlayton@redhat.com>
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
