@@ -1,42 +1,29 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:24622 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755630Ab1DTTXN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 15:23:13 -0400
-Subject: RE: [pnfs] pnfs read layoutget
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "Halevy, Benny" <bhalevy@panasas.com>
-Cc: quanli gui <gqlxj1987@gmail.com>, linux-nfs <linux-nfs@vger.kernel.org>
-In-Reply-To: <7225594ED4A1304C9E43D030A886D221F4CAC6@daytona.int.panasas.com>
-References: <BANLkTi=tOYjnmfsRw+5HXShR4EGd5wsKFw@mail.gmail.com>
-	 <7225594ED4A1304C9E43D030A886D221F4CAC6@daytona.int.panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 20 Apr 2011 15:23:11 -0400
-Message-ID: <1303327391.23206.4.camel@lade.trondhjem.org>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:59435 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756608Ab1DGTzn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2011 15:55:43 -0400
+Date: Thu, 7 Apr 2011 15:55:40 -0400
+From: Jim Rees <rees@umich.edu>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: peter honeyman <honey@citi.umich.edu>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: Updated the pNFS Developmental Repository
+Message-ID: <20110407195540.GB13863@merit.edu>
+References: <4D8E2B90.4030100@RedHat.com>
+ <20110407153811.GA13098@merit.edu>
+ <4D9E0ADF.9020802@RedHat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D9E0ADF.9020802@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-04-20 at 11:05 -0400, Halevy, Benny wrote:
-> This seems like a bug.
+Steve Dickson wrote:
 
-In 2.6.36?
+  > Do these builds include the following patch?  I sent it to the list on Feb
+  > 23 but don't see it in Benny's repo.
+  If they its not in Benny repo, then they are not in this release....
 
-> If I remember correctly, you are testing the files layout, right?
-> Does this also happen with the latest kernel v2.6.39-rc3
-> and / or pnfs-all-2.6.38?
-
-We should definitely be calling layoutget from the 2.6.39-rc3 read code
-assuming that the files layout module is being correctly loaded and that
-the server is correctly advertising pNFS capabilities.
-
-Cheers
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Looks like it is in.  My mistake.  I think I did a fetch but forgot to reset
+and/or merge.  Sorry for the noise.
