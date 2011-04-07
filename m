@@ -1,43 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f46.google.com ([209.85.215.46]:63122 "EHLO
-	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751727Ab1DQJX3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Apr 2011 05:23:29 -0400
-Received: by ewy4 with SMTP id 4so1111514ewy.19
-        for <linux-nfs@vger.kernel.org>; Sun, 17 Apr 2011 02:23:28 -0700 (PDT)
-Date: Sun, 17 Apr 2011 18:23:26 +0900
-Message-ID: <BANLkTi=3mcfWuFhoCzetzuguA2vA02AShg@mail.gmail.com>
-Subject: NFSv3 client caches dozens or hundreds of megabytes before sending a
- write request to NFS server.
-From: crocket <crockabiscuit@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet10.oracle.com ([148.87.113.121]:56920 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751576Ab1DGOgq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2011 10:36:46 -0400
+Subject: Re: Prioritizing readdirplus/getattr/lookup
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <642211.9524.qm@web65416.mail.ac4.yahoo.com>
+Date: Thu, 7 Apr 2011 10:36:34 -0400
+Cc: Benny Halevy <bhalevy@panasas.com>, Jim Rees <rees@umich.edu>,
+        Garth Gibson <garth@cs.cmu.edu>, linux-nfs@vger.kernel.org
+Message-Id: <CCB59DB2-C865-4C36-BB77-1A76E6B261E9@oracle.com>
+References: <642211.9524.qm@web65416.mail.ac4.yahoo.com>
+To: Andrew Klaassen <clawsoon@yahoo.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Let me explain my network configuration.
 
-Internet <--------------------> eth0 | the linux router | eth1
-<------------------------------> eth0 | the desktop.
+On Apr 7, 2011, at 10:34 AM, Andrew Klaassen wrote:
 
-The linux router is actually a proper computer but not a router that
-has linux firmware.
-eth1 on the router and eth0 on the desktop are both full-duplex at 100Mbps.
-The full-duplex connection is confirmed using netcat like
-http://imagebin.org/148650
-And they also remain full-duplex during NFS transfers according to "ethtool".
+> --- On Thu, 4/7/11, Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+>> On Apr 6, 2011, at 3:25 PM, Andrew Klaassen wrote:
+>> 
+>>> I have, for now, hacked my way around my problem by
+>>> splitting the server's uplink into two separate bonds. 
+>>> This seems to have moderated the transaction rate of the HPC
+>>> farm and allowed the "ls -l" calls to be served at an
+>>> acceptable rate.
+>> 
+>> Have you created enough nfsd threads on your Linux NFS
+>> servers?
+> 
+> That was one of the things I varied as part of my testing; almost every power of 2 from 8 threads up to 1024 threads.  It actually made things slightly worse, not better, but I can certainly give it a try again.
 
-The router runs an NFS server, and the desktop uses an NFS client.
+Is the server an SMP system?  Do you see high CPU load during times of slow performance?
 
-On the desktop, if I download files from the internet to the NFS
-server, the client caches dozens or hundreds of megabytes before
-sending data to the server like http://imagebin.org/148648
-As a result, the download pauses frequently to send data to the NFS
-server until the download is finished.
-I want NFS client to forward downloaded data to the server immediately
-instead of after caching.
-In other words, I want NFS transfer to be http://imagebin.org/148650
-but not http://imagebin.org/148648
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Does anybody know how to solve this issue?
+
+
+
