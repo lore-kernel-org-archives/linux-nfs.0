@@ -1,56 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:21819 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758763Ab1D0Tr0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Apr 2011 15:47:26 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 3/3] NFSD: Remove unused variable from nfsd4_decode_bind_conn_to_session()
-Date: Wed, 27 Apr 2011 15:47:16 -0400
-Message-Id: <1303933636-22134-3-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1303933636-22134-1-git-send-email-bjschuma@netapp.com>
-References: <1303933636-22134-1-git-send-email-bjschuma@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:57766 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755898Ab1DGQha (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2011 12:37:30 -0400
+Received: by iwn34 with SMTP id 34so2629173iwn.19
+        for <linux-nfs@vger.kernel.org>; Thu, 07 Apr 2011 09:37:29 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/2] NFSROOT short subjects
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 07 Apr 2011 12:37:27 -0400
+Message-ID: <20110407163304.8531.18745.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Hi Trond-
 
-Compiling gave me this warning:
-fs/nfsd/nfs4xdr.c: In function ‘nfsd4_decode_bind_conn_to_session’:
-fs/nfsd/nfs4xdr.c:427:6: warning: variable ‘dummy’ set but not used
-[-Wunused-but-set-variable]
+These visit the NFSROOT default mount option issues we discussed at LSF.
 
-The local variable "dummy" wasn't being used past the READ32() macro that
-set it.  READ_BUF() should ensure that the xdr buffer is pushed past the
-data read into dummy already, so nothing needs to be read in.
+The first patch fixes a regression reported in 2.6.38, and should go to
+linux-next as soon as possible for testing, then onto 2.6.38-stable and
+2.6.39-rc.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+The second patch (untested) should also be made available to linux-next
+but can go into 2.6.40.  I decided to keep the choices simple.
+
 ---
- fs/nfsd/nfs4xdr.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index c6766af..6191eec 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -424,14 +424,12 @@ nfsd4_decode_access(struct nfsd4_compoundargs *argp, struct nfsd4_access *access
- static __be32 nfsd4_decode_bind_conn_to_session(struct nfsd4_compoundargs *argp, struct nfsd4_bind_conn_to_session *bcts)
- {
- 	DECODE_HEAD;
--	u32 dummy;
- 
- 	READ_BUF(NFS4_MAX_SESSIONID_LEN + 8);
- 	COPYMEM(bcts->sessionid.data, NFS4_MAX_SESSIONID_LEN);
- 	READ32(bcts->dir);
- 	/* XXX: Perhaps Tom Tucker could help us figure out how we
- 	 * should be using ctsa_use_conn_in_rdma_mode: */
--	READ32(dummy);
- 
- 	DECODE_TAIL;
- }
+Chuck Lever (2):
+      NFSROOT: Select default mount options via Kconfig
+      NFS: Revert NFSROOT default mount options
+
+
+ fs/nfs/Kconfig   |   13 +++++++++++++
+ fs/nfs/nfsroot.c |    6 +++++-
+ 2 files changed, 18 insertions(+), 1 deletions(-)
+
 -- 
-1.7.4.4
-
+Chuck Lever
