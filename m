@@ -1,30 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:57476 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755819Ab1DPX75 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Apr 2011 19:59:57 -0400
-Received: by pzk9 with SMTP id 9so1498747pzk.19
-        for <linux-nfs@vger.kernel.org>; Sat, 16 Apr 2011 16:59:56 -0700 (PDT)
-In-Reply-To: <BANLkTikAGrM1Djve14PNmkLKO96Hq1t+=A@mail.gmail.com>
-References: <BANLkTikAGrM1Djve14PNmkLKO96Hq1t+=A@mail.gmail.com>
-Date: Sat, 16 Apr 2011 16:59:56 -0700
-Message-ID: <BANLkTi=VzVb31-9eQYOhUWzQJcJaie6OHA@mail.gmail.com>
-Subject: Static UID mapping
-From: NFS Newbie <nfsnewbie@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:42620 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754635Ab1DGPBX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2011 11:01:23 -0400
+Date: Thu, 7 Apr 2011 11:01:20 -0400
+From: Jim Rees <rees@umich.edu>
+To: "Finney, Sean" <Sean.Finney@sonyericsson.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>
+Subject: Re: [PATCH v2 1/2] nfs-utils: mountd: Use a dynamic buffer for
+ storing lists of gid's
+Message-ID: <20110407150120.GA12596@merit.edu>
+References: <20110405233552.GB27961@fieldses.org>
+ <1302160948-5628-1-git-send-email-sean.finney@sonyericsson.com>
+ <20110407122218.GA11897@merit.edu>
+ <A50602A820F61543B29992A418BB321B66E18F8A5E@seldmbx01.corpusers.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <A50602A820F61543B29992A418BB321B66E18F8A5E@seldmbx01.corpusers.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello,
+Finney, Sean wrote:
 
-I need to deploy NFS in a environment which requires static UID
-mappings.  After doing some research online, it seems like NFS used to
-support a map_static export option which would let the user specify a
-static local/remote UID map in a file.  However, this option seems to
-have been removed.
+  > I would re-word this.  The list isn't static, the list pointer is.  I don't
+  > think you need to mention that, it's just confusing.  "Use malloc/realloc to
+  > grow the list on an as-needed basis."
+  
+  Okay.  I was trying to just put a hint that there was a persistant
+  buffer that would hang around through multiple invocations, though
+  perhaps that's a little too much 'implementation details'.  Totally fine
+  with modifying the description either way :)
 
-Is this correct, and if so, why was this done?  Are there any alternatives?
+If it were me, I would alloc and free the list each time rather than keeping
+it around.  It's not like malloc is super expensive.  But that's a matter of
+taste.
 
-Thank you.
+  > BUGS
+  >        In  glibc  versions  before  2.3.3, the implementation of this function
+  >        contains a buffer-overrun bug: it returns the complete list  of  groups
+  >        for  user  in  the array groups, even when the number of groups exceeds
+  >        *ngroups.
+  
+  Yuck.  The function is also not in POSIX or any other standards, so
+  maybe it's worth discussing at a later point whether getgroups(2) would
+  be a better interface to use, even if it means an extra step or two.
+
+There's no sense in making nfs-utils portable to non-linux, so depending on
+glibc is probably ok.  2.3.3 was released in December 2003 so I would argue
+we don't care about the buffer-overrun bug.
+
+  Anyway, I will re-spin this patch with the two changes that you've
+  suggested and submit it tomorrow.   Care to take a look at patch
+  2/2?  :)
+
+It looked fine to me.
