@@ -1,66 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from eastrmfepo202.cox.net ([68.230.241.217]:48274 "EHLO
-	eastrmfepo202.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752986Ab1DEQMO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Apr 2011 12:12:14 -0400
-Date: Tue, 5 Apr 2011 11:09:33 -0500
-From: Tom Haynes <tdh@excfb.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: secinfo_no_name question
-Message-ID: <20110405160933.GA7787@adept.internal.excfb.com>
-References: <4D99CAFC.5070402@netapp.com>
- <20110404151412.GA17695@fieldses.org>
- <4D99E237.3030508@netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4D99E237.3030508@netapp.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:36588 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753317Ab1DHXad (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Apr 2011 19:30:33 -0400
+Received: by fxm17 with SMTP id 17so2629941fxm.19
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Apr 2011 16:30:32 -0700 (PDT)
+Date: Fri, 8 Apr 2011 16:30:32 -0700
+Message-ID: <BANLkTintp8Hx-D46L0WC6-+JJK=jDvz1KQ@mail.gmail.com>
+Subject: linux / automount not respecting sec=sys parameter when NFS server
+ supports sys:krb5
+From: Myles Uyema <mlists@uyema.net>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Apr 04, 2011 at 11:22:31AM -0400, Bryan Schumaker wrote:
-> On 04/04/2011 11:14 AM, J. Bruce Fields wrote:
-> > On Mon, Apr 04, 2011 at 09:43:24AM -0400, Bryan Schumaker wrote:
-> >> Hi Bruce,
-> >>
-> >> I'm looking at secinfo_no_name on the client.  RFC 5661 says to says to send PUTROOTFH followed by SECINFO_NO_NAME in the same compound and to use SECINFO_STYLE4_CURRENT_FH.  My compound is: SEQUENCE, PUTROOTFH, SECINFO_NO_NAME.  The server processes up to the PUTROOTFH, and then returns with NFS4ERR_WRONGSEC.  
-> >>
-> >> Am I doing something wrong?  Is this a server problem?
-> > 
-> > Could be; is the compound is being sent with a security flavor that
-> > *isn't* permitted on the root export?
+We have a Netapp filer (8.0.1) exporting NFSv3 homedirs with -sec=sys:krb5,rw
+We have automount using LDAP for homedir mounts, explicitly specifying
+sec=sys for all users, except for the krb5 beta testers.
 
-It should never fail:
+We are rolling out users with kerberos slowly across our linux
+machines. However, when a krb5 beta tester accessing any homedir,
+Linux and automount will choose to mount that homedir using sec=krb5.
+It's quite apparent that /etc/mtab shows the mount parameter as
+sec=sys, but /proc/mounts shows the same mount as sec=krb5
 
-2.6.3.1.1.5.  Put Filehandle Operation + SECINFO/SECINFO_NO_NAME
+/etc/mtab
+nfstest101:/vol/krbtest01/testuser /home/testuser nfs
+rw,hard,intr,sec=sys,addr=10.21.127.101 0 0
 
-...
+/proc/mounts
+nfstest101:/vol/krbtest01/testuser /home/testuser nfs
+rw,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=krb5,addr=10.21.127.101
+0 0
 
-   The NFSv4.1 server MUST NOT return NFS4ERR_WRONGSEC to a put
-   filehandle operation that is immediately followed by SECINFO or
-   SECINFO_NO_NAME.  The NFSv4.1 server MUST NOT return NFS4ERR_WRONGSEC
-   from SECINFO or SECINFO_NO_NAME.
+If testuser then logs in (without a kerberos ticket) they cannot
+access their own home directory.
 
+Why is linux/automount ignoring our explicit sec=sys parameter?
 
-> > 
-> > If so I believe the compound should have succeeded--the server needs
-> > some special exception there that we may have left out....
-> 
-> The root export is set up with sec=null and my compound is using auth_unix.  
-> 
-> > 
-> > --b.
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Tom Haynes
-ex-cfb
+Linux 2.6.20 kernel CentOS 5.x
+Autofs 5.0.1
+mount (util-linux 2.13-pre7)
+MIT-Kerberos 5
