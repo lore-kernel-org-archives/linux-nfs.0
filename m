@@ -1,144 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:29608 "EHLO mx2.netapp.com"
+Received: from mx2.parallels.com ([64.131.90.16]:36506 "EHLO mx2.parallels.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756188Ab1DFSda (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Apr 2011 14:33:30 -0400
-Message-ID: <4D9CB1F8.4060708@netapp.com>
-Date: Wed, 06 Apr 2011 14:33:28 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Dan Carpenter <error27@gmail.com>
-Subject: NFS: Fix a signed vs. unsigned secinfo bug
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1757438Ab1DHPIv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Apr 2011 11:08:51 -0400
+Message-ID: <4D9F24F2.9020603@parallels.com>
+Date: Fri, 8 Apr 2011 10:08:34 -0500
+From: Rob Landley <rlandley@parallels.com>
+To: "Serge E. Hallyn" <serge@hallyn.com>
+CC: <linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        <containers@lists.linux-foundation.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Tim Spriggs <tims@uahirise.org>, Kir Kolyshkin <kir@parallels.com>,
+        Pavel Emelyanov <xemul@parallels.com>
+Subject: Re: [PATCH 3/3] Compare namespaces when comparing addresses in auth_unix
+ cache.
+References: <4D9431B3.2070305@parallels.com> <20110405034641.GC6764@hallyn.com>
+In-Reply-To: <20110405034641.GC6764@hallyn.com>
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-rpc_authflavor_t is cast from an unsigned int, but the
-initial code tried to use it as a signed int.  I fix
-this by passing an rpc_authflavor_t pointer around, and
-returning signed integers from functions.
+On 04/04/2011 10:46 PM, Serge E. Hallyn wrote:
+> Quoting Rob Landley (rlandley@parallels.com):
+>> From: Rob Landley <rlandley@parallels.com>
+>>
+>> The auth_unix cache needs to check network namespace when comparing
+>> addresses. Add field to struct ip_map and extra argument to
+>> __ip_map_lookup() so it has the information to do so, and add test.
+>>
+>> Signed-off-by: Rob Landley <rlandley@parallels.com>
+>> ---
+>>
+>>  net/sunrpc/svcauth_unix.c |   21 ++++++++++++++-------
+>>  1 file changed, 14 insertions(+), 7 deletions(-)
+>>
+>> diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+>> index 30916b0..63a2fa7 100644
+>> --- a/net/sunrpc/svcauth_unix.c
+>> +++ b/net/sunrpc/svcauth_unix.c
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-Reported-by: Dan Carpenter <error27@gmail.com>
+code code code
 
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index 9166fcb..89fc160 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -148,67 +148,64 @@ static rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors,
- 	return pseudoflavor;
- }
- 
--static rpc_authflavor_t nfs_negotiate_security(const struct dentry *parent, const struct dentry *dentry)
-+static int nfs_negotiate_security(const struct dentry *parent,
-+				  const struct dentry *dentry,
-+				  rpc_authflavor_t *flavor)
- {
--	int status = 0;
- 	struct page *page;
- 	struct nfs4_secinfo_flavors *flavors;
- 	int (*secinfo)(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
--	rpc_authflavor_t flavor = RPC_AUTH_UNIX;
-+	int ret = -EPERM;
- 
- 	secinfo = NFS_PROTO(parent->d_inode)->secinfo;
- 	if (secinfo != NULL) {
- 		page = alloc_page(GFP_KERNEL);
- 		if (!page) {
--			status = -ENOMEM;
-+			ret = -ENOMEM;
- 			goto out;
- 		}
- 		flavors = page_address(page);
--		status = secinfo(parent->d_inode, &dentry->d_name, flavors);
--		flavor = nfs_find_best_sec(flavors, dentry->d_inode);
-+		ret = secinfo(parent->d_inode, &dentry->d_name, flavors);
-+		*flavor = nfs_find_best_sec(flavors, dentry->d_inode);
- 		put_page(page);
- 	}
- 
--	return flavor;
--
- out:
--	status = -ENOMEM;
--	return status;
-+	return ret;
- }
- 
--static rpc_authflavor_t nfs_lookup_with_sec(struct nfs_server *server, struct dentry *parent,
--				     struct dentry *dentry, struct path *path,
--				     struct nfs_fh *fh, struct nfs_fattr *fattr)
-+static int nfs_lookup_with_sec(struct nfs_server *server, struct dentry *parent,
-+			       struct dentry *dentry, struct path *path,
-+			       struct nfs_fh *fh, struct nfs_fattr *fattr,
-+			       rpc_authflavor_t *flavor)
- {
--	rpc_authflavor_t flavor;
- 	struct rpc_clnt *clone;
- 	struct rpc_auth *auth;
- 	int err;
- 
--	flavor = nfs_negotiate_security(parent, path->dentry);
--	if (flavor < 0)
-+	err = nfs_negotiate_security(parent, path->dentry, flavor);
-+	if (err < 0)
- 		goto out;
- 	clone  = rpc_clone_client(server->client);
--	auth   = rpcauth_create(flavor, clone);
-+	auth   = rpcauth_create(*flavor, clone);
- 	if (!auth) {
--		flavor = -EIO;
-+		err = -EIO;
- 		goto out_shutdown;
- 	}
- 	err = server->nfs_client->rpc_ops->lookup(clone, parent->d_inode,
- 						  &path->dentry->d_name,
- 						  fh, fattr);
--	if (err < 0)
--		flavor = err;
- out_shutdown:
- 	rpc_shutdown_client(clone);
- out:
--	return flavor;
-+	return err;
- }
- #else /* CONFIG_NFS_V4 */
--static inline rpc_authflavor_t nfs_lookup_with_sec(struct nfs_server *server,
--				     struct dentry *parent, struct dentry *dentry,
--				     struct path *path, struct nfs_fh *fh,
--				     struct nfs_fattr *fattr)
-+static inline int nfs_lookup_with_sec(struct nfs_server *server,
-+				      struct dentry *parent, struct dentry *dentry,
-+				      struct path *path, struct nfs_fh *fh,
-+				      struct nfs_fattr *fattr,
-+				      rpc_authflavor_t *flavor)
- {
- 	return -EPERM;
- }
-@@ -234,7 +231,7 @@ struct vfsmount *nfs_d_automount(struct path *path)
- 	struct nfs_fh *fh = NULL;
- 	struct nfs_fattr *fattr = NULL;
- 	int err;
--	rpc_authflavor_t flavor = 1;
-+	rpc_authflavor_t flavor = RPC_AUTH_UNIX;
- 
- 	dprintk("--> nfs_d_automount()\n");
- 
-@@ -255,13 +252,8 @@ struct vfsmount *nfs_d_automount(struct path *path)
- 	err = server->nfs_client->rpc_ops->lookup(server->client, parent->d_inode,
- 						  &path->dentry->d_name,
- 						  fh, fattr);
--	if (err == -EPERM) {
--		flavor = nfs_lookup_with_sec(server, parent, path->dentry, path, fh, fattr);
--		if (flavor < 0)
--			err = flavor;
--		else
--			err = 0;
--	}
-+	if (err == -EPERM && NFS_PROTO(parent->d_inode)->secinfo != NULL)
-+		err = nfs_lookup_with_sec(server, parent, path->dentry, path, fh, fattr, &flavor);
- 	dput(parent);
- 	if (err != 0) {
- 		mnt = ERR_PTR(err);
+>> @@ -142,6 +145,7 @@ static void ip_map_init(struct cache_head *cnew, struct cache_head *citem)
+>>  	struct ip_map *item = container_of(citem, struct ip_map, h);
+>>  
+>>  	strcpy(new->m_class, item->m_class);
+>> +	new->m_net = item->m_net;
+> 
+> Does this need to take a reference?  Or is there no way for an
+> entry to outlive its netns?  It sort of looks like
+> svcauth_unix_info_release will ensure that doesn't happen, but
+> I'm not convinced because other parts of the kernel can get
+> to ip_map_init through the struct cache_detail.
+
+When I wrote this I thought the transport's get_net() and put_net()
+would pin it, but after re-reading, the sunrpc code is disgustingly
+convoluted enough that I can't easily reconstruct my earlier reasoning.
+ I'll add a get_net() and put_net() just to not have to worry about it.
+
+Thanks,
+
+Rob
