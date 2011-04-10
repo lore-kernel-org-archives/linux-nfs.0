@@ -1,46 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:23102 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759214Ab1D2PiT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Apr 2011 11:38:19 -0400
-Subject: Re: Linux to Netapp -> Is UDP over WAN safe as long as I use "sync, hard and intr" ?
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <D158BE8E-BEDC-43EF-9C6C-48668AA6F5DF@gmail.com>
-Date: Fri, 29 Apr 2011 11:38:03 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <20AFBC51-7103-47E9-825A-A52B4FCA08B6@oracle.com>
-References: <D158BE8E-BEDC-43EF-9C6C-48668AA6F5DF@gmail.com>
-To: David McGiven <davidmcgivenn@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:57451 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754904Ab1DJQ3j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 10 Apr 2011 12:29:39 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Cc: Bryan Schumaker <bjschuma@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/5] nfsd4: introduce OPDESC helper
+Date: Sun, 10 Apr 2011 12:29:31 -0400
+Message-Id: <1302452973-27272-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <20110410162536.GC26233@fieldses.org>
+References: <20110410162536.GC26233@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c |    7 ++++++-
+ 1 files changed, 6 insertions(+), 1 deletions(-)
 
-On Apr 29, 2011, at 11:07 AM, David McGiven wrote:
-
-> Dear All,
-> 
-> I'm having problems with Linux NFS clients accessing a NetApp NFS server. The problems are mostly because it's a WAN connection (with 3 hops in between). There's a mixture of poor WAN performance and Ubuntu kernel bugs regarding NFS locks. I've been struggling with this for too long. I then tried UDP instead of TCP and all the problem seem to have vanished :
-> 
-> I get better performance.
-> I don't get lock errors and stalled connections in the kernel.
-> I don't get nfs server xxx.xxx.xx not responding any more.
-> 
-> So I guess I will use UDP, no matter if TCP is recommended in terms of performance. Also, I can't control the WAN routers and switches so I'm tied up to that.
-> 
-> My concerns are, is it OK to use UDP over WAN regarding data corruption ? I've read that UDP over WAN can cause it, and I'm a little bit afraid, although I don't know why would it corrupt data if it's "sync,hard,intr" as the mount options.
-
-The main source of data corruption in your case would be IP reassembly problems.  The IP ID field is just 16 bits.  If a UDP packet is large, it is spread across many IP packets, and the receiving end can screw up packet reassembly if the ID field wraps.
-
-You can mitigate this risk by capping the size of read and write requests.  Assuming an end-to-end MTU of 1536 octets, using rsize=wsize=1024 would eliminate the possibility of packet mis-assembly on reads and writes.  However, performance might suffer.  A somewhat larger transfer size might perform better, with acceptably small risk of data corruption.
-
-Though I must say, it is quite rare that TCP shows this kind of misbehavior while UDP does not.  I think it would be worth some trouble to root-cause the networking issues here.  It may be as simple as incorrect firewall settings.  Have you looked at packet traces?
-
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 5fcb139..126b8f7 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1031,6 +1031,11 @@ static __be32 nfs41_check_op_ordering(struct nfsd4_compoundargs *args)
+ 	return nfs_ok;
+ }
+ 
++static inline struct nfsd4_operation *OPDESC(struct nfsd4_op *op)
++{
++	return &nfsd4_ops[op->opnum];
++}
++
+ /*
+  * COMPOUND call.
+  */
+@@ -1108,7 +1113,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 			goto encode_op;
+ 		}
+ 
+-		opdesc = &nfsd4_ops[op->opnum];
++		opdesc = OPDESC(op);
+ 
+ 		if (!cstate->current_fh.fh_dentry) {
+ 			if (!(opdesc->op_flags & ALLOWED_WITHOUT_FH)) {
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.1
 
