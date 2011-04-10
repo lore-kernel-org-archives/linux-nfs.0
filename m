@@ -1,52 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:52937 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:34489 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751847Ab1DTXX6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Apr 2011 19:23:58 -0400
-Date: Wed, 20 Apr 2011 19:23:42 -0400
+	id S1753644Ab1DJQZj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 10 Apr 2011 12:25:39 -0400
+Date: Sun, 10 Apr 2011 12:25:36 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-        "J. Bruce Fields" <bfields@redhat.com>, Greg KH <gregkh@suse.de>,
-        linux-kernel@vger.kernel.org, stable@kernel.org,
-        akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
-Subject: nfsd bugfixes for 2.6.39
-Message-ID: <20110420232342.GI15919@fieldses.org>
-References: <BANLkTimN6L80e_oiJ_uqbLde2Cdnw5p45Q@mail.gmail.com>
- <20110418153236.GC20935@pad.home.fieldses.org>
- <87ipubwnj3.fsf@devron.myhome.or.jp>
- <8762qbwnf1.fsf@devron.myhome.or.jp>
- <87zknnv7id.fsf@devron.myhome.or.jp>
- <87vcybgt6u.fsf@devron.myhome.or.jp>
- <87hb9uhcre.fsf@devron.myhome.or.jp>
- <20110419204349.GB8228@fieldses.org>
- <87aafmgcvk.fsf@devron.myhome.or.jp>
- <20110419213331.GA9998@fieldses.org>
+To: Tom Haynes <tdh@excfb.com>
+Cc: Bryan Schumaker <bjschuma@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: secinfo_no_name question
+Message-ID: <20110410162536.GC26233@fieldses.org>
+References: <4D99CAFC.5070402@netapp.com>
+ <20110404151412.GA17695@fieldses.org>
+ <4D99E237.3030508@netapp.com>
+ <20110405160933.GA7787@adept.internal.excfb.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110419213331.GA9998@fieldses.org>
+In-Reply-To: <20110405160933.GA7787@adept.internal.excfb.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Bugfixes for nfsd are available from the for-2.6.39 branch at:
+On Tue, Apr 05, 2011 at 11:09:33AM -0500, Tom Haynes wrote:
+> On Mon, Apr 04, 2011 at 11:22:31AM -0400, Bryan Schumaker wrote:
+> > On 04/04/2011 11:14 AM, J. Bruce Fields wrote:
+> > > On Mon, Apr 04, 2011 at 09:43:24AM -0400, Bryan Schumaker wrote:
+> > >> Hi Bruce,
+> > >>
+> > >> I'm looking at secinfo_no_name on the client.  RFC 5661 says to says to send PUTROOTFH followed by SECINFO_NO_NAME in the same compound and to use SECINFO_STYLE4_CURRENT_FH.  My compound is: SEQUENCE, PUTROOTFH, SECINFO_NO_NAME.  The server processes up to the PUTROOTFH, and then returns with NFS4ERR_WRONGSEC.  
+> > >>
+> > >> Am I doing something wrong?  Is this a server problem?
+> > > 
+> > > Could be; is the compound is being sent with a security flavor that
+> > > *isn't* permitted on the root export?
+> 
+> It should never fail:
+> 
+> 2.6.3.1.1.5.  Put Filehandle Operation + SECINFO/SECINFO_NO_NAME
+> 
+> ...
+> 
+>    The NFSv4.1 server MUST NOT return NFS4ERR_WRONGSEC to a put
+>    filehandle operation that is immediately followed by SECINFO or
+>    SECINFO_NO_NAME.  The NFSv4.1 server MUST NOT return NFS4ERR_WRONGSEC
+>    from SECINFO or SECINFO_NO_NAME.
 
-  git://linux-nfs.org/~bfields/linux.git for-2.6.39
-
-In particular, this should deal with the file leaks noticed by several
-people.
+And I thought I'd implemented those recommendations at some point--I
+guess not!  My attempt follows.
 
 --b.
-
-J. Bruce Fields (1):
-      nfsd4: fix struct file leak on delegation
-
-OGAWA Hirofumi (1):
-      nfsd4: Fix filp leak
-
-Sachin Prabhu (1):
-      Open with O_CREAT flag set fails to open existing files on non writable directories
-
- fs/nfsd/nfs4state.c |    3 ++-
- fs/nfsd/vfs.c       |    9 ++++++++-
- 2 files changed, 10 insertions(+), 2 deletions(-)
