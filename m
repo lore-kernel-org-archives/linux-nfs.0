@@ -1,70 +1,28 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp01.online.nl ([194.134.41.31]:58661 "EHLO smtp01.online.nl"
+Received: from mx2.netapp.com ([216.240.18.37]:14097 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752661Ab1DOHP6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Apr 2011 03:15:58 -0400
-Message-ID: <20110415091555.15611t1y2vd6b3jf@vovan.nl>
-Date: Fri, 15 Apr 2011 09:15:55 +0200
-From: Vladimir Elisseev <vovan@vovan.nl>
-To: "Finney, Sean" <Sean.Finney@sonyericsson.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [BUG] sec=krb5 mount problem with nfs-utils 1.2.3 on client
- side
-References: <20110415010913@it-loops.com>
- <1302840158.2447.5.camel@vovan.net.home>
- <A50602A820F61543B29992A418BB321B66E18F8A71@seldmbx01.corpusers.net>
-In-Reply-To: <A50602A820F61543B29992A418BB321B66E18F8A71@seldmbx01.corpusers.net>
-Content-Type: text/plain;
- charset=ISO-8859-1;
- DelSp="Yes";
- format="flowed"
+	id S1753167Ab1DKUwG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Apr 2011 16:52:06 -0400
+Received: from [10.30.16.32] (jcohen5-lxp.hq.netapp.com [10.30.16.32] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id p3BKq3Ew016853
+	for <linux-nfs@vger.kernel.org>; Mon, 11 Apr 2011 13:52:04 -0700 (PDT)
+Message-ID: <4DA369F3.4020603@netapp.com>
+Date: Mon, 11 Apr 2011 16:52:03 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Jenkins NFS CI
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Sean,
+Hi everybody!
 
-I'm pretty sure this is not the case for my environment, as we have  
-less then 100 groups in total.
+I have posted my initial jenkins CI setup to a git repo located at: git://git.linux-nfs.org/projects/bjschuma/jenkins-nfs.git.  I would appreciate feedback for making it both more useful and usable.  I have it configured to test client changes, I haven't given much thought for testing the server.
 
-Regards,
-Vladimir.
+You can find instructions for setting it up here: https://wiki.linux-nfs.org/wiki/index.php/Jenkins_CI and also in the README.txt I placed in the root of the git tree.
 
-Quoting "Finney, Sean" <Sean.Finney@sonyericsson.com>:
+I have also created pre-configured virtual machine images that can be used with libvirt for running the tests.  You can download them from http://linux-nfs.org/~bjschuma/jenkins_master.32.img and http://linux-nfs.org/~bjschuma/jenkins_master.64.img.
 
-> Hi guys,
->
-> On Fri, 2011-04-15 at 06:02 +0200, Vladimir Elisseev wrote:
->> Michael,
->>
->> I've posted an email with the same question here a few weeks ago, but I
->> haven't been able to investigate what the problem is. The only
->> difference in my setup, that servers have kernel 2.6.36 the rest is
->> exactly the same and exactly the same error. See thread with the subject
->> "rpc.svcgssd problem after updating client 1.2.2->1.2.3".
->
-> I think the problem here is the same one we were experiencing, with
-> large group memberships causing invalid writes to the procfs rpc channel
-> files.  If you strace rpc.svcgssd (or rpc.mountd, you should see it
-> there too I think), you should see the write() calls being split into
-> multiple 1024-byte sized writes, each of which get EINVAL (or -EINVAL, I
-> forget) returned.
->
-> I've submitted a patch for that last week, which is waiting on
-> inclusion.  If you want to verify, please look back in the archive and
-> try the patch submitted in the mail with subject:
->
-> [PATCH v2] nfs-utils: Increase the stdio file buffer size for procfs
-> files
->
-> It seems to work here, I'd appreciate if you could try it out and let me
-> know if it works for you too :)
->
->
-> BR
-> 	Sean
->
-
-
-
-
+Thanks for any feedback!
+- Bryan
