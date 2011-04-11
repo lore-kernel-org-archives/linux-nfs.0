@@ -1,275 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57047 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752248Ab1DTR02 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 13:26:28 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [RFC 02/27] pnfs: direct i/o
-Date: Wed, 20 Apr 2011 20:26:23 +0300
-Message-Id: <1303320383-21027-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DAF0DE1.6020609@panasas.com>
-References: <4DAF0DE1.6020609@panasas.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:55151 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753756Ab1DKUkI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Apr 2011 16:40:08 -0400
+Message-ID: <4DA36722.2020402@suse.cz>
+Date: Mon, 11 Apr 2011 22:40:02 +0200
+From: Jiri Slaby <jslaby@suse.cz>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
+        mm-commits@vger.kernel.org, ML netdev <netdev@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, Jiri Slaby <jirislaby@gmail.com>
+Subject: Re: nfs client doesn't work [was: mmotm 2011-03-31-14-48 uploaded]
+References: <201103312224.p2VMOA5g000983@imap1.linux-foundation.org> <4D96E4C5.2080302@suse.cz> <1302122693.16786.0.camel@lade.trondhjem.org> <4D9D5CC9.2040002@suse.cz>
+In-Reply-To: <4D9D5CC9.2040002@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On 04/07/2011 08:42 AM, Jiri Slaby wrote:
+> On 04/06/2011 10:44 PM, Myklebust, Trond wrote:
+>> On Sat, 2011-04-02 at 10:56 +0200, Jiri Slaby wrote:
+>>> On 03/31/2011 11:48 PM, akpm@linux-foundation.org wrote:
+>>>> The mm-of-the-moment snapshot 2011-03-31-14-48 has been uploaded to
+>>>
+>>> Hi, nfs client is defunct in this kernel. Tcpdump says:
+>>> 10:51:55.489717 IP 10.20.11.33.759945860 > 10.20.3.2.2049: 132 getattr
+>>> fh 0,0/24
+>>> 10:51:55.515927 IP 10.20.3.2.2049 > 10.20.11.33.759945860: reply ok 44
+>>> getattr ERROR: Operation not permitted
+>>> 10:51:55.515949 IP 10.20.11.33.921 > 10.20.3.2.2049: Flags [.], ack
+>>> 3569361440, win 115, options [nop,nop,TS val 599750 ecr 255058541],
+>> length 0
+>>> 10:52:04.130310 IP 10.20.11.33.793500292 > 10.20.3.2.2049: 76 getattr fh
+>>> 0,0/24
+>>> 10:52:04.152178 IP 10.20.3.2.2049 > 10.20.11.33.793500292: reply ok 44
+>>> getattr ERROR: Operation not permitted
+>>>
+>>> If I run the same mount command (mount -oro,intr host:dir mountpoint)
+>>> from within a virtual machine with 2.6.38.2 there, everything mounts OK.
+>>
+>> Does the attached patch help?
+> 
+> No, still the operation not permitted in the tcpdump output and no mount.
 
-Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/direct.c |  160 +++++++++++++++++++++++++++++++-----------------------
- 1 files changed, 92 insertions(+), 68 deletions(-)
+The next tree from 20110411 still doesn't work. The topmost commit in
+fs/nfs/namespace.c is:
+commit 418875900e3de4831c84f86ae4756690dac5be77
+Author: Bryan Schumaker <bjschuma@netapp.com>
+Date:   Wed Apr 6 14:33:28 2011 -0400
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 8eea253..55dffb7 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -272,6 +272,38 @@ static const struct rpc_call_ops nfs_read_direct_ops = {
- 	.rpc_release = nfs_direct_read_release,
- };
- 
-+static long nfs_direct_read_execute(struct nfs_read_data *data,
-+				    struct rpc_task_setup *task_setup_data,
-+				    struct rpc_message *msg)
-+{
-+	struct inode *inode = data->inode;
-+	struct rpc_task *task;
-+
-+	nfs_fattr_init(&data->fattr);
-+	msg->rpc_argp = &data->args;
-+	msg->rpc_resp = &data->res;
-+
-+	task_setup_data->task = &data->task;
-+	task_setup_data->callback_data = data;
-+	NFS_PROTO(inode)->read_setup(data, msg);
-+
-+	task = rpc_run_task(task_setup_data);
-+	if (IS_ERR(task))
-+		return PTR_ERR(task);
-+
-+	rpc_put_task(task);
-+
-+	dprintk("NFS: %5u initiated direct read call "
-+		"(req %s/%lld, %u bytes @ offset %llu)\n",
-+		data->task.tk_pid,
-+		inode->i_sb->s_id,
-+		(long long)NFS_FILEID(inode),
-+		data->args.count,
-+		(unsigned long long)data->args.offset);
-+
-+	return 0;
-+}
-+
- /*
-  * For each rsize'd chunk of the user's buffer, dispatch an NFS READ
-  * operation.  If nfs_readdata_alloc() or get_user_pages() fails,
-@@ -288,7 +320,6 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
- 	unsigned long user_addr = (unsigned long)iov->iov_base;
- 	size_t count = iov->iov_len;
- 	size_t rsize = NFS_SERVER(inode)->rsize;
--	struct rpc_task *task;
- 	struct rpc_message msg = {
- 		.rpc_cred = ctx->cred,
- 	};
-@@ -349,26 +380,9 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
- 		data->res.fattr = &data->fattr;
- 		data->res.eof = 0;
- 		data->res.count = bytes;
--		nfs_fattr_init(&data->fattr);
--		msg.rpc_argp = &data->args;
--		msg.rpc_resp = &data->res;
- 
--		task_setup_data.task = &data->task;
--		task_setup_data.callback_data = data;
--		NFS_PROTO(inode)->read_setup(data, &msg);
--
--		task = rpc_run_task(&task_setup_data);
--		if (IS_ERR(task))
-+		if (nfs_direct_read_execute(data, &task_setup_data, &msg))
- 			break;
--		rpc_put_task(task);
--
--		dprintk("NFS: %5u initiated direct read call "
--			"(req %s/%Ld, %zu bytes @ offset %Lu)\n",
--				data->task.tk_pid,
--				inode->i_sb->s_id,
--				(long long)NFS_FILEID(inode),
--				bytes,
--				(unsigned long long)data->args.offset);
- 
- 		started += bytes;
- 		user_addr += bytes;
-@@ -461,12 +475,15 @@ static void nfs_direct_free_writedata(struct nfs_direct_req *dreq)
- }
- 
- #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
-+static long nfs_direct_write_execute(struct nfs_write_data *data,
-+				     struct rpc_task_setup *task_setup_data,
-+				     struct rpc_message *msg);
-+
- static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
- {
- 	struct inode *inode = dreq->inode;
- 	struct list_head *p;
- 	struct nfs_write_data *data;
--	struct rpc_task *task;
- 	struct rpc_message msg = {
- 		.rpc_cred = dreq->ctx->cred,
- 	};
-@@ -500,25 +517,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
- 		 * Reuse data->task; data->args should not have changed
- 		 * since the original request was sent.
- 		 */
--		task_setup_data.task = &data->task;
--		task_setup_data.callback_data = data;
--		msg.rpc_argp = &data->args;
--		msg.rpc_resp = &data->res;
--		NFS_PROTO(inode)->write_setup(data, &msg);
--
--		/*
--		 * We're called via an RPC callback, so BKL is already held.
--		 */
--		task = rpc_run_task(&task_setup_data);
--		if (!IS_ERR(task))
--			rpc_put_task(task);
--
--		dprintk("NFS: %5u rescheduled direct write call (req %s/%Ld, %u bytes @ offset %Lu)\n",
--				data->task.tk_pid,
--				inode->i_sb->s_id,
--				(long long)NFS_FILEID(inode),
--				data->args.count,
--				(unsigned long long)data->args.offset);
-+		nfs_direct_write_execute(data, &task_setup_data, &msg);
- 	}
- 
- 	if (put_dreq(dreq))
-@@ -561,10 +560,31 @@ static const struct rpc_call_ops nfs_commit_direct_ops = {
- 	.rpc_release = nfs_direct_commit_release,
- };
- 
-+static long nfs_direct_commit_execute(struct nfs_direct_req *dreq,
-+				      struct nfs_write_data *data,
-+				      struct rpc_task_setup *task_setup_data,
-+				      struct rpc_message *msg)
-+{
-+	struct rpc_task *task;
-+
-+	NFS_PROTO(data->inode)->commit_setup(data, msg);
-+
-+	/* Note: task.tk_ops->rpc_release will free dreq->commit_data */
-+	dreq->commit_data = NULL;
-+
-+	dprintk("NFS: %5u initiated commit call\n", data->task.tk_pid);
-+
-+	task = rpc_run_task(task_setup_data);
-+	if (IS_ERR(task))
-+		return PTR_ERR(task);
-+
-+	rpc_put_task(task);
-+	return 0;
-+}
-+
- static void nfs_direct_commit_schedule(struct nfs_direct_req *dreq)
- {
- 	struct nfs_write_data *data = dreq->commit_data;
--	struct rpc_task *task;
- 	struct rpc_message msg = {
- 		.rpc_argp = &data->args,
- 		.rpc_resp = &data->res,
-@@ -593,16 +613,7 @@ static void nfs_direct_commit_schedule(struct nfs_direct_req *dreq)
- 	data->res.verf = &data->verf;
- 	nfs_fattr_init(&data->fattr);
- 
--	NFS_PROTO(data->inode)->commit_setup(data, &msg);
--
--	/* Note: task.tk_ops->rpc_release will free dreq->commit_data */
--	dreq->commit_data = NULL;
--
--	dprintk("NFS: %5u initiated commit call\n", data->task.tk_pid);
--
--	task = rpc_run_task(&task_setup_data);
--	if (!IS_ERR(task))
--		rpc_put_task(task);
-+	nfs_direct_commit_execute(dreq, data, &task_setup_data, &msg);
- }
- 
- static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode *inode)
-@@ -703,6 +714,36 @@ static const struct rpc_call_ops nfs_write_direct_ops = {
- 	.rpc_release = nfs_direct_write_release,
- };
- 
-+static long nfs_direct_write_execute(struct nfs_write_data *data,
-+				     struct rpc_task_setup *task_setup_data,
-+				     struct rpc_message *msg)
-+{
-+	struct inode *inode = data->inode;
-+	struct rpc_task *task;
-+
-+	task_setup_data->task = &data->task;
-+	task_setup_data->callback_data = data;
-+	msg->rpc_argp = &data->args;
-+	msg->rpc_resp = &data->res;
-+	NFS_PROTO(inode)->write_setup(data, msg);
-+
-+	task = rpc_run_task(task_setup_data);
-+	if (IS_ERR(task))
-+		return PTR_ERR(task);
-+
-+	rpc_put_task(task);
-+
-+	dprintk("NFS: %5u initiated direct write call "
-+		"(req %s/%lld, %u bytes @ offset %llu)\n",
-+		data->task.tk_pid,
-+		inode->i_sb->s_id,
-+		(long long)NFS_FILEID(inode),
-+		data->args.count,
-+		(unsigned long long)data->args.offset);
-+
-+	return 0;
-+}
-+
- /*
-  * For each wsize'd chunk of the user's buffer, dispatch an NFS WRITE
-  * operation.  If nfs_writedata_alloc() or get_user_pages() fails,
-@@ -718,7 +759,6 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
- 	struct inode *inode = ctx->path.dentry->d_inode;
- 	unsigned long user_addr = (unsigned long)iov->iov_base;
- 	size_t count = iov->iov_len;
--	struct rpc_task *task;
- 	struct rpc_message msg = {
- 		.rpc_cred = ctx->cred,
- 	};
-@@ -785,24 +825,8 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
- 		data->res.verf = &data->verf;
- 		nfs_fattr_init(&data->fattr);
- 
--		task_setup_data.task = &data->task;
--		task_setup_data.callback_data = data;
--		msg.rpc_argp = &data->args;
--		msg.rpc_resp = &data->res;
--		NFS_PROTO(inode)->write_setup(data, &msg);
--
--		task = rpc_run_task(&task_setup_data);
--		if (IS_ERR(task))
-+		if (nfs_direct_write_execute(data, &task_setup_data, &msg))
- 			break;
--		rpc_put_task(task);
--
--		dprintk("NFS: %5u initiated direct write call "
--			"(req %s/%Ld, %zu bytes @ offset %Lu)\n",
--				data->task.tk_pid,
--				inode->i_sb->s_id,
--				(long long)NFS_FILEID(inode),
--				bytes,
--				(unsigned long long)data->args.offset);
- 
- 		started += bytes;
- 		user_addr += bytes;
+    NFS: Fix a signed vs. unsigned secinfo bug
+
+
+I bisected it to (in vanilla already):
+
+8f70e95f9f4159184f557a1db60c909d7c1bd2e3 is the first bad commit
+commit 8f70e95f9f4159184f557a1db60c909d7c1bd2e3
+Author: Bryan Schumaker <bjschuma@netapp.com>
+Date:   Thu Mar 24 17:12:31 2011 +0000
+
+    NFS: Determine initial mount security
+
+    When sec=<something> is not presented as a mount option,
+    we should attempt to determine what security flavor the
+    server is using.
+
+    Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+:040000 040000 8e5a640b37e00f0df21e1d9cd9aff160df2d5938
+0152daa67bc8d12e32cda5f4a036807d2e380392 M      fs
+:040000 040000 f74aa33f8597cb82cd0fd7d90d84e0660b7f5804
+527bc0ca6975cedc7e684b45dc9961f8aaf1207a M      include
+:040000 040000 87559d2f211ea905343a86c8551b6610dd239891
+7e4ee0e5eddf12474b6de9e7fdb6218b6165bdb2 M      net
+
+thanks,
 -- 
-1.7.3.4
-
+js
+suse labs
