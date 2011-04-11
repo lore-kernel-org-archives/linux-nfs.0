@@ -1,169 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:23791 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758047Ab1DAQ5r convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Apr 2011 12:57:47 -0400
-Subject: Re: kstrtox: convert net/sunrpc/
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20110331213625.GA3637@p183.telecom.by>
-Date: Fri, 1 Apr 2011 12:57:41 -0400
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Message-Id: <2A9AAF9A-727C-4558-883C-8052D1E2EF5A@oracle.com>
-References: <20110331213625.GA3637@p183.telecom.by>
+Received: from mx2.parallels.com ([64.131.90.16]:58050 "EHLO mx2.parallels.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752318Ab1DKRpS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Apr 2011 13:45:18 -0400
+Message-ID: <4DA33E1E.701@parallels.com>
+Date: Mon, 11 Apr 2011 12:45:02 -0500
+From: Rob Landley <rlandley@parallels.com>
 To: Alexey Dobriyan <adobriyan@gmail.com>
+CC: "Serge E. Hallyn" <serge@hallyn.com>, <linux-kernel@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>, <containers@lists.linux-foundation.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Tim Spriggs <tims@uahirise.org>, Kir Kolyshkin <kir@parallels.com>,
+        Pavel Emelyanov <xemul@parallels.com>
+Subject: Re: [PATCH 3/3] Compare namespaces when comparing addresses in auth_unix
+ cache.
+References: <4D9431B3.2070305@parallels.com>	<20110405034641.GC6764@hallyn.com>	<4D9F24F2.9020603@parallels.com>	<4DA30222.5040902@parallels.com>	<20110411133602.GA5321@hallyn.com> <BANLkTi=sh1CB+e1EhU-c-Bs3BCszWEBTMA@mail.gmail.com>
+In-Reply-To: <BANLkTi=sh1CB+e1EhU-c-Bs3BCszWEBTMA@mail.gmail.com>
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On 04/11/2011 08:57 AM, Alexey Dobriyan wrote:
+> On Mon, Apr 11, 2011 at 4:36 PM, Serge E. Hallyn <serge@hallyn.com> wrote:
+> 
+>> Besides use-after-free, the other concern is an invalid net_eq()
+>> result due to the * being re-used for a new netns.
+> 
+> Exactly.
+> 
+> "struct net" dies last, no exceptions, anything different is a disaster.
 
-On Mar 31, 2011, at 5:36 PM, Alexey Dobriyan wrote:
+Actually the patch turns out to be irrelevant because Pavel made the
+whole thing into a pernet subsystem, so it was already fixed in a
+different way.  (Commit 2f72c9b7.  My bad, I initially started working
+against an NFS tree with an older kernel version, this fix was to a
+different source file so my patch still applied, and I just regression
+tested that it worked, not that it still failed without it.  Just caught
+it now.)
 
-> * fix a bug in rpc_parse_scope_id() where successfull parsing of
->  scope ID was an error.
+I actually did talk about addressing potential reuse of the net * in my
+email with Stanislav (point of the patch was to allow one cache to
+maintain two different contexts at the same time; a situation that
+changed the meaning of an existing cache entry by requiring the old
+context to go away didn't introduce any new problems that a single
+context didn't already have due to DNAT, servers moving, administrators
+changing credentials on the server).  But sort of a moot point now.
 
-What was the bad behavior?
+I believe the third patch can be dropped entirely.
 
-This looks a little bigger than just a fix to rpc_parse_scope_id().  Perhaps it should be split.
-
->  I'm not sure whether ID=0 should be banned, though.
-> 
-> Signed-off-by: Alexey Dobriyan <adobriyan@gmail.com>
-> ---
-> 
-> net/sunrpc/addr.c     |   20 ++++++++------------
-> net/sunrpc/auth.c     |   15 ++++++---------
-> net/sunrpc/xprtsock.c |    8 +++++---
-> 3 files changed, 19 insertions(+), 24 deletions(-)
-> 
-> --- a/net/sunrpc/addr.c
-> +++ b/net/sunrpc/addr.c
-> @@ -173,15 +173,15 @@ static int rpc_parse_scope_id(const char *buf, const size_t buflen,
-> 	len = (buf + buflen) - delim - 1;
-> 	p = kstrndup(delim + 1, len, GFP_KERNEL);
-> 	if (p) {
-> -		unsigned long scope_id = 0;
-> 		struct net_device *dev;
-> +		u32 scope_id;
-> 
-> 		dev = dev_get_by_name(&init_net, p);
-> 		if (dev != NULL) {
-> 			scope_id = dev->ifindex;
-> 			dev_put(dev);
-> 		} else {
-> -			if (strict_strtoul(p, 10, &scope_id) == 0) {
-> +			if (kstrtou32(p, 10, &scope_id) < 0) {
-> 				kfree(p);
-> 				return 0;
-> 			}
-> @@ -299,7 +299,7 @@ EXPORT_SYMBOL_GPL(rpc_sockaddr2uaddr);
->  * @sap: buffer into which to plant socket address
->  * @salen: size of buffer
->  *
-> - * @uaddr does not have to be '\0'-terminated, but strict_strtoul() and
-> + * @uaddr does not have to be '\0'-terminated, but kstrto*() and
->  * rpc_pton() require proper string termination to be successful.
->  *
->  * Returns the size of the socket address if successful; otherwise
-> @@ -309,8 +309,8 @@ size_t rpc_uaddr2sockaddr(const char *uaddr, const size_t uaddr_len,
-> 			  struct sockaddr *sap, const size_t salen)
-> {
-> 	char *c, buf[RPCBIND_MAXUADDRLEN + sizeof('\0')];
-> -	unsigned long portlo, porthi;
-> -	unsigned short port;
-> +	u8 portlo, porthi;
-> +	u16 port;
-> 
-> 	if (uaddr_len > RPCBIND_MAXUADDRLEN)
-> 		return 0;
-> @@ -321,21 +321,17 @@ size_t rpc_uaddr2sockaddr(const char *uaddr, const size_t uaddr_len,
-> 	c = strrchr(buf, '.');
-> 	if (unlikely(c == NULL))
-> 		return 0;
-> -	if (unlikely(strict_strtoul(c + 1, 10, &portlo) != 0))
-> -		return 0;
-> -	if (unlikely(portlo > 255))
-> +	if (unlikely(kstrtou8(c + 1, 10, &portlo) != 0))
-> 		return 0;
-> 
-> 	*c = '\0';
-> 	c = strrchr(buf, '.');
-> 	if (unlikely(c == NULL))
-> 		return 0;
-> -	if (unlikely(strict_strtoul(c + 1, 10, &porthi) != 0))
-> -		return 0;
-> -	if (unlikely(porthi > 255))
-> +	if (unlikely(kstrtou8(c + 1, 10, &porthi) != 0))
-> 		return 0;
-> 
-> -	port = (unsigned short)((porthi << 8) | portlo);
-> +	port = (porthi << 8) | portlo;
-> 
-> 	*c = '\0';
-> 	if (rpc_pton(buf, strlen(buf), sap, salen) == 0)
-> --- a/net/sunrpc/auth.c
-> +++ b/net/sunrpc/auth.c
-> @@ -41,24 +41,21 @@ static unsigned long number_cred_unused;
-> #define MAX_HASHTABLE_BITS (14)
-> static int param_set_hashtbl_sz(const char *val, const struct kernel_param *kp)
-> {
-> -	unsigned long num;
-> -	unsigned int nbits;
-> +	unsigned int num, nbits;
-> 	int ret;
-> 
-> 	if (!val)
-> -		goto out_inval;
-> -	ret = strict_strtoul(val, 0, &num);
-> -	if (ret == -EINVAL)
-> -		goto out_inval;
-> +		return -EINVAL;
-> +	ret = kstrtouint(val, 0, &num);
-> +	if (ret < 0)
-> +		return ret;
-> 	nbits = fls(num);
-> 	if (num > (1U << nbits))
-> 		nbits++;
-> 	if (nbits > MAX_HASHTABLE_BITS || nbits < 2)
-> -		goto out_inval;
-> +		return -EINVAL;
-> 	*(unsigned int *)kp->arg = nbits;
-> 	return 0;
-> -out_inval:
-> -	return -EINVAL;
-> }
-> 
-> static int param_get_hashtbl_sz(char *buffer, const struct kernel_param *kp)
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -2502,13 +2502,15 @@ static int param_set_uint_minmax(const char *val,
-> 		const struct kernel_param *kp,
-> 		unsigned int min, unsigned int max)
-> {
-> -	unsigned long num;
-> +	unsigned int num;
-> 	int ret;
-> 
-> 	if (!val)
-> 		return -EINVAL;
-> -	ret = strict_strtoul(val, 0, &num);
-> -	if (ret == -EINVAL || num < min || num > max)
-> +	ret = kstrtouint(val, 0, &num);
-> +	if (ret < 0)
-> +		return ret;
-> +	if (num < min || num > max)
-> 		return -EINVAL;
-> 	*((unsigned int *)kp->arg) = num;
-> 	return 0;
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Rob
