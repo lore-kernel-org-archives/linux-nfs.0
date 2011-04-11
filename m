@@ -1,105 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:47831 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755964Ab1DKVIK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Apr 2011 17:08:10 -0400
-Message-ID: <4DA36DB6.8060108@suse.cz>
-Date: Mon, 11 Apr 2011 23:08:06 +0200
-From: Jiri Slaby <jslaby@suse.cz>
-To: bjschuma@netapp.com
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
-        mm-commits@vger.kernel.org, ML netdev <netdev@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, Jiri Slaby <jirislaby@gmail.com>
-Subject: Re: nfs client doesn't work [was: mmotm 2011-03-31-14-48 uploaded]
-References: <201103312224.p2VMOA5g000983@imap1.linux-foundation.org> <4D96E4C5.2080302@suse.cz> <1302122693.16786.0.camel@lade.trondhjem.org> <4D9D5CC9.2040002@suse.cz> <4DA36722.2020402@suse.cz> <4DA36758.4070203@suse.cz>
-In-Reply-To: <4DA36758.4070203@suse.cz>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from cn.fujitsu.com ([222.73.24.84]:57702 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752633Ab1DKDFI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Apr 2011 23:05:08 -0400
+Message-ID: <4DA2703B.8070300@cn.fujitsu.com>
+Date: Mon, 11 Apr 2011 11:06:35 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: Re: [PATCH 1/5] nfsd: distinguish functions of NFSD_MAY_* flags
+References: <20110410162536.GC26233@fieldses.org> <1302452973-27272-1-git-send-email-bfields@redhat.com>
+In-Reply-To: <1302452973-27272-1-git-send-email-bfields@redhat.com>
+Content-Type: text/plain; charset=Shift_JIS
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 04/11/2011 10:40 PM, Jiri Slaby wrote:
-> Ccing Bryan
+
+
+J. Bruce Fields ŽÊ“¹:
+> Most of the NFSD_MAY_* flags actually request permissions, but over the
+> years we've accreted a few that modify the behavior of the permission or
+> open code in other ways.
 > 
-> On 04/11/2011 10:40 PM, Jiri Slaby wrote:
->> On 04/07/2011 08:42 AM, Jiri Slaby wrote:
->>> On 04/06/2011 10:44 PM, Myklebust, Trond wrote:
->>>> On Sat, 2011-04-02 at 10:56 +0200, Jiri Slaby wrote:
->>>>> On 03/31/2011 11:48 PM, akpm@linux-foundation.org wrote:
->>>>>> The mm-of-the-moment snapshot 2011-03-31-14-48 has been uploaded to
->>>>>
->>>>> Hi, nfs client is defunct in this kernel. Tcpdump says:
->>>>> 10:51:55.489717 IP 10.20.11.33.759945860 > 10.20.3.2.2049: 132 getattr
->>>>> fh 0,0/24
->>>>> 10:51:55.515927 IP 10.20.3.2.2049 > 10.20.11.33.759945860: reply ok 44
->>>>> getattr ERROR: Operation not permitted
->>>>> 10:51:55.515949 IP 10.20.11.33.921 > 10.20.3.2.2049: Flags [.], ack
->>>>> 3569361440, win 115, options [nop,nop,TS val 599750 ecr 255058541],
->>>> length 0
->>>>> 10:52:04.130310 IP 10.20.11.33.793500292 > 10.20.3.2.2049: 76 getattr fh
->>>>> 0,0/24
->>>>> 10:52:04.152178 IP 10.20.3.2.2049 > 10.20.11.33.793500292: reply ok 44
->>>>> getattr ERROR: Operation not permitted
->>>>>
->>>>> If I run the same mount command (mount -oro,intr host:dir mountpoint)
->>>>> from within a virtual machine with 2.6.38.2 there, everything mounts OK.
->>>>
->>>> Does the attached patch help?
->>>
->>> No, still the operation not permitted in the tcpdump output and no mount.
->>
->> The next tree from 20110411 still doesn't work. The topmost commit in
->> fs/nfs/namespace.c is:
->> commit 418875900e3de4831c84f86ae4756690dac5be77
->> Author: Bryan Schumaker <bjschuma@netapp.com>
->> Date:   Wed Apr 6 14:33:28 2011 -0400
->>
->>     NFS: Fix a signed vs. unsigned secinfo bug
->>
->>
->> I bisected it to (in vanilla already):
->>
->> 8f70e95f9f4159184f557a1db60c909d7c1bd2e3 is the first bad commit
->> commit 8f70e95f9f4159184f557a1db60c909d7c1bd2e3
->> Author: Bryan Schumaker <bjschuma@netapp.com>
->> Date:   Thu Mar 24 17:12:31 2011 +0000
->>
->>     NFS: Determine initial mount security
->>
->>     When sec=<something> is not presented as a mount option,
->>     we should attempt to determine what security flavor the
->>     server is using.
->>
->>     Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->>     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->>
->> :040000 040000 8e5a640b37e00f0df21e1d9cd9aff160df2d5938
->> 0152daa67bc8d12e32cda5f4a036807d2e380392 M      fs
->> :040000 040000 f74aa33f8597cb82cd0fd7d90d84e0660b7f5804
->> 527bc0ca6975cedc7e684b45dc9961f8aaf1207a M      include
->> :040000 040000 87559d2f211ea905343a86c8551b6610dd239891
->> 7e4ee0e5eddf12474b6de9e7fdb6218b6165bdb2 M      net
+> Distinguish the two cases a little more.  In particular, allow the
+> shortcut at the start of nfsd_permission to ignore the
+> non-permission-requesting bits.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/nfsd/vfs.c |    2 +-
+>  fs/nfsd/vfs.h |    3 +++
+>  2 files changed, 4 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 2e1cebd..ac4f0b4 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -2027,7 +2027,7 @@ nfsd_permission(struct svc_rqst *rqstp, struct svc_export *exp,
+>  	struct inode	*inode = dentry->d_inode;
+>  	int		err;
+>  
+> -	if (acc == NFSD_MAY_NOP)
+> +	if (acc & NFSD_MAY_MASK == NFSD_MAY_NOP)
+>  		return 0;
 
-Sorry for an extra message. I've just found out that there appears
-messages in dmesg:
-[   58.656048] RPC: AUTH_GSS upcall timed out.
-[   58.656050] Please check user daemon is running.
-[   88.656065] RPC: AUTH_GSS upcall timed out.
-[   88.656068] Please check user daemon is running.
-[  118.656077] RPC: AUTH_GSS upcall timed out.
-[  118.656080] Please check user daemon is running.
-[  148.656049] RPC: AUTH_GSS upcall timed out.
-[  148.656052] Please check user daemon is running.
-[  178.656046] RPC: AUTH_GSS upcall timed out.
-[  178.656049] Please check user daemon is running.
+  Maybe there is a problem, the priority of '==' is higher than '&', 
+  this line equal to "if (acc & (NFSD_MAY_MASK == NFSD_MAY_NOP))",
+  "return 0" will appears every time, I think it's not we really want.
 
+  "if ((acc & NFSD_MAY_MASK) == NFSD_MAY_NOP)" is we need,
+  do you think so?
 
-I instrumented the code and it's stuck with trying RPC_AUTH_GSS_KRB5.
-
-I don't use GSS at all.
-
-regards,
 -- 
-js
-suse labs
+----
+thanks
+Mi Jinlong
+
+>  #if 0
+>  	dprintk("nfsd: permission 0x%x%s%s%s%s%s%s%s mode 0%o%s%s%s\n",
+> diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+> index 9a370a5..1036913 100644
+> --- a/fs/nfsd/vfs.h
+> +++ b/fs/nfsd/vfs.h
+> @@ -17,6 +17,9 @@
+>  #define NFSD_MAY_SATTR		8
+>  #define NFSD_MAY_TRUNC		16
+>  #define NFSD_MAY_LOCK		32
+> +#define NFSD_MAY_MASK		63
+> +
+> +/* extra hints to permission and open routines: */
+>  #define NFSD_MAY_OWNER_OVERRIDE	64
+>  #define NFSD_MAY_LOCAL_ACCESS	128 /* IRIX doing local access check on device special file*/
+>  #define NFSD_MAY_BYPASS_GSS_ON_ROOT 256
+
+-- 
+----
+thanks
+Mi Jinlong
+
