@@ -1,88 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lvps87-230-0-242.dedicated.hosteurope.de ([87.230.0.242]:38502
-	"EHLO lvps87-230-0-242.dedicated.hosteurope.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754472Ab1DNX0w (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Apr 2011 19:26:52 -0400
-Date: Fri, 15 Apr 2011 01:20:04 +0200
-From: Michael Guntsche <mike@it-loops.com>
-To: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: [BUG] sec=krb5 mount problem with nfs-utils 1.2.3 on client side
-Message-ID: <20110415010913@it-loops.com>
+Received: from hrndva-omtalb.mail.rr.com ([71.74.56.124]:52841 "EHLO
+	hrndva-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751624Ab1DKNgE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Apr 2011 09:36:04 -0400
+Date: Mon, 11 Apr 2011 08:36:02 -0500
+From: "Serge E. Hallyn" <serge@hallyn.com>
+To: Rob Landley <rlandley@parallels.com>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        containers@lists.linux-foundation.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Tim Spriggs <tims@uahirise.org>, Kir Kolyshkin <kir@parallels.com>,
+        Pavel Emelyanov <xemul@parallels.com>
+Subject: Re: [PATCH 3/3] Compare namespaces when comparing addresses in
+ auth_unix cache.
+Message-ID: <20110411133602.GA5321@hallyn.com>
+References: <4D9431B3.2070305@parallels.com>
+ <20110405034641.GC6764@hallyn.com>
+ <4D9F24F2.9020603@parallels.com>
+ <4DA30222.5040902@parallels.com>
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4DA30222.5040902@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+Quoting Rob Landley (rlandley@parallels.com):
+> On 04/08/2011 10:08 AM, Rob Landley wrote:
+> > On 04/04/2011 10:46 PM, Serge E. Hallyn wrote:
+> >> Does this need to take a reference?  Or is there no way for an
+> >> entry to outlive its netns?  It sort of looks like
+> >> svcauth_unix_info_release will ensure that doesn't happen, but
+> >> I'm not convinced because other parts of the kernel can get
+> >> to ip_map_init through the struct cache_detail.
+> > 
+> > When I wrote this I thought the transport's get_net() and put_net()
+> > would pin it, but after re-reading, the sunrpc code is disgustingly
+> > convoluted enough that I can't easily reconstruct my earlier reasoning.
+> >  I'll add a get_net() and put_net() just to not have to worry about it.
+> 
+> Ah-ha!
+> 
+> Stanislav Kinsbursky helped me reconstruct some of the reasoning: we
+> don't need to take a reference because we never actually dereference the
+> struct net *, all we do is feed them to net_eq() which just compares the
+> pointers for equality.  (The inline function exists so it can compile to
+> a constant "return 1" when configured out.)
+> 
+> So if the network context did go away (which still shouldn't happen
+> between the rpc_xprt and the struct nfs_client having references to it)
+> we still wouldn't have a use-after-free problem because we're not
+> looking at the memory, just the pointer.
 
-I recently updated my nfs clients and server to the new nfs-utls Version
-1.2.3 and then also tested a sec=krb5 mount via nfs4 again. For some reason
-the mount failed and I got the following message on the server.
+Besides use-after-free, the other concern is an invalid net_eq()
+result due to the * being re-used for a new netns.  I assume that's
+deemed "super-duper impossible" again bc of the rpc_xprt/nfs_client
+references to it?
 
-rpc.svcgssd output:
-===================
-entering poll
-leaving poll
-handling null request
-sname = nfs/zaphod.comsick.at@COMSICK.AT
-DEBUG: serialize_krb5_ctx: lucid version!
-prepare_krb5_rfc4121_buffer: protocol 1
-prepare_krb5_rfc4121_buffer: serializing key with enctype 18 and size 32
-doing downcall
-mech: krb5, hndl len: 4, ctx len 52, timeout: 1302858643 (35979 from
-now), clnt: nfs@zaphod.comsick.at, uid: -1, gid: -1, num aux grps: 0:
-: qword_eol: fflush failed: errno 22 (Invalid argument)
-WARNING: error writing to downcall channel
-/proc/net/rpc/auth.rpcsec.context/channel: Invalid argument
-sending null reply
-finished handling null request
-<repeated 4 times>
+> So I shouldn't need to add get_net() and put_net() to the cache.  Sound
+> about right?
 
-Since it worked before I downgraded the versions on both the client and
-the server to see when it started working again.
-
-Server with 1.2.3 and  client with 1.2.2 did the trick
-
-rpc.svcgssd output:
-===================
-entering poll
-leaving poll
-handling null request
-sname = nfs/zaphod.comsick.at@COMSICK.AT
-DEBUG: serialize_krb5_ctx: lucid version!
-prepare_krb5_rfc1964_buffer: serializing keys with enctype 4 and length
-8
-doing downcall
-mech: krb5, hndl len: 4, ctx len 85, timeout: 1302858893 (36000 from
-now), clnt: nfs@zaphod.comsick.at, uid: -1, gid: -1, num aux grps: 0:
-sending null reply
-finished handling null request
-entering poll
-
-So apparently with 1.2.2 on the client side a different enctype is
-select. I searched in the archives and saw that this problem was already
-known but I did not see any fixes. Both client and server have
-aes_generic enabled and loaded I also made sure that the correct keys on
-the kerberos side are available.
-
-Valid starting     Expires            Service principal 04/15/11
-01:14:53  04/15/11 11:14:53  krbtgt/COMSICK.AT@COMSICK.AT renew until
-04/16/11 01:14:53, Etype (skey, tkt): des3-cbc-sha1, des3-cbc-sha1
-04/15/11 01:14:53  04/15/11 11:14:53  nfs/gibson.comsick.at@COMSICK.AT
-renew until 04/16/11 01:14:53, Etype (skey, tkt): des-cbc-crc,
-aes256-cts-hmac-sha1-96 
-
-So right now I am little bit stumped 
-
-* why another enctype is used
-* why it does not succeed with the new enctype
-
-Both machines are running kernel 2.6.38 on debian sid with the latest
-Kerberos 1.9
-
-If you need more information please tell me.
-
-Kind regards,
-Michael Guntsche
-
-
+thanks,
+-serge
