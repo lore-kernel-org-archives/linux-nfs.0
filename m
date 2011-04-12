@@ -1,61 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from seldrel01.sonyericsson.com ([212.209.106.2]:17441 "EHLO
-	seldrel01.sonyericsson.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751576Ab1DGOPk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2011 10:15:40 -0400
-From: "Finney, Sean" <Sean.Finney@sonyericsson.com>
-To: "rees@umich.edu" <rees@umich.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-Date: Thu, 7 Apr 2011 16:15:37 +0200
-Subject: Re: [PATCH v2 1/2] nfs-utils: mountd: Use a dynamic buffer for
- storing lists of gid's
-Message-ID: <A50602A820F61543B29992A418BB321B66E18F8A5E@seldmbx01.corpusers.net>
-References: <20110405233552.GB27961@fieldses.org>
- <1302160948-5628-1-git-send-email-sean.finney@sonyericsson.com>
- <20110407122218.GA11897@merit.edu>
-In-Reply-To: <20110407122218.GA11897@merit.edu>
-Content-Type: text/plain; charset="utf-8"
+Received: from rcsinet10.oracle.com ([148.87.113.121]:37288 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754684Ab1DLQt2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Apr 2011 12:49:28 -0400
+Subject: Re: [ANNOUNCE] fedfs-utils for Linux
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20110412155431.GA8583@infradead.org>
+Date: Tue, 12 Apr 2011 12:48:18 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        autofs@linux.kernel.org, util-linux-ng@vger.kernel.org
+Message-Id: <8086DF6B-252D-4746-AA6E-A6A85FEDAAE5@oracle.com>
+References: <AB0460DE-A056-47AA-B387-156D35334E04@oracle.com> <20110412155431.GA8583@infradead.org>
+To: Christoph Hellwig <hch@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-SGkgSmltLAoKT24gVGh1LCAyMDExLTA0LTA3IGF0IDA4OjIyIC0wNDAwLCBKaW0gUmVlcyB3cm90
-ZToKPiBTZWFuIEZpbm5leSB3cm90ZToKPiAKPiAgIFByZXZpb3VzbHksIGluIGF1dGhfdW5peF9n
-aWQsIGdyb3VwIGxpc3RzIHdlcmUgc3RvcmVkIGluIGFuIGFycmF5IG9mCj4gICBoYXJkLWNvZGVk
-IGxlbmd0aCAxMDAsIGFuZCBpbiB0aGUgc2l0dWF0aW9uIHRoYXQgdGhlIGdyb3VwIGxpc3RzIGZv
-ciBhCj4gICBwYXJ0aWN1bGFyIGNhbGwgd2VyZSB0b28gbGFyZ2UsIHRoZSBhcnJheSB3YXMgc3dh
-cHBlZCB3aXRoIGEgZHluYW1pY2FsbHkKPiAgIGFsbG9jYXRlZC9mcmVlZCBidWZmZXIuICBGb3Ig
-ZW52aXJvbm1lbnRzIHdoZXJlIHVzZXJzIGFyZSBjb21tb25seSBpbgo+ICAgYSBsYXJnZSBudW1i
-ZXIgb2YgZ3JvdXBzLCB0aGlzIGlzbid0IGFuIGlkZWFsIGFwcHJvYWNoLgo+ICAgCj4gICBJbnN0
-ZWFkLCBtYWtlIHRoZSBncm91cCBsaXN0IHN0YXRpYyBzY29wZWQgdG8gdGhlIGZ1bmN0aW9uLCBh
-bmQKPiAgIHVzZSBtYWxsb2MvcmVhbGxvYyB0byBncm93IGl0IG9uIGFuIGFzLW5lZWRlZCBiYXNp
-cy4KPiAKPiBJIHdvdWxkIHJlLXdvcmQgdGhpcy4gIFRoZSBsaXN0IGlzbid0IHN0YXRpYywgdGhl
-IGxpc3QgcG9pbnRlciBpcy4gIEkgZG9uJ3QKPiB0aGluayB5b3UgbmVlZCB0byBtZW50aW9uIHRo
-YXQsIGl0J3MganVzdCBjb25mdXNpbmcuICAiVXNlIG1hbGxvYy9yZWFsbG9jIHRvCj4gZ3JvdyB0
-aGUgbGlzdCBvbiBhbiBhcy1uZWVkZWQgYmFzaXMuIgoKT2theS4gIEkgd2FzIHRyeWluZyB0byBq
-dXN0IHB1dCBhIGhpbnQgdGhhdCB0aGVyZSB3YXMgYSBwZXJzaXN0YW50CmJ1ZmZlciB0aGF0IHdv
-dWxkIGhhbmcgYXJvdW5kIHRocm91Z2ggbXVsdGlwbGUgaW52b2NhdGlvbnMsIHRob3VnaApwZXJo
-YXBzIHRoYXQncyBhIGxpdHRsZSB0b28gbXVjaCAnaW1wbGVtZW50YXRpb24gZGV0YWlscycuICBU
-b3RhbGx5IGZpbmUKd2l0aCBtb2RpZnlpbmcgdGhlIGRlc2NyaXB0aW9uIGVpdGhlciB3YXkgOikK
-Cgo+IAo+ICAgKwkJZ3JvdXBzID0gbWFsbG9jKHNpemVvZihnaWRfdCkqSU5JVElBTF9NQU5BR0VE
-X0dST1VQUyk7Cj4gCj4gU3R5bGUgbml0OiAgUHV0IGJsYW5rcyBhcm91bmQgdGhlICIqIi4KCldp
-bGwgZG8uCgo+IEkgd2FzIGdvaW5nIHRvIHN1Z2dlc3QgeW91IGZpcnN0IGNhbGwgZ2V0Z3JvdXBs
-aXN0IHdpdGggZ3JvdXBzIHNldCB0byAwIHNvCj4geW91IGNhbiBhbHdheXMgYWxsb2MoKSB0aGUg
-Y29ycmVjdCBzaXplIGxpc3QsIGJ1dCB0aGVuIEkgZm91bmQgdGhpcyBpbiB0aGUKPiBtYW4gcGFn
-ZToKPiAKPiBCVUdTCj4gICAgICAgIEluICBnbGliYyAgdmVyc2lvbnMgIGJlZm9yZSAgMi4zLjMs
-IHRoZSBpbXBsZW1lbnRhdGlvbiBvZiB0aGlzIGZ1bmN0aW9uCj4gICAgICAgIGNvbnRhaW5zIGEg
-YnVmZmVyLW92ZXJydW4gYnVnOiBpdCByZXR1cm5zIHRoZSBjb21wbGV0ZSBsaXN0ICBvZiAgZ3Jv
-dXBzCj4gICAgICAgIGZvciAgdXNlciAgaW4gIHRoZSBhcnJheSBncm91cHMsIGV2ZW4gd2hlbiB0
-aGUgbnVtYmVyIG9mIGdyb3VwcyBleGNlZWRzCj4gICAgICAgICpuZ3JvdXBzLgoKWXVjay4gIFRo
-ZSBmdW5jdGlvbiBpcyBhbHNvIG5vdCBpbiBQT1NJWCBvciBhbnkgb3RoZXIgc3RhbmRhcmRzLCBz
-bwptYXliZSBpdCdzIHdvcnRoIGRpc2N1c3NpbmcgYXQgYSBsYXRlciBwb2ludCB3aGV0aGVyIGdl
-dGdyb3VwcygyKSB3b3VsZApiZSBhIGJldHRlciBpbnRlcmZhY2UgdG8gdXNlLCBldmVuIGlmIGl0
-IG1lYW5zIGFuIGV4dHJhIHN0ZXAgb3IgdHdvLgoKCkFueXdheSwgSSB3aWxsIHJlLXNwaW4gdGhp
-cyBwYXRjaCB3aXRoIHRoZSB0d28gY2hhbmdlcyB0aGF0IHlvdSd2ZQpzdWdnZXN0ZWQgYW5kIHN1
-Ym1pdCBpdCB0b21vcnJvdy4gICBDYXJlIHRvIHRha2UgYSBsb29rIGF0IHBhdGNoCjIvMj8gIDop
-CgoKCVNlYW4KTu+/ve+/ve+/ve+/ve+/vXLvv73vv71577+977+977+9Yu+/vVjvv73vv73Hp3bv
-v71e77+9Kd66ey5u77+9K++/ve+/ve+/ve+/vXvvv73vv73vv70i77+977+9Xm7vv71y77+977+9
-77+9eu+/vRrvv73vv71o77+977+977+977+9Ju+/ve+/vR7vv71H77+977+977+9aO+/vQMo77+9
-6ZqO77+93aJqIu+/ve+/vRrvv70bbe+/ve+/ve+/ve+/ve+/vXrvv73elu+/ve+/ve+/vWbvv73v
-v73vv71o77+977+977+9fu+/vW3vv70=
+
+On Apr 12, 2011, at 11:54 AM, Christoph Hellwig wrote:
+
+> On Thu, Apr 07, 2011 at 04:24:29PM -0400, Chuck Lever wrote:
+>> See http://oss.oracle.com/projects/fedfs-utils for more information and source code downloads.  Two mailman mailing lists are also available:
+>> 
+>>  fedfs-utils-announce@oss.oracle.com
+>>  fedfs-utils-devel@oss.oracle.com
+> 
+> Is it really a good idea to not just one but two separate mailinglist
+> for something tightly integrated with nfs anyway?  Why not just use
+> linux-nfs for the small amount of additional traffic?
+
+FedFS is agnostic to the underlying file protocol.  The current Linux FedFS prototype happens to be NFS-only, but we don't expect it to stay that way.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
