@@ -1,74 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:37557 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758716Ab1DYSnP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Apr 2011 14:43:15 -0400
-Received: by iwn34 with SMTP id 34so2050043iwn.19
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Apr 2011 11:43:14 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/15] Client-side NFSv4 migration (take 2?)
-To: trond.myklebust@netapp.com
+Received: from mail-out2.uio.no ([129.240.10.58]:57387 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755947Ab1DLQ0N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Apr 2011 12:26:13 -0400
+Subject: Re: [RFC][PATCH] Vector read/write support for NFS (DIO) client
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Badari Pulavarty <pbadari@us.ibm.com>
 Cc: linux-nfs@vger.kernel.org
-Date: Mon, 25 Apr 2011 14:43:09 -0400
-Message-ID: <20110425183405.5669.52507.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <1302625032.3877.69.camel@badari-desktop>
+References: <1302622335.3877.62.camel@badari-desktop>
+	 <1302623369.4801.28.camel@lade.trondhjem.org>
+	 <1302625032.3877.69.camel@badari-desktop>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 12 Apr 2011 12:26:09 -0400
+Message-ID: <1302625569.4801.38.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Trond-
+On Tue, 2011-04-12 at 09:17 -0700, Badari Pulavarty wrote:
+> On Tue, 2011-04-12 at 11:49 -0400, Trond Myklebust wrote:
+> > On Tue, 2011-04-12 at 08:32 -0700, Badari Pulavarty wrote:
+> > > Hi,
+> > > 
+> > > We recently ran into serious performance issue with NFS client.
+> > > It turned out that its due to lack of readv/write support for
+> > > NFS (O_DIRECT) client.
+> > > 
+> > > Here is our use-case:
+> > > 
+> > > In our cloud environment, our storage is over NFS. Files
+> > > on NFS are passed as a blockdevices to the guest (using
+> > > O_DIRECT). When guest is doing IO on these block devices,
+> > > they will end up as O_DIRECT writes to NFS (on KVM host).
+> > > 
+> > > QEMU (on the host) gets a vector from virtio-ring and
+> > > submits them. Old versions of QEMU, linearized the vector
+> > > it got from KVM (copied them into a buffer) and submits
+> > > the buffer. So, NFS client always received a single buffer.
+> > > 
+> > > Later versions of QEMU, eliminated this copy and submits
+> > > a vector directly using preadv/pwritev().
+> > > 
+> > > NFS client loops through the vector and submits each
+> > > vector as separate request for each IO < wsize. In our
+> > > case (negotiated wsize=1MB), for 256K IO - we get 64 
+> > > vectors, each 4K. So, we end up submitting 64 4K FILE_SYNC IOs. 
+> > > Server end up doing each 4K synchronously. This causes
+> > > serious performance degrade. We are trying to see if the
+> > > performance improves if we convert IOs to ASYNC - but
+> > > our initial results doesn't look good.
+> > > 
+> > > readv/writev support NFS client for all possible cases is
+> > > hard. Instead, if all vectors are page-aligned and 
+> > > iosizes page-multiple - it fits the current code easily.
+> > > Luckily, QEMU use-case fits these requirements.
+> > > 
+> > > Here is the patch to add this support. Comments ?
+> > 
+> > Your approach goes in the direction of further special-casing O_DIRECT
+> > in the NFS client. I'd like to move away from that and towards
+> > integration with the ordinary read/write codepaths so that aside from
+> > adding request coalescing, we can also enable pNFS support.
+> > 
+> 
+> I completely agree. But its a major under-taking :(
 
-These apply on top of a 2.6.39-rc4 kernel with the RPC lock client
-patches.  The full series is available at:
+Sure, but it is one that I'm working on. I'm just explaining why I'd
+prefer not to include more stop-gap O_DIRECT patches at this point. We
+can afford to wait for one more release cycle if it means fixing
+O_DIRECT once and for all.
 
-  http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=commit;h=6e324e239238810e939d76af4d59a3b60e8d59ea
+Cheers,
+  Trond
 
-Light testing identified a number of bugs and verified that the
-architecture is suitable for consideration for integration in 2.6.40.
-
-For various reasons, I was not able to test post-migration state
-recovery at this time, but I expect to have testing facilities
-available for a while to continue exercising this code.  I don't
-think state recovery will need much, if any, extra work.
-
-Also, I don't have facilities yet to try NFSv4.1 migration.
-
----
-
-Chuck Lever (15):
-      NFS: Implement support for NFS4ERR_LEASE_MOVED
-      NFS: Add migration recovery callouts in nfs4proc.c
-      NFS: Remove "const" from "struct nfs_server *" fields
-      NFS: Add basic migration support to state manager thread
-      NFS: Add functions to swap transports during migration recovery
-      NFS: Add an API for cloning an nfs_client
-      NFS: Add infrastructure for updating callback data
-      NFS: Introduce nfs4_proc_get_mig_status()
-      NFS: Introduce NFS_ATTR_FATTR_V4_LOCATIONS
-      NFS: Save root file handle in nfs_server
-      NFS: Add a client-side function to display file handles
-      SUNRPC: Add API to acquire source address
-      SUNRPC: Address a lockdep splat in sunrpc.ko
-      NFS: Address lockdep splat during NFSv4 mount
-      SUNRPC: Remove obsolete comment
-
-
- fs/nfs/client.c             |  112 +++++++++++++++++++----
- fs/nfs/getroot.c            |    5 +
- fs/nfs/inode.c              |   45 +++++++++
- fs/nfs/internal.h           |    6 +
- fs/nfs/nfs4_fs.h            |    8 ++
- fs/nfs/nfs4namespace.c      |  202 +++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4proc.c           |  203 ++++++++++++++++++++++++++++++++++++-----
- fs/nfs/nfs4state.c          |  213 ++++++++++++++++++++++++++++++++++++++++++-
- fs/nfs/nfs4xdr.c            |   50 +++++++---
- include/linux/nfs_fs.h      |   14 +++
- include/linux/nfs_fs_sb.h   |    7 +
- include/linux/nfs_xdr.h     |   36 ++++---
- include/linux/sunrpc/clnt.h |    1 
- net/sunrpc/clnt.c           |  155 ++++++++++++++++++++++++++++++-
- net/sunrpc/xprt.c           |    2 
- 15 files changed, 977 insertions(+), 82 deletions(-)
-
--- 
-Chuck Lever
