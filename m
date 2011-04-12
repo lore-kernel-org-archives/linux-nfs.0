@@ -1,55 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62786 "EHLO mx1.redhat.com"
+Received: from mx1.netapp.com ([216.240.18.38]:17616 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751738Ab1DWMQu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 23 Apr 2011 08:16:50 -0400
-Message-ID: <4DB2C32B.7000400@RedHat.com>
-Date: Sat, 23 Apr 2011 08:16:43 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Richard Smits <R.Smits@tudelft.nl>
+	id S1756803Ab1DLTtI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Apr 2011 15:49:08 -0400
+Message-ID: <4DA4AA4D.2060702@netapp.com>
+Date: Tue, 12 Apr 2011 15:38:53 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: gssd mounts not working
-References: <4DAFD5B1.9060004@tudelft.nl>
-In-Reply-To: <4DAFD5B1.9060004@tudelft.nl>
+Subject: [PATCH 1/2] NFS: Attempt AUTH_UNIX style mount before guessing authflavors
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
+If an AUTH_UNIX mount returns -EPERM, we guess the authflavor needed
+to perform the mount.
 
-On 04/21/2011 02:58 AM, Richard Smits wrote:
-> Hello,
-> We are having problems with our gssd nfs mounts. I will explain our situation.
-> 
-> Our clients are running SLED 11 SP1.
-> Our server is a Netapp filer with Ontap 7.3.3P4.
-> 
-> We provide NFS exported directory's with krb5 security.
-> 
-> Our KDC is a Windows 2003 and 2008 Active Directory.
-> 
-> If we use nfs-client-1.2.1-8.1 everything works as expected.
-> 
-> But if we upgrade to (any) newer client, all gssd mounts fail. Now there is a bugreport on Novell Bugzilla about this : https://bugzilla.novell.com/show_bug.cgi?id=614293#c7
-> 
-> Apperantly if the nfs client is compiled with --disable-tirpc , the ticket size from the AD is to big ?
-Yes this problem was fixed in libitrpc with:
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/nfs4proc.c |   26 +++++++++++++++++---------
+ 1 files changed, 17 insertions(+), 9 deletions(-)
 
-commit 599511589ca7ddb3b2eac8d3aa5b0b38be7a7691
-Author: Jeff Layton <jlayton@redhat.com>
-Date:   Fri Mar 5 14:27:13 2010 -0500
-
-    libtirpc: allow larger ticket sizes with RPCSEC_GSS
-
-
-> On our Redhat server we do not have these problems. There we are running : nfs-utils-1.2.2-7
-> 
-> Is there an explanation for these problems ? How can i find out if a client has been compiled with specific options. There is no nfs devel package for suse.
-Good question... I don't think there is way to was to tell how each
-binary has been compiled... but doing a ldd `which rpc.gssd` will show
-which shared libraries will be used.. If libtirpc.so.1 does not show up 
-in that list the you know the rpc.gssd was compile with --disable-tirpc
-
-steved.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8a03ee0..7e27ebf 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2208,19 +2208,15 @@ out:
+ 	return ret;
+ }
+ 
+-/*
+- * get the file handle for the "/" directory on the server
+- */
+-static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
++static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+ 			      struct nfs_fsinfo *info)
+ {
+ 	int i, len, status = 0;
+-	rpc_authflavor_t flav_array[NFS_MAX_SECFLAVORS + 2];
++	rpc_authflavor_t flav_array[NFS_MAX_SECFLAVORS];
+ 
+-	flav_array[0] = RPC_AUTH_UNIX;
+-	len = gss_mech_list_pseudoflavors(&flav_array[1]);
+-	flav_array[1+len] = RPC_AUTH_NULL;
+-	len += 2;
++	len = gss_mech_list_pseudoflavors(&flav_array[0]);
++	flav_array[len] = RPC_AUTH_NULL;
++	len += 1;
+ 
+ 	for (i = 0; i < len; i++) {
+ 		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
+@@ -2228,6 +2224,18 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 			continue;
+ 		break;
+ 	}
++	return status;
++}
++
++/*
++ * get the file handle for the "/" directory on the server
++ */
++static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
++			      struct nfs_fsinfo *info)
++{
++	int status = nfs4_lookup_root(server, fhandle, info);
++	if (status == -EPERM)
++		status = nfs4_find_root_sec(server, fhandle, info);
+ 	if (status == 0)
+ 		status = nfs4_server_capabilities(server, fhandle);
+ 	if (status == 0)
+-- 
+1.7.4.4
 
