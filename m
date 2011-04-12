@@ -1,72 +1,402 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:21145 "EHLO mx2.netapp.com"
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:35286 "EHLO e5.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932379Ab1DMUmn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Apr 2011 16:42:43 -0400
-Message-ID: <4DA60AB9.1050104@netapp.com>
-Date: Wed, 13 Apr 2011 16:42:33 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: Jiri Slaby <jslaby@suse.cz>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Jiri Slaby <jirislaby@gmail.com>, linux-kernel@vger.kernel.org,
-        akpm@linux-foundation.org, mm-commits@vger.kernel.org,
-        ML netdev <netdev@vger.kernel.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS: Fix infinite loop in gss_create_upcall()
-References: <201103312224.p2VMOA5g000983@imap1.linux-foundation.org>	 <4D96E4C5.2080302@suse.cz> <1302122693.16786.0.camel@lade.trondhjem.org>	 <4D9D5CC9.2040002@suse.cz> <4DA36722.2020402@suse.cz>	 <4DA36758.4070203@suse.cz> <4DA36DB6.8060108@suse.cz>	 <4DA48EB0.40600@netapp.com>  <4DA4946D.5020403@suse.cz> <1302633088.4801.48.camel@lade.trondhjem.org> <4DA49B49.1020005@suse.cz> <4DA49D3A.7090800@netapp.com> <4DA49F7F.8060005@suse.cz>
-In-Reply-To: <4DA49F7F.8060005@suse.cz>
-Content-Type: text/plain; charset=UTF-8
+	id S1756321Ab1DLPaP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Apr 2011 11:30:15 -0400
+Received: from d01dlp01.pok.ibm.com (d01dlp01.pok.ibm.com [9.56.224.56])
+	by e5.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p3CF40fS007401
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Apr 2011 11:04:20 -0400
+Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 8755038C803E
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Apr 2011 11:29:55 -0400 (EDT)
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p3CFU5Nl169970
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Apr 2011 11:30:05 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p3CFU47q009368
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Apr 2011 12:30:04 -0300
+Received: from [9.47.25.237] (badari-desktop.beaverton.ibm.com [9.47.25.237])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p3CFU3p4009170
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Apr 2011 12:30:03 -0300
+Subject: [RFC][PATCH] Vector read/write support for NFS (DIO) client
+From: Badari Pulavarty <pbadari@us.ibm.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain
+Date: Tue, 12 Apr 2011 08:32:15 -0700
+Message-Id: <1302622335.3877.62.camel@badari-desktop>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 04/12/2011 02:52 PM, Jiri Slaby wrote:
-> On 04/12/2011 08:43 PM, Bryan Schumaker wrote:
->> On 04/12/2011 02:34 PM, Jiri Slaby wrote:
->>> On 04/12/2011 08:31 PM, Trond Myklebust wrote:
->>>>> Yes, it fixes the problem. But it waits 15s before it times out. This is
->>>>> inacceptable for automounted NFS dirs.
->>>>
->>>> I'm still confused as to why you are hitting it at all. In the normal
->>>> autonegotiation case, the client should be trying to use AUTH_SYS first
->>>> and then trying rpcsec_gss if and only if that fails.
->>>>
->>>> Are you really exporting a filesystem using AUTH_NULL as the only
->>>> supported flavour?
->>>
->>> I don't know, I connect to a nfs server which is not maintained by me.
->>> It looks like that. How can I find out?
->>
->> If you're not using gss for anything, you could try rmmod-ing rpcsec_gss_krb5 (and other rpcsec_gss_* modules).
-> 
-> I don't have NFS in modules. It's all built-in. And this one is
-> unconditionally selected because of CONFIG_NFS_V4.
+Hi,
 
-Does this patch help?
+We recently ran into serious performance issue with NFS client.
+It turned out that its due to lack of readv/write support for
+NFS (O_DIRECT) client.
 
-- Bryan
+Here is our use-case:
 
-We should attempt an AUTH_NULL style mount before
-trying gss flavors.  This should prevent a hang if
-gss modules are loaded but the userspace program
-isn't running.
+In our cloud environment, our storage is over NFS. Files
+on NFS are passed as a blockdevices to the guest (using
+O_DIRECT). When guest is doing IO on these block devices,
+they will end up as O_DIRECT writes to NFS (on KVM host).
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 9bf41ea..4e3c16b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2218,8 +2218,8 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 	rpc_authflavor_t flav_array[NFS_MAX_SECFLAVORS + 2];
+QEMU (on the host) gets a vector from virtio-ring and
+submits them. Old versions of QEMU, linearized the vector
+it got from KVM (copied them into a buffer) and submits
+the buffer. So, NFS client always received a single buffer.
+
+Later versions of QEMU, eliminated this copy and submits
+a vector directly using preadv/pwritev().
+
+NFS client loops through the vector and submits each
+vector as separate request for each IO < wsize. In our
+case (negotiated wsize=1MB), for 256K IO - we get 64 
+vectors, each 4K. So, we end up submitting 64 4K FILE_SYNC IOs. 
+Server end up doing each 4K synchronously. This causes
+serious performance degrade. We are trying to see if the
+performance improves if we convert IOs to ASYNC - but
+our initial results doesn't look good.
+
+readv/writev support NFS client for all possible cases is
+hard. Instead, if all vectors are page-aligned and 
+iosizes page-multiple - it fits the current code easily.
+Luckily, QEMU use-case fits these requirements.
+
+Here is the patch to add this support. Comments ?
+
+Thanks,
+Badari
+
+Special readv/writev support for NFS O_DIRECT. Currently NFS 
+client O_DIRECT read/write iterates over individual elements 
+in the vector and submits the IO and waits for them to finish. 
+If individual IOsize is < r/wsize, each IO will be FILE_SYNC. 
+Server has to finish individual smaller IOs synchronous. This 
+causes serious performance degrade.
+
+This patch is a special case to submit larger IOs from the client
+only if all the IO buffers are page-aligned and each individual
+IOs are page-multiple + total IO size is < r/wsize. 
+
+This is the common case for QEMU usage.
+
+Signed-off-by: Badari Pulavarty <pbadari@us.ibm.com>
+---
+ fs/nfs/direct.c |  259 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 259 insertions(+)
+
+Index: linux-2.6.38.2/fs/nfs/direct.c
+===================================================================
+--- linux-2.6.38.2.orig/fs/nfs/direct.c	2011-04-12 10:56:29.374266292 -0400
++++ linux-2.6.38.2/fs/nfs/direct.c	2011-04-12 11:01:21.883266310 -0400
+@@ -271,6 +271,52 @@ static const struct rpc_call_ops nfs_rea
+ 	.rpc_release = nfs_direct_read_release,
+ };
  
- 	flav_array[0] = RPC_AUTH_UNIX;
--	len = gss_mech_list_pseudoflavors(&flav_array[1]);
--	flav_array[1+len] = RPC_AUTH_NULL;
-+	flav_array[1] = RPC_AUTH_NULL;
-+	len = gss_mech_list_pseudoflavors(&flav_array[2]);
- 	len += 2;
++static int nfs_direct_check_single_io(struct nfs_direct_req *dreq,
++				      const struct iovec *iov,
++                                      unsigned long nr_segs, int rw)
++{
++	unsigned long seg;
++	int pages = 0;
++	struct nfs_open_context *ctx = dreq->ctx;
++	struct inode *inode = ctx->path.dentry->d_inode;
++	size_t size;
++
++
++	/* If its a single vector - use old code */
++	if (nr_segs == 1)
++		return pages;
++	/*
++	 * Check to see if all IO buffers are page-aligned and
++	 * individual IO sizes are page-multiple.
++	 * If so, we can submit them in a single IO.
++	 * Otherwise, use old code
++	 */
++	for (seg = 0; seg < nr_segs; seg++) {
++		unsigned long user_addr = (unsigned long)iov[seg].iov_base;
++
++		if ((user_addr & (PAGE_SIZE - 1)) ||
++			(iov[seg].iov_len & (PAGE_SIZE - 1))) {
++			pages = 0;
++			break;
++		}
++		pages += (iov[seg].iov_len >> PAGE_SHIFT);
++	}
++
++	if (rw)
++		size = NFS_SERVER(inode)->wsize;
++	else
++		size = NFS_SERVER(inode)->rsize;
++
++	/*
++         * If IOsize > wsize/rsize, we need to split IOs into r/wsize anyway
++         * - fall back to old code.
++         */
++	if (pages > (size >> PAGE_SHIFT))
++		pages = 0;
++
++	return pages;
++}
++
+ /*
+  * For each rsize'd chunk of the user's buffer, dispatch an NFS READ
+  * operation.  If nfs_readdata_alloc() or get_user_pages() fails,
+@@ -385,6 +431,101 @@ static ssize_t nfs_direct_read_schedule_
+ 	return result < 0 ? (ssize_t) result : -EFAULT;
+ }
  
- 	for (i = 0; i < len; i++) {
++/*
++ * Special Case: Efficient readv() support - only if all the IO buffers
++ * in the vector are page-aligned and IO sizes are page-multiple
++ * + total IO size is < rsize. We can map all of the vectors together
++ * and submit them in a single IO instead of operating on single entry
++ * in the vector.
++ */
++static ssize_t nfs_direct_read_schedule_single_io(struct nfs_direct_req *dreq,
++						 const struct iovec *iov,
++						 unsigned long nr_segs,
++						 int pages,
++						 loff_t pos)
++{
++	struct nfs_open_context *ctx = dreq->ctx;
++	struct inode *inode = ctx->path.dentry->d_inode;
++	unsigned long user_addr = (unsigned long)iov->iov_base;
++	size_t bytes = pages << PAGE_SHIFT;
++	struct rpc_task *task;
++	struct rpc_message msg = {
++		.rpc_cred = ctx->cred,
++	};
++	struct rpc_task_setup task_setup_data = {
++		.rpc_client = NFS_CLIENT(inode),
++		.rpc_message = &msg,
++		.callback_ops = &nfs_read_direct_ops,
++		.workqueue = nfsiod_workqueue,
++		.flags = RPC_TASK_ASYNC,
++	};
++	unsigned int pgbase;
++	int result;
++	int seg;
++	int mapped = 0;
++	int nr_pages;
++	ssize_t started = 0;
++	struct nfs_read_data *data;
++
++	result = -ENOMEM;
++	data = nfs_readdata_alloc(pages);
++	if (unlikely(!data))
++		return result;
++
++	pgbase = user_addr & ~PAGE_MASK;
++
++	for (seg = 0; seg < nr_segs; seg++) {
++		user_addr = (unsigned long)iov[seg].iov_base;
++		nr_pages = iov[seg].iov_len >> PAGE_SHIFT;
++
++		down_read(&current->mm->mmap_sem);
++		result = get_user_pages(current, current->mm, user_addr,
++					nr_pages, 1, 0, &data->pagevec[mapped],
++					NULL);
++		up_read(&current->mm->mmap_sem);
++		if (result < 0) {
++			/* unmap what is done so far */
++			nfs_direct_release_pages(data->pagevec, mapped);
++			nfs_readdata_free(data);
++			return result;
++		}
++		mapped += result;
++	}
++
++	get_dreq(dreq);
++
++	data->req = (struct nfs_page *) dreq;
++	data->inode = inode;
++	data->cred = msg.rpc_cred;
++	data->args.fh = NFS_FH(inode);
++	data->args.context = ctx;
++	data->args.offset = pos;
++	data->args.pgbase = pgbase;
++	data->args.pages = data->pagevec;
++	data->args.count = bytes;
++	data->res.fattr = &data->fattr;
++	data->res.eof = 0;
++	data->res.count = bytes;
++	nfs_fattr_init(&data->fattr);
++
++	task_setup_data.task = &data->task;
++	task_setup_data.callback_data = data;
++	msg.rpc_argp = &data->args;
++	msg.rpc_resp = &data->res;
++	NFS_PROTO(inode)->read_setup(data, &msg);
++
++	task = rpc_run_task(&task_setup_data);
++	if (IS_ERR(task))
++		goto out;
++	rpc_put_task(task);
++
++	started += bytes;
++out:
++	if (started)
++		return started;
++	return result < 0 ? (ssize_t) result : -EFAULT;
++}
++
+ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 					      const struct iovec *iov,
+ 					      unsigned long nr_segs,
+@@ -396,6 +537,16 @@ static ssize_t nfs_direct_read_schedule_
+ 
+ 	get_dreq(dreq);
+ 
++	result = nfs_direct_check_single_io(dreq, iov, nr_segs, 0);
++	if (result) {
++		result = nfs_direct_read_schedule_single_io(dreq, iov, nr_segs,
++							result, pos);
++		if (result < 0)
++			goto out;
++		requested_bytes += result;
++		pos += result;
++		goto out;
++	}
+ 	for (seg = 0; seg < nr_segs; seg++) {
+ 		const struct iovec *vec = &iov[seg];
+ 		result = nfs_direct_read_schedule_segment(dreq, vec, pos);
+@@ -416,6 +567,7 @@ static ssize_t nfs_direct_read_schedule_
+ 		return result < 0 ? result : -EIO;
+ 	}
+ 
++out:
+ 	if (put_dreq(dreq))
+ 		nfs_direct_complete(dreq);
+ 	return 0;
+@@ -821,6 +973,102 @@ static ssize_t nfs_direct_write_schedule
+ 	return result < 0 ? (ssize_t) result : -EFAULT;
+ }
+ 
++/*
++ * Special Case: Efficient writev() support - only if all the IO buffers
++ * in the vector are page-aligned and IO sizes are page-multiple
++ * + total IO size is < wsize. We can map all of the vectors together
++ * and submit them in a single IO instead of operating on single entry
++ * in the vector.
++ */
++static ssize_t nfs_direct_write_schedule_single_io(struct nfs_direct_req *dreq,
++						 const struct iovec *iov,
++						 unsigned long nr_segs,
++						 int pages,
++						 loff_t pos, int sync)
++{
++	struct nfs_open_context *ctx = dreq->ctx;
++	struct inode *inode = ctx->path.dentry->d_inode;
++	unsigned long user_addr = (unsigned long)iov->iov_base;
++	size_t bytes = pages << PAGE_SHIFT;
++	struct rpc_task *task;
++	struct rpc_message msg = {
++		.rpc_cred = ctx->cred,
++	};
++	struct rpc_task_setup task_setup_data = {
++		.rpc_client = NFS_CLIENT(inode),
++		.rpc_message = &msg,
++		.callback_ops = &nfs_write_direct_ops,
++		.workqueue = nfsiod_workqueue,
++		.flags = RPC_TASK_ASYNC,
++	};
++	unsigned int pgbase;
++	int result;
++	int seg;
++	int mapped = 0;
++	int nr_pages;
++	ssize_t started = 0;
++	struct nfs_write_data *data;
++
++	result = -ENOMEM;
++	data = nfs_writedata_alloc(pages);
++	if (unlikely(!data))
++		return result;
++
++	pgbase = user_addr & ~PAGE_MASK;
++
++	for (seg = 0; seg < nr_segs; seg++) {
++		user_addr = (unsigned long)iov[seg].iov_base;
++		nr_pages = iov[seg].iov_len >> PAGE_SHIFT;
++
++		down_read(&current->mm->mmap_sem);
++		result = get_user_pages(current, current->mm, user_addr,
++					nr_pages, 0, 0, &data->pagevec[mapped], NULL);
++		up_read(&current->mm->mmap_sem);
++		if (result < 0) {
++			/* unmap what is done so far */
++			nfs_direct_release_pages(data->pagevec, mapped);
++			nfs_writedata_free(data);
++			return result;
++		}
++		mapped += result;
++	}
++
++	get_dreq(dreq);
++	list_move_tail(&data->pages, &dreq->rewrite_list);
++
++	data->req = (struct nfs_page *) dreq;
++	data->inode = inode;
++	data->cred = msg.rpc_cred;
++	data->args.fh = NFS_FH(inode);
++	data->args.context = ctx;
++	data->args.offset = pos;
++	data->args.pgbase = pgbase;
++	data->args.pages = data->pagevec;
++	data->args.count = bytes;
++	data->args.stable = sync;
++	data->res.fattr = &data->fattr;
++	data->res.count = bytes;
++	data->res.verf = &data->verf;
++	nfs_fattr_init(&data->fattr);
++
++	task_setup_data.task = &data->task;
++	task_setup_data.callback_data = data;
++	msg.rpc_argp = &data->args;
++	msg.rpc_resp = &data->res;
++	NFS_PROTO(inode)->write_setup(data, &msg);
++
++	task = rpc_run_task(&task_setup_data);
++	if (IS_ERR(task))
++		goto out;
++	rpc_put_task(task);
++
++	started += bytes;
++out:
++	if (started)
++		return started;
++	return result < 0 ? (ssize_t) result : -EFAULT;
++}
++
+ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 					       const struct iovec *iov,
+ 					       unsigned long nr_segs,
+@@ -832,6 +1080,16 @@ static ssize_t nfs_direct_write_schedule
+ 
+ 	get_dreq(dreq);
+ 
++	result = nfs_direct_check_single_io(dreq, iov, nr_segs, 1);
++	if (result) {
++		result = nfs_direct_write_schedule_single_io(dreq, iov, nr_segs,
++							result, pos, sync);
++		if (result < 0)
++			goto out;
++		requested_bytes += result;
++		pos += result;
++		goto out;
++	}
+ 	for (seg = 0; seg < nr_segs; seg++) {
+ 		const struct iovec *vec = &iov[seg];
+ 		result = nfs_direct_write_schedule_segment(dreq, vec,
+@@ -853,6 +1111,7 @@ static ssize_t nfs_direct_write_schedule
+ 		return result < 0 ? result : -EIO;
+ 	}
+ 
++out:
+ 	if (put_dreq(dreq))
+ 		nfs_direct_write_complete(dreq, dreq->inode);
+ 	return 0;
 
-
-> 
-> regards,
 
