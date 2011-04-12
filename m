@@ -1,57 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37586 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:20510 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754157Ab1DRPdE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Apr 2011 11:33:04 -0400
-Date: Mon, 18 Apr 2011 11:32:38 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>, Greg KH <gregkh@suse.de>,
-        linux-kernel@vger.kernel.org, stable@kernel.org,
-        akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
-Subject: Re: [105/105] nfsd4: fix oops on lock failure
-Message-ID: <20110418153236.GC20935@pad.home.fieldses.org>
-References: <20110412143559.186613198@clark.kroah.org>
- <87pqokx6lr.fsf@devron.myhome.or.jp>
- <BANLkTimN6L80e_oiJ_uqbLde2Cdnw5p45Q@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <BANLkTimN6L80e_oiJ_uqbLde2Cdnw5p45Q@mail.gmail.com>
+	id S1754793Ab1DLSip convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Apr 2011 14:38:45 -0400
+Subject: Re: [PATCH] NFS: Fix infinite loop in gss_create_upcall()
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jiri Slaby <jslaby@suse.cz>
+Cc: Bryan Schumaker <bjschuma@netapp.com>, Jiri Slaby <jirislaby@gmail.com>,
+        linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
+        mm-commits@vger.kernel.org, ML netdev <netdev@vger.kernel.org>,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <4DA49B49.1020005@suse.cz>
+References: <201103312224.p2VMOA5g000983@imap1.linux-foundation.org>
+	 <4D96E4C5.2080302@suse.cz> <1302122693.16786.0.camel@lade.trondhjem.org>
+	 <4D9D5CC9.2040002@suse.cz> <4DA36722.2020402@suse.cz>
+	 <4DA36758.4070203@suse.cz> <4DA36DB6.8060108@suse.cz>
+	 <4DA48EB0.40600@netapp.com>  <4DA4946D.5020403@suse.cz>
+	 <1302633088.4801.48.camel@lade.trondhjem.org>  <4DA49B49.1020005@suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 12 Apr 2011 14:38:42 -0400
+Message-ID: <1302633522.4801.49.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, Apr 17, 2011 at 09:10:12AM -0700, Linus Torvalds wrote:
-> On Sun, Apr 17, 2011 at 8:03 AM, OGAWA Hirofumi
-> <hirofumi@mail.parknet.co.jp> wrote:
-> >
-> > I'm looking filp leak on recent kernel. Well, anyway,
+On Tue, 2011-04-12 at 20:34 +0200, Jiri Slaby wrote:
+> On 04/12/2011 08:31 PM, Trond Myklebust wrote:
+> >> Yes, it fixes the problem. But it waits 15s before it times out. This is
+> >> inacceptable for automounted NFS dirs.
+> > 
+> > I'm still confused as to why you are hitting it at all. In the normal
+> > autonegotiation case, the client should be trying to use AUTH_SYS first
+> > and then trying rpcsec_gss if and only if that fails.
+> > 
+> > Are you really exporting a filesystem using AUTH_NULL as the only
+> > supported flavour?
+> 
+> I don't know, I connect to a nfs server which is not maintained by me.
+> It looks like that. How can I find out?
 
-Does this fix it?
+A wireshark trace of a successful mount would help.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
---b.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
-commit 5152c8a947359758862d4631863e68e83ec01048
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri Apr 15 18:08:26 2011 -0400
-
-    nfsd4: fix struct file leak on delegation
-    
-    Introduced by acfdf5c383b38f7f4dddae41b97c97f1ae058f49.
-    
-    Cc: stable@kernel.org
-    Reported-by: Gerhard Heift <ml-nfs-linux-20110412-ef47@gheift.de>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index aa309aa..c79a983 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -258,6 +258,7 @@ static void nfs4_put_deleg_lease(struct nfs4_file *fp)
- 	if (atomic_dec_and_test(&fp->fi_delegees)) {
- 		vfs_setlease(fp->fi_deleg_file, F_UNLCK, &fp->fi_lease);
- 		fp->fi_lease = NULL;
-+		fput(fp->fi_deleg_file);
- 		fp->fi_deleg_file = NULL;
- 	}
- }
