@@ -1,117 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:6692 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752409Ab1DVIXb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Apr 2011 04:23:31 -0400
-Message-ID: <4DB13AFE.3060809@panasas.com>
-Date: Fri, 22 Apr 2011 11:23:26 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [RFC 04/27] pnfs: layoutret_on_setattr
-References: <4DAF0DE1.6020609@panasas.com>	 <1303320401-21106-1-git-send-email-bhalevy@panasas.com> <1303329838.23206.30.camel@lade.trondhjem.org>
-In-Reply-To: <1303329838.23206.30.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:61578 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758080Ab1DLSFj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Apr 2011 14:05:39 -0400
+Message-ID: <4DA4946D.5020403@suse.cz>
+Date: Tue, 12 Apr 2011 20:05:33 +0200
+From: Jiri Slaby <jslaby@suse.cz>
+To: Bryan Schumaker <bjschuma@netapp.com>
+CC: Jiri Slaby <jirislaby@gmail.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
+        mm-commits@vger.kernel.org, ML netdev <netdev@vger.kernel.org>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFS: Fix infinite loop in gss_create_upcall()
+References: <201103312224.p2VMOA5g000983@imap1.linux-foundation.org> <4D96E4C5.2080302@suse.cz> <1302122693.16786.0.camel@lade.trondhjem.org> <4D9D5CC9.2040002@suse.cz> <4DA36722.2020402@suse.cz> <4DA36758.4070203@suse.cz> <4DA36DB6.8060108@suse.cz> <4DA48EB0.40600@netapp.com>
+In-Reply-To: <4DA48EB0.40600@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-04-20 23:03, Trond Myklebust wrote:
-> On Wed, 2011-04-20 at 20:26 +0300, Benny Halevy wrote:
->> From: Andy Adamson <andros@netapp.com>
+On 04/12/2011 07:41 PM, Bryan Schumaker wrote:
+> On 04/11/2011 05:08 PM, Jiri Slaby wrote:
 >>
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> ---
->>  fs/nfs/nfs4proc.c |    3 +++
->>  fs/nfs/pnfs.h     |   22 ++++++++++++++++++++++
->>  2 files changed, 25 insertions(+), 0 deletions(-)
+>> Sorry for an extra message. I've just found out that there appears
+>> messages in dmesg:
+>> [   58.656048] RPC: AUTH_GSS upcall timed out.
+>> [   58.656050] Please check user daemon is running.
+>> [   88.656065] RPC: AUTH_GSS upcall timed out.
+>> [   88.656068] Please check user daemon is running.
+>> [  118.656077] RPC: AUTH_GSS upcall timed out.
+>> [  118.656080] Please check user daemon is running.
+>> [  148.656049] RPC: AUTH_GSS upcall timed out.
+>> [  148.656052] Please check user daemon is running.
+>> [  178.656046] RPC: AUTH_GSS upcall timed out.
+>> [  178.656049] Please check user daemon is running.
 >>
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index b03defb..b4df7a6 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -2332,6 +2332,9 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
->>  	struct nfs4_state *state = NULL;
->>  	int status;
->>  
->> +	if (pnfs_ld_layoutret_on_setattr(inode))
->> +		pnfs_return_layout(inode, NULL, true);
+>>
+>> I instrumented the code and it's stuck with trying RPC_AUTH_GSS_KRB5.
+>>
+>> I don't use GSS at all.
+>>
+>> regards,
 > 
-> There is nothing that prevents further reads and writes being scheduled
-> after this, so what is the plan to prevent them from being sent to the
-> MDS?
-
-The idea is that the client will acquire a fresh layout for further
-I/Os.  Sending I/Os to the MDS at any time should be fine,
-but layoutgets should be synchronized with LAYOUTRETURN+SETATTR.
-
-> Also, why are we doing this in the case of a file time update or a
-> modebits update? It seems relevant only for the case of a size update.
+> Does this patch help?
 > 
-
-I agree regarding file time updates, but in the case of modebits update
-the client will lose its layout too as its associated capabilities will
-be revoked due to the change in permissions.
-
-Benny
-
->> +
->>  	nfs_fattr_init(fattr);
->>  	
->>  	/* Search for an existing open(O_WRITE) file */
->> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->> index a308f3c..3506ad4 100644
->> --- a/fs/nfs/pnfs.h
->> +++ b/fs/nfs/pnfs.h
->> @@ -64,12 +64,18 @@ enum {
->>  	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
->>  };
->>  
->> +enum layoutdriver_policy_flags {
->> +	/* Should the pNFS client commit and return the layout upon a setattr */
->> +	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
->> +};
->> +
->>  /* Per-layout driver specific registration structure */
->>  struct pnfs_layoutdriver_type {
->>  	struct list_head pnfs_tblid;
->>  	const u32 id;
->>  	const char *name;
->>  	struct module *owner;
->> +	unsigned flags;
->>  	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr);
->>  	void (*free_lseg) (struct pnfs_layout_segment *lseg);
->>  
->> @@ -228,6 +234,16 @@ static inline void pnfs_clear_request_commit(struct nfs_page *req)
->>  		put_lseg(req->wb_commit_lseg);
->>  }
->>  
->> +/* Should the pNFS client commit and return the layout upon a setattr */
->> +static inline bool
->> +pnfs_ld_layoutret_on_setattr(struct inode *inode)
->> +{
->> +	if (!pnfs_enabled_sb(NFS_SERVER(inode)))
->> +		return false;
->> +	return NFS_SERVER(inode)->pnfs_curr_ld->flags &
->> +		PNFS_LAYOUTRET_ON_SETATTR;
->> +}
->> +
->>  static inline int pnfs_return_layout(struct inode *ino,
->>  				     struct pnfs_layout_range *range,
->>  				     bool wait)
->> @@ -290,6 +306,12 @@ static inline int pnfs_return_layout(struct inode *ino,
->>  }
->>  
->>  static inline bool
->> +pnfs_ld_layoutret_on_setattr(struct inode *inode)
->> +{
->> +	return false;
->> +}
->> +
->> +static inline bool
->>  pnfs_roc(struct inode *ino)
->>  {
->>  	return false;
+> - Bryan
 > 
+> 
+> 
+> There can be an infinite loop if gss_create_upcall() is called without
+> the userspace program running.  To prevent this, we return -EACCES if
+> we notice that pipe_version hasn't changed (indicating that the pipe
+> has not been opened).
 
+Yes, it fixes the problem. But it waits 15s before it times out. This is
+inacceptable for automounted NFS dirs.
+
+thanks,
+-- 
+js
+suse labs
