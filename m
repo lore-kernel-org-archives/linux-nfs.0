@@ -1,88 +1,81 @@
-From: Jiri Slaby <jslaby@suse.cz>
-Subject: Re: nfs client doesn't work [was: mmotm 2011-03-31-14-48 uploaded]
-Date: Mon, 11 Apr 2011 22:40:56 +0200
-Message-ID: <4DA36758.4070203@suse.cz>
-References: <201103312224.p2VMOA5g000983@imap1.linux-foundation.org> <4D96E4C5.2080302@suse.cz> <1302122693.16786.0.camel@lade.trondhjem.org> <4D9D5CC9.2040002@suse.cz> <4DA36722.2020402@suse.cz>
+From: Badari Pulavarty <pbadari@us.ibm.com>
+Subject: Re: [RFC][PATCH] Vector read/write support for NFS (DIO) client
+Date: Tue, 12 Apr 2011 09:17:12 -0700
+Message-ID: <1302625032.3877.69.camel@badari-desktop>
+References: <1302622335.3877.62.camel@badari-desktop>
+	 <1302623369.4801.28.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-	linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
-	mm-commits@vger.kernel.org, ML netdev <netdev@vger.kernel.org>,
-	linux-nfs@vger.kernel.org, Jiri Slaby <jirislaby@gmail.com>
-To: bjschuma@netapp.com
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:35291 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755305Ab1DKUlB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Apr 2011 16:41:01 -0400
-In-Reply-To: <4DA36722.2020402@suse.cz>
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:47293 "EHLO e5.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758065Ab1DLQPG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Apr 2011 12:15:06 -0400
+Received: from d01dlp01.pok.ibm.com (d01dlp01.pok.ibm.com [9.56.224.56])
+	by e5.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p3CFnBp5004244
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Apr 2011 11:49:11 -0400
+Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 94DA038C8038
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Apr 2011 12:14:55 -0400 (EDT)
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p3CGF5DG312086
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Apr 2011 12:15:05 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p3CGF3YX012912
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Apr 2011 12:15:04 -0400
+In-Reply-To: <1302623369.4801.28.camel-SyLVLa/KEI9HwK5hSS5vWB2eb7JE58TQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ccing Bryan
+On Tue, 2011-04-12 at 11:49 -0400, Trond Myklebust wrote:
+> On Tue, 2011-04-12 at 08:32 -0700, Badari Pulavarty wrote:
+> > Hi,
+> > 
+> > We recently ran into serious performance issue with NFS client.
+> > It turned out that its due to lack of readv/write support for
+> > NFS (O_DIRECT) client.
+> > 
+> > Here is our use-case:
+> > 
+> > In our cloud environment, our storage is over NFS. Files
+> > on NFS are passed as a blockdevices to the guest (using
+> > O_DIRECT). When guest is doing IO on these block devices,
+> > they will end up as O_DIRECT writes to NFS (on KVM host).
+> > 
+> > QEMU (on the host) gets a vector from virtio-ring and
+> > submits them. Old versions of QEMU, linearized the vector
+> > it got from KVM (copied them into a buffer) and submits
+> > the buffer. So, NFS client always received a single buffer.
+> > 
+> > Later versions of QEMU, eliminated this copy and submits
+> > a vector directly using preadv/pwritev().
+> > 
+> > NFS client loops through the vector and submits each
+> > vector as separate request for each IO < wsize. In our
+> > case (negotiated wsize=1MB), for 256K IO - we get 64 
+> > vectors, each 4K. So, we end up submitting 64 4K FILE_SYNC IOs. 
+> > Server end up doing each 4K synchronously. This causes
+> > serious performance degrade. We are trying to see if the
+> > performance improves if we convert IOs to ASYNC - but
+> > our initial results doesn't look good.
+> > 
+> > readv/writev support NFS client for all possible cases is
+> > hard. Instead, if all vectors are page-aligned and 
+> > iosizes page-multiple - it fits the current code easily.
+> > Luckily, QEMU use-case fits these requirements.
+> > 
+> > Here is the patch to add this support. Comments ?
+> 
+> Your approach goes in the direction of further special-casing O_DIRECT
+> in the NFS client. I'd like to move away from that and towards
+> integration with the ordinary read/write codepaths so that aside from
+> adding request coalescing, we can also enable pNFS support.
+> 
 
-On 04/11/2011 10:40 PM, Jiri Slaby wrote:
-> On 04/07/2011 08:42 AM, Jiri Slaby wrote:
->> On 04/06/2011 10:44 PM, Myklebust, Trond wrote:
->>> On Sat, 2011-04-02 at 10:56 +0200, Jiri Slaby wrote:
->>>> On 03/31/2011 11:48 PM, akpm@linux-foundation.org wrote:
->>>>> The mm-of-the-moment snapshot 2011-03-31-14-48 has been uploaded to
->>>>
->>>> Hi, nfs client is defunct in this kernel. Tcpdump says:
->>>> 10:51:55.489717 IP 10.20.11.33.759945860 > 10.20.3.2.2049: 132 getattr
->>>> fh 0,0/24
->>>> 10:51:55.515927 IP 10.20.3.2.2049 > 10.20.11.33.759945860: reply ok 44
->>>> getattr ERROR: Operation not permitted
->>>> 10:51:55.515949 IP 10.20.11.33.921 > 10.20.3.2.2049: Flags [.], ack
->>>> 3569361440, win 115, options [nop,nop,TS val 599750 ecr 255058541],
->>> length 0
->>>> 10:52:04.130310 IP 10.20.11.33.793500292 > 10.20.3.2.2049: 76 getattr fh
->>>> 0,0/24
->>>> 10:52:04.152178 IP 10.20.3.2.2049 > 10.20.11.33.793500292: reply ok 44
->>>> getattr ERROR: Operation not permitted
->>>>
->>>> If I run the same mount command (mount -oro,intr host:dir mountpoint)
->>>> from within a virtual machine with 2.6.38.2 there, everything mounts OK.
->>>
->>> Does the attached patch help?
->>
->> No, still the operation not permitted in the tcpdump output and no mount.
-> 
-> The next tree from 20110411 still doesn't work. The topmost commit in
-> fs/nfs/namespace.c is:
-> commit 418875900e3de4831c84f86ae4756690dac5be77
-> Author: Bryan Schumaker <bjschuma@netapp.com>
-> Date:   Wed Apr 6 14:33:28 2011 -0400
-> 
->     NFS: Fix a signed vs. unsigned secinfo bug
-> 
-> 
-> I bisected it to (in vanilla already):
-> 
-> 8f70e95f9f4159184f557a1db60c909d7c1bd2e3 is the first bad commit
-> commit 8f70e95f9f4159184f557a1db60c909d7c1bd2e3
-> Author: Bryan Schumaker <bjschuma@netapp.com>
-> Date:   Thu Mar 24 17:12:31 2011 +0000
-> 
->     NFS: Determine initial mount security
-> 
->     When sec=<something> is not presented as a mount option,
->     we should attempt to determine what security flavor the
->     server is using.
-> 
->     Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> :040000 040000 8e5a640b37e00f0df21e1d9cd9aff160df2d5938
-> 0152daa67bc8d12e32cda5f4a036807d2e380392 M      fs
-> :040000 040000 f74aa33f8597cb82cd0fd7d90d84e0660b7f5804
-> 527bc0ca6975cedc7e684b45dc9961f8aaf1207a M      include
-> :040000 040000 87559d2f211ea905343a86c8551b6610dd239891
-> 7e4ee0e5eddf12474b6de9e7fdb6218b6165bdb2 M      net
-> 
-> thanks,
+I completely agree. But its a major under-taking :(
 
+Thanks,
+Badari
 
--- 
-js
-suse labs
