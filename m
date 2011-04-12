@@ -1,51 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:62972 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:53937 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752984Ab1DTUgR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 16:36:17 -0400
-Subject: Re: [RFC 11/27] pnfs: per mount layout driver private data
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1303320461-21369-1-git-send-email-bhalevy@panasas.com>
-References: <4DAF0DE1.6020609@panasas.com>
-	 <1303320461-21369-1-git-send-email-bhalevy@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 20 Apr 2011 16:36:12 -0400
-Message-ID: <1303331772.23206.47.camel@lade.trondhjem.org>
+	id S1756451Ab1DLSnM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Apr 2011 14:43:12 -0400
+Message-ID: <4DA49D3A.7090800@netapp.com>
+Date: Tue, 12 Apr 2011 14:43:06 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: Jiri Slaby <jslaby@suse.cz>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Jiri Slaby <jirislaby@gmail.com>, linux-kernel@vger.kernel.org,
+        akpm@linux-foundation.org, mm-commits@vger.kernel.org,
+        ML netdev <netdev@vger.kernel.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFS: Fix infinite loop in gss_create_upcall()
+References: <201103312224.p2VMOA5g000983@imap1.linux-foundation.org>	 <4D96E4C5.2080302@suse.cz> <1302122693.16786.0.camel@lade.trondhjem.org>	 <4D9D5CC9.2040002@suse.cz> <4DA36722.2020402@suse.cz>	 <4DA36758.4070203@suse.cz> <4DA36DB6.8060108@suse.cz>	 <4DA48EB0.40600@netapp.com>  <4DA4946D.5020403@suse.cz> <1302633088.4801.48.camel@lade.trondhjem.org> <4DA49B49.1020005@suse.cz>
+In-Reply-To: <4DA49B49.1020005@suse.cz>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-04-20 at 20:27 +0300, Benny Halevy wrote:
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  include/linux/nfs_fs_sb.h |    3 +++
->  1 files changed, 3 insertions(+), 0 deletions(-)
+On 04/12/2011 02:34 PM, Jiri Slaby wrote:
+> On 04/12/2011 08:31 PM, Trond Myklebust wrote:
+>>> Yes, it fixes the problem. But it waits 15s before it times out. This is
+>>> inacceptable for automounted NFS dirs.
+>>
+>> I'm still confused as to why you are hitting it at all. In the normal
+>> autonegotiation case, the client should be trying to use AUTH_SYS first
+>> and then trying rpcsec_gss if and only if that fails.
+>>
+>> Are you really exporting a filesystem using AUTH_NULL as the only
+>> supported flavour?
 > 
-> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-> index 216cea5..c5b3fd0 100644
-> --- a/include/linux/nfs_fs_sb.h
-> +++ b/include/linux/nfs_fs_sb.h
-> @@ -142,6 +142,9 @@ struct nfs_server {
->  						   filesystem */
->  	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
->  	struct rpc_wait_queue	roc_rpcwaitq;
-> +	void			       *pnfs_ld_data; /* Per-mount data */
-> +	unsigned int			ds_rsize;  /* Data server read size */
-> +	unsigned int			ds_wsize;  /* Data server write size */
+> I don't know, I connect to a nfs server which is not maintained by me.
+> It looks like that. How can I find out?
 
-Shouldn't the rsize and wsize be part of the layout driver private data?
+If you're not using gss for anything, you could try rmmod-ing rpcsec_gss_krb5 (and other rpcsec_gss_* modules).
 
->  
->  	/* the following fields are protected by nfs_client->cl_lock */
->  	struct rb_root		state_owners;
+- Bryan
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> 
+> thanks,
 
