@@ -1,57 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:42620 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754635Ab1DGPBX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2011 11:01:23 -0400
-Date: Thu, 7 Apr 2011 11:01:20 -0400
-From: Jim Rees <rees@umich.edu>
-To: "Finney, Sean" <Sean.Finney@sonyericsson.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-Subject: Re: [PATCH v2 1/2] nfs-utils: mountd: Use a dynamic buffer for
- storing lists of gid's
-Message-ID: <20110407150120.GA12596@merit.edu>
-References: <20110405233552.GB27961@fieldses.org>
- <1302160948-5628-1-git-send-email-sean.finney@sonyericsson.com>
- <20110407122218.GA11897@merit.edu>
- <A50602A820F61543B29992A418BB321B66E18F8A5E@seldmbx01.corpusers.net>
+Received: from mx2.netapp.com ([216.240.18.37]:46646 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756638Ab1DMO1b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Apr 2011 10:27:31 -0400
+Subject: Re: [RFC][PATCH] Vector read/write support for NFS (DIO) client
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <A50602A820F61543B29992A418BB321B66E18F8A5E@seldmbx01.corpusers.net>
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <1302704533.8571.12.camel@lade.trondhjem.org>
+Date: Wed, 13 Apr 2011 10:27:23 -0400
+Cc: Jeff Layton <jlayton@redhat.com>, Badari Pulavarty <pbadari@us.ibm.com>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        khoa@us.ibm.com
+Message-Id: <00D863C6-8B7E-4645-A53E-14D1E2507AEE@netapp.com>
+References: <1302622335.3877.62.camel@badari-desktop> <0DC51758-AE6C-4DD2-A959-8C8E701FEA4E@oracle.com> <1302624935.3877.66.camel@badari-desktop> <FF1EE11E-62EB-42B9-A4C9-7A2FE4C60D2F@oracle.com> <1302630360.3877.72.camel@badari-desktop> <20110413083656.12e54a91@tlielax.poochiereds.net> <4DA5A899.3040202@us.ibm.com> <20110413100228.680ace66@tlielax.poochiereds.net> <1302704533.8571.12.camel@lade.trondhjem.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Finney, Sean wrote:
 
-  > I would re-word this.  The list isn't static, the list pointer is.  I don't
-  > think you need to mention that, it's just confusing.  "Use malloc/realloc to
-  > grow the list on an as-needed basis."
-  
-  Okay.  I was trying to just put a hint that there was a persistant
-  buffer that would hang around through multiple invocations, though
-  perhaps that's a little too much 'implementation details'.  Totally fine
-  with modifying the description either way :)
+On Apr 13, 2011, at 10:22 AM, Trond Myklebust wrote:
 
-If it were me, I would alloc and free the list each time rather than keeping
-it around.  It's not like malloc is super expensive.  But that's a matter of
-taste.
+> On Wed, 2011-04-13 at 10:02 -0400, Jeff Layton wrote:
+>> We could put the rpc_rqst's into a slabcache, and give each rpc_xprt a
+>> mempool with a minimum number of slots. Have them all be allocated with
+>> GFP_NOWAIT. If it gets a NULL pointer back, then the task can sleep on
+>> the waitqueue like it does today. Then, the clients can allocate
+>> rpc_rqst's as they need as long as memory holds out for it.
+>> 
+>> We have the reserve_xprt stuff to handle congestion control anyway so I
+>> don't really see the value in the artificial limits that the slot table
+>> provides.
+>> 
+>> Maybe I should hack up a patchset for this...
+> 
+> This issue has come up several times recently. My preference would be to
+> tie the availability of slots to the TCP window size, and basically say
+> that if the SOCK_ASYNC_NOSPACE flag is set on the socket, then we hold
+> off allocating more slots until we get a ->write_space() callback which
+> clears that flag.
 
-  > BUGS
-  >        In  glibc  versions  before  2.3.3, the implementation of this function
-  >        contains a buffer-overrun bug: it returns the complete list  of  groups
-  >        for  user  in  the array groups, even when the number of groups exceeds
-  >        *ngroups.
-  
-  Yuck.  The function is also not in POSIX or any other standards, so
-  maybe it's worth discussing at a later point whether getgroups(2) would
-  be a better interface to use, even if it means an extra step or two.
+I am scoping the dynamic rpc_slot allocation work and plan to prototype.
 
-There's no sense in making nfs-utils portable to non-linux, so depending on
-glibc is probably ok.  2.3.3 was released in December 2003 so I would argue
-we don't care about the buffer-overrun bug.
+-->Andy
+ 
+> 
+> For the RDMA case, we can continue to use the current system of a fixed
+> number of preallocated slots.
+> 
+> Cheers
+>  Trond
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-  Anyway, I will re-spin this patch with the two changes that you've
-  suggested and submit it tomorrow.   Care to take a look at patch
-  2/2?  :)
-
-It looked fine to me.
