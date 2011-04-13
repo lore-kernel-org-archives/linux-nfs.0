@@ -1,44 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from seldrel01.sonyericsson.com ([212.209.106.2]:2472 "EHLO
-	seldrel01.sonyericsson.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753090Ab1DOH3Q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Apr 2011 03:29:16 -0400
-From: "Finney, Sean" <Sean.Finney@sonyericsson.com>
-To: "vovan@vovan.nl" <vovan@vovan.nl>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Fri, 15 Apr 2011 09:29:13 +0200
-Subject: Re: [BUG] sec=krb5 mount problem with nfs-utils 1.2.3 on client side
-Message-ID: <A50602A820F61543B29992A418BB321B66E18F8A72@seldmbx01.corpusers.net>
-References: <20110415010913@it-loops.com>
- <1302840158.2447.5.camel@vovan.net.home>
- <A50602A820F61543B29992A418BB321B66E18F8A71@seldmbx01.corpusers.net>
- <20110415091555.15611t1y2vd6b3jf@vovan.nl>
-In-Reply-To: <20110415091555.15611t1y2vd6b3jf@vovan.nl>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:2453 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757105Ab1DMTEP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Apr 2011 15:04:15 -0400
+Date: Wed, 13 Apr 2011 15:04:19 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Andy Adamson <andros@netapp.com>,
+        Badari Pulavarty <pbadari@us.ibm.com>, linux-nfs@vger.kernel.org,
+        khoa@us.ibm.com
+Subject: Re: [RFC][PATCH] Vector read/write support for NFS (DIO) client
+Message-ID: <20110413150419.7ec07418@corrin.poochiereds.net>
+In-Reply-To: <D860A5B3-B6D5-4810-936B-ADC78E097997@oracle.com>
+References: <1302622335.3877.62.camel@badari-desktop>
+	<0DC51758-AE6C-4DD2-A959-8C8E701FEA4E@oracle.com>
+	<1302624935.3877.66.camel@badari-desktop>
+	<FF1EE11E-62EB-42B9-A4C9-7A2FE4C60D2F@oracle.com>
+	<1302630360.3877.72.camel@badari-desktop>
+	<20110413083656.12e54a91@tlielax.poochiereds.net>
+	<4DA5A899.3040202@us.ibm.com>
+	<20110413100228.680ace66@tlielax.poochiereds.net>
+	<1302704533.8571.12.camel@lade.trondhjem.org>
+	<20110413132034.459c68bb@corrin.poochiereds.net>
+	<7497FEC4-F173-4E10-B571-B856471CB9FD@netapp.com>
+	<1302718471.8571.48.camel@lade.trondhjem.org>
+	<D860A5B3-B6D5-4810-936B-ADC78E097997@oracle.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-SGkgVmxhZGltaXIsCgpPbiBGcmksIDIwMTEtMDQtMTUgYXQgMDk6MTUgKzAyMDAsIFZsYWRpbWly
-IEVsaXNzZWV2IHdyb3RlOgo+IEknbSBwcmV0dHkgc3VyZSB0aGlzIGlzIG5vdCB0aGUgY2FzZSBm
-b3IgbXkgZW52aXJvbm1lbnQsIGFzIHdlIGhhdmUgIAo+IGxlc3MgdGhlbiAxMDAgZ3JvdXBzIGlu
-IHRvdGFsLgoKUmUtcmVhZGluZyB0aGUgbWFpbCwgSSByZWFsaXplIHlvdSBtaWdodCBiZSByaWdo
-dC4gIFRoZSBFSU5WQUxJRCBvbiB0aGUKcnBjIGNoYW5uZWwgZmlsZSBqdW1wZWQgb3V0IGF0IG1l
-IHRob3VnaCBzaW5jZSBpdCB3YXMgdGhlIHNhbWUgc3ltcHRvbQppbiBvdXIgY2FzZS4gIEFsc28s
-IGluIG91ciBjYXNlIHdlIHNhdyB0aGUgcHJvYmxlbSBpbiBhbGwgdmVyc2lvbnMgb2YKbmZzLXV0
-aWxzIGFuZCBub3QganVzdCB0aGUgbGF0ZXN0IG9uZSwgc28gaXQgY291bGQgYmUgdGhhdCBpdCdz
-IGFuIGVycm9yCnNpbWlsYXIgaW4gbmF0dXJlIGJ1dCBub3QgdGhlIHNhbWUgdW5kZXJseWluZyBj
-YXVzZS4KCkFueXdheSwgaW4gY2FzZSBpdCdzIGFueSBoZWxwIChhc3N1bWluZyB0aGF0IHRoZSBw
-YXRjaCBkb2Vzbid0IGZpeCB0aGUKcHJvYmxlbSBmb3IgeW91KSwgdGhlIGtlcm5lbCByZXR1cm5z
-IEVJTlZBTElEIG9uIHdyaXRlKCkncyB0byB0aGUgZmlsZQp3aGVuIGFueSBzaW5nbGUgd3JpdGUg
-aXMgbm90IHByb3Blcmx5IGZvcm1hdHRlZCBhbmQgbmV3bGluZSB0ZXJtaW5hdGVkLgpJdCBzZWVt
-cyB0byBiZSB2ZXJ5IHBpY2t5IGFib3V0IHRoYXQuICBJZiB5b3Ugc3RyYWNlIC1zMjA0OCB0aGUK
-b2ZmZW5kaW5nIGRhZW1vbiwgaXQgc2hvdWxkIGJlIHByZXR0eSBjbGVhciB0aG91Z2gsIGVpdGhl
-ciB5b3UnbGwgc2VlIGEKc2VyaWVzIG9mIHNwbGl0IHVwIEJVRlNaIHNpemVkIHdyaXRlcyAoZWFj
-aCBnZXR0aW5nIEVJTlZBTElEKSBvciB5b3UnbGwKc2VlIGEgd3JpdGUgb3BlcmF0aW9uIHRoYXQn
-cyBvdGhlcndpc2Ugc29tZWhvdyBpbXByb3Blcmx5IGZvcm1hdHRlZC4KCkhvcGUgdGhhdCdzIGF0
-IGxlYXN0IGEgYml0IGhlbHBmdWwsCgoJU2VhbgoT77+977+97Lm7HO+/vSbvv71+77+9Ju+/vRjv
-v73vv70rLe+/ve+/vd22F++/ve+/vXfvv73vv73Lm++/ve+/ve+/vW3vv71i77+977+9Z37Ip++/
-vRfvv73vv73cqH3vv73vv73vv73GoHrvv70majordu+/ve+/ve+/vQfvv73vv73vv73vv716Wivv
-v73vv70rembvv73vv73vv71o77+977+977+9fu+/ve+/ve+/ve+/vWnvv73vv73vv71677+9Hu+/
-vXfvv73vv73vv70/77+977+977+977+9Ju+/vSnfohtm
+On Wed, 13 Apr 2011 14:47:05 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
+
+> 
+> On Apr 13, 2011, at 2:14 PM, Trond Myklebust wrote:
+> 
+> > On Wed, 2011-04-13 at 13:56 -0400, Andy Adamson wrote:
+> >> On Apr 13, 2011, at 1:20 PM, Jeff Layton wrote:
+> >> 
+> >>> On Wed, 13 Apr 2011 10:22:13 -0400
+> >>> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> >>> 
+> >>>> On Wed, 2011-04-13 at 10:02 -0400, Jeff Layton wrote:
+> >>>>> We could put the rpc_rqst's into a slabcache, and give each rpc_xprt a
+> >>>>> mempool with a minimum number of slots. Have them all be allocated with
+> >>>>> GFP_NOWAIT. If it gets a NULL pointer back, then the task can sleep on
+> >>>>> the waitqueue like it does today. Then, the clients can allocate
+> >>>>> rpc_rqst's as they need as long as memory holds out for it.
+> >>>>> 
+> >>>>> We have the reserve_xprt stuff to handle congestion control anyway so I
+> >>>>> don't really see the value in the artificial limits that the slot table
+> >>>>> provides.
+> >>>>> 
+> >>>>> Maybe I should hack up a patchset for this...
+> >>>> 
+> >>>> This issue has come up several times recently. My preference would be to
+> >>>> tie the availability of slots to the TCP window size, and basically say
+> >>>> that if the SOCK_ASYNC_NOSPACE flag is set on the socket, then we hold
+> >>>> off allocating more slots until we get a ->write_space() callback which
+> >>>> clears that flag.
+> >>>> 
+> >>>> For the RDMA case, we can continue to use the current system of a fixed
+> >>>> number of preallocated slots.
+> >>>> 
+> >>> 
+> >>> I take it then that we'd want a similar scheme for UDP as well? I guess
+> >>> I'm just not sure what the slot table is supposed to be for.
+> >> 
+> >> [andros] I look at the rpc_slot table as a representation of the amount of data the connection to the server
+> >> can handle - basically the #slots should = double the bandwidth-delay product divided by the max(rsize/wsize).
+> >> For TCP, this is the window size. (ping of max MTU packet * interface bandwidth).
+> >> There is no reason to allocate more rpc_rqsts that can fit on the wire. 
+> > 
+> > Agreed, but as I said earlier, there is no reason to even try to use UDP
+> > on high bandwidth links, so I suggest we just leave it as-is.
+> 
+> I think Jeff is suggesting that all the transports should use the same logic, but UDP and RDMA should simply have fixed upper limits on their slot table size.  UDP would then behave the same as before, but would share code with the others.  That might be cleaner than maintaining separate slot allocation mechanisms for each transport.
+> 
+> In other words, share the code, but parametrize it so that UDP and RDMA have effectively fixed slot tables as before, but TCP is allowed to expand.
+>
+
+That was my initial thought, but Trond has a point that there's no
+reason to allocate info for a call that we're not able to send.
+
+The idea of hooking up congestion feedback from the networking layer
+into the slot allocation code sounds intriguing, so for now I'll stop
+armchair quarterbacking and just wait to see what Andy comes up with :)
+
+-- 
+Jeff Layton <jlayton@redhat.com>
