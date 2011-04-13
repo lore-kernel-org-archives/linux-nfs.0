@@ -1,178 +1,339 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:41311 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758788Ab1DYSpX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Apr 2011 14:45:23 -0400
-Received: by mail-iy0-f174.google.com with SMTP id 14so2054039iyb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Apr 2011 11:45:23 -0700 (PDT)
+Received: from rcsinet10.oracle.com ([148.87.113.121]:19303 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756198Ab1DMTQk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Apr 2011 15:16:40 -0400
+Subject: Re: [PATCH] NFS: Add SECINFO_NO_NAME call
+Content-Type: text/plain; charset=us-ascii
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 13/15] NFS: Remove "const" from "struct nfs_server *" fields
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 25 Apr 2011 14:45:20 -0400
-Message-ID: <20110425184520.5669.91158.stgit@matisse.1015granger.net>
-In-Reply-To: <20110425183405.5669.52507.stgit@matisse.1015granger.net>
-References: <20110425183405.5669.52507.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <4DA5F1B2.6020200@netapp.com>
+Date: Wed, 13 Apr 2011 15:16:34 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Bryan Schumaker <bjschuma@netapp.com>
+Message-Id: <D048A3A2-D621-4537-BCCB-08A9F1269F3C@oracle.com>
+References: <4DA5F1B2.6020200@netapp.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We're about to pass the nfs_server pointer in some NFSv4 argument and
-result structures to functions that may change it, so it's no longer
-"const".
+If I'm not mistaken, this adds another NFSv4 proc, which would "break" nfsstat.  Does this mean I'm now allowed again to add a separate proc for "get migration status" instead of piggybacking on FS_LOCATIONS?
 
-The preference here is to maintain existing whitespace style rather
-than answer all the nits called out by checkpatch.pl.
+On Apr 13, 2011, at 2:55 PM, Bryan Schumaker wrote:
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+> 
+> If the client is using NFS v4.1 and the initial mount attempt fails
+> with -EPERM, we can use SECINFO_NO_NAME to determine what secflavor
+> to use.  This should be more efficient than the guess-and-check
+> method used with NFS v4.0.
+> 
+> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> 
+> ---
+> fs/nfs/internal.h       |    3 ++
+> fs/nfs/namespace.c      |    2 +-
+> fs/nfs/nfs4_fs.h        |    2 +
+> fs/nfs/nfs4proc.c       |   67 ++++++++++++++++++++++++++++++++++++++++++++++-
+> fs/nfs/nfs4xdr.c        |   66 ++++++++++++++++++++++++++++++++++++++++++++++
+> include/linux/nfs4.h    |    1 +
+> include/linux/nfs_xdr.h |    8 +++++
+> 7 files changed, 147 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+> index ce118ce..361a3a3 100644
+> --- a/fs/nfs/internal.h
+> +++ b/fs/nfs/internal.h
+> @@ -266,6 +266,9 @@ extern void nfs_sb_deactive(struct super_block *sb);
+> extern char *nfs_path(char **p, struct dentry *dentry,
+> 		      char *buffer, ssize_t buflen);
+> extern struct vfsmount *nfs_d_automount(struct path *path);
+> +#ifdef CONFIG_NFS_V4
+> +rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *);
+> +#endif
+> 
+> /* getroot.c */
+> extern struct dentry *nfs_get_root(struct super_block *, struct nfs_fh *,
+> diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+> index 1f063ba..8102391 100644
+> --- a/fs/nfs/namespace.c
+> +++ b/fs/nfs/namespace.c
+> @@ -119,7 +119,7 @@ Elong:
+> }
+> 
+> #ifdef CONFIG_NFS_V4
+> -static rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
+> +rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
+> {
+> 	struct gss_api_mech *mech;
+> 	struct xdr_netobj oid;
+> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+> index e1c261d..9f6bfa6 100644
+> --- a/fs/nfs/nfs4_fs.h
+> +++ b/fs/nfs/nfs4_fs.h
+> @@ -65,6 +65,8 @@ struct nfs4_minor_version_ops {
+> 			int cache_reply);
+> 	int	(*validate_stateid)(struct nfs_delegation *,
+> 			const nfs4_stateid *);
+> +	int	(*find_root_sec)(struct nfs_server *, struct nfs_fh *,
+> +			struct nfs_fsinfo *);
+> 	const struct nfs4_state_recovery_ops *reboot_recovery_ops;
+> 	const struct nfs4_state_recovery_ops *nograce_recovery_ops;
+> 	const struct nfs4_state_maintenance_ops *state_renewal_ops;
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index b8e1ac6..d78762c 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -2234,9 +2234,10 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+> static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
+> 			      struct nfs_fsinfo *info)
+> {
+> +	int minor_version = server->nfs_client->cl_minorversion;
+> 	int status = nfs4_lookup_root(server, fhandle, info);
+> 	if ((status == -EPERM) && !(server->flags & NFS_MOUNT_SECFLAVOUR))
+> -		status = nfs4_find_root_sec(server, fhandle, info);
+> +		status = nfs_v4_minor_ops[minor_version]->find_root_sec(server, fhandle, info);
+> 	if (status == 0)
+> 		status = nfs4_server_capabilities(server, fhandle);
+> 	if (status == 0)
+> @@ -5803,6 +5804,68 @@ out:
+> 	rpc_put_task(task);
+> 	return status;
+> }
+> +
+> +static int
+> +_nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
+> +		    struct nfs_fsinfo *info, struct nfs4_secinfo_flavors *flavors)
+> +{
+> +	struct nfs41_secinfo_no_name_args args = {
+> +		.style = SECINFO_STYLE_CURRENT_FH,
+> +	};
+> +	struct nfs4_secinfo_res res = {
+> +		.flavors = flavors,
+> +	};
+> +	struct rpc_message msg = {
+> +		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SECINFO_NO_NAME],
+> +		.rpc_argp = &args,
+> +		.rpc_resp = &res,
+> +	};
+> +	return nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
+> +}
+> +
+> +static int
+> +nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
+> +			   struct nfs_fsinfo *info, struct nfs4_secinfo_flavors *flavors)
+> +{
+> +	struct nfs4_exception exception = { };
+> +	int err;
+> +	do {
+> +		err = nfs4_handle_exception(server,
+> +					_nfs41_proc_secinfo_no_name(server, fhandle, info, flavors),
+> +					&exception);
+> +	} while (exception.retry);
+> +	return err;
+> +}
+> +
+> +static int
+> +nfs41_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+> +		    struct nfs_fsinfo *info)
+> +{
+> +	int err;
+> +	struct page *page;
+> +	rpc_authflavor_t flavor;
+> +	struct nfs4_secinfo_flavors *flavors;
+> +
+> +	page = alloc_page(GFP_KERNEL);
+> +	if (!page) {
+> +		err = -ENOMEM;
+> +		goto out;
+> +	}
+> +
+> +	flavors = page_address(page);
+> +	err = nfs41_proc_secinfo_no_name(server, fhandle, info, flavors);
+> +	if (err)
+> +		goto out_freepage;
+> +
+> +	flavor = nfs_find_best_sec(flavors);
+> +	if (err == 0)
+> +		err = nfs4_lookup_root_sec(server, fhandle, info, flavor);
+> +
+> +out_freepage:
+> +	put_page(page);
+> +out:
+> +	return err;
+> +}
+> #endif /* CONFIG_NFS_V4_1 */
+> 
+> struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
+> @@ -5864,6 +5927,7 @@ static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
+> 	.minor_version = 0,
+> 	.call_sync = _nfs4_call_sync,
+> 	.validate_stateid = nfs4_validate_delegation_stateid,
+> +	.find_root_sec = nfs4_find_root_sec,
+> 	.reboot_recovery_ops = &nfs40_reboot_recovery_ops,
+> 	.nograce_recovery_ops = &nfs40_nograce_recovery_ops,
+> 	.state_renewal_ops = &nfs40_state_renewal_ops,
+> @@ -5874,6 +5938,7 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
+> 	.minor_version = 1,
+> 	.call_sync = _nfs4_call_sync_session,
+> 	.validate_stateid = nfs41_validate_delegation_stateid,
+> +	.find_root_sec = nfs41_find_root_sec,
+> 	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
+> 	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
+> 	.state_renewal_ops = &nfs41_state_renewal_ops,
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index ba952bd..00952b2 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -338,6 +338,8 @@ static int nfs4_stat_to_errno(int);
+> 				1 /* layoutupdate4 layout type */ + \
+> 				1 /* NULL filelayout layoutupdate4 payload */)
+> #define decode_layoutcommit_maxsz (op_decode_hdr_maxsz + 3)
+> +#define encode_secinfo_no_name_maxsz (op_encode_hdr_maxsz + 4)
+> +#define decode_secinfo_no_name_maxsz decode_secinfo_maxsz
+> 
+> #else /* CONFIG_NFS_V4_1 */
+> #define encode_sequence_maxsz	0
+> @@ -760,6 +762,12 @@ static int nfs4_stat_to_errno(int);
+> 				decode_putfh_maxsz + \
+> 				decode_layoutcommit_maxsz + \
+> 				decode_getattr_maxsz)
+> +#define NFS4_enc_secinfo_no_name_sz	(compound_encode_hdr_maxsz + \
+> +					encode_putrootfh_maxsz +\
+> +					encode_secinfo_no_name_maxsz)
+> +#define NFS4_dec_secinfo_no_name_sz	(compound_decode_hdr_maxsz + \
+> +					decode_putrootfh_maxsz + \
+> +					decode_secinfo_no_name_maxsz)
+> 
+> 
+> const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
+> @@ -1890,6 +1898,20 @@ encode_layoutcommit(struct xdr_stream *xdr,
+> 	hdr->replen += decode_layoutcommit_maxsz;
+> 	return 0;
+> }
+> +
+> +static int
+> +encode_secinfo_no_name(struct xdr_stream *xdr,
+> +		       const struct nfs41_secinfo_no_name_args *args,
+> +		       struct compound_hdr *hdr)
+> +{
+> +	__be32 *p;
+> +	p = reserve_space(xdr, 8);
+> +	*p++ = cpu_to_be32(OP_SECINFO_NO_NAME);
+> +	*p++ = cpu_to_be32(args->style);
+> +	hdr->nops++;
+> +	hdr->replen += decode_secinfo_no_name_maxsz;
+> +	return 0;
+> +}
+> #endif /* CONFIG_NFS_V4_1 */
+> 
+> /*
+> @@ -2723,6 +2745,25 @@ static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
+> 	encode_nops(&hdr);
+> 	return 0;
+> }
+> +
+> +/*
+> + * Encode SECINFO_NO_NAME request
+> + */
+> +static int nfs4_xdr_enc_secinfo_no_name(struct rpc_rqst *req,
+> +					struct xdr_stream *xdr,
+> +					struct nfs41_secinfo_no_name_args *args)
+> +{
+> +	struct compound_hdr hdr = {
+> +		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
+> +	};
+> +
+> +	encode_compound_hdr(xdr, req, &hdr);
+> +	encode_sequence(xdr, &args->seq_args, &hdr);
+> +	encode_putrootfh(xdr, &hdr);
+> +	encode_secinfo_no_name(xdr, args, &hdr);
+> +	encode_nops(&hdr);
+> +	return 0;
+> +}
+> #endif /* CONFIG_NFS_V4_1 */
+> 
+> static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
+> @@ -6348,6 +6389,30 @@ static int nfs4_xdr_dec_layoutcommit(struct rpc_rqst *rqstp,
+> out:
+> 	return status;
+> }
+> +
+> +/*
+> + * Decode SECINFO_NO_NAME response
+> + */
+> +static int nfs4_xdr_dec_secinfo_no_name(struct rpc_rqst *rqstp,
+> +					struct xdr_stream *xdr,
+> +					struct nfs4_secinfo_res *res)
+> +{
+> +	struct compound_hdr hdr;
+> +	int status;
+> +
+> +	status = decode_compound_hdr(xdr, &hdr);
+> +	if (status)
+> +		goto out;
+> +	status = decode_sequence(xdr, &res->seq_res, rqstp);
+> +	if (status)
+> +		goto out;
+> +	status = decode_putrootfh(xdr);
+> +	if (status)
+> +		goto out;
+> +	status = decode_secinfo(xdr, res);
+> +out:
+> +	return status;
+> +}
+> #endif /* CONFIG_NFS_V4_1 */
+> 
+> /**
+> @@ -6547,6 +6612,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+> 	PROC(GETDEVICEINFO,	enc_getdeviceinfo,	dec_getdeviceinfo),
+> 	PROC(LAYOUTGET,		enc_layoutget,		dec_layoutget),
+> 	PROC(LAYOUTCOMMIT,	enc_layoutcommit,	dec_layoutcommit),
+> +	PROC(SECINFO_NO_NAME,	enc_secinfo_no_name,	dec_secinfo_no_name),
+> #endif /* CONFIG_NFS_V4_1 */
+> };
+> 
+> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> index 178fafe..7668f25 100644
+> --- a/include/linux/nfs4.h
+> +++ b/include/linux/nfs4.h
+> @@ -562,6 +562,7 @@ enum {
+> 	NFSPROC4_CLNT_LAYOUTGET,
+> 	NFSPROC4_CLNT_GETDEVICEINFO,
+> 	NFSPROC4_CLNT_LAYOUTCOMMIT,
+> +	NFSPROC4_CLNT_SECINFO_NO_NAME,
+> };
+> 
+> /* nfs41 types */
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 78b101e..a8123b7 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -1060,6 +1060,14 @@ struct nfs41_reclaim_complete_args {
+> struct nfs41_reclaim_complete_res {
+> 	struct nfs4_sequence_res	seq_res;
+> };
+> +
+> +#define SECINFO_STYLE_CURRENT_FH 0
+> +#define SECINFO_STYLE_PARENT 1
+> +struct nfs41_secinfo_no_name_args {
+> +	int				style;
+> +	struct nfs4_sequence_args	seq_args;
+> +};
+> +
+> #endif /* CONFIG_NFS_V4_1 */
+> 
+> struct nfs_page;
+> -- 
+> 1.7.4.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
- fs/nfs/nfs4proc.c       |    2 +-
- include/linux/nfs_xdr.h |   28 ++++++++++++++--------------
- 2 files changed, 15 insertions(+), 15 deletions(-)
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index b7f5666..5361b9d 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4020,7 +4020,7 @@ struct nfs4_unlockdata {
- 	struct nfs4_lock_state *lsp;
- 	struct nfs_open_context *ctx;
- 	struct file_lock fl;
--	const struct nfs_server *server;
-+	struct nfs_server *server;
- 	unsigned long timestamp;
- };
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 8168764..6972572 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -286,7 +286,7 @@ struct nfs_openargs {
- 		fmode_t		delegation_type;	/* CLAIM_PREVIOUS */
- 	} u;
- 	const struct qstr *	name;
--	const struct nfs_server *server;	 /* Needed for ID mapping */
-+	struct nfs_server *	server;		/* Needed for ID mapping */
- 	const u32 *		bitmask;
- 	__u32			claim;
- 	struct nfs4_sequence_args	seq_args;
-@@ -300,7 +300,7 @@ struct nfs_openres {
- 	struct nfs_fattr *      f_attr;
- 	struct nfs_fattr *      dir_attr;
- 	struct nfs_seqid *	seqid;
--	const struct nfs_server *server;
-+	struct nfs_server *	server;
- 	fmode_t			delegation_type;
- 	nfs4_stateid		delegation;
- 	__u32			do_recall;
-@@ -339,7 +339,7 @@ struct nfs_closeres {
- 	nfs4_stateid            stateid;
- 	struct nfs_fattr *	fattr;
- 	struct nfs_seqid *	seqid;
--	const struct nfs_server *server;
-+	struct nfs_server *	server;
- 	struct nfs4_sequence_res	seq_res;
- };
- /*
-@@ -411,7 +411,7 @@ struct nfs4_delegreturnargs {
- 
- struct nfs4_delegreturnres {
- 	struct nfs_fattr * fattr;
--	const struct nfs_server *server;
-+	struct nfs_server * server;
- 	struct nfs4_sequence_res	seq_res;
- };
- 
-@@ -461,7 +461,7 @@ struct nfs_writeres {
- 	struct nfs_fattr *	fattr;
- 	struct nfs_writeverf *	verf;
- 	__u32			count;
--	const struct nfs_server *server;
-+	struct nfs_server *	server;
- 	struct nfs4_sequence_res	seq_res;
- };
- 
-@@ -476,7 +476,7 @@ struct nfs_removeargs {
- };
- 
- struct nfs_removeres {
--	const struct nfs_server *server;
-+	struct nfs_server	*server;
- 	struct nfs_fattr	*dir_attr;
- 	struct nfs4_change_info	cinfo;
- 	struct nfs4_sequence_res 	seq_res;
-@@ -495,7 +495,7 @@ struct nfs_renameargs {
- };
- 
- struct nfs_renameres {
--	const struct nfs_server		*server;
-+	struct nfs_server		*server;
- 	struct nfs4_change_info		old_cinfo;
- 	struct nfs_fattr		*old_fattr;
- 	struct nfs4_change_info		new_cinfo;
-@@ -576,7 +576,7 @@ struct nfs_getaclres {
- 
- struct nfs_setattrres {
- 	struct nfs_fattr *              fattr;
--	const struct nfs_server *	server;
-+	struct nfs_server *		server;
- 	struct nfs4_sequence_res	seq_res;
- };
- 
-@@ -749,7 +749,7 @@ struct nfs4_accessargs {
- };
- 
- struct nfs4_accessres {
--	const struct nfs_server *	server;
-+	struct nfs_server *		server;
- 	struct nfs_fattr *		fattr;
- 	u32				supported;
- 	u32				access;
-@@ -777,7 +777,7 @@ struct nfs4_create_arg {
- };
- 
- struct nfs4_create_res {
--	const struct nfs_server *	server;
-+	struct nfs_server *		server;
- 	struct nfs_fh *			fh;
- 	struct nfs_fattr *		fattr;
- 	struct nfs4_change_info		dir_cinfo;
-@@ -803,7 +803,7 @@ struct nfs4_getattr_arg {
- };
- 
- struct nfs4_getattr_res {
--	const struct nfs_server *	server;
-+	struct nfs_server *		server;
- 	struct nfs_fattr *		fattr;
- 	struct nfs4_sequence_res	seq_res;
- };
-@@ -817,7 +817,7 @@ struct nfs4_link_arg {
- };
- 
- struct nfs4_link_res {
--	const struct nfs_server *	server;
-+	struct nfs_server *		server;
- 	struct nfs_fattr *		fattr;
- 	struct nfs4_change_info		cinfo;
- 	struct nfs_fattr *		dir_attr;
-@@ -833,7 +833,7 @@ struct nfs4_lookup_arg {
- };
- 
- struct nfs4_lookup_res {
--	const struct nfs_server *	server;
-+	struct nfs_server *		server;
- 	struct nfs_fattr *		fattr;
- 	struct nfs_fh *			fh;
- 	struct nfs4_sequence_res	seq_res;
-@@ -948,7 +948,7 @@ struct nfs4_fs_location {
- #define NFS4_FS_LOCATIONS_MAXENTRIES 10
- struct nfs4_fs_locations {
- 	struct nfs_fattr fattr;
--	const struct nfs_server *server;
-+	struct nfs_server *server;
- 	struct nfs4_pathname fs_path;
- 	int nlocations;
- 	struct nfs4_fs_location locations[NFS4_FS_LOCATIONS_MAXENTRIES];
+
 
