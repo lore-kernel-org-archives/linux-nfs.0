@@ -1,53 +1,153 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.parallels.com ([64.131.90.16]:39773 "EHLO mx2.parallels.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33597 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751007Ab1DKN3w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Apr 2011 09:29:52 -0400
-Message-ID: <4DA30222.5040902@parallels.com>
-Date: Mon, 11 Apr 2011 08:29:06 -0500
-From: Rob Landley <rlandley@parallels.com>
-To: "Serge E. Hallyn" <serge@hallyn.com>
-CC: <linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <containers@lists.linux-foundation.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Tim Spriggs <tims@uahirise.org>, Kir Kolyshkin <kir@parallels.com>,
-        Pavel Emelyanov <xemul@parallels.com>
-Subject: Re: [PATCH 3/3] Compare namespaces when comparing addresses in auth_unix
- cache.
-References: <4D9431B3.2070305@parallels.com> <20110405034641.GC6764@hallyn.com> <4D9F24F2.9020603@parallels.com>
-In-Reply-To: <4D9F24F2.9020603@parallels.com>
-Content-Type: text/plain; charset="ISO-8859-1"
+	id S1751981Ab1DMMhB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Apr 2011 08:37:01 -0400
+Date: Wed, 13 Apr 2011 08:36:56 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Badari Pulavarty <pbadari@us.ibm.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        khoa@us.ibm.com
+Subject: Re: [RFC][PATCH] Vector read/write support for NFS (DIO) client
+Message-ID: <20110413083656.12e54a91@tlielax.poochiereds.net>
+In-Reply-To: <1302630360.3877.72.camel@badari-desktop>
+References: <1302622335.3877.62.camel@badari-desktop>
+	<0DC51758-AE6C-4DD2-A959-8C8E701FEA4E@oracle.com>
+	<1302624935.3877.66.camel@badari-desktop>
+	<FF1EE11E-62EB-42B9-A4C9-7A2FE4C60D2F@oracle.com>
+	<1302630360.3877.72.camel@badari-desktop>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 04/08/2011 10:08 AM, Rob Landley wrote:
-> On 04/04/2011 10:46 PM, Serge E. Hallyn wrote:
->> Does this need to take a reference?  Or is there no way for an
->> entry to outlive its netns?  It sort of looks like
->> svcauth_unix_info_release will ensure that doesn't happen, but
->> I'm not convinced because other parts of the kernel can get
->> to ip_map_init through the struct cache_detail.
+On Tue, 12 Apr 2011 10:46:00 -0700
+Badari Pulavarty <pbadari@us.ibm.com> wrote:
+
+> On Tue, 2011-04-12 at 12:42 -0400, Chuck Lever wrote:
+> > On Apr 12, 2011, at 12:15 PM, Badari Pulavarty wrote:
+> > 
+> > > On Tue, 2011-04-12 at 11:36 -0400, Chuck Lever wrote:
+> > >> On Apr 12, 2011, at 11:32 AM, Badari Pulavarty wrote:
+> > >> 
+> > >>> Hi,
+> > >>> 
+> > >>> We recently ran into serious performance issue with NFS client.
+> > >>> It turned out that its due to lack of readv/write support for
+> > >>> NFS (O_DIRECT) client.
+> > >>> 
+> > >>> Here is our use-case:
+> > >>> 
+> > >>> In our cloud environment, our storage is over NFS. Files
+> > >>> on NFS are passed as a blockdevices to the guest (using
+> > >>> O_DIRECT). When guest is doing IO on these block devices,
+> > >>> they will end up as O_DIRECT writes to NFS (on KVM host).
+> > >>> 
+> > >>> QEMU (on the host) gets a vector from virtio-ring and
+> > >>> submits them. Old versions of QEMU, linearized the vector
+> > >>> it got from KVM (copied them into a buffer) and submits
+> > >>> the buffer. So, NFS client always received a single buffer.
+> > >>> 
+> > >>> Later versions of QEMU, eliminated this copy and submits
+> > >>> a vector directly using preadv/pwritev().
+> > >>> 
+> > >>> NFS client loops through the vector and submits each
+> > >>> vector as separate request for each IO < wsize. In our
+> > >>> case (negotiated wsize=1MB), for 256K IO - we get 64 
+> > >>> vectors, each 4K. So, we end up submitting 64 4K FILE_SYNC IOs. 
+> > >>> Server end up doing each 4K synchronously. This causes
+> > >>> serious performance degrade. We are trying to see if the
+> > >>> performance improves if we convert IOs to ASYNC - but
+> > >>> our initial results doesn't look good.
+> > >>> 
+> > >>> readv/writev support NFS client for all possible cases is
+> > >>> hard. Instead, if all vectors are page-aligned and 
+> > >>> iosizes page-multiple - it fits the current code easily.
+> > >>> Luckily, QEMU use-case fits these requirements.
+> > >>> 
+> > >>> Here is the patch to add this support. Comments ?
+> > >> 
+> > >> Restricting buffer alignment requirements would be an onerous API change, IMO.
+> > > 
+> > > I am not suggesting an API change at all. All I am doing is, if all
+> > > the IOs are aligned - we can do a fast path as we can do in a single
+> > > IO request. (as if we got a single buffer). Otherwise, we do hard
+> > > way as today - loop through each one and do them individually.
+> > 
+> > Thanks for the clarification.  That means you don't also address the problem of doing multiple small segments with FILE_SYNC writes.
+> > 
+> > >> If the NFS write path is smart enough not to set FILE_SYNC when there are multiple segments to write, then the problem should be mostly fixed.  I think Jeff Layton already has a patch that does this.
+> > > 
+> > > We are trying that patch. It does improve the performance by little,
+> > > but not anywhere close to doing it as a single vector/buffer.
+> > > 
+> > > Khoa, can you share your performance data for all the
+> > > suggestions/patches you tried so far ?
+> > 
+> > The individual WRITEs should be submitted in parallel.  If there is additional performance overhead, it is probably due to the small RPC slot table size.  Have you tried increasing it?
 > 
-> When I wrote this I thought the transport's get_net() and put_net()
-> would pin it, but after re-reading, the sunrpc code is disgustingly
-> convoluted enough that I can't easily reconstruct my earlier reasoning.
->  I'll add a get_net() and put_net() just to not have to worry about it.
+> We haven't tried both fixes together (RPC slot increase, Turn into
+> ASYNC). Each one individually didn't help much. We will try them
+> together.
+> 
 
-Ah-ha!
+I must have missed some of these emails, but here's the patch that
+Chuck mentioned and based on his suggestion. It may be reasonable as a
+stopgap solution until Trond's overhaul of the DIO code is complete.
 
-Stanislav Kinsbursky helped me reconstruct some of the reasoning: we
-don't need to take a reference because we never actually dereference the
-struct net *, all we do is feed them to net_eq() which just compares the
-pointers for equality.  (The inline function exists so it can compile to
-a constant "return 1" when configured out.)
+With this + a larger slot table size, I would think you'd have a
+substantial write performance improvement. Probably not as good as if
+the writes were coalesced, but it should help.
 
-So if the network context did go away (which still shouldn't happen
-between the rpc_xprt and the struct nfs_client having references to it)
-we still wouldn't have a use-after-free problem because we're not
-looking at the memory, just the pointer.
+Badari, if you can let us know whether this plus increasing the slot
+table size helps, then I'll plan to "officially" submit it. This one is
+against RHEL6 but it should apply to mainline kernels with a small
+offset.
 
-So I shouldn't need to add get_net() and put_net() to the cache.  Sound
-about right?
+-----------------[snip]-----------------
 
-Rob
+BZ#694309: nfs: use unstable writes for bigger groups of DIO writes
+
+Currently, the client uses FILE_SYNC whenever it's writing less than or
+equal data to the wsize. This is a problem though if we have a bunch
+of small iovec's batched up in a single writev call. The client will
+iterate over them and do a single FILE_SYNC WRITE for each.
+
+Instead, change the code to do unstable writes when we'll need to do
+multiple WRITE RPC's in order to satisfy the request. While we're at
+it, optimize away the allocation of commit_data when we aren't going
+to use it anyway.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/direct.c |   13 +++++++++++--
+ 1 files changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 398f8ed..d2ed659 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -870,9 +870,18 @@ static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
+ 	dreq = nfs_direct_req_alloc();
+ 	if (!dreq)
+ 		goto out;
+-	nfs_alloc_commit_data(dreq);
+ 
+-	if (dreq->commit_data == NULL || count <= wsize)
++	if (count > wsize || nr_segs > 1)
++		nfs_alloc_commit_data(dreq);
++	else
++		dreq->commit_data = NULL;
++
++	/*
++	 * If we couldn't allocate commit data, or we'll just be doing a
++	 * single write, then make this a NFS_FILE_SYNC write and do away
++	 * with the commit.
++	 */
++	if (dreq->commit_data == NULL)
+ 		sync = NFS_FILE_SYNC;
+ 
+ 	dreq->inode = inode;
+-- 
+1.7.1
+
