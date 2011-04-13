@@ -1,85 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:45392 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:29617 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751822Ab1DRUHr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Apr 2011 16:07:47 -0400
-Date: Mon, 18 Apr 2011 16:07:45 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd41: make sure nfs server process OPEN with
- EXCLUSIVE4_1 correcttly
-Message-ID: <20110418200745.GA1162@fieldses.org>
-References: <4D9C2CB2.7000101@cn.fujitsu.com>
- <20110407195005.GC11806@fieldses.org>
- <4D9EDC05.2080809@cn.fujitsu.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4D9EDC05.2080809@cn.fujitsu.com>
+	id S932349Ab1DMRUa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Apr 2011 13:20:30 -0400
+Date: Wed, 13 Apr 2011 13:20:34 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Badari Pulavarty <pbadari@us.ibm.com>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        khoa@us.ibm.com
+Subject: Re: [RFC][PATCH] Vector read/write support for NFS (DIO) client
+Message-ID: <20110413132034.459c68bb@corrin.poochiereds.net>
+In-Reply-To: <1302704533.8571.12.camel@lade.trondhjem.org>
+References: <1302622335.3877.62.camel@badari-desktop>
+	<0DC51758-AE6C-4DD2-A959-8C8E701FEA4E@oracle.com>
+	<1302624935.3877.66.camel@badari-desktop>
+	<FF1EE11E-62EB-42B9-A4C9-7A2FE4C60D2F@oracle.com>
+	<1302630360.3877.72.camel@badari-desktop>
+	<20110413083656.12e54a91@tlielax.poochiereds.net>
+	<4DA5A899.3040202@us.ibm.com>
+	<20110413100228.680ace66@tlielax.poochiereds.net>
+	<1302704533.8571.12.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Apr 08, 2011 at 05:57:25PM +0800, Mi Jinlong wrote:
-> 
-> 
-> J. Bruce Fields :
-> > On Wed, Apr 06, 2011 at 05:04:50PM +0800, Mi Jinlong wrote:
-> >> At the recent kernel(2.6.39-rc1),
+On Wed, 13 Apr 2011 10:22:13 -0400
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+
+> On Wed, 2011-04-13 at 10:02 -0400, Jeff Layton wrote:
+> > We could put the rpc_rqst's into a slabcache, and give each rpc_xprt a
+> > mempool with a minimum number of slots. Have them all be allocated with
+> > GFP_NOWAIT. If it gets a NULL pointer back, then the task can sleep on
+> > the waitqueue like it does today. Then, the clients can allocate
+> > rpc_rqst's as they need as long as memory holds out for it.
 > > 
-> > (But this is not a regression, right?  This has been a problem all
-> > along.)
-> 
->   Yes, I think it's just a problem.
-> 
+> > We have the reserve_xprt stuff to handle congestion control anyway so I
+> > don't really see the value in the artificial limits that the slot table
+> > provides.
 > > 
-> >> NFS server can't process OPEN with EXCLUSIVE4_1,
-> >> because NFS server call nfsd_create_v3 to create file instead implement a separate
-> >> one. But nfsd_create_v3 can't process createmode is EXCLUSIVE4_1.
-> > 
-> > Is our handling of the attributes correct in this case?  (See e.g. the
-> > op_bmval[1] assignment a few lines down.)
+> > Maybe I should hack up a patchset for this...
 > 
->   There is no problem of the p_bmval[1] assignment a few lines down.
->   According to rfc5661 18.16.3, EXCLUSIVE4_1 supports the setting of
->   attributes at file creation, we don't need to set p_bmval[1] assignment
->   as EXCLUSIVE.
+> This issue has come up several times recently. My preference would be to
+> tie the availability of slots to the TCP window size, and basically say
+> that if the SOCK_ASYNC_NOSPACE flag is set on the socket, then we hold
+> off allocating more slots until we get a ->write_space() callback which
+> clears that flag.
 > 
->   I think we should have a fix at nfsd_create_v3(), not at do_open_lookup().
->   Please ignore the old patch, a new one is as following.
+> For the RDMA case, we can continue to use the current system of a fixed
+> number of preallocated slots.
 > 
-> --
-> thanks,
-> Mi Jinlong
-> 
-> =============================================================================
-> >From 7adf0213b525c02761022c7fee60f52012d32a9a Mon Sep 17 00:00:00 2001
-> From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> Date: Mon, 4 Apr 2011 00:49:19 +0800
-> Subject: [PATCH] nfsd41: make sure nfs server process OPEN with EXCLUSIVE4_1 correcttly
-> 
-> NFS server can't process OPEN with EXCLUSIVE4_1, because NFS server call 
-> nfsd_create_v3 to create file instead implement a separate one. 
-> But nfsd_create_v3 can't process createmode is EXCLUSIVE4_1.
-> 
-> This patch rename nfsd_create_v3() to do_nfsd_create(),
 
-Good idea.
+I take it then that we'd want a similar scheme for UDP as well? I guess
+I'm just not sure what the slot table is supposed to be for.
 
-> -	if (createmode == NFS3_CREATE_EXCLUSIVE) {
-> +	if (createmode & NFS3_CREATE_EXCLUSIVE) {
+Possibly naive question, and maybe you or Andy have scoped this out
+already...
 
-Using & NFS3_CREATE_EXCLUSIVE is a little too clever; I'd rather just
-write out (createmode == NFS3_CREATE_EXCLUSIVE) || (createmode ==
-NFS4_CREATE_EXCLUSIVE4_1).  If that's too cumbersome, define a static
-inline helper nfsd_create_is_exclusive(createmode) in a header
-somewhere.
+Wouldn't it make more sense to allow the code to allocate rpc_rqst's as
+needed, and manage congestion control in reserve_xprt ? It appears that
+that at least is what xprt_reserve_xprt_cong is supposed to do. The TCP
+variant (xprt_reserve_xprt) doesn't do that currently, but we could do
+it there and that would seem to make for more parity between the TCP
+and UDP in this sense.
 
-> +#ifdef CONFIG_NFSD_V4
-> +		case NFS4_CREATE_EXCLUSIVE4_1:
-> +#endif
+We could do that similarly for RDMA too. Simply keep track of how many
+RPCs are in flight and only allow reserving the xprt when that number
+hasn't crossed the max number of slots...
 
-And I'd rather avoid these ifdef's in the main part of the code.  Could
-we move the definition of NFS4_CREATE_EXCLUSIVE4_1 someplace common
-instead?
-
---b.
+-- 
+Jeff Layton <jlayton@redhat.com>
