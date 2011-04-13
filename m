@@ -1,64 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:52786 "EHLO mail-out1.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:5315 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757826Ab1DLPth (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Apr 2011 11:49:37 -0400
-Subject: Re: [RFC][PATCH] Vector read/write support for NFS (DIO) client
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Badari Pulavarty <pbadari@us.ibm.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1302622335.3877.62.camel@badari-desktop>
-References: <1302622335.3877.62.camel@badari-desktop>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 12 Apr 2011 11:49:29 -0400
-Message-ID: <1302623369.4801.28.camel@lade.trondhjem.org>
+	id S1757105Ab1DMSbe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Apr 2011 14:31:34 -0400
+Message-ID: <4DA5EC02.2070906@netapp.com>
+Date: Wed, 13 Apr 2011 14:31:30 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH 5/6] NFS: don't negotiate when user specifies sec flavor
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-04-12 at 08:32 -0700, Badari Pulavarty wrote:
-> Hi,
-> 
-> We recently ran into serious performance issue with NFS client.
-> It turned out that its due to lack of readv/write support for
-> NFS (O_DIRECT) client.
-> 
-> Here is our use-case:
-> 
-> In our cloud environment, our storage is over NFS. Files
-> on NFS are passed as a blockdevices to the guest (using
-> O_DIRECT). When guest is doing IO on these block devices,
-> they will end up as O_DIRECT writes to NFS (on KVM host).
-> 
-> QEMU (on the host) gets a vector from virtio-ring and
-> submits them. Old versions of QEMU, linearized the vector
-> it got from KVM (copied them into a buffer) and submits
-> the buffer. So, NFS client always received a single buffer.
-> 
-> Later versions of QEMU, eliminated this copy and submits
-> a vector directly using preadv/pwritev().
-> 
-> NFS client loops through the vector and submits each
-> vector as separate request for each IO < wsize. In our
-> case (negotiated wsize=1MB), for 256K IO - we get 64 
-> vectors, each 4K. So, we end up submitting 64 4K FILE_SYNC IOs. 
-> Server end up doing each 4K synchronously. This causes
-> serious performance degrade. We are trying to see if the
-> performance improves if we convert IOs to ASYNC - but
-> our initial results doesn't look good.
-> 
-> readv/writev support NFS client for all possible cases is
-> hard. Instead, if all vectors are page-aligned and 
-> iosizes page-multiple - it fits the current code easily.
-> Luckily, QEMU use-case fits these requirements.
-> 
-> Here is the patch to add this support. Comments ?
 
-Your approach goes in the direction of further special-casing O_DIRECT
-in the NFS client. I'd like to move away from that and towards
-integration with the ordinary read/write codepaths so that aside from
-adding request coalescing, we can also enable pNFS support.
+We were always attempting sec flavor negotiation, even if the user
+told us a specific sec flavor to use.  If that sec flavor fails,
+we should return an error rather than continuing with sec flavor
+negotiation.
 
-Cheers
-   Trond
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/nfs4proc.c |    3 ++-
+ fs/nfs/super.c    |    1 +
+ 2 files changed, 3 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7e27ebf..b8e1ac6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -46,6 +46,7 @@
+ #include <linux/nfs4.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_page.h>
++#include <linux/nfs_mount.h>
+ #include <linux/namei.h>
+ #include <linux/mount.h>
+ #include <linux/module.h>
+@@ -2234,7 +2235,7 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 			      struct nfs_fsinfo *info)
+ {
+ 	int status = nfs4_lookup_root(server, fhandle, info);
+-	if (status == -EPERM)
++	if ((status == -EPERM) && !(server->flags & NFS_MOUNT_SECFLAVOUR))
+ 		status = nfs4_find_root_sec(server, fhandle, info);
+ 	if (status == 0)
+ 		status = nfs4_server_capabilities(server, fhandle);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 2b8e9a5..74482e6 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1004,6 +1004,7 @@ static int nfs_parse_security_flavors(char *value,
+ 		return 0;
+ 	}
+ 
++	mnt->flags |= NFS_MOUNT_SECFLAVOUR;
+ 	mnt->auth_flavor_len = 1;
+ 	return 1;
+ }
+-- 
+1.7.4.4
 
