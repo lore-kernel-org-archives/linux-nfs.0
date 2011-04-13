@@ -1,46 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:56920 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751576Ab1DGOgq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2011 10:36:46 -0400
-Subject: Re: Prioritizing readdirplus/getattr/lookup
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <642211.9524.qm@web65416.mail.ac4.yahoo.com>
-Date: Thu, 7 Apr 2011 10:36:34 -0400
-Cc: Benny Halevy <bhalevy@panasas.com>, Jim Rees <rees@umich.edu>,
-        Garth Gibson <garth@cs.cmu.edu>, linux-nfs@vger.kernel.org
-Message-Id: <CCB59DB2-C865-4C36-BB77-1A76E6B261E9@oracle.com>
-References: <642211.9524.qm@web65416.mail.ac4.yahoo.com>
-To: Andrew Klaassen <clawsoon@yahoo.com>
+Received: from mx2.netapp.com ([216.240.18.37]:65089 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753781Ab1DMOyM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Apr 2011 10:54:12 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: trond@netapp.com, andros@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] Don't mark_inode_dirty_sync() while holding lock
+Date: Wed, 13 Apr 2011 10:53:51 -0400
+Message-Id: <1302706431-78570-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+mark_inode_dirty_sync() grabs the same inode lock!
 
-On Apr 7, 2011, at 10:34 AM, Andrew Klaassen wrote:
+race conditions between holding the lock in pnfs_set_layoutcommit() and in
+mark_inode_dirty_sync() can result in a second call to pnfs_layoutcommit_inode(), but
+this will be a noop as NFS_INO_LAYOUTCOMMIT won't be set in the second call
 
-> --- On Thu, 4/7/11, Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
->> On Apr 6, 2011, at 3:25 PM, Andrew Klaassen wrote:
->> 
->>> I have, for now, hacked my way around my problem by
->>> splitting the server's uplink into two separate bonds. 
->>> This seems to have moderated the transaction rate of the HPC
->>> farm and allowed the "ls -l" calls to be served at an
->>> acceptable rate.
->> 
->> Have you created enough nfsd threads on your Linux NFS
->> servers?
-> 
-> That was one of the things I varied as part of my testing; almost every power of 2 from 8 threads up to 1024 threads.  It actually made things slightly worse, not better, but I can certainly give it a try again.
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ fs/nfs/pnfs.c |    8 +++++++-
+ 1 files changed, 7 insertions(+), 1 deletions(-)
 
-Is the server an SMP system?  Do you see high CPU load during times of slow performance?
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index d9ab972..ff681ab 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1004,6 +1004,7 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(wdata->inode);
+ 	loff_t end_pos = wdata->args.offset + wdata->res.count;
++	bool mark_as_dirty = false;
+ 
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+ 	if (!test_and_set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
+@@ -1011,13 +1012,18 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ 		get_lseg(wdata->lseg);
+ 		wdata->lseg->pls_lc_cred =
+ 			get_rpccred(wdata->args.context->state->owner->so_cred);
+-		mark_inode_dirty_sync(wdata->inode);
++		mark_as_dirty = true;
+ 		dprintk("%s: Set layoutcommit for inode %lu ",
+ 			__func__, wdata->inode->i_ino);
+ 	}
+ 	if (end_pos > wdata->lseg->pls_end_pos)
+ 		wdata->lseg->pls_end_pos = end_pos;
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
++
++	/* if pnfs_layoutcommit_inode() runs between inode locks, the next one
++	 * will be a noop because NFS_INO_LAYOUTCOMMIT will not be set */
++	if (mark_as_dirty)
++		mark_inode_dirty_sync(wdata->inode);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_set_layoutcommit);
+ 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.4.2
 
