@@ -1,75 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:47698 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:7987 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757107Ab1DMSbe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Apr 2011 14:31:34 -0400
-Message-ID: <4DA5EC03.9000301@netapp.com>
-Date: Wed, 13 Apr 2011 14:31:31 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH 6/6] NFS: Use correct variable for page bounds checking
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1752005Ab1DMRgA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Apr 2011 13:36:00 -0400
+Subject: Re: [RFC][PATCH] Vector read/write support for NFS (DIO) client
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Badari Pulavarty <pbadari@us.ibm.com>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        khoa@us.ibm.com
+In-Reply-To: <20110413132034.459c68bb@corrin.poochiereds.net>
+References: <1302622335.3877.62.camel@badari-desktop>
+	 <0DC51758-AE6C-4DD2-A959-8C8E701FEA4E@oracle.com>
+	 <1302624935.3877.66.camel@badari-desktop>
+	 <FF1EE11E-62EB-42B9-A4C9-7A2FE4C60D2F@oracle.com>
+	 <1302630360.3877.72.camel@badari-desktop>
+	 <20110413083656.12e54a91@tlielax.poochiereds.net>
+	 <4DA5A899.3040202@us.ibm.com>
+	 <20110413100228.680ace66@tlielax.poochiereds.net>
+	 <1302704533.8571.12.camel@lade.trondhjem.org>
+	 <20110413132034.459c68bb@corrin.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 13 Apr 2011 13:35:57 -0400
+Message-ID: <1302716157.8571.35.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, 2011-04-13 at 13:20 -0400, Jeff Layton wrote:
+> On Wed, 13 Apr 2011 10:22:13 -0400
+> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> 
+> > On Wed, 2011-04-13 at 10:02 -0400, Jeff Layton wrote:
+> > > We could put the rpc_rqst's into a slabcache, and give each rpc_xprt a
+> > > mempool with a minimum number of slots. Have them all be allocated with
+> > > GFP_NOWAIT. If it gets a NULL pointer back, then the task can sleep on
+> > > the waitqueue like it does today. Then, the clients can allocate
+> > > rpc_rqst's as they need as long as memory holds out for it.
+> > > 
+> > > We have the reserve_xprt stuff to handle congestion control anyway so I
+> > > don't really see the value in the artificial limits that the slot table
+> > > provides.
+> > > 
+> > > Maybe I should hack up a patchset for this...
+> > 
+> > This issue has come up several times recently. My preference would be to
+> > tie the availability of slots to the TCP window size, and basically say
+> > that if the SOCK_ASYNC_NOSPACE flag is set on the socket, then we hold
+> > off allocating more slots until we get a ->write_space() callback which
+> > clears that flag.
+> > 
+> > For the RDMA case, we can continue to use the current system of a fixed
+> > number of preallocated slots.
+> > 
+> 
+> I take it then that we'd want a similar scheme for UDP as well? I guess
+> I'm just not sure what the slot table is supposed to be for.
 
-While decoding a secinfo reply, I store the list of supported sec
-flavors on a page accessible through res->flavors.  Before reading
-each new flavor, I do some math to determine if there is enough
-space left on this page, and I break out of my read look if there
-isn't.  In order to perform this check correctly, I need to use the
-address of res->flavors, rather than the address of res.
+No. I don't see UDP as having much of a future in 10GigE and other high
+bandwidth environments (or even in 1GigE setups). Let's just leave it as
+it is...
 
-When this loop was broken early I lied to the caller and told them
-that the entire list had been decoded.  This could lead to problems
-if the caller tries to use any the garbage data claiming to be a
-valid sec flavor.  I fixed this by using res->flavors->num_flavors
-as a counter, incrementing it every time a sec flavor is 
-successfully decoded.
+> Possibly naive question, and maybe you or Andy have scoped this out
+> already...
+> 
+> Wouldn't it make more sense to allow the code to allocate rpc_rqst's as
+> needed, and manage congestion control in reserve_xprt ? It appears that
+> that at least is what xprt_reserve_xprt_cong is supposed to do. The TCP
+> variant (xprt_reserve_xprt) doesn't do that currently, but we could do
+> it there and that would seem to make for more parity between the TCP
+> and UDP in this sense.
+> 
+> We could do that similarly for RDMA too. Simply keep track of how many
+> RPCs are in flight and only allow reserving the xprt when that number
+> hasn't crossed the max number of slots...
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4xdr.c |   11 +++++++----
- 1 files changed, 7 insertions(+), 4 deletions(-)
+What is the point of allocating a lot of resources when you lack the
+bandwidth to do anything with them?
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index dddfb57..ba952bd 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4838,17 +4838,19 @@ static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
- 	struct nfs4_secinfo_flavor *sec_flavor;
- 	int status;
- 	__be32 *p;
--	int i;
-+	int i, num_flavors;
- 
- 	status = decode_op_hdr(xdr, OP_SECINFO);
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	res->flavors->num_flavors = be32_to_cpup(p);
- 
--	for (i = 0; i < res->flavors->num_flavors; i++) {
-+	res->flavors->num_flavors = 0;
-+	num_flavors = be32_to_cpup(p);
-+
-+	for (i = 0; i < num_flavors; i++) {
- 		sec_flavor = &res->flavors->flavors[i];
--		if ((char *)&sec_flavor[1] - (char *)res > PAGE_SIZE)
-+		if ((char *)&sec_flavor[1] - (char *)res->flavors > PAGE_SIZE)
- 			break;
- 
- 		p = xdr_inline_decode(xdr, 4);
-@@ -4860,6 +4862,7 @@ static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
- 			if (decode_secinfo_gss(xdr, sec_flavor))
- 				break;
- 		}
-+		res->flavors->num_flavors++;
- 	}
- 
- 	return 0;
+The reason for tying this to the TCP window size is to try to queue up
+as much data as we can possibly transmit, without eating too much out of
+the same GFP_ATOMIC pool of memory that the networking layer also uses.
+
 -- 
-1.7.4.4
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
