@@ -1,112 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:15949 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:11857 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755933Ab1DTUEB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 16:04:01 -0400
-Subject: Re: [RFC 04/27] pnfs: layoutret_on_setattr
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1303320401-21106-1-git-send-email-bhalevy@panasas.com>
-References: <4DAF0DE1.6020609@panasas.com>
-	 <1303320401-21106-1-git-send-email-bhalevy@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 20 Apr 2011 16:03:58 -0400
-Message-ID: <1303329838.23206.30.camel@lade.trondhjem.org>
+	id S1752057Ab1DMR4k convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Apr 2011 13:56:40 -0400
+Subject: Re: [RFC][PATCH] Vector read/write support for NFS (DIO) client
+Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <20110413132034.459c68bb@corrin.poochiereds.net>
+Date: Wed, 13 Apr 2011 13:56:36 -0400
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Badari Pulavarty <pbadari@us.ibm.com>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        khoa@us.ibm.com
+Message-Id: <7497FEC4-F173-4E10-B571-B856471CB9FD@netapp.com>
+References: <1302622335.3877.62.camel@badari-desktop> <0DC51758-AE6C-4DD2-A959-8C8E701FEA4E@oracle.com> <1302624935.3877.66.camel@badari-desktop> <FF1EE11E-62EB-42B9-A4C9-7A2FE4C60D2F@oracle.com> <1302630360.3877.72.camel@badari-desktop> <20110413083656.12e54a91@tlielax.poochiereds.net> <4DA5A899.3040202@us.ibm.com> <20110413100228.680ace66@tlielax.poochiereds.net> <1302704533.8571.12.camel@lade.trondhjem.org> <20110413132034.459c68bb@corrin.poochiereds.net>
+To: Jeff Layton <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-04-20 at 20:26 +0300, Benny Halevy wrote:
-> From: Andy Adamson <andros@netapp.com>
+
+On Apr 13, 2011, at 1:20 PM, Jeff Layton wrote:
+
+> On Wed, 13 Apr 2011 10:22:13 -0400
+> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 > 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfs/nfs4proc.c |    3 +++
->  fs/nfs/pnfs.h     |   22 ++++++++++++++++++++++
->  2 files changed, 25 insertions(+), 0 deletions(-)
+>> On Wed, 2011-04-13 at 10:02 -0400, Jeff Layton wrote:
+>>> We could put the rpc_rqst's into a slabcache, and give each rpc_xprt a
+>>> mempool with a minimum number of slots. Have them all be allocated with
+>>> GFP_NOWAIT. If it gets a NULL pointer back, then the task can sleep on
+>>> the waitqueue like it does today. Then, the clients can allocate
+>>> rpc_rqst's as they need as long as memory holds out for it.
+>>> 
+>>> We have the reserve_xprt stuff to handle congestion control anyway so I
+>>> don't really see the value in the artificial limits that the slot table
+>>> provides.
+>>> 
+>>> Maybe I should hack up a patchset for this...
+>> 
+>> This issue has come up several times recently. My preference would be to
+>> tie the availability of slots to the TCP window size, and basically say
+>> that if the SOCK_ASYNC_NOSPACE flag is set on the socket, then we hold
+>> off allocating more slots until we get a ->write_space() callback which
+>> clears that flag.
+>> 
+>> For the RDMA case, we can continue to use the current system of a fixed
+>> number of preallocated slots.
+>> 
 > 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index b03defb..b4df7a6 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -2332,6 +2332,9 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
->  	struct nfs4_state *state = NULL;
->  	int status;
->  
-> +	if (pnfs_ld_layoutret_on_setattr(inode))
-> +		pnfs_return_layout(inode, NULL, true);
+> I take it then that we'd want a similar scheme for UDP as well? I guess
+> I'm just not sure what the slot table is supposed to be for.
 
-There is nothing that prevents further reads and writes being scheduled
-after this, so what is the plan to prevent them from being sent to the
-MDS?
-Also, why are we doing this in the case of a file time update or a
-modebits update? It seems relevant only for the case of a size update.
+[andros] I look at the rpc_slot table as a representation of the amount of data the connection to the server
+can handle - basically the #slots should = double the bandwidth-delay product divided by the max(rsize/wsize).
+For TCP, this is the window size. (ping of max MTU packet * interface bandwidth).
+There is no reason to allocate more rpc_rqsts that can fit on the wire. 
 
-> +
->  	nfs_fattr_init(fattr);
->  	
->  	/* Search for an existing open(O_WRITE) file */
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index a308f3c..3506ad4 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -64,12 +64,18 @@ enum {
->  	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
->  };
->  
-> +enum layoutdriver_policy_flags {
-> +	/* Should the pNFS client commit and return the layout upon a setattr */
-> +	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
-> +};
-> +
->  /* Per-layout driver specific registration structure */
->  struct pnfs_layoutdriver_type {
->  	struct list_head pnfs_tblid;
->  	const u32 id;
->  	const char *name;
->  	struct module *owner;
-> +	unsigned flags;
->  	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr);
->  	void (*free_lseg) (struct pnfs_layout_segment *lseg);
->  
-> @@ -228,6 +234,16 @@ static inline void pnfs_clear_request_commit(struct nfs_page *req)
->  		put_lseg(req->wb_commit_lseg);
->  }
->  
-> +/* Should the pNFS client commit and return the layout upon a setattr */
-> +static inline bool
-> +pnfs_ld_layoutret_on_setattr(struct inode *inode)
-> +{
-> +	if (!pnfs_enabled_sb(NFS_SERVER(inode)))
-> +		return false;
-> +	return NFS_SERVER(inode)->pnfs_curr_ld->flags &
-> +		PNFS_LAYOUTRET_ON_SETATTR;
-> +}
-> +
->  static inline int pnfs_return_layout(struct inode *ino,
->  				     struct pnfs_layout_range *range,
->  				     bool wait)
-> @@ -290,6 +306,12 @@ static inline int pnfs_return_layout(struct inode *ino,
->  }
->  
->  static inline bool
-> +pnfs_ld_layoutret_on_setattr(struct inode *inode)
-> +{
-> +	return false;
-> +}
-> +
-> +static inline bool
->  pnfs_roc(struct inode *ino)
->  {
->  	return false;
+> 
+> Possibly naive question, and maybe you or Andy have scoped this out
+> already...
+> 
+> Wouldn't it make more sense to allow the code to allocate rpc_rqst's as
+> needed, and manage congestion control in reserve_xprt ?
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+[andros] Congestion control is not what the rpc_slot table is managing. It does need to have
+a minimum which experience has set at 16. It's the maximum that needs to be dynamic.
+Congestion control by the lower layers should work unfettered within the # of rpc_slots. Today that
+is not always the case when 16 slots is not enough to fill the wire, and the administrator has 
+not changed the # of rpc_slots.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> It appears that
+> that at least is what xprt_reserve_xprt_cong is supposed to do. The TCP
+> variant (xprt_reserve_xprt) doesn't do that currently, but we could do
+> it there and that would seem to make for more parity between the TCP
+> and UDP in this sense.
+> 
+> We could do that similarly for RDMA too. Simply keep track of how many
+> RPCs are in flight and only allow reserving the xprt when that number
+> hasn't crossed the max number of slots...
+
+
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
