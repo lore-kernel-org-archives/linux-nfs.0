@@ -1,45 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:37557 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758696Ab1DYSnZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Apr 2011 14:43:25 -0400
-Received: by mail-iw0-f174.google.com with SMTP id 34so2050043iwn.19
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Apr 2011 11:43:25 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/15] SUNRPC: Remove obsolete comment
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 25 Apr 2011 14:43:20 -0400
-Message-ID: <20110425184320.5669.71301.stgit@matisse.1015granger.net>
-In-Reply-To: <20110425183405.5669.52507.stgit@matisse.1015granger.net>
-References: <20110425183405.5669.52507.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:5315 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757042Ab1DMSbe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Apr 2011 14:31:34 -0400
+Message-ID: <4DA5EC01.3010704@netapp.com>
+Date: Wed, 13 Apr 2011 14:31:29 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH 3/6] NFS: flav_array honors NFS_MAX_SECFLAVORS
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.  The documenting comment at the top of net/sunrpc/clnt.c is
-out of date.  We adopted BSD's RTO estimation mechanism years ago.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+NFS_MAX_SECFLAVORS should already take into account RPC_AUTH_UNIX
+and RPC_AUTH_NULL, so we don't need to set aside extra slots
+for them.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
+ fs/nfs/nfs4proc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
- net/sunrpc/clnt.c |    4 ----
- 1 files changed, 0 insertions(+), 4 deletions(-)
-
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index ad0b6ea..2d4f8c5 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -13,10 +13,6 @@
-  *	and need to be refreshed, or when a packet was damaged in transit.
-  *	This may be have to be moved to the VFS layer.
-  *
-- *  NB: BSD uses a more intelligent approach to guessing when a request
-- *  or reply has been lost by keeping the RTO estimate for each procedure.
-- *  We currently make do with a constant timeout value.
-- *
-  *  Copyright (C) 1992,1993 Rick Sladkey <jrs@world.std.com>
-  *  Copyright (C) 1995,1996 Olaf Kirch <okir@monad.swb.de>
-  */
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8a03ee0..8833472 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2215,7 +2215,7 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 			      struct nfs_fsinfo *info)
+ {
+ 	int i, len, status = 0;
+-	rpc_authflavor_t flav_array[NFS_MAX_SECFLAVORS + 2];
++	rpc_authflavor_t flav_array[NFS_MAX_SECFLAVORS];
+ 
+ 	flav_array[0] = RPC_AUTH_UNIX;
+ 	len = gss_mech_list_pseudoflavors(&flav_array[1]);
+-- 
+1.7.4.4
 
