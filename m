@@ -1,271 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:11195 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:3736 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752123Ab1DTXuV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Apr 2011 19:50:21 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] NFSv4.1: Don't loop forever in nfs4_proc_create_session
-Date: Wed, 20 Apr 2011 16:50:03 -0700
-Message-Id: <1303343405-5021-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751041Ab1DNUUy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Apr 2011 16:20:54 -0400
+Subject: Re: [PATCH] NFS: dont restart loop in nfs_delegation_reap_unclaimed
+Content-Type: text/plain; charset=us-ascii
+From: Dros Adamson <dros@netapp.com>
+In-Reply-To: <1302809609.24028.66.camel@lade.trondhjem.org>
+Date: Thu, 14 Apr 2011 16:20:37 -0400
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Message-Id: <B87FD6A0-EA41-47C9-985F-101035471BB1@netapp.com>
+References: <1302807855-84959-1-git-send-email-dros@netapp.com> <F6E1551C-3A7B-4BD4-8C31-62996BEE2ACC@oracle.com> <1302809609.24028.66.camel@lade.trondhjem.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-If a server for some reason keeps sending NFS4ERR_DELAY errors, we can end
-up looping forever inside nfs4_proc_create_session, and so the usual
-mechanisms for detecting if the nfs_client is dead don't work.
 
-Fix this by ensuring that we loop inside the nfs4_state_manager thread
-instead.
+On Apr 14, 2011, at 3:33 PM, Trond Myklebust wrote:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4_fs.h          |    1 +
- fs/nfs/nfs4proc.c         |   84 ++++++++++++---------------------------------
- fs/nfs/nfs4state.c        |   47 +++++++++++++++++--------
- include/linux/nfs_fs_sb.h |    1 +
- 4 files changed, 56 insertions(+), 77 deletions(-)
+> On Thu, 2011-04-14 at 15:10 -0400, Chuck Lever wrote:
+>> On Apr 14, 2011, at 3:04 PM, Weston Andros Adamson wrote:
+>> 
+>>> The loop was being restarted after each delegation that has NFS_DELEGATION_NEED_RECLAIM
+>>> set.  Instead, build a temporary list of delegations that need to be freed and free
+>>> them after the for-each-delegation loop.
+>>> 
+>>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>>> ---
+>>> fs/nfs/delegation.c |   16 +++++++++++-----
+>>> 1 files changed, 11 insertions(+), 5 deletions(-)
+>>> 
+>>> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+>>> index bbbc6bf..c87fad8 100644
+>>> --- a/fs/nfs/delegation.c
+>>> +++ b/fs/nfs/delegation.c
+>>> @@ -645,8 +645,8 @@ void nfs_delegation_reap_unclaimed(struct nfs_client *clp)
+>>> 	struct nfs_delegation *delegation;
+>>> 	struct nfs_server *server;
+>>> 	struct inode *inode;
+>>> +	LIST_HEAD(tmplist);
+>>> 
+>>> -restart:
+>>> 	rcu_read_lock();
+>>> 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
+>>> 		list_for_each_entry_rcu(delegation, &server->delegations,
+>>> @@ -659,15 +659,21 @@ restart:
+>>> 				continue;
+>>> 			delegation = nfs_detach_delegation(NFS_I(inode),
+>>> 								server);
+>>> -			rcu_read_unlock();
+>>> -
+>>> +			/* super_list is unused now that deleg is detached */
+>>> 			if (delegation != NULL)
+>>> -				nfs_free_delegation(delegation);
+>>> +				list_add(&delegation->super_list, &tmplist);
+>>> +
+>>> 			iput(inode);
+>> 
+>> /me idly wonders if that iput() is safe to do inside rcu_read_lock() / rcu_read_unlock().
+> 
+> It isn't....
+> 
+>>> -			goto restart;
+>>> 		}
+>>> 	}
+>>> 	rcu_read_unlock();
+>>> +
+>>> +	while (!list_empty(&tmplist)) {
+>>> +		delegation = list_first_entry(&tmplist, struct nfs_delegation,
+>>> +					super_list);
+>>> +		list_del(&delegation->super_list);
+>>> +		nfs_free_delegation(delegation);
+>>> +	}
+>>> }
+> 
+> There is also the issue that the inode may have disappeared when we get
+> to this stage; there is nothing pinning it in memory any more.
+> 
+> One suggestion would be to move the iput into the above loop.
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index e1c261d..c4a6983 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -47,6 +47,7 @@ enum nfs4_client_state {
- 	NFS4CLNT_LAYOUTRECALL,
- 	NFS4CLNT_SESSION_RESET,
- 	NFS4CLNT_RECALL_SLOT,
-+	NFS4CLNT_LEASE_CONFIRM,
- };
- 
- enum nfs4_session_state {
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 628e35f..2507f1f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3726,46 +3726,36 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 		.rpc_cred = cred,
- 	};
- 	__be32 *p;
--	int loop = 0;
- 	int status;
- 
- 	p = (__be32*)sc_verifier.data;
- 	*p++ = htonl((u32)clp->cl_boot_time.tv_sec);
- 	*p = htonl((u32)clp->cl_boot_time.tv_nsec);
- 
--	for(;;) {
--		setclientid.sc_name_len = scnprintf(setclientid.sc_name,
--				sizeof(setclientid.sc_name), "%s/%s %s %s %u",
--				clp->cl_ipaddr,
--				rpc_peeraddr2str(clp->cl_rpcclient,
--							RPC_DISPLAY_ADDR),
--				rpc_peeraddr2str(clp->cl_rpcclient,
--							RPC_DISPLAY_PROTO),
--				clp->cl_rpcclient->cl_auth->au_ops->au_name,
--				clp->cl_id_uniquifier);
--		setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
--				sizeof(setclientid.sc_netid),
--				rpc_peeraddr2str(clp->cl_rpcclient,
--							RPC_DISPLAY_NETID));
--		setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
--				sizeof(setclientid.sc_uaddr), "%s.%u.%u",
--				clp->cl_ipaddr, port >> 8, port & 255);
--
--		status = rpc_call_sync(clp->cl_rpcclient, &msg, 0);
--		if (status != -NFS4ERR_CLID_INUSE)
--			break;
--		if (signalled())
--			break;
--		if (loop++ & 1)
--			ssleep(clp->cl_lease_time / HZ + 1);
--		else
--			if (++clp->cl_id_uniquifier == 0)
--				break;
--	}
-+	setclientid.sc_name_len = scnprintf(setclientid.sc_name,
-+			sizeof(setclientid.sc_name), "%s/%s %s %s %u",
-+			clp->cl_ipaddr,
-+			rpc_peeraddr2str(clp->cl_rpcclient,
-+						RPC_DISPLAY_ADDR),
-+			rpc_peeraddr2str(clp->cl_rpcclient,
-+						RPC_DISPLAY_PROTO),
-+			clp->cl_rpcclient->cl_auth->au_ops->au_name,
-+			clp->cl_id_uniquifier);
-+	setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
-+			sizeof(setclientid.sc_netid),
-+			rpc_peeraddr2str(clp->cl_rpcclient,
-+						RPC_DISPLAY_NETID));
-+	setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
-+			sizeof(setclientid.sc_uaddr), "%s.%u.%u",
-+			clp->cl_ipaddr, port >> 8, port & 255);
-+
-+	status = rpc_call_sync(clp->cl_rpcclient, &msg, 0);
-+	if (status == -NFS4ERR_CLID_INUSE)
-+		ssleep(clp->cl_lease_time / HZ + 1);
- 	return status;
- }
- 
--static int _nfs4_proc_setclientid_confirm(struct nfs_client *clp,
-+int nfs4_proc_setclientid_confirm(struct nfs_client *clp,
- 		struct nfs4_setclientid_res *arg,
- 		struct rpc_cred *cred)
- {
-@@ -3790,26 +3780,6 @@ static int _nfs4_proc_setclientid_confirm(struct nfs_client *clp,
- 	return status;
- }
- 
--int nfs4_proc_setclientid_confirm(struct nfs_client *clp,
--		struct nfs4_setclientid_res *arg,
--		struct rpc_cred *cred)
--{
--	long timeout = 0;
--	int err;
--	do {
--		err = _nfs4_proc_setclientid_confirm(clp, arg, cred);
--		switch (err) {
--			case 0:
--				return err;
--			case -NFS4ERR_RESOURCE:
--				/* The IBM lawyers misread another document! */
--			case -NFS4ERR_DELAY:
--				err = nfs4_delay(clp->cl_rpcclient, &timeout);
--		}
--	} while (err == 0);
--	return err;
--}
--
- struct nfs4_delegreturndata {
- 	struct nfs4_delegreturnargs args;
- 	struct nfs4_delegreturnres res;
-@@ -5222,20 +5192,10 @@ int nfs4_proc_create_session(struct nfs_client *clp)
- 	int status;
- 	unsigned *ptr;
- 	struct nfs4_session *session = clp->cl_session;
--	long timeout = 0;
--	int err;
- 
- 	dprintk("--> %s clp=%p session=%p\n", __func__, clp, session);
- 
--	do {
--		status = _nfs4_proc_create_session(clp);
--		if (status == -NFS4ERR_DELAY) {
--			err = nfs4_delay(clp->cl_rpcclient, &timeout);
--			if (err)
--				status = err;
--		}
--	} while (status == -NFS4ERR_DELAY);
--
-+	status = _nfs4_proc_create_session(clp);
- 	if (status)
- 		goto out;
- 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 4dfb34b..9a7f9df 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -64,10 +64,15 @@ static LIST_HEAD(nfs4_clientid_list);
- 
- int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- {
--	struct nfs4_setclientid_res clid;
-+	struct nfs4_setclientid_res clid = {
-+		.clientid = clp->cl_clientid,
-+		.confirm = clp->cl_confirm,
-+	};
- 	unsigned short port;
- 	int status;
- 
-+	if (test_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state))
-+		goto do_confirm;
- 	port = nfs_callback_tcpport;
- 	if (clp->cl_addr.ss_family == AF_INET6)
- 		port = nfs_callback_tcpport6;
-@@ -75,10 +80,14 @@ int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- 	status = nfs4_proc_setclientid(clp, NFS4_CALLBACK, port, cred, &clid);
- 	if (status != 0)
- 		goto out;
-+	clp->cl_clientid = clid.clientid;
-+	clp->cl_confirm = clid.confirm;
-+	set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
-+do_confirm:
- 	status = nfs4_proc_setclientid_confirm(clp, &clid, cred);
- 	if (status != 0)
- 		goto out;
--	clp->cl_clientid = clid.clientid;
-+	clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
- 	nfs4_schedule_state_renewal(clp);
- out:
- 	return status;
-@@ -230,13 +239,18 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- {
- 	int status;
- 
-+	if (test_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state))
-+		goto do_confirm;
- 	nfs4_begin_drain_session(clp);
- 	status = nfs4_proc_exchange_id(clp, cred);
- 	if (status != 0)
- 		goto out;
-+	set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
-+do_confirm:
- 	status = nfs4_proc_create_session(clp);
- 	if (status != 0)
- 		goto out;
-+	clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
- 	nfs41_setup_state_renewal(clp);
- 	nfs_mark_client_ready(clp, NFS_CS_READY);
- out:
-@@ -1584,20 +1598,23 @@ static int nfs4_recall_slot(struct nfs_client *clp) { return 0; }
-  */
- static void nfs4_set_lease_expired(struct nfs_client *clp, int status)
- {
--	if (nfs4_has_session(clp)) {
--		switch (status) {
--		case -NFS4ERR_DELAY:
--		case -NFS4ERR_CLID_INUSE:
--		case -EAGAIN:
--			break;
-+	switch (status) {
-+	case -NFS4ERR_CLID_INUSE:
-+		clp->cl_id_uniquifier++;
-+	case -NFS4ERR_STALE_CLIENTID:
-+		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
-+		break;
-+	case -NFS4ERR_DELAY:
-+	case -EAGAIN:
-+		ssleep(1);
-+		break;
- 
--		case -EKEYEXPIRED:
--			nfs4_warn_keyexpired(clp->cl_hostname);
--		case -NFS4ERR_NOT_SAME: /* FixMe: implement recovery
--					 * in nfs4_exchange_id */
--		default:
--			return;
--		}
-+	case -EKEYEXPIRED:
-+		nfs4_warn_keyexpired(clp->cl_hostname);
-+	case -NFS4ERR_NOT_SAME: /* FixMe: implement recovery
-+				 * in nfs4_exchange_id */
-+	default:
-+		return;
- 	}
- 	set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
- }
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 216cea5..87694ca 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -47,6 +47,7 @@ struct nfs_client {
- 
- #ifdef CONFIG_NFS_V4
- 	u64			cl_clientid;	/* constant */
-+	nfs4_verifier		cl_confirm;	/* Clientid verifier */
- 	unsigned long		cl_state;
- 
- 	spinlock_t		cl_lock;
--- 
-1.7.4.4
+Good points!  Sorry, I'm still trying to wrap my head around RCU...
+
+> 
+> The question is, though, whether or not we get much of a performance
+> improvement.
+> One advantage of the current scheme is that we're immediately freeing
+> the delegation after detaching it. If you queue up the delegations for
+> freeing, then a process that may need to free a delegation that is at
+> the end of that list in order to make progress (because it wants to
+> rename a file, or open it for writing) may have a longer wait during
+> which the server will be replying NFS4ERR_DELAY.
+> 
+> Do we have any evidence for or against?
+
+Well, the reason that I attempted to fix this is that it looks very wrong for this scenario:
+
+  - there are many nfs_server structures with many delegations
+  - servers at the end of the list have many delegations with NEED_RECLAIM set
+
+In this case, we have terrible performance, iterating through the first N delegations (that don't need to be reclaimed) potentially many, many times.
+
+In your example, the delegation that needs reclaiming is at the end of the list, so both methods need to traverse the whole server list and each of the delegation sub-lists.
+If there is really only one (or a few) that need reclaiming, the difference between methods should be negligible.  If there are many that need reclaiming, the "dont restart the loop every time" method should be a clear winner.
+
+The scenario where the "restart every time" loop is faster (for a waiting process) is when the only delegations that need reclaiming are at the beginning of the list-of-lists (the other method won't free until iterating through everything).
+
+But my question is: once a delegation is detached, can't a waiting process progress?  as far as i can tell, nfs_free_delegation() is just a RCU safe wrapper for kfree().  nfs_detach_delegation() removes it from the list, and sets the nfs_inode's delegation pointer to NULL.  I'm new here, but as far as I can tell, at that point it should be out of the picture (outside of freeing it).
+
+Maybe this work isn't needed.  It just looked wrong to me!
+
+Thoughts?
+
+-dros
 
