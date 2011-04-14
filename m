@@ -1,111 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from seldrel01.sonyericsson.com ([212.209.106.2]:16967 "EHLO
-	seldrel01.sonyericsson.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752210Ab1DGHWq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2011 03:22:46 -0400
-From: Sean Finney <sean.finney@sonyericsson.com>
-To: <linux-nfs@vger.kernel.org>
-CC: <bfields@fieldses.org>, Sean Finney <sean.finney@sonyericsson.com>
-Subject: [PATCH v2 2/2] nfs-utils: Increase the stdio file buffer size for procfs files
-Date: Thu, 7 Apr 2011 09:22:28 +0200
-Message-ID: <1302160948-5628-2-git-send-email-sean.finney@sonyericsson.com>
-In-Reply-To: <1302160948-5628-1-git-send-email-sean.finney@sonyericsson.com>
-References: <20110405233552.GB27961@fieldses.org>
- <1302160948-5628-1-git-send-email-sean.finney@sonyericsson.com>
-Content-Type: text/plain
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:35162 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751124Ab1DNUhW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Apr 2011 16:37:22 -0400
+Message-ID: <4DA75AFC.3040000@suse.cz>
+Date: Thu, 14 Apr 2011 22:37:16 +0200
+From: Jiri Slaby <jslaby@suse.cz>
+To: Bryan Schumaker <bjschuma@netapp.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Jiri Slaby <jirislaby@gmail.com>, linux-kernel@vger.kernel.org,
+        akpm@linux-foundation.org, mm-commits@vger.kernel.org,
+        ML netdev <netdev@vger.kernel.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFS: Fix infinite loop in gss_create_upcall()
+References: <201103312224.p2VMOA5g000983@imap1.linux-foundation.org>	 <4D96E4C5.2080302@suse.cz> <1302122693.16786.0.camel@lade.trondhjem.org>	 <4D9D5CC9.2040002@suse.cz> <4DA36722.2020402@suse.cz>	 <4DA36758.4070203@suse.cz> <4DA36DB6.8060108@suse.cz>	 <4DA48EB0.40600@netapp.com>  <4DA4946D.5020403@suse.cz> <1302633088.4801.48.camel@lade.trondhjem.org> <4DA49B49.1020005@suse.cz> <4DA49D3A.7090800@netapp.com> <4DA49F7F.8060005@suse.cz> <4DA60AB9.1050104@netapp.com>
+In-Reply-To: <4DA60AB9.1050104@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Previously, when writing to /proc/net/rpc/*/channel, if a cache line
-were larger than the default buffer size (likely 1024 bytes), mountd
-and svcgssd would split writes into a number of buffer-sized writes.
-Each of these writes would get an EINVAL error back from the kernel
-procfs handle (it expects line-oriented input and does not account for
-multiple/split writes), and no cache update would occur.
+On 04/13/2011 10:42 PM, Bryan Schumaker wrote:
+> On 04/12/2011 02:52 PM, Jiri Slaby wrote:
+>> On 04/12/2011 08:43 PM, Bryan Schumaker wrote:
+>>> On 04/12/2011 02:34 PM, Jiri Slaby wrote:
+>>>> On 04/12/2011 08:31 PM, Trond Myklebust wrote:
+>>>>>> Yes, it fixes the problem. But it waits 15s before it times out. This is
+>>>>>> inacceptable for automounted NFS dirs.
+>>>>>
+>>>>> I'm still confused as to why you are hitting it at all. In the normal
+>>>>> autonegotiation case, the client should be trying to use AUTH_SYS first
+>>>>> and then trying rpcsec_gss if and only if that fails.
+>>>>>
+>>>>> Are you really exporting a filesystem using AUTH_NULL as the only
+>>>>> supported flavour?
+>>>>
+>>>> I don't know, I connect to a nfs server which is not maintained by me.
+>>>> It looks like that. How can I find out?
+>>>
+>>> If you're not using gss for anything, you could try rmmod-ing rpcsec_gss_krb5 (and other rpcsec_gss_* modules).
+>>
+>> I don't have NFS in modules. It's all built-in. And this one is
+>> unconditionally selected because of CONFIG_NFS_V4.
+> 
+> Does this patch help?
 
-When such behavior occurs, NFS clients depending on mountd to finish
-the cache operation would block/hang, or receive EPERM, depending on
-the context of the operation.  This is likely to happen if a user is a
-member of a large (~100-200) number of groups.
+Nope, it makes things even worse:
+# mount -oro,intr XXX:/yyy /mnt/c/
+<15s delay here>
+mount.nfs: access denied by server while mounting XXX:/yyy
 
-Instead, every fopen() on the procfs files in question is followed by
-a call to setvbuf(), using a per-file dedicated buffer of
-RPC_CHAN_BUF_SIZE length.
+So in nfs4_proc_get_root I do:
+  printk("%s: %d %u\n", __func__, i, flav_array[i]);
+  status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
+  printk("%s: res=%d\n", __func__, status);
+and get:
+[   18.159818] nfs4_proc_get_root: 0 1
+[   18.214872] nfs4_proc_get_root: res=-1
+[   18.214875] nfs4_proc_get_root: 1 0
+[   18.254636] nfs4_proc_get_root: res=-1
+[   18.254639] nfs4_proc_get_root: 2 390003
+[   33.252174] RPC: AUTH_GSS upcall timed out.
+[   33.252177] Please check user daemon is running.
+[   33.252192] nfs4_proc_get_root: res=-13
 
-Really, mountd should not be using stdio-style buffered file operations
-on files in /proc to begin with.  A better solution would be to use
-internally managed buffers and calls to write() instead of these stdio
-calls, but that would be a more extensive change; so this is proposed
-as a quick and not-so-dirty fix in the meantime.
+If I revert that back and do the same:
+[   28.275569] nfs4_proc_get_root: 0 1
+[   28.296545] nfs4_proc_get_root: res=-1
+[   28.296548] nfs4_proc_get_root: 1 390003
+[   43.296107] RPC: AUTH_GSS upcall timed out.
+[   43.296108] Please check user daemon is running.
+[   43.296121] nfs4_proc_get_root: res=-13
+[   43.296122] nfs4_proc_get_root: 2 0
+[   43.318201] nfs4_proc_get_root: res=-1
 
-Signed-off-by: Sean Finney <sean.finney@sonyericsson.com>
----
- support/include/misc.h    |    3 +++
- utils/gssd/svcgssd_proc.c |    3 +++
- utils/mountd/cache.c      |    2 ++
- 3 files changed, 8 insertions(+), 0 deletions(-)
+I.e. all methods fail. And what matters is the last retval. From NULL it
+is EPERM, from GSS it is EACCESS. For EPERM, mount(8) falls back to
+nfs3, for EACCESS it dies terrible death.
 
-diff --git a/support/include/misc.h b/support/include/misc.h
-index 9a1b25d..7e3874e 100644
---- a/support/include/misc.h
-+++ b/support/include/misc.h
-@@ -24,4 +24,7 @@ struct hostent *get_reliable_hostbyaddr(const char *addr, int len, int type);
- 
- extern int is_mountpoint(char *path);
- 
-+/* size of the file pointer buffers for rpc procfs files */
-+#define RPC_CHAN_BUF_SIZE 32768
-+
- #endif /* MISC_H */
-diff --git a/utils/gssd/svcgssd_proc.c b/utils/gssd/svcgssd_proc.c
-index 6f2ba61..8f6548e 100644
---- a/utils/gssd/svcgssd_proc.c
-+++ b/utils/gssd/svcgssd_proc.c
-@@ -56,6 +56,7 @@
- #include "gss_util.h"
- #include "err_util.h"
- #include "context.h"
-+#include "misc.h"
- 
- extern char * mech2file(gss_OID mech);
- #define SVCGSSD_CONTEXT_CHANNEL "/proc/net/rpc/auth.rpcsec.context/channel"
-@@ -78,6 +79,7 @@ do_svc_downcall(gss_buffer_desc *out_handle, struct svc_cred *cred,
- 	FILE *f;
- 	int i;
- 	char *fname = NULL;
-+	char vbuf[RPC_CHAN_BUF_SIZE];
- 	int err;
- 
- 	printerr(1, "doing downcall\n");
-@@ -90,6 +92,7 @@ do_svc_downcall(gss_buffer_desc *out_handle, struct svc_cred *cred,
- 			     SVCGSSD_CONTEXT_CHANNEL, strerror(errno));
- 		goto out_err;
- 	}
-+	setvbuf(f, vbuf, _IOLBF, RPC_CHAN_BUF_SIZE);
- 	qword_printhex(f, out_handle->value, out_handle->length);
- 	/* XXX are types OK for the rest of this? */
- 	/* For context cache, use the actual context endtime */
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 7deb050..4eded17 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -739,6 +739,7 @@ struct {
- 	char *cache_name;
- 	void (*cache_handle)(FILE *f);
- 	FILE *f;
-+	char vbuf[RPC_CHAN_BUF_SIZE];
- } cachelist[] = {
- 	{ "auth.unix.ip", auth_unix_ip},
- 	{ "auth.unix.gid", auth_unix_gid},
-@@ -757,6 +758,7 @@ void cache_open(void)
- 			continue;
- 		sprintf(path, "/proc/net/rpc/%s/channel", cachelist[i].cache_name);
- 		cachelist[i].f = fopen(path, "r+");
-+		setvbuf(cachelist[i].f, cachelist[i].vbuf, _IOLBF, RPC_CHAN_BUF_SIZE);
- 	}
- }
- 
+linux-b984:~ # strace -fe mount -s 1000 mount -oro,intr XXX:/yyy /mnt/c/
+Process 2396 attached
+Process 2395 suspended
+[pid  2396] mount("XXX:/yyy", "/mnt/c", "nfs", MS_RDONLY,
+"intr,vers=4,addr=10.20.3.2,clientaddr=10.0.2.15") = -1 EPERM (Operation
+not permitted)
+[pid  2396] mount("XXX:/yyy", "/mnt/c", "nfs", MS_RDONLY,
+"intr,addr=10.20.3.2,vers=3,proto=tcp,mountvers=3,mountproto=udp,mountport=709")
+= 0
+Process 2395 resumed
+Process 2396 detached
+--- SIGCHLD (Child exited) @ 0 (0) ---
+
+thanks,
 -- 
-1.7.4.1
-
+js
+suse labs
