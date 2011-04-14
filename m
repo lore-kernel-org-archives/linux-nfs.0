@@ -1,63 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from hrndva-omtalb.mail.rr.com ([71.74.56.124]:52841 "EHLO
-	hrndva-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751624Ab1DKNgE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Apr 2011 09:36:04 -0400
-Date: Mon, 11 Apr 2011 08:36:02 -0500
-From: "Serge E. Hallyn" <serge@hallyn.com>
-To: Rob Landley <rlandley@parallels.com>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        containers@lists.linux-foundation.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Tim Spriggs <tims@uahirise.org>, Kir Kolyshkin <kir@parallels.com>,
-        Pavel Emelyanov <xemul@parallels.com>
-Subject: Re: [PATCH 3/3] Compare namespaces when comparing addresses in
- auth_unix cache.
-Message-ID: <20110411133602.GA5321@hallyn.com>
-References: <4D9431B3.2070305@parallels.com>
- <20110405034641.GC6764@hallyn.com>
- <4D9F24F2.9020603@parallels.com>
- <4DA30222.5040902@parallels.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4DA30222.5040902@parallels.com>
+Received: from mx1.redhat.com ([209.132.183.28]:13320 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754614Ab1DNMoC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Apr 2011 08:44:02 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, pbadari@us.ibm.com, chuck.lever@oracle.com
+Subject: [PATCH] BZ#694309: nfs: use unstable writes for groups of small DIO writes
+Date: Thu, 14 Apr 2011 08:43:28 -0400
+Message-Id: <1302785008-30477-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Quoting Rob Landley (rlandley@parallels.com):
-> On 04/08/2011 10:08 AM, Rob Landley wrote:
-> > On 04/04/2011 10:46 PM, Serge E. Hallyn wrote:
-> >> Does this need to take a reference?  Or is there no way for an
-> >> entry to outlive its netns?  It sort of looks like
-> >> svcauth_unix_info_release will ensure that doesn't happen, but
-> >> I'm not convinced because other parts of the kernel can get
-> >> to ip_map_init through the struct cache_detail.
-> > 
-> > When I wrote this I thought the transport's get_net() and put_net()
-> > would pin it, but after re-reading, the sunrpc code is disgustingly
-> > convoluted enough that I can't easily reconstruct my earlier reasoning.
-> >  I'll add a get_net() and put_net() just to not have to worry about it.
-> 
-> Ah-ha!
-> 
-> Stanislav Kinsbursky helped me reconstruct some of the reasoning: we
-> don't need to take a reference because we never actually dereference the
-> struct net *, all we do is feed them to net_eq() which just compares the
-> pointers for equality.  (The inline function exists so it can compile to
-> a constant "return 1" when configured out.)
-> 
-> So if the network context did go away (which still shouldn't happen
-> between the rpc_xprt and the struct nfs_client having references to it)
-> we still wouldn't have a use-after-free problem because we're not
-> looking at the memory, just the pointer.
+Currently, the client uses FILE_SYNC whenever it's writing less than or
+equal data to the wsize with O_DIRECT. This is a problem though if we
+have a bunch of small iovec's batched up in a single writev call. The
+client will iterate over them and do a single FILE_SYNC WRITE for each.
 
-Besides use-after-free, the other concern is an invalid net_eq()
-result due to the * being re-used for a new netns.  I assume that's
-deemed "super-duper impossible" again bc of the rpc_xprt/nfs_client
-references to it?
+Instead, change the code to do unstable writes when we'll need to do
+multiple WRITE RPC's in order to satisfy the request. While we're at
+it, optimize away the allocation of commit_data when we aren't going
+to use it anyway.
 
-> So I shouldn't need to add get_net() and put_net() to the cache.  Sound
-> about right?
+I tested this with a program that allocates 256 page-sized and aligned
+chunks of data into an array of iovecs, opens a file with O_DIRECT, and
+then passes that into a writev call 128 times. Without this patch, it
+took 5m16s to run on my (admittedly crappy) test rig. With this patch,
+it finished in 7.5s.
 
-thanks,
--serge
+Trond, would it be reasonable to take this patch as a stopgap measure
+until your overhaul of the O_DIRECT code is finished?
+
+Reported-by: Badari Pulavarty <pbadari@us.ibm.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/direct.c |   13 +++++++++++--
+ 1 files changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 8eea253..9fc3430 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -871,9 +871,18 @@ static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
+ 	dreq = nfs_direct_req_alloc();
+ 	if (!dreq)
+ 		goto out;
+-	nfs_alloc_commit_data(dreq);
+ 
+-	if (dreq->commit_data == NULL || count <= wsize)
++	if (count > wsize || nr_segs > 1)
++		nfs_alloc_commit_data(dreq);
++	else
++		dreq->commit_data = NULL;
++
++	/*
++	 * If we couldn't allocate commit data, or we'll just be doing a
++	 * single write, then make this a NFS_FILE_SYNC write and do away
++	 * with the commit.
++	 */
++	if (dreq->commit_data == NULL)
+ 		sync = NFS_FILE_SYNC;
+ 
+ 	dreq->inode = inode;
+-- 
+1.7.1
+
