@@ -1,52 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:21819 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:9551 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759806Ab1D0TrX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Apr 2011 15:47:23 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 2/3] NFSD: Check status from nfsd4_map_bcts_dir()
-Date: Wed, 27 Apr 2011 15:47:15 -0400
-Message-Id: <1303933636-22134-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1303933636-22134-1-git-send-email-bjschuma@netapp.com>
-References: <1303933636-22134-1-git-send-email-bjschuma@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+	id S932481Ab1DNTUV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Apr 2011 15:20:21 -0400
+Subject: Re: [PATCH] NFS: dont restart loop in nfs_delegation_reap_unclaimed
+Content-Type: text/plain; charset=us-ascii
+From: Dros Adamson <dros@netapp.com>
+In-Reply-To: <F6E1551C-3A7B-4BD4-8C31-62996BEE2ACC@oracle.com>
+Date: Thu, 14 Apr 2011 15:20:18 -0400
+Cc: trond@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <538B0B51-537C-47A8-8F52-52C293E033A1@netapp.com>
+References: <1302807855-84959-1-git-send-email-dros@netapp.com> <F6E1551C-3A7B-4BD4-8C31-62996BEE2ACC@oracle.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Bryan Schumaker <bjschuma@netapp.com>
 
-Compiling gave me this warning:
-fs/nfsd/nfs4state.c: In function ‘nfsd4_bind_conn_to_session’:
-fs/nfsd/nfs4state.c:1623:9: warning: variable ‘status’ set but not used
-[-Wunused-but-set-variable]
+On Apr 14, 2011, at 3:10 PM, Chuck Lever wrote:
 
-The local variable "status" was being set by nfsd4_map_bcts_dir() and
-then ignored before calling nfsd4_new_conn().
+> 
+> On Apr 14, 2011, at 3:04 PM, Weston Andros Adamson wrote:
+> 
+>> The loop was being restarted after each delegation that has NFS_DELEGATION_NEED_RECLAIM
+>> set.  Instead, build a temporary list of delegations that need to be freed and free
+>> them after the for-each-delegation loop.
+>> 
+>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>> ---
+>> fs/nfs/delegation.c |   16 +++++++++++-----
+>> 1 files changed, 11 insertions(+), 5 deletions(-)
+>> 
+>> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+>> index bbbc6bf..c87fad8 100644
+>> --- a/fs/nfs/delegation.c
+>> +++ b/fs/nfs/delegation.c
+>> @@ -645,8 +645,8 @@ void nfs_delegation_reap_unclaimed(struct nfs_client *clp)
+>> 	struct nfs_delegation *delegation;
+>> 	struct nfs_server *server;
+>> 	struct inode *inode;
+>> +	LIST_HEAD(tmplist);
+>> 
+>> -restart:
+>> 	rcu_read_lock();
+>> 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
+>> 		list_for_each_entry_rcu(delegation, &server->delegations,
+>> @@ -659,15 +659,21 @@ restart:
+>> 				continue;
+>> 			delegation = nfs_detach_delegation(NFS_I(inode),
+>> 								server);
+>> -			rcu_read_unlock();
+>> -
+>> +			/* super_list is unused now that deleg is detached */
+>> 			if (delegation != NULL)
+>> -				nfs_free_delegation(delegation);
+>> +				list_add(&delegation->super_list, &tmplist);
+>> +
+>> 			iput(inode);
+> 
+> /me idly wonders if that iput() is safe to do inside rcu_read_lock() / rcu_read_unlock().
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/nfs4state.c |    5 +++--
- 1 files changed, 3 insertions(+), 2 deletions(-)
+Hrm, I think you're right.  I take this patch back!
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4cf04e1..e00061a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1637,8 +1637,9 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
- 		return nfserr_badsession;
- 
- 	status = nfsd4_map_bcts_dir(&bcts->dir);
--	nfsd4_new_conn(rqstp, cstate->session, bcts->dir);
--	return nfs_ok;
-+	if (!status)
-+		nfsd4_new_conn(rqstp, cstate->session, bcts->dir);
-+	return status;
- }
- 
- static bool nfsd4_compound_in_session(struct nfsd4_session *session, struct nfs4_sessionid *sid)
--- 
-1.7.4.4
+-dros
 
