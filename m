@@ -1,313 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.netapp.com ([216.240.18.38]:17616 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756863Ab1DLTtI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Apr 2011 15:49:08 -0400
-Message-ID: <4DA4AA4D.4070502@netapp.com>
-Date: Tue, 12 Apr 2011 15:38:53 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2] NFS: SECINFO_NO_NAME for v4.1 initial mount
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mta-2.ms.rz.RWTH-Aachen.DE ([134.130.7.73]:57200 "EHLO
+	mta-2.ms.rz.rwth-aachen.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754249Ab1DNFss (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Apr 2011 01:48:48 -0400
+Content-type: text/plain; charset=us-ascii
+Received: from ironport-out-1.rz.rwth-aachen.de ([134.130.5.40])
+ by mta-2.ms.rz.RWTH-Aachen.de
+ (Sun Java(tm) System Messaging Server 6.3-7.04 (built Sep 26 2008))
+ with ESMTP id <0LJM007HOO5BF5I0@mta-2.ms.rz.RWTH-Aachen.de> for
+ linux-nfs@vger.kernel.org; Thu, 14 Apr 2011 07:48:47 +0200 (CEST)
+Received: from gheift ([unknown] [134.130.113.37])
+ by relay-auth-2.ms.rz.rwth-aachen.de
+ (Sun Java(tm) System Messaging Server 7.0-3.01 64bit (built Dec  9 2008))
+ with ESMTPA id <0LJM00472O5AKE70@relay-auth-2.ms.rz.rwth-aachen.de> for
+ linux-nfs@vger.kernel.org; Thu, 14 Apr 2011 07:48:47 +0200 (CEST)
+Date: Thu, 14 Apr 2011 07:48:45 +0200
+From: Gerhard Heift <ml-nfs-linux-20110412-ef47@gheift.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: nfsdv4 leaks file descriptors
+Message-id: <20110414054844.GF17242@gheift>
+References: <20110412140148.GA17242@gheift>
+ <20110413211211.GA25189@fieldses.org>
+In-reply-to: <20110413211211.GA25189@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, Apr 13, 2011 at 05:12:11PM -0400, J. Bruce Fields wrote:
+> On Tue, Apr 12, 2011 at 04:01:50PM +0200, Gerhard Heift wrote:
+> > Hello,
+> > 
+> > I have a linux kernel (2.6.38.2, armv5tel) running which exports a
+> > directory with following options:
+> 
+> Should be fixed in more recent stable kernel; let me know if not.
 
-If mounting through AUTH_UNIX returns -EPERM on NFS v4.1, we place
-a SECINFO_NO_NAME call to find the authflavor needed in order to 
-perform the mount.
+An even more recent stable than 2.6.38.2? I just compiled 2.6.39-rc3 and
+there the leak happens too.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/internal.h       |    3 ++
- fs/nfs/namespace.c      |    2 +-
- fs/nfs/nfs4_fs.h        |    2 +
- fs/nfs/nfs4proc.c       |   58 +++++++++++++++++++++++++++++++++++++++-
- fs/nfs/nfs4xdr.c        |   68 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs4.h    |    1 +
- include/linux/nfs_xdr.h |    9 ++++++
- 7 files changed, 141 insertions(+), 2 deletions(-)
+> --b.
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index ce118ce..361a3a3 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -266,6 +266,9 @@ extern void nfs_sb_deactive(struct super_block *sb);
- extern char *nfs_path(char **p, struct dentry *dentry,
- 		      char *buffer, ssize_t buflen);
- extern struct vfsmount *nfs_d_automount(struct path *path);
-+#ifdef CONFIG_NFS_V4
-+rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *);
-+#endif
- 
- /* getroot.c */
- extern struct dentry *nfs_get_root(struct super_block *, struct nfs_fh *,
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index 1f063ba..8102391 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -119,7 +119,7 @@ Elong:
- }
- 
- #ifdef CONFIG_NFS_V4
--static rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
-+rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
- {
- 	struct gss_api_mech *mech;
- 	struct xdr_netobj oid;
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index e1c261d..0478c6d 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -65,6 +65,8 @@ struct nfs4_minor_version_ops {
- 			int cache_reply);
- 	int	(*validate_stateid)(struct nfs_delegation *,
- 			const nfs4_stateid *);
-+	int	(*find_root_sec)(struct nfs_server *, struct nfs_fh *, 
-+			struct nfs_fsinfo *);
- 	const struct nfs4_state_recovery_ops *reboot_recovery_ops;
- 	const struct nfs4_state_recovery_ops *nograce_recovery_ops;
- 	const struct nfs4_state_maintenance_ops *state_renewal_ops;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 7e27ebf..0da35e4 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2233,9 +2233,10 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
- static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 			      struct nfs_fsinfo *info)
- {
-+	int minor_version = server->nfs_client->cl_minorversion;
- 	int status = nfs4_lookup_root(server, fhandle, info);
- 	if (status == -EPERM)
--		status = nfs4_find_root_sec(server, fhandle, info);
-+		status = nfs_v4_minor_ops[minor_version]->find_root_sec(server, fhandle, info);
- 	if (status == 0)
- 		status = nfs4_server_capabilities(server, fhandle);
- 	if (status == 0)
-@@ -5802,6 +5803,59 @@ out:
- 	rpc_put_task(task);
- 	return status;
- }
-+
-+static int
-+_nfs41_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle, 
-+		    struct nfs_fsinfo *info, struct nfs4_secinfo_flavors *flavors)
-+{
-+	struct nfs41_secinfo_no_name_args args = {
-+		.style = 0,
-+	};
-+	struct nfs41_secinfo_no_name_res res = {
-+		.flavors = flavors,
-+	};
-+	struct rpc_message msg = {
-+		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SECINFO_NO_NAME],
-+		.rpc_argp = &args,
-+		.rpc_resp = &res,
-+	};
-+	return nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
-+}
-+
-+static int
-+nfs41_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
-+		    struct nfs_fsinfo *info)
-+{
-+	struct nfs4_exception exception = { };
-+	int err;
-+	rpc_authflavor_t flavor = RPC_AUTH_UNIX;
-+	struct nfs4_secinfo_flavors *flavors;
-+	struct page *page = alloc_page(GFP_KERNEL);
-+
-+	if (!page) {
-+		err = -ENOMEM;
-+		goto out;
-+	}
-+	flavors = page_address(page);
-+
-+	do {
-+		err = nfs4_handle_exception(server,
-+					_nfs41_find_root_sec(server, fhandle, info, flavors),
-+					&exception);
-+	} while (exception.retry);
-+
-+	if (err)
-+		goto out_freepage;
-+
-+	flavor = nfs_find_best_sec(flavors);
-+	if (err == 0)
-+		err = nfs4_lookup_root_sec(server, fhandle, info, flavor);
-+
-+out_freepage:
-+	put_page(page);
-+out:
-+	return err;
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
-@@ -5863,6 +5917,7 @@ static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
- 	.minor_version = 0,
- 	.call_sync = _nfs4_call_sync,
- 	.validate_stateid = nfs4_validate_delegation_stateid,
-+	.find_root_sec = nfs4_find_root_sec,
- 	.reboot_recovery_ops = &nfs40_reboot_recovery_ops,
- 	.nograce_recovery_ops = &nfs40_nograce_recovery_ops,
- 	.state_renewal_ops = &nfs40_state_renewal_ops,
-@@ -5873,6 +5928,7 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
- 	.minor_version = 1,
- 	.call_sync = _nfs4_call_sync_session,
- 	.validate_stateid = nfs41_validate_delegation_stateid,
-+	.find_root_sec = nfs41_find_root_sec,
- 	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
- 	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
- 	.state_renewal_ops = &nfs41_state_renewal_ops,
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index dddfb57..06a43b9 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -338,6 +338,8 @@ static int nfs4_stat_to_errno(int);
- 				1 /* layoutupdate4 layout type */ + \
- 				1 /* NULL filelayout layoutupdate4 payload */)
- #define decode_layoutcommit_maxsz (op_decode_hdr_maxsz + 3)
-+#define encode_secinfo_no_name_maxsz (op_encode_hdr_maxsz + 4)
-+#define decode_secinfo_no_name_maxsz decode_secinfo_maxsz
- 
- #else /* CONFIG_NFS_V4_1 */
- #define encode_sequence_maxsz	0
-@@ -760,6 +762,12 @@ static int nfs4_stat_to_errno(int);
- 				decode_putfh_maxsz + \
- 				decode_layoutcommit_maxsz + \
- 				decode_getattr_maxsz)
-+#define NFS4_enc_secinfo_no_name_sz	(compound_encode_hdr_maxsz + \
-+					encode_putrootfh_maxsz +\
-+					encode_secinfo_no_name_maxsz)
-+#define NFS4_dec_secinfo_no_name_sz	(compound_decode_hdr_maxsz + \
-+					decode_putrootfh_maxsz + \
-+					decode_secinfo_no_name_maxsz)
- 
- 
- const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
-@@ -1890,6 +1898,20 @@ encode_layoutcommit(struct xdr_stream *xdr,
- 	hdr->replen += decode_layoutcommit_maxsz;
- 	return 0;
- }
-+
-+static int
-+encode_secinfo_no_name(struct xdr_stream *xdr,
-+		       const struct nfs41_secinfo_no_name_args *args,
-+		       struct compound_hdr *hdr)
-+{
-+	__be32 *p;
-+	p =reserve_space(xdr, 8);
-+	*p++ = cpu_to_be32(OP_SECINFO_NO_NAME);
-+	*p++ = cpu_to_be32(args->style);
-+	hdr->nops++;
-+	hdr->replen += decode_secinfo_no_name_maxsz;
-+	return 0;
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- /*
-@@ -2723,6 +2745,25 @@ static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
- 	encode_nops(&hdr);
- 	return 0;
- }
-+
-+/*
-+ * Encode SECINFO_NO_NAME request
-+ */
-+static int nfs4_xdr_enc_secinfo_no_name(struct rpc_rqst *req,
-+					struct xdr_stream *xdr,
-+					struct nfs41_secinfo_no_name_args *args)
-+{
-+	struct compound_hdr hdr = {
-+		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
-+	};
-+
-+	encode_compound_hdr(xdr, req, &hdr);
-+	encode_sequence(xdr, &args->seq_args, &hdr);
-+	encode_putrootfh(xdr, &hdr);
-+	encode_secinfo_no_name(xdr, args, &hdr);
-+	encode_nops(&hdr);
-+	return 0;
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
-@@ -6345,6 +6386,32 @@ static int nfs4_xdr_dec_layoutcommit(struct rpc_rqst *rqstp,
- out:
- 	return status;
- }
-+
-+/*
-+ * Decode SECINFO_NO_NAME response
-+ */
-+static int nfs4_xdr_dec_secinfo_no_name(struct rpc_rqst *rqstp,
-+					struct xdr_stream *xdr,
-+					struct nfs41_secinfo_no_name_res *res)
-+{
-+	struct compound_hdr hdr;
-+	int status;
-+
-+	status = decode_compound_hdr(xdr, &hdr);
-+	if (status)
-+		goto out;
-+	status = decode_sequence(xdr, &res->seq_res, rqstp);
-+	if (status)
-+		goto out;
-+	status = decode_putrootfh(xdr);
-+	if (status)
-+		goto out;
-+	status = decode_secinfo(xdr, res);
-+	if (status)
-+		goto out;
-+out:
-+	return status;
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- /**
-@@ -6544,6 +6611,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
- 	PROC(GETDEVICEINFO,	enc_getdeviceinfo,	dec_getdeviceinfo),
- 	PROC(LAYOUTGET,		enc_layoutget,		dec_layoutget),
- 	PROC(LAYOUTCOMMIT,	enc_layoutcommit,	dec_layoutcommit),
-+	PROC(SECINFO_NO_NAME,	enc_secinfo_no_name,	dec_secinfo_no_name),
- #endif /* CONFIG_NFS_V4_1 */
- };
- 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 178fafe..7668f25 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -562,6 +562,7 @@ enum {
- 	NFSPROC4_CLNT_LAYOUTGET,
- 	NFSPROC4_CLNT_GETDEVICEINFO,
- 	NFSPROC4_CLNT_LAYOUTCOMMIT,
-+	NFSPROC4_CLNT_SECINFO_NO_NAME,
- };
- 
- /* nfs41 types */
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 78b101e..c4a0407 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1060,6 +1060,15 @@ struct nfs41_reclaim_complete_args {
- struct nfs41_reclaim_complete_res {
- 	struct nfs4_sequence_res	seq_res;
- };
-+
-+#define SECINFO_STYLE_CURRENT_FH 0
-+#define SECINFO_STYLE_PARENT 1
-+struct nfs41_secinfo_no_name_args {
-+	int				style;
-+	struct nfs4_sequence_args	seq_args;
-+};
-+
-+#define nfs41_secinfo_no_name_res nfs4_secinfo_res
- #endif /* CONFIG_NFS_V4_1 */
- 
- struct nfs_page;
--- 
-1.7.4.4
+Regards,
+  Gerhard
 
+> > /data ip/32(rw,async,crossmnt,insecure,root_squash,no_subtree_check,fsid=0)
+> > 
+> > On the client (Debian unstable, kernel 2.6.38-2-amd64) I mounted the
+> > directory under /media(nfs4import with
+> > 
+> > # mount -t nfs4 ip:/ /media/nfs4import
+> > 
+> > After a lot running fdupes on this folder the server kernel starts
+> > throwing messages like this one:
+> > 
+> >   VFS: file-max limit [number] reached
+> > 
+> > After a reboot I recognised that the number of used file descriptors
+> > increases during the run of fdupes (see /proc/sys/fs/file-nr). Even
+> > after unmounting the exported filesystem on the client, unexport the
+> > file system on the server and stopping the nfs-server the file
+> > descriptors are still allocated and unmounting the filesystem is not
+> > possible.
+> > 
+> > After a little bit of research I could create a small program, which
+> > increases the used file descriptors by one.
+> > 
+> > Regards,
+> >   Gerhard
+> 
+> > #include <stdio.h>
+> > 
+> > #define DIR "/media/nfs4import/"
+> > 
+> > int main(void) {
+> > 	FILE *f1;
+> > 	FILE *f2;
+> > 	char b[1024];
+> > 	int i;
+> > 
+> > 	// create file1
+> > 	f1 = fopen(DIR "file1.txt", "w");
+> > 	fwrite("test\n", 5, 1, f1);
+> > 	close(f1);
+> > 
+> > 	// open file1 in read mode
+> > 	f1 = fopen(DIR "file1.txt", "r");
+> > 
+> > 	for (i = 0; i < 1; i++) {
+> > 		// open file2 in write mode and close it
+> > 		f2 = fopen(DIR "file2.txt", "w");
+> > 		fclose(f2);
+> > 	
+> > 		// open file2 in read mode and close it
+> > 		// this causes the leak of a file descriptor on the server
+> > 		// just watch /proc/sys/fs/file-nr on the server
+> > 		f2 = fopen(DIR "file2.txt", "r");
+> > 		fclose(f2);
+> > 	}
+> > 	fclose(f1);
+> > 
+> > 	return 0;
+> > }
+> 
+> 
+> 
