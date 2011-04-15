@@ -1,106 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:15079 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754237Ab1D0U3z convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Apr 2011 16:29:55 -0400
-Subject: Re: [PATCH] nfsstat: reorder nfs4 stats for 2.6.38 and up
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, steved@redhat.com,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <4DB87B96.8090400@panasas.com>
-References: <1303461980-6731-1-git-send-email-bhalevy@panasas.com>
-	 <23EF6F61-46F2-431B-8A44-A3E941688D65@oracle.com>
-	 <4DB7A084.2060009@panasas.com>
-	 <1303913806.13195.3.camel@lade.trondhjem.org>
-	 <4DB86605.3000304@panasas.com>
-	 <1303930718.23640.6.camel@lade.trondhjem.org>
-	 <4DB87B96.8090400@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 27 Apr 2011 16:29:54 -0400
-Message-ID: <1303936194.28589.2.camel@lade.trondhjem.org>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:35899 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755089Ab1DOOVJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Apr 2011 10:21:09 -0400
+Received: by qwk3 with SMTP id 3so1452754qwk.19
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Apr 2011 07:21:08 -0700 (PDT)
+In-Reply-To: <1302874150.29239.12.camel@lade.trondhjem.org>
+References: <20110415010913@it-loops.com>
+	<1302840158.2447.5.camel@vovan.net.home>
+	<A50602A820F61543B29992A418BB321B66E18F8A71@seldmbx01.corpusers.net>
+	<20110415120934@it-loops.com>
+	<1302874150.29239.12.camel@lade.trondhjem.org>
+Date: Fri, 15 Apr 2011 10:21:08 -0400
+Message-ID: <BANLkTinUvdAsikun83=Bx3ssNM=m3zMEdw@mail.gmail.com>
+Subject: Re: [BUG] sec=krb5 mount problem with nfs-utils 1.2.3 on client side
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Michael Guntsche <mike@it-loops.com>,
+        "Dr. J. Bruce Fields" <bfields@fieldses.org>,
+        "Finney, Sean" <Sean.Finney@sonyericsson.com>,
+        "vovan@vovan.nl" <vovan@vovan.nl>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-04-27 at 23:24 +0300, Benny Halevy wrote:
-> On 2011-04-27 21:58, Trond Myklebust wrote:
-> > On Wed, 2011-04-27 at 21:52 +0300, Benny Halevy wrote:
-> >> On 2011-04-27 17:16, Trond Myklebust wrote:
-> >>> On Wed, 2011-04-27 at 07:50 +0300, Benny Halevy wrote:
-> >>>> On 2011-04-25 17:11, Chuck Lever wrote:
-> >>>>> Hey all-
-> >>>>>
-> >>>>> So what are we going to do when adding NFSv4.2 to this mix?  Will we
-> >>>>> then have to freeze both the NFSv4.1 and NFSv4.0 procedure API in the
-> >>>>> kernel?  Seems painful.
-> >>>>
-> >>>> Good question.
-> >>>> How about changing the stat pseudo-file format to include an op
-> >>>> identifier along with its respective counter, printing a line per op?
-> >>>
-> >>> We already have that in /proc/self/mountstats
-> >>>
-> >>>
-> >>
-> >> You mean /proc/self/status?
-> > 
-> > No.
-> 
-> So can you please explain what you meant by the /proc/self/mountstats
-> example?
-> 
-> This is what I see:
-> 
-> $ head -3 /proc/self/mountstats
-> device rootfs mounted on / with fstype rootfs
-> device /proc mounted on /proc with fstype proc
-> device /sys mounted on /sys with fstype sysfs
-> 
-> Benny
+On Fri, Apr 15, 2011 at 9:29 AM, Trond Myklebust
+<trond.myklebust@fys.uio.no> wrote:
+> On Fri, 2011-04-15 at 12:16 +0200, Michael Guntsche wrote:
+>> Thank you for the information, but I got it working in the meantime.
+>> The main problem still is that the code for some reason tries to use AES
+>> although I tried specifying a different enctype in my kerberos config.
+>> Nevertheless it should just work with AES as well, so where was the
+>> problem?
+>> Quite simple....missing kernel support. I enabled AES support but I DID
+>> NOT enable CTS support which is of course needed as well. So after
+>> compiling the server and client kernels with BOTH AES and CTS support I
+>> can no mount the NFS4 export without any issues.
+>
+> Sigh. We really should not allow that kind of config. It just creates
+> confusion.
+>
+> Kevin, what are the dependencies for the kerberos V module today? Am I
+> missing something in the following list?
+>
+>        depends on SUNRPC && CRYPTO
+>        depends on CRYPTO_MD5 && CRYPTO_DES && CRYPTO_CBC && CRYPTO_CTS
+>        depends on CRYPTO_ECB && CRYPTO_HMAC && CRYPTO_MD5 &&
+>        CRYPTO_SHA1
+>        depends on CRYPTO_AES
+>
+> Cheers
+>  Trond
 
-Try mounting an NFS partition. When I do, I also get:
+Yeah, I think that stuff got left out of the final patches.
 
-device ila.local:/raid0/data/vol0 mounted on /net/ila.local/raid0/data/vol0 with fstype nfs statvers=1.0
-	opts:	rw,vers=3,rsize=32768,wsize=32768,namlen=255,acregmin=3,acregmax=60,acdirmin=30,acdirmax=60,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.1.20,mountvers=3,mountport=993,mountproto=udp
-	age:	3
-	caps:	caps=0x3fcf,wtmult=4096,dtsize=4096,bsize=0,namlen=255
-	sec:	flavor=1,pseudoflavor=1
-	events:	4 101 0 0 6 0 107 0 0 0 0 0 12 0 0 0 0 0 0 0 0 0 0 0 0 
-	bytes:	0 0 0 0 0 0 0 0 
-	RPC iostats version: 1.0  p/v: 100003/3 (nfs)
-	xprt:	tcp 826 1 1 0 2 24 24 0 24 0
-	per-op statistics
-	        NULL: 0 0 0 0 0 0 0 0
-	     GETATTR: 6 6 0 752 672 0 1 1
-	     SETATTR: 0 0 0 0 0 0 0 0
-	      LOOKUP: 0 0 0 0 0 0 0 0
-	      ACCESS: 5 5 0 692 600 0 1 1
-	    READLINK: 0 0 0 0 0 0 0 0
-	        READ: 0 0 0 0 0 0 0 0
-	       WRITE: 0 0 0 0 0 0 0 0
-	      CREATE: 0 0 0 0 0 0 0 0
-	       MKDIR: 0 0 0 0 0 0 0 0
-	     SYMLINK: 0 0 0 0 0 0 0 0
-	       MKNOD: 0 0 0 0 0 0 0 0
-	      REMOVE: 0 0 0 0 0 0 0 0
-	       RMDIR: 0 0 0 0 0 0 0 0
-	      RENAME: 0 0 0 0 0 0 0 0
-	        LINK: 0 0 0 0 0 0 0 0
-	     READDIR: 0 0 0 0 0 0 0 0
-	 READDIRPLUS: 7 7 0 1112 13832 0 35 36
-	      FSSTAT: 1 1 0 104 84 0 1 1
-	      FSINFO: 2 2 0 208 160 0 0 0
-	    PATHCONF: 1 1 0 104 56 0 0 0
-	      COMMIT: 0 0 0 0 0 0 0 0
+DES3 needs (in addition to the stuff already there for DES) HMAC and SHA1
+AES needs SHA1 AES CTS
+RC4 needs ECB ARC4 MD5
 
-Providing this kind of statistic was _exactly_ the reason for adding
-mountstats in the first place.
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+So I think you are only missing CRYPTO_ARC4.
