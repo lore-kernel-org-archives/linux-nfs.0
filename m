@@ -1,69 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:57767 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:52449 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755537Ab1DFRS4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Apr 2011 13:18:56 -0400
-Subject: Re: rc4-hmac-md5 mount failure
+	id S1755607Ab1DOSAn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Apr 2011 14:00:43 -0400
+Subject: Re: [RFC][PATCH] Vector read/write support for NFS (DIO) client
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Olga Kornievskaia <aglo@citi.umich.edu>, Joe Perches <joe@perches.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-In-Reply-To: <AANLkTikRJad_vR1qxL1Wr4AO0OfP32oCYj4X0cTnVwv+@mail.gmail.com>
-References: <AANLkTikRJad_vR1qxL1Wr4AO0OfP32oCYj4X0cTnVwv+@mail.gmail.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Badari Pulavarty <pbadari@us.ibm.com>, linux-nfs@vger.kernel.org
+In-Reply-To: <20110415173317.GA21468@infradead.org>
+References: <1302622335.3877.62.camel@badari-desktop>
+	 <1302623369.4801.28.camel@lade.trondhjem.org>
+	 <20110415173317.GA21468@infradead.org>
 Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 06 Apr 2011 10:17:47 -0700
-Message-ID: <1302110267.7020.8.camel@lade.trondhjem.org>
+Date: Fri, 15 Apr 2011 14:00:39 -0400
+Message-ID: <1302890439.7454.24.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2011-03-28 at 16:56 -0400, Olga Kornievskaia wrote:
-> I apologize I have posted an incomplete problem/solution and possibly
-> to the wrong thread.
+On Fri, 2011-04-15 at 13:33 -0400, Christoph Hellwig wrote:
+> On Tue, Apr 12, 2011 at 11:49:29AM -0400, Trond Myklebust wrote:
+> > Your approach goes in the direction of further special-casing O_DIRECT
+> > in the NFS client. I'd like to move away from that and towards
+> > integration with the ordinary read/write codepaths so that aside from
+> > adding request coalescing, we can also enable pNFS support.
 > 
-> Problem: linux client mounting linux server using rc4-hmac-md5
-> enctype. gssd fails with create a context after receiving a reply from
-> the server.
-> 
-> Diagnose: putting printout statements in the server kernel and
-> kerberos libraries revealed that client and server derived different
-> integrity keys.
-> 
-> Server kernel code was at fault due the the commit
-> 
-> [aglo@skydive linux-pnfs]$ git show 411b5e05617593efebc06241dbc56f42150f2abe
-> commit 411b5e05617593efebc06241dbc56f42150f2abe
-> Author: Joe Perches <joe@perches.com>
-> Date:   Mon Sep 13 12:48:01 2010 -0700
-> 
->    net/sunrpc: Use static const char arrays
-> 
->    Signed-off-by: Joe Perches <joe@perches.com>
->    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_
-> index 0326446..8a4d083c 100644
-> --- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-> +++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-> @@ -422,7 +422,7 @@ static int
->  context_derive_keys_rc4(struct krb5_ctx *ctx)
->  {
->        struct crypto_hash *hmac;
-> -       char sigkeyconstant[] = "signaturekey";
-> +       static const char sigkeyconstant[] = "signaturekey";
->        int slen = strlen(sigkeyconstant) + 1;  /* include null terminator */
->        struct hash_desc desc;
->        struct scatterlist sg[1];
-> 
-> Solution: if this commit is undone, rc4-based mount works without
-> issues. verified with linux and windows clients.
+> What is the exact plan?  Split the direct I/O into two passes, one
+> to lock down the user pages and then a second one to send the pages
+> over the wire, which is shared with the writeback code?  If that's
+> the case it should naturally allow plugging in a scheme like Badari
+> to send pages from different iovecs in a single on the wire request -
+> after all page cache pages are non-continuous in virtual and physical
+> memory, too.
 
-Hi Olga,
+You can't lock the user pages unfortunately: they may need to be faulted
+in.
 
-Thanks for the report! I'll revert this commit in upstream and the
-stable kernels.
+What I was thinking of doing is splitting out the code in the RPC
+callbacks that plays around with page flags and puts the pages on the
+inode's dirty list so that they don't get called in the case of
+O_DIRECT.
+I then want to attach the O_DIRECT pages to the nfsi->nfs_page_tree
+radix tree so that they can be tracked by the NFS layer. I'm assuming
+that nobody is going to be silly enough to require simultaneous writes
+via O_DIRECT to the same locations.
+Then we can feed the O_DIRECT pages into nfs_page_async_flush() so that
+they share the existing page cache write coalescing and pnfs code.
 
-Cheers
-  Trond
+The commit code will be easy to reuse too, since the requests are listed
+in the radix tree and so nfs_scan_list() can find and process them in
+the usual fashion.
+
+The main problem that I have yet to figure out is what to do if the
+server flags a reboot and the requests need to be resent. One option I'm
+looking into is using the aio 'kick handler' to resubmit the writes.
+Another may be to just resend directly from the nfsiod work queue.
+
+> When do you plan to release your read/write code re-write?  If it's
+> not anytime soon how is applying Badari's patch going to hurt?  Most
+> of it probably will get reverted with a complete rewrite, but at least
+> the logic to check which direct I/O iovecs can coalesced would stay
+> in the new world order.
+
+I'm hoping that I can do the rewrite fairly quickly once the resend
+problem is solved. It shouldn't be more than a couple of weeks of
+coding.
 
 -- 
 Trond Myklebust
