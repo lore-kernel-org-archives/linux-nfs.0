@@ -1,339 +1,326 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:19303 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756198Ab1DMTQk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Apr 2011 15:16:40 -0400
-Subject: Re: [PATCH] NFS: Add SECINFO_NO_NAME call
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4DA5F1B2.6020200@netapp.com>
-Date: Wed, 13 Apr 2011 15:16:34 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Bryan Schumaker <bjschuma@netapp.com>
-Message-Id: <D048A3A2-D621-4537-BCCB-08A9F1269F3C@oracle.com>
-References: <4DA5F1B2.6020200@netapp.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:45492 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753549Ab1DOJyq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Apr 2011 05:54:46 -0400
+Received: by wya21 with SMTP id 21so2093699wya.19
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Apr 2011 02:54:45 -0700 (PDT)
+Date: Fri, 15 Apr 2011 18:54:45 +0900
+Message-ID: <BANLkTimnmqpEkggdBaJkX2xmdscSB2Yz7Q@mail.gmail.com>
+Subject: [Q] NFS IPoIB , NFS/RDMA which is fast??
+From: Hiroyuki Sato <hiroysato@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: multipart/mixed; boundary=00261883aff81a73f104a0f20879
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-If I'm not mistaken, this adds another NFSv4 proc, which would "break" nfsstat.  Does this mean I'm now allowed again to add a separate proc for "get migration status" instead of piggybacking on FS_LOCATIONS?
+--00261883aff81a73f104a0f20879
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 
-On Apr 13, 2011, at 2:55 PM, Bryan Schumaker wrote:
+Dear members.
 
-> 
-> If the client is using NFS v4.1 and the initial mount attempt fails
-> with -EPERM, we can use SECINFO_NO_NAME to determine what secflavor
-> to use.  This should be more efficient than the guess-and-check
-> method used with NFS v4.0.
-> 
-> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> 
-> ---
-> fs/nfs/internal.h       |    3 ++
-> fs/nfs/namespace.c      |    2 +-
-> fs/nfs/nfs4_fs.h        |    2 +
-> fs/nfs/nfs4proc.c       |   67 ++++++++++++++++++++++++++++++++++++++++++++++-
-> fs/nfs/nfs4xdr.c        |   66 ++++++++++++++++++++++++++++++++++++++++++++++
-> include/linux/nfs4.h    |    1 +
-> include/linux/nfs_xdr.h |    8 +++++
-> 7 files changed, 147 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index ce118ce..361a3a3 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -266,6 +266,9 @@ extern void nfs_sb_deactive(struct super_block *sb);
-> extern char *nfs_path(char **p, struct dentry *dentry,
-> 		      char *buffer, ssize_t buflen);
-> extern struct vfsmount *nfs_d_automount(struct path *path);
-> +#ifdef CONFIG_NFS_V4
-> +rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *);
-> +#endif
-> 
-> /* getroot.c */
-> extern struct dentry *nfs_get_root(struct super_block *, struct nfs_fh *,
-> diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-> index 1f063ba..8102391 100644
-> --- a/fs/nfs/namespace.c
-> +++ b/fs/nfs/namespace.c
-> @@ -119,7 +119,7 @@ Elong:
-> }
-> 
-> #ifdef CONFIG_NFS_V4
-> -static rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
-> +rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
-> {
-> 	struct gss_api_mech *mech;
-> 	struct xdr_netobj oid;
-> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-> index e1c261d..9f6bfa6 100644
-> --- a/fs/nfs/nfs4_fs.h
-> +++ b/fs/nfs/nfs4_fs.h
-> @@ -65,6 +65,8 @@ struct nfs4_minor_version_ops {
-> 			int cache_reply);
-> 	int	(*validate_stateid)(struct nfs_delegation *,
-> 			const nfs4_stateid *);
-> +	int	(*find_root_sec)(struct nfs_server *, struct nfs_fh *,
-> +			struct nfs_fsinfo *);
-> 	const struct nfs4_state_recovery_ops *reboot_recovery_ops;
-> 	const struct nfs4_state_recovery_ops *nograce_recovery_ops;
-> 	const struct nfs4_state_maintenance_ops *state_renewal_ops;
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index b8e1ac6..d78762c 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -2234,9 +2234,10 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
-> static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
-> 			      struct nfs_fsinfo *info)
-> {
-> +	int minor_version = server->nfs_client->cl_minorversion;
-> 	int status = nfs4_lookup_root(server, fhandle, info);
-> 	if ((status == -EPERM) && !(server->flags & NFS_MOUNT_SECFLAVOUR))
-> -		status = nfs4_find_root_sec(server, fhandle, info);
-> +		status = nfs_v4_minor_ops[minor_version]->find_root_sec(server, fhandle, info);
-> 	if (status == 0)
-> 		status = nfs4_server_capabilities(server, fhandle);
-> 	if (status == 0)
-> @@ -5803,6 +5804,68 @@ out:
-> 	rpc_put_task(task);
-> 	return status;
-> }
-> +
-> +static int
-> +_nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
-> +		    struct nfs_fsinfo *info, struct nfs4_secinfo_flavors *flavors)
-> +{
-> +	struct nfs41_secinfo_no_name_args args = {
-> +		.style = SECINFO_STYLE_CURRENT_FH,
-> +	};
-> +	struct nfs4_secinfo_res res = {
-> +		.flavors = flavors,
-> +	};
-> +	struct rpc_message msg = {
-> +		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SECINFO_NO_NAME],
-> +		.rpc_argp = &args,
-> +		.rpc_resp = &res,
-> +	};
-> +	return nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
-> +}
-> +
-> +static int
-> +nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
-> +			   struct nfs_fsinfo *info, struct nfs4_secinfo_flavors *flavors)
-> +{
-> +	struct nfs4_exception exception = { };
-> +	int err;
-> +	do {
-> +		err = nfs4_handle_exception(server,
-> +					_nfs41_proc_secinfo_no_name(server, fhandle, info, flavors),
-> +					&exception);
-> +	} while (exception.retry);
-> +	return err;
-> +}
-> +
-> +static int
-> +nfs41_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
-> +		    struct nfs_fsinfo *info)
-> +{
-> +	int err;
-> +	struct page *page;
-> +	rpc_authflavor_t flavor;
-> +	struct nfs4_secinfo_flavors *flavors;
-> +
-> +	page = alloc_page(GFP_KERNEL);
-> +	if (!page) {
-> +		err = -ENOMEM;
-> +		goto out;
-> +	}
-> +
-> +	flavors = page_address(page);
-> +	err = nfs41_proc_secinfo_no_name(server, fhandle, info, flavors);
-> +	if (err)
-> +		goto out_freepage;
-> +
-> +	flavor = nfs_find_best_sec(flavors);
-> +	if (err == 0)
-> +		err = nfs4_lookup_root_sec(server, fhandle, info, flavor);
-> +
-> +out_freepage:
-> +	put_page(page);
-> +out:
-> +	return err;
-> +}
-> #endif /* CONFIG_NFS_V4_1 */
-> 
-> struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
-> @@ -5864,6 +5927,7 @@ static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
-> 	.minor_version = 0,
-> 	.call_sync = _nfs4_call_sync,
-> 	.validate_stateid = nfs4_validate_delegation_stateid,
-> +	.find_root_sec = nfs4_find_root_sec,
-> 	.reboot_recovery_ops = &nfs40_reboot_recovery_ops,
-> 	.nograce_recovery_ops = &nfs40_nograce_recovery_ops,
-> 	.state_renewal_ops = &nfs40_state_renewal_ops,
-> @@ -5874,6 +5938,7 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
-> 	.minor_version = 1,
-> 	.call_sync = _nfs4_call_sync_session,
-> 	.validate_stateid = nfs41_validate_delegation_stateid,
-> +	.find_root_sec = nfs41_find_root_sec,
-> 	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
-> 	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
-> 	.state_renewal_ops = &nfs41_state_renewal_ops,
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index ba952bd..00952b2 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -338,6 +338,8 @@ static int nfs4_stat_to_errno(int);
-> 				1 /* layoutupdate4 layout type */ + \
-> 				1 /* NULL filelayout layoutupdate4 payload */)
-> #define decode_layoutcommit_maxsz (op_decode_hdr_maxsz + 3)
-> +#define encode_secinfo_no_name_maxsz (op_encode_hdr_maxsz + 4)
-> +#define decode_secinfo_no_name_maxsz decode_secinfo_maxsz
-> 
-> #else /* CONFIG_NFS_V4_1 */
-> #define encode_sequence_maxsz	0
-> @@ -760,6 +762,12 @@ static int nfs4_stat_to_errno(int);
-> 				decode_putfh_maxsz + \
-> 				decode_layoutcommit_maxsz + \
-> 				decode_getattr_maxsz)
-> +#define NFS4_enc_secinfo_no_name_sz	(compound_encode_hdr_maxsz + \
-> +					encode_putrootfh_maxsz +\
-> +					encode_secinfo_no_name_maxsz)
-> +#define NFS4_dec_secinfo_no_name_sz	(compound_decode_hdr_maxsz + \
-> +					decode_putrootfh_maxsz + \
-> +					decode_secinfo_no_name_maxsz)
-> 
-> 
-> const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
-> @@ -1890,6 +1898,20 @@ encode_layoutcommit(struct xdr_stream *xdr,
-> 	hdr->replen += decode_layoutcommit_maxsz;
-> 	return 0;
-> }
-> +
-> +static int
-> +encode_secinfo_no_name(struct xdr_stream *xdr,
-> +		       const struct nfs41_secinfo_no_name_args *args,
-> +		       struct compound_hdr *hdr)
-> +{
-> +	__be32 *p;
-> +	p = reserve_space(xdr, 8);
-> +	*p++ = cpu_to_be32(OP_SECINFO_NO_NAME);
-> +	*p++ = cpu_to_be32(args->style);
-> +	hdr->nops++;
-> +	hdr->replen += decode_secinfo_no_name_maxsz;
-> +	return 0;
-> +}
-> #endif /* CONFIG_NFS_V4_1 */
-> 
-> /*
-> @@ -2723,6 +2745,25 @@ static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
-> 	encode_nops(&hdr);
-> 	return 0;
-> }
-> +
-> +/*
-> + * Encode SECINFO_NO_NAME request
-> + */
-> +static int nfs4_xdr_enc_secinfo_no_name(struct rpc_rqst *req,
-> +					struct xdr_stream *xdr,
-> +					struct nfs41_secinfo_no_name_args *args)
-> +{
-> +	struct compound_hdr hdr = {
-> +		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
-> +	};
-> +
-> +	encode_compound_hdr(xdr, req, &hdr);
-> +	encode_sequence(xdr, &args->seq_args, &hdr);
-> +	encode_putrootfh(xdr, &hdr);
-> +	encode_secinfo_no_name(xdr, args, &hdr);
-> +	encode_nops(&hdr);
-> +	return 0;
-> +}
-> #endif /* CONFIG_NFS_V4_1 */
-> 
-> static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
-> @@ -6348,6 +6389,30 @@ static int nfs4_xdr_dec_layoutcommit(struct rpc_rqst *rqstp,
-> out:
-> 	return status;
-> }
-> +
-> +/*
-> + * Decode SECINFO_NO_NAME response
-> + */
-> +static int nfs4_xdr_dec_secinfo_no_name(struct rpc_rqst *rqstp,
-> +					struct xdr_stream *xdr,
-> +					struct nfs4_secinfo_res *res)
-> +{
-> +	struct compound_hdr hdr;
-> +	int status;
-> +
-> +	status = decode_compound_hdr(xdr, &hdr);
-> +	if (status)
-> +		goto out;
-> +	status = decode_sequence(xdr, &res->seq_res, rqstp);
-> +	if (status)
-> +		goto out;
-> +	status = decode_putrootfh(xdr);
-> +	if (status)
-> +		goto out;
-> +	status = decode_secinfo(xdr, res);
-> +out:
-> +	return status;
-> +}
-> #endif /* CONFIG_NFS_V4_1 */
-> 
-> /**
-> @@ -6547,6 +6612,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
-> 	PROC(GETDEVICEINFO,	enc_getdeviceinfo,	dec_getdeviceinfo),
-> 	PROC(LAYOUTGET,		enc_layoutget,		dec_layoutget),
-> 	PROC(LAYOUTCOMMIT,	enc_layoutcommit,	dec_layoutcommit),
-> +	PROC(SECINFO_NO_NAME,	enc_secinfo_no_name,	dec_secinfo_no_name),
-> #endif /* CONFIG_NFS_V4_1 */
-> };
-> 
-> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> index 178fafe..7668f25 100644
-> --- a/include/linux/nfs4.h
-> +++ b/include/linux/nfs4.h
-> @@ -562,6 +562,7 @@ enum {
-> 	NFSPROC4_CLNT_LAYOUTGET,
-> 	NFSPROC4_CLNT_GETDEVICEINFO,
-> 	NFSPROC4_CLNT_LAYOUTCOMMIT,
-> +	NFSPROC4_CLNT_SECINFO_NO_NAME,
-> };
-> 
-> /* nfs41 types */
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 78b101e..a8123b7 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -1060,6 +1060,14 @@ struct nfs41_reclaim_complete_args {
-> struct nfs41_reclaim_complete_res {
-> 	struct nfs4_sequence_res	seq_res;
-> };
-> +
-> +#define SECINFO_STYLE_CURRENT_FH 0
-> +#define SECINFO_STYLE_PARENT 1
-> +struct nfs41_secinfo_no_name_args {
-> +	int				style;
-> +	struct nfs4_sequence_args	seq_args;
-> +};
-> +
-> #endif /* CONFIG_NFS_V4_1 */
-> 
-> struct nfs_page;
-> -- 
-> 1.7.4.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I'm measuring the performance NFS on IPoIB and NFS/RDMA.
+I would like to ask the following questions.
+
+1) Benchmark result.
+
+  Does anyone tryied this benchmark??
+  If so , could you please tell me that result??
+
+=E2=80=A82) My test result and What is problem??
+
+  I compared that. Please see my test result at below.
+
+  I extpected NFS/RDMA faster than NFS IPoIB.
+  However, NFS/RDMA is slower than NFS IPoIB.
+  Expecially rsize,wsize larger equal 32768
+
+  Could you please what is problelm ??
+
+Thank you for your information.
+
+
+1, Environment
+
+  (1) Server
+    CentOS 5.5 x86_64
+    Kernel: 2.36.8.2 (self build)
+    OFED: any kernel modules does not use.
+      Only startup script and nfs-utils used
+      from OFED-1.5.3
+    Memory: 8GB
+    HCA: Mellanox InfiniHost III Ex.
+
+
+  (2) Client
+    CentOS 5.5 x86_64
+    Kernel: 2.36.8.2 (self build)
+    OFED: any kernel modules does not use.
+      Only startup script and nfs-utils used.
+      from OFED-1.5.3
+    Memory: 8GB
+    HCA: Mellanox InfiniHost III Ex.
+
+
+  Client and Server connected directly with Infiniband CX4 cable.
+
+
+2, Configurations
+
+  (1) NFS/RDMA
+
+    1-1) Server exports (/etc/exports)
+      /dev/shm	192.168.100.0/255.255.255.0(rw,no_root_squash,insecure,fsid=
+=3D0,sync)
+
+    1-2) Client mount
+      mount.rnfs 192.168.100.231:/dev/shm /mnt -i -o
+rdma,port=3D20049,rsize=3D32768,wsize=3D32768,sync,rw
+
+  (2) IPoIB
+
+    2-1) Server exports(/etc/exports)
+      /dev/shm	192.168.100.0/255.255.255.0(rw,no_root_squash,insecure,fsid=
+=3D0,sync)
+
+    2-2) Client mount
+      mount -t nfs  -o nfsvers=3D3,rsize=3D32768,wsize=3D32768,tcp,sync,rw
+192.168.100.231:/dev/shm /mnt
+
+
+3, test result
+
+  Please see attachement file. for more information.
+
+  Summary:
+   1GB write bs=3D(64MB) :
+      NFS IPoIB : 661.499MB/sec
+      NFS/RDMA  : 512.513MB/sec
+
+   1GB read bs=3D(64MB) :
+      NFS IPoIB : 592.250MB/sec
+      NFS/RDMA  : 1.353MB/sec ( very slow )
+
+4, about test tool
+
+  This tool based on  blockdev-perftest which is included in SCST.
+
+  this tool is using fio benchmark tool internally.
+
+  I modified this script for file system,
+
+
+  This command execute fio like the follwoing
+
+     fio --rw=3Dwrite # (and read)\
+      --directory=3D/mnt/fio-testing \
+      --bs=3DXXX \
+      --size=3D1073741824 \
+      --ioengine=3Dpsync \
+      --end_fsync=3D1 \
+      --invalidate=3D1 \
+      --direct=3D1 \
+      --name=3Dwriteperftest
+
+    XXX is
+
+      67108864
+      33554432
+      16777216
+      8388608
+      ...
+      ...
+
+Sincerely
 
 --
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Hiroyuki Sato.
 
+--00261883aff81a73f104a0f20879
+Content-Type: text/plain; charset=US-ASCII; name="nfstest.txt"
+Content-Disposition: attachment; filename="nfstest.txt"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_gmixxbxe0
 
+CiMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMj
+IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMKIwojIE5GUyBJUG9JQgojICAKIyMjIyMjIyMjIyMj
+IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMj
+IyMjIyMjIyMjIyMjIwoKYmxvY2tzaXplICAgICAgICBXICAgVyhhdmcsICAgVyhzdGQsICAgICAg
+ICBXICAgICAgICBSICAgUihhdmcsICAgUihzdGQsICAgICAgICBSCiAgKGJ5dGVzKSAgICAgIChz
+KSAgICBNQi9zKSAgICBNQi9zKSAgIChJT1BTKSAgICAgIChzKSAgICBNQi9zKSAgICBNQi9zKSAg
+IChJT1BTKQogNjcxMDg4NjQgICAgMS41NDggIDY2MS40OTkgICAgMC4wMDAgICAxMC4zMzYgICAg
+MS43MjkgIDU5Mi4yNTAgICAgMC4wMDAgICAgOS4yNTQgCiAzMzU1NDQzMiAgICAxLjU2MyAgNjU1
+LjE1MCAgICAwLjAwMCAgIDIwLjQ3MyAgICAxLjczOCAgNTg5LjE4MyAgICAwLjAwMCAgIDE4LjQx
+MiAKIDE2Nzc3MjE2ICAgIDEuNTY3ICA2NTMuNDc4ICAgIDAuMDAwICAgNDAuODQyICAgIDEuNzMx
+ICA1OTEuNTY2ICAgIDAuMDAwICAgMzYuOTczIAogIDgzODg2MDggICAgMS41OTMgIDY0Mi44MTIg
+ICAgMC4wMDAgICA4MC4zNTIgICAgMS43NjUgIDU4MC4xNzAgICAgMC4wMDAgICA3Mi41MjEgCiAg
+NDE5NDMwNCAgICAxLjU2NiAgNjUzLjg5NSAgICAwLjAwMCAgMTYzLjQ3NCAgICAxLjc5MyAgNTcx
+LjExMCAgICAwLjAwMCAgMTQyLjc3NyAKICAyMDk3MTUyICAgIDEuNjQyICA2MjMuNjMwICAgIDAu
+MDAwICAzMTEuODE1ICAgIDEuNzI3ICA1OTIuOTM2ICAgIDAuMDAwICAyOTYuNDY4IAogIDEwNDg1
+NzYgICAgMS43NTIgIDU4NC40NzUgICAgMC4wMDAgIDU4NC40NzUgICAgMS43MjUgIDU5My42MjMg
+ICAgMC4wMDAgIDU5My42MjMgCiAgIDUyNDI4OCAgICAyLjAwOSAgNTA5LjcwNiAgICAwLjAwMCAx
+MDE5LjQxMyAgICAxLjgzOSAgNTU2LjgyNCAgICAwLjAwMCAxMTEzLjY0OSAKICAgMjYyMTQ0ICAg
+IDIuMzY3ICA0MzIuNjE1ICAgIDAuMDAwIDE3MzAuNDYwICAgIDIuMTI4ICA0ODEuMjAzICAgIDAu
+MDAwIDE5MjQuODEyIAogICAxMzEwNzIgICAgMi45MzQgIDM0OS4wMTIgICAgMC4wMDAgMjc5Mi4w
+OTMgICAgMi41OTcgIDM5NC4zMDEgICAgMC4wMDAgMzE1NC40MDkgCiAgICA2NTUzNiAgICA0LjMy
+MyAgMjM2Ljg3MyAgICAwLjAwMCAzNzg5Ljk2MSAgICAzLjM0MiAgMzA2LjQwMyAgICAwLjAwMCA0
+OTAyLjQ1NCAKICAgIDMyNzY4ICAgIDQuODI0ICAyMTIuMjcyICAgIDAuMDAwIDY3OTIuNzAzICAg
+IDQuNTI2ICAyMjYuMjQ4ICAgIDAuMDAwIDcyMzkuOTQ3IAogICAgMTYzODQgICAgNi44MTEgIDE1
+MC4zNDUgICAgMC4wMDAgOTYyMi4wODIgICAgNi4zNzIgIDE2MC43MDMgICAgMC4wMDAgMTAyODQu
+OTk3IAogICAgIDgxOTIgICAxMC43NDcgICA5NS4yODIgICAgMC4wMDAgMTIxOTYuMTQ4ICAgMTAu
+NDk5ICAgOTcuNTMzICAgIDAuMDAwIDEyNDg0LjIzNyAKICAgICA0MDk2ICAgMTguNDA5ICAgNTUu
+NjI1ICAgIDAuMDAwIDE0MjM5Ljk5MSAgIDE3LjYxMSAgIDU4LjE0NSAgICAwLjAwMCAxNDg4NS4y
+NDIgCiAgICAgMjA0OCAgIDM0LjMxOSAgIDI5LjgzOCAgICAwLjAwMCAxNTI3Ni45MDIgICAzMi45
+NjQgICAzMS4wNjQgICAgMC4wMDAgMTU5MDQuODY2IAogICAgIDEwMjQgICA2NS4yMjEgICAxNS43
+MDAgICAgMC4wMDAgMTYwNzcuMjc2ICAgNjIuNDQwICAgMTYuNDAwICAgIDAuMDAwIDE2NzkzLjMz
+OCAKICAgICAgNTEyICAxMjYuNzgzICAgIDguMDc3ICAgIDAuMDAwIDE2NTQxLjI3MSAgMTIxLjc4
+NyAgICA4LjQwOCAgICAwLjAwMCAxNzIxOS44MzUgCiAgCiAgCiAgCiMjIyMjIyMjIyMjIyMjIyMj
+IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMj
+IyMjIyMjIyMKIwojIE5GUyBSRE1BCiMgIAojIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMj
+IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjCgoKYmxv
+Y2tzaXplICAgICAgICBXICAgVyhhdmcsICAgVyhzdGQsICAgICAgICBXICAgICAgICBSICAgUihh
+dmcsICAgUihzdGQsICAgICAgICBSCiAgKGJ5dGVzKSAgICAgIChzKSAgICBNQi9zKSAgICBNQi9z
+KSAgIChJT1BTKSAgICAgIChzKSAgICBNQi9zKSAgICBNQi9zKSAgIChJT1BTKQogNjcxMDg4NjQg
+ICAgMS45OTggIDUxMi41MTMgICAgMC4wMDAgICAgOC4wMDggIDc1Ni41NzggICAgMS4zNTMgICAg
+MC4wMDAgICAgMC4wMjEgCiAzMzU1NDQzMiAgICAyLjAwMSAgNTExLjc0NCAgICAwLjAwMCAgIDE1
+Ljk5MiAKICAKICAqKiBJIHN0b3BwdGVkIHRoaXMgdGVzdC4gCgoKIyMjIyMjIyMjIyMjIyMjIyMj
+IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMj
+IyMjIyMjIwojCiMgaWJfcmVhZF9idyAKIyAgCiMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMj
+IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMKCgog
+IC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLQogICAjYnl0ZXMgICAgICNpdGVyYXRpb25zICAgIEJXIHBlYWtbTUIvc2VjXSAg
+ICBCVyBhdmVyYWdlW01CL3NlY10KICAgMiAgICAgICAgIDEwMDAgICAgICAgICAgIDAuMzMgICAg
+ICAgICAgICAgICAwLjMzICAgCiAgIDQgICAgICAgICAxMDAwICAgICAgICAgICAwLjY2ICAgICAg
+ICAgICAgICAgMC42NiAgIAogICA4ICAgICAgICAgMTAwMCAgICAgICAgICAgMS4zMiAgICAgICAg
+ICAgICAgIDEuMzIgICAKICAgMTYgICAgICAgIDEwMDAgICAgICAgICAgIDIuNjIgICAgICAgICAg
+ICAgICAyLjYxICAgCiAgIDMyICAgICAgICAxMDAwICAgICAgICAgICA1LjUyICAgICAgICAgICAg
+ICAgNS4yMiAgIAogICA2NCAgICAgICAgMTAwMCAgICAgICAgICAgMTAuOTAgICAgICAgICAgICAg
+IDEwLjkwICAKICAgMTI4ICAgICAgIDEwMDAgICAgICAgICAgIDIwLjc2ICAgICAgICAgICAgICAy
+MC43MyAgCiAgIDI1NiAgICAgICAxMDAwICAgICAgICAgICA0MS41NiAgICAgICAgICAgICAgNDEu
+MzggIAogICA1MTIgICAgICAgMTAwMCAgICAgICAgICAgODMuMDMgICAgICAgICAgICAgIDgyLjIz
+ICAKICAgMTAyNCAgICAgIDEwMDAgICAgICAgICAgIDE2OC4wOCAgICAgICAgICAgICAxNjIuMzEg
+CiAgIDIwNDggICAgICAxMDAwICAgICAgICAgICAzMjAuNzEgICAgICAgICAgICAgMzE4LjU4IAog
+ICA0MDk2ICAgICAgMTAwMCAgICAgICAgICAgNTM3LjUwICAgICAgICAgICAgIDUzNi40MCAKICAg
+ODE5MiAgICAgIDEwMDAgICAgICAgICAgIDc1OC43MSAgICAgICAgICAgICA3NTcuMjcgCiAgIDE2
+Mzg0ICAgICAxMDAwICAgICAgICAgICA4NDUuMjEgICAgICAgICAgICAgODQ0LjQ4IAogICAzMjc2
+OCAgICAgMTAwMCAgICAgICAgICAgODkwLjQ2ICAgICAgICAgICAgIDg5MC4zOCAKICAgNjU1MzYg
+ICAgIDEwMDAgICAgICAgICAgIDkxMi41OSAgICAgICAgICAgICA5MTIuNTEgCiAgIDEzMTA3MiAg
+ICAxMDAwICAgICAgICAgICA5MjMuODYgICAgICAgICAgICAgOTIzLjg1IAogICAyNjIxNDQgICAg
+MTAwMCAgICAgICAgICAgOTI5LjgwICAgICAgICAgICAgIDkyOS43OSAKICAgNTI0Mjg4ICAgIDEw
+MDAgICAgICAgICAgIDkzMS43NiAgICAgICAgICAgICA5MzEuNzUgCiAgIDEwNDg1NzYgICAxMDAw
+ICAgICAgICAgICA5MzMuMTkgICAgICAgICAgICAgOTMzLjE5IAogICAyMDk3MTUyICAgMTAwMCAg
+ICAgICAgICAgOTMzLjk2ICAgICAgICAgICAgIDkzMy45NSAKICAgNDE5NDMwNCAgIDEwMDAgICAg
+ICAgICAgIDkzNC4zMiAgICAgICAgICAgICA5MzQuMzIgCiAgIDgzODg2MDggICAxMDAwICAgICAg
+ICAgICA5MzQuNTMgICAgICAgICAgICAgOTM0LjUzIAogIC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQoKCgojIyMjIyMjIyMj
+IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMj
+IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMKIyAK
+IyBhbm90aGVyIE5GUy9SRE1BIHRlc3QgcnNpemUscnNpemU9ODE5MiwgMTYzODQsIDMyNzY4CiMK
+IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMj
+IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMj
+IyMjIyMjCgoqKioqIDIwMTEtMDQtMTMgMjI6MTg6MjIgICAgICAqKioqKioqKioqKioKKioqKiBz
+aXplPTgxOTIgKioqKioqKioqKioqCmJsb2Nrc2l6ZSAgICAgICAgVyAgICAgICAgVyAgICAgICAg
+VyAgIFcoYXZnLCAgIFcoc3RkLCAgICAgICAgVyAgICAgICAgUiAgICAgICAgUiAgICAgICAgUiAg
+IFIoYXZnLCAgIFIoc3RkLCAgICAgICAgUgogIChieXRlcykgICAgICAocykgICAgICAocykgICAg
+ICAocykgICAgTUIvcykgICAgTUIvcykgICAoSU9QUykgICAgICAocykgICAgICAocykgICAgICAo
+cykgICAgTUIvcykgICAgTUIvcykgICAoSU9QUykKIDY3MTA4ODY0ICAgIDIuNDQ0ICAgIDIuNDM5
+ICAgIDIuNDQ5ICA0MTguOTg2ICAgIDAuNzAwICAgIDYuNTQ3ICAgIDEuNjc0ICAgIDEuNjgzICAg
+IDEuNjgwICA2MDkuODkwICAgIDEuMzYwICAgIDkuNTMwIAogMzM1NTQ0MzIgICAgMi40NTQgICAg
+Mi40MzEgICAgMi40NjQgIDQxOC4wMjkgICAgMi4zNjQgICAxMy4wNjMgICAgMS42ODggICAgMS42
+NzkgICAgMS42ODEgIDYwOC41NjEgICAgMS4zOTQgICAxOS4wMTggCiAxNjc3NzIxNiAgICAyLjQ0
+NCAgICAyLjQ2MSAgICAyLjQ1NyAgNDE3LjI4MiAgICAxLjIzNiAgIDI2LjA4MCAgICAxLjY4NiAg
+ICAxLjY4MSAgICAxLjY4MyAgNjA4LjMxOCAgICAwLjc0MiAgIDM4LjAyMCAKICA4Mzg4NjA4ICAg
+IDIuNDYxICAgIDIuNDgyICAgIDIuNDY1ICA0MTQuNjkyICAgIDEuNTI2ICAgNTEuODM3ICAgIDEu
+Njg1ICAgIDEuNjg4ICAgIDEuNjk1ICA2MDYuMTYwICAgIDEuNTAyICAgNzUuNzcwIAogIDQxOTQz
+MDQgICAgMi40NzUgICAgMi40OTIgICAgMi40OTUgIDQxMS42OTEgICAgMS40NjEgIDEwMi45MjMg
+ICAgMS42OTYgICAgMS42OTkgICAgMS42OTcgIDYwMy4zMDAgICAgMC40NDMgIDE1MC44MjUgCiAg
+MjA5NzE1MiAgICAyLjUyOSAgICAyLjUyMyAgICAyLjUzNiAgNDA0Ljg1MiAgICAwLjg1MCAgMjAy
+LjQyNiAgICAxLjcyMCAgICAxLjcyMyAgICAxLjcyNCAgNTk0LjU0MyAgICAwLjU4NyAgMjk3LjI3
+MSAKICAxMDQ4NTc2ICAgIDIuNjE2ICAgIDIuNjA5ICAgIDIuNjIwICAzOTEuNTg4ICAgIDAuNjgx
+ICAzOTEuNTg4ICAgIDEuNzgwICAgIDEuNzc1ICAgIDEuNzcyICA1NzYuNjg3ICAgIDEuMDcxICA1
+NzYuNjg3IAogICA1MjQyODggICAgMi43NTYgICAgMi43ODcgICAgMi43NzkgIDM2OS4xNTAgICAg
+MS43NTMgIDczOC4zMDEgICAgMS45MjkgICAgMS45MjQgICAgMS45MTcgIDUzMi40MTMgICAgMS4z
+NjMgMTA2NC44MjUgCiAgIDI2MjE0NCAgICAzLjIwNCAgICAzLjE0MCAgICAzLjE4NyAgMzIyLjM0
+MCAgICAyLjc1OCAxMjg5LjM2MSAgICAyLjA5NyAgICAyLjA5MiAgICAyLjExMyAgNDg3LjQ3MyAg
+ICAyLjA3NCAxOTQ5Ljg5MyAKICAgMTMxMDcyICAgIDMuNjg4ICAgIDMuNjc2ICAgIDMuNzAxICAy
+NzcuNjM0ICAgIDAuNzY4IDIyMjEuMDc0ICAgIDIuNDczICAgIDIuNDkwICAgIDIuNDc0ICA0MTMu
+MDc0ICAgIDEuMjk1IDMzMDQuNTkxIAogICAgNjU1MzYgICAgNC41NzMgICAgNC41NjIgICAgNC41
+NzYgIDIyNC4wNTQgICAgMC4yOTUgMzU4NC44NjUgICAgMy4zNjggICAgMy4zNTQgICAgMy4zODIg
+IDMwNC4wNDIgICAgMS4wMzIgNDg2NC42NjQgCiAgICAzMjc2OCAgICA2Ljg1NCAgICA2Ljg5MSAg
+ICA2Ljg5NiAgMTQ4LjgzMSAgICAwLjQwNiA0NzYyLjU5NSAgICA0LjU5MiAgICA0LjU3MCAgICA0
+LjYzOCAgMjIyLjYxNyAgICAxLjM2OCA3MTIzLjc0OCAKICAgIDE2Mzg0ICAgMTEuMjUwICAgMTEu
+MTg4ICAgMTEuMjIyICAgOTEuMjY2ICAgIDAuMjA2IDU4NDEuMDI4ICAgIDcuMDQ1ICAgIDcuMDM3
+ICAgIDcuMDE5ICAxNDUuNTg2ICAgIDAuMjI1IDkzMTcuNDk1IAogICAgIDgxOTIgICAxMS44MjMg
+ICAxMS43NjUgICAxMS44MDUgICA4Ni43OTcgICAgMC4xNzggMTExMTAuMDQwICAgIDkuNTIzICAg
+IDkuNTIwICAgIDkuNTE1ICAxMDcuNTcxICAgIDAuMDM3IDEzNzY5LjAzMyAKICAgICA0MDk2ICAg
+MjAuNzUxICAgMjAuNzcxICAgMjAuNjM1ICAgNDkuNDI0ICAgIDAuMTQzIDEyNjUyLjQ1NCAgIDE3
+LjkyNiAgIDE3LjkzMiAgIDE3LjkxNyAgIDU3LjEyNyAgICAwLjAyMCAxNDYyNC40OTMgCiAgICAg
+MjA0OCAgIDM5LjU0MCAgIDM5LjQ4NSAgIDM5LjQwMSAgIDI1Ljk0MCAgICAwLjAzOCAxMzI4MS40
+MzYgICAzNS42NzcgICAzNS42NTQgICAzNS42NTMgICAyOC43MTUgICAgMC4wMDkgMTQ3MDEuODYz
+IAogICAgIDEwMjQgICA3Ni4yNDYgICA3Ni40MjcgICA3Ni4yMTcgICAxMy40MjEgICAgMC4wMTYg
+MTM3NDMuNDI1ICAgNzEuMDYxICAgNzEuMDY1ICAgNzEuMDU1ICAgMTQuNDEwICAgIDAuMDAxIDE0
+NzU2LjEzNyAKICAgICAgNTEyICAxNDIuMjczICAxNDIuMzUyICAxNDIuMjA5ICAgIDcuMTk3ICAg
+IDAuMDAzIDE0NzM5LjgyMiAgMTMyLjcyMiAgMTMyLjQ5MiAgMTMyLjY2NiAgICA3LjcyMSAgICAw
+LjAwNiAxNTgxMi40NTUgCgoqKioqIDIwMTEtMDQtMTMgMjM6NTg6MzQgICAgICAqKioqKioqKioq
+KioKKioqKiBzaXplPTE2Mzg0ICoqKioqKioqKioqKgpibG9ja3NpemUgICAgICAgIFcgICAgICAg
+IFcgICAgICAgIFcgICBXKGF2ZywgICBXKHN0ZCwgICAgICAgIFcgICAgICAgIFIgICAgICAgIFIg
+ICAgICAgIFIgICBSKGF2ZywgICBSKHN0ZCwgICAgICAgIFIKICAoYnl0ZXMpICAgICAgKHMpICAg
+ICAgKHMpICAgICAgKHMpICAgIE1CL3MpICAgIE1CL3MpICAgKElPUFMpICAgICAgKHMpICAgICAg
+KHMpICAgICAgKHMpICAgIE1CL3MpICAgIE1CL3MpICAgKElPUFMpCiA2NzEwODg2NCAgICAyLjA2
+NiAgICAyLjA2NCAgICAyLjA1MyAgNDk2Ljg1MCAgICAxLjM4MCAgICA3Ljc2MyAgICAxLjE4OCAg
+ICAxLjE4MSAgICAxLjE4NyAgODYzLjg5OCAgICAyLjI1NyAgIDEzLjQ5OCAKIDMzNTU0NDMyICAg
+IDIuMDU1ICAgIDIuMDU3ICAgIDIuMDYzICA0OTcuNDkxICAgIDAuODIxICAgMTUuNTQ3ICAgIDEu
+MjAwICAgIDEuMTg0ICAgIDEuMTg3ICA4NjAuMjkyICAgIDUuMDAxICAgMjYuODg0IAogMTY3Nzcy
+MTYgICAgMi4wNjIgICAgMi4wNzAgICAgMi4wNzIgIDQ5NS4xNjcgICAgMS4wMzYgICAzMC45NDgg
+ICAgMS4xOTQgICAgMS4xODggICAgMS4xODggIDg2MC41MDkgICAgMi4wNDIgICA1My43ODIgCiAg
+ODM4ODYwOCAgICAyLjA3MCAgICAyLjA4MyAgICAyLjA4NiAgNDkyLjM5MiAgICAxLjY0OCAgIDYx
+LjU0OSAgICAxLjIwMCAgICAxLjE5NCAgICAxLjIwMCAgODU0Ljc2MyAgICAyLjAyMSAgMTA2Ljg0
+NSAKICA0MTk0MzA0ICAgIDIuMDk1ICAgIDIuMTExICAgIDIuMTA2ICA0ODYuNjk3ICAgIDEuNTQ4
+ICAxMjEuNjc0ICAgIDEuMjEyICAgIDEuMjExICAgIDEuMjEyICA4NDUuMTE3ICAgIDAuMzI5ICAy
+MTEuMjc5IAogIDIwOTcxNTIgICAgMi4xMzggICAgMi4xNTkgICAgMi4xMzYgIDQ3Ny41NDkgICAg
+Mi4zMDkgIDIzOC43NzQgICAgMS4yNDQgICAgMS4yNDMgICAgMS4yNDMgIDgyMy41OTMgICAgMC4z
+MTIgIDQxMS43OTYgCiAgMTA0ODU3NiAgICAyLjIzOSAgICAyLjI0NyAgICAyLjIzMCAgNDU3LjQy
+MCAgICAxLjQxOSAgNDU3LjQyMCAgICAxLjMwNiAgICAxLjMwMiAgICAxLjMwMyAgNzg1LjQ3OCAg
+ICAxLjAyMyAgNzg1LjQ3OCAKICAgNTI0Mjg4ICAgIDIuNDE4ICAgIDIuNDI2ICAgIDIuNDAyICA0
+MjMuOTY1ICAgIDEuNzU0ICA4NDcuOTMxICAgIDEuNDc5ICAgIDEuNDcyICAgIDEuNDgyICA2OTIu
+OTkwICAgIDEuOTY3IDEzODUuOTgwIAogICAyNjIxNDQgICAgMi43NzIgICAgMi43NTMgICAgMi43
+NTEgIDM3MS4xOTggICAgMS4yNzAgMTQ4NC43OTMgICAgMS42MzAgICAgMS42MzEgICAgMS42MzAg
+IDYyOC4wOTIgICAgMC4xODIgMjUxMi4zNzAgCiAgIDEzMTA3MiAgICAzLjIzNyAgICAzLjI0OSAg
+ICAzLjIzNSAgMzE2LjAxOCAgICAwLjYwMiAyNTI4LjE0NCAgICAxLjk1OCAgICAxLjk1MCAgICAx
+LjkzOSAgNTI1LjQwNiAgICAyLjEwMSA0MjAzLjI0OCAKICAgIDY1NTM2ICAgIDQuNDI2ICAgIDQu
+NDM1ICAgIDQuNDQwICAyMzAuOTYwICAgIDAuMzAyIDM2OTUuMzY4ICAgIDIuNTQyICAgIDIuNTM2
+ICAgIDIuNTE0ICA0MDQuNjQ2ICAgIDEuOTMwIDY0NzQuMzMwIAogICAgMzI3NjggICAgNi44MjYg
+ICAgNi44MjQgICAgNi44MjMgIDE1MC4wNTEgICAgMC4wMjcgNDgwMS42NDEgICAgMy43MTggICAg
+My43MTkgICAgMy43MDkgIDI3NS42MTUgICAgMC4zMzQgODgxOS42NzkgCiAgICAxNjM4NCAgICA3
+LjI4MSAgICA3LjI4NiAgICA3LjI4NCAgMTQwLjU4OSAgICAwLjA0MCA4OTk3LjY2NyAgICA1LjMz
+MSAgICA1LjMzOSAgICA1LjMyOCAgMTkyLjAyNCAgICAwLjE2NyAxMjI4OS41NDYgCiAgICAgODE5
+MiAgIDExLjc5OCAgIDExLjkxMCAgIDExLjkyNSAgIDg2LjIxNCAgICAwLjQxMyAxMTAzNS40MTYg
+ICAgOS41MjcgICAgOS41MjcgICAgOS41MzcgIDEwNy40NDYgICAgMC4wNTMgMTM3NTMuMTQyIAog
+ICAgIDQwOTYgICAyMC45MjUgICAyMC44MDIgICAyMC44NDYgICA0OS4wOTUgICAgMC4xMjAgMTI1
+NjguMzA3ICAgMTcuOTU1ICAgMTcuOTUwICAgMTcuOTM3ICAgNTcuMDU2ICAgIDAuMDI0IDE0NjA2
+LjI5NSAKICAgICAyMDQ4ICAgMzkuOTc2ICAgMzkuOTg0ICAgMzkuODQxICAgMjUuNjQzICAgIDAu
+MDQyIDEzMTI5LjAwOCAgIDM1Ljc0NiAgIDM1LjczMSAgIDM1LjY3OCAgIDI4LjY2OSAgICAwLjAy
+MyAxNDY3OC40MTAgCiAgICAgMTAyNCAgIDc2LjY3MSAgIDc2Ljc5MyAgIDc2LjkzNiAgIDEzLjMz
+MyAgICAwLjAxOSAxMzY1My4zNjAgICA3MS4xODcgICA3MS4xOTcgICA3MS4xMzggICAxNC4zODcg
+ICAgMC4wMDUgMTQ3MzIuNTczIAogICAgICA1MTIgIDE0Mi4zNTIgIDE0Mi4yNDAgIDE0Mi4zNDcg
+ICAgNy4xOTUgICAgMC4wMDMgMTQ3MzYuMTk2ICAxMzIuNzUyICAxMzIuNTA0ICAxMzIuNjI0ICAg
+IDcuNzIxICAgIDAuMDA2IDE1ODEyLjQ1NSAKKioqKiAyMDExLTA0LTE0IDAxOjE5OjUzICAgICAg
+KioqKioqKioqKioqCioqKiogc2l6ZT0zMjc2OCAqKioqKioqKioqKioKYmxvY2tzaXplICAgICAg
+ICBXICAgICAgICBXICAgICAgICBXICAgVyhhdmcsICAgVyhzdGQsICAgICAgICBXICAgICAgICBS
+ICAgICAgICBSICAgICAgICBSICAgUihhdmcsICAgUihzdGQsICAgICAgICBSCiAgKGJ5dGVzKSAg
+ICAgIChzKSAgICAgIChzKSAgICAgIChzKSAgICBNQi9zKSAgICBNQi9zKSAgIChJT1BTKSAgICAg
+IChzKSAgICAgIChzKSAgICAgIChzKSAgICBNQi9zKSAgICBNQi9zKSAgIChJT1BTKQogNjcxMDg4
+NjQgICAgMi4wMDcgICAgMi4wMDAgICAgMi4wMDcgIDUxMC44MTAgICAgMC44NDIgICAgNy45ODEg
+IDM5Ni42MjYgIDU0MS43MDYgIDgxMi4yMDEgICAgMS45MTEgICAgMC41MzkgICAgMC4wMzAgCiAz
+MzU1NDQzMiAgICAyLjAwOSAgICAyLjAyOCAgICAyLjAxNiAgNTA3LjUyNSAgICAxLjk3MSAgIDE1
+Ljg2MCAgNzIyLjM1NCAgOTAyLjk4NCAgNjMyLjQ4NSAgICAxLjM5MCAgICAwLjE5OSAgICAwLjA0
+MyAKIDE2Nzc3MjE2ICAgIDIuMDE3ICAgIDIuMDMwICAgIDIuMDI1ICA1MDUuOTMyICAgIDEuMzM5
+ICAgMzEuNjIxIDE3MTQuMjYwIDEyNjMuNTAwIDIxNjQuODkwICAgIDAuNjI3ICAgIDAuMTM5ICAg
+IDAuMDM5IAogIDgzODg2MDggICAgMi4wMzIgICAgMi4wNDggICAgMi4wNDcgIDUwMS4zOTQgICAg
+MS44MDEgICA2Mi42NzQgMzM4Ny44NzAgNDA1Ny4xMjAgMzI0Ni42NDAgICAgMC4yOTAgICAgMC4w
+MjcgICAgMC4wMzYgCiAgNDE5NDMwNCAgICAyLjA0OSAgICAyLjA2MCAgICAyLjA0OSAgNDk4Ljg2
+NiAgICAxLjI1OCAgCgogIC0tIHN0b3BwdGVkIGhlcmUgLS0KICAKICAKICAKICA=
 
+--00261883aff81a73f104a0f20879--
