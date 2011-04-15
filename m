@@ -1,51 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.ugent.be ([157.193.71.182]:36962 "EHLO smtp1.UGent.be"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751108Ab1DWRF7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 23 Apr 2011 13:05:59 -0400
-Message-ID: <4DB30594.1060704@debian.org>
-Date: Sat, 23 Apr 2011 19:00:04 +0200
-From: Luk Claes <luk@debian.org>
-To: Steve Dickson <SteveD@redhat.com>
-CC: Richard Smits <R.Smits@tudelft.nl>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: gssd mounts not working
-References: <4DAFD5B1.9060004@tudelft.nl> <4DB2C32B.7000400@RedHat.com>
-In-Reply-To: <4DB2C32B.7000400@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from bombadil.infradead.org ([18.85.46.34]:50995 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753471Ab1DORdU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Apr 2011 13:33:20 -0400
+Date: Fri, 15 Apr 2011 13:33:17 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Badari Pulavarty <pbadari@us.ibm.com>, linux-nfs@vger.kernel.org
+Subject: Re: [RFC][PATCH] Vector read/write support for NFS (DIO) client
+Message-ID: <20110415173317.GA21468@infradead.org>
+References: <1302622335.3877.62.camel@badari-desktop>
+ <1302623369.4801.28.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1302623369.4801.28.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 04/23/2011 02:16 PM, Steve Dickson wrote:
-> 
-> 
-> On 04/21/2011 02:58 AM, Richard Smits wrote:
->> Hello,
->> We are having problems with our gssd nfs mounts. I will explain our situation.
->>
->> Our clients are running SLED 11 SP1.
->> Our server is a Netapp filer with Ontap 7.3.3P4.
->>
->> We provide NFS exported directory's with krb5 security.
->>
->> Our KDC is a Windows 2003 and 2008 Active Directory.
->>
->> If we use nfs-client-1.2.1-8.1 everything works as expected.
->>
->> But if we upgrade to (any) newer client, all gssd mounts fail. Now there is a bugreport on Novell Bugzilla about this : https://bugzilla.novell.com/show_bug.cgi?id=614293#c7
->>
->> Apperantly if the nfs client is compiled with --disable-tirpc , the ticket size from the AD is to big ?
-> Yes this problem was fixed in libitrpc with:
-> 
-> commit 599511589ca7ddb3b2eac8d3aa5b0b38be7a7691
-> Author: Jeff Layton <jlayton@redhat.com>
-> Date:   Fri Mar 5 14:27:13 2010 -0500
-> 
->     libtirpc: allow larger ticket sizes with RPCSEC_GSS
+On Tue, Apr 12, 2011 at 11:49:29AM -0400, Trond Myklebust wrote:
+> Your approach goes in the direction of further special-casing O_DIRECT
+> in the NFS client. I'd like to move away from that and towards
+> integration with the ordinary read/write codepaths so that aside from
+> adding request coalescing, we can also enable pNFS support.
 
-When will 0.2.2 be released?
+What is the exact plan?  Split the direct I/O into two passes, one
+to lock down the user pages and then a second one to send the pages
+over the wire, which is shared with the writeback code?  If that's
+the case it should naturally allow plugging in a scheme like Badari
+to send pages from different iovecs in a single on the wire request -
+after all page cache pages are non-continuous in virtual and physical
+memory, too.
 
-Cheers
+When do you plan to release your read/write code re-write?  If it's
+not anytime soon how is applying Badari's patch going to hurt?  Most
+of it probably will get reverted with a complete rewrite, but at least
+the logic to check which direct I/O iovecs can coalesced would stay
+in the new world order.
 
-Luk
