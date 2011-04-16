@@ -1,73 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from nm11-vm0.bullet.mail.sp2.yahoo.com ([98.139.91.240]:21976 "HELO
-	nm11-vm0.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751052Ab1DYF0O convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Apr 2011 01:26:14 -0400
-Message-ID: <669423.65679.qm@web111713.mail.gq1.yahoo.com>
-Date: Sun, 24 Apr 2011 22:26:13 -0700 (PDT)
-From: Mahmood Naderan <nt_mahmood@yahoo.com>
-Reply-To: Mahmood Naderan <nt_mahmood@yahoo.com>
-Subject: NFS over TCP not available
-To: nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=iso-8859-1
+Received: from mailservice.tudelft.nl ([130.161.131.5]:51825 "EHLO
+	mailservice.tudelft.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759327Ab1DPMAx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Apr 2011 08:00:53 -0400
+Message-ID: <4DA984F2.20600@tudelft.nl>
+Date: Sat, 16 Apr 2011 14:00:50 +0200
+From: Richard Smits <R.Smits@tudelft.nl>
+To: Myles Uyema <mlists@uyema.net>
+CC: linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: linux / automount not respecting sec=sys parameter when NFS server
+ supports sys:krb5
+References: <BANLkTintp8Hx-D46L0WC6-+JJK=jDvz1KQ@mail.gmail.com>	<4DA0F46D.3000909@tudelft.nl> <BANLkTim8R0f=gXBLzV2Ym-KaRpOCq672SQ@mail.gmail.com>
+In-Reply-To: <BANLkTim8R0f=gXBLzV2Ym-KaRpOCq672SQ@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
-A week ago I sent a post to nfs-linux, however bacause of my subscribe problem I don't know whether you received my post or not.
- 
-Sorry if it is a double post.... Here is the problem.
- 
-I am trying to boot a node from network via nfs and pxe. Here are the assumptions on the server:
- 
-auto lo
-iface lo inet loopback
-# The primary network interface
-auto eth3
-iface eth3 inet static
-    address 196.25.69.15
-    netmask 255.255.255.128
-    network 196.25.69.0
-    broadcast 196.25.69.127
-    gateway 196.25.69.1
-auto eth2
-iface eth2 inet static
-    address 192.168.1.1
-    netmask 255.255.255.0
-    broadcast 192.168.1.255
- 
-and the content of /etc/exports is:
- 
-/home/nfsroot 192.168.1.0/255.255.255.0(rw,no_subtree_check,async,no_root_squash)
- 
-where /home/nfsroot contains the linux image for client. The content of /home/nfsroot/etc/fstab is:
+Great tip. We did not knew this... I have tried it and it works great.
+This will make our admin tasks a lot easier.
 
-# UNCONFIGURED FSTAB FOR BASE SYSTEM
-proc            /proc         proc   defaults       0      0
-/dev/nfs        /             nfs    defaults       0      0
-I see no terminal prompt (e.g bash, sh, ...). After some minutes I see these messages on the node:
- 
-connect: connection timed out
-NFS over TCP not available from 192.168.1.1
-Done.
-Begin: Retrying nfs mount ...
-Begin: Running /scripts/nfs-permanent ...
-Done.
-connect: connection timed out
-....
-Begin: Running /scripts/init-bottom...
-mount: mounting /dev on /root/dev failed: no such file or directory
-Done.
-mount: mounting /sys on /root/sys failed: no such file or directory
-mount: mounting /proc on /root/proc failed: no such file or directory
-Taget filesystem doesn't have /sbin/init
-No init found. Try passing init= bootarg
- 
- 
- 
-What is wrong with NFS? appreciate any idea and comment.
-Thanks
- 
-// Naderan *Mahmood;
+We also use automount scripts for different mountpoints to different
+servers. We use an attribute in our AD for this.
+
+> However, when a krb5 beta tester accessing any homedir,
+> Linux and automount will choose to mount that homedir using sec=krb5.
+
+How does the automounter makes this choice ? (sys or krb5) Is this a
+manual setting or an entry in your ldap directory ?
+
+Greetings ..
+
+Myles Uyema wrote:
+> Yes, on the filer /etc/exports (and exportfs output) the parameter is
+> -sec=sys:krb5
+> It works generally for mounts listed in /etc/fstab, but automount is a
+> weird one.
+> 
+> I believe we have narrowed it down to 2.6.20 kernel behavior. More
+> news forthcoming with a newer kernel.
+> 
+> On Sat, Apr 9, 2011 at 5:06 PM, Richard Smits <R.Smits@tudelft.nl> wrote:
+>> Myles Uyema wrote:
+>>> We have a Netapp filer (8.0.1) exporting NFSv3 homedirs with -sec=sys:krb5,rw
+>> This is interesting. Are you making an export on a Netapp filer that is
+>> "sec=sys" AND "sec=krb5" ? (sys:krb5)
+>>
+>> In my experience this doesn't work and you can only make a "sec=sys"
+>> export OR a "sec=krb5" on the same directory/qtree.
+>>
+>> Can you please clarify this ?
+>>
+>> Greetings .. Richard Smits
+>>
+>>> We have automount using LDAP for homedir mounts, explicitly specifying
+>>> sec=sys for all users, except for the krb5 beta testers.
+>>>
+>>> We are rolling out users with kerberos slowly across our linux
+>>> machines. However, when a krb5 beta tester accessing any homedir,
+>>> Linux and automount will choose to mount that homedir using sec=krb5.
+>>> It's quite apparent that /etc/mtab shows the mount parameter as
+>>> sec=sys, but /proc/mounts shows the same mount as sec=krb5
+>>>
+>>> /etc/mtab
+>>> nfstest101:/vol/krbtest01/testuser /home/testuser nfs
+>>> rw,hard,intr,sec=sys,addr=10.21.127.101 0 0
+>>>
+>>> /proc/mounts
+>>> nfstest101:/vol/krbtest01/testuser /home/testuser nfs
+>>> rw,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=krb5,addr=10.21.127.101
+>>> 0 0
+>>>
+>>> If testuser then logs in (without a kerberos ticket) they cannot
+>>> access their own home directory.
+>>>
+>>> Why is linux/automount ignoring our explicit sec=sys parameter?
+>>>
+>>> Linux 2.6.20 kernel CentOS 5.x
+>>> Autofs 5.0.1
+>>> mount (util-linux 2.13-pre7)
+>>> MIT-Kerberos 5
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
