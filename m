@@ -1,43 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:6480 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751829Ab1DVIEZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Apr 2011 04:04:25 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/6] SQUASHME: call pnfs_return_layout right before pnfs_destroy_layout
-Date: Fri, 22 Apr 2011 11:04:14 +0300
-Message-Id: <1303459454-16283-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DB125BD.3040703@panasas.com>
-References: <4DB125BD.3040703@panasas.com>
+Received: from mail-ew0-f46.google.com ([209.85.215.46]:32889 "EHLO
+	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752112Ab1DQNVY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Apr 2011 09:21:24 -0400
+Received: by ewy4 with SMTP id 4so1139340ewy.19
+        for <linux-nfs@vger.kernel.org>; Sun, 17 Apr 2011 06:21:23 -0700 (PDT)
+In-Reply-To: <BANLkTi=3mcfWuFhoCzetzuguA2vA02AShg@mail.gmail.com>
+References: <BANLkTi=3mcfWuFhoCzetzuguA2vA02AShg@mail.gmail.com>
+Date: Sun, 17 Apr 2011 22:21:22 +0900
+Message-ID: <BANLkTimP_=XcFA3nLembsh6VyfOtSL91FA@mail.gmail.com>
+Subject: Re: NFSv3 client caches dozens or hundreds of megabytes before
+ sending a write request to NFS server.
+From: crocket <crockabiscuit@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-squash into "pnfs: layoutreturn"
+It seems "noac" mount option enables direct write to the NFS server.
+Now the NFS client doesn't cache but write directly to the server.
+Please refer to "man nfs" if you use linux.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/inode.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 73a2529..9a48d1c 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1424,9 +1424,9 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
-  */
- void nfs4_evict_inode(struct inode *inode)
- {
--	pnfs_return_layout(inode, NULL, true);
- 	truncate_inode_pages(&inode->i_data, 0);
- 	end_writeback(inode);
-+	pnfs_return_layout(inode, NULL);
- 	pnfs_destroy_layout(NFS_I(inode));
- 	/* If we are holding a delegation, return it! */
- 	nfs_inode_return_delegation_noreclaim(inode);
--- 
-1.7.3.4
-
+On Sun, Apr 17, 2011 at 6:23 PM, crocket <crockabiscuit@gmail.com> wrote:
+> Let me explain my network configuration.
+>
+> Internet <--------------------> eth0 | the linux router | eth1
+> <------------------------------> eth0 | the desktop.
+>
+> The linux router is actually a proper computer but not a router that
+> has linux firmware.
+> eth1 on the router and eth0 on the desktop are both full-duplex at 100Mbps.
+> The full-duplex connection is confirmed using netcat like
+> http://imagebin.org/148650
+> And they also remain full-duplex during NFS transfers according to "ethtool".
+>
+> The router runs an NFS server, and the desktop uses an NFS client.
+>
+> On the desktop, if I download files from the internet to the NFS
+> server, the client caches dozens or hundreds of megabytes before
+> sending data to the server like http://imagebin.org/148648
+> As a result, the download pauses frequently to send data to the NFS
+> server until the download is finished.
+> I want NFS client to forward downloaded data to the server immediately
+> instead of after caching.
+> In other words, I want NFS transfer to be http://imagebin.org/148650
+> but not http://imagebin.org/148648
+>
+> Does anybody know how to solve this issue?
+>
