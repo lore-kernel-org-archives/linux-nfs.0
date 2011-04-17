@@ -1,65 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:46646 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756638Ab1DMO1b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Apr 2011 10:27:31 -0400
-Subject: Re: [RFC][PATCH] Vector read/write support for NFS (DIO) client
-Content-Type: text/plain; charset=us-ascii
-From: Andy Adamson <andros@netapp.com>
-In-Reply-To: <1302704533.8571.12.camel@lade.trondhjem.org>
-Date: Wed, 13 Apr 2011 10:27:23 -0400
-Cc: Jeff Layton <jlayton@redhat.com>, Badari Pulavarty <pbadari@us.ibm.com>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        khoa@us.ibm.com
-Message-Id: <00D863C6-8B7E-4645-A53E-14D1E2507AEE@netapp.com>
-References: <1302622335.3877.62.camel@badari-desktop> <0DC51758-AE6C-4DD2-A959-8C8E701FEA4E@oracle.com> <1302624935.3877.66.camel@badari-desktop> <FF1EE11E-62EB-42B9-A4C9-7A2FE4C60D2F@oracle.com> <1302630360.3877.72.camel@badari-desktop> <20110413083656.12e54a91@tlielax.poochiereds.net> <4DA5A899.3040202@us.ibm.com> <20110413100228.680ace66@tlielax.poochiereds.net> <1302704533.8571.12.camel@lade.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:41842 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754390Ab1DQQLI convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 17 Apr 2011 12:11:08 -0400
+In-Reply-To: <87pqokx6lr.fsf@devron.myhome.or.jp>
+References: <20110412143559.186613198@clark.kroah.org> <87pqokx6lr.fsf@devron.myhome.or.jp>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Sun, 17 Apr 2011 09:10:12 -0700
+Message-ID: <BANLkTimN6L80e_oiJ_uqbLde2Cdnw5p45Q@mail.gmail.com>
+Subject: Re: [105/105] nfsd4: fix oops on lock failure
+To: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, Greg KH <gregkh@suse.de>,
+        linux-kernel@vger.kernel.org, stable@kernel.org,
+        akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
+        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Sun, Apr 17, 2011 at 8:03 AM, OGAWA Hirofumi
+<hirofumi@mail.parknet.co.jp> wrote:
+>
+> I'm looking filp leak on recent kernel. Well, anyway,
+> 23fcf2ec93fb8573a653408316af599939ff9a8e is strange, and I think it can
+> be one of causes.
 
-On Apr 13, 2011, at 10:22 AM, Trond Myklebust wrote:
+Hmm. Your patch looks correct to me. Added Neil and linux-nfs.
 
-> On Wed, 2011-04-13 at 10:02 -0400, Jeff Layton wrote:
->> We could put the rpc_rqst's into a slabcache, and give each rpc_xprt a
->> mempool with a minimum number of slots. Have them all be allocated with
->> GFP_NOWAIT. If it gets a NULL pointer back, then the task can sleep on
->> the waitqueue like it does today. Then, the clients can allocate
->> rpc_rqst's as they need as long as memory holds out for it.
->> 
->> We have the reserve_xprt stuff to handle congestion control anyway so I
->> don't really see the value in the artificial limits that the slot table
->> provides.
->> 
->> Maybe I should hack up a patchset for this...
-> 
-> This issue has come up several times recently. My preference would be to
-> tie the availability of slots to the TCP window size, and basically say
-> that if the SOCK_ASYNC_NOSPACE flag is set on the socket, then we hold
-> off allocating more slots until we get a ->write_space() callback which
-> clears that flag.
+Bruce? Neil?
 
-I am scoping the dynamic rpc_slot allocation work and plan to prototype.
+               Linus
 
--->Andy
- 
-> 
-> For the RDMA case, we can continue to use the current system of a fixed
-> number of preallocated slots.
-> 
-> Cheers
->  Trond
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
+---
+> [PATCH] nfsd4: Fix filp leak
+>
+> 23fcf2ec93fb8573a653408316af599939ff9a8e (nfsd4: fix oops on lock failure)
+>
+> The above patch breaks free path for stp->st_file. If stp was inserted
+> into sop->so_stateids, we have to free stp->st_file refcount. Because
+> stp->st_file refcount itself is taken unrelated to stp->st_file->fi_fds[].
+>
+> Signed-off-by: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+> ---
+>
+>  fs/nfsd/nfs4state.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+>
+> diff -puN fs/nfsd/nfs4state.c~nfsd4-filp-leak-fix fs/nfsd/nfs4state.c
+> --- linux-2.6/fs/nfsd/nfs4state.c~nfsd4-filp-leak-fix   2011-04-17 20:45:45.000000000 +0900
+> +++ linux-2.6-hirofumi/fs/nfsd/nfs4state.c      2011-04-17 20:59:53.000000000 +0900
+> @@ -402,8 +402,8 @@ static void free_generic_stateid(struct
+>        if (stp->st_access_bmap) {
+>                oflag = nfs4_access_bmap_to_omode(stp);
+>                nfs4_file_put_access(stp->st_file, oflag);
+> -               put_nfs4_file(stp->st_file);
+>        }
+> +       put_nfs4_file(stp->st_file);
+>        kmem_cache_free(stateid_slab, stp);
+>  }
+>
+> _
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+> OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+>
