@@ -1,104 +1,56 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfsdv4 leaks file descriptors
-Date: Thu, 14 Apr 2011 15:10:06 -0400
-Message-ID: <20110414191005.GB1721@fieldses.org>
-References: <20110412140148.GA17242@gheift>
- <20110413211211.GA25189@fieldses.org>
- <20110414054844.GF17242@gheift>
+From: "J. Bruce Fields" <bfields@redhat.com>
+Subject: Re: [105/105] nfsd4: fix oops on lock failure
+Date: Mon, 18 Apr 2011 13:16:43 -0400
+Message-ID: <20110418171640.GJ20935@pad.home.fieldses.org>
+References: <20110412143559.186613198@clark.kroah.org>
+	<87pqokx6lr.fsf@devron.myhome.or.jp>
+	<BANLkTimN6L80e_oiJ_uqbLde2Cdnw5p45Q@mail.gmail.com>
+	<20110418153236.GC20935@pad.home.fieldses.org>
+	<87ipubwnj3.fsf@devron.myhome.or.jp>
+	<8762qbwnf1.fsf@devron.myhome.or.jp>
+	<87zknnv7id.fsf@devron.myhome.or.jp>
+	<BANLkTi=HGzJ4LaZpWsWXrUQVWheS=x7CoQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Gerhard Heift <ml-nfs-linux-20110412-ef47-UG2eIutGyHWzQB+pC5nmwQ@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:44606 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932707Ab1DNTKH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Apr 2011 15:10:07 -0400
-In-Reply-To: <20110414054844.GF17242@gheift>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>,
+        Greg KH <gregkh@suse.de>, linux-kernel@vger.kernel.org,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        akpm@linux-foundation.org, stable@kernel.org, alan@lxorguk.ukuu.org.uk
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <stable-bounces@linux.kernel.org>
+In-Reply-To: <BANLkTi=HGzJ4LaZpWsWXrUQVWheS=x7CoQ@mail.gmail.com>
+List-Unsubscribe: <http://linux.kernel.org/mailman/options/stable>,
+	<mailto:stable-request@linux.kernel.org?subject=unsubscribe>
+List-Archive: <http://linux.kernel.org/mailman/private/stable/>
+List-Post: <mailto:stable@linux.kernel.org>
+List-Help: <mailto:stable-request@linux.kernel.org?subject=help>
+List-Subscribe: <http://linux.kernel.org/mailman/listinfo/stable>,
+	<mailto:stable-request@linux.kernel.org?subject=subscribe>
+Sender: stable-bounces@linux.kernel.org
+Errors-To: stable-bounces@linux.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 14, 2011 at 07:48:45AM +0200, Gerhard Heift wrote:
-> On Wed, Apr 13, 2011 at 05:12:11PM -0400, J. Bruce Fields wrote:
-> > On Tue, Apr 12, 2011 at 04:01:50PM +0200, Gerhard Heift wrote:
-> > > Hello,
-> > > 
-> > > I have a linux kernel (2.6.38.2, armv5tel) running which exports a
-> > > directory with following options:
-> > 
-> > Should be fixed in more recent stable kernel; let me know if not.
+On Mon, Apr 18, 2011 at 09:59:26AM -0700, Linus Torvalds wrote:
+> On Mon, Apr 18, 2011 at 9:39 AM, OGAWA Hirofumi
+> <hirofumi@mail.parknet.co.jp> wrote:
+> >
+> > For now, I feel this explain filp leak on my system. the leak is
+> > increased slowly (filp, cred_jar, and no nfs* slabs), and leak is on
+> > nfs server side.
+> >
+> > I'll start test of this patch, and see what happens.
 > 
-> An even more recent stable than 2.6.38.2? I just compiled 2.6.39-rc3 and
-> there the leak happens too.
+> Can somebody ping/remind me when that is verified - preferably about
+> _both_ patches, even if it turns out that the first one by Ogawa
+> wasn't the one that caused the problem?
+> 
+> Or can I just assume that the fix will be in Bruce's pull requests some day?
 
-Ugh.  OK, investigating.
+I'll send a pull request when it's sorted out, thanks.
 
 --b.
 
-> 
-> > --b.
-> 
-> Regards,
->   Gerhard
-> 
-> > > /data ip/32(rw,async,crossmnt,insecure,root_squash,no_subtree_check,fsid=0)
-> > > 
-> > > On the client (Debian unstable, kernel 2.6.38-2-amd64) I mounted the
-> > > directory under /media(nfs4import with
-> > > 
-> > > # mount -t nfs4 ip:/ /media/nfs4import
-> > > 
-> > > After a lot running fdupes on this folder the server kernel starts
-> > > throwing messages like this one:
-> > > 
-> > >   VFS: file-max limit [number] reached
-> > > 
-> > > After a reboot I recognised that the number of used file descriptors
-> > > increases during the run of fdupes (see /proc/sys/fs/file-nr). Even
-> > > after unmounting the exported filesystem on the client, unexport the
-> > > file system on the server and stopping the nfs-server the file
-> > > descriptors are still allocated and unmounting the filesystem is not
-> > > possible.
-> > > 
-> > > After a little bit of research I could create a small program, which
-> > > increases the used file descriptors by one.
-> > > 
-> > > Regards,
-> > >   Gerhard
-> > 
-> > > #include <stdio.h>
-> > > 
-> > > #define DIR "/media/nfs4import/"
-> > > 
-> > > int main(void) {
-> > > 	FILE *f1;
-> > > 	FILE *f2;
-> > > 	char b[1024];
-> > > 	int i;
-> > > 
-> > > 	// create file1
-> > > 	f1 = fopen(DIR "file1.txt", "w");
-> > > 	fwrite("test\n", 5, 1, f1);
-> > > 	close(f1);
-> > > 
-> > > 	// open file1 in read mode
-> > > 	f1 = fopen(DIR "file1.txt", "r");
-> > > 
-> > > 	for (i = 0; i < 1; i++) {
-> > > 		// open file2 in write mode and close it
-> > > 		f2 = fopen(DIR "file2.txt", "w");
-> > > 		fclose(f2);
-> > > 	
-> > > 		// open file2 in read mode and close it
-> > > 		// this causes the leak of a file descriptor on the server
-> > > 		// just watch /proc/sys/fs/file-nr on the server
-> > > 		f2 = fopen(DIR "file2.txt", "r");
-> > > 		fclose(f2);
-> > > 	}
-> > > 	fclose(f1);
-> > > 
-> > > 	return 0;
-> > > }
-> > 
-> > 
-> > 
+_______________________________________________
+stable mailing list
+stable@linux.kernel.org
+http://linux.kernel.org/mailman/listinfo/stable
