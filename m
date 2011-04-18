@@ -1,40 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.parknet.co.jp ([210.171.160.6]:50008 "EHLO
-	mail.parknet.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755490Ab1DRQII (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Apr 2011 12:08:08 -0400
-From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, Greg KH <gregkh@suse.de>,
-        linux-kernel@vger.kernel.org, stable@kernel.org,
-        akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
-Subject: Re: [105/105] nfsd4: fix oops on lock failure
-References: <20110412143559.186613198@clark.kroah.org>
-	<87pqokx6lr.fsf@devron.myhome.or.jp>
-	<BANLkTimN6L80e_oiJ_uqbLde2Cdnw5p45Q@mail.gmail.com>
-	<20110418153236.GC20935@pad.home.fieldses.org>
-Date: Tue, 19 Apr 2011 01:08:00 +0900
-In-Reply-To: <20110418153236.GC20935@pad.home.fieldses.org> (J. Bruce Fields's
-	message of "Mon, 18 Apr 2011 11:32:38 -0400")
-Message-ID: <87ipubwnj3.fsf@devron.myhome.or.jp>
-Content-Type: text/plain
+Received: from mx2.netapp.com ([216.240.18.37]:49515 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751684Ab1DRT5e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Apr 2011 15:57:34 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 1/2] Handle NFS4ERR_WRONGSEC outside of nfs4_handle_exception()
+Date: Mon, 18 Apr 2011 15:57:31 -0400
+Message-Id: <1303156652-5929-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-"J. Bruce Fields" <bfields@redhat.com> writes:
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-> On Sun, Apr 17, 2011 at 09:10:12AM -0700, Linus Torvalds wrote:
->> On Sun, Apr 17, 2011 at 8:03 AM, OGAWA Hirofumi
->> <hirofumi@mail.parknet.co.jp> wrote:
->> >
->> > I'm looking filp leak on recent kernel. Well, anyway,
->
-> Does this fix it?
+I only want to try other secflavors during an initial mount if
+NFS4ERR_WRONGSEC is returned.  nfs4_handle_exception() could
+potentially map other errors to EPERM, so we should handle this
+error specially for correctness.
 
-It seems to be no, unfortunately. filp leak is not so fast, and obvious
-reproduce process is not known yet. Well, sigh, I'm starting to add
-debugging code for it...
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+
+---
+ fs/nfs/nfs4proc.c |   17 ++++++++++++-----
+ 1 files changed, 12 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index b8e1ac6..152e0eb 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2186,9 +2186,14 @@ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(server,
+-				_nfs4_lookup_root(server, fhandle, info),
+-				&exception);
++		err = _nfs4_lookup_root(server, fhandle, info);
++		switch (err) {
++		case 0:
++		case -NFS4ERR_WRONGSEC:
++			break;
++		default:
++			err = nfs4_handle_exception(server, err, &exception);
++		}
+ 	} while (exception.retry);
+ 	return err;
+ }
+@@ -2221,10 +2226,12 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+ 
+ 	for (i = 0; i < len; i++) {
+ 		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
+-		if (status == -EPERM || status == -EACCES)
++		if (status == -NFS4ERR_WRONGSEC || status == -EACCES)
+ 			continue;
+ 		break;
+ 	}
++	if (status == -EACCES)
++		status = -EPERM;
+ 	return status;
+ }
+ 
+@@ -2235,7 +2242,7 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 			      struct nfs_fsinfo *info)
+ {
+ 	int status = nfs4_lookup_root(server, fhandle, info);
+-	if ((status == -EPERM) && !(server->flags & NFS_MOUNT_SECFLAVOUR))
++	if ((status == -NFS4ERR_WRONGSEC) && !(server->flags & NFS_MOUNT_SECFLAVOUR))
+ 		status = nfs4_find_root_sec(server, fhandle, info);
+ 	if (status == 0)
+ 		status = nfs4_server_capabilities(server, fhandle);
 -- 
-OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+1.7.4.4
+
