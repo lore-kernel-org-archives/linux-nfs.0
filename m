@@ -1,55 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cpmx.mail.saic.com ([139.121.17.160]:46186 "EHLO
-	cpmx.mail.saic.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755687Ab1DGXDb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2011 19:03:31 -0400
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Subject: RE: Prioritizing readdirplus/getattr/lookup
-Date: Thu, 7 Apr 2011 15:48:22 -0700
-Message-Id: <620E93B2E5CC3B46BD811165E3335B870B8B0E09@0461-its-exmb02.us.saic.com>
-In-Reply-To: <770047.76192.qm@web65409.mail.ac4.yahoo.com>
-References: <514401.95922.qm@web65408.mail.ac4.yahoo.com> <770047.76192.qm@web65409.mail.ac4.yahoo.com>
-From: "Murata, Dennis" <DENNIS.MURATA@saic.com>
-To: "Andrew Klaassen" <clawsoon@yahoo.com>,
-        "Chuck Lever" <chuck.lever@oracle.com>
-Cc: "Benny Halevy" <bhalevy@panasas.com>, "Jim Rees" <rees@umich.edu>,
-        "Garth Gibson" <garth@cs.cmu.edu>, <linux-nfs@vger.kernel.org>
+Received: from mail.parknet.co.jp ([210.171.160.6]:50020 "EHLO
+	mail.parknet.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755417Ab1DRQK3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Apr 2011 12:10:29 -0400
+From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>, Greg KH <gregkh@suse.de>,
+        linux-kernel@vger.kernel.org, stable@kernel.org,
+        akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
+        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: [105/105] nfsd4: fix oops on lock failure
+References: <20110412143559.186613198@clark.kroah.org>
+	<87pqokx6lr.fsf@devron.myhome.or.jp>
+	<BANLkTimN6L80e_oiJ_uqbLde2Cdnw5p45Q@mail.gmail.com>
+	<20110418153236.GC20935@pad.home.fieldses.org>
+	<87ipubwnj3.fsf@devron.myhome.or.jp>
+Date: Tue, 19 Apr 2011 01:10:26 +0900
+In-Reply-To: <87ipubwnj3.fsf@devron.myhome.or.jp> (OGAWA Hirofumi's message of
+	"Tue, 19 Apr 2011 01:08:00 +0900")
+Message-ID: <8762qbwnf1.fsf@devron.myhome.or.jp>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Did you set each ksoftirqd to a specific cpu?
-Wayne 
+OGAWA Hirofumi <hirofumi@mail.parknet.co.jp> writes:
 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org 
-> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Andrew Klaassen
-> Sent: Thursday, April 07, 2011 4:50 PM
-> To: Chuck Lever
-> Cc: Benny Halevy; Jim Rees; Garth Gibson; linux-nfs@vger.kernel.org
-> Subject: Re: Prioritizing readdirplus/getattr/lookup
+> "J. Bruce Fields" <bfields@redhat.com> writes:
+>
+>> On Sun, Apr 17, 2011 at 09:10:12AM -0700, Linus Torvalds wrote:
+>>> On Sun, Apr 17, 2011 at 8:03 AM, OGAWA Hirofumi
+>>> <hirofumi@mail.parknet.co.jp> wrote:
+>>> >
+>>> > I'm looking filp leak on recent kernel. Well, anyway,
+>>
+>> Does this fix it?
+>
+> It seems to be no, unfortunately. filp leak is not so fast, and obvious
+> reproduce process is not known yet. Well, sigh, I'm starting to add
+> debugging code for it...
+
+Ah, I was missing patch itself. I'll see.
+
+> commit 5152c8a947359758862d4631863e68e83ec01048
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Fri Apr 15 18:08:26 2011 -0400
 > 
-> --- On Thu, 4/7/11, Andrew Klaassen <clawsoon@yahoo.com> wrote:
+>     nfsd4: fix struct file leak on delegation
+>     
+>     Introduced by acfdf5c383b38f7f4dddae41b97c97f1ae058f49.
+>     
+>     Cc: stable@kernel.org
+>     Reported-by: Gerhard Heift <ml-nfs-linux-20110412-ef47@gheift.de>
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 > 
-> > I do notice that ksoftirqd is eating up 100% of a core when I'm 
-> > loading the server heavily.  I assume that's because I'm not using 
-> > jumbo frames and the ethernet cards are spitting out interrupts as 
-> > fast as they're able.
-> 
-> I just got myself edjumicated on smp_affinity, and now I'm 
-> able to achieve 99% CPU usage by 8 nfsd processes on 8 cores 
-> on a read-only, fully-cached workload, with ksoftirqd 
-> processes only using 1% CPU per core.
-> 
-> Unfortunately, this doesn't help the "ls -l" speed.
-> 
-> Andrew
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe 
-> linux-nfs" in the body of a message to 
-> majordomo@vger.kernel.org More majordomo info at  
-> http://vger.kernel.org/majordomo-info.html
-> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index aa309aa..c79a983 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -258,6 +258,7 @@ static void nfs4_put_deleg_lease(struct nfs4_file *fp)
+>  	if (atomic_dec_and_test(&fp->fi_delegees)) {
+>  		vfs_setlease(fp->fi_deleg_file, F_UNLCK, &fp->fi_lease);
+>  		fp->fi_lease = NULL;
+> +		fput(fp->fi_deleg_file);
+>  		fp->fi_deleg_file = NULL;
+>  	}
+>  }
+-- 
+OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
