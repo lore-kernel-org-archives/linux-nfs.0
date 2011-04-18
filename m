@@ -1,96 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57127 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754093Ab1DTR1M (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 13:27:12 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [RFC 07/27] pnfs: encode_layoutcommit
-Date: Wed, 20 Apr 2011 20:27:07 +0300
-Message-Id: <1303320427-21218-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DAF0DE1.6020609@panasas.com>
-References: <4DAF0DE1.6020609@panasas.com>
+Received: from mail.parknet.co.jp ([210.171.160.6]:59300 "EHLO
+	mail.parknet.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755715Ab1DRQj0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Apr 2011 12:39:26 -0400
+From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>, Greg KH <gregkh@suse.de>,
+        linux-kernel@vger.kernel.org, stable@kernel.org,
+        akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
+        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: [105/105] nfsd4: fix oops on lock failure
+References: <20110412143559.186613198@clark.kroah.org>
+	<87pqokx6lr.fsf@devron.myhome.or.jp>
+	<BANLkTimN6L80e_oiJ_uqbLde2Cdnw5p45Q@mail.gmail.com>
+	<20110418153236.GC20935@pad.home.fieldses.org>
+	<87ipubwnj3.fsf@devron.myhome.or.jp>
+	<8762qbwnf1.fsf@devron.myhome.or.jp>
+Date: Tue, 19 Apr 2011 01:39:22 +0900
+In-Reply-To: <8762qbwnf1.fsf@devron.myhome.or.jp> (OGAWA Hirofumi's message of
+	"Tue, 19 Apr 2011 01:10:26 +0900")
+Message-ID: <87zknnv7id.fsf@devron.myhome.or.jp>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4xdr.c |   16 +++++++++++++---
- fs/nfs/pnfs.h    |    4 ++++
- 2 files changed, 17 insertions(+), 3 deletions(-)
+OGAWA Hirofumi <hirofumi@mail.parknet.co.jp> writes:
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 6b64dd8..4f7bef9 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1877,6 +1877,7 @@ encode_layoutget(struct xdr_stream *xdr,
- 
- static int
- encode_layoutcommit(struct xdr_stream *xdr,
-+		    struct inode *inode,
- 		    const struct nfs4_layoutcommit_args *args,
- 		    struct compound_hdr *hdr)
- {
-@@ -1885,7 +1886,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
- 	dprintk("%s: lbw: %llu type: %d\n", __func__, args->lastbytewritten,
- 		NFS_SERVER(args->inode)->pnfs_curr_ld->id);
- 
--	p = reserve_space(xdr, 48 + NFS4_STATEID_SIZE);
-+	p = reserve_space(xdr, 44 + NFS4_STATEID_SIZE);
- 	*p++ = cpu_to_be32(OP_LAYOUTCOMMIT);
- 	/* Only whole file layouts */
- 	p = xdr_encode_hyper(p, 0); /* offset */
-@@ -1896,7 +1897,14 @@ encode_layoutcommit(struct xdr_stream *xdr,
- 	p = xdr_encode_hyper(p, args->lastbytewritten);
- 	*p++ = cpu_to_be32(0); /* Never send time_modify_changed */
- 	*p++ = cpu_to_be32(NFS_SERVER(args->inode)->pnfs_curr_ld->id);/* type */
--	*p++ = cpu_to_be32(0); /* no file layout payload */
-+
-+	if (NFS_SERVER(inode)->pnfs_curr_ld->encode_layoutcommit)
-+		NFS_SERVER(inode)->pnfs_curr_ld->encode_layoutcommit(
-+			NFS_I(inode)->layout, xdr, args);
-+	else {
-+		p = reserve_space(xdr, 4);
-+		*p = cpu_to_be32(0); /* no layout-type payload */
-+	}
- 
- 	hdr->nops++;
- 	hdr->replen += decode_layoutcommit_maxsz;
-@@ -2759,6 +2767,8 @@ static void nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
- 				      struct xdr_stream *xdr,
- 				      struct nfs4_layoutcommit_args *args)
- {
-+	struct nfs4_layoutcommit_data *data =
-+		container_of(args, struct nfs4_layoutcommit_data, args);
- 	struct compound_hdr hdr = {
- 		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
- 	};
-@@ -2766,7 +2776,7 @@ static void nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
- 	encode_compound_hdr(xdr, req, &hdr);
- 	encode_sequence(xdr, &args->seq_args, &hdr);
- 	encode_putfh(xdr, NFS_FH(args->inode), &hdr);
--	encode_layoutcommit(xdr, args, &hdr);
-+	encode_layoutcommit(xdr, data->args.inode, args, &hdr);
- 	encode_getfattr(xdr, args->bitmask, &hdr);
- 	encode_nops(&hdr);
- }
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 51dcbc1..011885e 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -99,6 +99,10 @@ struct pnfs_layoutdriver_type {
- 	/* device notification methods */
- 	void (*delete_deviceid)(struct nfs4_deviceid *);
- 
-+	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
-+				     struct xdr_stream *xdr,
-+				     const struct nfs4_layoutcommit_args *args);
-+
- 	void (*encode_layoutreturn) (struct pnfs_layout_hdr *layoutid,
- 				     struct xdr_stream *xdr,
- 				     const struct nfs4_layoutreturn_args *args);
+>> commit 5152c8a947359758862d4631863e68e83ec01048
+>> Author: J. Bruce Fields <bfields@redhat.com>
+>> Date:   Fri Apr 15 18:08:26 2011 -0400
+>> 
+>>     nfsd4: fix struct file leak on delegation
+>>     
+>>     Introduced by acfdf5c383b38f7f4dddae41b97c97f1ae058f49.
+>>     
+>>     Cc: stable@kernel.org
+>>     Reported-by: Gerhard Heift <ml-nfs-linux-20110412-ef47@gheift.de>
+>>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>> 
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index aa309aa..c79a983 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -258,6 +258,7 @@ static void nfs4_put_deleg_lease(struct nfs4_file *fp)
+>>  	if (atomic_dec_and_test(&fp->fi_delegees)) {
+>>  		vfs_setlease(fp->fi_deleg_file, F_UNLCK, &fp->fi_lease);
+>>  		fp->fi_lease = NULL;
+>> +		fput(fp->fi_deleg_file);
+>>  		fp->fi_deleg_file = NULL;
+>>  	}
+>>  }
+
+For now, I feel this explain filp leak on my system. the leak is
+increased slowly (filp, cred_jar, and no nfs* slabs), and leak is on
+nfs server side.
+
+I'll start test of this patch, and see what happens.
+
+Thanks.
 -- 
-1.7.3.4
-
+OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
