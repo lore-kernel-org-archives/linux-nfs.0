@@ -1,76 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.netapp.com ([216.240.18.38]:17616 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756803Ab1DLTtI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Apr 2011 15:49:08 -0400
-Message-ID: <4DA4AA4D.2060702@netapp.com>
-Date: Tue, 12 Apr 2011 15:38:53 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/2] NFS: Attempt AUTH_UNIX style mount before guessing authflavors
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:37775 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755977Ab1DRRAY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Apr 2011 13:00:24 -0400
+In-Reply-To: <87zknnv7id.fsf@devron.myhome.or.jp>
+References: <20110412143559.186613198@clark.kroah.org> <87pqokx6lr.fsf@devron.myhome.or.jp>
+ <BANLkTimN6L80e_oiJ_uqbLde2Cdnw5p45Q@mail.gmail.com> <20110418153236.GC20935@pad.home.fieldses.org>
+ <87ipubwnj3.fsf@devron.myhome.or.jp> <8762qbwnf1.fsf@devron.myhome.or.jp> <87zknnv7id.fsf@devron.myhome.or.jp>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Mon, 18 Apr 2011 09:59:26 -0700
+Message-ID: <BANLkTi=HGzJ4LaZpWsWXrUQVWheS=x7CoQ@mail.gmail.com>
+Subject: Re: [105/105] nfsd4: fix oops on lock failure
+To: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, Greg KH <gregkh@suse.de>,
+        linux-kernel@vger.kernel.org, stable@kernel.org,
+        akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
+        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Mon, Apr 18, 2011 at 9:39 AM, OGAWA Hirofumi
+<hirofumi@mail.parknet.co.jp> wrote:
+>
+> For now, I feel this explain filp leak on my system. the leak is
+> increased slowly (filp, cred_jar, and no nfs* slabs), and leak is on
+> nfs server side.
+>
+> I'll start test of this patch, and see what happens.
 
-If an AUTH_UNIX mount returns -EPERM, we guess the authflavor needed
-to perform the mount.
+Can somebody ping/remind me when that is verified - preferably about
+_both_ patches, even if it turns out that the first one by Ogawa
+wasn't the one that caused the problem?
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4proc.c |   26 +++++++++++++++++---------
- 1 files changed, 17 insertions(+), 9 deletions(-)
+Or can I just assume that the fix will be in Bruce's pull requests some day?
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8a03ee0..7e27ebf 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2208,19 +2208,15 @@ out:
- 	return ret;
- }
- 
--/*
-- * get the file handle for the "/" directory on the server
-- */
--static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
-+static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
- 			      struct nfs_fsinfo *info)
- {
- 	int i, len, status = 0;
--	rpc_authflavor_t flav_array[NFS_MAX_SECFLAVORS + 2];
-+	rpc_authflavor_t flav_array[NFS_MAX_SECFLAVORS];
- 
--	flav_array[0] = RPC_AUTH_UNIX;
--	len = gss_mech_list_pseudoflavors(&flav_array[1]);
--	flav_array[1+len] = RPC_AUTH_NULL;
--	len += 2;
-+	len = gss_mech_list_pseudoflavors(&flav_array[0]);
-+	flav_array[len] = RPC_AUTH_NULL;
-+	len += 1;
- 
- 	for (i = 0; i < len; i++) {
- 		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
-@@ -2228,6 +2224,18 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 			continue;
- 		break;
- 	}
-+	return status;
-+}
-+
-+/*
-+ * get the file handle for the "/" directory on the server
-+ */
-+static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
-+			      struct nfs_fsinfo *info)
-+{
-+	int status = nfs4_lookup_root(server, fhandle, info);
-+	if (status == -EPERM)
-+		status = nfs4_find_root_sec(server, fhandle, info);
- 	if (status == 0)
- 		status = nfs4_server_capabilities(server, fhandle);
- 	if (status == 0)
--- 
-1.7.4.4
-
+                         Linus
