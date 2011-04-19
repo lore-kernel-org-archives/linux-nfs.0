@@ -1,102 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:59708 "EHLO mail-out1.uio.no"
+Received: from fieldses.org ([174.143.236.118]:54305 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751307Ab1DTUn6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Apr 2011 16:43:58 -0400
-Subject: Re: [RFC 12/27] pnfs: alloc and free layout_hdr layoutdriver
- methods
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1303320468-21407-1-git-send-email-bhalevy@panasas.com>
-References: <4DAF0DE1.6020609@panasas.com>
-	 <1303320468-21407-1-git-send-email-bhalevy@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 20 Apr 2011 13:43:51 -0700
-Message-ID: <1303332231.23206.49.camel@lade.trondhjem.org>
+	id S1751567Ab1DSWtu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Apr 2011 18:49:50 -0400
+Date: Tue, 19 Apr 2011 18:49:49 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 3/5] CLNT: test reclaim after RECLAIM_COMPLETE
+Message-ID: <20110419224948.GA10478@fieldses.org>
+References: <4D6DE26C.3010103@cn.fujitsu.com>
+ <4D904BEB.1060101@cn.fujitsu.com>
+ <4D904DF9.1080806@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D904DF9.1080806@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-04-20 at 20:27 +0300, Benny Halevy wrote:
+On Mon, Mar 28, 2011 at 04:59:37PM +0800, Mi Jinlong wrote:
+> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
 
-Why is this needed?
+Looks fine but note you shouldn't need to go to the trouble of doing a
+lock if you want to test reclaims--opens can also be reclaimed.
 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+--b.
+
 > ---
->  fs/nfs/pnfs.c |   21 ++++++++++++++++++---
->  fs/nfs/pnfs.h |    3 +++
->  2 files changed, 21 insertions(+), 3 deletions(-)
+>  nfs4.1/server41tests/st_reclaim_complete.py |   50 +++++++++++++++++++++++++++
+>  1 files changed, 50 insertions(+), 0 deletions(-)
 > 
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index afc64b3..2254362 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -188,13 +188,28 @@ get_layout_hdr(struct pnfs_layout_hdr *lo)
->  	atomic_inc(&lo->plh_refcount);
->  }
+> diff --git a/nfs4.1/server41tests/st_reclaim_complete.py b/nfs4.1/server41tests/st_reclaim_complete.py
+> index 5e3174c..4c9fc37 100644
+> --- a/nfs4.1/server41tests/st_reclaim_complete.py
+> +++ b/nfs4.1/server41tests/st_reclaim_complete.py
+> @@ -1,9 +1,18 @@
+>  from st_create_session import create_session
+>  from nfs4_const import *
+>  from environment import check, fail, use_obj, create_file
+> +from nfs4_type import open_owner4, locker4, open_to_lock_owner4
+>  import nfs4_ops as op
+>  import nfs4lib
 >  
-> +static struct pnfs_layout_hdr *
-> +pnfs_alloc_layout_hdr(struct inode *ino)
-> +{
-> +	struct pnfs_layoutdriver_type *ld = NFS_SERVER(ino)->pnfs_curr_ld;
-> +	return ld->alloc_layout_hdr ? ld->alloc_layout_hdr(ino) :
-> +		kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
-
-BTW: GFP_KERNEL is a bug here. It should be GFP_NOFS or else we can
-recurse back into the filesystem through the page reclaim code.
-
-> +}
+> +def opt_result(res, opt=None):
+> +    """Get the corresponding result at res.resarray[]"""
+> +    if opt == None:
+> +        return
+> +    for resa in res.resarray:
+> +        if resa.resop == opt:
+> +            return resa
 > +
-> +static void
-> +pnfs_free_layout_hdr(struct pnfs_layout_hdr *lo)
-> +{
-> +	struct pnfs_layoutdriver_type *ld = NFS_SERVER(lo->plh_inode)->pnfs_curr_ld;
-> +	return ld->alloc_layout_hdr ? ld->free_layout_hdr(lo) : kfree(lo);
-> +}
+>  def testSupported(t, env):
+>      """Do a simple RECLAIM_COMPLETE
+>  
+> @@ -20,3 +29,44 @@ def testSupported(t, env):
+>      res = sess.compound([op.reclaim_complete(FALSE)])
+>      check(res)
+>      sess.destroy()
 > +
->  static void
->  destroy_layout_hdr(struct pnfs_layout_hdr *lo)
->  {
->  	dprintk("%s: freeing layout cache %p\n", __func__, lo);
->  	BUG_ON(!list_empty(&lo->plh_layouts));
->  	NFS_I(lo->plh_inode)->layout = NULL;
-> -	kfree(lo);
-> +	pnfs_free_layout_hdr(lo);
->  }
->  
->  static void
-> @@ -857,7 +872,7 @@ alloc_init_layout_hdr(struct inode *ino)
->  {
->  	struct pnfs_layout_hdr *lo;
->  
-> -	lo = kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
-> +	lo = pnfs_alloc_layout_hdr(ino);
->  	if (!lo)
->  		return NULL;
->  	atomic_set(&lo->plh_refcount, 1);
-> @@ -890,7 +905,7 @@ pnfs_find_alloc_layout(struct inode *ino)
->  	if (likely(nfsi->layout == NULL))	/* Won the race? */
->  		nfsi->layout = new;
->  	else
-> -		kfree(new);
-> +		pnfs_free_layout_hdr(new);
->  	return nfsi->layout;
->  }
->  
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index bb266ba..35662ac 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -83,6 +83,9 @@ struct pnfs_layoutdriver_type {
->  	int (*set_layoutdriver) (struct nfs_server *);
->  	int (*unset_layoutdriver) (struct nfs_server *);
->  
-> +	struct pnfs_layout_hdr * (*alloc_layout_hdr) (struct inode *inode);
-> +	void (*free_layout_hdr) (struct pnfs_layout_hdr *);
+> +def testReclaimAfterRECC(t, env):
+> +    """If client does subsequent reclaims of locking state after
+> +       RECLAIM_COMPLETE is done, server will return NFS4ERR_NO_GRACE.
+> +       rfc5661 18.51.3
 > +
->  	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr);
->  	void (*free_lseg) (struct pnfs_layout_segment *lseg);
->  
-
-
+> +    FLAGS: reclaim_complete all
+> +    CODE: RECC2
+> +    """
+> +    name = env.testname(t)
+> +    c = env.c1.new_client(name)
+> +    sess = c.create_session()
+> +
+> +    # RECLAIM_COMPLETE
+> +    res = sess.compound([op.reclaim_complete(FALSE)])
+> +    check(res)
+> +
+> +    fname = "owner_%s" % name
+> +    path = sess.c.homedir + [name]
+> +    res = create_file(sess, fname, path, access=OPEN4_SHARE_ACCESS_BOTH)
+> +    check(res)
+> +
+> +    # Get stateid from OPEN4resok for making a lockowner
+> +    nres = opt_result(res, OP_OPEN)
+> +    if nres == None:
+> +        fail("Can not get OPEN4resok!")
+> +    oseqid = nres.stateid
+> +
+> +    owner = open_owner4(0, "My Open Owner")
+> +    otlowner = open_to_lock_owner4(0, oseqid, 0, owner)
+> +    lowner = locker4(TRUE, otlowner)
+> +
+> +    # Get filehandle from GETFHresok for locking
+> +    nres = opt_result(res, OP_GETFH)
+> +    if nres == None:
+> +	fail("Can not get GETFHresok!")
+> +    cfh = nres.object
+> +
+> +    res = sess.compound([op.putfh(cfh), op.lock(READ_LT, TRUE, 0, 1, lowner)])
+> +    check(res, NFS4ERR_NO_GRACE)
+> +    sess.destroy()
+> -- 
+> 1.7.4.1
+> 
+> 
+> 
