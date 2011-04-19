@@ -1,76 +1,183 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:39230 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756153Ab1DPAHo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Apr 2011 20:07:44 -0400
-Received: by iwn34 with SMTP id 34so2531206iwn.19
-        for <linux-nfs@vger.kernel.org>; Fri, 15 Apr 2011 17:07:43 -0700 (PDT)
-In-Reply-To: <4DA0F46D.3000909@tudelft.nl>
-References: <BANLkTintp8Hx-D46L0WC6-+JJK=jDvz1KQ@mail.gmail.com>
-	<4DA0F46D.3000909@tudelft.nl>
-Date: Fri, 15 Apr 2011 17:07:43 -0700
-Message-ID: <BANLkTim8R0f=gXBLzV2Ym-KaRpOCq672SQ@mail.gmail.com>
-Subject: Re: linux / automount not respecting sec=sys parameter when NFS
- server supports sys:krb5
-From: Myles Uyema <mlists@uyema.net>
-To: Richard Smits <R.Smits@tudelft.nl>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from cn.fujitsu.com ([222.73.24.84]:53759 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753788Ab1DSIod (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Apr 2011 04:44:33 -0400
+Message-ID: <4DAD48C7.9090808@cn.fujitsu.com>
+Date: Tue, 19 Apr 2011 16:33:11 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: Chuck Lever <chuck.lever@oracle.com>, NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH] svc: make sure mountd can get ports from /etc/services
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Yes, on the filer /etc/exports (and exportfs output) the parameter is
--sec=sys:krb5
-It works generally for mounts listed in /etc/fstab, but automount is a
-weird one.
+At RHEL, if user set port for mountd at /etc/services as 
+"mount   12345/tcp", mountd should be bind to 12345, but the 
+latest nfs-utils, mountd get a rand port, not 12345.
 
-I believe we have narrowed it down to 2.6.20 kernel behavior. More
-news forthcoming with a newer kernel.
+This patch make sure mountd be bind to the port which was set
+at /etc/service.
 
-On Sat, Apr 9, 2011 at 5:06 PM, Richard Smits <R.Smits@tudelft.nl> wrote:
-> Myles Uyema wrote:
->> We have a Netapp filer (8.0.1) exporting NFSv3 homedirs with -sec=sys:krb5,rw
->
-> This is interesting. Are you making an export on a Netapp filer that is
-> "sec=sys" AND "sec=krb5" ? (sys:krb5)
->
-> In my experience this doesn't work and you can only make a "sec=sys"
-> export OR a "sec=krb5" on the same directory/qtree.
->
-> Can you please clarify this ?
->
-> Greetings .. Richard Smits
->
->> We have automount using LDAP for homedir mounts, explicitly specifying
->> sec=sys for all users, except for the krb5 beta testers.
->>
->> We are rolling out users with kerberos slowly across our linux
->> machines. However, when a krb5 beta tester accessing any homedir,
->> Linux and automount will choose to mount that homedir using sec=krb5.
->> It's quite apparent that /etc/mtab shows the mount parameter as
->> sec=sys, but /proc/mounts shows the same mount as sec=krb5
->>
->> /etc/mtab
->> nfstest101:/vol/krbtest01/testuser /home/testuser nfs
->> rw,hard,intr,sec=sys,addr=10.21.127.101 0 0
->>
->> /proc/mounts
->> nfstest101:/vol/krbtest01/testuser /home/testuser nfs
->> rw,vers=3,rsize=65536,wsize=65536,hard,intr,proto=tcp,timeo=600,retrans=2,sec=krb5,addr=10.21.127.101
->> 0 0
->>
->> If testuser then logs in (without a kerberos ticket) they cannot
->> access their own home directory.
->>
->> Why is linux/automount ignoring our explicit sec=sys parameter?
->>
->> Linux 2.6.20 kernel CentOS 5.x
->> Autofs 5.0.1
->> mount (util-linux 2.13-pre7)
->> MIT-Kerberos 5
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+---
+ support/include/rpcmisc.h |    1 +
+ support/nfs/svc_create.c  |    9 ++++-
+ support/nfs/svc_socket.c  |   83 +++++++++++++++++++++-----------------------
+ 3 files changed, 48 insertions(+), 45 deletions(-)
+
+diff --git a/support/include/rpcmisc.h b/support/include/rpcmisc.h
+index 0b06457..b806227 100644
+--- a/support/include/rpcmisc.h
++++ b/support/include/rpcmisc.h
+@@ -53,6 +53,7 @@ void		rpc_init(char *name, int prog, int vers,
+ void		rpc_dispatch(struct svc_req *rq, SVCXPRT *xprt,
+ 				struct rpc_dtable *dtable, int nvers,
+ 				void *argp, void *resp);
++int		getservport(u_long number, const char *proto);
+ 
+ extern int	_rpcpmstart;
+ extern int	_rpcfdtype;
+diff --git a/support/nfs/svc_create.c b/support/nfs/svc_create.c
+index b3f75ed..fd09902 100644
+--- a/support/nfs/svc_create.c
++++ b/support/nfs/svc_create.c
+@@ -393,7 +393,7 @@ nfs_svc_create(char *name, const rpcprog_t program, const rpcvers_t version,
+ 	const struct sigaction create_sigaction = {
+ 		.sa_handler	= SIG_IGN,
+ 	};
+-	unsigned int visible, up;
++	unsigned int visible, up, servport;
+ 	struct netconfig *nconf;
+ 	void *handlep;
+ 
+@@ -417,8 +417,13 @@ nfs_svc_create(char *name, const rpcprog_t program, const rpcvers_t version,
+ 		if (!(nconf->nc_flag & NC_VISIBLE))
+ 			continue;
+ 		visible++;
++		if (port == 0)
++			servport = getservport(program, nconf->nc_proto);
++		else
++			servport = port;
++		
+ 		up += svc_create_nconf(name, program, version, dispatch,
+-						port, nconf);
++						servport, nconf);
+ 	}
+ 
+ 	if (visible == 0)
+diff --git a/support/nfs/svc_socket.c b/support/nfs/svc_socket.c
+index 03a5325..ec406a9 100644
+--- a/support/nfs/svc_socket.c
++++ b/support/nfs/svc_socket.c
+@@ -35,14 +35,46 @@
+ # define __close(f)		close ((f))
+ #endif
+ 
++int getservport(u_long number, const char *proto)
++{
++	char rpcdata [1024], servdata [1024];
++	struct rpcent rpcbuf, *rpcp;
++	struct servent servbuf, *servp = NULL;
++	int ret;
++
++	ret = getrpcbynumber_r (number, &rpcbuf, rpcdata, sizeof rpcdata,
++				&rpcp);
++	if (ret == 0 && rpcp != NULL)
++	{
++		/* First try name.  */
++		ret = getservbyname_r (rpcp->r_name, proto, &servbuf, servdata,
++					sizeof servdata, &servp);
++		if ((ret != 0 || servp == NULL) && rpcp->r_aliases)
++		{
++			const char **a;
++
++			/* Then we try aliases.  */
++			for (a = (const char **) rpcp->r_aliases; *a != NULL; a++) 
++			{
++				ret = getservbyname_r (*a, proto, &servbuf, servdata,
++							sizeof servdata, &servp);
++				if (ret == 0 && servp != NULL)
++					break;
++			}
++		}
++	}
++
++	if (ret == 0 && servp != NULL)
++		return  ntohs(servp->s_port);
++
++	return 0;
++}
++
+ static int
+ svc_socket (u_long number, int type, int protocol, int reuse)
+ {
+   struct sockaddr_in addr;
+   socklen_t len = sizeof (struct sockaddr_in);
+-  char rpcdata [1024], servdata [1024];
+-  struct rpcent rpcbuf, *rpcp;
+-  struct servent servbuf, *servp = NULL;
+   int sock, ret;
+   const char *proto = protocol == IPPROTO_TCP ? "tcp" : "udp";
+ 
+@@ -66,48 +98,13 @@ svc_socket (u_long number, int type, int protocol, int reuse)
+ 
+   memset (&addr, 0, sizeof (addr));
+   addr.sin_family = AF_INET;
++  addr.sin_port = htons(getservport(number, proto));
+ 
+-  ret = getrpcbynumber_r (number, &rpcbuf, rpcdata, sizeof rpcdata,
+-			  &rpcp);
+-  if (ret == 0 && rpcp != NULL)
++  if (bind (sock, (struct sockaddr *) &addr, len) < 0)
+     {
+-      /* First try name.  */
+-      ret = getservbyname_r (rpcp->r_name, proto, &servbuf, servdata,
+-			     sizeof servdata, &servp);
+-      if ((ret != 0 || servp == NULL) && rpcp->r_aliases)
+-	{
+-	  const char **a;
+-
+-	  /* Then we try aliases.  */
+-	  for (a = (const char **) rpcp->r_aliases; *a != NULL; a++) 
+-	    {
+-	      ret = getservbyname_r (*a, proto, &servbuf, servdata,
+-				     sizeof servdata, &servp);
+-	      if (ret == 0 && servp != NULL)
+-		break;
+-	    }
+-	}
+-    }
+-
+-  if (ret == 0 && servp != NULL)
+-    {
+-      addr.sin_port = servp->s_port;
+-      if (bind (sock, (struct sockaddr *) &addr, len) < 0)
+-	{
+-	  perror (_("svc_socket: bind problem"));
+-	  (void) __close (sock);
+-	  sock = -1;
+-	}
+-    }
+-  else
+-    {
+-	  addr.sin_port = 0;
+-	  if (bind (sock, (struct sockaddr *) &addr, len) < 0)
+-	    {
+-	      perror (_("svc_socket: bind problem"));
+-	      (void) __close (sock);
+-	      sock = -1;
+-	    }
++      perror (_("svc_socket: bind problem"));
++      (void) __close (sock);
++      sock = -1;
+     }
+ 
+   if (sock >= 0)
+-- 
+1.7.4.1
+
+
+
