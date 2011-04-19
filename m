@@ -1,44 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:17339 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:52402 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932096Ab1D0OQs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Apr 2011 10:16:48 -0400
-Subject: Re: [PATCH] nfsstat: reorder nfs4 stats for 2.6.38 and up
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, steved@redhat.com,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <4DB7A084.2060009@panasas.com>
-References: <1303461980-6731-1-git-send-email-bhalevy@panasas.com>
-	 <23EF6F61-46F2-431B-8A44-A3E941688D65@oracle.com>
-	 <4DB7A084.2060009@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 27 Apr 2011 10:16:46 -0400
-Message-ID: <1303913806.13195.3.camel@lade.trondhjem.org>
+	id S1754996Ab1DSUoH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Apr 2011 16:44:07 -0400
+Date: Tue, 19 Apr 2011 16:43:49 -0400
+To: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Greg KH <gregkh@suse.de>, linux-kernel@vger.kernel.org,
+        stable@kernel.org, akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
+        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: [105/105] nfsd4: fix oops on lock failure
+Message-ID: <20110419204349.GB8228@fieldses.org>
+References: <20110412143559.186613198@clark.kroah.org>
+ <87pqokx6lr.fsf@devron.myhome.or.jp>
+ <BANLkTimN6L80e_oiJ_uqbLde2Cdnw5p45Q@mail.gmail.com>
+ <20110418153236.GC20935@pad.home.fieldses.org>
+ <87ipubwnj3.fsf@devron.myhome.or.jp>
+ <8762qbwnf1.fsf@devron.myhome.or.jp>
+ <87zknnv7id.fsf@devron.myhome.or.jp>
+ <87vcybgt6u.fsf@devron.myhome.or.jp>
+ <87hb9uhcre.fsf@devron.myhome.or.jp>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87hb9uhcre.fsf@devron.myhome.or.jp>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-04-27 at 07:50 +0300, Benny Halevy wrote:
-> On 2011-04-25 17:11, Chuck Lever wrote:
-> > Hey all-
-> > 
-> > So what are we going to do when adding NFSv4.2 to this mix?  Will we
-> > then have to freeze both the NFSv4.1 and NFSv4.0 procedure API in the
-> > kernel?  Seems painful.
+On Tue, Apr 19, 2011 at 05:21:57PM +0900, OGAWA Hirofumi wrote:
+> OGAWA Hirofumi <hirofumi@mail.parknet.co.jp> writes:
 > 
-> Good question.
-> How about changing the stat pseudo-file format to include an op
-> identifier along with its respective counter, printing a line per op?
+> >> I'll start test of this patch, and see what happens.
+> >
+> > OK. Although filp slabs are still slightly increasing (I'm not sure yet
+> > whether this is leak of filp on system). But watching before/after
+> > patch, the graph of filp slabs is clearly different.
+> >
+> > As far as I can say patches are fine.
+> 
+> slightly increasing was stopped at 2200-2300. filp leak seems to be fixed.
 
-We already have that in /proc/self/mountstats
+Another thing to check is whether you can always unmount the exported
+filesystem on the server after running your test.  So something like:
 
+	service nfs stop
+	unmount /exports/fs
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+should always succeed; if you get an inexplicable EBUSY on the final
+unmount then we likely still have a leak someplace.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+--b.
