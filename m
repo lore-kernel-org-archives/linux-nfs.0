@@ -1,53 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from eastrmfepo202.cox.net ([68.230.241.217]:39995 "EHLO
-	eastrmfepo202.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756538Ab1DFTHS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Apr 2011 15:07:18 -0400
-Message-ID: <4D9CB9E4.1090902@excfb.com>
-Date: Wed, 06 Apr 2011 14:07:16 -0500
-From: Tom Haynes <tdh@excfb.com>
-To: Jim Rees <rees@umich.edu>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Olga Kornievskaia <aglo@citi.umich.edu>, Joe Perches <joe@perches.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: rc4-hmac-md5 mount failure
-References: <AANLkTikRJad_vR1qxL1Wr4AO0OfP32oCYj4X0cTnVwv+@mail.gmail.com> <1302110267.7020.8.camel@lade.trondhjem.org> <20110406173631.GA8741@merit.edu>
-In-Reply-To: <20110406173631.GA8741@merit.edu>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail.parknet.co.jp ([210.171.160.6]:40241 "EHLO
+	mail.parknet.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754278Ab1DSVRL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Apr 2011 17:17:11 -0400
+From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Greg KH <gregkh@suse.de>, linux-kernel@vger.kernel.org,
+        stable@kernel.org, akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
+        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: [105/105] nfsd4: fix oops on lock failure
+References: <20110412143559.186613198@clark.kroah.org>
+	<87pqokx6lr.fsf@devron.myhome.or.jp>
+	<BANLkTimN6L80e_oiJ_uqbLde2Cdnw5p45Q@mail.gmail.com>
+	<20110418153236.GC20935@pad.home.fieldses.org>
+	<87ipubwnj3.fsf@devron.myhome.or.jp>
+	<8762qbwnf1.fsf@devron.myhome.or.jp>
+	<87zknnv7id.fsf@devron.myhome.or.jp>
+	<87vcybgt6u.fsf@devron.myhome.or.jp>
+	<87hb9uhcre.fsf@devron.myhome.or.jp>
+	<20110419204349.GB8228@fieldses.org>
+Date: Wed, 20 Apr 2011 06:17:03 +0900
+In-Reply-To: <20110419204349.GB8228@fieldses.org> (J. Bruce Fields's message
+	of "Tue, 19 Apr 2011 16:43:49 -0400")
+Message-ID: <87aafmgcvk.fsf@devron.myhome.or.jp>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 4/6/11 12:36 PM, Jim Rees wrote:
-> Trond Myklebust wrote:
->
->    >  diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_
->    >  index 0326446..8a4d083c 100644
->    >  --- a/net/sunrpc/auth_gss/gss_krb5_mech.c
->    >  +++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
->    >  @@ -422,7 +422,7 @@ static int
->    >   context_derive_keys_rc4(struct krb5_ctx *ctx)
->    >   {
->    >         struct crypto_hash *hmac;
->    >  -       char sigkeyconstant[] = "signaturekey";
->    >  +       static const char sigkeyconstant[] = "signaturekey";
->    >         int slen = strlen(sigkeyconstant) + 1;  /* include null terminator */
->    >         struct hash_desc desc;
->    >         struct scatterlist sg[1];
->    >
->    >  Solution: if this commit is undone, rc4-based mount works without
->    >  issues. verified with linux and windows clients.
->
->    Hi Olga,
->
->    Thanks for the report! I'll revert this commit in upstream and the
->    stable kernels.
->
-> But why does this fix it?
-> --
+"J. Bruce Fields" <bfields@fieldses.org> writes:
 
-Because it is no longer on the stack?
+> On Tue, Apr 19, 2011 at 05:21:57PM +0900, OGAWA Hirofumi wrote:
+>> OGAWA Hirofumi <hirofumi@mail.parknet.co.jp> writes:
+>> 
+>> >> I'll start test of this patch, and see what happens.
+>> >
+>> > OK. Although filp slabs are still slightly increasing (I'm not sure yet
+>> > whether this is leak of filp on system). But watching before/after
+>> > patch, the graph of filp slabs is clearly different.
+>> >
+>> > As far as I can say patches are fine.
+>> 
+>> slightly increasing was stopped at 2200-2300. filp leak seems to be fixed.
+>
+> Another thing to check is whether you can always unmount the exported
+> filesystem on the server after running your test.  So something like:
+>
+> 	service nfs stop
+> 	unmount /exports/fs
+>
+> should always succeed; if you get an inexplicable EBUSY on the final
+> unmount then we likely still have a leak someplace.
 
-If whatever referenced it lived longer than the call to 
-context_derive_keys_rc4(),
-then it would be referencing garbage.
+It succeeded.
+-- 
+OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
