@@ -1,92 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:7987 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752005Ab1DMRgA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Apr 2011 13:36:00 -0400
-Subject: Re: [RFC][PATCH] Vector read/write support for NFS (DIO) client
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Badari Pulavarty <pbadari@us.ibm.com>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        khoa@us.ibm.com
-In-Reply-To: <20110413132034.459c68bb@corrin.poochiereds.net>
-References: <1302622335.3877.62.camel@badari-desktop>
-	 <0DC51758-AE6C-4DD2-A959-8C8E701FEA4E@oracle.com>
-	 <1302624935.3877.66.camel@badari-desktop>
-	 <FF1EE11E-62EB-42B9-A4C9-7A2FE4C60D2F@oracle.com>
-	 <1302630360.3877.72.camel@badari-desktop>
-	 <20110413083656.12e54a91@tlielax.poochiereds.net>
-	 <4DA5A899.3040202@us.ibm.com>
-	 <20110413100228.680ace66@tlielax.poochiereds.net>
-	 <1302704533.8571.12.camel@lade.trondhjem.org>
-	 <20110413132034.459c68bb@corrin.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 13 Apr 2011 13:35:57 -0400
-Message-ID: <1302716157.8571.35.camel@lade.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:57120 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754093Ab1DTR1E (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 13:27:04 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [RFC 06/27] pnfs: encode_layoutreturn
+Date: Wed, 20 Apr 2011 20:26:58 +0300
+Message-Id: <1303320418-21181-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DAF0DE1.6020609@panasas.com>
+References: <4DAF0DE1.6020609@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 2011-04-13 at 13:20 -0400, Jeff Layton wrote:
-> On Wed, 13 Apr 2011 10:22:13 -0400
-> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> 
-> > On Wed, 2011-04-13 at 10:02 -0400, Jeff Layton wrote:
-> > > We could put the rpc_rqst's into a slabcache, and give each rpc_xprt a
-> > > mempool with a minimum number of slots. Have them all be allocated with
-> > > GFP_NOWAIT. If it gets a NULL pointer back, then the task can sleep on
-> > > the waitqueue like it does today. Then, the clients can allocate
-> > > rpc_rqst's as they need as long as memory holds out for it.
-> > > 
-> > > We have the reserve_xprt stuff to handle congestion control anyway so I
-> > > don't really see the value in the artificial limits that the slot table
-> > > provides.
-> > > 
-> > > Maybe I should hack up a patchset for this...
-> > 
-> > This issue has come up several times recently. My preference would be to
-> > tie the availability of slots to the TCP window size, and basically say
-> > that if the SOCK_ASYNC_NOSPACE flag is set on the socket, then we hold
-> > off allocating more slots until we get a ->write_space() callback which
-> > clears that flag.
-> > 
-> > For the RDMA case, we can continue to use the current system of a fixed
-> > number of preallocated slots.
-> > 
-> 
-> I take it then that we'd want a similar scheme for UDP as well? I guess
-> I'm just not sure what the slot table is supposed to be for.
+From: Andy Adamson <andros@netapp.com>
 
-No. I don't see UDP as having much of a future in 10GigE and other high
-bandwidth environments (or even in 1GigE setups). Let's just leave it as
-it is...
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[fixup layout header pointer for encode_layoutreturn]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/nfs4xdr.c |    9 +++++++--
+ fs/nfs/pnfs.h    |    4 ++++
+ 2 files changed, 11 insertions(+), 2 deletions(-)
 
-> Possibly naive question, and maybe you or Andy have scoped this out
-> already...
-> 
-> Wouldn't it make more sense to allow the code to allocate rpc_rqst's as
-> needed, and manage congestion control in reserve_xprt ? It appears that
-> that at least is what xprt_reserve_xprt_cong is supposed to do. The TCP
-> variant (xprt_reserve_xprt) doesn't do that currently, but we could do
-> it there and that would seem to make for more parity between the TCP
-> and UDP in this sense.
-> 
-> We could do that similarly for RDMA too. Simply keep track of how many
-> RPCs are in flight and only allow reserving the xprt when that number
-> hasn't crossed the max number of slots...
-
-What is the point of allocating a lot of resources when you lack the
-bandwidth to do anything with them?
-
-The reason for tying this to the TCP window size is to try to queue up
-as much data as we can possibly transmit, without eating too much out of
-the same GFP_ATOMIC pool of memory that the networking layer also uses.
-
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 53ea3e5..6b64dd8 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1927,8 +1927,13 @@ encode_layoutreturn(struct xdr_stream *xdr,
+ 		spin_unlock(&args->inode->i_lock);
+ 		p = xdr_encode_opaque_fixed(p, &stateid.data,
+ 					    NFS4_STATEID_SIZE);
+-		p = reserve_space(xdr, 4);
+-		*p = cpu_to_be32(0);
++		if (NFS_SERVER(args->inode)->pnfs_curr_ld->encode_layoutreturn) {
++			NFS_SERVER(args->inode)->pnfs_curr_ld->encode_layoutreturn(
++				NFS_I(args->inode)->layout, xdr, args);
++		} else {
++			p = reserve_space(xdr, 4);
++			*p = cpu_to_be32(0);
++		}
+ 	}
+ 	hdr->nops++;
+ 	hdr->replen += decode_layoutreturn_maxsz;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index c315109..51dcbc1 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -98,6 +98,10 @@ struct pnfs_layoutdriver_type {
+ 
+ 	/* device notification methods */
+ 	void (*delete_deviceid)(struct nfs4_deviceid *);
++
++	void (*encode_layoutreturn) (struct pnfs_layout_hdr *layoutid,
++				     struct xdr_stream *xdr,
++				     const struct nfs4_layoutreturn_args *args);
+ };
+ 
+ struct pnfs_layout_hdr {
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.3.4
 
