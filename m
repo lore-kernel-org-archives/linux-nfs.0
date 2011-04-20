@@ -1,63 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from swampdragon.chaosbits.net ([90.184.90.115]:10040 "EHLO
-	swampdragon.chaosbits.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754138Ab1DJP4q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Apr 2011 11:56:46 -0400
-Date: Sun, 10 Apr 2011 17:57:07 +0200 (CEST)
-From: Jesper Juhl <jj@chaosbits.net>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] NFS: Remove dead code from nfs_fs_mount()
-Message-ID: <alpine.LNX.2.00.1104101750220.17454@swampdragon.chaosbits.net>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from mx2.netapp.com ([216.240.18.37]:24622 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755630Ab1DTTXN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 15:23:13 -0400
+Subject: RE: [pnfs] pnfs read layoutget
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "Halevy, Benny" <bhalevy@panasas.com>
+Cc: quanli gui <gqlxj1987@gmail.com>, linux-nfs <linux-nfs@vger.kernel.org>
+In-Reply-To: <7225594ED4A1304C9E43D030A886D221F4CAC6@daytona.int.panasas.com>
+References: <BANLkTi=tOYjnmfsRw+5HXShR4EGd5wsKFw@mail.gmail.com>
+	 <7225594ED4A1304C9E43D030A886D221F4CAC6@daytona.int.panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 20 Apr 2011 15:23:11 -0400
+Message-ID: <1303327391.23206.4.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-In fs/nfs/super.c::nfs_fs_mount() we test for a NULL 'data':
+On Wed, 2011-04-20 at 11:05 -0400, Halevy, Benny wrote:
+> This seems like a bug.
 
-...
- 		if (data == NULL || mntfh == NULL)
- 			goto out_free_fh;
-...
+In 2.6.36?
 
-and then further down in the function we test 'data' again:
+> If I remember correctly, you are testing the files layout, right?
+> Does this also happen with the latest kernel v2.6.39-rc3
+> and / or pnfs-all-2.6.38?
 
-...
- 			nfs_fscache_get_super_cookie(
- 				s, data ? data->fscache_uniq : NULL, NULL);
-...
+We should definitely be calling layoutget from the 2.6.39-rc3 read code
+assuming that the files layout module is being correctly loaded and that
+the server is correctly advertising pNFS capabilities.
 
-this second check is just dead code since there is no way 'data' could 
-possibly be NULL here.
-We also rely on a non-NULL 'data' in more than one location between these 
-two tests, further proving the point that the second test is bogus.
-
-This patch removes the dead code.
-
-Signed-off-by: Jesper Juhl <jj@chaosbits.net>
----
- super.c |    3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 2b8e9a5..685a8a7 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2235,8 +2235,7 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 	if (!s->s_root) {
- 		/* initial superblock/root creation */
- 		nfs_fill_super(s, data);
--		nfs_fscache_get_super_cookie(
--			s, data ? data->fscache_uniq : NULL, NULL);
-+		nfs_fscache_get_super_cookie(s, data->fscache_uniq, NULL);
- 	}
- 
- 	mntroot = nfs_get_root(s, mntfh, dev_name);
-
-
+Cheers
+  Trond
 -- 
-Jesper Juhl <jj@chaosbits.net>       http://www.chaosbits.net/
-Don't top-post http://www.catb.org/jargon/html/T/top-post.html
-Plain text mails only, please.
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
