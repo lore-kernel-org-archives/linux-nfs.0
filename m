@@ -1,86 +1,495 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:57766 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755392Ab1DGQhj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2011 12:37:39 -0400
-Received: by mail-iw0-f174.google.com with SMTP id 34so2629173iwn.19
-        for <linux-nfs@vger.kernel.org>; Thu, 07 Apr 2011 09:37:39 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/2] NFS: Revert NFSROOT default mount options
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 07 Apr 2011 12:37:37 -0400
-Message-ID: <20110407163736.8531.98316.stgit@matisse.1015granger.net>
-In-Reply-To: <20110407163304.8531.18745.stgit@matisse.1015granger.net>
-References: <20110407163304.8531.18745.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from daytona.panasas.com ([67.152.220.89]:57167 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752671Ab1DTR2N (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 13:28:13 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [RFC 15/27] pnfs-obj: pnfs_osd XDR definitions
+Date: Wed, 20 Apr 2011 20:28:10 +0300
+Message-Id: <1303320490-21526-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DAF0DE1.6020609@panasas.com>
+References: <4DAF0DE1.6020609@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Marek Belisko <marek.belisko@gmail.com> reports that recent attempts
-to fix regressions in NFSROOT have broken his configuration:
+* Add the pnfs_osd_xdr.h header
 
-> After update from 2.6.38-rc8 to 2.6.38 is mounting rootfs over nfs not possible.
-> Log:
-> VFS: Mounted root (nfs filesystem) on device 0:14.
-> Freeing init memory: 132K
-> nfs: server 10.146.1.21 not responding, still trying
-> nfs: server 10.146.1.21 not responding, still trying
->
-> This is never ending. I make short bisect (not too much commits
-> between versions)
-> and bad commit was reported: 53d4737580535e073963b91ce87d4216e434fab5
->
-> NFS: NFSROOT should default to "proto=udp"
->
-> I've tested on mini2440 board (DM9000, static IP).
-> Is there some missing option or something else to be checked?
+* defintions the pnfs_osd_layout structure including all it's
+  sub-types and constants.
+* Declare the pnfs_osd_xdr_encode/decode_layout API + all needed
+  inline helpers.
 
-An examination of a network trace captured during the failure shows
-that the mount is actually succeeding, but that the client is not
-seeing READ replies larger than 16KB.  This could be a local packet
-filtering issue on the client, but we didn't troubleshoot this
-further because of the reported "git bisect" result.
+* Define the pnfs_osd_deviceaddr structure and all its subtypes and
+  constants.
+* Declare API for encoding/decoding of a pnfs_osd_deviceaddr to/from
+  XDR stream.
 
-Last fall we removed the ad hoc mount option parser in
-fs/nfs/nfsroot.c in favor of using the main parser in fs/nfs/super.c
-(see commit 56463e50 "NFS: Use super.c for NFSROOT mount option
-parsing").  That commit changed the default NFSROOT mount options to
-be the same as those employed by user space mounts.
+* Define the pnfs_osd_ioerr structure, its substructures and constants.
+* Declare API for encoding/decoding of a pnfs_osd_ioerr to/from
+  XDR stream.
 
-As it turns out, these new default mount options are not tolerated by
-many embedded systems.  So far these problems have been due to
-specific behavior of certain embedded NICs.  The NFS community does
-not have such hardware on hand for running tests.
+* Define the pnfs_osd_layoutupdate structure and its substructures.
+* Declare API for encoding/decoding of a pnfs_osd_layoutupdate to/from
+  XDR stream.
 
-Commit 53d47375 recently introduced a clean way to specify default
-mount options for NFSROOT, so we can now easily restore the
-traditional defaults for NFSROOT:
-
-   vers=2,udp,rsize=4096,wsize=4096
-
-This should revert the new default NFSROOT mount options introduced
-with commit 56463e50.
-
-Tested-by: Marek Belisto <marek.belisto@open-nandra.com>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+[Some extra debug-prints]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+[objlayout driver skeleton]
+[use __be32]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
+ include/linux/pnfs_osd_xdr.h |  439 ++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 439 insertions(+), 0 deletions(-)
+ create mode 100644 include/linux/pnfs_osd_xdr.h
 
- fs/nfs/nfsroot.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
-index c541093..c4744e1 100644
---- a/fs/nfs/nfsroot.c
-+++ b/fs/nfs/nfsroot.c
-@@ -87,7 +87,7 @@
- #define NFS_ROOT		"/tftpboot/%s"
- 
- /* Default NFSROOT mount options. */
--#define NFS_DEF_OPTIONS		"udp"
-+#define NFS_DEF_OPTIONS		"vers=2,udp,rsize=4096,wsize=4096"
- 
- /* Parameters passed from the kernel command line */
- static char nfs_root_parms[256] __initdata = "";
+diff --git a/include/linux/pnfs_osd_xdr.h b/include/linux/pnfs_osd_xdr.h
+new file mode 100644
+index 0000000..6f2cedf
+--- /dev/null
++++ b/include/linux/pnfs_osd_xdr.h
+@@ -0,0 +1,439 @@
++/*
++ *  pnfs_osd_xdr.h
++ *
++ *  pNFS-osd on-the-wire data structures
++ *
++ *  Copyright (C) 2007-2009 Panasas Inc.
++ *  All rights reserved.
++ *
++ *  Benny Halevy <bhalevy@panasas.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License version 2
++ *  See the file COPYING included with this distribution for more details.
++ *
++ *  Redistribution and use in source and binary forms, with or without
++ *  modification, are permitted provided that the following conditions
++ *  are met:
++ *
++ *  1. Redistributions of source code must retain the above copyright
++ *     notice, this list of conditions and the following disclaimer.
++ *  2. Redistributions in binary form must reproduce the above copyright
++ *     notice, this list of conditions and the following disclaimer in the
++ *     documentation and/or other materials provided with the distribution.
++ *  3. Neither the name of the Panasas company nor the names of its
++ *     contributors may be used to endorse or promote products derived
++ *     from this software without specific prior written permission.
++ *
++ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
++ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
++ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
++ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
++ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++#ifndef __PNFS_OSD_XDR_H__
++#define __PNFS_OSD_XDR_H__
++
++#include <linux/nfs_fs.h>
++#include <linux/nfs_page.h>
++#include <linux/exp_xdr.h>
++#include <scsi/osd_protocol.h>
++
++#define PNFS_OSD_OSDNAME_MAXSIZE 256
++
++/*
++ * START OF "GENERIC" DECODE ROUTINES.
++ *   These may look a little ugly since they are imported from a "generic"
++ * set of XDR encode/decode routines which are intended to be shared by
++ * all of our NFSv4 implementations (OpenBSD, MacOS X...).
++ *
++ * If the pain of reading these is too great, it should be a straightforward
++ * task to translate them into Linux-specific versions which are more
++ * consistent with the style used in NFSv2/v3...
++ */
++#define READ32(x)         (x) = ntohl(*p++)
++#define READ64(x)         do {			\
++	(x) = (u64)ntohl(*p++) << 32;		\
++	(x) |= ntohl(*p++);			\
++} while (0)
++#define COPYMEM(x, nbytes) do {			\
++	memcpy((x), p, nbytes);			\
++	p += XDR_QUADLEN(nbytes);		\
++} while (0)
++
++/*
++ * draft-ietf-nfsv4-minorversion-22
++ * draft-ietf-nfsv4-pnfs-obj-12
++ */
++
++/* Layout Structure */
++
++enum pnfs_osd_raid_algorithm4 {
++	PNFS_OSD_RAID_0		= 1,
++	PNFS_OSD_RAID_4		= 2,
++	PNFS_OSD_RAID_5		= 3,
++	PNFS_OSD_RAID_PQ	= 4     /* Reed-Solomon P+Q */
++};
++
++/*   struct pnfs_osd_data_map4 {
++ *       uint32_t                    odm_num_comps;
++ *       length4                     odm_stripe_unit;
++ *       uint32_t                    odm_group_width;
++ *       uint32_t                    odm_group_depth;
++ *       uint32_t                    odm_mirror_cnt;
++ *       pnfs_osd_raid_algorithm4    odm_raid_algorithm;
++ *   };
++ */
++struct pnfs_osd_data_map {
++	u32	odm_num_comps;
++	u64	odm_stripe_unit;
++	u32	odm_group_width;
++	u32	odm_group_depth;
++	u32	odm_mirror_cnt;
++	u32	odm_raid_algorithm;
++};
++
++static inline int
++pnfs_osd_data_map_xdr_sz(void)
++{
++	return 1 + 2 + 1 + 1 + 1 + 1;
++}
++
++static inline size_t
++pnfs_osd_data_map_incore_sz(void)
++{
++	return sizeof(struct pnfs_osd_data_map);
++}
++
++/*   struct pnfs_osd_objid4 {
++ *       deviceid4       oid_device_id;
++ *       uint64_t        oid_partition_id;
++ *       uint64_t        oid_object_id;
++ *   };
++ */
++struct pnfs_osd_objid {
++	struct nfs4_deviceid	oid_device_id;
++	u64			oid_partition_id;
++	u64			oid_object_id;
++};
++
++/* For printout. I use "dev(%llx:%llx)", _DEVID_LO(), _DEVID_HI BE style */
++#define _DEVID_LO(oid_device_id) \
++	(unsigned long long)be64_to_cpup((__be64 *)oid_device_id.data)
++
++#define _DEVID_HI(oid_device_id) \
++	(unsigned long long)be64_to_cpup(((__be64 *)oid_device_id.data) + 1)
++
++static inline int
++pnfs_osd_objid_xdr_sz(void)
++{
++	return (NFS4_DEVICEID4_SIZE / 4) + 2 + 2;
++}
++
++static inline size_t
++pnfs_osd_objid_incore_sz(void)
++{
++	return sizeof(struct pnfs_osd_objid);
++}
++
++enum pnfs_osd_version {
++	PNFS_OSD_MISSING              = 0,
++	PNFS_OSD_VERSION_1            = 1,
++	PNFS_OSD_VERSION_2            = 2
++};
++
++struct pnfs_osd_opaque_cred {
++	u32 cred_len;
++	u8 *cred;
++};
++
++static inline int
++pnfs_osd_opaque_cred_xdr_sz(__be32 *p)
++{
++	u32 *start = p;
++	u32 n;
++
++	READ32(n);
++	p += XDR_QUADLEN(n);
++	return p - start;
++}
++
++static inline size_t
++pnfs_osd_opaque_cred_incore_sz(__be32 *p)
++{
++	u32 n;
++
++	READ32(n);
++	return XDR_QUADLEN(n) * 4;
++}
++
++enum pnfs_osd_cap_key_sec {
++	PNFS_OSD_CAP_KEY_SEC_NONE     = 0,
++	PNFS_OSD_CAP_KEY_SEC_SSV      = 1,
++};
++
++/*   struct pnfs_osd_object_cred4 {
++ *       pnfs_osd_objid4         oc_object_id;
++ *       pnfs_osd_version4       oc_osd_version;
++ *       pnfs_osd_cap_key_sec4   oc_cap_key_sec;
++ *       opaque                  oc_capability_key<>;
++ *       opaque                  oc_capability<>;
++ *   };
++ */
++struct pnfs_osd_object_cred {
++	struct pnfs_osd_objid		oc_object_id;
++	u32				oc_osd_version;
++	u32				oc_cap_key_sec;
++	struct pnfs_osd_opaque_cred	oc_cap_key;
++	struct pnfs_osd_opaque_cred	oc_cap;
++};
++
++static inline int
++pnfs_osd_object_cred_xdr_sz(__be32 *p)
++{
++	__be32 *start = p;
++
++	p += pnfs_osd_objid_xdr_sz() + 2;
++	p += pnfs_osd_opaque_cred_xdr_sz(p);
++	p += pnfs_osd_opaque_cred_xdr_sz(p);
++	return p - start;
++}
++
++static inline size_t
++pnfs_osd_object_cred_incore_sz(__be32 *p)
++{
++	size_t sz = sizeof(struct pnfs_osd_object_cred);
++
++	p += pnfs_osd_objid_xdr_sz() + 2;
++	sz += pnfs_osd_opaque_cred_incore_sz(p);
++	p += pnfs_osd_opaque_cred_xdr_sz(p);
++	sz += pnfs_osd_opaque_cred_incore_sz(p);
++	return sz;
++}
++
++/*   struct pnfs_osd_layout4 {
++ *       pnfs_osd_data_map4      olo_map;
++ *       uint32_t                olo_comps_index;
++ *       pnfs_osd_object_cred4   olo_components<>;
++ *   };
++ */
++struct pnfs_osd_layout {
++	struct pnfs_osd_data_map	olo_map;
++	u32				olo_comps_index;
++	u32				olo_num_comps;
++	struct pnfs_osd_object_cred	*olo_comps;
++};
++
++static inline int
++pnfs_osd_layout_xdr_sz(__be32 *p)
++{
++	__be32 *start = p;
++	u32 n;
++
++	p += pnfs_osd_data_map_xdr_sz() + 1;
++	READ32(n);
++	while ((int)(n--) > 0)
++		p += pnfs_osd_object_cred_xdr_sz(p);
++	return p - start;
++}
++
++static inline size_t
++pnfs_osd_layout_incore_sz(__be32 *p)
++{
++	u32 n;
++	size_t sz;
++
++	p += pnfs_osd_data_map_xdr_sz() + 1;
++	READ32(n);
++	sz = sizeof(struct pnfs_osd_layout);
++	while ((int)(n--) > 0) {
++		sz += pnfs_osd_object_cred_incore_sz(p);
++		p += pnfs_osd_object_cred_xdr_sz(p);
++	}
++	return sz;
++}
++
++/* Device Address */
++
++enum pnfs_osd_targetid_type {
++	OBJ_TARGET_ANON = 1,
++	OBJ_TARGET_SCSI_NAME = 2,
++	OBJ_TARGET_SCSI_DEVICE_ID = 3,
++};
++
++/*   union pnfs_osd_targetid4 switch (pnfs_osd_targetid_type4 oti_type) {
++ *       case OBJ_TARGET_SCSI_NAME:
++ *           string              oti_scsi_name<>;
++ *
++ *       case OBJ_TARGET_SCSI_DEVICE_ID:
++ *           opaque              oti_scsi_device_id<>;
++ *
++ *       default:
++ *           void;
++ *   };
++ *
++ *   union pnfs_osd_targetaddr4 switch (bool ota_available) {
++ *       case TRUE:
++ *           netaddr4            ota_netaddr;
++ *       case FALSE:
++ *           void;
++ *   };
++ *
++ *   struct pnfs_osd_deviceaddr4 {
++ *       pnfs_osd_targetid4      oda_targetid;
++ *       pnfs_osd_targetaddr4    oda_targetaddr;
++ *       uint64_t                oda_lun;
++ *       opaque                  oda_systemid<>;
++ *       pnfs_osd_object_cred4   oda_root_obj_cred;
++ *       opaque                  oda_osdname<>;
++ *   };
++ */
++struct pnfs_osd_targetid {
++	u32				oti_type;
++	struct nfs4_string		oti_scsi_device_id;
++};
++
++enum { PNFS_OSD_TARGETID_MAX = 1 + PNFS_OSD_OSDNAME_MAXSIZE / 4 };
++
++/*   struct netaddr4 {
++ *       // see struct rpcb in RFC1833
++ *       string r_netid<>;    // network id
++ *       string r_addr<>;     // universal address
++ *   };
++ */
++struct pnfs_osd_net_addr {
++	struct nfs4_string	r_netid;
++	struct nfs4_string	r_addr;
++};
++
++struct pnfs_osd_targetaddr {
++	u32				ota_available;
++	struct pnfs_osd_net_addr	ota_netaddr;
++};
++
++enum {
++	NETWORK_ID_MAX = 16 / 4,
++	UNIVERSAL_ADDRESS_MAX = 64 / 4,
++	PNFS_OSD_TARGETADDR_MAX = 3 +  NETWORK_ID_MAX + UNIVERSAL_ADDRESS_MAX,
++};
++
++struct pnfs_osd_deviceaddr {
++	struct pnfs_osd_targetid	oda_targetid;
++	struct pnfs_osd_targetaddr	oda_targetaddr;
++	u8				oda_lun[8];
++	struct nfs4_string		oda_systemid;
++	struct pnfs_osd_object_cred	oda_root_obj_cred;
++	struct nfs4_string		oda_osdname;
++};
++
++enum {
++	ODA_OSDNAME_MAX = PNFS_OSD_OSDNAME_MAXSIZE / 4,
++	PNFS_OSD_DEVICEADDR_MAX =
++		PNFS_OSD_TARGETID_MAX + PNFS_OSD_TARGETADDR_MAX +
++		2 /*oda_lun*/ +
++		1 + OSD_SYSTEMID_LEN +
++		1 + ODA_OSDNAME_MAX,
++};
++
++/* LAYOUTCOMMIT: layoutupdate */
++
++/*   union pnfs_osd_deltaspaceused4 switch (bool dsu_valid) {
++ *       case TRUE:
++ *           int64_t     dsu_delta;
++ *       case FALSE:
++ *           void;
++ *   };
++ *
++ *   struct pnfs_osd_layoutupdate4 {
++ *       pnfs_osd_deltaspaceused4    olu_delta_space_used;
++ *       bool                        olu_ioerr_flag;
++ *   };
++ */
++struct pnfs_osd_layoutupdate {
++	u32	dsu_valid;
++	s64	dsu_delta;
++	u32	olu_ioerr_flag;
++};
++
++/* LAYOUTRETURN: I/O Rrror Report */
++
++enum pnfs_osd_errno {
++	PNFS_OSD_ERR_EIO		= 1,
++	PNFS_OSD_ERR_NOT_FOUND		= 2,
++	PNFS_OSD_ERR_NO_SPACE		= 3,
++	PNFS_OSD_ERR_BAD_CRED		= 4,
++	PNFS_OSD_ERR_NO_ACCESS		= 5,
++	PNFS_OSD_ERR_UNREACHABLE	= 6,
++	PNFS_OSD_ERR_RESOURCE		= 7
++};
++
++/*   struct pnfs_osd_ioerr4 {
++ *       pnfs_osd_objid4     oer_component;
++ *       length4             oer_comp_offset;
++ *       length4             oer_comp_length;
++ *       bool                oer_iswrite;
++ *       pnfs_osd_errno4     oer_errno;
++ *   };
++ */
++struct pnfs_osd_ioerr {
++	struct pnfs_osd_objid	oer_component;
++	u64			oer_comp_offset;
++	u64			oer_comp_length;
++	u32			oer_iswrite;
++	u32			oer_errno;
++};
++
++static inline unsigned
++pnfs_osd_ioerr_xdr_sz(void)
++{
++	return pnfs_osd_objid_xdr_sz() + 2 + 2 + 1 + 1;
++}
++
++/* OSD XDR API */
++
++/* Layout helpers */
++extern struct pnfs_osd_layout *pnfs_osd_xdr_decode_layout(
++	struct pnfs_osd_layout *layout, __be32 *p);
++
++extern int pnfs_osd_xdr_encode_layout(
++	struct exp_xdr_stream *xdr,
++	struct pnfs_osd_layout *layout);
++
++/* Device Info helpers */
++
++/* First pass calculate total size for space needed */
++extern size_t pnfs_osd_xdr_deviceaddr_incore_sz(__be32 *p);
++
++/* Note: some strings pointed to inside @deviceaddr might point
++ * to space inside @p. @p should stay valid while @deviceaddr
++ * is in use.
++ * It is assumed that @deviceaddr points to bigger memory of size
++ * calculated in first pass by pnfs_osd_xdr_deviceaddr_incore_sz()
++ */
++extern void pnfs_osd_xdr_decode_deviceaddr(
++	struct pnfs_osd_deviceaddr *deviceaddr, __be32 *p);
++
++/* For Servers */
++extern int pnfs_osd_xdr_encode_deviceaddr(
++	struct exp_xdr_stream *xdr, struct pnfs_osd_deviceaddr *devaddr);
++
++/* layoutupdate (layout_commit) xdr helpers */
++extern int
++pnfs_osd_xdr_encode_layoutupdate(struct xdr_stream *xdr,
++				 struct pnfs_osd_layoutupdate *lou);
++extern __be32 *
++pnfs_osd_xdr_decode_layoutupdate(struct pnfs_osd_layoutupdate *lou, __be32 *p);
++
++/* osd_ioerror encoding/decoding (layout_return) */
++extern int
++pnfs_osd_xdr_encode_ioerr(struct xdr_stream *xdr, struct pnfs_osd_ioerr *ioerr);
++extern __be32 *
++pnfs_osd_xdr_decode_ioerr(struct pnfs_osd_ioerr *ioerr, __be32 *p);
++
++#endif /* __PNFS_OSD_XDR_H__ */
+-- 
+1.7.3.4
 
