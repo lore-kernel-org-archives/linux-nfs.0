@@ -1,71 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lvps87-230-0-242.dedicated.hosteurope.de ([87.230.0.242]:47134
-	"EHLO lvps87-230-0-242.dedicated.hosteurope.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751248Ab1DUGYt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Apr 2011 02:24:49 -0400
-Date: Thu, 21 Apr 2011 08:24:39 +0200
-From: Michael Guntsche <mike@it-loops.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, kwc@umich.edu
-Subject: Re: [BUG] supported_krb5_enctypes not available if GSS support
- compiled as a module
-Message-ID: <20110421082106@it-loops.com>
-References: <20110420224241@it-loops.com>
- <20110420213906.GB24503@pad.home.fieldses.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:51126 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752503Ab1DTPJj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 11:09:39 -0400
+Subject: Re: [PATCH] svc: make sure mountd can get ports from /etc/services
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110420213906.GB24503@pad.home.fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4DAEA782.2090108@cn.fujitsu.com>
+Date: Wed, 20 Apr 2011 11:08:23 -0400
+Cc: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
+Message-Id: <AD03EC99-CB5C-41BA-AE0B-FEA7A8D48B6E@oracle.com>
+References: <4DAD48C7.9090808@cn.fujitsu.com> <94B98C85-8FAE-4B72-A782-F0B0DFD83674@oracle.com> <4DAEA782.2090108@cn.fujitsu.com>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 20 Apr 11 17:39, J. Bruce Fields wrote:
-> On Wed, Apr 20, 2011 at 10:49:51PM +0200, Michael Guntsche wrote:
-> > Hello Bruce,
-> > 
-> > Commit 0a5e5f122c nfsd: fix compile error fixed a compile error by
-> > putting the code between an #ifdef CONFIG_SUNRPC_GSS.
-> > 
-> > In my case this is compiled as a module so CONFIG_SUNRPC_GSS_MODULE is
-> > defined but not CONFIG_SUNRPC_GSS. I do not know if this was on purpose
-> > but as it is now "supported_krb5_enctypes" is only available if GSS
-> > support is compiled in the kernel.
+
+On Apr 20, 2011, at 5:29 AM, Mi Jinlong wrote:
+
 > 
-> Ugh, fuzzy thinking on my part.
 > 
-> So I guess to do this right we want modules to be able to dynamically
-> add files to the nfsd filesystem at module load time?
+> Chuck Lever:
+>> Hi MJ-
+>> 
+>> On Apr 19, 2011, at 4:33 AM, Mi Jinlong wrote:
+>> 
+>>> At RHEL, if user set port for mountd at /etc/services as 
+>>> "mount   12345/tcp", mountd should be bind to 12345, but the 
+>>> latest nfs-utils, mountd get a rand port, not 12345.
+>>> 
+>>> This patch make sure mountd be bind to the port which was set
+>>> at /etc/service.
+>> 
+>> I don't think this is documented anywhere.  Is there a reason it should work this way?
+>> 
+>> The typical way to set mountd's port is to use a command line option.  That's the way it works for all the other RPC daemons.  By default the ports are set up at random and registered with rpcbind.  That's why clients use rpcbind, and not /etc/services, to find these services.
+> 
+>  I don't have a depth research, agree with you.
+>  But I got different result when I set port for mountd at /etc/services
+>  between nfs-utils-1.2.3 and nfs-utils-1.2.2.
 
-Good morning,
+IMO that's unintentional behavior.  Could I ask a favor: would you bisect nfs-utils to find out exactly where this started and ended?
 
-A little bit more sleep and taking a look at other modules I came up
-with the following patch which looks ok for me.
-I think you find a better wording for this commit though.
-___________________________________
+>  I just think we should get the same result at new nfs-utils as older.
 
-Fix supported_krb5_enctypes proc entry when compiled as module
+Is there a real-world use case for this feature?  Why isn't the command line option adequate?
 
-The GSS module can also be compiled as a module so check for this
-configuration as well. 
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 1f5eae4..33660ca 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -189,7 +189,7 @@ static struct file_operations export_features_operations = {
- 	.release	= single_release,
- };
- 
--#ifdef CONFIG_SUNRPC_GSS
-+#if defined(CONFIG_SUNRPC_GSS) || defined(CONFIG_SUNRPC_GSS_MODULE)
- static int supported_enctypes_show(struct seq_file *m, void *v)
- {
- 	struct gss_api_mech *k5mech;
-@@ -1427,7 +1427,7 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
- 		[NFSD_Versions] = {"versions", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Ports] = {"portlist", &transaction_ops, S_IWUSR|S_IRUGO},
- 		[NFSD_MaxBlkSize] = {"max_block_size", &transaction_ops, S_IWUSR|S_IRUGO},
--#ifdef CONFIG_SUNRPC_GSS
-+#if defined(CONFIG_SUNRPC_GSS) || defined(CONFIG_SUNRPC_GSS_MODULE)
- 		[NFSD_SupportedEnctypes] = {"supported_krb5_enctypes", &supported_enctypes_ops, S_IRUGO},
- #endif /* CONFIG_SUNRPC_GSS */
- #ifdef CONFIG_NFSD_V4
+
+
+
