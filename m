@@ -1,649 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from web65412.mail.ac4.yahoo.com ([76.13.9.32]:21416 "HELO
-	web65412.mail.ac4.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1754278Ab1DDWKM convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Apr 2011 18:10:12 -0400
-Message-ID: <882887.75491.qm@web65412.mail.ac4.yahoo.com>
-Date: Mon, 4 Apr 2011 15:10:05 -0700 (PDT)
-From: Andrew Klaassen <clawsoon@yahoo.com>
-Subject: Re: Prioritizing readdirplus/getattr/lookup
+Received: from daytona.panasas.com ([67.152.220.89]:57162 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752671Ab1DTR16 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 13:27:58 -0400
+From: Benny Halevy <bhalevy@panasas.com>
 To: linux-nfs@vger.kernel.org
-In-Reply-To: <13701.83906.qm@web65411.mail.ac4.yahoo.com>
-Content-Type: text/plain; charset=iso-8859-1
+Subject: [RFC 13/27] pnfs: client stats
+Date: Wed, 20 Apr 2011 20:27:55 +0300
+Message-Id: <1303320475-21448-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DAF0DE1.6020609@panasas.com>
+References: <4DAF0DE1.6020609@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-I've confirmed my earlier results using 2.6.37.5 on the server, though now the results are closer to 10 times worse than the Netapp on similar hardware rather than 100 times worse.
+From: J. Bruce Fields <bfields@fieldses.org>
 
-A big improvement, but I'd still be interested to know if the server is capable of the getattr/readdirplus/lookup versus read/write tradeoffs that I'm looking for to bring "ls -l" speeds under load down to levels that won't make my users yell at me.
+A pNFS client auto-negotiates a lot of features (minorversion level,
+pNFS layout type, etc.).  This is convenient, but makes certain kinds of
+failures hard for a user to detect.
 
-Is this the wrong place to ask the question?
+For example, if the client falls back on 4.0, or falls back to MDS IO
+because the user didn't connect to the right iscsi disks before
+mounting, the only symptoms may be reduced performance, which may not be
+noticed till long after the actual failure, and may be difficult for a
+user to diagnose.
 
-Is there more knowledge of Linux NFS server internals on a different mailing list that I should contact?
+However, such "failures" may also be perfectly normal in some cases, so
+we don't want to spam the system logs with them.
 
-Thanks once more.
+One approach would be to put some more information into
+/proc/self/mountstats.
 
-Andrew
+Signed-off-by: J. Bruce Fields <bfields@fieldses.org>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfs: add commit client stats]
+[fixup data types for "ret" variables in pnfs_try_to* inline funcs.]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[fix definition of show_pnfs for !CONFIG_PNFS]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfs41: Fix show_sessions in the not CONFIG_NFS_V4_1 case]
+    There is a build error when CONFIG_NFS_V4 is set but
+    CONFIG_NFS_V4_1 is *not* set. show_sessions() prototype
+    was unbalanced between the two cases.
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+[pnfs: super.c remove CONFIG_PNFS]
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/super.c |   25 +++++++++++++++++++++++++
+ 1 files changed, 25 insertions(+), 0 deletions(-)
 
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 2b8e9a5..50f3987 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -63,6 +63,7 @@
+ #include "iostat.h"
+ #include "internal.h"
+ #include "fscache.h"
++#include "pnfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_VFS
+ 
+@@ -732,6 +733,28 @@ static int nfs_show_options(struct seq_file *m, struct vfsmount *mnt)
+ 
+ 	return 0;
+ }
++#ifdef CONFIG_NFS_V4_1
++void show_sessions(struct seq_file *m, struct nfs_server *server)
++{
++	if (nfs4_has_session(server->nfs_client))
++		seq_printf(m, ",sessions");
++}
++#else
++void show_sessions(struct seq_file *m, struct nfs_server *server) {}
++#endif
++
++#ifdef CONFIG_NFS_V4_1
++void show_pnfs(struct seq_file *m, struct nfs_server *server)
++{
++	seq_printf(m, ",pnfs=");
++	if (server->pnfs_curr_ld)
++		seq_printf(m, "%s", server->pnfs_curr_ld->name);
++	else
++		seq_printf(m, "not configured");
++}
++#else  /* CONFIG_NFS_V4_1 */
++void show_pnfs(struct seq_file *m, struct nfs_server *server) {}
++#endif /* CONFIG_NFS_V4_1 */
+ 
+ static int nfs_show_devname(struct seq_file *m, struct vfsmount *mnt)
+ {
+@@ -792,6 +815,8 @@ static int nfs_show_stats(struct seq_file *m, struct vfsmount *mnt)
+ 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
+ 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
+ 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
++		show_sessions(m, nfss);
++		show_pnfs(m, nfss);
+ 	}
+ #endif
+ 
+-- 
+1.7.3.4
 
---- On Mon, 4/4/11, Andrew Klaassen <clawsoon@yahoo.com> wrote:
-
-> Hi Steven,
-> 
-> Packet sniffing is exactly what I did (to the limit of my
-> current abilities, anyway); it's what led to my
-> questions.  If you read further down, you'll see the
-> packet sniffer results I got that led me to ask about having
-> the server nfsd processes prioritize
-> getattr/readdirplus/lookup queries.
-> 
-> In brief: Under the same load, on similar hardware, with a
-> similar number of disks, our NetApp pumps back
-> getattr/readdirplus/lookup replies at a rate of thousands
-> per second, compared to the tens per second (or less, plus
-> periodic long delays) averaged by our Linux server under
-> that load.
-> 
-> The Linux filesystem and VM system don't seem to be the
-> problem, because the same load locally doesn't cause the "ls
-> -l" problem, and the NFS load doesn't cause the problem for
-> local "ls -l" runs.
-> 
-> I guess I could start trying to trace nfsd processes to
-> find the contention, but I really don't feel qualified for
-> that; I was hoping someone familiar with the code could say,
-> "Sure, that's an easy fix," or, "Not gonna happen, because
-> everything would have to be re-written to get the kernel to
-> prioritize nfsd threads based on what they're doing."
-> 
-> I can gladly provide more details about my test setup
-> and/or packet traces.
-> 
-> Thanks.
-> 
-> Andrew
-> 
-> 
-> --- On Mon, 4/4/11, Steven Procter <steven@risen.void.org>
-> wrote:
-> 
-> > I'd recommend using a packet sniffer to see what is
-> going on at the
-> > protocol level when there are performance issues. 
-> I've found that
-> > wireshark works well for this kind of investigation.
-> > 
-> > --Steven
-> > 
-> > > X-Mailer: YahooMailClassic/12.0.2
-> > YahooMailWebService/0.8.109.295617
-> > > Date:    Mon, 4 Apr 2011 06:31:09 -0700
-> > (PDT)
-> > > From:    Andrew Klaassen <clawsoon@yahoo.com>
-> > > Subject: Prioritizing readdirplus/getattr/lookup
-> > > To:    linux-nfs@vger.kernel.org
-> > > Sender:    linux-nfs-owner@vger.kernel.org
-> > > 
-> > > How difficult would it be to make nfsd give
-> priority
-> > to the calls generated by "ls -l" (i.e. readdirplus,
-> > getattr, lookup) over read and write calls?  Is it a
-> matter
-> > of tweaking a couple of sysctls or changing a few
-> lines of
-> > code, or would it mean a major re-write?
-> > > 
-> > > I'm working in an environment where it's
-> important to
-> > have reasonably good throughput for the HPC farm
-> (50-200
-> > machines reading and writing 5-10MB files as fast as
-> they
-> > can pump them through), while simultaneously
-> providing
-> > snappy responses to "ls -l" and equivalents for
-> people
-> > reviewing file sizes and times and browsing through
-> the
-> > filesystem and constructing new jobs and whatnot.
-> > > 
-> > > I've tried a small handful of server OSes
-> (Solaris,
-> > Exastore, various Linux flavours and tunings and nfsd
-> > counts) that do great on the throughput side but
-> horrible on
-> > the "ls -l" under load side (as mentioned in my
-> previous
-> > emails).
-> > > 
-> > > However, I know what I need is possible, because
-> > Netapp GX on very similar hardware (similar
-> processor,
-> > memory, and spindle count), does slightly worse (20%
-> or so)
-> > on total throughput but much better (10-100 times
-> better
-> > than Solaris/Linux/Exastore) on under-load "ls -l"
-> > responsiveness.
-> > > 
-> > > In the Linux case, I think I've narrowed to the
-> > problem down to nfsd rather than filesystem or VM
-> system. 
-> > It's not filesystem or VM system, because when the
-> server is
-> > under heavy local load equivalent to my HPC farm load,
-> both
-> > local and remote "ls -l" commands are fast.  It's not
-> that
-> > the NFS load overwhelms the server, because when the
-> server
-> > is under heavy HPC farm load, local "ls -l" commands
-> are
-> > still fast.
-> > > 
-> > > It's only when there's an NFS load and an NFS "ls
-> -l"
-> > that the "ls -l" is slow.  Like so:
-> > > 
-> > >                                
->  
-> > throughput     ls -l
-> > >                                
->  
-> > ==========     =====
-> > > Heavy local load, local ls -l     fast   
->    
-> >    fast
-> > > Heavy local load, NFS ls -l       fast   
->    
-> >    fast
-> > > Heavy NFS load, local ls -l       fast   
->    
-> >    fast
-> > > Heavy NFS load, NFS ls -l         fast   
->  
-> >      very slow
-> > > 
-> > > This suggests to me that it's nfsd that's slowing
-> down
-> > the ls -l response times rather than the filesystem or
-> VM
-> > system.
-> > > 
-> > > Would fixing the bottom-right-corner case - even
-> if it
-> > meant a modest throughput slowdown - be an easy
-> > tweak/patch?  Or major re-write?  (Or just a kernel
-> > upgrade?)
-> > > 
-> > > I know it's doable because the Netapp does it;
-> the
-> > question is how large a job would it be on Linux.
-> > > 
-> > > Thanks again.
-> > > 
-> > > 
-> > > FWIW, here's what I've tried so far to try to
-> make
-> > this problem go away without success:
-> > > 
-> > > Server side:
-> > > 
-> > > kernels (all x86_64): 2.6.32-[something] on
-> Scientific
-> > Linux 6.0, 2.6.32.4 on Slackware, 2.6.37.5 on
-> Slackware
-> > > filesystems: xfs, ext4
-> > > nfsd counts: 8,32,64,127,128,256,1024
-> > > schedulers: cfq,deadline
-> > > export options: async,no_root_squash
-> > > 
-> > > Client side:
-> > > kernel: 2.6.31.14-0.6-desktop, x86_64, from
-> openSUSE
-> > 11.3
-> > > hard,intr,noatime,vers=3,mountvers=3 # always on
-> > > rsize,wsize:  32768,65536
-> > > proto:        tcp,udp
-> > > nolock        # on or off
-> > > noac          # on or off
-> > > actimeo:      3,5,60,240,600  # I had really
-> hoped
-> > this would help
-> > > 
-> > > Andrew
-> > > 
-> > > 
-> > > --- On Thu, 3/31/11, Andrew Klaassen <clawsoon@yahoo.com>
-> > wrote:
-> > > 
-> > > > Setting actimeo=600 gave me part of
-> > > > the behaviour I expected; on the first
-> directory
-> > listing,
-> > > > the calls were all readdirplus and no
-> getattr.
-> > > > 
-> > > > However, there were now long stretches
-> where
-> > nothing was
-> > > > happening.  During a single directory
-> listing to
-> > a
-> > > > loaded server, there'd be:
-> > > > 
-> > > >  ~10 seconds of readdirplus calls and
-> replies,
-> > followed by
-> > > >  ~70 seconds of nothing, followed by
-> > > >  ~10 seconds of readdirplus calls and
-> replies,
-> > followed by
-> > > >  ~100 seconds of nothing, followed by
-> > > >  ~10 seconds of readdirplus calls and
-> replies,
-> > followed by
-> > > >  ~110 seconds of nothing, followed by
-> > > >  ~2 seconds of readdirplus calls and
-> replies
-> > > > 
-> > > > Why the long stretches of nothing?  If I'm
-> > reading my
-> > > > tshark output properly, it doesn't seem like
-> the
-> > client was
-> > > > waiting for a server response.  Here are a
-> > couple of
-> > > > lines before and after a long stretch of
-> > nothing:
-> > > > 
-> > > >  28.575537 192.168.10.158 ->
-> 192.168.10.5 NFS
-> > V3
-> > > > READDIRPLUS Call, FH:0xa216e302
-> > > >  28.593943 192.168.10.5 ->
-> 192.168.10.158 NFS
-> > V3
-> > > > READDIRPLUS Reply (Call In 358)
-> random_1168.exr
-> > > > random_2159.exr random_2188
-> > > > .exr random_0969.exr random_1662.exr
-> > random_0022.exr
-> > > > random_0785.exr random_2316.exr
-> random_0831.exr
-> > > > random_0443.exr random_
-> > > > 1203.exr random_1907.exr
-> > > >  28.594006 192.168.10.158 ->
-> 192.168.10.5 NFS
-> > V3
-> > > > READDIRPLUS Call, FH:0xa216e302
-> > > >  28.623736 192.168.10.5 ->
-> 192.168.10.158 NFS
-> > V3
-> > > > READDIRPLUS Reply (Call In 362)
-> random_1575.exr
-> > > > random_0492.exr random_0335
-> > > > .exr random_2460.exr random_0754.exr
-> > random_1114.exr
-> > > > random_2001.exr random_2298.exr
-> random_1858.exr
-> > > > random_1889.exr random_
-> > > > 2249.exr random_0782.exr
-> > > > 103.811801 192.168.10.158 -> 192.168.10.5
-> NFS
-> > V3
-> > > > READDIRPLUS Call, FH:0xa216e302
-> > > > 103.883930 192.168.10.5 -> 192.168.10.158
-> NFS
-> > V3
-> > > > READDIRPLUS Reply (Call In 2311)
-> random_0025.exr
-> > > > random_1665.exr random_231
-> > > > 1.exr random_1204.exr random_0444.exr
-> > random_0836.exr
-> > > > random_0332.exr random_0495.exr
-> random_1572.exr
-> > > > random_1900.exr random
-> > > > _2467.exr random_1113.exr
-> > > > 103.884014 192.168.10.158 -> 192.168.10.5
-> NFS
-> > V3
-> > > > READDIRPLUS Call, FH:0xa216e302
-> > > > 103.965167 192.168.10.5 -> 192.168.10.158
-> NFS
-> > V3
-> > > > READDIRPLUS Reply (Call In 2316)
-> random_0753.exr
-> > > > random_2006.exr random_021
-> > > > 6.exr random_1824.exr random_1456.exr
-> > random_1790.exr
-> > > > random_1037.exr random_0677.exr
-> random_2122.exr
-> > > > random_0101.exr random
-> > > > _1741.exr random_2235.exr
-> > > > 
-> > > > Calls are sent and replies received at the
-> 28
-> > second mark,
-> > > > and then... nothing... until the 103 second
-> > mark.  I'm
-> > > > sure the server must be somehow telling the
-> > client that it's
-> > > > busy, but - at least with the tools I'm
-> looking
-> > at - I don't
-> > > > see how.  Is tshark just hiding TCP delays
-> and
-> > > > retransmits from me?
-> > > > 
-> > > > Thanks again.
-> > > > 
-> > > > Andrew
-> > > > 
-> > > > 
-> > > > --- On Thu, 3/31/11, Andrew Klaassen <clawsoon@yahoo.com>
-> > > > wrote:
-> > > > 
-> > > > > Interesting.  So the reason it's
-> > > > > switching back and forth between
-> readdirplus
-> > and
-> > > > getattr
-> > > > > during the same ls command is because
-> the
-> > command is
-> > > > taking
-> > > > > so long to run that the cache is
-> > periodically expiring
-> > > > as
-> > > > > the command is running?
-> > > > > 
-> > > > > I'll do some playing with actimeo to
-> see if
-> > I'm
-> > > > actually
-> > > > > understanding this.
-> > > > > 
-> > > > > Thanks!
-> > > > > 
-> > > > > Andrew
-> > > > > 
-> > > > > 
-> > > > > --- On Thu, 3/31/11, Steven Procter
-> <steven@risen.void.org>
-> > > > > wrote:
-> > > > > 
-> > > > > > This is due to client caching. 
-> > > > > > When the second ls -l runs the
-> cache
-> > > > > > contains an entry for the
-> directory. 
-> > The client
-> > > > can
-> > > > > > check if the cached
-> > > > > > directory data is still valid by
-> > issuing a
-> > > > GETATTR on
-> > > > > the
-> > > > > > directory.
-> > > > > > 
-> > > > > > But this only validates the names,
-> not
-> > the
-> > > > > attributes,
-> > > > > > which are not
-> > > > > > actually part of the directory. 
-> Those
-> > must be
-> > > > > > refetched.  So the client
-> > > > > > issues a GETATTR for each entry in
-> the
-> > > > directory. 
-> > > > > It
-> > > > > > issues them
-> > > > > > sequentially, probably as ls
-> calls
-> > readdir() and
-> > > > then
-> > > > > > stat()
-> > > > > > sequentially on the directory
-> entries.
-> > > > > > 
-> > > > > > This takes so long that the cache
-> entry
-> > times out
-> > > > and
-> > > > > the
-> > > > > > next time you
-> > > > > > run ls -l the client reloads the
-> > directory using
-> > > > > > READDIRPLUS.
-> > > > > > 
-> > > > > > --Steven
-> > > > > > 
-> > > > > > > X-Mailer:
-> YahooMailClassic/12.0.2
-> > > > > >
-> YahooMailWebService/0.8.109.295617
-> > > > > > > Date:    Thu, 31 Mar 2011
-> > 15:24:15
-> > > > > > -0700 (PDT)
-> > > > > > > From:    Andrew Klaassen
-> <clawsoon@yahoo.com>
-> > > > > > > Subject: readdirplus/getattr
-> > > > > > > To:    linux-nfs@vger.kernel.org
-> > > > > > > Sender:    linux-nfs-owner@vger.kernel.org
-> > > > > > > 
-> > > > > > > Hi,
-> > > > > > > 
-> > > > > > > I've been trying to get my
-> Linux
-> > NFS clients
-> > > > to
-> > > > > be a
-> > > > > > little snappier about listing
-> large
-> > directories
-> > > > from
-> > > > > > heavily-loaded servers.  I found
-> the
-> > following
-> > > > > > fascinating behaviour (this is
-> with
-> > > > > 2.6.31.14-0.6-desktop,
-> > > > > > x86_64, from openSUSE 11.3,
-> Solaris
-> > Express 11
-> > > > NFS
-> > > > > server):
-> > > > > > > 
-> > > > > > > With "ls -l --color=none" on
-> a
-> > directory
-> > > > with
-> > > > > 2500
-> > > > > > files:
-> > > > > > > 
-> > > > > > >             
-> > > > > > |      rdirplus   | 
-> > > > > >   nordirplus   |
-> > > > > > >             
-> > > > > > |1st  |2nd  |1st  |1st 
-> |2nd 
-> > > > > > |1st  |
-> > > > > > >             
-> > > > > > |run  |run  |run  |run 
-> |run 
-> > > > > > |run  |
-> > > > > > >             
-> > > > > >
-> |light|light|heavy|light|light|heavy|
-> > > > > > >              |load
-> > > > > > |load |load |load |load |load |
-> > > > > > >
-> > > > >
-> > --------------------------------------------------
-> > > > > > > readdir      |   0
-> > > > > > |   0 |   0 |  25
-> > > > > > |   0 |  25 |
-> > > > > > > readdirplus  | 209 |   0
-> |
-> > 276
-> > > > > > |   0 |   0
-> > > > > > |   0 |
-> > > > > > > lookup       |  16
-> > > > > > |   0 |  10 |2316 |   0
-> > > > > > |2473 |
-> > > > > > > getattr      |   1
-> |2501
-> > > > > > |2452 |   1 |2465 |   1 |
-> > > > > > > 
-> > > > > > > The most interesting case is
-> with
-> > rdirplus
-> > > > > specified
-> > > > > > as a mount option to a heavily
-> loaded
-> > server. 
-> > > > The
-> > > > > NFS
-> > > > > > client keeps switching back and
-> forth
-> > between
-> > > > > readdirplus
-> > > > > > and getattr:
-> > > > > > > 
-> > > > > > >  ~10 seconds doing ~70
-> > readdirplus calls,
-> > > > > > followed by
-> > > > > > >  ~150 seconds doing ~800
-> gettattr
-> > calls,
-> > > > > followed
-> > > > > > by
-> > > > > > >  ~12 seconds doing ~70
-> > readdirplus calls,
-> > > > > > followed by
-> > > > > > >  ~200 seconds doing ~800
-> gettattr
-> > calls,
-> > > > > followed
-> > > > > > by
-> > > > > > >  ~20 seconds doing ~130
-> > readdirplus calls,
-> > > > > > followed by
-> > > > > > >  ~220 seconds doing ~800
-> gettattr
-> > calls
-> > > > > > > 
-> > > > > > > All the calls appear to get
-> > reasonably
-> > > > prompt
-> > > > > replies
-> > > > > > (never more than a second or so),
-> which
-> > makes me
-> > > > > wonder why
-> > > > > > it keeps switching back and forth
-> > between the
-> > > > > > strategies.  (Especially since
-> I've
-> > specified
-> > > > > rdirplus
-> > > > > > as a mount option.)
-> > > > > > > 
-> > > > > > > Is it supposed to do that?
-> > > > > > > 
-> > > > > > > I'd really like to see how it
-> does
-> > with
-> > > > > readdirplus
-> > > > > > ~only~, no getattr calls, since
-> it's
-> > spending
-> > > > only 40
-> > > > > > seconds in total on readdirplus
-> calls
-> > compared to
-> > > > 570
-> > > > > > seconds in total on (redundant, I
-> > think, based on
-> > > > the
-> > > > > > lightly-loaded case) getattr
-> calls.
-> > > > > > > 
-> > > > > > > It'd also be nice to be able
-> to
-> > force
-> > > > > readdirplus
-> > > > > > calls instead of getattr calls
-> for
-> > second and
-> > > > > subsequent
-> > > > > > listings of a directory.
-> > > > > > > 
-> > > > > > > I saw a recent thread
-> talking
-> > about
-> > > > readdirplus
-> > > > > > changes in 2.6.37, so I'll give
-> that a
-> > try when I
-> > > > get
-> > > > > a
-> > > > > > chance to see how it behaves.
-> > > > > > > 
-> > > > > > > Andrew
-> > > > > > > 
-> > > > > > > 
-> > > > > > > --
-> > > > > > > To unsubscribe from this
-> list:
-> > send the
-> > > > line
-> > > > > > "unsubscribe linux-nfs" in
-> > > > > > > the body of a message to majordomo@vger.kernel.org
-> > > > > > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > > > > > --
-> > > > > > To unsubscribe from this list:
-> send the
-> > line
-> > > > > "unsubscribe
-> > > > > > linux-nfs" in
-> > > > > > the body of a message to majordomo@vger.kernel.org
-> > > > > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > > > > > 
-> > > > > --
-> > > > > To unsubscribe from this list: send
-> the
-> > line
-> > > > "unsubscribe
-> > > > > linux-nfs" in
-> > > > > the body of a message to majordomo@vger.kernel.org
-> > > > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > > > > 
-> > > > --
-> > > > To unsubscribe from this list: send the
-> line
-> > "unsubscribe
-> > > > linux-nfs" in
-> > > > the body of a message to majordomo@vger.kernel.org
-> > > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > > >
-> > > 
-> > > 
-> > > 
-> > > --
-> > > To unsubscribe from this list: send the line
-> > "unsubscribe linux-nfs" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe
-> linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
