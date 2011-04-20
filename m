@@ -1,48 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:46503 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756211Ab1DVQqu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Apr 2011 12:46:50 -0400
-From: andros@netapp.com
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/1] nfsd v4.1 lOCKT clientid field must be ignored
-Date: Fri, 22 Apr 2011 12:45:59 -0400
-Message-Id: <1303490759-2646-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1303490759-2646-1-git-send-email-andros@netapp.com>
-References: <1303490759-2646-1-git-send-email-andros@netapp.com>
+Received: from sainfoin-out.extra.cea.fr ([132.167.192.144]:43870 "EHLO
+	sainfoin-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751127Ab1DTHyM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 03:54:12 -0400
+Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
+	by sainfoin.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.2) with ESMTP id p3K7sAxg007489
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Apr 2011 09:54:10 +0200
+Received: from muguet1.intra.cea.fr (muguet1.intra.cea.fr [132.166.192.6])
+	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id p3K7sAEI032545
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Apr 2011 09:54:10 +0200
+	(envelope-from philippe.deniel@cea.fr)
+Received: from zia.bruyeres.cea.fr (esteban.dam.intra.cea.fr [132.165.76.10])
+	by muguet1.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.1) with SMTP id p3K7s9kN013904
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Apr 2011 09:54:09 +0200
+Message-ID: <4DAE9121.9090500@cea.fr>
+Date: Wed, 20 Apr 2011 09:54:09 +0200
+From: DENIEL Philippe <philippe.deniel@cea.fr>
+To: =?ISO-8859-15?Q?Peter_=C5strand?= <astrand@cendio.se>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Save the unfs3 project
+References: <alpine.LFD.2.02.1104191614010.23639@stella.lkpg.cendio.se>
+In-Reply-To: <alpine.LFD.2.02.1104191614010.23639@stella.lkpg.cendio.se>
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+Hi Peter,
+> Another option, I guess, would be to discontinue the unfs3 project and 
+> recommend users to migrate to nfs-ganesha, or something like that. Any 
+> users of ganesha on this list? I don't know much about it.
+I am the project lead for nfs-ganesha. I would be happy to provide you 
+with all  information that would help you.
 
-RFC 5661 Section 18.11.3
+> Unfortunately it seems like it does not support Windows, which we need.
+There is currently no port of nfs-ganesha to windows. I am working on a 
+linux environment and so does the other folks contributing to the 
+project. Anyway, I do not think that a port to windows would be 
+something impossible. Matt Benjamin (from the LinuxBox company) 
+succeeded once in compiling nfs-ganesha on cygwin on a windows platform. 
+It seems to me there are tools at Microsoft's to ease port of unix 
+applications to Windows, but I am no expert of this. Anyway, the 
+linux-nfs is probably not the right place for discussing of this, I 
+suggest that we continue talking of this on the nfs-ganesha's 
+development list whose address is nfs-ganesha-devel@lists.sourceforge.net .
 
-   The clientid field of the owner MAY be set to any value by the client
-   and MUST be ignored by the server.  The reason the server MUST ignore
-   the clientid field is that the server MUST derive the client ID from
-   the session ID from the SEQUENCE operation of the COMPOUND request.
+    Regards
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfsd/nfs4xdr.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index abdd42d..eb234df 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -591,8 +591,6 @@ nfsd4_decode_lockt(struct nfsd4_compoundargs *argp, struct nfsd4_lockt *lockt)
- 	READ_BUF(lockt->lt_owner.len);
- 	READMEM(lockt->lt_owner.data, lockt->lt_owner.len);
- 
--	if (argp->minorversion && !zero_clientid(&lockt->lt_clientid))
--		return nfserr_inval;
- 	DECODE_TAIL;
- }
- 
--- 
-1.7.2.3
+       Philippe
 
