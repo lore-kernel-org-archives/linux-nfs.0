@@ -1,37 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57122 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755387Ab1D0SxI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Apr 2011 14:53:08 -0400
-Message-ID: <4DB86605.3000304@panasas.com>
-Date: Wed, 27 Apr 2011 21:52:53 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Chuck Lever <chuck.lever@oracle.com>, steved@redhat.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsstat: reorder nfs4 stats for 2.6.38 and up
-References: <1303461980-6731-1-git-send-email-bhalevy@panasas.com>	 <23EF6F61-46F2-431B-8A44-A3E941688D65@oracle.com>	 <4DB7A084.2060009@panasas.com> <1303913806.13195.3.camel@lade.trondhjem.org>
-In-Reply-To: <1303913806.13195.3.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:46004 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752135Ab1DTVOX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Apr 2011 17:14:23 -0400
+Date: Wed, 20 Apr 2011 17:14:21 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: nfsd41: add flag checking for create_session
+Message-ID: <20110420211421.GH15919@fieldses.org>
+References: <4D89C3F3.9020505@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D89C3F3.9020505@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-04-27 17:16, Trond Myklebust wrote:
-> On Wed, 2011-04-27 at 07:50 +0300, Benny Halevy wrote:
->> On 2011-04-25 17:11, Chuck Lever wrote:
->>> Hey all-
->>>
->>> So what are we going to do when adding NFSv4.2 to this mix?  Will we
->>> then have to freeze both the NFSv4.1 and NFSv4.0 procedure API in the
->>> kernel?  Seems painful.
->>
->> Good question.
->> How about changing the stat pseudo-file format to include an op
->> identifier along with its respective counter, printing a line per op?
+On Wed, Mar 23, 2011 at 05:57:07PM +0800, Mi Jinlong wrote:
+> At the latest kernel, NFS server doesn't check create_session 
+> operation's falg.
 > 
-> We already have that in /proc/self/mountstats
-> 
-> 
+> This patch add flag mask and check flag for create_session
+>  as exchang_id. Also, make some adjustment for align.
 
-You mean /proc/self/status?
+A clients sending undefined flags is out of spec as far as I can tell,
+and I'm not sure we owe them any particular error.
+
+But perhaps erroring out is useful for debugging at least, OK.  Applying
+for 2.6.40.
+
+--b.
+
+> 
+> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> ---
+>  fs/nfsd/nfs4state.c  |    3 +++
+>  include/linux/nfs4.h |    8 +++++---
+>  2 files changed, 8 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 7b566ec..1f66370 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1514,6 +1514,9 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>  	bool confirm_me = false;
+>  	int status = 0;
+>  
+> +	if (cr_ses->flags & ~SESSION4_FLAG_MASK_A)
+> +		return nfserr_inval;
+> +
+>  	nfs4_lock_state();
+>  	unconf = find_unconfirmed_client(&cr_ses->clientid);
+>  	conf = find_confirmed_client(&cr_ses->clientid);
+> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> index 134716e..e064895 100644
+> --- a/include/linux/nfs4.h
+> +++ b/include/linux/nfs4.h
+> @@ -568,9 +568,11 @@ struct nfs4_sessionid {
+>  };
+>  
+>  /* Create Session Flags */
+> -#define SESSION4_PERSIST	 0x001
+> -#define SESSION4_BACK_CHAN 	 0x002
+> -#define SESSION4_RDMA		 0x004
+> +#define SESSION4_PERSIST	0x001
+> +#define SESSION4_BACK_CHAN	0x002
+> +#define SESSION4_RDMA		0x004
+> +
+> +#define SESSION4_FLAG_MASK_A	0x007
+>  
+>  enum state_protect_how4 {
+>  	SP4_NONE	= 0,
+> -- 
+> 1.7.4.1
+> 
+> 
