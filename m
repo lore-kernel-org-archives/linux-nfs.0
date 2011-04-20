@@ -1,75 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:41311 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758825Ab1DYSoO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Apr 2011 14:44:14 -0400
-Received: by mail-iy0-f174.google.com with SMTP id 14so2054039iyb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Apr 2011 11:44:14 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/15] NFS: Save root file handle in nfs_server
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 25 Apr 2011 14:44:11 -0400
-Message-ID: <20110425184411.5669.23400.stgit@matisse.1015granger.net>
-In-Reply-To: <20110425183405.5669.52507.stgit@matisse.1015granger.net>
-References: <20110425183405.5669.52507.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from daytona.panasas.com ([67.152.220.89]:57127 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754093Ab1DTR1M (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 13:27:12 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [RFC 07/27] pnfs: encode_layoutcommit
+Date: Wed, 20 Apr 2011 20:27:07 +0300
+Message-Id: <1303320427-21218-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DAF0DE1.6020609@panasas.com>
+References: <4DAF0DE1.6020609@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Save each FSID's root directory file handle in the export's local
-nfs_server structure on the client.  This file handle can later be
-used for migration recovery.
-
-NB: Saving the root FH is done only for NFSv4 mounts.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
+ fs/nfs/nfs4xdr.c |   16 +++++++++++++---
+ fs/nfs/pnfs.h    |    4 ++++
+ 2 files changed, 17 insertions(+), 3 deletions(-)
 
- fs/nfs/client.c           |    1 +
- fs/nfs/getroot.c          |    5 +++++
- include/linux/nfs_fs_sb.h |    1 +
- 3 files changed, 7 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 8f8035e..c23bcf1 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1101,6 +1101,7 @@ void nfs_free_server(struct nfs_server *server)
- 	nfs_put_client(server->nfs_client);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 6b64dd8..4f7bef9 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1877,6 +1877,7 @@ encode_layoutget(struct xdr_stream *xdr,
  
- 	nfs_free_iostats(server->io_stats);
-+	nfs_free_fhandle(server->rootfh);
- 	bdi_destroy(&server->backing_dev_info);
- 	kfree(server);
- 	nfs_release_automount_timer();
-diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-index dcb6154..8d4fbe1 100644
---- a/fs/nfs/getroot.c
-+++ b/fs/nfs/getroot.c
-@@ -232,6 +232,11 @@ struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh,
- 		ret = ERR_CAST(inode);
- 		goto out;
- 	}
-+	server->rootfh = nfs_alloc_fhandle();
-+	if (server->rootfh != NULL) {
-+		nfs_display_fhandle(mntfh, "nfs_get_root: new root FH");
-+		nfs_copy_fh(server->rootfh, mntfh);
+ static int
+ encode_layoutcommit(struct xdr_stream *xdr,
++		    struct inode *inode,
+ 		    const struct nfs4_layoutcommit_args *args,
+ 		    struct compound_hdr *hdr)
+ {
+@@ -1885,7 +1886,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
+ 	dprintk("%s: lbw: %llu type: %d\n", __func__, args->lastbytewritten,
+ 		NFS_SERVER(args->inode)->pnfs_curr_ld->id);
+ 
+-	p = reserve_space(xdr, 48 + NFS4_STATEID_SIZE);
++	p = reserve_space(xdr, 44 + NFS4_STATEID_SIZE);
+ 	*p++ = cpu_to_be32(OP_LAYOUTCOMMIT);
+ 	/* Only whole file layouts */
+ 	p = xdr_encode_hyper(p, 0); /* offset */
+@@ -1896,7 +1897,14 @@ encode_layoutcommit(struct xdr_stream *xdr,
+ 	p = xdr_encode_hyper(p, args->lastbytewritten);
+ 	*p++ = cpu_to_be32(0); /* Never send time_modify_changed */
+ 	*p++ = cpu_to_be32(NFS_SERVER(args->inode)->pnfs_curr_ld->id);/* type */
+-	*p++ = cpu_to_be32(0); /* no file layout payload */
++
++	if (NFS_SERVER(inode)->pnfs_curr_ld->encode_layoutcommit)
++		NFS_SERVER(inode)->pnfs_curr_ld->encode_layoutcommit(
++			NFS_I(inode)->layout, xdr, args);
++	else {
++		p = reserve_space(xdr, 4);
++		*p = cpu_to_be32(0); /* no layout-type payload */
 +	}
  
- 	error = nfs_superblock_set_dummy_root(sb, inode);
- 	if (error != 0) {
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 216cea5..33b7459 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -150,6 +150,7 @@ struct nfs_server {
- #endif
- 	struct list_head	delegations;
- 	void (*destroy)(struct nfs_server *);
-+	struct nfs_fh		*rootfh;
+ 	hdr->nops++;
+ 	hdr->replen += decode_layoutcommit_maxsz;
+@@ -2759,6 +2767,8 @@ static void nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
+ 				      struct xdr_stream *xdr,
+ 				      struct nfs4_layoutcommit_args *args)
+ {
++	struct nfs4_layoutcommit_data *data =
++		container_of(args, struct nfs4_layoutcommit_data, args);
+ 	struct compound_hdr hdr = {
+ 		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
+ 	};
+@@ -2766,7 +2776,7 @@ static void nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
+ 	encode_compound_hdr(xdr, req, &hdr);
+ 	encode_sequence(xdr, &args->seq_args, &hdr);
+ 	encode_putfh(xdr, NFS_FH(args->inode), &hdr);
+-	encode_layoutcommit(xdr, args, &hdr);
++	encode_layoutcommit(xdr, data->args.inode, args, &hdr);
+ 	encode_getfattr(xdr, args->bitmask, &hdr);
+ 	encode_nops(&hdr);
+ }
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 51dcbc1..011885e 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -99,6 +99,10 @@ struct pnfs_layoutdriver_type {
+ 	/* device notification methods */
+ 	void (*delete_deviceid)(struct nfs4_deviceid *);
  
- 	atomic_t active; /* Keep trace of any activity to this server */
- 
++	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
++				     struct xdr_stream *xdr,
++				     const struct nfs4_layoutcommit_args *args);
++
+ 	void (*encode_layoutreturn) (struct pnfs_layout_hdr *layoutid,
+ 				     struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutreturn_args *args);
+-- 
+1.7.3.4
 
