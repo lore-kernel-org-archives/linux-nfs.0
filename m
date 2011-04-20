@@ -1,72 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:39839 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756762Ab1DFXGc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Apr 2011 19:06:32 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
+Received: from daytona.panasas.com ([67.152.220.89]:57222 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751366Ab1DTR3D (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 13:29:03 -0400
+From: Benny Halevy <bhalevy@panasas.com>
 To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/7] svcrpc: close connection if client sends short packet
-Date: Wed,  6 Apr 2011 19:06:23 -0400
-Message-Id: <1302131186-6578-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1302131186-6578-1-git-send-email-bfields@redhat.com>
-References: <1302131186-6578-1-git-send-email-bfields@redhat.com>
+Subject: [RFC 22/27] sunrpc: New xdr_rewind_stream()
+Date: Wed, 20 Apr 2011 20:29:01 +0300
+Message-Id: <1303320541-21787-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DAF0DE1.6020609@panasas.com>
+References: <4DAF0DE1.6020609@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-If the client sents a record too short to contain even the beginning of
-the rpc header, then just close the connection.
+In a long encoded xdr stream, we might run out of allocated xdr space.
+In some situations it is possibly to reset the xdr buffer to a previuos
+good state and send a parial list, which is better then just BUGing as
+today or completely failing the xdr.
 
-The current code drops the record data and continues.  I don't see the
-point.  It's a hopeless situation and simpler just to cut off the
-connection completely.
+* define such API that can move the xdr pointer to a good known
+  state before the failed encoding.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- net/sunrpc/svcsock.c |   21 +++++++--------------
- 1 files changed, 7 insertions(+), 14 deletions(-)
+ include/linux/sunrpc/xdr.h |    1 +
+ net/sunrpc/xdr.c           |   21 +++++++++++++++++++++
+ 2 files changed, 22 insertions(+), 0 deletions(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 2053259..9d72a79 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -949,6 +949,9 @@ static int svc_tcp_recv_record(struct svc_sock *svsk, struct svc_rqst *rqstp)
- 		}
- 	}
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index fc84b7a..bf17e38 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -213,6 +213,7 @@ typedef int	(*kxdrdproc_t)(void *rqstp, struct xdr_stream *xdr, void *obj);
  
-+	if (svsk->sk_reclen < 8)
-+		goto err_delete; /* client is nuts. */
+ extern void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
+ extern __be32 *xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes);
++extern __be32 *xdr_rewind_stream(struct xdr_stream *xdr, __be32 *q);
+ extern void xdr_write_pages(struct xdr_stream *xdr, struct page **pages,
+ 		unsigned int base, unsigned int len);
+ extern void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 679cd67..3e0d79e 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -518,6 +518,27 @@ __be32 * xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes)
+ EXPORT_SYMBOL_GPL(xdr_reserve_space);
+ 
+ /**
++ * xdr_rewind_stream - rewind a stream back to some checkpoint
++ * @xdr: pointer to xdr_stream
++ * @q: some checkpoint at historical place of @xdr
++ *
++ * Restors an xdr stream to some historical point. @q must be
++ * a logical xdr point in the past that was sampled by @q = @xdr->p.
++ */
++__be32 *xdr_rewind_stream(struct xdr_stream *xdr, __be32 *q)
++{
++	size_t nbytes = (xdr->p - q) << 2;
 +
- 	/* Check whether enough data is available */
- 	len = svc_recv_available(svsk);
- 	if (len < 0)
-@@ -1052,20 +1055,10 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 	vec[0] = rqstp->rq_arg.head[0];
- 	vlen = PAGE_SIZE;
- 
--	/*
--	 * We have enough data for the whole tcp record. Let's try and read the
--	 * first 8 bytes to get the xid and the call direction. We can use this
--	 * to figure out if this is a call or a reply to a callback. If
--	 * sk_reclen is < 8 (xid and calldir), then this is a malformed packet.
--	 * In that case, don't bother with the calldir and just read the data.
--	 * It will be rejected in svc_process.
--	 */
--	if (len >= 8) {
--		len = svc_process_calldir(svsk, rqstp, &req, vec);
--		if (len < 0)
--			goto err_again;
--		vlen -= 8;
--	}
-+	len = svc_process_calldir(svsk, rqstp, &req, vec);
-+	if (len < 0)
-+		goto err_again;
-+	vlen -= 8;
- 
- 	pnum = 1;
- 	while (vlen < svsk->sk_reclen - 8) {
++	BUG_ON(xdr->p < q);
++	BUG_ON(nbytes > xdr->iov->iov_len || nbytes > xdr->buf->len);
++	xdr->p = q;
++	xdr->iov->iov_len -= nbytes;
++	xdr->buf->len -= nbytes;
++	return q;
++}
++EXPORT_SYMBOL_GPL(xdr_rewind_stream);
++
++/**
+  * xdr_write_pages - Insert a list of pages into an XDR buffer for sending
+  * @xdr: pointer to xdr_stream
+  * @pages: list of pages
 -- 
-1.7.1
+1.7.3.4
 
