@@ -1,68 +1,29 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:4612 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755464Ab1D0SxJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Apr 2011 14:53:09 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH] NFS: Return meaningful status from decode_secinfo()
-Date: Wed, 27 Apr 2011 14:53:06 -0400
-Message-Id: <1303930386-30688-1-git-send-email-bjschuma@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from lvps87-230-0-242.dedicated.hosteurope.de ([87.230.0.242]:44635
+	"EHLO lvps87-230-0-242.dedicated.hosteurope.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752123Ab1DTUuA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 16:50:00 -0400
+Date: Wed, 20 Apr 2011 22:49:51 +0200
+From: Michael Guntsche <mike@it-loops.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [BUG] supported_krb5_enctypes not available if GSS support compiled
+ as a module
+Message-ID: <20110420224241@it-loops.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Hello Bruce,
 
-When compiling, I was getting this warning:
-fs/nfs/nfs4xdr.c: In function ‘decode_secinfo’:
-fs/nfs/nfs4xdr.c:4839:6: warning: variable ‘status’ set but not used
-[-Wunused-but-set-variable]
+Commit 0a5e5f122c nfsd: fix compile error fixed a compile error by
+putting the code between an #ifdef CONFIG_SUNRPC_GSS.
 
-We were unconditionally returning 0 as long as there wasn't an error
-coming out of xdr_inline_decode().  We probably want to check the error
-status coming out of decode_op_hdr() and decode_secinfo_gss(), rather
-than assuming that everything is OK all the time.
+In my case this is compiled as a module so CONFIG_SUNRPC_GSS_MODULE is
+defined but not CONFIG_SUNRPC_GSS. I do not know if this was on purpose
+but as it is now "supported_krb5_enctypes" is only available if GSS
+support is compiled in the kernel.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4xdr.c |   10 +++++++---
- 1 files changed, 7 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index dddfb57..58768f9 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4841,6 +4841,9 @@ static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
- 	int i;
- 
- 	status = decode_op_hdr(xdr, OP_SECINFO);
-+	if (status)
-+		goto out;
-+
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
- 		goto out_overflow;
-@@ -4857,13 +4860,14 @@ static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
- 		sec_flavor->flavor = be32_to_cpup(p);
- 
- 		if (sec_flavor->flavor == RPC_AUTH_GSS) {
--			if (decode_secinfo_gss(xdr, sec_flavor))
-+			status = decode_secinfo_gss(xdr, sec_flavor);
-+			if (status)
- 				break;
- 		}
- 	}
- 
--	return 0;
--
-+out:
-+	return status;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
- 	return -EIO;
--- 
-1.7.4.4
-
+Kind regards,
+Michael
