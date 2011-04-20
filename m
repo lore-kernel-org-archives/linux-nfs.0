@@ -1,51 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:50105 "EHLO mail-out2.uio.no"
+Received: from mx1.redhat.com ([209.132.183.28]:33178 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754568Ab1DON3W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Apr 2011 09:29:22 -0400
-Subject: Re: [BUG] sec=krb5 mount problem with nfs-utils 1.2.3 on client
- side
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Michael Guntsche <mike@it-loops.com>, Kevin Coffman <kwc@citi.umich.edu>,
-        "Dr. J. Bruce Fields" <bfields@fieldses.org>
-Cc: "Finney, Sean" <Sean.Finney@sonyericsson.com>,
-        "vovan@vovan.nl" <vovan@vovan.nl>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <20110415120934@it-loops.com>
-References: <20110415010913@it-loops.com>
-	 <1302840158.2447.5.camel@vovan.net.home>
-	 <A50602A820F61543B29992A418BB321B66E18F8A71@seldmbx01.corpusers.net>
-	 <20110415120934@it-loops.com>
+	id S1752471Ab1DTMJh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Apr 2011 08:09:37 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p3KC9avD023136
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Apr 2011 08:09:37 -0400
+Received: from [10.33.1.119] (dhcp-1-119.fab.redhat.com [10.33.1.119])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id p3KC9axj032076
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Apr 2011 08:09:36 -0400
+Subject: Open with O_CREAT flag set fails to open existing files on non
+ writable directories
+From: Sachin Prabhu <sprabhu@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Date: Wed, 20 Apr 2011 13:09:35 +0100
 Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 15 Apr 2011 09:29:10 -0400
-Message-ID: <1302874150.29239.12.camel@lade.trondhjem.org>
+Message-ID: <1303301376.21523.7.camel@dhcp-1-119.fab.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2011-04-15 at 12:16 +0200, Michael Guntsche wrote:
-> Thank you for the information, but I got it working in the meantime.
-> The main problem still is that the code for some reason tries to use AES
-> although I tried specifying a different enctype in my kerberos config.
-> Nevertheless it should just work with AES as well, so where was the
-> problem? 
-> Quite simple....missing kernel support. I enabled AES support but I DID
-> NOT enable CTS support which is of course needed as well. So after
-> compiling the server and client kernels with BOTH AES and CTS support I
-> can no mount the NFS4 export without any issues.
+An open on a NFS4 share using the O_CREAT flag on an existing file for
+which we have permissions to open but contained in a directory with no
+write permissions will fail with EACCES.
 
-Sigh. We really should not allow that kind of config. It just creates
-confusion.
+A tcpdump shows that the client had set the open mode to UNCHECKED which
+indicates that the file should be created if it doesn't exist and
+encountering an existing flag is not an error. Since in this case the
+file exists and can be opened by the user, the NFS server is wrong in
+attempting to check create permissions on the parent directory.
 
-Kevin, what are the dependencies for the kerberos V module today? Am I
-missing something in the following list?
+The patch adds a conditional statement to check for create permissions
+only if the file doesn't exist.
 
-        depends on SUNRPC && CRYPTO
-        depends on CRYPTO_MD5 && CRYPTO_DES && CRYPTO_CBC && CRYPTO_CTS
-        depends on CRYPTO_ECB && CRYPTO_HMAC && CRYPTO_MD5 &&
-        CRYPTO_SHA1
-        depends on CRYPTO_AES
+Signed-off-by: Sachin S. Prabhu <sprabhu@redhat.com>
 
-Cheers
- Trond
+diff -up linux-2.6/fs/nfsd/vfs.c.bz683372 linux-2.6/fs/nfsd/vfs.c
+--- linux-2.6/fs/nfsd/vfs.c.bz683372	2011-04-20 13:03:54.021040329 +0100
++++ linux-2.6/fs/nfsd/vfs.c	2011-04-20 13:05:21.551858218 +0100
+@@ -1363,7 +1363,7 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
+ 		goto out;
+ 	if (!(iap->ia_valid & ATTR_MODE))
+ 		iap->ia_mode = 0;
+-	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
++	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_EXEC);
+ 	if (err)
+ 		goto out;
+ 
+@@ -1385,6 +1385,13 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
+ 	if (IS_ERR(dchild))
+ 		goto out_nfserr;
+ 
++	/* If file doesn't exist, check for permissions to create one */
++	if (!dchild->d_inode) {
++		err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
++		if (err)
++			goto out;
++	}
++
+ 	err = fh_compose(resfhp, fhp->fh_export, dchild, fhp);
+ 	if (err)
+ 		goto out;
+
 
