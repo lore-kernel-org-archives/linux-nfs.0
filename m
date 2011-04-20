@@ -1,177 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:6765 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752166Ab1DVIbv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Apr 2011 04:31:51 -0400
-Message-ID: <4DB13CF1.8070300@panasas.com>
-Date: Fri, 22 Apr 2011 11:31:45 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/6] SQUASHME: remove wait parameter from the layoutreturn
- path.
-References: <4DB125BD.3040703@panasas.com> <1303459491-16357-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <1303459491-16357-1-git-send-email-bhalevy@panasas.com>
-Content-Type: text/plain; charset=windows-1255
+Received: from mx2.netapp.com ([216.240.18.37]:15949 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755933Ab1DTUEB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 16:04:01 -0400
+Subject: Re: [RFC 04/27] pnfs: layoutret_on_setattr
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <1303320401-21106-1-git-send-email-bhalevy@panasas.com>
+References: <4DAF0DE1.6020609@panasas.com>
+	 <1303320401-21106-1-git-send-email-bhalevy@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 20 Apr 2011 16:03:58 -0400
+Message-ID: <1303329838.23206.30.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-04-22 11:04, Benny Halevy wrote:
-> all call sites are sync now
-> squash into "pnfs: layoutreturn"
+On Wed, 2011-04-20 at 20:26 +0300, Benny Halevy wrote:
+> From: Andy Adamson <andros@netapp.com>
 > 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
 > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 > ---
->  fs/nfs/nfs4proc.c |   11 ++++-------
->  fs/nfs/pnfs.c     |   10 +++++-----
->  fs/nfs/pnfs.h     |   12 +++++-------
->  3 files changed, 14 insertions(+), 19 deletions(-)
+>  fs/nfs/nfs4proc.c |    3 +++
+>  fs/nfs/pnfs.h     |   22 ++++++++++++++++++++++
+>  2 files changed, 25 insertions(+), 0 deletions(-)
 > 
 > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 3e1843d..4f637e9 100644
+> index b03defb..b4df7a6 100644
 > --- a/fs/nfs/nfs4proc.c
 > +++ b/fs/nfs/nfs4proc.c
-> @@ -2333,7 +2333,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+> @@ -2332,6 +2332,9 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+>  	struct nfs4_state *state = NULL;
 >  	int status;
 >  
->  	if (pnfs_ld_layoutret_on_setattr(inode))
-> -		pnfs_return_layout(inode, NULL, true);
-> +		pnfs_return_layout(inode, NULL);
->  
+> +	if (pnfs_ld_layoutret_on_setattr(inode))
+> +		pnfs_return_layout(inode, NULL, true);
+
+There is nothing that prevents further reads and writes being scheduled
+after this, so what is the plan to prevent them from being sent to the
+MDS?
+Also, why are we doing this in the case of a file time update or a
+modebits update? It seems relevant only for the case of a size update.
+
+> +
 >  	nfs_fattr_init(fattr);
 >  	
-> @@ -5739,7 +5739,7 @@ static const struct rpc_call_ops nfs4_layoutreturn_call_ops = {
->  	.rpc_release = nfs4_layoutreturn_release,
->  };
->  
-> -int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool issync)
-> +int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp)
->  {
->  	struct rpc_task *task;
->  	struct rpc_message msg = {
-> @@ -5752,22 +5752,19 @@ int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool issync)
->  		.rpc_message = &msg,
->  		.callback_ops = &nfs4_layoutreturn_call_ops,
->  		.callback_data = lrp,
-> -		.flags = RPC_TASK_ASYNC,
->  	};
-> -	int status = 0;
-> +	int status;
->  
->  	dprintk("--> %s\n", __func__);
->  	task = rpc_run_task(&task_setup_data);
->  	if (IS_ERR(task))
->  		return PTR_ERR(task);
-> -	if (!issync)
-> -		goto out;
->  	status = nfs4_wait_for_completion_rpc_task(task);
-
-sorry, no need to wait if the task isn't ASYNC.
-
-Benny
-
->  	if (status != 0)
->  		goto out;
->  	status = task->tk_status;
->  out:
-> -	dprintk("<-- %s\n", __func__);
-> +	dprintk("<-- %s status=%d\n", __func__, status);
->  	rpc_put_task(task);
->  	return status;
->  }
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index bacde63..1ec5bb8 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -667,7 +667,7 @@ out_err_free:
->  }
->  
->  static int
-> -return_layout(struct inode *ino, struct pnfs_layout_range *range, bool wait)
-> +return_layout(struct inode *ino, struct pnfs_layout_range *range)
->  {
->  	struct nfs4_layoutreturn *lrp;
->  	struct nfs_server *server = NFS_SERVER(ino);
-> @@ -687,7 +687,7 @@ return_layout(struct inode *ino, struct pnfs_layout_range *range, bool wait)
->  	lrp->args.inode = ino;
->  	lrp->clp = server->nfs_client;
->  
-> -	status = nfs4_proc_layoutreturn(lrp, wait);
-> +	status = nfs4_proc_layoutreturn(lrp);
->  out:
->  	dprintk("<-- %s status: %d\n", __func__, status);
->  	return status;
-> @@ -695,7 +695,7 @@ out:
->  
->  /* Initiates a LAYOUTRETURN(FILE) */
->  int
-> -_pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range, bool wait)
-> +_pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range)
->  {
->  	struct pnfs_layout_hdr *lo = NULL;
->  	struct nfs_inode *nfsi = NFS_I(ino);
-> @@ -722,11 +722,11 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range, bool wai
->  	pnfs_free_lseg_list(&tmp_list);
->  
->  	/* Return layout even if layoutcommit fails */
-> -	status = pnfs_layoutcommit_inode(ino, wait);
-> +	status = pnfs_layoutcommit_inode(ino, true);
->  	if (status)
->  		dprintk("%s: layoutcommit failed, status=%d. Returning layout anyway\n",
->  			__func__, status);
-> -	status = return_layout(ino, &arg, wait);
-> +	status = return_layout(ino, &arg);
->  out:
->  	dprintk("<-- %s status: %d\n", __func__, status);
->  	return status;
+>  	/* Search for an existing open(O_WRITE) file */
 > diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index b0f9b79..b5d1d22 100644
+> index a308f3c..3506ad4 100644
 > --- a/fs/nfs/pnfs.h
 > +++ b/fs/nfs/pnfs.h
-> @@ -164,7 +164,7 @@ extern int nfs4_proc_getdevicelist(struct nfs_server *server,
->  extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
->  				   struct pnfs_device *dev);
->  extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
-> -extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool wait);
-> +extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
+> @@ -64,12 +64,18 @@ enum {
+>  	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
+>  };
 >  
->  /* pnfs.c */
->  void get_layout_hdr(struct pnfs_layout_hdr *lo);
-> @@ -202,7 +202,7 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
->  bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
->  void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
->  int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
-> -int _pnfs_return_layout(struct inode *, struct pnfs_layout_range *, bool wait);
-> +int _pnfs_return_layout(struct inode *, struct pnfs_layout_range *);
->  int pnfs_write_done(struct nfs_write_data *);
->  int pnfs_read_done(struct nfs_read_data *);
+> +enum layoutdriver_policy_flags {
+> +	/* Should the pNFS client commit and return the layout upon a setattr */
+> +	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
+> +};
+> +
+>  /* Per-layout driver specific registration structure */
+>  struct pnfs_layoutdriver_type {
+>  	struct list_head pnfs_tblid;
+>  	const u32 id;
+>  	const char *name;
+>  	struct module *owner;
+> +	unsigned flags;
+>  	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr);
+>  	void (*free_lseg) (struct pnfs_layout_segment *lseg);
 >  
-> @@ -284,14 +284,13 @@ pnfs_ld_layoutret_on_setattr(struct inode *inode)
+> @@ -228,6 +234,16 @@ static inline void pnfs_clear_request_commit(struct nfs_page *req)
+>  		put_lseg(req->wb_commit_lseg);
 >  }
 >  
+> +/* Should the pNFS client commit and return the layout upon a setattr */
+> +static inline bool
+> +pnfs_ld_layoutret_on_setattr(struct inode *inode)
+> +{
+> +	if (!pnfs_enabled_sb(NFS_SERVER(inode)))
+> +		return false;
+> +	return NFS_SERVER(inode)->pnfs_curr_ld->flags &
+> +		PNFS_LAYOUTRET_ON_SETATTR;
+> +}
+> +
 >  static inline int pnfs_return_layout(struct inode *ino,
-> -				     struct pnfs_layout_range *range,
-> -				     bool wait)
-> +				     struct pnfs_layout_range *range)
+>  				     struct pnfs_layout_range *range,
+>  				     bool wait)
+> @@ -290,6 +306,12 @@ static inline int pnfs_return_layout(struct inode *ino,
+>  }
+>  
+>  static inline bool
+> +pnfs_ld_layoutret_on_setattr(struct inode *inode)
+> +{
+> +	return false;
+> +}
+> +
+> +static inline bool
+>  pnfs_roc(struct inode *ino)
 >  {
->  	struct nfs_inode *nfsi = NFS_I(ino);
->  	struct nfs_server *nfss = NFS_SERVER(ino);
->  
->  	if (pnfs_enabled_sb(nfss) && nfsi->layout)
-> -		return _pnfs_return_layout(ino, range, wait);
-> +		return _pnfs_return_layout(ino, range);
->  
->  	return 0;
->  }
-> @@ -338,8 +337,7 @@ pnfs_try_to_write_data(struct nfs_write_data *data,
->  }
->  
->  static inline int pnfs_return_layout(struct inode *ino,
-> -				     struct pnfs_layout_range *range,
-> -				     bool wait)
-> +				     struct pnfs_layout_range *range)
->  {
->  	return 0;
->  }
+>  	return false;
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
