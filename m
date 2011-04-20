@@ -1,76 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:52449 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755607Ab1DOSAn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Apr 2011 14:00:43 -0400
-Subject: Re: [RFC][PATCH] Vector read/write support for NFS (DIO) client
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Badari Pulavarty <pbadari@us.ibm.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <20110415173317.GA21468@infradead.org>
-References: <1302622335.3877.62.camel@badari-desktop>
-	 <1302623369.4801.28.camel@lade.trondhjem.org>
-	 <20110415173317.GA21468@infradead.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 15 Apr 2011 14:00:39 -0400
-Message-ID: <1302890439.7454.24.camel@lade.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:57156 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755147Ab1DTR1v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 13:27:51 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [RFC 12/27] pnfs: alloc and free layout_hdr layoutdriver methods
+Date: Wed, 20 Apr 2011 20:27:48 +0300
+Message-Id: <1303320468-21407-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DAF0DE1.6020609@panasas.com>
+References: <4DAF0DE1.6020609@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, 2011-04-15 at 13:33 -0400, Christoph Hellwig wrote:
-> On Tue, Apr 12, 2011 at 11:49:29AM -0400, Trond Myklebust wrote:
-> > Your approach goes in the direction of further special-casing O_DIRECT
-> > in the NFS client. I'd like to move away from that and towards
-> > integration with the ordinary read/write codepaths so that aside from
-> > adding request coalescing, we can also enable pNFS support.
-> 
-> What is the exact plan?  Split the direct I/O into two passes, one
-> to lock down the user pages and then a second one to send the pages
-> over the wire, which is shared with the writeback code?  If that's
-> the case it should naturally allow plugging in a scheme like Badari
-> to send pages from different iovecs in a single on the wire request -
-> after all page cache pages are non-continuous in virtual and physical
-> memory, too.
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/pnfs.c |   21 ++++++++++++++++++---
+ fs/nfs/pnfs.h |    3 +++
+ 2 files changed, 21 insertions(+), 3 deletions(-)
 
-You can't lock the user pages unfortunately: they may need to be faulted
-in.
-
-What I was thinking of doing is splitting out the code in the RPC
-callbacks that plays around with page flags and puts the pages on the
-inode's dirty list so that they don't get called in the case of
-O_DIRECT.
-I then want to attach the O_DIRECT pages to the nfsi->nfs_page_tree
-radix tree so that they can be tracked by the NFS layer. I'm assuming
-that nobody is going to be silly enough to require simultaneous writes
-via O_DIRECT to the same locations.
-Then we can feed the O_DIRECT pages into nfs_page_async_flush() so that
-they share the existing page cache write coalescing and pnfs code.
-
-The commit code will be easy to reuse too, since the requests are listed
-in the radix tree and so nfs_scan_list() can find and process them in
-the usual fashion.
-
-The main problem that I have yet to figure out is what to do if the
-server flags a reboot and the requests need to be resent. One option I'm
-looking into is using the aio 'kick handler' to resubmit the writes.
-Another may be to just resend directly from the nfsiod work queue.
-
-> When do you plan to release your read/write code re-write?  If it's
-> not anytime soon how is applying Badari's patch going to hurt?  Most
-> of it probably will get reverted with a complete rewrite, but at least
-> the logic to check which direct I/O iovecs can coalesced would stay
-> in the new world order.
-
-I'm hoping that I can do the rewrite fairly quickly once the resend
-problem is solved. It shouldn't be more than a couple of weeks of
-coding.
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index afc64b3..2254362 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -188,13 +188,28 @@ get_layout_hdr(struct pnfs_layout_hdr *lo)
+ 	atomic_inc(&lo->plh_refcount);
+ }
+ 
++static struct pnfs_layout_hdr *
++pnfs_alloc_layout_hdr(struct inode *ino)
++{
++	struct pnfs_layoutdriver_type *ld = NFS_SERVER(ino)->pnfs_curr_ld;
++	return ld->alloc_layout_hdr ? ld->alloc_layout_hdr(ino) :
++		kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
++}
++
++static void
++pnfs_free_layout_hdr(struct pnfs_layout_hdr *lo)
++{
++	struct pnfs_layoutdriver_type *ld = NFS_SERVER(lo->plh_inode)->pnfs_curr_ld;
++	return ld->alloc_layout_hdr ? ld->free_layout_hdr(lo) : kfree(lo);
++}
++
+ static void
+ destroy_layout_hdr(struct pnfs_layout_hdr *lo)
+ {
+ 	dprintk("%s: freeing layout cache %p\n", __func__, lo);
+ 	BUG_ON(!list_empty(&lo->plh_layouts));
+ 	NFS_I(lo->plh_inode)->layout = NULL;
+-	kfree(lo);
++	pnfs_free_layout_hdr(lo);
+ }
+ 
+ static void
+@@ -857,7 +872,7 @@ alloc_init_layout_hdr(struct inode *ino)
+ {
+ 	struct pnfs_layout_hdr *lo;
+ 
+-	lo = kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
++	lo = pnfs_alloc_layout_hdr(ino);
+ 	if (!lo)
+ 		return NULL;
+ 	atomic_set(&lo->plh_refcount, 1);
+@@ -890,7 +905,7 @@ pnfs_find_alloc_layout(struct inode *ino)
+ 	if (likely(nfsi->layout == NULL))	/* Won the race? */
+ 		nfsi->layout = new;
+ 	else
+-		kfree(new);
++		pnfs_free_layout_hdr(new);
+ 	return nfsi->layout;
+ }
+ 
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index bb266ba..35662ac 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -83,6 +83,9 @@ struct pnfs_layoutdriver_type {
+ 	int (*set_layoutdriver) (struct nfs_server *);
+ 	int (*unset_layoutdriver) (struct nfs_server *);
+ 
++	struct pnfs_layout_hdr * (*alloc_layout_hdr) (struct inode *inode);
++	void (*free_layout_hdr) (struct pnfs_layout_hdr *);
++
+ 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr);
+ 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
+ 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.3.4
 
