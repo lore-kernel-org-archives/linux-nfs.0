@@ -1,171 +1,511 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:41311 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758825Ab1DYSoo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Apr 2011 14:44:44 -0400
-Received: by mail-iy0-f174.google.com with SMTP id 14so2054039iyb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Apr 2011 11:44:44 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 09/15] NFS: Add infrastructure for updating callback data
-To: trond.myklebust@netapp.com
+Received: from mx2.netapp.com ([216.240.18.37]:7683 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752123Ab1DTUtX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 16:49:23 -0400
+Subject: Re: [RFC 15/27] pnfs-obj: pnfs_osd XDR definitions
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Cc: linux-nfs@vger.kernel.org
-Date: Mon, 25 Apr 2011 14:44:41 -0400
-Message-ID: <20110425184441.5669.40015.stgit@matisse.1015granger.net>
-In-Reply-To: <20110425183405.5669.52507.stgit@matisse.1015granger.net>
-References: <20110425183405.5669.52507.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <1303320490-21526-1-git-send-email-bhalevy@panasas.com>
+References: <4DAF0DE1.6020609@panasas.com>
+	 <1303320490-21526-1-git-send-email-bhalevy@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 20 Apr 2011 13:49:21 -0700
+Message-ID: <1303332561.23206.52.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Currently the NFS client creates the long-form client ID in the XDR
-encoder for SETCLIENTID, just before it is sent to the server.
+On Wed, 2011-04-20 at 20:28 +0300, Benny Halevy wrote:
+> * Add the pnfs_osd_xdr.h header
+> 
+> * defintions the pnfs_osd_layout structure including all it's
+>   sub-types and constants.
+> * Declare the pnfs_osd_xdr_encode/decode_layout API + all needed
+>   inline helpers.
+> 
+> * Define the pnfs_osd_deviceaddr structure and all its subtypes and
+>   constants.
+> * Declare API for encoding/decoding of a pnfs_osd_deviceaddr to/from
+>   XDR stream.
+> 
+> * Define the pnfs_osd_ioerr structure, its substructures and constants.
+> * Declare API for encoding/decoding of a pnfs_osd_ioerr to/from
+>   XDR stream.
+> 
+> * Define the pnfs_osd_layoutupdate structure and its substructures.
+> * Declare API for encoding/decoding of a pnfs_osd_layoutupdate to/from
+>   XDR stream.
+> 
+> [Some extra debug-prints]
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> [objlayout driver skeleton]
+> [use __be32]
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  include/linux/pnfs_osd_xdr.h |  439 ++++++++++++++++++++++++++++++++++++++++++
+>  1 files changed, 439 insertions(+), 0 deletions(-)
+>  create mode 100644 include/linux/pnfs_osd_xdr.h
+> 
+> diff --git a/include/linux/pnfs_osd_xdr.h b/include/linux/pnfs_osd_xdr.h
+> new file mode 100644
+> index 0000000..6f2cedf
+> --- /dev/null
+> +++ b/include/linux/pnfs_osd_xdr.h
+> @@ -0,0 +1,439 @@
+> +/*
+> + *  pnfs_osd_xdr.h
+> + *
+> + *  pNFS-osd on-the-wire data structures
+> + *
+> + *  Copyright (C) 2007-2009 Panasas Inc.
+> + *  All rights reserved.
+> + *
+> + *  Benny Halevy <bhalevy@panasas.com>
+> + *
+> + *  This program is free software; you can redistribute it and/or modify
+> + *  it under the terms of the GNU General Public License version 2
+> + *  See the file COPYING included with this distribution for more details.
+> + *
+> + *  Redistribution and use in source and binary forms, with or without
+> + *  modification, are permitted provided that the following conditions
+> + *  are met:
+> + *
+> + *  1. Redistributions of source code must retain the above copyright
+> + *     notice, this list of conditions and the following disclaimer.
+> + *  2. Redistributions in binary form must reproduce the above copyright
+> + *     notice, this list of conditions and the following disclaimer in the
+> + *     documentation and/or other materials provided with the distribution.
+> + *  3. Neither the name of the Panasas company nor the names of its
+> + *     contributors may be used to endorse or promote products derived
+> + *     from this software without specific prior written permission.
+> + *
+> + *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
+> + *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+> + *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+> + *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+> + *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+> + *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+> + *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+> + *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+> + *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+> + *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+> + *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+> + */
+> +#ifndef __PNFS_OSD_XDR_H__
+> +#define __PNFS_OSD_XDR_H__
+> +
+> +#include <linux/nfs_fs.h>
+> +#include <linux/nfs_page.h>
+> +#include <linux/exp_xdr.h>
+> +#include <scsi/osd_protocol.h>
+> +
+> +#define PNFS_OSD_OSDNAME_MAXSIZE 256
+> +
+> +/*
+> + * START OF "GENERIC" DECODE ROUTINES.
+> + *   These may look a little ugly since they are imported from a "generic"
+> + * set of XDR encode/decode routines which are intended to be shared by
+> + * all of our NFSv4 implementations (OpenBSD, MacOS X...).
+> + *
+> + * If the pain of reading these is too great, it should be a straightforward
+> + * task to translate them into Linux-specific versions which are more
+> + * consistent with the style used in NFSv2/v3...
 
-With transparent state migration, the long-form client ID used with
-the source server must be sent to the destination server when the
-client uses SETCLIENTID to update the destination server with fresh
-callback information.  If a new long-form client ID is used here, the
-destination server will drop all the NFSv4 state the servers so
-carefully migrated for us.
+Please do... We just got rid of these in the NFS code. The last thing we
+want to do is reintroduce them in new code.
 
-So, the client must preserve the short-form and long-form client ID
-that are generated at SETCLIENTID/EXCHANGE_ID time.  When it comes
-time to update the callback information, the preserved client IDs
-are used so the server doesn't drop state for this client.
+> + */
+> +#define READ32(x)         (x) = ntohl(*p++)
+> +#define READ64(x)         do {			\
+> +	(x) = (u64)ntohl(*p++) << 32;		\
+> +	(x) |= ntohl(*p++);			\
+> +} while (0)
+> +#define COPYMEM(x, nbytes) do {			\
+> +	memcpy((x), p, nbytes);			\
+> +	p += XDR_QUADLEN(nbytes);		\
+> +} while (0)
+> +
+> +/*
+> + * draft-ietf-nfsv4-minorversion-22
+> + * draft-ietf-nfsv4-pnfs-obj-12
+> + */
+> +
+> +/* Layout Structure */
+> +
+> +enum pnfs_osd_raid_algorithm4 {
+> +	PNFS_OSD_RAID_0		= 1,
+> +	PNFS_OSD_RAID_4		= 2,
+> +	PNFS_OSD_RAID_5		= 3,
+> +	PNFS_OSD_RAID_PQ	= 4     /* Reed-Solomon P+Q */
+> +};
+> +
+> +/*   struct pnfs_osd_data_map4 {
+> + *       uint32_t                    odm_num_comps;
+> + *       length4                     odm_stripe_unit;
+> + *       uint32_t                    odm_group_width;
+> + *       uint32_t                    odm_group_depth;
+> + *       uint32_t                    odm_mirror_cnt;
+> + *       pnfs_osd_raid_algorithm4    odm_raid_algorithm;
+> + *   };
+> + */
+> +struct pnfs_osd_data_map {
+> +	u32	odm_num_comps;
+> +	u64	odm_stripe_unit;
+> +	u32	odm_group_width;
+> +	u32	odm_group_depth;
+> +	u32	odm_mirror_cnt;
+> +	u32	odm_raid_algorithm;
+> +};
+> +
+> +static inline int
+> +pnfs_osd_data_map_xdr_sz(void)
+> +{
+> +	return 1 + 2 + 1 + 1 + 1 + 1;
+> +}
+> +
+> +static inline size_t
+> +pnfs_osd_data_map_incore_sz(void)
+> +{
+> +	return sizeof(struct pnfs_osd_data_map);
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Why the wrapper?
 
- fs/nfs/client.c           |    1 +
- fs/nfs/nfs4_fs.h          |    1 +
- fs/nfs/nfs4proc.c         |   29 ++++++++++++++++++++++++++---
- fs/nfs/nfs4state.c        |    1 +
- include/linux/nfs_fs_sb.h |    1 +
- 5 files changed, 30 insertions(+), 3 deletions(-)
+> +}
+> +
+> +/*   struct pnfs_osd_objid4 {
+> + *       deviceid4       oid_device_id;
+> + *       uint64_t        oid_partition_id;
+> + *       uint64_t        oid_object_id;
+> + *   };
+> + */
+> +struct pnfs_osd_objid {
+> +	struct nfs4_deviceid	oid_device_id;
+> +	u64			oid_partition_id;
+> +	u64			oid_object_id;
+> +};
+> +
+> +/* For printout. I use "dev(%llx:%llx)", _DEVID_LO(), _DEVID_HI BE style */
+> +#define _DEVID_LO(oid_device_id) \
+> +	(unsigned long long)be64_to_cpup((__be64 *)oid_device_id.data)
+> +
+> +#define _DEVID_HI(oid_device_id) \
+> +	(unsigned long long)be64_to_cpup(((__be64 *)oid_device_id.data) + 1)
+> +
+> +static inline int
+> +pnfs_osd_objid_xdr_sz(void)
+> +{
+> +	return (NFS4_DEVICEID4_SIZE / 4) + 2 + 2;
+> +}
+> +
+> +static inline size_t
+> +pnfs_osd_objid_incore_sz(void)
+> +{
+> +	return sizeof(struct pnfs_osd_objid);
+> +}
+> +
+> +enum pnfs_osd_version {
+> +	PNFS_OSD_MISSING              = 0,
+> +	PNFS_OSD_VERSION_1            = 1,
+> +	PNFS_OSD_VERSION_2            = 2
+> +};
+> +
+> +struct pnfs_osd_opaque_cred {
+> +	u32 cred_len;
+> +	u8 *cred;
+> +};
+> +
+> +static inline int
+> +pnfs_osd_opaque_cred_xdr_sz(__be32 *p)
+> +{
+> +	u32 *start = p;
+> +	u32 n;
+> +
+> +	READ32(n);
+> +	p += XDR_QUADLEN(n);
+> +	return p - start;
+> +}
+> +
+> +static inline size_t
+> +pnfs_osd_opaque_cred_incore_sz(__be32 *p)
+> +{
+> +	u32 n;
+> +
+> +	READ32(n);
+> +	return XDR_QUADLEN(n) * 4;
+> +}
+> +
+> +enum pnfs_osd_cap_key_sec {
+> +	PNFS_OSD_CAP_KEY_SEC_NONE     = 0,
+> +	PNFS_OSD_CAP_KEY_SEC_SSV      = 1,
+> +};
+> +
+> +/*   struct pnfs_osd_object_cred4 {
+> + *       pnfs_osd_objid4         oc_object_id;
+> + *       pnfs_osd_version4       oc_osd_version;
+> + *       pnfs_osd_cap_key_sec4   oc_cap_key_sec;
+> + *       opaque                  oc_capability_key<>;
+> + *       opaque                  oc_capability<>;
+> + *   };
+> + */
+> +struct pnfs_osd_object_cred {
+> +	struct pnfs_osd_objid		oc_object_id;
+> +	u32				oc_osd_version;
+> +	u32				oc_cap_key_sec;
+> +	struct pnfs_osd_opaque_cred	oc_cap_key;
+> +	struct pnfs_osd_opaque_cred	oc_cap;
+> +};
+> +
+> +static inline int
+> +pnfs_osd_object_cred_xdr_sz(__be32 *p)
+> +{
+> +	__be32 *start = p;
+> +
+> +	p += pnfs_osd_objid_xdr_sz() + 2;
+> +	p += pnfs_osd_opaque_cred_xdr_sz(p);
+> +	p += pnfs_osd_opaque_cred_xdr_sz(p);
+> +	return p - start;
+> +}
+> +
+> +static inline size_t
+> +pnfs_osd_object_cred_incore_sz(__be32 *p)
+> +{
+> +	size_t sz = sizeof(struct pnfs_osd_object_cred);
+> +
+> +	p += pnfs_osd_objid_xdr_sz() + 2;
+> +	sz += pnfs_osd_opaque_cred_incore_sz(p);
+> +	p += pnfs_osd_opaque_cred_xdr_sz(p);
+> +	sz += pnfs_osd_opaque_cred_incore_sz(p);
+> +	return sz;
+> +}
+> +
+> +/*   struct pnfs_osd_layout4 {
+> + *       pnfs_osd_data_map4      olo_map;
+> + *       uint32_t                olo_comps_index;
+> + *       pnfs_osd_object_cred4   olo_components<>;
+> + *   };
+> + */
+> +struct pnfs_osd_layout {
+> +	struct pnfs_osd_data_map	olo_map;
+> +	u32				olo_comps_index;
+> +	u32				olo_num_comps;
+> +	struct pnfs_osd_object_cred	*olo_comps;
+> +};
+> +
+> +static inline int
+> +pnfs_osd_layout_xdr_sz(__be32 *p)
+> +{
+> +	__be32 *start = p;
+> +	u32 n;
+> +
+> +	p += pnfs_osd_data_map_xdr_sz() + 1;
+> +	READ32(n);
+> +	while ((int)(n--) > 0)
+> +		p += pnfs_osd_object_cred_xdr_sz(p);
+> +	return p - start;
+> +}
+> +
+> +static inline size_t
+> +pnfs_osd_layout_incore_sz(__be32 *p)
+> +{
+> +	u32 n;
+> +	size_t sz;
+> +
+> +	p += pnfs_osd_data_map_xdr_sz() + 1;
+> +	READ32(n);
+> +	sz = sizeof(struct pnfs_osd_layout);
+> +	while ((int)(n--) > 0) {
+> +		sz += pnfs_osd_object_cred_incore_sz(p);
+> +		p += pnfs_osd_object_cred_xdr_sz(p);
+> +	}
+> +	return sz;
+> +}
+> +
+> +/* Device Address */
+> +
+> +enum pnfs_osd_targetid_type {
+> +	OBJ_TARGET_ANON = 1,
+> +	OBJ_TARGET_SCSI_NAME = 2,
+> +	OBJ_TARGET_SCSI_DEVICE_ID = 3,
+> +};
+> +
+> +/*   union pnfs_osd_targetid4 switch (pnfs_osd_targetid_type4 oti_type) {
+> + *       case OBJ_TARGET_SCSI_NAME:
+> + *           string              oti_scsi_name<>;
+> + *
+> + *       case OBJ_TARGET_SCSI_DEVICE_ID:
+> + *           opaque              oti_scsi_device_id<>;
+> + *
+> + *       default:
+> + *           void;
+> + *   };
+> + *
+> + *   union pnfs_osd_targetaddr4 switch (bool ota_available) {
+> + *       case TRUE:
+> + *           netaddr4            ota_netaddr;
+> + *       case FALSE:
+> + *           void;
+> + *   };
+> + *
+> + *   struct pnfs_osd_deviceaddr4 {
+> + *       pnfs_osd_targetid4      oda_targetid;
+> + *       pnfs_osd_targetaddr4    oda_targetaddr;
+> + *       uint64_t                oda_lun;
+> + *       opaque                  oda_systemid<>;
+> + *       pnfs_osd_object_cred4   oda_root_obj_cred;
+> + *       opaque                  oda_osdname<>;
+> + *   };
+> + */
+> +struct pnfs_osd_targetid {
+> +	u32				oti_type;
+> +	struct nfs4_string		oti_scsi_device_id;
+> +};
+> +
+> +enum { PNFS_OSD_TARGETID_MAX = 1 + PNFS_OSD_OSDNAME_MAXSIZE / 4 };
+> +
+> +/*   struct netaddr4 {
+> + *       // see struct rpcb in RFC1833
+> + *       string r_netid<>;    // network id
+> + *       string r_addr<>;     // universal address
+> + *   };
+> + */
+> +struct pnfs_osd_net_addr {
+> +	struct nfs4_string	r_netid;
+> +	struct nfs4_string	r_addr;
+> +};
+> +
+> +struct pnfs_osd_targetaddr {
+> +	u32				ota_available;
+> +	struct pnfs_osd_net_addr	ota_netaddr;
+> +};
+> +
+> +enum {
+> +	NETWORK_ID_MAX = 16 / 4,
+> +	UNIVERSAL_ADDRESS_MAX = 64 / 4,
+> +	PNFS_OSD_TARGETADDR_MAX = 3 +  NETWORK_ID_MAX + UNIVERSAL_ADDRESS_MAX,
+> +};
+> +
+> +struct pnfs_osd_deviceaddr {
+> +	struct pnfs_osd_targetid	oda_targetid;
+> +	struct pnfs_osd_targetaddr	oda_targetaddr;
+> +	u8				oda_lun[8];
+> +	struct nfs4_string		oda_systemid;
+> +	struct pnfs_osd_object_cred	oda_root_obj_cred;
+> +	struct nfs4_string		oda_osdname;
+> +};
+> +
+> +enum {
+> +	ODA_OSDNAME_MAX = PNFS_OSD_OSDNAME_MAXSIZE / 4,
+> +	PNFS_OSD_DEVICEADDR_MAX =
+> +		PNFS_OSD_TARGETID_MAX + PNFS_OSD_TARGETADDR_MAX +
+> +		2 /*oda_lun*/ +
+> +		1 + OSD_SYSTEMID_LEN +
+> +		1 + ODA_OSDNAME_MAX,
+> +};
+> +
+> +/* LAYOUTCOMMIT: layoutupdate */
+> +
+> +/*   union pnfs_osd_deltaspaceused4 switch (bool dsu_valid) {
+> + *       case TRUE:
+> + *           int64_t     dsu_delta;
+> + *       case FALSE:
+> + *           void;
+> + *   };
+> + *
+> + *   struct pnfs_osd_layoutupdate4 {
+> + *       pnfs_osd_deltaspaceused4    olu_delta_space_used;
+> + *       bool                        olu_ioerr_flag;
+> + *   };
+> + */
+> +struct pnfs_osd_layoutupdate {
+> +	u32	dsu_valid;
+> +	s64	dsu_delta;
+> +	u32	olu_ioerr_flag;
+> +};
+> +
+> +/* LAYOUTRETURN: I/O Rrror Report */
+> +
+> +enum pnfs_osd_errno {
+> +	PNFS_OSD_ERR_EIO		= 1,
+> +	PNFS_OSD_ERR_NOT_FOUND		= 2,
+> +	PNFS_OSD_ERR_NO_SPACE		= 3,
+> +	PNFS_OSD_ERR_BAD_CRED		= 4,
+> +	PNFS_OSD_ERR_NO_ACCESS		= 5,
+> +	PNFS_OSD_ERR_UNREACHABLE	= 6,
+> +	PNFS_OSD_ERR_RESOURCE		= 7
+> +};
+> +
+> +/*   struct pnfs_osd_ioerr4 {
+> + *       pnfs_osd_objid4     oer_component;
+> + *       length4             oer_comp_offset;
+> + *       length4             oer_comp_length;
+> + *       bool                oer_iswrite;
+> + *       pnfs_osd_errno4     oer_errno;
+> + *   };
+> + */
+> +struct pnfs_osd_ioerr {
+> +	struct pnfs_osd_objid	oer_component;
+> +	u64			oer_comp_offset;
+> +	u64			oer_comp_length;
+> +	u32			oer_iswrite;
+> +	u32			oer_errno;
+> +};
+> +
+> +static inline unsigned
+> +pnfs_osd_ioerr_xdr_sz(void)
+> +{
+> +	return pnfs_osd_objid_xdr_sz() + 2 + 2 + 1 + 1;
+> +}
+> +
+> +/* OSD XDR API */
+> +
+> +/* Layout helpers */
+> +extern struct pnfs_osd_layout *pnfs_osd_xdr_decode_layout(
+> +	struct pnfs_osd_layout *layout, __be32 *p);
+> +
+> +extern int pnfs_osd_xdr_encode_layout(
+> +	struct exp_xdr_stream *xdr,
+> +	struct pnfs_osd_layout *layout);
+> +
+> +/* Device Info helpers */
+> +
+> +/* First pass calculate total size for space needed */
+> +extern size_t pnfs_osd_xdr_deviceaddr_incore_sz(__be32 *p);
+> +
+> +/* Note: some strings pointed to inside @deviceaddr might point
+> + * to space inside @p. @p should stay valid while @deviceaddr
+> + * is in use.
+> + * It is assumed that @deviceaddr points to bigger memory of size
+> + * calculated in first pass by pnfs_osd_xdr_deviceaddr_incore_sz()
+> + */
+> +extern void pnfs_osd_xdr_decode_deviceaddr(
+> +	struct pnfs_osd_deviceaddr *deviceaddr, __be32 *p);
+> +
+> +/* For Servers */
+> +extern int pnfs_osd_xdr_encode_deviceaddr(
+> +	struct exp_xdr_stream *xdr, struct pnfs_osd_deviceaddr *devaddr);
+> +
+> +/* layoutupdate (layout_commit) xdr helpers */
+> +extern int
+> +pnfs_osd_xdr_encode_layoutupdate(struct xdr_stream *xdr,
+> +				 struct pnfs_osd_layoutupdate *lou);
+> +extern __be32 *
+> +pnfs_osd_xdr_decode_layoutupdate(struct pnfs_osd_layoutupdate *lou, __be32 *p);
+> +
+> +/* osd_ioerror encoding/decoding (layout_return) */
+> +extern int
+> +pnfs_osd_xdr_encode_ioerr(struct xdr_stream *xdr, struct pnfs_osd_ioerr *ioerr);
+> +extern __be32 *
+> +pnfs_osd_xdr_decode_ioerr(struct pnfs_osd_ioerr *ioerr, __be32 *p);
+> +
+> +#endif /* __PNFS_OSD_XDR_H__ */
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index c23bcf1..42b579d 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -231,6 +231,7 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
- 	nfs4_destroy_callback(clp);
- 	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
- 		nfs_idmap_delete(clp);
-+	kfree(clp->cl_cached_clientid);
- 
- 	rpc_destroy_wait_queue(&clp->cl_rpcwaitq);
- }
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 06b7457..eba7791 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -47,6 +47,7 @@ enum nfs4_client_state {
- 	NFS4CLNT_LAYOUTRECALL,
- 	NFS4CLNT_SESSION_RESET,
- 	NFS4CLNT_RECALL_SLOT,
-+	NFS4CLNT_UPDATE_CALLBACK,
- };
- 
- enum nfs4_session_state {
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 561ffa1..b7f5666 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3708,7 +3708,11 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 
- 	for(;;) {
- 		rcu_read_lock();
--		setclientid.sc_name_len = scnprintf(setclientid.sc_name,
-+		if (test_bit(NFS4CLNT_UPDATE_CALLBACK, &clp->cl_state)) {
-+			strcpy(setclientid.sc_name, clp->cl_cached_clientid);
-+			setclientid.sc_name_len = strlen(setclientid.sc_name);
-+		} else {
-+			setclientid.sc_name_len = scnprintf(setclientid.sc_name,
- 				sizeof(setclientid.sc_name), "%s/%s %s %s %u",
- 				clp->cl_ipaddr,
- 				rpc_peeraddr2str(clp->cl_rpcclient,
-@@ -3717,6 +3721,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 							RPC_DISPLAY_PROTO),
- 				clp->cl_rpcclient->cl_auth->au_ops->au_name,
- 				clp->cl_id_uniquifier);
-+		}
- 		setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
- 				sizeof(setclientid.sc_netid),
- 				rpc_peeraddr2str(clp->cl_rpcclient,
-@@ -3727,7 +3732,8 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 		rcu_read_unlock();
- 
- 		status = rpc_call_sync(clp->cl_rpcclient, &msg, 0);
--		if (status != -NFS4ERR_CLID_INUSE)
-+		if (clp->cl_cached_clientid != NULL ||
-+		    status != -NFS4ERR_CLID_INUSE)
- 			break;
- 		if (signalled())
- 			break;
-@@ -3737,6 +3743,13 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 			if (++clp->cl_id_uniquifier == 0)
- 				break;
- 	}
-+
-+	if (status == 0 &&
-+	    !test_bit(NFS4CLNT_UPDATE_CALLBACK, &clp->cl_state)) {
-+		kfree(clp->cl_cached_clientid);
-+		clp->cl_cached_clientid = kstrdup(setclientid.sc_name,
-+								GFP_KERNEL);
-+	}
- 	return status;
- }
- 
-@@ -4867,16 +4880,26 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 	*p = htonl((u32)clp->cl_boot_time.tv_nsec);
- 	args.verifier = &verifier;
- 
--	args.id_len = scnprintf(args.id, sizeof(args.id),
-+	if (test_bit(NFS4CLNT_UPDATE_CALLBACK, &clp->cl_state)) {
-+		strcpy(args.id, clp->cl_cached_clientid);
-+		args.id_len = strlen(args.id);
-+	} else {
-+		args.id_len = scnprintf(args.id, sizeof(args.id),
- 				"%s/%s.%s/%u",
- 				clp->cl_ipaddr,
- 				init_utsname()->nodename,
- 				init_utsname()->domainname,
- 				clp->cl_rpcclient->cl_auth->au_flavor);
-+	}
- 
- 	status = rpc_call_sync(clp->cl_rpcclient, &msg, 0);
- 	if (!status)
- 		status = nfs4_check_cl_exchange_flags(clp->cl_exchange_flags);
-+	if (!status &&
-+	    !test_bit(NFS4CLNT_UPDATE_CALLBACK, &clp->cl_state)) {
-+		kfree(clp->cl_cached_clientid);
-+		clp->cl_cached_clientid = kstrdup(args.id, GFP_KERNEL);
-+	}
- 	dprintk("<-- %s status= %d\n", __func__, status);
- 	return status;
- }
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index a6804f7..09181b0 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1621,6 +1621,7 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 					nfs_mark_client_ready(clp, status);
- 				goto out_error;
- 			}
-+			clear_bit(NFS4CLNT_UPDATE_CALLBACK, &clp->cl_state);
- 			clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state);
- 			set_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state);
- 			pnfs_destroy_all_layouts(clp);
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 33b7459..4a4940c 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -69,6 +69,7 @@ struct nfs_client {
- 	char			cl_ipaddr[48];
- 	unsigned char		cl_id_uniquifier;
- 	u32			cl_cb_ident;	/* v4.0 callback identifier */
-+	char			*cl_cached_clientid;
- 	const struct nfs4_minor_version_ops *cl_mvops;
- 
- 	/* The sequence id to use for the next CREATE_SESSION */
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
