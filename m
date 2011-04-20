@@ -1,69 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:48124 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751954Ab1D0T2t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Apr 2011 15:28:49 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v2] NFS: Return meaningful status from decode_secinfo()
-Date: Wed, 27 Apr 2011 15:28:44 -0400
-Message-Id: <1303932524-11413-1-git-send-email-bjschuma@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from cn.fujitsu.com ([222.73.24.84]:51009 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753567Ab1DTJbm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Apr 2011 05:31:42 -0400
+Message-ID: <4DAEA860.8000203@cn.fujitsu.com>
+Date: Wed, 20 Apr 2011 17:33:20 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NFS <linux-nfs@vger.kernel.org>, iisaman@netapp.com
+Subject: Re: [PATCH 1/5] CLNT: try to destroy session after test complete
+References: <4D6DE26C.3010103@cn.fujitsu.com> <4D904BEB.1060101@cn.fujitsu.com> <4D904D97.3020003@cn.fujitsu.com> <20110419152013.GB6316@fieldses.org>
+In-Reply-To: <20110419152013.GB6316@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Bryan Schumaker <bjschuma@netapp.com>
 
-When compiling, I was getting this warning:
-fs/nfs/nfs4xdr.c: In function ‘decode_secinfo’:
-fs/nfs/nfs4xdr.c:4839:6: warning: variable ‘status’ set but not used
-[-Wunused-but-set-variable]
 
-We were unconditionally returning 0 as long as there wasn't an error
-coming out of xdr_inline_decode().  We probably want to check the error
-status coming out of decode_op_hdr() and decode_secinfo_gss(), rather
-than assuming that everything is OK all the time.
+J. Bruce Fields:
+> On Mon, Mar 28, 2011 at 04:57:59PM +0800, Mi Jinlong wrote:
+>> When testing pynfs41, I got NFS4ERR_DELAY at some tests.
+>> At a test case, we don't destroy the session after create.
+>> So, this patch try to destroy session test complete.
+> 
+> Sounds like a good idea.
+> 
+> It seems a little tedious to have to do this by hand every time; could
+> we do some automatic cleanup at the end of the test when the variable
+> goes out of scope, or something like that?
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4xdr.c |   11 +++++++----
- 1 files changed, 7 insertions(+), 4 deletions(-)
+  I have try my best to find a automatic method to cleanup it,
+  but I can't get.
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index ba952bd..8e0c467 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4841,6 +4841,8 @@ static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
- 	int i, num_flavors;
- 
- 	status = decode_op_hdr(xdr, OP_SECINFO);
-+	if (status)
-+		goto out;
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
- 		goto out_overflow;
-@@ -4859,14 +4861,15 @@ static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
- 		sec_flavor->flavor = be32_to_cpup(p);
- 
- 		if (sec_flavor->flavor == RPC_AUTH_GSS) {
--			if (decode_secinfo_gss(xdr, sec_flavor))
--				break;
-+			status = decode_secinfo_gss(xdr, sec_flavor);
-+			if (status)
-+				goto out;
- 		}
- 		res->flavors->num_flavors++;
- 	}
- 
--	return 0;
--
-+out:
-+	return status;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
- 	return -EIO;
+  Maybe Fred can help us?
+
+
 -- 
-1.7.4.4
+----
+thanks
+Mi Jinlong
+
 
