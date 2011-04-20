@@ -1,66 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:9551 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:50460 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932481Ab1DNTUV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Apr 2011 15:20:21 -0400
-Subject: Re: [PATCH] NFS: dont restart loop in nfs_delegation_reap_unclaimed
+	id S1752787Ab1DTPXZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Apr 2011 11:23:25 -0400
+Date: Wed, 20 Apr 2011 11:23:24 -0400
+To: Sachin Prabhu <sprabhu@redhat.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Open with O_CREAT flag set fails to open existing files on non
+ writable directories
+Message-ID: <20110420152324.GB15919@fieldses.org>
+References: <1303301376.21523.7.camel@dhcp-1-119.fab.redhat.com>
 Content-Type: text/plain; charset=us-ascii
-From: Dros Adamson <dros@netapp.com>
-In-Reply-To: <F6E1551C-3A7B-4BD4-8C31-62996BEE2ACC@oracle.com>
-Date: Thu, 14 Apr 2011 15:20:18 -0400
-Cc: trond@netapp.com, linux-nfs@vger.kernel.org
-Message-Id: <538B0B51-537C-47A8-8F52-52C293E033A1@netapp.com>
-References: <1302807855-84959-1-git-send-email-dros@netapp.com> <F6E1551C-3A7B-4BD4-8C31-62996BEE2ACC@oracle.com>
-To: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1303301376.21523.7.camel@dhcp-1-119.fab.redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, Apr 20, 2011 at 01:09:35PM +0100, Sachin Prabhu wrote:
+> An open on a NFS4 share using the O_CREAT flag on an existing file for
+> which we have permissions to open but contained in a directory with no
+> write permissions will fail with EACCES.
+> 
+> A tcpdump shows that the client had set the open mode to UNCHECKED which
+> indicates that the file should be created if it doesn't exist and
+> encountering an existing flag is not an error. Since in this case the
+> file exists and can be opened by the user, the NFS server is wrong in
+> attempting to check create permissions on the parent directory.
+> 
+> The patch adds a conditional statement to check for create permissions
+> only if the file doesn't exist.
 
-On Apr 14, 2011, at 3:10 PM, Chuck Lever wrote:
+That looks correct to me, thanks.
+
+It's a bad bug, but appears to be one we've lived with a long time, so
+I'm a bit up in the air whether to submit now for 2.6.39 or to queue up
+for 2.6.40.
+
+--b.
 
 > 
-> On Apr 14, 2011, at 3:04 PM, Weston Andros Adamson wrote:
+> Signed-off-by: Sachin S. Prabhu <sprabhu@redhat.com>
 > 
->> The loop was being restarted after each delegation that has NFS_DELEGATION_NEED_RECLAIM
->> set.  Instead, build a temporary list of delegations that need to be freed and free
->> them after the for-each-delegation loop.
->> 
->> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->> ---
->> fs/nfs/delegation.c |   16 +++++++++++-----
->> 1 files changed, 11 insertions(+), 5 deletions(-)
->> 
->> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
->> index bbbc6bf..c87fad8 100644
->> --- a/fs/nfs/delegation.c
->> +++ b/fs/nfs/delegation.c
->> @@ -645,8 +645,8 @@ void nfs_delegation_reap_unclaimed(struct nfs_client *clp)
->> 	struct nfs_delegation *delegation;
->> 	struct nfs_server *server;
->> 	struct inode *inode;
->> +	LIST_HEAD(tmplist);
->> 
->> -restart:
->> 	rcu_read_lock();
->> 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
->> 		list_for_each_entry_rcu(delegation, &server->delegations,
->> @@ -659,15 +659,21 @@ restart:
->> 				continue;
->> 			delegation = nfs_detach_delegation(NFS_I(inode),
->> 								server);
->> -			rcu_read_unlock();
->> -
->> +			/* super_list is unused now that deleg is detached */
->> 			if (delegation != NULL)
->> -				nfs_free_delegation(delegation);
->> +				list_add(&delegation->super_list, &tmplist);
->> +
->> 			iput(inode);
+> diff -up linux-2.6/fs/nfsd/vfs.c.bz683372 linux-2.6/fs/nfsd/vfs.c
+> --- linux-2.6/fs/nfsd/vfs.c.bz683372	2011-04-20 13:03:54.021040329 +0100
+> +++ linux-2.6/fs/nfsd/vfs.c	2011-04-20 13:05:21.551858218 +0100
+> @@ -1363,7 +1363,7 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
+>  		goto out;
+>  	if (!(iap->ia_valid & ATTR_MODE))
+>  		iap->ia_mode = 0;
+> -	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
+> +	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_EXEC);
+>  	if (err)
+>  		goto out;
+>  
+> @@ -1385,6 +1385,13 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
+>  	if (IS_ERR(dchild))
+>  		goto out_nfserr;
+>  
+> +	/* If file doesn't exist, check for permissions to create one */
+> +	if (!dchild->d_inode) {
+> +		err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
+> +		if (err)
+> +			goto out;
+> +	}
+> +
+>  	err = fh_compose(resfhp, fhp->fh_export, dchild, fhp);
+>  	if (err)
+>  		goto out;
 > 
-> /me idly wonders if that iput() is safe to do inside rcu_read_lock() / rcu_read_unlock().
-
-Hrm, I think you're right.  I take this patch back!
-
--dros
-
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
