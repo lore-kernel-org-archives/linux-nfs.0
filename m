@@ -1,60 +1,55 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [105/105] nfsd4: fix oops on lock failure
-Date: Tue, 19 Apr 2011 17:33:31 -0400
-Message-ID: <20110419213331.GA9998@fieldses.org>
-References: <87pqokx6lr.fsf@devron.myhome.or.jp>
- <BANLkTimN6L80e_oiJ_uqbLde2Cdnw5p45Q@mail.gmail.com>
- <20110418153236.GC20935@pad.home.fieldses.org>
- <87ipubwnj3.fsf@devron.myhome.or.jp>
- <8762qbwnf1.fsf@devron.myhome.or.jp>
- <87zknnv7id.fsf@devron.myhome.or.jp>
- <87vcybgt6u.fsf@devron.myhome.or.jp>
- <87hb9uhcre.fsf@devron.myhome.or.jp>
- <20110419204349.GB8228@fieldses.org>
- <87aafmgcvk.fsf@devron.myhome.or.jp>
+Subject: Re: nfsdv4 leaks file descriptors
+Date: Wed, 20 Apr 2011 11:30:53 -0400
+Message-ID: <20110420153053.GD15919@fieldses.org>
+References: <20110412140148.GA17242@gheift>
+ <20110413211211.GA25189@fieldses.org>
+ <20110414054844.GF17242@gheift>
+ <20110414191005.GB1721@fieldses.org>
+ <20110415132025.GA6126@gheift>
+ <20110415223621.GB12254@fieldses.org>
+ <20110420110834.GB11224@gheift>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Greg KH <gregkh@suse.de>, linux-kernel@vger.kernel.org,
-	stable@kernel.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, Neil Brown <neilb@suse.de>,
-	linux-nfs@vger.kernel.org
-To: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Cc: linux-nfs@vger.kernel.org
+To: Gerhard Heift <ml-nfs-linux-20110412-ef47-UG2eIutGyHWzQB+pC5nmwQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48581 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:42018 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753701Ab1DSVdm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Apr 2011 17:33:42 -0400
-In-Reply-To: <87aafmgcvk.fsf-x/W9pkDDSe1TgC2z9Sl/nXf5DAMn2ifp@public.gmane.org>
+	id S1755141Ab1DTPay (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Apr 2011 11:30:54 -0400
+In-Reply-To: <20110420110834.GB11224@gheift>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 20, 2011 at 06:17:03AM +0900, OGAWA Hirofumi wrote:
-> "J. Bruce Fields" <bfields@fieldses.org> writes:
+On Wed, Apr 20, 2011 at 01:08:36PM +0200, Gerhard Heift wrote:
+> On Fri, Apr 15, 2011 at 06:36:21PM -0400, J. Bruce Fields wrote:
+> > On Fri, Apr 15, 2011 at 03:20:30PM +0200, Gerhard Heift wrote:
+> > > On Thu, Apr 14, 2011 at 03:10:06PM -0400, J. Bruce Fields wrote:
+> > > > On Thu, Apr 14, 2011 at 07:48:45AM +0200, Gerhard Heift wrote:
+> > > > > On Wed, Apr 13, 2011 at 05:12:11PM -0400, J. Bruce Fields wrote:
+> > > > > > On Tue, Apr 12, 2011 at 04:01:50PM +0200, Gerhard Heift wrote:
+> > > > > > > Hello,
+> > > > > > > 
+> > > > > > > I have a linux kernel (2.6.38.2, armv5tel) running which exports a
+> > > > > > > directory with following options:
+> > > > > > 
+> > > > > > Should be fixed in more recent stable kernel; let me know if not.
+> > > > > 
+> > > > > An even more recent stable than 2.6.38.2? I just compiled 2.6.39-rc3 and
+> > > > > there the leak happens too.
+> > > > 
+> > > > Ugh.  OK, investigating.
+> > > 
+> > > It took me a bit of time, but I located the commit which introduced this
+> > > behavior: acfdf5c383b38f7f4dddae41b97c97f1ae058f49
+> > 
+> > Doh--probably we just need this (lightly tested).
+> > 
+> > Thanks for tracking this down.
 > 
-> > On Tue, Apr 19, 2011 at 05:21:57PM +0900, OGAWA Hirofumi wrote:
-> >> OGAWA Hirofumi <hirofumi@mail.parknet.co.jp> writes:
-> >> 
-> >> >> I'll start test of this patch, and see what happens.
-> >> >
-> >> > OK. Although filp slabs are still slightly increasing (I'm not sure yet
-> >> > whether this is leak of filp on system). But watching before/after
-> >> > patch, the graph of filp slabs is clearly different.
-> >> >
-> >> > As far as I can say patches are fine.
-> >> 
-> >> slightly increasing was stopped at 2200-2300. filp leak seems to be fixed.
-> >
-> > Another thing to check is whether you can always unmount the exported
-> > filesystem on the server after running your test.  So something like:
-> >
-> > 	service nfs stop
-> > 	unmount /exports/fs
-> >
-> > should always succeed; if you get an inexplicable EBUSY on the final
-> > unmount then we likely still have a leak someplace.
-> 
-> It succeeded.
+> This patch works for me. Thanks for fixing it.
 
-Good, thanks.--b.
+Thanks for the confirmation.  I'll pass the patch along soon.
+
+--b.
