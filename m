@@ -1,279 +1,292 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57235 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751366Ab1DTR3j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 13:29:39 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [RFC 27/27] pnfs-obj: objio_osd: groups support
-Date: Wed, 20 Apr 2011 20:29:36 +0300
-Message-Id: <1303320576-21972-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DAF0DE1.6020609@panasas.com>
-References: <4DAF0DE1.6020609@panasas.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:18122 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753316Ab1DUPjq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Apr 2011 11:39:46 -0400
+Subject: Re: [PATCH 1/3] NFSv4.1: Don't loop forever in nfs4_proc_create_session
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1303343405-5021-1-git-send-email-Trond.Myklebust@netapp.com>
+Date: Thu, 21 Apr 2011 11:39:35 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <8912E996-3D52-470F-801B-F37842AB7BF3@oracle.com>
+References: <1303343405-5021-1-git-send-email-Trond.Myklebust@netapp.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Boaz Harrosh <bharrosh@panasas.com>
+Hi-
 
-* _calc_stripe_info() changes to accommodate for grouping
-  calculations. Returns additional information
+This will require some significant human intervention to merge with my code that caches the long-form client ID.
 
-* old _prepare_pages() becomes _prepare_one_group()
-  which stores pages belonging to one device group.
+On Apr 20, 2011, at 7:50 PM, Trond Myklebust wrote:
 
-* Iterates on all groups calling _prepare_one_group().
+> If a server for some reason keeps sending NFS4ERR_DELAY errors, we can end
+> up looping forever inside nfs4_proc_create_session, and so the usual
+> mechanisms for detecting if the nfs_client is dead don't work.
+> 
+> Fix this by ensuring that we loop inside the nfs4_state_manager thread
+> instead.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> fs/nfs/nfs4_fs.h          |    1 +
+> fs/nfs/nfs4proc.c         |   84 ++++++++++++---------------------------------
+> fs/nfs/nfs4state.c        |   47 +++++++++++++++++--------
+> include/linux/nfs_fs_sb.h |    1 +
+> 4 files changed, 56 insertions(+), 77 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+> index e1c261d..c4a6983 100644
+> --- a/fs/nfs/nfs4_fs.h
+> +++ b/fs/nfs/nfs4_fs.h
+> @@ -47,6 +47,7 @@ enum nfs4_client_state {
+> 	NFS4CLNT_LAYOUTRECALL,
+> 	NFS4CLNT_SESSION_RESET,
+> 	NFS4CLNT_RECALL_SLOT,
+> +	NFS4CLNT_LEASE_CONFIRM,
+> };
+> 
+> enum nfs4_session_state {
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 628e35f..2507f1f 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -3726,46 +3726,36 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+> 		.rpc_cred = cred,
+> 	};
+> 	__be32 *p;
+> -	int loop = 0;
+> 	int status;
+> 
+> 	p = (__be32*)sc_verifier.data;
+> 	*p++ = htonl((u32)clp->cl_boot_time.tv_sec);
+> 	*p = htonl((u32)clp->cl_boot_time.tv_nsec);
+> 
+> -	for(;;) {
+> -		setclientid.sc_name_len = scnprintf(setclientid.sc_name,
+> -				sizeof(setclientid.sc_name), "%s/%s %s %s %u",
+> -				clp->cl_ipaddr,
+> -				rpc_peeraddr2str(clp->cl_rpcclient,
+> -							RPC_DISPLAY_ADDR),
+> -				rpc_peeraddr2str(clp->cl_rpcclient,
+> -							RPC_DISPLAY_PROTO),
+> -				clp->cl_rpcclient->cl_auth->au_ops->au_name,
+> -				clp->cl_id_uniquifier);
+> -		setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
+> -				sizeof(setclientid.sc_netid),
+> -				rpc_peeraddr2str(clp->cl_rpcclient,
+> -							RPC_DISPLAY_NETID));
+> -		setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
+> -				sizeof(setclientid.sc_uaddr), "%s.%u.%u",
+> -				clp->cl_ipaddr, port >> 8, port & 255);
+> -
+> -		status = rpc_call_sync(clp->cl_rpcclient, &msg, 0);
+> -		if (status != -NFS4ERR_CLID_INUSE)
+> -			break;
+> -		if (signalled())
+> -			break;
+> -		if (loop++ & 1)
+> -			ssleep(clp->cl_lease_time / HZ + 1);
+> -		else
+> -			if (++clp->cl_id_uniquifier == 0)
+> -				break;
+> -	}
+> +	setclientid.sc_name_len = scnprintf(setclientid.sc_name,
+> +			sizeof(setclientid.sc_name), "%s/%s %s %s %u",
+> +			clp->cl_ipaddr,
+> +			rpc_peeraddr2str(clp->cl_rpcclient,
+> +						RPC_DISPLAY_ADDR),
+> +			rpc_peeraddr2str(clp->cl_rpcclient,
+> +						RPC_DISPLAY_PROTO),
+> +			clp->cl_rpcclient->cl_auth->au_ops->au_name,
+> +			clp->cl_id_uniquifier);
+> +	setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
+> +			sizeof(setclientid.sc_netid),
+> +			rpc_peeraddr2str(clp->cl_rpcclient,
+> +						RPC_DISPLAY_NETID));
+> +	setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
+> +			sizeof(setclientid.sc_uaddr), "%s.%u.%u",
+> +			clp->cl_ipaddr, port >> 8, port & 255);
+> +
+> +	status = rpc_call_sync(clp->cl_rpcclient, &msg, 0);
+> +	if (status == -NFS4ERR_CLID_INUSE)
+> +		ssleep(clp->cl_lease_time / HZ + 1);
+> 	return status;
+> }
+> 
+> -static int _nfs4_proc_setclientid_confirm(struct nfs_client *clp,
+> +int nfs4_proc_setclientid_confirm(struct nfs_client *clp,
+> 		struct nfs4_setclientid_res *arg,
+> 		struct rpc_cred *cred)
+> {
+> @@ -3790,26 +3780,6 @@ static int _nfs4_proc_setclientid_confirm(struct nfs_client *clp,
+> 	return status;
+> }
+> 
+> -int nfs4_proc_setclientid_confirm(struct nfs_client *clp,
+> -		struct nfs4_setclientid_res *arg,
+> -		struct rpc_cred *cred)
+> -{
+> -	long timeout = 0;
+> -	int err;
+> -	do {
+> -		err = _nfs4_proc_setclientid_confirm(clp, arg, cred);
+> -		switch (err) {
+> -			case 0:
+> -				return err;
+> -			case -NFS4ERR_RESOURCE:
+> -				/* The IBM lawyers misread another document! */
+> -			case -NFS4ERR_DELAY:
+> -				err = nfs4_delay(clp->cl_rpcclient, &timeout);
+> -		}
+> -	} while (err == 0);
+> -	return err;
+> -}
+> -
+> struct nfs4_delegreturndata {
+> 	struct nfs4_delegreturnargs args;
+> 	struct nfs4_delegreturnres res;
+> @@ -5222,20 +5192,10 @@ int nfs4_proc_create_session(struct nfs_client *clp)
+> 	int status;
+> 	unsigned *ptr;
+> 	struct nfs4_session *session = clp->cl_session;
+> -	long timeout = 0;
+> -	int err;
+> 
+> 	dprintk("--> %s clp=%p session=%p\n", __func__, clp, session);
+> 
+> -	do {
+> -		status = _nfs4_proc_create_session(clp);
+> -		if (status == -NFS4ERR_DELAY) {
+> -			err = nfs4_delay(clp->cl_rpcclient, &timeout);
+> -			if (err)
+> -				status = err;
+> -		}
+> -	} while (status == -NFS4ERR_DELAY);
+> -
+> +	status = _nfs4_proc_create_session(clp);
+> 	if (status)
+> 		goto out;
+> 
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index 4dfb34b..9a7f9df 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -64,10 +64,15 @@ static LIST_HEAD(nfs4_clientid_list);
+> 
+> int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+> {
+> -	struct nfs4_setclientid_res clid;
+> +	struct nfs4_setclientid_res clid = {
+> +		.clientid = clp->cl_clientid,
+> +		.confirm = clp->cl_confirm,
+> +	};
+> 	unsigned short port;
+> 	int status;
+> 
+> +	if (test_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state))
+> +		goto do_confirm;
+> 	port = nfs_callback_tcpport;
+> 	if (clp->cl_addr.ss_family == AF_INET6)
+> 		port = nfs_callback_tcpport6;
+> @@ -75,10 +80,14 @@ int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+> 	status = nfs4_proc_setclientid(clp, NFS4_CALLBACK, port, cred, &clid);
+> 	if (status != 0)
+> 		goto out;
+> +	clp->cl_clientid = clid.clientid;
+> +	clp->cl_confirm = clid.confirm;
+> +	set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
+> +do_confirm:
+> 	status = nfs4_proc_setclientid_confirm(clp, &clid, cred);
+> 	if (status != 0)
+> 		goto out;
+> -	clp->cl_clientid = clid.clientid;
+> +	clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
+> 	nfs4_schedule_state_renewal(clp);
+> out:
+> 	return status;
+> @@ -230,13 +239,18 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+> {
+> 	int status;
+> 
+> +	if (test_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state))
+> +		goto do_confirm;
+> 	nfs4_begin_drain_session(clp);
+> 	status = nfs4_proc_exchange_id(clp, cred);
+> 	if (status != 0)
+> 		goto out;
+> +	set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
+> +do_confirm:
+> 	status = nfs4_proc_create_session(clp);
+> 	if (status != 0)
+> 		goto out;
+> +	clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
+> 	nfs41_setup_state_renewal(clp);
+> 	nfs_mark_client_ready(clp, NFS_CS_READY);
+> out:
+> @@ -1584,20 +1598,23 @@ static int nfs4_recall_slot(struct nfs_client *clp) { return 0; }
+>  */
+> static void nfs4_set_lease_expired(struct nfs_client *clp, int status)
+> {
+> -	if (nfs4_has_session(clp)) {
+> -		switch (status) {
+> -		case -NFS4ERR_DELAY:
+> -		case -NFS4ERR_CLID_INUSE:
+> -		case -EAGAIN:
+> -			break;
+> +	switch (status) {
+> +	case -NFS4ERR_CLID_INUSE:
+> +		clp->cl_id_uniquifier++;
+> +	case -NFS4ERR_STALE_CLIENTID:
+> +		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
+> +		break;
+> +	case -NFS4ERR_DELAY:
+> +	case -EAGAIN:
+> +		ssleep(1);
+> +		break;
+> 
+> -		case -EKEYEXPIRED:
+> -			nfs4_warn_keyexpired(clp->cl_hostname);
+> -		case -NFS4ERR_NOT_SAME: /* FixMe: implement recovery
+> -					 * in nfs4_exchange_id */
+> -		default:
+> -			return;
+> -		}
+> +	case -EKEYEXPIRED:
+> +		nfs4_warn_keyexpired(clp->cl_hostname);
+> +	case -NFS4ERR_NOT_SAME: /* FixMe: implement recovery
+> +				 * in nfs4_exchange_id */
+> +	default:
+> +		return;
+> 	}
+> 	set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
+> }
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index 216cea5..87694ca 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -47,6 +47,7 @@ struct nfs_client {
+> 
+> #ifdef CONFIG_NFS_V4
+> 	u64			cl_clientid;	/* constant */
+> +	nfs4_verifier		cl_confirm;	/* Clientid verifier */
+> 	unsigned long		cl_state;
+> 
+> 	spinlock_t		cl_lock;
+> -- 
+> 1.7.4.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-* Enable mounting of groups data_maps (group_width != 0)
-
-TODO:
-  Support for parial layout will come in next patch
-
-[Support partial layouts]
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfs/objlayout/objio_osd.c |  135 +++++++++++++++++++++++++++++++++---------
- 1 files changed, 106 insertions(+), 29 deletions(-)
-
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 5c141d0..47e8695 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -140,6 +140,8 @@ struct objio_segment {
- 	unsigned mirrors_p1;
- 	unsigned stripe_unit;
- 	unsigned group_width;	/* Data stripe_units without integrity comps */
-+	u64 group_depth;
-+	unsigned group_count;
- 
- 	unsigned num_comps;
- 	/* variable length */
-@@ -258,12 +260,9 @@ static int _verify_data_map(struct pnfs_osd_layout *layout)
- {
- 	struct pnfs_osd_data_map *data_map = &layout->olo_map;
- 	u64 stripe_length;
-+	u32 group_width;
- 
--/* FIXME: Only raid0 !group_width/depth for now. if not so, do not mount */
--	if (data_map->odm_group_width || data_map->odm_group_depth) {
--		printk(KERN_ERR "Group width/depth not supported\n");
--		return -ENOTSUPP;
--	}
-+/* FIXME: Only raid0 for now. if not go through MDS */
- 	if (data_map->odm_raid_algorithm != PNFS_OSD_RAID_0) {
- 		printk(KERN_ERR "Only RAID_0 for now\n");
- 		return -ENOTSUPP;
-@@ -274,8 +273,13 @@ static int _verify_data_map(struct pnfs_osd_layout *layout)
- 		return -EINVAL;
- 	}
- 
--	stripe_length = data_map->odm_stripe_unit * (data_map->odm_num_comps /
--						(data_map->odm_mirror_cnt + 1));
-+	if (data_map->odm_group_width)
-+		group_width = data_map->odm_group_width;
-+	else
-+		group_width = data_map->odm_num_comps /
-+						(data_map->odm_mirror_cnt + 1);
-+
-+	stripe_length = (u64)data_map->odm_stripe_unit * group_width;
- 	if (stripe_length >= (1ULL << 32)) {
- 		printk(KERN_ERR "Total Stripe length(0x%llx)"
- 			  " >= 32bit is not supported\n", _LLU(stripe_length));
-@@ -317,8 +321,18 @@ int objio_alloc_lseg(void **outp,
- 
- 	objio_seg->mirrors_p1 = layout->olo_map.odm_mirror_cnt + 1;
- 	objio_seg->stripe_unit = layout->olo_map.odm_stripe_unit;
--	objio_seg->group_width = layout->olo_map.odm_num_comps /
--							objio_seg->mirrors_p1;
-+	if (layout->olo_map.odm_group_width) {
-+		objio_seg->group_width = layout->olo_map.odm_group_width;
-+		objio_seg->group_depth = layout->olo_map.odm_group_depth;
-+		objio_seg->group_count = layout->olo_map.odm_num_comps /
-+						objio_seg->mirrors_p1 /
-+						objio_seg->group_width;
-+	} else {
-+		objio_seg->group_width = layout->olo_map.odm_num_comps /
-+						objio_seg->mirrors_p1;
-+		objio_seg->group_depth = -1;
-+		objio_seg->group_count = 1;
-+	}
- 
- 	*outp = objio_seg;
- 	return 0;
-@@ -489,6 +503,9 @@ struct osd_dev * _io_od(struct objio_state *ios, unsigned dev)
- 
- struct _striping_info {
- 	u64 obj_offset;
-+	u64 group_length;
-+	u64 total_group_length;
-+	u64 Major;
- 	unsigned dev;
- 	unsigned unit_off;
- };
-@@ -498,15 +515,34 @@ static void _calc_stripe_info(struct objio_state *ios, u64 file_offset,
- {
- 	u32	stripe_unit = ios->objio_seg->stripe_unit;
- 	u32	group_width = ios->objio_seg->group_width;
-+	u64	group_depth = ios->objio_seg->group_depth;
- 	u32	U = stripe_unit * group_width;
- 
--	u32	LmodU;
--	u64 	N = div_u64_rem(file_offset, U, &LmodU);
-+	u64	T = U * group_depth;
-+	u64	S = T * ios->objio_seg->group_count;
-+	u64	M = div64_u64(file_offset, S);
-+
-+	/*
-+	G = (L - (M * S)) / T
-+	H = (L - (M * S)) % T
-+	*/
-+	u64	LmodU = file_offset - M * S;
-+	u32	G = div64_u64(LmodU, T);
-+	u64	H = LmodU - G * T;
-+
-+	u32	N = div_u64(H, U);
-+
-+	div_u64_rem(file_offset, stripe_unit, &si->unit_off);
-+	si->obj_offset = si->unit_off + (N * stripe_unit) +
-+				  (M * group_depth * stripe_unit);
- 
--	si->unit_off = LmodU % stripe_unit;
--	si->obj_offset = N * stripe_unit + si->unit_off;
--	si->dev = LmodU / stripe_unit;
-+	/* "H - (N * U)" is just "H % U" so it's bound to u32 */
-+	si->dev = (u32)(H - (N * U)) / stripe_unit + G * group_width;
- 	si->dev *= ios->objio_seg->mirrors_p1;
-+
-+	si->group_length = T - H;
-+	si->total_group_length = T;
-+	si->Major = M;
- }
- 
- static int _add_stripe_unit(struct objio_state *ios,  unsigned *cur_pg,
-@@ -553,15 +589,18 @@ static int _add_stripe_unit(struct objio_state *ios,  unsigned *cur_pg,
- 	return 0;
- }
- 
--static int _prepare_pages(struct objio_state *ios, struct _striping_info *si)
-+static int _prepare_one_group(struct objio_state *ios, u64 length,
-+			      struct _striping_info *si, unsigned first_comp,
-+			      unsigned *last_pg)
- {
--	u64 length = ios->ol_state.count;
- 	unsigned stripe_unit = ios->objio_seg->stripe_unit;
- 	unsigned mirrors_p1 = ios->objio_seg->mirrors_p1;
-+	unsigned devs_in_group = ios->objio_seg->group_width * mirrors_p1;
- 	unsigned dev = si->dev;
--	unsigned comp = 0;
--	unsigned stripes = 0;
--	unsigned cur_pg = 0;
-+	unsigned first_dev = dev - (dev % devs_in_group);
-+	unsigned comp = first_comp + (dev - first_dev);
-+	unsigned max_comp = ios->numdevs ? ios->numdevs - mirrors_p1 : 0;
-+	unsigned cur_pg = *last_pg;
- 	int ret = 0;
- 
- 	while (length) {
-@@ -585,10 +624,11 @@ static int _prepare_pages(struct objio_state *ios, struct _striping_info *si)
- 				cur_len = stripe_unit;
- 			}
- 
--			stripes++;
-+			if (max_comp < comp)
-+				max_comp = comp;
- 
- 			dev += mirrors_p1;
--			dev %= ios->ol_state.num_comps;
-+			dev = (dev % devs_in_group) + first_dev;
- 		} else {
- 			cur_len = stripe_unit;
- 		}
-@@ -601,25 +641,58 @@ static int _prepare_pages(struct objio_state *ios, struct _striping_info *si)
- 			goto out;
- 
- 		comp += mirrors_p1;
--		comp %= ios->ol_state.num_comps;
-+		comp = (comp % devs_in_group) + first_comp;
- 
- 		length -= cur_len;
- 		ios->length += cur_len;
- 	}
- out:
--	if (!ios->length)
--		return ret;
--
--	ios->numdevs = stripes * mirrors_p1;
--	return 0;
-+	ios->numdevs = max_comp + mirrors_p1;
-+	*last_pg = cur_pg;
-+	return ret;
- }
- 
- static int _io_rw_pagelist(struct objio_state *ios)
- {
-+	u64 length = ios->ol_state.count;
- 	struct _striping_info si;
-+	unsigned devs_in_group = ios->objio_seg->group_width *
-+				 ios->objio_seg->mirrors_p1;
-+	unsigned first_comp = 0;
-+	unsigned num_comps = ios->objio_seg->layout->olo_map.odm_num_comps;
-+	unsigned last_pg = 0;
-+	int ret = 0;
- 
--	_calc_stripe_info(ios, ios->ol_state.count, &si);
--	return _prepare_pages(ios, &si);
-+	_calc_stripe_info(ios, ios->ol_state.offset, &si);
-+	while (length) {
-+		if (length < si.group_length)
-+			si.group_length = length;
-+
-+		ret = _prepare_one_group(ios, si.group_length, &si, first_comp,
-+					 &last_pg);
-+		if (unlikely(ret))
-+			goto out;
-+
-+		length -= si.group_length;
-+
-+		si.group_length = si.total_group_length;
-+		si.unit_off = 0;
-+		++si.Major;
-+		si.obj_offset = si.Major * ios->objio_seg->stripe_unit *
-+						ios->objio_seg->group_depth;
-+
-+		si.dev = (si.dev - (si.dev % devs_in_group)) + devs_in_group;
-+		si.dev %= num_comps;
-+
-+		first_comp += devs_in_group;
-+		first_comp %= num_comps;
-+	}
-+
-+out:
-+	if (!ios->length)
-+		return ret;
-+
-+	return 0;
- }
- 
- static ssize_t _sync_done(struct objio_state *ios)
-@@ -741,6 +814,8 @@ static ssize_t _read_exec(struct objio_state *ios)
- 	int ret;
- 
- 	for (i = 0; i < ios->numdevs; i += ios->objio_seg->mirrors_p1) {
-+		if (!ios->per_dev[i].length)
-+			continue;
- 		ret = _read_mirrors(ios, i);
- 		if (unlikely(ret))
- 			goto err;
-@@ -861,6 +936,8 @@ static ssize_t _write_exec(struct objio_state *ios)
- 	int ret;
- 
- 	for (i = 0; i < ios->numdevs; i += ios->objio_seg->mirrors_p1) {
-+		if (!ios->per_dev[i].length)
-+			continue;
- 		ret = _write_mirrors(ios, i);
- 		if (unlikely(ret))
- 			goto err;
 -- 
-1.7.3.4
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
