@@ -1,36 +1,35 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
-Subject: Linux pNFS status meeting 04/21/11
-Date: Wed, 20 Apr 2011 16:54:23 -0700
-Message-ID: <OF3093658E.12917418-ON88257878.00833B42-88257878.00834DDE@us.ibm.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH v2] nfs-utils: mountd: Use a dynamic buffer for storing
+ lists of gid's
+Date: Thu, 21 Apr 2011 08:26:36 -0400
+Message-ID: <4DB0227C.7070701@RedHat.com>
+References: <1302261406-9048-1-git-send-email-sean.finney@sonyericsson.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: Sean Finney <sean.finney@sonyericsson.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:54867 "EHLO e8.ny.us.ibm.com"
+Received: from mx1.redhat.com ([209.132.183.28]:12137 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752292Ab1DTXyv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Apr 2011 19:54:51 -0400
-Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
-	by e8.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p3KNTGqM009976
-	for <linux-nfs@vger.kernel.org>; Wed, 20 Apr 2011 19:29:16 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p3KNsRN5160060
-	for <linux-nfs@vger.kernel.org>; Wed, 20 Apr 2011 19:54:31 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p3KNsQjK012986
-	for <linux-nfs@vger.kernel.org>; Wed, 20 Apr 2011 20:54:26 -0300
-Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p3KNsQML012983
-	for <linux-nfs@vger.kernel.org>; Wed, 20 Apr 2011 20:54:26 -0300
+	id S1752387Ab1DUM0j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Apr 2011 08:26:39 -0400
+In-Reply-To: <1302261406-9048-1-git-send-email-sean.finney@sonyericsson.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Meeting on Thursday 04/21/11 at 9:30 AM PST (12:30 PM EST)
 
 
-USA Toll-Free: 888-426-6840
-USA Caller Paid: 215-861-6239
+On 04/08/2011 07:16 AM, Sean Finney wrote:
+> Previously, in auth_unix_gid, group lists were stored in an array of
+> hard-coded length 100, and in the situation that the group lists for a
+> particular call were too large, the array was swapped with a dynamically
+> allocated/freed buffer.  For environments where users are commonly in
+> a large number of groups, this isn't an ideal approach.
+> 
+> Instead, use malloc/realloc to grow the list on an as-needed basis.
+> 
+> Signed-off-by: Sean Finney <sean.finney@sonyericsson.com>
+My bad... I committed this early this week and forgot to 
+acknowledge on the list... Sorry about that... 
 
-Israel Toll-Free: 1-809-417-783
-
-Participant Code: 8792872
+steved. 
