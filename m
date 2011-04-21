@@ -1,35 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:42120 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753709Ab1DETe0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Apr 2011 15:34:26 -0400
-Date: Tue, 5 Apr 2011 15:34:25 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Garth Gibson <garth@cs.cmu.edu>, linux-nfs@vger.kernel.org,
-        Andrew Klaassen <clawsoon@yahoo.com>
-Subject: Re: Prioritizing readdirplus/getattr/lookup
-Message-ID: <20110405193425.GA4263@merit.edu>
-References: <13701.83906.qm@web65411.mail.ac4.yahoo.com>
- <882887.75491.qm@web65412.mail.ac4.yahoo.com>
- <20110404230528.GA2624@merit.edu>
- <4D9A61C9.1030900@panasas.com>
- <20110405003944.GA31014@merit.edu>
- <4D9B195E.60108@panasas.com>
- <640DA909-32A8-43EF-AF0B-ACE0689AC0CD@cs.cmu.edu>
- <4D9B694D.1030609@panasas.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4D9B694D.1030609@panasas.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:50745 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753700Ab1DUDkw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Apr 2011 23:40:52 -0400
+Message-ID: <4DAFA7AB.9020507@cn.fujitsu.com>
+Date: Thu, 21 Apr 2011 11:42:35 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] svc: make sure mountd can get ports from /etc/services
+References: <4DAD48C7.9090808@cn.fujitsu.com> <94B98C85-8FAE-4B72-A782-F0B0DFD83674@oracle.com> <4DAEA782.2090108@cn.fujitsu.com> <AD03EC99-CB5C-41BA-AE0B-FEA7A8D48B6E@oracle.com>
+In-Reply-To: <AD03EC99-CB5C-41BA-AE0B-FEA7A8D48B6E@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Benny Halevy wrote:
 
-  At any rate, the broader issue is that the posix system call API assumes a
-  local file system and is not network not cluster file-system aware.
 
-It would be interesting to see someone who is affected by this implement the
-readdirplus system call, modify ls to use it, and report the results.  I
-suspect the system call won't go anywhere in linux without some evidence
-that it solves a real problem for real users.
+Chuck Lever:
+> On Apr 20, 2011, at 5:29 AM, Mi Jinlong wrote:
+> 
+>>
+>> Chuck Lever:
+>>> Hi MJ-
+>>>
+>>> On Apr 19, 2011, at 4:33 AM, Mi Jinlong wrote:
+>>>
+>>>> At RHEL, if user set port for mountd at /etc/services as 
+>>>> "mount   12345/tcp", mountd should be bind to 12345, but the 
+>>>> latest nfs-utils, mountd get a rand port, not 12345.
+>>>>
+>>>> This patch make sure mountd be bind to the port which was set
+>>>> at /etc/service.
+>>> I don't think this is documented anywhere.  Is there a reason it should work this way?
+>>>
+>>> The typical way to set mountd's port is to use a command line option.  That's the way it works for all the other RPC daemons.  By default the ports are set up at random and registered with rpcbind.  That's why clients use rpcbind, and not /etc/services, to find these services.
+>>  I don't have a depth research, agree with you.
+>>  But I got different result when I set port for mountd at /etc/services
+>>  between nfs-utils-1.2.3 and nfs-utils-1.2.2.
+> 
+> IMO that's unintentional behavior.  Could I ask a favor: would you bisect nfs-utils to find out exactly where this started and ended?
+
+  Hi Chuck,
+
+  It's after your patch "mountd: Support TI-RPC mountd listener" 
+  (commit id:b551b1fd0052de9b8c674b30c39d9f2a1e9d79cc).
+
+  Before this patch, mountd call rpc_init to create rpc socket,
+  after it, if HAVE_LIBTIRPC is defined, mountd will call 
+  nfs_svc_create to create rpc socket, that appears.
+
+> 
+>>  I just think we should get the same result at new nfs-utils as older.
+> 
+> Is there a real-world use case for this feature?  Why isn't the command line option adequate?
+> 
+
+  I have a test site which depend on this feature.
+  If this feature indeed unnecessary, I will try to modify my test site.
+
+-- 
+----
+thanks
+Mi Jinlong
+
