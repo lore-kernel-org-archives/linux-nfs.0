@@ -1,92 +1,123 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:63575 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1756179Ab1DYHH0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Apr 2011 03:07:26 -0400
-Message-ID: <4DB51E1B.5020004@cn.fujitsu.com>
-Date: Mon, 25 Apr 2011 15:09:15 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] svc: make sure mountd can get ports from /etc/services
-References: <4DAD48C7.9090808@cn.fujitsu.com> <94B98C85-8FAE-4B72-A782-F0B0DFD83674@oracle.com> <4DAEA782.2090108@cn.fujitsu.com> <AD03EC99-CB5C-41BA-AE0B-FEA7A8D48B6E@oracle.com> <4DAFA7AB.9020507@cn.fujitsu.com> <5A8AD10C-81A4-4088-BCFA-08D0BA2337C7@oracle.com>
-In-Reply-To: <5A8AD10C-81A4-4088-BCFA-08D0BA2337C7@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:7302 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752891Ab1DVJLF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Apr 2011 05:11:05 -0400
+Message-ID: <4DB14625.3060403@panasas.com>
+Date: Fri, 22 Apr 2011 12:11:01 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [RFC 15/27] pnfs-obj: pnfs_osd XDR definitions
+References: <4DAF0DE1.6020609@panasas.com>	 <1303320490-21526-1-git-send-email-bhalevy@panasas.com> <1303332561.23206.52.camel@lade.trondhjem.org>
+In-Reply-To: <1303332561.23206.52.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-
-Chuck Lever :
-> On Apr 20, 2011, at 11:42 PM, Mi Jinlong wrote:
-> 
+On 2011-04-20 23:49, Trond Myklebust wrote:
+> On Wed, 2011-04-20 at 20:28 +0300, Benny Halevy wrote:
+>> * Add the pnfs_osd_xdr.h header
 >>
->> Chuck Lever:
->>> On Apr 20, 2011, at 5:29 AM, Mi Jinlong wrote:
->>>
->>>> Chuck Lever:
->>>>> Hi MJ-
->>>>>
->>>>> On Apr 19, 2011, at 4:33 AM, Mi Jinlong wrote:
->>>>>
->>>>>> At RHEL, if user set port for mountd at /etc/services as 
->>>>>> "mount   12345/tcp", mountd should be bind to 12345, but the 
->>>>>> latest nfs-utils, mountd get a rand port, not 12345.
->>>>>>
->>>>>> This patch make sure mountd be bind to the port which was set
->>>>>> at /etc/service.
->>>>> I don't think this is documented anywhere.  Is there a reason it should work this way?
->>>>>
->>>>> The typical way to set mountd's port is to use a command line option.  That's the way it works for all the other RPC daemons.  By default the ports are set up at random and registered with rpcbind.  That's why clients use rpcbind, and not /etc/services, to find these services.
->>>> I don't have a depth research, agree with you.
->>>> But I got different result when I set port for mountd at /etc/services
->>>> between nfs-utils-1.2.3 and nfs-utils-1.2.2.
->>> IMO that's unintentional behavior.  Could I ask a favor: would you bisect nfs-utils to find out exactly where this started and ended?
->>  Hi Chuck,
+>> * defintions the pnfs_osd_layout structure including all it's
+>>   sub-types and constants.
+>> * Declare the pnfs_osd_xdr_encode/decode_layout API + all needed
+>>   inline helpers.
 >>
->>  It's after your patch "mountd: Support TI-RPC mountd listener" 
->>  (commit id:b551b1fd0052de9b8c674b30c39d9f2a1e9d79cc).
+>> * Define the pnfs_osd_deviceaddr structure and all its subtypes and
+>>   constants.
+>> * Declare API for encoding/decoding of a pnfs_osd_deviceaddr to/from
+>>   XDR stream.
 >>
->>  Before this patch, mountd call rpc_init to create rpc socket,
->>  after it, if HAVE_LIBTIRPC is defined, mountd will call 
->>  nfs_svc_create to create rpc socket, that appears.
+>> * Define the pnfs_osd_ioerr structure, its substructures and constants.
+>> * Declare API for encoding/decoding of a pnfs_osd_ioerr to/from
+>>   XDR stream.
+>>
+>> * Define the pnfs_osd_layoutupdate structure and its substructures.
+>> * Declare API for encoding/decoding of a pnfs_osd_layoutupdate to/from
+>>   XDR stream.
+>>
+>> [Some extra debug-prints]
+>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+>> [objlayout driver skeleton]
+>> [use __be32]
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  include/linux/pnfs_osd_xdr.h |  439 ++++++++++++++++++++++++++++++++++++++++++
+>>  1 files changed, 439 insertions(+), 0 deletions(-)
+>>  create mode 100644 include/linux/pnfs_osd_xdr.h
+>>
+>> diff --git a/include/linux/pnfs_osd_xdr.h b/include/linux/pnfs_osd_xdr.h
+>> new file mode 100644
+>> index 0000000..6f2cedf
+>> --- /dev/null
+>> +++ b/include/linux/pnfs_osd_xdr.h
+>> @@ -0,0 +1,439 @@
+>> +/*
+>> + *  pnfs_osd_xdr.h
+>> + *
+>> + *  pNFS-osd on-the-wire data structures
+>> + *
+>> + *  Copyright (C) 2007-2009 Panasas Inc.
+>> + *  All rights reserved.
+>> + *
+>> + *  Benny Halevy <bhalevy@panasas.com>
+>> + *
+>> + *  This program is free software; you can redistribute it and/or modify
+>> + *  it under the terms of the GNU General Public License version 2
+>> + *  See the file COPYING included with this distribution for more details.
+>> + *
+>> + *  Redistribution and use in source and binary forms, with or without
+>> + *  modification, are permitted provided that the following conditions
+>> + *  are met:
+>> + *
+>> + *  1. Redistributions of source code must retain the above copyright
+>> + *     notice, this list of conditions and the following disclaimer.
+>> + *  2. Redistributions in binary form must reproduce the above copyright
+>> + *     notice, this list of conditions and the following disclaimer in the
+>> + *     documentation and/or other materials provided with the distribution.
+>> + *  3. Neither the name of the Panasas company nor the names of its
+>> + *     contributors may be used to endorse or promote products derived
+>> + *     from this software without specific prior written permission.
+>> + *
+>> + *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
+>> + *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+>> + *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+>> + *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+>> + *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+>> + *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+>> + *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+>> + *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+>> + *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+>> + *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+>> + *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+>> + */
+>> +#ifndef __PNFS_OSD_XDR_H__
+>> +#define __PNFS_OSD_XDR_H__
+>> +
+>> +#include <linux/nfs_fs.h>
+>> +#include <linux/nfs_page.h>
+>> +#include <linux/exp_xdr.h>
+>> +#include <scsi/osd_protocol.h>
+>> +
+>> +#define PNFS_OSD_OSDNAME_MAXSIZE 256
+>> +
+>> +/*
+>> + * START OF "GENERIC" DECODE ROUTINES.
+>> + *   These may look a little ugly since they are imported from a "generic"
+>> + * set of XDR encode/decode routines which are intended to be shared by
+>> + * all of our NFSv4 implementations (OpenBSD, MacOS X...).
+>> + *
+>> + * If the pain of reading these is too great, it should be a straightforward
+>> + * task to translate them into Linux-specific versions which are more
+>> + * consistent with the style used in NFSv2/v3...
 > 
-> Thanks.  I don't immediately see how that code path consults /etc/services.  There are no calls to getservby{name,port}(3) in either mountd or in libtirpc.  Did I miss something?  Any idea?
-> 
-  mountd main()
-     --> rpc_init()
-      --> svcudp_socket()
-       --> svc_socket()
-        --> getservbyname_r()       ***
-
-> You said it stopped working after a while.  Can you bisect that as well?
-> 
-> Note that if nfs-utils is built without TI-RPC support, rpc_init() is still used instead of nfs_svc_create().  If nfs_svc_create() is indeed the proximal cause of this behavior, mountd won't consult /etc/services if it is built without TI-RPC support.  So it might be a bug if this works for some build configurations and doesn't work for others.  The question is should it always work, or should it never work; see below.
+> Please do... We just got rid of these in the NFS code. The last thing we
+> want to do is reintroduce them in new code.
 > 
 
-  If building without TI-RPC support, mountd will get ports from /etc/service. 
-  With TI-RPC support, mountd will not get ports from /etc/service. That's the problem.
+Yeah, this is on our queue already
+(as mentioned in [RFC 0/27] :)
 
->>>> I just think we should get the same result at new nfs-utils as older.
->>> Is there a real-world use case for this feature?  Why isn't the command line option adequate?
->>>
->>  I have a test site which depend on this feature.
->>  If this feature indeed unnecessary, I will try to modify my test site.
-> 
-> Without knowing more about your test site, I claim it can and should use the "-p" option on rpc.mountd.  If your distribution of choice is Red Hat-based, you can set this in /etc/sysconfig/nfs (see MOUNTD_PORT=).
-> 
-
-  Got it, thanks!
-
-> In other words, we have a documented and supported mechanism now, that should always work, for setting mountd's listener port.  Can you explain in detail why allowing /etc/services to have this effect is also necessary?
-> 
-
-  I just think the new nfs-utils should do the same thing as older one.
-  Maybe called backward compatibility.
-  
--- 
-----
-thanks
-Mi Jinlong
-
+Benny
