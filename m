@@ -1,28 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:14097 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753167Ab1DKUwG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Apr 2011 16:52:06 -0400
-Received: from [10.30.16.32] (jcohen5-lxp.hq.netapp.com [10.30.16.32] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id p3BKq3Ew016853
-	for <linux-nfs@vger.kernel.org>; Mon, 11 Apr 2011 13:52:04 -0700 (PDT)
-Message-ID: <4DA369F3.4020603@netapp.com>
-Date: Mon, 11 Apr 2011 16:52:03 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Jenkins NFS CI
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:7213 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752983Ab1DVJGD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Apr 2011 05:06:03 -0400
+Message-ID: <4DB144F6.4060302@panasas.com>
+Date: Fri, 22 Apr 2011 12:05:58 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [RFC 11/27] pnfs: per mount layout driver private data
+References: <4DAF0DE1.6020609@panasas.com>	 <1303320461-21369-1-git-send-email-bhalevy@panasas.com> <1303331772.23206.47.camel@lade.trondhjem.org>
+In-Reply-To: <1303331772.23206.47.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi everybody!
+On 2011-04-20 23:36, Trond Myklebust wrote:
+> On Wed, 2011-04-20 at 20:27 +0300, Benny Halevy wrote:
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  include/linux/nfs_fs_sb.h |    3 +++
+>>  1 files changed, 3 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+>> index 216cea5..c5b3fd0 100644
+>> --- a/include/linux/nfs_fs_sb.h
+>> +++ b/include/linux/nfs_fs_sb.h
+>> @@ -142,6 +142,9 @@ struct nfs_server {
+>>  						   filesystem */
+>>  	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
+>>  	struct rpc_wait_queue	roc_rpcwaitq;
+>> +	void			       *pnfs_ld_data; /* Per-mount data */
+>> +	unsigned int			ds_rsize;  /* Data server read size */
+>> +	unsigned int			ds_wsize;  /* Data server write size */
+> 
+> Shouldn't the rsize and wsize be part of the layout driver private data?
+> 
 
-I have posted my initial jenkins CI setup to a git repo located at: git://git.linux-nfs.org/projects/bjschuma/jenkins-nfs.git.  I would appreciate feedback for making it both more useful and usable.  I have it configured to test client changes, I haven't given much thought for testing the server.
+Oops, they're not used anymore (they were previously
+used by the files layout). I'll just get rid of them.
 
-You can find instructions for setting it up here: https://wiki.linux-nfs.org/wiki/index.php/Jenkins_CI and also in the README.txt I placed in the root of the git tree.
+Benny
 
-I have also created pre-configured virtual machine images that can be used with libvirt for running the tests.  You can download them from http://linux-nfs.org/~bjschuma/jenkins_master.32.img and http://linux-nfs.org/~bjschuma/jenkins_master.64.img.
+>>  
+>>  	/* the following fields are protected by nfs_client->cl_lock */
+>>  	struct rb_root		state_owners;
+> 
 
-Thanks for any feedback!
-- Bryan
