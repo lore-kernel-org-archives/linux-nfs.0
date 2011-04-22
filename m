@@ -1,100 +1,172 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:44862 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752774Ab1DNVbC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Apr 2011 17:31:02 -0400
-Message-ID: <4DA76790.8040909@suse.cz>
-Date: Thu, 14 Apr 2011 23:30:56 +0200
-From: Jiri Slaby <jslaby@suse.cz>
+Received: from daytona.panasas.com ([67.152.220.89]:6491 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752409Ab1DVIFB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Apr 2011 04:05:01 -0400
+From: Benny Halevy <bhalevy@panasas.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Bryan Schumaker <bjschuma@netapp.com>, Jiri Slaby <jirislaby@gmail.com>,
-        linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
-        mm-commits@vger.kernel.org, ML netdev <netdev@vger.kernel.org>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS: Fix infinite loop in gss_create_upcall()
-References: <201103312224.p2VMOA5g000983@imap1.linux-foundation.org>	 <4D96E4C5.2080302@suse.cz> <1302122693.16786.0.camel@lade.trondhjem.org>	 <4D9D5CC9.2040002@suse.cz> <4DA36722.2020402@suse.cz>	 <4DA36758.4070203@suse.cz> <4DA36DB6.8060108@suse.cz>	 <4DA48EB0.40600@netapp.com>  <4DA4946D.5020403@suse.cz>	 <1302633088.4801.48.camel@lade.trondhjem.org> <4DA49B49.1020005@suse.cz>	 <4DA49D3A.7090800@netapp.com> <4DA49F7F.8060005@suse.cz>	 <4DA60AB9.1050104@netapp.com>  <4DA75AFC.3040000@suse.cz> <1302816095.24028.87.camel@lade.trondhjem.org>
-In-Reply-To: <1302816095.24028.87.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/6] SQUASHME: remove wait parameter from the layoutreturn path.
+Date: Fri, 22 Apr 2011 11:04:51 +0300
+Message-Id: <1303459491-16357-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DB125BD.3040703@panasas.com>
+References: <4DB125BD.3040703@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 04/14/2011 11:21 PM, Trond Myklebust wrote:
-> On Thu, 2011-04-14 at 22:37 +0200, Jiri Slaby wrote:
->> On 04/13/2011 10:42 PM, Bryan Schumaker wrote:
->>> On 04/12/2011 02:52 PM, Jiri Slaby wrote:
->>>> On 04/12/2011 08:43 PM, Bryan Schumaker wrote:
->>>>> On 04/12/2011 02:34 PM, Jiri Slaby wrote:
->>>>>> On 04/12/2011 08:31 PM, Trond Myklebust wrote:
->>>>>>>> Yes, it fixes the problem. But it waits 15s before it times out. This is
->>>>>>>> inacceptable for automounted NFS dirs.
->>>>>>>
->>>>>>> I'm still confused as to why you are hitting it at all. In the normal
->>>>>>> autonegotiation case, the client should be trying to use AUTH_SYS first
->>>>>>> and then trying rpcsec_gss if and only if that fails.
->>>>>>>
->>>>>>> Are you really exporting a filesystem using AUTH_NULL as the only
->>>>>>> supported flavour?
->>>>>>
->>>>>> I don't know, I connect to a nfs server which is not maintained by me.
->>>>>> It looks like that. How can I find out?
->>>>>
->>>>> If you're not using gss for anything, you could try rmmod-ing rpcsec_gss_krb5 (and other rpcsec_gss_* modules).
->>>>
->>>> I don't have NFS in modules. It's all built-in. And this one is
->>>> unconditionally selected because of CONFIG_NFS_V4.
->>>
->>> Does this patch help?
->>
->> Nope, it makes things even worse:
->> # mount -oro,intr XXX:/yyy /mnt/c/
->> <15s delay here>
->> mount.nfs: access denied by server while mounting XXX:/yyy
->>
->> So in nfs4_proc_get_root I do:
->>   printk("%s: %d %u\n", __func__, i, flav_array[i]);
->>   status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
->>   printk("%s: res=%d\n", __func__, status);
->> and get:
->> [   18.159818] nfs4_proc_get_root: 0 1
->> [   18.214872] nfs4_proc_get_root: res=-1
->> [   18.214875] nfs4_proc_get_root: 1 0
->> [   18.254636] nfs4_proc_get_root: res=-1
->> [   18.254639] nfs4_proc_get_root: 2 390003
->> [   33.252174] RPC: AUTH_GSS upcall timed out.
->> [   33.252177] Please check user daemon is running.
->> [   33.252192] nfs4_proc_get_root: res=-13
->>
->> If I revert that back and do the same:
->> [   28.275569] nfs4_proc_get_root: 0 1
->> [   28.296545] nfs4_proc_get_root: res=-1
->> [   28.296548] nfs4_proc_get_root: 1 390003
->> [   43.296107] RPC: AUTH_GSS upcall timed out.
->> [   43.296108] Please check user daemon is running.
->> [   43.296121] nfs4_proc_get_root: res=-13
->> [   43.296122] nfs4_proc_get_root: 2 0
->> [   43.318201] nfs4_proc_get_root: res=-1
->>
->> I.e. all methods fail. And what matters is the last retval. From NULL it
->> is EPERM, from GSS it is EACCESS. For EPERM, mount(8) falls back to
->> nfs3, for EACCESS it dies terrible death.
-> 
-> OK. That's good information. Thanks for testing!
-> 
-> I'm still curious as to why that NFS server is refusing all NFSv4 mounts
-> with NFS4ERR_WRONGSEC. Unless NFSv4 really is configured only to export
-> the root filesystem with RPCSEC_GSS, then that definitely sounds like a
-> bug...
+all call sites are sync now
+squash into "pnfs: layoutreturn"
 
-With gssd running if that helps:
-[  229.806528] nfs4_proc_get_root: 0 1
-[  229.828491] nfs4_proc_get_root: res=-1
-[  229.828494] nfs4_proc_get_root: 1 390003
-[  229.896994] nfs4_proc_get_root: res=-13
-[  229.896997] nfs4_proc_get_root: 2 0
-[  229.920344] nfs4_proc_get_root: res=-1
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/nfs4proc.c |   11 ++++-------
+ fs/nfs/pnfs.c     |   10 +++++-----
+ fs/nfs/pnfs.h     |   12 +++++-------
+ 3 files changed, 14 insertions(+), 19 deletions(-)
 
-thanks,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3e1843d..4f637e9 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2333,7 +2333,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 	int status;
+ 
+ 	if (pnfs_ld_layoutret_on_setattr(inode))
+-		pnfs_return_layout(inode, NULL, true);
++		pnfs_return_layout(inode, NULL);
+ 
+ 	nfs_fattr_init(fattr);
+ 	
+@@ -5739,7 +5739,7 @@ static const struct rpc_call_ops nfs4_layoutreturn_call_ops = {
+ 	.rpc_release = nfs4_layoutreturn_release,
+ };
+ 
+-int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool issync)
++int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp)
+ {
+ 	struct rpc_task *task;
+ 	struct rpc_message msg = {
+@@ -5752,22 +5752,19 @@ int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool issync)
+ 		.rpc_message = &msg,
+ 		.callback_ops = &nfs4_layoutreturn_call_ops,
+ 		.callback_data = lrp,
+-		.flags = RPC_TASK_ASYNC,
+ 	};
+-	int status = 0;
++	int status;
+ 
+ 	dprintk("--> %s\n", __func__);
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+ 		return PTR_ERR(task);
+-	if (!issync)
+-		goto out;
+ 	status = nfs4_wait_for_completion_rpc_task(task);
+ 	if (status != 0)
+ 		goto out;
+ 	status = task->tk_status;
+ out:
+-	dprintk("<-- %s\n", __func__);
++	dprintk("<-- %s status=%d\n", __func__, status);
+ 	rpc_put_task(task);
+ 	return status;
+ }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index bacde63..1ec5bb8 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -667,7 +667,7 @@ out_err_free:
+ }
+ 
+ static int
+-return_layout(struct inode *ino, struct pnfs_layout_range *range, bool wait)
++return_layout(struct inode *ino, struct pnfs_layout_range *range)
+ {
+ 	struct nfs4_layoutreturn *lrp;
+ 	struct nfs_server *server = NFS_SERVER(ino);
+@@ -687,7 +687,7 @@ return_layout(struct inode *ino, struct pnfs_layout_range *range, bool wait)
+ 	lrp->args.inode = ino;
+ 	lrp->clp = server->nfs_client;
+ 
+-	status = nfs4_proc_layoutreturn(lrp, wait);
++	status = nfs4_proc_layoutreturn(lrp);
+ out:
+ 	dprintk("<-- %s status: %d\n", __func__, status);
+ 	return status;
+@@ -695,7 +695,7 @@ out:
+ 
+ /* Initiates a LAYOUTRETURN(FILE) */
+ int
+-_pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range, bool wait)
++_pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range)
+ {
+ 	struct pnfs_layout_hdr *lo = NULL;
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+@@ -722,11 +722,11 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range, bool wai
+ 	pnfs_free_lseg_list(&tmp_list);
+ 
+ 	/* Return layout even if layoutcommit fails */
+-	status = pnfs_layoutcommit_inode(ino, wait);
++	status = pnfs_layoutcommit_inode(ino, true);
+ 	if (status)
+ 		dprintk("%s: layoutcommit failed, status=%d. Returning layout anyway\n",
+ 			__func__, status);
+-	status = return_layout(ino, &arg, wait);
++	status = return_layout(ino, &arg);
+ out:
+ 	dprintk("<-- %s status: %d\n", __func__, status);
+ 	return status;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index b0f9b79..b5d1d22 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -164,7 +164,7 @@ extern int nfs4_proc_getdevicelist(struct nfs_server *server,
+ extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
+ 				   struct pnfs_device *dev);
+ extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
+-extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool wait);
++extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
+ 
+ /* pnfs.c */
+ void get_layout_hdr(struct pnfs_layout_hdr *lo);
+@@ -202,7 +202,7 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+ bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+-int _pnfs_return_layout(struct inode *, struct pnfs_layout_range *, bool wait);
++int _pnfs_return_layout(struct inode *, struct pnfs_layout_range *);
+ int pnfs_write_done(struct nfs_write_data *);
+ int pnfs_read_done(struct nfs_read_data *);
+ 
+@@ -284,14 +284,13 @@ pnfs_ld_layoutret_on_setattr(struct inode *inode)
+ }
+ 
+ static inline int pnfs_return_layout(struct inode *ino,
+-				     struct pnfs_layout_range *range,
+-				     bool wait)
++				     struct pnfs_layout_range *range)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+ 	struct nfs_server *nfss = NFS_SERVER(ino);
+ 
+ 	if (pnfs_enabled_sb(nfss) && nfsi->layout)
+-		return _pnfs_return_layout(ino, range, wait);
++		return _pnfs_return_layout(ino, range);
+ 
+ 	return 0;
+ }
+@@ -338,8 +337,7 @@ pnfs_try_to_write_data(struct nfs_write_data *data,
+ }
+ 
+ static inline int pnfs_return_layout(struct inode *ino,
+-				     struct pnfs_layout_range *range,
+-				     bool wait)
++				     struct pnfs_layout_range *range)
+ {
+ 	return 0;
+ }
 -- 
-js
-suse labs
+1.7.3.4
+
