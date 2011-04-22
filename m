@@ -1,147 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:12200 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752930Ab1DDMsc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Apr 2011 08:48:32 -0400
-Message-ID: <4D99BE1E.80701@netapp.com>
-Date: Mon, 04 Apr 2011 08:48:30 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Eric Paris <eparis@redhat.com>, linux-nfs@vger.kernel.org,
-        Trond.Myklebust@netapp.com
-Subject: Re: [REGRESSION] 8f70e95f9f4159184f557 causes mount failure with
- EGAIN
-References: <1301513561.561.7.camel@unknown001a4b0c2895> <4D939CAF.40506@netapp.com> <1301520805.561.11.camel@unknown001a4b0c2895> <1301535117.561.16.camel@unknown001a4b0c2895> <20110402190117.GA8960@fieldses.org>
-In-Reply-To: <20110402190117.GA8960@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:6485 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751829Ab1DVIEq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Apr 2011 04:04:46 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/6] SQUASHME: remove assert_spin_locked from pnfs_clear_lseg_list
+Date: Fri, 22 Apr 2011 11:04:30 +0300
+Message-Id: <1303459470-16321-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DB125BD.3040703@panasas.com>
+References: <4DB125BD.3040703@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 04/02/2011 03:01 PM, J. Bruce Fields wrote:
-> On Wed, Mar 30, 2011 at 09:31:57PM -0400, Eric Paris wrote:
->> On Wed, 2011-03-30 at 17:33 -0400, Eric Paris wrote:
->>> On Wed, 2011-03-30 at 17:12 -0400, Bryan Schumaker wrote:
->>>> On 03/30/2011 03:32 PM, Eric Paris wrote:
->>>>> $ git bisect good
->>>>> 8f70e95f9f4159184f557a1db60c909d7c1bd2e3 is the first bad commit
->>>>> commit 8f70e95f9f4159184f557a1db60c909d7c1bd2e3
->>>>> Author: Bryan Schumaker <bjschuma@netapp.com>
->>>>> Date:   Thu Mar 24 17:12:31 2011 +0000
->>>>>
->>>>>     NFS: Determine initial mount security
->>>>>     
->>>>>     When sec=<something> is not presented as a mount option,
->>>>>     we should attempt to determine what security flavor the
->>>>>     server is using.
->>>>>     
->>>>>     Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->>>>>     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->>>>>
->>>>> Using a linux-next kernel for the last 2 days I have been unable to
->>>>> mount exports from my RHEL6 server.  mount(2) returned EAGAIN.  Turned
->>>>
->>>> Thanks for letting me know.  What does your exports file look like?
->>>
->>> # cat /etc/exports
->>> /		127.0.0.1(fsid=0)
->>> /export		*(rw,fsid=1,all_squash,anonuid=500,anongid=500)
->>
->> At jlayton's suggestion I changed /exports to not include the /
->> 127.0.0.1 and removed both explicit fsid= and it works.  So this patch
->> broke my setup, but I have a workaround.
-> 
-> OK, but I'm a little confused why that would make any difference to
-> client security negotiation code.
-> 
-> Do we understand why your setup broke after that client change?
+currently it's called only from the evict_inode path
+no lock is needed there...
 
-There is some error code returned to the mount program that tells it to fall back to v3 for mounting.  My change stopped returning this error, and instead returned a different code that told mount to give up.  I think this patch fixes it.
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/pnfs.c |    7 +++++--
+ 1 files changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index dfd1e6d..9bf41ea 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2204,8 +2204,6 @@ static int nfs4_lookup_root_sec(struct nfs_server *server, struct nfs_fh *fhandl
- 		goto out;
- 	}
- 	ret = nfs4_lookup_root(server, fhandle, info);
--	if (ret < 0)
--		ret = -EAGAIN;
- out:
- 	return ret;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 0237b2c..bacde63 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -410,7 +410,11 @@ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 	return invalid - removed;
  }
-@@ -2226,7 +2224,7 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
  
- 	for (i = 0; i < len; i++) {
- 		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
--		if (status == 0)
-+		if (status != -EPERM)
- 			break;
- 	}
- 	if (status == 0)
-
-
-
-
-> 
-> --b
-> 
->> (I'm pretty sure the
->> previous / 127 entry was a workaround for a problem when all my clients
->> broke during Fedora's switch to use NFSv4 default.  Funny one workaround
->> comes back to bit me again  :))
->>
->> Thanks! 
->>
->>
->>> The client fstab looks like:
->>> paris.rdu.redhat.com:/export/ /storage nfs tcp,noatime,nodiratime,noauto,users,exec,suid 0 0
->>>
->>>>
->>>> Bryan
->>>>
->>>>> up debugging (thanks jlayton) and got:
->>>>>
->>>>>         [ 1732.795056] NFS: nfs mount opts='tcp,vers=4,addr=10.11.231.241,clientaddr=10.11.231.191'
->>>>>         [ 1732.798079] NFS:   parsing nfs mount option 'tcp'
->>>>>         [ 1732.800210] NFS:   parsing nfs mount option 'vers=4'
->>>>>         [ 1732.802324] NFS:   parsing nfs mount option 'addr=10.11.231.241'
->>>>>         [ 1732.804477] NFS:   parsing nfs mount option 'clientaddr=10.11.231.191'
->>>>>         [ 1732.805790] NFS: MNTPATH: '/export/'
->>>>>         [ 1732.806663] --> nfs4_try_mount()
->>>>>         [ 1732.807459] --> nfs4_create_server()
->>>>>         [ 1732.808301] --> nfs4_init_server()
->>>>>         [ 1732.809136] --> nfs4_set_client()
->>>>>         [ 1732.809898] --> nfs_get_client(paris.rdu.redhat.com,v4)
->>>>>         [ 1732.811122] NFS: get client cookie (0xffff880039cfd9e8/0xffff88003b889000)
->>>>>         [ 1732.813771] NFS: Callback listener port = 36700 (af 2)
->>>>>         [ 1732.814931] NFS: Callback listener port = 60202 (af 10)
->>>>>         [ 1732.816199] --> nfs_get_client() = ffff880039cfd9e8 [new]
->>>>>         [ 1732.817356] <-- nfs4_set_client() = 0 [new ffff880039cfd9e8]
->>>>>         [ 1732.818587] <-- nfs4_init_server() = 0
->>>>>         [ 1732.819476] --> nfs4_get_rootfh()
->>>>>         [ 1732.820282] encode_compound: tag=
->>>>>         [ 1732.822070] encode_compound: tag=
->>>>>         [ 1732.822937] nfs4_get_rootfh: getroot error = 11
->>>>>         [ 1732.823982] <-- nfs4_get_rootfh() = -11
->>>>>         [ 1732.824880] --> nfs_free_server()
->>>>>         [ 1732.846219] --> nfs_put_client({1})
->>>>>         [ 1732.847888] --> nfs_free_client(4)
->>>>>         [ 1732.850236] NFS: releasing client cookie (0xffff880039cfd9e8/0xffff88003b889000)
->>>>>         [ 1732.853726] <-- nfs_free_client()
->>>>>         [ 1732.854505] <-- nfs_free_server()
->>>>>         [ 1732.855274] <-- nfs4_create_server() = error -11
->>>>>         [ 1732.856187] <-- nfs4_try_mount() = -11 [error]
->>>>>
->>>>> Bisected and got the commit listed above.
->>>>>
->>>>
->>>
->>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-/* Returns false if there was nothing to do, true otherwise */
++/*
++ * Returns false if there was nothing to do, true otherwise.
++ *
++ * Must be called under the i_lock (unless from the nfs4_evict_inode path)
++ */
+ static bool
+ pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list,
+ 		     struct pnfs_layout_range *range)
+@@ -420,7 +424,6 @@ pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list,
+ 
+ 	dprintk("%s:Begin lo %p offset %llu length %llu iomode %d\n",
+ 		__func__, lo, range->offset, range->length, range->iomode);
+-	assert_spin_locked(&lo->plh_inode->i_lock);
+ 	if (list_empty(&lo->plh_segs)) {
+ 		if (!test_and_set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags))
+ 			put_layout_hdr_locked(lo);
+-- 
+1.7.3.4
 
