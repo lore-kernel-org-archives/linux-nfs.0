@@ -1,55 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:53145 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:25720 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753706Ab1DETsJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Apr 2011 15:48:09 -0400
-Subject: Re: Prioritizing readdirplus/getattr/lookup
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Garth Gibson <garth@cs.cmu.edu>, linux-nfs@vger.kernel.org,
-        Jim Rees <rees@umich.edu>, Andrew Klaassen <clawsoon@yahoo.com>
-In-Reply-To: <4D9B694D.1030609@panasas.com>
-References: <13701.83906.qm@web65411.mail.ac4.yahoo.com>
-	 <882887.75491.qm@web65412.mail.ac4.yahoo.com>
-	 <20110404230528.GA2624@merit.edu> <4D9A61C9.1030900@panasas.com>
-	 <20110405003944.GA31014@merit.edu> <4D9B195E.60108@panasas.com>
-	 <640DA909-32A8-43EF-AF0B-ACE0689AC0CD@cs.cmu.edu>
-	 <4D9B694D.1030609@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 05 Apr 2011 12:48:07 -0700
-Message-ID: <1302032887.7265.40.camel@lade.trondhjem.org>
+	id S1756257Ab1DVQzL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Apr 2011 12:55:11 -0400
+Date: Fri, 22 Apr 2011 12:54:52 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: andros@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/1] nfsd v4.1 lOCKT clientid field must be ignored
+Message-ID: <20110422165451.GB23345@pad.home.fieldses.org>
+References: <1303490759-2646-1-git-send-email-andros@netapp.com>
+ <1303490759-2646-2-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1303490759-2646-2-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-04-05 at 12:11 -0700, Benny Halevy wrote:
-> On 2011-04-05 10:14, Garth Gibson wrote:
-> > The OpenGroup HECE proposals for extending the application/filesystem interface did not have a team of implementers behind them.  At the time some of the parallel file system vendors that added modules to the kernel were willing to work toward supporting these interfaces, but not a broader community.   
-> >
-> > I encourage the pNFS community to consider the use cases that led to those proposals.
-> >
-> > One example is lazy attributes.  Folks running large parallel jobs have a nasty habit of monitoring the progress of the job by running on their desktop a looping script doing ls -l on output files.  What is the length of a file that is open and being written to by other nodes?  Much of the time you want to be able to ask for a recently accurate value of attributes without recalling layouts, but perhaps some of the time you would like layouts to be recalled, or at least committed.
+On Fri, Apr 22, 2011 at 12:45:59PM -0400, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
 > 
-> Right now the pNFS server does not have to recall the layout on GETATTR
-> so lazy would be the default behavior for most implementations. Even if
-> a client holds a delegation the server could send a CB_GETATTR to it to
-> get the latest attributes without recalling the layout.  At any rate,
-> the broader issue is that the posix system call API assumes a local file
-> system and is not network not cluster file-system aware.
+> RFC 5661 Section 18.11.3
+> 
+>    The clientid field of the owner MAY be set to any value by the client
+>    and MUST be ignored by the server.  The reason the server MUST ignore
+>    the clientid field is that the server MUST derive the client ID from
+>    the session ID from the SEQUENCE operation of the COMPOUND request.
 
-Recalling the outstanding layouts in a directory on every 'ls -l' sounds
-like the perfect recipe for poor performance. I can't see why any
-servers would want to do this.
+I thought I'd checked the network and determined the failure prevented
+the client from even sending a request--but I guess not!  Thanks for
+tracking this down, applied.--b.
 
-In any case, a layout recall does not trigger client writeback: layouts
-do not define a caching protocol.
-
-Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfsd/nfs4xdr.c |    2 --
+>  1 files changed, 0 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index abdd42d..eb234df 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -591,8 +591,6 @@ nfsd4_decode_lockt(struct nfsd4_compoundargs *argp, struct nfsd4_lockt *lockt)
+>  	READ_BUF(lockt->lt_owner.len);
+>  	READMEM(lockt->lt_owner.data, lockt->lt_owner.len);
+>  
+> -	if (argp->minorversion && !zero_clientid(&lockt->lt_clientid))
+> -		return nfserr_inval;
+>  	DECODE_TAIL;
+>  }
+>  
+> -- 
+> 1.7.2.3
+> 
