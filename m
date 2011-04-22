@@ -1,52 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:8353 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:43176 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755148Ab1D0S6j convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Apr 2011 14:58:39 -0400
-Subject: Re: [PATCH] nfsstat: reorder nfs4 stats for 2.6.38 and up
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, steved@redhat.com,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <4DB86605.3000304@panasas.com>
-References: <1303461980-6731-1-git-send-email-bhalevy@panasas.com>
-	 <23EF6F61-46F2-431B-8A44-A3E941688D65@oracle.com>
-	 <4DB7A084.2060009@panasas.com>
-	 <1303913806.13195.3.camel@lade.trondhjem.org>
-	 <4DB86605.3000304@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 27 Apr 2011 14:58:38 -0400
-Message-ID: <1303930718.23640.6.camel@lade.trondhjem.org>
+	id S1750970Ab1DVTbH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Apr 2011 15:31:07 -0400
+Date: Fri, 22 Apr 2011 15:31:03 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Adam Lackorzynski <adam@os.inf.tu-dresden.de>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
+        xfs@oss.sgi.com
+Subject: Re: 2.6.38: Quota over NFS4
+Message-ID: <20110422193103.GB32290@fieldses.org>
+References: <20110321222301.GB472@fieldses.org>
+ <20110322221305.GA5857@os.inf.tu-dresden.de>
+ <20110323150328.GD23418@fieldses.org>
+ <20110323174052.GE5005@os.inf.tu-dresden.de>
+ <20110323190632.GA26306@fieldses.org>
+ <20110323223017.GA5177@os.inf.tu-dresden.de>
+ <20110324171704.GA1784@infradead.org>
+ <20110324175106.GB1886@fieldses.org>
+ <20110324222807.GC10821@os.inf.tu-dresden.de>
+ <20110325000310.GA5514@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110325000310.GA5514@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-04-27 at 21:52 +0300, Benny Halevy wrote:
-> On 2011-04-27 17:16, Trond Myklebust wrote:
-> > On Wed, 2011-04-27 at 07:50 +0300, Benny Halevy wrote:
-> >> On 2011-04-25 17:11, Chuck Lever wrote:
-> >>> Hey all-
-> >>>
-> >>> So what are we going to do when adding NFSv4.2 to this mix?  Will we
-> >>> then have to freeze both the NFSv4.1 and NFSv4.0 procedure API in the
-> >>> kernel?  Seems painful.
-> >>
-> >> Good question.
-> >> How about changing the stat pseudo-file format to include an op
-> >> identifier along with its respective counter, printing a line per op?
+On Thu, Mar 24, 2011 at 08:03:10PM -0400, J. Bruce Fields wrote:
+> On Thu, Mar 24, 2011 at 11:28:07PM +0100, Adam Lackorzynski wrote:
 > > 
-> > We already have that in /proc/self/mountstats
+> > On Thu Mar 24, 2011 at 13:51:06 -0400, J. Bruce Fields wrote:
+> > > On Thu, Mar 24, 2011 at 01:17:05PM -0400, Christoph Hellwig wrote:
+> > > > On Wed, Mar 23, 2011 at 11:30:17PM +0100, Adam Lackorzynski wrote:
+> > > > > I probably mistyped something and thus bisected again:
+> > > > 
+> > > > maybe this is just a symptom.  When was the nfs4 code converted
+> > > > to just use a single open struct file, and what are the lifetime
+> > > > rules for it?  It would easily be that a long alive file might
+> > > > make XFS keep persistent preallocations longer or similar issues.
+> > > 
+> > > Definitely, the commit he's bisect to there seems much more likely to be
+> > > a culprit.  I'll take a closer look....
+> > > 
+> > > > Adam, can you create a loop filesystem with ext3 or something else
+> > > > on it and see if the problem is XFS-specific?
+> > > 
+> > > Originally it sounded like he was able to reproduce this only on one
+> > > specific filesystem so I wondered whether there was something particular
+> > > to that filesystem.
 > > 
-> > 
+> > I just found out it happens also with a newly created xfs and also with
+> > ext3 and ext4. The reason that I did not see that initially is that the
+> > script I'm using needs to be on the same fs which wasn't the case when I
+> > initially tried it with a new fs. The sequence I'm using is:
 > 
-> You mean /proc/self/status?
+> Ah-hah, got it.  So the leak's probably of a delegation on the file
+> containing the script itself.  OK, I should be able to fix that, thanks!
 
-No.
--- 
-Trond Myklebust
-Linux NFS client maintainer
+This should be fixed in the latest upstream (so, in 39-rc5, when that
+comes out) and soon in stable.  Let me know if not.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+--b.
