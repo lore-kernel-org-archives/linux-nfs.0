@@ -1,155 +1,177 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:50331 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753579Ab1DONCm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Apr 2011 09:02:42 -0400
-Date: Fri, 15 Apr 2011 08:59:41 -0400
-To: "Hiroyuki Sato" <hiroysato@gmail.com>, linux-nfs@vger.kernel.org
-Subject: Re: [Q] NFS IPoIB , NFS/RDMA which is fast??
-From: sfaibish <sfaibish@emc.com>
-Content-Type: text/plain; format=flowed; delsp=yes; charset=utf-8
-References: <BANLkTimnmqpEkggdBaJkX2xmdscSB2Yz7Q@mail.gmail.com>
-Message-ID: <op.vtzc1rteunckof@usensfaibisl2e.eng.emc.com>
-In-Reply-To: <BANLkTimnmqpEkggdBaJkX2xmdscSB2Yz7Q@mail.gmail.com>
+Received: from daytona.panasas.com ([67.152.220.89]:6765 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752166Ab1DVIbv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Apr 2011 04:31:51 -0400
+Message-ID: <4DB13CF1.8070300@panasas.com>
+Date: Fri, 22 Apr 2011 11:31:45 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/6] SQUASHME: remove wait parameter from the layoutreturn
+ path.
+References: <4DB125BD.3040703@panasas.com> <1303459491-16357-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <1303459491-16357-1-git-send-email-bhalevy@panasas.com>
+Content-Type: text/plain; charset=windows-1255
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 15 Apr 2011 05:54:45 -0400, Hiroyuki Sato <hiroysato@gmail.com>  
-wrote:
+On 2011-04-22 11:04, Benny Halevy wrote:
+> all call sites are sync now
+> squash into "pnfs: layoutreturn"
+> 
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  fs/nfs/nfs4proc.c |   11 ++++-------
+>  fs/nfs/pnfs.c     |   10 +++++-----
+>  fs/nfs/pnfs.h     |   12 +++++-------
+>  3 files changed, 14 insertions(+), 19 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 3e1843d..4f637e9 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -2333,7 +2333,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+>  	int status;
+>  
+>  	if (pnfs_ld_layoutret_on_setattr(inode))
+> -		pnfs_return_layout(inode, NULL, true);
+> +		pnfs_return_layout(inode, NULL);
+>  
+>  	nfs_fattr_init(fattr);
+>  	
+> @@ -5739,7 +5739,7 @@ static const struct rpc_call_ops nfs4_layoutreturn_call_ops = {
+>  	.rpc_release = nfs4_layoutreturn_release,
+>  };
+>  
+> -int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool issync)
+> +int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp)
+>  {
+>  	struct rpc_task *task;
+>  	struct rpc_message msg = {
+> @@ -5752,22 +5752,19 @@ int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool issync)
+>  		.rpc_message = &msg,
+>  		.callback_ops = &nfs4_layoutreturn_call_ops,
+>  		.callback_data = lrp,
+> -		.flags = RPC_TASK_ASYNC,
+>  	};
+> -	int status = 0;
+> +	int status;
+>  
+>  	dprintk("--> %s\n", __func__);
+>  	task = rpc_run_task(&task_setup_data);
+>  	if (IS_ERR(task))
+>  		return PTR_ERR(task);
+> -	if (!issync)
+> -		goto out;
+>  	status = nfs4_wait_for_completion_rpc_task(task);
 
-> Dear members.
->
-> I'm measuring the performance NFS on IPoIB and NFS/RDMA.
-> I would like to ask the following questions.
->
-> 1) Benchmark result.
->
->   Does anyone tryied this benchmark??
->   If so , could you please tell me that result??
->
->  2) My test result and What is problem??
->
->   I compared that. Please see my test result at below.
->
->   I extpected NFS/RDMA faster than NFS IPoIB.
->   However, NFS/RDMA is slower than NFS IPoIB.
->   Expecially rsize,wsize larger equal 32768
->
->   Could you please what is problelm ??
->
-> Thank you for your information.
->
->
-> 1, Environment
-First impression is that your IB switch is not configured to
-support NFS/RDMA. In which case of course IPoIB is faster as
-it can get all the BW from the switch.
+sorry, no need to wait if the task isn't ASYNC.
 
->
->   (1) Server
->     CentOS 5.5 x86_64
->     Kernel: 2.36.8.2 (self build)
->     OFED: any kernel modules does not use.
->       Only startup script and nfs-utils used
->       from OFED-1.5.3
->     Memory: 8GB
->     HCA: Mellanox InfiniHost III Ex.
->
->
->   (2) Client
->     CentOS 5.5 x86_64
->     Kernel: 2.36.8.2 (self build)
->     OFED: any kernel modules does not use.
->       Only startup script and nfs-utils used.
->       from OFED-1.5.3
->     Memory: 8GB
->     HCA: Mellanox InfiniHost III Ex.
->
->
->   Client and Server connected directly with Infiniband CX4 cable.
->
->
-> 2, Configurations
->
->   (1) NFS/RDMA
->
->     1-1) Server exports (/etc/exports)
->       /dev/shm	192.168.100.0/255.255.255.0(rw,no_root_squash,insecure,fsid=0,sync)
->
->     1-2) Client mount
->       mount.rnfs 192.168.100.231:/dev/shm /mnt -i -o
-> rdma,port=20049,rsize=32768,wsize=32768,sync,rw
->
->   (2) IPoIB
->
->     2-1) Server exports(/etc/exports)
->       /dev/shm	192.168.100.0/255.255.255.0(rw,no_root_squash,insecure,fsid=0,sync)
->
->     2-2) Client mount
->       mount -t nfs  -o nfsvers=3,rsize=32768,wsize=32768,tcp,sync,rw
-> 192.168.100.231:/dev/shm /mnt
->
->
-> 3, test result
->
->   Please see attachement file. for more information.
->
->   Summary:
->    1GB write bs=(64MB) :
->       NFS IPoIB : 661.499MB/sec
->       NFS/RDMA  : 512.513MB/sec
->
->    1GB read bs=(64MB) :
->       NFS IPoIB : 592.250MB/sec
->       NFS/RDMA  : 1.353MB/sec ( very slow )
->
-> 4, about test tool
->
->   This tool based on  blockdev-perftest which is included in SCST.
->
->   this tool is using fio benchmark tool internally.
->
->   I modified this script for file system,
->
->
->   This command execute fio like the follwoing
->
->      fio --rw=write # (and read)\
->       --directory=/mnt/fio-testing \
->       --bs=XXX \
->       --size=1073741824 \
->       --ioengine=psync \
->       --end_fsync=1 \
->       --invalidate=1 \
->       --direct=1 \
->       --name=writeperftest
->
->     XXX is
->
->       67108864
->       33554432
->       16777216
->       8388608
->       ...
->       ...
->
-> Sincerely
->
-> --
-> Hiroyuki Sato.
+Benny
 
+>  	if (status != 0)
+>  		goto out;
+>  	status = task->tk_status;
+>  out:
+> -	dprintk("<-- %s\n", __func__);
+> +	dprintk("<-- %s status=%d\n", __func__, status);
+>  	rpc_put_task(task);
+>  	return status;
+>  }
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index bacde63..1ec5bb8 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -667,7 +667,7 @@ out_err_free:
+>  }
+>  
+>  static int
+> -return_layout(struct inode *ino, struct pnfs_layout_range *range, bool wait)
+> +return_layout(struct inode *ino, struct pnfs_layout_range *range)
+>  {
+>  	struct nfs4_layoutreturn *lrp;
+>  	struct nfs_server *server = NFS_SERVER(ino);
+> @@ -687,7 +687,7 @@ return_layout(struct inode *ino, struct pnfs_layout_range *range, bool wait)
+>  	lrp->args.inode = ino;
+>  	lrp->clp = server->nfs_client;
+>  
+> -	status = nfs4_proc_layoutreturn(lrp, wait);
+> +	status = nfs4_proc_layoutreturn(lrp);
+>  out:
+>  	dprintk("<-- %s status: %d\n", __func__, status);
+>  	return status;
+> @@ -695,7 +695,7 @@ out:
+>  
+>  /* Initiates a LAYOUTRETURN(FILE) */
+>  int
+> -_pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range, bool wait)
+> +_pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range)
+>  {
+>  	struct pnfs_layout_hdr *lo = NULL;
+>  	struct nfs_inode *nfsi = NFS_I(ino);
+> @@ -722,11 +722,11 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range, bool wai
+>  	pnfs_free_lseg_list(&tmp_list);
+>  
+>  	/* Return layout even if layoutcommit fails */
+> -	status = pnfs_layoutcommit_inode(ino, wait);
+> +	status = pnfs_layoutcommit_inode(ino, true);
+>  	if (status)
+>  		dprintk("%s: layoutcommit failed, status=%d. Returning layout anyway\n",
+>  			__func__, status);
+> -	status = return_layout(ino, &arg, wait);
+> +	status = return_layout(ino, &arg);
+>  out:
+>  	dprintk("<-- %s status: %d\n", __func__, status);
+>  	return status;
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index b0f9b79..b5d1d22 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -164,7 +164,7 @@ extern int nfs4_proc_getdevicelist(struct nfs_server *server,
+>  extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
+>  				   struct pnfs_device *dev);
+>  extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
+> -extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool wait);
+> +extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
+>  
+>  /* pnfs.c */
+>  void get_layout_hdr(struct pnfs_layout_hdr *lo);
+> @@ -202,7 +202,7 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+>  bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+>  void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
+>  int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+> -int _pnfs_return_layout(struct inode *, struct pnfs_layout_range *, bool wait);
+> +int _pnfs_return_layout(struct inode *, struct pnfs_layout_range *);
+>  int pnfs_write_done(struct nfs_write_data *);
+>  int pnfs_read_done(struct nfs_read_data *);
+>  
+> @@ -284,14 +284,13 @@ pnfs_ld_layoutret_on_setattr(struct inode *inode)
+>  }
+>  
+>  static inline int pnfs_return_layout(struct inode *ino,
+> -				     struct pnfs_layout_range *range,
+> -				     bool wait)
+> +				     struct pnfs_layout_range *range)
+>  {
+>  	struct nfs_inode *nfsi = NFS_I(ino);
+>  	struct nfs_server *nfss = NFS_SERVER(ino);
+>  
+>  	if (pnfs_enabled_sb(nfss) && nfsi->layout)
+> -		return _pnfs_return_layout(ino, range, wait);
+> +		return _pnfs_return_layout(ino, range);
+>  
+>  	return 0;
+>  }
+> @@ -338,8 +337,7 @@ pnfs_try_to_write_data(struct nfs_write_data *data,
+>  }
+>  
+>  static inline int pnfs_return_layout(struct inode *ino,
+> -				     struct pnfs_layout_range *range,
+> -				     bool wait)
+> +				     struct pnfs_layout_range *range)
+>  {
+>  	return 0;
+>  }
 
-
--- 
-Best Regards
-
-Sorin Faibish
-Corporate Distinguished Engineer
-Unified Storage Division
-         EMC²
-where information lives
-
-Phone: 508-249-5745
-Cellphone: 617-510-0422
-Email : sfaibish@emc.com
