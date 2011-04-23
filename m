@@ -1,104 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:64627 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:62786 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753572Ab1DNVVx convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Apr 2011 17:21:53 -0400
-Subject: Re: [PATCH] NFS: Fix infinite loop in gss_create_upcall()
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jiri Slaby <jslaby@suse.cz>
-Cc: Bryan Schumaker <bjschuma@netapp.com>, Jiri Slaby <jirislaby@gmail.com>,
-        linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
-        mm-commits@vger.kernel.org, ML netdev <netdev@vger.kernel.org>,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <4DA75AFC.3040000@suse.cz>
-References: <201103312224.p2VMOA5g000983@imap1.linux-foundation.org>
-	 <4D96E4C5.2080302@suse.cz> <1302122693.16786.0.camel@lade.trondhjem.org>
-	 <4D9D5CC9.2040002@suse.cz> <4DA36722.2020402@suse.cz>
-	 <4DA36758.4070203@suse.cz> <4DA36DB6.8060108@suse.cz>
-	 <4DA48EB0.40600@netapp.com>  <4DA4946D.5020403@suse.cz>
-	 <1302633088.4801.48.camel@lade.trondhjem.org> <4DA49B49.1020005@suse.cz>
-	 <4DA49D3A.7090800@netapp.com> <4DA49F7F.8060005@suse.cz>
-	 <4DA60AB9.1050104@netapp.com>  <4DA75AFC.3040000@suse.cz>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 14 Apr 2011 17:21:35 -0400
-Message-ID: <1302816095.24028.87.camel@lade.trondhjem.org>
+	id S1751738Ab1DWMQu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 23 Apr 2011 08:16:50 -0400
+Message-ID: <4DB2C32B.7000400@RedHat.com>
+Date: Sat, 23 Apr 2011 08:16:43 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Richard Smits <R.Smits@tudelft.nl>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: gssd mounts not working
+References: <4DAFD5B1.9060004@tudelft.nl>
+In-Reply-To: <4DAFD5B1.9060004@tudelft.nl>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2011-04-14 at 22:37 +0200, Jiri Slaby wrote:
-> On 04/13/2011 10:42 PM, Bryan Schumaker wrote:
-> > On 04/12/2011 02:52 PM, Jiri Slaby wrote:
-> >> On 04/12/2011 08:43 PM, Bryan Schumaker wrote:
-> >>> On 04/12/2011 02:34 PM, Jiri Slaby wrote:
-> >>>> On 04/12/2011 08:31 PM, Trond Myklebust wrote:
-> >>>>>> Yes, it fixes the problem. But it waits 15s before it times out. This is
-> >>>>>> inacceptable for automounted NFS dirs.
-> >>>>>
-> >>>>> I'm still confused as to why you are hitting it at all. In the normal
-> >>>>> autonegotiation case, the client should be trying to use AUTH_SYS first
-> >>>>> and then trying rpcsec_gss if and only if that fails.
-> >>>>>
-> >>>>> Are you really exporting a filesystem using AUTH_NULL as the only
-> >>>>> supported flavour?
-> >>>>
-> >>>> I don't know, I connect to a nfs server which is not maintained by me.
-> >>>> It looks like that. How can I find out?
-> >>>
-> >>> If you're not using gss for anything, you could try rmmod-ing rpcsec_gss_krb5 (and other rpcsec_gss_* modules).
-> >>
-> >> I don't have NFS in modules. It's all built-in. And this one is
-> >> unconditionally selected because of CONFIG_NFS_V4.
-> > 
-> > Does this patch help?
-> 
-> Nope, it makes things even worse:
-> # mount -oro,intr XXX:/yyy /mnt/c/
-> <15s delay here>
-> mount.nfs: access denied by server while mounting XXX:/yyy
-> 
-> So in nfs4_proc_get_root I do:
->   printk("%s: %d %u\n", __func__, i, flav_array[i]);
->   status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
->   printk("%s: res=%d\n", __func__, status);
-> and get:
-> [   18.159818] nfs4_proc_get_root: 0 1
-> [   18.214872] nfs4_proc_get_root: res=-1
-> [   18.214875] nfs4_proc_get_root: 1 0
-> [   18.254636] nfs4_proc_get_root: res=-1
-> [   18.254639] nfs4_proc_get_root: 2 390003
-> [   33.252174] RPC: AUTH_GSS upcall timed out.
-> [   33.252177] Please check user daemon is running.
-> [   33.252192] nfs4_proc_get_root: res=-13
-> 
-> If I revert that back and do the same:
-> [   28.275569] nfs4_proc_get_root: 0 1
-> [   28.296545] nfs4_proc_get_root: res=-1
-> [   28.296548] nfs4_proc_get_root: 1 390003
-> [   43.296107] RPC: AUTH_GSS upcall timed out.
-> [   43.296108] Please check user daemon is running.
-> [   43.296121] nfs4_proc_get_root: res=-13
-> [   43.296122] nfs4_proc_get_root: 2 0
-> [   43.318201] nfs4_proc_get_root: res=-1
-> 
-> I.e. all methods fail. And what matters is the last retval. From NULL it
-> is EPERM, from GSS it is EACCESS. For EPERM, mount(8) falls back to
-> nfs3, for EACCESS it dies terrible death.
 
-OK. That's good information. Thanks for testing!
 
-I'm still curious as to why that NFS server is refusing all NFSv4 mounts
-with NFS4ERR_WRONGSEC. Unless NFSv4 really is configured only to export
-the root filesystem with RPCSEC_GSS, then that definitely sounds like a
-bug...
+On 04/21/2011 02:58 AM, Richard Smits wrote:
+> Hello,
+> We are having problems with our gssd nfs mounts. I will explain our situation.
+> 
+> Our clients are running SLED 11 SP1.
+> Our server is a Netapp filer with Ontap 7.3.3P4.
+> 
+> We provide NFS exported directory's with krb5 security.
+> 
+> Our KDC is a Windows 2003 and 2008 Active Directory.
+> 
+> If we use nfs-client-1.2.1-8.1 everything works as expected.
+> 
+> But if we upgrade to (any) newer client, all gssd mounts fail. Now there is a bugreport on Novell Bugzilla about this : https://bugzilla.novell.com/show_bug.cgi?id=614293#c7
+> 
+> Apperantly if the nfs client is compiled with --disable-tirpc , the ticket size from the AD is to big ?
+Yes this problem was fixed in libitrpc with:
 
-Cheers
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
+commit 599511589ca7ddb3b2eac8d3aa5b0b38be7a7691
+Author: Jeff Layton <jlayton@redhat.com>
+Date:   Fri Mar 5 14:27:13 2010 -0500
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+    libtirpc: allow larger ticket sizes with RPCSEC_GSS
+
+
+> On our Redhat server we do not have these problems. There we are running : nfs-utils-1.2.2-7
+> 
+> Is there an explanation for these problems ? How can i find out if a client has been compiled with specific options. There is no nfs devel package for suse.
+Good question... I don't think there is way to was to tell how each
+binary has been compiled... but doing a ldd `which rpc.gssd` will show
+which shared libraries will be used.. If libtirpc.so.1 does not show up 
+in that list the you know the rpc.gssd was compile with --disable-tirpc
+
+steved.
 
