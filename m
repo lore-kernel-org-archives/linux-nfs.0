@@ -1,48 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:64228 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1755066Ab1D0BZP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Apr 2011 21:25:15 -0400
-Message-ID: <4DB76D60.3010802@cn.fujitsu.com>
-Date: Wed, 27 Apr 2011 09:12:00 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH] nfsd41: Deny new lock before RECLAIM_COMPLETE done
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from mx1.redhat.com ([209.132.183.28]:42775 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751849Ab1DWRsH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 23 Apr 2011 13:48:07 -0400
+Message-ID: <4DB310CE.4080009@RedHat.com>
+Date: Sat, 23 Apr 2011 13:47:58 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Luk Claes <luk@debian.org>
+CC: Richard Smits <R.Smits@tudelft.nl>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: gssd mounts not working
+References: <4DAFD5B1.9060004@tudelft.nl> <4DB2C32B.7000400@RedHat.com> <4DB30594.1060704@debian.org>
+In-Reply-To: <4DB30594.1060704@debian.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Before nfs41 client's RECLAIM_COMPLETE done, nfs server should 
-deny it's new lock.
-
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
----
- fs/nfsd/nfs4state.c |    9 +++++++++
- 1 files changed, 9 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4b36ec3..43cda94 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3803,6 +3803,15 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		 */
- 		struct nfs4_stateid *open_stp = NULL;
- 		
-+		/*
-+		 * RFC5661 18.51.3
-+		 * Before RECLAIM_COMPLETE done, return NFS4ERR_GRACE
-+		 */
-+		status = nfserr_grace;
-+		if (nfsd4_has_session(cstate) &&
-+		    !cstate->session->se_client->cl_firststate)
-+			goto out;
-+
- 		status = nfserr_stale_clientid;
- 		if (!nfsd4_has_session(cstate) &&
- 		    STALE_CLIENTID(&lock->lk_new_clientid))
--- 
-1.7.4.1
 
 
+On 04/23/2011 01:00 PM, Luk Claes wrote:
+> On 04/23/2011 02:16 PM, Steve Dickson wrote:
+>>
+>>
+>> On 04/21/2011 02:58 AM, Richard Smits wrote:
+>>> Hello,
+>>> We are having problems with our gssd nfs mounts. I will explain our situation.
+>>>
+>>> Our clients are running SLED 11 SP1.
+>>> Our server is a Netapp filer with Ontap 7.3.3P4.
+>>>
+>>> We provide NFS exported directory's with krb5 security.
+>>>
+>>> Our KDC is a Windows 2003 and 2008 Active Directory.
+>>>
+>>> If we use nfs-client-1.2.1-8.1 everything works as expected.
+>>>
+>>> But if we upgrade to (any) newer client, all gssd mounts fail. Now there is a bugreport on Novell Bugzilla about this : https://bugzilla.novell.com/show_bug.cgi?id=614293#c7
+>>>
+>>> Apperantly if the nfs client is compiled with --disable-tirpc , the ticket size from the AD is to big ?
+>> Yes this problem was fixed in libitrpc with:
+>>
+>> commit 599511589ca7ddb3b2eac8d3aa5b0b38be7a7691
+>> Author: Jeff Layton <jlayton@redhat.com>
+>> Date:   Fri Mar 5 14:27:13 2010 -0500
+>>
+>>     libtirpc: allow larger ticket sizes with RPCSEC_GSS
+> 
+> When will 0.2.2 be released?
+I'll try to get it out sometime next week...
+
+steved.
