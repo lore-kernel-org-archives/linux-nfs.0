@@ -1,48 +1,49 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH v2] nfs-utils: Increase the stdio file buffer size for
- procfs files
-Date: Thu, 21 Apr 2011 08:28:40 -0400
-Message-ID: <4DB022F8.4050706@RedHat.com>
-References: <1302261406-9048-1-git-send-email-sean.finney@sonyericsson.com> <1302261406-9048-2-git-send-email-sean.finney@sonyericsson.com>
+Subject: Re: pNFS kernel for Fedora 15
+Date: Sat, 23 Apr 2011 08:05:59 -0400
+Message-ID: <4DB2C0A7.6090501@RedHat.com>
+References: <4DB05BB3.8080706@desy.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Sean Finney <sean.finney@sonyericsson.com>
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45307 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60216 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754099Ab1DUM2n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Apr 2011 08:28:43 -0400
-In-Reply-To: <1302261406-9048-2-git-send-email-sean.finney@sonyericsson.com>
+	id S1751359Ab1DWMGH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 23 Apr 2011 08:06:07 -0400
+In-Reply-To: <4DB05BB3.8080706@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 04/08/2011 07:16 AM, Sean Finney wrote:
-> Previously, when writing to /proc/net/rpc/*/channel, if a cache line
-> were larger than the default buffer size (likely 1024 bytes), mountd
-> and svcgssd would split writes into a number of buffer-sized writes.
-> Each of these writes would get an EINVAL error back from the kernel
-> procfs handle (it expects line-oriented input and does not account for
-> multiple/split writes), and no cache update would occur.
+On 04/21/2011 12:30 PM, Tigran Mkrtchyan wrote:
 > 
-> When such behavior occurs, NFS clients depending on mountd to finish
-> the cache operation would block/hang, or receive EPERM, depending on
-> the context of the operation.  This is likely to happen if a user is a
-> member of a large (~100-200) number of groups.
+> Hi Steve et. al.
 > 
-> Instead, every fopen() on the procfs files in question is followed by
-> a call to setvbuf(), using a per-file dedicated buffer of
-> RPC_CHAN_BUF_SIZE length.
+> it looks like kernel fails to correctly work with
+> rpc.gssd if some of kernel modules statically
+> compiled:
 > 
-> Really, mountd should not be using stdio-style buffered file operations
-> on files in /proc to begin with.  A better solution would be to use
-> internally managed buffers and calls to write() instead of these stdio
-> calls, but that would be a more extensive change; so this is proposed
-> as a quick and not-so-dirty fix in the meantime.
+> BAD (pnfs kernel from Steve):
+> CONFIG_SUNRPC_GSS=m
+> CONFIG_RPCSEC_GSS_KRB5=y
 > 
-> Signed-off-by: Sean Finney <sean.finney@sonyericsson.com>
-The same with this one... Committed!
+> in messages:
+> [  537.544188] gss_create: Pseudoflavor 390003 not found!
+> [  537.544236] RPC: Couldn't create auth handle (flavor 390003)
+> 
+> 
+> GOOD (fedora native kernel or my own build):
+> CONFIG_SUNRPC_GSS=m
+> CONFIG_RPCSEC_GSS_KRB5=m
+> 
+> Steve, could you build new kernel with CONFIG_RPCSEC_GSS_KRB5=m ?
+> 
+> 
+> BTW, there was a similar issue with nfsd discussed last couple of days.
+> http://www.spinics.net/lists/linux-nfs/msg20617.html
+I'll take a look... thanks!
 
 steved.
