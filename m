@@ -1,50 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:48128 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751278Ab1DETwn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Apr 2011 15:52:43 -0400
-Message-ID: <4D9B7304.7010506@panasas.com>
-Date: Tue, 05 Apr 2011 12:52:36 -0700
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Garth Gibson <garth@cs.cmu.edu>, linux-nfs@vger.kernel.org,
-        Jim Rees <rees@umich.edu>, Andrew Klaassen <clawsoon@yahoo.com>
-Subject: Re: Prioritizing readdirplus/getattr/lookup
-References: <13701.83906.qm@web65411.mail.ac4.yahoo.com>	 <882887.75491.qm@web65412.mail.ac4.yahoo.com>	 <20110404230528.GA2624@merit.edu> <4D9A61C9.1030900@panasas.com>	 <20110405003944.GA31014@merit.edu> <4D9B195E.60108@panasas.com>	 <640DA909-32A8-43EF-AF0B-ACE0689AC0CD@cs.cmu.edu>	 <4D9B694D.1030609@panasas.com> <1302032887.7265.40.camel@lade.trondhjem.org>
-In-Reply-To: <1302032887.7265.40.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from rcsinet10.oracle.com ([148.87.113.121]:58822 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751013Ab1DYP6f convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Apr 2011 11:58:35 -0400
+Subject: Re: [PATCH] svc: make sure mountd can get ports from /etc/services
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4DB51E1B.5020004@cn.fujitsu.com>
+Date: Mon, 25 Apr 2011 11:58:25 -0400
+Cc: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
+Message-Id: <C34494E7-A0D3-428D-834B-FCAF473D056A@oracle.com>
+References: <4DAD48C7.9090808@cn.fujitsu.com> <94B98C85-8FAE-4B72-A782-F0B0DFD83674@oracle.com> <4DAEA782.2090108@cn.fujitsu.com> <AD03EC99-CB5C-41BA-AE0B-FEA7A8D48B6E@oracle.com> <4DAFA7AB.9020507@cn.fujitsu.com> <5A8AD10C-81A4-4088-BCFA-08D0BA2337C7@oracle.com> <4DB51E1B.5020004@cn.fujitsu.com>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-04-05 12:48, Trond Myklebust wrote:
-> On Tue, 2011-04-05 at 12:11 -0700, Benny Halevy wrote:
->> On 2011-04-05 10:14, Garth Gibson wrote:
->>> The OpenGroup HECE proposals for extending the application/filesystem interface did not have a team of implementers behind them.  At the time some of the parallel file system vendors that added modules to the kernel were willing to work toward supporting these interfaces, but not a broader community.   
->>>
->>> I encourage the pNFS community to consider the use cases that led to those proposals.
->>>
->>> One example is lazy attributes.  Folks running large parallel jobs have a nasty habit of monitoring the progress of the job by running on their desktop a looping script doing ls -l on output files.  What is the length of a file that is open and being written to by other nodes?  Much of the time you want to be able to ask for a recently accurate value of attributes without recalling layouts, but perhaps some of the time you would like layouts to be recalled, or at least committed.
->>
->> Right now the pNFS server does not have to recall the layout on GETATTR
->> so lazy would be the default behavior for most implementations. Even if
->> a client holds a delegation the server could send a CB_GETATTR to it to
->> get the latest attributes without recalling the layout.  At any rate,
->> the broader issue is that the posix system call API assumes a local file
->> system and is not network not cluster file-system aware.
-> 
-> Recalling the outstanding layouts in a directory on every 'ls -l' sounds
-> like the perfect recipe for poor performance. I can't see why any
-> servers would want to do this.
-> 
-> In any case, a layout recall does not trigger client writeback: layouts
-> do not define a caching protocol.
 
-Yet for already written (DATA_SYNC) data, a layout recall should trigger
-a LAYOUTCOMMIT and that will update the visible attrs.
+On Apr 25, 2011, at 3:09 AM, Mi Jinlong wrote:
 
-Benny
-
+> Chuck Lever :
 > 
-> Trond
+>> In other words, we have a documented and supported mechanism now, that should always work, for setting mountd's listener port.  Can you explain in detail why allowing /etc/services to have this effect is also necessary?
+> 
+>  I just think the new nfs-utils should do the same thing as older one.
+>  Maybe called backward compatibility.
+
+I was confused by your original report.
+
+Before, I read that with the commit mentioned above, /etc/services started working, then it stopped at some later point.  Now you seem to be saying that /etc/services always worked this way, but with the commit above, it stops working.  I've filed a bugzilla to track the issue:
+
+  https://bugzilla.linux-nfs.org/show_bug.cgi?id=200
+
+If you can find documentation that describes this feature (ie makes it a formal API, or describes any other details about its operation we should know of), or know of a widely deployed application of mountd or statd that requires it, please do let us know, or modify the bugzilla report.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
