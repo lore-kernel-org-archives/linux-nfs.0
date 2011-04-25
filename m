@@ -1,54 +1,221 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mao.cendio.se ([193.12.253.101]:41570 "EHLO mail.cendio.se"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753450Ab1DTH07 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Apr 2011 03:26:59 -0400
-Received: from stella (dmz-gw.cendio.se [193.12.253.97])
-	by mail.cendio.se (Postfix) with ESMTP id 5246D13817B
-	for <linux-nfs@vger.kernel.org>; Wed, 20 Apr 2011 08:58:31 +0200 (CEST)
-Date: Wed, 20 Apr 2011 08:58:31 +0200 (CEST)
-From: =?ISO-8859-15?Q?Peter_=C5strand?= <astrand@cendio.se>
-To: linux-nfs@vger.kernel.org
-Subject: Save the unfs3 project
-Message-ID: <alpine.LFD.2.02.1104191614010.23639@stella.lkpg.cendio.se>
-Content-Type: MULTIPART/MIXED; BOUNDARY="789238273-640111187-1303222841=:23639"
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:41311 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758825Ab1DYSny (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Apr 2011 14:43:54 -0400
+Received: by mail-iy0-f174.google.com with SMTP id 14so2054039iyb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 25 Apr 2011 11:43:54 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 04/15] SUNRPC: Add API to acquire source address
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 25 Apr 2011 14:43:51 -0400
+Message-ID: <20110425184351.5669.72626.stgit@matisse.1015granger.net>
+In-Reply-To: <20110425183405.5669.52507.stgit@matisse.1015granger.net>
+References: <20110425183405.5669.52507.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---789238273-640111187-1303222841=:23639
-Content-Type: TEXT/PLAIN; FORMAT=flowed; CHARSET=ISO-8859-15
-Content-Transfer-Encoding: 8BIT
-Content-ID: <alpine.LFD.2.02.1104191623371.23639@stella.lkpg.cendio.se>
+NFSv4.0 clients have to send endpoint information for their callback
+service to NFSv4.0 servers during their first contact with a server.
+Traditionally, user space provides the callback endpoint IP address
+via the "clientaddr=" mount option.
 
+During an NFSv4 migration event, it is possible that an FSID may be
+migrated to a destination server that is accessible via a different
+NIC than the source server was.  The client must update callback
+endpoint information on the destination server so that it can maintain
+leases and allow delegation.  Without a new "clientaddr=" option from
+user space, however, the kernel itself must construct an appropriate
+IP address for the callback service.
 
-Hi! I am one of the developers of the "unfs3" server. Unfortunately, the 
-maintainer Pascal Schmidt has disappeared from the net. I've been hosting 
-the source repository, but I do not have admin access to the Sourceforge 
-unfs3 project. This means that I cannot make new releases or maintain the 
-project. Now, the problem is that Sourceforge no longer accepts Abandoned 
-Project Takeovers.
+Provide an API in the RPC client for upper layers to acquire a source
+address for a remote.  We copy the mechanism used by the mount
+command: set up a connected UDP socket to the remote, then scrape the
+source address off the socket.
 
-I can of course host the project somewhere else, but Google Code does not 
-accept project names which exists on SF, nor do they offer Subversion 
-imports, and I believe it would be quite confusing for old users to have a 
-"dead" project at SF. Switching to another name doesn't seem very 
-practical neither.
+We are careful to select the correct network namespace when setting
+up the temporary socket.
 
-So, if anyone of you knows where Pascal Schmidt can be reached, or have 
-some idea of how the SF staff can be convinced to do a Abandoned Project 
-Takeover, please let me know. There's a ticket at 
-https://sourceforge.net/apps/trac/sourceforge/ticket/17261 .
-
-Another option, I guess, would be to discontinue the unfs3 project and 
-recommend users to migrate to nfs-ganesha, or something like that. Any 
-users of ganesha on this list? I don't know much about it. Unfortunately 
-it seems like it does not support Windows, which we need.
-
-Best regards, 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
-Peter Åstrand		ThinLinc Chief Developer
-Cendio AB		http://www.cendio.com
-Wallenbergs gata 4
-583 30 Linköping	Phone: +46-13-21 46 00
---789238273-640111187-1303222841=:23639--
+
+ include/linux/sunrpc/clnt.h |    1 
+ net/sunrpc/clnt.c           |  149 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 150 insertions(+), 0 deletions(-)
+
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index d117531..7866e82 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -170,6 +170,7 @@ size_t		rpc_max_payload(struct rpc_clnt *);
+ void		rpc_force_rebind(struct rpc_clnt *);
+ size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
+ const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
++int		rpc_localaddr(struct rpc_clnt *, struct sockaddr *, size_t);
+ 
+ size_t		rpc_ntop(const struct sockaddr *, char *, const size_t);
+ size_t		rpc_pton(const char *, const size_t,
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 0541a35..34e88cd 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -943,6 +943,155 @@ const char *rpc_peeraddr2str(struct rpc_clnt *clnt,
+ }
+ EXPORT_SYMBOL_GPL(rpc_peeraddr2str);
+ 
++static const struct sockaddr_in rpc_inaddr_loopback = {
++	.sin_family		= AF_INET,
++	.sin_addr.s_addr	= htonl(INADDR_ANY),
++};
++
++static const struct sockaddr_in6 rpc_in6addr_loopback = {
++	.sin6_family		= AF_INET6,
++	.sin6_addr		= IN6ADDR_ANY_INIT,
++};
++
++/*
++ * Try a getsockname() on a connected datagram socket.  Using a
++ * connected datagram socket prevents leaving a socket in TIME_WAIT.
++ * This conserves the ephemeral port number space.
++ *
++ * Returns zero and fills in "buf" if successful; otherwise, a
++ * negative errno is returned.
++ */
++static int rpc_sockname(struct net *net, struct sockaddr *sap, size_t salen,
++			struct sockaddr *buf, int buflen)
++{
++	struct socket *sock;
++	int err;
++
++	err = __sock_create(net, sap->sa_family,
++				SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
++	if (err < 0) {
++		dprintk("RPC:       can't create UDP socket (%d)\n", err);
++		goto out;
++	}
++
++	switch (sap->sa_family) {
++	case AF_INET:
++		err = kernel_bind(sock,
++				(struct sockaddr *)&rpc_inaddr_loopback,
++				sizeof(rpc_inaddr_loopback));
++		break;
++	case AF_INET6:
++		err = kernel_bind(sock,
++				(struct sockaddr *)&rpc_in6addr_loopback,
++				sizeof(rpc_in6addr_loopback));
++		break;
++	default:
++		err = -EAFNOSUPPORT;
++		goto out;
++	}
++	if (err < 0) {
++		dprintk("RPC:       can't bind UDP socket (%d)\n", err);
++		goto out_release;
++	}
++
++	err = kernel_connect(sock, sap, salen, 0);
++	if (err < 0) {
++		dprintk("RPC:       can't connect UDP socket (%d)\n", err);
++		goto out_release;
++	}
++
++	err = kernel_getsockname(sock, buf, &buflen);
++	if (err < 0) {
++		dprintk("RPC:       getsockname failed (%d)\n", err);
++		goto out_release;
++	}
++
++	err = 0;
++	if (buf->sa_family == AF_INET6) {
++		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)buf;
++		sin6->sin6_scope_id = 0;
++	}
++	dprintk("RPC:       %s succeeded\n", __func__);
++
++out_release:
++	sock_release(sock);
++out:
++	return err;
++}
++
++/*
++ * Scraping a connected socket failed, so we don't have a useable
++ * local address.  Fallback: generate an address that will prevent
++ * the server from calling us back.
++ *
++ * Returns zero and fills in "buf" if successful; otherwise, a
++ * negative errno is returned.
++ */
++static int rpc_anyaddr(int family, struct sockaddr *buf, size_t buflen)
++{
++	switch (family) {
++	case AF_INET:
++		if (buflen < sizeof(rpc_inaddr_loopback))
++			return -EINVAL;
++		memcpy(buf, &rpc_inaddr_loopback,
++				sizeof(rpc_inaddr_loopback));
++		break;
++	case AF_INET6:
++		if (buflen < sizeof(rpc_in6addr_loopback))
++			return -EINVAL;
++		memcpy(buf, &rpc_in6addr_loopback,
++				sizeof(rpc_in6addr_loopback));
++	default:
++		dprintk("RPC:       %s: address family not supported\n",
++			__func__);
++		return -EAFNOSUPPORT;
++	}
++	dprintk("RPC:       %s: succeeded\n", __func__);
++	return 0;
++}
++
++/**
++ * rpc_localaddr - discover local endpoint address for an RPC client
++ * @clnt: RPC client structure
++ * @buf: target buffer
++ * @buflen: size of target buffer, in bytes
++ *
++ * Returns zero and fills in "buf" and "buflen" if successful;
++ * otherwise, a negative errno is returned.
++ *
++ * This works even if the underlying transport is not currently connected,
++ * or if the upper layer never previously provided a source address.
++ *
++ * The results of this function call are transient: multiple calls in
++ * succession may give different results, depending on how local
++ * networking configuration changes over time.
++ */
++int rpc_localaddr(struct rpc_clnt *clnt, struct sockaddr *buf, size_t buflen)
++{
++	struct sockaddr_storage address;
++	struct sockaddr *sap = (struct sockaddr *)&address;
++	struct rpc_xprt *xprt;
++	struct net *net;
++	size_t salen;
++	int err;
++
++	rcu_read_lock();
++	xprt = rcu_dereference(clnt->cl_xprt);
++	salen = xprt->addrlen;
++	memcpy(sap, &xprt->addr, salen);
++	net = get_net(xprt->xprt_net);
++	rcu_read_unlock();
++
++	rpc_set_port(sap, 0);
++	err = rpc_sockname(net, sap, salen, buf, buflen);
++	put_net(net);
++	if (err != 0)
++		/* Couldn't discover local address, return ANYADDR */
++		return rpc_anyaddr(sap->sa_family, buf, buflen);
++	return 0;
++}
++EXPORT_SYMBOL_GPL(rpc_localaddr);
++
+ void
+ rpc_setbufsize(struct rpc_clnt *clnt, unsigned int sndsize, unsigned int rcvsize)
+ {
+
