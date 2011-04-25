@@ -1,78 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:15530 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756118Ab1DLSbb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Apr 2011 14:31:31 -0400
-Subject: Re: [PATCH] NFS: Fix infinite loop in gss_create_upcall()
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jiri Slaby <jslaby@suse.cz>
-Cc: Bryan Schumaker <bjschuma@netapp.com>, Jiri Slaby <jirislaby@gmail.com>,
-        linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
-        mm-commits@vger.kernel.org, ML netdev <netdev@vger.kernel.org>,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <4DA4946D.5020403@suse.cz>
-References: <201103312224.p2VMOA5g000983@imap1.linux-foundation.org>
-	 <4D96E4C5.2080302@suse.cz> <1302122693.16786.0.camel@lade.trondhjem.org>
-	 <4D9D5CC9.2040002@suse.cz> <4DA36722.2020402@suse.cz>
-	 <4DA36758.4070203@suse.cz> <4DA36DB6.8060108@suse.cz>
-	 <4DA48EB0.40600@netapp.com>  <4DA4946D.5020403@suse.cz>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 12 Apr 2011 14:31:28 -0400
-Message-ID: <1302633088.4801.48.camel@lade.trondhjem.org>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:41311 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758825Ab1DYSoX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Apr 2011 14:44:23 -0400
+Received: by mail-iy0-f174.google.com with SMTP id 14so2054039iyb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 25 Apr 2011 11:44:23 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 07/15] NFS: Introduce NFS_ATTR_FATTR_V4_LOCATIONS
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 25 Apr 2011 14:44:21 -0400
+Message-ID: <20110425184421.5669.94039.stgit@matisse.1015granger.net>
+In-Reply-To: <20110425183405.5669.52507.stgit@matisse.1015granger.net>
+References: <20110425183405.5669.52507.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-04-12 at 20:05 +0200, Jiri Slaby wrote:
-> On 04/12/2011 07:41 PM, Bryan Schumaker wrote:
-> > On 04/11/2011 05:08 PM, Jiri Slaby wrote:
-> >>
-> >> Sorry for an extra message. I've just found out that there appears
-> >> messages in dmesg:
-> >> [   58.656048] RPC: AUTH_GSS upcall timed out.
-> >> [   58.656050] Please check user daemon is running.
-> >> [   88.656065] RPC: AUTH_GSS upcall timed out.
-> >> [   88.656068] Please check user daemon is running.
-> >> [  118.656077] RPC: AUTH_GSS upcall timed out.
-> >> [  118.656080] Please check user daemon is running.
-> >> [  148.656049] RPC: AUTH_GSS upcall timed out.
-> >> [  148.656052] Please check user daemon is running.
-> >> [  178.656046] RPC: AUTH_GSS upcall timed out.
-> >> [  178.656049] Please check user daemon is running.
-> >>
-> >>
-> >> I instrumented the code and it's stuck with trying RPC_AUTH_GSS_KRB5.
-> >>
-> >> I don't use GSS at all.
-> >>
-> >> regards,
-> > 
-> > Does this patch help?
-> > 
-> > - Bryan
-> > 
-> > 
-> > 
-> > There can be an infinite loop if gss_create_upcall() is called without
-> > the userspace program running.  To prevent this, we return -EACCES if
-> > we notice that pipe_version hasn't changed (indicating that the pipe
-> > has not been opened).
-> 
-> Yes, it fixes the problem. But it waits 15s before it times out. This is
-> inacceptable for automounted NFS dirs.
+Our NFS client must distinguish between referral events (which it
+currently supports) and migration events (which it does not yet
+support).
 
-I'm still confused as to why you are hitting it at all. In the normal
-autonegotiation case, the client should be trying to use AUTH_SYS first
-and then trying rpcsec_gss if and only if that fails.
+In both types of events, an fs_locations array is returned.  But upper
+layers should make the distinction between a referral and a migration,
+not the XDR layer.  There really isn't a generic way for an XDR
+decoder function to tell one from the other.
 
-Are you really exporting a filesystem using AUTH_NULL as the only
-supported flavour?
+Slightly adjust the FATTR flags returned by decode_fs_locations()
+to set NFS_ATTR_FATTR_V4_LOCATIONS only if a non-empty locations
+array was returned from the server.  Then have logic in nfs4proc.c
+distinguish whether the locations array is for a referral or
+something else.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+ fs/nfs/nfs4proc.c       |    5 +++--
+ fs/nfs/nfs4xdr.c        |    2 +-
+ include/linux/nfs_xdr.h |    1 +
+ 3 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 1d8e7c3..aa90145 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2263,7 +2263,8 @@ static int nfs4_get_referral(struct inode *dir, const struct qstr *name, struct
+ 	}
+ 
+ 	memcpy(fattr, &locations->fattr, sizeof(struct nfs_fattr));
+-	fattr->valid |= NFS_ATTR_FATTR_V4_REFERRAL;
++	if (fattr->valid & NFS_ATTR_FATTR_V4_LOCATIONS)
++		fattr->valid |= NFS_ATTR_FATTR_V4_REFERRAL;
+ 	if (!fattr->mode)
+ 		fattr->mode = S_IFDIR;
+ 	memset(fhandle, 0, sizeof(struct nfs_fh));
+@@ -4649,7 +4650,7 @@ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
+ {
+ 	if (!((fattr->valid & NFS_ATTR_FATTR_FILEID) &&
+ 		(fattr->valid & NFS_ATTR_FATTR_FSID) &&
+-		(fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)))
++		(fattr->valid & NFS_ATTR_FATTR_V4_LOCATIONS)))
+ 		return;
+ 
+ 	fattr->valid |= NFS_ATTR_FATTR_TYPE | NFS_ATTR_FATTR_MODE |
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index dddfb57..76209b2 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -3327,7 +3327,7 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
+ 			res->nlocations++;
+ 	}
+ 	if (res->nlocations != 0)
+-		status = NFS_ATTR_FATTR_V4_REFERRAL;
++		status = NFS_ATTR_FATTR_V4_LOCATIONS;
+ out:
+ 	dprintk("%s: fs_locations done, error = %d\n", __func__, status);
+ 	return status;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 78b101e..26e693e 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -83,6 +83,7 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_PRECHANGE	(1U << 18)
+ #define NFS_ATTR_FATTR_V4_REFERRAL	(1U << 19)	/* NFSv4 referral */
+ #define NFS_ATTR_FATTR_MOUNTPOINT	(1U << 20)	/* Treat as mountpoint */
++#define NFS_ATTR_FATTR_V4_LOCATIONS	(1U << 21)
+ 
+ #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
+ 		| NFS_ATTR_FATTR_MODE \
 
