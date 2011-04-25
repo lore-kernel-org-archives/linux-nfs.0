@@ -1,43 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:58822 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751013Ab1DYP6f convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Apr 2011 11:58:35 -0400
-Subject: Re: [PATCH] svc: make sure mountd can get ports from /etc/services
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4DB51E1B.5020004@cn.fujitsu.com>
-Date: Mon, 25 Apr 2011 11:58:25 -0400
-Cc: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
-Message-Id: <C34494E7-A0D3-428D-834B-FCAF473D056A@oracle.com>
-References: <4DAD48C7.9090808@cn.fujitsu.com> <94B98C85-8FAE-4B72-A782-F0B0DFD83674@oracle.com> <4DAEA782.2090108@cn.fujitsu.com> <AD03EC99-CB5C-41BA-AE0B-FEA7A8D48B6E@oracle.com> <4DAFA7AB.9020507@cn.fujitsu.com> <5A8AD10C-81A4-4088-BCFA-08D0BA2337C7@oracle.com> <4DB51E1B.5020004@cn.fujitsu.com>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Received: from nm11-vm0.bullet.mail.sp2.yahoo.com ([98.139.91.240]:21976 "HELO
+	nm11-vm0.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751052Ab1DYF0O convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Apr 2011 01:26:14 -0400
+Message-ID: <669423.65679.qm@web111713.mail.gq1.yahoo.com>
+Date: Sun, 24 Apr 2011 22:26:13 -0700 (PDT)
+From: Mahmood Naderan <nt_mahmood@yahoo.com>
+Reply-To: Mahmood Naderan <nt_mahmood@yahoo.com>
+Subject: NFS over TCP not available
+To: nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=iso-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Hi,
+A week ago I sent a post to nfs-linux, however bacause of my subscribe problem I don't know whether you received my post or not.
+ 
+Sorry if it is a double post.... Here is the problem.
+ 
+I am trying to boot a node from network via nfs and pxe. Here are the assumptions on the server:
+ 
+auto lo
+iface lo inet loopback
+# The primary network interface
+auto eth3
+iface eth3 inet static
+    address 196.25.69.15
+    netmask 255.255.255.128
+    network 196.25.69.0
+    broadcast 196.25.69.127
+    gateway 196.25.69.1
+auto eth2
+iface eth2 inet static
+    address 192.168.1.1
+    netmask 255.255.255.0
+    broadcast 192.168.1.255
+ 
+and the content of /etc/exports is:
+ 
+/home/nfsroot 192.168.1.0/255.255.255.0(rw,no_subtree_check,async,no_root_squash)
+ 
+where /home/nfsroot contains the linux image for client. The content of /home/nfsroot/etc/fstab is:
 
-On Apr 25, 2011, at 3:09 AM, Mi Jinlong wrote:
-
-> Chuck Lever :
-> 
->> In other words, we have a documented and supported mechanism now, that should always work, for setting mountd's listener port.  Can you explain in detail why allowing /etc/services to have this effect is also necessary?
-> 
->  I just think the new nfs-utils should do the same thing as older one.
->  Maybe called backward compatibility.
-
-I was confused by your original report.
-
-Before, I read that with the commit mentioned above, /etc/services started working, then it stopped at some later point.  Now you seem to be saying that /etc/services always worked this way, but with the commit above, it stops working.  I've filed a bugzilla to track the issue:
-
-  https://bugzilla.linux-nfs.org/show_bug.cgi?id=200
-
-If you can find documentation that describes this feature (ie makes it a formal API, or describes any other details about its operation we should know of), or know of a widely deployed application of mountd or statd that requires it, please do let us know, or modify the bugzilla report.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+# UNCONFIGURED FSTAB FOR BASE SYSTEM
+proc            /proc         proc   defaults       0      0
+/dev/nfs        /             nfs    defaults       0      0
+I see no terminal prompt (e.g bash, sh, ...). After some minutes I see these messages on the node:
+ 
+connect: connection timed out
+NFS over TCP not available from 192.168.1.1
+Done.
+Begin: Retrying nfs mount ...
+Begin: Running /scripts/nfs-permanent ...
+Done.
+connect: connection timed out
+....
+Begin: Running /scripts/init-bottom...
+mount: mounting /dev on /root/dev failed: no such file or directory
+Done.
+mount: mounting /sys on /root/sys failed: no such file or directory
+mount: mounting /proc on /root/proc failed: no such file or directory
+Taget filesystem doesn't have /sbin/init
+No init found. Try passing init= bootarg
+ 
+ 
+ 
+What is wrong with NFS? appreciate any idea and comment.
+Thanks
+ 
+// Naderan *Mahmood;
