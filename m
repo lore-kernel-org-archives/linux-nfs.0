@@ -1,32 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:40605 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754269Ab1DDPON (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Apr 2011 11:14:13 -0400
-Date: Mon, 4 Apr 2011 11:14:12 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: secinfo_no_name question
-Message-ID: <20110404151412.GA17695@fieldses.org>
-References: <4D99CAFC.5070402@netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4D99CAFC.5070402@netapp.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:41311 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758696Ab1DYSoE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Apr 2011 14:44:04 -0400
+Received: by mail-iy0-f174.google.com with SMTP id 14so2054039iyb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 25 Apr 2011 11:44:04 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 05/15] NFS: Add a client-side function to display file handles
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 25 Apr 2011 14:44:01 -0400
+Message-ID: <20110425184401.5669.43926.stgit@matisse.1015granger.net>
+In-Reply-To: <20110425183405.5669.52507.stgit@matisse.1015granger.net>
+References: <20110425183405.5669.52507.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Apr 04, 2011 at 09:43:24AM -0400, Bryan Schumaker wrote:
-> Hi Bruce,
-> 
-> I'm looking at secinfo_no_name on the client.  RFC 5661 says to says to send PUTROOTFH followed by SECINFO_NO_NAME in the same compound and to use SECINFO_STYLE4_CURRENT_FH.  My compound is: SEQUENCE, PUTROOTFH, SECINFO_NO_NAME.  The server processes up to the PUTROOTFH, and then returns with NFS4ERR_WRONGSEC.  
-> 
-> Am I doing something wrong?  Is this a server problem?
+For debugging, introduce a simplistic function to print file handles
+on the system console.  It's hooked into the dprintk debugging
+facility, but you can call _nfs_display_fhandle() directly if you
+want to print a handle unconditionally.
 
-Could be; is the compound is being sent with a security flavor that
-*isn't* permitted on the root export?
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-If so I believe the compound should have succeeded--the server needs
-some special exception there that we may have left out....
+ fs/nfs/inode.c         |   45 +++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs_fs.h |   14 ++++++++++++++
+ 2 files changed, 59 insertions(+), 0 deletions(-)
 
---b.
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 57bb31a..9a444d0 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1039,6 +1039,51 @@ struct nfs_fh *nfs_alloc_fhandle(void)
+ }
+ 
+ /**
++ * _nfs_display_fhandle - display an NFS file handle on the console
++ *
++ * @fh: file handle to display
++ * @caption: display caption
++ *
++ * For debugging only.
++ */
++#ifdef RPC_DEBUG
++void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption)
++{
++	unsigned short i;
++
++	if (fh->size == 0 || fh == NULL) {
++		printk(KERN_NOTICE "%s at %p is empty\n", caption, fh);
++		return;
++	}
++
++	printk(KERN_NOTICE "%s at %p is %u bytes:\n", caption, fh, fh->size);
++	for (i = 0; i < fh->size; i += 16) {
++		__be32 *pos = (__be32 *)&fh->data[i];
++
++		switch ((fh->size - i - 1) >> 2) {
++		case 0:
++			printk(KERN_NOTICE " %08x",
++				be32_to_cpup(pos));
++			break;
++		case 1:
++			printk(KERN_NOTICE " %08x %08x\n",
++				be32_to_cpup(pos), be32_to_cpup(pos + 1));
++			break;
++		case 2:
++			printk(KERN_NOTICE " %08x %08x %08x\n",
++				be32_to_cpup(pos), be32_to_cpup(pos + 1),
++				be32_to_cpup(pos + 2));
++			break;
++		default:
++			printk(KERN_NOTICE " %08x %08x %08x %08x\n",
++				be32_to_cpup(pos), be32_to_cpup(pos + 1),
++				be32_to_cpup(pos + 2), be32_to_cpup(pos + 3));
++		}
++	}
++}
++#endif
++
++/**
+  * nfs_inode_attrs_need_update - check if the inode attributes need updating
+  * @inode - pointer to inode
+  * @fattr - attributes
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 1b93b9c..0e3eb70 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -394,6 +394,20 @@ static inline void nfs_free_fhandle(const struct nfs_fh *fh)
+ 	kfree(fh);
+ }
+ 
++#ifdef RPC_DEBUG
++extern void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption);
++#define nfs_display_fhandle(fh, caption)			\
++	do {							\
++		if (unlikely(nfs_debug & NFSDBG_FACILITY))	\
++			_nfs_display_fhandle(fh, caption);	\
++	} while (0)
++#else
++static inline void nfs_display_fhandle(const struct nfs_fh *fh,
++				       const char *caption)
++{
++}
++#endif
++
+ /*
+  * linux/fs/nfs/nfsroot.c
+  */
+
