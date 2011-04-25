@@ -1,53 +1,160 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailservice.tudelft.nl ([130.161.131.5]:36719 "EHLO
-	mailservice.tudelft.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753170Ab1DUG66 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Apr 2011 02:58:58 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by amavis (Postfix) with ESMTP id DD9E42B8020
-	for <linux-nfs@vger.kernel.org>; Thu, 21 Apr 2011 08:58:57 +0200 (CEST)
-Received: from mailservice.tudelft.nl ([130.161.131.73])
-	by localhost (tudelft.nl [127.0.0.1]) (amavisd-new, port 10026)
-	with ESMTP id ZztsGGUfWHqW for <linux-nfs@vger.kernel.org>;
-	Thu, 21 Apr 2011 08:58:57 +0200 (CEST)
-Received: from pc-rsmits.dto.tudelft.nl (pc-rsmits.dto.tudelft.nl [131.180.97.81])
-	by mx2.tudelft.nl (Postfix) with ESMTP id 2D0EE2B801D
-	for <linux-nfs@vger.kernel.org>; Thu, 21 Apr 2011 08:58:57 +0200 (CEST)
-Message-ID: <4DAFD5B1.9060004@tudelft.nl>
-Date: Thu, 21 Apr 2011 08:58:57 +0200
-From: Richard Smits <R.Smits@tudelft.nl>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: gssd mounts not working
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:60958 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758842Ab1DYSpd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Apr 2011 14:45:33 -0400
+Received: by mail-iw0-f174.google.com with SMTP id 34so2051386iwn.19
+        for <linux-nfs@vger.kernel.org>; Mon, 25 Apr 2011 11:45:33 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 14/15] NFS: Add migration recovery callouts in nfs4proc.c
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 25 Apr 2011 14:45:30 -0400
+Message-ID: <20110425184530.5669.57336.stgit@matisse.1015granger.net>
+In-Reply-To: <20110425183405.5669.52507.stgit@matisse.1015granger.net>
+References: <20110425183405.5669.52507.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello,
-We are having problems with our gssd nfs mounts. I will explain our 
-situation.
+Finally, to enable support for migration, insert migration recovery
+callouts in the synchronous and asynchronous error handling paths for
+NFSv4 procedures.
 
-Our clients are running SLED 11 SP1.
-Our server is a Netapp filer with Ontap 7.3.3P4.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-We provide NFS exported directory's with krb5 security.
+ fs/nfs/nfs4proc.c |   67 +++++++++++++++++++++++++++++++++++++++--------------
+ 1 files changed, 49 insertions(+), 18 deletions(-)
 
-Our KDC is a Windows 2003 and 2008 Active Directory.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5361b9d..4e6afc7 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -71,10 +71,11 @@ struct nfs4_opendata;
+ static int _nfs4_proc_open(struct nfs4_opendata *data);
+ static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
+ static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
+-static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *);
+-static int _nfs4_proc_lookup(struct rpc_clnt *client, struct inode *dir,
+-			     const struct qstr *name, struct nfs_fh *fhandle,
+-			     struct nfs_fattr *fattr);
++static int nfs4_async_handle_error(struct rpc_task *, struct nfs_server *,
++				struct nfs4_state *);
++static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
++		const struct qstr *name, struct nfs_fh *fhandle,
++		struct nfs_fattr *fattr);
+ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
+ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 			    struct nfs_fattr *fattr, struct iattr *sattr,
+@@ -246,10 +247,17 @@ static int nfs4_delay(struct rpc_clnt *clnt, long *timeout)
+ 	return res;
+ }
+ 
+-/* This is the error handling routine for processes that are allowed
+- * to sleep.
++/**
++ * nfs4_handle_exception - Common error handling for callers allowed to sleep
++ *
++ * @server: local state context for the server
++ * @errorcode: NFS4ERR value returned from the server
++ * @exception: exception handling state
++ *
++ * Returns zero on success, or a negative errno value.
+  */
+-static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struct nfs4_exception *exception)
++static int nfs4_handle_exception(struct nfs_server *server, int errorcode,
++				 struct nfs4_exception *exception)
+ {
+ 	struct nfs_client *clp = server->nfs_client;
+ 	struct nfs4_state *state = exception->state;
+@@ -285,6 +293,9 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
+ 			exception->retry = 1;
+ 			break;
+ #endif /* defined(CONFIG_NFS_V4_1) */
++		case -NFS4ERR_MOVED:
++			nfs4_schedule_migration_recovery(server);
++			goto wait_on_recovery;
+ 		case -NFS4ERR_FILE_OPEN:
+ 			if (exception->timeout > HZ) {
+ 				/* We have retried a decent amount, time to
+@@ -2255,10 +2266,14 @@ static int nfs4_get_referral(struct inode *dir, const struct qstr *name, struct
+ 	status = nfs4_proc_fs_locations(dir, name, locations, page);
+ 	if (status != 0)
+ 		goto out;
+-	/* Make sure server returned a different fsid for the referral */
++
++	/*
++	 * If the fsid didn't change, this is a migration event, not a
++	 * referral.  Cause us to drop into the exception handler, which
++	 * will kick off migration recovery.
++	 */
+ 	if (nfs_fsid_equal(&NFS_SERVER(dir)->fsid, &locations->fattr.fsid)) {
+-		dprintk("%s: server did not return a different fsid for a referral at %s\n", __func__, name->name);
+-		status = -EIO;
++		status = -NFS4ERR_MOVED;
+ 		goto out;
+ 	}
+ 
+@@ -3627,8 +3642,18 @@ static int nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t buflen
+ 	return err;
+ }
+ 
+-static int
+-nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server, struct nfs4_state *state)
++/**
++ * nfs4_async_handle_error - Common error handling for callers who cannot sleep
++ *
++ * @task: active RPC task
++ * @server: local state for the server
++ * @state: NFSv4 state for active operation
++ *
++ * Returns zero on success, or a negative errno value.
++ */
++static int nfs4_async_handle_error(struct rpc_task *task,
++				   struct nfs_server *server,
++				   struct nfs4_state *state)
+ {
+ 	struct nfs_client *clp = server->nfs_client;
+ 
+@@ -3658,19 +3683,24 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
+ 			dprintk("%s ERROR %d, Reset session\n", __func__,
+ 				task->tk_status);
+ 			nfs4_schedule_session_recovery(clp->cl_session);
+-			task->tk_status = 0;
+-			return -EAGAIN;
++			goto restart_call;
+ #endif /* CONFIG_NFS_V4_1 */
++		case -NFS4ERR_MOVED:
++			rpc_sleep_on(&clp->cl_rpcwaitq, task, NULL);
++			nfs4_schedule_migration_recovery(server);
++			if (test_bit(NFS4CLNT_MANAGER_RUNNING,
++							&clp->cl_state) == 0)
++				rpc_wake_up_queued_task(&clp->cl_rpcwaitq,
++									task);
++			goto restart_call;
+ 		case -NFS4ERR_DELAY:
+ 			nfs_inc_server_stats(server, NFSIOS_DELAY);
+ 		case -NFS4ERR_GRACE:
+ 		case -EKEYEXPIRED:
+ 			rpc_delay(task, NFS4_POLL_RETRY_MAX);
+-			task->tk_status = 0;
+-			return -EAGAIN;
++			goto restart_call;
+ 		case -NFS4ERR_OLD_STATEID:
+-			task->tk_status = 0;
+-			return -EAGAIN;
++			goto restart_call;
+ 	}
+ 	task->tk_status = nfs4_map_errors(task->tk_status);
+ 	return 0;
+@@ -3678,6 +3708,7 @@ wait_on_recovery:
+ 	rpc_sleep_on(&clp->cl_rpcwaitq, task, NULL);
+ 	if (test_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) == 0)
+ 		rpc_wake_up_queued_task(&clp->cl_rpcwaitq, task);
++restart_call:
+ 	task->tk_status = 0;
+ 	return -EAGAIN;
+ }
 
-If we use nfs-client-1.2.1-8.1 everything works as expected.
-
-But if we upgrade to (any) newer client, all gssd mounts fail. Now there 
-is a bugreport on Novell Bugzilla about this : 
-https://bugzilla.novell.com/show_bug.cgi?id=614293#c7
-
-Apperantly if the nfs client is compiled with --disable-tirpc , the 
-ticket size from the AD is to big ?
-
-On our Redhat server we do not have these problems. There we are running 
-: nfs-utils-1.2.2-7
-
-Is there an explanation for these problems ? How can i find out if a 
-client has been compiled with specific options. There is no nfs devel 
-package for suse.
-
-Greetings .. Richard Smits
