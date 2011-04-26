@@ -1,172 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:5156 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751746Ab1DVGWh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Apr 2011 02:22:37 -0400
-Message-ID: <4DB11EA9.5080900@panasas.com>
-Date: Fri, 22 Apr 2011 09:22:33 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [RFC 01/27] pnfs: CB_NOTIFY_DEVICEID
-References: <4DAF0DE1.6020609@panasas.com>	 <1303320368-20990-1-git-send-email-bhalevy@panasas.com> <1303328485.23206.13.camel@lade.trondhjem.org>
-In-Reply-To: <1303328485.23206.13.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:19832 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756542Ab1DZO34 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Apr 2011 10:29:56 -0400
+Subject: Re: pNFS read/write behavior change in 2.6.39
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Cc: NFS list <linux-nfs@vger.kernel.org>, Steve Dickson <SteveD@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <4DB6D0CC.4050601@desy.de>
+References: <4DB6D0CC.4050601@desy.de>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 26 Apr 2011 10:29:54 -0400
+Message-ID: <1303828194.1785.21.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-04-20 22:41, Trond Myklebust wrote:
-> On Wed, 2011-04-20 at 20:26 +0300, Benny Halevy wrote:
->> From: Marc Eshel <eshel@almaden.ibm.com>
->> +struct cb_devicenotifyargs {
->> +	struct sockaddr			*addr;
+On Tue, 2011-04-26 at 16:03 +0200, Tigran Mkrtchyan wrote:
+> I run 2.6.39-0.rc4.git2.0 build for fedora-16 build by redhat.
+> Probably Steve and Bruce can comment on the patch set.
 > 
-> No sockaddr_size parameter?
+> My observation is that state id provided by client on read to
+> DS dit not contain correct stateid:
 > 
-
-Actually, it can be safely removed altogether.
-
->> +	int				 ndevs;
->> +	struct cb_devicenotifyitem	 devs[NFS4_DEV_NOTIFY_MAXENTRIES];
->> +};
+> struct stateid4 {
+>          uint32_t        seqid;
+>          opaque          other[12];
+> };
 > 
-> Why can't we make this dynamic at this time?
-> 
+> The seqid equals to zero when client send it to DS which is not the
+> value returned on OPEN.
 
-Will do.
-How about the following patch?
-(while at it I fixed the error codes in decode_devicenotify_args)
+Why do you think this is a bug? Section 8.2.2 of RFC5661 not only allows
+this behaviour, it actually suggests it is appropriate for READ and
+WRITE since it means that the server isn't forced to constantly check
+the seqid value.
 
----
- fs/nfs/callback.h      |    5 +----
- fs/nfs/callback_proc.c |    1 +
- fs/nfs/callback_xdr.c  |   30 +++++++++++++++---------------
- 3 files changed, 17 insertions(+), 19 deletions(-)
-
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 892128f..b257383 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -175,12 +175,9 @@ struct cb_devicenotifyitem {
- 	uint32_t		cbd_immediate;
- };
-
--/* XXX: Should be dynamic up to max compound size */
--#define NFS4_DEV_NOTIFY_MAXENTRIES 10
- struct cb_devicenotifyargs {
--	struct sockaddr			*addr;
- 	int				 ndevs;
--	struct cb_devicenotifyitem	 devs[NFS4_DEV_NOTIFY_MAXENTRIES];
-+	struct cb_devicenotifyitem	 *devs;
- };
-
- extern __be32 nfs4_callback_devicenotify(
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 96f35f2..964c416 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -286,6 +286,7 @@ __be32 nfs4_callback_devicenotify(struct
-cb_devicenotifyargs *args,
- 	}
-
- out:
-+	kfree(args->devs);
- 	dprintk("%s: exit with status = %u\n",
- 		__func__, res);
- 	return cpu_to_be32(res);
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 5ec2c12..c6c86a7 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -296,23 +296,20 @@ __be32 decode_devicenotify_args(struct svc_rqst
-*rqstp,
- 	int n, i;
- 	args->ndevs = 0;
-
--	args->addr = svc_addr(rqstp);
--
- 	/* Num of device notifications */
- 	p = read_buf(xdr, sizeof(uint32_t));
- 	if (unlikely(p == NULL)) {
--		status = htonl(NFS4ERR_RESOURCE);
-+		status = htonl(NFS4ERR_BADXDR);
- 		goto out;
- 	}
- 	n = ntohl(*p++);
- 	if (n <= 0)
- 		goto out;
-
--	/* XXX: need to possibly return error in this case */
--	if (n > NFS4_DEV_NOTIFY_MAXENTRIES) {
--		dprintk("%s: Processing (%d) notifications out of (%d)\n",
--			__func__, NFS4_DEV_NOTIFY_MAXENTRIES, n);
--		n = NFS4_DEV_NOTIFY_MAXENTRIES;
-+	args->devs = kmalloc(n * sizeof(*args->devs), GFP_KERNEL);
-+	if (!args->devs) {
-+		status = htonl(NFS4ERR_DELAY);
-+		goto out;
- 	}
-
- 	/* Decode each dev notification */
-@@ -321,20 +318,20 @@ __be32 decode_devicenotify_args(struct svc_rqst
-*rqstp,
-
- 		p = read_buf(xdr, (4 * sizeof(uint32_t)) + NFS4_DEVICEID4_SIZE);
- 		if (unlikely(p == NULL)) {
--			status = htonl(NFS4ERR_RESOURCE);
--			goto out;
-+			status = htonl(NFS4ERR_BADXDR);
-+			goto err;
- 		}
-
- 		tmp = ntohl(*p++);	/* bitmap size */
- 		if (tmp != 1) {
- 			status = htonl(NFS4ERR_INVAL);
--			goto out;
-+			goto err;
- 		}
- 		dev->cbd_notify_type = ntohl(*p++);
- 		if (dev->cbd_notify_type != NOTIFY_DEVICEID4_CHANGE &&
- 		    dev->cbd_notify_type != NOTIFY_DEVICEID4_DELETE) {
- 			status = htonl(NFS4ERR_INVAL);
--			goto out;
-+			goto err;
- 		}
-
- 		tmp = ntohl(*p++);	/* opaque size */
-@@ -343,7 +340,7 @@ __be32 decode_devicenotify_args(struct svc_rqst *rqstp,
- 		    ((dev->cbd_notify_type == NOTIFY_DEVICEID4_DELETE) &&
- 		     (tmp != NFS4_DEVICEID4_SIZE + 4))) {
- 			status = htonl(NFS4ERR_INVAL);
--			goto out;
-+			goto err;
- 		}
- 		dev->cbd_layout_type = ntohl(*p++);
- 		memcpy(dev->cbd_dev_id.data, p, NFS4_DEVICEID4_SIZE);
-@@ -352,8 +349,8 @@ __be32 decode_devicenotify_args(struct svc_rqst *rqstp,
- 		if (dev->cbd_layout_type == NOTIFY_DEVICEID4_CHANGE) {
- 			p = read_buf(xdr, sizeof(uint32_t));
- 			if (unlikely(p == NULL)) {
--				status = htonl(NFS4ERR_DELAY);
--				goto out;
-+				status = htonl(NFS4ERR_BADXDR);
-+				goto err;
- 			}
- 			dev->cbd_immediate = ntohl(*p++);
- 		} else {
-@@ -370,6 +367,9 @@ out:
- 	dprintk("%s: status %d ndevs %d\n",
- 		__func__, ntohl(status), args->ndevs);
- 	return status;
-+err:
-+	kfree(args->devs);
-+	goto out;
- }
-
- static __be32 decode_sessionid(struct xdr_stream *xdr,
+Trond
 -- 
-1.7.3.4
+Trond Myklebust
+Linux NFS client maintainer
 
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
