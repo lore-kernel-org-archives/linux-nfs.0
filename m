@@ -1,89 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:55250 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750696Ab1DKECn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Apr 2011 00:02:43 -0400
-Date: Mon, 11 Apr 2011 14:02:09 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: Will Simoneau <simoneau@ele.uri.edu>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: lockdep splat: nfsroot on 2.6.39-rc2
-Message-ID: <20110411040209.GA21395@dastard>
-References: <20110410025502.GA15112@ele.uri.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110410025502.GA15112@ele.uri.edu>
+Received: from smtp-out-1.desy.de ([131.169.56.84]:51308 "EHLO
+	smtp-out-1.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751529Ab1DZOjX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Apr 2011 10:39:23 -0400
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-out-1.desy.de (DESY_OUT_1) with ESMTP id C7D9617EA
+	for <linux-nfs@vger.kernel.org>; Tue, 26 Apr 2011 16:39:22 +0200 (MEST)
+Received: from adserv72.win.desy.de (adserv72.win.desy.de [131.169.97.58])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id C105013E8B
+	for <linux-nfs@vger.kernel.org>; Tue, 26 Apr 2011 16:39:22 +0200 (MEST)
+Message-ID: <4DB6D8C3.1070801@desy.de>
+Date: Tue, 26 Apr 2011 16:37:55 +0200
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: NFS list <linux-nfs@vger.kernel.org>, Steve Dickson <SteveD@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: pNFS read/write behavior change in 2.6.39
+References: <4DB6D0CC.4050601@desy.de> <1303828194.1785.21.camel@lade.trondhjem.org>
+In-Reply-To: <1303828194.1785.21.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, Apr 09, 2011 at 10:55:02PM -0400, Will Simoneau wrote:
-> Hi,
-> 
-> I just got this soft-lockup 3 times in a row and was able to reproduce
-> it with lockdep enabled. The kernel is Linus git 94c8a984 plus patches
-> to support my hardware. System is a full custom 2-way SMP mipsel/R4K
-> clone on an FPGA, I am hoping this is not my fault or the hardware's
-> fault though. Root is on NFS (tcp).
-> 
-> This seems to happen consistently when running "apt-get update". Ideas?
-> Known bug?
+On 04/26/2011 04:29 PM, Trond Myklebust wrote:
+> On Tue, 2011-04-26 at 16:03 +0200, Tigran Mkrtchyan wrote:
+>> I run 2.6.39-0.rc4.git2.0 build for fedora-16 build by redhat.
+>> Probably Steve and Bruce can comment on the patch set.
+>>
+>> My observation is that state id provided by client on read to
+>> DS dit not contain correct stateid:
+>>
+>> struct stateid4 {
+>>           uint32_t        seqid;
+>>           opaque          other[12];
+>> };
+>>
+>> The seqid equals to zero when client send it to DS which is not the
+>> value returned on OPEN.
+> Why do you think this is a bug? Section 8.2.2 of RFC5661 not only allows
+> this behaviour, it actually suggests it is appropriate for READ and
+> WRITE since it means that the server isn't forced to constantly check
+> the seqid value.
+Well, It's not a bug, but it's not the behavior we was testing at 
+Connectathon.
+My expectation was that during interoperability testing we catch such 
+changes.
 
-The bug is in nfs_commit_inode(), where it calls nfs_scan_commit()
-with the inode->i_lock held and that calls __mark_inode_dirty()
-which takes the inode->i_lock....
+Tigran.
+> Trond
 
-The patch below should fix this problem.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
-
-
-nfs: don't call __mark_inode_dirty while holding i_lock
-
-From: Dave Chinner <dchinner@redhat.com>
-
-nfs_scan_commit() is called with the inode->i_lock held, but it then calls
-__mark_inode_dirty() while still holding the lock. This causes a deadlock.
-
-Move the __mark_inode_dirty() call outside nfs_scan_commit() and the
-inode->i_lock to avoid the deadlock.
-
-Signed-off-by: Dave Chinner <dchinner@redhat.com>
----
- fs/nfs/write.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index af0c627..e4cbc11 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -542,11 +542,15 @@ nfs_scan_commit(struct inode *inode, struct list_head *dst, pgoff_t idx_start, u
- 	if (!nfs_need_commit(nfsi))
- 		return 0;
- 
-+	spin_lock(&inode->i_lock);
- 	ret = nfs_scan_list(nfsi, dst, idx_start, npages, NFS_PAGE_TAG_COMMIT);
- 	if (ret > 0)
- 		nfsi->ncommit -= ret;
-+	spin_unlock(&inode->i_lock);
-+
- 	if (nfs_need_commit(NFS_I(inode)))
- 		__mark_inode_dirty(inode, I_DIRTY_DATASYNC);
-+
- 	return ret;
- }
- #else
-@@ -1483,9 +1487,7 @@ int nfs_commit_inode(struct inode *inode, int how)
- 	res = nfs_commit_set_lock(NFS_I(inode), may_wait);
- 	if (res <= 0)
- 		goto out_mark_dirty;
--	spin_lock(&inode->i_lock);
- 	res = nfs_scan_commit(inode, &head, 0, 0);
--	spin_unlock(&inode->i_lock);
- 	if (res) {
- 		int error;
- 
