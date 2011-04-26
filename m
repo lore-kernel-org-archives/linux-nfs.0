@@ -1,63 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57453 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:55092 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754908Ab1DJQ3j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 10 Apr 2011 12:29:39 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Cc: Bryan Schumaker <bjschuma@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/5] nfsd: distinguish functions of NFSD_MAY_* flags
-Date: Sun, 10 Apr 2011 12:29:29 -0400
-Message-Id: <1302452973-27272-1-git-send-email-bfields@redhat.com>
-In-Reply-To: <20110410162536.GC26233@fieldses.org>
-References: <20110410162536.GC26233@fieldses.org>
+	id S1753391Ab1DZQwY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Apr 2011 12:52:24 -0400
+Subject: Re: pNFS read/write behavior change in 2.6.39
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Cc: NFS list <linux-nfs@vger.kernel.org>, Steve Dickson <SteveD@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <4DB6D8C3.1070801@desy.de>
+References: <4DB6D0CC.4050601@desy.de>
+	 <1303828194.1785.21.camel@lade.trondhjem.org>  <4DB6D8C3.1070801@desy.de>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 26 Apr 2011 12:52:16 -0400
+Message-ID: <1303836736.1785.27.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Most of the NFSD_MAY_* flags actually request permissions, but over the
-years we've accreted a few that modify the behavior of the permission or
-open code in other ways.
+On Tue, 2011-04-26 at 16:37 +0200, Tigran Mkrtchyan wrote:
+> On 04/26/2011 04:29 PM, Trond Myklebust wrote:
+> > On Tue, 2011-04-26 at 16:03 +0200, Tigran Mkrtchyan wrote:
+> >> I run 2.6.39-0.rc4.git2.0 build for fedora-16 build by redhat.
+> >> Probably Steve and Bruce can comment on the patch set.
+> >>
+> >> My observation is that state id provided by client on read to
+> >> DS dit not contain correct stateid:
+> >>
+> >> struct stateid4 {
+> >>           uint32_t        seqid;
+> >>           opaque          other[12];
+> >> };
+> >>
+> >> The seqid equals to zero when client send it to DS which is not the
+> >> value returned on OPEN.
+> > Why do you think this is a bug? Section 8.2.2 of RFC5661 not only allows
+> > this behaviour, it actually suggests it is appropriate for READ and
+> > WRITE since it means that the server isn't forced to constantly check
+> > the seqid value.
+> Well, It's not a bug, but it's not the behavior we was testing at 
+> Connectathon.
+> My expectation was that during interoperability testing we catch such 
+> changes.
 
-Distinguish the two cases a little more.  In particular, allow the
-shortcut at the start of nfsd_permission to ignore the
-non-permission-requesting bits.
+My expectation is that everyone is coding to the spec, and not to
+specific client or server behaviours. The main goal of interoperability
+testing should be to discover deviations from the spec and/or incomplete
+implementations.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/vfs.c |    2 +-
- fs/nfsd/vfs.h |    3 +++
- 2 files changed, 4 insertions(+), 1 deletions(-)
+Cheers
+  Trond
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 2e1cebd..ac4f0b4 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -2027,7 +2027,7 @@ nfsd_permission(struct svc_rqst *rqstp, struct svc_export *exp,
- 	struct inode	*inode = dentry->d_inode;
- 	int		err;
- 
--	if (acc == NFSD_MAY_NOP)
-+	if (acc & NFSD_MAY_MASK == NFSD_MAY_NOP)
- 		return 0;
- #if 0
- 	dprintk("nfsd: permission 0x%x%s%s%s%s%s%s%s mode 0%o%s%s%s\n",
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 9a370a5..1036913 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -17,6 +17,9 @@
- #define NFSD_MAY_SATTR		8
- #define NFSD_MAY_TRUNC		16
- #define NFSD_MAY_LOCK		32
-+#define NFSD_MAY_MASK		63
-+
-+/* extra hints to permission and open routines: */
- #define NFSD_MAY_OWNER_OVERRIDE	64
- #define NFSD_MAY_LOCAL_ACCESS	128 /* IRIX doing local access check on device special file*/
- #define NFSD_MAY_BYPASS_GSS_ON_ROOT 256
 -- 
-1.7.1
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
