@@ -1,43 +1,144 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.parallels.com ([64.131.90.16]:48063 "EHLO mx2.parallels.com"
+Received: from mx2.netapp.com ([216.240.18.37]:60171 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755376Ab1DFLsh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Apr 2011 07:48:37 -0400
-Message-ID: <4D9C5309.1010700@parallels.com>
-Date: Wed, 6 Apr 2011 06:48:25 -0500
-From: Rob Landley <rlandley@parallels.com>
-To: "Kirill A. Shutemov" <kirill@shutemov.name>
-CC: <linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <containers@lists.linux-foundation.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Tim Spriggs <tims@uahirise.org>, Kir Kolyshkin <kir@parallels.com>,
-        Pavel Emelyanov <xemul@parallels.com>
-Subject: Re: [PATCH 2/3] Supply network namespace to rpcbind.
-References: <4D94319F.8040005@parallels.com> <20110406005743.GB27844@shutemov.name>
-In-Reply-To: <20110406005743.GB27844@shutemov.name>
-Content-Type: text/plain; charset="ISO-8859-1"
+	id S1758911Ab1D0WiR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Apr 2011 18:38:17 -0400
+Subject: Re: [PATCH] NFS: move pnfs layouts to nfs_server structure
+Content-Type: text/plain; charset=us-ascii
+From: Dros Adamson <dros@netapp.com>
+In-Reply-To: <4DB87D31.2060808@panasas.com>
+Date: Wed, 27 Apr 2011 18:38:06 -0400
+Cc: trond@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <F5F5C79A-8DCC-439F-AA1F-4DD9FE6ACF3C@netapp.com>
+References: <1303922649-25478-1-git-send-email-dros@netapp.com> <4DB8659A.8020206@panasas.com> <B2051E16-6792-4DE7-B679-C28BED3D3B3F@netapp.com> <4DB87D31.2060808@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 04/05/2011 07:57 PM, Kirill A. Shutemov wrote:
-> On Thu, Mar 31, 2011 at 02:47:43AM -0500, Rob Landley wrote:
->> From: Rob Landley <rlandley@parallels.com>
->>
->> The sunrpc code already has some support for network namespaces,
->> but rpcb_create() is still using init_net.  Its arguments include
->> a sockaddr and a port, but not a struct net *.  Add one, and
->> pass in the value from rpc_xprt when calling it.
->>
->> Signed-off-by: Rob Landley <rlandley@parallels.com>
+
+On Apr 27, 2011, at 4:31 PM, Benny Halevy wrote:
+
+> On 2011-04-27 21:56, Dros Adamson wrote:
+>> 
+>> On Apr 27, 2011, at 2:51 PM, Benny Halevy wrote:
+>> 
+>>> On 2011-04-27 19:44, Weston Andros Adamson wrote:
+>>>> Layouts should be tracked per FSID (aka superblock, aka struct nfs_server)
+>>>> instead of per struct nfs_client, which may have multiple FSIDs associated
+>>>> with it.
+>>>> 
+>>>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>>>> ---
+>>>> fs/nfs/callback_proc.c    |   60 +++++++++++++++++++++++++++-----------------
+>>>> fs/nfs/client.c           |    6 ++--
+>>>> fs/nfs/pnfs.c             |   13 +++++++--
+>>>> include/linux/nfs_fs_sb.h |    2 +-
+>>>> 4 files changed, 51 insertions(+), 30 deletions(-)
+>>>> 
+>>>> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+>>>> index 2f41dcce..3964467 100644
+>>>> --- a/fs/nfs/callback_proc.c
+>>>> +++ b/fs/nfs/callback_proc.c
+>>>> @@ -111,6 +111,7 @@ int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation, const nf
+>>>> static u32 initiate_file_draining(struct nfs_client *clp,
+>>>> 				  struct cb_layoutrecallargs *args)
+>>>> {
+>>>> +	struct nfs_server *server;
+>>>> 	struct pnfs_layout_hdr *lo;
+>>>> 	struct inode *ino;
+>>>> 	bool found = false;
+>>>> @@ -118,21 +119,28 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+>>>> 	LIST_HEAD(free_me_list);
+>>>> 
+>>>> 	spin_lock(&clp->cl_lock);
+>>>> -	list_for_each_entry(lo, &clp->cl_layouts, plh_layouts) {
+>>>> -		if (nfs_compare_fh(&args->cbl_fh,
+>>>> -				   &NFS_I(lo->plh_inode)->fh))
+>>>> -			continue;
+>>>> -		ino = igrab(lo->plh_inode);
+>>>> -		if (!ino)
+>>>> -			continue;
+>>>> -		found = true;
+>>>> -		/* Without this, layout can be freed as soon
+>>>> -		 * as we release cl_lock.
+>>>> -		 */
+>>>> -		get_layout_hdr(lo);
+>>>> -		break;
+>>>> +	rcu_read_lock();
+>>>> +	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
+>>>> +		list_for_each_entry(lo, &server->layouts, plh_layouts) {
+>>>> +			if (nfs_compare_fh(&args->cbl_fh,
+>>>> +					   &NFS_I(lo->plh_inode)->fh))
+>>>> +				continue;
+>>>> +			ino = igrab(lo->plh_inode);
+>>>> +			if (!ino)
+>>>> +				continue;
+>>>> +			found = true;
+>>>> +			/* Without this, layout can be freed as soon
+>>>> +			 * as we release cl_lock.
+>>>> +			 */
+>>>> +			get_layout_hdr(lo);
+>>>> +			break;
+>>>> +		}
+>>>> +		if (found)
+>>>> +			break;
+>>>> 	}
+>>>> +	rcu_read_unlock();
+>>>> 	spin_unlock(&clp->cl_lock);
+>>>> +
+>>>> 	if (!found)
+>>>> 		return NFS4ERR_NOMATCHING_LAYOUT;
+>>>> 
+>>>> @@ -154,6 +162,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+>>>> static u32 initiate_bulk_draining(struct nfs_client *clp,
+>>>> 				  struct cb_layoutrecallargs *args)
+>>>> {
+>>>> +	struct nfs_server *server;
+>>>> 	struct pnfs_layout_hdr *lo;
+>>>> 	struct inode *ino;
+>>>> 	u32 rv = NFS4ERR_NOMATCHING_LAYOUT;
+>>>> @@ -167,18 +176,23 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
+>>>> 	};
+>>>> 
+>>>> 	spin_lock(&clp->cl_lock);
+>>>> -	list_for_each_entry(lo, &clp->cl_layouts, plh_layouts) {
+>>>> -		if ((args->cbl_recall_type == RETURN_FSID) &&
+>>>> -		    memcmp(&NFS_SERVER(lo->plh_inode)->fsid,
+>>>> -			   &args->cbl_fsid, sizeof(struct nfs_fsid)))
+>>>> -			continue;
+>>>> -		if (!igrab(lo->plh_inode))
+>>>> -			continue;
+>>>> -		get_layout_hdr(lo);
+>>>> -		BUG_ON(!list_empty(&lo->plh_bulk_recall));
+>>>> -		list_add(&lo->plh_bulk_recall, &recall_list);
+>>>> +	rcu_read_lock();
+>>>> +	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
+>>>> +		list_for_each_entry(lo, &server->layouts, plh_layouts) {
+>>>> +			if ((args->cbl_recall_type == RETURN_FSID) &&
+>>>> +			    memcmp(&server->fsid, &args->cbl_fsid,
+>>>> +				   sizeof(struct nfs_fsid)))
+>>>> +				continue;
+>>> 
+>>> This condition can be popped up to the outer loop now...
+>>> (or break rather than continue)
+>>> 
+>>> Benny
+>> 
+>> Good point.  Fred wanted me to wait until this patch got in to optimize handling RETURN_FSID.  Comments?
 > 
-> Acked-by: Kirill A. Shutemov <kas@openvz.org>
+> In this case, I think it is overly careful since the mechanical
+> change of indenting the whole block in the inner loop doesn't
+> make sense here. The whole purpose of this patch, as mentioned
+> in the description is to track layouts per fsid, therefore
+> testing the fsid at the right level need not be separated
+> into a separate, optimizing patch, but rather it can be included
+> in this one as a self-sufficient version.
 > 
-> BTW, it seems conflicts with my rpc_pipefs patchset. I'll rebase my
-> patchset, if your patches will be merged first.
+> Benny
 
-And vice versa, lemme know which order you want them in.
+OK, I buy it!  Patch on the way.
 
-Thanks,
+-dros
 
-Rob
+
