@@ -1,119 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mta-2.ms.rz.RWTH-Aachen.DE ([134.130.7.73]:39481 "EHLO
-	mta-2.ms.rz.rwth-aachen.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751620Ab1DLOb4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Apr 2011 10:31:56 -0400
-Received: from ironport-out-2.rz.rwth-aachen.de ([134.130.5.41])
- by mta-2.ms.rz.RWTH-Aachen.de
- (Sun Java(tm) System Messaging Server 6.3-7.04 (built Sep 26 2008))
- with ESMTP id <0LJJ00HSELN5KVJ0@mta-2.ms.rz.RWTH-Aachen.de> for
- linux-nfs@vger.kernel.org; Tue, 12 Apr 2011 16:01:53 +0200 (CEST)
-Received: from gheift ([unknown] [134.130.113.37])
- by relay-auth-2.ms.rz.rwth-aachen.de
- (Sun Java(tm) System Messaging Server 7.0-3.01 64bit (built Dec  9 2008))
- with ESMTPA id <0LJJ0057MLN2CX00@relay-auth-2.ms.rz.rwth-aachen.de> for
- linux-nfs@vger.kernel.org; Tue, 12 Apr 2011 16:01:53 +0200 (CEST)
-Date: Tue, 12 Apr 2011 16:01:50 +0200
-From: Gerhard Heift <ml-nfs-linux-20110412-ef47@gheift.de>
-To: linux-nfs@vger.kernel.org
-Subject: nfsdv4 leaks file descriptors
-Message-id: <20110412140148.GA17242@gheift>
-Content-type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature"; boundary=dc+cDN39EJAMEtIO
+Received: from mx2.netapp.com ([216.240.18.37]:12317 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755178Ab1D0SA5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Apr 2011 14:00:57 -0400
+Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id p3RI0sqY003787
+	for <linux-nfs@vger.kernel.org>; Wed, 27 Apr 2011 11:00:55 -0700 (PDT)
+Subject: Re: [PATCH] NFS: move pnfs layouts to nfs_server structure
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Weston Andros Adamson <dros@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <1303922649-25478-1-git-send-email-dros@netapp.com>
+References: <1303922649-25478-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 27 Apr 2011 14:00:51 -0400
+Message-ID: <1303927251.13195.19.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---dc+cDN39EJAMEtIO
-Content-Type: multipart/mixed; boundary="n8g4imXOkfNTN/H1"
-Content-Disposition: inline
+On Wed, 2011-04-27 at 12:44 -0400, Weston Andros Adamson wrote:
+> Layouts should be tracked per FSID (aka superblock, aka struct nfs_server)
+> instead of per struct nfs_client, which may have multiple FSIDs associated
+> with it.
+> 
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> ---
+>  fs/nfs/callback_proc.c    |   60 +++++++++++++++++++++++++++-----------------
+>  fs/nfs/client.c           |    6 ++--
+>  fs/nfs/pnfs.c             |   13 +++++++--
+>  include/linux/nfs_fs_sb.h |    2 +-
+>  4 files changed, 51 insertions(+), 30 deletions(-)
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 139be96..f72fd39 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -188,9 +188,6 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+>  	cred = rpc_lookup_machine_cred();
+>  	if (!IS_ERR(cred))
+>  		clp->cl_machine_cred = cred;
+> -#if defined(CONFIG_NFS_V4_1)
+> -	INIT_LIST_HEAD(&clp->cl_layouts);
+> -#endif
+>  	nfs_fscache_get_client_cookie(clp);
+>  
+>  	return clp;
+> @@ -1060,6 +1057,9 @@ static struct nfs_server *nfs_alloc_server(void)
+>  	INIT_LIST_HEAD(&server->client_link);
+>  	INIT_LIST_HEAD(&server->master_link);
+>  	INIT_LIST_HEAD(&server->delegations);
+> +#if defined(CONFIG_NFS_V4_1)
+> +	INIT_LIST_HEAD(&server->layouts);
+> +#endif
 
+Can we please just drop the #ifdef here?
 
---n8g4imXOkfNTN/H1
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+>  	atomic_set(&server->active, 0);
 
-Hello,
+Otherwise it looks good to me...
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-I have a linux kernel (2.6.38.2, armv5tel) running which exports a
-directory with following options:
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
-/data ip/32(rw,async,crossmnt,insecure,root_squash,no_subtree_check,fsid=0)
-
-On the client (Debian unstable, kernel 2.6.38-2-amd64) I mounted the
-directory under /media(nfs4import with
-
-# mount -t nfs4 ip:/ /media/nfs4import
-
-After a lot running fdupes on this folder the server kernel starts
-throwing messages like this one:
-
-  VFS: file-max limit [number] reached
-
-After a reboot I recognised that the number of used file descriptors
-increases during the run of fdupes (see /proc/sys/fs/file-nr). Even
-after unmounting the exported filesystem on the client, unexport the
-file system on the server and stopping the nfs-server the file
-descriptors are still allocated and unmounting the filesystem is not
-possible.
-
-After a little bit of research I could create a small program, which
-increases the used file descriptors by one.
-
-Regards,
-  Gerhard
-
---n8g4imXOkfNTN/H1
-Content-Type: text/x-csrc; charset=us-ascii
-Content-Disposition: attachment; filename="leak-test.c"
-Content-Transfer-Encoding: quoted-printable
-
-#include <stdio.h>
-
-#define DIR "/media/nfs4import/"
-
-int main(void) {
-	FILE *f1;
-	FILE *f2;
-	char b[1024];
-	int i;
-
-	// create file1
-	f1 =3D fopen(DIR "file1.txt", "w");
-	fwrite("test\n", 5, 1, f1);
-	close(f1);
-
-	// open file1 in read mode
-	f1 =3D fopen(DIR "file1.txt", "r");
-
-	for (i =3D 0; i < 1; i++) {
-		// open file2 in write mode and close it
-		f2 =3D fopen(DIR "file2.txt", "w");
-		fclose(f2);
-=09
-		// open file2 in read mode and close it
-		// this causes the leak of a file descriptor on the server
-		// just watch /proc/sys/fs/file-nr on the server
-		f2 =3D fopen(DIR "file2.txt", "r");
-		fclose(f2);
-	}
-	fclose(f1);
-
-	return 0;
-}
-
---n8g4imXOkfNTN/H1--
-
---dc+cDN39EJAMEtIO
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-
-iEYEARECAAYFAk2kW0wACgkQa8fhU24j2fkiIACeNFbYDC/LZn69iwAd70mr2/5i
-4V4AnRXfL+F/Pwn5H3dSfG08x2Fyk4AL
-=84jh
------END PGP SIGNATURE-----
-
---dc+cDN39EJAMEtIO--
