@@ -1,92 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:34419 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:21819 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758081Ab1D0Cl2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Apr 2011 22:41:28 -0400
-Date: Tue, 26 Apr 2011 22:41:26 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd41: compare request's opcnt with session's maxops
- at nfsd4_sequence
-Message-ID: <20110427024126.GB26541@fieldses.org>
-References: <4DB76CE6.9080404@cn.fujitsu.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4DB76CE6.9080404@cn.fujitsu.com>
+	id S1759806Ab1D0TrX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Apr 2011 15:47:23 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 2/3] NFSD: Check status from nfsd4_map_bcts_dir()
+Date: Wed, 27 Apr 2011 15:47:15 -0400
+Message-Id: <1303933636-22134-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1303933636-22134-1-git-send-email-bjschuma@netapp.com>
+References: <1303933636-22134-1-git-send-email-bjschuma@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Apr 27, 2011 at 09:09:58AM +0800, Mi Jinlong wrote:
-> Make sure nfs server can distinguish request contains more ops
-> than channel allowed.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Yes, sequence looks like a reasonable op to catch this error.  The spec
-doesn't care as far as I can tell (and it's a buggy-client case, so why
-should it), and we already check that any compound not starting with a
-sequence has only one op.
+Compiling gave me this warning:
+fs/nfsd/nfs4state.c: In function ‘nfsd4_bind_conn_to_session’:
+fs/nfsd/nfs4state.c:1623:9: warning: variable ‘status’ set but not used
+[-Wunused-but-set-variable]
 
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
->  fs/nfsd/nfs4state.c |    5 +++++
->  1 files changed, 5 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index fbde6f7..4f9fc68 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1749,6 +1749,11 @@ nfsd4_sequence(struct svc_rqst *rqstp,
->  	if (!session)
->  		goto out;
->  
-> +	status = nfserr_too_many_ops;
-> +	if (((struct nfsd4_compoundargs *)rqstp->rq_argp)->opcnt >
+The local variable "status" was being set by nfsd4_map_bcts_dir() and
+then ignored before calling nfsd4_new_conn().
 
-Kind of a cumbersome construction, though.
-
-Eh, maybe overkill, but how about this?:
-
---b.
-
-commit d5eee1629fb9d3a55e5793d156026248c14cb46c
-Author: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Date:   Wed Apr 27 09:09:58 2011 +0800
-
-    nfsd41: compare request's opcnt with session's maxops at nfsd4_sequence
-    
-    Make sure nfs server errors out if request contains more ops
-    than channel allows.
-    
-    Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-    [bfields@redhat.com: use helper function]
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/nfs4state.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index fbde6f7..487ba47 100644
+index 4cf04e1..e00061a 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1721,6 +1721,13 @@ static void nfsd4_sequence_check_conn(struct nfsd4_conn *new, struct nfsd4_sessi
- 	return;
+@@ -1637,8 +1637,9 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
+ 		return nfserr_badsession;
+ 
+ 	status = nfsd4_map_bcts_dir(&bcts->dir);
+-	nfsd4_new_conn(rqstp, cstate->session, bcts->dir);
+-	return nfs_ok;
++	if (!status)
++		nfsd4_new_conn(rqstp, cstate->session, bcts->dir);
++	return status;
  }
  
-+static bool nfsd4_session_too_many_ops(struct svc_rqst *rqstp, struct nfsd4_session *session)
-+{
-+	struct nfsd4_compoundargs *args = rqstp->rq_argp;
-+
-+	return args->opcnt > session->se_fchannel.maxops;
-+}
-+
- __be32
- nfsd4_sequence(struct svc_rqst *rqstp,
- 	       struct nfsd4_compound_state *cstate,
-@@ -1749,6 +1756,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	if (!session)
- 		goto out;
- 
-+	status = nfserr_too_many_ops;
-+	if (nfsd4_session_too_many_ops(rqstp, session))
-+		goto out;
-+
- 	status = nfserr_badslot;
- 	if (seq->slotid >= session->se_fchannel.maxreqs)
- 		goto out;
+ static bool nfsd4_compound_in_session(struct nfsd4_session *session, struct nfs4_sessionid *sid)
+-- 
+1.7.4.4
+
