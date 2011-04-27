@@ -1,31 +1,92 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 1/2] Read /etc/exports.d/*.export as extra export files
-Date: Thu, 3 Mar 2011 12:50:19 -0500
-Message-ID: <20110303175018.GC11402@fieldses.org>
-References: <20110217.215900.388120588347145930.yamato@redhat.com>
- <20110303.230122.1012453714437438591.yamato@redhat.com>
- <87fwr4rzri.fsf@tac.ki.iif.hu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Masatake YAMATO <yamato@redhat.com>, linux-nfs@vger.kernel.org,
-	steved@redhat.com
-To: Ferenc Wagner <wferi-eEbw3PyuezQ@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:54136 "EHLO fieldses.org"
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:34419 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932182Ab1CCRuU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Mar 2011 12:50:20 -0500
-In-Reply-To: <87fwr4rzri.fsf-/U8DR9OPLL8grVaPS+uXcA@public.gmane.org>
+	id S1758081Ab1D0Cl2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Apr 2011 22:41:28 -0400
+Date: Tue, 26 Apr 2011 22:41:26 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd41: compare request's opcnt with session's maxops
+ at nfsd4_sequence
+Message-ID: <20110427024126.GB26541@fieldses.org>
+References: <4DB76CE6.9080404@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4DB76CE6.9080404@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-On Thu, Mar 03, 2011 at 04:26:41PM +0100, Ferenc Wagner wrote:
-> Masatake YAMATO <yamato@redhat.com> writes:
-> 
-> > No comment?
-> 
-> I like the idea and find the approach sane, but I'm just a user.
+On Wed, Apr 27, 2011 at 09:09:58AM +0800, Mi Jinlong wrote:
+> Make sure nfs server can distinguish request contains more ops
+> than channel allowed.
 
-I don't see any obvious problem; Steve's call.
+Yes, sequence looks like a reasonable op to catch this error.  The spec
+doesn't care as far as I can tell (and it's a buggy-client case, so why
+should it), and we already check that any compound not starting with a
+sequence has only one op.
+
+> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> ---
+>  fs/nfsd/nfs4state.c |    5 +++++
+>  1 files changed, 5 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index fbde6f7..4f9fc68 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1749,6 +1749,11 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+>  	if (!session)
+>  		goto out;
+>  
+> +	status = nfserr_too_many_ops;
+> +	if (((struct nfsd4_compoundargs *)rqstp->rq_argp)->opcnt >
+
+Kind of a cumbersome construction, though.
+
+Eh, maybe overkill, but how about this?:
 
 --b.
+
+commit d5eee1629fb9d3a55e5793d156026248c14cb46c
+Author: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Date:   Wed Apr 27 09:09:58 2011 +0800
+
+    nfsd41: compare request's opcnt with session's maxops at nfsd4_sequence
+    
+    Make sure nfs server errors out if request contains more ops
+    than channel allows.
+    
+    Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+    [bfields@redhat.com: use helper function]
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index fbde6f7..487ba47 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1721,6 +1721,13 @@ static void nfsd4_sequence_check_conn(struct nfsd4_conn *new, struct nfsd4_sessi
+ 	return;
+ }
+ 
++static bool nfsd4_session_too_many_ops(struct svc_rqst *rqstp, struct nfsd4_session *session)
++{
++	struct nfsd4_compoundargs *args = rqstp->rq_argp;
++
++	return args->opcnt > session->se_fchannel.maxops;
++}
++
+ __be32
+ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	       struct nfsd4_compound_state *cstate,
+@@ -1749,6 +1756,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	if (!session)
+ 		goto out;
+ 
++	status = nfserr_too_many_ops;
++	if (nfsd4_session_too_many_ops(rqstp, session))
++		goto out;
++
+ 	status = nfserr_badslot;
+ 	if (seq->slotid >= session->se_fchannel.maxreqs)
+ 		goto out;
