@@ -1,42 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:64563 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932136Ab1DHPRz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Apr 2011 11:17:55 -0400
-Subject: Re: Prioritizing readdirplus/getattr/lookup
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <770047.76192.qm@web65409.mail.ac4.yahoo.com>
-Date: Fri, 8 Apr 2011 11:17:43 -0400
-Cc: Benny Halevy <bhalevy@panasas.com>, Jim Rees <rees@umich.edu>,
-        Garth Gibson <garth@cs.cmu.edu>, linux-nfs@vger.kernel.org
-Message-Id: <F8F557F7-8799-449A-94FD-12FF5FC2974C@oracle.com>
-References: <770047.76192.qm@web65409.mail.ac4.yahoo.com>
-To: Andrew Klaassen <clawsoon@yahoo.com>
+Received: from mx2.netapp.com ([216.240.18.37]:21819 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758763Ab1D0Tr0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Apr 2011 15:47:26 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 3/3] NFSD: Remove unused variable from nfsd4_decode_bind_conn_to_session()
+Date: Wed, 27 Apr 2011 15:47:16 -0400
+Message-Id: <1303933636-22134-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1303933636-22134-1-git-send-email-bjschuma@netapp.com>
+References: <1303933636-22134-1-git-send-email-bjschuma@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-On Apr 7, 2011, at 5:49 PM, Andrew Klaassen wrote:
+Compiling gave me this warning:
+fs/nfsd/nfs4xdr.c: In function ‘nfsd4_decode_bind_conn_to_session’:
+fs/nfsd/nfs4xdr.c:427:6: warning: variable ‘dummy’ set but not used
+[-Wunused-but-set-variable]
 
-> --- On Thu, 4/7/11, Andrew Klaassen <clawsoon@yahoo.com> wrote:
-> 
->> I do notice that ksoftirqd is eating up 100% of a core when
->> I'm loading the server heavily.  I assume that's
->> because I'm not using jumbo frames and the ethernet cards
->> are spitting out interrupts as fast as they're able.
-> 
-> I just got myself edjumicated on smp_affinity, and now I'm able to achieve 99% CPU usage by 8 nfsd processes on 8 cores on a read-only, fully-cached workload, with ksoftirqd processes only using 1% CPU per core.
-> 
-> Unfortunately, this doesn't help the "ls -l" speed.
+The local variable "dummy" wasn't being used past the READ32() macro that
+set it.  READ_BUF() should ensure that the xdr buffer is pushed past the
+data read into dummy already, so nothing needs to be read in.
 
-Serving NFS files is generally not CPU intensive.  The problem may be lock contention on the server, but that's about as far as my expertise goes.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/nfs4xdr.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index c6766af..6191eec 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -424,14 +424,12 @@ nfsd4_decode_access(struct nfsd4_compoundargs *argp, struct nfsd4_access *access
+ static __be32 nfsd4_decode_bind_conn_to_session(struct nfsd4_compoundargs *argp, struct nfsd4_bind_conn_to_session *bcts)
+ {
+ 	DECODE_HEAD;
+-	u32 dummy;
+ 
+ 	READ_BUF(NFS4_MAX_SESSIONID_LEN + 8);
+ 	COPYMEM(bcts->sessionid.data, NFS4_MAX_SESSIONID_LEN);
+ 	READ32(bcts->dir);
+ 	/* XXX: Perhaps Tom Tucker could help us figure out how we
+ 	 * should be using ctsa_use_conn_in_rdma_mode: */
+-	READ32(dummy);
+ 
+ 	DECODE_TAIL;
+ }
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.4.4
 
