@@ -1,110 +1,59 @@
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Subject: Re: [PATCH] nfsd41: compare request's opcnt with session's maxops
- at nfsd4_sequence
-Date: Wed, 27 Apr 2011 13:48:09 +0800
-Message-ID: <4DB7AE19.3080308@cn.fujitsu.com>
-References: <4DB76CE6.9080404@cn.fujitsu.com> <20110427024126.GB26541@fieldses.org>
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: Re: pNFS kernel for Fedora 15
+Date: Wed, 27 Apr 2011 15:59:39 +0200
+Message-ID: <4DB8214B.9000603@desy.de>
+References: <4DB05BB3.8080706@desy.de> <4DB2C0A7.6090501@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: NFS <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:58816 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751578Ab1D0Fql (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Apr 2011 01:46:41 -0400
-In-Reply-To: <20110427024126.GB26541@fieldses.org>
+Received: from smtp-out-1.desy.de ([131.169.56.84]:45034 "EHLO
+	smtp-out-1.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932509Ab1D0OBI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Apr 2011 10:01:08 -0400
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-out-1.desy.de (DESY_OUT_1) with ESMTP id AB1C318EB
+	for <linux-nfs@vger.kernel.org>; Wed, 27 Apr 2011 16:01:06 +0200 (MEST)
+Received: from adserv72.win.desy.de (adserv72.win.desy.de [131.169.97.58])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id A058D13ED2
+	for <linux-nfs@vger.kernel.org>; Wed, 27 Apr 2011 16:01:06 +0200 (MEST)
+In-Reply-To: <4DB2C0A7.6090501-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The build for fc16 looks like OK.
 
+Tigran.
 
-J. Bruce Fields:
-> On Wed, Apr 27, 2011 at 09:09:58AM +0800, Mi Jinlong wrote:
->> Make sure nfs server can distinguish request contains more ops
->> than channel allowed.
-> 
-> Yes, sequence looks like a reasonable op to catch this error.  The spec
-> doesn't care as far as I can tell (and it's a buggy-client case, so why
-> should it), and we already check that any compound not starting with a
-> sequence has only one op.
-> 
->> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
->> ---
->>  fs/nfsd/nfs4state.c |    5 +++++
->>  1 files changed, 5 insertions(+), 0 deletions(-)
+On 04/23/2011 02:05 PM, Steve Dickson wrote:
+>
+> On 04/21/2011 12:30 PM, Tigran Mkrtchyan wrote:
+>> Hi Steve et. al.
 >>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index fbde6f7..4f9fc68 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -1749,6 +1749,11 @@ nfsd4_sequence(struct svc_rqst *rqstp,
->>  	if (!session)
->>  		goto out;
->>  
->> +	status = nfserr_too_many_ops;
->> +	if (((struct nfsd4_compoundargs *)rqstp->rq_argp)->opcnt >
-> 
-> Kind of a cumbersome construction, though.
-> 
-> Eh, maybe overkill, but how about this?:
-
-  That's great!
-
--- 
-----
-thanks
-Mi Jinlong
-
-> 
-> --b.
-> 
-> commit d5eee1629fb9d3a55e5793d156026248c14cb46c
-> Author: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> Date:   Wed Apr 27 09:09:58 2011 +0800
-> 
->     nfsd41: compare request's opcnt with session's maxops at nfsd4_sequence
->     
->     Make sure nfs server errors out if request contains more ops
->     than channel allows.
->     
->     Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
->     [bfields@redhat.com: use helper function]
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index fbde6f7..487ba47 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1721,6 +1721,13 @@ static void nfsd4_sequence_check_conn(struct nfsd4_conn *new, struct nfsd4_sessi
->  	return;
->  }
->  
-> +static bool nfsd4_session_too_many_ops(struct svc_rqst *rqstp, struct nfsd4_session *session)
-> +{
-> +	struct nfsd4_compoundargs *args = rqstp->rq_argp;
-> +
-> +	return args->opcnt > session->se_fchannel.maxops;
-> +}
-> +
->  __be32
->  nfsd4_sequence(struct svc_rqst *rqstp,
->  	       struct nfsd4_compound_state *cstate,
-> @@ -1749,6 +1756,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
->  	if (!session)
->  		goto out;
->  
-> +	status = nfserr_too_many_ops;
-> +	if (nfsd4_session_too_many_ops(rqstp, session))
-> +		goto out;
-> +
->  	status = nfserr_badslot;
->  	if (seq->slotid >= session->se_fchannel.maxreqs)
->  		goto out;
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
+>> it looks like kernel fails to correctly work with
+>> rpc.gssd if some of kernel modules statically
+>> compiled:
+>>
+>> BAD (pnfs kernel from Steve):
+>> CONFIG_SUNRPC_GSS=m
+>> CONFIG_RPCSEC_GSS_KRB5=y
+>>
+>> in messages:
+>> [  537.544188] gss_create: Pseudoflavor 390003 not found!
+>> [  537.544236] RPC: Couldn't create auth handle (flavor 390003)
+>>
+>>
+>> GOOD (fedora native kernel or my own build):
+>> CONFIG_SUNRPC_GSS=m
+>> CONFIG_RPCSEC_GSS_KRB5=m
+>>
+>> Steve, could you build new kernel with CONFIG_RPCSEC_GSS_KRB5=m ?
+>>
+>>
+>> BTW, there was a similar issue with nfsd discussed last couple of days.
+>> http://www.spinics.net/lists/linux-nfs/msg20617.html
+> I'll take a look... thanks!
+>
+> steved.
 
