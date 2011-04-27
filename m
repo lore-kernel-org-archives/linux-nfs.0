@@ -1,45 +1,220 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:52986 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756565Ab1DGUCk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Apr 2011 16:02:40 -0400
-Message-ID: <4D9E184C.8080908@netapp.com>
-Date: Thu, 07 Apr 2011 16:02:20 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Subject: [PATCH] NFS: Change initial mount authflavor only when server returns
- NFS4ERR_WRONGSEC
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:57016 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755189Ab1D0Sva (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Apr 2011 14:51:30 -0400
+Message-ID: <4DB8659A.8020206@panasas.com>
+Date: Wed, 27 Apr 2011 21:51:06 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Weston Andros Adamson <dros@netapp.com>
+CC: trond@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFS: move pnfs layouts to nfs_server structure
+References: <1303922649-25478-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1303922649-25478-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset=windows-1255
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-When attempting an initial mount, we should only attempt other
-authflavors if AUTH_UNIX receives a NFS4ERR_WRONGSEC error.
-This allows other errors to be passed back to userspace programs.
+On 2011-04-27 19:44, Weston Andros Adamson wrote:
+> Layouts should be tracked per FSID (aka superblock, aka struct nfs_server)
+> instead of per struct nfs_client, which may have multiple FSIDs associated
+> with it.
+> 
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> ---
+>  fs/nfs/callback_proc.c    |   60 +++++++++++++++++++++++++++-----------------
+>  fs/nfs/client.c           |    6 ++--
+>  fs/nfs/pnfs.c             |   13 +++++++--
+>  include/linux/nfs_fs_sb.h |    2 +-
+>  4 files changed, 51 insertions(+), 30 deletions(-)
+> 
+> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+> index 2f41dcce..3964467 100644
+> --- a/fs/nfs/callback_proc.c
+> +++ b/fs/nfs/callback_proc.c
+> @@ -111,6 +111,7 @@ int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation, const nf
+>  static u32 initiate_file_draining(struct nfs_client *clp,
+>  				  struct cb_layoutrecallargs *args)
+>  {
+> +	struct nfs_server *server;
+>  	struct pnfs_layout_hdr *lo;
+>  	struct inode *ino;
+>  	bool found = false;
+> @@ -118,21 +119,28 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+>  	LIST_HEAD(free_me_list);
+>  
+>  	spin_lock(&clp->cl_lock);
+> -	list_for_each_entry(lo, &clp->cl_layouts, plh_layouts) {
+> -		if (nfs_compare_fh(&args->cbl_fh,
+> -				   &NFS_I(lo->plh_inode)->fh))
+> -			continue;
+> -		ino = igrab(lo->plh_inode);
+> -		if (!ino)
+> -			continue;
+> -		found = true;
+> -		/* Without this, layout can be freed as soon
+> -		 * as we release cl_lock.
+> -		 */
+> -		get_layout_hdr(lo);
+> -		break;
+> +	rcu_read_lock();
+> +	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
+> +		list_for_each_entry(lo, &server->layouts, plh_layouts) {
+> +			if (nfs_compare_fh(&args->cbl_fh,
+> +					   &NFS_I(lo->plh_inode)->fh))
+> +				continue;
+> +			ino = igrab(lo->plh_inode);
+> +			if (!ino)
+> +				continue;
+> +			found = true;
+> +			/* Without this, layout can be freed as soon
+> +			 * as we release cl_lock.
+> +			 */
+> +			get_layout_hdr(lo);
+> +			break;
+> +		}
+> +		if (found)
+> +			break;
+>  	}
+> +	rcu_read_unlock();
+>  	spin_unlock(&clp->cl_lock);
+> +
+>  	if (!found)
+>  		return NFS4ERR_NOMATCHING_LAYOUT;
+>  
+> @@ -154,6 +162,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+>  static u32 initiate_bulk_draining(struct nfs_client *clp,
+>  				  struct cb_layoutrecallargs *args)
+>  {
+> +	struct nfs_server *server;
+>  	struct pnfs_layout_hdr *lo;
+>  	struct inode *ino;
+>  	u32 rv = NFS4ERR_NOMATCHING_LAYOUT;
+> @@ -167,18 +176,23 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
+>  	};
+>  
+>  	spin_lock(&clp->cl_lock);
+> -	list_for_each_entry(lo, &clp->cl_layouts, plh_layouts) {
+> -		if ((args->cbl_recall_type == RETURN_FSID) &&
+> -		    memcmp(&NFS_SERVER(lo->plh_inode)->fsid,
+> -			   &args->cbl_fsid, sizeof(struct nfs_fsid)))
+> -			continue;
+> -		if (!igrab(lo->plh_inode))
+> -			continue;
+> -		get_layout_hdr(lo);
+> -		BUG_ON(!list_empty(&lo->plh_bulk_recall));
+> -		list_add(&lo->plh_bulk_recall, &recall_list);
+> +	rcu_read_lock();
+> +	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
+> +		list_for_each_entry(lo, &server->layouts, plh_layouts) {
+> +			if ((args->cbl_recall_type == RETURN_FSID) &&
+> +			    memcmp(&server->fsid, &args->cbl_fsid,
+> +				   sizeof(struct nfs_fsid)))
+> +				continue;
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index dfd1e6d..9bf41ea 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2204,8 +2204,6 @@ static int nfs4_lookup_root_sec(struct nfs_server *server, struct nfs_fh *fhandl
- 		goto out;
- 	}
- 	ret = nfs4_lookup_root(server, fhandle, info);
--	if (ret < 0)
--		ret = -EAGAIN;
- out:
- 	return ret;
- }
-@@ -2226,7 +2224,7 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 
- 	for (i = 0; i < len; i++) {
- 		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
--		if (status == 0)
-+		if (status != -EPERM)
- 			break;
- 	}
- 	if (status == 0)
+This condition can be popped up to the outer loop now...
+(or break rather than continue)
+
+Benny
+
+> +			if (!igrab(lo->plh_inode))
+> +				continue;
+> +			get_layout_hdr(lo);
+> +			BUG_ON(!list_empty(&lo->plh_bulk_recall));
+> +			list_add(&lo->plh_bulk_recall, &recall_list);
+> +		}
+>  	}
+> +	rcu_read_unlock();
+>  	spin_unlock(&clp->cl_lock);
+> +
+>  	list_for_each_entry_safe(lo, tmp,
+>  				 &recall_list, plh_bulk_recall) {
+>  		ino = lo->plh_inode;
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 139be96..f72fd39 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -188,9 +188,6 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+>  	cred = rpc_lookup_machine_cred();
+>  	if (!IS_ERR(cred))
+>  		clp->cl_machine_cred = cred;
+> -#if defined(CONFIG_NFS_V4_1)
+> -	INIT_LIST_HEAD(&clp->cl_layouts);
+> -#endif
+>  	nfs_fscache_get_client_cookie(clp);
+>  
+>  	return clp;
+> @@ -1060,6 +1057,9 @@ static struct nfs_server *nfs_alloc_server(void)
+>  	INIT_LIST_HEAD(&server->client_link);
+>  	INIT_LIST_HEAD(&server->master_link);
+>  	INIT_LIST_HEAD(&server->delegations);
+> +#if defined(CONFIG_NFS_V4_1)
+> +	INIT_LIST_HEAD(&server->layouts);
+> +#endif
+>  
+>  	atomic_set(&server->active, 0);
+>  
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index ff681ab..6a5d0a4 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -371,11 +371,17 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+>  void
+>  pnfs_destroy_all_layouts(struct nfs_client *clp)
+>  {
+> +	struct nfs_server *server;
+>  	struct pnfs_layout_hdr *lo;
+>  	LIST_HEAD(tmp_list);
+>  
+>  	spin_lock(&clp->cl_lock);
+> -	list_splice_init(&clp->cl_layouts, &tmp_list);
+> +	rcu_read_lock();
+> +	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
+> +		if (!list_empty(&server->layouts))
+> +			list_splice_init(&server->layouts, &tmp_list);
+> +	}
+> +	rcu_read_unlock();
+>  	spin_unlock(&clp->cl_lock);
+>  
+>  	while (!list_empty(&tmp_list)) {
+> @@ -759,7 +765,8 @@ pnfs_update_layout(struct inode *ino,
+>  		   enum pnfs_iomode iomode)
+>  {
+>  	struct nfs_inode *nfsi = NFS_I(ino);
+> -	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
+> +	struct nfs_server *server = NFS_SERVER(ino);
+> +	struct nfs_client *clp = server->nfs_client;
+>  	struct pnfs_layout_hdr *lo;
+>  	struct pnfs_layout_segment *lseg = NULL;
+>  	bool first = false;
+> @@ -803,7 +810,7 @@ pnfs_update_layout(struct inode *ino,
+>  		 */
+>  		spin_lock(&clp->cl_lock);
+>  		BUG_ON(!list_empty(&lo->plh_layouts));
+> -		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
+> +		list_add_tail(&lo->plh_layouts, &server->layouts);
+>  		spin_unlock(&clp->cl_lock);
+>  	}
+>  
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index 87694ca..f321015 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -77,7 +77,6 @@ struct nfs_client {
+>  	/* The flags used for obtaining the clientid during EXCHANGE_ID */
+>  	u32			cl_exchange_flags;
+>  	struct nfs4_session	*cl_session; 	/* sharred session */
+> -	struct list_head	cl_layouts;
+>  #endif /* CONFIG_NFS_V4 */
+>  
+>  #ifdef CONFIG_NFS_FSCACHE
+> @@ -148,6 +147,7 @@ struct nfs_server {
+>  	struct rb_root		state_owners;
+>  	struct rb_root		openowner_id;
+>  	struct rb_root		lockowner_id;
+> +	struct list_head	layouts;
+>  #endif
+>  	struct list_head	delegations;
+>  	void (*destroy)(struct nfs_server *);
+
