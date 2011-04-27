@@ -1,63 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:35899 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755089Ab1DOOVJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Apr 2011 10:21:09 -0400
-Received: by qwk3 with SMTP id 3so1452754qwk.19
-        for <linux-nfs@vger.kernel.org>; Fri, 15 Apr 2011 07:21:08 -0700 (PDT)
-In-Reply-To: <1302874150.29239.12.camel@lade.trondhjem.org>
-References: <20110415010913@it-loops.com>
-	<1302840158.2447.5.camel@vovan.net.home>
-	<A50602A820F61543B29992A418BB321B66E18F8A71@seldmbx01.corpusers.net>
-	<20110415120934@it-loops.com>
-	<1302874150.29239.12.camel@lade.trondhjem.org>
-Date: Fri, 15 Apr 2011 10:21:08 -0400
-Message-ID: <BANLkTinUvdAsikun83=Bx3ssNM=m3zMEdw@mail.gmail.com>
-Subject: Re: [BUG] sec=krb5 mount problem with nfs-utils 1.2.3 on client side
-From: Kevin Coffman <kwc@citi.umich.edu>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: Michael Guntsche <mike@it-loops.com>,
-        "Dr. J. Bruce Fields" <bfields@fieldses.org>,
-        "Finney, Sean" <Sean.Finney@sonyericsson.com>,
-        "vovan@vovan.nl" <vovan@vovan.nl>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:48124 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751954Ab1D0T2t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Apr 2011 15:28:49 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v2] NFS: Return meaningful status from decode_secinfo()
+Date: Wed, 27 Apr 2011 15:28:44 -0400
+Message-Id: <1303932524-11413-1-git-send-email-bjschuma@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Apr 15, 2011 at 9:29 AM, Trond Myklebust
-<trond.myklebust@fys.uio.no> wrote:
-> On Fri, 2011-04-15 at 12:16 +0200, Michael Guntsche wrote:
->> Thank you for the information, but I got it working in the meantime.
->> The main problem still is that the code for some reason tries to use AES
->> although I tried specifying a different enctype in my kerberos config.
->> Nevertheless it should just work with AES as well, so where was the
->> problem?
->> Quite simple....missing kernel support. I enabled AES support but I DID
->> NOT enable CTS support which is of course needed as well. So after
->> compiling the server and client kernels with BOTH AES and CTS support I
->> can no mount the NFS4 export without any issues.
->
-> Sigh. We really should not allow that kind of config. It just creates
-> confusion.
->
-> Kevin, what are the dependencies for the kerberos V module today? Am I
-> missing something in the following list?
->
->        depends on SUNRPC && CRYPTO
->        depends on CRYPTO_MD5 && CRYPTO_DES && CRYPTO_CBC && CRYPTO_CTS
->        depends on CRYPTO_ECB && CRYPTO_HMAC && CRYPTO_MD5 &&
->        CRYPTO_SHA1
->        depends on CRYPTO_AES
->
-> Cheers
->  Trond
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Yeah, I think that stuff got left out of the final patches.
+When compiling, I was getting this warning:
+fs/nfs/nfs4xdr.c: In function â€˜decode_secinfoâ€™:
+fs/nfs/nfs4xdr.c:4839:6: warning: variable â€˜statusâ€™ set but not used
+[-Wunused-but-set-variable]
 
-DES3 needs (in addition to the stuff already there for DES) HMAC and SHA1
-AES needs SHA1 AES CTS
-RC4 needs ECB ARC4 MD5
+We were unconditionally returning 0 as long as there wasn't an error
+coming out of xdr_inline_decode().  We probably want to check the error
+status coming out of decode_op_hdr() and decode_secinfo_gss(), rather
+than assuming that everything is OK all the time.
 
-So I think you are only missing CRYPTO_ARC4.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/nfs4xdr.c |   11 +++++++----
+ 1 files changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index ba952bd..8e0c467 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -4841,6 +4841,8 @@ static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
+ 	int i, num_flavors;
+ 
+ 	status = decode_op_hdr(xdr, OP_SECINFO);
++	if (status)
++		goto out;
+ 	p = xdr_inline_decode(xdr, 4);
+ 	if (unlikely(!p))
+ 		goto out_overflow;
+@@ -4859,14 +4861,15 @@ static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
+ 		sec_flavor->flavor = be32_to_cpup(p);
+ 
+ 		if (sec_flavor->flavor == RPC_AUTH_GSS) {
+-			if (decode_secinfo_gss(xdr, sec_flavor))
+-				break;
++			status = decode_secinfo_gss(xdr, sec_flavor);
++			if (status)
++				goto out;
+ 		}
+ 		res->flavors->num_flavors++;
+ 	}
+ 
+-	return 0;
+-
++out:
++	return status;
+ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+ 	return -EIO;
+-- 
+1.7.4.4
+
