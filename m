@@ -1,105 +1,215 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:6990 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752897Ab1DVItE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Apr 2011 04:49:04 -0400
-Message-ID: <4DB140F6.7020604@panasas.com>
-Date: Fri, 22 Apr 2011 11:48:54 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [RFC 07/27] pnfs: encode_layoutcommit
-References: <4DAF0DE1.6020609@panasas.com>	 <1303320427-21218-1-git-send-email-bhalevy@panasas.com> <1303330705.23206.38.camel@lade.trondhjem.org>
-In-Reply-To: <1303330705.23206.38.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:41759 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759017Ab1D0WlN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Apr 2011 18:41:13 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: trond@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] NFS: move pnfs layouts to nfs_server structure
+Date: Wed, 27 Apr 2011 18:40:50 -0400
+Message-Id: <1303944050-29932-2-git-send-email-dros@netapp.com>
+In-Reply-To: <1303944050-29932-1-git-send-email-dros@netapp.com>
+References: <1303944050-29932-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-04-20 23:18, Trond Myklebust wrote:
-> On Wed, 2011-04-20 at 20:27 +0300, Benny Halevy wrote:
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> ---
->>  fs/nfs/nfs4xdr.c |   16 +++++++++++++---
->>  fs/nfs/pnfs.h    |    4 ++++
->>  2 files changed, 17 insertions(+), 3 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
->> index 6b64dd8..4f7bef9 100644
->> --- a/fs/nfs/nfs4xdr.c
->> +++ b/fs/nfs/nfs4xdr.c
->> @@ -1877,6 +1877,7 @@ encode_layoutget(struct xdr_stream *xdr,
->>  
->>  static int
->>  encode_layoutcommit(struct xdr_stream *xdr,
->> +		    struct inode *inode,
->>  		    const struct nfs4_layoutcommit_args *args,
->>  		    struct compound_hdr *hdr)
->>  {
->> @@ -1885,7 +1886,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
->>  	dprintk("%s: lbw: %llu type: %d\n", __func__, args->lastbytewritten,
->>  		NFS_SERVER(args->inode)->pnfs_curr_ld->id);
->>  
->> -	p = reserve_space(xdr, 48 + NFS4_STATEID_SIZE);
->> +	p = reserve_space(xdr, 44 + NFS4_STATEID_SIZE);
->>  	*p++ = cpu_to_be32(OP_LAYOUTCOMMIT);
->>  	/* Only whole file layouts */
->>  	p = xdr_encode_hyper(p, 0); /* offset */
->> @@ -1896,7 +1897,14 @@ encode_layoutcommit(struct xdr_stream *xdr,
->>  	p = xdr_encode_hyper(p, args->lastbytewritten);
->>  	*p++ = cpu_to_be32(0); /* Never send time_modify_changed */
->>  	*p++ = cpu_to_be32(NFS_SERVER(args->inode)->pnfs_curr_ld->id);/* type */
->> -	*p++ = cpu_to_be32(0); /* no file layout payload */
->> +
->> +	if (NFS_SERVER(inode)->pnfs_curr_ld->encode_layoutcommit)
->> +		NFS_SERVER(inode)->pnfs_curr_ld->encode_layoutcommit(
->> +			NFS_I(inode)->layout, xdr, args);
->> +	else {
->> +		p = reserve_space(xdr, 4);
->> +		*p = cpu_to_be32(0); /* no layout-type payload */
->> +	}
->>  
->>  	hdr->nops++;
->>  	hdr->replen += decode_layoutcommit_maxsz;
->> @@ -2759,6 +2767,8 @@ static void nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
->>  				      struct xdr_stream *xdr,
->>  				      struct nfs4_layoutcommit_args *args)
->>  {
->> +	struct nfs4_layoutcommit_data *data =
->> +		container_of(args, struct nfs4_layoutcommit_data, args);
->>  	struct compound_hdr hdr = {
->>  		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
->>  	};
->> @@ -2766,7 +2776,7 @@ static void nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
->>  	encode_compound_hdr(xdr, req, &hdr);
->>  	encode_sequence(xdr, &args->seq_args, &hdr);
->>  	encode_putfh(xdr, NFS_FH(args->inode), &hdr);
->> -	encode_layoutcommit(xdr, args, &hdr);
->> +	encode_layoutcommit(xdr, data->args.inode, args, &hdr);
->>  	encode_getfattr(xdr, args->bitmask, &hdr);
->>  	encode_nops(&hdr);
->>  }
->> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->> index 51dcbc1..011885e 100644
->> --- a/fs/nfs/pnfs.h
->> +++ b/fs/nfs/pnfs.h
->> @@ -99,6 +99,10 @@ struct pnfs_layoutdriver_type {
->>  	/* device notification methods */
->>  	void (*delete_deviceid)(struct nfs4_deviceid *);
->>  
->> +	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
->> +				     struct xdr_stream *xdr,
->> +				     const struct nfs4_layoutcommit_args *args);
-> 
-> This too is way too ugly. Can't the layout payload be pre-encoded by the
-> layout driver?
-> 
-> 
+Layouts should be tracked per FSID (aka superblock, aka struct nfs_server)
+instead of per struct nfs_client, which may have multiple FSIDs associated
+with it.
 
-The contents for the objects layout driver are dynamic, representing
-attribute-level metadata rather than something derived from the layout
-that can be pre-encoded.  In addition, I'd like to avoid having to
-alloc and free a buffer for this stuff and rather have the layout driver
-encode whatever it needs in-line.
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ fs/nfs/callback_proc.c    |   60 +++++++++++++++++++++++++++++---------------
+ fs/nfs/client.c           |    4 +--
+ fs/nfs/pnfs.c             |   13 +++++++--
+ include/linux/nfs_fs_sb.h |    2 +-
+ 4 files changed, 51 insertions(+), 28 deletions(-)
 
-Benny
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 2f41dcce..d3f1892 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -111,6 +111,7 @@ int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation, const nf
+ static u32 initiate_file_draining(struct nfs_client *clp,
+ 				  struct cb_layoutrecallargs *args)
+ {
++	struct nfs_server *server;
+ 	struct pnfs_layout_hdr *lo;
+ 	struct inode *ino;
+ 	bool found = false;
+@@ -118,21 +119,28 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ 	LIST_HEAD(free_me_list);
+ 
+ 	spin_lock(&clp->cl_lock);
+-	list_for_each_entry(lo, &clp->cl_layouts, plh_layouts) {
+-		if (nfs_compare_fh(&args->cbl_fh,
+-				   &NFS_I(lo->plh_inode)->fh))
+-			continue;
+-		ino = igrab(lo->plh_inode);
+-		if (!ino)
+-			continue;
+-		found = true;
+-		/* Without this, layout can be freed as soon
+-		 * as we release cl_lock.
+-		 */
+-		get_layout_hdr(lo);
+-		break;
++	rcu_read_lock();
++	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
++		list_for_each_entry(lo, &server->layouts, plh_layouts) {
++			if (nfs_compare_fh(&args->cbl_fh,
++					   &NFS_I(lo->plh_inode)->fh))
++				continue;
++			ino = igrab(lo->plh_inode);
++			if (!ino)
++				continue;
++			found = true;
++			/* Without this, layout can be freed as soon
++			 * as we release cl_lock.
++			 */
++			get_layout_hdr(lo);
++			break;
++		}
++		if (found)
++			break;
+ 	}
++	rcu_read_unlock();
+ 	spin_unlock(&clp->cl_lock);
++
+ 	if (!found)
+ 		return NFS4ERR_NOMATCHING_LAYOUT;
+ 
+@@ -154,6 +162,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ static u32 initiate_bulk_draining(struct nfs_client *clp,
+ 				  struct cb_layoutrecallargs *args)
+ {
++	struct nfs_server *server;
+ 	struct pnfs_layout_hdr *lo;
+ 	struct inode *ino;
+ 	u32 rv = NFS4ERR_NOMATCHING_LAYOUT;
+@@ -167,18 +176,27 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
+ 	};
+ 
+ 	spin_lock(&clp->cl_lock);
+-	list_for_each_entry(lo, &clp->cl_layouts, plh_layouts) {
++	rcu_read_lock();
++	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
+ 		if ((args->cbl_recall_type == RETURN_FSID) &&
+-		    memcmp(&NFS_SERVER(lo->plh_inode)->fsid,
+-			   &args->cbl_fsid, sizeof(struct nfs_fsid)))
+-			continue;
+-		if (!igrab(lo->plh_inode))
++		    memcmp(&server->fsid, &args->cbl_fsid,
++			   sizeof(struct nfs_fsid)))
+ 			continue;
+-		get_layout_hdr(lo);
+-		BUG_ON(!list_empty(&lo->plh_bulk_recall));
+-		list_add(&lo->plh_bulk_recall, &recall_list);
++
++		list_for_each_entry(lo, &server->layouts, plh_layouts) {
++			if (!igrab(lo->plh_inode))
++				continue;
++			get_layout_hdr(lo);
++			BUG_ON(!list_empty(&lo->plh_bulk_recall));
++			list_add(&lo->plh_bulk_recall, &recall_list);
++		}
++
++		if (args->cbl_recall_type == RETURN_FSID)
++			break;
+ 	}
++	rcu_read_unlock();
+ 	spin_unlock(&clp->cl_lock);
++
+ 	list_for_each_entry_safe(lo, tmp,
+ 				 &recall_list, plh_bulk_recall) {
+ 		ino = lo->plh_inode;
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 139be96..1c927cf 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -188,9 +188,6 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ 	cred = rpc_lookup_machine_cred();
+ 	if (!IS_ERR(cred))
+ 		clp->cl_machine_cred = cred;
+-#if defined(CONFIG_NFS_V4_1)
+-	INIT_LIST_HEAD(&clp->cl_layouts);
+-#endif
+ 	nfs_fscache_get_client_cookie(clp);
+ 
+ 	return clp;
+@@ -1060,6 +1057,7 @@ static struct nfs_server *nfs_alloc_server(void)
+ 	INIT_LIST_HEAD(&server->client_link);
+ 	INIT_LIST_HEAD(&server->master_link);
+ 	INIT_LIST_HEAD(&server->delegations);
++	INIT_LIST_HEAD(&server->layouts);
+ 
+ 	atomic_set(&server->active, 0);
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index ff681ab..6a5d0a4 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -371,11 +371,17 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ void
+ pnfs_destroy_all_layouts(struct nfs_client *clp)
+ {
++	struct nfs_server *server;
+ 	struct pnfs_layout_hdr *lo;
+ 	LIST_HEAD(tmp_list);
+ 
+ 	spin_lock(&clp->cl_lock);
+-	list_splice_init(&clp->cl_layouts, &tmp_list);
++	rcu_read_lock();
++	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
++		if (!list_empty(&server->layouts))
++			list_splice_init(&server->layouts, &tmp_list);
++	}
++	rcu_read_unlock();
+ 	spin_unlock(&clp->cl_lock);
+ 
+ 	while (!list_empty(&tmp_list)) {
+@@ -759,7 +765,8 @@ pnfs_update_layout(struct inode *ino,
+ 		   enum pnfs_iomode iomode)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+-	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
++	struct nfs_server *server = NFS_SERVER(ino);
++	struct nfs_client *clp = server->nfs_client;
+ 	struct pnfs_layout_hdr *lo;
+ 	struct pnfs_layout_segment *lseg = NULL;
+ 	bool first = false;
+@@ -803,7 +810,7 @@ pnfs_update_layout(struct inode *ino,
+ 		 */
+ 		spin_lock(&clp->cl_lock);
+ 		BUG_ON(!list_empty(&lo->plh_layouts));
+-		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
++		list_add_tail(&lo->plh_layouts, &server->layouts);
+ 		spin_unlock(&clp->cl_lock);
+ 	}
+ 
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 87694ca..2cc467f 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -77,7 +77,6 @@ struct nfs_client {
+ 	/* The flags used for obtaining the clientid during EXCHANGE_ID */
+ 	u32			cl_exchange_flags;
+ 	struct nfs4_session	*cl_session; 	/* sharred session */
+-	struct list_head	cl_layouts;
+ #endif /* CONFIG_NFS_V4 */
+ 
+ #ifdef CONFIG_NFS_FSCACHE
+@@ -149,6 +148,7 @@ struct nfs_server {
+ 	struct rb_root		openowner_id;
+ 	struct rb_root		lockowner_id;
+ #endif
++	struct list_head	layouts;
+ 	struct list_head	delegations;
+ 	void (*destroy)(struct nfs_server *);
+ 
+-- 
+1.7.4.2
+
