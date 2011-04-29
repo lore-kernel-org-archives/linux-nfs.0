@@ -1,144 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57231 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751366Ab1DTR3Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 13:29:24 -0400
-From: Benny Halevy <bhalevy@panasas.com>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:41957 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755970Ab1D2Pwj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Apr 2011 11:52:39 -0400
+Received: by wya21 with SMTP id 21so2940304wya.19
+        for <linux-nfs@vger.kernel.org>; Fri, 29 Apr 2011 08:52:38 -0700 (PDT)
+Message-Id: <6FF9D79F-27E7-49E5-AE4D-A5A17C8F1403@gmail.com>
+From: David McGiven <davidmcgivenn@gmail.com>
 To: linux-nfs@vger.kernel.org
-Subject: [RFC 25/27] pnfs-obj: objlayout_encode_layoutcommit implementation
-Date: Wed, 20 Apr 2011 20:29:22 +0300
-Message-Id: <1303320562-21898-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DAF0DE1.6020609@panasas.com>
-References: <4DAF0DE1.6020609@panasas.com>
+In-Reply-To: <20AFBC51-7103-47E9-825A-A52B4FCA08B6@oracle.com>
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Subject: Re: Linux to Netapp -> Is UDP over WAN safe as long as I use "sync, hard and intr" ?
+Date: Fri, 29 Apr 2011 17:52:27 +0200
+References: <D158BE8E-BEDC-43EF-9C6C-48668AA6F5DF@gmail.com> <20AFBC51-7103-47E9-825A-A52B4FCA08B6@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Boaz Harrosh <bharrosh@panasas.com>
+Chuck,
 
-* Define API for io-engines to report delta_space_used in IOs
-* Encode the osd-layout specific information of the layoutcommit
-  XDR buffer.
+Thank you very much for the advice. I'm currently using wsize and  
+rsize of 1024 to avoid IP fragmentation. Strangely, UDP performs much  
+faster compared to TCP, no matter the size of rsize/wsize. I am  
+puzzled about that, but ...
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-[check for OBJ_DSU_INVALID in objlayout_add_delta_space_used under lock]
-[use new alloc/free_layout API]
-[apply types rename]
-[convert to new pnfs-submit changes]
-[fixup encode_layoutcommit arguments]
-[fixup layoutcommit methods args]
-[use pnfs_layout_hdr and layout_segment field prefix]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/objlayout/objio_osd.c |    1 +
- fs/nfs/objlayout/objlayout.c |   30 ++++++++++++++++++++++++++++++
- fs/nfs/objlayout/objlayout.h |   25 +++++++++++++++++++++++++
- 3 files changed, 56 insertions(+), 0 deletions(-)
+The problem with the network troubleshoot is that I cannot change  
+anything in the path between the client and the server : 2 routers and  
+a CISCO PIX (I don't know if it's one of this 2 hops or it's  
+invisible, but it's there for sure). While researching this problem  
+I've noticed that iperf shows extremely slow speed from client to  
+server LAN segments, while in the opposite way the speed is ok.  
+There's definitely something wrong there but I cannot change it  
+neither complain, so, let UDP be it, I'm satisfied enough with the  
+speed I get with rsize/wsize=1024. My main concern was about data  
+corruption.
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 027ba38..179dfbd 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -755,6 +755,7 @@ static struct pnfs_layoutdriver_type objlayout_type = {
- 	.write_pagelist          = objlayout_write_pagelist,
- 
- 	.encode_layoutreturn     = objlayout_encode_layoutreturn,
-+	.encode_layoutcommit     = objlayout_encode_layoutcommit,
- };
- 
- void *objio_init_mt(void)
-diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-index 322ffa3..2cf139c 100644
---- a/fs/nfs/objlayout/objlayout.c
-+++ b/fs/nfs/objlayout/objlayout.c
-@@ -247,6 +247,7 @@ objlayout_iodone(struct objlayout_io_state *state)
- 		struct objlayout *objlay = OBJLAYOUT(state->objlseg->lseg.pls_layout);
- 
- 		spin_lock(&objlay->lock);
-+		objlay->delta_space_valid = OBJ_DSU_INVALID;
- 		list_add(&objlay->err_list, &state->err_list);
- 		spin_unlock(&objlay->lock);
- 	}
-@@ -455,6 +456,35 @@ objlayout_write_pagelist(struct nfs_write_data *wdata,
- 	return PNFS_ATTEMPTED;
- }
- 
-+void
-+objlayout_encode_layoutcommit(struct pnfs_layout_hdr *pnfslay,
-+			      struct xdr_stream *xdr,
-+			      const struct nfs4_layoutcommit_args *args)
-+{
-+	struct objlayout *objlay = OBJLAYOUT(pnfslay);
-+	struct pnfs_osd_layoutupdate lou;
-+	__be32 *start;
-+
-+	dprintk("%s: Begin\n", __func__);
-+
-+	spin_lock(&objlay->lock);
-+	lou.dsu_valid = (objlay->delta_space_valid == OBJ_DSU_VALID);
-+	lou.dsu_delta = objlay->delta_space_used;
-+	objlay->delta_space_used = 0;
-+	objlay->delta_space_valid = OBJ_DSU_INIT;
-+	lou.olu_ioerr_flag = !list_empty(&objlay->err_list);
-+	spin_unlock(&objlay->lock);
-+
-+	start = xdr_reserve_space(xdr, 4);
-+
-+	BUG_ON(pnfs_osd_xdr_encode_layoutupdate(xdr, &lou));
-+
-+	*start = cpu_to_be32((xdr->p - start - 1) * 4);
-+
-+	dprintk("%s: Return delta_space_used %lld err %d\n", __func__,
-+		lou.dsu_delta, lou.olu_ioerr_flag);
-+}
-+
- static int
- err_prio(u32 oer_errno)
- {
-diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
-index 65f8d44..fb0bf93 100644
---- a/fs/nfs/objlayout/objlayout.h
-+++ b/fs/nfs/objlayout/objlayout.h
-@@ -62,6 +62,14 @@ struct objlayout_segment {
- struct objlayout {
- 	struct pnfs_layout_hdr pnfs_layout;
- 
-+	 /* for layout_commit */
-+	enum osd_delta_space_valid_enum {
-+		OBJ_DSU_INIT = 0,
-+		OBJ_DSU_VALID,
-+		OBJ_DSU_INVALID,
-+	} delta_space_valid;
-+	s64 delta_space_used;  /* consumed by write ops */
-+
- 	 /* for layout_return */
- 	spinlock_t lock;
- 	struct list_head err_list;
-@@ -129,6 +137,23 @@ extern void objlayout_io_set_result(struct objlayout_io_state *state,
- 				    unsigned index, int osd_error,
- 				    u64 offset, u64 length, bool is_write);
- 
-+static inline void
-+objlayout_add_delta_space_used(struct objlayout_io_state *state, s64 space_used)
-+{
-+	struct objlayout *objlay = OBJLAYOUT(state->objlseg->lseg.pls_layout);
-+
-+	/* If one of the I/Os errored out and the delta_space_used was
-+	 * invalid we render the complete report as invalid. Protocol mandate
-+	 * the DSU be accurate or not reported.
-+	 */
-+	spin_lock(&objlay->lock);
-+	if (objlay->delta_space_valid != OBJ_DSU_INVALID) {
-+		objlay->delta_space_valid = OBJ_DSU_VALID;
-+		objlay->delta_space_used += space_used;
-+	}
-+	spin_unlock(&objlay->lock);
-+}
-+
- extern void objlayout_read_done(struct objlayout_io_state *state,
- 				ssize_t status, bool sync);
- extern void objlayout_write_done(struct objlayout_io_state *state,
--- 
-1.7.3.4
+Thanks again.
+
+All the best,
+David
+
+On 29/04/2011, at 17:38, Chuck Lever wrote:
+
+>
+> On Apr 29, 2011, at 11:07 AM, David McGiven wrote:
+>
+>> Dear All,
+>>
+>> I'm having problems with Linux NFS clients accessing a NetApp NFS  
+>> server. The problems are mostly because it's a WAN connection (with  
+>> 3 hops in between). There's a mixture of poor WAN performance and  
+>> Ubuntu kernel bugs regarding NFS locks. I've been struggling with  
+>> this for too long. I then tried UDP instead of TCP and all the  
+>> problem seem to have vanished :
+>>
+>> I get better performance.
+>> I don't get lock errors and stalled connections in the kernel.
+>> I don't get nfs server xxx.xxx.xx not responding any more.
+>>
+>> So I guess I will use UDP, no matter if TCP is recommended in terms  
+>> of performance. Also, I can't control the WAN routers and switches  
+>> so I'm tied up to that.
+>>
+>> My concerns are, is it OK to use UDP over WAN regarding data  
+>> corruption ? I've read that UDP over WAN can cause it, and I'm a  
+>> little bit afraid, although I don't know why would it corrupt data  
+>> if it's "sync,hard,intr" as the mount options.
+>
+> The main source of data corruption in your case would be IP  
+> reassembly problems.  The IP ID field is just 16 bits.  If a UDP  
+> packet is large, it is spread across many IP packets, and the  
+> receiving end can screw up packet reassembly if the ID field wraps.
+>
+> You can mitigate this risk by capping the size of read and write  
+> requests.  Assuming an end-to-end MTU of 1536 octets, using  
+> rsize=wsize=1024 would eliminate the possibility of packet mis- 
+> assembly on reads and writes.  However, performance might suffer.  A  
+> somewhat larger transfer size might perform better, with acceptably  
+> small risk of data corruption.
+>
+> Though I must say, it is quite rare that TCP shows this kind of  
+> misbehavior while UDP does not.  I think it would be worth some  
+> trouble to root-cause the networking issues here.  It may be as  
+> simple as incorrect firewall settings.  Have you looked at packet  
+> traces?
+>
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
+>
 
