@@ -1,68 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:11344 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:7350 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932735Ab1DNTEn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Apr 2011 15:04:43 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: trond@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] NFS: dont restart loop in nfs_delegation_reap_unclaimed
-Date: Thu, 14 Apr 2011 15:04:15 -0400
-Message-Id: <1302807855-84959-1-git-send-email-dros@netapp.com>
+	id S1759698Ab1D2QyV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Apr 2011 12:54:21 -0400
+Subject: Re: Linux to Netapp -> Is UDP over WAN safe as long as I use
+ "sync, hard and intr" ?
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: David McGiven <davidmcgivenn@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <6FF9D79F-27E7-49E5-AE4D-A5A17C8F1403@gmail.com>
+References: <D158BE8E-BEDC-43EF-9C6C-48668AA6F5DF@gmail.com>
+	 <20AFBC51-7103-47E9-825A-A52B4FCA08B6@oracle.com>
+	 <6FF9D79F-27E7-49E5-AE4D-A5A17C8F1403@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 29 Apr 2011 12:54:04 -0400
+Message-ID: <1304096044.3654.8.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The loop was being restarted after each delegation that has NFS_DELEGATION_NEED_RECLAIM
-set.  Instead, build a temporary list of delegations that need to be freed and free
-them after the for-each-delegation loop.
+On Fri, 2011-04-29 at 17:52 +0200, David McGiven wrote:
+> Chuck,
+> 
+> Thank you very much for the advice. I'm currently using wsize and  
+> rsize of 1024 to avoid IP fragmentation. Strangely, UDP performs much  
+> faster compared to TCP, no matter the size of rsize/wsize. I am  
+> puzzled about that, but ...
+> 
+> The problem with the network troubleshoot is that I cannot change  
+> anything in the path between the client and the server : 2 routers and  
+> a CISCO PIX (I don't know if it's one of this 2 hops or it's  
+> invisible, but it's there for sure). While researching this problem  
+> I've noticed that iperf shows extremely slow speed from client to  
+> server LAN segments, while in the opposite way the speed is ok.  
+> There's definitely something wrong there but I cannot change it  
+> neither complain, so, let UDP be it, I'm satisfied enough with the  
+> speed I get with rsize/wsize=1024. My main concern was about data  
+> corruption.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- fs/nfs/delegation.c |   16 +++++++++++-----
- 1 files changed, 11 insertions(+), 5 deletions(-)
+Have you checked the autonegotiation settings on your NIC? 'ethtool
+eth0' is your friend...
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index bbbc6bf..c87fad8 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -645,8 +645,8 @@ void nfs_delegation_reap_unclaimed(struct nfs_client *clp)
- 	struct nfs_delegation *delegation;
- 	struct nfs_server *server;
- 	struct inode *inode;
-+	LIST_HEAD(tmplist);
- 
--restart:
- 	rcu_read_lock();
- 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
- 		list_for_each_entry_rcu(delegation, &server->delegations,
-@@ -659,15 +659,21 @@ restart:
- 				continue;
- 			delegation = nfs_detach_delegation(NFS_I(inode),
- 								server);
--			rcu_read_unlock();
--
-+			/* super_list is unused now that deleg is detached */
- 			if (delegation != NULL)
--				nfs_free_delegation(delegation);
-+				list_add(&delegation->super_list, &tmplist);
-+
- 			iput(inode);
--			goto restart;
- 		}
- 	}
- 	rcu_read_unlock();
-+
-+	while (!list_empty(&tmplist)) {
-+		delegation = list_first_entry(&tmplist, struct nfs_delegation,
-+					super_list);
-+		list_del(&delegation->super_list);
-+		nfs_free_delegation(delegation);
-+	}
- }
- 
- /**
 -- 
-1.7.4.2
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
