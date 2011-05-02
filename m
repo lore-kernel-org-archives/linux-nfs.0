@@ -1,47 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lo.gmane.org ([80.91.229.12]:60237 "EHLO lo.gmane.org"
+Received: from mx2.netapp.com ([216.240.18.37]:34327 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932268Ab1EFVIV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 May 2011 17:08:21 -0400
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1QISG3-0006pX-GX
-	for linux-nfs@vger.kernel.org; Fri, 06 May 2011 23:08:19 +0200
-Received: from inferno.cora.nwra.com ([65.44.101.162])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Fri, 06 May 2011 23:08:19 +0200
-Received: from orion by inferno.cora.nwra.com with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Fri, 06 May 2011 23:08:19 +0200
-To: linux-nfs@vger.kernel.org
-From: Orion Poplawski <orion@cora.nwra.com>
-Subject: Trouble with krb5 mounts with multiple hostnames/networks
-Date: Fri, 6 May 2011 21:08:09 +0000 (UTC)
-Message-ID: <loom.20110506T230745-58@post.gmane.org>
-Content-Type: text/plain; charset=us-ascii
+	id S1753344Ab1EBRSg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2011 13:18:36 -0400
+Subject: Re: How does NFS handle notify?
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Stef Bon <stefbon@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+In-Reply-To: <BANLkTikZnnt0cmpP4iT4Q4EJTxZnSC_SYQ@mail.gmail.com>
+References: <BANLkTi=X0VtcSecmEwzPBTqk3L154aj+2Q@mail.gmail.com>
+	 <20110502140750.GA10885@fieldses.org>
+	 <BANLkTinTu8XVmxkUUhJby8=DNY4sZF5VAQ@mail.gmail.com>
+	 <1304347155.7830.7.camel@lade.trondhjem.org>
+	 <BANLkTikZnnt0cmpP4iT4Q4EJTxZnSC_SYQ@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 02 May 2011 13:18:19 -0400
+Message-ID: <1304356699.7830.26.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We have a setup where some machines have two network connections, one of which
-is dedicated for nfs traffic.  The nfs network interface will have a hostname
-with a "g" suffix.  e.g. saga's interface on the nfs network is called "sagag".
+On Mon, 2011-05-02 at 16:56 +0200, Stef Bon wrote:
+> Sorry,
+> 
+> Gamin is in the first place completly useless in my case. Futher I've
+> tried to contact the developer of gamin, but no response at all, from
+> different addresses.
+> 
+> And also with other fs's like cifs (and I think nfs as well), what I
+> try to achieve is that the fs self is responsible for the handling of
+> the inotify request.
+> 
+> How to do this? First possible via VFS, clients will set a watch on
+> (mounted) fs directly, VFS handles this call and forwards it to the
+> mounted fs. I write here forward, I mean sends a signal to the mounted
+> fs about a notify watch being set on a inode. After that (and being
+> successfull) the VFS opens a fd the mounted fs can send events to when
+> something happens on the inode (what is significant).
+> 
+> Next via a daemon like Gamin. Yes, possible, but is this smart? Isn't
+> it just possible through the VFS like above described.
 
-This has worked fine for years with nfs3, and am now testing out nfs4/krb5.  I
-can connect fine with the normal hostname, but trying with the nfs network name
-fails:
+All filesystems should already support notification for files that are
+created through the VFS.
 
-# mount -t nfs4 -o sec=krb5  alexandriag:/cora2 /mnt
-mount.nfs4: Permission denied
+The missing bit is to support notification for files that are created on
+the _server_ and that never go through the client VFS. That is precisely
+the problem that projects such as FAM and gamin are supposed to solve
+using generic userland daemons that can re-export the notifications from
+the NFS/CIFS/... server to any interested listeners.
 
-I've added krb5 nfs principals for both hostnames in each machine's
-/etc/krb5.keytab.
+Note that there is no NFS protocol support for notifications in v2, v3
+or v4. NFSv4.1 does have some limited protocol support for notifications
+(dnotify only), but we haven't implemented them on Linux.
 
-I'm running centos 5.6 with nfs-utils-1.0.9-50.el5.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Is there any hope of this working with nfs4/krb5?  Or is this just not going to
-fly because of hostname authentication issues?
-
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
