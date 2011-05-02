@@ -1,7 +1,7 @@
 From: Mahmood Naderan <nt_mahmood@yahoo.com>
 Subject: Re: rpc.statd is not running but is required
-Date: Mon, 2 May 2011 03:46:13 -0700 (PDT)
-Message-ID: <875966.44962.qm@web111717.mail.gq1.yahoo.com>
+Date: Mon, 2 May 2011 03:54:32 -0700 (PDT)
+Message-ID: <447609.81996.qm@web111705.mail.gq1.yahoo.com>
 References: <846668.33333.qm@web111707.mail.gq1.yahoo.com> <20110502183547.7e9f1295@notabene.brown> <4DBE80CE.8070406@conversis.de> <830501.99174.qm@web111711.mail.gq1.yahoo.com> <20110502204200.41f71733@notabene.brown>
 Reply-To: Mahmood Naderan <nt_mahmood@yahoo.com>
 Mime-Version: 1.0
@@ -9,61 +9,41 @@ Content-Type: text/plain; charset=iso-8859-1
 Cc: nfs <linux-nfs@vger.kernel.org>
 To: NeilBrown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from nm2.bullet.mail.sp2.yahoo.com ([98.139.91.72]:33348 "HELO
+Received: from nm2.bullet.mail.sp2.yahoo.com ([98.139.91.72]:20526 "HELO
 	nm2.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1757751Ab1EBKqO convert rfc822-to-8bit
+	by vger.kernel.org with SMTP id S1754166Ab1EBKyd convert rfc822-to-8bit
 	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 May 2011 06:46:14 -0400
+	Mon, 2 May 2011 06:54:33 -0400
 In-Reply-To: <20110502204200.41f71733-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->to start statd.  That should work unless NEED_STATD is set to 'no' in=20
->/etc/default/nfs-common.
+I have to say somethig that might related to this problem. Earleir I ha=
+d problem with these files:
 
-mahmood@server:~$ cat /etc/default/nfs-common
-# If you do not set values for the NEED_ options, they will be attempte=
-d
-# autodetected; this should be sufficient for most people. Valid altern=
-atives
-# for the NEED_ options are "yes" and "no".
-# Do you want to start the statd daemon? It is not needed for NFSv4.
-NEED_STATD=3D
-# Options for rpc.statd.
-#=A0=A0 Should rpc.statd listen on a specific port? This is especially =
-useful
-#=A0=A0 when you have a port-based firewall. To use a fixed port, set t=
-his
-#=A0=A0 this variable to a statd argument like: "--port 4000 --outgoing=
--port 4001".
-#=A0=A0 For more information, see rpc.statd(8) or http://wiki.debian.or=
-g/?SecuringNFS
-STATDOPTS=3D
-# Do you want to start the idmapd daemon? It is only needed for NFSv4.
-NEED_IDMAPD=3D
-# Do you want to start the gssd daemon? It is required for Kerberos mou=
-nts.
-NEED_GSSD=3D
+/etc/passwd
+/etc/group
+/etc/shadow
+=A0
+Hopefully I had backed up them to *.bak. The procedure to fix those fil=
+e names was booting a live cd and then:
 
-Should I NEED_STATD to yes?
+cp /etc/passwd.bak /etc/passwd
+cp /etc/group.bak /etc/group
+cp /etc/shadow.bak /etc/shadow
+=A0
+I said that becuase I found that statd has a user name which I didn't t=
+hink about it.
+here they are:
+mahmood@server:~$ cat /etc/passwd | grep "statd"
+statd:x:108:65534::/var/lib/nfs:/bin/false
 
->What is in /etc/default/nfs-common??
->If you=20
->/etc/init.d/nfs-common restart
->does that start statd?
+mahmood@server:~$ cat /etc/group | grep "statd"
 
-As I said, I have only nfs-kernel-server
+mahmood@server:~$ sudo cat /etc/shadow | grep "statd"
+statd:*:14970:0:99999:7:::
 
-mahmood@server:~$ ls /etc/init.d/nfs*
-/etc/init.d/nfs-kernel-server
-
-One more question? Can I install statd?
-mahmood@server:~$ sudo apt-get install stat
-stat        statcvs     statd       statgrab    statnews    statserial =
- statsvn
-
-So you recommend that?
-
+Are they normal?=A0
 // Naderan *Mahmood;
 
 
