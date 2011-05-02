@@ -1,64 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:21663 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757385Ab1EZOpT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 May 2011 10:45:19 -0400
-Message-ID: <4DDE6783.5@panasas.com>
-Date: Thu, 26 May 2011 17:45:23 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:33006 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752965Ab1EBUQW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2011 16:16:22 -0400
+Received: by mail-iw0-f174.google.com with SMTP id 34so4946386iwn.19
+        for <linux-nfs@vger.kernel.org>; Mon, 02 May 2011 13:16:22 -0700 (PDT)
+In-Reply-To: <1304356699.7830.26.camel@lade.trondhjem.org>
+References: <BANLkTi=X0VtcSecmEwzPBTqk3L154aj+2Q@mail.gmail.com>
+	<20110502140750.GA10885@fieldses.org>
+	<BANLkTinTu8XVmxkUUhJby8=DNY4sZF5VAQ@mail.gmail.com>
+	<1304347155.7830.7.camel@lade.trondhjem.org>
+	<BANLkTikZnnt0cmpP4iT4Q4EJTxZnSC_SYQ@mail.gmail.com>
+	<1304356699.7830.26.camel@lade.trondhjem.org>
+Date: Mon, 2 May 2011 22:16:22 +0200
+Message-ID: <BANLkTi=2uYagwN=Xy9FxhXV4wt3tf669JA@mail.gmail.com>
+Subject: Re: How does NFS handle notify?
+From: Stef Bon <stefbon@gmail.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Benny Halevy <bhalevy@panasas.com>, Fred Isaman <iisaman@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC] pnfs: Send layoutreturn, if Return-On-Close is set
-References: <4DDE536E.8020805@panasas.com> <1306419397.2984.14.camel@lade.trondhjem.org>
-In-Reply-To: <1306419397.2984.14.camel@lade.trondhjem.org>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/26/2011 05:16 PM, Trond Myklebust wrote:
-> On Thu, 2011-05-26 at 16:19 +0300, Boaz Harrosh wrote: 
->> Every thing was ready, in pnfs_roc(). The segments released
->> and the LO state blocked til after the close is done. All that
->> is needed is to send the actual layoutreturn synchronously.
-> 
-> Why would we want to do this?
-> 
-> Return-on-close was initially considered useful only for debugging.
-> 
-What ??
+2011/5/2 Trond Myklebust <Trond.Myklebust@netapp.com>:
+>> Next via a daemon like Gamin. Yes, possible, but is this smart? Isn't
+>> it just possible through the VFS like above described.
+>
+> All filesystems should already support notification for files that are
+> created through the VFS.
 
-> At the interim IETF meeting in Sunnyvale, we also discussed the case
-> where the forgetful client has forgotten the layout: in this case the
-> server may decide to forget the layout too. There is no controversy in
-> doing this, since both the client and the server know that any
-> outstanding layout is supposed to be returned (and if there is a
-> problem, then the server always has the option of sending a
-> CB_LAYOUTRECALL).
-> 
+Exact, only I like to say here that the filesystems do not have to do
+anything for that.
+The VFS combines various things here. The filesystem self does not do
+anything here.
 
-OK I didn't know that. So what you are saying is that if the server see
-a final close he can go and provocative free all segments marked with ROC?
+>
+> The missing bit is to support notification for files that are created on
+> the _server_ and that never go through the client VFS. That is precisely
+> the problem that projects such as FAM and gamin are supposed to solve
+> using generic userland daemons that can re-export the notifications from
+> the NFS/CIFS/... server to any interested listeners.
 
-If so then someone should fix the Linux server. Because currently it never
-frees them. On a modest machine like the UML I use. Few 10s of "git checkout linux"
-crash the machine with oom. Today they are only freed on client umount.
+Yes that's also true. If you are taking nfs, cifs or a FUSE fs, where
+the server is for example the localhost self, thus more like backend.
+I 'm not very convinced Gamin is the way to go.
 
-> Adding a synchronous call to close is in any case a bug since close can
-> on occasion be sent in situations where we don't allow sleeping.
-> 
+Let me explain:
 
-This is done only on the final close. Isn't the very final call sync?
+for example a simple overlay FUSE fs, fusexmp-bind.
+It's behaving like a mount bind, making the contents of the directory
+to bind available under the mountpoint.
 
-Ok re-inspecting the code I can see that nfs4_do_close also takes a wait flag.
-I thought that the last close should always be waiting for all operations
-to end before proceeding with the close. That's how it is at the VFS level
-but I guess life is hard. So the only possible solution is within the same
-compound as the close. (not that we need it as you say)
+Now user a mounts it like:
 
-> Cheers
->   Trond
+mkdir ~/mount
+fusexmp-bind --bind-directory=/tmp ~/mount
 
-Thanks
-Boaz
+This makes the directory /tmp available under ~/mount for user a.
+As you say, when the user does:
+
+touch ~/mount/testfile1
+
+any client watching the ~/mount directory (through notify) will be
+notfied of this change, while
+fusexmp-bind does not support inotify at all. It the VFS which does all that.
+
+Now if any other process is doing something in /tmp,
+the same client watching ~/mount will not get notified, until a hard
+refresh command is given.
+The kernel (VFS) does not understand (and does not have to) that the
+directories /tmp and
+~/mount are related.
+
+A sollution is that the VFS makes the filesystem (in this case thus
+fusexmp-bind) aware of a client
+watching directory ~/mount.
+
+This filesystem "knows" as the only one what to do with it, namenly
+set a inotify watch (with the same mask) on /tmp, read any events
+there and forward them back to the original inotify watch (the one on
+~/mount).
+
+I'm suggesting here the use of VFS, making the filesystem aware of an
+inotify watch.
+
+But what about gamin?? Is is possible to make gamin take care of the
+changes, like with the simple example of above. Well, possible, but
+with extra configuration.
+And this is only a simple example. With much more complicated setups,
+where the files and directories a client "sees", which may depend on
+the specific context of that connection, Gamin cannot be aware af that
+all.
+
+So my suggestion is to make everything go through the filesystem. As I
+mentioned above, the VFS should make the filesystem aware of a notify
+watch being added, the filesystem should take the right action (like
+sending a SMB2 CHANGE_NOTIFY Request to the server and wait for
+anything to come back from the server with cifs, or setting another
+intofy watch on the backend with the simple FUSE fs above, and with
+NFS doing something simular like cifs) and giving any received event
+back to the VFS.
+
+There is another advantage here, which for my fs is interesting.
+"Knowing" that there is a watch set on a certain inode is interesting.
+My fs handles various resources, like local harddrives, usb sticks,
+cdroms but also SMB shares mounted with cifs, and especially with
+removable resources, like USB sticks and cdroms, it's very usefull
+that someone is watching it. This prevents it from unmounting it. But
+this counts for my fs.
+Ans also, it helps my fs to stay upto date. I say here helps, is not a
+complete garantee.
+
+So, what's your opinion?
+
+Stef
