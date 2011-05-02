@@ -1,105 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:36163 "EHLO e6.ny.us.ibm.com"
+Received: from mx2.netapp.com ([216.240.18.37]:3933 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752898Ab1EETAU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 May 2011 15:00:20 -0400
-Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
-	by e6.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p45Ia6Go001344
-	for <linux-nfs@vger.kernel.org>; Thu, 5 May 2011 14:36:06 -0400
-Received: from d03av06.boulder.ibm.com (d03av06.boulder.ibm.com [9.17.195.245])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p45J0CiZ1032418
-	for <linux-nfs@vger.kernel.org>; Thu, 5 May 2011 15:00:13 -0400
-Received: from d03av06.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av06.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p45J3hCv022815
-	for <linux-nfs@vger.kernel.org>; Thu, 5 May 2011 13:03:44 -0600
-Date: Thu, 5 May 2011 13:58:40 -0500
-From: Tyler Hicks <tyhicks@linux.vnet.ibm.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, ecryptfs-devel@lists.launchpad.net
-Subject: Re: [PATCH] NFS: Allow NULL nameidata in d_revalidate and create
-Message-ID: <20110505185839.GF12250@boyd.l.tihix.com>
-References: <1304609741-12541-1-git-send-email-tyhicks@linux.vnet.ibm.com>
- <20110505155728.GB12250@boyd.l.tihix.com>
- <1304613413.20441.2.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1304613413.20441.2.camel@lade.trondhjem.org>
+	id S1755963Ab1EBWCp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2011 18:02:45 -0400
+Subject: Re: How does NFS handle notify?
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Stef Bon <stefbon@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+In-Reply-To: <BANLkTimB=-QaW8S-H9XNv9TM+gWbB23CjQ@mail.gmail.com>
+References: <BANLkTi=X0VtcSecmEwzPBTqk3L154aj+2Q@mail.gmail.com>
+	 <20110502140750.GA10885@fieldses.org>
+	 <BANLkTinTu8XVmxkUUhJby8=DNY4sZF5VAQ@mail.gmail.com>
+	 <1304347155.7830.7.camel@lade.trondhjem.org>
+	 <BANLkTikZnnt0cmpP4iT4Q4EJTxZnSC_SYQ@mail.gmail.com>
+	 <1304356699.7830.26.camel@lade.trondhjem.org>
+	 <BANLkTi=2uYagwN=Xy9FxhXV4wt3tf669JA@mail.gmail.com>
+	 <1304367673.20876.1.camel@lade.trondhjem.org>
+	 <BANLkTimB=-QaW8S-H9XNv9TM+gWbB23CjQ@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 02 May 2011 18:02:44 -0400
+Message-ID: <1304373764.23069.17.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu May 05, 2011 at 12:36:53PM -0400, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2011-05-05 at 10:57 -0500, Tyler Hicks wrote:
-> > On Thu May 05, 2011 at 10:35:41AM -0500, Tyler Hicks <tyhicks@linux.vnet.ibm.com> wrote:
-> > > To add support for eCryptfs mounts on top of NFS client mounts, the NFS
-> > > client must properly handle NULL nameidata pointers in its d_revalidate
-> > > functions.
-> > > 
-> > > NFS clients should also handle NULL nameidata in its create functions,
-> > > although this is not currently required for eCryptfs support.
-> > > 
-> > > Signed-off-by: Tyler Hicks <tyhicks@linux.vnet.ibm.com>
-> > > ---
-> > 
-> > We (eCryptfs) are in the process of switching mailing lists, so I copied
-> > both the old (launchpad.net) and the new (vger.kernel.org), but it
-> > doesn't look like the vger.kernel.org list is accepting mail yet. Sorry
-> > about that, I should have tested it first. Feel free to drop it from
-> > any replies.
-> > 
-> > I should also mention that if/when this patch is merged, eCryptfs will
-> > have basic support of mounting on top of NFSv3 client mounts. I say
-> > basic because I'm sure there are some bugs, I'm not yet confident that
-> > the required cache flushes are there in the eCryptfs layer to have NFSv3
-> > cache consistency, and we have some trouble with silly rename.
-> > 
-> > All files unlinked through eCryptfs get silly renamed in the NFS client
-> > because of the extra reference eCryptfs holds on the NFS dentry.
-> > 
-> > This also seems to come into play when unlinking the last file in a
-> > directory and then immediately removing the directory. nfs_rmdir() will
-> > sometimes return -EBUSY.
-> > 
-> > BTW, I think these are all issues that should be handled in the eCryptfs
-> > layer, but I wanted to provide an update on the status of eCryptfs on
-> > top of NFS.
+On Mon, 2011-05-02 at 22:28 +0200, Stef Bon wrote:
+> 2011/5/2 Trond Myklebust <Trond.Myklebust@netapp.com>:
 > 
-> Why would we want to 'support' ecryptfs in this manner? Can't you set up
-> a proper nameidata with appropriate open intents?
-
-Sorry, that was bad wording in my commit message. NFS would not be
-"supporting" eCryptfs. eCryptfs supports the filesystem that it is
-mounted on top of. We keep any quirks from the stacking scheme in
-fs/ecryptfs/ and don't expect filesystems to do anything special for
-eCryptfs.
-
-In this case, I believe it is a bug for NFS to oops on NULL nameidata in
-d_revalidate. It was introduced by 34286d66 and 657e94b6 and has been
-fixed in most other filesystems (9177ada9, 8ce84eeb, 4714e637, 53fe9241,
-529c5f95, 0eb980e3).
-
-I saw two potential oopses in the NFS create functions and patched
-those, too. However, in the case of create, eCryptfs does pass a proper
-nameidata to vfs_create().
-
+> >>
+> >> So, what's your opinion?
+> >
+> > Your proposal requires NFS and CIFS protocol support and I just told you
+> > that there is none in NFS...
 > 
-> This patch might allow you to look up files on NFS, but without open
-> intents, you certainly won't be able to open them, nor will you be able
-> to create them (as you seem to believe).
+> Hi,
+> 
+> yes I've read that. I also have read that there is possibly support
+> for in newer versions in NFS.
 
-I'm not sure why open and create would not work. My testing shows that
-with this patch applied, I can compile the kernel in an eCryptfs mount
-mounted on top of an NFSv3 client, run fsx-linux, etc.
+As I said, there is support for dnotify-like functionality in NFSv4.1,
+but no support for inotify, and certainly not for fanotify.
 
-Tyler
+> I imagined that you (not only you but I mean all who are working on
+> NFS) are interested to find a good way to do this.
 
-> 
-> NACKed...
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
+You've proposed a 'solution', but I'm still not seeing what the problem
+is.
+
+     1. Why do we need to develop kernel support for dnotify+inotify+...
+        in every networked filesystem + fuse?
+     2. What are the killer app use cases that we need to support and
+        that cannot be supported with existing methods?
+
+Notifications on large distributed filesystems are a scalability
+nightmare (particularly so for inotify), so they need careful
+justification and need to be limited in scope. Just pulling out a
+solution from your magic hat isn't sufficient.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
