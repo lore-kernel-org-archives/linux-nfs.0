@@ -1,7 +1,7 @@
 From: NeilBrown <neilb@suse.de>
 Subject: Re: rpc.statd is not running but is required
-Date: Mon, 2 May 2011 20:40:07 +1000
-Message-ID: <20110502204007.388283d0@notabene.brown>
+Date: Mon, 2 May 2011 20:42:00 +1000
+Message-ID: <20110502204200.41f71733@notabene.brown>
 References: <846668.33333.qm@web111707.mail.gq1.yahoo.com>
 	<20110502183547.7e9f1295@notabene.brown>
 	<4DBE80CE.8070406@conversis.de>
@@ -12,10 +12,10 @@ Cc: Dennis Jacobfeuerborn <dennisml@conversis.de>,
 	nfs <linux-nfs@vger.kernel.org>
 To: Mahmood Naderan <nt_mahmood@yahoo.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:38478 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:38600 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751437Ab1EBKkR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2011 06:40:17 -0400
+	id S1751437Ab1EBKmK convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2011 06:42:10 -0400
 In-Reply-To: <830501.99174.qm-gl49SJLIJaiORdMXk8NaZPu2YVrzzGjVVpNB7YpNyf8@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -40,6 +40,26 @@ On Mon, 2 May 2011 03:03:28 -0700 (PDT) Mahmood Naderan
 >=20
 > =A0
 > I use debian based linux. Is that what you meant?
+
+(sorry - clicked wrong button before.
+
+Yes, it seems Debian doesn't supply start-statd.  I wonder why.
+
+They rely on
+    /etc/init.d/nfs-common start
+
+to start statd.  That should work unless NEED_STATD is set to 'no' in=20
+/etc/default/nfs-common.
+
+What is in /etc/default/nfs-common??
+If you=20
+   /etc/init.d/nfs-common restart
+
+does that start statd?
+
+NeilBrown
+
+
 >=20
 > // Naderan *Mahmood;
 >=20
