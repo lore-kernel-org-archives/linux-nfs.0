@@ -1,68 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:37267 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757404Ab1EZTFa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 May 2011 15:05:30 -0400
-Message-ID: <4DDEA47A.6080700@panasas.com>
-Date: Thu, 26 May 2011 22:05:30 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH] SQUASHME V2: objio alloc/free lseg Bugs fixes
-References: <4DDD7392.6040505@panasas.com> <1306358906-17366-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <1306358906-17366-1-git-send-email-bhalevy@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:31312 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752233Ab1EBUVP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2011 16:21:15 -0400
+Subject: Re: How does NFS handle notify?
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Stef Bon <stefbon@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+In-Reply-To: <BANLkTi=2uYagwN=Xy9FxhXV4wt3tf669JA@mail.gmail.com>
+References: <BANLkTi=X0VtcSecmEwzPBTqk3L154aj+2Q@mail.gmail.com>
+	 <20110502140750.GA10885@fieldses.org>
+	 <BANLkTinTu8XVmxkUUhJby8=DNY4sZF5VAQ@mail.gmail.com>
+	 <1304347155.7830.7.camel@lade.trondhjem.org>
+	 <BANLkTikZnnt0cmpP4iT4Q4EJTxZnSC_SYQ@mail.gmail.com>
+	 <1304356699.7830.26.camel@lade.trondhjem.org>
+	 <BANLkTi=2uYagwN=Xy9FxhXV4wt3tf669JA@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 02 May 2011 16:21:13 -0400
+Message-ID: <1304367673.20876.1.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Mon, 2011-05-02 at 22:16 +0200, Stef Bon wrote:
+> 2011/5/2 Trond Myklebust <Trond.Myklebust@netapp.com>:
+> >> Next via a daemon like Gamin. Yes, possible, but is this smart? Isn't
+> >> it just possible through the VFS like above described.
+> >
+> > All filesystems should already support notification for files that are
+> > created through the VFS.
+> 
+> Exact, only I like to say here that the filesystems do not have to do
+> anything for that.
+> The VFS combines various things here. The filesystem self does not do
+> anything here.
+> 
+> >
+> > The missing bit is to support notification for files that are created on
+> > the _server_ and that never go through the client VFS. That is precisely
+> > the problem that projects such as FAM and gamin are supposed to solve
+> > using generic userland daemons that can re-export the notifications from
+> > the NFS/CIFS/... server to any interested listeners.
+> 
+> Yes that's also true. If you are taking nfs, cifs or a FUSE fs, where
+> the server is for example the localhost self, thus more like backend.
+> I 'm not very convinced Gamin is the way to go.
+> 
+> Let me explain:
+> 
+> for example a simple overlay FUSE fs, fusexmp-bind.
+> It's behaving like a mount bind, making the contents of the directory
+> to bind available under the mountpoint.
+> 
+> Now user a mounts it like:
+> 
+> mkdir ~/mount
+> fusexmp-bind --bind-directory=/tmp ~/mount
+> 
+> This makes the directory /tmp available under ~/mount for user a.
+> As you say, when the user does:
+> 
+> touch ~/mount/testfile1
+> 
+> any client watching the ~/mount directory (through notify) will be
+> notfied of this change, while
+> fusexmp-bind does not support inotify at all. It the VFS which does all that.
+> 
+> Now if any other process is doing something in /tmp,
+> the same client watching ~/mount will not get notified, until a hard
+> refresh command is given.
+> The kernel (VFS) does not understand (and does not have to) that the
+> directories /tmp and
+> ~/mount are related.
+> 
+> A sollution is that the VFS makes the filesystem (in this case thus
+> fusexmp-bind) aware of a client
+> watching directory ~/mount.
+> 
+> This filesystem "knows" as the only one what to do with it, namenly
+> set a inotify watch (with the same mask) on /tmp, read any events
+> there and forward them back to the original inotify watch (the one on
+> ~/mount).
+> 
+> I'm suggesting here the use of VFS, making the filesystem aware of an
+> inotify watch.
+> 
+> But what about gamin?? Is is possible to make gamin take care of the
+> changes, like with the simple example of above. Well, possible, but
+> with extra configuration.
+> And this is only a simple example. With much more complicated setups,
+> where the files and directories a client "sees", which may depend on
+> the specific context of that connection, Gamin cannot be aware af that
+> all.
+> 
+> So my suggestion is to make everything go through the filesystem. As I
+> mentioned above, the VFS should make the filesystem aware of a notify
+> watch being added, the filesystem should take the right action (like
+> sending a SMB2 CHANGE_NOTIFY Request to the server and wait for
+> anything to come back from the server with cifs, or setting another
+> intofy watch on the backend with the simple FUSE fs above, and with
+> NFS doing something simular like cifs) and giving any received event
+> back to the VFS.
+> 
+> There is another advantage here, which for my fs is interesting.
+> "Knowing" that there is a watch set on a certain inode is interesting.
+> My fs handles various resources, like local harddrives, usb sticks,
+> cdroms but also SMB shares mounted with cifs, and especially with
+> removable resources, like USB sticks and cdroms, it's very usefull
+> that someone is watching it. This prevents it from unmounting it. But
+> this counts for my fs.
+> Ans also, it helps my fs to stay upto date. I say here helps, is not a
+> complete garantee.
+> 
+> So, what's your opinion?
 
-Wrong allocation and pointering in lseg_alloc.
+Your proposal requires NFS and CIFS protocol support and I just told you
+that there is none in NFS...
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfs/objlayout/objio_osd.c |    7 ++++---
- 1 files changed, 4 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 725b1df..08f1d90 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -65,7 +65,7 @@ struct objio_segment {
- 	unsigned comps_index;
- 	unsigned num_comps;
- 	/* variable length */
--	struct osd_dev	*ods[1];
-+	struct objio_dev_ent *ods[];
- };
- 
- static inline struct objio_segment *
-@@ -143,7 +143,6 @@ int objio_alloc_lseg(struct pnfs_layout_segment **outp,
- 	struct pnfs_osd_layout layout;
- 	struct pnfs_osd_object_cred *cur_comp, src_comp;
- 	struct caps_buffers *caps_p;
--
- 	int err;
- 
- 	err = pnfs_osd_xdr_decode_layout_map(&layout, &iter, xdr);
-@@ -155,13 +154,15 @@ int objio_alloc_lseg(struct pnfs_layout_segment **outp,
- 		return err;
- 
- 	objio_seg = kzalloc(sizeof(*objio_seg) +
-+			    sizeof(objio_seg->ods[0]) * layout.olo_num_comps +
- 			    sizeof(*objio_seg->comps) * layout.olo_num_comps +
- 			    sizeof(struct caps_buffers) * layout.olo_num_comps,
- 			    gfp_flags);
- 	if (!objio_seg)
- 		return -ENOMEM;
- 
--	cur_comp = objio_seg->comps = (void *)(objio_seg + 1);
-+	objio_seg->comps = (void *)(objio_seg->ods + layout.olo_num_comps);
-+	cur_comp = objio_seg->comps;
- 	caps_p = (void *)(cur_comp + layout.olo_num_comps);
- 	while (pnfs_osd_xdr_decode_layout_comp(&src_comp, &iter, xdr, &err))
- 		copy_single_comp(cur_comp++, &src_comp, caps_p++);
 -- 
-1.7.2.3
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
