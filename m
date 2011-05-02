@@ -1,33 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:20160 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756303Ab1EBMwP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 May 2011 08:52:15 -0400
-Message-ID: <4DBEA8F7.20502@RedHat.com>
-Date: Mon, 02 May 2011 08:52:07 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: libtirpc <libtirpc-devel@lists.sourceforge.net>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: ANNOUNCE: libtirpc-0.2.2 released.
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:35335 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751710Ab1EBO4k convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2011 10:56:40 -0400
+Received: by iwn34 with SMTP id 34so4700637iwn.19
+        for <linux-nfs@vger.kernel.org>; Mon, 02 May 2011 07:56:39 -0700 (PDT)
+In-Reply-To: <1304347155.7830.7.camel@lade.trondhjem.org>
+References: <BANLkTi=X0VtcSecmEwzPBTqk3L154aj+2Q@mail.gmail.com>
+	<20110502140750.GA10885@fieldses.org>
+	<BANLkTinTu8XVmxkUUhJby8=DNY4sZF5VAQ@mail.gmail.com>
+	<1304347155.7830.7.camel@lade.trondhjem.org>
+Date: Mon, 2 May 2011 16:56:39 +0200
+Message-ID: <BANLkTikZnnt0cmpP4iT4Q4EJTxZnSC_SYQ@mail.gmail.com>
+Subject: Re: How does NFS handle notify?
+From: Stef Bon <stefbon@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello,
+Sorry,
 
-The 0.2.2 version of libtirpc has just been release. This
-is basically a bug fix release. The release notes detailing
-the fixed bugs are at:
+Gamin is in the first place completly useless in my case. Futher I've
+tried to contact the developer of gamin, but no response at all, from
+different addresses.
 
-http://sourceforge.net/projects/libtirpc/files/libtirpc/0.2.2/ReleaseNotes.txt
+And also with other fs's like cifs (and I think nfs as well), what I
+try to achieve is that the fs self is responsible for the handling of
+the inotify request.
 
-The tarball can be found at:
+How to do this? First possible via VFS, clients will set a watch on
+(mounted) fs directly, VFS handles this call and forwards it to the
+mounted fs. I write here forward, I mean sends a signal to the mounted
+fs about a notify watch being set on a inode. After that (and being
+successfull) the VFS opens a fd the mounted fs can send events to when
+something happens on the inode (what is significant).
 
-  http://sourceforge.net/projects/libtirpc/files/libtirpc/0.2.2/libtirpc-0.2.2.tar.bz2
+Next via a daemon like Gamin. Yes, possible, but is this smart? Isn't
+it just possible through the VFS like above described.
 
-The git tree is at:
-   git://git.infradead.org/~steved/libtirpc.git
+Stef
 
 
-steved.
+2011/5/2 Trond Myklebust <Trond.Myklebust@netapp.com>:
+> On Mon, 2011-05-02 at 16:29 +0200, Stef Bon wrote:
+>> Ok,
+>>
+>> so as I understand NFS does not support it yet. I thought it does.
+>>
+>> Are you interested when I set up a project to work on the VFS to make
+>> it possible to
+>> make the mounted fs notified (by the VFS) that a  notify watch is set
+>> (or removed)?
+>> I guess the developers of cifs are interested too, and me, as
+>> developer of a FUSE fs.
+>
+> http://people.gnome.org/~veillard/gamin/
+>
+> Cheers
+>  Trond
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>
+>
