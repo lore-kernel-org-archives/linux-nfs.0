@@ -1,133 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:55079 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751229Ab1EXROT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 13:14:19 -0400
-Message-ID: <4DDBE767.6030803@panasas.com>
-Date: Tue, 24 May 2011 20:14:15 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 09/12] SQUASHME: pnfs-obj: Bugs in new global-device-cache
- code
-References: <4DDBC611.3050202@panasas.com> <1306249644-23422-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <1306249644-23422-1-git-send-email-bharrosh@panasas.com>
-Content-Type: text/plain; charset=windows-1255
+Received: from rcsinet10.oracle.com ([148.87.113.121]:36087 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751299Ab1ECOir convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 May 2011 10:38:47 -0400
+Received: from acsinet15.oracle.com (acsinet15.oracle.com [141.146.126.227])
+	by rcsinet10.oracle.com (Switch-3.4.2/Switch-3.4.2) with ESMTP id p43EcihZ000878
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 3 May 2011 14:38:45 GMT
+Subject: Re: messages on restarting NFS
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <348580.13472.qm@web111713.mail.gq1.yahoo.com>
+Date: Tue, 3 May 2011 10:38:39 -0400
+Cc: nfs <linux-nfs@vger.kernel.org>
+Message-Id: <C0899C69-1BB1-45A4-BD90-418A50980F62@oracle.com>
+References: <348580.13472.qm@web111713.mail.gq1.yahoo.com>
+To: Mahmood Naderan <nt_mahmood@yahoo.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-05-24 18:07, Boaz Harrosh wrote:
-> Fix BUGs in the new "Use global-device-cache".
+
+On May 3, 2011, at 5:30 AM, Mahmood Naderan wrote:
+
+> Hi,
+> When I restart NFS with 
 > 
-> One thing I don't understand is why the compiler did
-> not complain when the code was returning the wrong
-> type of structure
 > 
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> ---
->  fs/nfs/objlayout/objio_osd.c |   28 +++++++++++++++++++---------
->  1 files changed, 19 insertions(+), 9 deletions(-)
+> /etc/init.d/nfs-kernel-server restart
 > 
-> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-> index 167cd1e..faacde2 100644
-> --- a/fs/nfs/objlayout/objio_osd.c
-> +++ b/fs/nfs/objlayout/objio_osd.c
-> @@ -56,6 +56,7 @@ objio_free_deviceid_node(struct nfs4_deviceid_node *d)
->  {
->  	struct objio_dev_ent *de = container_of(d, struct objio_dev_ent, id_node);
+> 
+> I see these messages in syslog:
+> 
+> May  3 13:57:15 server mountd[928]: Caught signal 15, un-registering and exiting.
+> May  3 13:57:15 serverkernel: [82562.372930] nfsd: last server has exited, flushing export cache
+> May  3 13:57:16 serverkernel: [82563.499249] svc: failed to register lockdv1 RPC service (errno 97).
+> May  3 13:57:16 serverkernel: [82563.501211] NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+> May  3 13:57:16 serverkernel: [82563.501246] NFSD: starting 90-second grace period
+> 
 >  
-> +	dprintk("%s: free od=%p\n", __func__, de->od);
->  	osduld_put_device(de->od);
->  	kfree(de);
->  }
-> @@ -64,14 +65,18 @@ static struct objio_dev_ent *_dev_list_find(const struct nfs_server *nfss,
->  	const struct nfs4_deviceid *d_id)
->  {
->  	struct nfs4_deviceid_node *d;
-> +	struct objio_dev_ent *de;
->  
->  	d = nfs4_find_get_deviceid(nfss->pnfs_curr_ld, nfss->nfs_client, d_id);
->  	if (!d)
->  		return NULL;
-> -	return container_of(d, struct objio_dev_ent, id_node);
-> +
-> +	de = container_of(d, struct objio_dev_ent, id_node);
-> +	return de;
+> How can I fix that failure?
 
-That's not really required as container_of() does the type casting
-for you.
+IIRC, that usually means the kernel has attempted to register an IPv6 listener with the local portmapper, which doesn't support IPv6.  The message was removed in a later kernel.
 
->  }
->  
-> -static int _dev_list_add(const struct nfs_server *nfss,
-> +static struct objio_dev_ent *
-> +_dev_list_add(const struct nfs_server *nfss,
->  	const struct nfs4_deviceid *d_id, struct osd_dev *od,
->  	gfp_t gfp_flags)
->  {
-> @@ -79,9 +84,12 @@ static int _dev_list_add(const struct nfs_server *nfss,
->  	struct objio_dev_ent *de = kzalloc(sizeof(*de), gfp_flags);
->  	struct objio_dev_ent *n;
->  
-> -	if (!de)
-> -		return -ENOMEM;
-> +	if (!de) {
-> +		dprintk("%s: -ENOMEM od=%p\n", __func__, od);
-> +		return NULL;
+To be sure it's harmless, after NFSD is running, verify that lockd is registered by running "rpcinfo -p" on your server.
 
-better return ERR_PTR(-ENOMEM)
-that will percolate up the stack via _device_lookup.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Thanks!
 
-Benny
 
-> +	}
->  
-> +	dprintk("%s: Adding od=%p\n", __func__, od);
->  	nfs4_init_deviceid_node(&de->id_node,
->  				nfss->pnfs_curr_ld,
->  				nfss->nfs_client,
-> @@ -91,11 +99,12 @@ static int _dev_list_add(const struct nfs_server *nfss,
->  	d = nfs4_insert_deviceid_node(&de->id_node);
->  	n = container_of(d, struct objio_dev_ent, id_node);
->  	if (n != de) {
-> -		BUG_ON(n->od != od);
-> +		dprintk("%s: Race with other n->od=%p\n", __func__, n->od);
->  		objio_free_deviceid_node(&de->id_node);
-> +		de = n;
->  	}
->  
-> -	return 0;
-> +	return de;
->  }
->  
->  struct caps_buffers {
-> @@ -117,7 +126,7 @@ struct objio_segment {
->  	unsigned comps_index;
->  	unsigned num_comps;
->  	/* variable length */
-> -	struct objio_dev_ent *ods[0];
-> +	struct objio_dev_ent *ods[];
->  };
->  
->  static inline struct objio_segment *
-> @@ -176,12 +185,13 @@ static struct objio_dev_ent *_device_lookup(struct pnfs_layout_hdr *pnfslay,
->  		goto out;
->  	}
->  
-> -	_dev_list_add(NFS_SERVER(pnfslay->plh_inode), d_id, od, gfp_flags);
-> +	ode = _dev_list_add(NFS_SERVER(pnfslay->plh_inode), d_id, od,
-> +			    gfp_flags);
->  
->  out:
->  	dprintk("%s: return=%d\n", __func__, err);
->  	objlayout_put_deviceinfo(deviceaddr);
-> -	return err ? ERR_PTR(err) : od;
-> +	return err ? ERR_PTR(err) : ode;
->  }
->  
->  static int objio_devices_lookup(struct pnfs_layout_hdr *pnfslay,
 
