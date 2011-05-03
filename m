@@ -1,117 +1,129 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:46780 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754804Ab1EEPZg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 May 2011 11:25:36 -0400
-Received: by wya21 with SMTP id 21so1702678wya.19
-        for <linux-nfs@vger.kernel.org>; Thu, 05 May 2011 08:25:35 -0700 (PDT)
-In-Reply-To: <591857.64709.qm@web111726.mail.gq1.yahoo.com>
-References: <781436.95809.qm@web111709.mail.gq1.yahoo.com>
-	<OF40F1C0BA.A5FC46BA-ON85257887.004DC668-85257887.004DD321@us.ibm.com>
-	<591857.64709.qm@web111726.mail.gq1.yahoo.com>
-Date: Fri, 6 May 2011 00:25:34 +0900
-Message-ID: <BANLkTimbnz4xKyK1oNDnyWN7k9dhApW2TA@mail.gmail.com>
-Subject: Re: debugging nfs
-From: Hiroyuki Sato <hiroysato@gmail.com>
-To: Mahmood Naderan <nt_mahmood@yahoo.com>
-Cc: Brian R Cowan <brcowan@us.ibm.com>, nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:48153 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751268Ab1ECDsn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 May 2011 23:48:43 -0400
+Date: Mon, 2 May 2011 23:48:41 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>, iisaman@umich.edu
+Subject: Re: [PATCH] nfsd41: compare request's opcnt with session's maxops
+ at nfsd4_sequence
+Message-ID: <20110503034841.GA16120@fieldses.org>
+References: <4DB76CE6.9080404@cn.fujitsu.com>
+ <20110427024126.GB26541@fieldses.org>
+ <4DB7AE19.3080308@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4DB7AE19.3080308@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello Mahmood.
+On Wed, Apr 27, 2011 at 01:48:09PM +0800, Mi Jinlong wrote:
+> 
+> 
+> J. Bruce Fields:
+> > On Wed, Apr 27, 2011 at 09:09:58AM +0800, Mi Jinlong wrote:
+> >> Make sure nfs server can distinguish request contains more ops
+> >> than channel allowed.
+> > 
+> > Yes, sequence looks like a reasonable op to catch this error.  The spec
+> > doesn't care as far as I can tell (and it's a buggy-client case, so why
+> > should it), and we already check that any compound not starting with a
+> > sequence has only one op.
+> > 
+> >> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> >> ---
+> >>  fs/nfsd/nfs4state.c |    5 +++++
+> >>  1 files changed, 5 insertions(+), 0 deletions(-)
+> >>
+> >> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> >> index fbde6f7..4f9fc68 100644
+> >> --- a/fs/nfsd/nfs4state.c
+> >> +++ b/fs/nfsd/nfs4state.c
+> >> @@ -1749,6 +1749,11 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+> >>  	if (!session)
+> >>  		goto out;
+> >>  
+> >> +	status = nfserr_too_many_ops;
+> >> +	if (((struct nfsd4_compoundargs *)rqstp->rq_argp)->opcnt >
+> > 
+> > Kind of a cumbersome construction, though.
+> > 
+> > Eh, maybe overkill, but how about this?:
+> 
+>   That's great!
 
-Have you ever tried to write ip address instead of server fqdn??
-or have you ever tries write server entry in /etc/hosts??
+But note we're making a bunch of the pynfs tests fail now, since they
+aren't careful about how many ops they use in a compound.  For example,
+LKPP1d fails for me now.  Note it might not fail for you if you put the
+pynfs test directory right at the root of the export tree?
 
-It is mean that
+I don't think pynfs hsould be using absolute paths for everything.  And
+it should probably be doing single-component lookups in a loop instead
+of depending on being able to do the whole lookup in one compound,
+unless it's willing to adapt the compounds to take into account
+maxops--which sounds to me like more trouble than it's worth.
 
-/etc/fstab
-ip.ad.re.ss:/opt /opt nfs mount_opt 0 0
+The server could probably also raise its limit, though.
 
-or /etc/hosts
-ip.add.re.ss server
+--b.
 
-
-I met same problem today, and I resolve it.
-
-My friend were using NIS on scientific linux .
-and It tried to mount before NIS started.
-
---
-Hiroyuki Sato
-
-
-2011/5/5 Mahmood Naderan <nt_mahmood@yahoo.com>:
-> Well, I found the problem very nasty and in my previous posts, I mentioned some of them.
->
-> The big problem:
-> when the clients boots, it doesn't automatically mount the shared folders via /etc/fstab.
-> However after login to client, I can mount the folder manually with
->
-> "sudo mount -t nfs server:/opt /opt"
->
-> I really don't know why fstab doesn't work. I searched a lot.... some say disbale IPV6.
-> I did that but still have that problem.
->
-> So how can I tell nfs (on server or client) to be verbose so that I can see what is going on
-> and what is not going on.
->
-> Any feedback and comment is welcomed.
->
-> // Naderan *Mahmood;
->
-> From: Brian R Cowan <brcowan@us.ibm.com>
-> To: Mahmood Naderan <nt_mahmood@yahoo.com>
-> Cc: nfs <linux-nfs@vger.kernel.org>; linux-nfs-owner@vger.kernel.org
-> Sent: Thursday, May 5, 2011 6:40 PM
-> Subject: Re: debugging nfs
->
->
-> It would probably help to explain the problem
-> so you can get targeted debugging assistance...
->
-> =================================================================
-> Brian Cowan
-> Advisory Software Engineer
-> ClearCase Software Advisory Team (SWAT)
-> Rational Software
-> IBM Software Group
-> 550 King St
-> Littleton, MA 01460
->
-> Phone: 1.978.899.9471
-> Web: http://www.ibm.com/software/rational/support/
->
->
->
->
-> From:
->  Mahmood Naderan <nt_mahmood@yahoo.com>
-> To:
->  nfs <linux-nfs@vger.kernel.org>,
-> Date:
->  05/05/2011 09:30 AM
-> Subject:
->    debugging nfs
-> Sent by:
->    linux-nfs-owner@vger.kernel.org
->
->
->
-> Hi,
-> I didn't find a method for debugging NFS for debain based systems. Is there
-> any verbose switch or debuging method for that?
->
-> // Naderan *Mahmood;
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+> 
+> -- 
+> ----
+> thanks
+> Mi Jinlong
+> 
+> > 
+> > --b.
+> > 
+> > commit d5eee1629fb9d3a55e5793d156026248c14cb46c
+> > Author: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> > Date:   Wed Apr 27 09:09:58 2011 +0800
+> > 
+> >     nfsd41: compare request's opcnt with session's maxops at nfsd4_sequence
+> >     
+> >     Make sure nfs server errors out if request contains more ops
+> >     than channel allows.
+> >     
+> >     Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> >     [bfields@redhat.com: use helper function]
+> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > 
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index fbde6f7..487ba47 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -1721,6 +1721,13 @@ static void nfsd4_sequence_check_conn(struct nfsd4_conn *new, struct nfsd4_sessi
+> >  	return;
+> >  }
+> >  
+> > +static bool nfsd4_session_too_many_ops(struct svc_rqst *rqstp, struct nfsd4_session *session)
+> > +{
+> > +	struct nfsd4_compoundargs *args = rqstp->rq_argp;
+> > +
+> > +	return args->opcnt > session->se_fchannel.maxops;
+> > +}
+> > +
+> >  __be32
+> >  nfsd4_sequence(struct svc_rqst *rqstp,
+> >  	       struct nfsd4_compound_state *cstate,
+> > @@ -1749,6 +1756,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+> >  	if (!session)
+> >  		goto out;
+> >  
+> > +	status = nfserr_too_many_ops;
+> > +	if (nfsd4_session_too_many_ops(rqstp, session))
+> > +		goto out;
+> > +
+> >  	status = nfserr_badslot;
+> >  	if (seq->slotid >= session->se_fchannel.maxreqs)
+> >  		goto out;
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> > 
+> 
