@@ -1,52 +1,82 @@
-From: Mahmood Naderan <nt_mahmood@yahoo.com>
-Subject: Re: sharing some files (and not folders) over NFS
-Date: Mon, 2 May 2011 07:46:18 -0700 (PDT)
-Message-ID: <395629.71734.qm@web111701.mail.gq1.yahoo.com>
-References: <416818.76742.qm@web111712.mail.gq1.yahoo.com> <1304347223.7830.8.camel@lade.trondhjem.org>
-Reply-To: Mahmood Naderan <nt_mahmood@yahoo.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] nfsd41: Make sure nfs server can distinguish client's
+ retry RECLAIM_COMPLETE.
+Date: Mon, 2 May 2011 22:46:29 -0400
+Message-ID: <20110503024629.GC11472@fieldses.org>
+References: <4DB76DF6.2040902@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: nfs <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: NFS <linux-nfs@vger.kernel.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from nm3.bullet.mail.sp2.yahoo.com ([98.139.91.73]:25432 "HELO
-	nm3.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1759726Ab1EBOqT convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 May 2011 10:46:19 -0400
-In-Reply-To: <1304347223.7830.8.camel-SyLVLa/KEI9HwK5hSS5vWB2eb7JE58TQ@public.gmane.org>
+Received: from fieldses.org ([174.143.236.118]:49547 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753909Ab1ECCqb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 May 2011 22:46:31 -0400
+In-Reply-To: <4DB76DF6.2040902@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->Diskless/NFSroot systems do this all the time
-Well I have setup diskless nfs but have no idea about that. Can you exp=
-lain more or give a link on that?
-=A0
+On Wed, Apr 27, 2011 at 09:14:30AM +0800, Mi Jinlong wrote:
+> Make sure nfs server can distinguish client's retry RECLAIM_COMPLETE.
 
-// Naderan *Mahmood;
+Applying for 2.6.40, thanks.--b.
 
-
------ Original Message -----
-=46rom: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Mahmood Naderan <nt_mahmood@yahoo.com>
-Cc: nfs <linux-nfs@vger.kernel.org>
-Sent: Monday, May 2, 2011 7:10 PM
-Subject: Re: sharing some files (and not folders) over NFS
-
-On Mon, 2011-05-02 at 07:34 -0700, Mahmood Naderan wrote:
-> Hi,
-> Is it possible to share passwd, group and shadow files over nfs?
-> Since a shared folder needs to be defined in /etc/fstab (on the desti=
-nation), I wonder how can I do that for files?
-
-Diskless/NFSroot systems do this all the time.
-
-Cheers
-=A0 Trond
---=20
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> 
+> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> ---
+>  fs/nfsd/nfs4state.c |   19 ++++++++++++++-----
+>  1 files changed, 14 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 43cda94..8d521d8 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1804,6 +1804,8 @@ out:
+>  __be32
+>  nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_reclaim_complete *rc)
+>  {
+> +	int status = 0;
+> +
+>  	if (rc->rca_one_fs) {
+>  		if (!cstate->current_fh.fh_dentry)
+>  			return nfserr_nofilehandle;
+> @@ -1813,9 +1815,14 @@ nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
+>  		 */
+>  		 return nfs_ok;
+>  	}
+> +
+>  	nfs4_lock_state();
+> -	if (is_client_expired(cstate->session->se_client)) {
+> -		nfs4_unlock_state();
+> +	status = nfserr_complete_already;
+> +	if (cstate->session->se_client->cl_firststate)
+> +		goto out;
+> +
+> +	status = nfserr_stale_clientid;
+> +	if (is_client_expired(cstate->session->se_client))
+>  		/*
+>  		 * The following error isn't really legal.
+>  		 * But we only get here if the client just explicitly
+> @@ -1823,11 +1830,13 @@ nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
+>  		 * error it gets back on an operation for the dead
+>  		 * client.
+>  		 */
+> -		return nfserr_stale_clientid;
+> -	}
+> +		goto out;
+> +
+> +	status = nfs_ok;
+>  	nfsd4_create_clid_dir(cstate->session->se_client);
+> +out:
+>  	nfs4_unlock_state();
+> -	return nfs_ok;
+> +	return status;
+>  }
+>  
+>  __be32
+> -- 
+> 1.7.4.1
+> 
+> 
+> 
