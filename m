@@ -1,34 +1,23 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:48092 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753205Ab1EPTnp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 May 2011 15:43:45 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v2 0/2] NFSD: add FREE_STATEID and TEST_STATEID operations
-Date: Mon, 16 May 2011 15:43:39 -0400
-Message-Id: <1305575021-2841-1-git-send-email-bjschuma@netapp.com>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:42588 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751124Ab1ECP6F (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 May 2011 11:58:05 -0400
+Date: Tue, 3 May 2011 11:57:59 -0400
+From: Jim Rees <rees@umich.edu>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Cc: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: pNFS and ipv6
+Message-ID: <20110503155759.GA3049@merit.edu>
+References: <4DC01F1A.9060305@desy.de>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4DC01F1A.9060305@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Tigran Mkrtchyan wrote:
 
-These patches add FREE_STATEID and TEST_STATEID to the NFS server.  I
-appreciate any comments, especially if there is a better way of doing things.
+  are there plans to support IPv6 with pNFS ?
 
-v2:
-- FREE_STATEID
-  - Free open, lock, and delegation state ids correctly
-  - Use the check_for_locks() function to check for locks
-
-- TEST_STATEID
-  - Remove openmode check
-  - Sanity check on size of stateid list
-  - Delay decoding stateid list until encoding the reply
-
-Thanks!
-
-- Bryan
+Block layout should work with ipv6 but I have not tested it.
