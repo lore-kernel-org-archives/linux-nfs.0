@@ -1,87 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:46035 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752497Ab1E2Kbk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 06:31:40 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Subject: [PATCH 7/8] SQUASHME: Move a check from nfs_pageio_do_add_request to nfs_generic_pg_test
-Date: Sun, 29 May 2011 13:31:30 +0300
-Message-Id: <1306665090-1155-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4DE21CD5.8070907@panasas.com>
-References: <4DE21CD5.8070907@panasas.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:48614 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751485Ab1ECGzQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 May 2011 02:55:16 -0400
+Received: by iyb14 with SMTP id 14so5257244iyb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 02 May 2011 23:55:15 -0700 (PDT)
+In-Reply-To: <1304373764.23069.17.camel@lade.trondhjem.org>
+References: <BANLkTi=X0VtcSecmEwzPBTqk3L154aj+2Q@mail.gmail.com>
+	<20110502140750.GA10885@fieldses.org>
+	<BANLkTinTu8XVmxkUUhJby8=DNY4sZF5VAQ@mail.gmail.com>
+	<1304347155.7830.7.camel@lade.trondhjem.org>
+	<BANLkTikZnnt0cmpP4iT4Q4EJTxZnSC_SYQ@mail.gmail.com>
+	<1304356699.7830.26.camel@lade.trondhjem.org>
+	<BANLkTi=2uYagwN=Xy9FxhXV4wt3tf669JA@mail.gmail.com>
+	<1304367673.20876.1.camel@lade.trondhjem.org>
+	<BANLkTimB=-QaW8S-H9XNv9TM+gWbB23CjQ@mail.gmail.com>
+	<1304373764.23069.17.camel@lade.trondhjem.org>
+Date: Tue, 3 May 2011 08:55:15 +0200
+Message-ID: <BANLkTinqn6=UJdF3H+seTskuk5JRtW9-kg@mail.gmail.com>
+Subject: Re: How does NFS handle notify?
+From: Stef Bon <stefbon@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-desc->pg_bsize is negotiated with the MDS. But if we are doing
-pnfs-IO it is not relevent.
+2011/5/3 Trond Myklebust <Trond.Myklebust@netapp.com>:
 
-While at it cleanup nfs_pageio_do_add_request() in light of the
-less things it needs to do.
+> You've proposed a 'solution', but I'm still not seeing what the problem
+> is.
+>
+>     1. Why do we need to develop kernel support for dnotify+inotify+...
+>        in every networked filesystem + fuse?
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfs/pagelist.c |   27 +++++++++++++--------------
- 1 files changed, 13 insertions(+), 14 deletions(-)
+Well yes that's a problem indeed. I see also there are more different
+types, which do not make life easier.
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 36bb67f..624ec2c 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -206,6 +206,16 @@ nfs_wait_on_request(struct nfs_page *req)
- 
- static bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc, struct nfs_page *prev, struct nfs_page *req)
- {
-+	/*
-+	* FIXME: ideally we should be able to coalesce all requests
-+	* that are not block boundary aligned, but currently this
-+	* is problematic for the case of bsize < PAGE_CACHE_SIZE,
-+	* since nfs_flush_multi and nfs_pagein_multi assume you
-+	* can have only one struct nfs_page.
-+	*/
-+	if (desc->pg_bsize < PAGE_SIZE)
-+		return 0;
-+
- 	return desc->pg_count + req->wb_bytes <= desc->pg_bsize;
- }
- 
-@@ -279,29 +289,18 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
- static int nfs_pageio_do_add_request(struct nfs_pageio_descriptor *desc,
- 				     struct nfs_page *req)
- {
--	size_t newlen = req->wb_bytes;
--
- 	if (desc->pg_count != 0) {
- 		struct nfs_page *prev;
- 
--		/*
--		 * FIXME: ideally we should be able to coalesce all requests
--		 * that are not block boundary aligned, but currently this
--		 * is problematic for the case of bsize < PAGE_CACHE_SIZE,
--		 * since nfs_flush_multi and nfs_pagein_multi assume you
--		 * can have only one struct nfs_page.
--		 */
--		if (desc->pg_bsize < PAGE_SIZE)
--			return 0;
--		newlen += desc->pg_count;
- 		prev = nfs_list_entry(desc->pg_list.prev);
- 		if (!nfs_can_coalesce_requests(prev, req, desc))
- 			return 0;
--	} else
-+	} else {
- 		desc->pg_base = req->wb_pgbase;
-+	}
- 	nfs_list_remove_request(req);
- 	nfs_list_add_request(req, &desc->pg_list);
--	desc->pg_count = newlen;
-+	desc->pg_count += req->wb_bytes;
- 	return 1;
- }
- 
--- 
-1.7.2.3
+>     2. What are the killer app use cases that we need to support and
+>        that cannot be supported with existing methods?
+>
 
+I do not have one, only the idea that Linux in general will benefit,
+when notify is supported for users using cifs, nfs and fuse fs's like
+mine.
+
+> Notifications on large distributed filesystems are a scalability
+> nightmare (particularly so for inotify), so they need careful
+> justification and need to be limited in scope. Just pulling out a
+> solution from your magic hat isn't sufficient.
+
+I do not have much experience with large distributed filesystems (can
+you name an example?) but isn't it possible to just turn notify off
+for such systems?
+
+Stef
