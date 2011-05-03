@@ -1,122 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:51035 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755898Ab1E2S3D (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 14:29:03 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Benny Halevy <bhalevy@panasas.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Cc: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 30/32] NFSv4.1: use pnfs_generic_pg_test directly by layout driver
-Date: Sun, 29 May 2011 21:28:51 +0300
-Message-Id: <1306693731-8550-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4DE28CFB.4060608@panasas.com>
-References: <4DE28CFB.4060608@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:63029 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752856Ab1ECUOB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 May 2011 16:14:01 -0400
+Subject: Re: [RFC 0/1] SUNRPC: dynamic rpc_slot allocator for TCP
+Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <0C6F7F78-D506-463B-B4B7-D780BA9FA95F@oracle.com>
+Date: Tue, 3 May 2011 16:13:59 -0400
+Cc: trond.myklebust@netapp.com, jlayton@redhat.com, linux-nfs@vger.kernel.org
+Message-Id: <A5ED05D7-9EA2-46C0-A27E-63FFA39BC024@netapp.com>
+References: <1304386808-2733-1-git-send-email-andros@netapp.com> <0C6F7F78-D506-463B-B4B7-D780BA9FA95F@oracle.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4filelayout.c      |    3 +++
- fs/nfs/objlayout/objio_osd.c |   14 +-------------
- fs/nfs/pnfs.c                |   13 +++++++++----
- fs/nfs/pnfs.h                |    6 ++++--
- 4 files changed, 17 insertions(+), 19 deletions(-)
+On May 3, 2011, at 4:06 PM, Chuck Lever wrote:
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 24f0572..4269088 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -661,6 +661,9 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 	u64 p_stripe, r_stripe;
- 	u32 stripe_unit;
- 
-+	if (!pnfs_generic_pg_test(pgio, prev, req))
-+		return 0;
-+
- 	if (!pgio->pg_lseg)
- 		return 1;
- 	p_stripe = (u64)prev->wb_index << PAGE_CACHE_SHIFT;
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 8c2bd3e..3b10d09 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -988,18 +988,6 @@ ssize_t objio_write_pagelist(struct objlayout_io_state *ol_state, bool stable)
- 	return _write_exec(ios);
- }
- 
--/*
-- * objlayout_pg_test(). Called by nfs_can_coalesce_requests()
-- *
-- * return true iff coalesce page
-- */
--bool
--objlayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
--		   struct nfs_page *req)
--{
--	return true;
--}
--
- static struct pnfs_layoutdriver_type objlayout_type = {
- 	.id = LAYOUT_OSD2_OBJECTS,
- 	.name = "LAYOUT_OSD2_OBJECTS",
-@@ -1013,7 +1001,7 @@ static struct pnfs_layoutdriver_type objlayout_type = {
- 
- 	.read_pagelist           = objlayout_read_pagelist,
- 	.write_pagelist          = objlayout_write_pagelist,
--	.pg_test                 = objlayout_pg_test,
-+	.pg_test                 = pnfs_generic_pg_test,
- 
- 	.free_deviceid_node	 = objio_free_deviceid_node,
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 212fc29..d79f2df 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1067,12 +1067,17 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 						   pgio->pg_count,
- 						   access_type,
- 						   gfp_flags);
--	} else if (pgio->pg_lseg &&
--		   req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
--						pgio->pg_lseg->pls_range.length))
-+		return true;
-+	}
-+
-+	if (pgio->pg_lseg &&
-+	    req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
-+					 pgio->pg_lseg->pls_range.length))
- 		return false;
--	return NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->pg_test(pgio, prev, req);
-+
-+	return true;
- }
-+EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
- 
- /*
-  * Called by non rpc-based layout drivers
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 65daae5..48d0a8e 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -295,8 +295,10 @@ static inline int pnfs_return_layout(struct inode *ino)
- static inline void pnfs_pageio_init(struct nfs_pageio_descriptor *pgio,
- 				    struct inode *inode)
- {
--	if (NFS_SERVER(inode)->pnfs_curr_ld)
--		pgio->pg_test = pnfs_generic_pg_test;
-+	struct pnfs_layoutdriver_type *ld = NFS_SERVER(inode)->pnfs_curr_ld;
-+
-+	if (ld)
-+		pgio->pg_test = ld->pg_test;
- }
- 
- #else  /* CONFIG_NFS_V4_1 */
--- 
-1.7.2.3
+> Hi-
+> 
+> On May 2, 2011, at 9:40 PM, andros@netapp.com wrote:
+> 
+>> I would appreciate comments on this patch. I've done a small amount of testing
+>> where I've set the /proc/sys/sunrpc/tcp_slot_table_entries to 2, and watched
+>> the dynamic allocator increase it to 3. I have a 10G test system being
+>> configured.
+> 
+> For TCP transports, then, the effective slot table size varies between the tcp_slot_table_entries setting and the estimated number of RPCs that can fit in the TCP window?  
+
+Yes.
+
+> What happens when the TCP window shrinks such that fewer RPCs can fit than are allowed by the tcp_slot_table_entries setting?
+
+We don't shrink the rpc_slot table size. The idea being that if the TCP hits size X then shrinks to size X-n, there is a good chance that it will get back to size X. In the worst case, this is still better than a hard configured 'to large' slot table size.
+
+> 
+> Have you done performance testing with loopback mounts (ie server and client on the same machine, mounting over the "lo" interface)?  As I recall this was the test case that Trond found worked poorly when we boosted the tcp_slot_table_entries setting to default to a 64 entry slot table.
+
+No, not yet. I'll add this to the planned testing.  So having way too many default rpc_slots is bad? I could test by starting with a default of 2 slots and seeing how many are needed.
+
+-->Andy
+
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> 
 
