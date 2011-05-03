@@ -1,105 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:38064 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753591Ab1EIRLY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:11:24 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 26/29] pnfs: encode_layoutcommit
-Date: Mon,  9 May 2011 20:11:17 +0300
-Message-Id: <1304961077-4757-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DC81E8C.6040901@panasas.com>
-References: <4DC81E8C.6040901@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:52587 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754768Ab1ECUep convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 May 2011 16:34:45 -0400
+Subject: Re: [RFC 0/1] SUNRPC: dynamic rpc_slot allocator for TCP
+Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <516EBEB5-E5DE-46E4-99D6-3452586904EA@oracle.com>
+Date: Tue, 3 May 2011 16:34:43 -0400
+Cc: trond.myklebust@netapp.com, jlayton@redhat.com, linux-nfs@vger.kernel.org
+Message-Id: <4DBF79D3-14A6-4306-8049-1722BFB8A41D@netapp.com>
+References: <1304386808-2733-1-git-send-email-andros@netapp.com> <0C6F7F78-D506-463B-B4B7-D780BA9FA95F@oracle.com> <A5ED05D7-9EA2-46C0-A27E-63FFA39BC024@netapp.com> <516EBEB5-E5DE-46E4-99D6-3452586904EA@oracle.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Add a layout driver method to encode the layout type specific
-opaque part of layout commit in-line in the xdr stream.
 
-Currently, the pnfs-objects layout driver uses it to encode metadata hints
-to the MDS and the blocks layout driver to commit provisionally allocated
-extents to the file.
+On May 3, 2011, at 4:20 PM, Chuck Lever wrote:
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4xdr.c |   16 +++++++++++++---
- fs/nfs/pnfs.h    |    4 ++++
- 2 files changed, 17 insertions(+), 3 deletions(-)
+> 
+> On May 3, 2011, at 4:13 PM, Andy Adamson wrote:
+> 
+>> 
+>> On May 3, 2011, at 4:06 PM, Chuck Lever wrote:
+>> 
+>>> Hi-
+>>> 
+>>> On May 2, 2011, at 9:40 PM, andros@netapp.com wrote:
+>>> 
+>>>> I would appreciate comments on this patch. I've done a small amount of testing
+>>>> where I've set the /proc/sys/sunrpc/tcp_slot_table_entries to 2, and watched
+>>>> the dynamic allocator increase it to 3. I have a 10G test system being
+>>>> configured.
+>>> 
+>>> For TCP transports, then, the effective slot table size varies between the tcp_slot_table_entries setting and the estimated number of RPCs that can fit in the TCP window?  
+>> 
+>> Yes.
+>> 
+>>> What happens when the TCP window shrinks such that fewer RPCs can fit than are allowed by the tcp_slot_table_entries setting?
+>> 
+>> We don't shrink the rpc_slot table size. The idea being that if the TCP hits size X then shrinks to size X-n, there is a good chance that it will get back to size X. In the worst case, this is still better than a hard configured 'to large' slot table size.
+> 
+> Seems to me that we wouldn't need the tcp_slot_table_entries setting at all, then.  Always start at 2 and it will adjust itself as needed.  
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 368c2a2..808c996 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1885,6 +1885,7 @@ encode_layoutget(struct xdr_stream *xdr,
- 
- static int
- encode_layoutcommit(struct xdr_stream *xdr,
-+		    struct inode *inode,
- 		    const struct nfs4_layoutcommit_args *args,
- 		    struct compound_hdr *hdr)
- {
-@@ -1893,7 +1894,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
- 	dprintk("%s: lbw: %llu type: %d\n", __func__, args->lastbytewritten,
- 		NFS_SERVER(args->inode)->pnfs_curr_ld->id);
- 
--	p = reserve_space(xdr, 48 + NFS4_STATEID_SIZE);
-+	p = reserve_space(xdr, 44 + NFS4_STATEID_SIZE);
- 	*p++ = cpu_to_be32(OP_LAYOUTCOMMIT);
- 	/* Only whole file layouts */
- 	p = xdr_encode_hyper(p, 0); /* offset */
-@@ -1904,7 +1905,14 @@ encode_layoutcommit(struct xdr_stream *xdr,
- 	p = xdr_encode_hyper(p, args->lastbytewritten);
- 	*p++ = cpu_to_be32(0); /* Never send time_modify_changed */
- 	*p++ = cpu_to_be32(NFS_SERVER(args->inode)->pnfs_curr_ld->id);/* type */
--	*p++ = cpu_to_be32(0); /* no file layout payload */
-+
-+	if (NFS_SERVER(inode)->pnfs_curr_ld->encode_layoutcommit)
-+		NFS_SERVER(inode)->pnfs_curr_ld->encode_layoutcommit(
-+			NFS_I(inode)->layout, xdr, args);
-+	else {
-+		p = reserve_space(xdr, 4);
-+		*p = cpu_to_be32(0); /* no layout-type payload */
-+	}
- 
- 	hdr->nops++;
- 	hdr->replen += decode_layoutcommit_maxsz;
-@@ -2761,6 +2769,8 @@ static void nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
- 				      struct xdr_stream *xdr,
- 				      struct nfs4_layoutcommit_args *args)
- {
-+	struct nfs4_layoutcommit_data *data =
-+		container_of(args, struct nfs4_layoutcommit_data, args);
- 	struct compound_hdr hdr = {
- 		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
- 	};
-@@ -2768,7 +2778,7 @@ static void nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
- 	encode_compound_hdr(xdr, req, &hdr);
- 	encode_sequence(xdr, &args->seq_args, &hdr);
- 	encode_putfh(xdr, NFS_FH(args->inode), &hdr);
--	encode_layoutcommit(xdr, args, &hdr);
-+	encode_layoutcommit(xdr, data->args.inode, args, &hdr);
- 	encode_getfattr(xdr, args->bitmask, &hdr);
- 	encode_nops(&hdr);
- }
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 798861c..0c33d57 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -110,6 +110,10 @@ struct pnfs_layoutdriver_type {
- 	void (*encode_layoutreturn) (struct pnfs_layout_hdr *layoutid,
- 				     struct xdr_stream *xdr,
- 				     const struct nfs4_layoutreturn_args *args);
-+
-+	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
-+				     struct xdr_stream *xdr,
-+				     const struct nfs4_layoutcommit_args *args);
- };
- 
- struct pnfs_layout_hdr {
--- 
-1.7.3.4
+Yep - for TCP. UDP and RDMA will still use just the default.  I hope to determine a new reasonable  tcp default with testing.
+
+> Unless we find we need a hard upper bound in some cases.
+
+This is also a goal for testing - adding more and more network delay in a 10G test environment to increase the TCP window.  We may upper bound it by looking at available memory.
+
+> 
+>>> Have you done performance testing with loopback mounts (ie server and client on the same machine, mounting over the "lo" interface)?  As I recall this was the test case that Trond found worked poorly when we boosted the tcp_slot_table_entries setting to default to a 64 entry slot table.
+>> 
+>> No, not yet. I'll add this to the planned testing.  So having way too many default rpc_slots is bad? I could test by starting with a default of 2 slots and seeing how many are needed.
+> 
+> Apparently there was a problem with having too many slots, but I was never clear what that problem might be.  The report was only poor performance on loopback NFS mounts.
+
+OK. I'll check it out.
+
+-->Andy
+
+> 
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> 
 
