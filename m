@@ -1,150 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:54030 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751262Ab1EDQCg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 May 2011 12:02:36 -0400
-Subject: Re: [[RFC] 1/1] SUNRPC: dynamic rpc_slot allocator for TCP
+Received: from mx2.netapp.com ([216.240.18.37]:37063 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755170Ab1ECUej convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 May 2011 16:34:39 -0400
+Subject: Re: [PATCH 1/1] NFSv41: Resend on NFS4ERR_RETRY_UNCACHED_REP
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <505415C4-0383-4A8D-BD6B-D85F3CB5E7EB@netapp.com>
-Date: Wed, 4 May 2011 12:01:57 -0400
-Cc: Jeff Layton <jlayton@redhat.com>, NeilBrown <neilb@suse.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Message-Id: <85C0EB32-BBF6-4224-AC6B-A24B7D5C06B1@oracle.com>
-References: <1304386808-2733-1-git-send-email-andros@netapp.com> <1304386808-2733-2-git-send-email-andros@netapp.com> <20110503202023.699435f4@corrin.poochiereds.net> <1304469890.26184.16.camel@lade.trondhjem.org> <20110504111825.6f26f75a@notabene.brown> <1304473563.26184.28.camel@lade.trondhjem.org> <20110504120726.347df3fc@notabene.brown> <20110504075410.5e59c6b4@tlielax.poochiereds.net> <0424D640-C315-449B-847A-59105BBADBCE@netapp.com> <20110504111853.7150915a@tlielax.poochiereds.net> <505415C4-0383-4A8D-BD6B-D85F3CB5E7EB@netapp.com>
-To: Andy Adamson <andros@netapp.com>
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <1304453940.20025.3.camel@lade.trondhjem.org>
+Date: Tue, 3 May 2011 16:34:38 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <2E1D534F-B51C-4E5D-A115-6CAD2F38B890@netapp.com>
+References: <1304387669-2969-1-git-send-email-andros@netapp.com> <1304453940.20025.3.camel@lade.trondhjem.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
-On May 4, 2011, at 11:52 AM, Andy Adamson wrote:
+On May 3, 2011, at 4:19 PM, Trond Myklebust wrote:
+
+> On Mon, 2011-05-02 at 21:54 -0400, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>> 
+>> Free the slot and resend the RPC with new session <slot#,seq#>.
+>> 
+>> For nfs4_async_handle_error, return -EAGAIN and set the task->tk_status to 0
+>> to restart the async rpc in the rpc_restart_call_prepare state which resets
+>> the slot.
+>> 
+>> For nfs4_handle_exception, retrying a call that uses nfs4_call_sync will
+>> reset the slot via nfs41_call_sync_prepare.
+>> 
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>> fs/nfs/nfs4proc.c |    2 ++
+>> 1 files changed, 2 insertions(+), 0 deletions(-)
+>> 
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index b8e1ac6..01d70dd 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -300,6 +300,7 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
+>> 			ret = nfs4_delay(server->client, &exception->timeout);
+>> 			if (ret != 0)
+>> 				break;
+>> +		case -NFS4ERR_RETRY_UNCACHED_REP:
+>> 		case -NFS4ERR_OLD_STATEID:
+>> 			exception->retry = 1;
+>> 			break;
+>> @@ -3677,6 +3678,7 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
+>> 			rpc_delay(task, NFS4_POLL_RETRY_MAX);
+>> 			task->tk_status = 0;
+>> 			return -EAGAIN;
+>> +		case -NFS4ERR_RETRY_UNCACHED_REP:
+>> 		case -NFS4ERR_OLD_STATEID:
+>> 			task->tk_status = 0;
+>> 			return -EAGAIN;
+> 
+> Looks good... Do we need handlers for this in things like
+> 'reclaim_complete_done()' and 'nfs41_sequence_handle_errors()'?
+
+We probably do. I'll check for coverage.
+ 
+> 
+> I'm assuming that all the stateful operations such as open/close/... set
+> the cache reply flag and so don't need it?
+
+Yes - and I'll double check.
+
+-->Andy
 
 > 
-> On May 4, 2011, at 11:18 AM, Jeff Layton wrote:
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
 > 
->> On Wed, 4 May 2011 10:54:57 -0400
->> Andy Adamson <andros@netapp.com> wrote:
->> 
->>> 
->>> On May 4, 2011, at 7:54 AM, Jeff Layton wrote:
->>> 
->>>> On Wed, 4 May 2011 12:07:26 +1000
->>>> NeilBrown <neilb@suse.de> wrote:
->>>> 
->>>>> On Tue, 03 May 2011 21:46:03 -0400 Trond Myklebust
->>>>> <Trond.Myklebust@netapp.com> wrote:
->>>>> 
->>>>>> On Wed, 2011-05-04 at 11:18 +1000, NeilBrown wrote:
->>>>>>> For rpc slots, I doubt you need mempools at all.
->>>>>>> Mempools are only needed if failure is not an option and you would rather
->>>>>>> wait, but you cannot wait for regular writeback because you are on the
->>>>>>> writeback path.  So you use a mempool which waits for a previous request to
->>>>>>> complete.  I don't think that describes rpc slots at all.
->>>>>>> For rpc slots, you can afford to wait when setting up the transport, as you
->>>>>>> are not on the writeout path yet, and later you can always cope with failure.
->>>>>>> So just use kmalloc.
->>>>>> 
->>>>>> Errr.... No. By the time you get to allocating an RPC slot, you may be
->>>>>> bang smack in the middle of the writeout path.
->>>>>> 
->>>>>> The scenario would be that something triggers a writeback (kswapd,
->>>>>> direct reclaim,...) which triggers an RPC call, which requires you to
->>>>>> allocate at least one rpc slot before you can put the write on the wire.
->>>>>> 
->>>>>> I agree with your assertion that we only need one successful slot
->>>>>> allocation in order to make overall forward progress, but we definitely
->>>>>> do need that one...
->>>>>> 
->>>>> 
->>>>> Probably I misunderstood the code, but I thought that there was a base set of
->>>>> slots preallocated.  Eventually one of those will become free won't it?
->>>>> 
->>>>> Looking at the code again, it only ever returns entries to the mempool when
->>>>> it is about to destroy the xprt.  That makes no sense.  If you are using a
->>>>> mempool, then you allocate when you need to use space, and free it as soon as
->>>>> you have finished with it, so the next request can get a turn.
->>>>> 
->>>> 
->>>> That was sort of my point, though I didn't articulate it very well.
->>>> 
->>>> I don't think we want to keep this "static" set of rqsts and the
->>>> mempool. It seems like that's somewhat redundant and more complex than
->>>> is warranted. The question is...which should we keep?
->>>> 
->>>> I think it sort of depends on what the intended model is. If we want to
->>>> allocate out of the "guaranteed" pool first and only when that's
->>>> exhausted fall back to doing dynamic allocations, then we probably want
->>>> to keep the static list of entries.
->>>> 
->>>> If we want to allocate dynamically most of the time and only dip into
->>>> the "guaranteed" pool when that can't be satisfied, then basing all of
->>>> this around mempools might make more sense.
->>> 
->>> Thanks for the review - I've learned a lot about mempools from this discussion.
->>> 
->>> I've noticed that a lot of the time, (at least for TCP) rpc_slots are allocated and not used.
->>> The default slot entries value is a guess. This is why I like the idea of dynamically allocating most 
->>> of the time, and only dipping into the guaranteed pool when the dynamic allocation
->>> can't be satisfied. e.g. get rid of the static set of slots.
->>> Does this design require two mempools, one for dynamic allocation and a guaranteed one being small and "in reserve"?
->>> 
->> 
->> No, a single mempool would give you that. Just declare the mempool with
->> the amount of "emergency" slots you want, and then allocate directly
->> from it and then free them back to the mempool. Most of the time (as
->> Neil points out) you'll get them allocated from the slabcache. It'll
->> it'll only dip into the reserved set when those can't be allocated.
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
 > 
-> Cool.
-> 
->> 
->> The other thing you have to determine is whether you want this
->> guaranteed number of slots to be per-xprt or global. Today, it's
->> per-xprt. Making it global might mean less wasted memory overall, but I
->> could forsee situations where a hung mount could starve other mounts of
->> slots.
->> 
->> Figuring that out might help guide the overall design here...
->> 
->>> For UDP and RDMA, the default # of slot entries can turn into an upper bound.
->>> For TCP, the default # of slot entries would have no meaning WRT upper bound, as the upper bound is determined
->>> by the TCP window size.
->>> 
->> 
->> Maybe rather than having this dynamic_slot_alloc operation that's only
->> conditionally called, it would cleaner to abstract out the slot
->> allocator altogether.
->> 
->> UDP and RDMA could use the same routine and just allocate out of a
->> fixed set of preallocated slots (sort of like how they do today), and
->> TCP could use this new scheme.
-> 
-> We need rpc_slots (UDP/RDMA/TCP/....) to be freed back to the mempool in xprt_free_slot.
-> If we allocate the set # of rpc_slots, place them on the xprt->free list, and they don't get used,
-> then they won't be freed until the xprt is destroyed.
-
-The reason to keep slots around and on a local free list is that full-out memory allocation is heavy weight.  I keep thinking of the talk Willy gave at LSF about how much scalability was affected in the SCSI I/O path by simple memory allocation operations.  Is using a SLAB or SLUB as fast as what we have today?
-
-> I was thinking of using the same allocator for UDP/RDMA/TCP. With all transports, start off with a 
-> minimal # of pre-allocated slots (6? 4? 2?) and for UDP/RDMA trigger a dynamic allocation in xprt_alloc_slot
-> when there are no slots available and the # slots allocated is less than the default # slot entries for that transport.
-> 
-> -->Andy
-> 
->> -- 
->> Jeff Layton <jlayton@redhat.com>
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
 
