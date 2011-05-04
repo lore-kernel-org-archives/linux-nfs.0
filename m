@@ -1,118 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:9112 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756325Ab1EWQiC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 12:38:02 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCH v6 18/26] pnfs-obj: define per-inode private structure
-Date: Mon, 23 May 2011 19:37:53 +0300
-Message-Id: <1306168673-11613-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DDA8C3D.5080706@panasas.com>
-References: <4DDA8C3D.5080706@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:46568 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751299Ab1EDBqU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 May 2011 21:46:20 -0400
+Subject: Re: [[RFC] 1/1] SUNRPC: dynamic rpc_slot allocator for TCP
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: NeilBrown <neilb@suse.de>
+Cc: andros@netapp.com, Jeff Layton <jlayton@redhat.com>,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <20110504111825.6f26f75a@notabene.brown>
+References: <1304386808-2733-1-git-send-email-andros@netapp.com>
+	 <1304386808-2733-2-git-send-email-andros@netapp.com>
+	 <20110503202023.699435f4@corrin.poochiereds.net>
+	 <1304469890.26184.16.camel@lade.trondhjem.org>
+	 <20110504111825.6f26f75a@notabene.brown>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 03 May 2011 21:46:03 -0400
+Message-ID: <1304473563.26184.28.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-allocate and deallocate per-inode private pnfs_layout_hdr
-in preparation for I/O implementation.
+On Wed, 2011-05-04 at 11:18 +1000, NeilBrown wrote:
+> For rpc slots, I doubt you need mempools at all.
+> Mempools are only needed if failure is not an option and you would rather
+> wait, but you cannot wait for regular writeback because you are on the
+> writeback path.  So you use a mempool which waits for a previous request to
+> complete.  I don't think that describes rpc slots at all.
+> For rpc slots, you can afford to wait when setting up the transport, as you
+> are not on the writeout path yet, and later you can always cope with failure.
+> So just use kmalloc.
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/objlayout/objio_osd.c |    3 +++
- fs/nfs/objlayout/objlayout.c |   26 ++++++++++++++++++++++++++
- fs/nfs/objlayout/objlayout.h |   17 +++++++++++++++++
- 3 files changed, 46 insertions(+), 0 deletions(-)
+Errr.... No. By the time you get to allocating an RPC slot, you may be
+bang smack in the middle of the writeout path.
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index a4201d8..a71f58e 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -352,6 +352,9 @@ static struct pnfs_layoutdriver_type objlayout_type = {
- 	.id = LAYOUT_OSD2_OBJECTS,
- 	.name = "LAYOUT_OSD2_OBJECTS",
- 
-+	.alloc_layout_hdr        = objlayout_alloc_layout_hdr,
-+	.free_layout_hdr         = objlayout_free_layout_hdr,
-+
- 	.alloc_lseg              = objlayout_alloc_lseg,
- 	.free_lseg               = objlayout_free_lseg,
- 
-diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-index 10e5fca..f14b4da 100644
---- a/fs/nfs/objlayout/objlayout.c
-+++ b/fs/nfs/objlayout/objlayout.c
-@@ -42,6 +42,32 @@
- 
- #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
- /*
-+ * Create a objlayout layout structure for the given inode and return it.
-+ */
-+struct pnfs_layout_hdr *
-+objlayout_alloc_layout_hdr(struct inode *inode, gfp_t gfp_flags)
-+{
-+	struct objlayout *objlay;
-+
-+	objlay = kzalloc(sizeof(struct objlayout), gfp_flags);
-+	dprintk("%s: Return %p\n", __func__, objlay);
-+	return &objlay->pnfs_layout;
-+}
-+
-+/*
-+ * Free an objlayout layout structure
-+ */
-+void
-+objlayout_free_layout_hdr(struct pnfs_layout_hdr *lo)
-+{
-+	struct objlayout *objlay = OBJLAYOUT(lo);
-+
-+	dprintk("%s: objlay %p\n", __func__, objlay);
-+
-+	kfree(objlay);
-+}
-+
-+/*
-  * Unmarshall layout and store it in pnfslay.
-  */
- struct pnfs_layout_segment *
-diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
-index 0814271..fa02621 100644
---- a/fs/nfs/objlayout/objlayout.h
-+++ b/fs/nfs/objlayout/objlayout.h
-@@ -46,6 +46,19 @@
- #include "../pnfs.h"
- 
- /*
-+ * per-inode layout
-+ */
-+struct objlayout {
-+	struct pnfs_layout_hdr pnfs_layout;
-+};
-+
-+static inline struct objlayout *
-+OBJLAYOUT(struct pnfs_layout_hdr *lo)
-+{
-+	return container_of(lo, struct objlayout, pnfs_layout);
-+}
-+
-+/*
-  * Raid engine I/O API
-  */
- extern int objio_alloc_lseg(struct pnfs_layout_segment **outp,
-@@ -66,6 +79,10 @@ extern void objlayout_put_deviceinfo(struct pnfs_osd_deviceaddr *deviceaddr);
- /*
-  * exported generic objects function vectors
-  */
-+
-+extern struct pnfs_layout_hdr *objlayout_alloc_layout_hdr(struct inode *, gfp_t gfp_flags);
-+extern void objlayout_free_layout_hdr(struct pnfs_layout_hdr *);
-+
- extern struct pnfs_layout_segment *objlayout_alloc_lseg(
- 	struct pnfs_layout_hdr *,
- 	struct nfs4_layoutget_res *,
+The scenario would be that something triggers a writeback (kswapd,
+direct reclaim,...) which triggers an RPC call, which requires you to
+allocate at least one rpc slot before you can put the write on the wire.
+
+I agree with your assertion that we only need one successful slot
+allocation in order to make overall forward progress, but we definitely
+do need that one...
+
 -- 
-1.7.3.4
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
