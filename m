@@ -1,74 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:23308 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:12862 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932858Ab1EaWtS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 May 2011 18:49:18 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: trond@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 3/3] NFS: pnfs: loop over multipath addrs on connect
-Date: Tue, 31 May 2011 18:48:58 -0400
-Message-Id: <1306882138-6528-4-git-send-email-dros@netapp.com>
-In-Reply-To: <1306882138-6528-1-git-send-email-dros@netapp.com>
-References: <1306882138-6528-1-git-send-email-dros@netapp.com>
+	id S1754391Ab1EDPbE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 May 2011 11:31:04 -0400
+Subject: Re: [[RFC] 1/1] SUNRPC: dynamic rpc_slot allocator for TCP
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Andy Adamson <andros@netapp.com>, NeilBrown <neilb@suse.de>,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <20110504111853.7150915a@tlielax.poochiereds.net>
+References: <1304386808-2733-1-git-send-email-andros@netapp.com>
+	 <1304386808-2733-2-git-send-email-andros@netapp.com>
+	 <20110503202023.699435f4@corrin.poochiereds.net>
+	 <1304469890.26184.16.camel@lade.trondhjem.org>
+	 <20110504111825.6f26f75a@notabene.brown>
+	 <1304473563.26184.28.camel@lade.trondhjem.org>
+	 <20110504120726.347df3fc@notabene.brown>
+	 <20110504075410.5e59c6b4@tlielax.poochiereds.net>
+	 <0424D640-C315-449B-847A-59105BBADBCE@netapp.com>
+	 <20110504111853.7150915a@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 04 May 2011 11:30:46 -0400
+Message-ID: <1304523046.4476.7.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Don't just use the first addr in the multipath list - instead, loop
-over addresses when calling nfs4_set_ds_client() (which calls connect)
-until it is successful.
+On Wed, 2011-05-04 at 11:18 -0400, Jeff Layton wrote:
+> The other thing you have to determine is whether you want this
+> guaranteed number of slots to be per-xprt or global. Today, it's
+> per-xprt. Making it global might mean less wasted memory overall, but I
+> could forsee situations where a hung mount could starve other mounts of
+> slots.
 
-Although this is not real multipath support, it's a quick fix to handle when
-an MDS sends a list of addresses for a DS and some of the addr families are
-unsupported or misconfigured (like no routable ipv6 addr assigned).
-This will attempt all paths to the DS before giving up, instead of immediately
-falling back to the MDS.
+The hung mount scenario is one that we're not going to deal too well
+with anyway: both rpc_tasks and rpc buffers are allocated from global
+mempools (as are the struct nfs_read_data/nfs_write_data)
 
-As before, an error encountered after a successful connect() will cause all
-i/o to fall back to the MDS.
-
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- fs/nfs/nfs4filelayoutdev.c |   14 +++++++++-----
- 1 files changed, 9 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index f26c1cf..aff4d9a 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -169,7 +169,7 @@ _data_server_match_all_addrs_locked(struct list_head *dsaddrs1,
- static int
- nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
- {
--	struct nfs_client *clp;
-+	struct nfs_client *clp = ERR_PTR(-EIO);
- 	struct nfs4_pnfs_ds_addr *da;
- 	int status = 0;
- 
-@@ -178,13 +178,17 @@ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
- 
- 	BUG_ON(list_empty(&ds->ds_addrs));
- 
--	da = list_first_entry(&ds->ds_addrs, struct nfs4_pnfs_ds_addr, da_node);
--	dprintk("%s: using the first address for DS %s: %s\n",
--		__func__, ds->ds_remotestr, da->da_remotestr);
-+	list_for_each_entry(da, &ds->ds_addrs, da_node) {
-+		dprintk("%s: DS %s: trying address %s\n",
-+			__func__, ds->ds_remotestr, da->da_remotestr);
- 
--	clp = nfs4_set_ds_client(mds_srv->nfs_client,
-+		clp = nfs4_set_ds_client(mds_srv->nfs_client,
- 				 (struct sockaddr *)&da->da_addr,
- 				 da->da_addrlen, IPPROTO_TCP);
-+		if (!IS_ERR(clp))
-+			break;
-+	}
-+
- 	if (IS_ERR(clp)) {
- 		status = PTR_ERR(clp);
- 		goto out;
 -- 
-1.7.5.2
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
