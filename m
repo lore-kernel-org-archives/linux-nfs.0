@@ -1,648 +1,262 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:58964 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754072Ab1EITgc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 15:36:32 -0400
-Received: by mail-yx0-f174.google.com with SMTP id 7so1914279yxs.19
-        for <linux-nfs@vger.kernel.org>; Mon, 09 May 2011 12:36:32 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 02/16] SUNRPC: Use RCU to dereference the rpc_clnt.cl_xprt
-	field
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 09 May 2011 15:36:29 -0400
-Message-ID: <20110509193628.16568.59448.stgit@matisse.1015granger.net>
-In-Reply-To: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
-References: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from out2.smtp.messagingengine.com ([66.111.4.26]:50033 "EHLO
+	out2.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750888Ab1EDJXR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 May 2011 05:23:17 -0400
+From: Roberto Sassu <roberto.sassu@polito.it>
+To: Casey Schaufler <casey@schaufler-ca.com>
+Subject: Re: [RFC][PATCH 0/7] File descriptor labeling
+Date: Wed, 4 May 2011 11:19:57 +0200
+Cc: Tyler Hicks <tyhicks@linux.vnet.ibm.com>,
+        linux-security-module@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, dhowells@redhat.com, jmorris@namei.org,
+        zohar@linux.vnet.ibm.com, safford@watson.ibm.com,
+        kirkland@canonical.com, ecryptfs-devel@lists.launchpad.net,
+        eparis@redhat.com, sds@tycho.nsa.gov, selinux@tycho.nsa.gov,
+        viro@zeniv.linux.org.uk, john.johansen@canonical.com,
+        apparmor@lists.ubuntu.com, bfields@fieldses.org, neilb@suse.de,
+        linux-nfs@vger.kernel.org
+References: <201104291139.37489.roberto.sassu@polito.it> <201105021053.54031.roberto.sassu@polito.it> <4DC088A8.4000300@schaufler-ca.com>
+In-Reply-To: <4DC088A8.4000300@schaufler-ca.com>
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Message-Id: <201105041119.57493.roberto.sassu@polito.it>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+On Wednesday, May 04, 2011 12:58:48 AM Casey Schaufler wrote:
+> On 5/2/2011 1:53 AM, Roberto Sassu wrote:
+> > On Friday, April 29, 2011 05:46:20 PM Casey Schaufler wrote:
+> >> On 4/29/2011 2:39 AM, Roberto Sassu wrote:
+> >>> Sorry for resending, it was rejected by the mailing lists due to
+> >>> the html formatting.
+> >>>
+> >>>
+> >>> On Thursday, April 28, 2011 07:37:29 PM Casey Schaufler wrote:
+> >>>> On 4/28/2011 5:35 AM, Roberto Sassu wrote:
+> >>>>> On Thursday, April 28, 2011 01:27:19 AM Tyler Hicks wrote:
+> >>>>>> On Wed Apr 27, 2011 at 01:19:55PM -0700, Casey Schaufler <casey@schaufler-ca.com> wrote:
+> >>>>>>> On 4/27/2011 5:34 AM, Roberto Sassu wrote:
+> >>>>>>>> File descriptor labeling issue
+> >>>>>>>>
+> >>>>>>>> Actually SELinux and SMACK assign to file descriptors the same label of the
+> >>>>>>>> opening process and use it in LSM hooks security_file_permission(),
+> >>>>>>>> security_file_fcntl() and others to verify if the 'current' process has the
+> >>>>>>>> rights to perform the requested operation.
+> >>>>>>>>
+> >>>>>>>> Using the credentials of the 'current' process may be not appropriate in
+> >>>>>>>> case a file descriptor is opened by a kernel service (i.e. a filesystem)
+> >>>>>>>> and made shared among user processes. For instance, in a system with
+> >>>>>>>> SELinux and eCryptfs, if the process A opens an encrypted file, eCryptfs
+> >>>>>>>> obtains a file descriptor to access the correspondent inode in the lower
+> >>>>>>>> filesystem, labeled with the A's label.
+> >>>>>>>>
+> >>>>>>>> If the process B accesses the same encrypted file, it needs the 'use'
+> >>>>>>>> permission on the A's label other than permissions for the lower inode.
+> >>>>>>>> However, if B is the first accessing process, A needs the 'use' permission
+> >>>>>>>> on the B's label.
+> >>>>>>> I am having trouble understanding the argument. I will pose my
+> >>>>>>> question in Smack terms, as I can speak most definitively in them.
+> >>>>>>>
+> >>>>>>> A process running with a Smack label "A" creates a file, and that
+> >>>>>>> file gets labeled "A", as it ought. If eCryptfs is behaving correctly
+> >>>>>>> this ought not change. If eCryptfs in encrypting the label it needs
+> >>>>>>> to do so in such a way as to be able to decrypt it prior to
+> >>>>>>> presentation to the vfs layer, where it will be used in an access
+> >>>>>>> check. When the process running with a Smack label "B" comes along
+> >>>>>>> the vfs code will check the fetched and possibly decrypted "A"
+> >>>>>>> against "B" and, unless there is an explicit Smack rule in place
+> >>>>>>> granting "B" access to "A", fail.
+> >>>>>>>
+> >>>>>>> What is the problem? What is eCryptfs doing that prevents this
+> >>>>>>> from working?
+> >>>>>> Hi Casey - I think what Roberto is getting at is the way eCryptfs uses
+> >>>>>> only one lower file per eCryptfs inode. Imagine that there are 5
+> >>>>>> files open for ~/secret/foo at the eCryptfs layer, only 1 file is going
+> >>>>>> to be open in the lower filesystem and all eCryptfs file operations will
+> >>>>>> be multiplexed through it.
+> >>>>>>
+> >>>>>> To make things more complicated, if the eCryptfs file is opened for
+> >>>>>> writing, the lower file must be opened for reading and writing. This is
+> >>>>>> because a write operation requires eCryptfs to vfs_read() from the lower
+> >>>>>> filesystem, decrypt that data and then vfs_write() the new data.
+> >>>>>>
+> >>>>>> If the lower file can't be opened O_RDWR by the calling process, the
+> >>>>>> request is handed off to a kernel thread to open the lower file on
+> >>>>>> behalf of the calling process. It is definitely ugly.
+> >>>>>>
+> >>>>>> Roberto, I hope I correctly described the situation that you're trying
+> >>>>>> to address. Can you tell me why we can't have a 1:1 mapping of eCryptfs
+> >>>>>> files to lower files?
+> >>>>>>
+> >>>>>> Instead of having just one lower file attached to the eCryptfs inode, we
+> >>>>>> could have a list of opened files. There would be one for each eCryptfs
+> >>>>>> file that was opened. ecryptfs_writepage() would have to pick, in a
+> >>>>>> somewhat random fashion, one of the lower files to use. Of course, we
+> >>>>>> would still need to solve the problem of opening the lower file O_RDWR
+> >>>>>> when the calling process is only allowed write access (I may have just
+> >>>>>> answered my own question of why the 1:1 mapping technique won't solve
+> >>>>>> this problem).
+> >>>>>>
+> >>>>> Hi Tyler
+> >>>>>
+> >>>>> i think the 1:1 mapping isn't necessary at least from the security perspective.
+> >>>>> Since eCryptfs is a stacked filesystem access control is performed on
+> >>>>> both the upper and the lower layer.
+> >>>>> ECryptfs relies on the lower filesystem for the management of extended
+> >>>>> attributes, so this means that the security label of both the upper and
+> >>>>> the lower inodes is the same (however this is not the current behavior
+> >>>>> in SELinux, which assigns the label 'ecryptfs_t' to the upper inode).
+> >>>> Where does this assignment occur?
+> >>>>
+> >>> Hi Casey
+> >>>
+> >>> The assignment happens at the inode's initialization time and depends on
+> >>> the behavior configured for a specific filesystem.
+> >>> The SELinux reference policy actually configures static labeling for inodes
+> >>> in the eCryptfs filesystem while for example allows ext4 inodes to be
+> >>> initialized using extended attributes.
+> >> So how about changing eCryptfs (Goodness, but I hate camelCase) to
+> >> properly support extended attributes? That would seem a better
+> >> approach than mucking up the entire LSM. You still have to deal
+> >> with the SELinux policy, but I don't see you getting away without
+> >> doing something with that in any case.
+> >>
+> > Hi Casey
+> >
+> > i think having separate extended attributes in eCryptfs does not
+> > address the issue i reported in the cover letter.
+> > The reason is, in my opinion, the incorrect labeling of file descriptors
+> > which causes in SELinux more permissions than those really needed
+> > must be added in the policy. This does not depends on the inode's
+> > security context but on the credentials provided to dentry_open().
+> 
+> The problem is that you seem to think that eCryptfs needs
+> access to the file. If eCryptfs is kernel code being invoked
+> through the VFS you should be providing the user's credentials.
+> 
+> >
+> >>>>> In my view, for this reason the access control checks can be performed
+> >>>>> only at the upper layer, letting eCryptfs full privileges to access inodes
+> >>>>> in the lower filesystem.
+> >>>> On this point I most strongly disagree.
+> >>>>
+> >>>> The behavior of a filesystem and the data that it uses to determine
+> >>>> that behavior is wrought with complex interactions which may include
+> >>>> but are not limited to caching, read-aheads, garbage collection,
+> >>>> and various side effects of access control. If eCryptfs needs to go
+> >>>> mucking about with the data used by the underlying filesystem it is
+> >>>> not stacking properly. A stacked filesystem has no business whatever
+> >>>> changing the data of the underlying filesystem.
+> >>>>
+> >>> Ok, probably i have to go more in deep to explain how access control is
+> >>> performed on eCryptfs. I'm talking for the SELinux's case, so SELinux experts
+> >>> can correct me if i'm wrong.
+> >>>
+> >>> First, i want to use extended attributes to initialize an eCryptfs inode, so
+> >>> both the upper and the lower inodes have the same security context
+> >>> because eCryptfs calls the *xattr() methods of the underlying filesystem.
+> >> OK, you could create your own xattr functions that do whatever credential
+> >> mucking they need to and then call the underlying file system's version.
+> >> It is possible that the work the NFS people have been doing for xattr
+> >> support (I haven't seen much on this lately, is it still active? Anyone?)
+> >> would prove instructive.
+> >>
+> >>> Then, the process A accesses the eCryptfs inode 'I'. On the upper layer access
+> >>> control is performed using the credentials of the 'current' process and the
+> >>> security context of I.
+> >>>
+> >>> If the process is allowed to access the upper inode, eCryptfs opens the lower
+> >>> inode, presenting its own credentials with the type 'kernel_t'.
+> >> So eCryptfs provides its own process context. When you say "open" do you
+> >> mean open(2) or something else? A little precision goes a long way in these
+> >> discussions.
+> >>
+> > ECryptfs provides its own credentials when calling the function dentry_open()
+> > to obtain a file descriptor to be shared among user processes.
+> 
+> This is your problem. The problem is that you are not
+> using the credential of the user process to access the
+> file, you are using your own. Sharing a "file descriptor"
+> may seem like an optimization, but as you see it has
+> does not work.
+> 
+> >>> Then, SELinux
+> >>> checks if 'kernel_t' can access the inode with the security context of 'I'.
+> >> Why doesn't eCryptfs provide the credentials of 'I'? In the kernel you
+> >> can do what you will.
+> > No, eCryptfs provides (in the following patch) the 'initial' credentials which
+> > are obtained through the function prepare_kernel_cred() which give root
+> > privileges. These credentials are used in the hook security_dentry_open()
+> > to verify if eCryptfs is allowed to access the inode 'I' in the underlying
+> > filesystem.
+> 
+> But you shouldn't care if eCryptfs can access the file. You should
+> only care if the user process can access the file. You're kernel code,
+> you can do what you will.
+> 
+> >>> If so,
+> >>> eCryptfs obtains a file descriptor which, in this patch set, is labeled using the
+> >>> same credentials it provided at open time and binds it to the upper inode.
+> >>>
+> >>> Suppose for a moment that A is working on the eCryptfs inode 'I' and the process
+> >>> B requests the same inode. ECryptfs uses the already opened file descriptor and
+> >>> B will be granted to open the requested inode if:
+> >>>
+> >>> - B has the 'open' permission on the upper inode 'I';
+> >>>
+> >>>
+> >>> and can perform read/write operations if:
+> >>>
+> >>> - B has the 'read' and 'write' permissions on the upper inode 'I';
+> >>> - B is allowed to use the file descriptor opened by eCryptfs ('kernel_t').
+> >>> - B has the 'read' and 'write' permissions on the lower inode I;
+> >>>
+> >>>
+> >>> What i miss to say in my previous email is that even if eCryptfs is granted
+> >>> to access inodes in the lower filesystem with full privileges, user processes
+> >>> still need the permission to deal with the lower inode, but the check on the
+> >>> upper inode is sufficient because the security context is the same.
+> >> Right, but what I don't understand is why you can't use existing
+> >> mechanisms to achieve this? NFS manages (mostly).
+> >>
+> > Please, can you explain better this thought?
+> 
+> NFS provides a network "view" of an ext4 (or any type for that matter)
+> filesystem. NFS does not support extended attributes, but there has been
+> ongoing work on that. It seems that if NFS does not require the kind
+> of changes you are requesting you shouldn't either.
+> 
 
-A migration event will replace the rpc_xprt used by an rpc_clnt.  To
-ensure this can be done safely, all references to cl_xprt must now use
-a form of rcu_dereference().
+I'm not familiar with NFS, so i cannot answer about this scenario.
+I'm adding in CC also the NFS mantainers and the mailing list so
+that they can express their point of view. The whole thread is
+available at:
 
-Special care is taken with rpc_peeraddr2str(), which returns a pointer
-to memory whose lifetime is the same as the rpc_xprt.
+https://lkml.org/lkml/2011/4/27/201
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-[ cel: fix lockdep splats and layering violations ]
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Roberto Sassu
 
- fs/nfs/callback_proc.c       |    9 ++--
- fs/nfs/client.c              |   16 +++++--
- fs/nfs/nfs4proc.c            |   15 +++++--
- fs/nfs/nfs4state.c           |   14 +++++-
- fs/nfs/super.c               |    5 ++
- include/linux/sunrpc/clnt.h  |    4 +-
- include/linux/sunrpc/debug.h |   11 +++++
- net/sunrpc/clnt.c            |   94 +++++++++++++++++++++++++++++++++++-------
- net/sunrpc/rpc_pipe.c        |    3 +
- net/sunrpc/rpcb_clnt.c       |   15 +++++--
- net/sunrpc/stats.c           |    6 ++-
- 11 files changed, 155 insertions(+), 37 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 2f41dcce..d360b80 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -8,6 +8,7 @@
- #include <linux/nfs4.h>
- #include <linux/nfs_fs.h>
- #include <linux/slab.h>
-+#include <linux/rcupdate.h>
- #include "nfs4_fs.h"
- #include "callback.h"
- #include "delegation.h"
-@@ -33,7 +34,7 @@ __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
- 	res->bitmap[0] = res->bitmap[1] = 0;
- 	res->status = htonl(NFS4ERR_BADHANDLE);
- 
--	dprintk("NFS: GETATTR callback request from %s\n",
-+	dprintk_rcu("NFS: GETATTR callback request from %s\n",
- 		rpc_peeraddr2str(cps->clp->cl_rpcclient, RPC_DISPLAY_ADDR));
- 
- 	inode = nfs_delegation_find_inode(cps->clp, &args->fh);
-@@ -73,7 +74,7 @@ __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
- 	if (!cps->clp) /* Always set for v4.0. Set in cb_sequence for v4.1 */
- 		goto out;
- 
--	dprintk("NFS: RECALL callback request from %s\n",
-+	dprintk_rcu("NFS: RECALL callback request from %s\n",
- 		rpc_peeraddr2str(cps->clp->cl_rpcclient, RPC_DISPLAY_ADDR));
- 
- 	res = htonl(NFS4ERR_BADHANDLE);
-@@ -442,7 +443,7 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
- 	if (!cps->clp) /* set in cb_sequence */
- 		goto out;
- 
--	dprintk("NFS: RECALL_ANY callback request from %s\n",
-+	dprintk_rcu("NFS: RECALL_ANY callback request from %s\n",
- 		rpc_peeraddr2str(cps->clp->cl_rpcclient, RPC_DISPLAY_ADDR));
- 
- 	status = cpu_to_be32(NFS4ERR_INVAL);
-@@ -477,7 +478,7 @@ __be32 nfs4_callback_recallslot(struct cb_recallslotargs *args, void *dummy,
- 	if (!cps->clp) /* set in cb_sequence */
- 		goto out;
- 
--	dprintk("NFS: CB_RECALL_SLOT request from %s target max slots %d\n",
-+	dprintk_rcu("NFS: CB_RECALL_SLOT request from %s target max slots %d\n",
- 		rpc_peeraddr2str(cps->clp->cl_rpcclient, RPC_DISPLAY_ADDR),
- 		args->crsa_target_max_slots);
- 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 139be96..b55ef58 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1273,16 +1273,18 @@ static int nfs4_init_callback(struct nfs_client *clp)
- 	int error;
- 
- 	if (clp->rpc_ops->version == 4) {
-+		struct rpc_xprt *xprt;
-+
-+		xprt = rcu_dereference_raw(clp->cl_rpcclient->cl_xprt);
-+
- 		if (nfs4_has_session(clp)) {
--			error = xprt_setup_backchannel(
--						clp->cl_rpcclient->cl_xprt,
-+			error = xprt_setup_backchannel(xprt,
- 						NFS41_BC_MIN_CALLBACKS);
- 			if (error < 0)
- 				return error;
- 		}
- 
--		error = nfs_callback_up(clp->cl_mvops->minor_version,
--					clp->cl_rpcclient->cl_xprt);
-+		error = nfs_callback_up(clp->cl_mvops->minor_version, xprt);
- 		if (error < 0) {
- 			dprintk("%s: failed to start callback. Error = %d\n",
- 				__func__, error);
-@@ -1663,7 +1665,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
- 				data->addrlen,
- 				parent_client->cl_ipaddr,
- 				data->authflavor,
--				parent_server->client->cl_xprt->prot,
-+				rpc_protocol(parent_server->client),
- 				parent_server->client->cl_timeout,
- 				parent_client->cl_mvops->minor_version);
- 	if (error < 0)
-@@ -1863,12 +1865,14 @@ static int nfs_server_list_show(struct seq_file *m, void *v)
- 	/* display one transport per line on subsequent lines */
- 	clp = list_entry(v, struct nfs_client, cl_share_link);
- 
-+	rcu_read_lock();
- 	seq_printf(m, "v%u %s %s %3d %s\n",
- 		   clp->rpc_ops->version,
- 		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_ADDR),
- 		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_PORT),
- 		   atomic_read(&clp->cl_count),
- 		   clp->cl_hostname);
-+	rcu_read_unlock();
- 
- 	return 0;
- }
-@@ -1942,6 +1946,7 @@ static int nfs_volume_list_show(struct seq_file *m, void *v)
- 		 (unsigned long long) server->fsid.major,
- 		 (unsigned long long) server->fsid.minor);
- 
-+	rcu_read_lock();
- 	seq_printf(m, "v%u %s %s %-7s %-17s %s\n",
- 		   clp->rpc_ops->version,
- 		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_ADDR),
-@@ -1949,6 +1954,7 @@ static int nfs_volume_list_show(struct seq_file *m, void *v)
- 		   dev,
- 		   fsid,
- 		   nfs_server_fscache_state(server));
-+	rcu_read_unlock();
- 
- 	return 0;
- }
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 69c0f3c..5a87686 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3734,6 +3734,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 	*p = htonl((u32)clp->cl_boot_time.tv_nsec);
- 
- 	for(;;) {
-+		rcu_read_lock();
- 		setclientid.sc_name_len = scnprintf(setclientid.sc_name,
- 				sizeof(setclientid.sc_name), "%s/%s %s %s %u",
- 				clp->cl_ipaddr,
-@@ -3750,6 +3751,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 		setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
- 				sizeof(setclientid.sc_uaddr), "%s.%u.%u",
- 				clp->cl_ipaddr, port >> 8, port & 255);
-+		rcu_read_unlock();
- 
- 		status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
- 		if (status != -NFS4ERR_CLID_INUSE)
-@@ -5050,11 +5052,16 @@ struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp)
- 
- void nfs4_destroy_session(struct nfs4_session *session)
- {
-+	struct rpc_xprt *xprt;
-+
- 	nfs4_proc_destroy_session(session);
-+
-+	rcu_read_lock();
-+	xprt = rcu_dereference(session->clp->cl_rpcclient->cl_xprt);
-+	rcu_read_unlock();
- 	dprintk("%s Destroy backchannel for xprt %p\n",
--		__func__, session->clp->cl_rpcclient->cl_xprt);
--	xprt_destroy_backchannel(session->clp->cl_rpcclient->cl_xprt,
--				NFS41_BC_MIN_CALLBACKS);
-+		__func__, xprt);
-+	xprt_destroy_backchannel(xprt, NFS41_BC_MIN_CALLBACKS);
- 	nfs4_destroy_slot_tables(session);
- 	kfree(session);
- }
-@@ -5083,7 +5090,7 @@ static void nfs4_init_channel_attrs(struct nfs41_create_session_args *args)
- 	args->fc_attrs.max_rqst_sz = mxrqst_sz;
- 	args->fc_attrs.max_resp_sz = mxresp_sz;
- 	args->fc_attrs.max_ops = NFS4_MAX_OPS;
--	args->fc_attrs.max_reqs = session->clp->cl_rpcclient->cl_xprt->max_reqs;
-+	args->fc_attrs.max_reqs = rpc_max_reqs(session->clp->cl_rpcclient);
- 
- 	dprintk("%s: Fore Channel : max_rqst_sz=%u max_resp_sz=%u "
- 		"max_ops=%u max_reqs=%u\n",
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 036f5ad..f6b268f 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1011,16 +1011,24 @@ static void nfs4_clear_state_manager_bit(struct nfs_client *clp)
- void nfs4_schedule_state_manager(struct nfs_client *clp)
- {
- 	struct task_struct *task;
-+	char buf[INET6_ADDRSTRLEN + sizeof("-manager") + 1];
- 
- 	if (test_and_set_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) != 0)
- 		return;
- 	__module_get(THIS_MODULE);
- 	atomic_inc(&clp->cl_count);
--	task = kthread_run(nfs4_run_state_manager, clp, "%s-manager",
--				rpc_peeraddr2str(clp->cl_rpcclient,
--							RPC_DISPLAY_ADDR));
-+
-+	/* The rcu_read_lock() is not strictly necessary, as the state
-+	 * manager is the only thread that ever changes the rpc_xprt
-+	 * after it's initialized.  At this point, we're single threaded. */
-+	rcu_read_lock();
-+	snprintf(buf, sizeof(buf), "%s-manager",
-+			rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
-+	rcu_read_unlock();
-+	task = kthread_run(nfs4_run_state_manager, clp, buf);
- 	if (!IS_ERR(task))
- 		return;
-+
- 	nfs4_clear_state_manager_bit(clp);
- 	nfs_put_client(clp);
- 	module_put(THIS_MODULE);
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index e288f06..50c0482 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -53,6 +53,7 @@
- #include <linux/nfs_xdr.h>
- #include <linux/magic.h>
- #include <linux/parser.h>
-+#include <linux/rcupdate.h>
- 
- #include <asm/system.h>
- #include <asm/uaccess.h>
-@@ -676,8 +677,10 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
- 		else
- 			seq_puts(m, nfs_infop->nostr);
- 	}
-+	rcu_read_lock();
- 	seq_printf(m, ",proto=%s",
- 		   rpc_peeraddr2str(nfss->client, RPC_DISPLAY_NETID));
-+	rcu_read_unlock();
- 	if (version == 4) {
- 		if (nfss->port != NFS_PORT)
- 			seq_printf(m, ",port=%u", nfss->port);
-@@ -726,9 +729,11 @@ static int nfs_show_options(struct seq_file *m, struct vfsmount *mnt)
- 
- 	nfs_show_mount_options(m, nfss, 0);
- 
-+	rcu_read_lock();
- 	seq_printf(m, ",addr=%s",
- 			rpc_peeraddr2str(nfss->nfs_client->cl_rpcclient,
- 							RPC_DISPLAY_ADDR));
-+	rcu_read_unlock();
- 
- 	return 0;
- }
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 1cab257..7a1d124 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -36,7 +36,7 @@ struct rpc_clnt {
- 	struct list_head	cl_clients;	/* Global list of clients */
- 	struct list_head	cl_tasks;	/* List of tasks */
- 	spinlock_t		cl_lock;	/* spinlock */
--	struct rpc_xprt *	cl_xprt;	/* transport */
-+	struct rpc_xprt __rcu *	cl_xprt;	/* transport */
- 	struct rpc_procinfo *	cl_procinfo;	/* procedure info */
- 	u32			cl_prog,	/* RPC program number */
- 				cl_vers,	/* RPC version number */
-@@ -164,6 +164,8 @@ struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred,
- int		rpc_restart_call_prepare(struct rpc_task *);
- int		rpc_restart_call(struct rpc_task *);
- void		rpc_setbufsize(struct rpc_clnt *, unsigned int, unsigned int);
-+int		rpc_protocol(struct rpc_clnt *);
-+unsigned int	rpc_max_reqs(struct rpc_clnt *);
- size_t		rpc_max_payload(struct rpc_clnt *);
- void		rpc_force_rebind(struct rpc_clnt *);
- size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
-diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
-index c2786f2..28136fd 100644
---- a/include/linux/sunrpc/debug.h
-+++ b/include/linux/sunrpc/debug.h
-@@ -47,15 +47,26 @@ extern unsigned int		nlm_debug;
- #endif
- 
- #define dprintk(args...)	dfprintk(FACILITY, ## args)
-+#define dprintk_rcu(args...)	dfprintk_rcu(FACILITY, ## args)
- 
- #undef ifdebug
- #ifdef RPC_DEBUG			
- # define ifdebug(fac)		if (unlikely(rpc_debug & RPCDBG_##fac))
- # define dfprintk(fac, args...)	do { ifdebug(fac) printk(args); } while(0)
-+
-+# define dfprintk_rcu(fac, args...)	\
-+	do { \
-+		ifdebug(fac) { \
-+			rcu_read_lock(); \
-+			printk(args); \
-+			rcu_read_unlock(); \
-+		} \
-+	} while (0)
- # define RPC_IFDEBUG(x)		x
- #else
- # define ifdebug(fac)		if (0)
- # define dfprintk(fac, args...)	do ; while (0)
-+# define dfprintk_rcu(fac, args...)	do ; while (0)
- # define RPC_IFDEBUG(x)
- #endif
- 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 3d6b1a9..31ee4db 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -31,6 +31,7 @@
- #include <linux/in.h>
- #include <linux/in6.h>
- #include <linux/un.h>
-+#include <linux/rcupdate.h>
- 
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/rpc_pipe_fs.h>
-@@ -190,7 +191,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
- 	}
- 	strlcpy(clnt->cl_server, args->servername, len);
- 
--	clnt->cl_xprt     = xprt;
-+	rcu_assign_pointer(clnt->cl_xprt, xprt);
- 	clnt->cl_procinfo = version->procs;
- 	clnt->cl_maxproc  = version->nrprocs;
- 	clnt->cl_protname = program->name;
-@@ -205,7 +206,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
- 	INIT_LIST_HEAD(&clnt->cl_tasks);
- 	spin_lock_init(&clnt->cl_lock);
- 
--	if (!xprt_bound(clnt->cl_xprt))
-+	if (!xprt_bound(xprt))
- 		clnt->cl_autobind = 1;
- 
- 	clnt->cl_timeout = xprt->timeout;
-@@ -377,6 +378,7 @@ struct rpc_clnt *
- rpc_clone_client(struct rpc_clnt *clnt)
- {
- 	struct rpc_clnt *new;
-+	struct rpc_xprt *xprt;
- 	int err = -ENOMEM;
- 
- 	new = kmemdup(clnt, sizeof(*new), GFP_KERNEL);
-@@ -396,6 +398,12 @@ rpc_clone_client(struct rpc_clnt *clnt)
- 		if (new->cl_principal == NULL)
- 			goto out_no_principal;
- 	}
-+	rcu_read_lock();
-+	xprt = xprt_get(rcu_dereference(clnt->cl_xprt));
-+	rcu_read_unlock();
-+	if (xprt == NULL)
-+		goto out_no_transport;
-+	rcu_assign_pointer(new->cl_xprt, xprt);
- 	atomic_set(&new->cl_count, 1);
- 	atomic_set(&new->cl_active_tasks, 0);
- 	rpc_init_wait_queue(&new->cl_waitqueue, "client waitqueue");
-@@ -404,12 +412,13 @@ rpc_clone_client(struct rpc_clnt *clnt)
- 		goto out_no_path;
- 	if (new->cl_auth)
- 		atomic_inc(&new->cl_auth->au_count);
--	xprt_get(clnt->cl_xprt);
- 	atomic_inc(&clnt->cl_count);
- 	rpc_register_client(new);
- 	rpciod_up();
- 	return new;
- out_no_path:
-+	xprt_put(xprt);
-+out_no_transport:
- 	kfree(new->cl_principal);
- out_no_principal:
- 	rpc_free_iostats(new->cl_metrics);
-@@ -494,7 +503,7 @@ out_free:
- 	rpc_free_iostats(clnt->cl_metrics);
- 	kfree(clnt->cl_principal);
- 	clnt->cl_metrics = NULL;
--	xprt_put(clnt->cl_xprt);
-+	xprt_put(rcu_dereference_raw(clnt->cl_xprt));
- 	rpciod_down();
- 	kfree(clnt);
- }
-@@ -851,13 +860,18 @@ EXPORT_SYMBOL_GPL(rpc_call_start);
- size_t rpc_peeraddr(struct rpc_clnt *clnt, struct sockaddr *buf, size_t bufsize)
- {
- 	size_t bytes;
--	struct rpc_xprt *xprt = clnt->cl_xprt;
-+	struct rpc_xprt *xprt;
-+
-+	rcu_read_lock();
-+	xprt = rcu_dereference(clnt->cl_xprt);
- 
--	bytes = sizeof(xprt->addr);
-+	bytes = xprt->addrlen;
- 	if (bytes > bufsize)
- 		bytes = bufsize;
--	memcpy(buf, &clnt->cl_xprt->addr, bytes);
--	return xprt->addrlen;
-+	memcpy(buf, &xprt->addr, bytes);
-+	rcu_read_unlock();
-+
-+	return bytes;
- }
- EXPORT_SYMBOL_GPL(rpc_peeraddr);
- 
-@@ -866,11 +880,16 @@ EXPORT_SYMBOL_GPL(rpc_peeraddr);
-  * @clnt: RPC client structure
-  * @format: address format
-  *
-+ * NB: the lifetime of the memory referenced by the returned pointer is
-+ * the same as the rpc_xprt itself.  As long as the caller uses this
-+ * pointer, it must hold the RCU read lock.
-  */
- const char *rpc_peeraddr2str(struct rpc_clnt *clnt,
- 			     enum rpc_display_format_t format)
- {
--	struct rpc_xprt *xprt = clnt->cl_xprt;
-+	struct rpc_xprt *xprt;
-+
-+	xprt = rcu_dereference(clnt->cl_xprt);
- 
- 	if (xprt->address_strings[format] != NULL)
- 		return xprt->address_strings[format];
-@@ -882,14 +901,51 @@ EXPORT_SYMBOL_GPL(rpc_peeraddr2str);
- void
- rpc_setbufsize(struct rpc_clnt *clnt, unsigned int sndsize, unsigned int rcvsize)
- {
--	struct rpc_xprt *xprt = clnt->cl_xprt;
-+	struct rpc_xprt *xprt;
-+
-+	rcu_read_lock();
-+	xprt = rcu_dereference(clnt->cl_xprt);
- 	if (xprt->ops->set_buffer_size)
- 		xprt->ops->set_buffer_size(xprt, sndsize, rcvsize);
-+	rcu_read_unlock();
- }
- EXPORT_SYMBOL_GPL(rpc_setbufsize);
- 
--/*
-- * Return size of largest payload RPC client can support, in bytes
-+/**
-+ * rpc_protocol - Get transport protocol number for an RPC client
-+ * @clnt: RPC client to query
-+ *
-+ */
-+int rpc_protocol(struct rpc_clnt *clnt)
-+{
-+	int protocol;
-+
-+	rcu_read_lock();
-+	protocol = rcu_dereference(clnt->cl_xprt)->prot;
-+	rcu_read_unlock();
-+	return protocol;
-+}
-+EXPORT_SYMBOL_GPL(rpc_protocol);
-+
-+/**
-+ * rpc_max_reqs - Get the maximum number of outstanding requests
-+ * @clnt: RPC client to query
-+ *
-+ */
-+unsigned int rpc_max_reqs(struct rpc_clnt *clnt)
-+{
-+	unsigned int max_reqs;
-+
-+	rcu_read_lock();
-+	max_reqs = rcu_dereference(clnt->cl_xprt)->max_reqs;
-+	rcu_read_unlock();
-+	return max_reqs;
-+}
-+EXPORT_SYMBOL_GPL(rpc_max_reqs);
-+
-+/**
-+ * rpc_max_payload - Get maximum payload size for a transport, in bytes
-+ * @clnt: RPC client to query
-  *
-  * For stream transports, this is one RPC record fragment (see RFC
-  * 1831), as we don't support multi-record requests yet.  For datagram
-@@ -898,7 +954,12 @@ EXPORT_SYMBOL_GPL(rpc_setbufsize);
-  */
- size_t rpc_max_payload(struct rpc_clnt *clnt)
- {
--	return clnt->cl_xprt->max_payload;
-+	size_t ret;
-+
-+	rcu_read_lock();
-+	ret = rcu_dereference(clnt->cl_xprt)->max_payload;
-+	rcu_read_unlock();
-+	return ret;
- }
- EXPORT_SYMBOL_GPL(rpc_max_payload);
- 
-@@ -909,8 +970,11 @@ EXPORT_SYMBOL_GPL(rpc_max_payload);
-  */
- void rpc_force_rebind(struct rpc_clnt *clnt)
- {
--	if (clnt->cl_autobind)
--		xprt_clear_bound(clnt->cl_xprt);
-+	if (clnt->cl_autobind) {
-+		rcu_read_lock();
-+		xprt_clear_bound(rcu_dereference(clnt->cl_xprt));
-+		rcu_read_unlock();
-+	}
- }
- EXPORT_SYMBOL_GPL(rpc_force_rebind);
- 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 72bc536..47053e5 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -16,6 +16,7 @@
- #include <linux/namei.h>
- #include <linux/fsnotify.h>
- #include <linux/kernel.h>
-+#include <linux/rcupdate.h>
- 
- #include <asm/ioctls.h>
- #include <linux/fs.h>
-@@ -359,12 +360,14 @@ rpc_show_info(struct seq_file *m, void *v)
- {
- 	struct rpc_clnt *clnt = m->private;
- 
-+	rcu_read_lock();
- 	seq_printf(m, "RPC server: %s\n", clnt->cl_server);
- 	seq_printf(m, "service: %s (%d) version %d\n", clnt->cl_protname,
- 			clnt->cl_prog, clnt->cl_vers);
- 	seq_printf(m, "address: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_ADDR));
- 	seq_printf(m, "protocol: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_PROTO));
- 	seq_printf(m, "port: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_PORT));
-+	rcu_read_unlock();
- 	return 0;
- }
- 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 9a80a92..a861e19 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -571,9 +571,10 @@ static struct rpc_task *rpcb_call_async(struct rpc_clnt *rpcb_clnt, struct rpcbi
- static struct rpc_clnt *rpcb_find_transport_owner(struct rpc_clnt *clnt)
- {
- 	struct rpc_clnt *parent = clnt->cl_parent;
-+	struct rpc_xprt *xprt = rcu_dereference(clnt->cl_xprt);
- 
- 	while (parent != clnt) {
--		if (parent->cl_xprt != clnt->cl_xprt)
-+		if (rcu_dereference(parent->cl_xprt) != xprt)
- 			break;
- 		if (clnt->cl_autobind)
- 			break;
-@@ -604,8 +605,12 @@ void rpcb_getport_async(struct rpc_task *task)
- 	size_t salen;
- 	int status;
- 
--	clnt = rpcb_find_transport_owner(task->tk_client);
--	xprt = clnt->cl_xprt;
-+	rcu_read_lock();
-+	do {
-+		clnt = rpcb_find_transport_owner(task->tk_client);
-+		xprt = xprt_get(rcu_dereference(clnt->cl_xprt));
-+	} while (xprt == NULL);
-+	rcu_read_unlock();
- 
- 	dprintk("RPC: %5u %s(%s, %u, %u, %d)\n",
- 		task->tk_pid, __func__,
-@@ -618,6 +623,7 @@ void rpcb_getport_async(struct rpc_task *task)
- 	if (xprt_test_and_set_binding(xprt)) {
- 		dprintk("RPC: %5u %s: waiting for another binder\n",
- 			task->tk_pid, __func__);
-+		xprt_put(xprt);
- 		return;
- 	}
- 
-@@ -685,7 +691,7 @@ void rpcb_getport_async(struct rpc_task *task)
- 	switch (bind_version) {
- 	case RPCBVERS_4:
- 	case RPCBVERS_3:
--		map->r_netid = rpc_peeraddr2str(clnt, RPC_DISPLAY_NETID);
-+		map->r_netid = xprt->address_strings[RPC_DISPLAY_NETID];
- 		map->r_addr = rpc_sockaddr2uaddr(sap);
- 		map->r_owner = "";
- 		break;
-@@ -714,6 +720,7 @@ bailout_release_client:
- bailout_nofree:
- 	rpcb_wake_rpcbind_waiters(xprt, status);
- 	task->tk_status = status;
-+	xprt_put(xprt);
- }
- EXPORT_SYMBOL_GPL(rpcb_getport_async);
- 
-diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
-index 80df89d..4084255 100644
---- a/net/sunrpc/stats.c
-+++ b/net/sunrpc/stats.c
-@@ -22,6 +22,7 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/svcsock.h>
- #include <linux/sunrpc/metrics.h>
-+#include <linux/rcupdate.h>
- 
- #include "netns.h"
- 
-@@ -179,7 +180,7 @@ static void _print_name(struct seq_file *seq, unsigned int op,
- void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt)
- {
- 	struct rpc_iostats *stats = clnt->cl_metrics;
--	struct rpc_xprt *xprt = clnt->cl_xprt;
-+	struct rpc_xprt *xprt;
- 	unsigned int op, maxproc = clnt->cl_maxproc;
- 
- 	if (!stats)
-@@ -189,8 +190,11 @@ void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt)
- 	seq_printf(seq, "p/v: %u/%u (%s)\n",
- 			clnt->cl_prog, clnt->cl_vers, clnt->cl_protname);
- 
-+	rcu_read_lock();
-+	xprt = rcu_dereference(clnt->cl_xprt);
- 	if (xprt)
- 		xprt->ops->print_stats(xprt, seq);
-+	rcu_read_unlock();
- 
- 	seq_printf(seq, "\tper-op statistics\n");
- 	for (op = 0; op < maxproc; op++) {
-
+> >>>> Excuse my ignorance for a moment. Is eCryptfs a user mode filesystem,
+> >>>> or in the kernel properly? The behavior makes it sound like the former
+> >>>> while the interfaces you're requesting make it seem like the latter.
+> >> I'll repeat the question because it matters.
+> > As already reported by Guido Trentalancia, eCryptfs is a kernel mode
+> > filesystem, which accepts data from the VFS layer, encrypts or decrypts
+> > them and store the result in the underlying filesystem, always passing from
+> > the VFS interface.
+> >
+> > Roberto Sassu
+> >
+> >
+> >>
+> > --
+> > This message was distributed to subscribers of the selinux mailing list.
+> > If you no longer wish to subscribe, send mail to majordomo@tycho.nsa.gov with
+> > the words "unsubscribe selinux" without quotes as the message.
+> >
+> >
+> 
+> 
