@@ -1,176 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:30480 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753273Ab1EVCtn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 May 2011 22:49:43 -0400
-Message-ID: <4DD879BC.6000503@panasas.com>
-Date: Sun, 22 May 2011 05:49:32 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Fred Isaman <iisaman@netapp.com>, NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] SQUASHME: BUGs squashing in new pnfs for LD code
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:59323 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753976Ab1EDATz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 May 2011 20:19:55 -0400
+Date: Tue, 3 May 2011 20:20:23 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: andros@netapp.com
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [[RFC] 1/1] SUNRPC: dynamic rpc_slot allocator for TCP
+Message-ID: <20110503202023.699435f4@corrin.poochiereds.net>
+In-Reply-To: <1304386808-2733-2-git-send-email-andros@netapp.com>
+References: <1304386808-2733-1-git-send-email-andros@netapp.com>
+	<1304386808-2733-2-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Mon,  2 May 2011 21:40:08 -0400
+andros@netapp.com wrote:
 
-1. In nfs4_write_done_cb: data->write_done_cb comes with a NULL.
-   Just as a guess I call nfs4_write_done_cb() just above it
-   it looked like the right thing to do. With that in, I'm able
-   to write things to file When converting pnfs.c:258 to a WARN_ON.
+> From: Andy Adamson <andros@netapp.com>
+> 
+> Hookup TCP congestion feedback into rpc_slot allocation so that the RPC layer
+> can fully utilize the negotiated TCP window.
+> 
+> Use a slab cache for rpc_slots. Statically allocate an rpc_xprt rpc_slot slab
+> cache using GFP_KERNEL to the RPC_DEF_SLOT_TABLE number of slots at
+> rpc_xprt allocation.
+> 
+> Add a dynamic rpc slot allocator to rpc_xprt_ops which is set only for TCP.
+> For TCP, trigger a dyamic slot allocation in response to a write_space
+> callback which is in turn called when the TCP layer is waiting for buffer space.
+> 
+> Dynamically add a slot at the beginning of the RPC call_transmit state. The slot
+> allocator uses GFP_NOWAIT and will return without allocating a slot if
+> GFP_NOWAIT allocation fails. This is OK because the write_space callback will
+> be called again, and the dynamic slot allocator can retry.
+> 
+> Signed-off-by: Andy Adamson <andros@netap.com>
+> ---
+>  include/linux/sunrpc/sched.h |    2 +
+>  include/linux/sunrpc/xprt.h  |    6 +++-
+>  net/sunrpc/clnt.c            |    4 ++
+>  net/sunrpc/sched.c           |   39 ++++++++++++++++++++++
+>  net/sunrpc/xprt.c            |   75 +++++++++++++++++++++++++++++++++++++-----
+>  net/sunrpc/xprtsock.c        |    1 +
+>  6 files changed, 117 insertions(+), 10 deletions(-)
+> 
 
-   Benny we might want to set data->write_done_cb somewhere in the
-   none-rpc path? where is it best to do that?
-1.5
-   Same as above for nfs4_read_done.
+Nice work, comments inline below...
 
-2. In pnfs_ld_write_done We don't need:
-	put_lseg(data->lseg);
-	data->lseg = NULL;
-   It is called in nfs_writedata_release()
-2.5 Same for pnfs_ld_read_done
 
-3. In pnfs_ld_write_done:
-   data->mds_ops->rpc_call_done(NULL, data);
-   crashes with a NULL task. Just pass it with &data->task
+[...]
 
-   Which calls for a cleanup. There is bunch of functions
-   with [task, write_data] API. And the task is always
-   write_data->task
+> +
+> +/*
+> + * Static transport rpc_slot allocation called only at rpc_xprt allocation.
+> + * No need to take the xprt->reserve_lock.
+> + */
+> +int
+> +xprt_alloc_slot_entries(struct rpc_xprt *xprt, int num_req)
+> +{
+> +	struct rpc_rqst *req;
+> +	int i;
+> +
+> +	for (i = 0; i < num_req; i++) {
+> +		req = rpc_alloc_slot(GFP_KERNEL);
+> +		if (!req)
+> +			return -ENOMEM;
+> +		memset(req, 0, sizeof(*req));
+> +		list_add(&req->rq_list, &xprt->free);
+> +	}
+> +	dprintk("<-- %s mempool_alloc %d reqs\n", __func__,
+> +		xprt->max_reqs);
+> +	return 0;
+> +}
+> +
 
-3.5
-   Same for pnfs_ld_read_done
+So, I don't quite get this...
 
-4. It is now with current code not possible to run with out a
-   *.pg_test* opt. Without, it will crash, reference leak and
-   only do pnfs-IO on a single page. I'll send a patch to check
-   for it in... where the ld->opt is checked.
+You declare a global mempool early on, and then allocate from that
+mempool for a list of static entries. Doesn't that sort of rob you of
+any benefit of using a mempool here? IOW, won't the static allocations
+potentially rob the mempool of "guaranteed" entries such that the
+dynamic ones eventually all turn into slab allocations anyway?
 
-   So define one for objlayout. Which always returns true.
+What I think would make more sense would be to have multiple mempools
+-- one per xprt and simply set the mempool size to the number of
+"static" entries that you want for the mempool. Then you could get rid
+of the free list, and just do allocations out of the mempool directly.
+You'll be guaranteed to be able to allocate up to the number in the
+mempool and everything above that would just becomes a slab allocation.
 
-With this I'm able to read/write with pnfs-IO. (lightly test)
-(With out any WARN_ONs)
-
-One problem I've seen is that I only get up to 16 pages maximum
-in a single request. I would like to see the 512 pages we had
-before for a full request. Where should I fix that?
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfs/nfs4proc.c            |    5 +++--
- fs/nfs/objlayout/objio_osd.c |   15 +++++++++++++++
- fs/nfs/pnfs.c                |   14 +++++++-------
- 3 files changed, 25 insertions(+), 9 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 759523a..4bf7c0c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3205,7 +3205,7 @@ static int nfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
- 	if (!nfs4_sequence_done(task, &data->res.seq_res))
- 		return -EAGAIN;
- 
--	return data->read_done_cb(task, data);
-+	return data->read_done_cb ? data->read_done_cb(task, data) : nfs4_read_done_cb(task, data);
- }
- 
- static void nfs4_proc_read_setup(struct nfs_read_data *data, struct rpc_message *msg)
-@@ -3250,7 +3250,8 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
- {
- 	if (!nfs4_sequence_done(task, &data->res.seq_res))
- 		return -EAGAIN;
--	return data->write_done_cb(task, data);
-+	return data->write_done_cb ? data->write_done_cb(task, data) :
-+		nfs4_write_done_cb(task, data);
- }
- 
- /* Reset the the nfs_write_data to send the write to the MDS. */
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 7e46d2b..105d8a6 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -989,6 +989,19 @@ ssize_t objio_write_pagelist(struct objlayout_io_state *ol_state, bool stable)
- 	return _write_exec(ios);
- }
- 
-+/*
-+ * objlayout_pg_test(). Called by nfs_can_coalesce_requests()
-+ *
-+ * return 1 :  coalesce page
-+ * return 0 :  don't coalesce page
-+ */
-+int
-+objlayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
-+		   struct nfs_page *req)
-+{
-+	return 1;
-+}
-+
- static struct pnfs_layoutdriver_type objlayout_type = {
- 	.id = LAYOUT_OSD2_OBJECTS,
- 	.name = "LAYOUT_OSD2_OBJECTS",
-@@ -1008,6 +1021,8 @@ static struct pnfs_layoutdriver_type objlayout_type = {
- 
- 	.encode_layoutcommit	 = objlayout_encode_layoutcommit,
- 	.encode_layoutreturn     = objlayout_encode_layoutreturn,
-+
-+	.pg_test		= objlayout_pg_test,
- };
- 
- void *objio_init_mt(void)
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 8d2baf8..ea30a52 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -256,7 +256,7 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
- {
- 	struct inode *inode = lseg->pls_layout->plh_inode;
- 
--	BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
-+ 	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 	list_del_init(&lseg->pls_list);
- 	if (list_empty(&lseg->pls_layout->plh_segs)) {
- 		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
-@@ -1125,15 +1125,15 @@ pnfs_ld_write_done(struct nfs_write_data *data)
- {
- 	int status;
- 
--	put_lseg(data->lseg);
--	data->lseg = NULL;
- 	if (!data->pnfs_error) {
- 		pnfs_set_layoutcommit(data);
--		data->mds_ops->rpc_call_done(NULL, data);
-+		data->mds_ops->rpc_call_done(&data->task, data);
- 		data->mds_ops->rpc_release(data);
- 		return 0;
- 	}
- 
-+	put_lseg(data->lseg);
-+	data->lseg = NULL;
- 	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
- 		data->pnfs_error);
- 	status = nfs_initiate_write(data, NFS_CLIENT(data->inode), data->mds_ops, NFS_FILE_SYNC);
-@@ -1173,15 +1173,15 @@ pnfs_ld_read_done(struct nfs_read_data *data)
- {
- 	int status;
- 
--	put_lseg(data->lseg);
--	data->lseg = NULL;
- 	if (!data->pnfs_error) {
- 		__nfs4_read_done_cb(data);
--		data->mds_ops->rpc_call_done(NULL, data);
-+		data->mds_ops->rpc_call_done(&data->task, data);
- 		data->mds_ops->rpc_release(data);
- 		return 0;
- 	}
- 
-+	put_lseg(data->lseg);
-+	data->lseg = NULL;
- 	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
- 		data->pnfs_error);
- 	status = nfs_initiate_read(data, NFS_CLIENT(data->inode), data->mds_ops);
 -- 
-1.7.2.3
-
+Jeff Layton <jlayton@redhat.com>
