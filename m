@@ -1,125 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:55935 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750853Ab1EEWC6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 May 2011 18:02:58 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e32.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p45Lpe7l021293
-	for <linux-nfs@vger.kernel.org>; Thu, 5 May 2011 15:51:40 -0600
-Received: from d03av05.boulder.ibm.com (d03av05.boulder.ibm.com [9.17.195.85])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p45M3cqe056660
-	for <linux-nfs@vger.kernel.org>; Thu, 5 May 2011 16:03:39 -0600
-Received: from d03av05.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av05.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p45M2Ta6022158
-	for <linux-nfs@vger.kernel.org>; Thu, 5 May 2011 16:02:29 -0600
-Date: Thu, 5 May 2011 17:02:28 -0500
-From: Tyler Hicks <tyhicks@linux.vnet.ibm.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, ecryptfs-devel@lists.launchpad.net
-Subject: Re: [PATCH] NFS: Allow NULL nameidata in d_revalidate and create
-Message-ID: <20110505220227.GG12250@boyd.l.tihix.com>
-References: <1304609741-12541-1-git-send-email-tyhicks@linux.vnet.ibm.com>
- <20110505155728.GB12250@boyd.l.tihix.com>
- <1304613413.20441.2.camel@lade.trondhjem.org>
- <20110505185839.GF12250@boyd.l.tihix.com>
- <1304622496.20441.23.camel@lade.trondhjem.org>
+Received: from mx2.netapp.com ([216.240.18.37]:20173 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753528Ab1EDOzP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 May 2011 10:55:15 -0400
+Subject: Re: [[RFC] 1/1] SUNRPC: dynamic rpc_slot allocator for TCP
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1304622496.20441.23.camel@lade.trondhjem.org>
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <20110504075410.5e59c6b4@tlielax.poochiereds.net>
+Date: Wed, 4 May 2011 10:54:57 -0400
+Cc: NeilBrown <neilb@suse.de>, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Message-Id: <0424D640-C315-449B-847A-59105BBADBCE@netapp.com>
+References: <1304386808-2733-1-git-send-email-andros@netapp.com> <1304386808-2733-2-git-send-email-andros@netapp.com> <20110503202023.699435f4@corrin.poochiereds.net> <1304469890.26184.16.camel@lade.trondhjem.org> <20110504111825.6f26f75a@notabene.brown> <1304473563.26184.28.camel@lade.trondhjem.org> <20110504120726.347df3fc@notabene.brown> <20110504075410.5e59c6b4@tlielax.poochiereds.net>
+To: Jeff Layton <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu May 05, 2011 at 03:08:16PM -0400, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2011-05-05 at 13:58 -0500, Tyler Hicks wrote:
-> > On Thu May 05, 2011 at 12:36:53PM -0400, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> > > On Thu, 2011-05-05 at 10:57 -0500, Tyler Hicks wrote:
-> > > > On Thu May 05, 2011 at 10:35:41AM -0500, Tyler Hicks <tyhicks@linux.vnet.ibm.com> wrote:
-> > > > > To add support for eCryptfs mounts on top of NFS client mounts, the NFS
-> > > > > client must properly handle NULL nameidata pointers in its d_revalidate
-> > > > > functions.
-> > > > > 
-> > > > > NFS clients should also handle NULL nameidata in its create functions,
-> > > > > although this is not currently required for eCryptfs support.
-> > > > > 
-> > > > > Signed-off-by: Tyler Hicks <tyhicks@linux.vnet.ibm.com>
-> > > > > ---
-> > > > 
-> > > > We (eCryptfs) are in the process of switching mailing lists, so I copied
-> > > > both the old (launchpad.net) and the new (vger.kernel.org), but it
-> > > > doesn't look like the vger.kernel.org list is accepting mail yet. Sorry
-> > > > about that, I should have tested it first. Feel free to drop it from
-> > > > any replies.
-> > > > 
-> > > > I should also mention that if/when this patch is merged, eCryptfs will
-> > > > have basic support of mounting on top of NFSv3 client mounts. I say
-> > > > basic because I'm sure there are some bugs, I'm not yet confident that
-> > > > the required cache flushes are there in the eCryptfs layer to have NFSv3
-> > > > cache consistency, and we have some trouble with silly rename.
-> > > > 
-> > > > All files unlinked through eCryptfs get silly renamed in the NFS client
-> > > > because of the extra reference eCryptfs holds on the NFS dentry.
-> > > > 
-> > > > This also seems to come into play when unlinking the last file in a
-> > > > directory and then immediately removing the directory. nfs_rmdir() will
-> > > > sometimes return -EBUSY.
-> > > > 
-> > > > BTW, I think these are all issues that should be handled in the eCryptfs
-> > > > layer, but I wanted to provide an update on the status of eCryptfs on
-> > > > top of NFS.
-> > > 
-> > > Why would we want to 'support' ecryptfs in this manner? Can't you set up
-> > > a proper nameidata with appropriate open intents?
-> > 
-> > Sorry, that was bad wording in my commit message. NFS would not be
-> > "supporting" eCryptfs. eCryptfs supports the filesystem that it is
-> > mounted on top of. We keep any quirks from the stacking scheme in
-> > fs/ecryptfs/ and don't expect filesystems to do anything special for
-> > eCryptfs.
-> > 
-> > In this case, I believe it is a bug for NFS to oops on NULL nameidata in
-> > d_revalidate. It was introduced by 34286d66 and 657e94b6 and has been
-> > fixed in most other filesystems (9177ada9, 8ce84eeb, 4714e637, 53fe9241,
-> > 529c5f95, 0eb980e3).
-> > 
-> > I saw two potential oopses in the NFS create functions and patched
-> > those, too. However, in the case of create, eCryptfs does pass a proper
-> > nameidata to vfs_create().
+
+On May 4, 2011, at 7:54 AM, Jeff Layton wrote:
+
+> On Wed, 4 May 2011 12:07:26 +1000
+> NeilBrown <neilb@suse.de> wrote:
 > 
-> Does it do so to d_revalidate() when opening a file?
-
-I don't believe so.
-
+>> On Tue, 03 May 2011 21:46:03 -0400 Trond Myklebust
+>> <Trond.Myklebust@netapp.com> wrote:
+>> 
+>>> On Wed, 2011-05-04 at 11:18 +1000, NeilBrown wrote:
+>>>> For rpc slots, I doubt you need mempools at all.
+>>>> Mempools are only needed if failure is not an option and you would rather
+>>>> wait, but you cannot wait for regular writeback because you are on the
+>>>> writeback path.  So you use a mempool which waits for a previous request to
+>>>> complete.  I don't think that describes rpc slots at all.
+>>>> For rpc slots, you can afford to wait when setting up the transport, as you
+>>>> are not on the writeout path yet, and later you can always cope with failure.
+>>>> So just use kmalloc.
+>>> 
+>>> Errr.... No. By the time you get to allocating an RPC slot, you may be
+>>> bang smack in the middle of the writeout path.
+>>> 
+>>> The scenario would be that something triggers a writeback (kswapd,
+>>> direct reclaim,...) which triggers an RPC call, which requires you to
+>>> allocate at least one rpc slot before you can put the write on the wire.
+>>> 
+>>> I agree with your assertion that we only need one successful slot
+>>> allocation in order to make overall forward progress, but we definitely
+>>> do need that one...
+>>> 
+>> 
+>> Probably I misunderstood the code, but I thought that there was a base set of
+>> slots preallocated.  Eventually one of those will become free won't it?
+>> 
+>> Looking at the code again, it only ever returns entries to the mempool when
+>> it is about to destroy the xprt.  That makes no sense.  If you are using a
+>> mempool, then you allocate when you need to use space, and free it as soon as
+>> you have finished with it, so the next request can get a turn.
+>> 
 > 
-> > > 
-> > > This patch might allow you to look up files on NFS, but without open
-> > > intents, you certainly won't be able to open them, nor will you be able
-> > > to create them (as you seem to believe).
-> > 
-> > I'm not sure why open and create would not work. My testing shows that
-> > with this patch applied, I can compile the kernel in an eCryptfs mount
-> > mounted on top of an NFSv3 client, run fsx-linux, etc.
+> That was sort of my point, though I didn't articulate it very well.
 > 
-> Please try testing with NFSv4, which requires intents in both lookup()
-> and d_revalidate() when opening a file.
+> I don't think we want to keep this "static" set of rqsts and the
+> mempool. It seems like that's somewhat redundant and more complex than
+> is warranted. The question is...which should we keep?
+> 
+> I think it sort of depends on what the intended model is. If we want to
+> allocate out of the "guaranteed" pool first and only when that's
+> exhausted fall back to doing dynamic allocations, then we probably want
+> to keep the static list of entries.
+> 
+> If we want to allocate dynamically most of the time and only dip into
+> the "guaranteed" pool when that can't be satisfied, then basing all of
+> this around mempools might make more sense.
 
-I acknowledge that eCryptfs won't work on top of NFSv4 in its current
-form. The lookup, create, and open paths in eCryptfs will need some
-rewriting, as you've mentioned.
+Thanks for the review - I've learned a lot about mempools from this discussion.
 
-This patch simply allows eCryptfs to be mounted on top of NFSv3, which
-is the first step in allowing client-side file encryption. This is an
-eCryptfs feature that is asked for quite often and I hope you'll
-reconsider merging the patch until I can make the changes needed to
-support NFSv4.
+I've noticed that a lot of the time, (at least for TCP) rpc_slots are allocated and not used.
+The default slot entries value is a guess. This is why I like the idea of dynamically allocating most 
+of the time, and only dipping into the guaranteed pool when the dynamic allocation
+can't be satisfied. e.g. get rid of the static set of slots.
+Does this design require two mempools, one for dynamic allocation and a guaranteed one being small and "in reserve"?
 
-Tyler
+For UDP and RDMA, the default # of slot entries can turn into an upper bound.
+For TCP, the default # of slot entries would have no meaning WRT upper bound, as the upper bound is determined
+by the TCP window size.
 
+We should actually free the slots in xprt_free_slot to return the slot to the mempool.
+
+-->Andy
 > 
 > -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
+> Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
