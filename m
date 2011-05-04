@@ -1,189 +1,164 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ausxippc101.us.dell.com ([143.166.85.207]:61961 "EHLO
-	ausxippc101.us.dell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752546Ab1EXLkC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 07:40:02 -0400
-From: <Taousif_Ansari@DELLTEAM.com>
-To: <Shyam_Iyer@Dell.com>, <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>, <Ashokan_Vellimalai@Dell.com>
-Date: Tue, 24 May 2011 17:09:46 +0530
-Subject: RE: Performance Issue with multiple dataserver
-Message-ID: <A1A98FD909DC5248811A65C5D18E9C761DF6A1CC2F@BLRX7MCDC202.AMER.DELL.COM>
-References: <4DD2A084.1040905@moving-picture.com>
- <20110518080106.1159c5b8@notabene.brown>
- <4DD39D39.7010805@moving-picture.com>
- <A1A98FD909DC5248811A65C5D18E9C761DF69B1F18@BLRX7MCDC202.AMER.DELL.COM>
- <20110518161239.GA16835@fieldses.org>
- <A1A98FD909DC5248811A65C5D18E9C761DF69B2188@BLRX7MCDC202.AMER.DELL.COM>
- <20110519115018.GA31978@fieldses.org>
- <A1A98FD909DC5248811A65C5D18E9C761DF69B2432@BLRX7MCDC202.AMER.DELL.COM>
- <20110519131236.GA32648@fieldses.org>
- <A1A98FD909DC5248811A65C5D18E9C761DF69B244C@BLRX7MCDC202.AMER.DELL.COM>
- <20110519134356.GB32648@fieldses.org>
- <A1A98FD909DC5248811A65C5D18E9C761DF69B247B@BLRX7MCDC202.AMER.DELL.COM>
- <DBFB1B45AF80394ABD1C807E9F28D157032A7822A8@BLRX7MCDC203.AMER.DELL.COM>
-In-Reply-To: <DBFB1B45AF80394ABD1C807E9F28D157032A7822A8@BLRX7MCDC203.AMER.DELL.COM>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mx2.netapp.com ([216.240.18.37]:11984 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752717Ab1EDRWT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 May 2011 13:22:19 -0400
+Subject: Re: [[RFC] 1/1] SUNRPC: dynamic rpc_slot allocator for TCP
+Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <85C0EB32-BBF6-4224-AC6B-A24B7D5C06B1@oracle.com>
+Date: Wed, 4 May 2011 13:22:01 -0400
+Cc: Jeff Layton <jlayton@redhat.com>, NeilBrown <neilb@suse.de>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Message-Id: <218A78E5-7AEA-45C5-A689-458E0E9244AC@netapp.com>
+References: <1304386808-2733-1-git-send-email-andros@netapp.com> <1304386808-2733-2-git-send-email-andros@netapp.com> <20110503202023.699435f4@corrin.poochiereds.net> <1304469890.26184.16.camel@lade.trondhjem.org> <20110504111825.6f26f75a@notabene.brown> <1304473563.26184.28.camel@lade.trondhjem.org> <20110504120726.347df3fc@notabene.brown> <20110504075410.5e59c6b4@tlielax.poochiereds.net> <0424D640-C315-449B-847A-59105BBADBCE@netapp.com> <20110504111853.7150915a@tlielax.poochiereds.net> <505415C4-0383-4A8D-BD6B-D85F3CB5E7EB@netapp.com> <85C0EB32-BBF6-4224-AC6B-A24B7D5C06B1@oracle.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Bruce, Shyam
 
- As mentioned here http://wiki.linux-nfs.org/wiki/index.php/PNFS_server_projects gfs2 is also having issues(crashes, performance), so instead of going for gfs2 can we debug spNFS itself to get high performance?
-
-
--Taousif
-
------Original Message-----
-From: Iyer, Shyam 
-Sent: Thursday, May 19, 2011 8:08 PM
-To: Ansari, Taousif - Dell Team; bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: RE: Performance Issue with multiple dataserver
-
-
-
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> owner@vger.kernel.org] On Behalf Of Ansari, Taousif - Dell Team
-> 
-> Can you please elaborate GFS2-setup a bit more...
-
-
-I guess Bruce is saying the step-by-step procedure is not written up...
-
-Create a Redhat cluster using the shared block storage(iSCSI in your case I guess). You would get documentation on creating a RH cluster in many places..
-
-All the MDSs and the DSs need to be part of the cluster.
-
-Format GFS2 on the shared iSCSI storage.
-
-Mount the GFS2 formatted iSCSI storage on all the MDSs and DSs and export them via NFS. Use Benny's tree for NFS.
-
-The GFS2 cluster backend is your glue to scale the MDSes and DSes.
+On May 4, 2011, at 12:01 PM, Chuck Lever wrote:
 
 > 
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> Sent: Thursday, May 19, 2011 7:14 PM
-> To: Ansari, Taousif - Dell Team
-> Cc: linux-nfs@vger.kernel.org
-> Subject: Re: Performance Issue with multiple dataserver
+> On May 4, 2011, at 11:52 AM, Andy Adamson wrote:
 > 
-> On Thu, May 19, 2011 at 06:44:59PM +0530, Taousif_Ansari@DELLTEAM.com
-> wrote:
-> > Then what should I follow, and what details are needed....
+>> 
+>> On May 4, 2011, at 11:18 AM, Jeff Layton wrote:
+>> 
+>>> On Wed, 4 May 2011 10:54:57 -0400
+>>> Andy Adamson <andros@netapp.com> wrote:
+>>> 
+>>>> 
+>>>> On May 4, 2011, at 7:54 AM, Jeff Layton wrote:
+>>>> 
+>>>>> On Wed, 4 May 2011 12:07:26 +1000
+>>>>> NeilBrown <neilb@suse.de> wrote:
+>>>>> 
+>>>>>> On Tue, 03 May 2011 21:46:03 -0400 Trond Myklebust
+>>>>>> <Trond.Myklebust@netapp.com> wrote:
+>>>>>> 
+>>>>>>> On Wed, 2011-05-04 at 11:18 +1000, NeilBrown wrote:
+>>>>>>>> For rpc slots, I doubt you need mempools at all.
+>>>>>>>> Mempools are only needed if failure is not an option and you would rather
+>>>>>>>> wait, but you cannot wait for regular writeback because you are on the
+>>>>>>>> writeback path.  So you use a mempool which waits for a previous request to
+>>>>>>>> complete.  I don't think that describes rpc slots at all.
+>>>>>>>> For rpc slots, you can afford to wait when setting up the transport, as you
+>>>>>>>> are not on the writeout path yet, and later you can always cope with failure.
+>>>>>>>> So just use kmalloc.
+>>>>>>> 
+>>>>>>> Errr.... No. By the time you get to allocating an RPC slot, you may be
+>>>>>>> bang smack in the middle of the writeout path.
+>>>>>>> 
+>>>>>>> The scenario would be that something triggers a writeback (kswapd,
+>>>>>>> direct reclaim,...) which triggers an RPC call, which requires you to
+>>>>>>> allocate at least one rpc slot before you can put the write on the wire.
+>>>>>>> 
+>>>>>>> I agree with your assertion that we only need one successful slot
+>>>>>>> allocation in order to make overall forward progress, but we definitely
+>>>>>>> do need that one...
+>>>>>>> 
+>>>>>> 
+>>>>>> Probably I misunderstood the code, but I thought that there was a base set of
+>>>>>> slots preallocated.  Eventually one of those will become free won't it?
+>>>>>> 
+>>>>>> Looking at the code again, it only ever returns entries to the mempool when
+>>>>>> it is about to destroy the xprt.  That makes no sense.  If you are using a
+>>>>>> mempool, then you allocate when you need to use space, and free it as soon as
+>>>>>> you have finished with it, so the next request can get a turn.
+>>>>>> 
+>>>>> 
+>>>>> That was sort of my point, though I didn't articulate it very well.
+>>>>> 
+>>>>> I don't think we want to keep this "static" set of rqsts and the
+>>>>> mempool. It seems like that's somewhat redundant and more complex than
+>>>>> is warranted. The question is...which should we keep?
+>>>>> 
+>>>>> I think it sort of depends on what the intended model is. If we want to
+>>>>> allocate out of the "guaranteed" pool first and only when that's
+>>>>> exhausted fall back to doing dynamic allocations, then we probably want
+>>>>> to keep the static list of entries.
+>>>>> 
+>>>>> If we want to allocate dynamically most of the time and only dip into
+>>>>> the "guaranteed" pool when that can't be satisfied, then basing all of
+>>>>> this around mempools might make more sense.
+>>>> 
+>>>> Thanks for the review - I've learned a lot about mempools from this discussion.
+>>>> 
+>>>> I've noticed that a lot of the time, (at least for TCP) rpc_slots are allocated and not used.
+>>>> The default slot entries value is a guess. This is why I like the idea of dynamically allocating most 
+>>>> of the time, and only dipping into the guaranteed pool when the dynamic allocation
+>>>> can't be satisfied. e.g. get rid of the static set of slots.
+>>>> Does this design require two mempools, one for dynamic allocation and a guaranteed one being small and "in reserve"?
+>>>> 
+>>> 
+>>> No, a single mempool would give you that. Just declare the mempool with
+>>> the amount of "emergency" slots you want, and then allocate directly
+>>> from it and then free them back to the mempool. Most of the time (as
+>>> Neil points out) you'll get them allocated from the slabcache. It'll
+>>> it'll only dip into the reserved set when those can't be allocated.
+>> 
+>> Cool.
+>> 
+>>> 
+>>> The other thing you have to determine is whether you want this
+>>> guaranteed number of slots to be per-xprt or global. Today, it's
+>>> per-xprt. Making it global might mean less wasted memory overall, but I
+>>> could forsee situations where a hung mount could starve other mounts of
+>>> slots.
+>>> 
+>>> Figuring that out might help guide the overall design here...
+>>> 
+>>>> For UDP and RDMA, the default # of slot entries can turn into an upper bound.
+>>>> For TCP, the default # of slot entries would have no meaning WRT upper bound, as the upper bound is determined
+>>>> by the TCP window size.
+>>>> 
+>>> 
+>>> Maybe rather than having this dynamic_slot_alloc operation that's only
+>>> conditionally called, it would cleaner to abstract out the slot
+>>> allocator altogether.
+>>> 
+>>> UDP and RDMA could use the same routine and just allocate out of a
+>>> fixed set of preallocated slots (sort of like how they do today), and
+>>> TCP could use this new scheme.
+>> 
+>> We need rpc_slots (UDP/RDMA/TCP/....) to be freed back to the mempool in xprt_free_slot.
+>> If we allocate the set # of rpc_slots, place them on the xprt->free list, and they don't get used,
+>> then they won't be freed until the xprt is destroyed.
 > 
-> There isn't really any supported server-side pNFS.
+> The reason to keep slots around and on a local free list is that full-out memory allocation is heavy weight.  I keep thinking of the talk Willy gave at LSF about how much scalability was affected in the SCSI I/O path by simple memory allocation operations.  Is using a SLAB or SLUB as fast as what we have today?
+
+That is a good question. We could implement this same slot allocation scheme without a SLAB/SLUB - just use kmalloc and leave xprt_free_slot to just move the allocated slots to the free list as is done today. I don't have any information on a performance hit. 
+
+Is this worth testing, or should we just stick with kmalloc and friends?
+
+-->Andy
 > 
-> The closest is the GFS2-based code, for which you need to install
-> Benny's latest tree, configure a shared block device, create a GFS2
-> filesystem on it, mount it across all DS's and the MDS, and export it
-> from all of them--but I don't believe anyone has written step-by-step
-> instructions for that.
+>> I was thinking of using the same allocator for UDP/RDMA/TCP. With all transports, start off with a 
+>> minimal # of pre-allocated slots (6? 4? 2?) and for UDP/RDMA trigger a dynamic allocation in xprt_alloc_slot
+>> when there are no slots available and the # slots allocated is less than the default # slot entries for that transport.
+>> 
+>> -->Andy
+>> 
+>>> -- 
+>>> Jeff Layton <jlayton@redhat.com>
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-> --b.
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
 > 
-> >
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-> > Sent: Thursday, May 19, 2011 6:43 PM
-> > To: Ansari, Taousif - Dell Team
-> > Cc: linux-nfs@vger.kernel.org
-> > Subject: Re: Performance Issue with multiple dataserver
-> >
-> > On Thu, May 19, 2011 at 06:09:21PM +0530, Taousif_Ansari@DELLTEAM.com
-> wrote:
-> > > I have followed the way given on http://wiki.linux-
-> nfs.org/wiki/index.php/Configuring_pNFS/spnfsd .
-> >
-> > Oh.  As noted there, spnfs is unmaintained.
-> >
-> > And, in any case, we'd need many more details about your setup.
-> >
-> > --b.
-> >
-> > >
-> > > -Taousif
-> > >
-> > > -----Original Message-----
-> > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > > Sent: Thursday, May 19, 2011 5:20 PM
-> > > To: Ansari, Taousif - Dell Team
-> > > Cc: linux-nfs@vger.kernel.org
-> > > Subject: Re: Performance Issue with multiple dataserver
-> > >
-> > > On Thu, May 19, 2011 at 10:56:44AM +0530,
-> Taousif_Ansari@DELLTEAM.com wrote:
-> > > > Hi,
-> > > >
-> > > > I am using on Server linux-pnfs-2.6.38(linux-pnfs-ae7441f.tar)
-> and on client also linux-pnfs-2.6.38(linux-pnfs-ae7441f.tar) downloaded
-> from http://git.linux-nfs.org/?p=bhalevy/linux-pnfs.git;a=summary on
-> Fedora 14.
-> > >
-> > > So you're using GFS2 on the server?  With what sort of storage?
-> > >
-> > > --b.
-> > >
-> > > >
-> > > > Extremely sorry for causing confusing .
-> > > > -----Original Message-----
-> > > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > > > Sent: Wednesday, May 18, 2011 9:43 PM
-> > > > To: Ansari, Taousif - Dell Team
-> > > > Cc: linux-nfs@vger.kernel.org
-> > > > Subject: Re: Performance Issue with multiple dataserver
-> > > >
-> > > > You sent this message as a reply to an unrelated message, which
-> is
-> > > > confusing to those of us with threaded mail readers.
-> > > >
-> > > > On Wed, May 18, 2011 at 05:24:45PM +0530,
-> Taousif_Ansari@DELLTEAM.com wrote:
-> > > > > I have done pNFS setup with single Dataserver and Two
-> Dataserver and ran the IOzone tool on both, I found that the
-> performance with multiple dataservers is less than the performance with
-> single dataservers.
-> > > >
-> > > > What are you using as the server, and what as the client?
-> > > >
-> > > > --b.
-> > > >
-> > > > >
-> > > > > Here are some numbers, which were captured by the IOzone tool.
-> > > > >
-> > > > >
-> > > > > 							  4	  8	 16	 32
-> 	 64	 128	 256	 512	1024	<== Record Length in KB
-> > > > > With Single Dataserver:
-> > > > > Read operation for file size 1 MB-		66415	66359	63630
-> 	70358	86223	70256	66047	66068	68489	<== IO kB/sec
-> > > > > Write operation for file size 1 MB-		18827	16920	18846
-> 	17039	18896	17009	17173	19206	17947	<== IO kB/sec
-> > > > >
-> > > > > With Two Dataservers :
-> > > > > Read operation for file size 1 MB-		36882	381198
-> 	38150	38084	38749	33663	34398	37313	37847	<== IO kB/sec
-> > > > > Write operation for file size 1 MB-		5461	4661	5586
-> 	4870	5227	4922	4214	5572	4658	<== IO kB/sec
-> > > > >
-> > > > >
-> > > > > Can somebody tell me What could be the issue....
-> > > > > --
-> > > > > To unsubscribe from this list: send the line "unsubscribe
-> linux-nfs" in
-> > > > > the body of a message to majordomo@vger.kernel.org
-> > > > > More majordomo info at  http://vger.kernel.org/majordomo-
-> info.html
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+> 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
