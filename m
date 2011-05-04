@@ -1,75 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:18251 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751205Ab1EUIIJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 May 2011 04:08:09 -0400
-Message-ID: <4DD772E4.2030505@panasas.com>
-Date: Sat, 21 May 2011 11:08:04 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: pnfs-submit for objects: BUGs Please help
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:50584 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753837Ab1EDLyP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 May 2011 07:54:15 -0400
+Date: Wed, 4 May 2011 07:54:10 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: NeilBrown <neilb@suse.de>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, andros@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [[RFC] 1/1] SUNRPC: dynamic rpc_slot allocator for TCP
+Message-ID: <20110504075410.5e59c6b4@tlielax.poochiereds.net>
+In-Reply-To: <20110504120726.347df3fc@notabene.brown>
+References: <1304386808-2733-1-git-send-email-andros@netapp.com>
+	<1304386808-2733-2-git-send-email-andros@netapp.com>
+	<20110503202023.699435f4@corrin.poochiereds.net>
+	<1304469890.26184.16.camel@lade.trondhjem.org>
+	<20110504111825.6f26f75a@notabene.brown>
+	<1304473563.26184.28.camel@lade.trondhjem.org>
+	<20110504120726.347df3fc@notabene.brown>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, 4 May 2011 12:07:26 +1000
+NeilBrown <neilb@suse.de> wrote:
 
-Benny, people hi!
+> On Tue, 03 May 2011 21:46:03 -0400 Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+> 
+> > On Wed, 2011-05-04 at 11:18 +1000, NeilBrown wrote:
+> > > For rpc slots, I doubt you need mempools at all.
+> > > Mempools are only needed if failure is not an option and you would rather
+> > > wait, but you cannot wait for regular writeback because you are on the
+> > > writeback path.  So you use a mempool which waits for a previous request to
+> > > complete.  I don't think that describes rpc slots at all.
+> > > For rpc slots, you can afford to wait when setting up the transport, as you
+> > > are not on the writeout path yet, and later you can always cope with failure.
+> > > So just use kmalloc.
+> > 
+> > Errr.... No. By the time you get to allocating an RPC slot, you may be
+> > bang smack in the middle of the writeout path.
+> > 
+> > The scenario would be that something triggers a writeback (kswapd,
+> > direct reclaim,...) which triggers an RPC call, which requires you to
+> > allocate at least one rpc slot before you can put the write on the wire.
+> > 
+> > I agree with your assertion that we only need one successful slot
+> > allocation in order to make overall forward progress, but we definitely
+> > do need that one...
+> > 
+> 
+> Probably I misunderstood the code, but I thought that there was a base set of
+> slots preallocated.  Eventually one of those will become free won't it?
+> 
+> Looking at the code again, it only ever returns entries to the mempool when
+> it is about to destroy the xprt.  That makes no sense.  If you are using a
+> mempool, then you allocate when you need to use space, and free it as soon as
+> you have finished with it, so the next request can get a turn.
+> 
 
-After long debugging of the "pnfs-submit for objects" and after some bugs found.
-Please see next-mail patch: [RFC] pnfs: pnfs-core BUGs fixing
+That was sort of my point, though I didn't articulate it very well.
 
-I'm at a situation that the lseg reference count is unbalanced short, and the
-segment gets freed after layout_commit stage, and never survives to see
-a layout_return. (So layout_commit is the last operation I see)
+I don't think we want to keep this "static" set of rqsts and the
+mempool. It seems like that's somewhat redundant and more complex than
+is warranted. The question is...which should we keep?
 
-What is nice is that there is a BUG_ON that caches this, (I've converted it to WARN_ON
-for debbuging but just the same)
+I think it sort of depends on what the intended model is. If we want to
+allocate out of the "guaranteed" pool first and only when that's
+exhausted fall back to doing dynamic allocations, then we probably want
+to keep the static list of entries.
 
-Please see below:
+If we want to allocate dynamically most of the time and only dip into
+the "guaranteed" pool when that can't be satisfied, then basing all of
+this around mempools might make more sense.
 
-------------[ cut here ]------------
-WARNING: at /usr0/export/dev/bharrosh/git/pub/linux-pnfs/fs/nfs/pnfs.c:258 put_lseg_common+0x29/0x7f [nfs]()
-Modules linked in: md5 objlayoutdriver exofs nfsd nfs lockd auth_rpcgss nfs_acl sunrpc osd libosd cryptomgr aead crc32c crypto_hash crypto_algapi ipv6 iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi scsi_mod binfmt_misc dm_mirror dm_region_hash dm_log dm_multipath dm_mod [last unloaded: scsi_wait_scan]
-Call Trace: 
-76a5bb98:  [<60030b0a>] warn_slowpath_common+0x5e/0x75
-76a5bbd8:  [<60030b36>] warn_slowpath_null+0x15/0x17
-76a5bbe8:  [<7b7c97df>] put_lseg_common+0x29/0x7f [nfs]
-76a5bc08:  [<7b7ca685>] put_lseg+0x6d/0x9b [nfs]
-76a5bc48:  [<7b7b8c0a>] nfs4_layoutcommit_release+0x27/0x3f [nfs]
-76a5bc68:  [<7a8a3e06>] rpc_release_calldata+0x12/0x14 [sunrpc]
-76a5bc78:  [<7a8a3ec8>] rpc_free_task+0x57/0x5f [sunrpc]
-76a5bca8:  [<7a8a3f1d>] rpc_final_put_task+0x4d/0x4f [sunrpc]
-76a5bcb8:  [<7a8a3f49>] rpc_do_put_task+0x2a/0x31 [sunrpc]
-76a5bce8:  [<7a8a3f6a>] rpc_put_task+0xb/0xd [sunrpc]
-76a5bcf8:  [<7b7b4d7f>] nfs4_proc_layoutcommit+0x10b/0x119 [nfs]
-76a5bd88:  [<7b7c8e71>] pnfs_layoutcommit_inode+0x1d5/0x207 [nfs]
-76a5bde8:  [<7b79f293>] nfs_file_fsync+0xa2/0xab [nfs]
-76a5be18:  [<600aa80e>] vfs_fsync_range+0x4d/0x75
-76a5be48:  [<600aa88b>] vfs_fsync+0x17/0x19
-76a5be58:  [<7b79ee2c>] nfs_file_flush+0x5c/0x61 [nfs]
-76a5be78:  [<60087638>] filp_close+0x3f/0x76
-76a5bea8:  [<6008771a>] sys_close+0xab/0xe7
-76a5bee8:  [<60016fd4>] handle_syscall+0x58/0x70
-76a5bf08:  [<600264d7>] userspace+0x2dd/0x38a
-76a5bfc8:  [<600145e8>] fork_handler+0x7d/0x84
-
----[ end trace 00e42804444a3cac ]---
-
-So you can see that put_lseg() in nfs4_layoutcommit_release decides that this is the
-last ref and frees lseg. (See pnfs.c:258)
-
-I'm not sure where is the missing ref? Please help!!
-
-I'll send the fixes needed to get to this stage as reply. Current tree will crash much
-earlier.
-
-Benny I've done all the work needed on the pnfs-objects I'll send that next look for
-the:
-[PATCHSET 00/11] SQUASHME pnfs-obj: Lots of changes addressing comments by Trond and Benny
-
-Thanks
-Boaz
-
+-- 
+Jeff Layton <jlayton@redhat.com>
