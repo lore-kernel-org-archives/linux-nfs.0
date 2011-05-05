@@ -1,47 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:59146 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751349Ab1EWFmm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 01:42:42 -0400
-Received: by gxk21 with SMTP id 21so2026124gxk.19
-        for <linux-nfs@vger.kernel.org>; Sun, 22 May 2011 22:42:41 -0700 (PDT)
-Date: Mon, 23 May 2011 13:42:41 +0800
-Message-ID: <BANLkTikCdr6P-WFBdshPwiBQ5_LK-qobLQ@mail.gmail.com>
-Subject: Report bug: space not released when file deleted.
-From: Sid Moore <learnmost@gmail.com>
-To: linux-nfs@vger.kernel.org
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:46780 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754804Ab1EEPZg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 May 2011 11:25:36 -0400
+Received: by wya21 with SMTP id 21so1702678wya.19
+        for <linux-nfs@vger.kernel.org>; Thu, 05 May 2011 08:25:35 -0700 (PDT)
+In-Reply-To: <591857.64709.qm@web111726.mail.gq1.yahoo.com>
+References: <781436.95809.qm@web111709.mail.gq1.yahoo.com>
+	<OF40F1C0BA.A5FC46BA-ON85257887.004DC668-85257887.004DD321@us.ibm.com>
+	<591857.64709.qm@web111726.mail.gq1.yahoo.com>
+Date: Fri, 6 May 2011 00:25:34 +0900
+Message-ID: <BANLkTimbnz4xKyK1oNDnyWN7k9dhApW2TA@mail.gmail.com>
+Subject: Re: debugging nfs
+From: Hiroyuki Sato <hiroysato@gmail.com>
+To: Mahmood Naderan <nt_mahmood@yahoo.com>
+Cc: Brian R Cowan <brcowan@us.ibm.com>, nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+Hello Mahmood.
 
-On Linux NFS, I found a file deleted but its space not released in
-NFSv3. It is on 2.6.32.
+Have you ever tried to write ip address instead of server fqdn??
+or have you ever tries write server entry in /etc/hosts??
 
-The steps for reproducing are listed below.
-1) create a ext3 filesystem on a device, mount it to local dir
-/exports/fs1_ext3/, export /exports/fs1_ext3/ with no_subtree_check to
-a NFS client. this client mount this exported dir with infinite
-retrans.
-2) on the ext3 fs, create a large regular file  (say: 600MB)
-3) on NFS client, starts several processes who reading this file in 2)
-in parallel
-4) during step 3), kill all nfsd threads, umount this ext3 fs; then
-mount this ext3 to /exports/fs1_ext3; start 8 nfsd threads.
-5) after processes finished reading, delete this file. then, I found
-the space occupied but this file not released.
+It is mean that
 
-during step 4), I think an anonymous dentry of this file was created
-after fh_verify(). in step 5), a named dentry of this file also
-created. So, there are two dentry on this inode. but when deleting,
-only the named dentry deleted. only restart this ext3 fs or dcache
-shrinked, the anonymous dentry will not be released and it referenced
-the inode of this file. so its space not freed.
+/etc/fstab
+ip.ad.re.ss:/opt /opt nfs mount_opt 0 0
 
-is my analysis correct?  anyone has encountered this issue before? or,
-this issue was fixed by someone? Thanks.
+or /etc/hosts
+ip.add.re.ss server
+
+
+I met same problem today, and I resolve it.
+
+My friend were using NIS on scientific linux .
+and It tried to mount before NIS started.
 
 --
-Sid
+Hiroyuki Sato
+
+
+2011/5/5 Mahmood Naderan <nt_mahmood@yahoo.com>:
+> Well, I found the problem very nasty and in my previous posts, I mentioned some of them.
+>
+> The big problem:
+> when the clients boots, it doesn't automatically mount the shared folders via /etc/fstab.
+> However after login to client, I can mount the folder manually with
+>
+> "sudo mount -t nfs server:/opt /opt"
+>
+> I really don't know why fstab doesn't work. I searched a lot.... some say disbale IPV6.
+> I did that but still have that problem.
+>
+> So how can I tell nfs (on server or client) to be verbose so that I can see what is going on
+> and what is not going on.
+>
+> Any feedback and comment is welcomed.
+>
+> // Naderan *Mahmood;
+>
+> From: Brian R Cowan <brcowan@us.ibm.com>
+> To: Mahmood Naderan <nt_mahmood@yahoo.com>
+> Cc: nfs <linux-nfs@vger.kernel.org>; linux-nfs-owner@vger.kernel.org
+> Sent: Thursday, May 5, 2011 6:40 PM
+> Subject: Re: debugging nfs
+>
+>
+> It would probably help to explain the problem
+> so you can get targeted debugging assistance...
+>
+> =================================================================
+> Brian Cowan
+> Advisory Software Engineer
+> ClearCase Software Advisory Team (SWAT)
+> Rational Software
+> IBM Software Group
+> 550 King St
+> Littleton, MA 01460
+>
+> Phone: 1.978.899.9471
+> Web: http://www.ibm.com/software/rational/support/
+>
+>
+>
+>
+> From:
+>  Mahmood Naderan <nt_mahmood@yahoo.com>
+> To:
+>  nfs <linux-nfs@vger.kernel.org>,
+> Date:
+>  05/05/2011 09:30 AM
+> Subject:
+>    debugging nfs
+> Sent by:
+>    linux-nfs-owner@vger.kernel.org
+>
+>
+>
+> Hi,
+> I didn't find a method for debugging NFS for debain based systems. Is there
+> any verbose switch or debuging method for that?
+>
+> // Naderan *Mahmood;
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
