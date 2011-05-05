@@ -1,171 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:38818 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752271Ab1EVQtc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 12:49:32 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Cc: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 07/23] pnfs-obj: objlayoutdriver module skeleton
-Date: Sun, 22 May 2011 19:49:06 +0300
-Message-Id: <1306082946-10813-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4DD93D3E.9010909@panasas.com>
-References: <4DD93D3E.9010909@panasas.com>
+Received: from nm3-vm0.bullet.mail.sp2.yahoo.com ([98.139.90.230]:31209 "HELO
+	nm3-vm0.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1754276Ab1EEOQE convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 May 2011 10:16:04 -0400
+Message-ID: <591857.64709.qm@web111726.mail.gq1.yahoo.com>
+References: <781436.95809.qm@web111709.mail.gq1.yahoo.com> <OF40F1C0BA.A5FC46BA-ON85257887.004DC668-85257887.004DD321@us.ibm.com>
+Date: Thu, 5 May 2011 07:16:03 -0700 (PDT)
+From: Mahmood Naderan <nt_mahmood@yahoo.com>
+Reply-To: Mahmood Naderan <nt_mahmood@yahoo.com>
+Subject: Re: debugging nfs
+To: Brian R Cowan <brcowan@us.ibm.com>
+Cc: nfs <linux-nfs@vger.kernel.org>
+In-Reply-To: <OF40F1C0BA.A5FC46BA-ON85257887.004DC668-85257887.004DD321@us.ibm.com>
+Content-Type: text/plain; charset=iso-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+Well, I found the problem very nasty and in my previous posts, I mentioned some of them.
+ 
+The big problem:
+when the clients boots, it doesn't automatically mount the shared folders via /etc/fstab.
+However after login to client, I can mount the folder manually with
+ 
+"sudo mount -t nfs server:/opt /opt"
+ 
+I really don't know why fstab doesn't work. I searched a lot.... some say disbale IPV6.
+I did that but still have that problem.
+ 
+So how can I tell nfs (on server or client) to be verbose so that I can see what is going on
+and what is not going on.
+ 
+Any feedback and comment is welcomed.
 
-* Define the PNFS_OBJLAYOUT Kconfig option in the nfs
-  master Kconfig file.
-* Add the objlayout driver to the Kernel's Kbuild system.
-* Add the fs/nfs/objlayout/Kbuild file for building the
-  objlayoutdriver.ko driver
-* Define fs/nfs/objlayout/objio_osd.c, register the driver on module
-  initialization and unregister on exit.
+// Naderan *Mahmood;
 
-[pnfs-obj: remove of CONFIG_PNFS fallout]
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-[added "unsure" clause]
-[depend on NFS_V4_1]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/Kconfig               |   10 +++++
- fs/nfs/Makefile              |    2 +
- fs/nfs/objlayout/Kbuild      |    5 +++
- fs/nfs/objlayout/objio_osd.c |   76 ++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 93 insertions(+), 0 deletions(-)
- create mode 100644 fs/nfs/objlayout/Kbuild
- create mode 100644 fs/nfs/objlayout/objio_osd.c
+From: Brian R Cowan <brcowan@us.ibm.com>
+To: Mahmood Naderan <nt_mahmood@yahoo.com>
+Cc: nfs <linux-nfs@vger.kernel.org>; linux-nfs-owner@vger.kernel.org
+Sent: Thursday, May 5, 2011 6:40 PM
+Subject: Re: debugging nfs
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index ba30665..8151554 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -87,6 +87,16 @@ config NFS_V4_1
- config PNFS_FILE_LAYOUT
- 	tristate
- 
-+config PNFS_OBJLAYOUT
-+	tristate "Provide support for the pNFS Objects Layout Driver for NFSv4.1 pNFS (EXPERIMENTAL)"
-+	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
-+	help
-+	  Say M here if you want your pNFS client to support the Objects Layout Driver.
-+	  Requires the SCSI osd initiator library (SCSI_OSD_INITIATOR) and
-+	  upper level driver (SCSI_OSD_ULD).
-+
-+	  If unsure, say N.
-+
- config ROOT_NFS
- 	bool "Root file system on NFS"
- 	depends on NFS_FS=y && IP_PNP
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index 4776ff9..c9574f0 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -21,3 +21,5 @@ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
- 
- obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
- nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
-+
-+obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayout/
-diff --git a/fs/nfs/objlayout/Kbuild b/fs/nfs/objlayout/Kbuild
-new file mode 100644
-index 0000000..2e5b9a4
---- /dev/null
-+++ b/fs/nfs/objlayout/Kbuild
-@@ -0,0 +1,5 @@
-+#
-+# Makefile for the pNFS Objects Layout Driver kernel module
-+#
-+objlayoutdriver-y := objio_osd.o
-+obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayoutdriver.o
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-new file mode 100644
-index 0000000..379595f
---- /dev/null
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -0,0 +1,76 @@
-+/*
-+ *  pNFS Objects layout implementation over open-osd initiator library
-+ *
-+ *  Copyright (C) 2009 Panasas Inc. [year of first publication]
-+ *  All rights reserved.
-+ *
-+ *  Benny Halevy <bhalevy@panasas.com>
-+ *  Boaz Harrosh <bharrosh@panasas.com>
-+ *
-+ *  This program is free software; you can redistribute it and/or modify
-+ *  it under the terms of the GNU General Public License version 2
-+ *  See the file COPYING included with this distribution for more details.
-+ *
-+ *  Redistribution and use in source and binary forms, with or without
-+ *  modification, are permitted provided that the following conditions
-+ *  are met:
-+ *
-+ *  1. Redistributions of source code must retain the above copyright
-+ *     notice, this list of conditions and the following disclaimer.
-+ *  2. Redistributions in binary form must reproduce the above copyright
-+ *     notice, this list of conditions and the following disclaimer in the
-+ *     documentation and/or other materials provided with the distribution.
-+ *  3. Neither the name of the Panasas company nor the names of its
-+ *     contributors may be used to endorse or promote products derived
-+ *     from this software without specific prior written permission.
-+ *
-+ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
-+ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-+ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-+ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
-+ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-+ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-+ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-+ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-+ */
-+
-+#include <linux/module.h>
-+#include "../pnfs.h"
-+
-+static struct pnfs_layoutdriver_type objlayout_type = {
-+	.id = LAYOUT_OSD2_OBJECTS,
-+	.name = "LAYOUT_OSD2_OBJECTS",
-+};
-+
-+MODULE_DESCRIPTION("pNFS Layout Driver for OSD2 objects");
-+MODULE_AUTHOR("Benny Halevy <bhalevy@panasas.com>");
-+MODULE_LICENSE("GPL");
-+
-+static int __init
-+objlayout_init(void)
-+{
-+	int ret = pnfs_register_layoutdriver(&objlayout_type);
-+
-+	if (ret)
-+		printk(KERN_INFO
-+			"%s: Registering OSD pNFS Layout Driver failed: error=%d\n",
-+			__func__, ret);
-+	else
-+		printk(KERN_INFO "%s: Registered OSD pNFS Layout Driver\n",
-+			__func__);
-+	return ret;
-+}
-+
-+static void __exit
-+objlayout_exit(void)
-+{
-+	pnfs_unregister_layoutdriver(&objlayout_type);
-+	printk(KERN_INFO "%s: Unregistered OSD pNFS Layout Driver\n",
-+	       __func__);
-+}
-+
-+module_init(objlayout_init);
-+module_exit(objlayout_exit);
--- 
-1.7.2.3
 
+It would probably help to explain the problem
+so you can get targeted debugging assistance... 
+
+=================================================================
+Brian Cowan
+Advisory Software Engineer
+ClearCase Software Advisory Team (SWAT)
+Rational Software
+IBM Software Group
+550 King St
+Littleton, MA 01460
+
+Phone: 1.978.899.9471
+Web: http://www.ibm.com/software/rational/support/
+
+
+
+
+From:      
+ Mahmood Naderan <nt_mahmood@yahoo.com> 
+To:      
+ nfs <linux-nfs@vger.kernel.org>,  
+Date:      
+ 05/05/2011 09:30 AM 
+Subject:    
+   debugging nfs 
+Sent by:    
+   linux-nfs-owner@vger.kernel.org 
+
+
+
+Hi,
+I didn't find a method for debugging NFS for debain based systems. Is there 
+any verbose switch or debuging method for that?
+
+// Naderan *Mahmood;
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html 
