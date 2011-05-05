@@ -1,166 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:56947 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755635Ab1EYVYh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:24:37 -0400
-Message-ID: <4DDD7392.6040505@panasas.com>
-Date: Thu, 26 May 2011 00:24:34 +0300
-From: Benny Halevy <bhalevy@panasas.com>
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:36163 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752898Ab1EETAU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 May 2011 15:00:20 -0400
+Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
+	by e6.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p45Ia6Go001344
+	for <linux-nfs@vger.kernel.org>; Thu, 5 May 2011 14:36:06 -0400
+Received: from d03av06.boulder.ibm.com (d03av06.boulder.ibm.com [9.17.195.245])
+	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p45J0CiZ1032418
+	for <linux-nfs@vger.kernel.org>; Thu, 5 May 2011 15:00:13 -0400
+Received: from d03av06.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av06.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p45J3hCv022815
+	for <linux-nfs@vger.kernel.org>; Thu, 5 May 2011 13:03:44 -0600
+Date: Thu, 5 May 2011 13:58:40 -0500
+From: Tyler Hicks <tyhicks@linux.vnet.ibm.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Boaz Harrosh <bharrosh@panasas.com>, NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCHSET v8 0/32] pnfs for 2.6.40
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, ecryptfs-devel@lists.launchpad.net
+Subject: Re: [PATCH] NFS: Allow NULL nameidata in d_revalidate and create
+Message-ID: <20110505185839.GF12250@boyd.l.tihix.com>
+References: <1304609741-12541-1-git-send-email-tyhicks@linux.vnet.ibm.com>
+ <20110505155728.GB12250@boyd.l.tihix.com>
+ <1304613413.20441.2.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1304613413.20441.2.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Trond,
+On Thu May 05, 2011 at 12:36:53PM -0400, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> On Thu, 2011-05-05 at 10:57 -0500, Tyler Hicks wrote:
+> > On Thu May 05, 2011 at 10:35:41AM -0500, Tyler Hicks <tyhicks@linux.vnet.ibm.com> wrote:
+> > > To add support for eCryptfs mounts on top of NFS client mounts, the NFS
+> > > client must properly handle NULL nameidata pointers in its d_revalidate
+> > > functions.
+> > > 
+> > > NFS clients should also handle NULL nameidata in its create functions,
+> > > although this is not currently required for eCryptfs support.
+> > > 
+> > > Signed-off-by: Tyler Hicks <tyhicks@linux.vnet.ibm.com>
+> > > ---
+> > 
+> > We (eCryptfs) are in the process of switching mailing lists, so I copied
+> > both the old (launchpad.net) and the new (vger.kernel.org), but it
+> > doesn't look like the vger.kernel.org list is accepting mail yet. Sorry
+> > about that, I should have tested it first. Feel free to drop it from
+> > any replies.
+> > 
+> > I should also mention that if/when this patch is merged, eCryptfs will
+> > have basic support of mounting on top of NFSv3 client mounts. I say
+> > basic because I'm sure there are some bugs, I'm not yet confident that
+> > the required cache flushes are there in the eCryptfs layer to have NFSv3
+> > cache consistency, and we have some trouble with silly rename.
+> > 
+> > All files unlinked through eCryptfs get silly renamed in the NFS client
+> > because of the extra reference eCryptfs holds on the NFS dentry.
+> > 
+> > This also seems to come into play when unlinking the last file in a
+> > directory and then immediately removing the directory. nfs_rmdir() will
+> > sometimes return -EBUSY.
+> > 
+> > BTW, I think these are all issues that should be handled in the eCryptfs
+> > layer, but I wanted to provide an update on the status of eCryptfs on
+> > top of NFS.
+> 
+> Why would we want to 'support' ecryptfs in this manner? Can't you set up
+> a proper nameidata with appropriate open intents?
 
-This patchset includes the latest fixes from Boaz and it is ready
-in my opinion for linux-next.
+Sorry, that was bad wording in my commit message. NFS would not be
+"supporting" eCryptfs. eCryptfs supports the filesystem that it is
+mounted on top of. We keep any quirks from the stacking scheme in
+fs/ecryptfs/ and don't expect filesystems to do anything special for
+eCryptfs.
 
-Last 5 patches include the changes we discussed for pg_test and
-their use by pnfs-obj, please review carefully.
+In this case, I believe it is a bug for NFS to oops on NULL nameidata in
+d_revalidate. It was introduced by 34286d66 and 657e94b6 and has been
+fixed in most other filesystems (9177ada9, 8ce84eeb, 4714e637, 53fe9241,
+529c5f95, 0eb980e3).
 
-Note that I skipped v7.  It was pushed up to the git tree but no patches were sent.
+I saw two potential oopses in the NFS create functions and patched
+those, too. However, in the case of create, eCryptfs does pass a proper
+nameidata to vfs_create().
 
-I released the series to git://linux-nfs.org/~bhalevy/linux-pnfs.git pnfs-submit
-under this tag: pnfs-for-2.6.40-v8-2011-05-25
+> 
+> This patch might allow you to look up files on NFS, but without open
+> intents, you certainly won't be able to open them, nor will you be able
+> to create them (as you seem to believe).
 
-Rebased on top of it are the pnfs-obj, pnfs, pnfsd-all, pnfsd-lexp-all,
-and pnfs-exofs-all branches, marked with tag pnfs-exofs-all-2.6.39-2011-05-25
+I'm not sure why open and create would not work. My testing shows that
+with this patch applied, I can compile the kernel in an eCryptfs mount
+mounted on top of an NFSv3 client, run fsx-linux, etc.
 
-Changes in v8: (Benny)
-* removed EXPORT_SYMBOL_GPL from nfs4_deviceid_purge_client
-* split "NFSv4.1: use layout driver in global device cache"
-* squashed "Bug in new global-device-cache code"
-* squashed "BUG in _deviceid_purge_client"
-* squashed "layout_driver MUST set free_deviceid_node if using dev-cache"
-* committed "layout_driver MUST set free_deviceid_node if using dev-cache"
-* squashed "pnfs_osd_xdr.h Remove server definitions"
-  - updated commit message
-* squashed "xdr_cli: Wrong type in comments"
-* squashed "objio alloc/free lseg Bugs fixes"
-* squashed "use layout driver in global device cache"
-* squashed "Bugs in new global-device-cache code"
-* squashed "objlayout wants to cache devices until unmount"
-* squashed "Fall out from: non-rpc layout drivers"
-* squashed "objio read/write patch: Bugs fixes"
-* fixed NULL deref in _pnfs_return_layout
-* removed "reclaim" member of nfs4_layoutreturn_args
-* removed "extern" from function definitions
+Tyler
 
-* committed "NFSv4.1: unify pnfs_pageio_init functions"
-* committed "NFSv4.1: change pg_test return type to bool"
-* committed "NFSv4.1: use pnfs_generic_pg_test directly by layout driver"
-* committed "NFSv4.1: define nfs_generic_pg_test"
-* committed "pnfs-obj: pg_test check for max_io_size"
-
-Changes in v6: (Benny)
-* squashed all SQUASHMEs
-* reverted "SQUASHME: initialize data->task on the non-rpc io done
-success paths"
-* reverted "per mount layout driver private data"
-* reverted "pnfs: set/unset layoutdriver"
-* applied (in reverse) "SQUASHME: pnfs-obj: Important fallout from the
-last rebase"
-
-Changes in v5: (Benny)
-* use struct nfs_client to qualify deviceid
-* make device cache global
-* use be32 res in nfs4_callback_devicenotify
-* use gfp_flags
-* xdr_init_decode_pages
-* fix layout stateid used for layoutreturn args
-* commit message for layoutret_on_setattr
-* use global deviceid cache for pnfs-obj
-  - revert per-mount hook and related {.un}set_layoutdriver methods
-* use layout driver in global device cache
-
-changes in v4: (Boaz)
-* See the long SQUASHME patchset I sent yesterday for all the changes.
-  titled: [PATCHSET 00/13] SQUASHME pnfs-obj: Lots of changes addressing
-comments by Trond and Benny
-* I have united all 3 raid-engine read/write patches to a single patch
-* I've united the two error-reporting and error-encoding into one patch
-* Some checkpatch love
-* small cleanups here and there.
-(I'll send a diff as reply to this mail)
-
-changes in v3: (Benny)
-* removed direct i/o patch
-* align layoutget requests on page boundaries
-* fix lseg ordering
-* cleanup pnfs_insert_lseg
-* pnfs: clean up pnfs_find_lseg lseg arg
-* remove unnecessary FIXME
-
-changes in v2:
-* fix CB_NOTIFY_DEVICEID
-* call pnfs_return_layout right before pnfs_destroy_layout
-* remove assert_spin_locked from pnfs_clear_lseg_list
-* remove wait parameter from the layoutreturn path.
-* remove return_type field from nfs4_layoutreturn_args
-* remove range from nfs4_layoutreturn_args
-* no need to send layoutcommit from _pnfs_return_layout
-* don't wait on sync layoutreturn
-* get rid of PNFS_USE_RPC_CODE
-* get rid of __nfs4_write_done_cb
-* get rid of ds_[rw]size
-* rename pnfs_{read,write}_done -> pnfs_ld_{read,write}_done
-* reorganize and reorder the pnfs-obj patchset to expose dependencies
-  and separate api changes
-* some cleaning up of the pnfs-obj patches
-* add xdr space reservation for pnfs-obj opaque layoutreturn
-  and layoutcommit payloads
-
-List of patches:
-
-generic:
-[PATCH v8 01/32] NFSv4.1: fix typo in filelayout_check_layout
-[PATCH v8 02/32] NFSv4.1: use struct nfs_client to qualify deviceid
-[PATCH v8 03/32] pnfs: resolve header dependency in pnfs.h
-[PATCH v8 04/32] NFSv4.1: make deviceid cache global
-[PATCH v8 05/32] NFSv4.1: purge deviceid cache on nfs_free_client
-[PATCH v8 06/32] pnfs: CB_NOTIFY_DEVICEID
-[PATCH v8 07/32] NFSv4.1: use layout driver in global device cache
-[PATCH v8 08/32] SUNRPC: introduce xdr_init_decode_pages
-[PATCH v8 09/32] pnfs: Use byte-range for layoutget
-[PATCH v8 10/32] pnfs: align layoutget requests on page boundaries
-[PATCH v8 11/32] pnfs: Use byte-range for cb_layoutrecall
-[PATCH v8 12/32] pnfs: client stats
-
-Basic ld driver and some std definitions:
-[PATCH v8 13/32] pnfs-obj: objlayoutdriver module skeleton
-[PATCH v8 14/32] pnfs-obj: pnfs_osd XDR definitions
-[PATCH v8 15/32] pnfs-obj: pnfs_osd XDR client implementation
-
-layoutget:
-[PATCH v8 16/32] pnfs-obj: decode layout, alloc/free lseg
-
-getdeviceinfo:
-[PATCH v8 17/32] pnfs-obj: objio_osd device information retrieval and caching
-
-read/write:
-[PATCH v8 18/32] pnfs: alloc and free layout_hdr layoutdriver methods
-[PATCH v8 19/32] pnfs-obj: define per-inode private structure
-[PATCH v8 20/32] pnfs: support for non-rpc layout drivers
-[PATCH v8 21/32] pnfs-obj: osd raid engine read/write implementation
-
-layoutreturn:
-[PATCH v8 22/32] pnfs: layoutreturn
-[PATCH v8 23/32] pnfs: layoutret_on_setattr
-[PATCH v8 24/32] pnfs: encode_layoutreturn
-[PATCH v8 25/32] pnfs-obj: report errors and .encode_layoutreturn Implementation.
-
-layoutcommit:
-[PATCH v8 26/32] pnfs: encode_layoutcommit
-[PATCH v8 27/32] pnfs-obj: objlayout_encode_layoutcommit implementation
-
-pg-test:
-[PATCH v8 28/32] NFSv4.1: unify pnfs_pageio_init functions
-[PATCH v8 29/32] NFSv4.1: change pg_test return type to bool
-[PATCH v8 30/32] NFSv4.1: use pnfs_generic_pg_test directly by layout driver
-[PATCH v8 31/32] NFSv4.1: define nfs_generic_pg_test
-[PATCH v8 32/32] pnfs-obj: pg_test check for max_io_size
-
+> 
+> NACKed...
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
