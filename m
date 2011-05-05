@@ -1,67 +1,165 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:43345 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754340Ab1EVXrI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 19:47:08 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v5 06/38] SQUASHME: use be32 res in nfs4_callback_devicenotify
-Date: Mon, 23 May 2011 02:46:51 +0300
-Message-Id: <1306108011-28016-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DD99F9B.2040406@panasas.com>
-References: <4DD99F9B.2040406@panasas.com>
+Received: from mx1.redhat.com ([209.132.183.28]:35264 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751966Ab1EEMGd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 May 2011 08:06:33 -0400
+Date: Thu, 5 May 2011 08:05:41 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Andy Adamson <andros@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neilb@suse.de>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [[RFC] 1/1] SUNRPC: dynamic rpc_slot allocator for TCP
+Message-ID: <20110505080541.6e318d88@tlielax.poochiereds.net>
+In-Reply-To: <218A78E5-7AEA-45C5-A689-458E0E9244AC@netapp.com>
+References: <1304386808-2733-1-git-send-email-andros@netapp.com>
+	<1304386808-2733-2-git-send-email-andros@netapp.com>
+	<20110503202023.699435f4@corrin.poochiereds.net>
+	<1304469890.26184.16.camel@lade.trondhjem.org>
+	<20110504111825.6f26f75a@notabene.brown>
+	<1304473563.26184.28.camel@lade.trondhjem.org>
+	<20110504120726.347df3fc@notabene.brown>
+	<20110504075410.5e59c6b4@tlielax.poochiereds.net>
+	<0424D640-C315-449B-847A-59105BBADBCE@netapp.com>
+	<20110504111853.7150915a@tlielax.poochiereds.net>
+	<505415C4-0383-4A8D-BD6B-D85F3CB5E7EB@netapp.com>
+	<85C0EB32-BBF6-4224-AC6B-A24B7D5C06B1@oracle.com>
+	<218A78E5-7AEA-45C5-A689-458E0E9244AC@netapp.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/callback_proc.c |   10 +++++-----
- 1 files changed, 5 insertions(+), 5 deletions(-)
+On Wed, 4 May 2011 13:22:01 -0400
+Andy Adamson <andros@netapp.com> wrote:
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 975c8f2..95107fe 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -245,14 +245,14 @@ __be32 nfs4_callback_devicenotify(struct cb_devicenotifyargs *args,
- 				  void *dummy, struct cb_process_state *cps)
- {
- 	int i;
--	u32 res = 0;
-+	__be32 res = 0;
- 	struct nfs_client *clp = cps->clp;
- 	struct nfs_server *server = NULL;
- 
- 	dprintk("%s: -->\n", __func__);
- 
- 	if (!clp) {
--		res = NFS4ERR_OP_NOT_IN_SESSION;
-+		res = cpu_to_be32(NFS4ERR_OP_NOT_IN_SESSION);
- 		goto out;
- 	}
- 
-@@ -276,7 +276,7 @@ __be32 nfs4_callback_devicenotify(struct cb_devicenotifyargs *args,
- 
- 	found:
- 		if (!server->pnfs_curr_ld->delete_deviceid) {
--			res = NFS4ERR_NOTSUPP;
-+			res = cpu_to_be32(NFS4ERR_NOTSUPP);
- 			break;
- 		}
- 		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
-@@ -288,8 +288,8 @@ __be32 nfs4_callback_devicenotify(struct cb_devicenotifyargs *args,
- out:
- 	kfree(args->devs);
- 	dprintk("%s: exit with status = %u\n",
--		__func__, res);
--	return cpu_to_be32(res);
-+		__func__, be32_to_cpu(res));
-+	return res;
- }
- 
- int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const nfs4_stateid *stateid)
+> 
+> On May 4, 2011, at 12:01 PM, Chuck Lever wrote:
+> 
+> > 
+> > On May 4, 2011, at 11:52 AM, Andy Adamson wrote:
+> > 
+> >> 
+> >> On May 4, 2011, at 11:18 AM, Jeff Layton wrote:
+> >> 
+> >>> On Wed, 4 May 2011 10:54:57 -0400
+> >>> Andy Adamson <andros@netapp.com> wrote:
+> >>> 
+> >>>> 
+> >>>> On May 4, 2011, at 7:54 AM, Jeff Layton wrote:
+> >>>> 
+> >>>>> On Wed, 4 May 2011 12:07:26 +1000
+> >>>>> NeilBrown <neilb@suse.de> wrote:
+> >>>>> 
+> >>>>>> On Tue, 03 May 2011 21:46:03 -0400 Trond Myklebust
+> >>>>>> <Trond.Myklebust@netapp.com> wrote:
+> >>>>>> 
+> >>>>>>> On Wed, 2011-05-04 at 11:18 +1000, NeilBrown wrote:
+> >>>>>>>> For rpc slots, I doubt you need mempools at all.
+> >>>>>>>> Mempools are only needed if failure is not an option and you would rather
+> >>>>>>>> wait, but you cannot wait for regular writeback because you are on the
+> >>>>>>>> writeback path.  So you use a mempool which waits for a previous request to
+> >>>>>>>> complete.  I don't think that describes rpc slots at all.
+> >>>>>>>> For rpc slots, you can afford to wait when setting up the transport, as you
+> >>>>>>>> are not on the writeout path yet, and later you can always cope with failure.
+> >>>>>>>> So just use kmalloc.
+> >>>>>>> 
+> >>>>>>> Errr.... No. By the time you get to allocating an RPC slot, you may be
+> >>>>>>> bang smack in the middle of the writeout path.
+> >>>>>>> 
+> >>>>>>> The scenario would be that something triggers a writeback (kswapd,
+> >>>>>>> direct reclaim,...) which triggers an RPC call, which requires you to
+> >>>>>>> allocate at least one rpc slot before you can put the write on the wire.
+> >>>>>>> 
+> >>>>>>> I agree with your assertion that we only need one successful slot
+> >>>>>>> allocation in order to make overall forward progress, but we definitely
+> >>>>>>> do need that one...
+> >>>>>>> 
+> >>>>>> 
+> >>>>>> Probably I misunderstood the code, but I thought that there was a base set of
+> >>>>>> slots preallocated.  Eventually one of those will become free won't it?
+> >>>>>> 
+> >>>>>> Looking at the code again, it only ever returns entries to the mempool when
+> >>>>>> it is about to destroy the xprt.  That makes no sense.  If you are using a
+> >>>>>> mempool, then you allocate when you need to use space, and free it as soon as
+> >>>>>> you have finished with it, so the next request can get a turn.
+> >>>>>> 
+> >>>>> 
+> >>>>> That was sort of my point, though I didn't articulate it very well.
+> >>>>> 
+> >>>>> I don't think we want to keep this "static" set of rqsts and the
+> >>>>> mempool. It seems like that's somewhat redundant and more complex than
+> >>>>> is warranted. The question is...which should we keep?
+> >>>>> 
+> >>>>> I think it sort of depends on what the intended model is. If we want to
+> >>>>> allocate out of the "guaranteed" pool first and only when that's
+> >>>>> exhausted fall back to doing dynamic allocations, then we probably want
+> >>>>> to keep the static list of entries.
+> >>>>> 
+> >>>>> If we want to allocate dynamically most of the time and only dip into
+> >>>>> the "guaranteed" pool when that can't be satisfied, then basing all of
+> >>>>> this around mempools might make more sense.
+> >>>> 
+> >>>> Thanks for the review - I've learned a lot about mempools from this discussion.
+> >>>> 
+> >>>> I've noticed that a lot of the time, (at least for TCP) rpc_slots are allocated and not used.
+> >>>> The default slot entries value is a guess. This is why I like the idea of dynamically allocating most 
+> >>>> of the time, and only dipping into the guaranteed pool when the dynamic allocation
+> >>>> can't be satisfied. e.g. get rid of the static set of slots.
+> >>>> Does this design require two mempools, one for dynamic allocation and a guaranteed one being small and "in reserve"?
+> >>>> 
+> >>> 
+> >>> No, a single mempool would give you that. Just declare the mempool with
+> >>> the amount of "emergency" slots you want, and then allocate directly
+> >>> from it and then free them back to the mempool. Most of the time (as
+> >>> Neil points out) you'll get them allocated from the slabcache. It'll
+> >>> it'll only dip into the reserved set when those can't be allocated.
+> >> 
+> >> Cool.
+> >> 
+> >>> 
+> >>> The other thing you have to determine is whether you want this
+> >>> guaranteed number of slots to be per-xprt or global. Today, it's
+> >>> per-xprt. Making it global might mean less wasted memory overall, but I
+> >>> could forsee situations where a hung mount could starve other mounts of
+> >>> slots.
+> >>> 
+> >>> Figuring that out might help guide the overall design here...
+> >>> 
+> >>>> For UDP and RDMA, the default # of slot entries can turn into an upper bound.
+> >>>> For TCP, the default # of slot entries would have no meaning WRT upper bound, as the upper bound is determined
+> >>>> by the TCP window size.
+> >>>> 
+> >>> 
+> >>> Maybe rather than having this dynamic_slot_alloc operation that's only
+> >>> conditionally called, it would cleaner to abstract out the slot
+> >>> allocator altogether.
+> >>> 
+> >>> UDP and RDMA could use the same routine and just allocate out of a
+> >>> fixed set of preallocated slots (sort of like how they do today), and
+> >>> TCP could use this new scheme.
+> >> 
+> >> We need rpc_slots (UDP/RDMA/TCP/....) to be freed back to the mempool in xprt_free_slot.
+> >> If we allocate the set # of rpc_slots, place them on the xprt->free list, and they don't get used,
+> >> then they won't be freed until the xprt is destroyed.
+> > 
+> > The reason to keep slots around and on a local free list is that full-out memory allocation is heavy weight.  I keep thinking of the talk Willy gave at LSF about how much scalability was affected in the SCSI I/O path by simple memory allocation operations.  Is using a SLAB or SLUB as fast as what we have today?
+> 
+> That is a good question. We could implement this same slot allocation scheme without a SLAB/SLUB - just use kmalloc and leave xprt_free_slot to just move the allocated slots to the free list as is done today. I don't have any information on a performance hit. 
+> 
+> Is this worth testing, or should we just stick with kmalloc and friends?
+> 
+
+I think Chuck's point here is that there is an argument for doing it
+the other way around -- keeping a static set of objects and only
+dynamically allocating when those are used up.
+
+Of course, pulling them off the free list is not cost-free either (you
+do need to take a spinlock there), but it may have less contention.
+
+It's hard for me to imagine that this will make a big difference
+overall, but I guess you never know. Personally, I wouldn't worry about
+it. :)
+
 -- 
-1.7.3.4
-
+Jeff Layton <jlayton@redhat.com>
