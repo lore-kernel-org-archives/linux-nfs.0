@@ -1,289 +1,272 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:21346 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:26250 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933139Ab1ESPYO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 May 2011 11:24:14 -0400
-Message-ID: <4DD5361D.6010304@netapp.com>
-Date: Thu, 19 May 2011 11:24:13 -0400
+	id S1753305Ab1EFRhq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 May 2011 13:37:46 -0400
+Message-ID: <4DC431C8.6060104@netapp.com>
+Date: Fri, 06 May 2011 13:37:12 -0400
 From: Bryan Schumaker <bjschuma@netapp.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [RFC] NFSD: Added basic fault injection
-References: <1305651070-24654-1-git-send-email-bjschuma@netapp.com> <20110519000959.GC26545@fieldses.org>
-In-Reply-To: <20110519000959.GC26545@fieldses.org>
+CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] NFS: Added TEST_STATEID call
+References: <1304700595-5040-1-git-send-email-bjschuma@netapp.com> <20110506172944.GA15109@fieldses.org>
+In-Reply-To: <20110506172944.GA15109@fieldses.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/18/2011 08:09 PM, J. Bruce Fields wrote:
-> On Tue, May 17, 2011 at 12:51:10PM -0400, bjschuma@netapp.com wrote:
+On 05/06/2011 01:29 PM, J. Bruce Fields wrote:
+> On Fri, May 06, 2011 at 12:49:53PM -0400, bjschuma@netapp.com wrote:
 >> From: Bryan Schumaker <bjschuma@netapp.com>
 >>
->> I have been looking at adding fault injection to the NFS server in order
->> to test the client's state manager and recovery threads.  Simulating
->> errors on the server seems like the easiest way to guarentee that
->> specific errors happen, and happen when we tell them to.
->>
->> This patch uses debugfs to add a simple framework for fault injection to
->> the server.  This framework is a config option, and can be enabled
->> through CONFIG_NFSD_FAULT_INJECTION.  Assuming you have debugfs mounted
->> to /sys/debug, a set of files will be created in /sys/debug/nfsd/.
->> Writing to any of these files will cause the corresponding action and
->> write a log entry to dmesg.
+>> This patch adds in the xdr for doing a TEST_STATEID call with a single
+>> stateid. RFC 5661 allows multiple stateids to be tested in a single
+>> call, but only testing one keeps things simpler for now.
 > 
-> Seems like a reasonable thing to do.
-> 
->> Suggestions?  Comments?
->>
->> - Bryan
->> ---
->>  fs/nfsd/Kconfig     |   13 ++++++
->>  fs/nfsd/Makefile    |    3 +-
->>  fs/nfsd/nfs4state.c |  117 +++++++++++++++++++++++++++++++++++++++++++++++++++
->>  fs/nfsd/nfsctl.c    |    6 +++
->>  fs/nfsd/nfsd.h      |   12 +++++
->>  5 files changed, 150 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
->> index 18b3e89..8c02eab 100644
->> --- a/fs/nfsd/Kconfig
->> +++ b/fs/nfsd/Kconfig
->> @@ -91,3 +91,16 @@ config NFSD_V4
->>  	  available from http://linux-nfs.org/.
->>  
->>  	  If unsure, say N.
->> +
->> +config NFSD_FAULT_INJECTION
->> +	bool "NFS server manual fault injection"
->> +	depends on NFSD_V4 && DEBUG_KERNEL
->> +	help
->> +	  This option enables support for manually injecting faults
->> +	  into the NFS server.  This is intended to be used for
->> +	  testing error recovery on the NFS client.
->> +	  
->> +	  If unsure, say N.
->> +
->> +
->> +
->> diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
->> index 9b118ee..69eae75 100644
->> --- a/fs/nfsd/Makefile
->> +++ b/fs/nfsd/Makefile
->> @@ -5,7 +5,8 @@
->>  obj-$(CONFIG_NFSD)	+= nfsd.o
->>  
->>  nfsd-y 			:= nfssvc.o nfsctl.o nfsproc.o nfsfh.o vfs.o \
->> -			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o
->> +			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o \
->> +			   fault_inject.o
->>  nfsd-$(CONFIG_NFSD_V2_ACL) += nfs2acl.o
->>  nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
->>  nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 4cf04e1..e46c4ef 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -2991,6 +2991,123 @@ laundromat_main(struct work_struct *not_used)
->>  	queue_delayed_work(laundry_wq, &laundromat_work, t*HZ);
->>  }
->>  
->> +#ifdef CONFIG_NFSD_FAULT_INJECTION
->> +
->> +void nfsd_forget_all_clients(void)
->> +{
->> +	struct nfs4_client *clp;
->> +	struct list_head *pos, *next, reaplist;
->> +	int count = 0;
->> +
->> +	nfs4_lock_state();
->> +	INIT_LIST_HEAD(&reaplist);
->> +
->> +	spin_lock(&client_lock);
->> +	list_for_each_safe(pos, next, &client_lru) {
->> +		clp = list_entry(pos, struct nfs4_client, cl_lru);
->> +		unhash_client_locked(clp);
->> +		list_add(&clp->cl_lru, &reaplist);
->> +		count ++;
->> +	}
->> +	spin_unlock(&client_lock);
->> +	list_for_each_safe(pos, next, &reaplist) {
->> +		clp = list_entry(pos, struct nfs4_client, cl_lru);
->> +		nfsd4_remove_clid_dir(clp);
->> +		expire_client(clp);
->> +	}
->> +
->> +	nfs4_unlock_state();
->> +	printk(KERN_INFO "%s %s Forgot %d clients", __FILE__, __func__, count);
->> +}
->> +
->> +void nfsd_forget_all_state_owners(void)
->> +{
->> +	struct nfs4_stateowner *sop;
->> +	struct list_head *pos, *next;
->> +	int count = 0;
->> +
->> +	nfs4_lock_state();
->> +	list_for_each_safe(pos, next, &close_lru) {
-> 
-> Not all state owners are on the close_lru list--just open owners that
-> have been closed and are waiting to be reaped.
+> These are among the mandatory 4.1 ops that we haven't implemented on the
+> server yet.  Anyone up for it?  It's probably not difficult.
 
-Ok.  Is the file_hashtbl the right place to look for this?  I think I'm going to change the function so it only deletes open stateids.
+I have some server patches that I think will work.  I'm checking out your linux.git tree from linux-nfs.org to make sure they still apply.  Is there a branch that I should check against?
+
+> 
+> Also: how will it behave against a server that returns nfserr_notsupp?
+
+The FREE_STATEID won't be used, and the nfs v4.0 recovery functions will be called (these functions will be called after the FREE_STATEID anyway).
 
 > 
 > --b.
 > 
->> +		sop = list_entry(pos, struct nfs4_stateowner, so_close_lru);
->> +		release_openowner(sop);
->> +		count ++;
+>>
+>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+>> ---
+>>  fs/nfs/nfs4proc.c       |   28 ++++++++++++++
+>>  fs/nfs/nfs4xdr.c        |   91 +++++++++++++++++++++++++++++++++++++++++++++++
+>>  include/linux/nfs4.h    |    1 +
+>>  include/linux/nfs_xdr.h |   10 +++++
+>>  4 files changed, 130 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 69c0f3c..044c151 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -5791,6 +5791,34 @@ out:
+>>  	rpc_put_task(task);
+>>  	return status;
+>>  }
+>> +static int _nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *state)
+>> +{
+>> +	int status;
+>> +	struct nfs41_test_stateid_args args = {
+>> +		.stateid = &state->stateid,
 >> +	};
->> +	nfs4_unlock_state();
->> +	printk(KERN_INFO "%s %s Forgot %d state owners", __FILE__, __func__, count);
+>> +	struct nfs41_test_stateid_res res;
+>> +	struct rpc_message msg = {
+>> +		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_TEST_STATEID],
+>> +		.rpc_argp = &args,
+>> +		.rpc_resp = &res,
+>> +	};
+>> +	args.seq_args.sa_session = res.seq_res.sr_session = NULL;
+>> +	status = nfs4_call_sync_sequence(server->client, server, &msg, &args.seq_args, &res.seq_res, 0, 1);
+>> +	return status;
 >> +}
 >> +
->> +void nfsd_count_all_state_owners(void)
+>> +static int nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *state)
 >> +{
->> +	struct list_head *pos, *next;
->> +	int count = 0;
->> +
->> +	nfs4_lock_state();
->> +	list_for_each_safe(pos, next, &close_lru)
->> +		count++;
->> +	nfs4_unlock_state();
->> +	printk(KERN_INFO "%s %s Counted %d state owners", __FILE__, __func__, count);
+>> +	struct nfs4_exception exception = { };
+>> +	int err;
+>> +	do {
+>> +		err = nfs4_handle_exception(server,
+>> +				_nfs41_test_stateid(server, state),
+>> +				&exception);
+>> +	} while (exception.retry);
+>> +	return err;
 >> +}
->> +
->> +void nfsd_forget_all_delegations(void)
->> +{
->> +	struct nfs4_file *fp;
->> +	struct nfs4_delegation *dp;
->> +	struct list_head *pos, *next, reaplist;
->> +	unsigned int i;
->> +	unsigned int count = 0;
->> +
->> +	INIT_LIST_HEAD(&reaplist);
->> +
->> +	nfs4_lock_state();
->> +	spin_lock(&recall_lock);
->> +	for (i = 0; i < FILE_HASH_SIZE; i++) {
->> +		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
->> +			list_for_each(pos, &fp->fi_delegations) {
->> +				dp = list_entry(pos, struct nfs4_delegation, dl_perfile);
->> +				list_del_init(&dp->dl_perclnt);
->> +				list_move(&dp->dl_recall_lru, &reaplist);
->> +			}
->> +		}
->> +	}
->> +
->> +	spin_unlock(&recall_lock);
->> +	list_for_each_safe(pos, next, &reaplist) {
->> +		dp = list_entry(pos, struct nfs4_delegation, dl_recall_lru);
->> +		list_del_init(&dp->dl_recall_lru);
->> +		unhash_delegation(dp);
->> +		count++;
->> +	}
->> +	nfs4_unlock_state();
->> +
->> +	printk(KERN_INFO "%s %s Forgot %d delegations", __FILE__, __func__, count);
->> +}
->> +
->> +void nfsd_recall_all_delegations(void)
->> +{
->> +	struct nfs4_file *fp;
->> +	struct nfs4_delegation *dp;
->> +	struct list_head *pos;
->> +	unsigned int i;
->> +	unsigned int count = 0;
->> +
->> +	nfs4_lock_state();
->> +	spin_lock(&recall_lock);
->> +	for (i = 0; i < FILE_HASH_SIZE; i++) {
->> +		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
->> +			list_for_each(pos, &fp->fi_delegations) {
->> +				dp = list_entry(pos, struct nfs4_delegation, dl_perfile);
->> +				nfsd_break_one_deleg(dp);
->> +				count++;
->> +			}
->> +		}
->> +	}
->> +	spin_unlock(&recall_lock);
->> +	nfs4_unlock_state();
->> +	printk(KERN_INFO "%s %s Recalled %d delegations", __FILE__, __func__, count);
->> +}
->> +
->> +#endif /* CONFIG_NFSD_FAULT_INJECTION */
->> +
->>  static struct nfs4_stateowner *
->>  search_close_lru(u32 st_id, int flags)
->>  {
->> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
->> index 1f5eae4..1eb3e92 100644
->> --- a/fs/nfsd/nfsctl.c
->> +++ b/fs/nfsd/nfsctl.c
->> @@ -1481,6 +1481,9 @@ static int __init init_nfsd(void)
->>  	retval = nfs4_state_init(); /* nfs4 locking state */
->>  	if (retval)
->>  		return retval;
->> +	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
->> +	if (retval)
->> +		goto out_cleanup_fault_injection;
->>  	nfsd_stat_init();	/* Statistics */
->>  	retval = nfsd_reply_cache_init();
->>  	if (retval)
->> @@ -1512,6 +1515,8 @@ out_free_cache:
->>  out_free_stat:
->>  	nfsd_stat_shutdown();
->>  	nfsd4_free_slabs();
->> +out_cleanup_fault_injection:
->> +	nfsd_cleanup_fault_inject();
->>  	return retval;
->>  }
+>>  #endif /* CONFIG_NFS_V4_1 */
 >>  
->> @@ -1525,6 +1530,7 @@ static void __exit exit_nfsd(void)
->>  	nfsd_lockd_shutdown();
->>  	nfsd_idmap_shutdown();
->>  	nfsd4_free_slabs();
->> +	nfsd_cleanup_fault_inject();
->>  	unregister_filesystem(&nfsd_fs_type);
->>  }
+>>  struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
+>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>> index c3ccd2c..2746616 100644
+>> --- a/fs/nfs/nfs4xdr.c
+>> +++ b/fs/nfs/nfs4xdr.c
+>> @@ -338,6 +338,9 @@ static int nfs4_stat_to_errno(int);
+>>  				1 /* layoutupdate4 layout type */ + \
+>>  				1 /* NULL filelayout layoutupdate4 payload */)
+>>  #define decode_layoutcommit_maxsz (op_decode_hdr_maxsz + 3)
+>> +#define encode_test_stateid_maxsz	(op_encode_hdr_maxsz + 8 + \
+>> +					 XDR_QUADLEN(NFS4_STATEID_SIZE))
+>> +#define decode_test_stateid_maxsz	(op_decode_hdr_maxsz + 8 + 4)
 >>  
->> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
->> index 7ecfa24..4e6dd45 100644
->> --- a/fs/nfsd/nfsd.h
->> +++ b/fs/nfsd/nfsd.h
->> @@ -79,11 +79,18 @@ static inline int nfsd_v4client(struct svc_rqst *rq)
->>  #ifdef CONFIG_NFSD_V4
->>  extern unsigned int max_delegations;
->>  int nfs4_state_init(void);
->> +int nfsd_fault_inject_init(void);
->> +void nfsd_cleanup_fault_inject(void);
->>  void nfsd4_free_slabs(void);
->>  int nfs4_state_start(void);
->>  void nfs4_state_shutdown(void);
->>  void nfs4_reset_lease(time_t leasetime);
->>  int nfs4_reset_recoverydir(char *recdir);
->> +void nfsd_forget_all_clients(void);
->> +void nfsd_forget_all_state_owners(void);
->> +void nfsd_count_all_state_owners(void);
->> +void nfsd_forget_all_delegations(void);
->> +void nfsd_recall_all_delegations(void);
->>  #else
->>  static inline int nfs4_state_init(void) { return 0; }
->>  static inline void nfsd4_free_slabs(void) { }
->> @@ -91,6 +98,11 @@ static inline int nfs4_state_start(void) { return 0; }
->>  static inline void nfs4_state_shutdown(void) { }
->>  static inline void nfs4_reset_lease(time_t leasetime) { }
->>  static inline int nfs4_reset_recoverydir(char *recdir) { return 0; }
->> +static inline void nfsd_forget_all_clients(void) {};
->> +static inline void nfsd_forget_all_state_owners(void) {};
->> +static inline void nfsd_count_all_state_owners(void) {};
->> +static inline void nfsd_forget_all_delegations(void) {};
->> +static inline void nfsd_recall_all_delegations(void) {};
->>  #endif
+>>  #else /* CONFIG_NFS_V4_1 */
+>>  #define encode_sequence_maxsz	0
+>> @@ -760,6 +763,12 @@ static int nfs4_stat_to_errno(int);
+>>  				decode_putfh_maxsz + \
+>>  				decode_layoutcommit_maxsz + \
+>>  				decode_getattr_maxsz)
+>> +#define NFS4_enc_test_stateid_sz	(compound_encode_hdr_maxsz + \
+>> +					 encode_sequence_maxsz + \
+>> +					 encode_test_stateid_maxsz)
+>> +#define NFS4_dec_test_stateid_sz	(compound_decode_hdr_maxsz + \
+>> +					 decode_sequence_maxsz + \
+>> +					 decode_test_stateid_maxsz)
+>>  
+>>  
+>>  const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
+>> @@ -1889,6 +1898,20 @@ encode_layoutcommit(struct xdr_stream *xdr,
+>>  	hdr->replen += decode_layoutcommit_maxsz;
+>>  	return 0;
+>>  }
+>> +
+>> +static void encode_test_stateid(struct xdr_stream *xdr,
+>> +				struct nfs41_test_stateid_args *args,
+>> +				struct compound_hdr *hdr)
+>> +{
+>> +	__be32 *p;
+>> +
+>> +	p = reserve_space(xdr, 8 + NFS4_STATEID_SIZE);
+>> +	*p++ = cpu_to_be32(OP_TEST_STATEID);
+>> +	*p++ = cpu_to_be32(1);
+>> +	xdr_encode_opaque_fixed(p, args->stateid->data, NFS4_STATEID_SIZE);
+>> +	hdr->nops++;
+>> +	hdr->replen += decode_test_stateid_maxsz;
+>> +}
+>>  #endif /* CONFIG_NFS_V4_1 */
 >>  
 >>  /*
+>> @@ -2722,6 +2745,23 @@ static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
+>>  	encode_nops(&hdr);
+>>  	return 0;
+>>  }
+>> +
+>> +/*
+>> + *  Encode TEST_STATEID request
+>> + */
+>> +static void nfs4_xdr_enc_test_stateid(struct rpc_rqst *req,
+>> +				      struct xdr_stream *xdr,
+>> +				      struct nfs41_test_stateid_args *args)
+>> +{
+>> +	struct compound_hdr hdr = {
+>> +		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
+>> +	};
+>> +
+>> +	encode_compound_hdr(xdr, req, &hdr);
+>> +	encode_sequence(xdr, &args->seq_args, &hdr);
+>> +	encode_test_stateid(xdr, args, &hdr);
+>> +	encode_nops(&hdr);
+>> +}
+>>  #endif /* CONFIG_NFS_V4_1 */
+>>  
+>>  static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
+>> @@ -5231,6 +5271,35 @@ out_overflow:
+>>  	print_overflow_msg(__func__, xdr);
+>>  	return -EIO;
+>>  }
+>> +
+>> +static int decode_test_stateid(struct xdr_stream *xdr,
+>> +			       struct nfs41_test_stateid_res *res)
+>> +{
+>> +	__be32 *p;
+>> +	int status;
+>> +	int num_res;
+>> +
+>> +	status = decode_op_hdr(xdr, OP_TEST_STATEID);
+>> +	if (status)
+>> +		return status;
+>> +
+>> +	p = xdr_inline_decode(xdr, 4);
+>> +	if (unlikely(!p))
+>> +		goto out_overflow;
+>> +	num_res = be32_to_cpup(p++);
+>> +	if (num_res != 1)
+>> +		goto out;
+>> +
+>> +	p = xdr_inline_decode(xdr, 4);
+>> +	if (unlikely(!p))
+>> +		goto out_overflow;
+>> +	res->status = be32_to_cpup(p++);
+>> +	return res->status;
+>> +out_overflow:
+>> +	print_overflow_msg(__func__, xdr);
+>> +out:
+>> +	return -EIO;
+>> +}
+>>  #endif /* CONFIG_NFS_V4_1 */
+>>  
+>>  /*
+>> @@ -6346,6 +6415,27 @@ static int nfs4_xdr_dec_layoutcommit(struct rpc_rqst *rqstp,
+>>  out:
+>>  	return status;
+>>  }
+>> +
+>> +/*
+>> + * Decode TEST_STATEID response
+>> + */
+>> +static int nfs4_xdr_dec_test_stateid(struct rpc_rqst *rqstp,
+>> +				     struct xdr_stream *xdr,
+>> +				     struct nfs41_test_stateid_res *res)
+>> +{
+>> +	struct compound_hdr hdr;
+>> +	int status;
+>> +
+>> +	status = decode_compound_hdr(xdr, &hdr);
+>> +	if (status)
+>> +		goto out;
+>> +	status = decode_sequence(xdr, &res->seq_res, rqstp);
+>> +	if (status)
+>> +		goto out;
+>> +	status = decode_test_stateid(xdr, res);
+>> +out:
+>> +	return status;
+>> +}
+>>  #endif /* CONFIG_NFS_V4_1 */
+>>  
+>>  /**
+>> @@ -6547,6 +6637,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+>>  	PROC(GETDEVICEINFO,	enc_getdeviceinfo,	dec_getdeviceinfo),
+>>  	PROC(LAYOUTGET,		enc_layoutget,		dec_layoutget),
+>>  	PROC(LAYOUTCOMMIT,	enc_layoutcommit,	dec_layoutcommit),
+>> +	PROC(TEST_STATEID,	enc_test_stateid,	dec_test_stateid),
+>>  #endif /* CONFIG_NFS_V4_1 */
+>>  };
+>>  
+>> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+>> index 178fafe..0df1eed 100644
+>> --- a/include/linux/nfs4.h
+>> +++ b/include/linux/nfs4.h
+>> @@ -562,6 +562,7 @@ enum {
+>>  	NFSPROC4_CLNT_LAYOUTGET,
+>>  	NFSPROC4_CLNT_GETDEVICEINFO,
+>>  	NFSPROC4_CLNT_LAYOUTCOMMIT,
+>> +	NFSPROC4_CLNT_TEST_STATEID,
+>>  };
+>>  
+>>  /* nfs41 types */
+>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+>> index 890dce2..36f50dc 100644
+>> --- a/include/linux/nfs_xdr.h
+>> +++ b/include/linux/nfs_xdr.h
+>> @@ -1062,6 +1062,16 @@ struct nfs41_reclaim_complete_args {
+>>  struct nfs41_reclaim_complete_res {
+>>  	struct nfs4_sequence_res	seq_res;
+>>  };
+>> +
+>> +struct nfs41_test_stateid_args {
+>> +	nfs4_stateid			*stateid;
+>> +	struct nfs4_sequence_args	seq_args;
+>> +};
+>> +
+>> +struct nfs41_test_stateid_res {
+>> +	unsigned int			status;
+>> +	struct nfs4_sequence_res	seq_res;
+>> +};
+>>  #endif /* CONFIG_NFS_V4_1 */
+>>  
+>>  struct nfs_page;
 >> -- 
 >> 1.7.5.1
 >>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
