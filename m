@@ -1,175 +1,249 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:46499 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751443Ab1E3R14 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 May 2011 13:27:56 -0400
-Received: by wya21 with SMTP id 21so2766106wya.19
-        for <linux-nfs@vger.kernel.org>; Mon, 30 May 2011 10:27:55 -0700 (PDT)
-Message-ID: <4DE3D392.3020902@panasas.com>
-Date: Mon, 30 May 2011 20:27:46 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: "J. Bruce Fields" <bfields@citi.umich.edu>,
-        NFS list <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [RFC] pnfsd: Return all ROC layouts On Close
-References: <4DE3B812.8020804@panasas.com>
-In-Reply-To: <4DE3B812.8020804@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:59513 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756653Ab1EFQuM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 May 2011 12:50:12 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 1/3] NFS: Added TEST_STATEID call
+Date: Fri,  6 May 2011 12:49:53 -0400
+Message-Id: <1304700595-5040-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-05-30 18:30, Boaz Harrosh wrote:
-> 
-> As talk to with Trond, when a client has sent an nfs4_close, the
-> server can surly assume that the given client has already forgotten
-> all it's ROC given layouts. And in fact the current Linux-client goes
-> to grate length to make sure all ROC layouts are invalidated, before
-> sending the close. If a new open+IO comes in and tries to get a new layout,
-> it will wait for the nfs4_close to return before sending the new layout_get.
-> 
-> So in light of above the server should simulate layout_return and remove
-> any layouts marked ROC on nfs4_close.
-> 
-> Current code is protocol correct, but a more fine-grained approach can be
-> devised to also release layouts in open_downgrade, of all unused iomodes.
-> But to do this I'll need the help of an expert.
-> 
-> With this patch in, I'm finally able to run with the new Linux-Client together
-> with a Linux-Server. Before, the layouts where only released and freed on umount
-> and in a modest machine like the UML I use, few 10s of "git checkout linux" the
-> server would oom.
-> 
-> Benny please submit it to the pnfs tree, so we can run with this in Bakeathone.
-> 
-> So please all help me to verify and refine this code.
-> 
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> ---
->  fs/nfsd/nfs4pnfsd.c |   44 ++++++++++++++++++++++++++++++++++++++++++--
->  fs/nfsd/nfs4state.c |    3 +++
->  fs/nfsd/pnfsd.h     |    3 +++
->  3 files changed, 48 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-> index 9089e6b9..d8f744e 100644
-> --- a/fs/nfsd/nfs4pnfsd.c
-> +++ b/fs/nfsd/nfs4pnfsd.c
-> @@ -402,7 +402,8 @@ init_layout(struct nfs4_layout_state *ls,
->  	    struct nfs4_client *clp,
->  	    struct svc_fh *current_fh,
->  	    struct nfsd4_layout_seg *seg,
-> -	    stateid_t *stateid)
-> +	    stateid_t *stateid,
-> +	    bool roc)
->  {
->  	dprintk("pNFS %s: ls %p lp %p clp %p fp %p ino %p\n", __func__,
->  		ls, lp, clp, fp, fp->fi_inode);
-> @@ -412,6 +413,7 @@ init_layout(struct nfs4_layout_state *ls,
->  	lp->lo_file = fp;
->  	get_layout_state(ls);
->  	lp->lo_state = ls;
-> +	lp->lo_roc = roc;
->  	memcpy(&lp->lo_seg, seg, sizeof(lp->lo_seg));
->  	spin_lock(&layout_lock);
->  	update_layout_stateid(ls, stateid);
-> @@ -914,7 +916,8 @@ nfs4_pnfs_get_layout(struct nfsd4_pnfs_layoutget *lgp,
->  		goto out_freelayout;
->  
->  	/* Can't merge, so let's initialize this new layout */
-> -	init_layout(ls, lp, fp, clp, lgp->lg_fhp, &res.lg_seg, &lgp->lg_sid);
-> +	init_layout(ls, lp, fp, clp, lgp->lg_fhp, &res.lg_seg, &lgp->lg_sid,
-> +		    res.lg_return_on_close);
->  out_unlock:
->  	if (ls)
->  		put_layout_state(ls);
-> @@ -1328,6 +1331,43 @@ nomatching_layout(struct nfs4_layoutrecall *clr)
->  	iput(inode);
->  }
->  
-> +/* Return On Close:
-> + *   Look for all layouts of @fp that belong to @clp, if ROC is set, remove
-> + *   the layout and simulate a layout_return. Surly the client has forgotten
-> + *   these layouts or it would return them before the close.
-> + */
-> +void pnfs_roc(struct nfs4_client *clp, struct nfs4_file *fp,
-> +	      enum pnfs_iomode iomode)
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-what's the iomode for?
+This patch adds in the xdr for doing a TEST_STATEID call with a single
+stateid. RFC 5661 allows multiple stateids to be tested in a single
+call, but only testing one keeps things simpler for now.
 
-The nfs CLOSE operation is sent on the final close on the client side.
-otherwise you'd get an OPEN_DOWNGRADE for which return on close is not
-really defined.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/nfs4proc.c       |   28 ++++++++++++++
+ fs/nfs/nfs4xdr.c        |   91 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs4.h    |    1 +
+ include/linux/nfs_xdr.h |   10 +++++
+ 4 files changed, 130 insertions(+), 0 deletions(-)
 
-Benny
-
-> +{
-> +	struct nfs4_layout *lo, *nextlp;
-> +
-> +	spin_lock(&layout_lock);
-> +	list_for_each_entry_safe (lo, nextlp, &fp->fi_layouts, lo_perfile) {
-> +		struct nfsd4_pnfs_layoutreturn lr;
-> +		bool empty;
-> +
-> +		/* Check for a match */
-> +		if (!lo->lo_roc ||
-> +		    (lo->lo_client != clp) ||
-> +		    ((iomode != IOMODE_ANY) && (lo->lo_seg.iomode != iomode))
-> +		)
-> +			continue;
-> +
-> +		/* Return the layout */
-> +		memset(&lr, 0, sizeof(lr));
-> +		lr.args.lr_return_type = RETURN_FILE;
-> +		lr.args.lr_seg = lo->lo_seg;
-> +		dequeue_layout(lo);
-> +		destroy_layout(lo); /* do not access lp after this */
-> +
-> +		empty = list_empty(&fp->fi_layouts);
-> +		fs_layout_return(fp->fi_inode->i_sb, fp->fi_inode, &lr,
-> +				 LR_FLAG_EXPIRE,
-> +				 empty ? PNFS_LAST_LAYOUT_NO_RECALLS : NULL);
-> +	}
-> +	spin_unlock(&layout_lock);
-> +}
-> +
->  void pnfs_expire_client(struct nfs4_client *clp)
->  {
->  	for (;;) {
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 66f6f48..a116e41 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -3592,6 +3592,9 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	/* release_stateid() calls nfsd_close() if needed */
->  	release_open_stateid(stp);
->  
-> +	/* RFC: what to do with IOMODE */
-> +	pnfs_roc(stp->st_stateowner->so_client, stp->st_file, IOMODE_ANY);
-> +
->  	/* place unused nfs4_stateowners on so_close_lru list to be
->  	 * released by the laundromat service after the lease period
->  	 * to enable us to handle CLOSE replay
-> diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
-> index c11d93d..fcb16d2 100644
-> --- a/fs/nfsd/pnfsd.h
-> +++ b/fs/nfsd/pnfsd.h
-> @@ -59,6 +59,7 @@ struct nfs4_layout {
->  	struct nfs4_client		*lo_client;
->  	struct nfs4_layout_state	*lo_state;
->  	struct nfsd4_layout_seg 	lo_seg;
-> +	bool				lo_roc;
->  };
->  
->  struct pnfs_inval_state {
-> @@ -124,6 +125,8 @@ int nfs4_pnfs_cb_change_state(struct pnfs_get_state *);
->  void nfs4_ds_get_verifier(stateid_t *, struct super_block *, u32 *);
->  int put_layoutrecall(struct nfs4_layoutrecall *);
->  void nomatching_layout(struct nfs4_layoutrecall *);
-> +void pnfs_roc(struct nfs4_client *clp, struct nfs4_file *fp,
-> +	      enum pnfs_iomode iomode);
->  void *layoutrecall_done(struct nfs4_layoutrecall *);
->  void nfsd4_cb_layout(struct nfs4_layoutrecall *);
->  int nfsd_layout_recall_cb(struct super_block *, struct inode *,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 69c0f3c..044c151 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5791,6 +5791,34 @@ out:
+ 	rpc_put_task(task);
+ 	return status;
+ }
++static int _nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *state)
++{
++	int status;
++	struct nfs41_test_stateid_args args = {
++		.stateid = &state->stateid,
++	};
++	struct nfs41_test_stateid_res res;
++	struct rpc_message msg = {
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_TEST_STATEID],
++		.rpc_argp = &args,
++		.rpc_resp = &res,
++	};
++	args.seq_args.sa_session = res.seq_res.sr_session = NULL;
++	status = nfs4_call_sync_sequence(server->client, server, &msg, &args.seq_args, &res.seq_res, 0, 1);
++	return status;
++}
++
++static int nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *state)
++{
++	struct nfs4_exception exception = { };
++	int err;
++	do {
++		err = nfs4_handle_exception(server,
++				_nfs41_test_stateid(server, state),
++				&exception);
++	} while (exception.retry);
++	return err;
++}
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c3ccd2c..2746616 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -338,6 +338,9 @@ static int nfs4_stat_to_errno(int);
+ 				1 /* layoutupdate4 layout type */ + \
+ 				1 /* NULL filelayout layoutupdate4 payload */)
+ #define decode_layoutcommit_maxsz (op_decode_hdr_maxsz + 3)
++#define encode_test_stateid_maxsz	(op_encode_hdr_maxsz + 8 + \
++					 XDR_QUADLEN(NFS4_STATEID_SIZE))
++#define decode_test_stateid_maxsz	(op_decode_hdr_maxsz + 8 + 4)
+ 
+ #else /* CONFIG_NFS_V4_1 */
+ #define encode_sequence_maxsz	0
+@@ -760,6 +763,12 @@ static int nfs4_stat_to_errno(int);
+ 				decode_putfh_maxsz + \
+ 				decode_layoutcommit_maxsz + \
+ 				decode_getattr_maxsz)
++#define NFS4_enc_test_stateid_sz	(compound_encode_hdr_maxsz + \
++					 encode_sequence_maxsz + \
++					 encode_test_stateid_maxsz)
++#define NFS4_dec_test_stateid_sz	(compound_decode_hdr_maxsz + \
++					 decode_sequence_maxsz + \
++					 decode_test_stateid_maxsz)
+ 
+ 
+ const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
+@@ -1889,6 +1898,20 @@ encode_layoutcommit(struct xdr_stream *xdr,
+ 	hdr->replen += decode_layoutcommit_maxsz;
+ 	return 0;
+ }
++
++static void encode_test_stateid(struct xdr_stream *xdr,
++				struct nfs41_test_stateid_args *args,
++				struct compound_hdr *hdr)
++{
++	__be32 *p;
++
++	p = reserve_space(xdr, 8 + NFS4_STATEID_SIZE);
++	*p++ = cpu_to_be32(OP_TEST_STATEID);
++	*p++ = cpu_to_be32(1);
++	xdr_encode_opaque_fixed(p, args->stateid->data, NFS4_STATEID_SIZE);
++	hdr->nops++;
++	hdr->replen += decode_test_stateid_maxsz;
++}
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ /*
+@@ -2722,6 +2745,23 @@ static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
+ 	encode_nops(&hdr);
+ 	return 0;
+ }
++
++/*
++ *  Encode TEST_STATEID request
++ */
++static void nfs4_xdr_enc_test_stateid(struct rpc_rqst *req,
++				      struct xdr_stream *xdr,
++				      struct nfs41_test_stateid_args *args)
++{
++	struct compound_hdr hdr = {
++		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
++	};
++
++	encode_compound_hdr(xdr, req, &hdr);
++	encode_sequence(xdr, &args->seq_args, &hdr);
++	encode_test_stateid(xdr, args, &hdr);
++	encode_nops(&hdr);
++}
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
+@@ -5231,6 +5271,35 @@ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+ 	return -EIO;
+ }
++
++static int decode_test_stateid(struct xdr_stream *xdr,
++			       struct nfs41_test_stateid_res *res)
++{
++	__be32 *p;
++	int status;
++	int num_res;
++
++	status = decode_op_hdr(xdr, OP_TEST_STATEID);
++	if (status)
++		return status;
++
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(!p))
++		goto out_overflow;
++	num_res = be32_to_cpup(p++);
++	if (num_res != 1)
++		goto out;
++
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(!p))
++		goto out_overflow;
++	res->status = be32_to_cpup(p++);
++	return res->status;
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++out:
++	return -EIO;
++}
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ /*
+@@ -6346,6 +6415,27 @@ static int nfs4_xdr_dec_layoutcommit(struct rpc_rqst *rqstp,
+ out:
+ 	return status;
+ }
++
++/*
++ * Decode TEST_STATEID response
++ */
++static int nfs4_xdr_dec_test_stateid(struct rpc_rqst *rqstp,
++				     struct xdr_stream *xdr,
++				     struct nfs41_test_stateid_res *res)
++{
++	struct compound_hdr hdr;
++	int status;
++
++	status = decode_compound_hdr(xdr, &hdr);
++	if (status)
++		goto out;
++	status = decode_sequence(xdr, &res->seq_res, rqstp);
++	if (status)
++		goto out;
++	status = decode_test_stateid(xdr, res);
++out:
++	return status;
++}
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ /**
+@@ -6547,6 +6637,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+ 	PROC(GETDEVICEINFO,	enc_getdeviceinfo,	dec_getdeviceinfo),
+ 	PROC(LAYOUTGET,		enc_layoutget,		dec_layoutget),
+ 	PROC(LAYOUTCOMMIT,	enc_layoutcommit,	dec_layoutcommit),
++	PROC(TEST_STATEID,	enc_test_stateid,	dec_test_stateid),
+ #endif /* CONFIG_NFS_V4_1 */
+ };
+ 
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 178fafe..0df1eed 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -562,6 +562,7 @@ enum {
+ 	NFSPROC4_CLNT_LAYOUTGET,
+ 	NFSPROC4_CLNT_GETDEVICEINFO,
+ 	NFSPROC4_CLNT_LAYOUTCOMMIT,
++	NFSPROC4_CLNT_TEST_STATEID,
+ };
+ 
+ /* nfs41 types */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 890dce2..36f50dc 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1062,6 +1062,16 @@ struct nfs41_reclaim_complete_args {
+ struct nfs41_reclaim_complete_res {
+ 	struct nfs4_sequence_res	seq_res;
+ };
++
++struct nfs41_test_stateid_args {
++	nfs4_stateid			*stateid;
++	struct nfs4_sequence_args	seq_args;
++};
++
++struct nfs41_test_stateid_res {
++	unsigned int			status;
++	struct nfs4_sequence_res	seq_res;
++};
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ struct nfs_page;
+-- 
+1.7.5.1
 
