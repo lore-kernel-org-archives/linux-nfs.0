@@ -1,203 +1,243 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57202 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754488Ab1EYVaB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:30:01 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v8 28/32] NFSv4.1: unify pnfs_pageio_init functions
-Date: Thu, 26 May 2011 00:29:58 +0300
-Message-Id: <1306358998-17872-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DDD7392.6040505@panasas.com>
-References: <4DDD7392.6040505@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:59513 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756637Ab1EFQuO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 May 2011 12:50:14 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 2/3] NFS: added FREE_STATEID call
+Date: Fri,  6 May 2011 12:49:54 -0400
+Message-Id: <1304700595-5040-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1304700595-5040-1-git-send-email-bjschuma@netapp.com>
+References: <1304700595-5040-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Use common code for pnfs_pageio_init_{read,write} and use
-a common generic pg_test function.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Note that this function always assumes the the layout driver's
-pg_test method is implemented.
+FREE_STATEID is used to tell the server that we want to free a stateid
+that no longer has any locks associated with it.  This allows the client
+to reclaim locks without encountering edge conditions documented in
+section 8.4.3 of RFC 5661.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/pagelist.c |    1 +
- fs/nfs/pnfs.c     |   57 ++++++++++++++--------------------------------------
- fs/nfs/pnfs.h     |   19 +++++++----------
- fs/nfs/read.c     |    2 +-
- fs/nfs/write.c    |    3 +-
- 5 files changed, 27 insertions(+), 55 deletions(-)
+ fs/nfs/nfs4proc.c       |   30 +++++++++++++++++
+ fs/nfs/nfs4xdr.c        |   80 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs4.h    |    1 +
+ include/linux/nfs_xdr.h |   10 ++++++
+ 4 files changed, 121 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index c80add6..0918ea8 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -229,6 +229,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
- 	desc->pg_ioflags = io_flags;
- 	desc->pg_error = 0;
- 	desc->pg_lseg = NULL;
-+	desc->pg_test = NULL;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 044c151..9eb6d2b 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5819,6 +5819,36 @@ static int nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *stat
+ 	} while (exception.retry);
+ 	return err;
  }
- 
- /**
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 00b1282..f7a9405 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1043,46 +1043,30 @@ out_forget_reply:
- 	goto out;
- }
- 
--static int pnfs_read_pg_test(struct nfs_pageio_descriptor *pgio,
--			     struct nfs_page *prev,
--			     struct nfs_page *req)
--{
--	if (pgio->pg_count == prev->wb_bytes) {
--		/* This is first coelesce call for a series of nfs_pages */
--		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
--						   prev->wb_context,
--						   req_offset(req),
--						   pgio->pg_count,
--						   IOMODE_READ,
--						   GFP_KERNEL);
--	} else if (pgio->pg_lseg &&
--		   req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
--						pgio->pg_lseg->pls_range.length))
--		return 0;
--	return NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->pg_test(pgio, prev, req);
--}
--
--void
--pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode)
-+int
-+pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
-+		     struct nfs_page *req)
- {
--	struct pnfs_layoutdriver_type *ld;
-+	enum pnfs_iomode access_type;
-+	gfp_t gfp_flags;
- 
--	ld = NFS_SERVER(inode)->pnfs_curr_ld;
--	pgio->pg_test = (ld && ld->pg_test) ? pnfs_read_pg_test : NULL;
--}
--
--static int pnfs_write_pg_test(struct nfs_pageio_descriptor *pgio,
--			      struct nfs_page *prev,
--			      struct nfs_page *req)
--{
-+	/* We assume that pg_ioflags == 0 iff we're reading a page */
-+	if (pgio->pg_ioflags == 0) {
-+		access_type = IOMODE_READ;
-+		gfp_flags = GFP_KERNEL;
-+	} else {
-+		access_type = IOMODE_RW;
-+		gfp_flags = GFP_NOFS;
-+	}
-+		
- 	if (pgio->pg_count == prev->wb_bytes) {
- 		/* This is first coelesce call for a series of nfs_pages */
- 		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 						   prev->wb_context,
- 						   req_offset(req),
- 						   pgio->pg_count,
--						   IOMODE_RW,
--						   GFP_NOFS);
-+						   access_type,
-+						   gfp_flags);
- 	} else if (pgio->pg_lseg &&
- 		   req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
- 						pgio->pg_lseg->pls_range.length))
-@@ -1090,15 +1074,6 @@ static int pnfs_write_pg_test(struct nfs_pageio_descriptor *pgio,
- 	return NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->pg_test(pgio, prev, req);
- }
- 
--void
--pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
--{
--	struct pnfs_layoutdriver_type *ld;
--
--	ld = NFS_SERVER(inode)->pnfs_curr_ld;
--	pgio->pg_test = (ld && ld->pg_test) ? pnfs_write_pg_test : NULL;
--}
--
- /*
-  * Called by non rpc-based layout drivers
-  */
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 25da946..cc61ae0 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -158,8 +158,7 @@ enum pnfs_try_status pnfs_try_to_write_data(struct nfs_write_data *,
- 					     const struct rpc_call_ops *, int);
- enum pnfs_try_status pnfs_try_to_read_data(struct nfs_read_data *,
- 					    const struct rpc_call_ops *);
--void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
--void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
-+int pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev, struct nfs_page *req);
- int pnfs_layout_process(struct nfs4_layoutget *lgp);
- void pnfs_free_lseg_list(struct list_head *tmp_list);
- void pnfs_destroy_layout(struct nfs_inode *);
-@@ -293,6 +292,12 @@ static inline int pnfs_return_layout(struct inode *ino)
- 	return 0;
- }
- 
-+static inline void pnfs_pageio_init(struct nfs_pageio_descriptor *pgio, struct inode *inode)
++
++static int _nfs4_free_stateid(struct nfs_server *server, struct nfs4_state *state)
 +{
-+	if (NFS_SERVER(inode)->pnfs_curr_ld)
-+		pgio->pg_test = pnfs_generic_pg_test;
++	int status;
++	struct nfs41_free_stateid_args args = {
++		.stateid = &state->stateid,
++	};
++	struct nfs41_free_stateid_res res;
++	struct rpc_message msg = {
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_FREE_STATEID],
++		.rpc_argp = &args,
++		.rpc_resp = &res,
++	};
++
++	args.seq_args.sa_session = res.seq_res.sr_session = NULL;
++	status = nfs4_call_sync_sequence(server->client, server, &msg, &args.seq_args, &res.seq_res, 0, 1);
++	return status;
 +}
 +
- #else  /* CONFIG_NFS_V4_1 */
++static int nfs41_free_stateid(struct nfs_server *server, struct nfs4_state *state)
++{
++	struct nfs4_exception exception = { };
++	int err;
++	do {
++		err = nfs4_handle_exception(server,
++				_nfs4_free_stateid(server, state),
++				&exception);
++	} while (exception.retry);
++	return err;
++}
+ #endif /* CONFIG_NFS_V4_1 */
  
- static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
-@@ -376,16 +381,8 @@ static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
- {
+ struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 2746616..1c48c7cf 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -341,6 +341,9 @@ static int nfs4_stat_to_errno(int);
+ #define encode_test_stateid_maxsz	(op_encode_hdr_maxsz + 8 + \
+ 					 XDR_QUADLEN(NFS4_STATEID_SIZE))
+ #define decode_test_stateid_maxsz	(op_decode_hdr_maxsz + 8 + 4)
++#define encode_free_stateid_maxsz	(op_encode_hdr_maxsz + 4 + \
++					 XDR_QUADLEN(NFS4_STATEID_SIZE))
++#define decode_free_stateid_maxsz	(op_decode_hdr_maxsz + 4)
+ 
+ #else /* CONFIG_NFS_V4_1 */
+ #define encode_sequence_maxsz	0
+@@ -769,6 +772,12 @@ static int nfs4_stat_to_errno(int);
+ #define NFS4_dec_test_stateid_sz	(compound_decode_hdr_maxsz + \
+ 					 decode_sequence_maxsz + \
+ 					 decode_test_stateid_maxsz)
++#define NFS4_enc_free_stateid_sz	(compound_encode_hdr_maxsz + \
++					 encode_sequence_maxsz + \
++					 encode_free_stateid_maxsz)
++#define NFS4_dec_free_stateid_sz	(compound_decode_hdr_maxsz + \
++					 decode_sequence_maxsz + \
++					 decode_free_stateid_maxsz)
+ 
+ 
+ const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
+@@ -1912,6 +1921,18 @@ static void encode_test_stateid(struct xdr_stream *xdr,
+ 	hdr->nops++;
+ 	hdr->replen += decode_test_stateid_maxsz;
  }
++
++static void encode_free_stateid(struct xdr_stream *xdr,
++				struct nfs41_free_stateid_args *args,
++				struct compound_hdr *hdr)
++{
++	__be32 *p;
++	p = reserve_space(xdr, 4 + NFS4_STATEID_SIZE);
++	*p++ = cpu_to_be32(OP_FREE_STATEID);
++	xdr_encode_opaque_fixed(p, args->stateid->data, NFS4_STATEID_SIZE);
++	hdr->nops++;
++	hdr->replen += decode_free_stateid_maxsz;
++}
+ #endif /* CONFIG_NFS_V4_1 */
  
--static inline void
--pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *ino)
--{
--	pgio->pg_test = NULL;
--}
--
--static inline void
--pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *ino)
-+static inline void pnfs_pageio_init(struct nfs_pageio_descriptor *, struct inode *)
- {
--	pgio->pg_test = NULL;
+ /*
+@@ -2762,6 +2783,23 @@ static void nfs4_xdr_enc_test_stateid(struct rpc_rqst *req,
+ 	encode_test_stateid(xdr, args, &hdr);
+ 	encode_nops(&hdr);
  }
++
++/*
++ *  Encode FREE_STATEID request
++ */
++static void nfs4_xdr_enc_free_stateid(struct rpc_rqst *req,
++				     struct xdr_stream *xdr,
++				     struct nfs41_free_stateid_args *args)
++{
++	struct compound_hdr hdr = {
++		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
++	};
++
++	encode_compound_hdr(xdr, req, &hdr);
++	encode_sequence(xdr, &args->seq_args, &hdr);
++	encode_free_stateid(xdr, args, &hdr);
++	encode_nops(&hdr);
++}
+ #endif /* CONFIG_NFS_V4_1 */
  
- static inline void
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 540c8bc..6bd09a8 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -664,7 +664,7 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
- 	if (ret == 0)
- 		goto read_complete; /* all pages were read */
+ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
+@@ -5300,6 +5338,26 @@ out_overflow:
+ out:
+ 	return -EIO;
+ }
++
++static int decode_free_stateid(struct xdr_stream *xdr,
++			       struct nfs41_free_stateid_res *res)
++{
++	__be32 *p;
++	int status;
++
++	status = decode_op_hdr(xdr, OP_FREE_STATEID);
++	if (status)
++		return status;
++
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(!p))
++		goto out_overflow;
++	res->status = be32_to_cpup(p++);
++	return res->status;
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++}
+ #endif /* CONFIG_NFS_V4_1 */
  
--	pnfs_pageio_init_read(&pgio, inode);
-+	pnfs_pageio_init(&pgio, inode);
- 	if (rsize < PAGE_CACHE_SIZE)
- 		nfs_pageio_init(&pgio, inode, nfs_pagein_multi, rsize, 0);
- 	else
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 7edb72f..d81c5c0 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1036,8 +1036,7 @@ static void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
- {
- 	size_t wsize = NFS_SERVER(inode)->wsize;
+ /*
+@@ -6436,6 +6494,27 @@ static int nfs4_xdr_dec_test_stateid(struct rpc_rqst *rqstp,
+ out:
+ 	return status;
+ }
++
++/*
++ * Decode FREE_STATEID response
++ */
++static int nfs4_xdr_dec_free_stateid(struct rpc_rqst *rqstp,
++				     struct xdr_stream *xdr,
++				     struct nfs41_free_stateid_res *res)
++{
++	struct compound_hdr hdr;
++	int status;
++
++	status = decode_compound_hdr(xdr, &hdr);
++	if (status)
++		goto out;
++	status = decode_sequence(xdr, &res->seq_res, rqstp);
++	if (status)
++		goto out;
++	status = decode_free_stateid(xdr, res);
++out:
++	return status;
++}
+ #endif /* CONFIG_NFS_V4_1 */
  
--	pnfs_pageio_init_write(pgio, inode);
--
-+	pnfs_pageio_init(pgio, inode);
- 	if (wsize < PAGE_CACHE_SIZE)
- 		nfs_pageio_init(pgio, inode, nfs_flush_multi, wsize, ioflags);
- 	else
+ /**
+@@ -6638,6 +6717,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+ 	PROC(LAYOUTGET,		enc_layoutget,		dec_layoutget),
+ 	PROC(LAYOUTCOMMIT,	enc_layoutcommit,	dec_layoutcommit),
+ 	PROC(TEST_STATEID,	enc_test_stateid,	dec_test_stateid),
++	PROC(FREE_STATEID,	enc_free_stateid,	dec_free_stateid),
+ #endif /* CONFIG_NFS_V4_1 */
+ };
+ 
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 0df1eed..761c1af 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -563,6 +563,7 @@ enum {
+ 	NFSPROC4_CLNT_GETDEVICEINFO,
+ 	NFSPROC4_CLNT_LAYOUTCOMMIT,
+ 	NFSPROC4_CLNT_TEST_STATEID,
++	NFSPROC4_CLNT_FREE_STATEID,
+ };
+ 
+ /* nfs41 types */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 36f50dc..73f02e8 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1072,6 +1072,16 @@ struct nfs41_test_stateid_res {
+ 	unsigned int			status;
+ 	struct nfs4_sequence_res	seq_res;
+ };
++
++struct nfs41_free_stateid_args {
++	nfs4_stateid			*stateid;
++	struct nfs4_sequence_args	seq_args;
++};
++
++struct nfs41_free_stateid_res {
++	unsigned int			status;
++	struct nfs4_sequence_res	seq_res;
++};
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ struct nfs_page;
 -- 
-1.7.3.4
+1.7.5.1
 
