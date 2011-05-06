@@ -1,75 +1,302 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:20232 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752824Ab1EWUxg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 16:53:36 -0400
-Message-ID: <4DDAC93A.2020209@panasas.com>
-Date: Mon, 23 May 2011 23:53:14 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v5 23/38] SQUASHME: pnfs-obj: use global device cache
-References: <4DD99F9B.2040406@panasas.com> <1306108720-28762-1-git-send-email-bhalevy@panasas.com> <4DD9E805.2020106@panasas.com> <4DDA64C6.2080909@panasas.com>
-In-Reply-To: <4DDA64C6.2080909@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:65238 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753305Ab1EFRzs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 May 2011 13:55:48 -0400
+Message-ID: <4DC43622.60006@netapp.com>
+Date: Fri, 06 May 2011 13:55:46 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] NFS: Added TEST_STATEID call
+References: <1304700595-5040-1-git-send-email-bjschuma@netapp.com> <20110506172944.GA15109@fieldses.org> <4DC431C8.6060104@netapp.com> <20110506174327.GA15365@fieldses.org> <4DC433CB.8060102@netapp.com>
+In-Reply-To: <4DC433CB.8060102@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/23/2011 04:44 PM, Benny Halevy wrote:
-> On 2011-05-23 07:52, Boaz Harrosh wrote:
->> On 05/23/2011 02:58 AM, Benny Halevy wrote:
->>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+On 05/06/2011 01:45 PM, Bryan Schumaker wrote:
+> On 05/06/2011 01:43 PM, J. Bruce Fields wrote:
+>> On Fri, May 06, 2011 at 01:37:12PM -0400, Bryan Schumaker wrote:
+>>> On 05/06/2011 01:29 PM, J. Bruce Fields wrote:
+>>>> On Fri, May 06, 2011 at 12:49:53PM -0400, bjschuma@netapp.com wrote:
+>>>>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>>>>
+>>>>> This patch adds in the xdr for doing a TEST_STATEID call with a
+>>>>> single stateid. RFC 5661 allows multiple stateids to be tested in a
+>>>>> single call, but only testing one keeps things simpler for now.
+>>>>
+>>>> These are among the mandatory 4.1 ops that we haven't implemented on
+>>>> the server yet.  Anyone up for it?  It's probably not difficult.
+>>>
+>>> I have some server patches that I think will work.  I'm checking out
+>>> your linux.git tree from linux-nfs.org to make sure they still apply.
 >>
->> Benny sorry but NACK on the global device cache for now
+>> OK, great.
 >>
->> This is to late at this stage. We have decided that first imp will
->> use the private cache and we'll postpone these cleanups for later.
+>>> Is there a branch that I should check against?
 >>
->> All other code was well tested for years, all this is new code, and 
+>> Probably for-2.6.40.
 > 
-> The file layout is upstream and better be harnessed for other layout
-> drivers as well.  If it's inferior to the current objects layout cache
-> we should fix and improve the former rather than introducing a new
-> implementation.
+> Thanks, I'll submit once I'm convinced everything is still working.
 > 
->> new behaviour that we will not have time to test. I do not like the
-> 
-> Ideally, the should already be fully tested, but last minute review-
-> related changes will always require further testing that needs to be
-> taken place during the -rc cycle.  The whole point of having rc's is
-> to stabilize the merged code to a point it can be released as a stable
-> release.
-> 
->> code as it is. Because currently it will release the device on layout_return.
->> Where is the cache? There is much more work to do here!
 >>
+>>>> Also: how will it behave against a server that returns nfserr_notsupp?
+>>>
+>>> The FREE_STATEID won't be used, and the nfs v4.0 recovery functions will be called (these functions will be called after the FREE_STATEID anyway).
+>>
+>> Then it sounds like your patches cause no change in behavior in the case
+>> of a server that doesn't support the ops?
 > 
-> Like I said, if there are bugs we should fix them rather introducing
-> alternative code that does the same thing.
+> Right, no change in behavior in this case.
+
+Actually, I think I got confused with what I did for SECINFO_NO_NAME.  Both TEST_STATEID and FREE_STATEID will be called and get nfserr_notsupp from the server in both cases.  It'll still call the v4.0 recovery functions when this happens.
+
 > 
->> We already said not to do this in this merge why the change of heart?
+>>
+>> --b.
+>>
+>>>
+>>>>
+>>>> --b.
+>>>>
+>>>>>
+>>>>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+>>>>> ---
+>>>>>  fs/nfs/nfs4proc.c       |   28 ++++++++++++++
+>>>>>  fs/nfs/nfs4xdr.c        |   91 +++++++++++++++++++++++++++++++++++++++++++++++
+>>>>>  include/linux/nfs4.h    |    1 +
+>>>>>  include/linux/nfs_xdr.h |   10 +++++
+>>>>>  4 files changed, 130 insertions(+), 0 deletions(-)
+>>>>>
+>>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>>>> index 69c0f3c..044c151 100644
+>>>>> --- a/fs/nfs/nfs4proc.c
+>>>>> +++ b/fs/nfs/nfs4proc.c
+>>>>> @@ -5791,6 +5791,34 @@ out:
+>>>>>  	rpc_put_task(task);
+>>>>>  	return status;
+>>>>>  }
+>>>>> +static int _nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *state)
+>>>>> +{
+>>>>> +	int status;
+>>>>> +	struct nfs41_test_stateid_args args = {
+>>>>> +		.stateid = &state->stateid,
+>>>>> +	};
+>>>>> +	struct nfs41_test_stateid_res res;
+>>>>> +	struct rpc_message msg = {
+>>>>> +		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_TEST_STATEID],
+>>>>> +		.rpc_argp = &args,
+>>>>> +		.rpc_resp = &res,
+>>>>> +	};
+>>>>> +	args.seq_args.sa_session = res.seq_res.sr_session = NULL;
+>>>>> +	status = nfs4_call_sync_sequence(server->client, server, &msg, &args.seq_args, &res.seq_res, 0, 1);
+>>>>> +	return status;
+>>>>> +}
+>>>>> +
+>>>>> +static int nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *state)
+>>>>> +{
+>>>>> +	struct nfs4_exception exception = { };
+>>>>> +	int err;
+>>>>> +	do {
+>>>>> +		err = nfs4_handle_exception(server,
+>>>>> +				_nfs41_test_stateid(server, state),
+>>>>> +				&exception);
+>>>>> +	} while (exception.retry);
+>>>>> +	return err;
+>>>>> +}
+>>>>>  #endif /* CONFIG_NFS_V4_1 */
+>>>>>  
+>>>>>  struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
+>>>>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>>>>> index c3ccd2c..2746616 100644
+>>>>> --- a/fs/nfs/nfs4xdr.c
+>>>>> +++ b/fs/nfs/nfs4xdr.c
+>>>>> @@ -338,6 +338,9 @@ static int nfs4_stat_to_errno(int);
+>>>>>  				1 /* layoutupdate4 layout type */ + \
+>>>>>  				1 /* NULL filelayout layoutupdate4 payload */)
+>>>>>  #define decode_layoutcommit_maxsz (op_decode_hdr_maxsz + 3)
+>>>>> +#define encode_test_stateid_maxsz	(op_encode_hdr_maxsz + 8 + \
+>>>>> +					 XDR_QUADLEN(NFS4_STATEID_SIZE))
+>>>>> +#define decode_test_stateid_maxsz	(op_decode_hdr_maxsz + 8 + 4)
+>>>>>  
+>>>>>  #else /* CONFIG_NFS_V4_1 */
+>>>>>  #define encode_sequence_maxsz	0
+>>>>> @@ -760,6 +763,12 @@ static int nfs4_stat_to_errno(int);
+>>>>>  				decode_putfh_maxsz + \
+>>>>>  				decode_layoutcommit_maxsz + \
+>>>>>  				decode_getattr_maxsz)
+>>>>> +#define NFS4_enc_test_stateid_sz	(compound_encode_hdr_maxsz + \
+>>>>> +					 encode_sequence_maxsz + \
+>>>>> +					 encode_test_stateid_maxsz)
+>>>>> +#define NFS4_dec_test_stateid_sz	(compound_decode_hdr_maxsz + \
+>>>>> +					 decode_sequence_maxsz + \
+>>>>> +					 decode_test_stateid_maxsz)
+>>>>>  
+>>>>>  
+>>>>>  const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
+>>>>> @@ -1889,6 +1898,20 @@ encode_layoutcommit(struct xdr_stream *xdr,
+>>>>>  	hdr->replen += decode_layoutcommit_maxsz;
+>>>>>  	return 0;
+>>>>>  }
+>>>>> +
+>>>>> +static void encode_test_stateid(struct xdr_stream *xdr,
+>>>>> +				struct nfs41_test_stateid_args *args,
+>>>>> +				struct compound_hdr *hdr)
+>>>>> +{
+>>>>> +	__be32 *p;
+>>>>> +
+>>>>> +	p = reserve_space(xdr, 8 + NFS4_STATEID_SIZE);
+>>>>> +	*p++ = cpu_to_be32(OP_TEST_STATEID);
+>>>>> +	*p++ = cpu_to_be32(1);
+>>>>> +	xdr_encode_opaque_fixed(p, args->stateid->data, NFS4_STATEID_SIZE);
+>>>>> +	hdr->nops++;
+>>>>> +	hdr->replen += decode_test_stateid_maxsz;
+>>>>> +}
+>>>>>  #endif /* CONFIG_NFS_V4_1 */
+>>>>>  
+>>>>>  /*
+>>>>> @@ -2722,6 +2745,23 @@ static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
+>>>>>  	encode_nops(&hdr);
+>>>>>  	return 0;
+>>>>>  }
+>>>>> +
+>>>>> +/*
+>>>>> + *  Encode TEST_STATEID request
+>>>>> + */
+>>>>> +static void nfs4_xdr_enc_test_stateid(struct rpc_rqst *req,
+>>>>> +				      struct xdr_stream *xdr,
+>>>>> +				      struct nfs41_test_stateid_args *args)
+>>>>> +{
+>>>>> +	struct compound_hdr hdr = {
+>>>>> +		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
+>>>>> +	};
+>>>>> +
+>>>>> +	encode_compound_hdr(xdr, req, &hdr);
+>>>>> +	encode_sequence(xdr, &args->seq_args, &hdr);
+>>>>> +	encode_test_stateid(xdr, args, &hdr);
+>>>>> +	encode_nops(&hdr);
+>>>>> +}
+>>>>>  #endif /* CONFIG_NFS_V4_1 */
+>>>>>  
+>>>>>  static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
+>>>>> @@ -5231,6 +5271,35 @@ out_overflow:
+>>>>>  	print_overflow_msg(__func__, xdr);
+>>>>>  	return -EIO;
+>>>>>  }
+>>>>> +
+>>>>> +static int decode_test_stateid(struct xdr_stream *xdr,
+>>>>> +			       struct nfs41_test_stateid_res *res)
+>>>>> +{
+>>>>> +	__be32 *p;
+>>>>> +	int status;
+>>>>> +	int num_res;
+>>>>> +
+>>>>> +	status = decode_op_hdr(xdr, OP_TEST_STATEID);
+>>>>> +	if (status)
+>>>>> +		return status;
+>>>>> +
+>>>>> +	p = xdr_inline_decode(xdr, 4);
+>>>>> +	if (unlikely(!p))
+>>>>> +		goto out_overflow;
+>>>>> +	num_res = be32_to_cpup(p++);
+>>>>> +	if (num_res != 1)
+>>>>> +		goto out;
+>>>>> +
+>>>>> +	p = xdr_inline_decode(xdr, 4);
+>>>>> +	if (unlikely(!p))
+>>>>> +		goto out_overflow;
+>>>>> +	res->status = be32_to_cpup(p++);
+>>>>> +	return res->status;
+>>>>> +out_overflow:
+>>>>> +	print_overflow_msg(__func__, xdr);
+>>>>> +out:
+>>>>> +	return -EIO;
+>>>>> +}
+>>>>>  #endif /* CONFIG_NFS_V4_1 */
+>>>>>  
+>>>>>  /*
+>>>>> @@ -6346,6 +6415,27 @@ static int nfs4_xdr_dec_layoutcommit(struct rpc_rqst *rqstp,
+>>>>>  out:
+>>>>>  	return status;
+>>>>>  }
+>>>>> +
+>>>>> +/*
+>>>>> + * Decode TEST_STATEID response
+>>>>> + */
+>>>>> +static int nfs4_xdr_dec_test_stateid(struct rpc_rqst *rqstp,
+>>>>> +				     struct xdr_stream *xdr,
+>>>>> +				     struct nfs41_test_stateid_res *res)
+>>>>> +{
+>>>>> +	struct compound_hdr hdr;
+>>>>> +	int status;
+>>>>> +
+>>>>> +	status = decode_compound_hdr(xdr, &hdr);
+>>>>> +	if (status)
+>>>>> +		goto out;
+>>>>> +	status = decode_sequence(xdr, &res->seq_res, rqstp);
+>>>>> +	if (status)
+>>>>> +		goto out;
+>>>>> +	status = decode_test_stateid(xdr, res);
+>>>>> +out:
+>>>>> +	return status;
+>>>>> +}
+>>>>>  #endif /* CONFIG_NFS_V4_1 */
+>>>>>  
+>>>>>  /**
+>>>>> @@ -6547,6 +6637,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+>>>>>  	PROC(GETDEVICEINFO,	enc_getdeviceinfo,	dec_getdeviceinfo),
+>>>>>  	PROC(LAYOUTGET,		enc_layoutget,		dec_layoutget),
+>>>>>  	PROC(LAYOUTCOMMIT,	enc_layoutcommit,	dec_layoutcommit),
+>>>>> +	PROC(TEST_STATEID,	enc_test_stateid,	dec_test_stateid),
+>>>>>  #endif /* CONFIG_NFS_V4_1 */
+>>>>>  };
+>>>>>  
+>>>>> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+>>>>> index 178fafe..0df1eed 100644
+>>>>> --- a/include/linux/nfs4.h
+>>>>> +++ b/include/linux/nfs4.h
+>>>>> @@ -562,6 +562,7 @@ enum {
+>>>>>  	NFSPROC4_CLNT_LAYOUTGET,
+>>>>>  	NFSPROC4_CLNT_GETDEVICEINFO,
+>>>>>  	NFSPROC4_CLNT_LAYOUTCOMMIT,
+>>>>> +	NFSPROC4_CLNT_TEST_STATEID,
+>>>>>  };
+>>>>>  
+>>>>>  /* nfs41 types */
+>>>>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+>>>>> index 890dce2..36f50dc 100644
+>>>>> --- a/include/linux/nfs_xdr.h
+>>>>> +++ b/include/linux/nfs_xdr.h
+>>>>> @@ -1062,6 +1062,16 @@ struct nfs41_reclaim_complete_args {
+>>>>>  struct nfs41_reclaim_complete_res {
+>>>>>  	struct nfs4_sequence_res	seq_res;
+>>>>>  };
+>>>>> +
+>>>>> +struct nfs41_test_stateid_args {
+>>>>> +	nfs4_stateid			*stateid;
+>>>>> +	struct nfs4_sequence_args	seq_args;
+>>>>> +};
+>>>>> +
+>>>>> +struct nfs41_test_stateid_res {
+>>>>> +	unsigned int			status;
+>>>>> +	struct nfs4_sequence_res	seq_res;
+>>>>> +};
+>>>>>  #endif /* CONFIG_NFS_V4_1 */
+>>>>>  
+>>>>>  struct nfs_page;
+>>>>> -- 
+>>>>> 1.7.5.1
+>>>>>
+>>>>> --
+>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
 > 
-> We discussed that again on Thursday's conference call which you did not
-> attend.  I decided to take a stab at it to see how a unified cache would
-> look like and I rather like the outcome..
-> 
-> Benny
-> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-As I suspected this is crashing all over the place. Finally I was  able
-to rebase a server on your latest code. (And find out what I was missing).
-
-I'm fighting with it for two hours now. And I don't see the end of it.
-
-Again I'm not at all against this work. I have my own version of this
-in my tree. Only against the timing. Your latest code cannot go in now.
-It is to new!
-
-What do you want to do now? Postpone pnfs-objects to next Kernel. Or put
-in good solid code that was tested and worked for a long time.
-
-I'm not sleeping nights, have worked all through both weekends. Now it is
-for nothing. Thanks alot!
-
-Boaz
