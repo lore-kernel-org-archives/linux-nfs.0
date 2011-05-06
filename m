@@ -1,117 +1,193 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:50823 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755111Ab1E2SUm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 14:20:42 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Benny Halevy <bhalevy@panasas.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Cc: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 11/32] pnfs: Use byte-range for cb_layoutrecall
-Date: Sun, 29 May 2011 21:20:31 +0300
-Message-Id: <1306693231-8016-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4DE28CFB.4060608@panasas.com>
-References: <4DE28CFB.4060608@panasas.com>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:59805 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932567Ab1EFAbC convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 May 2011 20:31:02 -0400
+Received: by wwa36 with SMTP id 36so2924947wwa.1
+        for <linux-nfs@vger.kernel.org>; Thu, 05 May 2011 17:31:01 -0700 (PDT)
+In-Reply-To: <437877.23899.qm@web111716.mail.gq1.yahoo.com>
+References: <781436.95809.qm@web111709.mail.gq1.yahoo.com>
+	<OF40F1C0BA.A5FC46BA-ON85257887.004DC668-85257887.004DD321@us.ibm.com>
+	<591857.64709.qm@web111726.mail.gq1.yahoo.com>
+	<BANLkTimbnz4xKyK1oNDnyWN7k9dhApW2TA@mail.gmail.com>
+	<437877.23899.qm@web111716.mail.gq1.yahoo.com>
+Date: Fri, 6 May 2011 09:31:00 +0900
+Message-ID: <BANLkTikmtaBUCZeyMvnx_vO2J6ymk0_FfQ@mail.gmail.com>
+Subject: Re: debugging nfs
+From: Hiroyuki Sato <hiroysato@gmail.com>
+To: Mahmood Naderan <nt_mahmood@yahoo.com>
+Cc: nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+Hello Mahmood
 
-Use recalled range to invalidate particular layout segments in the layout cache.
+What kind of OS are you using??
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/callback_proc.c |    4 ++--
- fs/nfs/pnfs.c          |   15 +++++++++------
- fs/nfs/pnfs.h          |    2 +-
- 3 files changed, 12 insertions(+), 9 deletions(-)
+If you want to use automount, you have to setup automount.
+  ex) http://freespace.sourceforge.net/guidod/howto/autofs.html
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index c73e7b2..d4d1954 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -139,7 +139,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 	spin_lock(&ino->i_lock);
- 	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
- 	    mark_matching_lsegs_invalid(lo, &free_me_list,
--					args->cbl_range.iomode))
-+					&args->cbl_range))
- 		rv = NFS4ERR_DELAY;
- 	else
- 		rv = NFS4ERR_NOMATCHING_LAYOUT;
-@@ -184,7 +184,7 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
- 		ino = lo->plh_inode;
- 		spin_lock(&ino->i_lock);
- 		set_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
--		if (mark_matching_lsegs_invalid(lo, &free_me_list, range.iomode))
-+		if (mark_matching_lsegs_invalid(lo, &free_me_list, &range))
- 			rv = NFS4ERR_DELAY;
- 		list_del_init(&lo->plh_bulk_recall);
- 		spin_unlock(&ino->i_lock);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 2357ee3..20436a5 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -321,10 +321,12 @@ lo_seg_intersecting(struct pnfs_layout_range *l1,
- }
- 
- static bool
--should_free_lseg(u32 lseg_iomode, u32 recall_iomode)
-+should_free_lseg(struct pnfs_layout_range *lseg_range,
-+		 struct pnfs_layout_range *recall_range)
- {
--	return (recall_iomode == IOMODE_ANY ||
--		lseg_iomode == recall_iomode);
-+	return (recall_range->iomode == IOMODE_ANY ||
-+		lseg_range->iomode == recall_range->iomode) &&
-+	       lo_seg_intersecting(lseg_range, recall_range);
- }
- 
- /* Returns 1 if lseg is removed from list, 0 otherwise */
-@@ -355,7 +357,7 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
- int
- mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
- 			    struct list_head *tmp_list,
--			    u32 iomode)
-+			    struct pnfs_layout_range *recall_range)
- {
- 	struct pnfs_layout_segment *lseg, *next;
- 	int invalid = 0, removed = 0;
-@@ -368,7 +370,8 @@ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
- 		return 0;
- 	}
- 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
--		if (should_free_lseg(lseg->pls_range.iomode, iomode)) {
-+		if (!recall_range ||
-+		    should_free_lseg(&lseg->pls_range, recall_range)) {
- 			dprintk("%s: freeing lseg %p iomode %d "
- 				"offset %llu length %llu\n", __func__,
- 				lseg, lseg->pls_range.iomode, lseg->pls_range.offset,
-@@ -417,7 +420,7 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
- 	lo = nfsi->layout;
- 	if (lo) {
- 		lo->plh_block_lgets++; /* permanently block new LAYOUTGETs */
--		mark_matching_lsegs_invalid(lo, &tmp_list, IOMODE_ANY);
-+		mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
- 	}
- 	spin_unlock(&nfsi->vfs_inode.i_lock);
- 	pnfs_free_lseg_list(&tmp_list);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 78f8a4a..f37ab35 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -154,7 +154,7 @@ int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
- 				  struct nfs4_state *open_state);
- int mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
- 				struct list_head *tmp_list,
--				u32 iomode);
-+				struct pnfs_layout_range *recall_range);
- bool pnfs_roc(struct inode *ino);
- void pnfs_roc_release(struct inode *ino);
- void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
--- 
-1.7.2.3
+I you wan to mount /opt at boot time, but now you can't
+ Could you please check autofs (If you are using RHEL, CentOS, Fedora...)
 
+ # /sbin/chkconfig --list netfs
+ netfs          	0:off	1:off	2:off	3:on	4:on	5:on	6:off
+
+--
+Hiroyuki Sato
+
+
+2011/5/6 Mahmood Naderan <nt_mahmood@yahoo.com>:
+> Hi Hiroyuki,
+>
+> I tried what you said, but no success. Here are the configs:
+>
+> on server:
+>
+> root@server:~# cat /etc/hosts
+> 127.0.0.1       localhost     localhost,server
+> 194.225.69.105  server
+> 192.168.1.3     client1
+> 192.168.1.4     client2
+>
+> root@server:~# cat /etc/exports
+> /home/nfsroot        192.168.1.0/255.255.255.0(rw,async,no_root_squash)
+> /opt                 192.168.1.0/255.255.255.0(rw,sync,no_root_squash)
+>
+> root@server:~# cat /etc/hosts.allow
+> sendmail: all
+> ALL: 192.168.1.0/255.255.255.0
+>
+>
+>
+> On clients:
+>
+> mahmood@client1:~$ cat /etc/fstab
+> # UNCONFIGURED FSTAB FOR BASE SYSTEM
+> # <file system> <mount point> <type> <options> <dump> <pass>
+> proc            /proc         proc   defaults       0      0
+> /dev/nfs        /             nfs    defaults       0      0
+> 192.168.1.1:/opt       /opt          nfs    defaults       0      0
+>
+> mahmood@client1:~$ cat /etc/hosts
+> 127.0.0.1 localhost
+> 192.168.1.1 server
+> 192.168.1.3 client1
+> 192.168.1.4 client2
+>
+>
+> However, there is no sign of proper automount:
+>
+> mahmood@client1:~$ ls /opt/
+> mahmood@client1:~$
+>
+>
+> // Naderan *Mahmood;
+>
+>
+> ----- Original Message -----
+> From: Hiroyuki Sato <hiroysato@gmail.com>
+> To: Mahmood Naderan <nt_mahmood@yahoo.com>
+> Cc: Brian R Cowan <brcowan@us.ibm.com>; nfs <linux-nfs@vger.kernel.org>
+> Sent: Thursday, May 5, 2011 7:55 PM
+> Subject: Re: debugging nfs
+>
+> Hello Mahmood.
+>
+> Have you ever tried to write ip address instead of server fqdn??
+> or have you ever tries write server entry in /etc/hosts??
+>
+> It is mean that
+>
+> /etc/fstab
+> ip.ad.re.ss:/opt /opt nfs mount_opt 0 0
+>
+> or /etc/hosts
+> ip.add.re.ss server
+>
+>
+> I met same problem today, and I resolve it.
+>
+> My friend were using NIS on scientific linux .
+> and It tried to mount before NIS started.
+>
+> --
+> Hiroyuki Sato
+>
+>
+> 2011/5/5 Mahmood Naderan <nt_mahmood@yahoo.com>:
+>> Well, I found the problem very nasty and in my previous posts, I mentioned some of them.
+>>
+>> The big problem:
+>> when the clients boots, it doesn't automatically mount the shared folders via /etc/fstab.
+>> However after login to client, I can mount the folder manually with
+>>
+>> "sudo mount -t nfs server:/opt /opt"
+>>
+>> I really don't know why fstab doesn't work. I searched a lot.... some say disbale IPV6.
+>> I did that but still have that problem.
+>>
+>> So how can I tell nfs (on server or client) to be verbose so that I can see what is going on
+>> and what is not going on.
+>>
+>> Any feedback and comment is welcomed.
+>>
+>> // Naderan *Mahmood;
+>>
+>> From: Brian R Cowan <brcowan@us.ibm.com>
+>> To: Mahmood Naderan <nt_mahmood@yahoo.com>
+>> Cc: nfs <linux-nfs@vger.kernel.org>; linux-nfs-owner@vger.kernel.org
+>> Sent: Thursday, May 5, 2011 6:40 PM
+>> Subject: Re: debugging nfs
+>>
+>>
+>> It would probably help to explain the problem
+>> so you can get targeted debugging assistance...
+>>
+>> =================================================================
+>> Brian Cowan
+>> Advisory Software Engineer
+>> ClearCase Software Advisory Team (SWAT)
+>> Rational Software
+>> IBM Software Group
+>> 550 King St
+>> Littleton, MA 01460
+>>
+>> Phone: 1.978.899.9471
+>> Web: http://www.ibm.com/software/rational/support/
+>>
+>>
+>>
+>>
+>> From:
+>>  Mahmood Naderan <nt_mahmood@yahoo.com>
+>> To:
+>>  nfs <linux-nfs@vger.kernel.org>,
+>> Date:
+>>  05/05/2011 09:30 AM
+>> Subject:
+>>    debugging nfs
+>> Sent by:
+>>    linux-nfs-owner@vger.kernel.org
+>>
+>>
+>>
+>> Hi,
+>> I didn't find a method for debugging NFS for debain based systems. Is there
+>> any verbose switch or debuging method for that?
+>>
+>> // Naderan *Mahmood;
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+>> in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>
+>
