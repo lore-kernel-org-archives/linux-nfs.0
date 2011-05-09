@@ -1,280 +1,648 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:34928 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751790Ab1EPQYk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 12:24:40 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com
-Subject: [PATCH v3 29/29] pnfs-obj: objio_osd: groups support
-Date: Mon, 16 May 2011 09:24:36 -0700
-Message-Id: <1305563076-8362-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DD14D8E.1070701@panasas.com>
-References: <4DD14D8E.1070701@panasas.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:58964 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754072Ab1EITgc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 15:36:32 -0400
+Received: by mail-yx0-f174.google.com with SMTP id 7so1914279yxs.19
+        for <linux-nfs@vger.kernel.org>; Mon, 09 May 2011 12:36:32 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 02/16] SUNRPC: Use RCU to dereference the rpc_clnt.cl_xprt
+	field
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 09 May 2011 15:36:29 -0400
+Message-ID: <20110509193628.16568.59448.stgit@matisse.1015granger.net>
+In-Reply-To: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
+References: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Boaz Harrosh <bharrosh@panasas.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-* _calc_stripe_info() changes to accommodate for grouping
-  calculations. Returns additional information
+A migration event will replace the rpc_xprt used by an rpc_clnt.  To
+ensure this can be done safely, all references to cl_xprt must now use
+a form of rcu_dereference().
 
-* old _prepare_pages() becomes _prepare_one_group()
-  which stores pages belonging to one device group.
+Special care is taken with rpc_peeraddr2str(), which returns a pointer
+to memory whose lifetime is the same as the rpc_xprt.
 
-* Iterates on all groups calling _prepare_one_group().
-
-* Enable mounting of groups data_maps (group_width != 0)
-
-TODO:
-  Support for parial layout will come in next patch
-
-[Support partial layouts]
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+[ cel: fix lockdep splats and layering violations ]
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/objlayout/objio_osd.c |  135 +++++++++++++++++++++++++++++++++---------
- 1 files changed, 106 insertions(+), 29 deletions(-)
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 6da4aa2..e7a0fcb 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -134,6 +134,8 @@ struct objio_segment {
- 	unsigned mirrors_p1;
- 	unsigned stripe_unit;
- 	unsigned group_width;	/* Data stripe_units without integrity comps */
-+	u64 group_depth;
-+	unsigned group_count;
+ fs/nfs/callback_proc.c       |    9 ++--
+ fs/nfs/client.c              |   16 +++++--
+ fs/nfs/nfs4proc.c            |   15 +++++--
+ fs/nfs/nfs4state.c           |   14 +++++-
+ fs/nfs/super.c               |    5 ++
+ include/linux/sunrpc/clnt.h  |    4 +-
+ include/linux/sunrpc/debug.h |   11 +++++
+ net/sunrpc/clnt.c            |   94 +++++++++++++++++++++++++++++++++++-------
+ net/sunrpc/rpc_pipe.c        |    3 +
+ net/sunrpc/rpcb_clnt.c       |   15 +++++--
+ net/sunrpc/stats.c           |    6 ++-
+ 11 files changed, 155 insertions(+), 37 deletions(-)
+
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 2f41dcce..d360b80 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -8,6 +8,7 @@
+ #include <linux/nfs4.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/slab.h>
++#include <linux/rcupdate.h>
+ #include "nfs4_fs.h"
+ #include "callback.h"
+ #include "delegation.h"
+@@ -33,7 +34,7 @@ __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
+ 	res->bitmap[0] = res->bitmap[1] = 0;
+ 	res->status = htonl(NFS4ERR_BADHANDLE);
  
- 	unsigned num_comps;
- 	/* variable length */
-@@ -252,12 +254,9 @@ static int _verify_data_map(struct pnfs_osd_layout *layout)
- {
- 	struct pnfs_osd_data_map *data_map = &layout->olo_map;
- 	u64 stripe_length;
-+	u32 group_width;
+-	dprintk("NFS: GETATTR callback request from %s\n",
++	dprintk_rcu("NFS: GETATTR callback request from %s\n",
+ 		rpc_peeraddr2str(cps->clp->cl_rpcclient, RPC_DISPLAY_ADDR));
  
--/* FIXME: Only raid0 !group_width/depth for now. if not so, do not mount */
--	if (data_map->odm_group_width || data_map->odm_group_depth) {
--		printk(KERN_ERR "Group width/depth not supported\n");
--		return -ENOTSUPP;
--	}
-+/* FIXME: Only raid0 for now. if not go through MDS */
- 	if (data_map->odm_raid_algorithm != PNFS_OSD_RAID_0) {
- 		printk(KERN_ERR "Only RAID_0 for now\n");
- 		return -ENOTSUPP;
-@@ -268,8 +267,13 @@ static int _verify_data_map(struct pnfs_osd_layout *layout)
- 		return -EINVAL;
- 	}
+ 	inode = nfs_delegation_find_inode(cps->clp, &args->fh);
+@@ -73,7 +74,7 @@ __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
+ 	if (!cps->clp) /* Always set for v4.0. Set in cb_sequence for v4.1 */
+ 		goto out;
  
--	stripe_length = data_map->odm_stripe_unit * (data_map->odm_num_comps /
--						(data_map->odm_mirror_cnt + 1));
-+	if (data_map->odm_group_width)
-+		group_width = data_map->odm_group_width;
-+	else
-+		group_width = data_map->odm_num_comps /
-+						(data_map->odm_mirror_cnt + 1);
+-	dprintk("NFS: RECALL callback request from %s\n",
++	dprintk_rcu("NFS: RECALL callback request from %s\n",
+ 		rpc_peeraddr2str(cps->clp->cl_rpcclient, RPC_DISPLAY_ADDR));
+ 
+ 	res = htonl(NFS4ERR_BADHANDLE);
+@@ -442,7 +443,7 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
+ 	if (!cps->clp) /* set in cb_sequence */
+ 		goto out;
+ 
+-	dprintk("NFS: RECALL_ANY callback request from %s\n",
++	dprintk_rcu("NFS: RECALL_ANY callback request from %s\n",
+ 		rpc_peeraddr2str(cps->clp->cl_rpcclient, RPC_DISPLAY_ADDR));
+ 
+ 	status = cpu_to_be32(NFS4ERR_INVAL);
+@@ -477,7 +478,7 @@ __be32 nfs4_callback_recallslot(struct cb_recallslotargs *args, void *dummy,
+ 	if (!cps->clp) /* set in cb_sequence */
+ 		goto out;
+ 
+-	dprintk("NFS: CB_RECALL_SLOT request from %s target max slots %d\n",
++	dprintk_rcu("NFS: CB_RECALL_SLOT request from %s target max slots %d\n",
+ 		rpc_peeraddr2str(cps->clp->cl_rpcclient, RPC_DISPLAY_ADDR),
+ 		args->crsa_target_max_slots);
+ 
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 139be96..b55ef58 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1273,16 +1273,18 @@ static int nfs4_init_callback(struct nfs_client *clp)
+ 	int error;
+ 
+ 	if (clp->rpc_ops->version == 4) {
++		struct rpc_xprt *xprt;
 +
-+	stripe_length = (u64)data_map->odm_stripe_unit * group_width;
- 	if (stripe_length >= (1ULL << 32)) {
- 		printk(KERN_ERR "Total Stripe length(0x%llx)"
- 			  " >= 32bit is not supported\n", _LLU(stripe_length));
-@@ -311,8 +315,18 @@ int objio_alloc_lseg(void **outp,
- 
- 	objio_seg->mirrors_p1 = layout->olo_map.odm_mirror_cnt + 1;
- 	objio_seg->stripe_unit = layout->olo_map.odm_stripe_unit;
--	objio_seg->group_width = layout->olo_map.odm_num_comps /
--							objio_seg->mirrors_p1;
-+	if (layout->olo_map.odm_group_width) {
-+		objio_seg->group_width = layout->olo_map.odm_group_width;
-+		objio_seg->group_depth = layout->olo_map.odm_group_depth;
-+		objio_seg->group_count = layout->olo_map.odm_num_comps /
-+						objio_seg->mirrors_p1 /
-+						objio_seg->group_width;
-+	} else {
-+		objio_seg->group_width = layout->olo_map.odm_num_comps /
-+						objio_seg->mirrors_p1;
-+		objio_seg->group_depth = -1;
-+		objio_seg->group_count = 1;
-+	}
- 
- 	*outp = objio_seg;
- 	return 0;
-@@ -483,6 +497,9 @@ struct osd_dev * _io_od(struct objio_state *ios, unsigned dev)
- 
- struct _striping_info {
- 	u64 obj_offset;
-+	u64 group_length;
-+	u64 total_group_length;
-+	u64 Major;
- 	unsigned dev;
- 	unsigned unit_off;
- };
-@@ -492,15 +509,34 @@ static void _calc_stripe_info(struct objio_state *ios, u64 file_offset,
- {
- 	u32	stripe_unit = ios->objio_seg->stripe_unit;
- 	u32	group_width = ios->objio_seg->group_width;
-+	u64	group_depth = ios->objio_seg->group_depth;
- 	u32	U = stripe_unit * group_width;
- 
--	u32	LmodU;
--	u64 	N = div_u64_rem(file_offset, U, &LmodU);
-+	u64	T = U * group_depth;
-+	u64	S = T * ios->objio_seg->group_count;
-+	u64	M = div64_u64(file_offset, S);
++		xprt = rcu_dereference_raw(clp->cl_rpcclient->cl_xprt);
 +
-+	/*
-+	G = (L - (M * S)) / T
-+	H = (L - (M * S)) % T
-+	*/
-+	u64	LmodU = file_offset - M * S;
-+	u32	G = div64_u64(LmodU, T);
-+	u64	H = LmodU - G * T;
-+
-+	u32	N = div_u64(H, U);
-+
-+	div_u64_rem(file_offset, stripe_unit, &si->unit_off);
-+	si->obj_offset = si->unit_off + (N * stripe_unit) +
-+				  (M * group_depth * stripe_unit);
- 
--	si->unit_off = LmodU % stripe_unit;
--	si->obj_offset = N * stripe_unit + si->unit_off;
--	si->dev = LmodU / stripe_unit;
-+	/* "H - (N * U)" is just "H % U" so it's bound to u32 */
-+	si->dev = (u32)(H - (N * U)) / stripe_unit + G * group_width;
- 	si->dev *= ios->objio_seg->mirrors_p1;
-+
-+	si->group_length = T - H;
-+	si->total_group_length = T;
-+	si->Major = M;
- }
- 
- static int _add_stripe_unit(struct objio_state *ios,  unsigned *cur_pg,
-@@ -547,15 +583,18 @@ static int _add_stripe_unit(struct objio_state *ios,  unsigned *cur_pg,
- 	return 0;
- }
- 
--static int _prepare_pages(struct objio_state *ios, struct _striping_info *si)
-+static int _prepare_one_group(struct objio_state *ios, u64 length,
-+			      struct _striping_info *si, unsigned first_comp,
-+			      unsigned *last_pg)
- {
--	u64 length = ios->ol_state.count;
- 	unsigned stripe_unit = ios->objio_seg->stripe_unit;
- 	unsigned mirrors_p1 = ios->objio_seg->mirrors_p1;
-+	unsigned devs_in_group = ios->objio_seg->group_width * mirrors_p1;
- 	unsigned dev = si->dev;
--	unsigned comp = 0;
--	unsigned stripes = 0;
--	unsigned cur_pg = 0;
-+	unsigned first_dev = dev - (dev % devs_in_group);
-+	unsigned comp = first_comp + (dev - first_dev);
-+	unsigned max_comp = ios->numdevs ? ios->numdevs - mirrors_p1 : 0;
-+	unsigned cur_pg = *last_pg;
- 	int ret = 0;
- 
- 	while (length) {
-@@ -579,10 +618,11 @@ static int _prepare_pages(struct objio_state *ios, struct _striping_info *si)
- 				cur_len = stripe_unit;
- 			}
- 
--			stripes++;
-+			if (max_comp < comp)
-+				max_comp = comp;
- 
- 			dev += mirrors_p1;
--			dev %= ios->ol_state.num_comps;
-+			dev = (dev % devs_in_group) + first_dev;
- 		} else {
- 			cur_len = stripe_unit;
+ 		if (nfs4_has_session(clp)) {
+-			error = xprt_setup_backchannel(
+-						clp->cl_rpcclient->cl_xprt,
++			error = xprt_setup_backchannel(xprt,
+ 						NFS41_BC_MIN_CALLBACKS);
+ 			if (error < 0)
+ 				return error;
  		}
-@@ -595,25 +635,58 @@ static int _prepare_pages(struct objio_state *ios, struct _striping_info *si)
- 			goto out;
  
- 		comp += mirrors_p1;
--		comp %= ios->ol_state.num_comps;
-+		comp = (comp % devs_in_group) + first_comp;
+-		error = nfs_callback_up(clp->cl_mvops->minor_version,
+-					clp->cl_rpcclient->cl_xprt);
++		error = nfs_callback_up(clp->cl_mvops->minor_version, xprt);
+ 		if (error < 0) {
+ 			dprintk("%s: failed to start callback. Error = %d\n",
+ 				__func__, error);
+@@ -1663,7 +1665,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
+ 				data->addrlen,
+ 				parent_client->cl_ipaddr,
+ 				data->authflavor,
+-				parent_server->client->cl_xprt->prot,
++				rpc_protocol(parent_server->client),
+ 				parent_server->client->cl_timeout,
+ 				parent_client->cl_mvops->minor_version);
+ 	if (error < 0)
+@@ -1863,12 +1865,14 @@ static int nfs_server_list_show(struct seq_file *m, void *v)
+ 	/* display one transport per line on subsequent lines */
+ 	clp = list_entry(v, struct nfs_client, cl_share_link);
  
- 		length -= cur_len;
- 		ios->length += cur_len;
++	rcu_read_lock();
+ 	seq_printf(m, "v%u %s %s %3d %s\n",
+ 		   clp->rpc_ops->version,
+ 		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_ADDR),
+ 		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_PORT),
+ 		   atomic_read(&clp->cl_count),
+ 		   clp->cl_hostname);
++	rcu_read_unlock();
+ 
+ 	return 0;
+ }
+@@ -1942,6 +1946,7 @@ static int nfs_volume_list_show(struct seq_file *m, void *v)
+ 		 (unsigned long long) server->fsid.major,
+ 		 (unsigned long long) server->fsid.minor);
+ 
++	rcu_read_lock();
+ 	seq_printf(m, "v%u %s %s %-7s %-17s %s\n",
+ 		   clp->rpc_ops->version,
+ 		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_ADDR),
+@@ -1949,6 +1954,7 @@ static int nfs_volume_list_show(struct seq_file *m, void *v)
+ 		   dev,
+ 		   fsid,
+ 		   nfs_server_fscache_state(server));
++	rcu_read_unlock();
+ 
+ 	return 0;
+ }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 69c0f3c..5a87686 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3734,6 +3734,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 	*p = htonl((u32)clp->cl_boot_time.tv_nsec);
+ 
+ 	for(;;) {
++		rcu_read_lock();
+ 		setclientid.sc_name_len = scnprintf(setclientid.sc_name,
+ 				sizeof(setclientid.sc_name), "%s/%s %s %s %u",
+ 				clp->cl_ipaddr,
+@@ -3750,6 +3751,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 		setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
+ 				sizeof(setclientid.sc_uaddr), "%s.%u.%u",
+ 				clp->cl_ipaddr, port >> 8, port & 255);
++		rcu_read_unlock();
+ 
+ 		status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+ 		if (status != -NFS4ERR_CLID_INUSE)
+@@ -5050,11 +5052,16 @@ struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp)
+ 
+ void nfs4_destroy_session(struct nfs4_session *session)
+ {
++	struct rpc_xprt *xprt;
++
+ 	nfs4_proc_destroy_session(session);
++
++	rcu_read_lock();
++	xprt = rcu_dereference(session->clp->cl_rpcclient->cl_xprt);
++	rcu_read_unlock();
+ 	dprintk("%s Destroy backchannel for xprt %p\n",
+-		__func__, session->clp->cl_rpcclient->cl_xprt);
+-	xprt_destroy_backchannel(session->clp->cl_rpcclient->cl_xprt,
+-				NFS41_BC_MIN_CALLBACKS);
++		__func__, xprt);
++	xprt_destroy_backchannel(xprt, NFS41_BC_MIN_CALLBACKS);
+ 	nfs4_destroy_slot_tables(session);
+ 	kfree(session);
+ }
+@@ -5083,7 +5090,7 @@ static void nfs4_init_channel_attrs(struct nfs41_create_session_args *args)
+ 	args->fc_attrs.max_rqst_sz = mxrqst_sz;
+ 	args->fc_attrs.max_resp_sz = mxresp_sz;
+ 	args->fc_attrs.max_ops = NFS4_MAX_OPS;
+-	args->fc_attrs.max_reqs = session->clp->cl_rpcclient->cl_xprt->max_reqs;
++	args->fc_attrs.max_reqs = rpc_max_reqs(session->clp->cl_rpcclient);
+ 
+ 	dprintk("%s: Fore Channel : max_rqst_sz=%u max_resp_sz=%u "
+ 		"max_ops=%u max_reqs=%u\n",
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 036f5ad..f6b268f 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1011,16 +1011,24 @@ static void nfs4_clear_state_manager_bit(struct nfs_client *clp)
+ void nfs4_schedule_state_manager(struct nfs_client *clp)
+ {
+ 	struct task_struct *task;
++	char buf[INET6_ADDRSTRLEN + sizeof("-manager") + 1];
+ 
+ 	if (test_and_set_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) != 0)
+ 		return;
+ 	__module_get(THIS_MODULE);
+ 	atomic_inc(&clp->cl_count);
+-	task = kthread_run(nfs4_run_state_manager, clp, "%s-manager",
+-				rpc_peeraddr2str(clp->cl_rpcclient,
+-							RPC_DISPLAY_ADDR));
++
++	/* The rcu_read_lock() is not strictly necessary, as the state
++	 * manager is the only thread that ever changes the rpc_xprt
++	 * after it's initialized.  At this point, we're single threaded. */
++	rcu_read_lock();
++	snprintf(buf, sizeof(buf), "%s-manager",
++			rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
++	rcu_read_unlock();
++	task = kthread_run(nfs4_run_state_manager, clp, buf);
+ 	if (!IS_ERR(task))
+ 		return;
++
+ 	nfs4_clear_state_manager_bit(clp);
+ 	nfs_put_client(clp);
+ 	module_put(THIS_MODULE);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index e288f06..50c0482 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -53,6 +53,7 @@
+ #include <linux/nfs_xdr.h>
+ #include <linux/magic.h>
+ #include <linux/parser.h>
++#include <linux/rcupdate.h>
+ 
+ #include <asm/system.h>
+ #include <asm/uaccess.h>
+@@ -676,8 +677,10 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
+ 		else
+ 			seq_puts(m, nfs_infop->nostr);
  	}
- out:
--	if (!ios->length)
--		return ret;
--
--	ios->numdevs = stripes * mirrors_p1;
--	return 0;
-+	ios->numdevs = max_comp + mirrors_p1;
-+	*last_pg = cur_pg;
++	rcu_read_lock();
+ 	seq_printf(m, ",proto=%s",
+ 		   rpc_peeraddr2str(nfss->client, RPC_DISPLAY_NETID));
++	rcu_read_unlock();
+ 	if (version == 4) {
+ 		if (nfss->port != NFS_PORT)
+ 			seq_printf(m, ",port=%u", nfss->port);
+@@ -726,9 +729,11 @@ static int nfs_show_options(struct seq_file *m, struct vfsmount *mnt)
+ 
+ 	nfs_show_mount_options(m, nfss, 0);
+ 
++	rcu_read_lock();
+ 	seq_printf(m, ",addr=%s",
+ 			rpc_peeraddr2str(nfss->nfs_client->cl_rpcclient,
+ 							RPC_DISPLAY_ADDR));
++	rcu_read_unlock();
+ 
+ 	return 0;
+ }
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 1cab257..7a1d124 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -36,7 +36,7 @@ struct rpc_clnt {
+ 	struct list_head	cl_clients;	/* Global list of clients */
+ 	struct list_head	cl_tasks;	/* List of tasks */
+ 	spinlock_t		cl_lock;	/* spinlock */
+-	struct rpc_xprt *	cl_xprt;	/* transport */
++	struct rpc_xprt __rcu *	cl_xprt;	/* transport */
+ 	struct rpc_procinfo *	cl_procinfo;	/* procedure info */
+ 	u32			cl_prog,	/* RPC program number */
+ 				cl_vers,	/* RPC version number */
+@@ -164,6 +164,8 @@ struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred,
+ int		rpc_restart_call_prepare(struct rpc_task *);
+ int		rpc_restart_call(struct rpc_task *);
+ void		rpc_setbufsize(struct rpc_clnt *, unsigned int, unsigned int);
++int		rpc_protocol(struct rpc_clnt *);
++unsigned int	rpc_max_reqs(struct rpc_clnt *);
+ size_t		rpc_max_payload(struct rpc_clnt *);
+ void		rpc_force_rebind(struct rpc_clnt *);
+ size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
+diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
+index c2786f2..28136fd 100644
+--- a/include/linux/sunrpc/debug.h
++++ b/include/linux/sunrpc/debug.h
+@@ -47,15 +47,26 @@ extern unsigned int		nlm_debug;
+ #endif
+ 
+ #define dprintk(args...)	dfprintk(FACILITY, ## args)
++#define dprintk_rcu(args...)	dfprintk_rcu(FACILITY, ## args)
+ 
+ #undef ifdebug
+ #ifdef RPC_DEBUG			
+ # define ifdebug(fac)		if (unlikely(rpc_debug & RPCDBG_##fac))
+ # define dfprintk(fac, args...)	do { ifdebug(fac) printk(args); } while(0)
++
++# define dfprintk_rcu(fac, args...)	\
++	do { \
++		ifdebug(fac) { \
++			rcu_read_lock(); \
++			printk(args); \
++			rcu_read_unlock(); \
++		} \
++	} while (0)
+ # define RPC_IFDEBUG(x)		x
+ #else
+ # define ifdebug(fac)		if (0)
+ # define dfprintk(fac, args...)	do ; while (0)
++# define dfprintk_rcu(fac, args...)	do ; while (0)
+ # define RPC_IFDEBUG(x)
+ #endif
+ 
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 3d6b1a9..31ee4db 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -31,6 +31,7 @@
+ #include <linux/in.h>
+ #include <linux/in6.h>
+ #include <linux/un.h>
++#include <linux/rcupdate.h>
+ 
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/rpc_pipe_fs.h>
+@@ -190,7 +191,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 	}
+ 	strlcpy(clnt->cl_server, args->servername, len);
+ 
+-	clnt->cl_xprt     = xprt;
++	rcu_assign_pointer(clnt->cl_xprt, xprt);
+ 	clnt->cl_procinfo = version->procs;
+ 	clnt->cl_maxproc  = version->nrprocs;
+ 	clnt->cl_protname = program->name;
+@@ -205,7 +206,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 	INIT_LIST_HEAD(&clnt->cl_tasks);
+ 	spin_lock_init(&clnt->cl_lock);
+ 
+-	if (!xprt_bound(clnt->cl_xprt))
++	if (!xprt_bound(xprt))
+ 		clnt->cl_autobind = 1;
+ 
+ 	clnt->cl_timeout = xprt->timeout;
+@@ -377,6 +378,7 @@ struct rpc_clnt *
+ rpc_clone_client(struct rpc_clnt *clnt)
+ {
+ 	struct rpc_clnt *new;
++	struct rpc_xprt *xprt;
+ 	int err = -ENOMEM;
+ 
+ 	new = kmemdup(clnt, sizeof(*new), GFP_KERNEL);
+@@ -396,6 +398,12 @@ rpc_clone_client(struct rpc_clnt *clnt)
+ 		if (new->cl_principal == NULL)
+ 			goto out_no_principal;
+ 	}
++	rcu_read_lock();
++	xprt = xprt_get(rcu_dereference(clnt->cl_xprt));
++	rcu_read_unlock();
++	if (xprt == NULL)
++		goto out_no_transport;
++	rcu_assign_pointer(new->cl_xprt, xprt);
+ 	atomic_set(&new->cl_count, 1);
+ 	atomic_set(&new->cl_active_tasks, 0);
+ 	rpc_init_wait_queue(&new->cl_waitqueue, "client waitqueue");
+@@ -404,12 +412,13 @@ rpc_clone_client(struct rpc_clnt *clnt)
+ 		goto out_no_path;
+ 	if (new->cl_auth)
+ 		atomic_inc(&new->cl_auth->au_count);
+-	xprt_get(clnt->cl_xprt);
+ 	atomic_inc(&clnt->cl_count);
+ 	rpc_register_client(new);
+ 	rpciod_up();
+ 	return new;
+ out_no_path:
++	xprt_put(xprt);
++out_no_transport:
+ 	kfree(new->cl_principal);
+ out_no_principal:
+ 	rpc_free_iostats(new->cl_metrics);
+@@ -494,7 +503,7 @@ out_free:
+ 	rpc_free_iostats(clnt->cl_metrics);
+ 	kfree(clnt->cl_principal);
+ 	clnt->cl_metrics = NULL;
+-	xprt_put(clnt->cl_xprt);
++	xprt_put(rcu_dereference_raw(clnt->cl_xprt));
+ 	rpciod_down();
+ 	kfree(clnt);
+ }
+@@ -851,13 +860,18 @@ EXPORT_SYMBOL_GPL(rpc_call_start);
+ size_t rpc_peeraddr(struct rpc_clnt *clnt, struct sockaddr *buf, size_t bufsize)
+ {
+ 	size_t bytes;
+-	struct rpc_xprt *xprt = clnt->cl_xprt;
++	struct rpc_xprt *xprt;
++
++	rcu_read_lock();
++	xprt = rcu_dereference(clnt->cl_xprt);
+ 
+-	bytes = sizeof(xprt->addr);
++	bytes = xprt->addrlen;
+ 	if (bytes > bufsize)
+ 		bytes = bufsize;
+-	memcpy(buf, &clnt->cl_xprt->addr, bytes);
+-	return xprt->addrlen;
++	memcpy(buf, &xprt->addr, bytes);
++	rcu_read_unlock();
++
++	return bytes;
+ }
+ EXPORT_SYMBOL_GPL(rpc_peeraddr);
+ 
+@@ -866,11 +880,16 @@ EXPORT_SYMBOL_GPL(rpc_peeraddr);
+  * @clnt: RPC client structure
+  * @format: address format
+  *
++ * NB: the lifetime of the memory referenced by the returned pointer is
++ * the same as the rpc_xprt itself.  As long as the caller uses this
++ * pointer, it must hold the RCU read lock.
+  */
+ const char *rpc_peeraddr2str(struct rpc_clnt *clnt,
+ 			     enum rpc_display_format_t format)
+ {
+-	struct rpc_xprt *xprt = clnt->cl_xprt;
++	struct rpc_xprt *xprt;
++
++	xprt = rcu_dereference(clnt->cl_xprt);
+ 
+ 	if (xprt->address_strings[format] != NULL)
+ 		return xprt->address_strings[format];
+@@ -882,14 +901,51 @@ EXPORT_SYMBOL_GPL(rpc_peeraddr2str);
+ void
+ rpc_setbufsize(struct rpc_clnt *clnt, unsigned int sndsize, unsigned int rcvsize)
+ {
+-	struct rpc_xprt *xprt = clnt->cl_xprt;
++	struct rpc_xprt *xprt;
++
++	rcu_read_lock();
++	xprt = rcu_dereference(clnt->cl_xprt);
+ 	if (xprt->ops->set_buffer_size)
+ 		xprt->ops->set_buffer_size(xprt, sndsize, rcvsize);
++	rcu_read_unlock();
+ }
+ EXPORT_SYMBOL_GPL(rpc_setbufsize);
+ 
+-/*
+- * Return size of largest payload RPC client can support, in bytes
++/**
++ * rpc_protocol - Get transport protocol number for an RPC client
++ * @clnt: RPC client to query
++ *
++ */
++int rpc_protocol(struct rpc_clnt *clnt)
++{
++	int protocol;
++
++	rcu_read_lock();
++	protocol = rcu_dereference(clnt->cl_xprt)->prot;
++	rcu_read_unlock();
++	return protocol;
++}
++EXPORT_SYMBOL_GPL(rpc_protocol);
++
++/**
++ * rpc_max_reqs - Get the maximum number of outstanding requests
++ * @clnt: RPC client to query
++ *
++ */
++unsigned int rpc_max_reqs(struct rpc_clnt *clnt)
++{
++	unsigned int max_reqs;
++
++	rcu_read_lock();
++	max_reqs = rcu_dereference(clnt->cl_xprt)->max_reqs;
++	rcu_read_unlock();
++	return max_reqs;
++}
++EXPORT_SYMBOL_GPL(rpc_max_reqs);
++
++/**
++ * rpc_max_payload - Get maximum payload size for a transport, in bytes
++ * @clnt: RPC client to query
+  *
+  * For stream transports, this is one RPC record fragment (see RFC
+  * 1831), as we don't support multi-record requests yet.  For datagram
+@@ -898,7 +954,12 @@ EXPORT_SYMBOL_GPL(rpc_setbufsize);
+  */
+ size_t rpc_max_payload(struct rpc_clnt *clnt)
+ {
+-	return clnt->cl_xprt->max_payload;
++	size_t ret;
++
++	rcu_read_lock();
++	ret = rcu_dereference(clnt->cl_xprt)->max_payload;
++	rcu_read_unlock();
 +	return ret;
  }
+ EXPORT_SYMBOL_GPL(rpc_max_payload);
  
- static int _io_rw_pagelist(struct objio_state *ios)
+@@ -909,8 +970,11 @@ EXPORT_SYMBOL_GPL(rpc_max_payload);
+  */
+ void rpc_force_rebind(struct rpc_clnt *clnt)
  {
-+	u64 length = ios->ol_state.count;
- 	struct _striping_info si;
-+	unsigned devs_in_group = ios->objio_seg->group_width *
-+				 ios->objio_seg->mirrors_p1;
-+	unsigned first_comp = 0;
-+	unsigned num_comps = ios->objio_seg->layout->olo_map.odm_num_comps;
-+	unsigned last_pg = 0;
-+	int ret = 0;
- 
--	_calc_stripe_info(ios, ios->ol_state.count, &si);
--	return _prepare_pages(ios, &si);
-+	_calc_stripe_info(ios, ios->ol_state.offset, &si);
-+	while (length) {
-+		if (length < si.group_length)
-+			si.group_length = length;
-+
-+		ret = _prepare_one_group(ios, si.group_length, &si, first_comp,
-+					 &last_pg);
-+		if (unlikely(ret))
-+			goto out;
-+
-+		length -= si.group_length;
-+
-+		si.group_length = si.total_group_length;
-+		si.unit_off = 0;
-+		++si.Major;
-+		si.obj_offset = si.Major * ios->objio_seg->stripe_unit *
-+						ios->objio_seg->group_depth;
-+
-+		si.dev = (si.dev - (si.dev % devs_in_group)) + devs_in_group;
-+		si.dev %= num_comps;
-+
-+		first_comp += devs_in_group;
-+		first_comp %= num_comps;
+-	if (clnt->cl_autobind)
+-		xprt_clear_bound(clnt->cl_xprt);
++	if (clnt->cl_autobind) {
++		rcu_read_lock();
++		xprt_clear_bound(rcu_dereference(clnt->cl_xprt));
++		rcu_read_unlock();
 +	}
-+
-+out:
-+	if (!ios->length)
-+		return ret;
-+
-+	return 0;
+ }
+ EXPORT_SYMBOL_GPL(rpc_force_rebind);
+ 
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 72bc536..47053e5 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -16,6 +16,7 @@
+ #include <linux/namei.h>
+ #include <linux/fsnotify.h>
+ #include <linux/kernel.h>
++#include <linux/rcupdate.h>
+ 
+ #include <asm/ioctls.h>
+ #include <linux/fs.h>
+@@ -359,12 +360,14 @@ rpc_show_info(struct seq_file *m, void *v)
+ {
+ 	struct rpc_clnt *clnt = m->private;
+ 
++	rcu_read_lock();
+ 	seq_printf(m, "RPC server: %s\n", clnt->cl_server);
+ 	seq_printf(m, "service: %s (%d) version %d\n", clnt->cl_protname,
+ 			clnt->cl_prog, clnt->cl_vers);
+ 	seq_printf(m, "address: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_ADDR));
+ 	seq_printf(m, "protocol: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_PROTO));
+ 	seq_printf(m, "port: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_PORT));
++	rcu_read_unlock();
+ 	return 0;
  }
  
- static ssize_t _sync_done(struct objio_state *ios)
-@@ -735,6 +808,8 @@ static ssize_t _read_exec(struct objio_state *ios)
- 	int ret;
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 9a80a92..a861e19 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -571,9 +571,10 @@ static struct rpc_task *rpcb_call_async(struct rpc_clnt *rpcb_clnt, struct rpcbi
+ static struct rpc_clnt *rpcb_find_transport_owner(struct rpc_clnt *clnt)
+ {
+ 	struct rpc_clnt *parent = clnt->cl_parent;
++	struct rpc_xprt *xprt = rcu_dereference(clnt->cl_xprt);
  
- 	for (i = 0; i < ios->numdevs; i += ios->objio_seg->mirrors_p1) {
-+		if (!ios->per_dev[i].length)
-+			continue;
- 		ret = _read_mirrors(ios, i);
- 		if (unlikely(ret))
- 			goto err;
-@@ -855,6 +930,8 @@ static ssize_t _write_exec(struct objio_state *ios)
- 	int ret;
+ 	while (parent != clnt) {
+-		if (parent->cl_xprt != clnt->cl_xprt)
++		if (rcu_dereference(parent->cl_xprt) != xprt)
+ 			break;
+ 		if (clnt->cl_autobind)
+ 			break;
+@@ -604,8 +605,12 @@ void rpcb_getport_async(struct rpc_task *task)
+ 	size_t salen;
+ 	int status;
  
- 	for (i = 0; i < ios->numdevs; i += ios->objio_seg->mirrors_p1) {
-+		if (!ios->per_dev[i].length)
-+			continue;
- 		ret = _write_mirrors(ios, i);
- 		if (unlikely(ret))
- 			goto err;
--- 
-1.7.3.4
+-	clnt = rpcb_find_transport_owner(task->tk_client);
+-	xprt = clnt->cl_xprt;
++	rcu_read_lock();
++	do {
++		clnt = rpcb_find_transport_owner(task->tk_client);
++		xprt = xprt_get(rcu_dereference(clnt->cl_xprt));
++	} while (xprt == NULL);
++	rcu_read_unlock();
+ 
+ 	dprintk("RPC: %5u %s(%s, %u, %u, %d)\n",
+ 		task->tk_pid, __func__,
+@@ -618,6 +623,7 @@ void rpcb_getport_async(struct rpc_task *task)
+ 	if (xprt_test_and_set_binding(xprt)) {
+ 		dprintk("RPC: %5u %s: waiting for another binder\n",
+ 			task->tk_pid, __func__);
++		xprt_put(xprt);
+ 		return;
+ 	}
+ 
+@@ -685,7 +691,7 @@ void rpcb_getport_async(struct rpc_task *task)
+ 	switch (bind_version) {
+ 	case RPCBVERS_4:
+ 	case RPCBVERS_3:
+-		map->r_netid = rpc_peeraddr2str(clnt, RPC_DISPLAY_NETID);
++		map->r_netid = xprt->address_strings[RPC_DISPLAY_NETID];
+ 		map->r_addr = rpc_sockaddr2uaddr(sap);
+ 		map->r_owner = "";
+ 		break;
+@@ -714,6 +720,7 @@ bailout_release_client:
+ bailout_nofree:
+ 	rpcb_wake_rpcbind_waiters(xprt, status);
+ 	task->tk_status = status;
++	xprt_put(xprt);
+ }
+ EXPORT_SYMBOL_GPL(rpcb_getport_async);
+ 
+diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
+index 80df89d..4084255 100644
+--- a/net/sunrpc/stats.c
++++ b/net/sunrpc/stats.c
+@@ -22,6 +22,7 @@
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/svcsock.h>
+ #include <linux/sunrpc/metrics.h>
++#include <linux/rcupdate.h>
+ 
+ #include "netns.h"
+ 
+@@ -179,7 +180,7 @@ static void _print_name(struct seq_file *seq, unsigned int op,
+ void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt)
+ {
+ 	struct rpc_iostats *stats = clnt->cl_metrics;
+-	struct rpc_xprt *xprt = clnt->cl_xprt;
++	struct rpc_xprt *xprt;
+ 	unsigned int op, maxproc = clnt->cl_maxproc;
+ 
+ 	if (!stats)
+@@ -189,8 +190,11 @@ void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt)
+ 	seq_printf(seq, "p/v: %u/%u (%s)\n",
+ 			clnt->cl_prog, clnt->cl_vers, clnt->cl_protname);
+ 
++	rcu_read_lock();
++	xprt = rcu_dereference(clnt->cl_xprt);
+ 	if (xprt)
+ 		xprt->ops->print_stats(xprt, seq);
++	rcu_read_unlock();
+ 
+ 	seq_printf(seq, "\tper-op statistics\n");
+ 	for (op = 0; op < maxproc; op++) {
 
