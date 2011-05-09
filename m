@@ -1,86 +1,182 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:34363 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753462Ab1EITWS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 15:22:18 -0400
-Received: by gyd10 with SMTP id 10so1905347gyd.19
-        for <linux-nfs@vger.kernel.org>; Mon, 09 May 2011 12:22:18 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/6] NFS: Revert NFSROOT default mount options
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 09 May 2011 15:22:15 -0400
-Message-ID: <20110509192214.16449.98018.stgit@matisse.1015granger.net>
-In-Reply-To: <20110509191859.16449.73749.stgit@matisse.1015granger.net>
-References: <20110509191859.16449.73749.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from daytona.panasas.com ([67.152.220.89]:38018 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752602Ab1EIRJx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:09:53 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH v2 18/29] pnfs: support for non-rpc layout drivers
+Date: Mon,  9 May 2011 20:09:47 +0300
+Message-Id: <1304960987-4457-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DC81E8C.6040901@panasas.com>
+References: <4DC81E8C.6040901@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Marek Belisko <marek.belisko@gmail.com> reports that recent attempts
-to fix regressions in NFSROOT have broken his configuration:
+Non-rpc layout driver such as for objects and blocks
+implement their own I/O path and error handling logic.
+Therefore bypass NFS-based error handling for these layout drivers.
 
-> After update from 2.6.38-rc8 to 2.6.38 is mounting rootfs over nfs not possible.
-> Log:
-> VFS: Mounted root (nfs filesystem) on device 0:14.
-> Freeing init memory: 132K
-> nfs: server 10.146.1.21 not responding, still trying
-> nfs: server 10.146.1.21 not responding, still trying
->
-> This is never ending. I make short bisect (not too much commits
-> between versions)
-> and bad commit was reported: 53d4737580535e073963b91ce87d4216e434fab5
->
-> NFS: NFSROOT should default to "proto=udp"
->
-> I've tested on mini2440 board (DM9000, static IP).
-> Is there some missing option or something else to be checked?
-
-An examination of a network trace captured during the failure shows
-that the mount is actually succeeding, but that the client is not
-seeing READ replies larger than 16KB.  This could be a local packet
-filtering issue on the client, but we didn't troubleshoot this
-further because of the reported "git bisect" result.
-
-Last fall we removed the ad hoc mount option parser in
-fs/nfs/nfsroot.c in favor of using the main parser in fs/nfs/super.c
-(see commit 56463e50 "NFS: Use super.c for NFSROOT mount option
-parsing").  That commit changed the default NFSROOT mount options to
-be the same as those employed by user space mounts.
-
-As it turns out, these new default mount options are not tolerated by
-many embedded systems.  So far these problems have been due to
-specific behavior of certain embedded NICs.  The NFS community does
-not have such hardware on hand for running tests.
-
-Commit 53d47375 recently introduced a clean way to specify default
-mount options for NFSROOT, so we can now easily restore the
-traditional defaults for NFSROOT:
-
-   vers=2,udp,rsize=4096,wsize=4096
-
-This should revert the new default NFSROOT mount options introduced
-with commit 56463e50.
-
-Tested-by: Marek Belisto <marek.belisto@open-nandra.com>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+[get rid of PNFS_USE_RPC_CODE]
+[get rid of __nfs4_write_done_cb]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
+ fs/nfs/internal.h       |    1 +
+ fs/nfs/nfs4proc.c       |    9 ++++++-
+ fs/nfs/pnfs.c           |   48 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.h           |    2 +
+ include/linux/nfs_xdr.h |    2 +
+ 5 files changed, 60 insertions(+), 2 deletions(-)
 
- fs/nfs/nfsroot.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
-index c541093..c4744e1 100644
---- a/fs/nfs/nfsroot.c
-+++ b/fs/nfs/nfsroot.c
-@@ -87,7 +87,7 @@
- #define NFS_ROOT		"/tftpboot/%s"
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index ce118ce..bcf0f0f 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -310,6 +310,7 @@ extern int nfs_migrate_page(struct address_space *,
+ #endif
  
- /* Default NFSROOT mount options. */
--#define NFS_DEF_OPTIONS		"udp"
-+#define NFS_DEF_OPTIONS		"vers=2,udp,rsize=4096,wsize=4096"
+ /* nfs4proc.c */
++extern void __nfs4_read_done_cb(struct nfs_read_data *);
+ extern void nfs4_reset_read(struct rpc_task *task, struct nfs_read_data *data);
+ extern int nfs4_init_client(struct nfs_client *clp,
+ 			    const struct rpc_timeout *timeparms,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 9bf41ea..da51abe 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3146,6 +3146,11 @@ static int nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	return err;
+ }
  
- /* Parameters passed from the kernel command line */
- static char nfs_root_parms[256] __initdata = "";
++void __nfs4_read_done_cb(struct nfs_read_data *data)
++{
++	nfs_invalidate_atime(data->inode);
++}
++
+ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
+ {
+ 	struct nfs_server *server = NFS_SERVER(data->inode);
+@@ -3155,7 +3160,7 @@ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
+ 		return -EAGAIN;
+ 	}
+ 
+-	nfs_invalidate_atime(data->inode);
++	__nfs4_read_done_cb(data);
+ 	if (task->tk_status > 0)
+ 		renew_lease(server, data->timestamp);
+ 	return 0;
+@@ -3205,7 +3210,7 @@ static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data
+ 	}
+ 	if (task->tk_status >= 0) {
+ 		renew_lease(NFS_SERVER(inode), data->timestamp);
+-		nfs_post_op_update_inode_force_wcc(inode, data->res.fattr);
++		nfs_post_op_update_inode_force_wcc(data->inode, data->res.fattr);
+ 	}
+ 	return 0;
+ }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 880a84d..dc6541d 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1055,6 +1055,30 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
+ 	pgio->pg_test = (ld && ld->pg_test) ? pnfs_write_pg_test : NULL;
+ }
+ 
++/*
++ * Called by non rpc-based layout drivers
++ */
++int
++pnfs_ld_write_done(struct nfs_write_data *data)
++{
++	int status;
++
++	put_lseg(data->lseg);
++	data->lseg = NULL;
++	if (!data->pnfs_error) {
++		pnfs_set_layoutcommit(data);
++		data->mds_ops->rpc_call_done(NULL, data);
++		data->mds_ops->rpc_release(data);
++		return 0;
++	}
++
++	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
++		data->pnfs_error);
++	status = nfs_initiate_write(data, NFS_CLIENT(data->inode), data->mds_ops, NFS_FILE_SYNC);
++	return status ? : -EAGAIN;
++}
++EXPORT_SYMBOL_GPL(pnfs_ld_write_done);
++
+ enum pnfs_try_status
+ pnfs_try_to_write_data(struct nfs_write_data *wdata,
+ 			const struct rpc_call_ops *call_ops, int how)
+@@ -1080,6 +1104,30 @@ pnfs_try_to_write_data(struct nfs_write_data *wdata,
+ }
+ 
+ /*
++ * Called by non rpc-based layout drivers
++ */
++int
++pnfs_ld_read_done(struct nfs_read_data *data)
++{
++	int status;
++
++	put_lseg(data->lseg);
++	data->lseg = NULL;
++	if (!data->pnfs_error) {
++		__nfs4_read_done_cb(data);
++		data->mds_ops->rpc_call_done(NULL, data);
++		data->mds_ops->rpc_release(data);
++		return 0;
++	}
++
++	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
++		data->pnfs_error);
++	status = nfs_initiate_read(data, NFS_CLIENT(data->inode), data->mds_ops);
++	return status ? : -EAGAIN;
++}
++EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
++
++/*
+  * Call the appropriate parallel I/O subsystem read function.
+  */
+ enum pnfs_try_status
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index e24c7fb..2f8776b 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -166,6 +166,8 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+ bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
++int pnfs_ld_write_done(struct nfs_write_data *);
++int pnfs_ld_read_done(struct nfs_read_data *);
+ 
+ static inline int lo_fail_bit(u32 iomode)
+ {
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 78b101e..ef2b6a9 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1084,6 +1084,7 @@ struct nfs_read_data {
+ 	const struct rpc_call_ops *mds_ops;
+ 	int (*read_done_cb) (struct rpc_task *task, struct nfs_read_data *data);
+ 	__u64			mds_offset;
++	int			pnfs_error;
+ 	struct page		*page_array[NFS_PAGEVEC_SIZE];
+ };
+ 
+@@ -1109,6 +1110,7 @@ struct nfs_write_data {
+ 	unsigned long		timestamp;	/* For lease renewal */
+ #endif
+ 	__u64			mds_offset;	/* Filelayout dense stripe */
++	int			pnfs_error;
+ 	struct page		*page_array[NFS_PAGEVEC_SIZE];
+ };
+ 
+-- 
+1.7.3.4
 
