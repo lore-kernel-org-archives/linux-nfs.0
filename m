@@ -1,63 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46385 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750818Ab1EaMfY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 May 2011 08:35:24 -0400
-Date: Tue, 31 May 2011 08:35:18 -0400
-From: "Ted Ts'o" <tytso@mit.edu>
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: infinite getdents64 loop
-Message-ID: <20110531123518.GB4215@thunk.org>
-References: <201105281502.32719.sweet_f_a@gmx.de>
- <201105301137.02061.sweet_f_a@gmx.de>
- <1306767521.5971.2.camel@lade.trondhjem.org>
- <201105311147.24939.sweet_f_a@gmx.de>
- <4DE4C063.9060100@itwm.fraunhofer.de>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4DE4C063.9060100@itwm.fraunhofer.de>
+Received: from daytona.panasas.com ([67.152.220.89]:37930 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753631Ab1EIRHL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:07:11 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH v2 04/29] pnfs: Use byte-range for cb_layoutrecall
+Date: Mon,  9 May 2011 20:07:03 +0300
+Message-Id: <1304960823-3902-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DC81E8C.6040901@panasas.com>
+References: <4DC81E8C.6040901@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, May 31, 2011 at 12:18:11PM +0200, Bernd Schubert wrote:
-> 
-> Out of interest, did anyone ever benchmark if dirindex provides any
-> advantages to readdir?  And did those benchmarks include the
-> disadvantages of the present implementation (non-linear inode
-> numbers from readdir, so disk seeks on stat() (e.g. from 'ls -l') or
-> 'rm -fr $dir')?
+Use recalled range to invalidate particular layout segments in the layout cache.
 
-The problem is that seekdir/telldir is terminally broken (and so is
-NFSv2 for using a such a tiny cookie) in that it fundamentally assumes
-a linear data structure.  If you're going to use any kind of
-tree-based data structure, a 32-bit "offset" for seekdir/telldir just
-doesn't cut it.  We actually play games where we memoize the low
-32-bits of the hash and keep track of which cookies we hand out via
-seekdir/telldir so that things mostly work --- except for NFSv2, where
-with the 32-bit cookie, you're just hosed.
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/callback_proc.c |    4 ++--
+ fs/nfs/pnfs.c          |   15 +++++++++------
+ fs/nfs/pnfs.h          |    2 +-
+ 3 files changed, 12 insertions(+), 9 deletions(-)
 
-The reason why we have to iterate over the directory in hash tree
-order is because if we have a leaf node split, half the directories
-entries get copied to another directory entry, given the promises made
-by seekdir() and telldir() about directory entries appearing exactly
-once during a readdir() stream, even if you hold the fd open for weeks
-or days, mean that you really have to iterate over things in hash
-order.
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 975c8f2..964c416 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -139,7 +139,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ 	spin_lock(&ino->i_lock);
+ 	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
+ 	    mark_matching_lsegs_invalid(lo, &free_me_list,
+-					args->cbl_range.iomode))
++					&args->cbl_range))
+ 		rv = NFS4ERR_DELAY;
+ 	else
+ 		rv = NFS4ERR_NOMATCHING_LAYOUT;
+@@ -184,7 +184,7 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
+ 		ino = lo->plh_inode;
+ 		spin_lock(&ino->i_lock);
+ 		set_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
+-		if (mark_matching_lsegs_invalid(lo, &free_me_list, range.iomode))
++		if (mark_matching_lsegs_invalid(lo, &free_me_list, &range))
+ 			rv = NFS4ERR_DELAY;
+ 		list_del_init(&lo->plh_bulk_recall);
+ 		spin_unlock(&ino->i_lock);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index e689bdf..b58155a 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -321,10 +321,12 @@ lo_seg_intersecting(struct pnfs_layout_range *l1,
+ }
+ 
+ static bool
+-should_free_lseg(u32 lseg_iomode, u32 recall_iomode)
++should_free_lseg(struct pnfs_layout_range *lseg_range,
++		 struct pnfs_layout_range *recall_range)
+ {
+-	return (recall_iomode == IOMODE_ANY ||
+-		lseg_iomode == recall_iomode);
++	return (recall_range->iomode == IOMODE_ANY ||
++		lseg_range->iomode == recall_range->iomode) &&
++	       lo_seg_intersecting(lseg_range, recall_range);
+ }
+ 
+ /* Returns 1 if lseg is removed from list, 0 otherwise */
+@@ -355,7 +357,7 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
+ int
+ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 			    struct list_head *tmp_list,
+-			    u32 iomode)
++			    struct pnfs_layout_range *recall_range)
+ {
+ 	struct pnfs_layout_segment *lseg, *next;
+ 	int invalid = 0, removed = 0;
+@@ -368,7 +370,8 @@ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 		return 0;
+ 	}
+ 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
+-		if (should_free_lseg(lseg->pls_range.iomode, iomode)) {
++		if (!recall_range ||
++		    should_free_lseg(&lseg->pls_range, recall_range)) {
+ 			dprintk("%s: freeing lseg %p iomode %d "
+ 				"offset %llu length %llu\n", __func__,
+ 				lseg, lseg->pls_range.iomode, lseg->pls_range.offset,
+@@ -417,7 +420,7 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ 	lo = nfsi->layout;
+ 	if (lo) {
+ 		lo->plh_block_lgets++; /* permanently block new LAYOUTGETs */
+-		mark_matching_lsegs_invalid(lo, &tmp_list, IOMODE_ANY);
++		mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
+ 	}
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
+ 	pnfs_free_lseg_list(&tmp_list);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 14a2af9..02ef40c 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -151,7 +151,7 @@ int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
+ 				  struct nfs4_state *open_state);
+ int mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 				struct list_head *tmp_list,
+-				u32 iomode);
++				struct pnfs_layout_range *recall_range);
+ bool pnfs_roc(struct inode *ino);
+ void pnfs_roc_release(struct inode *ino);
+ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+-- 
+1.7.3.4
 
-I'd have to look, since it's been too many years, but as I recall the
-problem was that there is a common path for NFSv2 and NFSv3/v4, so we
-don't know whether we can hand back a 32-bit cookie or a 64-bit
-cookie, so we're always handing the NFS server a 32-bit "offset", even
-though ew could do better.  Actually, if we had an interface where we
-could give you a 128-bit "offset" into the directory, we could
-probably eliminate the duplicate cookie problem entirely.  We just
-send 64-bits worth of hash, plus the first two bytes of the of file
-name.
-
-> 3) Disable dirindexing for readdirs
-
-That won't work, since it will break POSIX compliance.  Once again,
-we're tied by the decisions made decades ago...
-
-						- Ted
