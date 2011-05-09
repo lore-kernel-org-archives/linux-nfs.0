@@ -1,95 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:9102 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:38044 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756245Ab1EWQhs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 12:37:48 -0400
+	with ESMTP id S1752602Ab1EIRKl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:10:41 -0400
 From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCH v6 17/26] pnfs: alloc and free layout_hdr layoutdriver methods
-Date: Mon, 23 May 2011 19:37:42 +0300
-Message-Id: <1306168662-11576-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DDA8C3D.5080706@panasas.com>
-References: <4DDA8C3D.5080706@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>,
+        Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH v2 22/29] pnfs: encode_layoutreturn
+Date: Mon,  9 May 2011 20:10:34 +0300
+Message-Id: <1304961034-4606-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DC81E8C.6040901@panasas.com>
+References: <4DC81E8C.6040901@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-[gfp_flags]
+From: Andy Adamson <andros@netapp.com>
+
+Add a layout driver method to encode the layout type specific
+opaque part of layout return in-line in the xdr stream.
+
+Currently the pnfs-objects layout driver uses it to encode i/o error
+information on LAYOUTRETURN.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[fixup layout header pointer for encode_layoutreturn]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/pnfs.c |   21 ++++++++++++++++++---
- fs/nfs/pnfs.h |    4 ++++
- 2 files changed, 22 insertions(+), 3 deletions(-)
+ fs/nfs/nfs4xdr.c |    9 +++++++--
+ fs/nfs/pnfs.h    |    4 ++++
+ 2 files changed, 11 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 20436a5..ef535f2 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -177,13 +177,28 @@ get_layout_hdr(struct pnfs_layout_hdr *lo)
- 	atomic_inc(&lo->plh_refcount);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 34fc994..75ad9e1 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1921,8 +1921,13 @@ encode_layoutreturn(struct xdr_stream *xdr,
+ 	spin_lock(&args->inode->i_lock);
+ 	xdr_encode_opaque_fixed(p, &NFS_I(args->inode)->layout->plh_stateid.data, NFS4_STATEID_SIZE);
+ 	spin_unlock(&args->inode->i_lock);
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(0);
++	if (NFS_SERVER(args->inode)->pnfs_curr_ld->encode_layoutreturn) {
++		NFS_SERVER(args->inode)->pnfs_curr_ld->encode_layoutreturn(
++			NFS_I(args->inode)->layout, xdr, args);
++	} else {
++		p = reserve_space(xdr, 4);
++		*p = cpu_to_be32(0);
++	}
+ 	hdr->nops++;
+ 	hdr->replen += decode_layoutreturn_maxsz;
  }
- 
-+static struct pnfs_layout_hdr *
-+pnfs_alloc_layout_hdr(struct inode *ino, gfp_t gfp_flags)
-+{
-+	struct pnfs_layoutdriver_type *ld = NFS_SERVER(ino)->pnfs_curr_ld;
-+	return ld->alloc_layout_hdr ? ld->alloc_layout_hdr(ino, gfp_flags) :
-+		kzalloc(sizeof(struct pnfs_layout_hdr), gfp_flags);
-+}
-+
-+static void
-+pnfs_free_layout_hdr(struct pnfs_layout_hdr *lo)
-+{
-+	struct pnfs_layoutdriver_type *ld = NFS_SERVER(lo->plh_inode)->pnfs_curr_ld;
-+	return ld->alloc_layout_hdr ? ld->free_layout_hdr(lo) : kfree(lo);
-+}
-+
- static void
- destroy_layout_hdr(struct pnfs_layout_hdr *lo)
- {
- 	dprintk("%s: freeing layout cache %p\n", __func__, lo);
- 	BUG_ON(!list_empty(&lo->plh_layouts));
- 	NFS_I(lo->plh_inode)->layout = NULL;
--	kfree(lo);
-+	pnfs_free_layout_hdr(lo);
- }
- 
- static void
-@@ -744,7 +759,7 @@ alloc_init_layout_hdr(struct inode *ino, gfp_t gfp_flags)
- {
- 	struct pnfs_layout_hdr *lo;
- 
--	lo = kzalloc(sizeof(struct pnfs_layout_hdr), gfp_flags);
-+	lo = pnfs_alloc_layout_hdr(ino, gfp_flags);
- 	if (!lo)
- 		return NULL;
- 	atomic_set(&lo->plh_refcount, 1);
-@@ -777,7 +792,7 @@ pnfs_find_alloc_layout(struct inode *ino, gfp_t gfp_flags)
- 	if (likely(nfsi->layout == NULL))	/* Won the race? */
- 		nfsi->layout = new;
- 	else
--		kfree(new);
-+		pnfs_free_layout_hdr(new);
- 	return nfsi->layout;
- }
- 
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 2e94ed3..ed167a7 100644
+index a54e715..798861c 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -73,6 +73,10 @@ struct pnfs_layoutdriver_type {
- 	const u32 id;
- 	const char *name;
- 	struct module *owner;
-+
-+	struct pnfs_layout_hdr * (*alloc_layout_hdr) (struct inode *inode, gfp_t gfp_flags);
-+	void (*free_layout_hdr) (struct pnfs_layout_hdr *);
-+
- 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
- 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
+@@ -106,6 +106,10 @@ struct pnfs_layoutdriver_type {
  
+ 	/* device notification methods */
+ 	void (*delete_deviceid)(struct nfs4_deviceid *);
++
++	void (*encode_layoutreturn) (struct pnfs_layout_hdr *layoutid,
++				     struct xdr_stream *xdr,
++				     const struct nfs4_layoutreturn_args *args);
+ };
+ 
+ struct pnfs_layout_hdr {
 -- 
 1.7.3.4
 
