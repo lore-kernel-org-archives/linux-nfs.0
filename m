@@ -1,186 +1,267 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:19755 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751434Ab1EUKbF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 May 2011 06:31:05 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 03/13] SQUASHME: pnfs-obj: Rename ios->objio_seg => ios->layout
-Date: Sat, 21 May 2011 13:30:54 +0300
-Message-Id: <1305973854-17307-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4DD79273.9030202@panasas.com>
-References: <4DD79273.9030202@panasas.com>
+Received: from mail-yi0-f46.google.com ([209.85.218.46]:55808 "EHLO
+	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754272Ab1EITiQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 15:38:16 -0400
+Received: by yia27 with SMTP id 27so1915854yia.19
+        for <linux-nfs@vger.kernel.org>; Mon, 09 May 2011 12:38:16 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 12/16] NFS: Add functions to swap transports during migration
+	recovery
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 09 May 2011 15:38:13 -0400
+Message-ID: <20110509193813.16568.4549.stgit@matisse.1015granger.net>
+In-Reply-To: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
+References: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This is what the exofs raid engine calls it. As we transition
-to use exofs_io_state directly and drop objio_io_start.
+Introduce functions that can walk through an array of returned
+fs_locations information and connect a transport to one of the
+destination servers listed therein.
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Note that NFS minor version 1 introduces "fs_locations_info" which
+extends the locations array sorting criteria available to clients.
+This is not supported yet.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/objlayout/objio_osd.c |   48 +++++++++++++++++++++---------------------
- 1 files changed, 24 insertions(+), 24 deletions(-)
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 9524d93..1289dff 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -150,7 +150,7 @@ struct objio_state {
- 	/* Generic layer */
- 	struct objlayout_io_state ol_state;
+ fs/nfs/internal.h      |    2 
+ fs/nfs/nfs4namespace.c |  202 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 204 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 0bf4e67..191c5b4 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -177,6 +177,8 @@ static inline void nfs_fs_proc_exit(void)
+ /* nfs4namespace.c */
+ #ifdef CONFIG_NFS_V4
+ extern struct vfsmount *nfs_do_refmount(struct dentry *dentry);
++extern int nfs4_replace_transport(struct nfs_server *server,
++		const struct nfs4_fs_locations *locations);
+ #else
+ static inline
+ struct vfsmount *nfs_do_refmount(struct dentry *dentry)
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index bb80c49..2fa024c 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -22,6 +22,8 @@
  
--	struct objio_segment *objio_seg;
-+	struct objio_segment *layout;
+ #define NFSDBG_FACILITY		NFSDBG_VFS
  
- 	struct kref kref;
- 	objio_done_fn done;
-@@ -359,7 +359,7 @@ int objio_alloc_io_state(void *seg, struct objlayout_io_state **outp)
- 	if (unlikely(!ios))
- 		return -ENOMEM;
- 
--	ios->objio_seg = objio_seg;
-+	ios->layout = objio_seg;
- 	ios->ol_state.ioerrs = ((void *)ios) + first_size;
- 	ios->ol_state.num_comps = objio_seg->num_comps;
- 
-@@ -488,11 +488,11 @@ static void _io_free(struct objio_state *ios)
- 
- struct osd_dev * _io_od(struct objio_state *ios, unsigned dev)
- {
--	unsigned min_dev = ios->objio_seg->comps_index;
-+	unsigned min_dev = ios->layout->comps_index;
- 	unsigned max_dev = min_dev + ios->ol_state.num_comps;
- 
- 	BUG_ON(dev < min_dev || max_dev <= dev);
--	return ios->objio_seg->ods[dev - min_dev];
-+	return ios->layout->ods[dev - min_dev];
++#undef USE_RPC_LOCK_CLIENT
++
+ /*
+  * Convert the NFSv4 pathname components into a standard posix path.
+  *
+@@ -263,3 +265,203 @@ out:
+ 	dprintk("%s: done\n", __func__);
+ 	return mnt;
  }
- 
- struct _striping_info {
-@@ -507,13 +507,13 @@ struct _striping_info {
- static void _calc_stripe_info(struct objio_state *ios, u64 file_offset,
- 			      struct _striping_info *si)
- {
--	u32	stripe_unit = ios->objio_seg->stripe_unit;
--	u32	group_width = ios->objio_seg->group_width;
--	u64	group_depth = ios->objio_seg->group_depth;
-+	u32	stripe_unit = ios->layout->stripe_unit;
-+	u32	group_width = ios->layout->group_width;
-+	u64	group_depth = ios->layout->group_depth;
- 	u32	U = stripe_unit * group_width;
- 
- 	u64	T = U * group_depth;
--	u64	S = T * ios->objio_seg->group_count;
-+	u64	S = T * ios->layout->group_count;
- 	u64	M = div64_u64(file_offset, S);
- 
- 	/*
-@@ -532,7 +532,7 @@ static void _calc_stripe_info(struct objio_state *ios, u64 file_offset,
- 
- 	/* "H - (N * U)" is just "H % U" so it's bound to u32 */
- 	si->dev = (u32)(H - (N * U)) / stripe_unit + G * group_width;
--	si->dev *= ios->objio_seg->mirrors_p1;
-+	si->dev *= ios->layout->mirrors_p1;
- 
- 	si->group_length = T - H;
- 	si->total_group_length = T;
-@@ -550,9 +550,9 @@ static int _add_stripe_unit(struct objio_state *ios,  unsigned *cur_pg,
- 
- 	if (per_dev->bio == NULL) {
- 		unsigned stripes = ios->ol_state.num_comps /
--						     ios->objio_seg->mirrors_p1;
-+						     ios->layout->mirrors_p1;
- 		unsigned pages_in_stripe = stripes *
--				      (ios->objio_seg->stripe_unit / PAGE_SIZE);
-+				      (ios->layout->stripe_unit / PAGE_SIZE);
- 		unsigned bio_size = (ios->ol_state.nr_pages + pages_in_stripe) /
- 				    stripes;
- 
-@@ -587,9 +587,9 @@ static int _prepare_one_group(struct objio_state *ios, u64 length,
- 			      struct _striping_info *si, unsigned first_comp,
- 			      unsigned *last_pg)
- {
--	unsigned stripe_unit = ios->objio_seg->stripe_unit;
--	unsigned mirrors_p1 = ios->objio_seg->mirrors_p1;
--	unsigned devs_in_group = ios->objio_seg->group_width * mirrors_p1;
-+	unsigned stripe_unit = ios->layout->stripe_unit;
-+	unsigned mirrors_p1 = ios->layout->mirrors_p1;
-+	unsigned devs_in_group = ios->layout->group_width * mirrors_p1;
- 	unsigned dev = si->dev;
- 	unsigned first_dev = dev - (dev % devs_in_group);
- 	unsigned comp = first_comp + (dev - first_dev);
-@@ -650,10 +650,10 @@ static int _io_rw_pagelist(struct objio_state *ios)
- {
- 	u64 length = ios->ol_state.count;
- 	struct _striping_info si;
--	unsigned devs_in_group = ios->objio_seg->group_width *
--				 ios->objio_seg->mirrors_p1;
-+	unsigned devs_in_group = ios->layout->group_width *
-+				 ios->layout->mirrors_p1;
- 	unsigned first_comp = 0;
--	unsigned num_comps = devs_in_group * ios->objio_seg->group_count;
-+	unsigned num_comps = devs_in_group * ios->layout->group_count;
- 	unsigned last_pg = 0;
- 	int ret = 0;
- 
-@@ -672,8 +672,8 @@ static int _io_rw_pagelist(struct objio_state *ios)
- 		si.group_length = si.total_group_length;
- 		si.unit_off = 0;
- 		++si.Major;
--		si.obj_offset = si.Major * ios->objio_seg->stripe_unit *
--						ios->objio_seg->group_depth;
-+		si.obj_offset = si.Major * ios->layout->stripe_unit *
-+						ios->layout->group_depth;
- 
- 		si.dev = (si.dev - (si.dev % devs_in_group)) + devs_in_group;
- 		si.dev %= num_comps;
-@@ -771,7 +771,7 @@ static int _read_mirrors(struct objio_state *ios, unsigned cur_comp)
- 	struct _objio_per_comp *per_dev = &ios->per_dev[cur_comp];
- 	unsigned dev = per_dev->dev;
- 	struct pnfs_osd_object_cred *cred =
--			&ios->objio_seg->comps[dev];
-+			&ios->layout->comps[dev];
- 	struct osd_obj_id obj = {
- 		.partition = cred->oc_object_id.oid_partition_id,
- 		.id = cred->oc_object_id.oid_object_id,
-@@ -807,7 +807,7 @@ static ssize_t _read_exec(struct objio_state *ios)
- 	unsigned i;
- 	int ret;
- 
--	for (i = 0; i < ios->numdevs; i += ios->objio_seg->mirrors_p1) {
-+	for (i = 0; i < ios->numdevs; i += ios->layout->mirrors_p1) {
- 		if (!ios->per_dev[i].length)
- 			continue;
- 		ret = _read_mirrors(ios, i);
-@@ -863,13 +863,13 @@ static int _write_mirrors(struct objio_state *ios, unsigned cur_comp)
- {
- 	struct _objio_per_comp *master_dev = &ios->per_dev[cur_comp];
- 	unsigned dev = ios->per_dev[cur_comp].dev;
--	unsigned last_comp = cur_comp + ios->objio_seg->mirrors_p1;
-+	unsigned last_comp = cur_comp + ios->layout->mirrors_p1;
- 	int ret;
- 
- 	for (; cur_comp < last_comp; ++cur_comp, ++dev) {
- 		struct osd_request *or = NULL;
- 		struct pnfs_osd_object_cred *cred =
--					&ios->objio_seg->comps[dev];
-+					&ios->layout->comps[dev];
- 		struct osd_obj_id obj = {
- 			.partition = cred->oc_object_id.oid_partition_id,
- 			.id = cred->oc_object_id.oid_object_id,
-@@ -929,7 +929,7 @@ static ssize_t _write_exec(struct objio_state *ios)
- 	unsigned i;
- 	int ret;
- 
--	for (i = 0; i < ios->numdevs; i += ios->objio_seg->mirrors_p1) {
-+	for (i = 0; i < ios->numdevs; i += ios->layout->mirrors_p1) {
- 		if (!ios->per_dev[i].length)
- 			continue;
- 		ret = _write_mirrors(ios, i);
--- 
-1.7.2.3
++
++#undef NFSDBG_FACILITY
++#define NFSDBG_FACILITY		NFSDBG_CLIENT
++
++/*
++ * Returns zero on success, or a negative errno value.
++ */
++static int nfs4_update_server(struct nfs_server *server, const char *hostname,
++			      struct sockaddr *sap, size_t salen)
++{
++	struct nfs_client *clp = server->nfs_client;
++	struct rpc_clnt *clnt = server->client;
++	struct xprt_create xargs = {
++		.ident		= clp->cl_proto,
++		.net		= &init_net,
++		.dstaddr	= sap,
++		.addrlen	= salen,
++		.servername	= hostname,
++	};
++	char buf[INET6_ADDRSTRLEN + 1];
++	struct sockaddr_storage address;
++	struct sockaddr *localaddr = (struct sockaddr *)&address;
++	int error;
++
++	dprintk("--> %s: move FSID %llx:%llx to \"%s\")\n", __func__,
++			(unsigned long long)server->fsid.major,
++			(unsigned long long)server->fsid.minor,
++			hostname);
++
++	/*
++	 * rpc_lock_client() deadlocks here.  This is because the tasks
++	 * that received NFS4ERR_MOVED are waiting for us to wake them
++	 * when we are done recovering.  But they have bumped
++	 * cl_active_tasks for this clnt, so rpc_lock_client() can't make
++	 * any progress.
++	 */
++#ifdef USE_RPC_LOCK_CLIENT
++	error = rpc_lock_client(clnt, clnt->cl_timeout->to_maxval);
++	if (error != 0) {
++		dprintk("<-- %s(): rpc_lock_client returned %d\n",
++			__func__, error);
++		goto out;
++	}
++#endif	/* USE_RPC_LOCK_CLIENT */
++
++	error = rpc_switch_client_transport(clnt, &xargs, clnt->cl_timeout);
++	if (error != 0) {
++		dprintk("<-- %s(): rpc_switch_client_transport returned %d\n",
++			__func__, error);
++		goto out;
++	}
++
++	/*
++	 * If we were able to contact the server at @sap, set up a new
++	 * nfs_client and move @server to it.
++	 */
++	error = rpc_localaddr(clnt, localaddr, sizeof(address));
++	if (error != 0) {
++		dprintk("<-- %s(): rpc_localaddr returned %d\n",
++			__func__, error);
++		goto out;
++	}
++	error = -EAFNOSUPPORT;
++	if (rpc_ntop(localaddr, buf, sizeof(buf)) == 0) {
++		dprintk("<-- %s(): rpc_ntop returned %d\n",
++			__func__, error);
++		goto out;
++	}
++	error = nfs4_clone_client(clp, sap, salen, buf, server);
++	if (error != 0) {
++		dprintk("<-- %s(): nfs4_clone_client returned %d\n",
++			__func__, error);
++		goto out;
++	}
++	if (server->nfs_client->cl_hostname == NULL)
++		server->nfs_client->cl_hostname = kstrdup(hostname, GFP_KERNEL);
++
++	dprintk("<-- %s() succeeded\n", __func__);
++
++out:
++#ifdef USE_RPC_LOCK_CLIENT
++	rpc_unlock_client(clnt);
++#endif	/* USE_RPC_LOCK_CLIENT */
++	return error;
++}
++
++/*
++ * Try one location from the fs_locations array.
++ *
++ * Returns zero on success, or a negative errno value.
++ */
++static int nfs4_try_replacing_one_location(struct nfs_server *server,
++		char *page, char *page2,
++		const struct nfs4_fs_location *location)
++{
++	const size_t addr_bufsize = sizeof(struct sockaddr_storage);
++	struct sockaddr *sap;
++	unsigned int s;
++	size_t salen;
++	int error;
++
++	dprintk("--> %s(%llx:%llx)\n", __func__,
++			(unsigned long long)server->fsid.major,
++			(unsigned long long)server->fsid.minor);
++
++	error = -ENOMEM;
++	sap = kmalloc(addr_bufsize, GFP_KERNEL);
++	if (sap == NULL)
++		goto out;
++
++	error = -ENOENT;
++	for (s = 0; s < location->nservers; s++) {
++		const struct nfs4_string *buf = &location->servers[s];
++		char *hostname;
++
++		if (buf->len <= 0 || buf->len > PAGE_SIZE)
++			continue;
++
++		/* XXX: IPv6 not supported? */
++		if (memchr(buf->data, IPV6_SCOPE_DELIMITER, buf->len) != NULL)
++			continue;
++
++		salen = nfs_parse_server_name(buf->data, buf->len,
++						sap, addr_bufsize);
++		if (salen == 0)
++			continue;
++		rpc_set_port(sap, NFS_PORT);
++
++		error = -ENOMEM;
++		hostname = kstrndup(buf->data, buf->len, GFP_KERNEL);
++		if (hostname == NULL)
++			break;
++
++		error = nfs4_update_server(server, hostname, sap, salen);
++		kfree(hostname);
++		if (error == 0)
++			break;
++	}
++
++	kfree(sap);
++out:
++	dprintk("<-- %s() = %d\n", __func__, error);
++	return error;
++}
++
++/**
++ * nfs4_replace_transport - set up transport to destination server
++ *
++ * @server: export being migrated
++ * @locations: fs_locations array
++ *
++ * Returns zero on success, or a negative errno value.
++ *
++ * The client tries all the entries in the "locations" array, in the
++ * order returned by the server, until one works or the end of the
++ * array is reached.
++ */
++int nfs4_replace_transport(struct nfs_server *server,
++			   const struct nfs4_fs_locations *locations)
++{
++	char *page = NULL, *page2 = NULL;
++	int loc, error;
++
++	dprintk("--> %s(%llx:%llx)\n", __func__,
++			(unsigned long long)server->fsid.major,
++			(unsigned long long)server->fsid.minor);
++
++	error = -ENOENT;
++	if (locations == NULL || locations->nlocations <= 0)
++		goto out;
++
++	error = -ENOMEM;
++	page = (char *) __get_free_page(GFP_USER);
++	if (!page)
++		goto out;
++	page2 = (char *) __get_free_page(GFP_USER);
++	if (!page2)
++		goto out;
++
++	for (loc = 0; loc < locations->nlocations; loc++) {
++		const struct nfs4_fs_location *location =
++						&locations->locations[loc];
++
++		if (location == NULL || location->nservers <= 0 ||
++		    location->rootpath.ncomponents == 0)
++			continue;
++
++		error = nfs4_try_replacing_one_location(server, page,
++							page2, location);
++		if (error == 0)
++			break;
++	}
++
++out:
++	free_page((unsigned long)page);
++	free_page((unsigned long)page2);
++
++	dprintk("<-- %s() = %d\n", __func__, error);
++	return error;
++}
 
