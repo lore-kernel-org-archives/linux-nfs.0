@@ -1,111 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e38.co.us.ibm.com ([32.97.110.159]:57646 "EHLO
-	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753402Ab1EKXHr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 May 2011 19:07:47 -0400
-Date: Wed, 11 May 2011 18:07:39 -0500
-From: Tyler Hicks <tyhicks@linux.vnet.ibm.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Peng Huang <shawn.p.huang@gmail.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] nfs: check a crash in nfs_lookup_revalidate
-Message-ID: <20110511230739.GB9776@boyd.l.tihix.com>
-References: <1305147805-5756-1-git-send-email-shawn.p.huang@gmail.com>
- <1305148125.21868.2.camel@lade.trondhjem.org>
- <20110511221750.GA9776@boyd.l.tihix.com>
- <1305153237.26971.4.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1305153237.26971.4.camel@lade.trondhjem.org>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:58964 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754072Ab1EITgN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 15:36:13 -0400
+Received: by yxs7 with SMTP id 7so1914279yxs.19
+        for <linux-nfs@vger.kernel.org>; Mon, 09 May 2011 12:36:12 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 00/16] Client-side migration support for 2.6.40 [take 3]
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 09 May 2011 15:36:09 -0400
+Message-ID: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed May 11, 2011 at 06:33:57PM -0400, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> On Wed, 2011-05-11 at 17:17 -0500, Tyler Hicks wrote:
-> > On Wed May 11, 2011 at 05:08:45PM -0400, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> > > On Wed, 2011-05-11 at 17:03 -0400, Peng Huang wrote:
-> > > > lookup_one_len() may call nfs_loopup_revalidate() with nd == NULL
-> > > > indirectly, that causes the kernel crash.
-> > > > 
-> > > > RIP: 0010:[<ffffffffa0ba3b41>]  [<ffffffffa0ba3b41>]
-> > > > nfs_lookup_revalidate+0x21/0x4a0 [nfs]
-> > > > RSP: 0018:ffff88018f00fae8  EFLAGS: 00010286
-> > > > 
-> > > > Call Trace:
-> > > >  [<ffffffff81164a17>] do_revalidate+0x17/0x60
-> > > >  [<ffffffff81164e9b>] __lookup_hash+0xcb/0x140
-> > > >  [<ffffffff811653c4>] lookup_one_len+0x94/0xe0
-> > > >  [<ffffffff81241ef1>] ecryptfs_lookup+0x91/0x1d0
-> > > >  [<ffffffff81164d85>] d_alloc_and_lookup+0x45/0x90
-> > > >  [<ffffffff8116f7b5>] ? d_lookup+0x35/0x60
-> > > >  [<ffffffff811669b2>] do_lookup+0x192/0x2d0
-> > > >  [<ffffffff811763be>] ? vfsmount_lock_local_unlock+0x1e/0x30
-> > > >  [<ffffffff8126d09c>] ? security_inode_permission+0x1c/0x30
-> > > >  [<ffffffff81167d67>] link_path_walk+0x597/0xae0
-> > > >  [<ffffffff8117638e>] ? vfsmount_lock_local_lock+0x1e/0x30
-> > > >  [<ffffffff81165905>] ? path_init_rcu+0xa5/0x210
-> > > >  [<ffffffff8116858b>] do_path_lookup+0x5b/0x140
-> > > >  [<ffffffff811692f7>] user_path_at+0x57/0xa0
-> > > >  [<ffffffff8159fd08>] ? do_page_fault+0x1e8/0x4e0
-> > > >  [<ffffffff8115eb86>] vfs_fstatat+0x46/0x80
-> > > >  [<ffffffff8116b990>] ? filldir+0x0/0xe0
-> > > >  [<ffffffff8115ec2e>] vfs_lstat+0x1e/0x20
-> > > >  [<ffffffff8115ec54>] sys_newlstat+0x24/0x50
-> > > >  [<ffffffff8159c995>] ? page_fault+0x25/0x30
-> > > >  [<ffffffff8100bfc2>] system_call_fastpath+0x16/0x1b
-> > > > 
-> > > > Signed-off-by: Peng Huang <shawn.p.huang@gmail.com>
-> > > > ---
-> > > >  fs/nfs/dir.c |    2 +-
-> > > >  1 files changed, 1 insertions(+), 1 deletions(-)
-> > > > 
-> > > > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> > > > index 2c3eb33..9452aa5 100644
-> > > > --- a/fs/nfs/dir.c
-> > > > +++ b/fs/nfs/dir.c
-> > > > @@ -1028,7 +1028,7 @@ static int nfs_lookup_revalidate(struct dentry *dentry, struct nameidata *nd)
-> > > >  	struct nfs_fattr *fattr = NULL;
-> > > >  	int error;
-> > > >  
-> > > > -	if (nd->flags & LOOKUP_RCU)
-> > > > +	if (nd != NULL && nd->flags & LOOKUP_RCU)
-> > > >  		return -ECHILD;
-> > > >  
-> > > >  	parent = dget_parent(dentry);
-> > > 
-> > > That's exactly what Tyler Hicks proposed last week and which was NACKed.
-> > > We simply won't support layered filesystems that don't do intents.
-> > 
-> > But you _did_ support it up until
-> > 34286d66 "fs: rcu-walk aware d_revalidate method"
-> > 
-> > I see why you wouldn't want NULL nameidata in the NFSv4 specific
-> > functions, but don't quite understand the opposition against it in NFSv3
-> > (nfs_lookup_revalidate). The one-liner above would allow users to begin
-> > using eCryptfs on top of NFSv3 clients immediately, with no side effects
-> > to NFS.
-> 
-> Because even on NFSv3 it breaks exclusive creates.
+Hi-
 
-I somehow missed that bit of code in nfs_lookup(). Thanks for the
-pointer.
+Here is the latest pass at client-side support for NFS4.0 migration.
+Some 4.1 support is thrown in, but is not tested (no extant 4.1
+servers in the wild support migration).  Patches are against
+2.6.39-rc6.
 
-I'll start getting the eCryptfs lookup code straightened out.
+This series adds support for both NFS4ERR_MOVED and
+NFS4ERR_LEASE_MOVED.  It can also re-establish a callback channel
+with the destination server, post-migration.  I've attempted to
+address all comments and re-organization requests from pub night.
 
-Tyler
+This series is what I am testing this week.  I'm sure there are still
+some bugs, but let's get the review process rolling.
 
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
-> 
+---
+
+Chuck Lever (12):
+      NFS: Implement support for NFS4ERR_LEASE_MOVED
+      NFS: Add migration recovery callouts in nfs4proc.c
+      NFS: Remove "const" from "struct nfs_server *" fields
+      NFS: Add basic migration support to state manager thread
+      NFS: Add functions to swap transports during migration recovery
+      NFS: Add an API for cloning an nfs_client
+      NFS: Add infrastructure for updating callback data
+      NFS: Introduce nfs4_proc_get_mig_status()
+      NFS: Introduce NFS_ATTR_FATTR_V4_LOCATIONS
+      NFS: Save root file handle in nfs_server
+      NFS: Add a client-side function to display file handles
+      SUNRPC: Add API to acquire source address
+
+Trond Myklebust (4):
+      SUNRPC: Add a helper to switch the transport of the rpc_client
+      SUNRPC: Move clnt->cl_server into struct rpc_xprt
+      SUNRPC: Use RCU to dereference the rpc_clnt.cl_xprt field
+      SUNRPC: Allow temporary blocking of an rpc client
+
+
+ fs/nfs/callback.c            |    3 
+ fs/nfs/callback_proc.c       |    9 -
+ fs/nfs/client.c              |   88 +++++++-
+ fs/nfs/getroot.c             |    5 
+ fs/nfs/inode.c               |   45 ++++
+ fs/nfs/internal.h            |    6 +
+ fs/nfs/nfs4_fs.h             |    8 +
+ fs/nfs/nfs4namespace.c       |  202 ++++++++++++++++++
+ fs/nfs/nfs4proc.c            |  218 +++++++++++++++++---
+ fs/nfs/nfs4state.c           |  227 ++++++++++++++++++++-
+ fs/nfs/nfs4xdr.c             |   50 +++--
+ fs/nfs/super.c               |    5 
+ include/linux/nfs_fs.h       |   14 +
+ include/linux/nfs_fs_sb.h    |    7 +
+ include/linux/nfs_xdr.h      |   42 ++--
+ include/linux/sunrpc/clnt.h  |   22 ++
+ include/linux/sunrpc/debug.h |   11 +
+ include/linux/sunrpc/xprt.h  |    2 
+ net/sunrpc/clnt.c            |  461 +++++++++++++++++++++++++++++++++++++-----
+ net/sunrpc/rpc_pipe.c        |    5 
+ net/sunrpc/rpcb_clnt.c       |   24 +-
+ net/sunrpc/stats.c           |    6 -
+ net/sunrpc/xprt.c            |   14 +
+ 23 files changed, 1320 insertions(+), 154 deletions(-)
+
+-- 
+Chuck Lever
