@@ -1,94 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:31781 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933500Ab1ESQfq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 May 2011 12:35:46 -0400
-Message-ID: <4DD546D1.7050806@netapp.com>
-Date: Thu, 19 May 2011 12:35:29 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 1/2] NFSD: added FREE_STATEID operation
-References: <1305575021-2841-1-git-send-email-bjschuma@netapp.com> <1305575021-2841-2-git-send-email-bjschuma@netapp.com> <20110518225609.GA26545@fieldses.org> <4DD53864.1010401@netapp.com> <20110519163051.GB976@fieldses.org>
-In-Reply-To: <20110519163051.GB976@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:49509 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754224Ab1EIThg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 15:37:36 -0400
+Received: by mail-gx0-f174.google.com with SMTP id 21so1941561gxk.19
+        for <linux-nfs@vger.kernel.org>; Mon, 09 May 2011 12:37:36 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 08/16] NFS: Introduce NFS_ATTR_FATTR_V4_LOCATIONS
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 09 May 2011 15:37:29 -0400
+Message-ID: <20110509193729.16568.49840.stgit@matisse.1015granger.net>
+In-Reply-To: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
+References: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/19/2011 12:30 PM, J. Bruce Fields wrote:
-> On Thu, May 19, 2011 at 11:33:56AM -0400, Bryan Schumaker wrote:
->> On 05/18/2011 06:56 PM, J. Bruce Fields wrote:
->>> On Mon, May 16, 2011 at 03:43:40PM -0400, bjschuma@netapp.com wrote:
->>>> +static __be32
->>>> +nfsd4_free_file_stateid(stateid_t *stateid)
->>>> +{
->>>> +	struct nfs4_stateid *stp = search_for_stateid(stateid);
->>>> +	if (!stp)
->>>> +		return nfserr_bad_stateid;
->>>> +	if (stateid->si_generation != 0) {
->>>> +		if (stateid->si_generation < stp->st_stateid.si_generation)
->>>> +			return nfserr_old_stateid;
->>>> +		if (stateid->si_generation > stp->st_stateid.si_generation)
->>>> +			return nfserr_bad_stateid;
->>>> +	}
->>>> +
->>>> +	if (check_for_locks(stp->st_file, stp->st_stateowner))
->>>> +		return nfserr_locks_held;
->>>
->>> I think this catches a lock stateid, but not an open stateid that has
->>> associated lock stateid's that in turn hold locks.
->>>
->>> Hm, also:
->>>
->>> 	"The FREE_STATEID operation is used to free a stateid that no
->>> 	longer has any associated locks (including opens, byte-range
->>> 	locks, delegations, and layouts)"
->>>
->>> So an open stateid also shouldn't be freeable as long as there are opens
->>> associated with it.
->>
->> So having an open stateid doesn't necessarily mean that the file is open?
-> 
-> Looking back at it.... Sorry, you're right, open stateid's are destroyed
-> on close, so like delegation stateid's they should just never be
-> freeable.
-> 
->> and having a lock stateid doesn't mean that the file is locked?
-> 
-> Here we don't know whether the file's locked or not, so we do have to
-> check.
-> 
->> I'll look at making a "check_for_opens()" function to help with this check.
-> 
-> So actually I think it's really simple: always fail opens and
-> delegations, but check for locks.  (Except I'm not sure if
+Our NFS client must distinguish between referral events (which it
+currently supports) and migration events (which it does not yet
+support).
 
-That is much simpler.  I'm glad I asked!
+In both types of events, an fs_locations array is returned.  But upper
+layers should make the distinction between a referral and a migration,
+not the XDR layer.  There really isn't a generic way for an XDR
+decoder function to tell one from the other.
 
-> check_for_locks() does the right things, as it operates on a stateowner
-> not a stateid--I'm forgetting how those work....  If there's a unique
-> lock stateid per (stateowner,file) pair then check_for_locks() should do
-> what you want.)
+Slightly adjust the FATTR flags returned by decode_fs_locations()
+to set NFS_ATTR_FATTR_V4_LOCATIONS only if a non-empty locations
+array was returned from the server.  Then have logic in nfs4proc.c
+distinguish whether the locations array is for a referral or
+something else.
 
-I'm not sure how they work either.  I'll browse through the code to see what I can find.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Thanks!
+ fs/nfs/nfs4proc.c       |    5 +++--
+ fs/nfs/nfs4xdr.c        |    2 +-
+ include/linux/nfs_xdr.h |    7 ++++---
+ 3 files changed, 8 insertions(+), 6 deletions(-)
 
-> 
-> --b.
-> 
->>
->>>
->>> Also I guess a client shouldn't be permitted to free a delegation that
->>> it still holds.  That means we'll always just return nfserr_locks for
->>> delegation stateid's.  I assume free_stateid is only useful in this case
->>
->> Sounds simple enough.
->>
->>> for the case where a server forcibly revokes part of the client's state
->>> and leaves some "stub" stateid's around in place of the revoked ones.
->>>
->>> --b.
->>
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5a87686..641691c 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2291,7 +2291,8 @@ static int nfs4_get_referral(struct inode *dir, const struct qstr *name, struct
+ 	}
+ 
+ 	memcpy(fattr, &locations->fattr, sizeof(struct nfs_fattr));
+-	fattr->valid |= NFS_ATTR_FATTR_V4_REFERRAL;
++	if (fattr->valid & NFS_ATTR_FATTR_V4_LOCATIONS)
++		fattr->valid |= NFS_ATTR_FATTR_V4_REFERRAL;
+ 	if (!fattr->mode)
+ 		fattr->mode = S_IFDIR;
+ 	memset(fhandle, 0, sizeof(struct nfs_fh));
+@@ -4656,7 +4657,7 @@ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
+ {
+ 	if (!((fattr->valid & NFS_ATTR_FATTR_FILEID) &&
+ 		(fattr->valid & NFS_ATTR_FATTR_FSID) &&
+-		(fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)))
++		(fattr->valid & NFS_ATTR_FATTR_V4_LOCATIONS)))
+ 		return;
+ 
+ 	fattr->valid |= NFS_ATTR_FATTR_TYPE | NFS_ATTR_FATTR_MODE |
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c3ccd2c..be70be9 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -3326,7 +3326,7 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
+ 			res->nlocations++;
+ 	}
+ 	if (res->nlocations != 0)
+-		status = NFS_ATTR_FATTR_V4_REFERRAL;
++		status = NFS_ATTR_FATTR_V4_LOCATIONS;
+ out:
+ 	dprintk("%s: fs_locations done, error = %d\n", __func__, status);
+ 	return status;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 890dce2..26165a5 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -82,9 +82,10 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_PRECTIME		(1U << 16)
+ #define NFS_ATTR_FATTR_CHANGE		(1U << 17)
+ #define NFS_ATTR_FATTR_PRECHANGE	(1U << 18)
+-#define NFS_ATTR_FATTR_V4_REFERRAL	(1U << 19)	/* NFSv4 referral */
+-#define NFS_ATTR_FATTR_MOUNTPOINT	(1U << 20)	/* Treat as mountpoint */
+-#define NFS_ATTR_FATTR_MOUNTED_ON_FILEID		(1U << 21)
++#define NFS_ATTR_FATTR_V4_LOCATIONS	(1U << 19)
++#define NFS_ATTR_FATTR_V4_REFERRAL	(1U << 20)	/* NFSv4 referral */
++#define NFS_ATTR_FATTR_MOUNTPOINT	(1U << 21) /* Treat as mountpoint */
++#define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
+ 
+ #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
+ 		| NFS_ATTR_FATTR_MODE \
 
