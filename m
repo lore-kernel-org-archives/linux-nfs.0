@@ -1,110 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:38795 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:38009 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752271Ab1EVQsk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 12:48:40 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH 05/23] pnfs: client stats
-Date: Sun, 22 May 2011 19:48:21 +0300
-Message-Id: <1306082901-10758-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4DD93D3E.9010909@panasas.com>
-References: <4DD93D3E.9010909@panasas.com>
+	with ESMTP id S1752602Ab1EIRJn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:09:43 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH v2 17/29] pnfs: alloc and free layout_hdr layoutdriver methods
+Date: Mon,  9 May 2011 20:09:34 +0300
+Message-Id: <1304960974-4420-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DC81E8C.6040901@panasas.com>
+References: <4DC81E8C.6040901@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@fieldses.org>
-
-A pNFS client auto-negotiates a lot of features (minorversion level,
-pNFS layout type, etc.).  This is convenient, but makes certain kinds of
-failures hard for a user to detect.
-
-For example, if the client falls back on 4.0, or falls back to MDS IO
-because the user didn't connect to the right iscsi disks before
-mounting, the only symptoms may be reduced performance, which may not be
-noticed till long after the actual failure, and may be difficult for a
-user to diagnose.
-
-However, such "failures" may also be perfectly normal in some cases, so
-we don't want to spam the system logs with them.
-
-One approach would be to put some more information into
-/proc/self/mountstats.
-
-Signed-off-by: J. Bruce Fields <bfields@fieldses.org>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[pnfs: add commit client stats]
-[fixup data types for "ret" variables in pnfs_try_to* inline funcs.]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[fix definition of show_pnfs for !CONFIG_PNFS]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: Fix show_sessions in the not CONFIG_NFS_V4_1 case]
-    There is a build error when CONFIG_NFS_V4 is set but
-    CONFIG_NFS_V4_1 is *not* set. show_sessions() prototype
-    was unbalanced between the two cases.
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-[pnfs: super.c remove CONFIG_PNFS]
-Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/super.c |   25 +++++++++++++++++++++++++
- 1 files changed, 25 insertions(+), 0 deletions(-)
+ fs/nfs/pnfs.c |   21 ++++++++++++++++++---
+ fs/nfs/pnfs.h |    3 +++
+ 2 files changed, 21 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index e288f06..ce40e5c 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -63,6 +63,7 @@
- #include "iostat.h"
- #include "internal.h"
- #include "fscache.h"
-+#include "pnfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
- 
-@@ -732,6 +733,28 @@ static int nfs_show_options(struct seq_file *m, struct vfsmount *mnt)
- 
- 	return 0;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index d5efe2e..880a84d 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -188,13 +188,28 @@ get_layout_hdr(struct pnfs_layout_hdr *lo)
+ 	atomic_inc(&lo->plh_refcount);
  }
-+#ifdef CONFIG_NFS_V4_1
-+void show_sessions(struct seq_file *m, struct nfs_server *server)
-+{
-+	if (nfs4_has_session(server->nfs_client))
-+		seq_printf(m, ",sessions");
-+}
-+#else
-+void show_sessions(struct seq_file *m, struct nfs_server *server) {}
-+#endif
-+
-+#ifdef CONFIG_NFS_V4_1
-+void show_pnfs(struct seq_file *m, struct nfs_server *server)
-+{
-+	seq_printf(m, ",pnfs=");
-+	if (server->pnfs_curr_ld)
-+		seq_printf(m, "%s", server->pnfs_curr_ld->name);
-+	else
-+		seq_printf(m, "not configured");
-+}
-+#else  /* CONFIG_NFS_V4_1 */
-+void show_pnfs(struct seq_file *m, struct nfs_server *server) {}
-+#endif /* CONFIG_NFS_V4_1 */
  
- static int nfs_show_devname(struct seq_file *m, struct vfsmount *mnt)
++static struct pnfs_layout_hdr *
++pnfs_alloc_layout_hdr(struct inode *ino)
++{
++	struct pnfs_layoutdriver_type *ld = NFS_SERVER(ino)->pnfs_curr_ld;
++	return ld->alloc_layout_hdr ? ld->alloc_layout_hdr(ino) :
++		kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
++}
++
++static void
++pnfs_free_layout_hdr(struct pnfs_layout_hdr *lo)
++{
++	struct pnfs_layoutdriver_type *ld = NFS_SERVER(lo->plh_inode)->pnfs_curr_ld;
++	return ld->alloc_layout_hdr ? ld->free_layout_hdr(lo) : kfree(lo);
++}
++
+ static void
+ destroy_layout_hdr(struct pnfs_layout_hdr *lo)
  {
-@@ -792,6 +815,8 @@ static int nfs_show_stats(struct seq_file *m, struct vfsmount *mnt)
- 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
- 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
- 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
-+		show_sessions(m, nfss);
-+		show_pnfs(m, nfss);
- 	}
- #endif
+ 	dprintk("%s: freeing layout cache %p\n", __func__, lo);
+ 	BUG_ON(!list_empty(&lo->plh_layouts));
+ 	NFS_I(lo->plh_inode)->layout = NULL;
+-	kfree(lo);
++	pnfs_free_layout_hdr(lo);
+ }
+ 
+ static void
+@@ -756,7 +771,7 @@ alloc_init_layout_hdr(struct inode *ino)
+ {
+ 	struct pnfs_layout_hdr *lo;
+ 
+-	lo = kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
++	lo = pnfs_alloc_layout_hdr(ino);
+ 	if (!lo)
+ 		return NULL;
+ 	atomic_set(&lo->plh_refcount, 1);
+@@ -789,7 +804,7 @@ pnfs_find_alloc_layout(struct inode *ino)
+ 	if (likely(nfsi->layout == NULL))	/* Won the race? */
+ 		nfsi->layout = new;
+ 	else
+-		kfree(new);
++		pnfs_free_layout_hdr(new);
+ 	return nfsi->layout;
+ }
+ 
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 9d620de..e24c7fb 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -75,6 +75,9 @@ struct pnfs_layoutdriver_type {
+ 	int (*set_layoutdriver) (struct nfs_server *);
+ 	int (*unset_layoutdriver) (struct nfs_server *);
+ 
++	struct pnfs_layout_hdr * (*alloc_layout_hdr) (struct inode *inode);
++	void (*free_layout_hdr) (struct pnfs_layout_hdr *);
++
+ 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr);
+ 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
  
 -- 
-1.7.2.3
+1.7.3.4
 
