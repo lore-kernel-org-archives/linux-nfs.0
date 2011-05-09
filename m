@@ -1,398 +1,168 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:34837 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933693Ab1ETSNZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 May 2011 14:13:25 -0400
-Message-ID: <4DD6AF42.5050502@netapp.com>
-Date: Fri, 20 May 2011 14:13:22 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [RFC v2] NFSD: Added basic fault injection
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:37956 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753582Ab1EIRHq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:07:46 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH v2 07/29] pnfs-obj: objlayoutdriver module skeleton
+Date: Mon,  9 May 2011 20:07:39 +0300
+Message-Id: <1304960859-4042-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DC81E8C.6040901@panasas.com>
+References: <4DC81E8C.6040901@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-I have been looking at adding fault injection to the NFS server in order
-to test the client's state manager and recovery threads.  Simulating
-errors on the server seems like the easiest way to guarentee that
-specific errors happen, and happen when we tell them to.
+* Define the PNFS_OBJLAYOUT Kconfig option in the nfs
+  master Kconfig file.
+* Add the objlayout driver to the Kernel's Kbuild system.
+* Add the fs/nfs/objlayout/Kbuild file for building the
+  objlayoutdriver.ko driver
+* Define fs/nfs/objlayout/objio_osd.c, register the driver on module
+  initialization and unregister on exit.
 
-This patch uses debugfs to add a simple framework for fault injection to
-the server.  This framework is a config option, and can be enabled
-through CONFIG_NFSD_FAULT_INJECTION.  Assuming you have debugfs mounted
-to /sys/debug, a set of files will be created in /sys/debug/nfsd/.
-Writing to any of these files will cause the corresponding action and
-write a log entry to dmesg.
-
-Changes in v2:
-- Replaced "forget all state owners" with "forget all open owners"
-- Include fs/nfsd/fault_inject.c in the patch
-
-Suggestions?  Comments?
-
-- Bryan
+[pnfs-obj: remove of CONFIG_PNFS fallout]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+[added "unsure" clause]
+[depend on NFS_V4_1]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index 18b3e89..8c02eab 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -91,3 +91,16 @@ config NFSD_V4
- 	  available from http://linux-nfs.org/.
+ fs/nfs/Kconfig               |   10 +++++
+ fs/nfs/Makefile              |    2 +
+ fs/nfs/objlayout/Kbuild      |    5 +++
+ fs/nfs/objlayout/objio_osd.c |   76 ++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 93 insertions(+), 0 deletions(-)
+ create mode 100644 fs/nfs/objlayout/Kbuild
+ create mode 100644 fs/nfs/objlayout/objio_osd.c
+
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index ba30665..8151554 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -87,6 +87,16 @@ config NFS_V4_1
+ config PNFS_FILE_LAYOUT
+ 	tristate
  
- 	  If unsure, say N.
-+
-+config NFSD_FAULT_INJECTION
-+	bool "NFS server manual fault injection"
-+	depends on NFSD_V4 && DEBUG_KERNEL
++config PNFS_OBJLAYOUT
++	tristate "Provide support for the pNFS Objects Layout Driver for NFSv4.1 pNFS (EXPERIMENTAL)"
++	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
 +	help
-+	  This option enables support for manually injecting faults
-+	  into the NFS server.  This is intended to be used for
-+	  testing error recovery on the NFS client.
-+	  
++	  Say M here if you want your pNFS client to support the Objects Layout Driver.
++	  Requires the SCSI osd initiator library (SCSI_OSD_INITIATOR) and
++	  upper level driver (SCSI_OSD_ULD).
++
 +	  If unsure, say N.
 +
-+
-+
-diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
-index 9b118ee..69eae75 100644
---- a/fs/nfsd/Makefile
-+++ b/fs/nfsd/Makefile
-@@ -5,7 +5,8 @@
- obj-$(CONFIG_NFSD)	+= nfsd.o
+ config ROOT_NFS
+ 	bool "Root file system on NFS"
+ 	depends on NFS_FS=y && IP_PNP
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 4776ff9..c9574f0 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -21,3 +21,5 @@ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
  
- nfsd-y 			:= nfssvc.o nfsctl.o nfsproc.o nfsfh.o vfs.o \
--			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o
-+			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o \
-+			   fault_inject.o
- nfsd-$(CONFIG_NFSD_V2_ACL) += nfs2acl.o
- nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
- nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+ obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
+ nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
++
++obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayout/
+diff --git a/fs/nfs/objlayout/Kbuild b/fs/nfs/objlayout/Kbuild
 new file mode 100644
-index 0000000..3dd1c32
+index 0000000..2e5b9a4
 --- /dev/null
-+++ b/fs/nfsd/fault_inject.c
-@@ -0,0 +1,106 @@
++++ b/fs/nfs/objlayout/Kbuild
+@@ -0,0 +1,5 @@
++#
++# Makefile for the pNFS Objects Layout Driver kernel module
++#
++objlayoutdriver-y := objio_osd.o
++obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayoutdriver.o
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+new file mode 100644
+index 0000000..379595f
+--- /dev/null
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -0,0 +1,76 @@
++/*
++ *  pNFS Objects layout implementation over open-osd initiator library
++ *
++ *  Copyright (C) 2009 Panasas Inc. [year of first publication]
++ *  All rights reserved.
++ *
++ *  Benny Halevy <bhalevy@panasas.com>
++ *  Boaz Harrosh <bharrosh@panasas.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License version 2
++ *  See the file COPYING included with this distribution for more details.
++ *
++ *  Redistribution and use in source and binary forms, with or without
++ *  modification, are permitted provided that the following conditions
++ *  are met:
++ *
++ *  1. Redistributions of source code must retain the above copyright
++ *     notice, this list of conditions and the following disclaimer.
++ *  2. Redistributions in binary form must reproduce the above copyright
++ *     notice, this list of conditions and the following disclaimer in the
++ *     documentation and/or other materials provided with the distribution.
++ *  3. Neither the name of the Panasas company nor the names of its
++ *     contributors may be used to endorse or promote products derived
++ *     from this software without specific prior written permission.
++ *
++ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
++ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
++ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
++ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
++ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
 +
-+#ifdef CONFIG_NFSD_FAULT_INJECTION
-+
-+#include <linux/types.h>
-+#include <linux/fs.h>
-+#include <linux/debugfs.h>
 +#include <linux/module.h>
++#include "../pnfs.h"
 +
-+#include "state.h"
-+#include "nfsd.h"
-+
-+static void nfsd_forget_everything(void);
-+
-+struct nfsd_fault_inject_op {
-+	char *name;
-+	char *text;
-+	int file_data;
-+	void (*func)(void);
++static struct pnfs_layoutdriver_type objlayout_type = {
++	.id = LAYOUT_OSD2_OBJECTS,
++	.name = "LAYOUT_OSD2_OBJECTS",
 +};
 +
-+#define INJECTION_OP(op_name, op_text, op_func) \
-+{				\
-+	.name = op_name,	\
-+	.text = op_text,	\
-+	.func = op_func,	\
-+}
++MODULE_DESCRIPTION("pNFS Layout Driver for OSD2 objects");
++MODULE_AUTHOR("Benny Halevy <bhalevy@panasas.com>");
++MODULE_LICENSE("GPL");
 +
-+static struct nfsd_fault_inject_op inject_ops[] = {
-+	INJECTION_OP("forget_clients",     "forget all clients",     nfsd_forget_all_clients),
-+	INJECTION_OP("forget_locks",       "forget all locks",       nfsd_forget_all_locks),
-+	INJECTION_OP("forget_open_owners", "forget all open owners", nfsd_forget_all_open_owners),
-+	INJECTION_OP("forget_delegations", "forget all delegations", nfsd_forget_all_delegations),
-+	INJECTION_OP("forget_everything",  "forget everything",      nfsd_forget_everything),
-+	INJECTION_OP("recall_delegations", "recall all delegations", nfsd_recall_all_delegations),
-+};
-+
-+static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
-+static struct dentry *debug_dir;
-+
-+static void nfsd_forget_everything(void)
++static int __init
++objlayout_init(void)
 +{
-+	nfsd_forget_all_clients();
-+	nfsd_forget_all_locks();
-+	nfsd_forget_all_open_owners();
-+	nfsd_forget_all_delegations();
++	int ret = pnfs_register_layoutdriver(&objlayout_type);
++
++	if (ret)
++		printk(KERN_INFO
++			"%s: Registering OSD pNFS Layout Driver failed: error=%d\n",
++			__func__, ret);
++	else
++		printk(KERN_INFO "%s: Registered OSD pNFS Layout Driver\n",
++			__func__);
++	return ret;
 +}
 +
-+static int nfsd_inject_set(void *data, u64 val)
++static void __exit
++objlayout_exit(void)
 +{
-+	int i;
-+	for (i = 0; i < NUM_INJECT_OPS; i++) {
-+		if (&inject_ops[i].file_data == data) {
-+			printk(KERN_INFO "%s %s Server will %s", __FILE__, __func__, inject_ops[i].text);
-+			inject_ops[i].func();
-+		}
-+	}
-+	return 0;
++	pnfs_unregister_layoutdriver(&objlayout_type);
++	printk(KERN_INFO "%s: Unregistered OSD pNFS Layout Driver\n",
++	       __func__);
 +}
 +
-+static int nfsd_inject_get(void *data, u64 *val)
-+{
-+	return 0;
-+}
-+
-+DEFINE_SIMPLE_ATTRIBUTE(fops_nfsd, nfsd_inject_get, nfsd_inject_set, "%llu\n");
-+
-+void
-+nfsd_cleanup_fault_inject(void)
-+{
-+	debugfs_remove_recursive(debug_dir);
-+}
-+
-+int
-+nfsd_fault_inject_init(void)
-+{
-+	unsigned int i;
-+	struct nfsd_fault_inject_op *op;
-+	mode_t mode = S_IFREG | S_IRUSR | S_IWUSR;
-+
-+	debug_dir = debugfs_create_dir("nfsd", NULL);
-+	if (!debug_dir)
-+		goto fail;
-+
-+	for (i = 0; i < NUM_INJECT_OPS; i++) {
-+		op = &inject_ops[i];
-+		debugfs_create_file(op->name, mode, debug_dir, &op->file_data, &fops_nfsd);
-+	}
-+	return 0;
-+fail:
-+	nfsd_cleanup_fault_inject();
-+	return -ENOMEM;
-+}
-+
-+#else /* CONFIG_NFSD_FAULT_INJECTION */
-+
-+inline void
-+nfsd_cleanup_fault_inject(void)
-+{}
-+
-+inline int
-+nfsd_fault_inject_init(void)
-+{
-+	return 0;
-+}
-+
-+#endif /* CONFIG_NFSD_FAULT_INJECTION */
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4cf04e1..f555e02 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4274,6 +4274,144 @@ nfs4_check_open_reclaim(clientid_t *clid)
- 	return nfs4_find_reclaim_client(clid) ? nfs_ok : nfserr_reclaim_bad;
- }
- 
-+#ifdef CONFIG_NFSD_FAULT_INJECTION
-+
-+void nfsd_forget_all_clients(void)
-+{
-+	struct nfs4_client *clp;
-+	struct list_head *pos, *next, reaplist;
-+	int count = 0;
-+
-+	nfs4_lock_state();
-+	INIT_LIST_HEAD(&reaplist);
-+
-+	spin_lock(&client_lock);
-+	list_for_each_safe(pos, next, &client_lru) {
-+		clp = list_entry(pos, struct nfs4_client, cl_lru);
-+		unhash_client_locked(clp);
-+		list_add(&clp->cl_lru, &reaplist);
-+		count ++;
-+	}
-+	spin_unlock(&client_lock);
-+	list_for_each_safe(pos, next, &reaplist) {
-+		clp = list_entry(pos, struct nfs4_client, cl_lru);
-+		nfsd4_remove_clid_dir(clp);
-+		expire_client(clp);
-+	}
-+
-+	nfs4_unlock_state();
-+	printk(KERN_INFO "%s %s Forgot %d clients", __FILE__, __func__, count);
-+}
-+
-+void nfsd_forget_all_locks(void)
-+{
-+	struct nfs4_stateid *stp;
-+	struct nfs4_stateowner *sop;
-+	struct list_head reaplist;
-+	int count = 0;
-+	int i;
-+
-+	INIT_LIST_HEAD(&reaplist);
-+	nfs4_lock_state();
-+	for (i = 0; i < LOCK_HASH_SIZE; i++) {
-+		list_for_each_entry(sop, &lock_ownerid_hashtbl[i], so_idhash) {
-+			list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
-+				list_add(&sop->so_perclient, &reaplist);
-+			}
-+		}
-+	}
-+
-+	while (!list_empty(&reaplist)) {
-+		sop = list_entry(reaplist.next, struct nfs4_stateowner, so_perclient);
-+		list_del(&sop->so_perclient);
-+		release_lockowner(sop);
-+		count ++;
-+	}
-+	nfs4_unlock_state();
-+
-+	printk(KERN_INFO "%s %s Forgot %d locks", __FILE__, __func__, count);
-+}
-+
-+void nfsd_forget_all_open_owners(void)
-+{
-+	struct nfs4_stateid *stp, *next;
-+	unsigned int i;
-+	int count = 0;
-+
-+	nfs4_lock_state();
-+	for (i = 0; i < STATEID_HASH_SIZE; i++) {
-+		list_for_each_entry_safe(stp, next, &stateid_hashtbl[i], st_hash) {
-+			if (stp->st_openstp == NULL) {
-+				release_openowner(stp->st_stateowner);
-+				count++;
-+			}
-+		}
-+	}
-+	nfs4_unlock_state();
-+	printk(KERN_INFO "%s %s Forgot %d open owners", __FILE__, __func__, count);
-+}
-+
-+void nfsd_forget_all_delegations(void)
-+{
-+	struct nfs4_file *fp;
-+	struct nfs4_delegation *dp;
-+	struct list_head *pos, *next, reaplist;
-+	unsigned int i;
-+	unsigned int count = 0;
-+
-+	INIT_LIST_HEAD(&reaplist);
-+
-+	nfs4_lock_state();
-+	spin_lock(&recall_lock);
-+	for (i = 0; i < FILE_HASH_SIZE; i++) {
-+		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
-+			list_for_each(pos, &fp->fi_delegations) {
-+				dp = list_entry(pos, struct nfs4_delegation, dl_perfile);
-+				list_del_init(&dp->dl_perclnt);
-+				list_move(&dp->dl_recall_lru, &reaplist);
-+			}
-+		}
-+	}
-+
-+	spin_unlock(&recall_lock);
-+	list_for_each_safe(pos, next, &reaplist) {
-+		dp = list_entry(pos, struct nfs4_delegation, dl_recall_lru);
-+		list_del_init(&dp->dl_recall_lru);
-+		unhash_delegation(dp);
-+		count++;
-+	}
-+	nfs4_unlock_state();
-+
-+	printk(KERN_INFO "%s %s Forgot %d delegations", __FILE__, __func__, count);
-+}
-+
-+void nfsd_recall_all_delegations(void)
-+{
-+	struct nfs4_file *fp;
-+	struct nfs4_delegation *dp;
-+	struct list_head *pos;
-+	unsigned int i;
-+	unsigned int count = 0;
-+
-+	nfs4_lock_state();
-+	spin_lock(&recall_lock);
-+	for (i = 0; i < FILE_HASH_SIZE; i++) {
-+		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
-+			list_for_each(pos, &fp->fi_delegations) {
-+				dp = list_entry(pos, struct nfs4_delegation, dl_perfile);
-+				nfsd_break_one_deleg(dp);
-+				count++;
-+			}
-+		}
-+	}
-+	spin_unlock(&recall_lock);
-+	nfs4_unlock_state();
-+	printk(KERN_INFO "%s %s Recalled %d delegations", __FILE__, __func__, count);
-+}
-+
-+#endif /* CONFIG_NFSD_FAULT_INJECTION */
-+
-+
- /* initialization to perform at module load time: */
- 
- int
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 1f5eae4..1eb3e92 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1481,6 +1481,9 @@ static int __init init_nfsd(void)
- 	retval = nfs4_state_init(); /* nfs4 locking state */
- 	if (retval)
- 		return retval;
-+	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
-+	if (retval)
-+		goto out_cleanup_fault_injection;
- 	nfsd_stat_init();	/* Statistics */
- 	retval = nfsd_reply_cache_init();
- 	if (retval)
-@@ -1512,6 +1515,8 @@ out_free_cache:
- out_free_stat:
- 	nfsd_stat_shutdown();
- 	nfsd4_free_slabs();
-+out_cleanup_fault_injection:
-+	nfsd_cleanup_fault_inject();
- 	return retval;
- }
- 
-@@ -1525,6 +1530,7 @@ static void __exit exit_nfsd(void)
- 	nfsd_lockd_shutdown();
- 	nfsd_idmap_shutdown();
- 	nfsd4_free_slabs();
-+	nfsd_cleanup_fault_inject();
- 	unregister_filesystem(&nfsd_fs_type);
- }
- 
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 7ecfa24..4a6cded 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -79,11 +79,18 @@ static inline int nfsd_v4client(struct svc_rqst *rq)
- #ifdef CONFIG_NFSD_V4
- extern unsigned int max_delegations;
- int nfs4_state_init(void);
-+int nfsd_fault_inject_init(void);
-+void nfsd_cleanup_fault_inject(void);
- void nfsd4_free_slabs(void);
- int nfs4_state_start(void);
- void nfs4_state_shutdown(void);
- void nfs4_reset_lease(time_t leasetime);
- int nfs4_reset_recoverydir(char *recdir);
-+void nfsd_forget_all_clients(void);
-+void nfsd_forget_all_locks(void);
-+void nfsd_forget_all_open_owners(void);
-+void nfsd_forget_all_delegations(void);
-+void nfsd_recall_all_delegations(void);
- #else
- static inline int nfs4_state_init(void) { return 0; }
- static inline void nfsd4_free_slabs(void) { }
-@@ -91,6 +98,11 @@ static inline int nfs4_state_start(void) { return 0; }
- static inline void nfs4_state_shutdown(void) { }
- static inline void nfs4_reset_lease(time_t leasetime) { }
- static inline int nfs4_reset_recoverydir(char *recdir) { return 0; }
-+static inline void nfsd_forget_all_clients(void) {};
-+static inline void nfsd_forget_all_locks(void) {};
-+static inline void nfsd_forget_all_open_owners(void) {};
-+static inline void nfsd_forget_all_delegations(void) {};
-+static inline void nfsd_recall_all_delegations(void) {};
- #endif
- 
- /*
++module_init(objlayout_init);
++module_exit(objlayout_exit);
+-- 
+1.7.3.4
+
