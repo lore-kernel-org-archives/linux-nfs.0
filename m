@@ -1,132 +1,353 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:46882 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:37905 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750854Ab1EWEUA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 00:20:00 -0400
-Message-ID: <4DD9E05E.4070204@panasas.com>
-Date: Mon, 23 May 2011 07:19:42 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 10/13] [RFC] Bugs in new pnfs write path
-References: <4DD79273.9030202@panasas.com> <1305973982-17499-1-git-send-email-bharrosh@panasas.com> <4DD9513B.9070003@panasas.com>
-In-Reply-To: <4DD9513B.9070003@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+	with ESMTP id S1753556Ab1EIRGe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:06:34 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-nfs@vger.kernel.org, Marc Eshel <eshel@almaden.ibm.com>,
+        Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH v2 01/29] pnfs: CB_NOTIFY_DEVICEID
+Date: Mon,  9 May 2011 20:06:19 +0300
+Message-Id: <1304960779-3789-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DC81E8C.6040901@panasas.com>
+References: <4DC81E8C.6040901@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 05/22/2011 09:08 PM, Benny Halevy wrote:
+From: Marc Eshel <eshel@almaden.ibm.com>
 
-This is the old patch please see the one that actually works
-I sent it by itself after this one
+Note: This functionlaity is incomplete as all layout segments referring to
+the 'to be removed device id' need to be reaped, and all in flight I/O drained.
 
-> On 2011-05-21 13:33, Boaz Harrosh wrote:
->> 1. In nfs4_write_done_cb: data->write_done_cb comes with a NULL.
-> 
-> what's the call path?
-> 
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/callback.h          |   17 ++++++++
+ fs/nfs/callback_proc.c     |   51 +++++++++++++++++++++++
+ fs/nfs/callback_xdr.c      |   96 +++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfs/nfs4filelayout.c    |    1 +
+ fs/nfs/nfs4filelayout.h    |    1 +
+ fs/nfs/nfs4filelayoutdev.c |   38 +++++++++++++++++-
+ fs/nfs/pnfs.h              |    3 +
+ 7 files changed, 205 insertions(+), 2 deletions(-)
 
-I sent it in my mails
-it is eventually called from pnfs_ld_write_done trhough
-data->mds_ops->rpc_call_done(&data->task, data);
-
->>    Just as a guess I call nfs4_write_done_cb() just above it
->>    it looked like the right thing todo. With that in, I'm able
->>    to write things to file When converting pnfs.c:258 to a WARN_ON.
->>
->>    Benny we might want to set data->write_done_cb somewhere in the
->>    none-rpc path? where is it best to do that?
-> 
-> we're not supposed to get there in the non-rpc path...
-> The non-rpc drivers must call pnfs_ld_write_done.
-> 
-
-Yep! we do. And please don't touch anything, everything works perfectly
-now.
-
-As I said it gets called from pnfs_ld_write_done through 
-data->mds_ops->rpc_call_done(&data->task, data);
-
->>
->> 2. In pnfs_ld_write_done:
->> 	put_lseg(data->lseg);
->> 	data->lseg = NULL;
->>    was done before the call to pnfs_set_layoutcommit()
->>    which trys to get_lseg() on that same data->lseg.
-> 
-> good catch, thanks!
-> 
->>
->> 3. In pnfs_ld_write_done:
->>    data->mds_ops->rpc_call_done(NULL, data);
->>    crashes with a NULL task. Just pass it with &data->task
-> 
-> As we don't go through nfs_initiate_write data->task is not initialized.
-> Where's the crash exactly?
-> We better fix it than fake a task structure...
-> 
-> Benny
-> 
->>
->>    Which calls for a cleanup. There is bunch of functions
->>    with [task, write_data] API. And the task is always
->>    write_data->task
->>
->> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
->> ---
->>  fs/nfs/nfs4proc.c |    3 ++-
->>  fs/nfs/pnfs.c     |   10 ++++++----
->>  2 files changed, 8 insertions(+), 5 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 759523a..1a53187 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -3250,7 +3250,8 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
->>  {
->>  	if (!nfs4_sequence_done(task, &data->res.seq_res))
->>  		return -EAGAIN;
->> -	return data->write_done_cb(task, data);
->> +	return data->write_done_cb ? data->write_done_cb(task, data) :
->> +		nfs4_write_done_cb(task, data);
->>  }
->>  
->>  /* Reset the the nfs_write_data to send the write to the MDS. */
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index 17d0c4c..b04cdb4 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -255,7 +255,7 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
->>  {
->>  	struct inode *inode = lseg->pls_layout->plh_inode;
->>  
->> -	BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
->> + 	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
->>  	list_del_init(&lseg->pls_list);
->>  	if (list_empty(&lseg->pls_layout->plh_segs)) {
->>  		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
->> @@ -1124,15 +1124,17 @@ pnfs_ld_write_done(struct nfs_write_data *data)
->>  {
->>  	int status;
->>  
->> -	put_lseg(data->lseg);
->> -	data->lseg = NULL;
->>  	if (!data->pnfs_error) {
->>  		pnfs_set_layoutcommit(data);
->> -		data->mds_ops->rpc_call_done(NULL, data);
->> +		data->mds_ops->rpc_call_done(&data->task, data);
->>  		data->mds_ops->rpc_release(data);
->> +		put_lseg(data->lseg);
->> +		data->lseg = NULL;
->>  		return 0;
->>  	}
->>  
->> +	put_lseg(data->lseg);
->> +	data->lseg = NULL;
->>  	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
->>  		data->pnfs_error);
->>  	status = nfs_initiate_write(data, NFS_CLIENT(data->inode), data->mds_ops, NFS_FILE_SYNC);
-> 
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index 46d93ce..b257383 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -167,6 +167,23 @@ extern unsigned nfs4_callback_layoutrecall(
+ 
+ extern void nfs4_check_drain_bc_complete(struct nfs4_session *ses);
+ extern void nfs4_cb_take_slot(struct nfs_client *clp);
++
++struct cb_devicenotifyitem {
++	uint32_t		cbd_notify_type;
++	uint32_t		cbd_layout_type;
++	struct nfs4_deviceid	cbd_dev_id;
++	uint32_t		cbd_immediate;
++};
++
++struct cb_devicenotifyargs {
++	int				 ndevs;
++	struct cb_devicenotifyitem	 *devs;
++};
++
++extern __be32 nfs4_callback_devicenotify(
++	struct cb_devicenotifyargs *args,
++	void *dummy, struct cb_process_state *cps);
++
+ #endif /* CONFIG_NFS_V4_1 */
+ extern int check_gss_callback_principal(struct nfs_client *, struct svc_rqst *);
+ extern __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 2f41dcce..975c8f2 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -241,6 +241,57 @@ static void pnfs_recall_all_layouts(struct nfs_client *clp)
+ 	do_callback_layoutrecall(clp, &args);
+ }
+ 
++__be32 nfs4_callback_devicenotify(struct cb_devicenotifyargs *args,
++				  void *dummy, struct cb_process_state *cps)
++{
++	int i;
++	u32 res = 0;
++	struct nfs_client *clp = cps->clp;
++	struct nfs_server *server = NULL;
++
++	dprintk("%s: -->\n", __func__);
++
++	if (!clp) {
++		res = NFS4ERR_OP_NOT_IN_SESSION;
++		goto out;
++	}
++
++	for (i = 0; i < args->ndevs; i++) {
++		struct cb_devicenotifyitem *dev = &args->devs[i];
++
++		if (!server ||
++		    server->pnfs_curr_ld->id != dev->cbd_layout_type) {
++			rcu_read_lock();
++			list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link)
++				if (server->pnfs_curr_ld &&
++				    server->pnfs_curr_ld->id == dev->cbd_layout_type) {
++					rcu_read_unlock();
++					goto found;
++				}
++			rcu_read_unlock();
++			dprintk("%s: layout type %u not found\n",
++				__func__, dev->cbd_layout_type);
++			continue;
++		}
++
++	found:
++		if (!server->pnfs_curr_ld->delete_deviceid) {
++			res = NFS4ERR_NOTSUPP;
++			break;
++		}
++		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
++			dprintk("%s: NOTIFY_DEVICEID4_CHANGE not supported, "
++				"deleting instead\n", __func__);
++		server->pnfs_curr_ld->delete_deviceid(&dev->cbd_dev_id);
++	}
++
++out:
++	kfree(args->devs);
++	dprintk("%s: exit with status = %u\n",
++		__func__, res);
++	return cpu_to_be32(res);
++}
++
+ int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const nfs4_stateid *stateid)
+ {
+ 	if (delegation == NULL)
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index 00ecf62..c6c86a7 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -25,6 +25,7 @@
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ #define CB_OP_LAYOUTRECALL_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
++#define CB_OP_DEVICENOTIFY_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+ #define CB_OP_SEQUENCE_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ + \
+ 					4 + 1 + 3)
+ #define CB_OP_RECALLANY_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+@@ -284,6 +285,93 @@ out:
+ 	return status;
+ }
+ 
++static
++__be32 decode_devicenotify_args(struct svc_rqst *rqstp,
++				struct xdr_stream *xdr,
++				struct cb_devicenotifyargs *args)
++{
++	__be32 *p;
++	__be32 status = 0;
++	u32 tmp;
++	int n, i;
++	args->ndevs = 0;
++
++	/* Num of device notifications */
++	p = read_buf(xdr, sizeof(uint32_t));
++	if (unlikely(p == NULL)) {
++		status = htonl(NFS4ERR_BADXDR);
++		goto out;
++	}
++	n = ntohl(*p++);
++	if (n <= 0)
++		goto out;
++
++	args->devs = kmalloc(n * sizeof(*args->devs), GFP_KERNEL);
++	if (!args->devs) {
++		status = htonl(NFS4ERR_DELAY);
++		goto out;
++	}
++
++	/* Decode each dev notification */
++	for (i = 0; i < n; i++) {
++		struct cb_devicenotifyitem *dev = &args->devs[i];
++
++		p = read_buf(xdr, (4 * sizeof(uint32_t)) + NFS4_DEVICEID4_SIZE);
++		if (unlikely(p == NULL)) {
++			status = htonl(NFS4ERR_BADXDR);
++			goto err;
++		}
++
++		tmp = ntohl(*p++);	/* bitmap size */
++		if (tmp != 1) {
++			status = htonl(NFS4ERR_INVAL);
++			goto err;
++		}
++		dev->cbd_notify_type = ntohl(*p++);
++		if (dev->cbd_notify_type != NOTIFY_DEVICEID4_CHANGE &&
++		    dev->cbd_notify_type != NOTIFY_DEVICEID4_DELETE) {
++			status = htonl(NFS4ERR_INVAL);
++			goto err;
++		}
++
++		tmp = ntohl(*p++);	/* opaque size */
++		if (((dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE) &&
++		     (tmp != NFS4_DEVICEID4_SIZE + 8)) ||
++		    ((dev->cbd_notify_type == NOTIFY_DEVICEID4_DELETE) &&
++		     (tmp != NFS4_DEVICEID4_SIZE + 4))) {
++			status = htonl(NFS4ERR_INVAL);
++			goto err;
++		}
++		dev->cbd_layout_type = ntohl(*p++);
++		memcpy(dev->cbd_dev_id.data, p, NFS4_DEVICEID4_SIZE);
++		p += XDR_QUADLEN(NFS4_DEVICEID4_SIZE);
++
++		if (dev->cbd_layout_type == NOTIFY_DEVICEID4_CHANGE) {
++			p = read_buf(xdr, sizeof(uint32_t));
++			if (unlikely(p == NULL)) {
++				status = htonl(NFS4ERR_BADXDR);
++				goto err;
++			}
++			dev->cbd_immediate = ntohl(*p++);
++		} else {
++			dev->cbd_immediate = 0;
++		}
++
++		args->ndevs++;
++
++		dprintk("%s: type %d layout 0x%x immediate %d\n",
++			__func__, dev->cbd_notify_type, dev->cbd_layout_type,
++			dev->cbd_immediate);
++	}
++out:
++	dprintk("%s: status %d ndevs %d\n",
++		__func__, ntohl(status), args->ndevs);
++	return status;
++err:
++	kfree(args->devs);
++	goto out;
++}
++
+ static __be32 decode_sessionid(struct xdr_stream *xdr,
+ 				 struct nfs4_sessionid *sid)
+ {
+@@ -639,10 +727,10 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
+ 	case OP_CB_RECALL_ANY:
+ 	case OP_CB_RECALL_SLOT:
+ 	case OP_CB_LAYOUTRECALL:
++	case OP_CB_NOTIFY_DEVICEID:
+ 		*op = &callback_ops[op_nr];
+ 		break;
+ 
+-	case OP_CB_NOTIFY_DEVICEID:
+ 	case OP_CB_NOTIFY:
+ 	case OP_CB_PUSH_DELEG:
+ 	case OP_CB_RECALLABLE_OBJ_AVAIL:
+@@ -849,6 +937,12 @@ static struct callback_op callback_ops[] = {
+ 			(callback_decode_arg_t)decode_layoutrecall_args,
+ 		.res_maxsize = CB_OP_LAYOUTRECALL_RES_MAXSZ,
+ 	},
++	[OP_CB_NOTIFY_DEVICEID] = {
++		.process_op = (callback_process_op_t)nfs4_callback_devicenotify,
++		.decode_args =
++			(callback_decode_arg_t)decode_devicenotify_args,
++		.res_maxsize = CB_OP_DEVICENOTIFY_RES_MAXSZ,
++	},
+ 	[OP_CB_SEQUENCE] = {
+ 		.process_op = (callback_process_op_t)nfs4_callback_sequence,
+ 		.decode_args = (callback_decode_arg_t)decode_cb_sequence_args,
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index e6e0c294..2feab7f 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -867,6 +867,7 @@ static struct pnfs_layoutdriver_type filelayout_type = {
+ 	.commit_pagelist	= filelayout_commit_pagelist,
+ 	.read_pagelist		= filelayout_read_pagelist,
+ 	.write_pagelist		= filelayout_write_pagelist,
++	.delete_deviceid	= filelayout_delete_deviceid,
+ };
+ 
+ static int __init nfs4filelayout_init(void)
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index 7c44579..8be70ab 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -105,5 +105,6 @@ nfs4_fl_find_get_deviceid(struct nfs4_deviceid *dev_id);
+ extern void nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
+ struct nfs4_file_layout_dsaddr *
+ get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id);
++void filelayout_delete_deviceid(struct nfs4_deviceid *);
+ 
+ #endif /* FS_NFS_NFS4FILELAYOUT_H */
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index de5350f..601aaea 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -601,7 +601,7 @@ void
+ nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr)
+ {
+ 	if (atomic_dec_and_lock(&dsaddr->ref, &filelayout_deviceid_lock)) {
+-		hlist_del_rcu(&dsaddr->node);
++		hlist_del_init_rcu(&dsaddr->node);
+ 		spin_unlock(&filelayout_deviceid_lock);
+ 
+ 		synchronize_rcu();
+@@ -631,6 +631,42 @@ fail:
+ 	return NULL;
+ }
+ 
++static struct nfs4_file_layout_dsaddr *
++nfs4_fl_unhash_deviceid(struct nfs4_deviceid *id)
++{
++	struct nfs4_file_layout_dsaddr *d;
++	struct hlist_node *n;
++	long hash = nfs4_fl_deviceid_hash(id);
++
++	dprintk("%s: hash %ld\n", __func__, hash);
++	rcu_read_lock();
++	hlist_for_each_entry_rcu(d, n, &filelayout_deviceid_cache[hash], node)
++		if (!memcmp(&d->deviceid, id, sizeof(*id)))
++			goto found;
++	rcu_read_unlock();
++	return NULL;
++
++found:
++	rcu_read_unlock();
++	spin_lock(&filelayout_deviceid_lock);
++	hlist_del_init_rcu(&d->node);
++	spin_unlock(&filelayout_deviceid_lock);
++	synchronize_rcu();
++
++	return d;
++}
++
++void
++filelayout_delete_deviceid(struct nfs4_deviceid *id)
++{
++	struct nfs4_file_layout_dsaddr *d;
++
++	d = nfs4_fl_unhash_deviceid(id);
++	/* balance the initial ref taken in decode_and_add_device */
++	if (d && atomic_dec_and_test(&d->ref))
++		nfs4_fl_free_deviceid(d);
++}
++
+ /*
+  * Want res = (offset - layout->pattern_offset)/ layout->stripe_unit
+  * Then: ((res + fsi) % dsaddr->stripe_count)
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index bc48272..4cb0a0d 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -89,6 +89,9 @@ struct pnfs_layoutdriver_type {
+ 	 */
+ 	enum pnfs_try_status (*read_pagelist) (struct nfs_read_data *nfs_data);
+ 	enum pnfs_try_status (*write_pagelist) (struct nfs_write_data *nfs_data, int how);
++
++	/* device notification methods */
++	void (*delete_deviceid)(struct nfs4_deviceid *);
+ };
+ 
+ struct pnfs_layout_hdr {
+-- 
+1.7.3.4
 
