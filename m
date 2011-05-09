@@ -1,96 +1,215 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:12693 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755620Ab1EWR5E (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 13:57:04 -0400
-Message-ID: <4DDA9FDA.40802@panasas.com>
-Date: Mon, 23 May 2011 20:56:42 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-CC: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Subject: Re: [PATCH 16/23] pnfs: support for non-rpc layout drivers
-References: <4DD93D3E.9010909@panasas.com>	<1306083123-11061-1-git-send-email-bharrosh@panasas.com>	<4DD96697.50800@panasas.com>	<4DD9E113.7050506@panasas.com> <BANLkTikj_h-1LK1ZWVsQQuwZ6-v2uB7QpQ@mail.gmail.com>
-In-Reply-To: <BANLkTikj_h-1LK1ZWVsQQuwZ6-v2uB7QpQ@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:41801 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754214Ab1EITi4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 15:38:56 -0400
+Received: by yxs7 with SMTP id 7so1915119yxs.19
+        for <linux-nfs@vger.kernel.org>; Mon, 09 May 2011 12:38:56 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 16/16] NFS: Implement support for NFS4ERR_LEASE_MOVED
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 09 May 2011 15:38:53 -0400
+Message-ID: <20110509193853.16568.93770.stgit@matisse.1015granger.net>
+In-Reply-To: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
+References: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/23/2011 05:54 PM, Fred Isaman wrote:
-> On Mon, May 23, 2011 at 12:22 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->> On 05/22/2011 10:40 PM, Benny Halevy wrote:
->>>> +/*
->>>> + * Called by non rpc-based layout drivers
->>>> + */
->>>> +int
->>>> +pnfs_ld_write_done(struct nfs_write_data *data)
->>>> +{
->>>> +    int status;
->>>> +
->>>
->>>
->>>> +    if (!data->pnfs_error) {
->>>> +            pnfs_set_layoutcommit(data);
->>>
->>> We need at least to set data->task.tk_status to 0
->>
->> I guess it does not hurt, but we never touched it, is it garbage?
->>
->>>
->>>> +            data->mds_ops->rpc_call_done(&data->task, data);
->>>> +            data->mds_ops->rpc_release(data);
->>>
->>> Where's the put_lseg you had in PATCH 10/13?
->>>
->>> Benny
->>
->> That was the bug. Please see my SQUASHME patches I explained
->> it all there.
->>
->>>
->>>> +            return 0;
->>>> +    }
->>>> +
->>>> +    put_lseg(data->lseg);
->>>> +    data->lseg = NULL;
->>
->> I'm not sure it is needed here as well.
->> Fred! please see this code
->> We know that the lseg is put in nfs_writedata_release()
->> Does the below nfs_initiate_write() retakes the ref.
->> If it does we need the put here. If it does not we
->> don't need here.
->>
-> 
-> nfs_initiate_read/write() did not take any reference to the lseg.
-> This was done immediately prior in the nfs_read/write_rpcsetup
-> functions.
-> 
+To recover from NFS4ERR_LEASE_MOVED, walk the cl_superblocks list and
+invoke nfs4_try_migration() on each server's root file handle.
+nfs4_try_migration() should automatically determine whether that file
+system has migrated, and then perform recovery for it.
 
-Thanks, Yes, you are right. I actually tested that and I saw the bug.
-The put here in the error case needs to be removed as well.
-Benny I'll send a squashme. (I inserted simulated errors to test the error path)
+The per-filesystem migration probe also informs minor version zero
+servers that this client should no longer receive NFS4ERR_LEASE_MOVED.
 
-> Note however that the commit code takes references in the file driver code.
-> 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-We don't do commit in objects yet, and Benny did not implement the
-pnfs_ld_commit_done, yet. But we will need it eventually.
+ fs/nfs/client.c           |    1 +
+ fs/nfs/nfs4_fs.h          |    2 +
+ fs/nfs/nfs4proc.c         |   11 ++++++++
+ fs/nfs/nfs4state.c        |   63 ++++++++++++++++++++++++++++++++++++++++++++-
+ include/linux/nfs_fs_sb.h |    2 +
+ 5 files changed, 77 insertions(+), 2 deletions(-)
 
-I hope that the ref taken by the file driver is balance by the driver
-and not by generic code, right? If not, we might need to fix that somewhere.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 2f5e29f..b89af4d 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -188,6 +188,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ 	if (cl_init->long_clientid != NULL)
+ 		clp->cl_cached_clientid = kstrdup(cl_init->long_clientid,
+ 							GFP_KERNEL);
++	clp->cl_mig_counter = 1;
+ #endif
+ 	cred = rpc_lookup_machine_cred();
+ 	if (!IS_ERR(cred))
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index c3e8641..2ad6c9b 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -51,6 +51,7 @@ enum nfs4_client_state {
+ 	NFS4CLNT_UPDATE_CALLBACK,
+ 	NFS4CLNT_CLONED_CLIENT,
+ 	NFS4CLNT_MOVED,
++	NFS4CLNT_LEASE_MOVED,
+ };
+ 
+ enum nfs4_session_state {
+@@ -351,6 +352,7 @@ extern void nfs4_close_sync(struct path *, struct nfs4_state *, fmode_t);
+ extern void nfs4_state_set_mode_locked(struct nfs4_state *, fmode_t);
+ extern void nfs4_schedule_lease_recovery(struct nfs_client *);
+ extern void nfs4_schedule_migration_recovery(struct nfs_server *);
++extern void nfs4_schedule_lease_moved_recovery(struct nfs_client *);
+ extern void nfs4_schedule_state_manager(struct nfs_client *);
+ extern void nfs4_schedule_stateid_recovery(const struct nfs_server *, struct nfs4_state *);
+ extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a545d46..f4e07ba 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -297,6 +297,9 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode,
+ 		case -NFS4ERR_MOVED:
+ 			nfs4_schedule_migration_recovery(server);
+ 			goto wait_on_recovery;
++		case -NFS4ERR_LEASE_MOVED:
++			nfs4_schedule_lease_moved_recovery(clp);
++			goto wait_on_recovery;
+ 		case -NFS4ERR_FILE_OPEN:
+ 			if (exception->timeout > HZ) {
+ 				/* We have retried a decent amount, time to
+@@ -3721,6 +3724,14 @@ static int nfs4_async_handle_error(struct rpc_task *task,
+ 				rpc_wake_up_queued_task(&clp->cl_rpcwaitq,
+ 									task);
+ 			goto restart_call;
++		case -NFS4ERR_LEASE_MOVED:
++			rpc_sleep_on(&clp->cl_rpcwaitq, task, NULL);
++			nfs4_schedule_lease_moved_recovery(clp);
++			if (test_bit(NFS4CLNT_MANAGER_RUNNING,
++							&clp->cl_state) == 0)
++				rpc_wake_up_queued_task(&clp->cl_rpcwaitq,
++									task);
++			goto restart_call;
+ 		case -NFS4ERR_DELAY:
+ 			nfs_inc_server_stats(server, NFSIOS_DELAY);
+ 		case -NFS4ERR_GRACE:
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index c7b414a..8bef9d8 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1071,7 +1071,32 @@ void nfs4_schedule_migration_recovery(struct nfs_server *server)
+ 	dprintk("<-- %s\n", __func__);
+ }
+ 
+-static int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *state)
++/**
++ * nfs4_schedule_lease_moved_recovery - start lease moved recovery
++ *
++ * @clp: nfs_client of server that may have migrated file systems
++ *
++ */
++void nfs4_schedule_lease_moved_recovery(struct nfs_client *clp)
++{
++	dprintk("--> %s: \"%s\" (client ID %llx)\n",
++		__func__, clp->cl_hostname, clp->cl_clientid);
++
++	if (test_and_set_bit(NFS4CLNT_LEASE_MOVED, &clp->cl_state) == 0)
++		nfs4_schedule_state_manager(clp);
++
++	dprintk("<-- %s\n", __func__);
++}
++
++/**
++ * nfs4_state_mark_reclaim_reboot - Mark nfs_client for reboot recovery
++ * @clp: nfs_client of server that may have rebooted
++ * @state: state flags to test
++ *
++ * Returns 1 if reboot recovery is needed.
++ */
++int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp,
++				   struct nfs4_state *state)
+ {
+ 
+ 	set_bit(NFS_STATE_RECLAIM_REBOOT, &state->flags);
+@@ -1384,7 +1409,6 @@ static int nfs4_recovery_handle_error(struct nfs_client *clp, int error)
+ 			nfs4_state_end_reclaim_reboot(clp);
+ 			return 0;
+ 		case -NFS4ERR_STALE_CLIENTID:
+-		case -NFS4ERR_LEASE_MOVED:
+ 			set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
+ 			nfs4_state_clear_reclaim_reboot(clp);
+ 			nfs4_state_start_reclaim_reboot(clp);
+@@ -1597,6 +1621,37 @@ out_err:
+ 	kfree(locations);
+ }
+ 
++static void nfs4_handle_lease_moved(struct nfs_client *clp)
++{
++	struct nfs_server *server;
++
++	dprintk("--> %s: \"%s\" (client ID %llx)\n",
++		__func__, clp->cl_hostname, clp->cl_clientid);
++
++	/*
++	 * rcu_read_lock() must be dropped before trying each individual
++	 * migration.  cl_mig_counter is used to skip servers that have
++	 * already been visited for this lease_moved event when the list
++	 * walk is restarted.
++	 */
++	clp->cl_mig_counter++;
++
++restart:
++	rcu_read_lock();
++	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link)
++		if (server->mig_counter != clp->cl_mig_counter) {
++			server->mig_counter = clp->cl_mig_counter;
++			rcu_read_unlock();
++			nfs4_try_migration(server);
++			/* Ask the server if there's more work to do */
++			if (nfs4_check_lease(clp) == NFS4ERR_LEASE_MOVED)
++				goto restart;
++			break;
++		}
++	rcu_read_unlock();
++	dprintk("<-- %s\n", __func__);
++}
++
+ #ifdef CONFIG_NFS_V4_1
+ void nfs4_schedule_session_recovery(struct nfs4_session *session)
+ {
+@@ -1814,6 +1869,10 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 			nfs4_try_migration(clp->cl_moved_server);
+ 			continue;
+ 		}
++		if (test_and_clear_bit(NFS4CLNT_LEASE_MOVED, &clp->cl_state)) {
++			nfs4_handle_lease_moved(clp);
++			continue;
++		}
+ 
+ 		/* First recover reboot state... */
+ 		if (test_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state)) {
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 091abf0..58050db 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -60,6 +60,7 @@ struct nfs_client {
+ 
+ 	/* accessed only when NFS4CLNT_MOVED bit is set */
+ 	struct nfs_server *	cl_moved_server;
++	unsigned long		cl_mig_counter;
+ 
+ 	/* used for the setclientid verifier */
+ 	struct timespec		cl_boot_time;
+@@ -156,6 +157,7 @@ struct nfs_server {
+ 	struct list_head	delegations;
+ 	void (*destroy)(struct nfs_server *);
+ 	struct nfs_fh		*rootfh;
++	unsigned long		mig_counter;
+ 
+ 	atomic_t active; /* Keep trace of any activity to this server */
+ 
 
-> Fred
-> 
-
-Thanks
->> Boaz
->>
->>>> +    dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
->>>> +            data->pnfs_error);
->>>> +    status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
->>>> +                                data->mds_ops, NFS_FILE_SYNC);
->>>> +    return status ? : -EAGAIN;
->>>> +}
