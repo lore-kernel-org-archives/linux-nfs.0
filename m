@@ -1,71 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:43273 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752744Ab1EPUVE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 May 2011 16:21:04 -0400
-Date: Mon, 16 May 2011 16:20:59 -0400
-From: "Dr. J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Harry Edmon <harry@uw.edu>, Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: 2.6.38.6 - state manager constantly respawns
-Message-ID: <20110516202059.GC1680@fieldses.org>
-References: <4DD16FA8.4030602@uw.edu>
- <05D08339-888C-4A64-BDC5-8667B3901E7A@oracle.com>
- <4DD1772E.9010609@uw.edu>
- <6A6FB1C3-D4C3-40BE-810A-B4551FA9E591@oracle.com>
- <4DD17CB5.7010009@uw.edu>
- <1305575007.19725.3.camel@lade.trondhjem.org>
- <4DD17F79.305@uw.edu>
- <1305575656.19725.9.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1305575656.19725.9.camel@lade.trondhjem.org>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:58964 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754072Ab1EIThM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 15:37:12 -0400
+Received: by mail-yx0-f174.google.com with SMTP id 7so1914279yxs.19
+        for <linux-nfs@vger.kernel.org>; Mon, 09 May 2011 12:37:12 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 06/16] NFS: Add a client-side function to display file handles
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 09 May 2011 15:37:10 -0400
+Message-ID: <20110509193710.16568.68115.stgit@matisse.1015granger.net>
+In-Reply-To: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
+References: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, May 16, 2011 at 03:54:16PM -0400, Trond Myklebust wrote:
-> On Mon, 2011-05-16 at 12:48 -0700, Harry Edmon wrote:
-> > On 05/16/11 12:43, Trond Myklebust wrote:
-> > > On Mon, 2011-05-16 at 12:36 -0700, Harry Edmon wrote:
-> > >    
-> > >> On 05/16/11 12:22, Chuck Lever wrote:
-> > >>      
-> > >>> On May 16, 2011, at 3:12 PM, Harry Edmon wrote:
-> > >>>
-> > >>>
-> > >>>        
-> > >>>> Attached is 1000 lines of output from tshark when the problem is occurring.   The client and server are connected by a private ethernet.
-> > >>>>
-> > >>>>          
-> > >>> Disappointing: tshark is not telling us the return codes.  However, I see "PUTFH;READ" then "RENEW" in a loop, which indicates the state manager thread is being kicked off because of ongoing difficulties with state recovery.  Is there a stuck application on that client?
-> > >>>
-> > >>> Try again with "tshark -V".
-> > >>>
-> > >>>        
-> > >> Here is the output from tshark -V (first 50,000 lines).   Nothing
-> > >> appears to be stuck, and as I said when I reboot the client into 2.6.32
-> > >> the problem goes away, only to reappear when I reboot it back into 2.6.38.6.
-> > >>
-> > >>      
-> > > Possibly, but it definitely indicates a server bug. What kind of server
-> > > are you using?
-> > >
-> > > Basically, the client is getting confused because when it sends a READ,
-> > > the server is telling it that the lease has expired, then when it sends
-> > > a RENEW, the same server replies that the lease is OK...
-> > >
-> > > Trond
-> > >    
-> > The server is running the 2.6.38.6 kernel with Debian squeeze, just like 
-> > the client.   The kernel config is attached.
-> 
-> Bruce, any idea how the server might get into this state?
+For debugging, introduce a simplistic function to print file handles
+on the system console.  It's hooked into the dprintk debugging
+facility, but you can call _nfs_display_fhandle() directly if you
+want to print a handle unconditionally.
 
-So READ is getting ESTALE and RENEW is getting OK?  And we're positive
-that the stateid on the READ is derived from the clientid sent with the
-RENEW?
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-OK, I'll look at the capture....
+ fs/nfs/inode.c         |   45 +++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs_fs.h |   14 ++++++++++++++
+ 2 files changed, 59 insertions(+), 0 deletions(-)
 
---b.
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 57bb31a..9a444d0 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1039,6 +1039,51 @@ struct nfs_fh *nfs_alloc_fhandle(void)
+ }
+ 
+ /**
++ * _nfs_display_fhandle - display an NFS file handle on the console
++ *
++ * @fh: file handle to display
++ * @caption: display caption
++ *
++ * For debugging only.
++ */
++#ifdef RPC_DEBUG
++void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption)
++{
++	unsigned short i;
++
++	if (fh->size == 0 || fh == NULL) {
++		printk(KERN_NOTICE "%s at %p is empty\n", caption, fh);
++		return;
++	}
++
++	printk(KERN_NOTICE "%s at %p is %u bytes:\n", caption, fh, fh->size);
++	for (i = 0; i < fh->size; i += 16) {
++		__be32 *pos = (__be32 *)&fh->data[i];
++
++		switch ((fh->size - i - 1) >> 2) {
++		case 0:
++			printk(KERN_NOTICE " %08x",
++				be32_to_cpup(pos));
++			break;
++		case 1:
++			printk(KERN_NOTICE " %08x %08x\n",
++				be32_to_cpup(pos), be32_to_cpup(pos + 1));
++			break;
++		case 2:
++			printk(KERN_NOTICE " %08x %08x %08x\n",
++				be32_to_cpup(pos), be32_to_cpup(pos + 1),
++				be32_to_cpup(pos + 2));
++			break;
++		default:
++			printk(KERN_NOTICE " %08x %08x %08x %08x\n",
++				be32_to_cpup(pos), be32_to_cpup(pos + 1),
++				be32_to_cpup(pos + 2), be32_to_cpup(pos + 3));
++		}
++	}
++}
++#endif
++
++/**
+  * nfs_inode_attrs_need_update - check if the inode attributes need updating
+  * @inode - pointer to inode
+  * @fattr - attributes
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 1b93b9c..0e3eb70 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -394,6 +394,20 @@ static inline void nfs_free_fhandle(const struct nfs_fh *fh)
+ 	kfree(fh);
+ }
+ 
++#ifdef RPC_DEBUG
++extern void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption);
++#define nfs_display_fhandle(fh, caption)			\
++	do {							\
++		if (unlikely(nfs_debug & NFSDBG_FACILITY))	\
++			_nfs_display_fhandle(fh, caption);	\
++	} while (0)
++#else
++static inline void nfs_display_fhandle(const struct nfs_fh *fh,
++				       const char *caption)
++{
++}
++#endif
++
+ /*
+  * linux/fs/nfs/nfsroot.c
+  */
+
