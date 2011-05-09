@@ -1,181 +1,206 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59416 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755452Ab1EMVgK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 May 2011 17:36:10 -0400
-Date: Fri, 13 May 2011 17:36:09 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bryan Schumaker <bjschuma@netapp.com>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:48944 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751261Ab1EITW6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 15:22:58 -0400
+Received: by gyd10 with SMTP id 10so1905573gyd.19
+        for <linux-nfs@vger.kernel.org>; Mon, 09 May 2011 12:22:57 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 5/6] SUNRPC: Use AF_LOCAL for rpcbind upcalls
+To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] NFSD: added FREE_STATEID operation
-Message-ID: <20110513213608.GB14771@fieldses.org>
-References: <1304708255-20464-1-git-send-email-bjschuma@netapp.com>
- <1304708255-20464-2-git-send-email-bjschuma@netapp.com>
- <20110510003624.GB3600@fieldses.org>
- <4DCA9FFD.5070707@netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4DCA9FFD.5070707@netapp.com>
+Date: Mon, 09 May 2011 15:22:55 -0400
+Message-ID: <20110509192255.16449.6637.stgit@matisse.1015granger.net>
+In-Reply-To: <20110509191859.16449.73749.stgit@matisse.1015granger.net>
+References: <20110509191859.16449.73749.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, May 11, 2011 at 10:41:01AM -0400, Bryan Schumaker wrote:
-> On 05/09/2011 08:36 PM, J. Bruce Fields wrote:
-> > On Fri, May 06, 2011 at 02:57:34PM -0400, bjschuma@netapp.com wrote:
-> >> +		release_open_stateid(stp);
-> > 
-> > OK, but it might not be a lock stateid.  (I assume free_stateid can be
-> > called on *any* kind of stateid?)
-> 
-> I thought release_open_stateid() freed all stateids, not just the lock stateid...
+As libtirpc does in user space, have our registration API try using an
+AF_LOCAL transport first when registering and unregistering.
 
-Lock stateid's are released by release_lock_stateid(), delegation
-stateid's (actually embedded in a struct nfs4_delegation) by
-unhash_delegation().
+This means we don't chew up privileged ports, and our registration is
+bound to an "owner" (the effective uid of the process on the sending
+end of the transport).  Only that "owner" may unregister the service.
 
---b.
+The kernel could probe rpcbind via an rpcbind query to determine
+whether rpcbind has an AF_LOCAL service. For simplicity, we use the
+same technique that libtirpc uses: simply fail over to network
+loopback if creating an AF_LOCAL transport to the well-known rpcbind
+service socket fails.
 
-> 
-> > 
-> > --b.
-> > 
-> >> +	return nfs_ok;
-> >> +}
-> >> +
-> >>  static inline int
-> >>  setlkflg (int type)
-> >>  {
-> >> @@ -3619,6 +3653,28 @@ find_stateid(stateid_t *stid, int flags)
-> >>  	return NULL;
-> >>  }
-> >>  
-> >> +static struct nfs4_stateid *
-> >> +search_for_stateid(stateid_t *stid)
-> >> +{
-> >> +	struct nfs4_stateid *local;
-> >> +	u32 st_id = stid->si_stateownerid;
-> >> +	u32 f_id  = stid->si_fileid;
-> >> +	unsigned int hashval = stateid_hashval(st_id, f_id);
-> >> +
-> >> +	list_for_each_entry(local, &lockstateid_hashtbl[hashval], st_hash) {
-> >> +		if ((local->st_stateid.si_stateownerid == st_id) &&
-> >> +		    (local->st_stateid.si_fileid == f_id))
-> >> +			return local;
-> >> +	}
-> >> +
-> >> +	list_for_each_entry(local, &stateid_hashtbl[hashval], st_hash) {
-> >> +		if ((local->st_stateid.si_stateownerid == st_id) &&
-> >> +		    (local->st_stateid.si_fileid == f_id))
-> >> +			return local;
-> >> +	}
-> >> +	return NULL;
-> >> +}
-> >> +
-> >>  static struct nfs4_delegation *
-> >>  find_delegation_stateid(struct inode *ino, stateid_t *stid)
-> >>  {
-> >> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> >> index 195a91d..5da6874 100644
-> >> --- a/fs/nfsd/nfs4xdr.c
-> >> +++ b/fs/nfsd/nfs4xdr.c
-> >> @@ -1246,6 +1246,19 @@ nfsd4_decode_destroy_session(struct nfsd4_compoundargs *argp,
-> >>  }
-> >>  
-> >>  static __be32
-> >> +nfsd4_decode_free_stateid(struct nfsd4_compoundargs *argp,
-> >> +			  struct nfsd4_free_stateid *free_stateid)
-> >> +{
-> >> +	DECODE_HEAD;
-> >> +
-> >> +	READ_BUF(sizeof(stateid_t));
-> >> +	READ32(free_stateid->fr_stateid.si_generation);
-> >> +	COPYMEM(&free_stateid->fr_stateid.si_opaque, sizeof(stateid_opaque_t));
-> >> +
-> >> +	DECODE_TAIL;
-> >> +}
-> >> +
-> >> +static __be32
-> >>  nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
-> >>  		      struct nfsd4_sequence *seq)
-> >>  {
-> >> @@ -1370,7 +1383,7 @@ static nfsd4_dec nfsd41_dec_ops[] = {
-> >>  	[OP_EXCHANGE_ID]	= (nfsd4_dec)nfsd4_decode_exchange_id,
-> >>  	[OP_CREATE_SESSION]	= (nfsd4_dec)nfsd4_decode_create_session,
-> >>  	[OP_DESTROY_SESSION]	= (nfsd4_dec)nfsd4_decode_destroy_session,
-> >> -	[OP_FREE_STATEID]	= (nfsd4_dec)nfsd4_decode_notsupp,
-> >> +	[OP_FREE_STATEID]	= (nfsd4_dec)nfsd4_decode_free_stateid,
-> >>  	[OP_GET_DIR_DELEGATION]	= (nfsd4_dec)nfsd4_decode_notsupp,
-> >>  	[OP_GETDEVICEINFO]	= (nfsd4_dec)nfsd4_decode_notsupp,
-> >>  	[OP_GETDEVICELIST]	= (nfsd4_dec)nfsd4_decode_notsupp,
-> >> @@ -3115,6 +3128,21 @@ nfsd4_encode_destroy_session(struct nfsd4_compoundres *resp, int nfserr,
-> >>  	return nfserr;
-> >>  }
-> >>  
-> >> +static __be32
-> >> +nfsd4_encode_free_stateid(struct nfsd4_compoundres *resp, int nfserr,
-> >> +			  struct nfsd4_free_stateid *free_stateid)
-> >> +{
-> >> +	__be32 *p;
-> >> +
-> >> +	if (nfserr)
-> >> +		return nfserr;
-> >> +
-> >> +	RESERVE_SPACE(4);
-> >> +	WRITE32(nfserr);
-> >> +	ADJUST_ARGS();
-> >> +	return nfserr;
-> >> +}
-> >> +
-> >>  __be32
-> >>  nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
-> >>  		      struct nfsd4_sequence *seq)
-> >> @@ -3196,7 +3224,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
-> >>  	[OP_EXCHANGE_ID]	= (nfsd4_enc)nfsd4_encode_exchange_id,
-> >>  	[OP_CREATE_SESSION]	= (nfsd4_enc)nfsd4_encode_create_session,
-> >>  	[OP_DESTROY_SESSION]	= (nfsd4_enc)nfsd4_encode_destroy_session,
-> >> -	[OP_FREE_STATEID]	= (nfsd4_enc)nfsd4_encode_noop,
-> >> +	[OP_FREE_STATEID]	= (nfsd4_enc)nfsd4_encode_free_stateid,
-> >>  	[OP_GET_DIR_DELEGATION]	= (nfsd4_enc)nfsd4_encode_noop,
-> >>  	[OP_GETDEVICEINFO]	= (nfsd4_enc)nfsd4_encode_noop,
-> >>  	[OP_GETDEVICELIST]	= (nfsd4_enc)nfsd4_encode_noop,
-> >> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> >> index 366401e..ed1784d 100644
-> >> --- a/fs/nfsd/xdr4.h
-> >> +++ b/fs/nfsd/xdr4.h
-> >> @@ -342,6 +342,11 @@ struct nfsd4_setclientid_confirm {
-> >>  	nfs4_verifier	sc_confirm;
-> >>  };
-> >>  
-> >> +struct nfsd4_free_stateid {
-> >> +	stateid_t	fr_stateid;         /* request */
-> >> +	__be32		fr_status;          /* response */
-> >> +};
-> >> +
-> >>  /* also used for NVERIFY */
-> >>  struct nfsd4_verify {
-> >>  	u32		ve_bmval[3];        /* request */
-> >> @@ -432,6 +437,7 @@ struct nfsd4_op {
-> >>  		struct nfsd4_destroy_session	destroy_session;
-> >>  		struct nfsd4_sequence		sequence;
-> >>  		struct nfsd4_reclaim_complete	reclaim_complete;
-> >> +		struct nfsd4_free_stateid	free_stateid;
-> >>  	} u;
-> >>  	struct nfs4_replay *			replay;
-> >>  };
-> >> @@ -564,6 +570,8 @@ extern __be32 nfsd4_delegreturn(struct svc_rqst *rqstp,
-> >>  		struct nfsd4_compound_state *, struct nfsd4_delegreturn *dr);
-> >>  extern __be32 nfsd4_renew(struct svc_rqst *rqstp,
-> >>  			  struct nfsd4_compound_state *, clientid_t *clid);
-> >> +extern __be32 nfsd4_free_stateid(struct svc_rqst *rqstp,
-> >> +		struct nfsd4_compound_state *, struct nfsd4_free_stateid *free_stateid);
-> >>  #endif
-> >>  
-> >>  /*
-> >> -- 
-> >> 1.7.5.1
-> >>
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+This means we open-code the pathname of the rpcbind socket in the
+kernel.  For now we have to do that anyway because the kernel's
+RPC over AF_LOCAL implementation does not support autobind.  That may
+be undesirable in the long term.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ net/sunrpc/rpcb_clnt.c |   97 +++++++++++++++++++++++++++++++++++++++++-------
+ net/sunrpc/svc.c       |    2 +
+ 2 files changed, 85 insertions(+), 14 deletions(-)
+
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index c652e4c..9a80a92 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -16,6 +16,7 @@
+ 
+ #include <linux/types.h>
+ #include <linux/socket.h>
++#include <linux/un.h>
+ #include <linux/in.h>
+ #include <linux/in6.h>
+ #include <linux/kernel.h>
+@@ -32,6 +33,8 @@
+ # define RPCDBG_FACILITY	RPCDBG_BIND
+ #endif
+ 
++#define RPCBIND_SOCK_PATHNAME	"/var/run/rpcbind.sock"
++
+ #define RPCBIND_PROGRAM		(100000u)
+ #define RPCBIND_PORT		(111u)
+ 
+@@ -158,20 +161,69 @@ static void rpcb_map_release(void *data)
+ 	kfree(map);
+ }
+ 
+-static const struct sockaddr_in rpcb_inaddr_loopback = {
+-	.sin_family		= AF_INET,
+-	.sin_addr.s_addr	= htonl(INADDR_LOOPBACK),
+-	.sin_port		= htons(RPCBIND_PORT),
+-};
++/*
++ * Returns zero on success, otherwise a negative errno value
++ * is returned.
++ */
++static int rpcb_create_local_unix(void)
++{
++	static const struct sockaddr_un rpcb_localaddr_rpcbind = {
++		.sun_family		= AF_LOCAL,
++		.sun_path		= RPCBIND_SOCK_PATHNAME,
++	};
++	struct rpc_create_args args = {
++		.net		= &init_net,
++		.protocol	= XPRT_TRANSPORT_LOCAL,
++		.address	= (struct sockaddr *)&rpcb_localaddr_rpcbind,
++		.addrsize	= sizeof(rpcb_localaddr_rpcbind),
++		.servername	= "localhost",
++		.program	= &rpcb_program,
++		.version	= RPCBVERS_2,
++		.authflavor	= RPC_AUTH_NULL,
++	};
++	struct rpc_clnt *clnt, *clnt4;
++	int result = 0;
++
++	/*
++	 * Because we requested an RPC PING at transport creation time,
++	 * this works only if the user space portmapper is rpcbind, and
++	 * it's listening on AF_LOCAL on the named socket.
++	 */
++	clnt = rpc_create(&args);
++	if (IS_ERR(clnt)) {
++		dprintk("RPC:       failed to create AF_LOCAL rpcbind "
++				"client (errno %ld).\n", PTR_ERR(clnt));
++		result = -PTR_ERR(clnt);
++		goto out;
++	}
++
++	clnt4 = rpc_bind_new_program(clnt, &rpcb_program, RPCBVERS_4);
++	if (IS_ERR(clnt4)) {
++		dprintk("RPC:       failed to bind second program to "
++				"rpcbind v4 client (errno %ld).\n",
++				PTR_ERR(clnt4));
++		clnt4 = NULL;
++	}
++
++	/* Protected by rpcb_create_local_mutex */
++	rpcb_local_clnt = clnt;
++	rpcb_local_clnt4 = clnt4;
+ 
+-static DEFINE_MUTEX(rpcb_create_local_mutex);
++out:
++	return result;
++}
+ 
+ /*
+  * Returns zero on success, otherwise a negative errno value
+  * is returned.
+  */
+-static int rpcb_create_local(void)
++static int rpcb_create_local_net(void)
+ {
++	static const struct sockaddr_in rpcb_inaddr_loopback = {
++		.sin_family		= AF_INET,
++		.sin_addr.s_addr	= htonl(INADDR_LOOPBACK),
++		.sin_port		= htons(RPCBIND_PORT),
++	};
+ 	struct rpc_create_args args = {
+ 		.net		= &init_net,
+ 		.protocol	= XPRT_TRANSPORT_TCP,
+@@ -186,13 +238,6 @@ static int rpcb_create_local(void)
+ 	struct rpc_clnt *clnt, *clnt4;
+ 	int result = 0;
+ 
+-	if (rpcb_local_clnt)
+-		return result;
+-
+-	mutex_lock(&rpcb_create_local_mutex);
+-	if (rpcb_local_clnt)
+-		goto out;
+-
+ 	clnt = rpc_create(&args);
+ 	if (IS_ERR(clnt)) {
+ 		dprintk("RPC:       failed to create local rpcbind "
+@@ -214,10 +259,34 @@ static int rpcb_create_local(void)
+ 		clnt4 = NULL;
+ 	}
+ 
++	/* Protected by rpcb_create_local_mutex */
+ 	rpcb_local_clnt = clnt;
+ 	rpcb_local_clnt4 = clnt4;
+ 
+ out:
++	return result;
++}
++
++/*
++ * Returns zero on success, otherwise a negative errno value
++ * is returned.
++ */
++static int rpcb_create_local(void)
++{
++	static DEFINE_MUTEX(rpcb_create_local_mutex);
++	int result = 0;
++
++	if (rpcb_local_clnt)
++		return result;
++
++	mutex_lock(&rpcb_create_local_mutex);
++	if (rpcb_local_clnt)
++		goto out;
++
++	if (rpcb_create_local_unix() != 0)
++		result = rpcb_create_local_net();
++
++out:
+ 	mutex_unlock(&rpcb_create_local_mutex);
+ 	return result;
+ }
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 08e05a8..2b90292 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -942,6 +942,8 @@ static void svc_unregister(const struct svc_serv *serv)
+ 			if (progp->pg_vers[i]->vs_hidden)
+ 				continue;
+ 
++			dprintk("svc: attempting to unregister %sv%u\n",
++				progp->pg_name, i);
+ 			__svc_unregister(progp->pg_prog, i, progp->pg_name);
+ 		}
+ 	}
+
