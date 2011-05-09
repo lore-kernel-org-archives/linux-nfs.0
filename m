@@ -1,74 +1,208 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:50231 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753569Ab1EPR31 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 May 2011 13:29:27 -0400
-Date: Mon, 16 May 2011 13:29:27 -0400
-To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Removed compilation warnings from mountd/cache.c
-Message-ID: <20110516172927.GA1348@fieldses.org>
-References: <1305561014-25688-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1305561014-25688-1-git-send-email-steved@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from daytona.panasas.com ([67.152.220.89]:38070 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753724Ab1EIRLf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:11:35 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH v2 27/29] pnfs-obj: objlayout_encode_layoutcommit implementation
+Date: Mon,  9 May 2011 20:11:27 +0300
+Message-Id: <1304961087-4794-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DC81E8C.6040901@panasas.com>
+References: <4DC81E8C.6040901@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, May 16, 2011 at 11:50:14AM -0400, Steve Dickson wrote:
-> Commit 5604b35a6 introduced a number of missing initializer
-> warnings that were missed. This patch removes those warnings.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  utils/mountd/cache.c |    6 ++++--
->  1 files changed, 4 insertions(+), 2 deletions(-)
-> 
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index df6b38f..86a2790 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -825,7 +825,6 @@ struct {
->  	char *cache_name;
->  	void (*cache_handle)(FILE *f);
->  	FILE *f;
-> -	char vbuf[RPC_CHAN_BUF_SIZE];
->  } cachelist[] = {
->  	{ "auth.unix.ip", auth_unix_ip, NULL},
->  	{ "auth.unix.gid", auth_unix_gid, NULL},
-> @@ -833,6 +832,9 @@ struct {
->  	{ "nfsd.fh", nfsd_fh, NULL},
->  	{ NULL, NULL, NULL }
->  };
-> +struct vbs {
-> +	char vbuf[RPC_CHAN_BUF_SIZE];
-> +} vbufs [(sizeof(cachelist)/sizeof(cachelist[0])) - 1];
+From: Boaz Harrosh <bharrosh@panasas.com>
 
-Weird--why does that make a difference?  It's statically initialized
-memory either way, isn't it?
+* Define API for io-engines to report delta_space_used in IOs
+* Encode the osd-layout specific information of the layoutcommit
+  XDR buffer.
 
-I prefer the way it is now.  The buffer belongs logically with the other
-data associated with its cache file.
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+[check for OBJ_DSU_INVALID in objlayout_add_delta_space_used under lock]
+[use new alloc/free_layout API]
+[apply types rename]
+[convert to new pnfs-submit changes]
+[fixup encode_layoutcommit arguments]
+[fixup layoutcommit methods args]
+[use pnfs_layout_hdr and layout_segment field prefix]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/nfs4xdr.c                    |    6 +++++-
+ fs/nfs/objlayout/objio_osd.c        |    1 +
+ fs/nfs/objlayout/objlayout.c        |   30 ++++++++++++++++++++++++++++++
+ fs/nfs/objlayout/objlayout.h        |   32 +++++++++++++++++++++++++++++++-
+ fs/nfs/objlayout/pnfs_osd_xdr_cli.c |   23 +++++++++++++++++++++++
+ 5 files changed, 90 insertions(+), 2 deletions(-)
 
---b.
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 808c996..d5f15b6 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -336,7 +336,11 @@ static int nfs4_stat_to_errno(int);
+ 				2 /* last byte written */ + \
+ 				1 /* nt_timechanged (false) */ + \
+ 				1 /* layoutupdate4 layout type */ + \
+-				1 /* NULL filelayout layoutupdate4 payload */)
++				/* pnfs-obj pnfs_osd_layoutupdate4 */ \
++				1 /* lou_body size */ + \
++				1 /* dsu_body */ + \
++				2 /* dsu_delta */ + \
++				1 /* ioerr_flag */ )
+ #define decode_layoutcommit_maxsz (op_decode_hdr_maxsz + 3)
+ #define encode_layoutreturn_maxsz (8 + op_encode_hdr_maxsz + \
+ 				encode_stateid_maxsz + \
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 9c9dc9a..0988e1e 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -739,6 +739,7 @@ static struct pnfs_layoutdriver_type objlayout_type = {
+ 	.write_pagelist          = objlayout_write_pagelist,
+ 
+ 	.encode_layoutreturn     = objlayout_encode_layoutreturn,
++	.encode_layoutcommit     = objlayout_encode_layoutcommit,
+ };
+ 
+ void *objio_init_mt(void)
+diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+index c47e03d..0b5be4d 100644
+--- a/fs/nfs/objlayout/objlayout.c
++++ b/fs/nfs/objlayout/objlayout.c
+@@ -343,6 +343,7 @@ objlayout_iodone(struct objlayout_io_state *state)
+ 		struct objlayout *objlay = OBJLAYOUT(state->objlseg->lseg.pls_layout);
+ 
+ 		spin_lock(&objlay->lock);
++		objlay->delta_space_valid = OBJ_DSU_INVALID;
+ 		list_add(&objlay->err_list, &state->err_list);
+ 		spin_unlock(&objlay->lock);
+ 	}
+@@ -723,3 +724,32 @@ loop_done:
+ 	*start = cpu_to_be32((xdr->p - start - 1) * 4);
+ 	dprintk("%s: Return\n", __func__);
+ }
++
++void
++objlayout_encode_layoutcommit(struct pnfs_layout_hdr *pnfslay,
++			      struct xdr_stream *xdr,
++			      const struct nfs4_layoutcommit_args *args)
++{
++	struct objlayout *objlay = OBJLAYOUT(pnfslay);
++	struct pnfs_osd_layoutupdate lou;
++	__be32 *start;
++
++	dprintk("%s: Begin\n", __func__);
++
++	spin_lock(&objlay->lock);
++	lou.dsu_valid = (objlay->delta_space_valid == OBJ_DSU_VALID);
++	lou.dsu_delta = objlay->delta_space_used;
++	objlay->delta_space_used = 0;
++	objlay->delta_space_valid = OBJ_DSU_INIT;
++	lou.olu_ioerr_flag = !list_empty(&objlay->err_list);
++	spin_unlock(&objlay->lock);
++
++	start = xdr_reserve_space(xdr, 4);
++
++	BUG_ON(pnfs_osd_xdr_encode_layoutupdate(xdr, &lou));
++
++	*start = cpu_to_be32((xdr->p - start - 1) * 4);
++
++	dprintk("%s: Return delta_space_used %lld err %d\n", __func__,
++		lou.dsu_delta, lou.olu_ioerr_flag);
++}
+diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
+index 31fd34b..caee5c9 100644
+--- a/fs/nfs/objlayout/objlayout.h
++++ b/fs/nfs/objlayout/objlayout.h
+@@ -59,10 +59,18 @@ struct objlayout_segment {
+  */
+ struct objlayout {
+ 	struct pnfs_layout_hdr pnfs_layout;
++	spinlock_t lock;
+ 
+ 	 /* for layout_return */
+-	spinlock_t lock;
+ 	struct list_head err_list;
++
++	 /* for layout_commit */
++	enum osd_delta_space_valid_enum {
++		OBJ_DSU_INIT = 0,
++		OBJ_DSU_VALID,
++		OBJ_DSU_INVALID,
++	} delta_space_valid;
++	s64 delta_space_used;  /* consumed by write ops */
+ };
+ 
+ static inline struct objlayout *
+@@ -127,6 +135,23 @@ extern void objlayout_io_set_result(struct objlayout_io_state *state,
+ 				    unsigned index, int osd_error,
+ 				    u64 offset, u64 length, bool is_write);
+ 
++static inline void
++objlayout_add_delta_space_used(struct objlayout_io_state *state, s64 space_used)
++{
++	struct objlayout *objlay = OBJLAYOUT(state->objlseg->lseg.pls_layout);
++
++	/* If one of the I/Os errored out and the delta_space_used was
++	 * invalid we render the complete report as invalid. Protocol mandate
++	 * the DSU be accurate or not reported.
++	 */
++	spin_lock(&objlay->lock);
++	if (objlay->delta_space_valid != OBJ_DSU_INVALID) {
++		objlay->delta_space_valid = OBJ_DSU_VALID;
++		objlay->delta_space_used += space_used;
++	}
++	spin_unlock(&objlay->lock);
++}
++
+ extern void objlayout_read_done(struct objlayout_io_state *state,
+ 				ssize_t status, bool sync);
+ extern void objlayout_write_done(struct objlayout_io_state *state,
+@@ -163,4 +188,9 @@ extern void objlayout_encode_layoutreturn(
+ 	struct xdr_stream *,
+ 	const struct nfs4_layoutreturn_args *);
+ 
++extern void objlayout_encode_layoutcommit(
++	struct pnfs_layout_hdr *,
++	struct xdr_stream *,
++	const struct nfs4_layoutcommit_args *);
++
+ #endif /* _OBJLAYOUT_H */
+diff --git a/fs/nfs/objlayout/pnfs_osd_xdr_cli.c b/fs/nfs/objlayout/pnfs_osd_xdr_cli.c
+index 232b32c49..4ff2e3e 100644
+--- a/fs/nfs/objlayout/pnfs_osd_xdr_cli.c
++++ b/fs/nfs/objlayout/pnfs_osd_xdr_cli.c
+@@ -405,3 +405,26 @@ int pnfs_osd_xdr_encode_ioerr(struct xdr_stream *xdr,
+ 
+ 	return 0;
+ }
++
++/*
++ * struct pnfs_osd_layoutupdate {
++ * 	u32	dsu_valid;
++ * 	s64	dsu_delta;
++ * 	u32	olu_ioerr_flag;
++ * };
++ */
++int
++pnfs_osd_xdr_encode_layoutupdate(struct xdr_stream *xdr,
++				 struct pnfs_osd_layoutupdate *lou)
++{
++	__be32 *p = xdr_reserve_space(xdr, 16);
++
++	if (!p)
++		return -E2BIG;
++
++	*p++ = cpu_to_be32(lou->dsu_valid);
++	if (lou->dsu_valid)
++		p = xdr_encode_hyper(p, lou->dsu_delta);
++	*p++ = cpu_to_be32(lou->olu_ioerr_flag);
++	return 0;
++}
+-- 
+1.7.3.4
 
->  
->  extern int manage_gids;
->  
-> @@ -850,7 +852,7 @@ void cache_open(void)
->  		sprintf(path, "/proc/net/rpc/%s/channel", cachelist[i].cache_name);
->  		cachelist[i].f = fopen(path, "r+");
->  		if (cachelist[i].f != NULL) {
-> -			setvbuf(cachelist[i].f, cachelist[i].vbuf, _IOLBF, 
-> +			setvbuf(cachelist[i].f, vbufs[i].vbuf, _IOLBF, 
->  				RPC_CHAN_BUF_SIZE);
->  		}
->  	}
-> -- 
-> 1.7.4.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
