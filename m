@@ -1,302 +1,161 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:39895 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932688Ab1ERQoR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 May 2011 12:44:17 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/2] Generalize reboot helper script
-Date: Wed, 18 May 2011 12:44:12 -0400
-Message-Id: <1305737053-17096-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1305737053-17096-1-git-send-email-bfields@redhat.com>
-References: <1305737053-17096-1-git-send-email-bfields@redhat.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:59842 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751261Ab1EITiG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 15:38:06 -0400
+Received: by mail-yw0-f46.google.com with SMTP id 3so1917800ywj.19
+        for <linux-nfs@vger.kernel.org>; Mon, 09 May 2011 12:38:06 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 11/16] NFS: Add an API for cloning an nfs_client
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 09 May 2011 15:38:03 -0400
+Message-ID: <20110509193803.16568.61644.stgit@matisse.1015granger.net>
+In-Reply-To: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
+References: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-We allow the user to pass a script on the testserver commandline that
-reboots the server.
+After a migration event, we have to preserve the client ID the client
+used with the source server, and introduce it to the destination
+server, in case the migration transparently migrated state for the
+migrating FSID.
 
-There will be more cases like this where we want to do something special
-on the server that can't be done through the protocol and may depend on
-local configuration details.
+Note that our RENEW and SETCLIENTID procs both take an nfs_client as
+an argument.  Thus, after a successful migration recovery, we want to
+have a nfs_client with the correct long-form and short-form client ID
+for the destination server to pass these procs.
 
-So instead of adding a new helper script for each one, use a single
-"serverhelper" script that can be passed different commands.  Fall back
-on requesting manual intervention in the absence of the script.
+To preserve the client IDs, we clone the source server's nfs_client.
+The migrated FSID is moved from the original nfs_client to the cloned
+one.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+This patch introduces an API for cloning an nfs_client and moving an
+FSID to it.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- lib/nfs4/servertests/environment.py |   16 ++++++++++++
- lib/nfs4/servertests/st_reboot.py   |   46 +++++++++++++---------------------
- sample_files/send_reboot.py         |   17 -------------
- sample_files/server_helper.sh       |   17 +++++++++++++
- testserver.py                       |   13 +++++----
- 5 files changed, 58 insertions(+), 51 deletions(-)
- delete mode 100755 sample_files/send_reboot.py
- create mode 100644 sample_files/server_helper.sh
 
-diff --git a/lib/nfs4/servertests/environment.py b/lib/nfs4/servertests/environment.py
-index 6a318f7..8b23e66 100644
---- a/lib/nfs4/servertests/environment.py
-+++ b/lib/nfs4/servertests/environment.py
-@@ -15,6 +15,7 @@ from nfs4.nfs4_const import *
- from nfs4.nfs4_type import fsid4, nfsace4, fs_locations4, fs_location4, \
-      specdata4, nfstime4, settime4, stateid4
- import rpc
-+import sys
- import os
+ fs/nfs/client.c   |   69 +++++++++++++++++++++++++++++++++++++++++++++++++++--
+ fs/nfs/internal.h |    4 +++
+ 2 files changed, 71 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 536b0ba..2f5e29f 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -135,6 +135,7 @@ struct nfs_client_initdata {
+ 	const struct nfs_rpc_ops *rpc_ops;
+ 	int proto;
+ 	u32 minorversion;
++	const char *long_clientid;
+ };
  
- class AttrInfo(object):
-@@ -210,6 +211,21 @@ class Environment(testmod.Environment):
-         time.sleep(sec)
-         print "Woke up"
+ /*
+@@ -184,6 +185,9 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ 	clp->cl_state = 1 << NFS4CLNT_LEASE_EXPIRED;
+ 	clp->cl_minorversion = cl_init->minorversion;
+ 	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
++	if (cl_init->long_clientid != NULL)
++		clp->cl_cached_clientid = kstrdup(cl_init->long_clientid,
++							GFP_KERNEL);
+ #endif
+ 	cred = rpc_lookup_machine_cred();
+ 	if (!IS_ERR(cred))
+@@ -476,6 +480,10 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+ 		/* Match the full socket address */
+ 		if (!nfs_sockaddr_cmp(sap, clap))
+ 			continue;
++		/* Match on long-form client ID */
++		if (data->long_clientid && clp->cl_cached_clientid &&
++		    strcmp(data->long_clientid, clp->cl_cached_clientid))
++			continue;
  
-+    def serverhelper(self, args):
-+        """Perform a special operation on the server side (such as
-+        rebooting the server)"""
-+        if self.opts.serverhelper is None:
-+            print "Manual operation required on server:"
-+            print args + " and hit ENTER when done"
-+            sys.stdin.readline()
-+            print "Continuing with test"
-+        else:
-+            cmd = self.opts.serverhelper
-+            if self.opts.serverhelperarg:
-+                cmd += ' ' + self.opts.serverhelperarg
-+            cmd += ' ' + args
-+            os.system(cmd);
+ 		atomic_inc(&clp->cl_count);
+ 		return clp;
+@@ -1426,8 +1434,65 @@ error:
+ 	return error;
+ }
+ 
+-/*
+- * Set up a pNFS Data Server client.
++/**
++ * nfs4_clone_client - Clone a client after a migration event
++ * clp: nfs_client to clone
++ * sap: address of destination server
++ * salen: size of "sap" in bytes
++ * ip_addr: NUL-terminated string containing local presentation address
++ * server: nfs_server to move from "clp" to the new one
++ *
++ * Returns negative errno or zero.  nfs_client field of "server" is
++ * updated to refer to a new or existing nfs_client that matches
++ * [server address, port, version, minorversion, client ID].  The
++ * nfs_server is moved from the old nfs_client's cl_superblocks list
++ * to the new nfs_client's list.
++ */
++int nfs4_clone_client(struct nfs_client *clp, const struct sockaddr *sap,
++		      size_t salen, const char *ip_addr,
++		      struct nfs_server *server)
++{
++	struct rpc_clnt *rpcclnt = clp->cl_rpcclient;
++	struct nfs_client_initdata cl_init = {
++		.addr		= sap,
++		.addrlen	= salen,
++		.rpc_ops	= &nfs_v4_clientops,
++		.proto		= rpc_protocol(rpcclnt),
++		.minorversion	= clp->cl_minorversion,
++		.long_clientid	= clp->cl_cached_clientid,
++	};
++	struct nfs_client *new;
++	int status = 0;
 +
- #########################################
- debug_fail = False
- 
-diff --git a/lib/nfs4/servertests/st_reboot.py b/lib/nfs4/servertests/st_reboot.py
-index 758c54c..067cda6 100644
---- a/lib/nfs4/servertests/st_reboot.py
-+++ b/lib/nfs4/servertests/st_reboot.py
-@@ -1,30 +1,20 @@
- from nfs4.nfs4_const import *
- from environment import check, checklist
--import sys
- import os
- 
- # NOTE - reboot tests are NOT part of the standard test suite
- 
--def _waitForReboot(c):
-+def _waitForReboot(c, env):
-     """Wait for server to reboot.
- 
-     Returns an estimate of how long grace period will last.
-     """
-     oldleasetime = c.getLeaseTime()
--    if c.opts.rebootscript is None:
--        print "Hit ENTER to continue after server is reset"
--        sys.stdin.readline()
--        print "Continuing with test"
--    else:
--        args = c.opts.rebootscript
--        if c.opts.rebootargs:
--            c.opts.rebootscript += ' ' + c.opts.rebootargs
--        os.system(args)
--
--        # Wait until the server is back up.
--        # c.null() blocks until it gets a response,
--        # which happens when the server comes back up.
--        c.null()
-+    env.serverhelper("reboot")
-+    # Wait until the server is back up.
-+    # c.null() blocks until it gets a response,
-+    # which happens when the server comes back up.
-+    c.null()
-     newleasetime = c.getLeaseTime()
-     return 5 + max(oldleasetime, newleasetime)
- 
-@@ -40,7 +30,7 @@ def testRebootValid(t, env):
-     c = env.c1
-     c.init_connection()
-     fh, stateid = c.create_confirm(t.code)
--    sleeptime = _waitForReboot(c)
-+    sleeptime = _waitForReboot(c, env)
-     try:
-         res = c.open_file(t.code, fh, claim_type=CLAIM_PREVIOUS,
-                        deleg_type=OPEN_DELEGATE_NONE)
-@@ -73,7 +63,7 @@ def testManyClaims(t, env):
-         c.init_connection(id)
-         fh, stateid = c.create_confirm(t.code, basedir + [id])
-         fhdict[id] = fh
--    sleeptime = _waitForReboot(c)
-+    sleeptime = _waitForReboot(c, env)
-     try: 
-         # Lots of reclaims
-         badfh = fhdict[idlist[-1]]
-@@ -101,7 +91,7 @@ def testRebootWait(t, env):
-     c = env.c1
-     c.init_connection()
-     fh, stateid = c.create_confirm(t.code)
--    sleeptime = _waitForReboot(c)
-+    sleeptime = _waitForReboot(c, env)
-     try:
-         res = c.open_file(t.code, fh, claim_type=CLAIM_PREVIOUS,
-                        deleg_type=OPEN_DELEGATE_NONE)
-@@ -123,7 +113,7 @@ def testRebootInvalid(t, env):
-     c = env.c1
-     c.init_connection()
-     fh, stateid = c.create_confirm(t.code, access=OPEN4_SHARE_ACCESS_READ)
--    sleeptime = _waitForReboot(c)
-+    sleeptime = _waitForReboot(c, env)
-     try:
-         c.init_connection()
-         res = c.open_file(t.code, fh, access=OPEN4_SHARE_ACCESS_WRITE,
-@@ -167,7 +157,7 @@ def testEdge1(t, env):
-     res2 = c2.close_file(t.code, fh2, stateid2)
-     check(res2, msg="Client 2 closing file")
-     # Server reboots
--    sleeptime = _waitForReboot(c2)
-+    sleeptime = _waitForReboot(c2, env)
-     try:
-         # Client 1: Reclaim lock (should not work, since #2 has interfered)
-         res1 = c1.compound([c1.renew_op(c1.clientid)])
-@@ -197,7 +187,7 @@ def testEdge2(t, env):
-     res1 = c1.lock_file(t.code, fh1, stateid1)
-     check(res1, msg="Client 1 locking file")
-     # Server reboots
--    sleeptime = _waitForReboot(c1)
-+    sleeptime = _waitForReboot(c1, env)
-     # Let grace period expire
-     env.sleep(sleeptime, "Waiting for grace period to end")
-     # Client 2: come in and grab lock
-@@ -214,7 +204,7 @@ def testEdge2(t, env):
-     res2 = c2.close_file(t.code, fh2, stateid2)
-     check(res2, msg="Client 2 closing file")
-     # Server reboots
--    sleeptime = _waitForReboot(c2)
-+    sleeptime = _waitForReboot(c2, env)
-     try:
-         # Client 1: Reclaim lock (should not work, since #2 has interfered)
-         res1 = c1.compound([c1.renew_op(c1.clientid)])
-@@ -251,7 +241,7 @@ def testRootSquash(t, env):
-     print "Detected root squashing: root -> %s" % oldname
-     
-     # Wait for grace period to have *just* expired
--    _waitForReboot(c)
-+    _waitForReboot(c, env)
-     c.init_connection()
-     while 1:
-         res = c.create_file(t.code, c.homedir + [t.code, 'file'])
-@@ -279,7 +269,7 @@ def testValidDeleg(t, env):
-     c.init_connection(id, cb_ident=0)
-     deleg_info, fh, stateid =_get_deleg(t, c, c.homedir + [t.code],
-                                         None, NFS4_OK)
--    sleeptime = _waitForReboot(c)
-+    sleeptime = _waitForReboot(c, env)
-     try:
-         res = c.open_file(t.code, fh, claim_type=CLAIM_PREVIOUS,
-                           deleg_type=OPEN_DELEGATE_NONE)
-@@ -306,13 +296,13 @@ def testRebootMultiple(t, env):
-     c = env.c1
-     c.init_connection()
-     fh, stateid = c.create_confirm(t.code)
--    sleeptime = _waitForReboot(c)
-+    sleeptime = _waitForReboot(c, env)
-     try:
-         c.init_connection()
-         res = c.open_file(t.code, fh, claim_type=CLAIM_PREVIOUS,
-                        deleg_type=OPEN_DELEGATE_NONE)
-         check(res, msg="Reclaim using newly created clientid")
--        sleeptime = _waitForReboot(c)
-+        sleeptime = _waitForReboot(c, env)
-         c.init_connection()
-         res = c.open_file(t.code, fh, claim_type=CLAIM_PREVIOUS,
-                        deleg_type=OPEN_DELEGATE_NONE)
-@@ -330,7 +320,7 @@ def testGraceSeqid(t, env):
-     c = env.c1
-     c.init_connection()
-     fh, stateid = c.create_confirm(t.code)
--    sleeptime = _waitForReboot(c)
-+    sleeptime = _waitForReboot(c, env)
-     try:
-         c.init_connection()
-         res = c.open_file(t.code, fh, claim_type=CLAIM_PREVIOUS,
-diff --git a/sample_files/send_reboot.py b/sample_files/send_reboot.py
-deleted file mode 100755
-index a66c6e8..0000000
---- a/sample_files/send_reboot.py
-+++ /dev/null
-@@ -1,17 +0,0 @@
--#!/usr/bin/python
--
--import sys
--import os
--
--"""
--A simple reboot script for the reboot tests that reboots a virtual guest.
--It would be used by adding
----rebootscript=sample/send_reboot.py --rebootargs=SERVERNAME
--to testserver.py's commandline arguments.
--"""
--
--def reboot(servername):
--    os.system('virsh destroy ' + servername)
--    os.system('virsh start ' + servername)
--
--reboot(sys.argv[1])
-diff --git a/sample_files/server_helper.sh b/sample_files/server_helper.sh
-new file mode 100644
-index 0000000..291f840
---- /dev/null
-+++ b/sample_files/server_helper.sh
-@@ -0,0 +1,17 @@
-+#!/bin/bash
++	dprintk("--> %s cloning \"%s\" (client ID %llx)\n",
++		__func__, clp->cl_hostname, clp->cl_clientid);
 +
-+# A simple script for the reboot tests that reboots a virtual guest.
-+# It would be used by adding
-+# --serverhelper=sample/send_reboot.py --serverhelperarg=SERVERNAME
-+# to testserver.py's commandline arguments.
++	new = nfs_get_client(&cl_init, rpcclnt->cl_timeout, ip_addr,
++				rpcclnt->cl_auth->au_flavor, 0);
++	if (IS_ERR(new)) {
++		dprintk("<-- %s nfs_get_client failed\n", __func__);
++		status = PTR_ERR(new);
++		goto out;
++	}
 +
-+server=$1
-+command=$2
-+shift; shift
++	nfs_server_remove_lists(server);
++	server->nfs_client = new;
++	nfs_server_insert_lists(server);
 +
-+case $command in
-+reboot )
-+	virsh destroy $server
-+	virsh start $server
-+	;;
-+esac
-diff --git a/testserver.py b/testserver.py
-index 67ae35f..c2a7c7b 100755
---- a/testserver.py
-+++ b/testserver.py
-@@ -122,8 +122,9 @@ def scan_options(p):
-     .usedir    = (None)
-     .usespecial= (None)
- 
--    .rebootscript = (None)
--    .rebootargs = (None)
-+    .serverhelper = (None)
-+    .serverhelperarg = (None)
++	dprintk("<-- %s moved (%llx:%llx) to nfs_client %p\n", __func__,
++			(unsigned long long)server->fsid.major,
++			(unsigned long long)server->fsid.minor, new);
 +
-     """
-     p.add_option("--showflags", action="store_true", default=False,
-                  help="Print a list of all possible flags and exit")
-@@ -225,11 +226,11 @@ def scan_options(p):
-                     "the scripts and arguments used to control how the "
-                     "server is restarted.")
- 
--    g.add_option("--rebootscript", default=None, metavar="FILE",
--                 help="Use FILE as the script to reboot SERVER.")
-+    g.add_option("--serverhelper", default=None, metavar="FILE",
-+                 help="Use script to perform special actions on server")
- 
--    g.add_option("--rebootargs", default=None, metavar="ARGS",
--                 help="Pass ARGS as a string to the reboot script.")
-+    g.add_option("--serverhelperarg", default=None, metavar="ARG",
-+                 help="Pass ARG as first argument to serverhelper");
- 
-     p.add_option_group(g)
- 
--- 
-1.7.4.1
++out:
++	return status;
++}
++
++/**
++ * nfs4_set_ds_client - Set up a pNFS Data Server client
++ * mds_clp: nfs_client representing the MDS
++ * ds_addr: IP address of DS
++ * ds_addrlen: size of "ds_addr" in bytes
++ * ds_proto: transport protocol to use to contact DS
+  *
+  * Return any existing nfs_client that matches server address,port,version
+  * and minorversion.
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index f6baf5b..0bf4e67 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -154,6 +154,10 @@ extern struct nfs_server *nfs_clone_server(struct nfs_server *,
+ 					   struct nfs_fattr *);
+ extern void nfs_mark_client_ready(struct nfs_client *clp, int state);
+ extern int nfs4_check_client_ready(struct nfs_client *clp);
++extern int nfs4_clone_client(struct nfs_client *clp,
++				const struct sockaddr *sap, size_t salen,
++				const char *ip_addr,
++				struct nfs_server *server);
+ extern struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+ 					     const struct sockaddr *ds_addr,
+ 					     int ds_addrlen, int ds_proto);
 
