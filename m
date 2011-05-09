@@ -1,218 +1,347 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:41034 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:37979 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752366Ab1EVTk0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 15:40:26 -0400
-Message-ID: <4DD96697.50800@panasas.com>
-Date: Sun, 22 May 2011 22:40:07 +0300
+	with ESMTP id S1753747Ab1EIRIm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:08:42 -0400
 From: Benny Halevy <bhalevy@panasas.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Subject: Re: [PATCH 16/23] pnfs: support for non-rpc layout drivers
-References: <4DD93D3E.9010909@panasas.com> <1306083123-11061-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <1306083123-11061-1-git-send-email-bharrosh@panasas.com>
-Content-Type: text/plain; charset=windows-1255
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH v2 12/29] pnfs-obj: decode layout, alloc/free lseg
+Date: Mon,  9 May 2011 20:08:37 +0300
+Message-Id: <1304960917-4233-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DC81E8C.6040901@panasas.com>
+References: <4DC81E8C.6040901@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-05-22 19:52, Boaz Harrosh wrote:
-> From: Benny Halevy <bhalevy@panasas.com>
-> 
-> Non-rpc layout driver such as for objects and blocks
-> implement their own I/O path and error handling logic.
-> Therefore bypass NFS-based error handling for these layout drivers.
-> 
-> [fix lseg ref-count bugs, and null de-refs]
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> [get rid of PNFS_USE_RPC_CODE]
-> [get rid of __nfs4_write_done_cb]
-> [revert useless change in nfs4_write_done_cb]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfs/internal.h       |    1 +
->  fs/nfs/nfs4proc.c       |   13 +++++++++--
->  fs/nfs/pnfs.c           |   52 ++++++++++++++++++++++++++++++++++++++++++++++-
->  fs/nfs/pnfs.h           |    2 +
->  include/linux/nfs_xdr.h |    2 +
->  5 files changed, 66 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index ce118ce..bcf0f0f 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -310,6 +310,7 @@ extern int nfs_migrate_page(struct address_space *,
->  #endif
->  
->  /* nfs4proc.c */
-> +extern void __nfs4_read_done_cb(struct nfs_read_data *);
->  extern void nfs4_reset_read(struct rpc_task *task, struct nfs_read_data *data);
->  extern int nfs4_init_client(struct nfs_client *clp,
-wr>  			    const struct rpc_timeout *timeparms,
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 69c0f3c..61f30b2 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -3174,6 +3174,11 @@ static int nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
->  	return err;
->  }
->  
-> +void __nfs4_read_done_cb(struct nfs_read_data *data)
-> +{
-> +	nfs_invalidate_atime(data->inode);
-> +}
-> +
->  static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
->  {
->  	struct nfs_server *server = NFS_SERVER(data->inode);
-> @@ -3183,7 +3188,7 @@ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
->  		return -EAGAIN;
->  	}
->  
-> -	nfs_invalidate_atime(data->inode);
-> +	__nfs4_read_done_cb(data);
->  	if (task->tk_status > 0)
->  		renew_lease(server, data->timestamp);
->  	return 0;
-> @@ -3197,7 +3202,8 @@ static int nfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
->  	if (!nfs4_sequence_done(task, &data->res.seq_res))
->  		return -EAGAIN;
->  
-> -	return data->read_done_cb(task, data);
-> +	return data->read_done_cb ? data->read_done_cb(task, data) :
-> +				    nfs4_read_done_cb(task, data);
->  }
->  
->  static void nfs4_proc_read_setup(struct nfs_read_data *data, struct rpc_message *msg)
-> @@ -3242,7 +3248,8 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
->  {
->  	if (!nfs4_sequence_done(task, &data->res.seq_res))
->  		return -EAGAIN;
-> -	return data->write_done_cb(task, data);
-> +	return data->write_done_cb ? data->write_done_cb(task, data) :
-> +		nfs4_write_done_cb(task, data);
->  }
->  
->  /* Reset the the nfs_write_data to send the write to the MDS. */
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 7f283b2..d4f8ba8 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -254,7 +254,7 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
->  {
->  	struct inode *inode = lseg->pls_layout->plh_inode;
->  
-> -	BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
-> +	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
->  	list_del_init(&lseg->pls_list);
->  	if (list_empty(&lseg->pls_layout->plh_segs)) {
->  		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
-> @@ -1059,6 +1059,31 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
->  	pgio->pg_test = (ld && ld->pg_test) ? pnfs_write_pg_test : NULL;
->  }
->  
-> +/*
-> + * Called by non rpc-based layout drivers
-> + */
-> +int
-> +pnfs_ld_write_done(struct nfs_write_data *data)
-> +{
-> +	int status;
-> +
+objlayout_alloc_lseg allocates space for and decodes the pnfs-obj layout payload.
 
+objlayout_free_lseg frees the allocated space.
 
-> +	if (!data->pnfs_error) {
-> +		pnfs_set_layoutcommit(data);
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/objlayout/Kbuild             |    2 +-
+ fs/nfs/objlayout/objio_osd.c        |   34 ++++++++++-
+ fs/nfs/objlayout/objlayout.c        |  121 +++++++++++++++++++++++++++++++++++
+ fs/nfs/objlayout/objlayout.h        |   75 +++++++++++++++++++++
+ fs/nfs/objlayout/pnfs_osd_xdr_cli.c |   33 ++++++++++
+ 5 files changed, 263 insertions(+), 2 deletions(-)
+ create mode 100644 fs/nfs/objlayout/objlayout.c
+ create mode 100644 fs/nfs/objlayout/objlayout.h
 
-We need at least to set data->task.tk_status to 0
-
-> +		data->mds_ops->rpc_call_done(&data->task, data);
-> +		data->mds_ops->rpc_release(data);
-
-Where's the put_lseg you had in PATCH 10/13?
-
-Benny
-
-> +		return 0;
-> +	}
-> +
-> +	put_lseg(data->lseg);
-> +	data->lseg = NULL;
-> +	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
-> +		data->pnfs_error);
-> +	status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
-> +				    data->mds_ops, NFS_FILE_SYNC);
-> +	return status ? : -EAGAIN;
-> +}
-> +EXPORT_SYMBOL_GPL(pnfs_ld_write_done);
-> +
->  enum pnfs_try_status
->  pnfs_try_to_write_data(struct nfs_write_data *wdata,
->  			const struct rpc_call_ops *call_ops, int how)
-> @@ -1084,6 +1109,31 @@ pnfs_try_to_write_data(struct nfs_write_data *wdata,
->  }
->  
->  /*
-> + * Called by non rpc-based layout drivers
-> + */
-> +int
-> +pnfs_ld_read_done(struct nfs_read_data *data)
-> +{
-> +	int status;
-> +
-> +	if (!data->pnfs_error) {
-> +		__nfs4_read_done_cb(data);
-> +		data->mds_ops->rpc_call_done(&data->task, data);
-> +		data->mds_ops->rpc_release(data);
-> +		return 0;
-> +	}
-> +
-> +	put_lseg(data->lseg);
-> +	data->lseg = NULL;
-> +	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
-> +		data->pnfs_error);
-> +	status = nfs_initiate_read(data, NFS_CLIENT(data->inode),
-> +				   data->mds_ops);
-> +	return status ? : -EAGAIN;
-> +}
-> +EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
-> +
-> +/*
->   * Call the appropriate parallel I/O subsystem read function.
->   */
->  enum pnfs_try_status
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index e24c7fb..2f8776b 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -166,6 +166,8 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
->  bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
->  void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
->  int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
-> +int pnfs_ld_write_done(struct nfs_write_data *);
-> +int pnfs_ld_read_done(struct nfs_read_data *);
->  
->  static inline int lo_fail_bit(u32 iomode)
->  {
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 890dce2..39c1e1b 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -1086,6 +1086,7 @@ struct nfs_read_data {
->  	const struct rpc_call_ops *mds_ops;
->  	int (*read_done_cb) (struct rpc_task *task, struct nfs_read_data *data);
->  	__u64			mds_offset;
-> +	int			pnfs_error;
->  	struct page		*page_array[NFS_PAGEVEC_SIZE];
->  };
->  
-> @@ -1111,6 +1112,7 @@ struct nfs_write_data {
->  	unsigned long		timestamp;	/* For lease renewal */
->  #endif
->  	__u64			mds_offset;	/* Filelayout dense stripe */
-> +	int			pnfs_error;
->  	struct page		*page_array[NFS_PAGEVEC_SIZE];
->  };
->  
+diff --git a/fs/nfs/objlayout/Kbuild b/fs/nfs/objlayout/Kbuild
+index 7b2a5a2..ed30ea0 100644
+--- a/fs/nfs/objlayout/Kbuild
++++ b/fs/nfs/objlayout/Kbuild
+@@ -1,5 +1,5 @@
+ #
+ # Makefile for the pNFS Objects Layout Driver kernel module
+ #
+-objlayoutdriver-y := objio_osd.o pnfs_osd_xdr_cli.o
++objlayoutdriver-y := objio_osd.o pnfs_osd_xdr_cli.o objlayout.o
+ obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayoutdriver.o
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 379595f..c5f69c6 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -38,11 +38,43 @@
+  */
+ 
+ #include <linux/module.h>
+-#include "../pnfs.h"
++
++#include "objlayout.h"
++
++struct objio_segment {
++	struct pnfs_osd_layout *layout;
++};
++
++int objio_alloc_lseg(void **outp,
++	struct pnfs_layout_hdr *pnfslay,
++	struct pnfs_layout_segment *lseg,
++	struct pnfs_osd_layout *layout)
++{
++	struct objio_segment *objio_seg;
++
++	objio_seg = kzalloc(sizeof(*objio_seg), GFP_KERNEL);
++	if (!objio_seg)
++		return -ENOMEM;
++
++	objio_seg->layout = layout;
++
++	*outp = objio_seg;
++	return 0;
++}
++
++void objio_free_lseg(void *p)
++{
++	struct objio_segment *objio_seg = p;
++
++	kfree(objio_seg);
++}
+ 
+ static struct pnfs_layoutdriver_type objlayout_type = {
+ 	.id = LAYOUT_OSD2_OBJECTS,
+ 	.name = "LAYOUT_OSD2_OBJECTS",
++
++	.alloc_lseg              = objlayout_alloc_lseg,
++	.free_lseg               = objlayout_free_lseg,
+ };
+ 
+ MODULE_DESCRIPTION("pNFS Layout Driver for OSD2 objects");
+diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+new file mode 100644
+index 0000000..7401dd3
+--- /dev/null
++++ b/fs/nfs/objlayout/objlayout.c
+@@ -0,0 +1,121 @@
++/*
++ *  pNFS Objects layout driver high level definitions
++ *
++ *  Copyright (C) 2007 Panasas Inc. [year of first publication]
++ *  All rights reserved.
++ *
++ *  Benny Halevy <bhalevy@panasas.com>
++ *  Boaz Harrosh <bharrosh@panasas.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License version 2
++ *  See the file COPYING included with this distribution for more details.
++ *
++ *  Redistribution and use in source and binary forms, with or without
++ *  modification, are permitted provided that the following conditions
++ *  are met:
++ *
++ *  1. Redistributions of source code must retain the above copyright
++ *     notice, this list of conditions and the following disclaimer.
++ *  2. Redistributions in binary form must reproduce the above copyright
++ *     notice, this list of conditions and the following disclaimer in the
++ *     documentation and/or other materials provided with the distribution.
++ *  3. Neither the name of the Panasas company nor the names of its
++ *     contributors may be used to endorse or promote products derived
++ *     from this software without specific prior written permission.
++ *
++ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
++ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
++ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
++ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
++ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "objlayout.h"
++
++#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
++
++struct pnfs_client_operations *pnfs_client_ops;
++
++/*
++ * Unmarshall layout and store it in pnfslay.
++ */
++struct pnfs_layout_segment *
++objlayout_alloc_lseg(struct pnfs_layout_hdr *pnfslay,
++		     struct nfs4_layoutget_res *lgr)
++{
++	int status = -ENOMEM;
++	struct xdr_stream stream;
++	struct xdr_buf buf = {
++		.pages =  lgr->layoutp->pages,
++		.page_len =  lgr->layoutp->len,
++		.buflen =  lgr->layoutp->len,
++		.len = lgr->layoutp->len,
++	};
++	struct page *scratch;
++	__be32 *p;
++	struct objlayout_segment *objlseg = NULL;
++	struct pnfs_osd_layout *pnfs_osd_layout;
++
++	dprintk("%s: Begin pnfslay %p\n", __func__, pnfslay);
++
++	scratch = alloc_page(GFP_KERNEL);
++	if (!scratch)
++		goto err_nofree;
++
++	xdr_init_decode(&stream, &buf, NULL);
++	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
++
++	p = xdr_inline_decode(&stream, pnfs_osd_data_map_xdr_sz() << 2);
++	if (unlikely(!p))
++		goto err;
++
++	objlseg = kzalloc(sizeof(*objlseg) +
++			  pnfs_osd_layout_incore_sz(p), GFP_KERNEL);
++	if (!objlseg)
++		goto err;
++
++	pnfs_osd_layout = (struct pnfs_osd_layout *)objlseg->pnfs_osd_layout;
++	pnfs_osd_xdr_decode_layout(pnfs_osd_layout, p);
++
++	objlseg->lseg.pls_range = lgr->range;
++	status = objio_alloc_lseg(&objlseg->internal, pnfslay, &objlseg->lseg,
++				  pnfs_osd_layout);
++	if (status)
++		goto err;
++
++	__free_page(scratch);
++
++	dprintk("%s: Return %p\n", __func__, &objlseg->lseg);
++	return &objlseg->lseg;
++
++err:
++	kfree(objlseg);
++	__free_page(scratch);
++err_nofree:
++	return ERR_PTR(status);
++}
++
++/*
++ * Free a layout segement
++ */
++void
++objlayout_free_lseg(struct pnfs_layout_segment *lseg)
++{
++	struct objlayout_segment *objlseg;
++
++	dprintk("%s: freeing layout segment %p\n", __func__, lseg);
++
++	if (unlikely(!lseg))
++		return;
++
++	objlseg = container_of(lseg, struct objlayout_segment, lseg);
++	objio_free_lseg(objlseg->internal);
++	kfree(objlseg);
++}
+diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
+new file mode 100644
+index 0000000..8c0fb1c
+--- /dev/null
++++ b/fs/nfs/objlayout/objlayout.h
+@@ -0,0 +1,75 @@
++/*
++ *  Data types and function declerations for interfacing with the
++ *  pNFS standard object layout driver.
++ *
++ *  Copyright (C) 2007 Panasas Inc. [year of first publication]
++ *  All rights reserved.
++ *
++ *  Benny Halevy <bhalevy@panasas.com>
++ *  Boaz Harrosh <bharrosh@panasas.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License version 2
++ *  See the file COPYING included with this distribution for more details.
++ *
++ *  Redistribution and use in source and binary forms, with or without
++ *  modification, are permitted provided that the following conditions
++ *  are met:
++ *
++ *  1. Redistributions of source code must retain the above copyright
++ *     notice, this list of conditions and the following disclaimer.
++ *  2. Redistributions in binary form must reproduce the above copyright
++ *     notice, this list of conditions and the following disclaimer in the
++ *     documentation and/or other materials provided with the distribution.
++ *  3. Neither the name of the Panasas company nor the names of its
++ *     contributors may be used to endorse or promote products derived
++ *     from this software without specific prior written permission.
++ *
++ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
++ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
++ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
++ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
++ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#ifndef _OBJLAYOUT_H
++#define _OBJLAYOUT_H
++
++#include <linux/nfs_fs.h>
++#include <linux/pnfs_osd_xdr.h>
++#include "../pnfs.h"
++
++/*
++ * in-core layout segment
++ */
++struct objlayout_segment {
++	struct pnfs_layout_segment lseg;
++	void *internal;    /* for provider internal use */
++	u8 pnfs_osd_layout[];
++};
++
++/*
++ * Raid engine I/O API
++ */
++extern int objio_alloc_lseg(void **outp,
++	struct pnfs_layout_hdr *pnfslay,
++	struct pnfs_layout_segment *lseg,
++	struct pnfs_osd_layout *layout);
++extern void objio_free_lseg(void *p);
++
++/*
++ * exported generic objects function vectors
++ */
++
++extern struct pnfs_layout_segment *objlayout_alloc_lseg(
++	struct pnfs_layout_hdr *,
++	struct nfs4_layoutget_res *);
++extern void objlayout_free_lseg(struct pnfs_layout_segment *);
++
++#endif /* _OBJLAYOUT_H */
+diff --git a/fs/nfs/objlayout/pnfs_osd_xdr_cli.c b/fs/nfs/objlayout/pnfs_osd_xdr_cli.c
+index 19228f8..a2a2e91 100644
+--- a/fs/nfs/objlayout/pnfs_osd_xdr_cli.c
++++ b/fs/nfs/objlayout/pnfs_osd_xdr_cli.c
+@@ -130,3 +130,36 @@ pnfs_osd_xdr_decode_data_map(__be32 *p, struct pnfs_osd_data_map *data_map)
+ 		data_map->odm_raid_algorithm);
+ 	return p;
+ }
++
++struct pnfs_osd_layout *
++pnfs_osd_xdr_decode_layout(struct pnfs_osd_layout *layout, __be32 *p)
++{
++	int i;
++	__be32 *start = p;
++	struct pnfs_osd_object_cred *comp;
++	u8 *cred;
++
++	p = pnfs_osd_xdr_decode_data_map(p, &layout->olo_map);
++	READ32(layout->olo_comps_index);
++	READ32(layout->olo_num_comps);
++	layout->olo_comps = (struct pnfs_osd_object_cred *)(layout + 1);
++	comp = layout->olo_comps;
++	cred = (u8 *)(comp + layout->olo_num_comps);
++	dprintk("%s: comps_index=%u num_comps=%u\n",
++		__func__, layout->olo_comps_index, layout->olo_num_comps);
++	for (i = 0; i < layout->olo_num_comps; i++) {
++		p = pnfs_osd_xdr_decode_object_cred(p, comp, &cred);
++		dprintk("%s: comp[%d]=dev(%llx:%llx) par=0x%llx obj=0x%llx "
++			"key_len=%u cap_len=%u\n",
++			__func__, i,
++			_DEVID_LO(&comp->oc_object_id.oid_device_id),
++			_DEVID_HI(&comp->oc_object_id.oid_device_id),
++			comp->oc_object_id.oid_partition_id,
++			comp->oc_object_id.oid_object_id,
++			comp->oc_cap_key.cred_len, comp->oc_cap.cred_len);
++		comp++;
++	}
++	dprintk("%s: xdr_size=%Zd end=%p in_core_size=%Zd\n", __func__,
++	       (char *)p - (char *)start, cred, (char *)cred - (char *)layout);
++	return layout;
++}
+-- 
+1.7.3.4
 
