@@ -1,56 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:37102 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753068Ab1EAJdd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 May 2011 05:33:33 -0400
-Received: by iyb14 with SMTP id 14so4006732iyb.19
-        for <linux-nfs@vger.kernel.org>; Sun, 01 May 2011 02:33:32 -0700 (PDT)
-Date: Sun, 1 May 2011 11:33:32 +0200
-Message-ID: <BANLkTi=X0VtcSecmEwzPBTqk3L154aj+2Q@mail.gmail.com>
-Subject: How does NFS handle notify?
-From: Stef Bon <stefbon@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from daytona.panasas.com ([67.152.220.89]:38064 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753591Ab1EIRLY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:11:24 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH v2 26/29] pnfs: encode_layoutcommit
+Date: Mon,  9 May 2011 20:11:17 +0300
+Message-Id: <1304961077-4757-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DC81E8C.6040901@panasas.com>
+References: <4DC81E8C.6040901@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi,
+Add a layout driver method to encode the layout type specific
+opaque part of layout commit in-line in the xdr stream.
 
-I'm working on a FUSE filesystem, which is part of a construction like
-GoboLinux. It offers the user, when her/his session begins an
-environment like:
+Currently, the pnfs-objects layout driver uses it to encode metadata hints
+to the MDS and the blocks layout driver to commit provisionally allocated
+extents to the file.
 
-/Computer
-/Home
-/Internet Services
-/Mounts
-/Network
-/Shared
-/System
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/nfs4xdr.c |   16 +++++++++++++---
+ fs/nfs/pnfs.h    |    4 ++++
+ 2 files changed, 17 insertions(+), 3 deletions(-)
 
-The normal directories like /bin, /etc, /usr etcetera are present but
-hidden ( by the FUSE fs).
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 368c2a2..808c996 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1885,6 +1885,7 @@ encode_layoutget(struct xdr_stream *xdr,
+ 
+ static int
+ encode_layoutcommit(struct xdr_stream *xdr,
++		    struct inode *inode,
+ 		    const struct nfs4_layoutcommit_args *args,
+ 		    struct compound_hdr *hdr)
+ {
+@@ -1893,7 +1894,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
+ 	dprintk("%s: lbw: %llu type: %d\n", __func__, args->lastbytewritten,
+ 		NFS_SERVER(args->inode)->pnfs_curr_ld->id);
+ 
+-	p = reserve_space(xdr, 48 + NFS4_STATEID_SIZE);
++	p = reserve_space(xdr, 44 + NFS4_STATEID_SIZE);
+ 	*p++ = cpu_to_be32(OP_LAYOUTCOMMIT);
+ 	/* Only whole file layouts */
+ 	p = xdr_encode_hyper(p, 0); /* offset */
+@@ -1904,7 +1905,14 @@ encode_layoutcommit(struct xdr_stream *xdr,
+ 	p = xdr_encode_hyper(p, args->lastbytewritten);
+ 	*p++ = cpu_to_be32(0); /* Never send time_modify_changed */
+ 	*p++ = cpu_to_be32(NFS_SERVER(args->inode)->pnfs_curr_ld->id);/* type */
+-	*p++ = cpu_to_be32(0); /* no file layout payload */
++
++	if (NFS_SERVER(inode)->pnfs_curr_ld->encode_layoutcommit)
++		NFS_SERVER(inode)->pnfs_curr_ld->encode_layoutcommit(
++			NFS_I(inode)->layout, xdr, args);
++	else {
++		p = reserve_space(xdr, 4);
++		*p = cpu_to_be32(0); /* no layout-type payload */
++	}
+ 
+ 	hdr->nops++;
+ 	hdr->replen += decode_layoutcommit_maxsz;
+@@ -2761,6 +2769,8 @@ static void nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
+ 				      struct xdr_stream *xdr,
+ 				      struct nfs4_layoutcommit_args *args)
+ {
++	struct nfs4_layoutcommit_data *data =
++		container_of(args, struct nfs4_layoutcommit_data, args);
+ 	struct compound_hdr hdr = {
+ 		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
+ 	};
+@@ -2768,7 +2778,7 @@ static void nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
+ 	encode_compound_hdr(xdr, req, &hdr);
+ 	encode_sequence(xdr, &args->seq_args, &hdr);
+ 	encode_putfh(xdr, NFS_FH(args->inode), &hdr);
+-	encode_layoutcommit(xdr, args, &hdr);
++	encode_layoutcommit(xdr, data->args.inode, args, &hdr);
+ 	encode_getfattr(xdr, args->bitmask, &hdr);
+ 	encode_nops(&hdr);
+ }
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 798861c..0c33d57 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -110,6 +110,10 @@ struct pnfs_layoutdriver_type {
+ 	void (*encode_layoutreturn) (struct pnfs_layout_hdr *layoutid,
+ 				     struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutreturn_args *args);
++
++	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
++				     struct xdr_stream *xdr,
++				     const struct nfs4_layoutcommit_args *args);
+ };
+ 
+ struct pnfs_layout_hdr {
+-- 
+1.7.3.4
 
-See:
-
-http://linux.bononline.nl/wiki/index.php/Mount.md5key
-
-(especially the changes and the screenshots..)
-
-To make this environment more consistent and usefull, it has to
-support (i)notify.
-Earlier I've posted a message about that on the linux fsdevel mailist:
-
-http://marc.info/?l=linux-fsdevel&m=130052497829681&w=2
-
-Mentioned there - and I agree - that when developing support for
-notify on mounted filesystems you need to have one base (in VFS), and
-a part which is handled by the (mounted) fs self.
-
-So here my question, how does NFS handle notify?? I'm not that
-familiar with NFS, so maybe I'm asking something really stupid here...
-
-Thanks in advance,
-
-Stef
