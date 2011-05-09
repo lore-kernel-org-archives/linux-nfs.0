@@ -1,87 +1,281 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:44911 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753427Ab1EQNpQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 May 2011 09:45:16 -0400
-Subject: Re: [PATCH 1/2] Remove risk of nfs_addmntent corrupting mtab
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20110517045217.29020.16140.stgit@notabene.brown>
-Date: Tue, 17 May 2011 09:45:00 -0400
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-Message-Id: <566E6C00-8FC5-4F1A-AFBC-585BF3485C93@oracle.com>
-References: <20110517045125.29020.14596.stgit@notabene.brown> <20110517045217.29020.16140.stgit@notabene.brown>
-To: Neil Brown <neilb@suse.de>
+Received: from daytona.panasas.com ([67.152.220.89]:38085 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753784Ab1EIRL5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:11:57 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 29/29] pnfs-obj: objio_osd: groups support
+Date: Mon,  9 May 2011 20:11:51 +0300
+Message-Id: <1304961111-4868-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DC81E8C.6040901@panasas.com>
+References: <4DC81E8C.6040901@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Boaz Harrosh <bharrosh@panasas.com>
 
-On May 17, 2011, at 12:52 AM, Neil Brown wrote:
+* _calc_stripe_info() changes to accommodate for grouping
+  calculations. Returns additional information
 
-> nfs_addmntent is used to append directly to /etc/mtab.
-> If the write partially fail, e.g. due to RLIMIT_FSIZE,
-> truncate back to original size and return an error.
-> 
-> See also https://bugzilla.redhat.com/show_bug.cgi?id=697975
-> (CVE-2011-1749) CVE-2011-1749 nfs-utils: mount.nfs fails to anticipate RLIMIT_FSIZE
+* old _prepare_pages() becomes _prepare_one_group()
+  which stores pages belonging to one device group.
 
-Seems reasonable.  Is there a similar fix needed for libmount?
+* Iterates on all groups calling _prepare_one_group().
 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
-> 
-> support/nfs/nfs_mntent.c |    9 +++++++++
-> 1 files changed, 9 insertions(+), 0 deletions(-)
-> 
-> diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
-> index a5216fc..a2118a2 100644
-> --- a/support/nfs/nfs_mntent.c
-> +++ b/support/nfs/nfs_mntent.c
-> @@ -12,6 +12,7 @@
-> #include <string.h>		/* for index */
-> #include <ctype.h>		/* for isdigit */
-> #include <sys/stat.h>		/* for umask */
-> +#include <unistd.h>		/* for ftruncate */
-> 
-> #include "nfs_mntent.h"
-> #include "nls.h"
-> @@ -127,9 +128,11 @@ int
-> nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
-> 	char *m1, *m2, *m3, *m4;
-> 	int res;
-> +	off_t length;
-> 
-> 	if (fseek (mfp->mntent_fp, 0, SEEK_END))
-> 		return 1;			/* failure */
-> +	length = ftell(mfp->mntent_fp);
-> 
-> 	m1 = mangle(mnt->mnt_fsname);
-> 	m2 = mangle(mnt->mnt_dir);
-> @@ -143,6 +146,12 @@ nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
-> 	free(m2);
-> 	free(m3);
-> 	free(m4);
-> +	if (res >= 0) {
-> +		res = fflush(mfp->mntent_fp);
-> +		if (res < 0)
-> +			/* Avoid leaving a corrupt mtab file */
-> +			ftruncate(fileno(mfp->mntent_fp), length);
-> +	}
-> 	return (res < 0) ? 1 : 0;
-> }
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+* Enable mounting of groups data_maps (group_width != 0)
 
+TODO:
+  Support for parial layout will come in next patch
+
+[Support partial layouts]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/objlayout/objio_osd.c |  135 +++++++++++++++++++++++++++++++++---------
+ 1 files changed, 106 insertions(+), 29 deletions(-)
+
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 6da4aa2..e7a0fcb 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -134,6 +134,8 @@ struct objio_segment {
+ 	unsigned mirrors_p1;
+ 	unsigned stripe_unit;
+ 	unsigned group_width;	/* Data stripe_units without integrity comps */
++	u64 group_depth;
++	unsigned group_count;
+ 
+ 	unsigned num_comps;
+ 	/* variable length */
+@@ -252,12 +254,9 @@ static int _verify_data_map(struct pnfs_osd_layout *layout)
+ {
+ 	struct pnfs_osd_data_map *data_map = &layout->olo_map;
+ 	u64 stripe_length;
++	u32 group_width;
+ 
+-/* FIXME: Only raid0 !group_width/depth for now. if not so, do not mount */
+-	if (data_map->odm_group_width || data_map->odm_group_depth) {
+-		printk(KERN_ERR "Group width/depth not supported\n");
+-		return -ENOTSUPP;
+-	}
++/* FIXME: Only raid0 for now. if not go through MDS */
+ 	if (data_map->odm_raid_algorithm != PNFS_OSD_RAID_0) {
+ 		printk(KERN_ERR "Only RAID_0 for now\n");
+ 		return -ENOTSUPP;
+@@ -268,8 +267,13 @@ static int _verify_data_map(struct pnfs_osd_layout *layout)
+ 		return -EINVAL;
+ 	}
+ 
+-	stripe_length = data_map->odm_stripe_unit * (data_map->odm_num_comps /
+-						(data_map->odm_mirror_cnt + 1));
++	if (data_map->odm_group_width)
++		group_width = data_map->odm_group_width;
++	else
++		group_width = data_map->odm_num_comps /
++						(data_map->odm_mirror_cnt + 1);
++
++	stripe_length = (u64)data_map->odm_stripe_unit * group_width;
+ 	if (stripe_length >= (1ULL << 32)) {
+ 		printk(KERN_ERR "Total Stripe length(0x%llx)"
+ 			  " >= 32bit is not supported\n", _LLU(stripe_length));
+@@ -311,8 +315,18 @@ int objio_alloc_lseg(void **outp,
+ 
+ 	objio_seg->mirrors_p1 = layout->olo_map.odm_mirror_cnt + 1;
+ 	objio_seg->stripe_unit = layout->olo_map.odm_stripe_unit;
+-	objio_seg->group_width = layout->olo_map.odm_num_comps /
+-							objio_seg->mirrors_p1;
++	if (layout->olo_map.odm_group_width) {
++		objio_seg->group_width = layout->olo_map.odm_group_width;
++		objio_seg->group_depth = layout->olo_map.odm_group_depth;
++		objio_seg->group_count = layout->olo_map.odm_num_comps /
++						objio_seg->mirrors_p1 /
++						objio_seg->group_width;
++	} else {
++		objio_seg->group_width = layout->olo_map.odm_num_comps /
++						objio_seg->mirrors_p1;
++		objio_seg->group_depth = -1;
++		objio_seg->group_count = 1;
++	}
+ 
+ 	*outp = objio_seg;
+ 	return 0;
+@@ -483,6 +497,9 @@ struct osd_dev * _io_od(struct objio_state *ios, unsigned dev)
+ 
+ struct _striping_info {
+ 	u64 obj_offset;
++	u64 group_length;
++	u64 total_group_length;
++	u64 Major;
+ 	unsigned dev;
+ 	unsigned unit_off;
+ };
+@@ -492,15 +509,34 @@ static void _calc_stripe_info(struct objio_state *ios, u64 file_offset,
+ {
+ 	u32	stripe_unit = ios->objio_seg->stripe_unit;
+ 	u32	group_width = ios->objio_seg->group_width;
++	u64	group_depth = ios->objio_seg->group_depth;
+ 	u32	U = stripe_unit * group_width;
+ 
+-	u32	LmodU;
+-	u64 	N = div_u64_rem(file_offset, U, &LmodU);
++	u64	T = U * group_depth;
++	u64	S = T * ios->objio_seg->group_count;
++	u64	M = div64_u64(file_offset, S);
++
++	/*
++	G = (L - (M * S)) / T
++	H = (L - (M * S)) % T
++	*/
++	u64	LmodU = file_offset - M * S;
++	u32	G = div64_u64(LmodU, T);
++	u64	H = LmodU - G * T;
++
++	u32	N = div_u64(H, U);
++
++	div_u64_rem(file_offset, stripe_unit, &si->unit_off);
++	si->obj_offset = si->unit_off + (N * stripe_unit) +
++				  (M * group_depth * stripe_unit);
+ 
+-	si->unit_off = LmodU % stripe_unit;
+-	si->obj_offset = N * stripe_unit + si->unit_off;
+-	si->dev = LmodU / stripe_unit;
++	/* "H - (N * U)" is just "H % U" so it's bound to u32 */
++	si->dev = (u32)(H - (N * U)) / stripe_unit + G * group_width;
+ 	si->dev *= ios->objio_seg->mirrors_p1;
++
++	si->group_length = T - H;
++	si->total_group_length = T;
++	si->Major = M;
+ }
+ 
+ static int _add_stripe_unit(struct objio_state *ios,  unsigned *cur_pg,
+@@ -547,15 +583,18 @@ static int _add_stripe_unit(struct objio_state *ios,  unsigned *cur_pg,
+ 	return 0;
+ }
+ 
+-static int _prepare_pages(struct objio_state *ios, struct _striping_info *si)
++static int _prepare_one_group(struct objio_state *ios, u64 length,
++			      struct _striping_info *si, unsigned first_comp,
++			      unsigned *last_pg)
+ {
+-	u64 length = ios->ol_state.count;
+ 	unsigned stripe_unit = ios->objio_seg->stripe_unit;
+ 	unsigned mirrors_p1 = ios->objio_seg->mirrors_p1;
++	unsigned devs_in_group = ios->objio_seg->group_width * mirrors_p1;
+ 	unsigned dev = si->dev;
+-	unsigned comp = 0;
+-	unsigned stripes = 0;
+-	unsigned cur_pg = 0;
++	unsigned first_dev = dev - (dev % devs_in_group);
++	unsigned comp = first_comp + (dev - first_dev);
++	unsigned max_comp = ios->numdevs ? ios->numdevs - mirrors_p1 : 0;
++	unsigned cur_pg = *last_pg;
+ 	int ret = 0;
+ 
+ 	while (length) {
+@@ -579,10 +618,11 @@ static int _prepare_pages(struct objio_state *ios, struct _striping_info *si)
+ 				cur_len = stripe_unit;
+ 			}
+ 
+-			stripes++;
++			if (max_comp < comp)
++				max_comp = comp;
+ 
+ 			dev += mirrors_p1;
+-			dev %= ios->ol_state.num_comps;
++			dev = (dev % devs_in_group) + first_dev;
+ 		} else {
+ 			cur_len = stripe_unit;
+ 		}
+@@ -595,25 +635,58 @@ static int _prepare_pages(struct objio_state *ios, struct _striping_info *si)
+ 			goto out;
+ 
+ 		comp += mirrors_p1;
+-		comp %= ios->ol_state.num_comps;
++		comp = (comp % devs_in_group) + first_comp;
+ 
+ 		length -= cur_len;
+ 		ios->length += cur_len;
+ 	}
+ out:
+-	if (!ios->length)
+-		return ret;
+-
+-	ios->numdevs = stripes * mirrors_p1;
+-	return 0;
++	ios->numdevs = max_comp + mirrors_p1;
++	*last_pg = cur_pg;
++	return ret;
+ }
+ 
+ static int _io_rw_pagelist(struct objio_state *ios)
+ {
++	u64 length = ios->ol_state.count;
+ 	struct _striping_info si;
++	unsigned devs_in_group = ios->objio_seg->group_width *
++				 ios->objio_seg->mirrors_p1;
++	unsigned first_comp = 0;
++	unsigned num_comps = ios->objio_seg->layout->olo_map.odm_num_comps;
++	unsigned last_pg = 0;
++	int ret = 0;
+ 
+-	_calc_stripe_info(ios, ios->ol_state.count, &si);
+-	return _prepare_pages(ios, &si);
++	_calc_stripe_info(ios, ios->ol_state.offset, &si);
++	while (length) {
++		if (length < si.group_length)
++			si.group_length = length;
++
++		ret = _prepare_one_group(ios, si.group_length, &si, first_comp,
++					 &last_pg);
++		if (unlikely(ret))
++			goto out;
++
++		length -= si.group_length;
++
++		si.group_length = si.total_group_length;
++		si.unit_off = 0;
++		++si.Major;
++		si.obj_offset = si.Major * ios->objio_seg->stripe_unit *
++						ios->objio_seg->group_depth;
++
++		si.dev = (si.dev - (si.dev % devs_in_group)) + devs_in_group;
++		si.dev %= num_comps;
++
++		first_comp += devs_in_group;
++		first_comp %= num_comps;
++	}
++
++out:
++	if (!ios->length)
++		return ret;
++
++	return 0;
+ }
+ 
+ static ssize_t _sync_done(struct objio_state *ios)
+@@ -735,6 +808,8 @@ static ssize_t _read_exec(struct objio_state *ios)
+ 	int ret;
+ 
+ 	for (i = 0; i < ios->numdevs; i += ios->objio_seg->mirrors_p1) {
++		if (!ios->per_dev[i].length)
++			continue;
+ 		ret = _read_mirrors(ios, i);
+ 		if (unlikely(ret))
+ 			goto err;
+@@ -855,6 +930,8 @@ static ssize_t _write_exec(struct objio_state *ios)
+ 	int ret;
+ 
+ 	for (i = 0; i < ios->numdevs; i += ios->objio_seg->mirrors_p1) {
++		if (!ios->per_dev[i].length)
++			continue;
+ 		ret = _write_mirrors(ios, i);
+ 		if (unlikely(ret))
+ 			goto err;
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.3.4
 
