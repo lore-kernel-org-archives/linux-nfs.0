@@ -1,203 +1,173 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:32047 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750736Ab1EJRXo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 May 2011 13:23:44 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: trond@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] NFS: use scope from exchange_id to skip reclaim
-Date: Tue, 10 May 2011 13:23:15 -0400
-Message-Id: <1305048195-24377-1-git-send-email-dros@netapp.com>
+Received: from mail-yi0-f46.google.com ([209.85.218.46]:50715 "EHLO
+	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754072Ab1EITgx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 15:36:53 -0400
+Received: by yia27 with SMTP id 27so1915432yia.19
+        for <linux-nfs@vger.kernel.org>; Mon, 09 May 2011 12:36:53 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 04/16] SUNRPC: Add a helper to switch the transport of the
+	rpc_client
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 09 May 2011 15:36:49 -0400
+Message-ID: <20110509193649.16568.42738.stgit@matisse.1015granger.net>
+In-Reply-To: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
+References: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
->From Section 8.4.2.1 of the rfc 5661 - We can determine if a RECLAIM_REBOOT
-can be skipped if the "eir_server_scope" from the exchange_id proc differs from
-previous calls.
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-Also, in the future server_scope will be useful for determining whether client
-trunking is available
-
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+[ cel: fix whitespace ]
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
-Applied comments from Benny. Also, I added a dprintk when server_scope mismatch
-is detected.
+ include/linux/sunrpc/clnt.h |    3 ++
+ net/sunrpc/clnt.c           |   76 ++++++++++++++++++++++++++++++++++++++++---
+ 2 files changed, 73 insertions(+), 6 deletions(-)
 
-
- fs/nfs/client.c           |    1 +
- fs/nfs/nfs4_fs.h          |    2 ++
- fs/nfs/nfs4proc.c         |   32 ++++++++++++++++++++++++++++++++
- fs/nfs/nfs4state.c        |    9 ++++++++-
- fs/nfs/nfs4xdr.c          |    8 +++++++-
- include/linux/nfs_fs_sb.h |    3 +++
- include/linux/nfs_xdr.h   |    1 +
- 7 files changed, 54 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 139be96..ba96834 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -291,6 +291,7 @@ static void nfs_free_client(struct nfs_client *clp)
- 		put_rpccred(clp->cl_machine_cred);
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 2eea0d7..d18d952 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -144,6 +144,9 @@ void		rpc_task_release_client(struct rpc_task *);
  
- 	kfree(clp->cl_hostname);
-+	kfree(clp->server_scope);
- 	kfree(clp);
+ int		rpc_lock_client(struct rpc_clnt *clnt, unsigned long timeout);
+ void		rpc_unlock_client(struct rpc_clnt *clnt);
++int		rpc_switch_client_transport(struct rpc_clnt *,
++				struct xprt_create *,
++				const struct rpc_timeout *);
  
- 	dprintk("<-- nfs_free_client()\n");
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index c4a6983..bfde1c1 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -48,6 +48,7 @@ enum nfs4_client_state {
- 	NFS4CLNT_SESSION_RESET,
- 	NFS4CLNT_RECALL_SLOT,
- 	NFS4CLNT_LEASE_CONFIRM,
-+	NFS4CLNT_SERVER_SCOPE_MISMATCH,
- };
- 
- enum nfs4_session_state {
-@@ -349,6 +350,7 @@ extern void nfs4_schedule_state_manager(struct nfs_client *);
- extern void nfs4_schedule_stateid_recovery(const struct nfs_server *, struct nfs4_state *);
- extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags);
- extern void nfs41_handle_recall_slot(struct nfs_client *clp);
-+extern void nfs41_handle_server_scope(struct nfs_client *, struct server_scope **);
- extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
- extern int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl);
- extern void nfs4_copy_stateid(nfs4_stateid *, struct nfs4_state *, fl_owner_t, pid_t);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 69c0f3c..455e7f8 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4751,6 +4751,16 @@ out_inval:
- 	return -NFS4ERR_INVAL;
+ int		rpcb_register(u32, u32, int, unsigned short);
+ int		rpcb_v4_register(const u32 program, const u32 version,
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 6479e1d..ac2d29e 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -26,6 +26,7 @@
+ #include <linux/namei.h>
+ #include <linux/mount.h>
+ #include <linux/slab.h>
++#include <linux/rcupdate.h>
+ #include <linux/utsname.h>
+ #include <linux/workqueue.h>
+ #include <linux/in.h>
+@@ -143,12 +144,35 @@ err:
+ 	return error;
  }
  
-+static bool
-+nfs41_same_server_scope(struct server_scope *a, struct server_scope *b)
++static void rpc_set_client_transport(struct rpc_clnt *clnt,
++		struct rpc_xprt *xprt,
++		const struct rpc_timeout *timeout)
 +{
-+	if (a->server_scope_sz == b->server_scope_sz &&
-+	    memcmp(a->server_scope, b->server_scope, a->server_scope_sz) == 0)
-+		return true;
++	struct rpc_xprt *old;
 +
-+	return false;
++	spin_lock(&clnt->cl_lock);
++	old = clnt->cl_xprt;
++
++	if (!xprt_bound(xprt))
++		clnt->cl_autobind = 1;
++
++	clnt->cl_timeout = timeout;
++	rcu_assign_pointer(clnt->cl_xprt, xprt);
++	spin_unlock(&clnt->cl_lock);
++
++	if (old != NULL) {
++		synchronize_rcu();
++		xprt_put(old);
++	}
 +}
 +
- /*
-  * nfs4_proc_exchange_id()
-  *
-@@ -4793,9 +4803,31 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 				init_utsname()->domainname,
- 				clp->cl_rpcclient->cl_auth->au_flavor);
+ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, struct rpc_xprt *xprt)
+ {
+ 	struct rpc_program	*program = args->program;
+ 	struct rpc_version	*version;
+ 	struct rpc_clnt		*clnt = NULL;
+ 	struct rpc_auth		*auth;
++	const struct rpc_timeout *timeout;
+ 	int err;
  
-+	res.server_scope = kzalloc(sizeof(struct server_scope), GFP_KERNEL);
-+	if (unlikely(!res.server_scope))
-+		return -ENOMEM;
+ 	/* sanity check the name before trying to print it */
+@@ -174,7 +198,6 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 		goto out_err;
+ 	clnt->cl_parent = clnt;
+ 
+-	rcu_assign_pointer(clnt->cl_xprt, xprt);
+ 	clnt->cl_procinfo = version->procs;
+ 	clnt->cl_maxproc  = version->nrprocs;
+ 	clnt->cl_protname = program->name;
+@@ -189,16 +212,15 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 	INIT_LIST_HEAD(&clnt->cl_tasks);
+ 	spin_lock_init(&clnt->cl_lock);
+ 
+-	if (!xprt_bound(xprt))
+-		clnt->cl_autobind = 1;
+-
+-	clnt->cl_timeout = xprt->timeout;
++	timeout = xprt->timeout;
+ 	if (args->timeout != NULL) {
+ 		memcpy(&clnt->cl_timeout_default, args->timeout,
+ 				sizeof(clnt->cl_timeout_default));
+-		clnt->cl_timeout = &clnt->cl_timeout_default;
++		timeout = &clnt->cl_timeout_default;
+ 	}
+ 
++	rpc_set_client_transport(clnt, xprt, timeout);
 +
- 	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
- 	if (!status)
- 		status = nfs4_check_cl_exchange_flags(clp->cl_exchange_flags);
-+
-+	if (!status) {
-+		if (clp->server_scope &&
-+		    !nfs41_same_server_scope(clp->server_scope,
-+					     res.server_scope)) {
-+			dprintk("%s: server_scope mismatch detected\n",
-+				__func__);
-+			set_bit(NFS4CLNT_SERVER_SCOPE_MISMATCH, &clp->cl_state);
-+			kfree(clp->server_scope);
-+			clp->server_scope = NULL;
-+		}
-+
-+		if (!clp->server_scope)
-+			clp->server_scope = res.server_scope;
-+		else
-+			kfree(res.server_scope);
-+	}
-+
- 	dprintk("<-- %s status= %d\n", __func__, status);
- 	return status;
+ 	clnt->cl_rtt = &clnt->cl_rtt_default;
+ 	rpc_init_rtt(&clnt->cl_rtt_default, clnt->cl_timeout->to_initval);
+ 	clnt->cl_principal = NULL;
+@@ -412,6 +434,48 @@ out_no_clnt:
  }
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 036f5ad..4138453 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1639,7 +1639,14 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 				goto out_error;
- 			}
- 			clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state);
--			set_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state);
-+
-+			if (test_and_clear_bit(NFS4CLNT_SERVER_SCOPE_MISMATCH,
-+					       &clp->cl_state))
-+				nfs4_state_start_reclaim_nograce(clp);
-+			else
-+				set_bit(NFS4CLNT_RECLAIM_REBOOT,
-+					&clp->cl_state);
-+
- 			pnfs_destroy_all_layouts(clp);
- 		}
+ EXPORT_SYMBOL_GPL(rpc_clone_client);
  
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index c3ccd2c..09a19ca 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4909,11 +4909,17 @@ static int decode_exchange_id(struct xdr_stream *xdr,
- 	if (unlikely(status))
- 		return status;
- 
--	/* Throw away server_scope */
-+	/* Save server_scope */
- 	status = decode_opaque_inline(xdr, &dummy, &dummy_str);
- 	if (unlikely(status))
- 		return status;
- 
-+	if (unlikely(dummy > NFS4_OPAQUE_LIMIT))
-+		return -EIO;
++/**
++ * rpc_switch_client_transport: switch the RPC transport on the fly
++ * @clnt: pointer to a struct rpc_clnt
++ * @args: pointer to the new transport arguments
++ * @timeout: pointer to the new timeout parameters
++ *
++ * This function allows the caller to switch the RPC transport for the
++ * rpc_clnt structure 'clnt' to allow it to connect to a mirrored NFS server,
++ * for instance. It assumes that the caller has ensured that there are no
++ * active tasks by using some form of locking.
++ */
++int rpc_switch_client_transport(struct rpc_clnt *clnt,
++		struct xprt_create *args,
++		const struct rpc_timeout *timeout)
++{
++	struct rpc_xprt *xprt;
++	struct rpc_auth *auth;
++	rpc_authflavor_t pseudoflavor;
 +
-+	memcpy(res->server_scope->server_scope, dummy_str, dummy);
-+	res->server_scope->server_scope_sz = dummy;
++	xprt = xprt_create_transport(args);
++	if (IS_ERR(xprt))
++		return PTR_ERR(xprt);
 +
- 	/* Throw away Implementation id array */
- 	status = decode_opaque_inline(xdr, &dummy, &dummy_str);
- 	if (unlikely(status))
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 87694ca..f23b188 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -16,6 +16,7 @@ struct nfs4_sequence_args;
- struct nfs4_sequence_res;
- struct nfs_server;
- struct nfs4_minor_version_ops;
-+struct server_scope;
- 
++	pseudoflavor = clnt->cl_auth->au_flavor;
++
++	rpc_set_client_transport(clnt, xprt, timeout);
++
++	/*
++	 * Note: we must always create a new rpc_auth cache
++	 * when switching to a different server! RPCSEC_GSS sessions
++	 * in particular are between a single client and server,
++	 * so we cannot reuse the sessions in the cache when we switch
++	 * servers.
++	 */
++	auth = rpcauth_create(pseudoflavor, clnt);
++	if (IS_ERR(auth))
++		return PTR_ERR(auth);
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(rpc_switch_client_transport);
++
  /*
-  * The nfs_client identifies our client state to the server.
-@@ -83,6 +84,8 @@ struct nfs_client {
- #ifdef CONFIG_NFS_FSCACHE
- 	struct fscache_cookie	*fscache;	/* client index cache cookie */
- #endif
-+
-+	struct server_scope	*server_scope;	/* from exchange_id */
- };
- 
- /*
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 890dce2..31d6df4 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1039,6 +1039,7 @@ struct server_scope {
- struct nfs41_exchange_id_res {
- 	struct nfs_client		*client;
- 	u32				flags;
-+	struct server_scope		*server_scope;
- };
- 
- struct nfs41_create_session_args {
--- 
-1.7.4.2
+  * Kill all tasks for the given client.
+  * XXX: kill their descendants as well?
 
