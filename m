@@ -1,105 +1,182 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ausxippc101.us.dell.com ([143.166.85.207]:38317 "EHLO
-	ausxippc101.us.dell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932671Ab1ESNPh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 May 2011 09:15:37 -0400
-From: <Taousif_Ansari@DELLTEAM.com>
-To: <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-Date: Thu, 19 May 2011 18:44:59 +0530
-Subject: RE: Performance Issue with multiple dataserver
-Message-ID: <A1A98FD909DC5248811A65C5D18E9C761DF69B244C@BLRX7MCDC202.AMER.DELL.COM>
-References: <4DD2A084.1040905@moving-picture.com>
- <20110518080106.1159c5b8@notabene.brown>
- <4DD39D39.7010805@moving-picture.com>
- <A1A98FD909DC5248811A65C5D18E9C761DF69B1F18@BLRX7MCDC202.AMER.DELL.COM>
- <20110518161239.GA16835@fieldses.org>
- <A1A98FD909DC5248811A65C5D18E9C761DF69B2188@BLRX7MCDC202.AMER.DELL.COM>
- <20110519115018.GA31978@fieldses.org>
- <A1A98FD909DC5248811A65C5D18E9C761DF69B2432@BLRX7MCDC202.AMER.DELL.COM>
- <20110519131236.GA32648@fieldses.org>
-In-Reply-To: <20110519131236.GA32648@fieldses.org>
-Content-Type: text/plain; charset="us-ascii"
+Received: from daytona.panasas.com ([67.152.220.89]:37962 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753625Ab1EIRH7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:07:59 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>,
+        "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH v2 08/29] NFSD: introduce exp_xdr.h
+Date: Mon,  9 May 2011 20:07:50 +0300
+Message-Id: <1304960870-4080-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DC81E8C.6040901@panasas.com>
+References: <4DC81E8C.6040901@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Then what should I follow, and what details are needed....
+Containing xdr encoding helpers.
 
------Original Message-----
-From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-Sent: Thursday, May 19, 2011 6:43 PM
-To: Ansari, Taousif - Dell Team
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Performance Issue with multiple dataserver
+Cc: J. Bruce Fields <bfields@citi.umich.edu>
+[nfsd: fix exp_xdr_encode_u64 parameter type]
+Reported-by: J. Bruce Fields <bfields@citi.umich.edu>
+[exportfs: exp_xdr.h: Use #include <linux/string.h> instead of <asm/string.h>]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ include/linux/exp_xdr.h |  141 +++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 141 insertions(+), 0 deletions(-)
+ create mode 100644 include/linux/exp_xdr.h
 
-On Thu, May 19, 2011 at 06:09:21PM +0530, Taousif_Ansari@DELLTEAM.com wrote:
-> I have followed the way given on http://wiki.linux-nfs.org/wiki/index.php/Configuring_pNFS/spnfsd .
+diff --git a/include/linux/exp_xdr.h b/include/linux/exp_xdr.h
+new file mode 100644
+index 0000000..b69c309
+--- /dev/null
++++ b/include/linux/exp_xdr.h
+@@ -0,0 +1,141 @@
++#ifndef _LINUX_EXP_XDR_H
++#define _LINUX_EXP_XDR_H
++
++#include <asm/byteorder.h>
++#include <asm/unaligned.h>
++#include <linux/string.h>
++
++struct exp_xdr_stream {
++	__be32 *p;
++	__be32 *end;
++};
++
++/**
++ * exp_xdr_qwords - Calculate the number of quad-words holding nbytes
++ * @nbytes: number of bytes to encode
++ */
++static inline size_t
++exp_xdr_qwords(__u32 nbytes)
++{
++	return DIV_ROUND_UP(nbytes, 4);
++}
++
++/**
++ * exp_xdr_qbytes - Calculate the number of bytes holding qwords
++ * @qwords: number of quad-words to encode
++ */
++static inline size_t
++exp_xdr_qbytes(size_t qwords)
++{
++	return qwords << 2;
++}
++
++/**
++ * exp_xdr_reserve_space - Reserve buffer space for sending
++ * @xdr: pointer to exp_xdr_stream
++ * @nbytes: number of bytes to reserve
++ *
++ * Checks that we have enough buffer space to encode 'nbytes' more
++ * bytes of data. If so, update the xdr stream.
++ */
++static inline __be32 *
++exp_xdr_reserve_space(struct exp_xdr_stream *xdr, size_t nbytes)
++{
++	__be32 *p = xdr->p;
++	__be32 *q;
++
++	/* align nbytes on the next 32-bit boundary */
++	q = p + exp_xdr_qwords(nbytes);
++	if (unlikely(q > xdr->end || q < p))
++		return NULL;
++	xdr->p = q;
++	return p;
++}
++
++/**
++ * exp_xdr_reserve_qwords - Reserve buffer space for sending
++ * @xdr: pointer to exp_xdr_stream
++ * @nwords: number of quad words (u32's) to reserve
++ */
++static inline __be32 *
++exp_xdr_reserve_qwords(struct exp_xdr_stream *xdr, size_t qwords)
++{
++	return exp_xdr_reserve_space(xdr, exp_xdr_qbytes(qwords));
++}
++
++/**
++ * exp_xdr_encode_u32 - Encode an unsigned 32-bit value onto a xdr stream
++ * @p: pointer to encoding destination
++ * @val: value to encode
++ */
++static inline __be32 *
++exp_xdr_encode_u32(__be32 *p, __u32 val)
++{
++	*p = cpu_to_be32(val);
++	return p + 1;
++}
++
++/**
++ * exp_xdr_encode_u64 - Encode an unsigned 64-bit value onto a xdr stream
++ * @p: pointer to encoding destination
++ * @val: value to encode
++ */
++static inline __be32 *
++exp_xdr_encode_u64(__be32 *p, __u64 val)
++{
++	put_unaligned_be64(val, p);
++	return p + 2;
++}
++
++/**
++ * exp_xdr_encode_bytes - Encode an array of bytes onto a xdr stream
++ * @p: pointer to encoding destination
++ * @ptr: pointer to the array of bytes
++ * @nbytes: number of bytes to encode
++ */
++static inline __be32 *
++exp_xdr_encode_bytes(__be32 *p, const void *ptr, __u32 nbytes)
++{
++	if (likely(nbytes != 0)) {
++		unsigned int qwords = exp_xdr_qwords(nbytes);
++		unsigned int padding = exp_xdr_qbytes(qwords) - nbytes;
++
++		memcpy(p, ptr, nbytes);
++		if (padding != 0)
++			memset((char *)p + nbytes, 0, padding);
++		p += qwords;
++	}
++	return p;
++}
++
++/**
++ * exp_xdr_encode_opaque - Encode an opaque type onto a xdr stream
++ * @p: pointer to encoding destination
++ * @ptr: pointer to the opaque array
++ * @nbytes: number of bytes to encode
++ *
++ * Encodes the 32-bit opaque size in bytes followed by the opaque value.
++ */
++static inline __be32 *
++exp_xdr_encode_opaque(__be32 *p, const void *ptr, __u32 nbytes)
++{
++	p = exp_xdr_encode_u32(p, nbytes);
++	return exp_xdr_encode_bytes(p, ptr, nbytes);
++}
++
++/**
++ * exp_xdr_encode_opaque_qlen - Encode the opaque length onto a xdr stream
++ * @lenp: pointer to the opaque length destination
++ * @endp: pointer to the end of the opaque array
++ *
++ * Encodes the 32-bit opaque size in bytes given the start and end pointers
++ */
++static inline __be32 *
++exp_xdr_encode_opaque_len(__be32 *lenp, const void *endp)
++{
++	size_t nbytes = (char *)endp - (char *)(lenp + 1);
++
++	exp_xdr_encode_u32(lenp, nbytes);
++	return lenp + 1 + exp_xdr_qwords(nbytes);
++}
++#endif /* _LINUX_EXP_XDR_H */
+-- 
+1.7.3.4
 
-Oh.  As noted there, spnfs is unmaintained.
-
-And, in any case, we'd need many more details about your setup.
-
---b.
-
-> 
-> -Taousif
-> 
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-> Sent: Thursday, May 19, 2011 5:20 PM
-> To: Ansari, Taousif - Dell Team
-> Cc: linux-nfs@vger.kernel.org
-> Subject: Re: Performance Issue with multiple dataserver
-> 
-> On Thu, May 19, 2011 at 10:56:44AM +0530, Taousif_Ansari@DELLTEAM.com wrote:
-> > Hi,
-> > 
-> > I am using on Server linux-pnfs-2.6.38(linux-pnfs-ae7441f.tar) and on client also linux-pnfs-2.6.38(linux-pnfs-ae7441f.tar) downloaded from http://git.linux-nfs.org/?p=bhalevy/linux-pnfs.git;a=summary on Fedora 14.
-> 
-> So you're using GFS2 on the server?  With what sort of storage?
-> 
-> --b.
-> 
-> > 
-> > Extremely sorry for causing confusing .
-> > -----Original Message-----
-> > From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-> > Sent: Wednesday, May 18, 2011 9:43 PM
-> > To: Ansari, Taousif - Dell Team
-> > Cc: linux-nfs@vger.kernel.org
-> > Subject: Re: Performance Issue with multiple dataserver
-> > 
-> > You sent this message as a reply to an unrelated message, which is
-> > confusing to those of us with threaded mail readers.
-> > 
-> > On Wed, May 18, 2011 at 05:24:45PM +0530, Taousif_Ansari@DELLTEAM.com wrote:
-> > > I have done pNFS setup with single Dataserver and Two Dataserver and ran the IOzone tool on both, I found that the performance with multiple dataservers is less than the performance with single dataservers.
-> > 
-> > What are you using as the server, and what as the client?
-> > 
-> > --b.
-> > 
-> > > 
-> > > Here are some numbers, which were captured by the IOzone tool.
-> > > 
-> > > 
-> > > 							  4	  8	 16	 32	 64	 128	 256	 512	1024	<== Record Length in KB
-> > > With Single Dataserver:
-> > > Read operation for file size 1 MB-		66415	66359	63630	70358	86223	70256	66047	66068	68489	<== IO kB/sec
-> > > Write operation for file size 1 MB-		18827	16920	18846	17039	18896	17009	17173	19206	17947	<== IO kB/sec
-> > > 
-> > > With Two Dataservers :
-> > > Read operation for file size 1 MB-		36882	381198	38150	38084	38749	33663	34398	37313	37847	<== IO kB/sec
-> > > Write operation for file size 1 MB-		5461	4661	5586	4870	5227	4922	4214	5572	4658	<== IO kB/sec
-> > > 
-> > > 
-> > > Can somebody tell me What could be the issue....
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
