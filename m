@@ -1,197 +1,221 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:43657 "EHLO
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:58964 "EHLO
 	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755253Ab1EWOi0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 10:38:26 -0400
-Received: by yxs7 with SMTP id 7so2107910yxs.19
-        for <linux-nfs@vger.kernel.org>; Mon, 23 May 2011 07:38:26 -0700 (PDT)
-In-Reply-To: <4DD879BC.6000503@panasas.com>
-References: <4DD879BC.6000503@panasas.com>
-Date: Mon, 23 May 2011 10:38:25 -0400
-Message-ID: <BANLkTiniZOn5bc711Ab38=kS0JT-5ZdgrA@mail.gmail.com>
-Subject: Re: [PATCH] SQUASHME: BUGs squashing in new pnfs for LD code
-From: Fred Isaman <iisaman@netapp.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+	with ESMTP id S1754072Ab1EIThD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 15:37:03 -0400
+Received: by mail-yx0-f174.google.com with SMTP id 7so1914279yxs.19
+        for <linux-nfs@vger.kernel.org>; Mon, 09 May 2011 12:37:03 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 05/16] SUNRPC: Add API to acquire source address
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 09 May 2011 15:37:00 -0400
+Message-ID: <20110509193700.16568.4372.stgit@matisse.1015granger.net>
+In-Reply-To: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
+References: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, May 21, 2011 at 10:49 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->
-> 1. In nfs4_write_done_cb: data->write_done_cb comes with a NULL.
->   Just as a guess I call nfs4_write_done_cb() just above it
->   it looked like the right thing to do. With that in, I'm able
->   to write things to file When converting pnfs.c:258 to a WARN_ON.
->
+NFSv4.0 clients must send endpoint information for their callback
+service to NFSv4.0 servers during their first contact with a server.
+Traditionally, user space provides the callback endpoint IP address
+via the "clientaddr=" mount option.
 
-It is set by the file driver in the .write_pagelist() routine, and if
-it is not set there, it is set to the default nfs4_write_done_cb in
-.write_setup(), which ends up being nfs4_proc_write_setup().
+During an NFSv4 migration event, it is possible that an FSID may be
+migrated to a destination server that is accessible via a different
+client-side NIC than the source server was.  The client must update
+callback endpoint information on the destination server so that it can
+maintain leases and allow delegation.
 
->   Benny we might want to set data->write_done_cb somewhere in the
->   none-rpc path? where is it best to do that?
-> 1.5
->   Same as above for nfs4_read_done.
->
-> 2. In pnfs_ld_write_done We don't need:
->        put_lseg(data->lseg);
->        data->lseg = NULL;
->   It is called in nfs_writedata_release()
-> 2.5 Same for pnfs_ld_read_done
->
-> 3. In pnfs_ld_write_done:
->   data->mds_ops->rpc_call_done(NULL, data);
->   crashes with a NULL task. Just pass it with &data->task
->
->   Which calls for a cleanup. There is bunch of functions
->   with [task, write_data] API. And the task is always
->   write_data->task
->
-> 3.5
->   Same for pnfs_ld_read_done
->
-> 4. It is now with current code not possible to run with out a
->   *.pg_test* opt. Without, it will crash, reference leak and
->   only do pnfs-IO on a single page. I'll send a patch to check
->   for it in... where the ld->opt is checked.
->
+Without a new "clientaddr=" option from user space, however, the
+kernel itself must construct an appropriate IP address for the
+callback service.  Provide an API in the RPC client for upper layer
+RPC consumers to acquire a source address for a remote.
 
-Yes, this is a bug in the existing code.
+The mechanism used by the mount command is copied: set up a connected
+UDP socket to the remote, then scrape the source address off the
+socket.  We are careful to select the correct network namespace when
+setting up the temporary UDP socket.
 
-Fred
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
->   So define one for objlayout. Which always returns true.
->
-> With this I'm able to read/write with pnfs-IO. (lightly test)
-> (With out any WARN_ONs)
->
-> One problem I've seen is that I only get up to 16 pages maximum
-> in a single request. I would like to see the 512 pages we had
-> before for a full request. Where should I fix that?
->
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> ---
->  fs/nfs/nfs4proc.c            |    5 +++--
->  fs/nfs/objlayout/objio_osd.c |   15 +++++++++++++++
->  fs/nfs/pnfs.c                |   14 +++++++-------
->  3 files changed, 25 insertions(+), 9 deletions(-)
->
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 759523a..4bf7c0c 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -3205,7 +3205,7 @@ static int nfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
->        if (!nfs4_sequence_done(task, &data->res.seq_res))
->                return -EAGAIN;
->
-> -       return data->read_done_cb(task, data);
-> +       return data->read_done_cb ? data->read_done_cb(task, data) : nfs4_read_done_cb(task, data);
->  }
->
->  static void nfs4_proc_read_setup(struct nfs_read_data *data, struct rpc_message *msg)
-> @@ -3250,7 +3250,8 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
->  {
->        if (!nfs4_sequence_done(task, &data->res.seq_res))
->                return -EAGAIN;
-> -       return data->write_done_cb(task, data);
-> +       return data->write_done_cb ? data->write_done_cb(task, data) :
-> +               nfs4_write_done_cb(task, data);
->  }
->
->  /* Reset the the nfs_write_data to send the write to the MDS. */
-> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-> index 7e46d2b..105d8a6 100644
-> --- a/fs/nfs/objlayout/objio_osd.c
-> +++ b/fs/nfs/objlayout/objio_osd.c
-> @@ -989,6 +989,19 @@ ssize_t objio_write_pagelist(struct objlayout_io_state *ol_state, bool stable)
->        return _write_exec(ios);
->  }
->
-> +/*
-> + * objlayout_pg_test(). Called by nfs_can_coalesce_requests()
-> + *
-> + * return 1 :  coalesce page
-> + * return 0 :  don't coalesce page
-> + */
-> +int
-> +objlayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
-> +                  struct nfs_page *req)
-> +{
-> +       return 1;
-> +}
-> +
->  static struct pnfs_layoutdriver_type objlayout_type = {
->        .id = LAYOUT_OSD2_OBJECTS,
->        .name = "LAYOUT_OSD2_OBJECTS",
-> @@ -1008,6 +1021,8 @@ static struct pnfs_layoutdriver_type objlayout_type = {
->
->        .encode_layoutcommit     = objlayout_encode_layoutcommit,
->        .encode_layoutreturn     = objlayout_encode_layoutreturn,
-> +
-> +       .pg_test                = objlayout_pg_test,
->  };
->
->  void *objio_init_mt(void)
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 8d2baf8..ea30a52 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -256,7 +256,7 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
->  {
->        struct inode *inode = lseg->pls_layout->plh_inode;
->
-> -       BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
-> +       WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
->        list_del_init(&lseg->pls_list);
->        if (list_empty(&lseg->pls_layout->plh_segs)) {
->                set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
-> @@ -1125,15 +1125,15 @@ pnfs_ld_write_done(struct nfs_write_data *data)
->  {
->        int status;
->
-> -       put_lseg(data->lseg);
-> -       data->lseg = NULL;
->        if (!data->pnfs_error) {
->                pnfs_set_layoutcommit(data);
-> -               data->mds_ops->rpc_call_done(NULL, data);
-> +               data->mds_ops->rpc_call_done(&data->task, data);
->                data->mds_ops->rpc_release(data);
->                return 0;
->        }
->
-> +       put_lseg(data->lseg);
-> +       data->lseg = NULL;
->        dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
->                data->pnfs_error);
->        status = nfs_initiate_write(data, NFS_CLIENT(data->inode), data->mds_ops, NFS_FILE_SYNC);
-> @@ -1173,15 +1173,15 @@ pnfs_ld_read_done(struct nfs_read_data *data)
->  {
->        int status;
->
-> -       put_lseg(data->lseg);
-> -       data->lseg = NULL;
->        if (!data->pnfs_error) {
->                __nfs4_read_done_cb(data);
-> -               data->mds_ops->rpc_call_done(NULL, data);
-> +               data->mds_ops->rpc_call_done(&data->task, data);
->                data->mds_ops->rpc_release(data);
->                return 0;
->        }
->
-> +       put_lseg(data->lseg);
-> +       data->lseg = NULL;
->        dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
->                data->pnfs_error);
->        status = nfs_initiate_read(data, NFS_CLIENT(data->inode), data->mds_ops);
-> --
-> 1.7.2.3
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+ include/linux/sunrpc/clnt.h |    1 
+ net/sunrpc/clnt.c           |  149 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 150 insertions(+), 0 deletions(-)
+
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index d18d952..c2d60c3 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -172,6 +172,7 @@ size_t		rpc_max_payload(struct rpc_clnt *);
+ void		rpc_force_rebind(struct rpc_clnt *);
+ size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
+ const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
++int		rpc_localaddr(struct rpc_clnt *, struct sockaddr *, size_t);
+ 
+ size_t		rpc_ntop(const struct sockaddr *, char *, const size_t);
+ size_t		rpc_pton(const char *, const size_t,
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index ac2d29e..efb5959 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -944,6 +944,155 @@ const char *rpc_peeraddr2str(struct rpc_clnt *clnt,
+ }
+ EXPORT_SYMBOL_GPL(rpc_peeraddr2str);
+ 
++static const struct sockaddr_in rpc_inaddr_loopback = {
++	.sin_family		= AF_INET,
++	.sin_addr.s_addr	= htonl(INADDR_ANY),
++};
++
++static const struct sockaddr_in6 rpc_in6addr_loopback = {
++	.sin6_family		= AF_INET6,
++	.sin6_addr		= IN6ADDR_ANY_INIT,
++};
++
++/*
++ * Try a getsockname() on a connected datagram socket.  Using a
++ * connected datagram socket prevents leaving a socket in TIME_WAIT.
++ * This conserves the ephemeral port number space.
++ *
++ * Returns zero and fills in "buf" if successful; otherwise, a
++ * negative errno is returned.
++ */
++static int rpc_sockname(struct net *net, struct sockaddr *sap, size_t salen,
++			struct sockaddr *buf, int buflen)
++{
++	struct socket *sock;
++	int err;
++
++	err = __sock_create(net, sap->sa_family,
++				SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
++	if (err < 0) {
++		dprintk("RPC:       can't create UDP socket (%d)\n", err);
++		goto out;
++	}
++
++	switch (sap->sa_family) {
++	case AF_INET:
++		err = kernel_bind(sock,
++				(struct sockaddr *)&rpc_inaddr_loopback,
++				sizeof(rpc_inaddr_loopback));
++		break;
++	case AF_INET6:
++		err = kernel_bind(sock,
++				(struct sockaddr *)&rpc_in6addr_loopback,
++				sizeof(rpc_in6addr_loopback));
++		break;
++	default:
++		err = -EAFNOSUPPORT;
++		goto out;
++	}
++	if (err < 0) {
++		dprintk("RPC:       can't bind UDP socket (%d)\n", err);
++		goto out_release;
++	}
++
++	err = kernel_connect(sock, sap, salen, 0);
++	if (err < 0) {
++		dprintk("RPC:       can't connect UDP socket (%d)\n", err);
++		goto out_release;
++	}
++
++	err = kernel_getsockname(sock, buf, &buflen);
++	if (err < 0) {
++		dprintk("RPC:       getsockname failed (%d)\n", err);
++		goto out_release;
++	}
++
++	err = 0;
++	if (buf->sa_family == AF_INET6) {
++		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)buf;
++		sin6->sin6_scope_id = 0;
++	}
++	dprintk("RPC:       %s succeeded\n", __func__);
++
++out_release:
++	sock_release(sock);
++out:
++	return err;
++}
++
++/*
++ * Scraping a connected socket failed, so we don't have a useable
++ * local address.  Fallback: generate an address that will prevent
++ * the server from calling us back.
++ *
++ * Returns zero and fills in "buf" if successful; otherwise, a
++ * negative errno is returned.
++ */
++static int rpc_anyaddr(int family, struct sockaddr *buf, size_t buflen)
++{
++	switch (family) {
++	case AF_INET:
++		if (buflen < sizeof(rpc_inaddr_loopback))
++			return -EINVAL;
++		memcpy(buf, &rpc_inaddr_loopback,
++				sizeof(rpc_inaddr_loopback));
++		break;
++	case AF_INET6:
++		if (buflen < sizeof(rpc_in6addr_loopback))
++			return -EINVAL;
++		memcpy(buf, &rpc_in6addr_loopback,
++				sizeof(rpc_in6addr_loopback));
++	default:
++		dprintk("RPC:       %s: address family not supported\n",
++			__func__);
++		return -EAFNOSUPPORT;
++	}
++	dprintk("RPC:       %s: succeeded\n", __func__);
++	return 0;
++}
++
++/**
++ * rpc_localaddr - discover local endpoint address for an RPC client
++ * @clnt: RPC client structure
++ * @buf: target buffer
++ * @buflen: size of target buffer, in bytes
++ *
++ * Returns zero and fills in "buf" and "buflen" if successful;
++ * otherwise, a negative errno is returned.
++ *
++ * This works even if the underlying transport is not currently connected,
++ * or if the upper layer never previously provided a source address.
++ *
++ * The results of this function call are transient: multiple calls in
++ * succession may give different results, depending on how local
++ * networking configuration changes over time.
++ */
++int rpc_localaddr(struct rpc_clnt *clnt, struct sockaddr *buf, size_t buflen)
++{
++	struct sockaddr_storage address;
++	struct sockaddr *sap = (struct sockaddr *)&address;
++	struct rpc_xprt *xprt;
++	struct net *net;
++	size_t salen;
++	int err;
++
++	rcu_read_lock();
++	xprt = rcu_dereference(clnt->cl_xprt);
++	salen = xprt->addrlen;
++	memcpy(sap, &xprt->addr, salen);
++	net = get_net(xprt->xprt_net);
++	rcu_read_unlock();
++
++	rpc_set_port(sap, 0);
++	err = rpc_sockname(net, sap, salen, buf, buflen);
++	put_net(net);
++	if (err != 0)
++		/* Couldn't discover local address, return ANYADDR */
++		return rpc_anyaddr(sap->sa_family, buf, buflen);
++	return 0;
++}
++EXPORT_SYMBOL_GPL(rpc_localaddr);
++
+ void
+ rpc_setbufsize(struct rpc_clnt *clnt, unsigned int sndsize, unsigned int rcvsize)
+ {
+
