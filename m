@@ -1,91 +1,259 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:41847 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755846Ab1EWOyI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 10:54:08 -0400
-Received: by yxs7 with SMTP id 7so2115329yxs.19
-        for <linux-nfs@vger.kernel.org>; Mon, 23 May 2011 07:54:07 -0700 (PDT)
-In-Reply-To: <4DD9E113.7050506@panasas.com>
-References: <4DD93D3E.9010909@panasas.com>
-	<1306083123-11061-1-git-send-email-bharrosh@panasas.com>
-	<4DD96697.50800@panasas.com>
-	<4DD9E113.7050506@panasas.com>
-Date: Mon, 23 May 2011 10:54:07 -0400
-Message-ID: <BANLkTikj_h-1LK1ZWVsQQuwZ6-v2uB7QpQ@mail.gmail.com>
-Subject: Re: [PATCH 16/23] pnfs: support for non-rpc layout drivers
-From: Fred Isaman <iisaman@netapp.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:42055 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753556Ab1EJAgZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 May 2011 20:36:25 -0400
+Date: Mon, 9 May 2011 20:36:24 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: bjschuma@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] NFSD: added FREE_STATEID operation
+Message-ID: <20110510003624.GB3600@fieldses.org>
+References: <1304708255-20464-1-git-send-email-bjschuma@netapp.com>
+ <1304708255-20464-2-git-send-email-bjschuma@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1304708255-20464-2-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, May 23, 2011 at 12:22 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 05/22/2011 10:40 PM, Benny Halevy wrote:
->>> +/*
->>> + * Called by non rpc-based layout drivers
->>> + */
->>> +int
->>> +pnfs_ld_write_done(struct nfs_write_data *data)
->>> +{
->>> +    int status;
->>> +
->>
->>
->>> +    if (!data->pnfs_error) {
->>> +            pnfs_set_layoutcommit(data);
->>
->> We need at least to set data->task.tk_status to 0
->
-> I guess it does not hurt, but we never touched it, is it garbage?
->
->>
->>> +            data->mds_ops->rpc_call_done(&data->task, data);
->>> +            data->mds_ops->rpc_release(data);
->>
->> Where's the put_lseg you had in PATCH 10/13?
->>
->> Benny
->
-> That was the bug. Please see my SQUASHME patches I explained
-> it all there.
->
->>
->>> +            return 0;
->>> +    }
->>> +
->>> +    put_lseg(data->lseg);
->>> +    data->lseg = NULL;
->
-> I'm not sure it is needed here as well.
-> Fred! please see this code
-> We know that the lseg is put in nfs_writedata_release()
-> Does the below nfs_initiate_write() retakes the ref.
-> If it does we need the put here. If it does not we
-> don't need here.
->
+On Fri, May 06, 2011 at 02:57:34PM -0400, bjschuma@netapp.com wrote:
+> From: Bryan Schumaker <bjschuma@netapp.com>
+> 
+> This operation is used by the client to tell the server to free a
+> stateid.
+> 
+> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> ---
+>  fs/nfsd/nfs4proc.c  |    5 ++++
+>  fs/nfsd/nfs4state.c |   56 +++++++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfsd/nfs4xdr.c   |   32 +++++++++++++++++++++++++++-
+>  fs/nfsd/xdr4.h      |    8 +++++++
+>  4 files changed, 99 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 3a6dbd7..7e00116 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1412,6 +1412,11 @@ static struct nfsd4_operation nfsd4_ops[] = {
+>  		.op_flags = OP_HANDLES_WRONGSEC,
+>  		.op_name = "OP_SECINFO_NO_NAME",
+>  	},
+> +	[OP_FREE_STATEID] = {
+> +		.op_func = (nfsd4op_func)nfsd4_free_stateid,
+> +		.op_flags = ALLOWED_WITHOUT_FH,
+> +		.op_name = "OP_FREE_STATEID",
+> +	},
+>  };
+>  
+>  static const char *nfsd4_op_name(unsigned opnum)
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index a2ea14f..6beec13 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -60,6 +60,7 @@ static u64 current_sessionid = 1;
+>  
+>  /* forward declarations */
+>  static struct nfs4_stateid * find_stateid(stateid_t *stid, int flags);
+> +static struct nfs4_stateid * search_for_stateid(stateid_t *stid);
+>  static struct nfs4_delegation * find_delegation_stateid(struct inode *ino, stateid_t *stid);
+>  static char user_recovery_dirname[PATH_MAX] = "/var/lib/nfs/v4recovery";
+>  static void nfs4_set_recdir(char *recdir);
+> @@ -316,6 +317,12 @@ static struct list_head	unconf_id_hashtbl[CLIENT_HASH_SIZE];
+>  static struct list_head client_lru;
+>  static struct list_head close_lru;
+>  
+> +static int
+> +stateid_has_locks(struct nfs4_stateid *stp)
+> +{
+> +	return list_empty(&stp->st_lockowners);
+> +}
 
-nfs_initiate_read/write() did not take any reference to the lseg.
-This was done immediately prior in the nfs_read/write_rpcsetup
-functions.
+There may be lockowners that aren't associated with any current locks.
 
-Note however that the commit code takes references in the file driver code.
+The only way we have to check this currently is to walk through the
+i_flock list for the given inode, like check_for_locks() does.  That may
+be the expedient thing to do for now.
 
-Fred
+(It would be simpler if we could, say, keep a count of the locks
+associated with each lock stateid.  That's not as easy as it sounds,
+thanks to merging and splitting of byte-range locks.  But we could use
+callbacks from locks.c to do it.  I think that's what I'd really like to
+do.)
 
-> Boaz
->
->>> +    dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
->>> +            data->pnfs_error);
->>> +    status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
->>> +                                data->mds_ops, NFS_FILE_SYNC);
->>> +    return status ? : -EAGAIN;
->>> +}
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+> +
+>  /*
+>   * We store the NONE, READ, WRITE, and BOTH bits separately in the
+>   * st_{access,deny}_bmap field of the stateid, in order to track not
+> @@ -3212,6 +3219,33 @@ out:
+>  	return status;
+>  }
+>  
+> +/*
+> + * Free a state id
+> + */
+> +__be32
+> +nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> +		   struct nfsd4_free_stateid *free_stateid)
+> +{
+> +	struct nfs4_stateid *stp = NULL;
+> +	stateid_t *stateid = &free_stateid->fr_stateid;
+> +
+> +	stp = search_for_stateid(stateid);
+> +	if (!stp)
+> +		return nfserr_bad_stateid;
+> +	if (stateid->si_generation != 0) {
+> +		if (stateid->si_generation < stp->st_stateid.si_generation)
+> +			return nfserr_old_stateid;
+> +		if (stateid->si_generation > stp->st_stateid.si_generation)
+> +			return nfserr_bad_stateid;
+> +	}
+> +
+> +	if (stateid_has_locks(stp))
+> +		return nfserr_locks_held;
+> +	if (stp)
+
+Already checked this above.
+
+> +		release_open_stateid(stp);
+
+OK, but it might not be a lock stateid.  (I assume free_stateid can be
+called on *any* kind of stateid?)
+
+--b.
+
+> +	return nfs_ok;
+> +}
+> +
+>  static inline int
+>  setlkflg (int type)
+>  {
+> @@ -3619,6 +3653,28 @@ find_stateid(stateid_t *stid, int flags)
+>  	return NULL;
+>  }
+>  
+> +static struct nfs4_stateid *
+> +search_for_stateid(stateid_t *stid)
+> +{
+> +	struct nfs4_stateid *local;
+> +	u32 st_id = stid->si_stateownerid;
+> +	u32 f_id  = stid->si_fileid;
+> +	unsigned int hashval = stateid_hashval(st_id, f_id);
+> +
+> +	list_for_each_entry(local, &lockstateid_hashtbl[hashval], st_hash) {
+> +		if ((local->st_stateid.si_stateownerid == st_id) &&
+> +		    (local->st_stateid.si_fileid == f_id))
+> +			return local;
+> +	}
+> +
+> +	list_for_each_entry(local, &stateid_hashtbl[hashval], st_hash) {
+> +		if ((local->st_stateid.si_stateownerid == st_id) &&
+> +		    (local->st_stateid.si_fileid == f_id))
+> +			return local;
+> +	}
+> +	return NULL;
+> +}
+> +
+>  static struct nfs4_delegation *
+>  find_delegation_stateid(struct inode *ino, stateid_t *stid)
+>  {
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 195a91d..5da6874 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -1246,6 +1246,19 @@ nfsd4_decode_destroy_session(struct nfsd4_compoundargs *argp,
+>  }
+>  
+>  static __be32
+> +nfsd4_decode_free_stateid(struct nfsd4_compoundargs *argp,
+> +			  struct nfsd4_free_stateid *free_stateid)
+> +{
+> +	DECODE_HEAD;
+> +
+> +	READ_BUF(sizeof(stateid_t));
+> +	READ32(free_stateid->fr_stateid.si_generation);
+> +	COPYMEM(&free_stateid->fr_stateid.si_opaque, sizeof(stateid_opaque_t));
+> +
+> +	DECODE_TAIL;
+> +}
+> +
+> +static __be32
+>  nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
+>  		      struct nfsd4_sequence *seq)
+>  {
+> @@ -1370,7 +1383,7 @@ static nfsd4_dec nfsd41_dec_ops[] = {
+>  	[OP_EXCHANGE_ID]	= (nfsd4_dec)nfsd4_decode_exchange_id,
+>  	[OP_CREATE_SESSION]	= (nfsd4_dec)nfsd4_decode_create_session,
+>  	[OP_DESTROY_SESSION]	= (nfsd4_dec)nfsd4_decode_destroy_session,
+> -	[OP_FREE_STATEID]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_FREE_STATEID]	= (nfsd4_dec)nfsd4_decode_free_stateid,
+>  	[OP_GET_DIR_DELEGATION]	= (nfsd4_dec)nfsd4_decode_notsupp,
+>  	[OP_GETDEVICEINFO]	= (nfsd4_dec)nfsd4_decode_notsupp,
+>  	[OP_GETDEVICELIST]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> @@ -3115,6 +3128,21 @@ nfsd4_encode_destroy_session(struct nfsd4_compoundres *resp, int nfserr,
+>  	return nfserr;
+>  }
+>  
+> +static __be32
+> +nfsd4_encode_free_stateid(struct nfsd4_compoundres *resp, int nfserr,
+> +			  struct nfsd4_free_stateid *free_stateid)
+> +{
+> +	__be32 *p;
+> +
+> +	if (nfserr)
+> +		return nfserr;
+> +
+> +	RESERVE_SPACE(4);
+> +	WRITE32(nfserr);
+> +	ADJUST_ARGS();
+> +	return nfserr;
+> +}
+> +
+>  __be32
+>  nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
+>  		      struct nfsd4_sequence *seq)
+> @@ -3196,7 +3224,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+>  	[OP_EXCHANGE_ID]	= (nfsd4_enc)nfsd4_encode_exchange_id,
+>  	[OP_CREATE_SESSION]	= (nfsd4_enc)nfsd4_encode_create_session,
+>  	[OP_DESTROY_SESSION]	= (nfsd4_enc)nfsd4_encode_destroy_session,
+> -	[OP_FREE_STATEID]	= (nfsd4_enc)nfsd4_encode_noop,
+> +	[OP_FREE_STATEID]	= (nfsd4_enc)nfsd4_encode_free_stateid,
+>  	[OP_GET_DIR_DELEGATION]	= (nfsd4_enc)nfsd4_encode_noop,
+>  	[OP_GETDEVICEINFO]	= (nfsd4_enc)nfsd4_encode_noop,
+>  	[OP_GETDEVICELIST]	= (nfsd4_enc)nfsd4_encode_noop,
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index 366401e..ed1784d 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -342,6 +342,11 @@ struct nfsd4_setclientid_confirm {
+>  	nfs4_verifier	sc_confirm;
+>  };
+>  
+> +struct nfsd4_free_stateid {
+> +	stateid_t	fr_stateid;         /* request */
+> +	__be32		fr_status;          /* response */
+> +};
+> +
+>  /* also used for NVERIFY */
+>  struct nfsd4_verify {
+>  	u32		ve_bmval[3];        /* request */
+> @@ -432,6 +437,7 @@ struct nfsd4_op {
+>  		struct nfsd4_destroy_session	destroy_session;
+>  		struct nfsd4_sequence		sequence;
+>  		struct nfsd4_reclaim_complete	reclaim_complete;
+> +		struct nfsd4_free_stateid	free_stateid;
+>  	} u;
+>  	struct nfs4_replay *			replay;
+>  };
+> @@ -564,6 +570,8 @@ extern __be32 nfsd4_delegreturn(struct svc_rqst *rqstp,
+>  		struct nfsd4_compound_state *, struct nfsd4_delegreturn *dr);
+>  extern __be32 nfsd4_renew(struct svc_rqst *rqstp,
+>  			  struct nfsd4_compound_state *, clientid_t *clid);
+> +extern __be32 nfsd4_free_stateid(struct svc_rqst *rqstp,
+> +		struct nfsd4_compound_state *, struct nfsd4_free_stateid *free_stateid);
+>  #endif
+>  
+>  /*
+> -- 
+> 1.7.5.1
+> 
