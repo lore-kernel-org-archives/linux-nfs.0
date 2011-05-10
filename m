@@ -1,48 +1,39 @@
-From: Weston Andros Adamson <dros@netapp.com>
-Subject: Re: linux client support for pnfs over ipv6
-Date: Tue, 17 May 2011 16:21:52 -0400
-Message-ID: <BD2C7B9F-FA9D-4504-8A11-BD15544AC284@netapp.com>
-References: <BANLkTi=juxkPqEXtSNubnOFHWT7FLzPdGA@mail.gmail.com> <348736D4-8B01-4BD9-BE05-82A8F64CEB8D@netapp.com> <BANLkTimBQqe=AnFrGq23z4jaMTUAcKbupQ@mail.gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: NFSD Secinfo no name
+Date: Tue, 10 May 2011 11:53:37 -0400
+Message-ID: <20110510155337.GB11698@fieldses.org>
+References: <4DC43CE7.7070705@netapp.com>
+ <20110510005931.GD3600@fieldses.org>
+ <4DC93200.3070706@netapp.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs <linux-nfs@vger.kernel.org>,
-	Mike Groshans <groshans@umich.edu>,
-	peter honeyman <honey@citi.umich.edu>
-To: Olga Kornievskaia <aglo@citi.umich.edu>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: Bryan Schumaker <bjschuma@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:59165 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:38996 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751720Ab1EQUWI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 May 2011 16:22:08 -0400
-In-Reply-To: <BANLkTimBQqe=AnFrGq23z4jaMTUAcKbupQ-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1754335Ab1EJPxi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 May 2011 11:53:38 -0400
+In-Reply-To: <4DC93200.3070706@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Odd!  I'll forward it to you.
-
--dros
-
-On May 17, 2011, at 4:14 PM, Olga Kornievskaia wrote:
-
-> Sorry, I must be blind, I don't see any posts with ipv6 patches from you.
+On Tue, May 10, 2011 at 08:39:28AM -0400, Bryan Schumaker wrote:
+> On 05/09/2011 08:59 PM, J. Bruce Fields wrote:
+> > On Fri, May 06, 2011 at 02:24:39PM -0400, Bryan Schumaker wrote:
+> >> Hi Bruce,
+> >>
+> >> On the call yesterday you asked me to double check that secinfo no name still works in NFSD.  It does still work for me.
+> > 
+> > My real question was whether the bug you reported here:
+> > 
+> > 	http://marc.info/?l=linux-nfs&m=130192462122087&w=2
+> > 
+> > appears to have been fixed (in my for-2.6.40 branch) to your
+> > satisfaction?
 > 
-> We are almost ready to submit ipv6 patches for the linux server side.
-> 
-> On Tue, May 17, 2011 at 3:34 PM, Weston Andros Adamson <dros@netapp.com> wrote:
->> Yes, posted a diff on saturday, but I'm doing a little cleanup (need to check CONFIG_IPV6) and reposting later today.
->> 
->> -dros
->> 
->> On May 17, 2011, at 3:28 PM, Olga Kornievskaia wrote:
->> 
->>> Is there a plan to support ipv6 pnfs on the linux client side?
->>> 
->>> kernel output on the client has:
->>> kernel: decode_and_add_ds: Only ipv4 addresses supported
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> 
+> Yes it has.  That's what I was trying to answer, sorry if I wasn't clear.
 
+Oh, sorry, I misundertood then.  Got it, thanks!
+
+--b.
