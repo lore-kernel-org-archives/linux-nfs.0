@@ -1,262 +1,230 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out2.smtp.messagingengine.com ([66.111.4.26]:50033 "EHLO
-	out2.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750888Ab1EDJXR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 May 2011 05:23:17 -0400
-From: Roberto Sassu <roberto.sassu@polito.it>
-To: Casey Schaufler <casey@schaufler-ca.com>
-Subject: Re: [RFC][PATCH 0/7] File descriptor labeling
-Date: Wed, 4 May 2011 11:19:57 +0200
-Cc: Tyler Hicks <tyhicks@linux.vnet.ibm.com>,
-        linux-security-module@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, dhowells@redhat.com, jmorris@namei.org,
-        zohar@linux.vnet.ibm.com, safford@watson.ibm.com,
-        kirkland@canonical.com, ecryptfs-devel@lists.launchpad.net,
-        eparis@redhat.com, sds@tycho.nsa.gov, selinux@tycho.nsa.gov,
-        viro@zeniv.linux.org.uk, john.johansen@canonical.com,
-        apparmor@lists.ubuntu.com, bfields@fieldses.org, neilb@suse.de,
-        linux-nfs@vger.kernel.org
-References: <201104291139.37489.roberto.sassu@polito.it> <201105021053.54031.roberto.sassu@polito.it> <4DC088A8.4000300@schaufler-ca.com>
-In-Reply-To: <4DC088A8.4000300@schaufler-ca.com>
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Message-Id: <201105041119.57493.roberto.sassu@polito.it>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:32900 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753720Ab1EJAH0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 20:07:26 -0400
+Received: by wwa36 with SMTP id 36so6292274wwa.1
+        for <linux-nfs@vger.kernel.org>; Mon, 09 May 2011 17:07:25 -0700 (PDT)
+Message-ID: <4DC88159.8010704@panasas.com>
+Date: Tue, 10 May 2011 03:05:45 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Weston Andros Adamson <dros@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFS: use scope from exchange_id to skip reclaim
+References: <1304975677-21419-1-git-send-email-dros@netapp.com> <1304975677-21419-2-git-send-email-dros@netapp.com>
+In-Reply-To: <1304975677-21419-2-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset=windows-1255
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wednesday, May 04, 2011 12:58:48 AM Casey Schaufler wrote:
-> On 5/2/2011 1:53 AM, Roberto Sassu wrote:
-> > On Friday, April 29, 2011 05:46:20 PM Casey Schaufler wrote:
-> >> On 4/29/2011 2:39 AM, Roberto Sassu wrote:
-> >>> Sorry for resending, it was rejected by the mailing lists due to
-> >>> the html formatting.
-> >>>
-> >>>
-> >>> On Thursday, April 28, 2011 07:37:29 PM Casey Schaufler wrote:
-> >>>> On 4/28/2011 5:35 AM, Roberto Sassu wrote:
-> >>>>> On Thursday, April 28, 2011 01:27:19 AM Tyler Hicks wrote:
-> >>>>>> On Wed Apr 27, 2011 at 01:19:55PM -0700, Casey Schaufler <casey@schaufler-ca.com> wrote:
-> >>>>>>> On 4/27/2011 5:34 AM, Roberto Sassu wrote:
-> >>>>>>>> File descriptor labeling issue
-> >>>>>>>>
-> >>>>>>>> Actually SELinux and SMACK assign to file descriptors the same label of the
-> >>>>>>>> opening process and use it in LSM hooks security_file_permission(),
-> >>>>>>>> security_file_fcntl() and others to verify if the 'current' process has the
-> >>>>>>>> rights to perform the requested operation.
-> >>>>>>>>
-> >>>>>>>> Using the credentials of the 'current' process may be not appropriate in
-> >>>>>>>> case a file descriptor is opened by a kernel service (i.e. a filesystem)
-> >>>>>>>> and made shared among user processes. For instance, in a system with
-> >>>>>>>> SELinux and eCryptfs, if the process A opens an encrypted file, eCryptfs
-> >>>>>>>> obtains a file descriptor to access the correspondent inode in the lower
-> >>>>>>>> filesystem, labeled with the A's label.
-> >>>>>>>>
-> >>>>>>>> If the process B accesses the same encrypted file, it needs the 'use'
-> >>>>>>>> permission on the A's label other than permissions for the lower inode.
-> >>>>>>>> However, if B is the first accessing process, A needs the 'use' permission
-> >>>>>>>> on the B's label.
-> >>>>>>> I am having trouble understanding the argument. I will pose my
-> >>>>>>> question in Smack terms, as I can speak most definitively in them.
-> >>>>>>>
-> >>>>>>> A process running with a Smack label "A" creates a file, and that
-> >>>>>>> file gets labeled "A", as it ought. If eCryptfs is behaving correctly
-> >>>>>>> this ought not change. If eCryptfs in encrypting the label it needs
-> >>>>>>> to do so in such a way as to be able to decrypt it prior to
-> >>>>>>> presentation to the vfs layer, where it will be used in an access
-> >>>>>>> check. When the process running with a Smack label "B" comes along
-> >>>>>>> the vfs code will check the fetched and possibly decrypted "A"
-> >>>>>>> against "B" and, unless there is an explicit Smack rule in place
-> >>>>>>> granting "B" access to "A", fail.
-> >>>>>>>
-> >>>>>>> What is the problem? What is eCryptfs doing that prevents this
-> >>>>>>> from working?
-> >>>>>> Hi Casey - I think what Roberto is getting at is the way eCryptfs uses
-> >>>>>> only one lower file per eCryptfs inode. Imagine that there are 5
-> >>>>>> files open for ~/secret/foo at the eCryptfs layer, only 1 file is going
-> >>>>>> to be open in the lower filesystem and all eCryptfs file operations will
-> >>>>>> be multiplexed through it.
-> >>>>>>
-> >>>>>> To make things more complicated, if the eCryptfs file is opened for
-> >>>>>> writing, the lower file must be opened for reading and writing. This is
-> >>>>>> because a write operation requires eCryptfs to vfs_read() from the lower
-> >>>>>> filesystem, decrypt that data and then vfs_write() the new data.
-> >>>>>>
-> >>>>>> If the lower file can't be opened O_RDWR by the calling process, the
-> >>>>>> request is handed off to a kernel thread to open the lower file on
-> >>>>>> behalf of the calling process. It is definitely ugly.
-> >>>>>>
-> >>>>>> Roberto, I hope I correctly described the situation that you're trying
-> >>>>>> to address. Can you tell me why we can't have a 1:1 mapping of eCryptfs
-> >>>>>> files to lower files?
-> >>>>>>
-> >>>>>> Instead of having just one lower file attached to the eCryptfs inode, we
-> >>>>>> could have a list of opened files. There would be one for each eCryptfs
-> >>>>>> file that was opened. ecryptfs_writepage() would have to pick, in a
-> >>>>>> somewhat random fashion, one of the lower files to use. Of course, we
-> >>>>>> would still need to solve the problem of opening the lower file O_RDWR
-> >>>>>> when the calling process is only allowed write access (I may have just
-> >>>>>> answered my own question of why the 1:1 mapping technique won't solve
-> >>>>>> this problem).
-> >>>>>>
-> >>>>> Hi Tyler
-> >>>>>
-> >>>>> i think the 1:1 mapping isn't necessary at least from the security perspective.
-> >>>>> Since eCryptfs is a stacked filesystem access control is performed on
-> >>>>> both the upper and the lower layer.
-> >>>>> ECryptfs relies on the lower filesystem for the management of extended
-> >>>>> attributes, so this means that the security label of both the upper and
-> >>>>> the lower inodes is the same (however this is not the current behavior
-> >>>>> in SELinux, which assigns the label 'ecryptfs_t' to the upper inode).
-> >>>> Where does this assignment occur?
-> >>>>
-> >>> Hi Casey
-> >>>
-> >>> The assignment happens at the inode's initialization time and depends on
-> >>> the behavior configured for a specific filesystem.
-> >>> The SELinux reference policy actually configures static labeling for inodes
-> >>> in the eCryptfs filesystem while for example allows ext4 inodes to be
-> >>> initialized using extended attributes.
-> >> So how about changing eCryptfs (Goodness, but I hate camelCase) to
-> >> properly support extended attributes? That would seem a better
-> >> approach than mucking up the entire LSM. You still have to deal
-> >> with the SELinux policy, but I don't see you getting away without
-> >> doing something with that in any case.
-> >>
-> > Hi Casey
-> >
-> > i think having separate extended attributes in eCryptfs does not
-> > address the issue i reported in the cover letter.
-> > The reason is, in my opinion, the incorrect labeling of file descriptors
-> > which causes in SELinux more permissions than those really needed
-> > must be added in the policy. This does not depends on the inode's
-> > security context but on the credentials provided to dentry_open().
+On 2011-05-10 00:14, Weston Andros Adamson wrote:
+>>From Section 8.4.2.1 of the rfc 5661 - We can determine if a RECLAIM_REBOOT
+> can be skipped if the "eir_server_scope" from the exchange_id proc differs from
+> previous calls.
 > 
-> The problem is that you seem to think that eCryptfs needs
-> access to the file. If eCryptfs is kernel code being invoked
-> through the VFS you should be providing the user's credentials.
+> Also, in the future server_scope will be useful for determining whether client
+> trunking is available
+> ---
+>  fs/nfs/nfs4_fs.h          |    2 ++
+>  fs/nfs/nfs4proc.c         |   12 ++++++++++++
+>  fs/nfs/nfs4state.c        |   42 +++++++++++++++++++++++++++++++++++++++++-
+>  fs/nfs/nfs4xdr.c          |    8 +++++++-
+>  include/linux/nfs_fs_sb.h |    3 +++
+>  include/linux/nfs_xdr.h   |    1 +
+>  6 files changed, 66 insertions(+), 2 deletions(-)
 > 
-> >
-> >>>>> In my view, for this reason the access control checks can be performed
-> >>>>> only at the upper layer, letting eCryptfs full privileges to access inodes
-> >>>>> in the lower filesystem.
-> >>>> On this point I most strongly disagree.
-> >>>>
-> >>>> The behavior of a filesystem and the data that it uses to determine
-> >>>> that behavior is wrought with complex interactions which may include
-> >>>> but are not limited to caching, read-aheads, garbage collection,
-> >>>> and various side effects of access control. If eCryptfs needs to go
-> >>>> mucking about with the data used by the underlying filesystem it is
-> >>>> not stacking properly. A stacked filesystem has no business whatever
-> >>>> changing the data of the underlying filesystem.
-> >>>>
-> >>> Ok, probably i have to go more in deep to explain how access control is
-> >>> performed on eCryptfs. I'm talking for the SELinux's case, so SELinux experts
-> >>> can correct me if i'm wrong.
-> >>>
-> >>> First, i want to use extended attributes to initialize an eCryptfs inode, so
-> >>> both the upper and the lower inodes have the same security context
-> >>> because eCryptfs calls the *xattr() methods of the underlying filesystem.
-> >> OK, you could create your own xattr functions that do whatever credential
-> >> mucking they need to and then call the underlying file system's version.
-> >> It is possible that the work the NFS people have been doing for xattr
-> >> support (I haven't seen much on this lately, is it still active? Anyone?)
-> >> would prove instructive.
-> >>
-> >>> Then, the process A accesses the eCryptfs inode 'I'. On the upper layer access
-> >>> control is performed using the credentials of the 'current' process and the
-> >>> security context of I.
-> >>>
-> >>> If the process is allowed to access the upper inode, eCryptfs opens the lower
-> >>> inode, presenting its own credentials with the type 'kernel_t'.
-> >> So eCryptfs provides its own process context. When you say "open" do you
-> >> mean open(2) or something else? A little precision goes a long way in these
-> >> discussions.
-> >>
-> > ECryptfs provides its own credentials when calling the function dentry_open()
-> > to obtain a file descriptor to be shared among user processes.
-> 
-> This is your problem. The problem is that you are not
-> using the credential of the user process to access the
-> file, you are using your own. Sharing a "file descriptor"
-> may seem like an optimization, but as you see it has
-> does not work.
-> 
-> >>> Then, SELinux
-> >>> checks if 'kernel_t' can access the inode with the security context of 'I'.
-> >> Why doesn't eCryptfs provide the credentials of 'I'? In the kernel you
-> >> can do what you will.
-> > No, eCryptfs provides (in the following patch) the 'initial' credentials which
-> > are obtained through the function prepare_kernel_cred() which give root
-> > privileges. These credentials are used in the hook security_dentry_open()
-> > to verify if eCryptfs is allowed to access the inode 'I' in the underlying
-> > filesystem.
-> 
-> But you shouldn't care if eCryptfs can access the file. You should
-> only care if the user process can access the file. You're kernel code,
-> you can do what you will.
-> 
-> >>> If so,
-> >>> eCryptfs obtains a file descriptor which, in this patch set, is labeled using the
-> >>> same credentials it provided at open time and binds it to the upper inode.
-> >>>
-> >>> Suppose for a moment that A is working on the eCryptfs inode 'I' and the process
-> >>> B requests the same inode. ECryptfs uses the already opened file descriptor and
-> >>> B will be granted to open the requested inode if:
-> >>>
-> >>> - B has the 'open' permission on the upper inode 'I';
-> >>>
-> >>>
-> >>> and can perform read/write operations if:
-> >>>
-> >>> - B has the 'read' and 'write' permissions on the upper inode 'I';
-> >>> - B is allowed to use the file descriptor opened by eCryptfs ('kernel_t').
-> >>> - B has the 'read' and 'write' permissions on the lower inode I;
-> >>>
-> >>>
-> >>> What i miss to say in my previous email is that even if eCryptfs is granted
-> >>> to access inodes in the lower filesystem with full privileges, user processes
-> >>> still need the permission to deal with the lower inode, but the check on the
-> >>> upper inode is sufficient because the security context is the same.
-> >> Right, but what I don't understand is why you can't use existing
-> >> mechanisms to achieve this? NFS manages (mostly).
-> >>
-> > Please, can you explain better this thought?
-> 
-> NFS provides a network "view" of an ext4 (or any type for that matter)
-> filesystem. NFS does not support extended attributes, but there has been
-> ongoing work on that. It seems that if NFS does not require the kind
-> of changes you are requesting you shouldn't either.
-> 
+> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+> index c4a6983..bfde1c1 100644
+> --- a/fs/nfs/nfs4_fs.h
+> +++ b/fs/nfs/nfs4_fs.h
+> @@ -48,6 +48,7 @@ enum nfs4_client_state {
+>  	NFS4CLNT_SESSION_RESET,
+>  	NFS4CLNT_RECALL_SLOT,
+>  	NFS4CLNT_LEASE_CONFIRM,
+> +	NFS4CLNT_SERVER_SCOPE_MISMATCH,
+>  };
+>  
+>  enum nfs4_session_state {
+> @@ -349,6 +350,7 @@ extern void nfs4_schedule_state_manager(struct nfs_client *);
+>  extern void nfs4_schedule_stateid_recovery(const struct nfs_server *, struct nfs4_state *);
+>  extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags);
+>  extern void nfs41_handle_recall_slot(struct nfs_client *clp);
+> +extern void nfs41_handle_server_scope(struct nfs_client *, struct server_scope **);
+>  extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
+>  extern int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl);
+>  extern void nfs4_copy_stateid(nfs4_stateid *, struct nfs4_state *, fl_owner_t, pid_t);
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 69c0f3c..2e62974 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -4793,9 +4793,21 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+>  				init_utsname()->domainname,
+>  				clp->cl_rpcclient->cl_auth->au_flavor);
+>  
+> +	res.server_scope = kzalloc(sizeof(struct server_scope), GFP_KERNEL);
+> +	if (unlikely(!res.server_scope))
+> +		return -ENOMEM;
+> +
+>  	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+> +
 
-I'm not familiar with NFS, so i cannot answer about this scenario.
-I'm adding in CC also the NFS mantainers and the mailing list so
-that they can express their point of view. The whole thread is
-available at:
+nit: extraneous newline
 
-https://lkml.org/lkml/2011/4/27/201
+>  	if (!status)
+>  		status = nfs4_check_cl_exchange_flags(clp->cl_exchange_flags);
+> +
+> +	if (!status)
+> +		nfs41_handle_server_scope(clp, &res.server_scope);
+> +
+> +	/* free if not consumed by nfs41_handle_server_scope() */
 
-Roberto Sassu
+Even if defined here, it seems over complicated to hide this
+side effect in nfs41_handle_server_scope.
+
+I'd consider open-coding nfs41_handle_server_scope here
+and defining its comparison helper statically in this source file.
+
+> +	kfree(res.server_scope);
+> +
+>  	dprintk("<-- %s status= %d\n", __func__, status);
+>  	return status;
+>  }
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index 036f5ad..26b0780 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -1619,6 +1619,39 @@ static void nfs4_set_lease_expired(struct nfs_client *clp, int status)
+>  	set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
+>  }
+>  
+> +static int
+> +nfs41_cmp_server_scope(struct server_scope *a, struct server_scope *b)
+> +{
+> +	int res;
+> +
+> +	res = memcmp(a->server_scope, b->server_scope,
+> +		     min(a->server_scope_sz, b->server_scope_sz));
+> +
+> +	if (!res)
+> +		res = a->server_scope_sz - b->server_scope_sz;
+
+I'm confused :-/
+What's the point of doing the memcmp if the sizes differ?
+It's much faster to break out of this function by comparing
+the sizes first.
+
+Also, since you're just interested in equality just return
+a bool value and call the function nfs41_same_server_scope.
+
+For pedantic layering, if really required, just define a helper
+in nfs4state.c to set NFS4CLNT_SERVER_SCOPE_MISMATCH.
 
 
-> >>>> Excuse my ignorance for a moment. Is eCryptfs a user mode filesystem,
-> >>>> or in the kernel properly? The behavior makes it sound like the former
-> >>>> while the interfaces you're requesting make it seem like the latter.
-> >> I'll repeat the question because it matters.
-> > As already reported by Guido Trentalancia, eCryptfs is a kernel mode
-> > filesystem, which accepts data from the VFS layer, encrypts or decrypts
-> > them and store the result in the underlying filesystem, always passing from
-> > the VFS interface.
-> >
-> > Roberto Sassu
-> >
-> >
-> >>
-> > --
-> > This message was distributed to subscribers of the selinux mailing list.
-> > If you no longer wish to subscribe, send mail to majordomo@tycho.nsa.gov with
-> > the words "unsubscribe selinux" without quotes as the message.
-> >
-> >
-> 
-> 
+> +
+> +	return res;
+> +}
+> +
+> +void
+> +nfs41_handle_server_scope(struct nfs_client *clp,
+> +			  struct server_scope **server_scopep)
+> +{
+> +	struct server_scope *server_scope = *server_scopep;
+> +
+> +	if (clp->server_scope) {
+> +		/* if same server_scope, do nothing */
+> +		if (!nfs41_cmp_server_scope(clp->server_scope, server_scope))
+> +			return;
+> +
+> +		set_bit(NFS4CLNT_SERVER_SCOPE_MISMATCH, &clp->cl_state);
+> +		kfree(clp->server_scope);
+
+need to kfree also in nfs_free_client
+
+> +	}
+> +
+> +	clp->server_scope = server_scope;
+> +	*server_scopep = NULL;
+> +}
+> +
+>  static void nfs4_state_manager(struct nfs_client *clp)
+>  {
+>  	int status = 0;
+> @@ -1639,7 +1672,14 @@ static void nfs4_state_manager(struct nfs_client *clp)
+>  				goto out_error;
+>  			}
+>  			clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state);
+> -			set_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state);
+> +
+> +			if (test_and_clear_bit(NFS4CLNT_SERVER_SCOPE_MISMATCH,
+> +					       &clp->cl_state))
+> +				nfs4_state_start_reclaim_nograce(clp);
+> +			else
+> +				set_bit(NFS4CLNT_RECLAIM_REBOOT,
+> +					&clp->cl_state);
+> +
+>  			pnfs_destroy_all_layouts(clp);
+>  		}
+>  
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index c3ccd2c..09a19ca 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -4909,11 +4909,17 @@ static int decode_exchange_id(struct xdr_stream *xdr,
+>  	if (unlikely(status))
+>  		return status;
+>  
+> -	/* Throw away server_scope */
+> +	/* Save server_scope */
+>  	status = decode_opaque_inline(xdr, &dummy, &dummy_str);
+>  	if (unlikely(status))
+>  		return status;
+>  
+> +	if (unlikely(dummy > NFS4_OPAQUE_LIMIT))
+> +		return -EIO;
+> +
+> +	memcpy(res->server_scope->server_scope, dummy_str, dummy);
+> +	res->server_scope->server_scope_sz = dummy;
+> +
+>  	/* Throw away Implementation id array */
+>  	status = decode_opaque_inline(xdr, &dummy, &dummy_str);
+>  	if (unlikely(status))
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index 87694ca..baf72a4 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -16,6 +16,7 @@ struct nfs4_sequence_args;
+>  struct nfs4_sequence_res;
+>  struct nfs_server;
+>  struct nfs4_minor_version_ops;
+> +struct server_scope;
+>  
+>  /*
+>   * The nfs_client identifies our client state to the server.
+> @@ -83,6 +84,8 @@ struct nfs_client {
+>  #ifdef CONFIG_NFS_FSCACHE
+>  	struct fscache_cookie	*fscache;	/* client index cache cookie */
+>  #endif
+> +
+> +	struct server_scope *server_scope;	/* from exchange_id */
+
+nit: align field same as all other members of this struct.
+
+Benny
+
+>  };
+>  
+>  /*
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 890dce2..31d6df4 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -1039,6 +1039,7 @@ struct server_scope {
+>  struct nfs41_exchange_id_res {
+>  	struct nfs_client		*client;
+>  	u32				flags;
+> +	struct server_scope		*server_scope;
+>  };
+>  
+>  struct nfs41_create_session_args {
+
