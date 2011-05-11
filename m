@@ -1,74 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:38044 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752602Ab1EIRKl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:10:41 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>,
-        Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 22/29] pnfs: encode_layoutreturn
-Date: Mon,  9 May 2011 20:10:34 +0300
-Message-Id: <1304961034-4606-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DC81E8C.6040901@panasas.com>
-References: <4DC81E8C.6040901@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:47086 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932074Ab1EKWd6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 May 2011 18:33:58 -0400
+Subject: Re: [PATCH] nfs: check a crash in nfs_lookup_revalidate
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Tyler Hicks <tyhicks@linux.vnet.ibm.com>
+Cc: Peng Huang <shawn.p.huang@gmail.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+In-Reply-To: <20110511221750.GA9776@boyd.l.tihix.com>
+References: <1305147805-5756-1-git-send-email-shawn.p.huang@gmail.com>
+	 <1305148125.21868.2.camel@lade.trondhjem.org>
+	 <20110511221750.GA9776@boyd.l.tihix.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 11 May 2011 18:33:57 -0400
+Message-ID: <1305153237.26971.4.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Wed, 2011-05-11 at 17:17 -0500, Tyler Hicks wrote:
+> On Wed May 11, 2011 at 05:08:45PM -0400, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> > On Wed, 2011-05-11 at 17:03 -0400, Peng Huang wrote:
+> > > lookup_one_len() may call nfs_loopup_revalidate() with nd == NULL
+> > > indirectly, that causes the kernel crash.
+> > > 
+> > > RIP: 0010:[<ffffffffa0ba3b41>]  [<ffffffffa0ba3b41>]
+> > > nfs_lookup_revalidate+0x21/0x4a0 [nfs]
+> > > RSP: 0018:ffff88018f00fae8  EFLAGS: 00010286
+> > > 
+> > > Call Trace:
+> > >  [<ffffffff81164a17>] do_revalidate+0x17/0x60
+> > >  [<ffffffff81164e9b>] __lookup_hash+0xcb/0x140
+> > >  [<ffffffff811653c4>] lookup_one_len+0x94/0xe0
+> > >  [<ffffffff81241ef1>] ecryptfs_lookup+0x91/0x1d0
+> > >  [<ffffffff81164d85>] d_alloc_and_lookup+0x45/0x90
+> > >  [<ffffffff8116f7b5>] ? d_lookup+0x35/0x60
+> > >  [<ffffffff811669b2>] do_lookup+0x192/0x2d0
+> > >  [<ffffffff811763be>] ? vfsmount_lock_local_unlock+0x1e/0x30
+> > >  [<ffffffff8126d09c>] ? security_inode_permission+0x1c/0x30
+> > >  [<ffffffff81167d67>] link_path_walk+0x597/0xae0
+> > >  [<ffffffff8117638e>] ? vfsmount_lock_local_lock+0x1e/0x30
+> > >  [<ffffffff81165905>] ? path_init_rcu+0xa5/0x210
+> > >  [<ffffffff8116858b>] do_path_lookup+0x5b/0x140
+> > >  [<ffffffff811692f7>] user_path_at+0x57/0xa0
+> > >  [<ffffffff8159fd08>] ? do_page_fault+0x1e8/0x4e0
+> > >  [<ffffffff8115eb86>] vfs_fstatat+0x46/0x80
+> > >  [<ffffffff8116b990>] ? filldir+0x0/0xe0
+> > >  [<ffffffff8115ec2e>] vfs_lstat+0x1e/0x20
+> > >  [<ffffffff8115ec54>] sys_newlstat+0x24/0x50
+> > >  [<ffffffff8159c995>] ? page_fault+0x25/0x30
+> > >  [<ffffffff8100bfc2>] system_call_fastpath+0x16/0x1b
+> > > 
+> > > Signed-off-by: Peng Huang <shawn.p.huang@gmail.com>
+> > > ---
+> > >  fs/nfs/dir.c |    2 +-
+> > >  1 files changed, 1 insertions(+), 1 deletions(-)
+> > > 
+> > > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> > > index 2c3eb33..9452aa5 100644
+> > > --- a/fs/nfs/dir.c
+> > > +++ b/fs/nfs/dir.c
+> > > @@ -1028,7 +1028,7 @@ static int nfs_lookup_revalidate(struct dentry *dentry, struct nameidata *nd)
+> > >  	struct nfs_fattr *fattr = NULL;
+> > >  	int error;
+> > >  
+> > > -	if (nd->flags & LOOKUP_RCU)
+> > > +	if (nd != NULL && nd->flags & LOOKUP_RCU)
+> > >  		return -ECHILD;
+> > >  
+> > >  	parent = dget_parent(dentry);
+> > 
+> > That's exactly what Tyler Hicks proposed last week and which was NACKed.
+> > We simply won't support layered filesystems that don't do intents.
+> 
+> But you _did_ support it up until
+> 34286d66 "fs: rcu-walk aware d_revalidate method"
+> 
+> I see why you wouldn't want NULL nameidata in the NFSv4 specific
+> functions, but don't quite understand the opposition against it in NFSv3
+> (nfs_lookup_revalidate). The one-liner above would allow users to begin
+> using eCryptfs on top of NFSv3 clients immediately, with no side effects
+> to NFS.
 
-Add a layout driver method to encode the layout type specific
-opaque part of layout return in-line in the xdr stream.
+Because even on NFSv3 it breaks exclusive creates.
 
-Currently the pnfs-objects layout driver uses it to encode i/o error
-information on LAYOUTRETURN.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[fixup layout header pointer for encode_layoutreturn]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4xdr.c |    9 +++++++--
- fs/nfs/pnfs.h    |    4 ++++
- 2 files changed, 11 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 34fc994..75ad9e1 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1921,8 +1921,13 @@ encode_layoutreturn(struct xdr_stream *xdr,
- 	spin_lock(&args->inode->i_lock);
- 	xdr_encode_opaque_fixed(p, &NFS_I(args->inode)->layout->plh_stateid.data, NFS4_STATEID_SIZE);
- 	spin_unlock(&args->inode->i_lock);
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(0);
-+	if (NFS_SERVER(args->inode)->pnfs_curr_ld->encode_layoutreturn) {
-+		NFS_SERVER(args->inode)->pnfs_curr_ld->encode_layoutreturn(
-+			NFS_I(args->inode)->layout, xdr, args);
-+	} else {
-+		p = reserve_space(xdr, 4);
-+		*p = cpu_to_be32(0);
-+	}
- 	hdr->nops++;
- 	hdr->replen += decode_layoutreturn_maxsz;
- }
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index a54e715..798861c 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -106,6 +106,10 @@ struct pnfs_layoutdriver_type {
- 
- 	/* device notification methods */
- 	void (*delete_deviceid)(struct nfs4_deviceid *);
-+
-+	void (*encode_layoutreturn) (struct pnfs_layout_hdr *layoutid,
-+				     struct xdr_stream *xdr,
-+				     const struct nfs4_layoutreturn_args *args);
- };
- 
- struct pnfs_layout_hdr {
 -- 
-1.7.3.4
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
