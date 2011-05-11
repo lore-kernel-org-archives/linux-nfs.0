@@ -1,59 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:50722 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753122Ab1E2SO0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 14:14:26 -0400
-Message-ID: <4DE28CFB.4060608@panasas.com>
-Date: Sun, 29 May 2011 21:14:19 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Benny Halevy <bhalevy@panasas.com>, open-osd <osd-dev@open-osd.org>
-Subject: [PATCHSET final 00/32] pnfs-obj: pnfs-objects layout driver submission
-Content-Type: text/plain; charset=UTF-8
+Received: from smtp1.iitb.ac.in ([59.162.23.13]:54332 "HELO smtp1.iitb.ac.in"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1754366Ab1EKT03 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 May 2011 15:26:29 -0400
+Received: from nsl-23.cse.iitb.ac.in (nsl-23.cse.iitb.ac.in [10.105.12.23])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by smtp-auth.iitb.ac.in (Postfix) with ESMTP id 459DE13900
+	for <linux-nfs@vger.kernel.org>; Wed, 11 May 2011 11:29:43 +0530 (IST)
+Date: Wed, 11 May 2011 11:29:39 +0530 (IST)
+From: Prateek Sharma <prateeks@cse.iitb.ac.in>
+To: linux-nfs@vger.kernel.org
+Subject: NFS latency tuning
+Message-ID: <alpine.DEB.2.00.1105111123570.32365@nsl-23>
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Hello all,
+ 	I was wondering whether the NFS client implementation has any support 
+for latency-based tcp-like 'windows'.
+Basically my problem is: due to high request rate the server is swamped and 
+response time is unbearable. If clients can be delayed from sending requests 
+by introducing a 'waiting period' before every read/write request that might 
+make things better.
+ 	Does NFS currently have such an implementation? (I could not find it in 
+a quick scan of the code.) Is there even a need for what i have described above 
+- are there other mechanisms present which allow for flow-control .
 
-This is the complete and squashed version of the pnfs objects layout driver
-plus the needed changes from the pnfs-core to support more then one LD.
-
-[PATCH 01/32] NFSv4.1: fix typo in filelayout_check_layout
-[PATCH 02/32] NFSv4.1: use struct nfs_client to qualify deviceid
-[PATCH 03/32] pnfs: resolve header dependency in pnfs.h
-[PATCH 04/32] NFSv4.1: make deviceid cache global
-[PATCH 05/32] NFSv4.1: purge deviceid cache on nfs_free_client
-[PATCH 06/32] pnfs: CB_NOTIFY_DEVICEID
-[PATCH 07/32] NFSv4.1: use layout driver in global device cache
-[PATCH 08/32] SUNRPC: introduce xdr_init_decode_pages
-[PATCH 09/32] pnfs: Use byte-range for layoutget
-[PATCH 10/32] pnfs: align layoutget requests on page boundaries
-[PATCH 11/32] pnfs: Use byte-range for cb_layoutrecall
-[PATCH 12/32] pnfs: client stats
-[PATCH 13/32] pnfs-obj: objlayoutdriver module skeleton
-[PATCH 14/32] pnfs-obj: pnfs_osd XDR definitions
-[PATCH 15/32] pnfs-obj: pnfs_osd XDR client implementation
-[PATCH 16/32] pnfs-obj: decode layout, alloc/free lseg
-[PATCH 17/32] pnfs-obj: objio_osd device information retrieval and caching
-[PATCH 18/32] pnfs: alloc and free layout_hdr layoutdriver methods
-[PATCH 19/32] pnfs-obj: define per-inode private structure
-[PATCH 20/32] pnfs: support for non-rpc layout drivers
-[PATCH 21/32] pnfs-obj: osd raid engine read/write implementation
-[PATCH 22/32] pnfs: layoutreturn
-[PATCH 23/32] pnfs: layoutret_on_setattr
-[PATCH 24/32] pnfs: encode_layoutreturn
-[PATCH 25/32] pnfs-obj: report errors and .encode_layoutreturn Implementation.
-[PATCH 26/32] pnfs: encode_layoutcommit
-[PATCH 27/32] pnfs-obj: objlayout_encode_layoutcommit implementation
-[PATCH 28/32] NFSv4.1: unify pnfs_pageio_init functions
-[PATCH 29/32] NFSv4.1: change pg_test return type to bool
-[PATCH 30/32] NFSv4.1: use pnfs_generic_pg_test directly by layout driver
-[PATCH 31/32] NFSv4.1: define nfs_generic_pg_test
-[PATCH 32/32] pnfs-obj: pg_test check for max_io_size
-
-I'll send the git tree address as separate email.
-
-Thanks
-Boaz
+Thanks!
+--
+Prateek
 
