@@ -1,92 +1,24 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57156 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755147Ab1DTR1v (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 13:27:51 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [RFC 12/27] pnfs: alloc and free layout_hdr layoutdriver methods
-Date: Wed, 20 Apr 2011 20:27:48 +0300
-Message-Id: <1303320468-21407-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DAF0DE1.6020609@panasas.com>
-References: <4DAF0DE1.6020609@panasas.com>
+Received: from logistix.cr ([201.201.66.140]:1666 "EHLO mail.alsa.co.cr"
+	rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1757793Ab1DXVb7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 24 Apr 2011 17:31:59 -0400
+Reply-To: <europaycen@hotmail.com>
+From: "CONFIDENTIAL" <europaycen@hotmail.com>
+Subject: CONFIDENTIAL
+Date: Thu, 12 May 2011 19:04:04 +0200
+Content-Type: text/plain;
+	charset="Windows-1251"
+Message-Id: <20110424043623.5C4A8290F4F0@mail.alsa.co.cr>
+To: undisclosed-recipients:;
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/pnfs.c |   21 ++++++++++++++++++---
- fs/nfs/pnfs.h |    3 +++
- 2 files changed, 21 insertions(+), 3 deletions(-)
+Acknowledge,
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index afc64b3..2254362 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -188,13 +188,28 @@ get_layout_hdr(struct pnfs_layout_hdr *lo)
- 	atomic_inc(&lo->plh_refcount);
- }
- 
-+static struct pnfs_layout_hdr *
-+pnfs_alloc_layout_hdr(struct inode *ino)
-+{
-+	struct pnfs_layoutdriver_type *ld = NFS_SERVER(ino)->pnfs_curr_ld;
-+	return ld->alloc_layout_hdr ? ld->alloc_layout_hdr(ino) :
-+		kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
-+}
-+
-+static void
-+pnfs_free_layout_hdr(struct pnfs_layout_hdr *lo)
-+{
-+	struct pnfs_layoutdriver_type *ld = NFS_SERVER(lo->plh_inode)->pnfs_curr_ld;
-+	return ld->alloc_layout_hdr ? ld->free_layout_hdr(lo) : kfree(lo);
-+}
-+
- static void
- destroy_layout_hdr(struct pnfs_layout_hdr *lo)
- {
- 	dprintk("%s: freeing layout cache %p\n", __func__, lo);
- 	BUG_ON(!list_empty(&lo->plh_layouts));
- 	NFS_I(lo->plh_inode)->layout = NULL;
--	kfree(lo);
-+	pnfs_free_layout_hdr(lo);
- }
- 
- static void
-@@ -857,7 +872,7 @@ alloc_init_layout_hdr(struct inode *ino)
- {
- 	struct pnfs_layout_hdr *lo;
- 
--	lo = kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
-+	lo = pnfs_alloc_layout_hdr(ino);
- 	if (!lo)
- 		return NULL;
- 	atomic_set(&lo->plh_refcount, 1);
-@@ -890,7 +905,7 @@ pnfs_find_alloc_layout(struct inode *ino)
- 	if (likely(nfsi->layout == NULL))	/* Won the race? */
- 		nfsi->layout = new;
- 	else
--		kfree(new);
-+		pnfs_free_layout_hdr(new);
- 	return nfsi->layout;
- }
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index bb266ba..35662ac 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -83,6 +83,9 @@ struct pnfs_layoutdriver_type {
- 	int (*set_layoutdriver) (struct nfs_server *);
- 	int (*unset_layoutdriver) (struct nfs_server *);
- 
-+	struct pnfs_layout_hdr * (*alloc_layout_hdr) (struct inode *inode);
-+	void (*free_layout_hdr) (struct pnfs_layout_hdr *);
-+
- 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr);
- 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
- 
--- 
-1.7.3.4
-
+An Iraqi made a fixed deposit of $6.5m usd in my bank branch (Hang Seng Bank,Hong Kong) where am a director and he died with his entire family in the war leaving behind no next of kin, I?m ready to share 50/50 with you if you choose to stand as my deceased client next of kin. If interested mail me at the address below: 
+tongwon@ibibo.com  or
+tongwonhk@ibibo.com
+Yours Truly,
+Tong Won.
