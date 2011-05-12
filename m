@@ -1,215 +1,445 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:41801 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754214Ab1EITi4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 15:38:56 -0400
-Received: by yxs7 with SMTP id 7so1915119yxs.19
-        for <linux-nfs@vger.kernel.org>; Mon, 09 May 2011 12:38:56 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 16/16] NFS: Implement support for NFS4ERR_LEASE_MOVED
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 09 May 2011 15:38:53 -0400
-Message-ID: <20110509193853.16568.93770.stgit@matisse.1015granger.net>
-In-Reply-To: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
-References: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qy0-f181.google.com ([209.85.216.181]:49884 "EHLO
+	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757566Ab1ELXql (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 May 2011 19:46:41 -0400
+Received: by qyg14 with SMTP id 14so1190897qyg.19
+        for <linux-nfs@vger.kernel.org>; Thu, 12 May 2011 16:46:41 -0700 (PDT)
+Message-ID: <4DCC715C.1090101@panasas.com>
+Date: Thu, 12 May 2011 19:46:36 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 03/29] pnfs: Use byte-range for layoutget
+References: <4DC81E8C.6040901@panasas.com>	<1304960811-3863-1-git-send-email-bhalevy@panasas.com> <BANLkTimaVzS94FtZrY_EpXB5Od6QGjeLhg@mail.gmail.com>
+In-Reply-To: <BANLkTimaVzS94FtZrY_EpXB5Od6QGjeLhg@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-To recover from NFS4ERR_LEASE_MOVED, walk the cl_superblocks list and
-invoke nfs4_try_migration() on each server's root file handle.
-nfs4_try_migration() should automatically determine whether that file
-system has migrated, and then perform recovery for it.
+On 2011-05-12 11:18, Fred Isaman wrote:
+> On Mon, May 9, 2011 at 1:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+>> Add offset and count parameters to pnfs_update_layout and use them to get
+>> the layout in the pageio path.
+>>
+>> Test byte range against the layout segment in use in pnfs_{read,write}_pg_test
+>> so not to coalesce pages not using the same layout segment.
+>>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfs/pnfs.c  |  149 +++++++++++++++++++++++++++++++++++++++++++++-----------
+>>  fs/nfs/pnfs.h  |    4 +-
+>>  fs/nfs/read.c  |   10 +++-
+>>  fs/nfs/write.c |    8 ++-
+>>  4 files changed, 136 insertions(+), 35 deletions(-)
+>>
+>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>> index d9ab972..e689bdf 100644
+>> --- a/fs/nfs/pnfs.c
+>> +++ b/fs/nfs/pnfs.c
+>> @@ -261,6 +261,65 @@ put_lseg(struct pnfs_layout_segment *lseg)
+>>  }
+>>  EXPORT_SYMBOL_GPL(put_lseg);
+>>
+>> +static inline u64
+>> +end_offset(u64 start, u64 len)
+>> +{
+>> +       u64 end;
+>> +
+>> +       end = start + len;
+>> +       return end >= start ? end : NFS4_MAX_UINT64;
+>> +}
+>> +
+>> +/* last octet in a range */
+>> +static inline u64
+>> +last_byte_offset(u64 start, u64 len)
+>> +{
+>> +       u64 end;
+>> +
+>> +       BUG_ON(!len);
+>> +       end = start + len;
+>> +       return end > start ? end - 1 : NFS4_MAX_UINT64;
+>> +}
+>> +
+>> +/*
+>> + * is l2 fully contained in l1?
+>> + *   start1                             end1
+>> + *   [----------------------------------)
+>> + *           start2           end2
+>> + *           [----------------)
+>> + */
+>> +static inline int
+>> +lo_seg_contained(struct pnfs_layout_range *l1,
+>> +                struct pnfs_layout_range *l2)
+>> +{
+>> +       u64 start1 = l1->offset;
+>> +       u64 end1 = end_offset(start1, l1->length);
+>> +       u64 start2 = l2->offset;
+>> +       u64 end2 = end_offset(start2, l2->length);
+>> +
+>> +       return (start1 <= start2) && (end1 >= end2);
+>> +}
+>> +
+>> +/*
+>> + * is l1 and l2 intersecting?
+>> + *   start1                             end1
+>> + *   [----------------------------------)
+>> + *                              start2           end2
+>> + *                              [----------------)
+>> + */
+>> +static inline int
+>> +lo_seg_intersecting(struct pnfs_layout_range *l1,
+>> +                   struct pnfs_layout_range *l2)
+>> +{
+>> +       u64 start1 = l1->offset;
+>> +       u64 end1 = end_offset(start1, l1->length);
+>> +       u64 start2 = l2->offset;
+>> +       u64 end2 = end_offset(start2, l2->length);
+>> +
+>> +       return (end1 == NFS4_MAX_UINT64 || end1 > start2) &&
+>> +              (end2 == NFS4_MAX_UINT64 || end2 > start1);
+>> +}
+>> +
+>>  static bool
+>>  should_free_lseg(u32 lseg_iomode, u32 recall_iomode)
+>>  {
+>> @@ -466,7 +525,7 @@ pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+>>  static struct pnfs_layout_segment *
+>>  send_layoutget(struct pnfs_layout_hdr *lo,
+>>           struct nfs_open_context *ctx,
+>> -          u32 iomode)
+>> +          struct pnfs_layout_range *range)
+>>  {
+>>        struct inode *ino = lo->plh_inode;
+>>        struct nfs_server *server = NFS_SERVER(ino);
+>> @@ -497,11 +556,11 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+>>                        goto out_err_free;
+>>        }
+>>
+>> -       lgp->args.minlength = NFS4_MAX_UINT64;
+>> +       lgp->args.minlength = PAGE_CACHE_SIZE;
+>> +       if (lgp->args.minlength > range->length)
+>> +               lgp->args.minlength = range->length;
+>>        lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
+>> -       lgp->args.range.iomode = iomode;
+>> -       lgp->args.range.offset = 0;
+>> -       lgp->args.range.length = NFS4_MAX_UINT64;
+>> +       lgp->args.range = *range;
+> 
+> Do you want to align offet to page boundary?
+> 
+> 
 
-The per-filesystem migration probe also informs minor version zero
-servers that this client should no longer receive NFS4ERR_LEASE_MOVED.
+Yeah, that makes sense.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+>>        lgp->args.type = server->pnfs_curr_ld->id;
+>>        lgp->args.inode = ino;
+>>        lgp->args.ctx = get_nfs_open_context(ctx);
+>> @@ -515,7 +574,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+>>        nfs4_proc_layoutget(lgp);
+>>        if (!lseg) {
+>>                /* remember that LAYOUTGET failed and suspend trying */
+>> -               set_bit(lo_fail_bit(iomode), &lo->plh_flags);
+>> +               set_bit(lo_fail_bit(range->iomode), &lo->plh_flags);
+>>        }
+>>
+>>        /* free xdr pages */
+>> @@ -622,10 +681,24 @@ bool pnfs_roc_drain(struct inode *ino, u32 *barrier)
+>>  * are seen first.
+>>  */
+>>  static s64
+>> -cmp_layout(u32 iomode1, u32 iomode2)
+>> +cmp_layout(struct pnfs_layout_range *l1,
+>> +          struct pnfs_layout_range *l2)
+>>  {
+>> +       s64 d;
+>> +
+>> +       /* higher offset > lower offset */
+>> +       d = l1->offset - l2->offset;
+>> +       if (d)
+>> +               return d;
+>> +
+>> +       /* longer length > shorter length */
+>> +       d = l1->length - l2->length;
+>> +       if (d)
+>> +               return d;
+>> +
+> 
+> Assuming iomodes the same, don't we prefer seeing the longer to the shorter?
+> 
 
- fs/nfs/client.c           |    1 +
- fs/nfs/nfs4_fs.h          |    2 +
- fs/nfs/nfs4proc.c         |   11 ++++++++
- fs/nfs/nfs4state.c        |   63 ++++++++++++++++++++++++++++++++++++++++++++-
- include/linux/nfs_fs_sb.h |    2 +
- 5 files changed, 77 insertions(+), 2 deletions(-)
+yup. good catch!
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 2f5e29f..b89af4d 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -188,6 +188,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- 	if (cl_init->long_clientid != NULL)
- 		clp->cl_cached_clientid = kstrdup(cl_init->long_clientid,
- 							GFP_KERNEL);
-+	clp->cl_mig_counter = 1;
- #endif
- 	cred = rpc_lookup_machine_cred();
- 	if (!IS_ERR(cred))
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index c3e8641..2ad6c9b 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -51,6 +51,7 @@ enum nfs4_client_state {
- 	NFS4CLNT_UPDATE_CALLBACK,
- 	NFS4CLNT_CLONED_CLIENT,
- 	NFS4CLNT_MOVED,
-+	NFS4CLNT_LEASE_MOVED,
- };
- 
- enum nfs4_session_state {
-@@ -351,6 +352,7 @@ extern void nfs4_close_sync(struct path *, struct nfs4_state *, fmode_t);
- extern void nfs4_state_set_mode_locked(struct nfs4_state *, fmode_t);
- extern void nfs4_schedule_lease_recovery(struct nfs_client *);
- extern void nfs4_schedule_migration_recovery(struct nfs_server *);
-+extern void nfs4_schedule_lease_moved_recovery(struct nfs_client *);
- extern void nfs4_schedule_state_manager(struct nfs_client *);
- extern void nfs4_schedule_stateid_recovery(const struct nfs_server *, struct nfs4_state *);
- extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index a545d46..f4e07ba 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -297,6 +297,9 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode,
- 		case -NFS4ERR_MOVED:
- 			nfs4_schedule_migration_recovery(server);
- 			goto wait_on_recovery;
-+		case -NFS4ERR_LEASE_MOVED:
-+			nfs4_schedule_lease_moved_recovery(clp);
-+			goto wait_on_recovery;
- 		case -NFS4ERR_FILE_OPEN:
- 			if (exception->timeout > HZ) {
- 				/* We have retried a decent amount, time to
-@@ -3721,6 +3724,14 @@ static int nfs4_async_handle_error(struct rpc_task *task,
- 				rpc_wake_up_queued_task(&clp->cl_rpcwaitq,
- 									task);
- 			goto restart_call;
-+		case -NFS4ERR_LEASE_MOVED:
-+			rpc_sleep_on(&clp->cl_rpcwaitq, task, NULL);
-+			nfs4_schedule_lease_moved_recovery(clp);
-+			if (test_bit(NFS4CLNT_MANAGER_RUNNING,
-+							&clp->cl_state) == 0)
-+				rpc_wake_up_queued_task(&clp->cl_rpcwaitq,
-+									task);
-+			goto restart_call;
- 		case -NFS4ERR_DELAY:
- 			nfs_inc_server_stats(server, NFSIOS_DELAY);
- 		case -NFS4ERR_GRACE:
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index c7b414a..8bef9d8 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1071,7 +1071,32 @@ void nfs4_schedule_migration_recovery(struct nfs_server *server)
- 	dprintk("<-- %s\n", __func__);
- }
- 
--static int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *state)
-+/**
-+ * nfs4_schedule_lease_moved_recovery - start lease moved recovery
-+ *
-+ * @clp: nfs_client of server that may have migrated file systems
-+ *
-+ */
-+void nfs4_schedule_lease_moved_recovery(struct nfs_client *clp)
-+{
-+	dprintk("--> %s: \"%s\" (client ID %llx)\n",
-+		__func__, clp->cl_hostname, clp->cl_clientid);
-+
-+	if (test_and_set_bit(NFS4CLNT_LEASE_MOVED, &clp->cl_state) == 0)
-+		nfs4_schedule_state_manager(clp);
-+
-+	dprintk("<-- %s\n", __func__);
-+}
-+
-+/**
-+ * nfs4_state_mark_reclaim_reboot - Mark nfs_client for reboot recovery
-+ * @clp: nfs_client of server that may have rebooted
-+ * @state: state flags to test
-+ *
-+ * Returns 1 if reboot recovery is needed.
-+ */
-+int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp,
-+				   struct nfs4_state *state)
- {
- 
- 	set_bit(NFS_STATE_RECLAIM_REBOOT, &state->flags);
-@@ -1384,7 +1409,6 @@ static int nfs4_recovery_handle_error(struct nfs_client *clp, int error)
- 			nfs4_state_end_reclaim_reboot(clp);
- 			return 0;
- 		case -NFS4ERR_STALE_CLIENTID:
--		case -NFS4ERR_LEASE_MOVED:
- 			set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
- 			nfs4_state_clear_reclaim_reboot(clp);
- 			nfs4_state_start_reclaim_reboot(clp);
-@@ -1597,6 +1621,37 @@ out_err:
- 	kfree(locations);
- }
- 
-+static void nfs4_handle_lease_moved(struct nfs_client *clp)
-+{
-+	struct nfs_server *server;
-+
-+	dprintk("--> %s: \"%s\" (client ID %llx)\n",
-+		__func__, clp->cl_hostname, clp->cl_clientid);
-+
-+	/*
-+	 * rcu_read_lock() must be dropped before trying each individual
-+	 * migration.  cl_mig_counter is used to skip servers that have
-+	 * already been visited for this lease_moved event when the list
-+	 * walk is restarted.
-+	 */
-+	clp->cl_mig_counter++;
-+
-+restart:
-+	rcu_read_lock();
-+	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link)
-+		if (server->mig_counter != clp->cl_mig_counter) {
-+			server->mig_counter = clp->cl_mig_counter;
-+			rcu_read_unlock();
-+			nfs4_try_migration(server);
-+			/* Ask the server if there's more work to do */
-+			if (nfs4_check_lease(clp) == NFS4ERR_LEASE_MOVED)
-+				goto restart;
-+			break;
-+		}
-+	rcu_read_unlock();
-+	dprintk("<-- %s\n", __func__);
-+}
-+
- #ifdef CONFIG_NFS_V4_1
- void nfs4_schedule_session_recovery(struct nfs4_session *session)
- {
-@@ -1814,6 +1869,10 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 			nfs4_try_migration(clp->cl_moved_server);
- 			continue;
- 		}
-+		if (test_and_clear_bit(NFS4CLNT_LEASE_MOVED, &clp->cl_state)) {
-+			nfs4_handle_lease_moved(clp);
-+			continue;
-+		}
- 
- 		/* First recover reboot state... */
- 		if (test_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state)) {
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 091abf0..58050db 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -60,6 +60,7 @@ struct nfs_client {
- 
- 	/* accessed only when NFS4CLNT_MOVED bit is set */
- 	struct nfs_server *	cl_moved_server;
-+	unsigned long		cl_mig_counter;
- 
- 	/* used for the setclientid verifier */
- 	struct timespec		cl_boot_time;
-@@ -156,6 +157,7 @@ struct nfs_server {
- 	struct list_head	delegations;
- 	void (*destroy)(struct nfs_server *);
- 	struct nfs_fh		*rootfh;
-+	unsigned long		mig_counter;
- 
- 	atomic_t active; /* Keep trace of any activity to this server */
- 
+> Wouldn't we prefer a short rw to a long ro?
+> 
+
+hmm, it might matter in the blocks layout world if there's
+un-layoutcommit-ted data accessible only through the RW layout
+but that means we dropped the data out of our cache without
+completing layoutcommit.  not good.
+
+Otherwise, using the longer RO layout rather the shorter RW
+is helpful to coalesce longer read requests using the same
+layout segment, so I'd still do it.
+
+>>        /* read > read/write */
+>> -       return (int)(iomode2 == IOMODE_READ) - (int)(iomode1 == IOMODE_READ);
+>> +       return (int)(l2->iomode == IOMODE_READ) -
+>> +               (int)(l1->iomode == IOMODE_READ);
+>>  }
+>>
+>>  static void
+>> @@ -639,7 +712,7 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
+>>
+>>        assert_spin_locked(&lo->plh_inode->i_lock);
+>>        list_for_each_entry(lp, &lo->plh_segs, pls_list) {
+>> -               if (cmp_layout(lp->pls_range.iomode, lseg->pls_range.iomode) > 0)
+>> +               if (cmp_layout(&lp->pls_range, &lseg->pls_range) > 0)
+>>                        continue;
+>>                list_add_tail(&lseg->pls_list, &lp->pls_list);
+>>                dprintk("%s: inserted lseg %p "
+>> @@ -718,16 +791,28 @@ pnfs_find_alloc_layout(struct inode *ino)
+>>  * READ                RW      true
+>>  */
+>>  static int
+>> -is_matching_lseg(struct pnfs_layout_segment *lseg, u32 iomode)
+>> +is_matching_lseg(struct pnfs_layout_segment *lseg,
+>> +                struct pnfs_layout_range *range)
+> 
+> arguments to this should probably both be of struct pnfs_layout_range
+> 
+
+ok, this seems to be cleaner indeed.
+
+> 
+>>  {
+>> -       return (iomode != IOMODE_RW || lseg->pls_range.iomode == IOMODE_RW);
+>> +       struct pnfs_layout_range range1;
+>> +
+>> +       if ((range->iomode == IOMODE_RW &&
+>> +            lseg->pls_range.iomode != IOMODE_RW) ||
+>> +           !lo_seg_intersecting(&lseg->pls_range, range))
+>> +               return 0;
+>> +
+>> +       /* range1 covers only the first byte in the range */
+>> +       range1 = *range;
+>> +       range1.length = 1;
+>> +       return lo_seg_contained(&lseg->pls_range, &range1);
+>>  }
+>>
+>>  /*
+>>  * lookup range in layout
+>>  */
+>>  static struct pnfs_layout_segment *
+>> -pnfs_find_lseg(struct pnfs_layout_hdr *lo, u32 iomode)
+>> +pnfs_find_lseg(struct pnfs_layout_hdr *lo,
+>> +               struct pnfs_layout_range *range)
+>>  {
+>>        struct pnfs_layout_segment *lseg, *ret = NULL;
+>>
+>> @@ -736,11 +821,11 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo, u32 iomode)
+>>        assert_spin_locked(&lo->plh_inode->i_lock);
+>>        list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
+>>                if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
+>> -                   is_matching_lseg(lseg, iomode)) {
+>> +                   is_matching_lseg(lseg, range)) {
+>>                        ret = get_lseg(lseg);
+>>                        break;
+>>                }
+>> -               if (cmp_layout(iomode, lseg->pls_range.iomode) > 0)
+>> +               if (cmp_layout(range, &lseg->pls_range) > 0)
+>>                        break;
+>>        }
+>>
+>> @@ -756,8 +841,15 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo, u32 iomode)
+>>  struct pnfs_layout_segment *
+>>  pnfs_update_layout(struct inode *ino,
+>>                   struct nfs_open_context *ctx,
+>> +                  loff_t pos,
+>> +                  u64 count,
+>>                   enum pnfs_iomode iomode)
+>>  {
+>> +       struct pnfs_layout_range arg = {
+>> +               .iomode = iomode,
+>> +               .offset = pos,
+>> +               .length = count,
+>> +       };
+>>        struct nfs_inode *nfsi = NFS_I(ino);
+>>        struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
+>>        struct pnfs_layout_hdr *lo;
+>> @@ -785,7 +877,7 @@ pnfs_update_layout(struct inode *ino,
+>>                goto out_unlock;
+>>
+>>        /* Check to see if the layout for the given range already exists */
+>> -       lseg = pnfs_find_lseg(lo, iomode);
+>> +       lseg = pnfs_find_lseg(lo, &arg);
+>>        if (lseg)
+>>                goto out_unlock;
+>>
+>> @@ -807,7 +899,7 @@ pnfs_update_layout(struct inode *ino,
+>>                spin_unlock(&clp->cl_lock);
+>>        }
+>>
+>> -       lseg = send_layoutget(lo, ctx, iomode);
+>> +       lseg = send_layoutget(lo, ctx, &arg);
+>>        if (!lseg && first) {
+>>                spin_lock(&clp->cl_lock);
+>>                list_del_init(&lo->plh_layouts);
+>> @@ -834,17 +926,6 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+>>        struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
+>>        int status = 0;
+>>
+>> -       /* Verify we got what we asked for.
+>> -        * Note that because the xdr parsing only accepts a single
+>> -        * element array, this can fail even if the server is behaving
+>> -        * correctly.
+>> -        */
+>> -       if (lgp->args.range.iomode > res->range.iomode ||
+>> -           res->range.offset != 0 ||
+>> -           res->range.length != NFS4_MAX_UINT64) {
+>> -               status = -EINVAL;
+>> -               goto out;
+>> -       }
+>>        /* Inject layout blob into I/O device driver */
+>>        lseg = NFS_SERVER(ino)->pnfs_curr_ld->alloc_lseg(lo, res);
+>>        if (!lseg || IS_ERR(lseg)) {
+>> @@ -899,8 +980,13 @@ static int pnfs_read_pg_test(struct nfs_pageio_descriptor *pgio,
+>>                /* This is first coelesce call for a series of nfs_pages */
+>>                pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+>>                                                   prev->wb_context,
+>> +                                                  req_offset(req),
+>> +                                                  pgio->pg_count,
+>>                                                   IOMODE_READ);
+>> -       }
+>> +       } else if (pgio->pg_lseg &&
+>> +                  req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
+>> +                                               pgio->pg_lseg->pls_range.length))
+>> +               return 0;
+>>        return NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->pg_test(pgio, prev, req);
+>>  }
+>>
+>> @@ -921,8 +1007,13 @@ static int pnfs_write_pg_test(struct nfs_pageio_descriptor *pgio,
+>>                /* This is first coelesce call for a series of nfs_pages */
+>>                pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+>>                                                   prev->wb_context,
+>> +                                                  req_offset(req),
+>> +                                                  pgio->pg_count,
+>>                                                   IOMODE_RW);
+>> -       }
+>> +       } else if (pgio->pg_lseg &&
+>> +                  req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
+>> +                                               pgio->pg_lseg->pls_range.length))
+>> +               return 0;
+>>        return NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->pg_test(pgio, prev, req);
+>>  }
+>>
+>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+>> index 4cb0a0d..14a2af9 100644
+>> --- a/fs/nfs/pnfs.h
+>> +++ b/fs/nfs/pnfs.h
+>> @@ -129,7 +129,7 @@ void get_layout_hdr(struct pnfs_layout_hdr *lo);
+>>  void put_lseg(struct pnfs_layout_segment *lseg);
+>>  struct pnfs_layout_segment *
+>>  pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+>> -                  enum pnfs_iomode access_type);
+>> +                  loff_t pos, u64 count, enum pnfs_iomode access_type);
+>>  void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+>>  void unset_pnfs_layoutdriver(struct nfs_server *);
+>>  enum pnfs_try_status pnfs_try_to_write_data(struct nfs_write_data *,
+>> @@ -248,7 +248,7 @@ static inline void put_lseg(struct pnfs_layout_segment *lseg)
+>>
+>>  static inline struct pnfs_layout_segment *
+>>  pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+>> -                  enum pnfs_iomode access_type)
+>> +                  loff_t pos, u64 count, enum pnfs_iomode access_type)
+>>  {
+>>        return NULL;
+>>  }
+>> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+>> index 7cded2b..10eff1c 100644
+>> --- a/fs/nfs/read.c
+>> +++ b/fs/nfs/read.c
+>> @@ -288,13 +288,17 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc)
+>>        atomic_set(&req->wb_complete, requests);
+>>
+>>        BUG_ON(desc->pg_lseg != NULL);
+>> -       lseg = pnfs_update_layout(desc->pg_inode, req->wb_context, IOMODE_READ);
+>> +       lseg = pnfs_update_layout(desc->pg_inode, req->wb_context,
+>> +                                 req_offset(req), desc->pg_count,
+>> +                                 IOMODE_READ);
+>>        ClearPageError(page);
+>>        offset = 0;
+>>        nbytes = desc->pg_count;
+>>        do {
+>>                int ret2;
+>>
+>> +               /* FIXME: need a new layout segment? */
+>> +
+> 
+> No need for FIXME, since we assume strongly throughout that the
+> layouts are page aligned.
+
+OK. I'll remove it.
+
+Thanks!
+
+Benny
+
+> 
+> Fred
+> 
+>>                data = list_entry(list.next, struct nfs_read_data, pages);
+>>                list_del_init(&data->pages);
+>>
+>> @@ -351,7 +355,9 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc)
+>>        }
+>>        req = nfs_list_entry(data->pages.next);
+>>        if ((!lseg) && list_is_singular(&data->pages))
+>> -               lseg = pnfs_update_layout(desc->pg_inode, req->wb_context, IOMODE_READ);
+>> +               lseg = pnfs_update_layout(desc->pg_inode, req->wb_context,
+>> +                                         req_offset(req), desc->pg_count,
+>> +                                         IOMODE_READ);
+>>
+>>        ret = nfs_read_rpcsetup(req, data, &nfs_read_full_ops, desc->pg_count,
+>>                                0, lseg);
+>> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+>> index e4cbc11..318e0a3 100644
+>> --- a/fs/nfs/write.c
+>> +++ b/fs/nfs/write.c
+>> @@ -940,7 +940,9 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc)
+>>        atomic_set(&req->wb_complete, requests);
+>>
+>>        BUG_ON(desc->pg_lseg);
+>> -       lseg = pnfs_update_layout(desc->pg_inode, req->wb_context, IOMODE_RW);
+>> +       lseg = pnfs_update_layout(desc->pg_inode, req->wb_context,
+>> +                                 req_offset(req), desc->pg_count,
+>> +                                 IOMODE_RW);
+>>        ClearPageError(page);
+>>        offset = 0;
+>>        nbytes = desc->pg_count;
+>> @@ -1014,7 +1016,9 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc)
+>>        }
+>>        req = nfs_list_entry(data->pages.next);
+>>        if ((!lseg) && list_is_singular(&data->pages))
+>> -               lseg = pnfs_update_layout(desc->pg_inode, req->wb_context, IOMODE_RW);
+>> +               lseg = pnfs_update_layout(desc->pg_inode, req->wb_context,
+>> +                                         req_offset(req), desc->pg_count,
+>> +                                         IOMODE_RW);
+>>
+>>        if ((desc->pg_ioflags & FLUSH_COND_STABLE) &&
+>>            (desc->pg_moreio || NFS_I(desc->pg_inode)->ncommit))
+>> --
+>> 1.7.3.4
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
