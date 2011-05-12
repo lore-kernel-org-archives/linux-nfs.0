@@ -1,167 +1,196 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57112 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932137Ab1EYV2H (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:28:07 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v8 13/32] pnfs-obj: objlayoutdriver module skeleton
-Date: Thu, 26 May 2011 00:28:03 +0300
-Message-Id: <1306358883-17258-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DDD7392.6040505@panasas.com>
-References: <4DDD7392.6040505@panasas.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:37619 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757918Ab1ELQH3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 May 2011 12:07:29 -0400
+Received: by iwn34 with SMTP id 34so1534496iwn.19
+        for <linux-nfs@vger.kernel.org>; Thu, 12 May 2011 09:07:28 -0700 (PDT)
+In-Reply-To: <1304960987-4457-1-git-send-email-bhalevy@panasas.com>
+References: <4DC81E8C.6040901@panasas.com>
+	<1304960987-4457-1-git-send-email-bhalevy@panasas.com>
+Date: Thu, 12 May 2011 12:07:28 -0400
+Message-ID: <BANLkTin4G6B=gFyp5tkfq__GtDH8w2RpYg@mail.gmail.com>
+Subject: Re: [PATCH v2 18/29] pnfs: support for non-rpc layout drivers
+From: Fred Isaman <iisaman@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-* Define the PNFS_OBJLAYOUT Kconfig option in the nfs
-  master Kconfig file.
-* Add the objlayout driver to the Kernel's Kbuild system.
-* Add the fs/nfs/objlayout/Kbuild file for building the
-  objlayoutdriver.ko driver
-* Define fs/nfs/objlayout/objio_osd.c, register the driver on module
-  initialization and unregister on exit.
+On Mon, May 9, 2011 at 1:09 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+> Non-rpc layout driver such as for objects and blocks
+> implement their own I/O path and error handling logic.
+> Therefore bypass NFS-based error handling for these layout drivers.
+>
+> [get rid of PNFS_USE_RPC_CODE]
+> [get rid of __nfs4_write_done_cb]
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  fs/nfs/internal.h       |    1 +
+>  fs/nfs/nfs4proc.c       |    9 ++++++-
+>  fs/nfs/pnfs.c           |   48 +++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfs/pnfs.h           |    2 +
+>  include/linux/nfs_xdr.h |    2 +
+>  5 files changed, 60 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+> index ce118ce..bcf0f0f 100644
+> --- a/fs/nfs/internal.h
+> +++ b/fs/nfs/internal.h
+> @@ -310,6 +310,7 @@ extern int nfs_migrate_page(struct address_space *,
+>  #endif
+>
+>  /* nfs4proc.c */
+> +extern void __nfs4_read_done_cb(struct nfs_read_data *);
+>  extern void nfs4_reset_read(struct rpc_task *task, struct nfs_read_data *data);
+>  extern int nfs4_init_client(struct nfs_client *clp,
+>                            const struct rpc_timeout *timeparms,
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 9bf41ea..da51abe 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -3146,6 +3146,11 @@ static int nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
+>        return err;
+>  }
+>
+> +void __nfs4_read_done_cb(struct nfs_read_data *data)
+> +{
+> +       nfs_invalidate_atime(data->inode);
+> +}
+> +
+>  static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
+>  {
+>        struct nfs_server *server = NFS_SERVER(data->inode);
+> @@ -3155,7 +3160,7 @@ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
+>                return -EAGAIN;
+>        }
+>
+> -       nfs_invalidate_atime(data->inode);
+> +       __nfs4_read_done_cb(data);
+>        if (task->tk_status > 0)
+>                renew_lease(server, data->timestamp);
+>        return 0;
+> @@ -3205,7 +3210,7 @@ static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data
+>        }
+>        if (task->tk_status >= 0) {
+>                renew_lease(NFS_SERVER(inode), data->timestamp);
+> -               nfs_post_op_update_inode_force_wcc(inode, data->res.fattr);
+> +               nfs_post_op_update_inode_force_wcc(data->inode, data->res.fattr);
 
-[pnfs-obj: remove of CONFIG_PNFS fallout]
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-[added "unsure" clause]
-[depend on NFS_V4_1]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/Kconfig               |   10 +++++
- fs/nfs/Makefile              |    2 +
- fs/nfs/objlayout/Kbuild      |    5 +++
- fs/nfs/objlayout/objio_osd.c |   76 ++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 93 insertions(+), 0 deletions(-)
- create mode 100644 fs/nfs/objlayout/Kbuild
- create mode 100644 fs/nfs/objlayout/objio_osd.c
+Why this change?
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index ba30665..8151554 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -87,6 +87,16 @@ config NFS_V4_1
- config PNFS_FILE_LAYOUT
- 	tristate
- 
-+config PNFS_OBJLAYOUT
-+	tristate "Provide support for the pNFS Objects Layout Driver for NFSv4.1 pNFS (EXPERIMENTAL)"
-+	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
-+	help
-+	  Say M here if you want your pNFS client to support the Objects Layout Driver.
-+	  Requires the SCSI osd initiator library (SCSI_OSD_INITIATOR) and
-+	  upper level driver (SCSI_OSD_ULD).
-+
-+	  If unsure, say N.
-+
- config ROOT_NFS
- 	bool "Root file system on NFS"
- 	depends on NFS_FS=y && IP_PNP
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index 7516a8a..6a34f7d 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -21,3 +21,5 @@ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
- 
- obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
- nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
-+
-+obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayout/
-diff --git a/fs/nfs/objlayout/Kbuild b/fs/nfs/objlayout/Kbuild
-new file mode 100644
-index 0000000..2e5b9a4
---- /dev/null
-+++ b/fs/nfs/objlayout/Kbuild
-@@ -0,0 +1,5 @@
-+#
-+# Makefile for the pNFS Objects Layout Driver kernel module
-+#
-+objlayoutdriver-y := objio_osd.o
-+obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayoutdriver.o
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-new file mode 100644
-index 0000000..379595f
---- /dev/null
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -0,0 +1,76 @@
-+/*
-+ *  pNFS Objects layout implementation over open-osd initiator library
-+ *
-+ *  Copyright (C) 2009 Panasas Inc. [year of first publication]
-+ *  All rights reserved.
-+ *
-+ *  Benny Halevy <bhalevy@panasas.com>
-+ *  Boaz Harrosh <bharrosh@panasas.com>
-+ *
-+ *  This program is free software; you can redistribute it and/or modify
-+ *  it under the terms of the GNU General Public License version 2
-+ *  See the file COPYING included with this distribution for more details.
-+ *
-+ *  Redistribution and use in source and binary forms, with or without
-+ *  modification, are permitted provided that the following conditions
-+ *  are met:
-+ *
-+ *  1. Redistributions of source code must retain the above copyright
-+ *     notice, this list of conditions and the following disclaimer.
-+ *  2. Redistributions in binary form must reproduce the above copyright
-+ *     notice, this list of conditions and the following disclaimer in the
-+ *     documentation and/or other materials provided with the distribution.
-+ *  3. Neither the name of the Panasas company nor the names of its
-+ *     contributors may be used to endorse or promote products derived
-+ *     from this software without specific prior written permission.
-+ *
-+ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
-+ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-+ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-+ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
-+ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-+ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-+ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-+ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-+ */
-+
-+#include <linux/module.h>
-+#include "../pnfs.h"
-+
-+static struct pnfs_layoutdriver_type objlayout_type = {
-+	.id = LAYOUT_OSD2_OBJECTS,
-+	.name = "LAYOUT_OSD2_OBJECTS",
-+};
-+
-+MODULE_DESCRIPTION("pNFS Layout Driver for OSD2 objects");
-+MODULE_AUTHOR("Benny Halevy <bhalevy@panasas.com>");
-+MODULE_LICENSE("GPL");
-+
-+static int __init
-+objlayout_init(void)
-+{
-+	int ret = pnfs_register_layoutdriver(&objlayout_type);
-+
-+	if (ret)
-+		printk(KERN_INFO
-+			"%s: Registering OSD pNFS Layout Driver failed: error=%d\n",
-+			__func__, ret);
-+	else
-+		printk(KERN_INFO "%s: Registered OSD pNFS Layout Driver\n",
-+			__func__);
-+	return ret;
-+}
-+
-+static void __exit
-+objlayout_exit(void)
-+{
-+	pnfs_unregister_layoutdriver(&objlayout_type);
-+	printk(KERN_INFO "%s: Unregistered OSD pNFS Layout Driver\n",
-+	       __func__);
-+}
-+
-+module_init(objlayout_init);
-+module_exit(objlayout_exit);
--- 
-1.7.3.4
+Fred
 
+>        }
+>        return 0;
+>  }
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 880a84d..dc6541d 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -1055,6 +1055,30 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
+>        pgio->pg_test = (ld && ld->pg_test) ? pnfs_write_pg_test : NULL;
+>  }
+>
+> +/*
+> + * Called by non rpc-based layout drivers
+> + */
+> +int
+> +pnfs_ld_write_done(struct nfs_write_data *data)
+> +{
+> +       int status;
+> +
+> +       put_lseg(data->lseg);
+> +       data->lseg = NULL;
+> +       if (!data->pnfs_error) {
+> +               pnfs_set_layoutcommit(data);
+> +               data->mds_ops->rpc_call_done(NULL, data);
+> +               data->mds_ops->rpc_release(data);
+> +               return 0;
+> +       }
+> +
+> +       dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
+> +               data->pnfs_error);
+> +       status = nfs_initiate_write(data, NFS_CLIENT(data->inode), data->mds_ops, NFS_FILE_SYNC);
+> +       return status ? : -EAGAIN;
+> +}
+> +EXPORT_SYMBOL_GPL(pnfs_ld_write_done);
+> +
+>  enum pnfs_try_status
+>  pnfs_try_to_write_data(struct nfs_write_data *wdata,
+>                        const struct rpc_call_ops *call_ops, int how)
+> @@ -1080,6 +1104,30 @@ pnfs_try_to_write_data(struct nfs_write_data *wdata,
+>  }
+>
+>  /*
+> + * Called by non rpc-based layout drivers
+> + */
+> +int
+> +pnfs_ld_read_done(struct nfs_read_data *data)
+> +{
+> +       int status;
+> +
+> +       put_lseg(data->lseg);
+> +       data->lseg = NULL;
+> +       if (!data->pnfs_error) {
+> +               __nfs4_read_done_cb(data);
+> +               data->mds_ops->rpc_call_done(NULL, data);
+> +               data->mds_ops->rpc_release(data);
+> +               return 0;
+> +       }
+> +
+> +       dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
+> +               data->pnfs_error);
+> +       status = nfs_initiate_read(data, NFS_CLIENT(data->inode), data->mds_ops);
+> +       return status ? : -EAGAIN;
+> +}
+> +EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
+> +
+> +/*
+>  * Call the appropriate parallel I/O subsystem read function.
+>  */
+>  enum pnfs_try_status
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index e24c7fb..2f8776b 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -166,6 +166,8 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+>  bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+>  void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
+>  int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+> +int pnfs_ld_write_done(struct nfs_write_data *);
+> +int pnfs_ld_read_done(struct nfs_read_data *);
+>
+>  static inline int lo_fail_bit(u32 iomode)
+>  {
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 78b101e..ef2b6a9 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -1084,6 +1084,7 @@ struct nfs_read_data {
+>        const struct rpc_call_ops *mds_ops;
+>        int (*read_done_cb) (struct rpc_task *task, struct nfs_read_data *data);
+>        __u64                   mds_offset;
+> +       int                     pnfs_error;
+>        struct page             *page_array[NFS_PAGEVEC_SIZE];
+>  };
+>
+> @@ -1109,6 +1110,7 @@ struct nfs_write_data {
+>        unsigned long           timestamp;      /* For lease renewal */
+>  #endif
+>        __u64                   mds_offset;     /* Filelayout dense stripe */
+> +       int                     pnfs_error;
+>        struct page             *page_array[NFS_PAGEVEC_SIZE];
+>  };
+>
+> --
+> 1.7.3.4
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
