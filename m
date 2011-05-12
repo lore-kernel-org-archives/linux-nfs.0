@@ -1,150 +1,304 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57196 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754488Ab1EYV3x (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:29:53 -0400
+Received: from mail-qy0-f181.google.com ([209.85.216.181]:58932 "EHLO
+	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757859Ab1ELXy0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 May 2011 19:54:26 -0400
+Received: by qyg14 with SMTP id 14so1193033qyg.19
+        for <linux-nfs@vger.kernel.org>; Thu, 12 May 2011 16:54:25 -0700 (PDT)
+Message-ID: <4DCC732E.4060407@panasas.com>
+Date: Thu, 12 May 2011 19:54:22 -0400
 From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v8 27/32] pnfs-obj: objlayout_encode_layoutcommit implementation
-Date: Thu, 26 May 2011 00:29:51 +0300
-Message-Id: <1306358991-17823-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DDD7392.6040505@panasas.com>
-References: <4DDD7392.6040505@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>, Dean Hildebrand <dhildeb@us.ibm.com>
+Subject: Re: [PATCH v2 02/29] pnfs: direct i/o
+References: <4DC81E8C.6040901@panasas.com>	<1304960798-3826-1-git-send-email-bhalevy@panasas.com> <BANLkTikZGWBOr=MG+ipKoPSaZ4bo20kD7A@mail.gmail.com>
+In-Reply-To: <BANLkTikZGWBOr=MG+ipKoPSaZ4bo20kD7A@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Boaz Harrosh <bharrosh@panasas.com>
+On 2011-05-12 10:41, Fred Isaman wrote:
+> Note this does not seem to change any functionality, just rearranges
+> the code.  Is this patch needed?
 
-* Define API for io-engines to report delta_space_used in IOs
-* Encode the osd-layout specific information of the layoutcommit
-  XDR buffer.
+Duh, we used to have another patch adding the pnfs on top of this.
+I'll drop it from this patch series as it's not strictly required
+the objects layout.  We need to retest pnfs direct I/O anyway...
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/objlayout/objio_osd.c |    1 +
- fs/nfs/objlayout/objlayout.c |   30 ++++++++++++++++++++++++++++++
- fs/nfs/objlayout/objlayout.h |   30 ++++++++++++++++++++++++++++++
- 3 files changed, 61 insertions(+), 0 deletions(-)
+Benny
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 28a73e9..c788146 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -1004,6 +1004,7 @@ static struct pnfs_layoutdriver_type objlayout_type = {
- 
- 	.free_deviceid_node	 = objio_free_deviceid_node,
- 
-+	.encode_layoutcommit	 = objlayout_encode_layoutcommit,
- 	.encode_layoutreturn     = objlayout_encode_layoutreturn,
- };
- 
-diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-index f7caecf..dc3956c 100644
---- a/fs/nfs/objlayout/objlayout.c
-+++ b/fs/nfs/objlayout/objlayout.c
-@@ -225,6 +225,7 @@ objlayout_iodone(struct objlayout_io_state *state)
- 		struct objlayout *objlay = OBJLAYOUT(state->lseg->pls_layout);
- 
- 		spin_lock(&objlay->lock);
-+		objlay->delta_space_valid = OBJ_DSU_INVALID;
- 		list_add(&objlay->err_list, &state->err_list);
- 		spin_unlock(&objlay->lock);
- 	}
-@@ -433,6 +434,35 @@ objlayout_write_pagelist(struct nfs_write_data *wdata,
- 	return PNFS_ATTEMPTED;
- }
- 
-+void
-+objlayout_encode_layoutcommit(struct pnfs_layout_hdr *pnfslay,
-+			      struct xdr_stream *xdr,
-+			      const struct nfs4_layoutcommit_args *args)
-+{
-+	struct objlayout *objlay = OBJLAYOUT(pnfslay);
-+	struct pnfs_osd_layoutupdate lou;
-+	__be32 *start;
-+
-+	dprintk("%s: Begin\n", __func__);
-+
-+	spin_lock(&objlay->lock);
-+	lou.dsu_valid = (objlay->delta_space_valid == OBJ_DSU_VALID);
-+	lou.dsu_delta = objlay->delta_space_used;
-+	objlay->delta_space_used = 0;
-+	objlay->delta_space_valid = OBJ_DSU_INIT;
-+	lou.olu_ioerr_flag = !list_empty(&objlay->err_list);
-+	spin_unlock(&objlay->lock);
-+
-+	start = xdr_reserve_space(xdr, 4);
-+
-+	BUG_ON(pnfs_osd_xdr_encode_layoutupdate(xdr, &lou));
-+
-+	*start = cpu_to_be32((xdr->p - start - 1) * 4);
-+
-+	dprintk("%s: Return delta_space_used %lld err %d\n", __func__,
-+		lou.dsu_delta, lou.olu_ioerr_flag);
-+}
-+
- static int
- err_prio(u32 oer_errno)
- {
-diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
-index b0bb975..a8244c8 100644
---- a/fs/nfs/objlayout/objlayout.h
-+++ b/fs/nfs/objlayout/objlayout.h
-@@ -51,6 +51,14 @@
- struct objlayout {
- 	struct pnfs_layout_hdr pnfs_layout;
- 
-+	 /* for layout_commit */
-+	enum osd_delta_space_valid_enum {
-+		OBJ_DSU_INIT = 0,
-+		OBJ_DSU_VALID,
-+		OBJ_DSU_INVALID,
-+	} delta_space_valid;
-+	s64 delta_space_used;  /* consumed by write ops */
-+
- 	 /* for layout_return */
- 	spinlock_t lock;
- 	struct list_head err_list;
-@@ -119,6 +127,23 @@ extern void objlayout_io_set_result(struct objlayout_io_state *state,
- 			unsigned index, struct pnfs_osd_objid *pooid,
- 			int osd_error, u64 offset, u64 length, bool is_write);
- 
-+static inline void
-+objlayout_add_delta_space_used(struct objlayout_io_state *state, s64 space_used)
-+{
-+	struct objlayout *objlay = OBJLAYOUT(state->lseg->pls_layout);
-+
-+	/* If one of the I/Os errored out and the delta_space_used was
-+	 * invalid we render the complete report as invalid. Protocol mandate
-+	 * the DSU be accurate or not reported.
-+	 */
-+	spin_lock(&objlay->lock);
-+	if (objlay->delta_space_valid != OBJ_DSU_INVALID) {
-+		objlay->delta_space_valid = OBJ_DSU_VALID;
-+		objlay->delta_space_used += space_used;
-+	}
-+	spin_unlock(&objlay->lock);
-+}
-+
- extern void objlayout_read_done(struct objlayout_io_state *state,
- 				ssize_t status, bool sync);
- extern void objlayout_write_done(struct objlayout_io_state *state,
-@@ -149,6 +174,11 @@ extern enum pnfs_try_status objlayout_write_pagelist(
- 	struct nfs_write_data *,
- 	int how);
- 
-+extern void objlayout_encode_layoutcommit(
-+	struct pnfs_layout_hdr *,
-+	struct xdr_stream *,
-+	const struct nfs4_layoutcommit_args *);
-+
- extern void objlayout_encode_layoutreturn(
- 	struct pnfs_layout_hdr *,
- 	struct xdr_stream *,
--- 
-1.7.3.4
+> 
+> Fred
+> 
+> On Mon, May 9, 2011 at 1:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfs/direct.c |  160 +++++++++++++++++++++++++++++++-----------------------
+>>  1 files changed, 92 insertions(+), 68 deletions(-)
+>>
+>> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+>> index 8eea253..55dffb7 100644
+>> --- a/fs/nfs/direct.c
+>> +++ b/fs/nfs/direct.c
+>> @@ -272,6 +272,38 @@ static const struct rpc_call_ops nfs_read_direct_ops = {
+>>        .rpc_release = nfs_direct_read_release,
+>>  };
+>>
+>> +static long nfs_direct_read_execute(struct nfs_read_data *data,
+>> +                                   struct rpc_task_setup *task_setup_data,
+>> +                                   struct rpc_message *msg)
+>> +{
+>> +       struct inode *inode = data->inode;
+>> +       struct rpc_task *task;
+>> +
+>> +       nfs_fattr_init(&data->fattr);
+>> +       msg->rpc_argp = &data->args;
+>> +       msg->rpc_resp = &data->res;
+>> +
+>> +       task_setup_data->task = &data->task;
+>> +       task_setup_data->callback_data = data;
+>> +       NFS_PROTO(inode)->read_setup(data, msg);
+>> +
+>> +       task = rpc_run_task(task_setup_data);
+>> +       if (IS_ERR(task))
+>> +               return PTR_ERR(task);
+>> +
+>> +       rpc_put_task(task);
+>> +
+>> +       dprintk("NFS: %5u initiated direct read call "
+>> +               "(req %s/%lld, %u bytes @ offset %llu)\n",
+>> +               data->task.tk_pid,
+>> +               inode->i_sb->s_id,
+>> +               (long long)NFS_FILEID(inode),
+>> +               data->args.count,
+>> +               (unsigned long long)data->args.offset);
+>> +
+>> +       return 0;
+>> +}
+>> +
+>>  /*
+>>  * For each rsize'd chunk of the user's buffer, dispatch an NFS READ
+>>  * operation.  If nfs_readdata_alloc() or get_user_pages() fails,
+>> @@ -288,7 +320,6 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
+>>        unsigned long user_addr = (unsigned long)iov->iov_base;
+>>        size_t count = iov->iov_len;
+>>        size_t rsize = NFS_SERVER(inode)->rsize;
+>> -       struct rpc_task *task;
+>>        struct rpc_message msg = {
+>>                .rpc_cred = ctx->cred,
+>>        };
+>> @@ -349,26 +380,9 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
+>>                data->res.fattr = &data->fattr;
+>>                data->res.eof = 0;
+>>                data->res.count = bytes;
+>> -               nfs_fattr_init(&data->fattr);
+>> -               msg.rpc_argp = &data->args;
+>> -               msg.rpc_resp = &data->res;
+>>
+>> -               task_setup_data.task = &data->task;
+>> -               task_setup_data.callback_data = data;
+>> -               NFS_PROTO(inode)->read_setup(data, &msg);
+>> -
+>> -               task = rpc_run_task(&task_setup_data);
+>> -               if (IS_ERR(task))
+>> +               if (nfs_direct_read_execute(data, &task_setup_data, &msg))
+>>                        break;
+>> -               rpc_put_task(task);
+>> -
+>> -               dprintk("NFS: %5u initiated direct read call "
+>> -                       "(req %s/%Ld, %zu bytes @ offset %Lu)\n",
+>> -                               data->task.tk_pid,
+>> -                               inode->i_sb->s_id,
+>> -                               (long long)NFS_FILEID(inode),
+>> -                               bytes,
+>> -                               (unsigned long long)data->args.offset);
+>>
+>>                started += bytes;
+>>                user_addr += bytes;
+>> @@ -461,12 +475,15 @@ static void nfs_direct_free_writedata(struct nfs_direct_req *dreq)
+>>  }
+>>
+>>  #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
+>> +static long nfs_direct_write_execute(struct nfs_write_data *data,
+>> +                                    struct rpc_task_setup *task_setup_data,
+>> +                                    struct rpc_message *msg);
+>> +
+>>  static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+>>  {
+>>        struct inode *inode = dreq->inode;
+>>        struct list_head *p;
+>>        struct nfs_write_data *data;
+>> -       struct rpc_task *task;
+>>        struct rpc_message msg = {
+>>                .rpc_cred = dreq->ctx->cred,
+>>        };
+>> @@ -500,25 +517,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+>>                 * Reuse data->task; data->args should not have changed
+>>                 * since the original request was sent.
+>>                 */
+>> -               task_setup_data.task = &data->task;
+>> -               task_setup_data.callback_data = data;
+>> -               msg.rpc_argp = &data->args;
+>> -               msg.rpc_resp = &data->res;
+>> -               NFS_PROTO(inode)->write_setup(data, &msg);
+>> -
+>> -               /*
+>> -                * We're called via an RPC callback, so BKL is already held.
+>> -                */
+>> -               task = rpc_run_task(&task_setup_data);
+>> -               if (!IS_ERR(task))
+>> -                       rpc_put_task(task);
+>> -
+>> -               dprintk("NFS: %5u rescheduled direct write call (req %s/%Ld, %u bytes @ offset %Lu)\n",
+>> -                               data->task.tk_pid,
+>> -                               inode->i_sb->s_id,
+>> -                               (long long)NFS_FILEID(inode),
+>> -                               data->args.count,
+>> -                               (unsigned long long)data->args.offset);
+>> +               nfs_direct_write_execute(data, &task_setup_data, &msg);
+>>        }
+>>
+>>        if (put_dreq(dreq))
+>> @@ -561,10 +560,31 @@ static const struct rpc_call_ops nfs_commit_direct_ops = {
+>>        .rpc_release = nfs_direct_commit_release,
+>>  };
+>>
+>> +static long nfs_direct_commit_execute(struct nfs_direct_req *dreq,
+>> +                                     struct nfs_write_data *data,
+>> +                                     struct rpc_task_setup *task_setup_data,
+>> +                                     struct rpc_message *msg)
+>> +{
+>> +       struct rpc_task *task;
+>> +
+>> +       NFS_PROTO(data->inode)->commit_setup(data, msg);
+>> +
+>> +       /* Note: task.tk_ops->rpc_release will free dreq->commit_data */
+>> +       dreq->commit_data = NULL;
+>> +
+>> +       dprintk("NFS: %5u initiated commit call\n", data->task.tk_pid);
+>> +
+>> +       task = rpc_run_task(task_setup_data);
+>> +       if (IS_ERR(task))
+>> +               return PTR_ERR(task);
+>> +
+>> +       rpc_put_task(task);
+>> +       return 0;
+>> +}
+>> +
+>>  static void nfs_direct_commit_schedule(struct nfs_direct_req *dreq)
+>>  {
+>>        struct nfs_write_data *data = dreq->commit_data;
+>> -       struct rpc_task *task;
+>>        struct rpc_message msg = {
+>>                .rpc_argp = &data->args,
+>>                .rpc_resp = &data->res,
+>> @@ -593,16 +613,7 @@ static void nfs_direct_commit_schedule(struct nfs_direct_req *dreq)
+>>        data->res.verf = &data->verf;
+>>        nfs_fattr_init(&data->fattr);
+>>
+>> -       NFS_PROTO(data->inode)->commit_setup(data, &msg);
+>> -
+>> -       /* Note: task.tk_ops->rpc_release will free dreq->commit_data */
+>> -       dreq->commit_data = NULL;
+>> -
+>> -       dprintk("NFS: %5u initiated commit call\n", data->task.tk_pid);
+>> -
+>> -       task = rpc_run_task(&task_setup_data);
+>> -       if (!IS_ERR(task))
+>> -               rpc_put_task(task);
+>> +       nfs_direct_commit_execute(dreq, data, &task_setup_data, &msg);
+>>  }
+>>
+>>  static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode *inode)
+>> @@ -703,6 +714,36 @@ static const struct rpc_call_ops nfs_write_direct_ops = {
+>>        .rpc_release = nfs_direct_write_release,
+>>  };
+>>
+>> +static long nfs_direct_write_execute(struct nfs_write_data *data,
+>> +                                    struct rpc_task_setup *task_setup_data,
+>> +                                    struct rpc_message *msg)
+>> +{
+>> +       struct inode *inode = data->inode;
+>> +       struct rpc_task *task;
+>> +
+>> +       task_setup_data->task = &data->task;
+>> +       task_setup_data->callback_data = data;
+>> +       msg->rpc_argp = &data->args;
+>> +       msg->rpc_resp = &data->res;
+>> +       NFS_PROTO(inode)->write_setup(data, msg);
+>> +
+>> +       task = rpc_run_task(task_setup_data);
+>> +       if (IS_ERR(task))
+>> +               return PTR_ERR(task);
+>> +
+>> +       rpc_put_task(task);
+>> +
+>> +       dprintk("NFS: %5u initiated direct write call "
+>> +               "(req %s/%lld, %u bytes @ offset %llu)\n",
+>> +               data->task.tk_pid,
+>> +               inode->i_sb->s_id,
+>> +               (long long)NFS_FILEID(inode),
+>> +               data->args.count,
+>> +               (unsigned long long)data->args.offset);
+>> +
+>> +       return 0;
+>> +}
+>> +
+>>  /*
+>>  * For each wsize'd chunk of the user's buffer, dispatch an NFS WRITE
+>>  * operation.  If nfs_writedata_alloc() or get_user_pages() fails,
+>> @@ -718,7 +759,6 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
+>>        struct inode *inode = ctx->path.dentry->d_inode;
+>>        unsigned long user_addr = (unsigned long)iov->iov_base;
+>>        size_t count = iov->iov_len;
+>> -       struct rpc_task *task;
+>>        struct rpc_message msg = {
+>>                .rpc_cred = ctx->cred,
+>>        };
+>> @@ -785,24 +825,8 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
+>>                data->res.verf = &data->verf;
+>>                nfs_fattr_init(&data->fattr);
+>>
+>> -               task_setup_data.task = &data->task;
+>> -               task_setup_data.callback_data = data;
+>> -               msg.rpc_argp = &data->args;
+>> -               msg.rpc_resp = &data->res;
+>> -               NFS_PROTO(inode)->write_setup(data, &msg);
+>> -
+>> -               task = rpc_run_task(&task_setup_data);
+>> -               if (IS_ERR(task))
+>> +               if (nfs_direct_write_execute(data, &task_setup_data, &msg))
+>>                        break;
+>> -               rpc_put_task(task);
+>> -
+>> -               dprintk("NFS: %5u initiated direct write call "
+>> -                       "(req %s/%Ld, %zu bytes @ offset %Lu)\n",
+>> -                               data->task.tk_pid,
+>> -                               inode->i_sb->s_id,
+>> -                               (long long)NFS_FILEID(inode),
+>> -                               bytes,
+>> -                               (unsigned long long)data->args.offset);
+>>
+>>                started += bytes;
+>>                user_addr += bytes;
+>> --
+>> 1.7.3.4
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
