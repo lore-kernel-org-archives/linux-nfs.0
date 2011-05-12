@@ -1,110 +1,292 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pw0-f46.google.com ([209.85.160.46]:63508 "EHLO
-	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934649Ab1ETQUu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 May 2011 12:20:50 -0400
-Received: by pwi15 with SMTP id 15so1777983pwi.19
-        for <linux-nfs@vger.kernel.org>; Fri, 20 May 2011 09:20:50 -0700 (PDT)
-Message-ID: <4DD694DF.2060302@uw.edu>
-Date: Fri, 20 May 2011 09:20:47 -0700
-From: Harry Edmon <harry@uw.edu>
-To: "Dr. J. Bruce Fields" <bfields@fieldses.org>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: 2.6.38.6 - state manager constantly respawns
-References: <4DD16FA8.4030602@uw.edu> <05D08339-888C-4A64-BDC5-8667B3901E7A@oracle.com> <4DD1772E.9010609@uw.edu> <6A6FB1C3-D4C3-40BE-810A-B4551FA9E591@oracle.com> <4DD17CB5.7010009@uw.edu> <1305575007.19725.3.camel@lade.trondhjem.org> <4DD17F79.305@uw.edu> <1305575656.19725.9.camel@lade.trondhjem.org> <20110516202059.GC1680@fieldses.org> <20110516205351.GD1680@fieldses.org>
-In-Reply-To: <20110516205351.GD1680@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:35612 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757805Ab1ELOlm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 May 2011 10:41:42 -0400
+Received: by iwn34 with SMTP id 34so1464123iwn.19
+        for <linux-nfs@vger.kernel.org>; Thu, 12 May 2011 07:41:41 -0700 (PDT)
+In-Reply-To: <1304960798-3826-1-git-send-email-bhalevy@panasas.com>
+References: <4DC81E8C.6040901@panasas.com>
+	<1304960798-3826-1-git-send-email-bhalevy@panasas.com>
+Date: Thu, 12 May 2011 10:41:41 -0400
+Message-ID: <BANLkTikZGWBOr=MG+ipKoPSaZ4bo20kD7A@mail.gmail.com>
+Subject: Re: [PATCH v2 02/29] pnfs: direct i/o
+From: Fred Isaman <iisaman@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>, Dean Hildebrand <dhildeb@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/16/11 13:53, Dr. J. Bruce Fields wrote:
-> On Mon, May 16, 2011 at 04:20:59PM -0400, Dr. J. Bruce Fields wrote:
->    
->> On Mon, May 16, 2011 at 03:54:16PM -0400, Trond Myklebust wrote:
->>      
->>> On Mon, 2011-05-16 at 12:48 -0700, Harry Edmon wrote:
->>>        
->>>> On 05/16/11 12:43, Trond Myklebust wrote:
->>>>          
->>>>> On Mon, 2011-05-16 at 12:36 -0700, Harry Edmon wrote:
->>>>>
->>>>>            
->>>>>> On 05/16/11 12:22, Chuck Lever wrote:
->>>>>>
->>>>>>              
->>>>>>> On May 16, 2011, at 3:12 PM, Harry Edmon wrote:
->>>>>>>
->>>>>>>
->>>>>>>
->>>>>>>                
->>>>>>>> Attached is 1000 lines of output from tshark when the problem is occurring.   The client and server are connected by a private ethernet.
->>>>>>>>
->>>>>>>>
->>>>>>>>                  
->>>>>>> Disappointing: tshark is not telling us the return codes.  However, I see "PUTFH;READ" then "RENEW" in a loop, which indicates the state manager thread is being kicked off because of ongoing difficulties with state recovery.  Is there a stuck application on that client?
->>>>>>>
->>>>>>> Try again with "tshark -V".
->>>>>>>
->>>>>>>
->>>>>>>                
->>>>>> Here is the output from tshark -V (first 50,000 lines).   Nothing
->>>>>> appears to be stuck, and as I said when I reboot the client into 2.6.32
->>>>>> the problem goes away, only to reappear when I reboot it back into 2.6.38.6.
->>>>>>
->>>>>>
->>>>>>              
->>>>> Possibly, but it definitely indicates a server bug. What kind of server
->>>>> are you using?
->>>>>
->>>>> Basically, the client is getting confused because when it sends a READ,
->>>>> the server is telling it that the lease has expired, then when it sends
->>>>> a RENEW, the same server replies that the lease is OK...
->>>>>
->>>>> Trond
->>>>>
->>>>>            
->>>> The server is running the 2.6.38.6 kernel with Debian squeeze, just like
->>>> the client.   The kernel config is attached.
->>>>          
->>> Bruce, any idea how the server might get into this state?
->>>        
->> So READ is getting ESTALE
->>      
-> Err, sorry, EXPIRED.
->
->    
->> and RENEW is getting OK?  And we're positive
->> that the stateid on the READ is derived from the clientid sent with the
->> RENEW?
->>
->> OK, I'll look at the capture....
->>      
-> Hm, so the renews all have clid 465ccc4d09000000, and the reads all have
-> a stateid (0, 465ccc4dc24c0a0000000000).
->
-> So the first 4 bytes matching just tells me both were handed out by the
-> same server instance (so there was no server reboot in between); there's
-> no way for me to tell whether they really belong to the same client.
->
-> The server does assume that any stateid from the current server instance
-> that no longer exists in its table is expired.  I believe that's
-> correct, given a correctly functioning client, but perhaps I'm missing a
-> case.
->
-> --b.
->    
-I am very appreciative of the quick initial comments I receive from all 
-of you on my NFS problem.   I notice that there has been silence on the 
-problem since the 16th, so I assume that either this is a hard bug to 
-track down or you have been busy with higher priority tasks.  Is there 
-anything I can do to help develop a solution to this problem?
+Note this does not seem to change any functionality, just rearranges
+the code.  Is this patch needed?
 
--- 
-  Dr. Harry Edmon			E-MAIL: harry@uw.edu
-  206-543-0547 FAX: 206-543-0308			harry@atmos.washington.edu
-  Director of IT, College of the Environment and
-  Director of Computing, Dept of Atmospheric Sciences
-  University of Washington, Box 351640, Seattle, WA 98195-1640
+Fred
 
+On Mon, May 9, 2011 at 1:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+> From: Andy Adamson <andros@netapp.com>
+>
+> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  fs/nfs/direct.c |  160 +++++++++++++++++++++++++++++++-----------------------
+>  1 files changed, 92 insertions(+), 68 deletions(-)
+>
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index 8eea253..55dffb7 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -272,6 +272,38 @@ static const struct rpc_call_ops nfs_read_direct_ops = {
+>        .rpc_release = nfs_direct_read_release,
+>  };
+>
+> +static long nfs_direct_read_execute(struct nfs_read_data *data,
+> +                                   struct rpc_task_setup *task_setup_data,
+> +                                   struct rpc_message *msg)
+> +{
+> +       struct inode *inode = data->inode;
+> +       struct rpc_task *task;
+> +
+> +       nfs_fattr_init(&data->fattr);
+> +       msg->rpc_argp = &data->args;
+> +       msg->rpc_resp = &data->res;
+> +
+> +       task_setup_data->task = &data->task;
+> +       task_setup_data->callback_data = data;
+> +       NFS_PROTO(inode)->read_setup(data, msg);
+> +
+> +       task = rpc_run_task(task_setup_data);
+> +       if (IS_ERR(task))
+> +               return PTR_ERR(task);
+> +
+> +       rpc_put_task(task);
+> +
+> +       dprintk("NFS: %5u initiated direct read call "
+> +               "(req %s/%lld, %u bytes @ offset %llu)\n",
+> +               data->task.tk_pid,
+> +               inode->i_sb->s_id,
+> +               (long long)NFS_FILEID(inode),
+> +               data->args.count,
+> +               (unsigned long long)data->args.offset);
+> +
+> +       return 0;
+> +}
+> +
+>  /*
+>  * For each rsize'd chunk of the user's buffer, dispatch an NFS READ
+>  * operation.  If nfs_readdata_alloc() or get_user_pages() fails,
+> @@ -288,7 +320,6 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
+>        unsigned long user_addr = (unsigned long)iov->iov_base;
+>        size_t count = iov->iov_len;
+>        size_t rsize = NFS_SERVER(inode)->rsize;
+> -       struct rpc_task *task;
+>        struct rpc_message msg = {
+>                .rpc_cred = ctx->cred,
+>        };
+> @@ -349,26 +380,9 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
+>                data->res.fattr = &data->fattr;
+>                data->res.eof = 0;
+>                data->res.count = bytes;
+> -               nfs_fattr_init(&data->fattr);
+> -               msg.rpc_argp = &data->args;
+> -               msg.rpc_resp = &data->res;
+>
+> -               task_setup_data.task = &data->task;
+> -               task_setup_data.callback_data = data;
+> -               NFS_PROTO(inode)->read_setup(data, &msg);
+> -
+> -               task = rpc_run_task(&task_setup_data);
+> -               if (IS_ERR(task))
+> +               if (nfs_direct_read_execute(data, &task_setup_data, &msg))
+>                        break;
+> -               rpc_put_task(task);
+> -
+> -               dprintk("NFS: %5u initiated direct read call "
+> -                       "(req %s/%Ld, %zu bytes @ offset %Lu)\n",
+> -                               data->task.tk_pid,
+> -                               inode->i_sb->s_id,
+> -                               (long long)NFS_FILEID(inode),
+> -                               bytes,
+> -                               (unsigned long long)data->args.offset);
+>
+>                started += bytes;
+>                user_addr += bytes;
+> @@ -461,12 +475,15 @@ static void nfs_direct_free_writedata(struct nfs_direct_req *dreq)
+>  }
+>
+>  #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
+> +static long nfs_direct_write_execute(struct nfs_write_data *data,
+> +                                    struct rpc_task_setup *task_setup_data,
+> +                                    struct rpc_message *msg);
+> +
+>  static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+>  {
+>        struct inode *inode = dreq->inode;
+>        struct list_head *p;
+>        struct nfs_write_data *data;
+> -       struct rpc_task *task;
+>        struct rpc_message msg = {
+>                .rpc_cred = dreq->ctx->cred,
+>        };
+> @@ -500,25 +517,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+>                 * Reuse data->task; data->args should not have changed
+>                 * since the original request was sent.
+>                 */
+> -               task_setup_data.task = &data->task;
+> -               task_setup_data.callback_data = data;
+> -               msg.rpc_argp = &data->args;
+> -               msg.rpc_resp = &data->res;
+> -               NFS_PROTO(inode)->write_setup(data, &msg);
+> -
+> -               /*
+> -                * We're called via an RPC callback, so BKL is already held.
+> -                */
+> -               task = rpc_run_task(&task_setup_data);
+> -               if (!IS_ERR(task))
+> -                       rpc_put_task(task);
+> -
+> -               dprintk("NFS: %5u rescheduled direct write call (req %s/%Ld, %u bytes @ offset %Lu)\n",
+> -                               data->task.tk_pid,
+> -                               inode->i_sb->s_id,
+> -                               (long long)NFS_FILEID(inode),
+> -                               data->args.count,
+> -                               (unsigned long long)data->args.offset);
+> +               nfs_direct_write_execute(data, &task_setup_data, &msg);
+>        }
+>
+>        if (put_dreq(dreq))
+> @@ -561,10 +560,31 @@ static const struct rpc_call_ops nfs_commit_direct_ops = {
+>        .rpc_release = nfs_direct_commit_release,
+>  };
+>
+> +static long nfs_direct_commit_execute(struct nfs_direct_req *dreq,
+> +                                     struct nfs_write_data *data,
+> +                                     struct rpc_task_setup *task_setup_data,
+> +                                     struct rpc_message *msg)
+> +{
+> +       struct rpc_task *task;
+> +
+> +       NFS_PROTO(data->inode)->commit_setup(data, msg);
+> +
+> +       /* Note: task.tk_ops->rpc_release will free dreq->commit_data */
+> +       dreq->commit_data = NULL;
+> +
+> +       dprintk("NFS: %5u initiated commit call\n", data->task.tk_pid);
+> +
+> +       task = rpc_run_task(task_setup_data);
+> +       if (IS_ERR(task))
+> +               return PTR_ERR(task);
+> +
+> +       rpc_put_task(task);
+> +       return 0;
+> +}
+> +
+>  static void nfs_direct_commit_schedule(struct nfs_direct_req *dreq)
+>  {
+>        struct nfs_write_data *data = dreq->commit_data;
+> -       struct rpc_task *task;
+>        struct rpc_message msg = {
+>                .rpc_argp = &data->args,
+>                .rpc_resp = &data->res,
+> @@ -593,16 +613,7 @@ static void nfs_direct_commit_schedule(struct nfs_direct_req *dreq)
+>        data->res.verf = &data->verf;
+>        nfs_fattr_init(&data->fattr);
+>
+> -       NFS_PROTO(data->inode)->commit_setup(data, &msg);
+> -
+> -       /* Note: task.tk_ops->rpc_release will free dreq->commit_data */
+> -       dreq->commit_data = NULL;
+> -
+> -       dprintk("NFS: %5u initiated commit call\n", data->task.tk_pid);
+> -
+> -       task = rpc_run_task(&task_setup_data);
+> -       if (!IS_ERR(task))
+> -               rpc_put_task(task);
+> +       nfs_direct_commit_execute(dreq, data, &task_setup_data, &msg);
+>  }
+>
+>  static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode *inode)
+> @@ -703,6 +714,36 @@ static const struct rpc_call_ops nfs_write_direct_ops = {
+>        .rpc_release = nfs_direct_write_release,
+>  };
+>
+> +static long nfs_direct_write_execute(struct nfs_write_data *data,
+> +                                    struct rpc_task_setup *task_setup_data,
+> +                                    struct rpc_message *msg)
+> +{
+> +       struct inode *inode = data->inode;
+> +       struct rpc_task *task;
+> +
+> +       task_setup_data->task = &data->task;
+> +       task_setup_data->callback_data = data;
+> +       msg->rpc_argp = &data->args;
+> +       msg->rpc_resp = &data->res;
+> +       NFS_PROTO(inode)->write_setup(data, msg);
+> +
+> +       task = rpc_run_task(task_setup_data);
+> +       if (IS_ERR(task))
+> +               return PTR_ERR(task);
+> +
+> +       rpc_put_task(task);
+> +
+> +       dprintk("NFS: %5u initiated direct write call "
+> +               "(req %s/%lld, %u bytes @ offset %llu)\n",
+> +               data->task.tk_pid,
+> +               inode->i_sb->s_id,
+> +               (long long)NFS_FILEID(inode),
+> +               data->args.count,
+> +               (unsigned long long)data->args.offset);
+> +
+> +       return 0;
+> +}
+> +
+>  /*
+>  * For each wsize'd chunk of the user's buffer, dispatch an NFS WRITE
+>  * operation.  If nfs_writedata_alloc() or get_user_pages() fails,
+> @@ -718,7 +759,6 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
+>        struct inode *inode = ctx->path.dentry->d_inode;
+>        unsigned long user_addr = (unsigned long)iov->iov_base;
+>        size_t count = iov->iov_len;
+> -       struct rpc_task *task;
+>        struct rpc_message msg = {
+>                .rpc_cred = ctx->cred,
+>        };
+> @@ -785,24 +825,8 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
+>                data->res.verf = &data->verf;
+>                nfs_fattr_init(&data->fattr);
+>
+> -               task_setup_data.task = &data->task;
+> -               task_setup_data.callback_data = data;
+> -               msg.rpc_argp = &data->args;
+> -               msg.rpc_resp = &data->res;
+> -               NFS_PROTO(inode)->write_setup(data, &msg);
+> -
+> -               task = rpc_run_task(&task_setup_data);
+> -               if (IS_ERR(task))
+> +               if (nfs_direct_write_execute(data, &task_setup_data, &msg))
+>                        break;
+> -               rpc_put_task(task);
+> -
+> -               dprintk("NFS: %5u initiated direct write call "
+> -                       "(req %s/%Ld, %zu bytes @ offset %Lu)\n",
+> -                               data->task.tk_pid,
+> -                               inode->i_sb->s_id,
+> -                               (long long)NFS_FILEID(inode),
+> -                               bytes,
+> -                               (unsigned long long)data->args.offset);
+>
+>                started += bytes;
+>                user_addr += bytes;
+> --
+> 1.7.3.4
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
