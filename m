@@ -1,49 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:63436 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756136Ab1EBO3M convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2011 10:29:12 -0400
-Received: by ywj3 with SMTP id 3so1910039ywj.19
-        for <linux-nfs@vger.kernel.org>; Mon, 02 May 2011 07:29:11 -0700 (PDT)
-In-Reply-To: <20110502140750.GA10885@fieldses.org>
-References: <BANLkTi=X0VtcSecmEwzPBTqk3L154aj+2Q@mail.gmail.com>
-	<20110502140750.GA10885@fieldses.org>
-Date: Mon, 2 May 2011 16:29:11 +0200
-Message-ID: <BANLkTinTu8XVmxkUUhJby8=DNY4sZF5VAQ@mail.gmail.com>
-Subject: Re: How does NFS handle notify?
-From: Stef Bon <stefbon@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:57684 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757347Ab1EMUXv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 May 2011 16:23:51 -0400
+Subject: [GIT PULL] Please pull NFS client bugfixes
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 13 May 2011 16:23:42 -0400
+Message-ID: <1305318222.27980.1.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Ok,
+Hi Linus,
 
-so as I understand NFS does not support it yet. I thought it does.
+Please pull from the "bugfixes" branch of the repository at
 
-Are you interested when I set up a project to work on the VFS to make
-it possible to
-make the mounted fs notified (by the VFS) that a  notify watch is set
-(or removed)?
-I guess the developers of cifs are interested too, and me, as
-developer of a FUSE fs.
+   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
 
-Stef
+This will update the following files through the appended changesets.
+
+  Cheers,
+    Trond
+
+----
+ fs/nfs/nfs4filelayout.c    |   27 ++++++++++++++++-----------
+ fs/nfs/nfs4filelayout.h    |    2 +-
+ fs/nfs/nfs4filelayoutdev.c |   34 +++++++++++++++++-----------------
+ fs/nfs/nfs4proc.c          |    6 ++++++
+ fs/nfs/pnfs.c              |   34 ++++++++++++++++++++--------------
+ fs/nfs/pnfs.h              |    6 +++---
+ fs/nfs/read.c              |    4 ++--
+ fs/nfs/write.c             |    4 ++--
+ include/linux/nfs_xdr.h    |    1 +
+ 9 files changed, 68 insertions(+), 50 deletions(-)
+
+commit a75b9df9d3bfc3cd1083974c045ae31ce5f3434f
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Wed May 11 18:00:51 2011 -0400
+
+    NFSv4.1: Ensure that layoutget uses the correct gfp modes
+    
+    Currently, writebacks may end up recursing back into the filesystem due to
+    GFP_KERNEL direct reclaims in the pnfs subsystem.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 2887fe45522843149ccf72e01f43813be4fb36c5
+Author: Andy Adamson <andros@netapp.com>
+Date:   Wed May 11 01:19:58 2011 -0400
+
+    NFSv4.1: remove pnfs_layout_hdr from pnfs_destroy_all_layouts tmp_list
+    
+    Prevents an infinite loop as list was never emptied.
+    
+    Signed-off-by: Andy Adamson <andros@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit a8a4ae3a899a6c0b4771cc57884800d8b76a6996
+Author: Andy Adamson <andros@netapp.com>
+Date:   Tue May 3 13:43:03 2011 -0400
+
+    NFSv41: Resend on NFS4ERR_RETRY_UNCACHED_REP
+    
+    Free the slot and resend the RPC with new session <slot#,seq#>.
+    
+    For nfs4_async_handle_error, return -EAGAIN and set the task->tk_status to 0
+    to restart the async rpc in the rpc_restart_call_prepare state which resets
+    the slot.
+    
+    For nfs4_handle_exception, retrying a call that uses nfs4_call_sync will
+    reset the slot via nfs41_call_sync_prepare.
+    
+    For open/close/lock/locku/delegreturn/layoutcommit/unlink/rename/write
+    cachethis is true, so these operations will not trigger an
+    NFS4ERR_RETRY_UNCACHED_REP.
+    
+    Signed-off-by: Andy Adamson <andros@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
 
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-2011/5/2 J. Bruce Fields <bfields@fieldses.org>:
-> On Sun, May 01, 2011 at 11:33:32AM +0200, Stef Bon wrote:
->> Mentioned there - and I agree - that when developing support for
->> notify on mounted filesystems you need to have one base (in VFS), and
->> a part which is handled by the (mounted) fs self.
->>
->> So here my question, how does NFS handle notify??
->
-> No.  It might be possible with new features in the 4.1 version of the
-> protocol (http://tools.ietf.org/html//rfc5661#section-10.9).
->
-> --b.
->
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
