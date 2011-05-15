@@ -1,248 +1,484 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from eastrmfepo101.cox.net ([68.230.241.213]:60708 "EHLO
-	eastrmfepo101.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750799Ab1EKAUM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 May 2011 20:20:12 -0400
-Message-ID: <4DC9D636.3050307@excfb.com>
-Date: Tue, 10 May 2011 19:20:06 -0500
-From: Tom Haynes <tdh@excfb.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Trond Myklebust <trond.myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 16/16] NFS: Implement support for NFS4ERR_LEASE_MOVED
-References: <20110509192522.16568.59082.stgit@matisse.1015granger.net> <20110509193853.16568.93770.stgit@matisse.1015granger.net> <A5DC12D9-0FAB-43B4-9FA7-822A6152C73A@oracle.com>
-In-Reply-To: <A5DC12D9-0FAB-43B4-9FA7-822A6152C73A@oracle.com>
+Received: from smtp-out-1.desy.de ([131.169.56.84]:56818 "EHLO
+	smtp-out-1.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753638Ab1EOHkA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 May 2011 03:40:00 -0400
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-out-1.desy.de (DESY_OUT_1) with ESMTP id A16A91891
+	for <linux-nfs@vger.kernel.org>; Sun, 15 May 2011 09:39:58 +0200 (MEST)
+Received: from ZITSWEEP3.win.desy.de (zitsweep3.win.desy.de [131.169.97.97])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 921D613E9B
+	for <linux-nfs@vger.kernel.org>; Sun, 15 May 2011 09:39:58 +0200 (MEST)
+Message-ID: <4DCF8342.4070809@desy.de>
+Date: Sun, 15 May 2011 09:39:46 +0200
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: Weston Andros Adamson <dros@netapp.com>
+CC: trond@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFS: pnfs IPv6 support
+References: <1305407199-15206-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1305407199-15206-1-git-send-email-dros@netapp.com>
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 5/9/11 5:48 PM, Chuck Lever wrote:
-> On May 9, 2011, at 3:38 PM, Chuck Lever wrote:
+On 05/14/2011 11:06 PM, Weston Andros Adamson wrote:
+> Handle ipv6 remote addresses from GETDEVICEINFO
 >
->> To recover from NFS4ERR_LEASE_MOVED, walk the cl_superblocks list and
->> invoke nfs4_try_migration() on each server's root file handle.
->> nfs4_try_migration() should automatically determine whether that file
->> system has migrated, and then perform recovery for it.
->>
->> The per-filesystem migration probe also informs minor version zero
->> servers that this client should no longer receive NFS4ERR_LEASE_MOVED.
-> I see one thing that may be missing here.
+>   - supports netid "tcp" for ipv4 and "tcp6" for ipv6 as rfc 5665 specifies
+>   - added ds_remotestr to avoid having to handle different AFs in every dprintk
+>   - tested against pynfs 4.1 server, submitting ipv6 support patch to pynfs
 >
-> RFC 3530, section 8.14.3, lists OPEN, CLOSE, READ, WRITE, RENEW, LOCK, LOCKU, and LOCKT as the only procedures that return NFS4ERR_LEASE_MOVED.  A code audit suggests that handling NFS4ERR_LEASE_MOVED in the two generic error handlers in nfs4proc.c is sufficient for all of these but RENEW and OPEN.
-
-3503bis, section 13.4:
-
-    | NFS4ERR_LEASE_MOVED      | CLOSE, DELEGPURGE, DELEGRETURN, LOCK,  |
-    |                          | LOCKT, LOCKU, OPEN_CONFIRM,            |
-    |                          | OPEN_DOWNGRADE, READ,                  |
-    |                          | RELEASE_LOCKOWNER, RENEW, SETATTR,     |
-    |                          | WRITE                                  |
-
-And the equivalent text as to what is in 3530 is section 9.14.3:
-
-    To accomplish this, all
-    operations which implicitly renew leases for a client (such as OPEN,
-    CLOSE, READ, WRITE, RENEW, LOCK, and others), will return the error
-    NFS4ERR_LEASE_MOVED if responsibility for any of the leases to be
-    renewed has been transferred to a new server.
-
-
-
-
-> RENEW is part of the lease_moved recovery logic, so I've left NFS4ERR_LEASE_MOVED handling there pretty sparse.  The caller wants to deal with it.
+> Signed-off-by: Weston Andros Adamson<dros@netapp.com>
+> ---
 >
-> OPEN, as far as I can tell, won't deal with it at all, at least not directly.  Should we look for it in nfs4_open_done() and invoke nfs4_schedule_lease_moved_recovery()?
+> NOTE: checkpatch.pl complains about a printk() call in print_ds() that doesn't
+>        include a KERN_ facility level.  I'm not sure if I should change this or
+>        what I should change it to.
 >
->> Signed-off-by: Chuck Lever<chuck.lever@oracle.com>
->> ---
->>
->> fs/nfs/client.c           |    1 +
->> fs/nfs/nfs4_fs.h          |    2 +
->> fs/nfs/nfs4proc.c         |   11 ++++++++
->> fs/nfs/nfs4state.c        |   63 ++++++++++++++++++++++++++++++++++++++++++++-
->> include/linux/nfs_fs_sb.h |    2 +
->> 5 files changed, 77 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
->> index 2f5e29f..b89af4d 100644
->> --- a/fs/nfs/client.c
->> +++ b/fs/nfs/client.c
->> @@ -188,6 +188,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
->> 	if (cl_init->long_clientid != NULL)
->> 		clp->cl_cached_clientid = kstrdup(cl_init->long_clientid,
->> 							GFP_KERNEL);
->> +	clp->cl_mig_counter = 1;
->> #endif
->> 	cred = rpc_lookup_machine_cred();
->> 	if (!IS_ERR(cred))
->> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
->> index c3e8641..2ad6c9b 100644
->> --- a/fs/nfs/nfs4_fs.h
->> +++ b/fs/nfs/nfs4_fs.h
->> @@ -51,6 +51,7 @@ enum nfs4_client_state {
->> 	NFS4CLNT_UPDATE_CALLBACK,
->> 	NFS4CLNT_CLONED_CLIENT,
->> 	NFS4CLNT_MOVED,
->> +	NFS4CLNT_LEASE_MOVED,
->> };
->>
->> enum nfs4_session_state {
->> @@ -351,6 +352,7 @@ extern void nfs4_close_sync(struct path *, struct nfs4_state *, fmode_t);
->> extern void nfs4_state_set_mode_locked(struct nfs4_state *, fmode_t);
->> extern void nfs4_schedule_lease_recovery(struct nfs_client *);
->> extern void nfs4_schedule_migration_recovery(struct nfs_server *);
->> +extern void nfs4_schedule_lease_moved_recovery(struct nfs_client *);
->> extern void nfs4_schedule_state_manager(struct nfs_client *);
->> extern void nfs4_schedule_stateid_recovery(const struct nfs_server *, struct nfs4_state *);
->> extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags);
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index a545d46..f4e07ba 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -297,6 +297,9 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode,
->> 		case -NFS4ERR_MOVED:
->> 			nfs4_schedule_migration_recovery(server);
->> 			goto wait_on_recovery;
->> +		case -NFS4ERR_LEASE_MOVED:
->> +			nfs4_schedule_lease_moved_recovery(clp);
->> +			goto wait_on_recovery;
->> 		case -NFS4ERR_FILE_OPEN:
->> 			if (exception->timeout>  HZ) {
->> 				/* We have retried a decent amount, time to
->> @@ -3721,6 +3724,14 @@ static int nfs4_async_handle_error(struct rpc_task *task,
->> 				rpc_wake_up_queued_task(&clp->cl_rpcwaitq,
->> 									task);
->> 			goto restart_call;
->> +		case -NFS4ERR_LEASE_MOVED:
->> +			rpc_sleep_on(&clp->cl_rpcwaitq, task, NULL);
->> +			nfs4_schedule_lease_moved_recovery(clp);
->> +			if (test_bit(NFS4CLNT_MANAGER_RUNNING,
->> +							&clp->cl_state) == 0)
->> +				rpc_wake_up_queued_task(&clp->cl_rpcwaitq,
->> +									task);
->> +			goto restart_call;
->> 		case -NFS4ERR_DELAY:
->> 			nfs_inc_server_stats(server, NFSIOS_DELAY);
->> 		case -NFS4ERR_GRACE:
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index c7b414a..8bef9d8 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -1071,7 +1071,32 @@ void nfs4_schedule_migration_recovery(struct nfs_server *server)
->> 	dprintk("<-- %s\n", __func__);
->> }
->>
->> -static int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *state)
->> +/**
->> + * nfs4_schedule_lease_moved_recovery - start lease moved recovery
->> + *
->> + * @clp: nfs_client of server that may have migrated file systems
->> + *
->> + */
->> +void nfs4_schedule_lease_moved_recovery(struct nfs_client *clp)
->> +{
->> +	dprintk("-->  %s: \"%s\" (client ID %llx)\n",
->> +		__func__, clp->cl_hostname, clp->cl_clientid);
->> +
->> +	if (test_and_set_bit(NFS4CLNT_LEASE_MOVED,&clp->cl_state) == 0)
->> +		nfs4_schedule_state_manager(clp);
->> +
->> +	dprintk("<-- %s\n", __func__);
->> +}
->> +
->> +/**
->> + * nfs4_state_mark_reclaim_reboot - Mark nfs_client for reboot recovery
->> + * @clp: nfs_client of server that may have rebooted
->> + * @state: state flags to test
->> + *
->> + * Returns 1 if reboot recovery is needed.
->> + */
->> +int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp,
->> +				   struct nfs4_state *state)
->> {
->>
->> 	set_bit(NFS_STATE_RECLAIM_REBOOT,&state->flags);
->> @@ -1384,7 +1409,6 @@ static int nfs4_recovery_handle_error(struct nfs_client *clp, int error)
->> 			nfs4_state_end_reclaim_reboot(clp);
->> 			return 0;
->> 		case -NFS4ERR_STALE_CLIENTID:
->> -		case -NFS4ERR_LEASE_MOVED:
->> 			set_bit(NFS4CLNT_LEASE_EXPIRED,&clp->cl_state);
->> 			nfs4_state_clear_reclaim_reboot(clp);
->> 			nfs4_state_start_reclaim_reboot(clp);
->> @@ -1597,6 +1621,37 @@ out_err:
->> 	kfree(locations);
->> }
->>
->> +static void nfs4_handle_lease_moved(struct nfs_client *clp)
->> +{
->> +	struct nfs_server *server;
->> +
->> +	dprintk("-->  %s: \"%s\" (client ID %llx)\n",
->> +		__func__, clp->cl_hostname, clp->cl_clientid);
->> +
->> +	/*
->> +	 * rcu_read_lock() must be dropped before trying each individual
->> +	 * migration.  cl_mig_counter is used to skip servers that have
->> +	 * already been visited for this lease_moved event when the list
->> +	 * walk is restarted.
->> +	 */
->> +	clp->cl_mig_counter++;
->> +
->> +restart:
->> +	rcu_read_lock();
->> +	list_for_each_entry_rcu(server,&clp->cl_superblocks, client_link)
->> +		if (server->mig_counter != clp->cl_mig_counter) {
->> +			server->mig_counter = clp->cl_mig_counter;
->> +			rcu_read_unlock();
->> +			nfs4_try_migration(server);
->> +			/* Ask the server if there's more work to do */
->> +			if (nfs4_check_lease(clp) == NFS4ERR_LEASE_MOVED)
->> +				goto restart;
->> +			break;
->> +		}
->> +	rcu_read_unlock();
->> +	dprintk("<-- %s\n", __func__);
->> +}
->> +
->> #ifdef CONFIG_NFS_V4_1
->> void nfs4_schedule_session_recovery(struct nfs4_session *session)
->> {
->> @@ -1814,6 +1869,10 @@ static void nfs4_state_manager(struct nfs_client *clp)
->> 			nfs4_try_migration(clp->cl_moved_server);
->> 			continue;
->> 		}
->> +		if (test_and_clear_bit(NFS4CLNT_LEASE_MOVED,&clp->cl_state)) {
->> +			nfs4_handle_lease_moved(clp);
->> +			continue;
->> +		}
->>
->> 		/* First recover reboot state... */
->> 		if (test_bit(NFS4CLNT_RECLAIM_REBOOT,&clp->cl_state)) {
->> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
->> index 091abf0..58050db 100644
->> --- a/include/linux/nfs_fs_sb.h
->> +++ b/include/linux/nfs_fs_sb.h
->> @@ -60,6 +60,7 @@ struct nfs_client {
->>
->> 	/* accessed only when NFS4CLNT_MOVED bit is set */
->> 	struct nfs_server *	cl_moved_server;
->> +	unsigned long		cl_mig_counter;
->>
->> 	/* used for the setclientid verifier */
->> 	struct timespec		cl_boot_time;
->> @@ -156,6 +157,7 @@ struct nfs_server {
->> 	struct list_head	delegations;
->> 	void (*destroy)(struct nfs_server *);
->> 	struct nfs_fh		*rootfh;
->> +	unsigned long		mig_counter;
->>
->> 	atomic_t active; /* Keep trace of any activity to this server */
->>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>   I am also working on parsing and storing multipath info for dataservers, but
+>   I'm going to treat that as a separate patch
+>
+>   fs/nfs/nfs4filelayout.c    |    7 +-
+>   fs/nfs/nfs4filelayout.h    |    5 +-
+>   fs/nfs/nfs4filelayoutdev.c |  246 ++++++++++++++++++++++++++++++++------------
+>   3 files changed, 184 insertions(+), 74 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+> index be79dc9..583adb3 100644
+> --- a/fs/nfs/nfs4filelayout.c
+> +++ b/fs/nfs/nfs4filelayout.c
+> @@ -343,8 +343,7 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+>   		set_bit(lo_fail_bit(IOMODE_READ),&lseg->pls_layout->plh_flags);
+>   		return PNFS_NOT_ATTEMPTED;
+>   	}
+> -	dprintk("%s USE DS:ip %x %hu\n", __func__,
+> -		ntohl(ds->ds_ip_addr), ntohs(ds->ds_port));
+> +	dprintk("%s USE DS: %s\n", __func__, ds->ds_remotestr);
+>
+>   	/* No multipath support. Use first DS */
+>   	data->ds_clp = ds->ds_clp;
+> @@ -383,9 +382,9 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+>   		set_bit(lo_fail_bit(IOMODE_READ),&lseg->pls_layout->plh_flags);
+>   		return PNFS_NOT_ATTEMPTED;
+>   	}
+> -	dprintk("%s ino %lu sync %d req %Zu@%llu DS:%x:%hu\n", __func__,
+> +	dprintk("%s ino %lu sync %d req %Zu@%llu DS: %s\n", __func__,
+>   		data->inode->i_ino, sync, (size_t) data->args.count, offset,
+> -		ntohl(ds->ds_ip_addr), ntohs(ds->ds_port));
+> +		ds->ds_remotestr);
+>
+>   	data->write_done_cb = filelayout_write_done_cb;
+>   	data->ds_clp = ds->ds_clp;
+> diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+> index 2b461d7..1dfd7eb 100644
+> --- a/fs/nfs/nfs4filelayout.h
+> +++ b/fs/nfs/nfs4filelayout.h
+> @@ -49,8 +49,9 @@ enum stripetype4 {
+>   /* Individual ip address */
+>   struct nfs4_pnfs_ds {
+>   	struct list_head	ds_node;  /* nfs4_pnfs_dev_hlist dev_dslist */
+> -	u32			ds_ip_addr;
+> -	u32			ds_port;
+> +	struct sockaddr_storage	ds_addr;
+> +	size_t			ds_addrlen;
+> +	char			*ds_remotestr;	/* human readable addr+port */
+>   	struct nfs_client	*ds_clp;
+>   	atomic_t		ds_count;
+>   };
+> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+> index db07c7a..7f77cd1 100644
+> --- a/fs/nfs/nfs4filelayoutdev.c
+> +++ b/fs/nfs/nfs4filelayoutdev.c
+> @@ -80,11 +80,11 @@ print_ds(struct nfs4_pnfs_ds *ds)
+>   		printk("%s NULL device\n", __func__);
+>   		return;
+>   	}
+> -	printk("        ip_addr %x port %hu\n"
+> +	printk("        ds %s\n"
+>   		"        ref count %d\n"
+>   		"        client %p\n"
+>   		"        cl_exchange_flags %x\n",
+> -		ntohl(ds->ds_ip_addr), ntohs(ds->ds_port),
+> +		ds->ds_remotestr,
+>   		atomic_read(&ds->ds_count), ds->ds_clp,
+>   		ds->ds_clp ? ds->ds_clp->cl_exchange_flags : 0);
+>   }
+> @@ -112,17 +112,45 @@ void print_deviceid(struct nfs4_deviceid *id)
+>
+>   /* nfs4_ds_cache_lock is held */
+>   static struct nfs4_pnfs_ds *
+> -_data_server_lookup_locked(u32 ip_addr, u32 port)
+> +_data_server_lookup_locked(struct sockaddr *addr, size_t addrlen)
+>   {
+>   	struct nfs4_pnfs_ds *ds;
+> -
+> -	dprintk("_data_server_lookup: ip_addr=%x port=%hu\n",
+> -			ntohl(ip_addr), ntohs(port));
+> +	struct sockaddr_in *a, *b;
+> +	struct sockaddr_in6 *a6, *b6;
+>
+>   	list_for_each_entry(ds,&nfs4_data_server_cache, ds_node) {
+> -		if (ds->ds_ip_addr == ip_addr&&
+> -		    ds->ds_port == port) {
+> -			return ds;
+> +		if (addr->sa_family != ds->ds_addr.ss_family)
+> +			continue;
+> +
+> +		switch (addr->sa_family) {
+> +		case AF_INET:
+> +			a = (struct sockaddr_in *)addr;
+> +			b = (struct sockaddr_in *)&ds->ds_addr;
+> +
+> +			if (a->sin_addr.s_addr == b->sin_addr.s_addr&&
+> +			    a->sin_port == b->sin_port)
+> +				return ds;
+> +			break;
+> +
+> +		case AF_INET6:
+> +			a6 = (struct sockaddr_in6 *)addr;
+> +			b6 = (struct sockaddr_in6 *)&ds->ds_addr;
+> +
+> +			/* LINKLOCAL addresses must have matching scope_id */
+> +			if (ipv6_addr_scope(&a6->sin6_addr) ==
+> +			    IPV6_ADDR_SCOPE_LINKLOCAL&&
+> +			    a6->sin6_scope_id != b6->sin6_scope_id)
+> +				continue;
+> +
+> +			if (ipv6_addr_equal(&a6->sin6_addr,&b6->sin6_addr)&&
+> +			    a6->sin6_port == b6->sin6_port)
+> +				return ds;
+> +			break;
+> +
+> +		default:
+> +			dprintk("%s: unhandled address family: %u\n",
+> +				__func__, addr->sa_family);
+> +			return NULL;
+>   		}
+>   	}
+>   	return NULL;
+> @@ -136,19 +164,14 @@ static int
+>   nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+>   {
+>   	struct nfs_client *clp;
+> -	struct sockaddr_in sin;
+>   	int status = 0;
+>
+> -	dprintk("-->  %s ip:port %x:%hu au_flavor %d\n", __func__,
+> -		ntohl(ds->ds_ip_addr), ntohs(ds->ds_port),
+> +	dprintk("-->  %s addr %s au_flavor %d\n", __func__, ds->ds_remotestr,
+>   		mds_srv->nfs_client->cl_rpcclient->cl_auth->au_flavor);
+>
+> -	sin.sin_family = AF_INET;
+> -	sin.sin_addr.s_addr = ds->ds_ip_addr;
+> -	sin.sin_port = ds->ds_port;
+> -
+> -	clp = nfs4_set_ds_client(mds_srv->nfs_client, (struct sockaddr *)&sin,
+> -				 sizeof(sin), IPPROTO_TCP);
+> +	clp = nfs4_set_ds_client(mds_srv->nfs_client,
+> +				 (struct sockaddr *)&ds->ds_addr,
+> +				 ds->ds_addrlen, IPPROTO_TCP);
+>   	if (IS_ERR(clp)) {
+>   		status = PTR_ERR(clp);
+>   		goto out;
+> @@ -160,8 +183,8 @@ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+>   			goto out_put;
+>   		}
+>   		ds->ds_clp = clp;
+> -		dprintk("%s [existing] ip=%x, port=%hu\n", __func__,
+> -			ntohl(ds->ds_ip_addr), ntohs(ds->ds_port));
+> +		dprintk("%s [existing] server=%s\n", __func__,
+> +			ds->ds_remotestr);
+>   		goto out;
+>   	}
+>
+> @@ -180,8 +203,7 @@ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+>   		goto out_put;
+>
+>   	ds->ds_clp = clp;
+> -	dprintk("%s [new] ip=%x, port=%hu\n", __func__, ntohl(ds->ds_ip_addr),
+> -		ntohs(ds->ds_port));
+> +	dprintk("%s [new] addr: %s\n", __func__, ds->ds_remotestr);
+>   out:
+>   	return status;
+>   out_put:
+> @@ -198,6 +220,7 @@ destroy_ds(struct nfs4_pnfs_ds *ds)
+>
+>   	if (ds->ds_clp)
+>   		nfs_put_client(ds->ds_clp);
+> +	kfree(ds->ds_remotestr);
+>   	kfree(ds);
+>   }
+>
+> @@ -224,8 +247,56 @@ nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr)
+>   	kfree(dsaddr);
+>   }
+>
+> +/*
+> + * Set ds->ds_remotestr to human readable format of address to avoid
+> + * complicated setup around many dprinks().
+> + *
+> + * As it's only for debugging, this doesn't error out on kmalloc failure and
+> + * the remotestr will just be displayed as "(null)"
+> + */
+> +static void
+> +nfs4_pnfs_set_remotestr(struct nfs4_pnfs_ds *ds, gfp_t gfp_flags)
+> +{
+> +	char buf[INET6_ADDRSTRLEN + IPV6_SCOPE_ID_LEN];
+> +	char *startsep = "";
+> +	char *endsep = "";
+> +	size_t len;
+> +	uint16_t port;
+> +
+> +	switch (ds->ds_addr.ss_family) {
+> +	case AF_INET:
+> +		port = ((struct sockaddr_in *)&ds->ds_addr)->sin_port;
+> +		break;
+> +	case AF_INET6:
+> +		startsep = "[";
+> +		endsep = "]";
+> +		port = ((struct sockaddr_in6 *)&ds->ds_addr)->sin6_port;
+> +		break;
+> +	default:
+> +		dprintk("%s: Unknown address family %u\n",
+> +			__func__, ds->ds_addr.ss_family);
+> +		return;
+> +	}
+> +
+> +	if (!rpc_ntop((struct sockaddr *)&ds->ds_addr, buf, sizeof(buf))) {
+> +		dprintk("%s: error printing addr\n", __func__);
+> +		return;
+> +	}
+> +
+> +	len = strlen(buf) + strlen(startsep) + strlen(endsep) + 1 + 5 + 1;
+> +	ds->ds_remotestr = kzalloc(len, gfp_flags);
+> +
+> +	if (unlikely(!ds->ds_remotestr)) {
+> +		dprintk("%s: couldn't alloc ds_remotestr\n", __func__);
+> +		return;
+> +	}
+> +
+> +	snprintf(ds->ds_remotestr, len, "%s%s%s:%u",
+> +		 startsep, buf, endsep, port);
+should be ntohs(port) to print the correct value.
+
+Tigran.
+> +}
+> +
+>   static struct nfs4_pnfs_ds *
+> -nfs4_pnfs_ds_add(struct inode *inode, u32 ip_addr, u32 port, gfp_t gfp_flags)
+> +nfs4_pnfs_ds_add(struct sockaddr *addr, size_t addrlen, gfp_t gfp_flags)
+>   {
+>   	struct nfs4_pnfs_ds *tmp_ds, *ds;
+>
+> @@ -234,21 +305,22 @@ nfs4_pnfs_ds_add(struct inode *inode, u32 ip_addr, u32 port, gfp_t gfp_flags)
+>   		goto out;
+>
+>   	spin_lock(&nfs4_ds_cache_lock);
+> -	tmp_ds = _data_server_lookup_locked(ip_addr, port);
+> +	tmp_ds = _data_server_lookup_locked(addr, addrlen);
+>   	if (tmp_ds == NULL) {
+> -		ds->ds_ip_addr = ip_addr;
+> -		ds->ds_port = port;
+> +		memcpy(&ds->ds_addr, addr, addrlen);
+> +		ds->ds_addrlen = addrlen;
+> +		nfs4_pnfs_set_remotestr(ds, gfp_flags);
+>   		atomic_set(&ds->ds_count, 1);
+>   		INIT_LIST_HEAD(&ds->ds_node);
+>   		ds->ds_clp = NULL;
+>   		list_add(&ds->ds_node,&nfs4_data_server_cache);
+> -		dprintk("%s add new data server ip 0x%x\n", __func__,
+> -			ds->ds_ip_addr);
+> +		dprintk("%s add new data server %s\n", __func__,
+> +			ds->ds_remotestr);
+>   	} else {
+>   		kfree(ds);
+>   		atomic_inc(&tmp_ds->ds_count);
+> -		dprintk("%s data server found ip 0x%x, inc'ed ds_count to %d\n",
+> -			__func__, tmp_ds->ds_ip_addr,
+> +		dprintk("%s data server %s found, inc'ed ds_count to %d\n",
+> +			__func__, ds->ds_remotestr,
+>   			atomic_read(&tmp_ds->ds_count));
+>   		ds = tmp_ds;
+>   	}
+> @@ -258,18 +330,21 @@ out:
+>   }
+>
+>   /*
+> - * Currently only support ipv4, and one multi-path address.
+> + * Currently only supports ipv4, ipv6 and one multi-path address.
+>    */
+>   static struct nfs4_pnfs_ds *
+>   decode_and_add_ds(struct xdr_stream *streamp, struct inode *inode, gfp_t gfp_flags)
+>   {
+>   	struct nfs4_pnfs_ds *ds = NULL;
+> -	char *buf;
+> -	const char *ipend, *pstr;
+> -	u32 ip_addr, port;
+> +	char *buf, *portstr;
+> +	struct sockaddr_storage ss;
+> +	size_t sslen;
+> +	u32 port;
+>   	int nlen, rlen, i;
+>   	int tmp[2];
+>   	__be32 *p;
+> +	char *netid, *match_netid;
+> +	size_t match_netid_len;
+>
+>   	/* r_netid */
+>   	p = xdr_inline_decode(streamp, 4);
+> @@ -281,62 +356,97 @@ decode_and_add_ds(struct xdr_stream *streamp, struct inode *inode, gfp_t gfp_fla
+>   	if (unlikely(!p))
+>   		goto out_err;
+>
+> -	/* Check that netid is "tcp" */
+> -	if (nlen != 3 ||  memcmp((char *)p, "tcp", 3)) {
+> -		dprintk("%s: ERROR: non ipv4 TCP r_netid\n", __func__);
+> +	netid = kmalloc(nlen+1, gfp_flags);
+> +	if (unlikely(!netid))
+>   		goto out_err;
+> -	}
+>
+> -	/* r_addr */
+> +	netid[nlen] = '\0';
+> +	memcpy(netid, p, nlen);
+> +
+> +	/* r_addr: ip/ip6addr with port in dec octets - see RFC 5665 */
+>   	p = xdr_inline_decode(streamp, 4);
+>   	if (unlikely(!p))
+> -		goto out_err;
+> +		goto out_free_netid;
+>   	rlen = be32_to_cpup(p);
+>
+>   	p = xdr_inline_decode(streamp, rlen);
+>   	if (unlikely(!p))
+> -		goto out_err;
+> +		goto out_free_netid;
+>
+> -	/* ipv6 length plus port is legal */
+> -	if (rlen>  INET6_ADDRSTRLEN + 8) {
+> +	/* port is ".ABC.DEF", 8 chars max */
+> +	if (rlen>  INET6_ADDRSTRLEN + IPV6_SCOPE_ID_LEN + 8) {
+>   		dprintk("%s: Invalid address, length %d\n", __func__,
+>   			rlen);
+> -		goto out_err;
+> +		goto out_free_netid;
+>   	}
+>   	buf = kmalloc(rlen + 1, gfp_flags);
+>   	if (!buf) {
+>   		dprintk("%s: Not enough memory\n", __func__);
+> -		goto out_err;
+> +		goto out_free_netid;
+>   	}
+>   	buf[rlen] = '\0';
+>   	memcpy(buf, p, rlen);
+>
+> -	/* replace the port dots with dashes for the in4_pton() delimiter*/
+> -	for (i = 0; i<  2; i++) {
+> -		char *res = strrchr(buf, '.');
+> -		if (!res) {
+> -			dprintk("%s: Failed finding expected dots in port\n",
+> -				__func__);
+> -			goto out_free;
+> -		}
+> -		*res = '-';
+> +	/* replace port '.' with '-' */
+> +	portstr = strrchr(buf, '.');
+> +	if (!portstr) {
+> +		dprintk("%s: Failed finding expected dot in port\n",
+> +			__func__);
+> +		goto out_free_buf;
+> +	}
+> +	*portstr = '-';
+> +
+> +	/* find '.' between address and port */
+> +	portstr = strrchr(buf, '.');
+> +	if (!portstr) {
+> +		dprintk("%s: Failed finding expected dot between address and "
+> +			"port\n", __func__);
+> +		goto out_free_buf;
+>   	}
+> +	*portstr = '\0';
+>
+> -	/* Currently only support ipv4 address */
+> -	if (in4_pton(buf, rlen, (u8 *)&ip_addr, '-',&ipend) == 0) {
+> -		dprintk("%s: Only ipv4 addresses supported\n", __func__);
+> -		goto out_free;
+> +	if (!rpc_pton(buf, portstr-buf, (struct sockaddr *)&ss, sizeof(ss))) {
+> +		dprintk("%s: error parsing address %s\n", __func__, buf);
+> +		goto out_free_buf;
+>   	}
+>
+> -	/* port */
+> -	pstr = ipend;
+> -	sscanf(pstr, "-%d-%d",&tmp[0],&tmp[1]);
+> +	portstr++;
+> +	sscanf(portstr, "%d-%d",&tmp[0],&tmp[1]);
+>   	port = htons((tmp[0]<<  8) | (tmp[1]));
+>
+> -	ds = nfs4_pnfs_ds_add(inode, ip_addr, port, gfp_flags);
+> -	dprintk("%s: Decoded address and port %s\n", __func__, buf);
+> -out_free:
+> +	switch (ss.ss_family) {
+> +	case AF_INET:
+> +		((struct sockaddr_in *)&ss)->sin_port = port;
+> +		sslen = sizeof(struct sockaddr_in);
+> +		match_netid = "tcp";
+> +		match_netid_len = 3;
+> +		break;
+> +
+> +	case AF_INET6:
+> +		((struct sockaddr_in6 *)&ss)->sin6_port = port;
+> +		sslen = sizeof(struct sockaddr_in6);
+> +		match_netid = "tcp6";
+> +		match_netid_len = 4;
+> +		break;
+> +
+> +	default:
+> +		dprintk("%s: unsupported address family: %u\n",
+> +			__func__, ss.ss_family);
+> +		break;
+> +	}
+> +
+> +	if (nlen != match_netid_len || strncmp(netid, match_netid, nlen)) {
+> +		dprintk("%s: ERROR: r_netid \"%s\" != \"%s\"\n",
+> +			__func__, netid, match_netid);
+> +		goto out_free_buf;
+> +	}
+> +
+> +	ds = nfs4_pnfs_ds_add((struct sockaddr *)&ss, sslen, gfp_flags);
+> +	dprintk("%s: Added DS %s\n", __func__, ds->ds_remotestr);
+> +out_free_buf:
+>   	kfree(buf);
+> +out_free_netid:
+> +	kfree(netid);
+>   out_err:
+>   	return ds;
+>   }
+> @@ -674,13 +784,13 @@ nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j)
+>
+>   static void
+>   filelayout_mark_devid_negative(struct nfs4_file_layout_dsaddr *dsaddr,
+> -			       int err, u32 ds_addr)
+> +			       int err, const char *ds_remotestr)
+>   {
+>   	u32 *p = (u32 *)&dsaddr->deviceid;
+>
+> -	printk(KERN_ERR "NFS: data server %x connection error %d."
+> +	printk(KERN_ERR "NFS: data server %s connection error %d."
+>   		" Deviceid [%x%x%x%x] marked out of use.\n",
+> -		ds_addr, err, p[0], p[1], p[2], p[3]);
+> +		ds_remotestr, err, p[0], p[1], p[2], p[3]);
+>
+>   	spin_lock(&filelayout_deviceid_lock);
+>   	dsaddr->flags |= NFS4_DEVICE_ID_NEG_ENTRY;
+> @@ -711,7 +821,7 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+>   		err = nfs4_ds_connect(s, ds);
+>   		if (err) {
+>   			filelayout_mark_devid_negative(dsaddr, err,
+> -						       ntohl(ds->ds_ip_addr));
+> +						       ds->ds_remotestr);
+>   			return NULL;
+>   		}
+>   	}
 
