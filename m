@@ -1,108 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:43476 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754491Ab1EVXx5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 19:53:57 -0400
-From: Benny Halevy <bhalevy@panasas.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:41842 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751470Ab1EPUVr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 16:21:47 -0400
+Subject: Re: 2.6.38.6 - state manager constantly respawns
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1305575007.19725.3.camel@lade.trondhjem.org>
+Date: Mon, 16 May 2011 16:21:33 -0400
+Cc: Harry Edmon <harry@uw.edu>, linux-nfs@vger.kernel.org
+Message-Id: <8382A5A9-381C-47D7-B2DF-64625FE7C08C@oracle.com>
+References: <4DD16FA8.4030602@uw.edu> <05D08339-888C-4A64-BDC5-8667B3901E7A@oracle.com> <4DD1772E.9010609@uw.edu> <6A6FB1C3-D4C3-40BE-810A-B4551FA9E591@oracle.com> <4DD17CB5.7010009@uw.edu> <1305575007.19725.3.camel@lade.trondhjem.org>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v5 15/38] pnfs: client stats
-Date: Mon, 23 May 2011 02:53:17 +0300
-Message-Id: <1306108397-28439-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DD99F9B.2040406@panasas.com>
-References: <4DD99F9B.2040406@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@fieldses.org>
 
-A pNFS client auto-negotiates a lot of features (minorversion level,
-pNFS layout type, etc.).  This is convenient, but makes certain kinds of
-failures hard for a user to detect.
+On May 16, 2011, at 3:43 PM, Trond Myklebust wrote:
 
-For example, if the client falls back on 4.0, or falls back to MDS IO
-because the user didn't connect to the right iscsi disks before
-mounting, the only symptoms may be reduced performance, which may not be
-noticed till long after the actual failure, and may be difficult for a
-user to diagnose.
+> On Mon, 2011-05-16 at 12:36 -0700, Harry Edmon wrote:
+>> On 05/16/11 12:22, Chuck Lever wrote:
+>>> On May 16, 2011, at 3:12 PM, Harry Edmon wrote:
+>>> 
+>>> 
+>>>> Attached is 1000 lines of output from tshark when the problem is occurring.   The client and server are connected by a private ethernet.
+>>>> 
+>>> Disappointing: tshark is not telling us the return codes.  However, I see "PUTFH;READ" then "RENEW" in a loop, which indicates the state manager thread is being kicked off because of ongoing difficulties with state recovery.  Is there a stuck application on that client?
+>>> 
+>>> Try again with "tshark -V".
+>>> 
+>> Here is the output from tshark -V (first 50,000 lines).   Nothing 
+>> appears to be stuck, and as I said when I reboot the client into 2.6.32 
+>> the problem goes away, only to reappear when I reboot it back into 2.6.38.6.
+>> 
+> 
+> Possibly, but it definitely indicates a server bug. What kind of server
+> are you using?
+> 
+> Basically, the client is getting confused because when it sends a READ,
+> the server is telling it that the lease has expired, then when it sends
+> a RENEW, the same server replies that the lease is OK...
 
-However, such "failures" may also be perfectly normal in some cases, so
-we don't want to spam the system logs with them.
+I've seen this during migration recovery testing.  The client may be testing the wrong client ID.
 
-One approach would be to put some more information into
-/proc/self/mountstats.
+But I wonder if it's really worth doing that separate RENEW.  I've seen the client send a RENEW after it gets STALE_STATEID.  Would RENEW really tell the client anything in that case?
 
-Signed-off-by: J. Bruce Fields <bfields@fieldses.org>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[pnfs: add commit client stats]
-[fixup data types for "ret" variables in pnfs_try_to* inline funcs.]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[fix definition of show_pnfs for !CONFIG_PNFS]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: Fix show_sessions in the not CONFIG_NFS_V4_1 case]
-    There is a build error when CONFIG_NFS_V4 is set but
-    CONFIG_NFS_V4_1 is *not* set. show_sessions() prototype
-    was unbalanced between the two cases.
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-[pnfs: super.c remove CONFIG_PNFS]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/super.c |   25 +++++++++++++++++++++++++
- 1 files changed, 25 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index e288f06..ce40e5c 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -63,6 +63,7 @@
- #include "iostat.h"
- #include "internal.h"
- #include "fscache.h"
-+#include "pnfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
- 
-@@ -732,6 +733,28 @@ static int nfs_show_options(struct seq_file *m, struct vfsmount *mnt)
- 
- 	return 0;
- }
-+#ifdef CONFIG_NFS_V4_1
-+void show_sessions(struct seq_file *m, struct nfs_server *server)
-+{
-+	if (nfs4_has_session(server->nfs_client))
-+		seq_printf(m, ",sessions");
-+}
-+#else
-+void show_sessions(struct seq_file *m, struct nfs_server *server) {}
-+#endif
-+
-+#ifdef CONFIG_NFS_V4_1
-+void show_pnfs(struct seq_file *m, struct nfs_server *server)
-+{
-+	seq_printf(m, ",pnfs=");
-+	if (server->pnfs_curr_ld)
-+		seq_printf(m, "%s", server->pnfs_curr_ld->name);
-+	else
-+		seq_printf(m, "not configured");
-+}
-+#else  /* CONFIG_NFS_V4_1 */
-+void show_pnfs(struct seq_file *m, struct nfs_server *server) {}
-+#endif /* CONFIG_NFS_V4_1 */
- 
- static int nfs_show_devname(struct seq_file *m, struct vfsmount *mnt)
- {
-@@ -792,6 +815,8 @@ static int nfs_show_stats(struct seq_file *m, struct vfsmount *mnt)
- 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
- 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
- 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
-+		show_sessions(m, nfss);
-+		show_pnfs(m, nfss);
- 	}
- #endif
- 
 -- 
-1.7.3.4
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
