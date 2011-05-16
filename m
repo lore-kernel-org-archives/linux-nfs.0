@@ -1,121 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:51304 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1755665Ab1ESFdK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 May 2011 01:33:10 -0400
-Message-ID: <4DD4AC1D.2070509@cn.fujitsu.com>
-Date: Thu, 19 May 2011 13:35:25 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd41: check the size of response
-References: <4DD32CAB.5010405@cn.fujitsu.com> <20110519010700.GF26545@fieldses.org>
-In-Reply-To: <20110519010700.GF26545@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:34569 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753110Ab1EPQU7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 12:20:59 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com
+Subject: [PATCH v3 03/29] pnfs: align layoutget requests on page boundaries
+Date: Mon, 16 May 2011 09:20:56 -0700
+Message-Id: <1305562856-7319-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD14D8E.1070701@panasas.com>
+References: <4DD14D8E.1070701@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+---
+ fs/nfs/pnfs.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-
-J. Bruce Fields:
-> On Wed, May 18, 2011 at 10:19:23AM +0800, Mi Jinlong wrote:
->> Compare response's size to the session se_fmaxresp_sz and 
->> se_fmaxresp_cached at the same function.
->>
->> And modify function name nfsd4_check_drc_limit to
->> nfsd4_check_response_size.
-> 
-> Hm.  I guess that's OK.  Note we have a bigger problem, though, which is
-> that we're waiting too late to check these limits:
-> 
-> 	http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues#DRC_limit_checking
-> 
-> Have you looked at that list, by the way?:
-
-  I will have a look, and try to solve this problem.
-  Maybe it will take me some times.
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 15c8e48..bad146e 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -846,6 +846,7 @@ pnfs_update_layout(struct inode *ino,
+ 		.offset = pos,
+ 		.length = count,
+ 	};
++	unsigned pg_offset;
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+ 	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
+ 	struct pnfs_layout_hdr *lo;
+@@ -895,6 +896,13 @@ pnfs_update_layout(struct inode *ino,
+ 		spin_unlock(&clp->cl_lock);
+ 	}
+ 
++	pg_offset = arg.offset & ~PAGE_CACHE_MASK;
++	if (pg_offset) {
++		arg.offset -= pg_offset;
++		arg.length += pg_offset;
++	}
++	arg.length = PAGE_CACHE_ALIGN(arg.length);
++
+ 	lseg = send_layoutget(lo, ctx, &arg);
+ 	if (!lseg && first) {
+ 		spin_lock(&clp->cl_lock);
 -- 
-----
-thanks
-Mi Jinlong
-
-> 
-> 	http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues#Highest_priority
-> 
-> Those are the 4.1 spec compliance problems that I think are the most
-> important to fix--the ones that I think we have to get done before we
-> can really declare the 4.1 server correct.
-> 
-> --b.
-> 
->> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
->> ---
->>  fs/nfsd/nfs4xdr.c |   20 ++++++++++++--------
->>  1 files changed, 12 insertions(+), 8 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->> index c6766af..a7cf985 100644
->> --- a/fs/nfsd/nfs4xdr.c
->> +++ b/fs/nfsd/nfs4xdr.c
->> @@ -3224,12 +3224,12 @@ static nfsd4_enc nfsd4_enc_ops[] = {
->>   * pad: add on 8 bytes for the next operation's op_code and status so that
->>   * there is room to cache a failure on the next operation.
->>   *
->> - * Compare this length to the session se_fmaxresp_cached.
->> + * Compare this length to the session se_fmaxresp_sz and se_fmaxresp_cached.
->>   *
->>   * Our se_fmaxresp_cached will always be a multiple of PAGE_SIZE, and so
->>   * will be at least a page and will therefore hold the xdr_buf head.
->>   */
->> -static int nfsd4_check_drc_limit(struct nfsd4_compoundres *resp)
->> +static int nfsd4_check_response_size(struct nfsd4_compoundres *resp)
->>  {
->>  	int status = 0;
->>  	struct xdr_buf *xb = &resp->rqstp->rq_res;
->> @@ -3242,7 +3242,7 @@ static int nfsd4_check_drc_limit(struct nfsd4_compoundres *resp)
->>  		return status;
->>  
->>  	session = resp->cstate.session;
->> -	if (session == NULL || slot->sl_cachethis == 0)
->> +	if (session == NULL)
->>  		return status;
->>  
->>  	if (resp->opcnt >= args->opcnt)
->> @@ -3259,10 +3259,14 @@ static int nfsd4_check_drc_limit(struct nfsd4_compoundres *resp)
->>  	dprintk("%s length %u, xb->page_len %u tlen %u pad %u\n", __func__,
->>  		length, xb->page_len, tlen, pad);
->>  
->> -	if (length <= session->se_fchannel.maxresp_cached)
->> -		return status;
->> -	else
->> +	if (length > session->se_fchannel.maxresp_sz)
->> +		return nfserr_rep_too_big;
->> +
->> +	if (slot->sl_cachethis == 1 &&
->> +	    length > session->se_fchannel.maxresp_cached)
->>  		return nfserr_rep_too_big_to_cache;
->> +
->> +	return status;
->>  }
->>  
->>  void
->> @@ -3282,8 +3286,8 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
->>  	       !nfsd4_enc_ops[op->opnum]);
->>  	op->status = nfsd4_enc_ops[op->opnum](resp, op->status, &op->u);
->>  	/* nfsd4_check_drc_limit guarantees enough room for error status */
->> -	if (!op->status && nfsd4_check_drc_limit(resp))
->> -		op->status = nfserr_rep_too_big_to_cache;
->> +	if (!op->status)
->> +		op->status = nfsd4_check_response_size(resp);
->>  status:
->>  	/*
->>  	 * Note: We write the status directly, instead of using WRITE32(),
->> -- 
->> 1.7.4.5
->>
->>
-> 
-> 
+1.7.3.4
 
