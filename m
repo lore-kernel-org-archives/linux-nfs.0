@@ -1,54 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57864 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755101Ab1EPNzX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 May 2011 09:55:23 -0400
-Date: Mon, 16 May 2011 09:56:15 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Luca Giuzzi <luca.giuzzi@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] rpc.idmapd dies with 'I/O possible'
-Message-ID: <20110516095615.5d788c1a@corrin.poochiereds.net>
-In-Reply-To: <BANLkTinSoHVQH1meHMwCtxEp8Mku1gJv0Q@mail.gmail.com>
-References: <BANLkTinSoHVQH1meHMwCtxEp8Mku1gJv0Q@mail.gmail.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from daytona.panasas.com ([67.152.220.89]:24139 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755165Ab1EPN74 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 09:59:56 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 3/4] SQUASHME: pnfs: clean up pnfs_find_lseg lseg arg
+Date: Mon, 16 May 2011 06:59:44 -0700
+Message-Id: <1305554384-29198-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DCC715C.1090101@panasas.com>
+References: <4DCC715C.1090101@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, 16 May 2011 15:38:27 +0200
-Luca Giuzzi <luca.giuzzi@gmail.com> wrote:
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/pnfs.c |   10 +++++-----
+ 1 files changed, 5 insertions(+), 5 deletions(-)
 
-> Dear All,
->  we have had problems on some of our machines (all Fedora 14), where
-> rpc.idmapd used to die with an `I/O possible' message at (basically)
-> random times. A strace suggested the issue being in nfsopen() where a
-> signal type is reset before notification is disabled; a signal at just
-> the right time might be the cause of the problem; see
-> https://bugzilla.redhat.com/show_bug.cgi?id=684308
-> I am now proposing the (trivial) patch to the list as well.
-> 
-> Best Regards,
->   luca giuzzi
-> 
-> --- nfs-utils-1.2.3/utils/idmapd/idmapd.c.orig	2011-05-13
-> 16:27:08.000000000 +0200
-> +++ nfs-utils-1.2.3/utils/idmapd/idmapd.c	2011-05-13 16:27:16.000000000 +0200
-> @@ -778,8 +778,8 @@ nfsopen(struct idmap_client *ic)
->  	} else {
->  		event_set(&ic->ic_event, ic->ic_fd, EV_READ, nfscb, ic);
->  		event_add(&ic->ic_event, NULL);
-> -		fcntl(ic->ic_dirfd, F_SETSIG, 0);
->  		fcntl(ic->ic_dirfd, F_NOTIFY, 0);
-> +		fcntl(ic->ic_dirfd, F_SETSIG, 0);
->  		if (verbose > 0)
->  			xlog_warn("Opened %s", ic->ic_path);
->  	}
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 9d41cab..9b67b1c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -790,20 +790,20 @@ pnfs_find_alloc_layout(struct inode *ino)
+  * READ		RW	true
+  */
+ static int
+-is_matching_lseg(struct pnfs_layout_segment *lseg,
++is_matching_lseg(struct pnfs_layout_range *ls_range,
+ 		 struct pnfs_layout_range *range)
+ {
+ 	struct pnfs_layout_range range1;
+ 
+ 	if ((range->iomode == IOMODE_RW &&
+-	     lseg->pls_range.iomode != IOMODE_RW) ||
+-	    !lo_seg_intersecting(&lseg->pls_range, range))
++	     ls_range->iomode != IOMODE_RW) ||
++	    !lo_seg_intersecting(ls_range, range))
+ 		return 0;
+ 
+ 	/* range1 covers only the first byte in the range */
+ 	range1 = *range;
+ 	range1.length = 1;
+-	return lo_seg_contained(&lseg->pls_range, &range1);
++	return lo_seg_contained(ls_range, &range1);
+ }
+ 
+ /*
+@@ -820,7 +820,7 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
+ 	assert_spin_locked(&lo->plh_inode->i_lock);
+ 	list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
+ 		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
+-		    is_matching_lseg(lseg, range)) {
++		    is_matching_lseg(&lseg->pls_range, range)) {
+ 			ret = get_lseg(lseg);
+ 			break;
+ 		}
+-- 
+1.7.3.4
 
-Looks correct to me:
-
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
