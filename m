@@ -1,203 +1,494 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57139 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:34597 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752643Ab1EYV3A (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:29:00 -0400
+	with ESMTP id S1751200Ab1EPQVx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 12:21:53 -0400
 From: Benny Halevy <bhalevy@panasas.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v8 20/32] pnfs: support for non-rpc layout drivers
-Date: Thu, 26 May 2011 00:28:57 +0300
-Message-Id: <1306358937-17514-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DDD7392.6040505@panasas.com>
-References: <4DDD7392.6040505@panasas.com>
+Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com
+Subject: [PATCH v3 09/29] pnfs-obj: pnfs_osd XDR definitions
+Date: Mon, 16 May 2011 09:21:50 -0700
+Message-Id: <1305562910-7624-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD14D8E.1070701@panasas.com>
+References: <4DD14D8E.1070701@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Non-rpc layout driver such as for objects and blocks
-implement their own I/O path and error handling logic.
-Therefore bypass NFS-based error handling for these layout drivers.
+* Add the pnfs_osd_xdr.h header
 
-[fix lseg ref-count bugs, and null de-refs]
-[Fall out from: non-rpc layout drivers]
+* defintions the pnfs_osd_layout structure including all it's
+  sub-types and constants.
+* Declare the pnfs_osd_xdr_encode/decode_layout API + all needed
+  inline helpers.
+
+* Define the pnfs_osd_deviceaddr structure and all its subtypes and
+  constants.
+* Declare API for encoding/decoding of a pnfs_osd_deviceaddr to/from
+  XDR stream.
+
+* Define the pnfs_osd_ioerr structure, its substructures and constants.
+* Declare API for encoding/decoding of a pnfs_osd_ioerr to/from
+  XDR stream.
+
+* Define the pnfs_osd_layoutupdate structure and its substructures.
+* Declare API for encoding/decoding of a pnfs_osd_layoutupdate to/from
+  XDR stream.
+
+[Some extra debug-prints]
 Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-[get rid of PNFS_USE_RPC_CODE]
-[get rid of __nfs4_write_done_cb]
-[revert useless change in nfs4_write_done_cb]
+[objlayout driver skeleton]
+[use __be32]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/internal.h       |    1 +
- fs/nfs/nfs4proc.c       |   13 +++++++++--
- fs/nfs/pnfs.c           |   48 ++++++++++++++++++++++++++++++++++++++++++++++-
- fs/nfs/pnfs.h           |    2 +
- include/linux/nfs_xdr.h |    2 +
- 5 files changed, 62 insertions(+), 4 deletions(-)
+ include/linux/pnfs_osd_xdr.h |  437 ++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 437 insertions(+), 0 deletions(-)
+ create mode 100644 include/linux/pnfs_osd_xdr.h
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index ce118ce..bcf0f0f 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -310,6 +310,7 @@ extern int nfs_migrate_page(struct address_space *,
- #endif
- 
- /* nfs4proc.c */
-+extern void __nfs4_read_done_cb(struct nfs_read_data *);
- extern void nfs4_reset_read(struct rpc_task *task, struct nfs_read_data *data);
- extern int nfs4_init_client(struct nfs_client *clp,
- 			    const struct rpc_timeout *timeparms,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index cf1b339..92c8bc4 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3175,6 +3175,11 @@ static int nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
- 	return err;
- }
- 
-+void __nfs4_read_done_cb(struct nfs_read_data *data)
-+{
-+	nfs_invalidate_atime(data->inode);
-+}
-+
- static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
- {
- 	struct nfs_server *server = NFS_SERVER(data->inode);
-@@ -3184,7 +3189,7 @@ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
- 		return -EAGAIN;
- 	}
- 
--	nfs_invalidate_atime(data->inode);
-+	__nfs4_read_done_cb(data);
- 	if (task->tk_status > 0)
- 		renew_lease(server, data->timestamp);
- 	return 0;
-@@ -3198,7 +3203,8 @@ static int nfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
- 	if (!nfs4_sequence_done(task, &data->res.seq_res))
- 		return -EAGAIN;
- 
--	return data->read_done_cb(task, data);
-+	return data->read_done_cb ? data->read_done_cb(task, data) :
-+				    nfs4_read_done_cb(task, data);
- }
- 
- static void nfs4_proc_read_setup(struct nfs_read_data *data, struct rpc_message *msg)
-@@ -3243,7 +3249,8 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
- {
- 	if (!nfs4_sequence_done(task, &data->res.seq_res))
- 		return -EAGAIN;
--	return data->write_done_cb(task, data);
-+	return data->write_done_cb ? data->write_done_cb(task, data) :
-+		nfs4_write_done_cb(task, data);
- }
- 
- /* Reset the the nfs_write_data to send the write to the MDS. */
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index ef535f2..1716621 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -243,7 +243,7 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
- {
- 	struct inode *inode = lseg->pls_layout->plh_inode;
- 
--	BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
-+	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 	list_del_init(&lseg->pls_list);
- 	if (list_empty(&lseg->pls_layout->plh_segs)) {
- 		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
-@@ -1054,6 +1054,29 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
- 	pgio->pg_test = (ld && ld->pg_test) ? pnfs_write_pg_test : NULL;
- }
- 
+diff --git a/include/linux/pnfs_osd_xdr.h b/include/linux/pnfs_osd_xdr.h
+new file mode 100644
+index 0000000..aed693f
+--- /dev/null
++++ b/include/linux/pnfs_osd_xdr.h
+@@ -0,0 +1,437 @@
 +/*
-+ * Called by non rpc-based layout drivers
++ *  pNFS-osd on-the-wire data structures
++ *
++ *  Copyright (C) 2007 Panasas Inc. [year of first publication]
++ *  All rights reserved.
++ *
++ *  Benny Halevy <bhalevy@panasas.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License version 2
++ *  See the file COPYING included with this distribution for more details.
++ *
++ *  Redistribution and use in source and binary forms, with or without
++ *  modification, are permitted provided that the following conditions
++ *  are met:
++ *
++ *  1. Redistributions of source code must retain the above copyright
++ *     notice, this list of conditions and the following disclaimer.
++ *  2. Redistributions in binary form must reproduce the above copyright
++ *     notice, this list of conditions and the following disclaimer in the
++ *     documentation and/or other materials provided with the distribution.
++ *  3. Neither the name of the Panasas company nor the names of its
++ *     contributors may be used to endorse or promote products derived
++ *     from this software without specific prior written permission.
++ *
++ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
++ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
++ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
++ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
++ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 + */
-+int
-+pnfs_ld_write_done(struct nfs_write_data *data)
-+{
-+	int status;
++#ifndef __PNFS_OSD_XDR_H__
++#define __PNFS_OSD_XDR_H__
 +
-+	if (!data->pnfs_error) {
-+		pnfs_set_layoutcommit(data);
-+		data->mds_ops->rpc_call_done(&data->task, data);
-+		data->mds_ops->rpc_release(data);
-+		return 0;
-+	}
++#include <linux/nfs_fs.h>
++#include <linux/nfs_page.h>
++#include <linux/exp_xdr.h>
++#include <scsi/osd_protocol.h>
 +
-+	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
-+		data->pnfs_error);
-+	status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
-+				    data->mds_ops, NFS_FILE_SYNC);
-+	return status ? : -EAGAIN;
-+}
-+EXPORT_SYMBOL_GPL(pnfs_ld_write_done);
-+
- enum pnfs_try_status
- pnfs_try_to_write_data(struct nfs_write_data *wdata,
- 			const struct rpc_call_ops *call_ops, int how)
-@@ -1079,6 +1102,29 @@ pnfs_try_to_write_data(struct nfs_write_data *wdata,
- }
- 
- /*
-+ * Called by non rpc-based layout drivers
-+ */
-+int
-+pnfs_ld_read_done(struct nfs_read_data *data)
-+{
-+	int status;
-+
-+	if (!data->pnfs_error) {
-+		__nfs4_read_done_cb(data);
-+		data->mds_ops->rpc_call_done(&data->task, data);
-+		data->mds_ops->rpc_release(data);
-+		return 0;
-+	}
-+
-+	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
-+		data->pnfs_error);
-+	status = nfs_initiate_read(data, NFS_CLIENT(data->inode),
-+				   data->mds_ops);
-+	return status ? : -EAGAIN;
-+}
-+EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
++#define PNFS_OSD_OSDNAME_MAXSIZE 256
 +
 +/*
-  * Call the appropriate parallel I/O subsystem read function.
-  */
- enum pnfs_try_status
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index ed167a7..8a6e1f1 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -165,6 +165,8 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
- bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
- void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
- int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
-+int pnfs_ld_write_done(struct nfs_write_data *);
-+int pnfs_ld_read_done(struct nfs_read_data *);
- 
- /* pnfs_dev.c */
- struct nfs4_deviceid_node {
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 7e371f7..7c8ff09 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1087,6 +1087,7 @@ struct nfs_read_data {
- 	const struct rpc_call_ops *mds_ops;
- 	int (*read_done_cb) (struct rpc_task *task, struct nfs_read_data *data);
- 	__u64			mds_offset;
-+	int			pnfs_error;
- 	struct page		*page_array[NFS_PAGEVEC_SIZE];
- };
- 
-@@ -1112,6 +1113,7 @@ struct nfs_write_data {
- 	unsigned long		timestamp;	/* For lease renewal */
- #endif
- 	__u64			mds_offset;	/* Filelayout dense stripe */
-+	int			pnfs_error;
- 	struct page		*page_array[NFS_PAGEVEC_SIZE];
- };
- 
++ * START OF "GENERIC" DECODE ROUTINES.
++ *   These may look a little ugly since they are imported from a "generic"
++ * set of XDR encode/decode routines which are intended to be shared by
++ * all of our NFSv4 implementations (OpenBSD, MacOS X...).
++ *
++ * If the pain of reading these is too great, it should be a straightforward
++ * task to translate them into Linux-specific versions which are more
++ * consistent with the style used in NFSv2/v3...
++ */
++#define READ32(x)         (x) = ntohl(*p++)
++#define READ64(x)         do {			\
++	(x) = (u64)ntohl(*p++) << 32;		\
++	(x) |= ntohl(*p++);			\
++} while (0)
++#define COPYMEM(x, nbytes) do {			\
++	memcpy((x), p, nbytes);			\
++	p += XDR_QUADLEN(nbytes);		\
++} while (0)
++
++/*
++ * draft-ietf-nfsv4-minorversion-22
++ * draft-ietf-nfsv4-pnfs-obj-12
++ */
++
++/* Layout Structure */
++
++enum pnfs_osd_raid_algorithm4 {
++	PNFS_OSD_RAID_0		= 1,
++	PNFS_OSD_RAID_4		= 2,
++	PNFS_OSD_RAID_5		= 3,
++	PNFS_OSD_RAID_PQ	= 4     /* Reed-Solomon P+Q */
++};
++
++/*   struct pnfs_osd_data_map4 {
++ *       uint32_t                    odm_num_comps;
++ *       length4                     odm_stripe_unit;
++ *       uint32_t                    odm_group_width;
++ *       uint32_t                    odm_group_depth;
++ *       uint32_t                    odm_mirror_cnt;
++ *       pnfs_osd_raid_algorithm4    odm_raid_algorithm;
++ *   };
++ */
++struct pnfs_osd_data_map {
++	u32	odm_num_comps;
++	u64	odm_stripe_unit;
++	u32	odm_group_width;
++	u32	odm_group_depth;
++	u32	odm_mirror_cnt;
++	u32	odm_raid_algorithm;
++};
++
++static inline int
++pnfs_osd_data_map_xdr_sz(void)
++{
++	return 1 + 2 + 1 + 1 + 1 + 1;
++}
++
++static inline size_t
++pnfs_osd_data_map_incore_sz(void)
++{
++	return sizeof(struct pnfs_osd_data_map);
++}
++
++/*   struct pnfs_osd_objid4 {
++ *       deviceid4       oid_device_id;
++ *       uint64_t        oid_partition_id;
++ *       uint64_t        oid_object_id;
++ *   };
++ */
++struct pnfs_osd_objid {
++	struct nfs4_deviceid	oid_device_id;
++	u64			oid_partition_id;
++	u64			oid_object_id;
++};
++
++/* For printout. I use "dev(%llx:%llx)", _DEVID_LO(), _DEVID_HI BE style */
++#define _DEVID_LO(oid_device_id) \
++	(unsigned long long)be64_to_cpup((__be64 *)oid_device_id.data)
++
++#define _DEVID_HI(oid_device_id) \
++	(unsigned long long)be64_to_cpup(((__be64 *)oid_device_id.data) + 1)
++
++static inline int
++pnfs_osd_objid_xdr_sz(void)
++{
++	return (NFS4_DEVICEID4_SIZE / 4) + 2 + 2;
++}
++
++static inline size_t
++pnfs_osd_objid_incore_sz(void)
++{
++	return sizeof(struct pnfs_osd_objid);
++}
++
++enum pnfs_osd_version {
++	PNFS_OSD_MISSING              = 0,
++	PNFS_OSD_VERSION_1            = 1,
++	PNFS_OSD_VERSION_2            = 2
++};
++
++struct pnfs_osd_opaque_cred {
++	u32 cred_len;
++	u8 *cred;
++};
++
++static inline int
++pnfs_osd_opaque_cred_xdr_sz(__be32 *p)
++{
++	u32 *start = p;
++	u32 n;
++
++	READ32(n);
++	p += XDR_QUADLEN(n);
++	return p - start;
++}
++
++static inline size_t
++pnfs_osd_opaque_cred_incore_sz(__be32 *p)
++{
++	u32 n;
++
++	READ32(n);
++	return XDR_QUADLEN(n) * 4;
++}
++
++enum pnfs_osd_cap_key_sec {
++	PNFS_OSD_CAP_KEY_SEC_NONE     = 0,
++	PNFS_OSD_CAP_KEY_SEC_SSV      = 1,
++};
++
++/*   struct pnfs_osd_object_cred4 {
++ *       pnfs_osd_objid4         oc_object_id;
++ *       pnfs_osd_version4       oc_osd_version;
++ *       pnfs_osd_cap_key_sec4   oc_cap_key_sec;
++ *       opaque                  oc_capability_key<>;
++ *       opaque                  oc_capability<>;
++ *   };
++ */
++struct pnfs_osd_object_cred {
++	struct pnfs_osd_objid		oc_object_id;
++	u32				oc_osd_version;
++	u32				oc_cap_key_sec;
++	struct pnfs_osd_opaque_cred	oc_cap_key;
++	struct pnfs_osd_opaque_cred	oc_cap;
++};
++
++static inline int
++pnfs_osd_object_cred_xdr_sz(__be32 *p)
++{
++	__be32 *start = p;
++
++	p += pnfs_osd_objid_xdr_sz() + 2;
++	p += pnfs_osd_opaque_cred_xdr_sz(p);
++	p += pnfs_osd_opaque_cred_xdr_sz(p);
++	return p - start;
++}
++
++static inline size_t
++pnfs_osd_object_cred_incore_sz(__be32 *p)
++{
++	size_t sz = sizeof(struct pnfs_osd_object_cred);
++
++	p += pnfs_osd_objid_xdr_sz() + 2;
++	sz += pnfs_osd_opaque_cred_incore_sz(p);
++	p += pnfs_osd_opaque_cred_xdr_sz(p);
++	sz += pnfs_osd_opaque_cred_incore_sz(p);
++	return sz;
++}
++
++/*   struct pnfs_osd_layout4 {
++ *       pnfs_osd_data_map4      olo_map;
++ *       uint32_t                olo_comps_index;
++ *       pnfs_osd_object_cred4   olo_components<>;
++ *   };
++ */
++struct pnfs_osd_layout {
++	struct pnfs_osd_data_map	olo_map;
++	u32				olo_comps_index;
++	u32				olo_num_comps;
++	struct pnfs_osd_object_cred	*olo_comps;
++};
++
++static inline int
++pnfs_osd_layout_xdr_sz(__be32 *p)
++{
++	__be32 *start = p;
++	u32 n;
++
++	p += pnfs_osd_data_map_xdr_sz() + 1;
++	READ32(n);
++	while ((int)(n--) > 0)
++		p += pnfs_osd_object_cred_xdr_sz(p);
++	return p - start;
++}
++
++static inline size_t
++pnfs_osd_layout_incore_sz(__be32 *p)
++{
++	u32 n;
++	size_t sz;
++
++	p += pnfs_osd_data_map_xdr_sz() + 1;
++	READ32(n);
++	sz = sizeof(struct pnfs_osd_layout);
++	while ((int)(n--) > 0) {
++		sz += pnfs_osd_object_cred_incore_sz(p);
++		p += pnfs_osd_object_cred_xdr_sz(p);
++	}
++	return sz;
++}
++
++/* Device Address */
++
++enum pnfs_osd_targetid_type {
++	OBJ_TARGET_ANON = 1,
++	OBJ_TARGET_SCSI_NAME = 2,
++	OBJ_TARGET_SCSI_DEVICE_ID = 3,
++};
++
++/*   union pnfs_osd_targetid4 switch (pnfs_osd_targetid_type4 oti_type) {
++ *       case OBJ_TARGET_SCSI_NAME:
++ *           string              oti_scsi_name<>;
++ *
++ *       case OBJ_TARGET_SCSI_DEVICE_ID:
++ *           opaque              oti_scsi_device_id<>;
++ *
++ *       default:
++ *           void;
++ *   };
++ *
++ *   union pnfs_osd_targetaddr4 switch (bool ota_available) {
++ *       case TRUE:
++ *           netaddr4            ota_netaddr;
++ *       case FALSE:
++ *           void;
++ *   };
++ *
++ *   struct pnfs_osd_deviceaddr4 {
++ *       pnfs_osd_targetid4      oda_targetid;
++ *       pnfs_osd_targetaddr4    oda_targetaddr;
++ *       uint64_t                oda_lun;
++ *       opaque                  oda_systemid<>;
++ *       pnfs_osd_object_cred4   oda_root_obj_cred;
++ *       opaque                  oda_osdname<>;
++ *   };
++ */
++struct pnfs_osd_targetid {
++	u32				oti_type;
++	struct nfs4_string		oti_scsi_device_id;
++};
++
++enum { PNFS_OSD_TARGETID_MAX = 1 + PNFS_OSD_OSDNAME_MAXSIZE / 4 };
++
++/*   struct netaddr4 {
++ *       // see struct rpcb in RFC1833
++ *       string r_netid<>;    // network id
++ *       string r_addr<>;     // universal address
++ *   };
++ */
++struct pnfs_osd_net_addr {
++	struct nfs4_string	r_netid;
++	struct nfs4_string	r_addr;
++};
++
++struct pnfs_osd_targetaddr {
++	u32				ota_available;
++	struct pnfs_osd_net_addr	ota_netaddr;
++};
++
++enum {
++	NETWORK_ID_MAX = 16 / 4,
++	UNIVERSAL_ADDRESS_MAX = 64 / 4,
++	PNFS_OSD_TARGETADDR_MAX = 3 +  NETWORK_ID_MAX + UNIVERSAL_ADDRESS_MAX,
++};
++
++struct pnfs_osd_deviceaddr {
++	struct pnfs_osd_targetid	oda_targetid;
++	struct pnfs_osd_targetaddr	oda_targetaddr;
++	u8				oda_lun[8];
++	struct nfs4_string		oda_systemid;
++	struct pnfs_osd_object_cred	oda_root_obj_cred;
++	struct nfs4_string		oda_osdname;
++};
++
++enum {
++	ODA_OSDNAME_MAX = PNFS_OSD_OSDNAME_MAXSIZE / 4,
++	PNFS_OSD_DEVICEADDR_MAX =
++		PNFS_OSD_TARGETID_MAX + PNFS_OSD_TARGETADDR_MAX +
++		2 /*oda_lun*/ +
++		1 + OSD_SYSTEMID_LEN +
++		1 + ODA_OSDNAME_MAX,
++};
++
++/* LAYOUTCOMMIT: layoutupdate */
++
++/*   union pnfs_osd_deltaspaceused4 switch (bool dsu_valid) {
++ *       case TRUE:
++ *           int64_t     dsu_delta;
++ *       case FALSE:
++ *           void;
++ *   };
++ *
++ *   struct pnfs_osd_layoutupdate4 {
++ *       pnfs_osd_deltaspaceused4    olu_delta_space_used;
++ *       bool                        olu_ioerr_flag;
++ *   };
++ */
++struct pnfs_osd_layoutupdate {
++	u32	dsu_valid;
++	s64	dsu_delta;
++	u32	olu_ioerr_flag;
++};
++
++/* LAYOUTRETURN: I/O Rrror Report */
++
++enum pnfs_osd_errno {
++	PNFS_OSD_ERR_EIO		= 1,
++	PNFS_OSD_ERR_NOT_FOUND		= 2,
++	PNFS_OSD_ERR_NO_SPACE		= 3,
++	PNFS_OSD_ERR_BAD_CRED		= 4,
++	PNFS_OSD_ERR_NO_ACCESS		= 5,
++	PNFS_OSD_ERR_UNREACHABLE	= 6,
++	PNFS_OSD_ERR_RESOURCE		= 7
++};
++
++/*   struct pnfs_osd_ioerr4 {
++ *       pnfs_osd_objid4     oer_component;
++ *       length4             oer_comp_offset;
++ *       length4             oer_comp_length;
++ *       bool                oer_iswrite;
++ *       pnfs_osd_errno4     oer_errno;
++ *   };
++ */
++struct pnfs_osd_ioerr {
++	struct pnfs_osd_objid	oer_component;
++	u64			oer_comp_offset;
++	u64			oer_comp_length;
++	u32			oer_iswrite;
++	u32			oer_errno;
++};
++
++static inline unsigned
++pnfs_osd_ioerr_xdr_sz(void)
++{
++	return pnfs_osd_objid_xdr_sz() + 2 + 2 + 1 + 1;
++}
++
++/* OSD XDR API */
++
++/* Layout helpers */
++extern struct pnfs_osd_layout *pnfs_osd_xdr_decode_layout(
++	struct pnfs_osd_layout *layout, __be32 *p);
++
++extern int pnfs_osd_xdr_encode_layout(
++	struct exp_xdr_stream *xdr,
++	struct pnfs_osd_layout *layout);
++
++/* Device Info helpers */
++
++/* First pass calculate total size for space needed */
++extern size_t pnfs_osd_xdr_deviceaddr_incore_sz(__be32 *p);
++
++/* Note: some strings pointed to inside @deviceaddr might point
++ * to space inside @p. @p should stay valid while @deviceaddr
++ * is in use.
++ * It is assumed that @deviceaddr points to bigger memory of size
++ * calculated in first pass by pnfs_osd_xdr_deviceaddr_incore_sz()
++ */
++extern void pnfs_osd_xdr_decode_deviceaddr(
++	struct pnfs_osd_deviceaddr *deviceaddr, __be32 *p);
++
++/* For Servers */
++extern int pnfs_osd_xdr_encode_deviceaddr(
++	struct exp_xdr_stream *xdr, struct pnfs_osd_deviceaddr *devaddr);
++
++/* layoutupdate (layout_commit) xdr helpers */
++extern int
++pnfs_osd_xdr_encode_layoutupdate(struct xdr_stream *xdr,
++				 struct pnfs_osd_layoutupdate *lou);
++extern __be32 *
++pnfs_osd_xdr_decode_layoutupdate(struct pnfs_osd_layoutupdate *lou, __be32 *p);
++
++/* osd_ioerror encoding/decoding (layout_return) */
++extern int
++pnfs_osd_xdr_encode_ioerr(struct xdr_stream *xdr, struct pnfs_osd_ioerr *ioerr);
++extern __be32 *
++pnfs_osd_xdr_decode_ioerr(struct pnfs_osd_ioerr *ioerr, __be32 *p);
++
++#endif /* __PNFS_OSD_XDR_H__ */
 -- 
 1.7.3.4
 
