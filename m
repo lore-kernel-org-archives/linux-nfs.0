@@ -1,132 +1,320 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:61017 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:48125 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752780Ab1EDPwW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 May 2011 11:52:22 -0400
-Subject: Re: [[RFC] 1/1] SUNRPC: dynamic rpc_slot allocator for TCP
-Content-Type: text/plain; charset=us-ascii
-From: Andy Adamson <andros@netapp.com>
-In-Reply-To: <20110504111853.7150915a@tlielax.poochiereds.net>
-Date: Wed, 4 May 2011 11:52:20 -0400
-Cc: NeilBrown <neilb@suse.de>, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Message-Id: <505415C4-0383-4A8D-BD6B-D85F3CB5E7EB@netapp.com>
-References: <1304386808-2733-1-git-send-email-andros@netapp.com> <1304386808-2733-2-git-send-email-andros@netapp.com> <20110503202023.699435f4@corrin.poochiereds.net> <1304469890.26184.16.camel@lade.trondhjem.org> <20110504111825.6f26f75a@notabene.brown> <1304473563.26184.28.camel@lade.trondhjem.org> <20110504120726.347df3fc@notabene.brown> <20110504075410.5e59c6b4@tlielax.poochiereds.net> <0424D640-C315-449B-847A-59105BBADBCE@netapp.com> <20110504111853.7150915a@tlielax.poochiereds.net>
-To: Jeff Layton <jlayton@redhat.com>
+	id S1754601Ab1EPTnq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 May 2011 15:43:46 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v2 2/2] NFSD: Added TEST_STATEID opreation
+Date: Mon, 16 May 2011 15:43:41 -0400
+Message-Id: <1305575021-2841-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1305575021-2841-1-git-send-email-bjschuma@netapp.com>
+References: <1305575021-2841-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-On May 4, 2011, at 11:18 AM, Jeff Layton wrote:
+This operation is used by the client to check the validity of a list of
+stateids.
 
-> On Wed, 4 May 2011 10:54:57 -0400
-> Andy Adamson <andros@netapp.com> wrote:
-> 
->> 
->> On May 4, 2011, at 7:54 AM, Jeff Layton wrote:
->> 
->>> On Wed, 4 May 2011 12:07:26 +1000
->>> NeilBrown <neilb@suse.de> wrote:
->>> 
->>>> On Tue, 03 May 2011 21:46:03 -0400 Trond Myklebust
->>>> <Trond.Myklebust@netapp.com> wrote:
->>>> 
->>>>> On Wed, 2011-05-04 at 11:18 +1000, NeilBrown wrote:
->>>>>> For rpc slots, I doubt you need mempools at all.
->>>>>> Mempools are only needed if failure is not an option and you would rather
->>>>>> wait, but you cannot wait for regular writeback because you are on the
->>>>>> writeback path.  So you use a mempool which waits for a previous request to
->>>>>> complete.  I don't think that describes rpc slots at all.
->>>>>> For rpc slots, you can afford to wait when setting up the transport, as you
->>>>>> are not on the writeout path yet, and later you can always cope with failure.
->>>>>> So just use kmalloc.
->>>>> 
->>>>> Errr.... No. By the time you get to allocating an RPC slot, you may be
->>>>> bang smack in the middle of the writeout path.
->>>>> 
->>>>> The scenario would be that something triggers a writeback (kswapd,
->>>>> direct reclaim,...) which triggers an RPC call, which requires you to
->>>>> allocate at least one rpc slot before you can put the write on the wire.
->>>>> 
->>>>> I agree with your assertion that we only need one successful slot
->>>>> allocation in order to make overall forward progress, but we definitely
->>>>> do need that one...
->>>>> 
->>>> 
->>>> Probably I misunderstood the code, but I thought that there was a base set of
->>>> slots preallocated.  Eventually one of those will become free won't it?
->>>> 
->>>> Looking at the code again, it only ever returns entries to the mempool when
->>>> it is about to destroy the xprt.  That makes no sense.  If you are using a
->>>> mempool, then you allocate when you need to use space, and free it as soon as
->>>> you have finished with it, so the next request can get a turn.
->>>> 
->>> 
->>> That was sort of my point, though I didn't articulate it very well.
->>> 
->>> I don't think we want to keep this "static" set of rqsts and the
->>> mempool. It seems like that's somewhat redundant and more complex than
->>> is warranted. The question is...which should we keep?
->>> 
->>> I think it sort of depends on what the intended model is. If we want to
->>> allocate out of the "guaranteed" pool first and only when that's
->>> exhausted fall back to doing dynamic allocations, then we probably want
->>> to keep the static list of entries.
->>> 
->>> If we want to allocate dynamically most of the time and only dip into
->>> the "guaranteed" pool when that can't be satisfied, then basing all of
->>> this around mempools might make more sense.
->> 
->> Thanks for the review - I've learned a lot about mempools from this discussion.
->> 
->> I've noticed that a lot of the time, (at least for TCP) rpc_slots are allocated and not used.
->> The default slot entries value is a guess. This is why I like the idea of dynamically allocating most 
->> of the time, and only dipping into the guaranteed pool when the dynamic allocation
->> can't be satisfied. e.g. get rid of the static set of slots.
->> Does this design require two mempools, one for dynamic allocation and a guaranteed one being small and "in reserve"?
->> 
-> 
-> No, a single mempool would give you that. Just declare the mempool with
-> the amount of "emergency" slots you want, and then allocate directly
-> from it and then free them back to the mempool. Most of the time (as
-> Neil points out) you'll get them allocated from the slabcache. It'll
-> it'll only dip into the reserved set when those can't be allocated.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/nfs4proc.c  |    5 +++
+ fs/nfsd/nfs4state.c |   53 +++++++++++++++++++++++++++++++
+ fs/nfsd/nfs4xdr.c   |   85 +++++++++++++++++++++++++++++++++++++++++++++++++--
+ fs/nfsd/state.h     |    1 +
+ fs/nfsd/xdr4.h      |   17 ++++++++++
+ 5 files changed, 158 insertions(+), 3 deletions(-)
 
-Cool.
-
-> 
-> The other thing you have to determine is whether you want this
-> guaranteed number of slots to be per-xprt or global. Today, it's
-> per-xprt. Making it global might mean less wasted memory overall, but I
-> could forsee situations where a hung mount could starve other mounts of
-> slots.
-> 
-> Figuring that out might help guide the overall design here...
-> 
->> For UDP and RDMA, the default # of slot entries can turn into an upper bound.
->> For TCP, the default # of slot entries would have no meaning WRT upper bound, as the upper bound is determined
->> by the TCP window size.
->> 
-> 
-> Maybe rather than having this dynamic_slot_alloc operation that's only
-> conditionally called, it would cleaner to abstract out the slot
-> allocator altogether.
-> 
-> UDP and RDMA could use the same routine and just allocate out of a
-> fixed set of preallocated slots (sort of like how they do today), and
-> TCP could use this new scheme.
-
-We need rpc_slots (UDP/RDMA/TCP/....) to be freed back to the mempool in xprt_free_slot.
-If we allocate the set # of rpc_slots, place them on the xprt->free list, and they don't get used,
-then they won't be freed until the xprt is destroyed.
-
-I was thinking of using the same allocator for UDP/RDMA/TCP. With all transports, start off with a 
-minimal # of pre-allocated slots (6? 4? 2?) and for UDP/RDMA trigger a dynamic allocation in xprt_alloc_slot
-when there are no slots available and the # slots allocated is less than the default # slot entries for that transport.
-
--->Andy
-
-> -- 
-> Jeff Layton <jlayton@redhat.com>
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 7e00116..a856f30 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1412,6 +1412,11 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = OP_HANDLES_WRONGSEC,
+ 		.op_name = "OP_SECINFO_NO_NAME",
+ 	},
++	[OP_TEST_STATEID] = {
++		.op_func = (nfsd4op_func)nfsd4_test_stateid,
++		.op_flags = ALLOWED_WITHOUT_FH,
++		.op_name = "OP_TEST_STATEID",
++	},
+ 	[OP_FREE_STATEID] = {
+ 		.op_func = (nfsd4op_func)nfsd4_free_stateid,
+ 		.op_flags = ALLOWED_WITHOUT_FH,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 043baa0..18e0762 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -37,6 +37,7 @@
+ #include <linux/slab.h>
+ #include <linux/namei.h>
+ #include <linux/swap.h>
++#include <linux/pagemap.h>
+ #include <linux/sunrpc/svcauth_gss.h>
+ #include <linux/sunrpc/clnt.h>
+ #include "xdr4.h"
+@@ -3136,6 +3137,32 @@ static int is_delegation_stateid(stateid_t *stateid)
+ 	return stateid->si_fileid == 0;
+ }
+ 
++static __be32 nfs4_validate_stateid(stateid_t *stateid, int flags, struct file **filpp, struct svc_fh *current_fh)
++{
++	struct nfs4_stateid *stp = NULL;
++	__be32 status = nfserr_stale_stateid;
++
++	if (STALE_STATEID(stateid))
++		goto out;
++
++	status = nfserr_expired;
++	stp = search_for_stateid(stateid);
++	if (!stp)
++		goto out;
++	status = nfserr_bad_stateid;
++
++	if (!stp->st_stateowner->so_confirmed)
++		goto out;
++
++	status = check_stateid_generation(stateid, &stp->st_stateid, flags);
++	if (status)
++		goto out;
++
++	status = nfs_ok;
++out:
++	return status;
++}
++
+ /*
+ * Checks for stateid operations
+ */
+@@ -3252,6 +3279,32 @@ nfsd4_free_file_stateid(stateid_t *stateid)
+ }
+ 
+ /*
++ * Test if the stateid is valid
++ */
++__be32
++nfsd4_test_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
++		   struct nfsd4_test_stateid *test_stateid)
++{
++	test_stateid->ts_saved_state = cstate;
++	return nfs_ok;
++}
++
++__be32
++nfsd4_do_test_stateid(stateid_t *stateid, struct nfsd4_compound_state *cstate)
++{
++	__be32 ret;
++	unsigned int lock_flags = LOCK_STATE | RD_STATE | WR_STATE;
++	unsigned int open_flags = OPEN_STATE | RD_STATE | WR_STATE;
++	struct svc_fh *current_fh;
++
++	current_fh = &cstate->current_fh;
++	ret = nfs4_validate_stateid(stateid, lock_flags, NULL, current_fh);
++	if (!ret)
++		ret = nfs4_validate_stateid(stateid, open_flags, NULL, current_fh);
++	return ret;
++}
++
++/*
+  * Free a state id
+  */
+ __be32
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 5da6874..2239114 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -44,13 +44,14 @@
+ #include <linux/namei.h>
+ #include <linux/statfs.h>
+ #include <linux/utsname.h>
++#include <linux/pagemap.h>
+ #include <linux/sunrpc/svcauth_gss.h>
+ 
+ #include "idmap.h"
+ #include "acl.h"
+ #include "xdr4.h"
+ #include "vfs.h"
+-
++#include "state.h"
+ 
+ #define NFSDDBG_FACILITY		NFSDDBG_XDR
+ 
+@@ -131,6 +132,22 @@ xdr_error:					\
+ 	}					\
+ } while (0)
+ 
++static void save_buf(struct nfsd4_compoundargs *argp, struct nfsd4_saved_compoundargs *savep)
++{
++	savep->p        = argp->p;
++	savep->end      = argp->end;
++	savep->pagelen  = argp->pagelen;
++	savep->pagelist = argp->pagelist;
++}
++
++static void restore_buf(struct nfsd4_compoundargs *argp, struct nfsd4_saved_compoundargs *savep)
++{
++	argp->p        = savep->p;
++	argp->end      = savep->end;
++	argp->pagelen  = savep->pagelen;
++	argp->pagelist = savep->pagelist;
++}
++
+ static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
+ {
+ 	/* We want more bytes than seem to be available.
+@@ -1274,6 +1291,40 @@ nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
+ 	DECODE_TAIL;
+ }
+ 
++static __be32
++nfsd4_decode_test_stateid(struct nfsd4_compoundargs *argp, struct nfsd4_test_stateid *test_stateid)
++{
++	unsigned int nbytes;
++	stateid_t si;
++	int i;
++	__be32 *p;
++	__be32 status;
++
++	READ_BUF(4);
++	test_stateid->ts_num_ids = ntohl(*p++);
++
++	nbytes = test_stateid->ts_num_ids * sizeof(stateid_t);
++	if (nbytes > (u32)((char *)argp->end - (char *)argp->p))
++		goto xdr_error;
++
++	test_stateid->ts_saved_args = argp;
++	save_buf(argp, &test_stateid->ts_savedp);
++
++	for (i = 0; i < test_stateid->ts_num_ids; i++) {
++		status = nfsd4_decode_stateid(argp, &si);
++		if (status)
++			return status;
++	}
++
++	status = 0;
++out:
++	return status;
++xdr_error:
++	dprintk("NFSD: xdr error (%s:%d)\n", __FILE__, __LINE__);
++	status = nfserr_bad_xdr;
++	goto out;
++}
++
+ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, struct nfsd4_reclaim_complete *rc)
+ {
+ 	DECODE_HEAD;
+@@ -1393,7 +1444,7 @@ static nfsd4_dec nfsd41_dec_ops[] = {
+ 	[OP_SECINFO_NO_NAME]	= (nfsd4_dec)nfsd4_decode_secinfo_no_name,
+ 	[OP_SEQUENCE]		= (nfsd4_dec)nfsd4_decode_sequence,
+ 	[OP_SET_SSV]		= (nfsd4_dec)nfsd4_decode_notsupp,
+-	[OP_TEST_STATEID]	= (nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_TEST_STATEID]	= (nfsd4_dec)nfsd4_decode_test_stateid,
+ 	[OP_WANT_DELEGATION]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_DESTROY_CLIENTID]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
+@@ -3166,6 +3217,34 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
+ 	return 0;
+ }
+ 
++__be32
++nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, int nfserr,
++			  struct nfsd4_test_stateid *test_stateid)
++{
++	struct nfsd4_compoundargs *argp;
++	stateid_t si;
++	__be32 *p;
++	int i;
++	int valid;
++
++	restore_buf(test_stateid->ts_saved_args, &test_stateid->ts_savedp);
++	argp = test_stateid->ts_saved_args;
++
++	RESERVE_SPACE(4);
++	*p++ = htonl(test_stateid->ts_num_ids);
++	resp->p = p;
++
++	for (i = 0; i < test_stateid->ts_num_ids; i++) {
++		nfsd4_decode_stateid(argp, &si);
++		valid = nfsd4_do_test_stateid(&si, test_stateid->ts_saved_state);
++		RESERVE_SPACE(4);
++		*p++ = htonl(valid);
++		resp->p = p;
++	}
++
++	return nfserr;
++}
++
+ static __be32
+ nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
+ {
+@@ -3234,7 +3313,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+ 	[OP_SECINFO_NO_NAME]	= (nfsd4_enc)nfsd4_encode_secinfo_no_name,
+ 	[OP_SEQUENCE]		= (nfsd4_enc)nfsd4_encode_sequence,
+ 	[OP_SET_SSV]		= (nfsd4_enc)nfsd4_encode_noop,
+-	[OP_TEST_STATEID]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_TEST_STATEID]	= (nfsd4_enc)nfsd4_encode_test_stateid,
+ 	[OP_WANT_DELEGATION]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_DESTROY_CLIENTID]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_RECLAIM_COMPLETE]	= (nfsd4_enc)nfsd4_encode_noop,
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 6bd2f3c..3447b04 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -482,6 +482,7 @@ extern void nfsd4_recdir_purge_old(void);
+ extern int nfsd4_create_clid_dir(struct nfs4_client *clp);
+ extern void nfsd4_remove_clid_dir(struct nfs4_client *clp);
+ extern void release_session_client(struct nfsd4_session *);
++extern __be32 nfsd4_do_test_stateid(stateid_t *, struct nfsd4_compound_state *);
+ 
+ static inline void
+ nfs4_put_stateowner(struct nfs4_stateowner *so)
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index ed1784d..628ef97 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -342,6 +342,20 @@ struct nfsd4_setclientid_confirm {
+ 	nfs4_verifier	sc_confirm;
+ };
+ 
++struct nfsd4_saved_compoundargs {
++	__be32 *p;
++	__be32 *end;
++	int pagelen;
++	struct page **pagelist;
++};
++
++struct nfsd4_test_stateid {
++	__be32		ts_num_ids;
++	struct nfsd4_compoundargs *ts_saved_args;
++	struct nfsd4_saved_compoundargs ts_savedp;
++	struct nfsd4_compound_state *ts_saved_state;
++};
++
+ struct nfsd4_free_stateid {
+ 	stateid_t	fr_stateid;         /* request */
+ 	__be32		fr_status;          /* response */
+@@ -437,6 +451,7 @@ struct nfsd4_op {
+ 		struct nfsd4_destroy_session	destroy_session;
+ 		struct nfsd4_sequence		sequence;
+ 		struct nfsd4_reclaim_complete	reclaim_complete;
++		struct nfsd4_test_stateid	test_stateid;
+ 		struct nfsd4_free_stateid	free_stateid;
+ 	} u;
+ 	struct nfs4_replay *			replay;
+@@ -570,6 +585,8 @@ extern __be32 nfsd4_delegreturn(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *, struct nfsd4_delegreturn *dr);
+ extern __be32 nfsd4_renew(struct svc_rqst *rqstp,
+ 			  struct nfsd4_compound_state *, clientid_t *clid);
++extern __be32 nfsd4_test_stateid(struct svc_rqst *rqstp,
++		struct nfsd4_compound_state *, struct nfsd4_test_stateid *test_stateid);
+ extern __be32 nfsd4_free_stateid(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *, struct nfsd4_free_stateid *free_stateid);
+ #endif
+-- 
+1.7.5.1
 
