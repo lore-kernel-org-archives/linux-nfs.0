@@ -1,121 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:46771 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754975Ab1EXPHz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 11:07:55 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 09/12] SQUASHME: pnfs-obj: Bugs in new global-device-cache code
-Date: Tue, 24 May 2011 18:07:24 +0300
-Message-Id: <1306249644-23422-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4DDBC611.3050202@panasas.com>
-References: <4DDBC611.3050202@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:36452 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755525Ab1EPOje (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 May 2011 10:39:34 -0400
+Date: Mon, 16 May 2011 10:39:31 -0400
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Luca Giuzzi <luca.giuzzi@gmail.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] rpc.idmapd dies with 'I/O possible'
+Message-ID: <20110516143931.GB31848@fieldses.org>
+References: <BANLkTinSoHVQH1meHMwCtxEp8Mku1gJv0Q@mail.gmail.com>
+ <4DD13350.1000207@RedHat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4DD13350.1000207@RedHat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Fix BUGs in the new "Use global-device-cache".
+On Mon, May 16, 2011 at 10:23:12AM -0400, Steve Dickson wrote:
+> 
+> 
+> On 05/16/2011 09:38 AM, Luca Giuzzi wrote:
+> > Dear All,
+> >  we have had problems on some of our machines (all Fedora 14), where
+> > rpc.idmapd used to die with an `I/O possible' message at (basically)
+> > random times. A strace suggested the issue being in nfsopen() where a
+> > signal type is reset before notification is disabled; a signal at just
+> > the right time might be the cause of the problem; see
+> > https://bugzilla.redhat.com/show_bug.cgi?id=684308
+> > I am now proposing the (trivial) patch to the list as well.
+> > 
+> > Best Regards,
+> >   luca giuzzi
+> > 
+> > --- nfs-utils-1.2.3/utils/idmapd/idmapd.c.orig	2011-05-13
+> > 16:27:08.000000000 +0200
+> > +++ nfs-utils-1.2.3/utils/idmapd/idmapd.c	2011-05-13 16:27:16.000000000 +0200
+> > @@ -778,8 +778,8 @@ nfsopen(struct idmap_client *ic)
+> >  	} else {
+> >  		event_set(&ic->ic_event, ic->ic_fd, EV_READ, nfscb, ic);
+> >  		event_add(&ic->ic_event, NULL);
+> > -		fcntl(ic->ic_dirfd, F_SETSIG, 0);
+> >  		fcntl(ic->ic_dirfd, F_NOTIFY, 0);
+> > +		fcntl(ic->ic_dirfd, F_SETSIG, 0);
+> >  		if (verbose > 0)
+> >  			xlog_warn("Opened %s", ic->ic_path);
+> >  	}
+> I just updated the bz with these questions, but we can have the 
+> conversation here...
+> 
+> I'm just a bit concerned by the fact that there are
+> a couple of places that sets F_SETSIG and then sets F_NOTIFY, 
+> so does that mean those places are potential race cases as 
+> well?
 
-One thing I don't understand is why the compiler did
-not complain when the code was returning the wrong
-type of structure
+I wondered about that too; looking:
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfs/objlayout/objio_osd.c |   28 +++++++++++++++++++---------
- 1 files changed, 19 insertions(+), 9 deletions(-)
+utils/gssd/gssd_main_loop.c:		fcntl(tdi->fd, F_NOTIFY,
+		      	DN_CREATE|DN_DELETE|DN_MODIFY|DN_MULTISHOT);
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 167cd1e..faacde2 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -56,6 +56,7 @@ objio_free_deviceid_node(struct nfs4_deviceid_node *d)
- {
- 	struct objio_dev_ent *de = container_of(d, struct objio_dev_ent, id_node);
- 
-+	dprintk("%s: free od=%p\n", __func__, de->od);
- 	osduld_put_device(de->od);
- 	kfree(de);
- }
-@@ -64,14 +65,18 @@ static struct objio_dev_ent *_dev_list_find(const struct nfs_server *nfss,
- 	const struct nfs4_deviceid *d_id)
- {
- 	struct nfs4_deviceid_node *d;
-+	struct objio_dev_ent *de;
- 
- 	d = nfs4_find_get_deviceid(nfss->pnfs_curr_ld, nfss->nfs_client, d_id);
- 	if (!d)
- 		return NULL;
--	return container_of(d, struct objio_dev_ent, id_node);
-+
-+	de = container_of(d, struct objio_dev_ent, id_node);
-+	return de;
- }
- 
--static int _dev_list_add(const struct nfs_server *nfss,
-+static struct objio_dev_ent *
-+_dev_list_add(const struct nfs_server *nfss,
- 	const struct nfs4_deviceid *d_id, struct osd_dev *od,
- 	gfp_t gfp_flags)
- {
-@@ -79,9 +84,12 @@ static int _dev_list_add(const struct nfs_server *nfss,
- 	struct objio_dev_ent *de = kzalloc(sizeof(*de), gfp_flags);
- 	struct objio_dev_ent *n;
- 
--	if (!de)
--		return -ENOMEM;
-+	if (!de) {
-+		dprintk("%s: -ENOMEM od=%p\n", __func__, od);
-+		return NULL;
-+	}
- 
-+	dprintk("%s: Adding od=%p\n", __func__, od);
- 	nfs4_init_deviceid_node(&de->id_node,
- 				nfss->pnfs_curr_ld,
- 				nfss->nfs_client,
-@@ -91,11 +99,12 @@ static int _dev_list_add(const struct nfs_server *nfss,
- 	d = nfs4_insert_deviceid_node(&de->id_node);
- 	n = container_of(d, struct objio_dev_ent, id_node);
- 	if (n != de) {
--		BUG_ON(n->od != od);
-+		dprintk("%s: Race with other n->od=%p\n", __func__, n->od);
- 		objio_free_deviceid_node(&de->id_node);
-+		de = n;
- 	}
- 
--	return 0;
-+	return de;
- }
- 
- struct caps_buffers {
-@@ -117,7 +126,7 @@ struct objio_segment {
- 	unsigned comps_index;
- 	unsigned num_comps;
- 	/* variable length */
--	struct objio_dev_ent *ods[0];
-+	struct objio_dev_ent *ods[];
- };
- 
- static inline struct objio_segment *
-@@ -176,12 +185,13 @@ static struct objio_dev_ent *_device_lookup(struct pnfs_layout_hdr *pnfslay,
- 		goto out;
- 	}
- 
--	_dev_list_add(NFS_SERVER(pnfslay->plh_inode), d_id, od, gfp_flags);
-+	ode = _dev_list_add(NFS_SERVER(pnfslay->plh_inode), d_id, od,
-+			    gfp_flags);
- 
- out:
- 	dprintk("%s: return=%d\n", __func__, err);
- 	objlayout_put_deviceinfo(deviceaddr);
--	return err ? ERR_PTR(err) : od;
-+	return err ? ERR_PTR(err) : ode;
- }
- 
- static int objio_devices_lookup(struct pnfs_layout_hdr *pnfslay,
--- 
-1.7.2.3
+utils/gssd/gssd_proc.c:	fcntl(clp->dir_fd, F_NOTIFY, DN_CREATE | DN_DELETE | DN_MULTISHOT);
+utils/idmapd/idmapd.c:		if (fcntl(fd, F_NOTIFY,
+			DN_CREATE | DN_DELETE | DN_MODIFY | DN_MULTISHOT) == -1) {
+utils/idmapd/idmapd.c:			fcntl(ic->ic_dirfd, F_NOTIFY,
+			DN_CREATE | DN_DELETE | DN_MULTISHOT);
+utils/idmapd/idmapd.c:		fcntl(ic->ic_dirfd, F_NOTIFY, 0);
 
+So the last is the only one where we're turning notifications *off*.
+
+So I think the patch is OK.
+
+--b.
+
+> 
+> Also, after you applied this patch, did the problem go away?
+> Finally, how often did this problem occur?
+> 
+> tia,
+> 
+> steved.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
