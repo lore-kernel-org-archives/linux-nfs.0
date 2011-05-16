@@ -1,77 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:36907 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:34625 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753933Ab1EXKy6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 06:54:58 -0400
-Message-ID: <4DDB8E68.2030504@panasas.com>
-Date: Tue, 24 May 2011 13:54:32 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] pnfs: layout_driver MUST set .free_deviceid_node if using
- dev-cache
-References: <4DDB8DD1.20101@panasas.com>
-In-Reply-To: <4DDB8DD1.20101@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+	with ESMTP id S1751200Ab1EPQWC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 12:22:02 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com
+Subject: [PATCH v3 10/29] exofs: pnfs-tree: Remove pnfs-osd private definitions
+Date: Mon, 16 May 2011 09:21:59 -0700
+Message-Id: <1305562919-7660-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD14D8E.1070701@panasas.com>
+References: <4DD14D8E.1070701@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Boaz Harrosh <bharrosh@panasas.com>
 
-A device cache is not a matter of memory store. It is a matter
-of mounting/login and unmounting/logout. So it is not logical
-to not set free_deviceid_node. Who will do the unmount?
-
-It is better to crash the developer then let him leak mounts.
+Now that pnfs-osd has hit mainline we can remove exofs's
+private header. (And the FIXME comment)
 
 Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- fs/nfs/pnfs_dev.c |   16 ++++------------
- 1 files changed, 4 insertions(+), 12 deletions(-)
+ fs/exofs/exofs.h |    6 +-----
+ fs/exofs/pnfs.h  |   45 ---------------------------------------------
+ 2 files changed, 1 insertions(+), 50 deletions(-)
+ delete mode 100644 fs/exofs/pnfs.h
 
-diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
-index 37ca215..1b592d9 100644
---- a/fs/nfs/pnfs_dev.c
-+++ b/fs/nfs/pnfs_dev.c
-@@ -163,10 +163,7 @@ nfs4_delete_deviceid(const struct pnfs_layoutdriver_type *ld,
- 	d = nfs4_unhash_put_deviceid(ld, clp, id);
- 	if (!d)
- 		return;
--	if (d->ld->free_deviceid_node)
--		d->ld->free_deviceid_node(d);
--	else
--		kfree(d);
-+	d->ld->free_deviceid_node(d);
- }
- EXPORT_SYMBOL_GPL(nfs4_delete_deviceid);
+diff --git a/fs/exofs/exofs.h b/fs/exofs/exofs.h
+index c965806..e103dbd 100644
+--- a/fs/exofs/exofs.h
++++ b/fs/exofs/exofs.h
+@@ -36,13 +36,9 @@
+ #include <linux/fs.h>
+ #include <linux/time.h>
+ #include <linux/backing-dev.h>
++#include <linux/pnfs_osd_xdr.h>
+ #include "common.h"
  
-@@ -232,8 +229,7 @@ nfs4_put_deviceid_node(struct nfs4_deviceid_node *d)
- 	hlist_del_init_rcu(&d->node);
- 	spin_unlock(&nfs4_deviceid_lock);
- 	synchronize_rcu();
--	if (d->ld->free_deviceid_node)
--		d->ld->free_deviceid_node(d);
-+	d->ld->free_deviceid_node(d);
- 	return true;
- }
- EXPORT_SYMBOL_GPL(nfs4_put_deviceid_node);
-@@ -258,12 +254,8 @@ _deviceid_purge_client(const struct nfs_client *clp, long hash)
+-/* FIXME: Remove once pnfs hits mainline
+- * #include <linux/exportfs/pnfs_osd_xdr.h>
+- */
+-#include "pnfs.h"
+-
+ #define EXOFS_ERR(fmt, a...) printk(KERN_ERR "exofs: " fmt, ##a)
  
- 	synchronize_rcu();
- 	hlist_for_each_entry_safe(d, n, next, &tmp, node)
--		if (atomic_dec_and_test(&d->ref)) {
--			if (d->ld->free_deviceid_node)
--				d->ld->free_deviceid_node(d);
--			else
--				kfree(d);
--		}
-+		if (atomic_dec_and_test(&d->ref))
-+			d->ld->free_deviceid_node(d);
- }
- 
- void
+ #ifdef CONFIG_EXOFS_DEBUG
+diff --git a/fs/exofs/pnfs.h b/fs/exofs/pnfs.h
+deleted file mode 100644
+index c52e988..0000000
+--- a/fs/exofs/pnfs.h
++++ /dev/null
+@@ -1,45 +0,0 @@
+-/*
+- * Copyright (C) 2008, 2009
+- * Boaz Harrosh <bharrosh@panasas.com>
+- *
+- * This file is part of exofs.
+- *
+- * exofs is free software; you can redistribute it and/or modify it under the
+- * terms of the GNU General Public License  version 2 as published by the Free
+- * Software Foundation.
+- *
+- */
+-
+-/* FIXME: Remove this file once pnfs hits mainline */
+-
+-#ifndef __EXOFS_PNFS_H__
+-#define __EXOFS_PNFS_H__
+-
+-#if ! defined(__PNFS_OSD_XDR_H__)
+-
+-enum pnfs_iomode {
+-	IOMODE_READ = 1,
+-	IOMODE_RW = 2,
+-	IOMODE_ANY = 3,
+-};
+-
+-/* Layout Structure */
+-enum pnfs_osd_raid_algorithm4 {
+-	PNFS_OSD_RAID_0		= 1,
+-	PNFS_OSD_RAID_4		= 2,
+-	PNFS_OSD_RAID_5		= 3,
+-	PNFS_OSD_RAID_PQ	= 4     /* Reed-Solomon P+Q */
+-};
+-
+-struct pnfs_osd_data_map {
+-	u32	odm_num_comps;
+-	u64	odm_stripe_unit;
+-	u32	odm_group_width;
+-	u32	odm_group_depth;
+-	u32	odm_mirror_cnt;
+-	u32	odm_raid_algorithm;
+-};
+-
+-#endif /* ! defined(__PNFS_OSD_XDR_H__) */
+-
+-#endif /* __EXOFS_PNFS_H__ */
 -- 
-1.7.2.3
-
+1.7.3.4
 
