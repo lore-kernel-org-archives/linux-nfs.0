@@ -1,51 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:24130 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:34797 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755264Ab1EPN71 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 09:59:27 -0400
+	with ESMTP id S1752379Ab1EPQXu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 12:23:50 -0400
 From: Benny Halevy <bhalevy@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 1/4] pnfs: align layoutget requests on page boundaries
-Date: Mon, 16 May 2011 06:59:17 -0700
-Message-Id: <1305554357-29114-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DCC715C.1090101@panasas.com>
-References: <4DCC715C.1090101@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com
+Subject: [PATCH v3 23/29] sunrpc: xdr_rewind_stream()
+Date: Mon, 16 May 2011 09:23:47 -0700
+Message-Id: <1305563027-8136-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD14D8E.1070701@panasas.com>
+References: <4DD14D8E.1070701@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
----
- fs/nfs/pnfs.c |    8 ++++++++
- 1 files changed, 8 insertions(+), 0 deletions(-)
+In a long encoded xdr stream, we might run out of allocated xdr space.
+In some situations it is possibly to reset the xdr buffer to a previuos
+good state and send a parial list, which is better then just BUGing as
+today or completely failing the xdr.
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index e689bdf..589989d 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -850,6 +850,7 @@ pnfs_update_layout(struct inode *ino,
- 		.offset = pos,
- 		.length = count,
- 	};
-+	unsigned pg_offset;
- 	struct nfs_inode *nfsi = NFS_I(ino);
- 	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
- 	struct pnfs_layout_hdr *lo;
-@@ -899,6 +900,13 @@ pnfs_update_layout(struct inode *ino,
- 		spin_unlock(&clp->cl_lock);
- 	}
+* define such API that can move the xdr pointer to a good known
+  state before the failed encoding.
+
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ include/linux/sunrpc/xdr.h |    1 +
+ net/sunrpc/xdr.c           |   21 +++++++++++++++++++++
+ 2 files changed, 22 insertions(+), 0 deletions(-)
+
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index fc84b7a..bf17e38 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -213,6 +213,7 @@ typedef int	(*kxdrdproc_t)(void *rqstp, struct xdr_stream *xdr, void *obj);
  
-+	pg_offset = arg.offset & ~PAGE_CACHE_MASK;
-+	if (pg_offset) {
-+		arg.offset -= pg_offset;
-+		arg.length += pg_offset;
-+	}
-+	arg.length = PAGE_CACHE_ALIGN(arg.length);
+ extern void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
+ extern __be32 *xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes);
++extern __be32 *xdr_rewind_stream(struct xdr_stream *xdr, __be32 *q);
+ extern void xdr_write_pages(struct xdr_stream *xdr, struct page **pages,
+ 		unsigned int base, unsigned int len);
+ extern void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 679cd67..3e0d79e 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -518,6 +518,27 @@ __be32 * xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes)
+ EXPORT_SYMBOL_GPL(xdr_reserve_space);
+ 
+ /**
++ * xdr_rewind_stream - rewind a stream back to some checkpoint
++ * @xdr: pointer to xdr_stream
++ * @q: some checkpoint at historical place of @xdr
++ *
++ * Restors an xdr stream to some historical point. @q must be
++ * a logical xdr point in the past that was sampled by @q = @xdr->p.
++ */
++__be32 *xdr_rewind_stream(struct xdr_stream *xdr, __be32 *q)
++{
++	size_t nbytes = (xdr->p - q) << 2;
 +
- 	lseg = send_layoutget(lo, ctx, &arg);
- 	if (!lseg && first) {
- 		spin_lock(&clp->cl_lock);
++	BUG_ON(xdr->p < q);
++	BUG_ON(nbytes > xdr->iov->iov_len || nbytes > xdr->buf->len);
++	xdr->p = q;
++	xdr->iov->iov_len -= nbytes;
++	xdr->buf->len -= nbytes;
++	return q;
++}
++EXPORT_SYMBOL_GPL(xdr_rewind_stream);
++
++/**
+  * xdr_write_pages - Insert a list of pages into an XDR buffer for sending
+  * @xdr: pointer to xdr_stream
+  * @pages: list of pages
 -- 
 1.7.3.4
 
