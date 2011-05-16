@@ -1,488 +1,280 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:50925 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:34928 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755219Ab1E2SZ5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 14:25:57 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Benny Halevy <bhalevy@panasas.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Cc: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 22/32] pnfs: layoutreturn
-Date: Sun, 29 May 2011 21:25:46 +0300
-Message-Id: <1306693546-8328-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4DE28CFB.4060608@panasas.com>
-References: <4DE28CFB.4060608@panasas.com>
+	with ESMTP id S1751790Ab1EPQYk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 12:24:40 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com
+Subject: [PATCH v3 29/29] pnfs-obj: objio_osd: groups support
+Date: Mon, 16 May 2011 09:24:36 -0700
+Message-Id: <1305563076-8362-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD14D8E.1070701@panasas.com>
+References: <4DD14D8E.1070701@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+From: Boaz Harrosh <bharrosh@panasas.com>
 
-NFSv4.1 LAYOUTRETURN implementation
+* _calc_stripe_info() changes to accommodate for grouping
+  calculations. Returns additional information
 
-Currently, does not support layout-type payload encoding.
+* old _prepare_pages() becomes _prepare_one_group()
+  which stores pages belonging to one device group.
 
-Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-Signed-off-by: Andy Adamson <andros@citi.umich.edu>
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
-Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
-[call pnfs_return_layout right before pnfs_destroy_layout]
-[remove assert_spin_locked from pnfs_clear_lseg_list]
-[remove wait parameter from the layoutreturn path.]
-[remove return_type field from nfs4_layoutreturn_args]
-[remove range from nfs4_layoutreturn_args]
-[no need to send layoutcommit from _pnfs_return_layout]
-[don't wait on sync layoutreturn]
-[fix layout stateid in layoutreturn args]
-[fixed NULL deref in _pnfs_return_layout]
-[removed recaim member of nfs4_layoutreturn_args]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+* Iterates on all groups calling _prepare_one_group().
+
+* Enable mounting of groups data_maps (group_width != 0)
+
+TODO:
+  Support for parial layout will come in next patch
+
+[Support partial layouts]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- fs/nfs/inode.c          |    3 +-
- fs/nfs/nfs4proc.c       |   82 ++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4xdr.c        |  111 ++++++++++++++++++++++++++++++++++++++++++++---
- fs/nfs/pnfs.c           |   45 +++++++++++++++++++
- fs/nfs/pnfs.h           |   18 ++++++++
- include/linux/nfs4.h    |    1 +
- include/linux/nfs_xdr.h |   21 +++++++++
- 7 files changed, 274 insertions(+), 7 deletions(-)
+ fs/nfs/objlayout/objio_osd.c |  135 +++++++++++++++++++++++++++++++++---------
+ 1 files changed, 106 insertions(+), 29 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 57bb31a..e9c6d9f 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1424,9 +1424,10 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
-  */
- void nfs4_evict_inode(struct inode *inode)
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 6da4aa2..e7a0fcb 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -134,6 +134,8 @@ struct objio_segment {
+ 	unsigned mirrors_p1;
+ 	unsigned stripe_unit;
+ 	unsigned group_width;	/* Data stripe_units without integrity comps */
++	u64 group_depth;
++	unsigned group_count;
+ 
+ 	unsigned num_comps;
+ 	/* variable length */
+@@ -252,12 +254,9 @@ static int _verify_data_map(struct pnfs_osd_layout *layout)
  {
--	pnfs_destroy_layout(NFS_I(inode));
- 	truncate_inode_pages(&inode->i_data, 0);
- 	end_writeback(inode);
-+	pnfs_return_layout(inode);
-+	pnfs_destroy_layout(NFS_I(inode));
- 	/* If we are holding a delegation, return it! */
- 	nfs_inode_return_delegation_noreclaim(inode);
- 	/* First call standard NFS clear_inode() code */
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 92c8bc4..5b4124e 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5673,6 +5673,88 @@ int nfs4_proc_layoutget(struct nfs4_layoutget *lgp)
- 	return status;
+ 	struct pnfs_osd_data_map *data_map = &layout->olo_map;
+ 	u64 stripe_length;
++	u32 group_width;
+ 
+-/* FIXME: Only raid0 !group_width/depth for now. if not so, do not mount */
+-	if (data_map->odm_group_width || data_map->odm_group_depth) {
+-		printk(KERN_ERR "Group width/depth not supported\n");
+-		return -ENOTSUPP;
+-	}
++/* FIXME: Only raid0 for now. if not go through MDS */
+ 	if (data_map->odm_raid_algorithm != PNFS_OSD_RAID_0) {
+ 		printk(KERN_ERR "Only RAID_0 for now\n");
+ 		return -ENOTSUPP;
+@@ -268,8 +267,13 @@ static int _verify_data_map(struct pnfs_osd_layout *layout)
+ 		return -EINVAL;
+ 	}
+ 
+-	stripe_length = data_map->odm_stripe_unit * (data_map->odm_num_comps /
+-						(data_map->odm_mirror_cnt + 1));
++	if (data_map->odm_group_width)
++		group_width = data_map->odm_group_width;
++	else
++		group_width = data_map->odm_num_comps /
++						(data_map->odm_mirror_cnt + 1);
++
++	stripe_length = (u64)data_map->odm_stripe_unit * group_width;
+ 	if (stripe_length >= (1ULL << 32)) {
+ 		printk(KERN_ERR "Total Stripe length(0x%llx)"
+ 			  " >= 32bit is not supported\n", _LLU(stripe_length));
+@@ -311,8 +315,18 @@ int objio_alloc_lseg(void **outp,
+ 
+ 	objio_seg->mirrors_p1 = layout->olo_map.odm_mirror_cnt + 1;
+ 	objio_seg->stripe_unit = layout->olo_map.odm_stripe_unit;
+-	objio_seg->group_width = layout->olo_map.odm_num_comps /
+-							objio_seg->mirrors_p1;
++	if (layout->olo_map.odm_group_width) {
++		objio_seg->group_width = layout->olo_map.odm_group_width;
++		objio_seg->group_depth = layout->olo_map.odm_group_depth;
++		objio_seg->group_count = layout->olo_map.odm_num_comps /
++						objio_seg->mirrors_p1 /
++						objio_seg->group_width;
++	} else {
++		objio_seg->group_width = layout->olo_map.odm_num_comps /
++						objio_seg->mirrors_p1;
++		objio_seg->group_depth = -1;
++		objio_seg->group_count = 1;
++	}
+ 
+ 	*outp = objio_seg;
+ 	return 0;
+@@ -483,6 +497,9 @@ struct osd_dev * _io_od(struct objio_state *ios, unsigned dev)
+ 
+ struct _striping_info {
+ 	u64 obj_offset;
++	u64 group_length;
++	u64 total_group_length;
++	u64 Major;
+ 	unsigned dev;
+ 	unsigned unit_off;
+ };
+@@ -492,15 +509,34 @@ static void _calc_stripe_info(struct objio_state *ios, u64 file_offset,
+ {
+ 	u32	stripe_unit = ios->objio_seg->stripe_unit;
+ 	u32	group_width = ios->objio_seg->group_width;
++	u64	group_depth = ios->objio_seg->group_depth;
+ 	u32	U = stripe_unit * group_width;
+ 
+-	u32	LmodU;
+-	u64 	N = div_u64_rem(file_offset, U, &LmodU);
++	u64	T = U * group_depth;
++	u64	S = T * ios->objio_seg->group_count;
++	u64	M = div64_u64(file_offset, S);
++
++	/*
++	G = (L - (M * S)) / T
++	H = (L - (M * S)) % T
++	*/
++	u64	LmodU = file_offset - M * S;
++	u32	G = div64_u64(LmodU, T);
++	u64	H = LmodU - G * T;
++
++	u32	N = div_u64(H, U);
++
++	div_u64_rem(file_offset, stripe_unit, &si->unit_off);
++	si->obj_offset = si->unit_off + (N * stripe_unit) +
++				  (M * group_depth * stripe_unit);
+ 
+-	si->unit_off = LmodU % stripe_unit;
+-	si->obj_offset = N * stripe_unit + si->unit_off;
+-	si->dev = LmodU / stripe_unit;
++	/* "H - (N * U)" is just "H % U" so it's bound to u32 */
++	si->dev = (u32)(H - (N * U)) / stripe_unit + G * group_width;
+ 	si->dev *= ios->objio_seg->mirrors_p1;
++
++	si->group_length = T - H;
++	si->total_group_length = T;
++	si->Major = M;
  }
  
-+static void
-+nfs4_layoutreturn_prepare(struct rpc_task *task, void *calldata)
-+{
-+	struct nfs4_layoutreturn *lrp = calldata;
-+
-+	dprintk("--> %s\n", __func__);
-+	if (nfs41_setup_sequence(lrp->clp->cl_session, &lrp->args.seq_args,
-+				&lrp->res.seq_res, 0, task))
-+		return;
-+	rpc_call_start(task);
-+}
-+
-+static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
-+{
-+	struct nfs4_layoutreturn *lrp = calldata;
-+	struct nfs_server *server;
-+
-+	dprintk("--> %s\n", __func__);
-+
-+	if (!nfs4_sequence_done(task, &lrp->res.seq_res))
-+		return;
-+
-+	server = NFS_SERVER(lrp->args.inode);
-+	if (nfs4_async_handle_error(task, server, NULL) == -EAGAIN) {
-+		nfs_restart_rpc(task, lrp->clp);
-+		return;
-+	}
-+	if (task->tk_status == 0) {
-+		struct pnfs_layout_hdr *lo = NFS_I(lrp->args.inode)->layout;
-+
-+		if (lrp->res.lrs_present) {
-+			spin_lock(&lo->plh_inode->i_lock);
-+			pnfs_set_layout_stateid(lo, &lrp->res.stateid, true);
-+			spin_unlock(&lo->plh_inode->i_lock);
-+		} else
-+			BUG_ON(!list_empty(&lo->plh_segs));
-+	}
-+	dprintk("<-- %s\n", __func__);
-+}
-+
-+static void nfs4_layoutreturn_release(void *calldata)
-+{
-+	struct nfs4_layoutreturn *lrp = calldata;
-+
-+	dprintk("--> %s\n", __func__);
-+	put_layout_hdr(NFS_I(lrp->args.inode)->layout);
-+	kfree(calldata);
-+	dprintk("<-- %s\n", __func__);
-+}
-+
-+static const struct rpc_call_ops nfs4_layoutreturn_call_ops = {
-+	.rpc_call_prepare = nfs4_layoutreturn_prepare,
-+	.rpc_call_done = nfs4_layoutreturn_done,
-+	.rpc_release = nfs4_layoutreturn_release,
-+};
-+
-+int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp)
-+{
-+	struct rpc_task *task;
-+	struct rpc_message msg = {
-+		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LAYOUTRETURN],
-+		.rpc_argp = &lrp->args,
-+		.rpc_resp = &lrp->res,
-+	};
-+	struct rpc_task_setup task_setup_data = {
-+		.rpc_client = lrp->clp->cl_rpcclient,
-+		.rpc_message = &msg,
-+		.callback_ops = &nfs4_layoutreturn_call_ops,
-+		.callback_data = lrp,
-+	};
-+	int status;
-+
-+	dprintk("--> %s\n", __func__);
-+	task = rpc_run_task(&task_setup_data);
-+	if (IS_ERR(task))
-+		return PTR_ERR(task);
-+	status = task->tk_status;
-+	dprintk("<-- %s status=%d\n", __func__, status);
-+	rpc_put_task(task);
-+	return status;
-+}
-+
- static int
- _nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
- {
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index c3ccd2c..f242120 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -338,7 +338,11 @@ static int nfs4_stat_to_errno(int);
- 				1 /* layoutupdate4 layout type */ + \
- 				1 /* NULL filelayout layoutupdate4 payload */)
- #define decode_layoutcommit_maxsz (op_decode_hdr_maxsz + 3)
--
-+#define encode_layoutreturn_maxsz (8 + op_encode_hdr_maxsz + \
-+				encode_stateid_maxsz + \
-+				1 /* FIXME: opaque lrf_body always empty at the moment */)
-+#define decode_layoutreturn_maxsz (op_decode_hdr_maxsz + \
-+				1 + decode_stateid_maxsz)
- #else /* CONFIG_NFS_V4_1 */
- #define encode_sequence_maxsz	0
- #define decode_sequence_maxsz	0
-@@ -760,7 +764,14 @@ static int nfs4_stat_to_errno(int);
- 				decode_putfh_maxsz + \
- 				decode_layoutcommit_maxsz + \
- 				decode_getattr_maxsz)
--
-+#define NFS4_enc_layoutreturn_sz (compound_encode_hdr_maxsz + \
-+				encode_sequence_maxsz + \
-+				encode_putfh_maxsz + \
-+				encode_layoutreturn_maxsz)
-+#define NFS4_dec_layoutreturn_sz (compound_decode_hdr_maxsz + \
-+				decode_sequence_maxsz + \
-+				decode_putfh_maxsz + \
-+				decode_layoutreturn_maxsz)
- 
- const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
- 				      compound_encode_hdr_maxsz +
-@@ -1889,6 +1900,31 @@ encode_layoutcommit(struct xdr_stream *xdr,
- 	hdr->replen += decode_layoutcommit_maxsz;
+ static int _add_stripe_unit(struct objio_state *ios,  unsigned *cur_pg,
+@@ -547,15 +583,18 @@ static int _add_stripe_unit(struct objio_state *ios,  unsigned *cur_pg,
  	return 0;
  }
-+
-+static void
-+encode_layoutreturn(struct xdr_stream *xdr,
-+		    const struct nfs4_layoutreturn_args *args,
-+		    struct compound_hdr *hdr)
-+{
-+	__be32 *p;
-+
-+	p = reserve_space(xdr, 20);
-+	*p++ = cpu_to_be32(OP_LAYOUTRETURN);
-+	*p++ = cpu_to_be32(0);		/* reclaim. always 0 for now */
-+	*p++ = cpu_to_be32(args->layout_type);
-+	*p++ = cpu_to_be32(IOMODE_ANY);
-+	*p = cpu_to_be32(RETURN_FILE);
-+	p = reserve_space(xdr, 16 + NFS4_STATEID_SIZE);
-+	p = xdr_encode_hyper(p, 0);
-+	p = xdr_encode_hyper(p, NFS4_MAX_UINT64);
-+	spin_lock(&args->inode->i_lock);
-+	xdr_encode_opaque_fixed(p, &args->stateid.data, NFS4_STATEID_SIZE);
-+	spin_unlock(&args->inode->i_lock);
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(0);
-+	hdr->nops++;
-+	hdr->replen += decode_layoutreturn_maxsz;
-+}
- #endif /* CONFIG_NFS_V4_1 */
  
- /*
-@@ -2706,9 +2742,9 @@ static void nfs4_xdr_enc_layoutget(struct rpc_rqst *req,
- /*
-  *  Encode LAYOUTCOMMIT request
-  */
--static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
--				     struct xdr_stream *xdr,
--				     struct nfs4_layoutcommit_args *args)
-+static void nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
-+				      struct xdr_stream *xdr,
-+				      struct nfs4_layoutcommit_args *args)
+-static int _prepare_pages(struct objio_state *ios, struct _striping_info *si)
++static int _prepare_one_group(struct objio_state *ios, u64 length,
++			      struct _striping_info *si, unsigned first_comp,
++			      unsigned *last_pg)
  {
- 	struct compound_hdr hdr = {
- 		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
-@@ -2720,7 +2756,24 @@ static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
- 	encode_layoutcommit(xdr, args, &hdr);
- 	encode_getfattr(xdr, args->bitmask, &hdr);
- 	encode_nops(&hdr);
+-	u64 length = ios->ol_state.count;
+ 	unsigned stripe_unit = ios->objio_seg->stripe_unit;
+ 	unsigned mirrors_p1 = ios->objio_seg->mirrors_p1;
++	unsigned devs_in_group = ios->objio_seg->group_width * mirrors_p1;
+ 	unsigned dev = si->dev;
+-	unsigned comp = 0;
+-	unsigned stripes = 0;
+-	unsigned cur_pg = 0;
++	unsigned first_dev = dev - (dev % devs_in_group);
++	unsigned comp = first_comp + (dev - first_dev);
++	unsigned max_comp = ios->numdevs ? ios->numdevs - mirrors_p1 : 0;
++	unsigned cur_pg = *last_pg;
+ 	int ret = 0;
+ 
+ 	while (length) {
+@@ -579,10 +618,11 @@ static int _prepare_pages(struct objio_state *ios, struct _striping_info *si)
+ 				cur_len = stripe_unit;
+ 			}
+ 
+-			stripes++;
++			if (max_comp < comp)
++				max_comp = comp;
+ 
+ 			dev += mirrors_p1;
+-			dev %= ios->ol_state.num_comps;
++			dev = (dev % devs_in_group) + first_dev;
+ 		} else {
+ 			cur_len = stripe_unit;
+ 		}
+@@ -595,25 +635,58 @@ static int _prepare_pages(struct objio_state *ios, struct _striping_info *si)
+ 			goto out;
+ 
+ 		comp += mirrors_p1;
+-		comp %= ios->ol_state.num_comps;
++		comp = (comp % devs_in_group) + first_comp;
+ 
+ 		length -= cur_len;
+ 		ios->length += cur_len;
+ 	}
+ out:
+-	if (!ios->length)
+-		return ret;
+-
+-	ios->numdevs = stripes * mirrors_p1;
 -	return 0;
-+}
-+
-+/*
-+ * Encode LAYOUTRETURN request
-+ */
-+static void nfs4_xdr_enc_layoutreturn(struct rpc_rqst *req,
-+				      struct xdr_stream *xdr,
-+				      struct nfs4_layoutreturn_args *args)
-+{
-+	struct compound_hdr hdr = {
-+		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
-+	};
-+
-+	encode_compound_hdr(xdr, req, &hdr);
-+	encode_sequence(xdr, &args->seq_args, &hdr);
-+	encode_putfh(xdr, NFS_FH(args->inode), &hdr);
-+	encode_layoutreturn(xdr, args, &hdr);
-+	encode_nops(&hdr);
- }
- #endif /* CONFIG_NFS_V4_1 */
- 
-@@ -5203,6 +5256,27 @@ out_overflow:
- 	return -EIO;
++	ios->numdevs = max_comp + mirrors_p1;
++	*last_pg = cur_pg;
++	return ret;
  }
  
-+static int decode_layoutreturn(struct xdr_stream *xdr,
-+			       struct nfs4_layoutreturn_res *res)
-+{
-+	__be32 *p;
-+	int status;
-+
-+	status = decode_op_hdr(xdr, OP_LAYOUTRETURN);
-+	if (status)
-+		return status;
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(!p))
-+		goto out_overflow;
-+	res->lrs_present = be32_to_cpup(p);
-+	if (res->lrs_present)
-+		status = decode_stateid(xdr, &res->stateid);
-+	return status;
-+out_overflow:
-+	print_overflow_msg(__func__, xdr);
-+	return -EIO;
-+}
-+
- static int decode_layoutcommit(struct xdr_stream *xdr,
- 			       struct rpc_rqst *req,
- 			       struct nfs4_layoutcommit_res *res)
-@@ -6320,6 +6394,30 @@ out:
- }
+ static int _io_rw_pagelist(struct objio_state *ios)
+ {
++	u64 length = ios->ol_state.count;
+ 	struct _striping_info si;
++	unsigned devs_in_group = ios->objio_seg->group_width *
++				 ios->objio_seg->mirrors_p1;
++	unsigned first_comp = 0;
++	unsigned num_comps = ios->objio_seg->layout->olo_map.odm_num_comps;
++	unsigned last_pg = 0;
++	int ret = 0;
  
- /*
-+ * Decode LAYOUTRETURN response
-+ */
-+static int nfs4_xdr_dec_layoutreturn(struct rpc_rqst *rqstp,
-+				     struct xdr_stream *xdr,
-+				     struct nfs4_layoutreturn_res *res)
-+{
-+	struct compound_hdr hdr;
-+	int status;
+-	_calc_stripe_info(ios, ios->ol_state.count, &si);
+-	return _prepare_pages(ios, &si);
++	_calc_stripe_info(ios, ios->ol_state.offset, &si);
++	while (length) {
++		if (length < si.group_length)
++			si.group_length = length;
 +
-+	status = decode_compound_hdr(xdr, &hdr);
-+	if (status)
-+		goto out;
-+	status = decode_sequence(xdr, &res->seq_res, rqstp);
-+	if (status)
-+		goto out;
-+	status = decode_putfh(xdr);
-+	if (status)
-+		goto out;
-+	status = decode_layoutreturn(xdr, res);
-+out:
-+	return status;
-+}
++		ret = _prepare_one_group(ios, si.group_length, &si, first_comp,
++					 &last_pg);
++		if (unlikely(ret))
++			goto out;
 +
-+/*
-  * Decode LAYOUTCOMMIT response
-  */
- static int nfs4_xdr_dec_layoutcommit(struct rpc_rqst *rqstp,
-@@ -6547,6 +6645,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
- 	PROC(GETDEVICEINFO,	enc_getdeviceinfo,	dec_getdeviceinfo),
- 	PROC(LAYOUTGET,		enc_layoutget,		dec_layoutget),
- 	PROC(LAYOUTCOMMIT,	enc_layoutcommit,	dec_layoutcommit),
-+	PROC(LAYOUTRETURN,	enc_layoutreturn,	dec_layoutreturn),
- #endif /* CONFIG_NFS_V4_1 */
- };
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 1716621..00b1282 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -619,6 +619,51 @@ out_err_free:
- 	return NULL;
- }
- 
-+/* Initiates a LAYOUTRETURN(FILE) */
-+int
-+_pnfs_return_layout(struct inode *ino)
-+{
-+	struct pnfs_layout_hdr *lo = NULL;
-+	struct nfs_inode *nfsi = NFS_I(ino);
-+	LIST_HEAD(tmp_list);
-+	struct nfs4_layoutreturn *lrp;
-+	nfs4_stateid stateid;
-+	int status = 0;
++		length -= si.group_length;
 +
-+	dprintk("--> %s\n", __func__);
++		si.group_length = si.total_group_length;
++		si.unit_off = 0;
++		++si.Major;
++		si.obj_offset = si.Major * ios->objio_seg->stripe_unit *
++						ios->objio_seg->group_depth;
 +
-+	spin_lock(&ino->i_lock);
-+	lo = nfsi->layout;
-+	if (!lo || !mark_matching_lsegs_invalid(lo, &tmp_list, NULL)) {
-+		spin_unlock(&ino->i_lock);
-+		dprintk("%s: no layout segments to return\n", __func__);
-+		goto out;
-+	}
-+	stateid = nfsi->layout->plh_stateid;
-+	/* Reference matched in nfs4_layoutreturn_release */
-+	get_layout_hdr(lo);
-+	spin_unlock(&ino->i_lock);
-+	pnfs_free_lseg_list(&tmp_list);
++		si.dev = (si.dev - (si.dev % devs_in_group)) + devs_in_group;
++		si.dev %= num_comps;
 +
-+	WARN_ON(test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags));
-+
-+	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
-+	if (unlikely(lrp == NULL)) {
-+		status = -ENOMEM;
-+		goto out;
++		first_comp += devs_in_group;
++		first_comp %= num_comps;
 +	}
 +
-+	lrp->args.stateid = stateid;
-+	lrp->args.layout_type = NFS_SERVER(ino)->pnfs_curr_ld->id;
-+	lrp->args.inode = ino;
-+	lrp->clp = NFS_SERVER(ino)->nfs_client;
-+
-+	status = nfs4_proc_layoutreturn(lrp);
 +out:
-+	dprintk("<-- %s status: %d\n", __func__, status);
-+	return status;
-+}
-+
- bool pnfs_roc(struct inode *ino)
- {
- 	struct pnfs_layout_hdr *lo;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 0383e66..c34f7a0 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -129,6 +129,7 @@ extern void pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *);
- extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
- 				   struct pnfs_device *dev);
- extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
-+extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
- 
- /* pnfs.c */
- void get_layout_hdr(struct pnfs_layout_hdr *lo);
-@@ -165,6 +166,7 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
- bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
- void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
- int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
-+int _pnfs_return_layout(struct inode *);
- int pnfs_ld_write_done(struct nfs_write_data *);
- int pnfs_ld_read_done(struct nfs_read_data *);
- 
-@@ -256,6 +258,17 @@ static inline void pnfs_clear_request_commit(struct nfs_page *req)
- 		put_lseg(req->wb_commit_lseg);
- }
- 
-+static inline int pnfs_return_layout(struct inode *ino)
-+{
-+	struct nfs_inode *nfsi = NFS_I(ino);
-+	struct nfs_server *nfss = NFS_SERVER(ino);
-+
-+	if (pnfs_enabled_sb(nfss) && nfsi->layout)
-+		return _pnfs_return_layout(ino);
++	if (!ios->length)
++		return ret;
 +
 +	return 0;
-+}
-+
- #else  /* CONFIG_NFS_V4_1 */
- 
- static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
-@@ -298,6 +311,11 @@ pnfs_try_to_write_data(struct nfs_write_data *data,
- 	return PNFS_NOT_ATTEMPTED;
  }
  
-+static inline int pnfs_return_layout(struct inode *ino)
-+{
-+	return 0;
-+}
-+
- static inline bool
- pnfs_roc(struct inode *ino)
- {
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 178fafe..9376eaf 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -562,6 +562,7 @@ enum {
- 	NFSPROC4_CLNT_LAYOUTGET,
- 	NFSPROC4_CLNT_GETDEVICEINFO,
- 	NFSPROC4_CLNT_LAYOUTCOMMIT,
-+	NFSPROC4_CLNT_LAYOUTRETURN,
- };
+ static ssize_t _sync_done(struct objio_state *ios)
+@@ -735,6 +808,8 @@ static ssize_t _read_exec(struct objio_state *ios)
+ 	int ret;
  
- /* nfs41 types */
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 7c8ff09..5e8444a 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -269,6 +269,27 @@ struct nfs4_layoutcommit_data {
- 	struct nfs4_layoutcommit_res res;
- };
+ 	for (i = 0; i < ios->numdevs; i += ios->objio_seg->mirrors_p1) {
++		if (!ios->per_dev[i].length)
++			continue;
+ 		ret = _read_mirrors(ios, i);
+ 		if (unlikely(ret))
+ 			goto err;
+@@ -855,6 +930,8 @@ static ssize_t _write_exec(struct objio_state *ios)
+ 	int ret;
  
-+struct nfs4_layoutreturn_args {
-+	__u32   layout_type;
-+	struct inode *inode;
-+	nfs4_stateid stateid;
-+	struct nfs4_sequence_args seq_args;
-+};
-+
-+struct nfs4_layoutreturn_res {
-+	struct nfs4_sequence_res seq_res;
-+	u32 lrs_present;
-+	nfs4_stateid stateid;
-+};
-+
-+struct nfs4_layoutreturn {
-+	struct nfs4_layoutreturn_args args;
-+	struct nfs4_layoutreturn_res res;
-+	struct rpc_cred *cred;
-+	struct nfs_client *clp;
-+	int rpc_status;
-+};
-+
- /*
-  * Arguments to the open call.
-  */
+ 	for (i = 0; i < ios->numdevs; i += ios->objio_seg->mirrors_p1) {
++		if (!ios->per_dev[i].length)
++			continue;
+ 		ret = _write_mirrors(ios, i);
+ 		if (unlikely(ret))
+ 			goto err;
 -- 
-1.7.2.3
+1.7.3.4
 
