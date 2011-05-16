@@ -1,52 +1,167 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp109.prem.mail.sp1.yahoo.com ([98.136.44.54]:30124 "HELO
-	smtp109.prem.mail.sp1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751524Ab1EDRtT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 May 2011 13:49:19 -0400
-Message-ID: <4DC1900D.3010804@schaufler-ca.com>
-Date: Wed, 04 May 2011 10:42:37 -0700
-From: Casey Schaufler <casey@schaufler-ca.com>
-To: Roberto Sassu <roberto.sassu@polito.it>
-CC: Tyler Hicks <tyhicks@linux.vnet.ibm.com>,
-        linux-security-module@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, dhowells@redhat.com, jmorris@namei.org,
-        zohar@linux.vnet.ibm.com, safford@watson.ibm.com,
-        kirkland@canonical.com, ecryptfs-devel@lists.launchpad.net,
-        eparis@redhat.com, sds@tycho.nsa.gov, selinux@tycho.nsa.gov,
-        viro@zeniv.linux.org.uk, john.johansen@canonical.com,
-        apparmor@lists.ubuntu.com, bfields@fieldses.org, neilb@suse.de,
-        linux-nfs@vger.kernel.org, Casey Schaufler <casey@schaufler-ca.com>
-Subject: Re: [RFC][PATCH 0/7] File descriptor labeling
-References: <201104291139.37489.roberto.sassu@polito.it> <201105021053.54031.roberto.sassu@polito.it> <4DC088A8.4000300@schaufler-ca.com> <201105041119.57493.roberto.sassu@polito.it>
-In-Reply-To: <201105041119.57493.roberto.sassu@polito.it>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:34585 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750707Ab1EPQVh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 12:21:37 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com
+Subject: [PATCH v3 07/29] pnfs-obj: objlayoutdriver module skeleton
+Date: Mon, 16 May 2011 09:21:29 -0700
+Message-Id: <1305562889-7469-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD14D8E.1070701@panasas.com>
+References: <4DD14D8E.1070701@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 5/4/2011 2:19 AM, Roberto Sassu wrote:
-> On Wednesday, May 04, 2011 12:58:48 AM Casey Schaufler wrote:
->> On 5/2/2011 1:53 AM, Roberto Sassu wrote:
->> ...
->>>> Right, but what I don't understand is why you can't use existing
->>>> mechanisms to achieve this? NFS manages (mostly).
->>> Please, can you explain better this thought?
->> NFS provides a network "view" of an ext4 (or any type for that matter)
->> filesystem. NFS does not support extended attributes, but there has been
->> ongoing work on that. It seems that if NFS does not require the kind
->> of changes you are requesting you shouldn't either.
-> I'm not familiar with NFS, so i cannot answer about this scenario.
+* Define the PNFS_OBJLAYOUT Kconfig option in the nfs
+  master Kconfig file.
+* Add the objlayout driver to the Kernel's Kbuild system.
+* Add the fs/nfs/objlayout/Kbuild file for building the
+  objlayoutdriver.ko driver
+* Define fs/nfs/objlayout/objio_osd.c, register the driver on module
+  initialization and unregister on exit.
 
-NFS provides the historical and prototypical example of a layered
-filesystem. If you are implementing a layered filesystem and have
-not researched NFS you are missing out on the bulk of the experience
-and wisdom on the subject.
+[pnfs-obj: remove of CONFIG_PNFS fallout]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+[added "unsure" clause]
+[depend on NFS_V4_1]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/Kconfig               |   10 +++++
+ fs/nfs/Makefile              |    2 +
+ fs/nfs/objlayout/Kbuild      |    5 +++
+ fs/nfs/objlayout/objio_osd.c |   76 ++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 93 insertions(+), 0 deletions(-)
+ create mode 100644 fs/nfs/objlayout/Kbuild
+ create mode 100644 fs/nfs/objlayout/objio_osd.c
 
-> I'm adding in CC also the NFS mantainers and the mailing list so
-> that they can express their point of view. The whole thread is
-> available at:
->
-> https://lkml.org/lkml/2011/4/27/201
->
-> Roberto Sassu
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index ba30665..8151554 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -87,6 +87,16 @@ config NFS_V4_1
+ config PNFS_FILE_LAYOUT
+ 	tristate
+ 
++config PNFS_OBJLAYOUT
++	tristate "Provide support for the pNFS Objects Layout Driver for NFSv4.1 pNFS (EXPERIMENTAL)"
++	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
++	help
++	  Say M here if you want your pNFS client to support the Objects Layout Driver.
++	  Requires the SCSI osd initiator library (SCSI_OSD_INITIATOR) and
++	  upper level driver (SCSI_OSD_ULD).
++
++	  If unsure, say N.
++
+ config ROOT_NFS
+ 	bool "Root file system on NFS"
+ 	depends on NFS_FS=y && IP_PNP
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 4776ff9..c9574f0 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -21,3 +21,5 @@ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+ 
+ obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
+ nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
++
++obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayout/
+diff --git a/fs/nfs/objlayout/Kbuild b/fs/nfs/objlayout/Kbuild
+new file mode 100644
+index 0000000..2e5b9a4
+--- /dev/null
++++ b/fs/nfs/objlayout/Kbuild
+@@ -0,0 +1,5 @@
++#
++# Makefile for the pNFS Objects Layout Driver kernel module
++#
++objlayoutdriver-y := objio_osd.o
++obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayoutdriver.o
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+new file mode 100644
+index 0000000..379595f
+--- /dev/null
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -0,0 +1,76 @@
++/*
++ *  pNFS Objects layout implementation over open-osd initiator library
++ *
++ *  Copyright (C) 2009 Panasas Inc. [year of first publication]
++ *  All rights reserved.
++ *
++ *  Benny Halevy <bhalevy@panasas.com>
++ *  Boaz Harrosh <bharrosh@panasas.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License version 2
++ *  See the file COPYING included with this distribution for more details.
++ *
++ *  Redistribution and use in source and binary forms, with or without
++ *  modification, are permitted provided that the following conditions
++ *  are met:
++ *
++ *  1. Redistributions of source code must retain the above copyright
++ *     notice, this list of conditions and the following disclaimer.
++ *  2. Redistributions in binary form must reproduce the above copyright
++ *     notice, this list of conditions and the following disclaimer in the
++ *     documentation and/or other materials provided with the distribution.
++ *  3. Neither the name of the Panasas company nor the names of its
++ *     contributors may be used to endorse or promote products derived
++ *     from this software without specific prior written permission.
++ *
++ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
++ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
++ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
++ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
++ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include <linux/module.h>
++#include "../pnfs.h"
++
++static struct pnfs_layoutdriver_type objlayout_type = {
++	.id = LAYOUT_OSD2_OBJECTS,
++	.name = "LAYOUT_OSD2_OBJECTS",
++};
++
++MODULE_DESCRIPTION("pNFS Layout Driver for OSD2 objects");
++MODULE_AUTHOR("Benny Halevy <bhalevy@panasas.com>");
++MODULE_LICENSE("GPL");
++
++static int __init
++objlayout_init(void)
++{
++	int ret = pnfs_register_layoutdriver(&objlayout_type);
++
++	if (ret)
++		printk(KERN_INFO
++			"%s: Registering OSD pNFS Layout Driver failed: error=%d\n",
++			__func__, ret);
++	else
++		printk(KERN_INFO "%s: Registered OSD pNFS Layout Driver\n",
++			__func__);
++	return ret;
++}
++
++static void __exit
++objlayout_exit(void)
++{
++	pnfs_unregister_layoutdriver(&objlayout_type);
++	printk(KERN_INFO "%s: Unregistered OSD pNFS Layout Driver\n",
++	       __func__);
++}
++
++module_init(objlayout_init);
++module_exit(objlayout_exit);
+-- 
+1.7.3.4
 
