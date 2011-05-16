@@ -1,77 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:19611 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:34910 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751193Ab1EUKWt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 May 2011 06:22:49 -0400
-Message-ID: <4DD79273.9030202@panasas.com>
-Date: Sat, 21 May 2011 13:22:43 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCHSET 00/13] SQUASHME pnfs-obj: Lots of changes addressing comments
- by Trond and Benny
-Content-Type: text/plain; charset=UTF-8
+	with ESMTP id S1750707Ab1EPQYH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 12:24:07 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com
+Subject: [PATCH v3 25/29] pnfs-obj: objio_osd report osd_errors for layoutreturn
+Date: Mon, 16 May 2011 09:24:03 -0700
+Message-Id: <1305563043-8208-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD14D8E.1070701@panasas.com>
+References: <4DD14D8E.1070701@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Boaz Harrosh <bharrosh@panasas.com>
 
-Submitted are SQUASHME patches on-top of *pnfs-exofs-all* that demonstrate all the
-changes I did addressing comments by Trond and Benny. So it is easy to see the changes
-and not need to review the complete patchset.
+* Allocate io-error descriptors space as part of io_state
+* Use generic objlayout error reporting at end of io.
 
-Thanks guys for the excellent review!
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/objlayout/objio_osd.c |   10 +++++++++-
+ 1 files changed, 9 insertions(+), 1 deletions(-)
 
-Next I will send a new *pnfs-submit* patchset so they can be reviewed and put in next.
-(Benny you need to come back to me if it is OK to submit the full read/write raid-engine
- as one patch, instead of three)
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 023f2b2..9c9dc9a 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -319,13 +319,17 @@ int objio_alloc_io_state(void *seg, struct objlayout_io_state **outp)
+ 	struct objio_state *ios;
+ 	const unsigned first_size = sizeof(*ios) +
+ 				objio_seg->num_comps * sizeof(ios->per_dev[0]);
++	const unsigned sec_size = objio_seg->num_comps *
++						sizeof(ios->ol_state.ioerrs[0]);
+ 
+ 	dprintk("%s: num_comps=%d\n", __func__, objio_seg->num_comps);
+-	ios = kzalloc(first_size, GFP_KERNEL);
++	ios = kzalloc(first_size + sec_size, GFP_KERNEL);
+ 	if (unlikely(!ios))
+ 		return -ENOMEM;
+ 
+ 	ios->objio_seg = objio_seg;
++	ios->ol_state.ioerrs = ((void *)ios) + first_size;
++	ios->ol_state.num_comps = objio_seg->num_comps;
+ 
+ 	*outp = &ios->ol_state;
+ 	return 0;
+@@ -412,6 +416,10 @@ static int _io_check(struct objio_state *ios, bool is_write)
+ 
+ 			continue; /* we recovered */
+ 		}
++		objlayout_io_set_result(&ios->ol_state, i,
++					osd_pri_2_pnfs_err(osi.osd_err_pri),
++					ios->ol_state.offset, ios->length,
++					is_write);
+ 
+ 		if (osi.osd_err_pri >= oep) {
+ 			oep = osi.osd_err_pri;
+-- 
+1.7.3.4
 
-Here is the list of SQUASHME patches:
-
-[PATCH 01/13] SQUASHME: re-reorder the functions so it compares better with raids base
-
-  Benny decided to change functions order. This completely through off all the changes
-  I had pending in my trees. This patch does nothing but moves code back to its original
-  place. See as reply to this email the diff of the nice changes Benny did after the last
-  tree at pnfs/pnfs-all-2.6.38
-
-[PATCH 02/13] SQUASHME: pnfs-obj: objio_segment only needs the pnfs_osd_layout->olo_comps
-[PATCH 03/13] SQUASHME: pnfs-obj: Rename ios->objio_seg => ios->layout
-[PATCH 04/13] SQUASHME: pnfs-obj: Fix groups code when num_devices is not divisible by group_width
-
-  These three are bug fixes and last minute code style changes
-
-[PATCH 05/13] SQUASHME: pnfs-obj: Convert layout and deviceinfo decoding to new XDR
-
-  This one was requested by Trond and rightly so. It is now supported a bigger then
-  4K layout, using all the new(old) exr_stream API. Thanks Trond!
-
-[PATCH 06/13] SQUASHME: pnfs-obj: Change API of objlayout_io_set_result
-[PATCH 07/13] SQUASHME: pnfs-obj: Avoid double allocation logic in objlayout_alloc_lseg
-
-  Another nice cleanup and performance boost.
-
-[PATCH 08/13] SQUASHME: pnfs_osd_xdr: Remove Server API declarations
-
-  Remove the dependency on the exp_xdr header.
-
-[PATCH 09/13] SQUASHME: pnfs_osd_xdr: Avoid using xdr_rewind_stream
-
-  Also requested by Trond
-
-[PATCH 10/13] [RFC] Bugs in new pnfs write path
-
-  This is a resend of the BUGs patch to pnfs-core (So I can test the tree)
-
-Below is some exofs changes needed to compile and test.
-[PATCH 11/13] SQUASHME: pnfs_osd_xdr: Add Server API for encoding/decoding osd XDRs
-[PATCH 12/13] SQUASHME: XDR API changes to pnfs_osd_xdr_decode_ioerr()
-[PATCH 13/13] SQUASHME: dbg Print the full device_id returned
-
-  Benny could you submit these to the pnfs-exofs-all branch?
-
-So next I'll send these already squashed into a new submit patchset
-
-Thanks
-Boaz
