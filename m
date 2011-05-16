@@ -1,66 +1,492 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:39153 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754116Ab1EITW2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 15:22:28 -0400
-Received: by yxs7 with SMTP id 7so1909710yxs.19
-        for <linux-nfs@vger.kernel.org>; Mon, 09 May 2011 12:22:27 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/6] SUNRPC: Clean up use of curly braces in switch cases
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 09 May 2011 15:22:25 -0400
-Message-ID: <20110509192225.16449.92373.stgit@matisse.1015granger.net>
-In-Reply-To: <20110509191859.16449.73749.stgit@matisse.1015granger.net>
-References: <20110509191859.16449.73749.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from daytona.panasas.com ([67.152.220.89]:34769 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752379Ab1EPQXZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 12:23:25 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com
+Subject: [PATCH v3 20/29] pnfs: layoutreturn
+Date: Mon, 16 May 2011 09:23:21 -0700
+Message-Id: <1305563001-8028-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD14D8E.1070701@panasas.com>
+References: <4DD14D8E.1070701@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Clean up.  Preferred style is not to use curly braces around
-switch cases.  I'm about to add another case that needs a third
-type cast.
+NFSv4.1 LAYOUTRETURN implementation
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Currently, does not support layout-type payload encoding.
+
+Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+[call pnfs_return_layout right before pnfs_destroy_layout]
+[remove assert_spin_locked from pnfs_clear_lseg_list]
+[remove wait parameter from the layoutreturn path.]
+[remove return_type field from nfs4_layoutreturn_args]
+[remove range from nfs4_layoutreturn_args]
+[no need to send layoutcommit from _pnfs_return_layout]
+[don't wait on sync layoutreturn]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
+ fs/nfs/inode.c          |    3 +-
+ fs/nfs/nfs4proc.c       |   82 ++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4xdr.c        |  111 ++++++++++++++++++++++++++++++++++++++++++++---
+ fs/nfs/pnfs.c           |   56 ++++++++++++++++++++++++
+ fs/nfs/pnfs.h           |   18 ++++++++
+ include/linux/nfs4.h    |    1 +
+ include/linux/nfs_xdr.h |   21 +++++++++
+ 7 files changed, 285 insertions(+), 7 deletions(-)
 
- net/sunrpc/clnt.c |   17 ++++++++---------
- 1 files changed, 8 insertions(+), 9 deletions(-)
-
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 8d83f9d..b91f8f9 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -298,22 +298,21 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
- 	 * up a string representation of the passed-in address.
- 	 */
- 	if (args->servername == NULL) {
-+		struct sockaddr_in *sin =
-+				(struct sockaddr_in *)args->address;
-+		struct sockaddr_in6 *sin6 =
-+				(struct sockaddr_in6 *)args->address;
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 57bb31a..e9c6d9f 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1424,9 +1424,10 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+  */
+ void nfs4_evict_inode(struct inode *inode)
+ {
+-	pnfs_destroy_layout(NFS_I(inode));
+ 	truncate_inode_pages(&inode->i_data, 0);
+ 	end_writeback(inode);
++	pnfs_return_layout(inode);
++	pnfs_destroy_layout(NFS_I(inode));
+ 	/* If we are holding a delegation, return it! */
+ 	nfs_inode_return_delegation_noreclaim(inode);
+ 	/* First call standard NFS clear_inode() code */
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 020f2a0..5489370 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5665,6 +5665,88 @@ int nfs4_proc_layoutget(struct nfs4_layoutget *lgp)
+ 	return status;
+ }
+ 
++static void
++nfs4_layoutreturn_prepare(struct rpc_task *task, void *calldata)
++{
++	struct nfs4_layoutreturn *lrp = calldata;
 +
- 		servername[0] = '\0';
- 		switch (args->address->sa_family) {
--		case AF_INET: {
--			struct sockaddr_in *sin =
--					(struct sockaddr_in *)args->address;
-+		case AF_INET:
- 			snprintf(servername, sizeof(servername), "%pI4",
- 				 &sin->sin_addr.s_addr);
- 			break;
--		}
--		case AF_INET6: {
--			struct sockaddr_in6 *sin =
--					(struct sockaddr_in6 *)args->address;
-+		case AF_INET6:
- 			snprintf(servername, sizeof(servername), "%pI6",
--				 &sin->sin6_addr);
-+				 &sin6->sin6_addr);
- 			break;
--		}
- 		default:
- 			/* caller wants default server name, but
- 			 * address family isn't recognized. */
++	dprintk("--> %s\n", __func__);
++	if (nfs41_setup_sequence(lrp->clp->cl_session, &lrp->args.seq_args,
++				&lrp->res.seq_res, 0, task))
++		return;
++	rpc_call_start(task);
++}
++
++static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
++{
++	struct nfs4_layoutreturn *lrp = calldata;
++	struct nfs_server *server;
++
++	dprintk("--> %s\n", __func__);
++
++	if (!nfs4_sequence_done(task, &lrp->res.seq_res))
++		return;
++
++	server = NFS_SERVER(lrp->args.inode);
++	if (nfs4_async_handle_error(task, server, NULL) == -EAGAIN) {
++		nfs_restart_rpc(task, lrp->clp);
++		return;
++	}
++	if (task->tk_status == 0) {
++		struct pnfs_layout_hdr *lo = NFS_I(lrp->args.inode)->layout;
++
++		if (lrp->res.lrs_present) {
++			spin_lock(&lo->plh_inode->i_lock);
++			pnfs_set_layout_stateid(lo, &lrp->res.stateid, true);
++			spin_unlock(&lo->plh_inode->i_lock);
++		} else
++			BUG_ON(!list_empty(&lo->plh_segs));
++	}
++	dprintk("<-- %s\n", __func__);
++}
++
++static void nfs4_layoutreturn_release(void *calldata)
++{
++	struct nfs4_layoutreturn *lrp = calldata;
++
++	dprintk("--> %s\n", __func__);
++	put_layout_hdr(NFS_I(lrp->args.inode)->layout);
++	kfree(calldata);
++	dprintk("<-- %s\n", __func__);
++}
++
++static const struct rpc_call_ops nfs4_layoutreturn_call_ops = {
++	.rpc_call_prepare = nfs4_layoutreturn_prepare,
++	.rpc_call_done = nfs4_layoutreturn_done,
++	.rpc_release = nfs4_layoutreturn_release,
++};
++
++int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp)
++{
++	struct rpc_task *task;
++	struct rpc_message msg = {
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LAYOUTRETURN],
++		.rpc_argp = &lrp->args,
++		.rpc_resp = &lrp->res,
++	};
++	struct rpc_task_setup task_setup_data = {
++		.rpc_client = lrp->clp->cl_rpcclient,
++		.rpc_message = &msg,
++		.callback_ops = &nfs4_layoutreturn_call_ops,
++		.callback_data = lrp,
++	};
++	int status;
++
++	dprintk("--> %s\n", __func__);
++	task = rpc_run_task(&task_setup_data);
++	if (IS_ERR(task))
++		return PTR_ERR(task);
++	status = task->tk_status;
++	dprintk("<-- %s status=%d\n", __func__, status);
++	rpc_put_task(task);
++	return status;
++}
++
+ static int
+ _nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
+ {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c3ccd2c..e53d7d8 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -338,7 +338,11 @@ static int nfs4_stat_to_errno(int);
+ 				1 /* layoutupdate4 layout type */ + \
+ 				1 /* NULL filelayout layoutupdate4 payload */)
+ #define decode_layoutcommit_maxsz (op_decode_hdr_maxsz + 3)
+-
++#define encode_layoutreturn_maxsz (8 + op_encode_hdr_maxsz + \
++				encode_stateid_maxsz + \
++				1 /* FIXME: opaque lrf_body always empty at the moment */)
++#define decode_layoutreturn_maxsz (op_decode_hdr_maxsz + \
++				1 + decode_stateid_maxsz)
+ #else /* CONFIG_NFS_V4_1 */
+ #define encode_sequence_maxsz	0
+ #define decode_sequence_maxsz	0
+@@ -760,7 +764,14 @@ static int nfs4_stat_to_errno(int);
+ 				decode_putfh_maxsz + \
+ 				decode_layoutcommit_maxsz + \
+ 				decode_getattr_maxsz)
+-
++#define NFS4_enc_layoutreturn_sz (compound_encode_hdr_maxsz + \
++				encode_sequence_maxsz + \
++				encode_putfh_maxsz + \
++				encode_layoutreturn_maxsz)
++#define NFS4_dec_layoutreturn_sz (compound_decode_hdr_maxsz + \
++				decode_sequence_maxsz + \
++				decode_putfh_maxsz + \
++				decode_layoutreturn_maxsz)
+ 
+ const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
+ 				      compound_encode_hdr_maxsz +
+@@ -1889,6 +1900,31 @@ encode_layoutcommit(struct xdr_stream *xdr,
+ 	hdr->replen += decode_layoutcommit_maxsz;
+ 	return 0;
+ }
++
++static void
++encode_layoutreturn(struct xdr_stream *xdr,
++		    const struct nfs4_layoutreturn_args *args,
++		    struct compound_hdr *hdr)
++{
++	__be32 *p;
++
++	p = reserve_space(xdr, 20);
++	*p++ = cpu_to_be32(OP_LAYOUTRETURN);
++	*p++ = cpu_to_be32(args->reclaim);
++	*p++ = cpu_to_be32(args->layout_type);
++	*p++ = cpu_to_be32(IOMODE_ANY);
++	*p = cpu_to_be32(RETURN_FILE);
++	p = reserve_space(xdr, 16 + NFS4_STATEID_SIZE);
++	p = xdr_encode_hyper(p, 0);
++	p = xdr_encode_hyper(p, NFS4_MAX_UINT64);
++	spin_lock(&args->inode->i_lock);
++	xdr_encode_opaque_fixed(p, &NFS_I(args->inode)->layout->plh_stateid.data, NFS4_STATEID_SIZE);
++	spin_unlock(&args->inode->i_lock);
++	p = reserve_space(xdr, 4);
++	*p = cpu_to_be32(0);
++	hdr->nops++;
++	hdr->replen += decode_layoutreturn_maxsz;
++}
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ /*
+@@ -2706,9 +2742,9 @@ static void nfs4_xdr_enc_layoutget(struct rpc_rqst *req,
+ /*
+  *  Encode LAYOUTCOMMIT request
+  */
+-static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
+-				     struct xdr_stream *xdr,
+-				     struct nfs4_layoutcommit_args *args)
++static void nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
++				      struct xdr_stream *xdr,
++				      struct nfs4_layoutcommit_args *args)
+ {
+ 	struct compound_hdr hdr = {
+ 		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
+@@ -2720,7 +2756,24 @@ static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
+ 	encode_layoutcommit(xdr, args, &hdr);
+ 	encode_getfattr(xdr, args->bitmask, &hdr);
+ 	encode_nops(&hdr);
+-	return 0;
++}
++
++/*
++ * Encode LAYOUTRETURN request
++ */
++static void nfs4_xdr_enc_layoutreturn(struct rpc_rqst *req,
++				      struct xdr_stream *xdr,
++				      struct nfs4_layoutreturn_args *args)
++{
++	struct compound_hdr hdr = {
++		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
++	};
++
++	encode_compound_hdr(xdr, req, &hdr);
++	encode_sequence(xdr, &args->seq_args, &hdr);
++	encode_putfh(xdr, NFS_FH(args->inode), &hdr);
++	encode_layoutreturn(xdr, args, &hdr);
++	encode_nops(&hdr);
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+@@ -5203,6 +5256,27 @@ out_overflow:
+ 	return -EIO;
+ }
+ 
++static int decode_layoutreturn(struct xdr_stream *xdr,
++			       struct nfs4_layoutreturn_res *res)
++{
++	__be32 *p;
++	int status;
++
++	status = decode_op_hdr(xdr, OP_LAYOUTRETURN);
++	if (status)
++		return status;
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(!p))
++		goto out_overflow;
++	res->lrs_present = be32_to_cpup(p);
++	if (res->lrs_present)
++		status = decode_stateid(xdr, &res->stateid);
++	return status;
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++}
++
+ static int decode_layoutcommit(struct xdr_stream *xdr,
+ 			       struct rpc_rqst *req,
+ 			       struct nfs4_layoutcommit_res *res)
+@@ -6320,6 +6394,30 @@ out:
+ }
+ 
+ /*
++ * Decode LAYOUTRETURN response
++ */
++static int nfs4_xdr_dec_layoutreturn(struct rpc_rqst *rqstp,
++				     struct xdr_stream *xdr,
++				     struct nfs4_layoutreturn_res *res)
++{
++	struct compound_hdr hdr;
++	int status;
++
++	status = decode_compound_hdr(xdr, &hdr);
++	if (status)
++		goto out;
++	status = decode_sequence(xdr, &res->seq_res, rqstp);
++	if (status)
++		goto out;
++	status = decode_putfh(xdr);
++	if (status)
++		goto out;
++	status = decode_layoutreturn(xdr, res);
++out:
++	return status;
++}
++
++/*
+  * Decode LAYOUTCOMMIT response
+  */
+ static int nfs4_xdr_dec_layoutcommit(struct rpc_rqst *rqstp,
+@@ -6547,6 +6645,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+ 	PROC(GETDEVICEINFO,	enc_getdeviceinfo,	dec_getdeviceinfo),
+ 	PROC(LAYOUTGET,		enc_layoutget,		dec_layoutget),
+ 	PROC(LAYOUTCOMMIT,	enc_layoutcommit,	dec_layoutcommit),
++	PROC(LAYOUTRETURN,	enc_layoutreturn,	dec_layoutreturn),
+ #endif /* CONFIG_NFS_V4_1 */
+ };
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 1de72ea..abc2c38 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -627,6 +627,62 @@ out_err_free:
+ 	return NULL;
+ }
+ 
++static int
++return_layout(struct inode *ino)
++{
++	struct nfs4_layoutreturn *lrp;
++	struct nfs_server *server = NFS_SERVER(ino);
++	int status = -ENOMEM;
++
++	dprintk("--> %s\n", __func__);
++
++	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
++	if (lrp == NULL) {
++		put_layout_hdr(NFS_I(ino)->layout);
++		goto out;
++	}
++	lrp->args.reclaim = 0;
++	lrp->args.layout_type = server->pnfs_curr_ld->id;
++	lrp->args.inode = ino;
++	lrp->clp = server->nfs_client;
++
++	status = nfs4_proc_layoutreturn(lrp);
++out:
++	dprintk("<-- %s status: %d\n", __func__, status);
++	return status;
++}
++
++/* Initiates a LAYOUTRETURN(FILE) */
++int
++_pnfs_return_layout(struct inode *ino)
++{
++	struct pnfs_layout_hdr *lo = NULL;
++	struct nfs_inode *nfsi = NFS_I(ino);
++	LIST_HEAD(tmp_list);
++	int status = 0;
++
++	dprintk("--> %s\n", __func__);
++
++	spin_lock(&ino->i_lock);
++	lo = nfsi->layout;
++	if (!lo || !mark_matching_lsegs_invalid(lo, &tmp_list, NULL)) {
++		spin_unlock(&ino->i_lock);
++		dprintk("%s: no layout segments to return\n", __func__);
++		goto out;
++	}
++	/* Reference matched in nfs4_layoutreturn_release */
++	get_layout_hdr(lo);
++	spin_unlock(&ino->i_lock);
++	pnfs_free_lseg_list(&tmp_list);
++
++	WARN_ON(test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags));
++
++	status = return_layout(ino);
++out:
++	dprintk("<-- %s status: %d\n", __func__, status);
++	return status;
++}
++
+ bool pnfs_roc(struct inode *ino)
+ {
+ 	struct pnfs_layout_hdr *lo;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 2f8776b..63f51b7 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -131,6 +131,7 @@ extern void pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *);
+ extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
+ 				   struct pnfs_device *dev);
+ extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
++extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
+ 
+ /* pnfs.c */
+ void get_layout_hdr(struct pnfs_layout_hdr *lo);
+@@ -166,6 +167,7 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+ bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
++int _pnfs_return_layout(struct inode *);
+ int pnfs_ld_write_done(struct nfs_write_data *);
+ int pnfs_ld_read_done(struct nfs_read_data *);
+ 
+@@ -236,6 +238,17 @@ static inline void pnfs_clear_request_commit(struct nfs_page *req)
+ 		put_lseg(req->wb_commit_lseg);
+ }
+ 
++static inline int pnfs_return_layout(struct inode *ino)
++{
++	struct nfs_inode *nfsi = NFS_I(ino);
++	struct nfs_server *nfss = NFS_SERVER(ino);
++
++	if (pnfs_enabled_sb(nfss) && nfsi->layout)
++		return _pnfs_return_layout(ino);
++
++	return 0;
++}
++
+ #else  /* CONFIG_NFS_V4_1 */
+ 
+ static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
+@@ -277,6 +290,11 @@ pnfs_try_to_write_data(struct nfs_write_data *data,
+ 	return PNFS_NOT_ATTEMPTED;
+ }
+ 
++static inline int pnfs_return_layout(struct inode *ino)
++{
++	return 0;
++}
++
+ static inline bool
+ pnfs_roc(struct inode *ino)
+ {
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 178fafe..9376eaf 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -562,6 +562,7 @@ enum {
+ 	NFSPROC4_CLNT_LAYOUTGET,
+ 	NFSPROC4_CLNT_GETDEVICEINFO,
+ 	NFSPROC4_CLNT_LAYOUTCOMMIT,
++	NFSPROC4_CLNT_LAYOUTRETURN,
+ };
+ 
+ /* nfs41 types */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 39c1e1b..c14fd17 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -268,6 +268,27 @@ struct nfs4_layoutcommit_data {
+ 	struct nfs4_layoutcommit_res res;
+ };
+ 
++struct nfs4_layoutreturn_args {
++	__u32   reclaim;
++	__u32   layout_type;
++	struct inode *inode;
++	struct nfs4_sequence_args seq_args;
++};
++
++struct nfs4_layoutreturn_res {
++	struct nfs4_sequence_res seq_res;
++	u32 lrs_present;
++	nfs4_stateid stateid;
++};
++
++struct nfs4_layoutreturn {
++	struct nfs4_layoutreturn_args args;
++	struct nfs4_layoutreturn_res res;
++	struct rpc_cred *cred;
++	struct nfs_client *clp;
++	int rpc_status;
++};
++
+ /*
+  * Arguments to the open call.
+  */
+-- 
+1.7.3.4
 
