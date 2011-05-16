@@ -1,54 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:36087 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751299Ab1ECOir convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 May 2011 10:38:47 -0400
-Received: from acsinet15.oracle.com (acsinet15.oracle.com [141.146.126.227])
-	by rcsinet10.oracle.com (Switch-3.4.2/Switch-3.4.2) with ESMTP id p43EcihZ000878
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 3 May 2011 14:38:45 GMT
-Subject: Re: messages on restarting NFS
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <348580.13472.qm@web111713.mail.gq1.yahoo.com>
-Date: Tue, 3 May 2011 10:38:39 -0400
-Cc: nfs <linux-nfs@vger.kernel.org>
-Message-Id: <C0899C69-1BB1-45A4-BD90-418A50980F62@oracle.com>
-References: <348580.13472.qm@web111713.mail.gq1.yahoo.com>
-To: Mahmood Naderan <nt_mahmood@yahoo.com>
+Received: from daytona.panasas.com ([67.152.220.89]:24130 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755264Ab1EPN71 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 09:59:27 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 1/4] pnfs: align layoutget requests on page boundaries
+Date: Mon, 16 May 2011 06:59:17 -0700
+Message-Id: <1305554357-29114-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DCC715C.1090101@panasas.com>
+References: <4DCC715C.1090101@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+---
+ fs/nfs/pnfs.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-On May 3, 2011, at 5:30 AM, Mahmood Naderan wrote:
-
-> Hi,
-> When I restart NFS with 
-> 
-> 
-> /etc/init.d/nfs-kernel-server restart
-> 
-> 
-> I see these messages in syslog:
-> 
-> May  3 13:57:15 server mountd[928]: Caught signal 15, un-registering and exiting.
-> May  3 13:57:15 serverkernel: [82562.372930] nfsd: last server has exited, flushing export cache
-> May  3 13:57:16 serverkernel: [82563.499249] svc: failed to register lockdv1 RPC service (errno 97).
-> May  3 13:57:16 serverkernel: [82563.501211] NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
-> May  3 13:57:16 serverkernel: [82563.501246] NFSD: starting 90-second grace period
-> 
->  
-> How can I fix that failure?
-
-IIRC, that usually means the kernel has attempted to register an IPv6 listener with the local portmapper, which doesn't support IPv6.  The message was removed in a later kernel.
-
-To be sure it's harmless, after NFSD is running, verify that lockd is registered by running "rpcinfo -p" on your server.
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index e689bdf..589989d 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -850,6 +850,7 @@ pnfs_update_layout(struct inode *ino,
+ 		.offset = pos,
+ 		.length = count,
+ 	};
++	unsigned pg_offset;
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+ 	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
+ 	struct pnfs_layout_hdr *lo;
+@@ -899,6 +900,13 @@ pnfs_update_layout(struct inode *ino,
+ 		spin_unlock(&clp->cl_lock);
+ 	}
+ 
++	pg_offset = arg.offset & ~PAGE_CACHE_MASK;
++	if (pg_offset) {
++		arg.offset -= pg_offset;
++		arg.length += pg_offset;
++	}
++	arg.length = PAGE_CACHE_ALIGN(arg.length);
++
+ 	lseg = send_layoutget(lo, ctx, &arg);
+ 	if (!lseg && first) {
+ 		spin_lock(&clp->cl_lock);
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.3.4
 
