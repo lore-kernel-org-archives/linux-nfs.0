@@ -1,71 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:46918 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750788Ab1EWEXC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 00:23:02 -0400
-Message-ID: <4DD9E113.7050506@panasas.com>
-Date: Mon, 23 May 2011 07:22:43 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
-        Fred Isaman <iisaman@netapp.com>
-Subject: Re: [PATCH 16/23] pnfs: support for non-rpc layout drivers
-References: <4DD93D3E.9010909@panasas.com> <1306083123-11061-1-git-send-email-bharrosh@panasas.com> <4DD96697.50800@panasas.com>
-In-Reply-To: <4DD96697.50800@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from rcsinet10.oracle.com ([148.87.113.121]:22383 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751857Ab1EPTku convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 15:40:50 -0400
+Received: from rtcsinet22.oracle.com (rtcsinet22.oracle.com [66.248.204.30])
+	by rcsinet10.oracle.com (Switch-3.4.2/Switch-3.4.2) with ESMTP id p4GJemYn023570
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 16 May 2011 19:40:50 GMT
+Received: from acsmt358.oracle.com (acsmt358.oracle.com [141.146.40.158])
+	by rtcsinet22.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id p4GJelSJ022033
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Mon, 16 May 2011 19:40:48 GMT
+Received: from abhmt007.oracle.com (abhmt007.oracle.com [141.146.116.16])
+	by acsmt358.oracle.com (8.12.11.20060308/8.12.11) with ESMTP id p4GJegED004741
+	for <linux-nfs@vger.kernel.org>; Mon, 16 May 2011 14:40:42 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Subject: SEQ4_STATUS_ question
+Date: Mon, 16 May 2011 15:40:40 -0400
+Message-Id: <FB972601-FDA2-4C1D-B695-5D268CD568C1@oracle.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/22/2011 10:40 PM, Benny Halevy wrote:
->> +/*
->> + * Called by non rpc-based layout drivers
->> + */
->> +int
->> +pnfs_ld_write_done(struct nfs_write_data *data)
->> +{
->> +	int status;
->> +
-> 
-> 
->> +	if (!data->pnfs_error) {
->> +		pnfs_set_layoutcommit(data);
-> 
-> We need at least to set data->task.tk_status to 0
+Hi-
 
-I guess it does not hurt, but we never touched it, is it garbage?
+In minor version 1, the "lease moved" condition is indicated via a flag set in the result of a SEQUENCE operation; in mv0, it was a real NFS4ERR status code.
 
-> 
->> +		data->mds_ops->rpc_call_done(&data->task, data);
->> +		data->mds_ops->rpc_release(data);
-> 
-> Where's the put_lseg you had in PATCH 10/13?
-> 
-> Benny
+I don't see anything in RFC 5661 that says SEQUENCE returns anything but NFS4_OK if one or more of these flags are set.  But nfs41_sequence_call_done checks these status flags only when task->tk_status < 0.
 
-That was the bug. Please see my SQUASHME patches I explained
-it all there.
+If SEQUENCE returns a non-NFS4_OK status code when these flags are set, and MUST be the first operation in a compound, how can anything else in any compound with a SEQUENCE operation get done?
 
-> 
->> +		return 0;
->> +	}
->> +
->> +	put_lseg(data->lseg);
->> +	data->lseg = NULL;
+To clear a "lease moved" condition requires that the client send an operation that will get an NFS4ERR_MOVED result.  I assume such a compound would require an initial SEQUENCE operation... but that should fail, since there is a "lease moved" condition.
 
-I'm not sure it is needed here as well.
-Fred! please see this code
-We know that the lseg is put in nfs_writedata_release()
-Does the below nfs_initiate_write() retakes the ref.
-If it does we need the put here. If it does not we
-don't need here.
+What am I missing?
 
-Boaz
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
->> +	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
->> +		data->pnfs_error);
->> +	status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
->> +				    data->mds_ops, NFS_FILE_SYNC);
->> +	return status ? : -EAGAIN;
->> +}
+
+
+
