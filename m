@@ -1,45 +1,180 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:50769 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:34589 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755063Ab1E2SSL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 14:18:11 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Benny Halevy <bhalevy@panasas.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Cc: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 03/32] pnfs: resolve header dependency in pnfs.h
-Date: Sun, 29 May 2011 21:17:59 +0300
-Message-Id: <1306693079-7787-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4DE28CFB.4060608@panasas.com>
-References: <4DE28CFB.4060608@panasas.com>
+	with ESMTP id S1750876Ab1EPQVp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 12:21:45 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com
+Subject: [PATCH v3 08/29] NFSD: introduce exp_xdr.h
+Date: Mon, 16 May 2011 09:21:42 -0700
+Message-Id: <1305562902-7584-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD14D8E.1070701@panasas.com>
+References: <4DD14D8E.1070701@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+Containing xdr encoding helpers.
 
-Some definitions in the header file depend on nfs_fs.h so pnfs.h can't
-be included independently.
-
+Cc: J. Bruce Fields <bfields@citi.umich.edu>
+[nfsd: fix exp_xdr_encode_u64 parameter type]
+Reported-by: J. Bruce Fields <bfields@citi.umich.edu>
+[exportfs: exp_xdr.h: Use #include <linux/string.h> instead of <asm/string.h>]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/pnfs.h |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ include/linux/exp_xdr.h |  141 +++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 141 insertions(+), 0 deletions(-)
+ create mode 100644 include/linux/exp_xdr.h
 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 0c015ba..720bb9d 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -30,6 +30,7 @@
- #ifndef FS_NFS_PNFS_H
- #define FS_NFS_PNFS_H
- 
-+#include <linux/nfs_fs.h>
- #include <linux/nfs_page.h>
- 
- enum {
+diff --git a/include/linux/exp_xdr.h b/include/linux/exp_xdr.h
+new file mode 100644
+index 0000000..b69c309
+--- /dev/null
++++ b/include/linux/exp_xdr.h
+@@ -0,0 +1,141 @@
++#ifndef _LINUX_EXP_XDR_H
++#define _LINUX_EXP_XDR_H
++
++#include <asm/byteorder.h>
++#include <asm/unaligned.h>
++#include <linux/string.h>
++
++struct exp_xdr_stream {
++	__be32 *p;
++	__be32 *end;
++};
++
++/**
++ * exp_xdr_qwords - Calculate the number of quad-words holding nbytes
++ * @nbytes: number of bytes to encode
++ */
++static inline size_t
++exp_xdr_qwords(__u32 nbytes)
++{
++	return DIV_ROUND_UP(nbytes, 4);
++}
++
++/**
++ * exp_xdr_qbytes - Calculate the number of bytes holding qwords
++ * @qwords: number of quad-words to encode
++ */
++static inline size_t
++exp_xdr_qbytes(size_t qwords)
++{
++	return qwords << 2;
++}
++
++/**
++ * exp_xdr_reserve_space - Reserve buffer space for sending
++ * @xdr: pointer to exp_xdr_stream
++ * @nbytes: number of bytes to reserve
++ *
++ * Checks that we have enough buffer space to encode 'nbytes' more
++ * bytes of data. If so, update the xdr stream.
++ */
++static inline __be32 *
++exp_xdr_reserve_space(struct exp_xdr_stream *xdr, size_t nbytes)
++{
++	__be32 *p = xdr->p;
++	__be32 *q;
++
++	/* align nbytes on the next 32-bit boundary */
++	q = p + exp_xdr_qwords(nbytes);
++	if (unlikely(q > xdr->end || q < p))
++		return NULL;
++	xdr->p = q;
++	return p;
++}
++
++/**
++ * exp_xdr_reserve_qwords - Reserve buffer space for sending
++ * @xdr: pointer to exp_xdr_stream
++ * @nwords: number of quad words (u32's) to reserve
++ */
++static inline __be32 *
++exp_xdr_reserve_qwords(struct exp_xdr_stream *xdr, size_t qwords)
++{
++	return exp_xdr_reserve_space(xdr, exp_xdr_qbytes(qwords));
++}
++
++/**
++ * exp_xdr_encode_u32 - Encode an unsigned 32-bit value onto a xdr stream
++ * @p: pointer to encoding destination
++ * @val: value to encode
++ */
++static inline __be32 *
++exp_xdr_encode_u32(__be32 *p, __u32 val)
++{
++	*p = cpu_to_be32(val);
++	return p + 1;
++}
++
++/**
++ * exp_xdr_encode_u64 - Encode an unsigned 64-bit value onto a xdr stream
++ * @p: pointer to encoding destination
++ * @val: value to encode
++ */
++static inline __be32 *
++exp_xdr_encode_u64(__be32 *p, __u64 val)
++{
++	put_unaligned_be64(val, p);
++	return p + 2;
++}
++
++/**
++ * exp_xdr_encode_bytes - Encode an array of bytes onto a xdr stream
++ * @p: pointer to encoding destination
++ * @ptr: pointer to the array of bytes
++ * @nbytes: number of bytes to encode
++ */
++static inline __be32 *
++exp_xdr_encode_bytes(__be32 *p, const void *ptr, __u32 nbytes)
++{
++	if (likely(nbytes != 0)) {
++		unsigned int qwords = exp_xdr_qwords(nbytes);
++		unsigned int padding = exp_xdr_qbytes(qwords) - nbytes;
++
++		memcpy(p, ptr, nbytes);
++		if (padding != 0)
++			memset((char *)p + nbytes, 0, padding);
++		p += qwords;
++	}
++	return p;
++}
++
++/**
++ * exp_xdr_encode_opaque - Encode an opaque type onto a xdr stream
++ * @p: pointer to encoding destination
++ * @ptr: pointer to the opaque array
++ * @nbytes: number of bytes to encode
++ *
++ * Encodes the 32-bit opaque size in bytes followed by the opaque value.
++ */
++static inline __be32 *
++exp_xdr_encode_opaque(__be32 *p, const void *ptr, __u32 nbytes)
++{
++	p = exp_xdr_encode_u32(p, nbytes);
++	return exp_xdr_encode_bytes(p, ptr, nbytes);
++}
++
++/**
++ * exp_xdr_encode_opaque_qlen - Encode the opaque length onto a xdr stream
++ * @lenp: pointer to the opaque length destination
++ * @endp: pointer to the end of the opaque array
++ *
++ * Encodes the 32-bit opaque size in bytes given the start and end pointers
++ */
++static inline __be32 *
++exp_xdr_encode_opaque_len(__be32 *lenp, const void *endp)
++{
++	size_t nbytes = (char *)endp - (char *)(lenp + 1);
++
++	exp_xdr_encode_u32(lenp, nbytes);
++	return lenp + 1 + exp_xdr_qwords(nbytes);
++}
++#endif /* _LINUX_EXP_XDR_H */
 -- 
-1.7.2.3
+1.7.3.4
 
