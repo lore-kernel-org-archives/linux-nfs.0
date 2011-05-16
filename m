@@ -1,71 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:63662 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757892Ab1EZS53 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 May 2011 14:57:29 -0400
-Received: by iyb14 with SMTP id 14so840732iyb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 26 May 2011 11:57:29 -0700 (PDT)
-In-Reply-To: <CCEDE6F7-12A9-4308-A178-873FD972994C@oracle.com>
-References: <7C481A0A0BBE9E4BA110F26D7A2BFFDC026E7C46@nodmx01.igglobal.com>
-	<BANLkTikzuTGgHU=oUMTjmPhfsR_-nD5Ffw@mail.gmail.com>
-	<BANLkTi=s4_A-WiG_a11pLgmeQ39qw=22Hg@mail.gmail.com>
-	<CCEDE6F7-12A9-4308-A178-873FD972994C@oracle.com>
-Date: Fri, 27 May 2011 00:27:28 +0530
-Message-ID: <BANLkTi=_kAOipcotAH+vP-nHMebkrQqR7Q@mail.gmail.com>
-Subject: Re: IPv6 support for NFSv2 server.
-From: Upakul Barkakaty <upakul@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:24366 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755254Ab1EPUdw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 16:33:52 -0400
+Subject: Re: 2.6.38.6 - state manager constantly respawns
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=windows-1252
+Cc: Harry Edmon <harry@uw.edu>, linux-nfs@vger.kernel.org
+In-Reply-To: <8382A5A9-381C-47D7-B2DF-64625FE7C08C@oracle.com>
+References: <4DD16FA8.4030602@uw.edu>
+	 <05D08339-888C-4A64-BDC5-8667B3901E7A@oracle.com> <4DD1772E.9010609@uw.edu>
+	 <6A6FB1C3-D4C3-40BE-810A-B4551FA9E591@oracle.com> <4DD17CB5.7010009@uw.edu>
+	 <1305575007.19725.3.camel@lade.trondhjem.org>
+	 <8382A5A9-381C-47D7-B2DF-64625FE7C08C@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 16 May 2011 16:33:27 -0400
+Message-ID: <1305578007.19725.24.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Chuck,
+On Mon, 2011-05-16 at 16:21 -0400, Chuck Lever wrote:
+> On May 16, 2011, at 3:43 PM, Trond Myklebust wrote:
+> 
+> > On Mon, 2011-05-16 at 12:36 -0700, Harry Edmon wrote:
+> >> On 05/16/11 12:22, Chuck Lever wrote:
+> >>> On May 16, 2011, at 3:12 PM, Harry Edmon wrote:
+> >>> 
+> >>> 
+> >>>> Attached is 1000 lines of output from tshark when the problem is occurring.   The client and server are connected by a private ethernet.
+> >>>> 
+> >>> Disappointing: tshark is not telling us the return codes.  However, I see "PUTFH;READ" then "RENEW" in a loop, which indicates the state manager thread is being kicked off because of ongoing difficulties with state recovery.  Is there a stuck application on that client?
+> >>> 
+> >>> Try again with "tshark -V".
+> >>> 
+> >> Here is the output from tshark -V (first 50,000 lines).   Nothing 
+> >> appears to be stuck, and as I said when I reboot the client into 2.6.32 
+> >> the problem goes away, only to reappear when I reboot it back into 2.6.38.6.
+> >> 
+> > 
+> > Possibly, but it definitely indicates a server bug. What kind of server
+> > are you using?
+> > 
+> > Basically, the client is getting confused because when it sends a READ,
+> > the server is telling it that the lease has expired, then when it sends
+> > a RENEW, the same server replies that the lease is OK...
+> 
+> I've seen this during migration recovery testing.  The client may be testing the wrong client ID.
+> 
+> But I wonder if it's really worth doing that separate RENEW.  I've seen the client send a RENEW after it gets STALE_STATEID.  Would RENEW really tell the client anything in that case?
 
-Thanks for writing in. I am using the command line option -o vers=2.
+It is needed.
 
-These 2 commands return different errors:
-
-mount -o vers=2 <ipv6-address>:<path> --> mount.nfs: an incorrect
-mount option was specified
-mount <ipv6-address>:<path> --> mount.nfs: system call failed
-
-RHEL6 uses NFSv4 by default so the second command is expected to use NFSv4.
-
-Both the above commands execute successfully in case of ipv4 addresses.
+Without the RENEW, we have no idea whether or not we need to do a full
+state recovery. Running a full recovery when we don't have to is _bad_,
+and will usually cause us to lose delegations and may possibly even
+cause us to lose locks.
 
 -- 
-Regards,
-Upakul Barkakaty
+Trond Myklebust
+Linux NFS client maintainer
 
-On Fri, May 27, 2011 at 12:06 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->
-> On May 26, 2011, at 2:27 PM, Upakul Barkakaty wrote:
->
->> Hi all,
->>
->> I have been contemplating about using an appropriate server that would
->> support NFSv2 over IPv6.
->>
->> RHEL5 doesn’t support IPv6 over NFS by default. I tried installing a
->> few libraries and patches but it doesn’t seem to be working out yet
->> due to some missing dependencies.
->>
->> RHEL6 *seems* to support just the NFS client over IPv6. Further it
->> seems to support only NFSv4 as it generates an error if I force the
->> NFS version to 2 in the mount options[mount.nfs: an incorrect mount
->> option was specified].
->
-> NFSv2 over IPv6 should work on Linux clients.  I don't think I ever explicitly tested it, though, so there could be bugs.
->
-> How are you "forcing" it?
->
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
->
->
->
->
->
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
