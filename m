@@ -1,60 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail1.SerNet.de ([193.175.80.2]:58566 "EHLO mail.SerNet.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751849Ab1EKX74 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 May 2011 19:59:56 -0400
-Date: Thu, 12 May 2011 00:16:13 +0200
-From: =?iso-8859-1?Q?Bj=F6rn?= JACKE <bj@SerNet.DE>
-To: "Ted Ts'o" <tytso@mit.edu>,
-        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-        sfrench@us.ibm.com, agruen@linbit.com, dilger.kernel@dilger.ca,
-        sandeen@redhat.com, bfields@fieldses.org, jlayton@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V5 00/24]  New ACL format for better NFSv4 acl
- interoperability
-References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <20110228211145.GG28617@thunk.org>
-Content-Type: multipart/signed; micalg=pgp-ripemd160;
-	protocol="application/pgp-signature"; boundary="2fHTh5uZTiUOsy+g"
-In-Reply-To: <20110228211145.GG28617@thunk.org>
-Message-Id: <E1QKJAl-00DGc7-EB@intern.SerNet.DE>
+Received: from daytona.panasas.com ([67.152.220.89]:34573 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753110Ab1EPQVH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 12:21:07 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com
+Subject: [PATCH v3 04/29] pnfs: Use byte-range for cb_layoutrecall
+Date: Mon, 16 May 2011 09:21:04 -0700
+Message-Id: <1305562864-7357-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD14D8E.1070701@panasas.com>
+References: <4DD14D8E.1070701@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
---2fHTh5uZTiUOsy+g
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Use recalled range to invalidate particular layout segments in the layout cache.
 
-Hi,
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/callback_proc.c |    4 ++--
+ fs/nfs/pnfs.c          |   15 +++++++++------
+ fs/nfs/pnfs.h          |    2 +-
+ 3 files changed, 12 insertions(+), 9 deletions(-)
 
-On 2011-02-28 at 16:11 -0500 Ted Ts'o sent off:
-> What is the current status of this patch series?  I seem to remember
-> that Christoph and Al Viro had some objections; have those been
-> cleared yet?  If not, can you summarize what their objections are?
->=20
-> To be honest I haven't been paying super close attention to this patch
-> series, and I'm curious what needs to happen with it one way or
-> another.
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 975c8f2..964c416 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -139,7 +139,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ 	spin_lock(&ino->i_lock);
+ 	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
+ 	    mark_matching_lsegs_invalid(lo, &free_me_list,
+-					args->cbl_range.iomode))
++					&args->cbl_range))
+ 		rv = NFS4ERR_DELAY;
+ 	else
+ 		rv = NFS4ERR_NOMATCHING_LAYOUT;
+@@ -184,7 +184,7 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
+ 		ino = lo->plh_inode;
+ 		spin_lock(&ino->i_lock);
+ 		set_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
+-		if (mark_matching_lsegs_invalid(lo, &free_me_list, range.iomode))
++		if (mark_matching_lsegs_invalid(lo, &free_me_list, &range))
+ 			rv = NFS4ERR_DELAY;
+ 		list_del_init(&lo->plh_bulk_recall);
+ 		spin_unlock(&ino->i_lock);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index bad146e..dcf04ea 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -321,10 +321,12 @@ lo_seg_intersecting(struct pnfs_layout_range *l1,
+ }
+ 
+ static bool
+-should_free_lseg(u32 lseg_iomode, u32 recall_iomode)
++should_free_lseg(struct pnfs_layout_range *lseg_range,
++		 struct pnfs_layout_range *recall_range)
+ {
+-	return (recall_iomode == IOMODE_ANY ||
+-		lseg_iomode == recall_iomode);
++	return (recall_range->iomode == IOMODE_ANY ||
++		lseg_range->iomode == recall_range->iomode) &&
++	       lo_seg_intersecting(lseg_range, recall_range);
+ }
+ 
+ /* Returns 1 if lseg is removed from list, 0 otherwise */
+@@ -355,7 +357,7 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
+ int
+ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 			    struct list_head *tmp_list,
+-			    u32 iomode)
++			    struct pnfs_layout_range *recall_range)
+ {
+ 	struct pnfs_layout_segment *lseg, *next;
+ 	int invalid = 0, removed = 0;
+@@ -368,7 +370,8 @@ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 		return 0;
+ 	}
+ 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
+-		if (should_free_lseg(lseg->pls_range.iomode, iomode)) {
++		if (!recall_range ||
++		    should_free_lseg(&lseg->pls_range, recall_range)) {
+ 			dprintk("%s: freeing lseg %p iomode %d "
+ 				"offset %llu length %llu\n", __func__,
+ 				lseg, lseg->pls_range.iomode, lseg->pls_range.offset,
+@@ -417,7 +420,7 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ 	lo = nfsi->layout;
+ 	if (lo) {
+ 		lo->plh_block_lgets++; /* permanently block new LAYOUTGETs */
+-		mark_matching_lsegs_invalid(lo, &tmp_list, IOMODE_ANY);
++		mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
+ 	}
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
+ 	pnfs_free_lseg_list(&tmp_list);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 14a2af9..02ef40c 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -151,7 +151,7 @@ int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
+ 				  struct nfs4_state *open_state);
+ int mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 				struct list_head *tmp_list,
+-				u32 iomode);
++				struct pnfs_layout_range *recall_range);
+ bool pnfs_roc(struct inode *ino);
+ void pnfs_roc_release(struct inode *ino);
+ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+-- 
+1.7.3.4
 
-after the discussion of this path submission thread are there any major or
-minor issues left that prevent these to go upstream? I'd really love to see
-NFSv4 ACLs being available on Linux, too.
-
-Cheers
-Bj=F6rn
-
---2fHTh5uZTiUOsy+g
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.16 (GNU/Linux)
-
-iEYEAREDAAYFAk3LCq0ACgkQdoo0s+hIejnNDQCfaSJOqCApOflElPSFaoZyR8cb
-x+cAnAo+J0M54Xew09v2pPF4RIl3Ed9O
-=Vaef
------END PGP SIGNATURE-----
-
---2fHTh5uZTiUOsy+g--
