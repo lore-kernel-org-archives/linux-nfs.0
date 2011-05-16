@@ -1,257 +1,185 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:1409 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:34636 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753004Ab1EWNoo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 09:44:44 -0400
-Message-ID: <4DDA64C6.2080909@panasas.com>
-Date: Mon, 23 May 2011 16:44:38 +0300
+	with ESMTP id S1751200Ab1EPQWL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 12:22:11 -0400
 From: Benny Halevy <bhalevy@panasas.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v5 23/38] SQUASHME: pnfs-obj: use global device cache
-References: <4DD99F9B.2040406@panasas.com> <1306108720-28762-1-git-send-email-bhalevy@panasas.com> <4DD9E805.2020106@panasas.com>
-In-Reply-To: <4DD9E805.2020106@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com
+Subject: [PATCH v3 11/29] pnfs-obj: pnfs_osd XDR client implementation
+Date: Mon, 16 May 2011 09:22:07 -0700
+Message-Id: <1305562927-7700-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD14D8E.1070701@panasas.com>
+References: <4DD14D8E.1070701@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-05-23 07:52, Boaz Harrosh wrote:
-> On 05/23/2011 02:58 AM, Benny Halevy wrote:
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> 
-> Benny sorry but NACK on the global device cache for now
-> 
-> This is to late at this stage. We have decided that first imp will
-> use the private cache and we'll postpone these cleanups for later.
-> 
-> All other code was well tested for years, all this is new code, and 
+* Add the fs/nfs/objlayout/pnfs_osd_xdr_cli.c file, which will
+  include the XDR encode/decode implementations for the pNFS
+  client objlayout driver.
 
-The file layout is upstream and better be harnessed for other layout
-drivers as well.  If it's inferior to the current objects layout cache
-we should fix and improve the former rather than introducing a new
-implementation.
+[Some extra debug-prints]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+[use NFSDBG_PNFS_LD also in pnfs_osd_xdr_cli.c]
+[use __be32]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/objlayout/Kbuild             |    2 +-
+ fs/nfs/objlayout/pnfs_osd_xdr_cli.c |  132 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 133 insertions(+), 1 deletions(-)
+ create mode 100644 fs/nfs/objlayout/pnfs_osd_xdr_cli.c
 
-> new behaviour that we will not have time to test. I do not like the
-
-Ideally, the should already be fully tested, but last minute review-
-related changes will always require further testing that needs to be
-taken place during the -rc cycle.  The whole point of having rc's is
-to stabilize the merged code to a point it can be released as a stable
-release.
-
-> code as it is. Because currently it will release the device on layout_return.
-> Where is the cache? There is much more work to do here!
-> 
-
-Like I said, if there are bugs we should fix them rather introducing
-alternative code that does the same thing.
-
-> We already said not to do this in this merge why the change of heart?
-
-We discussed that again on Thursday's conference call which you did not
-attend.  I decided to take a stab at it to see how a unified cache would
-look like and I rather like the outcome..
-
-Benny
-
-> 
-> Boaz
-> 
->> ---
->>  fs/nfs/objlayout/objio_osd.c |  102 ++++++++++++++++++++----------------------
->>  1 files changed, 49 insertions(+), 53 deletions(-)
->>
->> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
->> index 752bf7a..bcc8468 100644
->> --- a/fs/nfs/objlayout/objio_osd.c
->> +++ b/fs/nfs/objlayout/objio_osd.c
->> @@ -46,66 +46,55 @@
->>  
->>  #define _LLU(x) ((unsigned long long)x)
->>  
->> -/* A per mountpoint struct currently for device cache */
->> -struct objio_mount_type {
->> -	struct list_head dev_list;
->> -	spinlock_t dev_list_lock;
->> -};
->> -
->> -struct _dev_ent {
->> -	struct list_head list;
->> -	struct nfs4_deviceid d_id;
->> +struct objio_dev_ent {
->> +	struct nfs4_deviceid_node id_node;
->>  	struct osd_dev *od;
->>  };
->>  
->> -static struct osd_dev *___dev_list_find(struct objio_mount_type *omt,
->> -	struct nfs4_deviceid *d_id)
->> +static void
->> +objio_free_deviceid_node(struct nfs4_deviceid_node *d)
->>  {
->> -	struct list_head *le;
->> +	struct objio_dev_ent *de = container_of(d, struct objio_dev_ent, id_node);
->>  
->> -	list_for_each(le, &omt->dev_list) {
->> -		struct _dev_ent *de = list_entry(le, struct _dev_ent, list);
->> -
->> -		if (0 == memcmp(&de->d_id, d_id, sizeof(*d_id)))
->> -			return de->od;
->> -	}
->> -
->> -	return NULL;
->> +	osduld_put_device(de->od);
->> +	kfree(de);
->>  }
->>  
->> -static struct osd_dev *_dev_list_find(struct objio_mount_type *omt,
->> -	struct nfs4_deviceid *d_id)
->> +static struct objio_dev_ent *_dev_list_find(const struct nfs_client *clp,
->> +	const struct nfs4_deviceid *d_id)
->>  {
->> -	struct osd_dev *od;
->> +	struct nfs4_deviceid_node *d;
->>  
->> -	spin_lock(&omt->dev_list_lock);
->> -	od = ___dev_list_find(omt, d_id);
->> -	spin_unlock(&omt->dev_list_lock);
->> -	return od;
->> +	d = nfs4_find_get_deviceid(clp, d_id);
->> +	if (!d)
->> +		return NULL;
->> +	return container_of(d, struct objio_dev_ent, id_node);
->>  }
->>  
->> -static int _dev_list_add(struct objio_mount_type *omt,
->> -	struct nfs4_deviceid *d_id, struct osd_dev *od,
->> +static int _dev_list_add(const struct nfs_server *nfss,
->> +	const struct nfs4_deviceid *d_id, struct osd_dev *od,
->>  	gfp_t gfp_flags)
->>  {
->> -	struct _dev_ent *de = kzalloc(sizeof(*de), gfp_flags);
->> +	struct nfs4_deviceid_node *d;
->> +	struct objio_dev_ent *de = kzalloc(sizeof(*de), gfp_flags);
->> +	struct objio_dev_ent *n;
->>  
->>  	if (!de)
->>  		return -ENOMEM;
->>  
->> -	spin_lock(&omt->dev_list_lock);
->> +	nfs4_init_deviceid_node(&de->id_node,
->> +				nfss->pnfs_curr_ld,
->> +				nfss->nfs_client,
->> +				d_id);
->> +	de->od = od;
->>  
->> -	if (___dev_list_find(omt, d_id)) {
->> -		kfree(de);
->> -		goto out;
->> +	d = nfs4_insert_deviceid_node(&de->id_node);
->> +	n = container_of(d, struct objio_dev_ent, id_node);
->> +	if (n != de) {
->> +		BUG_ON(n->od != od);
->> +		objio_free_deviceid_node(&de->id_node);
->>  	}
->>  
->> -	de->d_id = *d_id;
->> -	de->od = od;
->> -	list_add(&de->list, &omt->dev_list);
->> -
->> -out:
->> -	spin_unlock(&omt->dev_list_lock);
->>  	return 0;
->>  }
->>  
->> @@ -128,7 +117,7 @@ struct objio_segment {
->>  	unsigned comps_index;
->>  	unsigned num_comps;
->>  	/* variable length */
->> -	struct osd_dev	*ods[1];
->> +	struct objio_dev_ent *ods[1];
->>  };
->>  
->>  static inline struct objio_segment *
->> @@ -139,23 +128,22 @@ OBJIO_LSEG(struct pnfs_layout_segment *lseg)
->>  
->>  /* Send and wait for a get_device_info of devices in the layout,
->>     then look them up with the osd_initiator library */
->> -static struct osd_dev *_device_lookup(struct pnfs_layout_hdr *pnfslay,
->> +static struct objio_dev_ent *_device_lookup(struct pnfs_layout_hdr *pnfslay,
->>  				struct objio_segment *objio_seg, unsigned comp,
->>  				gfp_t gfp_flags)
->>  {
->>  	struct pnfs_osd_deviceaddr *deviceaddr;
->>  	struct nfs4_deviceid *d_id;
->> +	struct objio_dev_ent *ode;
->>  	struct osd_dev *od;
->>  	struct osd_dev_info odi;
->> -	struct objio_mount_type *omt =
->> -				   NFS_SERVER(pnfslay->plh_inode)->pnfs_ld_data;
->>  	int err;
->>  
->>  	d_id = &objio_seg->comps[comp].oc_object_id.oid_device_id;
->>  
->> -	od = _dev_list_find(omt, d_id);
->> -	if (od)
->> -		return od;
->> +	ode = _dev_list_find(NFS_SERVER(pnfslay->plh_inode)->nfs_client, d_id);
->> +	if (ode)
->> +		return ode;
->>  
->>  	err = objlayout_get_deviceinfo(pnfslay, d_id, &deviceaddr, gfp_flags);
->>  	if (unlikely(err)) {
->> @@ -188,7 +176,7 @@ static struct osd_dev *_device_lookup(struct pnfs_layout_hdr *pnfslay,
->>  		goto out;
->>  	}
->>  
->> -	_dev_list_add(omt, d_id, od, gfp_flags);
->> +	_dev_list_add(NFS_SERVER(pnfslay->plh_inode), d_id, od, gfp_flags);
->>  
->>  out:
->>  	dprintk("%s: return=%d\n", __func__, err);
->> @@ -205,14 +193,14 @@ static int objio_devices_lookup(struct pnfs_layout_hdr *pnfslay,
->>  
->>  	/* lookup all devices */
->>  	for (i = 0; i < objio_seg->num_comps; i++) {
->> -		struct osd_dev *od;
->> +		struct objio_dev_ent *ode;
->>  
->> -		od = _device_lookup(pnfslay, objio_seg, i, gfp_flags);
->> -		if (unlikely(IS_ERR(od))) {
->> -			err = PTR_ERR(od);
->> +		ode = _device_lookup(pnfslay, objio_seg, i, gfp_flags);
->> +		if (unlikely(IS_ERR(ode))) {
->> +			err = PTR_ERR(ode);
->>  			goto out;
->>  		}
->> -		objio_seg->ods[i] = od;
->> +		objio_seg->ods[i] = ode;
->>  	}
->>  	err = 0;
->>  
->> @@ -348,8 +336,14 @@ err:
->>  
->>  void objio_free_lseg(struct pnfs_layout_segment *lseg)
->>  {
->> +	int i;
->>  	struct objio_segment *objio_seg = OBJIO_LSEG(lseg);
->>  
->> +	for (i = 0; i < objio_seg->num_comps; i++) {
->> +		if (!objio_seg->ods[i])
->> +			break;
->> +		nfs4_put_deviceid_node(&objio_seg->ods[i]->id_node);
->> +	}
->>  	kfree(objio_seg);
->>  }
->>  
->> @@ -360,6 +354,8 @@ static struct pnfs_layoutdriver_type objlayout_type = {
->>  
->>  	.alloc_lseg              = objlayout_alloc_lseg,
->>  	.free_lseg               = objlayout_free_lseg,
->> +
->> +	.free_deviceid_node	 = objio_free_deviceid_node,
->>  };
->>  
->>  MODULE_DESCRIPTION("pNFS Layout Driver for OSD2 objects");
-> 
+diff --git a/fs/nfs/objlayout/Kbuild b/fs/nfs/objlayout/Kbuild
+index 2e5b9a4..7b2a5a2 100644
+--- a/fs/nfs/objlayout/Kbuild
++++ b/fs/nfs/objlayout/Kbuild
+@@ -1,5 +1,5 @@
+ #
+ # Makefile for the pNFS Objects Layout Driver kernel module
+ #
+-objlayoutdriver-y := objio_osd.o
++objlayoutdriver-y := objio_osd.o pnfs_osd_xdr_cli.o
+ obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayoutdriver.o
+diff --git a/fs/nfs/objlayout/pnfs_osd_xdr_cli.c b/fs/nfs/objlayout/pnfs_osd_xdr_cli.c
+new file mode 100644
+index 0000000..19228f8
+--- /dev/null
++++ b/fs/nfs/objlayout/pnfs_osd_xdr_cli.c
+@@ -0,0 +1,132 @@
++/*
++ *  Object-Based pNFS Layout XDR layer
++ *
++ *  Copyright (C) 2007 Panasas Inc. [year of first publication]
++ *  All rights reserved.
++ *
++ *  Benny Halevy <bhalevy@panasas.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License version 2
++ *  See the file COPYING included with this distribution for more details.
++ *
++ *  Redistribution and use in source and binary forms, with or without
++ *  modification, are permitted provided that the following conditions
++ *  are met:
++ *
++ *  1. Redistributions of source code must retain the above copyright
++ *     notice, this list of conditions and the following disclaimer.
++ *  2. Redistributions in binary form must reproduce the above copyright
++ *     notice, this list of conditions and the following disclaimer in the
++ *     documentation and/or other materials provided with the distribution.
++ *  3. Neither the name of the Panasas company nor the names of its
++ *     contributors may be used to endorse or promote products derived
++ *     from this software without specific prior written permission.
++ *
++ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
++ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
++ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
++ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
++ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include <linux/pnfs_osd_xdr.h>
++
++#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
++
++/*
++ * The following implementation is based on RFC5664
++ */
++
++/*
++ * struct pnfs_osd_objid {
++ * 	struct pnfs_deviceid	oid_device_id;
++ * 	u64			oid_partition_id;
++ * 	u64			oid_object_id;
++ * };
++ */
++static inline __be32 *
++pnfs_osd_xdr_decode_objid(__be32 *p, struct pnfs_osd_objid *objid)
++{
++	COPYMEM(objid->oid_device_id.data, sizeof(objid->oid_device_id.data));
++	READ64(objid->oid_partition_id);
++	READ64(objid->oid_object_id);
++	return p;
++}
++
++static inline __be32 *
++pnfs_osd_xdr_decode_opaque_cred(__be32 *p,
++				struct pnfs_osd_opaque_cred *opaque_cred)
++{
++	READ32(opaque_cred->cred_len);
++	COPYMEM(opaque_cred->cred, opaque_cred->cred_len);
++	return p;
++}
++
++/*
++ * struct pnfs_osd_object_cred {
++ * 	struct pnfs_osd_objid		oc_object_id;
++ * 	u32				oc_osd_version;
++ * 	u32				oc_cap_key_sec;
++ * 	struct pnfs_osd_opaque_cred	oc_cap_key
++ * 	struct pnfs_osd_opaque_cred	oc_cap;
++ * };
++ */
++static inline __be32 *
++pnfs_osd_xdr_decode_object_cred(__be32 *p, struct pnfs_osd_object_cred *comp,
++				u8 **credp)
++{
++	u8 *cred;
++
++	p = pnfs_osd_xdr_decode_objid(p, &comp->oc_object_id);
++	READ32(comp->oc_osd_version);
++	READ32(comp->oc_cap_key_sec);
++
++	cred = *credp;
++	comp->oc_cap_key.cred = cred;
++	p = pnfs_osd_xdr_decode_opaque_cred(p, &comp->oc_cap_key);
++	cred = (u8 *)((u32 *)cred + XDR_QUADLEN(comp->oc_cap_key.cred_len));
++	comp->oc_cap.cred = cred;
++	p = pnfs_osd_xdr_decode_opaque_cred(p, &comp->oc_cap);
++	cred = (u8 *)((u32 *)cred + XDR_QUADLEN(comp->oc_cap.cred_len));
++	*credp = cred;
++
++	return p;
++}
++
++/*
++ * struct pnfs_osd_data_map {
++ * 	u32	odm_num_comps;
++ * 	u64	odm_stripe_unit;
++ * 	u32	odm_group_width;
++ * 	u32	odm_group_depth;
++ * 	u32	odm_mirror_cnt;
++ * 	u32	odm_raid_algorithm;
++ * };
++ */
++static inline u32 *
++pnfs_osd_xdr_decode_data_map(__be32 *p, struct pnfs_osd_data_map *data_map)
++{
++	READ32(data_map->odm_num_comps);
++	READ64(data_map->odm_stripe_unit);
++	READ32(data_map->odm_group_width);
++	READ32(data_map->odm_group_depth);
++	READ32(data_map->odm_mirror_cnt);
++	READ32(data_map->odm_raid_algorithm);
++	dprintk("%s: odm_num_comps=%u odm_stripe_unit=%llu odm_group_width=%u "
++		"odm_group_depth=%u odm_mirror_cnt=%u odm_raid_algorithm=%u\n",
++		__func__,
++		data_map->odm_num_comps,
++		(unsigned long long)data_map->odm_stripe_unit,
++		data_map->odm_group_width,
++		data_map->odm_group_depth,
++		data_map->odm_mirror_cnt,
++		data_map->odm_raid_algorithm);
++	return p;
++}
+-- 
+1.7.3.4
 
