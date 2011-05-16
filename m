@@ -1,43 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:13693 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756140Ab1EWSUe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 14:20:34 -0400
-Message-ID: <4DDAA55C.7030700@panasas.com>
-Date: Mon, 23 May 2011 21:20:12 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCHSET v6 0/26] pnfs for 2.6.40
-References: <4DDA8C3D.5080706@panasas.com>
-In-Reply-To: <4DDA8C3D.5080706@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:57864 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755101Ab1EPNzX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 May 2011 09:55:23 -0400
+Date: Mon, 16 May 2011 09:56:15 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Luca Giuzzi <luca.giuzzi@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] rpc.idmapd dies with 'I/O possible'
+Message-ID: <20110516095615.5d788c1a@corrin.poochiereds.net>
+In-Reply-To: <BANLkTinSoHVQH1meHMwCtxEp8Mku1gJv0Q@mail.gmail.com>
+References: <BANLkTinSoHVQH1meHMwCtxEp8Mku1gJv0Q@mail.gmail.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/23/2011 07:33 PM, Benny Halevy wrote:
-> Hi,
-> 
-> This is a cleaned up version of the v5 patchset I sent earlier.
-> It's also based over v2.6.39 and push to
-> git://linux-nfs.org/~bhalevy/linux-pnfs.git pnfs-submit
-> at tag pnfs-for-2.6.40-v6-2011-05-23
-> 
-> Changes in v6: (Benny)
-> * squashed all SQUASHMEs
-> * reverted "SQUASHME: initialize data->task on the non-rpc io done
-> success paths"
-> * reverted "per mount layout driver private data"
-> * reverted "pnfs: set/unset layoutdriver"
-> * applied (in reverse) "SQUASHME: pnfs-obj: Important fallout from the
-> last rebase"
-> 
-<snip>
+On Mon, 16 May 2011 15:38:27 +0200
+Luca Giuzzi <luca.giuzzi@gmail.com> wrote:
 
-Benny I found some more small bugs. Do you want a full replacement patch
-or a SQUASHME?
+> Dear All,
+>  we have had problems on some of our machines (all Fedora 14), where
+> rpc.idmapd used to die with an `I/O possible' message at (basically)
+> random times. A strace suggested the issue being in nfsopen() where a
+> signal type is reset before notification is disabled; a signal at just
+> the right time might be the cause of the problem; see
+> https://bugzilla.redhat.com/show_bug.cgi?id=684308
+> I am now proposing the (trivial) patch to the list as well.
+> 
+> Best Regards,
+>   luca giuzzi
+> 
+> --- nfs-utils-1.2.3/utils/idmapd/idmapd.c.orig	2011-05-13
+> 16:27:08.000000000 +0200
+> +++ nfs-utils-1.2.3/utils/idmapd/idmapd.c	2011-05-13 16:27:16.000000000 +0200
+> @@ -778,8 +778,8 @@ nfsopen(struct idmap_client *ic)
+>  	} else {
+>  		event_set(&ic->ic_event, ic->ic_fd, EV_READ, nfscb, ic);
+>  		event_add(&ic->ic_event, NULL);
+> -		fcntl(ic->ic_dirfd, F_SETSIG, 0);
+>  		fcntl(ic->ic_dirfd, F_NOTIFY, 0);
+> +		fcntl(ic->ic_dirfd, F_SETSIG, 0);
+>  		if (verbose > 0)
+>  			xlog_warn("Opened %s", ic->ic_path);
+>  	}
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Boaz
- 
+Looks correct to me:
+
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
