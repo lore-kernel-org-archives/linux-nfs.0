@@ -1,78 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:37997 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753759Ab1EIRJR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:09:17 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 15/29] pnfs: set/unset layoutdriver
-Date: Mon,  9 May 2011 20:09:09 +0300
-Message-Id: <1304960949-4344-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DC81E8C.6040901@panasas.com>
-References: <4DC81E8C.6040901@panasas.com>
+Received: from cantor.suse.de ([195.135.220.2]:49754 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751007Ab1EQExS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 May 2011 00:53:18 -0400
+From: Neil Brown <neilb@suse.de>
+To: Steve Dickson <SteveD@redhat.com>
+Date: Tue, 17 May 2011 14:52:17 +1000
+Subject: [PATCH 2/2] supress socket error when address family is not supported
+Cc: linux-nfs@vger.kernel.org, Suresh Jayaraman <sjayaraman@suse.de>,
+        Neil Brown <neilb@suse.de>
+Message-ID: <20110517045217.29020.46681.stgit@notabene.brown>
+In-Reply-To: <20110517045125.29020.14596.stgit@notabene.brown>
+References: <20110517045125.29020.14596.stgit@notabene.brown>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-For managing per nfs_server layout driver data
+From: Suresh Jayaraman <sjayaraman@suse.de>
 
-[was: pass mntfh down the init_pnfs path]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+It was observed that when ipv6 module was not loaded and cannot be auto-loaded,
+when starting NFS server, the following error occurs:
+	"rpc.nfsd: unable to create inet6 TCP socket: errno 97 (Address
+	family not supported by protocol)"
+
+This is obviously a true message, but does not represent an "error" when ipv6
+is not enabled.  Rather, it is an expected condition.  As such, it can be
+confusing / misleading / distracting to display it in this scenario.
+
+This patch instead of throwing error when a socket call fails with
+EAFNOSUPPORT, makes it as a NOTICE.
+
+Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
+Signed-off-by: Neil Brown <neilb@suse.de>
 ---
- fs/nfs/pnfs.c |   13 ++++++++++++-
- fs/nfs/pnfs.h |    4 ++++
- 2 files changed, 16 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index b58155a..d5efe2e 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -75,8 +75,11 @@ find_pnfs_driver(u32 id)
- void
- unset_pnfs_layoutdriver(struct nfs_server *nfss)
- {
--	if (nfss->pnfs_curr_ld)
-+	if (nfss->pnfs_curr_ld) {
-+		if (nfss->pnfs_curr_ld->unset_layoutdriver)
-+			nfss->pnfs_curr_ld->unset_layoutdriver(nfss);
- 		module_put(nfss->pnfs_curr_ld->owner);
-+	}
- 	nfss->pnfs_curr_ld = NULL;
- }
- 
-@@ -115,6 +118,14 @@ set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
- 	}
- 	server->pnfs_curr_ld = ld_type;
- 
-+	if (ld_type->set_layoutdriver &&
-+	    ld_type->set_layoutdriver(server)) {
-+		dprintk("%s: Error initializing mount point for layout driver %u.\n",
-+		       __func__, id);
-+		module_put(ld_type->owner);
-+		goto out_no_driver;
-+	}
-+
- 	dprintk("%s: pNFS module for %u set\n", __func__, id);
- 	return;
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 006314e..9d620de 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -71,6 +71,10 @@ struct pnfs_layoutdriver_type {
- 	const u32 id;
- 	const char *name;
- 	struct module *owner;
-+
-+	int (*set_layoutdriver) (struct nfs_server *);
-+	int (*unset_layoutdriver) (struct nfs_server *);
-+
- 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr);
- 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
- 
--- 
-1.7.3.4
+ utils/nfsd/nfssvc.c |    9 +++++++--
+ 1 files changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+index ea36399..f607214 100644
+--- a/utils/nfsd/nfssvc.c
++++ b/utils/nfsd/nfssvc.c
+@@ -174,8 +174,13 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
+ 		sockfd = socket(addr->ai_family, addr->ai_socktype,
+ 				addr->ai_protocol);
+ 		if (sockfd < 0) {
+-			xlog(L_ERROR, "unable to create %s %s socket: "
+-				"errno %d (%m)", family, proto, errno);
++			if (errno == EAFNOSUPPORT)
++				xlog(L_NOTICE, "address family %s not "
++						"supported by protocol %s",
++						family, proto);
++			else
++				xlog(L_ERROR, "unable to create %s %s socket: "
++				     "errno %d (%m)", family, proto, errno);
+ 			rc = errno;
+ 			goto error;
+ 		}
+
 
