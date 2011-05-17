@@ -1,74 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:38934 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752279Ab1EVQxc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 12:53:32 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Cc: Andy Adamson <andros@netapp.com>
-Subject: [PATCH 20/23] pnfs: encode_layoutreturn
-Date: Sun, 22 May 2011 19:53:10 +0300
-Message-Id: <1306083190-11170-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4DD93D3E.9010909@panasas.com>
-References: <4DD93D3E.9010909@panasas.com>
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251]:39988 "EHLO
+	moving-picture.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755660Ab1EQQkD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 May 2011 12:40:03 -0400
+Received: from cassini.mpc.local ([172.16.15.37] helo=moving-picture.com)
+	by moving-picture.com with esmtp (Exim 4.43)
+	id 1QMN1Q-0000Wa-Hl
+	for linux-nfs@vger.kernel.org; Tue, 17 May 2011 17:21:24 +0100
+Message-ID: <4DD2A084.1040905@moving-picture.com>
+Date: Tue, 17 May 2011 17:21:24 +0100
+From: James Pearson <james-p@moving-picture.com>
+To: linux-nfs@vger.kernel.org
+Subject: How to control the order of different export options for different
+ client formats?
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+I'm using CentOS 5.x (nfs-utils based on v1.0.9) - and have been using 
+the following in /etc/exports:
 
-Add a layout driver method to encode the layout type specific
-opaque part of layout return in-line in the xdr stream.
+/export *(rw,async) @backup(rw,no_root_squash,async)
 
-Currently the pnfs-objects layout driver uses it to encode i/o error
-information on LAYOUTRETURN.
+which works fine - hosts in the backup NIS netgroup mount the file 
+system with no_root_squash and other clients with root_squash
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[fixup layout header pointer for encode_layoutreturn]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4xdr.c |    9 +++++++--
- fs/nfs/pnfs.h    |    4 ++++
- 2 files changed, 11 insertions(+), 2 deletions(-)
+However, I now want to restrict the export to all clients in a single 
+subnet - so I now have /etc/exports as:
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index e53d7d8..29d33b3 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1920,8 +1920,13 @@ encode_layoutreturn(struct xdr_stream *xdr,
- 	spin_lock(&args->inode->i_lock);
- 	xdr_encode_opaque_fixed(p, &NFS_I(args->inode)->layout->plh_stateid.data, NFS4_STATEID_SIZE);
- 	spin_unlock(&args->inode->i_lock);
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(0);
-+	if (NFS_SERVER(args->inode)->pnfs_curr_ld->encode_layoutreturn) {
-+		NFS_SERVER(args->inode)->pnfs_curr_ld->encode_layoutreturn(
-+			NFS_I(args->inode)->layout, xdr, args);
-+	} else {
-+		p = reserve_space(xdr, 4);
-+		*p = cpu_to_be32(0);
-+	}
- 	hdr->nops++;
- 	hdr->replen += decode_layoutreturn_maxsz;
- }
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index a54e715..798861c 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -106,6 +106,10 @@ struct pnfs_layoutdriver_type {
- 
- 	/* device notification methods */
- 	void (*delete_deviceid)(struct nfs4_deviceid *);
-+
-+	void (*encode_layoutreturn) (struct pnfs_layout_hdr *layoutid,
-+				     struct xdr_stream *xdr,
-+				     const struct nfs4_layoutreturn_args *args);
- };
- 
- struct pnfs_layout_hdr {
--- 
-1.7.2.3
+/export 172.16.0.0/20(rw,async) @backup(rw,no_root_squash,async)
 
+Unfortunately, hosts in the backup NIS netgroup (which are also in the 
+172.16.0.0/20 subnet) no longer mount with no_root_squash
+
+It appears that the subnet export takes precedence over the netgroup 
+export (it doesn't matter in what order the subnets/netgroups exports 
+are listed in /etc/exports) - so the netgroup client options are ignored 
+as a match has already been found in the subnet export.
+
+Is there any way to control the order in which clients are checked for 
+export options?
+
+i.e. I would like netgroups to take precedence over subnets
+
+Thanks
+
+James Pearson
