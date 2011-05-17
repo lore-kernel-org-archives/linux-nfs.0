@@ -1,29 +1,87 @@
-From: <Taousif_Ansari-G5Y5guI6XLZWk0Htik3J/w@public.gmane.org>
-Subject: mount.nfs4: Mounting failed, reason given by server: No such file
- or directory
-Date: Mon, 16 May 2011 23:29:31 -0700
-Message-ID: <A1A98FD909DC5248811A65C5D18E9C761DF69B191D@BLRX7MCDC202.AMER.DELL.COM>
-References: <20110517045125.29020.14596.stgit@notabene.brown>
- <20110517045217.29020.46681.stgit@notabene.brown>
+From: bpm@sgi.com
+Subject: Re: [PATCH] nfs-utils: getexportent interprets -test-client- as
+	default options
+Date: Tue, 17 May 2011 09:05:47 -0500
+Message-ID: <20110517140547.GI11654@sgi.com>
+References: <20110512131810.25028.50931.stgit@nfs3> <4DD14CE9.1070301@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-To: <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ausc60ps301.us.dell.com ([143.166.148.206]:15317 "EHLO
-	ausc60ps301.us.dell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751866Ab1EQG3j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 May 2011 02:29:39 -0400
-In-Reply-To: <20110517045217.29020.46681.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+Received: from relay1.sgi.com ([192.48.179.29]:50903 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754939Ab1EQOHH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 May 2011 10:07:07 -0400
+In-Reply-To: <4DD14CE9.1070301-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGksDQoNCkkgaGF2ZSBleHBvcnRlZCBvbmUgZGlyZWN0b3J5IGZyb20gbXkgc2VydmVyIGl0IGlz
-IC9leHBvcnQgYW5kIG15IC9ldGMvZXhwb3J0IGZpbGUgbG9va3MgbGlrZQ0KDQovZXhwb3J0ICoo
-cncsZnNpZD0wLHN5bmMscG5mcyxpbnNlY3VyZSxub19yb290X3NxdWFzaCxub19zdWJ0cmVlX2No
-ZWNrKQ0KDQpBdCBjbGllbnQNCnRzZkBjbGllbnRdIyBtb3VudCAtdCBuZnM0IC1vIG1pbm9ydmVy
-c2lvbj0xIDxzZXJ2ZXItaXA+Oi9leHBvcnQgL21udA0KTW91bnQubmZzNDogbW91bnRpbmcgPHNl
-cnZlci1pcD46L2V4cG9ydCBmaWxlZCwgcmVhc29uIGdpdmVuIGJ5IHNlcnZlcjogTm8gc3VjaCBm
-aWxlIG9yIGRpcmVjdG9yeS4NCg0KSW5zdGVhZCwgaWYgSSB1c2Ugc2ltcGxlIG1vdW50IHRoZW4g
-aXQgaXMgc3VjY2VlZGluZw0KdHNmQGNsaWVudF0jIG1vdW50IDxzZXJ2ZXItaXA+Oi9leHBvcnQg
-L21udA0KU3VjY2Vzc2Z1bGx5IG1vdW50ZWQuDQoNCg0KQ2FuIHNvbWVib2R5IHBsZWFzZSB0ZWxs
-IG1lIHdoYXQgaXMgdGhlIHByb2JsZW0uLi4/DQo=
+Hey Steve,
+
+On Mon, May 16, 2011 at 12:12:25PM -0400, Steve Dickson wrote:
+> On 05/12/2011 09:18 AM, Ben Myers wrote:
+> > With commit 1374c3861abdc66f3a1410e26cc85f86760b51dd Neil added a -test-client-
+> > export to test the exportability of filesystems when exportfs is run.  When
+> > using the old cache controls (i.e. /proc/fs/nfsd is not mounted) exportfs will
+> > read /proc/fs/nfs/exports and find these test client entries.  The dash at the
+> > beginning of -test-client- will be cause getexportent to look for default
+> > options in the rest of the string, which test-client- will not match:
+> > 
+> > exportfs: /proc/fs/nfs/exports:1: unknown keyword "test-client-(rw"
+> > 
+> > This patch resolves the problem by testing for -test-client- string in the
+> > check for default arguments.
+> > 
+> > Signed-off-by: Ben Myers <bpm@sgi.com>
+> > ---
+> >  support/nfs/exports.c |    9 ++++++---
+> >  1 files changed, 6 insertions(+), 3 deletions(-)
+> > 
+> > diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+> > index 6acb2b6..7e29155 100644
+> > --- a/support/nfs/exports.c
+> > +++ b/support/nfs/exports.c
+> > @@ -142,9 +142,12 @@ getexportent(int fromkernel, int fromexports)
+> >  		return NULL;
+> >  	}
+> >  	first = 0;
+> > -		
+> > -	/* Check for default options */
+> > -	if (exp[0] == '-') {
+> > +
+> > +	/*
+> > +	 * Check for default options.  The test client string does not indicate
+> > +	 * default arguments.
+> > +	 */
+> > +	if (exp[0] == '-' && strncmp(exp, "-test-client-", 13) != 0) {
+> >  		if (parseopts(exp + 1, &def_ee, 0, &has_default_subtree_opts) < 0)
+> >  			return NULL;
+> If I'm understanding you correctly, when using the old cache controls
+> and when processing exports that are already exported (exports that 
+> are in /proc/fs/nfs/exports) will cause this problem.
+
+Exactly.
+
+> If this indeed is the case, I think it's a bit cleaner if we
+> use the 'fromkernel' argument to decide if the '-' options
+> should or should not be processed. Something like:
+> 
+> diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+> index 6acb2b6..e4e9375 100644
+> --- a/support/nfs/exports.c
+> +++ b/support/nfs/exports.c
+> @@ -144,7 +144,7 @@ getexportent(int fromkernel, int fromexports)
+>         first = 0;
+>                 
+>         /* Check for default options */
+> -       if (exp[0] == '-') {
+> +       if (exp[0] == '-' && !fromkernel) {
+>                 if (parseopts(exp + 1, &def_ee, 0, &has_default_subtree_opts) < 0)
+>                         return NULL;
+> 
+
+Ok, I'll try that on.
+
+Thanks,
+	Ben
