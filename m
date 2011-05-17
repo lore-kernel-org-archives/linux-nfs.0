@@ -1,39 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:24143 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755305Ab1EPOAI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 10:00:08 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 4/4] SQUASHME: remove unnecessary FIXME
-Date: Mon, 16 May 2011 06:59:58 -0700
-Message-Id: <1305554398-29235-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DCC715C.1090101@panasas.com>
-References: <4DCC715C.1090101@panasas.com>
+Received: from cantor2.suse.de ([195.135.220.15]:57752 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751007Ab1EQExF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 May 2011 00:53:05 -0400
+From: Neil Brown <neilb@suse.de>
+To: Steve Dickson <SteveD@redhat.com>
+Date: Tue, 17 May 2011 14:52:17 +1000
+Subject: [PATCH 0/2] Two small fixes for nfs-utils
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20110517045125.29020.14596.stgit@notabene.brown>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/read.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+I've been sorting through nfs-utils patches in suse and have two that
+should go upstream.
 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 10eff1c..61e87c6 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -297,8 +297,6 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc)
- 	do {
- 		int ret2;
- 
--		/* FIXME: need a new layout segment? */
--
- 		data = list_entry(list.next, struct nfs_read_data, pages);
- 		list_del_init(&data->pages);
- 
+Please consider for next release.
+
+Thanks,
+NeilBrown
+
+
+
+---
+
+Neil Brown (1):
+      Remove risk of nfs_addmntent corrupting mtab
+
+Suresh Jayaraman (1):
+      supress socket error when address family is not supported
+
+
+ support/nfs/nfs_mntent.c |    9 +++++++++
+ utils/nfsd/nfssvc.c      |    9 +++++++--
+ 2 files changed, 16 insertions(+), 2 deletions(-)
+
 -- 
-1.7.3.4
+Signature
 
