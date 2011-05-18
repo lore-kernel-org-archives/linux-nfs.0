@@ -1,120 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:50932 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755219Ab1E2S0S (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 14:26:18 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Benny Halevy <bhalevy@panasas.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Cc: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 23/32] pnfs: layoutret_on_setattr
-Date: Sun, 29 May 2011 21:26:07 +0300
-Message-Id: <1306693567-8355-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4DE28CFB.4060608@panasas.com>
-References: <4DE28CFB.4060608@panasas.com>
+Received: from mx1.redhat.com ([209.132.183.28]:58465 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932995Ab1ERQsR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 May 2011 12:48:17 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p4IGmGZ4002787
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 18 May 2011 12:48:16 -0400
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p4IGmGVd016388
+	for <linux-nfs@vger.kernel.org>; Wed, 18 May 2011 12:48:16 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] Removed compilation warnings from mountd/cache.c (take 2)
+Date: Wed, 18 May 2011 12:48:15 -0400
+Message-Id: <1305737295-19559-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+From: Jim Rees <rees@umich.edu>
 
-With the objects layout security model, we have object capabilities
-that are associated with the layout and we anticipate that the server
-will issue a cb_layoutrecall for any setattr that changes security
-related attributes (user/group/mode/acl) or truncates the file.
+Commit 5604b35a6 introduced a number of missing initializer
+warnings that were missed. This patch removes those warnings.
 
-Therefore, the layout is returned before issuing the setattr to avoid
-the anticipated cb_layoutrecall.
-
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfs/nfs4proc.c            |    3 +++
- fs/nfs/objlayout/objio_osd.c |    1 +
- fs/nfs/pnfs.h                |   22 ++++++++++++++++++++++
- 3 files changed, 26 insertions(+), 0 deletions(-)
+ utils/mountd/cache.c |   10 +++++-----
+ 1 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5b4124e..5734009 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2361,6 +2361,9 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 	struct nfs4_state *state = NULL;
- 	int status;
- 
-+	if (pnfs_ld_layoutret_on_setattr(inode))
-+		pnfs_return_layout(inode);
-+
- 	nfs_fattr_init(fattr);
- 	
- 	/* Search for an existing open(O_WRITE) file */
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index cc92d3b..4e8de3e 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -964,6 +964,7 @@ objlayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- static struct pnfs_layoutdriver_type objlayout_type = {
- 	.id = LAYOUT_OSD2_OBJECTS,
- 	.name = "LAYOUT_OSD2_OBJECTS",
-+	.flags                   = PNFS_LAYOUTRET_ON_SETATTR,
- 
- 	.alloc_layout_hdr        = objlayout_alloc_layout_hdr,
- 	.free_layout_hdr         = objlayout_free_layout_hdr,
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index c34f7a0..af3967a 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -65,6 +65,11 @@ enum {
- 	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index df6b38f..0c4a03d 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -827,11 +827,11 @@ struct {
+ 	FILE *f;
+ 	char vbuf[RPC_CHAN_BUF_SIZE];
+ } cachelist[] = {
+-	{ "auth.unix.ip", auth_unix_ip, NULL},
+-	{ "auth.unix.gid", auth_unix_gid, NULL},
+-	{ "nfsd.export", nfsd_export, NULL},
+-	{ "nfsd.fh", nfsd_fh, NULL},
+-	{ NULL, NULL, NULL }
++	{ "auth.unix.ip", auth_unix_ip, NULL, ""},
++	{ "auth.unix.gid", auth_unix_gid, NULL, ""},
++	{ "nfsd.export", nfsd_export, NULL, ""},
++	{ "nfsd.fh", nfsd_fh, NULL, ""},
++	{ NULL, NULL, NULL, ""}
  };
  
-+enum layoutdriver_policy_flags {
-+	/* Should the pNFS client commit and return the layout upon a setattr */
-+	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
-+};
-+
- struct nfs4_deviceid_node;
- 
- /* Per-layout driver specific registration structure */
-@@ -73,6 +78,7 @@ struct pnfs_layoutdriver_type {
- 	const u32 id;
- 	const char *name;
- 	struct module *owner;
-+	unsigned flags;
- 
- 	struct pnfs_layout_hdr * (*alloc_layout_hdr) (struct inode *inode, gfp_t gfp_flags);
- 	void (*free_layout_hdr) (struct pnfs_layout_hdr *);
-@@ -258,6 +264,16 @@ static inline void pnfs_clear_request_commit(struct nfs_page *req)
- 		put_lseg(req->wb_commit_lseg);
- }
- 
-+/* Should the pNFS client commit and return the layout upon a setattr */
-+static inline bool
-+pnfs_ld_layoutret_on_setattr(struct inode *inode)
-+{
-+	if (!pnfs_enabled_sb(NFS_SERVER(inode)))
-+		return false;
-+	return NFS_SERVER(inode)->pnfs_curr_ld->flags &
-+		PNFS_LAYOUTRET_ON_SETATTR;
-+}
-+
- static inline int pnfs_return_layout(struct inode *ino)
- {
- 	struct nfs_inode *nfsi = NFS_I(ino);
-@@ -317,6 +333,12 @@ static inline int pnfs_return_layout(struct inode *ino)
- }
- 
- static inline bool
-+pnfs_ld_layoutret_on_setattr(struct inode *inode)
-+{
-+	return false;
-+}
-+
-+static inline bool
- pnfs_roc(struct inode *ino)
- {
- 	return false;
+ extern int manage_gids;
 -- 
-1.7.2.3
+1.7.5.1
 
