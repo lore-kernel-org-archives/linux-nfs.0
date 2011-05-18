@@ -1,51 +1,125 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:40320 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934278Ab1ETUXy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 May 2011 16:23:54 -0400
-Received: by pzk9 with SMTP id 9so1819842pzk.19
-        for <linux-nfs@vger.kernel.org>; Fri, 20 May 2011 13:23:53 -0700 (PDT)
-Message-ID: <4DD6CDD7.60503@uw.edu>
-Date: Fri, 20 May 2011 13:23:51 -0700
-From: Harry Edmon <harry@uw.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: "Dr. J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: 2.6.38.6 - state manager constantly respawns
-References: <05D08339-888C-4A64-BDC5-8667B3901E7A@oracle.com>			 <4DD1772E.9010609@uw.edu>		 <6A6FB1C3-D4C3-40BE-810A-B4551FA9E591@oracle.com>			 <4DD17CB5.7010009@uw.edu> <1305575007.19725.3.camel@lade.trondhjem.org>			 <4DD17F79.305@uw.edu> <1305575656.19725.9.camel@lade.trondhjem.org>			 <20110516202059.GC1680@fieldses.org> <20110516205351.GD1680@fieldses.org>			 <4DD694DF.2060302@uw.edu> <20110520172639.GA11670@fieldses.org>		 <1305913963.12712.6.camel@lade.trondhjem.org> <4DD6C103.7090302@uw.edu>	 <1305920417.14253.15.camel@lade.trondhjem.org> <4DD6C4A3.5010709@uw.edu> <1305922283.14253.24.camel@lade.trondhjem.org>
-In-Reply-To: <1305922283.14253.24.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from fieldses.org ([174.143.236.118]:38851 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933623Ab1ERTTv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 May 2011 15:19:51 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [RFC PATCH 2/2] locks: break lease on unlink
+Date: Wed, 18 May 2011 15:19:48 -0400
+Message-Id: <1305746388-18241-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1305746388-18241-1-git-send-email-bfields@redhat.com>
+References: <1305746388-18241-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 05/20/11 13:11, Trond Myklebust wrote:
-> On Fri, 2011-05-20 at 12:44 -0700, Harry Edmon wrote:
->    
->>> Once a minute is rather unusual... What kind of server are you running
->>> against?
->>>
->>> If it is a Linux server, what is the value contained in the virtual file
->>> "/proc/fs/nfsd/nfsv4leasetime" ?
->>>
->>>
->>>        
->> Same as before - Debian Squeeze running 2.6.38.6.   The value of
->> /proc/fs/nfsd/nfsv4leasetime is 90 and is not something I changed.
->>      
-> OK... Does 'nfsstat' on the server show any 'delegreturn' updates around
-> the time when the state manager thread runs? It could just be that it is
-> reaping all your unused delegations.
->
->    
-That number seems to be increasing all the time, whether or not the 
-state manager process appears in the accounting file.   And this is only 
-the one NFS client for this sever.
+NFSv4 uses leases (delegations) to allow clients to do opens locally.
+An open takes a component name, so to do a local open a client needs to
+know that at least that last component name points at the same time as
+long as they hold the delegation.  For that reason, the NFSv4 spec
+requires that delegations be broken on unlink.
 
+Waiting for a lease to be broken may mean waiting for an nfs client or a
+user process to give it up, so doing that while holding the i_mutex
+would risk deadlocks.  So instead we do a non-blocking lease break, then
+drop the i_mutex and do a blocking lease break if necessary.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/namei.c    |   32 ++++++++++++++++++++++++++++----
+ fs/nfsd/vfs.c |    6 +++++-
+ 2 files changed, 33 insertions(+), 5 deletions(-)
+
+diff --git a/fs/namei.c b/fs/namei.c
+index 079e68c..4661469 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2799,6 +2799,7 @@ static long do_unlinkat(int dfd, const char __user *pathname)
+ 
+ 	nd.flags &= ~LOOKUP_PARENT;
+ 
++retry:
+ 	mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
+ 	dentry = lookup_hash(&nd);
+ 	error = PTR_ERR(dentry);
+@@ -2806,15 +2807,27 @@ static long do_unlinkat(int dfd, const char __user *pathname)
+ 		/* Why not before? Because we want correct error value */
+ 		if (nd.last.name[nd.last.len])
+ 			goto slashes;
+-		inode = dentry->d_inode;
+-		if (inode)
+-			ihold(inode);
++		if (inode && inode != dentry->d_inode) {
++			reallow_leases(inode, O_WRONLY);
++			iput(inode);
++			inode = NULL;
++		}
++		if (!inode) {
++			inode = dentry->d_inode;
++			if (inode)
++				ihold(inode);
++			disallow_leases(inode, O_WRONLY);
++		}
+ 		error = mnt_want_write(nd.path.mnt);
+ 		if (error)
+ 			goto exit2;
+ 		error = security_path_unlink(&nd.path, dentry);
+ 		if (error)
+ 			goto exit3;
++		if (inode)
++			error = break_lease(inode, O_WRONLY|O_NONBLOCK);
++		if (error)
++			goto exit3;
+ 		error = vfs_unlink(nd.path.dentry->d_inode, dentry);
+ exit3:
+ 		mnt_drop_write(nd.path.mnt);
+@@ -2822,8 +2835,19 @@ exit3:
+ 		dput(dentry);
+ 	}
+ 	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
+-	if (inode)
++	if (inode) {
++		/* XXX: safe to use EWOULDBLOCK==EAGAIN to do this?: */
++		if (error == -EWOULDBLOCK) {
++			/*
++			 * Wait this time, then retry with leases left
++			 * disabled:
++			 */
++			break_lease(inode, O_WRONLY);
++			goto retry;
++		}
++		reallow_leases(inode, O_WRONLY);
+ 		iput(inode);	/* truncate the inode here */
++	}
+ exit1:
+ 	path_put(&nd.path);
+ 	putname(name);
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index f4e056a..ef01b98 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1826,13 +1826,17 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 	if (host_err)
+ 		goto out_put;
+ 
++	disallow_leases(rdentry->d_inode, O_WRONLY);
+ 	host_err = nfsd_break_lease(rdentry->d_inode);
+-	if (host_err)
++	if (host_err) {
++		reallow_leases(rdentry->d_inode, O_WRONLY);
+ 		goto out_drop_write;
++	}
+ 	if (type != S_IFDIR)
+ 		host_err = vfs_unlink(dirp, rdentry);
+ 	else
+ 		host_err = vfs_rmdir(dirp, rdentry);
++	reallow_leases(rdentry->d_inode, O_WRONLY);
+ 	if (!host_err)
+ 		host_err = commit_metadata(fhp);
+ out_drop_write:
 -- 
-  Dr. Harry Edmon			E-MAIL: harry@uw.edu
-  206-543-0547 FAX: 206-543-0308			harry@atmos.washington.edu
-  Director of IT, College of the Environment and
-  Director of Computing, Dept of Atmospheric Sciences
-  University of Washington, Box 351640, Seattle, WA 98195-1640
+1.7.4.1
 
