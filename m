@@ -1,39 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:34668 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751200Ab1EPQW2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 12:22:28 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com
-Subject: [PATCH v3 13/29] pnfs: per mount layout driver private data
-Date: Mon, 16 May 2011 09:22:24 -0700
-Message-Id: <1305562944-7774-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DD14D8E.1070701@panasas.com>
-References: <4DD14D8E.1070701@panasas.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:58998 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753855Ab1ERUlS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 May 2011 16:41:18 -0400
+Subject: Re: NFS: pnfs ipv6 and multipath parsing
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <955779EA-D374-4C9A-B260-5200E3C19F8F@netapp.com>
+Date: Wed, 18 May 2011 16:41:07 -0400
+Cc: trond@netapp.com, linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <6E3482C0-A193-420D-B57D-E6EEECA83421@oracle.com>
+References: <1305748634-28348-1-git-send-email-dros@netapp.com> <AA6F9C64-8FDB-4B0A-B8CB-80AB4FA3D985@oracle.com> <74A7DF78-2AF3-43EA-978B-E53252045F04@netapp.com> <955779EA-D374-4C9A-B260-5200E3C19F8F@netapp.com>
+To: Weston Andros Adamson <dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-[get rid of ds_[rw]size]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- include/linux/nfs_fs_sb.h |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 87694ca..66e031f 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -143,6 +143,7 @@ struct nfs_server {
- 						   filesystem */
- 	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
- 	struct rpc_wait_queue	roc_rpcwaitq;
-+	void			       *pnfs_ld_data; /* Per-mount data */
- 
- 	/* the following fields are protected by nfs_client->cl_lock */
- 	struct rb_root		state_owners;
+On May 18, 2011, at 4:29 PM, Weston Andros Adamson wrote:
+
+> Some clarification:
+> 
+> If ipv6.ko can't be found, this patch will still try to connect to the v6 address, fail (EIO) and revert to the MDS.
+> 
+> In order to properly handle this, we need to handle errors on connect and try another multipath address.  
+> I feel that this is really part of the other "half" of the multipath work (actually using more than one address), which we will get to very soon and should be treated as a separate patch.  Unless there are objections...
+
+Sounds like a plan.  My only concern is that your proposed code fails gracefully in the case that ipv6.ko cannot be loaded.  Crashing was a typical failure mode for this case while IPv6 support was being developed.
+
+> -dros
+> 
+> On May 18, 2011, at 4:19 PM, Weston Andros Adamson wrote:
+> 
+>> Yeah, that should work too.  Like other parts of fs/nfs/, I relied on rpc_pton() to allow or disallow parsing ipv6 addresses.
+>> 
+>> -dros
+>> 
+>> On May 18, 2011, at 4:11 PM, Chuck Lever wrote:
+>> 
+>>> 
+>>> On May 18, 2011, at 3:57 PM, Weston Andros Adamson wrote:
+>>> 
+>>>> These two patches add support for IPv6 dataserver connectivity and 
+>>>> parsing all multipath addresses.
+>>>> 
+>>>> IPv6: basically same patch as before:
+>>>> - no longer calls kzalloc() while holding spinlock
+>>>> - i verified that everything works as expected when CONFIG_IPV6 is not defined
+>>> 
+>>> You'll also need to worry about when IPv6 is built in a kernel module, but ipv6.ko cannot be loaded.
+>>> 
+>>> -- 
+>>> Chuck Lever
+>>> chuck[dot]lever[at]oracle[dot]com
+>>> 
+>>> 
+>>> 
+>>> 
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
 -- 
-1.7.3.4
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
