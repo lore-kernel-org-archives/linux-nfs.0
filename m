@@ -1,193 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:59805 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932567Ab1EFAbC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 May 2011 20:31:02 -0400
-Received: by wwa36 with SMTP id 36so2924947wwa.1
-        for <linux-nfs@vger.kernel.org>; Thu, 05 May 2011 17:31:01 -0700 (PDT)
-In-Reply-To: <437877.23899.qm@web111716.mail.gq1.yahoo.com>
-References: <781436.95809.qm@web111709.mail.gq1.yahoo.com>
-	<OF40F1C0BA.A5FC46BA-ON85257887.004DC668-85257887.004DD321@us.ibm.com>
-	<591857.64709.qm@web111726.mail.gq1.yahoo.com>
-	<BANLkTimbnz4xKyK1oNDnyWN7k9dhApW2TA@mail.gmail.com>
-	<437877.23899.qm@web111716.mail.gq1.yahoo.com>
-Date: Fri, 6 May 2011 09:31:00 +0900
-Message-ID: <BANLkTikmtaBUCZeyMvnx_vO2J6ymk0_FfQ@mail.gmail.com>
-Subject: Re: debugging nfs
-From: Hiroyuki Sato <hiroysato@gmail.com>
-To: Mahmood Naderan <nt_mahmood@yahoo.com>
-Cc: nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251]:47511 "EHLO
+	moving-picture.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756376Ab1ERKTj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 May 2011 06:19:39 -0400
+Received: from cassini.mpc.local ([172.16.15.37] helo=moving-picture.com)
+	by moving-picture.com with esmtp (Exim 4.43)
+	id 1QMdqs-0006lR-0L
+	for linux-nfs@vger.kernel.org; Wed, 18 May 2011 11:19:38 +0100
+Message-ID: <4DD39D39.7010805@moving-picture.com>
+Date: Wed, 18 May 2011 11:19:37 +0100
+From: James Pearson <james-p@moving-picture.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: How to control the order of different export options for different
+ client formats?
+References: <4DD2A084.1040905@moving-picture.com> <20110518080106.1159c5b8@notabene.brown>
+In-Reply-To: <20110518080106.1159c5b8@notabene.brown>
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello Mahmood
+NeilBrown wrote:
+> 
+> Unfortunately you cannot do that.
+> 
+> The place in the code where this is determined is towards the end of
+> 'lookup_export' in utils/mountd/cache.c
+> 
+> Were I to try to 'fix' this I would probably define a new field in 'struct
+> exportent' which holds a 'priority'.
+> 
+> Then allow a setting like "priority=4" in /etc/exports
+> 
+> Then change the code in lookup_export to choose the one with the higher
+> priority, rather than the 'first' one.
+> 
+> NeilBrown
 
-What kind of OS are you using??
+I've hacked the source to make netgroups take precedence over subnets by 
+  moving MCL_NETGROUP before MCL_SUBNETWORK in the enum in 
+support/include/exportfs.h - which works for me, as I only use 
+netgroups, subnets and anonymous (in that priority order).
 
-If you want to use automount, you have to setup automount.
-  ex) http://freespace.sourceforge.net/guidod/howto/autofs.html
+IMHO the priority of exports should really be as they appear on the line 
+in /etc/exports, but I guess if that were to change, it would break 
+existing /etc/exports that use the current priority ordering (either by 
+design or accident!).
 
-I you wan to mount /opt at boot time, but now you can't
- Could you please check autofs (If you are using RHEL, CentOS, Fedora...)
+Having a priority option would be a very good idea - and may be in the 
+meantime the exports man page should be updated with info about the 
+current priority ordering?
 
- # /sbin/chkconfig --list netfs
- netfs          	0:off	1:off	2:off	3:on	4:on	5:on	6:off
+Thanks
 
---
-Hiroyuki Sato
-
-
-2011/5/6 Mahmood Naderan <nt_mahmood@yahoo.com>:
-> Hi Hiroyuki,
->
-> I tried what you said, but no success. Here are the configs:
->
-> on server:
->
-> root@server:~# cat /etc/hosts
-> 127.0.0.1       localhost     localhost,server
-> 194.225.69.105  server
-> 192.168.1.3     client1
-> 192.168.1.4     client2
->
-> root@server:~# cat /etc/exports
-> /home/nfsroot        192.168.1.0/255.255.255.0(rw,async,no_root_squash)
-> /opt                 192.168.1.0/255.255.255.0(rw,sync,no_root_squash)
->
-> root@server:~# cat /etc/hosts.allow
-> sendmail: all
-> ALL: 192.168.1.0/255.255.255.0
->
->
->
-> On clients:
->
-> mahmood@client1:~$ cat /etc/fstab
-> # UNCONFIGURED FSTAB FOR BASE SYSTEM
-> # <file system> <mount point> <type> <options> <dump> <pass>
-> proc            /proc         proc   defaults       0      0
-> /dev/nfs        /             nfs    defaults       0      0
-> 192.168.1.1:/opt       /opt          nfs    defaults       0      0
->
-> mahmood@client1:~$ cat /etc/hosts
-> 127.0.0.1 localhost
-> 192.168.1.1 server
-> 192.168.1.3 client1
-> 192.168.1.4 client2
->
->
-> However, there is no sign of proper automount:
->
-> mahmood@client1:~$ ls /opt/
-> mahmood@client1:~$
->
->
-> // Naderan *Mahmood;
->
->
-> ----- Original Message -----
-> From: Hiroyuki Sato <hiroysato@gmail.com>
-> To: Mahmood Naderan <nt_mahmood@yahoo.com>
-> Cc: Brian R Cowan <brcowan@us.ibm.com>; nfs <linux-nfs@vger.kernel.org>
-> Sent: Thursday, May 5, 2011 7:55 PM
-> Subject: Re: debugging nfs
->
-> Hello Mahmood.
->
-> Have you ever tried to write ip address instead of server fqdn??
-> or have you ever tries write server entry in /etc/hosts??
->
-> It is mean that
->
-> /etc/fstab
-> ip.ad.re.ss:/opt /opt nfs mount_opt 0 0
->
-> or /etc/hosts
-> ip.add.re.ss server
->
->
-> I met same problem today, and I resolve it.
->
-> My friend were using NIS on scientific linux .
-> and It tried to mount before NIS started.
->
-> --
-> Hiroyuki Sato
->
->
-> 2011/5/5 Mahmood Naderan <nt_mahmood@yahoo.com>:
->> Well, I found the problem very nasty and in my previous posts, I mentioned some of them.
->>
->> The big problem:
->> when the clients boots, it doesn't automatically mount the shared folders via /etc/fstab.
->> However after login to client, I can mount the folder manually with
->>
->> "sudo mount -t nfs server:/opt /opt"
->>
->> I really don't know why fstab doesn't work. I searched a lot.... some say disbale IPV6.
->> I did that but still have that problem.
->>
->> So how can I tell nfs (on server or client) to be verbose so that I can see what is going on
->> and what is not going on.
->>
->> Any feedback and comment is welcomed.
->>
->> // Naderan *Mahmood;
->>
->> From: Brian R Cowan <brcowan@us.ibm.com>
->> To: Mahmood Naderan <nt_mahmood@yahoo.com>
->> Cc: nfs <linux-nfs@vger.kernel.org>; linux-nfs-owner@vger.kernel.org
->> Sent: Thursday, May 5, 2011 6:40 PM
->> Subject: Re: debugging nfs
->>
->>
->> It would probably help to explain the problem
->> so you can get targeted debugging assistance...
->>
->> =================================================================
->> Brian Cowan
->> Advisory Software Engineer
->> ClearCase Software Advisory Team (SWAT)
->> Rational Software
->> IBM Software Group
->> 550 King St
->> Littleton, MA 01460
->>
->> Phone: 1.978.899.9471
->> Web: http://www.ibm.com/software/rational/support/
->>
->>
->>
->>
->> From:
->>  Mahmood Naderan <nt_mahmood@yahoo.com>
->> To:
->>  nfs <linux-nfs@vger.kernel.org>,
->> Date:
->>  05/05/2011 09:30 AM
->> Subject:
->>    debugging nfs
->> Sent by:
->>    linux-nfs-owner@vger.kernel.org
->>
->>
->>
->> Hi,
->> I didn't find a method for debugging NFS for debain based systems. Is there
->> any verbose switch or debuging method for that?
->>
->> // Naderan *Mahmood;
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
->> in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->
->
+James Pearson
