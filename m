@@ -1,425 +1,404 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:9071 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756270Ab1EWQhN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 12:37:13 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCH v6 14/26] pnfs-obj: decode layout, alloc/free lseg
-Date: Mon, 23 May 2011 19:37:06 +0300
-Message-Id: <1306168626-11463-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DDA8C3D.5080706@panasas.com>
-References: <4DDA8C3D.5080706@panasas.com>
+Received: from mx1.redhat.com ([209.132.183.28]:41204 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752856Ab1EROiY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 May 2011 10:38:24 -0400
+Date: Wed, 18 May 2011 10:39:18 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: andros@netapp.com
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [RFC V2 1/1] SUNRPC: dynamic rpc_slot allocator
+Message-ID: <20110518103918.5489879e@corrin.poochiereds.net>
+In-Reply-To: <1305059200-412-2-git-send-email-andros@netapp.com>
+References: <1305059200-412-1-git-send-email-andros@netapp.com>
+	<1305059200-412-2-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Boaz Harrosh <bharrosh@panasas.com>
+On Tue, 10 May 2011 16:26:40 -0400
+andros@netapp.com wrote:
 
-objlayout_alloc_lseg prepares an xdr_stream and calls the
-raid engins objio_alloc_lseg() to allocate a private
-pnfs_layout_segment.
+> From: Andy Adamson <andros@netapp.com>
+> 
+> Add a dynamic rpc slot allocator at the beginning of the RPC call_transmit
+> state.  The allocator is triggered by a new rpc_xprt bit XPRT_ADD_SLOT.
+> 
+> The dynamic slot allocator uses GFP_NOWAIT and will return without
+> allocating a slot if GFP_NOWAIT allocation fails. This is OK because the
+> XPRT_ADD_SLOT bit will be set the next time UDP calls xprt_alloc, or the
+> next time the TCP write_space callback is called.
+> 
+> XXX Is this really true? XXX
+> Change the rpc_xprt allocation, including the intial slot table entries, to
+> GFP_ATOMIC as it can be called in the file system writeout path.
+> 
+> In the UDP and BC_TCP case, this means we no longer allocate slots we don't
+> need. In the TCP case, this means we follow the TCP window size up to
+> RPC_MAX_SLOT_TABLE.
+> 
+> Current transport slot allocation:
+> 
+> RDMA: No change, allocate xprt_rdma_slot_table_entries slots in
+>       xprt_setup_rdma.
+> 
+> UDP:  Changed: Start with RPC_MIN_SLOT_TABLE slots and dynamically add
+>       up to xprt_udp_slot_table_entries slots.
+>       Allocate RPC_MIN_SLOT_TABLE in xs_setup_udp. Add a set_add_slot
+>       operation so that if xprt_alloc can not find a slot on the free list,
+>       and max_reqs < xprt_udp_slot_table_entries, XPRT_ADD_SLOT is set and
+>       a slot is dynamically allocated.
+> 
+> TCP:  Changed: Start with xprt_tcp_slot_table_entries slots and dynamically
+>       add up to the TCP window size or (upper bound) RPC_MAX_SLOT_TABLE slots.
+>       Allocate xprt_tcp_slot_table_entries in xs_setup_tcp. Set XPRT_ADD_SLOT
+>       in xs_tcp_write_space so that we hookup TCP congestion feedback into
+>       the dynamic rpc_slot allocation so that the RPC layer can fully utilize
+>       the negotiated TCP window.
+> 
 
-objio_osd.c::objio_alloc_lseg() uses passed xdr_stream to
-decode and store the layout_segment information in an
-objio_segment struct, using the pnfs_osd_xdr.h API for
-the actual parsing the layout xdr.
+So UDP will start with a very small number of slots and grow
+dynamically, but TCP will start with a relatively large number and grow
+up to a hard fixed limit once those are exhausted. I'm not sure I
+understand the reasoning behind the difference there. Why not start TCP
+with an equally small number of fixed slots?
 
-objlayout_free_lseg calls objio_free_lseg() to free the
-allocated space.
+Also, why have a maximum at all for the TCP case? If we have the
+ability to send another frame, I see no need to hold back.
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-[gfp_flags]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/objlayout/Kbuild      |    2 +-
- fs/nfs/objlayout/objio_osd.c |  169 +++++++++++++++++++++++++++++++++++++++++-
- fs/nfs/objlayout/objlayout.c |  104 ++++++++++++++++++++++++++
- fs/nfs/objlayout/objlayout.h |   67 +++++++++++++++++
- 4 files changed, 340 insertions(+), 2 deletions(-)
- create mode 100644 fs/nfs/objlayout/objlayout.c
- create mode 100644 fs/nfs/objlayout/objlayout.h
+> BC_TCP: Changed: The back channel will not use more than two slots.
+>       Allocate RPC_MIN_SLOT_TABLE slots instead of xprt_tcp_slot_table_entries
+>       slots in xs_setup_bc_tcp.
+> 
+> Signed-off-by: Andy Adamson <andros@netap.com>
+> ---
+>  include/linux/sunrpc/xprt.h |    8 ++++
+>  net/sunrpc/clnt.c           |    4 ++
+>  net/sunrpc/xprt.c           |   90 +++++++++++++++++++++++++++++++++++++------
+>  net/sunrpc/xprtsock.c       |   34 +++++++++++++++-
+>  4 files changed, 121 insertions(+), 15 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> index a0f998c..6c3c78e 100644
+> --- a/include/linux/sunrpc/xprt.h
+> +++ b/include/linux/sunrpc/xprt.h
+> @@ -115,6 +115,7 @@ struct rpc_xprt_ops {
+>  	void		(*release_xprt)(struct rpc_xprt *xprt, struct rpc_task *task);
+>  	void		(*rpcbind)(struct rpc_task *task);
+>  	void		(*set_port)(struct rpc_xprt *xprt, unsigned short port);
+> +	void		(*set_add_slot)(struct rpc_xprt *xprt);
+>  	void		(*connect)(struct rpc_task *task);
+>  	void *		(*buf_alloc)(struct rpc_task *task, size_t size);
+>  	void		(*buf_free)(void *buffer);
+> @@ -307,6 +308,7 @@ void			xprt_release_rqst_cong(struct rpc_task *task);
+>  void			xprt_disconnect_done(struct rpc_xprt *xprt);
+>  void			xprt_force_disconnect(struct rpc_xprt *xprt);
+>  void			xprt_conditional_disconnect(struct rpc_xprt *xprt, unsigned int cookie);
+> +void			xprt_nowait_add_slot(struct rpc_xprt *xprt);
+>  
+>  /*
+>   * Reserved bit positions in xprt->state
+> @@ -321,6 +323,7 @@ void			xprt_conditional_disconnect(struct rpc_xprt *xprt, unsigned int cookie);
+>  #define XPRT_CONNECTION_ABORT	(7)
+>  #define XPRT_CONNECTION_CLOSE	(8)
+>  #define XPRT_INITIALIZED	(9)
+> +#define XPRT_ADD_SLOT		(10)
+>  
+>  static inline void xprt_set_connected(struct rpc_xprt *xprt)
+>  {
+> @@ -391,6 +394,11 @@ static inline int xprt_test_and_set_binding(struct rpc_xprt *xprt)
+>  	return test_and_set_bit(XPRT_BINDING, &xprt->state);
+>  }
+>  
+> +static inline void xprt_set_add_slot(struct rpc_xprt *xprt)
+> +{
+> +	set_bit(XPRT_ADD_SLOT, &xprt->state);
+> +}
+> +
+>  #endif /* __KERNEL__*/
+>  
+>  #endif /* _LINUX_SUNRPC_XPRT_H */
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 8d83f9d..82e69fe 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -1276,6 +1276,10 @@ call_transmit(struct rpc_task *task)
+>  	task->tk_action = call_status;
+>  	if (task->tk_status < 0)
+>  		return;
+> +
+> +	/* Add a slot if XPRT_ADD_SLOT is set */
+> +	xprt_nowait_add_slot(task->tk_xprt);
+> +
+>  	task->tk_status = xprt_prepare_transmit(task);
+>  	if (task->tk_status != 0)
+>  		return;
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index ce5eb68..6d11d95 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -942,6 +942,8 @@ static void xprt_alloc_slot(struct rpc_task *task)
+>  		xprt_request_init(task, xprt);
+>  		return;
+>  	}
+> +	if (xprt->ops->set_add_slot)
+> +		xprt->ops->set_add_slot(xprt);
+>  	dprintk("RPC:       waiting for request slot\n");
+>  	task->tk_status = -EAGAIN;
+>  	task->tk_timeout = 0;
+> @@ -958,24 +960,94 @@ static void xprt_free_slot(struct rpc_xprt *xprt, struct rpc_rqst *req)
+>  	spin_unlock(&xprt->reserve_lock);
+>  }
+>  
+> -struct rpc_xprt *xprt_alloc(struct net *net, int size, int max_req)
+> +
+> +/*
+> + * Initial slot table allocation called only at rpc_xprt allocation.
+> + * No need to take the xprt->reserve_lock.
+> + * GFP_ATOMIC used because an RPC can be triggered in the writeout path.
+> + *
+> + */
+> +static int xprt_alloc_slot_table_entries(struct rpc_xprt *xprt, int num_req)
+> +{
+> +	struct rpc_rqst *req;
+> +	int i;
+> +
+> +	for (i = 0; i < num_req; i++) {
+> +		req = kzalloc(sizeof(*req), GFP_ATOMIC);
+> +		if (!req)
+> +			return -ENOMEM;
+> +		list_add(&req->rq_list, &xprt->free);
+> +	}
 
-diff --git a/fs/nfs/objlayout/Kbuild b/fs/nfs/objlayout/Kbuild
-index 7b2a5a2..ed30ea0 100644
---- a/fs/nfs/objlayout/Kbuild
-+++ b/fs/nfs/objlayout/Kbuild
-@@ -1,5 +1,5 @@
- #
- # Makefile for the pNFS Objects Layout Driver kernel module
- #
--objlayoutdriver-y := objio_osd.o pnfs_osd_xdr_cli.o
-+objlayoutdriver-y := objio_osd.o pnfs_osd_xdr_cli.o objlayout.o
- obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayoutdriver.o
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 379595f..5a43fbe 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -38,11 +38,178 @@
-  */
- 
- #include <linux/module.h>
--#include "../pnfs.h"
-+#include <scsi/osd_initiator.h>
-+
-+#include "objlayout.h"
-+
-+#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
-+
-+#define _LLU(x) ((unsigned long long)x)
-+
-+struct caps_buffers {
-+	u8 caps_key[OSD_CRYPTO_KEYID_SIZE];
-+	u8 creds[OSD_CAP_LEN];
-+};
-+
-+struct objio_segment {
-+	struct pnfs_layout_segment lseg;
-+
-+	struct pnfs_osd_object_cred *comps;
-+
-+	unsigned mirrors_p1;
-+	unsigned stripe_unit;
-+	unsigned group_width;	/* Data stripe_units without integrity comps */
-+	u64 group_depth;
-+	unsigned group_count;
-+
-+	unsigned comps_index;
-+	unsigned num_comps;
-+	/* variable length */
-+	struct osd_dev	*ods[1];
-+};
-+
-+static inline struct objio_segment *
-+OBJIO_LSEG(struct pnfs_layout_segment *lseg)
-+{
-+	return container_of(lseg, struct objio_segment, lseg);
-+}
-+
-+static int _verify_data_map(struct pnfs_osd_layout *layout)
-+{
-+	struct pnfs_osd_data_map *data_map = &layout->olo_map;
-+	u64 stripe_length;
-+	u32 group_width;
-+
-+/* FIXME: Only raid0 for now. if not go through MDS */
-+	if (data_map->odm_raid_algorithm != PNFS_OSD_RAID_0) {
-+		printk(KERN_ERR "Only RAID_0 for now\n");
-+		return -ENOTSUPP;
-+	}
-+	if (0 != (data_map->odm_num_comps % (data_map->odm_mirror_cnt + 1))) {
-+		printk(KERN_ERR "Data Map wrong, num_comps=%u mirrors=%u\n",
-+			  data_map->odm_num_comps, data_map->odm_mirror_cnt);
-+		return -EINVAL;
-+	}
-+
-+	if (data_map->odm_group_width)
-+		group_width = data_map->odm_group_width;
-+	else
-+		group_width = data_map->odm_num_comps /
-+						(data_map->odm_mirror_cnt + 1);
-+
-+	stripe_length = (u64)data_map->odm_stripe_unit * group_width;
-+	if (stripe_length >= (1ULL << 32)) {
-+		printk(KERN_ERR "Total Stripe length(0x%llx)"
-+			  " >= 32bit is not supported\n", _LLU(stripe_length));
-+		return -ENOTSUPP;
-+	}
-+
-+	if (0 != (data_map->odm_stripe_unit & ~PAGE_MASK)) {
-+		printk(KERN_ERR "Stripe Unit(0x%llx)"
-+			  " must be Multples of PAGE_SIZE(0x%lx)\n",
-+			  _LLU(data_map->odm_stripe_unit), PAGE_SIZE);
-+		return -ENOTSUPP;
-+	}
-+
-+	return 0;
-+}
-+
-+static void copy_single_comp(struct pnfs_osd_object_cred *cur_comp,
-+			     struct pnfs_osd_object_cred *src_comp,
-+			     struct caps_buffers *caps_p)
-+{
-+	WARN_ON(src_comp->oc_cap_key.cred_len > sizeof(caps_p->caps_key));
-+	WARN_ON(src_comp->oc_cap.cred_len > sizeof(caps_p->creds));
-+
-+	*cur_comp = *src_comp;
-+
-+	memcpy(caps_p->caps_key, src_comp->oc_cap_key.cred,
-+	       sizeof(caps_p->caps_key));
-+	cur_comp->oc_cap_key.cred = caps_p->caps_key;
-+
-+	memcpy(caps_p->creds, src_comp->oc_cap.cred,
-+	       sizeof(caps_p->creds));
-+	cur_comp->oc_cap.cred = caps_p->creds;
-+}
-+
-+extern int objio_alloc_lseg(struct pnfs_layout_segment **outp,
-+	struct pnfs_layout_hdr *pnfslay,
-+	struct pnfs_layout_range *range,
-+	struct xdr_stream *xdr,
-+	gfp_t gfp_flags)
-+{
-+	struct objio_segment *objio_seg;
-+	struct pnfs_osd_xdr_decode_layout_iter iter;
-+	struct pnfs_osd_layout layout;
-+	struct pnfs_osd_object_cred *cur_comp, src_comp;
-+	struct caps_buffers *caps_p;
-+
-+	int err;
-+
-+	err = pnfs_osd_xdr_decode_layout_map(&layout, &iter, xdr);
-+	if (unlikely(err))
-+		return err;
-+
-+	err = _verify_data_map(&layout);
-+	if (unlikely(err))
-+		return err;
-+
-+	objio_seg = kzalloc(sizeof(*objio_seg) +
-+			    sizeof(*objio_seg->comps) * layout.olo_num_comps +
-+			    sizeof(struct caps_buffers) * layout.olo_num_comps,
-+			    gfp_flags);
-+	if (!objio_seg)
-+		return -ENOMEM;
-+
-+	cur_comp = objio_seg->comps = (void *)(objio_seg + 1);
-+	caps_p = (void *)(cur_comp + layout.olo_num_comps);
-+	while (pnfs_osd_xdr_decode_layout_comp(&src_comp, &iter, xdr, &err))
-+		copy_single_comp(cur_comp++, &src_comp, caps_p++);
-+	if (unlikely(err))
-+		goto err;
-+
-+	objio_seg->num_comps = layout.olo_num_comps;
-+	objio_seg->comps_index = layout.olo_comps_index;
-+
-+	objio_seg->mirrors_p1 = layout.olo_map.odm_mirror_cnt + 1;
-+	objio_seg->stripe_unit = layout.olo_map.odm_stripe_unit;
-+	if (layout.olo_map.odm_group_width) {
-+		objio_seg->group_width = layout.olo_map.odm_group_width;
-+		objio_seg->group_depth = layout.olo_map.odm_group_depth;
-+		objio_seg->group_count = layout.olo_map.odm_num_comps /
-+						objio_seg->mirrors_p1 /
-+						objio_seg->group_width;
-+	} else {
-+		objio_seg->group_width = layout.olo_map.odm_num_comps /
-+						objio_seg->mirrors_p1;
-+		objio_seg->group_depth = -1;
-+		objio_seg->group_count = 1;
-+	}
-+
-+	*outp = &objio_seg->lseg;
-+	return 0;
-+
-+err:
-+	kfree(objio_seg);
-+	dprintk("%s: Error: return %d\n", __func__, err);
-+	*outp = NULL;
-+	return err;
-+}
-+
-+void objio_free_lseg(struct pnfs_layout_segment *lseg)
-+{
-+	struct objio_segment *objio_seg = OBJIO_LSEG(lseg);
-+
-+	kfree(objio_seg);
-+}
-+
- 
- static struct pnfs_layoutdriver_type objlayout_type = {
- 	.id = LAYOUT_OSD2_OBJECTS,
- 	.name = "LAYOUT_OSD2_OBJECTS",
-+
-+	.alloc_lseg              = objlayout_alloc_lseg,
-+	.free_lseg               = objlayout_free_lseg,
- };
- 
- MODULE_DESCRIPTION("pNFS Layout Driver for OSD2 objects");
-diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-new file mode 100644
-index 0000000..9465267
---- /dev/null
-+++ b/fs/nfs/objlayout/objlayout.c
-@@ -0,0 +1,104 @@
-+/*
-+ *  pNFS Objects layout driver high level definitions
-+ *
-+ *  Copyright (C) 2007 Panasas Inc. [year of first publication]
-+ *  All rights reserved.
-+ *
-+ *  Benny Halevy <bhalevy@panasas.com>
-+ *  Boaz Harrosh <bharrosh@panasas.com>
-+ *
-+ *  This program is free software; you can redistribute it and/or modify
-+ *  it under the terms of the GNU General Public License version 2
-+ *  See the file COPYING included with this distribution for more details.
-+ *
-+ *  Redistribution and use in source and binary forms, with or without
-+ *  modification, are permitted provided that the following conditions
-+ *  are met:
-+ *
-+ *  1. Redistributions of source code must retain the above copyright
-+ *     notice, this list of conditions and the following disclaimer.
-+ *  2. Redistributions in binary form must reproduce the above copyright
-+ *     notice, this list of conditions and the following disclaimer in the
-+ *     documentation and/or other materials provided with the distribution.
-+ *  3. Neither the name of the Panasas company nor the names of its
-+ *     contributors may be used to endorse or promote products derived
-+ *     from this software without specific prior written permission.
-+ *
-+ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
-+ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-+ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-+ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
-+ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-+ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-+ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-+ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-+ */
-+
-+#include <scsi/osd_initiator.h>
-+#include "objlayout.h"
-+
-+#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
-+/*
-+ * Unmarshall layout and store it in pnfslay.
-+ */
-+struct pnfs_layout_segment *
-+objlayout_alloc_lseg(struct pnfs_layout_hdr *pnfslay,
-+		     struct nfs4_layoutget_res *lgr,
-+		     gfp_t gfp_flags)
-+{
-+	int status = -ENOMEM;
-+	struct xdr_stream stream;
-+	struct xdr_buf buf = {
-+		.pages =  lgr->layoutp->pages,
-+		.page_len =  lgr->layoutp->len,
-+		.buflen =  lgr->layoutp->len,
-+		.len = lgr->layoutp->len,
-+	};
-+	struct page *scratch;
-+	struct pnfs_layout_segment *lseg;
-+
-+	dprintk("%s: Begin pnfslay %p\n", __func__, pnfslay);
-+
-+	scratch = alloc_page(gfp_flags);
-+	if (!scratch)
-+		goto err_nofree;
-+
-+	xdr_init_decode(&stream, &buf, NULL);
-+	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
-+
-+	status = objio_alloc_lseg(&lseg, pnfslay, &lgr->range, &stream, gfp_flags);
-+	if (unlikely(status)) {
-+		dprintk("%s: objio_alloc_lseg Return err %d\n", __func__,
-+			status);
-+		goto err;
-+	}
-+
-+	__free_page(scratch);
-+
-+	dprintk("%s: Return %p\n", __func__, lseg);
-+	return lseg;
-+
-+err:
-+	__free_page(scratch);
-+err_nofree:
-+	dprintk("%s: Err Return=>%d\n", __func__, status);
-+	return ERR_PTR(status);
-+}
-+
-+/*
-+ * Free a layout segement
-+ */
-+void
-+objlayout_free_lseg(struct pnfs_layout_segment *lseg)
-+{
-+	dprintk("%s: freeing layout segment %p\n", __func__, lseg);
-+
-+	if (unlikely(!lseg))
-+		return;
-+
-+	objio_free_lseg(lseg);
-+}
-+
-diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
-new file mode 100644
-index 0000000..066280a
---- /dev/null
-+++ b/fs/nfs/objlayout/objlayout.h
-@@ -0,0 +1,67 @@
-+/*
-+ *  Data types and function declerations for interfacing with the
-+ *  pNFS standard object layout driver.
-+ *
-+ *  Copyright (C) 2007 Panasas Inc. [year of first publication]
-+ *  All rights reserved.
-+ *
-+ *  Benny Halevy <bhalevy@panasas.com>
-+ *  Boaz Harrosh <bharrosh@panasas.com>
-+ *
-+ *  This program is free software; you can redistribute it and/or modify
-+ *  it under the terms of the GNU General Public License version 2
-+ *  See the file COPYING included with this distribution for more details.
-+ *
-+ *  Redistribution and use in source and binary forms, with or without
-+ *  modification, are permitted provided that the following conditions
-+ *  are met:
-+ *
-+ *  1. Redistributions of source code must retain the above copyright
-+ *     notice, this list of conditions and the following disclaimer.
-+ *  2. Redistributions in binary form must reproduce the above copyright
-+ *     notice, this list of conditions and the following disclaimer in the
-+ *     documentation and/or other materials provided with the distribution.
-+ *  3. Neither the name of the Panasas company nor the names of its
-+ *     contributors may be used to endorse or promote products derived
-+ *     from this software without specific prior written permission.
-+ *
-+ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
-+ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-+ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-+ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
-+ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-+ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-+ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-+ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-+ */
-+
-+#ifndef _OBJLAYOUT_H
-+#define _OBJLAYOUT_H
-+
-+#include <linux/nfs_fs.h>
-+#include <linux/pnfs_osd_xdr.h>
-+#include "../pnfs.h"
-+
-+/*
-+ * Raid engine I/O API
-+ */
-+extern int objio_alloc_lseg(struct pnfs_layout_segment **outp,
-+	struct pnfs_layout_hdr *pnfslay,
-+	struct pnfs_layout_range *range,
-+	struct xdr_stream *xdr,
-+	gfp_t gfp_flags);
-+extern void objio_free_lseg(struct pnfs_layout_segment *lseg);
-+
-+/*
-+ * exported generic objects function vectors
-+ */
-+extern struct pnfs_layout_segment *objlayout_alloc_lseg(
-+	struct pnfs_layout_hdr *,
-+	struct nfs4_layoutget_res *,
-+	gfp_t gfp_flags);
-+extern void objlayout_free_lseg(struct pnfs_layout_segment *);
-+
-+#endif /* _OBJLAYOUT_H */
+Do we really need GFP_ATOMIC here? We don't use it today with the
+fixed-size slot table and this is just called when allocating the xprt
+(aka mount time), right? I think GFP_KERNEL might be more appropriate
+here.
+
+> +	dprintk("<-- %s mempool_alloc %d reqs\n", __func__,
+> +		xprt->max_reqs);
+		^^^^^^^^^^^^^
+	nit: not really a mempool anymore...
+
+> +	return 0;
+> +}
+> +
+> +static void
+> +xprt_free_slot_table_entries(struct rpc_xprt *xprt)
+> +{
+> +	struct rpc_rqst *req;
+> +	int cnt = 0;
+> +
+> +	while (!list_empty(&xprt->free)) {
+> +		req = list_entry(xprt->free.next, struct rpc_rqst, rq_list);
+> +		list_del(&req->rq_list);
+> +		kfree(req);
+> +		cnt++;
+> +	}
+> +	dprintk("<-- %s freed %d reqs\n", __func__, cnt);
+> +}
+> +
+> +/*
+> + * Dynamic rpc_slot allocator. GFP_NOWAIT will not cause rpciod to sleep.
+> + * Return NULL if allocation can't be serviced immediately.
+> + * Triggered by write_space callback.
+> + */
+> +void
+> +xprt_nowait_add_slot(struct rpc_xprt *xprt)
+> +{
+> +	struct rpc_rqst *req;
+> +
+> +	if (!test_and_clear_bit(XPRT_ADD_SLOT, &xprt->state))
+> +		return;
+> +
+> +	if (xprt->max_reqs == RPC_MAX_SLOT_TABLE) {
+> +		dprintk("RPC    %s: %p has RPC_MAX_SLOT_TABLE %d slots\n",
+> +			__func__, xprt, RPC_MAX_SLOT_TABLE);
+> +		return;
+> +	}
+> +	req = kzalloc(sizeof(*req), GFP_NOWAIT);
+> +	if (!req)
+> +		return;
+> +	spin_lock(&xprt->reserve_lock);
+> +	list_add(&req->rq_list, &xprt->free);
+> +	xprt->max_reqs += 1;
+> +	spin_unlock(&xprt->reserve_lock);
+> +
+> +	dprintk("RPC    %s added rpc_slot to transport %p max_req %d\n",
+> +		__func__, xprt, xprt->max_reqs);
+> +}
+> +
+> +struct rpc_xprt *xprt_alloc(struct net *net, int size, int num_req)
+>  {
+>  	struct rpc_xprt *xprt;
+>  
+> -	xprt = kzalloc(size, GFP_KERNEL);
+> +	xprt = kzalloc(size, GFP_ATOMIC);
+		^^^^^^^^^^^^^
+	Again, this is called at mount time primarily. I don't see any
+	need for GFP_ATOMIC. If we're that low on memory, it's probably
+	best to just fail the mount.
+
+>  	if (xprt == NULL)
+>  		goto out;
+>  	atomic_set(&xprt->count, 1);
+>  
+> -	xprt->max_reqs = max_req;
+> -	xprt->slot = kcalloc(max_req, sizeof(struct rpc_rqst), GFP_KERNEL);
+> -	if (xprt->slot == NULL)
+> +	xprt->max_reqs = num_req;
+> +	/* allocate slots and place them on the free list */
+> +	INIT_LIST_HEAD(&xprt->free);
+> +	if (xprt_alloc_slot_table_entries(xprt, num_req) != 0)
+>  		goto out_free;
+>  
+>  	xprt->xprt_net = get_net(net);
+>  	return xprt;
+>  
+>  out_free:
+> +	xprt_free_slot_table_entries(xprt);
+>  	kfree(xprt);
+>  out:
+>  	return NULL;
+> @@ -985,7 +1057,7 @@ EXPORT_SYMBOL_GPL(xprt_alloc);
+>  void xprt_free(struct rpc_xprt *xprt)
+>  {
+>  	put_net(xprt->xprt_net);
+> -	kfree(xprt->slot);
+> +	xprt_free_slot_table_entries(xprt);
+>  	kfree(xprt);
+>  }
+>  EXPORT_SYMBOL_GPL(xprt_free);
+> @@ -1081,7 +1153,6 @@ void xprt_release(struct rpc_task *task)
+>  struct rpc_xprt *xprt_create_transport(struct xprt_create *args)
+>  {
+>  	struct rpc_xprt	*xprt;
+> -	struct rpc_rqst	*req;
+>  	struct xprt_class *t;
+>  
+>  	spin_lock(&xprt_list_lock);
+> @@ -1109,7 +1180,6 @@ found:
+>  	spin_lock_init(&xprt->transport_lock);
+>  	spin_lock_init(&xprt->reserve_lock);
+>  
+> -	INIT_LIST_HEAD(&xprt->free);
+>  	INIT_LIST_HEAD(&xprt->recv);
+>  #if defined(CONFIG_NFS_V4_1)
+>  	spin_lock_init(&xprt->bc_pa_lock);
+> @@ -1132,10 +1202,6 @@ found:
+>  	rpc_init_wait_queue(&xprt->resend, "xprt_resend");
+>  	rpc_init_priority_wait_queue(&xprt->backlog, "xprt_backlog");
+>  
+> -	/* initialize free list */
+> -	for (req = &xprt->slot[xprt->max_reqs-1]; req >= &xprt->slot[0]; req--)
+> -		list_add(&req->rq_list, &xprt->free);
+> -
+>  	xprt_init_xid(xprt);
+>  
+>  	dprintk("RPC:       created transport %p with %u slots\n", xprt,
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index bf005d3..310c73a 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1405,6 +1405,29 @@ static void xs_write_space(struct sock *sk)
+>  	xprt_write_space(xprt);
+>  }
+>  
+> +/*
+> + * called from xs_tcp_write_space to dynamically add a slot
+> + * in response to the TCP window size.
+> + */
+> +static void xs_tcp_add_slot(struct sock *sk)
+> +{
+> +	struct rpc_xprt *xprt;
+> +
+> +	if (unlikely(!(xprt = xprt_from_sock(sk))))
+> +                return;
+> +
+> +	dprintk("%s xprt %p\n", __func__, xprt);
+> +	xprt_set_add_slot(xprt);
+> +}
+> +
+> +/* set_add_slot xprt operation for UDP */
+> +static void xs_udp_set_add_slot(struct rpc_xprt *xprt)
+> +{
+> +	dprintk("--> %s xprt %p\n", __func__, xprt);
+> +	if (xprt->max_reqs < xprt_udp_slot_table_entries)
+> +		xprt_set_add_slot(xprt);
+> +}
+> +
+>  /**
+>   * xs_udp_write_space - callback invoked when socket buffer space
+>   *                             becomes available
+> @@ -1417,6 +1440,7 @@ static void xs_write_space(struct sock *sk)
+>   */
+>  static void xs_udp_write_space(struct sock *sk)
+>  {
+> +	dprintk("--> %s\n", __func__);
+>  	read_lock_bh(&sk->sk_callback_lock);
+>  
+>  	/* from net/core/sock.c:sock_def_write_space */
+> @@ -1438,11 +1462,14 @@ static void xs_udp_write_space(struct sock *sk)
+>   */
+>  static void xs_tcp_write_space(struct sock *sk)
+>  {
+> +	dprintk("--> %s\n", __func__);
+>  	read_lock_bh(&sk->sk_callback_lock);
+>  
+>  	/* from net/core/stream.c:sk_stream_write_space */
+> -	if (sk_stream_wspace(sk) >= sk_stream_min_wspace(sk))
+> +	if (sk_stream_wspace(sk) >= sk_stream_min_wspace(sk)) {
+> +		xs_tcp_add_slot(sk);
+>  		xs_write_space(sk);
+> +	}
+>  
+
+I guess I don't quite understand how this works...
+
+It looks like whenever we get a sk_write_space callback that is bigger
+than the sk_stream_min_wspace threshold, we allow for the addition of
+one more dynamic slot.
+
+Ok, so expanding those inlines give us:
+
+    (sk->sk_sndbuf - sk->sk_wmem_queued) >= (sk->sk_wmem_queued >> 1)
+
+So the test is whether there's enough send buffer space left to hold
+half of what we already have queued.
+
+It seems like we could allow for more slots to be open than just one in
+many of those cases.
+
+>  	read_unlock_bh(&sk->sk_callback_lock);
+>  }
+> @@ -2095,6 +2122,7 @@ static struct rpc_xprt_ops xs_udp_ops = {
+>  	.release_xprt		= xprt_release_xprt_cong,
+>  	.rpcbind		= rpcb_getport_async,
+>  	.set_port		= xs_set_port,
+> +	.set_add_slot		= xs_udp_set_add_slot,
+>  	.connect		= xs_connect,
+>  	.buf_alloc		= rpc_malloc,
+>  	.buf_free		= rpc_free,
+> @@ -2216,7 +2244,7 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
+>  	struct sock_xprt *transport;
+>  	struct rpc_xprt *ret;
+>  
+> -	xprt = xs_setup_xprt(args, xprt_udp_slot_table_entries);
+> +	xprt = xs_setup_xprt(args, RPC_MIN_SLOT_TABLE);
+>  	if (IS_ERR(xprt))
+>  		return xprt;
+>  	transport = container_of(xprt, struct sock_xprt, xprt);
+> @@ -2371,7 +2399,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+>  		 */
+>  		 return args->bc_xprt->xpt_bc_xprt;
+>  	}
+> -	xprt = xs_setup_xprt(args, xprt_tcp_slot_table_entries);
+> +	xprt = xs_setup_xprt(args, RPC_MIN_SLOT_TABLE);
+>  	if (IS_ERR(xprt))
+>  		return xprt;
+>  	transport = container_of(xprt, struct sock_xprt, xprt);
+
+
 -- 
-1.7.3.4
-
+Jeff Layton <jlayton@redhat.com>
