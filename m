@@ -1,55 +1,36 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] nfsstat: reorder nfs4 stats for 2.6.38 and up
-Date: Mon, 23 May 2011 08:39:53 -0400
-Message-ID: <4DDA5599.7000506@RedHat.com>
-References: <1303461980-6731-1-git-send-email-bhalevy@panasas.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Subject: Linux pNFS status meeting 05/19/11
+Date: Wed, 18 May 2011 10:36:50 -0700
+Message-ID: <OFD7A7CC04.EBDF9826-ON88257894.00609F5B-88257894.0060BD86@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset="US-ASCII"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8543 "EHLO mx1.redhat.com"
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:44122 "EHLO e2.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754294Ab1EWMkY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 May 2011 08:40:24 -0400
-In-Reply-To: <1303461980-6731-1-git-send-email-bhalevy@panasas.com>
+	id S933273Ab1ERRhH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 May 2011 13:37:07 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e2.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p4IHHD9d029010
+	for <linux-nfs@vger.kernel.org>; Wed, 18 May 2011 13:17:13 -0400
+Received: from d01av05.pok.ibm.com (d01av05.pok.ibm.com [9.56.224.195])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p4IHaqpE416726
+	for <linux-nfs@vger.kernel.org>; Wed, 18 May 2011 13:37:00 -0400
+Received: from d01av05.pok.ibm.com (loopback [127.0.0.1])
+	by d01av05.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p4IHapKn030471
+	for <linux-nfs@vger.kernel.org>; Wed, 18 May 2011 13:36:51 -0400
+Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
+	by d01av05.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p4IHap0K030468
+	for <linux-nfs@vger.kernel.org>; Wed, 18 May 2011 13:36:51 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Meeting on Thursday 05/19/11 at 9:30 AM PST (12:30 PM EST)
 
 
-On 04/22/2011 04:46 AM, Benny Halevy wrote:
-> match order in 2.6.38, 2.6.39 (-rc3) and development tree
-> while at it, get rid of obsolete ds_write and ds_commit
-> 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  utils/nfsstat/nfsstat.c |    5 +----
->  1 files changed, 1 insertions(+), 4 deletions(-)
-> 
-> git://linux-nfs.org/~bhalevy/pnfs-nfs-utils.git
-> updated respectively
-> 
-> diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-> index f31bb81..a4a8034 100644
-> --- a/utils/nfsstat/nfsstat.c
-> +++ b/utils/nfsstat/nfsstat.c
-> @@ -126,14 +126,11 @@ static const char *	nfscltproc4name[CLTPROC4_SZ] = {
->  	"sequence",
->  	"get_lease_t",
->  	"reclaim_comp",
-> +	"getdevinfo",
->  	"layoutget",
->  	"layoutcommit",
->  	"layoutreturn",
->  	"getdevlist",
-> -	"getdevinfo",
-> -	/* nfsv4.1 pnfs client ops to data server only */
-> -	"ds_write",
-> -	"ds_commit",
->  };
->  
->  static const char *     nfssrvproc4opname[SRVPROC4OPS_SZ] = {
-Committed...
+USA Toll-Free: 888-426-6840
+USA Caller Paid: 215-861-6239
 
-steved.
+Israel Toll-Free: 1-809-417-783
+
+Participant Code: 8792872
