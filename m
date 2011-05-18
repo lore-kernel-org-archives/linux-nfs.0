@@ -1,53 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:50526 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751661Ab1EXQEs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 12:04:48 -0400
-Message-ID: <4DDBD704.5020303@panasas.com>
-Date: Tue, 24 May 2011 19:04:20 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] SQUASHME: objio read/write patch: Bugs fixes
-References: <4DDA8C3D.5080706@panasas.com> <1306168626-11463-1-git-send-email-bhalevy@panasas.com> <4DDAB94C.6070407@panasas.com> <4DDBAE2B.2060705@panasas.com> <4DDBC2B4.9040305@panasas.com> <4DDBD551.8010603@panasas.com>
-In-Reply-To: <4DDBD551.8010603@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from relay3.sgi.com ([192.48.152.1]:58971 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S933451Ab1ERSeh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 May 2011 14:34:37 -0400
+Subject: [PATCH v2] nfs-utils: getexportent interprets -test-client- as
+	default options
+To: steved@redhat.com
+From: Ben Myers <bpm@sgi.com>
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org
+Date: Wed, 18 May 2011 06:55:37 -0500
+Message-ID: <20110518115537.8725.44754.stgit@nfs3>
+In-Reply-To: <4DD14CE9.1070301@RedHat.com>
+References: <4DD14CE9.1070301@RedHat.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/24/2011 06:57 PM, Benny Halevy wrote:
-> On 2011-05-24 17:37, Boaz Harrosh wrote:
->> On 05/24/2011 04:10 PM, Benny Halevy wrote:
->>>
->>> This hunk doesn't apply cleanly, as in the latest version
->>> we pass gfp_flags, not GFP_KERNEL.
->>>
->>>>  	if (!objio_seg)
->>>>  		return -ENOMEM;
->>>>  
->>
->> Please don't do anything. I'm just now sending a clean
->> SQUASHME set
->>
->> Please talk to me
->>
->> Boaz]
-> 
-> OK. I'm waiting for a plumber to arrive in a few minutes
-> so I'll call you later today...
-> 
-> Benny
-> 
+With commit 1374c3861abdc66f3a1410e26cc85f86760b51dd Neil added a
+-test-client- export to test the exportability of filesystems when exportfs
+is run.  When using the old cache controls (i.e. /proc/fs/nfsd is not
+mounted) exportfs will read /proc/fs/nfs/exports to process existing
+exports and find these test client entries.  The dash at the beginning of
+-test-client- will be cause getexportent to look for default options in the
+rest of the string, which test-client- will not match:
 
-Thanks Benny.
+exportfs: /proc/fs/nfs/exports:1: unknown keyword "test-client-(rw"
 
-I've now re-sent all the fixes in the right order and properly
-separated, to be able to cleanly squash on the V6 patchset from you.
-Please see my mail:
-   [PATCHES 00/12] Mostly a Resend of ALL Bug fixes and SQUASHMEs - pnfs-submit 2.6.40 V7
-and the thread that follows, also the proposed patch reorder.
+This patch resolves that problem (as Steve suggested) by not processing any
+default options if we are reading the list of existing exports from the
+kernel.  Default options are converted to individual exports by exportfs so
+the kernel won't have any regardless.
 
-Tell me if you also need the cleaned squashed set. It is no problem.
+Signed-off-by: Ben Myers <bpm@sgi.com>
+---
+ support/nfs/exports.c |   11 ++++++++---
+ 1 files changed, 8 insertions(+), 3 deletions(-)
 
-Boaz
+diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+index 6acb2b6..c250383 100644
+--- a/support/nfs/exports.c
++++ b/support/nfs/exports.c
+@@ -142,9 +142,14 @@ getexportent(int fromkernel, int fromexports)
+ 		return NULL;
+ 	}
+ 	first = 0;
+-		
+-	/* Check for default options */
+-	if (exp[0] == '-') {
++
++	/*
++	 * Check for default options.  The kernel will never have default
++	 * options in /proc/fs/nfs/exports, however due to the initial '-' in
++	 * the -test-client- string from the test export we have to check that
++	 * we're not reading from the kernel.
++	 */
++	if (exp[0] == '-' && !fromkernel) {
+ 		if (parseopts(exp + 1, &def_ee, 0, &has_default_subtree_opts) < 0)
+ 			return NULL;
+ 		
+
