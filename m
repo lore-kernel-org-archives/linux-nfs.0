@@ -1,64 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:64869 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752505Ab1ESPeD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 May 2011 11:34:03 -0400
-Message-ID: <4DD53864.1010401@netapp.com>
-Date: Thu, 19 May 2011 11:33:56 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:62805 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S932703Ab1ERCN0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 May 2011 22:13:26 -0400
+Message-ID: <4DD32BCF.8020905@cn.fujitsu.com>
+Date: Wed, 18 May 2011 10:15:43 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 1/2] NFSD: added FREE_STATEID operation
-References: <1305575021-2841-1-git-send-email-bjschuma@netapp.com> <1305575021-2841-2-git-send-email-bjschuma@netapp.com> <20110518225609.GA26545@fieldses.org>
-In-Reply-To: <20110518225609.GA26545@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH] nfsd41: check the size of request
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/18/2011 06:56 PM, J. Bruce Fields wrote:
-> On Mon, May 16, 2011 at 03:43:40PM -0400, bjschuma@netapp.com wrote:
->> +static __be32
->> +nfsd4_free_file_stateid(stateid_t *stateid)
->> +{
->> +	struct nfs4_stateid *stp = search_for_stateid(stateid);
->> +	if (!stp)
->> +		return nfserr_bad_stateid;
->> +	if (stateid->si_generation != 0) {
->> +		if (stateid->si_generation < stp->st_stateid.si_generation)
->> +			return nfserr_old_stateid;
->> +		if (stateid->si_generation > stp->st_stateid.si_generation)
->> +			return nfserr_bad_stateid;
->> +	}
->> +
->> +	if (check_for_locks(stp->st_file, stp->st_stateowner))
->> +		return nfserr_locks_held;
-> 
-> I think this catches a lock stateid, but not an open stateid that has
-> associated lock stateid's that in turn hold locks.
-> 
-> Hm, also:
-> 
-> 	"The FREE_STATEID operation is used to free a stateid that no
-> 	longer has any associated locks (including opens, byte-range
-> 	locks, delegations, and layouts)"
-> 
-> So an open stateid also shouldn't be freeable as long as there are opens
-> associated with it.
+This patch just check request's size when it consists SEQUENCE.
 
-So having an open stateid doesn't necessarily mean that the file is open?  and having a lock stateid doesn't mean that the file is locked?
+Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+---
+ fs/nfsd/nfs4state.c |   33 +++++++++++++++++++++++++++++++++
+ 1 files changed, 33 insertions(+), 0 deletions(-)
 
-I'll look at making a "check_for_opens()" function to help with this check.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 4cf04e1..de4e6d4 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1725,6 +1725,38 @@ static void nfsd4_sequence_check_conn(struct nfsd4_conn *new, struct nfsd4_sessi
+ 	return;
+ }
+ 
++static int nfsd4_check_request_size(struct nfsd4_compoundargs *args,
++				    struct nfsd4_compound_state *cstate)
++{
++	int status = 0;
++	struct xdr_buf *xb = &args->rqstp->rq_arg;
++	struct nfsd4_session *session = NULL;
++	u32 length, tlen = 0, pad = 8;
++
++	if (!nfsd4_has_session(cstate))
++		return status;
++
++	session = cstate->session;
++	if (session == NULL)
++		return status;
++
++	if (xb->page_len == 0) {
++		length = (char *)args->p - (char *)xb->head[0].iov_base + pad;
++	} else {
++		if (xb->tail[0].iov_base && xb->tail[0].iov_len > 0)
++			tlen = (char *)args->p - (char *)xb->tail[0].iov_base;
++
++		 length = xb->head[0].iov_len + xb->page_len + tlen + pad;
++	}
++	dprintk("%s length %u, xb->page_len %u tlen %u pad %u\n", __func__,
++		length, xb->page_len, tlen, pad);
++
++	if (length > session->se_fchannel.maxreq_sz)
++		return nfserr_req_too_big;
++
++	return status;
++}
++
+ __be32
+ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	       struct nfsd4_compound_state *cstate,
+@@ -1789,6 +1821,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	cstate->slot = slot;
+ 	cstate->session = session;
+ 
++	status = nfsd4_check_request_size(rqstp->rq_argp, cstate);
+ out:
+ 	/* Hold a session reference until done processing the compound. */
+ 	if (cstate->session) {
+-- 
+1.7.4.5
 
-> 
-> Also I guess a client shouldn't be permitted to free a delegation that
-> it still holds.  That means we'll always just return nfserr_locks for
-> delegation stateid's.  I assume free_stateid is only useful in this case
-
-Sounds simple enough.
-
-> for the case where a server forcibly revokes part of the client's state
-> and leaves some "stub" stateid's around in place of the revoked ones.
-> 
-> --b.
 
