@@ -1,73 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:43383 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754626Ab1EVXuM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 19:50:12 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v5 10/38] SQUASHME: pnfs: refactor device cache _find_get_deviceid
-Date: Mon, 23 May 2011 02:49:38 +0300
-Message-Id: <1306108178-28173-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DD99F9B.2040406@panasas.com>
-References: <4DD99F9B.2040406@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:38850 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933451Ab1ERTTv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 May 2011 15:19:51 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: fixing leases/delegations
+Date: Wed, 18 May 2011 15:19:46 -0400
+Message-Id: <1305746388-18241-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/pnfs_dev.c |   15 +++++++++++----
- 1 files changed, 11 insertions(+), 4 deletions(-)
+NFSv4 (along with, from what I'm told, Samba) has a problem with read
+leases, which is that they are currently only broken on write opens,
+whereas they should really be broken on any operation that changes an
+inode's metadata or any of the links pointing to it.
 
-diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
-index 374fa66..f830616 100644
---- a/fs/nfs/pnfs_dev.c
-+++ b/fs/nfs/pnfs_dev.c
-@@ -90,17 +90,24 @@ _lookup_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
-  * @id deviceid to look up
-  */
- struct nfs4_deviceid_node *
--nfs4_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
-+_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
-+		   long hash)
- {
- 	struct nfs4_deviceid_node *d;
- 
- 	rcu_read_lock();
--	d = _lookup_deviceid(clp, id, nfs4_deviceid_hash(id));
-+	d = _lookup_deviceid(clp, id, hash);
- 	if (!atomic_inc_not_zero(&d->ref))
- 		d = NULL;
- 	rcu_read_unlock();
- 	return d;
- }
-+
-+struct nfs4_deviceid_node *
-+nfs4_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
-+{
-+	return _find_get_deviceid(clp, id, nfs4_deviceid_hash(id));
-+}
- EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
- 
- /*
-@@ -189,13 +196,13 @@ nfs4_insert_deviceid_node(struct nfs4_deviceid_node *new)
- 	long hash;
- 
- 	spin_lock(&nfs4_deviceid_lock);
--	d = nfs4_find_get_deviceid(new->nfs_client, &new->deviceid);
-+	hash = nfs4_deviceid_hash(&new->deviceid);
-+	d = _find_get_deviceid(new->nfs_client, &new->deviceid, hash);
- 	if (d) {
- 		spin_unlock(&nfs4_deviceid_lock);
- 		return d;
- 	}
- 
--	hash = nfs4_deviceid_hash(&new->deviceid);
- 	hlist_add_head_rcu(&new->node, &nfs4_deviceid_cache[hash]);
- 	spin_unlock(&nfs4_deviceid_lock);
- 
--- 
-1.7.3.4
+Also, to break leases in a non-racy way it's not sufficient to have a
+single break_lease() call from the vfs code; we also need to prevent
+anyone from acquiring a new lease while the operation is still in
+progress.
 
+So here's one attempt to deal with those problems, by adding to the
+inode a counter which is incremented whenever we start such an operation
+and decremented when we finish it.
+
+I only handle unlink; we'd also need to do link, rename, chown, and
+chmod, at least.
+
+Comments? Better ideas?
+
+--b.
