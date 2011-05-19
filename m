@@ -1,55 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:41842 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751470Ab1EPUVr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 16:21:47 -0400
-Subject: Re: 2.6.38.6 - state manager constantly respawns
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1305575007.19725.3.camel@lade.trondhjem.org>
-Date: Mon, 16 May 2011 16:21:33 -0400
-Cc: Harry Edmon <harry@uw.edu>, linux-nfs@vger.kernel.org
-Message-Id: <8382A5A9-381C-47D7-B2DF-64625FE7C08C@oracle.com>
-References: <4DD16FA8.4030602@uw.edu> <05D08339-888C-4A64-BDC5-8667B3901E7A@oracle.com> <4DD1772E.9010609@uw.edu> <6A6FB1C3-D4C3-40BE-810A-B4551FA9E591@oracle.com> <4DD17CB5.7010009@uw.edu> <1305575007.19725.3.camel@lade.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:27669 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934153Ab1EST4O convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 May 2011 15:56:14 -0400
+Subject: Re: [PATCH] nfs41: Correct offset for LAYOUTCOMMIT
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+Cc: Vitaliy Gusev <gusev.vitaliy@gmail.com>, andros@netapp.com,
+        linux-nfs@vger.kernel.org
+Date: Thu, 19 May 2011 15:56:12 -0400
+In-Reply-To: <4DD57342.3060804@nexenta.com>
+References: <1305832245-17318-1-git-send-email-gusev.vitaliy@nexenta.com>
+	 <1305833890.5552.0.camel@lade.trondhjem.org> <4DD57342.3060804@nexenta.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1305834972.5552.9.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On May 16, 2011, at 3:43 PM, Trond Myklebust wrote:
-
-> On Mon, 2011-05-16 at 12:36 -0700, Harry Edmon wrote:
->> On 05/16/11 12:22, Chuck Lever wrote:
->>> On May 16, 2011, at 3:12 PM, Harry Edmon wrote:
->>> 
->>> 
->>>> Attached is 1000 lines of output from tshark when the problem is occurring.   The client and server are connected by a private ethernet.
->>>> 
->>> Disappointing: tshark is not telling us the return codes.  However, I see "PUTFH;READ" then "RENEW" in a loop, which indicates the state manager thread is being kicked off because of ongoing difficulties with state recovery.  Is there a stuck application on that client?
->>> 
->>> Try again with "tshark -V".
->>> 
->> Here is the output from tshark -V (first 50,000 lines).   Nothing 
->> appears to be stuck, and as I said when I reboot the client into 2.6.32 
->> the problem goes away, only to reappear when I reboot it back into 2.6.38.6.
->> 
+On Thu, 2011-05-19 at 23:45 +0400, Vitaliy Gusev wrote: 
+> On 05/19/2011 11:38 PM, Trond Myklebust wrote:
+> > On Thu, 2011-05-19 at 23:10 +0400, Vitaliy Gusev wrote:
+> >> A client sends offset to MDS as it was seen by DS. As result,
+> >> file size after copy is only half of original file size in case
+> >> of 2 DS.
+> >>
+> >> Signed-off-by: Vitaliy Gusev<gusev.vitaliy@nexenta.com>
+> >> ---
+> >>   fs/nfs/nfs4filelayout.c |    1 +
+> >>   1 files changed, 1 insertions(+), 0 deletions(-)
+> >>
+> >> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+> >> index be79dc9..790eb1d 100644
+> >> --- a/fs/nfs/nfs4filelayout.c
+> >> +++ b/fs/nfs/nfs4filelayout.c
+> >> @@ -167,6 +167,7 @@ filelayout_set_layoutcommit(struct nfs_write_data *wdata)
+> >>   	    wdata->res.verf->committed == NFS_FILE_SYNC)
+> >>   		return;
+> >>
+> >> +	wdata->args.offset = wdata->mds_offset;
+> >>   	pnfs_set_layoutcommit(wdata);
+> >>   	dprintk("%s ionde %lu pls_end_pos %lu\n", __func__, wdata->inode->i_ino,
+> >>   		(unsigned long) wdata->lseg->pls_end_pos);
+> >
+> > Err... Shouldn't we rather be fixing pnfs_set_layoutcommit() to use the
+> > mds_offset instead of hacking args.offset?
 > 
-> Possibly, but it definitely indicates a server bug. What kind of server
-> are you using?
-> 
-> Basically, the client is getting confused because when it sends a READ,
-> the server is telling it that the lease has expired, then when it sends
-> a RENEW, the same server replies that the lease is OK...
+> I thought about it...  pnfs_set_layoutcommit is a generic code for all 
+> type of layouts, but mds_offset is set only for file layout.
 
-I've seen this during migration recovery testing.  The client may be testing the wrong client ID.
-
-But I wonder if it's really worth doing that separate RENEW.  I've seen the client send a RENEW after it gets STALE_STATEID.  Would RENEW really tell the client anything in that case?
+If we're going to use the struct nfs_write_data as the parameter to
+pnfs_set_layoutcommit, then we can and should require that the fields be
+correctly initialised. It's another matter altogether that the choice of
+nfs_write_data may have been a poor one if other layouts don't use it.
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Trond Myklebust
+Linux NFS client maintainer
 
-
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
