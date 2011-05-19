@@ -1,81 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:38049 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753582Ab1EIRKw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:10:52 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 23/29] sunrpc: xdr_rewind_stream()
-Date: Mon,  9 May 2011 20:10:45 +0300
-Message-Id: <1304961045-4645-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DC81E8C.6040901@panasas.com>
-References: <4DC81E8C.6040901@panasas.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:37914 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934614Ab1ESVfG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 May 2011 17:35:06 -0400
+Received: by bwz15 with SMTP id 15so2472238bwz.19
+        for <linux-nfs@vger.kernel.org>; Thu, 19 May 2011 14:35:05 -0700 (PDT)
+From: Vitaliy Gusev <gusev.vitaliy@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: andros@netapp.com, linux-nfs@vger.kernel.org,
+        Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+Subject: [PATCH] nfs41: Correct offset for LAYOUTCOMMIT v2
+Date: Fri, 20 May 2011 01:34:46 +0400
+Message-Id: <1305840886-18945-1-git-send-email-gusev.vitaliy@nexenta.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-In a long encoded xdr stream, we might run out of allocated xdr space.
-In some situations it is possibly to reset the xdr buffer to a previuos
-good state and send a parial list, which is better then just BUGing as
-today or completely failing the xdr.
+A client sends offset to MDS as it was seen by DS. As result,
+file size after copy is only half of original file size in case
+of 2 DS.
 
-* define such API that can move the xdr pointer to a good known
-  state before the failed encoding.
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
 ---
- include/linux/sunrpc/xdr.h |    1 +
- net/sunrpc/xdr.c           |   21 +++++++++++++++++++++
- 2 files changed, 22 insertions(+), 0 deletions(-)
+ fs/nfs/pnfs.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index fc84b7a..bf17e38 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -213,6 +213,7 @@ typedef int	(*kxdrdproc_t)(void *rqstp, struct xdr_stream *xdr, void *obj);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index f57f528..101c85a 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1009,7 +1009,7 @@ void
+ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(wdata->inode);
+-	loff_t end_pos = wdata->args.offset + wdata->res.count;
++	loff_t end_pos = wdata->mds_offset + wdata->res.count;
+ 	bool mark_as_dirty = false;
  
- extern void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
- extern __be32 *xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes);
-+extern __be32 *xdr_rewind_stream(struct xdr_stream *xdr, __be32 *q);
- extern void xdr_write_pages(struct xdr_stream *xdr, struct page **pages,
- 		unsigned int base, unsigned int len);
- extern void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 679cd67..3e0d79e 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -518,6 +518,27 @@ __be32 * xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes)
- EXPORT_SYMBOL_GPL(xdr_reserve_space);
- 
- /**
-+ * xdr_rewind_stream - rewind a stream back to some checkpoint
-+ * @xdr: pointer to xdr_stream
-+ * @q: some checkpoint at historical place of @xdr
-+ *
-+ * Restors an xdr stream to some historical point. @q must be
-+ * a logical xdr point in the past that was sampled by @q = @xdr->p.
-+ */
-+__be32 *xdr_rewind_stream(struct xdr_stream *xdr, __be32 *q)
-+{
-+	size_t nbytes = (xdr->p - q) << 2;
-+
-+	BUG_ON(xdr->p < q);
-+	BUG_ON(nbytes > xdr->iov->iov_len || nbytes > xdr->buf->len);
-+	xdr->p = q;
-+	xdr->iov->iov_len -= nbytes;
-+	xdr->buf->len -= nbytes;
-+	return q;
-+}
-+EXPORT_SYMBOL_GPL(xdr_rewind_stream);
-+
-+/**
-  * xdr_write_pages - Insert a list of pages into an XDR buffer for sending
-  * @xdr: pointer to xdr_stream
-  * @pages: list of pages
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
 -- 
-1.7.3.4
+1.7.4.1
 
