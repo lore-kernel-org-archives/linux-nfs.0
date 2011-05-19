@@ -1,116 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:44789 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750779Ab1E2IKm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 04:10:42 -0400
-Message-ID: <4DE1FF7D.7000403@panasas.com>
-Date: Sun, 29 May 2011 11:10:37 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v2] SQUASHME: Fix BUG in: NFSv4.1: unify pnfs_pageio_init
- functions
-References: <4DDD7392.6040505@panasas.com> <1306358998-17872-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <1306358998-17872-1-git-send-email-bhalevy@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from cn.fujitsu.com ([222.73.24.84]:51304 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1755665Ab1ESFdK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 May 2011 01:33:10 -0400
+Message-ID: <4DD4AC1D.2070509@cn.fujitsu.com>
+Date: Thu, 19 May 2011 13:35:25 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd41: check the size of response
+References: <4DD32CAB.5010405@cn.fujitsu.com> <20110519010700.GF26545@fieldses.org>
+In-Reply-To: <20110519010700.GF26545@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
-The call to pnfs_pageio_init() was done before the call
-to nfs_pageio_init which would override the .pg_test set
-there.
 
-But enough is enough. One init function is more than
-enough. Call pnfs_pageio_init() from within the
-nfs_pageio_init(). It is kept separate so the code can
-compile in ver < 4.1, where the layout_driver type is not
-defined
+J. Bruce Fields:
+> On Wed, May 18, 2011 at 10:19:23AM +0800, Mi Jinlong wrote:
+>> Compare response's size to the session se_fmaxresp_sz and 
+>> se_fmaxresp_cached at the same function.
+>>
+>> And modify function name nfsd4_check_drc_limit to
+>> nfsd4_check_response_size.
+> 
+> Hm.  I guess that's OK.  Note we have a bigger problem, though, which is
+> that we're waiting too late to check these limits:
+> 
+> 	http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues#DRC_limit_checking
+> 
+> Have you looked at that list, by the way?:
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfs/pagelist.c |    1 +
- fs/nfs/pnfs.c     |    2 +-
- fs/nfs/pnfs.h     |    6 ++++--
- fs/nfs/read.c     |    1 -
- fs/nfs/write.c    |    1 -
- 5 files changed, 6 insertions(+), 5 deletions(-)
+  I will have a look, and try to solve this problem.
+  Maybe it will take me some times.
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index dbf82ab..624ec2c 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -245,6 +245,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
- 	desc->pg_error = 0;
- 	desc->pg_lseg = NULL;
- 	desc->pg_test = nfs_generic_pg_test;
-+	pnfs_pageio_init(desc, inode);
- }
- 
- /**
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 8171212..d79f2df 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1058,7 +1058,7 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 		access_type = IOMODE_RW;
- 		gfp_flags = GFP_NOFS;
- 	}
--		
-+
- 	if (pgio->pg_count == prev->wb_bytes) {
- 		/* This is first coelesce call for a series of nfs_pages */
- 		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index a279969..020be34 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -292,7 +292,8 @@ static inline int pnfs_return_layout(struct inode *ino)
- 	return 0;
- }
- 
--static inline void pnfs_pageio_init(struct nfs_pageio_descriptor *pgio, struct inode *inode)
-+static inline void pnfs_pageio_init(struct nfs_pageio_descriptor *pgio,
-+				    struct inode *inode)
- {
- 	struct pnfs_layoutdriver_type *ld = NFS_SERVER(inode)->pnfs_curr_ld;
- 
-@@ -383,7 +384,8 @@ static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
- {
- }
- 
--static inline void pnfs_pageio_init(struct nfs_pageio_descriptor *, struct inode *)
-+static inline void pnfs_pageio_init(struct nfs_pageio_descriptor *pgio,
-+				    struct inode *inode)
- {
- }
- 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 6bd09a8..20a7f95 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -664,7 +664,6 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
- 	if (ret == 0)
- 		goto read_complete; /* all pages were read */
- 
--	pnfs_pageio_init(&pgio, inode);
- 	if (rsize < PAGE_CACHE_SIZE)
- 		nfs_pageio_init(&pgio, inode, nfs_pagein_multi, rsize, 0);
- 	else
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index d81c5c0..e268e3b 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1036,7 +1036,6 @@ static void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
- {
- 	size_t wsize = NFS_SERVER(inode)->wsize;
- 
--	pnfs_pageio_init(pgio, inode);
- 	if (wsize < PAGE_CACHE_SIZE)
- 		nfs_pageio_init(pgio, inode, nfs_flush_multi, wsize, ioflags);
- 	else
 -- 
-1.7.2.3
+----
+thanks
+Mi Jinlong
 
+> 
+> 	http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues#Highest_priority
+> 
+> Those are the 4.1 spec compliance problems that I think are the most
+> important to fix--the ones that I think we have to get done before we
+> can really declare the 4.1 server correct.
+> 
+> --b.
+> 
+>> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+>> ---
+>>  fs/nfsd/nfs4xdr.c |   20 ++++++++++++--------
+>>  1 files changed, 12 insertions(+), 8 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> index c6766af..a7cf985 100644
+>> --- a/fs/nfsd/nfs4xdr.c
+>> +++ b/fs/nfsd/nfs4xdr.c
+>> @@ -3224,12 +3224,12 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+>>   * pad: add on 8 bytes for the next operation's op_code and status so that
+>>   * there is room to cache a failure on the next operation.
+>>   *
+>> - * Compare this length to the session se_fmaxresp_cached.
+>> + * Compare this length to the session se_fmaxresp_sz and se_fmaxresp_cached.
+>>   *
+>>   * Our se_fmaxresp_cached will always be a multiple of PAGE_SIZE, and so
+>>   * will be at least a page and will therefore hold the xdr_buf head.
+>>   */
+>> -static int nfsd4_check_drc_limit(struct nfsd4_compoundres *resp)
+>> +static int nfsd4_check_response_size(struct nfsd4_compoundres *resp)
+>>  {
+>>  	int status = 0;
+>>  	struct xdr_buf *xb = &resp->rqstp->rq_res;
+>> @@ -3242,7 +3242,7 @@ static int nfsd4_check_drc_limit(struct nfsd4_compoundres *resp)
+>>  		return status;
+>>  
+>>  	session = resp->cstate.session;
+>> -	if (session == NULL || slot->sl_cachethis == 0)
+>> +	if (session == NULL)
+>>  		return status;
+>>  
+>>  	if (resp->opcnt >= args->opcnt)
+>> @@ -3259,10 +3259,14 @@ static int nfsd4_check_drc_limit(struct nfsd4_compoundres *resp)
+>>  	dprintk("%s length %u, xb->page_len %u tlen %u pad %u\n", __func__,
+>>  		length, xb->page_len, tlen, pad);
+>>  
+>> -	if (length <= session->se_fchannel.maxresp_cached)
+>> -		return status;
+>> -	else
+>> +	if (length > session->se_fchannel.maxresp_sz)
+>> +		return nfserr_rep_too_big;
+>> +
+>> +	if (slot->sl_cachethis == 1 &&
+>> +	    length > session->se_fchannel.maxresp_cached)
+>>  		return nfserr_rep_too_big_to_cache;
+>> +
+>> +	return status;
+>>  }
+>>  
+>>  void
+>> @@ -3282,8 +3286,8 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+>>  	       !nfsd4_enc_ops[op->opnum]);
+>>  	op->status = nfsd4_enc_ops[op->opnum](resp, op->status, &op->u);
+>>  	/* nfsd4_check_drc_limit guarantees enough room for error status */
+>> -	if (!op->status && nfsd4_check_drc_limit(resp))
+>> -		op->status = nfserr_rep_too_big_to_cache;
+>> +	if (!op->status)
+>> +		op->status = nfsd4_check_response_size(resp);
+>>  status:
+>>  	/*
+>>  	 * Note: We write the status directly, instead of using WRITE32(),
+>> -- 
+>> 1.7.4.5
+>>
+>>
+> 
+> 
 
