@@ -1,45 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:38801 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752271Ab1EVQsz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 12:48:55 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Cc: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 06/23] pnfs: resolve header dependency in pnfs.h
-Date: Sun, 22 May 2011 19:48:36 +0300
-Message-Id: <1306082916-10785-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4DD93D3E.9010909@panasas.com>
-References: <4DD93D3E.9010909@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:53228 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756938Ab1ESNn5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 May 2011 09:43:57 -0400
+Date: Thu, 19 May 2011 09:43:56 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Taousif_Ansari@DELLTEAM.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Performance Issue with multiple dataserver
+Message-ID: <20110519134356.GB32648@fieldses.org>
+References: <4DD2A084.1040905@moving-picture.com>
+ <20110518080106.1159c5b8@notabene.brown>
+ <4DD39D39.7010805@moving-picture.com>
+ <A1A98FD909DC5248811A65C5D18E9C761DF69B1F18@BLRX7MCDC202.AMER.DELL.COM>
+ <20110518161239.GA16835@fieldses.org>
+ <A1A98FD909DC5248811A65C5D18E9C761DF69B2188@BLRX7MCDC202.AMER.DELL.COM>
+ <20110519115018.GA31978@fieldses.org>
+ <A1A98FD909DC5248811A65C5D18E9C761DF69B2432@BLRX7MCDC202.AMER.DELL.COM>
+ <20110519131236.GA32648@fieldses.org>
+ <A1A98FD909DC5248811A65C5D18E9C761DF69B244C@BLRX7MCDC202.AMER.DELL.COM>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <A1A98FD909DC5248811A65C5D18E9C761DF69B244C@BLRX7MCDC202.AMER.DELL.COM>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+On Thu, May 19, 2011 at 06:44:59PM +0530, Taousif_Ansari@DELLTEAM.com wrote:
+> Then what should I follow, and what details are needed....
 
-Some definitions in the header file depend on nfs_fs.h so pnfs.h can't
-be included independently.
+There isn't really any supported server-side pNFS.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/pnfs.h |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+The closest is the GFS2-based code, for which you need to install
+Benny's latest tree, configure a shared block device, create a GFS2
+filesystem on it, mount it across all DS's and the MDS, and export it
+from all of them--but I don't believe anyone has written step-by-step
+instructions for that.
 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 02ef40c..006314e 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -30,6 +30,7 @@
- #ifndef FS_NFS_PNFS_H
- #define FS_NFS_PNFS_H
- 
-+#include <linux/nfs_fs.h>
- #include <linux/nfs_page.h>
- 
- enum {
--- 
-1.7.2.3
+--b.
 
+> 
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> Sent: Thursday, May 19, 2011 6:43 PM
+> To: Ansari, Taousif - Dell Team
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: Performance Issue with multiple dataserver
+> 
+> On Thu, May 19, 2011 at 06:09:21PM +0530, Taousif_Ansari@DELLTEAM.com wrote:
+> > I have followed the way given on http://wiki.linux-nfs.org/wiki/index.php/Configuring_pNFS/spnfsd .
+> 
+> Oh.  As noted there, spnfs is unmaintained.
+> 
+> And, in any case, we'd need many more details about your setup.
+> 
+> --b.
+> 
+> > 
+> > -Taousif
+> > 
+> > -----Original Message-----
+> > From: J. Bruce Fields [mailto:bfields@fieldses.org] 
+> > Sent: Thursday, May 19, 2011 5:20 PM
+> > To: Ansari, Taousif - Dell Team
+> > Cc: linux-nfs@vger.kernel.org
+> > Subject: Re: Performance Issue with multiple dataserver
+> > 
+> > On Thu, May 19, 2011 at 10:56:44AM +0530, Taousif_Ansari@DELLTEAM.com wrote:
+> > > Hi,
+> > > 
+> > > I am using on Server linux-pnfs-2.6.38(linux-pnfs-ae7441f.tar) and on client also linux-pnfs-2.6.38(linux-pnfs-ae7441f.tar) downloaded from http://git.linux-nfs.org/?p=bhalevy/linux-pnfs.git;a=summary on Fedora 14.
+> > 
+> > So you're using GFS2 on the server?  With what sort of storage?
+> > 
+> > --b.
+> > 
+> > > 
+> > > Extremely sorry for causing confusing .
+> > > -----Original Message-----
+> > > From: J. Bruce Fields [mailto:bfields@fieldses.org] 
+> > > Sent: Wednesday, May 18, 2011 9:43 PM
+> > > To: Ansari, Taousif - Dell Team
+> > > Cc: linux-nfs@vger.kernel.org
+> > > Subject: Re: Performance Issue with multiple dataserver
+> > > 
+> > > You sent this message as a reply to an unrelated message, which is
+> > > confusing to those of us with threaded mail readers.
+> > > 
+> > > On Wed, May 18, 2011 at 05:24:45PM +0530, Taousif_Ansari@DELLTEAM.com wrote:
+> > > > I have done pNFS setup with single Dataserver and Two Dataserver and ran the IOzone tool on both, I found that the performance with multiple dataservers is less than the performance with single dataservers.
+> > > 
+> > > What are you using as the server, and what as the client?
+> > > 
+> > > --b.
+> > > 
+> > > > 
+> > > > Here are some numbers, which were captured by the IOzone tool.
+> > > > 
+> > > > 
+> > > > 							  4	  8	 16	 32	 64	 128	 256	 512	1024	<== Record Length in KB
+> > > > With Single Dataserver:
+> > > > Read operation for file size 1 MB-		66415	66359	63630	70358	86223	70256	66047	66068	68489	<== IO kB/sec
+> > > > Write operation for file size 1 MB-		18827	16920	18846	17039	18896	17009	17173	19206	17947	<== IO kB/sec
+> > > > 
+> > > > With Two Dataservers :
+> > > > Read operation for file size 1 MB-		36882	381198	38150	38084	38749	33663	34398	37313	37847	<== IO kB/sec
+> > > > Write operation for file size 1 MB-		5461	4661	5586	4870	5227	4922	4214	5572	4658	<== IO kB/sec
+> > > > 
+> > > > 
+> > > > Can somebody tell me What could be the issue....
+> > > > --
+> > > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > > > the body of a message to majordomo@vger.kernel.org
+> > > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
