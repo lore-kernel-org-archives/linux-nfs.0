@@ -1,203 +1,174 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:43547 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754412Ab1EWAAL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 20:00:11 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v5 26/38] NFSv4.1: use layout driver in global device cache
-Date: Mon, 23 May 2011 02:59:56 +0300
-Message-Id: <1306108796-28883-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DD99F9B.2040406@panasas.com>
-References: <4DD99F9B.2040406@panasas.com>
+Received: from ausc60ps301.us.dell.com ([143.166.148.206]:63527 "EHLO
+	ausc60ps301.us.dell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752850Ab1ESOhp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 May 2011 10:37:45 -0400
+From: <Shyam_Iyer@Dell.com>
+To: <Taousif_Ansari@DELLTEAM.com>, <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Date: Thu, 19 May 2011 20:07:35 +0530
+Subject: RE: Performance Issue with multiple dataserver
+Message-ID: <DBFB1B45AF80394ABD1C807E9F28D157032A7822A8@BLRX7MCDC203.AMER.DELL.COM>
+References: <4DD2A084.1040905@moving-picture.com>
+ <20110518080106.1159c5b8@notabene.brown>
+ <4DD39D39.7010805@moving-picture.com>
+ <A1A98FD909DC5248811A65C5D18E9C761DF69B1F18@BLRX7MCDC202.AMER.DELL.COM>
+ <20110518161239.GA16835@fieldses.org>
+ <A1A98FD909DC5248811A65C5D18E9C761DF69B2188@BLRX7MCDC202.AMER.DELL.COM>
+ <20110519115018.GA31978@fieldses.org>
+ <A1A98FD909DC5248811A65C5D18E9C761DF69B2432@BLRX7MCDC202.AMER.DELL.COM>
+ <20110519131236.GA32648@fieldses.org>
+ <A1A98FD909DC5248811A65C5D18E9C761DF69B244C@BLRX7MCDC202.AMER.DELL.COM>
+ <20110519134356.GB32648@fieldses.org>
+ <A1A98FD909DC5248811A65C5D18E9C761DF69B247B@BLRX7MCDC202.AMER.DELL.COM>
+In-Reply-To: <A1A98FD909DC5248811A65C5D18E9C761DF69B247B@BLRX7MCDC202.AMER.DELL.COM>
+Content-Type: text/plain; charset="Windows-1252"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-pnfs deviceids are unique per server, per layout type.
-struct nfs_client is currently used to distinguish deviceids from
-different nfs servers, yet these may clash between different layout
-types on the same server.  Therefore, use the layout driver associated
-with each deviceid at insertion time to look it up, unhash, or
-delete it.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/callback_proc.c       |    2 +-
- fs/nfs/nfs4filelayout.c      |    3 ++-
- fs/nfs/objlayout/objio_osd.c |    6 +++---
- fs/nfs/pnfs.h                |    6 +++---
- fs/nfs/pnfs_dev.c            |   28 +++++++++++++++++-----------
- 5 files changed, 26 insertions(+), 19 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 5780c37..d4d1954 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -278,7 +278,7 @@ __be32 nfs4_callback_devicenotify(struct cb_devicenotifyargs *args,
- 		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
- 			dprintk("%s: NOTIFY_DEVICEID4_CHANGE not supported, "
- 				"deleting instead\n", __func__);
--		nfs4_delete_deviceid(clp, &dev->cbd_dev_id);
-+		nfs4_delete_deviceid(server->pnfs_curr_ld, clp, &dev->cbd_dev_id);
- 	}
- 
- out:
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 5b3080d..2529db0 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -441,7 +441,8 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
- 	}
- 
- 	/* find and reference the deviceid */
--	d = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode)->nfs_client, id);
-+	d = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode)->pnfs_curr_ld,
-+				   NFS_SERVER(lo->plh_inode)->nfs_client, id);
- 	if (d == NULL) {
- 		dsaddr = get_device_info(lo->plh_inode, id, gfp_flags);
- 		if (dsaddr == NULL)
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index bcc8468..a4201d8 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -60,12 +60,12 @@ objio_free_deviceid_node(struct nfs4_deviceid_node *d)
- 	kfree(de);
- }
- 
--static struct objio_dev_ent *_dev_list_find(const struct nfs_client *clp,
-+static struct objio_dev_ent *_dev_list_find(const struct nfs_server *nfss,
- 	const struct nfs4_deviceid *d_id)
- {
- 	struct nfs4_deviceid_node *d;
- 
--	d = nfs4_find_get_deviceid(clp, d_id);
-+	d = nfs4_find_get_deviceid(nfss->pnfs_curr_ld, nfss->nfs_client, d_id);
- 	if (!d)
- 		return NULL;
- 	return container_of(d, struct objio_dev_ent, id_node);
-@@ -141,7 +141,7 @@ static struct objio_dev_ent *_device_lookup(struct pnfs_layout_hdr *pnfslay,
- 
- 	d_id = &objio_seg->comps[comp].oc_object_id.oid_device_id;
- 
--	ode = _dev_list_find(NFS_SERVER(pnfslay->plh_inode)->nfs_client, d_id);
-+	ode = _dev_list_find(NFS_SERVER(pnfslay->plh_inode), d_id);
- 	if (ode)
- 		return ode;
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 7417be9..2e94ed3 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -172,9 +172,9 @@ struct nfs4_deviceid_node {
- };
- 
- void nfs4_print_deviceid(const struct nfs4_deviceid *dev_id);
--struct nfs4_deviceid_node *nfs4_find_get_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
--struct nfs4_deviceid_node *nfs4_unhash_put_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
--void nfs4_delete_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
-+struct nfs4_deviceid_node *nfs4_find_get_deviceid(const struct pnfs_layoutdriver_type *, const struct nfs_client *, const struct nfs4_deviceid *);
-+struct nfs4_deviceid_node *nfs4_unhash_put_deviceid(const struct pnfs_layoutdriver_type *, const struct nfs_client *, const struct nfs4_deviceid *);
-+void nfs4_delete_deviceid(const struct pnfs_layoutdriver_type *, const struct nfs_client *, const struct nfs4_deviceid *);
- void nfs4_init_deviceid_node(struct nfs4_deviceid_node *,
- 			     const struct pnfs_layoutdriver_type *,
- 			     const struct nfs_client *,
-diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
-index f830616..7997899 100644
---- a/fs/nfs/pnfs_dev.c
-+++ b/fs/nfs/pnfs_dev.c
-@@ -67,14 +67,16 @@ nfs4_deviceid_hash(const struct nfs4_deviceid *id)
- }
- 
- static struct nfs4_deviceid_node *
--_lookup_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
-+_lookup_deviceid(const struct pnfs_layoutdriver_type *ld,
-+		 const struct nfs_client *clp, const struct nfs4_deviceid *id,
- 		 long hash)
- {
- 	struct nfs4_deviceid_node *d;
- 	struct hlist_node *n;
- 
- 	hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[hash], node)
--		if (d->nfs_client == clp && !memcmp(&d->deviceid, id, sizeof(*id))) {
-+		if (d->ld == ld && d->nfs_client == clp &&
-+		    !memcmp(&d->deviceid, id, sizeof(*id))) {
- 			if (atomic_read(&d->ref))
- 				return d;
- 			else
-@@ -90,13 +92,14 @@ _lookup_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
-  * @id deviceid to look up
-  */
- struct nfs4_deviceid_node *
--_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
-+_find_get_deviceid(const struct pnfs_layoutdriver_type *ld,
-+		   const struct nfs_client *clp, const struct nfs4_deviceid *id,
- 		   long hash)
- {
- 	struct nfs4_deviceid_node *d;
- 
- 	rcu_read_lock();
--	d = _lookup_deviceid(clp, id, hash);
-+	d = _lookup_deviceid(ld, clp, id, hash);
- 	if (!atomic_inc_not_zero(&d->ref))
- 		d = NULL;
- 	rcu_read_unlock();
-@@ -104,9 +107,10 @@ _find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
- }
- 
- struct nfs4_deviceid_node *
--nfs4_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
-+nfs4_find_get_deviceid(const struct pnfs_layoutdriver_type *ld,
-+		       const struct nfs_client *clp, const struct nfs4_deviceid *id)
- {
--	return _find_get_deviceid(clp, id, nfs4_deviceid_hash(id));
-+	return _find_get_deviceid(ld, clp, id, nfs4_deviceid_hash(id));
- }
- EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
- 
-@@ -119,13 +123,14 @@ EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
-  * @ret the unhashed node, if found and dereferenced to zero, NULL otherwise.
-  */
- struct nfs4_deviceid_node *
--nfs4_unhash_put_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
-+nfs4_unhash_put_deviceid(const struct pnfs_layoutdriver_type *ld,
-+			 const struct nfs_client *clp, const struct nfs4_deviceid *id)
- {
- 	struct nfs4_deviceid_node *d;
- 
- 	spin_lock(&nfs4_deviceid_lock);
- 	rcu_read_lock();
--	d = _lookup_deviceid(clp, id, nfs4_deviceid_hash(id));
-+	d = _lookup_deviceid(ld, clp, id, nfs4_deviceid_hash(id));
- 	rcu_read_unlock();
- 	if (!d) {
- 		spin_unlock(&nfs4_deviceid_lock);
-@@ -150,11 +155,12 @@ EXPORT_SYMBOL_GPL(nfs4_unhash_put_deviceid);
-  * @id deviceid to delete
-  */
- void
--nfs4_delete_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
-+nfs4_delete_deviceid(const struct pnfs_layoutdriver_type *ld,
-+		     const struct nfs_client *clp, const struct nfs4_deviceid *id)
- {
- 	struct nfs4_deviceid_node *d;
- 
--	d = nfs4_unhash_put_deviceid(clp, id);
-+	d = nfs4_unhash_put_deviceid(ld, clp, id);
- 	if (!d)
- 		return;
- 	if (d->ld->free_deviceid_node)
-@@ -197,7 +203,7 @@ nfs4_insert_deviceid_node(struct nfs4_deviceid_node *new)
- 
- 	spin_lock(&nfs4_deviceid_lock);
- 	hash = nfs4_deviceid_hash(&new->deviceid);
--	d = _find_get_deviceid(new->nfs_client, &new->deviceid, hash);
-+	d = _find_get_deviceid(new->ld, new->nfs_client, &new->deviceid, hash);
- 	if (d) {
- 		spin_unlock(&nfs4_deviceid_lock);
- 		return d;
--- 
-1.7.3.4
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of Ansari, Taousif - Dell Team
+> 
+> Can you please elaborate GFS2-setup a bit more...
 
+
+I guess Bruce is saying the step-by-step procedure is not written up...
+
+Create a Redhat cluster using the shared block storage(iSCSI in your case I guess). You would get documentation on creating a RH cluster in many places..
+
+All the MDSs and the DSs need to be part of the cluster.
+
+Format GFS2 on the shared iSCSI storage.
+
+Mount the GFS2 formatted iSCSI storage on all the MDSs and DSs and export them via NFS. Use Benny's tree for NFS.
+
+The GFS2 cluster backend is your glue to scale the MDSes and DSes.
+
+> 
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> Sent: Thursday, May 19, 2011 7:14 PM
+> To: Ansari, Taousif - Dell Team
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: Performance Issue with multiple dataserver
+> 
+> On Thu, May 19, 2011 at 06:44:59PM +0530, Taousif_Ansari@DELLTEAM.com
+> wrote:
+> > Then what should I follow, and what details are needed....
+> 
+> There isn't really any supported server-side pNFS.
+> 
+> The closest is the GFS2-based code, for which you need to install
+> Benny's latest tree, configure a shared block device, create a GFS2
+> filesystem on it, mount it across all DS's and the MDS, and export it
+> from all of them--but I don't believe anyone has written step-by-step
+> instructions for that.
+> 
+> --b.
+> 
+> >
+> > -----Original Message-----
+> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> > Sent: Thursday, May 19, 2011 6:43 PM
+> > To: Ansari, Taousif - Dell Team
+> > Cc: linux-nfs@vger.kernel.org
+> > Subject: Re: Performance Issue with multiple dataserver
+> >
+> > On Thu, May 19, 2011 at 06:09:21PM +0530, Taousif_Ansari@DELLTEAM.com
+> wrote:
+> > > I have followed the way given on http://wiki.linux-
+> nfs.org/wiki/index.php/Configuring_pNFS/spnfsd .
+> >
+> > Oh.  As noted there, spnfs is unmaintained.
+> >
+> > And, in any case, we'd need many more details about your setup.
+> >
+> > --b.
+> >
+> > >
+> > > -Taousif
+> > >
+> > > -----Original Message-----
+> > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > > Sent: Thursday, May 19, 2011 5:20 PM
+> > > To: Ansari, Taousif - Dell Team
+> > > Cc: linux-nfs@vger.kernel.org
+> > > Subject: Re: Performance Issue with multiple dataserver
+> > >
+> > > On Thu, May 19, 2011 at 10:56:44AM +0530,
+> Taousif_Ansari@DELLTEAM.com wrote:
+> > > > Hi,
+> > > >
+> > > > I am using on Server linux-pnfs-2.6.38(linux-pnfs-ae7441f.tar)
+> and on client also linux-pnfs-2.6.38(linux-pnfs-ae7441f.tar) downloaded
+> from http://git.linux-nfs.org/?p=bhalevy/linux-pnfs.git;a=summary on
+> Fedora 14.
+> > >
+> > > So you're using GFS2 on the server?  With what sort of storage?
+> > >
+> > > --b.
+> > >
+> > > >
+> > > > Extremely sorry for causing confusing .
+> > > > -----Original Message-----
+> > > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > > > Sent: Wednesday, May 18, 2011 9:43 PM
+> > > > To: Ansari, Taousif - Dell Team
+> > > > Cc: linux-nfs@vger.kernel.org
+> > > > Subject: Re: Performance Issue with multiple dataserver
+> > > >
+> > > > You sent this message as a reply to an unrelated message, which
+> is
+> > > > confusing to those of us with threaded mail readers.
+> > > >
+> > > > On Wed, May 18, 2011 at 05:24:45PM +0530,
+> Taousif_Ansari@DELLTEAM.com wrote:
+> > > > > I have done pNFS setup with single Dataserver and Two
+> Dataserver and ran the IOzone tool on both, I found that the
+> performance with multiple dataservers is less than the performance with
+> single dataservers.
+> > > >
+> > > > What are you using as the server, and what as the client?
+> > > >
+> > > > --b.
+> > > >
+> > > > >
+> > > > > Here are some numbers, which were captured by the IOzone tool.
+> > > > >
+> > > > >
+> > > > > 							  4	  8	 16	 32
+> 	 64	 128	 256	 512	1024	<== Record Length in KB
+> > > > > With Single Dataserver:
+> > > > > Read operation for file size 1 MB-		66415	66359	63630
+> 	70358	86223	70256	66047	66068	68489	<== IO kB/sec
+> > > > > Write operation for file size 1 MB-		18827	16920	18846
+> 	17039	18896	17009	17173	19206	17947	<== IO kB/sec
+> > > > >
+> > > > > With Two Dataservers :
+> > > > > Read operation for file size 1 MB-		36882	381198
+> 	38150	38084	38749	33663	34398	37313	37847	<== IO kB/sec
+> > > > > Write operation for file size 1 MB-		5461	4661	5586
+> 	4870	5227	4922	4214	5572	4658	<== IO kB/sec
+> > > > >
+> > > > >
+> > > > > Can somebody tell me What could be the issue....
+> > > > > --
+> > > > > To unsubscribe from this list: send the line "unsubscribe
+> linux-nfs" in
+> > > > > the body of a message to majordomo@vger.kernel.org
+> > > > > More majordomo info at  http://vger.kernel.org/majordomo-
+> info.html
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+> in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
