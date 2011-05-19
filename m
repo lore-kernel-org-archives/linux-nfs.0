@@ -1,182 +1,351 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:37962 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753625Ab1EIRH7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:07:59 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>,
-        "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH v2 08/29] NFSD: introduce exp_xdr.h
-Date: Mon,  9 May 2011 20:07:50 +0300
-Message-Id: <1304960870-4080-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DC81E8C.6040901@panasas.com>
-References: <4DC81E8C.6040901@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:49532 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933139Ab1ESPWE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 May 2011 11:22:04 -0400
+Message-ID: <4DD5358A.3060705@netapp.com>
+Date: Thu, 19 May 2011 11:21:46 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 2/2] NFSD: Added TEST_STATEID opreation
+References: <1305575021-2841-1-git-send-email-bjschuma@netapp.com> <1305575021-2841-3-git-send-email-bjschuma@netapp.com> <20110518235742.GB26545@fieldses.org>
+In-Reply-To: <20110518235742.GB26545@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Containing xdr encoding helpers.
+On 05/18/2011 07:57 PM, J. Bruce Fields wrote:
+> On Mon, May 16, 2011 at 03:43:41PM -0400, bjschuma@netapp.com wrote:
+>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>
+>> This operation is used by the client to check the validity of a list of
+>> stateids.
+>>
+>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+>> ---
+>>  fs/nfsd/nfs4proc.c  |    5 +++
+>>  fs/nfsd/nfs4state.c |   53 +++++++++++++++++++++++++++++++
+>>  fs/nfsd/nfs4xdr.c   |   85 +++++++++++++++++++++++++++++++++++++++++++++++++--
+>>  fs/nfsd/state.h     |    1 +
+>>  fs/nfsd/xdr4.h      |   17 ++++++++++
+>>  5 files changed, 158 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+>> index 7e00116..a856f30 100644
+>> --- a/fs/nfsd/nfs4proc.c
+>> +++ b/fs/nfsd/nfs4proc.c
+>> @@ -1412,6 +1412,11 @@ static struct nfsd4_operation nfsd4_ops[] = {
+>>  		.op_flags = OP_HANDLES_WRONGSEC,
+>>  		.op_name = "OP_SECINFO_NO_NAME",
+>>  	},
+>> +	[OP_TEST_STATEID] = {
+>> +		.op_func = (nfsd4op_func)nfsd4_test_stateid,
+>> +		.op_flags = ALLOWED_WITHOUT_FH,
+>> +		.op_name = "OP_TEST_STATEID",
+>> +	},
+>>  	[OP_FREE_STATEID] = {
+>>  		.op_func = (nfsd4op_func)nfsd4_free_stateid,
+>>  		.op_flags = ALLOWED_WITHOUT_FH,
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 043baa0..18e0762 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -37,6 +37,7 @@
+>>  #include <linux/slab.h>
+>>  #include <linux/namei.h>
+>>  #include <linux/swap.h>
+>> +#include <linux/pagemap.h>
+>>  #include <linux/sunrpc/svcauth_gss.h>
+>>  #include <linux/sunrpc/clnt.h>
+>>  #include "xdr4.h"
+>> @@ -3136,6 +3137,32 @@ static int is_delegation_stateid(stateid_t *stateid)
+>>  	return stateid->si_fileid == 0;
+>>  }
+>>  
+>> +static __be32 nfs4_validate_stateid(stateid_t *stateid, int flags, struct file **filpp, struct svc_fh *current_fh)
+> 
+> You're not use current_fh (which makes sense, since test_stateid doesn't
+> seem to use the current filehandle).
 
-Cc: J. Bruce Fields <bfields@citi.umich.edu>
-[nfsd: fix exp_xdr_encode_u64 parameter type]
-Reported-by: J. Bruce Fields <bfields@citi.umich.edu>
-[exportfs: exp_xdr.h: Use #include <linux/string.h> instead of <asm/string.h>]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- include/linux/exp_xdr.h |  141 +++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 141 insertions(+), 0 deletions(-)
- create mode 100644 include/linux/exp_xdr.h
+I wasn't using filpp either.  I've removed both from the patch.
 
-diff --git a/include/linux/exp_xdr.h b/include/linux/exp_xdr.h
-new file mode 100644
-index 0000000..b69c309
---- /dev/null
-+++ b/include/linux/exp_xdr.h
-@@ -0,0 +1,141 @@
-+#ifndef _LINUX_EXP_XDR_H
-+#define _LINUX_EXP_XDR_H
-+
-+#include <asm/byteorder.h>
-+#include <asm/unaligned.h>
-+#include <linux/string.h>
-+
-+struct exp_xdr_stream {
-+	__be32 *p;
-+	__be32 *end;
-+};
-+
-+/**
-+ * exp_xdr_qwords - Calculate the number of quad-words holding nbytes
-+ * @nbytes: number of bytes to encode
-+ */
-+static inline size_t
-+exp_xdr_qwords(__u32 nbytes)
-+{
-+	return DIV_ROUND_UP(nbytes, 4);
-+}
-+
-+/**
-+ * exp_xdr_qbytes - Calculate the number of bytes holding qwords
-+ * @qwords: number of quad-words to encode
-+ */
-+static inline size_t
-+exp_xdr_qbytes(size_t qwords)
-+{
-+	return qwords << 2;
-+}
-+
-+/**
-+ * exp_xdr_reserve_space - Reserve buffer space for sending
-+ * @xdr: pointer to exp_xdr_stream
-+ * @nbytes: number of bytes to reserve
-+ *
-+ * Checks that we have enough buffer space to encode 'nbytes' more
-+ * bytes of data. If so, update the xdr stream.
-+ */
-+static inline __be32 *
-+exp_xdr_reserve_space(struct exp_xdr_stream *xdr, size_t nbytes)
-+{
-+	__be32 *p = xdr->p;
-+	__be32 *q;
-+
-+	/* align nbytes on the next 32-bit boundary */
-+	q = p + exp_xdr_qwords(nbytes);
-+	if (unlikely(q > xdr->end || q < p))
-+		return NULL;
-+	xdr->p = q;
-+	return p;
-+}
-+
-+/**
-+ * exp_xdr_reserve_qwords - Reserve buffer space for sending
-+ * @xdr: pointer to exp_xdr_stream
-+ * @nwords: number of quad words (u32's) to reserve
-+ */
-+static inline __be32 *
-+exp_xdr_reserve_qwords(struct exp_xdr_stream *xdr, size_t qwords)
-+{
-+	return exp_xdr_reserve_space(xdr, exp_xdr_qbytes(qwords));
-+}
-+
-+/**
-+ * exp_xdr_encode_u32 - Encode an unsigned 32-bit value onto a xdr stream
-+ * @p: pointer to encoding destination
-+ * @val: value to encode
-+ */
-+static inline __be32 *
-+exp_xdr_encode_u32(__be32 *p, __u32 val)
-+{
-+	*p = cpu_to_be32(val);
-+	return p + 1;
-+}
-+
-+/**
-+ * exp_xdr_encode_u64 - Encode an unsigned 64-bit value onto a xdr stream
-+ * @p: pointer to encoding destination
-+ * @val: value to encode
-+ */
-+static inline __be32 *
-+exp_xdr_encode_u64(__be32 *p, __u64 val)
-+{
-+	put_unaligned_be64(val, p);
-+	return p + 2;
-+}
-+
-+/**
-+ * exp_xdr_encode_bytes - Encode an array of bytes onto a xdr stream
-+ * @p: pointer to encoding destination
-+ * @ptr: pointer to the array of bytes
-+ * @nbytes: number of bytes to encode
-+ */
-+static inline __be32 *
-+exp_xdr_encode_bytes(__be32 *p, const void *ptr, __u32 nbytes)
-+{
-+	if (likely(nbytes != 0)) {
-+		unsigned int qwords = exp_xdr_qwords(nbytes);
-+		unsigned int padding = exp_xdr_qbytes(qwords) - nbytes;
-+
-+		memcpy(p, ptr, nbytes);
-+		if (padding != 0)
-+			memset((char *)p + nbytes, 0, padding);
-+		p += qwords;
-+	}
-+	return p;
-+}
-+
-+/**
-+ * exp_xdr_encode_opaque - Encode an opaque type onto a xdr stream
-+ * @p: pointer to encoding destination
-+ * @ptr: pointer to the opaque array
-+ * @nbytes: number of bytes to encode
-+ *
-+ * Encodes the 32-bit opaque size in bytes followed by the opaque value.
-+ */
-+static inline __be32 *
-+exp_xdr_encode_opaque(__be32 *p, const void *ptr, __u32 nbytes)
-+{
-+	p = exp_xdr_encode_u32(p, nbytes);
-+	return exp_xdr_encode_bytes(p, ptr, nbytes);
-+}
-+
-+/**
-+ * exp_xdr_encode_opaque_qlen - Encode the opaque length onto a xdr stream
-+ * @lenp: pointer to the opaque length destination
-+ * @endp: pointer to the end of the opaque array
-+ *
-+ * Encodes the 32-bit opaque size in bytes given the start and end pointers
-+ */
-+static inline __be32 *
-+exp_xdr_encode_opaque_len(__be32 *lenp, const void *endp)
-+{
-+	size_t nbytes = (char *)endp - (char *)(lenp + 1);
-+
-+	exp_xdr_encode_u32(lenp, nbytes);
-+	return lenp + 1 + exp_xdr_qwords(nbytes);
-+}
-+#endif /* _LINUX_EXP_XDR_H */
--- 
-1.7.3.4
+> 
+> Ditto for callers.
+> 
+>> +{
+>> +	struct nfs4_stateid *stp = NULL;
+>> +	__be32 status = nfserr_stale_stateid;
+>> +
+>> +	if (STALE_STATEID(stateid))
+>> +		goto out;
+>> +
+>> +	status = nfserr_expired;
+>> +	stp = search_for_stateid(stateid);
+>> +	if (!stp)
+>> +		goto out;
+>> +	status = nfserr_bad_stateid;
+>> +
+>> +	if (!stp->st_stateowner->so_confirmed)
+>> +		goto out;
+>> +
+>> +	status = check_stateid_generation(stateid, &stp->st_stateid, flags);
+>> +	if (status)
+>> +		goto out;
+>> +
+>> +	status = nfs_ok;
+>> +out:
+>> +	return status;
+>> +}
+>> +
+>>  /*
+>>  * Checks for stateid operations
+>>  */
+>> @@ -3252,6 +3279,32 @@ nfsd4_free_file_stateid(stateid_t *stateid)
+>>  }
+>>  
+>>  /*
+>> + * Test if the stateid is valid
+>> + */
+>> +__be32
+>> +nfsd4_test_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>> +		   struct nfsd4_test_stateid *test_stateid)
+>> +{
+>> +	test_stateid->ts_saved_state = cstate;
+>> +	return nfs_ok;
+>> +}
+>> +
+>> +__be32
+>> +nfsd4_do_test_stateid(stateid_t *stateid, struct nfsd4_compound_state *cstate)
+>> +{
+>> +	__be32 ret;
+>> +	unsigned int lock_flags = LOCK_STATE | RD_STATE | WR_STATE;
+>> +	unsigned int open_flags = OPEN_STATE | RD_STATE | WR_STATE;
+>> +	struct svc_fh *current_fh;
+>> +
+>> +	current_fh = &cstate->current_fh;
+>> +	ret = nfs4_validate_stateid(stateid, lock_flags, NULL, current_fh);
+>> +	if (!ret)
+>> +		ret = nfs4_validate_stateid(stateid, open_flags, NULL, current_fh);
+> 
+> Do we really need to do this once for each set of flags?
+> 
+> Seems we only use them in check_stateid_generation(), which only uses
+> them to check the HAS_SESSION case.  (Which actually should be set in
+> our case?)
+
+I can check for HAS_SESSION using cstate, and then pass the result to nfs4_validate_stateid().
+> 
+>> +	return ret;
+>> +}
+>> +
+>> +/*
+>>   * Free a state id
+>>   */
+>>  __be32
+>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> index 5da6874..2239114 100644
+>> --- a/fs/nfsd/nfs4xdr.c
+>> +++ b/fs/nfsd/nfs4xdr.c
+>> @@ -44,13 +44,14 @@
+>>  #include <linux/namei.h>
+>>  #include <linux/statfs.h>
+>>  #include <linux/utsname.h>
+>> +#include <linux/pagemap.h>
+>>  #include <linux/sunrpc/svcauth_gss.h>
+>>  
+>>  #include "idmap.h"
+>>  #include "acl.h"
+>>  #include "xdr4.h"
+>>  #include "vfs.h"
+>> -
+>> +#include "state.h"
+>>  
+>>  #define NFSDDBG_FACILITY		NFSDDBG_XDR
+>>  
+>> @@ -131,6 +132,22 @@ xdr_error:					\
+>>  	}					\
+>>  } while (0)
+>>  
+>> +static void save_buf(struct nfsd4_compoundargs *argp, struct nfsd4_saved_compoundargs *savep)
+>> +{
+>> +	savep->p        = argp->p;
+>> +	savep->end      = argp->end;
+>> +	savep->pagelen  = argp->pagelen;
+>> +	savep->pagelist = argp->pagelist;
+>> +}
+>> +
+>> +static void restore_buf(struct nfsd4_compoundargs *argp, struct nfsd4_saved_compoundargs *savep)
+>> +{
+>> +	argp->p        = savep->p;
+>> +	argp->end      = savep->end;
+>> +	argp->pagelen  = savep->pagelen;
+>> +	argp->pagelist = savep->pagelist;
+>> +}
+>> +
+>>  static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
+>>  {
+>>  	/* We want more bytes than seem to be available.
+>> @@ -1274,6 +1291,40 @@ nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
+>>  	DECODE_TAIL;
+>>  }
+>>  
+>> +static __be32
+>> +nfsd4_decode_test_stateid(struct nfsd4_compoundargs *argp, struct nfsd4_test_stateid *test_stateid)
+>> +{
+>> +	unsigned int nbytes;
+>> +	stateid_t si;
+>> +	int i;
+>> +	__be32 *p;
+>> +	__be32 status;
+>> +
+>> +	READ_BUF(4);
+>> +	test_stateid->ts_num_ids = ntohl(*p++);
+>> +
+>> +	nbytes = test_stateid->ts_num_ids * sizeof(stateid_t);
+>> +	if (nbytes > (u32)((char *)argp->end - (char *)argp->p))
+>> +		goto xdr_error;
+>> +
+>> +	test_stateid->ts_saved_args = argp;
+>> +	save_buf(argp, &test_stateid->ts_savedp);
+> 
+> I guess that works.  It's a little strange.  I can't see an immediate
+> problem.
+> 
+> --b.
+> 
+>> +
+>> +	for (i = 0; i < test_stateid->ts_num_ids; i++) {
+>> +		status = nfsd4_decode_stateid(argp, &si);
+>> +		if (status)
+>> +			return status;
+>> +	}
+>> +
+>> +	status = 0;
+>> +out:
+>> +	return status;
+>> +xdr_error:
+>> +	dprintk("NFSD: xdr error (%s:%d)\n", __FILE__, __LINE__);
+>> +	status = nfserr_bad_xdr;
+>> +	goto out;
+>> +}
+>> +
+>>  static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, struct nfsd4_reclaim_complete *rc)
+>>  {
+>>  	DECODE_HEAD;
+>> @@ -1393,7 +1444,7 @@ static nfsd4_dec nfsd41_dec_ops[] = {
+>>  	[OP_SECINFO_NO_NAME]	= (nfsd4_dec)nfsd4_decode_secinfo_no_name,
+>>  	[OP_SEQUENCE]		= (nfsd4_dec)nfsd4_decode_sequence,
+>>  	[OP_SET_SSV]		= (nfsd4_dec)nfsd4_decode_notsupp,
+>> -	[OP_TEST_STATEID]	= (nfsd4_dec)nfsd4_decode_notsupp,
+>> +	[OP_TEST_STATEID]	= (nfsd4_dec)nfsd4_decode_test_stateid,
+>>  	[OP_WANT_DELEGATION]	= (nfsd4_dec)nfsd4_decode_notsupp,
+>>  	[OP_DESTROY_CLIENTID]	= (nfsd4_dec)nfsd4_decode_notsupp,
+>>  	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
+>> @@ -3166,6 +3217,34 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
+>>  	return 0;
+>>  }
+>>  
+>> +__be32
+>> +nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, int nfserr,
+>> +			  struct nfsd4_test_stateid *test_stateid)
+>> +{
+>> +	struct nfsd4_compoundargs *argp;
+>> +	stateid_t si;
+>> +	__be32 *p;
+>> +	int i;
+>> +	int valid;
+>> +
+>> +	restore_buf(test_stateid->ts_saved_args, &test_stateid->ts_savedp);
+>> +	argp = test_stateid->ts_saved_args;
+>> +
+>> +	RESERVE_SPACE(4);
+>> +	*p++ = htonl(test_stateid->ts_num_ids);
+>> +	resp->p = p;
+>> +
+>> +	for (i = 0; i < test_stateid->ts_num_ids; i++) {
+>> +		nfsd4_decode_stateid(argp, &si);
+>> +		valid = nfsd4_do_test_stateid(&si, test_stateid->ts_saved_state);
+>> +		RESERVE_SPACE(4);
+>> +		*p++ = htonl(valid);
+>> +		resp->p = p;
+>> +	}
+>> +
+>> +	return nfserr;
+>> +}
+>> +
+>>  static __be32
+>>  nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
+>>  {
+>> @@ -3234,7 +3313,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+>>  	[OP_SECINFO_NO_NAME]	= (nfsd4_enc)nfsd4_encode_secinfo_no_name,
+>>  	[OP_SEQUENCE]		= (nfsd4_enc)nfsd4_encode_sequence,
+>>  	[OP_SET_SSV]		= (nfsd4_enc)nfsd4_encode_noop,
+>> -	[OP_TEST_STATEID]	= (nfsd4_enc)nfsd4_encode_noop,
+>> +	[OP_TEST_STATEID]	= (nfsd4_enc)nfsd4_encode_test_stateid,
+>>  	[OP_WANT_DELEGATION]	= (nfsd4_enc)nfsd4_encode_noop,
+>>  	[OP_DESTROY_CLIENTID]	= (nfsd4_enc)nfsd4_encode_noop,
+>>  	[OP_RECLAIM_COMPLETE]	= (nfsd4_enc)nfsd4_encode_noop,
+>> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+>> index 6bd2f3c..3447b04 100644
+>> --- a/fs/nfsd/state.h
+>> +++ b/fs/nfsd/state.h
+>> @@ -482,6 +482,7 @@ extern void nfsd4_recdir_purge_old(void);
+>>  extern int nfsd4_create_clid_dir(struct nfs4_client *clp);
+>>  extern void nfsd4_remove_clid_dir(struct nfs4_client *clp);
+>>  extern void release_session_client(struct nfsd4_session *);
+>> +extern __be32 nfsd4_do_test_stateid(stateid_t *, struct nfsd4_compound_state *);
+>>  
+>>  static inline void
+>>  nfs4_put_stateowner(struct nfs4_stateowner *so)
+>> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+>> index ed1784d..628ef97 100644
+>> --- a/fs/nfsd/xdr4.h
+>> +++ b/fs/nfsd/xdr4.h
+>> @@ -342,6 +342,20 @@ struct nfsd4_setclientid_confirm {
+>>  	nfs4_verifier	sc_confirm;
+>>  };
+>>  
+>> +struct nfsd4_saved_compoundargs {
+>> +	__be32 *p;
+>> +	__be32 *end;
+>> +	int pagelen;
+>> +	struct page **pagelist;
+>> +};
+>> +
+>> +struct nfsd4_test_stateid {
+>> +	__be32		ts_num_ids;
+>> +	struct nfsd4_compoundargs *ts_saved_args;
+>> +	struct nfsd4_saved_compoundargs ts_savedp;
+>> +	struct nfsd4_compound_state *ts_saved_state;
+>> +};
+>> +
+>>  struct nfsd4_free_stateid {
+>>  	stateid_t	fr_stateid;         /* request */
+>>  	__be32		fr_status;          /* response */
+>> @@ -437,6 +451,7 @@ struct nfsd4_op {
+>>  		struct nfsd4_destroy_session	destroy_session;
+>>  		struct nfsd4_sequence		sequence;
+>>  		struct nfsd4_reclaim_complete	reclaim_complete;
+>> +		struct nfsd4_test_stateid	test_stateid;
+>>  		struct nfsd4_free_stateid	free_stateid;
+>>  	} u;
+>>  	struct nfs4_replay *			replay;
+>> @@ -570,6 +585,8 @@ extern __be32 nfsd4_delegreturn(struct svc_rqst *rqstp,
+>>  		struct nfsd4_compound_state *, struct nfsd4_delegreturn *dr);
+>>  extern __be32 nfsd4_renew(struct svc_rqst *rqstp,
+>>  			  struct nfsd4_compound_state *, clientid_t *clid);
+>> +extern __be32 nfsd4_test_stateid(struct svc_rqst *rqstp,
+>> +		struct nfsd4_compound_state *, struct nfsd4_test_stateid *test_stateid);
+>>  extern __be32 nfsd4_free_stateid(struct svc_rqst *rqstp,
+>>  		struct nfsd4_compound_state *, struct nfsd4_free_stateid *free_stateid);
+>>  #endif
+>> -- 
+>> 1.7.5.1
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
