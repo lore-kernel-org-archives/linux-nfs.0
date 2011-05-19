@@ -1,53 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay03.bluemeaney.com ([205.234.16.187]:35919 "EHLO
-	relay03.bluemeaney.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934210Ab1ESUCP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 May 2011 16:02:15 -0400
-Message-ID: <4DD57342.3060804@nexenta.com>
-Date: Thu, 19 May 2011 23:45:06 +0400
-From: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Vitaliy Gusev <gusev.vitaliy@gmail.com>, andros@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs41: Correct offset for LAYOUTCOMMIT
-References: <1305832245-17318-1-git-send-email-gusev.vitaliy@nexenta.com> <1305833890.5552.0.camel@lade.trondhjem.org>
-In-Reply-To: <1305833890.5552.0.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from ausxippc101.us.dell.com ([143.166.85.207]:38317 "EHLO
+	ausxippc101.us.dell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932671Ab1ESNPh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 May 2011 09:15:37 -0400
+From: <Taousif_Ansari@DELLTEAM.com>
+To: <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Date: Thu, 19 May 2011 18:44:59 +0530
+Subject: RE: Performance Issue with multiple dataserver
+Message-ID: <A1A98FD909DC5248811A65C5D18E9C761DF69B244C@BLRX7MCDC202.AMER.DELL.COM>
+References: <4DD2A084.1040905@moving-picture.com>
+ <20110518080106.1159c5b8@notabene.brown>
+ <4DD39D39.7010805@moving-picture.com>
+ <A1A98FD909DC5248811A65C5D18E9C761DF69B1F18@BLRX7MCDC202.AMER.DELL.COM>
+ <20110518161239.GA16835@fieldses.org>
+ <A1A98FD909DC5248811A65C5D18E9C761DF69B2188@BLRX7MCDC202.AMER.DELL.COM>
+ <20110519115018.GA31978@fieldses.org>
+ <A1A98FD909DC5248811A65C5D18E9C761DF69B2432@BLRX7MCDC202.AMER.DELL.COM>
+ <20110519131236.GA32648@fieldses.org>
+In-Reply-To: <20110519131236.GA32648@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/19/2011 11:38 PM, Trond Myklebust wrote:
-> On Thu, 2011-05-19 at 23:10 +0400, Vitaliy Gusev wrote:
->> A client sends offset to MDS as it was seen by DS. As result,
->> file size after copy is only half of original file size in case
->> of 2 DS.
->>
->> Signed-off-by: Vitaliy Gusev<gusev.vitaliy@nexenta.com>
->> ---
->>   fs/nfs/nfs4filelayout.c |    1 +
->>   1 files changed, 1 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->> index be79dc9..790eb1d 100644
->> --- a/fs/nfs/nfs4filelayout.c
->> +++ b/fs/nfs/nfs4filelayout.c
->> @@ -167,6 +167,7 @@ filelayout_set_layoutcommit(struct nfs_write_data *wdata)
->>   	    wdata->res.verf->committed == NFS_FILE_SYNC)
->>   		return;
->>
->> +	wdata->args.offset = wdata->mds_offset;
->>   	pnfs_set_layoutcommit(wdata);
->>   	dprintk("%s ionde %lu pls_end_pos %lu\n", __func__, wdata->inode->i_ino,
->>   		(unsigned long) wdata->lseg->pls_end_pos);
->
-> Err... Shouldn't we rather be fixing pnfs_set_layoutcommit() to use the
-> mds_offset instead of hacking args.offset?
+Then what should I follow, and what details are needed....
 
-I thought about it...  pnfs_set_layoutcommit is a generic code for all 
-type of layouts, but mds_offset is set only for file layout.
+-----Original Message-----
+From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+Sent: Thursday, May 19, 2011 6:43 PM
+To: Ansari, Taousif - Dell Team
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Performance Issue with multiple dataserver
 
+On Thu, May 19, 2011 at 06:09:21PM +0530, Taousif_Ansari@DELLTEAM.com wrote:
+> I have followed the way given on http://wiki.linux-nfs.org/wiki/index.php/Configuring_pNFS/spnfsd .
 
+Oh.  As noted there, spnfs is unmaintained.
 
->
+And, in any case, we'd need many more details about your setup.
 
+--b.
+
+> 
+> -Taousif
+> 
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org] 
+> Sent: Thursday, May 19, 2011 5:20 PM
+> To: Ansari, Taousif - Dell Team
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: Performance Issue with multiple dataserver
+> 
+> On Thu, May 19, 2011 at 10:56:44AM +0530, Taousif_Ansari@DELLTEAM.com wrote:
+> > Hi,
+> > 
+> > I am using on Server linux-pnfs-2.6.38(linux-pnfs-ae7441f.tar) and on client also linux-pnfs-2.6.38(linux-pnfs-ae7441f.tar) downloaded from http://git.linux-nfs.org/?p=bhalevy/linux-pnfs.git;a=summary on Fedora 14.
+> 
+> So you're using GFS2 on the server?  With what sort of storage?
+> 
+> --b.
+> 
+> > 
+> > Extremely sorry for causing confusing .
+> > -----Original Message-----
+> > From: J. Bruce Fields [mailto:bfields@fieldses.org] 
+> > Sent: Wednesday, May 18, 2011 9:43 PM
+> > To: Ansari, Taousif - Dell Team
+> > Cc: linux-nfs@vger.kernel.org
+> > Subject: Re: Performance Issue with multiple dataserver
+> > 
+> > You sent this message as a reply to an unrelated message, which is
+> > confusing to those of us with threaded mail readers.
+> > 
+> > On Wed, May 18, 2011 at 05:24:45PM +0530, Taousif_Ansari@DELLTEAM.com wrote:
+> > > I have done pNFS setup with single Dataserver and Two Dataserver and ran the IOzone tool on both, I found that the performance with multiple dataservers is less than the performance with single dataservers.
+> > 
+> > What are you using as the server, and what as the client?
+> > 
+> > --b.
+> > 
+> > > 
+> > > Here are some numbers, which were captured by the IOzone tool.
+> > > 
+> > > 
+> > > 							  4	  8	 16	 32	 64	 128	 256	 512	1024	<== Record Length in KB
+> > > With Single Dataserver:
+> > > Read operation for file size 1 MB-		66415	66359	63630	70358	86223	70256	66047	66068	68489	<== IO kB/sec
+> > > Write operation for file size 1 MB-		18827	16920	18846	17039	18896	17009	17173	19206	17947	<== IO kB/sec
+> > > 
+> > > With Two Dataservers :
+> > > Read operation for file size 1 MB-		36882	381198	38150	38084	38749	33663	34398	37313	37847	<== IO kB/sec
+> > > Write operation for file size 1 MB-		5461	4661	5586	4870	5227	4922	4214	5572	4658	<== IO kB/sec
+> > > 
+> > > 
+> > > Can somebody tell me What could be the issue....
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
