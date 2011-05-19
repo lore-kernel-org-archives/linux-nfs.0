@@ -1,82 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay03.bluemeaney.com ([205.234.16.187]:37329 "EHLO
-	relay03.bluemeaney.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751545Ab1EPTwS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 15:52:18 -0400
-Message-ID: <4DD17D8A.8080605@nexenta.com>
-Date: Mon, 16 May 2011 23:39:54 +0400
-From: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
-To: Andy Adamson <andros@netapp.com>
-CC: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [V2, 1/1] NFSv4.1: remove pnfs_layout_hdr from pnfs_destroy_all_layouts
- tmp_list
-References: <1305091198-27378-1-git-send-email-andros@netapp.com> <4DCF073B.1060400@nexenta.com> <3CF6346D-446F-43A7-BAF7-9A365E7386E3@netapp.com>
-In-Reply-To: <3CF6346D-446F-43A7-BAF7-9A365E7386E3@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from fieldses.org ([174.143.236.118]:58513 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753210Ab1ESAvw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 May 2011 20:51:52 -0400
+Date: Wed, 18 May 2011 20:51:51 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd41: error out when client sets maxreq_sz or
+ maxresp_sz too small
+Message-ID: <20110519005151.GD26545@fieldses.org>
+References: <4DD32B1B.8090709@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4DD32B1B.8090709@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/16/2011 09:44 PM, Andy Adamson wrote:
->
-> On May 14, 2011, at 6:50 PM, Vitaliy Gusev wrote:
->
->> On 01/-10/-28163 10:59 PM, Andy Adamson wrote:
->>> From: Andy Adamson<andros@netapp.com>
->>>
->>> Prevents an infinite loop as list was never emptied.
->>>
->>> Signed-off-by: Andy Adamson<andros@netapp.com>
->>> +++ b/fs/nfs/pnfs.c
->>> @@ -383,6 +383,7 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
->>>   				plh_layouts);
->>>   		dprintk("%s freeing layout for inode %lu\n", __func__,
->>>   			lo->plh_inode->i_ino);
->>> +		list_del_init(&lo->plh_layouts);
->>>   		pnfs_destroy_layout(NFS_I(lo->plh_inode));
->>
->> Shouldn't pnfs_destroy_layout() do it ?
->
-> pnfs_destroy_layout can't do it. The list is local to pnfs_destroy_all_layouts.
-> It's confusing because both pnfs_destroy_layout and pnfs_destroy_all_layouts have
- > a local tmp_list used for different purposes.
+On Wed, May 18, 2011 at 10:12:43AM +0800, Mi Jinlong wrote:
+> According to RFC5661, 18.36.3, 
+> 
+>  "if the client selects a value for ca_maxresponsesize such that
+>   a replier on a channel could never send a response,the server
+>   SHOULD return NFS4ERR_TOOSMALL in the CREATE_SESSION reply."
+> 
+> This patch let server error out when client sets maxreq_sz less than
+> SEQUENCE request size, and maxresp_sz less than a SEQUENCE reply size.
+> 
+> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> ---
+>  fs/nfsd/nfs4xdr.c |   18 ++++++++++++++++++
+>  1 files changed, 18 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index c6766af..8983d03 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -131,6 +131,14 @@ xdr_error:					\
+>  	}					\
+>  } while (0)
+>  
+> +#define op_decode_hdr_size	(1)
+> +#define op_encode_hdr_size	(2)
+> +
+> +#define decode_sequence_size	(op_decode_hdr_size + \
+> +				XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + 4)
+> +#define encode_sequence_size	(op_encode_hdr_size + \
+> +				XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + 5)
+> +
 
-Yes purposes are different but "lo" is the same and list_del_init() in 
-pnfs_free_lseg_list() see the same "lo" from pnfs_destroy_all_layouts.
+>From the description of ca_maxrequestsize on p. 515:
 
+	"This size represents the XDR encoded size of the request,
+	including the RPC headers (including security flavor credentials
+	and verifiers) but excludes any RPC transport framing headers."
 
-  pnfs_destroy_layout(struct nfs_inode *nfsi):
+There's no way to know how big the verifier and credential will be, but
+for the purposes of this function I guess we could assume they're both 2
+u32's (flavor + zero length).
 
-       lo = nfsi->layout;
+Looks fine to me otherwise.
 
-    >>> after that mark_matching_lsegs_invalid adds "lo" to tmplist_v2
+I assume you checked these are the ops that give the shortest possible
+request and response.
 
-	
-  pnfs_free_lseg_list(tmplist_v2):
+--b.
 
-	lo = list_first_entry(free_me, struct pnfs_layout_segment,
-			      pls_list)->pls_layout;
-
-   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   Here is "lo" from pnfs_destroy_all_layouts.
-
-
-	if (test_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags)) {
-		struct nfs_client *clp;
-
-		clp = NFS_SERVER(lo->plh_inode)->nfs_client;
-		spin_lock(&clp->cl_lock);
-		list_del_init(&lo->plh_layouts);
-       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   Here is second deleting "lo" that was already deleted in 
-pnfs_destroy_all_layouts.
-
-So if all is ok, it will delete list twice.
-
-I suppose, either current schema has to be changed or list_del_init() 
-should be removed from pnfs_destoy_all_layouts with fixing 
-mark_matching_lsegs_invalid and ref counter.
-
-
----
-Gusev Vitaliy
+>  static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
+>  {
+>  	/* We want more bytes than seem to be available.
+> @@ -1154,7 +1162,17 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
+>  	READ_BUF(28);
+>  	READ32(dummy); /* headerpadsz is always 0 */
+>  	READ32(sess->fore_channel.maxreq_sz);
+> +	if (sess->fore_channel.maxreq_sz < decode_sequence_size) {
+> +		status = nfserr_toosmall;
+> +		goto out;
+> +	}
+> +
+>  	READ32(sess->fore_channel.maxresp_sz);
+> +	if (sess->fore_channel.maxresp_sz < encode_sequence_size) {
+> +		status = nfserr_toosmall;
+> +		goto out;
+> +	}
+> +
+>  	READ32(sess->fore_channel.maxresp_cached);
+>  	READ32(sess->fore_channel.maxops);
+>  	READ32(sess->fore_channel.maxreqs);
+> -- 
+> 1.7.4.5
+> 
+> 
+> 
