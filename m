@@ -1,53 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:10232 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:64869 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757001Ab1ETTPf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 May 2011 15:15:35 -0400
-Subject: Re: 2.6.38.6 - state manager constantly respawns
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "Dr. J. Bruce Fields" <bfields@fieldses.org>
-Cc: Harry Edmon <harry@uw.edu>, Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs@vger.kernel.org
-Date: Fri, 20 May 2011 15:15:33 -0400
-In-Reply-To: <20110520185935.GC11670@fieldses.org>
-References: <4DD17CB5.7010009@uw.edu>
-	 <1305575007.19725.3.camel@lade.trondhjem.org> <4DD17F79.305@uw.edu>
-	 <1305575656.19725.9.camel@lade.trondhjem.org>
-	 <20110516202059.GC1680@fieldses.org> <20110516205351.GD1680@fieldses.org>
-	 <4DD694DF.2060302@uw.edu> <20110520172639.GA11670@fieldses.org>
-	 <1305913963.12712.6.camel@lade.trondhjem.org>
-	 <1305916616.14253.1.camel@lade.trondhjem.org>
-	 <20110520185935.GC11670@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1305918933.14253.5.camel@lade.trondhjem.org>
+	id S1752505Ab1ESPeD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 May 2011 11:34:03 -0400
+Message-ID: <4DD53864.1010401@netapp.com>
+Date: Thu, 19 May 2011 11:33:56 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 1/2] NFSD: added FREE_STATEID operation
+References: <1305575021-2841-1-git-send-email-bjschuma@netapp.com> <1305575021-2841-2-git-send-email-bjschuma@netapp.com> <20110518225609.GA26545@fieldses.org>
+In-Reply-To: <20110518225609.GA26545@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2011-05-20 at 14:59 -0400, Dr. J. Bruce Fields wrote: 
-> > Bruce,
-> > 
-> > If the clientid expired, is it possible that the server may have handed
-> > out the same numerical short clientid to someone else and that explains
-> > why the RENEW is succeeding?
+On 05/18/2011 06:56 PM, J. Bruce Fields wrote:
+> On Mon, May 16, 2011 at 03:43:40PM -0400, bjschuma@netapp.com wrote:
+>> +static __be32
+>> +nfsd4_free_file_stateid(stateid_t *stateid)
+>> +{
+>> +	struct nfs4_stateid *stp = search_for_stateid(stateid);
+>> +	if (!stp)
+>> +		return nfserr_bad_stateid;
+>> +	if (stateid->si_generation != 0) {
+>> +		if (stateid->si_generation < stp->st_stateid.si_generation)
+>> +			return nfserr_old_stateid;
+>> +		if (stateid->si_generation > stp->st_stateid.si_generation)
+>> +			return nfserr_bad_stateid;
+>> +	}
+>> +
+>> +	if (check_for_locks(stp->st_file, stp->st_stateowner))
+>> +		return nfserr_locks_held;
 > 
-> Clientid's are created from a u32 counter that's sampled only under the
-> state lock, so it sounds unlikely.
+> I think this catches a lock stateid, but not an open stateid that has
+> associated lock stateid's that in turn hold locks.
 > 
-> I think more likely would be some bug affecting the lifetime of a
-> stateid--e.g. if the server destroyed a lock stateid earlier than it
-> should in some case, then this would happen.  (Since, as I say, we
-> assume EXPIRED for any stateid we don't recognize.)
+> Hm, also:
+> 
+> 	"The FREE_STATEID operation is used to free a stateid that no
+> 	longer has any associated locks (including opens, byte-range
+> 	locks, delegations, and layouts)"
+> 
+> So an open stateid also shouldn't be freeable as long as there are opens
+> associated with it.
 
-Shouldn't that be a NFS4ERR_BAD_STATEID instead of NFS4ERR_EXPIRED? The
-latter should really be reserved for the case where you know that this
-stateid came from an expired lease.
+So having an open stateid doesn't necessarily mean that the file is open?  and having a lock stateid doesn't mean that the file is locked?
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+I'll look at making a "check_for_opens()" function to help with this check.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> 
+> Also I guess a client shouldn't be permitted to free a delegation that
+> it still holds.  That means we'll always just return nfserr_locks for
+> delegation stateid's.  I assume free_stateid is only useful in this case
+
+Sounds simple enough.
+
+> for the case where a server forcibly revokes part of the client's state
+> and leaves some "stub" stateid's around in place of the revoked ones.
+> 
+> --b.
 
