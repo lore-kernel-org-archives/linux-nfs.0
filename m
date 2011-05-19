@@ -1,21 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from nm9-vm0.bullet.mail.sp2.yahoo.com ([98.139.91.196]:23670 "HELO
-	nm9-vm0.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1753905Ab1EENai convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 May 2011 09:30:38 -0400
-Message-ID: <781436.95809.qm@web111709.mail.gq1.yahoo.com>
-Date: Thu, 5 May 2011 06:30:37 -0700 (PDT)
-From: Mahmood Naderan <nt_mahmood@yahoo.com>
-Reply-To: Mahmood Naderan <nt_mahmood@yahoo.com>
-Subject: debugging nfs
-To: nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=iso-8859-1
+Received: from ausxippc101.us.dell.com ([143.166.85.207]:6427 "EHLO
+	ausxippc101.us.dell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752638Ab1ESF0t convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 May 2011 01:26:49 -0400
+From: <Taousif_Ansari@DELLTEAM.com>
+To: <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Date: Thu, 19 May 2011 10:56:44 +0530
+Subject: RE: Performance Issue with multiple dataserver
+Message-ID: <A1A98FD909DC5248811A65C5D18E9C761DF69B2188@BLRX7MCDC202.AMER.DELL.COM>
+References: <4DD2A084.1040905@moving-picture.com>
+ <20110518080106.1159c5b8@notabene.brown>
+ <4DD39D39.7010805@moving-picture.com>
+ <A1A98FD909DC5248811A65C5D18E9C761DF69B1F18@BLRX7MCDC202.AMER.DELL.COM>
+ <20110518161239.GA16835@fieldses.org>
+In-Reply-To: <20110518161239.GA16835@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 Hi,
-I didn't find a method for debugging NFS for debain based systems. Is there  any verbose switch or debuging method for that?
 
-// Naderan *Mahmood;
+I am using on Server linux-pnfs-2.6.38(linux-pnfs-ae7441f.tar) and on client also linux-pnfs-2.6.38(linux-pnfs-ae7441f.tar) downloaded from http://git.linux-nfs.org/?p=bhalevy/linux-pnfs.git;a=summary on Fedora 14.
+
+Extremely sorry for causing confusing .
+-----Original Message-----
+From: J. Bruce Fields [mailto:bfields@fieldses.org] 
+Sent: Wednesday, May 18, 2011 9:43 PM
+To: Ansari, Taousif - Dell Team
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Performance Issue with multiple dataserver
+
+You sent this message as a reply to an unrelated message, which is
+confusing to those of us with threaded mail readers.
+
+On Wed, May 18, 2011 at 05:24:45PM +0530, Taousif_Ansari@DELLTEAM.com wrote:
+> I have done pNFS setup with single Dataserver and Two Dataserver and ran the IOzone tool on both, I found that the performance with multiple dataservers is less than the performance with single dataservers.
+
+What are you using as the server, and what as the client?
+
+--b.
+
+> 
+> Here are some numbers, which were captured by the IOzone tool.
+> 
+> 
+> 							  4	  8	 16	 32	 64	 128	 256	 512	1024	<== Record Length in KB
+> With Single Dataserver:
+> Read operation for file size 1 MB-		66415	66359	63630	70358	86223	70256	66047	66068	68489	<== IO kB/sec
+> Write operation for file size 1 MB-		18827	16920	18846	17039	18896	17009	17173	19206	17947	<== IO kB/sec
+> 
+> With Two Dataservers :
+> Read operation for file size 1 MB-		36882	381198	38150	38084	38749	33663	34398	37313	37847	<== IO kB/sec
+> Write operation for file size 1 MB-		5461	4661	5586	4870	5227	4922	4214	5572	4658	<== IO kB/sec
+> 
+> 
+> Can somebody tell me What could be the issue....
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
