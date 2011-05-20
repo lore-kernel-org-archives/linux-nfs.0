@@ -1,421 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:9009 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756064Ab1EWQfn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 12:35:43 -0400
-From: Benny Halevy <bhalevy@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:60780 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934921Ab1ETSrl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 May 2011 14:47:41 -0400
+Date: Fri, 20 May 2011 14:47:38 -0400
+From: "Dr. J. Bruce Fields" <bfields@fieldses.org>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCH v6 07/26] pnfs: Use byte-range for layoutget
-Date: Mon, 23 May 2011 19:35:36 +0300
-Message-Id: <1306168536-11195-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DDA8C3D.5080706@panasas.com>
-References: <4DDA8C3D.5080706@panasas.com>
+Cc: Harry Edmon <harry@uw.edu>, Chuck Lever <chuck.lever@oracle.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: 2.6.38.6 - state manager constantly respawns
+Message-ID: <20110520184738.GB11670@fieldses.org>
+References: <6A6FB1C3-D4C3-40BE-810A-B4551FA9E591@oracle.com>
+ <4DD17CB5.7010009@uw.edu>
+ <1305575007.19725.3.camel@lade.trondhjem.org>
+ <4DD17F79.305@uw.edu>
+ <1305575656.19725.9.camel@lade.trondhjem.org>
+ <20110516202059.GC1680@fieldses.org>
+ <20110516205351.GD1680@fieldses.org>
+ <4DD694DF.2060302@uw.edu>
+ <20110520172639.GA11670@fieldses.org>
+ <1305913963.12712.6.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1305913963.12712.6.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Add offset and count parameters to pnfs_update_layout and use them to get
-the layout in the pageio path.
+On Fri, May 20, 2011 at 01:52:43PM -0400, Trond Myklebust wrote:
+> On Fri, 2011-05-20 at 13:26 -0400, Dr. J. Bruce Fields wrote: 
+> > On Fri, May 20, 2011 at 09:20:47AM -0700, Harry Edmon wrote:
+> > > On 05/16/11 13:53, Dr. J. Bruce Fields wrote:
+> > > >Hm, so the renews all have clid 465ccc4d09000000, and the reads all have
+> > > >a stateid (0, 465ccc4dc24c0a0000000000).
+> > > >
+> > > >So the first 4 bytes matching just tells me both were handed out by the
+> > > >same server instance (so there was no server reboot in between); there's
+> > > >no way for me to tell whether they really belong to the same client.
+> > > >
+> > > >The server does assume that any stateid from the current server instance
+> > > >that no longer exists in its table is expired.  I believe that's
+> > > >correct, given a correctly functioning client, but perhaps I'm missing a
+> > > >case.
+> > > >
+> > > >--b.
+> > > I am very appreciative of the quick initial comments I receive from
+> > > all of you on my NFS problem.   I notice that there has been silence
+> > > on the problem since the 16th, so I assume that either this is a
+> > > hard bug to track down or you have been busy with higher priority
+> > > tasks.  Is there anything I can do to help develop a solution to
+> > > this problem?
+> > 
+> > Well, the only candidate explanation for the problem is that my
+> > assumption--that any time the server gets a stateid from the current
+> > boot instance that it doesn't recognize as an active stateid, it is safe
+> > for the server to return EXPIRED--is wrong.
+> > 
+> > I don't immediately see why it's wrong, and based on the silence nobody
+> > else does either, but I'm not 100% convinced I'm right either.
+> > 
+> > So one approach might be to add server code that makes a better effort
+> > to return EXPIRED only when we're sure it's a stateid from an expired
+> > client, and see if that solves your problem.
+> > 
+> > Remind me, did you have an easy way to reproduce your problem?
+> 
+> My silence is simply because I'm mystified as to how this can happen.
 
-Order cache layout segments in the following order:
-* offset (ascending)
-* length (descending)
-* iomode (RW before READ)
+So since the client's sending it with a READ, the client thinks that the
+stateid is still a valid open, lock, or delegation stateid, while the
+server thinks it's not.  Hm.
 
-Test byte range against the layout segment in use in pnfs_{read,write}_pg_test
-so not to coalesce pages not using the same layout segment.
+--b.
 
-[fix lseg ordering]
-[clean up pnfs_find_lseg lseg arg]
-[remove unnecessary FIXME]
-[fix ordering in pnfs_insert_layout]
-[clean up pnfs_insert_layout]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/pnfs.c  |  165 ++++++++++++++++++++++++++++++++++++++++++-------------
- fs/nfs/pnfs.h  |    6 ++-
- fs/nfs/read.c  |    8 ++-
- fs/nfs/write.c |    8 ++-
- 4 files changed, 142 insertions(+), 45 deletions(-)
-
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index f57f528..c2f09e9 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -261,6 +261,65 @@ put_lseg(struct pnfs_layout_segment *lseg)
- }
- EXPORT_SYMBOL_GPL(put_lseg);
- 
-+static inline u64
-+end_offset(u64 start, u64 len)
-+{
-+	u64 end;
-+
-+	end = start + len;
-+	return end >= start ? end : NFS4_MAX_UINT64;
-+}
-+
-+/* last octet in a range */
-+static inline u64
-+last_byte_offset(u64 start, u64 len)
-+{
-+	u64 end;
-+
-+	BUG_ON(!len);
-+	end = start + len;
-+	return end > start ? end - 1 : NFS4_MAX_UINT64;
-+}
-+
-+/*
-+ * is l2 fully contained in l1?
-+ *   start1                             end1
-+ *   [----------------------------------)
-+ *           start2           end2
-+ *           [----------------)
-+ */
-+static inline int
-+lo_seg_contained(struct pnfs_layout_range *l1,
-+		 struct pnfs_layout_range *l2)
-+{
-+	u64 start1 = l1->offset;
-+	u64 end1 = end_offset(start1, l1->length);
-+	u64 start2 = l2->offset;
-+	u64 end2 = end_offset(start2, l2->length);
-+
-+	return (start1 <= start2) && (end1 >= end2);
-+}
-+
-+/*
-+ * is l1 and l2 intersecting?
-+ *   start1                             end1
-+ *   [----------------------------------)
-+ *                              start2           end2
-+ *                              [----------------)
-+ */
-+static inline int
-+lo_seg_intersecting(struct pnfs_layout_range *l1,
-+		    struct pnfs_layout_range *l2)
-+{
-+	u64 start1 = l1->offset;
-+	u64 end1 = end_offset(start1, l1->length);
-+	u64 start2 = l2->offset;
-+	u64 end2 = end_offset(start2, l2->length);
-+
-+	return (end1 == NFS4_MAX_UINT64 || end1 > start2) &&
-+	       (end2 == NFS4_MAX_UINT64 || end2 > start1);
-+}
-+
- static bool
- should_free_lseg(u32 lseg_iomode, u32 recall_iomode)
- {
-@@ -467,7 +526,7 @@ pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
- static struct pnfs_layout_segment *
- send_layoutget(struct pnfs_layout_hdr *lo,
- 	   struct nfs_open_context *ctx,
--	   u32 iomode,
-+	   struct pnfs_layout_range *range,
- 	   gfp_t gfp_flags)
- {
- 	struct inode *ino = lo->plh_inode;
-@@ -499,11 +558,11 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 			goto out_err_free;
- 	}
- 
--	lgp->args.minlength = NFS4_MAX_UINT64;
-+	lgp->args.minlength = PAGE_CACHE_SIZE;
-+	if (lgp->args.minlength > range->length)
-+		lgp->args.minlength = range->length;
- 	lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
--	lgp->args.range.iomode = iomode;
--	lgp->args.range.offset = 0;
--	lgp->args.range.length = NFS4_MAX_UINT64;
-+	lgp->args.range = *range;
- 	lgp->args.type = server->pnfs_curr_ld->id;
- 	lgp->args.inode = ino;
- 	lgp->args.ctx = get_nfs_open_context(ctx);
-@@ -518,7 +577,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 	nfs4_proc_layoutget(lgp);
- 	if (!lseg) {
- 		/* remember that LAYOUTGET failed and suspend trying */
--		set_bit(lo_fail_bit(iomode), &lo->plh_flags);
-+		set_bit(lo_fail_bit(range->iomode), &lo->plh_flags);
- 	}
- 
- 	/* free xdr pages */
-@@ -625,10 +684,23 @@ bool pnfs_roc_drain(struct inode *ino, u32 *barrier)
-  * are seen first.
-  */
- static s64
--cmp_layout(u32 iomode1, u32 iomode2)
-+cmp_layout(struct pnfs_layout_range *l1,
-+	   struct pnfs_layout_range *l2)
- {
-+	s64 d;
-+
-+	/* high offset > low offset */
-+	d = l1->offset - l2->offset;
-+	if (d)
-+		return d;
-+
-+	/* short length > long length */
-+	d = l2->length - l1->length;
-+	if (d)
-+		return d;
-+
- 	/* read > read/write */
--	return (int)(iomode2 == IOMODE_READ) - (int)(iomode1 == IOMODE_READ);
-+	return (int)(l1->iomode == IOMODE_READ) - (int)(l2->iomode == IOMODE_READ);
- }
- 
- static void
-@@ -636,13 +708,12 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
- 		   struct pnfs_layout_segment *lseg)
- {
- 	struct pnfs_layout_segment *lp;
--	int found = 0;
- 
- 	dprintk("%s:Begin\n", __func__);
- 
- 	assert_spin_locked(&lo->plh_inode->i_lock);
- 	list_for_each_entry(lp, &lo->plh_segs, pls_list) {
--		if (cmp_layout(lp->pls_range.iomode, lseg->pls_range.iomode) > 0)
-+		if (cmp_layout(&lseg->pls_range, &lp->pls_range) > 0)
- 			continue;
- 		list_add_tail(&lseg->pls_list, &lp->pls_list);
- 		dprintk("%s: inserted lseg %p "
-@@ -652,16 +723,14 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
- 			lseg->pls_range.offset, lseg->pls_range.length,
- 			lp, lp->pls_range.iomode, lp->pls_range.offset,
- 			lp->pls_range.length);
--		found = 1;
--		break;
--	}
--	if (!found) {
--		list_add_tail(&lseg->pls_list, &lo->plh_segs);
--		dprintk("%s: inserted lseg %p "
--			"iomode %d offset %llu length %llu at tail\n",
--			__func__, lseg, lseg->pls_range.iomode,
--			lseg->pls_range.offset, lseg->pls_range.length);
-+		goto out;
- 	}
-+	list_add_tail(&lseg->pls_list, &lo->plh_segs);
-+	dprintk("%s: inserted lseg %p "
-+		"iomode %d offset %llu length %llu at tail\n",
-+		__func__, lseg, lseg->pls_range.iomode,
-+		lseg->pls_range.offset, lseg->pls_range.length);
-+out:
- 	get_layout_hdr(lo);
- 
- 	dprintk("%s:Return\n", __func__);
-@@ -721,16 +790,28 @@ pnfs_find_alloc_layout(struct inode *ino, gfp_t gfp_flags)
-  * READ		RW	true
-  */
- static int
--is_matching_lseg(struct pnfs_layout_segment *lseg, u32 iomode)
-+is_matching_lseg(struct pnfs_layout_range *ls_range,
-+		 struct pnfs_layout_range *range)
- {
--	return (iomode != IOMODE_RW || lseg->pls_range.iomode == IOMODE_RW);
-+	struct pnfs_layout_range range1;
-+
-+	if ((range->iomode == IOMODE_RW &&
-+	     ls_range->iomode != IOMODE_RW) ||
-+	    !lo_seg_intersecting(ls_range, range))
-+		return 0;
-+
-+	/* range1 covers only the first byte in the range */
-+	range1 = *range;
-+	range1.length = 1;
-+	return lo_seg_contained(ls_range, &range1);
- }
- 
- /*
-  * lookup range in layout
-  */
- static struct pnfs_layout_segment *
--pnfs_find_lseg(struct pnfs_layout_hdr *lo, u32 iomode)
-+pnfs_find_lseg(struct pnfs_layout_hdr *lo,
-+		struct pnfs_layout_range *range)
- {
- 	struct pnfs_layout_segment *lseg, *ret = NULL;
- 
-@@ -739,11 +820,11 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo, u32 iomode)
- 	assert_spin_locked(&lo->plh_inode->i_lock);
- 	list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
- 		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
--		    is_matching_lseg(lseg, iomode)) {
-+		    is_matching_lseg(&lseg->pls_range, range)) {
- 			ret = get_lseg(lseg);
- 			break;
- 		}
--		if (cmp_layout(iomode, lseg->pls_range.iomode) > 0)
-+		if (cmp_layout(range, &lseg->pls_range) > 0)
- 			break;
- 	}
- 
-@@ -759,9 +840,16 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo, u32 iomode)
- struct pnfs_layout_segment *
- pnfs_update_layout(struct inode *ino,
- 		   struct nfs_open_context *ctx,
-+		   loff_t pos,
-+		   u64 count,
- 		   enum pnfs_iomode iomode,
- 		   gfp_t gfp_flags)
- {
-+	struct pnfs_layout_range arg = {
-+		.iomode = iomode,
-+		.offset = pos,
-+		.length = count,
-+	};
- 	struct nfs_inode *nfsi = NFS_I(ino);
- 	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
- 	struct pnfs_layout_hdr *lo;
-@@ -789,7 +877,7 @@ pnfs_update_layout(struct inode *ino,
- 		goto out_unlock;
- 
- 	/* Check to see if the layout for the given range already exists */
--	lseg = pnfs_find_lseg(lo, iomode);
-+	lseg = pnfs_find_lseg(lo, &arg);
- 	if (lseg)
- 		goto out_unlock;
- 
-@@ -811,7 +899,7 @@ pnfs_update_layout(struct inode *ino,
- 		spin_unlock(&clp->cl_lock);
- 	}
- 
--	lseg = send_layoutget(lo, ctx, iomode, gfp_flags);
-+	lseg = send_layoutget(lo, ctx, &arg, gfp_flags);
- 	if (!lseg && first) {
- 		spin_lock(&clp->cl_lock);
- 		list_del_init(&lo->plh_layouts);
-@@ -838,17 +926,6 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
- 	int status = 0;
- 
--	/* Verify we got what we asked for.
--	 * Note that because the xdr parsing only accepts a single
--	 * element array, this can fail even if the server is behaving
--	 * correctly.
--	 */
--	if (lgp->args.range.iomode > res->range.iomode ||
--	    res->range.offset != 0 ||
--	    res->range.length != NFS4_MAX_UINT64) {
--		status = -EINVAL;
--		goto out;
--	}
- 	/* Inject layout blob into I/O device driver */
- 	lseg = NFS_SERVER(ino)->pnfs_curr_ld->alloc_lseg(lo, res, lgp->gfp_flags);
- 	if (!lseg || IS_ERR(lseg)) {
-@@ -903,9 +980,14 @@ static int pnfs_read_pg_test(struct nfs_pageio_descriptor *pgio,
- 		/* This is first coelesce call for a series of nfs_pages */
- 		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 						   prev->wb_context,
-+						   req_offset(req),
-+						   pgio->pg_count,
- 						   IOMODE_READ,
- 						   GFP_KERNEL);
--	}
-+	} else if (pgio->pg_lseg &&
-+		   req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
-+						pgio->pg_lseg->pls_range.length))
-+		return 0;
- 	return NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->pg_test(pgio, prev, req);
- }
- 
-@@ -926,9 +1008,14 @@ static int pnfs_write_pg_test(struct nfs_pageio_descriptor *pgio,
- 		/* This is first coelesce call for a series of nfs_pages */
- 		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 						   prev->wb_context,
-+						   req_offset(req),
-+						   pgio->pg_count,
- 						   IOMODE_RW,
- 						   GFP_NOFS);
--	}
-+	} else if (pgio->pg_lseg &&
-+		   req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
-+						pgio->pg_lseg->pls_range.length))
-+		return 0;
- 	return NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->pg_test(pgio, prev, req);
- }
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 7f29e3a..f1fb823 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -131,7 +131,8 @@ void get_layout_hdr(struct pnfs_layout_hdr *lo);
- void put_lseg(struct pnfs_layout_segment *lseg);
- struct pnfs_layout_segment *
- pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
--		   enum pnfs_iomode access_type, gfp_t gfp_flags);
-+		   loff_t pos, u64 count, enum pnfs_iomode access_type,
-+		   gfp_t gfp_flags);
- void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
- void unset_pnfs_layoutdriver(struct nfs_server *);
- enum pnfs_try_status pnfs_try_to_write_data(struct nfs_write_data *,
-@@ -271,7 +272,8 @@ static inline void put_lseg(struct pnfs_layout_segment *lseg)
- 
- static inline struct pnfs_layout_segment *
- pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
--		   enum pnfs_iomode access_type, gfp_t gfp_flags)
-+		   loff_t pos, u64 count, enum pnfs_iomode access_type,
-+		   gfp_t gfp_flags)
- {
- 	return NULL;
- }
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 2bcf0dc..540c8bc 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -288,7 +288,9 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc)
- 	atomic_set(&req->wb_complete, requests);
- 
- 	BUG_ON(desc->pg_lseg != NULL);
--	lseg = pnfs_update_layout(desc->pg_inode, req->wb_context, IOMODE_READ, GFP_KERNEL);
-+	lseg = pnfs_update_layout(desc->pg_inode, req->wb_context,
-+				  req_offset(req), desc->pg_count,
-+				  IOMODE_READ, GFP_KERNEL);
- 	ClearPageError(page);
- 	offset = 0;
- 	nbytes = desc->pg_count;
-@@ -351,7 +353,9 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc)
- 	}
- 	req = nfs_list_entry(data->pages.next);
- 	if ((!lseg) && list_is_singular(&data->pages))
--		lseg = pnfs_update_layout(desc->pg_inode, req->wb_context, IOMODE_READ, GFP_KERNEL);
-+		lseg = pnfs_update_layout(desc->pg_inode, req->wb_context,
-+					  req_offset(req), desc->pg_count,
-+					  IOMODE_READ, GFP_KERNEL);
- 
- 	ret = nfs_read_rpcsetup(req, data, &nfs_read_full_ops, desc->pg_count,
- 				0, lseg);
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 49c715b..7edb72f 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -939,7 +939,9 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc)
- 	atomic_set(&req->wb_complete, requests);
- 
- 	BUG_ON(desc->pg_lseg);
--	lseg = pnfs_update_layout(desc->pg_inode, req->wb_context, IOMODE_RW, GFP_NOFS);
-+	lseg = pnfs_update_layout(desc->pg_inode, req->wb_context,
-+				  req_offset(req), desc->pg_count,
-+				  IOMODE_RW, GFP_NOFS);
- 	ClearPageError(page);
- 	offset = 0;
- 	nbytes = desc->pg_count;
-@@ -1013,7 +1015,9 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc)
- 	}
- 	req = nfs_list_entry(data->pages.next);
- 	if ((!lseg) && list_is_singular(&data->pages))
--		lseg = pnfs_update_layout(desc->pg_inode, req->wb_context, IOMODE_RW, GFP_NOFS);
-+		lseg = pnfs_update_layout(desc->pg_inode, req->wb_context,
-+					  req_offset(req), desc->pg_count,
-+					  IOMODE_RW, GFP_NOFS);
- 
- 	if ((desc->pg_ioflags & FLUSH_COND_STABLE) &&
- 	    (desc->pg_moreio || NFS_I(desc->pg_inode)->ncommit))
--- 
-1.7.3.4
-
+> Patching for it is trivial (see below).
+> 
+> When the server tells us that our lease is expired, the normal behaviour
+> for the client is to re-establish the lease, and then proceed to recover
+> all known stateids. I don't see how we can 'miss' a stateid that then
+> needs to be recovered afterwards...
