@@ -1,123 +1,162 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51305 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754252Ab1EDPTd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 May 2011 11:19:33 -0400
-Date: Wed, 4 May 2011 11:18:53 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Andy Adamson <andros@netapp.com>
-Cc: NeilBrown <neilb@suse.de>, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [[RFC] 1/1] SUNRPC: dynamic rpc_slot allocator for TCP
-Message-ID: <20110504111853.7150915a@tlielax.poochiereds.net>
-In-Reply-To: <0424D640-C315-449B-847A-59105BBADBCE@netapp.com>
-References: <1304386808-2733-1-git-send-email-andros@netapp.com>
-	<1304386808-2733-2-git-send-email-andros@netapp.com>
-	<20110503202023.699435f4@corrin.poochiereds.net>
-	<1304469890.26184.16.camel@lade.trondhjem.org>
-	<20110504111825.6f26f75a@notabene.brown>
-	<1304473563.26184.28.camel@lade.trondhjem.org>
-	<20110504120726.347df3fc@notabene.brown>
-	<20110504075410.5e59c6b4@tlielax.poochiereds.net>
-	<0424D640-C315-449B-847A-59105BBADBCE@netapp.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-px0-f173.google.com ([209.85.212.173]:48014 "EHLO
+	mail-px0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757186Ab1ETToi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 May 2011 15:44:38 -0400
+Received: by pxi16 with SMTP id 16so2698673pxi.4
+        for <linux-nfs@vger.kernel.org>; Fri, 20 May 2011 12:44:37 -0700 (PDT)
+Message-ID: <4DD6C4A3.5010709@uw.edu>
+Date: Fri, 20 May 2011 12:44:35 -0700
+From: Harry Edmon <harry@uw.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: "Dr. J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: 2.6.38.6 - state manager constantly respawns
+References: <05D08339-888C-4A64-BDC5-8667B3901E7A@oracle.com>		 <4DD1772E.9010609@uw.edu>	 <6A6FB1C3-D4C3-40BE-810A-B4551FA9E591@oracle.com>		 <4DD17CB5.7010009@uw.edu> <1305575007.19725.3.camel@lade.trondhjem.org>		 <4DD17F79.305@uw.edu> <1305575656.19725.9.camel@lade.trondhjem.org>		 <20110516202059.GC1680@fieldses.org> <20110516205351.GD1680@fieldses.org>		 <4DD694DF.2060302@uw.edu> <20110520172639.GA11670@fieldses.org>	 <1305913963.12712.6.camel@lade.trondhjem.org> <4DD6C103.7090302@uw.edu> <1305920417.14253.15.camel@lade.trondhjem.org>
+In-Reply-To: <1305920417.14253.15.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 4 May 2011 10:54:57 -0400
-Andy Adamson <andros@netapp.com> wrote:
-
-> 
-> On May 4, 2011, at 7:54 AM, Jeff Layton wrote:
-> 
-> > On Wed, 4 May 2011 12:07:26 +1000
-> > NeilBrown <neilb@suse.de> wrote:
-> > 
-> >> On Tue, 03 May 2011 21:46:03 -0400 Trond Myklebust
-> >> <Trond.Myklebust@netapp.com> wrote:
-> >> 
-> >>> On Wed, 2011-05-04 at 11:18 +1000, NeilBrown wrote:
-> >>>> For rpc slots, I doubt you need mempools at all.
-> >>>> Mempools are only needed if failure is not an option and you would rather
-> >>>> wait, but you cannot wait for regular writeback because you are on the
-> >>>> writeback path.  So you use a mempool which waits for a previous request to
-> >>>> complete.  I don't think that describes rpc slots at all.
-> >>>> For rpc slots, you can afford to wait when setting up the transport, as you
-> >>>> are not on the writeout path yet, and later you can always cope with failure.
-> >>>> So just use kmalloc.
-> >>> 
-> >>> Errr.... No. By the time you get to allocating an RPC slot, you may be
-> >>> bang smack in the middle of the writeout path.
-> >>> 
-> >>> The scenario would be that something triggers a writeback (kswapd,
-> >>> direct reclaim,...) which triggers an RPC call, which requires you to
-> >>> allocate at least one rpc slot before you can put the write on the wire.
-> >>> 
-> >>> I agree with your assertion that we only need one successful slot
-> >>> allocation in order to make overall forward progress, but we definitely
-> >>> do need that one...
-> >>> 
-> >> 
-> >> Probably I misunderstood the code, but I thought that there was a base set of
-> >> slots preallocated.  Eventually one of those will become free won't it?
-> >> 
-> >> Looking at the code again, it only ever returns entries to the mempool when
-> >> it is about to destroy the xprt.  That makes no sense.  If you are using a
-> >> mempool, then you allocate when you need to use space, and free it as soon as
-> >> you have finished with it, so the next request can get a turn.
-> >> 
-> > 
-> > That was sort of my point, though I didn't articulate it very well.
-> > 
-> > I don't think we want to keep this "static" set of rqsts and the
-> > mempool. It seems like that's somewhat redundant and more complex than
-> > is warranted. The question is...which should we keep?
-> > 
-> > I think it sort of depends on what the intended model is. If we want to
-> > allocate out of the "guaranteed" pool first and only when that's
-> > exhausted fall back to doing dynamic allocations, then we probably want
-> > to keep the static list of entries.
-> > 
-> > If we want to allocate dynamically most of the time and only dip into
-> > the "guaranteed" pool when that can't be satisfied, then basing all of
-> > this around mempools might make more sense.
-> 
-> Thanks for the review - I've learned a lot about mempools from this discussion.
-> 
-> I've noticed that a lot of the time, (at least for TCP) rpc_slots are allocated and not used.
-> The default slot entries value is a guess. This is why I like the idea of dynamically allocating most 
-> of the time, and only dipping into the guaranteed pool when the dynamic allocation
-> can't be satisfied. e.g. get rid of the static set of slots.
-> Does this design require two mempools, one for dynamic allocation and a guaranteed one being small and "in reserve"?
-> 
-
-No, a single mempool would give you that. Just declare the mempool with
-the amount of "emergency" slots you want, and then allocate directly
-from it and then free them back to the mempool. Most of the time (as
-Neil points out) you'll get them allocated from the slabcache. It'll
-it'll only dip into the reserved set when those can't be allocated.
-
-The other thing you have to determine is whether you want this
-guaranteed number of slots to be per-xprt or global. Today, it's
-per-xprt. Making it global might mean less wasted memory overall, but I
-could forsee situations where a hung mount could starve other mounts of
-slots.
-
-Figuring that out might help guide the overall design here...
-
-> For UDP and RDMA, the default # of slot entries can turn into an upper bound.
-> For TCP, the default # of slot entries would have no meaning WRT upper bound, as the upper bound is determined
-> by the TCP window size.
-> 
-
-Maybe rather than having this dynamic_slot_alloc operation that's only
-conditionally called, it would cleaner to abstract out the slot
-allocator altogether.
-
-UDP and RDMA could use the same routine and just allocate out of a
-fixed set of preallocated slots (sort of like how they do today), and
-TCP could use this new scheme.
+On 05/20/11 12:40, Trond Myklebust wrote:
+> On Fri, 2011-05-20 at 12:29 -0700, Harry Edmon wrote:
+>    
+>> On 05/20/11 10:52, Trond Myklebust wrote:
+>>      
+>>> On Fri, 2011-05-20 at 13:26 -0400, Dr. J. Bruce Fields wrote:
+>>>
+>>>        
+>>>> On Fri, May 20, 2011 at 09:20:47AM -0700, Harry Edmon wrote:
+>>>>
+>>>>          
+>>>>> On 05/16/11 13:53, Dr. J. Bruce Fields wrote:
+>>>>>
+>>>>>            
+>>>>>> Hm, so the renews all have clid 465ccc4d09000000, and the reads all have
+>>>>>> a stateid (0, 465ccc4dc24c0a0000000000).
+>>>>>>
+>>>>>> So the first 4 bytes matching just tells me both were handed out by the
+>>>>>> same server instance (so there was no server reboot in between); there's
+>>>>>> no way for me to tell whether they really belong to the same client.
+>>>>>>
+>>>>>> The server does assume that any stateid from the current server instance
+>>>>>> that no longer exists in its table is expired.  I believe that's
+>>>>>> correct, given a correctly functioning client, but perhaps I'm missing a
+>>>>>> case.
+>>>>>>
+>>>>>> --b.
+>>>>>>
+>>>>>>              
+>>>>> I am very appreciative of the quick initial comments I receive from
+>>>>> all of you on my NFS problem.   I notice that there has been silence
+>>>>> on the problem since the 16th, so I assume that either this is a
+>>>>> hard bug to track down or you have been busy with higher priority
+>>>>> tasks.  Is there anything I can do to help develop a solution to
+>>>>> this problem?
+>>>>>
+>>>>>            
+>>>> Well, the only candidate explanation for the problem is that my
+>>>> assumption--that any time the server gets a stateid from the current
+>>>> boot instance that it doesn't recognize as an active stateid, it is safe
+>>>> for the server to return EXPIRED--is wrong.
+>>>>
+>>>> I don't immediately see why it's wrong, and based on the silence nobody
+>>>> else does either, but I'm not 100% convinced I'm right either.
+>>>>
+>>>> So one approach might be to add server code that makes a better effort
+>>>> to return EXPIRED only when we're sure it's a stateid from an expired
+>>>> client, and see if that solves your problem.
+>>>>
+>>>> Remind me, did you have an easy way to reproduce your problem?
+>>>>
+>>>>          
+>>> My silence is simply because I'm mystified as to how this can happen.
+>>> Patching for it is trivial (see below).
+>>>
+>>> When the server tells us that our lease is expired, the normal behaviour
+>>> for the client is to re-establish the lease, and then proceed to recover
+>>> all known stateids. I don't see how we can 'miss' a stateid that then
+>>> needs to be recovered afterwards...
+>>>
+>>> Cheers
+>>>     Trond
+>>>
+>>> 8<----------------------------------------------------------------------------
+>>>   From 920ddb153f28717be363f6e87dde24ef2a8d0ce2 Mon Sep 17 00:00:00 2001
+>>> From: Trond Myklebust<Trond.Myklebust@netapp.com>
+>>> Date: Fri, 20 May 2011 13:44:02 -0400
+>>> Subject: [PATCH] NFSv4: Handle expired stateids when the lease is still valid
+>>>
+>>> Currently, if the server returns NFS4ERR_EXPIRED in reply to a READ or
+>>> WRITE, but the RENEW test determines that the lease is still active, we
+>>> fail to recover and end up looping forever in a READ/WRITE + RENEW death
+>>> spiral.
+>>>
+>>> Signed-off-by: Trond Myklebust<Trond.Myklebust@netapp.com>
+>>> ---
+>>>    fs/nfs/nfs4proc.c |    9 +++++++--
+>>>    1 files changed, 7 insertions(+), 2 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>> index cf1b339..d0e15db 100644
+>>> --- a/fs/nfs/nfs4proc.c
+>>> +++ b/fs/nfs/nfs4proc.c
+>>> @@ -267,9 +267,11 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
+>>>    				break;
+>>>    			nfs4_schedule_stateid_recovery(server, state);
+>>>    			goto wait_on_recovery;
+>>> +		case -NFS4ERR_EXPIRED:
+>>> +			if (state != NULL)
+>>> +				nfs4_schedule_stateid_recovery(server, state);
+>>>    		case -NFS4ERR_STALE_STATEID:
+>>>    		case -NFS4ERR_STALE_CLIENTID:
+>>> -		case -NFS4ERR_EXPIRED:
+>>>    			nfs4_schedule_lease_recovery(clp);
+>>>    			goto wait_on_recovery;
+>>>    #if defined(CONFIG_NFS_V4_1)
+>>> @@ -3670,9 +3672,11 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
+>>>    				break;
+>>>    			nfs4_schedule_stateid_recovery(server, state);
+>>>    			goto wait_on_recovery;
+>>> +		case -NFS4ERR_EXPIRED:
+>>> +			if (state != NULL)
+>>> +				nfs4_schedule_stateid_recovery(server, state);
+>>>    		case -NFS4ERR_STALE_STATEID:
+>>>    		case -NFS4ERR_STALE_CLIENTID:
+>>> -		case -NFS4ERR_EXPIRED:
+>>>    			nfs4_schedule_lease_recovery(clp);
+>>>    			goto wait_on_recovery;
+>>>    #if defined(CONFIG_NFS_V4_1)
+>>> @@ -4543,6 +4547,7 @@ int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl)
+>>>    			case -ESTALE:
+>>>    				goto out;
+>>>    			case -NFS4ERR_EXPIRED:
+>>> +				nfs4_schedule_stateid_recovery(server, state);
+>>>    			case -NFS4ERR_STALE_CLIENTID:
+>>>    			case -NFS4ERR_STALE_STATEID:
+>>>    				nfs4_schedule_lease_recovery(server->nfs_client);
+>>>
+>>>        
+>> I installed this patch on my client, and now I am seeing the state
+>> manager appear in the process accounting file about once a minute rather
+>> that the constant respawning I saw earlier.  Is once a minute normal, or
+>> is there still a problem?
+>>      
+> Once a minute is rather unusual... What kind of server are you running
+> against?
+>
+> If it is a Linux server, what is the value contained in the virtual file
+> "/proc/fs/nfsd/nfsv4leasetime" ?
+>
+>    
+Same as before - Debian Squeeze running 2.6.38.6.   The value of 
+/proc/fs/nfsd/nfsv4leasetime is 90 and is not something I changed.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+  Dr. Harry Edmon			E-MAIL: harry@uw.edu
+  206-543-0547 FAX: 206-543-0308			harry@atmos.washington.edu
+  Director of IT, College of the Environment and
+  Director of Computing, Dept of Atmospheric Sciences
+  University of Washington, Box 351640, Seattle, WA 98195-1640
+
