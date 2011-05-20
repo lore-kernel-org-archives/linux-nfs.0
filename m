@@ -1,279 +1,290 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:59366 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:3678 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755657Ab1EOQh5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 May 2011 12:37:57 -0400
-Subject: Re: [PATCH] NFS: pnfs IPv6 support
-Content-Type: text/plain; charset=us-ascii
-From: Dros Adamson <dros@netapp.com>
-In-Reply-To: <4DCF8A57.6070201@desy.de>
-Date: Sun, 15 May 2011 12:37:38 -0400
-Cc: trond@netapp.com, NFS list <linux-nfs@vger.kernel.org>
-Message-Id: <697D02EC-AC0F-4501-9EF6-069F25B10857@netapp.com>
-References: <1305407199-15206-1-git-send-email-dros@netapp.com> <alpine.LNX.2.00.1105150919440.12006@anahit.desy.de> <4DCF8A57.6070201@desy.de>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+	id S1757234Ab1ETUNE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 May 2011 16:13:04 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 1/2] NFSD: added FREE_STATEID operation
+Date: Fri, 20 May 2011 16:12:59 -0400
+Message-Id: <1305922380-8162-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1305922380-8162-1-git-send-email-bjschuma@netapp.com>
+References: <1305922380-8162-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-On May 15, 2011, at 4:09 AM, Tigran Mkrtchyan wrote:
+This operation is used by the client to tell the server to free a
+stateid.
 
-> On 05/15/2011 09:23 AM, Tigran Mkrtchyan wrote:
->> 
->> 
->> On Sat, 14 May 2011, Weston Andros Adamson wrote:
->> 
->>> Handle ipv6 remote addresses from GETDEVICEINFO
->>> 
->>> - supports netid "tcp" for ipv4 and "tcp6" for ipv6 as rfc 5665 specifies
->>> - added ds_remotestr to avoid having to handle different AFs in every dprintk
->>> - tested against pynfs 4.1 server, submitting ipv6 support patch to pynfs
->>> 
->>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->>> ---
->>> 
->>> NOTE: checkpatch.pl complains about a printk() call in print_ds() that doesn't
->>>     include a KERN_ facility level.  I'm not sure if I should change this or
->>>     what I should change it to.
->>> 
->>> I am also working on parsing and storing multipath info for dataservers, but
->>> I'm going to treat that as a separate patch
->>> 
->>> fs/nfs/nfs4filelayout.c    |    7 +-
->>> fs/nfs/nfs4filelayout.h    |    5 +-
->>> fs/nfs/nfs4filelayoutdev.c |  246 ++++++++++++++++++++++++++++++++------------
->>> 3 files changed, 184 insertions(+), 74 deletions(-)
->>> 
->>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->>> index be79dc9..583adb3 100644
->>> --- a/fs/nfs/nfs4filelayout.c
->>> +++ b/fs/nfs/nfs4filelayout.c
->>> @@ -343,8 +343,7 @@ filelayout_read_pagelist(struct nfs_read_data *data)
->>>        set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
->>>        return PNFS_NOT_ATTEMPTED;
->>>    }
->>> -    dprintk("%s USE DS:ip %x %hu\n", __func__,
->>> -        ntohl(ds->ds_ip_addr), ntohs(ds->ds_port));
->>> +    dprintk("%s USE DS: %s\n", __func__, ds->ds_remotestr);
->>> 
->>>    /* No multipath support. Use first DS */
->>>    data->ds_clp = ds->ds_clp;
->>> @@ -383,9 +382,9 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
->>>        set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
->>>        return PNFS_NOT_ATTEMPTED;
->>>    }
->>> -    dprintk("%s ino %lu sync %d req %Zu@%llu DS:%x:%hu\n", __func__,
->>> +    dprintk("%s ino %lu sync %d req %Zu@%llu DS: %s\n", __func__,
->>>        data->inode->i_ino, sync, (size_t) data->args.count, offset,
->>> -        ntohl(ds->ds_ip_addr), ntohs(ds->ds_port));
->>> +        ds->ds_remotestr);
->>> 
->>>    data->write_done_cb = filelayout_write_done_cb;
->>>    data->ds_clp = ds->ds_clp;
->>> diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
->>> index 2b461d7..1dfd7eb 100644
->>> --- a/fs/nfs/nfs4filelayout.h
->>> +++ b/fs/nfs/nfs4filelayout.h
->>> @@ -49,8 +49,9 @@ enum stripetype4 {
->>> /* Individual ip address */
->>> struct nfs4_pnfs_ds {
->>>    struct list_head    ds_node;  /* nfs4_pnfs_dev_hlist dev_dslist */
->>> -    u32            ds_ip_addr;
->>> -    u32            ds_port;
->>> +    struct sockaddr_storage    ds_addr;
->>> +    size_t            ds_addrlen;
->>> +    char            *ds_remotestr;    /* human readable addr+port */
->>>    struct nfs_client    *ds_clp;
->>>    atomic_t        ds_count;
->>> };
->>> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
->>> index db07c7a..7f77cd1 100644
->>> --- a/fs/nfs/nfs4filelayoutdev.c
->>> +++ b/fs/nfs/nfs4filelayoutdev.c
->>> @@ -80,11 +80,11 @@ print_ds(struct nfs4_pnfs_ds *ds)
->>>        printk("%s NULL device\n", __func__);
->>>        return;
->>>    }
->>> -    printk("        ip_addr %x port %hu\n"
->>> +    printk("        ds %s\n"
->>>        "        ref count %d\n"
->>>        "        client %p\n"
->>>        "        cl_exchange_flags %x\n",
->>> -        ntohl(ds->ds_ip_addr), ntohs(ds->ds_port),
->>> +        ds->ds_remotestr,
->>>        atomic_read(&ds->ds_count), ds->ds_clp,
->>>        ds->ds_clp ? ds->ds_clp->cl_exchange_flags : 0);
->>> }
->>> @@ -112,17 +112,45 @@ void print_deviceid(struct nfs4_deviceid *id)
->>> 
->>> /* nfs4_ds_cache_lock is held */
->>> static struct nfs4_pnfs_ds *
->>> -_data_server_lookup_locked(u32 ip_addr, u32 port)
->>> +_data_server_lookup_locked(struct sockaddr *addr, size_t addrlen)
->>> {
->>>    struct nfs4_pnfs_ds *ds;
->>> -
->>> -    dprintk("_data_server_lookup: ip_addr=%x port=%hu\n",
->>> -            ntohl(ip_addr), ntohs(port));
->>> +    struct sockaddr_in *a, *b;
->>> +    struct sockaddr_in6 *a6, *b6;
->>> 
->>>    list_for_each_entry(ds, &nfs4_data_server_cache, ds_node) {
->>> -        if (ds->ds_ip_addr == ip_addr &&
->>> -            ds->ds_port == port) {
->>> -            return ds;
->>> +        if (addr->sa_family != ds->ds_addr.ss_family)
->>> +            continue;
->>> +
->>> +        switch (addr->sa_family) {
->>> +        case AF_INET:
->>> +            a = (struct sockaddr_in *)addr;
->>> +            b = (struct sockaddr_in *)&ds->ds_addr;
->>> +
->>> +            if (a->sin_addr.s_addr == b->sin_addr.s_addr &&
->>> +                a->sin_port == b->sin_port)
->>> +                return ds;
->>> +            break;
->>> +
->>> +        case AF_INET6:
->>> +            a6 = (struct sockaddr_in6 *)addr;
->>> +            b6 = (struct sockaddr_in6 *)&ds->ds_addr;
->>> +
->>> +            /* LINKLOCAL addresses must have matching scope_id */
->>> +            if (ipv6_addr_scope(&a6->sin6_addr) ==
->>> +                IPV6_ADDR_SCOPE_LINKLOCAL &&
->>> +                a6->sin6_scope_id != b6->sin6_scope_id)
->>> +                continue;
->>> +
->>> +            if (ipv6_addr_equal(&a6->sin6_addr, &b6->sin6_addr) &&
->>> +                a6->sin6_port == b6->sin6_port)
->>> +                return ds;
->>> +            break;
->>> +
->>> +        default:
->>> +            dprintk("%s: unhandled address family: %u\n",
->>> +                __func__, addr->sa_family);
->>> +            return NULL;
->>>        }
->>>    }
->>>    return NULL;
->>> @@ -136,19 +164,14 @@ static int
->>> nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
->>> {
->>>    struct nfs_client *clp;
->>> -    struct sockaddr_in sin;
->>>    int status = 0;
->>> 
->>> -    dprintk("--> %s ip:port %x:%hu au_flavor %d\n", __func__,
->>> -        ntohl(ds->ds_ip_addr), ntohs(ds->ds_port),
->>> +    dprintk("--> %s addr %s au_flavor %d\n", __func__, ds->ds_remotestr,
->>>        mds_srv->nfs_client->cl_rpcclient->cl_auth->au_flavor);
->>> 
->>> -    sin.sin_family = AF_INET;
->>> -    sin.sin_addr.s_addr = ds->ds_ip_addr;
->>> -    sin.sin_port = ds->ds_port;
->>> -
->>> -    clp = nfs4_set_ds_client(mds_srv->nfs_client, (struct sockaddr *)&sin,
->>> -                 sizeof(sin), IPPROTO_TCP);
->>> +    clp = nfs4_set_ds_client(mds_srv->nfs_client,
->>> +                 (struct sockaddr *)&ds->ds_addr,
->>> +                 ds->ds_addrlen, IPPROTO_TCP);
->>>    if (IS_ERR(clp)) {
->>>        status = PTR_ERR(clp);
->>>        goto out;
->>> @@ -160,8 +183,8 @@ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
->>>            goto out_put;
->>>        }
->>>        ds->ds_clp = clp;
->>> -        dprintk("%s [existing] ip=%x, port=%hu\n", __func__,
->>> -            ntohl(ds->ds_ip_addr), ntohs(ds->ds_port));
->>> +        dprintk("%s [existing] server=%s\n", __func__,
->>> +            ds->ds_remotestr);
->>>        goto out;
->>>    }
->>> 
->>> @@ -180,8 +203,7 @@ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
->>>        goto out_put;
->>> 
->>>    ds->ds_clp = clp;
->>> -    dprintk("%s [new] ip=%x, port=%hu\n", __func__, ntohl(ds->ds_ip_addr),
->>> -        ntohs(ds->ds_port));
->>> +    dprintk("%s [new] addr: %s\n", __func__, ds->ds_remotestr);
->>> out:
->>>    return status;
->>> out_put:
->>> @@ -198,6 +220,7 @@ destroy_ds(struct nfs4_pnfs_ds *ds)
->>> 
->>>    if (ds->ds_clp)
->>>        nfs_put_client(ds->ds_clp);
->>> +    kfree(ds->ds_remotestr);
->>>    kfree(ds);
->>> }
->>> 
->>> @@ -224,8 +247,56 @@ nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr)
->>>    kfree(dsaddr);
->>> }
->>> 
->>> +/*
->>> + * Set ds->ds_remotestr to human readable format of address to avoid
->>> + * complicated setup around many dprinks().
->>> + *
->>> + * As it's only for debugging, this doesn't error out on kmalloc failure and
->>> + * the remotestr will just be displayed as "(null)"
->>> + */
->>> +static void
->>> +nfs4_pnfs_set_remotestr(struct nfs4_pnfs_ds *ds, gfp_t gfp_flags)
->>> +{
->>> +    char buf[INET6_ADDRSTRLEN + IPV6_SCOPE_ID_LEN];
->>> +    char *startsep = "";
->>> +    char *endsep = "";
->>> +    size_t len;
->>> +    uint16_t port;
->>> +
->>> +    switch (ds->ds_addr.ss_family) {
->>> +    case AF_INET:
->>> +        port = ((struct sockaddr_in *)&ds->ds_addr)->sin_port;
->>> +        break;
->>> +    case AF_INET6:
->>> +        startsep = "[";
->>> +        endsep = "]";
->>> +        port = ((struct sockaddr_in6 *)&ds->ds_addr)->sin6_port;
->>> +        break;
->>> +    default:
->>> +        dprintk("%s: Unknown address family %u\n",
->>> +            __func__, ds->ds_addr.ss_family);
->>> +        return;
->>> +    }
->>> +
->>> +    if (!rpc_ntop((struct sockaddr *)&ds->ds_addr, buf, sizeof(buf))) {
->>> +        dprintk("%s: error printing addr\n", __func__);
->>> +        return;
->>> +    }
->>> +
->>> +    len = strlen(buf) + strlen(startsep) + strlen(endsep) + 1 + 5 + 1;
->>> +    ds->ds_remotestr = kzalloc(len, gfp_flags);
->>> +
->>> +    if (unlikely(!ds->ds_remotestr)) {
->>> +        dprintk("%s: couldn't alloc ds_remotestr\n", __func__);
->>> +        return;
->>> +    }
->>> +
->>> +    snprintf(ds->ds_remotestr, len, "%s%s%s:%u",
->>> +         startsep, buf, endsep, port);
->> 
->> should be ntohs(port) to print correct value.
->> 
->> Still does not work to me. But I will try to figure this out.
->> 
-> After fixing issue on my side got cthon tests to pass.
-> 
-> 
-> Thanks.
->> Tigran.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/nfs4proc.c  |    5 +++
+ fs/nfsd/nfs4state.c |  101 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs4xdr.c   |   32 +++++++++++++++-
+ fs/nfsd/xdr4.h      |    8 ++++
+ 4 files changed, 144 insertions(+), 2 deletions(-)
 
-Great!  I don't know how I missed the ntohs, posting updated patch soon.
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 3a6dbd7..7e00116 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1412,6 +1412,11 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = OP_HANDLES_WRONGSEC,
+ 		.op_name = "OP_SECINFO_NO_NAME",
+ 	},
++	[OP_FREE_STATEID] = {
++		.op_func = (nfsd4op_func)nfsd4_free_stateid,
++		.op_flags = ALLOWED_WITHOUT_FH,
++		.op_name = "OP_FREE_STATEID",
++	},
+ };
+ 
+ static const char *nfsd4_op_name(unsigned opnum)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a2ea14f..c8c1cad 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -60,9 +60,12 @@ static u64 current_sessionid = 1;
+ 
+ /* forward declarations */
+ static struct nfs4_stateid * find_stateid(stateid_t *stid, int flags);
++static struct nfs4_stateid * search_for_stateid(stateid_t *stid);
++static struct nfs4_delegation * search_for_delegation(stateid_t *stid);
+ static struct nfs4_delegation * find_delegation_stateid(struct inode *ino, stateid_t *stid);
+ static char user_recovery_dirname[PATH_MAX] = "/var/lib/nfs/v4recovery";
+ static void nfs4_set_recdir(char *recdir);
++static int check_for_locks(struct nfs4_file *filp, struct nfs4_stateowner *lowner);
+ 
+ /* Locking: */
+ 
+@@ -3133,6 +3136,11 @@ static int is_delegation_stateid(stateid_t *stateid)
+ 	return stateid->si_fileid == 0;
+ }
+ 
++static int is_open_stateid(struct nfs4_stateid *stateid)
++{
++	return stateid->st_openstp == NULL;
++}
++
+ /*
+ * Checks for stateid operations
+ */
+@@ -3212,6 +3220,53 @@ out:
+ 	return status;
+ }
+ 
++static __be32
++nfsd4_free_delegation_stateid(stateid_t *stateid)
++{
++	struct nfs4_delegation *dp = search_for_delegation(stateid);
++	if (dp)
++		return nfserr_locks_held;
++	return nfserr_bad_stateid;
++}
++
++static __be32
++nfsd4_free_lock_stateid(stateid_t *stateid, struct nfs4_stateid *stp)
++{
++	if (check_for_locks(stp->st_file, stp->st_stateowner))
++		return nfserr_locks_held;
++	release_lock_stateid(stp);
++	return nfs_ok;
++}
++
++/*
++ * Free a state id
++ */
++__be32
++nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
++		   struct nfsd4_free_stateid *free_stateid)
++{
++	stateid_t *stateid = &free_stateid->fr_stateid;
++	struct nfs4_stateid *stp;
++
++	if (is_delegation_stateid(stateid))
++		return nfsd4_free_delegation_stateid(stateid);
++
++	stp = search_for_stateid(stateid);
++	if (!stp)
++		return nfserr_bad_stateid;
++	if (stateid->si_generation != 0) {
++		if (stateid->si_generation < stp->st_stateid.si_generation)
++			return nfserr_old_stateid;
++		if (stateid->si_generation > stp->st_stateid.si_generation)
++			return nfserr_bad_stateid;
++	}
++
++	if (is_open_stateid(stp))
++		return nfserr_locks_held;
++	else
++		return nfsd4_free_lock_stateid(stateid, stp);
++}
++
+ static inline int
+ setlkflg (int type)
+ {
+@@ -3590,6 +3645,14 @@ static struct list_head lock_ownerid_hashtbl[LOCK_HASH_SIZE];
+ static struct list_head	lock_ownerstr_hashtbl[LOCK_HASH_SIZE];
+ static struct list_head lockstateid_hashtbl[STATEID_HASH_SIZE];
+ 
++static int
++same_stateid(stateid_t *id_one, stateid_t *id_two)
++{
++	if (id_one->si_stateownerid != id_two->si_stateownerid)
++		return 0;
++	return id_one->si_fileid == id_two->si_fileid;
++}
++
+ static struct nfs4_stateid *
+ find_stateid(stateid_t *stid, int flags)
+ {
+@@ -3619,6 +3682,44 @@ find_stateid(stateid_t *stid, int flags)
+ 	return NULL;
+ }
+ 
++static struct nfs4_stateid *
++search_for_stateid(stateid_t *stid)
++{
++	struct nfs4_stateid *local;
++	unsigned int hashval = stateid_hashval(stid->si_stateownerid, stid->si_fileid);
++
++	list_for_each_entry(local, &lockstateid_hashtbl[hashval], st_hash) {
++		if (same_stateid(&local->st_stateid, stid))
++			return local;
++	}
++
++	list_for_each_entry(local, &stateid_hashtbl[hashval], st_hash) {
++		if (same_stateid(&local->st_stateid, stid))
++			return local;
++	}
++	return NULL;
++}
++
++static struct nfs4_delegation *
++search_for_delegation(stateid_t *stid)
++{
++	struct nfs4_file *fp;
++	struct nfs4_delegation *dp;
++	struct list_head *pos;
++	int i;
++
++	for (i = 0; i < FILE_HASH_SIZE; i++) {
++		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
++			list_for_each(pos, &fp->fi_delegations) {
++				dp = list_entry(pos, struct nfs4_delegation, dl_perfile);
++				if (same_stateid(&dp->dl_stateid, stid))
++					return dp;
++			}
++		}
++	}
++	return NULL;
++}
++
+ static struct nfs4_delegation *
+ find_delegation_stateid(struct inode *ino, stateid_t *stid)
+ {
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 195a91d..5da6874 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1246,6 +1246,19 @@ nfsd4_decode_destroy_session(struct nfsd4_compoundargs *argp,
+ }
+ 
+ static __be32
++nfsd4_decode_free_stateid(struct nfsd4_compoundargs *argp,
++			  struct nfsd4_free_stateid *free_stateid)
++{
++	DECODE_HEAD;
++
++	READ_BUF(sizeof(stateid_t));
++	READ32(free_stateid->fr_stateid.si_generation);
++	COPYMEM(&free_stateid->fr_stateid.si_opaque, sizeof(stateid_opaque_t));
++
++	DECODE_TAIL;
++}
++
++static __be32
+ nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
+ 		      struct nfsd4_sequence *seq)
+ {
+@@ -1370,7 +1383,7 @@ static nfsd4_dec nfsd41_dec_ops[] = {
+ 	[OP_EXCHANGE_ID]	= (nfsd4_dec)nfsd4_decode_exchange_id,
+ 	[OP_CREATE_SESSION]	= (nfsd4_dec)nfsd4_decode_create_session,
+ 	[OP_DESTROY_SESSION]	= (nfsd4_dec)nfsd4_decode_destroy_session,
+-	[OP_FREE_STATEID]	= (nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_FREE_STATEID]	= (nfsd4_dec)nfsd4_decode_free_stateid,
+ 	[OP_GET_DIR_DELEGATION]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_GETDEVICEINFO]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_GETDEVICELIST]	= (nfsd4_dec)nfsd4_decode_notsupp,
+@@ -3115,6 +3128,21 @@ nfsd4_encode_destroy_session(struct nfsd4_compoundres *resp, int nfserr,
+ 	return nfserr;
+ }
+ 
++static __be32
++nfsd4_encode_free_stateid(struct nfsd4_compoundres *resp, int nfserr,
++			  struct nfsd4_free_stateid *free_stateid)
++{
++	__be32 *p;
++
++	if (nfserr)
++		return nfserr;
++
++	RESERVE_SPACE(4);
++	WRITE32(nfserr);
++	ADJUST_ARGS();
++	return nfserr;
++}
++
+ __be32
+ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
+ 		      struct nfsd4_sequence *seq)
+@@ -3196,7 +3224,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+ 	[OP_EXCHANGE_ID]	= (nfsd4_enc)nfsd4_encode_exchange_id,
+ 	[OP_CREATE_SESSION]	= (nfsd4_enc)nfsd4_encode_create_session,
+ 	[OP_DESTROY_SESSION]	= (nfsd4_enc)nfsd4_encode_destroy_session,
+-	[OP_FREE_STATEID]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_FREE_STATEID]	= (nfsd4_enc)nfsd4_encode_free_stateid,
+ 	[OP_GET_DIR_DELEGATION]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_GETDEVICEINFO]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_GETDEVICELIST]	= (nfsd4_enc)nfsd4_encode_noop,
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 366401e..ed1784d 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -342,6 +342,11 @@ struct nfsd4_setclientid_confirm {
+ 	nfs4_verifier	sc_confirm;
+ };
+ 
++struct nfsd4_free_stateid {
++	stateid_t	fr_stateid;         /* request */
++	__be32		fr_status;          /* response */
++};
++
+ /* also used for NVERIFY */
+ struct nfsd4_verify {
+ 	u32		ve_bmval[3];        /* request */
+@@ -432,6 +437,7 @@ struct nfsd4_op {
+ 		struct nfsd4_destroy_session	destroy_session;
+ 		struct nfsd4_sequence		sequence;
+ 		struct nfsd4_reclaim_complete	reclaim_complete;
++		struct nfsd4_free_stateid	free_stateid;
+ 	} u;
+ 	struct nfs4_replay *			replay;
+ };
+@@ -564,6 +570,8 @@ extern __be32 nfsd4_delegreturn(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *, struct nfsd4_delegreturn *dr);
+ extern __be32 nfsd4_renew(struct svc_rqst *rqstp,
+ 			  struct nfsd4_compound_state *, clientid_t *clid);
++extern __be32 nfsd4_free_stateid(struct svc_rqst *rqstp,
++		struct nfsd4_compound_state *, struct nfsd4_free_stateid *free_stateid);
+ #endif
+ 
+ /*
+-- 
+1.7.5.2
 
-Thanks for testing!
-
--dros
