@@ -1,92 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:56756 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:32526 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754710Ab1ESBCc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 May 2011 21:02:32 -0400
-Date: Wed, 18 May 2011 21:02:31 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd41: check the size of request
-Message-ID: <20110519010231.GE26545@fieldses.org>
-References: <4DD32BCF.8020905@cn.fujitsu.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4DD32BCF.8020905@cn.fujitsu.com>
+	id S935756Ab1ETUOE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 May 2011 16:14:04 -0400
+Message-ID: <4DD6CB82.2000603@netapp.com>
+Date: Fri, 20 May 2011 16:13:54 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: bjschuma@netapp.com
+CC: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 0/2] NFSD: add FREE_STATEID and TEST_STATEID operations
+References: <1305922380-8162-1-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1305922380-8162-1-git-send-email-bjschuma@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, May 18, 2011 at 10:15:43AM +0800, Mi Jinlong wrote:
-> This patch just check request's size when it consists SEQUENCE.
+The subject should read "v3" here.  Sorry about that.
+
+- Bryan
+
+On 05/20/2011 04:12 PM, bjschuma@netapp.com wrote:
+> From: Bryan Schumaker <bjschuma@netapp.com>
 > 
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
->  fs/nfsd/nfs4state.c |   33 +++++++++++++++++++++++++++++++++
->  1 files changed, 33 insertions(+), 0 deletions(-)
+> These patches add FREE_STATEID and TEST_STATEID to the NFS server.  I
+> appreciate any comments, especially if there is a better way of doing things.
 > 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 4cf04e1..de4e6d4 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1725,6 +1725,38 @@ static void nfsd4_sequence_check_conn(struct nfsd4_conn *new, struct nfsd4_sessi
->  	return;
->  }
->  
-> +static int nfsd4_check_request_size(struct nfsd4_compoundargs *args,
-> +				    struct nfsd4_compound_state *cstate)
-> +{
-> +	int status = 0;
-> +	struct xdr_buf *xb = &args->rqstp->rq_arg;
-> +	struct nfsd4_session *session = NULL;
-> +	u32 length, tlen = 0, pad = 8;
-> +
-> +	if (!nfsd4_has_session(cstate))
-> +		return status;
-
-If we're only called from nfsd4_sequence(), then this check is
-redundant.  (It should always return true.)
-
-> +
-> +	session = cstate->session;
-> +	if (session == NULL)
-> +		return status;
-
-Ditto, cstate->session was set by the caller just before calling us.
-
-> +
-> +	if (xb->page_len == 0) {
-> +		length = (char *)args->p - (char *)xb->head[0].iov_base + pad;
-> +	} else {
-> +		if (xb->tail[0].iov_base && xb->tail[0].iov_len > 0)
-> +			tlen = (char *)args->p - (char *)xb->tail[0].iov_base;
-> +
-> +		 length = xb->head[0].iov_len + xb->page_len + tlen + pad;
-> +	}
-
-There's gotta be something simpler....  Looking at svc_tcp_recvfrom.
-Won't xb->len do it?
-
-> +	dprintk("%s length %u, xb->page_len %u tlen %u pad %u\n", __func__,
-> +		length, xb->page_len, tlen, pad);
-> +
-> +	if (length > session->se_fchannel.maxreq_sz)
-> +		return nfserr_req_too_big;
-> +
-> +	return status;
-> +}
-> +
->  __be32
->  nfsd4_sequence(struct svc_rqst *rqstp,
->  	       struct nfsd4_compound_state *cstate,
-> @@ -1789,6 +1821,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
->  	cstate->slot = slot;
->  	cstate->session = session;
->  
-> +	status = nfsd4_check_request_size(rqstp->rq_argp, cstate);
->  out:
->  	/* Hold a session reference until done processing the compound. */
->  	if (cstate->session) {
-> -- 
-> 1.7.4.5
+> v2:
+> - FREE_STATEID
+>   - Free open, lock, and delegation state ids correctly
+>   - Use the check_for_locks() function to check for locks
 > 
+> - TEST_STATEID
+>   - Remove openmode check
+>   - Sanity check on size of stateid list
+>   - Delay decoding stateid list until encoding the reply
 > 
+> v3:
+> - FREE_STATEID
+>   - Open stateids and delegations are never freeable (return nfserr_locks_held)
+> 
+> - TEST_STATEID
+>   - Remove unused arguments from a function call
+>   - Store and use the HAS_SESSION flag for validating stateids
+> 
+> Thanks!
+> 
+> - Bryan
+
