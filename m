@@ -1,50 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251]:58839 "EHLO
-	moving-picture.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S933714Ab1ETNiR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 May 2011 09:38:17 -0400
-Message-ID: <4DD66EC6.7090706@moving-picture.com>
-Date: Fri, 20 May 2011 14:38:14 +0100
-From: James Pearson <james-p@moving-picture.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: How to control the order of different export options for different
- client formats?
-References: <4DD2A084.1040905@moving-picture.com> <20110518080106.1159c5b8@notabene.brown> <4DD39D39.7010805@moving-picture.com> <20110518162050.GB16835@fieldses.org>
-In-Reply-To: <20110518162050.GB16835@fieldses.org>
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Received: from fieldses.org ([174.143.236.118]:57996 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751479Ab1ETTcP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 May 2011 15:32:15 -0400
+Date: Fri, 20 May 2011 15:32:12 -0400
+From: "Dr. J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Harry Edmon <harry@uw.edu>, Chuck Lever <chuck.lever@oracle.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: 2.6.38.6 - state manager constantly respawns
+Message-ID: <20110520193212.GA12496@fieldses.org>
+References: <4DD17F79.305@uw.edu>
+ <1305575656.19725.9.camel@lade.trondhjem.org>
+ <20110516202059.GC1680@fieldses.org>
+ <20110516205351.GD1680@fieldses.org>
+ <4DD694DF.2060302@uw.edu>
+ <20110520172639.GA11670@fieldses.org>
+ <1305913963.12712.6.camel@lade.trondhjem.org>
+ <1305916616.14253.1.camel@lade.trondhjem.org>
+ <20110520185935.GC11670@fieldses.org>
+ <1305918933.14253.5.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1305918933.14253.5.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-J. Bruce Fields wrote:
->>Having a priority option would be a very good idea - and may be in
->>the meantime the exports man page should be updated with info about
->>the current priority ordering?
+On Fri, May 20, 2011 at 03:15:33PM -0400, Trond Myklebust wrote:
+> On Fri, 2011-05-20 at 14:59 -0400, Dr. J. Bruce Fields wrote: 
+> > > Bruce,
+> > > 
+> > > If the clientid expired, is it possible that the server may have handed
+> > > out the same numerical short clientid to someone else and that explains
+> > > why the RENEW is succeeding?
+> > 
+> > Clientid's are created from a u32 counter that's sampled only under the
+> > state lock, so it sounds unlikely.
+> > 
+> > I think more likely would be some bug affecting the lifetime of a
+> > stateid--e.g. if the server destroyed a lock stateid earlier than it
+> > should in some case, then this would happen.  (Since, as I say, we
+> > assume EXPIRED for any stateid we don't recognize.)
 > 
-> 
-> Sounds good.  Could you send in a patch?
+> Shouldn't that be a NFS4ERR_BAD_STATEID instead of NFS4ERR_EXPIRED?
 
-Here's an attempt - based on the info from Max Matveev <makc@redhat.com> 
-earlier in this thread
+Probably so, but absent a bug on either side I can't see a case where it
+would make a difference; can you?
 
-James Pearson
+--b.
 
---- exports.man.dist    2010-09-28 13:24:16.000000000 +0100
-+++ exports.man 2011-05-20 14:29:45.555314605 +0100
-@@ -92,6 +92,11 @@
-  '''.B \-\-public\-root
-  '''option. Multiple specifications of a public root will be ignored.
-  .PP
-+.SS Matched Client Priories
-+The order in which the different \fIMachine Name Formats\fR are matched
-+against clients is in the priority order: \fIhostname, IP address or 
-networks,
-+wildcards, netgroup and anonymous\fR. Entries at the same level are matched
-+in the same order in which they appear in \fI/etc/exports\fR.
-  .SS RPCSEC_GSS security
-  You may use the special strings "gss/krb5", "gss/krb5i", or "gss/krb5p"
-  to restrict access to clients using rpcsec_gss security.  However, this
-
-
-
+> The
+> latter should really be reserved for the case where you know that this
+> stateid came from an expired lease.
