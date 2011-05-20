@@ -1,284 +1,150 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:35744 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:2094 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752439Ab1ESAKA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 May 2011 20:10:00 -0400
-Date: Wed, 18 May 2011 20:09:59 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: bjschuma@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [RFC] NFSD: Added basic fault injection
-Message-ID: <20110519000959.GC26545@fieldses.org>
-References: <1305651070-24654-1-git-send-email-bjschuma@netapp.com>
+	id S1757060Ab1ETTjq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 May 2011 15:39:46 -0400
+Subject: Re: 2.6.38.6 - state manager constantly respawns
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1305651070-24654-1-git-send-email-bjschuma@netapp.com>
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <4DD6C103.7090302@uw.edu>
+Date: Fri, 20 May 2011 15:39:38 -0400
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "Dr. J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Message-Id: <13970932-C610-4F33-896C-9367380D328B@netapp.com>
+References: <05D08339-888C-4A64-BDC5-8667B3901E7A@oracle.com>	 <4DD1772E.9010609@uw.edu> <6A6FB1C3-D4C3-40BE-810A-B4551FA9E591@oracle.com>	 <4DD17CB5.7010009@uw.edu> <1305575007.19725.3.camel@lade.trondhjem.org>	 <4DD17F79.305@uw.edu> <1305575656.19725.9.camel@lade.trondhjem.org>	 <20110516202059.GC1680@fieldses.org> <20110516205351.GD1680@fieldses.org>	 <4DD694DF.2060302@uw.edu> <20110520172639.GA11670@fieldses.org> <1305913963.12712.6.camel@lade.trondhjem.org> <4DD6C103.7090302@uw.edu>
+To: Harry Edmon <harry@uw.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, May 17, 2011 at 12:51:10PM -0400, bjschuma@netapp.com wrote:
-> From: Bryan Schumaker <bjschuma@netapp.com>
+
+On May 20, 2011, at 3:29 PM, Harry Edmon wrote:
+
+> On 05/20/11 10:52, Trond Myklebust wrote:
+>> On Fri, 2011-05-20 at 13:26 -0400, Dr. J. Bruce Fields wrote:
+>>   
+>>> On Fri, May 20, 2011 at 09:20:47AM -0700, Harry Edmon wrote:
+>>>     
+>>>> On 05/16/11 13:53, Dr. J. Bruce Fields wrote:
+>>>>       
+>>>>> Hm, so the renews all have clid 465ccc4d09000000, and the reads all have
+>>>>> a stateid (0, 465ccc4dc24c0a0000000000).
+>>>>> 
+>>>>> So the first 4 bytes matching just tells me both were handed out by the
+>>>>> same server instance (so there was no server reboot in between); there's
+>>>>> no way for me to tell whether they really belong to the same client.
+>>>>> 
+>>>>> The server does assume that any stateid from the current server instance
+>>>>> that no longer exists in its table is expired.  I believe that's
+>>>>> correct, given a correctly functioning client, but perhaps I'm missing a
+>>>>> case.
+>>>>> 
+>>>>> --b.
+>>>>>         
+>>>> I am very appreciative of the quick initial comments I receive from
+>>>> all of you on my NFS problem.   I notice that there has been silence
+>>>> on the problem since the 16th, so I assume that either this is a
+>>>> hard bug to track down or you have been busy with higher priority
+>>>> tasks.  Is there anything I can do to help develop a solution to
+>>>> this problem?
+>>>>       
+>>> Well, the only candidate explanation for the problem is that my
+>>> assumption--that any time the server gets a stateid from the current
+>>> boot instance that it doesn't recognize as an active stateid, it is safe
+>>> for the server to return EXPIRED--is wrong.
+>>> 
+>>> I don't immediately see why it's wrong, and based on the silence nobody
+>>> else does either, but I'm not 100% convinced I'm right either.
+>>> 
+>>> So one approach might be to add server code that makes a better effort
+>>> to return EXPIRED only when we're sure it's a stateid from an expired
+>>> client, and see if that solves your problem.
+>>> 
+>>> Remind me, did you have an easy way to reproduce your problem?
+>>>     
+>> My silence is simply because I'm mystified as to how this can happen.
+>> Patching for it is trivial (see below).
+>> 
+>> When the server tells us that our lease is expired, the normal behaviour
+>> for the client is to re-establish the lease, and then proceed to recover
+>> all known stateids. I don't see how we can 'miss' a stateid that then
+>> needs to be recovered afterwards...
+>> 
+>> Cheers
+>>   Trond
+>> 
+>> 8<----------------------------------------------------------------------------
+>> From 920ddb153f28717be363f6e87dde24ef2a8d0ce2 Mon Sep 17 00:00:00 2001
+>> From: Trond Myklebust<Trond.Myklebust@netapp.com>
+>> Date: Fri, 20 May 2011 13:44:02 -0400
+>> Subject: [PATCH] NFSv4: Handle expired stateids when the lease is still valid
+>> 
+>> Currently, if the server returns NFS4ERR_EXPIRED in reply to a READ or
+>> WRITE, but the RENEW test determines that the lease is still active, we
+>> fail to recover and end up looping forever in a READ/WRITE + RENEW death
+>> spiral.
+>> 
+>> Signed-off-by: Trond Myklebust<Trond.Myklebust@netapp.com>
+>> ---
+>>  fs/nfs/nfs4proc.c |    9 +++++++--
+>>  1 files changed, 7 insertions(+), 2 deletions(-)
+>> 
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index cf1b339..d0e15db 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -267,9 +267,11 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
+>>  				break;
+>>  			nfs4_schedule_stateid_recovery(server, state);
+>>  			goto wait_on_recovery;
+>> +		case -NFS4ERR_EXPIRED:
+>> +			if (state != NULL)
+>> +				nfs4_schedule_stateid_recovery(server, state);
+>>  		case -NFS4ERR_STALE_STATEID:
+>>  		case -NFS4ERR_STALE_CLIENTID:
+>> -		case -NFS4ERR_EXPIRED:
+>>  			nfs4_schedule_lease_recovery(clp);
+>>  			goto wait_on_recovery;
+>>  #if defined(CONFIG_NFS_V4_1)
+>> @@ -3670,9 +3672,11 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
+>>  				break;
+>>  			nfs4_schedule_stateid_recovery(server, state);
+>>  			goto wait_on_recovery;
+>> +		case -NFS4ERR_EXPIRED:
+>> +			if (state != NULL)
+>> +				nfs4_schedule_stateid_recovery(server, state);
+>>  		case -NFS4ERR_STALE_STATEID:
+>>  		case -NFS4ERR_STALE_CLIENTID:
+>> -		case -NFS4ERR_EXPIRED:
+>>  			nfs4_schedule_lease_recovery(clp);
+>>  			goto wait_on_recovery;
+>>  #if defined(CONFIG_NFS_V4_1)
+>> @@ -4543,6 +4547,7 @@ int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl)
+>>  			case -ESTALE:
+>>  				goto out;
+>>  			case -NFS4ERR_EXPIRED:
+>> +				nfs4_schedule_stateid_recovery(server, state);
+>>  			case -NFS4ERR_STALE_CLIENTID:
+>>  			case -NFS4ERR_STALE_STATEID:
+>>  				nfs4_schedule_lease_recovery(server->nfs_client);
+>>   
+> I installed this patch on my client, and now I am seeing the state manager appear in the process accounting file about once a minute rather that the constant respawning I saw earlier.  Is once a minute normal, or is there still a problem?
+
+The state manager sends the lease renew heart-beat.  It should spawn every lease period unless a lease-renewing operation (one with state) happens to be sent.
+
+-->Andy
+
 > 
-> I have been looking at adding fault injection to the NFS server in order
-> to test the client's state manager and recovery threads.  Simulating
-> errors on the server seems like the easiest way to guarentee that
-> specific errors happen, and happen when we tell them to.
-> 
-> This patch uses debugfs to add a simple framework for fault injection to
-> the server.  This framework is a config option, and can be enabled
-> through CONFIG_NFSD_FAULT_INJECTION.  Assuming you have debugfs mounted
-> to /sys/debug, a set of files will be created in /sys/debug/nfsd/.
-> Writing to any of these files will cause the corresponding action and
-> write a log entry to dmesg.
-
-Seems like a reasonable thing to do.
-
-> Suggestions?  Comments?
-> 
-> - Bryan
-> ---
->  fs/nfsd/Kconfig     |   13 ++++++
->  fs/nfsd/Makefile    |    3 +-
->  fs/nfsd/nfs4state.c |  117 +++++++++++++++++++++++++++++++++++++++++++++++++++
->  fs/nfsd/nfsctl.c    |    6 +++
->  fs/nfsd/nfsd.h      |   12 +++++
->  5 files changed, 150 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-> index 18b3e89..8c02eab 100644
-> --- a/fs/nfsd/Kconfig
-> +++ b/fs/nfsd/Kconfig
-> @@ -91,3 +91,16 @@ config NFSD_V4
->  	  available from http://linux-nfs.org/.
->  
->  	  If unsure, say N.
-> +
-> +config NFSD_FAULT_INJECTION
-> +	bool "NFS server manual fault injection"
-> +	depends on NFSD_V4 && DEBUG_KERNEL
-> +	help
-> +	  This option enables support for manually injecting faults
-> +	  into the NFS server.  This is intended to be used for
-> +	  testing error recovery on the NFS client.
-> +	  
-> +	  If unsure, say N.
-> +
-> +
-> +
-> diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
-> index 9b118ee..69eae75 100644
-> --- a/fs/nfsd/Makefile
-> +++ b/fs/nfsd/Makefile
-> @@ -5,7 +5,8 @@
->  obj-$(CONFIG_NFSD)	+= nfsd.o
->  
->  nfsd-y 			:= nfssvc.o nfsctl.o nfsproc.o nfsfh.o vfs.o \
-> -			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o
-> +			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o \
-> +			   fault_inject.o
->  nfsd-$(CONFIG_NFSD_V2_ACL) += nfs2acl.o
->  nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
->  nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 4cf04e1..e46c4ef 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -2991,6 +2991,123 @@ laundromat_main(struct work_struct *not_used)
->  	queue_delayed_work(laundry_wq, &laundromat_work, t*HZ);
->  }
->  
-> +#ifdef CONFIG_NFSD_FAULT_INJECTION
-> +
-> +void nfsd_forget_all_clients(void)
-> +{
-> +	struct nfs4_client *clp;
-> +	struct list_head *pos, *next, reaplist;
-> +	int count = 0;
-> +
-> +	nfs4_lock_state();
-> +	INIT_LIST_HEAD(&reaplist);
-> +
-> +	spin_lock(&client_lock);
-> +	list_for_each_safe(pos, next, &client_lru) {
-> +		clp = list_entry(pos, struct nfs4_client, cl_lru);
-> +		unhash_client_locked(clp);
-> +		list_add(&clp->cl_lru, &reaplist);
-> +		count ++;
-> +	}
-> +	spin_unlock(&client_lock);
-> +	list_for_each_safe(pos, next, &reaplist) {
-> +		clp = list_entry(pos, struct nfs4_client, cl_lru);
-> +		nfsd4_remove_clid_dir(clp);
-> +		expire_client(clp);
-> +	}
-> +
-> +	nfs4_unlock_state();
-> +	printk(KERN_INFO "%s %s Forgot %d clients", __FILE__, __func__, count);
-> +}
-> +
-> +void nfsd_forget_all_state_owners(void)
-> +{
-> +	struct nfs4_stateowner *sop;
-> +	struct list_head *pos, *next;
-> +	int count = 0;
-> +
-> +	nfs4_lock_state();
-> +	list_for_each_safe(pos, next, &close_lru) {
-
-Not all state owners are on the close_lru list--just open owners that
-have been closed and are waiting to be reaped.
-
---b.
-
-> +		sop = list_entry(pos, struct nfs4_stateowner, so_close_lru);
-> +		release_openowner(sop);
-> +		count ++;
-> +	};
-> +	nfs4_unlock_state();
-> +	printk(KERN_INFO "%s %s Forgot %d state owners", __FILE__, __func__, count);
-> +}
-> +
-> +void nfsd_count_all_state_owners(void)
-> +{
-> +	struct list_head *pos, *next;
-> +	int count = 0;
-> +
-> +	nfs4_lock_state();
-> +	list_for_each_safe(pos, next, &close_lru)
-> +		count++;
-> +	nfs4_unlock_state();
-> +	printk(KERN_INFO "%s %s Counted %d state owners", __FILE__, __func__, count);
-> +}
-> +
-> +void nfsd_forget_all_delegations(void)
-> +{
-> +	struct nfs4_file *fp;
-> +	struct nfs4_delegation *dp;
-> +	struct list_head *pos, *next, reaplist;
-> +	unsigned int i;
-> +	unsigned int count = 0;
-> +
-> +	INIT_LIST_HEAD(&reaplist);
-> +
-> +	nfs4_lock_state();
-> +	spin_lock(&recall_lock);
-> +	for (i = 0; i < FILE_HASH_SIZE; i++) {
-> +		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
-> +			list_for_each(pos, &fp->fi_delegations) {
-> +				dp = list_entry(pos, struct nfs4_delegation, dl_perfile);
-> +				list_del_init(&dp->dl_perclnt);
-> +				list_move(&dp->dl_recall_lru, &reaplist);
-> +			}
-> +		}
-> +	}
-> +
-> +	spin_unlock(&recall_lock);
-> +	list_for_each_safe(pos, next, &reaplist) {
-> +		dp = list_entry(pos, struct nfs4_delegation, dl_recall_lru);
-> +		list_del_init(&dp->dl_recall_lru);
-> +		unhash_delegation(dp);
-> +		count++;
-> +	}
-> +	nfs4_unlock_state();
-> +
-> +	printk(KERN_INFO "%s %s Forgot %d delegations", __FILE__, __func__, count);
-> +}
-> +
-> +void nfsd_recall_all_delegations(void)
-> +{
-> +	struct nfs4_file *fp;
-> +	struct nfs4_delegation *dp;
-> +	struct list_head *pos;
-> +	unsigned int i;
-> +	unsigned int count = 0;
-> +
-> +	nfs4_lock_state();
-> +	spin_lock(&recall_lock);
-> +	for (i = 0; i < FILE_HASH_SIZE; i++) {
-> +		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
-> +			list_for_each(pos, &fp->fi_delegations) {
-> +				dp = list_entry(pos, struct nfs4_delegation, dl_perfile);
-> +				nfsd_break_one_deleg(dp);
-> +				count++;
-> +			}
-> +		}
-> +	}
-> +	spin_unlock(&recall_lock);
-> +	nfs4_unlock_state();
-> +	printk(KERN_INFO "%s %s Recalled %d delegations", __FILE__, __func__, count);
-> +}
-> +
-> +#endif /* CONFIG_NFSD_FAULT_INJECTION */
-> +
->  static struct nfs4_stateowner *
->  search_close_lru(u32 st_id, int flags)
->  {
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 1f5eae4..1eb3e92 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -1481,6 +1481,9 @@ static int __init init_nfsd(void)
->  	retval = nfs4_state_init(); /* nfs4 locking state */
->  	if (retval)
->  		return retval;
-> +	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
-> +	if (retval)
-> +		goto out_cleanup_fault_injection;
->  	nfsd_stat_init();	/* Statistics */
->  	retval = nfsd_reply_cache_init();
->  	if (retval)
-> @@ -1512,6 +1515,8 @@ out_free_cache:
->  out_free_stat:
->  	nfsd_stat_shutdown();
->  	nfsd4_free_slabs();
-> +out_cleanup_fault_injection:
-> +	nfsd_cleanup_fault_inject();
->  	return retval;
->  }
->  
-> @@ -1525,6 +1530,7 @@ static void __exit exit_nfsd(void)
->  	nfsd_lockd_shutdown();
->  	nfsd_idmap_shutdown();
->  	nfsd4_free_slabs();
-> +	nfsd_cleanup_fault_inject();
->  	unregister_filesystem(&nfsd_fs_type);
->  }
->  
-> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> index 7ecfa24..4e6dd45 100644
-> --- a/fs/nfsd/nfsd.h
-> +++ b/fs/nfsd/nfsd.h
-> @@ -79,11 +79,18 @@ static inline int nfsd_v4client(struct svc_rqst *rq)
->  #ifdef CONFIG_NFSD_V4
->  extern unsigned int max_delegations;
->  int nfs4_state_init(void);
-> +int nfsd_fault_inject_init(void);
-> +void nfsd_cleanup_fault_inject(void);
->  void nfsd4_free_slabs(void);
->  int nfs4_state_start(void);
->  void nfs4_state_shutdown(void);
->  void nfs4_reset_lease(time_t leasetime);
->  int nfs4_reset_recoverydir(char *recdir);
-> +void nfsd_forget_all_clients(void);
-> +void nfsd_forget_all_state_owners(void);
-> +void nfsd_count_all_state_owners(void);
-> +void nfsd_forget_all_delegations(void);
-> +void nfsd_recall_all_delegations(void);
->  #else
->  static inline int nfs4_state_init(void) { return 0; }
->  static inline void nfsd4_free_slabs(void) { }
-> @@ -91,6 +98,11 @@ static inline int nfs4_state_start(void) { return 0; }
->  static inline void nfs4_state_shutdown(void) { }
->  static inline void nfs4_reset_lease(time_t leasetime) { }
->  static inline int nfs4_reset_recoverydir(char *recdir) { return 0; }
-> +static inline void nfsd_forget_all_clients(void) {};
-> +static inline void nfsd_forget_all_state_owners(void) {};
-> +static inline void nfsd_count_all_state_owners(void) {};
-> +static inline void nfsd_forget_all_delegations(void) {};
-> +static inline void nfsd_recall_all_delegations(void) {};
->  #endif
->  
->  /*
 > -- 
-> 1.7.5.1
+> Dr. Harry Edmon			E-MAIL: harry@uw.edu
+> 206-543-0547 FAX: 206-543-0308			harry@atmos.washington.edu
+> Director of IT, College of the Environment and
+> Director of Computing, Dept of Atmospheric Sciences
+> University of Washington, Box 351640, Seattle, WA 98195-1640
 > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
