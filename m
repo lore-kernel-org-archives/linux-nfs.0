@@ -1,98 +1,154 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39341 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:26704 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753986Ab1EPRo2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 13:44:28 -0400
-Subject: Re: [V2, 1/1] NFSv4.1: remove pnfs_layout_hdr from pnfs_destroy_all_layouts tmp_list
-Content-Type: text/plain; charset=us-ascii
-From: Andy Adamson <andros@netapp.com>
-In-Reply-To: <4DCF073B.1060400@nexenta.com>
-Date: Mon, 16 May 2011 13:44:26 -0400
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Message-Id: <3CF6346D-446F-43A7-BAF7-9A365E7386E3@netapp.com>
-References: <1305091198-27378-1-git-send-email-andros@netapp.com> <4DCF073B.1060400@nexenta.com>
-To: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+	id S1757165Ab1ETTkT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 May 2011 15:40:19 -0400
+Subject: Re: 2.6.38.6 - state manager constantly respawns
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Harry Edmon <harry@uw.edu>
+Cc: "Dr. J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Date: Fri, 20 May 2011 15:40:17 -0400
+In-Reply-To: <4DD6C103.7090302@uw.edu>
+References: <05D08339-888C-4A64-BDC5-8667B3901E7A@oracle.com>
+		 <4DD1772E.9010609@uw.edu>
+	 <6A6FB1C3-D4C3-40BE-810A-B4551FA9E591@oracle.com>
+		 <4DD17CB5.7010009@uw.edu> <1305575007.19725.3.camel@lade.trondhjem.org>
+		 <4DD17F79.305@uw.edu> <1305575656.19725.9.camel@lade.trondhjem.org>
+		 <20110516202059.GC1680@fieldses.org> <20110516205351.GD1680@fieldses.org>
+		 <4DD694DF.2060302@uw.edu> <20110520172639.GA11670@fieldses.org>
+	 <1305913963.12712.6.camel@lade.trondhjem.org> <4DD6C103.7090302@uw.edu>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1305920417.14253.15.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Fri, 2011-05-20 at 12:29 -0700, Harry Edmon wrote: 
+> On 05/20/11 10:52, Trond Myklebust wrote:
+> > On Fri, 2011-05-20 at 13:26 -0400, Dr. J. Bruce Fields wrote:
+> >    
+> >> On Fri, May 20, 2011 at 09:20:47AM -0700, Harry Edmon wrote:
+> >>      
+> >>> On 05/16/11 13:53, Dr. J. Bruce Fields wrote:
+> >>>        
+> >>>> Hm, so the renews all have clid 465ccc4d09000000, and the reads all have
+> >>>> a stateid (0, 465ccc4dc24c0a0000000000).
+> >>>>
+> >>>> So the first 4 bytes matching just tells me both were handed out by the
+> >>>> same server instance (so there was no server reboot in between); there's
+> >>>> no way for me to tell whether they really belong to the same client.
+> >>>>
+> >>>> The server does assume that any stateid from the current server instance
+> >>>> that no longer exists in its table is expired.  I believe that's
+> >>>> correct, given a correctly functioning client, but perhaps I'm missing a
+> >>>> case.
+> >>>>
+> >>>> --b.
+> >>>>          
+> >>> I am very appreciative of the quick initial comments I receive from
+> >>> all of you on my NFS problem.   I notice that there has been silence
+> >>> on the problem since the 16th, so I assume that either this is a
+> >>> hard bug to track down or you have been busy with higher priority
+> >>> tasks.  Is there anything I can do to help develop a solution to
+> >>> this problem?
+> >>>        
+> >> Well, the only candidate explanation for the problem is that my
+> >> assumption--that any time the server gets a stateid from the current
+> >> boot instance that it doesn't recognize as an active stateid, it is safe
+> >> for the server to return EXPIRED--is wrong.
+> >>
+> >> I don't immediately see why it's wrong, and based on the silence nobody
+> >> else does either, but I'm not 100% convinced I'm right either.
+> >>
+> >> So one approach might be to add server code that makes a better effort
+> >> to return EXPIRED only when we're sure it's a stateid from an expired
+> >> client, and see if that solves your problem.
+> >>
+> >> Remind me, did you have an easy way to reproduce your problem?
+> >>      
+> > My silence is simply because I'm mystified as to how this can happen.
+> > Patching for it is trivial (see below).
+> >
+> > When the server tells us that our lease is expired, the normal behaviour
+> > for the client is to re-establish the lease, and then proceed to recover
+> > all known stateids. I don't see how we can 'miss' a stateid that then
+> > needs to be recovered afterwards...
+> >
+> > Cheers
+> >    Trond
+> >
+> > 8<----------------------------------------------------------------------------
+> >  From 920ddb153f28717be363f6e87dde24ef2a8d0ce2 Mon Sep 17 00:00:00 2001
+> > From: Trond Myklebust<Trond.Myklebust@netapp.com>
+> > Date: Fri, 20 May 2011 13:44:02 -0400
+> > Subject: [PATCH] NFSv4: Handle expired stateids when the lease is still valid
+> >
+> > Currently, if the server returns NFS4ERR_EXPIRED in reply to a READ or
+> > WRITE, but the RENEW test determines that the lease is still active, we
+> > fail to recover and end up looping forever in a READ/WRITE + RENEW death
+> > spiral.
+> >
+> > Signed-off-by: Trond Myklebust<Trond.Myklebust@netapp.com>
+> > ---
+> >   fs/nfs/nfs4proc.c |    9 +++++++--
+> >   1 files changed, 7 insertions(+), 2 deletions(-)
+> >
+> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> > index cf1b339..d0e15db 100644
+> > --- a/fs/nfs/nfs4proc.c
+> > +++ b/fs/nfs/nfs4proc.c
+> > @@ -267,9 +267,11 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
+> >   				break;
+> >   			nfs4_schedule_stateid_recovery(server, state);
+> >   			goto wait_on_recovery;
+> > +		case -NFS4ERR_EXPIRED:
+> > +			if (state != NULL)
+> > +				nfs4_schedule_stateid_recovery(server, state);
+> >   		case -NFS4ERR_STALE_STATEID:
+> >   		case -NFS4ERR_STALE_CLIENTID:
+> > -		case -NFS4ERR_EXPIRED:
+> >   			nfs4_schedule_lease_recovery(clp);
+> >   			goto wait_on_recovery;
+> >   #if defined(CONFIG_NFS_V4_1)
+> > @@ -3670,9 +3672,11 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
+> >   				break;
+> >   			nfs4_schedule_stateid_recovery(server, state);
+> >   			goto wait_on_recovery;
+> > +		case -NFS4ERR_EXPIRED:
+> > +			if (state != NULL)
+> > +				nfs4_schedule_stateid_recovery(server, state);
+> >   		case -NFS4ERR_STALE_STATEID:
+> >   		case -NFS4ERR_STALE_CLIENTID:
+> > -		case -NFS4ERR_EXPIRED:
+> >   			nfs4_schedule_lease_recovery(clp);
+> >   			goto wait_on_recovery;
+> >   #if defined(CONFIG_NFS_V4_1)
+> > @@ -4543,6 +4547,7 @@ int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl)
+> >   			case -ESTALE:
+> >   				goto out;
+> >   			case -NFS4ERR_EXPIRED:
+> > +				nfs4_schedule_stateid_recovery(server, state);
+> >   			case -NFS4ERR_STALE_CLIENTID:
+> >   			case -NFS4ERR_STALE_STATEID:
+> >   				nfs4_schedule_lease_recovery(server->nfs_client);
+> >    
+> I installed this patch on my client, and now I am seeing the state 
+> manager appear in the process accounting file about once a minute rather 
+> that the constant respawning I saw earlier.  Is once a minute normal, or 
+> is there still a problem?
 
-On May 14, 2011, at 6:50 PM, Vitaliy Gusev wrote:
+Once a minute is rather unusual... What kind of server are you running
+against?
 
-> On 01/-10/-28163 10:59 PM, Andy Adamson wrote:
->> From: Andy Adamson<andros@netapp.com>
->> 
->> Prevents an infinite loop as list was never emptied.
->> 
->> Signed-off-by: Andy Adamson<andros@netapp.com>
->> +++ b/fs/nfs/pnfs.c
->> @@ -383,6 +383,7 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
->>  				plh_layouts);
->>  		dprintk("%s freeing layout for inode %lu\n", __func__,
->>  			lo->plh_inode->i_ino);
->> +		list_del_init(&lo->plh_layouts);
->>  		pnfs_destroy_layout(NFS_I(lo->plh_inode));
-> 
-> Shouldn't pnfs_destroy_layout() do it ?
+If it is a Linux server, what is the value contained in the virtual file
+"/proc/fs/nfsd/nfsv4leasetime" ?
 
-pnfs_destroy_layout can't do it. The list is local to pnfs_destroy_all_layouts.  It's confusing because both pnfs_destroy_layout and pnfs_destroy_all_layouts have a local tmp_list used for different purposes.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
--->Andy
-
-
-> 
-> Really see:
-> 
->  pnfs_destroy_layout(struct nfs_inode *nfsi)
->  {
->  	struct pnfs_layout_hdr *lo;
->  	LIST_HEAD(tmp_list);
-> 
->  	spin_lock(&nfsi->vfs_inode.i_lock);
->  	lo = nfsi->layout;
->   ^^^^^^^^^^^^^^^^^^^^
-> Here is our "lo".
-> 
-> 
->  	if (lo) {
->  		lo->plh_block_lgets++; /* permanently block new LAYOUTGETs */
->  		mark_matching_lsegs_invalid(lo, &tmp_list, IOMODE_ANY);
->  	}
->  	spin_unlock(&nfsi->vfs_inode.i_lock);
->  	pnfs_free_lseg_list(&tmp_list);
->  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> It does cleanup and deletes lo from the list.
-
-> 
-> 
-> I think really problem is more deeper. I investigated  debug messages:
-> 
->   [  701.210784] put_lseg: lseg ffff88002cc36108 ref 5721 valid 1
->   [  701.463495] pnfs_destroy_all_layouts freeing layout for inode 9
->   [  701.465382] mark_matching_lsegs_invalid:Begin lo ffff880031b35ed8
->   [  701.467172] mark_matching_lsegs_invalid: freeing lseg ffff88002cc36108 iomode 2 offset 0 length 18446744073709551615
-> 
-> 
->   [701.470401] 701.470401] mark_lseg_invalid: lseg ffff88002cc36108 ref 5720
->   [  701.472071] mark_matching_lsegs_invalid:Return 1
->   [  701.473623] pnfs_destroy_all_layouts freeing layout for inode 9
->   [  701.475302] mark_matching_lsegs_invalid:Begin lo ffff880031b35ed8
->   [  701.476981] mark_matching_lsegs_invalid: freeing lseg ffff88002cc36108 iomode 2 offset 0 length 18446744073709551615
->   [  701.480549] mark_matching_lsegs_invalid:Return 1
-> 
-> 
->   [  701.482136] pnfs_destroy_all_layouts freeing layout for inode 9
->   [  701.483802] mark_matching_lsegs_invalid:Begin lo ffff880031b35ed8
->   [  701.485461] mark_matching_lsegs_invalid: freeing lseg ffff88002cc36108 iomode 2 offset 0 length 18446744073709551615
->   [  701.488598] mark_matching_lsegs_invalid:Return 1   ...
-> 
-> 
-> "Return 1" shows that mark_lseg_invalid() didn't do anything, because at first call it mark segment as invalid.
-> 
-> Also you can see that segment ref counter for last put_lseg() is 5720. I suppose that leak of refconter is real reason of the inifinite loop.
-> 
-> 
-> ---
-> Thanks,
-> Vitaliy Gusev
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
