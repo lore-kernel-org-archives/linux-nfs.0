@@ -1,357 +1,398 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:19620 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757360Ab1EZOEl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 May 2011 10:04:41 -0400
-Message-ID: <4DDE5DF9.7010802@panasas.com>
-Date: Thu, 26 May 2011 17:04:41 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v8 17/32] pnfs-obj: objio_osd device information retrieval
- and caching
-References: <4DDD7392.6040505@panasas.com> <1306358914-17403-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <1306358914-17403-1-git-send-email-bhalevy@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:34837 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933693Ab1ETSNZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 May 2011 14:13:25 -0400
+Message-ID: <4DD6AF42.5050502@netapp.com>
+Date: Fri, 20 May 2011 14:13:22 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [RFC v2] NFSD: Added basic fault injection
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/26/2011 12:28 AM, Benny Halevy wrote:
-> From: Boaz Harrosh <bharrosh@panasas.com>
-> 
-> When a new layout is received in objio_alloc_lseg all device_ids
-> referenced are retrieved. The device information is queried for from MDS
-> and then the osd_device is looked-up from the osd-initiator library. The
-> devices are cached in a per-mount-point list, for later use. At unmount
-> all devices are "put" back to the library.
-> 
-> objlayout_get_deviceinfo(), objlayout_put_deviceinfo() middleware
-> API for retrieving device information given a device_id.
-> 
-> TODO: The device cache can get big. Cap its size. Keep an LRU and start
->       to return devices which were not used, when list gets to big, or
->       when new entries allocation fail.
-> 
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> [gfp_flags]
-> [use global device cache]
-> [use layout driver in global device cache]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfs/objlayout/objio_osd.c |  148 +++++++++++++++++++++++++++++++++++++++++-
->  fs/nfs/objlayout/objlayout.c |   68 +++++++++++++++++++
->  fs/nfs/objlayout/objlayout.h |    8 ++
->  3 files changed, 223 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-> index 725b1df..80d916b 100644
-> --- a/fs/nfs/objlayout/objio_osd.c
-> +++ b/fs/nfs/objlayout/objio_osd.c
-> @@ -46,6 +46,58 @@
->  
->  #define _LLU(x) ((unsigned long long)x)
->  
-> +struct objio_dev_ent {
-> +	struct nfs4_deviceid_node id_node;
-> +	struct osd_dev *od;
-> +};
-> +
-> +static void
-> +objio_free_deviceid_node(struct nfs4_deviceid_node *d)
-> +{
-> +	struct objio_dev_ent *de = container_of(d, struct objio_dev_ent, id_node);
-> +
-> +	osduld_put_device(de->od);
-> +	kfree(de);
-> +}
-> +
-> +static struct objio_dev_ent *_dev_list_find(const struct nfs_server *nfss,
-> +	const struct nfs4_deviceid *d_id)
-> +{
-> +	struct nfs4_deviceid_node *d;
-> +
-> +	d = nfs4_find_get_deviceid(nfss->pnfs_curr_ld, nfss->nfs_client, d_id);
-> +	if (!d)
-> +		return NULL;
-> +	return container_of(d, struct objio_dev_ent, id_node);
-> +}
-> +
-> +static int _dev_list_add(const struct nfs_server *nfss,
-> +	const struct nfs4_deviceid *d_id, struct osd_dev *od,
-> +	gfp_t gfp_flags)
-> +{
-> +	struct nfs4_deviceid_node *d;
-> +	struct objio_dev_ent *de = kzalloc(sizeof(*de), gfp_flags);
-> +	struct objio_dev_ent *n;
-> +
-> +	if (!de)
-> +		return -ENOMEM;
-> +
-> +	nfs4_init_deviceid_node(&de->id_node,
-> +				nfss->pnfs_curr_ld,
-> +				nfss->nfs_client,
-> +				d_id);
-> +	de->od = od;
-> +
-> +	d = nfs4_insert_deviceid_node(&de->id_node);
-> +	n = container_of(d, struct objio_dev_ent, id_node);
-> +	if (n != de) {
-> +		BUG_ON(n->od != od);
+I have been looking at adding fault injection to the NFS server in order
+to test the client's state manager and recovery threads.  Simulating
+errors on the server seems like the easiest way to guarentee that
+specific errors happen, and happen when we tell them to.
 
-Benny!!! I removed that BUG_ON why is it back?
+This patch uses debugfs to add a simple framework for fault injection to
+the server.  This framework is a config option, and can be enabled
+through CONFIG_NFSD_FAULT_INJECTION.  Assuming you have debugfs mounted
+to /sys/debug, a set of files will be created in /sys/debug/nfsd/.
+Writing to any of these files will cause the corresponding action and
+write a log entry to dmesg.
 
-You cannot compare these handles. If you called osduld_info_lookup
-twice You get two different handles. This is because osd_dev handles
-are a filehandle open on the device.
+Changes in v2:
+- Replaced "forget all state owners" with "forget all open owners"
+- Include fs/nfsd/fault_inject.c in the patch
 
-> +		objio_free_deviceid_node(&de->id_node);
-> +	}
-> +
+Suggestions?  Comments?
 
-Where is the extra ref taking
-
-> +	return 0;
-> +}
-> +
->  struct caps_buffers {
->  	u8 caps_key[OSD_CRYPTO_KEYID_SIZE];
->  	u8 creds[OSD_CAP_LEN];
-> @@ -65,7 +117,7 @@ struct objio_segment {
->  	unsigned comps_index;
->  	unsigned num_comps;
->  	/* variable length */
-> -	struct osd_dev	*ods[1];
-> +	struct objio_dev_ent *ods[1];
->  };
->  
->  static inline struct objio_segment *
-> @@ -74,6 +126,89 @@ OBJIO_LSEG(struct pnfs_layout_segment *lseg)
->  	return container_of(lseg, struct objio_segment, lseg);
->  }
->  
-> +/* Send and wait for a get_device_info of devices in the layout,
-> +   then look them up with the osd_initiator library */
-> +static struct objio_dev_ent *_device_lookup(struct pnfs_layout_hdr *pnfslay,
-> +				struct objio_segment *objio_seg, unsigned comp,
-> +				gfp_t gfp_flags)
-> +{
-> +	struct pnfs_osd_deviceaddr *deviceaddr;
-> +	struct nfs4_deviceid *d_id;
-> +	struct objio_dev_ent *ode;
-> +	struct osd_dev *od;
-> +	struct osd_dev_info odi;
-> +	int err;
-> +
-> +	d_id = &objio_seg->comps[comp].oc_object_id.oid_device_id;
-> +
-> +	ode = _dev_list_find(NFS_SERVER(pnfslay->plh_inode), d_id);
-> +	if (ode)
-> +		return ode;
-> +
-> +	err = objlayout_get_deviceinfo(pnfslay, d_id, &deviceaddr, gfp_flags);
-> +	if (unlikely(err)) {
-> +		dprintk("%s: objlayout_get_deviceinfo dev(%llx:%llx) =>%d\n",
-> +			__func__, _DEVID_LO(d_id), _DEVID_HI(d_id), err);
-> +		return ERR_PTR(err);
-> +	}
-> +
-> +	odi.systemid_len = deviceaddr->oda_systemid.len;
-> +	if (odi.systemid_len > sizeof(odi.systemid)) {
-> +		err = -EINVAL;
-> +		goto out;
-> +	} else if (odi.systemid_len)
-> +		memcpy(odi.systemid, deviceaddr->oda_systemid.data,
-> +		       odi.systemid_len);
-> +	odi.osdname_len	 = deviceaddr->oda_osdname.len;
-> +	odi.osdname	 = (u8 *)deviceaddr->oda_osdname.data;
-> +
-> +	if (!odi.osdname_len && !odi.systemid_len) {
-> +		dprintk("%s: !odi.osdname_len && !odi.systemid_len\n",
-> +			__func__);
-> +		err = -ENODEV;
-> +		goto out;
-> +	}
-> +
-> +	od = osduld_info_lookup(&odi);
-> +	if (unlikely(IS_ERR(od))) {
-> +		err = PTR_ERR(od);
-> +		dprintk("%s: osduld_info_lookup => %d\n", __func__, err);
-> +		goto out;
-> +	}
-> +
-> +	_dev_list_add(NFS_SERVER(pnfslay->plh_inode), d_id, od, gfp_flags);
-> +
-> +out:
-> +	dprintk("%s: return=%d\n", __func__, err);
-> +	objlayout_put_deviceinfo(deviceaddr);
-> +	return err ? ERR_PTR(err) : od;
-
-Why is that bug back in
-
-> +}
-> +
-
-OK I can see that this patch is back to all the bugs I fixed.
-What's going on?
-
-(I'll stop reviewing here, I'll compare the all tree and see what else is missing)
-Boaz
-> +static int objio_devices_lookup(struct pnfs_layout_hdr *pnfslay,
-> +	struct objio_segment *objio_seg,
-> +	gfp_t gfp_flags)
-> +{
-> +	unsigned i;
-> +	int err;
-> +
-> +	/* lookup all devices */
-> +	for (i = 0; i < objio_seg->num_comps; i++) {
-> +		struct objio_dev_ent *ode;
-> +
-> +		ode = _device_lookup(pnfslay, objio_seg, i, gfp_flags);
-> +		if (unlikely(IS_ERR(ode))) {
-> +			err = PTR_ERR(ode);
-> +			goto out;
-> +		}
-> +		objio_seg->ods[i] = ode;
-> +	}
-> +	err = 0;
-> +
-> +out:
-> +	dprintk("%s: return=%d\n", __func__, err);
-> +	return err;
-> +}
-> +
->  static int _verify_data_map(struct pnfs_osd_layout *layout)
->  {
->  	struct pnfs_osd_data_map *data_map = &layout->olo_map;
-> @@ -170,6 +305,9 @@ int objio_alloc_lseg(struct pnfs_layout_segment **outp,
->  
->  	objio_seg->num_comps = layout.olo_num_comps;
->  	objio_seg->comps_index = layout.olo_comps_index;
-> +	err = objio_devices_lookup(pnfslay, objio_seg, gfp_flags);
-> +	if (err)
-> +		goto err;
->  
->  	objio_seg->mirrors_p1 = layout.olo_map.odm_mirror_cnt + 1;
->  	objio_seg->stripe_unit = layout.olo_map.odm_stripe_unit;
-> @@ -198,8 +336,14 @@ err:
->  
->  void objio_free_lseg(struct pnfs_layout_segment *lseg)
->  {
-> +	int i;
->  	struct objio_segment *objio_seg = OBJIO_LSEG(lseg);
->  
-> +	for (i = 0; i < objio_seg->num_comps; i++) {
-> +		if (!objio_seg->ods[i])
-> +			break;
-> +		nfs4_put_deviceid_node(&objio_seg->ods[i]->id_node);
-> +	}
->  	kfree(objio_seg);
->  }
->  
-> @@ -210,6 +354,8 @@ static struct pnfs_layoutdriver_type objlayout_type = {
->  
->  	.alloc_lseg              = objlayout_alloc_lseg,
->  	.free_lseg               = objlayout_free_lseg,
-> +
-> +	.free_deviceid_node	 = objio_free_deviceid_node,
->  };
->  
->  MODULE_DESCRIPTION("pNFS Layout Driver for OSD2 objects");
-> diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-> index 9465267..10e5fca 100644
-> --- a/fs/nfs/objlayout/objlayout.c
-> +++ b/fs/nfs/objlayout/objlayout.c
-> @@ -102,3 +102,71 @@ objlayout_free_lseg(struct pnfs_layout_segment *lseg)
->  	objio_free_lseg(lseg);
->  }
->  
-> +/*
-> + * Get Device Info API for io engines
-> + */
-> +struct objlayout_deviceinfo {
-> +	struct page *page;
-> +	struct pnfs_osd_deviceaddr da; /* This must be last */
-> +};
-> +
-> +/* Initialize and call nfs_getdeviceinfo, then decode and return a
-> + * "struct pnfs_osd_deviceaddr *" Eventually objlayout_put_deviceinfo()
-> + * should be called.
-> + */
-> +int objlayout_get_deviceinfo(struct pnfs_layout_hdr *pnfslay,
-> +	struct nfs4_deviceid *d_id, struct pnfs_osd_deviceaddr **deviceaddr,
-> +	gfp_t gfp_flags)
-> +{
-> +	struct objlayout_deviceinfo *odi;
-> +	struct pnfs_device pd;
-> +	struct super_block *sb;
-> +	struct page *page, **pages;
-> +	u32 *p;
-> +	int err;
-> +
-> +	page = alloc_page(gfp_flags);
-> +	if (!page)
-> +		return -ENOMEM;
-> +
-> +	pages = &page;
-> +	pd.pages = pages;
-> +
-> +	memcpy(&pd.dev_id, d_id, sizeof(*d_id));
-> +	pd.layout_type = LAYOUT_OSD2_OBJECTS;
-> +	pd.pages = &page;
-> +	pd.pgbase = 0;
-> +	pd.pglen = PAGE_SIZE;
-> +	pd.mincount = 0;
-> +
-> +	sb = pnfslay->plh_inode->i_sb;
-> +	err = nfs4_proc_getdeviceinfo(NFS_SERVER(pnfslay->plh_inode), &pd);
-> +	dprintk("%s nfs_getdeviceinfo returned %d\n", __func__, err);
-> +	if (err)
-> +		goto err_out;
-> +
-> +	p = page_address(page);
-> +	odi = kzalloc(sizeof(*odi), gfp_flags);
-> +	if (!odi) {
-> +		err = -ENOMEM;
-> +		goto err_out;
-> +	}
-> +	pnfs_osd_xdr_decode_deviceaddr(&odi->da, p);
-> +	odi->page = page;
-> +	*deviceaddr = &odi->da;
-> +	return 0;
-> +
-> +err_out:
-> +	__free_page(page);
-> +	return err;
-> +}
-> +
-> +void objlayout_put_deviceinfo(struct pnfs_osd_deviceaddr *deviceaddr)
-> +{
-> +	struct objlayout_deviceinfo *odi = container_of(deviceaddr,
-> +						struct objlayout_deviceinfo,
-> +						da);
-> +
-> +	__free_page(odi->page);
-> +	kfree(odi);
-> +}
-> diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
-> index 066280a..0814271 100644
-> --- a/fs/nfs/objlayout/objlayout.h
-> +++ b/fs/nfs/objlayout/objlayout.h
-> @@ -56,6 +56,14 @@ extern int objio_alloc_lseg(struct pnfs_layout_segment **outp,
->  extern void objio_free_lseg(struct pnfs_layout_segment *lseg);
->  
->  /*
-> + * callback API
-> + */
-> +extern int objlayout_get_deviceinfo(struct pnfs_layout_hdr *pnfslay,
-> +	struct nfs4_deviceid *d_id, struct pnfs_osd_deviceaddr **deviceaddr,
-> +	gfp_t gfp_flags);
-> +extern void objlayout_put_deviceinfo(struct pnfs_osd_deviceaddr *deviceaddr);
-> +
-> +/*
->   * exported generic objects function vectors
->   */
->  extern struct pnfs_layout_segment *objlayout_alloc_lseg(
-
+- Bryan
+---
+diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+index 18b3e89..8c02eab 100644
+--- a/fs/nfsd/Kconfig
++++ b/fs/nfsd/Kconfig
+@@ -91,3 +91,16 @@ config NFSD_V4
+ 	  available from http://linux-nfs.org/.
+ 
+ 	  If unsure, say N.
++
++config NFSD_FAULT_INJECTION
++	bool "NFS server manual fault injection"
++	depends on NFSD_V4 && DEBUG_KERNEL
++	help
++	  This option enables support for manually injecting faults
++	  into the NFS server.  This is intended to be used for
++	  testing error recovery on the NFS client.
++	  
++	  If unsure, say N.
++
++
++
+diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
+index 9b118ee..69eae75 100644
+--- a/fs/nfsd/Makefile
++++ b/fs/nfsd/Makefile
+@@ -5,7 +5,8 @@
+ obj-$(CONFIG_NFSD)	+= nfsd.o
+ 
+ nfsd-y 			:= nfssvc.o nfsctl.o nfsproc.o nfsfh.o vfs.o \
+-			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o
++			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o \
++			   fault_inject.o
+ nfsd-$(CONFIG_NFSD_V2_ACL) += nfs2acl.o
+ nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
+ nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+new file mode 100644
+index 0000000..3dd1c32
+--- /dev/null
++++ b/fs/nfsd/fault_inject.c
+@@ -0,0 +1,106 @@
++
++#ifdef CONFIG_NFSD_FAULT_INJECTION
++
++#include <linux/types.h>
++#include <linux/fs.h>
++#include <linux/debugfs.h>
++#include <linux/module.h>
++
++#include "state.h"
++#include "nfsd.h"
++
++static void nfsd_forget_everything(void);
++
++struct nfsd_fault_inject_op {
++	char *name;
++	char *text;
++	int file_data;
++	void (*func)(void);
++};
++
++#define INJECTION_OP(op_name, op_text, op_func) \
++{				\
++	.name = op_name,	\
++	.text = op_text,	\
++	.func = op_func,	\
++}
++
++static struct nfsd_fault_inject_op inject_ops[] = {
++	INJECTION_OP("forget_clients",     "forget all clients",     nfsd_forget_all_clients),
++	INJECTION_OP("forget_locks",       "forget all locks",       nfsd_forget_all_locks),
++	INJECTION_OP("forget_open_owners", "forget all open owners", nfsd_forget_all_open_owners),
++	INJECTION_OP("forget_delegations", "forget all delegations", nfsd_forget_all_delegations),
++	INJECTION_OP("forget_everything",  "forget everything",      nfsd_forget_everything),
++	INJECTION_OP("recall_delegations", "recall all delegations", nfsd_recall_all_delegations),
++};
++
++static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
++static struct dentry *debug_dir;
++
++static void nfsd_forget_everything(void)
++{
++	nfsd_forget_all_clients();
++	nfsd_forget_all_locks();
++	nfsd_forget_all_open_owners();
++	nfsd_forget_all_delegations();
++}
++
++static int nfsd_inject_set(void *data, u64 val)
++{
++	int i;
++	for (i = 0; i < NUM_INJECT_OPS; i++) {
++		if (&inject_ops[i].file_data == data) {
++			printk(KERN_INFO "%s %s Server will %s", __FILE__, __func__, inject_ops[i].text);
++			inject_ops[i].func();
++		}
++	}
++	return 0;
++}
++
++static int nfsd_inject_get(void *data, u64 *val)
++{
++	return 0;
++}
++
++DEFINE_SIMPLE_ATTRIBUTE(fops_nfsd, nfsd_inject_get, nfsd_inject_set, "%llu\n");
++
++void
++nfsd_cleanup_fault_inject(void)
++{
++	debugfs_remove_recursive(debug_dir);
++}
++
++int
++nfsd_fault_inject_init(void)
++{
++	unsigned int i;
++	struct nfsd_fault_inject_op *op;
++	mode_t mode = S_IFREG | S_IRUSR | S_IWUSR;
++
++	debug_dir = debugfs_create_dir("nfsd", NULL);
++	if (!debug_dir)
++		goto fail;
++
++	for (i = 0; i < NUM_INJECT_OPS; i++) {
++		op = &inject_ops[i];
++		debugfs_create_file(op->name, mode, debug_dir, &op->file_data, &fops_nfsd);
++	}
++	return 0;
++fail:
++	nfsd_cleanup_fault_inject();
++	return -ENOMEM;
++}
++
++#else /* CONFIG_NFSD_FAULT_INJECTION */
++
++inline void
++nfsd_cleanup_fault_inject(void)
++{}
++
++inline int
++nfsd_fault_inject_init(void)
++{
++	return 0;
++}
++
++#endif /* CONFIG_NFSD_FAULT_INJECTION */
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 4cf04e1..f555e02 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4274,6 +4274,144 @@ nfs4_check_open_reclaim(clientid_t *clid)
+ 	return nfs4_find_reclaim_client(clid) ? nfs_ok : nfserr_reclaim_bad;
+ }
+ 
++#ifdef CONFIG_NFSD_FAULT_INJECTION
++
++void nfsd_forget_all_clients(void)
++{
++	struct nfs4_client *clp;
++	struct list_head *pos, *next, reaplist;
++	int count = 0;
++
++	nfs4_lock_state();
++	INIT_LIST_HEAD(&reaplist);
++
++	spin_lock(&client_lock);
++	list_for_each_safe(pos, next, &client_lru) {
++		clp = list_entry(pos, struct nfs4_client, cl_lru);
++		unhash_client_locked(clp);
++		list_add(&clp->cl_lru, &reaplist);
++		count ++;
++	}
++	spin_unlock(&client_lock);
++	list_for_each_safe(pos, next, &reaplist) {
++		clp = list_entry(pos, struct nfs4_client, cl_lru);
++		nfsd4_remove_clid_dir(clp);
++		expire_client(clp);
++	}
++
++	nfs4_unlock_state();
++	printk(KERN_INFO "%s %s Forgot %d clients", __FILE__, __func__, count);
++}
++
++void nfsd_forget_all_locks(void)
++{
++	struct nfs4_stateid *stp;
++	struct nfs4_stateowner *sop;
++	struct list_head reaplist;
++	int count = 0;
++	int i;
++
++	INIT_LIST_HEAD(&reaplist);
++	nfs4_lock_state();
++	for (i = 0; i < LOCK_HASH_SIZE; i++) {
++		list_for_each_entry(sop, &lock_ownerid_hashtbl[i], so_idhash) {
++			list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
++				list_add(&sop->so_perclient, &reaplist);
++			}
++		}
++	}
++
++	while (!list_empty(&reaplist)) {
++		sop = list_entry(reaplist.next, struct nfs4_stateowner, so_perclient);
++		list_del(&sop->so_perclient);
++		release_lockowner(sop);
++		count ++;
++	}
++	nfs4_unlock_state();
++
++	printk(KERN_INFO "%s %s Forgot %d locks", __FILE__, __func__, count);
++}
++
++void nfsd_forget_all_open_owners(void)
++{
++	struct nfs4_stateid *stp, *next;
++	unsigned int i;
++	int count = 0;
++
++	nfs4_lock_state();
++	for (i = 0; i < STATEID_HASH_SIZE; i++) {
++		list_for_each_entry_safe(stp, next, &stateid_hashtbl[i], st_hash) {
++			if (stp->st_openstp == NULL) {
++				release_openowner(stp->st_stateowner);
++				count++;
++			}
++		}
++	}
++	nfs4_unlock_state();
++	printk(KERN_INFO "%s %s Forgot %d open owners", __FILE__, __func__, count);
++}
++
++void nfsd_forget_all_delegations(void)
++{
++	struct nfs4_file *fp;
++	struct nfs4_delegation *dp;
++	struct list_head *pos, *next, reaplist;
++	unsigned int i;
++	unsigned int count = 0;
++
++	INIT_LIST_HEAD(&reaplist);
++
++	nfs4_lock_state();
++	spin_lock(&recall_lock);
++	for (i = 0; i < FILE_HASH_SIZE; i++) {
++		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
++			list_for_each(pos, &fp->fi_delegations) {
++				dp = list_entry(pos, struct nfs4_delegation, dl_perfile);
++				list_del_init(&dp->dl_perclnt);
++				list_move(&dp->dl_recall_lru, &reaplist);
++			}
++		}
++	}
++
++	spin_unlock(&recall_lock);
++	list_for_each_safe(pos, next, &reaplist) {
++		dp = list_entry(pos, struct nfs4_delegation, dl_recall_lru);
++		list_del_init(&dp->dl_recall_lru);
++		unhash_delegation(dp);
++		count++;
++	}
++	nfs4_unlock_state();
++
++	printk(KERN_INFO "%s %s Forgot %d delegations", __FILE__, __func__, count);
++}
++
++void nfsd_recall_all_delegations(void)
++{
++	struct nfs4_file *fp;
++	struct nfs4_delegation *dp;
++	struct list_head *pos;
++	unsigned int i;
++	unsigned int count = 0;
++
++	nfs4_lock_state();
++	spin_lock(&recall_lock);
++	for (i = 0; i < FILE_HASH_SIZE; i++) {
++		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
++			list_for_each(pos, &fp->fi_delegations) {
++				dp = list_entry(pos, struct nfs4_delegation, dl_perfile);
++				nfsd_break_one_deleg(dp);
++				count++;
++			}
++		}
++	}
++	spin_unlock(&recall_lock);
++	nfs4_unlock_state();
++	printk(KERN_INFO "%s %s Recalled %d delegations", __FILE__, __func__, count);
++}
++
++#endif /* CONFIG_NFSD_FAULT_INJECTION */
++
++
+ /* initialization to perform at module load time: */
+ 
+ int
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 1f5eae4..1eb3e92 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1481,6 +1481,9 @@ static int __init init_nfsd(void)
+ 	retval = nfs4_state_init(); /* nfs4 locking state */
+ 	if (retval)
+ 		return retval;
++	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
++	if (retval)
++		goto out_cleanup_fault_injection;
+ 	nfsd_stat_init();	/* Statistics */
+ 	retval = nfsd_reply_cache_init();
+ 	if (retval)
+@@ -1512,6 +1515,8 @@ out_free_cache:
+ out_free_stat:
+ 	nfsd_stat_shutdown();
+ 	nfsd4_free_slabs();
++out_cleanup_fault_injection:
++	nfsd_cleanup_fault_inject();
+ 	return retval;
+ }
+ 
+@@ -1525,6 +1530,7 @@ static void __exit exit_nfsd(void)
+ 	nfsd_lockd_shutdown();
+ 	nfsd_idmap_shutdown();
+ 	nfsd4_free_slabs();
++	nfsd_cleanup_fault_inject();
+ 	unregister_filesystem(&nfsd_fs_type);
+ }
+ 
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 7ecfa24..4a6cded 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -79,11 +79,18 @@ static inline int nfsd_v4client(struct svc_rqst *rq)
+ #ifdef CONFIG_NFSD_V4
+ extern unsigned int max_delegations;
+ int nfs4_state_init(void);
++int nfsd_fault_inject_init(void);
++void nfsd_cleanup_fault_inject(void);
+ void nfsd4_free_slabs(void);
+ int nfs4_state_start(void);
+ void nfs4_state_shutdown(void);
+ void nfs4_reset_lease(time_t leasetime);
+ int nfs4_reset_recoverydir(char *recdir);
++void nfsd_forget_all_clients(void);
++void nfsd_forget_all_locks(void);
++void nfsd_forget_all_open_owners(void);
++void nfsd_forget_all_delegations(void);
++void nfsd_recall_all_delegations(void);
+ #else
+ static inline int nfs4_state_init(void) { return 0; }
+ static inline void nfsd4_free_slabs(void) { }
+@@ -91,6 +98,11 @@ static inline int nfs4_state_start(void) { return 0; }
+ static inline void nfs4_state_shutdown(void) { }
+ static inline void nfs4_reset_lease(time_t leasetime) { }
+ static inline int nfs4_reset_recoverydir(char *recdir) { return 0; }
++static inline void nfsd_forget_all_clients(void) {};
++static inline void nfsd_forget_all_locks(void) {};
++static inline void nfsd_forget_all_open_owners(void) {};
++static inline void nfsd_forget_all_delegations(void) {};
++static inline void nfsd_recall_all_delegations(void) {};
+ #endif
+ 
+ /*
