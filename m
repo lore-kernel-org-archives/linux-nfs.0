@@ -1,43 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:45715 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754377Ab1EWOWY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 10:22:24 -0400
-Received: by gyd10 with SMTP id 10so2094647gyd.19
-        for <linux-nfs@vger.kernel.org>; Mon, 23 May 2011 07:22:23 -0700 (PDT)
-In-Reply-To: <4DD855CD.3060901@panasas.com>
-References: <4DD84E8E.5040508@panasas.com>
-	<4DD855CD.3060901@panasas.com>
-Date: Mon, 23 May 2011 10:22:23 -0400
-Message-ID: <BANLkTim30-pDMWTyirSh4uT-C9zJK9XyJg@mail.gmail.com>
-Subject: Re: Smack on the head: Questions about pnfs write path
-From: Fred Isaman <iisaman@netapp.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:21981 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757050Ab1ETULj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 May 2011 16:11:39 -0400
+Subject: Re: 2.6.38.6 - state manager constantly respawns
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Harry Edmon <harry@uw.edu>
+Cc: "Dr. J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Date: Fri, 20 May 2011 16:11:23 -0400
+In-Reply-To: <4DD6C4A3.5010709@uw.edu>
+References: <05D08339-888C-4A64-BDC5-8667B3901E7A@oracle.com>
+			 <4DD1772E.9010609@uw.edu>
+		 <6A6FB1C3-D4C3-40BE-810A-B4551FA9E591@oracle.com>
+			 <4DD17CB5.7010009@uw.edu> <1305575007.19725.3.camel@lade.trondhjem.org>
+			 <4DD17F79.305@uw.edu> <1305575656.19725.9.camel@lade.trondhjem.org>
+			 <20110516202059.GC1680@fieldses.org> <20110516205351.GD1680@fieldses.org>
+			 <4DD694DF.2060302@uw.edu> <20110520172639.GA11670@fieldses.org>
+		 <1305913963.12712.6.camel@lade.trondhjem.org> <4DD6C103.7090302@uw.edu>
+	 <1305920417.14253.15.camel@lade.trondhjem.org> <4DD6C4A3.5010709@uw.edu>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1305922283.14253.24.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, May 21, 2011 at 8:16 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 05/22/2011 02:45 AM, Boaz Harrosh wrote:
->>
->> Fred git blame points to you:
->>
->> What was the meaning of the below code:
->>
->
-> OK Smack *ME* on the head
->
-> A layout driver must have a .pg_test function else
-> that's what happens. pNFS only for a single page.
-> I'd say it should be opposite no?
->
+On Fri, 2011-05-20 at 12:44 -0700, Harry Edmon wrote: 
+> > Once a minute is rather unusual... What kind of server are you running
+> > against?
+> >
+> > If it is a Linux server, what is the value contained in the virtual file
+> > "/proc/fs/nfsd/nfsv4leasetime" ?
+> >
+> >    
+> Same as before - Debian Squeeze running 2.6.38.6.   The value of 
+> /proc/fs/nfsd/nfsv4leasetime is 90 and is not something I changed.
 
-Right now, a driver with no pg_test function erroneously misses the
-pnfs_update_layout call in multi-page io.  I'll send a patch to fix
-that shortly.
+OK... Does 'nfsstat' on the server show any 'delegreturn' updates around
+the time when the state manager thread runs? It could just be that it is
+reaping all your unused delegations.
 
-Fred
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
