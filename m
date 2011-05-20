@@ -1,100 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:18603 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753584Ab1EUIn2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 May 2011 04:43:28 -0400
-Message-ID: <4DD77B2A.5080707@panasas.com>
-Date: Sat, 21 May 2011 11:43:22 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: [RFC] Bugs in new pnfs write path
-References: <4DD772E4.2030505@panasas.com>
-In-Reply-To: <4DD772E4.2030505@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:58022 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933419Ab1ETSu5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 May 2011 14:50:57 -0400
+Message-ID: <4DD6B80E.8010402@netapp.com>
+Date: Fri, 20 May 2011 14:50:54 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "Dr. J. Bruce Fields" <bfields@fieldses.org>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, Harry Edmon <harry@uw.edu>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: 2.6.38.6 - state manager constantly respawns
+References: <6A6FB1C3-D4C3-40BE-810A-B4551FA9E591@oracle.com> <4DD17CB5.7010009@uw.edu> <1305575007.19725.3.camel@lade.trondhjem.org> <4DD17F79.305@uw.edu> <1305575656.19725.9.camel@lade.trondhjem.org> <20110516202059.GC1680@fieldses.org> <20110516205351.GD1680@fieldses.org> <4DD694DF.2060302@uw.edu> <20110520172639.GA11670@fieldses.org> <1305913963.12712.6.camel@lade.trondhjem.org> <20110520184738.GB11670@fieldses.org>
+In-Reply-To: <20110520184738.GB11670@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On 05/20/2011 02:47 PM, Dr. J. Bruce Fields wrote:
+> On Fri, May 20, 2011 at 01:52:43PM -0400, Trond Myklebust wrote:
+>> On Fri, 2011-05-20 at 13:26 -0400, Dr. J. Bruce Fields wrote: 
+>>> On Fri, May 20, 2011 at 09:20:47AM -0700, Harry Edmon wrote:
+>>>> On 05/16/11 13:53, Dr. J. Bruce Fields wrote:
+>>>>> Hm, so the renews all have clid 465ccc4d09000000, and the reads all have
+>>>>> a stateid (0, 465ccc4dc24c0a0000000000).
+>>>>>
+>>>>> So the first 4 bytes matching just tells me both were handed out by the
+>>>>> same server instance (so there was no server reboot in between); there's
+>>>>> no way for me to tell whether they really belong to the same client.
+>>>>>
+>>>>> The server does assume that any stateid from the current server instance
+>>>>> that no longer exists in its table is expired.  I believe that's
+>>>>> correct, given a correctly functioning client, but perhaps I'm missing a
+>>>>> case.
+>>>>>
+>>>>> --b.
+>>>> I am very appreciative of the quick initial comments I receive from
+>>>> all of you on my NFS problem.   I notice that there has been silence
+>>>> on the problem since the 16th, so I assume that either this is a
+>>>> hard bug to track down or you have been busy with higher priority
+>>>> tasks.  Is there anything I can do to help develop a solution to
+>>>> this problem?
+>>>
+>>> Well, the only candidate explanation for the problem is that my
+>>> assumption--that any time the server gets a stateid from the current
+>>> boot instance that it doesn't recognize as an active stateid, it is safe
+>>> for the server to return EXPIRED--is wrong.
+>>>
+>>> I don't immediately see why it's wrong, and based on the silence nobody
+>>> else does either, but I'm not 100% convinced I'm right either.
+>>>
+>>> So one approach might be to add server code that makes a better effort
+>>> to return EXPIRED only when we're sure it's a stateid from an expired
+>>> client, and see if that solves your problem.
+>>>
+>>> Remind me, did you have an easy way to reproduce your problem?
+>>
+>> My silence is simply because I'm mystified as to how this can happen.
+> 
+> So since the client's sending it with a READ, the client thinks that the
+> stateid is still a valid open, lock, or delegation stateid, while the
+> server thinks it's not.  Hm.
 
-1. In nfs4_write_done_cb: data->write_done_cb comes with a NULL.
-   Just as a guess I call nfs4_write_done_cb() just above it
-   it looked like the right thing todo. With that in, I'm able
-   to write things to file When converting pnfs.c:258 to a WARN_ON.
+I found this bug when I used "forget all locks" in the fault injection code I recently posted.  Trond's fix works for me.
 
-   Benny we might want to set data->write_done_cb somewhere in the
-   none-rpc path? where is it best to do that?
+- Bryan
 
-2. In pnfs_ld_write_done:
-	put_lseg(data->lseg);
-	data->lseg = NULL;
-   was done before the call to pnfs_set_layoutcommit()
-   which trys to get_lseg() on that same data->lseg.
-
-3. In pnfs_ld_write_done:
-   data->mds_ops->rpc_call_done(NULL, data);
-   crashes with a NULL task. Just pass it with &data->task
-
-   Which calls for a cleanup. There is bunch of functions
-   with [task, write_data] API. And the task is always
-   write_data->task
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfs/nfs4proc.c |    3 ++-
- fs/nfs/pnfs.c     |   10 ++++++----
- 2 files changed, 8 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 759523a..1a53187 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3250,7 +3250,8 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
- {
- 	if (!nfs4_sequence_done(task, &data->res.seq_res))
- 		return -EAGAIN;
--	return data->write_done_cb(task, data);
-+	return data->write_done_cb ? data->write_done_cb(task, data) :
-+		nfs4_write_done_cb(task, data);
- }
- 
- /* Reset the the nfs_write_data to send the write to the MDS. */
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 17d0c4c..b04cdb4 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -255,7 +255,7 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
- {
- 	struct inode *inode = lseg->pls_layout->plh_inode;
- 
--	BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
-+ 	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 	list_del_init(&lseg->pls_list);
- 	if (list_empty(&lseg->pls_layout->plh_segs)) {
- 		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
-@@ -1124,15 +1124,17 @@ pnfs_ld_write_done(struct nfs_write_data *data)
- {
- 	int status;
- 
--	put_lseg(data->lseg);
--	data->lseg = NULL;
- 	if (!data->pnfs_error) {
- 		pnfs_set_layoutcommit(data);
--		data->mds_ops->rpc_call_done(NULL, data);
-+		data->mds_ops->rpc_call_done(&data->task, data);
- 		data->mds_ops->rpc_release(data);
-+		put_lseg(data->lseg);
-+		data->lseg = NULL;
- 		return 0;
- 	}
- 
-+	put_lseg(data->lseg);
-+	data->lseg = NULL;
- 	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
- 		data->pnfs_error);
- 	status = nfs_initiate_write(data, NFS_CLIENT(data->inode), data->mds_ops, NFS_FILE_SYNC);
--- 
-1.7.2.3
-
+> 
+> --b.
+> 
+>> Patching for it is trivial (see below).
+>>
+>> When the server tells us that our lease is expired, the normal behaviour
+>> for the client is to re-establish the lease, and then proceed to recover
+>> all known stateids. I don't see how we can 'miss' a stateid that then
+>> needs to be recovered afterwards...
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
