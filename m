@@ -1,114 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:37930 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:18603 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753631Ab1EIRHL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:07:11 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 04/29] pnfs: Use byte-range for cb_layoutrecall
-Date: Mon,  9 May 2011 20:07:03 +0300
-Message-Id: <1304960823-3902-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DC81E8C.6040901@panasas.com>
-References: <4DC81E8C.6040901@panasas.com>
+	with ESMTP id S1753584Ab1EUIn2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 May 2011 04:43:28 -0400
+Message-ID: <4DD77B2A.5080707@panasas.com>
+Date: Sat, 21 May 2011 11:43:22 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [RFC] Bugs in new pnfs write path
+References: <4DD772E4.2030505@panasas.com>
+In-Reply-To: <4DD772E4.2030505@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Use recalled range to invalidate particular layout segments in the layout cache.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+1. In nfs4_write_done_cb: data->write_done_cb comes with a NULL.
+   Just as a guess I call nfs4_write_done_cb() just above it
+   it looked like the right thing todo. With that in, I'm able
+   to write things to file When converting pnfs.c:258 to a WARN_ON.
+
+   Benny we might want to set data->write_done_cb somewhere in the
+   none-rpc path? where is it best to do that?
+
+2. In pnfs_ld_write_done:
+	put_lseg(data->lseg);
+	data->lseg = NULL;
+   was done before the call to pnfs_set_layoutcommit()
+   which trys to get_lseg() on that same data->lseg.
+
+3. In pnfs_ld_write_done:
+   data->mds_ops->rpc_call_done(NULL, data);
+   crashes with a NULL task. Just pass it with &data->task
+
+   Which calls for a cleanup. There is bunch of functions
+   with [task, write_data] API. And the task is always
+   write_data->task
+
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- fs/nfs/callback_proc.c |    4 ++--
- fs/nfs/pnfs.c          |   15 +++++++++------
- fs/nfs/pnfs.h          |    2 +-
- 3 files changed, 12 insertions(+), 9 deletions(-)
+ fs/nfs/nfs4proc.c |    3 ++-
+ fs/nfs/pnfs.c     |   10 ++++++----
+ 2 files changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 975c8f2..964c416 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -139,7 +139,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 	spin_lock(&ino->i_lock);
- 	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
- 	    mark_matching_lsegs_invalid(lo, &free_me_list,
--					args->cbl_range.iomode))
-+					&args->cbl_range))
- 		rv = NFS4ERR_DELAY;
- 	else
- 		rv = NFS4ERR_NOMATCHING_LAYOUT;
-@@ -184,7 +184,7 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
- 		ino = lo->plh_inode;
- 		spin_lock(&ino->i_lock);
- 		set_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
--		if (mark_matching_lsegs_invalid(lo, &free_me_list, range.iomode))
-+		if (mark_matching_lsegs_invalid(lo, &free_me_list, &range))
- 			rv = NFS4ERR_DELAY;
- 		list_del_init(&lo->plh_bulk_recall);
- 		spin_unlock(&ino->i_lock);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 759523a..1a53187 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3250,7 +3250,8 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
+ {
+ 	if (!nfs4_sequence_done(task, &data->res.seq_res))
+ 		return -EAGAIN;
+-	return data->write_done_cb(task, data);
++	return data->write_done_cb ? data->write_done_cb(task, data) :
++		nfs4_write_done_cb(task, data);
+ }
+ 
+ /* Reset the the nfs_write_data to send the write to the MDS. */
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index e689bdf..b58155a 100644
+index 17d0c4c..b04cdb4 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -321,10 +321,12 @@ lo_seg_intersecting(struct pnfs_layout_range *l1,
- }
- 
- static bool
--should_free_lseg(u32 lseg_iomode, u32 recall_iomode)
-+should_free_lseg(struct pnfs_layout_range *lseg_range,
-+		 struct pnfs_layout_range *recall_range)
+@@ -255,7 +255,7 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
  {
--	return (recall_iomode == IOMODE_ANY ||
--		lseg_iomode == recall_iomode);
-+	return (recall_range->iomode == IOMODE_ANY ||
-+		lseg_range->iomode == recall_range->iomode) &&
-+	       lo_seg_intersecting(lseg_range, recall_range);
- }
+ 	struct inode *inode = lseg->pls_layout->plh_inode;
  
- /* Returns 1 if lseg is removed from list, 0 otherwise */
-@@ -355,7 +357,7 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
- int
- mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
- 			    struct list_head *tmp_list,
--			    u32 iomode)
-+			    struct pnfs_layout_range *recall_range)
+-	BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
++ 	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+ 	list_del_init(&lseg->pls_list);
+ 	if (list_empty(&lseg->pls_layout->plh_segs)) {
+ 		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
+@@ -1124,15 +1124,17 @@ pnfs_ld_write_done(struct nfs_write_data *data)
  {
- 	struct pnfs_layout_segment *lseg, *next;
- 	int invalid = 0, removed = 0;
-@@ -368,7 +370,8 @@ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 	int status;
+ 
+-	put_lseg(data->lseg);
+-	data->lseg = NULL;
+ 	if (!data->pnfs_error) {
+ 		pnfs_set_layoutcommit(data);
+-		data->mds_ops->rpc_call_done(NULL, data);
++		data->mds_ops->rpc_call_done(&data->task, data);
+ 		data->mds_ops->rpc_release(data);
++		put_lseg(data->lseg);
++		data->lseg = NULL;
  		return 0;
  	}
- 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
--		if (should_free_lseg(lseg->pls_range.iomode, iomode)) {
-+		if (!recall_range ||
-+		    should_free_lseg(&lseg->pls_range, recall_range)) {
- 			dprintk("%s: freeing lseg %p iomode %d "
- 				"offset %llu length %llu\n", __func__,
- 				lseg, lseg->pls_range.iomode, lseg->pls_range.offset,
-@@ -417,7 +420,7 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
- 	lo = nfsi->layout;
- 	if (lo) {
- 		lo->plh_block_lgets++; /* permanently block new LAYOUTGETs */
--		mark_matching_lsegs_invalid(lo, &tmp_list, IOMODE_ANY);
-+		mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
- 	}
- 	spin_unlock(&nfsi->vfs_inode.i_lock);
- 	pnfs_free_lseg_list(&tmp_list);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 14a2af9..02ef40c 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -151,7 +151,7 @@ int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
- 				  struct nfs4_state *open_state);
- int mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
- 				struct list_head *tmp_list,
--				u32 iomode);
-+				struct pnfs_layout_range *recall_range);
- bool pnfs_roc(struct inode *ino);
- void pnfs_roc_release(struct inode *ino);
- void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+ 
++	put_lseg(data->lseg);
++	data->lseg = NULL;
+ 	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
+ 		data->pnfs_error);
+ 	status = nfs_initiate_write(data, NFS_CLIENT(data->inode), data->mds_ops, NFS_FILE_SYNC);
 -- 
-1.7.3.4
+1.7.2.3
+
 
