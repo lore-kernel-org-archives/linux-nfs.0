@@ -1,62 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 4dicksons.org ([207.22.49.45]:54189 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751452Ab1EPQd2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 12:33:28 -0400
-Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
-	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
-	(envelope-from <steved@redhat.com>)
-	id 1QM03i-0000Aq-Qm
-	for linux-nfs@vger.kernel.org; Mon, 16 May 2011 11:50:15 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH] Removed compilation warnings from mountd/cache.c
-Date: Mon, 16 May 2011 11:50:14 -0400
-Message-Id: <1305561014-25688-1-git-send-email-steved@redhat.com>
+Received: from daytona.panasas.com ([67.152.220.89]:19790 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753727Ab1EUKdN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 May 2011 06:33:13 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 10/13] [RFC] Bugs in new pnfs write path
+Date: Sat, 21 May 2011 13:33:02 +0300
+Message-Id: <1305973982-17499-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DD79273.9030202@panasas.com>
+References: <4DD79273.9030202@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Commit 5604b35a6 introduced a number of missing initializer
-warnings that were missed. This patch removes those warnings.
+1. In nfs4_write_done_cb: data->write_done_cb comes with a NULL.
+   Just as a guess I call nfs4_write_done_cb() just above it
+   it looked like the right thing todo. With that in, I'm able
+   to write things to file When converting pnfs.c:258 to a WARN_ON.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+   Benny we might want to set data->write_done_cb somewhere in the
+   none-rpc path? where is it best to do that?
+
+2. In pnfs_ld_write_done:
+	put_lseg(data->lseg);
+	data->lseg = NULL;
+   was done before the call to pnfs_set_layoutcommit()
+   which trys to get_lseg() on that same data->lseg.
+
+3. In pnfs_ld_write_done:
+   data->mds_ops->rpc_call_done(NULL, data);
+   crashes with a NULL task. Just pass it with &data->task
+
+   Which calls for a cleanup. There is bunch of functions
+   with [task, write_data] API. And the task is always
+   write_data->task
+
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- utils/mountd/cache.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+ fs/nfs/nfs4proc.c |    3 ++-
+ fs/nfs/pnfs.c     |   10 ++++++----
+ 2 files changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index df6b38f..86a2790 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -825,7 +825,6 @@ struct {
- 	char *cache_name;
- 	void (*cache_handle)(FILE *f);
- 	FILE *f;
--	char vbuf[RPC_CHAN_BUF_SIZE];
- } cachelist[] = {
- 	{ "auth.unix.ip", auth_unix_ip, NULL},
- 	{ "auth.unix.gid", auth_unix_gid, NULL},
-@@ -833,6 +832,9 @@ struct {
- 	{ "nfsd.fh", nfsd_fh, NULL},
- 	{ NULL, NULL, NULL }
- };
-+struct vbs {
-+	char vbuf[RPC_CHAN_BUF_SIZE];
-+} vbufs [(sizeof(cachelist)/sizeof(cachelist[0])) - 1];
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 759523a..1a53187 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3250,7 +3250,8 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
+ {
+ 	if (!nfs4_sequence_done(task, &data->res.seq_res))
+ 		return -EAGAIN;
+-	return data->write_done_cb(task, data);
++	return data->write_done_cb ? data->write_done_cb(task, data) :
++		nfs4_write_done_cb(task, data);
+ }
  
- extern int manage_gids;
+ /* Reset the the nfs_write_data to send the write to the MDS. */
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 17d0c4c..b04cdb4 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -255,7 +255,7 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
+ {
+ 	struct inode *inode = lseg->pls_layout->plh_inode;
  
-@@ -850,7 +852,7 @@ void cache_open(void)
- 		sprintf(path, "/proc/net/rpc/%s/channel", cachelist[i].cache_name);
- 		cachelist[i].f = fopen(path, "r+");
- 		if (cachelist[i].f != NULL) {
--			setvbuf(cachelist[i].f, cachelist[i].vbuf, _IOLBF, 
-+			setvbuf(cachelist[i].f, vbufs[i].vbuf, _IOLBF, 
- 				RPC_CHAN_BUF_SIZE);
- 		}
+-	BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
++ 	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+ 	list_del_init(&lseg->pls_list);
+ 	if (list_empty(&lseg->pls_layout->plh_segs)) {
+ 		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
+@@ -1124,15 +1124,17 @@ pnfs_ld_write_done(struct nfs_write_data *data)
+ {
+ 	int status;
+ 
+-	put_lseg(data->lseg);
+-	data->lseg = NULL;
+ 	if (!data->pnfs_error) {
+ 		pnfs_set_layoutcommit(data);
+-		data->mds_ops->rpc_call_done(NULL, data);
++		data->mds_ops->rpc_call_done(&data->task, data);
+ 		data->mds_ops->rpc_release(data);
++		put_lseg(data->lseg);
++		data->lseg = NULL;
+ 		return 0;
  	}
+ 
++	put_lseg(data->lseg);
++	data->lseg = NULL;
+ 	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
+ 		data->pnfs_error);
+ 	status = nfs_initiate_write(data, NFS_CLIENT(data->inode), data->mds_ops, NFS_FILE_SYNC);
 -- 
-1.7.4.4
+1.7.2.3
 
