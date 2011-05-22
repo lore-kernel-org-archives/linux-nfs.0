@@ -1,243 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:59513 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756637Ab1EFQuO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 May 2011 12:50:14 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 2/3] NFS: added FREE_STATEID call
-Date: Fri,  6 May 2011 12:49:54 -0400
-Message-Id: <1304700595-5040-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1304700595-5040-1-git-send-email-bjschuma@netapp.com>
-References: <1304700595-5040-1-git-send-email-bjschuma@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:43522 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754346Ab1EVX5m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 19:57:42 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v5 20/38] pnfs: per mount layout driver private data
+Date: Mon, 23 May 2011 02:57:29 +0300
+Message-Id: <1306108649-28644-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD99F9B.2040406@panasas.com>
+References: <4DD99F9B.2040406@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+With the objects layout security model we have object capabilities
+that are associated with the layout ad we anticipate that the server
+will issue a cb_layoutrecall for any setattr that changes security
+related attributes (user/group/mode/acl) or truncates the file.
+Therefore, the client returns the layout in advance to avoid the
+extra layout recall.
 
-FREE_STATEID is used to tell the server that we want to free a stateid
-that no longer has any locks associated with it.  This allows the client
-to reclaim locks without encountering edge conditions documented in
-section 8.4.3 of RFC 5661.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+[get rid of ds_[rw]size]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/nfs4proc.c       |   30 +++++++++++++++++
- fs/nfs/nfs4xdr.c        |   80 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs4.h    |    1 +
- include/linux/nfs_xdr.h |   10 ++++++
- 4 files changed, 121 insertions(+), 0 deletions(-)
+ include/linux/nfs_fs_sb.h |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 044c151..9eb6d2b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5819,6 +5819,36 @@ static int nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *stat
- 	} while (exception.retry);
- 	return err;
- }
-+
-+static int _nfs4_free_stateid(struct nfs_server *server, struct nfs4_state *state)
-+{
-+	int status;
-+	struct nfs41_free_stateid_args args = {
-+		.stateid = &state->stateid,
-+	};
-+	struct nfs41_free_stateid_res res;
-+	struct rpc_message msg = {
-+		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_FREE_STATEID],
-+		.rpc_argp = &args,
-+		.rpc_resp = &res,
-+	};
-+
-+	args.seq_args.sa_session = res.seq_res.sr_session = NULL;
-+	status = nfs4_call_sync_sequence(server->client, server, &msg, &args.seq_args, &res.seq_res, 0, 1);
-+	return status;
-+}
-+
-+static int nfs41_free_stateid(struct nfs_server *server, struct nfs4_state *state)
-+{
-+	struct nfs4_exception exception = { };
-+	int err;
-+	do {
-+		err = nfs4_handle_exception(server,
-+				_nfs4_free_stateid(server, state),
-+				&exception);
-+	} while (exception.retry);
-+	return err;
-+}
- #endif /* CONFIG_NFS_V4_1 */
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 87694ca..66e031f 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -143,6 +143,7 @@ struct nfs_server {
+ 						   filesystem */
+ 	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
+ 	struct rpc_wait_queue	roc_rpcwaitq;
++	void			       *pnfs_ld_data; /* Per-mount data */
  
- struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 2746616..1c48c7cf 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -341,6 +341,9 @@ static int nfs4_stat_to_errno(int);
- #define encode_test_stateid_maxsz	(op_encode_hdr_maxsz + 8 + \
- 					 XDR_QUADLEN(NFS4_STATEID_SIZE))
- #define decode_test_stateid_maxsz	(op_decode_hdr_maxsz + 8 + 4)
-+#define encode_free_stateid_maxsz	(op_encode_hdr_maxsz + 4 + \
-+					 XDR_QUADLEN(NFS4_STATEID_SIZE))
-+#define decode_free_stateid_maxsz	(op_decode_hdr_maxsz + 4)
- 
- #else /* CONFIG_NFS_V4_1 */
- #define encode_sequence_maxsz	0
-@@ -769,6 +772,12 @@ static int nfs4_stat_to_errno(int);
- #define NFS4_dec_test_stateid_sz	(compound_decode_hdr_maxsz + \
- 					 decode_sequence_maxsz + \
- 					 decode_test_stateid_maxsz)
-+#define NFS4_enc_free_stateid_sz	(compound_encode_hdr_maxsz + \
-+					 encode_sequence_maxsz + \
-+					 encode_free_stateid_maxsz)
-+#define NFS4_dec_free_stateid_sz	(compound_decode_hdr_maxsz + \
-+					 decode_sequence_maxsz + \
-+					 decode_free_stateid_maxsz)
- 
- 
- const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
-@@ -1912,6 +1921,18 @@ static void encode_test_stateid(struct xdr_stream *xdr,
- 	hdr->nops++;
- 	hdr->replen += decode_test_stateid_maxsz;
- }
-+
-+static void encode_free_stateid(struct xdr_stream *xdr,
-+				struct nfs41_free_stateid_args *args,
-+				struct compound_hdr *hdr)
-+{
-+	__be32 *p;
-+	p = reserve_space(xdr, 4 + NFS4_STATEID_SIZE);
-+	*p++ = cpu_to_be32(OP_FREE_STATEID);
-+	xdr_encode_opaque_fixed(p, args->stateid->data, NFS4_STATEID_SIZE);
-+	hdr->nops++;
-+	hdr->replen += decode_free_stateid_maxsz;
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- /*
-@@ -2762,6 +2783,23 @@ static void nfs4_xdr_enc_test_stateid(struct rpc_rqst *req,
- 	encode_test_stateid(xdr, args, &hdr);
- 	encode_nops(&hdr);
- }
-+
-+/*
-+ *  Encode FREE_STATEID request
-+ */
-+static void nfs4_xdr_enc_free_stateid(struct rpc_rqst *req,
-+				     struct xdr_stream *xdr,
-+				     struct nfs41_free_stateid_args *args)
-+{
-+	struct compound_hdr hdr = {
-+		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
-+	};
-+
-+	encode_compound_hdr(xdr, req, &hdr);
-+	encode_sequence(xdr, &args->seq_args, &hdr);
-+	encode_free_stateid(xdr, args, &hdr);
-+	encode_nops(&hdr);
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
-@@ -5300,6 +5338,26 @@ out_overflow:
- out:
- 	return -EIO;
- }
-+
-+static int decode_free_stateid(struct xdr_stream *xdr,
-+			       struct nfs41_free_stateid_res *res)
-+{
-+	__be32 *p;
-+	int status;
-+
-+	status = decode_op_hdr(xdr, OP_FREE_STATEID);
-+	if (status)
-+		return status;
-+
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(!p))
-+		goto out_overflow;
-+	res->status = be32_to_cpup(p++);
-+	return res->status;
-+out_overflow:
-+	print_overflow_msg(__func__, xdr);
-+	return -EIO;
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- /*
-@@ -6436,6 +6494,27 @@ static int nfs4_xdr_dec_test_stateid(struct rpc_rqst *rqstp,
- out:
- 	return status;
- }
-+
-+/*
-+ * Decode FREE_STATEID response
-+ */
-+static int nfs4_xdr_dec_free_stateid(struct rpc_rqst *rqstp,
-+				     struct xdr_stream *xdr,
-+				     struct nfs41_free_stateid_res *res)
-+{
-+	struct compound_hdr hdr;
-+	int status;
-+
-+	status = decode_compound_hdr(xdr, &hdr);
-+	if (status)
-+		goto out;
-+	status = decode_sequence(xdr, &res->seq_res, rqstp);
-+	if (status)
-+		goto out;
-+	status = decode_free_stateid(xdr, res);
-+out:
-+	return status;
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- /**
-@@ -6638,6 +6717,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
- 	PROC(LAYOUTGET,		enc_layoutget,		dec_layoutget),
- 	PROC(LAYOUTCOMMIT,	enc_layoutcommit,	dec_layoutcommit),
- 	PROC(TEST_STATEID,	enc_test_stateid,	dec_test_stateid),
-+	PROC(FREE_STATEID,	enc_free_stateid,	dec_free_stateid),
- #endif /* CONFIG_NFS_V4_1 */
- };
- 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 0df1eed..761c1af 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -563,6 +563,7 @@ enum {
- 	NFSPROC4_CLNT_GETDEVICEINFO,
- 	NFSPROC4_CLNT_LAYOUTCOMMIT,
- 	NFSPROC4_CLNT_TEST_STATEID,
-+	NFSPROC4_CLNT_FREE_STATEID,
- };
- 
- /* nfs41 types */
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 36f50dc..73f02e8 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1072,6 +1072,16 @@ struct nfs41_test_stateid_res {
- 	unsigned int			status;
- 	struct nfs4_sequence_res	seq_res;
- };
-+
-+struct nfs41_free_stateid_args {
-+	nfs4_stateid			*stateid;
-+	struct nfs4_sequence_args	seq_args;
-+};
-+
-+struct nfs41_free_stateid_res {
-+	unsigned int			status;
-+	struct nfs4_sequence_res	seq_res;
-+};
- #endif /* CONFIG_NFS_V4_1 */
- 
- struct nfs_page;
+ 	/* the following fields are protected by nfs_client->cl_lock */
+ 	struct rb_root		state_owners;
 -- 
-1.7.5.1
+1.7.3.4
 
