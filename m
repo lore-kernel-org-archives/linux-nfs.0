@@ -1,97 +1,203 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:20173 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753528Ab1EDOzP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 May 2011 10:55:15 -0400
-Subject: Re: [[RFC] 1/1] SUNRPC: dynamic rpc_slot allocator for TCP
-Content-Type: text/plain; charset=us-ascii
-From: Andy Adamson <andros@netapp.com>
-In-Reply-To: <20110504075410.5e59c6b4@tlielax.poochiereds.net>
-Date: Wed, 4 May 2011 10:54:57 -0400
-Cc: NeilBrown <neilb@suse.de>, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Message-Id: <0424D640-C315-449B-847A-59105BBADBCE@netapp.com>
-References: <1304386808-2733-1-git-send-email-andros@netapp.com> <1304386808-2733-2-git-send-email-andros@netapp.com> <20110503202023.699435f4@corrin.poochiereds.net> <1304469890.26184.16.camel@lade.trondhjem.org> <20110504111825.6f26f75a@notabene.brown> <1304473563.26184.28.camel@lade.trondhjem.org> <20110504120726.347df3fc@notabene.brown> <20110504075410.5e59c6b4@tlielax.poochiereds.net>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from daytona.panasas.com ([67.152.220.89]:43547 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754412Ab1EWAAL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 20:00:11 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v5 26/38] NFSv4.1: use layout driver in global device cache
+Date: Mon, 23 May 2011 02:59:56 +0300
+Message-Id: <1306108796-28883-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD99F9B.2040406@panasas.com>
+References: <4DD99F9B.2040406@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+pnfs deviceids are unique per server, per layout type.
+struct nfs_client is currently used to distinguish deviceids from
+different nfs servers, yet these may clash between different layout
+types on the same server.  Therefore, use the layout driver associated
+with each deviceid at insertion time to look it up, unhash, or
+delete it.
 
-On May 4, 2011, at 7:54 AM, Jeff Layton wrote:
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/callback_proc.c       |    2 +-
+ fs/nfs/nfs4filelayout.c      |    3 ++-
+ fs/nfs/objlayout/objio_osd.c |    6 +++---
+ fs/nfs/pnfs.h                |    6 +++---
+ fs/nfs/pnfs_dev.c            |   28 +++++++++++++++++-----------
+ 5 files changed, 26 insertions(+), 19 deletions(-)
 
-> On Wed, 4 May 2011 12:07:26 +1000
-> NeilBrown <neilb@suse.de> wrote:
-> 
->> On Tue, 03 May 2011 21:46:03 -0400 Trond Myklebust
->> <Trond.Myklebust@netapp.com> wrote:
->> 
->>> On Wed, 2011-05-04 at 11:18 +1000, NeilBrown wrote:
->>>> For rpc slots, I doubt you need mempools at all.
->>>> Mempools are only needed if failure is not an option and you would rather
->>>> wait, but you cannot wait for regular writeback because you are on the
->>>> writeback path.  So you use a mempool which waits for a previous request to
->>>> complete.  I don't think that describes rpc slots at all.
->>>> For rpc slots, you can afford to wait when setting up the transport, as you
->>>> are not on the writeout path yet, and later you can always cope with failure.
->>>> So just use kmalloc.
->>> 
->>> Errr.... No. By the time you get to allocating an RPC slot, you may be
->>> bang smack in the middle of the writeout path.
->>> 
->>> The scenario would be that something triggers a writeback (kswapd,
->>> direct reclaim,...) which triggers an RPC call, which requires you to
->>> allocate at least one rpc slot before you can put the write on the wire.
->>> 
->>> I agree with your assertion that we only need one successful slot
->>> allocation in order to make overall forward progress, but we definitely
->>> do need that one...
->>> 
->> 
->> Probably I misunderstood the code, but I thought that there was a base set of
->> slots preallocated.  Eventually one of those will become free won't it?
->> 
->> Looking at the code again, it only ever returns entries to the mempool when
->> it is about to destroy the xprt.  That makes no sense.  If you are using a
->> mempool, then you allocate when you need to use space, and free it as soon as
->> you have finished with it, so the next request can get a turn.
->> 
-> 
-> That was sort of my point, though I didn't articulate it very well.
-> 
-> I don't think we want to keep this "static" set of rqsts and the
-> mempool. It seems like that's somewhat redundant and more complex than
-> is warranted. The question is...which should we keep?
-> 
-> I think it sort of depends on what the intended model is. If we want to
-> allocate out of the "guaranteed" pool first and only when that's
-> exhausted fall back to doing dynamic allocations, then we probably want
-> to keep the static list of entries.
-> 
-> If we want to allocate dynamically most of the time and only dip into
-> the "guaranteed" pool when that can't be satisfied, then basing all of
-> this around mempools might make more sense.
-
-Thanks for the review - I've learned a lot about mempools from this discussion.
-
-I've noticed that a lot of the time, (at least for TCP) rpc_slots are allocated and not used.
-The default slot entries value is a guess. This is why I like the idea of dynamically allocating most 
-of the time, and only dipping into the guaranteed pool when the dynamic allocation
-can't be satisfied. e.g. get rid of the static set of slots.
-Does this design require two mempools, one for dynamic allocation and a guaranteed one being small and "in reserve"?
-
-For UDP and RDMA, the default # of slot entries can turn into an upper bound.
-For TCP, the default # of slot entries would have no meaning WRT upper bound, as the upper bound is determined
-by the TCP window size.
-
-We should actually free the slots in xprt_free_slot to return the slot to the mempool.
-
--->Andy
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 5780c37..d4d1954 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -278,7 +278,7 @@ __be32 nfs4_callback_devicenotify(struct cb_devicenotifyargs *args,
+ 		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
+ 			dprintk("%s: NOTIFY_DEVICEID4_CHANGE not supported, "
+ 				"deleting instead\n", __func__);
+-		nfs4_delete_deviceid(clp, &dev->cbd_dev_id);
++		nfs4_delete_deviceid(server->pnfs_curr_ld, clp, &dev->cbd_dev_id);
+ 	}
+ 
+ out:
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 5b3080d..2529db0 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -441,7 +441,8 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+ 	}
+ 
+ 	/* find and reference the deviceid */
+-	d = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode)->nfs_client, id);
++	d = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode)->pnfs_curr_ld,
++				   NFS_SERVER(lo->plh_inode)->nfs_client, id);
+ 	if (d == NULL) {
+ 		dsaddr = get_device_info(lo->plh_inode, id, gfp_flags);
+ 		if (dsaddr == NULL)
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index bcc8468..a4201d8 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -60,12 +60,12 @@ objio_free_deviceid_node(struct nfs4_deviceid_node *d)
+ 	kfree(de);
+ }
+ 
+-static struct objio_dev_ent *_dev_list_find(const struct nfs_client *clp,
++static struct objio_dev_ent *_dev_list_find(const struct nfs_server *nfss,
+ 	const struct nfs4_deviceid *d_id)
+ {
+ 	struct nfs4_deviceid_node *d;
+ 
+-	d = nfs4_find_get_deviceid(clp, d_id);
++	d = nfs4_find_get_deviceid(nfss->pnfs_curr_ld, nfss->nfs_client, d_id);
+ 	if (!d)
+ 		return NULL;
+ 	return container_of(d, struct objio_dev_ent, id_node);
+@@ -141,7 +141,7 @@ static struct objio_dev_ent *_device_lookup(struct pnfs_layout_hdr *pnfslay,
+ 
+ 	d_id = &objio_seg->comps[comp].oc_object_id.oid_device_id;
+ 
+-	ode = _dev_list_find(NFS_SERVER(pnfslay->plh_inode)->nfs_client, d_id);
++	ode = _dev_list_find(NFS_SERVER(pnfslay->plh_inode), d_id);
+ 	if (ode)
+ 		return ode;
+ 
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 7417be9..2e94ed3 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -172,9 +172,9 @@ struct nfs4_deviceid_node {
+ };
+ 
+ void nfs4_print_deviceid(const struct nfs4_deviceid *dev_id);
+-struct nfs4_deviceid_node *nfs4_find_get_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
+-struct nfs4_deviceid_node *nfs4_unhash_put_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
+-void nfs4_delete_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
++struct nfs4_deviceid_node *nfs4_find_get_deviceid(const struct pnfs_layoutdriver_type *, const struct nfs_client *, const struct nfs4_deviceid *);
++struct nfs4_deviceid_node *nfs4_unhash_put_deviceid(const struct pnfs_layoutdriver_type *, const struct nfs_client *, const struct nfs4_deviceid *);
++void nfs4_delete_deviceid(const struct pnfs_layoutdriver_type *, const struct nfs_client *, const struct nfs4_deviceid *);
+ void nfs4_init_deviceid_node(struct nfs4_deviceid_node *,
+ 			     const struct pnfs_layoutdriver_type *,
+ 			     const struct nfs_client *,
+diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+index f830616..7997899 100644
+--- a/fs/nfs/pnfs_dev.c
++++ b/fs/nfs/pnfs_dev.c
+@@ -67,14 +67,16 @@ nfs4_deviceid_hash(const struct nfs4_deviceid *id)
+ }
+ 
+ static struct nfs4_deviceid_node *
+-_lookup_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
++_lookup_deviceid(const struct pnfs_layoutdriver_type *ld,
++		 const struct nfs_client *clp, const struct nfs4_deviceid *id,
+ 		 long hash)
+ {
+ 	struct nfs4_deviceid_node *d;
+ 	struct hlist_node *n;
+ 
+ 	hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[hash], node)
+-		if (d->nfs_client == clp && !memcmp(&d->deviceid, id, sizeof(*id))) {
++		if (d->ld == ld && d->nfs_client == clp &&
++		    !memcmp(&d->deviceid, id, sizeof(*id))) {
+ 			if (atomic_read(&d->ref))
+ 				return d;
+ 			else
+@@ -90,13 +92,14 @@ _lookup_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
+  * @id deviceid to look up
+  */
+ struct nfs4_deviceid_node *
+-_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
++_find_get_deviceid(const struct pnfs_layoutdriver_type *ld,
++		   const struct nfs_client *clp, const struct nfs4_deviceid *id,
+ 		   long hash)
+ {
+ 	struct nfs4_deviceid_node *d;
+ 
+ 	rcu_read_lock();
+-	d = _lookup_deviceid(clp, id, hash);
++	d = _lookup_deviceid(ld, clp, id, hash);
+ 	if (!atomic_inc_not_zero(&d->ref))
+ 		d = NULL;
+ 	rcu_read_unlock();
+@@ -104,9 +107,10 @@ _find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
+ }
+ 
+ struct nfs4_deviceid_node *
+-nfs4_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
++nfs4_find_get_deviceid(const struct pnfs_layoutdriver_type *ld,
++		       const struct nfs_client *clp, const struct nfs4_deviceid *id)
+ {
+-	return _find_get_deviceid(clp, id, nfs4_deviceid_hash(id));
++	return _find_get_deviceid(ld, clp, id, nfs4_deviceid_hash(id));
+ }
+ EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
+ 
+@@ -119,13 +123,14 @@ EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
+  * @ret the unhashed node, if found and dereferenced to zero, NULL otherwise.
+  */
+ struct nfs4_deviceid_node *
+-nfs4_unhash_put_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
++nfs4_unhash_put_deviceid(const struct pnfs_layoutdriver_type *ld,
++			 const struct nfs_client *clp, const struct nfs4_deviceid *id)
+ {
+ 	struct nfs4_deviceid_node *d;
+ 
+ 	spin_lock(&nfs4_deviceid_lock);
+ 	rcu_read_lock();
+-	d = _lookup_deviceid(clp, id, nfs4_deviceid_hash(id));
++	d = _lookup_deviceid(ld, clp, id, nfs4_deviceid_hash(id));
+ 	rcu_read_unlock();
+ 	if (!d) {
+ 		spin_unlock(&nfs4_deviceid_lock);
+@@ -150,11 +155,12 @@ EXPORT_SYMBOL_GPL(nfs4_unhash_put_deviceid);
+  * @id deviceid to delete
+  */
+ void
+-nfs4_delete_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
++nfs4_delete_deviceid(const struct pnfs_layoutdriver_type *ld,
++		     const struct nfs_client *clp, const struct nfs4_deviceid *id)
+ {
+ 	struct nfs4_deviceid_node *d;
+ 
+-	d = nfs4_unhash_put_deviceid(clp, id);
++	d = nfs4_unhash_put_deviceid(ld, clp, id);
+ 	if (!d)
+ 		return;
+ 	if (d->ld->free_deviceid_node)
+@@ -197,7 +203,7 @@ nfs4_insert_deviceid_node(struct nfs4_deviceid_node *new)
+ 
+ 	spin_lock(&nfs4_deviceid_lock);
+ 	hash = nfs4_deviceid_hash(&new->deviceid);
+-	d = _find_get_deviceid(new->nfs_client, &new->deviceid, hash);
++	d = _find_get_deviceid(new->ld, new->nfs_client, &new->deviceid, hash);
+ 	if (d) {
+ 		spin_unlock(&nfs4_deviceid_lock);
+ 		return d;
+-- 
+1.7.3.4
 
