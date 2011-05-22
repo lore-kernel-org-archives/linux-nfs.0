@@ -1,354 +1,480 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:2489 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932590Ab1EFS5k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 May 2011 14:57:40 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 2/2] NFSD: Added TEST_STATEID opreation
-Date: Fri,  6 May 2011 14:57:35 -0400
-Message-Id: <1304708255-20464-3-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1304708255-20464-1-git-send-email-bjschuma@netapp.com>
-References: <1304708255-20464-1-git-send-email-bjschuma@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:43337 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754491Ab1EVXqE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 19:46:04 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v5 03/38] NFSv4.1: make deviceid cache global
+Date: Mon, 23 May 2011 02:45:46 +0300
+Message-Id: <1306107946-27905-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD99F9B.2040406@panasas.com>
+References: <4DD99F9B.2040406@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Move deviceid cache from the pnfs files layout driver to the
+generic layer in preparation for the objects layout driver.
 
-This operation is used by the client to check the validity of a list of
-stateids.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4proc.c  |    5 ++
- fs/nfsd/nfs4state.c |   66 ++++++++++++++++++++++++++
- fs/nfsd/nfs4xdr.c   |  128 ++++++++++++++++++++++++++++++++++++++++++++++++++-
- fs/nfsd/xdr4.h      |   21 ++++++++
- 4 files changed, 218 insertions(+), 2 deletions(-)
+ fs/nfs/Makefile            |    2 +-
+ fs/nfs/nfs4filelayout.c    |   10 ++-
+ fs/nfs/nfs4filelayout.h    |    8 +--
+ fs/nfs/nfs4filelayoutdev.c |  104 ++++-------------------------
+ fs/nfs/pnfs.h              |   17 +++++
+ fs/nfs/pnfs_dev.c          |  156 ++++++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 194 insertions(+), 103 deletions(-)
+ create mode 100644 fs/nfs/pnfs_dev.c
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 7e00116..a856f30 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1412,6 +1412,11 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_HANDLES_WRONGSEC,
- 		.op_name = "OP_SECINFO_NO_NAME",
- 	},
-+	[OP_TEST_STATEID] = {
-+		.op_func = (nfsd4op_func)nfsd4_test_stateid,
-+		.op_flags = ALLOWED_WITHOUT_FH,
-+		.op_name = "OP_TEST_STATEID",
-+	},
- 	[OP_FREE_STATEID] = {
- 		.op_func = (nfsd4op_func)nfsd4_free_stateid,
- 		.op_flags = ALLOWED_WITHOUT_FH,
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6beec13..c7bb3ce 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -37,6 +37,7 @@
- #include <linux/slab.h>
- #include <linux/namei.h>
- #include <linux/swap.h>
-+#include <linux/pagemap.h>
- #include <linux/sunrpc/svcauth_gss.h>
- #include <linux/sunrpc/clnt.h>
- #include "xdr4.h"
-@@ -3140,6 +3141,35 @@ static int is_delegation_stateid(stateid_t *stateid)
- 	return stateid->si_fileid == 0;
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 4776ff9..7516a8a 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -15,7 +15,7 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+ 			   delegation.o idmap.o \
+ 			   callback.o callback_xdr.o callback_proc.o \
+ 			   nfs4namespace.o
+-nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o
++nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
+ nfs-$(CONFIG_SYSCTL) += sysctl.o
+ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+ 
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index ff47fdf..c8e7afe 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -421,6 +421,7 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+ 			struct nfs4_deviceid *id,
+ 			gfp_t gfp_flags)
+ {
++	struct nfs4_deviceid_node *d;
+ 	struct nfs4_file_layout_dsaddr *dsaddr;
+ 	int status = -EINVAL;
+ 	struct nfs_server *nfss = NFS_SERVER(lo->plh_inode);
+@@ -440,12 +441,13 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+ 	}
+ 
+ 	/* find and reference the deviceid */
+-	dsaddr = nfs4_fl_find_get_deviceid(NFS_SERVER(lo->plh_inode)->nfs_client, id);
+-	if (dsaddr == NULL) {
++	d = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode)->nfs_client, id);
++	if (d == NULL) {
+ 		dsaddr = get_device_info(lo->plh_inode, id, gfp_flags);
+ 		if (dsaddr == NULL)
+ 			goto out;
+-	}
++	} else
++		dsaddr = container_of(d, struct nfs4_file_layout_dsaddr, id_node);
+ 	fl->dsaddr = dsaddr;
+ 
+ 	if (fl->first_stripe_index < 0 ||
+@@ -535,7 +537,7 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
+ 
+ 	memcpy(id, p, sizeof(*id));
+ 	p += XDR_QUADLEN(NFS4_DEVICEID4_SIZE);
+-	print_deviceid(id);
++	nfs4_print_deviceid(id);
+ 
+ 	nfl_util = be32_to_cpup(p++);
+ 	if (nfl_util & NFL4_UFLG_COMMIT_THRU_MDS)
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index 301b955..0ace0a2 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -59,10 +59,7 @@ struct nfs4_pnfs_ds {
+ #define NFS4_DEVICE_ID_NEG_ENTRY	0x00000001
+ 
+ struct nfs4_file_layout_dsaddr {
+-	struct hlist_node		node;
+-	struct nfs_client		*nfs_client;
+-	struct nfs4_deviceid		deviceid;
+-	atomic_t			ref;
++	struct nfs4_deviceid_node	id_node;
+ 	unsigned long			flags;
+ 	u32				stripe_count;
+ 	u8				*stripe_indices;
+@@ -96,13 +93,10 @@ extern struct nfs_fh *
+ nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j);
+ 
+ extern void print_ds(struct nfs4_pnfs_ds *ds);
+-extern void print_deviceid(struct nfs4_deviceid *dev_id);
+ u32 nfs4_fl_calc_j_index(struct pnfs_layout_segment *lseg, loff_t offset);
+ u32 nfs4_fl_calc_ds_index(struct pnfs_layout_segment *lseg, u32 j);
+ struct nfs4_pnfs_ds *nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg,
+ 					u32 ds_idx);
+-extern struct nfs4_file_layout_dsaddr *
+-nfs4_fl_find_get_deviceid(struct nfs_client *, struct nfs4_deviceid *dev_id);
+ extern void nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
+ struct nfs4_file_layout_dsaddr *
+ get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags);
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 42e3266..eda4527 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -37,30 +37,6 @@
+ #define NFSDBG_FACILITY		NFSDBG_PNFS_LD
+ 
+ /*
+- * Device ID RCU cache. A device ID is unique per client ID and layout type.
+- */
+-#define NFS4_FL_DEVICE_ID_HASH_BITS	5
+-#define NFS4_FL_DEVICE_ID_HASH_SIZE	(1 << NFS4_FL_DEVICE_ID_HASH_BITS)
+-#define NFS4_FL_DEVICE_ID_HASH_MASK	(NFS4_FL_DEVICE_ID_HASH_SIZE - 1)
+-
+-static inline u32
+-nfs4_fl_deviceid_hash(struct nfs4_deviceid *id)
+-{
+-	unsigned char *cptr = (unsigned char *)id->data;
+-	unsigned int nbytes = NFS4_DEVICEID4_SIZE;
+-	u32 x = 0;
+-
+-	while (nbytes--) {
+-		x *= 37;
+-		x += *cptr++;
+-	}
+-	return x & NFS4_FL_DEVICE_ID_HASH_MASK;
+-}
+-
+-static struct hlist_head filelayout_deviceid_cache[NFS4_FL_DEVICE_ID_HASH_SIZE];
+-static DEFINE_SPINLOCK(filelayout_deviceid_lock);
+-
+-/*
+  * Data server cache
+  *
+  * Data servers can be mapped to different device ids.
+@@ -89,27 +65,6 @@ print_ds(struct nfs4_pnfs_ds *ds)
+ 		ds->ds_clp ? ds->ds_clp->cl_exchange_flags : 0);
  }
  
-+static __be32 nfs4_validate_stateid(stateid_t *stateid, int flags, struct file **filpp, struct svc_fh *current_fh)
-+{
-+	struct nfs4_stateid *stp = NULL;
-+	__be32 status = nfserr_stale_stateid;
-+
-+	if (STALE_STATEID(stateid))
-+		goto out;
-+
-+	status = nfserr_expired;
-+	stp = search_for_stateid(stateid);
-+	if (!stp)
-+		goto out;
-+	status = nfserr_bad_stateid;
-+
-+	if (!stp->st_stateowner->so_confirmed)
-+		goto out;
-+
-+	status = check_stateid_generation(stateid, &stp->st_stateid, flags);
-+	if (status)
-+		goto out;
-+
-+	status = nfs4_check_openmode(stp, flags);
-+	if (status)
-+		goto out;
-+	status = nfs_ok;
-+out:
-+	return status;
-+}
-+
- /*
- * Checks for stateid operations
- */
-@@ -3220,6 +3250,42 @@ out:
+-void
+-print_ds_list(struct nfs4_file_layout_dsaddr *dsaddr)
+-{
+-	int i;
+-
+-	ifdebug(FACILITY) {
+-		printk("%s dsaddr->ds_num %d\n", __func__,
+-		       dsaddr->ds_num);
+-		for (i = 0; i < dsaddr->ds_num; i++)
+-			print_ds(dsaddr->ds_list[i]);
+-	}
+-}
+-
+-void print_deviceid(struct nfs4_deviceid *id)
+-{
+-	u32 *p = (u32 *)id;
+-
+-	dprintk("%s: device id= [%x%x%x%x]\n", __func__,
+-		p[0], p[1], p[2], p[3]);
+-}
+-
+ /* nfs4_ds_cache_lock is held */
+ static struct nfs4_pnfs_ds *
+ _data_server_lookup_locked(u32 ip_addr, u32 port)
+@@ -207,7 +162,7 @@ nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr)
+ 	struct nfs4_pnfs_ds *ds;
+ 	int i;
+ 
+-	print_deviceid(&dsaddr->deviceid);
++	nfs4_print_deviceid(&dsaddr->id_node.deviceid);
+ 
+ 	for (i = 0; i < dsaddr->ds_num; i++) {
+ 		ds = dsaddr->ds_list[i];
+@@ -431,8 +386,8 @@ decode_device(struct inode *ino, struct pnfs_device *pdev, gfp_t gfp_flags)
+ 	dsaddr->stripe_indices = stripe_indices;
+ 	stripe_indices = NULL;
+ 	dsaddr->ds_num = num;
+-	dsaddr->nfs_client = NFS_SERVER(ino)->nfs_client;
+-	memcpy(&dsaddr->deviceid, &pdev->dev_id, sizeof(pdev->dev_id));
++	nfs4_init_deviceid_node(&dsaddr->id_node, NFS_SERVER(ino)->nfs_client,
++				&pdev->dev_id);
+ 
+ 	for (i = 0; i < dsaddr->ds_num; i++) {
+ 		int j;
+@@ -505,8 +460,8 @@ out_err:
+ static struct nfs4_file_layout_dsaddr *
+ decode_and_add_device(struct inode *inode, struct pnfs_device *dev, gfp_t gfp_flags)
+ {
+-	struct nfs4_file_layout_dsaddr *d, *new;
+-	long hash;
++	struct nfs4_deviceid_node *d;
++	struct nfs4_file_layout_dsaddr *n, *new;
+ 
+ 	new = decode_device(inode, dev, gfp_flags);
+ 	if (!new) {
+@@ -515,20 +470,13 @@ decode_and_add_device(struct inode *inode, struct pnfs_device *dev, gfp_t gfp_fl
+ 		return NULL;
+ 	}
+ 
+-	spin_lock(&filelayout_deviceid_lock);
+-	d = nfs4_fl_find_get_deviceid(new->nfs_client, &new->deviceid);
+-	if (d) {
+-		spin_unlock(&filelayout_deviceid_lock);
++	d = nfs4_insert_deviceid_node(&new->id_node);
++	n = container_of(d, struct nfs4_file_layout_dsaddr, id_node);
++	if (n != new) {
+ 		nfs4_fl_free_deviceid(new);
+-		return d;
++		return n;
+ 	}
+ 
+-	INIT_HLIST_NODE(&new->node);
+-	atomic_set(&new->ref, 1);
+-	hash = nfs4_fl_deviceid_hash(&new->deviceid);
+-	hlist_add_head_rcu(&new->node, &filelayout_deviceid_cache[hash]);
+-	spin_unlock(&filelayout_deviceid_lock);
+-
+ 	return new;
+ }
+ 
+@@ -600,34 +548,8 @@ out_free:
+ void
+ nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr)
+ {
+-	if (atomic_dec_and_lock(&dsaddr->ref, &filelayout_deviceid_lock)) {
+-		hlist_del_rcu(&dsaddr->node);
+-		spin_unlock(&filelayout_deviceid_lock);
+-
+-		synchronize_rcu();
++	if (nfs4_put_deviceid_node(&dsaddr->id_node))
+ 		nfs4_fl_free_deviceid(dsaddr);
+-	}
+-}
+-
+-struct nfs4_file_layout_dsaddr *
+-nfs4_fl_find_get_deviceid(struct nfs_client *clp, struct nfs4_deviceid *id)
+-{
+-	struct nfs4_file_layout_dsaddr *d;
+-	struct hlist_node *n;
+-	long hash = nfs4_fl_deviceid_hash(id);
+-
+-	rcu_read_lock();
+-	hlist_for_each_entry_rcu(d, n, &filelayout_deviceid_cache[hash], node) {
+-		if (d->nfs_client == clp && !memcmp(&d->deviceid, id, sizeof(*id))) {
+-			if (!atomic_inc_not_zero(&d->ref))
+-				goto fail;
+-			rcu_read_unlock();
+-			return d;
+-		}
+-	}
+-fail:
+-	rcu_read_unlock();
+-	return NULL;
  }
  
  /*
-+ * Test if the stateid is valid
+@@ -675,15 +597,15 @@ static void
+ filelayout_mark_devid_negative(struct nfs4_file_layout_dsaddr *dsaddr,
+ 			       int err, u32 ds_addr)
+ {
+-	u32 *p = (u32 *)&dsaddr->deviceid;
++	u32 *p = (u32 *)&dsaddr->id_node.deviceid;
+ 
+ 	printk(KERN_ERR "NFS: data server %x connection error %d."
+ 		" Deviceid [%x%x%x%x] marked out of use.\n",
+ 		ds_addr, err, p[0], p[1], p[2], p[3]);
+ 
+-	spin_lock(&filelayout_deviceid_lock);
++	spin_lock(&nfs4_ds_cache_lock);
+ 	dsaddr->flags |= NFS4_DEVICE_ID_NEG_ENTRY;
+-	spin_unlock(&filelayout_deviceid_lock);
++	spin_unlock(&nfs4_ds_cache_lock);
+ }
+ 
+ struct nfs4_pnfs_ds *
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 720bb9d..3831ad0 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -157,6 +157,23 @@ bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+ 
++/* pnfs_dev.c */
++struct nfs4_deviceid_node {
++	struct hlist_node		node;
++	const struct nfs_client		*nfs_client;
++	struct nfs4_deviceid		deviceid;
++	atomic_t			ref;
++};
++
++void nfs4_print_deviceid(const struct nfs4_deviceid *dev_id);
++struct nfs4_deviceid_node *nfs4_find_get_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
++struct nfs4_deviceid_node *nfs4_unhash_put_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
++void nfs4_init_deviceid_node(struct nfs4_deviceid_node *,
++			     const struct nfs_client *,
++			     const struct nfs4_deviceid *);
++struct nfs4_deviceid_node *nfs4_insert_deviceid_node(struct nfs4_deviceid_node *);
++bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
++
+ static inline int lo_fail_bit(u32 iomode)
+ {
+ 	return iomode == IOMODE_RW ?
+diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+new file mode 100644
+index 0000000..bf05189
+--- /dev/null
++++ b/fs/nfs/pnfs_dev.c
+@@ -0,0 +1,156 @@
++/*
++ *  Device operations for the pnfs client.
++ *
++ *  Copyright (c) 2002
++ *  The Regents of the University of Michigan
++ *  All Rights Reserved
++ *
++ *  Dean Hildebrand <dhildebz@umich.edu>
++ *  Garth Goodson   <Garth.Goodson@netapp.com>
++ *
++ *  Permission is granted to use, copy, create derivative works, and
++ *  redistribute this software and such derivative works for any purpose,
++ *  so long as the name of the University of Michigan is not used in
++ *  any advertising or publicity pertaining to the use or distribution
++ *  of this software without specific, written prior authorization. If
++ *  the above copyright notice or any other identification of the
++ *  University of Michigan is included in any copy of any portion of
++ *  this software, then the disclaimer below must also be included.
++ *
++ *  This software is provided as is, without representation or warranty
++ *  of any kind either express or implied, including without limitation
++ *  the implied warranties of merchantability, fitness for a particular
++ *  purpose, or noninfringement.  The Regents of the University of
++ *  Michigan shall not be liable for any damages, including special,
++ *  indirect, incidental, or consequential damages, with respect to any
++ *  claim arising out of or in connection with the use of the software,
++ *  even if it has been or is hereafter advised of the possibility of
++ *  such damages.
 + */
-+__be32
-+nfsd4_test_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+		   struct nfsd4_test_stateid *test_stateid)
++
++#include "pnfs.h"
++
++#define NFSDBG_FACILITY		NFSDBG_PNFS
++
++/*
++ * Device ID RCU cache. A device ID is unique per server and layout type.
++ */
++#define NFS4_DEVICE_ID_HASH_BITS	5
++#define NFS4_DEVICE_ID_HASH_SIZE	(1 << NFS4_DEVICE_ID_HASH_BITS)
++#define NFS4_DEVICE_ID_HASH_MASK	(NFS4_DEVICE_ID_HASH_SIZE - 1)
++
++static struct hlist_head nfs4_deviceid_cache[NFS4_DEVICE_ID_HASH_SIZE];
++static DEFINE_SPINLOCK(nfs4_deviceid_lock);
++
++void
++nfs4_print_deviceid(const struct nfs4_deviceid *id)
 +{
-+	stateid_t *stateid = NULL;
-+	int *resp = NULL;
-+	struct svc_fh *current_fh;
-+	unsigned int cur_id_page = 0;
-+	unsigned int cur_resp_page = 0;
-+	int i;
-+	unsigned int lock_flags = LOCK_STATE | RD_STATE | WR_STATE;
-+	unsigned int open_flags = OPEN_STATE | RD_STATE | WR_STATE;
++	u32 *p = (u32 *)id;
 +
-+	current_fh = &cstate->current_fh;
++	dprintk("%s: device id= [%x%x%x%x]\n", __func__,
++		p[0], p[1], p[2], p[3]);
++}
++EXPORT_SYMBOL_GPL(nfs4_print_deviceid);
 +
-+	for (i = 0; i < test_stateid->ts_num_ids; i++) {
-+		if ((i % test_stateid->ts_stateids->items_per_page) == 0) {
-+			stateid = (stateid_t *)test_stateid->ts_stateids->items[cur_id_page].first_item;
-+			cur_id_page++;
-+		}
-+		if ((i % test_stateid->ts_valid->items_per_page) == 0) {
-+			resp = (int *)test_stateid->ts_valid->items[cur_resp_page].first_item;
-+			cur_resp_page++;
-+		}
-+		*resp = nfs4_validate_stateid(stateid, lock_flags, NULL, current_fh);
-+		if (!*resp)
-+			*resp = nfs4_validate_stateid(stateid, open_flags, NULL, current_fh);
-+		stateid++;
-+		resp++;
++static inline u32
++nfs4_deviceid_hash(const struct nfs4_deviceid *id)
++{
++	unsigned char *cptr = (unsigned char *)id->data;
++	unsigned int nbytes = NFS4_DEVICEID4_SIZE;
++	u32 x = 0;
++
++	while (nbytes--) {
++		x *= 37;
++		x += *cptr++;
 +	}
-+	return nfs_ok;
++	return x & NFS4_DEVICE_ID_HASH_MASK;
 +}
 +
 +/*
-  * Free a state id
-  */
- __be32
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 5da6874..c92c4d2 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -44,6 +44,7 @@
- #include <linux/namei.h>
- #include <linux/statfs.h>
- #include <linux/utsname.h>
-+#include <linux/pagemap.h>
- #include <linux/sunrpc/svcauth_gss.h>
- 
- #include "idmap.h"
-@@ -1274,6 +1275,98 @@ nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
- 	DECODE_TAIL;
- }
- 
-+static void
-+nfsd4_free_ts_pagearray(struct nfsd4_ts_pagearray *array)
++ * Lookup a deviceid in cache and get a reference count on it if found
++ *
++ * @clp nfs_client associated with deviceid
++ * @id deviceid to look up
++ */
++struct nfs4_deviceid_node *
++nfs4_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
 +{
-+	unsigned int i;
-+	struct page *page;
-+	for (i = 0; i < array->num_pages; i++) {
-+		kunmap(array->items[i].page);
-+		put_page(array->items[i].page);
-+	}
-+	page = array->page_ptr;
-+	put_page(page);
-+}
++	struct nfs4_deviceid_node *d;
++	struct hlist_node *n;
++	long hash = nfs4_deviceid_hash(id);
 +
-+static struct nfsd4_ts_pagearray *
-+nfsd4_alloc_ts_pagearray(struct nfsd4_test_stateid *test_stateid, unsigned int item_size)
-+{
-+	unsigned int num_pages;
-+	struct nfsd4_ts_pagearray *array;
-+	struct page *page;
-+	int i = 0;
-+
-+	page = alloc_page(GFP_KERNEL);
-+	if (page == NULL)
-+		goto out_nomem;
-+
-+	array = kmap(page);
-+	array->num_pages = 0;
-+	array->items_per_page = PAGE_SIZE / item_size;
-+	array->page_ptr  = page;
-+
-+	num_pages = ((test_stateid->ts_num_ids * item_size) / PAGE_SIZE) + 1;
-+
-+	for (i = 0; i < num_pages; i++) {
-+		page = alloc_page(GFP_KERNEL);
-+		if (page == NULL)
-+			goto out_freepages;
-+		array->items[i].page = page;
-+		array->items[i].first_item = kmap(page);
-+		array->num_pages += 1;
-+	}
-+	return array;
-+
-+out_freepages:
-+	nfsd4_free_ts_pagearray(array);
-+out_nomem:
-+	return ERR_PTR(-ENOMEM);
-+}
-+
-+static __be32
-+nfsd4_decode_test_stateid(struct nfsd4_compoundargs *argp, struct nfsd4_test_stateid *test_stateid)
-+{
-+	stateid_t * si = NULL;
-+	unsigned int cur_page = 0;
-+	struct page *page;
-+	int i;
-+
-+	DECODE_HEAD;
-+	READ_BUF(4);
-+	READ32(test_stateid->ts_num_ids);
-+
-+	test_stateid->ts_stateids = nfsd4_alloc_ts_pagearray(test_stateid, sizeof(stateid_t));
-+	if (IS_ERR(test_stateid->ts_stateids))
-+		return PTR_ERR(test_stateid->ts_stateids);
-+
-+	test_stateid->ts_valid = nfsd4_alloc_ts_pagearray(test_stateid, sizeof(int));
-+	if (IS_ERR(test_stateid->ts_valid)) {
-+		status = PTR_ERR(test_stateid->ts_valid);
-+		goto out_free_pages;
-+	}
-+
-+	/* Read in a list of stateids provided by the client */
-+	for (i = 0; i < test_stateid->ts_num_ids; i++) {
-+		if ((i % test_stateid->ts_stateids->items_per_page) == 0) {
-+			si = test_stateid->ts_stateids->items[cur_page].first_item;
-+			cur_page++;
-+		}
-+		nfsd4_decode_stateid(argp, si);
-+		si++;
-+	}
-+	kunmap(page);
-+	status = 0;
-+out:
-+	return status;
-+xdr_error:
-+	dprintk("NFSD: xdr error (%s:%d)\n", __FILE__, __LINE__);
-+	status = nfserr_bad_xdr;
-+	nfsd4_free_ts_pagearray(test_stateid->ts_valid);
-+out_free_pages:
-+	nfsd4_free_ts_pagearray(test_stateid->ts_stateids);
-+	goto out;
-+}
-+
- static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, struct nfsd4_reclaim_complete *rc)
- {
- 	DECODE_HEAD;
-@@ -1393,7 +1486,7 @@ static nfsd4_dec nfsd41_dec_ops[] = {
- 	[OP_SECINFO_NO_NAME]	= (nfsd4_dec)nfsd4_decode_secinfo_no_name,
- 	[OP_SEQUENCE]		= (nfsd4_dec)nfsd4_decode_sequence,
- 	[OP_SET_SSV]		= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_TEST_STATEID]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_TEST_STATEID]	= (nfsd4_dec)nfsd4_decode_test_stateid,
- 	[OP_WANT_DELEGATION]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_DESTROY_CLIENTID]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
-@@ -3166,6 +3259,37 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
- 	return 0;
- }
- 
-+__be32
-+nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, int nfserr,
-+			  struct nfsd4_test_stateid *test_stateid)
-+{
-+	__be32 *p;
-+	unsigned int i;
-+	unsigned int cur_page = 0;
-+	int *valid = NULL;
-+
-+	if (!nfserr) {
-+		RESERVE_SPACE(4);
-+		WRITE32(test_stateid->ts_num_ids);
-+		ADJUST_ARGS();
-+
-+		for (i = 0; i < test_stateid->ts_num_ids; i++) {
-+			if ((i % test_stateid->ts_valid->items_per_page) == 0) {
-+				valid = (int *)test_stateid->ts_valid->items[cur_page].first_item;
-+				cur_page++;
-+			}
-+			RESERVE_SPACE(4);
-+			WRITE32(*valid);
-+			ADJUST_ARGS();
-+			valid++;
++	rcu_read_lock();
++	hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[hash], node) {
++		if (d->nfs_client == clp && !memcmp(&d->deviceid, id, sizeof(*id))) {
++			if (!atomic_inc_not_zero(&d->ref))
++				goto fail;
++			rcu_read_unlock();
++			return d;
 +		}
 +	}
-+
-+	nfsd4_free_ts_pagearray(test_stateid->ts_valid);
-+	nfsd4_free_ts_pagearray(test_stateid->ts_stateids);
-+	return nfserr;
++fail:
++	rcu_read_unlock();
++	return NULL;
 +}
++EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
 +
- static __be32
- nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
- {
-@@ -3234,7 +3358,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
- 	[OP_SECINFO_NO_NAME]	= (nfsd4_enc)nfsd4_encode_secinfo_no_name,
- 	[OP_SEQUENCE]		= (nfsd4_enc)nfsd4_encode_sequence,
- 	[OP_SET_SSV]		= (nfsd4_enc)nfsd4_encode_noop,
--	[OP_TEST_STATEID]	= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_TEST_STATEID]	= (nfsd4_enc)nfsd4_encode_test_stateid,
- 	[OP_WANT_DELEGATION]	= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_DESTROY_CLIENTID]	= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_RECLAIM_COMPLETE]	= (nfsd4_enc)nfsd4_encode_noop,
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index ed1784d..0455f55 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -342,6 +342,24 @@ struct nfsd4_setclientid_confirm {
- 	nfs4_verifier	sc_confirm;
- };
- 
-+struct nfsd4_ts_pagearray_item {
-+	struct page *page;
-+	void *first_item;
-+};
++void
++nfs4_init_deviceid_node(struct nfs4_deviceid_node *d,
++			const struct nfs_client *nfs_client,
++			const struct nfs4_deviceid *id)
++{
++	d->nfs_client = nfs_client;
++	d->deviceid = *id;
++}
++EXPORT_SYMBOL_GPL(nfs4_init_deviceid_node);
 +
-+struct nfsd4_ts_pagearray {
-+	unsigned int num_pages;
-+	unsigned int items_per_page;
-+	struct page *page_ptr;
-+	struct nfsd4_ts_pagearray_item items[0];
-+};
++/*
++ * Uniquely initialize and insert a deviceid node into cache
++ *
++ * @new new deviceid node
++ *      Note that the caller must set up new->nfs_client and new->deviceid
++ *
++ * @ret the inserted node, if none found, otherwise, the found entry.
++ */
++struct nfs4_deviceid_node *
++nfs4_insert_deviceid_node(struct nfs4_deviceid_node *new)
++{
++	struct nfs4_deviceid_node *d;
++	long hash;
 +
-+struct nfsd4_test_stateid {
-+	__be32		ts_num_ids;             /* request */
-+	struct nfsd4_ts_pagearray *ts_stateids; /* request */
-+	struct nfsd4_ts_pagearray *ts_valid;    /* response */
-+};
++	spin_lock(&nfs4_deviceid_lock);
++	d = nfs4_find_get_deviceid(new->nfs_client, &new->deviceid);
++	if (d) {
++		spin_unlock(&nfs4_deviceid_lock);
++		return d;
++	}
 +
- struct nfsd4_free_stateid {
- 	stateid_t	fr_stateid;         /* request */
- 	__be32		fr_status;          /* response */
-@@ -437,6 +455,7 @@ struct nfsd4_op {
- 		struct nfsd4_destroy_session	destroy_session;
- 		struct nfsd4_sequence		sequence;
- 		struct nfsd4_reclaim_complete	reclaim_complete;
-+		struct nfsd4_test_stateid	test_stateid;
- 		struct nfsd4_free_stateid	free_stateid;
- 	} u;
- 	struct nfs4_replay *			replay;
-@@ -570,6 +589,8 @@ extern __be32 nfsd4_delegreturn(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *, struct nfsd4_delegreturn *dr);
- extern __be32 nfsd4_renew(struct svc_rqst *rqstp,
- 			  struct nfsd4_compound_state *, clientid_t *clid);
-+extern __be32 nfsd4_test_stateid(struct svc_rqst *rqstp,
-+		struct nfsd4_compound_state *, struct nfsd4_test_stateid *test_stateid);
- extern __be32 nfsd4_free_stateid(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *, struct nfsd4_free_stateid *free_stateid);
- #endif
++	INIT_HLIST_NODE(&new->node);
++	atomic_set(&new->ref, 1);
++	hash = nfs4_deviceid_hash(&new->deviceid);
++	hlist_add_head_rcu(&new->node, &nfs4_deviceid_cache[hash]);
++	spin_unlock(&nfs4_deviceid_lock);
++
++	return new;
++}
++EXPORT_SYMBOL_GPL(nfs4_insert_deviceid_node);
++
++/*
++ * Dereference a deviceid node and delete it when its reference count drops
++ * to zero.
++ *
++ * @d deviceid node to put
++ *
++ * @ret true iff the node was deleted
++ */
++bool
++nfs4_put_deviceid_node(struct nfs4_deviceid_node *d)
++{
++	if (!atomic_dec_and_lock(&d->ref, &nfs4_deviceid_lock))
++		return false;
++	hlist_del_init_rcu(&d->node);
++	spin_unlock(&nfs4_deviceid_lock);
++	synchronize_rcu();
++	return true;
++}
++EXPORT_SYMBOL_GPL(nfs4_put_deviceid_node);
 -- 
-1.7.5.1
+1.7.3.4
 
