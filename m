@@ -1,149 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:50997 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:43349 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753084Ab1E2S1e (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 14:27:34 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Benny Halevy <bhalevy@panasas.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Subject: [PATCH 27/32] pnfs-obj: objlayout_encode_layoutcommit implementation
-Date: Sun, 29 May 2011 21:27:23 +0300
-Message-Id: <1306693643-8465-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4DE28CFB.4060608@panasas.com>
-References: <4DE28CFB.4060608@panasas.com>
+	with ESMTP id S1754340Ab1EVXrw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 19:47:52 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v5 07/38] SQUASHME: pnfs: use nfs_client to qualify deviceid for cb_notify_deviceid
+Date: Mon, 23 May 2011 02:47:13 +0300
+Message-Id: <1306108033-28060-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD99F9B.2040406@panasas.com>
+References: <4DD99F9B.2040406@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-* Define API for io-engines to report delta_space_used in IOs
-* Encode the osd-layout specific information of the layoutcommit
-  XDR buffer.
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/objlayout/objio_osd.c |    1 +
- fs/nfs/objlayout/objlayout.c |   30 ++++++++++++++++++++++++++++++
- fs/nfs/objlayout/objlayout.h |   30 ++++++++++++++++++++++++++++++
- 3 files changed, 61 insertions(+), 0 deletions(-)
+ fs/nfs/callback_proc.c     |    2 +-
+ fs/nfs/nfs4filelayout.h    |    2 +-
+ fs/nfs/nfs4filelayoutdev.c |    8 ++++----
+ fs/nfs/pnfs.h              |    2 +-
+ 4 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 8bca5e1..3be1241 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -1018,6 +1018,7 @@ static struct pnfs_layoutdriver_type objlayout_type = {
- 
- 	.free_deviceid_node	 = objio_free_deviceid_node,
- 
-+	.encode_layoutcommit	 = objlayout_encode_layoutcommit,
- 	.encode_layoutreturn     = objlayout_encode_layoutreturn,
- };
- 
-diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-index f7caecf..dc3956c 100644
---- a/fs/nfs/objlayout/objlayout.c
-+++ b/fs/nfs/objlayout/objlayout.c
-@@ -225,6 +225,7 @@ objlayout_iodone(struct objlayout_io_state *state)
- 		struct objlayout *objlay = OBJLAYOUT(state->lseg->pls_layout);
- 
- 		spin_lock(&objlay->lock);
-+		objlay->delta_space_valid = OBJ_DSU_INVALID;
- 		list_add(&objlay->err_list, &state->err_list);
- 		spin_unlock(&objlay->lock);
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 95107fe..fc96057 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -282,7 +282,7 @@ __be32 nfs4_callback_devicenotify(struct cb_devicenotifyargs *args,
+ 		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
+ 			dprintk("%s: NOTIFY_DEVICEID4_CHANGE not supported, "
+ 				"deleting instead\n", __func__);
+-		server->pnfs_curr_ld->delete_deviceid(&dev->cbd_dev_id);
++		server->pnfs_curr_ld->delete_deviceid(clp, &dev->cbd_dev_id);
  	}
-@@ -433,6 +434,35 @@ objlayout_write_pagelist(struct nfs_write_data *wdata,
- 	return PNFS_ATTEMPTED;
+ 
+ out:
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index 8601656..4289dbf 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -101,6 +101,6 @@ extern void nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
+ extern void nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
+ struct nfs4_file_layout_dsaddr *
+ get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags);
+-void filelayout_delete_deviceid(struct nfs4_deviceid *);
++void filelayout_delete_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
+ 
+ #endif /* FS_NFS_NFS4FILELAYOUT_H */
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index f7f0bb8..f23a7f4 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -554,7 +554,7 @@ nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr)
  }
  
-+void
-+objlayout_encode_layoutcommit(struct pnfs_layout_hdr *pnfslay,
-+			      struct xdr_stream *xdr,
-+			      const struct nfs4_layoutcommit_args *args)
-+{
-+	struct objlayout *objlay = OBJLAYOUT(pnfslay);
-+	struct pnfs_osd_layoutupdate lou;
-+	__be32 *start;
-+
-+	dprintk("%s: Begin\n", __func__);
-+
-+	spin_lock(&objlay->lock);
-+	lou.dsu_valid = (objlay->delta_space_valid == OBJ_DSU_VALID);
-+	lou.dsu_delta = objlay->delta_space_used;
-+	objlay->delta_space_used = 0;
-+	objlay->delta_space_valid = OBJ_DSU_INIT;
-+	lou.olu_ioerr_flag = !list_empty(&objlay->err_list);
-+	spin_unlock(&objlay->lock);
-+
-+	start = xdr_reserve_space(xdr, 4);
-+
-+	BUG_ON(pnfs_osd_xdr_encode_layoutupdate(xdr, &lou));
-+
-+	*start = cpu_to_be32((xdr->p - start - 1) * 4);
-+
-+	dprintk("%s: Return delta_space_used %lld err %d\n", __func__,
-+		lou.dsu_delta, lou.olu_ioerr_flag);
-+}
-+
- static int
- err_prio(u32 oer_errno)
+ static struct nfs4_file_layout_dsaddr *
+-nfs4_fl_unhash_deviceid(struct nfs4_deviceid *id)
++nfs4_fl_unhash_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
  {
-diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
-index b0bb975..a8244c8 100644
---- a/fs/nfs/objlayout/objlayout.h
-+++ b/fs/nfs/objlayout/objlayout.h
-@@ -51,6 +51,14 @@
- struct objlayout {
- 	struct pnfs_layout_hdr pnfs_layout;
+ 	struct nfs4_file_layout_dsaddr *d;
+ 	struct hlist_node *n;
+@@ -563,7 +563,7 @@ nfs4_fl_unhash_deviceid(struct nfs4_deviceid *id)
+ 	dprintk("%s: hash %ld\n", __func__, hash);
+ 	rcu_read_lock();
+ 	hlist_for_each_entry_rcu(d, n, &filelayout_deviceid_cache[hash], node)
+-		if (!memcmp(&d->deviceid, id, sizeof(*id)))
++		if (d->nfs_client == clp && !memcmp(&d->deviceid, id, sizeof(*id)))
+ 			goto found;
+ 	rcu_read_unlock();
+ 	return NULL;
+@@ -579,11 +579,11 @@ found:
+ }
  
-+	 /* for layout_commit */
-+	enum osd_delta_space_valid_enum {
-+		OBJ_DSU_INIT = 0,
-+		OBJ_DSU_VALID,
-+		OBJ_DSU_INVALID,
-+	} delta_space_valid;
-+	s64 delta_space_used;  /* consumed by write ops */
-+
- 	 /* for layout_return */
- 	spinlock_t lock;
- 	struct list_head err_list;
-@@ -119,6 +127,23 @@ extern void objlayout_io_set_result(struct objlayout_io_state *state,
- 			unsigned index, struct pnfs_osd_objid *pooid,
- 			int osd_error, u64 offset, u64 length, bool is_write);
+ void
+-filelayout_delete_deviceid(struct nfs4_deviceid *id)
++filelayout_delete_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
+ {
+ 	struct nfs4_file_layout_dsaddr *d;
  
-+static inline void
-+objlayout_add_delta_space_used(struct objlayout_io_state *state, s64 space_used)
-+{
-+	struct objlayout *objlay = OBJLAYOUT(state->lseg->pls_layout);
-+
-+	/* If one of the I/Os errored out and the delta_space_used was
-+	 * invalid we render the complete report as invalid. Protocol mandate
-+	 * the DSU be accurate or not reported.
-+	 */
-+	spin_lock(&objlay->lock);
-+	if (objlay->delta_space_valid != OBJ_DSU_INVALID) {
-+		objlay->delta_space_valid = OBJ_DSU_VALID;
-+		objlay->delta_space_used += space_used;
-+	}
-+	spin_unlock(&objlay->lock);
-+}
-+
- extern void objlayout_read_done(struct objlayout_io_state *state,
- 				ssize_t status, bool sync);
- extern void objlayout_write_done(struct objlayout_io_state *state,
-@@ -149,6 +174,11 @@ extern enum pnfs_try_status objlayout_write_pagelist(
- 	struct nfs_write_data *,
- 	int how);
+-	d = nfs4_fl_unhash_deviceid(id);
++	d = nfs4_fl_unhash_deviceid(clp, id);
+ 	/* balance the initial ref taken in decode_and_add_device */
+ 	if (d && atomic_dec_and_test(&d->ref))
+ 		nfs4_fl_free_deviceid(d);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index fa19c97..64ebd76 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -94,7 +94,7 @@ struct pnfs_layoutdriver_type {
+ 	enum pnfs_try_status (*write_pagelist) (struct nfs_write_data *nfs_data, int how);
  
-+extern void objlayout_encode_layoutcommit(
-+	struct pnfs_layout_hdr *,
-+	struct xdr_stream *,
-+	const struct nfs4_layoutcommit_args *);
-+
- extern void objlayout_encode_layoutreturn(
- 	struct pnfs_layout_hdr *,
- 	struct xdr_stream *,
+ 	void (*free_deviceid_node) (struct nfs4_deviceid_node *);
+-	void (*delete_deviceid)(struct nfs4_deviceid *);
++	void (*delete_deviceid)(const struct nfs_client *, const struct nfs4_deviceid *);
+ };
+ 
+ struct pnfs_layout_hdr {
 -- 
-1.7.2.3
+1.7.3.4
 
