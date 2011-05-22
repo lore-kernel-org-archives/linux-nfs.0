@@ -1,71 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:8769 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755364Ab1EEQgz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 May 2011 12:36:55 -0400
-Subject: Re: [PATCH] NFS: Allow NULL nameidata in d_revalidate and create
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Tyler Hicks <tyhicks@linux.vnet.ibm.com>
-Cc: linux-nfs@vger.kernel.org, ecryptfs-devel@lists.launchpad.net
-In-Reply-To: <20110505155728.GB12250@boyd.l.tihix.com>
-References: <1304609741-12541-1-git-send-email-tyhicks@linux.vnet.ibm.com>
-	 <20110505155728.GB12250@boyd.l.tihix.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 05 May 2011 12:36:53 -0400
-Message-ID: <1304613413.20441.2.camel@lade.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:43476 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754491Ab1EVXx5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 19:53:57 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v5 15/38] pnfs: client stats
+Date: Mon, 23 May 2011 02:53:17 +0300
+Message-Id: <1306108397-28439-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD99F9B.2040406@panasas.com>
+References: <4DD99F9B.2040406@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2011-05-05 at 10:57 -0500, Tyler Hicks wrote:
-> On Thu May 05, 2011 at 10:35:41AM -0500, Tyler Hicks <tyhicks@linux.vnet.ibm.com> wrote:
-> > To add support for eCryptfs mounts on top of NFS client mounts, the NFS
-> > client must properly handle NULL nameidata pointers in its d_revalidate
-> > functions.
-> > 
-> > NFS clients should also handle NULL nameidata in its create functions,
-> > although this is not currently required for eCryptfs support.
-> > 
-> > Signed-off-by: Tyler Hicks <tyhicks@linux.vnet.ibm.com>
-> > ---
-> 
-> We (eCryptfs) are in the process of switching mailing lists, so I copied
-> both the old (launchpad.net) and the new (vger.kernel.org), but it
-> doesn't look like the vger.kernel.org list is accepting mail yet. Sorry
-> about that, I should have tested it first. Feel free to drop it from
-> any replies.
-> 
-> I should also mention that if/when this patch is merged, eCryptfs will
-> have basic support of mounting on top of NFSv3 client mounts. I say
-> basic because I'm sure there are some bugs, I'm not yet confident that
-> the required cache flushes are there in the eCryptfs layer to have NFSv3
-> cache consistency, and we have some trouble with silly rename.
-> 
-> All files unlinked through eCryptfs get silly renamed in the NFS client
-> because of the extra reference eCryptfs holds on the NFS dentry.
-> 
-> This also seems to come into play when unlinking the last file in a
-> directory and then immediately removing the directory. nfs_rmdir() will
-> sometimes return -EBUSY.
-> 
-> BTW, I think these are all issues that should be handled in the eCryptfs
-> layer, but I wanted to provide an update on the status of eCryptfs on
-> top of NFS.
+From: J. Bruce Fields <bfields@fieldses.org>
 
-Why would we want to 'support' ecryptfs in this manner? Can't you set up
-a proper nameidata with appropriate open intents?
+A pNFS client auto-negotiates a lot of features (minorversion level,
+pNFS layout type, etc.).  This is convenient, but makes certain kinds of
+failures hard for a user to detect.
 
-This patch might allow you to look up files on NFS, but without open
-intents, you certainly won't be able to open them, nor will you be able
-to create them (as you seem to believe).
+For example, if the client falls back on 4.0, or falls back to MDS IO
+because the user didn't connect to the right iscsi disks before
+mounting, the only symptoms may be reduced performance, which may not be
+noticed till long after the actual failure, and may be difficult for a
+user to diagnose.
 
-NACKed...
+However, such "failures" may also be perfectly normal in some cases, so
+we don't want to spam the system logs with them.
 
+One approach would be to put some more information into
+/proc/self/mountstats.
+
+Signed-off-by: J. Bruce Fields <bfields@fieldses.org>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfs: add commit client stats]
+[fixup data types for "ret" variables in pnfs_try_to* inline funcs.]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[fix definition of show_pnfs for !CONFIG_PNFS]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfs41: Fix show_sessions in the not CONFIG_NFS_V4_1 case]
+    There is a build error when CONFIG_NFS_V4 is set but
+    CONFIG_NFS_V4_1 is *not* set. show_sessions() prototype
+    was unbalanced between the two cases.
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+[pnfs: super.c remove CONFIG_PNFS]
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/super.c |   25 +++++++++++++++++++++++++
+ 1 files changed, 25 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index e288f06..ce40e5c 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -63,6 +63,7 @@
+ #include "iostat.h"
+ #include "internal.h"
+ #include "fscache.h"
++#include "pnfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_VFS
+ 
+@@ -732,6 +733,28 @@ static int nfs_show_options(struct seq_file *m, struct vfsmount *mnt)
+ 
+ 	return 0;
+ }
++#ifdef CONFIG_NFS_V4_1
++void show_sessions(struct seq_file *m, struct nfs_server *server)
++{
++	if (nfs4_has_session(server->nfs_client))
++		seq_printf(m, ",sessions");
++}
++#else
++void show_sessions(struct seq_file *m, struct nfs_server *server) {}
++#endif
++
++#ifdef CONFIG_NFS_V4_1
++void show_pnfs(struct seq_file *m, struct nfs_server *server)
++{
++	seq_printf(m, ",pnfs=");
++	if (server->pnfs_curr_ld)
++		seq_printf(m, "%s", server->pnfs_curr_ld->name);
++	else
++		seq_printf(m, "not configured");
++}
++#else  /* CONFIG_NFS_V4_1 */
++void show_pnfs(struct seq_file *m, struct nfs_server *server) {}
++#endif /* CONFIG_NFS_V4_1 */
+ 
+ static int nfs_show_devname(struct seq_file *m, struct vfsmount *mnt)
+ {
+@@ -792,6 +815,8 @@ static int nfs_show_stats(struct seq_file *m, struct vfsmount *mnt)
+ 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
+ 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
+ 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
++		show_sessions(m, nfss);
++		show_pnfs(m, nfss);
+ 	}
+ #endif
+ 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.3.4
 
