@@ -1,101 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:36906 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:43373 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758087Ab1EYQTq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 12:19:46 -0400
-Message-ID: <4DDD2C2A.1070102@panasas.com>
-Date: Wed, 25 May 2011 19:19:54 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>,
-        Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH V2] SQUASHME: pnfs: Fix NULL dereference and leak in the -ENOMEM
- path
-References: <4DDA8C3D.5080706@panasas.com> <1306168714-11721-1-git-send-email-bhalevy@panasas.com> <4DDD2933.3000209@panasas.com>
-In-Reply-To: <4DDD2933.3000209@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+	with ESMTP id S1754412Ab1EVXtd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 19:49:33 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v5 09/38] SQUASHME: pnfs: refactor device cache _lookup_deviceid
+Date: Mon, 23 May 2011 02:48:41 +0300
+Message-Id: <1306108121-28134-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD99F9B.2040406@panasas.com>
+References: <4DD99F9B.2040406@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-
-In _pnfs_return_layout:
-
-lrp pointer is checked for NULL after it was already accessed.
-
-The rational here is that in _pnfs_return_layout we want to
-de-ref and release the layout regardless of if we sent the
-return or not (forgetfull). An eventual recall can return -ENOMATCHING
-instead of -EDELAY.
-
-So to keep the reasoning above, copy the stateid twice.
-
-Benny if it is OK to not release the layout on -ENOMEM then the check
-could just be moved above the spin_lock(), and the put_layout_hdr removed.
-
-Also the error returns would leak the lrp so fix it.
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/pnfs.c |   14 +++++++++-----
- 1 files changed, 9 insertions(+), 5 deletions(-)
+ fs/nfs/pnfs_dev.c |   49 +++++++++++++++++++++++++++----------------------
+ 1 files changed, 27 insertions(+), 22 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index a07b007..3847406 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -627,13 +627,12 @@ _pnfs_return_layout(struct inode *ino)
- 	struct pnfs_layout_hdr *lo = NULL;
- 	struct nfs_inode *nfsi = NFS_I(ino);
- 	LIST_HEAD(tmp_list);
--	struct nfs4_layoutreturn *lrp;
-+	struct nfs4_layoutreturn *lrp = NULL;
-+	nfs4_stateid stateid;
- 	int status = 0;
- 
- 	dprintk("--> %s\n", __func__);
- 
--	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
--
- 	spin_lock(&ino->i_lock);
- 	lo = nfsi->layout;
- 	if (!lo || !mark_matching_lsegs_invalid(lo, &tmp_list, NULL)) {
-@@ -642,7 +641,7 @@ _pnfs_return_layout(struct inode *ino)
- 		kfree(lrp);
- 		goto out;
- 	}
--	lrp->args.stateid = nfsi->layout->plh_stateid;
-+	stateid = nfsi->layout->plh_stateid;
- 	/* Reference matched in nfs4_layoutreturn_release */
- 	get_layout_hdr(lo);
- 	spin_unlock(&ino->i_lock);
-@@ -650,11 +649,14 @@ _pnfs_return_layout(struct inode *ino)
- 
- 	WARN_ON(test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags));
- 
--	if (lrp == NULL) {
-+	/* lrp is freed in nfs4_layoutreturn_release */
-+	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
-+	if (unlikely(!lrp)) {
- 		put_layout_hdr(NFS_I(ino)->layout);
- 		status = -ENOMEM;
- 		goto out;
- 	}
-+	lrp->args.stateid = stateid;
- 	lrp->args.reclaim = 0;
- 	lrp->args.layout_type = NFS_SERVER(ino)->pnfs_curr_ld->id;
- 	lrp->args.inode = ino;
-@@ -662,6 +664,8 @@ _pnfs_return_layout(struct inode *ino)
- 
- 	status = nfs4_proc_layoutreturn(lrp);
- out:
-+	if (unlikely(status))
-+		kfree(lrp);
- 	dprintk("<-- %s status: %d\n", __func__, status);
- 	return status;
+diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+index d205b18..374fa66 100644
+--- a/fs/nfs/pnfs_dev.c
++++ b/fs/nfs/pnfs_dev.c
+@@ -66,6 +66,23 @@ nfs4_deviceid_hash(const struct nfs4_deviceid *id)
+ 	return x & NFS4_DEVICE_ID_HASH_MASK;
  }
+ 
++static struct nfs4_deviceid_node *
++_lookup_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
++		 long hash)
++{
++	struct nfs4_deviceid_node *d;
++	struct hlist_node *n;
++
++	hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[hash], node)
++		if (d->nfs_client == clp && !memcmp(&d->deviceid, id, sizeof(*id))) {
++			if (atomic_read(&d->ref))
++				return d;
++			else
++				continue;
++		}
++	return NULL;
++}
++
+ /*
+  * Lookup a deviceid in cache and get a reference count on it if found
+  *
+@@ -76,21 +93,13 @@ struct nfs4_deviceid_node *
+ nfs4_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
+ {
+ 	struct nfs4_deviceid_node *d;
+-	struct hlist_node *n;
+-	long hash = nfs4_deviceid_hash(id);
+ 
+ 	rcu_read_lock();
+-	hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[hash], node) {
+-		if (d->nfs_client == clp && !memcmp(&d->deviceid, id, sizeof(*id))) {
+-			if (!atomic_inc_not_zero(&d->ref))
+-				goto fail;
+-			rcu_read_unlock();
+-			return d;
+-		}
+-	}
+-fail:
++	d = _lookup_deviceid(clp, id, nfs4_deviceid_hash(id));
++	if (!atomic_inc_not_zero(&d->ref))
++		d = NULL;
+ 	rcu_read_unlock();
+-	return NULL;
++	return d;
+ }
+ EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
+ 
+@@ -106,19 +115,15 @@ struct nfs4_deviceid_node *
+ nfs4_unhash_put_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
+ {
+ 	struct nfs4_deviceid_node *d;
+-	struct hlist_node *n;
+-	long hash = nfs4_deviceid_hash(id);
+ 
++	spin_lock(&nfs4_deviceid_lock);
+ 	rcu_read_lock();
+-	hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[hash], node)
+-		if (d->nfs_client == clp && !memcmp(&d->deviceid, id, sizeof(*id)))
+-			goto found;
++	d = _lookup_deviceid(clp, id, nfs4_deviceid_hash(id));
+ 	rcu_read_unlock();
+-	return NULL;
+-
+-found:
+-	rcu_read_unlock();
+-	spin_lock(&nfs4_deviceid_lock);
++	if (!d) {
++		spin_unlock(&nfs4_deviceid_lock);
++		return NULL;
++	}
+ 	hlist_del_init_rcu(&d->node);
+ 	spin_unlock(&nfs4_deviceid_lock);
+ 	synchronize_rcu();
 -- 
-1.7.2.3
-
+1.7.3.4
 
