@@ -1,94 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57129 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:43383 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752643Ab1EYV2p (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:28:45 -0400
+	with ESMTP id S1754626Ab1EVXuM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 19:50:12 -0400
 From: Benny Halevy <bhalevy@panasas.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v8 18/32] pnfs: alloc and free layout_hdr layoutdriver methods
-Date: Thu, 26 May 2011 00:28:41 +0300
-Message-Id: <1306358921-17439-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DDD7392.6040505@panasas.com>
-References: <4DDD7392.6040505@panasas.com>
+Subject: [PATCH v5 10/38] SQUASHME: pnfs: refactor device cache _find_get_deviceid
+Date: Mon, 23 May 2011 02:49:38 +0300
+Message-Id: <1306108178-28173-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD99F9B.2040406@panasas.com>
+References: <4DD99F9B.2040406@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-[gfp_flags]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/pnfs.c |   21 ++++++++++++++++++---
- fs/nfs/pnfs.h |    4 ++++
- 2 files changed, 22 insertions(+), 3 deletions(-)
+ fs/nfs/pnfs_dev.c |   15 +++++++++++----
+ 1 files changed, 11 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 20436a5..ef535f2 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -177,13 +177,28 @@ get_layout_hdr(struct pnfs_layout_hdr *lo)
- 	atomic_inc(&lo->plh_refcount);
- }
- 
-+static struct pnfs_layout_hdr *
-+pnfs_alloc_layout_hdr(struct inode *ino, gfp_t gfp_flags)
-+{
-+	struct pnfs_layoutdriver_type *ld = NFS_SERVER(ino)->pnfs_curr_ld;
-+	return ld->alloc_layout_hdr ? ld->alloc_layout_hdr(ino, gfp_flags) :
-+		kzalloc(sizeof(struct pnfs_layout_hdr), gfp_flags);
-+}
-+
-+static void
-+pnfs_free_layout_hdr(struct pnfs_layout_hdr *lo)
-+{
-+	struct pnfs_layoutdriver_type *ld = NFS_SERVER(lo->plh_inode)->pnfs_curr_ld;
-+	return ld->alloc_layout_hdr ? ld->free_layout_hdr(lo) : kfree(lo);
-+}
-+
- static void
- destroy_layout_hdr(struct pnfs_layout_hdr *lo)
+diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+index 374fa66..f830616 100644
+--- a/fs/nfs/pnfs_dev.c
++++ b/fs/nfs/pnfs_dev.c
+@@ -90,17 +90,24 @@ _lookup_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
+  * @id deviceid to look up
+  */
+ struct nfs4_deviceid_node *
+-nfs4_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
++_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
++		   long hash)
  {
- 	dprintk("%s: freeing layout cache %p\n", __func__, lo);
- 	BUG_ON(!list_empty(&lo->plh_layouts));
- 	NFS_I(lo->plh_inode)->layout = NULL;
--	kfree(lo);
-+	pnfs_free_layout_hdr(lo);
+ 	struct nfs4_deviceid_node *d;
+ 
+ 	rcu_read_lock();
+-	d = _lookup_deviceid(clp, id, nfs4_deviceid_hash(id));
++	d = _lookup_deviceid(clp, id, hash);
+ 	if (!atomic_inc_not_zero(&d->ref))
+ 		d = NULL;
+ 	rcu_read_unlock();
+ 	return d;
  }
- 
- static void
-@@ -744,7 +759,7 @@ alloc_init_layout_hdr(struct inode *ino, gfp_t gfp_flags)
- {
- 	struct pnfs_layout_hdr *lo;
- 
--	lo = kzalloc(sizeof(struct pnfs_layout_hdr), gfp_flags);
-+	lo = pnfs_alloc_layout_hdr(ino, gfp_flags);
- 	if (!lo)
- 		return NULL;
- 	atomic_set(&lo->plh_refcount, 1);
-@@ -777,7 +792,7 @@ pnfs_find_alloc_layout(struct inode *ino, gfp_t gfp_flags)
- 	if (likely(nfsi->layout == NULL))	/* Won the race? */
- 		nfsi->layout = new;
- 	else
--		kfree(new);
-+		pnfs_free_layout_hdr(new);
- 	return nfsi->layout;
- }
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 2e94ed3..ed167a7 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -73,6 +73,10 @@ struct pnfs_layoutdriver_type {
- 	const u32 id;
- 	const char *name;
- 	struct module *owner;
 +
-+	struct pnfs_layout_hdr * (*alloc_layout_hdr) (struct inode *inode, gfp_t gfp_flags);
-+	void (*free_layout_hdr) (struct pnfs_layout_hdr *);
-+
- 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
- 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
++struct nfs4_deviceid_node *
++nfs4_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
++{
++	return _find_get_deviceid(clp, id, nfs4_deviceid_hash(id));
++}
+ EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
+ 
+ /*
+@@ -189,13 +196,13 @@ nfs4_insert_deviceid_node(struct nfs4_deviceid_node *new)
+ 	long hash;
+ 
+ 	spin_lock(&nfs4_deviceid_lock);
+-	d = nfs4_find_get_deviceid(new->nfs_client, &new->deviceid);
++	hash = nfs4_deviceid_hash(&new->deviceid);
++	d = _find_get_deviceid(new->nfs_client, &new->deviceid, hash);
+ 	if (d) {
+ 		spin_unlock(&nfs4_deviceid_lock);
+ 		return d;
+ 	}
+ 
+-	hash = nfs4_deviceid_hash(&new->deviceid);
+ 	hlist_add_head_rcu(&new->node, &nfs4_deviceid_cache[hash]);
+ 	spin_unlock(&nfs4_deviceid_lock);
  
 -- 
 1.7.3.4
