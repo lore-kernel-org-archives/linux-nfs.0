@@ -1,91 +1,176 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from nm5.bullet.mail.sp2.yahoo.com ([98.139.91.75]:23592 "HELO
-	nm5.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751384Ab1EEG5q convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 May 2011 02:57:46 -0400
-Message-ID: <798194.79212.qm@web111706.mail.gq1.yahoo.com>
-References: <868905.93230.qm@web111721.mail.gq1.yahoo.com> <20110505083843.6c6570d7@notabene.brown>
-Date: Wed, 4 May 2011 23:57:45 -0700 (PDT)
-From: Mahmood Naderan <nt_mahmood@yahoo.com>
-Reply-To: Mahmood Naderan <nt_mahmood@yahoo.com>
-Subject: Re: statd running as root
-To: NeilBrown <neilb@suse.de>
-Cc: nfs <linux-nfs@vger.kernel.org>
-In-Reply-To: <20110505083843.6c6570d7@notabene.brown>
-Content-Type: text/plain; charset=iso-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:30480 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753273Ab1EVCtn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 May 2011 22:49:43 -0400
+Message-ID: <4DD879BC.6000503@panasas.com>
+Date: Sun, 22 May 2011 05:49:32 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Fred Isaman <iisaman@netapp.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] SQUASHME: BUGs squashing in new pnfs for LD code
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
->Choose a used - e.g. "statd-user", and then
 
-The user I have in passwd file is: 
-statd:x:103:65534::/var/lib/nfs:/bin/false
+1. In nfs4_write_done_cb: data->write_done_cb comes with a NULL.
+   Just as a guess I call nfs4_write_done_cb() just above it
+   it looked like the right thing to do. With that in, I'm able
+   to write things to file When converting pnfs.c:258 to a WARN_ON.
 
-So I should run
-chown statd /var/lib/nfs/sm
+   Benny we might want to set data->write_done_cb somewhere in the
+   none-rpc path? where is it best to do that?
+1.5
+   Same as above for nfs4_read_done.
 
-I forgot to mention the main problem, instead I asked for solution to the log.
-The problem is that the client won't automatically mount the folders from 
-/etc/fstab. After booting and login, I have to manually use "mount" command.
+2. In pnfs_ld_write_done We don't need:
+	put_lseg(data->lseg);
+	data->lseg = NULL;
+   It is called in nfs_writedata_release()
+2.5 Same for pnfs_ld_read_done
 
-I searched a lot about that and some say (I found somethings in suse forum http://forums.opensuse.org/english/get-technical-help-here/network-internet/406148-opensuse-11-1-not-mounting-nfs-boot.html#post1934423)
-that portmap is run before network manager. 
+3. In pnfs_ld_write_done:
+   data->mds_ops->rpc_call_done(NULL, data);
+   crashes with a NULL task. Just pass it with &data->task
 
-So the boot order is problematic.
- 
+   Which calls for a cleanup. There is bunch of functions
+   with [task, write_data] API. And the task is always
+   write_data->task
 
-// Naderan *Mahmood;
+3.5
+   Same for pnfs_ld_read_done
 
+4. It is now with current code not possible to run with out a
+   *.pg_test* opt. Without, it will crash, reference leak and
+   only do pnfs-IO on a single page. I'll send a patch to check
+   for it in... where the ld->opt is checked.
 
------ Original Message -----
-From: NeilBrown <neilb@suse.de>
-To: Mahmood Naderan <nt_mahmood@yahoo.com>
-Cc: nfs <linux-nfs@vger.kernel.org>
-Sent: Thursday, May 5, 2011 3:08 AM
-Subject: Re: statd running as root
+   So define one for objlayout. Which always returns true.
 
-On Wed, 4 May 2011 10:43:52 -0700 (PDT) Mahmood Naderan
-<nt_mahmood@yahoo.com> wrote:
+With this I'm able to read/write with pnfs-IO. (lightly test)
+(With out any WARN_ONs)
 
-> Hi,
-> On the client side I see this log
->  
-> Apr  5 14:50:50 orca kernel: [   10.528336] udev: starting version 151
-> Apr  5 14:50:50 orca cron[1021]: (CRON) INFO (pidfile fd = 3)
-> Apr  5 14:50:50 orca cron[1032]: (CRON) STARTUP (fork ok)
-> Apr  5 14:50:51 orca cron[1032]: (CRON) INFO (Running @reboot jobs)
-> Apr  5 14:50:55 orca rpc.statd[704]: statd running as root. chown /var/lib/nfs/sm to choose different user
-> Apr  5 14:50:58 orca kernel: [   18.440010] eth0: no IPv6 routers present
-> 
->  
-> However I don't know what to do
->  
-> root@client:/home/mahmood# ls -l /var/lib/nfs/
-> total 12
-> drwxr-xr-x 2 root root 4096 2011-05-03 18:31 rpc_pipefs
-> drwxr-xr-x 2 root root 4096 2011-05-03 18:31 sm
-> drwxr-xr-x 2 root root 4096 2011-05-03 18:31 sm.bak
-> 
-> Any idea about that?
->  
+One problem I've seen is that I only get up to 16 pages maximum
+in a single request. I would like to see the 512 pages we had
+before for a full request. Where should I fix that?
 
-I thought that
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/nfs4proc.c            |    5 +++--
+ fs/nfs/objlayout/objio_osd.c |   15 +++++++++++++++
+ fs/nfs/pnfs.c                |   14 +++++++-------
+ 3 files changed, 25 insertions(+), 9 deletions(-)
 
-    chown /var/lib/nfs/sm to choose different user
-
-was sufficiently clear.
-Choose a used - e.g. "statd-user", and then
-
-
-    chown statd-user /var/lib/nfs/sm
-
-(of course you have to create the user first if it doesn't already exist).
-
-NeilBrown
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 759523a..4bf7c0c 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3205,7 +3205,7 @@ static int nfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
+ 	if (!nfs4_sequence_done(task, &data->res.seq_res))
+ 		return -EAGAIN;
+ 
+-	return data->read_done_cb(task, data);
++	return data->read_done_cb ? data->read_done_cb(task, data) : nfs4_read_done_cb(task, data);
+ }
+ 
+ static void nfs4_proc_read_setup(struct nfs_read_data *data, struct rpc_message *msg)
+@@ -3250,7 +3250,8 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
+ {
+ 	if (!nfs4_sequence_done(task, &data->res.seq_res))
+ 		return -EAGAIN;
+-	return data->write_done_cb(task, data);
++	return data->write_done_cb ? data->write_done_cb(task, data) :
++		nfs4_write_done_cb(task, data);
+ }
+ 
+ /* Reset the the nfs_write_data to send the write to the MDS. */
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 7e46d2b..105d8a6 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -989,6 +989,19 @@ ssize_t objio_write_pagelist(struct objlayout_io_state *ol_state, bool stable)
+ 	return _write_exec(ios);
+ }
+ 
++/*
++ * objlayout_pg_test(). Called by nfs_can_coalesce_requests()
++ *
++ * return 1 :  coalesce page
++ * return 0 :  don't coalesce page
++ */
++int
++objlayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
++		   struct nfs_page *req)
++{
++	return 1;
++}
++
+ static struct pnfs_layoutdriver_type objlayout_type = {
+ 	.id = LAYOUT_OSD2_OBJECTS,
+ 	.name = "LAYOUT_OSD2_OBJECTS",
+@@ -1008,6 +1021,8 @@ static struct pnfs_layoutdriver_type objlayout_type = {
+ 
+ 	.encode_layoutcommit	 = objlayout_encode_layoutcommit,
+ 	.encode_layoutreturn     = objlayout_encode_layoutreturn,
++
++	.pg_test		= objlayout_pg_test,
+ };
+ 
+ void *objio_init_mt(void)
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 8d2baf8..ea30a52 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -256,7 +256,7 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
+ {
+ 	struct inode *inode = lseg->pls_layout->plh_inode;
+ 
+-	BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
++ 	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+ 	list_del_init(&lseg->pls_list);
+ 	if (list_empty(&lseg->pls_layout->plh_segs)) {
+ 		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
+@@ -1125,15 +1125,15 @@ pnfs_ld_write_done(struct nfs_write_data *data)
+ {
+ 	int status;
+ 
+-	put_lseg(data->lseg);
+-	data->lseg = NULL;
+ 	if (!data->pnfs_error) {
+ 		pnfs_set_layoutcommit(data);
+-		data->mds_ops->rpc_call_done(NULL, data);
++		data->mds_ops->rpc_call_done(&data->task, data);
+ 		data->mds_ops->rpc_release(data);
+ 		return 0;
+ 	}
+ 
++	put_lseg(data->lseg);
++	data->lseg = NULL;
+ 	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
+ 		data->pnfs_error);
+ 	status = nfs_initiate_write(data, NFS_CLIENT(data->inode), data->mds_ops, NFS_FILE_SYNC);
+@@ -1173,15 +1173,15 @@ pnfs_ld_read_done(struct nfs_read_data *data)
+ {
+ 	int status;
+ 
+-	put_lseg(data->lseg);
+-	data->lseg = NULL;
+ 	if (!data->pnfs_error) {
+ 		__nfs4_read_done_cb(data);
+-		data->mds_ops->rpc_call_done(NULL, data);
++		data->mds_ops->rpc_call_done(&data->task, data);
+ 		data->mds_ops->rpc_release(data);
+ 		return 0;
+ 	}
+ 
++	put_lseg(data->lseg);
++	data->lseg = NULL;
+ 	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
+ 		data->pnfs_error);
+ 	status = nfs_initiate_read(data, NFS_CLIENT(data->inode), data->mds_ops);
+-- 
+1.7.2.3
 
