@@ -1,53 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:36456 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933830Ab1ESTiM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 May 2011 15:38:12 -0400
-Subject: Re: [PATCH] nfs41: Correct offset for LAYOUTCOMMIT
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Vitaliy Gusev <gusev.vitaliy@gmail.com>
-Cc: andros@netapp.com, linux-nfs@vger.kernel.org,
-        Vitaliy Gusev <gusev.vitaliy@nexenta.com>
-Date: Thu, 19 May 2011 15:38:10 -0400
-In-Reply-To: <1305832245-17318-1-git-send-email-gusev.vitaliy@nexenta.com>
-References: <1305832245-17318-1-git-send-email-gusev.vitaliy@nexenta.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1305833890.5552.0.camel@lade.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:38857 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752683Ab1EVQu5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 12:50:57 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Cc: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 11/23] pnfs: per mount layout driver private data
+Date: Sun, 22 May 2011 19:50:37 +0300
+Message-Id: <1306083037-10924-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DD93D3E.9010909@panasas.com>
+References: <4DD93D3E.9010909@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2011-05-19 at 23:10 +0400, Vitaliy Gusev wrote: 
-> A client sends offset to MDS as it was seen by DS. As result,
-> file size after copy is only half of original file size in case
-> of 2 DS.
-> 
-> Signed-off-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
-> ---
->  fs/nfs/nfs4filelayout.c |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> index be79dc9..790eb1d 100644
-> --- a/fs/nfs/nfs4filelayout.c
-> +++ b/fs/nfs/nfs4filelayout.c
-> @@ -167,6 +167,7 @@ filelayout_set_layoutcommit(struct nfs_write_data *wdata)
->  	    wdata->res.verf->committed == NFS_FILE_SYNC)
->  		return;
->  
-> +	wdata->args.offset = wdata->mds_offset;
->  	pnfs_set_layoutcommit(wdata);
->  	dprintk("%s ionde %lu pls_end_pos %lu\n", __func__, wdata->inode->i_ino,
->  		(unsigned long) wdata->lseg->pls_end_pos);
+From: Benny Halevy <bhalevy@panasas.com>
 
-Err... Shouldn't we rather be fixing pnfs_set_layoutcommit() to use the
-mds_offset instead of hacking args.offset?
+[get rid of ds_[rw]size]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ include/linux/nfs_fs_sb.h |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 87694ca..66e031f 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -143,6 +143,7 @@ struct nfs_server {
+ 						   filesystem */
+ 	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
+ 	struct rpc_wait_queue	roc_rpcwaitq;
++	void			       *pnfs_ld_data; /* Per-mount data */
+ 
+ 	/* the following fields are protected by nfs_client->cl_lock */
+ 	struct rb_root		state_owners;
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.2.3
 
