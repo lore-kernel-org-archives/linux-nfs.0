@@ -1,173 +1,167 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41303 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753692Ab1ELTak convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 May 2011 15:30:40 -0400
-Subject: Re: [PATCH 11/16] NFS: Add an API for cloning an nfs_client
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <4FFB50FE-FCD9-48C4-837B-61AAC94F9903@oracle.com>
-References: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
-	 <20110509193803.16568.61644.stgit@matisse.1015granger.net>
-	 <4FFB50FE-FCD9-48C4-837B-61AAC94F9903@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 12 May 2011 15:30:23 -0400
-Message-ID: <1305228623.21868.71.camel@lade.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:43488 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754491Ab1EVXza (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 19:55:30 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v5 16/38] pnfs-obj: objlayoutdriver module skeleton
+Date: Mon, 23 May 2011 02:54:04 +0300
+Message-Id: <1306108444-28478-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD99F9B.2040406@panasas.com>
+References: <4DD99F9B.2040406@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2011-05-12 at 13:30 -0400, Chuck Lever wrote:
-> On May 9, 2011, at 3:38 PM, Chuck Lever wrote:
-> 
-> > After a migration event, we have to preserve the client ID the client
-> > used with the source server, and introduce it to the destination
-> > server, in case the migration transparently migrated state for the
-> > migrating FSID.
-> > 
-> > Note that our RENEW and SETCLIENTID procs both take an nfs_client as
-> > an argument.  Thus, after a successful migration recovery, we want to
-> > have a nfs_client with the correct long-form and short-form client ID
-> > for the destination server to pass these procs.
-> > 
-> > To preserve the client IDs, we clone the source server's nfs_client.
-> > The migrated FSID is moved from the original nfs_client to the cloned
-> > one.
-> > 
-> > This patch introduces an API for cloning an nfs_client and moving an
-> > FSID to it.
-> > 
-> > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> > ---
-> > 
-> > fs/nfs/client.c   |   69 +++++++++++++++++++++++++++++++++++++++++++++++++++--
-> > fs/nfs/internal.h |    4 +++
-> > 2 files changed, 71 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> > index 536b0ba..2f5e29f 100644
-> > --- a/fs/nfs/client.c
-> > +++ b/fs/nfs/client.c
-> > @@ -135,6 +135,7 @@ struct nfs_client_initdata {
-> > 	const struct nfs_rpc_ops *rpc_ops;
-> > 	int proto;
-> > 	u32 minorversion;
-> > +	const char *long_clientid;
-> > };
-> > 
-> > /*
-> > @@ -184,6 +185,9 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
-> > 	clp->cl_state = 1 << NFS4CLNT_LEASE_EXPIRED;
-> > 	clp->cl_minorversion = cl_init->minorversion;
-> > 	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
-> > +	if (cl_init->long_clientid != NULL)
-> > +		clp->cl_cached_clientid = kstrdup(cl_init->long_clientid,
-> > +							GFP_KERNEL);
-> > #endif
-> > 	cred = rpc_lookup_machine_cred();
-> > 	if (!IS_ERR(cred))
-> > @@ -476,6 +480,10 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
-> > 		/* Match the full socket address */
-> > 		if (!nfs_sockaddr_cmp(sap, clap))
-> > 			continue;
-> > +		/* Match on long-form client ID */
-> > +		if (data->long_clientid && clp->cl_cached_clientid &&
-> > +		    strcmp(data->long_clientid, clp->cl_cached_clientid))
-> > +			continue;
-> > 
-> > 		atomic_inc(&clp->cl_count);
-> > 		return clp;
-> > @@ -1426,8 +1434,65 @@ error:
-> > 	return error;
-> > }
-> > 
-> > -/*
-> > - * Set up a pNFS Data Server client.
-> > +/**
-> > + * nfs4_clone_client - Clone a client after a migration event
-> > + * clp: nfs_client to clone
-> > + * sap: address of destination server
-> > + * salen: size of "sap" in bytes
-> > + * ip_addr: NUL-terminated string containing local presentation address
-> > + * server: nfs_server to move from "clp" to the new one
-> > + *
-> > + * Returns negative errno or zero.  nfs_client field of "server" is
-> > + * updated to refer to a new or existing nfs_client that matches
-> > + * [server address, port, version, minorversion, client ID].  The
-> > + * nfs_server is moved from the old nfs_client's cl_superblocks list
-> > + * to the new nfs_client's list.
-> > + */
-> > +int nfs4_clone_client(struct nfs_client *clp, const struct sockaddr *sap,
-> > +		      size_t salen, const char *ip_addr,
-> > +		      struct nfs_server *server)
-> > +{
-> > +	struct rpc_clnt *rpcclnt = clp->cl_rpcclient;
-> > +	struct nfs_client_initdata cl_init = {
-> > +		.addr		= sap,
-> > +		.addrlen	= salen,
-> > +		.rpc_ops	= &nfs_v4_clientops,
-> > +		.proto		= rpc_protocol(rpcclnt),
-> > +		.minorversion	= clp->cl_minorversion,
-> > +		.long_clientid	= clp->cl_cached_clientid,
-> > +	};
-> > +	struct nfs_client *new;
-> > +	int status = 0;
-> > +
-> > +	dprintk("--> %s cloning \"%s\" (client ID %llx)\n",
-> > +		__func__, clp->cl_hostname, clp->cl_clientid);
-> > +
-> > +	new = nfs_get_client(&cl_init, rpcclnt->cl_timeout, ip_addr,
-> > +				rpcclnt->cl_auth->au_flavor, 0);
-> > +	if (IS_ERR(new)) {
-> > +		dprintk("<-- %s nfs_get_client failed\n", __func__);
-> > +		status = PTR_ERR(new);
-> > +		goto out;
-> > +	}
-> > +
-> > +	nfs_server_remove_lists(server);
-> > +	server->nfs_client = new;
-> > +	nfs_server_insert_lists(server);
-> > +
-> > +	dprintk("<-- %s moved (%llx:%llx) to nfs_client %p\n", __func__,
-> > +			(unsigned long long)server->fsid.major,
-> > +			(unsigned long long)server->fsid.minor, new);
-> 
-> We may be in trouble here.
-> 
-> Solaris servers use the cb_ident field to recognize a callback update rather than a full SETCLIENTID.  This is because a migrate-reboot-migrate sequence can leave a destination server with a group of short form client IDs associated with the same long-form client ID.
+* Define the PNFS_OBJLAYOUT Kconfig option in the nfs
+  master Kconfig file.
+* Add the objlayout driver to the Kernel's Kbuild system.
+* Add the fs/nfs/objlayout/Kbuild file for building the
+  objlayoutdriver.ko driver
+* Define fs/nfs/objlayout/objio_osd.c, register the driver on module
+  initialization and unregister on exit.
 
-What part of the spec justifies that assumption?
+[pnfs-obj: remove of CONFIG_PNFS fallout]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+[added "unsure" clause]
+[depend on NFS_V4_1]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/Kconfig               |   10 +++++
+ fs/nfs/Makefile              |    2 +
+ fs/nfs/objlayout/Kbuild      |    5 +++
+ fs/nfs/objlayout/objio_osd.c |   76 ++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 93 insertions(+), 0 deletions(-)
+ create mode 100644 fs/nfs/objlayout/Kbuild
+ create mode 100644 fs/nfs/objlayout/objio_osd.c
 
-I can't see any mention of this kind of use of callback_ident in section
-14.2.33 (or anywhere else). On the contrary, that section states
-explicitly that the client is free at any time to modify both the
-callback and callback_ident by means of a SETCLIENTID call that
-preserves the client.id and client.verifier fields.
-
-Worse: section 14.2.34 (SETCLIENTID_CONFIRM) says that if you confirm a
-given short clientid, then _all_ state associated with another short
-clientid value for that same long clientid is wiped.
-
-IOW: I'm having trouble seeing how the 'multiple short clientid' model
-can work within the framework of the current spec. As far as I can see,
-it would require significant spec changes.
-
-> Cloning an nfs_client creates a new nfs_client in many cases, which bumps cb_ident.  On Linux, a callback with the original cb_ident would get us the old nfs_client anyway (via idr_find()).
-
-Right. This is intentional.
-
-> They are proposing that we use the callback RPC program number instead to find the right state information.
-
-I'm very sceptical to that. For one thing, it is hard to implement
-within the framework of the Linux server model: we work much better with
-the single callback RPC program number and multiple callback_idents.
-
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index ba30665..8151554 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -87,6 +87,16 @@ config NFS_V4_1
+ config PNFS_FILE_LAYOUT
+ 	tristate
+ 
++config PNFS_OBJLAYOUT
++	tristate "Provide support for the pNFS Objects Layout Driver for NFSv4.1 pNFS (EXPERIMENTAL)"
++	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
++	help
++	  Say M here if you want your pNFS client to support the Objects Layout Driver.
++	  Requires the SCSI osd initiator library (SCSI_OSD_INITIATOR) and
++	  upper level driver (SCSI_OSD_ULD).
++
++	  If unsure, say N.
++
+ config ROOT_NFS
+ 	bool "Root file system on NFS"
+ 	depends on NFS_FS=y && IP_PNP
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 7516a8a..6a34f7d 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -21,3 +21,5 @@ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+ 
+ obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
+ nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
++
++obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayout/
+diff --git a/fs/nfs/objlayout/Kbuild b/fs/nfs/objlayout/Kbuild
+new file mode 100644
+index 0000000..2e5b9a4
+--- /dev/null
++++ b/fs/nfs/objlayout/Kbuild
+@@ -0,0 +1,5 @@
++#
++# Makefile for the pNFS Objects Layout Driver kernel module
++#
++objlayoutdriver-y := objio_osd.o
++obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayoutdriver.o
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+new file mode 100644
+index 0000000..379595f
+--- /dev/null
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -0,0 +1,76 @@
++/*
++ *  pNFS Objects layout implementation over open-osd initiator library
++ *
++ *  Copyright (C) 2009 Panasas Inc. [year of first publication]
++ *  All rights reserved.
++ *
++ *  Benny Halevy <bhalevy@panasas.com>
++ *  Boaz Harrosh <bharrosh@panasas.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License version 2
++ *  See the file COPYING included with this distribution for more details.
++ *
++ *  Redistribution and use in source and binary forms, with or without
++ *  modification, are permitted provided that the following conditions
++ *  are met:
++ *
++ *  1. Redistributions of source code must retain the above copyright
++ *     notice, this list of conditions and the following disclaimer.
++ *  2. Redistributions in binary form must reproduce the above copyright
++ *     notice, this list of conditions and the following disclaimer in the
++ *     documentation and/or other materials provided with the distribution.
++ *  3. Neither the name of the Panasas company nor the names of its
++ *     contributors may be used to endorse or promote products derived
++ *     from this software without specific prior written permission.
++ *
++ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
++ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
++ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
++ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
++ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include <linux/module.h>
++#include "../pnfs.h"
++
++static struct pnfs_layoutdriver_type objlayout_type = {
++	.id = LAYOUT_OSD2_OBJECTS,
++	.name = "LAYOUT_OSD2_OBJECTS",
++};
++
++MODULE_DESCRIPTION("pNFS Layout Driver for OSD2 objects");
++MODULE_AUTHOR("Benny Halevy <bhalevy@panasas.com>");
++MODULE_LICENSE("GPL");
++
++static int __init
++objlayout_init(void)
++{
++	int ret = pnfs_register_layoutdriver(&objlayout_type);
++
++	if (ret)
++		printk(KERN_INFO
++			"%s: Registering OSD pNFS Layout Driver failed: error=%d\n",
++			__func__, ret);
++	else
++		printk(KERN_INFO "%s: Registered OSD pNFS Layout Driver\n",
++			__func__);
++	return ret;
++}
++
++static void __exit
++objlayout_exit(void)
++{
++	pnfs_unregister_layoutdriver(&objlayout_type);
++	printk(KERN_INFO "%s: Unregistered OSD pNFS Layout Driver\n",
++	       __func__);
++}
++
++module_init(objlayout_init);
++module_exit(objlayout_exit);
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.3.4
 
