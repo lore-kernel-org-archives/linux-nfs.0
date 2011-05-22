@@ -1,62 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:49754 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751007Ab1EQExS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 May 2011 00:53:18 -0400
-From: Neil Brown <neilb@suse.de>
-To: Steve Dickson <SteveD@redhat.com>
-Date: Tue, 17 May 2011 14:52:17 +1000
-Subject: [PATCH 2/2] supress socket error when address family is not supported
-Cc: linux-nfs@vger.kernel.org, Suresh Jayaraman <sjayaraman@suse.de>,
-        Neil Brown <neilb@suse.de>
-Message-ID: <20110517045217.29020.46681.stgit@notabene.brown>
-In-Reply-To: <20110517045125.29020.14596.stgit@notabene.brown>
-References: <20110517045125.29020.14596.stgit@notabene.brown>
-Content-Type: text/plain; charset="utf-8"
+Received: from daytona.panasas.com ([67.152.220.89]:38767 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752261Ab1EVQsF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 12:48:05 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Cc: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 03/23] pnfs: align layoutget requests on page boundaries
+Date: Sun, 22 May 2011 19:47:46 +0300
+Message-Id: <1306082866-10703-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DD93D3E.9010909@panasas.com>
+References: <4DD93D3E.9010909@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Suresh Jayaraman <sjayaraman@suse.de>
+From: Benny Halevy <bhalevy@panasas.com>
 
-It was observed that when ipv6 module was not loaded and cannot be auto-loaded,
-when starting NFS server, the following error occurs:
-	"rpc.nfsd: unable to create inet6 TCP socket: errno 97 (Address
-	family not supported by protocol)"
-
-This is obviously a true message, but does not represent an "error" when ipv6
-is not enabled.  Rather, it is an expected condition.  As such, it can be
-confusing / misleading / distracting to display it in this scenario.
-
-This patch instead of throwing error when a socket call fails with
-EAFNOSUPPORT, makes it as a NOTICE.
-
-Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
-Signed-off-by: Neil Brown <neilb@suse.de>
 ---
+ fs/nfs/pnfs.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
- utils/nfsd/nfssvc.c |    9 +++++++--
- 1 files changed, 7 insertions(+), 2 deletions(-)
-
-diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-index ea36399..f607214 100644
---- a/utils/nfsd/nfssvc.c
-+++ b/utils/nfsd/nfssvc.c
-@@ -174,8 +174,13 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
- 		sockfd = socket(addr->ai_family, addr->ai_socktype,
- 				addr->ai_protocol);
- 		if (sockfd < 0) {
--			xlog(L_ERROR, "unable to create %s %s socket: "
--				"errno %d (%m)", family, proto, errno);
-+			if (errno == EAFNOSUPPORT)
-+				xlog(L_NOTICE, "address family %s not "
-+						"supported by protocol %s",
-+						family, proto);
-+			else
-+				xlog(L_ERROR, "unable to create %s %s socket: "
-+				     "errno %d (%m)", family, proto, errno);
- 			rc = errno;
- 			goto error;
- 		}
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 15c8e48..bad146e 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -846,6 +846,7 @@ pnfs_update_layout(struct inode *ino,
+ 		.offset = pos,
+ 		.length = count,
+ 	};
++	unsigned pg_offset;
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+ 	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
+ 	struct pnfs_layout_hdr *lo;
+@@ -895,6 +896,13 @@ pnfs_update_layout(struct inode *ino,
+ 		spin_unlock(&clp->cl_lock);
+ 	}
+ 
++	pg_offset = arg.offset & ~PAGE_CACHE_MASK;
++	if (pg_offset) {
++		arg.offset -= pg_offset;
++		arg.length += pg_offset;
++	}
++	arg.length = PAGE_CACHE_ALIGN(arg.length);
++
+ 	lseg = send_layoutget(lo, ctx, &arg);
+ 	if (!lseg && first) {
+ 		spin_lock(&clp->cl_lock);
+-- 
+1.7.2.3
 
