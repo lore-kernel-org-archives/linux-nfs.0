@@ -1,154 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:34684 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:43326 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752054Ab1EPQWw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 12:22:52 -0400
+	with ESMTP id S1754936Ab1EVXpW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 19:45:22 -0400
 From: Benny Halevy <bhalevy@panasas.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com
-Subject: [PATCH v3 16/29] pnfs-obj: objlayout set/unset layout driver methods
-Date: Mon, 16 May 2011 09:22:49 -0700
-Message-Id: <1305562969-7882-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DD14D8E.1070701@panasas.com>
-References: <4DD14D8E.1070701@panasas.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v5 01/38] NFSv4.1: use struct nfs_client to qualify deviceid
+Date: Mon, 23 May 2011 02:45:09 +0300
+Message-Id: <1306107909-27833-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD99F9B.2040406@panasas.com>
+References: <4DD99F9B.2040406@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-allocate and deallocate per-mount device cache
+deviceids are unique per server, per layout type.
+Therefore, in the global cache in the files layout driver
+deviceids from different servers may clash so we need
+to qualify them with a struct nfs_client that represents
+the nfs server that returned the deviceid.
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Introduced in 2.6.39 commit ea8eecdd
+"NFSv4.1 move deviceid cache to filelayout driver"
+
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/objlayout/objio_osd.c |   37 +++++++++++++++++++++++++++++++++++++
- fs/nfs/objlayout/objlayout.c |   33 +++++++++++++++++++++++++++++++++
- fs/nfs/objlayout/objlayout.h |    5 +++++
- 3 files changed, 75 insertions(+), 0 deletions(-)
+ fs/nfs/nfs4filelayout.c    |    2 +-
+ fs/nfs/nfs4filelayout.h    |    3 ++-
+ fs/nfs/nfs4filelayoutdev.c |    9 ++++-----
+ 3 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 026e600..9baae80 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -56,6 +56,22 @@ struct _dev_ent {
- 	struct osd_dev *od;
- };
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index be79dc9..ff47fdf 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -440,7 +440,7 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+ 	}
  
-+static void _dev_list_remove_all(struct objio_mount_type *omt)
-+{
-+	spin_lock(&omt->dev_list_lock);
-+
-+	while (!list_empty(&omt->dev_list)) {
-+		struct _dev_ent *de = list_entry(omt->dev_list.next,
-+				 struct _dev_ent, list);
-+
-+		list_del_init(&de->list);
-+		osduld_put_device(de->od);
-+		kfree(de);
-+	}
-+
-+	spin_unlock(&omt->dev_list_lock);
-+}
-+
- static struct osd_dev *___dev_list_find(struct objio_mount_type *omt,
- 	struct nfs4_deviceid *d_id)
- {
-@@ -237,10 +253,31 @@ static struct pnfs_layoutdriver_type objlayout_type = {
- 	.id = LAYOUT_OSD2_OBJECTS,
- 	.name = "LAYOUT_OSD2_OBJECTS",
+ 	/* find and reference the deviceid */
+-	dsaddr = nfs4_fl_find_get_deviceid(id);
++	dsaddr = nfs4_fl_find_get_deviceid(NFS_SERVER(lo->plh_inode)->nfs_client, id);
+ 	if (dsaddr == NULL) {
+ 		dsaddr = get_device_info(lo->plh_inode, id, gfp_flags);
+ 		if (dsaddr == NULL)
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index 2b461d7..301b955 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -60,6 +60,7 @@ struct nfs4_pnfs_ds {
  
-+	.set_layoutdriver        = objlayout_set_layoutdriver,
-+	.unset_layoutdriver      = objlayout_unset_layoutdriver,
-+
- 	.alloc_lseg              = objlayout_alloc_lseg,
- 	.free_lseg               = objlayout_free_lseg,
- };
+ struct nfs4_file_layout_dsaddr {
+ 	struct hlist_node		node;
++	struct nfs_client		*nfs_client;
+ 	struct nfs4_deviceid		deviceid;
+ 	atomic_t			ref;
+ 	unsigned long			flags;
+@@ -101,7 +102,7 @@ u32 nfs4_fl_calc_ds_index(struct pnfs_layout_segment *lseg, u32 j);
+ struct nfs4_pnfs_ds *nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg,
+ 					u32 ds_idx);
+ extern struct nfs4_file_layout_dsaddr *
+-nfs4_fl_find_get_deviceid(struct nfs4_deviceid *dev_id);
++nfs4_fl_find_get_deviceid(struct nfs_client *, struct nfs4_deviceid *dev_id);
+ extern void nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
+ struct nfs4_file_layout_dsaddr *
+ get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags);
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index db07c7a..42e3266 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -431,7 +431,7 @@ decode_device(struct inode *ino, struct pnfs_device *pdev, gfp_t gfp_flags)
+ 	dsaddr->stripe_indices = stripe_indices;
+ 	stripe_indices = NULL;
+ 	dsaddr->ds_num = num;
+-
++	dsaddr->nfs_client = NFS_SERVER(ino)->nfs_client;
+ 	memcpy(&dsaddr->deviceid, &pdev->dev_id, sizeof(pdev->dev_id));
  
-+void *objio_init_mt(void)
-+{
-+	struct objio_mount_type *omt = kzalloc(sizeof(*omt), GFP_KERNEL);
-+
-+	if (!omt)
-+		return ERR_PTR(-ENOMEM);
-+
-+	INIT_LIST_HEAD(&omt->dev_list);
-+	spin_lock_init(&omt->dev_list_lock);
-+	return omt;
-+}
-+
-+void objio_fini_mt(void *mountid)
-+{
-+	_dev_list_remove_all(mountid);
-+	kfree(mountid);
-+}
-+
- MODULE_DESCRIPTION("pNFS Layout Driver for OSD2 objects");
- MODULE_AUTHOR("Benny Halevy <bhalevy@panasas.com>");
- MODULE_LICENSE("GPL");
-diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-index 68b2a29..75c158a 100644
---- a/fs/nfs/objlayout/objlayout.c
-+++ b/fs/nfs/objlayout/objlayout.c
-@@ -186,3 +186,36 @@ void objlayout_put_deviceinfo(struct pnfs_osd_deviceaddr *deviceaddr)
- 	__free_page(odi->page);
- 	kfree(odi);
+ 	for (i = 0; i < dsaddr->ds_num; i++) {
+@@ -516,7 +516,7 @@ decode_and_add_device(struct inode *inode, struct pnfs_device *dev, gfp_t gfp_fl
+ 	}
+ 
+ 	spin_lock(&filelayout_deviceid_lock);
+-	d = nfs4_fl_find_get_deviceid(&new->deviceid);
++	d = nfs4_fl_find_get_deviceid(new->nfs_client, &new->deviceid);
+ 	if (d) {
+ 		spin_unlock(&filelayout_deviceid_lock);
+ 		nfs4_fl_free_deviceid(new);
+@@ -610,16 +610,15 @@ nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr)
  }
-+
-+/*
-+ * Perform the objio specific init_mt method.
-+ * Set the layout driver private data pointer for later use.
-+ */
-+int
-+objlayout_set_layoutdriver(struct nfs_server *server)
-+{
-+	void *data;
-+
-+	data = objio_init_mt();
-+	if (IS_ERR(data)) {
-+		printk(KERN_INFO "%s: objlayout lib not ready err=%ld\n",
-+		       __func__, PTR_ERR(data));
-+		return PTR_ERR(data);
-+	}
-+	server->pnfs_ld_data = data;
-+
-+	dprintk("%s: Return data=%p\n", __func__, data);
-+	return 0;
-+}
-+
-+/*
-+ * Perform the objio specific fini_mt method to release the
-+ * layoutdriver private data.
-+ */
-+int
-+objlayout_unset_layoutdriver(struct nfs_server *server)
-+{
-+	dprintk("%s: Begin %p\n", __func__, server->pnfs_ld_data);
-+	objio_fini_mt(server->pnfs_ld_data);
-+	return 0;
-+}
-diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
-index 416a3b9..55caa64 100644
---- a/fs/nfs/objlayout/objlayout.h
-+++ b/fs/nfs/objlayout/objlayout.h
-@@ -57,6 +57,9 @@ struct objlayout_segment {
- /*
-  * Raid engine I/O API
-  */
-+extern void *objio_init_mt(void);
-+extern void objio_fini_mt(void *mt);
-+
- extern int objio_alloc_lseg(void **outp,
- 	struct pnfs_layout_hdr *pnfslay,
- 	struct pnfs_layout_segment *lseg,
-@@ -66,6 +69,8 @@ extern void objio_free_lseg(void *p);
- /*
-  * exported generic objects function vectors
-  */
-+extern int objlayout_set_layoutdriver(struct nfs_server *);
-+extern int objlayout_unset_layoutdriver(struct nfs_server *);
  
- extern struct pnfs_layout_segment *objlayout_alloc_lseg(
- 	struct pnfs_layout_hdr *,
+ struct nfs4_file_layout_dsaddr *
+-nfs4_fl_find_get_deviceid(struct nfs4_deviceid *id)
++nfs4_fl_find_get_deviceid(struct nfs_client *clp, struct nfs4_deviceid *id)
+ {
+ 	struct nfs4_file_layout_dsaddr *d;
+ 	struct hlist_node *n;
+ 	long hash = nfs4_fl_deviceid_hash(id);
+ 
+-
+ 	rcu_read_lock();
+ 	hlist_for_each_entry_rcu(d, n, &filelayout_deviceid_cache[hash], node) {
+-		if (!memcmp(&d->deviceid, id, sizeof(*id))) {
++		if (d->nfs_client == clp && !memcmp(&d->deviceid, id, sizeof(*id))) {
+ 			if (!atomic_inc_not_zero(&d->ref))
+ 				goto fail;
+ 			rcu_read_unlock();
 -- 
 1.7.3.4
 
