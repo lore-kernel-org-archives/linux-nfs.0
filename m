@@ -1,293 +1,452 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:64800 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754899Ab1EFRpu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 May 2011 13:45:50 -0400
-Message-ID: <4DC433CB.8060102@netapp.com>
-Date: Fri, 06 May 2011 13:45:47 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] NFS: Added TEST_STATEID call
-References: <1304700595-5040-1-git-send-email-bjschuma@netapp.com> <20110506172944.GA15109@fieldses.org> <4DC431C8.6060104@netapp.com> <20110506174327.GA15365@fieldses.org>
-In-Reply-To: <20110506174327.GA15365@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:38941 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752279Ab1EVQxv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 12:53:51 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Subject: [PATCH 21/23] pnfs-obj: report errors and .encode_layoutreturn Implementation.
+Date: Sun, 22 May 2011 19:53:31 +0300
+Message-Id: <1306083211-11199-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DD93D3E.9010909@panasas.com>
+References: <4DD93D3E.9010909@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 05/06/2011 01:43 PM, J. Bruce Fields wrote:
-> On Fri, May 06, 2011 at 01:37:12PM -0400, Bryan Schumaker wrote:
->> On 05/06/2011 01:29 PM, J. Bruce Fields wrote:
->>> On Fri, May 06, 2011 at 12:49:53PM -0400, bjschuma@netapp.com wrote:
->>>> From: Bryan Schumaker <bjschuma@netapp.com>
->>>>
->>>> This patch adds in the xdr for doing a TEST_STATEID call with a
->>>> single stateid. RFC 5661 allows multiple stateids to be tested in a
->>>> single call, but only testing one keeps things simpler for now.
->>>
->>> These are among the mandatory 4.1 ops that we haven't implemented on
->>> the server yet.  Anyone up for it?  It's probably not difficult.
->>
->> I have some server patches that I think will work.  I'm checking out
->> your linux.git tree from linux-nfs.org to make sure they still apply.
-> 
-> OK, great.
-> 
->> Is there a branch that I should check against?
-> 
-> Probably for-2.6.40.
+An io_state pre-allocates an error information structure for each
+possible osd-device that might error during IO. When IO is done if all
+was well the io_state is freed. (as today). If the I/O has ended with an
+error, the io_state is queued on a per-layout err_list. When eventually
+encode_layoutreturn() is called, each error is properly encoded on the
+XDR buffer and only then the io_state is removed from err_list and
+de-allocated.
 
-Thanks, I'll submit once I'm convinced everything is still working.
+It is up to the io_engine to fill in the segment that fault and the type
+of osd_error that occurred. By calling objlayout_io_set_result() for
+each failing device.
 
-> 
->>> Also: how will it behave against a server that returns nfserr_notsupp?
->>
->> The FREE_STATEID won't be used, and the nfs v4.0 recovery functions will be called (these functions will be called after the FREE_STATEID anyway).
-> 
-> Then it sounds like your patches cause no change in behavior in the case
-> of a server that doesn't support the ops?
+In objio_osd:
+* Allocate io-error descriptors space as part of io_state
+* Use generic objlayout error reporting at end of io.
 
-Right, no change in behavior in this case.
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/objlayout/objio_osd.c |   44 ++++++++-
+ fs/nfs/objlayout/objlayout.c |  232 +++++++++++++++++++++++++++++++++++++++++-
+ fs/nfs/objlayout/objlayout.h |   23 ++++
+ 3 files changed, 297 insertions(+), 2 deletions(-)
 
-> 
-> --b.
-> 
->>
->>>
->>> --b.
->>>
->>>>
->>>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->>>> ---
->>>>  fs/nfs/nfs4proc.c       |   28 ++++++++++++++
->>>>  fs/nfs/nfs4xdr.c        |   91 +++++++++++++++++++++++++++++++++++++++++++++++
->>>>  include/linux/nfs4.h    |    1 +
->>>>  include/linux/nfs_xdr.h |   10 +++++
->>>>  4 files changed, 130 insertions(+), 0 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>>> index 69c0f3c..044c151 100644
->>>> --- a/fs/nfs/nfs4proc.c
->>>> +++ b/fs/nfs/nfs4proc.c
->>>> @@ -5791,6 +5791,34 @@ out:
->>>>  	rpc_put_task(task);
->>>>  	return status;
->>>>  }
->>>> +static int _nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *state)
->>>> +{
->>>> +	int status;
->>>> +	struct nfs41_test_stateid_args args = {
->>>> +		.stateid = &state->stateid,
->>>> +	};
->>>> +	struct nfs41_test_stateid_res res;
->>>> +	struct rpc_message msg = {
->>>> +		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_TEST_STATEID],
->>>> +		.rpc_argp = &args,
->>>> +		.rpc_resp = &res,
->>>> +	};
->>>> +	args.seq_args.sa_session = res.seq_res.sr_session = NULL;
->>>> +	status = nfs4_call_sync_sequence(server->client, server, &msg, &args.seq_args, &res.seq_res, 0, 1);
->>>> +	return status;
->>>> +}
->>>> +
->>>> +static int nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *state)
->>>> +{
->>>> +	struct nfs4_exception exception = { };
->>>> +	int err;
->>>> +	do {
->>>> +		err = nfs4_handle_exception(server,
->>>> +				_nfs41_test_stateid(server, state),
->>>> +				&exception);
->>>> +	} while (exception.retry);
->>>> +	return err;
->>>> +}
->>>>  #endif /* CONFIG_NFS_V4_1 */
->>>>  
->>>>  struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
->>>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
->>>> index c3ccd2c..2746616 100644
->>>> --- a/fs/nfs/nfs4xdr.c
->>>> +++ b/fs/nfs/nfs4xdr.c
->>>> @@ -338,6 +338,9 @@ static int nfs4_stat_to_errno(int);
->>>>  				1 /* layoutupdate4 layout type */ + \
->>>>  				1 /* NULL filelayout layoutupdate4 payload */)
->>>>  #define decode_layoutcommit_maxsz (op_decode_hdr_maxsz + 3)
->>>> +#define encode_test_stateid_maxsz	(op_encode_hdr_maxsz + 8 + \
->>>> +					 XDR_QUADLEN(NFS4_STATEID_SIZE))
->>>> +#define decode_test_stateid_maxsz	(op_decode_hdr_maxsz + 8 + 4)
->>>>  
->>>>  #else /* CONFIG_NFS_V4_1 */
->>>>  #define encode_sequence_maxsz	0
->>>> @@ -760,6 +763,12 @@ static int nfs4_stat_to_errno(int);
->>>>  				decode_putfh_maxsz + \
->>>>  				decode_layoutcommit_maxsz + \
->>>>  				decode_getattr_maxsz)
->>>> +#define NFS4_enc_test_stateid_sz	(compound_encode_hdr_maxsz + \
->>>> +					 encode_sequence_maxsz + \
->>>> +					 encode_test_stateid_maxsz)
->>>> +#define NFS4_dec_test_stateid_sz	(compound_decode_hdr_maxsz + \
->>>> +					 decode_sequence_maxsz + \
->>>> +					 decode_test_stateid_maxsz)
->>>>  
->>>>  
->>>>  const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
->>>> @@ -1889,6 +1898,20 @@ encode_layoutcommit(struct xdr_stream *xdr,
->>>>  	hdr->replen += decode_layoutcommit_maxsz;
->>>>  	return 0;
->>>>  }
->>>> +
->>>> +static void encode_test_stateid(struct xdr_stream *xdr,
->>>> +				struct nfs41_test_stateid_args *args,
->>>> +				struct compound_hdr *hdr)
->>>> +{
->>>> +	__be32 *p;
->>>> +
->>>> +	p = reserve_space(xdr, 8 + NFS4_STATEID_SIZE);
->>>> +	*p++ = cpu_to_be32(OP_TEST_STATEID);
->>>> +	*p++ = cpu_to_be32(1);
->>>> +	xdr_encode_opaque_fixed(p, args->stateid->data, NFS4_STATEID_SIZE);
->>>> +	hdr->nops++;
->>>> +	hdr->replen += decode_test_stateid_maxsz;
->>>> +}
->>>>  #endif /* CONFIG_NFS_V4_1 */
->>>>  
->>>>  /*
->>>> @@ -2722,6 +2745,23 @@ static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
->>>>  	encode_nops(&hdr);
->>>>  	return 0;
->>>>  }
->>>> +
->>>> +/*
->>>> + *  Encode TEST_STATEID request
->>>> + */
->>>> +static void nfs4_xdr_enc_test_stateid(struct rpc_rqst *req,
->>>> +				      struct xdr_stream *xdr,
->>>> +				      struct nfs41_test_stateid_args *args)
->>>> +{
->>>> +	struct compound_hdr hdr = {
->>>> +		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
->>>> +	};
->>>> +
->>>> +	encode_compound_hdr(xdr, req, &hdr);
->>>> +	encode_sequence(xdr, &args->seq_args, &hdr);
->>>> +	encode_test_stateid(xdr, args, &hdr);
->>>> +	encode_nops(&hdr);
->>>> +}
->>>>  #endif /* CONFIG_NFS_V4_1 */
->>>>  
->>>>  static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
->>>> @@ -5231,6 +5271,35 @@ out_overflow:
->>>>  	print_overflow_msg(__func__, xdr);
->>>>  	return -EIO;
->>>>  }
->>>> +
->>>> +static int decode_test_stateid(struct xdr_stream *xdr,
->>>> +			       struct nfs41_test_stateid_res *res)
->>>> +{
->>>> +	__be32 *p;
->>>> +	int status;
->>>> +	int num_res;
->>>> +
->>>> +	status = decode_op_hdr(xdr, OP_TEST_STATEID);
->>>> +	if (status)
->>>> +		return status;
->>>> +
->>>> +	p = xdr_inline_decode(xdr, 4);
->>>> +	if (unlikely(!p))
->>>> +		goto out_overflow;
->>>> +	num_res = be32_to_cpup(p++);
->>>> +	if (num_res != 1)
->>>> +		goto out;
->>>> +
->>>> +	p = xdr_inline_decode(xdr, 4);
->>>> +	if (unlikely(!p))
->>>> +		goto out_overflow;
->>>> +	res->status = be32_to_cpup(p++);
->>>> +	return res->status;
->>>> +out_overflow:
->>>> +	print_overflow_msg(__func__, xdr);
->>>> +out:
->>>> +	return -EIO;
->>>> +}
->>>>  #endif /* CONFIG_NFS_V4_1 */
->>>>  
->>>>  /*
->>>> @@ -6346,6 +6415,27 @@ static int nfs4_xdr_dec_layoutcommit(struct rpc_rqst *rqstp,
->>>>  out:
->>>>  	return status;
->>>>  }
->>>> +
->>>> +/*
->>>> + * Decode TEST_STATEID response
->>>> + */
->>>> +static int nfs4_xdr_dec_test_stateid(struct rpc_rqst *rqstp,
->>>> +				     struct xdr_stream *xdr,
->>>> +				     struct nfs41_test_stateid_res *res)
->>>> +{
->>>> +	struct compound_hdr hdr;
->>>> +	int status;
->>>> +
->>>> +	status = decode_compound_hdr(xdr, &hdr);
->>>> +	if (status)
->>>> +		goto out;
->>>> +	status = decode_sequence(xdr, &res->seq_res, rqstp);
->>>> +	if (status)
->>>> +		goto out;
->>>> +	status = decode_test_stateid(xdr, res);
->>>> +out:
->>>> +	return status;
->>>> +}
->>>>  #endif /* CONFIG_NFS_V4_1 */
->>>>  
->>>>  /**
->>>> @@ -6547,6 +6637,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
->>>>  	PROC(GETDEVICEINFO,	enc_getdeviceinfo,	dec_getdeviceinfo),
->>>>  	PROC(LAYOUTGET,		enc_layoutget,		dec_layoutget),
->>>>  	PROC(LAYOUTCOMMIT,	enc_layoutcommit,	dec_layoutcommit),
->>>> +	PROC(TEST_STATEID,	enc_test_stateid,	dec_test_stateid),
->>>>  #endif /* CONFIG_NFS_V4_1 */
->>>>  };
->>>>  
->>>> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
->>>> index 178fafe..0df1eed 100644
->>>> --- a/include/linux/nfs4.h
->>>> +++ b/include/linux/nfs4.h
->>>> @@ -562,6 +562,7 @@ enum {
->>>>  	NFSPROC4_CLNT_LAYOUTGET,
->>>>  	NFSPROC4_CLNT_GETDEVICEINFO,
->>>>  	NFSPROC4_CLNT_LAYOUTCOMMIT,
->>>> +	NFSPROC4_CLNT_TEST_STATEID,
->>>>  };
->>>>  
->>>>  /* nfs41 types */
->>>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
->>>> index 890dce2..36f50dc 100644
->>>> --- a/include/linux/nfs_xdr.h
->>>> +++ b/include/linux/nfs_xdr.h
->>>> @@ -1062,6 +1062,16 @@ struct nfs41_reclaim_complete_args {
->>>>  struct nfs41_reclaim_complete_res {
->>>>  	struct nfs4_sequence_res	seq_res;
->>>>  };
->>>> +
->>>> +struct nfs41_test_stateid_args {
->>>> +	nfs4_stateid			*stateid;
->>>> +	struct nfs4_sequence_args	seq_args;
->>>> +};
->>>> +
->>>> +struct nfs41_test_stateid_res {
->>>> +	unsigned int			status;
->>>> +	struct nfs4_sequence_res	seq_res;
->>>> +};
->>>>  #endif /* CONFIG_NFS_V4_1 */
->>>>  
->>>>  struct nfs_page;
->>>> -- 
->>>> 1.7.5.1
->>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index ae987a0..64c226d 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -402,13 +402,17 @@ int objio_alloc_io_state(struct pnfs_layout_segment *lseg,
+ 	struct objio_state *ios;
+ 	const unsigned first_size = sizeof(*ios) +
+ 				objio_seg->num_comps * sizeof(ios->per_dev[0]);
++	const unsigned sec_size = objio_seg->num_comps *
++						sizeof(ios->ol_state.ioerrs[0]);
+ 
+ 	dprintk("%s: num_comps=%d\n", __func__, objio_seg->num_comps);
+-	ios = kzalloc(first_size, GFP_KERNEL);
++	ios = kzalloc(first_size + sec_size, GFP_KERNEL);
+ 	if (unlikely(!ios))
+ 		return -ENOMEM;
+ 
+ 	ios->layout = objio_seg;
++	ios->ol_state.ioerrs = ((void *)ios) + first_size;
++	ios->ol_state.num_comps = objio_seg->num_comps;
+ 
+ 	*outp = &ios->ol_state;
+ 	return 0;
+@@ -422,6 +426,36 @@ void objio_free_io_state(struct objlayout_io_state *ol_state)
+ 	kfree(ios);
+ }
+ 
++enum pnfs_osd_errno osd_pri_2_pnfs_err(enum osd_err_priority oep)
++{
++	switch (oep) {
++	case OSD_ERR_PRI_NO_ERROR:
++		return (enum pnfs_osd_errno)0;
++
++	case OSD_ERR_PRI_CLEAR_PAGES:
++		BUG_ON(1);
++		return 0;
++
++	case OSD_ERR_PRI_RESOURCE:
++		return PNFS_OSD_ERR_RESOURCE;
++	case OSD_ERR_PRI_BAD_CRED:
++		return PNFS_OSD_ERR_BAD_CRED;
++	case OSD_ERR_PRI_NO_ACCESS:
++		return PNFS_OSD_ERR_NO_ACCESS;
++	case OSD_ERR_PRI_UNREACHABLE:
++		return PNFS_OSD_ERR_UNREACHABLE;
++	case OSD_ERR_PRI_NOT_FOUND:
++		return PNFS_OSD_ERR_NOT_FOUND;
++	case OSD_ERR_PRI_NO_SPACE:
++		return PNFS_OSD_ERR_NO_SPACE;
++	default:
++		WARN_ON(1);
++		/* fallthrough */
++	case OSD_ERR_PRI_EIO:
++		return PNFS_OSD_ERR_EIO;
++	}
++}
++
+ static void _clear_bio(struct bio *bio)
+ {
+ 	struct bio_vec *bv;
+@@ -468,6 +502,12 @@ static int _io_check(struct objio_state *ios, bool is_write)
+ 			continue; /* we recovered */
+ 		}
+ 		dev = ios->per_dev[i].dev;
++		objlayout_io_set_result(&ios->ol_state, dev,
++					&ios->layout->comps[dev].oc_object_id,
++					osd_pri_2_pnfs_err(osi.osd_err_pri),
++					ios->per_dev[i].offset,
++					ios->per_dev[i].length,
++					is_write);
+ 
+ 		if (osi.osd_err_pri >= oep) {
+ 			oep = osi.osd_err_pri;
+@@ -966,6 +1006,8 @@ static struct pnfs_layoutdriver_type objlayout_type = {
+ 
+ 	.read_pagelist           = objlayout_read_pagelist,
+ 	.write_pagelist          = objlayout_write_pagelist,
++
++	.encode_layoutreturn     = objlayout_encode_layoutreturn,
+ };
+ 
+ void *objio_init_mt(void)
+diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+index 3fbee5d..fe47ab4 100644
+--- a/fs/nfs/objlayout/objlayout.c
++++ b/fs/nfs/objlayout/objlayout.c
+@@ -50,6 +50,10 @@ objlayout_alloc_layout_hdr(struct inode *inode)
+ 	struct objlayout *objlay;
+ 
+ 	objlay = kzalloc(sizeof(struct objlayout), GFP_KERNEL);
++	if (objlay) {
++		spin_lock_init(&objlay->lock);
++		INIT_LIST_HEAD(&objlay->err_list);
++	}
+ 	dprintk("%s: Return %p\n", __func__, objlay);
+ 	return &objlay->pnfs_layout;
+ }
+@@ -64,6 +68,7 @@ objlayout_free_layout_hdr(struct pnfs_layout_hdr *lo)
+ 
+ 	dprintk("%s: objlay %p\n", __func__, objlay);
+ 
++	WARN_ON(!list_empty(&objlay->err_list));
+ 	kfree(objlay);
+ }
+ 
+@@ -181,6 +186,7 @@ objlayout_alloc_io_state(struct pnfs_layout_hdr *pnfs_layout_type,
+ 		pgbase &= ~PAGE_MASK;
+ 	}
+ 
++	INIT_LIST_HEAD(&state->err_list);
+ 	state->lseg = lseg;
+ 	state->rpcdata = rpcdata;
+ 	state->pages = pages;
+@@ -211,7 +217,52 @@ objlayout_iodone(struct objlayout_io_state *state)
+ {
+ 	dprintk("%s: state %p status\n", __func__, state);
+ 
+-	objlayout_free_io_state(state);
++	if (likely(state->status >= 0)) {
++		objlayout_free_io_state(state);
++	} else {
++		struct objlayout *objlay = OBJLAYOUT(state->lseg->pls_layout);
++
++		spin_lock(&objlay->lock);
++		list_add(&objlay->err_list, &state->err_list);
++		spin_unlock(&objlay->lock);
++	}
++}
++
++/*
++ * objlayout_io_set_result - Set an osd_error code on a specific osd comp.
++ *
++ * The @index component IO failed (error returned from target). Register
++ * the error for later reporting at layout-return.
++ */
++void
++objlayout_io_set_result(struct objlayout_io_state *state, unsigned index,
++			struct pnfs_osd_objid *pooid, int osd_error,
++			u64 offset, u64 length, bool is_write)
++{
++	struct pnfs_osd_ioerr *ioerr = &state->ioerrs[index];
++
++	BUG_ON(index >= state->num_comps);
++	if (osd_error) {
++		ioerr->oer_component = *pooid;
++		ioerr->oer_comp_offset = offset;
++		ioerr->oer_comp_length = length;
++		ioerr->oer_iswrite = is_write;
++		ioerr->oer_errno = osd_error;
++
++		dprintk("%s: err[%d]: errno=%d is_write=%d dev(%llx:%llx) "
++			"par=0x%llx obj=0x%llx offset=0x%llx length=0x%llx\n",
++			__func__, index, ioerr->oer_errno,
++			ioerr->oer_iswrite,
++			_DEVID_LO(&ioerr->oer_component.oid_device_id),
++			_DEVID_HI(&ioerr->oer_component.oid_device_id),
++			ioerr->oer_component.oid_partition_id,
++			ioerr->oer_component.oid_object_id,
++			ioerr->oer_comp_offset,
++			ioerr->oer_comp_length);
++	} else {
++		/* User need not call if no error is reported */
++		ioerr->oer_errno = 0;
++	}
+ }
+ 
+ /* Function scheduled on rpc workqueue to call ->nfs_readlist_complete().
+@@ -378,6 +429,185 @@ objlayout_write_pagelist(struct nfs_write_data *wdata,
+ 	return PNFS_ATTEMPTED;
+ }
+ 
++static int
++err_prio(u32 oer_errno)
++{
++	switch (oer_errno) {
++	case 0:
++		return 0;
++
++	case PNFS_OSD_ERR_RESOURCE:
++		return OSD_ERR_PRI_RESOURCE;
++	case PNFS_OSD_ERR_BAD_CRED:
++		return OSD_ERR_PRI_BAD_CRED;
++	case PNFS_OSD_ERR_NO_ACCESS:
++		return OSD_ERR_PRI_NO_ACCESS;
++	case PNFS_OSD_ERR_UNREACHABLE:
++		return OSD_ERR_PRI_UNREACHABLE;
++	case PNFS_OSD_ERR_NOT_FOUND:
++		return OSD_ERR_PRI_NOT_FOUND;
++	case PNFS_OSD_ERR_NO_SPACE:
++		return OSD_ERR_PRI_NO_SPACE;
++	default:
++		WARN_ON(1);
++		/* fallthrough */
++	case PNFS_OSD_ERR_EIO:
++		return OSD_ERR_PRI_EIO;
++	}
++}
++
++static void
++merge_ioerr(struct pnfs_osd_ioerr *dest_err,
++	    const struct pnfs_osd_ioerr *src_err)
++{
++	u64 dest_end, src_end;
++
++	if (!dest_err->oer_errno) {
++		*dest_err = *src_err;
++		/* accumulated device must be blank */
++		memset(&dest_err->oer_component.oid_device_id, 0,
++			sizeof(dest_err->oer_component.oid_device_id));
++
++		return;
++	}
++
++	if (dest_err->oer_component.oid_partition_id !=
++				src_err->oer_component.oid_partition_id)
++		dest_err->oer_component.oid_partition_id = 0;
++
++	if (dest_err->oer_component.oid_object_id !=
++				src_err->oer_component.oid_object_id)
++		dest_err->oer_component.oid_object_id = 0;
++
++	if (dest_err->oer_comp_offset > src_err->oer_comp_offset)
++		dest_err->oer_comp_offset = src_err->oer_comp_offset;
++
++	dest_end = end_offset(dest_err->oer_comp_offset,
++			      dest_err->oer_comp_length);
++	src_end =  end_offset(src_err->oer_comp_offset,
++			      src_err->oer_comp_length);
++	if (dest_end < src_end)
++		dest_end = src_end;
++
++	dest_err->oer_comp_length = dest_end - dest_err->oer_comp_offset;
++
++	if ((src_err->oer_iswrite == dest_err->oer_iswrite) &&
++	    (err_prio(src_err->oer_errno) > err_prio(dest_err->oer_errno))) {
++			dest_err->oer_errno = src_err->oer_errno;
++	} else if (src_err->oer_iswrite) {
++		dest_err->oer_iswrite = true;
++		dest_err->oer_errno = src_err->oer_errno;
++	}
++}
++
++static void
++encode_accumulated_error(struct objlayout *objlay, __be32 *p)
++{
++	struct objlayout_io_state *state, *tmp;
++	struct pnfs_osd_ioerr accumulated_err = {.oer_errno = 0};
++
++	list_for_each_entry_safe(state, tmp, &objlay->err_list, err_list) {
++		unsigned i;
++
++		for (i = 0; i < state->num_comps; i++) {
++			struct pnfs_osd_ioerr *ioerr = &state->ioerrs[i];
++
++			if (!ioerr->oer_errno)
++				continue;
++
++			printk(KERN_ERR "%s: err[%d]: errno=%d is_write=%d "
++				"dev(%llx:%llx) par=0x%llx obj=0x%llx "
++				"offset=0x%llx length=0x%llx\n",
++				__func__, i, ioerr->oer_errno,
++				ioerr->oer_iswrite,
++				_DEVID_LO(&ioerr->oer_component.oid_device_id),
++				_DEVID_HI(&ioerr->oer_component.oid_device_id),
++				ioerr->oer_component.oid_partition_id,
++				ioerr->oer_component.oid_object_id,
++				ioerr->oer_comp_offset,
++				ioerr->oer_comp_length);
++
++			merge_ioerr(&accumulated_err, ioerr);
++		}
++		list_del(&state->err_list);
++		objlayout_free_io_state(state);
++	}
++
++	pnfs_osd_xdr_encode_ioerr(p, &accumulated_err);
++}
++
++void
++objlayout_encode_layoutreturn(struct pnfs_layout_hdr *pnfslay,
++			      struct xdr_stream *xdr,
++			      const struct nfs4_layoutreturn_args *args)
++{
++	struct objlayout *objlay = OBJLAYOUT(pnfslay);
++	struct objlayout_io_state *state, *tmp;
++	__be32 *start;
++
++	dprintk("%s: Begin\n", __func__);
++	start = xdr_reserve_space(xdr, 4);
++	BUG_ON(!start);
++
++	spin_lock(&objlay->lock);
++
++	list_for_each_entry_safe(state, tmp, &objlay->err_list, err_list) {
++		__be32 *last_xdr = NULL, *p;
++		unsigned i;
++		int res = 0;
++
++		for (i = 0; i < state->num_comps; i++) {
++			struct pnfs_osd_ioerr *ioerr = &state->ioerrs[i];
++
++			if (!ioerr->oer_errno)
++				continue;
++
++			dprintk("%s: err[%d]: errno=%d is_write=%d "
++				"dev(%llx:%llx) par=0x%llx obj=0x%llx "
++				"offset=0x%llx length=0x%llx\n",
++				__func__, i, ioerr->oer_errno,
++				ioerr->oer_iswrite,
++				_DEVID_LO(&ioerr->oer_component.oid_device_id),
++				_DEVID_HI(&ioerr->oer_component.oid_device_id),
++				ioerr->oer_component.oid_partition_id,
++				ioerr->oer_component.oid_object_id,
++				ioerr->oer_comp_offset,
++				ioerr->oer_comp_length);
++
++			p = pnfs_osd_xdr_ioerr_reserve_space(xdr);
++			if (unlikely(!p)) {
++				res = -E2BIG;
++				break; /* accumulated_error */
++			}
++
++			last_xdr = p;
++			pnfs_osd_xdr_encode_ioerr(p, &state->ioerrs[i]);
++		}
++
++		/* TODO: use xdr_write_pages */
++		if (unlikely(res)) {
++			/* no space for even one error descriptor */
++			BUG_ON(!last_xdr);
++
++			/* we've encountered a situation with lots and lots of
++			 * errors and no space to encode them all. Use the last
++			 * available slot to report the union of all the
++			 * remaining errors.
++			 */
++			encode_accumulated_error(objlay, last_xdr);
++			goto loop_done;
++		}
++		list_del(&state->err_list);
++		objlayout_free_io_state(state);
++	}
++loop_done:
++	spin_unlock(&objlay->lock);
++
++	*start = cpu_to_be32((xdr->p - start - 1) * 4);
++	dprintk("%s: Return\n", __func__);
++}
++
++
+ /*
+  * Get Device Info API for io engines
+  */
+diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
+index 369cc99..0dfbcce 100644
+--- a/fs/nfs/objlayout/objlayout.h
++++ b/fs/nfs/objlayout/objlayout.h
+@@ -50,6 +50,10 @@
+  */
+ struct objlayout {
+ 	struct pnfs_layout_hdr pnfs_layout;
++
++	 /* for layout_return */
++	spinlock_t lock;
++	struct list_head err_list;
+ };
+ 
+ static inline struct objlayout *
+@@ -76,6 +80,16 @@ struct objlayout_io_state {
+ 	int status;             /* res */
+ 	int eof;                /* res */
+ 	int committed;          /* res */
++
++	/* Error reporting (layout_return) */
++	struct list_head err_list;
++	unsigned num_comps;
++	/* Pointer to array of error descriptors of size num_comps.
++	 * It should contain as many entries as devices in the osd_layout
++	 * that participate in the I/O. It is up to the io_engine to allocate
++	 * needed space and set num_comps.
++	 */
++	struct pnfs_osd_ioerr *ioerrs;
+ };
+ 
+ /*
+@@ -102,6 +116,10 @@ extern ssize_t objio_write_pagelist(struct objlayout_io_state *ol_state,
+ /*
+  * callback API
+  */
++extern void objlayout_io_set_result(struct objlayout_io_state *state,
++			unsigned index, struct pnfs_osd_objid *pooid,
++			int osd_error, u64 offset, u64 length, bool is_write);
++
+ extern void objlayout_read_done(struct objlayout_io_state *state,
+ 				ssize_t status, bool sync);
+ extern void objlayout_write_done(struct objlayout_io_state *state,
+@@ -133,4 +151,9 @@ extern enum pnfs_try_status objlayout_write_pagelist(
+ 	struct nfs_write_data *,
+ 	int how);
+ 
++extern void objlayout_encode_layoutreturn(
++	struct pnfs_layout_hdr *,
++	struct xdr_stream *,
++	const struct nfs4_layoutreturn_args *);
++
+ #endif /* _OBJLAYOUT_H */
+-- 
+1.7.2.3
 
