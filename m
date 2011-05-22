@@ -1,156 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:23038 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:38795 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756267Ab1EWV7b (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 17:59:31 -0400
-Message-ID: <4DDAD8AC.8030206@panasas.com>
-Date: Tue, 24 May 2011 00:59:08 +0300
+	with ESMTP id S1752271Ab1EVQsk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 12:48:40 -0400
 From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH] SQUASHME: Bugs in new global-device-cache code
-References: <4DD99F9B.2040406@panasas.com> <1306108720-28762-1-git-send-email-bhalevy@panasas.com> <4DD9E805.2020106@panasas.com> <4DDA64C6.2080909@panasas.com> <4DDAC93A.2020209@panasas.com>
-In-Reply-To: <4DDAC93A.2020209@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+To: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH 05/23] pnfs: client stats
+Date: Sun, 22 May 2011 19:48:21 +0300
+Message-Id: <1306082901-10758-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DD93D3E.9010909@panasas.com>
+References: <4DD93D3E.9010909@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: J. Bruce Fields <bfields@fieldses.org>
 
-With this I'm able to do IO.
+A pNFS client auto-negotiates a lot of features (minorversion level,
+pNFS layout type, etc.).  This is convenient, but makes certain kinds of
+failures hard for a user to detect.
 
-It is ontop of benney's code and my BUGs fixes
- + a merge fallout, between the two codes.
+For example, if the client falls back on 4.0, or falls back to MDS IO
+because the user didn't connect to the right iscsi disks before
+mounting, the only symptoms may be reduced performance, which may not be
+noticed till long after the actual failure, and may be difficult for a
+user to diagnose.
 
-Current Benny's top + all the fixes has two problems.
-1. Very small IOs both reads and writes
-  How/where to set rsize/wsize
-2. Something funny I'm still investigating. When I do
-   a small Io couple of  requests the devices get freed
-   at the end on the release of the layout. (Which is not
-   layout_returned ever)
-   But when I do very large IO and lots of concurrent requests
-   the devices do not get to be released at all, they stay in
-   cache. But am still investigating
+However, such "failures" may also be perfectly normal in some cases, so
+we don't want to spam the system logs with them.
 
+One approach would be to put some more information into
+/proc/self/mountstats.
+
+Signed-off-by: J. Bruce Fields <bfields@fieldses.org>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfs: add commit client stats]
+[fixup data types for "ret" variables in pnfs_try_to* inline funcs.]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[fix definition of show_pnfs for !CONFIG_PNFS]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfs41: Fix show_sessions in the not CONFIG_NFS_V4_1 case]
+    There is a build error when CONFIG_NFS_V4 is set but
+    CONFIG_NFS_V4_1 is *not* set. show_sessions() prototype
+    was unbalanced between the two cases.
 Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+[pnfs: super.c remove CONFIG_PNFS]
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/objlayout/objio_osd.c |   31 ++++++++++++++++++++++---------
- fs/nfs/pnfs_dev.c            |    2 +-
- 2 files changed, 23 insertions(+), 10 deletions(-)
+ fs/nfs/super.c |   25 +++++++++++++++++++++++++
+ 1 files changed, 25 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 5210913..83aa088 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -60,6 +60,7 @@ objio_free_deviceid_node(struct nfs4_deviceid_node *d)
- {
- 	struct objio_dev_ent *de = container_of(d, struct objio_dev_ent, id_node);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index e288f06..ce40e5c 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -63,6 +63,7 @@
+ #include "iostat.h"
+ #include "internal.h"
+ #include "fscache.h"
++#include "pnfs.h"
  
-+	dprintk("%s: free od=%p\n", __func__, de->od);
- 	osduld_put_device(de->od);
- 	kfree(de);
+ #define NFSDBG_FACILITY		NFSDBG_VFS
+ 
+@@ -732,6 +733,28 @@ static int nfs_show_options(struct seq_file *m, struct vfsmount *mnt)
+ 
+ 	return 0;
  }
-@@ -68,14 +69,19 @@ static struct objio_dev_ent *_dev_list_find(const struct nfs_server *nfss,
- 	const struct nfs4_deviceid *d_id)
- {
- 	struct nfs4_deviceid_node *d;
-+	struct objio_dev_ent *de;
- 
- 	d = nfs4_find_get_deviceid(nfss->pnfs_curr_ld, nfss->nfs_client, d_id);
- 	if (!d)
- 		return NULL;
--	return container_of(d, struct objio_dev_ent, id_node);
++#ifdef CONFIG_NFS_V4_1
++void show_sessions(struct seq_file *m, struct nfs_server *server)
++{
++	if (nfs4_has_session(server->nfs_client))
++		seq_printf(m, ",sessions");
++}
++#else
++void show_sessions(struct seq_file *m, struct nfs_server *server) {}
++#endif
 +
-+	de = container_of(d, struct objio_dev_ent, id_node);
-+	dprintk("%s: found od=%p\n", __func__, de->od);
-+	return de;
- }
++#ifdef CONFIG_NFS_V4_1
++void show_pnfs(struct seq_file *m, struct nfs_server *server)
++{
++	seq_printf(m, ",pnfs=");
++	if (server->pnfs_curr_ld)
++		seq_printf(m, "%s", server->pnfs_curr_ld->name);
++	else
++		seq_printf(m, "not configured");
++}
++#else  /* CONFIG_NFS_V4_1 */
++void show_pnfs(struct seq_file *m, struct nfs_server *server) {}
++#endif /* CONFIG_NFS_V4_1 */
  
--static int _dev_list_add(const struct nfs_server *nfss,
-+static struct objio_dev_ent *
-+_dev_list_add(const struct nfs_server *nfss,
- 	const struct nfs4_deviceid *d_id, struct osd_dev *od,
- 	gfp_t gfp_flags)
+ static int nfs_show_devname(struct seq_file *m, struct vfsmount *mnt)
  {
-@@ -83,9 +89,12 @@ static int _dev_list_add(const struct nfs_server *nfss,
- 	struct objio_dev_ent *de = kzalloc(sizeof(*de), gfp_flags);
- 	struct objio_dev_ent *n;
- 
--	if (!de)
--		return -ENOMEM;
-+	if (!de) {
-+		dprintk("%s: -ENOMEM od=%p\n", __func__, od);
-+		return NULL;
-+	}
- 
-+	dprintk("%s: Adding od=%p\n", __func__, od);
- 	nfs4_init_deviceid_node(&de->id_node,
- 				nfss->pnfs_curr_ld,
- 				nfss->nfs_client,
-@@ -95,11 +104,13 @@ static int _dev_list_add(const struct nfs_server *nfss,
- 	d = nfs4_insert_deviceid_node(&de->id_node);
- 	n = container_of(d, struct objio_dev_ent, id_node);
- 	if (n != de) {
--		BUG_ON(n->od != od);
-+/*		BUG_ON(n->od != od);*/
-+		dprintk("%s: Race with other n->od=%p\n", __func__, n->od);
- 		objio_free_deviceid_node(&de->id_node);
-+		de = n;
+@@ -792,6 +815,8 @@ static int nfs_show_stats(struct seq_file *m, struct vfsmount *mnt)
+ 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
+ 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
+ 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
++		show_sessions(m, nfss);
++		show_pnfs(m, nfss);
  	}
+ #endif
  
--	return 0;
-+	return de;
- }
- 
- struct caps_buffers {
-@@ -121,7 +132,7 @@ struct objio_segment {
- 	unsigned comps_index;
- 	unsigned num_comps;
- 	/* variable length */
--	struct objio_dev_ent *ods[0];
-+	struct objio_dev_ent *ods[];
- };
- 
- static inline struct objio_segment *
-@@ -205,12 +216,13 @@ static struct objio_dev_ent *_device_lookup(struct pnfs_layout_hdr *pnfslay,
- 		goto out;
- 	}
- 
--	_dev_list_add(NFS_SERVER(pnfslay->plh_inode), d_id, od, gfp_flags);
-+	ode = _dev_list_add(NFS_SERVER(pnfslay->plh_inode), d_id, od,
-+			    gfp_flags);
- 
- out:
- 	dprintk("%s: return=%d\n", __func__, err);
- 	objlayout_put_deviceinfo(deviceaddr);
--	return err ? ERR_PTR(err) : od;
-+	return err ? ERR_PTR(err) : ode;
- }
- 
- static int objio_devices_lookup(struct pnfs_layout_hdr *pnfslay,
-@@ -230,6 +242,7 @@ static int objio_devices_lookup(struct pnfs_layout_hdr *pnfslay,
- 			goto out;
- 		}
- 		objio_seg->ods[i] = ode;
-+		dprintk("%s: ods[%d] = %p\n", __func__, i, ode->od);
- 	}
- 	err = 0;
- 
-diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
-index 7997899..7e5542c 100644
---- a/fs/nfs/pnfs_dev.c
-+++ b/fs/nfs/pnfs_dev.c
-@@ -100,7 +100,7 @@ _find_get_deviceid(const struct pnfs_layoutdriver_type *ld,
- 
- 	rcu_read_lock();
- 	d = _lookup_deviceid(ld, clp, id, hash);
--	if (!atomic_inc_not_zero(&d->ref))
-+	if (!d || !atomic_inc_not_zero(&d->ref))
- 		d = NULL;
- 	rcu_read_unlock();
- 	return d;
 -- 
 1.7.2.3
-
 
