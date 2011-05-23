@@ -1,93 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42849 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752632Ab1FABa1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 May 2011 21:30:27 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: trond@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] NFS: fix umount of pnfs filesystems
-Date: Tue, 31 May 2011 21:30:04 -0400
-Message-Id: <1306891804-8070-1-git-send-email-dros@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:1226 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753478Ab1EWNgt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 09:36:49 -0400
+Message-ID: <4DDA62EA.2000505@panasas.com>
+Date: Mon, 23 May 2011 16:36:42 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v5 20/38] pnfs: per mount layout driver private data
+References: <4DD99F9B.2040406@panasas.com> <1306108649-28644-1-git-send-email-bhalevy@panasas.com> <4DD9E4B6.70200@panasas.com>
+In-Reply-To: <4DD9E4B6.70200@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Unmounting a pnfs filesystem hangs using filelayout and possibly others.
-This fixes the use of the rcu protected node by making use of a new 'tmpnode'
-for the temporary purge list. Also, the spinlock shouldn't be held when calling
-synchronize_rcu().
+On 2011-05-23 07:38, Boaz Harrosh wrote:
+> On 05/23/2011 02:57 AM, Benny Halevy wrote:
+>> With the objects layout security model we have object capabilities
+>> that are associated with the layout ad we anticipate that the server
+>> will issue a cb_layoutrecall for any setattr that changes security
+>> related attributes (user/group/mode/acl) or truncates the file.
+>> Therefore, the client returns the layout in advance to avoid the
+>> extra layout recall.
+>>
+> 
+> This looks like the wrong text. It belongs to that other patch.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
-Fix proposed by Trond
+Hmm, looks like a pilot error... thanks!
 
- fs/nfs/pnfs.h     |    1 +
- fs/nfs/pnfs_dev.c |   11 +++++++----
- 2 files changed, 8 insertions(+), 4 deletions(-)
+Benny
 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 48d0a8e..96bf4e6 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -186,6 +186,7 @@ int pnfs_ld_read_done(struct nfs_read_data *);
- /* pnfs_dev.c */
- struct nfs4_deviceid_node {
- 	struct hlist_node		node;
-+	struct hlist_node		tmpnode;
- 	const struct pnfs_layoutdriver_type *ld;
- 	const struct nfs_client		*nfs_client;
- 	struct nfs4_deviceid		deviceid;
-diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
-index c65e133..81e642f 100644
---- a/fs/nfs/pnfs_dev.c
-+++ b/fs/nfs/pnfs_dev.c
-@@ -174,6 +174,7 @@ nfs4_init_deviceid_node(struct nfs4_deviceid_node *d,
- 			const struct nfs4_deviceid *id)
- {
- 	INIT_HLIST_NODE(&d->node);
-+	INIT_HLIST_NODE(&d->tmpnode);
- 	d->ld = ld;
- 	d->nfs_client = nfs_client;
- 	d->deviceid = *id;
-@@ -241,21 +242,25 @@ _deviceid_purge_client(const struct nfs_client *clp, long hash)
- 	struct hlist_node *n, *next;
- 	HLIST_HEAD(tmp);
- 
-+	spin_lock(&nfs4_deviceid_lock);
- 	rcu_read_lock();
- 	hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[hash], node)
- 		if (d->nfs_client == clp && atomic_read(&d->ref)) {
- 			hlist_del_init_rcu(&d->node);
--			hlist_add_head(&d->node, &tmp);
-+			hlist_add_head(&d->tmpnode, &tmp);
- 		}
- 	rcu_read_unlock();
-+	spin_unlock(&nfs4_deviceid_lock);
- 
- 	if (hlist_empty(&tmp))
- 		return;
- 
- 	synchronize_rcu();
--	hlist_for_each_entry_safe(d, n, next, &tmp, node)
-+	while (!hlist_empty(&tmp)) {
- 		if (atomic_dec_and_test(&d->ref))
- 			d->ld->free_deviceid_node(d);
-+		hlist_del_init(&d->tmpnode);
-+	}
- }
- 
- void
-@@ -263,8 +268,6 @@ nfs4_deviceid_purge_client(const struct nfs_client *clp)
- {
- 	long h;
- 
--	spin_lock(&nfs4_deviceid_lock);
- 	for (h = 0; h < NFS4_DEVICE_ID_HASH_SIZE; h++)
- 		_deviceid_purge_client(clp, h);
--	spin_unlock(&nfs4_deviceid_lock);
- }
--- 
-1.7.5.2
+> 
+> The title and actual patch do match
+> 
+> Boaz
+>> [get rid of ds_[rw]size]
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  include/linux/nfs_fs_sb.h |    1 +
+>>  1 files changed, 1 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+>> index 87694ca..66e031f 100644
+>> --- a/include/linux/nfs_fs_sb.h
+>> +++ b/include/linux/nfs_fs_sb.h
+>> @@ -143,6 +143,7 @@ struct nfs_server {
+>>  						   filesystem */
+>>  	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
+>>  	struct rpc_wait_queue	roc_rpcwaitq;
+>> +	void			       *pnfs_ld_data; /* Per-mount data */
+>>  
+>>  	/* the following fields are protected by nfs_client->cl_lock */
+>>  	struct rb_root		state_owners;
+> 
 
