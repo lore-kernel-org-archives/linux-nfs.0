@@ -1,85 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1744 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933366Ab1ETSg6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 May 2011 14:36:58 -0400
-Subject: Re: 2.6.38.6 - state manager constantly respawns
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "Dr. J. Bruce Fields" <bfields@fieldses.org>
-Cc: Harry Edmon <harry@uw.edu>, Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs@vger.kernel.org
-Date: Fri, 20 May 2011 14:36:56 -0400
-In-Reply-To: <1305913963.12712.6.camel@lade.trondhjem.org>
-References: <05D08339-888C-4A64-BDC5-8667B3901E7A@oracle.com>
-	 <4DD1772E.9010609@uw.edu> <6A6FB1C3-D4C3-40BE-810A-B4551FA9E591@oracle.com>
-	 <4DD17CB5.7010009@uw.edu> <1305575007.19725.3.camel@lade.trondhjem.org>
-	 <4DD17F79.305@uw.edu> <1305575656.19725.9.camel@lade.trondhjem.org>
-	 <20110516202059.GC1680@fieldses.org> <20110516205351.GD1680@fieldses.org>
-	 <4DD694DF.2060302@uw.edu> <20110520172639.GA11670@fieldses.org>
-	 <1305913963.12712.6.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1305916616.14253.1.camel@lade.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:43582 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752708Ab1EWACc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 20:02:32 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v5 34/38] pnfs: layoutret_on_setattr
+Date: Mon, 23 May 2011 03:02:21 +0300
+Message-Id: <1306108941-29209-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD99F9B.2040406@panasas.com>
+References: <4DD99F9B.2040406@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, 2011-05-20 at 13:52 -0400, Trond Myklebust wrote: 
-> On Fri, 2011-05-20 at 13:26 -0400, Dr. J. Bruce Fields wrote: 
-> > On Fri, May 20, 2011 at 09:20:47AM -0700, Harry Edmon wrote:
-> > > On 05/16/11 13:53, Dr. J. Bruce Fields wrote:
-> > > >Hm, so the renews all have clid 465ccc4d09000000, and the reads all have
-> > > >a stateid (0, 465ccc4dc24c0a0000000000).
-> > > >
-> > > >So the first 4 bytes matching just tells me both were handed out by the
-> > > >same server instance (so there was no server reboot in between); there's
-> > > >no way for me to tell whether they really belong to the same client.
-> > > >
-> > > >The server does assume that any stateid from the current server instance
-> > > >that no longer exists in its table is expired.  I believe that's
-> > > >correct, given a correctly functioning client, but perhaps I'm missing a
-> > > >case.
-> > > >
-> > > >--b.
-> > > I am very appreciative of the quick initial comments I receive from
-> > > all of you on my NFS problem.   I notice that there has been silence
-> > > on the problem since the 16th, so I assume that either this is a
-> > > hard bug to track down or you have been busy with higher priority
-> > > tasks.  Is there anything I can do to help develop a solution to
-> > > this problem?
-> > 
-> > Well, the only candidate explanation for the problem is that my
-> > assumption--that any time the server gets a stateid from the current
-> > boot instance that it doesn't recognize as an active stateid, it is safe
-> > for the server to return EXPIRED--is wrong.
-> > 
-> > I don't immediately see why it's wrong, and based on the silence nobody
-> > else does either, but I'm not 100% convinced I'm right either.
-> > 
-> > So one approach might be to add server code that makes a better effort
-> > to return EXPIRED only when we're sure it's a stateid from an expired
-> > client, and see if that solves your problem.
-> > 
-> > Remind me, did you have an easy way to reproduce your problem?
-> 
-> My silence is simply because I'm mystified as to how this can happen.
-> Patching for it is trivial (see below).
-> 
-> When the server tells us that our lease is expired, the normal behaviour
-> for the client is to re-establish the lease, and then proceed to recover
-> all known stateids. I don't see how we can 'miss' a stateid that then
-> needs to be recovered afterwards...
+With the objects layout security model, we have object capabilities
+that are associated with the layout and we anticipate that the server
+will issue a cb_layoutrecall for any setattr that changes security
+related attributes (user/group/mode/acl) or truncates the file.
 
-Bruce,
+Therefore, the layout is returned before issuing the setattr to avoid
+the anticipated cb_layoutrecall.
 
-If the clientid expired, is it possible that the server may have handed
-out the same numerical short clientid to someone else and that explains
-why the RENEW is succeeding?
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/nfs4proc.c            |    3 +++
+ fs/nfs/objlayout/objio_osd.c |    1 +
+ fs/nfs/pnfs.h                |   22 ++++++++++++++++++++++
+ 3 files changed, 26 insertions(+), 0 deletions(-)
 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5b4124e..5734009 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2361,6 +2361,9 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 	struct nfs4_state *state = NULL;
+ 	int status;
+ 
++	if (pnfs_ld_layoutret_on_setattr(inode))
++		pnfs_return_layout(inode);
++
+ 	nfs_fattr_init(fattr);
+ 	
+ 	/* Search for an existing open(O_WRITE) file */
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 55fa5fb..370da29 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -937,6 +937,7 @@ ssize_t objio_write_pagelist(struct objlayout_io_state *ol_state, bool stable)
+ static struct pnfs_layoutdriver_type objlayout_type = {
+ 	.id = LAYOUT_OSD2_OBJECTS,
+ 	.name = "LAYOUT_OSD2_OBJECTS",
++	.flags                   = PNFS_LAYOUTRET_ON_SETATTR,
+ 
+ 	.alloc_layout_hdr        = objlayout_alloc_layout_hdr,
+ 	.free_layout_hdr         = objlayout_free_layout_hdr,
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 21daebb..2858553 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -65,6 +65,11 @@ enum {
+ 	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
+ };
+ 
++enum layoutdriver_policy_flags {
++	/* Should the pNFS client commit and return the layout upon a setattr */
++	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
++};
++
+ struct nfs4_deviceid_node;
+ 
+ /* Per-layout driver specific registration structure */
+@@ -73,6 +78,7 @@ struct pnfs_layoutdriver_type {
+ 	const u32 id;
+ 	const char *name;
+ 	struct module *owner;
++	unsigned flags;
+ 
+ 	struct pnfs_layout_hdr * (*alloc_layout_hdr) (struct inode *inode, gfp_t gfp_flags);
+ 	void (*free_layout_hdr) (struct pnfs_layout_hdr *);
+@@ -258,6 +264,16 @@ static inline void pnfs_clear_request_commit(struct nfs_page *req)
+ 		put_lseg(req->wb_commit_lseg);
+ }
+ 
++/* Should the pNFS client commit and return the layout upon a setattr */
++static inline bool
++pnfs_ld_layoutret_on_setattr(struct inode *inode)
++{
++	if (!pnfs_enabled_sb(NFS_SERVER(inode)))
++		return false;
++	return NFS_SERVER(inode)->pnfs_curr_ld->flags &
++		PNFS_LAYOUTRET_ON_SETATTR;
++}
++
+ static inline int pnfs_return_layout(struct inode *ino)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+@@ -317,6 +333,12 @@ static inline int pnfs_return_layout(struct inode *ino)
+ }
+ 
+ static inline bool
++pnfs_ld_layoutret_on_setattr(struct inode *inode)
++{
++	return false;
++}
++
++static inline bool
+ pnfs_roc(struct inode *ino)
+ {
+ 	return false;
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.3.4
 
