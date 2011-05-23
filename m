@@ -1,110 +1,150 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:37940 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:9198 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753541Ab1EIRHX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:07:23 -0400
+	with ESMTP id S1756498Ab1EWQjv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 12:39:51 -0400
 From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>
-Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
-        Benny Halevy <bhalevy@panasas.com>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH v2 05/29] pnfs: client stats
-Date: Mon,  9 May 2011 20:07:14 +0300
-Message-Id: <1304960834-3940-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DC81E8C.6040901@panasas.com>
-References: <4DC81E8C.6040901@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Boaz Harrosh <bharrosh@panasas.com>
+Subject: [PATCH v6 26/26] pnfs-obj: objlayout_encode_layoutcommit implementation
+Date: Mon, 23 May 2011 19:39:39 +0300
+Message-Id: <1306168779-11903-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DDA8C3D.5080706@panasas.com>
+References: <4DDA8C3D.5080706@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@fieldses.org>
+From: Boaz Harrosh <bharrosh@panasas.com>
 
-A pNFS client auto-negotiates a lot of features (minorversion level,
-pNFS layout type, etc.).  This is convenient, but makes certain kinds of
-failures hard for a user to detect.
+* Define API for io-engines to report delta_space_used in IOs
+* Encode the osd-layout specific information of the layoutcommit
+  XDR buffer.
 
-For example, if the client falls back on 4.0, or falls back to MDS IO
-because the user didn't connect to the right iscsi disks before
-mounting, the only symptoms may be reduced performance, which may not be
-noticed till long after the actual failure, and may be difficult for a
-user to diagnose.
-
-However, such "failures" may also be perfectly normal in some cases, so
-we don't want to spam the system logs with them.
-
-One approach would be to put some more information into
-/proc/self/mountstats.
-
-Signed-off-by: J. Bruce Fields <bfields@fieldses.org>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[pnfs: add commit client stats]
-[fixup data types for "ret" variables in pnfs_try_to* inline funcs.]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[fix definition of show_pnfs for !CONFIG_PNFS]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: Fix show_sessions in the not CONFIG_NFS_V4_1 case]
-    There is a build error when CONFIG_NFS_V4 is set but
-    CONFIG_NFS_V4_1 is *not* set. show_sessions() prototype
-    was unbalanced between the two cases.
 Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-[pnfs: super.c remove CONFIG_PNFS]
-Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/super.c |   25 +++++++++++++++++++++++++
- 1 files changed, 25 insertions(+), 0 deletions(-)
+ fs/nfs/objlayout/objio_osd.c |    1 +
+ fs/nfs/objlayout/objlayout.c |   30 ++++++++++++++++++++++++++++++
+ fs/nfs/objlayout/objlayout.h |   30 ++++++++++++++++++++++++++++++
+ 3 files changed, 61 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 2b8e9a5..50f3987 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -63,6 +63,7 @@
- #include "iostat.h"
- #include "internal.h"
- #include "fscache.h"
-+#include "pnfs.h"
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 19b7a2c..d235529 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -1004,6 +1004,7 @@ static struct pnfs_layoutdriver_type objlayout_type = {
  
- #define NFSDBG_FACILITY		NFSDBG_VFS
+ 	.free_deviceid_node	 = objio_free_deviceid_node,
  
-@@ -732,6 +733,28 @@ static int nfs_show_options(struct seq_file *m, struct vfsmount *mnt)
++	.encode_layoutcommit	 = objlayout_encode_layoutcommit,
+ 	.encode_layoutreturn     = objlayout_encode_layoutreturn,
+ };
  
- 	return 0;
- }
-+#ifdef CONFIG_NFS_V4_1
-+void show_sessions(struct seq_file *m, struct nfs_server *server)
-+{
-+	if (nfs4_has_session(server->nfs_client))
-+		seq_printf(m, ",sessions");
-+}
-+#else
-+void show_sessions(struct seq_file *m, struct nfs_server *server) {}
-+#endif
-+
-+#ifdef CONFIG_NFS_V4_1
-+void show_pnfs(struct seq_file *m, struct nfs_server *server)
-+{
-+	seq_printf(m, ",pnfs=");
-+	if (server->pnfs_curr_ld)
-+		seq_printf(m, "%s", server->pnfs_curr_ld->name);
-+	else
-+		seq_printf(m, "not configured");
-+}
-+#else  /* CONFIG_NFS_V4_1 */
-+void show_pnfs(struct seq_file *m, struct nfs_server *server) {}
-+#endif /* CONFIG_NFS_V4_1 */
+diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+index f7caecf..dc3956c 100644
+--- a/fs/nfs/objlayout/objlayout.c
++++ b/fs/nfs/objlayout/objlayout.c
+@@ -225,6 +225,7 @@ objlayout_iodone(struct objlayout_io_state *state)
+ 		struct objlayout *objlay = OBJLAYOUT(state->lseg->pls_layout);
  
- static int nfs_show_devname(struct seq_file *m, struct vfsmount *mnt)
- {
-@@ -792,6 +815,8 @@ static int nfs_show_stats(struct seq_file *m, struct vfsmount *mnt)
- 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
- 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
- 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
-+		show_sessions(m, nfss);
-+		show_pnfs(m, nfss);
+ 		spin_lock(&objlay->lock);
++		objlay->delta_space_valid = OBJ_DSU_INVALID;
+ 		list_add(&objlay->err_list, &state->err_list);
+ 		spin_unlock(&objlay->lock);
  	}
- #endif
+@@ -433,6 +434,35 @@ objlayout_write_pagelist(struct nfs_write_data *wdata,
+ 	return PNFS_ATTEMPTED;
+ }
  
++void
++objlayout_encode_layoutcommit(struct pnfs_layout_hdr *pnfslay,
++			      struct xdr_stream *xdr,
++			      const struct nfs4_layoutcommit_args *args)
++{
++	struct objlayout *objlay = OBJLAYOUT(pnfslay);
++	struct pnfs_osd_layoutupdate lou;
++	__be32 *start;
++
++	dprintk("%s: Begin\n", __func__);
++
++	spin_lock(&objlay->lock);
++	lou.dsu_valid = (objlay->delta_space_valid == OBJ_DSU_VALID);
++	lou.dsu_delta = objlay->delta_space_used;
++	objlay->delta_space_used = 0;
++	objlay->delta_space_valid = OBJ_DSU_INIT;
++	lou.olu_ioerr_flag = !list_empty(&objlay->err_list);
++	spin_unlock(&objlay->lock);
++
++	start = xdr_reserve_space(xdr, 4);
++
++	BUG_ON(pnfs_osd_xdr_encode_layoutupdate(xdr, &lou));
++
++	*start = cpu_to_be32((xdr->p - start - 1) * 4);
++
++	dprintk("%s: Return delta_space_used %lld err %d\n", __func__,
++		lou.dsu_delta, lou.olu_ioerr_flag);
++}
++
+ static int
+ err_prio(u32 oer_errno)
+ {
+diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
+index b0bb975..a8244c8 100644
+--- a/fs/nfs/objlayout/objlayout.h
++++ b/fs/nfs/objlayout/objlayout.h
+@@ -51,6 +51,14 @@
+ struct objlayout {
+ 	struct pnfs_layout_hdr pnfs_layout;
+ 
++	 /* for layout_commit */
++	enum osd_delta_space_valid_enum {
++		OBJ_DSU_INIT = 0,
++		OBJ_DSU_VALID,
++		OBJ_DSU_INVALID,
++	} delta_space_valid;
++	s64 delta_space_used;  /* consumed by write ops */
++
+ 	 /* for layout_return */
+ 	spinlock_t lock;
+ 	struct list_head err_list;
+@@ -119,6 +127,23 @@ extern void objlayout_io_set_result(struct objlayout_io_state *state,
+ 			unsigned index, struct pnfs_osd_objid *pooid,
+ 			int osd_error, u64 offset, u64 length, bool is_write);
+ 
++static inline void
++objlayout_add_delta_space_used(struct objlayout_io_state *state, s64 space_used)
++{
++	struct objlayout *objlay = OBJLAYOUT(state->lseg->pls_layout);
++
++	/* If one of the I/Os errored out and the delta_space_used was
++	 * invalid we render the complete report as invalid. Protocol mandate
++	 * the DSU be accurate or not reported.
++	 */
++	spin_lock(&objlay->lock);
++	if (objlay->delta_space_valid != OBJ_DSU_INVALID) {
++		objlay->delta_space_valid = OBJ_DSU_VALID;
++		objlay->delta_space_used += space_used;
++	}
++	spin_unlock(&objlay->lock);
++}
++
+ extern void objlayout_read_done(struct objlayout_io_state *state,
+ 				ssize_t status, bool sync);
+ extern void objlayout_write_done(struct objlayout_io_state *state,
+@@ -149,6 +174,11 @@ extern enum pnfs_try_status objlayout_write_pagelist(
+ 	struct nfs_write_data *,
+ 	int how);
+ 
++extern void objlayout_encode_layoutcommit(
++	struct pnfs_layout_hdr *,
++	struct xdr_stream *,
++	const struct nfs4_layoutcommit_args *);
++
+ extern void objlayout_encode_layoutreturn(
+ 	struct pnfs_layout_hdr *,
+ 	struct xdr_stream *,
 -- 
 1.7.3.4
 
