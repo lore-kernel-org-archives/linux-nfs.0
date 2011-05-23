@@ -1,70 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46668 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754504Ab1ESLuT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 May 2011 07:50:19 -0400
-Date: Thu, 19 May 2011 07:50:18 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Taousif_Ansari@DELLTEAM.com
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Performance Issue with multiple dataserver
-Message-ID: <20110519115018.GA31978@fieldses.org>
-References: <4DD2A084.1040905@moving-picture.com>
- <20110518080106.1159c5b8@notabene.brown>
- <4DD39D39.7010805@moving-picture.com>
- <A1A98FD909DC5248811A65C5D18E9C761DF69B1F18@BLRX7MCDC202.AMER.DELL.COM>
- <20110518161239.GA16835@fieldses.org>
- <A1A98FD909DC5248811A65C5D18E9C761DF69B2188@BLRX7MCDC202.AMER.DELL.COM>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <A1A98FD909DC5248811A65C5D18E9C761DF69B2188@BLRX7MCDC202.AMER.DELL.COM>
+Received: from daytona.panasas.com ([67.152.220.89]:46918 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750788Ab1EWEXC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 00:23:02 -0400
+Message-ID: <4DD9E113.7050506@panasas.com>
+Date: Mon, 23 May 2011 07:22:43 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
+        Fred Isaman <iisaman@netapp.com>
+Subject: Re: [PATCH 16/23] pnfs: support for non-rpc layout drivers
+References: <4DD93D3E.9010909@panasas.com> <1306083123-11061-1-git-send-email-bharrosh@panasas.com> <4DD96697.50800@panasas.com>
+In-Reply-To: <4DD96697.50800@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, May 19, 2011 at 10:56:44AM +0530, Taousif_Ansari@DELLTEAM.com wrote:
-> Hi,
+On 05/22/2011 10:40 PM, Benny Halevy wrote:
+>> +/*
+>> + * Called by non rpc-based layout drivers
+>> + */
+>> +int
+>> +pnfs_ld_write_done(struct nfs_write_data *data)
+>> +{
+>> +	int status;
+>> +
 > 
-> I am using on Server linux-pnfs-2.6.38(linux-pnfs-ae7441f.tar) and on client also linux-pnfs-2.6.38(linux-pnfs-ae7441f.tar) downloaded from http://git.linux-nfs.org/?p=bhalevy/linux-pnfs.git;a=summary on Fedora 14.
+> 
+>> +	if (!data->pnfs_error) {
+>> +		pnfs_set_layoutcommit(data);
+> 
+> We need at least to set data->task.tk_status to 0
 
-So you're using GFS2 on the server?  With what sort of storage?
-
---b.
+I guess it does not hurt, but we never touched it, is it garbage?
 
 > 
-> Extremely sorry for causing confusing .
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-> Sent: Wednesday, May 18, 2011 9:43 PM
-> To: Ansari, Taousif - Dell Team
-> Cc: linux-nfs@vger.kernel.org
-> Subject: Re: Performance Issue with multiple dataserver
+>> +		data->mds_ops->rpc_call_done(&data->task, data);
+>> +		data->mds_ops->rpc_release(data);
 > 
-> You sent this message as a reply to an unrelated message, which is
-> confusing to those of us with threaded mail readers.
+> Where's the put_lseg you had in PATCH 10/13?
 > 
-> On Wed, May 18, 2011 at 05:24:45PM +0530, Taousif_Ansari@DELLTEAM.com wrote:
-> > I have done pNFS setup with single Dataserver and Two Dataserver and ran the IOzone tool on both, I found that the performance with multiple dataservers is less than the performance with single dataservers.
+> Benny
+
+That was the bug. Please see my SQUASHME patches I explained
+it all there.
+
 > 
-> What are you using as the server, and what as the client?
-> 
-> --b.
-> 
-> > 
-> > Here are some numbers, which were captured by the IOzone tool.
-> > 
-> > 
-> > 							  4	  8	 16	 32	 64	 128	 256	 512	1024	<== Record Length in KB
-> > With Single Dataserver:
-> > Read operation for file size 1 MB-		66415	66359	63630	70358	86223	70256	66047	66068	68489	<== IO kB/sec
-> > Write operation for file size 1 MB-		18827	16920	18846	17039	18896	17009	17173	19206	17947	<== IO kB/sec
-> > 
-> > With Two Dataservers :
-> > Read operation for file size 1 MB-		36882	381198	38150	38084	38749	33663	34398	37313	37847	<== IO kB/sec
-> > Write operation for file size 1 MB-		5461	4661	5586	4870	5227	4922	4214	5572	4658	<== IO kB/sec
-> > 
-> > 
-> > Can somebody tell me What could be the issue....
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> +		return 0;
+>> +	}
+>> +
+>> +	put_lseg(data->lseg);
+>> +	data->lseg = NULL;
+
+I'm not sure it is needed here as well.
+Fred! please see this code
+We know that the lseg is put in nfs_writedata_release()
+Does the below nfs_initiate_write() retakes the ref.
+If it does we need the put here. If it does not we
+don't need here.
+
+Boaz
+
+>> +	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
+>> +		data->pnfs_error);
+>> +	status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
+>> +				    data->mds_ops, NFS_FILE_SYNC);
+>> +	return status ? : -EAGAIN;
+>> +}
