@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:43488 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:43579 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754491Ab1EVXza (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 19:55:30 -0400
+	with ESMTP id S1755171Ab1EWACQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 20:02:16 -0400
 From: Benny Halevy <bhalevy@panasas.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v5 16/38] pnfs-obj: objlayoutdriver module skeleton
-Date: Mon, 23 May 2011 02:54:04 +0300
-Message-Id: <1306108444-28478-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v5 33/38] SQUASHME: pnfs: fix layout stateid in layoutreturn args
+Date: Mon, 23 May 2011 03:02:04 +0300
+Message-Id: <1306108924-29165-1-git-send-email-bhalevy@panasas.com>
 In-Reply-To: <4DD99F9B.2040406@panasas.com>
 References: <4DD99F9B.2040406@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -16,152 +16,116 @@ List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-* Define the PNFS_OBJLAYOUT Kconfig option in the nfs
-  master Kconfig file.
-* Add the objlayout driver to the Kernel's Kbuild system.
-* Add the fs/nfs/objlayout/Kbuild file for building the
-  objlayoutdriver.ko driver
-* Define fs/nfs/objlayout/objio_osd.c, register the driver on module
-  initialization and unregister on exit.
-
-[pnfs-obj: remove of CONFIG_PNFS fallout]
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-[added "unsure" clause]
-[depend on NFS_V4_1]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/Kconfig               |   10 +++++
- fs/nfs/Makefile              |    2 +
- fs/nfs/objlayout/Kbuild      |    5 +++
- fs/nfs/objlayout/objio_osd.c |   76 ++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 93 insertions(+), 0 deletions(-)
- create mode 100644 fs/nfs/objlayout/Kbuild
- create mode 100644 fs/nfs/objlayout/objio_osd.c
+ fs/nfs/nfs4xdr.c        |    2 +-
+ fs/nfs/pnfs.c           |   42 ++++++++++++++++--------------------------
+ include/linux/nfs_xdr.h |    1 +
+ 3 files changed, 18 insertions(+), 27 deletions(-)
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index ba30665..8151554 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -87,6 +87,16 @@ config NFS_V4_1
- config PNFS_FILE_LAYOUT
- 	tristate
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index e53d7d8..882c8f9 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1918,7 +1918,7 @@ encode_layoutreturn(struct xdr_stream *xdr,
+ 	p = xdr_encode_hyper(p, 0);
+ 	p = xdr_encode_hyper(p, NFS4_MAX_UINT64);
+ 	spin_lock(&args->inode->i_lock);
+-	xdr_encode_opaque_fixed(p, &NFS_I(args->inode)->layout->plh_stateid.data, NFS4_STATEID_SIZE);
++	xdr_encode_opaque_fixed(p, &args->stateid.data, NFS4_STATEID_SIZE);
+ 	spin_unlock(&args->inode->i_lock);
+ 	p = reserve_space(xdr, 4);
+ 	*p = cpu_to_be32(0);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 040219b..d3315c7 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -619,31 +619,6 @@ out_err_free:
+ 	return NULL;
+ }
  
-+config PNFS_OBJLAYOUT
-+	tristate "Provide support for the pNFS Objects Layout Driver for NFSv4.1 pNFS (EXPERIMENTAL)"
-+	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
-+	help
-+	  Say M here if you want your pNFS client to support the Objects Layout Driver.
-+	  Requires the SCSI osd initiator library (SCSI_OSD_INITIATOR) and
-+	  upper level driver (SCSI_OSD_ULD).
-+
-+	  If unsure, say N.
-+
- config ROOT_NFS
- 	bool "Root file system on NFS"
- 	depends on NFS_FS=y && IP_PNP
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index 7516a8a..6a34f7d 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -21,3 +21,5 @@ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+-static int
+-return_layout(struct inode *ino)
+-{
+-	struct nfs4_layoutreturn *lrp;
+-	struct nfs_server *server = NFS_SERVER(ino);
+-	int status = -ENOMEM;
+-
+-	dprintk("--> %s\n", __func__);
+-
+-	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
+-	if (lrp == NULL) {
+-		put_layout_hdr(NFS_I(ino)->layout);
+-		goto out;
+-	}
+-	lrp->args.reclaim = 0;
+-	lrp->args.layout_type = server->pnfs_curr_ld->id;
+-	lrp->args.inode = ino;
+-	lrp->clp = server->nfs_client;
+-
+-	status = nfs4_proc_layoutreturn(lrp);
+-out:
+-	dprintk("<-- %s status: %d\n", __func__, status);
+-	return status;
+-}
+-
+ /* Initiates a LAYOUTRETURN(FILE) */
+ int
+ _pnfs_return_layout(struct inode *ino)
+@@ -651,17 +626,22 @@ _pnfs_return_layout(struct inode *ino)
+ 	struct pnfs_layout_hdr *lo = NULL;
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+ 	LIST_HEAD(tmp_list);
++	struct nfs4_layoutreturn *lrp;
+ 	int status = 0;
  
- obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
- nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
+ 	dprintk("--> %s\n", __func__);
+ 
++	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
 +
-+obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayout/
-diff --git a/fs/nfs/objlayout/Kbuild b/fs/nfs/objlayout/Kbuild
-new file mode 100644
-index 0000000..2e5b9a4
---- /dev/null
-+++ b/fs/nfs/objlayout/Kbuild
-@@ -0,0 +1,5 @@
-+#
-+# Makefile for the pNFS Objects Layout Driver kernel module
-+#
-+objlayoutdriver-y := objio_osd.o
-+obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayoutdriver.o
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-new file mode 100644
-index 0000000..379595f
---- /dev/null
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -0,0 +1,76 @@
-+/*
-+ *  pNFS Objects layout implementation over open-osd initiator library
-+ *
-+ *  Copyright (C) 2009 Panasas Inc. [year of first publication]
-+ *  All rights reserved.
-+ *
-+ *  Benny Halevy <bhalevy@panasas.com>
-+ *  Boaz Harrosh <bharrosh@panasas.com>
-+ *
-+ *  This program is free software; you can redistribute it and/or modify
-+ *  it under the terms of the GNU General Public License version 2
-+ *  See the file COPYING included with this distribution for more details.
-+ *
-+ *  Redistribution and use in source and binary forms, with or without
-+ *  modification, are permitted provided that the following conditions
-+ *  are met:
-+ *
-+ *  1. Redistributions of source code must retain the above copyright
-+ *     notice, this list of conditions and the following disclaimer.
-+ *  2. Redistributions in binary form must reproduce the above copyright
-+ *     notice, this list of conditions and the following disclaimer in the
-+ *     documentation and/or other materials provided with the distribution.
-+ *  3. Neither the name of the Panasas company nor the names of its
-+ *     contributors may be used to endorse or promote products derived
-+ *     from this software without specific prior written permission.
-+ *
-+ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
-+ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-+ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-+ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
-+ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-+ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-+ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-+ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-+ */
+ 	spin_lock(&ino->i_lock);
+ 	lo = nfsi->layout;
+ 	if (!lo || !mark_matching_lsegs_invalid(lo, &tmp_list, NULL)) {
+ 		spin_unlock(&ino->i_lock);
+ 		dprintk("%s: no layout segments to return\n", __func__);
++		kfree(lrp);
+ 		goto out;
+ 	}
++	lrp->args.stateid = nfsi->layout->plh_stateid;
+ 	/* Reference matched in nfs4_layoutreturn_release */
+ 	get_layout_hdr(lo);
+ 	spin_unlock(&ino->i_lock);
+@@ -669,7 +649,17 @@ _pnfs_return_layout(struct inode *ino)
+ 
+ 	WARN_ON(test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags));
+ 
+-	status = return_layout(ino);
++	if (lrp == NULL) {
++		put_layout_hdr(NFS_I(ino)->layout);
++		status = -ENOMEM;
++		goto out;
++	}
++	lrp->args.reclaim = 0;
++	lrp->args.layout_type = NFS_SERVER(ino)->pnfs_curr_ld->id;
++	lrp->args.inode = ino;
++	lrp->clp = NFS_SERVER(ino)->nfs_client;
 +
-+#include <linux/module.h>
-+#include "../pnfs.h"
-+
-+static struct pnfs_layoutdriver_type objlayout_type = {
-+	.id = LAYOUT_OSD2_OBJECTS,
-+	.name = "LAYOUT_OSD2_OBJECTS",
-+};
-+
-+MODULE_DESCRIPTION("pNFS Layout Driver for OSD2 objects");
-+MODULE_AUTHOR("Benny Halevy <bhalevy@panasas.com>");
-+MODULE_LICENSE("GPL");
-+
-+static int __init
-+objlayout_init(void)
-+{
-+	int ret = pnfs_register_layoutdriver(&objlayout_type);
-+
-+	if (ret)
-+		printk(KERN_INFO
-+			"%s: Registering OSD pNFS Layout Driver failed: error=%d\n",
-+			__func__, ret);
-+	else
-+		printk(KERN_INFO "%s: Registered OSD pNFS Layout Driver\n",
-+			__func__);
-+	return ret;
-+}
-+
-+static void __exit
-+objlayout_exit(void)
-+{
-+	pnfs_unregister_layoutdriver(&objlayout_type);
-+	printk(KERN_INFO "%s: Unregistered OSD pNFS Layout Driver\n",
-+	       __func__);
-+}
-+
-+module_init(objlayout_init);
-+module_exit(objlayout_exit);
++	status = nfs4_proc_layoutreturn(lrp);
+ out:
+ 	dprintk("<-- %s status: %d\n", __func__, status);
+ 	return status;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 1629b69..22a3d03 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -273,6 +273,7 @@ struct nfs4_layoutreturn_args {
+ 	__u32   reclaim;
+ 	__u32   layout_type;
+ 	struct inode *inode;
++	nfs4_stateid stateid;
+ 	struct nfs4_sequence_args seq_args;
+ };
+ 
 -- 
 1.7.3.4
 
