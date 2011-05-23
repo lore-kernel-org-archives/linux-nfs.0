@@ -1,150 +1,257 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:2094 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757060Ab1ETTjq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 May 2011 15:39:46 -0400
-Subject: Re: 2.6.38.6 - state manager constantly respawns
-Content-Type: text/plain; charset=us-ascii
-From: Andy Adamson <andros@netapp.com>
-In-Reply-To: <4DD6C103.7090302@uw.edu>
-Date: Fri, 20 May 2011 15:39:38 -0400
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "Dr. J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Message-Id: <13970932-C610-4F33-896C-9367380D328B@netapp.com>
-References: <05D08339-888C-4A64-BDC5-8667B3901E7A@oracle.com>	 <4DD1772E.9010609@uw.edu> <6A6FB1C3-D4C3-40BE-810A-B4551FA9E591@oracle.com>	 <4DD17CB5.7010009@uw.edu> <1305575007.19725.3.camel@lade.trondhjem.org>	 <4DD17F79.305@uw.edu> <1305575656.19725.9.camel@lade.trondhjem.org>	 <20110516202059.GC1680@fieldses.org> <20110516205351.GD1680@fieldses.org>	 <4DD694DF.2060302@uw.edu> <20110520172639.GA11670@fieldses.org> <1305913963.12712.6.camel@lade.trondhjem.org> <4DD6C103.7090302@uw.edu>
-To: Harry Edmon <harry@uw.edu>
+Received: from daytona.panasas.com ([67.152.220.89]:1409 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753004Ab1EWNoo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 09:44:44 -0400
+Message-ID: <4DDA64C6.2080909@panasas.com>
+Date: Mon, 23 May 2011 16:44:38 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v5 23/38] SQUASHME: pnfs-obj: use global device cache
+References: <4DD99F9B.2040406@panasas.com> <1306108720-28762-1-git-send-email-bhalevy@panasas.com> <4DD9E805.2020106@panasas.com>
+In-Reply-To: <4DD9E805.2020106@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On 2011-05-23 07:52, Boaz Harrosh wrote:
+> On 05/23/2011 02:58 AM, Benny Halevy wrote:
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> 
+> Benny sorry but NACK on the global device cache for now
+> 
+> This is to late at this stage. We have decided that first imp will
+> use the private cache and we'll postpone these cleanups for later.
+> 
+> All other code was well tested for years, all this is new code, and 
 
-On May 20, 2011, at 3:29 PM, Harry Edmon wrote:
+The file layout is upstream and better be harnessed for other layout
+drivers as well.  If it's inferior to the current objects layout cache
+we should fix and improve the former rather than introducing a new
+implementation.
 
-> On 05/20/11 10:52, Trond Myklebust wrote:
->> On Fri, 2011-05-20 at 13:26 -0400, Dr. J. Bruce Fields wrote:
->>   
->>> On Fri, May 20, 2011 at 09:20:47AM -0700, Harry Edmon wrote:
->>>     
->>>> On 05/16/11 13:53, Dr. J. Bruce Fields wrote:
->>>>       
->>>>> Hm, so the renews all have clid 465ccc4d09000000, and the reads all have
->>>>> a stateid (0, 465ccc4dc24c0a0000000000).
->>>>> 
->>>>> So the first 4 bytes matching just tells me both were handed out by the
->>>>> same server instance (so there was no server reboot in between); there's
->>>>> no way for me to tell whether they really belong to the same client.
->>>>> 
->>>>> The server does assume that any stateid from the current server instance
->>>>> that no longer exists in its table is expired.  I believe that's
->>>>> correct, given a correctly functioning client, but perhaps I'm missing a
->>>>> case.
->>>>> 
->>>>> --b.
->>>>>         
->>>> I am very appreciative of the quick initial comments I receive from
->>>> all of you on my NFS problem.   I notice that there has been silence
->>>> on the problem since the 16th, so I assume that either this is a
->>>> hard bug to track down or you have been busy with higher priority
->>>> tasks.  Is there anything I can do to help develop a solution to
->>>> this problem?
->>>>       
->>> Well, the only candidate explanation for the problem is that my
->>> assumption--that any time the server gets a stateid from the current
->>> boot instance that it doesn't recognize as an active stateid, it is safe
->>> for the server to return EXPIRED--is wrong.
->>> 
->>> I don't immediately see why it's wrong, and based on the silence nobody
->>> else does either, but I'm not 100% convinced I'm right either.
->>> 
->>> So one approach might be to add server code that makes a better effort
->>> to return EXPIRED only when we're sure it's a stateid from an expired
->>> client, and see if that solves your problem.
->>> 
->>> Remind me, did you have an easy way to reproduce your problem?
->>>     
->> My silence is simply because I'm mystified as to how this can happen.
->> Patching for it is trivial (see below).
->> 
->> When the server tells us that our lease is expired, the normal behaviour
->> for the client is to re-establish the lease, and then proceed to recover
->> all known stateids. I don't see how we can 'miss' a stateid that then
->> needs to be recovered afterwards...
->> 
->> Cheers
->>   Trond
->> 
->> 8<----------------------------------------------------------------------------
->> From 920ddb153f28717be363f6e87dde24ef2a8d0ce2 Mon Sep 17 00:00:00 2001
->> From: Trond Myklebust<Trond.Myklebust@netapp.com>
->> Date: Fri, 20 May 2011 13:44:02 -0400
->> Subject: [PATCH] NFSv4: Handle expired stateids when the lease is still valid
->> 
->> Currently, if the server returns NFS4ERR_EXPIRED in reply to a READ or
->> WRITE, but the RENEW test determines that the lease is still active, we
->> fail to recover and end up looping forever in a READ/WRITE + RENEW death
->> spiral.
->> 
->> Signed-off-by: Trond Myklebust<Trond.Myklebust@netapp.com>
+> new behaviour that we will not have time to test. I do not like the
+
+Ideally, the should already be fully tested, but last minute review-
+related changes will always require further testing that needs to be
+taken place during the -rc cycle.  The whole point of having rc's is
+to stabilize the merged code to a point it can be released as a stable
+release.
+
+> code as it is. Because currently it will release the device on layout_return.
+> Where is the cache? There is much more work to do here!
+> 
+
+Like I said, if there are bugs we should fix them rather introducing
+alternative code that does the same thing.
+
+> We already said not to do this in this merge why the change of heart?
+
+We discussed that again on Thursday's conference call which you did not
+attend.  I decided to take a stab at it to see how a unified cache would
+look like and I rather like the outcome..
+
+Benny
+
+> 
+> Boaz
+> 
 >> ---
->>  fs/nfs/nfs4proc.c |    9 +++++++--
->>  1 files changed, 7 insertions(+), 2 deletions(-)
->> 
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index cf1b339..d0e15db 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -267,9 +267,11 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
->>  				break;
->>  			nfs4_schedule_stateid_recovery(server, state);
->>  			goto wait_on_recovery;
->> +		case -NFS4ERR_EXPIRED:
->> +			if (state != NULL)
->> +				nfs4_schedule_stateid_recovery(server, state);
->>  		case -NFS4ERR_STALE_STATEID:
->>  		case -NFS4ERR_STALE_CLIENTID:
->> -		case -NFS4ERR_EXPIRED:
->>  			nfs4_schedule_lease_recovery(clp);
->>  			goto wait_on_recovery;
->>  #if defined(CONFIG_NFS_V4_1)
->> @@ -3670,9 +3672,11 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
->>  				break;
->>  			nfs4_schedule_stateid_recovery(server, state);
->>  			goto wait_on_recovery;
->> +		case -NFS4ERR_EXPIRED:
->> +			if (state != NULL)
->> +				nfs4_schedule_stateid_recovery(server, state);
->>  		case -NFS4ERR_STALE_STATEID:
->>  		case -NFS4ERR_STALE_CLIENTID:
->> -		case -NFS4ERR_EXPIRED:
->>  			nfs4_schedule_lease_recovery(clp);
->>  			goto wait_on_recovery;
->>  #if defined(CONFIG_NFS_V4_1)
->> @@ -4543,6 +4547,7 @@ int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl)
->>  			case -ESTALE:
->>  				goto out;
->>  			case -NFS4ERR_EXPIRED:
->> +				nfs4_schedule_stateid_recovery(server, state);
->>  			case -NFS4ERR_STALE_CLIENTID:
->>  			case -NFS4ERR_STALE_STATEID:
->>  				nfs4_schedule_lease_recovery(server->nfs_client);
->>   
-> I installed this patch on my client, and now I am seeing the state manager appear in the process accounting file about once a minute rather that the constant respawning I saw earlier.  Is once a minute normal, or is there still a problem?
-
-The state manager sends the lease renew heart-beat.  It should spawn every lease period unless a lease-renewing operation (one with state) happens to be sent.
-
--->Andy
-
+>>  fs/nfs/objlayout/objio_osd.c |  102 ++++++++++++++++++++----------------------
+>>  1 files changed, 49 insertions(+), 53 deletions(-)
+>>
+>> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+>> index 752bf7a..bcc8468 100644
+>> --- a/fs/nfs/objlayout/objio_osd.c
+>> +++ b/fs/nfs/objlayout/objio_osd.c
+>> @@ -46,66 +46,55 @@
+>>  
+>>  #define _LLU(x) ((unsigned long long)x)
+>>  
+>> -/* A per mountpoint struct currently for device cache */
+>> -struct objio_mount_type {
+>> -	struct list_head dev_list;
+>> -	spinlock_t dev_list_lock;
+>> -};
+>> -
+>> -struct _dev_ent {
+>> -	struct list_head list;
+>> -	struct nfs4_deviceid d_id;
+>> +struct objio_dev_ent {
+>> +	struct nfs4_deviceid_node id_node;
+>>  	struct osd_dev *od;
+>>  };
+>>  
+>> -static struct osd_dev *___dev_list_find(struct objio_mount_type *omt,
+>> -	struct nfs4_deviceid *d_id)
+>> +static void
+>> +objio_free_deviceid_node(struct nfs4_deviceid_node *d)
+>>  {
+>> -	struct list_head *le;
+>> +	struct objio_dev_ent *de = container_of(d, struct objio_dev_ent, id_node);
+>>  
+>> -	list_for_each(le, &omt->dev_list) {
+>> -		struct _dev_ent *de = list_entry(le, struct _dev_ent, list);
+>> -
+>> -		if (0 == memcmp(&de->d_id, d_id, sizeof(*d_id)))
+>> -			return de->od;
+>> -	}
+>> -
+>> -	return NULL;
+>> +	osduld_put_device(de->od);
+>> +	kfree(de);
+>>  }
+>>  
+>> -static struct osd_dev *_dev_list_find(struct objio_mount_type *omt,
+>> -	struct nfs4_deviceid *d_id)
+>> +static struct objio_dev_ent *_dev_list_find(const struct nfs_client *clp,
+>> +	const struct nfs4_deviceid *d_id)
+>>  {
+>> -	struct osd_dev *od;
+>> +	struct nfs4_deviceid_node *d;
+>>  
+>> -	spin_lock(&omt->dev_list_lock);
+>> -	od = ___dev_list_find(omt, d_id);
+>> -	spin_unlock(&omt->dev_list_lock);
+>> -	return od;
+>> +	d = nfs4_find_get_deviceid(clp, d_id);
+>> +	if (!d)
+>> +		return NULL;
+>> +	return container_of(d, struct objio_dev_ent, id_node);
+>>  }
+>>  
+>> -static int _dev_list_add(struct objio_mount_type *omt,
+>> -	struct nfs4_deviceid *d_id, struct osd_dev *od,
+>> +static int _dev_list_add(const struct nfs_server *nfss,
+>> +	const struct nfs4_deviceid *d_id, struct osd_dev *od,
+>>  	gfp_t gfp_flags)
+>>  {
+>> -	struct _dev_ent *de = kzalloc(sizeof(*de), gfp_flags);
+>> +	struct nfs4_deviceid_node *d;
+>> +	struct objio_dev_ent *de = kzalloc(sizeof(*de), gfp_flags);
+>> +	struct objio_dev_ent *n;
+>>  
+>>  	if (!de)
+>>  		return -ENOMEM;
+>>  
+>> -	spin_lock(&omt->dev_list_lock);
+>> +	nfs4_init_deviceid_node(&de->id_node,
+>> +				nfss->pnfs_curr_ld,
+>> +				nfss->nfs_client,
+>> +				d_id);
+>> +	de->od = od;
+>>  
+>> -	if (___dev_list_find(omt, d_id)) {
+>> -		kfree(de);
+>> -		goto out;
+>> +	d = nfs4_insert_deviceid_node(&de->id_node);
+>> +	n = container_of(d, struct objio_dev_ent, id_node);
+>> +	if (n != de) {
+>> +		BUG_ON(n->od != od);
+>> +		objio_free_deviceid_node(&de->id_node);
+>>  	}
+>>  
+>> -	de->d_id = *d_id;
+>> -	de->od = od;
+>> -	list_add(&de->list, &omt->dev_list);
+>> -
+>> -out:
+>> -	spin_unlock(&omt->dev_list_lock);
+>>  	return 0;
+>>  }
+>>  
+>> @@ -128,7 +117,7 @@ struct objio_segment {
+>>  	unsigned comps_index;
+>>  	unsigned num_comps;
+>>  	/* variable length */
+>> -	struct osd_dev	*ods[1];
+>> +	struct objio_dev_ent *ods[1];
+>>  };
+>>  
+>>  static inline struct objio_segment *
+>> @@ -139,23 +128,22 @@ OBJIO_LSEG(struct pnfs_layout_segment *lseg)
+>>  
+>>  /* Send and wait for a get_device_info of devices in the layout,
+>>     then look them up with the osd_initiator library */
+>> -static struct osd_dev *_device_lookup(struct pnfs_layout_hdr *pnfslay,
+>> +static struct objio_dev_ent *_device_lookup(struct pnfs_layout_hdr *pnfslay,
+>>  				struct objio_segment *objio_seg, unsigned comp,
+>>  				gfp_t gfp_flags)
+>>  {
+>>  	struct pnfs_osd_deviceaddr *deviceaddr;
+>>  	struct nfs4_deviceid *d_id;
+>> +	struct objio_dev_ent *ode;
+>>  	struct osd_dev *od;
+>>  	struct osd_dev_info odi;
+>> -	struct objio_mount_type *omt =
+>> -				   NFS_SERVER(pnfslay->plh_inode)->pnfs_ld_data;
+>>  	int err;
+>>  
+>>  	d_id = &objio_seg->comps[comp].oc_object_id.oid_device_id;
+>>  
+>> -	od = _dev_list_find(omt, d_id);
+>> -	if (od)
+>> -		return od;
+>> +	ode = _dev_list_find(NFS_SERVER(pnfslay->plh_inode)->nfs_client, d_id);
+>> +	if (ode)
+>> +		return ode;
+>>  
+>>  	err = objlayout_get_deviceinfo(pnfslay, d_id, &deviceaddr, gfp_flags);
+>>  	if (unlikely(err)) {
+>> @@ -188,7 +176,7 @@ static struct osd_dev *_device_lookup(struct pnfs_layout_hdr *pnfslay,
+>>  		goto out;
+>>  	}
+>>  
+>> -	_dev_list_add(omt, d_id, od, gfp_flags);
+>> +	_dev_list_add(NFS_SERVER(pnfslay->plh_inode), d_id, od, gfp_flags);
+>>  
+>>  out:
+>>  	dprintk("%s: return=%d\n", __func__, err);
+>> @@ -205,14 +193,14 @@ static int objio_devices_lookup(struct pnfs_layout_hdr *pnfslay,
+>>  
+>>  	/* lookup all devices */
+>>  	for (i = 0; i < objio_seg->num_comps; i++) {
+>> -		struct osd_dev *od;
+>> +		struct objio_dev_ent *ode;
+>>  
+>> -		od = _device_lookup(pnfslay, objio_seg, i, gfp_flags);
+>> -		if (unlikely(IS_ERR(od))) {
+>> -			err = PTR_ERR(od);
+>> +		ode = _device_lookup(pnfslay, objio_seg, i, gfp_flags);
+>> +		if (unlikely(IS_ERR(ode))) {
+>> +			err = PTR_ERR(ode);
+>>  			goto out;
+>>  		}
+>> -		objio_seg->ods[i] = od;
+>> +		objio_seg->ods[i] = ode;
+>>  	}
+>>  	err = 0;
+>>  
+>> @@ -348,8 +336,14 @@ err:
+>>  
+>>  void objio_free_lseg(struct pnfs_layout_segment *lseg)
+>>  {
+>> +	int i;
+>>  	struct objio_segment *objio_seg = OBJIO_LSEG(lseg);
+>>  
+>> +	for (i = 0; i < objio_seg->num_comps; i++) {
+>> +		if (!objio_seg->ods[i])
+>> +			break;
+>> +		nfs4_put_deviceid_node(&objio_seg->ods[i]->id_node);
+>> +	}
+>>  	kfree(objio_seg);
+>>  }
+>>  
+>> @@ -360,6 +354,8 @@ static struct pnfs_layoutdriver_type objlayout_type = {
+>>  
+>>  	.alloc_lseg              = objlayout_alloc_lseg,
+>>  	.free_lseg               = objlayout_free_lseg,
+>> +
+>> +	.free_deviceid_node	 = objio_free_deviceid_node,
+>>  };
+>>  
+>>  MODULE_DESCRIPTION("pNFS Layout Driver for OSD2 objects");
 > 
-> -- 
-> Dr. Harry Edmon			E-MAIL: harry@uw.edu
-> 206-543-0547 FAX: 206-543-0308			harry@atmos.washington.edu
-> Director of IT, College of the Environment and
-> Director of Computing, Dept of Atmospheric Sciences
-> University of Washington, Box 351640, Seattle, WA 98195-1640
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
