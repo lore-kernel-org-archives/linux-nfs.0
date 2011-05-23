@@ -1,81 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:38871 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:47107 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752279Ab1EVQv0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 12:51:26 -0400
+	with ESMTP id S1750803Ab1EWEic (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 00:38:32 -0400
+Message-ID: <4DD9E4B6.70200@panasas.com>
+Date: Mon, 23 May 2011 07:38:14 +0300
 From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Cc: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 13/23] pnfs: set/unset layoutdriver
-Date: Sun, 22 May 2011 19:51:07 +0300
-Message-Id: <1306083067-10979-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4DD93D3E.9010909@panasas.com>
-References: <4DD93D3E.9010909@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v5 20/38] pnfs: per mount layout driver private data
+References: <4DD99F9B.2040406@panasas.com> <1306108649-28644-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <1306108649-28644-1-git-send-email-bhalevy@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+On 05/23/2011 02:57 AM, Benny Halevy wrote:
+> With the objects layout security model we have object capabilities
+> that are associated with the layout ad we anticipate that the server
+> will issue a cb_layoutrecall for any setattr that changes security
+> related attributes (user/group/mode/acl) or truncates the file.
+> Therefore, the client returns the layout in advance to avoid the
+> extra layout recall.
+> 
 
-For managing per nfs_server layout driver data
+This looks like the wrong text. It belongs to that other patch.
 
-[was: pass mntfh down the init_pnfs path]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/pnfs.c |   13 ++++++++++++-
- fs/nfs/pnfs.h |    4 ++++
- 2 files changed, 16 insertions(+), 1 deletions(-)
+The title and actual patch do match
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index dcf04ea..3ac7b82 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -75,8 +75,11 @@ find_pnfs_driver(u32 id)
- void
- unset_pnfs_layoutdriver(struct nfs_server *nfss)
- {
--	if (nfss->pnfs_curr_ld)
-+	if (nfss->pnfs_curr_ld) {
-+		if (nfss->pnfs_curr_ld->unset_layoutdriver)
-+			nfss->pnfs_curr_ld->unset_layoutdriver(nfss);
- 		module_put(nfss->pnfs_curr_ld->owner);
-+	}
- 	nfss->pnfs_curr_ld = NULL;
- }
- 
-@@ -115,6 +118,14 @@ set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
- 	}
- 	server->pnfs_curr_ld = ld_type;
- 
-+	if (ld_type->set_layoutdriver &&
-+	    ld_type->set_layoutdriver(server)) {
-+		dprintk("%s: Error initializing mount point for layout driver %u.\n",
-+		       __func__, id);
-+		module_put(ld_type->owner);
-+		goto out_no_driver;
-+	}
-+
- 	dprintk("%s: pNFS module for %u set\n", __func__, id);
- 	return;
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 006314e..9d620de 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -71,6 +71,10 @@ struct pnfs_layoutdriver_type {
- 	const u32 id;
- 	const char *name;
- 	struct module *owner;
-+
-+	int (*set_layoutdriver) (struct nfs_server *);
-+	int (*unset_layoutdriver) (struct nfs_server *);
-+
- 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr);
- 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
- 
--- 
-1.7.2.3
+Boaz
+> [get rid of ds_[rw]size]
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  include/linux/nfs_fs_sb.h |    1 +
+>  1 files changed, 1 insertions(+), 0 deletions(-)
+> 
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index 87694ca..66e031f 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -143,6 +143,7 @@ struct nfs_server {
+>  						   filesystem */
+>  	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
+>  	struct rpc_wait_queue	roc_rpcwaitq;
+> +	void			       *pnfs_ld_data; /* Per-mount data */
+>  
+>  	/* the following fields are protected by nfs_client->cl_lock */
+>  	struct rb_root		state_owners;
 
