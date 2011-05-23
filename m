@@ -1,114 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:40093 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:8845 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751768Ab1EVSJI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 14:09:08 -0400
-Message-ID: <4DD9513B.9070003@panasas.com>
-Date: Sun, 22 May 2011 21:08:59 +0300
+	with ESMTP id S1753008Ab1EWQdH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 12:33:07 -0400
+Message-ID: <4DDA8C3D.5080706@panasas.com>
+Date: Mon, 23 May 2011 19:33:01 +0300
 From: Benny Halevy <bhalevy@panasas.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 10/13] [RFC] Bugs in new pnfs write path
-References: <4DD79273.9030202@panasas.com> <1305973982-17499-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <1305973982-17499-1-git-send-email-bharrosh@panasas.com>
-Content-Type: text/plain; charset=windows-1255
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Boaz Harrosh <bharrosh@panasas.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCHSET v6 0/26] pnfs for 2.6.40
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-05-21 13:33, Boaz Harrosh wrote:
-> 1. In nfs4_write_done_cb: data->write_done_cb comes with a NULL.
+Hi,
 
-what's the call path?
+This is a cleaned up version of the v5 patchset I sent earlier.
+It's also based over v2.6.39 and push to
+git://linux-nfs.org/~bhalevy/linux-pnfs.git pnfs-submit
+at tag pnfs-for-2.6.40-v6-2011-05-23
 
->    Just as a guess I call nfs4_write_done_cb() just above it
->    it looked like the right thing todo. With that in, I'm able
->    to write things to file When converting pnfs.c:258 to a WARN_ON.
-> 
->    Benny we might want to set data->write_done_cb somewhere in the
->    none-rpc path? where is it best to do that?
+Changes in v6: (Benny)
+* squashed all SQUASHMEs
+* reverted "SQUASHME: initialize data->task on the non-rpc io done
+success paths"
+* reverted "per mount layout driver private data"
+* reverted "pnfs: set/unset layoutdriver"
+* applied (in reverse) "SQUASHME: pnfs-obj: Important fallout from the
+last rebase"
 
-we're not supposed to get there in the non-rpc path...
-The non-rpc drivers must call pnfs_ld_write_done.
+Changes in v5: (Benny)
+* use struct nfs_client to qualify deviceid
+* make device cache global
+* use be32 res in nfs4_callback_devicenotify
+* use gfp_flags
+* xdr_init_decode_pages
+* fix layout stateid used for layoutreturn args
+* commit message for layoutret_on_setattr
+* use global deviceid cache for pnfs-obj
+  - revert per-mount hook and related {.un}set_layoutdriver methods
+* use layout driver in global device cache
 
-> 
-> 2. In pnfs_ld_write_done:
-> 	put_lseg(data->lseg);
-> 	data->lseg = NULL;
->    was done before the call to pnfs_set_layoutcommit()
->    which trys to get_lseg() on that same data->lseg.
+changes in v4: (Boaz)
+* See the long SQUASHME patchset I sent yesterday for all the changes.
+  titled: [PATCHSET 00/13] SQUASHME pnfs-obj: Lots of changes addressing
+comments by Trond and Benny
+* I have united all 3 raid-engine read/write patches to a single patch
+* I've united the two error-reporting and error-encoding into one patch
+* Some checkpatch love
+* small cleanups here and there.
+(I'll send a diff as reply to this mail)
 
-good catch, thanks!
+changes in v3: (Benny)
+* removed direct i/o patch
+* align layoutget requests on page boundaries
+* fix lseg ordering
+* cleanup pnfs_insert_lseg
+* pnfs: clean up pnfs_find_lseg lseg arg
+* remove unnecessary FIXME
 
-> 
-> 3. In pnfs_ld_write_done:
->    data->mds_ops->rpc_call_done(NULL, data);
->    crashes with a NULL task. Just pass it with &data->task
+changes in v2:
+* fix CB_NOTIFY_DEVICEID
+* call pnfs_return_layout right before pnfs_destroy_layout
+* remove assert_spin_locked from pnfs_clear_lseg_list
+* remove wait parameter from the layoutreturn path.
+* remove return_type field from nfs4_layoutreturn_args
+* remove range from nfs4_layoutreturn_args
+* no need to send layoutcommit from _pnfs_return_layout
+* don't wait on sync layoutreturn
+* get rid of PNFS_USE_RPC_CODE
+* get rid of __nfs4_write_done_cb
+* get rid of ds_[rw]size
+* rename pnfs_{read,write}_done -> pnfs_ld_{read,write}_done
+* reorganize and reorder the pnfs-obj patchset to expose dependencies
+  and separate api changes
+* some cleaning up of the pnfs-obj patches
+* add xdr space reservation for pnfs-obj opaque layoutreturn
+  and layoutcommit payloads
 
-As we don't go through nfs_initiate_write data->task is not initialized.
-Where's the crash exactly?
-We better fix it than fake a task structure...
+List of patches:
 
-Benny
+generic:
+[PATCH v6 01/26] NFSv4.1: use struct nfs_client to qualify deviceid
+[PATCH v6 02/26] pnfs: resolve header dependency in pnfs.h
+[PATCH v6 03/26] NFSv4.1: make deviceid cache global
+[PATCH v6 04/26] NFSv4.1: purge deviceid cache on nfs_free_client
+[PATCH v6 05/26] pnfs: CB_NOTIFY_DEVICEID
+[PATCH v6 06/26] SUNRPC: introduce xdr_init_decode_pages
+[PATCH v6 07/26] pnfs: Use byte-range for layoutget
+[PATCH v6 08/26] pnfs: align layoutget requests on page boundaries
+[PATCH v6 09/26] pnfs: Use byte-range for cb_layoutrecall
+[PATCH v6 10/26] pnfs: client stats
 
-> 
->    Which calls for a cleanup. There is bunch of functions
->    with [task, write_data] API. And the task is always
->    write_data->task
-> 
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> ---
->  fs/nfs/nfs4proc.c |    3 ++-
->  fs/nfs/pnfs.c     |   10 ++++++----
->  2 files changed, 8 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 759523a..1a53187 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -3250,7 +3250,8 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
->  {
->  	if (!nfs4_sequence_done(task, &data->res.seq_res))
->  		return -EAGAIN;
-> -	return data->write_done_cb(task, data);
-> +	return data->write_done_cb ? data->write_done_cb(task, data) :
-> +		nfs4_write_done_cb(task, data);
->  }
->  
->  /* Reset the the nfs_write_data to send the write to the MDS. */
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 17d0c4c..b04cdb4 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -255,7 +255,7 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
->  {
->  	struct inode *inode = lseg->pls_layout->plh_inode;
->  
-> -	BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
-> + 	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
->  	list_del_init(&lseg->pls_list);
->  	if (list_empty(&lseg->pls_layout->plh_segs)) {
->  		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
-> @@ -1124,15 +1124,17 @@ pnfs_ld_write_done(struct nfs_write_data *data)
->  {
->  	int status;
->  
-> -	put_lseg(data->lseg);
-> -	data->lseg = NULL;
->  	if (!data->pnfs_error) {
->  		pnfs_set_layoutcommit(data);
-> -		data->mds_ops->rpc_call_done(NULL, data);
-> +		data->mds_ops->rpc_call_done(&data->task, data);
->  		data->mds_ops->rpc_release(data);
-> +		put_lseg(data->lseg);
-> +		data->lseg = NULL;
->  		return 0;
->  	}
->  
-> +	put_lseg(data->lseg);
-> +	data->lseg = NULL;
->  	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
->  		data->pnfs_error);
->  	status = nfs_initiate_write(data, NFS_CLIENT(data->inode), data->mds_ops, NFS_FILE_SYNC);
+Basic ld driver and some std definitions:
+[PATCH v6 11/26] pnfs-obj: objlayoutdriver module skeleton
+[PATCH v6 12/26] pnfs-obj: pnfs_osd XDR definitions
+[PATCH v6 13/26] pnfs-obj: pnfs_osd XDR client implementation
 
+layoutget:
+[PATCH v6 14/26] pnfs-obj: decode layout, alloc/free lseg
+
+getdeviceinfo:
+[PATCH v6 15/26] pnfs-obj: objio_osd device information retrieval and
+caching
+[PATCH v6 16/26] NFSv4.1: use layout driver in global device cache
+
+read/write:
+[PATCH v6 17/26] pnfs: alloc and free layout_hdr layoutdriver methods
+[PATCH v6 18/26] pnfs-obj: define per-inode private structure
+[PATCH v6 19/26] pnfs: support for non-rpc layout drivers
+[PATCH v6 20/26] pnfs-obj: osd raid engine read/write implementation
+
+layoutreturn:
+[PATCH v6 21/26] pnfs: layoutreturn
+[PATCH v6 22/26] pnfs: layoutret_on_setattr
+[PATCH v6 23/26] pnfs: encode_layoutreturn
+[PATCH v6 24/26] pnfs-obj: report errors and .encode_layoutreturn
+Implementation.
+
+layoutcommit:
+[PATCH v6 25/26] pnfs: encode_layoutcommit
+[PATCH v6 26/26] pnfs-obj: objlayout_encode_layoutcommit implementation
