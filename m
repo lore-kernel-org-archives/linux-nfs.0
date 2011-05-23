@@ -1,89 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:33239 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752659Ab1ERT3C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 May 2011 15:29:02 -0400
-Date: Wed, 18 May 2011 15:29:00 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Daniel Mack <zonque@gmail.com>
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 2/2] nfsd: make local functions static
-Message-ID: <20110518192900.GA18905@fieldses.org>
-References: <1305556694-6513-1-git-send-email-zonque@gmail.com>
- <1305556694-6513-2-git-send-email-zonque@gmail.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1305556694-6513-2-git-send-email-zonque@gmail.com>
+Received: from daytona.panasas.com ([67.152.220.89]:46882 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750854Ab1EWEUA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 00:20:00 -0400
+Message-ID: <4DD9E05E.4070204@panasas.com>
+Date: Mon, 23 May 2011 07:19:42 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 10/13] [RFC] Bugs in new pnfs write path
+References: <4DD79273.9030202@panasas.com> <1305973982-17499-1-git-send-email-bharrosh@panasas.com> <4DD9513B.9070003@panasas.com>
+In-Reply-To: <4DD9513B.9070003@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, May 16, 2011 at 04:38:14PM +0200, Daniel Mack wrote:
-> This also fixes a number of sparse warnings.
+On 05/22/2011 09:08 PM, Benny Halevy wrote:
 
-Applying for 2.6.40, thanks.
+This is the old patch please see the one that actually works
+I sent it by itself after this one
 
---b.
+> On 2011-05-21 13:33, Boaz Harrosh wrote:
+>> 1. In nfs4_write_done_cb: data->write_done_cb comes with a NULL.
+> 
+> what's the call path?
+> 
 
+I sent it in my mails
+it is eventually called from pnfs_ld_write_done trhough
+data->mds_ops->rpc_call_done(&data->task, data);
+
+>>    Just as a guess I call nfs4_write_done_cb() just above it
+>>    it looked like the right thing todo. With that in, I'm able
+>>    to write things to file When converting pnfs.c:258 to a WARN_ON.
+>>
+>>    Benny we might want to set data->write_done_cb somewhere in the
+>>    none-rpc path? where is it best to do that?
 > 
-> Signed-off-by: Daniel Mack <zonque@gmail.com>
-> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: J. Bruce Fields <bfields@fieldses.org>
-> Cc: Neil Brown <neilb@suse.de>
-> ---
->  fs/nfsd/nfs3xdr.c   |    2 +-
->  fs/nfsd/nfs4state.c |    4 ++--
->  fs/nfsd/nfs4xdr.c   |    2 +-
->  3 files changed, 4 insertions(+), 4 deletions(-)
+> we're not supposed to get there in the non-rpc path...
+> The non-rpc drivers must call pnfs_ld_write_done.
 > 
-> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-> index ad48fac..08c6e36 100644
-> --- a/fs/nfsd/nfs3xdr.c
-> +++ b/fs/nfsd/nfs3xdr.c
-> @@ -842,7 +842,7 @@ out:
->  	return rv;
->  }
->  
-> -__be32 *encode_entryplus_baggage(struct nfsd3_readdirres *cd, __be32 *p, const char *name, int namlen)
-> +static __be32 *encode_entryplus_baggage(struct nfsd3_readdirres *cd, __be32 *p, const char *name, int namlen)
->  {
->  	struct svc_fh	fh;
->  	int err;
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 4cf04e1..35f559b 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -2462,7 +2462,7 @@ find_delegation_file(struct nfs4_file *fp, stateid_t *stid)
->  	return NULL;
->  }
->  
-> -int share_access_to_flags(u32 share_access)
-> +static int share_access_to_flags(u32 share_access)
->  {
->  	share_access &= ~NFS4_SHARE_WANT_MASK;
->  
-> @@ -2882,7 +2882,7 @@ out:
->  	return status;
->  }
->  
-> -struct lock_manager nfsd4_manager = {
-> +static struct lock_manager nfsd4_manager = {
->  };
->  
->  static void
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index c6766af..125b276 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -3120,7 +3120,7 @@ nfsd4_encode_destroy_session(struct nfsd4_compoundres *resp, int nfserr,
->  	return nfserr;
->  }
->  
-> -__be32
-> +static __be32
->  nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
->  		      struct nfsd4_sequence *seq)
->  {
-> -- 
-> 1.7.5.1
+
+Yep! we do. And please don't touch anything, everything works perfectly
+now.
+
+As I said it gets called from pnfs_ld_write_done through 
+data->mds_ops->rpc_call_done(&data->task, data);
+
+>>
+>> 2. In pnfs_ld_write_done:
+>> 	put_lseg(data->lseg);
+>> 	data->lseg = NULL;
+>>    was done before the call to pnfs_set_layoutcommit()
+>>    which trys to get_lseg() on that same data->lseg.
 > 
+> good catch, thanks!
+> 
+>>
+>> 3. In pnfs_ld_write_done:
+>>    data->mds_ops->rpc_call_done(NULL, data);
+>>    crashes with a NULL task. Just pass it with &data->task
+> 
+> As we don't go through nfs_initiate_write data->task is not initialized.
+> Where's the crash exactly?
+> We better fix it than fake a task structure...
+> 
+> Benny
+> 
+>>
+>>    Which calls for a cleanup. There is bunch of functions
+>>    with [task, write_data] API. And the task is always
+>>    write_data->task
+>>
+>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+>> ---
+>>  fs/nfs/nfs4proc.c |    3 ++-
+>>  fs/nfs/pnfs.c     |   10 ++++++----
+>>  2 files changed, 8 insertions(+), 5 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 759523a..1a53187 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -3250,7 +3250,8 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
+>>  {
+>>  	if (!nfs4_sequence_done(task, &data->res.seq_res))
+>>  		return -EAGAIN;
+>> -	return data->write_done_cb(task, data);
+>> +	return data->write_done_cb ? data->write_done_cb(task, data) :
+>> +		nfs4_write_done_cb(task, data);
+>>  }
+>>  
+>>  /* Reset the the nfs_write_data to send the write to the MDS. */
+>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>> index 17d0c4c..b04cdb4 100644
+>> --- a/fs/nfs/pnfs.c
+>> +++ b/fs/nfs/pnfs.c
+>> @@ -255,7 +255,7 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
+>>  {
+>>  	struct inode *inode = lseg->pls_layout->plh_inode;
+>>  
+>> -	BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+>> + 	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+>>  	list_del_init(&lseg->pls_list);
+>>  	if (list_empty(&lseg->pls_layout->plh_segs)) {
+>>  		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
+>> @@ -1124,15 +1124,17 @@ pnfs_ld_write_done(struct nfs_write_data *data)
+>>  {
+>>  	int status;
+>>  
+>> -	put_lseg(data->lseg);
+>> -	data->lseg = NULL;
+>>  	if (!data->pnfs_error) {
+>>  		pnfs_set_layoutcommit(data);
+>> -		data->mds_ops->rpc_call_done(NULL, data);
+>> +		data->mds_ops->rpc_call_done(&data->task, data);
+>>  		data->mds_ops->rpc_release(data);
+>> +		put_lseg(data->lseg);
+>> +		data->lseg = NULL;
+>>  		return 0;
+>>  	}
+>>  
+>> +	put_lseg(data->lseg);
+>> +	data->lseg = NULL;
+>>  	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
+>>  		data->pnfs_error);
+>>  	status = nfs_initiate_write(data, NFS_CLIENT(data->inode), data->mds_ops, NFS_FILE_SYNC);
+> 
+
