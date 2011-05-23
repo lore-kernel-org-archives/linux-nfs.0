@@ -1,104 +1,405 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:25508 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751175Ab1EEMT5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 May 2011 08:19:57 -0400
-Subject: Re: [[RFC] 1/1] SUNRPC: dynamic rpc_slot allocator for TCP
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Andy Adamson <andros@netapp.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <20110505074741.17f1698d@tlielax.poochiereds.net>
-References: <1304386808-2733-1-git-send-email-andros@netapp.com>
-	 <1304386808-2733-2-git-send-email-andros@netapp.com>
-	 <20110504110841.6e3e85e4@tlielax.poochiereds.net>
-	 <6FD7BAA7-0E0D-42AD-98CC-DC528A091178@netapp.com>
-	 <1304523334.4476.12.camel@lade.trondhjem.org>
-	 <20110505074741.17f1698d@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 05 May 2011 08:19:56 -0400
-Message-ID: <1304597996.22197.9.camel@lade.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:8995 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756028Ab1EWQfP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 12:35:15 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Boaz Harrosh <bharrosh@panasas.com>
+Subject: [PATCH v6 05/26] pnfs: CB_NOTIFY_DEVICEID
+Date: Mon, 23 May 2011 19:35:09 +0300
+Message-Id: <1306168509-11115-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DDA8C3D.5080706@panasas.com>
+References: <4DDA8C3D.5080706@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2011-05-05 at 07:47 -0400, Jeff Layton wrote:
-> On Wed, 04 May 2011 11:35:34 -0400
-> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> 
-> > On Wed, 2011-05-04 at 11:20 -0400, Andy Adamson wrote:
-> > > On May 4, 2011, at 11:08 AM, Jeff Layton wrote:
-> > > 
-> > > > On Mon,  2 May 2011 21:40:08 -0400
-> > > > andros@netapp.com wrote:
-> > > > 
-> > > >> +	if (!test_and_clear_bit(XPRT_WRITE_SPACE, &xprt->state))
-> > > >> +		return;
-> > > > 
-> > > > Also, I'm not sure that a single bit really conveys enough information
-> > > > for this.
-> > > > 
-> > > > IIUC, sk_write_space gets called when a packet is TCP ACK'ed. It seems
-> > > > possible that we would sometimes have buffer space available to queue
-> > > > the packet without sk_write_space being called. With this, we'll
-> > > > basically be serializing all dynamic slot allocations behind the
-> > > > sk_write_space callbacks.
-> > > 
-> > > Which I thought was OK given that the TCP window takes a while to stabilize.
-> > > 
-> > > > 
-> > > > Consider the case of many small TCP frames being sent after a large one
-> > > > just got ACK'ed. Only one would be allowed to be sent, even though
-> > > > there might be enough send buffer space to allow for more.
-> > > > 
-> > > > Would it instead make more sense to base this on the amount of space
-> > > > available in the actual socket rather than this bit?
-> > > 
-> > > So at each write_space, potentially allocate more than one rpc_slot as opposed
-> > > to allocating one rpc_slot and waiting for the next write_space? I could look at this
-> > > with the 10G testiing.
-> > 
-> > Why? You can't send that data. Once you hit the write space limit, then
-> > the socket remains blocked until you get the callback. It doesn't matter
-> > how small the frame, you will not be allowed to send more data.
-> > 
-> > On the other hand, we do set the SOCK_NOSPACE bit, which means that the
-> > socket layer will attempt to grow the TCP window even though we're not
-> > actually putting more data into the socket.
-> > 
-> 
-> I'm not sure I understand what you're suggesting here.
-> 
-> I guess my main point is that a single bit that we flip on in
-> write_space and flip off when a slot is allocated doesn't carry enough
-> info. That scheme will also be subject to subtle differences in timing.
-> For instance...
-> 
-> Suppose a large number of TCP ACKs come in all at around the same time.
-> write_space gets called a bunch of times in succession, so the bit gets
-> "set" several times. Several queued tasks get woken up but only one can
-> clear the bit so only one gets a slot.
-> 
-> However, if those acks come in with enough of a delay between them, then
-> you can potentially get one slot allocated per write_space callback.
+From: Marc Eshel <eshel@almaden.ibm.com>
 
-The write space callback doesn't wake anyone up until 1/2 the total
-socket buffer is free: that's what the sock_writeable() test does.
+Note: This functionlaity is incomplete as all layout segments referring to
+the 'to be removed device id' need to be reaped, and all in flight I/O drained.
 
-> I think we ought to consider a heuristic that doesn't rely on the
-> frequency and timing of write_space callbacks.
+[use be32 res in nfs4_callback_devicenotify]
+[use nfs_client to qualify deviceid for cb_notify_deviceid]
+[use global deviceid cache for CB_NOTIFY_DEVICEID]
+[refactor device cache _lookup_deviceid]
+[refactor device cache _find_get_deviceid]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/callback.h      |   17 ++++++++
+ fs/nfs/callback_proc.c |   47 +++++++++++++++++++++++
+ fs/nfs/callback_xdr.c  |   96 ++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfs/pnfs.h          |    1 +
+ fs/nfs/pnfs_dev.c      |   98 +++++++++++++++++++++++++++++++++++++++++-------
+ 5 files changed, 244 insertions(+), 15 deletions(-)
 
-What we're doing now is basically what is being done by the socket layer
-when a user process tries to write too much data to the socket: we tell
-the TCP layer to grow the window, and we wait for the write space
-callback to tell us that we have enough free socket buffer space to be
-able to make progress. We're not waking up and retrying on every ACK as
-you suggest.
-
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index 46d93ce..b257383 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -167,6 +167,23 @@ extern unsigned nfs4_callback_layoutrecall(
+ 
+ extern void nfs4_check_drain_bc_complete(struct nfs4_session *ses);
+ extern void nfs4_cb_take_slot(struct nfs_client *clp);
++
++struct cb_devicenotifyitem {
++	uint32_t		cbd_notify_type;
++	uint32_t		cbd_layout_type;
++	struct nfs4_deviceid	cbd_dev_id;
++	uint32_t		cbd_immediate;
++};
++
++struct cb_devicenotifyargs {
++	int				 ndevs;
++	struct cb_devicenotifyitem	 *devs;
++};
++
++extern __be32 nfs4_callback_devicenotify(
++	struct cb_devicenotifyargs *args,
++	void *dummy, struct cb_process_state *cps);
++
+ #endif /* CONFIG_NFS_V4_1 */
+ extern int check_gss_callback_principal(struct nfs_client *, struct svc_rqst *);
+ extern __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 2f41dcce..fb5e5b9 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -241,6 +241,53 @@ static void pnfs_recall_all_layouts(struct nfs_client *clp)
+ 	do_callback_layoutrecall(clp, &args);
+ }
+ 
++__be32 nfs4_callback_devicenotify(struct cb_devicenotifyargs *args,
++				  void *dummy, struct cb_process_state *cps)
++{
++	int i;
++	__be32 res = 0;
++	struct nfs_client *clp = cps->clp;
++	struct nfs_server *server = NULL;
++
++	dprintk("%s: -->\n", __func__);
++
++	if (!clp) {
++		res = cpu_to_be32(NFS4ERR_OP_NOT_IN_SESSION);
++		goto out;
++	}
++
++	for (i = 0; i < args->ndevs; i++) {
++		struct cb_devicenotifyitem *dev = &args->devs[i];
++
++		if (!server ||
++		    server->pnfs_curr_ld->id != dev->cbd_layout_type) {
++			rcu_read_lock();
++			list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link)
++				if (server->pnfs_curr_ld &&
++				    server->pnfs_curr_ld->id == dev->cbd_layout_type) {
++					rcu_read_unlock();
++					goto found;
++				}
++			rcu_read_unlock();
++			dprintk("%s: layout type %u not found\n",
++				__func__, dev->cbd_layout_type);
++			continue;
++		}
++
++	found:
++		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
++			dprintk("%s: NOTIFY_DEVICEID4_CHANGE not supported, "
++				"deleting instead\n", __func__);
++		nfs4_delete_deviceid(clp, &dev->cbd_dev_id);
++	}
++
++out:
++	kfree(args->devs);
++	dprintk("%s: exit with status = %u\n",
++		__func__, be32_to_cpu(res));
++	return res;
++}
++
+ int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const nfs4_stateid *stateid)
+ {
+ 	if (delegation == NULL)
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index 00ecf62..c6c86a7 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -25,6 +25,7 @@
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ #define CB_OP_LAYOUTRECALL_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
++#define CB_OP_DEVICENOTIFY_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+ #define CB_OP_SEQUENCE_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ + \
+ 					4 + 1 + 3)
+ #define CB_OP_RECALLANY_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+@@ -284,6 +285,93 @@ out:
+ 	return status;
+ }
+ 
++static
++__be32 decode_devicenotify_args(struct svc_rqst *rqstp,
++				struct xdr_stream *xdr,
++				struct cb_devicenotifyargs *args)
++{
++	__be32 *p;
++	__be32 status = 0;
++	u32 tmp;
++	int n, i;
++	args->ndevs = 0;
++
++	/* Num of device notifications */
++	p = read_buf(xdr, sizeof(uint32_t));
++	if (unlikely(p == NULL)) {
++		status = htonl(NFS4ERR_BADXDR);
++		goto out;
++	}
++	n = ntohl(*p++);
++	if (n <= 0)
++		goto out;
++
++	args->devs = kmalloc(n * sizeof(*args->devs), GFP_KERNEL);
++	if (!args->devs) {
++		status = htonl(NFS4ERR_DELAY);
++		goto out;
++	}
++
++	/* Decode each dev notification */
++	for (i = 0; i < n; i++) {
++		struct cb_devicenotifyitem *dev = &args->devs[i];
++
++		p = read_buf(xdr, (4 * sizeof(uint32_t)) + NFS4_DEVICEID4_SIZE);
++		if (unlikely(p == NULL)) {
++			status = htonl(NFS4ERR_BADXDR);
++			goto err;
++		}
++
++		tmp = ntohl(*p++);	/* bitmap size */
++		if (tmp != 1) {
++			status = htonl(NFS4ERR_INVAL);
++			goto err;
++		}
++		dev->cbd_notify_type = ntohl(*p++);
++		if (dev->cbd_notify_type != NOTIFY_DEVICEID4_CHANGE &&
++		    dev->cbd_notify_type != NOTIFY_DEVICEID4_DELETE) {
++			status = htonl(NFS4ERR_INVAL);
++			goto err;
++		}
++
++		tmp = ntohl(*p++);	/* opaque size */
++		if (((dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE) &&
++		     (tmp != NFS4_DEVICEID4_SIZE + 8)) ||
++		    ((dev->cbd_notify_type == NOTIFY_DEVICEID4_DELETE) &&
++		     (tmp != NFS4_DEVICEID4_SIZE + 4))) {
++			status = htonl(NFS4ERR_INVAL);
++			goto err;
++		}
++		dev->cbd_layout_type = ntohl(*p++);
++		memcpy(dev->cbd_dev_id.data, p, NFS4_DEVICEID4_SIZE);
++		p += XDR_QUADLEN(NFS4_DEVICEID4_SIZE);
++
++		if (dev->cbd_layout_type == NOTIFY_DEVICEID4_CHANGE) {
++			p = read_buf(xdr, sizeof(uint32_t));
++			if (unlikely(p == NULL)) {
++				status = htonl(NFS4ERR_BADXDR);
++				goto err;
++			}
++			dev->cbd_immediate = ntohl(*p++);
++		} else {
++			dev->cbd_immediate = 0;
++		}
++
++		args->ndevs++;
++
++		dprintk("%s: type %d layout 0x%x immediate %d\n",
++			__func__, dev->cbd_notify_type, dev->cbd_layout_type,
++			dev->cbd_immediate);
++	}
++out:
++	dprintk("%s: status %d ndevs %d\n",
++		__func__, ntohl(status), args->ndevs);
++	return status;
++err:
++	kfree(args->devs);
++	goto out;
++}
++
+ static __be32 decode_sessionid(struct xdr_stream *xdr,
+ 				 struct nfs4_sessionid *sid)
+ {
+@@ -639,10 +727,10 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
+ 	case OP_CB_RECALL_ANY:
+ 	case OP_CB_RECALL_SLOT:
+ 	case OP_CB_LAYOUTRECALL:
++	case OP_CB_NOTIFY_DEVICEID:
+ 		*op = &callback_ops[op_nr];
+ 		break;
+ 
+-	case OP_CB_NOTIFY_DEVICEID:
+ 	case OP_CB_NOTIFY:
+ 	case OP_CB_PUSH_DELEG:
+ 	case OP_CB_RECALLABLE_OBJ_AVAIL:
+@@ -849,6 +937,12 @@ static struct callback_op callback_ops[] = {
+ 			(callback_decode_arg_t)decode_layoutrecall_args,
+ 		.res_maxsize = CB_OP_LAYOUTRECALL_RES_MAXSZ,
+ 	},
++	[OP_CB_NOTIFY_DEVICEID] = {
++		.process_op = (callback_process_op_t)nfs4_callback_devicenotify,
++		.decode_args =
++			(callback_decode_arg_t)decode_devicenotify_args,
++		.res_maxsize = CB_OP_DEVICENOTIFY_RES_MAXSZ,
++	},
+ 	[OP_CB_SEQUENCE] = {
+ 		.process_op = (callback_process_op_t)nfs4_callback_sequence,
+ 		.decode_args = (callback_decode_arg_t)decode_cb_sequence_args,
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 9667a62..7f29e3a 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -173,6 +173,7 @@ struct nfs4_deviceid_node {
+ void nfs4_print_deviceid(const struct nfs4_deviceid *dev_id);
+ struct nfs4_deviceid_node *nfs4_find_get_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
+ struct nfs4_deviceid_node *nfs4_unhash_put_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
++void nfs4_delete_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
+ void nfs4_init_deviceid_node(struct nfs4_deviceid_node *,
+ 			     const struct pnfs_layoutdriver_type *,
+ 			     const struct nfs_client *,
+diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+index 3cd7854..f830616 100644
+--- a/fs/nfs/pnfs_dev.c
++++ b/fs/nfs/pnfs_dev.c
+@@ -66,6 +66,23 @@ nfs4_deviceid_hash(const struct nfs4_deviceid *id)
+ 	return x & NFS4_DEVICE_ID_HASH_MASK;
+ }
+ 
++static struct nfs4_deviceid_node *
++_lookup_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
++		 long hash)
++{
++	struct nfs4_deviceid_node *d;
++	struct hlist_node *n;
++
++	hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[hash], node)
++		if (d->nfs_client == clp && !memcmp(&d->deviceid, id, sizeof(*id))) {
++			if (atomic_read(&d->ref))
++				return d;
++			else
++				continue;
++		}
++	return NULL;
++}
++
+ /*
+  * Lookup a deviceid in cache and get a reference count on it if found
+  *
+@@ -73,26 +90,79 @@ nfs4_deviceid_hash(const struct nfs4_deviceid *id)
+  * @id deviceid to look up
+  */
+ struct nfs4_deviceid_node *
++_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
++		   long hash)
++{
++	struct nfs4_deviceid_node *d;
++
++	rcu_read_lock();
++	d = _lookup_deviceid(clp, id, hash);
++	if (!atomic_inc_not_zero(&d->ref))
++		d = NULL;
++	rcu_read_unlock();
++	return d;
++}
++
++struct nfs4_deviceid_node *
+ nfs4_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
+ {
++	return _find_get_deviceid(clp, id, nfs4_deviceid_hash(id));
++}
++EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
++
++/*
++ * Unhash and put deviceid
++ *
++ * @clp nfs_client associated with deviceid
++ * @id the deviceid to unhash
++ *
++ * @ret the unhashed node, if found and dereferenced to zero, NULL otherwise.
++ */
++struct nfs4_deviceid_node *
++nfs4_unhash_put_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
++{
+ 	struct nfs4_deviceid_node *d;
+-	struct hlist_node *n;
+-	long hash = nfs4_deviceid_hash(id);
+ 
++	spin_lock(&nfs4_deviceid_lock);
+ 	rcu_read_lock();
+-	hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[hash], node) {
+-		if (d->nfs_client == clp && !memcmp(&d->deviceid, id, sizeof(*id))) {
+-			if (!atomic_inc_not_zero(&d->ref))
+-				goto fail;
+-			rcu_read_unlock();
+-			return d;
+-		}
+-	}
+-fail:
++	d = _lookup_deviceid(clp, id, nfs4_deviceid_hash(id));
+ 	rcu_read_unlock();
++	if (!d) {
++		spin_unlock(&nfs4_deviceid_lock);
++		return NULL;
++	}
++	hlist_del_init_rcu(&d->node);
++	spin_unlock(&nfs4_deviceid_lock);
++	synchronize_rcu();
++
++	/* balance the initial ref set in pnfs_insert_deviceid */
++	if (atomic_dec_and_test(&d->ref))
++		return d;
++
+ 	return NULL;
+ }
+-EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
++EXPORT_SYMBOL_GPL(nfs4_unhash_put_deviceid);
++
++/*
++ * Delete a deviceid from cache
++ *
++ * @clp struct nfs_client qualifying the deviceid
++ * @id deviceid to delete
++ */
++void
++nfs4_delete_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
++{
++	struct nfs4_deviceid_node *d;
++
++	d = nfs4_unhash_put_deviceid(clp, id);
++	if (!d)
++		return;
++	if (d->ld->free_deviceid_node)
++		d->ld->free_deviceid_node(d);
++	else
++		kfree(d);
++}
++EXPORT_SYMBOL_GPL(nfs4_delete_deviceid);
+ 
+ void
+ nfs4_init_deviceid_node(struct nfs4_deviceid_node *d,
+@@ -126,13 +196,13 @@ nfs4_insert_deviceid_node(struct nfs4_deviceid_node *new)
+ 	long hash;
+ 
+ 	spin_lock(&nfs4_deviceid_lock);
+-	d = nfs4_find_get_deviceid(new->nfs_client, &new->deviceid);
++	hash = nfs4_deviceid_hash(&new->deviceid);
++	d = _find_get_deviceid(new->nfs_client, &new->deviceid, hash);
+ 	if (d) {
+ 		spin_unlock(&nfs4_deviceid_lock);
+ 		return d;
+ 	}
+ 
+-	hash = nfs4_deviceid_hash(&new->deviceid);
+ 	hlist_add_head_rcu(&new->node, &nfs4_deviceid_cache[hash]);
+ 	spin_unlock(&nfs4_deviceid_lock);
+ 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.3.4
 
