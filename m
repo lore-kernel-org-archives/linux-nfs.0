@@ -1,95 +1,337 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:47086 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932074Ab1EKWd6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 May 2011 18:33:58 -0400
-Subject: Re: [PATCH] nfs: check a crash in nfs_lookup_revalidate
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Tyler Hicks <tyhicks@linux.vnet.ibm.com>
-Cc: Peng Huang <shawn.p.huang@gmail.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-In-Reply-To: <20110511221750.GA9776@boyd.l.tihix.com>
-References: <1305147805-5756-1-git-send-email-shawn.p.huang@gmail.com>
-	 <1305148125.21868.2.camel@lade.trondhjem.org>
-	 <20110511221750.GA9776@boyd.l.tihix.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 11 May 2011 18:33:57 -0400
-Message-ID: <1305153237.26971.4.camel@lade.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:9090 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756212Ab1EWQhY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 12:37:24 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Boaz Harrosh <bharrosh@panasas.com>
+Subject: [PATCH v6 15/26] pnfs-obj: objio_osd device information retrieval and caching
+Date: Mon, 23 May 2011 19:37:18 +0300
+Message-Id: <1306168638-11499-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DDA8C3D.5080706@panasas.com>
+References: <4DDA8C3D.5080706@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 2011-05-11 at 17:17 -0500, Tyler Hicks wrote:
-> On Wed May 11, 2011 at 05:08:45PM -0400, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> > On Wed, 2011-05-11 at 17:03 -0400, Peng Huang wrote:
-> > > lookup_one_len() may call nfs_loopup_revalidate() with nd == NULL
-> > > indirectly, that causes the kernel crash.
-> > > 
-> > > RIP: 0010:[<ffffffffa0ba3b41>]  [<ffffffffa0ba3b41>]
-> > > nfs_lookup_revalidate+0x21/0x4a0 [nfs]
-> > > RSP: 0018:ffff88018f00fae8  EFLAGS: 00010286
-> > > 
-> > > Call Trace:
-> > >  [<ffffffff81164a17>] do_revalidate+0x17/0x60
-> > >  [<ffffffff81164e9b>] __lookup_hash+0xcb/0x140
-> > >  [<ffffffff811653c4>] lookup_one_len+0x94/0xe0
-> > >  [<ffffffff81241ef1>] ecryptfs_lookup+0x91/0x1d0
-> > >  [<ffffffff81164d85>] d_alloc_and_lookup+0x45/0x90
-> > >  [<ffffffff8116f7b5>] ? d_lookup+0x35/0x60
-> > >  [<ffffffff811669b2>] do_lookup+0x192/0x2d0
-> > >  [<ffffffff811763be>] ? vfsmount_lock_local_unlock+0x1e/0x30
-> > >  [<ffffffff8126d09c>] ? security_inode_permission+0x1c/0x30
-> > >  [<ffffffff81167d67>] link_path_walk+0x597/0xae0
-> > >  [<ffffffff8117638e>] ? vfsmount_lock_local_lock+0x1e/0x30
-> > >  [<ffffffff81165905>] ? path_init_rcu+0xa5/0x210
-> > >  [<ffffffff8116858b>] do_path_lookup+0x5b/0x140
-> > >  [<ffffffff811692f7>] user_path_at+0x57/0xa0
-> > >  [<ffffffff8159fd08>] ? do_page_fault+0x1e8/0x4e0
-> > >  [<ffffffff8115eb86>] vfs_fstatat+0x46/0x80
-> > >  [<ffffffff8116b990>] ? filldir+0x0/0xe0
-> > >  [<ffffffff8115ec2e>] vfs_lstat+0x1e/0x20
-> > >  [<ffffffff8115ec54>] sys_newlstat+0x24/0x50
-> > >  [<ffffffff8159c995>] ? page_fault+0x25/0x30
-> > >  [<ffffffff8100bfc2>] system_call_fastpath+0x16/0x1b
-> > > 
-> > > Signed-off-by: Peng Huang <shawn.p.huang@gmail.com>
-> > > ---
-> > >  fs/nfs/dir.c |    2 +-
-> > >  1 files changed, 1 insertions(+), 1 deletions(-)
-> > > 
-> > > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> > > index 2c3eb33..9452aa5 100644
-> > > --- a/fs/nfs/dir.c
-> > > +++ b/fs/nfs/dir.c
-> > > @@ -1028,7 +1028,7 @@ static int nfs_lookup_revalidate(struct dentry *dentry, struct nameidata *nd)
-> > >  	struct nfs_fattr *fattr = NULL;
-> > >  	int error;
-> > >  
-> > > -	if (nd->flags & LOOKUP_RCU)
-> > > +	if (nd != NULL && nd->flags & LOOKUP_RCU)
-> > >  		return -ECHILD;
-> > >  
-> > >  	parent = dget_parent(dentry);
-> > 
-> > That's exactly what Tyler Hicks proposed last week and which was NACKed.
-> > We simply won't support layered filesystems that don't do intents.
-> 
-> But you _did_ support it up until
-> 34286d66 "fs: rcu-walk aware d_revalidate method"
-> 
-> I see why you wouldn't want NULL nameidata in the NFSv4 specific
-> functions, but don't quite understand the opposition against it in NFSv3
-> (nfs_lookup_revalidate). The one-liner above would allow users to begin
-> using eCryptfs on top of NFSv3 clients immediately, with no side effects
-> to NFS.
+From: Boaz Harrosh <bharrosh@panasas.com>
 
-Because even on NFSv3 it breaks exclusive creates.
+When a new layout is received in objio_alloc_lseg all device_ids
+referenced are retrieved. The device information is queried for from MDS
+and then the osd_device is looked-up from the osd-initiator library. The
+devices are cached in a per-mount-point list, for later use. At unmount
+all devices are "put" back to the library.
 
+objlayout_get_deviceinfo(), objlayout_put_deviceinfo() middleware
+API for retrieving device information given a device_id.
+
+TODO: The device cache can get big. Cap its size. Keep an LRU and start
+      to return devices which were not used, when list gets to big, or
+      when new entries allocation fail.
+
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+[gfp_flags]
+[use global device cache]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/objlayout/objio_osd.c |  148 +++++++++++++++++++++++++++++++++++++++++-
+ fs/nfs/objlayout/objlayout.c |   68 +++++++++++++++++++
+ fs/nfs/objlayout/objlayout.h |    8 ++
+ 3 files changed, 223 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 5a43fbe..bcc8468 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -46,6 +46,58 @@
+ 
+ #define _LLU(x) ((unsigned long long)x)
+ 
++struct objio_dev_ent {
++	struct nfs4_deviceid_node id_node;
++	struct osd_dev *od;
++};
++
++static void
++objio_free_deviceid_node(struct nfs4_deviceid_node *d)
++{
++	struct objio_dev_ent *de = container_of(d, struct objio_dev_ent, id_node);
++
++	osduld_put_device(de->od);
++	kfree(de);
++}
++
++static struct objio_dev_ent *_dev_list_find(const struct nfs_client *clp,
++	const struct nfs4_deviceid *d_id)
++{
++	struct nfs4_deviceid_node *d;
++
++	d = nfs4_find_get_deviceid(clp, d_id);
++	if (!d)
++		return NULL;
++	return container_of(d, struct objio_dev_ent, id_node);
++}
++
++static int _dev_list_add(const struct nfs_server *nfss,
++	const struct nfs4_deviceid *d_id, struct osd_dev *od,
++	gfp_t gfp_flags)
++{
++	struct nfs4_deviceid_node *d;
++	struct objio_dev_ent *de = kzalloc(sizeof(*de), gfp_flags);
++	struct objio_dev_ent *n;
++
++	if (!de)
++		return -ENOMEM;
++
++	nfs4_init_deviceid_node(&de->id_node,
++				nfss->pnfs_curr_ld,
++				nfss->nfs_client,
++				d_id);
++	de->od = od;
++
++	d = nfs4_insert_deviceid_node(&de->id_node);
++	n = container_of(d, struct objio_dev_ent, id_node);
++	if (n != de) {
++		BUG_ON(n->od != od);
++		objio_free_deviceid_node(&de->id_node);
++	}
++
++	return 0;
++}
++
+ struct caps_buffers {
+ 	u8 caps_key[OSD_CRYPTO_KEYID_SIZE];
+ 	u8 creds[OSD_CAP_LEN];
+@@ -65,7 +117,7 @@ struct objio_segment {
+ 	unsigned comps_index;
+ 	unsigned num_comps;
+ 	/* variable length */
+-	struct osd_dev	*ods[1];
++	struct objio_dev_ent *ods[1];
+ };
+ 
+ static inline struct objio_segment *
+@@ -74,6 +126,89 @@ OBJIO_LSEG(struct pnfs_layout_segment *lseg)
+ 	return container_of(lseg, struct objio_segment, lseg);
+ }
+ 
++/* Send and wait for a get_device_info of devices in the layout,
++   then look them up with the osd_initiator library */
++static struct objio_dev_ent *_device_lookup(struct pnfs_layout_hdr *pnfslay,
++				struct objio_segment *objio_seg, unsigned comp,
++				gfp_t gfp_flags)
++{
++	struct pnfs_osd_deviceaddr *deviceaddr;
++	struct nfs4_deviceid *d_id;
++	struct objio_dev_ent *ode;
++	struct osd_dev *od;
++	struct osd_dev_info odi;
++	int err;
++
++	d_id = &objio_seg->comps[comp].oc_object_id.oid_device_id;
++
++	ode = _dev_list_find(NFS_SERVER(pnfslay->plh_inode)->nfs_client, d_id);
++	if (ode)
++		return ode;
++
++	err = objlayout_get_deviceinfo(pnfslay, d_id, &deviceaddr, gfp_flags);
++	if (unlikely(err)) {
++		dprintk("%s: objlayout_get_deviceinfo dev(%llx:%llx) =>%d\n",
++			__func__, _DEVID_LO(d_id), _DEVID_HI(d_id), err);
++		return ERR_PTR(err);
++	}
++
++	odi.systemid_len = deviceaddr->oda_systemid.len;
++	if (odi.systemid_len > sizeof(odi.systemid)) {
++		err = -EINVAL;
++		goto out;
++	} else if (odi.systemid_len)
++		memcpy(odi.systemid, deviceaddr->oda_systemid.data,
++		       odi.systemid_len);
++	odi.osdname_len	 = deviceaddr->oda_osdname.len;
++	odi.osdname	 = (u8 *)deviceaddr->oda_osdname.data;
++
++	if (!odi.osdname_len && !odi.systemid_len) {
++		dprintk("%s: !odi.osdname_len && !odi.systemid_len\n",
++			__func__);
++		err = -ENODEV;
++		goto out;
++	}
++
++	od = osduld_info_lookup(&odi);
++	if (unlikely(IS_ERR(od))) {
++		err = PTR_ERR(od);
++		dprintk("%s: osduld_info_lookup => %d\n", __func__, err);
++		goto out;
++	}
++
++	_dev_list_add(NFS_SERVER(pnfslay->plh_inode), d_id, od, gfp_flags);
++
++out:
++	dprintk("%s: return=%d\n", __func__, err);
++	objlayout_put_deviceinfo(deviceaddr);
++	return err ? ERR_PTR(err) : od;
++}
++
++static int objio_devices_lookup(struct pnfs_layout_hdr *pnfslay,
++	struct objio_segment *objio_seg,
++	gfp_t gfp_flags)
++{
++	unsigned i;
++	int err;
++
++	/* lookup all devices */
++	for (i = 0; i < objio_seg->num_comps; i++) {
++		struct objio_dev_ent *ode;
++
++		ode = _device_lookup(pnfslay, objio_seg, i, gfp_flags);
++		if (unlikely(IS_ERR(ode))) {
++			err = PTR_ERR(ode);
++			goto out;
++		}
++		objio_seg->ods[i] = ode;
++	}
++	err = 0;
++
++out:
++	dprintk("%s: return=%d\n", __func__, err);
++	return err;
++}
++
+ static int _verify_data_map(struct pnfs_osd_layout *layout)
+ {
+ 	struct pnfs_osd_data_map *data_map = &layout->olo_map;
+@@ -170,6 +305,9 @@ extern int objio_alloc_lseg(struct pnfs_layout_segment **outp,
+ 
+ 	objio_seg->num_comps = layout.olo_num_comps;
+ 	objio_seg->comps_index = layout.olo_comps_index;
++	err = objio_devices_lookup(pnfslay, objio_seg, gfp_flags);
++	if (err)
++		goto err;
+ 
+ 	objio_seg->mirrors_p1 = layout.olo_map.odm_mirror_cnt + 1;
+ 	objio_seg->stripe_unit = layout.olo_map.odm_stripe_unit;
+@@ -198,8 +336,14 @@ err:
+ 
+ void objio_free_lseg(struct pnfs_layout_segment *lseg)
+ {
++	int i;
+ 	struct objio_segment *objio_seg = OBJIO_LSEG(lseg);
+ 
++	for (i = 0; i < objio_seg->num_comps; i++) {
++		if (!objio_seg->ods[i])
++			break;
++		nfs4_put_deviceid_node(&objio_seg->ods[i]->id_node);
++	}
+ 	kfree(objio_seg);
+ }
+ 
+@@ -210,6 +354,8 @@ static struct pnfs_layoutdriver_type objlayout_type = {
+ 
+ 	.alloc_lseg              = objlayout_alloc_lseg,
+ 	.free_lseg               = objlayout_free_lseg,
++
++	.free_deviceid_node	 = objio_free_deviceid_node,
+ };
+ 
+ MODULE_DESCRIPTION("pNFS Layout Driver for OSD2 objects");
+diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+index 9465267..10e5fca 100644
+--- a/fs/nfs/objlayout/objlayout.c
++++ b/fs/nfs/objlayout/objlayout.c
+@@ -102,3 +102,71 @@ objlayout_free_lseg(struct pnfs_layout_segment *lseg)
+ 	objio_free_lseg(lseg);
+ }
+ 
++/*
++ * Get Device Info API for io engines
++ */
++struct objlayout_deviceinfo {
++	struct page *page;
++	struct pnfs_osd_deviceaddr da; /* This must be last */
++};
++
++/* Initialize and call nfs_getdeviceinfo, then decode and return a
++ * "struct pnfs_osd_deviceaddr *" Eventually objlayout_put_deviceinfo()
++ * should be called.
++ */
++int objlayout_get_deviceinfo(struct pnfs_layout_hdr *pnfslay,
++	struct nfs4_deviceid *d_id, struct pnfs_osd_deviceaddr **deviceaddr,
++	gfp_t gfp_flags)
++{
++	struct objlayout_deviceinfo *odi;
++	struct pnfs_device pd;
++	struct super_block *sb;
++	struct page *page, **pages;
++	u32 *p;
++	int err;
++
++	page = alloc_page(gfp_flags);
++	if (!page)
++		return -ENOMEM;
++
++	pages = &page;
++	pd.pages = pages;
++
++	memcpy(&pd.dev_id, d_id, sizeof(*d_id));
++	pd.layout_type = LAYOUT_OSD2_OBJECTS;
++	pd.pages = &page;
++	pd.pgbase = 0;
++	pd.pglen = PAGE_SIZE;
++	pd.mincount = 0;
++
++	sb = pnfslay->plh_inode->i_sb;
++	err = nfs4_proc_getdeviceinfo(NFS_SERVER(pnfslay->plh_inode), &pd);
++	dprintk("%s nfs_getdeviceinfo returned %d\n", __func__, err);
++	if (err)
++		goto err_out;
++
++	p = page_address(page);
++	odi = kzalloc(sizeof(*odi), gfp_flags);
++	if (!odi) {
++		err = -ENOMEM;
++		goto err_out;
++	}
++	pnfs_osd_xdr_decode_deviceaddr(&odi->da, p);
++	odi->page = page;
++	*deviceaddr = &odi->da;
++	return 0;
++
++err_out:
++	__free_page(page);
++	return err;
++}
++
++void objlayout_put_deviceinfo(struct pnfs_osd_deviceaddr *deviceaddr)
++{
++	struct objlayout_deviceinfo *odi = container_of(deviceaddr,
++						struct objlayout_deviceinfo,
++						da);
++
++	__free_page(odi->page);
++	kfree(odi);
++}
+diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
+index 066280a..0814271 100644
+--- a/fs/nfs/objlayout/objlayout.h
++++ b/fs/nfs/objlayout/objlayout.h
+@@ -56,6 +56,14 @@ extern int objio_alloc_lseg(struct pnfs_layout_segment **outp,
+ extern void objio_free_lseg(struct pnfs_layout_segment *lseg);
+ 
+ /*
++ * callback API
++ */
++extern int objlayout_get_deviceinfo(struct pnfs_layout_hdr *pnfslay,
++	struct nfs4_deviceid *d_id, struct pnfs_osd_deviceaddr **deviceaddr,
++	gfp_t gfp_flags);
++extern void objlayout_put_deviceinfo(struct pnfs_osd_deviceaddr *deviceaddr);
++
++/*
+  * exported generic objects function vectors
+  */
+ extern struct pnfs_layout_segment *objlayout_alloc_lseg(
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.3.4
 
