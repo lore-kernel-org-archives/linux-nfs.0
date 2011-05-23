@@ -1,44 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:44261 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:33637 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752675Ab1ERUTk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 May 2011 16:19:40 -0400
-Subject: Re: NFS: pnfs ipv6 and multipath parsing
-Content-Type: text/plain; charset=us-ascii
-From: Weston Andros Adamson <dros@netapp.com>
-In-Reply-To: <AA6F9C64-8FDB-4B0A-B8CB-80AB4FA3D985@oracle.com>
-Date: Wed, 18 May 2011 16:19:38 -0400
-Cc: trond@netapp.com, linux-nfs@vger.kernel.org
-Message-Id: <74A7DF78-2AF3-43EA-978B-E53252045F04@netapp.com>
-References: <1305748634-28348-1-git-send-email-dros@netapp.com> <AA6F9C64-8FDB-4B0A-B8CB-80AB4FA3D985@oracle.com>
-To: Chuck Lever <chuck.lever@oracle.com>
+	id S1753727Ab1EWOCW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 May 2011 10:02:22 -0400
+Date: Mon, 23 May 2011 10:02:19 -0400
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Sid Moore <learnmost@gmail.com>, linux-nfs@vger.kernel.org
+Subject: Re: Report bug: space not released when file deleted.
+Message-ID: <20110523140219.GA25334@fieldses.org>
+References: <BANLkTikCdr6P-WFBdshPwiBQ5_LK-qobLQ@mail.gmail.com>
+ <20110523073027.271cb61f@corrin.poochiereds.net>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20110523073027.271cb61f@corrin.poochiereds.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Yeah, that should work too.  Like other parts of fs/nfs/, I relied on rpc_pton() to allow or disallow parsing ipv6 addresses.
+On Mon, May 23, 2011 at 07:30:27AM -0400, Jeff Layton wrote:
+> On Mon, 23 May 2011 13:42:41 +0800
+> Sid Moore <learnmost@gmail.com> wrote:
+> 
+> > Hi,
+> > 
+> > On Linux NFS, I found a file deleted but its space not released in
+> > NFSv3. It is on 2.6.32.
+> > 
+> > The steps for reproducing are listed below.
+> > 1) create a ext3 filesystem on a device, mount it to local dir
+> > /exports/fs1_ext3/, export /exports/fs1_ext3/ with no_subtree_check to
+> > a NFS client. this client mount this exported dir with infinite
+> > retrans.
+> > 2) on the ext3 fs, create a large regular file  (say: 600MB)
+> > 3) on NFS client, starts several processes who reading this file in 2)
+> > in parallel
+> > 4) during step 3), kill all nfsd threads, umount this ext3 fs; then
+> > mount this ext3 to /exports/fs1_ext3; start 8 nfsd threads.
+> > 5) after processes finished reading, delete this file. then, I found
+> > the space occupied but this file not released.
+> > 
+> > during step 4), I think an anonymous dentry of this file was created
+> > after fh_verify(). in step 5), a named dentry of this file also
+> > created. So, there are two dentry on this inode. but when deleting,
+> > only the named dentry deleted. only restart this ext3 fs or dcache
+> > shrinked, the anonymous dentry will not be released and it referenced
+> > the inode of this file. so its space not freed.
+> > 
+> > is my analysis correct?  anyone has encountered this issue before? or,
+> > this issue was fixed by someone? Thanks.
+> > 
+> 
+> You may want to test a more recent kernel on the server before you dig
+> in too deeply. I know that Bruce has fixed a number of these sorts of
+> problems recently.
 
--dros
+Yes, this should be fixed by d891eedbc3b1b0fade8a9ce60cc0eba1cccb59e5,
+in 2.6.38.
 
-On May 18, 2011, at 4:11 PM, Chuck Lever wrote:
-
-> 
-> On May 18, 2011, at 3:57 PM, Weston Andros Adamson wrote:
-> 
->> These two patches add support for IPv6 dataserver connectivity and 
->> parsing all multipath addresses.
->> 
->> IPv6: basically same patch as before:
->> - no longer calls kzalloc() while holding spinlock
->> - i verified that everything works as expected when CONFIG_IPV6 is not defined
-> 
-> You'll also need to worry about when IPv6 is built in a kernel module, but ipv6.ko cannot be loaded.
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
-
+--b.
