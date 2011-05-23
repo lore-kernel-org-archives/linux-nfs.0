@@ -1,292 +1,206 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:35612 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757805Ab1ELOlm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 May 2011 10:41:42 -0400
-Received: by iwn34 with SMTP id 34so1464123iwn.19
-        for <linux-nfs@vger.kernel.org>; Thu, 12 May 2011 07:41:41 -0700 (PDT)
-In-Reply-To: <1304960798-3826-1-git-send-email-bhalevy@panasas.com>
-References: <4DC81E8C.6040901@panasas.com>
-	<1304960798-3826-1-git-send-email-bhalevy@panasas.com>
-Date: Thu, 12 May 2011 10:41:41 -0400
-Message-ID: <BANLkTikZGWBOr=MG+ipKoPSaZ4bo20kD7A@mail.gmail.com>
-Subject: Re: [PATCH v2 02/29] pnfs: direct i/o
-From: Fred Isaman <iisaman@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>, Dean Hildebrand <dhildeb@us.ibm.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:9120 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756218Ab1EWQiO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 12:38:14 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Boaz Harrosh <bharrosh@panasas.com>
+Subject: [PATCH v6 19/26] pnfs: support for non-rpc layout drivers
+Date: Mon, 23 May 2011 19:38:07 +0300
+Message-Id: <1306168687-11649-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DDA8C3D.5080706@panasas.com>
+References: <4DDA8C3D.5080706@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Note this does not seem to change any functionality, just rearranges
-the code.  Is this patch needed?
+Non-rpc layout driver such as for objects and blocks
+implement their own I/O path and error handling logic.
+Therefore bypass NFS-based error handling for these layout drivers.
 
-Fred
+[fix lseg ref-count bugs, and null de-refs]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+[get rid of PNFS_USE_RPC_CODE]
+[get rid of __nfs4_write_done_cb]
+[revert useless change in nfs4_write_done_cb]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/internal.h       |    1 +
+ fs/nfs/nfs4proc.c       |   13 +++++++++--
+ fs/nfs/pnfs.c           |   52 ++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfs/pnfs.h           |    2 +
+ include/linux/nfs_xdr.h |    2 +
+ 5 files changed, 66 insertions(+), 4 deletions(-)
 
-On Mon, May 9, 2011 at 1:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
-> From: Andy Adamson <andros@netapp.com>
->
-> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-> Signed-off-by: Fred Isaman <iisaman@netapp.com>
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfs/direct.c |  160 +++++++++++++++++++++++++++++++-----------------------
->  1 files changed, 92 insertions(+), 68 deletions(-)
->
-> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> index 8eea253..55dffb7 100644
-> --- a/fs/nfs/direct.c
-> +++ b/fs/nfs/direct.c
-> @@ -272,6 +272,38 @@ static const struct rpc_call_ops nfs_read_direct_ops = {
->        .rpc_release = nfs_direct_read_release,
->  };
->
-> +static long nfs_direct_read_execute(struct nfs_read_data *data,
-> +                                   struct rpc_task_setup *task_setup_data,
-> +                                   struct rpc_message *msg)
-> +{
-> +       struct inode *inode = data->inode;
-> +       struct rpc_task *task;
-> +
-> +       nfs_fattr_init(&data->fattr);
-> +       msg->rpc_argp = &data->args;
-> +       msg->rpc_resp = &data->res;
-> +
-> +       task_setup_data->task = &data->task;
-> +       task_setup_data->callback_data = data;
-> +       NFS_PROTO(inode)->read_setup(data, msg);
-> +
-> +       task = rpc_run_task(task_setup_data);
-> +       if (IS_ERR(task))
-> +               return PTR_ERR(task);
-> +
-> +       rpc_put_task(task);
-> +
-> +       dprintk("NFS: %5u initiated direct read call "
-> +               "(req %s/%lld, %u bytes @ offset %llu)\n",
-> +               data->task.tk_pid,
-> +               inode->i_sb->s_id,
-> +               (long long)NFS_FILEID(inode),
-> +               data->args.count,
-> +               (unsigned long long)data->args.offset);
-> +
-> +       return 0;
-> +}
-> +
->  /*
->  * For each rsize'd chunk of the user's buffer, dispatch an NFS READ
->  * operation.  If nfs_readdata_alloc() or get_user_pages() fails,
-> @@ -288,7 +320,6 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
->        unsigned long user_addr = (unsigned long)iov->iov_base;
->        size_t count = iov->iov_len;
->        size_t rsize = NFS_SERVER(inode)->rsize;
-> -       struct rpc_task *task;
->        struct rpc_message msg = {
->                .rpc_cred = ctx->cred,
->        };
-> @@ -349,26 +380,9 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
->                data->res.fattr = &data->fattr;
->                data->res.eof = 0;
->                data->res.count = bytes;
-> -               nfs_fattr_init(&data->fattr);
-> -               msg.rpc_argp = &data->args;
-> -               msg.rpc_resp = &data->res;
->
-> -               task_setup_data.task = &data->task;
-> -               task_setup_data.callback_data = data;
-> -               NFS_PROTO(inode)->read_setup(data, &msg);
-> -
-> -               task = rpc_run_task(&task_setup_data);
-> -               if (IS_ERR(task))
-> +               if (nfs_direct_read_execute(data, &task_setup_data, &msg))
->                        break;
-> -               rpc_put_task(task);
-> -
-> -               dprintk("NFS: %5u initiated direct read call "
-> -                       "(req %s/%Ld, %zu bytes @ offset %Lu)\n",
-> -                               data->task.tk_pid,
-> -                               inode->i_sb->s_id,
-> -                               (long long)NFS_FILEID(inode),
-> -                               bytes,
-> -                               (unsigned long long)data->args.offset);
->
->                started += bytes;
->                user_addr += bytes;
-> @@ -461,12 +475,15 @@ static void nfs_direct_free_writedata(struct nfs_direct_req *dreq)
->  }
->
->  #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
-> +static long nfs_direct_write_execute(struct nfs_write_data *data,
-> +                                    struct rpc_task_setup *task_setup_data,
-> +                                    struct rpc_message *msg);
-> +
->  static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
->  {
->        struct inode *inode = dreq->inode;
->        struct list_head *p;
->        struct nfs_write_data *data;
-> -       struct rpc_task *task;
->        struct rpc_message msg = {
->                .rpc_cred = dreq->ctx->cred,
->        };
-> @@ -500,25 +517,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
->                 * Reuse data->task; data->args should not have changed
->                 * since the original request was sent.
->                 */
-> -               task_setup_data.task = &data->task;
-> -               task_setup_data.callback_data = data;
-> -               msg.rpc_argp = &data->args;
-> -               msg.rpc_resp = &data->res;
-> -               NFS_PROTO(inode)->write_setup(data, &msg);
-> -
-> -               /*
-> -                * We're called via an RPC callback, so BKL is already held.
-> -                */
-> -               task = rpc_run_task(&task_setup_data);
-> -               if (!IS_ERR(task))
-> -                       rpc_put_task(task);
-> -
-> -               dprintk("NFS: %5u rescheduled direct write call (req %s/%Ld, %u bytes @ offset %Lu)\n",
-> -                               data->task.tk_pid,
-> -                               inode->i_sb->s_id,
-> -                               (long long)NFS_FILEID(inode),
-> -                               data->args.count,
-> -                               (unsigned long long)data->args.offset);
-> +               nfs_direct_write_execute(data, &task_setup_data, &msg);
->        }
->
->        if (put_dreq(dreq))
-> @@ -561,10 +560,31 @@ static const struct rpc_call_ops nfs_commit_direct_ops = {
->        .rpc_release = nfs_direct_commit_release,
->  };
->
-> +static long nfs_direct_commit_execute(struct nfs_direct_req *dreq,
-> +                                     struct nfs_write_data *data,
-> +                                     struct rpc_task_setup *task_setup_data,
-> +                                     struct rpc_message *msg)
-> +{
-> +       struct rpc_task *task;
-> +
-> +       NFS_PROTO(data->inode)->commit_setup(data, msg);
-> +
-> +       /* Note: task.tk_ops->rpc_release will free dreq->commit_data */
-> +       dreq->commit_data = NULL;
-> +
-> +       dprintk("NFS: %5u initiated commit call\n", data->task.tk_pid);
-> +
-> +       task = rpc_run_task(task_setup_data);
-> +       if (IS_ERR(task))
-> +               return PTR_ERR(task);
-> +
-> +       rpc_put_task(task);
-> +       return 0;
-> +}
-> +
->  static void nfs_direct_commit_schedule(struct nfs_direct_req *dreq)
->  {
->        struct nfs_write_data *data = dreq->commit_data;
-> -       struct rpc_task *task;
->        struct rpc_message msg = {
->                .rpc_argp = &data->args,
->                .rpc_resp = &data->res,
-> @@ -593,16 +613,7 @@ static void nfs_direct_commit_schedule(struct nfs_direct_req *dreq)
->        data->res.verf = &data->verf;
->        nfs_fattr_init(&data->fattr);
->
-> -       NFS_PROTO(data->inode)->commit_setup(data, &msg);
-> -
-> -       /* Note: task.tk_ops->rpc_release will free dreq->commit_data */
-> -       dreq->commit_data = NULL;
-> -
-> -       dprintk("NFS: %5u initiated commit call\n", data->task.tk_pid);
-> -
-> -       task = rpc_run_task(&task_setup_data);
-> -       if (!IS_ERR(task))
-> -               rpc_put_task(task);
-> +       nfs_direct_commit_execute(dreq, data, &task_setup_data, &msg);
->  }
->
->  static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode *inode)
-> @@ -703,6 +714,36 @@ static const struct rpc_call_ops nfs_write_direct_ops = {
->        .rpc_release = nfs_direct_write_release,
->  };
->
-> +static long nfs_direct_write_execute(struct nfs_write_data *data,
-> +                                    struct rpc_task_setup *task_setup_data,
-> +                                    struct rpc_message *msg)
-> +{
-> +       struct inode *inode = data->inode;
-> +       struct rpc_task *task;
-> +
-> +       task_setup_data->task = &data->task;
-> +       task_setup_data->callback_data = data;
-> +       msg->rpc_argp = &data->args;
-> +       msg->rpc_resp = &data->res;
-> +       NFS_PROTO(inode)->write_setup(data, msg);
-> +
-> +       task = rpc_run_task(task_setup_data);
-> +       if (IS_ERR(task))
-> +               return PTR_ERR(task);
-> +
-> +       rpc_put_task(task);
-> +
-> +       dprintk("NFS: %5u initiated direct write call "
-> +               "(req %s/%lld, %u bytes @ offset %llu)\n",
-> +               data->task.tk_pid,
-> +               inode->i_sb->s_id,
-> +               (long long)NFS_FILEID(inode),
-> +               data->args.count,
-> +               (unsigned long long)data->args.offset);
-> +
-> +       return 0;
-> +}
-> +
->  /*
->  * For each wsize'd chunk of the user's buffer, dispatch an NFS WRITE
->  * operation.  If nfs_writedata_alloc() or get_user_pages() fails,
-> @@ -718,7 +759,6 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
->        struct inode *inode = ctx->path.dentry->d_inode;
->        unsigned long user_addr = (unsigned long)iov->iov_base;
->        size_t count = iov->iov_len;
-> -       struct rpc_task *task;
->        struct rpc_message msg = {
->                .rpc_cred = ctx->cred,
->        };
-> @@ -785,24 +825,8 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
->                data->res.verf = &data->verf;
->                nfs_fattr_init(&data->fattr);
->
-> -               task_setup_data.task = &data->task;
-> -               task_setup_data.callback_data = data;
-> -               msg.rpc_argp = &data->args;
-> -               msg.rpc_resp = &data->res;
-> -               NFS_PROTO(inode)->write_setup(data, &msg);
-> -
-> -               task = rpc_run_task(&task_setup_data);
-> -               if (IS_ERR(task))
-> +               if (nfs_direct_write_execute(data, &task_setup_data, &msg))
->                        break;
-> -               rpc_put_task(task);
-> -
-> -               dprintk("NFS: %5u initiated direct write call "
-> -                       "(req %s/%Ld, %zu bytes @ offset %Lu)\n",
-> -                               data->task.tk_pid,
-> -                               inode->i_sb->s_id,
-> -                               (long long)NFS_FILEID(inode),
-> -                               bytes,
-> -                               (unsigned long long)data->args.offset);
->
->                started += bytes;
->                user_addr += bytes;
-> --
-> 1.7.3.4
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index ce118ce..bcf0f0f 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -310,6 +310,7 @@ extern int nfs_migrate_page(struct address_space *,
+ #endif
+ 
+ /* nfs4proc.c */
++extern void __nfs4_read_done_cb(struct nfs_read_data *);
+ extern void nfs4_reset_read(struct rpc_task *task, struct nfs_read_data *data);
+ extern int nfs4_init_client(struct nfs_client *clp,
+ 			    const struct rpc_timeout *timeparms,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index cf1b339..92c8bc4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3175,6 +3175,11 @@ static int nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	return err;
+ }
+ 
++void __nfs4_read_done_cb(struct nfs_read_data *data)
++{
++	nfs_invalidate_atime(data->inode);
++}
++
+ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
+ {
+ 	struct nfs_server *server = NFS_SERVER(data->inode);
+@@ -3184,7 +3189,7 @@ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
+ 		return -EAGAIN;
+ 	}
+ 
+-	nfs_invalidate_atime(data->inode);
++	__nfs4_read_done_cb(data);
+ 	if (task->tk_status > 0)
+ 		renew_lease(server, data->timestamp);
+ 	return 0;
+@@ -3198,7 +3203,8 @@ static int nfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
+ 	if (!nfs4_sequence_done(task, &data->res.seq_res))
+ 		return -EAGAIN;
+ 
+-	return data->read_done_cb(task, data);
++	return data->read_done_cb ? data->read_done_cb(task, data) :
++				    nfs4_read_done_cb(task, data);
+ }
+ 
+ static void nfs4_proc_read_setup(struct nfs_read_data *data, struct rpc_message *msg)
+@@ -3243,7 +3249,8 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
+ {
+ 	if (!nfs4_sequence_done(task, &data->res.seq_res))
+ 		return -EAGAIN;
+-	return data->write_done_cb(task, data);
++	return data->write_done_cb ? data->write_done_cb(task, data) :
++		nfs4_write_done_cb(task, data);
+ }
+ 
+ /* Reset the the nfs_write_data to send the write to the MDS. */
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index ef535f2..0f59802 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -243,7 +243,7 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
+ {
+ 	struct inode *inode = lseg->pls_layout->plh_inode;
+ 
+-	BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
++	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+ 	list_del_init(&lseg->pls_list);
+ 	if (list_empty(&lseg->pls_layout->plh_segs)) {
+ 		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
+@@ -1054,6 +1054,31 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
+ 	pgio->pg_test = (ld && ld->pg_test) ? pnfs_write_pg_test : NULL;
+ }
+ 
++/*
++ * Called by non rpc-based layout drivers
++ */
++int
++pnfs_ld_write_done(struct nfs_write_data *data)
++{
++	int status;
++
++	if (!data->pnfs_error) {
++		pnfs_set_layoutcommit(data);
++		data->mds_ops->rpc_call_done(&data->task, data);
++		data->mds_ops->rpc_release(data);
++		return 0;
++	}
++
++	put_lseg(data->lseg);
++	data->lseg = NULL;
++	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
++		data->pnfs_error);
++	status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
++				    data->mds_ops, NFS_FILE_SYNC);
++	return status ? : -EAGAIN;
++}
++EXPORT_SYMBOL_GPL(pnfs_ld_write_done);
++
+ enum pnfs_try_status
+ pnfs_try_to_write_data(struct nfs_write_data *wdata,
+ 			const struct rpc_call_ops *call_ops, int how)
+@@ -1079,6 +1104,31 @@ pnfs_try_to_write_data(struct nfs_write_data *wdata,
+ }
+ 
+ /*
++ * Called by non rpc-based layout drivers
++ */
++int
++pnfs_ld_read_done(struct nfs_read_data *data)
++{
++	int status;
++
++	if (!data->pnfs_error) {
++		__nfs4_read_done_cb(data);
++		data->mds_ops->rpc_call_done(&data->task, data);
++		data->mds_ops->rpc_release(data);
++		return 0;
++	}
++
++	put_lseg(data->lseg);
++	data->lseg = NULL;
++	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
++		data->pnfs_error);
++	status = nfs_initiate_read(data, NFS_CLIENT(data->inode),
++				   data->mds_ops);
++	return status ? : -EAGAIN;
++}
++EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
++
++/*
+  * Call the appropriate parallel I/O subsystem read function.
+  */
+ enum pnfs_try_status
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index ed167a7..8a6e1f1 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -165,6 +165,8 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+ bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
++int pnfs_ld_write_done(struct nfs_write_data *);
++int pnfs_ld_read_done(struct nfs_read_data *);
+ 
+ /* pnfs_dev.c */
+ struct nfs4_deviceid_node {
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 7e371f7..7c8ff09 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1087,6 +1087,7 @@ struct nfs_read_data {
+ 	const struct rpc_call_ops *mds_ops;
+ 	int (*read_done_cb) (struct rpc_task *task, struct nfs_read_data *data);
+ 	__u64			mds_offset;
++	int			pnfs_error;
+ 	struct page		*page_array[NFS_PAGEVEC_SIZE];
+ };
+ 
+@@ -1112,6 +1113,7 @@ struct nfs_write_data {
+ 	unsigned long		timestamp;	/* For lease renewal */
+ #endif
+ 	__u64			mds_offset;	/* Filelayout dense stripe */
++	int			pnfs_error;
+ 	struct page		*page_array[NFS_PAGEVEC_SIZE];
+ };
+ 
+-- 
+1.7.3.4
+
