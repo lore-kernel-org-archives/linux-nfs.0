@@ -1,104 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:43594 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:8915 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754491Ab1EWADU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 20:03:20 -0400
+	with ESMTP id S1755512Ab1EWQej (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 12:34:39 -0400
 From: Benny Halevy <bhalevy@panasas.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v5 37/38] pnfs: encode_layoutcommit
-Date: Mon, 23 May 2011 03:03:09 +0300
-Message-Id: <1306108989-29318-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DD99F9B.2040406@panasas.com>
-References: <4DD99F9B.2040406@panasas.com>
+Cc: linux-nfs@vger.kernel.org, Boaz Harrosh <bharrosh@panasas.com>
+Subject: [PATCH v6 02/26] pnfs: resolve header dependency in pnfs.h
+Date: Mon, 23 May 2011 19:34:32 +0300
+Message-Id: <1306168472-10963-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DDA8C3D.5080706@panasas.com>
+References: <4DDA8C3D.5080706@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Add a layout driver method to encode the layout type specific
-opaque part of layout commit in-line in the xdr stream.
-
-Currently, the pnfs-objects layout driver uses it to encode metadata hints
-to the MDS and the blocks layout driver to commit provisionally allocated
-extents to the file.
+Some definitions in the header file depend on nfs_fs.h so pnfs.h can't
+be included independently.
 
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/nfs4xdr.c |   16 +++++++++++++---
- fs/nfs/pnfs.h    |    4 ++++
- 2 files changed, 17 insertions(+), 3 deletions(-)
+ fs/nfs/pnfs.h |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index ae580fa..899ffc0 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1875,6 +1875,7 @@ encode_layoutget(struct xdr_stream *xdr,
- 
- static int
- encode_layoutcommit(struct xdr_stream *xdr,
-+		    struct inode *inode,
- 		    const struct nfs4_layoutcommit_args *args,
- 		    struct compound_hdr *hdr)
- {
-@@ -1883,7 +1884,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
- 	dprintk("%s: lbw: %llu type: %d\n", __func__, args->lastbytewritten,
- 		NFS_SERVER(args->inode)->pnfs_curr_ld->id);
- 
--	p = reserve_space(xdr, 48 + NFS4_STATEID_SIZE);
-+	p = reserve_space(xdr, 44 + NFS4_STATEID_SIZE);
- 	*p++ = cpu_to_be32(OP_LAYOUTCOMMIT);
- 	/* Only whole file layouts */
- 	p = xdr_encode_hyper(p, 0); /* offset */
-@@ -1894,7 +1895,14 @@ encode_layoutcommit(struct xdr_stream *xdr,
- 	p = xdr_encode_hyper(p, args->lastbytewritten);
- 	*p++ = cpu_to_be32(0); /* Never send time_modify_changed */
- 	*p++ = cpu_to_be32(NFS_SERVER(args->inode)->pnfs_curr_ld->id);/* type */
--	*p++ = cpu_to_be32(0); /* no file layout payload */
-+
-+	if (NFS_SERVER(inode)->pnfs_curr_ld->encode_layoutcommit)
-+		NFS_SERVER(inode)->pnfs_curr_ld->encode_layoutcommit(
-+			NFS_I(inode)->layout, xdr, args);
-+	else {
-+		p = reserve_space(xdr, 4);
-+		*p = cpu_to_be32(0); /* no layout-type payload */
-+	}
- 
- 	hdr->nops++;
- 	hdr->replen += decode_layoutcommit_maxsz;
-@@ -2751,6 +2759,8 @@ static void nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
- 				      struct xdr_stream *xdr,
- 				      struct nfs4_layoutcommit_args *args)
- {
-+	struct nfs4_layoutcommit_data *data =
-+		container_of(args, struct nfs4_layoutcommit_data, args);
- 	struct compound_hdr hdr = {
- 		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
- 	};
-@@ -2758,7 +2768,7 @@ static void nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
- 	encode_compound_hdr(xdr, req, &hdr);
- 	encode_sequence(xdr, &args->seq_args, &hdr);
- 	encode_putfh(xdr, NFS_FH(args->inode), &hdr);
--	encode_layoutcommit(xdr, args, &hdr);
-+	encode_layoutcommit(xdr, data->args.inode, args, &hdr);
- 	encode_getfattr(xdr, args->bitmask, &hdr);
- 	encode_nops(&hdr);
- }
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index ed07f41..25da946 100644
+index 0c015ba..720bb9d 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -108,6 +108,10 @@ struct pnfs_layoutdriver_type {
- 	void (*encode_layoutreturn) (struct pnfs_layout_hdr *layoutid,
- 				     struct xdr_stream *xdr,
- 				     const struct nfs4_layoutreturn_args *args);
-+
-+	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
-+				     struct xdr_stream *xdr,
-+				     const struct nfs4_layoutcommit_args *args);
- };
+@@ -30,6 +30,7 @@
+ #ifndef FS_NFS_PNFS_H
+ #define FS_NFS_PNFS_H
  
- struct pnfs_layout_hdr {
++#include <linux/nfs_fs.h>
+ #include <linux/nfs_page.h>
+ 
+ enum {
 -- 
 1.7.3.4
 
