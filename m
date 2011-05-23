@@ -1,108 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:9041 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:1661 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756154Ab1EWQgR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 12:36:17 -0400
+	with ESMTP id S1755382Ab1EWNyE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 09:54:04 -0400
+Message-ID: <4DDA66F6.1050109@panasas.com>
+Date: Mon, 23 May 2011 16:53:58 +0300
 From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCH v6 10/26] pnfs: client stats
-Date: Mon, 23 May 2011 19:36:11 +0300
-Message-Id: <1306168571-11308-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DDA8C3D.5080706@panasas.com>
-References: <4DDA8C3D.5080706@panasas.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PTACH] SQUASHME: pnfs-obj: Important fallout from the last rebase
+References: <4DD99F9B.2040406@panasas.com> <1306108883-29089-1-git-send-email-bhalevy@panasas.com> <4DDA3AA4.8000205@panasas.com>
+In-Reply-To: <4DDA3AA4.8000205@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@fieldses.org>
+On 2011-05-23 13:44, Boaz Harrosh wrote:
+> 
+> On the last rebase I dropped this hunk it needs to go into  the:
+> 	[PATCH v5 31/38] pnfs-obj: osd raid engine read/write implementation
+> 
+> With out this the code does not work
 
-A pNFS client auto-negotiates a lot of features (minorversion level,
-pNFS layout type, etc.).  This is convenient, but makes certain kinds of
-failures hard for a user to detect.
+I agree that in the current implementation the ld must implement
+pg_test for pnfs to work.
+This patch is reverse though...
 
-For example, if the client falls back on 4.0, or falls back to MDS IO
-because the user didn't connect to the right iscsi disks before
-mounting, the only symptoms may be reduced performance, which may not be
-noticed till long after the actual failure, and may be difficult for a
-user to diagnose.
+Benny
 
-However, such "failures" may also be perfectly normal in some cases, so
-we don't want to spam the system logs with them.
-
-One approach would be to put some more information into
-/proc/self/mountstats.
-
-Signed-off-by: J. Bruce Fields <bfields@fieldses.org>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[pnfs: add commit client stats]
-[fixup data types for "ret" variables in pnfs_try_to* inline funcs.]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[fix definition of show_pnfs for !CONFIG_PNFS]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: Fix show_sessions in the not CONFIG_NFS_V4_1 case]
-    There is a build error when CONFIG_NFS_V4 is set but
-    CONFIG_NFS_V4_1 is *not* set. show_sessions() prototype
-    was unbalanced between the two cases.
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-[pnfs: super.c remove CONFIG_PNFS]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/super.c |   25 +++++++++++++++++++++++++
- 1 files changed, 25 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index e288f06..ce40e5c 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -63,6 +63,7 @@
- #include "iostat.h"
- #include "internal.h"
- #include "fscache.h"
-+#include "pnfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
- 
-@@ -732,6 +733,28 @@ static int nfs_show_options(struct seq_file *m, struct vfsmount *mnt)
- 
- 	return 0;
- }
-+#ifdef CONFIG_NFS_V4_1
-+void show_sessions(struct seq_file *m, struct nfs_server *server)
-+{
-+	if (nfs4_has_session(server->nfs_client))
-+		seq_printf(m, ",sessions");
-+}
-+#else
-+void show_sessions(struct seq_file *m, struct nfs_server *server) {}
-+#endif
-+
-+#ifdef CONFIG_NFS_V4_1
-+void show_pnfs(struct seq_file *m, struct nfs_server *server)
-+{
-+	seq_printf(m, ",pnfs=");
-+	if (server->pnfs_curr_ld)
-+		seq_printf(m, "%s", server->pnfs_curr_ld->name);
-+	else
-+		seq_printf(m, "not configured");
-+}
-+#else  /* CONFIG_NFS_V4_1 */
-+void show_pnfs(struct seq_file *m, struct nfs_server *server) {}
-+#endif /* CONFIG_NFS_V4_1 */
- 
- static int nfs_show_devname(struct seq_file *m, struct vfsmount *mnt)
- {
-@@ -792,6 +815,8 @@ static int nfs_show_stats(struct seq_file *m, struct vfsmount *mnt)
- 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
- 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
- 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
-+		show_sessions(m, nfss);
-+		show_pnfs(m, nfss);
- 	}
- #endif
- 
--- 
-1.7.3.4
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+> index 105d8a6..74b5d3f 100644
+> --- a/fs/nfs/objlayout/objio_osd.c
+> +++ b/fs/nfs/objlayout/objio_osd.c
+> @@ -989,19 +990,6 @@ ssize_t objio_write_pagelist(struct objlayout_io_state *ol_state, bool stable)
+>  	return _write_exec(ios);
+>  }
+>  
+> -/*
+> - * objlayout_pg_test(). Called by nfs_can_coalesce_requests()
+> - *
+> - * return 1 :  coalesce page
+> - * return 0 :  don't coalesce page
+> - */
+> -int
+> -objlayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+> -		   struct nfs_page *req)
+> -{
+> -	return 1;
+> -}
+> -
+>  static struct pnfs_layoutdriver_type objlayout_type = {
+>  	.id = LAYOUT_OSD2_OBJECTS,
+>  	.name = "LAYOUT_OSD2_OBJECTS",
+> @@ -1021,8 +1009,6 @@ static struct pnfs_layoutdriver_type objlayout_type = {
+>  
+>  	.encode_layoutcommit	 = objlayout_encode_layoutcommit,
+>  	.encode_layoutreturn     = objlayout_encode_layoutreturn,
+> -
+> -	.pg_test		= objlayout_pg_test,
+>  };
+>  
+>  void *objio_init_mt(void)
 
