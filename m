@@ -1,73 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:62376 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754976Ab1ECUTC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 May 2011 16:19:02 -0400
-Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id p43KJ15j014572
-	for <linux-nfs@vger.kernel.org>; Tue, 3 May 2011 13:19:02 -0700 (PDT)
-Subject: Re: [PATCH 1/1] NFSv41: Resend on NFS4ERR_RETRY_UNCACHED_REP
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: andros@netapp.com
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1304387669-2969-1-git-send-email-andros@netapp.com>
-References: <1304387669-2969-1-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 03 May 2011 16:19:00 -0400
-Message-ID: <1304453940.20025.3.camel@lade.trondhjem.org>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:41847 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755846Ab1EWOyI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 10:54:08 -0400
+Received: by yxs7 with SMTP id 7so2115329yxs.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 May 2011 07:54:07 -0700 (PDT)
+In-Reply-To: <4DD9E113.7050506@panasas.com>
+References: <4DD93D3E.9010909@panasas.com>
+	<1306083123-11061-1-git-send-email-bharrosh@panasas.com>
+	<4DD96697.50800@panasas.com>
+	<4DD9E113.7050506@panasas.com>
+Date: Mon, 23 May 2011 10:54:07 -0400
+Message-ID: <BANLkTikj_h-1LK1ZWVsQQuwZ6-v2uB7QpQ@mail.gmail.com>
+Subject: Re: [PATCH 16/23] pnfs: support for non-rpc layout drivers
+From: Fred Isaman <iisaman@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2011-05-02 at 21:54 -0400, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> Free the slot and resend the RPC with new session <slot#,seq#>.
-> 
-> For nfs4_async_handle_error, return -EAGAIN and set the task->tk_status to 0
-> to restart the async rpc in the rpc_restart_call_prepare state which resets
-> the slot.
-> 
-> For nfs4_handle_exception, retrying a call that uses nfs4_call_sync will
-> reset the slot via nfs41_call_sync_prepare.
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/nfs4proc.c |    2 ++
->  1 files changed, 2 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index b8e1ac6..01d70dd 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -300,6 +300,7 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
->  			ret = nfs4_delay(server->client, &exception->timeout);
->  			if (ret != 0)
->  				break;
-> +		case -NFS4ERR_RETRY_UNCACHED_REP:
->  		case -NFS4ERR_OLD_STATEID:
->  			exception->retry = 1;
->  			break;
-> @@ -3677,6 +3678,7 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
->  			rpc_delay(task, NFS4_POLL_RETRY_MAX);
->  			task->tk_status = 0;
->  			return -EAGAIN;
-> +		case -NFS4ERR_RETRY_UNCACHED_REP:
->  		case -NFS4ERR_OLD_STATEID:
->  			task->tk_status = 0;
->  			return -EAGAIN;
+On Mon, May 23, 2011 at 12:22 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+> On 05/22/2011 10:40 PM, Benny Halevy wrote:
+>>> +/*
+>>> + * Called by non rpc-based layout drivers
+>>> + */
+>>> +int
+>>> +pnfs_ld_write_done(struct nfs_write_data *data)
+>>> +{
+>>> +    int status;
+>>> +
+>>
+>>
+>>> +    if (!data->pnfs_error) {
+>>> +            pnfs_set_layoutcommit(data);
+>>
+>> We need at least to set data->task.tk_status to 0
+>
+> I guess it does not hurt, but we never touched it, is it garbage?
+>
+>>
+>>> +            data->mds_ops->rpc_call_done(&data->task, data);
+>>> +            data->mds_ops->rpc_release(data);
+>>
+>> Where's the put_lseg you had in PATCH 10/13?
+>>
+>> Benny
+>
+> That was the bug. Please see my SQUASHME patches I explained
+> it all there.
+>
+>>
+>>> +            return 0;
+>>> +    }
+>>> +
+>>> +    put_lseg(data->lseg);
+>>> +    data->lseg = NULL;
+>
+> I'm not sure it is needed here as well.
+> Fred! please see this code
+> We know that the lseg is put in nfs_writedata_release()
+> Does the below nfs_initiate_write() retakes the ref.
+> If it does we need the put here. If it does not we
+> don't need here.
+>
 
-Looks good... Do we need handlers for this in things like
-'reclaim_complete_done()' and 'nfs41_sequence_handle_errors()'?
+nfs_initiate_read/write() did not take any reference to the lseg.
+This was done immediately prior in the nfs_read/write_rpcsetup
+functions.
 
-I'm assuming that all the stateful operations such as open/close/... set
-the cache reply flag and so don't need it?
+Note however that the commit code takes references in the file driver code.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Fred
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+> Boaz
+>
+>>> +    dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
+>>> +            data->pnfs_error);
+>>> +    status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
+>>> +                                data->mds_ops, NFS_FILE_SYNC);
+>>> +    return status ? : -EAGAIN;
+>>> +}
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
