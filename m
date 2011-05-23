@@ -1,114 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:58964 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754072Ab1EIThM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 15:37:12 -0400
-Received: by mail-yx0-f174.google.com with SMTP id 7so1914279yxs.19
-        for <linux-nfs@vger.kernel.org>; Mon, 09 May 2011 12:37:12 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/16] NFS: Add a client-side function to display file handles
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 09 May 2011 15:37:10 -0400
-Message-ID: <20110509193710.16568.68115.stgit@matisse.1015granger.net>
-In-Reply-To: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
-References: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from daytona.panasas.com ([67.152.220.89]:43565 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754491Ab1EWABS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 20:01:18 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v5 30/38] SQUASHME: initialize data->task on the non-rpc io done success paths
+Date: Mon, 23 May 2011 03:01:06 +0300
+Message-Id: <1306108866-29053-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DD99F9B.2040406@panasas.com>
+References: <4DD99F9B.2040406@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-For debugging, introduce a simplistic function to print file handles
-on the system console.  It's hooked into the dprintk debugging
-facility, but you can call _nfs_display_fhandle() directly if you
-want to print a handle unconditionally.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
+ fs/nfs/pnfs.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
- fs/nfs/inode.c         |   45 +++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs_fs.h |   14 ++++++++++++++
- 2 files changed, 59 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 57bb31a..9a444d0 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1039,6 +1039,51 @@ struct nfs_fh *nfs_alloc_fhandle(void)
- }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 0f59802..d39fcca 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1064,6 +1064,7 @@ pnfs_ld_write_done(struct nfs_write_data *data)
  
- /**
-+ * _nfs_display_fhandle - display an NFS file handle on the console
-+ *
-+ * @fh: file handle to display
-+ * @caption: display caption
-+ *
-+ * For debugging only.
-+ */
-+#ifdef RPC_DEBUG
-+void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption)
-+{
-+	unsigned short i;
-+
-+	if (fh->size == 0 || fh == NULL) {
-+		printk(KERN_NOTICE "%s at %p is empty\n", caption, fh);
-+		return;
-+	}
-+
-+	printk(KERN_NOTICE "%s at %p is %u bytes:\n", caption, fh, fh->size);
-+	for (i = 0; i < fh->size; i += 16) {
-+		__be32 *pos = (__be32 *)&fh->data[i];
-+
-+		switch ((fh->size - i - 1) >> 2) {
-+		case 0:
-+			printk(KERN_NOTICE " %08x",
-+				be32_to_cpup(pos));
-+			break;
-+		case 1:
-+			printk(KERN_NOTICE " %08x %08x\n",
-+				be32_to_cpup(pos), be32_to_cpup(pos + 1));
-+			break;
-+		case 2:
-+			printk(KERN_NOTICE " %08x %08x %08x\n",
-+				be32_to_cpup(pos), be32_to_cpup(pos + 1),
-+				be32_to_cpup(pos + 2));
-+			break;
-+		default:
-+			printk(KERN_NOTICE " %08x %08x %08x %08x\n",
-+				be32_to_cpup(pos), be32_to_cpup(pos + 1),
-+				be32_to_cpup(pos + 2), be32_to_cpup(pos + 3));
-+		}
-+	}
-+}
-+#endif
-+
-+/**
-  * nfs_inode_attrs_need_update - check if the inode attributes need updating
-  * @inode - pointer to inode
-  * @fattr - attributes
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 1b93b9c..0e3eb70 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -394,6 +394,20 @@ static inline void nfs_free_fhandle(const struct nfs_fh *fh)
- 	kfree(fh);
- }
+ 	if (!data->pnfs_error) {
+ 		pnfs_set_layoutcommit(data);
++		memset(&data->task, 0, sizeof(data->task));
+ 		data->mds_ops->rpc_call_done(&data->task, data);
+ 		data->mds_ops->rpc_release(data);
+ 		return 0;
+@@ -1113,6 +1114,7 @@ pnfs_ld_read_done(struct nfs_read_data *data)
  
-+#ifdef RPC_DEBUG
-+extern void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption);
-+#define nfs_display_fhandle(fh, caption)			\
-+	do {							\
-+		if (unlikely(nfs_debug & NFSDBG_FACILITY))	\
-+			_nfs_display_fhandle(fh, caption);	\
-+	} while (0)
-+#else
-+static inline void nfs_display_fhandle(const struct nfs_fh *fh,
-+				       const char *caption)
-+{
-+}
-+#endif
-+
- /*
-  * linux/fs/nfs/nfsroot.c
-  */
+ 	if (!data->pnfs_error) {
+ 		__nfs4_read_done_cb(data);
++		memset(&data->task, 0, sizeof(data->task));
+ 		data->mds_ops->rpc_call_done(&data->task, data);
+ 		data->mds_ops->rpc_release(data);
+ 		return 0;
+-- 
+1.7.3.4
 
