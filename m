@@ -1,79 +1,73 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 04/12] pnfs: layout_driver MUST set free_deviceid_node
- if using dev-cache
-Date: Tue, 24 May 2011 20:04:23 +0300
-Message-ID: <4DDBE517.9090605@panasas.com>
-References: <4DDBC611.3050202@panasas.com> <1306249546-23273-1-git-send-email-bharrosh@panasas.com>
+Subject: Re: [PATCH 08/12] SQUASHME: objio alloc/free lseg Bugs fixes
+Date: Tue, 24 May 2011 20:06:24 +0300
+Message-ID: <4DDBE590.1080606@panasas.com>
+References: <4DDBC611.3050202@panasas.com> <1306249617-23391-1-git-send-email-bharrosh@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=windows-1255
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
 	NFS list <linux-nfs@vger.kernel.org>
 To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:54730 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:54779 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754525Ab1EXRE3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 13:04:29 -0400
-In-Reply-To: <1306249546-23273-1-git-send-email-bharrosh@panasas.com>
+	with ESMTP id S1752799Ab1EXRG1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 13:06:27 -0400
+In-Reply-To: <1306249617-23391-1-git-send-email-bharrosh@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-05-24 18:05, Boaz Harrosh wrote:
-> A device cache is not a matter of memory store. It is a matter
-> of mounting/login and unmounting/logout. So it is not logical
-> to not set free_deviceid_node. Who will do the unmount?
-> 
-> It is better to crash the developer then let him leak mounts.
+On 2011-05-24 18:06, Boaz Harrosh wrote:
+> Wrong allocation and pointering in lseg_alloc.
 > 
 > Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/nfs/objlayout/objio_osd.c |    9 +++++----
+>  1 files changed, 5 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+> index a4201d8..167cd1e 100644
+> --- a/fs/nfs/objlayout/objio_osd.c
+> +++ b/fs/nfs/objlayout/objio_osd.c
+> @@ -117,7 +117,7 @@ struct objio_segment {
+>  	unsigned comps_index;
+>  	unsigned num_comps;
+>  	/* variable length */
+> -	struct objio_dev_ent *ods[1];
+> +	struct objio_dev_ent *ods[0];
+>  };
+>  
+>  static inline struct objio_segment *
+> @@ -278,7 +278,6 @@ extern int objio_alloc_lseg(struct pnfs_layout_segment **outp,
+>  	struct pnfs_osd_layout layout;
+>  	struct pnfs_osd_object_cred *cur_comp, src_comp;
+>  	struct caps_buffers *caps_p;
+> -
+>  	int err;
+>  
+>  	err = pnfs_osd_xdr_decode_layout_map(&layout, &iter, xdr);
+> @@ -289,14 +288,16 @@ extern int objio_alloc_lseg(struct pnfs_layout_segment **outp,
+>  	if (unlikely(err))
+>  		return err;
+>  
+> -	objio_seg = kzalloc(sizeof(*objio_seg) +
+> +	objio_seg = kzalloc(sizeof(*objio_seg) + 
 
-OK, we can do that.
+nit: While at it, the trailing space is extraneous...
 
 Benny
 
-> ---
->  fs/nfs/pnfs_dev.c |   16 ++++------------
->  1 files changed, 4 insertions(+), 12 deletions(-)
-> 
-> diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
-> index 37ca215..1b592d9 100644
-> --- a/fs/nfs/pnfs_dev.c
-> +++ b/fs/nfs/pnfs_dev.c
-> @@ -163,10 +163,7 @@ nfs4_delete_deviceid(const struct pnfs_layoutdriver_type *ld,
->  	d = nfs4_unhash_put_deviceid(ld, clp, id);
->  	if (!d)
->  		return;
-> -	if (d->ld->free_deviceid_node)
-> -		d->ld->free_deviceid_node(d);
-> -	else
-> -		kfree(d);
-> +	d->ld->free_deviceid_node(d);
->  }
->  EXPORT_SYMBOL_GPL(nfs4_delete_deviceid);
+> +			    sizeof(objio_seg->ods[0]) * layout.olo_num_comps +
+>  			    sizeof(*objio_seg->comps) * layout.olo_num_comps +
+>  			    sizeof(struct caps_buffers) * layout.olo_num_comps,
+>  			    gfp_flags);
+>  	if (!objio_seg)
+>  		return -ENOMEM;
 >  
-> @@ -232,8 +229,7 @@ nfs4_put_deviceid_node(struct nfs4_deviceid_node *d)
->  	hlist_del_init_rcu(&d->node);
->  	spin_unlock(&nfs4_deviceid_lock);
->  	synchronize_rcu();
-> -	if (d->ld->free_deviceid_node)
-> -		d->ld->free_deviceid_node(d);
-> +	d->ld->free_deviceid_node(d);
->  	return true;
->  }
->  EXPORT_SYMBOL_GPL(nfs4_put_deviceid_node);
-> @@ -258,12 +254,8 @@ _deviceid_purge_client(const struct nfs_client *clp, long hash)
->  
->  	synchronize_rcu();
->  	hlist_for_each_entry_safe(d, n, next, &tmp, node)
-> -		if (atomic_dec_and_test(&d->ref)) {
-> -			if (d->ld->free_deviceid_node)
-> -				d->ld->free_deviceid_node(d);
-> -			else
-> -				kfree(d);
-> -		}
-> +		if (atomic_dec_and_test(&d->ref))
-> +			d->ld->free_deviceid_node(d);
->  }
->  
->  void
+> -	cur_comp = objio_seg->comps = (void *)(objio_seg + 1);
+> +	objio_seg->comps = (void *)(objio_seg->ods + layout.olo_num_comps);
+> +	cur_comp = objio_seg->comps;
+>  	caps_p = (void *)(cur_comp + layout.olo_num_comps);
+>  	while (pnfs_osd_xdr_decode_layout_comp(&src_comp, &iter, xdr, &err))
+>  		copy_single_comp(cur_comp++, &src_comp, caps_p++);
 
