@@ -1,40 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:37987 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:46750 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753747Ab1EIRIx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:08:53 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 13/29] pnfs: per mount layout driver private data
-Date: Mon,  9 May 2011 20:08:46 +0300
-Message-Id: <1304960926-4270-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DC81E8C.6040901@panasas.com>
-References: <4DC81E8C.6040901@panasas.com>
+	with ESMTP id S1754346Ab1EXPHL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 11:07:11 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Cc: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 07/12] SQUASHME: pnfs-obj: use layout driver in global device cache
+Date: Tue, 24 May 2011 18:06:39 +0300
+Message-Id: <1306249599-23362-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DDBC611.3050202@panasas.com>
+References: <4DDBC611.3050202@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-[get rid of ds_[rw]size]
+From: Benny Halevy <bhalevy@panasas.com>
+
+This is the objio_osd part of the patch:
+	NFSv4.1: use layout driver in global device cache
+
+I have move that patch to the begining of the submit
+toghther with the bug fixing of the new code
+
+This here should just be squashed into the single objlayout
+part of the get_devic_info handling
+
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- include/linux/nfs_fs_sb.h |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ fs/nfs/objlayout/objio_osd.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 216cea5..1d34e8c 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -142,6 +142,7 @@ struct nfs_server {
- 						   filesystem */
- 	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
- 	struct rpc_wait_queue	roc_rpcwaitq;
-+	void			       *pnfs_ld_data; /* Per-mount data */
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index bcc8468..a4201d8 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -60,12 +60,12 @@ objio_free_deviceid_node(struct nfs4_deviceid_node *d)
+ 	kfree(de);
+ }
  
- 	/* the following fields are protected by nfs_client->cl_lock */
- 	struct rb_root		state_owners;
+-static struct objio_dev_ent *_dev_list_find(const struct nfs_client *clp,
++static struct objio_dev_ent *_dev_list_find(const struct nfs_server *nfss,
+ 	const struct nfs4_deviceid *d_id)
+ {
+ 	struct nfs4_deviceid_node *d;
+ 
+-	d = nfs4_find_get_deviceid(clp, d_id);
++	d = nfs4_find_get_deviceid(nfss->pnfs_curr_ld, nfss->nfs_client, d_id);
+ 	if (!d)
+ 		return NULL;
+ 	return container_of(d, struct objio_dev_ent, id_node);
+@@ -141,7 +141,7 @@ static struct objio_dev_ent *_device_lookup(struct pnfs_layout_hdr *pnfslay,
+ 
+ 	d_id = &objio_seg->comps[comp].oc_object_id.oid_device_id;
+ 
+-	ode = _dev_list_find(NFS_SERVER(pnfslay->plh_inode)->nfs_client, d_id);
++	ode = _dev_list_find(NFS_SERVER(pnfslay->plh_inode), d_id);
+ 	if (ode)
+ 		return ode;
+ 
 -- 
-1.7.3.4
+1.7.2.3
 
