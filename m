@@ -1,23 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:39893 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932688Ab1ERQoP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 May 2011 12:44:15 -0400
-Received: from bfields by fieldses.org with local (Exim 4.72)
-	(envelope-from <bfields@fieldses.org>)
-	id 1QMjr5-0004Tb-H7
-	for linux-nfs@vger.kernel.org; Wed, 18 May 2011 12:44:15 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: pynfs server-side unlink test
-Date: Wed, 18 May 2011 12:44:11 -0400
-Message-Id: <1305737053-17096-1-git-send-email-bfields@redhat.com>
+Received: from daytona.panasas.com ([67.152.220.89]:36963 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753840Ab1EXK4m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 06:56:42 -0400
+Message-ID: <4DDB8ED0.9000506@panasas.com>
+Date: Tue, 24 May 2011 13:56:16 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 3/3] SQUASHME: pnfs-obj: objlayout wants to cache devices
+ until unmount
+References: <4DDB8DD1.20101@panasas.com>
+In-Reply-To: <4DDB8DD1.20101@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-These are a couple patches to help me test some delegation changes; I'm
-committing them to my pynfs repo for now.
 
---b.
+Take an extra reference on a device insert. So devices keep
+around in the cache until nfs_client release.
+(This was the behaviour of the old cache)
+
+The extra reference will be removed in nfs4_deviceid_purge_client().
+I tested this and it works perfectly.
+
+TODO: Define an nfs4_get_deviceid()
+ Currently accessing did->ref directly
+
+TODO: nfs4_insert_deviceid_node should check if there are too many
+      devices and start purging them. Say by longest time from last use.
+
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/objlayout/objio_osd.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index c09066f..47e8cb5 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -110,6 +110,7 @@ _dev_list_add(const struct nfs_server *nfss,
+ 		de = n;
+ 	}
+ 
++	atomic_inc(&de->id_node.ref);
+ 	return de;
+ }
+ 
+-- 
+1.7.2.3
+
+
