@@ -1,157 +1,189 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57089 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752869Ab1EYV12 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:27:28 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v8 08/32] SUNRPC: introduce xdr_init_decode_pages
-Date: Thu, 26 May 2011 00:27:25 +0300
-Message-Id: <1306358845-17076-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DDD7392.6040505@panasas.com>
-References: <4DDD7392.6040505@panasas.com>
+Received: from ausxippc101.us.dell.com ([143.166.85.207]:61961 "EHLO
+	ausxippc101.us.dell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752546Ab1EXLkC convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 07:40:02 -0400
+From: <Taousif_Ansari@DELLTEAM.com>
+To: <Shyam_Iyer@Dell.com>, <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>, <Ashokan_Vellimalai@Dell.com>
+Date: Tue, 24 May 2011 17:09:46 +0530
+Subject: RE: Performance Issue with multiple dataserver
+Message-ID: <A1A98FD909DC5248811A65C5D18E9C761DF6A1CC2F@BLRX7MCDC202.AMER.DELL.COM>
+References: <4DD2A084.1040905@moving-picture.com>
+ <20110518080106.1159c5b8@notabene.brown>
+ <4DD39D39.7010805@moving-picture.com>
+ <A1A98FD909DC5248811A65C5D18E9C761DF69B1F18@BLRX7MCDC202.AMER.DELL.COM>
+ <20110518161239.GA16835@fieldses.org>
+ <A1A98FD909DC5248811A65C5D18E9C761DF69B2188@BLRX7MCDC202.AMER.DELL.COM>
+ <20110519115018.GA31978@fieldses.org>
+ <A1A98FD909DC5248811A65C5D18E9C761DF69B2432@BLRX7MCDC202.AMER.DELL.COM>
+ <20110519131236.GA32648@fieldses.org>
+ <A1A98FD909DC5248811A65C5D18E9C761DF69B244C@BLRX7MCDC202.AMER.DELL.COM>
+ <20110519134356.GB32648@fieldses.org>
+ <A1A98FD909DC5248811A65C5D18E9C761DF69B247B@BLRX7MCDC202.AMER.DELL.COM>
+ <DBFB1B45AF80394ABD1C807E9F28D157032A7822A8@BLRX7MCDC203.AMER.DELL.COM>
+In-Reply-To: <DBFB1B45AF80394ABD1C807E9F28D157032A7822A8@BLRX7MCDC203.AMER.DELL.COM>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Initialize xdr_stream and xdr_buf using an array of page pointers
-and length of buffer.
+Hi Bruce, Shyam
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/dir.c               |    9 ++-------
- fs/nfs/nfs4filelayout.c    |    9 ++-------
- fs/nfs/nfs4filelayoutdev.c |    9 ++-------
- include/linux/sunrpc/xdr.h |    2 ++
- net/sunrpc/xdr.c           |   19 +++++++++++++++++++
- 5 files changed, 27 insertions(+), 21 deletions(-)
+ As mentioned here http://wiki.linux-nfs.org/wiki/index.php/PNFS_server_projects gfs2 is also having issues(crashes, performance), so instead of going for gfs2 can we debug spNFS itself to get high performance?
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 7237672..f673a9e 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -512,12 +512,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
- 				struct page **xdr_pages, struct page *page, unsigned int buflen)
- {
- 	struct xdr_stream stream;
--	struct xdr_buf buf = {
--		.pages = xdr_pages,
--		.page_len = buflen,
--		.buflen = buflen,
--		.len = buflen,
--	};
-+	struct xdr_buf buf;
- 	struct page *scratch;
- 	struct nfs_cache_array *array;
- 	unsigned int count = 0;
-@@ -527,7 +522,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
- 	if (scratch == NULL)
- 		return -ENOMEM;
- 
--	xdr_init_decode(&stream, &buf, NULL);
-+	xdr_init_decode_pages(&stream, &buf, xdr_pages, buflen);
- 	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
- 
- 	do {
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 501a9b8..33bda24 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -510,12 +510,7 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
- 			 gfp_t gfp_flags)
- {
- 	struct xdr_stream stream;
--	struct xdr_buf buf = {
--		.pages =  lgr->layoutp->pages,
--		.page_len =  lgr->layoutp->len,
--		.buflen =  lgr->layoutp->len,
--		.len = lgr->layoutp->len,
--	};
-+	struct xdr_buf buf;
- 	struct page *scratch;
- 	__be32 *p;
- 	uint32_t nfl_util;
-@@ -527,7 +522,7 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
- 	if (!scratch)
- 		return -ENOMEM;
- 
--	xdr_init_decode(&stream, &buf, NULL);
-+	xdr_init_decode_pages(&stream, &buf, lgr->layoutp->pages, lgr->layoutp->len);
- 	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
- 
- 	/* 20 = ufl_util (4), first_stripe_index (4), pattern_offset (8),
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index 5914659..3b7bf13 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -308,12 +308,7 @@ decode_device(struct inode *ino, struct pnfs_device *pdev, gfp_t gfp_flags)
- 	u8 max_stripe_index;
- 	struct nfs4_file_layout_dsaddr *dsaddr = NULL;
- 	struct xdr_stream stream;
--	struct xdr_buf buf = {
--		.pages = pdev->pages,
--		.page_len = pdev->pglen,
--		.buflen = pdev->pglen,
--		.len = pdev->pglen,
--	};
-+	struct xdr_buf buf;
- 	struct page *scratch;
- 
- 	/* set up xdr stream */
-@@ -321,7 +316,7 @@ decode_device(struct inode *ino, struct pnfs_device *pdev, gfp_t gfp_flags)
- 	if (!scratch)
- 		goto out_err;
- 
--	xdr_init_decode(&stream, &buf, NULL);
-+	xdr_init_decode_pages(&stream, &buf, pdev->pages, pdev->pglen);
- 	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
- 
- 	/* Get the stripe count (number of stripe index) */
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index fc84b7a..a20970ef 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -216,6 +216,8 @@ extern __be32 *xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes);
- extern void xdr_write_pages(struct xdr_stream *xdr, struct page **pages,
- 		unsigned int base, unsigned int len);
- extern void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
-+extern void xdr_init_decode_pages(struct xdr_stream *xdr, struct xdr_buf *buf,
-+		struct page **pages, unsigned int len);
- extern void xdr_set_scratch_buffer(struct xdr_stream *xdr, void *buf, size_t buflen);
- extern __be32 *xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes);
- extern void xdr_read_pages(struct xdr_stream *xdr, unsigned int len);
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 679cd67..f008c14 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -638,6 +638,25 @@ void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p)
- }
- EXPORT_SYMBOL_GPL(xdr_init_decode);
- 
-+/**
-+ * xdr_init_decode - Initialize an xdr_stream for decoding data.
-+ * @xdr: pointer to xdr_stream struct
-+ * @buf: pointer to XDR buffer from which to decode data
-+ * @pages: list of pages to decode into
-+ * @len: length in bytes of buffer in pages
-+ */
-+void xdr_init_decode_pages(struct xdr_stream *xdr, struct xdr_buf *buf,
-+			   struct page **pages, unsigned int len)
-+{
-+	memset(buf, 0, sizeof(*buf));
-+	buf->pages =  pages;
-+	buf->page_len =  len;
-+	buf->buflen =  len;
-+	buf->len = len;
-+	xdr_init_decode(xdr, buf, NULL);
-+}
-+EXPORT_SYMBOL_GPL(xdr_init_decode_pages);
-+
- static __be32 * __xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes)
- {
- 	__be32 *p = xdr->p;
--- 
-1.7.3.4
 
+-Taousif
+
+-----Original Message-----
+From: Iyer, Shyam 
+Sent: Thursday, May 19, 2011 8:08 PM
+To: Ansari, Taousif - Dell Team; bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: RE: Performance Issue with multiple dataserver
+
+
+
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of Ansari, Taousif - Dell Team
+> 
+> Can you please elaborate GFS2-setup a bit more...
+
+
+I guess Bruce is saying the step-by-step procedure is not written up...
+
+Create a Redhat cluster using the shared block storage(iSCSI in your case I guess). You would get documentation on creating a RH cluster in many places..
+
+All the MDSs and the DSs need to be part of the cluster.
+
+Format GFS2 on the shared iSCSI storage.
+
+Mount the GFS2 formatted iSCSI storage on all the MDSs and DSs and export them via NFS. Use Benny's tree for NFS.
+
+The GFS2 cluster backend is your glue to scale the MDSes and DSes.
+
+> 
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> Sent: Thursday, May 19, 2011 7:14 PM
+> To: Ansari, Taousif - Dell Team
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: Performance Issue with multiple dataserver
+> 
+> On Thu, May 19, 2011 at 06:44:59PM +0530, Taousif_Ansari@DELLTEAM.com
+> wrote:
+> > Then what should I follow, and what details are needed....
+> 
+> There isn't really any supported server-side pNFS.
+> 
+> The closest is the GFS2-based code, for which you need to install
+> Benny's latest tree, configure a shared block device, create a GFS2
+> filesystem on it, mount it across all DS's and the MDS, and export it
+> from all of them--but I don't believe anyone has written step-by-step
+> instructions for that.
+> 
+> --b.
+> 
+> >
+> > -----Original Message-----
+> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> > Sent: Thursday, May 19, 2011 6:43 PM
+> > To: Ansari, Taousif - Dell Team
+> > Cc: linux-nfs@vger.kernel.org
+> > Subject: Re: Performance Issue with multiple dataserver
+> >
+> > On Thu, May 19, 2011 at 06:09:21PM +0530, Taousif_Ansari@DELLTEAM.com
+> wrote:
+> > > I have followed the way given on http://wiki.linux-
+> nfs.org/wiki/index.php/Configuring_pNFS/spnfsd .
+> >
+> > Oh.  As noted there, spnfs is unmaintained.
+> >
+> > And, in any case, we'd need many more details about your setup.
+> >
+> > --b.
+> >
+> > >
+> > > -Taousif
+> > >
+> > > -----Original Message-----
+> > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > > Sent: Thursday, May 19, 2011 5:20 PM
+> > > To: Ansari, Taousif - Dell Team
+> > > Cc: linux-nfs@vger.kernel.org
+> > > Subject: Re: Performance Issue with multiple dataserver
+> > >
+> > > On Thu, May 19, 2011 at 10:56:44AM +0530,
+> Taousif_Ansari@DELLTEAM.com wrote:
+> > > > Hi,
+> > > >
+> > > > I am using on Server linux-pnfs-2.6.38(linux-pnfs-ae7441f.tar)
+> and on client also linux-pnfs-2.6.38(linux-pnfs-ae7441f.tar) downloaded
+> from http://git.linux-nfs.org/?p=bhalevy/linux-pnfs.git;a=summary on
+> Fedora 14.
+> > >
+> > > So you're using GFS2 on the server?  With what sort of storage?
+> > >
+> > > --b.
+> > >
+> > > >
+> > > > Extremely sorry for causing confusing .
+> > > > -----Original Message-----
+> > > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > > > Sent: Wednesday, May 18, 2011 9:43 PM
+> > > > To: Ansari, Taousif - Dell Team
+> > > > Cc: linux-nfs@vger.kernel.org
+> > > > Subject: Re: Performance Issue with multiple dataserver
+> > > >
+> > > > You sent this message as a reply to an unrelated message, which
+> is
+> > > > confusing to those of us with threaded mail readers.
+> > > >
+> > > > On Wed, May 18, 2011 at 05:24:45PM +0530,
+> Taousif_Ansari@DELLTEAM.com wrote:
+> > > > > I have done pNFS setup with single Dataserver and Two
+> Dataserver and ran the IOzone tool on both, I found that the
+> performance with multiple dataservers is less than the performance with
+> single dataservers.
+> > > >
+> > > > What are you using as the server, and what as the client?
+> > > >
+> > > > --b.
+> > > >
+> > > > >
+> > > > > Here are some numbers, which were captured by the IOzone tool.
+> > > > >
+> > > > >
+> > > > > 							  4	  8	 16	 32
+> 	 64	 128	 256	 512	1024	<== Record Length in KB
+> > > > > With Single Dataserver:
+> > > > > Read operation for file size 1 MB-		66415	66359	63630
+> 	70358	86223	70256	66047	66068	68489	<== IO kB/sec
+> > > > > Write operation for file size 1 MB-		18827	16920	18846
+> 	17039	18896	17009	17173	19206	17947	<== IO kB/sec
+> > > > >
+> > > > > With Two Dataservers :
+> > > > > Read operation for file size 1 MB-		36882	381198
+> 	38150	38084	38749	33663	34398	37313	37847	<== IO kB/sec
+> > > > > Write operation for file size 1 MB-		5461	4661	5586
+> 	4870	5227	4922	4214	5572	4658	<== IO kB/sec
+> > > > >
+> > > > >
+> > > > > Can somebody tell me What could be the issue....
+> > > > > --
+> > > > > To unsubscribe from this list: send the line "unsubscribe
+> linux-nfs" in
+> > > > > the body of a message to majordomo@vger.kernel.org
+> > > > > More majordomo info at  http://vger.kernel.org/majordomo-
+> info.html
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+> in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
