@@ -1,67 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:24366 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755254Ab1EPUdw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 16:33:52 -0400
-Subject: Re: 2.6.38.6 - state manager constantly respawns
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Harry Edmon <harry@uw.edu>, linux-nfs@vger.kernel.org
-In-Reply-To: <8382A5A9-381C-47D7-B2DF-64625FE7C08C@oracle.com>
-References: <4DD16FA8.4030602@uw.edu>
-	 <05D08339-888C-4A64-BDC5-8667B3901E7A@oracle.com> <4DD1772E.9010609@uw.edu>
-	 <6A6FB1C3-D4C3-40BE-810A-B4551FA9E591@oracle.com> <4DD17CB5.7010009@uw.edu>
-	 <1305575007.19725.3.camel@lade.trondhjem.org>
-	 <8382A5A9-381C-47D7-B2DF-64625FE7C08C@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 16 May 2011 16:33:27 -0400
-Message-ID: <1305578007.19725.24.camel@lade.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:46858 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752695Ab1EXPJV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 11:09:21 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 11/12] SQUASHME: pnfs: Fall out from: non-rpc layout drivers
+Date: Tue, 24 May 2011 18:08:49 +0300
+Message-Id: <1306249729-23485-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DDBC611.3050202@panasas.com>
+References: <4DDBC611.3050202@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, 2011-05-16 at 16:21 -0400, Chuck Lever wrote:
-> On May 16, 2011, at 3:43 PM, Trond Myklebust wrote:
-> 
-> > On Mon, 2011-05-16 at 12:36 -0700, Harry Edmon wrote:
-> >> On 05/16/11 12:22, Chuck Lever wrote:
-> >>> On May 16, 2011, at 3:12 PM, Harry Edmon wrote:
-> >>> 
-> >>> 
-> >>>> Attached is 1000 lines of output from tshark when the problem is occurring.   The client and server are connected by a private ethernet.
-> >>>> 
-> >>> Disappointing: tshark is not telling us the return codes.  However, I see "PUTFH;READ" then "RENEW" in a loop, which indicates the state manager thread is being kicked off because of ongoing difficulties with state recovery.  Is there a stuck application on that client?
-> >>> 
-> >>> Try again with "tshark -V".
-> >>> 
-> >> Here is the output from tshark -V (first 50,000 lines).   Nothing 
-> >> appears to be stuck, and as I said when I reboot the client into 2.6.32 
-> >> the problem goes away, only to reappear when I reboot it back into 2.6.38.6.
-> >> 
-> > 
-> > Possibly, but it definitely indicates a server bug. What kind of server
-> > are you using?
-> > 
-> > Basically, the client is getting confused because when it sends a READ,
-> > the server is telling it that the lease has expired, then when it sends
-> > a RENEW, the same server replies that the lease is OK...
-> 
-> I've seen this during migration recovery testing.  The client may be testing the wrong client ID.
-> 
-> But I wonder if it's really worth doing that separate RENEW.  I've seen the client send a RENEW after it gets STALE_STATEID.  Would RENEW really tell the client anything in that case?
+the de-ref in pnfs_ld_read/write_done in the error case is not
+needed. I only tested the write path but I suspect it is all
+symetric
 
-It is needed.
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/pnfs.c |    4 ----
+ 1 files changed, 0 insertions(+), 4 deletions(-)
 
-Without the RENEW, we have no idea whether or not we need to do a full
-state recovery. Running a full recovery when we don't have to is _bad_,
-and will usually cause us to lose delegations and may possibly even
-cause us to lose locks.
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 0f59802..1716621 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1069,8 +1069,6 @@ pnfs_ld_write_done(struct nfs_write_data *data)
+ 		return 0;
+ 	}
+ 
+-	put_lseg(data->lseg);
+-	data->lseg = NULL;
+ 	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
+ 		data->pnfs_error);
+ 	status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
+@@ -1118,8 +1116,6 @@ pnfs_ld_read_done(struct nfs_read_data *data)
+ 		return 0;
+ 	}
+ 
+-	put_lseg(data->lseg);
+-	data->lseg = NULL;
+ 	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
+ 		data->pnfs_error);
+ 	status = nfs_initiate_read(data, NFS_CLIENT(data->inode),
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.2.3
 
