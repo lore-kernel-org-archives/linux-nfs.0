@@ -1,98 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:13411 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751231Ab1EETIS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 May 2011 15:08:18 -0400
-Subject: Re: [PATCH] NFS: Allow NULL nameidata in d_revalidate and create
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Tyler Hicks <tyhicks@linux.vnet.ibm.com>
-Cc: linux-nfs@vger.kernel.org, ecryptfs-devel@lists.launchpad.net
-In-Reply-To: <20110505185839.GF12250@boyd.l.tihix.com>
-References: <1304609741-12541-1-git-send-email-tyhicks@linux.vnet.ibm.com>
-	 <20110505155728.GB12250@boyd.l.tihix.com>
-	 <1304613413.20441.2.camel@lade.trondhjem.org>
-	 <20110505185839.GF12250@boyd.l.tihix.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 05 May 2011 15:08:16 -0400
-Message-ID: <1304622496.20441.23.camel@lade.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:55181 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754505Ab1EXRRM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 13:17:12 -0400
+Message-ID: <4DDBE815.7070106@panasas.com>
+Date: Tue, 24 May 2011 20:17:09 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 10/12] SQUASHME: pnfs-obj: objlayout wants to cache devices
+ until unmount
+References: <4DDBC611.3050202@panasas.com> <1306249685-23453-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <1306249685-23453-1-git-send-email-bharrosh@panasas.com>
+Content-Type: text/plain; charset=windows-1255
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2011-05-05 at 13:58 -0500, Tyler Hicks wrote:
-> On Thu May 05, 2011 at 12:36:53PM -0400, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> > On Thu, 2011-05-05 at 10:57 -0500, Tyler Hicks wrote:
-> > > On Thu May 05, 2011 at 10:35:41AM -0500, Tyler Hicks <tyhicks@linux.vnet.ibm.com> wrote:
-> > > > To add support for eCryptfs mounts on top of NFS client mounts, the NFS
-> > > > client must properly handle NULL nameidata pointers in its d_revalidate
-> > > > functions.
-> > > > 
-> > > > NFS clients should also handle NULL nameidata in its create functions,
-> > > > although this is not currently required for eCryptfs support.
-> > > > 
-> > > > Signed-off-by: Tyler Hicks <tyhicks@linux.vnet.ibm.com>
-> > > > ---
-> > > 
-> > > We (eCryptfs) are in the process of switching mailing lists, so I copied
-> > > both the old (launchpad.net) and the new (vger.kernel.org), but it
-> > > doesn't look like the vger.kernel.org list is accepting mail yet. Sorry
-> > > about that, I should have tested it first. Feel free to drop it from
-> > > any replies.
-> > > 
-> > > I should also mention that if/when this patch is merged, eCryptfs will
-> > > have basic support of mounting on top of NFSv3 client mounts. I say
-> > > basic because I'm sure there are some bugs, I'm not yet confident that
-> > > the required cache flushes are there in the eCryptfs layer to have NFSv3
-> > > cache consistency, and we have some trouble with silly rename.
-> > > 
-> > > All files unlinked through eCryptfs get silly renamed in the NFS client
-> > > because of the extra reference eCryptfs holds on the NFS dentry.
-> > > 
-> > > This also seems to come into play when unlinking the last file in a
-> > > directory and then immediately removing the directory. nfs_rmdir() will
-> > > sometimes return -EBUSY.
-> > > 
-> > > BTW, I think these are all issues that should be handled in the eCryptfs
-> > > layer, but I wanted to provide an update on the status of eCryptfs on
-> > > top of NFS.
-> > 
-> > Why would we want to 'support' ecryptfs in this manner? Can't you set up
-> > a proper nameidata with appropriate open intents?
+On 2011-05-24 18:08, Boaz Harrosh wrote:
+> Take an extra reference on a device insert. So devices keep
+> around in the cache until nfs_client release.
+> (This was the behavior of the old cache)
 > 
-> Sorry, that was bad wording in my commit message. NFS would not be
-> "supporting" eCryptfs. eCryptfs supports the filesystem that it is
-> mounted on top of. We keep any quirks from the stacking scheme in
-> fs/ecryptfs/ and don't expect filesystems to do anything special for
-> eCryptfs.
+> The extra reference will be removed in nfs4_deviceid_purge_client().
+> I tested this and it works perfectly.
 > 
-> In this case, I believe it is a bug for NFS to oops on NULL nameidata in
-> d_revalidate. It was introduced by 34286d66 and 657e94b6 and has been
-> fixed in most other filesystems (9177ada9, 8ce84eeb, 4714e637, 53fe9241,
-> 529c5f95, 0eb980e3).
+> TODO: Define an nfs4_get_deviceid()
+>  Currently accesing did->ref directly
+
+This is the right time to do it, why wait?
+
 > 
-> I saw two potential oopses in the NFS create functions and patched
-> those, too. However, in the case of create, eCryptfs does pass a proper
-> nameidata to vfs_create().
+> TODO: nfs4_insert_deviceid_node should check if there are too many
+>       devices and start purging them. Say by time from last use.
 
-Does it do so to d_revalidate() when opening a file?
+yeah, an lru list would be helpful to prune the lists and get rid
+of unused devices.  As we discussed before, this can be done
+periodically, and all devices not used for a long enough interval can
+be deleted.
 
-> > 
-> > This patch might allow you to look up files on NFS, but without open
-> > intents, you certainly won't be able to open them, nor will you be able
-> > to create them (as you seem to believe).
+Benny
+
 > 
-> I'm not sure why open and create would not work. My testing shows that
-> with this patch applied, I can compile the kernel in an eCryptfs mount
-> mounted on top of an NFSv3 client, run fsx-linux, etc.
-
-Please try testing with NFSv4, which requires intents in both lookup()
-and d_revalidate() when opening a file.
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/nfs/objlayout/objio_osd.c |    1 +
+>  1 files changed, 1 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+> index faacde2..8b05b16 100644
+> --- a/fs/nfs/objlayout/objio_osd.c
+> +++ b/fs/nfs/objlayout/objio_osd.c
+> @@ -104,6 +104,7 @@ _dev_list_add(const struct nfs_server *nfss,
+>  		de = n;
+>  	}
+>  
+> +	atomic_inc(&de->id_node.ref);
+>  	return de;
+>  }
+>  
 
