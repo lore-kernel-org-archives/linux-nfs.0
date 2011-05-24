@@ -1,38 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:28315 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753801Ab1ECUGK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 May 2011 16:06:10 -0400
-Subject: Re: [RFC 0/1] SUNRPC: dynamic rpc_slot allocator for TCP
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1304386808-2733-1-git-send-email-andros@netapp.com>
-Date: Tue, 3 May 2011 16:06:00 -0400
-Cc: trond.myklebust@netapp.com, jlayton@redhat.com, linux-nfs@vger.kernel.org
-Message-Id: <0C6F7F78-D506-463B-B4B7-D780BA9FA95F@oracle.com>
-References: <1304386808-2733-1-git-send-email-andros@netapp.com>
-To: andros@netapp.com
+Received: from daytona.panasas.com ([67.152.220.89]:46752 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754346Ab1EXPH3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 11:07:29 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 08/12] SQUASHME: objio alloc/free lseg Bugs fixes
+Date: Tue, 24 May 2011 18:06:57 +0300
+Message-Id: <1306249617-23391-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DDBC611.3050202@panasas.com>
+References: <4DDBC611.3050202@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi-
+Wrong allocation and pointering in lseg_alloc.
 
-On May 2, 2011, at 9:40 PM, andros@netapp.com wrote:
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/objlayout/objio_osd.c |    9 +++++----
+ 1 files changed, 5 insertions(+), 4 deletions(-)
 
-> I would appreciate comments on this patch. I've done a small amount of testing
-> where I've set the /proc/sys/sunrpc/tcp_slot_table_entries to 2, and watched
-> the dynamic allocator increase it to 3. I have a 10G test system being
-> configured.
-
-For TCP transports, then, the effective slot table size varies between the tcp_slot_table_entries setting and the estimated number of RPCs that can fit in the TCP window?  What happens when the TCP window shrinks such that fewer RPCs can fit than are allowed by the tcp_slot_table_entries setting?
-
-Have you done performance testing with loopback mounts (ie server and client on the same machine, mounting over the "lo" interface)?  As I recall this was the test case that Trond found worked poorly when we boosted the tcp_slot_table_entries setting to default to a 64 entry slot table.
-
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index a4201d8..167cd1e 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -117,7 +117,7 @@ struct objio_segment {
+ 	unsigned comps_index;
+ 	unsigned num_comps;
+ 	/* variable length */
+-	struct objio_dev_ent *ods[1];
++	struct objio_dev_ent *ods[0];
+ };
+ 
+ static inline struct objio_segment *
+@@ -278,7 +278,6 @@ extern int objio_alloc_lseg(struct pnfs_layout_segment **outp,
+ 	struct pnfs_osd_layout layout;
+ 	struct pnfs_osd_object_cred *cur_comp, src_comp;
+ 	struct caps_buffers *caps_p;
+-
+ 	int err;
+ 
+ 	err = pnfs_osd_xdr_decode_layout_map(&layout, &iter, xdr);
+@@ -289,14 +288,16 @@ extern int objio_alloc_lseg(struct pnfs_layout_segment **outp,
+ 	if (unlikely(err))
+ 		return err;
+ 
+-	objio_seg = kzalloc(sizeof(*objio_seg) +
++	objio_seg = kzalloc(sizeof(*objio_seg) + 
++			    sizeof(objio_seg->ods[0]) * layout.olo_num_comps +
+ 			    sizeof(*objio_seg->comps) * layout.olo_num_comps +
+ 			    sizeof(struct caps_buffers) * layout.olo_num_comps,
+ 			    gfp_flags);
+ 	if (!objio_seg)
+ 		return -ENOMEM;
+ 
+-	cur_comp = objio_seg->comps = (void *)(objio_seg + 1);
++	objio_seg->comps = (void *)(objio_seg->ods + layout.olo_num_comps);
++	cur_comp = objio_seg->comps;
+ 	caps_p = (void *)(cur_comp + layout.olo_num_comps);
+ 	while (pnfs_osd_xdr_decode_layout_comp(&src_comp, &iter, xdr, &err))
+ 		copy_single_comp(cur_comp++, &src_comp, caps_p++);
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.2.3
 
