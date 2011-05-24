@@ -1,190 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:20512 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755225Ab1EQOyY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 May 2011 10:54:24 -0400
-Date: Tue, 17 May 2011 10:54:15 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Trond.Myklebust@netapp.com, Badari Pulavarty <pbadari@us.ibm.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: NFS DIO overhaul
-Message-ID: <20110517105415.7b26152f@tlielax.poochiereds.net>
-In-Reply-To: <4DDFE8CB-7308-44A4-9DF4-14E78A50E466@oracle.com>
-References: <20110517104532.72b7f588@tlielax.poochiereds.net>
-	<4DDFE8CB-7308-44A4-9DF4-14E78A50E466@oracle.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from daytona.panasas.com ([67.152.220.89]:55079 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751229Ab1EXROT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 13:14:19 -0400
+Message-ID: <4DDBE767.6030803@panasas.com>
+Date: Tue, 24 May 2011 20:14:15 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 09/12] SQUASHME: pnfs-obj: Bugs in new global-device-cache
+ code
+References: <4DDBC611.3050202@panasas.com> <1306249644-23422-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <1306249644-23422-1-git-send-email-bharrosh@panasas.com>
+Content-Type: text/plain; charset=windows-1255
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 17 May 2011 10:50:23 -0400
-Chuck Lever <chuck.lever@oracle.com> wrote:
-
-> Hi Jeff, Badari-
+On 2011-05-24 18:07, Boaz Harrosh wrote:
+> Fix BUGs in the new "Use global-device-cache".
 > 
-> On May 17, 2011, at 10:45 AM, Jeff Layton wrote:
+> One thing I don't understand is why the compiler did
+> not complain when the code was returning the wrong
+> type of structure
 > 
-> > Hi Trond,
-> > 
-> > You recently mentioned on the list that you were working on an overhaul
-> > of the DIO code that would merge large parts of it with the buffered IO
-> > routines.
-> > 
-> > I also started some work on an overhaul of the DIO code to make it work
-> > better with arbitrary sized arrays of iovecs. I've only really started
-> > it, but I have the following routine so far. The idea here is to always
-> > try to max out the size of a direct I/O READ or WRITE regardless of the
-> > layout of the iovec array. Once we have the count, we can then just
-> > marshal up a single read or write and send it, advance the iov_iter and
-> > repeat until we're done.
-> > 
-> > Obviously, it's rather complicated logic, but I think this is doable...
-> > 
-> > My question is -- is this something you would consider taking if I were
-> > to finish it up in the near future? Or should I not bother since you're
-> > working on an overhaul of this code?
-> > 
-> > My main concern is that we have some existing shipping code where we
-> > need to fix this, and  the changes you're planning to make may be too
-> > invasive to backport. If that's the case, then I may need to do
-> > something along these lines anyway (or just take Badari's latest patch).
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/nfs/objlayout/objio_osd.c |   28 +++++++++++++++++++---------
+>  1 files changed, 19 insertions(+), 9 deletions(-)
 > 
-> Do we have detailed analysis now on why simply sending these as separate UNSTABLE writes followed by a COMMIT is not sufficient to address performance issues?
-> 
+> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+> index 167cd1e..faacde2 100644
+> --- a/fs/nfs/objlayout/objio_osd.c
+> +++ b/fs/nfs/objlayout/objio_osd.c
+> @@ -56,6 +56,7 @@ objio_free_deviceid_node(struct nfs4_deviceid_node *d)
+>  {
+>  	struct objio_dev_ent *de = container_of(d, struct objio_dev_ent, id_node);
+>  
+> +	dprintk("%s: free od=%p\n", __func__, de->od);
+>  	osduld_put_device(de->od);
+>  	kfree(de);
+>  }
+> @@ -64,14 +65,18 @@ static struct objio_dev_ent *_dev_list_find(const struct nfs_server *nfss,
+>  	const struct nfs4_deviceid *d_id)
+>  {
+>  	struct nfs4_deviceid_node *d;
+> +	struct objio_dev_ent *de;
+>  
+>  	d = nfs4_find_get_deviceid(nfss->pnfs_curr_ld, nfss->nfs_client, d_id);
+>  	if (!d)
+>  		return NULL;
+> -	return container_of(d, struct objio_dev_ent, id_node);
+> +
+> +	de = container_of(d, struct objio_dev_ent, id_node);
+> +	return de;
 
-They've done some benchmarking that shows that performance plateaus out
-earlier with that approach. That approach also does absolutely nothing
-for the read codepath which has similar problems.
+That's not really required as container_of() does the type casting
+for you.
 
+>  }
+>  
+> -static int _dev_list_add(const struct nfs_server *nfss,
+> +static struct objio_dev_ent *
+> +_dev_list_add(const struct nfs_server *nfss,
+>  	const struct nfs4_deviceid *d_id, struct osd_dev *od,
+>  	gfp_t gfp_flags)
+>  {
+> @@ -79,9 +84,12 @@ static int _dev_list_add(const struct nfs_server *nfss,
+>  	struct objio_dev_ent *de = kzalloc(sizeof(*de), gfp_flags);
+>  	struct objio_dev_ent *n;
+>  
+> -	if (!de)
+> -		return -ENOMEM;
+> +	if (!de) {
+> +		dprintk("%s: -ENOMEM od=%p\n", __func__, od);
+> +		return NULL;
 
-> > Thanks...My "starter" patch follows:
-> > 
-> > ------------------------[snip]------------------------
-> > 
-> > [PATCH] nfs: add a direct I/O count routine
-> > 
-> > ...to count the number of bytes that we can stick in a single r/w req.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> > fs/nfs/direct.c |   90 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
-> > 1 files changed, 90 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> > index c8add8d..15658fe 100644
-> > --- a/fs/nfs/direct.c
-> > +++ b/fs/nfs/direct.c
-> > @@ -227,6 +227,96 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq)
-> > }
-> > 
-> > /*
-> > + * Walk an iovec array, and count bytes until it hits "maxsize" or until it
-> > + * hits a "discontinuity" in the array.
-> > + */
-> > +unsigned int
-> > +nfs_direct_count(const struct iov_iter *i_orig, unsigned int maxsize)
-> > +{
-> > +	struct iov_iter i;
-> > +	unsigned int count = 0, end_of_page, end_of_iov, end_of_seg;
-> > +	unsigned long base;
-> > +
-> > +	/* copy iov_iter so original is preserved */
-> > +	memcpy(&i, i_orig, sizeof(i));
-> > +
-> > +	/*
-> > +	 * Determine how many bytes to end of page. Advance to end of page or
-> > +	 * end of current iovec, or "size" bytes, whichever is closer.
-> > +	 *
-> > +	 * If end of a page, then continue to next page and repeat.
-> > +	 *
-> > +	 * If end of iovec, then see whether current iov ends on
-> > +	 * page boundary and next one starts on one. If so, then
-> > +	 * repeat.
-> > +	 *
-> > +	 * If not, then see if the iov's are "continuous". Are previous
-> > +	 * end and current beginning on same page? If so, then see if
-> > +	 * current end is just before next beginning. If so, repeat.
-> > +	 *
-> > +	 * If none of the conditions above are true, then break and
-> > +	 * return current count of bytes.
-> > +	 */
-> > +	for (;;) {
-> > +		base = (unsigned long)i.iov->iov_base + i.iov_offset;
-> > +
-> > +		/* bytes to end of page */
-> > +		end_of_page = PAGE_SIZE - (base & (PAGE_SIZE - 1));
-> > +
-> > +		/* bytes to end of iov */
-> > +		end_of_iov = i.iov->iov_len - i.iov_offset;
-> > +
-> > +		/* find min of end of page, end of iov, and r/wsize */
-> > +		end_of_seg = min(end_of_page, end_of_iov);
-> > +		end_of_seg = min(end_of_seg, maxsize);
-> > +
-> > +		iov_iter_advance(&i, end_of_seg);
-> > +		maxsize -= end_of_seg;
-> > +		count += end_of_seg;
-> > +
-> > +		/* Did we hit the end of array or maxsize? */
-> > +		if (maxsize - end_of_seg == 0 || i.count == 0)
-> > +			break;
-> > +
-> > +		/*
-> > +		 * Else end_of_seg either == end_of_page or end_of_iov,
-> > +		 * and iov has more data in it.
-> > +		 */
-> > +
-> > +		/* Did we hit a page boundary, but next segement is in same
-> > +		 * iov? If so, then carry on.
-> > +		 */
-> > +		if (end_of_page != end_of_iov && end_of_seg == end_of_page)
-> > +			goto advance_ii;
-> > +
-> > +		/* Did iov end on a page boundary? Ensure next starts on one. */
-> > +		if (end_of_page == end_of_iov &&
-> > +		    (unsigned long)i.iov[1].iov_base & (PAGE_SIZE - 1))
-> > +			break;
-> > +
-> > +		/* Make sure next iovec starts on same page as first */
-> > +		if ((base & PAGE_MASK) !=
-> > +		    ((unsigned long)i.iov[1].iov_base & PAGE_MASK))
-> > +			break;
-> > +
-> > +		/* and the offsets match up */
-> > +		if (end_of_iov + 1 != (unsigned long)i.iov[1].iov_base)
-> > +			break;
-> > +
-> > +advance_ii:
-> > +		/* Everything checks out. Advance into next iov and continue */
-> > +		iov_iter_advance(&i, 1);
-> > +		--maxsize;
-> > +		++count;
-> > +		/* Did we hit the end of array or maxsize? */
-> > +		if (maxsize == 0 || i.count == 0)
-> > +			break;
-> > +	}
-> > +
-> > +	return count;
-> > +}
-> > +
-> > +/*
-> >  * We must hold a reference to all the pages in this direct read request
-> >  * until the RPCs complete.  This could be long *after* we are woken up in
-> >  * nfs_direct_wait (for instance, if someone hits ^C on a slow server).
-> > -- 
-> > 1.7.1
-> > 
-> > 
-> > 
-> > -- 
-> > Jeff Layton <jlayton@redhat.com>
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+better return ERR_PTR(-ENOMEM)
+that will percolate up the stack via _device_lookup.
 
+Thanks!
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Benny
+
+> +	}
+>  
+> +	dprintk("%s: Adding od=%p\n", __func__, od);
+>  	nfs4_init_deviceid_node(&de->id_node,
+>  				nfss->pnfs_curr_ld,
+>  				nfss->nfs_client,
+> @@ -91,11 +99,12 @@ static int _dev_list_add(const struct nfs_server *nfss,
+>  	d = nfs4_insert_deviceid_node(&de->id_node);
+>  	n = container_of(d, struct objio_dev_ent, id_node);
+>  	if (n != de) {
+> -		BUG_ON(n->od != od);
+> +		dprintk("%s: Race with other n->od=%p\n", __func__, n->od);
+>  		objio_free_deviceid_node(&de->id_node);
+> +		de = n;
+>  	}
+>  
+> -	return 0;
+> +	return de;
+>  }
+>  
+>  struct caps_buffers {
+> @@ -117,7 +126,7 @@ struct objio_segment {
+>  	unsigned comps_index;
+>  	unsigned num_comps;
+>  	/* variable length */
+> -	struct objio_dev_ent *ods[0];
+> +	struct objio_dev_ent *ods[];
+>  };
+>  
+>  static inline struct objio_segment *
+> @@ -176,12 +185,13 @@ static struct objio_dev_ent *_device_lookup(struct pnfs_layout_hdr *pnfslay,
+>  		goto out;
+>  	}
+>  
+> -	_dev_list_add(NFS_SERVER(pnfslay->plh_inode), d_id, od, gfp_flags);
+> +	ode = _dev_list_add(NFS_SERVER(pnfslay->plh_inode), d_id, od,
+> +			    gfp_flags);
+>  
+>  out:
+>  	dprintk("%s: return=%d\n", __func__, err);
+>  	objlayout_put_deviceinfo(deviceaddr);
+> -	return err ? ERR_PTR(err) : od;
+> +	return err ? ERR_PTR(err) : ode;
+>  }
+>  
+>  static int objio_devices_lookup(struct pnfs_layout_hdr *pnfslay,
+
