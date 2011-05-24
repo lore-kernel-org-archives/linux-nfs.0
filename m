@@ -1,35 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from nm2-vm0.bullet.mail.sp2.yahoo.com ([98.139.91.248]:27709 "HELO
-	nm2-vm0.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1755459Ab1EGPvM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 May 2011 11:51:12 -0400
-Message-ID: <585464.69250.qm@web111704.mail.gq1.yahoo.com>
-Date: Sat, 7 May 2011 08:45:34 -0700 (PDT)
-From: Mahmood Naderan <nt_mahmood@yahoo.com>
-Reply-To: Mahmood Naderan <nt_mahmood@yahoo.com>
-Subject: file is run on server but not on client
-To: nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=us-ascii
+Received: from daytona.panasas.com ([67.152.220.89]:54589 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755883Ab1EXRBN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 13:01:13 -0400
+Message-ID: <4DDBE43E.60104@panasas.com>
+Date: Tue, 24 May 2011 20:00:46 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 02/12] SQUASHME: Bug in new global-device-cache code
+References: <4DDBC611.3050202@panasas.com> <1306249480-23212-1-git-send-email-bharrosh@panasas.com> <4DDBE265.7000101@panasas.com>
+In-Reply-To: <4DDBE265.7000101@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
-The problem is when I run a command on the server, it works fine but when I run that from a client, it doesn't find that file.
-ar@server:~/s1/src$ ls -l run
--rwxr-xr-x 1 ar users 2573621 2011-05-07 19:47 run
-ar@server:~/s1/src$ ./run
-Usage: ./run paramfile outfile format iotrace synthgen?
+On 05/24/2011 07:52 PM, Benny Halevy wrote:
+> On 2011-05-24 18:04, Boaz Harrosh wrote:
+>> NULL deref on first ever call. (When device is not found)
+>>
+>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+>> ---
+>>  fs/nfs/pnfs_dev.c |    2 +-
+>>  1 files changed, 1 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+>> index 7997899..7e5542c 100644
+>> --- a/fs/nfs/pnfs_dev.c
+>> +++ b/fs/nfs/pnfs_dev.c
+>> @@ -100,7 +100,7 @@ _find_get_deviceid(const struct pnfs_layoutdriver_type *ld,
+>>  
+>>  	rcu_read_lock();
+>>  	d = _lookup_deviceid(ld, clp, id, hash);
+>> -	if (!atomic_inc_not_zero(&d->ref))
+>> +	if (!d || !atomic_inc_not_zero(&d->ref))
+> 
+> This makes more sense, no?
+> +	if (d && !atomic_inc_not_zero(&d->ref))
+> 
+> Benny
+> 
+>>  		d = NULL;
 
-You can see that it ask for usage which shows the binary file works
+Sure, since then d is already set to NULL, I guess
 
-However in the client:
+>>  	rcu_read_unlock();
+>>  	return d;
+> 
 
-ar@client:~/s1/src$ ls -l run
--rwxr-xr-x 1 ar users 2573621 2011-05-07 15:17 run
-ar@client:~/s1/src$ ./run
--bash: ./run: No such file or directory
-
-
-the file property is the same but I don't know why it does not find that (!)
-// Naderan *Mahmood;
+Boaz
