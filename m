@@ -1,59 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:59965 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754157Ab1EaKdZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 May 2011 06:33:25 -0400
-Message-ID: <4DE4C063.9060100@itwm.fraunhofer.de>
-Date: Tue, 31 May 2011 12:18:11 +0200
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-CC: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: infinite getdents64 loop
-References: <201105281502.32719.sweet_f_a@gmx.de> <201105301137.02061.sweet_f_a@gmx.de> <1306767521.5971.2.camel@lade.trondhjem.org> <201105311147.24939.sweet_f_a@gmx.de>
-In-Reply-To: <201105311147.24939.sweet_f_a@gmx.de>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-To: unlisted-recipients:; (no To-header on input)
+Received: from daytona.panasas.com ([67.152.220.89]:46692 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753272Ab1EXPGR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 11:06:17 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 04/12] pnfs: layout_driver MUST set free_deviceid_node if using dev-cache
+Date: Tue, 24 May 2011 18:05:46 +0300
+Message-Id: <1306249546-23273-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DDBC611.3050202@panasas.com>
+References: <4DDBC611.3050202@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 05/31/2011 11:47 AM, Rüdiger Meier wrote:
-> On Monday 30 May 2011, Trond Myklebust wrote:
->> On Mon, 2011-05-30 at 11:37 +0200, Ruediger Meier wrote:
->>>
->>> Does this mean ext4 generally does not work with for nfs?
->>
->> ext2/3/4 are all known to have this problem when you switch on the
->> hashed b-tree directories. Typically, a directory with a million
->> entries will have several tens of cookie collisions.
->
-> Ok, like Jeff mentioned in the other reply disabling dir_index solves
-> it.
->
-> I wish I had seen this documented somewhere before switching from xfs to
-> ext4 but it's not easy to find something about these ext4/nfs probs
-> without knowing the details already.
-> Ext4 being default file system on many distros made me feel safe.
+A device cache is not a matter of memory store. It is a matter
+of mounting/login and unmounting/logout. So it is not logical
+to not set free_deviceid_node. Who will do the unmount?
 
-Well, this is hardly acceptable and we really need to find a solution. I 
-think any parallel filesystem and fuse, etc will have problems with that.
+It is better to crash the developer then let him leak mounts.
 
-Out of interest, did anyone ever benchmark if dirindex provides any 
-advantages to readdir?  And did those benchmarks include the 
-disadvantages of the present implementation (non-linear inode numbers 
-from readdir, so disk seeks on stat() (e.g. from 'ls -l') or
-'rm -fr $dir')?
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/pnfs_dev.c |   16 ++++------------
+ 1 files changed, 4 insertions(+), 12 deletions(-)
 
-
-I see those options to solve the ext3/ext4 seek problem:
-
-1) Break 32bit applications on 64 bit kernels
-
-2) Update the vfs to tell the underlying functions to tell them if 
-lseek() was called from 64bit or 32bit userspace
-
-3) Disable dirindexing for readdirs
-
-
-Thanks,
-Bernd
+diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+index 37ca215..1b592d9 100644
+--- a/fs/nfs/pnfs_dev.c
++++ b/fs/nfs/pnfs_dev.c
+@@ -163,10 +163,7 @@ nfs4_delete_deviceid(const struct pnfs_layoutdriver_type *ld,
+ 	d = nfs4_unhash_put_deviceid(ld, clp, id);
+ 	if (!d)
+ 		return;
+-	if (d->ld->free_deviceid_node)
+-		d->ld->free_deviceid_node(d);
+-	else
+-		kfree(d);
++	d->ld->free_deviceid_node(d);
+ }
+ EXPORT_SYMBOL_GPL(nfs4_delete_deviceid);
+ 
+@@ -232,8 +229,7 @@ nfs4_put_deviceid_node(struct nfs4_deviceid_node *d)
+ 	hlist_del_init_rcu(&d->node);
+ 	spin_unlock(&nfs4_deviceid_lock);
+ 	synchronize_rcu();
+-	if (d->ld->free_deviceid_node)
+-		d->ld->free_deviceid_node(d);
++	d->ld->free_deviceid_node(d);
+ 	return true;
+ }
+ EXPORT_SYMBOL_GPL(nfs4_put_deviceid_node);
+@@ -258,12 +254,8 @@ _deviceid_purge_client(const struct nfs_client *clp, long hash)
+ 
+ 	synchronize_rcu();
+ 	hlist_for_each_entry_safe(d, n, next, &tmp, node)
+-		if (atomic_dec_and_test(&d->ref)) {
+-			if (d->ld->free_deviceid_node)
+-				d->ld->free_deviceid_node(d);
+-			else
+-				kfree(d);
+-		}
++		if (atomic_dec_and_test(&d->ref))
++			d->ld->free_deviceid_node(d);
+ }
+ 
+ void
+-- 
+1.7.2.3
 
