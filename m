@@ -1,39 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:58489 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756053Ab1EGToA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 May 2011 15:44:00 -0400
-Date: Sat, 7 May 2011 15:43:55 -0400
-From: Jim Rees <rees@umich.edu>
-To: Mahmood Naderan <nt_mahmood@yahoo.com>
-Cc: nfs <linux-nfs@vger.kernel.org>
-Subject: Re: file is run on server but not on client
-Message-ID: <20110507194355.GA2112@merit.edu>
-References: <585464.69250.qm@web111704.mail.gq1.yahoo.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <585464.69250.qm@web111704.mail.gq1.yahoo.com>
+Received: from mx2.netapp.com ([216.240.18.37]:41512 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753062Ab1EXRFY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 13:05:24 -0400
+Subject: Re: [PATCHSET v6 0/26] pnfs for 2.6.40
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
+Date: Tue, 24 May 2011 13:05:06 -0400
+In-Reply-To: <4DDBE3BF.6080900@panasas.com>
+References: <4DDA8C3D.5080706@panasas.com> <4DDAAC64.6050807@panasas.com>
+		 <4DDBCBBA.5040700@panasas.com>
+		 <2E1EB2CF9ED1CB4AA966F0EB76EAB443080D6E54@SACMVEXC2-PRD.hq.netapp.com>
+		 <4DDBD53A.6030706@panasas.com>
+	 <1306254106.4162.9.camel@lade.trondhjem.org> <4DDBE3BF.6080900@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1306256706.7109.0.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Mahmood Naderan wrote:
+On Tue, 2011-05-24 at 19:58 +0300, Boaz Harrosh wrote: 
+> Thanks Trond, I think I understand and can write the proper implementation
+> for objects->pg_test now. One more question. I need the file offset
+> of the beginning of the write would that then be:
+> 
+> int objlayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+> 		      struct nfs_page *req)
+> }
+> 	struct nfs_page *first_pg = list_entry(pgio->pg_list.next, struct nfs_page, wb_list);
+> 
+> 	u64 io_offset = (first_pg->wb_index << PAGE_SHIFT) + first_pg->wb_offset;
+> 	...
+> }
 
-  Hi,
-  The problem is when I run a command on the server, it works fine but when I run that from a client, it doesn't find that file.
-  ar@server:~/s1/src$ ls -l run
-  -rwxr-xr-x 1 ar users 2573621 2011-05-07 19:47 run
-  ar@server:~/s1/src$ ./run
-  Usage: ./run paramfile outfile format iotrace synthgen?
-  
-  You can see that it ask for usage which shows the binary file works
-  
-  However in the client:
-  
-  ar@client:~/s1/src$ ls -l run
-  -rwxr-xr-x 1 ar users 2573621 2011-05-07 15:17 run
-  ar@client:~/s1/src$ ./run
-  -bash: ./run: No such file or directory
+Yes. That looks correct.
 
-This is not an nfs issue.  The client is missing the interpreter for this
-file.  If you do "head -1 run" you will see the name of the missing
-interpreter.  You also might want to check your timezone settings.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
