@@ -1,61 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:10549 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:19250 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964789Ab1ETU1s convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 May 2011 16:27:48 -0400
-Subject: Re: 2.6.38.6 - state manager constantly respawns
+	id S1757190Ab1EXQVv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 12:21:51 -0400
+Subject: Re: [PATCHSET v6 0/26] pnfs for 2.6.40
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Harry Edmon <harry@uw.edu>
-Cc: "Dr. J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Date: Fri, 20 May 2011 16:27:46 -0400
-In-Reply-To: <4DD6CDD7.60503@uw.edu>
-References: <05D08339-888C-4A64-BDC5-8667B3901E7A@oracle.com>
-				 <4DD1772E.9010609@uw.edu>
-			 <6A6FB1C3-D4C3-40BE-810A-B4551FA9E591@oracle.com>
-				 <4DD17CB5.7010009@uw.edu> <1305575007.19725.3.camel@lade.trondhjem.org>
-				 <4DD17F79.305@uw.edu> <1305575656.19725.9.camel@lade.trondhjem.org>
-				 <20110516202059.GC1680@fieldses.org>
-	 <20110516205351.GD1680@fieldses.org>			 <4DD694DF.2060302@uw.edu>
-	 <20110520172639.GA11670@fieldses.org>
-			 <1305913963.12712.6.camel@lade.trondhjem.org> <4DD6C103.7090302@uw.edu>
-		 <1305920417.14253.15.camel@lade.trondhjem.org> <4DD6C4A3.5010709@uw.edu>
-	 <1305922283.14253.24.camel@lade.trondhjem.org> <4DD6CDD7.60503@uw.edu>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
+Date: Tue, 24 May 2011 12:21:46 -0400
+In-Reply-To: <4DDBD53A.6030706@panasas.com>
+References: <4DDA8C3D.5080706@panasas.com> <4DDAAC64.6050807@panasas.com>
+	 <4DDBCBBA.5040700@panasas.com>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB443080D6E54@SACMVEXC2-PRD.hq.netapp.com>
+	 <4DDBD53A.6030706@panasas.com>
 Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1305923266.19534.2.camel@lade.trondhjem.org>
+Message-ID: <1306254106.4162.9.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2011-05-20 at 13:23 -0700, Harry Edmon wrote: 
-> On 05/20/11 13:11, Trond Myklebust wrote:
-> > On Fri, 2011-05-20 at 12:44 -0700, Harry Edmon wrote:
-> >    
-> >>> Once a minute is rather unusual... What kind of server are you running
-> >>> against?
-> >>>
-> >>> If it is a Linux server, what is the value contained in the virtual file
-> >>> "/proc/fs/nfsd/nfsv4leasetime" ?
-> >>>
-> >>>
-> >>>        
-> >> Same as before - Debian Squeeze running 2.6.38.6.   The value of
-> >> /proc/fs/nfsd/nfsv4leasetime is 90 and is not something I changed.
-> >>      
-> > OK... Does 'nfsstat' on the server show any 'delegreturn' updates around
-> > the time when the state manager thread runs? It could just be that it is
-> > reaping all your unused delegations.
-> >
-> >    
-> That number seems to be increasing all the time, whether or not the 
-> state manager process appears in the accounting file.   And this is only 
-> the one NFS client for this sever.
+On Tue, 2011-05-24 at 18:56 +0300, Boaz Harrosh wrote: 
+> In the nfs_pageio_descriptor passed to pg_test() together with the two pages:
+> Which member means the current byte_size (or page_count?) and what is the
+> meaning of some of these fields
 > 
+> struct nfs_pageio_descriptor {
+>         ....
+> 	unsigned long		pg_bytes_written;
+> 		Is this for result after read/write?
 
-OK. If your client is using delegations heavily then that would indeed
-explain the 1 minute delay between state manager runs, since the renew
-daemon runs once a minute, and will mark any unused delegations for
-reaping by the state manager.
+This is the total number of bytes we successfully called
+nfs_pageio_doio() for. In other words, it should represent the total
+number of bytes we put on the wire.
+
+> 	size_t			pg_count;
+> 		Is this the number of pages added up to now?
+> 		Do we also have the start of the first page?
+
+This is the number of bytes we have successfully coalesced into the
+current i/o.
+
+> 	size_t			pg_bsize;
+> 		So I understand this is the max allowed pages. Does
+> 		that mean also the allocated size or Just the negotiated
+> 		size with the server? (Really bad name if you ask me)
+
+It means the 'block size'. In ordinary NFS parlance that will be the
+'rsize' or the 'wsize'.
+
+> 	unsigned int		pg_base;
+> 		Is that the index of the first page? That cannot be, the page->index
+> 		needs to be 64bit. So what is this then?
+
+It is used when dealing with I/O requests that are not page aligned.
+
+If you consider the pages that we are to write out in the current I/O as
+a single buffer, then the pg_base is the offset of the first byte to
+write out/read in.
 
 -- 
 Trond Myklebust
