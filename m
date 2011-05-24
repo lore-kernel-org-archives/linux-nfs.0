@@ -1,221 +1,175 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:58964 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754072Ab1EIThD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 15:37:03 -0400
-Received: by mail-yx0-f174.google.com with SMTP id 7so1914279yxs.19
-        for <linux-nfs@vger.kernel.org>; Mon, 09 May 2011 12:37:03 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/16] SUNRPC: Add API to acquire source address
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 09 May 2011 15:37:00 -0400
-Message-ID: <20110509193700.16568.4372.stgit@matisse.1015granger.net>
-In-Reply-To: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
-References: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from daytona.panasas.com ([67.152.220.89]:46505 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752841Ab1EXPEe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 11:04:34 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 01/12] NFSv4.1: use layout driver in global device cache
+Date: Tue, 24 May 2011 18:04:02 +0300
+Message-Id: <1306249442-23180-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DDBC611.3050202@panasas.com>
+References: <4DDBC611.3050202@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-NFSv4.0 clients must send endpoint information for their callback
-service to NFSv4.0 servers during their first contact with a server.
-Traditionally, user space provides the callback endpoint IP address
-via the "clientaddr=" mount option.
+pnfs deviceids are unique per server, per layout type.
+struct nfs_client is currently used to distinguish deviceids from
+different nfs servers, yet these may clash between different layout
+types on the same server.  Therefore, use the layout driver associated
+with each deviceid at insertion time to look it up, unhash, or
+delete it.
 
-During an NFSv4 migration event, it is possible that an FSID may be
-migrated to a destination server that is accessible via a different
-client-side NIC than the source server was.  The client must update
-callback endpoint information on the destination server so that it can
-maintain leases and allow delegation.
-
-Without a new "clientaddr=" option from user space, however, the
-kernel itself must construct an appropriate IP address for the
-callback service.  Provide an API in the RPC client for upper layer
-RPC consumers to acquire a source address for a remote.
-
-The mechanism used by the mount command is copied: set up a connected
-UDP socket to the remote, then scrape the source address off the
-socket.  We are careful to select the correct network namespace when
-setting up the temporary UDP socket.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
+ fs/nfs/callback_proc.c  |    2 +-
+ fs/nfs/nfs4filelayout.c |    3 ++-
+ fs/nfs/pnfs.h           |    6 +++---
+ fs/nfs/pnfs_dev.c       |   28 +++++++++++++++++-----------
+ 4 files changed, 23 insertions(+), 16 deletions(-)
 
- include/linux/sunrpc/clnt.h |    1 
- net/sunrpc/clnt.c           |  149 +++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 150 insertions(+), 0 deletions(-)
-
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index d18d952..c2d60c3 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -172,6 +172,7 @@ size_t		rpc_max_payload(struct rpc_clnt *);
- void		rpc_force_rebind(struct rpc_clnt *);
- size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
- const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
-+int		rpc_localaddr(struct rpc_clnt *, struct sockaddr *, size_t);
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index fb5e5b9..c73e7b2 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -278,7 +278,7 @@ __be32 nfs4_callback_devicenotify(struct cb_devicenotifyargs *args,
+ 		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
+ 			dprintk("%s: NOTIFY_DEVICEID4_CHANGE not supported, "
+ 				"deleting instead\n", __func__);
+-		nfs4_delete_deviceid(clp, &dev->cbd_dev_id);
++		nfs4_delete_deviceid(server->pnfs_curr_ld, clp, &dev->cbd_dev_id);
+ 	}
  
- size_t		rpc_ntop(const struct sockaddr *, char *, const size_t);
- size_t		rpc_pton(const char *, const size_t,
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index ac2d29e..efb5959 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -944,6 +944,155 @@ const char *rpc_peeraddr2str(struct rpc_clnt *clnt,
+ out:
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index c181a8b..45866d0 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -441,7 +441,8 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+ 	}
+ 
+ 	/* find and reference the deviceid */
+-	d = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode)->nfs_client, id);
++	d = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode)->pnfs_curr_ld,
++				   NFS_SERVER(lo->plh_inode)->nfs_client, id);
+ 	if (d == NULL) {
+ 		dsaddr = get_device_info(lo->plh_inode, id, gfp_flags);
+ 		if (dsaddr == NULL)
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 7f29e3a..b7f88d4 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -171,9 +171,9 @@ struct nfs4_deviceid_node {
+ };
+ 
+ void nfs4_print_deviceid(const struct nfs4_deviceid *dev_id);
+-struct nfs4_deviceid_node *nfs4_find_get_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
+-struct nfs4_deviceid_node *nfs4_unhash_put_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
+-void nfs4_delete_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
++struct nfs4_deviceid_node *nfs4_find_get_deviceid(const struct pnfs_layoutdriver_type *, const struct nfs_client *, const struct nfs4_deviceid *);
++struct nfs4_deviceid_node *nfs4_unhash_put_deviceid(const struct pnfs_layoutdriver_type *, const struct nfs_client *, const struct nfs4_deviceid *);
++void nfs4_delete_deviceid(const struct pnfs_layoutdriver_type *, const struct nfs_client *, const struct nfs4_deviceid *);
+ void nfs4_init_deviceid_node(struct nfs4_deviceid_node *,
+ 			     const struct pnfs_layoutdriver_type *,
+ 			     const struct nfs_client *,
+diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+index f830616..7997899 100644
+--- a/fs/nfs/pnfs_dev.c
++++ b/fs/nfs/pnfs_dev.c
+@@ -67,14 +67,16 @@ nfs4_deviceid_hash(const struct nfs4_deviceid *id)
  }
- EXPORT_SYMBOL_GPL(rpc_peeraddr2str);
  
-+static const struct sockaddr_in rpc_inaddr_loopback = {
-+	.sin_family		= AF_INET,
-+	.sin_addr.s_addr	= htonl(INADDR_ANY),
-+};
-+
-+static const struct sockaddr_in6 rpc_in6addr_loopback = {
-+	.sin6_family		= AF_INET6,
-+	.sin6_addr		= IN6ADDR_ANY_INIT,
-+};
-+
-+/*
-+ * Try a getsockname() on a connected datagram socket.  Using a
-+ * connected datagram socket prevents leaving a socket in TIME_WAIT.
-+ * This conserves the ephemeral port number space.
-+ *
-+ * Returns zero and fills in "buf" if successful; otherwise, a
-+ * negative errno is returned.
-+ */
-+static int rpc_sockname(struct net *net, struct sockaddr *sap, size_t salen,
-+			struct sockaddr *buf, int buflen)
-+{
-+	struct socket *sock;
-+	int err;
-+
-+	err = __sock_create(net, sap->sa_family,
-+				SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
-+	if (err < 0) {
-+		dprintk("RPC:       can't create UDP socket (%d)\n", err);
-+		goto out;
-+	}
-+
-+	switch (sap->sa_family) {
-+	case AF_INET:
-+		err = kernel_bind(sock,
-+				(struct sockaddr *)&rpc_inaddr_loopback,
-+				sizeof(rpc_inaddr_loopback));
-+		break;
-+	case AF_INET6:
-+		err = kernel_bind(sock,
-+				(struct sockaddr *)&rpc_in6addr_loopback,
-+				sizeof(rpc_in6addr_loopback));
-+		break;
-+	default:
-+		err = -EAFNOSUPPORT;
-+		goto out;
-+	}
-+	if (err < 0) {
-+		dprintk("RPC:       can't bind UDP socket (%d)\n", err);
-+		goto out_release;
-+	}
-+
-+	err = kernel_connect(sock, sap, salen, 0);
-+	if (err < 0) {
-+		dprintk("RPC:       can't connect UDP socket (%d)\n", err);
-+		goto out_release;
-+	}
-+
-+	err = kernel_getsockname(sock, buf, &buflen);
-+	if (err < 0) {
-+		dprintk("RPC:       getsockname failed (%d)\n", err);
-+		goto out_release;
-+	}
-+
-+	err = 0;
-+	if (buf->sa_family == AF_INET6) {
-+		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)buf;
-+		sin6->sin6_scope_id = 0;
-+	}
-+	dprintk("RPC:       %s succeeded\n", __func__);
-+
-+out_release:
-+	sock_release(sock);
-+out:
-+	return err;
-+}
-+
-+/*
-+ * Scraping a connected socket failed, so we don't have a useable
-+ * local address.  Fallback: generate an address that will prevent
-+ * the server from calling us back.
-+ *
-+ * Returns zero and fills in "buf" if successful; otherwise, a
-+ * negative errno is returned.
-+ */
-+static int rpc_anyaddr(int family, struct sockaddr *buf, size_t buflen)
-+{
-+	switch (family) {
-+	case AF_INET:
-+		if (buflen < sizeof(rpc_inaddr_loopback))
-+			return -EINVAL;
-+		memcpy(buf, &rpc_inaddr_loopback,
-+				sizeof(rpc_inaddr_loopback));
-+		break;
-+	case AF_INET6:
-+		if (buflen < sizeof(rpc_in6addr_loopback))
-+			return -EINVAL;
-+		memcpy(buf, &rpc_in6addr_loopback,
-+				sizeof(rpc_in6addr_loopback));
-+	default:
-+		dprintk("RPC:       %s: address family not supported\n",
-+			__func__);
-+		return -EAFNOSUPPORT;
-+	}
-+	dprintk("RPC:       %s: succeeded\n", __func__);
-+	return 0;
-+}
-+
-+/**
-+ * rpc_localaddr - discover local endpoint address for an RPC client
-+ * @clnt: RPC client structure
-+ * @buf: target buffer
-+ * @buflen: size of target buffer, in bytes
-+ *
-+ * Returns zero and fills in "buf" and "buflen" if successful;
-+ * otherwise, a negative errno is returned.
-+ *
-+ * This works even if the underlying transport is not currently connected,
-+ * or if the upper layer never previously provided a source address.
-+ *
-+ * The results of this function call are transient: multiple calls in
-+ * succession may give different results, depending on how local
-+ * networking configuration changes over time.
-+ */
-+int rpc_localaddr(struct rpc_clnt *clnt, struct sockaddr *buf, size_t buflen)
-+{
-+	struct sockaddr_storage address;
-+	struct sockaddr *sap = (struct sockaddr *)&address;
-+	struct rpc_xprt *xprt;
-+	struct net *net;
-+	size_t salen;
-+	int err;
-+
-+	rcu_read_lock();
-+	xprt = rcu_dereference(clnt->cl_xprt);
-+	salen = xprt->addrlen;
-+	memcpy(sap, &xprt->addr, salen);
-+	net = get_net(xprt->xprt_net);
-+	rcu_read_unlock();
-+
-+	rpc_set_port(sap, 0);
-+	err = rpc_sockname(net, sap, salen, buf, buflen);
-+	put_net(net);
-+	if (err != 0)
-+		/* Couldn't discover local address, return ANYADDR */
-+		return rpc_anyaddr(sap->sa_family, buf, buflen);
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(rpc_localaddr);
-+
- void
- rpc_setbufsize(struct rpc_clnt *clnt, unsigned int sndsize, unsigned int rcvsize)
+ static struct nfs4_deviceid_node *
+-_lookup_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
++_lookup_deviceid(const struct pnfs_layoutdriver_type *ld,
++		 const struct nfs_client *clp, const struct nfs4_deviceid *id,
+ 		 long hash)
  {
+ 	struct nfs4_deviceid_node *d;
+ 	struct hlist_node *n;
+ 
+ 	hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[hash], node)
+-		if (d->nfs_client == clp && !memcmp(&d->deviceid, id, sizeof(*id))) {
++		if (d->ld == ld && d->nfs_client == clp &&
++		    !memcmp(&d->deviceid, id, sizeof(*id))) {
+ 			if (atomic_read(&d->ref))
+ 				return d;
+ 			else
+@@ -90,13 +92,14 @@ _lookup_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
+  * @id deviceid to look up
+  */
+ struct nfs4_deviceid_node *
+-_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
++_find_get_deviceid(const struct pnfs_layoutdriver_type *ld,
++		   const struct nfs_client *clp, const struct nfs4_deviceid *id,
+ 		   long hash)
+ {
+ 	struct nfs4_deviceid_node *d;
+ 
+ 	rcu_read_lock();
+-	d = _lookup_deviceid(clp, id, hash);
++	d = _lookup_deviceid(ld, clp, id, hash);
+ 	if (!atomic_inc_not_zero(&d->ref))
+ 		d = NULL;
+ 	rcu_read_unlock();
+@@ -104,9 +107,10 @@ _find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
+ }
+ 
+ struct nfs4_deviceid_node *
+-nfs4_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
++nfs4_find_get_deviceid(const struct pnfs_layoutdriver_type *ld,
++		       const struct nfs_client *clp, const struct nfs4_deviceid *id)
+ {
+-	return _find_get_deviceid(clp, id, nfs4_deviceid_hash(id));
++	return _find_get_deviceid(ld, clp, id, nfs4_deviceid_hash(id));
+ }
+ EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
+ 
+@@ -119,13 +123,14 @@ EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
+  * @ret the unhashed node, if found and dereferenced to zero, NULL otherwise.
+  */
+ struct nfs4_deviceid_node *
+-nfs4_unhash_put_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
++nfs4_unhash_put_deviceid(const struct pnfs_layoutdriver_type *ld,
++			 const struct nfs_client *clp, const struct nfs4_deviceid *id)
+ {
+ 	struct nfs4_deviceid_node *d;
+ 
+ 	spin_lock(&nfs4_deviceid_lock);
+ 	rcu_read_lock();
+-	d = _lookup_deviceid(clp, id, nfs4_deviceid_hash(id));
++	d = _lookup_deviceid(ld, clp, id, nfs4_deviceid_hash(id));
+ 	rcu_read_unlock();
+ 	if (!d) {
+ 		spin_unlock(&nfs4_deviceid_lock);
+@@ -150,11 +155,12 @@ EXPORT_SYMBOL_GPL(nfs4_unhash_put_deviceid);
+  * @id deviceid to delete
+  */
+ void
+-nfs4_delete_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
++nfs4_delete_deviceid(const struct pnfs_layoutdriver_type *ld,
++		     const struct nfs_client *clp, const struct nfs4_deviceid *id)
+ {
+ 	struct nfs4_deviceid_node *d;
+ 
+-	d = nfs4_unhash_put_deviceid(clp, id);
++	d = nfs4_unhash_put_deviceid(ld, clp, id);
+ 	if (!d)
+ 		return;
+ 	if (d->ld->free_deviceid_node)
+@@ -197,7 +203,7 @@ nfs4_insert_deviceid_node(struct nfs4_deviceid_node *new)
+ 
+ 	spin_lock(&nfs4_deviceid_lock);
+ 	hash = nfs4_deviceid_hash(&new->deviceid);
+-	d = _find_get_deviceid(new->nfs_client, &new->deviceid, hash);
++	d = _find_get_deviceid(new->ld, new->nfs_client, &new->deviceid, hash);
+ 	if (d) {
+ 		spin_unlock(&nfs4_deviceid_lock);
+ 		return d;
+-- 
+1.7.2.3
 
