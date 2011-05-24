@@ -1,125 +1,149 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:44778 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:55206 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750779Ab1E2IJx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 04:09:53 -0400
-Message-ID: <4DE1FF4C.6090804@panasas.com>
-Date: Sun, 29 May 2011 11:09:48 +0300
+	with ESMTP id S1754343Ab1EXRSz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 13:18:55 -0400
+Message-ID: <4DDBE863.5020307@panasas.com>
+Date: Tue, 24 May 2011 20:18:27 +0300
 From: Boaz Harrosh <bharrosh@panasas.com>
 To: Benny Halevy <bhalevy@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] SQUASHME: Fix BUG in: NFSv4.1: unify pnfs_pageio_init
- functions
-References: <4DDD7392.6040505@panasas.com> <1306358998-17872-1-git-send-email-bhalevy@panasas.com> <4DDFC553.2070601@panasas.com>
-In-Reply-To: <4DDFC553.2070601@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 09/12] SQUASHME: pnfs-obj: Bugs in new global-device-cache
+ code
+References: <4DDBC611.3050202@panasas.com> <1306249644-23422-1-git-send-email-bharrosh@panasas.com> <4DDBE767.6030803@panasas.com>
+In-Reply-To: <4DDBE767.6030803@panasas.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/27/2011 06:37 PM, Boaz Harrosh wrote:
+On 05/24/2011 08:14 PM, Benny Halevy wrote:
+> On 2011-05-24 18:07, Boaz Harrosh wrote:
+>> Fix BUGs in the new "Use global-device-cache".
+>>
+>> One thing I don't understand is why the compiler did
+>> not complain when the code was returning the wrong
+>> type of structure
+>>
+>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+>> ---
+>>  fs/nfs/objlayout/objio_osd.c |   28 +++++++++++++++++++---------
+>>  1 files changed, 19 insertions(+), 9 deletions(-)
+>>
+>> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+>> index 167cd1e..faacde2 100644
+>> --- a/fs/nfs/objlayout/objio_osd.c
+>> +++ b/fs/nfs/objlayout/objio_osd.c
+>> @@ -56,6 +56,7 @@ objio_free_deviceid_node(struct nfs4_deviceid_node *d)
+>>  {
+>>  	struct objio_dev_ent *de = container_of(d, struct objio_dev_ent, id_node);
+>>  
+>> +	dprintk("%s: free od=%p\n", __func__, de->od);
+>>  	osduld_put_device(de->od);
+>>  	kfree(de);
+>>  }
+>> @@ -64,14 +65,18 @@ static struct objio_dev_ent *_dev_list_find(const struct nfs_server *nfss,
+>>  	const struct nfs4_deviceid *d_id)
+>>  {
+>>  	struct nfs4_deviceid_node *d;
+>> +	struct objio_dev_ent *de;
+>>  
+>>  	d = nfs4_find_get_deviceid(nfss->pnfs_curr_ld, nfss->nfs_client, d_id);
+>>  	if (!d)
+>>  		return NULL;
+>> -	return container_of(d, struct objio_dev_ent, id_node);
+>> +
+>> +	de = container_of(d, struct objio_dev_ent, id_node);
+>> +	return de;
 > 
-> The call to pnfs_pageio_init() was done before the call
-> to nfs_pageio_init which would override the .pg_test set
-> there.
-> 
-> But enough is enough. One init function is more than
-> enough.
+> That's not really required as container_of() does the type casting
+> for you.
 > 
 
-This patch does not compile in ver < 4.1
-I'm sending a v2 of this patch
+Ye, I know that change is just a left over from a print between the
+set and the return. (Else how could I debug this)
+I than removed the print because these come a lot in a git clone for
+example.
 
+>>  }
+>>  
+>> -static int _dev_list_add(const struct nfs_server *nfss,
+>> +static struct objio_dev_ent *
+>> +_dev_list_add(const struct nfs_server *nfss,
+>>  	const struct nfs4_deviceid *d_id, struct osd_dev *od,
+>>  	gfp_t gfp_flags)
+>>  {
+>> @@ -79,9 +84,12 @@ static int _dev_list_add(const struct nfs_server *nfss,
+>>  	struct objio_dev_ent *de = kzalloc(sizeof(*de), gfp_flags);
+>>  	struct objio_dev_ent *n;
+>>  
+>> -	if (!de)
+>> -		return -ENOMEM;
+>> +	if (!de) {
+>> +		dprintk("%s: -ENOMEM od=%p\n", __func__, od);
+>> +		return NULL;
+> 
+> better return ERR_PTR(-ENOMEM)
+> that will percolate up the stack via _device_lookup.
+> 
+
+Right missed that one
+
+> Thanks!
+> 
+
+What thanks? beers on you next time! ;-)
+
+> Benny
+> 
 Boaz
 
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> ---
->  fs/nfs/pagelist.c |    7 ++++++-
->  fs/nfs/pnfs.c     |    2 +-
->  fs/nfs/pnfs.h     |    8 --------
->  fs/nfs/read.c     |    1 -
->  fs/nfs/write.c    |    1 -
->  5 files changed, 7 insertions(+), 12 deletions(-)
+>> +	}
+>>  
+>> +	dprintk("%s: Adding od=%p\n", __func__, od);
+>>  	nfs4_init_deviceid_node(&de->id_node,
+>>  				nfss->pnfs_curr_ld,
+>>  				nfss->nfs_client,
+>> @@ -91,11 +99,12 @@ static int _dev_list_add(const struct nfs_server *nfss,
+>>  	d = nfs4_insert_deviceid_node(&de->id_node);
+>>  	n = container_of(d, struct objio_dev_ent, id_node);
+>>  	if (n != de) {
+>> -		BUG_ON(n->od != od);
+>> +		dprintk("%s: Race with other n->od=%p\n", __func__, n->od);
+>>  		objio_free_deviceid_node(&de->id_node);
+>> +		de = n;
+>>  	}
+>>  
+>> -	return 0;
+>> +	return de;
+>>  }
+>>  
+>>  struct caps_buffers {
+>> @@ -117,7 +126,7 @@ struct objio_segment {
+>>  	unsigned comps_index;
+>>  	unsigned num_comps;
+>>  	/* variable length */
+>> -	struct objio_dev_ent *ods[0];
+>> +	struct objio_dev_ent *ods[];
+>>  };
+>>  
+>>  static inline struct objio_segment *
+>> @@ -176,12 +185,13 @@ static struct objio_dev_ent *_device_lookup(struct pnfs_layout_hdr *pnfslay,
+>>  		goto out;
+>>  	}
+>>  
+>> -	_dev_list_add(NFS_SERVER(pnfslay->plh_inode), d_id, od, gfp_flags);
+>> +	ode = _dev_list_add(NFS_SERVER(pnfslay->plh_inode), d_id, od,
+>> +			    gfp_flags);
+>>  
+>>  out:
+>>  	dprintk("%s: return=%d\n", __func__, err);
+>>  	objlayout_put_deviceinfo(deviceaddr);
+>> -	return err ? ERR_PTR(err) : od;
+>> +	return err ? ERR_PTR(err) : ode;
+>>  }
+>>  
+>>  static int objio_devices_lookup(struct pnfs_layout_hdr *pnfslay,
 > 
-> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-> index dbf82ab..a6cb0e9 100644
-> --- a/fs/nfs/pagelist.c
-> +++ b/fs/nfs/pagelist.c
-> @@ -233,6 +233,8 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
->  		     size_t bsize,
->  		     int io_flags)
->  {
-> +	struct pnfs_layoutdriver_type *ld = NFS_SERVER(inode)->pnfs_curr_ld;
-> +
->  	INIT_LIST_HEAD(&desc->pg_list);
->  	desc->pg_bytes_written = 0;
->  	desc->pg_count = 0;
-> @@ -244,7 +246,10 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
->  	desc->pg_ioflags = io_flags;
->  	desc->pg_error = 0;
->  	desc->pg_lseg = NULL;
-> -	desc->pg_test = nfs_generic_pg_test;
-> +	if (ld)
-> +		desc->pg_test = ld->pg_test;
-> +	else
-> +		desc->pg_test = nfs_generic_pg_test;
->  }
->  
->  /**
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 8171212..d79f2df 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -1058,7 +1058,7 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
->  		access_type = IOMODE_RW;
->  		gfp_flags = GFP_NOFS;
->  	}
-> -		
-> +
->  	if (pgio->pg_count == prev->wb_bytes) {
->  		/* This is first coelesce call for a series of nfs_pages */
->  		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index a279969..c6970fd 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -292,14 +292,6 @@ static inline int pnfs_return_layout(struct inode *ino)
->  	return 0;
->  }
->  
-> -static inline void pnfs_pageio_init(struct nfs_pageio_descriptor *pgio, struct inode *inode)
-> -{
-> -	struct pnfs_layoutdriver_type *ld = NFS_SERVER(inode)->pnfs_curr_ld;
-> -
-> -	if (ld)
-> -		pgio->pg_test = ld->pg_test;
-> -}
-> -
->  #else  /* CONFIG_NFS_V4_1 */
->  
->  static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
-> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-> index 6bd09a8..20a7f95 100644
-> --- a/fs/nfs/read.c
-> +++ b/fs/nfs/read.c
-> @@ -664,7 +664,6 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
->  	if (ret == 0)
->  		goto read_complete; /* all pages were read */
->  
-> -	pnfs_pageio_init(&pgio, inode);
->  	if (rsize < PAGE_CACHE_SIZE)
->  		nfs_pageio_init(&pgio, inode, nfs_pagein_multi, rsize, 0);
->  	else
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index d81c5c0..e268e3b 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -1036,7 +1036,6 @@ static void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
->  {
->  	size_t wsize = NFS_SERVER(inode)->wsize;
->  
-> -	pnfs_pageio_init(pgio, inode);
->  	if (wsize < PAGE_CACHE_SIZE)
->  		nfs_pageio_init(pgio, inode, nfs_flush_multi, wsize, ioflags);
->  	else
 
