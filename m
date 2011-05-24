@@ -1,73 +1,40 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 08/12] SQUASHME: objio alloc/free lseg Bugs fixes
-Date: Tue, 24 May 2011 20:06:24 +0300
-Message-ID: <4DDBE590.1080606@panasas.com>
-References: <4DDBC611.3050202@panasas.com> <1306249617-23391-1-git-send-email-bharrosh@panasas.com>
+From: Fred Isaman <iisaman@netapp.com>
+Subject: Re: [PATCHSET v6 0/26] pnfs for 2.6.40
+Date: Tue, 24 May 2011 13:07:21 -0400
+Message-ID: <BANLkTin1qq722amq06LyLxN+c7HOi527qg@mail.gmail.com>
+References: <4DDA8C3D.5080706@panasas.com>
+	<4DDAAC64.6050807@panasas.com>
+	<4DDBCBBA.5040700@panasas.com>
+	<2E1EB2CF9ED1CB4AA966F0EB76EAB443080D6E54@SACMVEXC2-PRD.hq.netapp.com>
+	<4DDBD378.4090906@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1255
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	NFS list <linux-nfs@vger.kernel.org>
-To: Boaz Harrosh <bharrosh@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+	bharrosh@panasas.com, linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:54779 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752799Ab1EXRG1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 13:06:27 -0400
-In-Reply-To: <1306249617-23391-1-git-send-email-bharrosh@panasas.com>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:32870 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752295Ab1EXRHW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 13:07:22 -0400
+Received: by gwaa18 with SMTP id a18so2650450gwa.19
+        for <linux-nfs@vger.kernel.org>; Tue, 24 May 2011 10:07:22 -0700 (PDT)
+In-Reply-To: <4DDBD378.4090906@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-05-24 18:06, Boaz Harrosh wrote:
-> Wrong allocation and pointering in lseg_alloc.
-> 
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> ---
->  fs/nfs/objlayout/objio_osd.c |    9 +++++----
->  1 files changed, 5 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-> index a4201d8..167cd1e 100644
-> --- a/fs/nfs/objlayout/objio_osd.c
-> +++ b/fs/nfs/objlayout/objio_osd.c
-> @@ -117,7 +117,7 @@ struct objio_segment {
->  	unsigned comps_index;
->  	unsigned num_comps;
->  	/* variable length */
-> -	struct objio_dev_ent *ods[1];
-> +	struct objio_dev_ent *ods[0];
->  };
->  
->  static inline struct objio_segment *
-> @@ -278,7 +278,6 @@ extern int objio_alloc_lseg(struct pnfs_layout_segment **outp,
->  	struct pnfs_osd_layout layout;
->  	struct pnfs_osd_object_cred *cur_comp, src_comp;
->  	struct caps_buffers *caps_p;
-> -
->  	int err;
->  
->  	err = pnfs_osd_xdr_decode_layout_map(&layout, &iter, xdr);
-> @@ -289,14 +288,16 @@ extern int objio_alloc_lseg(struct pnfs_layout_segment **outp,
->  	if (unlikely(err))
->  		return err;
->  
-> -	objio_seg = kzalloc(sizeof(*objio_seg) +
-> +	objio_seg = kzalloc(sizeof(*objio_seg) + 
+On Tue, May 24, 2011 at 11:49 AM, Benny Halevy <bhalevy@panasas.com> wrote:
 
-nit: While at it, the trailing space is extraneous...
+> I'll send a RFC patch including the generic pnfs pg_test for
+> the layout drivers.
+>
+> Fred - I hope you haven't started working on pg_test, have you?
+> Please let me know.
+>
+> Benny
+>
+>
 
-Benny
+It is all yours.
 
-> +			    sizeof(objio_seg->ods[0]) * layout.olo_num_comps +
->  			    sizeof(*objio_seg->comps) * layout.olo_num_comps +
->  			    sizeof(struct caps_buffers) * layout.olo_num_comps,
->  			    gfp_flags);
->  	if (!objio_seg)
->  		return -ENOMEM;
->  
-> -	cur_comp = objio_seg->comps = (void *)(objio_seg + 1);
-> +	objio_seg->comps = (void *)(objio_seg->ods + layout.olo_num_comps);
-> +	cur_comp = objio_seg->comps;
->  	caps_p = (void *)(cur_comp + layout.olo_num_comps);
->  	while (pnfs_osd_xdr_decode_layout_comp(&src_comp, &iter, xdr, &err))
->  		copy_single_comp(cur_comp++, &src_comp, caps_p++);
-
+Fred
