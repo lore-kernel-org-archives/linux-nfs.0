@@ -1,108 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57109 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:44891 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752130Ab1EYV16 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:27:58 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v8 12/32] pnfs: client stats
-Date: Thu, 26 May 2011 00:27:56 +0300
-Message-Id: <1306358876-17222-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DDD7392.6040505@panasas.com>
-References: <4DDD7392.6040505@panasas.com>
+	with ESMTP id S932147Ab1EXOiK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 10:38:10 -0400
+Message-ID: <4DDBC2B4.9040305@panasas.com>
+Date: Tue, 24 May 2011 17:37:40 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] SQUASHME: objio read/write patch: Bugs fixes
+References: <4DDA8C3D.5080706@panasas.com> <1306168626-11463-1-git-send-email-bhalevy@panasas.com> <4DDAB94C.6070407@panasas.com> <4DDBAE2B.2060705@panasas.com>
+In-Reply-To: <4DDBAE2B.2060705@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@fieldses.org>
+On 05/24/2011 04:10 PM, Benny Halevy wrote:
+> 
+> This hunk doesn't apply cleanly, as in the latest version
+> we pass gfp_flags, not GFP_KERNEL.
+> 
+>>  	if (!objio_seg)
+>>  		return -ENOMEM;
+>>  
 
-A pNFS client auto-negotiates a lot of features (minorversion level,
-pNFS layout type, etc.).  This is convenient, but makes certain kinds of
-failures hard for a user to detect.
+Please don't do anything. I'm just now sending a clean
+SQUASHME set
 
-For example, if the client falls back on 4.0, or falls back to MDS IO
-because the user didn't connect to the right iscsi disks before
-mounting, the only symptoms may be reduced performance, which may not be
-noticed till long after the actual failure, and may be difficult for a
-user to diagnose.
+Please talk to me
 
-However, such "failures" may also be perfectly normal in some cases, so
-we don't want to spam the system logs with them.
-
-One approach would be to put some more information into
-/proc/self/mountstats.
-
-Signed-off-by: J. Bruce Fields <bfields@fieldses.org>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[pnfs: add commit client stats]
-[fixup data types for "ret" variables in pnfs_try_to* inline funcs.]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[fix definition of show_pnfs for !CONFIG_PNFS]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: Fix show_sessions in the not CONFIG_NFS_V4_1 case]
-    There is a build error when CONFIG_NFS_V4 is set but
-    CONFIG_NFS_V4_1 is *not* set. show_sessions() prototype
-    was unbalanced between the two cases.
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-[pnfs: super.c remove CONFIG_PNFS]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/super.c |   25 +++++++++++++++++++++++++
- 1 files changed, 25 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index e288f06..ce40e5c 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -63,6 +63,7 @@
- #include "iostat.h"
- #include "internal.h"
- #include "fscache.h"
-+#include "pnfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
- 
-@@ -732,6 +733,28 @@ static int nfs_show_options(struct seq_file *m, struct vfsmount *mnt)
- 
- 	return 0;
- }
-+#ifdef CONFIG_NFS_V4_1
-+void show_sessions(struct seq_file *m, struct nfs_server *server)
-+{
-+	if (nfs4_has_session(server->nfs_client))
-+		seq_printf(m, ",sessions");
-+}
-+#else
-+void show_sessions(struct seq_file *m, struct nfs_server *server) {}
-+#endif
-+
-+#ifdef CONFIG_NFS_V4_1
-+void show_pnfs(struct seq_file *m, struct nfs_server *server)
-+{
-+	seq_printf(m, ",pnfs=");
-+	if (server->pnfs_curr_ld)
-+		seq_printf(m, "%s", server->pnfs_curr_ld->name);
-+	else
-+		seq_printf(m, "not configured");
-+}
-+#else  /* CONFIG_NFS_V4_1 */
-+void show_pnfs(struct seq_file *m, struct nfs_server *server) {}
-+#endif /* CONFIG_NFS_V4_1 */
- 
- static int nfs_show_devname(struct seq_file *m, struct vfsmount *mnt)
- {
-@@ -792,6 +815,8 @@ static int nfs_show_stats(struct seq_file *m, struct vfsmount *mnt)
- 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
- 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
- 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
-+		show_sessions(m, nfss);
-+		show_pnfs(m, nfss);
- 	}
- #endif
- 
--- 
-1.7.3.4
-
+Boaz]
