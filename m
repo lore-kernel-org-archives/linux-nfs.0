@@ -1,180 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:34589 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:57135 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750876Ab1EPQVp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 12:21:45 -0400
+	with ESMTP id S1755754Ab1EYV2w (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:28:52 -0400
 From: Benny Halevy <bhalevy@panasas.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com
-Subject: [PATCH v3 08/29] NFSD: introduce exp_xdr.h
-Date: Mon, 16 May 2011 09:21:42 -0700
-Message-Id: <1305562902-7584-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DD14D8E.1070701@panasas.com>
-References: <4DD14D8E.1070701@panasas.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v8 19/32] pnfs-obj: define per-inode private structure
+Date: Thu, 26 May 2011 00:28:50 +0300
+Message-Id: <1306358930-17476-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DDD7392.6040505@panasas.com>
+References: <4DDD7392.6040505@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Containing xdr encoding helpers.
+allocate and deallocate per-inode private pnfs_layout_hdr
+in preparation for I/O implementation.
 
-Cc: J. Bruce Fields <bfields@citi.umich.edu>
-[nfsd: fix exp_xdr_encode_u64 parameter type]
-Reported-by: J. Bruce Fields <bfields@citi.umich.edu>
-[exportfs: exp_xdr.h: Use #include <linux/string.h> instead of <asm/string.h>]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- include/linux/exp_xdr.h |  141 +++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 141 insertions(+), 0 deletions(-)
- create mode 100644 include/linux/exp_xdr.h
+ fs/nfs/objlayout/objio_osd.c |    3 +++
+ fs/nfs/objlayout/objlayout.c |   26 ++++++++++++++++++++++++++
+ fs/nfs/objlayout/objlayout.h |   17 +++++++++++++++++
+ 3 files changed, 46 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/exp_xdr.h b/include/linux/exp_xdr.h
-new file mode 100644
-index 0000000..b69c309
---- /dev/null
-+++ b/include/linux/exp_xdr.h
-@@ -0,0 +1,141 @@
-+#ifndef _LINUX_EXP_XDR_H
-+#define _LINUX_EXP_XDR_H
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 80d916b..eb01c26 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -352,6 +352,9 @@ static struct pnfs_layoutdriver_type objlayout_type = {
+ 	.id = LAYOUT_OSD2_OBJECTS,
+ 	.name = "LAYOUT_OSD2_OBJECTS",
+ 
++	.alloc_layout_hdr        = objlayout_alloc_layout_hdr,
++	.free_layout_hdr         = objlayout_free_layout_hdr,
 +
-+#include <asm/byteorder.h>
-+#include <asm/unaligned.h>
-+#include <linux/string.h>
+ 	.alloc_lseg              = objlayout_alloc_lseg,
+ 	.free_lseg               = objlayout_free_lseg,
+ 
+diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+index 10e5fca..f14b4da 100644
+--- a/fs/nfs/objlayout/objlayout.c
++++ b/fs/nfs/objlayout/objlayout.c
+@@ -42,6 +42,32 @@
+ 
+ #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
+ /*
++ * Create a objlayout layout structure for the given inode and return it.
++ */
++struct pnfs_layout_hdr *
++objlayout_alloc_layout_hdr(struct inode *inode, gfp_t gfp_flags)
++{
++	struct objlayout *objlay;
 +
-+struct exp_xdr_stream {
-+	__be32 *p;
-+	__be32 *end;
++	objlay = kzalloc(sizeof(struct objlayout), gfp_flags);
++	dprintk("%s: Return %p\n", __func__, objlay);
++	return &objlay->pnfs_layout;
++}
++
++/*
++ * Free an objlayout layout structure
++ */
++void
++objlayout_free_layout_hdr(struct pnfs_layout_hdr *lo)
++{
++	struct objlayout *objlay = OBJLAYOUT(lo);
++
++	dprintk("%s: objlay %p\n", __func__, objlay);
++
++	kfree(objlay);
++}
++
++/*
+  * Unmarshall layout and store it in pnfslay.
+  */
+ struct pnfs_layout_segment *
+diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
+index 0814271..fa02621 100644
+--- a/fs/nfs/objlayout/objlayout.h
++++ b/fs/nfs/objlayout/objlayout.h
+@@ -46,6 +46,19 @@
+ #include "../pnfs.h"
+ 
+ /*
++ * per-inode layout
++ */
++struct objlayout {
++	struct pnfs_layout_hdr pnfs_layout;
 +};
 +
-+/**
-+ * exp_xdr_qwords - Calculate the number of quad-words holding nbytes
-+ * @nbytes: number of bytes to encode
-+ */
-+static inline size_t
-+exp_xdr_qwords(__u32 nbytes)
++static inline struct objlayout *
++OBJLAYOUT(struct pnfs_layout_hdr *lo)
 +{
-+	return DIV_ROUND_UP(nbytes, 4);
++	return container_of(lo, struct objlayout, pnfs_layout);
 +}
 +
-+/**
-+ * exp_xdr_qbytes - Calculate the number of bytes holding qwords
-+ * @qwords: number of quad-words to encode
-+ */
-+static inline size_t
-+exp_xdr_qbytes(size_t qwords)
-+{
-+	return qwords << 2;
-+}
++/*
+  * Raid engine I/O API
+  */
+ extern int objio_alloc_lseg(struct pnfs_layout_segment **outp,
+@@ -66,6 +79,10 @@ extern void objlayout_put_deviceinfo(struct pnfs_osd_deviceaddr *deviceaddr);
+ /*
+  * exported generic objects function vectors
+  */
 +
-+/**
-+ * exp_xdr_reserve_space - Reserve buffer space for sending
-+ * @xdr: pointer to exp_xdr_stream
-+ * @nbytes: number of bytes to reserve
-+ *
-+ * Checks that we have enough buffer space to encode 'nbytes' more
-+ * bytes of data. If so, update the xdr stream.
-+ */
-+static inline __be32 *
-+exp_xdr_reserve_space(struct exp_xdr_stream *xdr, size_t nbytes)
-+{
-+	__be32 *p = xdr->p;
-+	__be32 *q;
++extern struct pnfs_layout_hdr *objlayout_alloc_layout_hdr(struct inode *, gfp_t gfp_flags);
++extern void objlayout_free_layout_hdr(struct pnfs_layout_hdr *);
 +
-+	/* align nbytes on the next 32-bit boundary */
-+	q = p + exp_xdr_qwords(nbytes);
-+	if (unlikely(q > xdr->end || q < p))
-+		return NULL;
-+	xdr->p = q;
-+	return p;
-+}
-+
-+/**
-+ * exp_xdr_reserve_qwords - Reserve buffer space for sending
-+ * @xdr: pointer to exp_xdr_stream
-+ * @nwords: number of quad words (u32's) to reserve
-+ */
-+static inline __be32 *
-+exp_xdr_reserve_qwords(struct exp_xdr_stream *xdr, size_t qwords)
-+{
-+	return exp_xdr_reserve_space(xdr, exp_xdr_qbytes(qwords));
-+}
-+
-+/**
-+ * exp_xdr_encode_u32 - Encode an unsigned 32-bit value onto a xdr stream
-+ * @p: pointer to encoding destination
-+ * @val: value to encode
-+ */
-+static inline __be32 *
-+exp_xdr_encode_u32(__be32 *p, __u32 val)
-+{
-+	*p = cpu_to_be32(val);
-+	return p + 1;
-+}
-+
-+/**
-+ * exp_xdr_encode_u64 - Encode an unsigned 64-bit value onto a xdr stream
-+ * @p: pointer to encoding destination
-+ * @val: value to encode
-+ */
-+static inline __be32 *
-+exp_xdr_encode_u64(__be32 *p, __u64 val)
-+{
-+	put_unaligned_be64(val, p);
-+	return p + 2;
-+}
-+
-+/**
-+ * exp_xdr_encode_bytes - Encode an array of bytes onto a xdr stream
-+ * @p: pointer to encoding destination
-+ * @ptr: pointer to the array of bytes
-+ * @nbytes: number of bytes to encode
-+ */
-+static inline __be32 *
-+exp_xdr_encode_bytes(__be32 *p, const void *ptr, __u32 nbytes)
-+{
-+	if (likely(nbytes != 0)) {
-+		unsigned int qwords = exp_xdr_qwords(nbytes);
-+		unsigned int padding = exp_xdr_qbytes(qwords) - nbytes;
-+
-+		memcpy(p, ptr, nbytes);
-+		if (padding != 0)
-+			memset((char *)p + nbytes, 0, padding);
-+		p += qwords;
-+	}
-+	return p;
-+}
-+
-+/**
-+ * exp_xdr_encode_opaque - Encode an opaque type onto a xdr stream
-+ * @p: pointer to encoding destination
-+ * @ptr: pointer to the opaque array
-+ * @nbytes: number of bytes to encode
-+ *
-+ * Encodes the 32-bit opaque size in bytes followed by the opaque value.
-+ */
-+static inline __be32 *
-+exp_xdr_encode_opaque(__be32 *p, const void *ptr, __u32 nbytes)
-+{
-+	p = exp_xdr_encode_u32(p, nbytes);
-+	return exp_xdr_encode_bytes(p, ptr, nbytes);
-+}
-+
-+/**
-+ * exp_xdr_encode_opaque_qlen - Encode the opaque length onto a xdr stream
-+ * @lenp: pointer to the opaque length destination
-+ * @endp: pointer to the end of the opaque array
-+ *
-+ * Encodes the 32-bit opaque size in bytes given the start and end pointers
-+ */
-+static inline __be32 *
-+exp_xdr_encode_opaque_len(__be32 *lenp, const void *endp)
-+{
-+	size_t nbytes = (char *)endp - (char *)(lenp + 1);
-+
-+	exp_xdr_encode_u32(lenp, nbytes);
-+	return lenp + 1 + exp_xdr_qwords(nbytes);
-+}
-+#endif /* _LINUX_EXP_XDR_H */
+ extern struct pnfs_layout_segment *objlayout_alloc_lseg(
+ 	struct pnfs_layout_hdr *,
+ 	struct nfs4_layoutget_res *,
 -- 
 1.7.3.4
 
