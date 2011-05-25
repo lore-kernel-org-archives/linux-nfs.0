@@ -1,117 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:33006 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752965Ab1EBUQW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2011 16:16:22 -0400
-Received: by mail-iw0-f174.google.com with SMTP id 34so4946386iwn.19
-        for <linux-nfs@vger.kernel.org>; Mon, 02 May 2011 13:16:22 -0700 (PDT)
-In-Reply-To: <1304356699.7830.26.camel@lade.trondhjem.org>
-References: <BANLkTi=X0VtcSecmEwzPBTqk3L154aj+2Q@mail.gmail.com>
-	<20110502140750.GA10885@fieldses.org>
-	<BANLkTinTu8XVmxkUUhJby8=DNY4sZF5VAQ@mail.gmail.com>
-	<1304347155.7830.7.camel@lade.trondhjem.org>
-	<BANLkTikZnnt0cmpP4iT4Q4EJTxZnSC_SYQ@mail.gmail.com>
-	<1304356699.7830.26.camel@lade.trondhjem.org>
-Date: Mon, 2 May 2011 22:16:22 +0200
-Message-ID: <BANLkTi=2uYagwN=Xy9FxhXV4wt3tf669JA@mail.gmail.com>
-Subject: Re: How does NFS handle notify?
-From: Stef Bon <stefbon@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Received: from daytona.panasas.com ([67.152.220.89]:39663 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750706Ab1EYQ5F (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 12:57:05 -0400
+Message-ID: <4DDD34DE.4080409@panasas.com>
+Date: Wed, 25 May 2011 19:57:02 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] SQUASHME: pnfs-obj: pg_test check for max_io_size
+References: <4DDA8C3D.5080706@panasas.com> <1306168699-11685-1-git-send-email-bhalevy@panasas.com> <4DDD0675.9080900@panasas.com> <4DDD06F6.7070508@panasas.com>
+In-Reply-To: <4DDD06F6.7070508@panasas.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-2011/5/2 Trond Myklebust <Trond.Myklebust@netapp.com>:
->> Next via a daemon like Gamin. Yes, possible, but is this smart? Isn't
->> it just possible through the VFS like above described.
->
-> All filesystems should already support notification for files that are
-> created through the VFS.
+On 2011-05-25 16:41, Boaz Harrosh wrote:
+> 
+> This should be squashed into:
+> 	pnfs-obj: osd raid engine read/write implementation
+> 
+> Implement pg_test vector to test for max IO sizes. We calculate
+> a max_io_size member only once, and cache it in lseg so to not
+> do so on every page insert.
 
-Exact, only I like to say here that the filesystems do not have to do
-anything for that.
-The VFS combines various things here. The filesystem self does not do
-anything here.
+Looks good (except one minor nit, see inline below).
+I prefer to commit it as a separate patch rather than squash it
+if ok with you.
 
->
-> The missing bit is to support notification for files that are created on
-> the _server_ and that never go through the client VFS. That is precisely
-> the problem that projects such as FAM and gamin are supposed to solve
-> using generic userland daemons that can re-export the notifications from
-> the NFS/CIFS/... server to any interested listeners.
+Benny
 
-Yes that's also true. If you are taking nfs, cifs or a FUSE fs, where
-the server is for example the localhost self, thus more like backend.
-I 'm not very convinced Gamin is the way to go.
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/nfs/objlayout/objio_osd.c |   14 +++++++++++++-
+>  1 files changed, 13 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+> index 0dcffc2..0dba6ec 100644
+> --- a/fs/nfs/objlayout/objio_osd.c
+> +++ b/fs/nfs/objlayout/objio_osd.c
+> @@ -129,6 +129,8 @@ struct objio_segment {
+>  	u64 group_depth;
+>  	unsigned group_count;
+>  
+> +	unsigned max_io_size;
+> +
+>  	unsigned comps_index;
+>  	unsigned num_comps;
+>  	/* variable length */
+> @@ -366,6 +368,11 @@ extern int objio_alloc_lseg(struct pnfs_layout_segment **outp,
+>  		objio_seg->group_count = 1;
+>  	}
+>  
+> +	/* Cache this calculation it will hit for every page */
+> +	objio_seg->max_io_size = (BIO_MAX_PAGES_KMALLOC * PAGE_SIZE -
+> +				  objio_seg->stripe_unit) *
+> +				 objio_seg->group_width;
+> +
+>  	*outp = &objio_seg->lseg;
+>  	return 0;
+>  
+> @@ -1000,7 +1007,12 @@ int
+>  objlayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+>  		   struct nfs_page *req)
+>  {
+> -	return 1;
+> +	struct objio_segment *layout = OBJIO_LSEG(pgio->pg_lseg);
+> +
+> +	if ((pgio->pg_count + req->wb_bytes) > layout->max_io_size)
+> +		return 0;
+> +	else
+> +		return 1;
 
-Let me explain:
+why not simply do this?
+	return (pgio->pg_count + req->wb_bytes) <= layout->max_io_size;
 
-for example a simple overlay FUSE fs, fusexmp-bind.
-It's behaving like a mount bind, making the contents of the directory
-to bind available under the mountpoint.
+Benny
 
-Now user a mounts it like:
-
-mkdir ~/mount
-fusexmp-bind --bind-directory=/tmp ~/mount
-
-This makes the directory /tmp available under ~/mount for user a.
-As you say, when the user does:
-
-touch ~/mount/testfile1
-
-any client watching the ~/mount directory (through notify) will be
-notfied of this change, while
-fusexmp-bind does not support inotify at all. It the VFS which does all that.
-
-Now if any other process is doing something in /tmp,
-the same client watching ~/mount will not get notified, until a hard
-refresh command is given.
-The kernel (VFS) does not understand (and does not have to) that the
-directories /tmp and
-~/mount are related.
-
-A sollution is that the VFS makes the filesystem (in this case thus
-fusexmp-bind) aware of a client
-watching directory ~/mount.
-
-This filesystem "knows" as the only one what to do with it, namenly
-set a inotify watch (with the same mask) on /tmp, read any events
-there and forward them back to the original inotify watch (the one on
-~/mount).
-
-I'm suggesting here the use of VFS, making the filesystem aware of an
-inotify watch.
-
-But what about gamin?? Is is possible to make gamin take care of the
-changes, like with the simple example of above. Well, possible, but
-with extra configuration.
-And this is only a simple example. With much more complicated setups,
-where the files and directories a client "sees", which may depend on
-the specific context of that connection, Gamin cannot be aware af that
-all.
-
-So my suggestion is to make everything go through the filesystem. As I
-mentioned above, the VFS should make the filesystem aware of a notify
-watch being added, the filesystem should take the right action (like
-sending a SMB2 CHANGE_NOTIFY Request to the server and wait for
-anything to come back from the server with cifs, or setting another
-intofy watch on the backend with the simple FUSE fs above, and with
-NFS doing something simular like cifs) and giving any received event
-back to the VFS.
-
-There is another advantage here, which for my fs is interesting.
-"Knowing" that there is a watch set on a certain inode is interesting.
-My fs handles various resources, like local harddrives, usb sticks,
-cdroms but also SMB shares mounted with cifs, and especially with
-removable resources, like USB sticks and cdroms, it's very usefull
-that someone is watching it. This prevents it from unmounting it. But
-this counts for my fs.
-Ans also, it helps my fs to stay upto date. I say here helps, is not a
-complete garantee.
-
-So, what's your opinion?
-
-Stef
+>  }
+>  
+>  static struct pnfs_layoutdriver_type objlayout_type = {
