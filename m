@@ -1,206 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:43560 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:57162 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751973Ab1EWABB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 20:01:01 -0400
+	with ESMTP id S1753660Ab1EYV3q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:29:46 -0400
 From: Benny Halevy <bhalevy@panasas.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v5 29/38] pnfs: support for non-rpc layout drivers
-Date: Mon, 23 May 2011 03:00:49 +0300
-Message-Id: <1306108849-28994-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DD99F9B.2040406@panasas.com>
-References: <4DD99F9B.2040406@panasas.com>
+Subject: [PATCH v8 26/32] pnfs: encode_layoutcommit
+Date: Thu, 26 May 2011 00:29:43 +0300
+Message-Id: <1306358983-17787-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DDD7392.6040505@panasas.com>
+References: <4DDD7392.6040505@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Non-rpc layout driver such as for objects and blocks
-implement their own I/O path and error handling logic.
-Therefore bypass NFS-based error handling for these layout drivers.
+Add a layout driver method to encode the layout type specific
+opaque part of layout commit in-line in the xdr stream.
 
-[fix lseg ref-count bugs, and null de-refs]
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-[get rid of PNFS_USE_RPC_CODE]
-[get rid of __nfs4_write_done_cb]
-[revert useless change in nfs4_write_done_cb]
+Currently, the pnfs-objects layout driver uses it to encode metadata hints
+to the MDS and the blocks layout driver to commit provisionally allocated
+extents to the file.
+
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/internal.h       |    1 +
- fs/nfs/nfs4proc.c       |   13 +++++++++--
- fs/nfs/pnfs.c           |   52 ++++++++++++++++++++++++++++++++++++++++++++++-
- fs/nfs/pnfs.h           |    2 +
- include/linux/nfs_xdr.h |    2 +
- 5 files changed, 66 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4xdr.c |   16 +++++++++++++---
+ fs/nfs/pnfs.h    |    4 ++++
+ 2 files changed, 17 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index ce118ce..bcf0f0f 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -310,6 +310,7 @@ extern int nfs_migrate_page(struct address_space *,
- #endif
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index d464bad..d869a5e 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1875,6 +1875,7 @@ encode_layoutget(struct xdr_stream *xdr,
  
- /* nfs4proc.c */
-+extern void __nfs4_read_done_cb(struct nfs_read_data *);
- extern void nfs4_reset_read(struct rpc_task *task, struct nfs_read_data *data);
- extern int nfs4_init_client(struct nfs_client *clp,
- 			    const struct rpc_timeout *timeparms,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index cf1b339..92c8bc4 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3175,6 +3175,11 @@ static int nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
- 	return err;
- }
+ static int
+ encode_layoutcommit(struct xdr_stream *xdr,
++		    struct inode *inode,
+ 		    const struct nfs4_layoutcommit_args *args,
+ 		    struct compound_hdr *hdr)
+ {
+@@ -1883,7 +1884,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
+ 	dprintk("%s: lbw: %llu type: %d\n", __func__, args->lastbytewritten,
+ 		NFS_SERVER(args->inode)->pnfs_curr_ld->id);
  
-+void __nfs4_read_done_cb(struct nfs_read_data *data)
-+{
-+	nfs_invalidate_atime(data->inode);
-+}
+-	p = reserve_space(xdr, 48 + NFS4_STATEID_SIZE);
++	p = reserve_space(xdr, 44 + NFS4_STATEID_SIZE);
+ 	*p++ = cpu_to_be32(OP_LAYOUTCOMMIT);
+ 	/* Only whole file layouts */
+ 	p = xdr_encode_hyper(p, 0); /* offset */
+@@ -1894,7 +1895,14 @@ encode_layoutcommit(struct xdr_stream *xdr,
+ 	p = xdr_encode_hyper(p, args->lastbytewritten);
+ 	*p++ = cpu_to_be32(0); /* Never send time_modify_changed */
+ 	*p++ = cpu_to_be32(NFS_SERVER(args->inode)->pnfs_curr_ld->id);/* type */
+-	*p++ = cpu_to_be32(0); /* no file layout payload */
 +
- static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
- {
- 	struct nfs_server *server = NFS_SERVER(data->inode);
-@@ -3184,7 +3189,7 @@ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
- 		return -EAGAIN;
- 	}
- 
--	nfs_invalidate_atime(data->inode);
-+	__nfs4_read_done_cb(data);
- 	if (task->tk_status > 0)
- 		renew_lease(server, data->timestamp);
- 	return 0;
-@@ -3198,7 +3203,8 @@ static int nfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
- 	if (!nfs4_sequence_done(task, &data->res.seq_res))
- 		return -EAGAIN;
- 
--	return data->read_done_cb(task, data);
-+	return data->read_done_cb ? data->read_done_cb(task, data) :
-+				    nfs4_read_done_cb(task, data);
- }
- 
- static void nfs4_proc_read_setup(struct nfs_read_data *data, struct rpc_message *msg)
-@@ -3243,7 +3249,8 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
- {
- 	if (!nfs4_sequence_done(task, &data->res.seq_res))
- 		return -EAGAIN;
--	return data->write_done_cb(task, data);
-+	return data->write_done_cb ? data->write_done_cb(task, data) :
-+		nfs4_write_done_cb(task, data);
- }
- 
- /* Reset the the nfs_write_data to send the write to the MDS. */
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index ef535f2..0f59802 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -243,7 +243,7 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
- {
- 	struct inode *inode = lseg->pls_layout->plh_inode;
- 
--	BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
-+	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 	list_del_init(&lseg->pls_list);
- 	if (list_empty(&lseg->pls_layout->plh_segs)) {
- 		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
-@@ -1054,6 +1054,31 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
- 	pgio->pg_test = (ld && ld->pg_test) ? pnfs_write_pg_test : NULL;
- }
- 
-+/*
-+ * Called by non rpc-based layout drivers
-+ */
-+int
-+pnfs_ld_write_done(struct nfs_write_data *data)
-+{
-+	int status;
-+
-+	if (!data->pnfs_error) {
-+		pnfs_set_layoutcommit(data);
-+		data->mds_ops->rpc_call_done(&data->task, data);
-+		data->mds_ops->rpc_release(data);
-+		return 0;
++	if (NFS_SERVER(inode)->pnfs_curr_ld->encode_layoutcommit)
++		NFS_SERVER(inode)->pnfs_curr_ld->encode_layoutcommit(
++			NFS_I(inode)->layout, xdr, args);
++	else {
++		p = reserve_space(xdr, 4);
++		*p = cpu_to_be32(0); /* no layout-type payload */
 +	}
-+
-+	put_lseg(data->lseg);
-+	data->lseg = NULL;
-+	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
-+		data->pnfs_error);
-+	status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
-+				    data->mds_ops, NFS_FILE_SYNC);
-+	return status ? : -EAGAIN;
-+}
-+EXPORT_SYMBOL_GPL(pnfs_ld_write_done);
-+
- enum pnfs_try_status
- pnfs_try_to_write_data(struct nfs_write_data *wdata,
- 			const struct rpc_call_ops *call_ops, int how)
-@@ -1079,6 +1104,31 @@ pnfs_try_to_write_data(struct nfs_write_data *wdata,
- }
  
- /*
-+ * Called by non rpc-based layout drivers
-+ */
-+int
-+pnfs_ld_read_done(struct nfs_read_data *data)
-+{
-+	int status;
-+
-+	if (!data->pnfs_error) {
-+		__nfs4_read_done_cb(data);
-+		data->mds_ops->rpc_call_done(&data->task, data);
-+		data->mds_ops->rpc_release(data);
-+		return 0;
-+	}
-+
-+	put_lseg(data->lseg);
-+	data->lseg = NULL;
-+	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
-+		data->pnfs_error);
-+	status = nfs_initiate_read(data, NFS_CLIENT(data->inode),
-+				   data->mds_ops);
-+	return status ? : -EAGAIN;
-+}
-+EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
-+
-+/*
-  * Call the appropriate parallel I/O subsystem read function.
-  */
- enum pnfs_try_status
+ 	hdr->nops++;
+ 	hdr->replen += decode_layoutcommit_maxsz;
+@@ -2751,6 +2759,8 @@ static void nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
+ 				      struct xdr_stream *xdr,
+ 				      struct nfs4_layoutcommit_args *args)
+ {
++	struct nfs4_layoutcommit_data *data =
++		container_of(args, struct nfs4_layoutcommit_data, args);
+ 	struct compound_hdr hdr = {
+ 		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
+ 	};
+@@ -2758,7 +2768,7 @@ static void nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
+ 	encode_compound_hdr(xdr, req, &hdr);
+ 	encode_sequence(xdr, &args->seq_args, &hdr);
+ 	encode_putfh(xdr, NFS_FH(args->inode), &hdr);
+-	encode_layoutcommit(xdr, args, &hdr);
++	encode_layoutcommit(xdr, data->args.inode, args, &hdr);
+ 	encode_getfattr(xdr, args->bitmask, &hdr);
+ 	encode_nops(&hdr);
+ }
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index ed167a7..8a6e1f1 100644
+index ed07f41..25da946 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -165,6 +165,8 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
- bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
- void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
- int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
-+int pnfs_ld_write_done(struct nfs_write_data *);
-+int pnfs_ld_read_done(struct nfs_read_data *);
- 
- /* pnfs_dev.c */
- struct nfs4_deviceid_node {
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 7e371f7..7c8ff09 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1087,6 +1087,7 @@ struct nfs_read_data {
- 	const struct rpc_call_ops *mds_ops;
- 	int (*read_done_cb) (struct rpc_task *task, struct nfs_read_data *data);
- 	__u64			mds_offset;
-+	int			pnfs_error;
- 	struct page		*page_array[NFS_PAGEVEC_SIZE];
+@@ -108,6 +108,10 @@ struct pnfs_layoutdriver_type {
+ 	void (*encode_layoutreturn) (struct pnfs_layout_hdr *layoutid,
+ 				     struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutreturn_args *args);
++
++	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
++				     struct xdr_stream *xdr,
++				     const struct nfs4_layoutcommit_args *args);
  };
  
-@@ -1112,6 +1113,7 @@ struct nfs_write_data {
- 	unsigned long		timestamp;	/* For lease renewal */
- #endif
- 	__u64			mds_offset;	/* Filelayout dense stripe */
-+	int			pnfs_error;
- 	struct page		*page_array[NFS_PAGEVEC_SIZE];
- };
- 
+ struct pnfs_layout_hdr {
 -- 
 1.7.3.4
 
