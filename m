@@ -1,203 +1,484 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:9099 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:57146 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756190Ab1EWQhh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 12:37:37 -0400
+	with ESMTP id S1755754Ab1EYV3Q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:29:16 -0400
 From: Benny Halevy <bhalevy@panasas.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCH v6 16/26] NFSv4.1: use layout driver in global device cache
-Date: Mon, 23 May 2011 19:37:29 +0300
-Message-Id: <1306168649-11538-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DDA8C3D.5080706@panasas.com>
-References: <4DDA8C3D.5080706@panasas.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v8 22/32] pnfs: layoutreturn
+Date: Thu, 26 May 2011 00:29:13 +0300
+Message-Id: <1306358953-17598-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DDD7392.6040505@panasas.com>
+References: <4DDD7392.6040505@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-pnfs deviceids are unique per server, per layout type.
-struct nfs_client is currently used to distinguish deviceids from
-different nfs servers, yet these may clash between different layout
-types on the same server.  Therefore, use the layout driver associated
-with each deviceid at insertion time to look it up, unhash, or
-delete it.
+NFSv4.1 LAYOUTRETURN implementation
 
+Currently, does not support layout-type payload encoding.
+
+Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+[call pnfs_return_layout right before pnfs_destroy_layout]
+[remove assert_spin_locked from pnfs_clear_lseg_list]
+[remove wait parameter from the layoutreturn path.]
+[remove return_type field from nfs4_layoutreturn_args]
+[remove range from nfs4_layoutreturn_args]
+[no need to send layoutcommit from _pnfs_return_layout]
+[don't wait on sync layoutreturn]
+[fix layout stateid in layoutreturn args]
+[fixed NULL deref in _pnfs_return_layout]
+[removed recaim member of nfs4_layoutreturn_args]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/callback_proc.c       |    2 +-
- fs/nfs/nfs4filelayout.c      |    3 ++-
- fs/nfs/objlayout/objio_osd.c |    6 +++---
- fs/nfs/pnfs.h                |    6 +++---
- fs/nfs/pnfs_dev.c            |   28 +++++++++++++++++-----------
- 5 files changed, 26 insertions(+), 19 deletions(-)
+ fs/nfs/inode.c          |    3 +-
+ fs/nfs/nfs4proc.c       |   82 ++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4xdr.c        |  111 ++++++++++++++++++++++++++++++++++++++++++++---
+ fs/nfs/pnfs.c           |   45 +++++++++++++++++++
+ fs/nfs/pnfs.h           |   18 ++++++++
+ include/linux/nfs4.h    |    1 +
+ include/linux/nfs_xdr.h |   21 +++++++++
+ 7 files changed, 274 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 5780c37..d4d1954 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -278,7 +278,7 @@ __be32 nfs4_callback_devicenotify(struct cb_devicenotifyargs *args,
- 		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
- 			dprintk("%s: NOTIFY_DEVICEID4_CHANGE not supported, "
- 				"deleting instead\n", __func__);
--		nfs4_delete_deviceid(clp, &dev->cbd_dev_id);
-+		nfs4_delete_deviceid(server->pnfs_curr_ld, clp, &dev->cbd_dev_id);
- 	}
- 
- out:
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 5b3080d..2529db0 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -441,7 +441,8 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
- 	}
- 
- 	/* find and reference the deviceid */
--	d = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode)->nfs_client, id);
-+	d = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode)->pnfs_curr_ld,
-+				   NFS_SERVER(lo->plh_inode)->nfs_client, id);
- 	if (d == NULL) {
- 		dsaddr = get_device_info(lo->plh_inode, id, gfp_flags);
- 		if (dsaddr == NULL)
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index bcc8468..a4201d8 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -60,12 +60,12 @@ objio_free_deviceid_node(struct nfs4_deviceid_node *d)
- 	kfree(de);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 57bb31a..e9c6d9f 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1424,9 +1424,10 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+  */
+ void nfs4_evict_inode(struct inode *inode)
+ {
+-	pnfs_destroy_layout(NFS_I(inode));
+ 	truncate_inode_pages(&inode->i_data, 0);
+ 	end_writeback(inode);
++	pnfs_return_layout(inode);
++	pnfs_destroy_layout(NFS_I(inode));
+ 	/* If we are holding a delegation, return it! */
+ 	nfs_inode_return_delegation_noreclaim(inode);
+ 	/* First call standard NFS clear_inode() code */
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 92c8bc4..5b4124e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5673,6 +5673,88 @@ int nfs4_proc_layoutget(struct nfs4_layoutget *lgp)
+ 	return status;
  }
  
--static struct objio_dev_ent *_dev_list_find(const struct nfs_client *clp,
-+static struct objio_dev_ent *_dev_list_find(const struct nfs_server *nfss,
- 	const struct nfs4_deviceid *d_id)
++static void
++nfs4_layoutreturn_prepare(struct rpc_task *task, void *calldata)
++{
++	struct nfs4_layoutreturn *lrp = calldata;
++
++	dprintk("--> %s\n", __func__);
++	if (nfs41_setup_sequence(lrp->clp->cl_session, &lrp->args.seq_args,
++				&lrp->res.seq_res, 0, task))
++		return;
++	rpc_call_start(task);
++}
++
++static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
++{
++	struct nfs4_layoutreturn *lrp = calldata;
++	struct nfs_server *server;
++
++	dprintk("--> %s\n", __func__);
++
++	if (!nfs4_sequence_done(task, &lrp->res.seq_res))
++		return;
++
++	server = NFS_SERVER(lrp->args.inode);
++	if (nfs4_async_handle_error(task, server, NULL) == -EAGAIN) {
++		nfs_restart_rpc(task, lrp->clp);
++		return;
++	}
++	if (task->tk_status == 0) {
++		struct pnfs_layout_hdr *lo = NFS_I(lrp->args.inode)->layout;
++
++		if (lrp->res.lrs_present) {
++			spin_lock(&lo->plh_inode->i_lock);
++			pnfs_set_layout_stateid(lo, &lrp->res.stateid, true);
++			spin_unlock(&lo->plh_inode->i_lock);
++		} else
++			BUG_ON(!list_empty(&lo->plh_segs));
++	}
++	dprintk("<-- %s\n", __func__);
++}
++
++static void nfs4_layoutreturn_release(void *calldata)
++{
++	struct nfs4_layoutreturn *lrp = calldata;
++
++	dprintk("--> %s\n", __func__);
++	put_layout_hdr(NFS_I(lrp->args.inode)->layout);
++	kfree(calldata);
++	dprintk("<-- %s\n", __func__);
++}
++
++static const struct rpc_call_ops nfs4_layoutreturn_call_ops = {
++	.rpc_call_prepare = nfs4_layoutreturn_prepare,
++	.rpc_call_done = nfs4_layoutreturn_done,
++	.rpc_release = nfs4_layoutreturn_release,
++};
++
++int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp)
++{
++	struct rpc_task *task;
++	struct rpc_message msg = {
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LAYOUTRETURN],
++		.rpc_argp = &lrp->args,
++		.rpc_resp = &lrp->res,
++	};
++	struct rpc_task_setup task_setup_data = {
++		.rpc_client = lrp->clp->cl_rpcclient,
++		.rpc_message = &msg,
++		.callback_ops = &nfs4_layoutreturn_call_ops,
++		.callback_data = lrp,
++	};
++	int status;
++
++	dprintk("--> %s\n", __func__);
++	task = rpc_run_task(&task_setup_data);
++	if (IS_ERR(task))
++		return PTR_ERR(task);
++	status = task->tk_status;
++	dprintk("<-- %s status=%d\n", __func__, status);
++	rpc_put_task(task);
++	return status;
++}
++
+ static int
+ _nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
  {
- 	struct nfs4_deviceid_node *d;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c3ccd2c..f242120 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -338,7 +338,11 @@ static int nfs4_stat_to_errno(int);
+ 				1 /* layoutupdate4 layout type */ + \
+ 				1 /* NULL filelayout layoutupdate4 payload */)
+ #define decode_layoutcommit_maxsz (op_decode_hdr_maxsz + 3)
+-
++#define encode_layoutreturn_maxsz (8 + op_encode_hdr_maxsz + \
++				encode_stateid_maxsz + \
++				1 /* FIXME: opaque lrf_body always empty at the moment */)
++#define decode_layoutreturn_maxsz (op_decode_hdr_maxsz + \
++				1 + decode_stateid_maxsz)
+ #else /* CONFIG_NFS_V4_1 */
+ #define encode_sequence_maxsz	0
+ #define decode_sequence_maxsz	0
+@@ -760,7 +764,14 @@ static int nfs4_stat_to_errno(int);
+ 				decode_putfh_maxsz + \
+ 				decode_layoutcommit_maxsz + \
+ 				decode_getattr_maxsz)
+-
++#define NFS4_enc_layoutreturn_sz (compound_encode_hdr_maxsz + \
++				encode_sequence_maxsz + \
++				encode_putfh_maxsz + \
++				encode_layoutreturn_maxsz)
++#define NFS4_dec_layoutreturn_sz (compound_decode_hdr_maxsz + \
++				decode_sequence_maxsz + \
++				decode_putfh_maxsz + \
++				decode_layoutreturn_maxsz)
  
--	d = nfs4_find_get_deviceid(clp, d_id);
-+	d = nfs4_find_get_deviceid(nfss->pnfs_curr_ld, nfss->nfs_client, d_id);
- 	if (!d)
- 		return NULL;
- 	return container_of(d, struct objio_dev_ent, id_node);
-@@ -141,7 +141,7 @@ static struct objio_dev_ent *_device_lookup(struct pnfs_layout_hdr *pnfslay,
+ const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
+ 				      compound_encode_hdr_maxsz +
+@@ -1889,6 +1900,31 @@ encode_layoutcommit(struct xdr_stream *xdr,
+ 	hdr->replen += decode_layoutcommit_maxsz;
+ 	return 0;
+ }
++
++static void
++encode_layoutreturn(struct xdr_stream *xdr,
++		    const struct nfs4_layoutreturn_args *args,
++		    struct compound_hdr *hdr)
++{
++	__be32 *p;
++
++	p = reserve_space(xdr, 20);
++	*p++ = cpu_to_be32(OP_LAYOUTRETURN);
++	*p++ = cpu_to_be32(0);		/* reclaim. always 0 for now */
++	*p++ = cpu_to_be32(args->layout_type);
++	*p++ = cpu_to_be32(IOMODE_ANY);
++	*p = cpu_to_be32(RETURN_FILE);
++	p = reserve_space(xdr, 16 + NFS4_STATEID_SIZE);
++	p = xdr_encode_hyper(p, 0);
++	p = xdr_encode_hyper(p, NFS4_MAX_UINT64);
++	spin_lock(&args->inode->i_lock);
++	xdr_encode_opaque_fixed(p, &args->stateid.data, NFS4_STATEID_SIZE);
++	spin_unlock(&args->inode->i_lock);
++	p = reserve_space(xdr, 4);
++	*p = cpu_to_be32(0);
++	hdr->nops++;
++	hdr->replen += decode_layoutreturn_maxsz;
++}
+ #endif /* CONFIG_NFS_V4_1 */
  
- 	d_id = &objio_seg->comps[comp].oc_object_id.oid_device_id;
+ /*
+@@ -2706,9 +2742,9 @@ static void nfs4_xdr_enc_layoutget(struct rpc_rqst *req,
+ /*
+  *  Encode LAYOUTCOMMIT request
+  */
+-static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
+-				     struct xdr_stream *xdr,
+-				     struct nfs4_layoutcommit_args *args)
++static void nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
++				      struct xdr_stream *xdr,
++				      struct nfs4_layoutcommit_args *args)
+ {
+ 	struct compound_hdr hdr = {
+ 		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
+@@ -2720,7 +2756,24 @@ static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
+ 	encode_layoutcommit(xdr, args, &hdr);
+ 	encode_getfattr(xdr, args->bitmask, &hdr);
+ 	encode_nops(&hdr);
+-	return 0;
++}
++
++/*
++ * Encode LAYOUTRETURN request
++ */
++static void nfs4_xdr_enc_layoutreturn(struct rpc_rqst *req,
++				      struct xdr_stream *xdr,
++				      struct nfs4_layoutreturn_args *args)
++{
++	struct compound_hdr hdr = {
++		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
++	};
++
++	encode_compound_hdr(xdr, req, &hdr);
++	encode_sequence(xdr, &args->seq_args, &hdr);
++	encode_putfh(xdr, NFS_FH(args->inode), &hdr);
++	encode_layoutreturn(xdr, args, &hdr);
++	encode_nops(&hdr);
+ }
+ #endif /* CONFIG_NFS_V4_1 */
  
--	ode = _dev_list_find(NFS_SERVER(pnfslay->plh_inode)->nfs_client, d_id);
-+	ode = _dev_list_find(NFS_SERVER(pnfslay->plh_inode), d_id);
- 	if (ode)
- 		return ode;
+@@ -5203,6 +5256,27 @@ out_overflow:
+ 	return -EIO;
+ }
  
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 7417be9..2e94ed3 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -172,9 +172,9 @@ struct nfs4_deviceid_node {
++static int decode_layoutreturn(struct xdr_stream *xdr,
++			       struct nfs4_layoutreturn_res *res)
++{
++	__be32 *p;
++	int status;
++
++	status = decode_op_hdr(xdr, OP_LAYOUTRETURN);
++	if (status)
++		return status;
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(!p))
++		goto out_overflow;
++	res->lrs_present = be32_to_cpup(p);
++	if (res->lrs_present)
++		status = decode_stateid(xdr, &res->stateid);
++	return status;
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++}
++
+ static int decode_layoutcommit(struct xdr_stream *xdr,
+ 			       struct rpc_rqst *req,
+ 			       struct nfs4_layoutcommit_res *res)
+@@ -6320,6 +6394,30 @@ out:
+ }
+ 
+ /*
++ * Decode LAYOUTRETURN response
++ */
++static int nfs4_xdr_dec_layoutreturn(struct rpc_rqst *rqstp,
++				     struct xdr_stream *xdr,
++				     struct nfs4_layoutreturn_res *res)
++{
++	struct compound_hdr hdr;
++	int status;
++
++	status = decode_compound_hdr(xdr, &hdr);
++	if (status)
++		goto out;
++	status = decode_sequence(xdr, &res->seq_res, rqstp);
++	if (status)
++		goto out;
++	status = decode_putfh(xdr);
++	if (status)
++		goto out;
++	status = decode_layoutreturn(xdr, res);
++out:
++	return status;
++}
++
++/*
+  * Decode LAYOUTCOMMIT response
+  */
+ static int nfs4_xdr_dec_layoutcommit(struct rpc_rqst *rqstp,
+@@ -6547,6 +6645,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+ 	PROC(GETDEVICEINFO,	enc_getdeviceinfo,	dec_getdeviceinfo),
+ 	PROC(LAYOUTGET,		enc_layoutget,		dec_layoutget),
+ 	PROC(LAYOUTCOMMIT,	enc_layoutcommit,	dec_layoutcommit),
++	PROC(LAYOUTRETURN,	enc_layoutreturn,	dec_layoutreturn),
+ #endif /* CONFIG_NFS_V4_1 */
  };
  
- void nfs4_print_deviceid(const struct nfs4_deviceid *dev_id);
--struct nfs4_deviceid_node *nfs4_find_get_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
--struct nfs4_deviceid_node *nfs4_unhash_put_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
--void nfs4_delete_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
-+struct nfs4_deviceid_node *nfs4_find_get_deviceid(const struct pnfs_layoutdriver_type *, const struct nfs_client *, const struct nfs4_deviceid *);
-+struct nfs4_deviceid_node *nfs4_unhash_put_deviceid(const struct pnfs_layoutdriver_type *, const struct nfs_client *, const struct nfs4_deviceid *);
-+void nfs4_delete_deviceid(const struct pnfs_layoutdriver_type *, const struct nfs_client *, const struct nfs4_deviceid *);
- void nfs4_init_deviceid_node(struct nfs4_deviceid_node *,
- 			     const struct pnfs_layoutdriver_type *,
- 			     const struct nfs_client *,
-diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
-index f830616..7997899 100644
---- a/fs/nfs/pnfs_dev.c
-+++ b/fs/nfs/pnfs_dev.c
-@@ -67,14 +67,16 @@ nfs4_deviceid_hash(const struct nfs4_deviceid *id)
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 1716621..00b1282 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -619,6 +619,51 @@ out_err_free:
+ 	return NULL;
  }
  
- static struct nfs4_deviceid_node *
--_lookup_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
-+_lookup_deviceid(const struct pnfs_layoutdriver_type *ld,
-+		 const struct nfs_client *clp, const struct nfs4_deviceid *id,
- 		 long hash)
++/* Initiates a LAYOUTRETURN(FILE) */
++int
++_pnfs_return_layout(struct inode *ino)
++{
++	struct pnfs_layout_hdr *lo = NULL;
++	struct nfs_inode *nfsi = NFS_I(ino);
++	LIST_HEAD(tmp_list);
++	struct nfs4_layoutreturn *lrp;
++	nfs4_stateid stateid;
++	int status = 0;
++
++	dprintk("--> %s\n", __func__);
++
++	spin_lock(&ino->i_lock);
++	lo = nfsi->layout;
++	if (!lo || !mark_matching_lsegs_invalid(lo, &tmp_list, NULL)) {
++		spin_unlock(&ino->i_lock);
++		dprintk("%s: no layout segments to return\n", __func__);
++		goto out;
++	}
++	stateid = nfsi->layout->plh_stateid;
++	/* Reference matched in nfs4_layoutreturn_release */
++	get_layout_hdr(lo);
++	spin_unlock(&ino->i_lock);
++	pnfs_free_lseg_list(&tmp_list);
++
++	WARN_ON(test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags));
++
++	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
++	if (unlikely(lrp == NULL)) {
++		status = -ENOMEM;
++		goto out;
++	}
++
++	lrp->args.stateid = stateid;
++	lrp->args.layout_type = NFS_SERVER(ino)->pnfs_curr_ld->id;
++	lrp->args.inode = ino;
++	lrp->clp = NFS_SERVER(ino)->nfs_client;
++
++	status = nfs4_proc_layoutreturn(lrp);
++out:
++	dprintk("<-- %s status: %d\n", __func__, status);
++	return status;
++}
++
+ bool pnfs_roc(struct inode *ino)
  {
- 	struct nfs4_deviceid_node *d;
- 	struct hlist_node *n;
+ 	struct pnfs_layout_hdr *lo;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 8a6e1f1..21daebb 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -129,6 +129,7 @@ extern void pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *);
+ extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
+ 				   struct pnfs_device *dev);
+ extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
++extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
  
- 	hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[hash], node)
--		if (d->nfs_client == clp && !memcmp(&d->deviceid, id, sizeof(*id))) {
-+		if (d->ld == ld && d->nfs_client == clp &&
-+		    !memcmp(&d->deviceid, id, sizeof(*id))) {
- 			if (atomic_read(&d->ref))
- 				return d;
- 			else
-@@ -90,13 +92,14 @@ _lookup_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
-  * @id deviceid to look up
-  */
- struct nfs4_deviceid_node *
--_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
-+_find_get_deviceid(const struct pnfs_layoutdriver_type *ld,
-+		   const struct nfs_client *clp, const struct nfs4_deviceid *id,
- 		   long hash)
- {
- 	struct nfs4_deviceid_node *d;
+ /* pnfs.c */
+ void get_layout_hdr(struct pnfs_layout_hdr *lo);
+@@ -165,6 +166,7 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+ bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
++int _pnfs_return_layout(struct inode *);
+ int pnfs_ld_write_done(struct nfs_write_data *);
+ int pnfs_ld_read_done(struct nfs_read_data *);
  
- 	rcu_read_lock();
--	d = _lookup_deviceid(clp, id, hash);
-+	d = _lookup_deviceid(ld, clp, id, hash);
- 	if (!atomic_inc_not_zero(&d->ref))
- 		d = NULL;
- 	rcu_read_unlock();
-@@ -104,9 +107,10 @@ _find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
+@@ -256,6 +258,17 @@ static inline void pnfs_clear_request_commit(struct nfs_page *req)
+ 		put_lseg(req->wb_commit_lseg);
  }
  
- struct nfs4_deviceid_node *
--nfs4_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
-+nfs4_find_get_deviceid(const struct pnfs_layoutdriver_type *ld,
-+		       const struct nfs_client *clp, const struct nfs4_deviceid *id)
- {
--	return _find_get_deviceid(clp, id, nfs4_deviceid_hash(id));
-+	return _find_get_deviceid(ld, clp, id, nfs4_deviceid_hash(id));
++static inline int pnfs_return_layout(struct inode *ino)
++{
++	struct nfs_inode *nfsi = NFS_I(ino);
++	struct nfs_server *nfss = NFS_SERVER(ino);
++
++	if (pnfs_enabled_sb(nfss) && nfsi->layout)
++		return _pnfs_return_layout(ino);
++
++	return 0;
++}
++
+ #else  /* CONFIG_NFS_V4_1 */
+ 
+ static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
+@@ -298,6 +311,11 @@ pnfs_try_to_write_data(struct nfs_write_data *data,
+ 	return PNFS_NOT_ATTEMPTED;
  }
- EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
  
-@@ -119,13 +123,14 @@ EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
-  * @ret the unhashed node, if found and dereferenced to zero, NULL otherwise.
-  */
- struct nfs4_deviceid_node *
--nfs4_unhash_put_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
-+nfs4_unhash_put_deviceid(const struct pnfs_layoutdriver_type *ld,
-+			 const struct nfs_client *clp, const struct nfs4_deviceid *id)
++static inline int pnfs_return_layout(struct inode *ino)
++{
++	return 0;
++}
++
+ static inline bool
+ pnfs_roc(struct inode *ino)
  {
- 	struct nfs4_deviceid_node *d;
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 178fafe..9376eaf 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -562,6 +562,7 @@ enum {
+ 	NFSPROC4_CLNT_LAYOUTGET,
+ 	NFSPROC4_CLNT_GETDEVICEINFO,
+ 	NFSPROC4_CLNT_LAYOUTCOMMIT,
++	NFSPROC4_CLNT_LAYOUTRETURN,
+ };
  
- 	spin_lock(&nfs4_deviceid_lock);
- 	rcu_read_lock();
--	d = _lookup_deviceid(clp, id, nfs4_deviceid_hash(id));
-+	d = _lookup_deviceid(ld, clp, id, nfs4_deviceid_hash(id));
- 	rcu_read_unlock();
- 	if (!d) {
- 		spin_unlock(&nfs4_deviceid_lock);
-@@ -150,11 +155,12 @@ EXPORT_SYMBOL_GPL(nfs4_unhash_put_deviceid);
-  * @id deviceid to delete
+ /* nfs41 types */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 7c8ff09..5e8444a 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -269,6 +269,27 @@ struct nfs4_layoutcommit_data {
+ 	struct nfs4_layoutcommit_res res;
+ };
+ 
++struct nfs4_layoutreturn_args {
++	__u32   layout_type;
++	struct inode *inode;
++	nfs4_stateid stateid;
++	struct nfs4_sequence_args seq_args;
++};
++
++struct nfs4_layoutreturn_res {
++	struct nfs4_sequence_res seq_res;
++	u32 lrs_present;
++	nfs4_stateid stateid;
++};
++
++struct nfs4_layoutreturn {
++	struct nfs4_layoutreturn_args args;
++	struct nfs4_layoutreturn_res res;
++	struct rpc_cred *cred;
++	struct nfs_client *clp;
++	int rpc_status;
++};
++
+ /*
+  * Arguments to the open call.
   */
- void
--nfs4_delete_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
-+nfs4_delete_deviceid(const struct pnfs_layoutdriver_type *ld,
-+		     const struct nfs_client *clp, const struct nfs4_deviceid *id)
- {
- 	struct nfs4_deviceid_node *d;
- 
--	d = nfs4_unhash_put_deviceid(clp, id);
-+	d = nfs4_unhash_put_deviceid(ld, clp, id);
- 	if (!d)
- 		return;
- 	if (d->ld->free_deviceid_node)
-@@ -197,7 +203,7 @@ nfs4_insert_deviceid_node(struct nfs4_deviceid_node *new)
- 
- 	spin_lock(&nfs4_deviceid_lock);
- 	hash = nfs4_deviceid_hash(&new->deviceid);
--	d = _find_get_deviceid(new->nfs_client, &new->deviceid, hash);
-+	d = _find_get_deviceid(new->ld, new->nfs_client, &new->deviceid, hash);
- 	if (d) {
- 		spin_unlock(&nfs4_deviceid_lock);
- 		return d;
 -- 
 1.7.3.4
 
