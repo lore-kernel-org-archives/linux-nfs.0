@@ -1,216 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:62275 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751458Ab1E1Jjw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 May 2011 05:39:52 -0400
-Message-ID: <4DE0C380.7040608@cn.fujitsu.com>
-Date: Sat, 28 May 2011 17:42:24 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: NFS <linux-nfs@vger.kernel.org>, Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v2] rpc.mountd: let mountd consult /etc/services for port
-References: <4DAD48C7.9090808@cn.fujitsu.com>
-In-Reply-To: <4DAD48C7.9090808@cn.fujitsu.com>
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from daytona.panasas.com ([67.152.220.89]:57250 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754046Ab1EYVaQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:30:16 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v8 30/32] NFSv4.1: use pnfs_generic_pg_test directly by layout driver
+Date: Thu, 26 May 2011 00:30:13 +0300
+Message-Id: <1306359013-17950-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DDD7392.6040505@panasas.com>
+References: <4DDD7392.6040505@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-At RHEL, if user set port for mountd at /etc/services as 
-"mount   12345/tcp", mountd should be bind to 12345, but the 
-latest nfs-utils, mountd get a rand port, not 12345.
-
-This patch make sure mountd be bind to the port which was set
-at /etc/service.
-
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- support/include/rpcmisc.h |    1 +
- support/nfs/svc_create.c  |    9 ++++-
- support/nfs/svc_socket.c  |   80 +++++++++++++++++++++------------------------
- utils/mountd/mountd.man   |    5 ++-
- utils/statd/statd.man     |    5 ++-
- 5 files changed, 53 insertions(+), 47 deletions(-)
+ fs/nfs/nfs4filelayout.c      |    3 +++
+ fs/nfs/objlayout/objio_osd.c |   14 +-------------
+ fs/nfs/pnfs.c                |   13 +++++++++----
+ fs/nfs/pnfs.h                |    6 ++++--
+ 4 files changed, 17 insertions(+), 19 deletions(-)
 
-diff --git a/support/include/rpcmisc.h b/support/include/rpcmisc.h
-index 0b06457..b806227 100644
---- a/support/include/rpcmisc.h
-+++ b/support/include/rpcmisc.h
-@@ -53,6 +53,7 @@ void		rpc_init(char *name, int prog, int vers,
- void		rpc_dispatch(struct svc_req *rq, SVCXPRT *xprt,
- 				struct rpc_dtable *dtable, int nvers,
- 				void *argp, void *resp);
-+int		getservport(u_long number, const char *proto);
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 24f0572..4269088 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -661,6 +661,9 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	u64 p_stripe, r_stripe;
+ 	u32 stripe_unit;
  
- extern int	_rpcpmstart;
- extern int	_rpcfdtype;
-diff --git a/support/nfs/svc_create.c b/support/nfs/svc_create.c
-index b3f75ed..c159fc8 100644
---- a/support/nfs/svc_create.c
-+++ b/support/nfs/svc_create.c
-@@ -393,7 +393,7 @@ nfs_svc_create(char *name, const rpcprog_t program, const rpcvers_t version,
- 	const struct sigaction create_sigaction = {
- 		.sa_handler	= SIG_IGN,
- 	};
--	unsigned int visible, up;
-+	unsigned int visible, up, servport;
- 	struct netconfig *nconf;
- 	void *handlep;
- 
-@@ -417,8 +417,13 @@ nfs_svc_create(char *name, const rpcprog_t program, const rpcvers_t version,
- 		if (!(nconf->nc_flag & NC_VISIBLE))
- 			continue;
- 		visible++;
-+		if (port == 0)
-+			servport = getservport(program, nconf->nc_proto);
-+		else
-+			servport = port;
++	if (!pnfs_generic_pg_test(pgio, prev, req))
++		return 0;
 +
- 		up += svc_create_nconf(name, program, version, dispatch,
--						port, nconf);
-+						servport, nconf);
- 	}
+ 	if (!pgio->pg_lseg)
+ 		return 1;
+ 	p_stripe = (u64)prev->wb_index << PAGE_CACHE_SHIFT;
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index bb68dc0..829a416 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -974,18 +974,6 @@ ssize_t objio_write_pagelist(struct objlayout_io_state *ol_state, bool stable)
+ 	return _write_exec(ios);
+ }
  
- 	if (visible == 0)
-diff --git a/support/nfs/svc_socket.c b/support/nfs/svc_socket.c
-index 03a5325..c252f53 100644
---- a/support/nfs/svc_socket.c
-+++ b/support/nfs/svc_socket.c
-@@ -35,14 +35,43 @@
- # define __close(f)		close ((f))
- #endif
+-/*
+- * objlayout_pg_test(). Called by nfs_can_coalesce_requests()
+- *
+- * return true iff coalesce page
+- */
+-bool
+-objlayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+-		   struct nfs_page *req)
+-{
+-	return true;
+-}
+-
+ static struct pnfs_layoutdriver_type objlayout_type = {
+ 	.id = LAYOUT_OSD2_OBJECTS,
+ 	.name = "LAYOUT_OSD2_OBJECTS",
+@@ -999,7 +987,7 @@ static struct pnfs_layoutdriver_type objlayout_type = {
  
-+int getservport(u_long number, const char *proto)
-+{
-+	char rpcdata[1024], servdata[1024];
-+	struct rpcent rpcbuf, *rpcp;
-+	struct servent servbuf, *servp = NULL;
-+	int ret;
-+
-+	ret = getrpcbynumber_r(number, &rpcbuf, rpcdata, sizeof rpcdata,
-+				&rpcp);
-+	if (ret == 0 && rpcp != NULL) {
-+		/* First try name.  */
-+		ret = getservbyname_r(rpcp->r_name, proto, &servbuf, servdata,
-+					sizeof servdata, &servp);
-+		if ((ret != 0 || servp == NULL) && rpcp->r_aliases) {
-+			const char **a;
-+
-+			/* Then we try aliases.  */
-+			for (a = (const char **) rpcp->r_aliases; *a != NULL; a++) {
-+				ret = getservbyname_r(*a, proto, &servbuf, servdata,
-+							sizeof servdata, &servp);
-+				if (ret == 0 && servp != NULL)
-+					break;
-+			}
-+		}
+ 	.read_pagelist           = objlayout_read_pagelist,
+ 	.write_pagelist          = objlayout_write_pagelist,
+-	.pg_test                 = objlayout_pg_test,
++	.pg_test                 = pnfs_generic_pg_test,
+ 
+ 	.free_deviceid_node	 = objio_free_deviceid_node,
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 7d96e6b..8171212 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1067,12 +1067,17 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 						   pgio->pg_count,
+ 						   access_type,
+ 						   gfp_flags);
+-	} else if (pgio->pg_lseg &&
+-		   req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
+-						pgio->pg_lseg->pls_range.length))
++		return true;
 +	}
 +
-+	if (ret == 0 && servp != NULL)
-+		return ntohs(servp->s_port);
++	if (pgio->pg_lseg &&
++	    req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
++					 pgio->pg_lseg->pls_range.length))
+ 		return false;
+-	return NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->pg_test(pgio, prev, req);
 +
-+	return 0;
-+}
-+
- static int
- svc_socket (u_long number, int type, int protocol, int reuse)
++	return true;
+ }
++EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
+ 
+ /*
+  * Called by non rpc-based layout drivers
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index d998d0d..a279969 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -294,8 +294,10 @@ static inline int pnfs_return_layout(struct inode *ino)
+ 
+ static inline void pnfs_pageio_init(struct nfs_pageio_descriptor *pgio, struct inode *inode)
  {
-   struct sockaddr_in addr;
-   socklen_t len = sizeof (struct sockaddr_in);
--  char rpcdata [1024], servdata [1024];
--  struct rpcent rpcbuf, *rpcp;
--  struct servent servbuf, *servp = NULL;
-   int sock, ret;
-   const char *proto = protocol == IPPROTO_TCP ? "tcp" : "udp";
+-	if (NFS_SERVER(inode)->pnfs_curr_ld)
+-		pgio->pg_test = pnfs_generic_pg_test;
++	struct pnfs_layoutdriver_type *ld = NFS_SERVER(inode)->pnfs_curr_ld;
++
++	if (ld)
++		pgio->pg_test = ld->pg_test;
+ }
  
-@@ -66,48 +95,13 @@ svc_socket (u_long number, int type, int protocol, int reuse)
- 
-   memset (&addr, 0, sizeof (addr));
-   addr.sin_family = AF_INET;
-+  addr.sin_port = htons(getservport(number, proto));
- 
--  ret = getrpcbynumber_r (number, &rpcbuf, rpcdata, sizeof rpcdata,
--			  &rpcp);
--  if (ret == 0 && rpcp != NULL)
--    {
--      /* First try name.  */
--      ret = getservbyname_r (rpcp->r_name, proto, &servbuf, servdata,
--			     sizeof servdata, &servp);
--      if ((ret != 0 || servp == NULL) && rpcp->r_aliases)
--	{
--	  const char **a;
--
--	  /* Then we try aliases.  */
--	  for (a = (const char **) rpcp->r_aliases; *a != NULL; a++) 
--	    {
--	      ret = getservbyname_r (*a, proto, &servbuf, servdata,
--				     sizeof servdata, &servp);
--	      if (ret == 0 && servp != NULL)
--		break;
--	    }
--	}
--    }
--
--  if (ret == 0 && servp != NULL)
-+  if (bind(sock, (struct sockaddr *) &addr, len) < 0)
-     {
--      addr.sin_port = servp->s_port;
--      if (bind (sock, (struct sockaddr *) &addr, len) < 0)
--	{
--	  perror (_("svc_socket: bind problem"));
--	  (void) __close (sock);
--	  sock = -1;
--	}
--    }
--  else
--    {
--	  addr.sin_port = 0;
--	  if (bind (sock, (struct sockaddr *) &addr, len) < 0)
--	    {
--	      perror (_("svc_socket: bind problem"));
--	      (void) __close (sock);
--	      sock = -1;
--	    }
-+      perror (_("svc_socket: bind problem"));
-+      (void) __close(sock);
-+      sock = -1;
-     }
- 
-   if (sock >= 0)
-diff --git a/utils/mountd/mountd.man b/utils/mountd/mountd.man
-index 016a357..b322437 100644
---- a/utils/mountd/mountd.man
-+++ b/utils/mountd/mountd.man
-@@ -122,7 +122,10 @@ Ignored (compatibility with unfsd??).
- Specifies the port number used for RPC listener sockets.
- If this option is not specified,
- .B rpc.mountd
--chooses a random ephemeral port for each listener socket.
-+will try to consult
-+.IR /etc/services ,
-+if gets port succeed, set the same port for all listener socket,
-+otherwise chooses a random ephemeral port for each listener socket.
- .IP
- This option can be used to fix the port value of
- .BR rpc.mountd 's
-diff --git a/utils/statd/statd.man b/utils/statd/statd.man
-index b72236c..203f8c9 100644
---- a/utils/statd/statd.man
-+++ b/utils/statd/statd.man
-@@ -219,7 +219,10 @@ for details.
- Specifies the port number used for RPC listener sockets.
- If this option is not specified,
- .B rpc.statd
--chooses a random ephemeral port for each listener socket.
-+will try to consult
-+.IR /etc/services ,
-+if gets port succeed, set the same port for all listener socket,
-+otherwise chooses a random ephemeral port for each listener socket.
- .IP
- This option can be used to fix the port value of its listeners when
- SM_NOTIFY requests must traverse a firewall between clients and servers.
+ #else  /* CONFIG_NFS_V4_1 */
 -- 
-1.7.5.1
-
-
+1.7.3.4
 
