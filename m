@@ -1,56 +1,150 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:21890 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754977Ab1ECUUc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 May 2011 16:20:32 -0400
-Subject: Re: [RFC 0/1] SUNRPC: dynamic rpc_slot allocator for TCP
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <A5ED05D7-9EA2-46C0-A27E-63FFA39BC024@netapp.com>
-Date: Tue, 3 May 2011 16:20:20 -0400
-Cc: trond.myklebust@netapp.com, jlayton@redhat.com, linux-nfs@vger.kernel.org
-Message-Id: <516EBEB5-E5DE-46E4-99D6-3452586904EA@oracle.com>
-References: <1304386808-2733-1-git-send-email-andros@netapp.com> <0C6F7F78-D506-463B-B4B7-D780BA9FA95F@oracle.com> <A5ED05D7-9EA2-46C0-A27E-63FFA39BC024@netapp.com>
-To: Andy Adamson <andros@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:57196 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754488Ab1EYV3x (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:29:53 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v8 27/32] pnfs-obj: objlayout_encode_layoutcommit implementation
+Date: Thu, 26 May 2011 00:29:51 +0300
+Message-Id: <1306358991-17823-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DDD7392.6040505@panasas.com>
+References: <4DDD7392.6040505@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Boaz Harrosh <bharrosh@panasas.com>
 
-On May 3, 2011, at 4:13 PM, Andy Adamson wrote:
+* Define API for io-engines to report delta_space_used in IOs
+* Encode the osd-layout specific information of the layoutcommit
+  XDR buffer.
 
-> 
-> On May 3, 2011, at 4:06 PM, Chuck Lever wrote:
-> 
->> Hi-
->> 
->> On May 2, 2011, at 9:40 PM, andros@netapp.com wrote:
->> 
->>> I would appreciate comments on this patch. I've done a small amount of testing
->>> where I've set the /proc/sys/sunrpc/tcp_slot_table_entries to 2, and watched
->>> the dynamic allocator increase it to 3. I have a 10G test system being
->>> configured.
->> 
->> For TCP transports, then, the effective slot table size varies between the tcp_slot_table_entries setting and the estimated number of RPCs that can fit in the TCP window?  
-> 
-> Yes.
-> 
->> What happens when the TCP window shrinks such that fewer RPCs can fit than are allowed by the tcp_slot_table_entries setting?
-> 
-> We don't shrink the rpc_slot table size. The idea being that if the TCP hits size X then shrinks to size X-n, there is a good chance that it will get back to size X. In the worst case, this is still better than a hard configured 'to large' slot table size.
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/objlayout/objio_osd.c |    1 +
+ fs/nfs/objlayout/objlayout.c |   30 ++++++++++++++++++++++++++++++
+ fs/nfs/objlayout/objlayout.h |   30 ++++++++++++++++++++++++++++++
+ 3 files changed, 61 insertions(+), 0 deletions(-)
 
-Seems to me that we wouldn't need the tcp_slot_table_entries setting at all, then.  Always start at 2 and it will adjust itself as needed.  Unless we find we need a hard upper bound in some cases.
-
->> Have you done performance testing with loopback mounts (ie server and client on the same machine, mounting over the "lo" interface)?  As I recall this was the test case that Trond found worked poorly when we boosted the tcp_slot_table_entries setting to default to a 64 entry slot table.
-> 
-> No, not yet. I'll add this to the planned testing.  So having way too many default rpc_slots is bad? I could test by starting with a default of 2 slots and seeing how many are needed.
-
-Apparently there was a problem with having too many slots, but I was never clear what that problem might be.  The report was only poor performance on loopback NFS mounts.
-
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 28a73e9..c788146 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -1004,6 +1004,7 @@ static struct pnfs_layoutdriver_type objlayout_type = {
+ 
+ 	.free_deviceid_node	 = objio_free_deviceid_node,
+ 
++	.encode_layoutcommit	 = objlayout_encode_layoutcommit,
+ 	.encode_layoutreturn     = objlayout_encode_layoutreturn,
+ };
+ 
+diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+index f7caecf..dc3956c 100644
+--- a/fs/nfs/objlayout/objlayout.c
++++ b/fs/nfs/objlayout/objlayout.c
+@@ -225,6 +225,7 @@ objlayout_iodone(struct objlayout_io_state *state)
+ 		struct objlayout *objlay = OBJLAYOUT(state->lseg->pls_layout);
+ 
+ 		spin_lock(&objlay->lock);
++		objlay->delta_space_valid = OBJ_DSU_INVALID;
+ 		list_add(&objlay->err_list, &state->err_list);
+ 		spin_unlock(&objlay->lock);
+ 	}
+@@ -433,6 +434,35 @@ objlayout_write_pagelist(struct nfs_write_data *wdata,
+ 	return PNFS_ATTEMPTED;
+ }
+ 
++void
++objlayout_encode_layoutcommit(struct pnfs_layout_hdr *pnfslay,
++			      struct xdr_stream *xdr,
++			      const struct nfs4_layoutcommit_args *args)
++{
++	struct objlayout *objlay = OBJLAYOUT(pnfslay);
++	struct pnfs_osd_layoutupdate lou;
++	__be32 *start;
++
++	dprintk("%s: Begin\n", __func__);
++
++	spin_lock(&objlay->lock);
++	lou.dsu_valid = (objlay->delta_space_valid == OBJ_DSU_VALID);
++	lou.dsu_delta = objlay->delta_space_used;
++	objlay->delta_space_used = 0;
++	objlay->delta_space_valid = OBJ_DSU_INIT;
++	lou.olu_ioerr_flag = !list_empty(&objlay->err_list);
++	spin_unlock(&objlay->lock);
++
++	start = xdr_reserve_space(xdr, 4);
++
++	BUG_ON(pnfs_osd_xdr_encode_layoutupdate(xdr, &lou));
++
++	*start = cpu_to_be32((xdr->p - start - 1) * 4);
++
++	dprintk("%s: Return delta_space_used %lld err %d\n", __func__,
++		lou.dsu_delta, lou.olu_ioerr_flag);
++}
++
+ static int
+ err_prio(u32 oer_errno)
+ {
+diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
+index b0bb975..a8244c8 100644
+--- a/fs/nfs/objlayout/objlayout.h
++++ b/fs/nfs/objlayout/objlayout.h
+@@ -51,6 +51,14 @@
+ struct objlayout {
+ 	struct pnfs_layout_hdr pnfs_layout;
+ 
++	 /* for layout_commit */
++	enum osd_delta_space_valid_enum {
++		OBJ_DSU_INIT = 0,
++		OBJ_DSU_VALID,
++		OBJ_DSU_INVALID,
++	} delta_space_valid;
++	s64 delta_space_used;  /* consumed by write ops */
++
+ 	 /* for layout_return */
+ 	spinlock_t lock;
+ 	struct list_head err_list;
+@@ -119,6 +127,23 @@ extern void objlayout_io_set_result(struct objlayout_io_state *state,
+ 			unsigned index, struct pnfs_osd_objid *pooid,
+ 			int osd_error, u64 offset, u64 length, bool is_write);
+ 
++static inline void
++objlayout_add_delta_space_used(struct objlayout_io_state *state, s64 space_used)
++{
++	struct objlayout *objlay = OBJLAYOUT(state->lseg->pls_layout);
++
++	/* If one of the I/Os errored out and the delta_space_used was
++	 * invalid we render the complete report as invalid. Protocol mandate
++	 * the DSU be accurate or not reported.
++	 */
++	spin_lock(&objlay->lock);
++	if (objlay->delta_space_valid != OBJ_DSU_INVALID) {
++		objlay->delta_space_valid = OBJ_DSU_VALID;
++		objlay->delta_space_used += space_used;
++	}
++	spin_unlock(&objlay->lock);
++}
++
+ extern void objlayout_read_done(struct objlayout_io_state *state,
+ 				ssize_t status, bool sync);
+ extern void objlayout_write_done(struct objlayout_io_state *state,
+@@ -149,6 +174,11 @@ extern enum pnfs_try_status objlayout_write_pagelist(
+ 	struct nfs_write_data *,
+ 	int how);
+ 
++extern void objlayout_encode_layoutcommit(
++	struct pnfs_layout_hdr *,
++	struct xdr_stream *,
++	const struct nfs4_layoutcommit_args *);
++
+ extern void objlayout_encode_layoutreturn(
+ 	struct pnfs_layout_hdr *,
+ 	struct xdr_stream *,
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.3.4
 
