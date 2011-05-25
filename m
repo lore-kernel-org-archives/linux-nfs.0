@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57122 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:57080 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932237Ab1EYV2g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:28:36 -0400
+	with ESMTP id S1751885Ab1EYV1N (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:27:13 -0400
 From: Benny Halevy <bhalevy@panasas.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v8 17/32] pnfs-obj: objio_osd device information retrieval and caching
-Date: Thu, 26 May 2011 00:28:34 +0300
-Message-Id: <1306358914-17403-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v8 06/32] pnfs: CB_NOTIFY_DEVICEID
+Date: Thu, 26 May 2011 00:27:09 +0300
+Message-Id: <1306358829-17003-1-git-send-email-bhalevy@panasas.com>
 In-Reply-To: <4DDD7392.6040505@panasas.com>
 References: <4DDD7392.6040505@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -16,323 +16,391 @@ List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Boaz Harrosh <bharrosh@panasas.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
 
-When a new layout is received in objio_alloc_lseg all device_ids
-referenced are retrieved. The device information is queried for from MDS
-and then the osd_device is looked-up from the osd-initiator library. The
-devices are cached in a per-mount-point list, for later use. At unmount
-all devices are "put" back to the library.
+Note: This functionlaity is incomplete as all layout segments referring to
+the 'to be removed device id' need to be reaped, and all in flight I/O drained.
 
-objlayout_get_deviceinfo(), objlayout_put_deviceinfo() middleware
-API for retrieving device information given a device_id.
-
-TODO: The device cache can get big. Cap its size. Keep an LRU and start
-      to return devices which were not used, when list gets to big, or
-      when new entries allocation fail.
-
+[use be32 res in nfs4_callback_devicenotify]
+[use nfs_client to qualify deviceid for cb_notify_deviceid]
+[use global deviceid cache for CB_NOTIFY_DEVICEID]
+[refactor device cache _lookup_deviceid]
+[refactor device cache _find_get_deviceid]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[Bug in new global-device-cache code]
+[layout_driver MUST set free_deviceid_node if using dev-cache]
 Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-[gfp_flags]
-[use global device cache]
-[use layout driver in global device cache]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/objlayout/objio_osd.c |  148 +++++++++++++++++++++++++++++++++++++++++-
- fs/nfs/objlayout/objlayout.c |   68 +++++++++++++++++++
- fs/nfs/objlayout/objlayout.h |    8 ++
- 3 files changed, 223 insertions(+), 1 deletions(-)
+ fs/nfs/callback.h      |   17 ++++++++
+ fs/nfs/callback_proc.c |   47 +++++++++++++++++++++++
+ fs/nfs/callback_xdr.c  |   96 +++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfs/pnfs.h          |    1 +
+ fs/nfs/pnfs_dev.c      |   95 ++++++++++++++++++++++++++++++++++++++++-------
+ 5 files changed, 241 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 725b1df..80d916b 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -46,6 +46,58 @@
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index 46d93ce..b257383 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -167,6 +167,23 @@ extern unsigned nfs4_callback_layoutrecall(
  
- #define _LLU(x) ((unsigned long long)x)
- 
-+struct objio_dev_ent {
-+	struct nfs4_deviceid_node id_node;
-+	struct osd_dev *od;
+ extern void nfs4_check_drain_bc_complete(struct nfs4_session *ses);
+ extern void nfs4_cb_take_slot(struct nfs_client *clp);
++
++struct cb_devicenotifyitem {
++	uint32_t		cbd_notify_type;
++	uint32_t		cbd_layout_type;
++	struct nfs4_deviceid	cbd_dev_id;
++	uint32_t		cbd_immediate;
 +};
 +
-+static void
-+objio_free_deviceid_node(struct nfs4_deviceid_node *d)
-+{
-+	struct objio_dev_ent *de = container_of(d, struct objio_dev_ent, id_node);
++struct cb_devicenotifyargs {
++	int				 ndevs;
++	struct cb_devicenotifyitem	 *devs;
++};
 +
-+	osduld_put_device(de->od);
-+	kfree(de);
-+}
++extern __be32 nfs4_callback_devicenotify(
++	struct cb_devicenotifyargs *args,
++	void *dummy, struct cb_process_state *cps);
 +
-+static struct objio_dev_ent *_dev_list_find(const struct nfs_server *nfss,
-+	const struct nfs4_deviceid *d_id)
-+{
-+	struct nfs4_deviceid_node *d;
-+
-+	d = nfs4_find_get_deviceid(nfss->pnfs_curr_ld, nfss->nfs_client, d_id);
-+	if (!d)
-+		return NULL;
-+	return container_of(d, struct objio_dev_ent, id_node);
-+}
-+
-+static int _dev_list_add(const struct nfs_server *nfss,
-+	const struct nfs4_deviceid *d_id, struct osd_dev *od,
-+	gfp_t gfp_flags)
-+{
-+	struct nfs4_deviceid_node *d;
-+	struct objio_dev_ent *de = kzalloc(sizeof(*de), gfp_flags);
-+	struct objio_dev_ent *n;
-+
-+	if (!de)
-+		return -ENOMEM;
-+
-+	nfs4_init_deviceid_node(&de->id_node,
-+				nfss->pnfs_curr_ld,
-+				nfss->nfs_client,
-+				d_id);
-+	de->od = od;
-+
-+	d = nfs4_insert_deviceid_node(&de->id_node);
-+	n = container_of(d, struct objio_dev_ent, id_node);
-+	if (n != de) {
-+		BUG_ON(n->od != od);
-+		objio_free_deviceid_node(&de->id_node);
-+	}
-+
-+	return 0;
-+}
-+
- struct caps_buffers {
- 	u8 caps_key[OSD_CRYPTO_KEYID_SIZE];
- 	u8 creds[OSD_CAP_LEN];
-@@ -65,7 +117,7 @@ struct objio_segment {
- 	unsigned comps_index;
- 	unsigned num_comps;
- 	/* variable length */
--	struct osd_dev	*ods[1];
-+	struct objio_dev_ent *ods[1];
- };
- 
- static inline struct objio_segment *
-@@ -74,6 +126,89 @@ OBJIO_LSEG(struct pnfs_layout_segment *lseg)
- 	return container_of(lseg, struct objio_segment, lseg);
+ #endif /* CONFIG_NFS_V4_1 */
+ extern int check_gss_callback_principal(struct nfs_client *, struct svc_rqst *);
+ extern __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 2f41dcce..fb5e5b9 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -241,6 +241,53 @@ static void pnfs_recall_all_layouts(struct nfs_client *clp)
+ 	do_callback_layoutrecall(clp, &args);
  }
  
-+/* Send and wait for a get_device_info of devices in the layout,
-+   then look them up with the osd_initiator library */
-+static struct objio_dev_ent *_device_lookup(struct pnfs_layout_hdr *pnfslay,
-+				struct objio_segment *objio_seg, unsigned comp,
-+				gfp_t gfp_flags)
++__be32 nfs4_callback_devicenotify(struct cb_devicenotifyargs *args,
++				  void *dummy, struct cb_process_state *cps)
 +{
-+	struct pnfs_osd_deviceaddr *deviceaddr;
-+	struct nfs4_deviceid *d_id;
-+	struct objio_dev_ent *ode;
-+	struct osd_dev *od;
-+	struct osd_dev_info odi;
-+	int err;
-+
-+	d_id = &objio_seg->comps[comp].oc_object_id.oid_device_id;
-+
-+	ode = _dev_list_find(NFS_SERVER(pnfslay->plh_inode), d_id);
-+	if (ode)
-+		return ode;
-+
-+	err = objlayout_get_deviceinfo(pnfslay, d_id, &deviceaddr, gfp_flags);
-+	if (unlikely(err)) {
-+		dprintk("%s: objlayout_get_deviceinfo dev(%llx:%llx) =>%d\n",
-+			__func__, _DEVID_LO(d_id), _DEVID_HI(d_id), err);
-+		return ERR_PTR(err);
-+	}
-+
-+	odi.systemid_len = deviceaddr->oda_systemid.len;
-+	if (odi.systemid_len > sizeof(odi.systemid)) {
-+		err = -EINVAL;
-+		goto out;
-+	} else if (odi.systemid_len)
-+		memcpy(odi.systemid, deviceaddr->oda_systemid.data,
-+		       odi.systemid_len);
-+	odi.osdname_len	 = deviceaddr->oda_osdname.len;
-+	odi.osdname	 = (u8 *)deviceaddr->oda_osdname.data;
-+
-+	if (!odi.osdname_len && !odi.systemid_len) {
-+		dprintk("%s: !odi.osdname_len && !odi.systemid_len\n",
-+			__func__);
-+		err = -ENODEV;
-+		goto out;
-+	}
-+
-+	od = osduld_info_lookup(&odi);
-+	if (unlikely(IS_ERR(od))) {
-+		err = PTR_ERR(od);
-+		dprintk("%s: osduld_info_lookup => %d\n", __func__, err);
-+		goto out;
-+	}
-+
-+	_dev_list_add(NFS_SERVER(pnfslay->plh_inode), d_id, od, gfp_flags);
-+
-+out:
-+	dprintk("%s: return=%d\n", __func__, err);
-+	objlayout_put_deviceinfo(deviceaddr);
-+	return err ? ERR_PTR(err) : od;
-+}
-+
-+static int objio_devices_lookup(struct pnfs_layout_hdr *pnfslay,
-+	struct objio_segment *objio_seg,
-+	gfp_t gfp_flags)
-+{
-+	unsigned i;
-+	int err;
-+
-+	/* lookup all devices */
-+	for (i = 0; i < objio_seg->num_comps; i++) {
-+		struct objio_dev_ent *ode;
-+
-+		ode = _device_lookup(pnfslay, objio_seg, i, gfp_flags);
-+		if (unlikely(IS_ERR(ode))) {
-+			err = PTR_ERR(ode);
-+			goto out;
-+		}
-+		objio_seg->ods[i] = ode;
-+	}
-+	err = 0;
-+
-+out:
-+	dprintk("%s: return=%d\n", __func__, err);
-+	return err;
-+}
-+
- static int _verify_data_map(struct pnfs_osd_layout *layout)
- {
- 	struct pnfs_osd_data_map *data_map = &layout->olo_map;
-@@ -170,6 +305,9 @@ int objio_alloc_lseg(struct pnfs_layout_segment **outp,
- 
- 	objio_seg->num_comps = layout.olo_num_comps;
- 	objio_seg->comps_index = layout.olo_comps_index;
-+	err = objio_devices_lookup(pnfslay, objio_seg, gfp_flags);
-+	if (err)
-+		goto err;
- 
- 	objio_seg->mirrors_p1 = layout.olo_map.odm_mirror_cnt + 1;
- 	objio_seg->stripe_unit = layout.olo_map.odm_stripe_unit;
-@@ -198,8 +336,14 @@ err:
- 
- void objio_free_lseg(struct pnfs_layout_segment *lseg)
- {
 +	int i;
- 	struct objio_segment *objio_seg = OBJIO_LSEG(lseg);
- 
-+	for (i = 0; i < objio_seg->num_comps; i++) {
-+		if (!objio_seg->ods[i])
-+			break;
-+		nfs4_put_deviceid_node(&objio_seg->ods[i]->id_node);
++	__be32 res = 0;
++	struct nfs_client *clp = cps->clp;
++	struct nfs_server *server = NULL;
++
++	dprintk("%s: -->\n", __func__);
++
++	if (!clp) {
++		res = cpu_to_be32(NFS4ERR_OP_NOT_IN_SESSION);
++		goto out;
 +	}
- 	kfree(objio_seg);
- }
- 
-@@ -210,6 +354,8 @@ static struct pnfs_layoutdriver_type objlayout_type = {
- 
- 	.alloc_lseg              = objlayout_alloc_lseg,
- 	.free_lseg               = objlayout_free_lseg,
 +
-+	.free_deviceid_node	 = objio_free_deviceid_node,
- };
- 
- MODULE_DESCRIPTION("pNFS Layout Driver for OSD2 objects");
-diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-index 9465267..10e5fca 100644
---- a/fs/nfs/objlayout/objlayout.c
-+++ b/fs/nfs/objlayout/objlayout.c
-@@ -102,3 +102,71 @@ objlayout_free_lseg(struct pnfs_layout_segment *lseg)
- 	objio_free_lseg(lseg);
- }
- 
-+/*
-+ * Get Device Info API for io engines
-+ */
-+struct objlayout_deviceinfo {
-+	struct page *page;
-+	struct pnfs_osd_deviceaddr da; /* This must be last */
-+};
++	for (i = 0; i < args->ndevs; i++) {
++		struct cb_devicenotifyitem *dev = &args->devs[i];
 +
-+/* Initialize and call nfs_getdeviceinfo, then decode and return a
-+ * "struct pnfs_osd_deviceaddr *" Eventually objlayout_put_deviceinfo()
-+ * should be called.
-+ */
-+int objlayout_get_deviceinfo(struct pnfs_layout_hdr *pnfslay,
-+	struct nfs4_deviceid *d_id, struct pnfs_osd_deviceaddr **deviceaddr,
-+	gfp_t gfp_flags)
-+{
-+	struct objlayout_deviceinfo *odi;
-+	struct pnfs_device pd;
-+	struct super_block *sb;
-+	struct page *page, **pages;
-+	u32 *p;
-+	int err;
++		if (!server ||
++		    server->pnfs_curr_ld->id != dev->cbd_layout_type) {
++			rcu_read_lock();
++			list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link)
++				if (server->pnfs_curr_ld &&
++				    server->pnfs_curr_ld->id == dev->cbd_layout_type) {
++					rcu_read_unlock();
++					goto found;
++				}
++			rcu_read_unlock();
++			dprintk("%s: layout type %u not found\n",
++				__func__, dev->cbd_layout_type);
++			continue;
++		}
 +
-+	page = alloc_page(gfp_flags);
-+	if (!page)
-+		return -ENOMEM;
-+
-+	pages = &page;
-+	pd.pages = pages;
-+
-+	memcpy(&pd.dev_id, d_id, sizeof(*d_id));
-+	pd.layout_type = LAYOUT_OSD2_OBJECTS;
-+	pd.pages = &page;
-+	pd.pgbase = 0;
-+	pd.pglen = PAGE_SIZE;
-+	pd.mincount = 0;
-+
-+	sb = pnfslay->plh_inode->i_sb;
-+	err = nfs4_proc_getdeviceinfo(NFS_SERVER(pnfslay->plh_inode), &pd);
-+	dprintk("%s nfs_getdeviceinfo returned %d\n", __func__, err);
-+	if (err)
-+		goto err_out;
-+
-+	p = page_address(page);
-+	odi = kzalloc(sizeof(*odi), gfp_flags);
-+	if (!odi) {
-+		err = -ENOMEM;
-+		goto err_out;
++	found:
++		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
++			dprintk("%s: NOTIFY_DEVICEID4_CHANGE not supported, "
++				"deleting instead\n", __func__);
++		nfs4_delete_deviceid(clp, &dev->cbd_dev_id);
 +	}
-+	pnfs_osd_xdr_decode_deviceaddr(&odi->da, p);
-+	odi->page = page;
-+	*deviceaddr = &odi->da;
-+	return 0;
 +
-+err_out:
-+	__free_page(page);
-+	return err;
++out:
++	kfree(args->devs);
++	dprintk("%s: exit with status = %u\n",
++		__func__, be32_to_cpu(res));
++	return res;
 +}
 +
-+void objlayout_put_deviceinfo(struct pnfs_osd_deviceaddr *deviceaddr)
-+{
-+	struct objlayout_deviceinfo *odi = container_of(deviceaddr,
-+						struct objlayout_deviceinfo,
-+						da);
-+
-+	__free_page(odi->page);
-+	kfree(odi);
-+}
-diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
-index 066280a..0814271 100644
---- a/fs/nfs/objlayout/objlayout.h
-+++ b/fs/nfs/objlayout/objlayout.h
-@@ -56,6 +56,14 @@ extern int objio_alloc_lseg(struct pnfs_layout_segment **outp,
- extern void objio_free_lseg(struct pnfs_layout_segment *lseg);
+ int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const nfs4_stateid *stateid)
+ {
+ 	if (delegation == NULL)
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index 00ecf62..c6c86a7 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -25,6 +25,7 @@
  
+ #if defined(CONFIG_NFS_V4_1)
+ #define CB_OP_LAYOUTRECALL_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
++#define CB_OP_DEVICENOTIFY_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+ #define CB_OP_SEQUENCE_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ + \
+ 					4 + 1 + 3)
+ #define CB_OP_RECALLANY_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+@@ -284,6 +285,93 @@ out:
+ 	return status;
+ }
+ 
++static
++__be32 decode_devicenotify_args(struct svc_rqst *rqstp,
++				struct xdr_stream *xdr,
++				struct cb_devicenotifyargs *args)
++{
++	__be32 *p;
++	__be32 status = 0;
++	u32 tmp;
++	int n, i;
++	args->ndevs = 0;
++
++	/* Num of device notifications */
++	p = read_buf(xdr, sizeof(uint32_t));
++	if (unlikely(p == NULL)) {
++		status = htonl(NFS4ERR_BADXDR);
++		goto out;
++	}
++	n = ntohl(*p++);
++	if (n <= 0)
++		goto out;
++
++	args->devs = kmalloc(n * sizeof(*args->devs), GFP_KERNEL);
++	if (!args->devs) {
++		status = htonl(NFS4ERR_DELAY);
++		goto out;
++	}
++
++	/* Decode each dev notification */
++	for (i = 0; i < n; i++) {
++		struct cb_devicenotifyitem *dev = &args->devs[i];
++
++		p = read_buf(xdr, (4 * sizeof(uint32_t)) + NFS4_DEVICEID4_SIZE);
++		if (unlikely(p == NULL)) {
++			status = htonl(NFS4ERR_BADXDR);
++			goto err;
++		}
++
++		tmp = ntohl(*p++);	/* bitmap size */
++		if (tmp != 1) {
++			status = htonl(NFS4ERR_INVAL);
++			goto err;
++		}
++		dev->cbd_notify_type = ntohl(*p++);
++		if (dev->cbd_notify_type != NOTIFY_DEVICEID4_CHANGE &&
++		    dev->cbd_notify_type != NOTIFY_DEVICEID4_DELETE) {
++			status = htonl(NFS4ERR_INVAL);
++			goto err;
++		}
++
++		tmp = ntohl(*p++);	/* opaque size */
++		if (((dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE) &&
++		     (tmp != NFS4_DEVICEID4_SIZE + 8)) ||
++		    ((dev->cbd_notify_type == NOTIFY_DEVICEID4_DELETE) &&
++		     (tmp != NFS4_DEVICEID4_SIZE + 4))) {
++			status = htonl(NFS4ERR_INVAL);
++			goto err;
++		}
++		dev->cbd_layout_type = ntohl(*p++);
++		memcpy(dev->cbd_dev_id.data, p, NFS4_DEVICEID4_SIZE);
++		p += XDR_QUADLEN(NFS4_DEVICEID4_SIZE);
++
++		if (dev->cbd_layout_type == NOTIFY_DEVICEID4_CHANGE) {
++			p = read_buf(xdr, sizeof(uint32_t));
++			if (unlikely(p == NULL)) {
++				status = htonl(NFS4ERR_BADXDR);
++				goto err;
++			}
++			dev->cbd_immediate = ntohl(*p++);
++		} else {
++			dev->cbd_immediate = 0;
++		}
++
++		args->ndevs++;
++
++		dprintk("%s: type %d layout 0x%x immediate %d\n",
++			__func__, dev->cbd_notify_type, dev->cbd_layout_type,
++			dev->cbd_immediate);
++	}
++out:
++	dprintk("%s: status %d ndevs %d\n",
++		__func__, ntohl(status), args->ndevs);
++	return status;
++err:
++	kfree(args->devs);
++	goto out;
++}
++
+ static __be32 decode_sessionid(struct xdr_stream *xdr,
+ 				 struct nfs4_sessionid *sid)
+ {
+@@ -639,10 +727,10 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
+ 	case OP_CB_RECALL_ANY:
+ 	case OP_CB_RECALL_SLOT:
+ 	case OP_CB_LAYOUTRECALL:
++	case OP_CB_NOTIFY_DEVICEID:
+ 		*op = &callback_ops[op_nr];
+ 		break;
+ 
+-	case OP_CB_NOTIFY_DEVICEID:
+ 	case OP_CB_NOTIFY:
+ 	case OP_CB_PUSH_DELEG:
+ 	case OP_CB_RECALLABLE_OBJ_AVAIL:
+@@ -849,6 +937,12 @@ static struct callback_op callback_ops[] = {
+ 			(callback_decode_arg_t)decode_layoutrecall_args,
+ 		.res_maxsize = CB_OP_LAYOUTRECALL_RES_MAXSZ,
+ 	},
++	[OP_CB_NOTIFY_DEVICEID] = {
++		.process_op = (callback_process_op_t)nfs4_callback_devicenotify,
++		.decode_args =
++			(callback_decode_arg_t)decode_devicenotify_args,
++		.res_maxsize = CB_OP_DEVICENOTIFY_RES_MAXSZ,
++	},
+ 	[OP_CB_SEQUENCE] = {
+ 		.process_op = (callback_process_op_t)nfs4_callback_sequence,
+ 		.decode_args = (callback_decode_arg_t)decode_cb_sequence_args,
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 9667a62..7f29e3a 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -173,6 +173,7 @@ struct nfs4_deviceid_node {
+ void nfs4_print_deviceid(const struct nfs4_deviceid *dev_id);
+ struct nfs4_deviceid_node *nfs4_find_get_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
+ struct nfs4_deviceid_node *nfs4_unhash_put_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
++void nfs4_delete_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
+ void nfs4_init_deviceid_node(struct nfs4_deviceid_node *,
+ 			     const struct pnfs_layoutdriver_type *,
+ 			     const struct nfs_client *,
+diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+index 64a4b85..8fd3839 100644
+--- a/fs/nfs/pnfs_dev.c
++++ b/fs/nfs/pnfs_dev.c
+@@ -66,6 +66,23 @@ nfs4_deviceid_hash(const struct nfs4_deviceid *id)
+ 	return x & NFS4_DEVICE_ID_HASH_MASK;
+ }
+ 
++static struct nfs4_deviceid_node *
++_lookup_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
++		 long hash)
++{
++	struct nfs4_deviceid_node *d;
++	struct hlist_node *n;
++
++	hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[hash], node)
++		if (d->nfs_client == clp && !memcmp(&d->deviceid, id, sizeof(*id))) {
++			if (atomic_read(&d->ref))
++				return d;
++			else
++				continue;
++		}
++	return NULL;
++}
++
  /*
-+ * callback API
-+ */
-+extern int objlayout_get_deviceinfo(struct pnfs_layout_hdr *pnfslay,
-+	struct nfs4_deviceid *d_id, struct pnfs_osd_deviceaddr **deviceaddr,
-+	gfp_t gfp_flags);
-+extern void objlayout_put_deviceinfo(struct pnfs_osd_deviceaddr *deviceaddr);
+  * Lookup a deviceid in cache and get a reference count on it if found
+  *
+@@ -73,26 +90,76 @@ nfs4_deviceid_hash(const struct nfs4_deviceid *id)
+  * @id deviceid to look up
+  */
+ struct nfs4_deviceid_node *
++_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id,
++		   long hash)
++{
++	struct nfs4_deviceid_node *d;
++
++	rcu_read_lock();
++	d = _lookup_deviceid(clp, id, hash);
++	if (d && !atomic_inc_not_zero(&d->ref))
++		d = NULL;
++	rcu_read_unlock();
++	return d;
++}
++
++struct nfs4_deviceid_node *
+ nfs4_find_get_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
+ {
++	return _find_get_deviceid(clp, id, nfs4_deviceid_hash(id));
++}
++EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
 +
 +/*
-  * exported generic objects function vectors
-  */
- extern struct pnfs_layout_segment *objlayout_alloc_lseg(
++ * Unhash and put deviceid
++ *
++ * @clp nfs_client associated with deviceid
++ * @id the deviceid to unhash
++ *
++ * @ret the unhashed node, if found and dereferenced to zero, NULL otherwise.
++ */
++struct nfs4_deviceid_node *
++nfs4_unhash_put_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
++{
+ 	struct nfs4_deviceid_node *d;
+-	struct hlist_node *n;
+-	long hash = nfs4_deviceid_hash(id);
+ 
++	spin_lock(&nfs4_deviceid_lock);
+ 	rcu_read_lock();
+-	hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[hash], node) {
+-		if (d->nfs_client == clp && !memcmp(&d->deviceid, id, sizeof(*id))) {
+-			if (!atomic_inc_not_zero(&d->ref))
+-				goto fail;
+-			rcu_read_unlock();
+-			return d;
+-		}
+-	}
+-fail:
++	d = _lookup_deviceid(clp, id, nfs4_deviceid_hash(id));
+ 	rcu_read_unlock();
++	if (!d) {
++		spin_unlock(&nfs4_deviceid_lock);
++		return NULL;
++	}
++	hlist_del_init_rcu(&d->node);
++	spin_unlock(&nfs4_deviceid_lock);
++	synchronize_rcu();
++
++	/* balance the initial ref set in pnfs_insert_deviceid */
++	if (atomic_dec_and_test(&d->ref))
++		return d;
++
+ 	return NULL;
+ }
+-EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
++EXPORT_SYMBOL_GPL(nfs4_unhash_put_deviceid);
++
++/*
++ * Delete a deviceid from cache
++ *
++ * @clp struct nfs_client qualifying the deviceid
++ * @id deviceid to delete
++ */
++void
++nfs4_delete_deviceid(const struct nfs_client *clp, const struct nfs4_deviceid *id)
++{
++	struct nfs4_deviceid_node *d;
++
++	d = nfs4_unhash_put_deviceid(clp, id);
++	if (!d)
++		return;
++	d->ld->free_deviceid_node(d);
++}
++EXPORT_SYMBOL_GPL(nfs4_delete_deviceid);
+ 
+ void
+ nfs4_init_deviceid_node(struct nfs4_deviceid_node *d,
+@@ -126,13 +193,13 @@ nfs4_insert_deviceid_node(struct nfs4_deviceid_node *new)
+ 	long hash;
+ 
+ 	spin_lock(&nfs4_deviceid_lock);
+-	d = nfs4_find_get_deviceid(new->nfs_client, &new->deviceid);
++	hash = nfs4_deviceid_hash(&new->deviceid);
++	d = _find_get_deviceid(new->nfs_client, &new->deviceid, hash);
+ 	if (d) {
+ 		spin_unlock(&nfs4_deviceid_lock);
+ 		return d;
+ 	}
+ 
+-	hash = nfs4_deviceid_hash(&new->deviceid);
+ 	hlist_add_head_rcu(&new->node, &nfs4_deviceid_cache[hash]);
+ 	spin_unlock(&nfs4_deviceid_lock);
+ 
 -- 
 1.7.3.4
 
