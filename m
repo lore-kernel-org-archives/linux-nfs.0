@@ -1,58 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yi0-f46.google.com ([209.85.218.46]:56522 "EHLO
-	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932108Ab1EaSVE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 May 2011 14:21:04 -0400
-Received: by yia27 with SMTP id 27so1882798yia.19
-        for <linux-nfs@vger.kernel.org>; Tue, 31 May 2011 11:21:03 -0700 (PDT)
-Message-ID: <4DE53171.7070808@gmail.com>
-Date: Tue, 31 May 2011 14:20:33 -0400
-From: Michael Groshans <mikegroshans@gmail.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] pnfsd: Correctly set netid to tcp or tcp6 for non-local exports
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:57152 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755778Ab1EYV3X (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:29:23 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v8 23/32] pnfs: layoutret_on_setattr
+Date: Thu, 26 May 2011 00:29:21 +0300
+Message-Id: <1306358961-17661-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DDD7392.6040505@panasas.com>
+References: <4DDD7392.6040505@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Michael Groshans <groshans@umich.edu>
+With the objects layout security model, we have object capabilities
+that are associated with the layout and we anticipate that the server
+will issue a cb_layoutrecall for any setattr that changes security
+related attributes (user/group/mode/acl) or truncates the file.
 
-Decide whether or not to send tcp or tcp6 in the netid field of GETDEVICEINFO
-replies by checking for the presence of a colon in the address.
+Therefore, the layout is returned before issuing the setattr to avoid
+the anticipated cb_layoutrecall.
 
-Signed-off by: Michael Groshans <groshans@umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4pnfsdlm.c |   11 ++++++++---
- 1 files changed, 8 insertions(+), 3 deletions(-)
+ fs/nfs/nfs4proc.c            |    3 +++
+ fs/nfs/objlayout/objio_osd.c |    1 +
+ fs/nfs/pnfs.h                |   22 ++++++++++++++++++++++
+ 3 files changed, 26 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
-index 0068ba0..1159cca 100644
---- a/fs/nfsd/nfs4pnfsdlm.c
-+++ b/fs/nfsd/nfs4pnfsdlm.c
-@@ -319,9 +319,6 @@ static int nfsd4_pnfs_dlm_getdevinfo(struct super_block *sb,
- 			goto out;
- 		}
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5b4124e..5734009 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2361,6 +2361,9 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 	struct nfs4_state *state = NULL;
+ 	int status;
  
--		daddr->r_netid.data = "tcp";
--		daddr->r_netid.len = 3;
--
- 		len = strcspn(bufp, ",");
- 		daddr->r_addr.data = kmalloc(len + 4, GFP_KERNEL);
- 		memcpy(daddr->r_addr.data, bufp, len);
-@@ -332,6 +329,14 @@ static int nfsd4_pnfs_dlm_getdevinfo(struct super_block *sb,
- 		memcpy(daddr->r_addr.data + len, ".8.1", 4);
- 		daddr->r_addr.len = len + 4;
- 
-+		if (strcspn(daddr->r_addr.data, ":") - 1 == daddr->r_addr.len) {
-+			daddr->r_netid.data = "tcp";
-+			daddr->r_netid.len = 3;
-+		} else {
-+			daddr->r_netid.data = "tcp6";
-+			daddr->r_netid.len = 4;
-+		}
++	if (pnfs_ld_layoutret_on_setattr(inode))
++		pnfs_return_layout(inode);
 +
- 		fdev.fl_device_list[i].fl_multipath_length = 1;
- 		fdev.fl_device_list[i].fl_multipath_list = daddr;
+ 	nfs_fattr_init(fattr);
+ 	
+ 	/* Search for an existing open(O_WRITE) file */
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index d1a965e..5682ab2 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -950,6 +950,7 @@ objlayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ static struct pnfs_layoutdriver_type objlayout_type = {
+ 	.id = LAYOUT_OSD2_OBJECTS,
+ 	.name = "LAYOUT_OSD2_OBJECTS",
++	.flags                   = PNFS_LAYOUTRET_ON_SETATTR,
  
+ 	.alloc_layout_hdr        = objlayout_alloc_layout_hdr,
+ 	.free_layout_hdr         = objlayout_free_layout_hdr,
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 21daebb..2858553 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -65,6 +65,11 @@ enum {
+ 	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
+ };
+ 
++enum layoutdriver_policy_flags {
++	/* Should the pNFS client commit and return the layout upon a setattr */
++	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
++};
++
+ struct nfs4_deviceid_node;
+ 
+ /* Per-layout driver specific registration structure */
+@@ -73,6 +78,7 @@ struct pnfs_layoutdriver_type {
+ 	const u32 id;
+ 	const char *name;
+ 	struct module *owner;
++	unsigned flags;
+ 
+ 	struct pnfs_layout_hdr * (*alloc_layout_hdr) (struct inode *inode, gfp_t gfp_flags);
+ 	void (*free_layout_hdr) (struct pnfs_layout_hdr *);
+@@ -258,6 +264,16 @@ static inline void pnfs_clear_request_commit(struct nfs_page *req)
+ 		put_lseg(req->wb_commit_lseg);
+ }
+ 
++/* Should the pNFS client commit and return the layout upon a setattr */
++static inline bool
++pnfs_ld_layoutret_on_setattr(struct inode *inode)
++{
++	if (!pnfs_enabled_sb(NFS_SERVER(inode)))
++		return false;
++	return NFS_SERVER(inode)->pnfs_curr_ld->flags &
++		PNFS_LAYOUTRET_ON_SETATTR;
++}
++
+ static inline int pnfs_return_layout(struct inode *ino)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+@@ -317,6 +333,12 @@ static inline int pnfs_return_layout(struct inode *ino)
+ }
+ 
+ static inline bool
++pnfs_ld_layoutret_on_setattr(struct inode *inode)
++{
++	return false;
++}
++
++static inline bool
+ pnfs_roc(struct inode *ino)
+ {
+ 	return false;
 -- 
 1.7.3.4
+
