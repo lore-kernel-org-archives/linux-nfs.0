@@ -1,163 +1,157 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:15554 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:57089 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753781Ab1E3Pae (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 May 2011 11:30:34 -0400
-Message-ID: <4DE3B812.8020804@panasas.com>
-Date: Mon, 30 May 2011 18:30:26 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>,
-        "J. Bruce Fields" <bfields@citi.umich.edu>,
-        NFS list <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [RFC] pnfsd: Return all ROC layouts On Close
-Content-Type: text/plain; charset=UTF-8
+	with ESMTP id S1752869Ab1EYV12 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:27:28 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v8 08/32] SUNRPC: introduce xdr_init_decode_pages
+Date: Thu, 26 May 2011 00:27:25 +0300
+Message-Id: <1306358845-17076-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DDD7392.6040505@panasas.com>
+References: <4DDD7392.6040505@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Initialize xdr_stream and xdr_buf using an array of page pointers
+and length of buffer.
 
-As talk to with Trond, when a client has sent an nfs4_close, the
-server can surly assume that the given client has already forgotten
-all it's ROC given layouts. And in fact the current Linux-client goes
-to grate length to make sure all ROC layouts are invalidated, before
-sending the close. If a new open+IO comes in and tries to get a new layout,
-it will wait for the nfs4_close to return before sending the new layout_get.
-
-So in light of above the server should simulate layout_return and remove
-any layouts marked ROC on nfs4_close.
-
-Current code is protocol correct, but a more fine-grained approach can be
-devised to also release layouts in open_downgrade, of all unused iomodes.
-But to do this I'll need the help of an expert.
-
-With this patch in, I'm finally able to run with the new Linux-Client together
-with a Linux-Server. Before, the layouts where only released and freed on umount
-and in a modest machine like the UML I use, few 10s of "git checkout linux" the
-server would oom.
-
-Benny please submit it to the pnfs tree, so we can run with this in Bakeathone.
-
-So please all help me to verify and refine this code.
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4pnfsd.c |   44 ++++++++++++++++++++++++++++++++++++++++++--
- fs/nfsd/nfs4state.c |    3 +++
- fs/nfsd/pnfsd.h     |    3 +++
- 3 files changed, 48 insertions(+), 2 deletions(-)
+ fs/nfs/dir.c               |    9 ++-------
+ fs/nfs/nfs4filelayout.c    |    9 ++-------
+ fs/nfs/nfs4filelayoutdev.c |    9 ++-------
+ include/linux/sunrpc/xdr.h |    2 ++
+ net/sunrpc/xdr.c           |   19 +++++++++++++++++++
+ 5 files changed, 27 insertions(+), 21 deletions(-)
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index 9089e6b9..d8f744e 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -402,7 +402,8 @@ init_layout(struct nfs4_layout_state *ls,
- 	    struct nfs4_client *clp,
- 	    struct svc_fh *current_fh,
- 	    struct nfsd4_layout_seg *seg,
--	    stateid_t *stateid)
-+	    stateid_t *stateid,
-+	    bool roc)
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 7237672..f673a9e 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -512,12 +512,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
+ 				struct page **xdr_pages, struct page *page, unsigned int buflen)
  {
- 	dprintk("pNFS %s: ls %p lp %p clp %p fp %p ino %p\n", __func__,
- 		ls, lp, clp, fp, fp->fi_inode);
-@@ -412,6 +413,7 @@ init_layout(struct nfs4_layout_state *ls,
- 	lp->lo_file = fp;
- 	get_layout_state(ls);
- 	lp->lo_state = ls;
-+	lp->lo_roc = roc;
- 	memcpy(&lp->lo_seg, seg, sizeof(lp->lo_seg));
- 	spin_lock(&layout_lock);
- 	update_layout_stateid(ls, stateid);
-@@ -914,7 +916,8 @@ nfs4_pnfs_get_layout(struct nfsd4_pnfs_layoutget *lgp,
- 		goto out_freelayout;
+ 	struct xdr_stream stream;
+-	struct xdr_buf buf = {
+-		.pages = xdr_pages,
+-		.page_len = buflen,
+-		.buflen = buflen,
+-		.len = buflen,
+-	};
++	struct xdr_buf buf;
+ 	struct page *scratch;
+ 	struct nfs_cache_array *array;
+ 	unsigned int count = 0;
+@@ -527,7 +522,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
+ 	if (scratch == NULL)
+ 		return -ENOMEM;
  
- 	/* Can't merge, so let's initialize this new layout */
--	init_layout(ls, lp, fp, clp, lgp->lg_fhp, &res.lg_seg, &lgp->lg_sid);
-+	init_layout(ls, lp, fp, clp, lgp->lg_fhp, &res.lg_seg, &lgp->lg_sid,
-+		    res.lg_return_on_close);
- out_unlock:
- 	if (ls)
- 		put_layout_state(ls);
-@@ -1328,6 +1331,43 @@ nomatching_layout(struct nfs4_layoutrecall *clr)
- 	iput(inode);
+-	xdr_init_decode(&stream, &buf, NULL);
++	xdr_init_decode_pages(&stream, &buf, xdr_pages, buflen);
+ 	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
+ 
+ 	do {
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 501a9b8..33bda24 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -510,12 +510,7 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
+ 			 gfp_t gfp_flags)
+ {
+ 	struct xdr_stream stream;
+-	struct xdr_buf buf = {
+-		.pages =  lgr->layoutp->pages,
+-		.page_len =  lgr->layoutp->len,
+-		.buflen =  lgr->layoutp->len,
+-		.len = lgr->layoutp->len,
+-	};
++	struct xdr_buf buf;
+ 	struct page *scratch;
+ 	__be32 *p;
+ 	uint32_t nfl_util;
+@@ -527,7 +522,7 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
+ 	if (!scratch)
+ 		return -ENOMEM;
+ 
+-	xdr_init_decode(&stream, &buf, NULL);
++	xdr_init_decode_pages(&stream, &buf, lgr->layoutp->pages, lgr->layoutp->len);
+ 	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
+ 
+ 	/* 20 = ufl_util (4), first_stripe_index (4), pattern_offset (8),
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 5914659..3b7bf13 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -308,12 +308,7 @@ decode_device(struct inode *ino, struct pnfs_device *pdev, gfp_t gfp_flags)
+ 	u8 max_stripe_index;
+ 	struct nfs4_file_layout_dsaddr *dsaddr = NULL;
+ 	struct xdr_stream stream;
+-	struct xdr_buf buf = {
+-		.pages = pdev->pages,
+-		.page_len = pdev->pglen,
+-		.buflen = pdev->pglen,
+-		.len = pdev->pglen,
+-	};
++	struct xdr_buf buf;
+ 	struct page *scratch;
+ 
+ 	/* set up xdr stream */
+@@ -321,7 +316,7 @@ decode_device(struct inode *ino, struct pnfs_device *pdev, gfp_t gfp_flags)
+ 	if (!scratch)
+ 		goto out_err;
+ 
+-	xdr_init_decode(&stream, &buf, NULL);
++	xdr_init_decode_pages(&stream, &buf, pdev->pages, pdev->pglen);
+ 	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
+ 
+ 	/* Get the stripe count (number of stripe index) */
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index fc84b7a..a20970ef 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -216,6 +216,8 @@ extern __be32 *xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes);
+ extern void xdr_write_pages(struct xdr_stream *xdr, struct page **pages,
+ 		unsigned int base, unsigned int len);
+ extern void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
++extern void xdr_init_decode_pages(struct xdr_stream *xdr, struct xdr_buf *buf,
++		struct page **pages, unsigned int len);
+ extern void xdr_set_scratch_buffer(struct xdr_stream *xdr, void *buf, size_t buflen);
+ extern __be32 *xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes);
+ extern void xdr_read_pages(struct xdr_stream *xdr, unsigned int len);
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 679cd67..f008c14 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -638,6 +638,25 @@ void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p)
  }
+ EXPORT_SYMBOL_GPL(xdr_init_decode);
  
-+/* Return On Close:
-+ *   Look for all layouts of @fp that belong to @clp, if ROC is set, remove
-+ *   the layout and simulate a layout_return. Surly the client has forgotten
-+ *   these layouts or it would return them before the close.
++/**
++ * xdr_init_decode - Initialize an xdr_stream for decoding data.
++ * @xdr: pointer to xdr_stream struct
++ * @buf: pointer to XDR buffer from which to decode data
++ * @pages: list of pages to decode into
++ * @len: length in bytes of buffer in pages
 + */
-+void pnfs_roc(struct nfs4_client *clp, struct nfs4_file *fp,
-+	      enum pnfs_iomode iomode)
++void xdr_init_decode_pages(struct xdr_stream *xdr, struct xdr_buf *buf,
++			   struct page **pages, unsigned int len)
 +{
-+	struct nfs4_layout *lo, *nextlp;
-+
-+	spin_lock(&layout_lock);
-+	list_for_each_entry_safe (lo, nextlp, &fp->fi_layouts, lo_perfile) {
-+		struct nfsd4_pnfs_layoutreturn lr;
-+		bool empty;
-+
-+		/* Check for a match */
-+		if (!lo->lo_roc ||
-+		    (lo->lo_client != clp) ||
-+		    ((iomode != IOMODE_ANY) && (lo->lo_seg.iomode != iomode))
-+		)
-+			continue;
-+
-+		/* Return the layout */
-+		memset(&lr, 0, sizeof(lr));
-+		lr.args.lr_return_type = RETURN_FILE;
-+		lr.args.lr_seg = lo->lo_seg;
-+		dequeue_layout(lo);
-+		destroy_layout(lo); /* do not access lp after this */
-+
-+		empty = list_empty(&fp->fi_layouts);
-+		fs_layout_return(fp->fi_inode->i_sb, fp->fi_inode, &lr,
-+				 LR_FLAG_EXPIRE,
-+				 empty ? PNFS_LAST_LAYOUT_NO_RECALLS : NULL);
-+	}
-+	spin_unlock(&layout_lock);
++	memset(buf, 0, sizeof(*buf));
++	buf->pages =  pages;
++	buf->page_len =  len;
++	buf->buflen =  len;
++	buf->len = len;
++	xdr_init_decode(xdr, buf, NULL);
 +}
++EXPORT_SYMBOL_GPL(xdr_init_decode_pages);
 +
- void pnfs_expire_client(struct nfs4_client *clp)
+ static __be32 * __xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes)
  {
- 	for (;;) {
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 66f6f48..a116e41 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3592,6 +3592,9 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	/* release_stateid() calls nfsd_close() if needed */
- 	release_open_stateid(stp);
- 
-+	/* RFC: what to do with IOMODE */
-+	pnfs_roc(stp->st_stateowner->so_client, stp->st_file, IOMODE_ANY);
-+
- 	/* place unused nfs4_stateowners on so_close_lru list to be
- 	 * released by the laundromat service after the lease period
- 	 * to enable us to handle CLOSE replay
-diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
-index c11d93d..fcb16d2 100644
---- a/fs/nfsd/pnfsd.h
-+++ b/fs/nfsd/pnfsd.h
-@@ -59,6 +59,7 @@ struct nfs4_layout {
- 	struct nfs4_client		*lo_client;
- 	struct nfs4_layout_state	*lo_state;
- 	struct nfsd4_layout_seg 	lo_seg;
-+	bool				lo_roc;
- };
- 
- struct pnfs_inval_state {
-@@ -124,6 +125,8 @@ int nfs4_pnfs_cb_change_state(struct pnfs_get_state *);
- void nfs4_ds_get_verifier(stateid_t *, struct super_block *, u32 *);
- int put_layoutrecall(struct nfs4_layoutrecall *);
- void nomatching_layout(struct nfs4_layoutrecall *);
-+void pnfs_roc(struct nfs4_client *clp, struct nfs4_file *fp,
-+	      enum pnfs_iomode iomode);
- void *layoutrecall_done(struct nfs4_layoutrecall *);
- void nfsd4_cb_layout(struct nfs4_layoutrecall *);
- int nfsd_layout_recall_cb(struct super_block *, struct inode *,
+ 	__be32 *p = xdr->p;
 -- 
-1.7.2.3
+1.7.3.4
 
