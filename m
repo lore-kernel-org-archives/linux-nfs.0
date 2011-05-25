@@ -1,35 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.iitb.ac.in ([59.162.23.13]:54332 "HELO smtp1.iitb.ac.in"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1754366Ab1EKT03 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 May 2011 15:26:29 -0400
-Received: from nsl-23.cse.iitb.ac.in (nsl-23.cse.iitb.ac.in [10.105.12.23])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by smtp-auth.iitb.ac.in (Postfix) with ESMTP id 459DE13900
-	for <linux-nfs@vger.kernel.org>; Wed, 11 May 2011 11:29:43 +0530 (IST)
-Date: Wed, 11 May 2011 11:29:39 +0530 (IST)
-From: Prateek Sharma <prateeks@cse.iitb.ac.in>
-To: linux-nfs@vger.kernel.org
-Subject: NFS latency tuning
-Message-ID: <alpine.DEB.2.00.1105111123570.32365@nsl-23>
-Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+Received: from daytona.panasas.com ([67.152.220.89]:36600 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754666Ab1EYQMc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 12:12:32 -0400
+Message-ID: <4DDD2A76.4060005@panasas.com>
+Date: Wed, 25 May 2011 19:12:38 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>,
+        Fred Isaman <iisaman@netapp.com>
+Subject: Re: [PATCH] SQUASHME: pnfs: Fix NULL dereference in the -ENOMEM path
+References: <4DDA8C3D.5080706@panasas.com> <1306168714-11721-1-git-send-email-bhalevy@panasas.com> <4DDD2933.3000209@panasas.com>
+In-Reply-To: <4DDD2933.3000209@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello all,
- 	I was wondering whether the NFS client implementation has any support 
-for latency-based tcp-like 'windows'.
-Basically my problem is: due to high request rate the server is swamped and 
-response time is unbearable. If clients can be delayed from sending requests 
-by introducing a 'waiting period' before every read/write request that might 
-make things better.
- 	Does NFS currently have such an implementation? (I could not find it in 
-a quick scan of the code.) Is there even a need for what i have described above 
-- are there other mechanisms present which allow for flow-control .
+On 05/25/2011 07:07 PM, Boaz Harrosh wrote:
+> 
+> In _pnfs_return_layout:
+> 
+> lrp pointer is checked for NULL after it was already accessed.
+> 
+> The rational here is that in _pnfs_return_layout we want to
+> de-ref and release the layout regardless of if we sent the
+> return or not (forgetfull). An eventual recall can return -ENOMATCHING
+> instead of -EDELAY.
+> 
+> So to keep the reasoning above, copy the stateid twice.
+> 
+> Benny if it is OK to not release the layout on -ENOMEM then the check
+> could just be moved above the spin_lock(), and the put_layout_hdr removed.
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/nfs/pnfs.c |    4 +++-
+>  1 files changed, 3 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index a07b007..c3ec577 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -628,6 +628,7 @@ _pnfs_return_layout(struct inode *ino)
+>  	struct nfs_inode *nfsi = NFS_I(ino);
+>  	LIST_HEAD(tmp_list);
+>  	struct nfs4_layoutreturn *lrp;
+> +	nfs4_stateid stateid;
+>  	int status = 0;
+>  
+>  	dprintk("--> %s\n", __func__);
+> @@ -642,7 +643,7 @@ _pnfs_return_layout(struct inode *ino)
+>  		kfree(lrp);
+>  		goto out;
 
-Thanks!
---
-Prateek
+Rrrr the lrp is leaked here
 
+>  	}
+> -	lrp->args.stateid = nfsi->layout->plh_stateid;
+> +	stateid = nfsi->layout->plh_stateid;
+>  	/* Reference matched in nfs4_layoutreturn_release */
+>  	get_layout_hdr(lo);
+>  	spin_unlock(&ino->i_lock);
+> @@ -655,6 +656,7 @@ _pnfs_return_layout(struct inode *ino)
+>  		status = -ENOMEM;
+>  		goto out;
+>  	}
+> +	lrp->args.stateid = stateid;
+>  	lrp->args.reclaim = 0;
+>  	lrp->args.layout_type = NFS_SERVER(ino)->pnfs_curr_ld->id;
+>  	lrp->args.inode = ino;
+
+I'll send a second squashme. Ignore that one please
+Boaz
