@@ -1,110 +1,203 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:30545 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:57202 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753621Ab1EVC4h (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 May 2011 22:56:37 -0400
-Message-ID: <4DD87B5B.30309@panasas.com>
-Date: Sun, 22 May 2011 05:56:27 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: [OUT-OF-TREE] DEBUGME: pnfs: DEBUGING of lseg ref counting
-Content-Type: text/plain; charset=UTF-8
+	with ESMTP id S1754488Ab1EYVaB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:30:01 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v8 28/32] NFSv4.1: unify pnfs_pageio_init functions
+Date: Thu, 26 May 2011 00:29:58 +0300
+Message-Id: <1306358998-17872-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DDD7392.6040505@panasas.com>
+References: <4DDD7392.6040505@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Use common code for pnfs_pageio_init_{read,write} and use
+a common generic pg_test function.
 
-With this patch it is possible to find lseg ref counting
-problems. It might help some one in the future
+Note that this function always assumes the the layout driver's
+pg_test method is implemented.
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/pnfs.c |    9 +++++----
- fs/nfs/pnfs.h |   10 ++++++++--
- 2 files changed, 13 insertions(+), 6 deletions(-)
+ fs/nfs/pagelist.c |    1 +
+ fs/nfs/pnfs.c     |   57 ++++++++++++++--------------------------------------
+ fs/nfs/pnfs.h     |   19 +++++++----------
+ fs/nfs/read.c     |    2 +-
+ fs/nfs/write.c    |    3 +-
+ 5 files changed, 27 insertions(+), 55 deletions(-)
 
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index c80add6..0918ea8 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -229,6 +229,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 	desc->pg_ioflags = io_flags;
+ 	desc->pg_error = 0;
+ 	desc->pg_lseg = NULL;
++	desc->pg_test = NULL;
+ }
+ 
+ /**
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 17d0c4c..8d2baf8 100644
+index 00b1282..f7a9405 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -239,6 +239,7 @@ init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
- 	smp_mb();
- 	set_bit(NFS_LSEG_VALID, &lseg->pls_flags);
- 	lseg->pls_layout = lo;
-+	printk(KERN_ERR "@@@%s: lseg %p ref 1 valid 1\n", __func__, lseg);
+@@ -1043,46 +1043,30 @@ out_forget_reply:
+ 	goto out;
  }
  
- static void free_lseg(struct pnfs_layout_segment *lseg)
-@@ -266,14 +267,14 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
- }
- 
- void
--put_lseg(struct pnfs_layout_segment *lseg)
-+__put_lseg(struct pnfs_layout_segment *lseg, const char* f)
+-static int pnfs_read_pg_test(struct nfs_pageio_descriptor *pgio,
+-			     struct nfs_page *prev,
+-			     struct nfs_page *req)
+-{
+-	if (pgio->pg_count == prev->wb_bytes) {
+-		/* This is first coelesce call for a series of nfs_pages */
+-		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+-						   prev->wb_context,
+-						   req_offset(req),
+-						   pgio->pg_count,
+-						   IOMODE_READ,
+-						   GFP_KERNEL);
+-	} else if (pgio->pg_lseg &&
+-		   req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
+-						pgio->pg_lseg->pls_range.length))
+-		return 0;
+-	return NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->pg_test(pgio, prev, req);
+-}
+-
+-void
+-pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode)
++int
++pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
++		     struct nfs_page *req)
  {
- 	struct inode *inode;
+-	struct pnfs_layoutdriver_type *ld;
++	enum pnfs_iomode access_type;
++	gfp_t gfp_flags;
  
- 	if (!lseg)
- 		return;
- 
--	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
-+	dprintk("@@@%s: %s: lseg %p ref %d valid %d\n", __func__, f, lseg,
- 		atomic_read(&lseg->pls_refcount),
- 		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 	inode = lseg->pls_layout->plh_inode;
-@@ -286,7 +287,7 @@ put_lseg(struct pnfs_layout_segment *lseg)
- 		pnfs_free_lseg_list(&free_me);
- 	}
+-	ld = NFS_SERVER(inode)->pnfs_curr_ld;
+-	pgio->pg_test = (ld && ld->pg_test) ? pnfs_read_pg_test : NULL;
+-}
+-
+-static int pnfs_write_pg_test(struct nfs_pageio_descriptor *pgio,
+-			      struct nfs_page *prev,
+-			      struct nfs_page *req)
+-{
++	/* We assume that pg_ioflags == 0 iff we're reading a page */
++	if (pgio->pg_ioflags == 0) {
++		access_type = IOMODE_READ;
++		gfp_flags = GFP_KERNEL;
++	} else {
++		access_type = IOMODE_RW;
++		gfp_flags = GFP_NOFS;
++	}
++		
+ 	if (pgio->pg_count == prev->wb_bytes) {
+ 		/* This is first coelesce call for a series of nfs_pages */
+ 		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 						   prev->wb_context,
+ 						   req_offset(req),
+ 						   pgio->pg_count,
+-						   IOMODE_RW,
+-						   GFP_NOFS);
++						   access_type,
++						   gfp_flags);
+ 	} else if (pgio->pg_lseg &&
+ 		   req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
+ 						pgio->pg_lseg->pls_range.length))
+@@ -1090,15 +1074,6 @@ static int pnfs_write_pg_test(struct nfs_pageio_descriptor *pgio,
+ 	return NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->pg_test(pgio, prev, req);
  }
--EXPORT_SYMBOL_GPL(put_lseg);
-+EXPORT_SYMBOL_GPL(__put_lseg);
  
- static inline u64
- end_offset(u64 start, u64 len)
-@@ -367,7 +368,7 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
- 		 * list.  It will now be removed when all
- 		 * outstanding io is finished.
- 		 */
--		dprintk("%s: lseg %p ref %d\n", __func__, lseg,
-+		dprintk("@@@%s: lseg %p ref %d\n", __func__, lseg,
- 			atomic_read(&lseg->pls_refcount));
- 		if (atomic_dec_and_test(&lseg->pls_refcount)) {
- 			put_lseg_common(lseg);
+-void
+-pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
+-{
+-	struct pnfs_layoutdriver_type *ld;
+-
+-	ld = NFS_SERVER(inode)->pnfs_curr_ld;
+-	pgio->pg_test = (ld && ld->pg_test) ? pnfs_write_pg_test : NULL;
+-}
+-
+ /*
+  * Called by non rpc-based layout drivers
+  */
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 322daba..fa6fe2b 100644
+index 25da946..cc61ae0 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -166,7 +166,9 @@ extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
+@@ -158,8 +158,7 @@ enum pnfs_try_status pnfs_try_to_write_data(struct nfs_write_data *,
+ 					     const struct rpc_call_ops *, int);
+ enum pnfs_try_status pnfs_try_to_read_data(struct nfs_read_data *,
+ 					    const struct rpc_call_ops *);
+-void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
+-void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
++int pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev, struct nfs_page *req);
+ int pnfs_layout_process(struct nfs4_layoutget *lgp);
+ void pnfs_free_lseg_list(struct list_head *tmp_list);
+ void pnfs_destroy_layout(struct nfs_inode *);
+@@ -293,6 +292,12 @@ static inline int pnfs_return_layout(struct inode *ino)
+ 	return 0;
+ }
  
- /* pnfs.c */
- void get_layout_hdr(struct pnfs_layout_hdr *lo);
--void put_lseg(struct pnfs_layout_segment *lseg);
-+void __put_lseg(struct pnfs_layout_segment *lseg, const char *f);
-+#define put_lseg(l) __put_lseg(l, __func__)
++static inline void pnfs_pageio_init(struct nfs_pageio_descriptor *pgio, struct inode *inode)
++{
++	if (NFS_SERVER(inode)->pnfs_curr_ld)
++		pgio->pg_test = pnfs_generic_pg_test;
++}
 +
- struct pnfs_layout_segment *
- pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
- 		   loff_t pos, u64 count, enum pnfs_iomode access_type);
-@@ -211,14 +213,18 @@ static inline int lo_fail_bit(u32 iomode)
- }
+ #else  /* CONFIG_NFS_V4_1 */
  
- static inline struct pnfs_layout_segment *
--get_lseg(struct pnfs_layout_segment *lseg)
-+__get_lseg(struct pnfs_layout_segment *lseg, const char *f)
+ static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
+@@ -376,16 +381,8 @@ static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
  {
- 	if (lseg) {
- 		atomic_inc(&lseg->pls_refcount);
- 		smp_mb__after_atomic_inc();
-+	printk(KERN_ERR "@@@%s: %s lseg %p ref %d valid %d\n", __func__, f, lseg,
-+		atomic_read(&lseg->pls_refcount),
-+		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 	}
- 	return lseg;
  }
-+#define get_lseg(l) __get_lseg(l, __func__)
  
- /* Return true if a layout driver is being used for this mountpoint */
- static inline int pnfs_enabled_sb(struct nfs_server *nfss)
+-static inline void
+-pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *ino)
+-{
+-	pgio->pg_test = NULL;
+-}
+-
+-static inline void
+-pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *ino)
++static inline void pnfs_pageio_init(struct nfs_pageio_descriptor *, struct inode *)
+ {
+-	pgio->pg_test = NULL;
+ }
+ 
+ static inline void
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 540c8bc..6bd09a8 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -664,7 +664,7 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
+ 	if (ret == 0)
+ 		goto read_complete; /* all pages were read */
+ 
+-	pnfs_pageio_init_read(&pgio, inode);
++	pnfs_pageio_init(&pgio, inode);
+ 	if (rsize < PAGE_CACHE_SIZE)
+ 		nfs_pageio_init(&pgio, inode, nfs_pagein_multi, rsize, 0);
+ 	else
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 7edb72f..d81c5c0 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1036,8 +1036,7 @@ static void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
+ {
+ 	size_t wsize = NFS_SERVER(inode)->wsize;
+ 
+-	pnfs_pageio_init_write(pgio, inode);
+-
++	pnfs_pageio_init(pgio, inode);
+ 	if (wsize < PAGE_CACHE_SIZE)
+ 		nfs_pageio_init(pgio, inode, nfs_flush_multi, wsize, ioflags);
+ 	else
 -- 
-1.7.2.3
+1.7.3.4
 
