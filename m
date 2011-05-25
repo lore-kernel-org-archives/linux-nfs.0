@@ -1,44 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailout-de.gmx.net ([213.165.64.22]:58998 "HELO
-	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752054Ab1E3MnD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 May 2011 08:43:03 -0400
-From: Ruediger Meier <sweet_f_a@gmx.de>
-To: linux-nfs@vger.kernel.org
-Subject: Re: infinite getdents64 loop
-Date: Mon, 30 May 2011 14:42:58 +0200
-References: <201105281502.32719.sweet_f_a@gmx.de> <201105301137.02061.sweet_f_a@gmx.de> <20110530075930.134c7541@corrin.poochiereds.net>
-In-Reply-To: <20110530075930.134c7541@corrin.poochiereds.net>
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Message-Id: <201105301442.58997.sweet_f_a@gmx.de>
+Received: from daytona.panasas.com ([67.152.220.89]:57097 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752869Ab1EYV1n (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:27:43 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v8 10/32] pnfs: align layoutget requests on page boundaries
+Date: Thu, 26 May 2011 00:27:40 +0300
+Message-Id: <1306358860-17150-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4DDD7392.6040505@panasas.com>
+References: <4DDD7392.6040505@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Monday 30 May 2011, Jeff Layton wrote:
-> On Mon, 30 May 2011 11:37:01 +0200
-> Ruediger Meier <sweet_f_a@gmx.de> wrote:
-> > On Sunday 29 May 2011, Trond Myklebust wrote:
-> > > It's actually a problem with the underlying filesystem: it is
-> > > generating readdir 'offsets' that are not unique. In other words,
-> > > if
-> >
-> > Does this mean ext4 generally does not work with for nfs?
->
-> Does it help if you turn off the dir_index feature on the filesystem?
-> See the tune2fs(8) manpage for how to do that.
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/pnfs.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-Unfortunately I can't umount it allthough I did exportfs -u and lsof 
-doesn't show used files. (reboot not possible right now)
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index c2f09e9..2357ee3 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -850,6 +850,7 @@ pnfs_update_layout(struct inode *ino,
+ 		.offset = pos,
+ 		.length = count,
+ 	};
++	unsigned pg_offset;
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+ 	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
+ 	struct pnfs_layout_hdr *lo;
+@@ -899,6 +900,13 @@ pnfs_update_layout(struct inode *ino,
+ 		spin_unlock(&clp->cl_lock);
+ 	}
+ 
++	pg_offset = arg.offset & ~PAGE_CACHE_MASK;
++	if (pg_offset) {
++		arg.offset -= pg_offset;
++		arg.length += pg_offset;
++	}
++	arg.length = PAGE_CACHE_ALIGN(arg.length);
++
+ 	lseg = send_layoutget(lo, ctx, &arg, gfp_flags);
+ 	if (!lseg && first) {
+ 		spin_lock(&clp->cl_lock);
+-- 
+1.7.3.4
 
-Hopefully I can try it until tomorrow on the other machine (have to wait 
-for some jobs finished).
-
-Pity that I am not able to create such a broken ext4/nfs server from 
-scratch on a test machine. Seems I get it broken only if it was 
-maltreated by our users some time in production.
-
-
-cu,
-Rudi
