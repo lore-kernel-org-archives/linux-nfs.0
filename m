@@ -1,67 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:3933 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755963Ab1EBWCp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2011 18:02:45 -0400
-Subject: Re: How does NFS handle notify?
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Stef Bon <stefbon@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-In-Reply-To: <BANLkTimB=-QaW8S-H9XNv9TM+gWbB23CjQ@mail.gmail.com>
-References: <BANLkTi=X0VtcSecmEwzPBTqk3L154aj+2Q@mail.gmail.com>
-	 <20110502140750.GA10885@fieldses.org>
-	 <BANLkTinTu8XVmxkUUhJby8=DNY4sZF5VAQ@mail.gmail.com>
-	 <1304347155.7830.7.camel@lade.trondhjem.org>
-	 <BANLkTikZnnt0cmpP4iT4Q4EJTxZnSC_SYQ@mail.gmail.com>
-	 <1304356699.7830.26.camel@lade.trondhjem.org>
-	 <BANLkTi=2uYagwN=Xy9FxhXV4wt3tf669JA@mail.gmail.com>
-	 <1304367673.20876.1.camel@lade.trondhjem.org>
-	 <BANLkTimB=-QaW8S-H9XNv9TM+gWbB23CjQ@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 02 May 2011 18:02:44 -0400
-Message-ID: <1304373764.23069.17.camel@lade.trondhjem.org>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:63662 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757892Ab1EZS53 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 May 2011 14:57:29 -0400
+Received: by iyb14 with SMTP id 14so840732iyb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 26 May 2011 11:57:29 -0700 (PDT)
+In-Reply-To: <CCEDE6F7-12A9-4308-A178-873FD972994C@oracle.com>
+References: <7C481A0A0BBE9E4BA110F26D7A2BFFDC026E7C46@nodmx01.igglobal.com>
+	<BANLkTikzuTGgHU=oUMTjmPhfsR_-nD5Ffw@mail.gmail.com>
+	<BANLkTi=s4_A-WiG_a11pLgmeQ39qw=22Hg@mail.gmail.com>
+	<CCEDE6F7-12A9-4308-A178-873FD972994C@oracle.com>
+Date: Fri, 27 May 2011 00:27:28 +0530
+Message-ID: <BANLkTi=_kAOipcotAH+vP-nHMebkrQqR7Q@mail.gmail.com>
+Subject: Re: IPv6 support for NFSv2 server.
+From: Upakul Barkakaty <upakul@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2011-05-02 at 22:28 +0200, Stef Bon wrote:
-> 2011/5/2 Trond Myklebust <Trond.Myklebust@netapp.com>:
-> 
-> >>
-> >> So, what's your opinion?
-> >
-> > Your proposal requires NFS and CIFS protocol support and I just told you
-> > that there is none in NFS...
-> 
-> Hi,
-> 
-> yes I've read that. I also have read that there is possibly support
-> for in newer versions in NFS.
+Hi Chuck,
 
-As I said, there is support for dnotify-like functionality in NFSv4.1,
-but no support for inotify, and certainly not for fanotify.
+Thanks for writing in. I am using the command line option -o vers=2.
 
-> I imagined that you (not only you but I mean all who are working on
-> NFS) are interested to find a good way to do this.
+These 2 commands return different errors:
 
-You've proposed a 'solution', but I'm still not seeing what the problem
-is.
+mount -o vers=2 <ipv6-address>:<path> --> mount.nfs: an incorrect
+mount option was specified
+mount <ipv6-address>:<path> --> mount.nfs: system call failed
 
-     1. Why do we need to develop kernel support for dnotify+inotify+...
-        in every networked filesystem + fuse?
-     2. What are the killer app use cases that we need to support and
-        that cannot be supported with existing methods?
+RHEL6 uses NFSv4 by default so the second command is expected to use NFSv4.
 
-Notifications on large distributed filesystems are a scalability
-nightmare (particularly so for inotify), so they need careful
-justification and need to be limited in scope. Just pulling out a
-solution from your magic hat isn't sufficient.
+Both the above commands execute successfully in case of ipv4 addresses.
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+Regards,
+Upakul Barkakaty
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+On Fri, May 27, 2011 at 12:06 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+> On May 26, 2011, at 2:27 PM, Upakul Barkakaty wrote:
+>
+>> Hi all,
+>>
+>> I have been contemplating about using an appropriate server that would
+>> support NFSv2 over IPv6.
+>>
+>> RHEL5 doesn’t support IPv6 over NFS by default. I tried installing a
+>> few libraries and patches but it doesn’t seem to be working out yet
+>> due to some missing dependencies.
+>>
+>> RHEL6 *seems* to support just the NFS client over IPv6. Further it
+>> seems to support only NFSv4 as it generates an error if I force the
+>> NFS version to 2 in the mount options[mount.nfs: an incorrect mount
+>> option was specified].
+>
+> NFSv2 over IPv6 should work on Linux clients.  I don't think I ever explicitly tested it, though, so there could be bugs.
+>
+> How are you "forcing" it?
+>
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
+>
+>
