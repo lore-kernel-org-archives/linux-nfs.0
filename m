@@ -1,77 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:34674 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:38000 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752074Ab1EPQWo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2011 12:22:44 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com
-Subject: [PATCH v3 15/29] pnfs: set/unset layoutdriver
-Date: Mon, 16 May 2011 09:22:41 -0700
-Message-Id: <1305562961-7846-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DD14D8E.1070701@panasas.com>
-References: <4DD14D8E.1070701@panasas.com>
+	with ESMTP id S1758251Ab1EZTOr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 May 2011 15:14:47 -0400
+Message-ID: <4DDEA6AB.3050605@panasas.com>
+Date: Thu, 26 May 2011 22:14:51 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v8 25/32] pnfs-obj: report errors and .encode_layoutreturn
+ Implementation.
+References: <4DDD7392.6040505@panasas.com> <1306358975-17740-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <1306358975-17740-1-git-send-email-bhalevy@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-For managing per nfs_server layout driver data
+On 05/26/2011 12:29 AM, Benny Halevy wrote:
+> From: Boaz Harrosh <bharrosh@panasas.com>
+> 
 
-[was: pass mntfh down the init_pnfs path]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/pnfs.c |   13 ++++++++++++-
- fs/nfs/pnfs.h |    4 ++++
- 2 files changed, 16 insertions(+), 1 deletions(-)
+Benny here two I'm sending the complete patch because it has conflicts
+with previous patches
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index dcf04ea..3ac7b82 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -75,8 +75,11 @@ find_pnfs_driver(u32 id)
- void
- unset_pnfs_layoutdriver(struct nfs_server *nfss)
- {
--	if (nfss->pnfs_curr_ld)
-+	if (nfss->pnfs_curr_ld) {
-+		if (nfss->pnfs_curr_ld->unset_layoutdriver)
-+			nfss->pnfs_curr_ld->unset_layoutdriver(nfss);
- 		module_put(nfss->pnfs_curr_ld->owner);
-+	}
- 	nfss->pnfs_curr_ld = NULL;
- }
- 
-@@ -115,6 +118,14 @@ set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
- 	}
- 	server->pnfs_curr_ld = ld_type;
- 
-+	if (ld_type->set_layoutdriver &&
-+	    ld_type->set_layoutdriver(server)) {
-+		dprintk("%s: Error initializing mount point for layout driver %u.\n",
-+		       __func__, id);
-+		module_put(ld_type->owner);
-+		goto out_no_driver;
-+	}
-+
- 	dprintk("%s: pNFS module for %u set\n", __func__, id);
- 	return;
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 006314e..9d620de 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -71,6 +71,10 @@ struct pnfs_layoutdriver_type {
- 	const u32 id;
- 	const char *name;
- 	struct module *owner;
-+
-+	int (*set_layoutdriver) (struct nfs_server *);
-+	int (*unset_layoutdriver) (struct nfs_server *);
-+
- 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr);
- 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
- 
--- 
-1.7.3.4
+I'll name it v9
 
+Boaz
+
+
+> An io_state pre-allocates an error information structure for each
+> possible osd-device that might error during IO. When IO is done if all
+> was well the io_state is freed. (as today). If the I/O has ended with an
+> error, the io_state is queued on a per-layout err_list. When eventually
+> encode_layoutreturn() is called, each error is properly encoded on the
+> XDR buffer and only then the io_state is removed from err_list and
+> de-allocated.
+> 
+> It is up to the io_engine to fill in the segment that fault and the type
+> of osd_error that occurred. By calling objlayout_io_set_result() for
+> each failing device.
+> 
+> In objio_osd:
+> * Allocate io-error descriptors space as part of io_state
+> * Use generic objlayout error reporting at end of io.
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
