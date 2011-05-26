@@ -1,43 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-out-2.desy.de ([131.169.56.85]:46069 "EHLO
-	smtp-out-2.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752484Ab1ECP35 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 May 2011 11:29:57 -0400
-Received: from smtp-map-2.desy.de (smtp-map-2.desy.de [131.169.56.67])
-	by smtp-out-2.desy.de (DESY_OUT_1) with ESMTP id CFA4BDA8
-	for <linux-nfs@vger.kernel.org>; Tue,  3 May 2011 17:29:55 +0200 (MEST)
-Received: from ZITSWEEP3.win.desy.de (zitsweep3.win.desy.de [131.169.97.97])
-	by smtp-map-2.desy.de (DESY_MAP_2) with ESMTP id B0698D6A
-	for <linux-nfs@vger.kernel.org>; Tue,  3 May 2011 17:29:55 +0200 (MEST)
-Received: from smtp-intra-1.desy.de (lb-40-26.desy.de) by ZITSWEEP3.win.desy.de
- (Clearswift SMTPRS 5.4.1) with ESMTP id <T9cc3517b7083a9616116d4@ZITSWEEP3.win.desy.de> for <linux-nfs@vger.kernel.org>;
- Tue, 3 May 2011 17:29:55 +0200
-Received: from [131.169.185.68] (anahit.desy.de [131.169.185.68])
-	by smtp-intra-1.desy.de (DESY-INTRA-1) with ESMTP id 40D363E901
-	for <linux-nfs@vger.kernel.org>; Tue,  3 May 2011 17:29:55 +0200 (MEST)
-Message-ID: <4DC01F1A.9060305@desy.de>
-Date: Tue, 03 May 2011 17:28:26 +0200
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: pNFS and ipv6
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:58090 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757986Ab1EZOQj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 May 2011 10:16:39 -0400
+Subject: Re: [RFC] pnfs: Send layoutreturn, if Return-On-Close is set
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Benny Halevy <bhalevy@panasas.com>, Fred Isaman <iisaman@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Date: Thu, 26 May 2011 10:16:37 -0400
+In-Reply-To: <4DDE536E.8020805@panasas.com>
+References: <4DDE536E.8020805@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1306419397.2984.14.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Thu, 2011-05-26 at 16:19 +0300, Boaz Harrosh wrote: 
+> Every thing was ready, in pnfs_roc(). The segments released
+> and the LO state blocked til after the close is done. All that
+> is needed is to send the actual layoutreturn synchronously.
 
-Dear friends,
+Why would we want to do this?
 
-are there plans to support IPv6 with pNFS ?
+Return-on-close was initially considered useful only for debugging.
 
-fs/nfs/nfs4filelayoutdev.c:325
+At the interim IETF meeting in Sunnyvale, we also discussed the case
+where the forgetful client has forgotten the layout: in this case the
+server may decide to forget the layout too. There is no controversy in
+doing this, since both the client and the server know that any
+outstanding layout is supposed to be returned (and if there is a
+problem, then the server always has the option of sending a
+CB_LAYOUTRECALL).
 
-         /* Currently only support ipv4 address */
-         if (in4_pton(buf, rlen, (u8 *)&ip_addr, '-', &ipend) == 0) {
-                 dprintk("%s: Only ipv4 addresses supported\n", __func__);
-                 goto out_free;
-         }
+Adding a synchronous call to close is in any case a bug since close can
+on occasion be sent in situations where we don't allow sleeping.
 
+Cheers
+  Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Regards,
-    Tigran.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
