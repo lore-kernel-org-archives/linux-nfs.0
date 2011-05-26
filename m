@@ -1,47 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:54001 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:37917 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752850Ab1EXQw5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2011 12:52:57 -0400
-Message-ID: <4DDBE265.7000101@panasas.com>
-Date: Tue, 24 May 2011 19:52:53 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 02/12] SQUASHME: Bug in new global-device-cache code
-References: <4DDBC611.3050202@panasas.com> <1306249480-23212-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <1306249480-23212-1-git-send-email-bharrosh@panasas.com>
-Content-Type: text/plain; charset=windows-1255
+	with ESMTP id S1757985Ab1EZTM3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 May 2011 15:12:29 -0400
+Message-ID: <4DDEA620.2000908@panasas.com>
+Date: Thu, 26 May 2011 22:12:32 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH resend3] SQUASHME: objio read/write patch: Bugs fixes
+References: <4DDD7392.6040505@panasas.com> <1306358945-17555-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <1306358945-17555-1-git-send-email-bhalevy@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-05-24 18:04, Boaz Harrosh wrote:
-> NULL deref on first ever call. (When device is not found)
-> 
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> ---
->  fs/nfs/pnfs_dev.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
-> index 7997899..7e5542c 100644
-> --- a/fs/nfs/pnfs_dev.c
-> +++ b/fs/nfs/pnfs_dev.c
-> @@ -100,7 +100,7 @@ _find_get_deviceid(const struct pnfs_layoutdriver_type *ld,
->  
->  	rcu_read_lock();
->  	d = _lookup_deviceid(ld, clp, id, hash);
-> -	if (!atomic_inc_not_zero(&d->ref))
-> +	if (!d || !atomic_inc_not_zero(&d->ref))
 
-This makes more sense, no?
-+	if (d && !atomic_inc_not_zero(&d->ref))
+Cap BIO size it one page
 
-Benny
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/objlayout/objio_osd.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
->  		d = NULL;
->  	rcu_read_unlock();
->  	return d;
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 6925567..cc92d3b 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -397,7 +397,6 @@ int objio_alloc_io_state(struct pnfs_layout_segment *lseg,
+ 	const unsigned first_size = sizeof(*ios) +
+ 				objio_seg->num_comps * sizeof(ios->per_dev[0]);
+ 
+-	dprintk("%s: num_comps=%d\n", __func__, objio_seg->num_comps);
+ 	ios = kzalloc(first_size, gfp_flags);
+ 	if (unlikely(!ios))
+ 		return -ENOMEM;
+@@ -561,6 +560,9 @@ static int _add_stripe_unit(struct objio_state *ios,  unsigned *cur_pg,
+ 		unsigned bio_size = (ios->ol_state.nr_pages + pages_in_stripe) /
+ 				    stripes;
+ 
++		if (BIO_MAX_PAGES_KMALLOC < bio_size)
++			bio_size = BIO_MAX_PAGES_KMALLOC;
++
+ 		per_dev->bio = bio_kmalloc(gfp_flags, bio_size);
+ 		if (unlikely(!per_dev->bio)) {
+ 			dprintk("Faild to allocate BIO size=%u\n", bio_size);
+-- 
+1.7.2.3
+
 
