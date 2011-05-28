@@ -1,56 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:54492 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753011Ab1EDWiw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 May 2011 18:38:52 -0400
-Date: Thu, 5 May 2011 08:38:43 +1000
-From: NeilBrown <neilb@suse.de>
-To: Mahmood Naderan <nt_mahmood@yahoo.com>
-Cc: nfs <linux-nfs@vger.kernel.org>
-Subject: Re: statd running as root
-Message-ID: <20110505083843.6c6570d7@notabene.brown>
-In-Reply-To: <868905.93230.qm@web111721.mail.gq1.yahoo.com>
-References: <868905.93230.qm@web111721.mail.gq1.yahoo.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mailout-de.gmx.net ([213.165.64.22]:56490 "HELO
+	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751505Ab1E1NCf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 May 2011 09:02:35 -0400
+From: =?iso-8859-1?q?R=FCdiger_Meier?= <sweet_f_a@gmx.de>
+To: linux-nfs@vger.kernel.org
+Subject: infinite getdents64 loop
+Date: Sat, 28 May 2011 15:02:31 +0200
+Content-Type: text/plain;
+  charset="us-ascii"
+Message-Id: <201105281502.32719.sweet_f_a@gmx.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 4 May 2011 10:43:52 -0700 (PDT) Mahmood Naderan
-<nt_mahmood@yahoo.com> wrote:
-
-> Hi,
-> On the client side I see this log
->  
-> Apr  5 14:50:50 orca kernel: [   10.528336] udev: starting version 151
-> Apr  5 14:50:50 orca cron[1021]: (CRON) INFO (pidfile fd = 3)
-> Apr  5 14:50:50 orca cron[1032]: (CRON) STARTUP (fork ok)
-> Apr  5 14:50:51 orca cron[1032]: (CRON) INFO (Running @reboot jobs)
-> Apr  5 14:50:55 orca rpc.statd[704]: statd running as root. chown /var/lib/nfs/sm to choose different user
-> Apr  5 14:50:58 orca kernel: [   18.440010] eth0: no IPv6 routers present
-> 
->  
-> However I don't know what to do
->  
-> root@client:/home/mahmood# ls -l /var/lib/nfs/
-> total 12
-> drwxr-xr-x 2 root root 4096 2011-05-03 18:31 rpc_pipefs
-> drwxr-xr-x 2 root root 4096 2011-05-03 18:31 sm
-> drwxr-xr-x 2 root root 4096 2011-05-03 18:31 sm.bak
-> 
-> Any idea about that?
->  
-
-I thought that
-
-    chown /var/lib/nfs/sm to choose different user
-
-was sufficiently clear.
-Choose a used - e.g. "statd-user", and then
+Hi,
 
 
-    chown statd-user /var/lib/nfs/sm
+I have some directories where I run reproducible into infinite 
+getdents64 loop. This happens whith kernels >=2.6.37 on clients and 
+just doing ls or find on that dirs.
 
-(of course you have to create the user first if it doesn't already exist).
+The "broken" dirs are mostly very large with >200000 files.
+While copying such dir within the underlying fs (ext4) keeps that odd 
+behavior it's not easy to create one on another exported filesystem.
 
-NeilBrown
+Sometimes I could "repair" such dir by just finding the right single 
+file to remove. But there was nothing special with that file.
+
+
+I could track down the problem to:
+
+commit 0b26a0bf6ff398185546432420bb772bcfdf8d94
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Sat Nov 20 14:26:44 2010 -0500
+
+    NFS: Ensure we return the dirent->d_type when it is known
+
+
+After reverting the problem is gone.
+
+
+cu,
+Rudi
