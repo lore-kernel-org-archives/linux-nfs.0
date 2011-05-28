@@ -1,61 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8387 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755525Ab1EPOXV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 May 2011 10:23:21 -0400
-Message-ID: <4DD13350.1000207@RedHat.com>
-Date: Mon, 16 May 2011 10:23:12 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Luca Giuzzi <luca.giuzzi@gmail.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] rpc.idmapd dies with 'I/O possible'
-References: <BANLkTinSoHVQH1meHMwCtxEp8Mku1gJv0Q@mail.gmail.com>
-In-Reply-To: <BANLkTinSoHVQH1meHMwCtxEp8Mku1gJv0Q@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mailout-de.gmx.net ([213.165.64.22]:44366 "HELO
+	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753489Ab1E1PAe convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 May 2011 11:00:34 -0400
+From: =?iso-8859-1?q?R=FCdiger_Meier?= <sweet_f_a@gmx.de>
+To: linux-nfs@vger.kernel.org
+Subject: Re: infinite getdents64 loop
+Date: Sat, 28 May 2011 17:00:29 +0200
+References: <201105281502.32719.sweet_f_a@gmx.de>
+In-Reply-To: <201105281502.32719.sweet_f_a@gmx.de>
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Message-Id: <201105281700.30726.sweet_f_a@gmx.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Saturday 28 May 2011, Rüdiger Meier wrote:
+> I could track down the problem to:
+>
+> commit 0b26a0bf6ff398185546432420bb772bcfdf8d94
+> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Date:   Sat Nov 20 14:26:44 2010 -0500
+>
+>     NFS: Ensure we return the dirent->d_type when it is known
+>
+>
+> After reverting the problem is gone.
+
+Actually it's enough to remove d_type from struct nfs_cache_array_entry 
+again. It's not enough to set it DT_UNKNOWN always. I had to remove it 
+from struct to let it work.
+Tested with kernels 2.6.37.6 and 2.6.39.
 
 
-On 05/16/2011 09:38 AM, Luca Giuzzi wrote:
-> Dear All,
->  we have had problems on some of our machines (all Fedora 14), where
-> rpc.idmapd used to die with an `I/O possible' message at (basically)
-> random times. A strace suggested the issue being in nfsopen() where a
-> signal type is reset before notification is disabled; a signal at just
-> the right time might be the cause of the problem; see
-> https://bugzilla.redhat.com/show_bug.cgi?id=684308
-> I am now proposing the (trivial) patch to the list as well.
-> 
-> Best Regards,
->   luca giuzzi
-> 
-> --- nfs-utils-1.2.3/utils/idmapd/idmapd.c.orig	2011-05-13
-> 16:27:08.000000000 +0200
-> +++ nfs-utils-1.2.3/utils/idmapd/idmapd.c	2011-05-13 16:27:16.000000000 +0200
-> @@ -778,8 +778,8 @@ nfsopen(struct idmap_client *ic)
->  	} else {
->  		event_set(&ic->ic_event, ic->ic_fd, EV_READ, nfscb, ic);
->  		event_add(&ic->ic_event, NULL);
-> -		fcntl(ic->ic_dirfd, F_SETSIG, 0);
->  		fcntl(ic->ic_dirfd, F_NOTIFY, 0);
-> +		fcntl(ic->ic_dirfd, F_SETSIG, 0);
->  		if (verbose > 0)
->  			xlog_warn("Opened %s", ic->ic_path);
->  	}
-I just updated the bz with these questions, but we can have the 
-conversation here...
+commit c9799af304af2a22acffaae25e7e9c3b733a5b68
+Author: Ruediger Meier <ruediger.meier@ga-group.nl>
+Date:   Sat May 28 15:26:15 2011 +0200
 
-I'm just a bit concerned by the fact that there are
-a couple of places that sets F_SETSIG and then sets F_NOTIFY, 
-so does that mean those places are potential race cases as 
-well?
+    hotfix, opensuse bug 678123
+    this reverts the effect of 0b26a0bf
 
-Also, after you applied this patch, did the problem go away?
-Finally, how often did this problem occur?
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 7237672..48cfc27 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -202,7 +202,6 @@ struct nfs_cache_array_entry {
+        u64 cookie;
+        u64 ino;
+        struct qstr string;
+-       unsigned char d_type;
+ };
 
-tia,
+ struct nfs_cache_array {
+@@ -305,7 +304,6 @@ int nfs_readdir_add_to_array(struct nfs_entry 
+*entry, struct page *page)
 
-steved.
-
+        cache_entry->cookie = entry->prev_cookie;
+        cache_entry->ino = entry->ino;
+-       cache_entry->d_type = entry->d_type;
+        ret = nfs_readdir_make_qstr(&cache_entry->string, entry->name, 
+entry->len);
+        if (ret)
+                goto out;
+@@ -770,7 +768,7 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc, 
+void *dirent,
+                ent = &array->array[i];
+                if (filldir(dirent, ent->string.name, ent->string.len,
+                    file->f_pos, nfs_compat_user_ino64(ent->ino),
+-                   ent->d_type) < 0) {
++                   DT_UNKNOWN) < 0) {
+                        desc->eof = 1;
+                        break;
+                }
