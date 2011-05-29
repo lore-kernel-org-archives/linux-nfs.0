@@ -1,203 +1,161 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:12931 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932887Ab1EaXFu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 May 2011 19:05:50 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: trond@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] NFS: use scope from exchange_id to skip reclaim
-Date: Tue, 31 May 2011 19:05:47 -0400
-Message-Id: <1306883147-6829-1-git-send-email-dros@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:50803 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755131Ab1E2STp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 14:19:45 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Benny Halevy <bhalevy@panasas.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Cc: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 08/32] SUNRPC: introduce xdr_init_decode_pages
+Date: Sun, 29 May 2011 21:19:33 +0300
+Message-Id: <1306693173-7929-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DE28CFB.4060608@panasas.com>
+References: <4DE28CFB.4060608@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
->From Section 8.4.2.1 of the rfc 5661 - We can determine if a RECLAIM_REBOOT
-can be skipped if the "eir_server_scope" from the exchange_id proc differs from
-previous calls.
+From: Benny Halevy <bhalevy@panasas.com>
 
-Also, in the future server_scope will be useful for determining whether client
-trunking is available
+Initialize xdr_stream and xdr_buf using an array of page pointers
+and length of buffer.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
+ fs/nfs/dir.c               |    9 ++-------
+ fs/nfs/nfs4filelayout.c    |    9 ++-------
+ fs/nfs/nfs4filelayoutdev.c |    9 ++-------
+ include/linux/sunrpc/xdr.h |    2 ++
+ net/sunrpc/xdr.c           |   19 +++++++++++++++++++
+ 5 files changed, 27 insertions(+), 21 deletions(-)
 
-Repost - This never made it into any branch and there haven't been any comments
-since Benny's last concerns were addressed.  Rebased to nfs-for-next.
-
- fs/nfs/client.c           |    1 +
- fs/nfs/nfs4_fs.h          |    3 +++
- fs/nfs/nfs4proc.c         |   32 ++++++++++++++++++++++++++++++++
- fs/nfs/nfs4state.c        |    9 ++++++++-
- fs/nfs/nfs4xdr.c          |    8 +++++++-
- include/linux/nfs_fs_sb.h |    3 +++
- include/linux/nfs_xdr.h   |    1 +
- 7 files changed, 55 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index b3dc2b8..006f8ff 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -293,6 +293,7 @@ static void nfs_free_client(struct nfs_client *clp)
- 	nfs4_deviceid_purge_client(clp);
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 7237672..f673a9e 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -512,12 +512,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
+ 				struct page **xdr_pages, struct page *page, unsigned int buflen)
+ {
+ 	struct xdr_stream stream;
+-	struct xdr_buf buf = {
+-		.pages = xdr_pages,
+-		.page_len = buflen,
+-		.buflen = buflen,
+-		.len = buflen,
+-	};
++	struct xdr_buf buf;
+ 	struct page *scratch;
+ 	struct nfs_cache_array *array;
+ 	unsigned int count = 0;
+@@ -527,7 +522,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
+ 	if (scratch == NULL)
+ 		return -ENOMEM;
  
- 	kfree(clp->cl_hostname);
-+	kfree(clp->server_scope);
- 	kfree(clp);
+-	xdr_init_decode(&stream, &buf, NULL);
++	xdr_init_decode_pages(&stream, &buf, xdr_pages, buflen);
+ 	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
  
- 	dprintk("<-- nfs_free_client()\n");
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index c4a6983..b47f0d4 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -48,6 +48,7 @@ enum nfs4_client_state {
- 	NFS4CLNT_SESSION_RESET,
- 	NFS4CLNT_RECALL_SLOT,
- 	NFS4CLNT_LEASE_CONFIRM,
-+	NFS4CLNT_SERVER_SCOPE_MISMATCH,
- };
+ 	do {
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 501a9b8..33bda24 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -510,12 +510,7 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
+ 			 gfp_t gfp_flags)
+ {
+ 	struct xdr_stream stream;
+-	struct xdr_buf buf = {
+-		.pages =  lgr->layoutp->pages,
+-		.page_len =  lgr->layoutp->len,
+-		.buflen =  lgr->layoutp->len,
+-		.len = lgr->layoutp->len,
+-	};
++	struct xdr_buf buf;
+ 	struct page *scratch;
+ 	__be32 *p;
+ 	uint32_t nfl_util;
+@@ -527,7 +522,7 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
+ 	if (!scratch)
+ 		return -ENOMEM;
  
- enum nfs4_session_state {
-@@ -349,6 +350,8 @@ extern void nfs4_schedule_state_manager(struct nfs_client *);
- extern void nfs4_schedule_stateid_recovery(const struct nfs_server *, struct nfs4_state *);
- extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags);
- extern void nfs41_handle_recall_slot(struct nfs_client *clp);
-+extern void nfs41_handle_server_scope(struct nfs_client *,
-+				      struct server_scope **);
- extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
- extern int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl);
- extern void nfs4_copy_stateid(nfs4_stateid *, struct nfs4_state *, fl_owner_t, pid_t);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d2c4b59..e7f043a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4768,6 +4768,16 @@ out_inval:
- 	return -NFS4ERR_INVAL;
+-	xdr_init_decode(&stream, &buf, NULL);
++	xdr_init_decode_pages(&stream, &buf, lgr->layoutp->pages, lgr->layoutp->len);
+ 	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
+ 
+ 	/* 20 = ufl_util (4), first_stripe_index (4), pattern_offset (8),
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 5914659..3b7bf13 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -308,12 +308,7 @@ decode_device(struct inode *ino, struct pnfs_device *pdev, gfp_t gfp_flags)
+ 	u8 max_stripe_index;
+ 	struct nfs4_file_layout_dsaddr *dsaddr = NULL;
+ 	struct xdr_stream stream;
+-	struct xdr_buf buf = {
+-		.pages = pdev->pages,
+-		.page_len = pdev->pglen,
+-		.buflen = pdev->pglen,
+-		.len = pdev->pglen,
+-	};
++	struct xdr_buf buf;
+ 	struct page *scratch;
+ 
+ 	/* set up xdr stream */
+@@ -321,7 +316,7 @@ decode_device(struct inode *ino, struct pnfs_device *pdev, gfp_t gfp_flags)
+ 	if (!scratch)
+ 		goto out_err;
+ 
+-	xdr_init_decode(&stream, &buf, NULL);
++	xdr_init_decode_pages(&stream, &buf, pdev->pages, pdev->pglen);
+ 	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
+ 
+ 	/* Get the stripe count (number of stripe index) */
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index fc84b7a..a20970e 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -216,6 +216,8 @@ extern __be32 *xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes);
+ extern void xdr_write_pages(struct xdr_stream *xdr, struct page **pages,
+ 		unsigned int base, unsigned int len);
+ extern void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
++extern void xdr_init_decode_pages(struct xdr_stream *xdr, struct xdr_buf *buf,
++		struct page **pages, unsigned int len);
+ extern void xdr_set_scratch_buffer(struct xdr_stream *xdr, void *buf, size_t buflen);
+ extern __be32 *xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes);
+ extern void xdr_read_pages(struct xdr_stream *xdr, unsigned int len);
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 679cd67..f008c14 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -638,6 +638,25 @@ void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p)
  }
+ EXPORT_SYMBOL_GPL(xdr_init_decode);
  
-+static bool
-+nfs41_same_server_scope(struct server_scope *a, struct server_scope *b)
++/**
++ * xdr_init_decode - Initialize an xdr_stream for decoding data.
++ * @xdr: pointer to xdr_stream struct
++ * @buf: pointer to XDR buffer from which to decode data
++ * @pages: list of pages to decode into
++ * @len: length in bytes of buffer in pages
++ */
++void xdr_init_decode_pages(struct xdr_stream *xdr, struct xdr_buf *buf,
++			   struct page **pages, unsigned int len)
 +{
-+	if (a->server_scope_sz == b->server_scope_sz &&
-+	    memcmp(a->server_scope, b->server_scope, a->server_scope_sz) == 0)
-+		return true;
-+
-+	return false;
++	memset(buf, 0, sizeof(*buf));
++	buf->pages =  pages;
++	buf->page_len =  len;
++	buf->buflen =  len;
++	buf->len = len;
++	xdr_init_decode(xdr, buf, NULL);
 +}
++EXPORT_SYMBOL_GPL(xdr_init_decode_pages);
 +
- /*
-  * nfs4_proc_exchange_id()
-  *
-@@ -4810,9 +4820,31 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 				init_utsname()->domainname,
- 				clp->cl_rpcclient->cl_auth->au_flavor);
- 
-+	res.server_scope = kzalloc(sizeof(struct server_scope), GFP_KERNEL);
-+	if (unlikely(!res.server_scope))
-+		return -ENOMEM;
-+
- 	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
- 	if (!status)
- 		status = nfs4_check_cl_exchange_flags(clp->cl_exchange_flags);
-+
-+	if (!status) {
-+		if (clp->server_scope &&
-+		    !nfs41_same_server_scope(clp->server_scope,
-+					     res.server_scope)) {
-+			dprintk("%s: server_scope mismatch detected\n",
-+				__func__);
-+			set_bit(NFS4CLNT_SERVER_SCOPE_MISMATCH, &clp->cl_state);
-+			kfree(clp->server_scope);
-+			clp->server_scope = NULL;
-+		}
-+
-+		if (!clp->server_scope)
-+			clp->server_scope = res.server_scope;
-+		else
-+			kfree(res.server_scope);
-+	}
-+
- 	dprintk("<-- %s status= %d\n", __func__, status);
- 	return status;
- }
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index e97dd21..5d744a5 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1643,7 +1643,14 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 				goto out_error;
- 			}
- 			clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state);
--			set_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state);
-+
-+			if (test_and_clear_bit(NFS4CLNT_SERVER_SCOPE_MISMATCH,
-+					       &clp->cl_state))
-+				nfs4_state_start_reclaim_nograce(clp);
-+			else
-+				set_bit(NFS4CLNT_RECLAIM_REBOOT,
-+					&clp->cl_state);
-+
- 			pnfs_destroy_all_layouts(clp);
- 		}
- 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index d869a5e..4aa0091 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4977,11 +4977,17 @@ static int decode_exchange_id(struct xdr_stream *xdr,
- 	if (unlikely(status))
- 		return status;
- 
--	/* Throw away server_scope */
-+	/* Save server_scope */
- 	status = decode_opaque_inline(xdr, &dummy, &dummy_str);
- 	if (unlikely(status))
- 		return status;
- 
-+	if (unlikely(dummy > NFS4_OPAQUE_LIMIT))
-+		return -EIO;
-+
-+	memcpy(res->server_scope->server_scope, dummy_str, dummy);
-+	res->server_scope->server_scope_sz = dummy;
-+
- 	/* Throw away Implementation id array */
- 	status = decode_opaque_inline(xdr, &dummy, &dummy_str);
- 	if (unlikely(status))
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 87694ca..f23b188 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -16,6 +16,7 @@ struct nfs4_sequence_args;
- struct nfs4_sequence_res;
- struct nfs_server;
- struct nfs4_minor_version_ops;
-+struct server_scope;
- 
- /*
-  * The nfs_client identifies our client state to the server.
-@@ -83,6 +84,8 @@ struct nfs_client {
- #ifdef CONFIG_NFS_FSCACHE
- 	struct fscache_cookie	*fscache;	/* client index cache cookie */
- #endif
-+
-+	struct server_scope	*server_scope;	/* from exchange_id */
- };
- 
- /*
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 5e8444a..4abceac 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1061,6 +1061,7 @@ struct server_scope {
- struct nfs41_exchange_id_res {
- 	struct nfs_client		*client;
- 	u32				flags;
-+	struct server_scope		*server_scope;
- };
- 
- struct nfs41_create_session_args {
+ static __be32 * __xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes)
+ {
+ 	__be32 *p = xdr->p;
 -- 
-1.7.5.2
+1.7.2.3
 
