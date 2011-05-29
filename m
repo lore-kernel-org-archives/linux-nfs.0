@@ -1,287 +1,286 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46237 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:42060 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754971Ab1EFRn2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 May 2011 13:43:28 -0400
-Date: Fri, 6 May 2011 13:43:27 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] NFS: Added TEST_STATEID call
-Message-ID: <20110506174327.GA15365@fieldses.org>
-References: <1304700595-5040-1-git-send-email-bjschuma@netapp.com>
- <20110506172944.GA15109@fieldses.org>
- <4DC431C8.6060104@netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4DC431C8.6060104@netapp.com>
+	id S1753972Ab1E2QbB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 12:31:01 -0400
+Subject: [GIT PULL] Please pull NFS client updates
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Sun, 29 May 2011 12:30:59 -0400
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1306686659.2386.9.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, May 06, 2011 at 01:37:12PM -0400, Bryan Schumaker wrote:
-> On 05/06/2011 01:29 PM, J. Bruce Fields wrote:
-> > On Fri, May 06, 2011 at 12:49:53PM -0400, bjschuma@netapp.com wrote:
-> >> From: Bryan Schumaker <bjschuma@netapp.com>
-> >>
-> >> This patch adds in the xdr for doing a TEST_STATEID call with a
-> >> single stateid. RFC 5661 allows multiple stateids to be tested in a
-> >> single call, but only testing one keeps things simpler for now.
-> > 
-> > These are among the mandatory 4.1 ops that we haven't implemented on
-> > the server yet.  Anyone up for it?  It's probably not difficult.
-> 
-> I have some server patches that I think will work.  I'm checking out
-> your linux.git tree from linux-nfs.org to make sure they still apply.
+Hi Linus,
 
-OK, great.
+Please pull from the "nfs-for-2.6.40" branch of the repository at
 
-> Is there a branch that I should check against?
+   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git nfs-for-2.6.40
 
-Probably for-2.6.40.
+This will update the following files through the appended changesets.
 
-> > Also: how will it behave against a server that returns nfserr_notsupp?
-> 
-> The FREE_STATEID won't be used, and the nfs v4.0 recovery functions will be called (these functions will be called after the FREE_STATEID anyway).
+  Cheers,
+    Trond
 
-Then it sounds like your patches cause no change in behavior in the case
-of a server that doesn't support the ops?
+----
+ fs/nfs/delegation.c             |   14 +--
+ fs/nfs/inode.c                  |    8 +-
+ fs/nfs/nfs4proc.c               |    9 +-
+ fs/nfs/nfs4state.c              |    6 +-
+ fs/nfs/nfsroot.c                |    2 +-
+ fs/nfs/pnfs.c                   |    2 +-
+ include/linux/sunrpc/msg_prot.h |    1 +
+ include/linux/sunrpc/xprt.h     |    3 +-
+ net/sunrpc/clnt.c               |   29 ++--
+ net/sunrpc/rpcb_clnt.c          |   97 ++++++++--
+ net/sunrpc/svc.c                |    2 +
+ net/sunrpc/xprtsock.c           |  435 +++++++++++++++++++++++++++++++++++++--
+ 12 files changed, 542 insertions(+), 66 deletions(-)
 
---b.
+commit 176e21ee2ec89cae8d45cf1a850ea45a45428fb8
+Author: Chuck Lever <chuck.lever@ORACLE.COM>
+Date:   Mon May 9 15:22:44 2011 -0400
 
-> 
-> > 
-> > --b.
-> > 
-> >>
-> >> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> >> ---
-> >>  fs/nfs/nfs4proc.c       |   28 ++++++++++++++
-> >>  fs/nfs/nfs4xdr.c        |   91 +++++++++++++++++++++++++++++++++++++++++++++++
-> >>  include/linux/nfs4.h    |    1 +
-> >>  include/linux/nfs_xdr.h |   10 +++++
-> >>  4 files changed, 130 insertions(+), 0 deletions(-)
-> >>
-> >> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> >> index 69c0f3c..044c151 100644
-> >> --- a/fs/nfs/nfs4proc.c
-> >> +++ b/fs/nfs/nfs4proc.c
-> >> @@ -5791,6 +5791,34 @@ out:
-> >>  	rpc_put_task(task);
-> >>  	return status;
-> >>  }
-> >> +static int _nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *state)
-> >> +{
-> >> +	int status;
-> >> +	struct nfs41_test_stateid_args args = {
-> >> +		.stateid = &state->stateid,
-> >> +	};
-> >> +	struct nfs41_test_stateid_res res;
-> >> +	struct rpc_message msg = {
-> >> +		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_TEST_STATEID],
-> >> +		.rpc_argp = &args,
-> >> +		.rpc_resp = &res,
-> >> +	};
-> >> +	args.seq_args.sa_session = res.seq_res.sr_session = NULL;
-> >> +	status = nfs4_call_sync_sequence(server->client, server, &msg, &args.seq_args, &res.seq_res, 0, 1);
-> >> +	return status;
-> >> +}
-> >> +
-> >> +static int nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *state)
-> >> +{
-> >> +	struct nfs4_exception exception = { };
-> >> +	int err;
-> >> +	do {
-> >> +		err = nfs4_handle_exception(server,
-> >> +				_nfs41_test_stateid(server, state),
-> >> +				&exception);
-> >> +	} while (exception.retry);
-> >> +	return err;
-> >> +}
-> >>  #endif /* CONFIG_NFS_V4_1 */
-> >>  
-> >>  struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
-> >> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> >> index c3ccd2c..2746616 100644
-> >> --- a/fs/nfs/nfs4xdr.c
-> >> +++ b/fs/nfs/nfs4xdr.c
-> >> @@ -338,6 +338,9 @@ static int nfs4_stat_to_errno(int);
-> >>  				1 /* layoutupdate4 layout type */ + \
-> >>  				1 /* NULL filelayout layoutupdate4 payload */)
-> >>  #define decode_layoutcommit_maxsz (op_decode_hdr_maxsz + 3)
-> >> +#define encode_test_stateid_maxsz	(op_encode_hdr_maxsz + 8 + \
-> >> +					 XDR_QUADLEN(NFS4_STATEID_SIZE))
-> >> +#define decode_test_stateid_maxsz	(op_decode_hdr_maxsz + 8 + 4)
-> >>  
-> >>  #else /* CONFIG_NFS_V4_1 */
-> >>  #define encode_sequence_maxsz	0
-> >> @@ -760,6 +763,12 @@ static int nfs4_stat_to_errno(int);
-> >>  				decode_putfh_maxsz + \
-> >>  				decode_layoutcommit_maxsz + \
-> >>  				decode_getattr_maxsz)
-> >> +#define NFS4_enc_test_stateid_sz	(compound_encode_hdr_maxsz + \
-> >> +					 encode_sequence_maxsz + \
-> >> +					 encode_test_stateid_maxsz)
-> >> +#define NFS4_dec_test_stateid_sz	(compound_decode_hdr_maxsz + \
-> >> +					 decode_sequence_maxsz + \
-> >> +					 decode_test_stateid_maxsz)
-> >>  
-> >>  
-> >>  const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
-> >> @@ -1889,6 +1898,20 @@ encode_layoutcommit(struct xdr_stream *xdr,
-> >>  	hdr->replen += decode_layoutcommit_maxsz;
-> >>  	return 0;
-> >>  }
-> >> +
-> >> +static void encode_test_stateid(struct xdr_stream *xdr,
-> >> +				struct nfs41_test_stateid_args *args,
-> >> +				struct compound_hdr *hdr)
-> >> +{
-> >> +	__be32 *p;
-> >> +
-> >> +	p = reserve_space(xdr, 8 + NFS4_STATEID_SIZE);
-> >> +	*p++ = cpu_to_be32(OP_TEST_STATEID);
-> >> +	*p++ = cpu_to_be32(1);
-> >> +	xdr_encode_opaque_fixed(p, args->stateid->data, NFS4_STATEID_SIZE);
-> >> +	hdr->nops++;
-> >> +	hdr->replen += decode_test_stateid_maxsz;
-> >> +}
-> >>  #endif /* CONFIG_NFS_V4_1 */
-> >>  
-> >>  /*
-> >> @@ -2722,6 +2745,23 @@ static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
-> >>  	encode_nops(&hdr);
-> >>  	return 0;
-> >>  }
-> >> +
-> >> +/*
-> >> + *  Encode TEST_STATEID request
-> >> + */
-> >> +static void nfs4_xdr_enc_test_stateid(struct rpc_rqst *req,
-> >> +				      struct xdr_stream *xdr,
-> >> +				      struct nfs41_test_stateid_args *args)
-> >> +{
-> >> +	struct compound_hdr hdr = {
-> >> +		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
-> >> +	};
-> >> +
-> >> +	encode_compound_hdr(xdr, req, &hdr);
-> >> +	encode_sequence(xdr, &args->seq_args, &hdr);
-> >> +	encode_test_stateid(xdr, args, &hdr);
-> >> +	encode_nops(&hdr);
-> >> +}
-> >>  #endif /* CONFIG_NFS_V4_1 */
-> >>  
-> >>  static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
-> >> @@ -5231,6 +5271,35 @@ out_overflow:
-> >>  	print_overflow_msg(__func__, xdr);
-> >>  	return -EIO;
-> >>  }
-> >> +
-> >> +static int decode_test_stateid(struct xdr_stream *xdr,
-> >> +			       struct nfs41_test_stateid_res *res)
-> >> +{
-> >> +	__be32 *p;
-> >> +	int status;
-> >> +	int num_res;
-> >> +
-> >> +	status = decode_op_hdr(xdr, OP_TEST_STATEID);
-> >> +	if (status)
-> >> +		return status;
-> >> +
-> >> +	p = xdr_inline_decode(xdr, 4);
-> >> +	if (unlikely(!p))
-> >> +		goto out_overflow;
-> >> +	num_res = be32_to_cpup(p++);
-> >> +	if (num_res != 1)
-> >> +		goto out;
-> >> +
-> >> +	p = xdr_inline_decode(xdr, 4);
-> >> +	if (unlikely(!p))
-> >> +		goto out_overflow;
-> >> +	res->status = be32_to_cpup(p++);
-> >> +	return res->status;
-> >> +out_overflow:
-> >> +	print_overflow_msg(__func__, xdr);
-> >> +out:
-> >> +	return -EIO;
-> >> +}
-> >>  #endif /* CONFIG_NFS_V4_1 */
-> >>  
-> >>  /*
-> >> @@ -6346,6 +6415,27 @@ static int nfs4_xdr_dec_layoutcommit(struct rpc_rqst *rqstp,
-> >>  out:
-> >>  	return status;
-> >>  }
-> >> +
-> >> +/*
-> >> + * Decode TEST_STATEID response
-> >> + */
-> >> +static int nfs4_xdr_dec_test_stateid(struct rpc_rqst *rqstp,
-> >> +				     struct xdr_stream *xdr,
-> >> +				     struct nfs41_test_stateid_res *res)
-> >> +{
-> >> +	struct compound_hdr hdr;
-> >> +	int status;
-> >> +
-> >> +	status = decode_compound_hdr(xdr, &hdr);
-> >> +	if (status)
-> >> +		goto out;
-> >> +	status = decode_sequence(xdr, &res->seq_res, rqstp);
-> >> +	if (status)
-> >> +		goto out;
-> >> +	status = decode_test_stateid(xdr, res);
-> >> +out:
-> >> +	return status;
-> >> +}
-> >>  #endif /* CONFIG_NFS_V4_1 */
-> >>  
-> >>  /**
-> >> @@ -6547,6 +6637,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
-> >>  	PROC(GETDEVICEINFO,	enc_getdeviceinfo,	dec_getdeviceinfo),
-> >>  	PROC(LAYOUTGET,		enc_layoutget,		dec_layoutget),
-> >>  	PROC(LAYOUTCOMMIT,	enc_layoutcommit,	dec_layoutcommit),
-> >> +	PROC(TEST_STATEID,	enc_test_stateid,	dec_test_stateid),
-> >>  #endif /* CONFIG_NFS_V4_1 */
-> >>  };
-> >>  
-> >> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> >> index 178fafe..0df1eed 100644
-> >> --- a/include/linux/nfs4.h
-> >> +++ b/include/linux/nfs4.h
-> >> @@ -562,6 +562,7 @@ enum {
-> >>  	NFSPROC4_CLNT_LAYOUTGET,
-> >>  	NFSPROC4_CLNT_GETDEVICEINFO,
-> >>  	NFSPROC4_CLNT_LAYOUTCOMMIT,
-> >> +	NFSPROC4_CLNT_TEST_STATEID,
-> >>  };
-> >>  
-> >>  /* nfs41 types */
-> >> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> >> index 890dce2..36f50dc 100644
-> >> --- a/include/linux/nfs_xdr.h
-> >> +++ b/include/linux/nfs_xdr.h
-> >> @@ -1062,6 +1062,16 @@ struct nfs41_reclaim_complete_args {
-> >>  struct nfs41_reclaim_complete_res {
-> >>  	struct nfs4_sequence_res	seq_res;
-> >>  };
-> >> +
-> >> +struct nfs41_test_stateid_args {
-> >> +	nfs4_stateid			*stateid;
-> >> +	struct nfs4_sequence_args	seq_args;
-> >> +};
-> >> +
-> >> +struct nfs41_test_stateid_res {
-> >> +	unsigned int			status;
-> >> +	struct nfs4_sequence_res	seq_res;
-> >> +};
-> >>  #endif /* CONFIG_NFS_V4_1 */
-> >>  
-> >>  struct nfs_page;
-> >> -- 
-> >> 1.7.5.1
-> >>
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+    SUNRPC: Support for RPC over AF_LOCAL transports
+    
+    TI-RPC introduces the capability of performing RPC over AF_LOCAL
+    sockets.  It uses this mainly for registering and unregistering
+    local RPC services securely with the local rpcbind, but we could
+    also conceivably use it as a generic upcall mechanism.
+    
+    This patch provides a client-side only implementation for the moment.
+    We might also consider a server-side implementation to provide
+    AF_LOCAL access to NLM (for statd downcalls, and such like).
+    
+    Autobinding is not supported on kernel AF_LOCAL transports at this
+    time.  Kernel ULPs must specify the pathname of the remote endpoint
+    when an AF_LOCAL transport is created.  rpcbind supports registering
+    services available via AF_LOCAL, so the kernel could handle it with
+    some adjustment to ->rpcbind and ->set_port.  But we don't need this
+    feature for doing upcalls via well-known named sockets.
+    
+    This has not been tested with ULPs that move a substantial amount of
+    data.  Thus, I can't attest to how robust the write_space and
+    congestion management logic is.
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 559649efb9b0d248541933197bdf7b75529da457
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon May 9 15:23:04 2011 -0400
+
+    SUNRPC: Remove obsolete comment
+    
+    Clean up.  The documenting comment at the top of net/sunrpc/clnt.c is
+    out of date.  We adopted BSD's RTO estimation mechanism years ago.
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 7402ab19cdd5943c7dd4f3399afe3abda8077ef5
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon May 9 15:22:55 2011 -0400
+
+    SUNRPC: Use AF_LOCAL for rpcbind upcalls
+    
+    As libtirpc does in user space, have our registration API try using an
+    AF_LOCAL transport first when registering and unregistering.
+    
+    This means we don't chew up privileged ports, and our registration is
+    bound to an "owner" (the effective uid of the process on the sending
+    end of the transport).  Only that "owner" may unregister the service.
+    
+    The kernel could probe rpcbind via an rpcbind query to determine
+    whether rpcbind has an AF_LOCAL service. For simplicity, we use the
+    same technique that libtirpc uses: simply fail over to network
+    loopback if creating an AF_LOCAL transport to the well-known rpcbind
+    service socket fails.
+    
+    This means we open-code the pathname of the rpcbind socket in the
+    kernel.  For now we have to do that anyway because the kernel's
+    RPC over AF_LOCAL implementation does not support autobind.  That may
+    be undesirable in the long term.
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit da09eb93033e7204cb3e3f3140b46cf108c42c8f
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon May 9 15:22:25 2011 -0400
+
+    SUNRPC: Clean up use of curly braces in switch cases
+    
+    Clean up.  Preferred style is not to use curly braces around
+    switch cases.  I'm about to add another case that needs a third
+    type cast.
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 4251c94833aa516c1fc7a0f8f504a26eadd4b91e
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon May 9 15:22:15 2011 -0400
+
+    NFS: Revert NFSROOT default mount options
+    
+    Marek Belisko <marek.belisko@gmail.com> reports that recent attempts
+    to fix regressions in NFSROOT have broken his configuration:
+    
+    > After update from 2.6.38-rc8 to 2.6.38 is mounting rootfs over nfs not possible.
+    > Log:
+    > VFS: Mounted root (nfs filesystem) on device 0:14.
+    > Freeing init memory: 132K
+    > nfs: server 10.146.1.21 not responding, still trying
+    > nfs: server 10.146.1.21 not responding, still trying
+    >
+    > This is never ending. I make short bisect (not too much commits
+    > between versions)
+    > and bad commit was reported: 53d4737580535e073963b91ce87d4216e434fab5
+    >
+    > NFS: NFSROOT should default to "proto=udp"
+    >
+    > I've tested on mini2440 board (DM9000, static IP).
+    > Is there some missing option or something else to be checked?
+    
+    An examination of a network trace captured during the failure shows
+    that the mount is actually succeeding, but that the client is not
+    seeing READ replies larger than 16KB.  This could be a local packet
+    filtering issue on the client, but we didn't troubleshoot this
+    further because of the reported "git bisect" result.
+    
+    Last fall we removed the ad hoc mount option parser in
+    fs/nfs/nfsroot.c in favor of using the main parser in fs/nfs/super.c
+    (see commit 56463e50 "NFS: Use super.c for NFSROOT mount option
+    parsing").  That commit changed the default NFSROOT mount options to
+    be the same as those employed by user space mounts.
+    
+    As it turns out, these new default mount options are not tolerated by
+    many embedded systems.  So far these problems have been due to
+    specific behavior of certain embedded NICs.  The NFS community does
+    not have such hardware on hand for running tests.
+    
+    Commit 53d47375 recently introduced a clean way to specify default
+    mount options for NFSROOT, so we can now easily restore the
+    traditional defaults for NFSROOT:
+    
+       vers=2,udp,rsize=4096,wsize=4096
+    
+    This should revert the new default NFSROOT mount options introduced
+    with commit 56463e50.
+    
+    Tested-by: Marek Belisto <marek.belisto@open-nandra.com>
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 61677eeec29e87edc03a1061ae0a04b92507450d
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon May 9 15:22:34 2011 -0400
+
+    SUNRPC: Rename xs_encode_tcp_fragment_header()
+    
+    Clean up: Use a more generic name for xs_encode_tcp_fragment_header();
+    it's appropriate to use for all stream transport types.  We're about
+    to add new stream transport.
+    
+    Also, move it to a place where it is more easily shared amongst the
+    various send_request methods.  And finally, replace the "htonl" macro
+    invocation with its modern equivalent.
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 26f04dde681c6a48b2bacfc5fe01fef204419b0c
+Author: Lai Jiangshan <laijs@cn.fujitsu.com>
+Date:   Sun May 1 06:21:54 2011 -0700
+
+    nfs,rcu: convert call_rcu(nfs_free_delegation_callback) to kfree_rcu()
+    
+    The rcu callback nfs_free_delegation_callback() just calls a kfree(),
+    so we use kfree_rcu() instead of the call_rcu(nfs_free_delegation_callback).
+    
+    Signed-off-by: Lai Jiangshan <laijs@cn.fujitsu.com>
+    Signed-off-by: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
+    Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 4b8ee2b82e8b0b6e17ee33feb74fcdb5c6d8dbdd
+Author: Vitaliy Gusev <gusev.vitaliy@gmail.com>
+Date:   Fri May 20 01:34:46 2011 +0400
+
+    nfs41: Correct offset for LAYOUTCOMMIT
+    
+    A client sends offset to MDS as it was seen by DS. As result,
+    file size after copy is only half of original file size in case
+    of 2 DS.
+    
+    Signed-off-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+    Cc: stable@kernel.org [2.6.39]
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 60c16ea877546e559988a8b1e4f4256afbbd83e6
+Author: Harshula Jayasuriya <harshula@redhat.com>
+Date:   Mon May 23 22:52:11 2011 +1000
+
+    NFS: nfs_update_inode: print current and new inode size in debug output
+    
+    Hi Trond,
+    
+    In nfs_update_inode debug output, print the current and new inode
+    size when the file size changes on the NFS server.
+    
+    Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
+    Reviewed-by: Jeff Layton <jlayton@redhat.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 444f72fe7e7b5f4db34cee933fa3546ebb8e9122
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Thu May 26 14:26:35 2011 -0400
+
+    NFSv4.1: Fix the handling of NFS4ERR_SEQ_MISORDERED errors
+    
+    Currently, the call to nfs4_schedule_session_recovery() will actually just
+    result in a test of the lease when what we really want is to force a
+    session reset.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Cc: stable@kernel.org
+
+commit 0ced63d1a245ac11241a5d37932e6d04d9c8040d
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Thu May 26 14:26:35 2011 -0400
+
+    NFSv4: Handle expired stateids when the lease is still valid
+    
+    Currently, if the server returns NFS4ERR_EXPIRED in reply to a READ or
+    WRITE, but the RENEW test determines that the lease is still active, we
+    fail to recover and end up looping forever in a READ/WRITE + RENEW death
+    spiral.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Cc: stable@kernel.org
+
+commit fe19a96b10032035a35779f42ad59e35d6dd8ffd
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Fri Mar 18 20:21:23 2011 -0400
+
+    SUNRPC: Deal with the lack of a SYN_SENT sk->sk_state_change callback...
+    
+    The TCP connection state code depends on the state_change() callback
+    being called when the SYN_SENT state is set. However the networking layer
+    doesn't actually call us back in that case.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Cc: stable@kernel.org
+
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
