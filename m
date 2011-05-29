@@ -1,46 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:43522 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:46003 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754346Ab1EVX5m (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 May 2011 19:57:42 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v5 20/38] pnfs: per mount layout driver private data
-Date: Mon, 23 May 2011 02:57:29 +0300
-Message-Id: <1306108649-28644-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DD99F9B.2040406@panasas.com>
-References: <4DD99F9B.2040406@panasas.com>
+	with ESMTP id S1752571Ab1E2KaX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 06:30:23 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Subject: [PATCH 2/8] SQUASHME V2: objio alloc/free lseg Bugs fixes
+Date: Sun, 29 May 2011 13:30:12 +0300
+Message-Id: <1306665012-1006-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DE21CD5.8070907@panasas.com>
+References: <4DE21CD5.8070907@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-With the objects layout security model we have object capabilities
-that are associated with the layout ad we anticipate that the server
-will issue a cb_layoutrecall for any setattr that changes security
-related attributes (user/group/mode/acl) or truncates the file.
-Therefore, the client returns the layout in advance to avoid the
-extra layout recall.
+Wrong allocation and pointering in lseg_alloc.
 
-[get rid of ds_[rw]size]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- include/linux/nfs_fs_sb.h |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ fs/nfs/objlayout/objio_osd.c |    7 ++++---
+ 1 files changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 87694ca..66e031f 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -143,6 +143,7 @@ struct nfs_server {
- 						   filesystem */
- 	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
- 	struct rpc_wait_queue	roc_rpcwaitq;
-+	void			       *pnfs_ld_data; /* Per-mount data */
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 725b1df..08f1d90 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -65,7 +65,7 @@ struct objio_segment {
+ 	unsigned comps_index;
+ 	unsigned num_comps;
+ 	/* variable length */
+-	struct osd_dev	*ods[1];
++	struct objio_dev_ent *ods[];
+ };
  
- 	/* the following fields are protected by nfs_client->cl_lock */
- 	struct rb_root		state_owners;
+ static inline struct objio_segment *
+@@ -143,7 +143,6 @@ int objio_alloc_lseg(struct pnfs_layout_segment **outp,
+ 	struct pnfs_osd_layout layout;
+ 	struct pnfs_osd_object_cred *cur_comp, src_comp;
+ 	struct caps_buffers *caps_p;
+-
+ 	int err;
+ 
+ 	err = pnfs_osd_xdr_decode_layout_map(&layout, &iter, xdr);
+@@ -155,13 +154,15 @@ int objio_alloc_lseg(struct pnfs_layout_segment **outp,
+ 		return err;
+ 
+ 	objio_seg = kzalloc(sizeof(*objio_seg) +
++			    sizeof(objio_seg->ods[0]) * layout.olo_num_comps +
+ 			    sizeof(*objio_seg->comps) * layout.olo_num_comps +
+ 			    sizeof(struct caps_buffers) * layout.olo_num_comps,
+ 			    gfp_flags);
+ 	if (!objio_seg)
+ 		return -ENOMEM;
+ 
+-	cur_comp = objio_seg->comps = (void *)(objio_seg + 1);
++	objio_seg->comps = (void *)(objio_seg->ods + layout.olo_num_comps);
++	cur_comp = objio_seg->comps;
+ 	caps_p = (void *)(cur_comp + layout.olo_num_comps);
+ 	while (pnfs_osd_xdr_decode_layout_comp(&src_comp, &iter, xdr, &err))
+ 		copy_single_comp(cur_comp++, &src_comp, caps_p++);
 -- 
-1.7.3.4
+1.7.2.3
 
