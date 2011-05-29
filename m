@@ -1,68 +1,267 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:1661 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:50782 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755382Ab1EWNyE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 09:54:04 -0400
-Message-ID: <4DDA66F6.1050109@panasas.com>
-Date: Mon, 23 May 2011 16:53:58 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PTACH] SQUASHME: pnfs-obj: Important fallout from the last rebase
-References: <4DD99F9B.2040406@panasas.com> <1306108883-29089-1-git-send-email-bhalevy@panasas.com> <4DDA3AA4.8000205@panasas.com>
-In-Reply-To: <4DDA3AA4.8000205@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+	with ESMTP id S1755069Ab1E2SS6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 14:18:58 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Benny Halevy <bhalevy@panasas.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Cc: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 05/32] NFSv4.1: purge deviceid cache on nfs_free_client
+Date: Sun, 29 May 2011 21:18:47 +0300
+Message-Id: <1306693127-7847-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DE28CFB.4060608@panasas.com>
+References: <4DE28CFB.4060608@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-05-23 13:44, Boaz Harrosh wrote:
-> 
-> On the last rebase I dropped this hunk it needs to go into  the:
-> 	[PATCH v5 31/38] pnfs-obj: osd raid engine read/write implementation
-> 
-> With out this the code does not work
+From: Benny Halevy <bhalevy@panasas.com>
 
-I agree that in the current implementation the ld must implement
-pg_test for pnfs to work.
-This patch is reverse though...
+Use the pnfs_layoutdriver_type both as a qualifier for the deviceid,
+distinguishing deviceid from different layout types on the server,
+and for freeing the layout-driver allocated structure containing the
+nfs4_deviceid_node.
 
-Benny
+[BUG in _deviceid_purge_client]
+[layout_driver MUST set free_deviceid_node if using dev-cache]
+[let ver < 4.1 compile]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+[removed EXPORT_SYMBOL_GPL(nfs4_deviceid_purge_client)]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/client.c            |    2 +
+ fs/nfs/nfs4filelayout.c    |    7 ++++++
+ fs/nfs/nfs4filelayout.h    |    1 +
+ fs/nfs/nfs4filelayoutdev.c |    9 ++++---
+ fs/nfs/pnfs.h              |   11 ++++++++++
+ fs/nfs/pnfs_dev.c          |   47 +++++++++++++++++++++++++++++++++++++++++--
+ 6 files changed, 70 insertions(+), 7 deletions(-)
 
-> 
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> ---
-> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-> index 105d8a6..74b5d3f 100644
-> --- a/fs/nfs/objlayout/objio_osd.c
-> +++ b/fs/nfs/objlayout/objio_osd.c
-> @@ -989,19 +990,6 @@ ssize_t objio_write_pagelist(struct objlayout_io_state *ol_state, bool stable)
->  	return _write_exec(ios);
->  }
->  
-> -/*
-> - * objlayout_pg_test(). Called by nfs_can_coalesce_requests()
-> - *
-> - * return 1 :  coalesce page
-> - * return 0 :  don't coalesce page
-> - */
-> -int
-> -objlayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
-> -		   struct nfs_page *req)
-> -{
-> -	return 1;
-> -}
-> -
->  static struct pnfs_layoutdriver_type objlayout_type = {
->  	.id = LAYOUT_OSD2_OBJECTS,
->  	.name = "LAYOUT_OSD2_OBJECTS",
-> @@ -1021,8 +1009,6 @@ static struct pnfs_layoutdriver_type objlayout_type = {
->  
->  	.encode_layoutcommit	 = objlayout_encode_layoutcommit,
->  	.encode_layoutreturn     = objlayout_encode_layoutreturn,
-> -
-> -	.pg_test		= objlayout_pg_test,
->  };
->  
->  void *objio_init_mt(void)
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 139be96..b3dc2b8 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -290,6 +290,8 @@ static void nfs_free_client(struct nfs_client *clp)
+ 	if (clp->cl_machine_cred != NULL)
+ 		put_rpccred(clp->cl_machine_cred);
+ 
++	nfs4_deviceid_purge_client(clp);
++
+ 	kfree(clp->cl_hostname);
+ 	kfree(clp);
+ 
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 4c67a6f..cd289d9 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -862,6 +862,12 @@ filelayout_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+ 	return -ENOMEM;
+ }
+ 
++static void
++filelayout_free_deveiceid_node(struct nfs4_deviceid_node *d)
++{
++	nfs4_fl_free_deviceid(container_of(d, struct nfs4_file_layout_dsaddr, id_node));
++}
++
+ static struct pnfs_layoutdriver_type filelayout_type = {
+ 	.id			= LAYOUT_NFSV4_1_FILES,
+ 	.name			= "LAYOUT_NFSV4_1_FILES",
+@@ -874,6 +880,7 @@ static struct pnfs_layoutdriver_type filelayout_type = {
+ 	.commit_pagelist	= filelayout_commit_pagelist,
+ 	.read_pagelist		= filelayout_read_pagelist,
+ 	.write_pagelist		= filelayout_write_pagelist,
++	.free_deviceid_node	= filelayout_free_deveiceid_node,
+ };
+ 
+ static int __init nfs4filelayout_init(void)
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index 0ace0a2..cebe01e 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -98,6 +98,7 @@ u32 nfs4_fl_calc_ds_index(struct pnfs_layout_segment *lseg, u32 j);
+ struct nfs4_pnfs_ds *nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg,
+ 					u32 ds_idx);
+ extern void nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
++extern void nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
+ struct nfs4_file_layout_dsaddr *
+ get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags);
+ 
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index eda4527..5914659 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -156,7 +156,7 @@ destroy_ds(struct nfs4_pnfs_ds *ds)
+ 	kfree(ds);
+ }
+ 
+-static void
++void
+ nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr)
+ {
+ 	struct nfs4_pnfs_ds *ds;
+@@ -386,7 +386,9 @@ decode_device(struct inode *ino, struct pnfs_device *pdev, gfp_t gfp_flags)
+ 	dsaddr->stripe_indices = stripe_indices;
+ 	stripe_indices = NULL;
+ 	dsaddr->ds_num = num;
+-	nfs4_init_deviceid_node(&dsaddr->id_node, NFS_SERVER(ino)->nfs_client,
++	nfs4_init_deviceid_node(&dsaddr->id_node,
++				NFS_SERVER(ino)->pnfs_curr_ld,
++				NFS_SERVER(ino)->nfs_client,
+ 				&pdev->dev_id);
+ 
+ 	for (i = 0; i < dsaddr->ds_num; i++) {
+@@ -548,8 +550,7 @@ out_free:
+ void
+ nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr)
+ {
+-	if (nfs4_put_deviceid_node(&dsaddr->id_node))
+-		nfs4_fl_free_deviceid(dsaddr);
++	nfs4_put_deviceid_node(&dsaddr->id_node);
+ }
+ 
+ /*
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 3831ad0..80a5d0e 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -65,6 +65,8 @@ enum {
+ 	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
+ };
+ 
++struct nfs4_deviceid_node;
++
+ /* Per-layout driver specific registration structure */
+ struct pnfs_layoutdriver_type {
+ 	struct list_head pnfs_tblid;
+@@ -90,6 +92,8 @@ struct pnfs_layoutdriver_type {
+ 	 */
+ 	enum pnfs_try_status (*read_pagelist) (struct nfs_read_data *nfs_data);
+ 	enum pnfs_try_status (*write_pagelist) (struct nfs_write_data *nfs_data, int how);
++
++	void (*free_deviceid_node) (struct nfs4_deviceid_node *);
+ };
+ 
+ struct pnfs_layout_hdr {
+@@ -160,6 +164,7 @@ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+ /* pnfs_dev.c */
+ struct nfs4_deviceid_node {
+ 	struct hlist_node		node;
++	const struct pnfs_layoutdriver_type *ld;
+ 	const struct nfs_client		*nfs_client;
+ 	struct nfs4_deviceid		deviceid;
+ 	atomic_t			ref;
+@@ -169,10 +174,12 @@ void nfs4_print_deviceid(const struct nfs4_deviceid *dev_id);
+ struct nfs4_deviceid_node *nfs4_find_get_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
+ struct nfs4_deviceid_node *nfs4_unhash_put_deviceid(const struct nfs_client *, const struct nfs4_deviceid *);
+ void nfs4_init_deviceid_node(struct nfs4_deviceid_node *,
++			     const struct pnfs_layoutdriver_type *,
+ 			     const struct nfs_client *,
+ 			     const struct nfs4_deviceid *);
+ struct nfs4_deviceid_node *nfs4_insert_deviceid_node(struct nfs4_deviceid_node *);
+ bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
++void nfs4_deviceid_purge_client(const struct nfs_client *);
+ 
+ static inline int lo_fail_bit(u32 iomode)
+ {
+@@ -349,6 +356,10 @@ static inline int pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ {
+ 	return 0;
+ }
++
++static inline void nfs4_deviceid_purge_client(struct nfs_client *ncl)
++{
++}
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ #endif /* FS_NFS_PNFS_H */
+diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+index bf05189..64a4b85 100644
+--- a/fs/nfs/pnfs_dev.c
++++ b/fs/nfs/pnfs_dev.c
+@@ -96,11 +96,15 @@ EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
+ 
+ void
+ nfs4_init_deviceid_node(struct nfs4_deviceid_node *d,
++			const struct pnfs_layoutdriver_type *ld,
+ 			const struct nfs_client *nfs_client,
+ 			const struct nfs4_deviceid *id)
+ {
++	INIT_HLIST_NODE(&d->node);
++	d->ld = ld;
+ 	d->nfs_client = nfs_client;
+ 	d->deviceid = *id;
++	atomic_set(&d->ref, 1);
+ }
+ EXPORT_SYMBOL_GPL(nfs4_init_deviceid_node);
+ 
+@@ -108,7 +112,10 @@ EXPORT_SYMBOL_GPL(nfs4_init_deviceid_node);
+  * Uniquely initialize and insert a deviceid node into cache
+  *
+  * @new new deviceid node
+- *      Note that the caller must set up new->nfs_client and new->deviceid
++ *      Note that the caller must set up the following members:
++ *        new->ld
++ *        new->nfs_client
++ *        new->deviceid
+  *
+  * @ret the inserted node, if none found, otherwise, the found entry.
+  */
+@@ -125,8 +132,6 @@ nfs4_insert_deviceid_node(struct nfs4_deviceid_node *new)
+ 		return d;
+ 	}
+ 
+-	INIT_HLIST_NODE(&new->node);
+-	atomic_set(&new->ref, 1);
+ 	hash = nfs4_deviceid_hash(&new->deviceid);
+ 	hlist_add_head_rcu(&new->node, &nfs4_deviceid_cache[hash]);
+ 	spin_unlock(&nfs4_deviceid_lock);
+@@ -151,6 +156,42 @@ nfs4_put_deviceid_node(struct nfs4_deviceid_node *d)
+ 	hlist_del_init_rcu(&d->node);
+ 	spin_unlock(&nfs4_deviceid_lock);
+ 	synchronize_rcu();
++	d->ld->free_deviceid_node(d);
+ 	return true;
+ }
+ EXPORT_SYMBOL_GPL(nfs4_put_deviceid_node);
++
++static void
++_deviceid_purge_client(const struct nfs_client *clp, long hash)
++{
++	struct nfs4_deviceid_node *d;
++	struct hlist_node *n, *next;
++	HLIST_HEAD(tmp);
++
++	rcu_read_lock();
++	hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[hash], node)
++		if (d->nfs_client == clp && atomic_read(&d->ref)) {
++			hlist_del_init_rcu(&d->node);
++			hlist_add_head(&d->node, &tmp);
++		}
++	rcu_read_unlock();
++
++	if (hlist_empty(&tmp))
++		return;
++
++	synchronize_rcu();
++	hlist_for_each_entry_safe(d, n, next, &tmp, node)
++		if (atomic_dec_and_test(&d->ref))
++			d->ld->free_deviceid_node(d);
++}
++
++void
++nfs4_deviceid_purge_client(const struct nfs_client *clp)
++{
++	long h;
++
++	spin_lock(&nfs4_deviceid_lock);
++	for (h = 0; h < NFS4_DEVICE_ID_HASH_SIZE; h++)
++		_deviceid_purge_client(clp, h);
++	spin_unlock(&nfs4_deviceid_lock);
++}
+-- 
+1.7.2.3
 
