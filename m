@@ -1,212 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from nm5-vm0.bullet.mail.sp2.yahoo.com ([98.139.91.204]:22361 "HELO
-	nm5-vm0.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1754795Ab1EFHy1 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 May 2011 03:54:27 -0400
-Message-ID: <336105.89235.qm@web111708.mail.gq1.yahoo.com>
-References: <781436.95809.qm@web111709.mail.gq1.yahoo.com> <OF40F1C0BA.A5FC46BA-ON85257887.004DC668-85257887.004DD321@us.ibm.com> <591857.64709.qm@web111726.mail.gq1.yahoo.com> <BANLkTimbnz4xKyK1oNDnyWN7k9dhApW2TA@mail.gmail.com> <437877.23899.qm@web111716.mail.gq1.yahoo.com> <BANLkTikmtaBUCZeyMvnx_vO2J6ymk0_FfQ@mail.gmail.com>
-Date: Fri, 6 May 2011 00:54:26 -0700 (PDT)
-From: Mahmood Naderan <nt_mahmood@yahoo.com>
-Reply-To: Mahmood Naderan <nt_mahmood@yahoo.com>
-Subject: Re: debugging nfs
-To: Hiroyuki Sato <hiroysato@gmail.com>
-Cc: nfs <linux-nfs@vger.kernel.org>
-In-Reply-To: <BANLkTikmtaBUCZeyMvnx_vO2J6ymk0_FfQ@mail.gmail.com>
-Content-Type: text/plain; charset=iso-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:50831 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755111Ab1E2SVO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 14:21:14 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Benny Halevy <bhalevy@panasas.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH 12/32] pnfs: client stats
+Date: Sun, 29 May 2011 21:21:03 +0300
+Message-Id: <1306693263-8044-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DE28CFB.4060608@panasas.com>
+References: <4DE28CFB.4060608@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
->What kind of OS are you using??
+From: J. Bruce Fields <bfields@fieldses.org>
 
-I am using debian. I am trying to apply this:
- 
-https://help.ubuntu.com/community/Autofs#Auto-mounting%20an%20NFS%20share
+A pNFS client auto-negotiates a lot of features (minorversion level,
+pNFS layout type, etc.).  This is convenient, but makes certain kinds of
+failures hard for a user to detect.
 
-I will post if it work or fail
+For example, if the client falls back on 4.0, or falls back to MDS IO
+because the user didn't connect to the right iscsi disks before
+mounting, the only symptoms may be reduced performance, which may not be
+noticed till long after the actual failure, and may be difficult for a
+user to diagnose.
 
-// Naderan *Mahmood;
+However, such "failures" may also be perfectly normal in some cases, so
+we don't want to spam the system logs with them.
 
+One approach would be to put some more information into
+/proc/self/mountstats.
 
------ Original Message -----
-From: Hiroyuki Sato <hiroysato@gmail.com>
-To: Mahmood Naderan <nt_mahmood@yahoo.com>
-Cc: nfs <linux-nfs@vger.kernel.org>
-Sent: Friday, May 6, 2011 5:01 AM
-Subject: Re: debugging nfs
+Signed-off-by: J. Bruce Fields <bfields@fieldses.org>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfs: add commit client stats]
+[fixup data types for "ret" variables in pnfs_try_to* inline funcs.]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[fix definition of show_pnfs for !CONFIG_PNFS]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfs41: Fix show_sessions in the not CONFIG_NFS_V4_1 case]
+    There is a build error when CONFIG_NFS_V4 is set but
+    CONFIG_NFS_V4_1 is *not* set. show_sessions() prototype
+    was unbalanced between the two cases.
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+[pnfs: super.c remove CONFIG_PNFS]
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/super.c |   25 +++++++++++++++++++++++++
+ 1 files changed, 25 insertions(+), 0 deletions(-)
 
-Hello Mahmood
-
-What kind of OS are you using??
-
-If you want to use automount, you have to setup automount.
-  ex) http://freespace.sourceforge.net/guidod/howto/autofs.html
-
-I you wan to mount /opt at boot time, but now you can't
-Could you please check autofs (If you are using RHEL, CentOS, Fedora...)
-
-# /sbin/chkconfig --list netfs
-netfs              0:off    1:off    2:off    3:on    4:on    5:on    6:off
-
---
-Hiroyuki Sato
-
-
-2011/5/6 Mahmood Naderan <nt_mahmood@yahoo.com>:
-> Hi Hiroyuki,
->
-> I tried what you said, but no success. Here are the configs:
->
-> on server:
->
-> root@server:~# cat /etc/hosts
-> 127.0.0.1       localhost     localhost,server
-> 194.225.69.105  server
-> 192.168.1.3     client1
-> 192.168.1.4     client2
->
-> root@server:~# cat /etc/exports
-> /home/nfsroot        192.168.1.0/255.255.255.0(rw,async,no_root_squash)
-> /opt                 192.168.1.0/255.255.255.0(rw,sync,no_root_squash)
->
-> root@server:~# cat /etc/hosts.allow
-> sendmail: all
-> ALL: 192.168.1.0/255.255.255.0
->
->
->
-> On clients:
->
-> mahmood@client1:~$ cat /etc/fstab
-> # UNCONFIGURED FSTAB FOR BASE SYSTEM
-> # <file system> <mount point> <type> <options> <dump> <pass>
-> proc            /proc         proc   defaults       0      0
-> /dev/nfs        /             nfs    defaults       0      0
-> 192.168.1.1:/opt       /opt          nfs    defaults       0      0
->
-> mahmood@client1:~$ cat /etc/hosts
-> 127.0.0.1 localhost
-> 192.168.1.1 server
-> 192.168.1.3 client1
-> 192.168.1.4 client2
->
->
-> However, there is no sign of proper automount:
->
-> mahmood@client1:~$ ls /opt/
-> mahmood@client1:~$
->
->
-> // Naderan *Mahmood;
->
->
-> ----- Original Message -----
-> From: Hiroyuki Sato <hiroysato@gmail.com>
-> To: Mahmood Naderan <nt_mahmood@yahoo.com>
-> Cc: Brian R Cowan <brcowan@us.ibm.com>; nfs <linux-nfs@vger.kernel.org>
-> Sent: Thursday, May 5, 2011 7:55 PM
-> Subject: Re: debugging nfs
->
-> Hello Mahmood.
->
-> Have you ever tried to write ip address instead of server fqdn??
-> or have you ever tries write server entry in /etc/hosts??
->
-> It is mean that
->
-> /etc/fstab
-> ip.ad.re.ss:/opt /opt nfs mount_opt 0 0
->
-> or /etc/hosts
-> ip.add.re.ss server
->
->
-> I met same problem today, and I resolve it.
->
-> My friend were using NIS on scientific linux .
-> and It tried to mount before NIS started.
->
-> --
-> Hiroyuki Sato
->
->
-> 2011/5/5 Mahmood Naderan <nt_mahmood@yahoo.com>:
->> Well, I found the problem very nasty and in my previous posts, I mentioned some of them.
->>
->> The big problem:
->> when the clients boots, it doesn't automatically mount the shared folders via /etc/fstab.
->> However after login to client, I can mount the folder manually with
->>
->> "sudo mount -t nfs server:/opt /opt"
->>
->> I really don't know why fstab doesn't work. I searched a lot.... some say disbale IPV6.
->> I did that but still have that problem.
->>
->> So how can I tell nfs (on server or client) to be verbose so that I can see what is going on
->> and what is not going on.
->>
->> Any feedback and comment is welcomed.
->>
->> // Naderan *Mahmood;
->>
->> From: Brian R Cowan <brcowan@us.ibm.com>
->> To: Mahmood Naderan <nt_mahmood@yahoo.com>
->> Cc: nfs <linux-nfs@vger.kernel.org>; linux-nfs-owner@vger.kernel.org
->> Sent: Thursday, May 5, 2011 6:40 PM
->> Subject: Re: debugging nfs
->>
->>
->> It would probably help to explain the problem
->> so you can get targeted debugging assistance...
->>
->> =================================================================
->> Brian Cowan
->> Advisory Software Engineer
->> ClearCase Software Advisory Team (SWAT)
->> Rational Software
->> IBM Software Group
->> 550 King St
->> Littleton, MA 01460
->>
->> Phone: 1.978.899.9471
->> Web: http://www.ibm.com/software/rational/support/
->>
->>
->>
->>
->> From:
->>  Mahmood Naderan <nt_mahmood@yahoo.com>
->> To:
->>  nfs <linux-nfs@vger.kernel.org>,
->> Date:
->>  05/05/2011 09:30 AM
->> Subject:
->>    debugging nfs
->> Sent by:
->>    linux-nfs-owner@vger.kernel.org
->>
->>
->>
->> Hi,
->> I didn't find a method for debugging NFS for debain based systems. Is there
->> any verbose switch or debuging method for that?
->>
->> // Naderan *Mahmood;
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
->> in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index e288f06..ce40e5c 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -63,6 +63,7 @@
+ #include "iostat.h"
+ #include "internal.h"
+ #include "fscache.h"
++#include "pnfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_VFS
+ 
+@@ -732,6 +733,28 @@ static int nfs_show_options(struct seq_file *m, struct vfsmount *mnt)
+ 
+ 	return 0;
+ }
++#ifdef CONFIG_NFS_V4_1
++void show_sessions(struct seq_file *m, struct nfs_server *server)
++{
++	if (nfs4_has_session(server->nfs_client))
++		seq_printf(m, ",sessions");
++}
++#else
++void show_sessions(struct seq_file *m, struct nfs_server *server) {}
++#endif
++
++#ifdef CONFIG_NFS_V4_1
++void show_pnfs(struct seq_file *m, struct nfs_server *server)
++{
++	seq_printf(m, ",pnfs=");
++	if (server->pnfs_curr_ld)
++		seq_printf(m, "%s", server->pnfs_curr_ld->name);
++	else
++		seq_printf(m, "not configured");
++}
++#else  /* CONFIG_NFS_V4_1 */
++void show_pnfs(struct seq_file *m, struct nfs_server *server) {}
++#endif /* CONFIG_NFS_V4_1 */
+ 
+ static int nfs_show_devname(struct seq_file *m, struct vfsmount *mnt)
+ {
+@@ -792,6 +815,8 @@ static int nfs_show_stats(struct seq_file *m, struct vfsmount *mnt)
+ 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
+ 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
+ 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
++		show_sessions(m, nfss);
++		show_pnfs(m, nfss);
+ 	}
+ #endif
+ 
+-- 
+1.7.2.3
 
