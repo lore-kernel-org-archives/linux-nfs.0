@@ -1,161 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:59842 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751261Ab1EITiG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 15:38:06 -0400
-Received: by mail-yw0-f46.google.com with SMTP id 3so1917800ywj.19
-        for <linux-nfs@vger.kernel.org>; Mon, 09 May 2011 12:38:06 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 11/16] NFS: Add an API for cloning an nfs_client
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 09 May 2011 15:38:03 -0400
-Message-ID: <20110509193803.16568.61644.stgit@matisse.1015granger.net>
-In-Reply-To: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
-References: <20110509192522.16568.59082.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from snippy.nobiscuit.com ([50.17.199.227]:42611 "EHLO
+	snippy.nobiscuit.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753258Ab1E2Ncs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 09:32:48 -0400
+Date: Sun, 29 May 2011 13:25:15 +0000
+From: Nigel Roberts <nigel@nobiscuit.com>
+To: linux-nfs@vger.kernel.org
+Subject: NFSv4 server on ARM
+Message-ID: <20110529132515.GB19451@snippy.nobiscuit.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-After a migration event, we have to preserve the client ID the client
-used with the source server, and introduce it to the destination
-server, in case the migration transparently migrated state for the
-migrating FSID.
+I've run into a problem with running an nfsv4 server on a Marvell
+Kirkwood (armv5tel) platform. When copying a large file (>1GB) to 
+the NFS  server, thewrite speed will suddenly slow down to ~750kB/s 
+and the CPU wait will jump to 100% for the remainder of the transfer.
 
-Note that our RENEW and SETCLIENTID procs both take an nfs_client as
-an argument.  Thus, after a successful migration recovery, we want to
-have a nfs_client with the correct long-form and short-form client ID
-for the destination server to pass these procs.
+Other important points:
 
-To preserve the client IDs, we clone the source server's nfs_client.
-The migrated FSID is moved from the original nfs_client to the cloned
-one.
+* it doesn't happen on nfsv3 or any other protocol or indeed any other 
+I/O that I have tried.
+* other I/O works fine on the server while this is happening.
+* the next operation will work normally unless it runs into the same 
+problem again after starting out ok.
+* the server is running Debian testing (ARM) and kernel 2.6.39. I've 
+tried 2.6.38 and 2.6.32 and they have the same problem.
+* I'm using gss/krb5i for the mounts
+* it doesn't seem to affect x86_64 servers running the same kernel
+version and distribution.
 
-This patch introduces an API for cloning an nfs_client and moving an
-FSID to it.
+Here is what vmstat 1 shows just as the problem occurs:
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+procs -----------memory---------- ---swap-- -----io---- -system-- ----cpu----
+ r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa
+ 0  0      0   2828  44044 169100    0    0     0 35924 2931 2661  0 86 12  2
+ 2  1      0   3084  44044 168656    0    0     0  5156 2744 4684  0 47 53  0
+ 2  0      0   2876  44048 169144    0    0     0    34 2804 5185  0 37 55  8
+ 1  0      0   3072  44048 168740    0    0     0     0 3068 5870  0 39 61  0
 
- fs/nfs/client.c   |   69 +++++++++++++++++++++++++++++++++++++++++++++++++++--
- fs/nfs/internal.h |    4 +++
- 2 files changed, 71 insertions(+), 2 deletions(-)
+All normal upto this point and it may stay this way for 100s of MB, 
+but then things go pear-shaped:
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 536b0ba..2f5e29f 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -135,6 +135,7 @@ struct nfs_client_initdata {
- 	const struct nfs_rpc_ops *rpc_ops;
- 	int proto;
- 	u32 minorversion;
-+	const char *long_clientid;
- };
- 
- /*
-@@ -184,6 +185,9 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- 	clp->cl_state = 1 << NFS4CLNT_LEASE_EXPIRED;
- 	clp->cl_minorversion = cl_init->minorversion;
- 	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
-+	if (cl_init->long_clientid != NULL)
-+		clp->cl_cached_clientid = kstrdup(cl_init->long_clientid,
-+							GFP_KERNEL);
- #endif
- 	cred = rpc_lookup_machine_cred();
- 	if (!IS_ERR(cred))
-@@ -476,6 +480,10 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
- 		/* Match the full socket address */
- 		if (!nfs_sockaddr_cmp(sap, clap))
- 			continue;
-+		/* Match on long-form client ID */
-+		if (data->long_clientid && clp->cl_cached_clientid &&
-+		    strcmp(data->long_clientid, clp->cl_cached_clientid))
-+			continue;
- 
- 		atomic_inc(&clp->cl_count);
- 		return clp;
-@@ -1426,8 +1434,65 @@ error:
- 	return error;
- }
- 
--/*
-- * Set up a pNFS Data Server client.
-+/**
-+ * nfs4_clone_client - Clone a client after a migration event
-+ * clp: nfs_client to clone
-+ * sap: address of destination server
-+ * salen: size of "sap" in bytes
-+ * ip_addr: NUL-terminated string containing local presentation address
-+ * server: nfs_server to move from "clp" to the new one
-+ *
-+ * Returns negative errno or zero.  nfs_client field of "server" is
-+ * updated to refer to a new or existing nfs_client that matches
-+ * [server address, port, version, minorversion, client ID].  The
-+ * nfs_server is moved from the old nfs_client's cl_superblocks list
-+ * to the new nfs_client's list.
-+ */
-+int nfs4_clone_client(struct nfs_client *clp, const struct sockaddr *sap,
-+		      size_t salen, const char *ip_addr,
-+		      struct nfs_server *server)
-+{
-+	struct rpc_clnt *rpcclnt = clp->cl_rpcclient;
-+	struct nfs_client_initdata cl_init = {
-+		.addr		= sap,
-+		.addrlen	= salen,
-+		.rpc_ops	= &nfs_v4_clientops,
-+		.proto		= rpc_protocol(rpcclnt),
-+		.minorversion	= clp->cl_minorversion,
-+		.long_clientid	= clp->cl_cached_clientid,
-+	};
-+	struct nfs_client *new;
-+	int status = 0;
-+
-+	dprintk("--> %s cloning \"%s\" (client ID %llx)\n",
-+		__func__, clp->cl_hostname, clp->cl_clientid);
-+
-+	new = nfs_get_client(&cl_init, rpcclnt->cl_timeout, ip_addr,
-+				rpcclnt->cl_auth->au_flavor, 0);
-+	if (IS_ERR(new)) {
-+		dprintk("<-- %s nfs_get_client failed\n", __func__);
-+		status = PTR_ERR(new);
-+		goto out;
-+	}
-+
-+	nfs_server_remove_lists(server);
-+	server->nfs_client = new;
-+	nfs_server_insert_lists(server);
-+
-+	dprintk("<-- %s moved (%llx:%llx) to nfs_client %p\n", __func__,
-+			(unsigned long long)server->fsid.major,
-+			(unsigned long long)server->fsid.minor, new);
-+
-+out:
-+	return status;
-+}
-+
-+/**
-+ * nfs4_set_ds_client - Set up a pNFS Data Server client
-+ * mds_clp: nfs_client representing the MDS
-+ * ds_addr: IP address of DS
-+ * ds_addrlen: size of "ds_addr" in bytes
-+ * ds_proto: transport protocol to use to contact DS
-  *
-  * Return any existing nfs_client that matches server address,port,version
-  * and minorversion.
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index f6baf5b..0bf4e67 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -154,6 +154,10 @@ extern struct nfs_server *nfs_clone_server(struct nfs_server *,
- 					   struct nfs_fattr *);
- extern void nfs_mark_client_ready(struct nfs_client *clp, int state);
- extern int nfs4_check_client_ready(struct nfs_client *clp);
-+extern int nfs4_clone_client(struct nfs_client *clp,
-+				const struct sockaddr *sap, size_t salen,
-+				const char *ip_addr,
-+				struct nfs_server *server);
- extern struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
- 					     const struct sockaddr *ds_addr,
- 					     int ds_addrlen, int ds_proto);
+ 0  1      0   3732  44092 167768    0    0     0 16486 1162 3489  0 31 4 65
+ 0  1      0   3252  44188 168184    0    0     0   728  423  481  0  1 0 99
+ 0  1      0   2728  44264 168632    0    0     0   784  426  509  0  0 0 100
+ 0  1      0   2968  44316 168540    0    0     0   728  394  489  0  0 0 100
+ 0  1      0   3300  44396 168220    0    0     0   784  422  517  0  0 0 100
 
+Does anyone have any ideas what might cause this and how I can help to
+get it fixed?
+
+Regards,
+Nigel
