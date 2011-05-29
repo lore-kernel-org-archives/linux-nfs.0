@@ -1,75 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailout-de.gmx.net ([213.165.64.22]:44366 "HELO
-	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753489Ab1E1PAe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 May 2011 11:00:34 -0400
-From: =?iso-8859-1?q?R=FCdiger_Meier?= <sweet_f_a@gmx.de>
-To: linux-nfs@vger.kernel.org
-Subject: Re: infinite getdents64 loop
-Date: Sat, 28 May 2011 17:00:29 +0200
-References: <201105281502.32719.sweet_f_a@gmx.de>
-In-Reply-To: <201105281502.32719.sweet_f_a@gmx.de>
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Message-Id: <201105281700.30726.sweet_f_a@gmx.de>
+Received: from daytona.panasas.com ([67.152.220.89]:46008 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752497Ab1E2Kai (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 06:30:38 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Subject: [PATCH 3/8] SQUASHME: objio read/write patch: Bugs fixes
+Date: Sun, 29 May 2011 13:30:28 +0300
+Message-Id: <1306665028-1033-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DE21CD5.8070907@panasas.com>
+References: <4DE21CD5.8070907@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Saturday 28 May 2011, Rüdiger Meier wrote:
-> I could track down the problem to:
->
-> commit 0b26a0bf6ff398185546432420bb772bcfdf8d94
-> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date:   Sat Nov 20 14:26:44 2010 -0500
->
->     NFS: Ensure we return the dirent->d_type when it is known
->
->
-> After reverting the problem is gone.
+Cap BIO size it one page
 
-Actually it's enough to remove d_type from struct nfs_cache_array_entry 
-again. It's not enough to set it DT_UNKNOWN always. I had to remove it 
-from struct to let it work.
-Tested with kernels 2.6.37.6 and 2.6.39.
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/objlayout/objio_osd.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 6925567..cc92d3b 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -397,7 +397,6 @@ int objio_alloc_io_state(struct pnfs_layout_segment *lseg,
+ 	const unsigned first_size = sizeof(*ios) +
+ 				objio_seg->num_comps * sizeof(ios->per_dev[0]);
+ 
+-	dprintk("%s: num_comps=%d\n", __func__, objio_seg->num_comps);
+ 	ios = kzalloc(first_size, gfp_flags);
+ 	if (unlikely(!ios))
+ 		return -ENOMEM;
+@@ -561,6 +560,9 @@ static int _add_stripe_unit(struct objio_state *ios,  unsigned *cur_pg,
+ 		unsigned bio_size = (ios->ol_state.nr_pages + pages_in_stripe) /
+ 				    stripes;
+ 
++		if (BIO_MAX_PAGES_KMALLOC < bio_size)
++			bio_size = BIO_MAX_PAGES_KMALLOC;
++
+ 		per_dev->bio = bio_kmalloc(gfp_flags, bio_size);
+ 		if (unlikely(!per_dev->bio)) {
+ 			dprintk("Faild to allocate BIO size=%u\n", bio_size);
+-- 
+1.7.2.3
 
-commit c9799af304af2a22acffaae25e7e9c3b733a5b68
-Author: Ruediger Meier <ruediger.meier@ga-group.nl>
-Date:   Sat May 28 15:26:15 2011 +0200
-
-    hotfix, opensuse bug 678123
-    this reverts the effect of 0b26a0bf
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 7237672..48cfc27 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -202,7 +202,6 @@ struct nfs_cache_array_entry {
-        u64 cookie;
-        u64 ino;
-        struct qstr string;
--       unsigned char d_type;
- };
-
- struct nfs_cache_array {
-@@ -305,7 +304,6 @@ int nfs_readdir_add_to_array(struct nfs_entry 
-*entry, struct page *page)
-
-        cache_entry->cookie = entry->prev_cookie;
-        cache_entry->ino = entry->ino;
--       cache_entry->d_type = entry->d_type;
-        ret = nfs_readdir_make_qstr(&cache_entry->string, entry->name, 
-entry->len);
-        if (ret)
-                goto out;
-@@ -770,7 +768,7 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc, 
-void *dirent,
-                ent = &array->array[i];
-                if (filldir(dirent, ent->string.name, ent->string.len,
-                    file->f_pos, nfs_compat_user_ino64(ent->ino),
--                   ent->d_type) < 0) {
-+                   DT_UNKNOWN) < 0) {
-                        desc->eof = 1;
-                        break;
-                }
