@@ -1,89 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:34772 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755873Ab1EPUxy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 May 2011 16:53:54 -0400
-Date: Mon, 16 May 2011 16:53:51 -0400
-From: "Dr. J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Harry Edmon <harry@uw.edu>, Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: 2.6.38.6 - state manager constantly respawns
-Message-ID: <20110516205351.GD1680@fieldses.org>
-References: <4DD16FA8.4030602@uw.edu>
- <05D08339-888C-4A64-BDC5-8667B3901E7A@oracle.com>
- <4DD1772E.9010609@uw.edu>
- <6A6FB1C3-D4C3-40BE-810A-B4551FA9E591@oracle.com>
- <4DD17CB5.7010009@uw.edu>
- <1305575007.19725.3.camel@lade.trondhjem.org>
- <4DD17F79.305@uw.edu>
- <1305575656.19725.9.camel@lade.trondhjem.org>
- <20110516202059.GC1680@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110516202059.GC1680@fieldses.org>
+Received: from daytona.panasas.com ([67.152.220.89]:50750 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753122Ab1E2SRD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 14:17:03 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Benny Halevy <bhalevy@panasas.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Cc: Jim Rees <rees@umich.edu>
+Subject: [PATCH 01/32] NFSv4.1: fix typo in filelayout_check_layout
+Date: Sun, 29 May 2011 21:16:51 +0300
+Message-Id: <1306693011-7731-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DE28CFB.4060608@panasas.com>
+References: <4DE28CFB.4060608@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, May 16, 2011 at 04:20:59PM -0400, Dr. J. Bruce Fields wrote:
-> On Mon, May 16, 2011 at 03:54:16PM -0400, Trond Myklebust wrote:
-> > On Mon, 2011-05-16 at 12:48 -0700, Harry Edmon wrote:
-> > > On 05/16/11 12:43, Trond Myklebust wrote:
-> > > > On Mon, 2011-05-16 at 12:36 -0700, Harry Edmon wrote:
-> > > >    
-> > > >> On 05/16/11 12:22, Chuck Lever wrote:
-> > > >>      
-> > > >>> On May 16, 2011, at 3:12 PM, Harry Edmon wrote:
-> > > >>>
-> > > >>>
-> > > >>>        
-> > > >>>> Attached is 1000 lines of output from tshark when the problem is occurring.   The client and server are connected by a private ethernet.
-> > > >>>>
-> > > >>>>          
-> > > >>> Disappointing: tshark is not telling us the return codes.  However, I see "PUTFH;READ" then "RENEW" in a loop, which indicates the state manager thread is being kicked off because of ongoing difficulties with state recovery.  Is there a stuck application on that client?
-> > > >>>
-> > > >>> Try again with "tshark -V".
-> > > >>>
-> > > >>>        
-> > > >> Here is the output from tshark -V (first 50,000 lines).   Nothing
-> > > >> appears to be stuck, and as I said when I reboot the client into 2.6.32
-> > > >> the problem goes away, only to reappear when I reboot it back into 2.6.38.6.
-> > > >>
-> > > >>      
-> > > > Possibly, but it definitely indicates a server bug. What kind of server
-> > > > are you using?
-> > > >
-> > > > Basically, the client is getting confused because when it sends a READ,
-> > > > the server is telling it that the lease has expired, then when it sends
-> > > > a RENEW, the same server replies that the lease is OK...
-> > > >
-> > > > Trond
-> > > >    
-> > > The server is running the 2.6.38.6 kernel with Debian squeeze, just like 
-> > > the client.   The kernel config is attached.
-> > 
-> > Bruce, any idea how the server might get into this state?
-> 
-> So READ is getting ESTALE
+From: Jim Rees <rees@umich.edu>
 
-Err, sorry, EXPIRED.
+Signed-off-by: Jim Rees <rees@umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/nfs4filelayout.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-> and RENEW is getting OK?  And we're positive
-> that the stateid on the READ is derived from the clientid sent with the
-> RENEW?
-> 
-> OK, I'll look at the capture....
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index be79dc9..dd6ccf0 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -428,7 +428,7 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+ 	dprintk("--> %s\n", __func__);
+ 
+ 	if (fl->pattern_offset > lgr->range.offset) {
+-		dprintk("%s pattern_offset %lld to large\n",
++		dprintk("%s pattern_offset %lld too large\n",
+ 				__func__, fl->pattern_offset);
+ 		goto out;
+ 	}
+-- 
+1.7.2.3
 
-Hm, so the renews all have clid 465ccc4d09000000, and the reads all have
-a stateid (0, 465ccc4dc24c0a0000000000).
-
-So the first 4 bytes matching just tells me both were handed out by the
-same server instance (so there was no server reboot in between); there's
-no way for me to tell whether they really belong to the same client.
-
-The server does assume that any stateid from the current server instance
-that no longer exists in its table is expired.  I believe that's
-correct, given a correctly functioning client, but perhaps I'm missing a
-case.
-
---b.
