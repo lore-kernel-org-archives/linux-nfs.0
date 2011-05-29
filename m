@@ -1,66 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:38055 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:51035 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753582Ab1EIRLN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2011 13:11:13 -0400
-From: Benny Halevy <bhalevy@panasas.com>
+	with ESMTP id S1755898Ab1E2S3D (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 14:29:03 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 25/29] pnfs-obj: objio_osd report osd_errors for layoutreturn
-Date: Mon,  9 May 2011 20:11:07 +0300
-Message-Id: <1304961067-4719-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DC81E8C.6040901@panasas.com>
-References: <4DC81E8C.6040901@panasas.com>
+        Benny Halevy <bhalevy@panasas.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Cc: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 30/32] NFSv4.1: use pnfs_generic_pg_test directly by layout driver
+Date: Sun, 29 May 2011 21:28:51 +0300
+Message-Id: <1306693731-8550-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DE28CFB.4060608@panasas.com>
+References: <4DE28CFB.4060608@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Boaz Harrosh <bharrosh@panasas.com>
+From: Benny Halevy <bhalevy@panasas.com>
 
-* Allocate io-error descriptors space as part of io_state
-* Use generic objlayout error reporting at end of io.
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/objlayout/objio_osd.c |   10 +++++++++-
- 1 files changed, 9 insertions(+), 1 deletions(-)
+ fs/nfs/nfs4filelayout.c      |    3 +++
+ fs/nfs/objlayout/objio_osd.c |   14 +-------------
+ fs/nfs/pnfs.c                |   13 +++++++++----
+ fs/nfs/pnfs.h                |    6 ++++--
+ 4 files changed, 17 insertions(+), 19 deletions(-)
 
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 24f0572..4269088 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -661,6 +661,9 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	u64 p_stripe, r_stripe;
+ 	u32 stripe_unit;
+ 
++	if (!pnfs_generic_pg_test(pgio, prev, req))
++		return 0;
++
+ 	if (!pgio->pg_lseg)
+ 		return 1;
+ 	p_stripe = (u64)prev->wb_index << PAGE_CACHE_SHIFT;
 diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 023f2b2..9c9dc9a 100644
+index 8c2bd3e..3b10d09 100644
 --- a/fs/nfs/objlayout/objio_osd.c
 +++ b/fs/nfs/objlayout/objio_osd.c
-@@ -319,13 +319,17 @@ int objio_alloc_io_state(void *seg, struct objlayout_io_state **outp)
- 	struct objio_state *ios;
- 	const unsigned first_size = sizeof(*ios) +
- 				objio_seg->num_comps * sizeof(ios->per_dev[0]);
-+	const unsigned sec_size = objio_seg->num_comps *
-+						sizeof(ios->ol_state.ioerrs[0]);
+@@ -988,18 +988,6 @@ ssize_t objio_write_pagelist(struct objlayout_io_state *ol_state, bool stable)
+ 	return _write_exec(ios);
+ }
  
- 	dprintk("%s: num_comps=%d\n", __func__, objio_seg->num_comps);
--	ios = kzalloc(first_size, GFP_KERNEL);
-+	ios = kzalloc(first_size + sec_size, GFP_KERNEL);
- 	if (unlikely(!ios))
- 		return -ENOMEM;
+-/*
+- * objlayout_pg_test(). Called by nfs_can_coalesce_requests()
+- *
+- * return true iff coalesce page
+- */
+-bool
+-objlayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+-		   struct nfs_page *req)
+-{
+-	return true;
+-}
+-
+ static struct pnfs_layoutdriver_type objlayout_type = {
+ 	.id = LAYOUT_OSD2_OBJECTS,
+ 	.name = "LAYOUT_OSD2_OBJECTS",
+@@ -1013,7 +1001,7 @@ static struct pnfs_layoutdriver_type objlayout_type = {
  
- 	ios->objio_seg = objio_seg;
-+	ios->ol_state.ioerrs = ((void *)ios) + first_size;
-+	ios->ol_state.num_comps = objio_seg->num_comps;
+ 	.read_pagelist           = objlayout_read_pagelist,
+ 	.write_pagelist          = objlayout_write_pagelist,
+-	.pg_test                 = objlayout_pg_test,
++	.pg_test                 = pnfs_generic_pg_test,
  
- 	*outp = &ios->ol_state;
- 	return 0;
-@@ -412,6 +416,10 @@ static int _io_check(struct objio_state *ios, bool is_write)
+ 	.free_deviceid_node	 = objio_free_deviceid_node,
  
- 			continue; /* we recovered */
- 		}
-+		objlayout_io_set_result(&ios->ol_state, i,
-+					osd_pri_2_pnfs_err(osi.osd_err_pri),
-+					ios->ol_state.offset, ios->length,
-+					is_write);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 212fc29..d79f2df 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1067,12 +1067,17 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 						   pgio->pg_count,
+ 						   access_type,
+ 						   gfp_flags);
+-	} else if (pgio->pg_lseg &&
+-		   req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
+-						pgio->pg_lseg->pls_range.length))
++		return true;
++	}
++
++	if (pgio->pg_lseg &&
++	    req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
++					 pgio->pg_lseg->pls_range.length))
+ 		return false;
+-	return NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->pg_test(pgio, prev, req);
++
++	return true;
+ }
++EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
  
- 		if (osi.osd_err_pri >= oep) {
- 			oep = osi.osd_err_pri;
+ /*
+  * Called by non rpc-based layout drivers
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 65daae5..48d0a8e 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -295,8 +295,10 @@ static inline int pnfs_return_layout(struct inode *ino)
+ static inline void pnfs_pageio_init(struct nfs_pageio_descriptor *pgio,
+ 				    struct inode *inode)
+ {
+-	if (NFS_SERVER(inode)->pnfs_curr_ld)
+-		pgio->pg_test = pnfs_generic_pg_test;
++	struct pnfs_layoutdriver_type *ld = NFS_SERVER(inode)->pnfs_curr_ld;
++
++	if (ld)
++		pgio->pg_test = ld->pg_test;
+ }
+ 
+ #else  /* CONFIG_NFS_V4_1 */
 -- 
-1.7.3.4
+1.7.2.3
 
