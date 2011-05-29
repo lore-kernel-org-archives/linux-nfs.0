@@ -1,86 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:36452 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755525Ab1EPOje (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 May 2011 10:39:34 -0400
-Date: Mon, 16 May 2011 10:39:31 -0400
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Luca Giuzzi <luca.giuzzi@gmail.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] rpc.idmapd dies with 'I/O possible'
-Message-ID: <20110516143931.GB31848@fieldses.org>
-References: <BANLkTinSoHVQH1meHMwCtxEp8Mku1gJv0Q@mail.gmail.com>
- <4DD13350.1000207@RedHat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4DD13350.1000207@RedHat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from daytona.panasas.com ([67.152.220.89]:50722 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753122Ab1E2SO0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 14:14:26 -0400
+Message-ID: <4DE28CFB.4060608@panasas.com>
+Date: Sun, 29 May 2011 21:14:19 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Benny Halevy <bhalevy@panasas.com>, open-osd <osd-dev@open-osd.org>
+Subject: [PATCHSET final 00/32] pnfs-obj: pnfs-objects layout driver submission
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, May 16, 2011 at 10:23:12AM -0400, Steve Dickson wrote:
-> 
-> 
-> On 05/16/2011 09:38 AM, Luca Giuzzi wrote:
-> > Dear All,
-> >  we have had problems on some of our machines (all Fedora 14), where
-> > rpc.idmapd used to die with an `I/O possible' message at (basically)
-> > random times. A strace suggested the issue being in nfsopen() where a
-> > signal type is reset before notification is disabled; a signal at just
-> > the right time might be the cause of the problem; see
-> > https://bugzilla.redhat.com/show_bug.cgi?id=684308
-> > I am now proposing the (trivial) patch to the list as well.
-> > 
-> > Best Regards,
-> >   luca giuzzi
-> > 
-> > --- nfs-utils-1.2.3/utils/idmapd/idmapd.c.orig	2011-05-13
-> > 16:27:08.000000000 +0200
-> > +++ nfs-utils-1.2.3/utils/idmapd/idmapd.c	2011-05-13 16:27:16.000000000 +0200
-> > @@ -778,8 +778,8 @@ nfsopen(struct idmap_client *ic)
-> >  	} else {
-> >  		event_set(&ic->ic_event, ic->ic_fd, EV_READ, nfscb, ic);
-> >  		event_add(&ic->ic_event, NULL);
-> > -		fcntl(ic->ic_dirfd, F_SETSIG, 0);
-> >  		fcntl(ic->ic_dirfd, F_NOTIFY, 0);
-> > +		fcntl(ic->ic_dirfd, F_SETSIG, 0);
-> >  		if (verbose > 0)
-> >  			xlog_warn("Opened %s", ic->ic_path);
-> >  	}
-> I just updated the bz with these questions, but we can have the 
-> conversation here...
-> 
-> I'm just a bit concerned by the fact that there are
-> a couple of places that sets F_SETSIG and then sets F_NOTIFY, 
-> so does that mean those places are potential race cases as 
-> well?
 
-I wondered about that too; looking:
+This is the complete and squashed version of the pnfs objects layout driver
+plus the needed changes from the pnfs-core to support more then one LD.
 
-utils/gssd/gssd_main_loop.c:		fcntl(tdi->fd, F_NOTIFY,
-		      	DN_CREATE|DN_DELETE|DN_MODIFY|DN_MULTISHOT);
+[PATCH 01/32] NFSv4.1: fix typo in filelayout_check_layout
+[PATCH 02/32] NFSv4.1: use struct nfs_client to qualify deviceid
+[PATCH 03/32] pnfs: resolve header dependency in pnfs.h
+[PATCH 04/32] NFSv4.1: make deviceid cache global
+[PATCH 05/32] NFSv4.1: purge deviceid cache on nfs_free_client
+[PATCH 06/32] pnfs: CB_NOTIFY_DEVICEID
+[PATCH 07/32] NFSv4.1: use layout driver in global device cache
+[PATCH 08/32] SUNRPC: introduce xdr_init_decode_pages
+[PATCH 09/32] pnfs: Use byte-range for layoutget
+[PATCH 10/32] pnfs: align layoutget requests on page boundaries
+[PATCH 11/32] pnfs: Use byte-range for cb_layoutrecall
+[PATCH 12/32] pnfs: client stats
+[PATCH 13/32] pnfs-obj: objlayoutdriver module skeleton
+[PATCH 14/32] pnfs-obj: pnfs_osd XDR definitions
+[PATCH 15/32] pnfs-obj: pnfs_osd XDR client implementation
+[PATCH 16/32] pnfs-obj: decode layout, alloc/free lseg
+[PATCH 17/32] pnfs-obj: objio_osd device information retrieval and caching
+[PATCH 18/32] pnfs: alloc and free layout_hdr layoutdriver methods
+[PATCH 19/32] pnfs-obj: define per-inode private structure
+[PATCH 20/32] pnfs: support for non-rpc layout drivers
+[PATCH 21/32] pnfs-obj: osd raid engine read/write implementation
+[PATCH 22/32] pnfs: layoutreturn
+[PATCH 23/32] pnfs: layoutret_on_setattr
+[PATCH 24/32] pnfs: encode_layoutreturn
+[PATCH 25/32] pnfs-obj: report errors and .encode_layoutreturn Implementation.
+[PATCH 26/32] pnfs: encode_layoutcommit
+[PATCH 27/32] pnfs-obj: objlayout_encode_layoutcommit implementation
+[PATCH 28/32] NFSv4.1: unify pnfs_pageio_init functions
+[PATCH 29/32] NFSv4.1: change pg_test return type to bool
+[PATCH 30/32] NFSv4.1: use pnfs_generic_pg_test directly by layout driver
+[PATCH 31/32] NFSv4.1: define nfs_generic_pg_test
+[PATCH 32/32] pnfs-obj: pg_test check for max_io_size
 
-utils/gssd/gssd_proc.c:	fcntl(clp->dir_fd, F_NOTIFY, DN_CREATE | DN_DELETE | DN_MULTISHOT);
-utils/idmapd/idmapd.c:		if (fcntl(fd, F_NOTIFY,
-			DN_CREATE | DN_DELETE | DN_MODIFY | DN_MULTISHOT) == -1) {
-utils/idmapd/idmapd.c:			fcntl(ic->ic_dirfd, F_NOTIFY,
-			DN_CREATE | DN_DELETE | DN_MULTISHOT);
-utils/idmapd/idmapd.c:		fcntl(ic->ic_dirfd, F_NOTIFY, 0);
+I'll send the git tree address as separate email.
 
-So the last is the only one where we're turning notifications *off*.
+Thanks
+Boaz
 
-So I think the patch is OK.
-
---b.
-
-> 
-> Also, after you applied this patch, did the problem go away?
-> Finally, how often did this problem occur?
-> 
-> tia,
-> 
-> steved.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
