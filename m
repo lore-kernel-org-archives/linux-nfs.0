@@ -1,264 +1,340 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:37629 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755152Ab1EFR3p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 May 2011 13:29:45 -0400
-Date: Fri, 6 May 2011 13:29:44 -0400
-To: bjschuma@netapp.com
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] NFS: Added TEST_STATEID call
-Message-ID: <20110506172944.GA15109@fieldses.org>
-References: <1304700595-5040-1-git-send-email-bjschuma@netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1304700595-5040-1-git-send-email-bjschuma@netapp.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from daytona.panasas.com ([67.152.220.89]:50871 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755311Ab1E2SXB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 14:23:01 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Benny Halevy <bhalevy@panasas.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Subject: [PATCH 17/32] pnfs-obj: objio_osd device information retrieval and caching
+Date: Sun, 29 May 2011 21:22:50 +0300
+Message-Id: <1306693370-8182-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DE28CFB.4060608@panasas.com>
+References: <4DE28CFB.4060608@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, May 06, 2011 at 12:49:53PM -0400, bjschuma@netapp.com wrote:
-> From: Bryan Schumaker <bjschuma@netapp.com>
-> 
-> This patch adds in the xdr for doing a TEST_STATEID call with a single
-> stateid. RFC 5661 allows multiple stateids to be tested in a single
-> call, but only testing one keeps things simpler for now.
+When a new layout is received in objio_alloc_lseg all device_ids
+referenced are retrieved. The device information is queried for from MDS
+and then the osd_device is looked-up from the osd-initiator library. The
+devices are cached in a per-mount-point list, for later use. At unmount
+all devices are "put" back to the library.
 
-These are among the mandatory 4.1 ops that we haven't implemented on the
-server yet.  Anyone up for it?  It's probably not difficult.
+objlayout_get_deviceinfo(), objlayout_put_deviceinfo() middleware
+API for retrieving device information given a device_id.
 
-Also: how will it behave against a server that returns nfserr_notsupp?
+TODO: The device cache can get big. Cap its size. Keep an LRU and start
+      to return devices which were not used, when list gets to big, or
+      when new entries allocation fail.
 
---b.
+[pnfs-obj: Bugs in new global-device-cache code]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+[gfp_flags]
+[use global device cache]
+[use layout driver in global device cache]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/objlayout/objio_osd.c |  157 ++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/objlayout/objlayout.c |   68 ++++++++++++++++++
+ fs/nfs/objlayout/objlayout.h |    8 ++
+ 3 files changed, 233 insertions(+), 0 deletions(-)
 
-> 
-> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> ---
->  fs/nfs/nfs4proc.c       |   28 ++++++++++++++
->  fs/nfs/nfs4xdr.c        |   91 +++++++++++++++++++++++++++++++++++++++++++++++
->  include/linux/nfs4.h    |    1 +
->  include/linux/nfs_xdr.h |   10 +++++
->  4 files changed, 130 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 69c0f3c..044c151 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -5791,6 +5791,34 @@ out:
->  	rpc_put_task(task);
->  	return status;
->  }
-> +static int _nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *state)
-> +{
-> +	int status;
-> +	struct nfs41_test_stateid_args args = {
-> +		.stateid = &state->stateid,
-> +	};
-> +	struct nfs41_test_stateid_res res;
-> +	struct rpc_message msg = {
-> +		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_TEST_STATEID],
-> +		.rpc_argp = &args,
-> +		.rpc_resp = &res,
-> +	};
-> +	args.seq_args.sa_session = res.seq_res.sr_session = NULL;
-> +	status = nfs4_call_sync_sequence(server->client, server, &msg, &args.seq_args, &res.seq_res, 0, 1);
-> +	return status;
-> +}
-> +
-> +static int nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *state)
-> +{
-> +	struct nfs4_exception exception = { };
-> +	int err;
-> +	do {
-> +		err = nfs4_handle_exception(server,
-> +				_nfs41_test_stateid(server, state),
-> +				&exception);
-> +	} while (exception.retry);
-> +	return err;
-> +}
->  #endif /* CONFIG_NFS_V4_1 */
->  
->  struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index c3ccd2c..2746616 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -338,6 +338,9 @@ static int nfs4_stat_to_errno(int);
->  				1 /* layoutupdate4 layout type */ + \
->  				1 /* NULL filelayout layoutupdate4 payload */)
->  #define decode_layoutcommit_maxsz (op_decode_hdr_maxsz + 3)
-> +#define encode_test_stateid_maxsz	(op_encode_hdr_maxsz + 8 + \
-> +					 XDR_QUADLEN(NFS4_STATEID_SIZE))
-> +#define decode_test_stateid_maxsz	(op_decode_hdr_maxsz + 8 + 4)
->  
->  #else /* CONFIG_NFS_V4_1 */
->  #define encode_sequence_maxsz	0
-> @@ -760,6 +763,12 @@ static int nfs4_stat_to_errno(int);
->  				decode_putfh_maxsz + \
->  				decode_layoutcommit_maxsz + \
->  				decode_getattr_maxsz)
-> +#define NFS4_enc_test_stateid_sz	(compound_encode_hdr_maxsz + \
-> +					 encode_sequence_maxsz + \
-> +					 encode_test_stateid_maxsz)
-> +#define NFS4_dec_test_stateid_sz	(compound_decode_hdr_maxsz + \
-> +					 decode_sequence_maxsz + \
-> +					 decode_test_stateid_maxsz)
->  
->  
->  const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
-> @@ -1889,6 +1898,20 @@ encode_layoutcommit(struct xdr_stream *xdr,
->  	hdr->replen += decode_layoutcommit_maxsz;
->  	return 0;
->  }
-> +
-> +static void encode_test_stateid(struct xdr_stream *xdr,
-> +				struct nfs41_test_stateid_args *args,
-> +				struct compound_hdr *hdr)
-> +{
-> +	__be32 *p;
-> +
-> +	p = reserve_space(xdr, 8 + NFS4_STATEID_SIZE);
-> +	*p++ = cpu_to_be32(OP_TEST_STATEID);
-> +	*p++ = cpu_to_be32(1);
-> +	xdr_encode_opaque_fixed(p, args->stateid->data, NFS4_STATEID_SIZE);
-> +	hdr->nops++;
-> +	hdr->replen += decode_test_stateid_maxsz;
-> +}
->  #endif /* CONFIG_NFS_V4_1 */
->  
->  /*
-> @@ -2722,6 +2745,23 @@ static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
->  	encode_nops(&hdr);
->  	return 0;
->  }
-> +
-> +/*
-> + *  Encode TEST_STATEID request
-> + */
-> +static void nfs4_xdr_enc_test_stateid(struct rpc_rqst *req,
-> +				      struct xdr_stream *xdr,
-> +				      struct nfs41_test_stateid_args *args)
-> +{
-> +	struct compound_hdr hdr = {
-> +		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
-> +	};
-> +
-> +	encode_compound_hdr(xdr, req, &hdr);
-> +	encode_sequence(xdr, &args->seq_args, &hdr);
-> +	encode_test_stateid(xdr, args, &hdr);
-> +	encode_nops(&hdr);
-> +}
->  #endif /* CONFIG_NFS_V4_1 */
->  
->  static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
-> @@ -5231,6 +5271,35 @@ out_overflow:
->  	print_overflow_msg(__func__, xdr);
->  	return -EIO;
->  }
-> +
-> +static int decode_test_stateid(struct xdr_stream *xdr,
-> +			       struct nfs41_test_stateid_res *res)
-> +{
-> +	__be32 *p;
-> +	int status;
-> +	int num_res;
-> +
-> +	status = decode_op_hdr(xdr, OP_TEST_STATEID);
-> +	if (status)
-> +		return status;
-> +
-> +	p = xdr_inline_decode(xdr, 4);
-> +	if (unlikely(!p))
-> +		goto out_overflow;
-> +	num_res = be32_to_cpup(p++);
-> +	if (num_res != 1)
-> +		goto out;
-> +
-> +	p = xdr_inline_decode(xdr, 4);
-> +	if (unlikely(!p))
-> +		goto out_overflow;
-> +	res->status = be32_to_cpup(p++);
-> +	return res->status;
-> +out_overflow:
-> +	print_overflow_msg(__func__, xdr);
-> +out:
-> +	return -EIO;
-> +}
->  #endif /* CONFIG_NFS_V4_1 */
->  
->  /*
-> @@ -6346,6 +6415,27 @@ static int nfs4_xdr_dec_layoutcommit(struct rpc_rqst *rqstp,
->  out:
->  	return status;
->  }
-> +
-> +/*
-> + * Decode TEST_STATEID response
-> + */
-> +static int nfs4_xdr_dec_test_stateid(struct rpc_rqst *rqstp,
-> +				     struct xdr_stream *xdr,
-> +				     struct nfs41_test_stateid_res *res)
-> +{
-> +	struct compound_hdr hdr;
-> +	int status;
-> +
-> +	status = decode_compound_hdr(xdr, &hdr);
-> +	if (status)
-> +		goto out;
-> +	status = decode_sequence(xdr, &res->seq_res, rqstp);
-> +	if (status)
-> +		goto out;
-> +	status = decode_test_stateid(xdr, res);
-> +out:
-> +	return status;
-> +}
->  #endif /* CONFIG_NFS_V4_1 */
->  
->  /**
-> @@ -6547,6 +6637,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
->  	PROC(GETDEVICEINFO,	enc_getdeviceinfo,	dec_getdeviceinfo),
->  	PROC(LAYOUTGET,		enc_layoutget,		dec_layoutget),
->  	PROC(LAYOUTCOMMIT,	enc_layoutcommit,	dec_layoutcommit),
-> +	PROC(TEST_STATEID,	enc_test_stateid,	dec_test_stateid),
->  #endif /* CONFIG_NFS_V4_1 */
->  };
->  
-> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> index 178fafe..0df1eed 100644
-> --- a/include/linux/nfs4.h
-> +++ b/include/linux/nfs4.h
-> @@ -562,6 +562,7 @@ enum {
->  	NFSPROC4_CLNT_LAYOUTGET,
->  	NFSPROC4_CLNT_GETDEVICEINFO,
->  	NFSPROC4_CLNT_LAYOUTCOMMIT,
-> +	NFSPROC4_CLNT_TEST_STATEID,
->  };
->  
->  /* nfs41 types */
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 890dce2..36f50dc 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -1062,6 +1062,16 @@ struct nfs41_reclaim_complete_args {
->  struct nfs41_reclaim_complete_res {
->  	struct nfs4_sequence_res	seq_res;
->  };
-> +
-> +struct nfs41_test_stateid_args {
-> +	nfs4_stateid			*stateid;
-> +	struct nfs4_sequence_args	seq_args;
-> +};
-> +
-> +struct nfs41_test_stateid_res {
-> +	unsigned int			status;
-> +	struct nfs4_sequence_res	seq_res;
-> +};
->  #endif /* CONFIG_NFS_V4_1 */
->  
->  struct nfs_page;
-> -- 
-> 1.7.5.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 08f1d90..2255e2d 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -46,6 +46,68 @@
+ 
+ #define _LLU(x) ((unsigned long long)x)
+ 
++struct objio_dev_ent {
++	struct nfs4_deviceid_node id_node;
++	struct osd_dev *od;
++};
++
++static void
++objio_free_deviceid_node(struct nfs4_deviceid_node *d)
++{
++	struct objio_dev_ent *de = container_of(d, struct objio_dev_ent, id_node);
++
++	dprintk("%s: free od=%p\n", __func__, de->od);
++	osduld_put_device(de->od);
++	kfree(de);
++}
++
++static struct objio_dev_ent *_dev_list_find(const struct nfs_server *nfss,
++	const struct nfs4_deviceid *d_id)
++{
++	struct nfs4_deviceid_node *d;
++	struct objio_dev_ent *de;
++
++	d = nfs4_find_get_deviceid(nfss->pnfs_curr_ld, nfss->nfs_client, d_id);
++	if (!d)
++		return NULL;
++
++	de = container_of(d, struct objio_dev_ent, id_node);
++	return de;
++}
++
++static struct objio_dev_ent *
++_dev_list_add(const struct nfs_server *nfss,
++	const struct nfs4_deviceid *d_id, struct osd_dev *od,
++	gfp_t gfp_flags)
++{
++	struct nfs4_deviceid_node *d;
++	struct objio_dev_ent *de = kzalloc(sizeof(*de), gfp_flags);
++	struct objio_dev_ent *n;
++
++	if (!de) {
++		dprintk("%s: -ENOMEM od=%p\n", __func__, od);
++		return NULL;
++	}
++
++	dprintk("%s: Adding od=%p\n", __func__, od);
++	nfs4_init_deviceid_node(&de->id_node,
++				nfss->pnfs_curr_ld,
++				nfss->nfs_client,
++				d_id);
++	de->od = od;
++
++	d = nfs4_insert_deviceid_node(&de->id_node);
++	n = container_of(d, struct objio_dev_ent, id_node);
++	if (n != de) {
++		dprintk("%s: Race with other n->od=%p\n", __func__, n->od);
++		objio_free_deviceid_node(&de->id_node);
++		de = n;
++	}
++
++	atomic_inc(&de->id_node.ref);
++	return de;
++}
++
+ struct caps_buffers {
+ 	u8 caps_key[OSD_CRYPTO_KEYID_SIZE];
+ 	u8 creds[OSD_CAP_LEN];
+@@ -74,6 +136,90 @@ OBJIO_LSEG(struct pnfs_layout_segment *lseg)
+ 	return container_of(lseg, struct objio_segment, lseg);
+ }
+ 
++/* Send and wait for a get_device_info of devices in the layout,
++   then look them up with the osd_initiator library */
++static struct objio_dev_ent *_device_lookup(struct pnfs_layout_hdr *pnfslay,
++				struct objio_segment *objio_seg, unsigned comp,
++				gfp_t gfp_flags)
++{
++	struct pnfs_osd_deviceaddr *deviceaddr;
++	struct nfs4_deviceid *d_id;
++	struct objio_dev_ent *ode;
++	struct osd_dev *od;
++	struct osd_dev_info odi;
++	int err;
++
++	d_id = &objio_seg->comps[comp].oc_object_id.oid_device_id;
++
++	ode = _dev_list_find(NFS_SERVER(pnfslay->plh_inode), d_id);
++	if (ode)
++		return ode;
++
++	err = objlayout_get_deviceinfo(pnfslay, d_id, &deviceaddr, gfp_flags);
++	if (unlikely(err)) {
++		dprintk("%s: objlayout_get_deviceinfo dev(%llx:%llx) =>%d\n",
++			__func__, _DEVID_LO(d_id), _DEVID_HI(d_id), err);
++		return ERR_PTR(err);
++	}
++
++	odi.systemid_len = deviceaddr->oda_systemid.len;
++	if (odi.systemid_len > sizeof(odi.systemid)) {
++		err = -EINVAL;
++		goto out;
++	} else if (odi.systemid_len)
++		memcpy(odi.systemid, deviceaddr->oda_systemid.data,
++		       odi.systemid_len);
++	odi.osdname_len	 = deviceaddr->oda_osdname.len;
++	odi.osdname	 = (u8 *)deviceaddr->oda_osdname.data;
++
++	if (!odi.osdname_len && !odi.systemid_len) {
++		dprintk("%s: !odi.osdname_len && !odi.systemid_len\n",
++			__func__);
++		err = -ENODEV;
++		goto out;
++	}
++
++	od = osduld_info_lookup(&odi);
++	if (unlikely(IS_ERR(od))) {
++		err = PTR_ERR(od);
++		dprintk("%s: osduld_info_lookup => %d\n", __func__, err);
++		goto out;
++	}
++
++	ode = _dev_list_add(NFS_SERVER(pnfslay->plh_inode), d_id, od,
++			    gfp_flags);
++
++out:
++	dprintk("%s: return=%d\n", __func__, err);
++	objlayout_put_deviceinfo(deviceaddr);
++	return err ? ERR_PTR(err) : ode;
++}
++
++static int objio_devices_lookup(struct pnfs_layout_hdr *pnfslay,
++	struct objio_segment *objio_seg,
++	gfp_t gfp_flags)
++{
++	unsigned i;
++	int err;
++
++	/* lookup all devices */
++	for (i = 0; i < objio_seg->num_comps; i++) {
++		struct objio_dev_ent *ode;
++
++		ode = _device_lookup(pnfslay, objio_seg, i, gfp_flags);
++		if (unlikely(IS_ERR(ode))) {
++			err = PTR_ERR(ode);
++			goto out;
++		}
++		objio_seg->ods[i] = ode;
++	}
++	err = 0;
++
++out:
++	dprintk("%s: return=%d\n", __func__, err);
++	return err;
++}
++
+ static int _verify_data_map(struct pnfs_osd_layout *layout)
+ {
+ 	struct pnfs_osd_data_map *data_map = &layout->olo_map;
+@@ -171,6 +317,9 @@ int objio_alloc_lseg(struct pnfs_layout_segment **outp,
+ 
+ 	objio_seg->num_comps = layout.olo_num_comps;
+ 	objio_seg->comps_index = layout.olo_comps_index;
++	err = objio_devices_lookup(pnfslay, objio_seg, gfp_flags);
++	if (err)
++		goto err;
+ 
+ 	objio_seg->mirrors_p1 = layout.olo_map.odm_mirror_cnt + 1;
+ 	objio_seg->stripe_unit = layout.olo_map.odm_stripe_unit;
+@@ -199,8 +348,14 @@ err:
+ 
+ void objio_free_lseg(struct pnfs_layout_segment *lseg)
+ {
++	int i;
+ 	struct objio_segment *objio_seg = OBJIO_LSEG(lseg);
+ 
++	for (i = 0; i < objio_seg->num_comps; i++) {
++		if (!objio_seg->ods[i])
++			break;
++		nfs4_put_deviceid_node(&objio_seg->ods[i]->id_node);
++	}
+ 	kfree(objio_seg);
+ }
+ 
+@@ -211,6 +366,8 @@ static struct pnfs_layoutdriver_type objlayout_type = {
+ 
+ 	.alloc_lseg              = objlayout_alloc_lseg,
+ 	.free_lseg               = objlayout_free_lseg,
++
++	.free_deviceid_node	 = objio_free_deviceid_node,
+ };
+ 
+ MODULE_DESCRIPTION("pNFS Layout Driver for OSD2 objects");
+diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+index 9465267..10e5fca 100644
+--- a/fs/nfs/objlayout/objlayout.c
++++ b/fs/nfs/objlayout/objlayout.c
+@@ -102,3 +102,71 @@ objlayout_free_lseg(struct pnfs_layout_segment *lseg)
+ 	objio_free_lseg(lseg);
+ }
+ 
++/*
++ * Get Device Info API for io engines
++ */
++struct objlayout_deviceinfo {
++	struct page *page;
++	struct pnfs_osd_deviceaddr da; /* This must be last */
++};
++
++/* Initialize and call nfs_getdeviceinfo, then decode and return a
++ * "struct pnfs_osd_deviceaddr *" Eventually objlayout_put_deviceinfo()
++ * should be called.
++ */
++int objlayout_get_deviceinfo(struct pnfs_layout_hdr *pnfslay,
++	struct nfs4_deviceid *d_id, struct pnfs_osd_deviceaddr **deviceaddr,
++	gfp_t gfp_flags)
++{
++	struct objlayout_deviceinfo *odi;
++	struct pnfs_device pd;
++	struct super_block *sb;
++	struct page *page, **pages;
++	u32 *p;
++	int err;
++
++	page = alloc_page(gfp_flags);
++	if (!page)
++		return -ENOMEM;
++
++	pages = &page;
++	pd.pages = pages;
++
++	memcpy(&pd.dev_id, d_id, sizeof(*d_id));
++	pd.layout_type = LAYOUT_OSD2_OBJECTS;
++	pd.pages = &page;
++	pd.pgbase = 0;
++	pd.pglen = PAGE_SIZE;
++	pd.mincount = 0;
++
++	sb = pnfslay->plh_inode->i_sb;
++	err = nfs4_proc_getdeviceinfo(NFS_SERVER(pnfslay->plh_inode), &pd);
++	dprintk("%s nfs_getdeviceinfo returned %d\n", __func__, err);
++	if (err)
++		goto err_out;
++
++	p = page_address(page);
++	odi = kzalloc(sizeof(*odi), gfp_flags);
++	if (!odi) {
++		err = -ENOMEM;
++		goto err_out;
++	}
++	pnfs_osd_xdr_decode_deviceaddr(&odi->da, p);
++	odi->page = page;
++	*deviceaddr = &odi->da;
++	return 0;
++
++err_out:
++	__free_page(page);
++	return err;
++}
++
++void objlayout_put_deviceinfo(struct pnfs_osd_deviceaddr *deviceaddr)
++{
++	struct objlayout_deviceinfo *odi = container_of(deviceaddr,
++						struct objlayout_deviceinfo,
++						da);
++
++	__free_page(odi->page);
++	kfree(odi);
++}
+diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
+index 066280a..0814271 100644
+--- a/fs/nfs/objlayout/objlayout.h
++++ b/fs/nfs/objlayout/objlayout.h
+@@ -56,6 +56,14 @@ extern int objio_alloc_lseg(struct pnfs_layout_segment **outp,
+ extern void objio_free_lseg(struct pnfs_layout_segment *lseg);
+ 
+ /*
++ * callback API
++ */
++extern int objlayout_get_deviceinfo(struct pnfs_layout_hdr *pnfslay,
++	struct nfs4_deviceid *d_id, struct pnfs_osd_deviceaddr **deviceaddr,
++	gfp_t gfp_flags);
++extern void objlayout_put_deviceinfo(struct pnfs_osd_deviceaddr *deviceaddr);
++
++/*
+  * exported generic objects function vectors
+  */
+ extern struct pnfs_layout_segment *objlayout_alloc_lseg(
+-- 
+1.7.2.3
+
