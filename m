@@ -1,72 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:9176 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:44758 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756474Ab1EWQjE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 12:39:04 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCH v6 23/26] pnfs: encode_layoutreturn
-Date: Mon, 23 May 2011 19:38:58 +0300
-Message-Id: <1306168738-11795-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DDA8C3D.5080706@panasas.com>
-References: <4DDA8C3D.5080706@panasas.com>
+	with ESMTP id S1750915Ab1E2IG6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 04:06:58 -0400
+Message-ID: <4DE1FE9B.9000109@panasas.com>
+Date: Sun, 29 May 2011 11:06:51 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH] SQUASHME: into NFSv4.1: purge deviceid cache - let ver <
+ 4.1 compile
+References: <4DDD7392.6040505@panasas.com> <1306358821-16967-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <1306358821-16967-1-git-send-email-bhalevy@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
 
-Add a layout driver method to encode the layout type specific
-opaque part of layout return in-line in the xdr stream.
+In C parameter names cannot be omitted from function implementation
 
-Currently the pnfs-objects layout driver uses it to encode i/o error
-information on LAYOUTRETURN.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[fixup layout header pointer for encode_layoutreturn]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- fs/nfs/nfs4xdr.c |    9 +++++++--
- fs/nfs/pnfs.h    |    4 ++++
- 2 files changed, 11 insertions(+), 2 deletions(-)
+ fs/nfs/pnfs.h |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 882c8f9..ae580fa 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1920,8 +1920,13 @@ encode_layoutreturn(struct xdr_stream *xdr,
- 	spin_lock(&args->inode->i_lock);
- 	xdr_encode_opaque_fixed(p, &args->stateid.data, NFS4_STATEID_SIZE);
- 	spin_unlock(&args->inode->i_lock);
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(0);
-+	if (NFS_SERVER(args->inode)->pnfs_curr_ld->encode_layoutreturn) {
-+		NFS_SERVER(args->inode)->pnfs_curr_ld->encode_layoutreturn(
-+			NFS_I(args->inode)->layout, xdr, args);
-+	} else {
-+		p = reserve_space(xdr, 4);
-+		*p = cpu_to_be32(0);
-+	}
- 	hdr->nops++;
- 	hdr->replen += decode_layoutreturn_maxsz;
- }
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 2858553..ed07f41 100644
+index 020be34..48d0a8e 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -104,6 +104,10 @@ struct pnfs_layoutdriver_type {
- 	enum pnfs_try_status (*write_pagelist) (struct nfs_write_data *nfs_data, int how);
+@@ -415,7 +415,7 @@ static inline int pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 	return 0;
+ }
  
- 	void (*free_deviceid_node) (struct nfs4_deviceid_node *);
-+
-+	void (*encode_layoutreturn) (struct pnfs_layout_hdr *layoutid,
-+				     struct xdr_stream *xdr,
-+				     const struct nfs4_layoutreturn_args *args);
- };
- 
- struct pnfs_layout_hdr {
+-static inline void nfs4_deviceid_purge_client(struct nfs_client *)
++static inline void nfs4_deviceid_purge_client(struct nfs_client *ncl)
+ {
+ }
+ #endif /* CONFIG_NFS_V4_1 */
 -- 
-1.7.3.4
+1.7.2.3
+
 
