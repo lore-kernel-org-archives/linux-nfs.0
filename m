@@ -1,79 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:48785 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:46028 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757574Ab1EaRNj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 May 2011 13:13:39 -0400
-Message-ID: <4DE521B9.5050603@panasas.com>
-Date: Tue, 31 May 2011 20:13:29 +0300
+	with ESMTP id S1752497Ab1E2Kb0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 06:31:26 -0400
 From: Boaz Harrosh <bharrosh@panasas.com>
-To: "Ted Ts'o" <tytso@mit.edu>
-CC: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: infinite getdents64 loop
-References: <201105281502.32719.sweet_f_a@gmx.de> <201105301137.02061.sweet_f_a@gmx.de> <1306767521.5971.2.camel@lade.trondhjem.org> <201105311147.24939.sweet_f_a@gmx.de> <4DE4C063.9060100@itwm.fraunhofer.de> <20110531123518.GB4215@thunk.org>
-In-Reply-To: <20110531123518.GB4215@thunk.org>
-Content-Type: text/plain; charset=UTF-8
+To: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Subject: [PATCH 6/8] NFSv4.1: define nfs_generic_pg_test
+Date: Sun, 29 May 2011 13:31:15 +0300
+Message-Id: <1306665075-1127-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DE21CD5.8070907@panasas.com>
+References: <4DE21CD5.8070907@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 05/31/2011 03:35 PM, Ted Ts'o wrote:
-> On Tue, May 31, 2011 at 12:18:11PM +0200, Bernd Schubert wrote:
->>
->> Out of interest, did anyone ever benchmark if dirindex provides any
->> advantages to readdir?  And did those benchmarks include the
->> disadvantages of the present implementation (non-linear inode
->> numbers from readdir, so disk seeks on stat() (e.g. from 'ls -l') or
->> 'rm -fr $dir')?
-> 
-> The problem is that seekdir/telldir is terminally broken (and so is
-> NFSv2 for using a such a tiny cookie) in that it fundamentally assumes
-> a linear data structure.  If you're going to use any kind of
-> tree-based data structure, a 32-bit "offset" for seekdir/telldir just
-> doesn't cut it.  We actually play games where we memoize the low
-> 32-bits of the hash and keep track of which cookies we hand out via
-> seekdir/telldir so that things mostly work --- except for NFSv2, where
-> with the 32-bit cookie, you're just hosed.
-> 
-> The reason why we have to iterate over the directory in hash tree
-> order is because if we have a leaf node split, half the directories
-> entries get copied to another directory entry, given the promises made
-> by seekdir() and telldir() about directory entries appearing exactly
-> once during a readdir() stream, even if you hold the fd open for weeks
-> or days, mean that you really have to iterate over things in hash
-> order.
+By default, unless pnfs is used coalesce pages until pg_bsize
+(rsize or wsize) is reached.
 
-open fd means that it does not survive a server reboot. Why don't you
-keep an array per open fd, and hand out the array index. In the array
-you can keep a pointer to any info you want to keep. (that's the meaning of
-a cookie)
+pnfs layout drivers define their own pg_test methods that use
+pnfs_generic_pg_test and need to define their own I/O size
+limits (e.g. based on the file stripe size).
 
-> 
-> I'd have to look, since it's been too many years, but as I recall the
-> problem was that there is a common path for NFSv2 and NFSv3/v4, so we
-> don't know whether we can hand back a 32-bit cookie or a 64-bit
-> cookie, so we're always handing the NFS server a 32-bit "offset", even
-> though ew could do better.  
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/pagelist.c |   17 +++++++----------
+ 1 files changed, 7 insertions(+), 10 deletions(-)
 
-Please fix that. In the 64-bit case of NFSv3/v4 you can give out a pointer
-instead of array-index. In NFSv2 on 64bit arches you are stuck with an index
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 5344371..36bb67f 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -204,6 +204,11 @@ nfs_wait_on_request(struct nfs_page *req)
+ 			TASK_UNINTERRUPTIBLE);
+ }
+ 
++static bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc, struct nfs_page *prev, struct nfs_page *req)
++{
++	return desc->pg_count + req->wb_bytes <= desc->pg_bsize;
++}
++
+ /**
+  * nfs_pageio_init - initialise a page io descriptor
+  * @desc: pointer to descriptor
+@@ -229,7 +234,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 	desc->pg_ioflags = io_flags;
+ 	desc->pg_error = 0;
+ 	desc->pg_lseg = NULL;
+-	desc->pg_test = NULL;
++	desc->pg_test = nfs_generic_pg_test;
+ 	pnfs_pageio_init(desc, inode);
+ }
+ 
+@@ -260,13 +265,7 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
+ 		return false;
+ 	if (prev->wb_pgbase + prev->wb_bytes != PAGE_CACHE_SIZE)
+ 		return false;
+-	/*
+-	 * Non-whole file layouts need to check that req is inside of
+-	 * pgio->pg_lseg.
+-	 */
+-	if (pgio->pg_test && !pgio->pg_test(pgio, prev, req))
+-		return false;
+-	return true;
++	return pgio->pg_test(pgio, prev, req);
+ }
+ 
+ /**
+@@ -295,8 +294,6 @@ static int nfs_pageio_do_add_request(struct nfs_pageio_descriptor *desc,
+ 		if (desc->pg_bsize < PAGE_SIZE)
+ 			return 0;
+ 		newlen += desc->pg_count;
+-		if (newlen > desc->pg_bsize)
+-			return 0;
+ 		prev = nfs_list_entry(desc->pg_list.prev);
+ 		if (!nfs_can_coalesce_requests(prev, req, desc))
+ 			return 0;
+-- 
+1.7.2.3
 
-> Actually, if we had an interface where we
-> could give you a 128-bit "offset" into the directory, we could
-> probably eliminate the duplicate cookie problem entirely.  We just
-> send 64-bits worth of hash, plus the first two bytes of the of file
-> name.
-> 
-
-If you hand out a pointer or index per fd, you could keep in memory
-any info you want, as big as you need it.
-
->> 3) Disable dirindexing for readdirs
-> 
-> That won't work, since it will break POSIX compliance.  Once again,
-> we're tied by the decisions made decades ago...
-> 
-> 						- Ted
-
-Thanks
-Boaz
