@@ -1,49 +1,99 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: IPv6 support for NFSv2 server.
-Date: Thu, 26 May 2011 14:36:09 -0400
-Message-ID: <CCEDE6F7-12A9-4308-A178-873FD972994C@oracle.com>
-References: <7C481A0A0BBE9E4BA110F26D7A2BFFDC026E7C46@nodmx01.igglobal.com> <BANLkTikzuTGgHU=oUMTjmPhfsR_-nD5Ffw@mail.gmail.com> <BANLkTi=s4_A-WiG_a11pLgmeQ39qw=22Hg@mail.gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=windows-1252
-Cc: linux-nfs@vger.kernel.org
-To: Upakul Barkakaty <upakul@gmail.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 7/8] SQUASHME: Move a check from nfs_pageio_do_add_request
+ to nfs_generic_pg_test
+Date: Sun, 29 May 2011 20:30:04 +0300
+Message-ID: <4DE2829C.3080208@panasas.com>
+References: <4DE21CD5.8070907@panasas.com> <1306665090-1155-1-git-send-email-bharrosh@panasas.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	NFS list <linux-nfs@vger.kernel.org>,
+	open-osd <osd-dev@open-osd.org>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:28739 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932308Ab1EZSgT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 May 2011 14:36:19 -0400
-In-Reply-To: <BANLkTi=s4_A-WiG_a11pLgmeQ39qw=22Hg-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from daytona.panasas.com ([67.152.220.89]:50232 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754697Ab1E2RaJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 13:30:09 -0400
+In-Reply-To: <1306665090-1155-1-git-send-email-bharrosh@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 2011-05-29 13:31, Boaz Harrosh wrote:
+> desc->pg_bsize is negotiated with the MDS. But if we are doing
+> pnfs-IO it is not relevent.
+> 
+> While at it cleanup nfs_pageio_do_add_request() in light of the
+> less things it needs to do.
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/nfs/pagelist.c |   27 +++++++++++++--------------
+>  1 files changed, 13 insertions(+), 14 deletions(-)
+> 
+> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+> index 36bb67f..624ec2c 100644
+> --- a/fs/nfs/pagelist.c
+> +++ b/fs/nfs/pagelist.c
+> @@ -206,6 +206,16 @@ nfs_wait_on_request(struct nfs_page *req)
+>  
+>  static bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc, struct nfs_page *prev, struct nfs_page *req)
+>  {
+> +	/*
+> +	* FIXME: ideally we should be able to coalesce all requests
+> +	* that are not block boundary aligned, but currently this
+> +	* is problematic for the case of bsize < PAGE_CACHE_SIZE,
+> +	* since nfs_flush_multi and nfs_pagein_multi assume you
+> +	* can have only one struct nfs_page.
+> +	*/
 
-On May 26, 2011, at 2:27 PM, Upakul Barkakaty wrote:
+nit: comment indent (will fix)
 
-> Hi all,
->=20
-> I have been contemplating about using an appropriate server that woul=
-d
-> support NFSv2 over IPv6.
->=20
-> RHEL5 doesn=92t support IPv6 over NFS by default. I tried installing =
-a
-> few libraries and patches but it doesn=92t seem to be working out yet
-> due to some missing dependencies.
->=20
-> RHEL6 *seems* to support just the NFS client over IPv6. Further it
-> seems to support only NFSv4 as it generates an error if I force the
-> NFS version to 2 in the mount options[mount.nfs: an incorrect mount
-> option was specified].
+> +	if (desc->pg_bsize < PAGE_SIZE)
+> +		return 0;
+> +
+>  	return desc->pg_count + req->wb_bytes <= desc->pg_bsize;
+>  }
+>  
+> @@ -279,29 +289,18 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
+>  static int nfs_pageio_do_add_request(struct nfs_pageio_descriptor *desc,
+>  				     struct nfs_page *req)
+>  {
+> -	size_t newlen = req->wb_bytes;
+> -
+>  	if (desc->pg_count != 0) {
+>  		struct nfs_page *prev;
+>  
+> -		/*
+> -		 * FIXME: ideally we should be able to coalesce all requests
+> -		 * that are not block boundary aligned, but currently this
+> -		 * is problematic for the case of bsize < PAGE_CACHE_SIZE,
+> -		 * since nfs_flush_multi and nfs_pagein_multi assume you
+> -		 * can have only one struct nfs_page.
+> -		 */
+> -		if (desc->pg_bsize < PAGE_SIZE)
+> -			return 0;
+> -		newlen += desc->pg_count;
+>  		prev = nfs_list_entry(desc->pg_list.prev);
+>  		if (!nfs_can_coalesce_requests(prev, req, desc))
+>  			return 0;
+> -	} else
+> +	} else {
+>  		desc->pg_base = req->wb_pgbase;
+> +	}
 
-NFSv2 over IPv6 should work on Linux clients.  I don't think I ever exp=
-licitly tested it, though, so there could be bugs.
+nit: no need to add the braces here (will remove)
 
-How are you "forcing" it?
+>  	nfs_list_remove_request(req);
+>  	nfs_list_add_request(req, &desc->pg_list);
+> -	desc->pg_count = newlen;
+> +	desc->pg_count += req->wb_bytes;
 
---=20
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Thanks!
 
+Benny
 
-
+>  	return 1;
+>  }
+>  
 
