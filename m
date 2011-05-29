@@ -1,116 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:9139 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:51059 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756437Ab1EWQix (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 12:38:53 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCH v6 22/26] pnfs: layoutret_on_setattr
-Date: Mon, 23 May 2011 19:38:46 +0300
-Message-Id: <1306168726-11757-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DDA8C3D.5080706@panasas.com>
-References: <4DDA8C3D.5080706@panasas.com>
+	with ESMTP id S1755758Ab1E2SaR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 14:30:17 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Benny Halevy <bhalevy@panasas.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Subject: [PATCH 32/32] pnfs-obj: pg_test check for max_io_size
+Date: Sun, 29 May 2011 21:30:06 +0300
+Message-Id: <1306693806-8608-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DE28CFB.4060608@panasas.com>
+References: <4DE28CFB.4060608@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-With the objects layout security model, we have object capabilities
-that are associated with the layout and we anticipate that the server
-will issue a cb_layoutrecall for any setattr that changes security
-related attributes (user/group/mode/acl) or truncates the file.
+Implement pg_test vector to test for max IO sizes. We calculate
+a max_io_size member only once, and cache it in lseg so to not
+do so on every page insert.
 
-Therefore, the layout is returned before issuing the setattr to avoid
-the anticipated cb_layoutrecall.
-
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+[simplify logic]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/nfs4proc.c            |    3 +++
- fs/nfs/objlayout/objio_osd.c |    1 +
- fs/nfs/pnfs.h                |   22 ++++++++++++++++++++++
- 3 files changed, 26 insertions(+), 0 deletions(-)
+ fs/nfs/objlayout/objio_osd.c |   19 ++++++++++++++++++-
+ 1 files changed, 18 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5b4124e..5734009 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2361,6 +2361,9 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 	struct nfs4_state *state = NULL;
- 	int status;
- 
-+	if (pnfs_ld_layoutret_on_setattr(inode))
-+		pnfs_return_layout(inode);
-+
- 	nfs_fattr_init(fattr);
- 	
- 	/* Search for an existing open(O_WRITE) file */
 diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 04fc2bf..95fb687 100644
+index 3b10d09..9cf208d 100644
 --- a/fs/nfs/objlayout/objio_osd.c
 +++ b/fs/nfs/objlayout/objio_osd.c
-@@ -950,6 +950,7 @@ objlayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+@@ -128,6 +128,8 @@ struct objio_segment {
+ 	u64 group_depth;
+ 	unsigned group_count;
+ 
++	unsigned max_io_size;
++
+ 	unsigned comps_index;
+ 	unsigned num_comps;
+ 	/* variable length */
+@@ -365,6 +367,11 @@ int objio_alloc_lseg(struct pnfs_layout_segment **outp,
+ 		objio_seg->group_count = 1;
+ 	}
+ 
++	/* Cache this calculation it will hit for every page */
++	objio_seg->max_io_size = (BIO_MAX_PAGES_KMALLOC * PAGE_SIZE -
++				  objio_seg->stripe_unit) *
++				 objio_seg->group_width;
++
+ 	*outp = &objio_seg->lseg;
+ 	return 0;
+ 
+@@ -988,6 +995,16 @@ ssize_t objio_write_pagelist(struct objlayout_io_state *ol_state, bool stable)
+ 	return _write_exec(ios);
+ }
+ 
++static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
++			  struct nfs_page *prev, struct nfs_page *req)
++{
++	if (!pnfs_generic_pg_test(pgio, prev, req))
++		return false;
++
++	return pgio->pg_count + req->wb_bytes <=
++			OBJIO_LSEG(pgio->pg_lseg)->max_io_size;
++}
++
  static struct pnfs_layoutdriver_type objlayout_type = {
  	.id = LAYOUT_OSD2_OBJECTS,
  	.name = "LAYOUT_OSD2_OBJECTS",
-+	.flags                   = PNFS_LAYOUTRET_ON_SETATTR,
+@@ -1001,7 +1018,7 @@ static struct pnfs_layoutdriver_type objlayout_type = {
  
- 	.alloc_layout_hdr        = objlayout_alloc_layout_hdr,
- 	.free_layout_hdr         = objlayout_free_layout_hdr,
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 21daebb..2858553 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -65,6 +65,11 @@ enum {
- 	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
- };
+ 	.read_pagelist           = objlayout_read_pagelist,
+ 	.write_pagelist          = objlayout_write_pagelist,
+-	.pg_test                 = pnfs_generic_pg_test,
++	.pg_test                 = objio_pg_test,
  
-+enum layoutdriver_policy_flags {
-+	/* Should the pNFS client commit and return the layout upon a setattr */
-+	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
-+};
-+
- struct nfs4_deviceid_node;
+ 	.free_deviceid_node	 = objio_free_deviceid_node,
  
- /* Per-layout driver specific registration structure */
-@@ -73,6 +78,7 @@ struct pnfs_layoutdriver_type {
- 	const u32 id;
- 	const char *name;
- 	struct module *owner;
-+	unsigned flags;
- 
- 	struct pnfs_layout_hdr * (*alloc_layout_hdr) (struct inode *inode, gfp_t gfp_flags);
- 	void (*free_layout_hdr) (struct pnfs_layout_hdr *);
-@@ -258,6 +264,16 @@ static inline void pnfs_clear_request_commit(struct nfs_page *req)
- 		put_lseg(req->wb_commit_lseg);
- }
- 
-+/* Should the pNFS client commit and return the layout upon a setattr */
-+static inline bool
-+pnfs_ld_layoutret_on_setattr(struct inode *inode)
-+{
-+	if (!pnfs_enabled_sb(NFS_SERVER(inode)))
-+		return false;
-+	return NFS_SERVER(inode)->pnfs_curr_ld->flags &
-+		PNFS_LAYOUTRET_ON_SETATTR;
-+}
-+
- static inline int pnfs_return_layout(struct inode *ino)
- {
- 	struct nfs_inode *nfsi = NFS_I(ino);
-@@ -317,6 +333,12 @@ static inline int pnfs_return_layout(struct inode *ino)
- }
- 
- static inline bool
-+pnfs_ld_layoutret_on_setattr(struct inode *inode)
-+{
-+	return false;
-+}
-+
-+static inline bool
- pnfs_roc(struct inode *ino)
- {
- 	return false;
 -- 
-1.7.3.4
+1.7.2.3
 
