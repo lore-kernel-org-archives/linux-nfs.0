@@ -1,220 +1,488 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:19777 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:50925 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753778Ab1EUKcs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 May 2011 06:32:48 -0400
+	with ESMTP id S1755219Ab1E2SZ5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 14:25:57 -0400
 From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 09/13] SQUASHME: pnfs_osd_xdr: Avoid using xdr_rewind_stream
-Date: Sat, 21 May 2011 13:32:32 +0300
-Message-Id: <1305973952-17471-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4DD79273.9030202@panasas.com>
-References: <4DD79273.9030202@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Benny Halevy <bhalevy@panasas.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Cc: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 22/32] pnfs: layoutreturn
+Date: Sun, 29 May 2011 21:25:46 +0300
+Message-Id: <1306693546-8328-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DE28CFB.4060608@panasas.com>
+References: <4DE28CFB.4060608@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-In encoding the io_err xdr. We used the xdr_rewind_stream
-API when we run out of space and want to encode the last
-accumulated error.
+From: Benny Halevy <bhalevy@panasas.com>
 
-We can avoid that by splitting the encoding API into two.
-first call: to reserved space.
-Second: do the encoding.
-If reserving space fails we can now use the previous
-place for the accumulated error
+NFSv4.1 LAYOUTRETURN implementation
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Currently, does not support layout-type payload encoding.
+
+Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+[call pnfs_return_layout right before pnfs_destroy_layout]
+[remove assert_spin_locked from pnfs_clear_lseg_list]
+[remove wait parameter from the layoutreturn path.]
+[remove return_type field from nfs4_layoutreturn_args]
+[remove range from nfs4_layoutreturn_args]
+[no need to send layoutcommit from _pnfs_return_layout]
+[don't wait on sync layoutreturn]
+[fix layout stateid in layoutreturn args]
+[fixed NULL deref in _pnfs_return_layout]
+[removed recaim member of nfs4_layoutreturn_args]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/objlayout/objlayout.c        |   25 ++++++++++++--------
- fs/nfs/objlayout/pnfs_osd_xdr_cli.c |   41 ++++++++++++++--------------------
- include/linux/pnfs_osd_xdr.h        |   14 +++--------
- 3 files changed, 36 insertions(+), 44 deletions(-)
+ fs/nfs/inode.c          |    3 +-
+ fs/nfs/nfs4proc.c       |   82 ++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4xdr.c        |  111 ++++++++++++++++++++++++++++++++++++++++++++---
+ fs/nfs/pnfs.c           |   45 +++++++++++++++++++
+ fs/nfs/pnfs.h           |   18 ++++++++
+ include/linux/nfs4.h    |    1 +
+ include/linux/nfs_xdr.h |   21 +++++++++
+ 7 files changed, 274 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-index e3c42fc..8892130 100644
---- a/fs/nfs/objlayout/objlayout.c
-+++ b/fs/nfs/objlayout/objlayout.c
-@@ -532,7 +532,7 @@ merge_ioerr(struct pnfs_osd_ioerr *dest_err,
- }
- 
- static void
--encode_accumulated_error(struct objlayout *objlay, struct xdr_stream *xdr)
-+encode_accumulated_error(struct objlayout *objlay, __be32 *p)
- {
- 	struct objlayout_io_state *state, *tmp;
- 	struct pnfs_osd_ioerr accumulated_err = {.oer_errno = 0};
-@@ -564,7 +564,7 @@ encode_accumulated_error(struct objlayout *objlay, struct xdr_stream *xdr)
- 		objlayout_free_io_state(state);
- 	}
- 
--	BUG_ON(pnfs_osd_xdr_encode_ioerr(xdr, &accumulated_err));
-+	pnfs_osd_xdr_encode_ioerr(p, &accumulated_err);
- }
- 
- void
-@@ -574,7 +574,7 @@ objlayout_encode_layoutreturn(struct pnfs_layout_hdr *pnfslay,
- {
- 	struct objlayout *objlay = OBJLAYOUT(pnfslay);
- 	struct objlayout_io_state *state, *tmp;
--	__be32 *start, *uninitialized_var(last_xdr);
-+	__be32 *start;
- 
- 	dprintk("%s: Begin\n", __func__);
- 	start = xdr_reserve_space(xdr, 4);
-@@ -583,10 +583,11 @@ objlayout_encode_layoutreturn(struct pnfs_layout_hdr *pnfslay,
- 	spin_lock(&objlay->lock);
- 
- 	list_for_each_entry_safe(state, tmp, &objlay->err_list, err_list) {
-+		__be32 *last_xdr = NULL, *p;
- 		unsigned i;
- 		int res = 0;
- 
--		for (i = 0; i < state->num_comps && !res; i++) {
-+		for (i = 0; i < state->num_comps; i++) {
- 			struct pnfs_osd_ioerr *ioerr = &state->ioerrs[i];
- 
- 			if (!ioerr->oer_errno)
-@@ -604,23 +605,27 @@ objlayout_encode_layoutreturn(struct pnfs_layout_hdr *pnfslay,
- 				ioerr->oer_comp_offset,
- 				ioerr->oer_comp_length);
- 
--			last_xdr = xdr->p;
--			res = pnfs_osd_xdr_encode_ioerr(xdr, &state->ioerrs[i]);
-+			p = pnfs_osd_xdr_ioerr_reserve_space(xdr);
-+			if (unlikely(!p)) {
-+				res = -E2BIG;
-+				break; /* accumulated_error */
-+			}
-+
-+			last_xdr = p;
-+			pnfs_osd_xdr_encode_ioerr(p, &state->ioerrs[i]);
- 		}
- 
- 		/* TODO: use xdr_write_pages */
- 		if (unlikely(res)) {
- 			/* no space for even one error descriptor */
--			BUG_ON(last_xdr == start + 1);
-+			BUG_ON(!last_xdr);
- 
- 			/* we've encountered a situation with lots and lots of
- 			 * errors and no space to encode them all. Use the last
- 			 * available slot to report the union of all the
- 			 * remaining errors.
- 			 */
--			xdr_rewind_stream(xdr, last_xdr -
--					       pnfs_osd_ioerr_xdr_sz() / 4);
--			encode_accumulated_error(objlay, xdr);
-+			encode_accumulated_error(objlay, last_xdr);
- 			goto loop_done;
- 		}
- 		list_del(&state->err_list);
-diff --git a/fs/nfs/objlayout/pnfs_osd_xdr_cli.c b/fs/nfs/objlayout/pnfs_osd_xdr_cli.c
-index b55131c..2aba671 100644
---- a/fs/nfs/objlayout/pnfs_osd_xdr_cli.c
-+++ b/fs/nfs/objlayout/pnfs_osd_xdr_cli.c
-@@ -369,22 +369,17 @@ pnfs_osd_xdr_encode_layoutupdate(struct xdr_stream *xdr,
-  * 	struct pnfs_deviceid	oid_device_id;
-  * 	u64			oid_partition_id;
-  * 	u64			oid_object_id;
-+ * }; // xdr size 32 bytes
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 57bb31a..e9c6d9f 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1424,9 +1424,10 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
   */
--static inline int pnfs_osd_xdr_encode_objid(struct xdr_stream *xdr,
--					    struct pnfs_osd_objid *object_id)
-+static inline __be32 *
-+pnfs_osd_xdr_encode_objid(__be32 *p, struct pnfs_osd_objid *object_id)
+ void nfs4_evict_inode(struct inode *inode)
  {
--	__be32 *p;
--
--	p = xdr_reserve_space(xdr, 32);
--	if (!p)
--		return -E2BIG;
--
- 	p = xdr_encode_opaque_fixed(p, &object_id->oid_device_id.data,
- 				    sizeof(object_id->oid_device_id.data));
- 	p = xdr_encode_hyper(p, object_id->oid_partition_id);
- 	p = xdr_encode_hyper(p, object_id->oid_object_id);
+-	pnfs_destroy_layout(NFS_I(inode));
+ 	truncate_inode_pages(&inode->i_data, 0);
+ 	end_writeback(inode);
++	pnfs_return_layout(inode);
++	pnfs_destroy_layout(NFS_I(inode));
+ 	/* If we are holding a delegation, return it! */
+ 	nfs_inode_return_delegation_noreclaim(inode);
+ 	/* First call standard NFS clear_inode() code */
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 92c8bc4..5b4124e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5673,6 +5673,88 @@ int nfs4_proc_layoutget(struct nfs4_layoutget *lgp)
+ 	return status;
+ }
  
++static void
++nfs4_layoutreturn_prepare(struct rpc_task *task, void *calldata)
++{
++	struct nfs4_layoutreturn *lrp = calldata;
++
++	dprintk("--> %s\n", __func__);
++	if (nfs41_setup_sequence(lrp->clp->cl_session, &lrp->args.seq_args,
++				&lrp->res.seq_res, 0, task))
++		return;
++	rpc_call_start(task);
++}
++
++static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
++{
++	struct nfs4_layoutreturn *lrp = calldata;
++	struct nfs_server *server;
++
++	dprintk("--> %s\n", __func__);
++
++	if (!nfs4_sequence_done(task, &lrp->res.seq_res))
++		return;
++
++	server = NFS_SERVER(lrp->args.inode);
++	if (nfs4_async_handle_error(task, server, NULL) == -EAGAIN) {
++		nfs_restart_rpc(task, lrp->clp);
++		return;
++	}
++	if (task->tk_status == 0) {
++		struct pnfs_layout_hdr *lo = NFS_I(lrp->args.inode)->layout;
++
++		if (lrp->res.lrs_present) {
++			spin_lock(&lo->plh_inode->i_lock);
++			pnfs_set_layout_stateid(lo, &lrp->res.stateid, true);
++			spin_unlock(&lo->plh_inode->i_lock);
++		} else
++			BUG_ON(!list_empty(&lo->plh_segs));
++	}
++	dprintk("<-- %s\n", __func__);
++}
++
++static void nfs4_layoutreturn_release(void *calldata)
++{
++	struct nfs4_layoutreturn *lrp = calldata;
++
++	dprintk("--> %s\n", __func__);
++	put_layout_hdr(NFS_I(lrp->args.inode)->layout);
++	kfree(calldata);
++	dprintk("<-- %s\n", __func__);
++}
++
++static const struct rpc_call_ops nfs4_layoutreturn_call_ops = {
++	.rpc_call_prepare = nfs4_layoutreturn_prepare,
++	.rpc_call_done = nfs4_layoutreturn_done,
++	.rpc_release = nfs4_layoutreturn_release,
++};
++
++int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp)
++{
++	struct rpc_task *task;
++	struct rpc_message msg = {
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LAYOUTRETURN],
++		.rpc_argp = &lrp->args,
++		.rpc_resp = &lrp->res,
++	};
++	struct rpc_task_setup task_setup_data = {
++		.rpc_client = lrp->clp->cl_rpcclient,
++		.rpc_message = &msg,
++		.callback_ops = &nfs4_layoutreturn_call_ops,
++		.callback_data = lrp,
++	};
++	int status;
++
++	dprintk("--> %s\n", __func__);
++	task = rpc_run_task(&task_setup_data);
++	if (IS_ERR(task))
++		return PTR_ERR(task);
++	status = task->tk_status;
++	dprintk("<-- %s status=%d\n", __func__, status);
++	rpc_put_task(task);
++	return status;
++}
++
+ static int
+ _nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
+ {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c3ccd2c..f242120 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -338,7 +338,11 @@ static int nfs4_stat_to_errno(int);
+ 				1 /* layoutupdate4 layout type */ + \
+ 				1 /* NULL filelayout layoutupdate4 payload */)
+ #define decode_layoutcommit_maxsz (op_decode_hdr_maxsz + 3)
+-
++#define encode_layoutreturn_maxsz (8 + op_encode_hdr_maxsz + \
++				encode_stateid_maxsz + \
++				1 /* FIXME: opaque lrf_body always empty at the moment */)
++#define decode_layoutreturn_maxsz (op_decode_hdr_maxsz + \
++				1 + decode_stateid_maxsz)
+ #else /* CONFIG_NFS_V4_1 */
+ #define encode_sequence_maxsz	0
+ #define decode_sequence_maxsz	0
+@@ -760,7 +764,14 @@ static int nfs4_stat_to_errno(int);
+ 				decode_putfh_maxsz + \
+ 				decode_layoutcommit_maxsz + \
+ 				decode_getattr_maxsz)
+-
++#define NFS4_enc_layoutreturn_sz (compound_encode_hdr_maxsz + \
++				encode_sequence_maxsz + \
++				encode_putfh_maxsz + \
++				encode_layoutreturn_maxsz)
++#define NFS4_dec_layoutreturn_sz (compound_decode_hdr_maxsz + \
++				decode_sequence_maxsz + \
++				decode_putfh_maxsz + \
++				decode_layoutreturn_maxsz)
+ 
+ const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
+ 				      compound_encode_hdr_maxsz +
+@@ -1889,6 +1900,31 @@ encode_layoutcommit(struct xdr_stream *xdr,
+ 	hdr->replen += decode_layoutcommit_maxsz;
+ 	return 0;
+ }
++
++static void
++encode_layoutreturn(struct xdr_stream *xdr,
++		    const struct nfs4_layoutreturn_args *args,
++		    struct compound_hdr *hdr)
++{
++	__be32 *p;
++
++	p = reserve_space(xdr, 20);
++	*p++ = cpu_to_be32(OP_LAYOUTRETURN);
++	*p++ = cpu_to_be32(0);		/* reclaim. always 0 for now */
++	*p++ = cpu_to_be32(args->layout_type);
++	*p++ = cpu_to_be32(IOMODE_ANY);
++	*p = cpu_to_be32(RETURN_FILE);
++	p = reserve_space(xdr, 16 + NFS4_STATEID_SIZE);
++	p = xdr_encode_hyper(p, 0);
++	p = xdr_encode_hyper(p, NFS4_MAX_UINT64);
++	spin_lock(&args->inode->i_lock);
++	xdr_encode_opaque_fixed(p, &args->stateid.data, NFS4_STATEID_SIZE);
++	spin_unlock(&args->inode->i_lock);
++	p = reserve_space(xdr, 4);
++	*p = cpu_to_be32(0);
++	hdr->nops++;
++	hdr->replen += decode_layoutreturn_maxsz;
++}
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ /*
+@@ -2706,9 +2742,9 @@ static void nfs4_xdr_enc_layoutget(struct rpc_rqst *req,
+ /*
+  *  Encode LAYOUTCOMMIT request
+  */
+-static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
+-				     struct xdr_stream *xdr,
+-				     struct nfs4_layoutcommit_args *args)
++static void nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
++				      struct xdr_stream *xdr,
++				      struct nfs4_layoutcommit_args *args)
+ {
+ 	struct compound_hdr hdr = {
+ 		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
+@@ -2720,7 +2756,24 @@ static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req,
+ 	encode_layoutcommit(xdr, args, &hdr);
+ 	encode_getfattr(xdr, args->bitmask, &hdr);
+ 	encode_nops(&hdr);
 -	return 0;
-+	return p;
++}
++
++/*
++ * Encode LAYOUTRETURN request
++ */
++static void nfs4_xdr_enc_layoutreturn(struct rpc_rqst *req,
++				      struct xdr_stream *xdr,
++				      struct nfs4_layoutreturn_args *args)
++{
++	struct compound_hdr hdr = {
++		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
++	};
++
++	encode_compound_hdr(xdr, req, &hdr);
++	encode_sequence(xdr, &args->seq_args, &hdr);
++	encode_putfh(xdr, NFS_FH(args->inode), &hdr);
++	encode_layoutreturn(xdr, args, &hdr);
++	encode_nops(&hdr);
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+@@ -5203,6 +5256,27 @@ out_overflow:
+ 	return -EIO;
+ }
+ 
++static int decode_layoutreturn(struct xdr_stream *xdr,
++			       struct nfs4_layoutreturn_res *res)
++{
++	__be32 *p;
++	int status;
++
++	status = decode_op_hdr(xdr, OP_LAYOUTRETURN);
++	if (status)
++		return status;
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(!p))
++		goto out_overflow;
++	res->lrs_present = be32_to_cpup(p);
++	if (res->lrs_present)
++		status = decode_stateid(xdr, &res->stateid);
++	return status;
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++}
++
+ static int decode_layoutcommit(struct xdr_stream *xdr,
+ 			       struct rpc_rqst *req,
+ 			       struct nfs4_layoutcommit_res *res)
+@@ -6320,6 +6394,30 @@ out:
  }
  
  /*
-@@ -394,26 +389,24 @@ static inline int pnfs_osd_xdr_encode_objid(struct xdr_stream *xdr,
-  * 	u64			oer_comp_length;
-  * 	u32			oer_iswrite;
-  * 	u32			oer_errno;
-- * };
-+ * }; // xdr size 32 + 24 bytes
-  */
--int pnfs_osd_xdr_encode_ioerr(struct xdr_stream *xdr,
--			      struct pnfs_osd_ioerr *ioerr)
-+void pnfs_osd_xdr_encode_ioerr(__be32 *p, struct pnfs_osd_ioerr *ioerr)
- {
--	__be32 *p;
--	int ret;
--
--	ret = pnfs_osd_xdr_encode_objid(xdr, &ioerr->oer_component);
--	if (ret)
--		return ret;
--
--	p = xdr_reserve_space(xdr, 24);
--	if (!p)
--		return -E2BIG;
--
-+	p = pnfs_osd_xdr_encode_objid(p, &ioerr->oer_component);
- 	p = xdr_encode_hyper(p, ioerr->oer_comp_offset);
- 	p = xdr_encode_hyper(p, ioerr->oer_comp_length);
- 	*p++ = cpu_to_be32(ioerr->oer_iswrite);
- 	*p   = cpu_to_be32(ioerr->oer_errno);
-+}
- 
--	return 0;
-+__be32 *pnfs_osd_xdr_ioerr_reserve_space(struct xdr_stream *xdr)
++ * Decode LAYOUTRETURN response
++ */
++static int nfs4_xdr_dec_layoutreturn(struct rpc_rqst *rqstp,
++				     struct xdr_stream *xdr,
++				     struct nfs4_layoutreturn_res *res)
 +{
-+	__be32 * p;
-+	
-+	p = xdr_reserve_space(xdr, 32 + 24);
-+	if (unlikely(!p))
-+		dprintk("%s: out of xdr space\n", __func__);
++	struct compound_hdr hdr;
++	int status;
 +
-+	return p;
- }
-diff --git a/include/linux/pnfs_osd_xdr.h b/include/linux/pnfs_osd_xdr.h
-index db22471..747d06d 100644
---- a/include/linux/pnfs_osd_xdr.h
-+++ b/include/linux/pnfs_osd_xdr.h
-@@ -279,14 +279,6 @@ struct pnfs_osd_ioerr {
- 	u32			oer_errno;
++	status = decode_compound_hdr(xdr, &hdr);
++	if (status)
++		goto out;
++	status = decode_sequence(xdr, &res->seq_res, rqstp);
++	if (status)
++		goto out;
++	status = decode_putfh(xdr);
++	if (status)
++		goto out;
++	status = decode_layoutreturn(xdr, res);
++out:
++	return status;
++}
++
++/*
+  * Decode LAYOUTCOMMIT response
+  */
+ static int nfs4_xdr_dec_layoutcommit(struct rpc_rqst *rqstp,
+@@ -6547,6 +6645,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+ 	PROC(GETDEVICEINFO,	enc_getdeviceinfo,	dec_getdeviceinfo),
+ 	PROC(LAYOUTGET,		enc_layoutget,		dec_layoutget),
+ 	PROC(LAYOUTCOMMIT,	enc_layoutcommit,	dec_layoutcommit),
++	PROC(LAYOUTRETURN,	enc_layoutreturn,	dec_layoutreturn),
+ #endif /* CONFIG_NFS_V4_1 */
  };
  
--/* FIXME: remove */
--static inline unsigned
--pnfs_osd_ioerr_xdr_sz(void)
--{
--	return pnfs_osd_objid_xdr_sz() + 2 + 2 + 1 + 1;
--}
--
--
- /* OSD XDR API */
- /* Layout helpers */
- /* Layout decoding is done in two parts:
-@@ -348,8 +340,10 @@ extern __be32 *
- pnfs_osd_xdr_decode_layoutupdate(struct pnfs_osd_layoutupdate *lou, __be32 *p);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 1716621..00b1282 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -619,6 +619,51 @@ out_err_free:
+ 	return NULL;
+ }
  
- /* osd_ioerror encoding/decoding (layout_return) */
--extern int
--pnfs_osd_xdr_encode_ioerr(struct xdr_stream *xdr, struct pnfs_osd_ioerr *ioerr);
-+/* Client */
-+extern __be32 *pnfs_osd_xdr_ioerr_reserve_space(struct xdr_stream *xdr);
-+extern void pnfs_osd_xdr_encode_ioerr(__be32 *p, struct pnfs_osd_ioerr *ioerr);
-+/* Server*/
- extern __be32 *
- pnfs_osd_xdr_decode_ioerr(struct pnfs_osd_ioerr *ioerr, __be32 *p);
++/* Initiates a LAYOUTRETURN(FILE) */
++int
++_pnfs_return_layout(struct inode *ino)
++{
++	struct pnfs_layout_hdr *lo = NULL;
++	struct nfs_inode *nfsi = NFS_I(ino);
++	LIST_HEAD(tmp_list);
++	struct nfs4_layoutreturn *lrp;
++	nfs4_stateid stateid;
++	int status = 0;
++
++	dprintk("--> %s\n", __func__);
++
++	spin_lock(&ino->i_lock);
++	lo = nfsi->layout;
++	if (!lo || !mark_matching_lsegs_invalid(lo, &tmp_list, NULL)) {
++		spin_unlock(&ino->i_lock);
++		dprintk("%s: no layout segments to return\n", __func__);
++		goto out;
++	}
++	stateid = nfsi->layout->plh_stateid;
++	/* Reference matched in nfs4_layoutreturn_release */
++	get_layout_hdr(lo);
++	spin_unlock(&ino->i_lock);
++	pnfs_free_lseg_list(&tmp_list);
++
++	WARN_ON(test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags));
++
++	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
++	if (unlikely(lrp == NULL)) {
++		status = -ENOMEM;
++		goto out;
++	}
++
++	lrp->args.stateid = stateid;
++	lrp->args.layout_type = NFS_SERVER(ino)->pnfs_curr_ld->id;
++	lrp->args.inode = ino;
++	lrp->clp = NFS_SERVER(ino)->nfs_client;
++
++	status = nfs4_proc_layoutreturn(lrp);
++out:
++	dprintk("<-- %s status: %d\n", __func__, status);
++	return status;
++}
++
+ bool pnfs_roc(struct inode *ino)
+ {
+ 	struct pnfs_layout_hdr *lo;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 0383e66..c34f7a0 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -129,6 +129,7 @@ extern void pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *);
+ extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
+ 				   struct pnfs_device *dev);
+ extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
++extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
  
+ /* pnfs.c */
+ void get_layout_hdr(struct pnfs_layout_hdr *lo);
+@@ -165,6 +166,7 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+ bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
++int _pnfs_return_layout(struct inode *);
+ int pnfs_ld_write_done(struct nfs_write_data *);
+ int pnfs_ld_read_done(struct nfs_read_data *);
+ 
+@@ -256,6 +258,17 @@ static inline void pnfs_clear_request_commit(struct nfs_page *req)
+ 		put_lseg(req->wb_commit_lseg);
+ }
+ 
++static inline int pnfs_return_layout(struct inode *ino)
++{
++	struct nfs_inode *nfsi = NFS_I(ino);
++	struct nfs_server *nfss = NFS_SERVER(ino);
++
++	if (pnfs_enabled_sb(nfss) && nfsi->layout)
++		return _pnfs_return_layout(ino);
++
++	return 0;
++}
++
+ #else  /* CONFIG_NFS_V4_1 */
+ 
+ static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
+@@ -298,6 +311,11 @@ pnfs_try_to_write_data(struct nfs_write_data *data,
+ 	return PNFS_NOT_ATTEMPTED;
+ }
+ 
++static inline int pnfs_return_layout(struct inode *ino)
++{
++	return 0;
++}
++
+ static inline bool
+ pnfs_roc(struct inode *ino)
+ {
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 178fafe..9376eaf 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -562,6 +562,7 @@ enum {
+ 	NFSPROC4_CLNT_LAYOUTGET,
+ 	NFSPROC4_CLNT_GETDEVICEINFO,
+ 	NFSPROC4_CLNT_LAYOUTCOMMIT,
++	NFSPROC4_CLNT_LAYOUTRETURN,
+ };
+ 
+ /* nfs41 types */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 7c8ff09..5e8444a 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -269,6 +269,27 @@ struct nfs4_layoutcommit_data {
+ 	struct nfs4_layoutcommit_res res;
+ };
+ 
++struct nfs4_layoutreturn_args {
++	__u32   layout_type;
++	struct inode *inode;
++	nfs4_stateid stateid;
++	struct nfs4_sequence_args seq_args;
++};
++
++struct nfs4_layoutreturn_res {
++	struct nfs4_sequence_res seq_res;
++	u32 lrs_present;
++	nfs4_stateid stateid;
++};
++
++struct nfs4_layoutreturn {
++	struct nfs4_layoutreturn_args args;
++	struct nfs4_layoutreturn_res res;
++	struct rpc_cred *cred;
++	struct nfs_client *clp;
++	int rpc_status;
++};
++
+ /*
+  * Arguments to the open call.
+  */
 -- 
 1.7.2.3
 
