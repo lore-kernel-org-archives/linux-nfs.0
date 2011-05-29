@@ -1,214 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:13301 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:50932 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756563Ab1EWSKk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 14:10:40 -0400
-Message-ID: <4DDAA30A.8090806@panasas.com>
-Date: Mon, 23 May 2011 21:10:18 +0300
+	with ESMTP id S1755219Ab1E2S0S (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 14:26:18 -0400
 From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v6 19/26] pnfs: support for non-rpc layout drivers
-References: <4DDA8C3D.5080706@panasas.com> <1306168687-11649-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <1306168687-11649-1-git-send-email-bhalevy@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Benny Halevy <bhalevy@panasas.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Cc: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 23/32] pnfs: layoutret_on_setattr
+Date: Sun, 29 May 2011 21:26:07 +0300
+Message-Id: <1306693567-8355-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DE28CFB.4060608@panasas.com>
+References: <4DE28CFB.4060608@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 05/23/2011 07:38 PM, Benny Halevy wrote:
-> Non-rpc layout driver such as for objects and blocks
-> implement their own I/O path and error handling logic.
-> Therefore bypass NFS-based error handling for these layout drivers.
-> 
-> [fix lseg ref-count bugs, and null de-refs]
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> [get rid of PNFS_USE_RPC_CODE]
-> [get rid of __nfs4_write_done_cb]
-> [revert useless change in nfs4_write_done_cb]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfs/internal.h       |    1 +
->  fs/nfs/nfs4proc.c       |   13 +++++++++--
->  fs/nfs/pnfs.c           |   52 ++++++++++++++++++++++++++++++++++++++++++++++-
->  fs/nfs/pnfs.h           |    2 +
->  include/linux/nfs_xdr.h |    2 +
->  5 files changed, 66 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index ce118ce..bcf0f0f 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -310,6 +310,7 @@ extern int nfs_migrate_page(struct address_space *,
->  #endif
->  
->  /* nfs4proc.c */
-> +extern void __nfs4_read_done_cb(struct nfs_read_data *);
->  extern void nfs4_reset_read(struct rpc_task *task, struct nfs_read_data *data);
->  extern int nfs4_init_client(struct nfs_client *clp,
->  			    const struct rpc_timeout *timeparms,
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index cf1b339..92c8bc4 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -3175,6 +3175,11 @@ static int nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
->  	return err;
->  }
->  
-> +void __nfs4_read_done_cb(struct nfs_read_data *data)
-> +{
-> +	nfs_invalidate_atime(data->inode);
-> +}
-> +
->  static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
->  {
->  	struct nfs_server *server = NFS_SERVER(data->inode);
-> @@ -3184,7 +3189,7 @@ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
->  		return -EAGAIN;
->  	}
->  
-> -	nfs_invalidate_atime(data->inode);
-> +	__nfs4_read_done_cb(data);
->  	if (task->tk_status > 0)
->  		renew_lease(server, data->timestamp);
->  	return 0;
-> @@ -3198,7 +3203,8 @@ static int nfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
->  	if (!nfs4_sequence_done(task, &data->res.seq_res))
->  		return -EAGAIN;
->  
-> -	return data->read_done_cb(task, data);
-> +	return data->read_done_cb ? data->read_done_cb(task, data) :
-> +				    nfs4_read_done_cb(task, data);
->  }
->  
->  static void nfs4_proc_read_setup(struct nfs_read_data *data, struct rpc_message *msg)
-> @@ -3243,7 +3249,8 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
->  {
->  	if (!nfs4_sequence_done(task, &data->res.seq_res))
->  		return -EAGAIN;
-> -	return data->write_done_cb(task, data);
-> +	return data->write_done_cb ? data->write_done_cb(task, data) :
-> +		nfs4_write_done_cb(task, data);
->  }
->  
->  /* Reset the the nfs_write_data to send the write to the MDS. */
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index ef535f2..0f59802 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -243,7 +243,7 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
->  {
->  	struct inode *inode = lseg->pls_layout->plh_inode;
->  
-> -	BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
-> +	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
->  	list_del_init(&lseg->pls_list);
->  	if (list_empty(&lseg->pls_layout->plh_segs)) {
->  		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
-> @@ -1054,6 +1054,31 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
->  	pgio->pg_test = (ld && ld->pg_test) ? pnfs_write_pg_test : NULL;
->  }
->  
-> +/*
-> + * Called by non rpc-based layout drivers
-> + */
-> +int
-> +pnfs_ld_write_done(struct nfs_write_data *data)
-> +{
-> +	int status;
-> +
-> +	if (!data->pnfs_error) {
-> +		pnfs_set_layoutcommit(data);
-> +		data->mds_ops->rpc_call_done(&data->task, data);
-> +		data->mds_ops->rpc_release(data);
-> +		return 0;
-> +	}
-> +
-> +	put_lseg(data->lseg);
-> +	data->lseg = NULL;
+From: Benny Halevy <bhalevy@panasas.com>
 
-These puts are not good as well. I tested. Do you want a SQUASHME or
-a replacement patch?
+With the objects layout security model, we have object capabilities
+that are associated with the layout and we anticipate that the server
+will issue a cb_layoutrecall for any setattr that changes security
+related attributes (user/group/mode/acl) or truncates the file.
 
+Therefore, the layout is returned before issuing the setattr to avoid
+the anticipated cb_layoutrecall.
 
-> +	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
-> +		data->pnfs_error);
-> +	status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
-> +				    data->mds_ops, NFS_FILE_SYNC);
-> +	return status ? : -EAGAIN;
-> +}
-> +EXPORT_SYMBOL_GPL(pnfs_ld_write_done);
-> +
->  enum pnfs_try_status
->  pnfs_try_to_write_data(struct nfs_write_data *wdata,
->  			const struct rpc_call_ops *call_ops, int how)
-> @@ -1079,6 +1104,31 @@ pnfs_try_to_write_data(struct nfs_write_data *wdata,
->  }
->  
->  /*
-> + * Called by non rpc-based layout drivers
-> + */
-> +int
-> +pnfs_ld_read_done(struct nfs_read_data *data)
-> +{
-> +	int status;
-> +
-> +	if (!data->pnfs_error) {
-> +		__nfs4_read_done_cb(data);
-> +		data->mds_ops->rpc_call_done(&data->task, data);
-> +		data->mds_ops->rpc_release(data);
-> +		return 0;
-> +	}
-> +
-> +	put_lseg(data->lseg);
-> +	data->lseg = NULL;
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/nfs4proc.c            |    3 +++
+ fs/nfs/objlayout/objio_osd.c |    1 +
+ fs/nfs/pnfs.h                |   22 ++++++++++++++++++++++
+ 3 files changed, 26 insertions(+), 0 deletions(-)
 
-Here to
-
-Boaz
-> +	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
-> +		data->pnfs_error);
-> +	status = nfs_initiate_read(data, NFS_CLIENT(data->inode),
-> +				   data->mds_ops);
-> +	return status ? : -EAGAIN;
-> +}
-> +EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
-> +
-> +/*
->   * Call the appropriate parallel I/O subsystem read function.
->   */
->  enum pnfs_try_status
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index ed167a7..8a6e1f1 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -165,6 +165,8 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
->  bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
->  void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
->  int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
-> +int pnfs_ld_write_done(struct nfs_write_data *);
-> +int pnfs_ld_read_done(struct nfs_read_data *);
->  
->  /* pnfs_dev.c */
->  struct nfs4_deviceid_node {
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 7e371f7..7c8ff09 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -1087,6 +1087,7 @@ struct nfs_read_data {
->  	const struct rpc_call_ops *mds_ops;
->  	int (*read_done_cb) (struct rpc_task *task, struct nfs_read_data *data);
->  	__u64			mds_offset;
-> +	int			pnfs_error;
->  	struct page		*page_array[NFS_PAGEVEC_SIZE];
->  };
->  
-> @@ -1112,6 +1113,7 @@ struct nfs_write_data {
->  	unsigned long		timestamp;	/* For lease renewal */
->  #endif
->  	__u64			mds_offset;	/* Filelayout dense stripe */
-> +	int			pnfs_error;
->  	struct page		*page_array[NFS_PAGEVEC_SIZE];
->  };
->  
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5b4124e..5734009 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2361,6 +2361,9 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 	struct nfs4_state *state = NULL;
+ 	int status;
+ 
++	if (pnfs_ld_layoutret_on_setattr(inode))
++		pnfs_return_layout(inode);
++
+ 	nfs_fattr_init(fattr);
+ 	
+ 	/* Search for an existing open(O_WRITE) file */
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index cc92d3b..4e8de3e 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -964,6 +964,7 @@ objlayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ static struct pnfs_layoutdriver_type objlayout_type = {
+ 	.id = LAYOUT_OSD2_OBJECTS,
+ 	.name = "LAYOUT_OSD2_OBJECTS",
++	.flags                   = PNFS_LAYOUTRET_ON_SETATTR,
+ 
+ 	.alloc_layout_hdr        = objlayout_alloc_layout_hdr,
+ 	.free_layout_hdr         = objlayout_free_layout_hdr,
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index c34f7a0..af3967a 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -65,6 +65,11 @@ enum {
+ 	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
+ };
+ 
++enum layoutdriver_policy_flags {
++	/* Should the pNFS client commit and return the layout upon a setattr */
++	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
++};
++
+ struct nfs4_deviceid_node;
+ 
+ /* Per-layout driver specific registration structure */
+@@ -73,6 +78,7 @@ struct pnfs_layoutdriver_type {
+ 	const u32 id;
+ 	const char *name;
+ 	struct module *owner;
++	unsigned flags;
+ 
+ 	struct pnfs_layout_hdr * (*alloc_layout_hdr) (struct inode *inode, gfp_t gfp_flags);
+ 	void (*free_layout_hdr) (struct pnfs_layout_hdr *);
+@@ -258,6 +264,16 @@ static inline void pnfs_clear_request_commit(struct nfs_page *req)
+ 		put_lseg(req->wb_commit_lseg);
+ }
+ 
++/* Should the pNFS client commit and return the layout upon a setattr */
++static inline bool
++pnfs_ld_layoutret_on_setattr(struct inode *inode)
++{
++	if (!pnfs_enabled_sb(NFS_SERVER(inode)))
++		return false;
++	return NFS_SERVER(inode)->pnfs_curr_ld->flags &
++		PNFS_LAYOUTRET_ON_SETATTR;
++}
++
+ static inline int pnfs_return_layout(struct inode *ino)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+@@ -317,6 +333,12 @@ static inline int pnfs_return_layout(struct inode *ino)
+ }
+ 
+ static inline bool
++pnfs_ld_layoutret_on_setattr(struct inode *inode)
++{
++	return false;
++}
++
++static inline bool
+ pnfs_roc(struct inode *ino)
+ {
+ 	return false;
+-- 
+1.7.2.3
 
