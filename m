@@ -1,55 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:45886 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754968Ab1ERW4K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 May 2011 18:56:10 -0400
-Date: Wed, 18 May 2011 18:56:09 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: bjschuma@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 1/2] NFSD: added FREE_STATEID operation
-Message-ID: <20110518225609.GA26545@fieldses.org>
-References: <1305575021-2841-1-git-send-email-bjschuma@netapp.com>
- <1305575021-2841-2-git-send-email-bjschuma@netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1305575021-2841-2-git-send-email-bjschuma@netapp.com>
+Received: from mailout-de.gmx.net ([213.165.64.23]:52510 "HELO
+	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1754356Ab1E2QzI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2011 12:55:08 -0400
+From: =?utf-8?q?R=C3=BCdiger_Meier?= <sweet_f_a@gmx.de>
+To: linux-nfs@vger.kernel.org
+Subject: Re: infinite getdents64 loop
+Date: Sun, 29 May 2011 18:55:04 +0200
+References: <201105281502.32719.sweet_f_a@gmx.de> <201105281700.30726.sweet_f_a@gmx.de> <1306685117.2386.7.camel@lade.trondhjem.org>
+In-Reply-To: <1306685117.2386.7.camel@lade.trondhjem.org>
+Content-Type: text/plain;
+  charset="utf-8"
+Message-Id: <201105291855.04487.sweet_f_a@gmx.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, May 16, 2011 at 03:43:40PM -0400, bjschuma@netapp.com wrote:
-> +static __be32
-> +nfsd4_free_file_stateid(stateid_t *stateid)
-> +{
-> +	struct nfs4_stateid *stp = search_for_stateid(stateid);
-> +	if (!stp)
-> +		return nfserr_bad_stateid;
-> +	if (stateid->si_generation != 0) {
-> +		if (stateid->si_generation < stp->st_stateid.si_generation)
-> +			return nfserr_old_stateid;
-> +		if (stateid->si_generation > stp->st_stateid.si_generation)
-> +			return nfserr_bad_stateid;
-> +	}
-> +
-> +	if (check_for_locks(stp->st_file, stp->st_stateowner))
-> +		return nfserr_locks_held;
+On Sunday 29 May 2011, Trond Myklebust wrote:
 
-I think this catches a lock stateid, but not an open stateid that has
-associated lock stateid's that in turn hold locks.
+> Sorry, but that patch makes absolutely no sense whatsoever as a fix
+> for the problem you describe.
 
-Hm, also:
+It wasn't ment to be a real fix. I just tried to find out where the prob 
+is roughly located. 
 
-	"The FREE_STATEID operation is used to free a stateid that no
-	longer has any associated locks (including opens, byte-range
-	locks, delegations, and layouts)"
+> All you are doing is changing the size 
+> of the readdir cache entry, which is probably causing a READDIR with
+> a duplicate cookie to trigger.
 
-So an open stateid also shouldn't be freeable as long as there are opens
-associated with it.
+Yup, my patch "repaired" the test directory and let another one fail. 
+Currently Ive reverted
+commit d1bacf9e, NFS: add readdir cache array
+(and a lot followups) to let clients work again.
 
-Also I guess a client shouldn't be permitted to free a delegation that
-it still holds.  That means we'll always just return nfserr_locks for
-delegation stateid's.  I assume free_stateid is only useful in this case
-for the case where a server forcibly revokes part of the client's state
-and leaves some "stub" stateid's around in place of the revoked ones.
+> When running with the stock 2.6.39 
+> client, do you see the "directory contains a readdir loop." message
+> in your syslog?
 
---b.
+Yes, didn't noticed that because I've booted 2.6.39 only a few times.
+There are a lot like this:
+May 25 13:26:09 kubera-114 kernel: [ 1105.419604] NFS: directory 
+gen/radar contains a readdir loop.  Please contact your server vendor.  
+Offending cookie: 947700512
+
+I hope it's not my server vendor's fault :)
+Or does this mean the NFS server is bad rather than the client?
+
+cu,
+Rudi
