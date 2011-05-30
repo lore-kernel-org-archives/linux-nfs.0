@@ -1,113 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57103 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751613Ab1EYV1v (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2011 17:27:51 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v8 11/32] pnfs: Use byte-range for cb_layoutrecall
-Date: Thu, 26 May 2011 00:27:48 +0300
-Message-Id: <1306358868-17186-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DDD7392.6040505@panasas.com>
-References: <4DDD7392.6040505@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:54578 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756912Ab1E3O6m convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 May 2011 10:58:42 -0400
+Subject: Re: infinite getdents64 loop
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Ruediger Meier <sweet_f_a@gmx.de>
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 30 May 2011 10:58:41 -0400
+In-Reply-To: <201105301137.02061.sweet_f_a@gmx.de>
+References: <201105281502.32719.sweet_f_a@gmx.de>
+	 <201105291855.04487.sweet_f_a@gmx.de>
+	 <1306688643.2386.24.camel@lade.trondhjem.org>
+	 <201105301137.02061.sweet_f_a@gmx.de>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1306767521.5971.2.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Use recalled range to invalidate particular layout segments in the layout cache.
+On Mon, 2011-05-30 at 11:37 +0200, Ruediger Meier wrote: 
+> On Sunday 29 May 2011, Trond Myklebust wrote:
+> > It's actually a problem with the underlying filesystem: it is
+> > generating readdir 'offsets' that are not unique. In other words, if
+> 
+> Does this mean ext4 generally does not work with for nfs?
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/callback_proc.c |    4 ++--
- fs/nfs/pnfs.c          |   15 +++++++++------
- fs/nfs/pnfs.h          |    2 +-
- 3 files changed, 12 insertions(+), 9 deletions(-)
+ext2/3/4 are all known to have this problem when you switch on the
+hashed b-tree directories. Typically, a directory with a million entries
+will have several tens of cookie collisions.
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index c73e7b2..d4d1954 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -139,7 +139,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 	spin_lock(&ino->i_lock);
- 	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
- 	    mark_matching_lsegs_invalid(lo, &free_me_list,
--					args->cbl_range.iomode))
-+					&args->cbl_range))
- 		rv = NFS4ERR_DELAY;
- 	else
- 		rv = NFS4ERR_NOMATCHING_LAYOUT;
-@@ -184,7 +184,7 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
- 		ino = lo->plh_inode;
- 		spin_lock(&ino->i_lock);
- 		set_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
--		if (mark_matching_lsegs_invalid(lo, &free_me_list, range.iomode))
-+		if (mark_matching_lsegs_invalid(lo, &free_me_list, &range))
- 			rv = NFS4ERR_DELAY;
- 		list_del_init(&lo->plh_bulk_recall);
- 		spin_unlock(&ino->i_lock);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 2357ee3..20436a5 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -321,10 +321,12 @@ lo_seg_intersecting(struct pnfs_layout_range *l1,
- }
- 
- static bool
--should_free_lseg(u32 lseg_iomode, u32 recall_iomode)
-+should_free_lseg(struct pnfs_layout_range *lseg_range,
-+		 struct pnfs_layout_range *recall_range)
- {
--	return (recall_iomode == IOMODE_ANY ||
--		lseg_iomode == recall_iomode);
-+	return (recall_range->iomode == IOMODE_ANY ||
-+		lseg_range->iomode == recall_range->iomode) &&
-+	       lo_seg_intersecting(lseg_range, recall_range);
- }
- 
- /* Returns 1 if lseg is removed from list, 0 otherwise */
-@@ -355,7 +357,7 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
- int
- mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
- 			    struct list_head *tmp_list,
--			    u32 iomode)
-+			    struct pnfs_layout_range *recall_range)
- {
- 	struct pnfs_layout_segment *lseg, *next;
- 	int invalid = 0, removed = 0;
-@@ -368,7 +370,8 @@ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
- 		return 0;
- 	}
- 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
--		if (should_free_lseg(lseg->pls_range.iomode, iomode)) {
-+		if (!recall_range ||
-+		    should_free_lseg(&lseg->pls_range, recall_range)) {
- 			dprintk("%s: freeing lseg %p iomode %d "
- 				"offset %llu length %llu\n", __func__,
- 				lseg, lseg->pls_range.iomode, lseg->pls_range.offset,
-@@ -417,7 +420,7 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
- 	lo = nfsi->layout;
- 	if (lo) {
- 		lo->plh_block_lgets++; /* permanently block new LAYOUTGETs */
--		mark_matching_lsegs_invalid(lo, &tmp_list, IOMODE_ANY);
-+		mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
- 	}
- 	spin_unlock(&nfsi->vfs_inode.i_lock);
- 	pnfs_free_lseg_list(&tmp_list);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 7121139..2e94ed3 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -154,7 +154,7 @@ int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
- 				  struct nfs4_state *open_state);
- int mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
- 				struct list_head *tmp_list,
--				u32 iomode);
-+				struct pnfs_layout_range *recall_range);
- bool pnfs_roc(struct inode *ino);
- void pnfs_roc_release(struct inode *ino);
- void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+Cheers
+  Trond
 -- 
-1.7.3.4
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
