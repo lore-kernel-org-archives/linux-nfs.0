@@ -1,67 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:65251 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753033Ab1EWM00 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 May 2011 08:26:26 -0400
-Message-ID: <4DDA526D.3020007@RedHat.com>
-Date: Mon, 23 May 2011 08:26:21 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Neil Brown <neilb@suse.de>
-CC: linux-nfs@vger.kernel.org, Suresh Jayaraman <sjayaraman@suse.de>
-Subject: Re: [PATCH 2/2] supress socket error when address family is not supported
-References: <20110517045125.29020.14596.stgit@notabene.brown> <20110517045217.29020.46681.stgit@notabene.brown>
-In-Reply-To: <20110517045217.29020.46681.stgit@notabene.brown>
-Content-Type: text/plain; charset=UTF-8
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:35743 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757725Ab1EaRoD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 May 2011 13:44:03 -0400
+Message-ID: <4DE528DE.5020908@itwm.fraunhofer.de>
+Date: Tue, 31 May 2011 19:43:58 +0200
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+To: Andreas Dilger <adilger@dilger.ca>
+CC: "Ted Ts'o" <tytso@mit.edu>, linux-nfs@vger.kernel.org,
+        "linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>,
+        Fan Yong <yong.fan@whamcloud.com>
+Subject: Re: infinite getdents64 loop
+References: <201105281502.32719.sweet_f_a@gmx.de> <201105301137.02061.sweet_f_a@gmx.de> <1306767521.5971.2.camel@lade.trondhjem.org> <201105311147.24939.sweet_f_a@gmx.de> <4DE4C063.9060100@itwm.fraunhofer.de> <20110531123518.GB4215@thunk.org> <D598829B-FB36-4DA8-978E-8C689940D0FA@dilger.ca>
+In-Reply-To: <D598829B-FB36-4DA8-978E-8C689940D0FA@dilger.ca>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On 05/31/2011 07:26 PM, Andreas Dilger wrote:
+> On 2011-05-31, at 6:35 AM, Ted Ts'o wrote:
+>> On Tue, May 31, 2011 at 12:18:11PM +0200, Bernd Schubert wrote:
+>>>
+>>> Out of interest, did anyone ever benchmark if dirindex provides any
+>>> advantages to readdir?  And did those benchmarks include the
+>>> disadvantages of the present implementation (non-linear inode
+>>> numbers from readdir, so disk seeks on stat() (e.g. from 'ls -l') or
+>>> 'rm -fr $dir')?
+>>
+>> The problem is that seekdir/telldir is terminally broken (and so is
+>> NFSv2 for using a such a tiny cookie) in that it fundamentally assumes
+>> a linear data structure.  If you're going to use any kind of
+>> tree-based data structure, a 32-bit "offset" for seekdir/telldir just
+>> doesn't cut it.  We actually play games where we memoize the low
+>> 32-bits of the hash and keep track of which cookies we hand out via
+>> seekdir/telldir so that things mostly work --- except for NFSv2, where
+>> with the 32-bit cookie, you're just hosed.
+>>
+>> The reason why we have to iterate over the directory in hash tree
+>> order is because if we have a leaf node split, half the directories
+>> entries get copied to another directory entry, given the promises made
+>> by seekdir() and telldir() about directory entries appearing exactly
+>> once during a readdir() stream, even if you hold the fd open for weeks
+>> or days, mean that you really have to iterate over things in hash
+>> order.
+>>
+>> I'd have to look, since it's been too many years, but as I recall the
+>> problem was that there is a common path for NFSv2 and NFSv3/v4, so we
+>> don't know whether we can hand back a 32-bit cookie or a 64-bit
+>> cookie, so we're always handing the NFS server a 32-bit "offset", even
+>> though ew could do better.  Actually, if we had an interface where we
+>> could give you a 128-bit "offset" into the directory, we could
+>> probably eliminate the duplicate cookie problem entirely.  We just
+>> send 64-bits worth of hash, plus the first two bytes of the of file
+>> name.
+>
+> If it's of interest, we've implemented a 64-bit hash mode for ext4 to
+> solve just this problem for Lustre.  The llseek() code will return a
+> 64-bit hash value on 64-bit systems, unless it is running for some
+> process that needs a 32-bit hash value (only NFSv2, AFAIK).
+>
+> The attached patch can at least form the basis for being able to return
+> 64-bit hash values for userspace/NFSv3/v4 when usable.  The patch
+> is NOT usable as it stands now, since I've had to modify it from the
+> version that we are currently using for Lustre (this version hasn't
+> actually been compiled), but it at least shows the outline of what needs
+> to be done to get this working.  None of the NFS side is implemented.
+
+Thanks Andreas! I haven't tested it yet, but the generic idea looks 
+good. I guess the lower part of the patch (netfilter stuff) got 
+accidentally in?
 
 
-On 05/17/2011 12:52 AM, Neil Brown wrote:
-> From: Suresh Jayaraman <sjayaraman@suse.de>
-> 
-> It was observed that when ipv6 module was not loaded and cannot be auto-loaded,
-> when starting NFS server, the following error occurs:
-> 	"rpc.nfsd: unable to create inet6 TCP socket: errno 97 (Address
-> 	family not supported by protocol)"
-> 
-> This is obviously a true message, but does not represent an "error" when ipv6
-> is not enabled.  Rather, it is an expected condition.  As such, it can be
-> confusing / misleading / distracting to display it in this scenario.
-> 
-> This patch instead of throwing error when a socket call fails with
-> EAFNOSUPPORT, makes it as a NOTICE.
-> 
-> Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
-> Signed-off-by: Neil Brown <neilb@suse.de>
-> ---
-> 
->  utils/nfsd/nfssvc.c |    9 +++++++--
->  1 files changed, 7 insertions(+), 2 deletions(-)
-> 
-> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-> index ea36399..f607214 100644
-> --- a/utils/nfsd/nfssvc.c
-> +++ b/utils/nfsd/nfssvc.c
-> @@ -174,8 +174,13 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
->  		sockfd = socket(addr->ai_family, addr->ai_socktype,
->  				addr->ai_protocol);
->  		if (sockfd < 0) {
-> -			xlog(L_ERROR, "unable to create %s %s socket: "
-> -				"errno %d (%m)", family, proto, errno);
-> +			if (errno == EAFNOSUPPORT)
-> +				xlog(L_NOTICE, "address family %s not "
-> +						"supported by protocol %s",
-> +						family, proto);
-> +			else
-> +				xlog(L_ERROR, "unable to create %s %s socket: "
-> +				     "errno %d (%m)", family, proto, errno);
->  			rc = errno;
->  			goto error;
->  		}
-> 
-> 
-Committed...
-
-steved.
+Cheers,
+Bernd
