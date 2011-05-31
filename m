@@ -1,79 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50584 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753837Ab1EDLyP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 May 2011 07:54:15 -0400
-Date: Wed, 4 May 2011 07:54:10 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: NeilBrown <neilb@suse.de>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, andros@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [[RFC] 1/1] SUNRPC: dynamic rpc_slot allocator for TCP
-Message-ID: <20110504075410.5e59c6b4@tlielax.poochiereds.net>
-In-Reply-To: <20110504120726.347df3fc@notabene.brown>
-References: <1304386808-2733-1-git-send-email-andros@netapp.com>
-	<1304386808-2733-2-git-send-email-andros@netapp.com>
-	<20110503202023.699435f4@corrin.poochiereds.net>
-	<1304469890.26184.16.camel@lade.trondhjem.org>
-	<20110504111825.6f26f75a@notabene.brown>
-	<1304473563.26184.28.camel@lade.trondhjem.org>
-	<20110504120726.347df3fc@notabene.brown>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:59965 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754157Ab1EaKdZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 May 2011 06:33:25 -0400
+Message-ID: <4DE4C063.9060100@itwm.fraunhofer.de>
+Date: Tue, 31 May 2011 12:18:11 +0200
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+CC: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: Re: infinite getdents64 loop
+References: <201105281502.32719.sweet_f_a@gmx.de> <201105301137.02061.sweet_f_a@gmx.de> <1306767521.5971.2.camel@lade.trondhjem.org> <201105311147.24939.sweet_f_a@gmx.de>
+In-Reply-To: <201105311147.24939.sweet_f_a@gmx.de>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+To: unlisted-recipients:; (no To-header on input)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 4 May 2011 12:07:26 +1000
-NeilBrown <neilb@suse.de> wrote:
+On 05/31/2011 11:47 AM, Rüdiger Meier wrote:
+> On Monday 30 May 2011, Trond Myklebust wrote:
+>> On Mon, 2011-05-30 at 11:37 +0200, Ruediger Meier wrote:
+>>>
+>>> Does this mean ext4 generally does not work with for nfs?
+>>
+>> ext2/3/4 are all known to have this problem when you switch on the
+>> hashed b-tree directories. Typically, a directory with a million
+>> entries will have several tens of cookie collisions.
+>
+> Ok, like Jeff mentioned in the other reply disabling dir_index solves
+> it.
+>
+> I wish I had seen this documented somewhere before switching from xfs to
+> ext4 but it's not easy to find something about these ext4/nfs probs
+> without knowing the details already.
+> Ext4 being default file system on many distros made me feel safe.
 
-> On Tue, 03 May 2011 21:46:03 -0400 Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> 
-> > On Wed, 2011-05-04 at 11:18 +1000, NeilBrown wrote:
-> > > For rpc slots, I doubt you need mempools at all.
-> > > Mempools are only needed if failure is not an option and you would rather
-> > > wait, but you cannot wait for regular writeback because you are on the
-> > > writeback path.  So you use a mempool which waits for a previous request to
-> > > complete.  I don't think that describes rpc slots at all.
-> > > For rpc slots, you can afford to wait when setting up the transport, as you
-> > > are not on the writeout path yet, and later you can always cope with failure.
-> > > So just use kmalloc.
-> > 
-> > Errr.... No. By the time you get to allocating an RPC slot, you may be
-> > bang smack in the middle of the writeout path.
-> > 
-> > The scenario would be that something triggers a writeback (kswapd,
-> > direct reclaim,...) which triggers an RPC call, which requires you to
-> > allocate at least one rpc slot before you can put the write on the wire.
-> > 
-> > I agree with your assertion that we only need one successful slot
-> > allocation in order to make overall forward progress, but we definitely
-> > do need that one...
-> > 
-> 
-> Probably I misunderstood the code, but I thought that there was a base set of
-> slots preallocated.  Eventually one of those will become free won't it?
-> 
-> Looking at the code again, it only ever returns entries to the mempool when
-> it is about to destroy the xprt.  That makes no sense.  If you are using a
-> mempool, then you allocate when you need to use space, and free it as soon as
-> you have finished with it, so the next request can get a turn.
-> 
+Well, this is hardly acceptable and we really need to find a solution. I 
+think any parallel filesystem and fuse, etc will have problems with that.
 
-That was sort of my point, though I didn't articulate it very well.
+Out of interest, did anyone ever benchmark if dirindex provides any 
+advantages to readdir?  And did those benchmarks include the 
+disadvantages of the present implementation (non-linear inode numbers 
+from readdir, so disk seeks on stat() (e.g. from 'ls -l') or
+'rm -fr $dir')?
 
-I don't think we want to keep this "static" set of rqsts and the
-mempool. It seems like that's somewhat redundant and more complex than
-is warranted. The question is...which should we keep?
 
-I think it sort of depends on what the intended model is. If we want to
-allocate out of the "guaranteed" pool first and only when that's
-exhausted fall back to doing dynamic allocations, then we probably want
-to keep the static list of entries.
+I see those options to solve the ext3/ext4 seek problem:
 
-If we want to allocate dynamically most of the time and only dip into
-the "guaranteed" pool when that can't be satisfied, then basing all of
-this around mempools might make more sense.
+1) Break 32bit applications on 64 bit kernels
 
--- 
-Jeff Layton <jlayton@redhat.com>
+2) Update the vfs to tell the underlying functions to tell them if 
+lseek() was called from 64bit or 32bit userspace
+
+3) Disable dirindexing for readdirs
+
+
+Thanks,
+Bernd
+
