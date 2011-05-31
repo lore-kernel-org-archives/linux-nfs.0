@@ -1,150 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:9198 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756498Ab1EWQjv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 12:39:51 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCH v6 26/26] pnfs-obj: objlayout_encode_layoutcommit implementation
-Date: Mon, 23 May 2011 19:39:39 +0300
-Message-Id: <1306168779-11903-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DDA8C3D.5080706@panasas.com>
-References: <4DDA8C3D.5080706@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:23308 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932858Ab1EaWtS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 May 2011 18:49:18 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: trond@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 3/3] NFS: pnfs: loop over multipath addrs on connect
+Date: Tue, 31 May 2011 18:48:58 -0400
+Message-Id: <1306882138-6528-4-git-send-email-dros@netapp.com>
+In-Reply-To: <1306882138-6528-1-git-send-email-dros@netapp.com>
+References: <1306882138-6528-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Boaz Harrosh <bharrosh@panasas.com>
+Don't just use the first addr in the multipath list - instead, loop
+over addresses when calling nfs4_set_ds_client() (which calls connect)
+until it is successful.
 
-* Define API for io-engines to report delta_space_used in IOs
-* Encode the osd-layout specific information of the layoutcommit
-  XDR buffer.
+Although this is not real multipath support, it's a quick fix to handle when
+an MDS sends a list of addresses for a DS and some of the addr families are
+unsupported or misconfigured (like no routable ipv6 addr assigned).
+This will attempt all paths to the DS before giving up, instead of immediately
+falling back to the MDS.
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+As before, an error encountered after a successful connect() will cause all
+i/o to fall back to the MDS.
+
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 ---
- fs/nfs/objlayout/objio_osd.c |    1 +
- fs/nfs/objlayout/objlayout.c |   30 ++++++++++++++++++++++++++++++
- fs/nfs/objlayout/objlayout.h |   30 ++++++++++++++++++++++++++++++
- 3 files changed, 61 insertions(+), 0 deletions(-)
+ fs/nfs/nfs4filelayoutdev.c |   14 +++++++++-----
+ 1 files changed, 9 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 19b7a2c..d235529 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -1004,6 +1004,7 @@ static struct pnfs_layoutdriver_type objlayout_type = {
- 
- 	.free_deviceid_node	 = objio_free_deviceid_node,
- 
-+	.encode_layoutcommit	 = objlayout_encode_layoutcommit,
- 	.encode_layoutreturn     = objlayout_encode_layoutreturn,
- };
- 
-diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-index f7caecf..dc3956c 100644
---- a/fs/nfs/objlayout/objlayout.c
-+++ b/fs/nfs/objlayout/objlayout.c
-@@ -225,6 +225,7 @@ objlayout_iodone(struct objlayout_io_state *state)
- 		struct objlayout *objlay = OBJLAYOUT(state->lseg->pls_layout);
- 
- 		spin_lock(&objlay->lock);
-+		objlay->delta_space_valid = OBJ_DSU_INVALID;
- 		list_add(&objlay->err_list, &state->err_list);
- 		spin_unlock(&objlay->lock);
- 	}
-@@ -433,6 +434,35 @@ objlayout_write_pagelist(struct nfs_write_data *wdata,
- 	return PNFS_ATTEMPTED;
- }
- 
-+void
-+objlayout_encode_layoutcommit(struct pnfs_layout_hdr *pnfslay,
-+			      struct xdr_stream *xdr,
-+			      const struct nfs4_layoutcommit_args *args)
-+{
-+	struct objlayout *objlay = OBJLAYOUT(pnfslay);
-+	struct pnfs_osd_layoutupdate lou;
-+	__be32 *start;
-+
-+	dprintk("%s: Begin\n", __func__);
-+
-+	spin_lock(&objlay->lock);
-+	lou.dsu_valid = (objlay->delta_space_valid == OBJ_DSU_VALID);
-+	lou.dsu_delta = objlay->delta_space_used;
-+	objlay->delta_space_used = 0;
-+	objlay->delta_space_valid = OBJ_DSU_INIT;
-+	lou.olu_ioerr_flag = !list_empty(&objlay->err_list);
-+	spin_unlock(&objlay->lock);
-+
-+	start = xdr_reserve_space(xdr, 4);
-+
-+	BUG_ON(pnfs_osd_xdr_encode_layoutupdate(xdr, &lou));
-+
-+	*start = cpu_to_be32((xdr->p - start - 1) * 4);
-+
-+	dprintk("%s: Return delta_space_used %lld err %d\n", __func__,
-+		lou.dsu_delta, lou.olu_ioerr_flag);
-+}
-+
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index f26c1cf..aff4d9a 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -169,7 +169,7 @@ _data_server_match_all_addrs_locked(struct list_head *dsaddrs1,
  static int
- err_prio(u32 oer_errno)
+ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
  {
-diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
-index b0bb975..a8244c8 100644
---- a/fs/nfs/objlayout/objlayout.h
-+++ b/fs/nfs/objlayout/objlayout.h
-@@ -51,6 +51,14 @@
- struct objlayout {
- 	struct pnfs_layout_hdr pnfs_layout;
+-	struct nfs_client *clp;
++	struct nfs_client *clp = ERR_PTR(-EIO);
+ 	struct nfs4_pnfs_ds_addr *da;
+ 	int status = 0;
  
-+	 /* for layout_commit */
-+	enum osd_delta_space_valid_enum {
-+		OBJ_DSU_INIT = 0,
-+		OBJ_DSU_VALID,
-+		OBJ_DSU_INVALID,
-+	} delta_space_valid;
-+	s64 delta_space_used;  /* consumed by write ops */
-+
- 	 /* for layout_return */
- 	spinlock_t lock;
- 	struct list_head err_list;
-@@ -119,6 +127,23 @@ extern void objlayout_io_set_result(struct objlayout_io_state *state,
- 			unsigned index, struct pnfs_osd_objid *pooid,
- 			int osd_error, u64 offset, u64 length, bool is_write);
+@@ -178,13 +178,17 @@ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
  
-+static inline void
-+objlayout_add_delta_space_used(struct objlayout_io_state *state, s64 space_used)
-+{
-+	struct objlayout *objlay = OBJLAYOUT(state->lseg->pls_layout);
-+
-+	/* If one of the I/Os errored out and the delta_space_used was
-+	 * invalid we render the complete report as invalid. Protocol mandate
-+	 * the DSU be accurate or not reported.
-+	 */
-+	spin_lock(&objlay->lock);
-+	if (objlay->delta_space_valid != OBJ_DSU_INVALID) {
-+		objlay->delta_space_valid = OBJ_DSU_VALID;
-+		objlay->delta_space_used += space_used;
+ 	BUG_ON(list_empty(&ds->ds_addrs));
+ 
+-	da = list_first_entry(&ds->ds_addrs, struct nfs4_pnfs_ds_addr, da_node);
+-	dprintk("%s: using the first address for DS %s: %s\n",
+-		__func__, ds->ds_remotestr, da->da_remotestr);
++	list_for_each_entry(da, &ds->ds_addrs, da_node) {
++		dprintk("%s: DS %s: trying address %s\n",
++			__func__, ds->ds_remotestr, da->da_remotestr);
+ 
+-	clp = nfs4_set_ds_client(mds_srv->nfs_client,
++		clp = nfs4_set_ds_client(mds_srv->nfs_client,
+ 				 (struct sockaddr *)&da->da_addr,
+ 				 da->da_addrlen, IPPROTO_TCP);
++		if (!IS_ERR(clp))
++			break;
 +	}
-+	spin_unlock(&objlay->lock);
-+}
 +
- extern void objlayout_read_done(struct objlayout_io_state *state,
- 				ssize_t status, bool sync);
- extern void objlayout_write_done(struct objlayout_io_state *state,
-@@ -149,6 +174,11 @@ extern enum pnfs_try_status objlayout_write_pagelist(
- 	struct nfs_write_data *,
- 	int how);
- 
-+extern void objlayout_encode_layoutcommit(
-+	struct pnfs_layout_hdr *,
-+	struct xdr_stream *,
-+	const struct nfs4_layoutcommit_args *);
-+
- extern void objlayout_encode_layoutreturn(
- 	struct pnfs_layout_hdr *,
- 	struct xdr_stream *,
+ 	if (IS_ERR(clp)) {
+ 		status = PTR_ERR(clp);
+ 		goto out;
 -- 
-1.7.3.4
+1.7.5.2
 
