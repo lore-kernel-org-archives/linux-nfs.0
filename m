@@ -1,414 +1,477 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:40091 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755250Ab1ELPSf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 May 2011 11:18:35 -0400
-Received: by iwn34 with SMTP id 34so1495628iwn.19
-        for <linux-nfs@vger.kernel.org>; Thu, 12 May 2011 08:18:35 -0700 (PDT)
-In-Reply-To: <1304960811-3863-1-git-send-email-bhalevy@panasas.com>
-References: <4DC81E8C.6040901@panasas.com>
-	<1304960811-3863-1-git-send-email-bhalevy@panasas.com>
-Date: Thu, 12 May 2011 11:18:35 -0400
-Message-ID: <BANLkTimaVzS94FtZrY_EpXB5Od6QGjeLhg@mail.gmail.com>
-Subject: Re: [PATCH v2 03/29] pnfs: Use byte-range for layoutget
-From: Fred Isaman <iisaman@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:23308 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932859Ab1EaWtQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 May 2011 18:49:16 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: trond@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 1/3] NFS: pnfs IPv6 support
+Date: Tue, 31 May 2011 18:48:56 -0400
+Message-Id: <1306882138-6528-2-git-send-email-dros@netapp.com>
+In-Reply-To: <1306882138-6528-1-git-send-email-dros@netapp.com>
+References: <1306882138-6528-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, May 9, 2011 at 1:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
-> Add offset and count parameters to pnfs_update_layout and use them to get
-> the layout in the pageio path.
->
-> Test byte range against the layout segment in use in pnfs_{read,write}_pg_test
-> so not to coalesce pages not using the same layout segment.
->
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfs/pnfs.c  |  149 +++++++++++++++++++++++++++++++++++++++++++++-----------
->  fs/nfs/pnfs.h  |    4 +-
->  fs/nfs/read.c  |   10 +++-
->  fs/nfs/write.c |    8 ++-
->  4 files changed, 136 insertions(+), 35 deletions(-)
->
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index d9ab972..e689bdf 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -261,6 +261,65 @@ put_lseg(struct pnfs_layout_segment *lseg)
->  }
->  EXPORT_SYMBOL_GPL(put_lseg);
->
-> +static inline u64
-> +end_offset(u64 start, u64 len)
-> +{
-> +       u64 end;
-> +
-> +       end = start + len;
-> +       return end >= start ? end : NFS4_MAX_UINT64;
-> +}
-> +
-> +/* last octet in a range */
-> +static inline u64
-> +last_byte_offset(u64 start, u64 len)
-> +{
-> +       u64 end;
-> +
-> +       BUG_ON(!len);
-> +       end = start + len;
-> +       return end > start ? end - 1 : NFS4_MAX_UINT64;
-> +}
-> +
-> +/*
-> + * is l2 fully contained in l1?
-> + *   start1                             end1
-> + *   [----------------------------------)
-> + *           start2           end2
-> + *           [----------------)
-> + */
-> +static inline int
-> +lo_seg_contained(struct pnfs_layout_range *l1,
-> +                struct pnfs_layout_range *l2)
-> +{
-> +       u64 start1 = l1->offset;
-> +       u64 end1 = end_offset(start1, l1->length);
-> +       u64 start2 = l2->offset;
-> +       u64 end2 = end_offset(start2, l2->length);
-> +
-> +       return (start1 <= start2) && (end1 >= end2);
-> +}
-> +
-> +/*
-> + * is l1 and l2 intersecting?
-> + *   start1                             end1
-> + *   [----------------------------------)
-> + *                              start2           end2
-> + *                              [----------------)
-> + */
-> +static inline int
-> +lo_seg_intersecting(struct pnfs_layout_range *l1,
-> +                   struct pnfs_layout_range *l2)
-> +{
-> +       u64 start1 = l1->offset;
-> +       u64 end1 = end_offset(start1, l1->length);
-> +       u64 start2 = l2->offset;
-> +       u64 end2 = end_offset(start2, l2->length);
-> +
-> +       return (end1 == NFS4_MAX_UINT64 || end1 > start2) &&
-> +              (end2 == NFS4_MAX_UINT64 || end2 > start1);
-> +}
-> +
->  static bool
->  should_free_lseg(u32 lseg_iomode, u32 recall_iomode)
->  {
-> @@ -466,7 +525,7 @@ pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
->  static struct pnfs_layout_segment *
->  send_layoutget(struct pnfs_layout_hdr *lo,
->           struct nfs_open_context *ctx,
-> -          u32 iomode)
-> +          struct pnfs_layout_range *range)
->  {
->        struct inode *ino = lo->plh_inode;
->        struct nfs_server *server = NFS_SERVER(ino);
-> @@ -497,11 +556,11 @@ send_layoutget(struct pnfs_layout_hdr *lo,
->                        goto out_err_free;
->        }
->
-> -       lgp->args.minlength = NFS4_MAX_UINT64;
-> +       lgp->args.minlength = PAGE_CACHE_SIZE;
-> +       if (lgp->args.minlength > range->length)
-> +               lgp->args.minlength = range->length;
->        lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
-> -       lgp->args.range.iomode = iomode;
-> -       lgp->args.range.offset = 0;
-> -       lgp->args.range.length = NFS4_MAX_UINT64;
-> +       lgp->args.range = *range;
+Handle ipv6 remote addresses from GETDEVICEINFO
 
-Do you want to align offet to page boundary?
+ - supports netid "tcp" for ipv4 and "tcp6" for ipv6 as rfc 5665 specifies
+ - added ds_remotestr to avoid having to handle different AFs in every dprintk
+ - tested against pynfs 4.1 server, submitting ipv6 support patch to pynfs
+ - tested with IPv6 disabled, it compiles cleanly and relies on rpc_pton to
+   refuse to accept IPv6 addresses
 
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c    |    7 +-
+ fs/nfs/nfs4filelayout.h    |    5 +-
+ fs/nfs/nfs4filelayoutdev.c |  255 ++++++++++++++++++++++++++++++++------------
+ 3 files changed, 191 insertions(+), 76 deletions(-)
 
->        lgp->args.type = server->pnfs_curr_ld->id;
->        lgp->args.inode = ino;
->        lgp->args.ctx = get_nfs_open_context(ctx);
-> @@ -515,7 +574,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
->        nfs4_proc_layoutget(lgp);
->        if (!lseg) {
->                /* remember that LAYOUTGET failed and suspend trying */
-> -               set_bit(lo_fail_bit(iomode), &lo->plh_flags);
-> +               set_bit(lo_fail_bit(range->iomode), &lo->plh_flags);
->        }
->
->        /* free xdr pages */
-> @@ -622,10 +681,24 @@ bool pnfs_roc_drain(struct inode *ino, u32 *barrier)
->  * are seen first.
->  */
->  static s64
-> -cmp_layout(u32 iomode1, u32 iomode2)
-> +cmp_layout(struct pnfs_layout_range *l1,
-> +          struct pnfs_layout_range *l2)
->  {
-> +       s64 d;
-> +
-> +       /* higher offset > lower offset */
-> +       d = l1->offset - l2->offset;
-> +       if (d)
-> +               return d;
-> +
-> +       /* longer length > shorter length */
-> +       d = l1->length - l2->length;
-> +       if (d)
-> +               return d;
-> +
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 4269088..b410a9b 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -343,8 +343,7 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
+ 		return PNFS_NOT_ATTEMPTED;
+ 	}
+-	dprintk("%s USE DS:ip %x %hu\n", __func__,
+-		ntohl(ds->ds_ip_addr), ntohs(ds->ds_port));
++	dprintk("%s USE DS: %s\n", __func__, ds->ds_remotestr);
+ 
+ 	/* No multipath support. Use first DS */
+ 	data->ds_clp = ds->ds_clp;
+@@ -383,9 +382,9 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+ 		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
+ 		return PNFS_NOT_ATTEMPTED;
+ 	}
+-	dprintk("%s ino %lu sync %d req %Zu@%llu DS:%x:%hu\n", __func__,
++	dprintk("%s ino %lu sync %d req %Zu@%llu DS: %s\n", __func__,
+ 		data->inode->i_ino, sync, (size_t) data->args.count, offset,
+-		ntohl(ds->ds_ip_addr), ntohs(ds->ds_port));
++		ds->ds_remotestr);
+ 
+ 	data->write_done_cb = filelayout_write_done_cb;
+ 	data->ds_clp = ds->ds_clp;
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index cebe01e..6c6a817 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -49,8 +49,9 @@ enum stripetype4 {
+ /* Individual ip address */
+ struct nfs4_pnfs_ds {
+ 	struct list_head	ds_node;  /* nfs4_pnfs_dev_hlist dev_dslist */
+-	u32			ds_ip_addr;
+-	u32			ds_port;
++	struct sockaddr_storage	ds_addr;
++	size_t			ds_addrlen;
++	char			*ds_remotestr;	/* human readable addr+port */
+ 	struct nfs_client	*ds_clp;
+ 	atomic_t		ds_count;
+ };
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 3b7bf13..0adb9be 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -56,28 +56,56 @@ print_ds(struct nfs4_pnfs_ds *ds)
+ 		printk("%s NULL device\n", __func__);
+ 		return;
+ 	}
+-	printk("        ip_addr %x port %hu\n"
++	printk("        ds %s\n"
+ 		"        ref count %d\n"
+ 		"        client %p\n"
+ 		"        cl_exchange_flags %x\n",
+-		ntohl(ds->ds_ip_addr), ntohs(ds->ds_port),
++		ds->ds_remotestr,
+ 		atomic_read(&ds->ds_count), ds->ds_clp,
+ 		ds->ds_clp ? ds->ds_clp->cl_exchange_flags : 0);
+ }
+ 
+ /* nfs4_ds_cache_lock is held */
+ static struct nfs4_pnfs_ds *
+-_data_server_lookup_locked(u32 ip_addr, u32 port)
++_data_server_lookup_locked(struct sockaddr *addr, size_t addrlen)
+ {
+ 	struct nfs4_pnfs_ds *ds;
+-
+-	dprintk("_data_server_lookup: ip_addr=%x port=%hu\n",
+-			ntohl(ip_addr), ntohs(port));
++	struct sockaddr_in *a, *b;
++	struct sockaddr_in6 *a6, *b6;
+ 
+ 	list_for_each_entry(ds, &nfs4_data_server_cache, ds_node) {
+-		if (ds->ds_ip_addr == ip_addr &&
+-		    ds->ds_port == port) {
+-			return ds;
++		if (addr->sa_family != ds->ds_addr.ss_family)
++			continue;
++
++		switch (addr->sa_family) {
++		case AF_INET:
++			a = (struct sockaddr_in *)addr;
++			b = (struct sockaddr_in *)&ds->ds_addr;
++
++			if (a->sin_addr.s_addr == b->sin_addr.s_addr &&
++			    a->sin_port == b->sin_port)
++				return ds;
++			break;
++
++		case AF_INET6:
++			a6 = (struct sockaddr_in6 *)addr;
++			b6 = (struct sockaddr_in6 *)&ds->ds_addr;
++
++			/* LINKLOCAL addresses must have matching scope_id */
++			if (ipv6_addr_scope(&a6->sin6_addr) ==
++			    IPV6_ADDR_SCOPE_LINKLOCAL &&
++			    a6->sin6_scope_id != b6->sin6_scope_id)
++				continue;
++
++			if (ipv6_addr_equal(&a6->sin6_addr, &b6->sin6_addr) &&
++			    a6->sin6_port == b6->sin6_port)
++				return ds;
++			break;
++
++		default:
++			dprintk("%s: unhandled address family: %u\n",
++				__func__, addr->sa_family);
++			return NULL;
+ 		}
+ 	}
+ 	return NULL;
+@@ -91,19 +119,14 @@ static int
+ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+ {
+ 	struct nfs_client *clp;
+-	struct sockaddr_in sin;
+ 	int status = 0;
+ 
+-	dprintk("--> %s ip:port %x:%hu au_flavor %d\n", __func__,
+-		ntohl(ds->ds_ip_addr), ntohs(ds->ds_port),
++	dprintk("--> %s addr %s au_flavor %d\n", __func__, ds->ds_remotestr,
+ 		mds_srv->nfs_client->cl_rpcclient->cl_auth->au_flavor);
+ 
+-	sin.sin_family = AF_INET;
+-	sin.sin_addr.s_addr = ds->ds_ip_addr;
+-	sin.sin_port = ds->ds_port;
+-
+-	clp = nfs4_set_ds_client(mds_srv->nfs_client, (struct sockaddr *)&sin,
+-				 sizeof(sin), IPPROTO_TCP);
++	clp = nfs4_set_ds_client(mds_srv->nfs_client,
++				 (struct sockaddr *)&ds->ds_addr,
++				 ds->ds_addrlen, IPPROTO_TCP);
+ 	if (IS_ERR(clp)) {
+ 		status = PTR_ERR(clp);
+ 		goto out;
+@@ -115,8 +138,8 @@ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+ 			goto out_put;
+ 		}
+ 		ds->ds_clp = clp;
+-		dprintk("%s [existing] ip=%x, port=%hu\n", __func__,
+-			ntohl(ds->ds_ip_addr), ntohs(ds->ds_port));
++		dprintk("%s [existing] server=%s\n", __func__,
++			ds->ds_remotestr);
+ 		goto out;
+ 	}
+ 
+@@ -135,8 +158,7 @@ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+ 		goto out_put;
+ 
+ 	ds->ds_clp = clp;
+-	dprintk("%s [new] ip=%x, port=%hu\n", __func__, ntohl(ds->ds_ip_addr),
+-		ntohs(ds->ds_port));
++	dprintk("%s [new] addr: %s\n", __func__, ds->ds_remotestr);
+ out:
+ 	return status;
+ out_put:
+@@ -153,6 +175,7 @@ destroy_ds(struct nfs4_pnfs_ds *ds)
+ 
+ 	if (ds->ds_clp)
+ 		nfs_put_client(ds->ds_clp);
++	kfree(ds->ds_remotestr);
+ 	kfree(ds);
+ }
+ 
+@@ -179,31 +202,85 @@ nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr)
+ 	kfree(dsaddr);
+ }
+ 
++/*
++ * Create a string with a human readable address and port to avoid
++ * complicated setup around many dprinks.
++ */
++static char *
++nfs4_pnfs_remotestr(struct sockaddr *ds_addr, gfp_t gfp_flags)
++{
++	char buf[INET6_ADDRSTRLEN + IPV6_SCOPE_ID_LEN];
++	char *remotestr;
++	char *startsep = "";
++	char *endsep = "";
++	size_t len;
++	uint16_t port;
++
++	switch (ds_addr->sa_family) {
++	case AF_INET:
++		port = ((struct sockaddr_in *)ds_addr)->sin_port;
++		break;
++	case AF_INET6:
++		startsep = "[";
++		endsep = "]";
++		port = ((struct sockaddr_in6 *)ds_addr)->sin6_port;
++		break;
++	default:
++		dprintk("%s: Unknown address family %u\n",
++			__func__, ds_addr->sa_family);
++		return NULL;
++	}
++
++	if (!rpc_ntop((struct sockaddr *)ds_addr, buf, sizeof(buf))) {
++		dprintk("%s: error printing addr\n", __func__);
++		return NULL;
++	}
++
++	len = strlen(buf) + strlen(startsep) + strlen(endsep) + 1 + 5 + 1;
++	remotestr = kzalloc(len, gfp_flags);
++
++	if (unlikely(!remotestr)) {
++		dprintk("%s: couldn't alloc remotestr\n", __func__);
++		return NULL;
++	}
++
++	snprintf(remotestr, len, "%s%s%s:%u",
++		 startsep, buf, endsep, ntohs(port));
++
++	return remotestr;
++}
++
+ static struct nfs4_pnfs_ds *
+-nfs4_pnfs_ds_add(struct inode *inode, u32 ip_addr, u32 port, gfp_t gfp_flags)
++nfs4_pnfs_ds_add(struct sockaddr *addr, size_t addrlen, gfp_t gfp_flags)
+ {
+-	struct nfs4_pnfs_ds *tmp_ds, *ds;
++	struct nfs4_pnfs_ds *tmp_ds, *ds = NULL;
++	char *remotestr;
+ 
+ 	ds = kzalloc(sizeof(*tmp_ds), gfp_flags);
+ 	if (!ds)
+ 		goto out;
+ 
++	/* this is only used for debugging, so it's ok if its NULL */
++	remotestr = nfs4_pnfs_remotestr(addr, gfp_flags);
++
+ 	spin_lock(&nfs4_ds_cache_lock);
+-	tmp_ds = _data_server_lookup_locked(ip_addr, port);
++	tmp_ds = _data_server_lookup_locked(addr, addrlen);
+ 	if (tmp_ds == NULL) {
+-		ds->ds_ip_addr = ip_addr;
+-		ds->ds_port = port;
++		memcpy(&ds->ds_addr, addr, addrlen);
++		ds->ds_addrlen = addrlen;
++		ds->ds_remotestr = remotestr;
+ 		atomic_set(&ds->ds_count, 1);
+ 		INIT_LIST_HEAD(&ds->ds_node);
+ 		ds->ds_clp = NULL;
+ 		list_add(&ds->ds_node, &nfs4_data_server_cache);
+-		dprintk("%s add new data server ip 0x%x\n", __func__,
+-			ds->ds_ip_addr);
++		dprintk("%s add new data server %s\n", __func__,
++			ds->ds_remotestr);
+ 	} else {
++		kfree(remotestr);
+ 		kfree(ds);
+ 		atomic_inc(&tmp_ds->ds_count);
+-		dprintk("%s data server found ip 0x%x, inc'ed ds_count to %d\n",
+-			__func__, tmp_ds->ds_ip_addr,
++		dprintk("%s data server %s found, inc'ed ds_count to %d\n",
++			__func__, ds->ds_remotestr,
+ 			atomic_read(&tmp_ds->ds_count));
+ 		ds = tmp_ds;
+ 	}
+@@ -213,18 +290,21 @@ out:
+ }
+ 
+ /*
+- * Currently only support ipv4, and one multi-path address.
++ * Currently only supports ipv4, ipv6 and one multi-path address.
+  */
+ static struct nfs4_pnfs_ds *
+ decode_and_add_ds(struct xdr_stream *streamp, struct inode *inode, gfp_t gfp_flags)
+ {
+ 	struct nfs4_pnfs_ds *ds = NULL;
+-	char *buf;
+-	const char *ipend, *pstr;
+-	u32 ip_addr, port;
+-	int nlen, rlen, i;
++	char *buf, *portstr;
++	struct sockaddr_storage ss;
++	size_t sslen;
++	u32 port;
++	int nlen, rlen;
+ 	int tmp[2];
+ 	__be32 *p;
++	char *netid, *match_netid;
++	size_t match_netid_len;
+ 
+ 	/* r_netid */
+ 	p = xdr_inline_decode(streamp, 4);
+@@ -236,62 +316,97 @@ decode_and_add_ds(struct xdr_stream *streamp, struct inode *inode, gfp_t gfp_fla
+ 	if (unlikely(!p))
+ 		goto out_err;
+ 
+-	/* Check that netid is "tcp" */
+-	if (nlen != 3 ||  memcmp((char *)p, "tcp", 3)) {
+-		dprintk("%s: ERROR: non ipv4 TCP r_netid\n", __func__);
++	netid = kmalloc(nlen+1, gfp_flags);
++	if (unlikely(!netid))
+ 		goto out_err;
+-	}
+ 
+-	/* r_addr */
++	netid[nlen] = '\0';
++	memcpy(netid, p, nlen);
++
++	/* r_addr: ip/ip6addr with port in dec octets - see RFC 5665 */
+ 	p = xdr_inline_decode(streamp, 4);
+ 	if (unlikely(!p))
+-		goto out_err;
++		goto out_free_netid;
+ 	rlen = be32_to_cpup(p);
+ 
+ 	p = xdr_inline_decode(streamp, rlen);
+ 	if (unlikely(!p))
+-		goto out_err;
++		goto out_free_netid;
+ 
+-	/* ipv6 length plus port is legal */
+-	if (rlen > INET6_ADDRSTRLEN + 8) {
++	/* port is ".ABC.DEF", 8 chars max */
++	if (rlen > INET6_ADDRSTRLEN + IPV6_SCOPE_ID_LEN + 8) {
+ 		dprintk("%s: Invalid address, length %d\n", __func__,
+ 			rlen);
+-		goto out_err;
++		goto out_free_netid;
+ 	}
+ 	buf = kmalloc(rlen + 1, gfp_flags);
+ 	if (!buf) {
+ 		dprintk("%s: Not enough memory\n", __func__);
+-		goto out_err;
++		goto out_free_netid;
+ 	}
+ 	buf[rlen] = '\0';
+ 	memcpy(buf, p, rlen);
+ 
+-	/* replace the port dots with dashes for the in4_pton() delimiter*/
+-	for (i = 0; i < 2; i++) {
+-		char *res = strrchr(buf, '.');
+-		if (!res) {
+-			dprintk("%s: Failed finding expected dots in port\n",
+-				__func__);
+-			goto out_free;
+-		}
+-		*res = '-';
++	/* replace port '.' with '-' */
++	portstr = strrchr(buf, '.');
++	if (!portstr) {
++		dprintk("%s: Failed finding expected dot in port\n",
++			__func__);
++		goto out_free_buf;
++	}
++	*portstr = '-';
++
++	/* find '.' between address and port */
++	portstr = strrchr(buf, '.');
++	if (!portstr) {
++		dprintk("%s: Failed finding expected dot between address and "
++			"port\n", __func__);
++		goto out_free_buf;
+ 	}
++	*portstr = '\0';
+ 
+-	/* Currently only support ipv4 address */
+-	if (in4_pton(buf, rlen, (u8 *)&ip_addr, '-', &ipend) == 0) {
+-		dprintk("%s: Only ipv4 addresses supported\n", __func__);
+-		goto out_free;
++	if (!rpc_pton(buf, portstr-buf, (struct sockaddr *)&ss, sizeof(ss))) {
++		dprintk("%s: Error parsing address %s\n", __func__, buf);
++		goto out_free_buf;
+ 	}
+ 
+-	/* port */
+-	pstr = ipend;
+-	sscanf(pstr, "-%d-%d", &tmp[0], &tmp[1]);
++	portstr++;
++	sscanf(portstr, "%d-%d", &tmp[0], &tmp[1]);
+ 	port = htons((tmp[0] << 8) | (tmp[1]));
+ 
+-	ds = nfs4_pnfs_ds_add(inode, ip_addr, port, gfp_flags);
+-	dprintk("%s: Decoded address and port %s\n", __func__, buf);
+-out_free:
++	switch (ss.ss_family) {
++	case AF_INET:
++		((struct sockaddr_in *)&ss)->sin_port = port;
++		sslen = sizeof(struct sockaddr_in);
++		match_netid = "tcp";
++		match_netid_len = 3;
++		break;
++
++	case AF_INET6:
++		((struct sockaddr_in6 *)&ss)->sin6_port = port;
++		sslen = sizeof(struct sockaddr_in6);
++		match_netid = "tcp6";
++		match_netid_len = 4;
++		break;
++
++	default:
++		dprintk("%s: unsupported address family: %u\n",
++			__func__, ss.ss_family);
++		goto out_free_buf;
++	}
++
++	if (nlen != match_netid_len || strncmp(netid, match_netid, nlen)) {
++		dprintk("%s: ERROR: r_netid \"%s\" != \"%s\"\n",
++			__func__, netid, match_netid);
++		goto out_free_buf;
++	}
++
++	ds = nfs4_pnfs_ds_add((struct sockaddr *)&ss, sslen, gfp_flags);
++	dprintk("%s: Added DS %s\n", __func__, ds->ds_remotestr);
++out_free_buf:
+ 	kfree(buf);
++out_free_netid:
++	kfree(netid);
+ out_err:
+ 	return ds;
+ }
+@@ -591,13 +706,13 @@ nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j)
+ 
+ static void
+ filelayout_mark_devid_negative(struct nfs4_file_layout_dsaddr *dsaddr,
+-			       int err, u32 ds_addr)
++			       int err, const char *ds_remotestr)
+ {
+ 	u32 *p = (u32 *)&dsaddr->id_node.deviceid;
+ 
+-	printk(KERN_ERR "NFS: data server %x connection error %d."
++	printk(KERN_ERR "NFS: data server %s connection error %d."
+ 		" Deviceid [%x%x%x%x] marked out of use.\n",
+-		ds_addr, err, p[0], p[1], p[2], p[3]);
++		ds_remotestr, err, p[0], p[1], p[2], p[3]);
+ 
+ 	spin_lock(&nfs4_ds_cache_lock);
+ 	dsaddr->flags |= NFS4_DEVICE_ID_NEG_ENTRY;
+@@ -628,7 +743,7 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+ 		err = nfs4_ds_connect(s, ds);
+ 		if (err) {
+ 			filelayout_mark_devid_negative(dsaddr, err,
+-						       ntohl(ds->ds_ip_addr));
++						       ds->ds_remotestr);
+ 			return NULL;
+ 		}
+ 	}
+-- 
+1.7.5.2
 
-Assuming iomodes the same, don't we prefer seeing the longer to the shorter?
-
-Wouldn't we prefer a short rw to a long ro?
-
->        /* read > read/write */
-> -       return (int)(iomode2 == IOMODE_READ) - (int)(iomode1 == IOMODE_READ);
-> +       return (int)(l2->iomode == IOMODE_READ) -
-> +               (int)(l1->iomode == IOMODE_READ);
->  }
->
->  static void
-> @@ -639,7 +712,7 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
->
->        assert_spin_locked(&lo->plh_inode->i_lock);
->        list_for_each_entry(lp, &lo->plh_segs, pls_list) {
-> -               if (cmp_layout(lp->pls_range.iomode, lseg->pls_range.iomode) > 0)
-> +               if (cmp_layout(&lp->pls_range, &lseg->pls_range) > 0)
->                        continue;
->                list_add_tail(&lseg->pls_list, &lp->pls_list);
->                dprintk("%s: inserted lseg %p "
-> @@ -718,16 +791,28 @@ pnfs_find_alloc_layout(struct inode *ino)
->  * READ                RW      true
->  */
->  static int
-> -is_matching_lseg(struct pnfs_layout_segment *lseg, u32 iomode)
-> +is_matching_lseg(struct pnfs_layout_segment *lseg,
-> +                struct pnfs_layout_range *range)
-
-arguments to this should probably both be of struct pnfs_layout_range
-
-
->  {
-> -       return (iomode != IOMODE_RW || lseg->pls_range.iomode == IOMODE_RW);
-> +       struct pnfs_layout_range range1;
-> +
-> +       if ((range->iomode == IOMODE_RW &&
-> +            lseg->pls_range.iomode != IOMODE_RW) ||
-> +           !lo_seg_intersecting(&lseg->pls_range, range))
-> +               return 0;
-> +
-> +       /* range1 covers only the first byte in the range */
-> +       range1 = *range;
-> +       range1.length = 1;
-> +       return lo_seg_contained(&lseg->pls_range, &range1);
->  }
->
->  /*
->  * lookup range in layout
->  */
->  static struct pnfs_layout_segment *
-> -pnfs_find_lseg(struct pnfs_layout_hdr *lo, u32 iomode)
-> +pnfs_find_lseg(struct pnfs_layout_hdr *lo,
-> +               struct pnfs_layout_range *range)
->  {
->        struct pnfs_layout_segment *lseg, *ret = NULL;
->
-> @@ -736,11 +821,11 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo, u32 iomode)
->        assert_spin_locked(&lo->plh_inode->i_lock);
->        list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
->                if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
-> -                   is_matching_lseg(lseg, iomode)) {
-> +                   is_matching_lseg(lseg, range)) {
->                        ret = get_lseg(lseg);
->                        break;
->                }
-> -               if (cmp_layout(iomode, lseg->pls_range.iomode) > 0)
-> +               if (cmp_layout(range, &lseg->pls_range) > 0)
->                        break;
->        }
->
-> @@ -756,8 +841,15 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo, u32 iomode)
->  struct pnfs_layout_segment *
->  pnfs_update_layout(struct inode *ino,
->                   struct nfs_open_context *ctx,
-> +                  loff_t pos,
-> +                  u64 count,
->                   enum pnfs_iomode iomode)
->  {
-> +       struct pnfs_layout_range arg = {
-> +               .iomode = iomode,
-> +               .offset = pos,
-> +               .length = count,
-> +       };
->        struct nfs_inode *nfsi = NFS_I(ino);
->        struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
->        struct pnfs_layout_hdr *lo;
-> @@ -785,7 +877,7 @@ pnfs_update_layout(struct inode *ino,
->                goto out_unlock;
->
->        /* Check to see if the layout for the given range already exists */
-> -       lseg = pnfs_find_lseg(lo, iomode);
-> +       lseg = pnfs_find_lseg(lo, &arg);
->        if (lseg)
->                goto out_unlock;
->
-> @@ -807,7 +899,7 @@ pnfs_update_layout(struct inode *ino,
->                spin_unlock(&clp->cl_lock);
->        }
->
-> -       lseg = send_layoutget(lo, ctx, iomode);
-> +       lseg = send_layoutget(lo, ctx, &arg);
->        if (!lseg && first) {
->                spin_lock(&clp->cl_lock);
->                list_del_init(&lo->plh_layouts);
-> @@ -834,17 +926,6 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
->        struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
->        int status = 0;
->
-> -       /* Verify we got what we asked for.
-> -        * Note that because the xdr parsing only accepts a single
-> -        * element array, this can fail even if the server is behaving
-> -        * correctly.
-> -        */
-> -       if (lgp->args.range.iomode > res->range.iomode ||
-> -           res->range.offset != 0 ||
-> -           res->range.length != NFS4_MAX_UINT64) {
-> -               status = -EINVAL;
-> -               goto out;
-> -       }
->        /* Inject layout blob into I/O device driver */
->        lseg = NFS_SERVER(ino)->pnfs_curr_ld->alloc_lseg(lo, res);
->        if (!lseg || IS_ERR(lseg)) {
-> @@ -899,8 +980,13 @@ static int pnfs_read_pg_test(struct nfs_pageio_descriptor *pgio,
->                /* This is first coelesce call for a series of nfs_pages */
->                pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
->                                                   prev->wb_context,
-> +                                                  req_offset(req),
-> +                                                  pgio->pg_count,
->                                                   IOMODE_READ);
-> -       }
-> +       } else if (pgio->pg_lseg &&
-> +                  req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
-> +                                               pgio->pg_lseg->pls_range.length))
-> +               return 0;
->        return NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->pg_test(pgio, prev, req);
->  }
->
-> @@ -921,8 +1007,13 @@ static int pnfs_write_pg_test(struct nfs_pageio_descriptor *pgio,
->                /* This is first coelesce call for a series of nfs_pages */
->                pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
->                                                   prev->wb_context,
-> +                                                  req_offset(req),
-> +                                                  pgio->pg_count,
->                                                   IOMODE_RW);
-> -       }
-> +       } else if (pgio->pg_lseg &&
-> +                  req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
-> +                                               pgio->pg_lseg->pls_range.length))
-> +               return 0;
->        return NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->pg_test(pgio, prev, req);
->  }
->
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index 4cb0a0d..14a2af9 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -129,7 +129,7 @@ void get_layout_hdr(struct pnfs_layout_hdr *lo);
->  void put_lseg(struct pnfs_layout_segment *lseg);
->  struct pnfs_layout_segment *
->  pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
-> -                  enum pnfs_iomode access_type);
-> +                  loff_t pos, u64 count, enum pnfs_iomode access_type);
->  void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
->  void unset_pnfs_layoutdriver(struct nfs_server *);
->  enum pnfs_try_status pnfs_try_to_write_data(struct nfs_write_data *,
-> @@ -248,7 +248,7 @@ static inline void put_lseg(struct pnfs_layout_segment *lseg)
->
->  static inline struct pnfs_layout_segment *
->  pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
-> -                  enum pnfs_iomode access_type)
-> +                  loff_t pos, u64 count, enum pnfs_iomode access_type)
->  {
->        return NULL;
->  }
-> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-> index 7cded2b..10eff1c 100644
-> --- a/fs/nfs/read.c
-> +++ b/fs/nfs/read.c
-> @@ -288,13 +288,17 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc)
->        atomic_set(&req->wb_complete, requests);
->
->        BUG_ON(desc->pg_lseg != NULL);
-> -       lseg = pnfs_update_layout(desc->pg_inode, req->wb_context, IOMODE_READ);
-> +       lseg = pnfs_update_layout(desc->pg_inode, req->wb_context,
-> +                                 req_offset(req), desc->pg_count,
-> +                                 IOMODE_READ);
->        ClearPageError(page);
->        offset = 0;
->        nbytes = desc->pg_count;
->        do {
->                int ret2;
->
-> +               /* FIXME: need a new layout segment? */
-> +
-
-No need for FIXME, since we assume strongly throughout that the
-layouts are page aligned.
-
-Fred
-
->                data = list_entry(list.next, struct nfs_read_data, pages);
->                list_del_init(&data->pages);
->
-> @@ -351,7 +355,9 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc)
->        }
->        req = nfs_list_entry(data->pages.next);
->        if ((!lseg) && list_is_singular(&data->pages))
-> -               lseg = pnfs_update_layout(desc->pg_inode, req->wb_context, IOMODE_READ);
-> +               lseg = pnfs_update_layout(desc->pg_inode, req->wb_context,
-> +                                         req_offset(req), desc->pg_count,
-> +                                         IOMODE_READ);
->
->        ret = nfs_read_rpcsetup(req, data, &nfs_read_full_ops, desc->pg_count,
->                                0, lseg);
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index e4cbc11..318e0a3 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -940,7 +940,9 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc)
->        atomic_set(&req->wb_complete, requests);
->
->        BUG_ON(desc->pg_lseg);
-> -       lseg = pnfs_update_layout(desc->pg_inode, req->wb_context, IOMODE_RW);
-> +       lseg = pnfs_update_layout(desc->pg_inode, req->wb_context,
-> +                                 req_offset(req), desc->pg_count,
-> +                                 IOMODE_RW);
->        ClearPageError(page);
->        offset = 0;
->        nbytes = desc->pg_count;
-> @@ -1014,7 +1016,9 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc)
->        }
->        req = nfs_list_entry(data->pages.next);
->        if ((!lseg) && list_is_singular(&data->pages))
-> -               lseg = pnfs_update_layout(desc->pg_inode, req->wb_context, IOMODE_RW);
-> +               lseg = pnfs_update_layout(desc->pg_inode, req->wb_context,
-> +                                         req_offset(req), desc->pg_count,
-> +                                         IOMODE_RW);
->
->        if ((desc->pg_ioflags & FLUSH_COND_STABLE) &&
->            (desc->pg_moreio || NFS_I(desc->pg_inode)->ncommit))
-> --
-> 1.7.3.4
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
