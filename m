@@ -1,57 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53767 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752209Ab1EWL30 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2011 07:29:26 -0400
-Date: Mon, 23 May 2011 07:30:27 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Sid Moore <learnmost@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Report bug: space not released when file deleted.
-Message-ID: <20110523073027.271cb61f@corrin.poochiereds.net>
-In-Reply-To: <BANLkTikCdr6P-WFBdshPwiBQ5_LK-qobLQ@mail.gmail.com>
-References: <BANLkTikCdr6P-WFBdshPwiBQ5_LK-qobLQ@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:49333 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751766Ab1EaSUV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 May 2011 14:20:21 -0400
+Received: by gyd10 with SMTP id 10so1876601gyd.19
+        for <linux-nfs@vger.kernel.org>; Tue, 31 May 2011 11:20:20 -0700 (PDT)
+Message-ID: <4DE53146.3030208@umich.edu>
+Date: Tue, 31 May 2011 14:19:50 -0400
+From: Michael Groshans <groshans@umich.edu>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] pnfsd: Prevent ipv6 address truncation in /proc/fs/nfsd/pnfs_dlm_device
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 23 May 2011 13:42:41 +0800
-Sid Moore <learnmost@gmail.com> wrote:
+From: Michael Groshans <groshans@umich.edu>
 
-> Hi,
-> 
-> On Linux NFS, I found a file deleted but its space not released in
-> NFSv3. It is on 2.6.32.
-> 
-> The steps for reproducing are listed below.
-> 1) create a ext3 filesystem on a device, mount it to local dir
-> /exports/fs1_ext3/, export /exports/fs1_ext3/ with no_subtree_check to
-> a NFS client. this client mount this exported dir with infinite
-> retrans.
-> 2) on the ext3 fs, create a large regular file  (say: 600MB)
-> 3) on NFS client, starts several processes who reading this file in 2)
-> in parallel
-> 4) during step 3), kill all nfsd threads, umount this ext3 fs; then
-> mount this ext3 to /exports/fs1_ext3; start 8 nfsd threads.
-> 5) after processes finished reading, delete this file. then, I found
-> the space occupied but this file not released.
-> 
-> during step 4), I think an anonymous dentry of this file was created
-> after fh_verify(). in step 5), a named dentry of this file also
-> created. So, there are two dentry on this inode. but when deleting,
-> only the named dentry deleted. only restart this ext3 fs or dcache
-> shrinked, the anonymous dentry will not be released and it referenced
-> the inode of this file. so its space not freed.
-> 
-> is my analysis correct?  anyone has encountered this issue before? or,
-> this issue was fixed by someone? Thanks.
-> 
+ipv6 addresses in /proc/fs/nfsd/pnfs_dlm_device were being truncated because the
+length was determined by looking for the next colon. Changed to use strlen()
+instead.
 
-You may want to test a more recent kernel on the server before you dig
-in too deeply. I know that Bruce has fixed a number of these sorts of
-problems recently.
+Signed-off by: Michael Groshans <groshans@umich.edu>
+---
+ fs/nfsd/nfs4pnfsdlm.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Cheers,
+diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+index 006ded5..0068ba0 100644
+--- a/fs/nfsd/nfs4pnfsdlm.c
++++ b/fs/nfsd/nfs4pnfsdlm.c
+@@ -165,7 +165,7 @@ nfsd4_set_pnfs_dlm_device(char *pnfs_dlm_device, int len)
+ 
+ 	/* data server list */
+ 	/* FIXME: need to check for comma separated valid ip format */
+-	len = strcspn(bufp, ":");
++	len = strlen(bufp);
+ 	if (len > NFSD_DLM_DS_LIST_MAX)
+ 		goto out_free;
+ 	memcpy(new->ds_list, bufp, len);
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.3.4
