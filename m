@@ -1,56 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cmx.pixar.com ([12.25.180.66]:57604 "EHLO cmx.pixar.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753394Ab1F0SZS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Jun 2011 14:25:18 -0400
-Message-ID: <4E08C8BE.2000407@pixar.com>
-Date: Mon, 27 Jun 2011 11:15:26 -0700
-From: Joe Frost <joef@pixar.com>
-To: linux-nfs@vger.kernel.org
-Subject: Mounstats keying on fsid or ipaddr?
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from daytona.panasas.com ([67.152.220.89]:24809 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756877Ab1FANnR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 09:43:17 -0400
+Message-ID: <4DE641EE.9000607@panasas.com>
+Date: Wed, 01 Jun 2011 16:43:10 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Boaz Harrosh <bharrosh@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Weston Andros Adamson <dros@netapp.com>, trond@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFS: filelayout should use nfs_generic_pg_test
+References: <1306898310-9229-1-git-send-email-dros@netapp.com>	 <4DE5D287.603@panasas.com> <1306930452.25992.61.camel@lade.trondhjem.org> <4DE64069.7080103@panasas.com>
+In-Reply-To: <4DE64069.7080103@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We've been using mountstats to graph/track NFS usage based on path. 
-We've recently made some changes on how we mount filesystems here where 
-it's possible the same IP will be used for multiple mounts. Since that 
-we've noticed that all mounts to the same IPaddr are showing the same 
-statistics. Wondering if anyone had ideas why it might be keying off of 
-IPaddr?
+On 2011-06-01 16:36, Boaz Harrosh wrote:
+> On 06/01/2011 03:14 PM, Trond Myklebust wrote:
+>> On Wed, 2011-06-01 at 08:47 +0300, Boaz Harrosh wrote: 
+>>> On 06/01/2011 06:18 AM, Weston Andros Adamson wrote:
+>>>
+>>> pnfs_generic_pg_test is the one that gets the layout.
+>>>
+>>> What you've done is revert to MDS IO
+>>
+>> The "files" layout type always gets the layout in the pg_doio() method
+>> instead of the pg_test().
+>>
+> 
+> Well I don't see where? I fought this all day, when trying to make the
+> new code run with objlayout, which was missing the implementation of pg_test().
+> And never got a pnfs-IO.
+> 
+> I've searched the full tree for calls to pnfs_update_layout() the only
+> one I can see are in:
+> nfs_pagein_multi() - which means within a single page, right?
+> nfs_pagein_one()   - But is protected with list_is_singular() so only in the
+>                      single page case
+> nfs_flush_multi()  - Same as nfs_pagein_multi
+> nfs_flush_one()    - Also here protected with list_is_singular()
+> 
+> and the all mighty
+> pnfs_generic_pg_test()
+> 
+> I cannot see where the filelayout is different then other layouts
+> in that respect. Sorry to be slow, I would like to understand?
+> 
+> And also be careful with nfs_generic_pg_test() it inspects
+> desc->bsize which is negotiated with MDS, it's very small.
+> 
 
-Below are some relevant configuration files:
+I'm also looking into this.
+The call to pnfs_generic_pg_test wasn't a typo.
+As pre dfed206 "NFSv4.1: unify pnfs_pageio_init functions"
+we were setting pg_pgio->test to pnfs_write_pg_test
+which is equivalent to pnfs_generic_pg_test
+and 89a58e3 "NFSv4.1: use pnfs_generic_pg_test directly by layout driver"
+only reversed the call from pnfs_generic_pg_test to ld->pg_test
+to a call from ld->pg_test to pnfs_generic_pg_test
 
+Benny
 
-Automount configuration for path /shows/movie/$key
+>> Cheers
+>>   Trond
+>>
+> 
+> Thanks
+> Boaz
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-ribcage              -rw,intr,rsize=131072,wsize=524288,tcp 
-primary.carrots:/ifs/shows/movie/ribcage
-convert              -rw,intr,rsize=131072,wsize=524288,tcp 
-primary.carrots:/ifs/shows/movie/convert
-shottmp              -rw,intr,rsize=131072,wsize=524288,tcp 
-primary.carrots:/ifs/shows/movie/shottmp
-
-Proc/mounts on a particular server:
-
-primary.carrots:/ifs/shows/movie/shottmp on /shows/movie/shottmp type 
-nfs 
-(rw,noatime,intr,tcp,intr,rsize=131072,wsize=524288,tcp,sloppy,addr=10.73.6.89)
-primary.carrots:/ifs/shows/movie/ribcage on /shows/movie/ribcage type 
-nfs 
-(rw,noatime,intr,tcp,intr,rsize=131072,wsize=524288,tcp,sloppy,addr=10.73.6.89)
-primary.carrots:/ifs/shows/movie/convert on /shows/movie/convert type 
-nfs 
-(rw,noatime,intr,tcp,intr,rsize=131072,wsize=524288,tcp,sloppy,addr=10.73.6.89)
-
-
-
-We're using Isilon as the filer:
-
-carrots-1# isi nfs exports list
-    Rule ID   Paths                                             Comment 
-
-           11  /ifs/shows/brave/convert                       convert
-           16  /ifs/shows/movie/ribcage                       ribcage
-           17  /ifs/shows/movie/shottmp                       shottmp
