@@ -1,96 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:38088 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750864Ab1FNOFv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2011 10:05:51 -0400
-Received: by ywe9 with SMTP id 9so2591510ywe.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Jun 2011 07:05:50 -0700 (PDT)
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805BED9D55D@MX09A.corp.emc.com>
-References: <cover.1307921137.git.rees@umich.edu>
-	<ea5e2bf59d726fbfec6f63af9eda83dbc15cb96d.1307921137.git.rees@umich.edu>
-	<BANLkTimtiDZNZPnBK6864Rwh-XhDAkcHVQ@mail.gmail.com>
-	<F19688880B763E40B28B2B462677FBF805BED9D55D@MX09A.corp.emc.com>
-Date: Tue, 14 Jun 2011 10:05:50 -0400
-Message-ID: <BANLkTimH7cxZWr26Fv2TuSPZOWA4pR74nQ@mail.gmail.com>
-Subject: Re: [PATCH 04/34] pnfs: hook nfs_write_begin/end to allow layout
- driver manipulation
-From: Fred Isaman <iisaman@netapp.com>
-To: tao.peng@emc.com
-Cc: rees@umich.edu, linux-nfs@vger.kernel.org, honey@citi.umich.edu
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mailhub.sw.ru ([195.214.232.25]:42601 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751766Ab1FANhR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Jun 2011 09:37:17 -0400
+Received: from [10.30.3.27] ([10.30.3.27])
+	(authenticated bits=0)
+	by relay.sw.ru (8.13.4/8.13.4) with ESMTP id p51Dd3sa007210
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 1 Jun 2011 17:39:04 +0400 (MSD)
+Message-ID: <4DE6408A.8050105@parallels.com>
+Date: Wed, 01 Jun 2011 17:37:14 +0400
+From: Vasily Averin <vvs@parallels.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] lockd: properly convert be32 values in debug messages
+Content-Type: multipart/mixed;
+ boundary="------------040308090600050507000400"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Jun 14, 2011 at 7:01 AM,  <tao.peng@emc.com> wrote:
-> Hi, Fred,
->
->> -----Original Message-----
->> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org]
->> On Behalf Of Fred Isaman
->> Sent: Monday, June 13, 2011 10:44 PM
->> To: Jim Rees
->> Cc: linux-nfs@vger.kernel.org; peter honeyman
->> Subject: Re: [PATCH 04/34] pnfs: hook nfs_write_begin/end to allow layout driver
->> manipulation
->>
->> On Sun, Jun 12, 2011 at 7:43 PM, Jim Rees <rees@umich.edu> wrote:
->> > From: Peng Tao <bergwolf@gmail.com>
->> >
->> > Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
->> > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> > Reported-by: Alexandros Batsakis <batsakis@netapp.com>
->> > Signed-off-by: Andy Adamson <andros@netapp.com>
->> > Signed-off-by: Fred Isaman <iisaman@netapp.com>
->> > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> > Signed-off-by: Peng Tao <bergwolf@gmail.com>
->> > ---
->> >  fs/nfs/file.c          |   26 ++++++++++-
->> >  fs/nfs/pnfs.c          |   41 +++++++++++++++++
->> >  fs/nfs/pnfs.h          |  115
->> ++++++++++++++++++++++++++++++++++++++++++++++++
->> >  fs/nfs/write.c         |   12 +++--
->> >  include/linux/nfs_fs.h |    3 +-
->> >  5 files changed, 189 insertions(+), 8 deletions(-)
->> >
->> > diff --git a/fs/nfs/file.c b/fs/nfs/file.c
->> > index 2f093ed..1768762 100644
->> > --- a/fs/nfs/file.c
->> > +++ b/fs/nfs/file.c
->> > @@ -384,12 +384,15 @@ static int nfs_write_begin(struct file *file, struct
->> address_space *mapping,
->> >        pgoff_t index = pos >> PAGE_CACHE_SHIFT;
->> >        struct page *page;
->> >        int once_thru = 0;
->> > +       struct pnfs_layout_segment *lseg;
->> >
->> >        dfprintk(PAGECACHE, "NFS: write_begin(%s/%s(%ld), %u@%lld)\n",
->> >                file->f_path.dentry->d_parent->d_name.name,
->> >                file->f_path.dentry->d_name.name,
->> >                mapping->host->i_ino, len, (long long) pos);
->> > -
->> > +       lseg = pnfs_update_layout(mapping->host,
->> > +                                 nfs_file_open_context(file),
->> > +                                 pos, len, IOMODE_RW, GFP_NOFS);
->>
->>
->> This looks like it is left over from before the rearrangements done to
->> where pnfs_update_layout.
->> In particular, we don't want to hold the reference on the lseg from
->> here until flush time.  And there
->> seems to be no reason to.  If the client needs a layout to deal with
->> read-in here, it should instead
->> trigger the nfs_want_read_modify_write clause.
-> Yes, you are right. Directly calling pnfs_update_layout here can be avoided.
-> But it seems triggering nfs_want_read_modify_write will acquire a read-only layout segment via readpage code path.
-> For write, client will need a read-write layout segment so it would mean two layoutget for each new segment (one in nfs_readpage and one at flush time). It may not be good for performance.
-> Does current generic code have method to avoid this?
->
-> Thanks,
-> Tao
->
+--------------040308090600050507000400
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-No.  However, note that this only hits in the case where you are doing
-subpage writes.
 
-Fred
+--------------040308090600050507000400
+Content-Type: text/plain;
+ name="diff-sunrpc-debug-20110601-2"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="diff-sunrpc-debug-20110601-2"
+
+RnJvbSBiZTFlNGZhNDVhYTBjODI4ZDJlODY0YzE2MDg1N2E0MWQyZGUwNTMxIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBWYXNpbHkgQXZlcmluIDx2dnNAc3cucnU+CkRhdGU6IFdlZCwg
+MSBKdW4gMjAxMSAxNjo1NDozMiArMDQwMApTdWJqZWN0OiBbUEFUQ0ggMi8yXSBsb2NrZDogcHJv
+cGVybHkgY29udmVydCBiZTMyIHZhbHVlcyBpbiBkZWJ1ZyBtZXNzYWdlcwoKbG9ja2Q6IHNlcnZl
+ciByZXR1cm5zIHN0YXR1cyA1MDMzMTY0OCAKaXQncyBxdWl0ZSBoYXJkIHRvIHVuZGVyc3RhbmQg
+dGhhdCBudW1iZXIgaW4gdGhpcyBtZXNzYWdlIGlzIDMgaW4gYmlnIGVuZGlhbgoKU2lnbmVkLW9m
+Zi1ieTogVmFzaWx5IEF2ZXJpbiA8dnZzQHN3LnJ1PgotLS0KIGZzL2xvY2tkL2NsbnRwcm9jLmMg
+fCAgICA5ICsrKysrKy0tLQogMSBmaWxlcyBjaGFuZ2VkLCA2IGluc2VydGlvbnMoKyksIDMgZGVs
+ZXRpb25zKC0pCgpkaWZmIC0tZ2l0IGEvZnMvbG9ja2QvY2xudHByb2MuYyBiL2ZzL2xvY2tkL2Ns
+bnRwcm9jLmMKaW5kZXggYWRiNDVlYy4uYWNlZjZiNyAxMDA2NDQKLS0tIGEvZnMvbG9ja2QvY2xu
+dHByb2MuYworKysgYi9mcy9sb2NrZC9jbG50cHJvYy5jCkBAIC0zMDIsNyArMzAyLDggQEAgbmxt
+Y2xudF9jYWxsKHN0cnVjdCBycGNfY3JlZCAqY3JlZCwgc3RydWN0IG5sbV9ycXN0ICpyZXEsIHUz
+MiBwcm9jKQogCQkJCS8qIFdlIGFwcGVhciB0byBiZSBvdXQgb2YgdGhlIGdyYWNlIHBlcmlvZCAq
+LwogCQkJCXdha2VfdXBfYWxsKCZob3N0LT5oX2dyYWNld2FpdCk7CiAJCQl9Ci0JCQlkcHJpbnRr
+KCJsb2NrZDogc2VydmVyIHJldHVybnMgc3RhdHVzICVkXG4iLCByZXNwLT5zdGF0dXMpOworCQkJ
+ZHByaW50aygibG9ja2Q6IHNlcnZlciByZXR1cm5zIHN0YXR1cyAlZFxuIiwKKwkJCQludG9obChy
+ZXNwLT5zdGF0dXMpKTsKIAkJCXJldHVybiAwOwkvKiBPa2F5LCBjYWxsIGNvbXBsZXRlICovCiAJ
+CX0KIApAQCAtNjkwLDcgKzY5MSw4IEBAIG5sbWNsbnRfdW5sb2NrKHN0cnVjdCBubG1fcnFzdCAq
+cmVxLCBzdHJ1Y3QgZmlsZV9sb2NrICpmbCkKIAkJZ290byBvdXQ7CiAKIAlpZiAocmVzcC0+c3Rh
+dHVzICE9IG5sbV9sY2tfZGVuaWVkX25vbG9ja3MpCi0JCXByaW50aygibG9ja2Q6IHVuZXhwZWN0
+ZWQgdW5sb2NrIHN0YXR1czogJWRcbiIsIHJlc3AtPnN0YXR1cyk7CisJCXByaW50aygibG9ja2Q6
+IHVuZXhwZWN0ZWQgdW5sb2NrIHN0YXR1czogJWRcbiIsCisJCQludG9obChyZXNwLT5zdGF0dXMp
+KTsKIAkvKiBXaGF0IHRvIGRvIG5vdz8gSSdtIG91dCBvZiBteSBkZXB0aC4uLiAqLwogCXN0YXR1
+cyA9IC1FTk9MQ0s7CiBvdXQ6CkBAIC04MzcsNiArODM5LDcgQEAgbmxtX3N0YXRfdG9fZXJybm8o
+X19iZTMyIHN0YXR1cykKIAkJcmV0dXJuIC1FTk9MQ0s7CiAjZW5kaWYKIAl9Ci0JcHJpbnRrKEtF
+Uk5fTk9USUNFICJsb2NrZDogdW5leHBlY3RlZCBzZXJ2ZXIgc3RhdHVzICVkXG4iLCBzdGF0dXMp
+OworCXByaW50ayhLRVJOX05PVElDRSAibG9ja2Q6IHVuZXhwZWN0ZWQgc2VydmVyIHN0YXR1cyAl
+ZFxuIiwKKwkJIG50b2hsKHN0YXR1cykpOwogCXJldHVybiAtRU5PTENLOwogfQotLSAKMS43LjQu
+MQoK
+
+--------------040308090600050507000400--
