@@ -1,70 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:44014 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757431Ab1FGRfb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:35:31 -0400
-Date: Tue, 7 Jun 2011 13:35:30 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 82/88] SQUASHME: pnfs-block: fixup encode_layoutcommit
- arguments
-Message-ID: <0069c4560794907aa1db9c01546ca80702b0a9cb.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
+Received: from mx2.netapp.com ([216.240.18.37]:41487 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756856Ab1FAOkK convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 10:40:10 -0400
+Subject: Re: [PATCH] NFS: fix umount of pnfs filesystems
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+From: Weston Andros Adamson <dros@netapp.com>
+In-Reply-To: <4DE5DE71.2090601@panasas.com>
+Date: Wed, 1 Jun 2011 10:39:54 -0400
+Cc: trond@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <9D92A547-5DA1-427E-A0A9-127AD83C3A45@netapp.com>
+References: <1306891804-8070-1-git-send-email-dros@netapp.com> <4DE5DE71.2090601@panasas.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/blocklayout.c |    2 +-
- fs/nfs/blocklayout/blocklayout.h |    2 +-
- fs/nfs/blocklayout/extents.c     |    2 +-
- 3 files changed, 3 insertions(+), 3 deletions(-)
+On Jun 1, 2011, at 2:38 AM, Boaz Harrosh wrote:
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 1865392..39f3896 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -645,7 +645,7 @@ bl_setup_layoutcommit(struct pnfs_layout_hdr *lo,
- 
- static void
- bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
--		       const struct nfs4_layoutcommit_args *arg)
-+		       const struct nfs4_layoutcommit_op_args *arg)
- {
- 	dprintk("%s enter\n", __func__);
- 	encode_pnfs_block_layoutupdate(BLK_LO2EXT(lo), xdr, arg);
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 4266ae7..058c198 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -276,7 +276,7 @@ struct pnfs_block_extent *get_extent(struct pnfs_block_extent *be);
- int is_sector_initialized(struct pnfs_inval_markings *marks, sector_t isect);
- int encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
- 				   struct xdr_stream *xdr,
--				   const struct nfs4_layoutcommit_args *arg);
-+				   const struct nfs4_layoutcommit_op_args *arg);
- void clean_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
- 				   const struct nfs4_layoutcommit_op_args *arg,
- 				   int status);
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 0ff65f3..cd32935 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -738,7 +738,7 @@ find_get_extent_locked(struct pnfs_block_layout *bl, sector_t isect)
- int
- encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
- 			       struct xdr_stream *xdr,
--			       const struct nfs4_layoutcommit_args *arg)
-+			       const struct nfs4_layoutcommit_op_args *arg)
- {
- 	sector_t start, end;
- 	struct pnfs_block_short_extent *lce, *save;
--- 
-1.7.4.1
+> On 06/01/2011 04:30 AM, Weston Andros Adamson wrote:
+>> Unmounting a pnfs filesystem hangs using filelayout and possibly others.
+>> This fixes the use of the rcu protected node by making use of a new 'tmpnode'
+>> for the temporary purge list. Also, the spinlock shouldn't be held when calling
+>> synchronize_rcu().
+>> 
+> 
+> I like the new code, but I have two questions:
+> 
+> * Why didn't I see this hang? (Maybe because I run uni-processor)
+> * How do you have this problem. Usually with the regular usage of device-cache
+>  all deviceids get released when layouts go away. So by the time client_purge comes
+>  in there are no more devices in the cache. At objects-ld I take an extra ref at
+>  first add_dev which is then get released in client_purge?
+> 
+> Thanks
+> Boaz
 
+Yeah, I saw the hangs on a vmware guest with two processors.
+
+I believe it looked like this (I can revert and test again if you want the full traces):
+
+1) Umount process calls client_purge, calls synchronize_rcu while holding lock
+2) another process notices that it should call client_purge, spins trying acquire lock
+
+With the file layout, there are definitely devices in the cache when umount is called.
+Note, I could only reproduce this by: mounting remote fs, write one byte to a file on remote fs, umount.
+If I get rid of the "write one byte" step, there is no hang.
+
+-dros
