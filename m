@@ -1,57 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27687 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:11986 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751005Ab1FURJk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Jun 2011 13:09:40 -0400
-Date: Tue, 21 Jun 2011 13:09:35 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Ruediger Meier <sweet_f_a@gmx.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] manpage: add info about IPv6 configuration to
- exports(5) (try #2)
-Message-ID: <20110621130935.0bd6751e@tlielax.poochiereds.net>
-In-Reply-To: <201106211825.08240.sweet_f_a@gmx.de>
-References: <1308665441-16704-1-git-send-email-jlayton@redhat.com>
-	<20110621160057.GC25534@fieldses.org>
-	<20110621120704.3b256de4@tlielax.poochiereds.net>
-	<201106211825.08240.sweet_f_a@gmx.de>
-Content-Type: text/plain; charset=US-ASCII
+	id S1751609Ab1FATRY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 15:17:24 -0400
+Subject: Re: [PATCH] NFS: filelayout should use nfs_generic_pg_test
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Fred Isaman <iisaman@netapp.com>, Weston Andros Adamson <dros@netapp.com>,
+        Boaz Harrosh <bharrosh@panasas.com>, trond@netapp.com,
+        linux-nfs@vger.kernel.org
+Date: Wed, 01 Jun 2011 15:17:07 -0400
+In-Reply-To: <4DE68B59.3030402@panasas.com>
+References: <1306898310-9229-1-git-send-email-dros@netapp.com>
+		<4DE5D287.603@panasas.com>
+		<09816808-BA7B-4EAF-A18A-866B5A98BF25@netapp.com>
+		<4DE65202.2010502@panasas.com>
+	 <BANLkTi=Bwuuar76phVyEguB1Amqn4Q70Fw@mail.gmail.com>
+	 <4DE68B59.3030402@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1306955827.3873.60.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 21 Jun 2011 18:25:07 +0200
-Ruediger Meier <sweet_f_a@gmx.de> wrote:
+On Wed, 2011-06-01 at 21:56 +0300, Benny Halevy wrote:
 
-> On Tuesday 21 June 2011, Jeff Layton wrote:
-> > On Tue, 21 Jun 2011 12:00:57 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > On Tue, Jun 21, 2011 at 10:10:41AM -0400, Jeff Layton wrote:
-> > > >  /srv/www        \-sync,rw server @trusted @external(ro)
-> > > > +/foo            2001:321:9:e54::/64(rw) 192.168.1.0/24(rw)
-> > >
-> > > (Any reason for that particular example address?  Just curious.)
-> > >
-> > > --b.
-> >
-> > Nope -- pulled that out of my nether regions.
-> 
-> To make it perfect you could use address blocks reserved for 
-> documentation. For example
-> 2001:DB8::/32
-> and
-> 192.0.2.0/24
-> 
-> see rfc 3849 and 5737
-> 
-> http://tools.ietf.org/html/rfc3849
-> http://tools.ietf.org/html/rfc5737
-> 
-> cu,
-> Rudi
+> For pnfs, we need to ignore wsize, meaning we first need to try
+> to coalesce the pages and then decide if we're going the nfs_flush_multi
+> or the nfs_flush_one way, based on the coalesced length.
 
-Good idea. I'll change those and respin the patch.
+No! Ignoring the wsize is definitely wrong... If the stripe size is
+larger than the 'maxwrite' recommended attribute, then the DS is allowed
+to do a short write, in which case we have to resend.
 
-Thanks,
+In any case, nfs_flush_multi and nfs_flush_one need a rewrite in order
+to deal properly with O_DIRECT writes, and so I'm expecting to get rid
+of the single nfs_page limit for the r/wsize<PAGE_SIZE case.
+Please don't make any large changes to this code at this time.
+
 -- 
-Jeff Layton <jlayton@redhat.com>
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
