@@ -1,107 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:50593 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758920Ab1FVVhM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 17:37:12 -0400
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH 11/11] nfs: Support srcaddr= to bind to specific IP address.
-Date: Wed, 22 Jun 2011 14:36:51 -0700
-Message-Id: <1308778611-9370-12-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1308778611-9370-1-git-send-email-greearb@candelatech.com>
-References: <1308778611-9370-1-git-send-email-greearb@candelatech.com>
+Received: from daytona.panasas.com ([67.152.220.89]:13924 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751429Ab1FAFsA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 01:48:00 -0400
+Message-ID: <4DE5D287.603@panasas.com>
+Date: Wed, 01 Jun 2011 08:47:51 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Weston Andros Adamson <dros@netapp.com>
+CC: trond@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFS: filelayout should use nfs_generic_pg_test
+References: <1306898310-9229-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1306898310-9229-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
+On 06/01/2011 06:18 AM, Weston Andros Adamson wrote:
+> Use nfs_generic_pg_test instead of pnfs_generic_pg_test.
+> 
+> This fixes the BUG at fs/nfs/write.c:941 introduced by
+> 89a58e32d9105c01022a757fb32ddc3b51bf0025.
+> 
+> I was able to trigger this BUG reliably using pynfs in pnfs mode,
+> by using dd(1) to write many small blocks.
+> 
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> ---
+> Fix proposed by Trond.
+> 
+> Benny- Does this make sense?
+> 
+>  fs/nfs/nfs4filelayout.c  |    2 +-
+>  fs/nfs/pagelist.c        |    5 ++++-
+>  include/linux/nfs_page.h |    3 ++-
+>  3 files changed, 7 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+> index 4269088..1c3bb72 100644
+> --- a/fs/nfs/nfs4filelayout.c
+> +++ b/fs/nfs/nfs4filelayout.c
+> @@ -661,7 +661,7 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+>  	u64 p_stripe, r_stripe;
+>  	u32 stripe_unit;
+>  
+> -	if (!pnfs_generic_pg_test(pgio, prev, req))
+> +	if (!nfs_generic_pg_test(pgio, prev, req))
+>  		return 0;
+>  
 
-In order to have more control on multi-homed machines, it is
-nice to be able to bind to a specific IP address.  This can aid
-with interface selection, policy based routing, multiple unique
-mounts to the same server, and similar things.
+pnfs_generic_pg_test is the one that gets the layout.
 
-This patch allows srcaddr= option for NFS.  The key 'srcaddr'
-was chosen to match the similar patch for cifs.
+What you've done is revert to MDS IO
 
-For NFSv4, if one is specifying clientaddr, it must be the same as
-srcaddr or things may not work properly.
+Boaz
 
-NFSv3, NFSv4 over TCP/IPv4 and TCP/IPv6 has been successfully tested.
-
-Usage:
-  mount -t nfs4 [2002::1]:/rpool/ben /mnt/foo/ben-1 -o srcaddr=2002::2,clientaddr=2002::2
-  mount -t nfs4 192.168.100.3:/foo /mnt/foo/ben-2 -o srcaddr=192.168.100.174
-
-Signed-off-by: Ben Greear <greearb@candelatech.com>
----
-:100644 100644 e45f616... 5d88e7b... M	fs/nfs/super.c
- fs/nfs/super.c |   29 ++++++++++++++++++++++++++++-
- 1 files changed, 28 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index e45f616..5d88e7b 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -103,7 +103,7 @@ enum {
- 
- 	/* Mount options that take string arguments */
- 	Opt_sec, Opt_proto, Opt_mountproto, Opt_mounthost,
--	Opt_addr, Opt_mountaddr, Opt_clientaddr,
-+	Opt_addr, Opt_mountaddr, Opt_clientaddr, Opt_srcaddr,
- 	Opt_lookupcache,
- 	Opt_fscache_uniq,
- 	Opt_local_lock,
-@@ -173,6 +173,7 @@ static const match_table_t nfs_mount_option_tokens = {
- 	{ Opt_mountproto, "mountproto=%s" },
- 	{ Opt_addr, "addr=%s" },
- 	{ Opt_clientaddr, "clientaddr=%s" },
-+	{ Opt_srcaddr, "srcaddr=%s" },
- 	{ Opt_mounthost, "mounthost=%s" },
- 	{ Opt_mountaddr, "mountaddr=%s" },
- 
-@@ -695,6 +696,15 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
- 	else
- 		nfs_show_nfsv4_options(m, nfss, showdefaults);
- 
-+	if (clp->srcaddr.ss_family == AF_INET6) {
-+		struct sockaddr_in6 *sin6;
-+		sin6 = (struct sockaddr_in6 *)(&clp->srcaddr);
-+		seq_printf(m, ",srcaddr=%pI6c", &sin6->sin6_addr);
-+	} else if (clp->srcaddr.ss_family == AF_INET) {
-+		struct sockaddr_in *sin = (struct sockaddr_in *)&clp->srcaddr;
-+		seq_printf(m, ",srcaddr=%pI4", &sin->sin_addr.s_addr);
-+	}
-+
- 	if (nfss->options & NFS_OPTION_FSCACHE)
- 		seq_printf(m, ",fsc");
- 
-@@ -1448,6 +1458,23 @@ static int nfs_parse_mount_options(char *raw,
- 				goto out_nomem;
- 			mnt->options |= NFS_OPTION_FSCACHE;
- 			break;
-+		case Opt_srcaddr:
-+			string = match_strdup(args);
-+			if (string == NULL)
-+				goto out_nomem;
-+			mnt->srcaddr.addrlen =
-+				rpc_pton(string, strlen(string),
-+					 (struct sockaddr *)
-+					 &mnt->srcaddr.address,
-+					 sizeof(mnt->srcaddr.address));
-+			kfree(string);
-+			if (mnt->srcaddr.addrlen == 0) {
-+				printk(KERN_WARNING
-+				       "nfs: Could not parse srcaddr: %s\n",
-+				       string);
-+				goto out_invalid_address;
-+			}
-+			break;
- 		case Opt_local_lock:
- 			string = match_strdup(args);
- 			if (string == NULL)
--- 
-1.7.3.4
+>  	if (!pgio->pg_lseg)
+> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+> index 7913961..1a4b0de 100644
+> --- a/fs/nfs/pagelist.c
+> +++ b/fs/nfs/pagelist.c
+> @@ -204,7 +204,9 @@ nfs_wait_on_request(struct nfs_page *req)
+>  			TASK_UNINTERRUPTIBLE);
+>  }
+>  
+> -static bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc, struct nfs_page *prev, struct nfs_page *req)
+> +bool
+> +nfs_generic_pg_test(struct nfs_pageio_descriptor *desc, struct nfs_page *prev,
+> +		    struct nfs_page *req)
+>  {
+>  	/*
+>  	 * FIXME: ideally we should be able to coalesce all requests
+> @@ -218,6 +220,7 @@ static bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc, struct nfs_p
+>  
+>  	return desc->pg_count + req->wb_bytes <= desc->pg_bsize;
+>  }
+> +EXPORT_SYMBOL_GPL(nfs_generic_pg_test);
+>  
+>  /**
+>   * nfs_pageio_init - initialise a page io descriptor
+> diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+> index 3a34e80..7d8a779 100644
+> --- a/include/linux/nfs_page.h
+> +++ b/include/linux/nfs_page.h
+> @@ -96,7 +96,8 @@ extern  int nfs_wait_on_request(struct nfs_page *);
+>  extern	void nfs_unlock_request(struct nfs_page *req);
+>  extern	int nfs_set_page_tag_locked(struct nfs_page *req);
+>  extern  void nfs_clear_page_tag_locked(struct nfs_page *req);
+> -
+> +extern  bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
+> +				 struct nfs_page *prev, struct nfs_page *req);
+>  
+>  /*
+>   * Lock the page of an asynchronous request without getting a new reference
 
