@@ -1,51 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:16339 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751766Ab1FANhJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Jun 2011 09:37:09 -0400
-Received: from [10.30.3.27] ([10.30.3.27])
-	(authenticated bits=0)
-	by relay.sw.ru (8.13.4/8.13.4) with ESMTP id p51DctJS022684
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Wed, 1 Jun 2011 17:38:56 +0400 (MSD)
-Message-ID: <4DE64082.4070604@parallels.com>
-Date: Wed, 01 Jun 2011 17:37:06 +0400
-From: Vasily Averin <vvs@parallels.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] sunrpc: use dprint_status() macro in call_decode()
-Content-Type: multipart/mixed;
- boundary="------------060807050304080006090503"
+Received: from daytona.panasas.com ([67.152.220.89]:21281 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758768Ab1FAMAO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 08:00:14 -0400
+Message-ID: <4DE629CB.1040806@panasas.com>
+Date: Wed, 01 Jun 2011 15:00:11 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Weston Andros Adamson <dros@netapp.com>
+CC: trond@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFS: fix umount of pnfs filesystems
+References: <1306892810-8416-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1306892810-8416-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---------------060807050304080006090503
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+On 2011-06-01 04:46, Weston Andros Adamson wrote:
+> Unmounting a pnfs filesystem hangs using filelayout and possibly others.
+> This fixes the use of the rcu protected node by making use of a new 'tmpnode'
+> for the temporary purge list. Also, the spinlock shouldn't be held when calling
+> synchronize_rcu().
+> 
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 
+ACK.
+Looks good to me, thanks!
 
---------------060807050304080006090503
-Content-Type: text/plain;
- name="diff-sunrpc-debug-20110601-1"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="diff-sunrpc-debug-20110601-1"
+Benny
 
-RnJvbSA5ZWNlNzBlOTk2NDA5ZTkxMzcxMjc1MzE5YjNiZjY3M2UyNTkxNmUyIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBWYXNpbHkgQXZlcmluIDx2dnNAc3cucnU+CkRhdGU6IFdlZCwg
-MSBKdW4gMjAxMSAxNjoyMzo1OSArMDQwMApTdWJqZWN0OiBbUEFUQ0ggMS8yXSBzdW5ycGM6IHVz
-ZSBkcHJpbnRfc3RhdHVzKCkgbWFjcm8gaW4gY2FsbF9kZWNvZGUoKQoKY29tbW9uIGRwcmludF9z
-dGF0dXMoKSBtYWNybyBpcyB1c2VkIGluIGFsbCBjYWxsYmFja3MgYnV0IG5vdCBpbiBjYWxsX2Rl
-Y29kZSgpCgpTaWduZWQtb2ZmLWJ5OiBWYXNpbHkgQXZlcmluIDx2dnNAc3cucnU+Ci0tLQogbmV0
-L3N1bnJwYy9jbG50LmMgfCAgICAzICstLQogMSBmaWxlcyBjaGFuZ2VkLCAxIGluc2VydGlvbnMo
-KyksIDIgZGVsZXRpb25zKC0pCgpkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9jbG50LmMgYi9uZXQv
-c3VucnBjL2NsbnQuYwppbmRleCBiODRkNzM5Li5hYjU1MzY5IDEwMDY0NAotLS0gYS9uZXQvc3Vu
-cnBjL2NsbnQuYworKysgYi9uZXQvc3VucnBjL2NsbnQuYwpAQCAtMTU0OCw4ICsxNTQ4LDcgQEAg
-Y2FsbF9kZWNvZGUoc3RydWN0IHJwY190YXNrICp0YXNrKQogCWt4ZHJkcHJvY190CWRlY29kZSA9
-IHRhc2stPnRrX21zZy5ycGNfcHJvYy0+cF9kZWNvZGU7CiAJX19iZTMyCQkqcDsKIAotCWRwcmlu
-dGsoIlJQQzogJTV1IGNhbGxfZGVjb2RlIChzdGF0dXMgJWQpXG4iLAotCQkJdGFzay0+dGtfcGlk
-LCB0YXNrLT50a19zdGF0dXMpOworCWRwcmludF9zdGF0dXModGFzayk7CiAKIAlpZiAodGFzay0+
-dGtfZmxhZ3MgJiBSUENfQ0FMTF9NQUpPUlNFRU4pIHsKIAkJaWYgKGNsbnQtPmNsX2NoYXR0eSkK
-LS0gCjEuNy40LjEKCg==
+> ---
+> Fix proposed by Trond.  Reposted without 'unused variable' warning.
+> 
+>  fs/nfs/pnfs.h     |    1 +
+>  fs/nfs/pnfs_dev.c |   13 ++++++++-----
+>  2 files changed, 9 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index 48d0a8e..96bf4e6 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -186,6 +186,7 @@ int pnfs_ld_read_done(struct nfs_read_data *);
+>  /* pnfs_dev.c */
+>  struct nfs4_deviceid_node {
+>  	struct hlist_node		node;
+> +	struct hlist_node		tmpnode;
+>  	const struct pnfs_layoutdriver_type *ld;
+>  	const struct nfs_client		*nfs_client;
+>  	struct nfs4_deviceid		deviceid;
+> diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+> index c65e133..503186e 100644
+> --- a/fs/nfs/pnfs_dev.c
+> +++ b/fs/nfs/pnfs_dev.c
+> @@ -174,6 +174,7 @@ nfs4_init_deviceid_node(struct nfs4_deviceid_node *d,
+>  			const struct nfs4_deviceid *id)
+>  {
+>  	INIT_HLIST_NODE(&d->node);
+> +	INIT_HLIST_NODE(&d->tmpnode);
+>  	d->ld = ld;
+>  	d->nfs_client = nfs_client;
+>  	d->deviceid = *id;
+> @@ -238,24 +239,28 @@ static void
+>  _deviceid_purge_client(const struct nfs_client *clp, long hash)
+>  {
+>  	struct nfs4_deviceid_node *d;
+> -	struct hlist_node *n, *next;
+> +	struct hlist_node *n;
+>  	HLIST_HEAD(tmp);
+>  
+> +	spin_lock(&nfs4_deviceid_lock);
+>  	rcu_read_lock();
+>  	hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[hash], node)
+>  		if (d->nfs_client == clp && atomic_read(&d->ref)) {
+>  			hlist_del_init_rcu(&d->node);
+> -			hlist_add_head(&d->node, &tmp);
+> +			hlist_add_head(&d->tmpnode, &tmp);
+>  		}
+>  	rcu_read_unlock();
+> +	spin_unlock(&nfs4_deviceid_lock);
+>  
+>  	if (hlist_empty(&tmp))
+>  		return;
+>  
+>  	synchronize_rcu();
+> -	hlist_for_each_entry_safe(d, n, next, &tmp, node)
+> +	while (!hlist_empty(&tmp)) {
+>  		if (atomic_dec_and_test(&d->ref))
+>  			d->ld->free_deviceid_node(d);
+> +		hlist_del_init(&d->tmpnode);
+> +	}
+>  }
+>  
+>  void
+> @@ -263,8 +268,6 @@ nfs4_deviceid_purge_client(const struct nfs_client *clp)
+>  {
+>  	long h;
+>  
+> -	spin_lock(&nfs4_deviceid_lock);
+>  	for (h = 0; h < NFS4_DEVICE_ID_HASH_SIZE; h++)
+>  		_deviceid_purge_client(clp, h);
+> -	spin_unlock(&nfs4_deviceid_lock);
+>  }
 
---------------060807050304080006090503--
