@@ -1,116 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-out-1.desy.de ([131.169.56.84]:44957 "EHLO
-	smtp-out-1.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751200Ab1FUIR2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jun 2011 04:17:28 -0400
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-out-1.desy.de (DESY_OUT_1) with ESMTP id 51F6C1824
-	for <linux-nfs@vger.kernel.org>; Tue, 21 Jun 2011 10:17:27 +0200 (MEST)
-Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 49FC413EDF
-	for <linux-nfs@vger.kernel.org>; Tue, 21 Jun 2011 10:17:23 +0200 (MEST)
-Received: from smtp-intra-1.desy.de (lb-40-26.desy.de) by ZITSWEEP2.win.desy.de
- (Clearswift SMTPRS 5.4.1) with ESMTP id <T9dbe1d17f783a96160ae8@ZITSWEEP2.win.desy.de> for <linux-nfs@vger.kernel.org>;
- Tue, 21 Jun 2011 10:17:23 +0200
-Received: from [131.169.185.68] (anahit.desy.de [131.169.185.68])
-	by smtp-intra-1.desy.de (DESY-INTRA-1) with ESMTP id 0DFB53E901
-	for <linux-nfs@vger.kernel.org>; Tue, 21 Jun 2011 10:17:23 +0200 (MEST)
-Message-ID: <4E005383.6030206@desy.de>
-Date: Tue, 21 Jun 2011 10:17:07 +0200
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: missing verifier in rpcsec_gss calls
-Content-Type: multipart/mixed;
- boundary="------------060704010107010107000107"
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:34139 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752855Ab1FATNR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 15:13:17 -0400
+Received: by wya21 with SMTP id 21so89016wya.19
+        for <linux-nfs@vger.kernel.org>; Wed, 01 Jun 2011 12:13:15 -0700 (PDT)
+Message-ID: <4DE68F47.5080802@panasas.com>
+Date: Wed, 01 Jun 2011 22:13:11 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Weston Andros Adamson <dros@netapp.com>,
+        Boaz Harrosh <bharrosh@panasas.com>, trond@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFS: filelayout should use nfs_generic_pg_test
+References: <1306898310-9229-1-git-send-email-dros@netapp.com>	 <4DE5D287.603@panasas.com>	 <09816808-BA7B-4EAF-A18A-866B5A98BF25@netapp.com>	 <4DE65202.2010502@panasas.com> <1306951621.3873.45.camel@lade.trondhjem.org>
+In-Reply-To: <1306951621.3873.45.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---------------060704010107010107000107
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+On 2011-06-01 21:07, Trond Myklebust wrote:
+> On Wed, 2011-06-01 at 17:51 +0300, Benny Halevy wrote: 
+>> I think the following should work:
+>>
+>> Benny
+>>
+>> git diff --stat -p -M
+>>  fs/nfs/nfs4filelayout.c |   10 ++++++++++
+>>  1 files changed, 10 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+>> index 4269088..9f1d445 100644
+>> --- a/fs/nfs/nfs4filelayout.c
+>> +++ b/fs/nfs/nfs4filelayout.c
+>> @@ -661,6 +661,16 @@ filelayout_pg_test(struct nfs_pageio_descriptor
+>> *pgio, struct nfs_page *prev,
+>>  	u64 p_stripe, r_stripe;
+>>  	u32 stripe_unit;
+>>
+>> +	/*
+>> +	 * FIXME: ideally we should be able to coalesce all requests
+>> +	 * that are not block boundary aligned, but currently this
+>> +	 * is problematic for the case of bsize < PAGE_CACHE_SIZE,
+>> +	 * since nfs_flush_multi and nfs_pagein_multi assume you
+>> +	 * can have only one struct nfs_page.
+>> +	 */
+>> +	if (desc->pg_bsize < PAGE_SIZE)
+>> +		return 0;
+>> +
+>>  	if (!pnfs_generic_pg_test(pgio, prev, req))
+>>  		return 0;
+> 
+> So, there are several things that bother me about pnfs_generic_pg_test()
+> too now that I'm looking more closely at it:
+> 
+>      1. If the intention is to coalesce 'prev' and 'req', shouldn't we
+>         be asking for a layout with req_offset(prev) instead of
+>         req_offset(req)? 
+>      2. If we're only requesting a layout of length pg_count, don't we
+>         still need to test the layout length that the server actually
+>         returned before we can allow the coalescing? 
+>      3. if (!pgio->lseg), shouldn't we be returning an error of some
+>         sort? Right now we're returning 'true', and allowing the
+>         coalesce to occur. 
+>      4. Furthermore, shouldn't that test guarding the
+>         pnfs_update_layout() call rather be an 'if (pgio->pg_lseg ==
+>         NULL)' instead of looking at the values of pg_count and
+>         prev->wb_bytes?
+> 
 
-this is what I am observing with v4.0 and v4.1.
-sometimes, mostly on RPCSEC_GSS_DESTROY,
-in the PC calls missing verifier. This is against my
-server and linux server.
+or rather we get the layout for the first page in
+nfs_pageio_do_add_request when desc->pg_count == 0?
 
-Packets attached. Please have a look at the packet 15.
-100% reproducible.
+Then, this lseg would be useful for nfs_flush_multi
+if we failed to coalesce, or we failed to get a layout
+altogether we go the nfs path and can reset pg_test to
+nfs_generic_pg_test.
 
+Otherwise I agree with your assertions above.
 
-I tried vanilla 2.6.39 and 3.0.0-rc3 from
-git://linux-nfs.org/~trondmy/nfs-2.6.git
-    9cff1ffd4d477f541d5644f0ec25ee40025fa806 origin/linux-next
-
-Regards,
-    Tigran.
-
---------------060704010107010107000107
-Content-Type: application/octet-stream;
- name="mount-krb5i.dump"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="mount-krb5i.dump"
-
-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
-jOUA2Yzl
-
---------------060704010107010107000107--
+Benny
