@@ -1,114 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46715 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:12336 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753809Ab1FDSUN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 4 Jun 2011 14:20:13 -0400
-Date: Sat, 4 Jun 2011 14:20:11 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: James Pearson <james-p@moving-picture.com>
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: Re: How to control the order of different export options for
- different client formats?
-Message-ID: <20110604182011.GB23099@fieldses.org>
-References: <4DD2A084.1040905@moving-picture.com>
- <20110518080106.1159c5b8@notabene.brown>
- <4DD39D39.7010805@moving-picture.com>
- <20110518162050.GB16835@fieldses.org>
- <4DD66EC6.7090706@moving-picture.com>
- <20110520164147.GA11176@fieldses.org>
- <4DE79236.1080808@moving-picture.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4DE79236.1080808@moving-picture.com>
+	id S1759549Ab1FATwX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 15:52:23 -0400
+Subject: Re: [PATCH] NFS: filelayout should use nfs_generic_pg_test
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Benny Halevy <bhalevy@panasas.com>, Fred Isaman <iisaman@netapp.com>,
+        Weston Andros Adamson <dros@netapp.com>, trond@netapp.com,
+        linux-nfs@vger.kernel.org
+Date: Wed, 01 Jun 2011 15:52:06 -0400
+In-Reply-To: <4DE697C4.7020309@panasas.com>
+References: <1306898310-9229-1-git-send-email-dros@netapp.com>
+				<4DE5D287.603@panasas.com>
+				<09816808-BA7B-4EAF-A18A-866B5A98BF25@netapp.com>
+				<4DE65202.2010502@panasas.com>
+			 <BANLkTi=Bwuuar76phVyEguB1Amqn4Q70Fw@mail.gmail.com>
+			 <4DE68B59.3030402@panasas.com>
+		 <1306955827.3873.60.camel@lade.trondhjem.org>
+		 <4DE69333.4020302@panasas.com>
+	 <1306957138.3873.75.camel@lade.trondhjem.org>
+	 <4DE697C4.7020309@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1306957926.3873.77.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Jun 02, 2011 at 02:37:58PM +0100, James Pearson wrote:
-> J. Bruce Fields wrote:
-> >
-> >But could we just combine this with the previous section--and make sure
-> >the different possibilities are listed there in the correct priority
-> >order to start off with.
-> >
-> >That'd also mean adding a new subsection for the "anonymous" case.
+On Wed, 2011-06-01 at 22:49 +0300, Boaz Harrosh wrote: 
+> On 06/01/2011 10:38 PM, Trond Myklebust wrote:
+> > 
+> > There is no distinction between the MDS's idea of the wsize and the DS's
+> > idea of the wsize. The DS has to support the same wsize as the MDS,
+> > since the client has no way of querying the wsize from the DS (GETATTR
+> > maxwrite is not on the allowed set of DS operations)...
+> > 
 > 
-> OK - how about the attached patch?
-
-Looks good to me, thanks.
-
-My one quibble is with the statement that "single host" "is the most
-common format".  (I don't think we know that.)
-
-Fix that, and just resend with a brief changelog comment and a
-
-	Signed-off-by: James Pearson <etc...>
-
-and steved should get around to applying it eventually....
-
---b.
-
+> OK I did not know that. Good god how broken is that?
 > 
-> James Pearson
+> Any way you are probably right. But then the check properly belongs in
+> files-layout driver. Surly it has nothing to do with objects, and blocks
 
-> --- exports.man.dist	2010-09-28 13:24:16.000000000 +0100
-> +++ exports.man	2011-06-02 14:19:26.434486000 +0100
-> @@ -48,19 +48,6 @@
->  This is the most common format. You may specify a host either by an
->  abbreviated name recognized be the resolver, the fully qualified domain
->  name, or an IP address.
-> -.IP "netgroups
-> -NIS netgroups may be given as
-> -.IR @group .
-> -Only the host part of each
-> -netgroup members is consider in checking for membership.  Empty host
-> -parts or those containing a single dash (\-) are ignored.
-> -.IP "wildcards
-> -Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
-> -This can be used to make the \fIexports\fR file more compact; for instance,
-> -\fI*.cs.foo.edu\fR matches all hosts in the domain
-> -\fIcs.foo.edu\fR.  As these characters also match the dots in a domain
-> -name, the given pattern will also match all hosts within any subdomain
-> -of \fIcs.foo.edu\fR.
->  .IP "IP networks
->  You can also export directories to all hosts on an IP (sub-) network
->  simultaneously. This is done by specifying an IP address and netmask pair
-> @@ -72,6 +59,25 @@
->  to the network base IPv4 address results in identical subnetworks with 10 bits of
->  host. Wildcard characters generally do not work on IP addresses, though they
->  may work by accident when reverse DNS lookups fail.
-> +.IP "wildcards
-> +Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
-> +This can be used to make the \fIexports\fR file more compact; for instance,
-> +\fI*.cs.foo.edu\fR matches all hosts in the domain
-> +\fIcs.foo.edu\fR.  As these characters also match the dots in a domain
-> +name, the given pattern will also match all hosts within any subdomain
-> +of \fIcs.foo.edu\fR.
-> +.IP "netgroups
-> +NIS netgroups may be given as
-> +.IR @group .
-> +Only the host part of each
-> +netgroup members is consider in checking for membership.  Empty host
-> +parts or those containing a single dash (\-) are ignored.
-> +.IP "anonymous
-> +This is specified by a single
-> +.I *
-> +character (not to be confused with the
-> +.I wildcard
-> +entry above) and will match all clients.
->  '''.TP
->  '''.B =public
->  '''This is a special ``hostname'' that identifies the given directory name
-> @@ -92,6 +98,12 @@
->  '''.B \-\-public\-root
->  '''option. Multiple specifications of a public root will be ignored.
->  .PP
-> +If a client matches more than one of the specifications above, then
-> +the first match from the above list order takes precedence - regardless of
-> +the order they appear on the export line. However, if a client matches
-> +more than one of the same type of specification (e.g. two netgroups),
-> +then the first match from the order they appear on the export line takes
-> +precedence.
->  .SS RPCSEC_GSS security
->  You may use the special strings "gss/krb5", "gss/krb5i", or "gss/krb5p"
->  to restrict access to clients using rpcsec_gss security.  However, this
+It belongs in the 'files' layout and in the generic (i.e. v2/v3/v4)
+code.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
