@@ -1,63 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:50967 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932116Ab1FGRbN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:31:13 -0400
-Date: Tue, 7 Jun 2011 13:31:12 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 44/88] SQUASHME: pnfsblock: Wrong extent refcount in block
- extents list
-Message-ID: <41a3a9eeeac246e94bfcc17f3464e10b01a19866.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:48073 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752942Ab1FAS6R (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 14:58:17 -0400
+Received: by bwz15 with SMTP id 15so307379bwz.19
+        for <linux-nfs@vger.kernel.org>; Wed, 01 Jun 2011 11:58:16 -0700 (PDT)
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] mountd: Fix missing varialble assignment in auth_unix_gid
+Date: Wed,  1 Jun 2011 22:57:21 +0400
+Message-Id: <1306954641-2560-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+When we get into auth_unix_gid at the second time, groups_len
+is not 0 and ngroups variable leave as 0. Then we use ngroups
+in getgrouplist that fails in this case. This patch fixes it.
 
-_prep_new_extent called kref_init to initialize extent's refcount to 1.
-After that, we shouldn't call kref_get to increase its refcount, because
-this extent is only referenced by the list.
-
-Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
-Acked-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
 ---
- fs/nfs/blocklayout/extents.c |    3 ---
- 1 files changed, 0 insertions(+), 3 deletions(-)
+ utils/mountd/cache.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 288a38a..4722899 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -868,7 +868,6 @@ set_to_rw(struct pnfs_block_layout *bl, u64 offset, u64 length)
- 				 offset - be->be_f_offset,
- 				 PNFS_BLOCK_INVALID_DATA);
- 		children[i++] = e1;
--		kref_get(&e1->be_refcnt);
- 		print_bl_extent(e1);
- 	} else
- 		merge1 = e1;
-@@ -876,7 +875,6 @@ set_to_rw(struct pnfs_block_layout *bl, u64 offset, u64 length)
- 			 min(length, be->be_f_offset + be->be_length - offset),
- 			 PNFS_BLOCK_READWRITE_DATA);
- 	children[i++] = e2;
--	kref_get(&e2->be_refcnt);
- 	print_bl_extent(e2);
- 	if (offset + length < be->be_f_offset + be->be_length) {
- 		_prep_new_extent(e3, be, e2->be_f_offset + e2->be_length,
-@@ -884,7 +882,6 @@ set_to_rw(struct pnfs_block_layout *bl, u64 offset, u64 length)
- 				 offset - length,
- 				 PNFS_BLOCK_INVALID_DATA);
- 		children[i++] = e3;
--		kref_get(&e3->be_refcnt);
- 		print_bl_extent(e3);
- 	} else
- 		merge2 = e3;
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index df6b38f..dbe20e9 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -138,7 +138,7 @@ static void auth_unix_gid(FILE *f)
+ 	static gid_t *groups = NULL;
+ 	static int groups_len = 0;
+ 	gid_t *more_groups;
+-	int ngroups = 0;
++	int ngroups;
+ 	int rv, i;
+ 	char *cp;
+ 
+@@ -147,9 +147,11 @@ static void auth_unix_gid(FILE *f)
+ 		if (!groups)
+ 			return;
+ 
+-		groups_len = ngroups = INITIAL_MANAGED_GROUPS;
++		groups_len = INITIAL_MANAGED_GROUPS;
+ 	}
+ 
++	ngroups = groups_len;
++
+ 	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
+ 		return;
+ 
 -- 
-1.7.4.1
+1.7.4.5
 
