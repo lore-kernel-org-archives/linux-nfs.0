@@ -1,67 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:41583 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758193Ab1FJWuP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 18:50:15 -0400
-Message-ID: <4DF29FA4.1090706@candelatech.com>
-Date: Fri, 10 Jun 2011 15:50:12 -0700
-From: Ben Greear <greearb@candelatech.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 3/6] nfs-utils:  Implement srcaddr binding in rpc_socket
-References: <1307740096-19933-1-git-send-email-greearb@candelatech.com> <1307740096-19933-4-git-send-email-greearb@candelatech.com> <A2323BA3-3082-4416-A4C4-062726F15D6F@oracle.com> <4DF2985E.9010300@candelatech.com> <FFBB00C7-4264-4EBD-A097-95979ABA1978@oracle.com>
-In-Reply-To: <FFBB00C7-4264-4EBD-A097-95979ABA1978@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:55426 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752823Ab1FASHG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 14:07:06 -0400
+Subject: Re: [PATCH] NFS: filelayout should use nfs_generic_pg_test
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Weston Andros Adamson <dros@netapp.com>,
+        Boaz Harrosh <bharrosh@panasas.com>, trond@netapp.com,
+        linux-nfs@vger.kernel.org
+Date: Wed, 01 Jun 2011 14:07:01 -0400
+In-Reply-To: <4DE65202.2010502@panasas.com>
+References: <1306898310-9229-1-git-send-email-dros@netapp.com>
+	 <4DE5D287.603@panasas.com>
+	 <09816808-BA7B-4EAF-A18A-866B5A98BF25@netapp.com>
+	 <4DE65202.2010502@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1306951621.3873.45.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 06/10/2011 03:37 PM, Chuck Lever wrote:
->
-> On Jun 10, 2011, at 6:19 PM, Ben Greear wrote:
->
->> On 06/10/2011 03:06 PM, Chuck Lever wrote:
->>>
->>> On Jun 10, 2011, at 5:08 PM, greearb@candelatech.com wrote:
->>>
->>>> From: Ben Greear<greearb@candelatech.com>
->>>>
->>>> This implements the actual binding, if we are passed
->>>> a non-null local_ip structure.
->>>
->>> Why not _always_ pass a valid local_ip structure, and simply set .addr to an appropriate ANYADDR by default?  Then .is_set wouldn't be necessary, would it?  It would also simplify the logic in nfs_validate_options().
->>
->> I like it as is because almost none of the new code is actually
->> used unless users pass in the srcaddr= option.  So, if I *did*
->> introduce any bugs, hopefully they would be limited to users
->> of the new option, and not a real regression.
->
-> It should be pretty obvious if something here breaks.
->
->> Maybe after the srcaddr= code is used a bit I could go back and
->> do that cleanup.
->>
->> But, I don't feel strongly about it, so if you think it's
->> worth the bother, I'll try changing the code as you suggest.
->
-> In the long-term, if my suggestion works out, this code would be simpler, and to me that's better than the risk of a little short-term instability.
+On Wed, 2011-06-01 at 17:51 +0300, Benny Halevy wrote: 
+> I think the following should work:
+> 
+> Benny
+> 
+> git diff --stat -p -M
+>  fs/nfs/nfs4filelayout.c |   10 ++++++++++
+>  1 files changed, 10 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+> index 4269088..9f1d445 100644
+> --- a/fs/nfs/nfs4filelayout.c
+> +++ b/fs/nfs/nfs4filelayout.c
+> @@ -661,6 +661,16 @@ filelayout_pg_test(struct nfs_pageio_descriptor
+> *pgio, struct nfs_page *prev,
+>  	u64 p_stripe, r_stripe;
+>  	u32 stripe_unit;
+> 
+> +	/*
+> +	 * FIXME: ideally we should be able to coalesce all requests
+> +	 * that are not block boundary aligned, but currently this
+> +	 * is problematic for the case of bsize < PAGE_CACHE_SIZE,
+> +	 * since nfs_flush_multi and nfs_pagein_multi assume you
+> +	 * can have only one struct nfs_page.
+> +	 */
+> +	if (desc->pg_bsize < PAGE_SIZE)
+> +		return 0;
+> +
+>  	if (!pnfs_generic_pg_test(pgio, prev, req))
+>  		return 0;
 
-Do you mean always make sure it is not NULL as well?
+So, there are several things that bother me about pnfs_generic_pg_test()
+too now that I'm looking more closely at it:
 
-That would complicate code everywhere I currently pass NULL in for local_ip
-(like in methods that don't care about binding, non stropts logic, etc).
-I think that would cause more harm than good.
-
-I could add return value to the parse method instead of relying on
-is_set (and just pass in NULL instead of &local_ip if we didn't have the srcaddr=
-option) if you think that is cleaner, but I don't think it will simplify things very
-much...
-
-Thanks,
-Ben
-
+     1. If the intention is to coalesce 'prev' and 'req', shouldn't we
+        be asking for a layout with req_offset(prev) instead of
+        req_offset(req)? 
+     2. If we're only requesting a layout of length pg_count, don't we
+        still need to test the layout length that the server actually
+        returned before we can allow the coalescing? 
+     3. if (!pgio->lseg), shouldn't we be returning an error of some
+        sort? Right now we're returning 'true', and allowing the
+        coalesce to occur. 
+     4. Furthermore, shouldn't that test guarding the
+        pnfs_update_layout() call rather be an 'if (pgio->pg_lseg ==
+        NULL)' instead of looking at the values of pg_count and
+        prev->wb_bytes?
 
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
