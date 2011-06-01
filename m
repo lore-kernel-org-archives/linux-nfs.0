@@ -1,47 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:37027 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754222Ab1FJWTN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 18:19:13 -0400
-Message-ID: <4DF2985E.9010300@candelatech.com>
-Date: Fri, 10 Jun 2011 15:19:10 -0700
-From: Ben Greear <greearb@candelatech.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 3/6] nfs-utils:  Implement srcaddr binding in rpc_socket
-References: <1307740096-19933-1-git-send-email-greearb@candelatech.com> <1307740096-19933-4-git-send-email-greearb@candelatech.com> <A2323BA3-3082-4416-A4C4-062726F15D6F@oracle.com>
-In-Reply-To: <A2323BA3-3082-4416-A4C4-062726F15D6F@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:14539 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755849Ab1FAOoO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 10:44:14 -0400
+Subject: Re: [PATCH] NFS: filelayout should use nfs_generic_pg_test
+Content-Type: text/plain; charset=us-ascii
+From: Weston Andros Adamson <dros@netapp.com>
+In-Reply-To: <4DE5D287.603@panasas.com>
+Date: Wed, 1 Jun 2011 10:44:14 -0400
+Cc: trond@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <09816808-BA7B-4EAF-A18A-866B5A98BF25@netapp.com>
+References: <1306898310-9229-1-git-send-email-dros@netapp.com> <4DE5D287.603@panasas.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 06/10/2011 03:06 PM, Chuck Lever wrote:
->
-> On Jun 10, 2011, at 5:08 PM, greearb@candelatech.com wrote:
->
->> From: Ben Greear<greearb@candelatech.com>
->>
->> This implements the actual binding, if we are passed
->> a non-null local_ip structure.
->
-> Why not _always_ pass a valid local_ip structure, and simply set .addr to an appropriate ANYADDR by default?  Then .is_set wouldn't be necessary, would it?  It would also simplify the logic in nfs_validate_options().
 
-I like it as is because almost none of the new code is actually
-used unless users pass in the srcaddr= option.  So, if I *did*
-introduce any bugs, hopefully they would be limited to users
-of the new option, and not a real regression.
+On Jun 1, 2011, at 1:47 AM, Boaz Harrosh wrote:
 
-Maybe after the srcaddr= code is used a bit I could go back and
-do that cleanup.
+> On 06/01/2011 06:18 AM, Weston Andros Adamson wrote:
+>> Use nfs_generic_pg_test instead of pnfs_generic_pg_test.
+>> 
+>> This fixes the BUG at fs/nfs/write.c:941 introduced by
+>> 89a58e32d9105c01022a757fb32ddc3b51bf0025.
+>> 
+>> I was able to trigger this BUG reliably using pynfs in pnfs mode,
+>> by using dd(1) to write many small blocks.
+>> 
+>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>> ---
+>> Fix proposed by Trond.
+>> 
+>> Benny- Does this make sense?
+>> 
+>> fs/nfs/nfs4filelayout.c  |    2 +-
+>> fs/nfs/pagelist.c        |    5 ++++-
+>> include/linux/nfs_page.h |    3 ++-
+>> 3 files changed, 7 insertions(+), 3 deletions(-)
+>> 
+>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+>> index 4269088..1c3bb72 100644
+>> --- a/fs/nfs/nfs4filelayout.c
+>> +++ b/fs/nfs/nfs4filelayout.c
+>> @@ -661,7 +661,7 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+>> 	u64 p_stripe, r_stripe;
+>> 	u32 stripe_unit;
+>> 
+>> -	if (!pnfs_generic_pg_test(pgio, prev, req))
+>> +	if (!nfs_generic_pg_test(pgio, prev, req))
+>> 		return 0;
+>> 
+> 
+> pnfs_generic_pg_test is the one that gets the layout.
+> 
+> What you've done is revert to MDS IO
+> 
+> Boaz
 
-But, I don't feel strongly about it, so if you think it's
-worth the bother, I'll try changing the code as you suggest.
+Ah, you're right - I didn't even notice that!  I usually confirm client -> DS communication with tcpdump.  I was working for too long yesterday :)
 
-Thanks,
-Ben
+Patch: recalled.  Discussion about a real fix: started.
 
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+-dros
 
