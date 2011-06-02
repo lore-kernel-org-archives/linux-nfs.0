@@ -1,98 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:45687 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754707Ab1FLXpA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2011 19:45:00 -0400
-Message-Id: <5242eddc4e010fb8a1dadd050ff6ec0ab6f3dd27.1307921138.git.rees@umich.edu>
-In-Reply-To: <cover.1307921137.git.rees@umich.edu>
-References: <cover.1307921137.git.rees@umich.edu>
-Date: Sun, 12 Jun 2011 19:44:58 -0400
-Subject: [PATCH 28/34] pnfsblock: write_end_cleanup
-From: Jim Rees <rees@umich.edu>
-To: linux-nfs@vger.kernel.org
-Cc: peter honeyman <honey@citi.umich.edu>
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251]:48631 "EHLO
+	moving-picture.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755555Ab1FBNiA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Jun 2011 09:38:00 -0400
+Message-ID: <4DE79236.1080808@moving-picture.com>
+Date: Thu, 02 Jun 2011 14:37:58 +0100
+From: James Pearson <james-p@moving-picture.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: How to control the order of different export options for different
+ client formats?
+References: <4DD2A084.1040905@moving-picture.com> <20110518080106.1159c5b8@notabene.brown> <4DD39D39.7010805@moving-picture.com> <20110518162050.GB16835@fieldses.org> <4DD66EC6.7090706@moving-picture.com> <20110520164147.GA11176@fieldses.org>
+In-Reply-To: <20110520164147.GA11176@fieldses.org>
+Content-Type: multipart/mixed;
+ boundary="------------080802010100050109070500"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+--------------080802010100050109070500
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Ensure all pages in block are marked for initialization if needed.
+J. Bruce Fields wrote:
+> 
+> But could we just combine this with the previous section--and make sure
+> the different possibilities are listed there in the correct priority
+> order to start off with.
+> 
+> That'd also mean adding a new subsection for the "anonymous" case.
 
-[pnfsblock: Update to 2.6.29]
-[pnfsblock: write_end_cleanup adjust for removed ok_to_use_pnfs]
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/blocklayout.c |   54 ++++++++++++++++++++++++++++++++++++++
- 1 files changed, 54 insertions(+), 0 deletions(-)
+OK - how about the attached patch?
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 8914143..a40616b 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -794,6 +794,60 @@ bl_write_end(struct inode *inode, struct page *page, loff_t pos,
- static void
- bl_write_end_cleanup(struct file *filp, struct pnfs_fsdata *fsdata)
- {
-+	struct page *page;
-+	pgoff_t index;
-+	sector_t *pos;
-+	struct address_space *mapping = filp->f_mapping;
-+	struct pnfs_fsdata *fake_data;
-+	struct pnfs_layout_segment *lseg;
-+
-+	if (!fsdata)
-+		return;
-+	lseg = fsdata->lseg;
-+	if (!lseg)
-+		return;
-+	pos = fsdata->private;
-+	if (!pos)
-+		return;
-+	dprintk("%s enter with pos=%llu\n", __func__, (u64)(*pos));
-+	for (; *pos != ~0; pos++) {
-+		index = *pos >> (PAGE_CACHE_SHIFT - 9);
-+		/* XXX How do we properly deal with failures here??? */
-+		page = grab_cache_page_write_begin(mapping, index, 0);
-+		if (!page) {
-+			printk(KERN_ERR "%s BUG BUG BUG NoMem\n", __func__);
-+			continue;
-+		}
-+		dprintk("%s: Examining block page\n", __func__);
-+		print_page(page);
-+		if (!PageMappedToDisk(page)) {
-+			/* XXX How do we properly deal with failures here??? */
-+			dprintk("%s Marking block page\n", __func__);
-+			init_page_for_write(BLK_LSEG2EXT(fsdata->lseg), page,
-+					    PAGE_CACHE_SIZE, PAGE_CACHE_SIZE,
-+					    NULL);
-+			print_page(page);
-+			fake_data = kzalloc(sizeof(*fake_data), GFP_KERNEL);
-+			if (!fake_data) {
-+				printk(KERN_ERR "%s BUG BUG BUG NoMem\n",
-+				       __func__);
-+				unlock_page(page);
-+				continue;
-+			}
-+			get_lseg(lseg);
-+			fake_data->lseg = lseg;
-+			fake_data->bypass_eof = 1;
-+			mapping->a_ops->write_end(filp, mapping,
-+						  index << PAGE_CACHE_SHIFT,
-+						  PAGE_CACHE_SIZE,
-+						  PAGE_CACHE_SIZE,
-+						  page, fake_data);
-+			/* Note fake_data is freed by nfs_write_end */
-+		} else
-+			unlock_page(page);
-+	}
-+	kfree(fsdata->private);
-+	fsdata->private = NULL;
- }
- 
- static struct pnfs_layoutdriver_type blocklayout_type = {
--- 
-1.7.4.1
+James Pearson
 
+--------------080802010100050109070500
+Content-Type: text/plain;
+ name="exports.man.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="exports.man.patch"
+
+--- exports.man.dist	2010-09-28 13:24:16.000000000 +0100
++++ exports.man	2011-06-02 14:19:26.434486000 +0100
+@@ -48,19 +48,6 @@
+ This is the most common format. You may specify a host either by an
+ abbreviated name recognized be the resolver, the fully qualified domain
+ name, or an IP address.
+-.IP "netgroups
+-NIS netgroups may be given as
+-.IR @group .
+-Only the host part of each
+-netgroup members is consider in checking for membership.  Empty host
+-parts or those containing a single dash (\-) are ignored.
+-.IP "wildcards
+-Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
+-This can be used to make the \fIexports\fR file more compact; for instance,
+-\fI*.cs.foo.edu\fR matches all hosts in the domain
+-\fIcs.foo.edu\fR.  As these characters also match the dots in a domain
+-name, the given pattern will also match all hosts within any subdomain
+-of \fIcs.foo.edu\fR.
+ .IP "IP networks
+ You can also export directories to all hosts on an IP (sub-) network
+ simultaneously. This is done by specifying an IP address and netmask pair
+@@ -72,6 +59,25 @@
+ to the network base IPv4 address results in identical subnetworks with 10 bits of
+ host. Wildcard characters generally do not work on IP addresses, though they
+ may work by accident when reverse DNS lookups fail.
++.IP "wildcards
++Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
++This can be used to make the \fIexports\fR file more compact; for instance,
++\fI*.cs.foo.edu\fR matches all hosts in the domain
++\fIcs.foo.edu\fR.  As these characters also match the dots in a domain
++name, the given pattern will also match all hosts within any subdomain
++of \fIcs.foo.edu\fR.
++.IP "netgroups
++NIS netgroups may be given as
++.IR @group .
++Only the host part of each
++netgroup members is consider in checking for membership.  Empty host
++parts or those containing a single dash (\-) are ignored.
++.IP "anonymous
++This is specified by a single
++.I *
++character (not to be confused with the
++.I wildcard
++entry above) and will match all clients.
+ '''.TP
+ '''.B =public
+ '''This is a special ``hostname'' that identifies the given directory name
+@@ -92,6 +98,12 @@
+ '''.B \-\-public\-root
+ '''option. Multiple specifications of a public root will be ignored.
+ .PP
++If a client matches more than one of the specifications above, then
++the first match from the above list order takes precedence - regardless of
++the order they appear on the export line. However, if a client matches
++more than one of the same type of specification (e.g. two netgroups),
++then the first match from the order they appear on the export line takes
++precedence.
+ .SS RPCSEC_GSS security
+ You may use the special strings "gss/krb5", "gss/krb5i", or "gss/krb5p"
+ to restrict access to clients using rpcsec_gss security.  However, this
+
+--------------080802010100050109070500--
