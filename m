@@ -1,136 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60186 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:8386 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750948Ab1FHQYv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Jun 2011 12:24:51 -0400
-Date: Wed, 8 Jun 2011 12:24:49 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Vladimir Elisseev <vovan@vovan.nl>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS3 + kerberos: performance issues
-Message-ID: <20110608162449.GD4101@fieldses.org>
-References: <1307086159.1052.19.camel@vovan.net.home>
- <1307104354.2477.17.camel@lade.trondhjem.org>
- <1307123836.1052.23.camel@vovan.net.home>
- <20110607230754.GF13911@fieldses.org>
- <1307514377.1533.35.camel@vovan.net.home>
- <20110608153950.GB4101@fieldses.org>
- <1307548836.1533.46.camel@vovan.net.home>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1307548836.1533.46.camel@vovan.net.home>
+	id S1752316Ab1FBPSM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Jun 2011 11:18:12 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/1] NFSv4.1 fs_locations compound request fileid
+Date: Thu,  2 Jun 2011 11:17:20 -0400
+Message-Id: <1307027840-3137-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Jun 08, 2011 at 06:00:36PM +0200, Vladimir Elisseev wrote:
-> Thanks for pointing me to the right to look at. However, the main point
-> is huge performance degradation while using sec=krb5 option instead of
-> sec=sys. With sec=sys everything works as expected. Personally I simply
-> can't find any reasonable explanation.
+From: Andy Adamson <andros@netapp.com>
 
-Right, me neither.  That's why I suggest a) looking at mountstats, to
-figure out which rpc operations are taking longer in the sec=krb5 case
-than they are in the sec=sys case, and b) looking at server-side
-statistics (mainly cpu usage, I guess) to start looking for bottlenecks
-on the server.
+Commit 28331a46d88459788c8fca72dbb0415cd7f514c9 "Ensure we request the
+ordinary fileid when doing readdirplus"
+changed the meaning of NFS_ATTR_FATTR_FILEID which used to be set when
+FATTR4_WORD1_MOUNTED_ON_FILED was requested. Request FATTR4_WORD0_FILEID
+in the nfs4_proc_fs_locations GETATTR so that nfs_fhget succeeds and
+the referral is mounted.
 
---b.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4proc.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-> BTW, I'm using Gentoo and getting
-> the same error while using mountstats script.
-> 
-> Regards,
-> Vlad.
-> 
-> On Wed, 2011-06-08 at 11:39 -0400, J. Bruce Fields wrote:
-> > On Wed, Jun 08, 2011 at 08:26:17AM +0200, Vladimir Elisseev wrote:
-> > > All of the accounts, except very limited amount, are in LDAP, and as I
-> > > can see user information is identical on server and client. As for my
-> > > tests, below are all the details. Difference in speed while copying a
-> > > lot of small files is _huge_... I'd appreciate if somebody more familiar
-> > > with NFS/kerberos combination can provide a kind of explanation. 
-> > > 
-> > > Regards,
-> > > Vlad.
-> > > 
-> > > * Local directory is /mnt/data/tmp/coreboot/src
-> > > # find x86/ | wc -l
-> > > 296
-> > > # du -csh x86
-> > > 1.5M	x86
-> > > 1.5M	total
-> > > * First try without kerberos: grep /mnt/tmp/ /proc/mounts
-> > > nfs:/mnt/tmp /mnt/tmp nfs
-> > > rw,noatime,vers=3,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.1.219,mountvers=3,mountport=32767,mountproto=tcp,local_lock=none,addr=192.168.1.219 0 0
-> > > # time cp -i -arv /mnt/data/tmp/coreboot/src/arch/x86 /mnt/tmp/x86 
-> > > cp -i -arv /mnt/data/tmp/coreboot/src/arch/x86 /mnt/tmp/x86 0.01s user
-> > > 0.04s system 10% cpu 0.476 total
-> > > 
-> > > * Second try with kerberos: grep /mnt/tmp/ /proc/mounts
-> > > nfs:/mnt/tmp /mnt/tmp nfs
-> > > rw,noatime,vers=3,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=krb5,mountaddr=192.168.1.219,mountvers=3,mountport=32767,mountproto=tcp,local_lock=none,addr=192.168.1.219 0 0
-> > > # time cp -i -arv /mnt/data/tmp/coreboot/src/arch/x86 /mnt/tmp/x86 
-> > > cp -i -arv /mnt/data/tmp/coreboot/src/arch/x86 /mnt/tmp/x86  0.01s user
-> > > 0.07s system 0% cpu 23.294 total
-> > 
-> > So if I'm reading that right, the client isn't doing any more work, it's
-> > just taking longer, so presumably it's spending more time waiting for
-> > the server.
-> > 
-> > Might be worth looking at /proc/self/mountstats to see which rpc's are
-> > taking longer.
-> > 
-> > (Chuck, what's up with the mountstats script?  On a fedora 15 machine
-> > with mountstats installed, it gives me "Statistics for mount point /mnt
-> > not found", but
-> > 
-> > 	# grep mnt /proc/self/mountstats 
-> > 	pip1:/exports/ mounted on /mnt with fstype nfs4 statvers=1.0
-> > 
-> > On a ubuntu machine running the mountstats out of
-> > nfs-utils/tools/mountstats/mountstats.py, it runs without any output.)
-> > 
-> > Might also be worth looking at vmstat or something on the server.
-> > 
-> > --b.
-> > 
-> > 
-> > > 
-> > > At the same time test with a single file (621M):
-> > > * without kerberos: 
-> > > cp -i -av /mnt/media/images/GNOME_3.x86_64-0.2.0-Build1.1.iso   0.00s
-> > > user 0.69s system 5% cpu 13.521 total
-> > > * with kerberos:
-> > > cp -i -av /mnt/media/images/GNOME_3.x86_64-0.2.0-Build1.1.iso   0.00s
-> > > user 0.55s system 2% cpu 26.299 total
-> > > 
-> > > With the same file, but with "dd
-> > > if=/mnt/media/images/GNOME_3.x86_64-0.2.0-Build1.1.iso
-> > > of=/mnt/tmp/test.iso bs=32M"
-> > > gives:
-> > > * without kerberos: 651165696 bytes (651 MB) copied, 10.7168 s, 60.8
-> > > MB/s
-> > > * with kerberos: 651165696 bytes (651 MB) copied, 24.6176 s, 26.5 MB/s
-> > > 
-> > > 
-> > > On Tue, 2011-06-07 at 19:07 -0400, J. Bruce Fields wrote:
-> > > > On Fri, Jun 03, 2011 at 07:57:16PM +0200, Vladimir Elisseev wrote:
-> > > > > There's no mount command involved in timing. It's simply copy of the
-> > > > > same directory (with many small files to NFS share with and without
-> > > > > sec=krb5 mount option.
-> > > > 
-> > > > Weird.
-> > > > 
-> > > > I wonder if the krb5 principal is being mapped to a different user on
-> > > > the server side, and that's making some difference.
-> > > > 
-> > > > Still, could you give us the full details?  (Exactly what commands are
-> > > > you running, what results do you see?)
-> > > > 
-> > > > --b.
-> > > > --
-> > > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > > > the body of a message to majordomo@vger.kernel.org
-> > > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > > 
-> 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d2c4b59..d99c5f8 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4685,7 +4685,8 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ {
+ 	struct nfs_server *server = NFS_SERVER(dir);
+ 	u32 bitmask[2] = {
+-		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
++		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS |
++		      FATTR4_WORD0_FILEID,
+ 		[1] = FATTR4_WORD1_MOUNTED_ON_FILEID,
+ 	};
+ 	struct nfs4_fs_locations_arg args = {
+-- 
+1.7.3.1
+
