@@ -1,104 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:44869 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760483Ab1F1SZf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jun 2011 14:25:35 -0400
-Received: by iyb12 with SMTP id 12so373005iyb.19
-        for <linux-nfs@vger.kernel.org>; Tue, 28 Jun 2011 11:25:34 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/2] NFS: Clean up nfs_walk_authlist()
-To: linux-nfs@vger.kernel.org
-Date: Tue, 28 Jun 2011 14:25:31 -0400
-Message-ID: <20110628182530.2866.58433.stgit@seurat.1015granger.net>
-In-Reply-To: <20110628181324.2866.98154.stgit@seurat.1015granger.net>
-References: <20110628181324.2866.98154.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:31680 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752723Ab1FBQP2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Jun 2011 12:15:28 -0400
+Subject: Re: [PATCH 1/1] NFSv4.1 fs_locations compound request fileid
+Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <1307031254.9634.12.camel@lade.trondhjem.org>
+Date: Thu, 2 Jun 2011 12:15:25 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <2E12BF92-B535-4FF1-9ABC-D8C1FE783A20@netapp.com>
+References: <1307027840-3137-1-git-send-email-andros@netapp.com> <1307031254.9634.12.camel@lade.trondhjem.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up: Add common exit labels in preparation for the following
-patch.  Clarify comments.  Rename variable for clarity.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+On Jun 2, 2011, at 12:14 PM, Trond Myklebust wrote:
 
- fs/nfs/super.c |   45 +++++++++++++++++++++++----------------------
- 1 files changed, 23 insertions(+), 22 deletions(-)
+> On Thu, 2011-06-02 at 11:17 -0400, andros@netapp.com wrote: 
+>> From: Andy Adamson <andros@netapp.com>
+>> 
+>> Commit 28331a46d88459788c8fca72dbb0415cd7f514c9 "Ensure we request the
+>> ordinary fileid when doing readdirplus"
+>> changed the meaning of NFS_ATTR_FATTR_FILEID which used to be set when
+>> FATTR4_WORD1_MOUNTED_ON_FILED was requested. Request FATTR4_WORD0_FILEID
+>> in the nfs4_proc_fs_locations GETATTR so that nfs_fhget succeeds and
+>> the referral is mounted.
+>> 
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>> fs/nfs/nfs4proc.c |    3 ++-
+>> 1 files changed, 2 insertions(+), 1 deletions(-)
+>> 
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index d2c4b59..d99c5f8 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -4685,7 +4685,8 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+>> {
+>> 	struct nfs_server *server = NFS_SERVER(dir);
+>> 	u32 bitmask[2] = {
+>> -		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
+>> +		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS |
+>> +		      FATTR4_WORD0_FILEID,
+>> 		[1] = FATTR4_WORD1_MOUNTED_ON_FILEID,
+>> 	};
+>> 	struct nfs4_fs_locations_arg args = {
+> 
+> Nope. We can't do this...
+> 
+> The ordinary fileid is _not_ supposed to be supported for an absent
+> filesystem. See RFC3530bis, section 7.3.1.
+> 
+> The correct thing to do here is rather to allow the nfs_fhget() to
+> succeed with only a mounted_on_fileid if (and only if!)
+> NFS_ATTR_FATTR_MOUNTPOINT or NFS_ATTR_FATTR_V4_REFERRAL are set.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index ce40e5c..4625a4c 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1541,15 +1541,19 @@ out_security_failure:
- }
- 
- /*
-- * Match the requested auth flavors with the list returned by
-- * the server.  Returns zero and sets the mount's authentication
-- * flavor on success; returns -EACCES if server does not support
-- * the requested flavor.
-+ * Match the requested auth flavors with the list returned by the
-+ * server.  args->auth_flavors contains a list of security flavors
-+ * to check for.  The caller has already set up the list of flavors
-+ * with the default (usually AUTH_SYS).
-+ *
-+ * Returns zero on success; the authentication flavor in args->
-+ * auth_flavors[0] should be used for this mount.  Otherwise, returns
-+ * -EACCES if server does not support the requested flavor.
-  */
- static int nfs_walk_authlist(struct nfs_parsed_mount_data *args,
--			     struct nfs_mount_request *request)
-+			     struct nfs_mount_request *server)
- {
--	unsigned int i, j, server_authlist_len = *(request->auth_flav_len);
-+	unsigned int i, j, server_authlist_len = *(server->auth_flav_len);
- 
- 	/*
- 	 * Certain releases of Linux's mountd return an empty
-@@ -1559,31 +1563,28 @@ static int nfs_walk_authlist(struct nfs_parsed_mount_data *args,
- 	 * if the returned flavor list is empty.
- 	 */
- 	if (server_authlist_len == 0)
--		return 0;
-+		goto out;
- 
- 	/*
--	 * We avoid sophisticated negotiating here, as there are
--	 * plenty of cases where we can get it wrong, providing
--	 * either too little or too much security.
--	 *
--	 * RFC 2623, section 2.7 suggests we SHOULD prefer the
--	 * flavor listed first.  However, some servers list
--	 * AUTH_NULL first.  Our caller plants AUTH_SYS, the
--	 * preferred default, in args->auth_flavors[0] if user
--	 * didn't specify sec= mount option.
-+	 * RFC 2623 section 2.7 says "... a NFS client SHOULD use
-+	 * the first flavor in the list that it supports, on the
-+	 * assumption that the best access is provided by the first
-+	 * flavor."
- 	 */
- 	for (i = 0; i < args->auth_flavor_len; i++)
- 		for (j = 0; j < server_authlist_len; j++)
--			if (args->auth_flavors[i] == request->auth_flavs[j]) {
--				dfprintk(MOUNT, "NFS: using auth flavor %d\n",
--					request->auth_flavs[j]);
--				args->auth_flavors[0] = request->auth_flavs[j];
--				return 0;
-+			if (args->auth_flavors[i] == server->auth_flavs[j]) {
-+				args->auth_flavors[0] = server->auth_flavs[j];
-+				goto out;
- 			}
- 
- 	dfprintk(MOUNT, "NFS: server does not support requested auth flavor\n");
--	nfs_umount(request);
-+	nfs_umount(server);
- 	return -EACCES;
-+
-+out:
-+	dfprintk(MOUNT, "NFS: using auth flavor %d\n", args->auth_flavors[0]);
-+	return 0;
- }
- 
- /*
+Ahh. OK - WIll do.
+
+-->Andy
+> 
+> Cheers
+>  Trond
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
 
