@@ -1,44 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:53118 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754412Ab1FGR1o (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:27:44 -0400
-Date: Tue, 7 Jun 2011 13:27:41 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 16/88] pnfsblock: select BLK_DEV_DM when PNFS_BLOCK is
- configured
-Message-ID: <83176d715bf7009b66f388ca6ddac98193e2ecf0.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+Received: from mailhub.sw.ru ([195.214.232.25]:39381 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932803Ab1FBKpO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Jun 2011 06:45:14 -0400
+Received: from [10.30.3.27] ([10.30.3.27])
+	(authenticated bits=0)
+	by relay.sw.ru (8.13.4/8.13.4) with ESMTP id p52Al4IH024870
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Thu, 2 Jun 2011 14:47:05 +0400 (MSD)
+Message-ID: <4DE769B7.7080704@parallels.com>
+Date: Thu, 02 Jun 2011 14:45:11 +0400
+From: Vasily Averin <vvs@parallels.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCHv2 1/2] SUNRPC: Use dprint_status() macro in call_decode()
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+common dprint_status() macro is used in all callbacks but not in call_decode()
 
-Also, select MD
-
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Vasily Averin <vvs@sw.ru>
 ---
- fs/nfs/Kconfig |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ net/sunrpc/clnt.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index d6bfd87..bccd415 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -108,6 +108,8 @@ config PNFS_PANLAYOUT
- config PNFS_BLOCK
- 	tristate "Provide a pNFS block client (EXPERIMENTAL)"
- 	depends on NFS_FS && PNFS
-+	select MD
-+	select BLK_DEV_DM
- 	help
- 	  Say M or y here if you want your pNfs client to support the block protocol
- 
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index b84d739..ab55369 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1548,8 +1548,7 @@ call_decode(struct rpc_task *task)
+ 	kxdrdproc_t	decode = task->tk_msg.rpc_proc->p_decode;
+ 	__be32		*p;
+
+-	dprintk("RPC: %5u call_decode (status %d)\n",
+-			task->tk_pid, task->tk_status);
++	dprint_status(task);
+
+ 	if (task->tk_flags & RPC_CALL_MAJORSEEN) {
+ 		if (clnt->cl_chatty)
 -- 
 1.7.4.1
 
