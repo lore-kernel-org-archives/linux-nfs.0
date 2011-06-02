@@ -1,31 +1,36 @@
-From: Pavel Shilovsky <piastry@etersoft.ru>
-Subject: Re: [PATCH] mountd: Fix missing varialble assigment in auth_unix_gid
-Date: Wed, 1 Jun 2011 22:55:27 +0400
-Message-ID: <BANLkTikVKNLQNSPeUjLz-EEJ+zwtWz6zOg@mail.gmail.com>
-References: <1306954194-2392-1-git-send-email-piastry@etersoft.ru>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Subject: Linux pNFS status meeting 06/02/11
+Date: Wed, 1 Jun 2011 19:17:54 -0700
+Message-ID: <OF07F10F47.59A5D112-ON882578A3.000C836E-882578A3.000C9F59@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="US-ASCII"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:61057 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751632Ab1FASz1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 14:55:27 -0400
-Received: by ywe9 with SMTP id 9so48559ywe.19
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Jun 2011 11:55:27 -0700 (PDT)
-In-Reply-To: <1306954194-2392-1-git-send-email-piastry@etersoft.ru>
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:60168 "EHLO e1.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756309Ab1FBCSD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Jun 2011 22:18:03 -0400
+Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
+	by e1.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p5226WQm017820
+	for <linux-nfs@vger.kernel.org>; Wed, 1 Jun 2011 22:06:32 -0400
+Received: from d01av05.pok.ibm.com (d01av05.pok.ibm.com [9.56.224.195])
+	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p522I0lZ966688
+	for <linux-nfs@vger.kernel.org>; Wed, 1 Jun 2011 22:18:00 -0400
+Received: from d01av05.pok.ibm.com (loopback [127.0.0.1])
+	by d01av05.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p522I0GQ020876
+	for <linux-nfs@vger.kernel.org>; Wed, 1 Jun 2011 22:18:00 -0400
+Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
+	by d01av05.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p522I07Q020873
+	for <linux-nfs@vger.kernel.org>; Wed, 1 Jun 2011 22:18:00 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2011/6/1 Pavel Shilovsky <piastry@etersoft.ru>:
-> When we get into auth_unix_gid at the second time, groups_len
-> is not 0 and ngroups variable leave as 0. Then we use ngroups
-> in getgrouplist that fails in this case. This patch fixes it.
->
-> Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+Meeting on Thursday 06/02/11 at 9:30 AM PST (12:30 PM EST)
 
-Sorry for the spam - wrong title!
 
--- 
-Best regards,
-Pavel Shilovsky.
+USA Toll-Free: 888-426-6840
+USA Caller Paid: 215-861-6239
+
+Israel Toll-Free: 1-809-417-783
+
+Participant Code: 8792872
