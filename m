@@ -1,103 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:47480 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759100Ab1FAUJV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 16:09:21 -0400
-Received: by wya21 with SMTP id 21so123773wya.19
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Jun 2011 13:09:20 -0700 (PDT)
-Message-ID: <4DE69C6A.3010204@panasas.com>
-Date: Wed, 01 Jun 2011 23:09:14 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Weston Andros Adamson <dros@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>, trond@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS: filelayout should use nfs_generic_pg_test
-References: <1306898310-9229-1-git-send-email-dros@netapp.com>		 <4DE5D287.603@panasas.com>		 <09816808-BA7B-4EAF-A18A-866B5A98BF25@netapp.com>		 <4DE65202.2010502@panasas.com>	 <1306951621.3873.45.camel@lade.trondhjem.org>	 <4DE68F47.5080802@panasas.com> <1306956591.3873.69.camel@lade.trondhjem.org>
-In-Reply-To: <1306956591.3873.69.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:31100 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751589Ab1FCUQx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Jun 2011 16:16:53 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 3 1/1] NFSv4.1: allow nfs_fhget to succeed with mounted on fileid
+Date: Fri,  3 Jun 2011 13:37:22 -0400
+Message-Id: <1307122642-2695-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-06-01 22:29, Trond Myklebust wrote:
-> On Wed, 2011-06-01 at 22:13 +0300, Benny Halevy wrote: 
->> On 2011-06-01 21:07, Trond Myklebust wrote:
->>> On Wed, 2011-06-01 at 17:51 +0300, Benny Halevy wrote: 
->>>> I think the following should work:
->>>>
->>>> Benny
->>>>
->>>> git diff --stat -p -M
->>>>  fs/nfs/nfs4filelayout.c |   10 ++++++++++
->>>>  1 files changed, 10 insertions(+), 0 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->>>> index 4269088..9f1d445 100644
->>>> --- a/fs/nfs/nfs4filelayout.c
->>>> +++ b/fs/nfs/nfs4filelayout.c
->>>> @@ -661,6 +661,16 @@ filelayout_pg_test(struct nfs_pageio_descriptor
->>>> *pgio, struct nfs_page *prev,
->>>>  	u64 p_stripe, r_stripe;
->>>>  	u32 stripe_unit;
->>>>
->>>> +	/*
->>>> +	 * FIXME: ideally we should be able to coalesce all requests
->>>> +	 * that are not block boundary aligned, but currently this
->>>> +	 * is problematic for the case of bsize < PAGE_CACHE_SIZE,
->>>> +	 * since nfs_flush_multi and nfs_pagein_multi assume you
->>>> +	 * can have only one struct nfs_page.
->>>> +	 */
->>>> +	if (desc->pg_bsize < PAGE_SIZE)
->>>> +		return 0;
->>>> +
->>>>  	if (!pnfs_generic_pg_test(pgio, prev, req))
->>>>  		return 0;
->>>
->>> So, there are several things that bother me about pnfs_generic_pg_test()
->>> too now that I'm looking more closely at it:
->>>
->>>      1. If the intention is to coalesce 'prev' and 'req', shouldn't we
->>>         be asking for a layout with req_offset(prev) instead of
->>>         req_offset(req)? 
->>>      2. If we're only requesting a layout of length pg_count, don't we
->>>         still need to test the layout length that the server actually
->>>         returned before we can allow the coalescing? 
->>>      3. if (!pgio->lseg), shouldn't we be returning an error of some
->>>         sort? Right now we're returning 'true', and allowing the
->>>         coalesce to occur. 
->>>      4. Furthermore, shouldn't that test guarding the
->>>         pnfs_update_layout() call rather be an 'if (pgio->pg_lseg ==
->>>         NULL)' instead of looking at the values of pg_count and
->>>         prev->wb_bytes?
->>>
->>
->> or rather we get the layout for the first page in
->> nfs_pageio_do_add_request when desc->pg_count == 0?
-> 
-> I can live with a desc->pg_init() callback or rather, converting
-> pg_test() and pg_doio() into a
-> 
-> struct nfs_pageio_ops {
-> 	int (*pg_init)(struct nfs_pageio_descriptor *desc, struct nfs_page *req);
-> 	bool (*pg_test)(struct nfs_pageio_descriptor *desc, struct nfs_page *prev, struct nfs_page *req);
-> 	int (*pg_doio)(struct nfs_pageio_descriptor *desc);
-> };
-> 
-> and then replacing the two callback functions in the existing struct
-> nfs_pageio_descriptor with a single pointer to a 'const struct
-> nfs_pageio_ops'...
-> 
+From: Andy Adamson <andros@netapp.com>
 
-looks like a good way to do this!
+Commit 28331a46d88459788c8fca72dbb0415cd7f514c9 "Ensure we request the
+ordinary fileid when doing readdirplus"
+changed the meaning of NFS_ATTR_FATTR_FILEID which used to be set when
+FATTR4_WORD1_MOUNTED_ON_FILED was requested.
+Allow nfs_fhget to succeed with only a mounted on fileid when crossing
+a mountpoint or a referral.
 
->> Then, this lseg would be useful for nfs_flush_multi
->> if we failed to coalesce, or we failed to get a layout
->> altogether we go the nfs path and can reset pg_test to
->> nfs_generic_pg_test.
-> 
-> It would presumably also get rid of all those pnfs_update_layout() calls
-> in read.c and write.c.
-> 
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/inode.c    |    4 +++-
+ fs/nfs/internal.h |    7 +++++++
+ fs/nfs/nfs4proc.c |    3 ++-
+ 3 files changed, 12 insertions(+), 2 deletions(-)
 
-Yup.
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 144f2a3..06b40e3 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -256,7 +256,9 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 
+ 	nfs_attr_check_mountpoint(sb, fattr);
+ 
+-	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) == 0 && (fattr->valid & NFS_ATTR_FATTR_MOUNTPOINT) == 0)
++	if (((fattr->valid & NFS_ATTR_FATTR_FILEID) == 0 &&
++	    (fattr->valid & NFS_ATTR_FATTR_MOUNTPOINT) == 0) &&
++	    nfs_attr_check_mounted_on_fileid(fattr))
+ 		goto out_no_inode;
+ 	if ((fattr->valid & NFS_ATTR_FATTR_TYPE) == 0)
+ 		goto out_no_inode;
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index b9056cb..da0a52e 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -45,6 +45,13 @@ static inline void nfs_attr_check_mountpoint(struct super_block *parent, struct
+ 		fattr->valid |= NFS_ATTR_FATTR_MOUNTPOINT;
+ }
+ 
++static inline int nfs_attr_check_mounted_on_fileid(struct nfs_fattr *fattr)
++{
++	return (((fattr->valid & NFS_ATTR_FATTR_MOUNTED_ON_FILEID) == 0) ||
++		(((fattr->valid & NFS_ATTR_FATTR_MOUNTPOINT) == 0) &&
++		 ((fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) == 0)));
++}
++
+ struct nfs_clone_mount {
+ 	const struct super_block *sb;
+ 	const struct dentry *dentry;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d2c4b59..49142f3 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4669,7 +4669,7 @@ static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
+ 
+ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
+ {
+-	if (!((fattr->valid & NFS_ATTR_FATTR_FILEID) &&
++	if (!((fattr->valid & NFS_ATTR_FATTR_MOUNTED_ON_FILEID) &&
+ 		(fattr->valid & NFS_ATTR_FATTR_FSID) &&
+ 		(fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)))
+ 		return;
+@@ -4678,6 +4678,7 @@ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
+ 		NFS_ATTR_FATTR_NLINK;
+ 	fattr->mode = S_IFDIR | S_IRUGO | S_IXUGO;
+ 	fattr->nlink = 2;
++	fattr->fileid = fattr->mounted_on_fileid;
+ }
+ 
+ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+-- 
+1.7.3.1
+
