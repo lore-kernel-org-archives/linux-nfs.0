@@ -1,89 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:50425 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758468Ab1FKCT6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 22:19:58 -0400
-Received: by vws1 with SMTP id 1so2628337vws.19
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Jun 2011 19:19:57 -0700 (PDT)
-In-Reply-To: <4DF2A6AA.8050608@panasas.com>
-References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu>
- <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu>
- <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com>
- <20110609114929.GA28157@merit.edu> <4DF0CB5D.60000@panasas.com>
- <20110609135846.GA32565@merit.edu> <BANLkTi=0yr1ecyf30+OQcFipJsHOk=4Y4w@mail.gmail.com>
- <4DF139B1.7070106@tonian.com> <F19688880B763E40B28B2B462677FBF805BED9D221@MX09A.corp.emc.com>
- <4DF20F07.4090804@tonian.com> <F19688880B763E40B28B2B462677FBF805BED9D2AC@MX09A.corp.emc.com>
- <4DF26F34.8080008@tonian.com> <4DF2A6AA.8050608@panasas.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Sat, 11 Jun 2011 10:19:22 +0800
-Message-ID: <BANLkTin+Z=sxrNkfyktqH_m5_dhsiHLf5w@mail.gmail.com>
-Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Benny Halevy <benny@tonian.com>, tao.peng@emc.com, rees@umich.edu,
-        linux-nfs@vger.kernel.org, honey@citi.umich.edu
-Content-Type: text/plain; charset=UTF-8
+Received: from smtp07.online.nl ([194.134.42.52]:44088 "EHLO smtp07.online.nl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751229Ab1FCSFg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Jun 2011 14:05:36 -0400
+Subject: Re: NFS3 + kerberos: performance issues
+From: Vladimir Elisseev <vovan@vovan.nl>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <1307104354.2477.17.camel@lade.trondhjem.org>
+References: <1307086159.1052.19.camel@vovan.net.home>
+	 <1307104354.2477.17.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 03 Jun 2011 19:57:16 +0200
+Message-ID: <1307123836.1052.23.camel@vovan.net.home>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, Jun 11, 2011 at 7:20 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 06/10/2011 12:23 PM, Benny Halevy wrote:
->> On 2011-06-10 10:09, tao.peng@emc.com wrote:
->>
->> A simple algorithm I can suggest is:
->> - on initialization, calculate and save, per layout driver
->>   - maximum layout size
->>     - take into account csr_fore_chan_attrs.ca_maxresponsesize and possible other parameters
->>   - keep a working copy of the maximum value and the calculated copy.
->>   - alignment value.
->> - on miss, see if there's an adjacent layout segment in cache
->> - if found, ask for twice the found segment size, up to the maximum value,
->>   aligned on the alignment value.
->> - if the server returns less the layoutget range, keep note of the returned length
->>   (but not adjust maximum yet, as the server may return a short segment for various
->>    reasons)
->> - if the server is consistent about returning less than was asked, adjust the
->>   - working copy of the maximum length
->> - if the maximum was adjusted try bumping it up after X (TBD) layoutgets or T seconds
->>   to see if that was just due to high load or conflicts on the server
->> - on any error returned for LAYOUTGET reset the algorithm parameters
->> - on session reestablishment recalculate maximums.
->>
->> Benny
->>
->
-> I completely disagree with all this. NACK!
->
-> The only proper thing a client can do is ask for what it needs, and only the application
-> can do that, because at the VFS level it is only second guessing, and is completely
-> pointless.
->
-> The only one that can know about structure, alignments, optimal IO sizes and layouts
-> is the server. The server even have more information to second guess the application
-> from the file size information and it's share and lock disposition. Please see my
-> simple Server side algorithm.
-Well, IMO, client is closer to applications and should have a better
-position at "guessing" application's workload.
+There's no mount command involved in timing. It's simply copy of the
+same directory (with many small files to NFS share with and without
+sec=krb5 mount option.
 
-A simple example, when a client asks for a layout, server would have
-no idea if client is doing layout prefetch, or if it really need that
-range to complete its work. But the client knows it for sure.
+Vlad.
 
->
-> Because you must understand one most important thing. Any smart decision a client can
-> make will be after it received the layout (stripe_unit, number-of-devices etc..) But
-> at that time it is too late it already sent the layout_get. Only the server knows
-> before hand what is the most optimal size. The client should just be a transparent
-> pipe from application to the server. It should never ever set policy. Only a Server
-> can/should do that.
->
-> Lets put the efforts and algorithms where they belong, please?
->
-> Boaz
->
+On Fri, 2011-06-03 at 08:32 -0400, Trond Myklebust wrote:
+> On Fri, 2011-06-03 at 09:29 +0200, Vladimir Elisseev wrote: 
+> > Hello,
+> > 
+> > After using nfs3 with kerberos for a while I discovered very poor
+> > performance for some file operations like creation of files. There are
+> > two observations:
+> > - the overal nfs3 performance is good: for instance copying large files
+> > works fine
+> > - this poor performance is definitely related to kerberos as the same
+> > volume exported without sec=krb5 works ~10 times faster with creating
+> > files
+> > I'd appreciate if somebody can explain this behaviour?
+> > 
+> > Below are some details about NFS server and client:
+> > server:
+> > - kernel 2.6.36
+> > - export options rw,sec=krb5,no_root_squash,no_subtree_check
+> > - nfs-utils 1.2.3
+> > 
+> > client:
+> > - kernel 2.6.38 or 2.6.39 
+> > - mout options (from /proc/mounts):
+> > rw,nosuid,nodev,noatime,vers=3,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=krb5,mountaddr=192.168.1.219,mountvers=3,mountport=32767,mountproto=tcp,local_lock=none,addr=192.168.1.219
+> > 
+> > when the same volume exported without sec=krb5, the only option changes
+> > in /proc/mounts is sec=sys
+> 
+> Can you please tell us a bit more about how you are measuring this? I
+> might expect a x10 performance difference if the workload is dominated
+> by the actual setting up of the RPCSEC_GSS session (i.e. you are timing
+> mount+create one file or something like that). If we're talking about a
+> workload where the RPCSEC_GSS negotiation can be neglected, however
+> (mount+create 100000 files), I wouldn't expect any measurable
+> performance impact from 'sec=krb'.
+> 
+> 
 
-
-
--- 
-Thanks,
--Bergwolf
