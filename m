@@ -1,17 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27460 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:4133 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760020Ab1F1R3Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Jun 2011 13:29:25 -0400
-Message-ID: <4E0A0F71.9080207@RedHat.com>
-Date: Tue, 28 Jun 2011 13:29:21 -0400
+	id S1751742Ab1FCPOC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Jun 2011 11:14:02 -0400
+Message-ID: <4DE8FA35.4010606@RedHat.com>
+Date: Fri, 03 Jun 2011 11:13:57 -0400
 From: Steve Dickson <SteveD@redhat.com>
-To: Prem Karat <prem.karat@linux.vnet.ibm.com>
-CC: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/1] nfs-utils: Don't hard code source and destination
- args
-References: <20110628104138.GB6600@d6fc318.ibm.com> <FA506314-750E-4E20-B80C-B507D032D962@oracle.com> <20110628165954.GA13059@d6fc318.ibm.com>
-In-Reply-To: <20110628165954.GA13059@d6fc318.ibm.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs4: v4 mounts should not need rpcbind running
+References: <1307110290-30672-1-git-send-email-steved@redhat.com> <A51F73EF-B137-4279-91BC-4B7E868CDCB6@oracle.com>
+In-Reply-To: <A51F73EF-B137-4279-91BC-4B7E868CDCB6@oracle.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -19,31 +18,47 @@ MIME-Version: 1.0
 
 
 
-On 06/28/2011 12:59 PM, Prem Karat wrote:
-> On 06/28/11 12:02pm, Chuck Lever wrote:
->>
->> On Jun 28, 2011, at 6:41 AM, Prem Karat wrote:
->>
->>>
->>> Currently souce and destination parameters should be passed as first and 
->>> second paramter while using mount.nfs. This patch allows them to be passed 
->>> anywhere while mounting.
->>>
->>> Current functionality is
->>> 	mount.nfs source destn -o <options>
->>> This patch will allow to do this
->>> 	mount.nfs -o <options> source destn
->>> 		or
->>> 	mount.nfs -o <options> source -o <options> destn
->>
->> Yep, that's clear, but why is this desirable?  mount.nfs should be invoked only by the mount command.  It's not meant to be run by humans.
-> Bare with me if my understanding is incorrect, however the man page does say that
-> it can be used as a standalone command with limited functionality.
+On 06/03/2011 10:41 AM, Chuck Lever wrote:
+> Hey-
 > 
-> Also it makes sense to use it if a newbie wants to know the nfs specific
-> options. The mount.nfs command shows a pointer to the correct man page for
-> nfs specific options.
-I agree.... I always thought it as a bit annoying that the command
-would only take arguments in an unnatural way...
+> On Jun 3, 2011, at 10:11 AM, Steve Dickson wrote:
+> 
+>> When RPC services are created with svc_create() an
+>> svc_unregister() is done to remove any stale registrations.
+>>
+>> This unregister is not needed with the v4 callback
+>> service and will cause the mount to hang if rpcbind
+>> is not running.
+> 
+> This should no longer be the case.  The kernel uses connected transports to contact rpcbind these days, and should be able to tell immediately that there is no rpcbind running.  If there is still a hang, something else is wrong.
+Ok... The hang was just an theory... I didn't test it out... but I do know
+for a fact that when a v4 mount is done, a PMAP_UNSET is set to rpcbind 
+which obviously is not needed.  
+> 
+>> This patch makes the nfs4 callback service a hide service
+>> by setting the vs_hidden flag in the nfs4_callback_version4
+>> structure
+> 
+> One reason to continue to do this is to have some assurance that no-one else takes the same RPC program number.  Not a big deal.
+Personally I think its a waste of cycles especially when a large
+number of mounts are happening at once... Its completely overkill IMHO...
 
-steved. 
+steved.
+
+> 
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> ---
+>> fs/nfs/callback_xdr.c |    1 +
+>> 1 files changed, 1 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+>> index c6c86a7..7c8b800 100644
+>> --- a/fs/nfs/callback_xdr.c
+>> +++ b/fs/nfs/callback_xdr.c
+>> @@ -996,4 +996,5 @@ struct svc_version nfs4_callback_version4 = {
+>> 	.vs_proc = nfs4_callback_procedures1,
+>> 	.vs_xdrsize = NFS4_CALLBACK_XDRSIZE,
+>> 	.vs_dispatch = NULL,
+>> +	.vs_hidden = 1,
+>> };
+> 
