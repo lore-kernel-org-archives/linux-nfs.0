@@ -1,67 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:17363 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751188Ab1FJE2s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 00:28:48 -0400
-Message-ID: <4DF19D7B.2060308@panasas.com>
-Date: Thu, 09 Jun 2011 21:28:43 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/5] NFSv4.1: Add an initialisation callback for pNFS
-References: <1307669462-15764-1-git-send-email-Trond.Myklebust@netapp.com> <1307669462-15764-2-git-send-email-Trond.Myklebust@netapp.com> <1307669462-15764-3-git-send-email-Trond.Myklebust@netapp.com> <1307669462-15764-4-git-send-email-Trond.Myklebust@netapp.com> <4DF1871C.1070001@panasas.com> <4DF19841.5030904@panasas.com>
-In-Reply-To: <4DF19841.5030904@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:52741 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753702Ab1FCMcg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Jun 2011 08:32:36 -0400
+Subject: Re: NFS3 + kerberos: performance issues
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Vladimir Elisseev <vovan@vovan.nl>
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 03 Jun 2011 08:32:34 -0400
+In-Reply-To: <1307086159.1052.19.camel@vovan.net.home>
+References: <1307086159.1052.19.camel@vovan.net.home>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1307104354.2477.17.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 06/09/2011 09:06 PM, Benny Halevy wrote:
-> On 2011-06-09 22:53, Boaz Harrosh wrote:
->> On 06/09/2011 06:31 PM, Trond Myklebust wrote:
->> <snip>
->>> +void
->>> +pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
->>> +{
->>> +	BUG_ON(pgio->pg_lseg != NULL);
->>> +
->>> +	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
->>> +					   req->wb_context,
->>> +					   req_offset(req),
->>> +					   req->wb_bytes,
->>> +					   IOMODE_READ,
->>> +					   GFP_KERNEL);
->>> +}
->>> +EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
->>> +
->>> +void
->>> +pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
->>> +{
->>> +	BUG_ON(pgio->pg_lseg != NULL);
->>> +
->>> +	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
->>> +					   req->wb_context,
->>> +					   req_offset(req),
->>> +					   req->wb_bytes,
->>> +					   IOMODE_RW,
->>> +					   GFP_NOFS);
->>> +}
->>> +EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
->>> +
->>
->> These two above are identical except the IOMODE_{READ,RW} variable.
+On Fri, 2011-06-03 at 09:29 +0200, Vladimir Elisseev wrote: 
+> Hello,
 > 
-> And the respective gfp flags...
+> After using nfs3 with kerberos for a while I discovered very poor
+> performance for some file operations like creation of files. There are
+> two observations:
+> - the overal nfs3 performance is good: for instance copying large files
+> works fine
+> - this poor performance is definitely related to kerberos as the same
+> volume exported without sec=krb5 works ~10 times faster with creating
+> files
+> I'd appreciate if somebody can explain this behaviour?
 > 
+> Below are some details about NFS server and client:
+> server:
+> - kernel 2.6.36
+> - export options rw,sec=krb5,no_root_squash,no_subtree_check
+> - nfs-utils 1.2.3
+> 
+> client:
+> - kernel 2.6.38 or 2.6.39 
+> - mout options (from /proc/mounts):
+> rw,nosuid,nodev,noatime,vers=3,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=krb5,mountaddr=192.168.1.219,mountvers=3,mountport=32767,mountproto=tcp,local_lock=none,addr=192.168.1.219
+> 
+> when the same volume exported without sec=krb5, the only option changes
+> in /proc/mounts is sec=sys
 
-So is that "we should" or should-not?
+Can you please tell us a bit more about how you are measuring this? I
+might expect a x10 performance difference if the workload is dominated
+by the actual setting up of the RPCSEC_GSS session (i.e. you are timing
+mount+create one file or something like that). If we're talking about a
+workload where the RPCSEC_GSS negotiation can be neglected, however
+(mount+create 100000 files), I wouldn't expect any measurable
+performance impact from 'sec=krb'.
 
->> Why don't you just have one and let the caller pass the IOMODE_ as a
->> 3rd parameter. Do you expect more code to be  added here?
->>
->> Boaz
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
