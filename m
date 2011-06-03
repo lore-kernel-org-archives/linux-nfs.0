@@ -1,31 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from blu0-omc3-s2.blu0.hotmail.com ([65.55.116.77]:4675 "EHLO
-	blu0-omc3-s2.blu0.hotmail.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751559Ab1FUP7S (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jun 2011 11:59:18 -0400
-Message-ID: <BLU0-SMTP1767240C27136C47A1BC384AB510@phx.gbl>
-Date: Wed, 22 Jun 2011 00:01:22 +0800
-From: =?utf-8?B?5LqO5rWp?= <haohaoweixiao@hotmail.com>
-To: "=?utf-8?B?bGludXgtbmZz?=" <linux-nfs@vger.kernel.org>
-CC: "=?utf-8?B?QmVubnkgSGFsZXZ5?=" <benny@tonian.com>
-References: <BLU0-SMTP135422B057EEE4C3CA3C9DEAB6A0@phx.gbl>,
- <4DFA211E.5040103@panasas.com>,
- <SNT136-w5258CE4C76C7D063BA95EBAB6D0@phx.gbl>
-Subject: =?utf-8?B?SXMgdGhlcmUgYW55IHJlbGVhc2Ugbm90ZSBmb3Igb25lIHBuZnMgcmVsZWFzZSB2ZXJzaW9uIO+8nw==?=
-Content-Type: text/plain; charset="utf-8"
+Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:60466 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1750990Ab1FCOd1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Jun 2011 10:33:27 -0400
+Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1QSV63-0005K7-JG
+	for linux-nfs@vger.kernel.org; Fri, 03 Jun 2011 10:11:31 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH] nfs4: v4 mounts should not need rpcbind running
+Date: Fri,  3 Jun 2011 10:11:30 -0400
+Message-Id: <1307110290-30672-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+When RPC services are created with svc_create() an
+svc_unregister() is done to remove any stale registrations.
 
-Hi,Benny!
+This unregister is not needed with the v4 callback
+service and will cause the mount to hang if rpcbind
+is not running.
 
-I still have another question :)
+This patch makes the nfs4 callback service a hide service
+by setting the vs_hidden flag in the nfs4_callback_version4
+structure
 
-When one pnfs version is released, for example, pnfs-all-2.6.38-2011-03-25,
-is there any description about the version, such as changelog,features and 
-so on. If none, how can I get the information? 
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ fs/nfs/callback_xdr.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-Best regards,
-Steven
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index c6c86a7..7c8b800 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -996,4 +996,5 @@ struct svc_version nfs4_callback_version4 = {
+ 	.vs_proc = nfs4_callback_procedures1,
+ 	.vs_xdrsize = NFS4_CALLBACK_XDRSIZE,
+ 	.vs_dispatch = NULL,
++	.vs_hidden = 1,
+ };
+-- 
+1.7.4.4
 
