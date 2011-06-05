@@ -1,89 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:55848 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753854Ab1FHAx0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 20:53:26 -0400
-Received: by vws1 with SMTP id 1so6833vws.19
-        for <linux-nfs@vger.kernel.org>; Tue, 07 Jun 2011 17:53:25 -0700 (PDT)
-Message-ID: <4DEEC808.40205@panasas.com>
-Date: Tue, 07 Jun 2011 20:53:28 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] NFSv4.1: Fix some issues with pnfs_generic_pg_test
-References: <1307399551-17489-1-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1307399551-17489-1-git-send-email-Trond.Myklebust@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:63612 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756366Ab1FEW45 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Jun 2011 18:56:57 -0400
+Received: by iyb14 with SMTP id 14so2701849iyb.19
+        for <linux-nfs@vger.kernel.org>; Sun, 05 Jun 2011 15:56:57 -0700 (PDT)
+References: <1307288638-32215-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1307288638-32215-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain;
+	charset=us-ascii
+Message-Id: <44DFB4C2-AD75-412F-B211-D6DB1B9D2ACE@gmail.com>
+Cc: Libtirpc Devel List <libtirpc-devel@lists.sourceforge.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Chuck Lever <chucklever@gmail.com>
+Subject: Re: [Libtirpc-devel] [PATCH] Do not skip records with nonblocking connections
+Date: Sun, 5 Jun 2011 18:57:01 -0400
+To: Steve Dickson <steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-06-06 18:32, Trond Myklebust wrote:
-> 1. If the intention is to coalesce requests 'prev' and 'req' then we
->    have to ensure at least that we have a layout starting at
->    req_offset(prev).
+
+
+Sent from my iPad
+
+On Jun 5, 2011, at 11:43 AM, Steve Dickson <steved@redhat.com> wrote:
+
+> With non-blocking connections, do not skip records when receiving
+> the streams since entire value messages can be ignored which
+> in cause the entire stream to become out of sync.
 > 
-> 2. If we're only requesting a minimal layout of length desc->pg_count,
->    we need to test the length actually returned by the server before
->    we allow the coalescing to occur.
+> For example, two mounts simultaneously send two unmaps
+> commands. The first one is read, then the second thrown
+> away due to skipping the record. Skipping this record
+> will cause XDR error later in processing of the stream.
 > 
-> 3. We need to deal correctly with (pgio->lseg == NULL)
-> 
-> 4. Fixup the test guarding the pnfs_update_layout.
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Signed-off-by: Steve Dickson <steved@redhat.com>
 > ---
->  fs/nfs/objlayout/objio_osd.c |    3 +++
->  fs/nfs/pnfs.c                |   12 +++++++-----
->  2 files changed, 10 insertions(+), 5 deletions(-)
+> src/svc_vc.c |    5 +++++
+> 1 files changed, 5 insertions(+), 0 deletions(-)
 > 
-> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-> index 9cf208d..4c41a60 100644
-> --- a/fs/nfs/objlayout/objio_osd.c
-> +++ b/fs/nfs/objlayout/objio_osd.c
-> @@ -1001,6 +1001,9 @@ static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
->  	if (!pnfs_generic_pg_test(pgio, prev, req))
->  		return false;
->  
-> +	if (pgio->pg_lseg == NULL)
-> +		return true;
-> +
->  	return pgio->pg_count + req->wb_bytes <=
->  			OBJIO_LSEG(pgio->pg_lseg)->max_io_size;
->  }
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 8c1309d..12b53ef 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -1059,19 +1059,21 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
->  		gfp_flags = GFP_NOFS;
->  	}
->  
-> -	if (pgio->pg_count == prev->wb_bytes) {
-> +	if (pgio->pg_lseg == NULL) {
-> +		if (pgio->pg_count != prev->wb_bytes)
-> +			return true;
->  		/* This is first coelesce call for a series of nfs_pages */
->  		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
->  						   prev->wb_context,
-> -						   req_offset(req),
-> +						   req_offset(prev),
->  						   pgio->pg_count,
->  						   access_type,
->  						   gfp_flags);
-> -		return true;
-> +		if (pgio->pg_lseg == NULL)
-> +			return true;
->  	}
->  
-> -	if (pgio->pg_lseg &&
-> -	    req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
-> +	if (req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
+> diff --git a/src/svc_vc.c b/src/svc_vc.c
+> index aaaf2d7..15dac18 100644
+> --- a/src/svc_vc.c
+> +++ b/src/svc_vc.c
+> @@ -610,6 +610,11 @@ svc_vc_recv(xprt, msg)
+>    }
+> 
+>    xdrs->x_op = XDR_DECODE;
+> +    /*
+> +     * No need skip records with nonblocking connections
+> +     */
+> +    if (cd->nonblock == FALSE)
+> +        (void)xdrrec_skiprecord(xdrs);
+>    (void)xdrrec_skiprecord(xdrs);
 
-One more issue to fix: the condition should be for ">=", not ">"
+Do you want to delete the unconditional invocation of xdrrec_skiprecord() here?
 
-Benny
-
->  					 pgio->pg_lseg->pls_range.length))
->  		return false;
->  
+>    if (xdr_callmsg(xdrs, msg)) {
+>        cd->x_id = msg->rm_xid;
+> -- 
+> 1.7.4.4
+> 
+> 
+> ------------------------------------------------------------------------------
+> Simplify data backup and recovery for your virtual environment with vRanger.
+> Installation's a snap, and flexible recovery options mean your data is safe,
+> secure and there when you need it. Discover what all the cheering's about.
+> Get your free trial download today. 
+> http://p.sf.net/sfu/quest-dev2dev2 
+> _______________________________________________
+> Libtirpc-devel mailing list
+> Libtirpc-devel@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
