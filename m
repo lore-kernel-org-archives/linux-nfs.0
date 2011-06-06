@@ -1,84 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:48155 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754073Ab1FNCc6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:58 -0400
-Message-Id: <b8f14a840bc2da395edbb90c257c580ab5d82b35.1308017749.git.rees@umich.edu>
-In-Reply-To: <cover.1308017749.git.rees@umich.edu>
-References: <cover.1308017749.git.rees@umich.edu>
-Subject: [PATCH 22/33] pnfsblock: merge rw extents
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Date: Mon, 13 Jun 2011 22:32:56 -0400
-From: Jim Rees <rees@umich.edu>
+Received: from mail.pronto.com.au ([202.9.18.113]:47838 "EHLO
+	melbsmtp.pronto.com.au" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753035Ab1FFN6F convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jun 2011 09:58:05 -0400
+From: Tristan Ball <tristanb@pronto.com.au>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: NFS Sync with External Journal
+Date: Mon, 6 Jun 2011 13:42:39 +0000
+Message-ID: <3FA034197108F04082D2AE1401CE0F3832A9B34E@VICMAILBOX.pronto.com.au>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+Hi,
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/extents.c |   47 ++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 47 insertions(+), 0 deletions(-)
+I've been experimenting with using an external ext3 journal as a way to bring the write performance of an NFS share exported with the the 'sync' option closer to that of one exported with 'async'.
+I've mounted the ext3 filesystem with data=journal, and the journal itself is on SSD.  I've seen various references on the net saying that this should improve performance, as the nfs process can respond to write requests as soon as the data is in journal, rather than flushed all the way to the filesystem
 
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 3d36f66..43a3601 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -501,3 +501,50 @@ find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
- 	print_bl_extent(ret);
- 	return ret;
- }
-+
-+/* Helper function to set_to_rw that initialize a new extent */
-+static void
-+_prep_new_extent(struct pnfs_block_extent *new,
-+		 struct pnfs_block_extent *orig,
-+		 sector_t offset, sector_t length, int state)
-+{
-+	kref_init(&new->be_refcnt);
-+	/* don't need to INIT_LIST_HEAD(&new->be_node) */
-+	memcpy(&new->be_devid, &orig->be_devid, sizeof(struct nfs4_deviceid));
-+	new->be_mdev = orig->be_mdev;
-+	new->be_f_offset = offset;
-+	new->be_length = length;
-+	new->be_v_offset = orig->be_v_offset - orig->be_f_offset + offset;
-+	new->be_state = state;
-+	new->be_inval = orig->be_inval;
-+}
-+
-+/* Tries to merge be with extent in front of it in list.
-+ * Frees storage if not used.
-+ */
-+static struct pnfs_block_extent *
-+_front_merge(struct pnfs_block_extent *be, struct list_head *head,
-+	     struct pnfs_block_extent *storage)
-+{
-+	struct pnfs_block_extent *prev;
-+
-+	if (!storage)
-+		goto no_merge;
-+	if (&be->be_node == head || be->be_node.prev == head)
-+		goto no_merge;
-+	prev = list_entry(be->be_node.prev, struct pnfs_block_extent, be_node);
-+	if ((prev->be_f_offset + prev->be_length != be->be_f_offset) ||
-+	    !extents_consistent(prev, be))
-+		goto no_merge;
-+	_prep_new_extent(storage, prev, prev->be_f_offset,
-+			 prev->be_length + be->be_length, prev->be_state);
-+	list_replace(&prev->be_node, &storage->be_node);
-+	put_extent(prev);
-+	list_del(&be->be_node);
-+	put_extent(be);
-+	return storage;
-+
-+ no_merge:
-+	kfree(storage);
-+	return be;
-+}
--- 
-1.7.4.1
+However, in my tests is seems that when the filesystem is shared as 'sync', then writes are written to the filesystem at the same time as they are written to the journal, and performance isn't significantly different to a plain ext3 filesystem with an internal journal and data=ordered. To me this implies that the NFS layer isn't returning from writes until they're flushed to the filesystem disk?
+
+So, my question really is - should I be expecting this to work as a performance enhancer?
+
+I realise that the server is doing more work with data=journal, however given how much faster than the HD the SSD is, and the fact that the journal is large enough to contain all the data I'm writing in this test, I was hoping to see the nfs writes occur at closer to wirespeed.
+
+Server is Oracle Linux, Kernel 2.6.32-100.28.5.el6.x86_64.
+Client was Ubuntu, 2.6.32-32-server x86_64.
+
+/etc/exports:
+/plain          *(rw,async,no_subtree_check,no_root_squash)
+/split          *(rw,async,no_subtree_check,no_root_squash) # (FS with external Journal)
+
+Client mounts were done simply with -o 'rw,rsize=32768,wsize=32768'
+
+Benchmark results:
+Plain Ext3, data=ordered export=sync, write speed 56-62MB/sec
+Split Ext3, data=journal export=sync, write speed = 46-50MB/sec
+
+For reference:
+Plain Ext3, data=ordered export=async, write speed 111MB/sec
+Split Ext3, data=journal export=async, write speed 110MB/sec
+
+Thanks for your time.
+
+Tristan
+
+
+Tristan Ball - Hosted Services Manager VIC
+Pronto Hosted Services
+20 Lakeside Drive, Burwood East, VIC 3151
+Phone: +61 3 9887 7770 | Email: tristanb@pronto.com.au
+Mobile: +61 408 397 473
+
+
+For PHS helpdesk support, please email phs@pronto.com.au
+For urgent after hours support phone: 1800 622 556
+
+---Legal Notice---
+The email message and any attachments are confidential and subject to copyright. If you are not the intended recipient, any use, interference with, disclosure or copying of this material is unauthorised and prohibited. No part may be reproduced, adapted or transmitted without the written permission of the copyright owner. If you have received this email in error, please immediately advise the sender by return email and delete the message from your system. Before opening or using attachments, check for viruses and defects. Our liability is limited to re-supplying any affected attachments.
 
