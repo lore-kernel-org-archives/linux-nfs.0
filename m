@@ -1,90 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:18005 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750720Ab1FJEn5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 00:43:57 -0400
-Message-ID: <4DF1A106.3070205@panasas.com>
-Date: Fri, 10 Jun 2011 00:43:50 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/5] NFSv4.1: Add an initialisation callback for pNFS
-References: <1307669462-15764-1-git-send-email-Trond.Myklebust@netapp.com> <1307669462-15764-2-git-send-email-Trond.Myklebust@netapp.com> <1307669462-15764-3-git-send-email-Trond.Myklebust@netapp.com> <1307669462-15764-4-git-send-email-Trond.Myklebust@netapp.com> <4DF1871C.1070001@panasas.com> <4DF19841.5030904@panasas.com> <4DF19D7B.2060308@panasas.com>
-In-Reply-To: <4DF19D7B.2060308@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet10.oracle.com ([148.87.113.121]:36770 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755932Ab1FFSXT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jun 2011 14:23:19 -0400
+Date: Mon, 6 Jun 2011 11:22:17 -0700
+From: Randy Dunlap <randy.dunlap@oracle.com>
+To: Wakko Warner <wakko@animx.eu.org>, linux-nfs@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
+        Neil Brown <neilb@suse.de>
+Subject: [PATCH] nfsd: v4 support requires CRYPTO
+Message-Id: <20110606112217.9648b8ff.randy.dunlap@oracle.com>
+In-Reply-To: <20110603174528.GA1368@animx.eu.org>
+References: <20110603174528.GA1368@animx.eu.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-06-10 00:28, Boaz Harrosh wrote:
-> On 06/09/2011 09:06 PM, Benny Halevy wrote:
->> On 2011-06-09 22:53, Boaz Harrosh wrote:
->>> On 06/09/2011 06:31 PM, Trond Myklebust wrote:
->>> <snip>
->>>> +void
->>>> +pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
->>>> +{
->>>> +	BUG_ON(pgio->pg_lseg != NULL);
->>>> +
->>>> +	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
->>>> +					   req->wb_context,
->>>> +					   req_offset(req),
->>>> +					   req->wb_bytes,
->>>> +					   IOMODE_READ,
->>>> +					   GFP_KERNEL);
->>>> +}
->>>> +EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
->>>> +
->>>> +void
->>>> +pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
->>>> +{
->>>> +	BUG_ON(pgio->pg_lseg != NULL);
->>>> +
->>>> +	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
->>>> +					   req->wb_context,
->>>> +					   req_offset(req),
->>>> +					   req->wb_bytes,
->>>> +					   IOMODE_RW,
->>>> +					   GFP_NOFS);
->>>> +}
->>>> +EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
->>>> +
->>>
->>> These two above are identical except the IOMODE_{READ,RW} variable.
->>
->> And the respective gfp flags...
->>
-> 
-> So is that "we should" or should-not?
-> 
+From: Randy Dunlap <randy.dunlap@oracle.com>
 
-That doesn't make much sense when you've defined separate vectors
-for read and write.
-And in any case, since pg_init is not pnfs specific the caller shouldn't
-pass IOMODE_* values but rather a generic value that will require translation anyway.
-In this case I'd just consider using a common function to be called
-respectively from both methods:
+nfsd V4 support uses crypto interfaces, so select CRYPTO
+to fix build errors in 2.6.39:
 
-static void
-pnfs_pg_update_layout(struct nfs_pageio_descriptor *pgio, struct nfs_page *req,
-		      enum pnfs_iomode iomode, gfp_t gfp_flags)
-{
-	BUG_ON(pgio->pg_lseg != NULL);
+ERROR: "crypto_destroy_tfm" [fs/nfsd/nfsd.ko] undefined!
+ERROR: "crypto_alloc_base" [fs/nfsd/nfsd.ko] undefined!
 
-	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
-					   req->wb_context,
-					   req_offset(req),
-					   req->wb_bytes,
-					   iomode,
-					   gfp_flags);
-}
+Reported-by: Wakko Warner <wakko@animx.eu.org>
+Signed-off-by: Randy Dunlap <randy.dunlap@oracle.com>
+Cc: stable@kernel.org
+---
+ fs/nfsd/Kconfig |    1 +
+ 1 file changed, 1 insertion(+)
 
->>> Why don't you just have one and let the caller pass the IOMODE_ as a
->>> 3rd parameter. Do you expect more code to be  added here?
->>>
->>> Boaz
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+--- linux-2.6.39.orig/fs/nfsd/Kconfig
++++ linux-2.6.39/fs/nfsd/Kconfig
+@@ -82,6 +82,7 @@ config NFSD_V4
+ 	select NFSD_V3
+ 	select FS_POSIX_ACL
+ 	select SUNRPC_GSS
++	select CRYPTO
+ 	help
+ 	  This option enables support in your system's NFS server for
+ 	  version 4 of the NFS protocol (RFC 3530).
