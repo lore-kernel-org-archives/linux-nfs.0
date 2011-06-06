@@ -1,67 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:42838 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751292Ab1FPMwW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jun 2011 08:52:22 -0400
-Message-ID: <4DF9FC85.6040901@panasas.com>
-Date: Thu, 16 Jun 2011 08:52:21 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <benny@tonian.com>
-CC: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] FIXME: BUG wdata->mds_offset never gets set
-References: <4DF9278A.5010103@panasas.com> <4DF96F5E.5010109@tonian.com>
-In-Reply-To: <4DF96F5E.5010109@tonian.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:16484 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754956Ab1FFWcy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Jun 2011 18:32:54 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/3] NFSv4.1: Fix some issues with pnfs_generic_pg_test
+Date: Mon,  6 Jun 2011 18:32:29 -0400
+Message-Id: <1307399551-17489-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 06/15/2011 10:50 PM, Benny Halevy wrote:
-> On 2011-06-15 17:43, Boaz Harrosh wrote:
->>
->> The fileslayout and blockslayout drivers had a set of
->> wdata->mds_offset in their .write_pagelist member.
->>
->> The objects driver did not. Which breaks layout_commit.
->>
->> FIXME: Since all drivers set mds_offset in exactly the same place
->> to the same value. And then never touch it. It calls for the
->> generic layer to take care of it.
->> (I'll send the fix tomorrow)
-> 
-> Thanks, that's indeed a fallout from 4b8ee2b
-> "nfs41: Correct offset for LAYOUTCOMMIT"
-> 
-> I merged this also for pnfs-all-2.6.39
-> 
-> Benny
-> 
+1. If the intention is to coalesce requests 'prev' and 'req' then we
+   have to ensure at least that we have a layout starting at
+   req_offset(prev).
 
-I talked to both Fred And Andy and they agreed with me that we should
-move the assignment to the generic layer. It's a layering violation
-this way. I'll send you a patch today
+2. If we're only requesting a minimal layout of length desc->pg_count,
+   we need to test the length actually returned by the server before
+   we allow the coalescing to occur.
 
-Thanks
-Boaz  
+3. We need to deal correctly with (pgio->lseg == NULL)
 
->>
->> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
->> ---
->>  fs/nfs/objlayout/objlayout.c |    2 ++
->>  1 files changed, 2 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
->> index dc3956c..96dd474 100644
->> --- a/fs/nfs/objlayout/objlayout.c
->> +++ b/fs/nfs/objlayout/objlayout.c
->> @@ -430,6 +430,8 @@ objlayout_write_pagelist(struct nfs_write_data *wdata,
->>  	status = objio_write_pagelist(state, how & FLUSH_STABLE);
->>   out:
->>  	dprintk("%s: Return status %Zd\n", __func__, status);
->> +	/* pnfs_set_layoutcommit needs this */
->> +	wdata->mds_offset = wdata->args.offset;
->>  	wdata->pnfs_error = status;
->>  	return PNFS_ATTEMPTED;
->>  }
-> 
+4. Fixup the test guarding the pnfs_update_layout.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/objlayout/objio_osd.c |    3 +++
+ fs/nfs/pnfs.c                |   12 +++++++-----
+ 2 files changed, 10 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 9cf208d..4c41a60 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -1001,6 +1001,9 @@ static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
+ 	if (!pnfs_generic_pg_test(pgio, prev, req))
+ 		return false;
+ 
++	if (pgio->pg_lseg == NULL)
++		return true;
++
+ 	return pgio->pg_count + req->wb_bytes <=
+ 			OBJIO_LSEG(pgio->pg_lseg)->max_io_size;
+ }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 8c1309d..12b53ef 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1059,19 +1059,21 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		gfp_flags = GFP_NOFS;
+ 	}
+ 
+-	if (pgio->pg_count == prev->wb_bytes) {
++	if (pgio->pg_lseg == NULL) {
++		if (pgio->pg_count != prev->wb_bytes)
++			return true;
+ 		/* This is first coelesce call for a series of nfs_pages */
+ 		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 						   prev->wb_context,
+-						   req_offset(req),
++						   req_offset(prev),
+ 						   pgio->pg_count,
+ 						   access_type,
+ 						   gfp_flags);
+-		return true;
++		if (pgio->pg_lseg == NULL)
++			return true;
+ 	}
+ 
+-	if (pgio->pg_lseg &&
+-	    req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
++	if (req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
+ 					 pgio->pg_lseg->pls_range.length))
+ 		return false;
+ 
+-- 
+1.7.5.2
 
