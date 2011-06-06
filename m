@@ -1,115 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:44219 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753745Ab1FGRgK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:36:10 -0400
-Date: Tue, 7 Jun 2011 13:36:05 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 87/88] Add configurable prefetch size for layoutget
-Message-ID: <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:53404 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754441Ab1FFUMw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jun 2011 16:12:52 -0400
+Received: by ywe9 with SMTP id 9so1620060ywe.19
+        for <linux-nfs@vger.kernel.org>; Mon, 06 Jun 2011 13:12:51 -0700 (PDT)
+In-Reply-To: <3FA034197108F04082D2AE1401CE0F3832A9B34E@VICMAILBOX.pronto.com.au>
+References: <3FA034197108F04082D2AE1401CE0F3832A9B34E@VICMAILBOX.pronto.com.au>
+Date: Mon, 6 Jun 2011 13:12:51 -0700
+Message-ID: <BANLkTi=4ey0YpTtUwuVuRQz4_xYpt10wuw@mail.gmail.com>
+Subject: Re: NFS Sync with External Journal
+From: Wendy Cheng <s.wendy.cheng@gmail.com>
+To: Tristan Ball <tristanb@pronto.com.au>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Peng Tao <peng_tao@emc.com>
+You'll probably get better answer(s) from ext3 user mailing list
+.... it is more about how journaling works for the specific file
+system.
 
-pnfs_layout_prefetch_kb can be modified via sysctl.
+In ext3 case, I believe "sync" forces data getting flushed to the file
+system *regardless* which journal mode is chosen. Using an external
+journal device, particularly on SSD,  does help but the performance
+gain is limited by the amount of data that needs to be written into
+the file system itself.
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- fs/nfs/pnfs.c   |   17 +++++++++++++++++
- fs/nfs/pnfs.h   |    1 +
- fs/nfs/sysctl.c |   10 ++++++++++
- 3 files changed, 28 insertions(+), 0 deletions(-)
+-- Wendy
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 9920bff..9c2b569 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -46,6 +46,11 @@ static DEFINE_SPINLOCK(pnfs_spinlock);
-  */
- static LIST_HEAD(pnfs_modules_tbl);
- 
-+/*
-+ * layoutget prefetch size
-+ */
-+unsigned int pnfs_layout_prefetch_kb = 2 << 10;
-+
- /* Return the registered pnfs layout driver module matching given id */
- static struct pnfs_layoutdriver_type *
- find_pnfs_driver_locked(u32 id)
-@@ -906,6 +911,16 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
- }
- 
- /*
-+ * Set layout prefetch length.
-+ */
-+static void
-+pnfs_set_layout_prefetch(struct pnfs_layout_range *range)
-+{
-+	if (range->length < (pnfs_layout_prefetch_kb << 10))
-+		range->length = pnfs_layout_prefetch_kb << 10;
-+}
-+
-+/*
-  * Layout segment is retreived from the server if not cached.
-  * The appropriate layout segment is referenced and returned to the caller.
-  */
-@@ -956,6 +971,8 @@ pnfs_update_layout(struct inode *ino,
- 
- 	if (pnfs_layoutgets_blocked(lo, NULL, 0))
- 		goto out_unlock;
-+
-+	pnfs_set_layout_prefetch(&arg);
- 	atomic_inc(&lo->plh_outstanding);
- 
- 	get_layout_hdr(lo);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 28d57c9..563c67b 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -182,6 +182,7 @@ extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
- extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
- 
- /* pnfs.c */
-+extern unsigned int pnfs_layout_prefetch_kb;
- void get_layout_hdr(struct pnfs_layout_hdr *lo);
- void put_lseg(struct pnfs_layout_segment *lseg);
- struct pnfs_layout_segment *
-diff --git a/fs/nfs/sysctl.c b/fs/nfs/sysctl.c
-index 978aaeb..79a5134 100644
---- a/fs/nfs/sysctl.c
-+++ b/fs/nfs/sysctl.c
-@@ -14,6 +14,7 @@
- #include <linux/nfs_fs.h>
- 
- #include "callback.h"
-+#include "pnfs.h"
- 
- #ifdef CONFIG_NFS_V4
- static const int nfs_set_port_min = 0;
-@@ -42,6 +43,15 @@ static ctl_table nfs_cb_sysctls[] = {
- 	},
- #endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
- #endif
-+#ifdef CONFIG_NFS_V4_1
-+	{
-+		.procname	= "pnfs_layout_prefetch_kb",
-+		.data		= &pnfs_layout_prefetch_kb,
-+		.maxlen		= sizeof(pnfs_layout_prefetch_kb),
-+		.mode		= 0644,
-+		.proc_handler	= proc_dointvec,
-+	},
-+#endif
- 	{
- 		.procname	= "nfs_mountpoint_timeout",
- 		.data		= &nfs_mountpoint_expiry_timeout,
--- 
-1.7.4.1
-
+On Mon, Jun 6, 2011 at 6:42 AM, Tristan Ball <tristanb@pronto.com.au> wrote:
+> Hi,
+>
+> I've been experimenting with using an external ext3 journal as a way to bring the write performance of an NFS share exported with the the 'sync' option closer to that of one exported with 'async'.
+> I've mounted the ext3 filesystem with data=journal, and the journal itself is on SSD.  I've seen various references on the net saying that this should improve performance, as the nfs process can respond to write requests as soon as the data is in journal, rather than flushed all the way to the filesystem
+>
+> However, in my tests is seems that when the filesystem is shared as 'sync', then writes are written to the filesystem at the same time as they are written to the journal, and performance isn't significantly different to a plain ext3 filesystem with an internal journal and data=ordered. To me this implies that the NFS layer isn't returning from writes until they're flushed to the filesystem disk?
+>
+> So, my question really is - should I be expecting this to work as a performance enhancer?
+>
+> I realise that the server is doing more work with data=journal, however given how much faster than the HD the SSD is, and the fact that the journal is large enough to contain all the data I'm writing in this test, I was hoping to see the nfs writes occur at closer to wirespeed.
+>
+> Server is Oracle Linux, Kernel 2.6.32-100.28.5.el6.x86_64.
+> Client was Ubuntu, 2.6.32-32-server x86_64.
+>
+> /etc/exports:
+> /plain          *(rw,async,no_subtree_check,no_root_squash)
+> /split          *(rw,async,no_subtree_check,no_root_squash) # (FS with external Journal)
+>
+> Client mounts were done simply with -o 'rw,rsize=32768,wsize=32768'
+>
+> Benchmark results:
+> Plain Ext3, data=ordered export=sync, write speed 56-62MB/sec
+> Split Ext3, data=journal export=sync, write speed = 46-50MB/sec
+>
+> For reference:
+> Plain Ext3, data=ordered export=async, write speed 111MB/sec
+> Split Ext3, data=journal export=async, write speed 110MB/sec
+>
+> Thanks for your time.
+>
+> Tristan
+>
+>
+> Tristan Ball - Hosted Services Manager VIC
+> Pronto Hosted Services
+> 20 Lakeside Drive, Burwood East, VIC 3151
+> Phone: +61 3 9887 7770 | Email: tristanb@pronto.com.au
+> Mobile: +61 408 397 473
+>
+>
+> For PHS helpdesk support, please email phs@pronto.com.au
+> For urgent after hours support phone: 1800 622 556
+>
+> ---Legal Notice---
+> The email message and any attachments are confidential and subject to copyright. If you are not the intended recipient, any use, interference with, disclosure or copying of this material is unauthorised and prohibited. No part may be reproduced, adapted or transmitted without the written permission of the copyright owner. If you have received this email in error, please immediately advise the sender by return email and delete the message from your system. Before opening or using attachments, check for viruses and defects. Our liability is limited to re-supplying any affected attachments.
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
