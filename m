@@ -1,115 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:34478 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757921Ab1FVWke convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 18:40:34 -0400
-In-Reply-To: <1308779507.25875.7.camel@lade.trondhjem.org>
-References: <BANLkTik9J3qcdPcp+DdfRq9kj+DMKnjKZw@mail.gmail.com>
-	<1308767449.14997.10.camel@lade.trondhjem.org>
-	<BANLkTimyCA0QyF1TNc0SU2GYobOt-sAsNQ@mail.gmail.com>
-	<1308769054.14997.18.camel@lade.trondhjem.org>
-	<BANLkTi=b1UJzYinAeW2VJj2AHzsAnwUpGg@mail.gmail.com>
-	<1308779507.25875.7.camel@lade.trondhjem.org>
-Date: Wed, 22 Jun 2011 15:40:32 -0700
-Message-ID: <BANLkTin0HnH7rufrHJGgEuPc-ZPjkZe3iw@mail.gmail.com>
-Subject: Re: Issue with Race Condition on NFS4 with KRB
-From: Joshua Scoggins <theoretically.x64@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:51751 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932122Ab1FGRdU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:33:20 -0400
+Date: Tue, 7 Jun 2011 13:33:17 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 61/88] SQUASHME: pnfs-block: use new alloc/free_layout API
+Message-ID: <761739026ec4e77bd7b7db1d23ddbd66a813cd4b.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The patch isn't applying to the 2.6.39 kernel sources.
+From: Benny Halevy <bhalevy@panasas.com>
 
--Josh
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/blocklayout.c    |    9 ++++-----
+ fs/nfs/blocklayout/blocklayout.h    |   15 +++++++++++++--
+ fs/nfs/blocklayout/blocklayoutdev.c |    2 +-
+ 3 files changed, 18 insertions(+), 8 deletions(-)
 
-On Wed, Jun 22, 2011 at 2:51 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> On Wed, 2011-06-22 at 12:18 -0700, Joshua Scoggins wrote:
->> According to the it guys they are running solaris 10 as the server platform.
->
-> Ok. That should not be subject to the race I was thinking of...
->
->> On Wed, Jun 22, 2011 at 11:57 AM, Trond Myklebust
->> <Trond.Myklebust@netapp.com> wrote:
->> > On Wed, 2011-06-22 at 11:37 -0700, Joshua Scoggins wrote:
->> >> Here are our mount options from auto.master
->> >>
->> >> /user -fstype=nfs4,sec=krb5p,noresvport,noatime
->> >> /group -fstype=nfs4,sec=krb5p,noresvport,noatime
->> >>
->> >> As for the server, we don't control it. It's actually run by the
->> >> campus wide it department we are just lab support for CS. I can
->> >> potentially get the server information but I need to know what you want
->> >> specifically as they're pretty paranoid about giving out information about
->> >> their servers.
->> >
->> > I would just want to know _what_ server platform you are running
->> > against. I know of at least one server bug that might explain what you
->> > are seeing, and I'd like to eliminate that as a possibility.
->> >
->> > Trond
->> >
->> >> Joshua Scoggins
->> >>
->> >> On Wed, Jun 22, 2011 at 11:30 AM, Trond Myklebust
->> >> <Trond.Myklebust@netapp.com> wrote:
->> >> > On Wed, 2011-06-22 at 11:21 -0700, Joshua Scoggins wrote:
->> >> >> Hello,
->> >> >>
->> >> >> We are trying to update our linux images in our CS lab and have it a
->> >> >> bit of an issue. We are
->> >> >> using nfs to load user home folder. While testing the new image we
->> >> >> found that the nfs4 module will
->> >> >>  crash when using firefox 3.6.17 for an extended period of time. Some
->> >> >> research via google yielded that
->> >> >> it's a potential race condition specific to nfs with krb auth with
->> >> >> newer kernels. Our old image doesn't have
->> >> >> this issue and it seems that its due to it running a far older kernel version.
->> >> >>
->> >> >> We have two images and both are having this problem. One is running
->> >> >> 2.6.39 and the other is 2.6.38.
->> >> >> Here is what dmesg spit out from the machine running 2.6.39 on one occasion:
->> >> >>
->> >> >> [  678.632061] ------------[ cut here ]------------
->> >> >> [  678.632068] WARNING: at net/sunrpc/clnt.c:1567 call_decode+0xb2/0x69c()
->> >> >> [  678.632070] Hardware name: OptiPlex 755
->> >> >> [  678.632072] Modules linked in: nvidia(P) scsi_wait_scan
->> >> >> [  678.632078] Pid: 3882, comm: kworker/0:2 Tainted: P
->> >> >> 2.6.39-gentoo-r1 #1
->> >> >> [  678.632080] Call Trace:
->> >> >> [  678.632086]  [<ffffffff81035b20>] warn_slowpath_common+0x80/0x98
->> >> >> [  678.632091]  [<ffffffff8117231e>] ? nfs4_xdr_dec_readdir+0xba/0xba
->> >> >> [  678.632094]  [<ffffffff81035b4d>] warn_slowpath_null+0x15/0x17
->> >> >> [  678.632097]  [<ffffffff81426f48>] call_decode+0xb2/0x69c
->> >> >> [  678.632101]  [<ffffffff8142d2b5>] __rpc_execute+0x78/0x24b
->> >> >> [  678.632104]  [<ffffffff8142d4c9>] ? rpc_execute+0x41/0x41
->> >> >> [  678.632107]  [<ffffffff8142d4d9>] rpc_async_schedule+0x10/0x12
->> >> >> [  678.632111]  [<ffffffff8104a49d>] process_one_work+0x1d9/0x2e7
->> >> >> [  678.632114]  [<ffffffff8104c402>] worker_thread+0x133/0x24f
->> >> >> [  678.632118]  [<ffffffff8104c2cf>] ? manage_workers+0x18d/0x18d
->> >> >> [  678.632121]  [<ffffffff8104f6a0>] kthread+0x7d/0x85
->> >> >> [  678.632125]  [<ffffffff8145e314>] kernel_thread_helper+0x4/0x10
->> >> >> [  678.632128]  [<ffffffff8104f623>] ? kthread_worker_fn+0x13a/0x13a
->> >> >> [  678.632131]  [<ffffffff8145e310>] ? gs_change+0xb/0xb
->> >> >> [  678.632133] ---[ end trace 6bfae002a63e020e ]---
->
-> Looking at the code, there is only one way I can see for that warning to
-> occur, and that is if we put the request back on the 'xprt->recv' list
-> after it has already received a reply from the server.
->
-> Can you reproduce the problem with the attached patch?
->
-> Trond
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
->
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 92f0b4b..63d3b5a 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -552,18 +552,17 @@ release_inval_marks(struct pnfs_inval_markings *marks)
+ 
+ /* Note we are relying on caller locking to prevent nasty races. */
+ static void
+-bl_free_layout(void *p)
++bl_free_layout(struct pnfs_layout_type *lo)
+ {
+-	struct pnfs_block_layout	*bl = p;
++	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
+ 
+ 	dprintk("%s enter\n", __func__);
+ 	release_extents(bl, NULL);
+ 	release_inval_marks(&bl->bl_inval);
+ 	kfree(bl);
+-	return;
+ }
+ 
+-static void *
++static struct pnfs_layout_type *
+ bl_alloc_layout(struct inode *inode)
+ {
+ 	struct pnfs_block_layout	*bl;
+@@ -579,7 +578,7 @@ bl_alloc_layout(struct inode *inode)
+ 	bl->bl_count = 0;
+ 	bl->bl_blocksize = NFS_SERVER(inode)->pnfs_blksize >> 9;
+ 	INIT_INVAL_MARKS(&bl->bl_inval, bl->bl_blocksize);
+-	return bl;
++	return &bl->bl_layout;
+ }
+ 
+ static void
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 0efed8d..d316b7f 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -177,6 +177,7 @@ static inline int choose_list(enum exstate4 state)
+ }
+ 
+ struct pnfs_block_layout {
++	struct pnfs_layout_type bl_layout;
+ 	struct pnfs_inval_markings bl_inval; /* tracks INVAL->RW transition */
+ 	spinlock_t		bl_ext_lock;   /* Protects list manipulation */
+ 	struct list_head	bl_extents[EXTENT_LISTS]; /* R and RW extents */
+@@ -193,8 +194,18 @@ struct bl_layoutupdate_data {
+ };
+ 
+ #define BLK_ID(lo) ((struct block_mount_id *)(PNFS_NFS_SERVER(lo)->pnfs_ld_data))
+-#define BLK_LSEG2EXT(lseg) ((struct pnfs_block_layout *)lseg->layout->ld_data)
+-#define BLK_LO2EXT(lo) ((struct pnfs_block_layout *)lo->ld_data)
++
++static inline struct pnfs_block_layout *
++BLK_LO2EXT(struct pnfs_layout_type *lo)
++{
++	return container_of(lo, struct pnfs_block_layout, bl_layout);
++}
++
++static inline struct pnfs_block_layout *
++BLK_LSEG2EXT(struct pnfs_layout_segment *lseg)
++{
++	return BLK_LO2EXT(lseg->layout);
++}
+ 
+ uint32_t *blk_overflow(uint32_t *p, uint32_t *end, size_t nbytes);
+ 
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+index a866f5c..7285d5e 100644
+--- a/fs/nfs/blocklayout/blocklayoutdev.c
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -620,7 +620,7 @@ int
+ nfs4_blk_process_layoutget(struct pnfs_layout_type *lo,
+ 			   struct nfs4_pnfs_layoutget_res *lgr)
+ {
+-	struct pnfs_block_layout *bl = PNFS_LD_DATA(lo);
++	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
+ 	uint32_t *p = (uint32_t *)lgr->layout.buf;
+ 	uint32_t *end = (uint32_t *)((char *)lgr->layout.buf + lgr->layout.len);
+ 	int i, status = -EIO;
+-- 
+1.7.4.1
+
