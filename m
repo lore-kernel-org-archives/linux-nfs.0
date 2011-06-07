@@ -1,182 +1,199 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:35604 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754825Ab1FIXrm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 19:47:42 -0400
-Message-ID: <4DF15B9B.5010408@candelatech.com>
-Date: Thu, 09 Jun 2011 16:47:39 -0700
-From: Ben Greear <greearb@candelatech.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] nfs-utils:  Support binding to source address.
-References: <1307574083-27608-1-git-send-email-greearb@candelatech.com> <A1094CD0-08C4-42C8-8928-DDD1BFC27C7B@oracle.com> <4DF0EBBA.8090703@candelatech.com> <CE8E8AB7-AC6F-4715-B282-CAAE8F63A98B@oracle.com>
-In-Reply-To: <CE8E8AB7-AC6F-4715-B282-CAAE8F63A98B@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:53819 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755936Ab1FGR3s (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:29:48 -0400
+Date: Tue, 7 Jun 2011 13:29:46 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 33/88] pnfsblock: bl_write_pagelist
+Message-ID: <15ecb4872bab4715ed7a275160e36f82e23c9e89.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 06/09/2011 11:39 AM, Chuck Lever wrote:
->
-> On Jun 9, 2011, at 11:50 AM, Ben Greear wrote:
->
->> On 06/09/2011 07:05 AM, Chuck Lever wrote:
->>>
->>> On Jun 8, 2011, at 7:01 PM, greearb@candelatech.com wrote:
->>>
->>>> From: Ben Greear<greearb@candelatech.com>
->>>>
->>>> This lets one specify the source IP address for
->>>> sockets, allowing users to leverage routing rules
->>>> on multi-homed systems.
->>>>
->>>> Kernel patches to RPC and NFS are needed to complete
->>>> full functionality.
->>>>
->>>> Signed-off-by: Ben Greear<greearb@candelatech.com>
->>>> ---
->>>>
->>>> v2:  Use union nfs_sockaddr in local_bind_info struct.
->>>>      Remove cmd-line and getenv parsing.
->>>>      Add option parsing to umount logic.
->>>>      Update man.nfs page.
->>>
->>> Thanks for that, but...
->>>
->>> I'm going to side with Neil on this: your solution is invasive.  We need to see much better rationale for the complexity of your design.  Why isn't an automatic solution adequate for your needs?  Don't design for every general case, just solve your immediate problem and explain your solution.
->>>
->>> I'm not saying "no" just please show your work more.  Clearly our community has not had to address this problem before now, so we need some explanation to do a proper review.
->>
->> Ok, first my use case:
->>
->> I want to have multiple interfaces on the system each make an independent
->> connection to the nfs server(s).  Each interface may be on the same subnet,
->> or on different subnets, and there may be routers attached to each
->> interface.  In order to make the traffic go out one interface or another,
->> I set up ip routing rules that say: use routing table X if source-ip is Y.
->> I can then set up the various routing tables to go to the correct external
->> routers.  If it's not a routed network, then the traffic will still originate
->> on the correct interface.
->>
->> We use this primarily for stress-testing NFS servers (create 1000 unique
->> mounts, for instance).
->
-> Typically this kind of server testing is better done with multiple clients.  This can be done with virtual guests, for example, if you don't have a lot of hardware.  It's certainly not a common use case, though.  (A frequently occurring use case would be one justification for significant additional complexity).
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-I can get 1000+ emulated clients, each with it's own MAC, IP, etc on a mid-range
-system, and even more on higher-end hardware.  I'm sure that's higher density
-than you can get with virtual guests, and it's also a lot easier to manage.
+Note: When upper layer's read/write request cannot be fulfilled, the block
+layout driver shouldn't silently mark the page as error. It should do
+what can be done and  leave the rest to the upper layer. To do so, we
+should set rdata/wdata->res.count properly.
 
-Regardless, the ability for users to have control over their network config
-is more useful than any of my personal use cases..
+When upper layer re-send the read/write request to finish the rest
+part of the request, pgbase is the position where we should start at.
 
->> Other users might want the same functionality to use two interfaces on the
->> same network to communicate to an nfs server, perhaps to utilize two 1Gbps
->> network interfaces that eventually connect to a 10Gbps file-server, and thus
->> get double the total throughput.
->
-> Bonding is supposed to be supported by pNFS, I thought.
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: handle errors when read or write pagelist.]
+Signed-off-by: Zhang Jingwang <yyalone@gmail.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |  141 ++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 137 insertions(+), 4 deletions(-)
 
-What I propose is a very simple change from standard old nfs
-usage.  Somehow I doubt bonding pNFS is quite so simple to deal
-with.
-
->> A second use case:
->>
->> User has two IPs on the same interface, and wants to use a specific
->> one for NFS traffic.  Aside from the testing scenario above, I'm not
->> sure how this helps, but I also know that people do clever things that
->> no one has thought of if you allow them the tools.
->>
->> Third case:
->>
->> User has trusted network A and un-trusted B.  They would like to make
->> sure that NFS traffic always originates on A.  So, they can bind the
->> local IP to A and not have to worry about what automatic address selection
->> might choose.
->
-> NFS has krb5p for preventing traffic sniffing.  It's all done well above the IP layer.
->
-> I'm not convinced.  I think we can accomplish these items more simply by refining other areas of the NFS client.
-
-Well, we differ in opinion.  I'm going to try a bit more to find some acceptable
-solution, but if everyone sees this effort as DOA, please let me know now so I can
-move on to other things.
-
->>>> +struct local_bind_info {
->>>> +	union nfs_sockaddr addr;
->>>> +	socklen_t addrlen;
->>>> +	bool is_set;
->>>> +};
->>>
->>> Please use "struct sockaddr *" or provide a very clear rationale (not "we may need this someday") for why "struct sockaddr *" is not adequate for solving your immediate problem.
->>
->> First, it's nice to be able to pass around the addrlen and not just
->> assume the length based on the family.
->
-> Can you elaborate on "nice" ?  We're really only concerned about just three families: AF_INET, AF_INET6, and AF_LOCAL.
->
->> Second:  I *will* submit a patch to allow binding to a network device with
->> SO_BINDTODEVICE if I can get this first patch accepted.
->
-> Then that subsequent patch is where this new structure belongs.  That groups the changes together logically.
-
-That would be two huge boring patches that touch the same code.
-
->
->> Using SO_BINDTODEVICE
->> offers similar functionality, but it doesn't require routing rules to force
->> traffic out an interface.  This is another way to help keep nfs traffic on
->> trusted interfaces, for instance.
->
-> It might be nicer if all of the parameters used to define the transport endpoints were included in the same structure.  Then you pass a single pointer around that encompasses both the remote address and the source address.  That seems more logical to me than passing a struct sockaddr * for the remote address and a pointer to an arbitrary structure for the source address.
->
-> Reshaping internal APIs is something you can split out of any patch to support source address binding.
-
-I made an attempt at this.  It seems way more risky, ugly, and more code than my
-posted patch.  The primary reason being that often copies are made of the
-addr before it's passed to other methods.  So, you would end up creating lots
-of on-stack config structs and then doing copies before passing them on to
-more functions.
-
-If changing the 'local_ip' argument everywhere to be a sockaddr* will make
-you happy, I will just do that and forget about implementing SO_BINDTODEVICE,
-and assume salen based on the sa_family.
-
->>>> @@ -305,6 +307,9 @@ static void parse_opt(const char *opt, int *mask, char *extra_opts, size_t len)
->>>>
->>>> 	if ((len -= strlen(opt))>   0)
->>>> 		strcat(extra_opts, opt);
->>>> +
->>>> +	if (strncmp(opt, "srcaddr=", strlen("srcaddr=")) == 0)
->>>> +		parse_local_bind(&glb_local_ip, opt + strlen("srcaddr="));
->>>> }
->>>
->>> Why is this needed?  Is it just to support legacy (non-string) mounts?
->>
->> No, it allows us to bind mount.nfs sockets to the IP that the mount options are asking the
->> kernel to bind to.  It's the *only* way to get the mount.nfs process to bind
->> to an IP now that I removed the cmd-line args and environ variable hacks.
->
-> I don't understand how that can be the case.  The srcaddr mount option should be parsed in stropt.c, where it is used to generate sockets for rpcbind and MNT calls.  This works the same for all of the sockets mount.nfs uses for string mounts.  I don't see any need for this logic in mount.c, especially if you don't support srcaddr= for legacy (nfs_mount_data) style mounts.
-
-Ok, I will look at that again.
-
->> I personally don't want to bind to a particular port, but it seems like something
->> that someone might want to do some day, so it would be nice to get the parsing
->> able to handle it up front to ease compatibility issues.
->
-> Unless you have a specific use case today, we prefer not to speculate about how this might be used.  Let's design exactly what we need right now.
->
-> If you want to look at a UI precedent for mount.nfs, ports are specified via separate mount options.  "srcport=" for example, might be used to specify the source port.  In any event, that support can be added later if desired.  Let's keep this as simple and to the point as possible.
-
-Ok, I'll make the srcaddr=n argument a plain numeric IP.  I'll try to resolve IPv4
-first, and if that doesn't work, will try it as IPv6.
-
-Thanks,
-Ben
-
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 9c46f5a..df0cfe4 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -335,9 +335,69 @@ bl_read_pagelist(struct pnfs_layout_type *lo,
+ 	return PNFS_NOT_ATTEMPTED;
+ }
+ 
+-/* FRED - It can indicate bytes written in wdata->res.count.
+- * It can indicate error status in wdata->task.tk_status.
++/* STUB - this needs thought */
++static inline void
++bl_done_with_wpage(struct page *page, const int ok)
++{
++	if (!ok) {
++		SetPageError(page);
++		SetPagePnfsErr(page);
++		/* This is an inline copy of nfs_zap_mapping */
++		/* This is oh so fishy, and needs deep thought */
++		if (page->mapping->nrpages != 0) {
++			struct inode *inode = page->mapping->host;
++			spin_lock(&inode->i_lock);
++			NFS_I(inode)->cache_validity |= NFS_INO_INVALID_DATA;
++			spin_unlock(&inode->i_lock);
++		}
++	}
++	/* end_page_writeback called in rpc_release.  Should be done here. */
++}
++
++/* This is basically copied from mpage_end_io_read */
++static void bl_end_io_write(struct bio *bio, int err)
++{
++	void *data = bio->bi_private;
++	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
++	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
++
++	do {
++		struct page *page = bvec->bv_page;
++
++		if (--bvec >= bio->bi_io_vec)
++			prefetchw(&bvec->bv_page->flags);
++		bl_done_with_wpage(page, uptodate);
++	} while (bvec >= bio->bi_io_vec);
++	bio_put(bio);
++	put_parallel(data);
++}
++
++/* Function scheduled for call during bl_end_par_io_write,
++ * it marks sectors as written and extends the commitlist.
+  */
++static void bl_write_cleanup(struct work_struct *work)
++{
++	struct rpc_task *task;
++	struct nfs_write_data *wdata;
++	dprintk("%s enter\n", __func__);
++	task = container_of(work, struct rpc_task, u.tk_work);
++	wdata = container_of(task, struct nfs_write_data, task);
++	pnfs_callback_ops->nfs_writelist_complete(wdata);
++}
++
++/* Called when last of bios associated with a bl_write_pagelist call finishes */
++static void
++bl_end_par_io_write(void *data)
++{
++	struct nfs_write_data *wdata = data;
++
++	/* STUB - ignoring error handling */
++	wdata->task.tk_status = 0;
++	wdata->verf.committed = NFS_FILE_SYNC;
++	INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
++	schedule_work(&wdata->task.u.tk_work);
++}
++
+ static enum pnfs_try_status
+ bl_write_pagelist(struct pnfs_layout_type *lo,
+ 		struct page **pages,
+@@ -348,8 +408,81 @@ bl_write_pagelist(struct pnfs_layout_type *lo,
+ 		int sync,
+ 		struct nfs_write_data *wdata)
+ {
+-	dprintk("%s enter - just using nfs\n", __func__);
+-	return PNFS_NOT_ATTEMPTED;
++	int i;
++	struct bio *bio = NULL;
++	struct pnfs_block_extent *be = NULL;
++	sector_t isect, extent_length = 0;
++	struct parallel_io *par;
++	int pg_index = pgbase >> PAGE_CACHE_SHIFT;
++
++	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
++	if (!test_bit(PG_USE_PNFS, &wdata->req->wb_flags)) {
++		dprintk("PG_USE_PNFS not set\n");
++		return PNFS_NOT_ATTEMPTED;
++	}
++	if (dont_like_caller(wdata->req)) {
++		dprintk("%s dont_like_caller failed\n", __func__);
++		return PNFS_NOT_ATTEMPTED;
++	}
++	/* At this point, wdata->pages is a (sequential) list of nfs_pages.
++	 * We want to write each, and if there is an error remove it from
++	 * list and call
++	 * nfs_retry_request(req) to have it redone using nfs.
++	 * QUEST? Do as block or per req?  Think have to do per block
++	 * as part of end_bio
++	 */
++	par = alloc_parallel(wdata);
++	if (!par)
++		return PNFS_NOT_ATTEMPTED;
++	par->call_ops = *wdata->pdata.call_ops;
++	par->call_ops.rpc_call_done = bl_rpc_do_nothing;
++	par->pnfs_callback = bl_end_par_io_write;
++	/* At this point, have to be more careful with error handling */
++
++	isect = (sector_t) ((offset & (long)PAGE_CACHE_MASK) >> 9);
++	for (i = pg_index; i < nr_pages; i++) {
++		if (!extent_length) {
++			/* We've used up the previous extent */
++			put_extent(be);
++			bio = bl_submit_bio(WRITE, bio);
++			/* Get the next one */
++			be = find_get_extent(BLK_LSEG2EXT(wdata->pdata.lseg),
++					     isect, NULL);
++			if (!be || !is_writable(be, isect)) {
++				/* FIXME */
++				bl_done_with_wpage(pages[i], 0);
++				break;
++			}
++			extent_length = be->be_length -
++				(isect - be->be_f_offset);
++		}
++		for (;;) {
++			if (!bio) {
++				bio = bio_alloc(GFP_NOIO, nr_pages - i);
++				if (!bio) {
++					/* Error out this page */
++					/* FIXME */
++					bl_done_with_wpage(pages[i], 0);
++					break;
++				}
++				bio->bi_sector = isect - be->be_f_offset +
++					be->be_v_offset;
++				bio->bi_bdev = be->be_mdev;
++				bio->bi_end_io = bl_end_io_write;
++				bio->bi_private = par;
++			}
++			if (bio_add_page(bio, pages[i], PAGE_SIZE, 0))
++				break;
++			bio = bl_submit_bio(WRITE, bio);
++		}
++		isect += PAGE_CACHE_SIZE >> 9;
++		extent_length -= PAGE_CACHE_SIZE >> 9;
++	}
++	wdata->res.count = (isect << 9) - (offset & (long)PAGE_CACHE_MASK);
++	put_extent(be);
++	bl_submit_bio(WRITE, bio);
++	put_parallel(par);
++	return PNFS_ATTEMPTED;
+ }
+ 
+ /* FIXME - range ignored */
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+1.7.4.1
 
