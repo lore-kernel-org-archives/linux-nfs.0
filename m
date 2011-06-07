@@ -1,54 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:22734 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751895Ab1FMUxd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 16:53:33 -0400
-Message-ID: <4DF678C5.1080001@panasas.com>
-Date: Mon, 13 Jun 2011 16:53:25 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCHSET 0/2] Small change needed in nfs_xdr.h
-Content-Type: text/plain; charset=UTF-8
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:52922 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932074Ab1FGR1H (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:27:07 -0400
+Date: Tue, 7 Jun 2011 13:27:04 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 10/88] pnfsblock: define PNFS_BLOCK Kconfig option
+Message-ID: <6d8d3b9723e497188fbfe4603d258b3986a059d7.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-Hi trond
+Define a configuration variable to enable/disable compilation of the
+block driver code.
 
-I need this simple patch:
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfs-block: fix CONFIG_PNFS_BLOCK dependencies]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/Kconfig              |    8 ++++++++
+ fs/nfs/Makefile             |    1 +
+ fs/nfs/blocklayout/Makefile |    5 +++++
+ 3 files changed, 14 insertions(+), 0 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/Makefile
 
-    [PATCH 1/2] nfs_xdr: Move nfs4_string definition out of #ifdef CONFIG_NFS_V4
-    
-    exofs file system wants to use pnfs_osd_xdr.h file instead of
-    redefining pnfs-objects types in it's private "pnfs.h" header.
-    
-    Before we do the switch we must make sure pnfs_osd_xdr.h is
-    compilable also under NFS versions smaller than 4.1. Since now
-    it is needed regardless of version, by the exofs code.
-    
-    Only miss-out is nfs4_string move it to global scope.
-    
-    Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index c96f9eb..d6bfd87 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -105,6 +105,14 @@ config PNFS_PANLAYOUT
+ 
+ 	  If unsure, say N.
+ 
++config PNFS_BLOCK
++	tristate "Provide a pNFS block client (EXPERIMENTAL)"
++	depends on NFS_FS && PNFS
++	help
++	  Say M or y here if you want your pNfs client to support the block protocol
++
++	  If unsure, say N.
++
+ config ROOT_NFS
+ 	bool "Root file system on NFS"
+ 	depends on NFS_FS=y && IP_PNP
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 6a34f7d..b58613d 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -23,3 +23,4 @@ obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
+ nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
+ 
+ obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayout/
++obj-$(CONFIG_PNFS_BLOCK) += blocklayout/
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+new file mode 100644
+index 0000000..f214c1c
+--- /dev/null
++++ b/fs/nfs/blocklayout/Makefile
+@@ -0,0 +1,5 @@
++#
++# Makefile for the pNFS block layout driver kernel module
++#
++obj-$(CONFIG_PNFS_BLOCK) +=
++blocklayoutdriver-objs :=
+-- 
+1.7.4.1
 
-So I can submit this patch to the exofs tree:
-    [PATCH 1/2] exofs: pnfs-tree: Remove pnfs-osd private definitions
-    
-    Now that pnfs-osd has hit mainline we can remove exofs's
-    private header. (And the FIXME comment)
-    
-    Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-
-The small problem is that if we both keep a copy of the patch in linux-next,
-it will be fine until there are possibly more changes to nfs_xdr.h. git
-merge will not like that.
-
-If you have another batch for this -rc you could include the patch
-and I'll rebase my linux-next on that -rc. Or we can risk having the same patch
-and if there are any more changes just ping me and I'll see what I do with
-linux-next. Or you can send me your ack-by: and I can submit it through
-exofs tree.
-
-Thanks
-Boaz
