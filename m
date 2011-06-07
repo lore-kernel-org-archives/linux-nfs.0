@@ -1,35 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:40289 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752943Ab1FKX7i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 11 Jun 2011 19:59:38 -0400
-Date: Sat, 11 Jun 2011 19:59:37 -0400
-To: Sid Moore <learnmost@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Question about EXCHANGE_ID on server.
-Message-ID: <20110611235937.GB9246@fieldses.org>
-References: <BANLkTikmtvLWVRX+wBx345QR-50P_Y_g5g@mail.gmail.com>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:51078 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752067Ab1FGRbd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:31:33 -0400
+Date: Tue, 7 Jun 2011 13:31:31 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 46/88] SQUASHME: pnfsblock: Fix missing extent in commit list
+Message-ID: <5f0b764a27be72fd2861ef4a5f7d1e13d9180635.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <BANLkTikmtvLWVRX+wBx345QR-50P_Y_g5g@mail.gmail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, Jun 11, 2011 at 03:54:56PM +0800, Sid Moore wrote:
-> Hi
-> 
-> on Linux NFSv4.1 server, nfsd4_exchange_id() is used for creating a
-> new client incarnation or updating a confirmed client incarnation. if
-> try to update a confirmed incarnation, EXCHGID4_FLAG_CONFIRMED_R
-> should be set in eir_flags according to section 18.35.3, RFC5661.
-> 
-> but I found EXCHGID4_FLAG_CONFIRMED_R is cleared by "clid->flags =
-> new->cl_exchange_flags;", which is in nfsd4_set_ex_flags() called by
-> nfsd4_exchange_id().
-> 
-> so the sematics of RFC5661 is broken? am I correct?
+From: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
 
-On a quick glance.... I think you're correct.  Patch welcomed.
+When offset is in the middle of a extent, we shouldn't step forward to
+offset + extent->be_length, otherwise we may miss some extents in
+commit list.
 
---b.
+Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |   11 ++++-------
+ 1 files changed, 4 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index b0ad836..cf306e9 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -348,16 +348,13 @@ static void mark_extents_written(struct pnfs_block_layout *bl,
+ 	end = (offset + count + PAGE_CACHE_SIZE - 1) & (long)(PAGE_CACHE_MASK);
+ 	end >>= 9;
+ 	while (isect < end) {
++		sector_t len;
+ 		be = find_get_extent(bl, isect, NULL);
+ 		BUG_ON(!be); /* FIXME */
+-		if (be->be_state != PNFS_BLOCK_INVALID_DATA)
+-			isect += be->be_length;
+-		else {
+-			sector_t len;
+-			len = min(end, be->be_f_offset + be->be_length) - isect;
++		len = min(end, be->be_f_offset + be->be_length) - isect;
++		if (be->be_state == PNFS_BLOCK_INVALID_DATA)
+ 			mark_for_commit(be, isect, len); /* What if fails? */
+-			isect += len;
+-		}
++		isect += len;
+ 		put_extent(be);
+ 	}
+ }
+-- 
+1.7.4.1
+
