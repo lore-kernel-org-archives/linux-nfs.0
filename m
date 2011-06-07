@@ -1,60 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:53565 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756968Ab1FPP2j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jun 2011 11:28:39 -0400
-Message-ID: <4DFA211E.5040103@panasas.com>
-Date: Thu, 16 Jun 2011 11:28:30 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: =?UTF-8?B?5LqO5rWp?= <haohaoweixiao@hotmail.com>
-CC: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: In the linux-all-2.6.38 of pnfs, why was pnfs_return_layout removed
- ?
-References: <BLU0-SMTP135422B057EEE4C3CA3C9DEAB6A0@phx.gbl>
-In-Reply-To: <BLU0-SMTP135422B057EEE4C3CA3C9DEAB6A0@phx.gbl>
-Content-Type: text/plain; charset=UTF-8
+Received: from rcsinet10.oracle.com ([148.87.113.121]:39300 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754948Ab1FGBLN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jun 2011 21:11:13 -0400
+Subject: Re: Question on portmapper source
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4DED6DC8.8020500@candelatech.com>
+Date: Mon, 6 Jun 2011 21:11:00 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <7B1787E7-75DC-4CBB-86DA-FAA1B0366B00@oracle.com>
+References: <4DED6DC8.8020500@candelatech.com>
+To: Ben Greear <greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Steven, the call was removed to accommodate for the "forgetful client" model
-where the client drops its layout unilaterally and the server is supposed
-to clean up the client layout on its side.
 
-We are bringing it back, correctly, with proper synchronization, in Linux 3.0
-in so that the layout will be returned in nfs_evict_inode.
+On Jun 6, 2011, at 8:16 PM, Ben Greear wrote:
 
-What server are you testing?
-Does the layouts it provides marked with return_on_close?
-If so, I pulled a patch from Boaz into pnfs-all-2.6.39 for automatically cleaning up
-return_on_close layouts on the server side after a forgetful client closes the file
-without returning them.
+> What is the official upstream project that contains the portmapper
+> source?
 
-Benny
+Do you want pormapper or rpcbind?  The newer rpcbind actually allows RPC services to register at specific addresses, but the legacy portmapper does not.
 
-On 2011-06-16 10:52, 于浩 wrote:
-> 
-> Dear All,
-> 	Dear All,
-> 	I got one problem when testing the read performance of linux-all-2.6.38. I found that the speed was becoming slower with time.(300MB/s-->50MB/s).  Finally,I found the cause of the problem.	In __nfs4_close(), the "LAYOUT RETURN" operation was removed. So the size of  "layout_hash"  becomes bigger and bigger on the pnfs server side. Then more time is spent on searching in __layout_inode_find() function. I wonder why the pnfs_return_layout() in __nfs4_close() was removed ??
-> 
-> Regards,
->     	Steven.
-> 
-> ----------------------------------------------------------------------
-> SQUASHME: pnfs: revert layout recall/get/return synchronization 
-> authorBenny Halevy <bhalevy@panasas.com>
-> Thu, 24 Feb 2011 02:53:46 +0000 (18:53 -0800)
-> committerBenny Halevy <bhalevy@panasas.com>
-> Fri, 25 Mar 2011 08:25:57 +0000 (10:25 +0200)
-> 
-> For now, revert code attempting a "forget-less" client model to match
-> the pnfs-submit-wave4 forgetful model implementation in preparation
-> for porting the tree onto it.
-> 
-> Signed-off-by: Benny Halevy bhalevy@panasas.com
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Also, the mount.nfs package, as I'll probably need to modify that
+> as well...
+
+mount.nfs is in nfs-utils.
+
+> I am going to try to allow portmapper to bind to a particular
+> source IP when making outbound requests....
+
+I don't understand.  portmapper, as an RPC service, receives incoming requests.  But we don't use the rpcbind CALLIT procedure on Linux, thus it doesn't make outbound requests.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
