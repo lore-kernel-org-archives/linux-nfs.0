@@ -1,115 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:61777 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754330Ab1F2Quk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jun 2011 12:50:40 -0400
-Subject: Re: NFSv4 null request and compatibility with netapp
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Franck Eyraud <franck.eyraud@jrc.ec.europa.eu>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:63426 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752936Ab1FGSO7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 14:14:59 -0400
+Subject: Re: [PATCH] Fix build on Fedora 13.
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1307469531-20595-1-git-send-email-greearb@candelatech.com>
+Date: Tue, 7 Jun 2011 14:14:46 -0400
 Cc: linux-nfs@vger.kernel.org
-Date: Wed, 29 Jun 2011 12:50:37 -0400
-In-Reply-To: <4E0B3897.40209@jrc.ec.europa.eu>
-References: <4E0B3897.40209@jrc.ec.europa.eu>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1309366237.12547.13.camel@lade.trondhjem.org>
+Message-Id: <E9E39B04-8045-44EF-970B-A1F1779C5A69@oracle.com>
+References: <1307469531-20595-1-git-send-email-greearb@candelatech.com>
+To: greearb@candelatech.com
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-06-29 at 16:37 +0200, Franck Eyraud wrote: 
-> Dear nfs linux list,
-> 
-> I have an issue with NFSv4 clients running debian with linux kernel 
-> version 2.6.29 and above. The NFS4 server is n a NetApp NAS.
-> 
-> The problem arised when, after upgrading the kernel of our machines, the 
-> filer started to issue a lot of these messages :
-> 
-> Client 1XX.1XX.2XX.73 has an authentication error 2
-> Client 1XX.1XX.2XX.73 is sending bad rpc requests with error: RPC version mismatch or authentication error(73)
-> 
-> The NetApp team analyzed the tcp trace and sent us with this answer, basically saying that the fault is from client side :
-> 
-> Can someone on the list confirm that their affirmations are correct ?
-> 
-> I already opened a bug on debian http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=632074 where they said that maybe the client behavior is not that odd with respect with the RFC standard.
+Hi Ben-
 
-Without a trace, it is hard to affirm anything, but please note the
-following:
+On Jun 7, 2011, at 1:58 PM, greearb@candelatech.com wrote:
 
-     1. The client will usually share the same TCP connection for _all_
-        mounts to any given server, so even if you didn't see the client
-        establish the rpcsec_gss session after the particular mount that
-        you used to test on, it may have been established by a previous
-        mount. 
-     2. Once the client is finished using an rpcsec_gss session, and
-        that session is kicked out of the cache (usually within 1 minute
-        of last use, but it may occasionally take longer), then the
-        client will send out a NULL call with the RPCSEC_GSS_DESTROY
-        message. 
-     3. The client doesn't know, before sending an RPC call, whether or
-        not the server has already expired the rpcsec_gss session. If
-        the server has expired it without the client's knowledge, then
-        it is unreasonable to declare the RPCSEC_GSS_DESTROY call to be
-        an error. The server should simply try to obey the call, and
-        then acknowledge it as a success, whether or not it actually
-        found an active session.
+> From: Ben Greear <greearb@candelatech.com>
+> 
+> Need sys/stat.h for S_ISDIR and S_ISREG symbols.
 
-IOW: this all looks to me like a storm in a teacup brought about by a
-server implementation that is logging errors in a case where it
-shouldn't.
+Can you tell when this problem was introduced?  What ./configure options might be relevant?
 
-Cheers
-  Trond
-
-> ---------
-> Tue May 24 10:05:59 MEST [vcid@s-jrciprna004p: nfsd.rpc.request.bad:warning]: Client 1XX.1XX.2XX.73 is sending bad rpc requests with error: RPC version mismatch or
-> authentication error(73)
+> Signed-off-by: Ben Greear <greearb@candelatech.com>
+> ---
+> :100644 100644 99618c9... e057c5c... M	utils/exportfs/exportfs.c
+> :100644 100644 2aa3d4f... a8ce028... M	utils/mount/mount.c
+> utils/exportfs/exportfs.c |    4 ++++
+> utils/mount/mount.c       |    3 +++
+> 2 files changed, 7 insertions(+), 0 deletions(-)
 > 
-> We looked in the code and the (73) has no significance here and is simply the error code number for "RPC version mismatch or authentication error".
+> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> index 99618c9..e057c5c 100644
+> --- a/utils/exportfs/exportfs.c
+> +++ b/utils/exportfs/exportfs.c
+> @@ -12,6 +12,10 @@
+> #include <config.h>
+> #endif
 > 
-> What we see is that the following occurs at the time of these errors:
-> - The client has an established TCP session on which it does NFSv4.
-> - The NFSv4 calls uses Kerberos.
-> - On that TCP session, the client occasionally does a NULL call.
-> - The filer rejects it with an authentication error (auth state 2, client must begin new session)
-> - The client does a new NULL call on a separate TCP session without a GSS context.
-> - The filer responds and a new context is established.
-> - The client continues on the original TCP session with the new context.
+> +#ifdef HAVE_SYS_STAT_H
+> +#include <sys/stat.h>
+> +#endif
+> +
+> #include <unistd.h>
+> #include <stdlib.h>
+> #include <string.h>
+> diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+> index 2aa3d4f..a8ce028 100644
+> --- a/utils/mount/mount.c
+> +++ b/utils/mount/mount.c
+> @@ -20,6 +20,9 @@
 > 
-> This explains why no side effect is seen: the client simply establishes a new context and continues as if nothing had happened.
-> We have checked through the trace for vlan 240 and the pattern is the same throughout and the error always happens for NULL calls only (occasionally two replies may be
-> sent in the same TCP payload, but the error is always on the NULL reply, then).
-> We know that some Debian kernels do not exhibit this problem at any time, but others do. This (along with the problem being tied to NULL calls only)
-> suggest to us that this is due to client side behaviour.
-> 
-> Anyway, we tried to check for the first occurrence of the error, which warrants some chronology. We'll do references per clock second for ease.
-> - The first client call is at 10:04:16 in an established NFS mount.
-> - The initial part of the trace, the client only uses TCP port 1006.
-> - The client uses the same GSS context, with the exception of a SETCLIENTID and a SETCLIENTID_CONFIRM call.
-> - At 10:05:00 the client tears down four GSS sessions (used for Kerberos) using RPCSEC_GSS_DESTROY in an NFSv4 NULL call. This is done from TCP port 1006 but for four
-> different contexts. None of these have been used in the trace at that point.
-> - The client continues with more cals on port 1006 using the the same GSS context.
-> - Still at 10:05:00 (frame 1982792), the client uses an NFSv4 call to do a RPCSEC_GSS_INIT to establish a new GSS context.
-> - The client continues using the new GSS context and does not reuse the old context.
-> - The sequence described above on the NULL calls start.
-> 
-> Looking closer at these steps, we notice something important in the NULL calls.
-> Above, the client destroyed four GSS contexts that were not used during the trace. However, it did not destroy the GSS context it was using for a while there.
-> 
-> However, we now note the client actually does a RPCSEC_GSS_DESTROY in each of the NFSv4 NULL calls where we respond with an authentication error. As the error
-> indicates that the client has to begin a new session, this seems like a reasonable response to the call.
-> 
-> So to summarize:
-> - The filer logs these errors when the client destroys a GSS context.
-> - The error message is a logical response.
-> 
-> The decission to tear down the GSS context is with the client. So this would seem to be a client side issue after all, which just happens to get logged on the filer.
-> -------------
-> 
-> Thank you for your help,
-> 
-> Franck Eyraud
+> #include "config.h"
+> #include <unistd.h>
+> +#ifdef HAVE_SYS_STAT_H
+> +#include <sys/stat.h>
+> +#endif
+> #include <sys/types.h>
+> #include <stdio.h>
+> #include <string.h>
+> -- 
+> 1.7.3.4
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
@@ -117,10 +72,9 @@ Cheers
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+
+
 
