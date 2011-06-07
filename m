@@ -1,111 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:20017 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758596Ab1FVS5h convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 14:57:37 -0400
-Subject: Re: Issue with Race Condition on NFS4 with KRB
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Joshua Scoggins <theoretically.x64@gmail.com>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 22 Jun 2011 14:57:34 -0400
-In-Reply-To: <BANLkTimyCA0QyF1TNc0SU2GYobOt-sAsNQ@mail.gmail.com>
-References: <BANLkTik9J3qcdPcp+DdfRq9kj+DMKnjKZw@mail.gmail.com>
-	 <1308767449.14997.10.camel@lade.trondhjem.org>
-	 <BANLkTimyCA0QyF1TNc0SU2GYobOt-sAsNQ@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1308769054.14997.18.camel@lade.trondhjem.org>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:52865 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755222Ab1FGR0v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:26:51 -0400
+Date: Tue, 7 Jun 2011 13:26:50 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 08/88] HACK: propagate fsdata into nfs_writepage_setup
+Message-ID: <16a8e2bf277999bbc976b115467394f4d7c9a292.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-06-22 at 11:37 -0700, Joshua Scoggins wrote: 
-> Here are our mount options from auto.master
-> 
-> /user -fstype=nfs4,sec=krb5p,noresvport,noatime
-> /group -fstype=nfs4,sec=krb5p,noresvport,noatime
-> 
-> As for the server, we don't control it. It's actually run by the
-> campus wide it department we are just lab support for CS. I can
-> potentially get the server information but I need to know what you want
-> specifically as they're pretty paranoid about giving out information about
-> their servers.
+From: Fred Isaman <iisaman@netapp.com>
 
-I would just want to know _what_ server platform you are running
-against. I know of at least one server bug that might explain what you
-are seeing, and I'd like to eliminate that as a possibility.
+This is needed for the eof hack
 
-Trond 
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/file.c          |    4 ++--
+ fs/nfs/write.c         |    9 ++++++---
+ include/linux/nfs_fs.h |    3 ++-
+ 3 files changed, 10 insertions(+), 6 deletions(-)
 
-> Joshua Scoggins
-> 
-> On Wed, Jun 22, 2011 at 11:30 AM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> > On Wed, 2011-06-22 at 11:21 -0700, Joshua Scoggins wrote:
-> >> Hello,
-> >>
-> >> We are trying to update our linux images in our CS lab and have it a
-> >> bit of an issue. We are
-> >> using nfs to load user home folder. While testing the new image we
-> >> found that the nfs4 module will
-> >>  crash when using firefox 3.6.17 for an extended period of time. Some
-> >> research via google yielded that
-> >> it's a potential race condition specific to nfs with krb auth with
-> >> newer kernels. Our old image doesn't have
-> >> this issue and it seems that its due to it running a far older kernel version.
-> >>
-> >> We have two images and both are having this problem. One is running
-> >> 2.6.39 and the other is 2.6.38.
-> >> Here is what dmesg spit out from the machine running 2.6.39 on one occasion:
-> >>
-> >> [  678.632061] ------------[ cut here ]------------
-> >> [  678.632068] WARNING: at net/sunrpc/clnt.c:1567 call_decode+0xb2/0x69c()
-> >> [  678.632070] Hardware name: OptiPlex 755
-> >> [  678.632072] Modules linked in: nvidia(P) scsi_wait_scan
-> >> [  678.632078] Pid: 3882, comm: kworker/0:2 Tainted: P
-> >> 2.6.39-gentoo-r1 #1
-> >> [  678.632080] Call Trace:
-> >> [  678.632086]  [<ffffffff81035b20>] warn_slowpath_common+0x80/0x98
-> >> [  678.632091]  [<ffffffff8117231e>] ? nfs4_xdr_dec_readdir+0xba/0xba
-> >> [  678.632094]  [<ffffffff81035b4d>] warn_slowpath_null+0x15/0x17
-> >> [  678.632097]  [<ffffffff81426f48>] call_decode+0xb2/0x69c
-> >> [  678.632101]  [<ffffffff8142d2b5>] __rpc_execute+0x78/0x24b
-> >> [  678.632104]  [<ffffffff8142d4c9>] ? rpc_execute+0x41/0x41
-> >> [  678.632107]  [<ffffffff8142d4d9>] rpc_async_schedule+0x10/0x12
-> >> [  678.632111]  [<ffffffff8104a49d>] process_one_work+0x1d9/0x2e7
-> >> [  678.632114]  [<ffffffff8104c402>] worker_thread+0x133/0x24f
-> >> [  678.632118]  [<ffffffff8104c2cf>] ? manage_workers+0x18d/0x18d
-> >> [  678.632121]  [<ffffffff8104f6a0>] kthread+0x7d/0x85
-> >> [  678.632125]  [<ffffffff8145e314>] kernel_thread_helper+0x4/0x10
-> >> [  678.632128]  [<ffffffff8104f623>] ? kthread_worker_fn+0x13a/0x13a
-> >> [  678.632131]  [<ffffffff8145e310>] ? gs_change+0xb/0xb
-> >> [  678.632133] ---[ end trace 6bfae002a63e020e ]---
-> >>
-> >> Is there some sort of work around?
-> >
-> > Cced the linux-nfs mailing list.
-> >
-> > The above warning is not specific to krb5, but indicates a likely race
-> > between replies after a resend of the RPC call.
-> >
-> > Can you please tell us what your mount options are, and also tell us a
-> > bit more about what kind of server you are running against?
-> >
-> > Trond
-> > --
-> > Trond Myklebust
-> > Linux NFS client maintainer
-> >
-> > NetApp
-> > Trond.Myklebust@netapp.com
-> > www.netapp.com
-> >
-> >
-
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 3af1c00..1768762 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -469,7 +469,7 @@ static int nfs_write_end(struct file *file, struct address_space *mapping,
+ 	status = pnfs_write_end(file, page, pos, len, copied, lseg);
+ 	if (status)
+ 		goto out;
+-	status = nfs_updatepage(file, page, offset, copied);
++	status = nfs_updatepage(file, page, offset, copied, lseg, fsdata);
+ 
+ out:
+ 	unlock_page(page);
+@@ -597,7 +597,7 @@ static int nfs_vm_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 
+ 	ret = VM_FAULT_LOCKED;
+ 	if (nfs_flush_incompatible(filp, page) == 0 &&
+-	    nfs_updatepage(filp, page, 0, pagelen) == 0)
++	    nfs_updatepage(filp, page, 0, pagelen, NULL, NULL) == 0)
+ 		goto out;
+ 
+ 	ret = VM_FAULT_SIGBUS;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index e268e3b..fc36db8 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -673,7 +673,9 @@ out:
+ }
+ 
+ static int nfs_writepage_setup(struct nfs_open_context *ctx, struct page *page,
+-		unsigned int offset, unsigned int count)
++		unsigned int offset, unsigned int count,
++		struct pnfs_layout_segment *lseg, void *fsdata)
++
+ {
+ 	struct nfs_page	*req;
+ 
+@@ -734,7 +736,8 @@ static int nfs_write_pageuptodate(struct page *page, struct inode *inode)
+  * things with a page scheduled for an RPC call (e.g. invalidate it).
+  */
+ int nfs_updatepage(struct file *file, struct page *page,
+-		unsigned int offset, unsigned int count)
++		unsigned int offset, unsigned int count,
++		struct pnfs_layout_segment *lseg, void *fsdata)
+ {
+ 	struct nfs_open_context *ctx = nfs_file_open_context(file);
+ 	struct inode	*inode = page->mapping->host;
+@@ -759,7 +762,7 @@ int nfs_updatepage(struct file *file, struct page *page,
+ 		offset = 0;
+ 	}
+ 
+-	status = nfs_writepage_setup(ctx, page, offset, count);
++	status = nfs_writepage_setup(ctx, page, offset, count, lseg, fsdata);
+ 	if (status < 0)
+ 		nfs_set_pageerror(page);
+ 
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 1b93b9c..d45e3b3 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -510,7 +510,8 @@ extern int  nfs_congestion_kb;
+ extern int  nfs_writepage(struct page *page, struct writeback_control *wbc);
+ extern int  nfs_writepages(struct address_space *, struct writeback_control *);
+ extern int  nfs_flush_incompatible(struct file *file, struct page *page);
+-extern int  nfs_updatepage(struct file *, struct page *, unsigned int, unsigned int);
++extern int  nfs_updatepage(struct file *, struct page *, unsigned int, unsigned int,
++			   struct pnfs_layout_segment *, void *);
+ extern void nfs_writeback_done(struct rpc_task *, struct nfs_write_data *);
+ 
+ /*
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.4.1
 
