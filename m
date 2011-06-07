@@ -1,105 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:15947 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757078Ab1FQUUy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Jun 2011 16:20:54 -0400
-Message-ID: <4DFBB71F.3050703@panasas.com>
-Date: Fri, 17 Jun 2011 16:20:47 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>, Fred Isaman <iisaman@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] FIXME: pnfs: BUG in layout_commit logic
-Content-Type: text/plain; charset=UTF-8
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:44042 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756044Ab1FGRfi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:35:38 -0400
+Date: Tue, 7 Jun 2011 13:35:36 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 83/88] SQUASHME: pnfs-block: fixup layoutcommit methods args
+Message-ID: <3d0a1f2e487c14932f25ccc4144e6e89a0e06bc7.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+From: Benny Halevy <bhalevy@panasas.com>
 
-When segments are used with the pnfs-objects driver (which supports them)
-I get a crash in layout commit do to unbalanced lseg reference counting.
-(under reference)
-
-With this patch taken from the blocks layout part of the patchset this
-problem goes away. But looking at the code it looks scary to me
-(I just don't understand it fully).
-
-Fred please review this code, to see if you like what it does.
-
-I will need a fix for the v3.0 Kernel
-
-SOB: Boaz
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/pnfs.c |   21 ++++++++++++++++++---
- fs/nfs/pnfs.h |    1 +
- 2 files changed, 19 insertions(+), 3 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c |   11 +++++------
+ fs/nfs/blocklayout/blocklayout.h |    4 ++--
+ fs/nfs/blocklayout/extents.c     |    4 ++--
+ 3 files changed, 9 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 5fc2e5d..cf048c0 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1246,10 +1246,19 @@ pnfs_try_to_read_data(struct nfs_read_data *rdata,
- static struct pnfs_layout_segment *pnfs_list_write_lseg(struct inode *inode)
- {
- 	struct pnfs_layout_segment *lseg, *rv = NULL;
-+	loff_t max_pos = 0;
-+
-+	list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list) {
-+		if (lseg->pls_range.iomode == IOMODE_RW) {
-+			if (max_pos < lseg->pls_end_pos)
-+				max_pos = lseg->pls_end_pos;
-+			if (test_and_clear_bit
-+			    (NFS_LSEG_LAYOUTCOMMIT, &lseg->pls_flags))
-+				rv = lseg;
-+		}
-+	}
-+	rv->pls_end_pos = max_pos;
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 39f3896..161c113 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -617,7 +617,7 @@ bl_alloc_lseg(struct pnfs_layout_hdr *lo,
  
--	list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list)
--		if (lseg->pls_range.iomode == IOMODE_RW)
--			rv = lseg;
- 	return rv;
+ static int
+ bl_setup_layoutcommit(struct pnfs_layout_hdr *lo,
+-		      struct nfs4_layoutcommit_op_args *arg)
++		      struct nfs4_layoutcommit_args *arg)
+ {
+ 	struct nfs_server *nfss = NFS_SERVER(lo->inode);
+ 	struct bl_layoutupdate_data *layoutupdate_data;
+@@ -645,7 +645,7 @@ bl_setup_layoutcommit(struct pnfs_layout_hdr *lo,
+ 
+ static void
+ bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
+-		       const struct nfs4_layoutcommit_op_args *arg)
++		       const struct nfs4_layoutcommit_args *arg)
+ {
+ 	dprintk("%s enter\n", __func__);
+ 	encode_pnfs_block_layoutupdate(BLK_LO2EXT(lo), xdr, arg);
+@@ -653,12 +653,11 @@ bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
+ 
+ static void
+ bl_cleanup_layoutcommit(struct pnfs_layout_hdr *lo,
+-			struct nfs4_layoutcommit_op_args *arg,
+-			struct nfs4_layoutcommit_op_res *res)
++			struct nfs4_layoutcommit_data *lcdata)
+ {
+ 	dprintk("%s enter\n", __func__);
+-	clean_pnfs_block_layoutupdate(BLK_LO2EXT(lo), arg, res->status);
+-	kfree(arg->layoutdriver_data);
++	clean_pnfs_block_layoutupdate(BLK_LO2EXT(lo), &lcdata->args, lcdata->res.status);
++	kfree(lcdata->args.layoutdriver_data);
  }
  
-@@ -1258,21 +1267,27 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ static void free_blk_mountid(struct block_mount_id *mid)
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 058c198..9e7bd62 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -276,9 +276,9 @@ struct pnfs_block_extent *get_extent(struct pnfs_block_extent *be);
+ int is_sector_initialized(struct pnfs_inval_markings *marks, sector_t isect);
+ int encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
+ 				   struct xdr_stream *xdr,
+-				   const struct nfs4_layoutcommit_op_args *arg);
++				   const struct nfs4_layoutcommit_args *arg);
+ void clean_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
+-				   const struct nfs4_layoutcommit_op_args *arg,
++				   const struct nfs4_layoutcommit_args *arg,
+ 				   int status);
+ int add_and_merge_extent(struct pnfs_block_layout *bl,
+ 			 struct pnfs_block_extent *new);
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index cd32935..40dff82 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -738,7 +738,7 @@ find_get_extent_locked(struct pnfs_block_layout *bl, sector_t isect)
+ int
+ encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
+ 			       struct xdr_stream *xdr,
+-			       const struct nfs4_layoutcommit_op_args *arg)
++			       const struct nfs4_layoutcommit_args *arg)
  {
- 	struct nfs_inode *nfsi = NFS_I(wdata->inode);
- 	loff_t end_pos = wdata->mds_offset + wdata->res.count;
-+	loff_t isize = i_size_read(wdata->inode);
- 	bool mark_as_dirty = false;
+ 	sector_t start, end;
+ 	struct pnfs_block_short_extent *lce, *save;
+@@ -922,7 +922,7 @@ set_to_rw(struct pnfs_block_layout *bl, u64 offset, u64 length)
  
- 	spin_lock(&nfsi->vfs_inode.i_lock);
- 	if (!test_and_set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
- 		/* references matched in nfs4_layoutcommit_release */
- 		get_lseg(wdata->lseg);
-+		set_bit(NFS_LSEG_LAYOUTCOMMIT, &wdata->lseg->pls_flags);
- 		wdata->lseg->pls_lc_cred =
- 			get_rpccred(wdata->args.context->state->owner->so_cred);
- 		mark_as_dirty = true;
- 		dprintk("%s: Set layoutcommit for inode %lu ",
- 			__func__, wdata->inode->i_ino);
- 	}
-+	if (end_pos > isize)
-+		end_pos = isize;
- 	if (end_pos > wdata->lseg->pls_end_pos)
- 		wdata->lseg->pls_end_pos = end_pos;
- 	spin_unlock(&nfsi->vfs_inode.i_lock);
-+	dprintk("%s: lseg %p end_pos %llu\n",
-+		__func__, wdata->lseg, wdata->lseg->pls_end_pos);
- 
- 	/* if pnfs_layoutcommit_inode() runs between inode locks, the next one
- 	 * will be a noop because NFS_INO_LAYOUTCOMMIT will not be set */
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index e46edac..4a30e81 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -36,6 +36,7 @@
- enum {
- 	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
- 	NFS_LSEG_ROC,		/* roc bit received from server */
-+	NFS_LSEG_LAYOUTCOMMIT,	/* layoutcommit bit set for layoutcommit */
- };
- 
- struct pnfs_layout_segment {
+ void
+ clean_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
+-			      const struct nfs4_layoutcommit_op_args *arg,
++			      const struct nfs4_layoutcommit_args *arg,
+ 			      int status)
+ {
+ 	struct bl_layoutupdate_data *bld = arg->layoutdriver_data;
 -- 
-1.7.3.4
+1.7.4.1
 
