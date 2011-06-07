@@ -1,59 +1,281 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:64606 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750899Ab1FMO7T (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 10:59:19 -0400
-Received: by iwn34 with SMTP id 34so3861309iwn.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Jun 2011 07:59:18 -0700 (PDT)
-Message-ID: <1399027233-1307977155-cardhu_decombobulator_blackberry.rim.net-1477776010-@b27.c3.bise3.blackberry>
-Reply-To: benny@tonian.com
-References: <BANLkTin4DBf=oW3HtJcSBQOLzySoX_7SdA@mail.gmail.com>
-In-Reply-To: <BANLkTin4DBf=oW3HtJcSBQOLzySoX_7SdA@mail.gmail.com>
-Subject: Re: 3.0.0-rc1 kernel oops
-To: "Olga Kornievskaia" <aglo@citi.umich.edu>, olga.kornievskaia@gmail.com
-Cc: "linux-nfs" <linux-nfs@vger.kernel.org>
-From: "Benny Halevy" <benny@tonian.com>
-Date: Mon, 13 Jun 2011 14:59:13 +0000
-Content-Type: text/plain; charset="Windows-1252"
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:52967 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932074Ab1FGR1N (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:27:13 -0400
+Date: Tue, 7 Jun 2011 13:27:11 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 11/88] pnfsblock: blocklayout stub
+Message-ID: <4904fc8cad92728785e9eec0cbefa4559397d805.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-VGhhbmtzISBJJ20gb24gYSBjYWxsIHdpdGggSXNyYWVsIHJpZ2h0IG5vdy4gSSdsbCBsb29rIGlu
-dG8gaXQgYXNhcC4NCg0KQmVubnkNClNlbnQgZnJvbSBteSBCbGFja0JlcnJ5riBzbWFydHBob25l
-IGZyb20gb3JhbmdlDQoNCi0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQpGcm9tOiBPbGdhIEtv
-cm5pZXZza2FpYSA8YWdsb0BjaXRpLnVtaWNoLmVkdT4NClNlbmRlcjogb2xnYS5rb3JuaWV2c2th
-aWFAZ21haWwuY29tDQpEYXRlOiBNb24sIDEzIEp1biAyMDExIDEwOjU0OjI1IA0KVG86IEJlbm55
-IEhhbGV2eTxiZW5ueUB0b25pYW4uY29tPg0KQ2M6IGxpbnV4LW5mczxsaW51eC1uZnNAdmdlci5r
-ZXJuZWwub3JnPg0KU3ViamVjdDogMy4wLjAtcmMxIGtlcm5lbCBvb3BzDQoNCnBuZnMga2VybmVs
-IHZlcnNpb24gMy4wLjAtcmMxLiB3aXJlc2hhcmsgdHJhY2UgaXMgYXR0YWNoZWQuDQoNCklORk86
-IHRhc2sgbmZzZDoxMzg1IGJsb2NrZWQgZm9yIG1vcmUgdGhhbiAxMjAgc2Vjb25kcy4NCiJlY2hv
-IDAgPiAvcHJvYy9zeXMva2VybmVsL2h1bmdfdGFza190aW1lb3V0X3NlY3MiIGRpc2FibGVzIHRo
-aXMgbWVzc2FnZS4NCm5mc2QgICAgICAgICAgICBEIDAwMDAwMDAwMDAwMDAwMDEgICAgIDAgIDEz
-ODUgICAgICAyIDB4MDAwMDAwODANCiBmZmZmODgwMDNjYmUzOWIwIDAwMDAwMDAwMDAwMDAwNDYg
-ZmZmZmZmZmY4MTQ3NjEwZSBmZmZmODgwMDNjYmUzOWIwDQogZmZmZjg4MDAzY2JlMjAxMCBmZmZm
-ODgwMDNiNzBjNTYwIDAwMDAwMDAwMDAwMTI1NDAgZmZmZjg4MDAzY2JlM2ZkOA0KIGZmZmY4ODAw
-M2NiZTNmZDggMDAwMDAwMDAwMDAxMjU0MCBmZmZmODgwMDNkZWUxNzIwIGZmZmY4ODAwM2I3MGM1
-NjANCkNhbGwgVHJhY2U6DQogWzxmZmZmZmZmZjgxNDc2MTBlPl0gPyBhcGljX3RpbWVyX2ludGVy
-cnVwdCsweGUvMHgyMA0KIFs8ZmZmZmZmZmY4MTQ2ZGQ4OD5dIF9fbXV0ZXhfbG9ja19jb21tb24r
-MHgxMTUvMHgxNzYNCiBbPGZmZmZmZmZmODE0NmRlMDQ+XSBfX211dGV4X2xvY2tfc2xvd3BhdGgr
-MHgxYi8weDFkDQogWzxmZmZmZmZmZjgxNDZkZjFjPl0gbXV0ZXhfbG9jaysweDM2LzB4NGENCiBb
-PGZmZmZmZmZmYTAyNjM5ZWY+XSBuZnM0X2xvY2tfc3RhdGUrMHgxNS8weDI3IFtuZnNkXQ0KIFs8
-ZmZmZmZmZmZhMDI2YmRhYz5dIG5mc2RfbGF5b3V0X3JlY2FsbF9jYisweGE5LzB4MzIwIFtuZnNk
-XQ0KIFs8ZmZmZmZmZmZhMDI2ZjZmMj5dIHBuZnNkX2xleHBfcmVjYWxsX2xheW91dCsweGZiLzB4
-MjQzIFtuZnNkXQ0KIFs8ZmZmZmZmZmZhMDI0Y2JiND5dID8gbmZzZF9wZXJtaXNzaW9uKzB4NDQv
-MHhmNyBbbmZzZF0NCiBbPGZmZmZmZmZmYTAyNGU1NTA+XSBuZnNkX3NldGF0dHIrMHgxMjQvMHgy
-YjMgW25mc2RdDQogWzxmZmZmZmZmZmEwMjY0NGM2Pl0gbmZzZDRfcHJvY2Vzc19vcGVuMisweDJl
-MC8weDk1NiBbbmZzZF0NCiBbPGZmZmZmZmZmYTAyNTkxMWI+XSBuZnNkNF9vcGVuKzB4Mjk2LzB4
-MmNkIFtuZnNkXQ0KIFs8ZmZmZmZmZmZhMDI1ODY4ZD5dIG5mc2Q0X3Byb2NfY29tcG91bmQrMHgy
-MzIvMHg0MjIgW25mc2RdDQogWzxmZmZmZmZmZmEwMjQ5MzhmPl0gbmZzZF9kaXNwYXRjaCsweGYx
-LzB4MWQ1IFtuZnNkXQ0KIFs8ZmZmZmZmZmZhMDFjYjVhMj5dIHN2Y19wcm9jZXNzX2NvbW1vbisw
-eDJlMS8weDRkOCBbc3VucnBjXQ0KIFs8ZmZmZmZmZmZhMDI0OTg1YT5dID8gbmZzZF9zdmMrMHgx
-ODYvMHgxODYgW25mc2RdDQogWzxmZmZmZmZmZmEwMWNiOWJjPl0gc3ZjX3Byb2Nlc3MrMHgxMWMv
-MHgxM2MgW3N1bnJwY10NCiBbPGZmZmZmZmZmYTAyNDk5NTA+XSBuZnNkKzB4ZjYvMHgxM2YgW25m
-c2RdDQogWzxmZmZmZmZmZjgxMDY4ZjllPl0ga3RocmVhZCsweDgyLzB4OGENCiBbPGZmZmZmZmZm
-ODE0NzY4NjQ+XSBrZXJuZWxfdGhyZWFkX2hlbHBlcisweDQvMHgxMA0KIFs8ZmZmZmZmZmY4MTA2
-OGYxYz5dID8ga3RocmVhZF93b3JrZXJfZm4rMHgxNGMvMHgxNGMNCiBbPGZmZmZmZmZmODE0NzY4
-NjA+XSA/IGdzX2NoYW5nZSsweDEzLzB4MTMNCg0KTounsubscribefromthislistsendtheline
-unsubscribelinuxnfsinthebodyofamessagetomajordomovgerkernelorgMoremajordomoi
-nfoathttp//vgerkernelorg/majordomoinfohtmg==
+From: Fred Isaman <iisaman@citi.umich.edu>
+
+Adds the minimal structure for a pnfs block layout driver,
+with all function pointers aimed at stubs.
+
+[pnfsblock: SQUASHME: adjust to API change]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfs: move pnfs_layout_type inline in nfs_inode]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[blocklayout: encode_layoutcommit implementation]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/Makefile      |    4 +-
+ fs/nfs/blocklayout/blocklayout.c |  224 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 226 insertions(+), 2 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/blocklayout.c
+
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+index f214c1c..6bf49cd 100644
+--- a/fs/nfs/blocklayout/Makefile
++++ b/fs/nfs/blocklayout/Makefile
+@@ -1,5 +1,5 @@
+ #
+ # Makefile for the pNFS block layout driver kernel module
+ #
+-obj-$(CONFIG_PNFS_BLOCK) +=
+-blocklayoutdriver-objs :=
++obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
++blocklayoutdriver-objs := blocklayout.o
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+new file mode 100644
+index 0000000..1312849
+--- /dev/null
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -0,0 +1,224 @@
++/*
++ *  linux/fs/nfs/blocklayout/blocklayout.c
++ *
++ *  Module for the NFSv4.1 pNFS block layout driver.
++ *
++ *  Copyright (c) 2006 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@citi.umich.edu>
++ *  Fred Isaman <iisaman@umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
++ */
++#include <linux/module.h>
++#include <linux/init.h>
++
++#include <linux/nfs_fs.h>
++#include <linux/pnfs_xdr.h> /* Needed by nfs4_pnfs.h */
++#include <linux/nfs4_pnfs.h>
++
++#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("Andy Adamson <andros@citi.umich.edu>");
++MODULE_DESCRIPTION("The NFSv4.1 pNFS Block layout driver");
++
++/* Callback operations to the pNFS client */
++struct pnfs_client_operations *pnfs_callback_ops;
++
++static enum pnfs_try_status
++bl_commit(struct pnfs_layout_type *lo,
++		int sync,
++		struct nfs_write_data *nfs_data)
++{
++	dprintk("%s enter\n", __func__);
++	return PNFS_NOT_ATTEMPTED;
++}
++
++static enum pnfs_try_status
++bl_read_pagelist(struct pnfs_layout_type *lo,
++		struct page **pages,
++		unsigned int pgbase,
++		unsigned nr_pages,
++		loff_t offset,
++		size_t count,
++		struct nfs_read_data *nfs_data)
++{
++	dprintk("%s enter\n", __func__);
++	return PNFS_NOT_ATTEMPTED;
++}
++
++/* FRED - It can indicate bytes written in wdata->res.count.
++ * It can indicate error status in wdata->task.tk_status.
++ */
++static enum pnfs_try_status
++bl_write_pagelist(struct pnfs_layout_type *lo,
++		struct page **pages,
++		unsigned int pgbase,
++		unsigned nr_pages,
++		loff_t offset,
++		size_t count,
++		int sync,
++		struct nfs_write_data *wdata)
++{
++	dprintk("%s enter - just using nfs\n", __func__);
++	return PNFS_NOT_ATTEMPTED;
++}
++
++static void
++bl_free_layout(void *p)
++{
++	dprintk("%s enter\n", __func__);
++	return;
++}
++
++static void *
++bl_alloc_layout(struct pnfs_mount_type *mtype, struct inode *inode)
++{
++	dprintk("%s enter\n", __func__);
++	return NULL;
++}
++
++static void
++bl_free_lseg(struct pnfs_layout_segment *lseg)
++{
++	dprintk("%s enter\n", __func__);
++	return;
++}
++
++static struct pnfs_layout_segment *
++bl_alloc_lseg(struct pnfs_layout_type *lo,
++	      struct nfs4_pnfs_layoutget_res *lgr)
++{
++	dprintk("%s enter\n", __func__);
++	return NULL;
++}
++
++static int
++bl_setup_layoutcommit(struct pnfs_layout_type *lo,
++		      struct pnfs_layoutcommit_arg *arg)
++{
++	dprintk("%s enter\n", __func__);
++	return 0;
++}
++
++static void
++bl_encode_layoutcommit(struct pnfs_layout_type *lo, struct xdr_stream *xdr,
++		       const struct pnfs_layoutcommit_arg *arg)
++{
++	dprintk("%s enter\n", __func__);
++}
++
++static void
++bl_cleanup_layoutcommit(struct pnfs_layout_type *lo,
++			struct pnfs_layoutcommit_arg *arg, int status)
++{
++	dprintk("%s enter\n", __func__);
++}
++
++static struct pnfs_mount_type *
++bl_initialize_mountpoint(struct super_block *sb, struct nfs_fh *fh)
++{
++	dprintk("%s enter\n", __func__);
++	return NULL;
++}
++
++static int
++bl_uninitialize_mountpoint(struct pnfs_mount_type *mtype)
++{
++	dprintk("%s enter\n", __func__);
++	return 0;
++}
++
++static ssize_t
++bl_get_stripesize(struct pnfs_layout_type *lo)
++{
++	dprintk("%s enter\n", __func__);
++	return 0;
++}
++
++static ssize_t
++bl_get_io_threshold(struct pnfs_layout_type *lo, struct inode *inode)
++{
++	dprintk("%s enter\n", __func__);
++	return 0;
++}
++
++/* This is called by nfs_can_coalesce_requests via nfs_pageio_do_add_request.
++ * Should return False if there is a reason requests can not be coalesced,
++ * otherwise, should default to returning True.
++ */
++static int
++bl_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
++	   struct nfs_page *req)
++{
++	dprintk("%s enter\n", __func__);
++	return 1;
++}
++
++static struct layoutdriver_io_operations blocklayout_io_operations = {
++	.commit				= bl_commit,
++	.read_pagelist			= bl_read_pagelist,
++	.write_pagelist			= bl_write_pagelist,
++	.alloc_layout			= bl_alloc_layout,
++	.free_layout			= bl_free_layout,
++	.alloc_lseg			= bl_alloc_lseg,
++	.free_lseg			= bl_free_lseg,
++	.setup_layoutcommit		= bl_setup_layoutcommit,
++	.encode_layoutcommit		= bl_encode_layoutcommit,
++	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
++	.initialize_mountpoint		= bl_initialize_mountpoint,
++	.uninitialize_mountpoint	= bl_uninitialize_mountpoint,
++};
++
++static struct layoutdriver_policy_operations blocklayout_policy_operations = {
++	.get_stripesize			= bl_get_stripesize,
++	.get_read_threshold		= bl_get_io_threshold,
++	.get_write_threshold		= bl_get_io_threshold,
++	.pg_test			= bl_pg_test,
++};
++
++static struct pnfs_layoutdriver_type blocklayout_type = {
++	.id = LAYOUT_BLOCK_VOLUME,
++	.name = "LAYOUT_BLOCK_VOLUME",
++	.ld_io_ops = &blocklayout_io_operations,
++	.ld_policy_ops = &blocklayout_policy_operations,
++};
++
++static int __init nfs4blocklayout_init(void)
++{
++	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
++
++	pnfs_callback_ops = pnfs_register_layoutdriver(&blocklayout_type);
++	return 0;
++}
++
++static void __exit nfs4blocklayout_exit(void)
++{
++	dprintk("%s: NFSv4 Block Layout Driver Unregistering...\n",
++	       __func__);
++
++	pnfs_unregister_layoutdriver(&blocklayout_type);
++}
++
++module_init(nfs4blocklayout_init);
++module_exit(nfs4blocklayout_exit);
+-- 
+1.7.4.1
+
