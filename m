@@ -1,75 +1,176 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:58446 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751502Ab1FNO6O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Jun 2011 10:58:14 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Steve Dickson <steved@redhat.com>
-Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/4] mountd: prefer explicit subexports over crossmnt parents
-Date: Tue, 14 Jun 2011 10:58:09 -0400
-Message-Id: <1308063492-30103-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1308063492-30103-1-git-send-email-bfields@redhat.com>
-References: <1308063492-30103-1-git-send-email-bfields@redhat.com>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:61000 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753674Ab1FGRYT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:24:19 -0400
+Date: Tue, 7 Jun 2011 13:24:17 -0400
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 00/88] pnfs block layout driver
+Message-ID: <cover.1307464381.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+From: rees@umich.edu
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-If a parent is exported with crossmnt, and if a child is also explicitly
-exported, then both exports could potentially produce matches in this
-loop; that isn't a bug.
+This patch set adds a block layout driver to the pnfs client.
 
-Instead of warning and ignoring the second match we find, we should
-instead prefer whichever export is deeper in the tree, so that
-children's options can override those of their parents.
+Benny Halevy (25):
+  pnfs: add set-clear layoutdriver interface
+  pnfs: xdr support for three word attribute bitmap
+  pnfsblock: select BLK_DEV_DM when PNFS_BLOCK is configured
+  SQUASHME: pnfs-block: convert APIs pnfs-post-submit
+  SQUASHME: pnfsblock: get rid of threshold policy ops
+  SQUASHME: pnfs-block: nfs4_blk_add_block_disk ret must be signed
+  SQUASHME: pnfs-block: use new alloc/free_layout API
+  SQUASHME: pnfs-block: use new commit api
+  SQUASHME: pnfs-block: use new read_pagelist api
+  SQUASHME: pnfs-block: use new write_pagelist api
+  SQUASHME: pnfs-block: apply types rename
+  SQUASHME: pnfs-block: Revert "pnfsblock: expose block_class
+    interface"
+  SQUASHME: pnfsblock: remove obsolete include file from blocklayout.h
+  SQUASHME: pnfsblock: use nfs4_deviceid
+  SQUASHME: pnfsblock: no callback ops
+  SQAUSHME: pnfsblock: no PNFS_NFS_SERVER
+  SQUASHME: pnfsblock: no dev_notify_types
+  SQUASHME: pnfsblock: use new struct pnfs_layout_hdr
+  SQUASHME: pnfs-block: deprecate get_stripesize
+  SQUASHME: pnfs-block: use {set,clear}_layoutdriver
+  SQUASHME: pnfs-block: fixup setup_layoutcommit arguments
+  SQUASHME: pnfs-block: fixup cleanup_layoutcommit arguments
+  SQUASHME: pnfs-block: fixup encode_layoutcommit arguments
+  SQUASHME: pnfs-block: fixup layoutcommit methods args
+  SQUASHME: pnfs-block: use pnfs_layout_hdr field prefix
 
-Reported-by: Olga Kornievskaia <aglo@citi.umich.edu>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- utils/mountd/cache.c |   18 +++++++++++++++---
- 1 files changed, 15 insertions(+), 3 deletions(-)
+Boaz Harrosh (1):
+  SQUASHME: pnfs-block: remove of CONFIG_PNFS fallout
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 68cccdf..c3dee13 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -341,6 +341,17 @@ static char *next_mnt(void **v, char *p)
- 	return me->mnt_dir;
- }
- 
-+/* True iff e1 is a child of e2 and e2 has crossmnt set: */
-+static bool subexport(struct exportent *e1, struct exportent *e2)
-+{
-+	char *p1 = e1->e_path, *p2 = e2->e_path;
-+	int l2 = strlen(p2);
-+
-+	return e2->e_flags & NFSEXP_CROSSMOUNT
-+	       && strncmp(p1, p2, l2) == 0
-+	       && p1[l2] == '/';
-+}
-+
- static void nfsd_fh(FILE *f)
- {
- 	/* request are:
-@@ -550,13 +561,14 @@ static void nfsd_fh(FILE *f)
- 				if (!client_check(exp->m_client, ai))
- 					continue;
- 			}
--			/* It's a match !! */
--			if (!found) {
-+			if (!found || subexport(&exp->m_export, found)) {
- 				found = &exp->m_export;
-+				free(found_path);
- 				found_path = strdup(path);
- 				if (found_path == NULL)
- 					goto out;
--			} else if (strcmp(found->e_path, exp->m_export.e_path)!= 0)
-+			} else if (strcmp(found->e_path, exp->m_export.e_path)
-+				   && !subexport(found, &exp->m_export))
- 			{
- 				xlog(L_WARNING, "%s and %s have same filehandle for %s, using first",
- 				     found_path, path, dom);
+Fred (1):
+  pnfsblock: find_get_extent
+
+Fred Isaman (39):
+  pnfs_post_submit: Restore "pnfs: pnfs_do_flush" part 1
+  pnfs_post_submit: Restore the pnfs_write_end part of "pnfs: commit
+    and pnfs_write_end"
+  pnfs: HACK: ask for layout_blksize on mount
+  pnfs: HACK: modify write_end_cleanup
+  HACK: propagate fsdata into nfs_writepage_setup
+  pnfs: HACK: adjust eof handling
+  pnfsblock: define PNFS_BLOCK Kconfig option
+  pnfsblock: blocklayout stub
+  pnfsblock: expose scsi interface
+  pnfsblock: scan scsi devices
+  pnfsblock: call and parse getdevicelist
+  pnfsblock: dm kernel interface
+  pnfsblock: create and destroy dm metadevice
+  pnfsblock: construct and load md table
+  pnfsblock: layout alloc and free
+  pnfsblock: basic extent code
+  pnfsblock: lseg alloc and free
+  pnfsblock: xdr decode pnfs_block_layout4
+  pnfsblock: merge extents
+  pnfsblock: bl_read_pagelist
+  pnfsblock: allow use of PG_owner_priv_1 flag
+  pnfsblock: read path error handling
+  pnfsblock: SPLITME: add extent manipulation functions
+  pnfsblock: write_begin
+  pnfsblock: write_end
+  pnfsblock: write_end_cleanup
+  pnfsblock: bl_write_pagelist support functions
+  pnfsblock: bl_write_pagelist
+  pnfsblock: note written INVAL areas for layoutcommit
+  pnfsblock: bl_setup_layoutcommit
+  pnfsblock: encode_layoutcommit
+  pnfsblock: cleanup_layoutcommit
+  pnfsblock: merge rw extents
+  pnfsblock: debugging dprintks for clist info
+  SQUASHME: pnfsblock: write_begin adjust for removed fields
+  SQUASHME: pnfsblock: write_end adjust for removed ok_to_use_pnfs
+  SQUASHME: pnfsblock: write_end_cleanup adjust for removed
+    ok_to_use_pnfs
+  SQUASHME: pnfsblock: bl_write_pagelist support functions adjust for
+    missing PG_USE_PNFS
+  SQUASHME: pnfsblock: bl_write_pagelist adjust for missing PG_USE_PNFS
+
+J. Bruce Fields (1):
+  SQUASHME: pnfs-block: fix compile breakage
+
+Jim Rees (5):
+  pnfs-block: Add support for simple rpc pipefs
+  pnfs-block: Remove device creation from kernel
+  move include lines out of include file
+  SQUASHME: pnfs-block: Return failure from bl_initialize_mountpoint
+  pnfs-block: fix blocklayoutdev.c for new blkdev_get_by_dev()
+
+Mike Sager (1):
+  pnfsblock: use the session max response size for getdeviceinfo's
+    maxcount
+
+Peng Tao (4):
+  pnfs: let layoutcommit code handle multiple segments
+  SQUASHME: pnfs: blocklayout: port block layout code
+  Add configurable prefetch size for layoutget
+  NFS41: do not update isize if inode needs layoutcommit
+
+Steve Dickson (1):
+  SQUASHME: pnfsblock: compile error in blocklayout code
+
+Tao Guo (3):
+  SQUASHME: pnfsblock: fix bug when decoding block device info.
+  pnfsblock: expose block_class interface
+  pnfsblock: iterating all local block disks instead of only scsi disks
+    when initializing mount point.
+
+Zhang Jingwang (7):
+  SQAUSHME: blocklayoutdriver: NULL pointer reference when committing
+    too many extents
+  SQUASHME: pnfsblock: Fix a memory leak
+  SQUASHME: pnfsblock: Wrong extent refcount in block extents list
+  SQUASHME: pnfsblock: Implement release_inval_marks
+  SQUASHME: pnfsblock: Fix missing extent in commit list
+  pnfsblock: Lookup list entry of layouts and tags in reverse order
+  SQUASHME: pnfsblock: set pnfs_blksize before calling
+    set_pnfs_layoutdriver
+
+ fs/nfs/Kconfig                                   |   10 +
+ fs/nfs/Makefile                                  |    1 +
+ fs/nfs/blocklayout/Makefile                      |    6 +
+ fs/nfs/blocklayout/block-device-discovery-pipe.c |   66 ++
+ fs/nfs/blocklayout/blocklayout.c                 | 1103 ++++++++++++++++++++++
+ fs/nfs/blocklayout/blocklayout.h                 |  297 ++++++
+ fs/nfs/blocklayout/blocklayoutdev.c              |  346 +++++++
+ fs/nfs/blocklayout/blocklayoutdm.c               |  120 +++
+ fs/nfs/blocklayout/extents.c                     |  940 ++++++++++++++++++
+ fs/nfs/client.c                                  |    8 +-
+ fs/nfs/file.c                                    |   26 +-
+ fs/nfs/inode.c                                   |    3 +-
+ fs/nfs/nfs4_fs.h                                 |    2 +-
+ fs/nfs/nfs4proc.c                                |    6 +-
+ fs/nfs/nfs4xdr.c                                 |  104 ++-
+ fs/nfs/pnfs.c                                    |   96 ++-
+ fs/nfs/pnfs.h                                    |  126 +++-
+ fs/nfs/sysctl.c                                  |   10 +
+ fs/nfs/write.c                                   |   12 +-
+ include/linux/nfs_fs.h                           |    3 +-
+ include/linux/nfs_fs_sb.h                        |    4 +-
+ include/linux/nfs_xdr.h                          |    3 +-
+ include/linux/sunrpc/rpc_pipe_fs.h               |    4 +
+ include/linux/sunrpc/simple_rpc_pipefs.h         |  105 ++
+ net/sunrpc/Makefile                              |    2 +-
+ net/sunrpc/simple_rpc_pipefs.c                   |  423 +++++++++
+ 26 files changed, 3778 insertions(+), 48 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/Makefile
+ create mode 100644 fs/nfs/blocklayout/block-device-discovery-pipe.c
+ create mode 100644 fs/nfs/blocklayout/blocklayout.c
+ create mode 100644 fs/nfs/blocklayout/blocklayout.h
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdev.c
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
+ create mode 100644 fs/nfs/blocklayout/extents.c
+ create mode 100644 include/linux/sunrpc/simple_rpc_pipefs.h
+ create mode 100644 net/sunrpc/simple_rpc_pipefs.c
+
 -- 
 1.7.4.1
 
