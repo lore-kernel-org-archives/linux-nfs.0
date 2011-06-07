@@ -1,52 +1,125 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:11653 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755655Ab1FJCQp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 22:16:45 -0400
-Message-ID: <4DF17E86.3060701@panasas.com>
-Date: Thu, 09 Jun 2011 19:16:38 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Jim Rees <rees@umich.edu>
-CC: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH 00/88] pnfs block layout driver
-References: <cover.1307464381.git.rees@umich.edu> <4DF140AF.20208@panasas.com> <20110609221528.GB28760@merit.edu>
-In-Reply-To: <20110609221528.GB28760@merit.edu>
-Content-Type: text/plain; charset=UTF-8
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:53275 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754412Ab1FGR2F (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:28:05 -0400
+Date: Tue, 7 Jun 2011 13:28:02 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 19/88] pnfsblock: layout alloc and free
+Message-ID: <c7b028d7fd040f0e737125ec31418d09f223fec5.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 06/09/2011 03:15 PM, Jim Rees wrote:
-> Boaz Harrosh wrote:
-> 
->   Who is going to SQUASH all the SQUASHMEs and re think the all patch
->   separation again. To something that makes a more logical progression
->   and easier on the review. The way it is now I'm not able to review,
->   sorry, I got lost trying to understand which is which.
-> 
-> I'm open to suggestions and happy to do the work.  I agree that 88 patches
-> is nearly indigestable.  However I note that Benny seems to have pulled in
-> the entire set so I'm not sure how to proceed at this point.  Also this code
-> was in Benny's 2.6.38 and only got dropped when the 3.0 merge came along, so
-> most of it's already been under review for a year or more.
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-Lets start by squashing all the SQUASHMEs into their proper place, that will
-get you down to 49. You might notice that it could get hard and it will be
-easier to actually take the complete code and re-divide it to patches, a fresh.
-crafted more less on the old division strategy.
+Allocate the empty list-heads that will hold all the extent data
+for the layout.
 
-It's what Fred did at the final files submission. And it is what I did more
-or less with the objects final submission. But you might find that for you
-it is easier to rebase and squash the patches together after you re-order
-them. It's your call and you will not know before you experiment a little.
-I can show you some techniques I use on both these paths.
-(Let's meet in B next week)
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfs: move pnfs_layout_type inline in nfs_inode]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |   33 ++++++++++++++++++++++++++++++++-
+ fs/nfs/blocklayout/blocklayout.h |   25 +++++++++++++++++++++++++
+ 2 files changed, 57 insertions(+), 1 deletions(-)
 
-Then you should do a second pass to see that each patch is compile-able and
-makes sense and maybe also reorder the introduction of the generic parts
-close to where they are used in the pachset progression. Again like we did
-for files and objects.
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index ebaa48a..677836c 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -83,18 +83,49 @@ bl_write_pagelist(struct pnfs_layout_type *lo,
+ 	return PNFS_NOT_ATTEMPTED;
+ }
+ 
++/* STUB */
++static void
++release_extents(struct pnfs_block_layout *bl,
++		struct nfs4_pnfs_layout_segment *range)
++{
++	return;
++}
++
++/* STUB */
++static void
++release_inval_marks(void)
++{
++	return;
++}
++
++/* Note we are relying on caller locking to prevent nasty races. */
+ static void
+ bl_free_layout(void *p)
+ {
++	struct pnfs_block_layout	*bl = p;
++
+ 	dprintk("%s enter\n", __func__);
++	release_extents(bl, NULL);
++	release_inval_marks();
++	kfree(bl);
+ 	return;
+ }
+ 
+ static void *
+ bl_alloc_layout(struct pnfs_mount_type *mtype, struct inode *inode)
+ {
++	struct pnfs_block_layout	*bl;
++
+ 	dprintk("%s enter\n", __func__);
+-	return NULL;
++	bl = kzalloc(sizeof(*bl), GFP_KERNEL);
++	if (!bl)
++		return NULL;
++	spin_lock_init(&bl->bl_ext_lock);
++	INIT_LIST_HEAD(&bl->bl_extents[0]);
++	INIT_LIST_HEAD(&bl->bl_extents[1]);
++	bl->bl_blocksize = NFS_SERVER(inode)->pnfs_blksize >> 9;
++	INIT_INVAL_MARKS(&bl->bl_inval, bl->bl_blocksize);
++	return bl;
+ }
+ 
+ static void
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index d695f8e..dd25f1a 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -99,6 +99,31 @@ struct pnfs_blk_sig {
+ 	struct pnfs_blk_sig_comp	si_comps[PNFS_BLOCK_MAX_SIG_COMP];
+ };
+ 
++struct pnfs_inval_markings {
++	/* STUB */
++};
++
++static inline void
++INIT_INVAL_MARKS(struct pnfs_inval_markings *marks, sector_t blocksize)
++{
++	/* STUB */
++}
++
++enum extentclass4 {
++	RW_EXTENT	= 0, /* READWRTE and INVAL */
++	RO_EXTENT	= 1, /* READ and NONE */
++	EXTENT_LISTS	= 2,
++};
++
++struct pnfs_block_layout {
++	struct pnfs_inval_markings bl_inval; /* tracks INVAL->RW transition */
++	spinlock_t		bl_ext_lock;   /* Protects list manipulation */
++	struct list_head	bl_extents[EXTENT_LISTS]; /* R and RW extents */
++	sector_t		bl_blocksize;  /* Server blocksize in sectors */
++};
++
++#define BLK_LO2EXT(lo) ((struct pnfs_block_layout *)lo->ld_data)
++
+ uint32_t *blk_overflow(uint32_t *p, uint32_t *end, size_t nbytes);
+ 
+ #define BLK_READBUF(p, e, nbytes)  do { \
+-- 
+1.7.4.1
 
-Thanks
-Boaz
