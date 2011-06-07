@@ -1,61 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:51093 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932718Ab1FWULT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Jun 2011 16:11:19 -0400
-Date: Thu, 23 Jun 2011 16:11:17 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: autoload rpcsec_gss_krb5
-Message-ID: <20110623201117.GB12357@fieldses.org>
-References: <20110622213209.GA3010@fieldses.org>
- <20110623155947.GC8911@fieldses.org>
- <BANLkTikS+Y-V=f3Pm8AF-AUoeYVo==4SzA@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <BANLkTikS+Y-V=f3Pm8AF-AUoeYVo==4SzA@mail.gmail.com>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:53745 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932074Ab1FGR3b (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:29:31 -0400
+Date: Tue, 7 Jun 2011 13:29:29 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 31/88] pnfsblock: write_end_cleanup
+Message-ID: <c229ed79ddc16ccff286f77018c5912bf30c83ed.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Jun 23, 2011 at 10:06:14PM +0200, Tigran Mkrtchyan wrote:
-> On Thu, Jun 23, 2011 at 5:59 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > By the way:
-> >
-> > On Wed, Jun 22, 2011 at 05:32:09PM -0400, J. Bruce Fields wrote:
-> >> diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-> >> index 0a9a2ec..5c33926 100644
-> >> --- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-> >> +++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-> >> @@ -743,6 +743,13 @@ static struct pf_desc gss_kerberos_pfs[] = {
-> >>       },
-> >>  };
-> >>
-> >> +MODULE_ALIAS("rpc-auth-gss-krb5");
-> >> +MODULE_ALIAS("rpc-auth-gss-krb5i");
-> >> +MODULE_ALIAS("rpc-auth-gss-krb5p");
-> >> +MODULE_ALIAS("rpc-auth-gss-390003");
-> >> +MODULE_ALIAS("rpc-auth-gss-390004");
-> >> +MODULE_ALIAS("rpc-auth-gss-390005");
-> >
-> > Is there any reason we don't do this for the auth modules, and the pnfs
-> > layout modules?  Seems silly to wait for distro's to add it to
-> > modprobe.conf if we don't need to.
-> >
-> 
-> I recall a discussion at connectaton 2010, where Peter Staubach from
-> RedHat ( at that time )
-> requested a way to disable pNFS without rebuilding the kernel.
-> 
-> Probably that's why autoload is not implemented.
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-Well, autoload *is* implemented, you just have to add an alias command
-to modprobe.conf before it'll work.
+Ensure all pages in block are marked for initialization if needed.
 
-And if we embed the alias in the module instead, it will still be
-possible to disable autloading by adding a "backlist <modulename>" to
-modproble.conf.
+[pnfsblock: Update to 2.6.29]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |   59 ++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 59 insertions(+), 0 deletions(-)
 
-So I don't *think* that's the issue, unless I've missed something.
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index f4851c1..af26bcc 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -835,6 +835,64 @@ bl_write_end(struct inode *inode, struct page *page, loff_t pos,
+ 	return 0;
+ }
+ 
++/* Return any memory allocated to fsdata->private, and take advantage
++ * of no page locks to mark pages noted in write_begin as needing
++ * initialization.
++ */
++static void
++bl_write_end_cleanup(struct file *filp, struct pnfs_fsdata *fsdata)
++{
++	struct page *page;
++	pgoff_t index;
++	sector_t *pos;
++	struct address_space *mapping = filp->f_mapping;
++	struct pnfs_fsdata *fake_data;
++
++	if (!fsdata)
++		return;
++	pos = fsdata->private;
++	if (!pos)
++		return;
++	dprintk("%s enter with pos=%llu\n", __func__, (u64)(*pos));
++	for (; *pos != ~0; pos++) {
++		index = *pos >> (PAGE_CACHE_SHIFT - 9);
++		/* XXX How do we properly deal with failures here??? */
++		page = grab_cache_page_write_begin(mapping, index, 0);
++		if (!page) {
++			printk(KERN_ERR "%s BUG BUG BUG NoMem\n", __func__);
++			continue;
++		}
++		dprintk("%s: Examining block page\n", __func__);
++		print_page(page);
++		if (!PageMappedToDisk(page)) {
++			/* XXX How do we properly deal with failures here??? */
++			dprintk("%s Marking block page\n", __func__);
++			init_page_for_write(BLK_LSEG2EXT(fsdata->lseg), page,
++					    PAGE_CACHE_SIZE, PAGE_CACHE_SIZE,
++					    NULL);
++			print_page(page);
++			fake_data = kzalloc(sizeof(*fake_data), GFP_KERNEL);
++			if (!fake_data) {
++				printk(KERN_ERR "%s BUG BUG BUG NoMem\n",
++				       __func__);
++				unlock_page(page);
++				continue;
++			}
++			fake_data->ok_to_use_pnfs = 1;
++			fake_data->bypass_eof = 1;
++			mapping->a_ops->write_end(filp, mapping,
++						  index << PAGE_CACHE_SHIFT,
++						  PAGE_CACHE_SIZE,
++						  PAGE_CACHE_SIZE,
++						  page, fake_data);
++			/* Note fake_data is freed by nfs_write_end */
++		} else
++			unlock_page(page);
++	}
++	kfree(fsdata->private);
++	fsdata->private = NULL;
++}
++
+ static ssize_t
+ bl_get_stripesize(struct pnfs_layout_type *lo)
+ {
+@@ -880,6 +938,7 @@ static struct layoutdriver_io_operations blocklayout_io_operations = {
+ 	.write_pagelist			= bl_write_pagelist,
+ 	.write_begin			= bl_write_begin,
+ 	.write_end			= bl_write_end,
++	.write_end_cleanup		= bl_write_end_cleanup,
+ 	.alloc_layout			= bl_alloc_layout,
+ 	.free_layout			= bl_free_layout,
+ 	.alloc_lseg			= bl_alloc_lseg,
+-- 
+1.7.4.1
 
---b.
