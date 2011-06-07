@@ -1,93 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:33695 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751027Ab1FJGAz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 02:00:55 -0400
-From: <tao.peng@emc.com>
-To: <benny@tonian.com>, <bergwolf@gmail.com>
-CC: <rees@umich.edu>, <linux-nfs@vger.kernel.org>, <honey@citi.umich.edu>
-Date: Fri, 10 Jun 2011 02:00:16 -0400
-Subject: RE: [PATCH 87/88] Add configurable prefetch size for layoutget
-Message-ID: <F19688880B763E40B28B2B462677FBF805BED9D221@MX09A.corp.emc.com>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:52475 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755985Ab1FGRfO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:35:14 -0400
+Date: Tue, 7 Jun 2011 13:35:13 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 79/88] SQUASHME: pnfs-block: Return failure from
+ bl_initialize_mountpoint
+Message-ID: <8e0ac5f6ac5077568f8ac20807b57be83dd9ca60.1307464382.git.rees@umich.edu>
 References: <cover.1307464381.git.rees@umich.edu>
- <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu>
- <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu>
- <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com>
- <4DF062D6.7010304@panasas.com> <20110609114929.GA28157@merit.edu>
- <4DF0CB5D.60000@panasas.com> <20110609135846.GA32565@merit.edu>
- <BANLkTi=0yr1ecyf30+OQcFipJsHOk=4Y4w@mail.gmail.com>
- <4DF139B1.7070106@tonian.com>
-In-Reply-To: <4DF139B1.7070106@tonian.com>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi, Benny,
+if we can't get the device for the disk list.
 
-Cheers,
--Bergwolf
+Signed-off-by: Jim Rees <rees@umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
 
-
------Original Message-----
-From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Benny Halevy
-Sent: Friday, June 10, 2011 5:23 AM
-To: Peng Tao
-Cc: Jim Rees; linux-nfs@vger.kernel.org; peter honeyman
-Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
-
-On 2011-06-09 08:07, Peng Tao wrote:
-> Hi, Jim and Benny,
-> 
-> On Thu, Jun 9, 2011 at 9:58 PM, Jim Rees <rees@umich.edu> wrote:
->> Benny Halevy wrote:
->>
->>  > My understanding is that layoutget specifies a min and max, and the server
->>
->>  There's a min.  What do you consider the max?
->>  Whatever gets into csa_fore_chan_attrs.ca_maxresponsesize?
->>
->> The spec doesn't say max, it says "desired."  I guess I assumed the server
->> wouldn't normally return more than desired.
-> In fact server is returning "desired" length. The problem is that we
-> call pnfs_update_layout in nfs_write_begin, and it will end up setting
-> both minlength and length to page size. There is no space for client
-> to collapse layoutget range in nfs_write_begin.
-> 
-
-That's a different issue.  Waiting with pnfs_update_layout to flush
-time rather than write_begin if the whole page is written would help
-sending a more meaningful desired range as well as avoiding needless
-read-modify-writes in case the application also wrote the whole
-preallocated block.
-[PT] It is also the reason why we want to introduce layout prefetching, to get more segment than the page passed in nfs_write_begin.
-
->>
->> 18.43.3.  DESCRIPTION
->> ...
->>
->>   The LAYOUTGET operation returns layout information for the specified
->>   byte-range: a layout.  The client actually specifies two ranges, both
->>   starting at the offset in the loga_offset field.  The first range is
->>   between loga_offset and loga_offset + loga_length - 1 inclusive.
->>   This range indicates the desired range the client wants the layout to
->>   cover.  The second range is between loga_offset and loga_offset +
->>   loga_minlength - 1 inclusive.  This range indicates the required
->>   range the client needs the layout to cover.  Thus, loga_minlength
->>   MUST be less than or equal to loga_length.
->>
-> 
-> 
-> 
-
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 5be912e..5f11fb8 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -677,7 +677,7 @@ static void free_blk_mountid(struct block_mount_id *mid)
+ 	}
+ }
+ 
+-/* This is mostly copied form the filelayout's get_device_info function.
++/* This is mostly copied from the filelayout's get_device_info function.
+  * It seems much of this should be at the generic pnfs level.
+  */
+ static struct pnfs_block_dev *
+@@ -796,8 +796,10 @@ bl_set_layoutdriver(struct nfs_server *server, const struct nfs_fh *fh)
+ 			bdev = nfs4_blk_get_deviceinfo(server, fh,
+ 						     &dlist->dev_id[i],
+ 						     &block_disklist);
+-			if (!bdev)
++			if (!bdev) {
++				status = -ENODEV;
+ 				goto out_error;
++			}
+ 			spin_lock(&b_mt_id->bm_lock);
+ 			list_add(&bdev->bm_node, &b_mt_id->bm_devlist);
+ 			spin_unlock(&b_mt_id->bm_lock);
 -- 
-Benny Halevy
-CTO, Tonian Inc.
-
-Tel: +972-54-802-8340
-benny@tonian.com
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+1.7.4.1
 
