@@ -1,110 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:55046 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755686Ab1FJTXf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 15:23:35 -0400
-Received: by iwn34 with SMTP id 34so2409012iwn.19
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Jun 2011 12:23:35 -0700 (PDT)
-Message-ID: <4DF26F34.8080008@tonian.com>
-Date: Fri, 10 Jun 2011 15:23:32 -0400
-From: Benny Halevy <benny@tonian.com>
-To: tao.peng@emc.com
-CC: bergwolf@gmail.com, rees@umich.edu, linux-nfs@vger.kernel.org,
-        honey@citi.umich.edu
-Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
-References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu> <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu> <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com> <20110609114929.GA28157@merit.edu> <4DF0CB5D.60000@panasas.com> <20110609135846.GA32565@merit.edu> <BANLkTi=0yr1ecyf30+OQcFipJsHOk=4Y4w@mail.gmail.com> <4DF139B1.7070106@tonian.com> <F19688880B763E40B28B2B462677FBF805BED9D221@MX09A.corp.emc.com> <4DF20F07.4090804@tonian.com> <F19688880B763E40B28B2B462677FBF805BED9D2AC@MX09A.corp.emc.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805BED9D2AC@MX09A.corp.emc.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:50767 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756761Ab1FGRak (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:30:40 -0400
+Date: Tue, 7 Jun 2011 13:30:38 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 39/88] pnfsblock: debugging dprintks for clist info
+Message-ID: <993ea6b9602ce4fdc128ae2490277b9cb3023b9d.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-06-10 10:09, tao.peng@emc.com wrote:
-> Hi, Benny,
-> 
-> -----Original Message-----
-> From: Benny Halevy [mailto:benny@tonian.com] 
-> Sent: Friday, June 10, 2011 8:33 PM
-> To: Peng, Tao
-> Cc: bergwolf@gmail.com; rees@umich.edu; linux-nfs@vger.kernel.org; honey@citi.umich.edu
-> Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
-> 
-> On 2011-06-10 02:00, tao.peng@emc.com wrote:
->> Hi, Benny,
->>
->> Cheers,
->> -Bergwolf
->>
->>
->> -----Original Message-----
->> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Benny Halevy
->> Sent: Friday, June 10, 2011 5:23 AM
->> To: Peng Tao
->> Cc: Jim Rees; linux-nfs@vger.kernel.org; peter honeyman
->> Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
->>
->> On 2011-06-09 08:07, Peng Tao wrote:
->>> Hi, Jim and Benny,
->>>
->>> On Thu, Jun 9, 2011 at 9:58 PM, Jim Rees <rees@umich.edu> wrote:
->>>> Benny Halevy wrote:
->>>>
->>>>  > My understanding is that layoutget specifies a min and max, and the server
->>>>
->>>>  There's a min.  What do you consider the max?
->>>>  Whatever gets into csa_fore_chan_attrs.ca_maxresponsesize?
->>>>
->>>> The spec doesn't say max, it says "desired."  I guess I assumed the server
->>>> wouldn't normally return more than desired.
->>> In fact server is returning "desired" length. The problem is that we
->>> call pnfs_update_layout in nfs_write_begin, and it will end up setting
->>> both minlength and length to page size. There is no space for client
->>> to collapse layoutget range in nfs_write_begin.
->>>
->>
->> That's a different issue.  Waiting with pnfs_update_layout to flush
->> time rather than write_begin if the whole page is written would help
->> sending a more meaningful desired range as well as avoiding needless
->> read-modify-writes in case the application also wrote the whole
->> preallocated block.
->> [PT] It is also the reason why we want to introduce layout prefetching, to get more segment than the page passed in nfs_write_begin.
->>
-> 
-> Peng, I understand what you want to achieve but the proposed way
-> just doesn't fly. The server knows better than the client its allocation policies
-> and it knows better the combined workload of different client and possible
-> conflicts between them therefore it should be making the ultimate decision
-> about the actual segment sizes.
-> [PT] Yes, you are right. Server should know combined workload of all clients and make its decision based on that.
-> And it always has the right to return more than (or less than) specified in loga_length.
->  
-> That said, the client should indeed do its best to ask for the most appropriate
-> segments size for its use and we should be making a better job at that.
-> It's just that blindly asking for more is not a good strategy and requiring
-> manual admin help to tune the clients is not acceptable.
-> [PT] yeah, determing the most appropriate is always the hart part. Do you have any suggestions to that?
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-A simple algorithm I can suggest is:
-- on initialization, calculate and save, per layout driver
-  - maximum layout size
-    - take into account csr_fore_chan_attrs.ca_maxresponsesize and possible other parameters
-  - keep a working copy of the maximum value and the calculated copy.
-  - alignment value.
-- on miss, see if there's an adjacent layout segment in cache
-- if found, ask for twice the found segment size, up to the maximum value,
-  aligned on the alignment value.
-- if the server returns less the layoutget range, keep note of the returned length
-  (but not adjust maximum yet, as the server may return a short segment for various
-   reasons)
-- if the server is consistent about returning less than was asked, adjust the
-  - working copy of the maximum length
-- if the maximum was adjusted try bumping it up after X (TBD) layoutgets or T seconds
-  to see if that was just due to high load or conflicts on the server
-- on any error returned for LAYOUTGET reset the algorithm parameters
-- on session reestablishment recalculate maximums.
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/extents.c |   30 ++++++++++++++++++++++++++++++
+ 1 files changed, 30 insertions(+), 0 deletions(-)
 
-Benny
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index a05ee2a..98452ca 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -349,6 +349,31 @@ int mark_written_sectors(struct pnfs_inval_markings *marks,
+ 	return status;
+ }
+ 
++static void print_short_extent(struct pnfs_block_short_extent *be)
++{
++	dprintk("PRINT SHORT EXTENT extent %p\n", be);
++	if (be) {
++		dprintk("        be_f_offset %llu\n", (u64)be->bse_f_offset);
++		dprintk("        be_length   %llu\n", (u64)be->bse_length);
++	}
++}
++
++void print_clist(struct list_head *list, unsigned int count)
++{
++	struct pnfs_block_short_extent *be;
++	unsigned int i = 0;
++
++	dprintk("****************\n");
++	dprintk("Extent list looks like:\n");
++	list_for_each_entry(be, list, bse_node) {
++		i++;
++		print_short_extent(be);
++	}
++	if (i != count)
++		dprintk("\n\nExpected %u entries\n\n\n", count);
++	dprintk("****************\n");
++}
++
+ /* Note: In theory, we should do more checking that devid's match between
+  * old and new, but if they don't, the lists are too corrupt to salvage anyway.
+  */
+@@ -360,6 +385,9 @@ static void add_to_commitlist(struct pnfs_block_layout *bl,
+ 	struct pnfs_block_short_extent *old, *save;
+ 	sector_t end = new->bse_f_offset + new->bse_length;
+ 
++	dprintk("%s enter\n", __func__);
++	print_short_extent(new);
++	print_clist(clist, bl->bl_count);
+ 	bl->bl_count++;
+ 	/* Scan for proper place to insert, extending new to the left
+ 	 * as much as possible.
+@@ -409,6 +437,8 @@ static void add_to_commitlist(struct pnfs_block_layout *bl,
+ 			kfree(old);
+ 		}
+ 	}
++	dprintk("%s: after merging\n", __func__);
++	print_clist(clist, bl->bl_count);
+ }
+ 
+ /* Note the range described by offset, length is guaranteed to be contained
+-- 
+1.7.4.1
 
-> 
-> Thanks,
-> Tao
