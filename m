@@ -1,39 +1,36 @@
-From: Dan Carpenter <error27@gmail.com>
-Subject: [patch v2] NFS: fix debug message
-Date: Thu, 9 Jun 2011 21:07:33 +0300
-Message-ID: <20110609180733.GJ4069@shale.localdomain>
-References: <4E3994E6-9DBF-439B-808E-F134EB5DD923@netapp.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: How to control the order of different export options for different
+ client formats?
+Date: Tue, 07 Jun 2011 16:33:17 -0400
+Message-ID: <4DEE8B0D.5040500@RedHat.com>
+References: <4DD2A084.1040905@moving-picture.com> <20110518080106.1159c5b8@notabene.brown> <4DD39D39.7010805@moving-picture.com> <20110518162050.GB16835@fieldses.org> <4DD66EC6.7090706@moving-picture.com> <20110520164147.GA11176@fieldses.org> <4DE79236.1080808@moving-picture.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
-	kernel-janitors@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+To: James Pearson <james-p-5Ol4pYTxKWu0ML75eksnrtBPR1lH4CV8@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:42801 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751353Ab1FISIK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 14:08:10 -0400
-In-Reply-To: <4E3994E6-9DBF-439B-808E-F134EB5DD923@netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:1026 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756561Ab1FGUdV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Jun 2011 16:33:21 -0400
+In-Reply-To: <4DE79236.1080808-5Ol4pYTxKWu0ML75eksnrtBPR1lH4CV8@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-"tmp_ds" was intended here instead of "ds".  Also "ds" was already
-freed.
 
-Signed-off-by: Dan Carpenter <error27@gmail.com>
----
-v1 fixed the user-after-free but left the message incorrect.
 
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index 77c171e..ed388aa 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -365,7 +365,7 @@ nfs4_pnfs_ds_add(struct list_head *dsaddrs, gfp_t gfp_flags)
- 		kfree(ds);
- 		atomic_inc(&tmp_ds->ds_count);
- 		dprintk("%s data server %s found, inc'ed ds_count to %d\n",
--			__func__, ds->ds_remotestr,
-+			__func__, tmp_ds->ds_remotestr,
- 			atomic_read(&tmp_ds->ds_count));
- 		ds = tmp_ds;
- 	}
+On 06/02/2011 09:37 AM, James Pearson wrote:
+> J. Bruce Fields wrote:
+>>
+>> But could we just combine this with the previous section--and make sure
+>> the different possibilities are listed there in the correct priority
+>> order to start off with.
+>>
+>> That'd also mean adding a new subsection for the "anonymous" case.
+> 
+> OK - how about the attached patch?
+> 
+> James Pearson
+Committed....
+
+steved.
