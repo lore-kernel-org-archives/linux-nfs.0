@@ -1,59 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:55866 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753919Ab1FILtb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 07:49:31 -0400
-Date: Thu, 9 Jun 2011 07:49:29 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Peng Tao <bergwolf@gmail.com>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
-Message-ID: <20110609114929.GA28157@merit.edu>
-References: <cover.1307464381.git.rees@umich.edu>
- <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu>
- <4DEED80A.4000102@panasas.com>
- <20110608021852.GA20998@merit.edu>
- <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com>
- <4DF062D6.7010304@panasas.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4DF062D6.7010304@panasas.com>
+Received: from smtp3.ugent.be ([157.193.49.127]:44605 "EHLO smtp3.UGent.be"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754451Ab1FGRM6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Jun 2011 13:12:58 -0400
+Received: from localhost (mcheck3.ugent.be [157.193.71.89])
+	by smtp3.UGent.be (Postfix) with ESMTP id 2194E148327
+	for <linux-nfs@vger.kernel.org>; Tue,  7 Jun 2011 19:04:59 +0200 (CEST)
+Received: from smtp3.UGent.be ([157.193.49.127])
+	by localhost (mcheck3.ugent.be [157.193.43.11]) (amavisd-new, port 10024)
+	with ESMTP id 3URvSzs-+aCc for <linux-nfs@vger.kernel.org>;
+	Tue,  7 Jun 2011 19:04:58 +0200 (CEST)
+Received: from [172.16.0.2] (78-20-75-230.access.telenet.be [78.20.75.230])
+	(Authenticated sender: lukclaes)
+	by smtp3.UGent.be (Postfix) with ESMTPSA id B5DD11482F9
+	for <linux-nfs@vger.kernel.org>; Tue,  7 Jun 2011 19:04:58 +0200 (CEST)
+Message-ID: <4DEE5A60.8000402@debian.org>
+Date: Tue, 07 Jun 2011 19:05:36 +0200
+From: Luk Claes <luk@debian.org>
+To: linux-nfs@vger.kernel.org
+Subject: Re: What RPM meets the libgssapi requirement on Fedora?
+References: <4DEE57AD.8050408@candelatech.com>
+In-Reply-To: <4DEE57AD.8050408@candelatech.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Benny Halevy wrote:
+Hi
 
-  >> But note that this patch doesn't change anything unless you set the sysctl.
-  > there is a default value of 2M. maybe we can set it to page size by
-  > default so other layout are not affected and block layout can let
-  > users set it by hand if they care about performance. does this make
-  > sense?
-  
-  If doing it at all why use a sysctl rather than a mount option?
-  Or maybe coding the logic for prefetching the layout iff sequential
-  access is detected is the right thing to do.
+In Debian it's called libgssglue as it was also renamed upstream quite a
+while ago.
 
-I would rather see some automatic solution than to add either a sysctl or a
-mount option.  For now you can just drop that patch, as it's not needed for
-basic pnfs block.
+Cheers
 
-My understanding is that layoutget specifies a min and max, and the server
-is returning the min.  Trond and Fred believe this should be fixed on the
-server.  Here's the original report of the problem:
+Luk
 
-From: Bergwolf
+On 06/07/2011 06:54 PM, Ben Greear wrote:
+> ./configure
+> ....
+> checking pkg-config is at least version 0.9.0... yes
+> checking for RPCSECGSS... yes
+> checking for GSSAPI... configure: error: Package requirements (libgssapi
+>>= 0.11) were not met:
+> 
+> No package 'libgssapi' found
+> 
+> I tried:
+> 
+> [root@fs3 linux-2.6.38.x64-dbg]# yum install libgssapi-devel
+> Loaded plugins: presto, refresh-packagekit
+> Setting up Install Process
+> Nothing to do
+> 
+> This is on Fedora 13...
+> 
+> Thanks,
+> Ben
+> 
 
->From the network trace for pnfs, we can see the root cause for slow performance
-is too many small layoutget. In specific, client asks for a layout of only 4K
-pagesize (and server returns 8K due to block size alignment) at each time.
-
-The total IO time is 256/1.68 = 152 second.
-There are 256*1024/8 = 32768 layoutget for the 256MB file.
-On average, the time spent on each layoutget is 0.00456 second according to the
-trace.
-The total layoutget time is 32768* 0.00456 = 149 second, which takes up about
-98% of total IO time.
-
-So we should optimize layoutget's granularity to get better performance. For
-instance, use a configurable prefetch size of 2MB or so.
