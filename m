@@ -1,121 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:34534 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756550Ab1FIXEf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 19:04:35 -0400
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [RFC 05/11] nfs:  Pay attention to srcaddr in v4.1 callback logic.
-Date: Thu,  9 Jun 2011 16:02:49 -0700
-Message-Id: <1307660575-6994-6-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1307660575-6994-1-git-send-email-greearb@candelatech.com>
-References: <1307660575-6994-1-git-send-email-greearb@candelatech.com>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:50818 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932108Ab1FGRar (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:30:47 -0400
+Date: Tue, 7 Jun 2011 13:30:44 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 40/88] SQAUSHME: blocklayoutdriver: NULL pointer reference
+ when committing too many extents
+Message-ID: <b645b267ac464fba8b8dccf6f0389e2e2767d6d8.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
+From: Zhang Jingwang <yyalone@gmail.com>
 
-Signed-off-by: Ben Greear <greearb@candelatech.com>
+If there are too many extents to commit, xdr buffer will be used up.
+
+So we check the return value and encode as many extents as possible to xdr buffer, leaving the rest in the bl_commit list.
+
+Signed-off-by: Zhang Jingwang <yyalone@gmail.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
-:100644 100644 d4d1954... 5b20987... M	fs/nfs/callback_proc.c
-:100644 100644 8ba7e1a... c571a97... M	fs/nfs/client.c
-:100644 100644 8a8ae87... 59c3a26... M	fs/nfs/internal.h
- fs/nfs/callback_proc.c |    3 ++-
- fs/nfs/client.c        |   27 +++++++++++++++++++++++++--
- fs/nfs/internal.h      |    4 +++-
- 3 files changed, 30 insertions(+), 4 deletions(-)
+ fs/nfs/blocklayout/extents.c |   29 ++++++++++++++++-------------
+ 1 files changed, 16 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index d4d1954..5b20987 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -424,7 +424,8 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 
- 	cps->clp = NULL;
- 
--	clp = nfs4_find_client_sessionid(args->csa_addr, &args->csa_sessionid);
-+	clp = nfs4_find_client_sessionid(args->csa_daddr, args->csa_addr,
-+					 &args->csa_sessionid);
- 	if (clp == NULL)
- 		goto out;
- 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 8ba7e1a..c571a97 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1233,10 +1233,12 @@ nfs4_find_client_ident(int cb_ident)
-  * Returns NULL if no such client
-  */
- struct nfs_client *
--nfs4_find_client_sessionid(const struct sockaddr *addr,
-+nfs4_find_client_sessionid(const struct sockaddr *srcaddr,
-+			   const struct sockaddr *addr,
- 			   struct nfs4_sessionid *sid)
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 98452ca..09a7c5c 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -745,7 +745,7 @@ encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
  {
- 	struct nfs_client *clp;
-+	struct nfs_client *ok_fit = NULL;
+ 	sector_t start, end;
+ 	struct pnfs_block_short_extent *lce, *save;
+-	unsigned int count;
++	unsigned int count = 0;
+ 	struct bl_layoutupdate_data *bld = arg->layoutdriver_data;
+ 	struct list_head *ranges = &bld->ranges;
+ 	__be32 *p, *xdr_start;
+@@ -760,29 +760,32 @@ encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
+ 	 * entire block to be marked WRITTEN before it can be added.
+ 	 */
+ 	spin_lock(&bl->bl_ext_lock);
+-	list_splice_init(&bl->bl_commit, ranges);
+-	count = bl->bl_count;
+-	bl->bl_count = 0;
+ 	/* Want to adjust for possible truncate */
+ 	/* We now want to adjust argument range */
+-	spin_unlock(&bl->bl_ext_lock);
  
- 	spin_lock(&nfs_client_lock);
- 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
-@@ -1251,10 +1253,30 @@ nfs4_find_client_sessionid(const struct sockaddr *addr,
- 		    sid->data, NFS4_MAX_SESSIONID_LEN) != 0)
- 			continue;
- 
-+		if (srcaddr) {
-+			const struct sockaddr *sa;
-+			sa = (const struct sockaddr *)&clp->cl_addr;
-+			if (!nfs_sockaddr_match_ipaddr(srcaddr, sa)) {
-+				/* If clp doesn't bind to srcaddr, then
-+				 * it is a potential match if we don't find
-+				 * a better one.
-+				 */
-+				if (sa->sa_family == AF_UNSPEC && !ok_fit)
-+					ok_fit = clp;
-+				continue;
-+			}
-+		}
-+found_one:
- 		atomic_inc(&clp->cl_count);
- 		spin_unlock(&nfs_client_lock);
- 		return clp;
+-	dprintk("%s found %i ranges\n", __func__, count);
+ 	/* XDR encode the ranges found */
+-	xdr_start = p = xdr_reserve_space(xdr, 8);
+-	p++;
+-	WRITE32(count);
+-	list_for_each_entry_safe(lce, save, ranges, bse_node) {
++	xdr_start = xdr_reserve_space(xdr, 8);
++	if (!xdr_start)
++		goto out;
++	list_for_each_entry_safe(lce, save, &bl->bl_commit, bse_node) {
+ 		p = xdr_reserve_space(xdr, 7 * 4 + sizeof(lce->bse_devid.data));
+-
++		if (!p)
++			break;
+ 		WRITE_DEVID(&lce->bse_devid);
+ 		WRITE64(lce->bse_f_offset << 9);
+ 		WRITE64(lce->bse_length << 9);
+ 		WRITE64(0LL);
+ 		WRITE32(PNFS_BLOCK_READWRITE_DATA);
++		list_del(&lce->bse_node);
++		list_add_tail(&lce->bse_node, ranges);
++		bl->bl_count--;
++		count++;
  	}
-+
-+	if (ok_fit) {
-+		clp = ok_fit;
-+		goto found_one;
-+	}
-+
- 	spin_unlock(&nfs_client_lock);
- 	return NULL;
+-
+-	*xdr_start = cpu_to_be32((xdr->p - xdr_start - 1) * 4);
++	xdr_start[0] = cpu_to_be32((xdr->p - xdr_start - 1) * 4);
++	xdr_start[1] = cpu_to_be32(count);
++out:
++	spin_unlock(&bl->bl_ext_lock);
++	dprintk("%s found %i ranges\n", __func__, count);
+ 	return 0;
  }
-@@ -1262,7 +1284,8 @@ nfs4_find_client_sessionid(const struct sockaddr *addr,
- #else /* CONFIG_NFS_V4_1 */
  
- struct nfs_client *
--nfs4_find_client_sessionid(const struct sockaddr *addr,
-+nfs4_find_client_sessionid(const struct sockaddr *srcaddr,
-+			   const struct sockaddr *addr,
- 			   struct nfs4_sessionid *sid)
- {
- 	return NULL;
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 8a8ae87..59c3a26 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -144,7 +144,9 @@ extern void nfs_put_client(struct nfs_client *);
- extern struct nfs_client *nfs4_find_client_no_ident(const struct sockaddr *);
- extern struct nfs_client *nfs4_find_client_ident(int);
- extern struct nfs_client *
--nfs4_find_client_sessionid(const struct sockaddr *, struct nfs4_sessionid *);
-+nfs4_find_client_sessionid(const struct sockaddr *srcaddr,
-+			   const struct sockaddr *addr,
-+			   struct nfs4_sessionid *);
- extern struct nfs_server *nfs_create_server(
- 					const struct nfs_parsed_mount_data *,
- 					struct nfs_fh *);
 -- 
-1.7.3.4
+1.7.4.1
 
