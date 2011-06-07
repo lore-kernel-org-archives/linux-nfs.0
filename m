@@ -1,157 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:57497 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753467Ab1FJWHS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 18:07:18 -0400
-Subject: Re: [PATCH v3 4/6] nfs-utils:  Support srcaddr=n option for string mount.
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:51524 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755451Ab1FGRcg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:32:36 -0400
+Date: Tue, 7 Jun 2011 13:32:34 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 55/88] SQUASHME: pnfsblock: write_begin adjust for removed
+ fields
+Message-ID: <03c95cf35d2e373e504440a62d90e833d81fc375.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1307740096-19933-5-git-send-email-greearb@candelatech.com>
-Date: Fri, 10 Jun 2011 18:07:08 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <D9DC610C-5620-403C-BF0A-CCD37AFAF4BB@oracle.com>
-References: <1307740096-19933-1-git-send-email-greearb@candelatech.com> <1307740096-19933-5-git-send-email-greearb@candelatech.com>
-To: greearb@candelatech.com
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+From: Fred Isaman <iisaman@netapp.com>
 
-On Jun 10, 2011, at 5:08 PM, greearb@candelatech.com wrote:
+ok_to_use_pnfs and PG_USE_PNFS are gone, instead test req->wb_lseg for NULL.
+This also means that the entire do_flush routine is redundant.
 
-> From: Ben Greear <greearb@candelatech.com>
-> 
-> Look for and parse the srcaddr=n argument.  If parsing
-> succeeds, pass this down the call chain.  This fully
-> implements binding to a specified source address when
-> mounting.
-> 
-> Signed-off-by: Ben Greear <greearb@candelatech.com>
-> ---
-> :100644 100644 71417df... aba4252... M	utils/mount/stropts.c
-> utils/mount/stropts.c |   29 +++++++++++++++++++++++++----
-> 1 files changed, 25 insertions(+), 4 deletions(-)
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index 71417df..aba4252 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -92,6 +92,7 @@ struct nfsmount_info {
-> 	int			flags,		/* MS_ flags */
-> 				fake,		/* actually do the mount? */
-> 				child;		/* forked bg child? */
-> +	struct local_bind_info  *local_ip;      /* Local IP binding info */
-> };
-> 
-> #ifdef MOUNT_CONFIG
-> @@ -345,6 +346,7 @@ static int nfs_validate_options(struct nfsmount_info *mi)
-> 	};
-> 	sa_family_t family;
-> 	int error;
-> +	char *option;
-> 
-> 	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
-> 		return 0;
-> @@ -371,6 +373,20 @@ static int nfs_validate_options(struct nfsmount_info *mi)
-> 					mi->address->ai_addrlen, mi->options))
-> 		return 0;
-> 
-> +	option = po_get(mi->options, "srcaddr");
-> +	if (option) {
-> +		struct local_bind_info *local_ip;
-> +		local_ip = malloc(sizeof(*local_ip));
-> +		memset(local_ip, 0, sizeof(*local_ip));
-> +		parse_local_bind(local_ip, option);
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |   21 ++++-----------------
+ 1 files changed, 4 insertions(+), 17 deletions(-)
 
-Nit: Steve may not agree with this, possibly, but it is better IMO if we name new functions like parse_local_bind() with an nfs_ prefix so that, when debugging, we can immediately tell in a backtrace what functions are in mount.nfs and which are in a system library.
-
-> +
-> +		if (!local_ip->is_set) {
-> +			free(local_ip);
-> +			return 0;
-> +		}
-> +		mi->local_ip = local_ip;
-> +	}
-
-I'm wondering what kind of sanity checking is done on the srcaddr value.
-
-1.  Do we verify that srcaddr == clientaddr?
-
-2.  Do we verify that srcaddr.sa_family == addr.sa_family ?
-
-> +
-> 	return 1;
-> }
-> 
-> @@ -484,7 +500,8 @@ static int nfs_construct_new_options(struct mount_options *options,
->  * FALSE is returned if some failure occurred.
->  */
-> static int
-> -nfs_rewrite_pmap_mount_options(struct mount_options *options)
-> +nfs_rewrite_pmap_mount_options(struct mount_options *options,
-> +			       struct local_bind_info *local_ip)
-> {
-> 	union nfs_sockaddr nfs_address;
-> 	struct sockaddr *nfs_saddr = &nfs_address.sa;
-> @@ -534,7 +551,8 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
-> 	 * negotiate.  Bail now if we can't contact it.
-> 	 */
-> 	if (!nfs_probe_bothports(mnt_saddr, mnt_salen, &mnt_pmap,
-> -				 nfs_saddr, nfs_salen, &nfs_pmap, NULL)) {
-> +				 nfs_saddr, nfs_salen, &nfs_pmap,
-> +				 local_ip)) {
-> 		errno = ESPIPE;
-> 		if (rpc_createerr.cf_stat == RPC_PROGNOTREGISTERED)
-> 			errno = EOPNOTSUPP;
-> @@ -589,7 +607,7 @@ static int nfs_sys_mount(struct nfsmount_info *mi, struct mount_options *opts)
-> }
-> 
-> static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
-> -		struct sockaddr *sap, socklen_t salen)
-> +			     struct sockaddr *sap, socklen_t salen)
-> {
-> 	struct mount_options *options = po_dup(mi->options);
-> 	int result = 0;
-> @@ -631,7 +649,7 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
-> 		printf(_("%s: trying text-based options '%s'\n"),
-> 			progname, *mi->extra_opts);
-> 
-> -	if (!nfs_rewrite_pmap_mount_options(options))
-> +	if (!nfs_rewrite_pmap_mount_options(options, mi->local_ip))
-> 		goto out_fail;
-> 
-> 	result = nfs_sys_mount(mi, options);
-> @@ -1039,6 +1057,7 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
-> 		.flags		= flags,
-> 		.fake		= fake,
-> 		.child		= child,
-> +		.local_ip	= NULL,
-> 	};
-> 	int retval = EX_FAIL;
-> 
-> @@ -1051,5 +1070,7 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
-> 
-> 	freeaddrinfo(mi.address);
-> 	free(mi.hostname);
-> +	if (mi.local_ip)
-> +		free(mi.local_ip);
-
-Nit: free(3) works when passed NULL, you don't need the extra "if (mi.local_ip)" in front of it.
-
-> 	return retval;
-> }
-> -- 
-> 1.7.3.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 66044d4..eb5760f 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -988,10 +988,10 @@ bl_write_begin(struct pnfs_layout_segment *lseg, struct page *page, loff_t pos,
+ 	if (bl->bl_blocksize < (PAGE_CACHE_SIZE >> 9)) {
+ 		dprintk("%s Can't handle blocksize %llu\n", __func__,
+ 			(u64)bl->bl_blocksize);
+-		fsdata->ok_to_use_pnfs = 0;
++		put_lseg(fsdata->lseg);
++		fsdata->lseg = NULL;
+ 		return 0;
+ 	}
+-	fsdata->ok_to_use_pnfs = 1;
+ 	if (PageMappedToDisk(page)) {
+ 		/* Basically, this is a flag that says we have
+ 		 * successfully called write_begin already on this page.
+@@ -1014,7 +1014,8 @@ bl_write_begin(struct pnfs_layout_segment *lseg, struct page *page, loff_t pos,
+ 		 * should be true if we get here.
+ 		 */
+ 		BUG_ON(PagePrivate(page));
+-		fsdata->ok_to_use_pnfs = 0;
++		put_lseg(fsdata->lseg);
++		fsdata->lseg = NULL;
+ 		kfree(pages_to_mark);
+ 		ret = 0;
+ 	} else {
+@@ -1122,19 +1123,6 @@ bl_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	}
+ }
+ 
+-/* This checks if old req will likely use same io method as soon
+- * to be created request, and returns False if they are the same.
+- */
+-static int
+-bl_do_flush(struct pnfs_layout_segment *lseg, struct nfs_page *req,
+-	    struct pnfs_fsdata *fsdata)
+-{
+-	int will_try_pnfs;
+-	dprintk("%s enter\n", __func__);
+-	will_try_pnfs = fsdata ? (fsdata->ok_to_use_pnfs) : (lseg != NULL);
+-	return will_try_pnfs != test_bit(PG_USE_PNFS, &req->wb_flags);
+-}
+-
+ static struct layoutdriver_io_operations blocklayout_io_operations = {
+ 	.commit				= bl_commit,
+ 	.read_pagelist			= bl_read_pagelist,
+@@ -1156,7 +1144,6 @@ static struct layoutdriver_io_operations blocklayout_io_operations = {
+ static struct layoutdriver_policy_operations blocklayout_policy_operations = {
+ 	.get_stripesize			= bl_get_stripesize,
+ 	.pg_test			= bl_pg_test,
+-	.do_flush			= bl_do_flush,
+ };
+ 
+ static struct pnfs_layoutdriver_type blocklayout_type = {
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.4.1
 
