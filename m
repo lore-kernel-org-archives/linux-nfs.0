@@ -1,166 +1,379 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from seldrel01.sonyericsson.com ([212.209.106.2]:11239 "EHLO
-	seldrel01.sonyericsson.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758039Ab1FQMXi convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Jun 2011 08:23:38 -0400
-From: "Assarsson, Emil" <Emil.Assarsson@sonyericsson.com>
-To: "'linux-nfs@vger.kernel.org'" <linux-nfs@vger.kernel.org>
-Date: Fri, 17 Jun 2011 14:23:35 +0200
-Subject: Exports stops working with permission denied.
-Message-ID: <2BF070A7A2375D46BA1B6087F8D5DCB67E82926EBD@seldmbx01.corpusers.net>
-Content-Type: text/plain; charset="us-ascii"
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:53020 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932074Ab1FGR1Z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:27:25 -0400
+Date: Tue, 7 Jun 2011 13:27:23 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 13/88] pnfsblock: scan scsi devices
+Message-ID: <83657c8f7323da3b32fe8785839f36e1aad33d4f.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-I got a problem where clients suddenly wasn't allowed to use mounted nfs filesystems. When I try to use them it responds with permission denied. It doesn't help to restart the nfsserver daemon, I need to restart the server :-/
+Scan scsi devices available to map against future GETDEVICEINFO output.
 
+[pnfsblock: use class iteration api]
+[pnfsblock: fix oops when using multiple devices]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
-uname -a
-Linux seldlnx101 2.6.32.12-0.7-default #1 SMP 2010-05-20 11:14:20 +0200 x86_64 x86_64 x86_64 GNU/Linux
----
-lsb_release -a
-LSB Version:    core-2.0-noarch:core-3.2-noarch:core-4.0-noarch:core-2.0-x86_64:core-3.2-x86_64:core-4.0-x86_64:desktop-4.0-amd64:desktop-4.0-noarch:graphics-2.0-amd64:graphics-2.0-noarch:graphics-3.2-amd64:graphics-3.2-noarch:graphics-4.0-amd64:graphics-4.0-noarch
-Distributor ID: SUSE LINUX
-Description:    SUSE Linux Enterprise Server 11 (x86_64)
-Release:        11
-Codename:       n/a
----
+ fs/nfs/blocklayout/Makefile         |    2 +-
+ fs/nfs/blocklayout/blocklayout.c    |   13 ++-
+ fs/nfs/blocklayout/blocklayout.h    |   53 ++++++++
+ fs/nfs/blocklayout/blocklayoutdev.c |  231 +++++++++++++++++++++++++++++++++++
+ 4 files changed, 295 insertions(+), 4 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/blocklayout.h
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdev.c
 
-We use infiniband but no offload is used on the interface.
----
-ethtool -k ib0
-Offload parameters for ib0:
-rx-checksumming: off
-tx-checksumming: off
-scatter-gather: off
-tcp segmentation offload: off
-udp fragmentation offload: off
-generic segmentation offload: off
-large receive offload: off
----
-
----
-[16810.468968] RPC: fragment too large: 0x00800103
-[16810.473942] RPC: multiple fragments per record not supported
-[19518.260511] RPC: fragment too large: 0x00800103
-[19521.259759] RPC: multiple fragments per record not supported
-[42412.835219] Disabling lock debugging due to kernel taint
-[42412.835226] Machine check events logged
-[103769.238439] RPC: fragment too large: 0x00800103
-[103769.248987] RPC: multiple fragments per record not supported
-[106163.584409] RPC: fragment too large: 0x00800103
-[106166.879358] RPC: multiple fragments per record not supported
-[190419.847170] RPC: fragment too large: 0x00800103
-[190419.854418] RPC: multiple fragments per record not supported
-[192898.293568] RPC: fragment too large: 0x00800103
-[192898.297469] RPC: multiple fragments per record not supported
-[251805.619942] ib0: Completion received during destruction of connection. Waiting.
-[277362.959669] RPC: fragment too large: 0x00800103
-[277366.145589] RPC: multiple fragments per record not supported
-[279462.162306] RPC: fragment too large: 0x00800103
-[279465.438442] RPC: multiple fragments per record not supported
-[348681.698560] kernel tried to execute NX-protected page - exploit attempt? (uid: 0)
-[348681.698570] BUG: unable to handle kernel paging request at ffff880bfbf20008
-[348681.698575] IP: [<ffff880bfbf20008>] 0xffff880bfbf20008
-[348681.698584] PGD 1805063 PUD 8000000bc00001e3
-[348681.698589] Oops: 0011 [#1] SMP
-[348681.698594] last sysfs file: /sys/devices/pci0000:00/0000:00:1e.0/0000:01:03.0/enable
-[348681.698600] CPU 23
-[348681.698603] Modules linked in: iptable_nat nf_nat nf_conntrack_ipv4 nf_conntrack nf_defrag_ipv4 mptctl mptbase af_packet nfsd exportfs iptable_filter ip_tables x_tables nfs lockd fscache nfs_acl auth_rpcgss sunrpc bonding kcopy(N) rdma_ucm rds_tcp(N) rds_rdma(N) rds(N) ib_sdp(N) rdma_cm iw_cm ib_addr ib_ipoib ib_cm ib_usa(N) ib_sa ib_uverbs ib_umad iw_nes crc32c libcrc32c iw_cxgb3 cxgb3 cpufreq_conservative cpufreq_userspace cpufreq_powersave pcc_cpufreq ib_qib(N) mlx4_ib mlx4_core ib_mthca microcode binfmt_misc ipv6 fuse loop dm_mod dca ib_mad sg ib_core rtc_cmos iTCO_wdt tpm_tis hpilo iTCO_vendor_support sr_mod tpm bnx2 rtc_core hpwdt serio_raw joydev pcspkr tpm_bios cdrom rtc_lib power_meter button container usbhid hid uhci_hcd ehci_hcd usbcore edd ext3 mbcache jbd fan ide_pci_generic ide_core ata_generic ata_piix libata thermal processor thermal_sys hwmon cciss scsi_mod
-[348681.698680] Supported: No, Unsupported modules are loaded
-[348681.698686] Pid: 5853, comm: rpc.mountd Tainted: G   M      N  2.6.32.12-0.7-default #1 ProLiant DL380 G7
-[348681.698690] RIP: 0010:[<ffff880bfbf20008>]  [<ffff880bfbf20008>] 0xffff880bfbf20008
-[348681.698698] RSP: 0018:ffff880bfbd59c50  EFLAGS: 00010246
-[348681.698702] RAX: ffff880bfb437cd0 RBX: 0000000000000063 RCX: ffff880bfbd59c58
-[348681.698706] RDX: ffff880bfbd59c58 RSI: 0000000000000000 RDI: ffff880bfb437cd0
-[348681.698710] RBP: ffff880b02fde8c0 R08: ffff880bfbcd2288 R09: 0000000000000000
-[348681.698714] R10: 0000000000000000 R11: 0000000000000000 R12: ffff880bfbd59c58
-[348681.698718] R13: ffff880b02fde8c0 R14: ffff880bfbd59df4 R15: ffff880bfbd59d08
-[348681.698723] FS:  00007fa2461a7740(0000) GS:ffff880635560000(0000) knlGS:0000000000000000
-[348681.698727] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[348681.698731] CR2: ffff880bfbf20008 CR3: 0000000c027ff000 CR4: 00000000000006e0
-[348681.698736] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-[348681.698740] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-[348681.698745] Process rpc.mountd (pid: 5853, threadinfo ffff880bfbd58000, task ffff880bfbcba400)
-[348681.698749] Stack:
-[348681.698751]  ffffffffa05a6883 ffff880bfbd59c58 ffff880bfbd59c58 ffff880b02fde8c0
-[348681.698756] <0> ffffffffa05b9740 00000000000559d8 ffffffffa05a725d 0000000000000004
-[348681.698762] <0> 00000000000000cf ffffffffa05b9740 ffffffffa05a87ab ffffffffa05b9758
-[348681.698769] Call Trace:
-[348681.698787] BUG: unable to handle kernel NULL pointer dereference at 0000000000000005
-[348681.698793] IP: [<ffffffff8107e540>] processCFI+0xa0/0x630
-[348681.698801] PGD 0
-[348681.698804] Oops: 0000 [#2] SMP
-[348681.698807] last sysfs file: /sys/devices/pci0000:00/0000:00:1e.0/0000:01:03.0/enable
-[348681.698812] CPU 23
-[348681.698814] Modules linked in: iptable_nat nf_nat nf_conntrack_ipv4 nf_conntrack nf_defrag_ipv4 mptctl mptbase af_packet nfsd exportfs iptable_filter ip_tables x_tables nfs lockd fscache nfs_acl auth_rpcgss sunrpc bonding kcopy(N) rdma_ucm rds_tcp(N) rds_rdma(N) rds(N) ib_sdp(N) rdma_cm iw_cm ib_addr ib_ipoib ib_cm ib_usa(N) ib_sa ib_uverbs ib_umad iw_nes crc32c libcrc32c iw_cxgb3 cxgb3 cpufreq_conservative cpufreq_userspace cpufreq_powersave pcc_cpufreq ib_qib(N) mlx4_ib mlx4_core ib_mthca microcode binfmt_misc ipv6 fuse loop dm_mod dca ib_mad sg ib_core rtc_cmos iTCO_wdt tpm_tis hpilo iTCO_vendor_support sr_mod tpm bnx2 rtc_core hpwdt serio_raw joydev pcspkr tpm_bios cdrom rtc_lib power_meter button container usbhid hid uhci_hcd ehci_hcd usbcore edd ext3 mbcache jbd fan ide_pci_generic ide_core ata_generic ata_piix libata thermal processor thermal_sys hwmon cciss scsi_mod
-[348681.698890] Supported: No, Unsupported modules are loaded
-[348681.698895] Pid: 5853, comm: rpc.mountd Tainted: G   M      N  2.6.32.12-0.7-default #1 ProLiant DL380 G7
-[348681.698899] RIP: 0010:[<ffffffff8107e540>]  [<ffffffff8107e540>] processCFI+0xa0/0x630
-[348681.698906] RSP: 0018:ffff880bfbd594a8  EFLAGS: 00010097
-[348681.698910] RAX: 0000000b00000001 RBX: ffff880bfbd59668 RCX: 00000000ffffffff
-[348681.698914] RDX: 0000000b00000003 RSI: 0000000affffffff RDI: 0000000000000005
-[348681.698918] RBP: 0000000affffffff R08: ffff880bfbd59668 R09: ffffffff81529d17
-[348681.698922] R10: 0000000000000001 R11: 0000000000000000 R12: ffff880bfbd594e8
-[348681.698926] R13: ffff880bfbd59668 R14: 0000000000000001 R15: 0000000000000000
-[348681.698930] FS:  00007fa2461a7740(0000) GS:ffff880635560000(0000) knlGS:0000000000000000
-[348681.698935] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[348681.698938] CR2: 0000000000000005 CR3: 0000000c027ff000 CR4: 00000000000006e0
-[348681.698943] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-[348681.698947] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-[348681.698951] Process rpc.mountd (pid: 5853, threadinfo ffff880bfbd58000, task ffff880bfbcba400)
-[348681.698955] Stack:
-[348681.698957]  6662663230303038 0000000b00000001 0000000b00000003 ffffffffeb8f0490
-[348681.698962] <0> 0000000000000005 ffff880bfbd59698 ffff880bfbd596a8 ffffffff811c5c23
-[348681.698967] <0> 0000000000000005 ffff880602aef1d0 ffff880bfbd59520 ffff880bfbd59668
-[348681.698974] Call Trace:
-[348681.698985]  [<ffffffff8107e4e1>] processCFI+0x41/0x630
-[348681.698992]  [<ffffffff8107ed0e>] unwind+0xee/0x1130
-[348681.699001]  [<ffffffff810072e4>] dump_trace_unwind+0xa4/0xe0
-[348681.699008]  [<ffffffff810073c7>] try_stack_unwind+0xa7/0x1c0
-[348681.699014]  [<ffffffff810061dc>] dump_trace+0x6c/0x2d0
-[348681.699021]  [<ffffffff81005e7f>] show_stack_log_lvl+0xef/0x160
-[348681.699027]  [<ffffffff81005fe4>] show_registers+0xf4/0x280
-[348681.699036]  [<ffffffff81397f74>] __die+0xb4/0x100
-[348681.699045]  [<ffffffff8102d72a>] no_context+0xca/0x1a0
-[348681.699052]  [<ffffffff8102d955>] __bad_area_nosemaphore+0x155/0x230
-[348681.699058]  [<ffffffff813972ef>] page_fault+0x1f/0x30
-[348681.699066]  [<ffff880bfbf20008>] 0xffff880bfbf20008
-[348681.699073] DWARF2 unwinder stuck at 0xffff880bfbf20008
-[348681.699077]
-[348681.699079] Leftover inexact backtrace:
-[348681.699080]
-[348681.699100]  [<ffffffffa05a6883>] ? cache_revisit_request+0xf3/0x110 [sunrpc]
-[348681.699116]  [<ffffffffa05a725d>] ? cache_fresh_unlocked+0x3d/0x60 [sunrpc]
-[348681.699131]  [<ffffffffa05a87ab>] ? sunrpc_cache_update+0xab/0x240 [sunrpc]
-[348681.699146]  [<ffffffffa05a27b9>] ? ip_map_update+0x149/0x1b0 [sunrpc]
-[348681.699161]  [<ffffffffa05a2cf1>] ? ip_map_parse+0x221/0x2a0 [sunrpc]
-[348681.699169]  [<ffffffff811a581d>] ? apparmor_dentry_open+0x6d/0x130
-[348681.699175]  [<ffffffff810b422b>] ? find_get_page+0x1b/0xb0
-[348681.699189]  [<ffffffffa05a628d>] ? cache_do_downcall+0x3d/0x60 [sunrpc]
-[348681.699204]  [<ffffffffa05a6f9b>] ? cache_downcall+0xbb/0x110 [sunrpc]
-[348681.699219]  [<ffffffffa05a7058>] ? cache_write+0x68/0xa0 [sunrpc]
-[348681.699226]  [<ffffffff81150927>] ? proc_reg_write+0x77/0xc0
-[348681.699232]  [<ffffffff810fc74e>] ? vfs_write+0xce/0x140
-[348681.699237]  [<ffffffff810fc8c3>] ? sys_write+0x53/0xa0
-[348681.699243]  [<ffffffff81002f7b>] ? system_call_fastpath+0x16/0x1b
-[348681.699246] Code: 7c 24 20 4c 8d 64 24 40 48 89 54 24 28 48 89 44 24 30 48 8d 55 04 48 8d 45 02 48 89 54 24 10 48 89 44 24 08 0f 1f 80 00 00 00 00 <0f> b6 07 89 c1 c0 e9 06 80 f9 01 0f 84 3f 01 00 00 0f 83 a9 00
-[348681.699280] RIP  [<ffffffff8107e540>] processCFI+0xa0/0x630
-[348681.699286]  RSP <ffff880bfbd594a8>
-[348681.699288] CR2: 0000000000000005
-[348681.699293] ---[ end trace 9cf7876bf6b9d794 ]---
-[355628.412154] nfsd: last server has exited, flushing export cache
----
-
-Best regards
-
-Emil Assarsson
-Sony Ericsson Mobile Communications AB
-
-"The information in this email, and attachment(s) thereto, is strictly confidential and may be legally privileged. It is intended solely for the named recipient(s), and access to this e-mail, or any attachment(s) thereto, by anyone else is unauthorized. Violations hereof may result in legal actions. Any attachment(s) to this e-mail has been checked for viruses, but please rely on your own virus-checker and procedures. If you contact us by e-mail, we will store your name and address to facilitate communications in the matter concerned. If you do not consent to us storing your name and address for above stated purpose, please notify the sender promptly. Also, if you are not the intended recipient please inform the sender by replying to this transmission, and delete the e-mail, its attachment(s), and any copies of it without, disclosing it."
-
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+index 6bf49cd..36d959f 100644
+--- a/fs/nfs/blocklayout/Makefile
++++ b/fs/nfs/blocklayout/Makefile
+@@ -2,4 +2,4 @@
+ # Makefile for the pNFS block layout driver kernel module
+ #
+ obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
+-blocklayoutdriver-objs := blocklayout.o
++blocklayoutdriver-objs := blocklayout.o blocklayoutdev.o
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 1312849..9889f27 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -32,9 +32,7 @@
+ #include <linux/module.h>
+ #include <linux/init.h>
+ 
+-#include <linux/nfs_fs.h>
+-#include <linux/pnfs_xdr.h> /* Needed by nfs4_pnfs.h */
+-#include <linux/nfs4_pnfs.h>
++#include "blocklayout.h"
+ 
+ #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
+ 
+@@ -135,10 +133,19 @@ bl_cleanup_layoutcommit(struct pnfs_layout_type *lo,
+ 	dprintk("%s enter\n", __func__);
+ }
+ 
++/*
++ * This is just a STUB to check the scsi scanning code
++ */
+ static struct pnfs_mount_type *
+ bl_initialize_mountpoint(struct super_block *sb, struct nfs_fh *fh)
+ {
++	LIST_HEAD(scsi_disklist);
++
+ 	dprintk("%s enter\n", __func__);
++
++	nfs4_blk_create_scsi_disk_list(&scsi_disklist);
++	nfs4_blk_destroy_disk_list(&scsi_disklist);
++
+ 	return NULL;
+ }
+ 
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+new file mode 100644
+index 0000000..5dbb8f2
+--- /dev/null
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -0,0 +1,53 @@
++/*
++ *  linux/fs/nfs/blocklayout/blocklayout.h
++ *
++ *  Module for the NFSv4.1 pNFS block layout driver.
++ *
++ *  Copyright (c) 2006 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@citi.umich.edu>
++ *  Fred Isaman <iisaman@umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
++ */
++#ifndef FS_NFS_NFS4BLOCKLAYOUT_H
++#define FS_NFS_NFS4BLOCKLAYOUT_H
++
++#include <linux/nfs_fs.h>
++#include <linux/pnfs_xdr.h> /* Needed by nfs4_pnfs.h */
++#include <linux/nfs4_pnfs.h>
++
++extern struct class shost_class; /* exported from drivers/scsi/hosts.c */
++
++/* holds visible disks that can be matched against VOLUME_SIMPLE signatures */
++struct visible_block_device {
++	struct list_head	vi_node;
++	struct block_device	*vi_bdev;
++	int			vi_mapped;
++	int			vi_put_done;
++};
++
++/* blocklayoutdev.c */
++int nfs4_blk_create_scsi_disk_list(struct list_head *);
++void nfs4_blk_destroy_disk_list(struct list_head *);
++
++#endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+new file mode 100644
+index 0000000..b4f52fb
+--- /dev/null
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -0,0 +1,231 @@
++/*
++ *  linux/fs/nfs/blocklayout/blocklayoutdev.c
++ *
++ *  Device operations for the pnfs nfs4 file layout driver.
++ *
++ *  Copyright (c) 2006 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@citi.umich.edu>
++ *  Fred Isaman <iisaman@umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
++ */
++#include <linux/module.h>
++#include <linux/buffer_head.h> /* __bread */
++
++#include <scsi/scsi.h>
++#include <scsi/scsi_device.h>
++#include <scsi/scsi_host.h>
++
++#include "blocklayout.h"
++
++#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
++
++#define MAX_VOLS  256  /* Maximum number of SCSI disks.  Totally arbitrary */
++
++uint32_t *blk_overflow(uint32_t *p, uint32_t *end, size_t nbytes)
++{
++	uint32_t *q = p + XDR_QUADLEN(nbytes);
++	if (unlikely(q > end || q < p))
++		return NULL;
++	return p;
++}
++EXPORT_SYMBOL(blk_overflow);
++
++/* Open a block_device by device number. */
++static struct block_device *nfs4_blkdev_get(dev_t dev)
++{
++	struct block_device *bd;
++
++	dprintk("%s enter\n", __func__);
++	bd = open_by_devnum(dev, FMODE_READ);
++	if (IS_ERR(bd))
++		goto fail;
++	return bd;
++fail:
++	dprintk("%s failed to open device : %ld\n",
++			__func__, PTR_ERR(bd));
++	return NULL;
++}
++
++/*
++ * Release the block device
++ */
++static int nfs4_blkdev_put(struct block_device *bdev)
++{
++	dprintk("%s for device %d:%d\n", __func__, MAJOR(bdev->bd_dev),
++			MINOR(bdev->bd_dev));
++	bd_release(bdev);
++	return blkdev_put(bdev, FMODE_READ);
++}
++
++/* Add a visible, claimed (by us!) scsi disk to the device list */
++static int alloc_add_disk(struct block_device *blk_dev, struct list_head *dlist)
++{
++	struct visible_block_device *vis_dev;
++
++	dprintk("%s enter\n", __func__);
++	vis_dev = kmalloc(sizeof(struct visible_block_device), GFP_KERNEL);
++	if (!vis_dev) {
++		dprintk("%s nfs4_get_sig failed\n", __func__);
++		return -ENOMEM;
++	}
++	vis_dev->vi_bdev = blk_dev;
++	vis_dev->vi_mapped = 0;
++	vis_dev->vi_put_done = 0;
++	list_add(&vis_dev->vi_node, dlist);
++	return 0;
++}
++
++/* Walk the list of scsi_devices. Add disks that can be opened and claimed
++ * to the device list
++ */
++static int
++nfs4_blk_add_scsi_disk(struct Scsi_Host *shost,
++		       int index, struct list_head *dlist)
++{
++	static char *claim_ptr = "I belong to pnfs block driver";
++	struct block_device *bdev;
++	struct gendisk *gd;
++	struct scsi_device *sdev;
++	unsigned int major, minor, ret = 0;
++	dev_t dev;
++
++	dprintk("%s enter \n", __func__);
++	if (index >= MAX_VOLS) {
++		dprintk("%s MAX_VOLS hit\n", __func__);
++		return -ENOSPC;
++	}
++	dprintk("%s 1 \n", __func__);
++	index--;
++	shost_for_each_device(sdev, shost) {
++		dprintk("%s 2\n", __func__);
++		/* Need to do this check before bumping index */
++		if (sdev->type != TYPE_DISK)
++			continue;
++		dprintk("%s 3 index %d \n", __func__, index);
++		if (++index >= MAX_VOLS) {
++			scsi_device_put(sdev);
++			break;
++		}
++		major = (!(index >> 4) ? SCSI_DISK0_MAJOR :
++			 SCSI_DISK1_MAJOR-1 + (index  >> 4));
++		minor =  ((index << 4) & 255);
++
++		dprintk("%s SCSI device %d:%d \n", __func__, major, minor);
++
++		dev = MKDEV(major, minor);
++		bdev = nfs4_blkdev_get(dev);
++		if (!bdev) {
++			dprintk("%s: failed to open device %d:%d\n",
++					__func__, major, minor);
++			continue;
++		}
++		gd = bdev->bd_disk;
++
++		dprintk("%s 4\n", __func__);
++
++		if (bd_claim(bdev, claim_ptr)) {
++			dprintk("%s: failed to claim device %d:%d\n",
++				__func__, gd->major, gd->first_minor);
++			blkdev_put(bdev, FMODE_READ);
++			continue;
++		}
++
++		ret = alloc_add_disk(bdev, dlist);
++		if (ret < 0)
++			goto out_err;
++		dprintk("%s ADDED DEVICE capacity %ld, bd_block_size %d\n",
++					__func__,
++					(unsigned long)get_capacity(gd),
++					bdev->bd_block_size);
++
++	}
++	index++;
++	dprintk("%s returns index %d \n", __func__, index);
++	return index;
++
++out_err:
++	dprintk("%s Can't add disk to list. ERROR: %d\n", __func__, ret);
++	nfs4_blkdev_put(bdev);
++	return ret;
++}
++
++/* Destroy the temporary scsi disk list */
++void nfs4_blk_destroy_disk_list(struct list_head *dlist)
++{
++	struct visible_block_device *vis_dev;
++
++	dprintk("%s enter\n", __func__);
++	while (!list_empty(dlist)) {
++		vis_dev = list_first_entry(dlist, struct visible_block_device,
++					   vi_node);
++		dprintk("%s removing device %d:%d\n", __func__,
++				MAJOR(vis_dev->vi_bdev->bd_dev),
++				MINOR(vis_dev->vi_bdev->bd_dev));
++		list_del(&vis_dev->vi_node);
++		if (!vis_dev->vi_put_done)
++			nfs4_blkdev_put(vis_dev->vi_bdev);
++		kfree(vis_dev);
++	}
++}
++
++struct nfs4_blk_scsi_disk_list_ctl {
++	struct list_head *dlist;
++	int index;
++};
++
++static int nfs4_blk_iter_scsi_disk_list(struct device *cdev, void *data)
++{
++	struct Scsi_Host *shost;
++	struct nfs4_blk_scsi_disk_list_ctl *lc = data;
++	int ret;
++
++	dprintk("%s enter\n", __func__);
++	shost = class_to_shost(cdev);
++	ret = nfs4_blk_add_scsi_disk(shost, lc->index, lc->dlist);
++	dprintk("%s 1 ret %d\n", __func__, ret);
++	if (ret >= 0) {
++		lc->index = ret;
++		ret = 0;
++	}
++	return ret;
++}
++
++/*
++ * Create a temporary list of all SCSI disks host can see, and that have not
++ * yet been claimed.
++ * shost_class: list of all registered scsi_hosts
++ * returns -errno on error, and #of devices found on success.
++ * XXX Loosely emulate scsi_host_lookup from scsi/host.c
++*/
++int nfs4_blk_create_scsi_disk_list(struct list_head *dlist)
++{
++	struct nfs4_blk_scsi_disk_list_ctl lc = {
++		.dlist = dlist,
++		.index = 0,
++	};
++
++	dprintk("%s enter\n", __func__);
++	return class_for_each_device(&shost_class, NULL,
++				     &lc, nfs4_blk_iter_scsi_disk_list);
++}
+-- 
+1.7.4.1
 
