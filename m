@@ -1,75 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e37.co.us.ibm.com ([32.97.110.158]:40350 "EHLO
-	e37.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751476Ab1FLTKP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2011 15:10:15 -0400
-Subject: Re: [PATCH 1/2] locks: introduce i_blockleases to close lease races
-From: Mimi Zohar <zohar@linux.vnet.ibm.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        samba-technical@lists.samba.org, Christoph Hellwig <hch@infradead.org>,
-        Eric Paris <eparis@redhat.com>
-In-Reply-To: <20110612040826.GD9246@fieldses.org>
-References: <20110610000944.GC22215@fieldses.org>
-	 <20110610001011.GD22215@fieldses.org>
-	 <1307737440.3281.5.camel@localhost.localdomain>
-	 <20110610213446.GC27837@fieldses.org>  <20110612040826.GD9246@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Sun, 12 Jun 2011 15:10:04 -0400
-Message-ID: <1307905804.3564.28.camel@localhost.localdomain>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:53766 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755722Ab1FGR3k (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:29:40 -0400
+Date: Tue, 7 Jun 2011 13:29:38 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 32/88] pnfsblock: bl_write_pagelist support functions
+Message-ID: <acad7c05f4df4df52f50c2b7ffd1c86fdc4cf2f4.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, 2011-06-12 at 00:08 -0400, J. Bruce Fields wrote:
-> On Fri, Jun 10, 2011 at 05:34:46PM -0400, J. Bruce Fields wrote:
-> > On Fri, Jun 10, 2011 at 04:24:00PM -0400, Mimi Zohar wrote:
-> > > On Thu, 2011-06-09 at 20:10 -0400, J. Bruce Fields wrote:
-> > > > From: J. Bruce Fields <bfields@redhat.com>
-> > > > 
-> > > > Since break_lease is called before i_writecount is incremented, there's
-> > > > a window between the two where a setlease call would have no way to know
-> > > > that an open is about to happen.
-> > > 
-> > > So unless the break_lease() call is moved from may_open() to after 
-> > > nameidata_to_filp(), I don't see any other options.
-> > 
-> > Actually, offhand I can't see why that wouldn't be OK.
-> > 
-> > Though I think we still end up needing something like i_blockleases to
-> > handle unlink, link, rename, chown, and chmod.
-> 
-> Well, I guess there's a bizarre alternative that wouldn't require a new
-> inode field:
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-In lieu of adding a new inode field, another possible option, a bit
-kludgy, would be extending i_flock with an additional fl_flag
-FL_BLOCKLEASE.
+[pnfsblock: SQUASHME: adjust to API change]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: fixup blksize alignment in bl_setup_layoutcommit]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |   32 +++++++++++++++++++++++++++++++-
+ 1 files changed, 31 insertions(+), 1 deletions(-)
 
-#define IS_BLOCKLEASE(fl)    (fl->fl_flags & FL_BLOCKLEASE)
-
-Mimi
-
-> What we care about is conflicts between read leases and operations that
-> modify the metadata of the inode or the set of names pointing to it.
-> 
-> As far as I can tell those operations all take the i_mutex either on the
-> inode itself or on the parents of one of its aliases.
-> 
-> So, you could prevent break_lease/setlease races by calling setlease
-> under *all* of those i_mutexes:
-> 
-> 	- take i_mutex on the inode
-> 	- take i_lock to prevent the set of aliases from changing
-> 	- take i_mutex for parent of each alias
-> 	- set the lease
-> 	- drop the parent i_mutexes, etc.
-> 
-> where the i_mutexes would all be taken with mutex_trylock, and we'd just
-> fail the whole setlease if any of them failed.
-> 
-> ???
-> 
-> --b.
-
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index af26bcc..9c46f5a 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -73,6 +73,19 @@ static int is_hole(struct pnfs_block_extent *be, sector_t isect)
+ 		return !is_sector_initialized(be->be_inval, isect);
+ }
+ 
++/* Given the be associated with isect, determine if page data can be
++ * written to disk.
++ */
++static int is_writable(struct pnfs_block_extent *be, sector_t isect)
++{
++	if (be->be_state == PNFS_BLOCK_READWRITE_DATA)
++		return 1;
++	else if (be->be_state != PNFS_BLOCK_INVALID_DATA)
++		return 0;
++	else
++		return is_sector_initialized(be->be_inval, isect);
++}
++
+ static int
+ dont_like_caller(struct nfs_page *req)
+ {
+@@ -441,7 +454,19 @@ static int
+ bl_setup_layoutcommit(struct pnfs_layout_type *lo,
+ 		      struct pnfs_layoutcommit_arg *arg)
+ {
++	struct nfs_server *nfss = PNFS_NFS_SERVER(lo);
++	struct pnfs_layoutcommit_arg *arg = &data->args;
++
+ 	dprintk("%s enter\n", __func__);
++	/* Need to ensure commit is block-size aligned */
++	if (nfss->pnfs_blksize) {
++		u64 mask = nfss->pnfs_blksize - 1;
++		u64 offset = arg->lseg.offset & mask;
++
++		arg->lseg.offset -= offset;
++		arg->lseg.length += offset + mask;
++		arg->lseg.length &= ~mask;
++	}
+ 	return 0;
+ }
+ 
+@@ -916,7 +941,12 @@ bl_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	   struct nfs_page *req)
+ {
+ 	dprintk("%s enter\n", __func__);
+-	return 1;
++	if (pgio->pg_iswrite) {
++		return test_bit(PG_USE_PNFS, &prev->wb_flags) ==
++			test_bit(PG_USE_PNFS, &req->wb_flags);
++	} else {
++		return 1;
++	}
+ }
+ 
+ /* This checks if old req will likely use same io method as soon
+-- 
+1.7.4.1
 
