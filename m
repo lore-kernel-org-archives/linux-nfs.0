@@ -1,62 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:48135 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754073Ab1FNCcs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:48 -0400
-Message-Id: <41abe6e718f2626cd4622c534bb9a0d7e9abfe93.1308017749.git.rees@umich.edu>
-In-Reply-To: <cover.1308017749.git.rees@umich.edu>
-References: <cover.1308017749.git.rees@umich.edu>
-Subject: [PATCH 18/33] pnfsblock: allow use of PG_owner_priv_1 flag
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:50967 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932116Ab1FGRbN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:31:13 -0400
+Date: Tue, 7 Jun 2011 13:31:12 -0400
+From: Jim Rees <rees@umich.edu>
 To: Benny Halevy <bhalevy@panasas.com>
 Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Date: Mon, 13 Jun 2011 22:32:46 -0400
-From: Jim Rees <rees@umich.edu>
+Subject: [PATCH 44/88] SQUASHME: pnfsblock: Wrong extent refcount in block
+ extents list
+Message-ID: <41a3a9eeeac246e94bfcc17f3464e10b01a19866.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+From: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
 
-There is currently no good way for pnfs to communicate problems.  For
-example - the linux read code first tries to do readahead through
-nfs_readpages. Failure there is ignored, and it will later call
-nfs_readpage.  Failure there is also ignored, except that the lack of
-PG_uptodate is communicated back via -EIO.
+_prep_new_extent called kref_init to initialize extent's refcount to 1.
+After that, we shouldn't call kref_get to increase its refcount, because
+this extent is only referenced by the list.
 
-With pnfs, it would be useful to be able to communicate to
-nfs_readpage that direct disk IO failed on readahead, and that it
-should failover to using the MDS.
-
-Making the page flag PG_owner_priv_1 available as PG_pnfserr is one
-way to do so. (An alternative would be to embed this in the layout,
-but then pg_test can't easily access the info.)
-
-This may be better as generic pnfs code, in which case it should be
-put in pnfs.h, or even page-flags.h
-
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+Acked-by: Fred Isaman <iisaman@citi.umich.edu>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/blocklayout/blocklayout.h |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+ fs/nfs/blocklayout/extents.c |    3 ---
+ 1 files changed, 0 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index a596e75..0a54feb 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -35,6 +35,11 @@
- #include <linux/nfs_fs.h>
- #include "../pnfs.h"
- 
-+#define PG_pnfserr PG_owner_priv_1
-+#define PagePnfsErr(page)	test_bit(PG_pnfserr, &(page)->flags)
-+#define SetPagePnfsErr(page)	set_bit(PG_pnfserr, &(page)->flags)
-+#define ClearPagePnfsErr(page)	clear_bit(PG_pnfserr, &(page)->flags)
-+
- struct block_mount_id {
- 	spinlock_t			bm_lock;    /* protects list */
- 	struct list_head		bm_devlist; /* holds pnfs_block_dev */
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 288a38a..4722899 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -868,7 +868,6 @@ set_to_rw(struct pnfs_block_layout *bl, u64 offset, u64 length)
+ 				 offset - be->be_f_offset,
+ 				 PNFS_BLOCK_INVALID_DATA);
+ 		children[i++] = e1;
+-		kref_get(&e1->be_refcnt);
+ 		print_bl_extent(e1);
+ 	} else
+ 		merge1 = e1;
+@@ -876,7 +875,6 @@ set_to_rw(struct pnfs_block_layout *bl, u64 offset, u64 length)
+ 			 min(length, be->be_f_offset + be->be_length - offset),
+ 			 PNFS_BLOCK_READWRITE_DATA);
+ 	children[i++] = e2;
+-	kref_get(&e2->be_refcnt);
+ 	print_bl_extent(e2);
+ 	if (offset + length < be->be_f_offset + be->be_length) {
+ 		_prep_new_extent(e3, be, e2->be_f_offset + e2->be_length,
+@@ -884,7 +882,6 @@ set_to_rw(struct pnfs_block_layout *bl, u64 offset, u64 length)
+ 				 offset - length,
+ 				 PNFS_BLOCK_INVALID_DATA);
+ 		children[i++] = e3;
+-		kref_get(&e3->be_refcnt);
+ 		print_bl_extent(e3);
+ 	} else
+ 		merge2 = e3;
 -- 
 1.7.4.1
 
