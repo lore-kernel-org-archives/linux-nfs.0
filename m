@@ -1,80 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:63426 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752936Ab1FGSO7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 14:14:59 -0400
-Subject: Re: [PATCH] Fix build on Fedora 13.
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:52220 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753958Ab1FGReb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:34:31 -0400
+Date: Tue, 7 Jun 2011 13:34:29 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 72/88] SQAUSHME: pnfsblock: no PNFS_NFS_SERVER
+Message-ID: <e6eb5a784ac623b3ea0a3f2345737976a2a300d2.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1307469531-20595-1-git-send-email-greearb@candelatech.com>
-Date: Tue, 7 Jun 2011 14:14:46 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <E9E39B04-8045-44EF-970B-A1F1779C5A69@oracle.com>
-References: <1307469531-20595-1-git-send-email-greearb@candelatech.com>
-To: greearb@candelatech.com
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Ben-
+From: Benny Halevy <bhalevy@panasas.com>
 
-On Jun 7, 2011, at 1:58 PM, greearb@candelatech.com wrote:
+---
+ fs/nfs/blocklayout/blocklayout.c |    2 +-
+ fs/nfs/blocklayout/blocklayout.h |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-> From: Ben Greear <greearb@candelatech.com>
-> 
-> Need sys/stat.h for S_ISDIR and S_ISREG symbols.
-
-Can you tell when this problem was introduced?  What ./configure options might be relevant?
-
-> Signed-off-by: Ben Greear <greearb@candelatech.com>
-> ---
-> :100644 100644 99618c9... e057c5c... M	utils/exportfs/exportfs.c
-> :100644 100644 2aa3d4f... a8ce028... M	utils/mount/mount.c
-> utils/exportfs/exportfs.c |    4 ++++
-> utils/mount/mount.c       |    3 +++
-> 2 files changed, 7 insertions(+), 0 deletions(-)
-> 
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index 99618c9..e057c5c 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -12,6 +12,10 @@
-> #include <config.h>
-> #endif
-> 
-> +#ifdef HAVE_SYS_STAT_H
-> +#include <sys/stat.h>
-> +#endif
-> +
-> #include <unistd.h>
-> #include <stdlib.h>
-> #include <string.h>
-> diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-> index 2aa3d4f..a8ce028 100644
-> --- a/utils/mount/mount.c
-> +++ b/utils/mount/mount.c
-> @@ -20,6 +20,9 @@
-> 
-> #include "config.h"
-> #include <unistd.h>
-> +#ifdef HAVE_SYS_STAT_H
-> +#include <sys/stat.h>
-> +#endif
-> #include <sys/types.h>
-> #include <stdio.h>
-> #include <string.h>
-> -- 
-> 1.7.3.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 5dbd9c6..5e50c93 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -619,7 +619,7 @@ static int
+ bl_setup_layoutcommit(struct pnfs_layout_hdr *lo,
+ 		      struct nfs4_layoutcommit_args *arg)
+ {
+-	struct nfs_server *nfss = PNFS_NFS_SERVER(lo);
++	struct nfs_server *nfss = NFS_SERVER(lo->inode);
+ 	struct bl_layoutupdate_data *layoutupdate_data;
+ 
+ 	dprintk("%s enter\n", __func__);
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index d62e3f9..7db7768 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -191,7 +191,7 @@ struct bl_layoutupdate_data {
+ 	struct list_head ranges;
+ };
+ 
+-#define BLK_ID(lo) ((struct block_mount_id *)(PNFS_NFS_SERVER(lo)->pnfs_ld_data))
++#define BLK_ID(lo) ((struct block_mount_id *)(NFS_SERVER(lo->inode)->pnfs_ld_data))
+ 
+ static inline struct pnfs_block_layout *
+ BLK_LO2EXT(struct pnfs_layout_hdr *lo)
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.4.1
 
