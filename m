@@ -1,47 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.SerNet.de ([193.175.80.2]:41335 "EHLO mail.SerNet.de"
+Received: from fieldses.org ([174.143.236.118]:43992 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754071Ab1FJIGf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Jun 2011 04:06:35 -0400
-Date: Fri, 10 Jun 2011 09:56:49 +0200
-Date: Fri, 10 Jun 2011 09:56:49 +0200
-From: Volker Lendecke <Volker.Lendecke@SerNet.DE>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        samba-technical@lists.samba.org, Casey Bodley <cbodley@citi.umich.edu>
-Subject: Re: [PATCH] locks: breaking read lease should not block read open
-Reply-To: Volker.Lendecke@SerNet.DE
-References: <20110609231606.GB22215@fieldses.org>
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <20110609231606.GB22215@fieldses.org>
-Message-Id: <E1QUwaT-00HRZw-74@intern.SerNet.DE>
+	id S1753982Ab1FGXDL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Jun 2011 19:03:11 -0400
+Date: Tue, 7 Jun 2011 19:03:11 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Pavel Shilovsky <piastryyy@gmail.com>
+Cc: linux-nfs@vger.kernel.org, Sean Finney <sean.finney@sonyericsson.com>,
+        Steve Dickson <steved@redhat.com>
+Subject: Re: Regression in current master
+Message-ID: <20110607230311.GE13911@fieldses.org>
+References: <BANLkTinFR06gifZxx9f8Go2ngjm6TYNayw@mail.gmail.com>
+ <20110607230107.GD13911@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110607230107.GD13911@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Jun 09, 2011 at 07:16:06PM -0400, J. Bruce Fields wrote:
-> The lease code behavior during the lease-breaking process is strange.
-> Fixing it completely would be complicated by the fact that the current
-> code allows a lease break to downgrade the lease instead of necessarily
-> removing it.
+On Tue, Jun 07, 2011 at 07:01:07PM -0400, J. Bruce Fields wrote:
+> On Wed, Jun 01, 2011 at 11:43:47AM +0400, Pavel Shilovsky wrote:
+> > Commit 9274e94db85bac04e170414cb8e0f4be271cde90
+> > (http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=commit;h=9274e94db85bac04e170414cb8e0f4be271cde90)
+> > caused the regression when --manage-gids option is enabled: a user
+> > doesn't get group list through getgrouplist when auth_unix_gid is
+> > called twice. When I remove static attributes from gid_t *groups and
+> > int groups_len, it works good.
 > 
-> But I can't see what the point of that feature is.  And googling around
-> and looking at the Samba code, I can't see any evidence that anyone uses
-> it.  Think we could just do away with removing the ability to downgrade
-> to satisfy a lease break?
+> Looking at the patch....
+> 
+> Hm, I can't spot the bug.  Sean?
 
-Without having looked too deeply, just let me point out that
-Samba here has a plain flaw. Early Linux Kernel versions
-that we programmed against did not properly support read
-only leases, so we did not implement that initially. If I
-remember correctly we never got around to finally do it once
-it became available. Eventually we will probably, as read
-only leases are a pretty important feature to present to
-CIFS clients.
+Whoops, sorry, missed your later message!
 
-Volker
+--b.
 
--- 
-SerNet GmbH, Bahnhofsallee 1b, 37081 Göttingen
-phone: +49-551-370000-0, fax: +49-551-370000-9
-AG Göttingen, HRB 2816, GF: Dr. Johannes Loxen
+> 
+> (Also, not a correctness issue, but: shouldn't
+> 
+> 	if (rv == -1 && ngroups >= groups_len) {
+> 
+> be
+> 
+> 	if (rv == -1 && ngroups > groups_len) {
+> 
+> ?
+> 
+> And, finally, why do we need the separate groups_len == 0 case at the
+> start at all?  The realloc case should be able to handle the initial
+> case as well.
+> 
+> )
+> 
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
