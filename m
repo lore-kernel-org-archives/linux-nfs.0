@@ -1,36 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from blu0-omc3-s18.blu0.hotmail.com ([65.55.116.93]:3414 "EHLO
-	blu0-omc3-s18.blu0.hotmail.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751479Ab1FPO6x (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jun 2011 10:58:53 -0400
-Message-ID: <BLU0-SMTP135422B057EEE4C3CA3C9DEAB6A0@phx.gbl>
-Date: Thu, 16 Jun 2011 22:52:12 +0800
-From: =?gb2312?B?09q6xg==?= <haohaoweixiao@hotmail.com>
-To: "linux-nfs" <linux-nfs@vger.kernel.org>
-Subject: In the linux-all-2.6.38 of pnfs, why was pnfs_return_layout removed ?
-Content-Type: text/plain; charset="gb2312"
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:44101 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756044Ab1FGRfs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:35:48 -0400
+Date: Tue, 7 Jun 2011 13:35:42 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 84/88] pnfs-block: fix blocklayoutdev.c for new
+ blkdev_get_by_dev()
+Message-ID: <749b82c976b5056af3ab7818eef4952c07d3ecba.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+blkdev_get has been replaced by blkdev_get_by_dev in 2.6.38, which now handles
+exclusive use too (which we don't use).  Fix uses in blocklayout to match.
 
-Dear All,
-	Dear All,
-	I got one problem when testing the read performance of linux-all-2.6.38. I found that the speed was becoming slower with time.(300MB/s-->50MB/s).  Finally,I found the cause of the problem.	In __nfs4_close(), the "LAYOUT RETURN" operation was removed. So the size of  "layout_hash"  becomes bigger and bigger on the pnfs server side. Then more time is spent on searching in __layout_inode_find() function. I wonder why the pnfs_return_layout() in __nfs4_close() was removed ??
+Signed-off-by: Jim Rees <rees@umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/blocklayoutdev.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
 
-Regards,
-    	Steven.
-
-----------------------------------------------------------------------
-SQUASHME: pnfs: revert layout recall/get/return synchronization 
-authorBenny Halevy <bhalevy@panasas.com>
-Thu, 24 Feb 2011 02:53:46 +0000 (18:53 -0800)
-committerBenny Halevy <bhalevy@panasas.com>
-Fri, 25 Mar 2011 08:25:57 +0000 (10:25 +0200)
-
-For now, revert code attempting a "forget-less" client model to match
-the pnfs-submit-wave4 forgetful model implementation in preparation
-for porting the tree onto it.
-
-Signed-off-by: Benny Halevy bhalevy@panasas.com
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+index 17bd25a..23469e3 100644
+--- a/fs/nfs/blocklayout/blocklayoutdev.c
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -55,7 +55,7 @@ struct block_device *nfs4_blkdev_get(dev_t dev)
+ 	struct block_device *bd;
+ 
+ 	dprintk("%s enter\n", __func__);
+-	bd = open_by_devnum(dev, FMODE_READ);
++	bd = blkdev_get_by_dev(dev, FMODE_READ, NULL);
+ 	if (IS_ERR(bd))
+ 		goto fail;
+ 	return bd;
+@@ -72,7 +72,6 @@ int nfs4_blkdev_put(struct block_device *bdev)
+ {
+ 	dprintk("%s for device %d:%d\n", __func__, MAJOR(bdev->bd_dev),
+ 			MINOR(bdev->bd_dev));
+-	bd_release(bdev);
+ 	return blkdev_put(bdev, FMODE_READ);
+ }
+ 
+-- 
+1.7.4.1
 
