@@ -1,112 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:52040 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754060Ab1FNCcx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:53 -0400
-Message-Id: <584e461a0fb182e75663e0097969806121558e41.1308017749.git.rees@umich.edu>
-In-Reply-To: <cover.1308017749.git.rees@umich.edu>
-References: <cover.1308017749.git.rees@umich.edu>
-Subject: [PATCH 20/33] pnfsblock: find_get_extent
-Content-Type: text/plain; charset=UTF-8
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:52054 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755799Ab1FGReG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:34:06 -0400
+Date: Tue, 7 Jun 2011 13:34:05 -0400
+From: Jim Rees <rees@umich.edu>
 To: Benny Halevy <bhalevy@panasas.com>
 Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Date: Mon, 13 Jun 2011 22:32:50 -0400
-From: Jim Rees <rees@umich.edu>
+Subject: [PATCH 68/88] SQUASHME: pnfs-block: Revert "pnfsblock: expose
+ block_class interface"
+Message-ID: <95b0dfe374f28fc29651467dc0e87e271373ba7b.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Fred <iisaman@citi.umich.edu>
+From: Benny Halevy <bhalevy@panasas.com>
 
-Implement find_get_extent(), one of the core extent manipulation
-routines.
+Following 462557a pnfs-block: Remove device creation from kernel
+exporting block_class is not needed anymore.
 
-[pnfsblock: Lookup list entry of layouts and tags in reverse order]
-Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-
-pnfsblock: fix print format warnings for sector_t and size_t
-
-gcc spews warnings about these on x86_64, e.g.:
-fs/nfs/blocklayout/blocklayout.c:74: warning: format ‘%Lu’ expects type ‘long long unsigned int’, but argument 2 has type ‘sector_t’
-fs/nfs/blocklayout/blocklayout.c:388: warning: format ‘%d’ expects type ‘int’, but argument 5 has type ‘size_t’
+This reverts commit f0004c24a5c923af2eba64506055bb83882bcf0e.
 
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/blocklayout/blocklayout.h |    3 ++
- fs/nfs/blocklayout/extents.c     |   47 ++++++++++++++++++++++++++++++++++++++
- 2 files changed, 50 insertions(+), 0 deletions(-)
+ block/genhd.c        |    1 -
+ drivers/scsi/hosts.c |    1 +
+ 2 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 0a54feb..04eb6de 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -219,6 +219,9 @@ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
- /* blocklayoutdm.c */
- void free_block_dev(struct pnfs_block_dev *bdev);
- /* extents.c */
-+struct pnfs_block_extent *
-+find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
-+		struct pnfs_block_extent **cow_read);
- void put_extent(struct pnfs_block_extent *be);
- struct pnfs_block_extent *alloc_extent(void);
- int add_and_merge_extent(struct pnfs_block_layout *bl,
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 26c263f..f0b3f13 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -201,3 +201,50 @@ add_and_merge_extent(struct pnfs_block_layout *bl,
- 	put_extent(new);
- 	return -EIO;
- }
-+
-+/* Returns extent, or NULL.  If a second READ extent exists, it is returned
-+ * in cow_read, if given.
-+ *
-+ * The extents are kept in two seperate ordered lists, one for READ and NONE,
-+ * one for READWRITE and INVALID.  Within each list, we assume:
-+ * 1. Extents are ordered by file offset.
-+ * 2. For any given isect, there is at most one extents that matches.
-+ */
-+struct pnfs_block_extent *
-+find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
-+	    struct pnfs_block_extent **cow_read)
-+{
-+	struct pnfs_block_extent *be, *cow, *ret;
-+	int i;
-+
-+	dprintk("%s enter with isect %llu\n", __func__, (u64)isect);
-+	cow = ret = NULL;
-+	spin_lock(&bl->bl_ext_lock);
-+	for (i = 0; i < EXTENT_LISTS; i++) {
-+		if (ret &&
-+		    (!cow_read || ret->be_state != PNFS_BLOCK_INVALID_DATA))
-+			break;
-+		list_for_each_entry_reverse(be, &bl->bl_extents[i], be_node) {
-+			if (isect >= be->be_f_offset + be->be_length)
-+				break;
-+			if (isect >= be->be_f_offset) {
-+				/* We have found an extent */
-+				dprintk("%s Get %p (%i)\n", __func__, be,
-+					atomic_read(&be->be_refcnt.refcount));
-+				kref_get(&be->be_refcnt);
-+				if (!ret)
-+					ret = be;
-+				else if (be->be_state != PNFS_BLOCK_READ_DATA)
-+					put_extent(be);
-+				else
-+					cow = be;
-+				break;
-+			}
-+		}
-+	}
-+	spin_unlock(&bl->bl_ext_lock);
-+	if (cow_read)
-+		*cow_read = cow;
-+	print_bl_extent(ret);
-+	return ret;
-+}
+diff --git a/block/genhd.c b/block/genhd.c
+index 6f19558..95822ae 100644
+--- a/block/genhd.c
++++ b/block/genhd.c
+@@ -1108,7 +1108,6 @@ static void disk_release(struct device *dev)
+ struct class block_class = {
+ 	.name		= "block",
+ };
+-EXPORT_SYMBOL(block_class);
+ 
+ static char *block_devnode(struct device *dev, mode_t *mode)
+ {
+diff --git a/drivers/scsi/hosts.c b/drivers/scsi/hosts.c
+index ac24f02..7d91903 100644
+--- a/drivers/scsi/hosts.c
++++ b/drivers/scsi/hosts.c
+@@ -54,6 +54,7 @@ struct class shost_class = {
+ 	.name		= "scsi_host",
+ 	.dev_release	= scsi_host_cls_release,
+ };
++EXPORT_SYMBOL(shost_class);
+ 
+ /**
+  *	scsi_host_set_state - Take the given host through the host state model.
 -- 
 1.7.4.1
 
