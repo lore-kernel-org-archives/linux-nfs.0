@@ -1,88 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:51944 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752848Ab1FNCcJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:09 -0400
-Message-Id: <127e82691f1eae9352d2aaf2af361fcfe397e0e0.1308017749.git.rees@umich.edu>
-In-Reply-To: <cover.1308017749.git.rees@umich.edu>
-References: <cover.1308017749.git.rees@umich.edu>
-Subject: [PATCH 03/33] pnfs: let layoutcommit code handle multiple segments
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Date: Mon, 13 Jun 2011 22:32:06 -0400
-From: Jim Rees <rees@umich.edu>
+Received: from mail.candelatech.com ([208.74.158.172]:45945 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753417Ab1FGQyG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 12:54:06 -0400
+Received: from [192.168.100.195] (firewall.candelatech.com [70.89.124.249])
+	(authenticated bits=0)
+	by ns3.lanforge.com (8.14.2/8.14.2) with ESMTP id p57Gs5w0013279
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Tue, 7 Jun 2011 09:54:05 -0700
+Message-ID: <4DEE57AD.8050408@candelatech.com>
+Date: Tue, 07 Jun 2011 09:54:05 -0700
+From: Ben Greear <greearb@candelatech.com>
+To: linux-nfs@vger.kernel.org
+Subject: What RPM meets the libgssapi requirement on Fedora?
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Peng Tao <bergwolf@gmail.com>
+./configure
+....
+checking pkg-config is at least version 0.9.0... yes
+checking for RPCSECGSS... yes
+checking for GSSAPI... configure: error: Package requirements (libgssapi >= 0.11) were not met:
 
-Some layout driver like block will have multiple segments.
-Generic code should be able to handle it.
+No package 'libgssapi' found
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/pnfs.c |   18 ++++++++++++++----
- fs/nfs/pnfs.h |    1 +
- 2 files changed, 15 insertions(+), 4 deletions(-)
+I tried:
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 593a9aa..e252af1 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -893,7 +893,7 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
- 	dprintk("%s:Begin\n", __func__);
- 
- 	assert_spin_locked(&lo->plh_inode->i_lock);
--	list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
-+	list_for_each_entry_reverse(lseg, &lo->plh_segs, pls_list) {
- 		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
- 		    is_matching_lseg(&lseg->pls_range, range)) {
- 			ret = get_lseg(lseg);
-@@ -1243,10 +1243,19 @@ pnfs_try_to_read_data(struct nfs_read_data *rdata,
- static struct pnfs_layout_segment *pnfs_list_write_lseg(struct inode *inode)
- {
- 	struct pnfs_layout_segment *lseg, *rv = NULL;
-+	loff_t max_pos = 0;
-+
-+	list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list) {
-+		if (lseg->pls_range.iomode == IOMODE_RW) {
-+			if (max_pos < lseg->pls_end_pos)
-+				max_pos = lseg->pls_end_pos;
-+			if (test_and_clear_bit
-+			    (NFS_LSEG_LAYOUTCOMMIT, &lseg->pls_flags))
-+				rv = lseg;
-+		}
-+	}
-+	rv->pls_end_pos = max_pos;
- 
--	list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list)
--		if (lseg->pls_range.iomode == IOMODE_RW)
--			rv = lseg;
- 	return rv;
- }
- 
-@@ -1261,6 +1270,7 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
- 	if (!test_and_set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
- 		/* references matched in nfs4_layoutcommit_release */
- 		get_lseg(wdata->lseg);
-+		set_bit(NFS_LSEG_LAYOUTCOMMIT, &wdata->lseg->pls_flags);
- 		wdata->lseg->pls_lc_cred =
- 			get_rpccred(wdata->args.context->state->owner->so_cred);
- 		mark_as_dirty = true;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index f984598..0ac820f 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -36,6 +36,7 @@
- enum {
- 	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
- 	NFS_LSEG_ROC,		/* roc bit received from server */
-+	NFS_LSEG_LAYOUTCOMMIT,	/* layoutcommit bit set for layoutcommit */
- };
- 
- struct pnfs_layout_segment {
+[root@fs3 linux-2.6.38.x64-dbg]# yum install libgssapi-devel
+Loaded plugins: presto, refresh-packagekit
+Setting up Install Process
+Nothing to do
+
+This is on Fedora 13...
+
+Thanks,
+Ben
+
 -- 
-1.7.4.1
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
