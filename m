@@ -1,91 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:38878 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757400Ab1FQQyw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Jun 2011 12:54:52 -0400
-Date: Fri, 17 Jun 2011 12:54:51 -0400
-To: larith <larith@go2.pl>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: rpc-srv/tcp: nfsd: got error -104 when sending 140 bytes -
- shutting down socket
-Message-ID: <20110617165451.GB23399@fieldses.org>
-References: <67100fe7.28c0fd91.4dfb22f0.e5a90@go2.pl>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <67100fe7.28c0fd91.4dfb22f0.e5a90@go2.pl>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:53510 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754086Ab1FGR2t (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:28:49 -0400
+Date: Tue, 7 Jun 2011 13:28:47 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 24/88] pnfsblock: find_get_extent
+Message-ID: <41ad52dc1c5519c25062cc42f021c97486783c1a.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Jun 17, 2011 at 11:48:32AM +0200, larith wrote:
-> I have problem with nfs-kernel-server 1.1.2-6lenny2 on system Debian lenny. My kernel 2.6.26-bpo.1-xen-amd64 panic. NFS working on drbd 8.0.14-2+lenny1
-> 
-> [553662.371435] rpc-srv/tcp: nfsd: got error -104 when sending 140 bytes - shutting down socket
+From: Fred <iisaman@citi.umich.edu>
 
--104 is -ECONNRESET.
+Implement find_get_extent(), one of the core extent manipulation
+routines.
 
-> [553662.371919] rpc-srv/tcp: nfsd: got error -32 when sending 8620 bytes - shutting down socket
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 
-And -32 is EPIPE.
+pnfsblock: fix print format warnings for sector_t and size_t
 
-> [553662.375095] rpc-srv/tcp: nfsd: got error -104 when sending 240 bytes - shutting down socket
+gcc spews warnings about these on x86_64, e.g.:
+fs/nfs/blocklayout/blocklayout.c:74: warning: format ‘%Lu’ expects type ‘long long unsigned int’, but argument 2 has type ‘sector_t’
+fs/nfs/blocklayout/blocklayout.c:388: warning: format ‘%d’ expects type ‘int’, but argument 5 has type ‘size_t’
 
-Without looking into it carefully I would have guessed that means the
-client shut down the connection, but I don't know--that 
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/blocklayout.h |    3 ++
+ fs/nfs/blocklayout/extents.c     |   47 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 50 insertions(+), 0 deletions(-)
 
-> [578802.236483] kswapd0: page allocation failure. order:0, mode:0x20
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 13fc0e2..e992b94 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -203,6 +203,9 @@ struct pnfs_block_dev *nfs4_blk_init_metadev(struct super_block *sb,
+ int nfs4_blk_flatten(struct pnfs_blk_volume *, int, struct pnfs_block_dev *);
+ void free_block_dev(struct pnfs_block_dev *bdev);
+ /* extents.c */
++struct pnfs_block_extent *
++find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
++		struct pnfs_block_extent **cow_read);
+ void put_extent(struct pnfs_block_extent *be);
+ struct pnfs_block_extent *alloc_extent(void);
+ int add_and_merge_extent(struct pnfs_block_layout *bl,
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index ce7b6f7..944f824 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -193,3 +193,50 @@ add_and_merge_extent(struct pnfs_block_layout *bl,
+ 	put_extent(new);
+ 	return -EIO;
+ }
++
++/* Returns extent, or NULL.  If a second READ extent exists, it is returned
++ * in cow_read, if given.
++ *
++ * The extents are kept in two seperate ordered lists, one for READ and NONE,
++ * one for READWRITE and INVALID.  Within each list, we assume:
++ * 1. Extents are ordered by file offset.
++ * 2. For any given isect, there is at most one extents that matches.
++ */
++struct pnfs_block_extent *
++find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
++	    struct pnfs_block_extent **cow_read)
++{
++	struct pnfs_block_extent *be, *cow, *ret;
++	int i;
++
++	dprintk("%s enter with isect %llu\n", __func__, (u64)isect);
++	cow = ret = NULL;
++	spin_lock(&bl->bl_ext_lock);
++	for (i = 0; i < EXTENT_LISTS; i++) {
++		if (ret &&
++		    (!cow_read || ret->be_state != PNFS_BLOCK_INVALID_DATA))
++			break;
++		list_for_each_entry(be, &bl->bl_extents[i], be_node) {
++			if (isect < be->be_f_offset)
++				break;
++			if (isect < be->be_f_offset + be->be_length) {
++				/* We have found an extent */
++				dprintk("%s Get %p (%i)\n", __func__, be,
++					atomic_read(&be->be_refcnt.refcount));
++				kref_get(&be->be_refcnt);
++				if (!ret)
++					ret = be;
++				else if (be->be_state != PNFS_BLOCK_READ_DATA)
++					put_extent(be);
++				else
++					cow = be;
++				break;
++			}
++		}
++	}
++	spin_unlock(&bl->bl_ext_lock);
++	if (cow_read)
++		*cow_read = cow;
++	print_bl_extent(ret);
++	return ret;
++}
+-- 
+1.7.4.1
 
-Hm.  An order 0 page allocation should be rare.  Looks like 0x20 is
-__GFP_HIGH == GFP_ATOMIC?
-
-Beats me....--b.
-
-> [578802.236505] Pid: 118, comm: kswapd0 Not tainted 2.6.26-bpo.1-xen-amd64 #1
-> [578802.236511]
-> [578802.236512] Call Trace:
-> [578802.236518]  <IRQ>  [<ffffffff80269dc6>] __alloc_pages_internal+0x399/0x3b2
-> [578802.236548]  [<ffffffff80287bb1>] cache_alloc_refill+0x2ad/0x564
-> [578802.236556]  [<ffffffff80287f05>] __kmalloc+0x9d/0xf8
-> [578802.236564]  [<ffffffff803c2c07>] __alloc_skb+0x56/0x11c
-> [578802.236572]  [<ffffffff803fb86d>] tcp_send_ack+0x28/0xca
-> [578802.236579]  [<ffffffff803fa770>] tcp_rcv_established+0x842/0x8d2
-> [578802.236587]  [<ffffffff80400208>] tcp_v4_do_rcv+0x2bd/0x492
-> [578802.236600]  [<ffffffff803e1c2c>] nf_iterate+0x41/0x7d
-> [578802.236607]  [<ffffffff80229f63>] check_preempt_wakeup+0xbd/0xe9
-> [578802.236614]  [<ffffffff803ee587>] __inet_lookup_established+0xf1/0x192
-> [578802.236622]  [<ffffffff8040237a>] tcp_v4_rcv+0x69b/0x701
-> [578802.236629]  [<ffffffff803e7523>] ip_local_deliver_finish+0x120/0x1dd
-> [578802.236636]  [<ffffffff803e73e0>] ip_rcv_finish+0x300/0x323
-> [578802.236644]  [<ffffffff803911b6>] netif_poll+0x9c8/0xc1a
-> [578802.236652]  [<ffffffff802fee41>] elv_next_request+0x1f0/0x200
-> [578802.236662]  [<ffffffff803c99c5>] net_rx_action+0xd9/0x24c
-> [578802.236670]  [<ffffffff80231f30>] __do_softirq+0x77/0x103
-> [578802.236677]  [<ffffffff8020c13c>] call_softirq+0x1c/0x28
-> [578802.236684]  [<ffffffff8020e0a0>] do_softirq+0x55/0xbb
-> [578802.236690]  [<ffffffff8020e183>] do_IRQ+0x7d/0x9a
-> [578802.236704]  [<ffffffff8037ec44>] evtchn_do_upcall+0x13c/0x1fb
-> [578802.236711]  [<ffffffff8020bbde>] do_hypervisor_callback+0x1e/0x30
-> [578802.236716]  <EOI>  [<ffffffff8037df12>] force_evtchn_callback+0xa/0xb
-> [578802.236768]  [<ffffffffa0227e7f>] :xfs:xfs_finish_reclaim+0x187/0x195
-> [578802.236801]  [<ffffffffa023482a>] :xfs:xfs_fs_clear_inode+0xe2/0x103
-> [578802.236810]  [<ffffffff8029dcc4>] clear_inode+0xad/0x104
-> [578802.236816]  [<ffffffff8029e412>] dispose_list+0x56/0x132
-> [578802.236823]  [<ffffffff8029e6fe>] shrink_icache_memory+0x210/0x23f
-> [578802.236831]  [<ffffffff8026eabe>] shrink_slab+0xe2/0x15a
-> [578802.236837]  [<ffffffff8026f248>] kswapd+0x325/0x4ac
-> [578802.236845]  [<ffffffff8026d657>] isolate_pages_global+0x0/0x2f
-> [578802.236853]  [<ffffffff8023fa2d>] autoremove_wake_function+0x0/0x2e
-> [578802.236860]  [<ffffffff8022178f>] __wake_up_common+0x41/0x74
-> [578802.236868]  [<ffffffff8026ef23>] kswapd+0x0/0x4ac
-> [578802.236874]  [<ffffffff8023f8ff>] kthread+0x47/0x74
-> [578802.236881]  [<ffffffff80228580>] schedule_tail+0x27/0x5c
-> [578802.236887]  [<ffffffff8020be28>] child_rip+0xa/0x12
-> [578802.236895]  [<ffffffff8023f8b8>] kthread+0x0/0x74
-> [578802.236900]  [<ffffffff8020be1e>] child_rip+0x0/0x12
-> 
-> 
-> is some known bug ?
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
