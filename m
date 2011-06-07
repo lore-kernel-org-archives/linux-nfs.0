@@ -1,37 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:51266 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759036Ab1FVVvs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 17:51:48 -0400
-Date: Wed, 22 Jun 2011 22:51:45 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: linux-nfs@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [nfs, rpc] crap with refcounting and rmmod races
-Message-ID: <20110622215145.GF11521@ZenIV.linux.org.uk>
-References: <20110622191239.GD11521@ZenIV.linux.org.uk>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:52595 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756691Ab1FGRfW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:35:22 -0400
+Date: Tue, 7 Jun 2011 13:35:19 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 80/88] SQUASHME: pnfs-block: fixup setup_layoutcommit
+ arguments
+Message-ID: <0a87173438422d20c18b5b9783a7eb71296ecd7b.1307464382.git.rees@umich.edu>
+References: <cover.1307464381.git.rees@umich.edu>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110622191239.GD11521@ZenIV.linux.org.uk>
+In-Reply-To: <cover.1307464381.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Jun 22, 2011 at 08:12:40PM +0100, Al Viro wrote:
+From: Benny Halevy <bhalevy@panasas.com>
 
-> 	Note that extra references to vfsmount do not prevent umount from
-> removing the sucker from the tree and dropping the preexisting reference
-> to it.  umount -l will do that just fine.
-> 
-> 	This thing is called as ->rpc_release(); do we have anything
-> protecting the issuer of rpc_run_task() from being rmmod'ed before (or
-> during) the call of ->rpc_release()?
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Ah, I see...  All these suckers end up running from rpc_task_free(),
-scheduled via nfsiod_workqueue.  Reference to vfsmount or superblock
-(in case of async_unlink; async close should also use nfs_sb_{,de}active()
-instead of playing with vfsmounts, BTW) pins the module down until we
-are into the ->rpc_release() in question.  And rmmod nfd done after
-that point will wait in destroy_workqueue() called by nfsiod_stop().
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 5f11fb8..ff94ee2 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -617,7 +617,7 @@ bl_alloc_lseg(struct pnfs_layout_hdr *lo,
+ 
+ static int
+ bl_setup_layoutcommit(struct pnfs_layout_hdr *lo,
+-		      struct nfs4_layoutcommit_args *arg)
++		      struct nfs4_layoutcommit_op_args *arg)
+ {
+ 	struct nfs_server *nfss = NFS_SERVER(lo->inode);
+ 	struct bl_layoutupdate_data *layoutupdate_data;
+-- 
+1.7.4.1
 
-Subtle and worth documenting explicitly, IMO...
