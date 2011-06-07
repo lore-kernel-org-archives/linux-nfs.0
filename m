@@ -1,103 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:44592 "EHLO
+Received: from mail.candelatech.com ([208.74.158.172]:44470 "EHLO
 	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757627Ab1FJVIr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 17:08:47 -0400
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH v3 2/6] nfs-utils:  Add patch to parse srcaddr= option.
-Date: Fri, 10 Jun 2011 14:08:12 -0700
-Message-Id: <1307740096-19933-3-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1307740096-19933-1-git-send-email-greearb@candelatech.com>
-References: <1307740096-19933-1-git-send-email-greearb@candelatech.com>
+	with ESMTP id S1750919Ab1FGSYq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 14:24:46 -0400
+Message-ID: <4DEE6CEA.8000909@candelatech.com>
+Date: Tue, 07 Jun 2011 11:24:42 -0700
+From: Ben Greear <greearb@candelatech.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Fix build on Fedora 13.
+References: <1307469531-20595-1-git-send-email-greearb@candelatech.com> <E9E39B04-8045-44EF-970B-A1F1779C5A69@oracle.com>
+In-Reply-To: <E9E39B04-8045-44EF-970B-A1F1779C5A69@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
+On 06/07/2011 11:14 AM, Chuck Lever wrote:
+> Hi Ben-
+>
+> On Jun 7, 2011, at 1:58 PM, greearb@candelatech.com wrote:
+>
+>> From: Ben Greear<greearb@candelatech.com>
+>>
+>> Need sys/stat.h for S_ISDIR and S_ISREG symbols.
+>
+> Can you tell when this problem was introduced?  What ./configure options might be relevant?
 
-This will be used to parse the IP address used for
-binding to a particular local IP address.
+I haven't compiled nfs-utils in years.  Since I can't get ./configure to find libgssapi,
+I'm compiling with:
 
-Signed-off-by: Ben Greear <greearb@candelatech.com>
----
-:100644 100644 5ba6967... 65c2145... M	utils/mount/network.c
-:100644 100644 a832e76... 6f66822... M	utils/mount/network.h
- utils/mount/network.c |   45 +++++++++++++++++++++++++++++++++++++++++++++
- utils/mount/network.h |    2 ++
- 2 files changed, 47 insertions(+), 0 deletions(-)
+./configure --disable-gss
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 5ba6967..65c2145 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -405,6 +405,51 @@ out:
- }
- 
- /*
-+ *  node should be an IPv4 or IPv6 address numeric notation.
-+ *  The value will be parsed in placed into laddr.
-+ */
-+void
-+parse_local_bind(struct local_bind_info *laddr, const char* node) {
-+	/* str is an IP address. */
-+	int aiErr;
-+	struct addrinfo *aiHead;
-+	struct addrinfo hints;
-+
-+	laddr->is_set = 0;
-+
-+	memset(&hints, 0, sizeof(hints));
-+
-+	hints.ai_flags  = AI_NUMERICSERV;
-+	hints.ai_socktype = SOCK_STREAM;
-+	hints.ai_protocol = IPPROTO_TCP;
-+	hints.ai_family = PF_INET;
-+
-+	aiErr = getaddrinfo(node, NULL, &hints, &aiHead);
-+
-+	/* If we tried PF_INET and it failed, try IPv6 instead
-+	 * to see if it resolves properly.
-+	 */
-+	if (aiErr != 0) {
-+		hints.ai_family = PF_INET6;
-+		aiErr = getaddrinfo(node, NULL, &hints, &aiHead);
-+	}
-+
-+	if (aiErr != 0) {
-+		nfs_error(_("%s: parse srcaddr failed, "
-+			    "node: %s  aiErr: %i %s\n"),
-+			  progname, node, aiErr, gai_strerror(aiErr));
-+	} else {
-+		if (aiHead) {
-+			memcpy(&laddr->addr, aiHead->ai_addr,
-+			       aiHead->ai_addrlen);
-+			laddr->addrlen = aiHead->ai_addrlen;
-+			laddr->is_set = true;
-+			freeaddrinfo(aiHead);
-+		}
-+	}
-+}
-+
-+/*
-  * Create a socket that is locally bound to a reserved or non-reserved port.
-  *
-  * The caller should check rpc_createerr to determine the cause of any error.
-diff --git a/utils/mount/network.h b/utils/mount/network.h
-index a832e76..6f66822 100644
---- a/utils/mount/network.h
-+++ b/utils/mount/network.h
-@@ -36,6 +36,8 @@ typedef struct {
- 	struct pmap pmap;
- } clnt_addr_t;
- 
-+void parse_local_bind(struct local_bind_info *laddr, const char* str);
-+
- /* RPC call timeout values */
- static const struct timeval TIMEOUT = { 20, 0 };
- static const struct timeval RETRY_TIMEOUT = { 3, 0 };
+
+Thanks,
+Ben
+
+>
+>> Signed-off-by: Ben Greear<greearb@candelatech.com>
+>> ---
+>> :100644 100644 99618c9... e057c5c... M	utils/exportfs/exportfs.c
+>> :100644 100644 2aa3d4f... a8ce028... M	utils/mount/mount.c
+>> utils/exportfs/exportfs.c |    4 ++++
+>> utils/mount/mount.c       |    3 +++
+>> 2 files changed, 7 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+>> index 99618c9..e057c5c 100644
+>> --- a/utils/exportfs/exportfs.c
+>> +++ b/utils/exportfs/exportfs.c
+>> @@ -12,6 +12,10 @@
+>> #include<config.h>
+>> #endif
+>>
+>> +#ifdef HAVE_SYS_STAT_H
+>> +#include<sys/stat.h>
+>> +#endif
+>> +
+>> #include<unistd.h>
+>> #include<stdlib.h>
+>> #include<string.h>
+>> diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+>> index 2aa3d4f..a8ce028 100644
+>> --- a/utils/mount/mount.c
+>> +++ b/utils/mount/mount.c
+>> @@ -20,6 +20,9 @@
+>>
+>> #include "config.h"
+>> #include<unistd.h>
+>> +#ifdef HAVE_SYS_STAT_H
+>> +#include<sys/stat.h>
+>> +#endif
+>> #include<sys/types.h>
+>> #include<stdio.h>
+>> #include<string.h>
+>> --
+>> 1.7.3.4
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+
+
 -- 
-1.7.3.4
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
