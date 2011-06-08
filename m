@@ -1,64 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from eastrmfepo102.cox.net ([68.230.241.214]:58151 "EHLO
-	eastrmfepo102.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751328Ab1F1W1w (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jun 2011 18:27:52 -0400
-From: Tom Haynes <tdh@excfb.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Tom Haynes <tdh@excfb.com>
-Subject: [PATCH 0/1] Remove warnings on various platforms
-Date: Tue, 28 Jun 2011 17:22:02 -0500
-Message-Id: <1309299723-31539-1-git-send-email-tdh@excfb.com>
-In-Reply-To: <y>
-References: <y>
+Received: from mail.candelatech.com ([208.74.158.172]:39703 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750943Ab1FHSj1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jun 2011 14:39:27 -0400
+Message-ID: <4DEFC1DC.4050809@candelatech.com>
+Date: Wed, 08 Jun 2011 11:39:24 -0700
+From: Ben Greear <greearb@candelatech.com>
+To: Jim Rees <rees@umich.edu>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs-utils:  Support binding to source address.
+References: <1307554748-31757-1-git-send-email-greearb@candelatech.com> <20110608183608.GA3513@merit.edu>
+In-Reply-To: <20110608183608.GA3513@merit.edu>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-I cleaned up some various warnings under FreeBSD, Linux, and
-Solaris 11 Express. I tested on these platforms with both
-NFSv3 and NFSv4.0.
+On 06/08/2011 11:36 AM, Jim Rees wrote:
+> greearb@candelatech.com wrote:
+>
+>    +	if (local_ip&&  local_ip->is_set) {
+>    +		sa = (struct sockaddr *)(char *)(&local_ip->addr);
+>    +		salen = local_ip->addrlen;
+>    +	} else {
+>    +		switch (family) {
+>    +		case AF_INET:
+>    +			sa = (struct sockaddr *)(char *)&sin;
+>    +			salen = sizeof(sin);
+>    +			break;
+>    +		case AF_INET6:
+>    +			sa = (struct sockaddr *)(char *)&sin6;
+>    +			salen = sizeof(sin6);
+>    +		default:
+>    +			break;
+>    +		}
+>
+> Are the double casts actually necessary?  And if so, shouldn't the inner one
+> be (void *)?
 
-loghyr (1):
-  Remove warnings on various platforms
+They are not, as far as I know..I was copying some
+similar code I found elsewhere in nfs-utils.
 
- basic/subr.c       |    5 ++++-
- basic/test1.c      |    1 +
- basic/test2.c      |    1 +
- basic/test3.c      |    1 +
- basic/test4.c      |    1 +
- basic/test4a.c     |    1 +
- basic/test5.c      |    1 +
- basic/test5a.c     |    1 +
- basic/test5b.c     |    1 +
- basic/test6.c      |    1 +
- basic/test7.c      |    1 +
- basic/test7a.c     |    1 +
- basic/test7b.c     |    1 +
- basic/test8.c      |    1 +
- basic/test9.c      |    1 +
- domount.c          |    3 +++
- general/large.c    |    1 +
- general/stat.c     |    1 +
- getopt.c           |    3 +++
- special/dupreq.c   |    1 +
- special/negseek.c  |    1 +
- special/nfsidem.c  |    1 +
- special/nstat.c    |    1 +
- special/rename.c   |    1 +
- special/rewind.c   |    6 +++++-
- special/stat.c     |    1 +
- special/touchn.c   |    6 ++++--
- special/truncate.c |    6 +++++-
- tools/dirdmp.c     |    1 +
- tools/dirprt.c     |    1 +
- tools/pmapbrd.c    |   15 ++++++++-------
- tools/tcpd.c       |    2 +-
- tools/udp.c        |    2 +-
- tools/udpd.c       |    2 +-
- 34 files changed, 59 insertions(+), 15 deletions(-)
+Unless someone knows a reason to keep this, I'll just
+remove the inner cast.
+
+Thanks,
+Ben
 
 -- 
-1.7.5.4
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
