@@ -1,55 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:51487 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755451Ab1FGRca (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:32:30 -0400
-Date: Tue, 7 Jun 2011 13:32:28 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 54/88] SQUASHME: pnfsblock: get rid of threshold policy ops
-Message-ID: <0a4015a24085c71684596103e1329799183262c3.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:42124 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752691Ab1FHDQS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Jun 2011 23:16:18 -0400
+Message-ID: <4DEEE980.3050308@RedHat.com>
+Date: Tue, 07 Jun 2011 23:16:16 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Pavel Shilovsky <piastryyy@gmail.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] mountd: group length not being set correctly in auth_unix_gid
+References: <1307462188-13122-1-git-send-email-steved@redhat.com> <BANLkTikuUNx+opL+8TnS=cM9ASnrJYLuLA@mail.gmail.com>
+In-Reply-To: <BANLkTikuUNx+opL+8TnS=cM9ASnrJYLuLA@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/blocklayout.c |    9 ---------
- 1 files changed, 0 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 688984f..66044d4 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -1105,13 +1105,6 @@ bl_get_stripesize(struct pnfs_layout_type *lo)
- 	return 0;
- }
- 
--static ssize_t
--bl_get_io_threshold(struct pnfs_layout_type *lo, struct inode *inode)
--{
--	dprintk("%s enter\n", __func__);
--	return 0;
--}
--
- /* This is called by nfs_can_coalesce_requests via nfs_pageio_do_add_request.
-  * Should return False if there is a reason requests can not be coalesced,
-  * otherwise, should default to returning True.
-@@ -1162,8 +1155,6 @@ static struct layoutdriver_io_operations blocklayout_io_operations = {
- 
- static struct layoutdriver_policy_operations blocklayout_policy_operations = {
- 	.get_stripesize			= bl_get_stripesize,
--	.get_read_threshold		= bl_get_io_threshold,
--	.get_write_threshold		= bl_get_io_threshold,
- 	.pg_test			= bl_pg_test,
- 	.do_flush			= bl_do_flush,
- };
--- 
-1.7.4.1
+On 06/07/2011 02:41 PM, Pavel Shilovsky wrote:
+> 2011/6/7 Steve Dickson <steved@redhat.com>:
+>> From: Rinat Bikov <becase@altlinux.org>
+>>
+>> Commit 9274e94d introduce dynamic buffering for gids lists.
+>> In that patch there was a bug that only used the dynamic
+>> length on the first call, resulting in the dynamic length
+>> not being dynamic at all.
+>>
+>> Reported-by: Rinat Bikov <becase@altlinux.org>
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> ---
+>>  utils/mountd/cache.c |    3 ++-
+>>  1 files changed, 2 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+>> index 0c4a03d..6084893 100644
+>> --- a/utils/mountd/cache.c
+>> +++ b/utils/mountd/cache.c
+>> @@ -147,8 +147,9 @@ static void auth_unix_gid(FILE *f)
+>>                if (!groups)
+>>                        return;
+>>
+>> -               groups_len = ngroups = INITIAL_MANAGED_GROUPS;
+>> +               groups_len = INITIAL_MANAGED_GROUPS;
+>>        }
+>> +       ngroups = groups_len;
+>>
+>>        if (readline(fileno(f), &lbuf, &lbuflen) != 1)
+>>                return;
+>> --
+>> 1.7.5.1
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+> 
+> Looks good. It's almost the same, as I sent before "mountd: Fix
+> missing varialble assignment in auth_unix_gid"
+> (https://patchwork.kernel.org/patch/841452/) but it haven't got any
+> comments yet.
+> 
+yeah.. Rinat sent me some private mail about this regression and
+I made this posting before I remember you had already post a 
+similar patch... So I did commit your patch...
 
+steved.
