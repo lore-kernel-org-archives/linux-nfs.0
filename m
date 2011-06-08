@@ -1,107 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:43999 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932729Ab1FWTaW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2011 15:30:22 -0400
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH v2 12/12] nfs: Support srcaddr= to bind to specific IP address.
-Date: Thu, 23 Jun 2011 12:29:48 -0700
-Message-Id: <1308857388-12243-15-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
-References: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
+Received: from mx2.netapp.com ([216.240.18.37]:35569 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754536Ab1FHBNF convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 21:13:05 -0400
+Subject: Re: [PATCH 1/3] NFSv4.1: Fix some issues with pnfs_generic_pg_test
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 07 Jun 2011 21:12:28 -0400
+In-Reply-To: <4DEEC808.40205@panasas.com>
+References: <1307399551-17489-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <4DEEC808.40205@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1307495548.12587.5.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
+On Tue, 2011-06-07 at 20:53 -0400, Benny Halevy wrote: 
+> On 2011-06-06 18:32, Trond Myklebust wrote:
+> > 1. If the intention is to coalesce requests 'prev' and 'req' then we
+> >    have to ensure at least that we have a layout starting at
+> >    req_offset(prev).
+> > 
+> > 2. If we're only requesting a minimal layout of length desc->pg_count,
+> >    we need to test the length actually returned by the server before
+> >    we allow the coalescing to occur.
+> > 
+> > 3. We need to deal correctly with (pgio->lseg == NULL)
+> > 
+> > 4. Fixup the test guarding the pnfs_update_layout.
+> > 
+> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > ---
+> >  fs/nfs/objlayout/objio_osd.c |    3 +++
+> >  fs/nfs/pnfs.c                |   12 +++++++-----
+> >  2 files changed, 10 insertions(+), 5 deletions(-)
+> > 
+> > diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+> > index 9cf208d..4c41a60 100644
+> > --- a/fs/nfs/objlayout/objio_osd.c
+> > +++ b/fs/nfs/objlayout/objio_osd.c
+> > @@ -1001,6 +1001,9 @@ static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
+> >  	if (!pnfs_generic_pg_test(pgio, prev, req))
+> >  		return false;
+> >  
+> > +	if (pgio->pg_lseg == NULL)
+> > +		return true;
+> > +
+> >  	return pgio->pg_count + req->wb_bytes <=
+> >  			OBJIO_LSEG(pgio->pg_lseg)->max_io_size;
+> >  }
+> > diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> > index 8c1309d..12b53ef 100644
+> > --- a/fs/nfs/pnfs.c
+> > +++ b/fs/nfs/pnfs.c
+> > @@ -1059,19 +1059,21 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+> >  		gfp_flags = GFP_NOFS;
+> >  	}
+> >  
+> > -	if (pgio->pg_count == prev->wb_bytes) {
+> > +	if (pgio->pg_lseg == NULL) {
+> > +		if (pgio->pg_count != prev->wb_bytes)
+> > +			return true;
+> >  		/* This is first coelesce call for a series of nfs_pages */
+> >  		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+> >  						   prev->wb_context,
+> > -						   req_offset(req),
+> > +						   req_offset(prev),
+> >  						   pgio->pg_count,
+> >  						   access_type,
+> >  						   gfp_flags);
+> > -		return true;
+> > +		if (pgio->pg_lseg == NULL)
+> > +			return true;
+> >  	}
+> >  
+> > -	if (pgio->pg_lseg &&
+> > -	    req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
+> > +	if (req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
+> 
+> One more issue to fix: the condition should be for ">=", not ">"
 
-In order to have more control on multi-homed machines, it is
-nice to be able to bind to a specific IP address.  This can aid
-with interface selection, policy based routing, multiple unique
-mounts to the same server, and similar things.
+Hmm.... Shouldn't it rather be:
 
-This patch allows srcaddr= option for NFS.  The key 'srcaddr'
-was chosen to match the similar patch for cifs.
+if (end_offset(req_offset(req), req->wb_bytes) > end_offset(pgio->pg_lseg->pls_range.offset,
+		pgio->pg_lseg->pls_range.length))
+	return false;
 
-For NFSv4, if one is specifying clientaddr, it must be the same as
-srcaddr or things may not work properly.
+Otherwise you don't know if the entire request fits in this layout
+segment...
 
-NFSv3, NFSv4 over TCP/IPv4 and TCP/IPv6 has been successfully tested.
-
-Usage:
-  mount -t nfs4 [2002::1]:/rpool/ben /mnt/foo/ben-1 -o srcaddr=2002::2,clientaddr=2002::2
-  mount -t nfs4 192.168.100.3:/foo /mnt/foo/ben-2 -o srcaddr=192.168.100.174
-
-Signed-off-by: Ben Greear <greearb@candelatech.com>
----
-:100644 100644 e45f616... 5d88e7b... M	fs/nfs/super.c
- fs/nfs/super.c |   29 ++++++++++++++++++++++++++++-
- 1 files changed, 28 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index e45f616..5d88e7b 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -103,7 +103,7 @@ enum {
- 
- 	/* Mount options that take string arguments */
- 	Opt_sec, Opt_proto, Opt_mountproto, Opt_mounthost,
--	Opt_addr, Opt_mountaddr, Opt_clientaddr,
-+	Opt_addr, Opt_mountaddr, Opt_clientaddr, Opt_srcaddr,
- 	Opt_lookupcache,
- 	Opt_fscache_uniq,
- 	Opt_local_lock,
-@@ -173,6 +173,7 @@ static const match_table_t nfs_mount_option_tokens = {
- 	{ Opt_mountproto, "mountproto=%s" },
- 	{ Opt_addr, "addr=%s" },
- 	{ Opt_clientaddr, "clientaddr=%s" },
-+	{ Opt_srcaddr, "srcaddr=%s" },
- 	{ Opt_mounthost, "mounthost=%s" },
- 	{ Opt_mountaddr, "mountaddr=%s" },
- 
-@@ -695,6 +696,15 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
- 	else
- 		nfs_show_nfsv4_options(m, nfss, showdefaults);
- 
-+	if (clp->srcaddr.ss_family == AF_INET6) {
-+		struct sockaddr_in6 *sin6;
-+		sin6 = (struct sockaddr_in6 *)(&clp->srcaddr);
-+		seq_printf(m, ",srcaddr=%pI6c", &sin6->sin6_addr);
-+	} else if (clp->srcaddr.ss_family == AF_INET) {
-+		struct sockaddr_in *sin = (struct sockaddr_in *)&clp->srcaddr;
-+		seq_printf(m, ",srcaddr=%pI4", &sin->sin_addr.s_addr);
-+	}
-+
- 	if (nfss->options & NFS_OPTION_FSCACHE)
- 		seq_printf(m, ",fsc");
- 
-@@ -1448,6 +1458,23 @@ static int nfs_parse_mount_options(char *raw,
- 				goto out_nomem;
- 			mnt->options |= NFS_OPTION_FSCACHE;
- 			break;
-+		case Opt_srcaddr:
-+			string = match_strdup(args);
-+			if (string == NULL)
-+				goto out_nomem;
-+			mnt->srcaddr.addrlen =
-+				rpc_pton(string, strlen(string),
-+					 (struct sockaddr *)
-+					 &mnt->srcaddr.address,
-+					 sizeof(mnt->srcaddr.address));
-+			kfree(string);
-+			if (mnt->srcaddr.addrlen == 0) {
-+				printk(KERN_WARNING
-+				       "nfs: Could not parse srcaddr: %s\n",
-+				       string);
-+				goto out_invalid_address;
-+			}
-+			break;
- 		case Opt_local_lock:
- 			string = match_strdup(args);
- 			if (string == NULL)
+Cheers
+  Trond
 -- 
-1.7.3.4
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
