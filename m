@@ -1,321 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:52051 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754073Ab1FNCdB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:33:01 -0400
-Message-Id: <5947aa685de51b38a77f0c49a47c6085b574faf0.1308017749.git.rees@umich.edu>
-In-Reply-To: <cover.1308017749.git.rees@umich.edu>
-References: <cover.1308017749.git.rees@umich.edu>
-Subject: [PATCH 23/33] pnfsblock: encode_layoutcommit
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Date: Mon, 13 Jun 2011 22:32:58 -0400
-From: Jim Rees <rees@umich.edu>
+Received: from sydfw.pronto.com.au ([202.9.16.110]:41412 "EHLO
+	NSWSMTP.pronto.com.au" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750822Ab1FHEMm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jun 2011 00:12:42 -0400
+From: Tristan Ball <tristanb@pronto.com.au>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Wendy Cheng <s.wendy.cheng@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: NFS Sync with External Journal
+Date: Wed, 8 Jun 2011 03:57:13 +0000
+Message-ID: <3FA034197108F04082D2AE1401CE0F3832AB05C6@VICMAILBOX.pronto.com.au>
+References: <3FA034197108F04082D2AE1401CE0F3832A9B34E@VICMAILBOX.pronto.com.au>
+ <BANLkTi=4ey0YpTtUwuVuRQz4_xYpt10wuw@mail.gmail.com>
+ <20110607232313.GG13911@fieldses.org>
+In-Reply-To: <20110607232313.GG13911@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
-
-In blocklayout driver. There are two things happening
-while layoutcommit/cleanup.
-1. the modified extents are encoded.
-2. On cleanup the extents are put back on the layout rw
-   extents list, for reads.
-
-In the new system where actual xdr encoding is done in
-encode_layoutcommit() directly into xdr buffer, these are
-the new commit stages:
-
-1. On setup_layoutcommit, the range is adjusted as before
-   and a structure is allocated for communication with
-   bl_encode_layoutcommit && bl_cleanup_layoutcommit
-   (Generic layer provides a void-star to hang it on)
-
-2. bl_encode_layoutcommit is called to do the actual
-   encoding directly into xdr. The commit-extent-list is not
-   freed and is stored on above structure.
-   FIXME: The code is not yet converted to the new XDR cleanup
-
-3. On cleanup the commit-extent-list is put back by a call
-   to set_to_rw() as before, but with no need for XDR decoding
-   of the list as before. And the commit-extent-list is freed.
-   Finally allocated structure is freed.
-
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[blocklayout: encode_layoutcommit implementation]
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-[pnfsblock: fix bug setting up layoutcommit.]
-Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
-[pnfsblock: prevent commit list corruption]
-[pnfsblock: fix layoutcommit with an empty opaque]
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/blocklayout.c |    2 +
- fs/nfs/blocklayout/blocklayout.h |   12 +++
- fs/nfs/blocklayout/extents.c     |  175 ++++++++++++++++++++++++++++----------
- 3 files changed, 145 insertions(+), 44 deletions(-)
-
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 243ce3f..6d0844c 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -153,6 +153,8 @@ static void
- bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
- 		       const struct nfs4_layoutcommit_args *arg)
- {
-+	dprintk("%s enter\n", __func__);
-+	encode_pnfs_block_layoutupdate(BLK_LO2EXT(lo), xdr, arg);
- }
- 
- static void
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 364540a..c3b41f4 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -135,6 +135,15 @@ struct pnfs_block_extent {
- 	struct pnfs_inval_markings *be_inval; /* tracks INVAL->RW transition */
- };
- 
-+/* Shortened extent used by LAYOUTCOMMIT */
-+struct pnfs_block_short_extent {
-+	struct list_head bse_node;
-+	struct nfs4_deviceid bse_devid;	/* STUB - removable??? */
-+	struct block_device *bse_mdev;
-+	sector_t	bse_f_offset;	/* the starting offset in the file */
-+	sector_t	bse_length;	/* the size of the extent */
-+};
-+
- static inline void
- INIT_INVAL_MARKS(struct pnfs_inval_markings *marks, sector_t blocksize)
- {
-@@ -250,6 +259,9 @@ void put_extent(struct pnfs_block_extent *be);
- struct pnfs_block_extent *alloc_extent(void);
- struct pnfs_block_extent *get_extent(struct pnfs_block_extent *be);
- int is_sector_initialized(struct pnfs_inval_markings *marks, sector_t isect);
-+int encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
-+				   struct xdr_stream *xdr,
-+				   const struct nfs4_layoutcommit_args *arg);
- int add_and_merge_extent(struct pnfs_block_layout *bl,
- 			 struct pnfs_block_extent *new);
- 
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 43a3601..e754d32 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -286,6 +286,47 @@ int mark_initialized_sectors(struct pnfs_inval_markings *marks,
- 	return -ENOMEM;
- }
- 
-+/* Marks sectors in [offest, offset+length) as having been written to disk.
-+ * All lengths should be block aligned.
-+ */
-+int mark_written_sectors(struct pnfs_inval_markings *marks,
-+			 sector_t offset, sector_t length)
-+{
-+	int status;
-+
-+	dprintk("%s(offset=%llu,len=%llu) enter\n", __func__,
-+		(u64)offset, (u64)length);
-+	spin_lock(&marks->im_lock);
-+	status = _set_range(&marks->im_tree, EXTENT_WRITTEN, offset, length);
-+	spin_unlock(&marks->im_lock);
-+	return status;
-+}
-+
-+static void print_short_extent(struct pnfs_block_short_extent *be)
-+{
-+	dprintk("PRINT SHORT EXTENT extent %p\n", be);
-+	if (be) {
-+		dprintk("        be_f_offset %llu\n", (u64)be->bse_f_offset);
-+		dprintk("        be_length   %llu\n", (u64)be->bse_length);
-+	}
-+}
-+
-+void print_clist(struct list_head *list, unsigned int count)
-+{
-+	struct pnfs_block_short_extent *be;
-+	unsigned int i = 0;
-+
-+	dprintk("****************\n");
-+	dprintk("Extent list looks like:\n");
-+	list_for_each_entry(be, list, bse_node) {
-+		i++;
-+		print_short_extent(be);
-+	}
-+	if (i != count)
-+		dprintk("\n\nExpected %u entries\n\n\n", count);
-+	dprintk("****************\n");
-+}
-+
- static void print_bl_extent(struct pnfs_block_extent *be)
- {
- 	dprintk("PRINT EXTENT extent %p\n", be);
-@@ -386,65 +427,67 @@ add_and_merge_extent(struct pnfs_block_layout *bl,
- 	/* Scan for proper place to insert, extending new to the left
- 	 * as much as possible.
- 	 */
--	list_for_each_entry_safe(be, tmp, list, be_node) {
--		if (new->be_f_offset < be->be_f_offset)
-+	list_for_each_entry_safe_reverse(be, tmp, list, be_node) {
-+		if (new->be_f_offset >= be->be_f_offset + be->be_length)
- 			break;
--		if (end <= be->be_f_offset + be->be_length) {
--			/* new is a subset of existing be*/
-+		if (new->be_f_offset >= be->be_f_offset) {
-+			if (end <= be->be_f_offset + be->be_length) {
-+				/* new is a subset of existing be*/
-+				if (extents_consistent(be, new)) {
-+					dprintk("%s: new is subset, ignoring\n",
-+						__func__);
-+					put_extent(new);
-+					return 0;
-+				} else {
-+					goto out_err;
-+				}
-+			} else {
-+				/* |<--   be   -->|
-+				 *          |<--   new   -->| */
-+				if (extents_consistent(be, new)) {
-+					/* extend new to fully replace be */
-+					new->be_length += new->be_f_offset -
-+						be->be_f_offset;
-+					new->be_f_offset = be->be_f_offset;
-+					new->be_v_offset = be->be_v_offset;
-+					dprintk("%s: removing %p\n", __func__, be);
-+					list_del(&be->be_node);
-+					put_extent(be);
-+				} else {
-+					goto out_err;
-+				}
-+			}
-+		} else if (end >= be->be_f_offset + be->be_length) {
-+			/* new extent overlap existing be */
- 			if (extents_consistent(be, new)) {
--				dprintk("%s: new is subset, ignoring\n",
--					__func__);
--				put_extent(new);
--				return 0;
--			} else
-+				/* extend new to fully replace be */
-+				dprintk("%s: removing %p\n", __func__, be);
-+				list_del(&be->be_node);
-+				put_extent(be);
-+			} else {
- 				goto out_err;
--		} else if (new->be_f_offset <=
--				be->be_f_offset + be->be_length) {
--			/* new overlaps or abuts existing be */
--			if (extents_consistent(be, new)) {
-+			}
-+		} else if (end > be->be_f_offset) {
-+			/*           |<--   be   -->|
-+			 *|<--   new   -->| */
-+			if (extents_consistent(new, be)) {
- 				/* extend new to fully replace be */
--				new->be_length += new->be_f_offset -
--						  be->be_f_offset;
--				new->be_f_offset = be->be_f_offset;
--				new->be_v_offset = be->be_v_offset;
-+				new->be_length += be->be_f_offset + be->be_length -
-+					new->be_f_offset - new->be_length;
- 				dprintk("%s: removing %p\n", __func__, be);
- 				list_del(&be->be_node);
- 				put_extent(be);
--			} else if (new->be_f_offset !=
--				   be->be_f_offset + be->be_length)
-+			} else {
- 				goto out_err;
-+			}
- 		}
- 	}
- 	/* Note that if we never hit the above break, be will not point to a
- 	 * valid extent.  However, in that case &be->be_node==list.
- 	 */
--	list_add_tail(&new->be_node, &be->be_node);
-+	list_add(&new->be_node, &be->be_node);
- 	dprintk("%s: inserting new\n", __func__);
- 	print_elist(list);
--	/* Scan forward for overlaps.  If we find any, extend new and
--	 * remove the overlapped extent.
--	 */
--	be = list_prepare_entry(new, list, be_node);
--	list_for_each_entry_safe_continue(be, tmp, list, be_node) {
--		if (end < be->be_f_offset)
--			break;
--		/* new overlaps or abuts existing be */
--		if (extents_consistent(be, new)) {
--			if (end < be->be_f_offset + be->be_length) {
--				/* extend new to fully cover be */
--				end = be->be_f_offset + be->be_length;
--				new->be_length = end - new->be_f_offset;
--			}
--			dprintk("%s: removing %p\n", __func__, be);
--			list_del(&be->be_node);
--			put_extent(be);
--		} else if (end != be->be_f_offset) {
--			list_del(&new->be_node);
--			goto out_err;
--		}
--	}
--	dprintk("%s: after merging\n", __func__);
--	print_elist(list);
- 	/* STUB - The per-list consistency checks have all been done,
- 	 * should now check cross-list consistency.
- 	 */
-@@ -502,6 +545,50 @@ find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
- 	return ret;
- }
- 
-+int
-+encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
-+			       struct xdr_stream *xdr,
-+			       const struct nfs4_layoutcommit_args *arg)
-+{
-+	struct pnfs_block_short_extent *lce, *save;
-+	unsigned int count = 0;
-+	struct list_head *ranges = &bl->bl_committing;
-+	__be32 *p, *xdr_start;
-+
-+	dprintk("%s enter\n", __func__);
-+	/* BUG - creation of bl_commit is buggy - need to wait for
-+	 * entire block to be marked WRITTEN before it can be added.
-+	 */
-+	spin_lock(&bl->bl_ext_lock);
-+	/* Want to adjust for possible truncate */
-+	/* We now want to adjust argument range */
-+
-+	/* XDR encode the ranges found */
-+	xdr_start = xdr_reserve_space(xdr, 8);
-+	if (!xdr_start)
-+		goto out;
-+	list_for_each_entry_safe(lce, save, &bl->bl_commit, bse_node) {
-+		p = xdr_reserve_space(xdr, 7 * 4 + sizeof(lce->bse_devid.data));
-+		if (!p)
-+			break;
-+		WRITE_DEVID(&lce->bse_devid);
-+		WRITE64(lce->bse_f_offset << 9);
-+		WRITE64(lce->bse_length << 9);
-+		WRITE64(0LL);
-+		WRITE32(PNFS_BLOCK_READWRITE_DATA);
-+		list_del(&lce->bse_node);
-+		list_add_tail(&lce->bse_node, ranges);
-+		bl->bl_count--;
-+		count++;
-+	}
-+	xdr_start[0] = cpu_to_be32((xdr->p - xdr_start - 1) * 4);
-+	xdr_start[1] = cpu_to_be32(count);
-+out:
-+	spin_unlock(&bl->bl_ext_lock);
-+	dprintk("%s found %i ranges\n", __func__, count);
-+	return 0;
-+}
-+
- /* Helper function to set_to_rw that initialize a new extent */
- static void
- _prep_new_extent(struct pnfs_block_extent *new,
--- 
-1.7.4.1
-
+VGhlIHRlc3Qgd2FzOg0KDQpJb3pvbmUgLUkgMCAtciA2NGsgLXMgMkcgLXcNCg0KQWN0dWFsbHks
+IEkgc3RhcnRlZCB3aXRoIGEgbXVjaCBsYXJnZXIgdGVzdCBzdWl0ZSwgYW5kIEknbSBhY3R1YWxs
+eSBtb3N0IGludGVyZXN0ZWQgaW4gc21hbGwgcmFuZG9tIHdyaXRlIGxhdGVuY3ksIHJhdGhlciB0
+aGFuIG92ZXJhbGwgdGhyb3VnaHB1dCwgYnV0IHRoZSBzZXF1ZW50aWFsIHdyaXRlcyB0ZXN0IG1h
+a2UgdGhlIGZpbGUgc3lzdGVtIHZzIGxvZyB3aGl0ZSBiZWhhdmlvdXIgb2J2aW91cyB2aWEgaW9z
+dGF0LiBJdCBhbHNvIHNlZW1zIHRoYXQgaW4gbXkgZW52aXJvbm1lbnQsIHRoZSBkaXNrIHdyaXRl
+IGxhdGVuY3kgYWN0dWFsbHkgbGltaXRzIHRocm91Z2hwdXQgc2xpZ2h0bHksIHByZXN1bWFibHkg
+YmVjYXVzZSB0aGUgZGVsYXkgaW4gc3luY2luZyBlYWNoIHdyaXRlIGRlbGF5cyByZXNwb25zZXMg
+YmFjayB0byB0aGUgY2xpZW50Pw0KDQpNeSBpbml0aWFsIHRlc3Qgd2FzIHdpdGggYSB3aXRoIGEg
+cGFpciBvZiBzdHJpcGVkIGRyaXZlcyBjYXBhYmxlIG9mIGFib3V0IDEzMC0xNjBNQi9zZWMgb24g
+bG9jYWwgd3JpdGVzICh0aGV5J3JlIDU0MDBycG0gbGFwdG9wIGRyaXZlcykuDQoNClNvbWUgc2xp
+Z2h0IHR1bmluZyAocmVtb3ZpbmcgdGhlIHJzaXplL3dzaXplIHBhcmFtZXRlcnMsIGFuZCBpbmNy
+ZWFzaW5nIHRoZSBbcnx3XW1lbV9kZWZhdWx0L21heCBwYXJhbWV0ZXJzIGdldHMgdGhlIE5GUyBz
+cGVlZCB1cCB0byBhYm91dCA4MG1iL3NlYyBvbiB3cml0ZXMuDQoNCkRvaW5nIHRoZSBleGFjdCBz
+YW1lIHRlc3Qgb24gYSBmaWxlc3lzdGVtIGJhY2tlZCBvbnRvIHNvbWUgU1NEJ3MgIGdldHMgbWUg
+dXAgdG8gYWJvdXQgMTAwLTEwNU1CIHNlYywgYWx0aG91Z2ggdGhlIHdyaXRlIGxhdGVuY3kgb24g
+dGhlc2UgaXMgbXVjaCBsb3dlciB0aGFuIHRoZSA1NDAwIGRpc2tzLg0KDQpJJ2xsIGdldCBiYWNr
+IHRvIHlvdSBvbiB0aGUgZXh0MyBtYWlsaW5nIGxpc3QgcmVzcG9uc2VzLCBJJ20gZ29pbmcgdG8g
+cmVkbyBteSB0ZXN0cyBvbiBleHQ0IGZpcnN0Lg0KDQpSZWdhcmRzLA0KICAgICAgICBUcmlzdGFu
+DQoNCg0KDQpUcmlzdGFuIEJhbGwgLSBIb3N0ZWQgU2VydmljZXMgTWFuYWdlciBWSUMNClByb250
+byBIb3N0ZWQgU2VydmljZXMNCjIwIExha2VzaWRlIERyaXZlLCBCdXJ3b29kIEVhc3QsIFZJQyAz
+MTUxLCBBdXN0cmFsaWENClBob25lOiArNjEgMyA5ODg3IDc3NzAgfCBFbWFpbDogdHJpc3RhbmJA
+cHJvbnRvLmNvbS5hdQ0KTW9iaWxlOiArNjEgNDA4IDM5NyA0NzMNCnd3dy5wcm9udG8uY29tLmF1
+DQoNCg0KLS0tTGVnYWwgTm90aWNlLS0tDQpUaGUgZW1haWwgbWVzc2FnZSBhbmQgYW55IGF0dGFj
+aG1lbnRzIGFyZSBjb25maWRlbnRpYWwgYW5kIHN1YmplY3QgdG8gY29weXJpZ2h0LiBJZiB5b3Ug
+YXJlIG5vdCB0aGUgaW50ZW5kZWQgcmVjaXBpZW50LCBhbnkgdXNlLCBpbnRlcmZlcmVuY2Ugd2l0
+aCwgZGlzY2xvc3VyZSBvciBjb3B5aW5nIG9mIHRoaXMgbWF0ZXJpYWwgaXMgdW5hdXRob3Jpc2Vk
+IGFuZCBwcm9oaWJpdGVkLiBObyBwYXJ0IG1heSBiZSByZXByb2R1Y2VkLCBhZGFwdGVkIG9yIHRy
+YW5zbWl0dGVkIHdpdGhvdXQgdGhlIHdyaXR0ZW4gcGVybWlzc2lvbiBvZiB0aGUgY29weXJpZ2h0
+IG93bmVyLiBJZiB5b3UgaGF2ZSByZWNlaXZlZCB0aGlzIGVtYWlsIGluIGVycm9yLCBwbGVhc2Ug
+aW1tZWRpYXRlbHkgYWR2aXNlIHRoZSBzZW5kZXIgYnkgcmV0dXJuIGVtYWlsIGFuZCBkZWxldGUg
+dGhlIG1lc3NhZ2UgZnJvbSB5b3VyIHN5c3RlbS4gQmVmb3JlIG9wZW5pbmcgb3IgdXNpbmcgYXR0
+YWNobWVudHMsIGNoZWNrIGZvciB2aXJ1c2VzIGFuZCBkZWZlY3RzLiBPdXIgbGlhYmlsaXR5IGlz
+IGxpbWl0ZWQgdG8gcmUtc3VwcGx5aW5nIGFueSBhZmZlY3RlZCBhdHRhY2htZW50cy4NCg0KLS0t
+LS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCkZyb206IEouIEJydWNlIEZpZWxkcyBbbWFpbHRvOmJm
+aWVsZHNAZmllbGRzZXMub3JnXQ0KU2VudDogV2VkbmVzZGF5LCA4IEp1bmUgMjAxMSA5OjIzIEFN
+DQpUbzogV2VuZHkgQ2hlbmcNCkNjOiBUcmlzdGFuIEJhbGw7IGxpbnV4LW5mc0B2Z2VyLmtlcm5l
+bC5vcmcNClN1YmplY3Q6IFJlOiBORlMgU3luYyB3aXRoIEV4dGVybmFsIEpvdXJuYWwNCg0KT24g
+TW9uLCBKdW4gMDYsIDIwMTEgYXQgMDE6MTI6NTFQTSAtMDcwMCwgV2VuZHkgQ2hlbmcgd3JvdGU6
+DQo+IFlvdSdsbCBwcm9iYWJseSBnZXQgYmV0dGVyIGFuc3dlcihzKSBmcm9tIGV4dDMgdXNlciBt
+YWlsaW5nIGxpc3QgLi4uLg0KPiBpdCBpcyBtb3JlIGFib3V0IGhvdyBqb3VybmFsaW5nIHdvcmtz
+IGZvciB0aGUgc3BlY2lmaWMgZmlsZSBzeXN0ZW0uDQoNClllcywgdGhvdWdoIGxlYXZlIGxpbnV4
+LW5mcyBvbiB0aGUgY2M6IGFzIEknZCBiZSBpbnRlcmVzdGVkIHdoYXQgeW91IGZpbmQgb3V0Lg0K
+DQo+IEluIGV4dDMgY2FzZSwgSSBiZWxpZXZlICJzeW5jIiBmb3JjZXMgZGF0YSBnZXR0aW5nIGZs
+dXNoZWQgdG8gdGhlIGZpbGUNCj4gc3lzdGVtICpyZWdhcmRsZXNzKiB3aGljaCBqb3VybmFsIG1v
+ZGUgaXMgY2hvc2VuLiBVc2luZyBhbiBleHRlcm5hbA0KPiBqb3VybmFsIGRldmljZSwgcGFydGlj
+dWxhcmx5IG9uIFNTRCwgIGRvZXMgaGVscCBidXQgdGhlIHBlcmZvcm1hbmNlDQo+IGdhaW4gaXMg
+bGltaXRlZCBieSB0aGUgYW1vdW50IG9mIGRhdGEgdGhhdCBuZWVkcyB0byBiZSB3cml0dGVuIGlu
+dG8NCj4gdGhlIGZpbGUgc3lzdGVtIGl0c2VsZi4NCg0KPiA+IC9ldGMvZXhwb3J0czoNCj4gPiAv
+cGxhaW4gICAgICAgICAgKihydyxhc3luYyxub19zdWJ0cmVlX2NoZWNrLG5vX3Jvb3Rfc3F1YXNo
+KQ0KPiA+IC9zcGxpdCAgICAgICAgICAqKHJ3LGFzeW5jLG5vX3N1YnRyZWVfY2hlY2ssbm9fcm9v
+dF9zcXVhc2gpICMgKEZTDQo+ID4gd2l0aCBleHRlcm5hbCBKb3VybmFsKQ0KPiA+DQo+ID4gQ2xp
+ZW50IG1vdW50cyB3ZXJlIGRvbmUgc2ltcGx5IHdpdGggLW8gJ3J3LHJzaXplPTMyNzY4LHdzaXpl
+PTMyNzY4Jw0KPiA+DQo+ID4gQmVuY2htYXJrIHJlc3VsdHM6DQo+ID4gUGxhaW4gRXh0MywgZGF0
+YT1vcmRlcmVkIGV4cG9ydD1zeW5jLCB3cml0ZSBzcGVlZCA1Ni02Mk1CL3NlYyBTcGxpdA0KPiA+
+IEV4dDMsIGRhdGE9am91cm5hbCBleHBvcnQ9c3luYywgd3JpdGUgc3BlZWQgPSA0Ni01ME1CL3Nl
+Yw0KPiA+DQo+ID4gRm9yIHJlZmVyZW5jZToNCj4gPiBQbGFpbiBFeHQzLCBkYXRhPW9yZGVyZWQg
+ZXhwb3J0PWFzeW5jLCB3cml0ZSBzcGVlZCAxMTFNQi9zZWMgU3BsaXQNCj4gPiBFeHQzLCBkYXRh
+PWpvdXJuYWwgZXhwb3J0PWFzeW5jLCB3cml0ZSBzcGVlZCAxMTBNQi9zZWMNCg0KV2hhdCBleGFj
+dGx5IGlzIHlvdXIgdGVzdD8NCg0KRm9yIHN1ZmZpY2llbnRseSBsYXJnZSBzZXF1ZW50aWFsIHdy
+aXRlcywgSSB3b3VsZG4ndCBhY3R1YWxseSBoYXZlIGV4cGVjdGVkIHN5bmMgdnMuIGFzeW5jIHRv
+IG1ha2UgbXVjaCBkaWZmZXJlbmNlOiBldmVudHVhbGx5IHlvdSdyZSBsaW1pdGVkIGJ5IHRoZSBk
+cml2ZSBzcGVlZCAoSSdtIGFzc3VtaW5nIHlvdXIgZHJpdmUgZG9lcyB+NjBNQi9zIHdyaXRlIHRo
+cm91Z3B1dD8pLiAgQW5kIGluZGl2aWR1YWwgd3JpdGVzIChmb3IgTkZTIHYzIGFuZCBoaWdoZXIp
+IGFyZW4ndCBuZWNlc3NhcmlseSByZXF1aXJlZCB0byBiZSBzeW5jaHJvbm91cy4NCg0KQSBiZXR0
+ZXIgdGVzdCB3b3VsZCBiZSBjcmVhdGluZyBvciBkZXN0cm95aW5nIGEgYnVuY2ggb2Ygc21hbGwg
+ZmlsZXMsIGFzIGNyZWF0ZSBhbmQgdW5saW5rIGFyZSBzeW5jaHJvbm91cyAodGhlIG5mcyBzZXJ2
+ZXIgd29uJ3QgcmV0dXJuLCBpbiB0aGUgc3luYyBjYXNlLCBiZWZvcmUgZWFjaCBjcmVhdGUgYW5k
+IHVubGluayBhY3R1YWxseSBoaXRzIHRoZSBkaXNrKS4NCg0KLS1iLg0KTu+/ve+/ve+/ve+/ve+/
+vXLvv73vv71577+977+977+9Yu+/vVjvv73vv73Hp3bvv71e77+9Kd66ey5u77+9K++/ve+/ve+/
+ve+/vXvvv73vv73vv70i77+977+9Xm7vv71y77+977+977+9eu+/vRrvv73vv71o77+977+977+9
+77+9Ju+/ve+/vR7vv71H77+977+977+9aO+/vQMo77+96ZqO77+93aJqIu+/ve+/vRrvv70bbe+/
+ve+/ve+/ve+/ve+/vXrvv73elu+/ve+/ve+/vWbvv73vv73vv71o77+977+977+9fu+/vW3vv70=
