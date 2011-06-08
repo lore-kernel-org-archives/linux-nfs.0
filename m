@@ -1,238 +1,136 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:52033 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754060Ab1FNCcu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:50 -0400
-Message-Id: <2bf0b7bafe8cf872ca215dc3fb3c62f902a78299.1308017749.git.rees@umich.edu>
-In-Reply-To: <cover.1308017749.git.rees@umich.edu>
-References: <cover.1308017749.git.rees@umich.edu>
-Subject: [PATCH 19/33] pnfsblock: xdr decode pnfs_block_layout4
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Date: Mon, 13 Jun 2011 22:32:48 -0400
-From: Jim Rees <rees@umich.edu>
+Received: from fieldses.org ([174.143.236.118]:60186 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750948Ab1FHQYv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Jun 2011 12:24:51 -0400
+Date: Wed, 8 Jun 2011 12:24:49 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Vladimir Elisseev <vovan@vovan.nl>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS3 + kerberos: performance issues
+Message-ID: <20110608162449.GD4101@fieldses.org>
+References: <1307086159.1052.19.camel@vovan.net.home>
+ <1307104354.2477.17.camel@lade.trondhjem.org>
+ <1307123836.1052.23.camel@vovan.net.home>
+ <20110607230754.GF13911@fieldses.org>
+ <1307514377.1533.35.camel@vovan.net.home>
+ <20110608153950.GB4101@fieldses.org>
+ <1307548836.1533.46.camel@vovan.net.home>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1307548836.1533.46.camel@vovan.net.home>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+On Wed, Jun 08, 2011 at 06:00:36PM +0200, Vladimir Elisseev wrote:
+> Thanks for pointing me to the right to look at. However, the main point
+> is huge performance degradation while using sec=krb5 option instead of
+> sec=sys. With sec=sys everything works as expected. Personally I simply
+> can't find any reasonable explanation.
 
-XDR decodes the block layout payload sent in LAYOUTGET result, storing
-the result in an extent list.
+Right, me neither.  That's why I suggest a) looking at mountstats, to
+figure out which rpc operations are taking longer in the sec=krb5 case
+than they are in the sec=sys case, and b) looking at server-side
+statistics (mainly cpu usage, I guess) to start looking for bottlenecks
+on the server.
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfsblock: fix bug getting pnfs_layout_type in translate_devid().]
-Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/blocklayoutdev.c |  191 ++++++++++++++++++++++++++++++++++-
- 1 files changed, 189 insertions(+), 2 deletions(-)
+--b.
 
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index 0fedf50..a90eb6b 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -150,10 +150,197 @@ out_err:
- 	return NULL;
- }
- 
-+/* Map deviceid returned by the server to constructed block_device */
-+static struct block_device *translate_devid(struct pnfs_layout_hdr *lo,
-+					    struct nfs4_deviceid *id)
-+{
-+	struct block_device *rv = NULL;
-+	struct block_mount_id *mid;
-+	struct pnfs_block_dev *dev;
-+
-+	dprintk("%s enter, lo=%p, id=%p\n", __func__, lo, id);
-+	mid = BLK_ID(lo);
-+	spin_lock(&mid->bm_lock);
-+	list_for_each_entry(dev, &mid->bm_devlist, bm_node) {
-+		if (memcmp(id->data, dev->bm_mdevid.data,
-+			   NFS4_DEVICEID4_SIZE) == 0) {
-+			rv = dev->bm_mdev;
-+			goto out;
-+		}
-+	}
-+ out:
-+	spin_unlock(&mid->bm_lock);
-+	dprintk("%s returning %p\n", __func__, rv);
-+	return rv;
-+}
-+
-+/* Tracks info needed to ensure extents in layout obey constraints of spec */
-+struct layout_verification {
-+	u32 mode;	/* R or RW */
-+	u64 start;	/* Expected start of next non-COW extent */
-+	u64 inval;	/* Start of INVAL coverage */
-+	u64 cowread;	/* End of COW read coverage */
-+};
-+
-+/* Verify the extent meets the layout requirements of the pnfs-block draft,
-+ * section 2.3.1.
-+ */
-+static int verify_extent(struct pnfs_block_extent *be,
-+			 struct layout_verification *lv)
-+{
-+	if (lv->mode == IOMODE_READ) {
-+		if (be->be_state == PNFS_BLOCK_READWRITE_DATA ||
-+		    be->be_state == PNFS_BLOCK_INVALID_DATA)
-+			return -EIO;
-+		if (be->be_f_offset != lv->start)
-+			return -EIO;
-+		lv->start += be->be_length;
-+		return 0;
-+	}
-+	/* lv->mode == IOMODE_RW */
-+	if (be->be_state == PNFS_BLOCK_READWRITE_DATA) {
-+		if (be->be_f_offset != lv->start)
-+			return -EIO;
-+		if (lv->cowread > lv->start)
-+			return -EIO;
-+		lv->start += be->be_length;
-+		lv->inval = lv->start;
-+		return 0;
-+	} else if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
-+		if (be->be_f_offset != lv->start)
-+			return -EIO;
-+		lv->start += be->be_length;
-+		return 0;
-+	} else if (be->be_state == PNFS_BLOCK_READ_DATA) {
-+		if (be->be_f_offset > lv->start)
-+			return -EIO;
-+		if (be->be_f_offset < lv->inval)
-+			return -EIO;
-+		if (be->be_f_offset < lv->cowread)
-+			return -EIO;
-+		/* It looks like you might want to min this with lv->start,
-+		 * but you really don't.
-+		 */
-+		lv->inval = lv->inval + be->be_length;
-+		lv->cowread = be->be_f_offset + be->be_length;
-+		return 0;
-+	} else
-+		return -EIO;
-+}
-+
-+/* XDR decode pnfs_block_layout4 structure */
- int
- nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
- 			   struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
- {
--	/* STUB */
--	return -EIO;
-+	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
-+	int i, status = -EIO;
-+	uint32_t count;
-+	struct pnfs_block_extent *be = NULL, *save;
-+	struct xdr_stream stream;
-+	struct xdr_buf buf;
-+	struct page *scratch;
-+	__be32 *p;
-+	uint64_t tmp; /* Used by READSECTOR */
-+	struct layout_verification lv = {
-+		.mode = lgr->range.iomode,
-+		.start = lgr->range.offset >> 9,
-+		.inval = lgr->range.offset >> 9,
-+		.cowread = lgr->range.offset >> 9,
-+	};
-+	LIST_HEAD(extents);
-+
-+	dprintk("---> %s\n", __func__);
-+
-+	scratch = alloc_page(gfp_flags);
-+	if (!scratch)
-+		return -ENOMEM;
-+
-+	xdr_init_decode_pages(&stream, &buf, lgr->layoutp->pages, lgr->layoutp->len);
-+	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
-+
-+	p = xdr_inline_decode(&stream, 4);
-+	if (unlikely(!p))
-+		goto out_err;
-+
-+	READ32(count);
-+
-+	dprintk("%s enter, number of extents %i\n", __func__, count);
-+	p = xdr_inline_decode(&stream, (28 + NFS4_DEVICEID4_SIZE) * count);
-+	if (unlikely(!p))
-+		goto out_err;
-+
-+	/* Decode individual extents, putting them in temporary
-+	 * staging area until whole layout is decoded to make error
-+	 * recovery easier.
-+	 */
-+	for (i = 0; i < count; i++) {
-+		be = alloc_extent();
-+		if (!be) {
-+			status = -ENOMEM;
-+			goto out_err;
-+		}
-+		READ_DEVID(&be->be_devid);
-+		be->be_mdev = translate_devid(lo, &be->be_devid);
-+		if (!be->be_mdev)
-+			goto out_err;
-+
-+		/* The next three values are read in as bytes,
-+		 * but stored as 512-byte sector lengths
-+		 */
-+		READ_SECTOR(be->be_f_offset);
-+		READ_SECTOR(be->be_length);
-+		READ_SECTOR(be->be_v_offset);
-+		READ32(be->be_state);
-+		if (be->be_state == PNFS_BLOCK_INVALID_DATA)
-+			be->be_inval = &bl->bl_inval;
-+		if (verify_extent(be, &lv)) {
-+			dprintk("%s verify failed\n", __func__);
-+			goto out_err;
-+		}
-+		list_add_tail(&be->be_node, &extents);
-+	}
-+	if (lgr->range.offset + lgr->range.length != lv.start << 9) {
-+		dprintk("%s Final length mismatch\n", __func__);
-+		be = NULL;
-+		goto out_err;
-+	}
-+	if (lv.start < lv.cowread) {
-+		dprintk("%s Final uncovered COW extent\n", __func__);
-+		be = NULL;
-+		goto out_err;
-+	}
-+	/* Extents decoded properly, now try to merge them in to
-+	 * existing layout extents.
-+	 */
-+	spin_lock(&bl->bl_ext_lock);
-+	list_for_each_entry_safe(be, save, &extents, be_node) {
-+		list_del(&be->be_node);
-+		status = add_and_merge_extent(bl, be);
-+		if (status) {
-+			spin_unlock(&bl->bl_ext_lock);
-+			/* This is a fairly catastrophic error, as the
-+			 * entire layout extent lists are now corrupted.
-+			 * We should have some way to distinguish this.
-+			 */
-+			be = NULL;
-+			goto out_err;
-+		}
-+	}
-+	spin_unlock(&bl->bl_ext_lock);
-+	status = 0;
-+ out:
-+	__free_page(scratch);
-+	dprintk("%s returns %i\n", __func__, status);
-+	return status;
-+
-+ out_err:
-+	put_extent(be);
-+	while (!list_empty(&extents)) {
-+		be = list_first_entry(&extents, struct pnfs_block_extent,
-+				      be_node);
-+		list_del(&be->be_node);
-+		put_extent(be);
-+	}
-+	goto out;
- }
--- 
-1.7.4.1
-
+> BTW, I'm using Gentoo and getting
+> the same error while using mountstats script.
+> 
+> Regards,
+> Vlad.
+> 
+> On Wed, 2011-06-08 at 11:39 -0400, J. Bruce Fields wrote:
+> > On Wed, Jun 08, 2011 at 08:26:17AM +0200, Vladimir Elisseev wrote:
+> > > All of the accounts, except very limited amount, are in LDAP, and as I
+> > > can see user information is identical on server and client. As for my
+> > > tests, below are all the details. Difference in speed while copying a
+> > > lot of small files is _huge_... I'd appreciate if somebody more familiar
+> > > with NFS/kerberos combination can provide a kind of explanation. 
+> > > 
+> > > Regards,
+> > > Vlad.
+> > > 
+> > > * Local directory is /mnt/data/tmp/coreboot/src
+> > > # find x86/ | wc -l
+> > > 296
+> > > # du -csh x86
+> > > 1.5M	x86
+> > > 1.5M	total
+> > > * First try without kerberos: grep /mnt/tmp/ /proc/mounts
+> > > nfs:/mnt/tmp /mnt/tmp nfs
+> > > rw,noatime,vers=3,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.1.219,mountvers=3,mountport=32767,mountproto=tcp,local_lock=none,addr=192.168.1.219 0 0
+> > > # time cp -i -arv /mnt/data/tmp/coreboot/src/arch/x86 /mnt/tmp/x86 
+> > > cp -i -arv /mnt/data/tmp/coreboot/src/arch/x86 /mnt/tmp/x86 0.01s user
+> > > 0.04s system 10% cpu 0.476 total
+> > > 
+> > > * Second try with kerberos: grep /mnt/tmp/ /proc/mounts
+> > > nfs:/mnt/tmp /mnt/tmp nfs
+> > > rw,noatime,vers=3,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=krb5,mountaddr=192.168.1.219,mountvers=3,mountport=32767,mountproto=tcp,local_lock=none,addr=192.168.1.219 0 0
+> > > # time cp -i -arv /mnt/data/tmp/coreboot/src/arch/x86 /mnt/tmp/x86 
+> > > cp -i -arv /mnt/data/tmp/coreboot/src/arch/x86 /mnt/tmp/x86  0.01s user
+> > > 0.07s system 0% cpu 23.294 total
+> > 
+> > So if I'm reading that right, the client isn't doing any more work, it's
+> > just taking longer, so presumably it's spending more time waiting for
+> > the server.
+> > 
+> > Might be worth looking at /proc/self/mountstats to see which rpc's are
+> > taking longer.
+> > 
+> > (Chuck, what's up with the mountstats script?  On a fedora 15 machine
+> > with mountstats installed, it gives me "Statistics for mount point /mnt
+> > not found", but
+> > 
+> > 	# grep mnt /proc/self/mountstats 
+> > 	pip1:/exports/ mounted on /mnt with fstype nfs4 statvers=1.0
+> > 
+> > On a ubuntu machine running the mountstats out of
+> > nfs-utils/tools/mountstats/mountstats.py, it runs without any output.)
+> > 
+> > Might also be worth looking at vmstat or something on the server.
+> > 
+> > --b.
+> > 
+> > 
+> > > 
+> > > At the same time test with a single file (621M):
+> > > * without kerberos: 
+> > > cp -i -av /mnt/media/images/GNOME_3.x86_64-0.2.0-Build1.1.iso   0.00s
+> > > user 0.69s system 5% cpu 13.521 total
+> > > * with kerberos:
+> > > cp -i -av /mnt/media/images/GNOME_3.x86_64-0.2.0-Build1.1.iso   0.00s
+> > > user 0.55s system 2% cpu 26.299 total
+> > > 
+> > > With the same file, but with "dd
+> > > if=/mnt/media/images/GNOME_3.x86_64-0.2.0-Build1.1.iso
+> > > of=/mnt/tmp/test.iso bs=32M"
+> > > gives:
+> > > * without kerberos: 651165696 bytes (651 MB) copied, 10.7168 s, 60.8
+> > > MB/s
+> > > * with kerberos: 651165696 bytes (651 MB) copied, 24.6176 s, 26.5 MB/s
+> > > 
+> > > 
+> > > On Tue, 2011-06-07 at 19:07 -0400, J. Bruce Fields wrote:
+> > > > On Fri, Jun 03, 2011 at 07:57:16PM +0200, Vladimir Elisseev wrote:
+> > > > > There's no mount command involved in timing. It's simply copy of the
+> > > > > same directory (with many small files to NFS share with and without
+> > > > > sec=krb5 mount option.
+> > > > 
+> > > > Weird.
+> > > > 
+> > > > I wonder if the krb5 principal is being mapped to a different user on
+> > > > the server side, and that's making some difference.
+> > > > 
+> > > > Still, could you give us the full details?  (Exactly what commands are
+> > > > you running, what results do you see?)
+> > > > 
+> > > > --b.
+> > > > --
+> > > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > > > the body of a message to majordomo@vger.kernel.org
+> > > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > > 
+> 
