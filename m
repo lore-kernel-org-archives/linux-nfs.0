@@ -1,53 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:50709 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758702Ab1FGVrE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 17:47:04 -0400
-Message-ID: <4DEE9C55.4040805@candelatech.com>
-Date: Tue, 07 Jun 2011 14:47:01 -0700
-From: Ben Greear <greearb@candelatech.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Fix build on Fedora 13.
-References: <1307469531-20595-1-git-send-email-greearb@candelatech.com> <E9E39B04-8045-44EF-970B-A1F1779C5A69@oracle.com> <4DEE6CEA.8000909@candelatech.com>
-In-Reply-To: <4DEE6CEA.8000909@candelatech.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:31578 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751036Ab1FHTtl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jun 2011 15:49:41 -0400
+Subject: Re: What is proper kernel tree to develop against?
+Content-Type: text/plain; charset=us-ascii
+From: Weston Andros Adamson <dros@netapp.com>
+In-Reply-To: <20110608190345.GA6752@fieldses.org>
+Date: Wed, 8 Jun 2011 15:49:38 -0400
+Cc: Jim Rees <rees@umich.edu>, Ben Greear <greearb@candelatech.com>,
+        linux-nfs@vger.kernel.org
+Message-Id: <6598B49E-A6F0-4D7B-AC82-A675CF69E9C8@netapp.com>
+References: <4DEFC244.2040306@candelatech.com> <20110608185219.GD3513@merit.edu> <20110608190345.GA6752@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 06/07/2011 11:24 AM, Ben Greear wrote:
-> On 06/07/2011 11:14 AM, Chuck Lever wrote:
->> Hi Ben-
->>
->> On Jun 7, 2011, at 1:58 PM, greearb@candelatech.com wrote:
->>
->>> From: Ben Greear<greearb@candelatech.com>
->>>
->>> Need sys/stat.h for S_ISDIR and S_ISREG symbols.
->>
->> Can you tell when this problem was introduced? What ./configure
->> options might be relevant?
->
-> I haven't compiled nfs-utils in years. Since I can't get ./configure to
-> find libgssapi,
-> I'm compiling with:
->
-> ./configure --disable-gss
 
-I think I was given a bad git repo suggestion in a previous email.
+On Jun 8, 2011, at 3:03 PM, J. Bruce Fields wrote:
 
-I was using:  git://git.infradead.org/users/steved/nfs-utils.git
-which hasn't been updated in years.
+> On Wed, Jun 08, 2011 at 02:52:19PM -0400, Jim Rees wrote:
+>> Ben Greear wrote:
+>> 
+>>  What kernel tree should I use to develop NFS & RPC patches
+>>  for possible upstream acceptance?
+>> 
+>> I think for the stuff you're doing it would just be the upstream git tree at
+>> kernel.org.  Note that nfs-utils is separate.
+>> 
+>> Has anyone pointed you to the wiki?  I think it answers many of these
+>> questions, although it seems heavily slanted towards pnfs.
+>> 
+>> http://wiki.linux-nfs.org/wiki/index.php/Main_Page
+> 
+> It would be nice to reorganize the wiki, especially that top page.
+> 
+> I'd kind of like linux-nfs.org to just point to some page on the wiki
+> some day.
 
-Let me start all over again with
-git://git.linux-nfs.org/projects/steved/nfs-utils.git
+I've actually signed up to revamp linux-nfs.org.  I'll begin work on that very soon (after bakeathon and my vacation).
 
-Thanks,
-Ben
-
-
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+-dros
 
