@@ -1,67 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:53700 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755722Ab1FGR3Z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:29:25 -0400
-Date: Tue, 7 Jun 2011 13:29:22 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 30/88] pnfsblock: write_end
-Message-ID: <33457eaede5912d7802ba8e3c5fd843c110b69d9.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
+Received: from fieldses.org ([174.143.236.118]:57999 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750912Ab1FHTLz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Jun 2011 15:11:55 -0400
+Date: Wed, 8 Jun 2011 15:11:55 -0400
+To: greearb@candelatech.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs-utils:  Support binding to source address.
+Message-ID: <20110608191155.GB6752@fieldses.org>
+References: <1307554748-31757-1-git-send-email-greearb@candelatech.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+In-Reply-To: <1307554748-31757-1-git-send-email-greearb@candelatech.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+On Wed, Jun 08, 2011 at 10:39:08AM -0700, greearb@candelatech.com wrote:
+> From: Ben Greear <greearb@candelatech.com>
+> 
+> This lets one specify the source IP address for
+> sockets, allowing users to leverage routing rules
+> on multi-homed systems.
+> 
+> Kernel patches to RPC and NFS are needed to complete
+> full functionality.
 
-Implements bl_write_end, which basically just calls SetPageUptodate.
+Possibly dumb question: there's an ongoing effort (I think--haven't
+heard much from them recently?) to make the nfs and rpc code aware of
+which network namespace it's running in.  Would that do what you need?
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/blocklayout.c |   18 ++++++++++++++++++
- 1 files changed, 18 insertions(+), 0 deletions(-)
+Does statd need changes too?
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index b3ad99d..f4851c1 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -818,6 +818,23 @@ bl_write_begin(struct pnfs_layout_segment *lseg, struct page *page, loff_t pos,
- 	return ret;
- }
- 
-+/* CAREFUL - what happens if copied < count??? */
-+static int
-+bl_write_end(struct inode *inode, struct page *page, loff_t pos,
-+	     unsigned count, unsigned copied, struct pnfs_fsdata *fsdata)
-+{
-+	dprintk("%s enter, %u@%lld, %i\n", __func__, count, pos,
-+		fsdata ? fsdata->ok_to_use_pnfs : -1);
-+	print_page(page);
-+	if (fsdata) {
-+		if (fsdata->ok_to_use_pnfs) {
-+			dprintk("%s using pnfs\n", __func__);
-+			SetPageUptodate(page);
-+		}
-+	}
-+	return 0;
-+}
-+
- static ssize_t
- bl_get_stripesize(struct pnfs_layout_type *lo)
- {
-@@ -862,6 +879,7 @@ static struct layoutdriver_io_operations blocklayout_io_operations = {
- 	.read_pagelist			= bl_read_pagelist,
- 	.write_pagelist			= bl_write_pagelist,
- 	.write_begin			= bl_write_begin,
-+	.write_end			= bl_write_end,
- 	.alloc_layout			= bl_alloc_layout,
- 	.free_layout			= bl_free_layout,
- 	.alloc_lseg			= bl_alloc_lseg,
--- 
-1.7.4.1
-
+--b.
