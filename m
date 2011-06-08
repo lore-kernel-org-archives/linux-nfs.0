@@ -1,67 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:51395 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755485Ab1F1IHa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jun 2011 04:07:30 -0400
-Received: by iwn6 with SMTP id 6so4762924iwn.19
-        for <linux-nfs@vger.kernel.org>; Tue, 28 Jun 2011 01:07:30 -0700 (PDT)
-Message-ID: <4E098BBC.3030007@tonian.com>
-Date: Tue, 28 Jun 2011 11:07:24 +0300
-From: Benny Halevy <bhalevy@tonian.com>
-To: quanli gui <gqlxj1987@gmail.com>
-CC: Thomas Haynes <thomas@netapp.com>, nfsv4@ietf.org,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [nfsv4] nfs client bug?
-References: <BANLkTinMhiYNiz2EP+yppxC7-MrtFa_xLg@mail.gmail.com>	<F84410BF-4426-4A85-891F-642F70955914@netapp.com> <BANLkTimZh2eCVLozyT8t_nkX08W=dx0mHg@mail.gmail.com>
-In-Reply-To: <BANLkTimZh2eCVLozyT8t_nkX08W=dx0mHg@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet10.oracle.com ([148.87.113.121]:29310 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754573Ab1FHUlN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jun 2011 16:41:13 -0400
+Subject: Re: [PATCH] nfs-utils:  Support binding to source address.
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1307554748-31757-1-git-send-email-greearb@candelatech.com>
+Date: Wed, 8 Jun 2011 16:41:00 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <41FD62D9-1CAA-46CA-B2D7-2F52E58A917B@oracle.com>
+References: <1307554748-31757-1-git-send-email-greearb@candelatech.com>
+To: greearb@candelatech.com
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Since your client runs SUSE linux please send this to
-linux-nfs@vger.kernel.org (please subscribe first if you aren't already)
 
-Benny
+On Jun 8, 2011, at 1:39 PM, greearb@candelatech.com wrote:
 
-On 2011-06-28 10:34, quanli gui wrote:
-> There is some else mailing list about the nfsv4?
+> From: Ben Greear <greearb@candelatech.com>
 > 
-> OSes are suse 11 enterprise server, the linux kernel version we are running is 2.6.31+pnfs.patch.
-> Our test command is mount -t nfs4 -o minorversion=1 serverIP:/ /mnt/serverIP.
+> This lets one specify the source IP address for
+> sockets, allowing users to leverage routing rules
+> on multi-homed systems.
+
+  [ ... snipped ... ]
+
+> diff --git a/support/include/sockaddr.h b/support/include/sockaddr.h
+> index 9af2543..3822b4b 100644
+> --- a/support/include/sockaddr.h
+> +++ b/support/include/sockaddr.h
+> @@ -46,6 +46,12 @@ union nfs_sockaddr {
+> 	struct sockaddr_in6	s6;
+> };
 > 
-> On Tue, Jun 28, 2011 at 1:17 PM, Thomas Haynes <thomas@netapp.com <mailto:thomas@netapp.com>> wrote:
-> 
->     This mailing list is concerned with the protocol.
-> 
->     You either want to contact your client or server provider. When you do so,
->     please make sure to mention which OSes and versions you are running.
-> 
->     On Jun 27, 2011, at 9:01 PM, quanli gui wrote:
-> 
->     > Hi,
->     > Recently I test the nfsv4 speed, I found that there is something wrong in the nfs client, that is the one nfs client can only provide 400MB/S to the server.
->     > My tests as follow:
->     > machine:one client, four server; hardware: all 16core, 16G memory, 5T disk; os: all suse 11 enterprise server, 2.6.31-pnfs-kernel; network: client, 10GE, server, 2GE(bond, 1GE*2);
->     > test method: on the client, mkdir four independent directory, mount the four server via nfsv4 protocol, every time increase one;
->     > test tool: iozone, or dd if=/dev/zero of=test count=20K,then cat test>/dev/null
->     > test result:(force on read speed, and watch the client/server network input/output by the sar command)
->     > 1 client vs 1 server: 200MB/S
->     > 1 client vs 2 server: 380MB/S, every server: 190MB/S
->     > 1 client vs 3 server: 380MB/S, every server: 130MB/S
->     > 1 client vs 4 server: 385MB/S, every server: 95MB/S
->     >
->     > From above, we found that 400MB/S is the max-speed for one client. This speed is the limition? How to increase this speed?
->     >
->     > _______________________________________________
->     > nfsv4 mailing list
->     > nfsv4@ietf.org <mailto:nfsv4@ietf.org>
->     > https://www.ietf.org/mailman/listinfo/nfsv4
-> 
-> 
-> 
-> 
-> _______________________________________________
-> nfsv4 mailing list
-> nfsv4@ietf.org
-> https://www.ietf.org/mailman/listinfo/nfsv4
+> +struct local_bind_info {
+> +	struct sockaddr_storage addr;
+
+For storing socket addresses, nfs_utils has "union nfs_sockaddr" which safely allows the equivalent of type-casting.  You should use that here.
+
+> +	int addrlen;
+
+socklen_t or size_t is preferred for sockaddr lengths.
+
+> +	int is_set;
+
+This should probably be _Bool or bool.
+
+But why is this structure needed?  Why can't you pass a bind address via a struct sockaddr * just as bind(2) does?
+
+When you specify a source address for mountd and statd, wouldn't they need to register that address with rpcbind? That won't work for non-TI-RPC builds, and neither would it work for the kernel, which, according to Trond, will never support listening on specific addresses (he NACKed a patch to the kernel's rpcbind client to support this). Are you sure you need server-side changes too?
+
+You can't pass a bind address to the mount command using a command line option, since command line options aren't stored in /etc/fstab or /etc/mtab.  How would umount.nfs learn of the bind address if it can't find it in /etc/mtab?
+
+It should not read from an environment variable either... how would that work during system boot?  How would such a variable be set during system shutdown?  If we were to do this, it really should use a new mount option.
+
+If you repost, I would do mountd, statd, and mount's getport implementation all in separate patches.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
