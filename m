@@ -1,43 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail127.messagelabs.com ([216.82.250.115]:39986 "EHLO
-	mail127.messagelabs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932079Ab1FUBT1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jun 2011 21:19:27 -0400
-From: H Hartley Sweeten <hartleys@visionengravers.com>
-To: Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: [PATCH] svcauth_unix.c: quiet sparse noise
-Date: Mon, 20 Jun 2011 18:19:12 -0700
-CC: <netdev@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <Trond.Myklebust@netapp.com>, <bfields@fieldses.org>, <neilb@suse.de>,
-        <davem@davemloft.net>
-Content-Type: text/plain; charset="utf-8"
-Message-ID: <201106201819.12839.hartleys@visionengravers.com>
+Received: from mx2.netapp.com ([216.240.18.37]:1927 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753628Ab1FHOaD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jun 2011 10:30:03 -0400
+Subject: Re: [patch] NFS: using freed variable in debug code
+Content-Type: text/plain; charset=us-ascii
+From: Weston Andros Adamson <dros@netapp.com>
+In-Reply-To: <20110608064300.GE3846@shale.localdomain>
+Date: Wed, 8 Jun 2011 10:30:00 -0400
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
+        kernel-janitors@vger.kernel.org
+Message-Id: <4E3994E6-9DBF-439B-808E-F134EB5DD923@netapp.com>
+References: <20110608064300.GE3846@shale.localdomain>
+To: Dan Carpenter <error27@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Like svcauth_unix, the symbol svcauth_null is used external from this
-file. Declare it as extern to quiet the following sparse noise:
+Oops, good catch!
 
-warning: symbol 'svcauth_null' was not declared. Should it be static?
+Actually, we can leave the kfree() where it is.  Using ds->ds_remotestr in the dprintk is a typo - It should be tmp_ds->ds_remotestr.
 
-Signed-off-by: H Hartley Sweeten <hsweeten@visionengravers.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Neil Brown <neilb@suse.de>
-Cc: "David S. Miller" <davem@davemloft.net>
+-dros
 
----
+On Jun 8, 2011, at 2:43 AM, Dan Carpenter wrote:
 
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index c8e1021..62e49e2 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -36,6 +36,7 @@ struct unix_domain {
- 	/* other stuff later */
- };
- 
-+extern struct auth_ops svcauth_null;
- extern struct auth_ops svcauth_unix;
- 
- static void svcauth_unix_domain_release(struct auth_domain *dom)
+> "ds" gets dereferenced after a kfree in the debug output.  I just
+> moved the free down a line.
+> 
+> Signed-off-by: Dan Carpenter <error27@gmail.com>
+> 
+> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+> index 77c171e..c63bbce 100644
+> --- a/fs/nfs/nfs4filelayoutdev.c
+> +++ b/fs/nfs/nfs4filelayoutdev.c
+> @@ -362,11 +362,11 @@ nfs4_pnfs_ds_add(struct list_head *dsaddrs, gfp_t gfp_flags)
+> 				__func__, tmp_ds->ds_remotestr, remotestr);
+> 		}
+> 		kfree(remotestr);
+> -		kfree(ds);
+> 		atomic_inc(&tmp_ds->ds_count);
+> 		dprintk("%s data server %s found, inc'ed ds_count to %d\n",
+> 			__func__, ds->ds_remotestr,
+> 			atomic_read(&tmp_ds->ds_count));
+> +		kfree(ds);
+> 		ds = tmp_ds;
+> 	}
+> 	spin_unlock(&nfs4_ds_cache_lock);
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
