@@ -1,55 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:48213 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754390Ab1FNCdP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:33:15 -0400
-Message-Id: <7abae6a47d5750528e8b91e364ab58eedadda97a.1308017749.git.rees@umich.edu>
-In-Reply-To: <cover.1308017749.git.rees@umich.edu>
-References: <cover.1308017749.git.rees@umich.edu>
-Subject: [PATCH 29/33] pnfsblock: bl_write_pagelist support functions
+Received: from mx2.netapp.com ([216.240.18.37]:11964 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753854Ab1FHAvZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 20:51:25 -0400
+Subject: Re: [PATCH 2/3] NFS: Cleanup of the nfs_pageio code in preparation
+ for a pnfs bugfix
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Date: Mon, 13 Jun 2011 22:33:13 -0400
-From: Jim Rees <rees@umich.edu>
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 07 Jun 2011 20:51:18 -0400
+In-Reply-To: <4DEEC221.6040902@panasas.com>
+References: <1307399551-17489-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1307399551-17489-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <4DEEC221.6040902@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1307494278.12587.1.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+On Tue, 2011-06-07 at 20:28 -0400, Benny Halevy wrote: 
+> On 2011-06-06 18:32, Trond Myklebust wrote:
+> > We need to ensure that the layouts are set up before we can decide to
+> > coalesce requests. To do so, we want to further split up the struct
+> > nfs_pageio_descriptor operations into an initialisation callback, a
+> > coalescing test callback, and a 'do i/o' callback.
+> > 
+> > This patch cleans up the existing callback methods before adding the
+> > 'initialisation' callback.
+> > 
+> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > +
+> >  static void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
+> >  				  struct inode *inode, int ioflags)
+> >  {
+> >  	size_t wsize = NFS_SERVER(inode)->wsize;
+> > +	const struct nfs_pageio_ops *ops;
+> > +	ops = pnfs_get_write_ops(inode);
+> > +	if (ops == NULL)
+> > +		ops = &nfs_pageio_write_ops;
+> >  
+> > -	if (wsize < PAGE_CACHE_SIZE)
+> > -		nfs_pageio_init(pgio, inode, nfs_flush_multi, wsize, ioflags);
+> > -	else
+> > -		nfs_pageio_init(pgio, inode, nfs_flush_one, wsize, ioflags);
+> > +	nfs_pageio_init(pgio, inode, &nfs_pageio_write_ops, wsize, ioflags);
+> 
+> Trond, this should be:
+> 	nfs_pageio_init(pgio, inode, ops, wsize, ioflags);
+> 
+> Benny
 
-[pnfsblock: SQUASHME: adjust to API change]
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfsblock: fixup blksize alignment in bl_setup_layoutcommit]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/blocklayout.c |   13 +++++++++++++
- 1 files changed, 13 insertions(+), 0 deletions(-)
+Yep. Fixed in the patch...
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index cbf74d8..01fe089 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -70,6 +70,19 @@ static int is_hole(struct pnfs_block_extent *be, sector_t isect)
- 		return !is_sector_initialized(be->be_inval, isect);
- }
- 
-+/* Given the be associated with isect, determine if page data can be
-+ * written to disk.
-+ */
-+static int is_writable(struct pnfs_block_extent *be, sector_t isect)
-+{
-+	if (be->be_state == PNFS_BLOCK_READWRITE_DATA)
-+		return 1;
-+	else if (be->be_state != PNFS_BLOCK_INVALID_DATA)
-+		return 0;
-+	else
-+		return is_sector_initialized(be->be_inval, isect);
-+}
-+
- static int
- dont_like_caller(struct nfs_page *req)
- {
+Thanks!
+  Trond
+
 -- 
-1.7.4.1
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
