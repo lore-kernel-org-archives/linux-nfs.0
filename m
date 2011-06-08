@@ -1,61 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:41599 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758449Ab1FWCZ5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 22:25:57 -0400
-Received: by gyh3 with SMTP id 3so562081gyh.19
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Jun 2011 19:25:56 -0700 (PDT)
-From: Tom Haynes <loghyr@gmail.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Tom Haynes <tdh@excfb.com>
-Subject: [PATCH 1/2] Multiple clnt_broadcast, rename static reference
-Date: Wed, 22 Jun 2011 21:26:06 -0500
-Message-Id: <1308795967-7605-2-git-send-email-tdh@excfb.com>
-In-Reply-To: <1308795967-7605-1-git-send-email-tdh@excfb.com>
-References: <1308795967-7605-1-git-send-email-tdh@excfb.com>
+Received: from mx1.redhat.com ([209.132.183.28]:62498 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754735Ab1FHLgj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Jun 2011 07:36:39 -0400
+Message-ID: <4DEF5EAC.9090603@RedHat.com>
+Date: Wed, 08 Jun 2011 07:36:12 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Ben Greear <greearb@candelatech.com>
+CC: Thomas Haynes <thomas@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: What RPM meets the libgssapi requirement on Fedora?
+References: <4DEE57AD.8050408@candelatech.com> <357A5DD9-991B-445B-8CF8-7C0A0B8F54D9@netapp.com> <4DEEF3F6.8090609@candelatech.com>
+In-Reply-To: <4DEEF3F6.8090609@candelatech.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
 
-Signed-off-by: Tom Haynes <tdh@excfb.com>
----
- tools/pmapbrd.c |    7 ++++---
- 1 files changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/tools/pmapbrd.c b/tools/pmapbrd.c
-index c447ced..2bb05b6 100644
---- a/tools/pmapbrd.c
-+++ b/tools/pmapbrd.c
-@@ -98,7 +98,7 @@ static bool_t xdr_rmtcallres ARGS_((XDR *, struct rmtcallres *));
- #define RPROC_NUM (u_long)1
- #endif
- 
--static enum clnt_stat clnt_broadcast ARGS_((int, unsigned long, unsigned long,
-+static enum clnt_stat clnt_broadcast_time ARGS_((int, unsigned long, unsigned long,
- 		unsigned long, xdrproc_t, void *, xdrproc_t, void *,
- 		resultproc_t, struct timeval *));
- 
-@@ -174,7 +174,7 @@ main(argc, argv)
- 		 * XXX shouldn't have to cast eachresult?
- 		 */
- 		clnt_stat =
--		    clnt_broadcast(sock, RPROG, RVERS, RPROC_NUM, xdr_void, &a,
-+		    clnt_broadcast_time(sock, RPROG, RVERS, RPROC_NUM, xdr_void, &a,
- 		    xdr_void, &b, (resultproc_t)eachresult, &t);
- 		if(clnt_stat != RPC_TIMEDOUT) {
- 			printf("error: clnt_stat = %d\n", clnt_stat);
-@@ -305,7 +305,8 @@ getbroadcastnets(sock, buf)
- }
- 
- static enum clnt_stat 
--clnt_broadcast(sock, prog, vers, proc, xargs, argsp, xresults, resultsp, eachresult, t)
-+clnt_broadcast_time(sock, prog, vers, proc, xargs, argsp, xresults,
-+			resultsp, eachresult, t)
- 	int		sock;
- #ifdef SVR3
- 	ulong		prog;		/* program number */
--- 
-1.7.3.4
+On 06/08/2011 12:00 AM, Ben Greear wrote:
+> On 06/07/2011 06:39 PM, Thomas Haynes wrote:
+>> On my FC 13 and FC 14 systems, I need to install the following to test NFSv4 XDR code:
+>>
+>> sudo yum -y install libgssglue-devel
+>> sudo yum -y install nfs-utils-lib-devel
+Please note, that nfs-utils-lib will be going away in Fedora 15.
 
+The rpm was a combination of two libraries. librpcsecgss and  libnfsidmap.
+librpcsecgss is no longer needed now that we have libtirpc so I
+broke libnfsidmap out into its own rpm... 
+
+steved.
+
+> 
+> Yeah, that works.  I was accidentally using a very ancient
+> nfs-utils git tree.
+
+> 
+> Thanks,
+> Ben
+> 
+>>
+>>
+>> On Jun 7, 2011, at 9:54 AM, Ben Greear wrote:
+>>
+>>> ./configure
+>>> ....
+>>> checking pkg-config is at least version 0.9.0... yes
+>>> checking for RPCSECGSS... yes
+>>> checking for GSSAPI... configure: error: Package requirements (libgssapi >= 0.11) were not met:
+>>>
+>>> No package 'libgssapi' found
+>>>
+>>> I tried:
+>>>
+>>> [root@fs3 linux-2.6.38.x64-dbg]# yum install libgssapi-devel
+>>> Loaded plugins: presto, refresh-packagekit
+>>> Setting up Install Process
+>>> Nothing to do
+>>>
+>>> This is on Fedora 13...
+>>>
+>>> Thanks,
+>>> Ben
+>>>
+>>> -- 
+>>> Ben Greear <greearb@candelatech.com <mailto:greearb@candelatech.com>>
+>>> Candela Technologies Inc http://www.candelatech.com
+>>>
+>>> -- 
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org <mailto:majordomo@vger.kernel.org>
+>>> More majordomo info at http://vger.kernel.org/majordomo-info.html
+>>
+> 
+> 
