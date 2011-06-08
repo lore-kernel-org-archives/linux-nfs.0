@@ -1,45 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:34772 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755284Ab1FOQbZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Jun 2011 12:31:25 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 1/1] nfs4.1: prevent race that allowed use of freed layout in _pnfs_return_layout
-Date: Wed, 15 Jun 2011 12:31:02 -0400
-Message-Id: <1308155462-29517-1-git-send-email-iisaman@netapp.com>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:43088 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752429Ab1FHHGo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jun 2011 03:06:44 -0400
+Received: by vws1 with SMTP id 1so141539vws.19
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Jun 2011 00:06:43 -0700 (PDT)
+In-Reply-To: <4DEED8FC.4000000@panasas.com>
+References: <cover.1307464381.git.rees@umich.edu>
+	<8d4549ecda23f5ada0c88677c9505cba2830dad5.1307464382.git.rees@umich.edu>
+	<4DEED8FC.4000000@panasas.com>
+Date: Wed, 8 Jun 2011 15:06:43 +0800
+Message-ID: <BANLkTimeDdSUZusf8RgpncSyW5K21UyhXw@mail.gmail.com>
+Subject: Re: [PATCH 88/88] NFS41: do not update isize if inode needs layoutcommit
+From: Peng Tao <bergwolf@gmail.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Jim Rees <rees@umich.edu>, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-mark_matching_lsegs_invalid could put the last ref to the layout, so
-the get_layout_hdr needs to be called first.
+On 6/8/11, Benny Halevy <bhalevy@panasas.com> wrote:
+> Better send generic patches separately.
+> This patch needs to go upstream and to stable 2.6.39
+It has been sent separately before. please see
+http://www.spinics.net/list/linux-nfs/msg21586.html
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/pnfs.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+>
+> Benny
+>
+> On 2011-06-07 13:36, Jim Rees wrote:
+>> From: Peng Tao <bergwolf@gmail.com>
+>>
+>> Layout commit is supposed to set server file size similiar to nfs pages.
+>> We should not update client file size for the same reason.
+>> Otherwise we will lose what we have at hand.
+>>
+>> Signed-off-by: Peng Tao <peng_tao@emc.com>
+>> Signed-off-by: Jim Rees <rees@umich.edu>
+>> ---
+>>  fs/nfs/inode.c |    3 ++-
+>>  1 files changed, 2 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+>> index 144f2a3..3f1eb81 100644
+>> --- a/fs/nfs/inode.c
+>> +++ b/fs/nfs/inode.c
+>> @@ -1294,7 +1294,8 @@ static int nfs_update_inode(struct inode *inode,
+>> struct nfs_fattr *fattr)
+>>  		if (new_isize != cur_isize) {
+>>  			/* Do we perhaps have any outstanding writes, or has
+>>  			 * the file grown beyond our last write? */
+>> -			if (nfsi->npages == 0 || new_isize > cur_isize) {
+>> +			if ((nfsi->npages == 0 && !test_bit(NFS_INO_LAYOUTCOMMIT,
+>> &nfsi->flags)) ||
+>> +			     new_isize > cur_isize) {
+>>  				i_size_write(inode, new_isize);
+>>  				invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
+>>  			}
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index d25f66d..f99f068 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -646,10 +646,10 @@ _pnfs_return_layout(struct inode *ino)
- 		return status;
- 	}
- 	stateid = nfsi->layout->plh_stateid;
--	mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
--	lo->plh_block_lgets++;
- 	/* Reference matched in nfs4_layoutreturn_release */
- 	get_layout_hdr(lo);
-+	mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
-+	lo->plh_block_lgets++;
- 	spin_unlock(&ino->i_lock);
- 	pnfs_free_lseg_list(&tmp_list);
- 
+
 -- 
-1.7.2.1
-
+Thanks,
+-Bergwolf
