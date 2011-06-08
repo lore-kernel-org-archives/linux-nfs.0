@@ -1,142 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48926 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:48874 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753877Ab1FJAKO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Jun 2011 20:10:14 -0400
-Date: Thu, 9 Jun 2011 20:10:11 -0400
+	id S1755890Ab1FHPjv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Jun 2011 11:39:51 -0400
+Date: Wed, 8 Jun 2011 11:39:50 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: linux-nfs@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org, samba-technical@lists.samba.org,
-        Christoph Hellwig <hch@infradead.org>,
-        Mimi Zohar <zohar@linux.vnet.ibm.com>, Eric Paris <eparis@redhat.com>
-Subject: [PATCH 1/2] locks: introduce i_blockleases to close lease races
-Message-ID: <20110610001011.GD22215@fieldses.org>
-References: <20110610000944.GC22215@fieldses.org>
+To: Vladimir Elisseev <vovan@vovan.nl>
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: NFS3 + kerberos: performance issues
+Message-ID: <20110608153950.GB4101@fieldses.org>
+References: <1307086159.1052.19.camel@vovan.net.home>
+ <1307104354.2477.17.camel@lade.trondhjem.org>
+ <1307123836.1052.23.camel@vovan.net.home>
+ <20110607230754.GF13911@fieldses.org>
+ <1307514377.1533.35.camel@vovan.net.home>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110610000944.GC22215@fieldses.org>
+In-Reply-To: <1307514377.1533.35.camel@vovan.net.home>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@redhat.com>
+On Wed, Jun 08, 2011 at 08:26:17AM +0200, Vladimir Elisseev wrote:
+> All of the accounts, except very limited amount, are in LDAP, and as I
+> can see user information is identical on server and client. As for my
+> tests, below are all the details. Difference in speed while copying a
+> lot of small files is _huge_... I'd appreciate if somebody more familiar
+> with NFS/kerberos combination can provide a kind of explanation. 
+> 
+> Regards,
+> Vlad.
+> 
+> * Local directory is /mnt/data/tmp/coreboot/src
+> # find x86/ | wc -l
+> 296
+> # du -csh x86
+> 1.5M	x86
+> 1.5M	total
+> * First try without kerberos: grep /mnt/tmp/ /proc/mounts
+> nfs:/mnt/tmp /mnt/tmp nfs
+> rw,noatime,vers=3,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.1.219,mountvers=3,mountport=32767,mountproto=tcp,local_lock=none,addr=192.168.1.219 0 0
+> # time cp -i -arv /mnt/data/tmp/coreboot/src/arch/x86 /mnt/tmp/x86 
+> cp -i -arv /mnt/data/tmp/coreboot/src/arch/x86 /mnt/tmp/x86 0.01s user
+> 0.04s system 10% cpu 0.476 total
+> 
+> * Second try with kerberos: grep /mnt/tmp/ /proc/mounts
+> nfs:/mnt/tmp /mnt/tmp nfs
+> rw,noatime,vers=3,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=krb5,mountaddr=192.168.1.219,mountvers=3,mountport=32767,mountproto=tcp,local_lock=none,addr=192.168.1.219 0 0
+> # time cp -i -arv /mnt/data/tmp/coreboot/src/arch/x86 /mnt/tmp/x86 
+> cp -i -arv /mnt/data/tmp/coreboot/src/arch/x86 /mnt/tmp/x86  0.01s user
+> 0.07s system 0% cpu 23.294 total
 
-Since break_lease is called before i_writecount is incremented, there's
-a window between the two where a setlease call would have no way to know
-that an open is about to happen.
+So if I'm reading that right, the client isn't doing any more work, it's
+just taking longer, so presumably it's spending more time waiting for
+the server.
 
-We fix this by adding a new inode field, i_blockleases, that is
-incremented while a lease-breaking operation is in progress.
+Might be worth looking at /proc/self/mountstats to see which rpc's are
+taking longer.
 
-We will later reuse i_blockleases to enforce lease-breaking for rename,
-unlink, etc.
+(Chuck, what's up with the mountstats script?  On a fedora 15 machine
+with mountstats installed, it gives me "Statistics for mount point /mnt
+not found", but
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/inode.c         |    1 +
- fs/locks.c         |   28 ++++++++++++++++++++++++++++
- fs/namei.c         |    6 +++++-
- include/linux/fs.h |    3 +++
- 4 files changed, 37 insertions(+), 1 deletions(-)
+	# grep mnt /proc/self/mountstats 
+	pip1:/exports/ mounted on /mnt with fstype nfs4 statvers=1.0
 
-diff --git a/fs/inode.c b/fs/inode.c
-index 33c963d..4f253a2 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -198,6 +198,7 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
- 	inode->i_uid = 0;
- 	inode->i_gid = 0;
- 	atomic_set(&inode->i_writecount, 0);
-+	atomic_set(&inode->i_blockleases, 0);
- 	inode->i_size = 0;
- 	inode->i_blocks = 0;
- 	inode->i_bytes = 0;
-diff --git a/fs/locks.c b/fs/locks.c
-index 0a4f50d..7699b1b 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -1164,6 +1164,32 @@ static void time_out_leases(struct inode *inode)
- 	}
- }
- 
-+/* Disallow all leases (read or write): */
-+void disallow_leases(struct inode *inode, int flags)
-+{
-+	if (!inode)
-+		return;
-+	if (!S_ISREG(inode->i_mode))
-+		return;
-+	if ((flags & O_ACCMODE) == O_RDONLY)
-+		return;
-+	atomic_inc(&inode->i_blockleases);
-+}
-+EXPORT_SYMBOL_GPL(disallow_leases);
-+
-+void reallow_leases(struct inode *inode, int flags)
-+{
-+	if (!inode)
-+		return;
-+	if (!S_ISREG(inode->i_mode))
-+		return;
-+	if ((flags & O_ACCMODE) == O_RDONLY)
-+		return;
-+	BUG_ON(atomic_read(&inode->i_blockleases) <= 0);
-+	atomic_dec(&inode->i_blockleases);
-+}
-+EXPORT_SYMBOL_GPL(reallow_leases);
-+
- /**
-  *	__break_lease	-	revoke all outstanding leases on file
-  *	@inode: the inode of the file to return
-@@ -1369,6 +1395,8 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
- 
- 	if (arg != F_UNLCK) {
- 		error = -EAGAIN;
-+		if (atomic_read(&inode->i_blockleases))
-+			goto out;
- 		if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
- 			goto out;
- 		if ((arg == F_WRLCK)
-diff --git a/fs/namei.c b/fs/namei.c
-index 3cb616d..079e68c 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2277,10 +2277,14 @@ ok:
- 		want_write = 1;
- 	}
- common:
-+	disallow_leases(nd->path.dentry->d_inode, open_flag);
- 	error = may_open(&nd->path, acc_mode, open_flag);
--	if (error)
-+	if (error) {
-+		reallow_leases(nd->path.dentry->d_inode, open_flag);
- 		goto exit;
-+	}
- 	filp = nameidata_to_filp(nd);
-+	reallow_leases(nd->path.dentry->d_inode, open_flag);
- 	if (!IS_ERR(filp)) {
- 		error = ima_file_check(filp, op->acc_mode);
- 		if (error) {
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 1b95af3..daf8443 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -796,6 +796,7 @@ struct inode {
- #ifdef CONFIG_IMA
- 	atomic_t		i_readcount; /* struct files open RO */
- #endif
-+	atomic_t		i_blockleases; /* setlease fails when >0 */
- 	atomic_t		i_writecount;
- #ifdef CONFIG_SECURITY
- 	void			*i_security;
-@@ -1161,6 +1162,8 @@ extern void lease_get_mtime(struct inode *, struct timespec *time);
- extern int generic_setlease(struct file *, long, struct file_lock **);
- extern int vfs_setlease(struct file *, long, struct file_lock **);
- extern int lease_modify(struct file_lock **, int);
-+extern void disallow_leases(struct inode *, int flags);
-+extern void reallow_leases(struct inode *, int flags);
- extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
- extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
- extern void lock_flocks(void);
--- 
-1.7.4.1
+On a ubuntu machine running the mountstats out of
+nfs-utils/tools/mountstats/mountstats.py, it runs without any output.)
 
+Might also be worth looking at vmstat or something on the server.
+
+--b.
+
+
+> 
+> At the same time test with a single file (621M):
+> * without kerberos: 
+> cp -i -av /mnt/media/images/GNOME_3.x86_64-0.2.0-Build1.1.iso   0.00s
+> user 0.69s system 5% cpu 13.521 total
+> * with kerberos:
+> cp -i -av /mnt/media/images/GNOME_3.x86_64-0.2.0-Build1.1.iso   0.00s
+> user 0.55s system 2% cpu 26.299 total
+> 
+> With the same file, but with "dd
+> if=/mnt/media/images/GNOME_3.x86_64-0.2.0-Build1.1.iso
+> of=/mnt/tmp/test.iso bs=32M"
+> gives:
+> * without kerberos: 651165696 bytes (651 MB) copied, 10.7168 s, 60.8
+> MB/s
+> * with kerberos: 651165696 bytes (651 MB) copied, 24.6176 s, 26.5 MB/s
+> 
+> 
+> On Tue, 2011-06-07 at 19:07 -0400, J. Bruce Fields wrote:
+> > On Fri, Jun 03, 2011 at 07:57:16PM +0200, Vladimir Elisseev wrote:
+> > > There's no mount command involved in timing. It's simply copy of the
+> > > same directory (with many small files to NFS share with and without
+> > > sec=krb5 mount option.
+> > 
+> > Weird.
+> > 
+> > I wonder if the krb5 principal is being mapped to a different user on
+> > the server side, and that's making some difference.
+> > 
+> > Still, could you give us the full details?  (Exactly what commands are
+> > you running, what results do you see?)
+> > 
+> > --b.
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
