@@ -1,78 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33896 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:64163 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752167Ab1FTTij (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Jun 2011 15:38:39 -0400
-Date: Mon, 20 Jun 2011 15:38:34 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org, chuck.lever@oracle.com
-Subject: Re: [PATCH] manpage: add info about IPv6 configuration to
- exports(5)
-Message-ID: <20110620153834.126e6bbc@tlielax.poochiereds.net>
-In-Reply-To: <1308597604-1198-1-git-send-email-jlayton@redhat.com>
-References: <1308597604-1198-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1753231Ab1FHLIs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Jun 2011 07:08:48 -0400
+Message-ID: <4DEF583C.8080907@RedHat.com>
+Date: Wed, 08 Jun 2011 07:08:44 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Ben Greear <greearb@candelatech.com>
+CC: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Fix build on Fedora 13.
+References: <1307469531-20595-1-git-send-email-greearb@candelatech.com> <E9E39B04-8045-44EF-970B-A1F1779C5A69@oracle.com> <4DEE6CEA.8000909@candelatech.com> <4DEE9C55.4040805@candelatech.com> <4DEEE8B1.8040001@RedHat.com> <4DEEF3C1.5060703@candelatech.com>
+In-Reply-To: <4DEEF3C1.5060703@candelatech.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 20 Jun 2011 15:20:04 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
 
-> The parts of the exports(5) manpage that discuss IP addressing neglect
-> IPv6 configuration. Update to include info on how to export to IPv6
-> subnets and addresses, and add a line demonstrating that to the EXAMPLE
-> section.
+
+On 06/08/2011 12:00 AM, Ben Greear wrote:
+> On 06/07/2011 08:12 PM, Steve Dickson wrote:
+>>
+>>
+>> On 06/07/2011 05:47 PM, Ben Greear wrote:
+>>> On 06/07/2011 11:24 AM, Ben Greear wrote:
+>>>> On 06/07/2011 11:14 AM, Chuck Lever wrote:
+>>>>> Hi Ben-
+>>>>>
+>>>>> On Jun 7, 2011, at 1:58 PM, greearb@candelatech.com wrote:
+>>>>>
+>>>>>> From: Ben Greear<greearb@candelatech.com>
+>>>>>>
+>>>>>> Need sys/stat.h for S_ISDIR and S_ISREG symbols.
+>>>>>
+>>>>> Can you tell when this problem was introduced? What ./configure
+>>>>> options might be relevant?
+>>>>
+>>>> I haven't compiled nfs-utils in years. Since I can't get ./configure to
+>>>> find libgssapi,
+>>>> I'm compiling with:
+>>>>
+>>>> ./configure --disable-gss
+>>>
+>>> I think I was given a bad git repo suggestion in a previous email.
+>>>
+>>> I was using:  git://git.infradead.org/users/steved/nfs-utils.git
+>>> which hasn't been updated in years.
+>>>
+>>> Let me start all over again with
+>>> git://git.linux-nfs.org/projects/steved/nfs-utils.git
+>> Here is the correct path:
+>>      git://linux-nfs.org/~steved/exports/nfs-utils
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  utils/exportfs/exports.man |    8 +++++---
->  1 files changed, 5 insertions(+), 3 deletions(-)
-> 
-> diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
-> index 241b3af..cf5f365 100644
-> --- a/utils/exportfs/exports.man
-> +++ b/utils/exportfs/exports.man
-> @@ -47,7 +47,7 @@ NFS clients may be specified in a number of ways:
->  .IP "single host
->  This is the most common format. You may specify a host either by an
->  abbreviated name recognized be the resolver, the fully qualified domain
-> -name, or an IP address.
-> +name, an IPv4 address, or an IPv6 address enclosed in square brackets.
->  .IP "IP networks
->  You can also export directories to all hosts on an IP (sub-) network
->  simultaneously. This is done by specifying an IP address and netmask pair
-> @@ -57,7 +57,7 @@ where the netmask can be specified in dotted-decimal format, or as a
->  contiguous mask length.
->  For example, either `/255.255.252.0' or `/22' appended
->  to the network base IPv4 address results in identical subnetworks with 10 bits of
-> -host. Wildcard characters generally do not work on IP addresses, though they
-> +host. IPv6 addresses must use a contiguous mask length and be enclosed in square brackets. Wildcard characters generally do not work on IP addresses, though they
->  may work by accident when reverse DNS lookups fail.
->  .IP "wildcards
->  Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
-> @@ -486,6 +486,7 @@ The format for extra export tables is the same as
->  /home/joe       pc001(rw,all_squash,anonuid=150,anongid=100)
->  /pub            *(ro,insecure,all_squash)
->  /srv/www        \-sync,rw server @trusted @external(ro)
-> +/foo            [2001:321:9:e54::/64](rw) 192.168.1.0/24(rw)
->  '''/pub/private    (noaccess)
->  .fi
->  .PP
-> @@ -501,7 +502,8 @@ option in this entry also allows clients with NFS implementations that
->  don't use a reserved port for NFS.
->  The sixth line exports a directory read-write to the machine 'server'
->  as well as the `@trusted' netgroup, and read-only to netgroup `@external',
-> -all three mounts with the `sync' option enabled.
-> +all three mounts with the `sync' option enabled. The seventh line exports
-> +a directory to both an IPv6 and an IPv4 subnet.
->  ''' The last line denies all NFS clients
->  '''access to the private directory.
->  '''.SH CAVEATS
+> Out of curiosity, what is the difference between the two
+> above?
+nothing.... 
 
-Self NAK on this, as brackets don't seem to be required after all. I'll
-respin and resend once I get that straightened out.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+steved.
