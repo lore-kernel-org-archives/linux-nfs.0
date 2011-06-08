@@ -1,88 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60108 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752801Ab1FMVKA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Jun 2011 17:10:00 -0400
-Date: Mon, 13 Jun 2011 17:09:59 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Sid Moore <learnmost@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [Patch 1/1]: fixed a bug that EXCHGID4_FLAG_CONFIRMED_R is
- cleared in EXCHANGE_ID reply if incarnation is a confirmed client
-Message-ID: <20110613210959.GB22174@fieldses.org>
-References: <BANLkTinHJm4be+gRrCeYdJg_B3ptt+A0qw@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <BANLkTinHJm4be+gRrCeYdJg_B3ptt+A0qw@mail.gmail.com>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:47561 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754732Ab1FHH3h (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jun 2011 03:29:37 -0400
+Received: by vws1 with SMTP id 1so150607vws.19
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Jun 2011 00:29:36 -0700 (PDT)
+In-Reply-To: <BANLkTimeDdSUZusf8RgpncSyW5K21UyhXw@mail.gmail.com>
+References: <cover.1307464381.git.rees@umich.edu>
+	<8d4549ecda23f5ada0c88677c9505cba2830dad5.1307464382.git.rees@umich.edu>
+	<4DEED8FC.4000000@panasas.com>
+	<BANLkTimeDdSUZusf8RgpncSyW5K21UyhXw@mail.gmail.com>
+Date: Wed, 8 Jun 2011 15:29:36 +0800
+Message-ID: <BANLkTimErrC_Jme06=U4T932YG_n0m6RSw@mail.gmail.com>
+Subject: Re: [PATCH 88/88] NFS41: do not update isize if inode needs layoutcommit
+From: Peng Tao <bergwolf@gmail.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Jim Rees <rees@umich.edu>, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Jun 13, 2011 at 09:27:19AM +0800, Sid Moore wrote:
-> On Sun, Jun 12, 2011 at 7:59 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Sat, Jun 11, 2011 at 03:54:56PM +0800, Sid Moore wrote:
-> >> Hi
-> >>
-> >> on Linux NFSv4.1 server, nfsd4_exchange_id() is used for creating a
-> >> new client incarnation or updating a confirmed client incarnation. if
-> >> try to update a confirmed incarnation, EXCHGID4_FLAG_CONFIRMED_R
-> >> should be set in eir_flags according to section 18.35.3, RFC5661.
-> >>
-> >> but I found EXCHGID4_FLAG_CONFIRMED_R is cleared by "clid->flags =
-> >> new->cl_exchange_flags;", which is in nfsd4_set_ex_flags() called by
-> >> nfsd4_exchange_id().
-> >>
-> >> so the sematics of RFC5661 is broken? am I correct?
-> >
-> > On a quick glance.... I think you're correct.  Patch welcomed.
-> >
-> > --b.
-> >
-> 
-> Hi, Bruce
-> 
-> I think the patch below might be able to fix this issue. I am not sure
-> what impact would be produced if EXCHGID4_FLAG_CONFIRMED_R directly
-> set on confirmed clients. So, I take a conservative way. Please review
-> it. Thanks.
+sorry, the link should be
+http://www.spinics.net/lists/linux-nfs/msg21586.html
 
-Grepping for cl_exchange_flags on the server side....  I think it would
-be fine just to set it directly.  Would you mind trying that and
-resending the patch if it works?
-
---b.
-
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 6fb7283..4bd9281 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1394,6 +1394,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
->  	char			addr_str[INET6_ADDRSTRLEN];
->  	nfs4_verifier		verf = exid->verifier;
->  	struct sockaddr		*sa = svc_addr(rqstp);
-> +	int 			confirmed_clnt = 0;
-> 
->  	rpc_ntop(sa, addr_str, sizeof(addr_str));
->  	dprintk("%s rqstp=%p exid=%p clname.len=%u clname.data=%p "
-> @@ -1455,7 +1456,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
->  		 * Set bit when the owner id and verifier map to an already
->  		 * confirmed client id (18.35.3).
->  		 */
-> -		exid->flags |= EXCHGID4_FLAG_CONFIRMED_R;
-> +		confirmed_clnt = 1;
-> 
->  		/*
->  		 * Falling into 18.35.4 case 2, possible router replay.
-> @@ -1498,6 +1499,9 @@ out_copy:
-> 
->  	exid->seqid = 1;
->  	nfsd4_set_ex_flags(new, exid);
-> +	if (confirmed_clnt)
-> +		exid->flags |= EXCHGID4_FLAG_CONFIRMED_R;
-> +
-> 
->  	dprintk("nfsd4_exchange_id seqid %d flags %x\n",
->  		new->cl_cs_slot.sl_seqid, new->cl_exchange_flags);
-> 
+On 6/8/11, Peng Tao <bergwolf@gmail.com> wrote:
+> On 6/8/11, Benny Halevy <bhalevy@panasas.com> wrote:
+>> Better send generic patches separately.
+>> This patch needs to go upstream and to stable 2.6.39
+> It has been sent separately before. please see
+> http://www.spinics.net/list/linux-nfs/msg21586.html
+>
+>>
+>> Benny
+>>
+>> On 2011-06-07 13:36, Jim Rees wrote:
+>>> From: Peng Tao <bergwolf@gmail.com>
+>>>
+>>> Layout commit is supposed to set server file size similiar to nfs pages.
+>>> We should not update client file size for the same reason.
+>>> Otherwise we will lose what we have at hand.
+>>>
+>>> Signed-off-by: Peng Tao <peng_tao@emc.com>
+>>> Signed-off-by: Jim Rees <rees@umich.edu>
+>>> ---
+>>>  fs/nfs/inode.c |    3 ++-
+>>>  1 files changed, 2 insertions(+), 1 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+>>> index 144f2a3..3f1eb81 100644
+>>> --- a/fs/nfs/inode.c
+>>> +++ b/fs/nfs/inode.c
+>>> @@ -1294,7 +1294,8 @@ static int nfs_update_inode(struct inode *inode,
+>>> struct nfs_fattr *fattr)
+>>>  		if (new_isize != cur_isize) {
+>>>  			/* Do we perhaps have any outstanding writes, or has
+>>>  			 * the file grown beyond our last write? */
+>>> -			if (nfsi->npages == 0 || new_isize > cur_isize) {
+>>> +			if ((nfsi->npages == 0 && !test_bit(NFS_INO_LAYOUTCOMMIT,
+>>> &nfsi->flags)) ||
+>>> +			     new_isize > cur_isize) {
+>>>  				i_size_write(inode, new_isize);
+>>>  				invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
+>>>  			}
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>
+>
 > --
-> Sid
+> Thanks,
+> -Bergwolf
+>
+
+
+-- 
+Thanks,
+-Bergwolf
