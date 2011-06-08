@@ -1,132 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f42.google.com ([74.125.82.42]:36971 "EHLO
-	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753444Ab1FAS4b (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 14:56:31 -0400
-Received: by wwk4 with SMTP id 4so3759764wwk.1
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Jun 2011 11:56:30 -0700 (PDT)
-Message-ID: <4DE68B59.3030402@panasas.com>
-Date: Wed, 01 Jun 2011 21:56:25 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-CC: Weston Andros Adamson <dros@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>, trond@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS: filelayout should use nfs_generic_pg_test
-References: <1306898310-9229-1-git-send-email-dros@netapp.com>	<4DE5D287.603@panasas.com>	<09816808-BA7B-4EAF-A18A-866B5A98BF25@netapp.com>	<4DE65202.2010502@panasas.com> <BANLkTi=Bwuuar76phVyEguB1Amqn4Q70Fw@mail.gmail.com>
-In-Reply-To: <BANLkTi=Bwuuar76phVyEguB1Amqn4Q70Fw@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail.candelatech.com ([208.74.158.172]:39966 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753269Ab1FHVa1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jun 2011 17:30:27 -0400
+Message-ID: <4DEFE9F0.6060600@candelatech.com>
+Date: Wed, 08 Jun 2011 14:30:24 -0700
+From: Ben Greear <greearb@candelatech.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs-utils:  Support binding to source address.
+References: <1307554748-31757-1-git-send-email-greearb@candelatech.com> <41FD62D9-1CAA-46CA-B2D7-2F52E58A917B@oracle.com> <4DEFE18C.3040308@candelatech.com> <A7E35DD6-C83B-4DAC-A64D-9D79EDA97C5F@oracle.com>
+In-Reply-To: <A7E35DD6-C83B-4DAC-A64D-9D79EDA97C5F@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-06-01 19:01, Fred Isaman wrote:
-> On Wed, Jun 1, 2011 at 10:51 AM, Benny Halevy <bhalevy@panasas.com> wrote:
->> On 2011-06-01 17:44, Weston Andros Adamson wrote:
+On 06/08/2011 02:16 PM, Chuck Lever wrote:
+>
+> On Jun 8, 2011, at 4:54 PM, Ben Greear wrote:
+>
+>> On 06/08/2011 01:41 PM, Chuck Lever wrote:
+
+>>> But why is this structure needed?  Why can't you pass a bind address via a struct sockaddr * just as bind(2) does?
+>>
+>> Someone might one day want to bind to an interface with SO_BINDTODEVICE, so I thought
+>> it would be nice to pass a container around so that it would be easy to add a dev-name
+>> argument without touching all of the method signatures again.
+>
+> My preference would be to go with something simple for now.  If we ever need more, it's easy to change.  These are not a published formal API.
+>
+> Are you thinking of allowing users to specify either an IP address or a hostname as a value for this new option?
+
+I was thinking "eth5", for use with SO_BINDTODEVICE.
+
+But, host-names might also be useful.
+
+It's not that difficult to change the method signatures again, but it sure makes
+the patch much bigger than it would otherwise need to be...
+
+>>> When you specify a source address for mountd and statd, wouldn't they need to register that address with rpcbind? That won't work for non-TI-RPC builds, and neither would it work for the kernel, which, according to Trond, will never support listening on specific addresses (he NACKed a patch to the kernel's rpcbind client to support this). Are you sure you need server-side changes too?
+>>
+>> Much of the changes are just required to make things compile with the changes to the
+>> core socket building methods.  I don't notice any changes to mountd or statd in
+>> the patch I posted.  What sections are you speaking of?
+>>
+>>> You can't pass a bind address to the mount command using a command line option, since command line options aren't stored in /etc/fstab or /etc/mtab.  How would umount.nfs learn of the bind address if it can't find it in /etc/mtab?
 >>>
->>> On Jun 1, 2011, at 1:47 AM, Boaz Harrosh wrote:
->>>
->>>> On 06/01/2011 06:18 AM, Weston Andros Adamson wrote:
->>>>> Use nfs_generic_pg_test instead of pnfs_generic_pg_test.
->>>>>
->>>>> This fixes the BUG at fs/nfs/write.c:941 introduced by
->>>>> 89a58e32d9105c01022a757fb32ddc3b51bf0025.
->>>>>
->>>>> I was able to trigger this BUG reliably using pynfs in pnfs mode,
->>>>> by using dd(1) to write many small blocks.
->>>>>
->>>>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->>>>> ---
->>>>> Fix proposed by Trond.
->>>>>
->>>>> Benny- Does this make sense?
->>>>>
->>>>> fs/nfs/nfs4filelayout.c  |    2 +-
->>>>> fs/nfs/pagelist.c        |    5 ++++-
->>>>> include/linux/nfs_page.h |    3 ++-
->>>>> 3 files changed, 7 insertions(+), 3 deletions(-)
->>>>>
->>>>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->>>>> index 4269088..1c3bb72 100644
->>>>> --- a/fs/nfs/nfs4filelayout.c
->>>>> +++ b/fs/nfs/nfs4filelayout.c
->>>>> @@ -661,7 +661,7 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
->>>>>     u64 p_stripe, r_stripe;
->>>>>     u32 stripe_unit;
->>>>>
->>>>> -   if (!pnfs_generic_pg_test(pgio, prev, req))
->>>>> +   if (!nfs_generic_pg_test(pgio, prev, req))
->>>>>             return 0;
->>>>>
->>>>
->>>> pnfs_generic_pg_test is the one that gets the layout.
->>>>
->>>> What you've done is revert to MDS IO
->>>>
->>>> Boaz
->>>
->>> Ah, you're right - I didn't even notice that!  I usually confirm client -> DS communication with tcpdump.  I was working for too long yesterday :)
->>>
->>> Patch: recalled.  Discussion about a real fix: started.
->>>
->>> -dros
+>>> It should not read from an environment variable either... how would that work during system boot?  How would such a variable be set during system shutdown?  If we were to do this, it really should use a new mount option.
 >>
->> I think the following should work:
->>
->> Benny
->>
->> git diff --stat -p -M
->>  fs/nfs/nfs4filelayout.c |   10 ++++++++++
->>  1 files changed, 10 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->> index 4269088..9f1d445 100644
->> --- a/fs/nfs/nfs4filelayout.c
->> +++ b/fs/nfs/nfs4filelayout.c
->> @@ -661,6 +661,16 @@ filelayout_pg_test(struct nfs_pageio_descriptor
->> *pgio, struct nfs_page *prev,
->>        u64 p_stripe, r_stripe;
->>        u32 stripe_unit;
->>
->> +       /*
->> +        * FIXME: ideally we should be able to coalesce all requests
->> +        * that are not block boundary aligned, but currently this
->> +        * is problematic for the case of bsize < PAGE_CACHE_SIZE,
->> +        * since nfs_flush_multi and nfs_pagein_multi assume you
->> +        * can have only one struct nfs_page.
->> +        */
->> +       if (desc->pg_bsize < PAGE_SIZE)
->> +               return 0;
->> +
->>        if (!pnfs_generic_pg_test(pgio, prev, req))
->>                return 0;
->>
-> 
-> Note this moves a test that was once part of the plain nfs code into
-> the file layout driver.  Why don't other drivers need this test?
+>> Ok, I've implemented it with a mount-option for my testing.  I'll remove the
+>> cmd-line-arg and environ variable logic.
+>
+> I have to admit that parse_local_bind() doesn't make sense to me.  For example, I don't think there is any need for bind addresses to use the square bracket convention that is used for server addresses; that is there for the NFS special device simply because a colon is already the separator between the server IP address and the export path.  We don't have that problem for a bind address, since it always stands by itself.
+>
+> I also imagine that the source address will need to be passed to the kernel via mount(2), yes?  That can only be done via a string mount option.  Anyway, point made.
 
-True.  Note I said it would work, not that it's the right fix? :-/
-This just tells us what change exposed this issue...
+I thought it might be nice to carry on the [] convention of v6 addresses, but it could
+be optional.  I'll work on that as well.
 
-Boaz moved this check to the nfs only path assuming that pg_bsize,
-which holds the MDS's wsize/rsize is irrelevant for coalescing requests
-for striping over pnfs.
+>
+> And such a mount option would need to be documented in nfs(5) (see utils/mount/nfs.man), and changes included with your patches.
 
-I'm still convinced why nfs_flush_multi cannot use desc->pg_lseg
-if it exists, but at the same time it seems like not doing the
-right thing for pnfs coalescing in nfs_pageio_init_write and
-nfs_pageio_do_add_request.
+I'm using "srcaddr=foo" currently.  I can update the man page if that option name looks like a good
+choice to you (it is used by cifs currently for the same purpose).
 
-For pnfs, we need to ignore wsize, meaning we first need to try
-to coalesce the pages and then decide if we're going the nfs_flush_multi
-or the nfs_flush_one way, based on the coalesced length.
 
-Benny
+Thanks,
+Ben
 
-> 
-> Fred
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
