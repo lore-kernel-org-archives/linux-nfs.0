@@ -1,69 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:50253 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758781Ab1F1SeS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jun 2011 14:34:18 -0400
-Subject: Re: [PATCH 1/1] nfs-utils: Don't hard code source and destination args
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4E0A166B.1000707@debian.org>
-Date: Tue, 28 Jun 2011 14:33:56 -0400
-Cc: Prem Karat <prem.karat@linux.vnet.ibm.com>, linux-nfs@vger.kernel.org
-Message-Id: <CAC69680-53D9-4676-B6CF-7145D17014BE@oracle.com>
-References: <20110628104138.GB6600@d6fc318.ibm.com> <FA506314-750E-4E20-B80C-B507D032D962@oracle.com> <20110628165954.GA13059@d6fc318.ibm.com> <42653612-BD54-4049-B8F8-ACDFB6FE6DA3@oracle.com> <4E0A166B.1000707@debian.org>
-To: Luk Claes <luk@debian.org>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:40139 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751433Ab1FHCBn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 22:01:43 -0400
+Received: by vws1 with SMTP id 1so35573vws.19
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Jun 2011 19:01:42 -0700 (PDT)
+Message-ID: <4DEED80A.4000102@panasas.com>
+Date: Tue, 07 Jun 2011 22:01:46 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Jim Rees <rees@umich.edu>
+CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu>
+In-Reply-To: <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+NAK.
+This affects all layout types.  In particular it is undesired
+for write layouts that extend the file with the objects layout.
+The server can extend the layout segments range
+over what the client requested so why would the client
+ask for artificially large layouts?
 
-On Jun 28, 2011, at 1:59 PM, Luk Claes wrote:
+Benny
 
-> On 06/28/2011 07:49 PM, Chuck Lever wrote:
->> 
->> On Jun 28, 2011, at 12:59 PM, Prem Karat wrote:
->> 
->>> On 06/28/11 12:02pm, Chuck Lever wrote:
->>>> 
->>>> On Jun 28, 2011, at 6:41 AM, Prem Karat wrote:
->>>> 
->>>>> 
->>>>> Currently souce and destination parameters should be passed as first and 
->>>>> second paramter while using mount.nfs. This patch allows them to be passed 
->>>>> anywhere while mounting.
->>>>> 
->>>>> Current functionality is
->>>>> 	mount.nfs source destn -o <options>
->>>>> This patch will allow to do this
->>>>> 	mount.nfs -o <options> source destn
->>>>> 		or
->>>>> 	mount.nfs -o <options> source -o <options> destn
->>>> 
->>>> Yep, that's clear, but why is this desirable?  mount.nfs should be invoked only by the mount command.  It's not meant to be run by humans.
->>> Bare with me if my understanding is incorrect, however the man page does say that
->>> it can be used as a standalone command with limited functionality.
->> 
->> Yes, it can be used that way, but it rarely is, and that's by design.
->> 
->>> Also it makes sense to use it if a newbie wants to know the nfs specific
->>> options. The mount.nfs command shows a pointer to the correct man page for
->>> nfs specific options.
-
-The mount(8) man page already has a pointer to nfs(5), it looks like.  IMO mount(8) probably shouldn't even mention mount.nfs.
-
->> I don't understand.  Why would a "newbie" invoke mount.nfs?  Is there a new use case that requires the additional flexibility?
->> 
->> I don't have a specific objection here, but this seems like an arbitrary change.
+On 2011-06-07 13:36, Jim Rees wrote:
+> From: Peng Tao <peng_tao@emc.com>
 > 
-> When debugging, it's quite handy that one can switch from mount to
-> mount.nfs without having to change the order of the arguments.
-
-Do any of the other mount subcommands (eg. mount.fuse, mount.cifs, mount.tmpfs) need this change too?
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+> pnfs_layout_prefetch_kb can be modified via sysctl.
+> 
+> Signed-off-by: Peng Tao <peng_tao@emc.com>
+> Signed-off-by: Jim Rees <rees@umich.edu>
+> ---
+>  fs/nfs/pnfs.c   |   17 +++++++++++++++++
+>  fs/nfs/pnfs.h   |    1 +
+>  fs/nfs/sysctl.c |   10 ++++++++++
+>  3 files changed, 28 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 9920bff..9c2b569 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -46,6 +46,11 @@ static DEFINE_SPINLOCK(pnfs_spinlock);
+>   */
+>  static LIST_HEAD(pnfs_modules_tbl);
+>  
+> +/*
+> + * layoutget prefetch size
+> + */
+> +unsigned int pnfs_layout_prefetch_kb = 2 << 10;
+> +
+>  /* Return the registered pnfs layout driver module matching given id */
+>  static struct pnfs_layoutdriver_type *
+>  find_pnfs_driver_locked(u32 id)
+> @@ -906,6 +911,16 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
+>  }
+>  
+>  /*
+> + * Set layout prefetch length.
+> + */
+> +static void
+> +pnfs_set_layout_prefetch(struct pnfs_layout_range *range)
+> +{
+> +	if (range->length < (pnfs_layout_prefetch_kb << 10))
+> +		range->length = pnfs_layout_prefetch_kb << 10;
+> +}
+> +
+> +/*
+>   * Layout segment is retreived from the server if not cached.
+>   * The appropriate layout segment is referenced and returned to the caller.
+>   */
+> @@ -956,6 +971,8 @@ pnfs_update_layout(struct inode *ino,
+>  
+>  	if (pnfs_layoutgets_blocked(lo, NULL, 0))
+>  		goto out_unlock;
+> +
+> +	pnfs_set_layout_prefetch(&arg);
+>  	atomic_inc(&lo->plh_outstanding);
+>  
+>  	get_layout_hdr(lo);
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index 28d57c9..563c67b 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -182,6 +182,7 @@ extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
+>  extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
+>  
+>  /* pnfs.c */
+> +extern unsigned int pnfs_layout_prefetch_kb;
+>  void get_layout_hdr(struct pnfs_layout_hdr *lo);
+>  void put_lseg(struct pnfs_layout_segment *lseg);
+>  struct pnfs_layout_segment *
+> diff --git a/fs/nfs/sysctl.c b/fs/nfs/sysctl.c
+> index 978aaeb..79a5134 100644
+> --- a/fs/nfs/sysctl.c
+> +++ b/fs/nfs/sysctl.c
+> @@ -14,6 +14,7 @@
+>  #include <linux/nfs_fs.h>
+>  
+>  #include "callback.h"
+> +#include "pnfs.h"
+>  
+>  #ifdef CONFIG_NFS_V4
+>  static const int nfs_set_port_min = 0;
+> @@ -42,6 +43,15 @@ static ctl_table nfs_cb_sysctls[] = {
+>  	},
+>  #endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
+>  #endif
+> +#ifdef CONFIG_NFS_V4_1
+> +	{
+> +		.procname	= "pnfs_layout_prefetch_kb",
+> +		.data		= &pnfs_layout_prefetch_kb,
+> +		.maxlen		= sizeof(pnfs_layout_prefetch_kb),
+> +		.mode		= 0644,
+> +		.proc_handler	= proc_dointvec,
+> +	},
+> +#endif
+>  	{
+>  		.procname	= "nfs_mountpoint_timeout",
+>  		.data		= &nfs_mountpoint_expiry_timeout,
