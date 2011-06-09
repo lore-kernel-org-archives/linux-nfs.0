@@ -1,63 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:53598 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755865Ab1FGR3G (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:29:06 -0400
-Date: Tue, 7 Jun 2011 13:29:05 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 27/88] pnfsblock: read path error handling
-Message-ID: <8807778f044cea23cfbacbdd3d3277b906cd943f.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
+Received: from fieldses.org ([174.143.236.118]:50056 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756889Ab1FIWpA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Jun 2011 18:45:00 -0400
+Date: Thu, 9 Jun 2011 18:44:59 -0400
+To: linux-nfs@vger.kernel.org
+Cc: Casey Bodley <cbodley@citi.umich.edu>
+Subject: [PATCH 1/2] nfsd4: fix break_lease flags on nfsd open
+Message-ID: <20110609224459.GA22215@fieldses.org>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+From: J. Bruce Fields <bfields@redhat.com>
 
-Communicate between nfs_readpages and nfs_readpage any pnfs failures,
-so that nfs_readpage can immediately default to mds.
+Thanks to Casey Bodley for pointing out that on a read open we pass 0,
+instead of O_RDONLY, to break_lease, with the result that a read open is
+treated like a write open for the purposes of lease breaking!
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Reported-by: Casey Bodley <cbodley@citi.umich.edu>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/blocklayout/blocklayout.c |    9 +++++++++
- 1 files changed, 9 insertions(+), 0 deletions(-)
+ fs/nfsd/vfs.c |   15 +++++++++------
+ 1 files changed, 9 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 22ea965..99de9e3 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -151,10 +151,12 @@ static inline void
- bl_done_with_rpage(struct page *page, const int ok)
- {
- 	if (ok) {
-+		ClearPagePnfsErr(page);
- 		SetPageUptodate(page);
- 	} else {
- 		ClearPageUptodate(page);
- 		SetPageError(page);
-+		SetPagePnfsErr(page);
- 	}
- 	/* Page is unlocked via rpc_release.  Should really be done here. */
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index f3fb61b..848a4af 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -696,7 +696,15 @@ nfsd_access(struct svc_rqst *rqstp, struct svc_fh *fhp, u32 *access, u32 *suppor
  }
-@@ -227,6 +229,13 @@ bl_read_pagelist(struct pnfs_layout_type *lo,
- 		dprintk("%s dont_like_caller failed\n", __func__);
- 		goto use_mds;
- 	}
-+	if ((nr_pages == 1) && PagePnfsErr(rdata->req->wb_page)) {
-+		/* We want to fall back to mds in case of read_page
-+		 * after error on read_pages.
-+		 */
-+		dprintk("%s PG_pnfserr set\n", __func__);
-+		goto use_mds;
-+	}
- 	par = alloc_parallel(rdata);
- 	if (!par)
- 		goto use_mds;
+ #endif /* CONFIG_NFSD_V3 */
+ 
++static int nfsd_open_break_lease(struct inode *inode, int access)
++{
++	unsigned int mode;
+ 
++	if (access & NFSD_MAY_NOT_BREAK_LEASE)
++		return 0;
++	mode = (access & NFSD_MAY_WRITE) ? O_WRONLY : O_RDONLY;
++	return break_lease(inode, mode | O_NONBLOCK);
++}
+ 
+ /*
+  * Open an existing file or directory.
+@@ -744,12 +752,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 	if (!inode->i_fop)
+ 		goto out;
+ 
+-	/*
+-	 * Check to see if there are any leases on this file.
+-	 * This may block while leases are broken.
+-	 */
+-	if (!(access & NFSD_MAY_NOT_BREAK_LEASE))
+-		host_err = break_lease(inode, O_NONBLOCK | ((access & NFSD_MAY_WRITE) ? O_WRONLY : 0));
++	 host_err = nfsd_open_break_lease(inode, access);
+ 	if (host_err) /* NOMEM or WOULDBLOCK */
+ 		goto out_nfserr;
+ 
 -- 
 1.7.4.1
 
