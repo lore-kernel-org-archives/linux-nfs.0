@@ -1,82 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e39.co.us.ibm.com ([32.97.110.160]:47594 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751686Ab1FMUhf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 16:37:35 -0400
-Subject: Re: [PATCH 1/2] locks: introduce i_blockleases to close lease races
-From: Mimi Zohar <zohar@linux.vnet.ibm.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        samba-technical@lists.samba.org, Christoph Hellwig <hch@infradead.org>,
-        Eric Paris <eparis@redhat.com>
-In-Reply-To: <20110613121939.GL12149@fieldses.org>
-References: <20110610000944.GC22215@fieldses.org>
-	 <20110610001011.GD22215@fieldses.org>
-	 <1307737440.3281.5.camel@localhost.localdomain>
-	 <20110610213446.GC27837@fieldses.org> <20110612040826.GD9246@fieldses.org>
-	 <1307905804.3564.28.camel@localhost.localdomain>
-	 <20110612191220.GK12149@fieldses.org>
-	 <1307912073.3564.80.camel@localhost.localdomain>
-	 <20110613121939.GL12149@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 13 Jun 2011 16:37:03 -0400
-Message-ID: <1307997423.13410.63.camel@localhost.localdomain>
+Received: from mail.candelatech.com ([208.74.158.172]:34554 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756650Ab1FIXF5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 19:05:57 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [RFC 11/11] nfs: Support srcaddr= to bind to specific IP address.
+Date: Thu,  9 Jun 2011 16:02:55 -0700
+Message-Id: <1307660575-6994-12-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1307660575-6994-1-git-send-email-greearb@candelatech.com>
+References: <1307660575-6994-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, 2011-06-13 at 08:19 -0400, J. Bruce Fields wrote:
-> On Sun, Jun 12, 2011 at 04:54:33PM -0400, Mimi Zohar wrote:
-> > On Sun, 2011-06-12 at 15:12 -0400, J. Bruce Fields wrote: 
-> > > On Sun, Jun 12, 2011 at 03:10:04PM -0400, Mimi Zohar wrote:
-> > > > On Sun, 2011-06-12 at 00:08 -0400, J. Bruce Fields wrote:
-> > > > > On Fri, Jun 10, 2011 at 05:34:46PM -0400, J. Bruce Fields wrote:
-> > > > > > On Fri, Jun 10, 2011 at 04:24:00PM -0400, Mimi Zohar wrote:
-> > > > > > > On Thu, 2011-06-09 at 20:10 -0400, J. Bruce Fields wrote:
-> > > > > > > > From: J. Bruce Fields <bfields@redhat.com>
-> > > > > > > > 
-> > > > > > > > Since break_lease is called before i_writecount is incremented, there's
-> > > > > > > > a window between the two where a setlease call would have no way to know
-> > > > > > > > that an open is about to happen.
-> > > > > > > 
-> > > > > > > So unless the break_lease() call is moved from may_open() to after 
-> > > > > > > nameidata_to_filp(), I don't see any other options.
-> > > > > > 
-> > > > > > Actually, offhand I can't see why that wouldn't be OK.
-> > > > > > 
-> > > > > > Though I think we still end up needing something like i_blockleases to
-> > > > > > handle unlink, link, rename, chown, and chmod.
-> > > > > 
-> > > > > Well, I guess there's a bizarre alternative that wouldn't require a new
-> > > > > inode field:
-> > > > 
-> > > > In lieu of adding a new inode field, another possible option, a bit
-> > > > kludgy, would be extending i_flock with an additional fl_flag
-> > > > FL_BLOCKLEASE.
-> > > > 
-> > > > #define IS_BLOCKLEASE(fl)    (fl->fl_flags & FL_BLOCKLEASE)
-> > > 
-> > > Alas, that would mean adding and removing one of these file locks around
-> > > every single link, unlink, rename,....
-> > > 
-> > > --b.
-> > 
-> > You're adding a call to break_lease() for each of them.  Currently
-> > __break_lease() is only called if a lease exists. Assuming there aren't
-> > any existing leases, couldn't break_lease() call something like
-> > block_lease()?  The free would be after the link, unlink, ...,
-> > completed/failed.
-> > 
-> > (You wouldn't actually need to alloc/free the 'struct file_lock' each
-> > time, just set the pointer and reset to NULL.)
-> 
-> Well, the pointer has to be set to something.  I suppose we could put a
-> struct file_lock on the stack.
-> 
-> --b.
+From: Ben Greear <greearb@candelatech.com>
 
-Instead of putting the struct file_lock on the stack, how about creating
-a dummy list containing a single element with FL_BLOCKLEASE set?
+In order to have more control on multi-homed machines, it is
+nice to be able to bind to a specific IP address.  This can aid
+with interface selection, policy based routing, multiple unique
+mounts to the same server, and similar things.
 
-Mimi
+This patch allows srcaddr= option for NFS.  The key 'srcaddr'
+was chosen to match the similar patch for cifs.
+
+For NFSv4, if one is specifying clientaddr, it must be the same as
+srcaddr or things may not work properly.
+
+NFSv3, NFSv4 over TCP/IPv4 and TCP/IPv6 has been successfully tested.
+
+Usage:
+  mount -t nfs4 [2002::1]:/rpool/ben /mnt/foo/ben-1 -o srcaddr=2002::2,clientaddr=2002::2
+  mount -t nfs4 192.168.100.3:/foo /mnt/foo/ben-2 -o srcaddr=192.168.100.174
+
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+:100644 100644 e45f616... 5d88e7b... M	fs/nfs/super.c
+ fs/nfs/super.c |   29 ++++++++++++++++++++++++++++-
+ 1 files changed, 28 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index e45f616..5d88e7b 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -103,7 +103,7 @@ enum {
+ 
+ 	/* Mount options that take string arguments */
+ 	Opt_sec, Opt_proto, Opt_mountproto, Opt_mounthost,
+-	Opt_addr, Opt_mountaddr, Opt_clientaddr,
++	Opt_addr, Opt_mountaddr, Opt_clientaddr, Opt_srcaddr,
+ 	Opt_lookupcache,
+ 	Opt_fscache_uniq,
+ 	Opt_local_lock,
+@@ -173,6 +173,7 @@ static const match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_mountproto, "mountproto=%s" },
+ 	{ Opt_addr, "addr=%s" },
+ 	{ Opt_clientaddr, "clientaddr=%s" },
++	{ Opt_srcaddr, "srcaddr=%s" },
+ 	{ Opt_mounthost, "mounthost=%s" },
+ 	{ Opt_mountaddr, "mountaddr=%s" },
+ 
+@@ -695,6 +696,15 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
+ 	else
+ 		nfs_show_nfsv4_options(m, nfss, showdefaults);
+ 
++	if (clp->srcaddr.ss_family == AF_INET6) {
++		struct sockaddr_in6 *sin6;
++		sin6 = (struct sockaddr_in6 *)(&clp->srcaddr);
++		seq_printf(m, ",srcaddr=%pI6c", &sin6->sin6_addr);
++	} else if (clp->srcaddr.ss_family == AF_INET) {
++		struct sockaddr_in *sin = (struct sockaddr_in *)&clp->srcaddr;
++		seq_printf(m, ",srcaddr=%pI4", &sin->sin_addr.s_addr);
++	}
++
+ 	if (nfss->options & NFS_OPTION_FSCACHE)
+ 		seq_printf(m, ",fsc");
+ 
+@@ -1448,6 +1458,23 @@ static int nfs_parse_mount_options(char *raw,
+ 				goto out_nomem;
+ 			mnt->options |= NFS_OPTION_FSCACHE;
+ 			break;
++		case Opt_srcaddr:
++			string = match_strdup(args);
++			if (string == NULL)
++				goto out_nomem;
++			mnt->srcaddr.addrlen =
++				rpc_pton(string, strlen(string),
++					 (struct sockaddr *)
++					 &mnt->srcaddr.address,
++					 sizeof(mnt->srcaddr.address));
++			kfree(string);
++			if (mnt->srcaddr.addrlen == 0) {
++				printk(KERN_WARNING
++				       "nfs: Could not parse srcaddr: %s\n",
++				       string);
++				goto out_invalid_address;
++			}
++			break;
+ 		case Opt_local_lock:
+ 			string = match_strdup(args);
+ 			if (string == NULL)
+-- 
+1.7.3.4
 
