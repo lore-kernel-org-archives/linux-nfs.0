@@ -1,109 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59841 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751422Ab1FUQQE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Jun 2011 12:16:04 -0400
-Date: Tue, 21 Jun 2011 12:16:03 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org, chuck.lever@oracle.com
-Subject: Re: [PATCH] manpage: add info about IPv6 configuration to
- exports(5) (try #2)
-Message-ID: <20110621161603.GD25534@fieldses.org>
-References: <1308665441-16704-1-git-send-email-jlayton@redhat.com>
- <20110621160057.GC25534@fieldses.org>
- <20110621120704.3b256de4@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110621120704.3b256de4@tlielax.poochiereds.net>
+Received: from mail.candelatech.com ([208.74.158.172]:40204 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756550Ab1FIXDL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 19:03:11 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [RFC 00/11] NFS:  Add client ability to bind to specific source-addr.
+Date: Thu,  9 Jun 2011 16:02:44 -0700
+Message-Id: <1307660575-6994-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Jun 21, 2011 at 12:07:04PM -0400, Jeff Layton wrote:
-> On Tue, 21 Jun 2011 12:00:57 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Tue, Jun 21, 2011 at 10:10:41AM -0400, Jeff Layton wrote:
-> > > The parts of the exports(5) manpage that discuss IP addressing neglect
-> > > IPv6 configuration. Update to include info on how to export to IPv6
-> > > subnets and addresses, and add a line demonstrating that to the EXAMPLE
-> > > section.
-> > > 
-> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > ---
-> > >  utils/exportfs/exports.man |   11 +++++++----
-> > >  1 files changed, 7 insertions(+), 4 deletions(-)
-> > > 
-> > > diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
-> > > index 241b3af..f53da4e 100644
-> > > --- a/utils/exportfs/exports.man
-> > > +++ b/utils/exportfs/exports.man
-> > > @@ -47,7 +47,7 @@ NFS clients may be specified in a number of ways:
-> > >  .IP "single host
-> > >  This is the most common format. You may specify a host either by an
-> > >  abbreviated name recognized be the resolver, the fully qualified domain
-> > > -name, or an IP address.
-> > > +name, an IPv4 address, or an IPv6 address.
-> > >  .IP "IP networks
-> > >  You can also export directories to all hosts on an IP (sub-) network
-> > >  simultaneously. This is done by specifying an IP address and netmask pair
-> > > @@ -56,8 +56,9 @@ as
-> > >  where the netmask can be specified in dotted-decimal format, or as a
-> > >  contiguous mask length.
-> > >  For example, either `/255.255.252.0' or `/22' appended
-> > > -to the network base IPv4 address results in identical subnetworks with 10 bits of
-> > > -host. Wildcard characters generally do not work on IP addresses, though they
-> > > +to the network base IPv4 address results in identical subnetworks with 10 bits
-> > > +of host. IPv6 addresses must use a contiguous mask length. Wildcard characters
-> > 
-> > People use non-contiguous masks?
-> > 
-> 
-> No, I was just trying to be clear that you can't use a dotted-decimal
-> netmask for IPv6.
+From: Ben Greear <greearb@candelatech.com>
 
-Sorry, I missed that "contiguous mask length" was just the term that was
-used for that above, OK.
+In order to have more control on multi-homed machines, it is
+nice to be able to bind to a specific IP address.  This can aid
+with interface selection, policy based routing, multiple unique
+mounts to the same server, and similar things.
 
---b.
+This patch allows srcaddr= option for NFS.  The key 'srcaddr'
+was chosen to match the similar patch for cifs.
 
-> > > +generally do not work on IP addresses, though they
-> > >  may work by accident when reverse DNS lookups fail.
-> > >  .IP "wildcards
-> > >  Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
-> > > @@ -486,6 +487,7 @@ The format for extra export tables is the same as
-> > >  /home/joe       pc001(rw,all_squash,anonuid=150,anongid=100)
-> > >  /pub            *(ro,insecure,all_squash)
-> > >  /srv/www        \-sync,rw server @trusted @external(ro)
-> > > +/foo            2001:321:9:e54::/64(rw) 192.168.1.0/24(rw)
-> > 
-> > (Any reason for that particular example address?  Just curious.)
-> > 
-> > --b.
-> 
-> Nope -- pulled that out of my nether regions.
-> 
-> > >  '''/pub/private    (noaccess)
-> > >  .fi
-> > >  .PP
-> > > @@ -501,7 +503,8 @@ option in this entry also allows clients with NFS implementations that
-> > >  don't use a reserved port for NFS.
-> > >  The sixth line exports a directory read-write to the machine 'server'
-> > >  as well as the `@trusted' netgroup, and read-only to netgroup `@external',
-> > > -all three mounts with the `sync' option enabled.
-> > > +all three mounts with the `sync' option enabled. The seventh line exports
-> > > +a directory to both an IPv6 and an IPv4 subnet.
-> > >  ''' The last line denies all NFS clients
-> > >  '''access to the private directory.
-> > >  '''.SH CAVEATS
-> > > -- 
-> > > 1.7.5.4
-> > > 
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
+For NFSv4, if one is specifying clientaddr, it must be the same as
+srcaddr or things may not work properly.
+
+NFSv3, NFSv4 over TCP/IPv4 and TCP/IPv6 has been successfully tested.
+
+Usage:
+  mount -t nfs4 [2002::1]:/rpool/ben /mnt/foo/ben-1 -o srcaddr=2002::2,clientaddr=2002::2
+  mount -t nfs4 192.168.100.3:/foo /mnt/foo/ben-2 -o srcaddr=192.168.100.174
+
+Ben Greear (11):
+  sunrpc:  Don't attempt to bind to AF_UNSPEC address.
+  nfs:  Two AF_UNSPEC addresses should always match each other.
+  nfs:  Add srcaddr member to nfs_client.
+  nfs:  Use request destination addr as callback source addr.
+  nfs:  Pay attention to srcaddr in v4.1 callback logic.
+  nfs:  Use srcaddr in nfs_match_client.
+  nfs:  Add srcaddr to /proc/fs/nfsfs/servers
+  nfs:  Pass srcaddr into mount request.
+  nfs:  Propagate src-addr in client code.
+  nfs: Bind to srcaddr in rpcb_create.
+  nfs: Support srcaddr= to bind to specific IP address.
+
+ fs/nfs/callback.h          |    3 ++
+ fs/nfs/callback_proc.c     |    3 +-
+ fs/nfs/callback_xdr.c      |    3 ++
+ fs/nfs/client.c            |   72 +++++++++++++++++++++++++++++++++++++++++--
+ fs/nfs/internal.h          |   10 +++++-
+ fs/nfs/mount_clnt.c        |    1 +
+ fs/nfs/super.c             |   33 +++++++++++++++++++-
+ include/linux/nfs_fs_sb.h  |    4 ++
+ include/linux/sunrpc/svc.h |    5 +++
+ net/sunrpc/rpcb_clnt.c     |   28 ++++++++++++++++-
+ net/sunrpc/sunrpc.h        |   45 +++++++++++++++++++++++++++
+ net/sunrpc/xprtsock.c      |   47 +---------------------------
+ 12 files changed, 200 insertions(+), 54 deletions(-)
+
+-- 
+1.7.3.4
+
