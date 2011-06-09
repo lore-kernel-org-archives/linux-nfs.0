@@ -1,49 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:53402 "EHLO
+Received: from mail.candelatech.com ([208.74.158.172]:34534 "EHLO
 	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751514Ab1F3W5Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jun 2011 18:57:24 -0400
-Received: from [192.168.100.195] (firewall.candelatech.com [70.89.124.249])
-	(authenticated bits=0)
-	by ns3.lanforge.com (8.14.2/8.14.2) with ESMTP id p5UMvNDL009283
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Thu, 30 Jun 2011 15:57:23 -0700
-Message-ID: <4E0CFF53.3090503@candelatech.com>
-Date: Thu, 30 Jun 2011 15:57:23 -0700
-From: Ben Greear <greearb@candelatech.com>
+	with ESMTP id S1756550Ab1FIXEf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 19:04:35 -0400
+From: greearb@candelatech.com
 To: linux-nfs@vger.kernel.org
-Subject: Questionable comment for rpc_execute()
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [RFC 05/11] nfs:  Pay attention to srcaddr in v4.1 callback logic.
+Date: Thu,  9 Jun 2011 16:02:49 -0700
+Message-Id: <1307660575-6994-6-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1307660575-6994-1-git-send-email-greearb@candelatech.com>
+References: <1307660575-6994-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-The comment below says that task is guaranteed to be freed,
-but that appears only true for non-async tasks.
+From: Ben Greear <greearb@candelatech.com>
 
-Also, should we lock task->tk_waitqueue before calling rpc_make_runnable
-(at least for async tasks)?  I'm basing this question on comments for
-rpc_make_runnable claiming to need the spinlock held for the wait-queue
-for async tasks.
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+:100644 100644 d4d1954... 5b20987... M	fs/nfs/callback_proc.c
+:100644 100644 8ba7e1a... c571a97... M	fs/nfs/client.c
+:100644 100644 8a8ae87... 59c3a26... M	fs/nfs/internal.h
+ fs/nfs/callback_proc.c |    3 ++-
+ fs/nfs/client.c        |   27 +++++++++++++++++++++++++--
+ fs/nfs/internal.h      |    4 +++-
+ 3 files changed, 30 insertions(+), 4 deletions(-)
 
-/*
-  * User-visible entry point to the scheduler.
-  *
-  * This may be called recursively if e.g. an async NFS task updates
-  * the attributes and finds that dirty pages must be flushed.
-  * NOTE: Upon exit of this function the task is guaranteed to be
-  *	 released. In particular note that tk_release() will have
-  *	 been called, so your task memory may have been freed.
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index d4d1954..5b20987 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -424,7 +424,8 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+ 
+ 	cps->clp = NULL;
+ 
+-	clp = nfs4_find_client_sessionid(args->csa_addr, &args->csa_sessionid);
++	clp = nfs4_find_client_sessionid(args->csa_daddr, args->csa_addr,
++					 &args->csa_sessionid);
+ 	if (clp == NULL)
+ 		goto out;
+ 
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 8ba7e1a..c571a97 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1233,10 +1233,12 @@ nfs4_find_client_ident(int cb_ident)
+  * Returns NULL if no such client
   */
-void rpc_execute(struct rpc_task *task)
-{
-	rpc_set_active(task);
-	rpc_make_runnable(task);
-	if (!RPC_IS_ASYNC(task))
-		__rpc_execute(task);
-}
-
+ struct nfs_client *
+-nfs4_find_client_sessionid(const struct sockaddr *addr,
++nfs4_find_client_sessionid(const struct sockaddr *srcaddr,
++			   const struct sockaddr *addr,
+ 			   struct nfs4_sessionid *sid)
+ {
+ 	struct nfs_client *clp;
++	struct nfs_client *ok_fit = NULL;
+ 
+ 	spin_lock(&nfs_client_lock);
+ 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
+@@ -1251,10 +1253,30 @@ nfs4_find_client_sessionid(const struct sockaddr *addr,
+ 		    sid->data, NFS4_MAX_SESSIONID_LEN) != 0)
+ 			continue;
+ 
++		if (srcaddr) {
++			const struct sockaddr *sa;
++			sa = (const struct sockaddr *)&clp->cl_addr;
++			if (!nfs_sockaddr_match_ipaddr(srcaddr, sa)) {
++				/* If clp doesn't bind to srcaddr, then
++				 * it is a potential match if we don't find
++				 * a better one.
++				 */
++				if (sa->sa_family == AF_UNSPEC && !ok_fit)
++					ok_fit = clp;
++				continue;
++			}
++		}
++found_one:
+ 		atomic_inc(&clp->cl_count);
+ 		spin_unlock(&nfs_client_lock);
+ 		return clp;
+ 	}
++
++	if (ok_fit) {
++		clp = ok_fit;
++		goto found_one;
++	}
++
+ 	spin_unlock(&nfs_client_lock);
+ 	return NULL;
+ }
+@@ -1262,7 +1284,8 @@ nfs4_find_client_sessionid(const struct sockaddr *addr,
+ #else /* CONFIG_NFS_V4_1 */
+ 
+ struct nfs_client *
+-nfs4_find_client_sessionid(const struct sockaddr *addr,
++nfs4_find_client_sessionid(const struct sockaddr *srcaddr,
++			   const struct sockaddr *addr,
+ 			   struct nfs4_sessionid *sid)
+ {
+ 	return NULL;
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 8a8ae87..59c3a26 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -144,7 +144,9 @@ extern void nfs_put_client(struct nfs_client *);
+ extern struct nfs_client *nfs4_find_client_no_ident(const struct sockaddr *);
+ extern struct nfs_client *nfs4_find_client_ident(int);
+ extern struct nfs_client *
+-nfs4_find_client_sessionid(const struct sockaddr *, struct nfs4_sessionid *);
++nfs4_find_client_sessionid(const struct sockaddr *srcaddr,
++			   const struct sockaddr *addr,
++			   struct nfs4_sessionid *);
+ extern struct nfs_server *nfs_create_server(
+ 					const struct nfs_parsed_mount_data *,
+ 					struct nfs_fh *);
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+1.7.3.4
 
