@@ -1,63 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:47187 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751481Ab1FIS6W (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 14:58:22 -0400
-Received: by gxk21 with SMTP id 21so958832gxk.19
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Jun 2011 11:58:21 -0700 (PDT)
-Message-ID: <4DF117CA.50508@panasas.com>
-Date: Thu, 09 Jun 2011 14:58:18 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org,
-        "Rees, James" <rees@umich.edu>
-Subject: Re: [PATCH 2/3] NFS: Cleanup of the nfs_pageio code in preparation
- for a pnfs bugfix
-References: <1307399551-17489-1-git-send-email-Trond.Myklebust@netapp.com>		 <1307399551-17489-2-git-send-email-Trond.Myklebust@netapp.com>		 <4DEEDECF.4090104@panasas.com>	 <1307637452.20245.11.camel@lade.trondhjem.org>	 <4DF10804.7000104@panasas.com> <1307643195.25848.10.camel@lade.trondhjem.org>
-In-Reply-To: <1307643195.25848.10.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail.candelatech.com ([208.74.158.172]:34537 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756650Ab1FIXEv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 19:04:51 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [RFC 06/11] nfs:  Use srcaddr in nfs_match_client.
+Date: Thu,  9 Jun 2011 16:02:50 -0700
+Message-Id: <1307660575-6994-7-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1307660575-6994-1-git-send-email-greearb@candelatech.com>
+References: <1307660575-6994-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-06-09 14:13, Trond Myklebust wrote:
-> On Thu, 2011-06-09 at 10:51 -0700, Boaz Harrosh wrote:
-> 
->> 1. We will then need to go through the ld in .pg_init
-> 
-> No. I'll fix nfs_pageio_init_read() and friends by replacing
-> pnfs_get_read_ops() by something more appropriate.
-> 
+From: Ben Greear <greearb@candelatech.com>
 
-OK, I just push the pnfs-block stuff out so you can see what I did
-over your previous version so I'll rebase over the new version once
-you send it.
+For bound clients, we have to make sure we do not re-use
+a client that is bound differently.
 
->> 2. What happens in the none pnfs-IO error case pg_bsize will need to be
->>    saved and restored to MDS value.
-> 
-> Yes, but if you are falling back to read/write-through-mds, then you
-> need to re-run the coalescing _anyway_, since the total length of the
-> request needs to fit in an rsize/wsize sized request.
-> 
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+:100644 100644 c571a97... 5d8998a... M	fs/nfs/client.c
+ fs/nfs/client.c |   12 ++++++++++++
+ 1 files changed, 12 insertions(+), 0 deletions(-)
 
-Right.  So we will need a place holder to keep a separate value for
-minimum OSD's pg_bsize vs. the MDS's (like what we used to have for DS's
-[rw]size in the past)
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index c571a97..5d8998a 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -131,7 +131,9 @@ struct rpc_program		nfsacl_program = {
+ struct nfs_client_initdata {
+ 	const char *hostname;
+ 	const struct sockaddr *addr;
++	const struct sockaddr *srcaddr;
+ 	size_t addrlen;
++	size_t srcaddrlen;
+ 	const struct nfs_rpc_ops *rpc_ops;
+ 	int proto;
+ 	u32 minorversion;
+@@ -463,6 +465,9 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+ 
+ 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
+ 	        const struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
++		const struct sockaddr *sa;
++		sa = (const struct sockaddr *)&clp->srcaddr;
++
+ 		/* Don't match clients that failed to initialise properly */
+ 		if (clp->cl_cons_state < 0)
+ 			continue;
+@@ -480,6 +485,13 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+ 		if (!nfs_sockaddr_cmp(sap, clap))
+ 			continue;
+ 
++		/* Check to make sure local-IP bindings match,
++		 * but just the IP-addr.
++		 */
++		if (data->srcaddr &&
++		    !nfs_sockaddr_match_ipaddr(data->srcaddr, sa))
++			continue;
++
+ 		atomic_inc(&clp->cl_count);
+ 		return clp;
+ 	}
+-- 
+1.7.3.4
 
-Benny
-
->> 3. At least in objects there is no such constant limit, it all depends on
->>    the layout, start and end. I thought the all point of .pg_test was
->>    exactly for avoiding a constant pg_bsize. (This is what we had before)
->> 4. All "the tests make no sense..." should be moved to the no-pnfs case
->>    please point these you found out, we'll need to fix them.
->>
->> Please understand that for none-files layouts pg_bsize is when IO goes
->> through MDS only.
-> 
-> As I said, I don't see how fallback to MDS can work correctly today for
-> the objects case for arbitrary values of rsize/wsize.
-> 
-> Cheers
->   Trond
