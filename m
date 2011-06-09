@@ -1,52 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:34351 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750780Ab1FNQPk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2011 12:15:40 -0400
-Received: by iyb14 with SMTP id 14so4797053iyb.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Jun 2011 09:15:40 -0700 (PDT)
-Message-ID: <4DF78929.6050205@gmail.com>
-Date: Tue, 14 Jun 2011 12:15:37 -0400
-From: Benny Halevy <bhalevy.lists@gmail.com>
-To: Jim Rees <rees@umich.edu>
-CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 34/34] NFS41: do not update isize if inode needs layoutcommit
-References: <cover.1307921137.git.rees@umich.edu> <e2fb9618168391b74186ebc670b7741bacc1f835.1307921138.git.rees@umich.edu>
-In-Reply-To: <e2fb9618168391b74186ebc670b7741bacc1f835.1307921138.git.rees@umich.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:33395 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750959Ab1FIQbY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 12:31:24 -0400
+Subject: Re: [PATCH 1/3] NFSv4.1: Fix some issues with pnfs_generic_pg_test
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 09 Jun 2011 12:31:09 -0400
+In-Reply-To: <4DEEDD59.5030902@panasas.com>
+References: <1307399551-17489-1-git-send-email-Trond.Myklebust@netapp.com>
+		 <4DEEC808.40205@panasas.com> <1307495548.12587.5.camel@lade.trondhjem.org>
+	 <4DEEDD59.5030902@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1307637069.20245.8.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-reminder: this is a generic patch that should be pushed upstream
-separately.
+On Tue, 2011-06-07 at 22:24 -0400, Benny Halevy wrote: 
+> On 2011-06-07 21:12, Trond Myklebust wrote:
+> > On Tue, 2011-06-07 at 20:53 -0400, Benny Halevy wrote: 
+> >> On 2011-06-06 18:32, Trond Myklebust wrote:
+> >>> 1. If the intention is to coalesce requests 'prev' and 'req' then we
+> >>>    have to ensure at least that we have a layout starting at
+> >>>    req_offset(prev).
+> >>>
+> >>> 2. If we're only requesting a minimal layout of length desc->pg_count,
+> >>>    we need to test the length actually returned by the server before
+> >>>    we allow the coalescing to occur.
+> >>>
+> >>> 3. We need to deal correctly with (pgio->lseg == NULL)
+> >>>
+> >>> 4. Fixup the test guarding the pnfs_update_layout.
+> >>>
+> >>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> >>> ---
+> >>>  fs/nfs/objlayout/objio_osd.c |    3 +++
+> >>>  fs/nfs/pnfs.c                |   12 +++++++-----
+> >>>  2 files changed, 10 insertions(+), 5 deletions(-)
+> >>>
+> >>> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+> >>> index 9cf208d..4c41a60 100644
+> >>> --- a/fs/nfs/objlayout/objio_osd.c
+> >>> +++ b/fs/nfs/objlayout/objio_osd.c
+> >>> @@ -1001,6 +1001,9 @@ static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
+> >>>  	if (!pnfs_generic_pg_test(pgio, prev, req))
+> >>>  		return false;
+> >>>  
+> >>> +	if (pgio->pg_lseg == NULL)
+> >>> +		return true;
+> >>> +
+> >>>  	return pgio->pg_count + req->wb_bytes <=
+> >>>  			OBJIO_LSEG(pgio->pg_lseg)->max_io_size;
+> >>>  }
+> >>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> >>> index 8c1309d..12b53ef 100644
+> >>> --- a/fs/nfs/pnfs.c
+> >>> +++ b/fs/nfs/pnfs.c
+> >>> @@ -1059,19 +1059,21 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+> >>>  		gfp_flags = GFP_NOFS;
+> >>>  	}
+> >>>  
+> >>> -	if (pgio->pg_count == prev->wb_bytes) {
+> >>> +	if (pgio->pg_lseg == NULL) {
+> >>> +		if (pgio->pg_count != prev->wb_bytes)
+> >>> +			return true;
+> >>>  		/* This is first coelesce call for a series of nfs_pages */
+> >>>  		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+> >>>  						   prev->wb_context,
+> >>> -						   req_offset(req),
+> >>> +						   req_offset(prev),
+> >>>  						   pgio->pg_count,
+> >>>  						   access_type,
+> >>>  						   gfp_flags);
+> >>> -		return true;
+> >>> +		if (pgio->pg_lseg == NULL)
+> >>> +			return true;
+> >>>  	}
+> >>>  
+> >>> -	if (pgio->pg_lseg &&
+> >>> -	    req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
+> >>> +	if (req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
+> >>
+> >> One more issue to fix: the condition should be for ">=", not ">"
+> > 
+> > Hmm.... Shouldn't it rather be:
+> > 
+> > if (end_offset(req_offset(req), req->wb_bytes) > end_offset(pgio->pg_lseg->pls_range.offset,
+> > 		pgio->pg_lseg->pls_range.length))
+> > 	return false;
+> > 
+> > Otherwise you don't know if the entire request fits in this layout
+> > segment...
+> 
+> True.
+> Though since we make sure the layout segments are page aligned
+> having the first offset covered is enough, this is the correct
+> way to express the condition.
 
-Benny
+Ugh... That definitely would require a comment, and probably deserves a
+helper function of its own.
 
-On 2011-06-12 19:45, Jim Rees wrote:
-> From: Peng Tao <bergwolf@gmail.com>
-> 
-> Layout commit is supposed to set server file size similiar to nfs pages.
-> We should not update client file size for the same reason.
-> Otherwise we will lose what we have at hand.
-> 
-> Signed-off-by: Peng Tao <peng_tao@emc.com>
-> ---
->  fs/nfs/inode.c |    3 ++-
->  1 files changed, 2 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index 144f2a3..3f1eb81 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -1294,7 +1294,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
->  		if (new_isize != cur_isize) {
->  			/* Do we perhaps have any outstanding writes, or has
->  			 * the file grown beyond our last write? */
-> -			if (nfsi->npages == 0 || new_isize > cur_isize) {
-> +			if ((nfsi->npages == 0 && !test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) ||
-> +			     new_isize > cur_isize) {
->  				i_size_write(inode, new_isize);
->  				invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
->  			}
+Also, the name 'end_offset()' is rather confusing. It really is the
+offset of the first byte that lies _outside_ the actual layout segment.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
