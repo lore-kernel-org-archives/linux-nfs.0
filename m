@@ -1,59 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:11318 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752160Ab1FMTiH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 15:38:07 -0400
-Subject: Re: [PATCH] NFS: return -EAGAIN when skipped commit in
- nfs_commit_unstable_pages()
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Wu Fengguang <fengguang.wu@intel.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
-Date: Mon, 13 Jun 2011 15:38:06 -0400
-In-Reply-To: <20110610140459.GA8021@localhost>
-References: <20110610140459.GA8021@localhost>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1307993886.5569.3.camel@lade.trondhjem.org>
+Received: from mail.candelatech.com ([208.74.158.172]:34551 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756650Ab1FIXFs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 19:05:48 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [RFC 09/11] nfs:  Propagate src-addr in client code.
+Date: Thu,  9 Jun 2011 16:02:53 -0700
+Message-Id: <1307660575-6994-10-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1307660575-6994-1-git-send-email-greearb@candelatech.com>
+References: <1307660575-6994-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, 2011-06-10 at 22:04 +0800, Wu Fengguang wrote: 
-> It's confusing to return success while redirtying the inode at the
-> same time in ->write_inode(). Return -EAGAIN to indicate that we've
-> not finished with this inode.
-> 
-> Impact: it's a cleanup, not bug fix.
-> 
-> CC: Christoph Hellwig <hch@infradead.org>
-> Signed-off-by: Wu Fengguang <fengguang.wu@intel.com>
-> ---
->  fs/nfs/write.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> --- linux-next.orig/fs/nfs/write.c	2011-06-10 21:52:34.000000000 +0800
-> +++ linux-next/fs/nfs/write.c	2011-06-10 21:52:37.000000000 +0800
-> @@ -1521,7 +1521,7 @@ static int nfs_commit_unstable_pages(str
->  {
->  	struct nfs_inode *nfsi = NFS_I(inode);
->  	int flags = FLUSH_SYNC;
-> -	int ret = 0;
-> +	int ret = -EAGAIN;
->  
->  	if (wbc->sync_mode == WB_SYNC_NONE) {
->  		/* Don't commit yet if this is a non-blocking flush and there
+From: Ben Greear <greearb@candelatech.com>
 
-Looks good, but since this is a cleanup, I'm queueing it for 3.1 rather
-than pushing it in the regression-fixing window.
+This ties the srcaddr supplied by mount to the
+rpc code.
 
-Cheers
-  Trond
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+:100644 100644 223785f... 8b8766a... M	fs/nfs/client.c
+ fs/nfs/client.c |   13 +++++++++++++
+ 1 files changed, 13 insertions(+), 0 deletions(-)
 
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 223785f..8b8766a 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -161,6 +161,8 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ 
+ 	memcpy(&clp->cl_addr, cl_init->addr, cl_init->addrlen);
+ 	clp->cl_addrlen = cl_init->addrlen;
++	memcpy(&clp->srcaddr, cl_init->srcaddr, cl_init->srcaddrlen);
++	clp->srcaddrlen = cl_init->srcaddrlen;
+ 
+ 	if (cl_init->hostname) {
+ 		err = -ENOMEM;
+@@ -655,6 +657,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
+ 		.net		= &init_net,
+ 		.protocol	= clp->cl_proto,
+ 		.address	= (struct sockaddr *)&clp->cl_addr,
++		.saddress	= (struct sockaddr *)&clp->srcaddr,
+ 		.addrsize	= clp->cl_addrlen,
+ 		.timeout	= timeparms,
+ 		.servername	= clp->cl_hostname,
+@@ -839,6 +842,8 @@ static int nfs_init_server(struct nfs_server *server,
+ 		.hostname = data->nfs_server.hostname,
+ 		.addr = (const struct sockaddr *)&data->nfs_server.address,
+ 		.addrlen = data->nfs_server.addrlen,
++		.srcaddr = (const struct sockaddr *)&data->srcaddr.address,
++		.srcaddrlen = data->srcaddr.addrlen,
+ 		.rpc_ops = &nfs_v2_clientops,
+ 		.proto = data->nfs_server.protocol,
+ 	};
+@@ -1419,6 +1424,8 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		const struct sockaddr *addr,
+ 		const size_t addrlen,
+ 		const char *ip_addr,
++		const struct sockaddr *srcaddr,
++		const size_t srcaddrlen,
+ 		rpc_authflavor_t authflavour,
+ 		int proto, const struct rpc_timeout *timeparms,
+ 		u32 minorversion)
+@@ -1430,6 +1437,8 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		.rpc_ops = &nfs_v4_clientops,
+ 		.proto = proto,
+ 		.minorversion = minorversion,
++		.srcaddr = srcaddr,
++		.srcaddrlen = srcaddrlen,
+ 	};
+ 	struct nfs_client *clp;
+ 	int error;
+@@ -1604,6 +1613,8 @@ static int nfs4_init_server(struct nfs_server *server,
+ 			(const struct sockaddr *)&data->nfs_server.address,
+ 			data->nfs_server.addrlen,
+ 			data->client_address,
++			(const struct sockaddr *)&data->srcaddr.address,
++			data->srcaddr.addrlen,
+ 			data->auth_flavors[0],
+ 			data->nfs_server.protocol,
+ 			&timeparms,
+@@ -1701,6 +1712,8 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
+ 				data->addr,
+ 				data->addrlen,
+ 				parent_client->cl_ipaddr,
++				(const struct sockaddr *)&parent_client->srcaddr,
++				parent_client->srcaddrlen,
+ 				data->authflavor,
+ 				parent_server->client->cl_xprt->prot,
+ 				parent_server->client->cl_timeout,
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.3.4
 
