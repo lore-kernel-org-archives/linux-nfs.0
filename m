@@ -1,103 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30923 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751005Ab1FUQHJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Jun 2011 12:07:09 -0400
-Date: Tue, 21 Jun 2011 12:07:04 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org, chuck.lever@oracle.com
-Subject: Re: [PATCH] manpage: add info about IPv6 configuration to
- exports(5) (try #2)
-Message-ID: <20110621120704.3b256de4@tlielax.poochiereds.net>
-In-Reply-To: <20110621160057.GC25534@fieldses.org>
-References: <1308665441-16704-1-git-send-email-jlayton@redhat.com>
-	<20110621160057.GC25534@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail.candelatech.com ([208.74.158.172]:34518 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756550Ab1FIXDW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 19:03:22 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [RFC 02/11] nfs:  Two AF_UNSPEC addresses should always match each other.
+Date: Thu,  9 Jun 2011 16:02:46 -0700
+Message-Id: <1307660575-6994-3-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1307660575-6994-1-git-send-email-greearb@candelatech.com>
+References: <1307660575-6994-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, 21 Jun 2011 12:00:57 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+From: Ben Greear <greearb@candelatech.com>
 
-> On Tue, Jun 21, 2011 at 10:10:41AM -0400, Jeff Layton wrote:
-> > The parts of the exports(5) manpage that discuss IP addressing neglect
-> > IPv6 configuration. Update to include info on how to export to IPv6
-> > subnets and addresses, and add a line demonstrating that to the EXAMPLE
-> > section.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  utils/exportfs/exports.man |   11 +++++++----
-> >  1 files changed, 7 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
-> > index 241b3af..f53da4e 100644
-> > --- a/utils/exportfs/exports.man
-> > +++ b/utils/exportfs/exports.man
-> > @@ -47,7 +47,7 @@ NFS clients may be specified in a number of ways:
-> >  .IP "single host
-> >  This is the most common format. You may specify a host either by an
-> >  abbreviated name recognized be the resolver, the fully qualified domain
-> > -name, or an IP address.
-> > +name, an IPv4 address, or an IPv6 address.
-> >  .IP "IP networks
-> >  You can also export directories to all hosts on an IP (sub-) network
-> >  simultaneously. This is done by specifying an IP address and netmask pair
-> > @@ -56,8 +56,9 @@ as
-> >  where the netmask can be specified in dotted-decimal format, or as a
-> >  contiguous mask length.
-> >  For example, either `/255.255.252.0' or `/22' appended
-> > -to the network base IPv4 address results in identical subnetworks with 10 bits of
-> > -host. Wildcard characters generally do not work on IP addresses, though they
-> > +to the network base IPv4 address results in identical subnetworks with 10 bits
-> > +of host. IPv6 addresses must use a contiguous mask length. Wildcard characters
-> 
-> People use non-contiguous masks?
-> 
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+:100644 100644 b3dc2b8... 8ba7e1a... M	fs/nfs/client.c
+ fs/nfs/client.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-No, I was just trying to be clear that you can't use a dotted-decimal
-netmask for IPv6.
-
-> > +generally do not work on IP addresses, though they
-> >  may work by accident when reverse DNS lookups fail.
-> >  .IP "wildcards
-> >  Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
-> > @@ -486,6 +487,7 @@ The format for extra export tables is the same as
-> >  /home/joe       pc001(rw,all_squash,anonuid=150,anongid=100)
-> >  /pub            *(ro,insecure,all_squash)
-> >  /srv/www        \-sync,rw server @trusted @external(ro)
-> > +/foo            2001:321:9:e54::/64(rw) 192.168.1.0/24(rw)
-> 
-> (Any reason for that particular example address?  Just curious.)
-> 
-> --b.
-> 
-
-Nope -- pulled that out of my nether regions.
-
-> >  '''/pub/private    (noaccess)
-> >  .fi
-> >  .PP
-> > @@ -501,7 +503,8 @@ option in this entry also allows clients with NFS implementations that
-> >  don't use a reserved port for NFS.
-> >  The sixth line exports a directory read-write to the machine 'server'
-> >  as well as the `@trusted' netgroup, and read-only to netgroup `@external',
-> > -all three mounts with the `sync' option enabled.
-> > +all three mounts with the `sync' option enabled. The seventh line exports
-> > +a directory to both an IPv6 and an IPv4 subnet.
-> >  ''' The last line denies all NFS clients
-> >  '''access to the private directory.
-> >  '''.SH CAVEATS
-> > -- 
-> > 1.7.5.4
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index b3dc2b8..8ba7e1a 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -403,6 +403,8 @@ static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
+ 		return nfs_sockaddr_match_ipaddr4(sa1, sa2);
+ 	case AF_INET6:
+ 		return nfs_sockaddr_match_ipaddr6(sa1, sa2);
++	case AF_UNSPEC:
++		return 1; /* two UNSPEC addresses match */
+ 	}
+ 	return 0;
+ }
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.3.4
+
