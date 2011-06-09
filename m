@@ -1,106 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251]:48631 "EHLO
-	moving-picture.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755555Ab1FBNiA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Jun 2011 09:38:00 -0400
-Message-ID: <4DE79236.1080808@moving-picture.com>
-Date: Thu, 02 Jun 2011 14:37:58 +0100
-From: James Pearson <james-p@moving-picture.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: How to control the order of different export options for different
- client formats?
-References: <4DD2A084.1040905@moving-picture.com> <20110518080106.1159c5b8@notabene.brown> <4DD39D39.7010805@moving-picture.com> <20110518162050.GB16835@fieldses.org> <4DD66EC6.7090706@moving-picture.com> <20110520164147.GA11176@fieldses.org>
-In-Reply-To: <20110520164147.GA11176@fieldses.org>
-Content-Type: multipart/mixed;
- boundary="------------080802010100050109070500"
+Received: from mail-px0-f179.google.com ([209.85.212.179]:37403 "EHLO
+	mail-px0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758024Ab1FINcR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 09:32:17 -0400
+Received: by pxi2 with SMTP id 2so1047058pxi.10
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Jun 2011 06:32:16 -0700 (PDT)
+Message-ID: <4DF0CB5D.60000@panasas.com>
+Date: Thu, 09 Jun 2011 09:32:13 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Jim Rees <rees@umich.edu>
+CC: Peng Tao <bergwolf@gmail.com>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu> <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu> <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com> <20110609114929.GA28157@merit.edu>
+In-Reply-To: <20110609114929.GA28157@merit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---------------080802010100050109070500
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-
-J. Bruce Fields wrote:
+On 2011-06-09 07:49, Jim Rees wrote:
+> Benny Halevy wrote:
 > 
-> But could we just combine this with the previous section--and make sure
-> the different possibilities are listed there in the correct priority
-> order to start off with.
+>   >> But note that this patch doesn't change anything unless you set the sysctl.
+>   > there is a default value of 2M. maybe we can set it to page size by
+>   > default so other layout are not affected and block layout can let
+>   > users set it by hand if they care about performance. does this make
+>   > sense?
+>   
+>   If doing it at all why use a sysctl rather than a mount option?
+>   Or maybe coding the logic for prefetching the layout iff sequential
+>   access is detected is the right thing to do.
 > 
-> That'd also mean adding a new subsection for the "anonymous" case.
+> I would rather see some automatic solution than to add either a sysctl or a
+> mount option.  For now you can just drop that patch, as it's not needed for
+> basic pnfs block.
+> 
+> My understanding is that layoutget specifies a min and max, and the server
 
-OK - how about the attached patch?
+There's a min.  What do you consider the max?
+Whatever gets into csa_fore_chan_attrs.ca_maxresponsesize?
 
-James Pearson
+> is returning the min.  Trond and Fred believe this should be fixed on the
+> server.  
 
---------------080802010100050109070500
-Content-Type: text/plain;
- name="exports.man.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="exports.man.patch"
+Agreed.
 
---- exports.man.dist	2010-09-28 13:24:16.000000000 +0100
-+++ exports.man	2011-06-02 14:19:26.434486000 +0100
-@@ -48,19 +48,6 @@
- This is the most common format. You may specify a host either by an
- abbreviated name recognized be the resolver, the fully qualified domain
- name, or an IP address.
--.IP "netgroups
--NIS netgroups may be given as
--.IR @group .
--Only the host part of each
--netgroup members is consider in checking for membership.  Empty host
--parts or those containing a single dash (\-) are ignored.
--.IP "wildcards
--Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
--This can be used to make the \fIexports\fR file more compact; for instance,
--\fI*.cs.foo.edu\fR matches all hosts in the domain
--\fIcs.foo.edu\fR.  As these characters also match the dots in a domain
--name, the given pattern will also match all hosts within any subdomain
--of \fIcs.foo.edu\fR.
- .IP "IP networks
- You can also export directories to all hosts on an IP (sub-) network
- simultaneously. This is done by specifying an IP address and netmask pair
-@@ -72,6 +59,25 @@
- to the network base IPv4 address results in identical subnetworks with 10 bits of
- host. Wildcard characters generally do not work on IP addresses, though they
- may work by accident when reverse DNS lookups fail.
-+.IP "wildcards
-+Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
-+This can be used to make the \fIexports\fR file more compact; for instance,
-+\fI*.cs.foo.edu\fR matches all hosts in the domain
-+\fIcs.foo.edu\fR.  As these characters also match the dots in a domain
-+name, the given pattern will also match all hosts within any subdomain
-+of \fIcs.foo.edu\fR.
-+.IP "netgroups
-+NIS netgroups may be given as
-+.IR @group .
-+Only the host part of each
-+netgroup members is consider in checking for membership.  Empty host
-+parts or those containing a single dash (\-) are ignored.
-+.IP "anonymous
-+This is specified by a single
-+.I *
-+character (not to be confused with the
-+.I wildcard
-+entry above) and will match all clients.
- '''.TP
- '''.B =public
- '''This is a special ``hostname'' that identifies the given directory name
-@@ -92,6 +98,12 @@
- '''.B \-\-public\-root
- '''option. Multiple specifications of a public root will be ignored.
- .PP
-+If a client matches more than one of the specifications above, then
-+the first match from the above list order takes precedence - regardless of
-+the order they appear on the export line. However, if a client matches
-+more than one of the same type of specification (e.g. two netgroups),
-+then the first match from the order they appear on the export line takes
-+precedence.
- .SS RPCSEC_GSS security
- You may use the special strings "gss/krb5", "gss/krb5i", or "gss/krb5p"
- to restrict access to clients using rpcsec_gss security.  However, this
+Benny
 
---------------080802010100050109070500--
+> Here's the original report of the problem:
+> 
+> From: Bergwolf
+> 
+> From the network trace for pnfs, we can see the root cause for slow performance
+> is too many small layoutget. In specific, client asks for a layout of only 4K
+> pagesize (and server returns 8K due to block size alignment) at each time.
+> 
+> The total IO time is 256/1.68 = 152 second.
+> There are 256*1024/8 = 32768 layoutget for the 256MB file.
+> On average, the time spent on each layoutget is 0.00456 second according to the
+> trace.
+> The total layoutget time is 32768* 0.00456 = 149 second, which takes up about
+> 98% of total IO time.
+> 
+> So we should optimize layoutget's granularity to get better performance. For
+> instance, use a configurable prefetch size of 2MB or so.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
