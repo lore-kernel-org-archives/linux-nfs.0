@@ -1,72 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:44042 "EHLO
+Received: from mail.candelatech.com ([208.74.158.172]:42214 "EHLO
 	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932619Ab1FWTcY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2011 15:32:24 -0400
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH v2 08/12] nfs: Pass srcaddr into mount request.
-Date: Thu, 23 Jun 2011 12:29:42 -0700
-Message-Id: <1308857388-12243-9-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
-References: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
+	with ESMTP id S1752987Ab1FIR3G (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 13:29:06 -0400
+Message-ID: <4DF102E0.5000201@candelatech.com>
+Date: Thu, 09 Jun 2011 10:29:04 -0700
+From: Ben Greear <greearb@candelatech.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] nfs-utils:  Support binding to source address.
+References: <1307574083-27608-1-git-send-email-greearb@candelatech.com> <4DF10053.9050901@RedHat.com>
+In-Reply-To: <4DF10053.9050901@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
+On 06/09/2011 10:18 AM, Steve Dickson wrote:
+> Hello,
+>
+>
+> On 06/08/2011 07:01 PM, greearb@candelatech.com wrote:
+>> From: Ben Greear<greearb@candelatech.com>
+>>
+>> This lets one specify the source IP address for
+>> sockets, allowing users to leverage routing rules
+>> on multi-homed systems.
+> Right out of the box I do think some support like
+> this would be good... but I not convinced on how needed
+> something like this is which means there is a lot of
+> change here for basically not... But lets continue
+> to talk about to see where we end up....
+>
+> One thing you must do is break up this patch in to
+> a more readable patch series. There is no way I going
+> to commit a patch that is close to 1500 lines
+> that so invasive.
 
-This starts tying the srcaddr logic together.
+The vast majority of the patch is adding an extra
+argument to various methods to get things to compile.
 
-Signed-off-by: Ben Greear <greearb@candelatech.com>
----
-:100644 100644 60a36a2... eaf9c66... M	fs/nfs/internal.h
-:100644 100644 d4c2d6b... 5ca6e12... M	fs/nfs/mount_clnt.c
-:100644 100644 cb41131... e45f616... M	fs/nfs/super.c
- fs/nfs/internal.h   |    1 +
- fs/nfs/mount_clnt.c |    1 +
- fs/nfs/super.c      |    2 ++
- 3 files changed, 4 insertions(+), 0 deletions(-)
+Do you want me to break those changes into individual
+chunks, or should I just separate the parsing & documentation
+chunks out?
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 60a36a2..eaf9c66 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -133,6 +133,7 @@ struct nfs_parsed_mount_data {
- /* mount_clnt.c */
- struct nfs_mount_request {
- 	struct sockaddr		*sap;
-+	struct sockaddr         *srcaddr;
- 	size_t			salen;
- 	char			*hostname;
- 	char			*dirpath;
-diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index d4c2d6b..5ca6e12 100644
---- a/fs/nfs/mount_clnt.c
-+++ b/fs/nfs/mount_clnt.c
-@@ -155,6 +155,7 @@ int nfs_mount(struct nfs_mount_request *info)
- 	struct rpc_create_args args = {
- 		.net		= &init_net,
- 		.protocol	= info->protocol,
-+		.saddress	= info->srcaddr,
- 		.address	= info->sap,
- 		.addrsize	= info->salen,
- 		.servername	= info->hostname,
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index cb41131..e45f616 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1600,6 +1600,8 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 	struct nfs_mount_request request = {
- 		.sap		= (struct sockaddr *)
- 						&args->mount_server.address,
-+		.salen		= args->mount_server.addrlen,
-+		.srcaddr	= (struct sockaddr *)&args->srcaddr.address,
- 		.dirpath	= args->nfs_server.export_path,
- 		.protocol	= args->mount_server.protocol,
- 		.fh		= root_fh,
+I can dummy stuff out with passing NULL around to make
+lots of smaller patches, but I'm not sure it helps
+any readability.
+
+Thanks,
+Ben
+
+
 -- 
-1.7.3.4
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
