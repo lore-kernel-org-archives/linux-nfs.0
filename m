@@ -1,39 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:36972 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751484Ab1FHGn0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jun 2011 02:43:26 -0400
-Date: Wed, 8 Jun 2011 09:43:00 +0300
-From: Dan Carpenter <error27@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
-        kernel-janitors@vger.kernel.org
-Subject: [patch] NFS: using freed variable in debug code
-Message-ID: <20110608064300.GE3846@shale.localdomain>
-Content-Type: text/plain; charset=us-ascii
+Received: from mx1.redhat.com ([209.132.183.28]:63334 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753243Ab1FIVQy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Jun 2011 17:16:54 -0400
+Message-ID: <4DF13842.1020307@RedHat.com>
+Date: Thu, 09 Jun 2011 17:16:50 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Ben Greear <greearb@candelatech.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] nfs-utils:  Support binding to source address.
+References: <1307574083-27608-1-git-send-email-greearb@candelatech.com> <4DF10053.9050901@RedHat.com> <4DF102E0.5000201@candelatech.com>
+In-Reply-To: <4DF102E0.5000201@candelatech.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-"ds" gets dereferenced after a kfree in the debug output.  I just
-moved the free down a line.
 
-Signed-off-by: Dan Carpenter <error27@gmail.com>
 
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index 77c171e..c63bbce 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -362,11 +362,11 @@ nfs4_pnfs_ds_add(struct list_head *dsaddrs, gfp_t gfp_flags)
- 				__func__, tmp_ds->ds_remotestr, remotestr);
- 		}
- 		kfree(remotestr);
--		kfree(ds);
- 		atomic_inc(&tmp_ds->ds_count);
- 		dprintk("%s data server %s found, inc'ed ds_count to %d\n",
- 			__func__, ds->ds_remotestr,
- 			atomic_read(&tmp_ds->ds_count));
-+		kfree(ds);
- 		ds = tmp_ds;
- 	}
- 	spin_unlock(&nfs4_ds_cache_lock);
+On 06/09/2011 01:29 PM, Ben Greear wrote:
+> On 06/09/2011 10:18 AM, Steve Dickson wrote:
+>> Hello,
+>>
+>>
+>> On 06/08/2011 07:01 PM, greearb@candelatech.com wrote:
+>>> From: Ben Greear<greearb@candelatech.com>
+>>>
+>>> This lets one specify the source IP address for
+>>> sockets, allowing users to leverage routing rules
+>>> on multi-homed systems.
+>> Right out of the box I do think some support like
+>> this would be good... but I not convinced on how needed
+>> something like this is which means there is a lot of
+>> change here for basically not... But lets continue
+>> to talk about to see where we end up....
+>>
+>> One thing you must do is break up this patch in to
+>> a more readable patch series. There is no way I going
+>> to commit a patch that is close to 1500 lines
+>> that so invasive.
+> 
+> The vast majority of the patch is adding an extra
+> argument to various methods to get things to compile.
+Yeah I know... I saw that... But there has to be
+some logical way to break this up.. 
+
+> 
+> Do you want me to break those changes into individual
+> chunks, or should I just separate the parsing & documentation
+> chunks out?
+I guess that would be start.... but just breaking this up
+unto just a couple patches probably will not do anything for
+readability either... 
+ 
+> 
+> I can dummy stuff out with passing NULL around to make
+> lots of smaller patches, but I'm not sure it helps
+> any readability.
+I don't know either... but it make me very nervous 
+to apply a 1400+ line patch especially when its basically
+rewriting mount... I've broken mount before... Its not
+a pretty sight... ;-)
+
+steved.  
+> 
+> Thanks,
+> Ben
+> 
+> 
