@@ -1,32 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:49691 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758371Ab1FWCZy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 22:25:54 -0400
-Received: by ywe9 with SMTP id 9so564770ywe.19
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Jun 2011 19:25:53 -0700 (PDT)
-From: Tom Haynes <loghyr@gmail.com>
+Received: from mail.candelatech.com ([208.74.158.172]:39546 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757368Ab1FIXsy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 19:48:54 -0400
+Message-ID: <4DF15BE4.6080709@candelatech.com>
+Date: Thu, 09 Jun 2011 16:48:52 -0700
+From: Ben Greear <greearb@candelatech.com>
 To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Tom Haynes <tdh@excfb.com>
-Subject: [PATCH 0/2] minor patches to cthon tests for FreeBSD
-Date: Wed, 22 Jun 2011 21:26:05 -0500
-Message-Id: <1308795967-7605-1-git-send-email-tdh@excfb.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] nfs-utils:  Support binding to source address.
+References: <1307574083-27608-1-git-send-email-greearb@candelatech.com> <4DF10053.9050901@RedHat.com> <4DF102E0.5000201@candelatech.com> <4DF13842.1020307@RedHat.com> <4DF13A43.6020500@candelatech.com>
+In-Reply-To: <4DF13A43.6020500@candelatech.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-First allows FreeBSD 9.0 to compile and second allows
-for leading space in the time output.
+On 06/09/2011 02:25 PM, Ben Greear wrote:
+> On 06/09/2011 02:16 PM, Steve Dickson wrote:
 
-Tom Haynes (2):
-  Multiple clnt_broadcast, rename static reference
-  Make the stat command handle leading blank spaces
+> How about an initial patch that just passes a container down
+> to the bind logic with the 'sap' and 'salen' into a container struct.
+>
+> Should have zero functionality change, but fairly large patch
+> (basically the same places as where I added the 'local_ip' argument).
+>
+> Then, I can post a patch to enable packaging a src-addr in that
+> container as well. That should be a much smaller patch and so
+> may seem less scary.
 
- general/stat.c  |    4 +++-
- tools/pmapbrd.c |    7 ++++---
- 2 files changed, 7 insertions(+), 4 deletions(-)
+I gave this a try and it started looking very ugly.
+
+I'll work on breaking my previously posted patch smaller
+chunks.
+
+Thanks,
+Ben
 
 -- 
-1.7.3.4
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
