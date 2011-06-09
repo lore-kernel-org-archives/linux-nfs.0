@@ -1,45 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:40240 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:34695 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751229Ab1FVRPY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Jun 2011 13:15:24 -0400
-Date: Wed, 22 Jun 2011 13:15:23 -0400
-To: James Pearson <james-p@moving-picture.com>
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: Re: [PATCH] nfs-utils: remove possibly false statement from
- exports.man
-Message-ID: <20110622171523.GA2284@fieldses.org>
-References: <4E01CE91.50203@moving-picture.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E01CE91.50203@moving-picture.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1750897Ab1FISNH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 14:13:07 -0400
+Subject: Re: [PATCH 2/3] NFS: Cleanup of the nfs_pageio code in preparation
+ for a pnfs bugfix
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
+Date: Thu, 09 Jun 2011 14:13:15 -0400
+In-Reply-To: <4DF10804.7000104@panasas.com>
+References: <1307399551-17489-1-git-send-email-Trond.Myklebust@netapp.com>
+		 <1307399551-17489-2-git-send-email-Trond.Myklebust@netapp.com>
+		 <4DEEDECF.4090104@panasas.com>
+	 <1307637452.20245.11.camel@lade.trondhjem.org>
+	 <4DF10804.7000104@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1307643195.25848.10.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Thu, 2011-06-09 at 10:51 -0700, Boaz Harrosh wrote:
 
-Works for me, thanks.--b.
+> 1. We will then need to go through the ld in .pg_init
 
-On Wed, Jun 22, 2011 at 12:14:25PM +0100, James Pearson wrote:
-> A very minor change suggested by J. Bruce Fields
-> <bfields@fieldses.org> to remove the statement that exporting to a
-> single host or IP address is the "most common format" - as it
-> probably isn't.
+No. I'll fix nfs_pageio_init_read() and friends by replacing
+pnfs_get_read_ops() by something more appropriate.
+
+> 2. What happens in the none pnfs-IO error case pg_bsize will need to be
+>    saved and restored to MDS value.
+
+Yes, but if you are falling back to read/write-through-mds, then you
+need to re-run the coalescing _anyway_, since the total length of the
+request needs to fit in an rsize/wsize sized request.
+
+> 3. At least in objects there is no such constant limit, it all depends on
+>    the layout, start and end. I thought the all point of .pg_test was
+>    exactly for avoiding a constant pg_bsize. (This is what we had before)
+> 4. All "the tests make no sense..." should be moved to the no-pnfs case
+>    please point these you found out, we'll need to fix them.
 > 
-> Signed-off-by: James Pearson <james-p@moving-picture.com>
-> 
-> --- a/utils/exportfs/exports.man        2011-06-22 11:37:41.228238000 +0100
-> +++ b/utils/exportfs/exports.man        2011-06-22 11:38:51.012894000 +0100
-> @@ -45,7 +45,7 @@
->  .SS Machine Name Formats
->  NFS clients may be specified in a number of ways:
->  .IP "single host
-> -This is the most common format. You may specify a host either by an
-> +You may specify a host either by an
->  abbreviated name recognized be the resolver, the fully qualified domain
->  name, or an IP address.
->  .IP "IP networks
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please understand that for none-files layouts pg_bsize is when IO goes
+> through MDS only.
+
+As I said, I don't see how fallback to MDS can work correctly today for
+the objects case for arbitrary values of rsize/wsize.
+
+Cheers
+  Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
