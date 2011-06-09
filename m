@@ -1,118 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:53361 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754412Ab1FGR2Q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:28:16 -0400
-Date: Tue, 7 Jun 2011 13:28:15 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 21/88] pnfsblock: lseg alloc and free
-Message-ID: <b181c80c9a43c6a64664364dc0616c81fbe66c9e.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+Received: from smtp09.online.nl ([194.134.42.54]:32795 "EHLO smtp09.online.nl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750819Ab1FIFCS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Jun 2011 01:02:18 -0400
+Subject: Re: NFS3 + kerberos: performance issues
+From: Vladimir Elisseev <vovan@vovan.nl>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <20110608162449.GD4101@fieldses.org>
+References: <1307086159.1052.19.camel@vovan.net.home>
+	 <1307104354.2477.17.camel@lade.trondhjem.org>
+	 <1307123836.1052.23.camel@vovan.net.home>
+	 <20110607230754.GF13911@fieldses.org>
+	 <1307514377.1533.35.camel@vovan.net.home>
+	 <20110608153950.GB4101@fieldses.org>
+	 <1307548836.1533.46.camel@vovan.net.home>
+	 <20110608162449.GD4101@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 09 Jun 2011 07:02:15 +0200
+Message-ID: <1307595735.1533.62.camel@vovan.net.home>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+This morning I've decided to redo all the tests and include some more
+statistics ( mountstat and vmstat ). However, when I exported the same
+mount point with different options I missed one _very_ important option.
+This option was presented for the export with sec=sys, but omitted with
+sec=krb5. The option is "async"... I promise to be more careful before
+posting any results. Thanks all of you for the help and I'm sorry to
+trouble you.
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfsblock: fix bug getting pnfs_layout_type in translate_devid().]
-Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/blocklayout.c    |   29 +++++++++++++++++++++++++++--
- fs/nfs/blocklayout/blocklayout.h    |    3 +++
- fs/nfs/blocklayout/blocklayoutdev.c |    9 +++++++++
- 3 files changed, 39 insertions(+), 2 deletions(-)
+Regards,
+Vlad.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index fb06f3a..f54e9a9 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -145,15 +145,40 @@ static void
- bl_free_lseg(struct pnfs_layout_segment *lseg)
- {
- 	dprintk("%s enter\n", __func__);
--	return;
-+	kfree(lseg);
- }
- 
-+/* Because the generic infrastructure does not correctly merge layouts,
-+ * we pretty much ignore lseg, and store all data layout wide, so we
-+ * can correctly merge.  Eventually we should push some correct merge
-+ * behavior up to the generic code, as the current behavior tends to
-+ * cause lots of unnecessary overlapping LAYOUTGET requests.
-+ */
- static struct pnfs_layout_segment *
- bl_alloc_lseg(struct pnfs_layout_type *lo,
- 	      struct nfs4_pnfs_layoutget_res *lgr)
- {
-+	struct pnfs_layout_segment *lseg;
-+	int status;
-+
- 	dprintk("%s enter\n", __func__);
--	return NULL;
-+	lseg = kzalloc(sizeof(*lseg) + 0, GFP_KERNEL);
-+	if (!lseg)
-+		return NULL;
-+	status = nfs4_blk_process_layoutget(lo, lgr);
-+	if (status) {
-+		/* We don't want to call the full-blown bl_free_lseg,
-+		 * since on error extents were not touched.
-+		 */
-+		/* STUB - we really want to distinguish between 2 error
-+		 * conditions here.  This lseg failed, but lo data structures
-+		 * are OK, or we hosed the lo data structures.  The calling
-+		 * code probably needs to distinguish this too.
-+		 */
-+		kfree(lseg);
-+		return ERR_PTR(status);
-+	}
-+	return lseg;
- }
- 
- static int
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 4e6f8fc..bcf85be 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -142,6 +142,7 @@ struct pnfs_block_layout {
- 	sector_t		bl_blocksize;  /* Server blocksize in sectors */
- };
- 
-+#define BLK_LSEG2EXT(lseg) ((struct pnfs_block_layout *)lseg->layout->ld_data)
- #define BLK_LO2EXT(lo) ((struct pnfs_block_layout *)lo->ld_data)
- 
- uint32_t *blk_overflow(uint32_t *p, uint32_t *end, size_t nbytes);
-@@ -183,6 +184,8 @@ int nfs4_blkdev_put(struct block_device *bdev);
- struct pnfs_block_dev *nfs4_blk_decode_device(struct super_block *sb,
- 					      struct pnfs_device *dev,
- 					      struct list_head *sdlist);
-+int nfs4_blk_process_layoutget(struct pnfs_layout_type *lo,
-+			       struct nfs4_pnfs_layoutget_res *lgr);
- int nfs4_blk_create_scsi_disk_list(struct list_head *);
- void nfs4_blk_destroy_disk_list(struct list_head *);
- /* blocklayoutdm.c */
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index 0ea44aa..818cc1c 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -553,3 +553,12 @@ nfs4_blk_decode_device(struct super_block *sb,
- 	kfree(vols);
- 	return rv;
- }
-+
-+/* XDR decode pnfs_block_layout4 structure */
-+int
-+nfs4_blk_process_layoutget(struct pnfs_layout_type *lo,
-+			   struct nfs4_pnfs_layoutget_res *lgr)
-+{
-+	/* STUB */
-+	return -EIO;
-+}
--- 
-1.7.4.1
+
+On Wed, 2011-06-08 at 12:24 -0400, J. Bruce Fields wrote:
+> On Wed, Jun 08, 2011 at 06:00:36PM +0200, Vladimir Elisseev wrote:
+> > Thanks for pointing me to the right to look at. However, the main point
+> > is huge performance degradation while using sec=krb5 option instead of
+> > sec=sys. With sec=sys everything works as expected. Personally I simply
+> > can't find any reasonable explanation.
+> 
+> Right, me neither.  That's why I suggest a) looking at mountstats, to
+> figure out which rpc operations are taking longer in the sec=krb5 case
+> than they are in the sec=sys case, and b) looking at server-side
+> statistics (mainly cpu usage, I guess) to start looking for bottlenecks
+> on the server.
+> 
+> --b.
+> 
+> > BTW, I'm using Gentoo and getting
+> > the same error while using mountstats script.
+> > 
+> > Regards,
+> > Vlad.
+> > 
+> > On Wed, 2011-06-08 at 11:39 -0400, J. Bruce Fields wrote:
+> > > On Wed, Jun 08, 2011 at 08:26:17AM +0200, Vladimir Elisseev wrote:
+> > > > All of the accounts, except very limited amount, are in LDAP, and as I
+> > > > can see user information is identical on server and client. As for my
+> > > > tests, below are all the details. Difference in speed while copying a
+> > > > lot of small files is _huge_... I'd appreciate if somebody more familiar
+> > > > with NFS/kerberos combination can provide a kind of explanation. 
+> > > > 
+> > > > Regards,
+> > > > Vlad.
+> > > > 
+> > > > * Local directory is /mnt/data/tmp/coreboot/src
+> > > > # find x86/ | wc -l
+> > > > 296
+> > > > # du -csh x86
+> > > > 1.5M	x86
+> > > > 1.5M	total
+> > > > * First try without kerberos: grep /mnt/tmp/ /proc/mounts
+> > > > nfs:/mnt/tmp /mnt/tmp nfs
+> > > > rw,noatime,vers=3,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.1.219,mountvers=3,mountport=32767,mountproto=tcp,local_lock=none,addr=192.168.1.219 0 0
+> > > > # time cp -i -arv /mnt/data/tmp/coreboot/src/arch/x86 /mnt/tmp/x86 
+> > > > cp -i -arv /mnt/data/tmp/coreboot/src/arch/x86 /mnt/tmp/x86 0.01s user
+> > > > 0.04s system 10% cpu 0.476 total
+> > > > 
+> > > > * Second try with kerberos: grep /mnt/tmp/ /proc/mounts
+> > > > nfs:/mnt/tmp /mnt/tmp nfs
+> > > > rw,noatime,vers=3,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=krb5,mountaddr=192.168.1.219,mountvers=3,mountport=32767,mountproto=tcp,local_lock=none,addr=192.168.1.219 0 0
+> > > > # time cp -i -arv /mnt/data/tmp/coreboot/src/arch/x86 /mnt/tmp/x86 
+> > > > cp -i -arv /mnt/data/tmp/coreboot/src/arch/x86 /mnt/tmp/x86  0.01s user
+> > > > 0.07s system 0% cpu 23.294 total
+> > > 
+> > > So if I'm reading that right, the client isn't doing any more work, it's
+> > > just taking longer, so presumably it's spending more time waiting for
+> > > the server.
+> > > 
+> > > Might be worth looking at /proc/self/mountstats to see which rpc's are
+> > > taking longer.
+> > > 
+> > > (Chuck, what's up with the mountstats script?  On a fedora 15 machine
+> > > with mountstats installed, it gives me "Statistics for mount point /mnt
+> > > not found", but
+> > > 
+> > > 	# grep mnt /proc/self/mountstats 
+> > > 	pip1:/exports/ mounted on /mnt with fstype nfs4 statvers=1.0
+> > > 
+> > > On a ubuntu machine running the mountstats out of
+> > > nfs-utils/tools/mountstats/mountstats.py, it runs without any output.)
+> > > 
+> > > Might also be worth looking at vmstat or something on the server.
+> > > 
+> > > --b.
+> > > 
+> > > 
+> > > > 
+> > > > At the same time test with a single file (621M):
+> > > > * without kerberos: 
+> > > > cp -i -av /mnt/media/images/GNOME_3.x86_64-0.2.0-Build1.1.iso   0.00s
+> > > > user 0.69s system 5% cpu 13.521 total
+> > > > * with kerberos:
+> > > > cp -i -av /mnt/media/images/GNOME_3.x86_64-0.2.0-Build1.1.iso   0.00s
+> > > > user 0.55s system 2% cpu 26.299 total
+> > > > 
+> > > > With the same file, but with "dd
+> > > > if=/mnt/media/images/GNOME_3.x86_64-0.2.0-Build1.1.iso
+> > > > of=/mnt/tmp/test.iso bs=32M"
+> > > > gives:
+> > > > * without kerberos: 651165696 bytes (651 MB) copied, 10.7168 s, 60.8
+> > > > MB/s
+> > > > * with kerberos: 651165696 bytes (651 MB) copied, 24.6176 s, 26.5 MB/s
+> > > > 
+> > > > 
+> > > > On Tue, 2011-06-07 at 19:07 -0400, J. Bruce Fields wrote:
+> > > > > On Fri, Jun 03, 2011 at 07:57:16PM +0200, Vladimir Elisseev wrote:
+> > > > > > There's no mount command involved in timing. It's simply copy of the
+> > > > > > same directory (with many small files to NFS share with and without
+> > > > > > sec=krb5 mount option.
+> > > > > 
+> > > > > Weird.
+> > > > > 
+> > > > > I wonder if the krb5 principal is being mapped to a different user on
+> > > > > the server side, and that's making some difference.
+> > > > > 
+> > > > > Still, could you give us the full details?  (Exactly what commands are
+> > > > > you running, what results do you see?)
+> > > > > 
+> > > > > --b.
+> > > > > --
+> > > > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > > > > the body of a message to majordomo@vger.kernel.org
+> > > > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > > > 
+> > 
 
