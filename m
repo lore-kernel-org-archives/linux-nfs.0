@@ -1,82 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:47561 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754732Ab1FHH3h (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jun 2011 03:29:37 -0400
-Received: by vws1 with SMTP id 1so150607vws.19
-        for <linux-nfs@vger.kernel.org>; Wed, 08 Jun 2011 00:29:36 -0700 (PDT)
-In-Reply-To: <BANLkTimeDdSUZusf8RgpncSyW5K21UyhXw@mail.gmail.com>
-References: <cover.1307464381.git.rees@umich.edu>
-	<8d4549ecda23f5ada0c88677c9505cba2830dad5.1307464382.git.rees@umich.edu>
-	<4DEED8FC.4000000@panasas.com>
-	<BANLkTimeDdSUZusf8RgpncSyW5K21UyhXw@mail.gmail.com>
-Date: Wed, 8 Jun 2011 15:29:36 +0800
-Message-ID: <BANLkTimErrC_Jme06=U4T932YG_n0m6RSw@mail.gmail.com>
-Subject: Re: [PATCH 88/88] NFS41: do not update isize if inode needs layoutcommit
-From: Peng Tao <bergwolf@gmail.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Jim Rees <rees@umich.edu>, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:47187 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751481Ab1FIS6W (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 14:58:22 -0400
+Received: by gxk21 with SMTP id 21so958832gxk.19
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Jun 2011 11:58:21 -0700 (PDT)
+Message-ID: <4DF117CA.50508@panasas.com>
+Date: Thu, 09 Jun 2011 14:58:18 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org,
+        "Rees, James" <rees@umich.edu>
+Subject: Re: [PATCH 2/3] NFS: Cleanup of the nfs_pageio code in preparation
+ for a pnfs bugfix
+References: <1307399551-17489-1-git-send-email-Trond.Myklebust@netapp.com>		 <1307399551-17489-2-git-send-email-Trond.Myklebust@netapp.com>		 <4DEEDECF.4090104@panasas.com>	 <1307637452.20245.11.camel@lade.trondhjem.org>	 <4DF10804.7000104@panasas.com> <1307643195.25848.10.camel@lade.trondhjem.org>
+In-Reply-To: <1307643195.25848.10.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-sorry, the link should be
-http://www.spinics.net/lists/linux-nfs/msg21586.html
+On 2011-06-09 14:13, Trond Myklebust wrote:
+> On Thu, 2011-06-09 at 10:51 -0700, Boaz Harrosh wrote:
+> 
+>> 1. We will then need to go through the ld in .pg_init
+> 
+> No. I'll fix nfs_pageio_init_read() and friends by replacing
+> pnfs_get_read_ops() by something more appropriate.
+> 
 
-On 6/8/11, Peng Tao <bergwolf@gmail.com> wrote:
-> On 6/8/11, Benny Halevy <bhalevy@panasas.com> wrote:
->> Better send generic patches separately.
->> This patch needs to go upstream and to stable 2.6.39
-> It has been sent separately before. please see
-> http://www.spinics.net/list/linux-nfs/msg21586.html
->
->>
->> Benny
->>
->> On 2011-06-07 13:36, Jim Rees wrote:
->>> From: Peng Tao <bergwolf@gmail.com>
->>>
->>> Layout commit is supposed to set server file size similiar to nfs pages.
->>> We should not update client file size for the same reason.
->>> Otherwise we will lose what we have at hand.
->>>
->>> Signed-off-by: Peng Tao <peng_tao@emc.com>
->>> Signed-off-by: Jim Rees <rees@umich.edu>
->>> ---
->>>  fs/nfs/inode.c |    3 ++-
->>>  1 files changed, 2 insertions(+), 1 deletions(-)
->>>
->>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->>> index 144f2a3..3f1eb81 100644
->>> --- a/fs/nfs/inode.c
->>> +++ b/fs/nfs/inode.c
->>> @@ -1294,7 +1294,8 @@ static int nfs_update_inode(struct inode *inode,
->>> struct nfs_fattr *fattr)
->>>  		if (new_isize != cur_isize) {
->>>  			/* Do we perhaps have any outstanding writes, or has
->>>  			 * the file grown beyond our last write? */
->>> -			if (nfsi->npages == 0 || new_isize > cur_isize) {
->>> +			if ((nfsi->npages == 0 && !test_bit(NFS_INO_LAYOUTCOMMIT,
->>> &nfsi->flags)) ||
->>> +			     new_isize > cur_isize) {
->>>  				i_size_write(inode, new_isize);
->>>  				invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
->>>  			}
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->
->
-> --
-> Thanks,
-> -Bergwolf
->
+OK, I just push the pnfs-block stuff out so you can see what I did
+over your previous version so I'll rebase over the new version once
+you send it.
 
+>> 2. What happens in the none pnfs-IO error case pg_bsize will need to be
+>>    saved and restored to MDS value.
+> 
+> Yes, but if you are falling back to read/write-through-mds, then you
+> need to re-run the coalescing _anyway_, since the total length of the
+> request needs to fit in an rsize/wsize sized request.
+> 
 
--- 
-Thanks,
--Bergwolf
+Right.  So we will need a place holder to keep a separate value for
+minimum OSD's pg_bsize vs. the MDS's (like what we used to have for DS's
+[rw]size in the past)
+
+Benny
+
+>> 3. At least in objects there is no such constant limit, it all depends on
+>>    the layout, start and end. I thought the all point of .pg_test was
+>>    exactly for avoiding a constant pg_bsize. (This is what we had before)
+>> 4. All "the tests make no sense..." should be moved to the no-pnfs case
+>>    please point these you found out, we'll need to fix them.
+>>
+>> Please understand that for none-files layouts pg_bsize is when IO goes
+>> through MDS only.
+> 
+> As I said, I don't see how fallback to MDS can work correctly today for
+> the objects case for arbitrary values of rsize/wsize.
+> 
+> Cheers
+>   Trond
