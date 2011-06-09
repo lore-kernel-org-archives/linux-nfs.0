@@ -1,151 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:22287 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758276Ab1FWQJs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2011 12:09:48 -0400
-Subject: Re: [PATCH/RFC] mount: improve signal management when locking mtab.
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20110623092052.414d78a8@notabene.brown>
-Date: Thu, 23 Jun 2011 10:09:33 -0600
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <4D5CF8CE-FDFE-491D-99A4-D35853DDEA61@oracle.com>
-References: <20110622163852.71a2ae80@notabene.brown> <B1677B7E-3A7E-418B-9CCA-0844510B59C8@oracle.com> <20110623092052.414d78a8@notabene.brown>
-To: NeilBrown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:63171 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753699Ab1FIPCU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 11:02:20 -0400
+Received: by vxi39 with SMTP id 39so1239138vxi.19
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Jun 2011 08:02:19 -0700 (PDT)
+In-Reply-To: <20110609114929.GA28157@merit.edu>
+References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu>
+ <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu>
+ <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com>
+ <20110609114929.GA28157@merit.edu>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Thu, 9 Jun 2011 23:01:59 +0800
+Message-ID: <BANLkTikOOY4LL6O67QddGM4cboLO_Fam4g@mail.gmail.com>
+Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+To: Jim Rees <rees@umich.edu>
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Hi, Jim,
 
-On Jun 22, 2011, at 5:20 PM, NeilBrown wrote:
+On Thu, Jun 9, 2011 at 7:49 PM, Jim Rees <rees@umich.edu> wrote:
+> Benny Halevy wrote:
+>
+>  >> But note that this patch doesn't change anything unless you set the sysctl.
+>  > there is a default value of 2M. maybe we can set it to page size by
+>  > default so other layout are not affected and block layout can let
+>  > users set it by hand if they care about performance. does this make
+>  > sense?
+>
+>  If doing it at all why use a sysctl rather than a mount option?
+>  Or maybe coding the logic for prefetching the layout iff sequential
+>  access is detected is the right thing to do.
+>
+> I would rather see some automatic solution than to add either a sysctl or a
+> mount option.  For now you can just drop that patch, as it's not needed for
+> basic pnfs block.
+The current code w/o the patch makes block layout performance very poor.
+Can we have it in for now, and when we have something smarter, change
+it back later?
 
-> On Wed, 22 Jun 2011 09:08:25 -0600 Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
->> Since we are going to adopt libmount for mount.nfs in the near future, would it be better to update libmount instead?
-> 
-> How near?
-> 
-> Libmount appears to get signal handling right already (though I haven't
-> tested it).  It blocks all signals rather than catching some of them.
-> 
-> So switching to libmount would a perfectly reasonably response.  However if
-> that is more than a few weeks away I think I would rather see this fixed up
-> anyway...
-
-We have a libmount-based mount.nfs already in the nfs-utils tree, IIRC.  I don't think we yet have a generic plan for switching to installing that one by default.  Steve?
-
-> Thanks,
-> NeilBrown
-> 
-> 
->> 
->> On Jun 22, 2011, at 12:38 AM, NeilBrown wrote:
->> 
->>> 
->>> From: Neil Brown <neilb@suse.de>
->>> Date: Wed, 22 Jun 2011 16:15:45 +1000
->>> Subject: [PATCH] mount: improve signal management when locking mtab.
->>> 
->>> As mount.nfs can run setuid it must be careful about how the user can
->>> interact with in.  In particular it needs to ensure it does not
->>> respond badly to any signals that the user might be able to generate.
->>> 
->>> This is particularly an issue while updating /etc/mtab (when that is
->>> not linked to /proc/mounts).  If the user can generate a signal which
->>> kills mount.nfs while /etc/mtab is locked, then it will leave the file
->>> locked, and could possibly corrupt mtab (particularly if 'ulimit 1'
->>> was previously issued).
->>> 
->>> Currently lock_mtab does set some handlers for signals, but not
->>> enough.  It arranges for every signal up to (but not including)
->>> SIGCHLD to cause mount.nfs to unlock mdadm promptly exit ... even if
->>> the default behaviour would be to ignore the signal.  SIGALRM is
->>> handled specially, and signals after SIGCHLD are left with their
->>> default behaviour.  This includes for example SIGXFSZ which can be
->>> generated by the user running "ulimit 1".
->>> 
->>> So: change this so that some signals are left unchanged, SIGALRM is
->>> handled as required, and all signals that the user can generate are
->>> explicitly ignored.
->>> 
->>> The remainder still cause mount.nfs to print a message, unlock mtab, and exit.
->>> 
->>> Signed-off-by: NeilBrown <neilb@suse.de>
->>> ---
->>> utils/mount/fstab.c |   37 ++++++++++++++++++++++++++++++++-----
->>> 1 files changed, 32 insertions(+), 5 deletions(-)
->>> 
->>> diff --git a/utils/mount/fstab.c b/utils/mount/fstab.c
->>> index a742e64..1fc9efe 100644
->>> --- a/utils/mount/fstab.c
->>> +++ b/utils/mount/fstab.c
->>> @@ -331,16 +331,43 @@ lock_mtab (void) {
->>> 		int sig = 0;
->>> 		struct sigaction sa;
->>> 
->>> -		sa.sa_handler = handler;
->>> 		sa.sa_flags = 0;
->>> 		sigfillset (&sa.sa_mask);
->>> 
->>> -		while (sigismember (&sa.sa_mask, ++sig) != -1
->>> -		       && sig != SIGCHLD) {
->>> -			if (sig == SIGALRM)
->>> +		while (sigismember (&sa.sa_mask, ++sig) != -1) {
->>> +			switch(sig) {
->>> +			case SIGCHLD:
->>> +			case SIGKILL:
->>> +			case SIGCONT:
->>> +			case SIGSTOP:
->>> +				/* The cannot be caught, or should not,
->>> +				 * so don't even try.
->>> +				 */
->>> +				continue;
->>> +			case SIGALRM:
->>> 				sa.sa_handler = setlkw_timeout;
->>> -			else
->>> +				break;
->>> +			case SIGHUP:
->>> +			case SIGINT:
->>> +			case SIGQUIT:
->>> +			case SIGWINCH:
->>> +			case SIGTSTP:
->>> +			case SIGTTIN:
->>> +			case SIGTTOU:
->>> +			case SIGPIPE:
->>> +			case SIGXFSZ:
->>> +			case SIGXCPU:
->>> +				/* non-priv user can cause these to be
->>> +				 * generated, so ignore them.
->>> +				 */
->>> +				sa.sa_handler = SIG_IGN;
->>> +				break;
->>> +			default:
->>> +				/* The rest should not be possible, so just
->>> +				 * print a message and unlock mtab.
->>> +				 */
->>> 				sa.sa_handler = handler;
->>> +			}
->>> 			sigaction (sig, &sa, (struct sigaction *) 0);
->>> 		}
->>> 		signals_have_been_setup = 1;
->>> -- 
->>> 1.7.3.4
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> --
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->> 
->> 
-> 
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+>
+> My understanding is that layoutget specifies a min and max, and the server
+> is returning the min.  Trond and Fred believe this should be fixed on the
+> server.  Here's the original report of the problem:
+>
+> From: Bergwolf
+>
+> From the network trace for pnfs, we can see the root cause for slow performance
+> is too many small layoutget. In specific, client asks for a layout of only 4K
+> pagesize (and server returns 8K due to block size alignment) at each time.
+>
+> The total IO time is 256/1.68 = 152 second.
+> There are 256*1024/8 = 32768 layoutget for the 256MB file.
+> On average, the time spent on each layoutget is 0.00456 second according to the
+> trace.
+> The total layoutget time is 32768* 0.00456 = 149 second, which takes up about
+> 98% of total IO time.
+>
+> So we should optimize layoutget's granularity to get better performance. For
+> instance, use a configurable prefetch size of 2MB or so.
+>
 
 
 
+-- 
+Thanks,
+-Bergwolf
