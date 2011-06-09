@@ -1,168 +1,182 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:57790 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757743Ab1FVXKL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 19:10:11 -0400
-Subject: Re: Issue with Race Condition on NFS4 with KRB
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Joshua Scoggins <theoretically.x64@gmail.com>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 22 Jun 2011 19:09:02 -0400
-In-Reply-To: <BANLkTimvMeF94O_S0rpSgy=5Z4obU9pPfg@mail.gmail.com>
-References: <BANLkTik9J3qcdPcp+DdfRq9kj+DMKnjKZw@mail.gmail.com>
-	 <1308767449.14997.10.camel@lade.trondhjem.org>
-	 <BANLkTimyCA0QyF1TNc0SU2GYobOt-sAsNQ@mail.gmail.com>
-	 <1308769054.14997.18.camel@lade.trondhjem.org>
-	 <BANLkTi=b1UJzYinAeW2VJj2AHzsAnwUpGg@mail.gmail.com>
-	 <1308779507.25875.7.camel@lade.trondhjem.org>
-	 <BANLkTin0HnH7rufrHJGgEuPc-ZPjkZe3iw@mail.gmail.com>
-	 <1308783190.25875.25.camel@lade.trondhjem.org>
-	 <BANLkTimvMeF94O_S0rpSgy=5Z4obU9pPfg@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1308784142.25875.37.camel@lade.trondhjem.org>
+Received: from mail.candelatech.com ([208.74.158.172]:35604 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754825Ab1FIXrm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 19:47:42 -0400
+Message-ID: <4DF15B9B.5010408@candelatech.com>
+Date: Thu, 09 Jun 2011 16:47:39 -0700
+From: Ben Greear <greearb@candelatech.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] nfs-utils:  Support binding to source address.
+References: <1307574083-27608-1-git-send-email-greearb@candelatech.com> <A1094CD0-08C4-42C8-8928-DDD1BFC27C7B@oracle.com> <4DF0EBBA.8090703@candelatech.com> <CE8E8AB7-AC6F-4715-B282-CAAE8F63A98B@oracle.com>
+In-Reply-To: <CE8E8AB7-AC6F-4715-B282-CAAE8F63A98B@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-06-22 at 16:01 -0700, Joshua Scoggins wrote: 
-> I just manually applied the patch as I'm using the gentoo sources.
+On 06/09/2011 11:39 AM, Chuck Lever wrote:
+>
+> On Jun 9, 2011, at 11:50 AM, Ben Greear wrote:
+>
+>> On 06/09/2011 07:05 AM, Chuck Lever wrote:
+>>>
+>>> On Jun 8, 2011, at 7:01 PM, greearb@candelatech.com wrote:
+>>>
+>>>> From: Ben Greear<greearb@candelatech.com>
+>>>>
+>>>> This lets one specify the source IP address for
+>>>> sockets, allowing users to leverage routing rules
+>>>> on multi-homed systems.
+>>>>
+>>>> Kernel patches to RPC and NFS are needed to complete
+>>>> full functionality.
+>>>>
+>>>> Signed-off-by: Ben Greear<greearb@candelatech.com>
+>>>> ---
+>>>>
+>>>> v2:  Use union nfs_sockaddr in local_bind_info struct.
+>>>>      Remove cmd-line and getenv parsing.
+>>>>      Add option parsing to umount logic.
+>>>>      Update man.nfs page.
+>>>
+>>> Thanks for that, but...
+>>>
+>>> I'm going to side with Neil on this: your solution is invasive.  We need to see much better rationale for the complexity of your design.  Why isn't an automatic solution adequate for your needs?  Don't design for every general case, just solve your immediate problem and explain your solution.
+>>>
+>>> I'm not saying "no" just please show your work more.  Clearly our community has not had to address this problem before now, so we need some explanation to do a proper review.
+>>
+>> Ok, first my use case:
+>>
+>> I want to have multiple interfaces on the system each make an independent
+>> connection to the nfs server(s).  Each interface may be on the same subnet,
+>> or on different subnets, and there may be routers attached to each
+>> interface.  In order to make the traffic go out one interface or another,
+>> I set up ip routing rules that say: use routing table X if source-ip is Y.
+>> I can then set up the various routing tables to go to the correct external
+>> routers.  If it's not a routed network, then the traffic will still originate
+>> on the correct interface.
+>>
+>> We use this primarily for stress-testing NFS servers (create 1000 unique
+>> mounts, for instance).
+>
+> Typically this kind of server testing is better done with multiple clients.  This can be done with virtual guests, for example, if you don't have a lot of hardware.  It's certainly not a common use case, though.  (A frequently occurring use case would be one justification for significant additional complexity).
 
-If they're not modifying the source, then it should just apply provided
-that your mailer saved it correctly. If gentoo are applying their own
-patches, then I suggest grabbing a copy of the original 2.6.39 from
-www.kernel.org.
+I can get 1000+ emulated clients, each with it's own MAC, IP, etc on a mid-range
+system, and even more on higher-end hardware.  I'm sure that's higher density
+than you can get with virtual guests, and it's also a lot easier to manage.
 
-> Josh
-> 
-> On Wed, Jun 22, 2011 at 3:53 PM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> > On Wed, 2011-06-22 at 15:40 -0700, Joshua Scoggins wrote:
-> >> The patch isn't applying to the 2.6.39 kernel sources.
-> >
-> > It does for me:
-> >
-> > [trondmy@lade linux-2.6]$ git checkout v2.6.39
-> > HEAD is now at 61c4f2c... Linux 2.6.39
-> > [trondmy@lade linux-2.6]$ git am ~/Desktop/bugfixes/0001-SUNRPC-Fix-a-potential-race-in-between-xprt_complete.patch
-> > Applying: SUNRPC: Fix a potential race in between xprt_complete_rqst and xprt_transmit
-> > [trondmy@lade linux-2.6]$
-> >
-> > Are you perhaps using some distro kernel instead of the regular one from
-> > Linus' repository?
-> >
-> > Cheers
-> >  Trond
-> >
-> >> -Josh
-> >>
-> >> On Wed, Jun 22, 2011 at 2:51 PM, Trond Myklebust
-> >> <Trond.Myklebust@netapp.com> wrote:
-> >> > On Wed, 2011-06-22 at 12:18 -0700, Joshua Scoggins wrote:
-> >> >> According to the it guys they are running solaris 10 as the server platform.
-> >> >
-> >> > Ok. That should not be subject to the race I was thinking of...
-> >> >
-> >> >> On Wed, Jun 22, 2011 at 11:57 AM, Trond Myklebust
-> >> >> <Trond.Myklebust@netapp.com> wrote:
-> >> >> > On Wed, 2011-06-22 at 11:37 -0700, Joshua Scoggins wrote:
-> >> >> >> Here are our mount options from auto.master
-> >> >> >>
-> >> >> >> /user -fstype=nfs4,sec=krb5p,noresvport,noatime
-> >> >> >> /group -fstype=nfs4,sec=krb5p,noresvport,noatime
-> >> >> >>
-> >> >> >> As for the server, we don't control it. It's actually run by the
-> >> >> >> campus wide it department we are just lab support for CS. I can
-> >> >> >> potentially get the server information but I need to know what you want
-> >> >> >> specifically as they're pretty paranoid about giving out information about
-> >> >> >> their servers.
-> >> >> >
-> >> >> > I would just want to know _what_ server platform you are running
-> >> >> > against. I know of at least one server bug that might explain what you
-> >> >> > are seeing, and I'd like to eliminate that as a possibility.
-> >> >> >
-> >> >> > Trond
-> >> >> >
-> >> >> >> Joshua Scoggins
-> >> >> >>
-> >> >> >> On Wed, Jun 22, 2011 at 11:30 AM, Trond Myklebust
-> >> >> >> <Trond.Myklebust@netapp.com> wrote:
-> >> >> >> > On Wed, 2011-06-22 at 11:21 -0700, Joshua Scoggins wrote:
-> >> >> >> >> Hello,
-> >> >> >> >>
-> >> >> >> >> We are trying to update our linux images in our CS lab and have it a
-> >> >> >> >> bit of an issue. We are
-> >> >> >> >> using nfs to load user home folder. While testing the new image we
-> >> >> >> >> found that the nfs4 module will
-> >> >> >> >>  crash when using firefox 3.6.17 for an extended period of time. Some
-> >> >> >> >> research via google yielded that
-> >> >> >> >> it's a potential race condition specific to nfs with krb auth with
-> >> >> >> >> newer kernels. Our old image doesn't have
-> >> >> >> >> this issue and it seems that its due to it running a far older kernel version.
-> >> >> >> >>
-> >> >> >> >> We have two images and both are having this problem. One is running
-> >> >> >> >> 2.6.39 and the other is 2.6.38.
-> >> >> >> >> Here is what dmesg spit out from the machine running 2.6.39 on one occasion:
-> >> >> >> >>
-> >> >> >> >> [  678.632061] ------------[ cut here ]------------
-> >> >> >> >> [  678.632068] WARNING: at net/sunrpc/clnt.c:1567 call_decode+0xb2/0x69c()
-> >> >> >> >> [  678.632070] Hardware name: OptiPlex 755
-> >> >> >> >> [  678.632072] Modules linked in: nvidia(P) scsi_wait_scan
-> >> >> >> >> [  678.632078] Pid: 3882, comm: kworker/0:2 Tainted: P
-> >> >> >> >> 2.6.39-gentoo-r1 #1
-> >> >> >> >> [  678.632080] Call Trace:
-> >> >> >> >> [  678.632086]  [<ffffffff81035b20>] warn_slowpath_common+0x80/0x98
-> >> >> >> >> [  678.632091]  [<ffffffff8117231e>] ? nfs4_xdr_dec_readdir+0xba/0xba
-> >> >> >> >> [  678.632094]  [<ffffffff81035b4d>] warn_slowpath_null+0x15/0x17
-> >> >> >> >> [  678.632097]  [<ffffffff81426f48>] call_decode+0xb2/0x69c
-> >> >> >> >> [  678.632101]  [<ffffffff8142d2b5>] __rpc_execute+0x78/0x24b
-> >> >> >> >> [  678.632104]  [<ffffffff8142d4c9>] ? rpc_execute+0x41/0x41
-> >> >> >> >> [  678.632107]  [<ffffffff8142d4d9>] rpc_async_schedule+0x10/0x12
-> >> >> >> >> [  678.632111]  [<ffffffff8104a49d>] process_one_work+0x1d9/0x2e7
-> >> >> >> >> [  678.632114]  [<ffffffff8104c402>] worker_thread+0x133/0x24f
-> >> >> >> >> [  678.632118]  [<ffffffff8104c2cf>] ? manage_workers+0x18d/0x18d
-> >> >> >> >> [  678.632121]  [<ffffffff8104f6a0>] kthread+0x7d/0x85
-> >> >> >> >> [  678.632125]  [<ffffffff8145e314>] kernel_thread_helper+0x4/0x10
-> >> >> >> >> [  678.632128]  [<ffffffff8104f623>] ? kthread_worker_fn+0x13a/0x13a
-> >> >> >> >> [  678.632131]  [<ffffffff8145e310>] ? gs_change+0xb/0xb
-> >> >> >> >> [  678.632133] ---[ end trace 6bfae002a63e020e ]---
-> >> >
-> >> > Looking at the code, there is only one way I can see for that warning to
-> >> > occur, and that is if we put the request back on the 'xprt->recv' list
-> >> > after it has already received a reply from the server.
-> >> >
-> >> > Can you reproduce the problem with the attached patch?
-> >> >
-> >> > Trond
-> >> >
-> >> > --
-> >> > Trond Myklebust
-> >> > Linux NFS client maintainer
-> >> >
-> >> > NetApp
-> >> > Trond.Myklebust@netapp.com
-> >> > www.netapp.com
-> >> >
-> >> >
-> >
-> > --
-> > Trond Myklebust
-> > Linux NFS client maintainer
-> >
-> > NetApp
-> > Trond.Myklebust@netapp.com
-> > www.netapp.com
-> >
-> >
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Regardless, the ability for users to have control over their network config
+is more useful than any of my personal use cases..
+
+>> Other users might want the same functionality to use two interfaces on the
+>> same network to communicate to an nfs server, perhaps to utilize two 1Gbps
+>> network interfaces that eventually connect to a 10Gbps file-server, and thus
+>> get double the total throughput.
+>
+> Bonding is supposed to be supported by pNFS, I thought.
+
+What I propose is a very simple change from standard old nfs
+usage.  Somehow I doubt bonding pNFS is quite so simple to deal
+with.
+
+>> A second use case:
+>>
+>> User has two IPs on the same interface, and wants to use a specific
+>> one for NFS traffic.  Aside from the testing scenario above, I'm not
+>> sure how this helps, but I also know that people do clever things that
+>> no one has thought of if you allow them the tools.
+>>
+>> Third case:
+>>
+>> User has trusted network A and un-trusted B.  They would like to make
+>> sure that NFS traffic always originates on A.  So, they can bind the
+>> local IP to A and not have to worry about what automatic address selection
+>> might choose.
+>
+> NFS has krb5p for preventing traffic sniffing.  It's all done well above the IP layer.
+>
+> I'm not convinced.  I think we can accomplish these items more simply by refining other areas of the NFS client.
+
+Well, we differ in opinion.  I'm going to try a bit more to find some acceptable
+solution, but if everyone sees this effort as DOA, please let me know now so I can
+move on to other things.
+
+>>>> +struct local_bind_info {
+>>>> +	union nfs_sockaddr addr;
+>>>> +	socklen_t addrlen;
+>>>> +	bool is_set;
+>>>> +};
+>>>
+>>> Please use "struct sockaddr *" or provide a very clear rationale (not "we may need this someday") for why "struct sockaddr *" is not adequate for solving your immediate problem.
+>>
+>> First, it's nice to be able to pass around the addrlen and not just
+>> assume the length based on the family.
+>
+> Can you elaborate on "nice" ?  We're really only concerned about just three families: AF_INET, AF_INET6, and AF_LOCAL.
+>
+>> Second:  I *will* submit a patch to allow binding to a network device with
+>> SO_BINDTODEVICE if I can get this first patch accepted.
+>
+> Then that subsequent patch is where this new structure belongs.  That groups the changes together logically.
+
+That would be two huge boring patches that touch the same code.
+
+>
+>> Using SO_BINDTODEVICE
+>> offers similar functionality, but it doesn't require routing rules to force
+>> traffic out an interface.  This is another way to help keep nfs traffic on
+>> trusted interfaces, for instance.
+>
+> It might be nicer if all of the parameters used to define the transport endpoints were included in the same structure.  Then you pass a single pointer around that encompasses both the remote address and the source address.  That seems more logical to me than passing a struct sockaddr * for the remote address and a pointer to an arbitrary structure for the source address.
+>
+> Reshaping internal APIs is something you can split out of any patch to support source address binding.
+
+I made an attempt at this.  It seems way more risky, ugly, and more code than my
+posted patch.  The primary reason being that often copies are made of the
+addr before it's passed to other methods.  So, you would end up creating lots
+of on-stack config structs and then doing copies before passing them on to
+more functions.
+
+If changing the 'local_ip' argument everywhere to be a sockaddr* will make
+you happy, I will just do that and forget about implementing SO_BINDTODEVICE,
+and assume salen based on the sa_family.
+
+>>>> @@ -305,6 +307,9 @@ static void parse_opt(const char *opt, int *mask, char *extra_opts, size_t len)
+>>>>
+>>>> 	if ((len -= strlen(opt))>   0)
+>>>> 		strcat(extra_opts, opt);
+>>>> +
+>>>> +	if (strncmp(opt, "srcaddr=", strlen("srcaddr=")) == 0)
+>>>> +		parse_local_bind(&glb_local_ip, opt + strlen("srcaddr="));
+>>>> }
+>>>
+>>> Why is this needed?  Is it just to support legacy (non-string) mounts?
+>>
+>> No, it allows us to bind mount.nfs sockets to the IP that the mount options are asking the
+>> kernel to bind to.  It's the *only* way to get the mount.nfs process to bind
+>> to an IP now that I removed the cmd-line args and environ variable hacks.
+>
+> I don't understand how that can be the case.  The srcaddr mount option should be parsed in stropt.c, where it is used to generate sockets for rpcbind and MNT calls.  This works the same for all of the sockets mount.nfs uses for string mounts.  I don't see any need for this logic in mount.c, especially if you don't support srcaddr= for legacy (nfs_mount_data) style mounts.
+
+Ok, I will look at that again.
+
+>> I personally don't want to bind to a particular port, but it seems like something
+>> that someone might want to do some day, so it would be nice to get the parsing
+>> able to handle it up front to ease compatibility issues.
+>
+> Unless you have a specific use case today, we prefer not to speculate about how this might be used.  Let's design exactly what we need right now.
+>
+> If you want to look at a UI precedent for mount.nfs, ports are specified via separate mount options.  "srcport=" for example, might be used to specify the source port.  In any event, that support can be added later if desired.  Let's keep this as simple and to the point as possible.
+
+Ok, I'll make the srcaddr=n argument a plain numeric IP.  I'll try to resolve IPv4
+first, and if that doesn't work, will try it as IPv6.
+
+Thanks,
+Ben
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
