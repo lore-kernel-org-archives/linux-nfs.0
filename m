@@ -1,199 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:53819 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755936Ab1FGR3s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:29:48 -0400
-Date: Tue, 7 Jun 2011 13:29:46 -0400
-From: Jim Rees <rees@umich.edu>
+Received: from mx2.netapp.com ([216.240.18.37]:43846 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752416Ab1FIQhW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 12:37:22 -0400
+Subject: Re: [PATCH 2/3] NFS: Cleanup of the nfs_pageio code in preparation
+ for a pnfs bugfix
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 33/88] pnfsblock: bl_write_pagelist
-Message-ID: <15ecb4872bab4715ed7a275160e36f82e23c9e89.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 09 Jun 2011 12:37:32 -0400
+In-Reply-To: <4DEEDECF.4090104@panasas.com>
+References: <1307399551-17489-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1307399551-17489-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <4DEEDECF.4090104@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1307637452.20245.11.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+On Tue, 2011-06-07 at 22:30 -0400, Benny Halevy wrote: 
+> On 2011-06-06 18:32, Trond Myklebust wrote:
+> > We need to ensure that the layouts are set up before we can decide to
+> > coalesce requests. To do so, we want to further split up the struct
+> > nfs_pageio_descriptor operations into an initialisation callback, a
+> > coalescing test callback, and a 'do i/o' callback.
+> > 
+> > This patch cleans up the existing callback methods before adding the
+> > 'initialisation' callback.
+> > 
+> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > ---
+> >  fs/nfs/nfs4filelayout.c      |   15 +++++++++++++--
+> >  fs/nfs/objlayout/objio_osd.c |   13 ++++++++++++-
+> >  fs/nfs/pagelist.c            |   12 +++++-------
+> >  fs/nfs/pnfs.h                |   29 ++++++++++++++++++++++-------
+> >  fs/nfs/read.c                |   42 +++++++++++++++++++++++++++++++-----------
+> >  fs/nfs/write.c               |   27 +++++++++++++++++++++++----
+> >  include/linux/nfs_page.h     |   17 ++++++++++++++---
+> >  7 files changed, 120 insertions(+), 35 deletions(-)
+> > 
+> > diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+> > index 4269088..e9b9b82 100644
+> > --- a/fs/nfs/nfs4filelayout.c
+> > +++ b/fs/nfs/nfs4filelayout.c
+> > @@ -654,7 +654,7 @@ filelayout_alloc_lseg(struct pnfs_layout_hdr *layoutid,
+> >   * return true  : coalesce page
+> >   * return false : don't coalesce page
+> >   */
+> > -bool
+> > +static bool
+> >  filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+> >  		   struct nfs_page *req)
+> >  {
+> > @@ -676,6 +676,16 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+> >  	return (p_stripe == r_stripe);
+> >  }
+> >  
+> > +static const struct nfs_pageio_ops filelayout_pg_read_ops = {
+> > +	.pg_test = filelayout_pg_test,
+> > +	.pg_doio = nfs_generic_pg_readpages,
+> > +};
+> > +
+> > +static const struct nfs_pageio_ops filelayout_pg_write_ops = {
+> > +	.pg_test = filelayout_pg_test,
+> > +	.pg_doio = nfs_generic_pg_writepages,
+> > +};
+> > +
+> >  static bool filelayout_mark_pnfs_commit(struct pnfs_layout_segment *lseg)
+> >  {
+> >  	return !FILELAYOUT_LSEG(lseg)->commit_through_mds;
+> > @@ -873,7 +883,8 @@ static struct pnfs_layoutdriver_type filelayout_type = {
+> >  	.owner			= THIS_MODULE,
+> >  	.alloc_lseg		= filelayout_alloc_lseg,
+> >  	.free_lseg		= filelayout_free_lseg,
+> > -	.pg_test		= filelayout_pg_test,
+> > +	.pg_read_ops		= &filelayout_pg_read_ops,
+> > +	.pg_write_ops		= &filelayout_pg_write_ops,
+> >  	.mark_pnfs_commit	= filelayout_mark_pnfs_commit,
+> >  	.choose_commit_list	= filelayout_choose_commit_list,
+> >  	.commit_pagelist	= filelayout_commit_pagelist,
+> > diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+> > index 4c41a60..31088f3 100644
+> > --- a/fs/nfs/objlayout/objio_osd.c
+> > +++ b/fs/nfs/objlayout/objio_osd.c
+> > @@ -1008,6 +1008,16 @@ static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
+> >  			OBJIO_LSEG(pgio->pg_lseg)->max_io_size;
+> >  }
+> >  
+> > +static const struct nfs_pageio_ops objio_pg_read_ops = {
+> > +	.pg_test = objio_pg_test,
+> > +	.pg_doio = nfs_generic_pg_readpages,
+> > +};
+> > +
+> > +static const struct nfs_pageio_ops objio_pg_write_ops = {
+> > +	.pg_test = objio_pg_test,
+> > +	.pg_doio = nfs_generic_pg_writepages,
+> 
+> Hmm, for the non-files layouts we should ignore the server's wsize
+> for pnfs I/O.
+> 
+> How about using the follwing?
+> 
+> int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+> {
+> 	return desc->pg_lseg ? nfs_pagein_one(desc) : nfs_generic_pg_readpages(desc);
+> }
+> EXPORT_SYMBOL_GPL(pnfs_generic_pg_readpages);
+> 
+> int pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+> {
+> 	return desc->pg_lseg ? nfs_flush_one(desc) : nfs_generic_pg_writepages(desc);
+> }
+> EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
+> 
+> Benny
 
-Note: When upper layer's read/write request cannot be fulfilled, the block
-layout driver shouldn't silently mark the page as error. It should do
-what can be done and  leave the rest to the upper layer. To do so, we
-should set rdata/wdata->res.count properly.
+I'd prefer to have the objects and blocks set desc->pg_bsize correctly
+according to their requirements. Otherwise, some of the tests make no
+sense...
 
-When upper layer re-send the read/write request to finish the rest
-part of the request, pgbase is the position where we should start at.
-
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfsblock: handle errors when read or write pagelist.]
-Signed-off-by: Zhang Jingwang <yyalone@gmail.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/blocklayout.c |  141 ++++++++++++++++++++++++++++++++++++-
- 1 files changed, 137 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 9c46f5a..df0cfe4 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -335,9 +335,69 @@ bl_read_pagelist(struct pnfs_layout_type *lo,
- 	return PNFS_NOT_ATTEMPTED;
- }
- 
--/* FRED - It can indicate bytes written in wdata->res.count.
-- * It can indicate error status in wdata->task.tk_status.
-+/* STUB - this needs thought */
-+static inline void
-+bl_done_with_wpage(struct page *page, const int ok)
-+{
-+	if (!ok) {
-+		SetPageError(page);
-+		SetPagePnfsErr(page);
-+		/* This is an inline copy of nfs_zap_mapping */
-+		/* This is oh so fishy, and needs deep thought */
-+		if (page->mapping->nrpages != 0) {
-+			struct inode *inode = page->mapping->host;
-+			spin_lock(&inode->i_lock);
-+			NFS_I(inode)->cache_validity |= NFS_INO_INVALID_DATA;
-+			spin_unlock(&inode->i_lock);
-+		}
-+	}
-+	/* end_page_writeback called in rpc_release.  Should be done here. */
-+}
-+
-+/* This is basically copied from mpage_end_io_read */
-+static void bl_end_io_write(struct bio *bio, int err)
-+{
-+	void *data = bio->bi_private;
-+	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
-+	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
-+
-+	do {
-+		struct page *page = bvec->bv_page;
-+
-+		if (--bvec >= bio->bi_io_vec)
-+			prefetchw(&bvec->bv_page->flags);
-+		bl_done_with_wpage(page, uptodate);
-+	} while (bvec >= bio->bi_io_vec);
-+	bio_put(bio);
-+	put_parallel(data);
-+}
-+
-+/* Function scheduled for call during bl_end_par_io_write,
-+ * it marks sectors as written and extends the commitlist.
-  */
-+static void bl_write_cleanup(struct work_struct *work)
-+{
-+	struct rpc_task *task;
-+	struct nfs_write_data *wdata;
-+	dprintk("%s enter\n", __func__);
-+	task = container_of(work, struct rpc_task, u.tk_work);
-+	wdata = container_of(task, struct nfs_write_data, task);
-+	pnfs_callback_ops->nfs_writelist_complete(wdata);
-+}
-+
-+/* Called when last of bios associated with a bl_write_pagelist call finishes */
-+static void
-+bl_end_par_io_write(void *data)
-+{
-+	struct nfs_write_data *wdata = data;
-+
-+	/* STUB - ignoring error handling */
-+	wdata->task.tk_status = 0;
-+	wdata->verf.committed = NFS_FILE_SYNC;
-+	INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
-+	schedule_work(&wdata->task.u.tk_work);
-+}
-+
- static enum pnfs_try_status
- bl_write_pagelist(struct pnfs_layout_type *lo,
- 		struct page **pages,
-@@ -348,8 +408,81 @@ bl_write_pagelist(struct pnfs_layout_type *lo,
- 		int sync,
- 		struct nfs_write_data *wdata)
- {
--	dprintk("%s enter - just using nfs\n", __func__);
--	return PNFS_NOT_ATTEMPTED;
-+	int i;
-+	struct bio *bio = NULL;
-+	struct pnfs_block_extent *be = NULL;
-+	sector_t isect, extent_length = 0;
-+	struct parallel_io *par;
-+	int pg_index = pgbase >> PAGE_CACHE_SHIFT;
-+
-+	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
-+	if (!test_bit(PG_USE_PNFS, &wdata->req->wb_flags)) {
-+		dprintk("PG_USE_PNFS not set\n");
-+		return PNFS_NOT_ATTEMPTED;
-+	}
-+	if (dont_like_caller(wdata->req)) {
-+		dprintk("%s dont_like_caller failed\n", __func__);
-+		return PNFS_NOT_ATTEMPTED;
-+	}
-+	/* At this point, wdata->pages is a (sequential) list of nfs_pages.
-+	 * We want to write each, and if there is an error remove it from
-+	 * list and call
-+	 * nfs_retry_request(req) to have it redone using nfs.
-+	 * QUEST? Do as block or per req?  Think have to do per block
-+	 * as part of end_bio
-+	 */
-+	par = alloc_parallel(wdata);
-+	if (!par)
-+		return PNFS_NOT_ATTEMPTED;
-+	par->call_ops = *wdata->pdata.call_ops;
-+	par->call_ops.rpc_call_done = bl_rpc_do_nothing;
-+	par->pnfs_callback = bl_end_par_io_write;
-+	/* At this point, have to be more careful with error handling */
-+
-+	isect = (sector_t) ((offset & (long)PAGE_CACHE_MASK) >> 9);
-+	for (i = pg_index; i < nr_pages; i++) {
-+		if (!extent_length) {
-+			/* We've used up the previous extent */
-+			put_extent(be);
-+			bio = bl_submit_bio(WRITE, bio);
-+			/* Get the next one */
-+			be = find_get_extent(BLK_LSEG2EXT(wdata->pdata.lseg),
-+					     isect, NULL);
-+			if (!be || !is_writable(be, isect)) {
-+				/* FIXME */
-+				bl_done_with_wpage(pages[i], 0);
-+				break;
-+			}
-+			extent_length = be->be_length -
-+				(isect - be->be_f_offset);
-+		}
-+		for (;;) {
-+			if (!bio) {
-+				bio = bio_alloc(GFP_NOIO, nr_pages - i);
-+				if (!bio) {
-+					/* Error out this page */
-+					/* FIXME */
-+					bl_done_with_wpage(pages[i], 0);
-+					break;
-+				}
-+				bio->bi_sector = isect - be->be_f_offset +
-+					be->be_v_offset;
-+				bio->bi_bdev = be->be_mdev;
-+				bio->bi_end_io = bl_end_io_write;
-+				bio->bi_private = par;
-+			}
-+			if (bio_add_page(bio, pages[i], PAGE_SIZE, 0))
-+				break;
-+			bio = bl_submit_bio(WRITE, bio);
-+		}
-+		isect += PAGE_CACHE_SIZE >> 9;
-+		extent_length -= PAGE_CACHE_SIZE >> 9;
-+	}
-+	wdata->res.count = (isect << 9) - (offset & (long)PAGE_CACHE_MASK);
-+	put_extent(be);
-+	bl_submit_bio(WRITE, bio);
-+	put_parallel(par);
-+	return PNFS_ATTEMPTED;
- }
- 
- /* FIXME - range ignored */
 -- 
-1.7.4.1
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
