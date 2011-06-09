@@ -1,197 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:54609 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754972Ab1FKM1Q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Jun 2011 08:27:16 -0400
-Received: by iwn34 with SMTP id 34so2779541iwn.19
-        for <linux-nfs@vger.kernel.org>; Sat, 11 Jun 2011 05:27:16 -0700 (PDT)
-Message-ID: <4DF35F17.20501@tonian.com>
-Date: Sat, 11 Jun 2011 08:27:03 -0400
-From: Benny Halevy <benny@tonian.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: "J. Bruce Fields" <bfields@citi.umich.edu>,
-        NFS list <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [RFC] pnfsd: Return all ROC layouts On Close
-References: <4DE3B812.8020804@panasas.com> <4DE3D392.3020902@panasas.com> <4DF27702.4060900@tonian.com> <4DF2A20B.2030901@panasas.com>
-In-Reply-To: <4DF2A20B.2030901@panasas.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:33008 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751130Ab1FJDHc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 23:07:32 -0400
+Received: by iyb14 with SMTP id 14so1863051iyb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Jun 2011 20:07:32 -0700 (PDT)
+Message-ID: <4DF13B65.5030401@panasas.com>
+Date: Thu, 09 Jun 2011 14:30:13 -0700
+From: Benny Halevy <bhalevy@panasas.com>
+To: Peng Tao <bergwolf@gmail.com>
+CC: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu> <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu> <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com> <BANLkTi=SMQhUNHEy=-ZPqFtCgKcnCtks=w@mail.gmail.com>
+In-Reply-To: <BANLkTi=SMQhUNHEy=-ZPqFtCgKcnCtks=w@mail.gmail.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-06-10 19:00, Boaz Harrosh wrote:
-> On 06/10/2011 12:56 PM, Benny Halevy wrote:
->> On 2011-05-30 13:27, Benny Halevy wrote:
->>> On 2011-05-30 18:30, Boaz Harrosh wrote:
+On 2011-06-09 07:54, Peng Tao wrote:
+> On Thu, Jun 9, 2011 at 2:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+>> On 2011-06-08 03:15, Peng Tao wrote:
+>>> On 6/8/11, Jim Rees <rees@umich.edu> wrote:
+>>>> Benny Halevy wrote:
 >>>>
->>>> As talk to with Trond, when a client has sent an nfs4_close, the
->>>> server can surly assume that the given client has already forgotten
->>>> all it's ROC given layouts. And in fact the current Linux-client goes
->>>> to grate length to make sure all ROC layouts are invalidated, before
->>>> sending the close. If a new open+IO comes in and tries to get a new layout,
->>>> it will wait for the nfs4_close to return before sending the new layout_get.
+>>>>   NAK.
+>>>>   This affects all layout types.  In particular it is undesired
+>>>>   for write layouts that extend the file with the objects layout.
+>>>>   The server can extend the layout segments range
+>>>>   over what the client requested so why would the client
+>>>>   ask for artificially large layouts?
 >>>>
->>>> So in light of above the server should simulate layout_return and remove
->>>> any layouts marked ROC on nfs4_close.
+>>>> This has actually been the subject of some debate over Thursday night
+>>>> beers.  The problem we're trying to solve is that the client is spending 98%
+>>>> of its time in layoutget.  This patch gives us something like a 10x
+>>>> speedup.  But many of us think it's not the right fix.  I suggest we discuss
+>>>> next week.
 >>>>
->>>> Current code is protocol correct, but a more fine-grained approach can be
->>>> devised to also release layouts in open_downgrade, of all unused iomodes.
->>>> But to do this I'll need the help of an expert.
->>>>
->>>> With this patch in, I'm finally able to run with the new Linux-Client together
->>>> with a Linux-Server. Before, the layouts where only released and freed on umount
->>>> and in a modest machine like the UML I use, few 10s of "git checkout linux" the
->>>> server would oom.
->>>>
->>>> Benny please submit it to the pnfs tree, so we can run with this in Bakeathone.
->>>>
->>>> So please all help me to verify and refine this code.
->>>>
->>>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
->>>> ---
->>>>  fs/nfsd/nfs4pnfsd.c |   44 ++++++++++++++++++++++++++++++++++++++++++--
->>>>  fs/nfsd/nfs4state.c |    3 +++
->>>>  fs/nfsd/pnfsd.h     |    3 +++
->>>>  3 files changed, 48 insertions(+), 2 deletions(-)
->>>>
->>>> diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
->>>> index 9089e6b9..d8f744e 100644
->>>> --- a/fs/nfsd/nfs4pnfsd.c
->>>> +++ b/fs/nfsd/nfs4pnfsd.c
->>>> @@ -402,7 +402,8 @@ init_layout(struct nfs4_layout_state *ls,
->>>>  	    struct nfs4_client *clp,
->>>>  	    struct svc_fh *current_fh,
->>>>  	    struct nfsd4_layout_seg *seg,
->>>> -	    stateid_t *stateid)
->>>> +	    stateid_t *stateid,
->>>> +	    bool roc)
->>>>  {
->>>>  	dprintk("pNFS %s: ls %p lp %p clp %p fp %p ino %p\n", __func__,
->>>>  		ls, lp, clp, fp, fp->fi_inode);
->>>> @@ -412,6 +413,7 @@ init_layout(struct nfs4_layout_state *ls,
->>>>  	lp->lo_file = fp;
->>>>  	get_layout_state(ls);
->>>>  	lp->lo_state = ls;
->>>> +	lp->lo_roc = roc;
->>>>  	memcpy(&lp->lo_seg, seg, sizeof(lp->lo_seg));
->>>>  	spin_lock(&layout_lock);
->>>>  	update_layout_stateid(ls, stateid);
->>>> @@ -914,7 +916,8 @@ nfs4_pnfs_get_layout(struct nfsd4_pnfs_layoutget *lgp,
->>>>  		goto out_freelayout;
->>>>  
->>>>  	/* Can't merge, so let's initialize this new layout */
->>>> -	init_layout(ls, lp, fp, clp, lgp->lg_fhp, &res.lg_seg, &lgp->lg_sid);
->>>> +	init_layout(ls, lp, fp, clp, lgp->lg_fhp, &res.lg_seg, &lgp->lg_sid,
->>>> +		    res.lg_return_on_close);
->>>>  out_unlock:
->>>>  	if (ls)
->>>>  		put_layout_state(ls);
->>>> @@ -1328,6 +1331,43 @@ nomatching_layout(struct nfs4_layoutrecall *clr)
->>>>  	iput(inode);
->>>>  }
->>>>  
->>>> +/* Return On Close:
->>>> + *   Look for all layouts of @fp that belong to @clp, if ROC is set, remove
->>>> + *   the layout and simulate a layout_return. Surly the client has forgotten
->>>> + *   these layouts or it would return them before the close.
->>>> + */
->>>> +void pnfs_roc(struct nfs4_client *clp, struct nfs4_file *fp,
->>>> +	      enum pnfs_iomode iomode)
->>>
->>> what's the iomode for?
->>>
->>> The nfs CLOSE operation is sent on the final close on the client side.
->>> otherwise you'd get an OPEN_DOWNGRADE for which return on close is not
->>> really defined.
 >>
->> Ping... :)
+>> Sure.
+>>
+>>>> But note that this patch doesn't change anything unless you set the sysctl.
+>>> there is a default value of 2M. maybe we can set it to page size by
+>>> default so other layout are not affected and block layout can let
+>>> users set it by hand if they care about performance. does this make
+>>> sense?
+>>
+>> If doing it at all why use a sysctl rather than a mount option?
+> The purpose of using a sysctl is to give client the ability to change
+> it on the fly. In theory, layout prefetching can benefit all layout
+> types. So the patch tries to solve it in the pnfs generic layer.
+> 
+
+But the need for this varies per-server and many times per application.
+Think sequential vs. random I/O.  Therefore a mount option would help
+tuning the behavior on a per-use basis.  Global behavior must be implemented
+using a dynamic algorithm that would take both the workload and the server
+observed behavior into account.
+
+Benny
+
+>> Or maybe coding the logic for prefetching the layout iff sequential
+>> access is detected is the right thing to do.
+> Yeah, automatic decision should be a better way.
+> 
 >>
 >> Benny
 >>
-> 
-> Fine just drop the iomode param for now. But with out this patch I cannot
-> run
-
-Sure, no problem....
-
-> 
-> Boaz
-> 
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>
 >>>
->>> Benny
 >>>
->>>> +{
->>>> +	struct nfs4_layout *lo, *nextlp;
->>>> +
->>>> +	spin_lock(&layout_lock);
->>>> +	list_for_each_entry_safe (lo, nextlp, &fp->fi_layouts, lo_perfile) {
->>>> +		struct nfsd4_pnfs_layoutreturn lr;
->>>> +		bool empty;
->>>> +
->>>> +		/* Check for a match */
->>>> +		if (!lo->lo_roc ||
->>>> +		    (lo->lo_client != clp) ||
->>>> +		    ((iomode != IOMODE_ANY) && (lo->lo_seg.iomode != iomode))
->>>> +		)
->>>> +			continue;
->>>> +
->>>> +		/* Return the layout */
->>>> +		memset(&lr, 0, sizeof(lr));
->>>> +		lr.args.lr_return_type = RETURN_FILE;
->>>> +		lr.args.lr_seg = lo->lo_seg;
->>>> +		dequeue_layout(lo);
->>>> +		destroy_layout(lo); /* do not access lp after this */
->>>> +
->>>> +		empty = list_empty(&fp->fi_layouts);
->>>> +		fs_layout_return(fp->fi_inode->i_sb, fp->fi_inode, &lr,
->>>> +				 LR_FLAG_EXPIRE,
->>>> +				 empty ? PNFS_LAST_LAYOUT_NO_RECALLS : NULL);
->>>> +	}
->>>> +	spin_unlock(&layout_lock);
->>>> +}
->>>> +
->>>>  void pnfs_expire_client(struct nfs4_client *clp)
->>>>  {
->>>>  	for (;;) {
->>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->>>> index 66f6f48..a116e41 100644
->>>> --- a/fs/nfsd/nfs4state.c
->>>> +++ b/fs/nfsd/nfs4state.c
->>>> @@ -3592,6 +3592,9 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>>>  	/* release_stateid() calls nfsd_close() if needed */
->>>>  	release_open_stateid(stp);
->>>>  
->>>> +	/* RFC: what to do with IOMODE */
->>>> +	pnfs_roc(stp->st_stateowner->so_client, stp->st_file, IOMODE_ANY);
->>>> +
->>>>  	/* place unused nfs4_stateowners on so_close_lru list to be
->>>>  	 * released by the laundromat service after the lease period
->>>>  	 * to enable us to handle CLOSE replay
->>>> diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
->>>> index c11d93d..fcb16d2 100644
->>>> --- a/fs/nfsd/pnfsd.h
->>>> +++ b/fs/nfsd/pnfsd.h
->>>> @@ -59,6 +59,7 @@ struct nfs4_layout {
->>>>  	struct nfs4_client		*lo_client;
->>>>  	struct nfs4_layout_state	*lo_state;
->>>>  	struct nfsd4_layout_seg 	lo_seg;
->>>> +	bool				lo_roc;
->>>>  };
->>>>  
->>>>  struct pnfs_inval_state {
->>>> @@ -124,6 +125,8 @@ int nfs4_pnfs_cb_change_state(struct pnfs_get_state *);
->>>>  void nfs4_ds_get_verifier(stateid_t *, struct super_block *, u32 *);
->>>>  int put_layoutrecall(struct nfs4_layoutrecall *);
->>>>  void nomatching_layout(struct nfs4_layoutrecall *);
->>>> +void pnfs_roc(struct nfs4_client *clp, struct nfs4_file *fp,
->>>> +	      enum pnfs_iomode iomode);
->>>>  void *layoutrecall_done(struct nfs4_layoutrecall *);
->>>>  void nfsd4_cb_layout(struct nfs4_layoutrecall *);
->>>>  int nfsd_layout_recall_cb(struct super_block *, struct inode *,
->>>
+>>
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
