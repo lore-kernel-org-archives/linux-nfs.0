@@ -1,115 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:45793 "EHLO
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:60332 "EHLO
 	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754717Ab1FLXpM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2011 19:45:12 -0400
-Message-Id: <5e62a78152b0dbe63b6a675a1f209679bc6f3d18.1307921138.git.rees@umich.edu>
-In-Reply-To: <cover.1307921137.git.rees@umich.edu>
-References: <cover.1307921137.git.rees@umich.edu>
-Date: Sun, 12 Jun 2011 19:45:09 -0400
-Subject: [PATCH 33/34] Add configurable prefetch size for layoutget
+	with ESMTP id S1757987Ab1FIN6s (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 09:58:48 -0400
+Date: Thu, 9 Jun 2011 09:58:46 -0400
 From: Jim Rees <rees@umich.edu>
-To: linux-nfs@vger.kernel.org
-Cc: peter honeyman <honey@citi.umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Peng Tao <bergwolf@gmail.com>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+Message-ID: <20110609135846.GA32565@merit.edu>
+References: <cover.1307464381.git.rees@umich.edu>
+ <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu>
+ <4DEED80A.4000102@panasas.com>
+ <20110608021852.GA20998@merit.edu>
+ <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com>
+ <4DF062D6.7010304@panasas.com>
+ <20110609114929.GA28157@merit.edu>
+ <4DF0CB5D.60000@panasas.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4DF0CB5D.60000@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Peng Tao <peng_tao@emc.com>
+Benny Halevy wrote:
 
-pnfs_layout_prefetch_kb can be modified via sysctl.
-default to 0 so no effect if not set via sysctl.
+  > My understanding is that layoutget specifies a min and max, and the server
+  
+  There's a min.  What do you consider the max?
+  Whatever gets into csa_fore_chan_attrs.ca_maxresponsesize?
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/pnfs.c   |   17 +++++++++++++++++
- fs/nfs/pnfs.h   |    1 +
- fs/nfs/sysctl.c |   10 ++++++++++
- 3 files changed, 28 insertions(+), 0 deletions(-)
+The spec doesn't say max, it says "desired."  I guess I assumed the server
+wouldn't normally return more than desired.
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 48a06a1..7b0c8dd 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -46,6 +46,11 @@ static DEFINE_SPINLOCK(pnfs_spinlock);
-  */
- static LIST_HEAD(pnfs_modules_tbl);
- 
-+/*
-+ * layoutget prefetch size
-+ */
-+unsigned int pnfs_layout_prefetch_kb = 0;
-+
- /* Return the registered pnfs layout driver module matching given id */
- static struct pnfs_layoutdriver_type *
- find_pnfs_driver_locked(u32 id)
-@@ -908,6 +913,16 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
- }
- 
- /*
-+ * Set layout prefetch length.
-+ */
-+static void
-+pnfs_set_layout_prefetch(struct pnfs_layout_range *range)
-+{
-+	if (range->length < (pnfs_layout_prefetch_kb << 10))
-+		range->length = pnfs_layout_prefetch_kb << 10;
-+}
-+
-+/*
-  * Layout segment is retreived from the server if not cached.
-  * The appropriate layout segment is referenced and returned to the caller.
-  */
-@@ -958,6 +973,8 @@ pnfs_update_layout(struct inode *ino,
- 
- 	if (pnfs_layoutgets_blocked(lo, NULL, 0))
- 		goto out_unlock;
-+
-+	pnfs_set_layout_prefetch(&arg);
- 	atomic_inc(&lo->plh_outstanding);
- 
- 	get_layout_hdr(lo);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 5048898..e12a77de 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -179,6 +179,7 @@ extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
- extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
- 
- /* pnfs.c */
-+extern unsigned int pnfs_layout_prefetch_kb;
- void get_layout_hdr(struct pnfs_layout_hdr *lo);
- void put_lseg(struct pnfs_layout_segment *lseg);
- struct pnfs_layout_segment *
-diff --git a/fs/nfs/sysctl.c b/fs/nfs/sysctl.c
-index 978aaeb..79a5134 100644
---- a/fs/nfs/sysctl.c
-+++ b/fs/nfs/sysctl.c
-@@ -14,6 +14,7 @@
- #include <linux/nfs_fs.h>
- 
- #include "callback.h"
-+#include "pnfs.h"
- 
- #ifdef CONFIG_NFS_V4
- static const int nfs_set_port_min = 0;
-@@ -42,6 +43,15 @@ static ctl_table nfs_cb_sysctls[] = {
- 	},
- #endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
- #endif
-+#ifdef CONFIG_NFS_V4_1
-+	{
-+		.procname	= "pnfs_layout_prefetch_kb",
-+		.data		= &pnfs_layout_prefetch_kb,
-+		.maxlen		= sizeof(pnfs_layout_prefetch_kb),
-+		.mode		= 0644,
-+		.proc_handler	= proc_dointvec,
-+	},
-+#endif
- 	{
- 		.procname	= "nfs_mountpoint_timeout",
- 		.data		= &nfs_mountpoint_expiry_timeout,
--- 
-1.7.4.1
+18.43.3.  DESCRIPTION
+...
 
+   The LAYOUTGET operation returns layout information for the specified
+   byte-range: a layout.  The client actually specifies two ranges, both
+   starting at the offset in the loga_offset field.  The first range is
+   between loga_offset and loga_offset + loga_length - 1 inclusive.
+   This range indicates the desired range the client wants the layout to
+   cover.  The second range is between loga_offset and loga_offset +
+   loga_minlength - 1 inclusive.  This range indicates the required
+   range the client needs the layout to cover.  Thus, loga_minlength
+   MUST be less than or equal to loga_length.
