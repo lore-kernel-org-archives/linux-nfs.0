@@ -1,78 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:50616 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758888Ab1FVViV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 17:38:21 -0400
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH 03/11] nfs:  Add srcaddr member to nfs_client.
-Date: Wed, 22 Jun 2011 14:36:43 -0700
-Message-Id: <1308778611-9370-4-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1308778611-9370-1-git-send-email-greearb@candelatech.com>
-References: <1308778611-9370-1-git-send-email-greearb@candelatech.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:42279 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754736Ab1FJTHt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 15:07:49 -0400
+Received: by iyb14 with SMTP id 14so2412171iyb.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Jun 2011 12:07:48 -0700 (PDT)
+Message-ID: <4DF26B82.5000002@panasas.com>
+Date: Fri, 10 Jun 2011 15:07:46 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: tao.peng@emc.com
+CC: bergwolf@gmail.com, rees@umich.edu, linux-nfs@vger.kernel.org,
+        honey@citi.umich.edu
+Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu> <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu> <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com> <BANLkTi=SMQhUNHEy=-ZPqFtCgKcnCtks=w@mail.gmail.com> <4DF13B65.5030401@panasas.com> <F19688880B763E40B28B2B462677FBF805BED9D222@MX09A.corp.emc.com> <4DF21267.9060706@panasas.com> <F19688880B763E40B28B2B462677FBF805BED9D2AE@MX09A.corp.emc.com>
+In-Reply-To: <F19688880B763E40B28B2B462677FBF805BED9D2AE@MX09A.corp.emc.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
+On 2011-06-10 10:30, tao.peng@emc.com wrote:
+> 
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Benny Halevy
+> Sent: Friday, June 10, 2011 8:48 PM
+> To: Peng, Tao
+> Cc: bergwolf@gmail.com; rees@umich.edu; linux-nfs@vger.kernel.org; honey@citi.umich.edu
+> Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+> 
+> On 2011-06-10 02:02, tao.peng@emc.com wrote:
+>> Hi, Benny,
+>>
+>> Cheers,
+>> -Bergwolf
+>>
+>>
+>> -----Original Message-----
+>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Benny Halevy
+>> Sent: Friday, June 10, 2011 5:30 AM
+>> To: Peng Tao
+>> Cc: Jim Rees; linux-nfs@vger.kernel.org; peter honeyman
+>> Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+>>
+>> On 2011-06-09 07:54, Peng Tao wrote:
+>>> On Thu, Jun 9, 2011 at 2:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+>>>> On 2011-06-08 03:15, Peng Tao wrote:
+>>>>> On 6/8/11, Jim Rees <rees@umich.edu> wrote:
+>>>>>> Benny Halevy wrote:
+>>>>>>
+>>>>>>   NAK.
+>>>>>>   This affects all layout types.  In particular it is undesired
+>>>>>>   for write layouts that extend the file with the objects layout.
+>>>>>>   The server can extend the layout segments range
+>>>>>>   over what the client requested so why would the client
+>>>>>>   ask for artificially large layouts?
+>>>>>>
+>>>>>> This has actually been the subject of some debate over Thursday night
+>>>>>> beers.  The problem we're trying to solve is that the client is spending 98%
+>>>>>> of its time in layoutget.  This patch gives us something like a 10x
+>>>>>> speedup.  But many of us think it's not the right fix.  I suggest we discuss
+>>>>>> next week.
+>>>>>>
+>>>>
+>>>> Sure.
+>>>>
+>>>>>> But note that this patch doesn't change anything unless you set the sysctl.
+>>>>> there is a default value of 2M. maybe we can set it to page size by
+>>>>> default so other layout are not affected and block layout can let
+>>>>> users set it by hand if they care about performance. does this make
+>>>>> sense?
+>>>>
+>>>> If doing it at all why use a sysctl rather than a mount option?
+>>> The purpose of using a sysctl is to give client the ability to change
+>>> it on the fly. In theory, layout prefetching can benefit all layout
+>>> types. So the patch tries to solve it in the pnfs generic layer.
+>>>
+>>
+>> But the need for this varies per-server and many times per application.
+>> Think sequential vs. random I/O.  Therefore a mount option would help
+>> tuning the behavior on a per-use basis.  Global behavior must be implemented
+>> using a dynamic algorithm that would take both the workload and the server
+>> observed behavior into account.
+>> [PT] Indeed. Dynamic algorithm is supposed to be able to solve all this. And it often takes longer to be designed/accepted. It has to prove to be better in most scenarios and does not hurt the left.
+> 
+> We need to find an acceptable solution to push this driver upstream.
+> I understand that developing a dynamic algorithm in the given time frame is
+> too big of a challenge, but hacking yet another client tunable is out of the
+> question either.   For testing in the Bakeathon I'd consider taking a DEVONLY version
+> of this patch that is enabled using a config option and defaults to zero to have no effect
+> in run-time until the sysctl is sets it differently.
+> But keep in mind this is not suitable for pushing upstream.
+> [PT] Thanks for your understanding. We truly want to solve the performance problem and are open to suggestions. And this will be a feature that benefits all layout types, am I right?
 
+Adaptive layout prefetching at the client side is a nice workaround for
+naive server implementations but you can't get around implementing
+a more sophisticated algorithm on the server side.  As for the benefit,
+if yo implement such an algorithm, on the client side I would like it
+to be implemented generically so that all layout types could benefit
+from it.
 
-Signed-off-by: Ben Greear <greearb@candelatech.com>
----
-:100644 100644 2a55347... 93979a9... M	fs/nfs/internal.h
-:100644 100644 ce40e5c... cb41131... M	fs/nfs/super.c
-:100644 100644 87694ca... 9db4473... M	include/linux/nfs_fs_sb.h
- fs/nfs/internal.h         |    5 +++++
- fs/nfs/super.c            |    2 ++
- include/linux/nfs_fs_sb.h |    4 ++++
- 3 files changed, 11 insertions(+), 0 deletions(-)
+Benny
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 2a55347..93979a9 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -107,6 +107,11 @@ struct nfs_parsed_mount_data {
- 	struct {
- 		struct sockaddr_storage	address;
- 		size_t			addrlen;
-+	} srcaddr;
-+
-+	struct {
-+		struct sockaddr_storage address;
-+		size_t                  addrlen;
- 		char			*hostname;
- 		u32			version;
- 		int			port;
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index ce40e5c..cb41131 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -904,6 +904,8 @@ static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(unsigned int ve
- 		data->auth_flavor_len	= 1;
- 		data->version		= version;
- 		data->minorversion	= 0;
-+		data->srcaddr.address.ss_family = AF_UNSPEC;
-+		data->srcaddr.addrlen = sizeof(data->srcaddr.address);
- 	}
- 	return data;
- }
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 87694ca..9db4473 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -80,6 +80,10 @@ struct nfs_client {
- 	struct list_head	cl_layouts;
- #endif /* CONFIG_NFS_V4 */
- 
-+	/* If we should bind to a local IP, it should be specified below. */
-+	struct sockaddr_storage	srcaddr;
-+	size_t			srcaddrlen;
-+
- #ifdef CONFIG_NFS_FSCACHE
- 	struct fscache_cookie	*fscache;	/* client index cache cookie */
- #endif
--- 
-1.7.3.4
-
+> 
+> -Tao
