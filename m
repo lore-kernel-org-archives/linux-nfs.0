@@ -1,89 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:62443 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753924Ab1FVMdY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 08:33:24 -0400
-Received: by qwk3 with SMTP id 3so347016qwk.19
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Jun 2011 05:33:23 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, neilb@suse.de, chuck.lever@oracle.com,
-        bfields@fieldses.org
-Subject: [PATCH] nfs: fix host_reliable_addrinfo
-Date: Wed, 22 Jun 2011 08:33:19 -0400
-Message-Id: <1308745999-6551-1-git-send-email-jlayton@redhat.com>
+Received: from mail.candelatech.com ([208.74.158.172]:44580 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756617Ab1FJVIW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 17:08:22 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH v3 0/6] nfs-utils:  Support binding to source address.
+Date: Fri, 10 Jun 2011 14:08:10 -0700
+Message-Id: <1307740096-19933-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-According to Neil Brown:
+From: Ben Greear <greearb@candelatech.com>
 
-    The point of the word 'reliable' is to check that the name we get
-    really does belong to the host in question - ie that both the
-    forward and reverse maps agree.
+This lets one specify the source IP address for
+sockets, allowing users to leverage routing rules
+on multi-homed systems.
 
-    But the new code doesn't do that check at all.  Rather it simply
-    maps the address to a name, then discards the address and maps the
-    name back to a list of addresses and uses that list of addresses as
-    "where the request came from" for permission checking.
+Kernel patches to RPC and NFS are needed to complete
+full functionality.
 
-Fix this by instead using the forward lookup of the hostname just to
-verify that the original address is in the list. Then do a numeric
-lookup using the address and stick the hostname in the ai_canonname.
+v5:  Fix compile error with ipv6 enabled.  One minor
+       change to patch 1.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Reviewed-by: NeilBrown <neilb@suse.de>
----
- support/export/hostname.c |   26 ++++++++++++++++++++++++--
- 1 files changed, 24 insertions(+), 2 deletions(-)
+v4:  Remove get_socket() modifications: stropt mount doesn't use them.
+       (This removed old patch 4, and modified patch 1)
+     Remove open-parsing of srcaddr= in mount logic.  Move parsing
+       to nfs_validate_options()
 
-diff --git a/support/export/hostname.c b/support/export/hostname.c
-index efcb75c..595333e 100644
---- a/support/export/hostname.c
-+++ b/support/export/hostname.c
-@@ -268,7 +268,7 @@ __attribute_malloc__
- struct addrinfo *
- host_reliable_addrinfo(const struct sockaddr *sap)
- {
--	struct addrinfo *ai;
-+	struct addrinfo *ai, *a;
- 	char *hostname;
- 
- 	hostname = host_canonname(sap);
-@@ -276,9 +276,31 @@ host_reliable_addrinfo(const struct sockaddr *sap)
- 		return NULL;
- 
- 	ai = host_addrinfo(hostname);
-+	if (!ai)
-+		goto out_free_hostname;
- 
--	free(hostname);
-+	/* make sure there's a matching address in the list */
-+	for (a = ai; a; a = a->ai_next)
-+		if (nfs_compare_sockaddr(a->ai_addr, sap))
-+			break;
-+
-+	freeaddrinfo(ai);
-+	if (!a)
-+		goto out_free_hostname;
-+
-+	/* get addrinfo with just the original address */
-+	ai = host_numeric_addrinfo(sap);
-+	if (!ai)
-+		goto out_free_hostname;
-+
-+	/* and populate its ai_canonname field */
-+	free(ai->ai_canonname);
-+	ai->ai_canonname = hostname;
- 	return ai;
-+
-+out_free_hostname:
-+	free(hostname);
-+	return NULL;
- }
- 
- /**
+Ben Greear (6):
+  nfs-utils:  Add structure for passing local binding info.
+  nfs-utils:  Add patch to parse srcaddr= option.
+  nfs-utils:  Implement srcaddr binding in rpc_socket
+  nfs-utils:  Support srcaddr=n option for string mount.
+  nfs-utils:  Implement srcaddr=n binding for unmount.
+  nfs-utils:  Update man page for srcaddr= option.
+
+ support/include/nfsrpc.h   |   23 ++++++---
+ support/include/sockaddr.h |    6 ++
+ support/nfs/getport.c      |   39 ++++++++++------
+ support/nfs/rpc_socket.c   |   96 +++++++++++++++++++++++++++-----------
+ utils/gssd/gssd.h          |    2 +
+ utils/gssd/gssd_proc.c     |   33 ++++++++------
+ utils/mount/network.c      |  111 ++++++++++++++++++++++++++++++++++----------
+ utils/mount/network.h      |   16 ++++--
+ utils/mount/nfs.man        |    7 +++
+ utils/mount/nfsmount.c     |    2 +-
+ utils/mount/nfsumount.c    |   26 +++++++++-
+ utils/mount/stropts.c      |   29 ++++++++++--
+ utils/mount/utils.c        |    6 ++-
+ utils/mount/utils.h        |    4 +-
+ 14 files changed, 296 insertions(+), 104 deletions(-)
+
 -- 
-1.7.5.4
+1.7.3.4
 
