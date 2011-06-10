@@ -1,37 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:37370 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753369Ab1F2TRs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jun 2011 15:17:48 -0400
-Date: Wed, 29 Jun 2011 15:17:46 -0400
-From: Jim Rees <rees@umich.edu>
-To: Tom Haynes <tdh@excfb.com>
-Cc: peter.staubach@emc.com, SteveD@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/1] Remove warnings on various platforms
-Message-ID: <20110629191746.GA8136@merit.edu>
-References: <y>
- <1309299723-31539-2-git-send-email-tdh@excfb.com>
- <5E6794FC7B8FCA41A704019BE3C70E8B8285F299@MX31A.corp.emc.com>
- <20110629172858.GA6258@adept.internal.excfb.com>
- <5E6794FC7B8FCA41A704019BE3C70E8B8285F3CB@MX31A.corp.emc.com>
- <20110629183235.GA6422@adept.internal.excfb.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110629183235.GA6422@adept.internal.excfb.com>
+Received: from mail.candelatech.com ([208.74.158.172]:53563 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757806Ab1FJSKn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 14:10:43 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH 4/7] nfs-utils:  Implement srcaddr binding in network.c
+Date: Fri, 10 Jun 2011 11:09:36 -0700
+Message-Id: <1307729379-7702-5-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1307729379-7702-1-git-send-email-greearb@candelatech.com>
+References: <1307729379-7702-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Tom Haynes wrote:
+From: Ben Greear <greearb@candelatech.com>
 
-  On Wed, Jun 29, 2011 at 02:16:24PM -0400, peter.staubach@emc.com wrote:
+Implement binding logic in get_socket() if local_ip
+argument is not NULL.
 
-  > Perhaps we could also consider cleaning up tests.init?  The lists of
-    commented out options seems quite unwieldly to me.  Do we really need
-    all of that stuff, especially for the much older systems?
-  
-  Yeah, I've been wondering if modern tools like autoconfig would work
-  here. 
+Note that this method had issues with supporting IPv6 before
+this patch, and this patch does NOT resolve them.
 
-I don't know that we need full-blown autoconf, which has portability
-problems of its own.  Maybe a shell script or makefile that figures out (or
-asks) what you're running on and tweaks tests.init for you.
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+:100644 100644 36c2e94... 5419c5d... M	utils/mount/network.c
+ utils/mount/network.c |   21 ++++++++++++++++++---
+ 1 files changed, 18 insertions(+), 3 deletions(-)
+
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 36c2e94..5419c5d 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -461,19 +461,34 @@ static int get_socket(struct sockaddr_in *saddr, unsigned int p_prot,
+ 	int so, cc, type;
+ 	struct sockaddr_in laddr;
+ 	socklen_t namelen = sizeof(laddr);
++	int f = AF_INET;
++
++	if (local_ip && local_ip->is_set)
++		f = local_ip->addr.sa.sa_family;
+ 
+ 	type = (p_prot == IPPROTO_UDP ? SOCK_DGRAM : SOCK_STREAM);
+-	if ((so = socket (AF_INET, type, p_prot)) < 0)
++
++	so = socket(f, type, p_prot);
++	if (so < 0)
+ 		goto err_socket;
+ 
+-	laddr.sin_family = AF_INET;
++	laddr.sin_family = f;
+ 	laddr.sin_port = 0;
+ 	laddr.sin_addr.s_addr = htonl(INADDR_ANY);
+ 	if (resvp) {
++		/* TODO:  Support IPv6 */
++		if (local_ip && local_ip->is_set
++		    && local_ip->addr.sa.sa_family == AF_INET) {
++			struct sockaddr_in *si = &local_ip->addr.s4;
++			laddr.sin_addr.s_addr = si->sin_addr.s_addr;
++		}
+ 		if (bindresvport(so, &laddr) < 0)
+ 			goto err_bindresvport;
+ 	} else {
+-		cc = bind(so, SAFE_SOCKADDR(&laddr), namelen);
++		if (local_ip && local_ip->is_set)
++			cc = bind(so, &local_ip->addr.sa, local_ip->addrlen);
++		else
++			cc = bind(so, SAFE_SOCKADDR(&laddr), namelen);
+ 		if (cc < 0)
+ 			goto err_bind;
+ 	}
+-- 
+1.7.3.4
+
