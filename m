@@ -1,32 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exchange.2besource.com ([203.126.216.22]:54205 "EHLO
-	exchange03.2besource.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751122Ab1F3RID (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jun 2011 13:08:03 -0400
-Reply-To: <profmauriceiwu2221@yahoo.co.jp>
-From: "PROF.MAURICE IWU" <iwumaurice900@sify.com>
-Subject: Equity Business Investment
-Date: Thu, 30 Jun 2011 19:08:00 +0200
-Content-Type: text/plain;
-	charset="Windows-1251"
-Message-ID: <EXCHANGE03QLVpSlSt7000005f7@exchange03.2besource.com>
-To: unlisted-recipients:; (no To-header on input)
+Received: from daytona.panasas.com ([67.152.220.89]:13501 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754652Ab1FJCxa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 22:53:30 -0400
+Message-ID: <4DF1871C.1070001@panasas.com>
+Date: Thu, 09 Jun 2011 19:53:16 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/5] NFSv4.1: Add an initialisation callback for pNFS
+References: <1307669462-15764-1-git-send-email-Trond.Myklebust@netapp.com> <1307669462-15764-2-git-send-email-Trond.Myklebust@netapp.com> <1307669462-15764-3-git-send-email-Trond.Myklebust@netapp.com> <1307669462-15764-4-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1307669462-15764-4-git-send-email-Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Equity Business Investment
->From Prof. Maurice Iwu 
+On 06/09/2011 06:31 PM, Trond Myklebust wrote:
+<snip>
+> +void
+> +pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+> +{
+> +	BUG_ON(pgio->pg_lseg != NULL);
+> +
+> +	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+> +					   req->wb_context,
+> +					   req_offset(req),
+> +					   req->wb_bytes,
+> +					   IOMODE_READ,
+> +					   GFP_KERNEL);
+> +}
+> +EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
+> +
+> +void
+> +pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+> +{
+> +	BUG_ON(pgio->pg_lseg != NULL);
+> +
+> +	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+> +					   req->wb_context,
+> +					   req_offset(req),
+> +					   req->wb_bytes,
+> +					   IOMODE_RW,
+> +					   GFP_NOFS);
+> +}
+> +EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
+> +
 
-Dear Friend,
+These two above are identical except the IOMODE_{READ,RW} variable.
+Why don't you just have one and let the caller pass the IOMODE_ as a
+3rd parameter. Do you expect more code to be  added here?
 
-I am Prof. Maurice M. Iwu, Former Chairman Independent Electoral Commission 
-(INEC).Currently, I am on compulsory terminal leave presently in UK , 
-leading up to my final retirement from public service.
-
-I am seeking your partnership in a mutual benefit project involving 
-investing into your company and secondly on properties and to be precise Estate Development or any other profitable venture of your great idea for our mutual benefit of Equity Market Investment.,
-
-Sincerely,
-Prof. Maurice M.Iwu.
-{INEC.}
+Boaz
