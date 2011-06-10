@@ -1,127 +1,137 @@
 From: greearb@candelatech.com
-Subject: [PATCH v2 4/6] nfs-utils:  Support srcaddr=n option for string mount.
-Date: Fri, 10 Jun 2011 12:41:36 -0700
-Message-ID: <1307734898-12860-5-git-send-email-greearb@candelatech.com>
+Subject: [PATCH v2 5/6] nfs-utils:  Implement srcaddr=n binding for unmount.
+Date: Fri, 10 Jun 2011 12:41:37 -0700
+Message-ID: <1307734898-12860-6-git-send-email-greearb@candelatech.com>
 References: <1307734898-12860-1-git-send-email-greearb@candelatech.com>
 Cc: Ben Greear <greearb@candelatech.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:43018 "EHLO
+Received: from mail.candelatech.com ([208.74.158.172]:46871 "EHLO
 	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757878Ab1FJTnF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 15:43:05 -0400
+	with ESMTP id S1757900Ab1FJTnW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 15:43:22 -0400
 In-Reply-To: <1307734898-12860-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Ben Greear <greearb@candelatech.com>
 
-Look for and parse the srcaddr=n argument.  If parsing
-succeeds, pass this down the call chain.  This fully
-implements binding to a specified source address when
-mounting.
+This fully implements binding to a local IP address when
+attempting to un-mount.
 
 Signed-off-by: Ben Greear <greearb@candelatech.com>
 ---
-:100644 100644 71417df... aba4252... M	utils/mount/stropts.c
- utils/mount/stropts.c |   29 +++++++++++++++++++++++++----
- 1 files changed, 25 insertions(+), 4 deletions(-)
+:100644 100644 8cd2852... ef5ec17... M	utils/mount/nfsumount.c
+:100644 100644 eb50074... c3d3467... M	utils/mount/utils.c
+:100644 100644 3fcd504... ef71814... M	utils/mount/utils.h
+ utils/mount/nfsumount.c |   26 +++++++++++++++++++++++---
+ utils/mount/utils.c     |    6 ++++--
+ utils/mount/utils.h     |    4 +++-
+ 3 files changed, 30 insertions(+), 6 deletions(-)
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 71417df..aba4252 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -92,6 +92,7 @@ struct nfsmount_info {
- 	int			flags,		/* MS_ flags */
- 				fake,		/* actually do the mount? */
- 				child;		/* forked bg child? */
-+	struct local_bind_info  *local_ip;      /* Local IP binding info */
- };
+diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
+index 8cd2852..ef5ec17 100644
+--- a/utils/mount/nfsumount.c
++++ b/utils/mount/nfsumount.c
+@@ -239,6 +239,9 @@ int nfsumount(int argc, char *argv[])
+ 	int c, ret;
+ 	char *spec;
+ 	struct mntentchn *mc;
++	char *opt;
++	struct local_bind_info local_ip;
++	memset(&local_ip, 0, sizeof(local_ip));
  
- #ifdef MOUNT_CONFIG
-@@ -345,6 +346,7 @@ static int nfs_validate_options(struct nfsmount_info *mi)
- 	};
- 	sa_family_t family;
- 	int error;
-+	char *option;
+ 	if (argc < 2) {
+ 		umount_usage();
+@@ -314,7 +317,7 @@ int nfsumount(int argc, char *argv[])
+ 			return EX_USAGE;
+ 		}
+ 		if (hasmntopt(&mc->m, "users") == NULL) {
+-			char *opt = hasmntopt(&mc->m, "user");
++			opt = hasmntopt(&mc->m, "user");
+ 			struct passwd *pw;
+ 			char *comma;
+ 			size_t len;
+@@ -334,6 +337,22 @@ int nfsumount(int argc, char *argv[])
+ 		}
+ 	}
  
- 	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
- 		return 0;
-@@ -371,6 +373,20 @@ static int nfs_validate_options(struct nfsmount_info *mi)
- 					mi->address->ai_addrlen, mi->options))
- 		return 0;
- 
-+	option = po_get(mi->options, "srcaddr");
-+	if (option) {
-+		struct local_bind_info *local_ip;
-+		local_ip = malloc(sizeof(*local_ip));
-+		memset(local_ip, 0, sizeof(*local_ip));
-+		parse_local_bind(local_ip, option);
-+
-+		if (!local_ip->is_set) {
-+			free(local_ip);
-+			return 0;
++	if (mc) {
++		opt = hasmntopt(&mc->m, "srcaddr");
++		if ((opt != NULL) && strlen(opt) > strlen("srcaddr=")) {
++			char *sa = xstrdup(opt + strlen("srcaddr="));
++			unsigned int z;
++			for (z = 0; z < strlen(sa); z++) {
++				if (sa[z] == ',') {
++					sa[z] = 0;
++					break;
++				}
++			}
++			parse_local_bind(&local_ip, sa);
++			free(sa);
 +		}
-+		mi->local_ip = local_ip;
 +	}
 +
- 	return 1;
- }
+ 	ret = EX_SUCCESS;
+ 	if (mc) {
+ 		if (!lazy) {
+@@ -344,7 +363,8 @@ int nfsumount(int argc, char *argv[])
+ 				 * we don't want to signal an error, as that
+ 				 * could cause /sbin/mount to retry!
+ 				 */
+-				nfs_umount23(mc->m.mnt_fsname, mc->m.mnt_opts);
++				nfs_umount23(mc->m.mnt_fsname, mc->m.mnt_opts,
++					     &local_ip);
+ 				break;
+ 			case 1:
+ 				break;
+@@ -355,7 +375,7 @@ int nfsumount(int argc, char *argv[])
+ 		ret = del_mtab(mc->m.mnt_fsname, mc->m.mnt_dir);
+ 	} else if (*spec != '/') {
+ 		if (!lazy)
+-			ret = nfs_umount23(spec, "tcp,v3");
++			ret = nfs_umount23(spec, "tcp,v3", &local_ip);
+ 	} else
+ 		ret = del_mtab(NULL, spec);
  
-@@ -484,7 +500,8 @@ static int nfs_construct_new_options(struct mount_options *options,
-  * FALSE is returned if some failure occurred.
+diff --git a/utils/mount/utils.c b/utils/mount/utils.c
+index eb50074..c3d3467 100644
+--- a/utils/mount/utils.c
++++ b/utils/mount/utils.c
+@@ -153,7 +153,8 @@ int chk_mountpoint(const char *mount_point)
+  * pmap tuple.  If the GETPORT call later fails to disambiguate them,
+  * then we fail.
   */
- static int
--nfs_rewrite_pmap_mount_options(struct mount_options *options)
-+nfs_rewrite_pmap_mount_options(struct mount_options *options,
-+			       struct local_bind_info *local_ip)
+-int nfs_umount23(const char *devname, char *string)
++int nfs_umount23(const char *devname, char *string,
++		 struct local_bind_info *local_ip)
  {
- 	union nfs_sockaddr nfs_address;
- 	struct sockaddr *nfs_saddr = &nfs_address.sa;
-@@ -534,7 +551,8 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
- 	 * negotiate.  Bail now if we can't contact it.
- 	 */
- 	if (!nfs_probe_bothports(mnt_saddr, mnt_salen, &mnt_pmap,
--				 nfs_saddr, nfs_salen, &nfs_pmap, NULL)) {
-+				 nfs_saddr, nfs_salen, &nfs_pmap,
-+				 local_ip)) {
- 		errno = ESPIPE;
- 		if (rpc_createerr.cf_stat == RPC_PROGNOTREGISTERED)
- 			errno = EOPNOTSUPP;
-@@ -589,7 +607,7 @@ static int nfs_sys_mount(struct nfsmount_info *mi, struct mount_options *opts)
- }
+ 	char *hostname = NULL, *dirname = NULL;
+ 	struct mount_options *options;
+@@ -164,7 +165,8 @@ int nfs_umount23(const char *devname, char *string)
  
- static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
--		struct sockaddr *sap, socklen_t salen)
-+			     struct sockaddr *sap, socklen_t salen)
- {
- 	struct mount_options *options = po_dup(mi->options);
- 	int result = 0;
-@@ -631,7 +649,7 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
- 		printf(_("%s: trying text-based options '%s'\n"),
- 			progname, *mi->extra_opts);
+ 	options = po_split(string);
+ 	if (options) {
+-		result = nfs_umount_do_umnt(options, &hostname, &dirname, NULL);
++		result = nfs_umount_do_umnt(options, &hostname, &dirname,
++					    local_ip);
+ 		po_destroy(options);
+ 	} else
+ 		nfs_error(_("%s: option parsing error"), progname);
+diff --git a/utils/mount/utils.h b/utils/mount/utils.h
+index 3fcd504..ef71814 100644
+--- a/utils/mount/utils.h
++++ b/utils/mount/utils.h
+@@ -31,6 +31,8 @@ void mount_usage(void);
+ void umount_usage(void);
+ int chk_mountpoint(const char *mount_point);
  
--	if (!nfs_rewrite_pmap_mount_options(options))
-+	if (!nfs_rewrite_pmap_mount_options(options, mi->local_ip))
- 		goto out_fail;
+-int nfs_umount23(const char *devname, char *string);
++struct local_bind_info;
++int nfs_umount23(const char *devname, char *string,
++		 struct local_bind_info *local_ip);
  
- 	result = nfs_sys_mount(mi, options);
-@@ -1039,6 +1057,7 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
- 		.flags		= flags,
- 		.fake		= fake,
- 		.child		= child,
-+		.local_ip	= NULL,
- 	};
- 	int retval = EX_FAIL;
- 
-@@ -1051,5 +1070,7 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
- 
- 	freeaddrinfo(mi.address);
- 	free(mi.hostname);
-+	if (mi.local_ip)
-+		free(mi.local_ip);
- 	return retval;
- }
+ #endif	/* !_NFS_UTILS_MOUNT_UTILS_H */
 -- 
 1.7.3.4
 
