@@ -1,47 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:27891 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752988Ab1F0SmH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jun 2011 14:42:07 -0400
-Subject: Re: Mounstats keying on fsid or ipaddr?
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Joe Frost <joef@pixar.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 27 Jun 2011 14:41:36 -0400
-In-Reply-To: <4E08C8BE.2000407@pixar.com>
-References: <4E08C8BE.2000407@pixar.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1309200096.25643.10.camel@lade.trondhjem.org>
+Received: from mail-qy0-f181.google.com ([209.85.216.181]:41073 "EHLO
+	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756011Ab1FJMgF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 08:36:05 -0400
+Received: by qyg14 with SMTP id 14so1385931qyg.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Jun 2011 05:36:05 -0700 (PDT)
+Message-ID: <4DF20FB3.6030603@tonian.com>
+Date: Fri, 10 Jun 2011 08:36:03 -0400
+From: Benny Halevy <benny@tonian.com>
+To: tao.peng@emc.com
+CC: rees@umich.edu, bergwolf@gmail.com, linux-nfs@vger.kernel.org,
+        honey@citi.umich.edu
+Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu> <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu> <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com> <20110609114929.GA28157@merit.edu> <4DF0CB5D.60000@panasas.com> <20110609135846.GA32565@merit.edu> <4DF139D0.1080200@tonian.com> <F19688880B763E40B28B2B462677FBF805BED9D217@MX09A.corp.emc.com>
+In-Reply-To: <F19688880B763E40B28B2B462677FBF805BED9D217@MX09A.corp.emc.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2011-06-27 at 11:15 -0700, Joe Frost wrote: 
-> We've been using mountstats to graph/track NFS usage based on path. 
-> We've recently made some changes on how we mount filesystems here where 
-> it's possible the same IP will be used for multiple mounts. Since that 
-> we've noticed that all mounts to the same IPaddr are showing the same 
-> statistics. Wondering if anyone had ideas why it might be keying off of 
-> IPaddr?
+On 2011-06-10 01:36, tao.peng@emc.com wrote:
+> Hi, Benny,
+> 
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Benny Halevy
+> Sent: Friday, June 10, 2011 5:23 AM
+> To: Jim Rees
+> Cc: Peng Tao; linux-nfs@vger.kernel.org; peter honeyman
+> Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+> 
+> On 2011-06-09 06:58, Jim Rees wrote:
+>> Benny Halevy wrote:
+>>
+>>   > My understanding is that layoutget specifies a min and max, and the server
+>>   
+>>   There's a min.  What do you consider the max?
+>>   Whatever gets into csa_fore_chan_attrs.ca_maxresponsesize?
+>>
+>> The spec doesn't say max, it says "desired."  I guess I assumed the server
+>> wouldn't normally return more than desired.
+> 
+> No, the server may freely upgrade the returned layout segment by returning
+> a layout for a larger byte range or even returning a RW layout where a READ
+> layout was asked for.
+> [PT] It is true that server can upgrade the layout segment freely. But there is always a price to pay. Server has to be dealing with all kind of clients.
+> If server returns more than being asked for, it may hurt other clients.
 
-mountstats keys off the fsid as reported on the _server_. If your server
-is reporting that these directories are all contained in one big volume,
-then that will suffice to confuse the client.
+And if all clients ask for more than they need and the server just
+gives it to them, what do you get out of that?
 
-One way to work around this, is to tell the client that the
-subdirectories are on different volumes. You can do that using the
-"nosharecache" mount option. Beware, however, that if you have hard
-linked files that appear under more than one of these mountpoints, then
-the client will treat them as if they are completely separate files for
-the purposes of caching and close-to-open cache consistency checking.
-
-Cheers
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Benny
