@@ -1,35 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57999 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750912Ab1FHTLz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Jun 2011 15:11:55 -0400
-Date: Wed, 8 Jun 2011 15:11:55 -0400
-To: greearb@candelatech.com
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs-utils:  Support binding to source address.
-Message-ID: <20110608191155.GB6752@fieldses.org>
-References: <1307554748-31757-1-git-send-email-greearb@candelatech.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1307554748-31757-1-git-send-email-greearb@candelatech.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from daytona.panasas.com ([67.152.220.89]:16147 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758264Ab1FJXUT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 19:20:19 -0400
+Message-ID: <4DF2A6AA.8050608@panasas.com>
+Date: Fri, 10 Jun 2011 16:20:10 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <benny@tonian.com>
+CC: tao.peng@emc.com, bergwolf@gmail.com, rees@umich.edu,
+        linux-nfs@vger.kernel.org, honey@citi.umich.edu
+Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu> <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu> <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com> <20110609114929.GA28157@merit.edu> <4DF0CB5D.60000@panasas.com> <20110609135846.GA32565@merit.edu> <BANLkTi=0yr1ecyf30+OQcFipJsHOk=4Y4w@mail.gmail.com> <4DF139B1.7070106@tonian.com> <F19688880B763E40B28B2B462677FBF805BED9D221@MX09A.corp.emc.com> <4DF20F07.4090804@tonian.com> <F19688880B763E40B28B2B462677FBF805BED9D2AC@MX09A.corp.emc.com> <4DF26F34.8080008@tonian.com>
+In-Reply-To: <4DF26F34.8080008@tonian.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Jun 08, 2011 at 10:39:08AM -0700, greearb@candelatech.com wrote:
-> From: Ben Greear <greearb@candelatech.com>
+On 06/10/2011 12:23 PM, Benny Halevy wrote:
+> On 2011-06-10 10:09, tao.peng@emc.com wrote:
 > 
-> This lets one specify the source IP address for
-> sockets, allowing users to leverage routing rules
-> on multi-homed systems.
+> A simple algorithm I can suggest is:
+> - on initialization, calculate and save, per layout driver
+>   - maximum layout size
+>     - take into account csr_fore_chan_attrs.ca_maxresponsesize and possible other parameters
+>   - keep a working copy of the maximum value and the calculated copy.
+>   - alignment value.
+> - on miss, see if there's an adjacent layout segment in cache
+> - if found, ask for twice the found segment size, up to the maximum value,
+>   aligned on the alignment value.
+> - if the server returns less the layoutget range, keep note of the returned length
+>   (but not adjust maximum yet, as the server may return a short segment for various
+>    reasons)
+> - if the server is consistent about returning less than was asked, adjust the
+>   - working copy of the maximum length
+> - if the maximum was adjusted try bumping it up after X (TBD) layoutgets or T seconds
+>   to see if that was just due to high load or conflicts on the server
+> - on any error returned for LAYOUTGET reset the algorithm parameters
+> - on session reestablishment recalculate maximums.
 > 
-> Kernel patches to RPC and NFS are needed to complete
-> full functionality.
+> Benny
+> 
 
-Possibly dumb question: there's an ongoing effort (I think--haven't
-heard much from them recently?) to make the nfs and rpc code aware of
-which network namespace it's running in.  Would that do what you need?
+I completely disagree with all this. NACK!
 
-Does statd need changes too?
+The only proper thing a client can do is ask for what it needs, and only the application
+can do that, because at the VFS level it is only second guessing, and is completely
+pointless.
 
---b.
+The only one that can know about structure, alignments, optimal IO sizes and layouts
+is the server. The server even have more information to second guess the application
+from the file size information and it's share and lock disposition. Please see my
+simple Server side algorithm.
+
+Because you must understand one most important thing. Any smart decision a client can
+make will be after it received the layout (stripe_unit, number-of-devices etc..) But
+at that time it is too late it already sent the layout_get. Only the server knows
+before hand what is the most optimal size. The client should just be a transparent
+pipe from application to the server. It should never ever set policy. Only a Server
+can/should do that.
+
+Lets put the efforts and algorithms where they belong, please?
+
+Boaz
