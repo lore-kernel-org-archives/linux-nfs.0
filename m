@@ -1,98 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:41612 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:18005 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753134Ab1FLOk4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2011 10:40:56 -0400
-Message-ID: <4DF4CFE9.7070000@panasas.com>
-Date: Sun, 12 Jun 2011 07:40:41 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: Benny Halevy <benny@tonian.com>, tao.peng@emc.com, rees@umich.edu,
-        linux-nfs@vger.kernel.org, honey@citi.umich.edu
-Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
-References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu> <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu> <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com> <20110609114929.GA28157@merit.edu> <4DF0CB5D.60000@panasas.com> <20110609135846.GA32565@merit.edu> <BANLkTi=0yr1ecyf30+OQcFipJsHOk=4Y4w@mail.gmail.com> <4DF139B1.7070106@tonian.com> <F19688880B763E40B28B2B462677FBF805BED9D221@MX09A.corp.emc.com> <4DF20F07.4090804@tonian.com> <F19688880B763E40B28B2B462677FBF805BED9D2AC@MX09A.corp.emc.com> <4DF26F34.8080008@tonian.com> <4DF2A6AA.8050608@panasas.com> <BANLkTin+Z=sxrNkfyktqH_m5_dhsiHLf5w@mail.gmail.com>
-In-Reply-To: <BANLkTin+Z=sxrNkfyktqH_m5_dhsiHLf5w@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+	with ESMTP id S1750720Ab1FJEn5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 00:43:57 -0400
+Message-ID: <4DF1A106.3070205@panasas.com>
+Date: Fri, 10 Jun 2011 00:43:50 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/5] NFSv4.1: Add an initialisation callback for pNFS
+References: <1307669462-15764-1-git-send-email-Trond.Myklebust@netapp.com> <1307669462-15764-2-git-send-email-Trond.Myklebust@netapp.com> <1307669462-15764-3-git-send-email-Trond.Myklebust@netapp.com> <1307669462-15764-4-git-send-email-Trond.Myklebust@netapp.com> <4DF1871C.1070001@panasas.com> <4DF19841.5030904@panasas.com> <4DF19D7B.2060308@panasas.com>
+In-Reply-To: <4DF19D7B.2060308@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 06/10/2011 07:19 PM, Peng Tao wrote:
-> On Sat, Jun 11, 2011 at 7:20 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->> On 06/10/2011 12:23 PM, Benny Halevy wrote:
->>> On 2011-06-10 10:09, tao.peng@emc.com wrote:
+On 2011-06-10 00:28, Boaz Harrosh wrote:
+> On 06/09/2011 09:06 PM, Benny Halevy wrote:
+>> On 2011-06-09 22:53, Boaz Harrosh wrote:
+>>> On 06/09/2011 06:31 PM, Trond Myklebust wrote:
+>>> <snip>
+>>>> +void
+>>>> +pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+>>>> +{
+>>>> +	BUG_ON(pgio->pg_lseg != NULL);
+>>>> +
+>>>> +	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+>>>> +					   req->wb_context,
+>>>> +					   req_offset(req),
+>>>> +					   req->wb_bytes,
+>>>> +					   IOMODE_READ,
+>>>> +					   GFP_KERNEL);
+>>>> +}
+>>>> +EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
+>>>> +
+>>>> +void
+>>>> +pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+>>>> +{
+>>>> +	BUG_ON(pgio->pg_lseg != NULL);
+>>>> +
+>>>> +	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+>>>> +					   req->wb_context,
+>>>> +					   req_offset(req),
+>>>> +					   req->wb_bytes,
+>>>> +					   IOMODE_RW,
+>>>> +					   GFP_NOFS);
+>>>> +}
+>>>> +EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
+>>>> +
 >>>
->>> A simple algorithm I can suggest is:
->>> - on initialization, calculate and save, per layout driver
->>>   - maximum layout size
->>>     - take into account csr_fore_chan_attrs.ca_maxresponsesize and possible other parameters
->>>   - keep a working copy of the maximum value and the calculated copy.
->>>   - alignment value.
->>> - on miss, see if there's an adjacent layout segment in cache
->>> - if found, ask for twice the found segment size, up to the maximum value,
->>>   aligned on the alignment value.
->>> - if the server returns less the layoutget range, keep note of the returned length
->>>   (but not adjust maximum yet, as the server may return a short segment for various
->>>    reasons)
->>> - if the server is consistent about returning less than was asked, adjust the
->>>   - working copy of the maximum length
->>> - if the maximum was adjusted try bumping it up after X (TBD) layoutgets or T seconds
->>>   to see if that was just due to high load or conflicts on the server
->>> - on any error returned for LAYOUTGET reset the algorithm parameters
->>> - on session reestablishment recalculate maximums.
+>>> These two above are identical except the IOMODE_{READ,RW} variable.
+>>
+>> And the respective gfp flags...
+>>
+> 
+> So is that "we should" or should-not?
+> 
+
+That doesn't make much sense when you've defined separate vectors
+for read and write.
+And in any case, since pg_init is not pnfs specific the caller shouldn't
+pass IOMODE_* values but rather a generic value that will require translation anyway.
+In this case I'd just consider using a common function to be called
+respectively from both methods:
+
+static void
+pnfs_pg_update_layout(struct nfs_pageio_descriptor *pgio, struct nfs_page *req,
+		      enum pnfs_iomode iomode, gfp_t gfp_flags)
+{
+	BUG_ON(pgio->pg_lseg != NULL);
+
+	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+					   req->wb_context,
+					   req_offset(req),
+					   req->wb_bytes,
+					   iomode,
+					   gfp_flags);
+}
+
+>>> Why don't you just have one and let the caller pass the IOMODE_ as a
+>>> 3rd parameter. Do you expect more code to be  added here?
 >>>
->>> Benny
->>>
->>
->> I completely disagree with all this. NACK!
->>
->> The only proper thing a client can do is ask for what it needs, and only the application
->> can do that, because at the VFS level it is only second guessing, and is completely
->> pointless.
->>
->> The only one that can know about structure, alignments, optimal IO sizes and layouts
->> is the server. The server even have more information to second guess the application
->> from the file size information and it's share and lock disposition. Please see my
->> simple Server side algorithm.
-> Well, IMO, client is closer to applications and should have a better
-> position at "guessing" application's workload.
+>>> Boaz
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-> A simple example, when a client asks for a layout, server would have
-> no idea if client is doing layout prefetch, or if it really need that
-> range to complete its work. But the client knows it for sure.
-> 
-
-What is layout prefetch? we don't do any in the Linux client.
-
-And your example does not make any sense. If a theoretical stupid client does
-"layout prefetch" what ever that means, how is it related to the application?
-
-There is not a single information a client has the the server does not. Look at
-your patch. Set an arbitrary value at client setup. That same arbitrary value
-can be setup at server. Look at benny's algorithm. It can be done just the same
-at the server side. (Which does not mean it is a good algorithm)
-
-Just take that patch of yours, but instead of at client side. Put it at server
-side. You will achieve exact same results. Only you configure one server instead
-of every client.
-
-And no way in hell I let that go into the Linux generic client!
-
-Boaz
-
->>
->> Because you must understand one most important thing. Any smart decision a client can
->> make will be after it received the layout (stripe_unit, number-of-devices etc..) But
->> at that time it is too late it already sent the layout_get. Only the server knows
->> before hand what is the most optimal size. The client should just be a transparent
->> pipe from application to the server. It should never ever set policy. Only a Server
->> can/should do that.
->>
->> Lets put the efforts and algorithms where they belong, please?
->>
->> Boaz
->>
-> 
-> 
-> 
-
