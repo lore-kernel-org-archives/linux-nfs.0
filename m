@@ -1,81 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:5654 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750990Ab1FCRQX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Jun 2011 13:16:23 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/1] NFSv4.1: allow nfs_fhget to succeed with mounted on fileid
-Date: Fri,  3 Jun 2011 10:36:52 -0400
-Message-Id: <1307111812-2380-1-git-send-email-andros@netapp.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:28676 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752509Ab1FJOc2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 10:32:28 -0400
+From: <tao.peng@emc.com>
+To: <bhalevy@panasas.com>
+CC: <bergwolf@gmail.com>, <rees@umich.edu>, <linux-nfs@vger.kernel.org>,
+        <honey@citi.umich.edu>
+Date: Fri, 10 Jun 2011 10:30:58 -0400
+Subject: RE: [PATCH 87/88] Add configurable prefetch size for layoutget
+Message-ID: <F19688880B763E40B28B2B462677FBF805BED9D2AE@MX09A.corp.emc.com>
+References: <cover.1307464381.git.rees@umich.edu>
+ <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu>
+ <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu>
+ <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com>
+ <4DF062D6.7010304@panasas.com>
+ <BANLkTi=SMQhUNHEy=-ZPqFtCgKcnCtks=w@mail.gmail.com>
+ <4DF13B65.5030401@panasas.com>
+ <F19688880B763E40B28B2B462677FBF805BED9D222@MX09A.corp.emc.com>
+ <4DF21267.9060706@panasas.com>
+In-Reply-To: <4DF21267.9060706@panasas.com>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
 
-Commit 28331a46d88459788c8fca72dbb0415cd7f514c9 "Ensure we request the
-ordinary fileid when doing readdirplus"
-changed the meaning of NFS_ATTR_FATTR_FILEID which used to be set when
-FATTR4_WORD1_MOUNTED_ON_FILED was requested.
-Allow nfs_fhget to succeed with only a mounted on fileid when crossing
-a mountpoint or a referral.
+-----Original Message-----
+From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Benny Halevy
+Sent: Friday, June 10, 2011 8:48 PM
+To: Peng, Tao
+Cc: bergwolf@gmail.com; rees@umich.edu; linux-nfs@vger.kernel.org; honey@citi.umich.edu
+Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/inode.c    |    4 +++-
- fs/nfs/internal.h |    7 +++++++
- fs/nfs/nfs4proc.c |    2 +-
- 3 files changed, 11 insertions(+), 2 deletions(-)
+On 2011-06-10 02:02, tao.peng@emc.com wrote:
+> Hi, Benny,
+> 
+> Cheers,
+> -Bergwolf
+> 
+> 
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Benny Halevy
+> Sent: Friday, June 10, 2011 5:30 AM
+> To: Peng Tao
+> Cc: Jim Rees; linux-nfs@vger.kernel.org; peter honeyman
+> Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+> 
+> On 2011-06-09 07:54, Peng Tao wrote:
+>> On Thu, Jun 9, 2011 at 2:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+>>> On 2011-06-08 03:15, Peng Tao wrote:
+>>>> On 6/8/11, Jim Rees <rees@umich.edu> wrote:
+>>>>> Benny Halevy wrote:
+>>>>>
+>>>>>   NAK.
+>>>>>   This affects all layout types.  In particular it is undesired
+>>>>>   for write layouts that extend the file with the objects layout.
+>>>>>   The server can extend the layout segments range
+>>>>>   over what the client requested so why would the client
+>>>>>   ask for artificially large layouts?
+>>>>>
+>>>>> This has actually been the subject of some debate over Thursday night
+>>>>> beers.  The problem we're trying to solve is that the client is spending 98%
+>>>>> of its time in layoutget.  This patch gives us something like a 10x
+>>>>> speedup.  But many of us think it's not the right fix.  I suggest we discuss
+>>>>> next week.
+>>>>>
+>>>
+>>> Sure.
+>>>
+>>>>> But note that this patch doesn't change anything unless you set the sysctl.
+>>>> there is a default value of 2M. maybe we can set it to page size by
+>>>> default so other layout are not affected and block layout can let
+>>>> users set it by hand if they care about performance. does this make
+>>>> sense?
+>>>
+>>> If doing it at all why use a sysctl rather than a mount option?
+>> The purpose of using a sysctl is to give client the ability to change
+>> it on the fly. In theory, layout prefetching can benefit all layout
+>> types. So the patch tries to solve it in the pnfs generic layer.
+>>
+> 
+> But the need for this varies per-server and many times per application.
+> Think sequential vs. random I/O.  Therefore a mount option would help
+> tuning the behavior on a per-use basis.  Global behavior must be implemented
+> using a dynamic algorithm that would take both the workload and the server
+> observed behavior into account.
+> [PT] Indeed. Dynamic algorithm is supposed to be able to solve all this. And it often takes longer to be designed/accepted. It has to prove to be better in most scenarios and does not hurt the left.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 144f2a3..06b40e3 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -256,7 +256,9 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 
- 	nfs_attr_check_mountpoint(sb, fattr);
- 
--	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) == 0 && (fattr->valid & NFS_ATTR_FATTR_MOUNTPOINT) == 0)
-+	if (((fattr->valid & NFS_ATTR_FATTR_FILEID) == 0 &&
-+	    (fattr->valid & NFS_ATTR_FATTR_MOUNTPOINT) == 0) &&
-+	    nfs_attr_check_mounted_on_fileid(fattr))
- 		goto out_no_inode;
- 	if ((fattr->valid & NFS_ATTR_FATTR_TYPE) == 0)
- 		goto out_no_inode;
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index b9056cb..257139d 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -45,6 +45,13 @@ static inline void nfs_attr_check_mountpoint(struct super_block *parent, struct
- 		fattr->valid |= NFS_ATTR_FATTR_MOUNTPOINT;
- }
- 
-+static inline boolean nfs_attr_check_mounted_on_fileid(struct nfs_fattr *fattr)
-+{
-+	return (((fattr->valid & NFS_ATTR_FATTR_MOUNTED_ON_FILEID) == 0) ||
-+		((fattr->valid & NFS_ATTR_FATTR_MOUNTPOINT) == 0) &&
-+		 (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) == 0);
-+}
-+
- struct nfs_clone_mount {
- 	const struct super_block *sb;
- 	const struct dentry *dentry;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d2c4b59..9c6e391 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4669,7 +4669,7 @@ static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
- 
- static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
- {
--	if (!((fattr->valid & NFS_ATTR_FATTR_FILEID) &&
-+	if (!((fattr->valid & NFS_ATTR_FATTR_MOUNTED_ON_FILEID) &&
- 		(fattr->valid & NFS_ATTR_FATTR_FSID) &&
- 		(fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)))
- 		return;
--- 
-1.7.3.1
+We need to find an acceptable solution to push this driver upstream.
+I understand that developing a dynamic algorithm in the given time frame is
+too big of a challenge, but hacking yet another client tunable is out of the
+question either.   For testing in the Bakeathon I'd consider taking a DEVONLY version
+of this patch that is enabled using a config option and defaults to zero to have no effect
+in run-time until the sysctl is sets it differently.
+But keep in mind this is not suitable for pushing upstream.
+[PT] Thanks for your understanding. We truly want to solve the performance problem and are open to suggestions. And this will be a feature that benefits all layout types, am I right?
 
+-Tao
