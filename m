@@ -1,103 +1,158 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:61575 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758468Ab1FKBqa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 21:46:30 -0400
-Received: by vxi39 with SMTP id 39so2616184vxi.19
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Jun 2011 18:46:29 -0700 (PDT)
-In-Reply-To: <4DF28983.8000604@tonian.com>
-References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu>
- <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu>
- <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com>
- <20110609114929.GA28157@merit.edu> <4DF0CB5D.60000@panasas.com>
- <20110609135846.GA32565@merit.edu> <BANLkTi=0yr1ecyf30+OQcFipJsHOk=4Y4w@mail.gmail.com>
- <4DF139B1.7070106@tonian.com> <F19688880B763E40B28B2B462677FBF805BED9D221@MX09A.corp.emc.com>
- <4DF20F07.4090804@tonian.com> <F19688880B763E40B28B2B462677FBF805BED9D2AC@MX09A.corp.emc.com>
- <4DF26F34.8080008@tonian.com> <BANLkTikbrBJL3K-v2Ecto1FfZ32QQwF8dw@mail.gmail.com>
- <4DF28983.8000604@tonian.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Sat, 11 Jun 2011 09:46:09 +0800
-Message-ID: <BANLkTik7swvmbYvpvpcyT7jtdit-UCke=Q@mail.gmail.com>
-Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
-To: Benny Halevy <benny@tonian.com>
-Cc: Fred Isaman <iisaman@netapp.com>, tao.peng@emc.com, rees@umich.edu,
-        linux-nfs@vger.kernel.org, honey@citi.umich.edu
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:56975 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756172Ab1FJVeu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Jun 2011 17:34:50 -0400
+Date: Fri, 10 Jun 2011 17:34:46 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mimi Zohar <zohar@linux.vnet.ibm.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        samba-technical@lists.samba.org, Christoph Hellwig <hch@infradead.org>,
+        Eric Paris <eparis@redhat.com>
+Subject: Re: [PATCH 1/2] locks: introduce i_blockleases to close lease races
+Message-ID: <20110610213446.GC27837@fieldses.org>
+References: <20110610000944.GC22215@fieldses.org>
+ <20110610001011.GD22215@fieldses.org>
+ <1307737440.3281.5.camel@localhost.localdomain>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1307737440.3281.5.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi, Benny,
+On Fri, Jun 10, 2011 at 04:24:00PM -0400, Mimi Zohar wrote:
+> On Thu, 2011-06-09 at 20:10 -0400, J. Bruce Fields wrote:
+> > From: J. Bruce Fields <bfields@redhat.com>
+> > 
+> > Since break_lease is called before i_writecount is incremented, there's
+> > a window between the two where a setlease call would have no way to know
+> > that an open is about to happen.
+> 
+> So unless the break_lease() call is moved from may_open() to after 
+> nameidata_to_filp(), I don't see any other options.
 
-On Sat, Jun 11, 2011 at 5:15 AM, Benny Halevy <benny@tonian.com> wrote:
-> On 2011-06-10 16:03, Fred Isaman wrote:
->> On Fri, Jun 10, 2011 at 3:23 PM, Benny Halevy <benny@tonian.com> wrote:
->>>
->>> A simple algorithm I can suggest is:
->>> - on initialization, calculate and save, per layout driver
->>>  - maximum layout size
->>
->> I must be misunderstanding something.  Layout size has nothing to do
->> with io size (other than the obvious fact that you want the layout >
->> io).
->
-> Exactly, and if the layouts you get from the server are too small
-> it's hard to do efficient I/O (modulo layout segment merging
-> or gathering)
->
->>
->> I don't know about the object driver, but for both the file and block
->> drivers the client wants as much as the server will give it.
->>
->
-> For blocks the message buffer size (as mentioned below) may be
-> a limiting factor hence the limit.
-It is true that message buffer size can limit the number of extents
-returned by block server. But the length that each extent is
-addressing is unknown. It can be of any size from layout_blksize to
-even larger than file size), determined by the file's on disk layout.
-Client cannot guess maximum segment size based on message buffer size.
+Actually, offhand I can't see why that wouldn't be OK.
 
-> Another constraint for blocks and for objects to some extent is
-> provisional allocation where you don't want to just arbitrarily
-> ask for artificially large write layouts and this may be interpreted
-> as intent to write to the whole range and will result in excessive
-> provisional allocation of resources.
->
-> Bottom line, I completely agree with "the client wants as much as the
-> server will give it" so it should ask for what it needs and let the
-> server decide whether to extend or trim the range if need be.
->
-> Benny
->
->> Fred
->>
->>>    - take into account csr_fore_chan_attrs.ca_maxresponsesize and possible other parameters
->>>  - keep a working copy of the maximum value and the calculated copy.
->>>  - alignment value.
->>> - on miss, see if there's an adjacent layout segment in cache
->>> - if found, ask for twice the found segment size, up to the maximum value,
->>>  aligned on the alignment value.
->>> - if the server returns less the layoutget range, keep note of the returned length
->>>  (but not adjust maximum yet, as the server may return a short segment for various
->>>   reasons)
->>> - if the server is consistent about returning less than was asked, adjust the
->>>  - working copy of the maximum length
->>> - if the maximum was adjusted try bumping it up after X (TBD) layoutgets or T seconds
->>>  to see if that was just due to high load or conflicts on the server
->>> - on any error returned for LAYOUTGET reset the algorithm parameters
->>> - on session reestablishment recalculate maximums.
->>>
->>> Benny
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+Though I think we still end up needing something like i_blockleases to
+handle unlink, link, rename, chown, and chmod.
 
+--b.
 
-
--- 
-Thanks,
--Bergwolf
+> 
+> Mimi
+> 
+> > We fix this by adding a new inode field, i_blockleases, that is
+> > incremented while a lease-breaking operation is in progress.
+> > 
+> > We will later reuse i_blockleases to enforce lease-breaking for rename,
+> > unlink, etc.
+> > 
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  fs/inode.c         |    1 +
+> >  fs/locks.c         |   28 ++++++++++++++++++++++++++++
+> >  fs/namei.c         |    6 +++++-
+> >  include/linux/fs.h |    3 +++
+> >  4 files changed, 37 insertions(+), 1 deletions(-)
+> > 
+> > diff --git a/fs/inode.c b/fs/inode.c
+> > index 33c963d..4f253a2 100644
+> > --- a/fs/inode.c
+> > +++ b/fs/inode.c
+> > @@ -198,6 +198,7 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
+> >  	inode->i_uid = 0;
+> >  	inode->i_gid = 0;
+> >  	atomic_set(&inode->i_writecount, 0);
+> > +	atomic_set(&inode->i_blockleases, 0);
+> >  	inode->i_size = 0;
+> >  	inode->i_blocks = 0;
+> >  	inode->i_bytes = 0;
+> > diff --git a/fs/locks.c b/fs/locks.c
+> > index 0a4f50d..7699b1b 100644
+> > --- a/fs/locks.c
+> > +++ b/fs/locks.c
+> > @@ -1164,6 +1164,32 @@ static void time_out_leases(struct inode *inode)
+> >  	}
+> >  }
+> > 
+> > +/* Disallow all leases (read or write): */
+> > +void disallow_leases(struct inode *inode, int flags)
+> > +{
+> > +	if (!inode)
+> > +		return;
+> > +	if (!S_ISREG(inode->i_mode))
+> > +		return;
+> > +	if ((flags & O_ACCMODE) == O_RDONLY)
+> > +		return;
+> > +	atomic_inc(&inode->i_blockleases);
+> > +}
+> > +EXPORT_SYMBOL_GPL(disallow_leases);
+> > +
+> > +void reallow_leases(struct inode *inode, int flags)
+> > +{
+> > +	if (!inode)
+> > +		return;
+> > +	if (!S_ISREG(inode->i_mode))
+> > +		return;
+> > +	if ((flags & O_ACCMODE) == O_RDONLY)
+> > +		return;
+> > +	BUG_ON(atomic_read(&inode->i_blockleases) <= 0);
+> > +	atomic_dec(&inode->i_blockleases);
+> > +}
+> > +EXPORT_SYMBOL_GPL(reallow_leases);
+> > +
+> >  /**
+> >   *	__break_lease	-	revoke all outstanding leases on file
+> >   *	@inode: the inode of the file to return
+> > @@ -1369,6 +1395,8 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
+> > 
+> >  	if (arg != F_UNLCK) {
+> >  		error = -EAGAIN;
+> > +		if (atomic_read(&inode->i_blockleases))
+> > +			goto out;
+> >  		if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
+> >  			goto out;
+> >  		if ((arg == F_WRLCK)
+> > diff --git a/fs/namei.c b/fs/namei.c
+> > index 3cb616d..079e68c 100644
+> > --- a/fs/namei.c
+> > +++ b/fs/namei.c
+> > @@ -2277,10 +2277,14 @@ ok:
+> >  		want_write = 1;
+> >  	}
+> >  common:
+> > +	disallow_leases(nd->path.dentry->d_inode, open_flag);
+> >  	error = may_open(&nd->path, acc_mode, open_flag);
+> > -	if (error)
+> > +	if (error) {
+> > +		reallow_leases(nd->path.dentry->d_inode, open_flag);
+> >  		goto exit;
+> > +	}
+> >  	filp = nameidata_to_filp(nd);
+> > +	reallow_leases(nd->path.dentry->d_inode, open_flag);
+> >  	if (!IS_ERR(filp)) {
+> >  		error = ima_file_check(filp, op->acc_mode);
+> >  		if (error) {
+> > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > index 1b95af3..daf8443 100644
+> > --- a/include/linux/fs.h
+> > +++ b/include/linux/fs.h
+> > @@ -796,6 +796,7 @@ struct inode {
+> >  #ifdef CONFIG_IMA
+> >  	atomic_t		i_readcount; /* struct files open RO */
+> >  #endif
+> > +	atomic_t		i_blockleases; /* setlease fails when >0 */
+> >  	atomic_t		i_writecount;
+> >  #ifdef CONFIG_SECURITY
+> >  	void			*i_security;
+> > @@ -1161,6 +1162,8 @@ extern void lease_get_mtime(struct inode *, struct timespec *time);
+> >  extern int generic_setlease(struct file *, long, struct file_lock **);
+> >  extern int vfs_setlease(struct file *, long, struct file_lock **);
+> >  extern int lease_modify(struct file_lock **, int);
+> > +extern void disallow_leases(struct inode *, int flags);
+> > +extern void reallow_leases(struct inode *, int flags);
+> >  extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
+> >  extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
+> >  extern void lock_flocks(void);
+> 
+> 
