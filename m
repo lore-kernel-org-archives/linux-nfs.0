@@ -1,111 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from permutation-city.suchdamage.org ([69.25.196.28]:52218 "EHLO
-	mail.suchdamage.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751871Ab1FIOhz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 10:37:55 -0400
-From: Sam Hartman <hartmans@debian.org>
-To: Kevin Coffman <kwc@citi.umich.edu>
-Cc: Didier Raboud <odyx@debian.org>, linux-nfs@vger.kernel.org,
-        629553@bugs.debian.org, 629692@bugs.debian.org
-Subject: Re: libgssglue: incompatible with krb5 1.9
-References: <tsl1uz57fa1.fsf@mit.edu>
-	<20110609013756.GA5304@master.debian.org>
-	<BANLkTikKC5jdJG0KtrKxONmnSWSTm-9iyA@mail.gmail.com>
-Date: Thu, 09 Jun 2011 10:29:03 -0400
-In-Reply-To: <BANLkTikKC5jdJG0KtrKxONmnSWSTm-9iyA@mail.gmail.com> (Kevin
-	Coffman's message of "Thu, 9 Jun 2011 01:18:43 -0400")
-Message-ID: <tsl8vtbyt74.fsf@mit.edu>
-Content-Type: text/plain; charset=us-ascii
+Received: from daytona.panasas.com ([67.152.220.89]:11834 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756921Ab1FJCUq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 22:20:46 -0400
+Message-ID: <4DF17F7D.7000601@panasas.com>
+Date: Thu, 09 Jun 2011 19:20:45 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Jim Rees <rees@umich.edu>
+CC: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>,
+        Fred Isaman <iisaman@netapp.com>
+Subject: Re: [PATCH 00/88] pnfs block layout driver
+References: <cover.1307464381.git.rees@umich.edu> <4DF140AF.20208@panasas.com> <20110609221528.GB28760@merit.edu> <4DF17E86.3060701@panasas.com>
+In-Reply-To: <4DF17E86.3060701@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Here's the MIT diff that introduces the types:
-commit 21479bb4df589793a4fc25aedb59d599043eb95b
-Author: lhoward <lhoward@dc483132-0cff-0310-8789-dd5450dbe970>
-Date:   Sun Apr 3 08:02:53 2011 +0000
+On 06/09/2011 07:16 PM, Boaz Harrosh wrote:
+> On 06/09/2011 03:15 PM, Jim Rees wrote:
+>> Boaz Harrosh wrote:
+>>
+>>   Who is going to SQUASH all the SQUASHMEs and re think the all patch
+>>   separation again. To something that makes a more logical progression
+>>   and easier on the review. The way it is now I'm not able to review,
+>>   sorry, I got lost trying to understand which is which.
+>>
+>> I'm open to suggestions and happy to do the work.  I agree that 88 patches
+>> is nearly indigestable.  However I note that Benny seems to have pulled in
+>> the entire set so I'm not sure how to proceed at this point.  Also this code
+>> was in Benny's 2.6.38 and only got dropped when the 3.0 merge came along, so
+>> most of it's already been under review for a year or more.
+> 
+> Lets start by squashing all the SQUASHMEs into their proper place, that will
+> get you down to 49. You might notice that it could get hard and it will be
+> easier to actually take the complete code and re-divide it to patches, a fresh.
+> crafted more less on the old division strategy.
+> 
+> It's what Fred did at the final files submission. And it is what I did more
+> or less with the objects final submission. But you might find that for you
+> it is easier to rebase and squash the patches together after you re-order
+> them. It's your call and you will not know before you experiment a little.
+> I can show you some techniques I use on both these paths.
+> (Let's meet in B next week)
+> 
+> Then you should do a second pass to see that each patch is compile-able and
+> makes sense and maybe also reorder the introduction of the generic parts
+> close to where they are used in the pachset progression. Again like we did
+> for files and objects.
+> 
+> Thanks
+> Boaz
 
-    Use RFC 5587 const types for draft-josefsson-gss-capsulate APIs
-    
-    git-svn-id: svn://anonsvn.mit.edu/svn/krb5/trunk@24821 dc483132-0cff-0310-8789-dd5450dbe970
-    (cherry picked from commit 4a46936a36f47e54134b24d7083cfd45a2d009bc)
+Ho and I forgot, once you do all that we might want to revisit all these patches
+that have HACK in their title. I guess Fred can help with some of these
 
-diff --git a/src/lib/gssapi/generic/gssapi_ext.h b/src/lib/gssapi/generic/gssapi_ext.h
-index a2a8bcd..31d972b 100644
---- a/src/lib/gssapi/generic/gssapi_ext.h
-+++ b/src/lib/gssapi/generic/gssapi_ext.h
-@@ -387,22 +387,22 @@ OM_uint32 KRB5_CALLCONV gss_release_any_name_mapping
- /* draft-josefsson-gss-capsulate */
- OM_uint32 KRB5_CALLCONV gss_encapsulate_token
- (
--    const gss_buffer_t, /* input_token */
--    const gss_OID,      /* token_oid */
--    const gss_buffer_t  /* output_token */
-+    gss_const_buffer_t, /* input_token */
-+    gss_const_OID,      /* token_oid */
-+    gss_buffer_t        /* output_token */
- );
- 
- OM_uint32 KRB5_CALLCONV gss_decapsulate_token
- (
--    const gss_buffer_t, /* input_token */
--    const gss_OID,      /* token_oid */
-+    gss_const_buffer_t, /* input_token */
-+    gss_const_OID,      /* token_oid */
-     gss_buffer_t        /* output_token */
- );
- 
- int KRB5_CALLCONV gss_oid_equal
- (
--    const gss_OID,      /* first_oid */
--    const gss_OID       /* second_oid */
-+    gss_const_OID,      /* first_oid */
-+    gss_const_OID       /* second_oid */
- );
- 
- #ifdef __cplusplus
-diff --git a/src/lib/gssapi/mechglue/g_decapsulate_token.c b/src/lib/gssapi/mechglue/g_decapsulate_token.c
-index a12d8f7..42b9e07 100644
---- a/src/lib/gssapi/mechglue/g_decapsulate_token.c
-+++ b/src/lib/gssapi/mechglue/g_decapsulate_token.c
-@@ -33,8 +33,8 @@
- #include "mglueP.h"
- 
- OM_uint32
--gss_decapsulate_token(const gss_buffer_t input_token,
--                      const gss_OID token_oid,
-+gss_decapsulate_token(gss_const_buffer_t input_token,
-+                      gss_const_OID token_oid,
-                       gss_buffer_t output_token)
- {
-     OM_uint32 minor;
-diff --git a/src/lib/gssapi/mechglue/g_encapsulate_token.c b/src/lib/gssapi/mechglue/g_encapsulate_token.c
-index a60c796..b26e147 100644
---- a/src/lib/gssapi/mechglue/g_encapsulate_token.c
-+++ b/src/lib/gssapi/mechglue/g_encapsulate_token.c
-@@ -33,8 +33,8 @@
- #include "mglueP.h"
- 
- OM_uint32
--gss_encapsulate_token(const gss_buffer_t input_token,
--                      const gss_OID token_oid,
-+gss_encapsulate_token(gss_const_buffer_t input_token,
-+                      gss_const_OID token_oid,
-                       gss_buffer_t output_token)
- {
-     unsigned int tokenSize;
-diff --git a/src/lib/gssapi/mechglue/g_oid_ops.c b/src/lib/gssapi/mechglue/g_oid_ops.c
-index aa6d807..db3cd78 100644
---- a/src/lib/gssapi/mechglue/g_oid_ops.c
-+++ b/src/lib/gssapi/mechglue/g_oid_ops.c
-@@ -111,8 +111,8 @@ gssint_copy_oid_set(
- 
- int
- gss_oid_equal(
--    const gss_OID first_oid,
--    const gss_OID second_oid)
-+    gss_const_OID first_oid,
-+    gss_const_OID second_oid)
- {
-     return g_OID_equal(first_oid, second_oid);
- }
+Boaz
