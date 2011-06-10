@@ -1,109 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:40157 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758277Ab1FXOec convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jun 2011 10:34:32 -0400
-Subject: Re: autoload rpcsec_gss_krb5
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Boaz Harrosh <bharrosh@panasas.com>,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond@netapp.com>
-Date: Fri, 24 Jun 2011 10:34:30 -0400
-In-Reply-To: <20110624140105.GA18829@fieldses.org>
-References: <20110622213209.GA3010@fieldses.org>
-	 <20110623155947.GC8911@fieldses.org>
-	 <BANLkTikS+Y-V=f3Pm8AF-AUoeYVo==4SzA@mail.gmail.com>
-	 <20110623201117.GB12357@fieldses.org> <20110623203012.GD12357@fieldses.org>
-	 <4E03F4EA.5050206@panasas.com> <20110624140105.GA18829@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1308926070.11165.3.camel@lade.trondhjem.org>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:29712 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750854Ab1FJFg5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 01:36:57 -0400
+From: <tao.peng@emc.com>
+To: <benny@tonian.com>, <rees@umich.edu>
+CC: <bergwolf@gmail.com>, <linux-nfs@vger.kernel.org>, <honey@citi.umich.edu>
+Date: Fri, 10 Jun 2011 01:36:05 -0400
+Subject: RE: [PATCH 87/88] Add configurable prefetch size for layoutget
+Message-ID: <F19688880B763E40B28B2B462677FBF805BED9D217@MX09A.corp.emc.com>
+References: <cover.1307464381.git.rees@umich.edu>
+ <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu>
+ <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu>
+ <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com>
+ <4DF062D6.7010304@panasas.com> <20110609114929.GA28157@merit.edu>
+ <4DF0CB5D.60000@panasas.com> <20110609135846.GA32565@merit.edu>
+ <4DF139D0.1080200@tonian.com>
+In-Reply-To: <4DF139D0.1080200@tonian.com>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2011-06-24 at 10:01 -0400, J. Bruce Fields wrote: 
-> On Thu, Jun 23, 2011 at 07:22:34PM -0700, Boaz Harrosh wrote:
-> > On 06/23/2011 01:30 PM, J. Bruce Fields wrote:
-> > > On Thu, Jun 23, 2011 at 04:11:17PM -0400, J. Bruce Fields wrote:
-> > >> On Thu, Jun 23, 2011 at 10:06:14PM +0200, Tigran Mkrtchyan wrote:
-> > >>> I recall a discussion at connectaton 2010, where Peter Staubach from
-> > >>> RedHat ( at that time )
-> > >>> requested a way to disable pNFS without rebuilding the kernel.
-> > >>>
-> > >>> Probably that's why autoload is not implemented.
-> > >>
-> > >> Well, autoload *is* implemented, you just have to add an alias command
-> > >> to modprobe.conf before it'll work.
-> > >>
-> > >> And if we embed the alias in the module instead, it will still be
-> > >> possible to disable autloading by adding a "backlist <modulename>" to
-> > >> modproble.conf.
-> > >>
-> > >> So I don't *think* that's the issue, unless I've missed something.
-> > > 
-> > > So can we just do this?  (Untested.)
-> > > 
-> > > --b.
-> > > 
-> > > commit 8b3065071b5469c428d70052c80f1df3cb398da6
-> > > Author: J. Bruce Fields <bfields@redhat.com>
-> > > Date:   Thu Jun 23 16:15:39 2011 -0400
-> > > 
-> > >     pnfs: simplify pnfs files module autoloading
-> > >     
-> > >     Embed the necessary alias into the module rather than waiting for
-> > >     someone to add it to /etc/modprobe.conf
-> > >     
-> > >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > > 
-> > > diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> > > index 4269088..eb65f82 100644
-> > > --- a/fs/nfs/nfs4filelayout.c
-> > > +++ b/fs/nfs/nfs4filelayout.c
-> > > @@ -896,5 +896,7 @@ static void __exit nfs4filelayout_exit(void)
-> > >  	pnfs_unregister_layoutdriver(&filelayout_type);
-> > >  }
-> > >  
-> > > +MODULE_ALIAS("nfs-layouttype4-1");
-> > > +
-> > >  module_init(nfs4filelayout_init);
-> > >  module_exit(nfs4filelayout_exit);
-> > diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-> > index 70272d5..dd6a453 100644
-> > --- a/fs/nfs/objlayout/objio_osd.c
-> > +++ b/fs/nfs/objlayout/objio_osd.c
-> > @@ -1065,5 +1065,7 @@ objlayout_exit(void)
-> >  	       __func__);
-> >  }
-> >  
-> > +MODULE_ALIAS("nfs-layouttype4-2");
-> > +
-> >  module_init(objlayout_init);
-> >  module_exit(objlayout_exit);
-> > ---
-> > 
-> > nfs-layouttype4-1
-> > nfs-layouttype4-2
-> > ...
-> > 
-> > Can we use a name here or it must be the number?
+Hi, Benny,
+
+-----Original Message-----
+From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Benny Halevy
+Sent: Friday, June 10, 2011 5:23 AM
+To: Jim Rees
+Cc: Peng Tao; linux-nfs@vger.kernel.org; peter honeyman
+Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+
+On 2011-06-09 06:58, Jim Rees wrote:
+> Benny Halevy wrote:
 > 
-> Looks like it needs a number; see the request_module() call in
-> set_pnfs_layoutdriver:
+>   > My understanding is that layoutget specifies a min and max, and the server
+>   
+>   There's a min.  What do you consider the max?
+>   Whatever gets into csa_fore_chan_attrs.ca_maxresponsesize?
 > 
-> 	request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
+> The spec doesn't say max, it says "desired."  I guess I assumed the server
+> wouldn't normally return more than desired.
 
-The title of the thread is "autoload rpcsec_gss_krb5", but the above
-patch only deals with layouts.
-
-Now I'm all confused...
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+No, the server may freely upgrade the returned layout segment by returning
+a layout for a larger byte range or even returning a RW layout where a READ
+layout was asked for.
+[PT] It is true that server can upgrade the layout segment freely. But there is always a price to pay. Server has to be dealing with all kind of clients.
+If server returns more than being asked for, it may hurt other clients.
 
