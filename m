@@ -1,137 +1,127 @@
 From: greearb@candelatech.com
-Subject: [PATCH v2 3/6] nfs-utils:  Implement srcaddr binding in rpc_socket
-Date: Fri, 10 Jun 2011 12:41:35 -0700
-Message-ID: <1307734898-12860-4-git-send-email-greearb@candelatech.com>
+Subject: [PATCH v2 4/6] nfs-utils:  Support srcaddr=n option for string mount.
+Date: Fri, 10 Jun 2011 12:41:36 -0700
+Message-ID: <1307734898-12860-5-git-send-email-greearb@candelatech.com>
 References: <1307734898-12860-1-git-send-email-greearb@candelatech.com>
 Cc: Ben Greear <greearb@candelatech.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:43015 "EHLO
+Received: from mail.candelatech.com ([208.74.158.172]:43018 "EHLO
 	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754222Ab1FJTm5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 15:42:57 -0400
+	with ESMTP id S1757878Ab1FJTnF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 15:43:05 -0400
 In-Reply-To: <1307734898-12860-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Ben Greear <greearb@candelatech.com>
 
-This implements the actual binding, if we are passed
-a non-null local_ip structure.
+Look for and parse the srcaddr=n argument.  If parsing
+succeeds, pass this down the call chain.  This fully
+implements binding to a specified source address when
+mounting.
 
 Signed-off-by: Ben Greear <greearb@candelatech.com>
 ---
-:100644 100644 5652f6c... 4bcbdf0... M	support/nfs/rpc_socket.c
- support/nfs/rpc_socket.c |   59 +++++++++++++++++++++++++++++++++++----------
- 1 files changed, 46 insertions(+), 13 deletions(-)
+:100644 100644 71417df... aba4252... M	utils/mount/stropts.c
+ utils/mount/stropts.c |   29 +++++++++++++++++++++++++----
+ 1 files changed, 25 insertions(+), 4 deletions(-)
 
-diff --git a/support/nfs/rpc_socket.c b/support/nfs/rpc_socket.c
-index 5652f6c..4bcbdf0 100644
---- a/support/nfs/rpc_socket.c
-+++ b/support/nfs/rpc_socket.c
-@@ -115,6 +115,8 @@ static CLIENT *nfs_get_localclient(const struct sockaddr *sap,
- static int nfs_bind(const int sock, const sa_family_t family,
- 		    struct local_bind_info *local_ip)
- {
-+	struct sockaddr *sa = NULL;
-+	socklen_t salen = 0;
- 	struct sockaddr_in sin = {
- 		.sin_family		= AF_INET,
- 		.sin_addr.s_addr	= htonl(INADDR_ANY),
-@@ -124,15 +126,26 @@ static int nfs_bind(const int sock, const sa_family_t family,
- 		.sin6_addr		= IN6ADDR_ANY_INIT,
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 71417df..aba4252 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -92,6 +92,7 @@ struct nfsmount_info {
+ 	int			flags,		/* MS_ flags */
+ 				fake,		/* actually do the mount? */
+ 				child;		/* forked bg child? */
++	struct local_bind_info  *local_ip;      /* Local IP binding info */
+ };
+ 
+ #ifdef MOUNT_CONFIG
+@@ -345,6 +346,7 @@ static int nfs_validate_options(struct nfsmount_info *mi)
  	};
+ 	sa_family_t family;
+ 	int error;
++	char *option;
  
--	switch (family) {
--	case AF_INET:
--		return bind(sock, (struct sockaddr *)(char *)&sin,
--					(socklen_t)sizeof(sin));
--	case AF_INET6:
--		return bind(sock, (struct sockaddr *)(char *)&sin6,
--					(socklen_t)sizeof(sin6));
-+	if (local_ip && local_ip->is_set) {
-+		sa = &local_ip->addr.sa;
-+		salen = local_ip->addrlen;
-+	} else {
-+		switch (family) {
-+		case AF_INET:
-+			sa = (struct sockaddr *)&sin;
-+			salen = sizeof(sin);
-+			break;
-+		case AF_INET6:
-+			sa = (struct sockaddr *)&sin6;
-+			salen = sizeof(sin6);
-+		default:
-+			break;
-+		}
- 	}
+ 	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
+ 		return 0;
+@@ -371,6 +373,20 @@ static int nfs_validate_options(struct nfsmount_info *mi)
+ 					mi->address->ai_addrlen, mi->options))
+ 		return 0;
  
-+	if (sa)
-+		return bind(sock, sa, salen);
++	option = po_get(mi->options, "srcaddr");
++	if (option) {
++		struct local_bind_info *local_ip;
++		local_ip = malloc(sizeof(*local_ip));
++		memset(local_ip, 0, sizeof(*local_ip));
++		parse_local_bind(local_ip, option);
 +
- 	errno = EAFNOSUPPORT;
- 	return -1;
- }
-@@ -148,6 +161,7 @@ static int nfs_bind(const int sock, const sa_family_t family,
- static int nfs_bindresvport(const int sock, const sa_family_t family,
- 			    struct local_bind_info *local_ip)
- {
-+	struct sockaddr *sa = NULL;
- 	struct sockaddr_in sin = {
- 		.sin_family		= AF_INET,
- 		.sin_addr.s_addr	= htonl(INADDR_ANY),
-@@ -157,13 +171,23 @@ static int nfs_bindresvport(const int sock, const sa_family_t family,
- 		.sin6_addr		= IN6ADDR_ANY_INIT,
- 	};
- 
--	switch (family) {
--	case AF_INET:
--		return bindresvport_sa(sock, (struct sockaddr *)(char *)&sin);
--	case AF_INET6:
--		return bindresvport_sa(sock, (struct sockaddr *)(char *)&sin6);
-+	if (local_ip && local_ip->is_set) {
-+		sa = &local_ip->addr.sa;
-+	} else {
-+		switch (family) {
-+		case AF_INET:
-+			sa = (struct sockaddr *)&sin;
-+			break;
-+		case AF_INET6:
-+			sa = (struct sockaddr *)&sin6;
-+		default:
-+			break;
++		if (!local_ip->is_set) {
++			free(local_ip);
++			return 0;
 +		}
- 	}
- 
-+	if (sa)
-+		return bindresvport_sa(sock, sa);
-+
- 	errno = EAFNOSUPPORT;
- 	return -1;
- }
-@@ -179,12 +203,21 @@ static int nfs_bindresvport(const int sock, const sa_family_t family,
- static int nfs_bindresvport(const int sock, const sa_family_t family,
- 			    struct local_bind_info *local_ip)
- {
-+	struct sockaddr_in laddr;
- 	if (family != AF_INET) {
- 		errno = EAFNOSUPPORT;
- 		return -1;
- 	}
- 
--	return bindresvport(sock, NULL);
-+	laddr.sin_family = family;
-+	laddr.sin_port = 0;
-+	if (local_ip && local_ip->is_set) {
-+		struct sockaddr_in *si = &local_ip->addr.s4;
-+		laddr.sin_addr.s_addr = si->sin_addr.s_addr;
-+	} else {
-+		laddr.sin_addr.s_addr = htonl(INADDR_ANY);
++		mi->local_ip = local_ip;
 +	}
-+	return bindresvport(sock, &laddr);
++
+ 	return 1;
  }
  
- #endif	/* !HAVE_LIBTIRPC */
+@@ -484,7 +500,8 @@ static int nfs_construct_new_options(struct mount_options *options,
+  * FALSE is returned if some failure occurred.
+  */
+ static int
+-nfs_rewrite_pmap_mount_options(struct mount_options *options)
++nfs_rewrite_pmap_mount_options(struct mount_options *options,
++			       struct local_bind_info *local_ip)
+ {
+ 	union nfs_sockaddr nfs_address;
+ 	struct sockaddr *nfs_saddr = &nfs_address.sa;
+@@ -534,7 +551,8 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
+ 	 * negotiate.  Bail now if we can't contact it.
+ 	 */
+ 	if (!nfs_probe_bothports(mnt_saddr, mnt_salen, &mnt_pmap,
+-				 nfs_saddr, nfs_salen, &nfs_pmap, NULL)) {
++				 nfs_saddr, nfs_salen, &nfs_pmap,
++				 local_ip)) {
+ 		errno = ESPIPE;
+ 		if (rpc_createerr.cf_stat == RPC_PROGNOTREGISTERED)
+ 			errno = EOPNOTSUPP;
+@@ -589,7 +607,7 @@ static int nfs_sys_mount(struct nfsmount_info *mi, struct mount_options *opts)
+ }
+ 
+ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
+-		struct sockaddr *sap, socklen_t salen)
++			     struct sockaddr *sap, socklen_t salen)
+ {
+ 	struct mount_options *options = po_dup(mi->options);
+ 	int result = 0;
+@@ -631,7 +649,7 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
+ 		printf(_("%s: trying text-based options '%s'\n"),
+ 			progname, *mi->extra_opts);
+ 
+-	if (!nfs_rewrite_pmap_mount_options(options))
++	if (!nfs_rewrite_pmap_mount_options(options, mi->local_ip))
+ 		goto out_fail;
+ 
+ 	result = nfs_sys_mount(mi, options);
+@@ -1039,6 +1057,7 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
+ 		.flags		= flags,
+ 		.fake		= fake,
+ 		.child		= child,
++		.local_ip	= NULL,
+ 	};
+ 	int retval = EX_FAIL;
+ 
+@@ -1051,5 +1070,7 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
+ 
+ 	freeaddrinfo(mi.address);
+ 	free(mi.hostname);
++	if (mi.local_ip)
++		free(mi.local_ip);
+ 	return retval;
+ }
 -- 
 1.7.3.4
 
