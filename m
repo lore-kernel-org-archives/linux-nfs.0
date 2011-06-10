@@ -1,71 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:60774 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751106Ab1FTTUT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jun 2011 15:20:19 -0400
-Received: by qwk3 with SMTP id 3so944401qwk.19
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Jun 2011 12:20:18 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
-Subject: [PATCH] manpage: add info about IPv6 configuration to exports(5)
-Date: Mon, 20 Jun 2011 15:20:04 -0400
-Message-Id: <1308597604-1198-1-git-send-email-jlayton@redhat.com>
+Received: from daytona.panasas.com ([67.152.220.89]:15656 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753657Ab1FJDtm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 23:49:42 -0400
+Message-ID: <4DF1944D.50806@panasas.com>
+Date: Thu, 09 Jun 2011 23:49:33 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org, Casey Bodley <cbodley@citi.umich.edu>
+Subject: Re: [PATCH 1/2] nfsd4: fix break_lease flags on nfsd open
+References: <20110609224459.GA22215@fieldses.org>
+In-Reply-To: <20110609224459.GA22215@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The parts of the exports(5) manpage that discuss IP addressing neglect
-IPv6 configuration. Update to include info on how to export to IPv6
-subnets and addresses, and add a line demonstrating that to the EXAMPLE
-section.
+On 2011-06-09 18:44, J. Bruce Fields wrote:
+> From: J. Bruce Fields <bfields@redhat.com>
+> 
+> Thanks to Casey Bodley for pointing out that on a read open we pass 0,
+> instead of O_RDONLY, to break_lease, with the result that a read open is
+> treated like a write open for the purposes of lease breaking!
+> 
+> Reported-by: Casey Bodley <cbodley@citi.umich.edu>
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/nfsd/vfs.c |   15 +++++++++------
+>  1 files changed, 9 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index f3fb61b..848a4af 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -696,7 +696,15 @@ nfsd_access(struct svc_rqst *rqstp, struct svc_fh *fhp, u32 *access, u32 *suppor
+>  }
+>  #endif /* CONFIG_NFSD_V3 */
+>  
+> +static int nfsd_open_break_lease(struct inode *inode, int access)
+> +{
+> +	unsigned int mode;
+>  
+> +	if (access & NFSD_MAY_NOT_BREAK_LEASE)
+> +		return 0;
+> +	mode = (access & NFSD_MAY_WRITE) ? O_WRONLY : O_RDONLY;
+> +	return break_lease(inode, mode | O_NONBLOCK);
+> +}
+>  
+>  /*
+>   * Open an existing file or directory.
+> @@ -744,12 +752,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+>  	if (!inode->i_fop)
+>  		goto out;
+>  
+> -	/*
+> -	 * Check to see if there are any leases on this file.
+> -	 * This may block while leases are broken.
+> -	 */
+> -	if (!(access & NFSD_MAY_NOT_BREAK_LEASE))
+> -		host_err = break_lease(inode, O_NONBLOCK | ((access & NFSD_MAY_WRITE) ? O_WRONLY : 0));
+> +	 host_err = nfsd_open_break_lease(inode, access);
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- utils/exportfs/exports.man |    8 +++++---
- 1 files changed, 5 insertions(+), 3 deletions(-)
+nit: looks like there's an extra space before "host_err ="...
 
-diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
-index 241b3af..cf5f365 100644
---- a/utils/exportfs/exports.man
-+++ b/utils/exportfs/exports.man
-@@ -47,7 +47,7 @@ NFS clients may be specified in a number of ways:
- .IP "single host
- This is the most common format. You may specify a host either by an
- abbreviated name recognized be the resolver, the fully qualified domain
--name, or an IP address.
-+name, an IPv4 address, or an IPv6 address enclosed in square brackets.
- .IP "IP networks
- You can also export directories to all hosts on an IP (sub-) network
- simultaneously. This is done by specifying an IP address and netmask pair
-@@ -57,7 +57,7 @@ where the netmask can be specified in dotted-decimal format, or as a
- contiguous mask length.
- For example, either `/255.255.252.0' or `/22' appended
- to the network base IPv4 address results in identical subnetworks with 10 bits of
--host. Wildcard characters generally do not work on IP addresses, though they
-+host. IPv6 addresses must use a contiguous mask length and be enclosed in square brackets. Wildcard characters generally do not work on IP addresses, though they
- may work by accident when reverse DNS lookups fail.
- .IP "wildcards
- Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
-@@ -486,6 +486,7 @@ The format for extra export tables is the same as
- /home/joe       pc001(rw,all_squash,anonuid=150,anongid=100)
- /pub            *(ro,insecure,all_squash)
- /srv/www        \-sync,rw server @trusted @external(ro)
-+/foo            [2001:321:9:e54::/64](rw) 192.168.1.0/24(rw)
- '''/pub/private    (noaccess)
- .fi
- .PP
-@@ -501,7 +502,8 @@ option in this entry also allows clients with NFS implementations that
- don't use a reserved port for NFS.
- The sixth line exports a directory read-write to the machine 'server'
- as well as the `@trusted' netgroup, and read-only to netgroup `@external',
--all three mounts with the `sync' option enabled.
-+all three mounts with the `sync' option enabled. The seventh line exports
-+a directory to both an IPv6 and an IPv4 subnet.
- ''' The last line denies all NFS clients
- '''access to the private directory.
- '''.SH CAVEATS
--- 
-1.7.5.4
+Benny
 
+>  	if (host_err) /* NOMEM or WOULDBLOCK */
+>  		goto out_nfserr;
+>  
