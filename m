@@ -1,97 +1,462 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:42634 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753417Ab1FHVQ6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jun 2011 17:16:58 -0400
-Subject: Re: [PATCH] nfs-utils:  Support binding to source address.
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4DEFE18C.3040308@candelatech.com>
-Date: Wed, 8 Jun 2011 17:16:44 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <A7E35DD6-C83B-4DAC-A64D-9D79EDA97C5F@oracle.com>
-References: <1307554748-31757-1-git-send-email-greearb@candelatech.com> <41FD62D9-1CAA-46CA-B2D7-2F52E58A917B@oracle.com> <4DEFE18C.3040308@candelatech.com>
-To: Ben Greear <greearb@candelatech.com>
+Received: from mx2.netapp.com ([216.240.18.37]:5591 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757580Ab1FJBbI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Jun 2011 21:31:08 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/5] NFS: Cleanup of the nfs_pageio code in preparation for a pnfs bugfix
+Date: Thu,  9 Jun 2011 21:31:00 -0400
+Message-Id: <1307669462-15764-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1307669462-15764-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1307669462-15764-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1307669462-15764-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+We need to ensure that the layouts are set up before we can decide to
+coalesce requests. To do so, we want to further split up the struct
+nfs_pageio_descriptor operations into an initialisation callback, a
+coalescing test callback, and a 'do i/o' callback.
 
-On Jun 8, 2011, at 4:54 PM, Ben Greear wrote:
+This patch cleans up the existing callback methods before adding the
+'initialisation' callback.
 
-> On 06/08/2011 01:41 PM, Chuck Lever wrote:
->> 
->> On Jun 8, 2011, at 1:39 PM, greearb@candelatech.com wrote:
->> 
->>> From: Ben Greear<greearb@candelatech.com>
->>> 
->>> This lets one specify the source IP address for
->>> sockets, allowing users to leverage routing rules
->>> on multi-homed systems.
->> 
->>   [ ... snipped ... ]
->> 
->>> diff --git a/support/include/sockaddr.h b/support/include/sockaddr.h
->>> index 9af2543..3822b4b 100644
->>> --- a/support/include/sockaddr.h
->>> +++ b/support/include/sockaddr.h
->>> @@ -46,6 +46,12 @@ union nfs_sockaddr {
->>> 	struct sockaddr_in6	s6;
->>> };
->>> 
->>> +struct local_bind_info {
->>> +	struct sockaddr_storage addr;
->> 
->> For storing socket addresses, nfs_utils has "union nfs_sockaddr" which safely allows the equivalent of type-casting.  You should use that here.
->> 
->>> +	int addrlen;
->> 
->> socklen_t or size_t is preferred for sockaddr lengths.
->> 
->>> +	int is_set;
->> 
->> This should probably be _Bool or bool.
->> 
->> But why is this structure needed?  Why can't you pass a bind address via a struct sockaddr * just as bind(2) does?
-> 
-> Someone might one day want to bind to an interface with SO_BINDTODEVICE, so I thought
-> it would be nice to pass a container around so that it would be easy to add a dev-name
-> argument without touching all of the method signatures again.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c      |   15 ++++++++++++-
+ fs/nfs/objlayout/objio_osd.c |   13 +++++++++++-
+ fs/nfs/pagelist.c            |   12 ++++------
+ fs/nfs/pnfs.c                |   24 ++++++++++++++++++++++
+ fs/nfs/pnfs.h                |   25 ++++++++++++-----------
+ fs/nfs/read.c                |   44 +++++++++++++++++++++++++++++++----------
+ fs/nfs/write.c               |   33 +++++++++++++++++++++++++-----
+ include/linux/nfs_page.h     |   17 +++++++++++++--
+ 8 files changed, 141 insertions(+), 42 deletions(-)
 
-My preference would be to go with something simple for now.  If we ever need more, it's easy to change.  These are not a published formal API.
-
-Are you thinking of allowing users to specify either an IP address or a hostname as a value for this new option?
-
->> When you specify a source address for mountd and statd, wouldn't they need to register that address with rpcbind? That won't work for non-TI-RPC builds, and neither would it work for the kernel, which, according to Trond, will never support listening on specific addresses (he NACKed a patch to the kernel's rpcbind client to support this). Are you sure you need server-side changes too?
-> 
-> Much of the changes are just required to make things compile with the changes to the
-> core socket building methods.  I don't notice any changes to mountd or statd in
-> the patch I posted.  What sections are you speaking of?
-> 
->> You can't pass a bind address to the mount command using a command line option, since command line options aren't stored in /etc/fstab or /etc/mtab.  How would umount.nfs learn of the bind address if it can't find it in /etc/mtab?
->> 
->> It should not read from an environment variable either... how would that work during system boot?  How would such a variable be set during system shutdown?  If we were to do this, it really should use a new mount option.
-> 
-> Ok, I've implemented it with a mount-option for my testing.  I'll remove the
-> cmd-line-arg and environ variable logic.
-
-I have to admit that parse_local_bind() doesn't make sense to me.  For example, I don't think there is any need for bind addresses to use the square bracket convention that is used for server addresses; that is there for the NFS special device simply because a colon is already the separator between the server IP address and the export path.  We don't have that problem for a bind address, since it always stands by itself.
-
-I also imagine that the source address will need to be passed to the kernel via mount(2), yes?  That can only be done via a string mount option.  Anyway, point made.
-
-And such a mount option would need to be documented in nfs(5) (see utils/mount/nfs.man), and changes included with your patches.
-
->> If you repost, I would do mountd, statd, and mount's getport implementation all in separate patches.
-> 
-> I'm happy to work on this, but plz point me to what parts of my patch are messing with
-> mountd and statd.
-
-I'm not sure why I had that impression, but I now see that there are no mountd or statd hunks.  If you are happy without server-side changes, then great!
-
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 4269088..e9b9b82 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -654,7 +654,7 @@ filelayout_alloc_lseg(struct pnfs_layout_hdr *layoutid,
+  * return true  : coalesce page
+  * return false : don't coalesce page
+  */
+-bool
++static bool
+ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		   struct nfs_page *req)
+ {
+@@ -676,6 +676,16 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	return (p_stripe == r_stripe);
+ }
+ 
++static const struct nfs_pageio_ops filelayout_pg_read_ops = {
++	.pg_test = filelayout_pg_test,
++	.pg_doio = nfs_generic_pg_readpages,
++};
++
++static const struct nfs_pageio_ops filelayout_pg_write_ops = {
++	.pg_test = filelayout_pg_test,
++	.pg_doio = nfs_generic_pg_writepages,
++};
++
+ static bool filelayout_mark_pnfs_commit(struct pnfs_layout_segment *lseg)
+ {
+ 	return !FILELAYOUT_LSEG(lseg)->commit_through_mds;
+@@ -873,7 +883,8 @@ static struct pnfs_layoutdriver_type filelayout_type = {
+ 	.owner			= THIS_MODULE,
+ 	.alloc_lseg		= filelayout_alloc_lseg,
+ 	.free_lseg		= filelayout_free_lseg,
+-	.pg_test		= filelayout_pg_test,
++	.pg_read_ops		= &filelayout_pg_read_ops,
++	.pg_write_ops		= &filelayout_pg_write_ops,
+ 	.mark_pnfs_commit	= filelayout_mark_pnfs_commit,
+ 	.choose_commit_list	= filelayout_choose_commit_list,
+ 	.commit_pagelist	= filelayout_commit_pagelist,
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 4c41a60..31088f3 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -1008,6 +1008,16 @@ static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
+ 			OBJIO_LSEG(pgio->pg_lseg)->max_io_size;
+ }
+ 
++static const struct nfs_pageio_ops objio_pg_read_ops = {
++	.pg_test = objio_pg_test,
++	.pg_doio = nfs_generic_pg_readpages,
++};
++
++static const struct nfs_pageio_ops objio_pg_write_ops = {
++	.pg_test = objio_pg_test,
++	.pg_doio = nfs_generic_pg_writepages,
++};
++
+ static struct pnfs_layoutdriver_type objlayout_type = {
+ 	.id = LAYOUT_OSD2_OBJECTS,
+ 	.name = "LAYOUT_OSD2_OBJECTS",
+@@ -1021,7 +1031,8 @@ static struct pnfs_layoutdriver_type objlayout_type = {
+ 
+ 	.read_pagelist           = objlayout_read_pagelist,
+ 	.write_pagelist          = objlayout_write_pagelist,
+-	.pg_test                 = objio_pg_test,
++	.pg_read_ops             = &objio_pg_read_ops,
++	.pg_write_ops            = &objio_pg_write_ops,
+ 
+ 	.free_deviceid_node	 = objio_free_deviceid_node,
+ 
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 7913961..2b71ad0 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -204,7 +204,7 @@ nfs_wait_on_request(struct nfs_page *req)
+ 			TASK_UNINTERRUPTIBLE);
+ }
+ 
+-static bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc, struct nfs_page *prev, struct nfs_page *req)
++bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc, struct nfs_page *prev, struct nfs_page *req)
+ {
+ 	/*
+ 	 * FIXME: ideally we should be able to coalesce all requests
+@@ -229,7 +229,7 @@ static bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc, struct nfs_p
+  */
+ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 		     struct inode *inode,
+-		     int (*doio)(struct nfs_pageio_descriptor *),
++		     const struct nfs_pageio_ops *pg_ops,
+ 		     size_t bsize,
+ 		     int io_flags)
+ {
+@@ -240,12 +240,10 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 	desc->pg_base = 0;
+ 	desc->pg_moreio = 0;
+ 	desc->pg_inode = inode;
+-	desc->pg_doio = doio;
++	desc->pg_ops = pg_ops;
+ 	desc->pg_ioflags = io_flags;
+ 	desc->pg_error = 0;
+ 	desc->pg_lseg = NULL;
+-	desc->pg_test = nfs_generic_pg_test;
+-	pnfs_pageio_init(desc, inode);
+ }
+ 
+ /**
+@@ -275,7 +273,7 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
+ 		return false;
+ 	if (prev->wb_pgbase + prev->wb_bytes != PAGE_CACHE_SIZE)
+ 		return false;
+-	return pgio->pg_test(pgio, prev, req);
++	return pgio->pg_ops->pg_test(pgio, prev, req);
+ }
+ 
+ /**
+@@ -310,7 +308,7 @@ static int nfs_pageio_do_add_request(struct nfs_pageio_descriptor *desc,
+ static void nfs_pageio_doio(struct nfs_pageio_descriptor *desc)
+ {
+ 	if (!list_empty(&desc->pg_list)) {
+-		int error = desc->pg_doio(desc);
++		int error = desc->pg_ops->pg_doio(desc);
+ 		if (error < 0)
+ 			desc->pg_error = error;
+ 		else
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 9a4ce7c..68349dc 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1044,6 +1044,30 @@ out_forget_reply:
+ }
+ 
+ bool
++pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode)
++{
++	struct nfs_server *server = NFS_SERVER(inode);
++	struct pnfs_layoutdriver_type *ld = server->pnfs_curr_ld;
++
++	if (ld == NULL)
++		return false;
++	nfs_pageio_init(pgio, inode, ld->pg_read_ops, server->rsize, 0);
++	return true;
++}
++
++bool
++pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode, int ioflags)
++{
++	struct nfs_server *server = NFS_SERVER(inode);
++	struct pnfs_layoutdriver_type *ld = server->pnfs_curr_ld;
++
++	if (ld == NULL)
++		return false;
++	nfs_pageio_init(pgio, inode, ld->pg_write_ops, server->wsize, ioflags);
++	return true;
++}
++
++bool
+ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		     struct nfs_page *req)
+ {
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 48d0a8e..c5f1d8c 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -87,7 +87,8 @@ struct pnfs_layoutdriver_type {
+ 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
+ 
+ 	/* test for nfs page cache coalescing */
+-	bool (*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
++	const struct nfs_pageio_ops *pg_read_ops;
++	const struct nfs_pageio_ops *pg_write_ops;
+ 
+ 	/* Returns true if layoutdriver wants to divert this request to
+ 	 * driver's commit routine.
+@@ -152,6 +153,10 @@ struct pnfs_layout_segment *
+ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+ 		   loff_t pos, u64 count, enum pnfs_iomode access_type,
+ 		   gfp_t gfp_flags);
++
++bool pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
++bool pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *, int);
++
+ void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
+ enum pnfs_try_status pnfs_try_to_write_data(struct nfs_write_data *,
+@@ -292,15 +297,6 @@ static inline int pnfs_return_layout(struct inode *ino)
+ 	return 0;
+ }
+ 
+-static inline void pnfs_pageio_init(struct nfs_pageio_descriptor *pgio,
+-				    struct inode *inode)
+-{
+-	struct pnfs_layoutdriver_type *ld = NFS_SERVER(inode)->pnfs_curr_ld;
+-
+-	if (ld)
+-		pgio->pg_test = ld->pg_test;
+-}
+-
+ #else  /* CONFIG_NFS_V4_1 */
+ 
+ static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
+@@ -384,9 +380,14 @@ static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
+ {
+ }
+ 
+-static inline void pnfs_pageio_init(struct nfs_pageio_descriptor *pgio,
+-				    struct inode *inode)
++static bool pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode)
+ {
++	return false;
++}
++
++static bool pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode, int ioflags)
++{
++	return false;
+ }
+ 
+ static inline void
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 20a7f95..b46157d 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -32,6 +32,7 @@
+ 
+ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc);
+ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc);
++static const struct nfs_pageio_ops nfs_pageio_read_ops;
+ static const struct rpc_call_ops nfs_read_partial_ops;
+ static const struct rpc_call_ops nfs_read_full_ops;
+ 
+@@ -113,6 +114,21 @@ static void nfs_readpage_truncate_uninitialised_page(struct nfs_read_data *data)
+ 	}
+ }
+ 
++static void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
++		struct inode *inode)
++{
++	nfs_pageio_init(pgio, inode, &nfs_pageio_read_ops,
++			NFS_SERVER(inode)->rsize, 0);
++}
++
++static void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
++		struct inode *inode)
++{
++
++	if (!pnfs_pageio_init_read(pgio, inode))
++		nfs_pageio_init_read_mds(pgio, inode);
++}
++
+ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
+ 		       struct page *page)
+ {
+@@ -131,14 +147,11 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
+ 	if (len < PAGE_CACHE_SIZE)
+ 		zero_user_segment(page, len, PAGE_CACHE_SIZE);
+ 
+-	nfs_pageio_init(&pgio, inode, NULL, 0, 0);
++	nfs_pageio_init_read(&pgio, inode);
+ 	nfs_list_add_request(new, &pgio.pg_list);
+ 	pgio.pg_count = len;
+ 
+-	if (NFS_SERVER(inode)->rsize < PAGE_CACHE_SIZE)
+-		nfs_pagein_multi(&pgio);
+-	else
+-		nfs_pagein_one(&pgio);
++	nfs_pageio_complete(&pgio);
+ 	return 0;
+ }
+ 
+@@ -365,6 +378,20 @@ out:
+ 	return ret;
+ }
+ 
++int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
++{
++	if (desc->pg_bsize < PAGE_CACHE_SIZE)
++		return nfs_pagein_multi(desc);
++	return nfs_pagein_one(desc);
++}
++EXPORT_SYMBOL_GPL(nfs_generic_pg_readpages);
++
++
++static const struct nfs_pageio_ops nfs_pageio_read_ops = {
++	.pg_test = nfs_generic_pg_test,
++	.pg_doio = nfs_generic_pg_readpages,
++};
++
+ /*
+  * This is the callback from RPC telling us whether a reply was
+  * received or some error occurred (timeout or socket shutdown).
+@@ -635,8 +662,6 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
+ 		.pgio = &pgio,
+ 	};
+ 	struct inode *inode = mapping->host;
+-	struct nfs_server *server = NFS_SERVER(inode);
+-	size_t rsize = server->rsize;
+ 	unsigned long npages;
+ 	int ret = -ESTALE;
+ 
+@@ -664,10 +689,7 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
+ 	if (ret == 0)
+ 		goto read_complete; /* all pages were read */
+ 
+-	if (rsize < PAGE_CACHE_SIZE)
+-		nfs_pageio_init(&pgio, inode, nfs_pagein_multi, rsize, 0);
+-	else
+-		nfs_pageio_init(&pgio, inode, nfs_pagein_one, rsize, 0);
++	nfs_pageio_init_read(&pgio, inode);
+ 
+ 	ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
+ 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index e268e3b..828fba7 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -977,6 +977,11 @@ out_bad:
+ 	return -ENOMEM;
+ }
+ 
++static const struct nfs_pageio_ops nfs_flush_multi_ops = {
++	.pg_test = nfs_generic_pg_test,
++	.pg_doio = nfs_flush_multi,
++};
++
+ /*
+  * Create an RPC task for the given write request and kick it.
+  * The page must have been locked by the caller.
+@@ -1031,15 +1036,31 @@ out:
+ 	return ret;
+ }
+ 
+-static void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
++int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
++{
++	if (desc->pg_bsize < PAGE_CACHE_SIZE)
++		return nfs_flush_multi(desc);
++	return nfs_flush_one(desc);
++}
++EXPORT_SYMBOL_GPL(nfs_generic_pg_writepages);
++
++static const struct nfs_pageio_ops nfs_pageio_write_ops = {
++	.pg_test = nfs_generic_pg_test,
++	.pg_doio = nfs_generic_pg_writepages,
++};
++
++static void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
+ 				  struct inode *inode, int ioflags)
+ {
+-	size_t wsize = NFS_SERVER(inode)->wsize;
++	nfs_pageio_init(pgio, inode, &nfs_pageio_write_ops,
++				NFS_SERVER(inode)->wsize, ioflags);
++}
+ 
+-	if (wsize < PAGE_CACHE_SIZE)
+-		nfs_pageio_init(pgio, inode, nfs_flush_multi, wsize, ioflags);
+-	else
+-		nfs_pageio_init(pgio, inode, nfs_flush_one, wsize, ioflags);
++static void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
++				  struct inode *inode, int ioflags)
++{
++	if (!pnfs_pageio_init_write(pgio, inode, ioflags))
++		nfs_pageio_init_write_mds(pgio, inode, ioflags);
+ }
+ 
+ /*
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 3a34e80..b0e26c0 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -55,6 +55,12 @@ struct nfs_page {
+ 	struct nfs_writeverf	wb_verf;	/* Commit cookie */
+ };
+ 
++struct nfs_pageio_descriptor;
++struct nfs_pageio_ops {
++	bool	(*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
++	int	(*pg_doio)(struct nfs_pageio_descriptor *);
++};
++
+ struct nfs_pageio_descriptor {
+ 	struct list_head	pg_list;
+ 	unsigned long		pg_bytes_written;
+@@ -64,11 +70,10 @@ struct nfs_pageio_descriptor {
+ 	char			pg_moreio;
+ 
+ 	struct inode		*pg_inode;
+-	int			(*pg_doio)(struct nfs_pageio_descriptor *);
++	const struct nfs_pageio_ops *pg_ops;
+ 	int 			pg_ioflags;
+ 	int			pg_error;
+ 	struct pnfs_layout_segment *pg_lseg;
+-	bool			(*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
+ };
+ 
+ #define NFS_WBACK_BUSY(req)	(test_bit(PG_BUSY,&(req)->wb_flags))
+@@ -85,18 +90,24 @@ extern	int nfs_scan_list(struct nfs_inode *nfsi, struct list_head *dst,
+ 			  pgoff_t idx_start, unsigned int npages, int tag);
+ extern	void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 			     struct inode *inode,
+-			     int (*doio)(struct nfs_pageio_descriptor *desc),
++			     const struct nfs_pageio_ops *pg_ops,
+ 			     size_t bsize,
+ 			     int how);
+ extern	int nfs_pageio_add_request(struct nfs_pageio_descriptor *,
+ 				   struct nfs_page *);
+ extern	void nfs_pageio_complete(struct nfs_pageio_descriptor *desc);
+ extern	void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *, pgoff_t);
++extern	bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
++				 struct nfs_page *prev,
++				 struct nfs_page *req);
+ extern  int nfs_wait_on_request(struct nfs_page *);
+ extern	void nfs_unlock_request(struct nfs_page *req);
+ extern	int nfs_set_page_tag_locked(struct nfs_page *req);
+ extern  void nfs_clear_page_tag_locked(struct nfs_page *req);
+ 
++extern	int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
++extern	int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc);
++
+ 
+ /*
+  * Lock the page of an asynchronous request without getting a new reference
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.5.2
 
