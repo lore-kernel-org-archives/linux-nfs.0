@@ -1,151 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:58182 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750843Ab1FNO3C (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2011 10:29:02 -0400
-Received: by iyb14 with SMTP id 14so4712275iyb.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Jun 2011 07:29:01 -0700 (PDT)
-Message-ID: <4DF7702B.5090609@gmail.com>
-Date: Tue, 14 Jun 2011 10:28:59 -0400
-From: Benny Halevy <bhalevy.lists@gmail.com>
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:38684 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756966Ab1FJMri (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 08:47:38 -0400
+Received: by qyk7 with SMTP id 7so3048647qyk.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Jun 2011 05:47:37 -0700 (PDT)
+Message-ID: <4DF21267.9060706@panasas.com>
+Date: Fri, 10 Jun 2011 08:47:35 -0400
+From: Benny Halevy <bhalevy@panasas.com>
 To: tao.peng@emc.com
-CC: iisaman@netapp.com, rees@umich.edu, linux-nfs@vger.kernel.org,
+CC: bergwolf@gmail.com, rees@umich.edu, linux-nfs@vger.kernel.org,
         honey@citi.umich.edu
-Subject: Re: [PATCH 03/34] pnfs: let layoutcommit code handle multiple segments
-References: <cover.1307921137.git.rees@umich.edu>	<9f228c643de1f0378835d6ec9a493c1320bf001d.1307921137.git.rees@umich.edu> <BANLkTi=Pw-mO25APweSFxyA5bhtYwt5f2Q@mail.gmail.com> <F19688880B763E40B28B2B462677FBF805BED9D553@MX09A.corp.emc.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805BED9D553@MX09A.corp.emc.com>
+Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu> <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu> <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com> <BANLkTi=SMQhUNHEy=-ZPqFtCgKcnCtks=w@mail.gmail.com> <4DF13B65.5030401@panasas.com> <F19688880B763E40B28B2B462677FBF805BED9D222@MX09A.corp.emc.com>
+In-Reply-To: <F19688880B763E40B28B2B462677FBF805BED9D222@MX09A.corp.emc.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-06-14 06:40, tao.peng@emc.com wrote:
-> Hi, Fred,
+On 2011-06-10 02:02, tao.peng@emc.com wrote:
+> Hi, Benny,
 > 
->> -----Original Message-----
->> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org]
->> On Behalf Of Fred Isaman
->> Sent: Monday, June 13, 2011 10:37 PM
->> To: Jim Rees
->> Cc: linux-nfs@vger.kernel.org; peter honeyman
->> Subject: Re: [PATCH 03/34] pnfs: let layoutcommit code handle multiple segments
->>
->> On Sun, Jun 12, 2011 at 7:43 PM, Jim Rees <rees@umich.edu> wrote:
->>> From: Peng Tao <bergwolf@gmail.com>
->>>
->>> Some layout driver like block will have multiple segments.
->>> Generic code should be able to handle it.
->>>
->>> Signed-off-by: Peng Tao <peng_tao@emc.com>
->>> ---
->>>  fs/nfs/pnfs.c |   17 +++++++++++++----
->>>  fs/nfs/pnfs.h |    1 +
->>>  2 files changed, 14 insertions(+), 4 deletions(-)
->>>
->>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>> index e3d618b..f03a5e0 100644
->>> --- a/fs/nfs/pnfs.c
->>> +++ b/fs/nfs/pnfs.c
->>> @@ -892,7 +892,7 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
->>>        dprintk("%s:Begin\n", __func__);
->>>
->>>        assert_spin_locked(&lo->plh_inode->i_lock);
->>> -       list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
->>> +       list_for_each_entry_reverse(lseg, &lo->plh_segs, pls_list) {
->>
->> This is a sortred list, and the order of search matters.  You can't
->> just reverse it here.
-> The layout segment list is in offset increasing order. But the lookup code here assumes it's a decreasing ordered list.
-> To fix it, we should either reverse lookup the list, or change the break condition test. Otherwise lookup always fails if not matching the first one.
+> Cheers,
+> -Bergwolf
 > 
+> 
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Benny Halevy
+> Sent: Friday, June 10, 2011 5:30 AM
+> To: Peng Tao
+> Cc: Jim Rees; linux-nfs@vger.kernel.org; peter honeyman
+> Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+> 
+> On 2011-06-09 07:54, Peng Tao wrote:
+>> On Thu, Jun 9, 2011 at 2:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+>>> On 2011-06-08 03:15, Peng Tao wrote:
+>>>> On 6/8/11, Jim Rees <rees@umich.edu> wrote:
+>>>>> Benny Halevy wrote:
+>>>>>
+>>>>>   NAK.
+>>>>>   This affects all layout types.  In particular it is undesired
+>>>>>   for write layouts that extend the file with the objects layout.
+>>>>>   The server can extend the layout segments range
+>>>>>   over what the client requested so why would the client
+>>>>>   ask for artificially large layouts?
+>>>>>
+>>>>> This has actually been the subject of some debate over Thursday night
+>>>>> beers.  The problem we're trying to solve is that the client is spending 98%
+>>>>> of its time in layoutget.  This patch gives us something like a 10x
+>>>>> speedup.  But many of us think it's not the right fix.  I suggest we discuss
+>>>>> next week.
+>>>>>
+>>>
+>>> Sure.
+>>>
+>>>>> But note that this patch doesn't change anything unless you set the sysctl.
+>>>> there is a default value of 2M. maybe we can set it to page size by
+>>>> default so other layout are not affected and block layout can let
+>>>> users set it by hand if they care about performance. does this make
+>>>> sense?
+>>>
+>>> If doing it at all why use a sysctl rather than a mount option?
+>> The purpose of using a sysctl is to give client the ability to change
+>> it on the fly. In theory, layout prefetching can benefit all layout
+>> types. So the patch tries to solve it in the pnfs generic layer.
+>>
+> 
+> But the need for this varies per-server and many times per application.
+> Think sequential vs. random I/O.  Therefore a mount option would help
+> tuning the behavior on a per-use basis.  Global behavior must be implemented
+> using a dynamic algorithm that would take both the workload and the server
+> observed behavior into account.
+> [PT] Indeed. Dynamic algorithm is supposed to be able to solve all this. And it often takes longer to be designed/accepted. It has to prove to be better in most scenarios and does not hurt the left.
 
-We shouldn't scan the list in reverse.
-I'll send a fix upstream to fix the break condition.
-This got broken when I last changed cmp_layout.
-Basically we want to break out of the loop once we can't find a layout covering the first
-byte of the range we're looking up.
+We need to find an acceptable solution to push this driver upstream.
+I understand that developing a dynamic algorithm in the given time frame is
+too big of a challenge, but hacking yet another client tunable is out of the
+question either.   For testing in the Bakeathon I'd consider taking a DEVONLY version
+of this patch that is enabled using a config option and defaults to zero to have no effect
+in run-time until the sysctl is sets it differently.
+But keep in mind this is not suitable for pushing upstream.
 
 Benny
-
->>
->>>                if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
->>>                    is_matching_lseg(&lseg->pls_range, range)) {
->>>                        ret = get_lseg(lseg);
->>> @@ -1193,10 +1193,18 @@ pnfs_try_to_read_data(struct nfs_read_data *rdata,
->>>  static struct pnfs_layout_segment *pnfs_list_write_lseg(struct inode *inode)
->>>  {
->>>        struct pnfs_layout_segment *lseg, *rv = NULL;
->>> +       loff_t max_pos = 0;
->>> +
->>> +       list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list) {
->>> +               if (lseg->pls_range.iomode == IOMODE_RW) {
->>> +                       if (max_pos < lseg->pls_end_pos)
->>> +                               max_pos = lseg->pls_end_pos;
->>> +                       if (test_and_clear_bit(NFS_LSEG_LAYOUTCOMMIT,
->> &lseg->pls_flags))
->>> +                               rv = lseg;
->>> +               }
->>> +       }
->>> +       rv->pls_end_pos = max_pos;
->>>
->>
->> The idea here was that it could be extended to use segment by
->> returning a list of affected lsegs,
->> not so,e random one.  Because otherwise you have problems with the
->> fact that relevant but not
->> returned lsegs are going to get there refcounts messed up.
-> The above code relies on NFS_INO_LAYOUTCOMMIT bit to ensure that only one inode lseg has NFS_LSEG_LAYOUTCOMMIT set. But, you are right. The layoutcommit code needs a second thought.
-> How about making it return a list of affected lsegs and pass them around layoutcommit_procs?
-> 
-> Thanks,
-> Tao
-> 
->>
->> Fred
->>
->>> -       list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list)
->>> -               if (lseg->pls_range.iomode == IOMODE_RW)
->>> -                       rv = lseg;
->>>        return rv;
->>>  }
->>>
->>> @@ -1211,6 +1219,7 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
->>>        if (!test_and_set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
->>>                /* references matched in nfs4_layoutcommit_release */
->>>                get_lseg(wdata->lseg);
->>> +               set_bit(NFS_LSEG_LAYOUTCOMMIT,
->> &wdata->lseg->pls_flags);
->>>                wdata->lseg->pls_lc_cred =
->>>                        get_rpccred(wdata->args.context->state->owner-
->>> so_cred);
->>>                mark_as_dirty = true;
->>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->>> index b071b56..a3fc0f2 100644
->>> --- a/fs/nfs/pnfs.h
->>> +++ b/fs/nfs/pnfs.h
->>> @@ -36,6 +36,7 @@
->>>  enum {
->>>        NFS_LSEG_VALID = 0,     /* cleared when lseg is recalled/returned */
->>>        NFS_LSEG_ROC,           /* roc bit received from server */
->>> +       NFS_LSEG_LAYOUTCOMMIT,  /* layoutcommit bit set for
->> layoutcommit */
->>>  };
->>>
->>>  struct pnfs_layout_segment {
->>> --
->>> 1.7.4.1
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
