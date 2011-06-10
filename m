@@ -1,97 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:46448 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751164Ab1FJQOX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 12:14:23 -0400
-Message-ID: <4DF242D7.4030607@panasas.com>
-Date: Fri, 10 Jun 2011 09:14:15 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/5] NFSv4.1: Add an initialisation callback for pNFS
-References: <1307669462-15764-1-git-send-email-Trond.Myklebust@netapp.com> <1307669462-15764-2-git-send-email-Trond.Myklebust@netapp.com> <1307669462-15764-3-git-send-email-Trond.Myklebust@netapp.com> <1307669462-15764-4-git-send-email-Trond.Myklebust@netapp.com> <4DF1871C.1070001@panasas.com> <4DF19841.5030904@panasas.com> <4DF19D7B.2060308@panasas.com> <4DF1A106.3070205@panasas.com>
-In-Reply-To: <4DF1A106.3070205@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail.candelatech.com ([208.74.158.172]:53550 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757793Ab1FJSJ6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 14:09:58 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH 0/7] nfs-utils:  Support binding to source address.
+Date: Fri, 10 Jun 2011 11:09:32 -0700
+Message-Id: <1307729379-7702-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 06/09/2011 09:43 PM, Benny Halevy wrote:
-> On 2011-06-10 00:28, Boaz Harrosh wrote:
->> On 06/09/2011 09:06 PM, Benny Halevy wrote:
->>> On 2011-06-09 22:53, Boaz Harrosh wrote:
->>>> On 06/09/2011 06:31 PM, Trond Myklebust wrote:
->>>> <snip>
->>>>> +void
->>>>> +pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
->>>>> +{
->>>>> +	BUG_ON(pgio->pg_lseg != NULL);
->>>>> +
->>>>> +	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
->>>>> +					   req->wb_context,
->>>>> +					   req_offset(req),
->>>>> +					   req->wb_bytes,
->>>>> +					   IOMODE_READ,
->>>>> +					   GFP_KERNEL);
->>>>> +}
->>>>> +EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
->>>>> +
->>>>> +void
->>>>> +pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
->>>>> +{
->>>>> +	BUG_ON(pgio->pg_lseg != NULL);
->>>>> +
->>>>> +	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
->>>>> +					   req->wb_context,
->>>>> +					   req_offset(req),
->>>>> +					   req->wb_bytes,
->>>>> +					   IOMODE_RW,
->>>>> +					   GFP_NOFS);
->>>>> +}
->>>>> +EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
->>>>> +
->>>>
->>>> These two above are identical except the IOMODE_{READ,RW} variable.
->>>
->>> And the respective gfp flags...
->>>
->>
->> So is that "we should" or should-not?
->>
-> 
-> That doesn't make much sense when you've defined separate vectors
-> for read and write.
+From: Ben Greear <greearb@candelatech.com>
 
-So what the same function is set at both vectors, and the few callers (1)
-passes a flag.
+This lets one specify the source IP address for
+sockets, allowing users to leverage routing rules
+on multi-homed systems.
 
-If you ask me we could do with one vector and a flag throughout this
-stack. Actually don't make the flag as function parameter but as a member
-of nfs_pageio_descriptor. For example in osd we want to know if we are
-reading or writing in the raid5 case it produces different results.
+Kernel patches to RPC and NFS are needed to complete
+full functionality.
 
-> And in any case, since pg_init is not pnfs specific the caller shouldn't
-> pass IOMODE_* values but rather a generic value that will require translation anyway.
-> In this case I'd just consider using a common function to be called
-> respectively from both methods:
-> 
-> static void
-> pnfs_pg_update_layout(struct nfs_pageio_descriptor *pgio, struct nfs_page *req,
-> 		      enum pnfs_iomode iomode, gfp_t gfp_flags)
-> {
-> 	BUG_ON(pgio->pg_lseg != NULL);
-> 
-> 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
-> 					   req->wb_context,
-> 					   req_offset(req),
-> 					   req->wb_bytes,
-> 					   iomode,
-> 					   gfp_flags);
-> }
-> 
 
-That makes it even more complicated for a do nothing function. We dont do
-a different function for each different parameter. We can just do a 
-"bool write" and unify the dam thing
+v3:  Break into smaller patches for easier review.
+     Remove srcaddr support from non-stropts API.
 
-Boaz
+Ben Greear (7):
+  nfs-utils:  Add structure for passing local binding info.
+  nfs-utils:  Add patch to parse srcaddr= option.
+  nfs-utils:  Implement srcaddr binding in rpc_socket
+  nfs-utils:  Implement srcaddr binding in network.c
+  nfs-utils:  Support srcaddr=n option for string mount.
+  nfs-utils:  Implement srcaddr=n binding for unmount.
+  nfs-utils:  Update man page for srcaddr= option.
+
+ support/include/nfsrpc.h   |   23 +++++--
+ support/include/sockaddr.h |    6 ++
+ support/nfs/getport.c      |   37 +++++++----
+ support/nfs/rpc_socket.c   |   96 ++++++++++++++++++++--------
+ utils/gssd/gssd.h          |    2 +
+ utils/gssd/gssd_proc.c     |   33 ++++++----
+ utils/mount/network.c      |  149 +++++++++++++++++++++++++++++++++----------
+ utils/mount/network.h      |   20 ++++--
+ utils/mount/nfs.man        |    7 ++
+ utils/mount/nfs4mount.c    |    3 +-
+ utils/mount/nfsmount.c     |    6 +-
+ utils/mount/nfsumount.c    |   26 +++++++-
+ utils/mount/stropts.c      |   35 +++++++++-
+ utils/mount/utils.c        |    6 +-
+ utils/mount/utils.h        |    4 +-
+ 15 files changed, 335 insertions(+), 118 deletions(-)
+
+-- 
+1.7.3.4
+
