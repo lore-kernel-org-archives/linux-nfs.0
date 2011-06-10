@@ -1,44 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:39381 "EHLO relay.sw.ru"
+Received: from mail.SerNet.de ([193.175.80.2]:41335 "EHLO mail.SerNet.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932803Ab1FBKpO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Jun 2011 06:45:14 -0400
-Received: from [10.30.3.27] ([10.30.3.27])
-	(authenticated bits=0)
-	by relay.sw.ru (8.13.4/8.13.4) with ESMTP id p52Al4IH024870
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Thu, 2 Jun 2011 14:47:05 +0400 (MSD)
-Message-ID: <4DE769B7.7080704@parallels.com>
-Date: Thu, 02 Jun 2011 14:45:11 +0400
-From: Vasily Averin <vvs@parallels.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCHv2 1/2] SUNRPC: Use dprint_status() macro in call_decode()
-Content-Type: text/plain; charset=UTF-8
+	id S1754071Ab1FJIGf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Jun 2011 04:06:35 -0400
+Date: Fri, 10 Jun 2011 09:56:49 +0200
+Date: Fri, 10 Jun 2011 09:56:49 +0200
+From: Volker Lendecke <Volker.Lendecke@SerNet.DE>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        samba-technical@lists.samba.org, Casey Bodley <cbodley@citi.umich.edu>
+Subject: Re: [PATCH] locks: breaking read lease should not block read open
+Reply-To: Volker.Lendecke@SerNet.DE
+References: <20110609231606.GB22215@fieldses.org>
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <20110609231606.GB22215@fieldses.org>
+Message-Id: <E1QUwaT-00HRZw-74@intern.SerNet.DE>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-common dprint_status() macro is used in all callbacks but not in call_decode()
+On Thu, Jun 09, 2011 at 07:16:06PM -0400, J. Bruce Fields wrote:
+> The lease code behavior during the lease-breaking process is strange.
+> Fixing it completely would be complicated by the fact that the current
+> code allows a lease break to downgrade the lease instead of necessarily
+> removing it.
+> 
+> But I can't see what the point of that feature is.  And googling around
+> and looking at the Samba code, I can't see any evidence that anyone uses
+> it.  Think we could just do away with removing the ability to downgrade
+> to satisfy a lease break?
 
-Signed-off-by: Vasily Averin <vvs@sw.ru>
----
- net/sunrpc/clnt.c |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
+Without having looked too deeply, just let me point out that
+Samba here has a plain flaw. Early Linux Kernel versions
+that we programmed against did not properly support read
+only leases, so we did not implement that initially. If I
+remember correctly we never got around to finally do it once
+it became available. Eventually we will probably, as read
+only leases are a pretty important feature to present to
+CIFS clients.
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index b84d739..ab55369 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1548,8 +1548,7 @@ call_decode(struct rpc_task *task)
- 	kxdrdproc_t	decode = task->tk_msg.rpc_proc->p_decode;
- 	__be32		*p;
+Volker
 
--	dprintk("RPC: %5u call_decode (status %d)\n",
--			task->tk_pid, task->tk_status);
-+	dprint_status(task);
-
- 	if (task->tk_flags & RPC_CALL_MAJORSEEN) {
- 		if (clnt->cl_chatty)
 -- 
-1.7.4.1
-
+SerNet GmbH, Bahnhofsallee 1b, 37081 Göttingen
+phone: +49-551-370000-0, fax: +49-551-370000-9
+AG Göttingen, HRB 2816, GF: Dr. Johannes Loxen
