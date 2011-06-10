@@ -1,96 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:58450 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751769Ab1FNO6P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Jun 2011 10:58:15 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Steve Dickson <steved@redhat.com>
-Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/4] mountd: don't automatically add subexports to kernel cache
-Date: Tue, 14 Jun 2011 10:58:12 -0400
-Message-Id: <1308063492-30103-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1308063492-30103-1-git-send-email-bfields@redhat.com>
-References: <1308063492-30103-1-git-send-email-bfields@redhat.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:21517 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756586Ab1FJOR3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 10:17:29 -0400
+From: <tao.peng@emc.com>
+To: <benny@tonian.com>
+CC: <rees@umich.edu>, <bergwolf@gmail.com>, <linux-nfs@vger.kernel.org>,
+        <honey@citi.umich.edu>
+Date: Fri, 10 Jun 2011 10:17:01 -0400
+Subject: RE: [PATCH 87/88] Add configurable prefetch size for layoutget
+Message-ID: <F19688880B763E40B28B2B462677FBF805BED9D2AD@MX09A.corp.emc.com>
+References: <cover.1307464381.git.rees@umich.edu>
+ <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu>
+ <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu>
+ <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com>
+ <4DF062D6.7010304@panasas.com> <20110609114929.GA28157@merit.edu>
+ <4DF0CB5D.60000@panasas.com> <20110609135846.GA32565@merit.edu>
+ <4DF139D0.1080200@tonian.com>
+ <F19688880B763E40B28B2B462677FBF805BED9D217@MX09A.corp.emc.com>
+ <4DF20FB3.6030603@tonian.com>
+In-Reply-To: <4DF20FB3.6030603@tonian.com>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Given a crossmnt export and a child path, search for all mountpoints in
-between and add exports for them to the kernel.
 
-This isn't necessary; if the the kernel needs one of the subexports, it
-can always ask.
+-----Original Message-----
+From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Benny Halevy
+Sent: Friday, June 10, 2011 8:36 PM
+To: Peng, Tao
+Cc: rees@umich.edu; bergwolf@gmail.com; linux-nfs@vger.kernel.org; honey@citi.umich.edu
+Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
 
-It might be some sort of minor optimization to add exports preemptively.
-But if so, why not just add them all?  Why this particular subset?
+On 2011-06-10 01:36, tao.peng@emc.com wrote:
+> Hi, Benny,
+> 
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Benny Halevy
+> Sent: Friday, June 10, 2011 5:23 AM
+> To: Jim Rees
+> Cc: Peng Tao; linux-nfs@vger.kernel.org; peter honeyman
+> Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+> 
+> On 2011-06-09 06:58, Jim Rees wrote:
+>> Benny Halevy wrote:
+>>
+>>   > My understanding is that layoutget specifies a min and max, and the server
+>>   
+>>   There's a min.  What do you consider the max?
+>>   Whatever gets into csa_fore_chan_attrs.ca_maxresponsesize?
+>>
+>> The spec doesn't say max, it says "desired."  I guess I assumed the server
+>> wouldn't normally return more than desired.
+> 
+> No, the server may freely upgrade the returned layout segment by returning
+> a layout for a larger byte range or even returning a RW layout where a READ
+> layout was asked for.
+> [PT] It is true that server can upgrade the layout segment freely. But there is always a price to pay. Server has to be dealing with all kind of clients.
+> If server returns more than being asked for, it may hurt other clients.
 
-Given the chance to delete some code I can't justify, I'll take it.
+And if all clients ask for more than they need and the server just
+gives it to them, what do you get out of that?
+[PT] We cannot avoid this even if client has automatic layout prefetch algorithem implemented... think about all clients are doing sequential IO...
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- utils/mountd/cache.c |   42 +-----------------------------------------
- 1 files changed, 1 insertions(+), 41 deletions(-)
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index d2ae4563..c77eb27 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -945,53 +945,13 @@ static int cache_export_ent(char *domain, struct exportent *exp, char *path)
- 	if (!f)
- 		return -1;
- 
--	err = dump_to_cache(f, domain, exp->e_path, exp);
-+	err = dump_to_cache(f, domain, path, exp);
- 	if (err) {
- 		xlog(L_WARNING,
- 		     "Cannot export %s, possibly unsupported filesystem or"
- 		     " fsid= required", exp->e_path);
- 	}
- 
--	while (err == 0 && (exp->e_flags & NFSEXP_CROSSMOUNT) && path) {
--		/* really an 'if', but we can break out of
--		 * a 'while' more easily */
--		/* Look along 'path' for other filesystems
--		 * and export them with the same options
--		 */
--		struct stat stb;
--		size_t l = strlen(exp->e_path);
--		__dev_t dev;
--
--		if (strlen(path) <= l || path[l] != '/' ||
--		    strncmp(exp->e_path, path, l) != 0)
--			break;
--		if (stat(exp->e_path, &stb) != 0)
--			break;
--		dev = stb.st_dev;
--		while(path[l] == '/') {
--			char c;
--			/* errors for submount should fail whole filesystem */
--			int err2;
--
--			l++;
--			while (path[l] != '/' && path[l])
--				l++;
--			c = path[l];
--			path[l] = 0;
--			err2 = lstat(path, &stb);
--			path[l] = c;
--			if (err2 < 0)
--				break;
--			if (stb.st_dev == dev)
--				continue;
--			dev = stb.st_dev;
--			path[l] = 0;
--			dump_to_cache(f, domain, path, exp);
--			path[l] = c;
--		}
--		break;
--	}
--
- 	fclose(f);
- 	return err;
- }
--- 
-1.7.4.1
-
+-Tao
