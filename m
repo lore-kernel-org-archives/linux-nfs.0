@@ -1,50 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:43290 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752908Ab1FROCF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Jun 2011 10:02:05 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Libtirpc Devel List <libtirpc-devel@lists.sourceforge.net>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH] Do not skip records with nonblocking connections (take 2)
-Date: Sat, 18 Jun 2011 10:01:46 -0400
-Message-Id: <1308405706-3467-1-git-send-email-steved@redhat.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:57505 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1755035Ab1FJIUx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Jun 2011 04:20:53 -0400
+Message-ID: <4DF1D48D.10403@cn.fujitsu.com>
+Date: Fri, 10 Jun 2011 16:23:41 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: Jim Rees <rees@umich.edu>, Chuck Lever <chuck.lever@oracle.com>,
+        NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2] rpc.mountd: let mountd consult /etc/services for port
+References: <4DAD48C7.9090808@cn.fujitsu.com> <4DE0C380.7040608@cn.fujitsu.com> <20110528132953.GA8525@merit.edu> <D3F4AA10-8A35-4600-815B-D63CB7EF7315@oracle.com> <20110528164502.GA9188@merit.edu> <4DEE873F.70607@RedHat.com>
+In-Reply-To: <4DEE873F.70607@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-With non-blocking connections, do not skip records when receiving
-the streams since entire value messages can be ignored which
-in cause the entire stream to become out of sync.
 
-For example, two mounts simultaneously send two unmaps
-commands. The first one is read, then the second thrown
-away due to skipping the record. Skipping this record
-will cause XDR error later in processing of the stream.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- src/svc_vc.c |    6 +++++-
- 1 files changed, 5 insertions(+), 1 deletions(-)
+Steve Dickson:
+> On 05/28/2011 12:45 PM, Jim Rees wrote:
+>> Chuck Lever wrote:
+>>
+>>   So, we could also address this by getting rid of the legacy RPC behavior
+>>   instead.  However, in cases like this, I typically choose to stick with
+>>   legacy behavior, since that improves backwards compatibility.  It already
+>>   works like this for legacy RPC builds, so in some sense we are stuck with
+>>   it.
+>>
+>> Ok.  I remember the earlier discussion but forgot that the patch simply
+>> restores older behavior that was changed by tirpc.  In that case I'll go
+>> along with Mi's patch.
+> I am all for restoring the older behavior, but unfortunately this patch
+> does not do it. 
+> 
+> I when back and took a look at how the  nfs-utils-1.2.2 code worked.
+> While its true both mountd and statd read ports from /etc/service, 
+> they did not fail when those ports were already taken. They just 
+> bound to random ephemeral ports, which is probably the reason none of 
+> us noticed they were reading ports out of /etc/services. With
+> Mi's patch, both daemons fail when the ports in /etc/service are
+> already taken. 
 
-diff --git a/src/svc_vc.c b/src/svc_vc.c
-index aaaf2d7..87406f1 100644
---- a/src/svc_vc.c
-+++ b/src/svc_vc.c
-@@ -610,7 +610,11 @@ svc_vc_recv(xprt, msg)
- 	}
- 
- 	xdrs->x_op = XDR_DECODE;
--	(void)xdrrec_skiprecord(xdrs);
-+	/*
-+	 * No need skip records with nonblocking connections
-+	 */
-+	if (cd->nonblock == FALSE)
-+		(void)xdrrec_skiprecord(xdrs);
- 	if (xdr_callmsg(xdrs, msg)) {
- 		cd->x_id = msg->rm_xid;
- 		return (TRUE);
--- 
-1.7.4.4
+Hi steve,
+
+  Do you mean the daemons can't run?
+
+  I test nfs-utils-1.2.2 at fedora15, mountd can bind to the port 
+  reading form /etc/service. 
+
+  So, can you post some error or other message here?
+
+thanks,
+Mi Jinlong
 
