@@ -1,137 +1,45 @@
 From: greearb@candelatech.com
-Subject: [PATCH v2 5/6] nfs-utils:  Implement srcaddr=n binding for unmount.
-Date: Fri, 10 Jun 2011 12:41:37 -0700
-Message-ID: <1307734898-12860-6-git-send-email-greearb@candelatech.com>
+Subject: [PATCH v2 6/6] nfs-utils:  Update man page for srcaddr= option.
+Date: Fri, 10 Jun 2011 12:41:38 -0700
+Message-ID: <1307734898-12860-7-git-send-email-greearb@candelatech.com>
 References: <1307734898-12860-1-git-send-email-greearb@candelatech.com>
 Cc: Ben Greear <greearb@candelatech.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:46871 "EHLO
+Received: from mail.candelatech.com ([208.74.158.172]:46874 "EHLO
 	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757900Ab1FJTnW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 15:43:22 -0400
+	with ESMTP id S1756617Ab1FJTn3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 15:43:29 -0400
 In-Reply-To: <1307734898-12860-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Ben Greear <greearb@candelatech.com>
 
-This fully implements binding to a local IP address when
-attempting to un-mount.
-
 Signed-off-by: Ben Greear <greearb@candelatech.com>
 ---
-:100644 100644 8cd2852... ef5ec17... M	utils/mount/nfsumount.c
-:100644 100644 eb50074... c3d3467... M	utils/mount/utils.c
-:100644 100644 3fcd504... ef71814... M	utils/mount/utils.h
- utils/mount/nfsumount.c |   26 +++++++++++++++++++++++---
- utils/mount/utils.c     |    6 ++++--
- utils/mount/utils.h     |    4 +++-
- 3 files changed, 30 insertions(+), 6 deletions(-)
+:100644 100644 be91a25... 622d7cb... M	utils/mount/nfs.man
+ utils/mount/nfs.man |    7 +++++++
+ 1 files changed, 7 insertions(+), 0 deletions(-)
 
-diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
-index 8cd2852..ef5ec17 100644
---- a/utils/mount/nfsumount.c
-+++ b/utils/mount/nfsumount.c
-@@ -239,6 +239,9 @@ int nfsumount(int argc, char *argv[])
- 	int c, ret;
- 	char *spec;
- 	struct mntentchn *mc;
-+	char *opt;
-+	struct local_bind_info local_ip;
-+	memset(&local_ip, 0, sizeof(local_ip));
- 
- 	if (argc < 2) {
- 		umount_usage();
-@@ -314,7 +317,7 @@ int nfsumount(int argc, char *argv[])
- 			return EX_USAGE;
- 		}
- 		if (hasmntopt(&mc->m, "users") == NULL) {
--			char *opt = hasmntopt(&mc->m, "user");
-+			opt = hasmntopt(&mc->m, "user");
- 			struct passwd *pw;
- 			char *comma;
- 			size_t len;
-@@ -334,6 +337,22 @@ int nfsumount(int argc, char *argv[])
- 		}
- 	}
- 
-+	if (mc) {
-+		opt = hasmntopt(&mc->m, "srcaddr");
-+		if ((opt != NULL) && strlen(opt) > strlen("srcaddr=")) {
-+			char *sa = xstrdup(opt + strlen("srcaddr="));
-+			unsigned int z;
-+			for (z = 0; z < strlen(sa); z++) {
-+				if (sa[z] == ',') {
-+					sa[z] = 0;
-+					break;
-+				}
-+			}
-+			parse_local_bind(&local_ip, sa);
-+			free(sa);
-+		}
-+	}
-+
- 	ret = EX_SUCCESS;
- 	if (mc) {
- 		if (!lazy) {
-@@ -344,7 +363,8 @@ int nfsumount(int argc, char *argv[])
- 				 * we don't want to signal an error, as that
- 				 * could cause /sbin/mount to retry!
- 				 */
--				nfs_umount23(mc->m.mnt_fsname, mc->m.mnt_opts);
-+				nfs_umount23(mc->m.mnt_fsname, mc->m.mnt_opts,
-+					     &local_ip);
- 				break;
- 			case 1:
- 				break;
-@@ -355,7 +375,7 @@ int nfsumount(int argc, char *argv[])
- 		ret = del_mtab(mc->m.mnt_fsname, mc->m.mnt_dir);
- 	} else if (*spec != '/') {
- 		if (!lazy)
--			ret = nfs_umount23(spec, "tcp,v3");
-+			ret = nfs_umount23(spec, "tcp,v3", &local_ip);
- 	} else
- 		ret = del_mtab(NULL, spec);
- 
-diff --git a/utils/mount/utils.c b/utils/mount/utils.c
-index eb50074..c3d3467 100644
---- a/utils/mount/utils.c
-+++ b/utils/mount/utils.c
-@@ -153,7 +153,8 @@ int chk_mountpoint(const char *mount_point)
-  * pmap tuple.  If the GETPORT call later fails to disambiguate them,
-  * then we fail.
-  */
--int nfs_umount23(const char *devname, char *string)
-+int nfs_umount23(const char *devname, char *string,
-+		 struct local_bind_info *local_ip)
- {
- 	char *hostname = NULL, *dirname = NULL;
- 	struct mount_options *options;
-@@ -164,7 +165,8 @@ int nfs_umount23(const char *devname, char *string)
- 
- 	options = po_split(string);
- 	if (options) {
--		result = nfs_umount_do_umnt(options, &hostname, &dirname, NULL);
-+		result = nfs_umount_do_umnt(options, &hostname, &dirname,
-+					    local_ip);
- 		po_destroy(options);
- 	} else
- 		nfs_error(_("%s: option parsing error"), progname);
-diff --git a/utils/mount/utils.h b/utils/mount/utils.h
-index 3fcd504..ef71814 100644
---- a/utils/mount/utils.h
-+++ b/utils/mount/utils.h
-@@ -31,6 +31,8 @@ void mount_usage(void);
- void umount_usage(void);
- int chk_mountpoint(const char *mount_point);
- 
--int nfs_umount23(const char *devname, char *string);
-+struct local_bind_info;
-+int nfs_umount23(const char *devname, char *string,
-+		 struct local_bind_info *local_ip);
- 
- #endif	/* !_NFS_UTILS_MOUNT_UTILS_H */
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index be91a25..622d7cb 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -463,6 +463,13 @@ by other clients, but can impact application and server performance.
+ .IP
+ The DATA AND METADATA COHERENCE section contains a
+ detailed discussion of these trade-offs.
++.TP 1.5i
++.BI srcaddr= n
++Specifies a single IPv4 or IPv6 address
++to which the NFS client will bind its sockets.
++This can help force NFS to use a particular IP
++address on a multi-homed machine.  This option is not required
++in most cases.
+ .SS "Options for NFS versions 2 and 3 only"
+ Use these options, along with the options in the above subsection,
+ for NFS versions 2 and 3 only.
 -- 
 1.7.3.4
 
