@@ -1,63 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp07.online.nl ([194.134.42.52]:44088 "EHLO smtp07.online.nl"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751229Ab1FCSFg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Jun 2011 14:05:36 -0400
-Subject: Re: NFS3 + kerberos: performance issues
-From: Vladimir Elisseev <vovan@vovan.nl>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1307104354.2477.17.camel@lade.trondhjem.org>
-References: <1307086159.1052.19.camel@vovan.net.home>
-	 <1307104354.2477.17.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 03 Jun 2011 19:57:16 +0200
-Message-ID: <1307123836.1052.23.camel@vovan.net.home>
+Received: from mail.candelatech.com ([208.74.158.172]:53566 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757795Ab1FJSLE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 14:11:04 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH 5/7] nfs-utils:  Support srcaddr=n option for string mount.
+Date: Fri, 10 Jun 2011 11:09:37 -0700
+Message-Id: <1307729379-7702-6-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1307729379-7702-1-git-send-email-greearb@candelatech.com>
+References: <1307729379-7702-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-There's no mount command involved in timing. It's simply copy of the
-same directory (with many small files to NFS share with and without
-sec=krb5 mount option.
+From: Ben Greear <greearb@candelatech.com>
 
-Vlad.
+Look for and parse the srcaddr=n argument.  If parsing
+succeeds, pass this down the call chain.  This fully
+implements binding to a specified source address when
+mounting.
 
-On Fri, 2011-06-03 at 08:32 -0400, Trond Myklebust wrote:
-> On Fri, 2011-06-03 at 09:29 +0200, Vladimir Elisseev wrote: 
-> > Hello,
-> > 
-> > After using nfs3 with kerberos for a while I discovered very poor
-> > performance for some file operations like creation of files. There are
-> > two observations:
-> > - the overal nfs3 performance is good: for instance copying large files
-> > works fine
-> > - this poor performance is definitely related to kerberos as the same
-> > volume exported without sec=krb5 works ~10 times faster with creating
-> > files
-> > I'd appreciate if somebody can explain this behaviour?
-> > 
-> > Below are some details about NFS server and client:
-> > server:
-> > - kernel 2.6.36
-> > - export options rw,sec=krb5,no_root_squash,no_subtree_check
-> > - nfs-utils 1.2.3
-> > 
-> > client:
-> > - kernel 2.6.38 or 2.6.39 
-> > - mout options (from /proc/mounts):
-> > rw,nosuid,nodev,noatime,vers=3,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=krb5,mountaddr=192.168.1.219,mountvers=3,mountport=32767,mountproto=tcp,local_lock=none,addr=192.168.1.219
-> > 
-> > when the same volume exported without sec=krb5, the only option changes
-> > in /proc/mounts is sec=sys
-> 
-> Can you please tell us a bit more about how you are measuring this? I
-> might expect a x10 performance difference if the workload is dominated
-> by the actual setting up of the RPCSEC_GSS session (i.e. you are timing
-> mount+create one file or something like that). If we're talking about a
-> workload where the RPCSEC_GSS negotiation can be neglected, however
-> (mount+create 100000 files), I wouldn't expect any measurable
-> performance impact from 'sec=krb'.
-> 
-> 
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+:100644 100644 71417df... b02a469... M	utils/mount/stropts.c
+ utils/mount/stropts.c |   35 +++++++++++++++++++++++++++++++----
+ 1 files changed, 31 insertions(+), 4 deletions(-)
+
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 71417df..b02a469 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -92,6 +92,7 @@ struct nfsmount_info {
+ 	int			flags,		/* MS_ flags */
+ 				fake,		/* actually do the mount? */
+ 				child;		/* forked bg child? */
++	struct local_bind_info  *local_ip;      /* Local IP binding info */
+ };
+ 
+ #ifdef MOUNT_CONFIG
+@@ -484,7 +485,8 @@ static int nfs_construct_new_options(struct mount_options *options,
+  * FALSE is returned if some failure occurred.
+  */
+ static int
+-nfs_rewrite_pmap_mount_options(struct mount_options *options)
++nfs_rewrite_pmap_mount_options(struct mount_options *options,
++			       struct local_bind_info *local_ip)
+ {
+ 	union nfs_sockaddr nfs_address;
+ 	struct sockaddr *nfs_saddr = &nfs_address.sa;
+@@ -534,7 +536,8 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
+ 	 * negotiate.  Bail now if we can't contact it.
+ 	 */
+ 	if (!nfs_probe_bothports(mnt_saddr, mnt_salen, &mnt_pmap,
+-				 nfs_saddr, nfs_salen, &nfs_pmap, NULL)) {
++				 nfs_saddr, nfs_salen, &nfs_pmap,
++				 local_ip)) {
+ 		errno = ESPIPE;
+ 		if (rpc_createerr.cf_stat == RPC_PROGNOTREGISTERED)
+ 			errno = EOPNOTSUPP;
+@@ -589,7 +592,7 @@ static int nfs_sys_mount(struct nfsmount_info *mi, struct mount_options *opts)
+ }
+ 
+ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
+-		struct sockaddr *sap, socklen_t salen)
++			     struct sockaddr *sap, socklen_t salen)
+ {
+ 	struct mount_options *options = po_dup(mi->options);
+ 	int result = 0;
+@@ -631,7 +634,7 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
+ 		printf(_("%s: trying text-based options '%s'\n"),
+ 			progname, *mi->extra_opts);
+ 
+-	if (!nfs_rewrite_pmap_mount_options(options))
++	if (!nfs_rewrite_pmap_mount_options(options, mi->local_ip))
+ 		goto out_fail;
+ 
+ 	result = nfs_sys_mount(mi, options);
+@@ -1039,8 +1042,31 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
+ 		.flags		= flags,
+ 		.fake		= fake,
+ 		.child		= child,
++		.local_ip	= NULL,
+ 	};
+ 	int retval = EX_FAIL;
++	char *opt = strstr(*extra_opts, "srcaddr=");
++	struct local_bind_info local_ip;
++	memset(&local_ip, 0, sizeof(local_ip));
++
++	if (opt) {
++		char *tmp = xstrdup(opt);
++		unsigned int i;
++		int olen = strlen("srcaddr=");
++		for (i = olen; i < strlen(tmp); i++) {
++			if (tmp[i] == ',') {
++				tmp[i] = 0;
++				break;
++			}
++		}
++		parse_local_bind(&local_ip, tmp + olen);
++		free(tmp);
++		if (!local_ip.is_set)
++			goto fail;
++	}
++
++	if (local_ip.is_set)
++		mi.local_ip = &local_ip;
+ 
+ 	mi.options = po_split(*extra_opts);
+ 	if (mi.options) {
+@@ -1049,6 +1075,7 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
+ 	} else
+ 		nfs_error(_("%s: internal option parsing error"), progname);
+ 
++fail:
+ 	freeaddrinfo(mi.address);
+ 	free(mi.hostname);
+ 	return retval;
+-- 
+1.7.3.4
 
