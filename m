@@ -1,59 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:29492 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752316Ab1FGUVd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Jun 2011 16:21:33 -0400
-Message-ID: <4DEE8846.3010009@RedHat.com>
-Date: Tue, 07 Jun 2011 16:21:26 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Pavel Shilovsky <piastry@etersoft.ru>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] mountd: Fix missing varialble assignment in auth_unix_gid
-References: <1306954641-2560-1-git-send-email-piastry@etersoft.ru>
-In-Reply-To: <1306954641-2560-1-git-send-email-piastry@etersoft.ru>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail.candelatech.com ([208.74.158.172]:44592 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757627Ab1FJVIr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 17:08:47 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH v3 2/6] nfs-utils:  Add patch to parse srcaddr= option.
+Date: Fri, 10 Jun 2011 14:08:12 -0700
+Message-Id: <1307740096-19933-3-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1307740096-19933-1-git-send-email-greearb@candelatech.com>
+References: <1307740096-19933-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Ben Greear <greearb@candelatech.com>
 
+This will be used to parse the IP address used for
+binding to a particular local IP address.
 
-On 06/01/2011 02:57 PM, Pavel Shilovsky wrote:
-> When we get into auth_unix_gid at the second time, groups_len
-> is not 0 and ngroups variable leave as 0. Then we use ngroups
-> in getgrouplist that fails in this case. This patch fixes it.
-> 
-> Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
-> ---
->  utils/mountd/cache.c |    6 ++++--
->  1 files changed, 4 insertions(+), 2 deletions(-)
-> 
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index df6b38f..dbe20e9 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -138,7 +138,7 @@ static void auth_unix_gid(FILE *f)
->  	static gid_t *groups = NULL;
->  	static int groups_len = 0;
->  	gid_t *more_groups;
-> -	int ngroups = 0;
-> +	int ngroups;
->  	int rv, i;
->  	char *cp;
->  
-> @@ -147,9 +147,11 @@ static void auth_unix_gid(FILE *f)
->  		if (!groups)
->  			return;
->  
-> -		groups_len = ngroups = INITIAL_MANAGED_GROUPS;
-> +		groups_len = INITIAL_MANAGED_GROUPS;
->  	}
->  
-> +	ngroups = groups_len;
-> +
->  	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
->  		return;
->  
-Committed...
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+:100644 100644 5ba6967... 65c2145... M	utils/mount/network.c
+:100644 100644 a832e76... 6f66822... M	utils/mount/network.h
+ utils/mount/network.c |   45 +++++++++++++++++++++++++++++++++++++++++++++
+ utils/mount/network.h |    2 ++
+ 2 files changed, 47 insertions(+), 0 deletions(-)
 
-steved.
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 5ba6967..65c2145 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -405,6 +405,51 @@ out:
+ }
+ 
+ /*
++ *  node should be an IPv4 or IPv6 address numeric notation.
++ *  The value will be parsed in placed into laddr.
++ */
++void
++parse_local_bind(struct local_bind_info *laddr, const char* node) {
++	/* str is an IP address. */
++	int aiErr;
++	struct addrinfo *aiHead;
++	struct addrinfo hints;
++
++	laddr->is_set = 0;
++
++	memset(&hints, 0, sizeof(hints));
++
++	hints.ai_flags  = AI_NUMERICSERV;
++	hints.ai_socktype = SOCK_STREAM;
++	hints.ai_protocol = IPPROTO_TCP;
++	hints.ai_family = PF_INET;
++
++	aiErr = getaddrinfo(node, NULL, &hints, &aiHead);
++
++	/* If we tried PF_INET and it failed, try IPv6 instead
++	 * to see if it resolves properly.
++	 */
++	if (aiErr != 0) {
++		hints.ai_family = PF_INET6;
++		aiErr = getaddrinfo(node, NULL, &hints, &aiHead);
++	}
++
++	if (aiErr != 0) {
++		nfs_error(_("%s: parse srcaddr failed, "
++			    "node: %s  aiErr: %i %s\n"),
++			  progname, node, aiErr, gai_strerror(aiErr));
++	} else {
++		if (aiHead) {
++			memcpy(&laddr->addr, aiHead->ai_addr,
++			       aiHead->ai_addrlen);
++			laddr->addrlen = aiHead->ai_addrlen;
++			laddr->is_set = true;
++			freeaddrinfo(aiHead);
++		}
++	}
++}
++
++/*
+  * Create a socket that is locally bound to a reserved or non-reserved port.
+  *
+  * The caller should check rpc_createerr to determine the cause of any error.
+diff --git a/utils/mount/network.h b/utils/mount/network.h
+index a832e76..6f66822 100644
+--- a/utils/mount/network.h
++++ b/utils/mount/network.h
+@@ -36,6 +36,8 @@ typedef struct {
+ 	struct pmap pmap;
+ } clnt_addr_t;
+ 
++void parse_local_bind(struct local_bind_info *laddr, const char* str);
++
+ /* RPC call timeout values */
+ static const struct timeval TIMEOUT = { 20, 0 };
+ static const struct timeval RETRY_TIMEOUT = { 3, 0 };
+-- 
+1.7.3.4
+
