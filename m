@@ -1,65 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:57348 "EHLO
+Received: from mail.candelatech.com ([208.74.158.172]:41583 "EHLO
 	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754336Ab1FGRYD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:24:03 -0400
-Message-ID: <4DEE5EB0.3080404@candelatech.com>
-Date: Tue, 07 Jun 2011 10:24:00 -0700
+	with ESMTP id S1758193Ab1FJWuP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 18:50:15 -0400
+Message-ID: <4DF29FA4.1090706@candelatech.com>
+Date: Fri, 10 Jun 2011 15:50:12 -0700
 From: Ben Greear <greearb@candelatech.com>
-To: Luk Claes <luk@debian.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 CC: linux-nfs@vger.kernel.org
-Subject: Re: What RPM meets the libgssapi requirement on Fedora?
-References: <4DEE57AD.8050408@candelatech.com> <4DEE5A60.8000402@debian.org>
-In-Reply-To: <4DEE5A60.8000402@debian.org>
+Subject: Re: [PATCH v3 3/6] nfs-utils:  Implement srcaddr binding in rpc_socket
+References: <1307740096-19933-1-git-send-email-greearb@candelatech.com> <1307740096-19933-4-git-send-email-greearb@candelatech.com> <A2323BA3-3082-4416-A4C4-062726F15D6F@oracle.com> <4DF2985E.9010300@candelatech.com> <FFBB00C7-4264-4EBD-A097-95979ABA1978@oracle.com>
+In-Reply-To: <FFBB00C7-4264-4EBD-A097-95979ABA1978@oracle.com>
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 06/07/2011 10:05 AM, Luk Claes wrote:
-> Hi
+On 06/10/2011 03:37 PM, Chuck Lever wrote:
 >
-> In Debian it's called libgssglue as it was also renamed upstream quite a
-> while ago.
+> On Jun 10, 2011, at 6:19 PM, Ben Greear wrote:
+>
+>> On 06/10/2011 03:06 PM, Chuck Lever wrote:
+>>>
+>>> On Jun 10, 2011, at 5:08 PM, greearb@candelatech.com wrote:
+>>>
+>>>> From: Ben Greear<greearb@candelatech.com>
+>>>>
+>>>> This implements the actual binding, if we are passed
+>>>> a non-null local_ip structure.
+>>>
+>>> Why not _always_ pass a valid local_ip structure, and simply set .addr to an appropriate ANYADDR by default?  Then .is_set wouldn't be necessary, would it?  It would also simplify the logic in nfs_validate_options().
+>>
+>> I like it as is because almost none of the new code is actually
+>> used unless users pass in the srcaddr= option.  So, if I *did*
+>> introduce any bugs, hopefully they would be limited to users
+>> of the new option, and not a real regression.
+>
+> It should be pretty obvious if something here breaks.
+>
+>> Maybe after the srcaddr= code is used a bit I could go back and
+>> do that cleanup.
+>>
+>> But, I don't feel strongly about it, so if you think it's
+>> worth the bother, I'll try changing the code as you suggest.
+>
+> In the long-term, if my suggestion works out, this code would be simpler, and to me that's better than the risk of a little short-term instability.
 
-Those are already installed (libgssglue, libgssglue-devel)
-on my system, so it must be something else on Fedora...
+Do you mean always make sure it is not NULL as well?
+
+That would complicate code everywhere I currently pass NULL in for local_ip
+(like in methods that don't care about binding, non stropts logic, etc).
+I think that would cause more harm than good.
+
+I could add return value to the parse method instead of relying on
+is_set (and just pass in NULL instead of &local_ip if we didn't have the srcaddr=
+option) if you think that is cleaner, but I don't think it will simplify things very
+much...
 
 Thanks,
 Ben
-
->
-> Cheers
->
-> Luk
->
-> On 06/07/2011 06:54 PM, Ben Greear wrote:
->> ./configure
->> ....
->> checking pkg-config is at least version 0.9.0... yes
->> checking for RPCSECGSS... yes
->> checking for GSSAPI... configure: error: Package requirements (libgssapi
->>> = 0.11) were not met:
->>
->> No package 'libgssapi' found
->>
->> I tried:
->>
->> [root@fs3 linux-2.6.38.x64-dbg]# yum install libgssapi-devel
->> Loaded plugins: presto, refresh-packagekit
->> Setting up Install Process
->> Nothing to do
->>
->> This is on Fedora 13...
->>
->> Thanks,
->> Ben
->>
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
 -- 
