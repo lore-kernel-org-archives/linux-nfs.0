@@ -1,113 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:47832 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751352Ab1FTT23 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jun 2011 15:28:29 -0400
-Received: by fxm17 with SMTP id 17so1190849fxm.19
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Jun 2011 12:28:28 -0700 (PDT)
-Reply-To: tigran.mkrtchyan@desy.de
-In-Reply-To: <BANLkTinoJ9eeYxQHRB2wVRfF0dS8R88dcQ@mail.gmail.com>
-References: <BANLkTinoJ9eeYxQHRB2wVRfF0dS8R88dcQ@mail.gmail.com>
-Date: Mon, 20 Jun 2011 21:28:27 +0200
-Message-ID: <BANLkTik3EAyjyePPU7jbufmx90J180JgsA@mail.gmail.com>
-Subject: Re: missing verifier with rpcsec_gss
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: linux-nfs@vger.kernel.org
-Content-Type: multipart/mixed; boundary=0015173fe97060b4c104a629bda3
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:60026 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756617Ab1FJTzR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 15:55:17 -0400
+Received: by iwn34 with SMTP id 34so2430663iwn.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Jun 2011 12:55:16 -0700 (PDT)
+Message-ID: <4DF276A0.6080504@tonian.com>
+Date: Fri, 10 Jun 2011 15:55:12 -0400
+From: Benny Halevy <benny@tonian.com>
+To: Sid Moore <learnmost@gmail.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [patch 1/1]: fix bug in CREATE_SESSION encoding
+References: <BANLkTikv_vi7eR8Xu-_K5F5D5Smrj=goog@mail.gmail.com>
+In-Reply-To: <BANLkTikv_vi7eR8Xu-_K5F5D5Smrj=goog@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---0015173fe97060b4c104a629bda3
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+On 2011-06-10 02:32, Sid Moore wrote:
+> Hi
+> 
+> I think it might be an error when typing. see the patch below.
+> 
+> 
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -1772,7 +1772,7 @@ static void encode_create_session(struct xdr_stream *xdr,
+>         *p++ = cpu_to_be32(0);                          /* rdmachannel_attrs */
+> 
+>         /* Back Channel */
+> -       *p++ = cpu_to_be32(args->fc_attrs.headerpadsz); /* header
+> padding size */
+> +       *p++ = cpu_to_be32(args->bc_attrs.headerpadsz); /* header
+> padding size */
+>         *p++ = cpu_to_be32(args->bc_attrs.max_rqst_sz); /* max req size */
+>         *p++ = cpu_to_be32(args->bc_attrs.max_resp_sz); /* max resp size */
+>         *p++ = cpu_to_be32(args->bc_attrs.max_resp_sz_cached);  /* Max
+> resp sz cached */
+> 
+> --
+> Sid
+> --
 
-and dump :)
+Thanks for spotting this!
+Since we don't support header padding yet the following patch
+might be more appropriate.
+Trond, what do you think?
 
-On Mon, Jun 20, 2011 at 9:06 PM, Tigran Mkrtchyan
-<tigran.mkrtchyan@desy.de> wrote:
-> this is what I am observing with v4.0 and v4.1.
-> sometimes, mostly on RPCSEC_GSS_DESTROY,
-> in the PC calls missing verifier. This is against my
-> server and linux server.
->
-> Packets attached. Look at them packet 15.
-> 100% reproducible.
->
->
-> I tried vanilla 2.6.39 and 3.0.0-rc3 from
-> git://linux-nfs.org/~trondmy/nfs-2.6.git<http://linux-nfs.org/~trondmy/nf=
-s-2.6.git
-> =C2=A09cff1ffd4d477f541d5644f0ec25ee origin/linux-next
->
-> Regards,
-> =C2=A0Tigran.
->
+Benny
 
---0015173fe97060b4c104a629bda3
-Content-Type: application/octet-stream; name="mount-krb5i.dump"
-Content-Disposition: attachment; filename="mount-krb5i.dump"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_gp5t1q440
+git diff --stat -p -M
+ fs/nfs/nfs4proc.c       |    4 ----
+ fs/nfs/nfs4xdr.c        |   10 ++++++----
+ include/linux/nfs_xdr.h |    1 -
+ 3 files changed, 6 insertions(+), 9 deletions(-)
 
-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
-jOUA2Yzl
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 987260c..e7ef0b1 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5099,7 +5099,6 @@ static void nfs4_init_channel_attrs(struct nfs41_create_session_args *args)
+ 	if (mxresp_sz == 0)
+ 		mxresp_sz = NFS_MAX_FILE_IO_SIZE;
+ 	/* Fore channel attributes */
+-	args->fc_attrs.headerpadsz = 0;
+ 	args->fc_attrs.max_rqst_sz = mxrqst_sz;
+ 	args->fc_attrs.max_resp_sz = mxresp_sz;
+ 	args->fc_attrs.max_ops = NFS4_MAX_OPS;
+@@ -5112,7 +5111,6 @@ static void nfs4_init_channel_attrs(struct nfs41_create_session_args *args)
+ 		args->fc_attrs.max_ops, args->fc_attrs.max_reqs);
 
---0015173fe97060b4c104a629bda3--
+ 	/* Back channel attributes */
+-	args->bc_attrs.headerpadsz = 0;
+ 	args->bc_attrs.max_rqst_sz = PAGE_SIZE;
+ 	args->bc_attrs.max_resp_sz = PAGE_SIZE;
+ 	args->bc_attrs.max_resp_sz_cached = 0;
+@@ -5132,8 +5130,6 @@ static int nfs4_verify_fore_channel_attrs(struct nfs41_create_session_args *args
+ 	struct nfs4_channel_attrs *sent = &args->fc_attrs;
+ 	struct nfs4_channel_attrs *rcvd = &session->fc_attrs;
+
+-	if (rcvd->headerpadsz > sent->headerpadsz)
+-		return -EINVAL;
+ 	if (rcvd->max_resp_sz > sent->max_resp_sz)
+ 		return -EINVAL;
+ 	/*
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 73f18f4..7afc8df 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1780,7 +1780,7 @@ static void encode_create_session(struct xdr_stream *xdr,
+ 	*p++ = cpu_to_be32(args->flags);			/*flags */
+
+ 	/* Fore Channel */
+-	*p++ = cpu_to_be32(args->fc_attrs.headerpadsz);	/* header padding size */
++	*p++ = cpu_to_be32(0);				/* header padding size */
+ 	*p++ = cpu_to_be32(args->fc_attrs.max_rqst_sz);	/* max req size */
+ 	*p++ = cpu_to_be32(args->fc_attrs.max_resp_sz);	/* max resp size */
+ 	*p++ = cpu_to_be32(max_resp_sz_cached);		/* Max resp sz cached */
+@@ -1789,7 +1789,7 @@ static void encode_create_session(struct xdr_stream *xdr,
+ 	*p++ = cpu_to_be32(0);				/* rdmachannel_attrs */
+
+ 	/* Back Channel */
+-	*p++ = cpu_to_be32(args->fc_attrs.headerpadsz);	/* header padding size */
++	*p++ = cpu_to_be32(0);				/* header padding size */
+ 	*p++ = cpu_to_be32(args->bc_attrs.max_rqst_sz);	/* max req size */
+ 	*p++ = cpu_to_be32(args->bc_attrs.max_resp_sz);	/* max resp size */
+ 	*p++ = cpu_to_be32(args->bc_attrs.max_resp_sz_cached);	/* Max resp sz cached */
+@@ -5119,12 +5119,14 @@ static int decode_chan_attrs(struct xdr_stream *xdr,
+ 			     struct nfs4_channel_attrs *attrs)
+ {
+ 	__be32 *p;
+-	u32 nr_attrs;
++	u32 nr_attrs, val;
+
+ 	p = xdr_inline_decode(xdr, 28);
+ 	if (unlikely(!p))
+ 		goto out_overflow;
+-	attrs->headerpadsz = be32_to_cpup(p++);
++	val = be32_to_cpup(p++);	/* headerpadsz */
++	if (val)
++		return -EINVAL;		/* no support for header padding yet */
+ 	attrs->max_rqst_sz = be32_to_cpup(p++);
+ 	attrs->max_resp_sz = be32_to_cpup(p++);
+ 	attrs->max_resp_sz_cached = be32_to_cpup(p++);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index d1f9c27..0a21844 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -161,7 +161,6 @@ struct nfs_seqid;
+
+ /* nfs41 sessions channel attributes */
+ struct nfs4_channel_attrs {
+-	u32			headerpadsz;
+ 	u32			max_rqst_sz;
+ 	u32			max_resp_sz;
+ 	u32			max_resp_sz_cached;
