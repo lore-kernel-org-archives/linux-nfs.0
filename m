@@ -1,65 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:16147 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758264Ab1FJXUT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 19:20:19 -0400
-Message-ID: <4DF2A6AA.8050608@panasas.com>
-Date: Fri, 10 Jun 2011 16:20:10 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <benny@tonian.com>
-CC: tao.peng@emc.com, bergwolf@gmail.com, rees@umich.edu,
-        linux-nfs@vger.kernel.org, honey@citi.umich.edu
-Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
-References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu> <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu> <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com> <20110609114929.GA28157@merit.edu> <4DF0CB5D.60000@panasas.com> <20110609135846.GA32565@merit.edu> <BANLkTi=0yr1ecyf30+OQcFipJsHOk=4Y4w@mail.gmail.com> <4DF139B1.7070106@tonian.com> <F19688880B763E40B28B2B462677FBF805BED9D221@MX09A.corp.emc.com> <4DF20F07.4090804@tonian.com> <F19688880B763E40B28B2B462677FBF805BED9D2AC@MX09A.corp.emc.com> <4DF26F34.8080008@tonian.com>
-In-Reply-To: <4DF26F34.8080008@tonian.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail.candelatech.com ([208.74.158.172]:33426 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756617Ab1FJUzv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 16:55:51 -0400
+Received: from [192.168.100.195] (firewall.candelatech.com [70.89.124.249])
+	(authenticated bits=0)
+	by ns3.lanforge.com (8.14.2/8.14.2) with ESMTP id p5AKtorC009120
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Jun 2011 13:55:50 -0700
+Message-ID: <4DF284D6.6090405@candelatech.com>
+Date: Fri, 10 Jun 2011 13:55:50 -0700
+From: Ben Greear <greearb@candelatech.com>
+To: linux-nfs@vger.kernel.org
+Subject: Unused method: nfs_rpcb_getaddr
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 06/10/2011 12:23 PM, Benny Halevy wrote:
-> On 2011-06-10 10:09, tao.peng@emc.com wrote:
-> 
-> A simple algorithm I can suggest is:
-> - on initialization, calculate and save, per layout driver
->   - maximum layout size
->     - take into account csr_fore_chan_attrs.ca_maxresponsesize and possible other parameters
->   - keep a working copy of the maximum value and the calculated copy.
->   - alignment value.
-> - on miss, see if there's an adjacent layout segment in cache
-> - if found, ask for twice the found segment size, up to the maximum value,
->   aligned on the alignment value.
-> - if the server returns less the layoutget range, keep note of the returned length
->   (but not adjust maximum yet, as the server may return a short segment for various
->    reasons)
-> - if the server is consistent about returning less than was asked, adjust the
->   - working copy of the maximum length
-> - if the maximum was adjusted try bumping it up after X (TBD) layoutgets or T seconds
->   to see if that was just due to high load or conflicts on the server
-> - on any error returned for LAYOUTGET reset the algorithm parameters
-> - on session reestablishment recalculate maximums.
-> 
-> Benny
-> 
+As far as I can tell, nfs_rpcb_getaddr in support/nfs/getport.c isn't used anywhere.
 
-I completely disagree with all this. NACK!
+Any reason to keep this v/s just deleting it?
 
-The only proper thing a client can do is ask for what it needs, and only the application
-can do that, because at the VFS level it is only second guessing, and is completely
-pointless.
+Thanks,
+Ben
 
-The only one that can know about structure, alignments, optimal IO sizes and layouts
-is the server. The server even have more information to second guess the application
-from the file size information and it's share and lock disposition. Please see my
-simple Server side algorithm.
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
-Because you must understand one most important thing. Any smart decision a client can
-make will be after it received the layout (stripe_unit, number-of-devices etc..) But
-at that time it is too late it already sent the layout_get. Only the server knows
-before hand what is the most optimal size. The client should just be a transparent
-pipe from application to the server. It should never ever set policy. Only a Server
-can/should do that.
-
-Lets put the efforts and algorithms where they belong, please?
-
-Boaz
