@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:55418 "EHLO
+Received: from mail.candelatech.com ([208.74.158.172]:53573 "EHLO
 	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754635Ab1FMV2H (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 17:28:07 -0400
+	with ESMTP id S1757733Ab1FJSLX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 14:11:23 -0400
 From: greearb@candelatech.com
 To: linux-nfs@vger.kernel.org
 Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH v4 6/6] nfs-utils:  Update man page for srcaddr= option.
-Date: Mon, 13 Jun 2011 14:26:48 -0700
-Message-Id: <1308000408-13690-7-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1308000408-13690-1-git-send-email-greearb@candelatech.com>
-References: <1308000408-13690-1-git-send-email-greearb@candelatech.com>
+Subject: [PATCH 7/7] nfs-utils:  Update man page for srcaddr= option.
+Date: Fri, 10 Jun 2011 11:09:39 -0700
+Message-Id: <1307729379-7702-8-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1307729379-7702-1-git-send-email-greearb@candelatech.com>
+References: <1307729379-7702-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
