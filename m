@@ -1,111 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53500 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754136Ab1FXOmg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Jun 2011 10:42:36 -0400
-Date: Fri, 24 Jun 2011 10:42:31 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond@netapp.com>
-Subject: Re: autoload rpcsec_gss_krb5
-Message-ID: <20110624144231.GA19007@fieldses.org>
-References: <20110622213209.GA3010@fieldses.org>
- <20110623155947.GC8911@fieldses.org>
- <BANLkTikS+Y-V=f3Pm8AF-AUoeYVo==4SzA@mail.gmail.com>
- <20110623201117.GB12357@fieldses.org>
- <20110623203012.GD12357@fieldses.org>
- <4E03F4EA.5050206@panasas.com>
- <20110624140105.GA18829@fieldses.org>
- <1308926070.11165.3.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1308926070.11165.3.camel@lade.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:11653 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755655Ab1FJCQp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 22:16:45 -0400
+Message-ID: <4DF17E86.3060701@panasas.com>
+Date: Thu, 09 Jun 2011 19:16:38 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Jim Rees <rees@umich.edu>
+CC: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH 00/88] pnfs block layout driver
+References: <cover.1307464381.git.rees@umich.edu> <4DF140AF.20208@panasas.com> <20110609221528.GB28760@merit.edu>
+In-Reply-To: <20110609221528.GB28760@merit.edu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Jun 24, 2011 at 10:34:30AM -0400, Trond Myklebust wrote:
-> On Fri, 2011-06-24 at 10:01 -0400, J. Bruce Fields wrote: 
-> > On Thu, Jun 23, 2011 at 07:22:34PM -0700, Boaz Harrosh wrote:
-> > > On 06/23/2011 01:30 PM, J. Bruce Fields wrote:
-> > > > On Thu, Jun 23, 2011 at 04:11:17PM -0400, J. Bruce Fields wrote:
-> > > >> On Thu, Jun 23, 2011 at 10:06:14PM +0200, Tigran Mkrtchyan wrote:
-> > > >>> I recall a discussion at connectaton 2010, where Peter Staubach from
-> > > >>> RedHat ( at that time )
-> > > >>> requested a way to disable pNFS without rebuilding the kernel.
-> > > >>>
-> > > >>> Probably that's why autoload is not implemented.
-> > > >>
-> > > >> Well, autoload *is* implemented, you just have to add an alias command
-> > > >> to modprobe.conf before it'll work.
-> > > >>
-> > > >> And if we embed the alias in the module instead, it will still be
-> > > >> possible to disable autloading by adding a "backlist <modulename>" to
-> > > >> modproble.conf.
-> > > >>
-> > > >> So I don't *think* that's the issue, unless I've missed something.
-> > > > 
-> > > > So can we just do this?  (Untested.)
-> > > > 
-> > > > --b.
-> > > > 
-> > > > commit 8b3065071b5469c428d70052c80f1df3cb398da6
-> > > > Author: J. Bruce Fields <bfields@redhat.com>
-> > > > Date:   Thu Jun 23 16:15:39 2011 -0400
-> > > > 
-> > > >     pnfs: simplify pnfs files module autoloading
-> > > >     
-> > > >     Embed the necessary alias into the module rather than waiting for
-> > > >     someone to add it to /etc/modprobe.conf
-> > > >     
-> > > >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > > > 
-> > > > diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> > > > index 4269088..eb65f82 100644
-> > > > --- a/fs/nfs/nfs4filelayout.c
-> > > > +++ b/fs/nfs/nfs4filelayout.c
-> > > > @@ -896,5 +896,7 @@ static void __exit nfs4filelayout_exit(void)
-> > > >  	pnfs_unregister_layoutdriver(&filelayout_type);
-> > > >  }
-> > > >  
-> > > > +MODULE_ALIAS("nfs-layouttype4-1");
-> > > > +
-> > > >  module_init(nfs4filelayout_init);
-> > > >  module_exit(nfs4filelayout_exit);
-> > > diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-> > > index 70272d5..dd6a453 100644
-> > > --- a/fs/nfs/objlayout/objio_osd.c
-> > > +++ b/fs/nfs/objlayout/objio_osd.c
-> > > @@ -1065,5 +1065,7 @@ objlayout_exit(void)
-> > >  	       __func__);
-> > >  }
-> > >  
-> > > +MODULE_ALIAS("nfs-layouttype4-2");
-> > > +
-> > >  module_init(objlayout_init);
-> > >  module_exit(objlayout_exit);
-> > > ---
-> > > 
-> > > nfs-layouttype4-1
-> > > nfs-layouttype4-2
-> > > ...
-> > > 
-> > > Can we use a name here or it must be the number?
-> > 
-> > Looks like it needs a number; see the request_module() call in
-> > set_pnfs_layoutdriver:
-> > 
-> > 	request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
+On 06/09/2011 03:15 PM, Jim Rees wrote:
+> Boaz Harrosh wrote:
 > 
-> The title of the thread is "autoload rpcsec_gss_krb5", but the above
-> patch only deals with layouts.
+>   Who is going to SQUASH all the SQUASHMEs and re think the all patch
+>   separation again. To something that makes a more logical progression
+>   and easier on the review. The way it is now I'm not able to review,
+>   sorry, I got lost trying to understand which is which.
 > 
-> Now I'm all confused...
+> I'm open to suggestions and happy to do the work.  I agree that 88 patches
+> is nearly indigestable.  However I note that Benny seems to have pulled in
+> the entire set so I'm not sure how to proceed at this point.  Also this code
+> was in Benny's 2.6.38 and only got dropped when the 3.0 merge came along, so
+> most of it's already been under review for a year or more.
 
-Topic drift, sorry; original patch, which I'll commit to my tree absent
-objections:
+Lets start by squashing all the SQUASHMEs into their proper place, that will
+get you down to 49. You might notice that it could get hard and it will be
+easier to actually take the complete code and re-divide it to patches, a fresh.
+crafted more less on the old division strategy.
 
-http://marc.info/?l=linux-nfs&m=130877833918632&w=2
+It's what Fred did at the final files submission. And it is what I did more
+or less with the objects final submission. But you might find that for you
+it is easier to rebase and squash the patches together after you re-order
+them. It's your call and you will not know before you experiment a little.
+I can show you some techniques I use on both these paths.
+(Let's meet in B next week)
 
---b.
+Then you should do a second pass to see that each patch is compile-able and
+makes sense and maybe also reorder the introduction of the generic parts
+close to where they are used in the pachset progression. Again like we did
+for files and objects.
+
+Thanks
+Boaz
