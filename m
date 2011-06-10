@@ -1,45 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:51734 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757391Ab1FGRdN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:33:13 -0400
-Date: Tue, 7 Jun 2011 13:33:11 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 60/88] SQUASHME: pnfs-block: nfs4_blk_add_block_disk ret must
- be signed
-Message-ID: <d050d13a4254d5ae992cb8de5b9536c5bd3c6821.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+Received: from mail.candelatech.com ([208.74.158.172]:44602 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753445Ab1FJVJe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 17:09:34 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH v3 3/6] nfs-utils:  Implement srcaddr binding in rpc_socket
+Date: Fri, 10 Jun 2011 14:08:13 -0700
+Message-Id: <1307740096-19933-4-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1307740096-19933-1-git-send-email-greearb@candelatech.com>
+References: <1307740096-19933-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+From: Ben Greear <greearb@candelatech.com>
 
-otherwise checking for ret < 0 is futile.
+This implements the actual binding, if we are passed
+a non-null local_ip structure.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Ben Greear <greearb@candelatech.com>
 ---
- fs/nfs/blocklayout/blocklayoutdev.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+:100644 100644 5652f6c... 4bcbdf0... M	support/nfs/rpc_socket.c
+ support/nfs/rpc_socket.c |   59 +++++++++++++++++++++++++++++++++++----------
+ 1 files changed, 46 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index ef39c36..a866f5c 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -105,7 +105,8 @@ nfs4_blk_add_block_disk(struct device *cdev,
- 	static char *claim_ptr = "I belong to pnfs block driver";
- 	struct block_device *bdev;
- 	struct gendisk *gd;
--	unsigned int major, minor, ret = 0;
-+	unsigned int major, minor;
-+	int ret;
- 	dev_t dev;
+diff --git a/support/nfs/rpc_socket.c b/support/nfs/rpc_socket.c
+index 5652f6c..4bcbdf0 100644
+--- a/support/nfs/rpc_socket.c
++++ b/support/nfs/rpc_socket.c
+@@ -115,6 +115,8 @@ static CLIENT *nfs_get_localclient(const struct sockaddr *sap,
+ static int nfs_bind(const int sock, const sa_family_t family,
+ 		    struct local_bind_info *local_ip)
+ {
++	struct sockaddr *sa = NULL;
++	socklen_t salen = 0;
+ 	struct sockaddr_in sin = {
+ 		.sin_family		= AF_INET,
+ 		.sin_addr.s_addr	= htonl(INADDR_ANY),
+@@ -124,15 +126,26 @@ static int nfs_bind(const int sock, const sa_family_t family,
+ 		.sin6_addr		= IN6ADDR_ANY_INIT,
+ 	};
  
- 	dprintk("%s enter \n", __func__);
+-	switch (family) {
+-	case AF_INET:
+-		return bind(sock, (struct sockaddr *)(char *)&sin,
+-					(socklen_t)sizeof(sin));
+-	case AF_INET6:
+-		return bind(sock, (struct sockaddr *)(char *)&sin6,
+-					(socklen_t)sizeof(sin6));
++	if (local_ip && local_ip->is_set) {
++		sa = &local_ip->addr.sa;
++		salen = local_ip->addrlen;
++	} else {
++		switch (family) {
++		case AF_INET:
++			sa = (struct sockaddr *)&sin;
++			salen = sizeof(sin);
++			break;
++		case AF_INET6:
++			sa = (struct sockaddr *)&sin6;
++			salen = sizeof(sin6);
++		default:
++			break;
++		}
+ 	}
+ 
++	if (sa)
++		return bind(sock, sa, salen);
++
+ 	errno = EAFNOSUPPORT;
+ 	return -1;
+ }
+@@ -148,6 +161,7 @@ static int nfs_bind(const int sock, const sa_family_t family,
+ static int nfs_bindresvport(const int sock, const sa_family_t family,
+ 			    struct local_bind_info *local_ip)
+ {
++	struct sockaddr *sa = NULL;
+ 	struct sockaddr_in sin = {
+ 		.sin_family		= AF_INET,
+ 		.sin_addr.s_addr	= htonl(INADDR_ANY),
+@@ -157,13 +171,23 @@ static int nfs_bindresvport(const int sock, const sa_family_t family,
+ 		.sin6_addr		= IN6ADDR_ANY_INIT,
+ 	};
+ 
+-	switch (family) {
+-	case AF_INET:
+-		return bindresvport_sa(sock, (struct sockaddr *)(char *)&sin);
+-	case AF_INET6:
+-		return bindresvport_sa(sock, (struct sockaddr *)(char *)&sin6);
++	if (local_ip && local_ip->is_set) {
++		sa = &local_ip->addr.sa;
++	} else {
++		switch (family) {
++		case AF_INET:
++			sa = (struct sockaddr *)&sin;
++			break;
++		case AF_INET6:
++			sa = (struct sockaddr *)&sin6;
++		default:
++			break;
++		}
+ 	}
+ 
++	if (sa)
++		return bindresvport_sa(sock, sa);
++
+ 	errno = EAFNOSUPPORT;
+ 	return -1;
+ }
+@@ -179,12 +203,21 @@ static int nfs_bindresvport(const int sock, const sa_family_t family,
+ static int nfs_bindresvport(const int sock, const sa_family_t family,
+ 			    struct local_bind_info *local_ip)
+ {
++	struct sockaddr_in laddr;
+ 	if (family != AF_INET) {
+ 		errno = EAFNOSUPPORT;
+ 		return -1;
+ 	}
+ 
+-	return bindresvport(sock, NULL);
++	laddr.sin_family = family;
++	laddr.sin_port = 0;
++	if (local_ip && local_ip->is_set) {
++		struct sockaddr_in *si = &local_ip->addr.s4;
++		laddr.sin_addr.s_addr = si->sin_addr.s_addr;
++	} else {
++		laddr.sin_addr.s_addr = htonl(INADDR_ANY);
++	}
++	return bindresvport(sock, &laddr);
+ }
+ 
+ #endif	/* !HAVE_LIBTIRPC */
 -- 
-1.7.4.1
+1.7.3.4
 
