@@ -1,103 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:53554 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756244Ab1FJSKP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 14:10:15 -0400
-From: greearb@candelatech.com
+Received: from mx2.netapp.com ([216.240.18.37]:5591 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756921Ab1FJBbI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Jun 2011 21:31:08 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH 2/7] nfs-utils:  Add patch to parse srcaddr= option.
-Date: Fri, 10 Jun 2011 11:09:34 -0700
-Message-Id: <1307729379-7702-3-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1307729379-7702-1-git-send-email-greearb@candelatech.com>
-References: <1307729379-7702-1-git-send-email-greearb@candelatech.com>
+Subject: [PATCH 2/5] NFSv4.1: Fix an off-by-one error in pnfs_generic_pg_test
+Date: Thu,  9 Jun 2011 21:30:59 -0400
+Message-Id: <1307669462-15764-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1307669462-15764-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1307669462-15764-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
+And document what is going on there...
 
-This will be used to parse the IP address used for
-binding to a particular local IP address.
-
-Signed-off-by: Ben Greear <greearb@candelatech.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
-:100644 100644 6dc257b... 36c2e94... M	utils/mount/network.c
-:100644 100644 5732eb6... 4af8fd1... M	utils/mount/network.h
- utils/mount/network.c |   45 +++++++++++++++++++++++++++++++++++++++++++++
- utils/mount/network.h |    2 ++
- 2 files changed, 47 insertions(+), 0 deletions(-)
+ fs/nfs/pnfs.c |   21 ++++++++++++++++-----
+ 1 files changed, 16 insertions(+), 5 deletions(-)
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 6dc257b..36c2e94 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -405,6 +405,51 @@ out:
- }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 12b53ef..9a4ce7c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1073,11 +1073,22 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 			return true;
+ 	}
  
- /*
-+ *  node should be an IPv4 or IPv6 address numeric notation.
-+ *  The value will be parsed in placed into laddr.
-+ */
-+void
-+parse_local_bind(struct local_bind_info *laddr, const char* node) {
-+	/* str is an IP address. */
-+	int aiErr;
-+	struct addrinfo *aiHead;
-+	struct addrinfo hints;
-+
-+	laddr->is_set = 0;
-+
-+	memset(&hints, 0, sizeof(hints));
-+
-+	hints.ai_flags  = AI_NUMERICSERV;
-+	hints.ai_socktype = SOCK_STREAM;
-+	hints.ai_protocol = IPPROTO_TCP;
-+	hints.ai_family = PF_INET;
-+
-+	aiErr = getaddrinfo(node, NULL, &hints, &aiHead);
-+
-+	/* If we tried PF_INET and it failed, try IPv6 instead
-+	 * to see if it resolves properly.
+-	if (req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
+-					 pgio->pg_lseg->pls_range.length))
+-		return false;
+-
+-	return true;
++	/*
++	 * Test if a nfs_page is fully contained in the pnfs_layout_range.
++	 * Note that this test makes several assumptions:
++	 * - that the previous nfs_page in the struct nfs_pageio_descriptor
++	 *   is known to lie within the range.
++	 *   - that the nfs_page being tested is known to be contiguous with the
++	 *   previous nfs_page.
++	 *   - Layout ranges are page aligned, so we only have to test the
++	 *   start offset of the request.
++	 *
++	 * Please also note that 'end_offset' is actually the offset of the
++	 * first byte that lies outside the pnfs_layout_range. FIXME?
++	 *
 +	 */
-+	if (aiErr != 0) {
-+		hints.ai_family = PF_INET6;
-+		aiErr = getaddrinfo(node, NULL, &hints, &aiHead);
-+	}
-+
-+	if (aiErr != 0) {
-+		nfs_error(_("%s: parse srcaddr failed, "
-+			    "node: %s  aiErr: %i %s\n"),
-+			  progname, node, aiErr, gai_strerror(aiErr));
-+	} else {
-+		if (aiHead) {
-+			memcpy(&laddr->addr, aiHead->ai_addr,
-+			       aiHead->ai_addrlen);
-+			laddr->addrlen = aiHead->ai_addrlen;
-+			laddr->is_set = true;
-+			freeaddrinfo(aiHead);
-+		}
-+	}
-+}
-+
-+/*
-  * Create a socket that is locally bound to a reserved or non-reserved port.
-  *
-  * The caller should check rpc_createerr to determine the cause of any error.
-diff --git a/utils/mount/network.h b/utils/mount/network.h
-index 5732eb6..4af8fd1 100644
---- a/utils/mount/network.h
-+++ b/utils/mount/network.h
-@@ -36,6 +36,8 @@ typedef struct {
- 	struct pmap pmap;
- } clnt_addr_t;
++	return req_offset(req) < end_offset(pgio->pg_lseg->pls_range.offset,
++					 pgio->pg_lseg->pls_range.length);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
  
-+void parse_local_bind(struct local_bind_info *laddr, const char* str);
-+
- /* RPC call timeout values */
- static const struct timeval TIMEOUT = { 20, 0 };
- static const struct timeval RETRY_TIMEOUT = { 3, 0 };
 -- 
-1.7.3.4
+1.7.5.2
 
