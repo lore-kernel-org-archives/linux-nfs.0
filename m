@@ -1,96 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:13924 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751429Ab1FAFsA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 01:48:00 -0400
-Message-ID: <4DE5D287.603@panasas.com>
-Date: Wed, 01 Jun 2011 08:47:51 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Weston Andros Adamson <dros@netapp.com>
-CC: trond@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS: filelayout should use nfs_generic_pg_test
-References: <1306898310-9229-1-git-send-email-dros@netapp.com>
-In-Reply-To: <1306898310-9229-1-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:47951 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751324Ab1FJQ24 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 12:28:56 -0400
+Subject: Re: [PATCH 4/5] NFSv4.1: Add an initialisation callback for pNFS
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
+Date: Fri, 10 Jun 2011 12:28:18 -0400
+In-Reply-To: <4DF242D7.4030607@panasas.com>
+References: <1307669462-15764-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1307669462-15764-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1307669462-15764-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <1307669462-15764-4-git-send-email-Trond.Myklebust@netapp.com>
+	 <4DF1871C.1070001@panasas.com> <4DF19841.5030904@panasas.com>
+	 <4DF19D7B.2060308@panasas.com> <4DF1A106.3070205@panasas.com>
+	 <4DF242D7.4030607@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1307723298.19554.8.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 06/01/2011 06:18 AM, Weston Andros Adamson wrote:
-> Use nfs_generic_pg_test instead of pnfs_generic_pg_test.
+On Fri, 2011-06-10 at 09:14 -0700, Boaz Harrosh wrote: 
+> On 06/09/2011 09:43 PM, Benny Halevy wrote:
+> > On 2011-06-10 00:28, Boaz Harrosh wrote:
+> >> On 06/09/2011 09:06 PM, Benny Halevy wrote:
+> >>> On 2011-06-09 22:53, Boaz Harrosh wrote:
+> >>>> On 06/09/2011 06:31 PM, Trond Myklebust wrote:
+> >>>> <snip>
+> >>>>> +void
+> >>>>> +pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+> >>>>> +{
+> >>>>> +	BUG_ON(pgio->pg_lseg != NULL);
+> >>>>> +
+> >>>>> +	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+> >>>>> +					   req->wb_context,
+> >>>>> +					   req_offset(req),
+> >>>>> +					   req->wb_bytes,
+> >>>>> +					   IOMODE_READ,
+> >>>>> +					   GFP_KERNEL);
+> >>>>> +}
+> >>>>> +EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
+> >>>>> +
+> >>>>> +void
+> >>>>> +pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+> >>>>> +{
+> >>>>> +	BUG_ON(pgio->pg_lseg != NULL);
+> >>>>> +
+> >>>>> +	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+> >>>>> +					   req->wb_context,
+> >>>>> +					   req_offset(req),
+> >>>>> +					   req->wb_bytes,
+> >>>>> +					   IOMODE_RW,
+> >>>>> +					   GFP_NOFS);
+> >>>>> +}
+> >>>>> +EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
+> >>>>> +
+> >>>>
+> >>>> These two above are identical except the IOMODE_{READ,RW} variable.
+> >>>
+> >>> And the respective gfp flags...
+> >>>
+> >>
+> >> So is that "we should" or should-not?
+> >>
+> > 
+> > That doesn't make much sense when you've defined separate vectors
+> > for read and write.
 > 
-> This fixes the BUG at fs/nfs/write.c:941 introduced by
-> 89a58e32d9105c01022a757fb32ddc3b51bf0025.
+> So what the same function is set at both vectors, and the few callers (1)
+> passes a flag.
 > 
-> I was able to trigger this BUG reliably using pynfs in pnfs mode,
-> by using dd(1) to write many small blocks.
+> If you ask me we could do with one vector and a flag throughout this
+> stack. Actually don't make the flag as function parameter but as a member
+> of nfs_pageio_descriptor. For example in osd we want to know if we are
+> reading or writing in the raid5 case it produces different results.
 > 
-> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-> ---
-> Fix proposed by Trond.
+> > And in any case, since pg_init is not pnfs specific the caller shouldn't
+> > pass IOMODE_* values but rather a generic value that will require translation anyway.
+> > In this case I'd just consider using a common function to be called
+> > respectively from both methods:
+> > 
+> > static void
+> > pnfs_pg_update_layout(struct nfs_pageio_descriptor *pgio, struct nfs_page *req,
+> > 		      enum pnfs_iomode iomode, gfp_t gfp_flags)
+> > {
+> > 	BUG_ON(pgio->pg_lseg != NULL);
+> > 
+> > 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+> > 					   req->wb_context,
+> > 					   req_offset(req),
+> > 					   req->wb_bytes,
+> > 					   iomode,
+> > 					   gfp_flags);
+> > }
+> > 
 > 
-> Benny- Does this make sense?
-> 
->  fs/nfs/nfs4filelayout.c  |    2 +-
->  fs/nfs/pagelist.c        |    5 ++++-
->  include/linux/nfs_page.h |    3 ++-
->  3 files changed, 7 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> index 4269088..1c3bb72 100644
-> --- a/fs/nfs/nfs4filelayout.c
-> +++ b/fs/nfs/nfs4filelayout.c
-> @@ -661,7 +661,7 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
->  	u64 p_stripe, r_stripe;
->  	u32 stripe_unit;
->  
-> -	if (!pnfs_generic_pg_test(pgio, prev, req))
-> +	if (!nfs_generic_pg_test(pgio, prev, req))
->  		return 0;
->  
+> That makes it even more complicated for a do nothing function. We dont do
+> a different function for each different parameter. We can just do a 
+> "bool write" and unify the dam thing
 
-pnfs_generic_pg_test is the one that gets the layout.
+Right now, the nfs_pageio_descriptor doesn't know about reads vs writes.
+It just knows about 'coalesce requests' and 'perform i/o'. I'd prefer to
+keep that abstraction, as it makes things cleaner, particularly when you
+get to patch 5 (NFSv4.1: Fall back to ordinary i/o through the mds if we
+have no layout segment). Why add more 'if' statements when you don't
+need to...
 
-What you've done is revert to MDS IO
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Boaz
-
->  	if (!pgio->pg_lseg)
-> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-> index 7913961..1a4b0de 100644
-> --- a/fs/nfs/pagelist.c
-> +++ b/fs/nfs/pagelist.c
-> @@ -204,7 +204,9 @@ nfs_wait_on_request(struct nfs_page *req)
->  			TASK_UNINTERRUPTIBLE);
->  }
->  
-> -static bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc, struct nfs_page *prev, struct nfs_page *req)
-> +bool
-> +nfs_generic_pg_test(struct nfs_pageio_descriptor *desc, struct nfs_page *prev,
-> +		    struct nfs_page *req)
->  {
->  	/*
->  	 * FIXME: ideally we should be able to coalesce all requests
-> @@ -218,6 +220,7 @@ static bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc, struct nfs_p
->  
->  	return desc->pg_count + req->wb_bytes <= desc->pg_bsize;
->  }
-> +EXPORT_SYMBOL_GPL(nfs_generic_pg_test);
->  
->  /**
->   * nfs_pageio_init - initialise a page io descriptor
-> diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-> index 3a34e80..7d8a779 100644
-> --- a/include/linux/nfs_page.h
-> +++ b/include/linux/nfs_page.h
-> @@ -96,7 +96,8 @@ extern  int nfs_wait_on_request(struct nfs_page *);
->  extern	void nfs_unlock_request(struct nfs_page *req);
->  extern	int nfs_set_page_tag_locked(struct nfs_page *req);
->  extern  void nfs_clear_page_tag_locked(struct nfs_page *req);
-> -
-> +extern  bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
-> +				 struct nfs_page *prev, struct nfs_page *req);
->  
->  /*
->   * Lock the page of an asynchronous request without getting a new reference
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
