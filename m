@@ -1,81 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:33008 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751130Ab1FJDHc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 23:07:32 -0400
-Received: by iyb14 with SMTP id 14so1863051iyb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Jun 2011 20:07:32 -0700 (PDT)
-Message-ID: <4DF13B65.5030401@panasas.com>
-Date: Thu, 09 Jun 2011 14:30:13 -0700
-From: Benny Halevy <bhalevy@panasas.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
-References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu> <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu> <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com> <BANLkTi=SMQhUNHEy=-ZPqFtCgKcnCtks=w@mail.gmail.com>
-In-Reply-To: <BANLkTi=SMQhUNHEy=-ZPqFtCgKcnCtks=w@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:54543 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756472Ab1FJRcI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 13:32:08 -0400
+Subject: Re: [PATCH 4/5] NFSv4.1: Add an initialisation callback for pNFS
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
+Date: Fri, 10 Jun 2011 13:32:20 -0400
+In-Reply-To: <4DF24CF0.3030507@panasas.com>
+References: <1307669462-15764-1-git-send-email-Trond.Myklebust@netapp.com>
+		 <1307669462-15764-2-git-send-email-Trond.Myklebust@netapp.com>
+		 <1307669462-15764-3-git-send-email-Trond.Myklebust@netapp.com>
+		 <1307669462-15764-4-git-send-email-Trond.Myklebust@netapp.com>
+		 <4DF1871C.1070001@panasas.com> <4DF19841.5030904@panasas.com>
+		 <4DF19D7B.2060308@panasas.com> <4DF1A106.3070205@panasas.com>
+		 <4DF242D7.4030607@panasas.com>
+	 <1307723298.19554.8.camel@lade.trondhjem.org>
+	 <4DF24CF0.3030507@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1307727140.19554.19.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-06-09 07:54, Peng Tao wrote:
-> On Thu, Jun 9, 2011 at 2:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
->> On 2011-06-08 03:15, Peng Tao wrote:
->>> On 6/8/11, Jim Rees <rees@umich.edu> wrote:
->>>> Benny Halevy wrote:
->>>>
->>>>   NAK.
->>>>   This affects all layout types.  In particular it is undesired
->>>>   for write layouts that extend the file with the objects layout.
->>>>   The server can extend the layout segments range
->>>>   over what the client requested so why would the client
->>>>   ask for artificially large layouts?
->>>>
->>>> This has actually been the subject of some debate over Thursday night
->>>> beers.  The problem we're trying to solve is that the client is spending 98%
->>>> of its time in layoutget.  This patch gives us something like a 10x
->>>> speedup.  But many of us think it's not the right fix.  I suggest we discuss
->>>> next week.
->>>>
->>
->> Sure.
->>
->>>> But note that this patch doesn't change anything unless you set the sysctl.
->>> there is a default value of 2M. maybe we can set it to page size by
->>> default so other layout are not affected and block layout can let
->>> users set it by hand if they care about performance. does this make
->>> sense?
->>
->> If doing it at all why use a sysctl rather than a mount option?
-> The purpose of using a sysctl is to give client the ability to change
-> it on the fly. In theory, layout prefetching can benefit all layout
-> types. So the patch tries to solve it in the pnfs generic layer.
+On Fri, 2011-06-10 at 09:57 -0700, Boaz Harrosh wrote: 
+> On 06/10/2011 09:28 AM, Trond Myklebust wrote:
+> >>
+> >> That makes it even more complicated for a do nothing function. We dont do
+> >> a different function for each different parameter. We can just do a 
+> >> "bool write" and unify the dam thing
+> > 
+> > Right now, the nfs_pageio_descriptor doesn't know about reads vs writes.
+> > It just knows about 'coalesce requests' and 'perform i/o'. I'd prefer to
+> > keep that abstraction, as it makes things cleaner, particularly when you
+> > get to patch 5 (NFSv4.1: Fall back to ordinary i/o through the mds if we
+> > have no layout segment). Why add more 'if' statements when you don't
+> > need to...
+> > 
 > 
+> OK It's fine. I'm convinced. Do you have this on a git tree? I want to test
+> it out. 
 
-But the need for this varies per-server and many times per application.
-Think sequential vs. random I/O.  Therefore a mount option would help
-tuning the behavior on a per-use basis.  Global behavior must be implemented
-using a dynamic algorithm that would take both the workload and the server
-observed behavior into account.
+I've added it to the 'nfs-for-bakeathon' branch.
 
-Benny
+> What was the disposition of desc->pg_bsize do I need to adjust it for the
+> pnfs_case in objlayout?
 
->> Or maybe coding the logic for prefetching the layout iff sequential
->> access is detected is the right thing to do.
-> Yeah, automatic decision should be a better way.
-> 
->>
->> Benny
->>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>
->>>
->>>
->>
-> 
-> 
-> 
+You might need to adjust it. Please check...
+
+I'm still working on the 'fallback to write through mds' case to ensure
+that we re-coalesce if the call to pnfs_try_to_read_data() and
+pnfs_try_to_write_data(). Once that is done, I think that the objects
+code will always do the right thing and I anticipate that the blocks
+code can reuse the same code...
+
+Cheers
+  Trond
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
