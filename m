@@ -1,53 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:28644 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752045Ab1FMULt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Jun 2011 16:11:49 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Bakeathon 1/2] NFSv4.1: allow zero fh array in filelayout decode layout
-Date: Mon, 13 Jun 2011 16:11:45 -0400
-Message-Id: <1307995906-4177-1-git-send-email-andros@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:49937 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752316Ab1FJQ51 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 12:57:27 -0400
+Message-ID: <4DF24CF0.3030507@panasas.com>
+Date: Fri, 10 Jun 2011 09:57:20 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/5] NFSv4.1: Add an initialisation callback for pNFS
+References: <1307669462-15764-1-git-send-email-Trond.Myklebust@netapp.com>	 <1307669462-15764-2-git-send-email-Trond.Myklebust@netapp.com>	 <1307669462-15764-3-git-send-email-Trond.Myklebust@netapp.com>	 <1307669462-15764-4-git-send-email-Trond.Myklebust@netapp.com>	 <4DF1871C.1070001@panasas.com> <4DF19841.5030904@panasas.com>	 <4DF19D7B.2060308@panasas.com> <4DF1A106.3070205@panasas.com>	 <4DF242D7.4030607@panasas.com> <1307723298.19554.8.camel@lade.trondhjem.org>
+In-Reply-To: <1307723298.19554.8.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On 06/10/2011 09:28 AM, Trond Myklebust wrote:
+>>
+>> That makes it even more complicated for a do nothing function. We dont do
+>> a different function for each different parameter. We can just do a 
+>> "bool write" and unify the dam thing
+> 
+> Right now, the nfs_pageio_descriptor doesn't know about reads vs writes.
+> It just knows about 'coalesce requests' and 'perform i/o'. I'd prefer to
+> keep that abstraction, as it makes things cleaner, particularly when you
+> get to patch 5 (NFSv4.1: Fall back to ordinary i/o through the mds if we
+> have no layout segment). Why add more 'if' statements when you don't
+> need to...
+> 
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-cc:stable@kernel.org [2.6.39]
----
- fs/nfs/nfs4filelayout.c |   13 ++++++++-----
- 1 files changed, 8 insertions(+), 5 deletions(-)
+OK It's fine. I'm convinced. Do you have this on a git tree? I want to test
+it out. 
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 2cfeaeb..3a8bd92 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -551,13 +551,16 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
- 		__func__, nfl_util, fl->num_fh, fl->first_stripe_index,
- 		fl->pattern_offset);
- 
--	if (!fl->num_fh)
-+	if (fl->num_fh < 0 || fl->num_fh >
-+	    max(NFS4_PNFS_MAX_STRIPE_CNT, NFS4_PNFS_MAX_MULTI_CNT))
- 		goto out_err;
- 
--	fl->fh_array = kzalloc(fl->num_fh * sizeof(struct nfs_fh *),
--			       gfp_flags);
--	if (!fl->fh_array)
--		goto out_err;
-+	if (fl->num_fh > 0) {
-+		fl->fh_array = kzalloc(fl->num_fh * sizeof(struct nfs_fh *),
-+				       gfp_flags);
-+		if (!fl->fh_array)
-+			goto out_err;
-+	}
- 
- 	for (i = 0; i < fl->num_fh; i++) {
- 		/* Do we want to use a mempool here? */
--- 
-1.7.3.1
+What was the disposition of desc->pg_bsize do I need to adjust it for the
+pnfs_case in objlayout?
 
+Thanks
+Boaz
