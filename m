@@ -1,96 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:22085 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:5591 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751402Ab1F1UIV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Jun 2011 16:08:21 -0400
-Message-ID: <4E0A34B3.6090004@netapp.com>
-Date: Tue, 28 Jun 2011 16:08:19 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] NFS: Allow sec=none mounts in certain cases
-References: <20110628181324.2866.98154.stgit@seurat.1015granger.net> <20110628182540.2866.42553.stgit@seurat.1015granger.net> <20110628190640.GB26517@fieldses.org> <20110628191004.GC26517@fieldses.org> <831D46A4-2C46-4895-8ABE-3C64533E2CBA@oracle.com>
-In-Reply-To: <831D46A4-2C46-4895-8ABE-3C64533E2CBA@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1756852Ab1FJBbH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Jun 2011 21:31:07 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 5/5] NFSv4.1: Fall back to ordinary i/o through the mds if we have no layout segment
+Date: Thu,  9 Jun 2011 21:31:02 -0400
+Message-Id: <1307669462-15764-5-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1307669462-15764-4-git-send-email-Trond.Myklebust@netapp.com>
+References: <1307669462-15764-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1307669462-15764-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1307669462-15764-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1307669462-15764-4-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 06/28/2011 03:34 PM, Chuck Lever wrote:
-> 
-> On Jun 28, 2011, at 3:10 PM, J. Bruce Fields wrote:
-> 
->> On Tue, Jun 28, 2011 at 03:06:40PM -0400, bfields wrote:
->>> On Tue, Jun 28, 2011 at 02:25:41PM -0400, Chuck Lever wrote:
->>>> There is an undocumented convention (verified by reviewing network
->>>> traces from a NetApp filer and a Solaris NFS server) where a server
->>>> that returns a mount authflavor list containing an AUTH_NULL entry
->>>> is actually indicating it will accept any security flavor for the
->>>> export being mounted.
->>>
->>> This is only in the case of NLM?  (Not v4 secinfo?)
->> 			      ^^^
->> 			      (Sorry, I meant MOUNT !)
-> 
-> Right, this fix is specifically for the kernel's NFSv3 mount client.  I expect that SECINFO is probably the area where NFSv4 spec changes might help, but I haven't touched that in these patches.
-> 
-> At some point Bryan, Trond, and I should discuss how we can unify these pieces, and teach them how to determine the list of locally supported authflavors.  Maybe this is done already?
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/internal.h            |    6 ++++++
+ fs/nfs/nfs4filelayout.c      |    4 +---
+ fs/nfs/objlayout/objio_osd.c |    3 ---
+ fs/nfs/pnfs.c                |    7 +++++++
+ fs/nfs/read.c                |    2 +-
+ fs/nfs/write.c               |    2 +-
+ 6 files changed, 16 insertions(+), 8 deletions(-)
 
-Do you mean something similar to gss_mech_list_pseudoflavors() in net/sunrpc/auth_gss/gss_mech_switch.c?  I use it to determine the sec flavor of an NFS v4.0 mount if AUTH_SYS fails (see nfs4_find_root_sec() in fs/nfs/nfs4proc.c)
-
-- Bryan
-
-> 
->>>
->>> --b.
->>>
->>>>
->>>> This might be used when the server maps all security flavors into the
->>>> same security mode.  For example, the server treats all accessors as,
->>>> say, UID 17.
->>>>
->>>> Essentially, AUTH_NULL is treated as a wildcard that matches the
->>>> flavor the mounter requested.
->>>>
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> ---
->>>>
->>>> fs/nfs/super.c |   15 +++++++++++----
->>>> 1 files changed, 11 insertions(+), 4 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->>>> index 4625a4c..543cf9f 100644
->>>> --- a/fs/nfs/super.c
->>>> +++ b/fs/nfs/super.c
->>>> @@ -1570,13 +1570,20 @@ static int nfs_walk_authlist(struct nfs_parsed_mount_data *args,
->>>> 	 * the first flavor in the list that it supports, on the
->>>> 	 * assumption that the best access is provided by the first
->>>> 	 * flavor."
->>>> +	 *
->>>> +	 * By convention we treat AUTH_NULL in the returned list as
->>>> +	 * a wild card.  The server will map our requested flavor to
->>>> +	 * something else.
->>>> 	 */
->>>> -	for (i = 0; i < args->auth_flavor_len; i++)
->>>> -		for (j = 0; j < server_authlist_len; j++)
->>>> -			if (args->auth_flavors[i] == server->auth_flavs[j]) {
->>>> -				args->auth_flavors[0] = server->auth_flavs[j];
->>>> +	for (i = 0; i < server_authlist_len; i++) {
->>>> +		if (server->auth_flavs[i] == RPC_AUTH_NULL)
->>>> +			goto out;
->>>> +		for (j = 0; j < args->auth_flavor_len; j++)
->>>> +			if (server->auth_flavs[i] == args->auth_flavors[j]) {
->>>> +				args->auth_flavors[0] = server->auth_flavs[i];
->>>> 				goto out;
->>>> 			}
->>>> +	}
->>>>
->>>> 	dfprintk(MOUNT, "NFS: server does not support requested auth flavor\n");
->>>> 	nfs_umount(server);
->>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index b9056cb..9f4386a 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -282,7 +282,13 @@ extern int nfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
+ 			     const struct rpc_call_ops *call_ops);
+ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
+ 
++struct nfs_pageio_descriptor;
++extern void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
++		struct inode *inode);
++
+ /* write.c */
++extern void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
++				  struct inode *inode, int ioflags);
+ extern void nfs_commit_free(struct nfs_write_data *p);
+ extern int nfs_initiate_write(struct nfs_write_data *data,
+ 			      struct rpc_clnt *clnt,
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 93c5bae1f..c3857f4 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -662,10 +662,8 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	u32 stripe_unit;
+ 
+ 	if (!pnfs_generic_pg_test(pgio, prev, req))
+-		return 0;
++		return false;
+ 
+-	if (!pgio->pg_lseg)
+-		return 1;
+ 	p_stripe = (u64)prev->wb_index << PAGE_CACHE_SHIFT;
+ 	r_stripe = (u64)req->wb_index << PAGE_CACHE_SHIFT;
+ 	stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 84b5fb7..f014038 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -1001,9 +1001,6 @@ static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
+ 	if (!pnfs_generic_pg_test(pgio, prev, req))
+ 		return false;
+ 
+-	if (pgio->pg_lseg == NULL)
+-		return true;
+-
+ 	return pgio->pg_count + req->wb_bytes <=
+ 			OBJIO_LSEG(pgio->pg_lseg)->max_io_size;
+ }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index e9a8072..b848a7e 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1054,6 +1054,10 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
+ 					   req->wb_bytes,
+ 					   IOMODE_READ,
+ 					   GFP_KERNEL);
++	/* If no lseg, fall back to read through mds */
++	if (pgio->pg_lseg == NULL)
++		nfs_pageio_init_read_mds(pgio, pgio->pg_inode);
++
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
+ 
+@@ -1068,6 +1072,9 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *
+ 					   req->wb_bytes,
+ 					   IOMODE_RW,
+ 					   GFP_NOFS);
++	/* If no lseg, fall back to write through mds */
++	if (pgio->pg_lseg == NULL)
++		nfs_pageio_init_write_mds(pgio, pgio->pg_inode, pgio->pg_ioflags);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
+ 
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index dbb89a3..9c5cf57 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -114,7 +114,7 @@ static void nfs_readpage_truncate_uninitialised_page(struct nfs_read_data *data)
+ 	}
+ }
+ 
+-static void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
++void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
+ 		struct inode *inode)
+ {
+ 	nfs_pageio_init(pgio, inode, &nfs_pageio_read_ops,
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index f0ce0c3..70f1ef0 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1043,7 +1043,7 @@ static const struct nfs_pageio_ops nfs_pageio_write_ops = {
+ 	.pg_doio = nfs_generic_pg_writepages,
+ };
+ 
+-static void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
++void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
+ 				  struct inode *inode, int ioflags)
+ {
+ 	nfs_pageio_init(pgio, inode, &nfs_pageio_write_ops,
+-- 
+1.7.5.2
 
