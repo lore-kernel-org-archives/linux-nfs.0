@@ -1,70 +1,172 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:15656 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753657Ab1FJDtm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 23:49:42 -0400
-Message-ID: <4DF1944D.50806@panasas.com>
-Date: Thu, 09 Jun 2011 23:49:33 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org, Casey Bodley <cbodley@citi.umich.edu>
-Subject: Re: [PATCH 1/2] nfsd4: fix break_lease flags on nfsd open
-References: <20110609224459.GA22215@fieldses.org>
-In-Reply-To: <20110609224459.GA22215@fieldses.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:54197 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751269Ab1FKVAO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Jun 2011 17:00:14 -0400
+Received: by iwn34 with SMTP id 34so2962101iwn.19
+        for <linux-nfs@vger.kernel.org>; Sat, 11 Jun 2011 14:00:14 -0700 (PDT)
+Message-ID: <4DF3D75A.4080808@tonian.com>
+Date: Sat, 11 Jun 2011 17:00:10 -0400
+From: Benny Halevy <benny@tonian.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: Benny Halevy <bhalevy@panasas.com>,
+        "J. Bruce Fields" <bfields@citi.umich.edu>,
+        NFS list <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [RFC] pnfsd: Return all ROC layouts On Close
+References: <4DE3B812.8020804@panasas.com>
+In-Reply-To: <4DE3B812.8020804@panasas.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-06-09 18:44, J. Bruce Fields wrote:
-> From: J. Bruce Fields <bfields@redhat.com>
+On 2011-05-30 11:30, Boaz Harrosh wrote:
 > 
-> Thanks to Casey Bodley for pointing out that on a read open we pass 0,
-> instead of O_RDONLY, to break_lease, with the result that a read open is
-> treated like a write open for the purposes of lease breaking!
+> As talk to with Trond, when a client has sent an nfs4_close, the
+> server can surly assume that the given client has already forgotten
+> all it's ROC given layouts. And in fact the current Linux-client goes
+> to grate length to make sure all ROC layouts are invalidated, before
+> sending the close. If a new open+IO comes in and tries to get a new layout,
+> it will wait for the nfs4_close to return before sending the new layout_get.
 > 
-> Reported-by: Casey Bodley <cbodley@citi.umich.edu>
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> So in light of above the server should simulate layout_return and remove
+> any layouts marked ROC on nfs4_close.
+> 
+> Current code is protocol correct, but a more fine-grained approach can be
+> devised to also release layouts in open_downgrade, of all unused iomodes.
+> But to do this I'll need the help of an expert.
+> 
+> With this patch in, I'm finally able to run with the new Linux-Client together
+> with a Linux-Server. Before, the layouts where only released and freed on umount
+> and in a modest machine like the UML I use, few 10s of "git checkout linux" the
+> server would oom.
+> 
+> Benny please submit it to the pnfs tree, so we can run with this in Bakeathone.
+> 
+> So please all help me to verify and refine this code.
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 > ---
->  fs/nfsd/vfs.c |   15 +++++++++------
->  1 files changed, 9 insertions(+), 6 deletions(-)
+>  fs/nfsd/nfs4pnfsd.c |   44 ++++++++++++++++++++++++++++++++++++++++++--
+>  fs/nfsd/nfs4state.c |    3 +++
+>  fs/nfsd/pnfsd.h     |    3 +++
+>  3 files changed, 48 insertions(+), 2 deletions(-)
 > 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index f3fb61b..848a4af 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -696,7 +696,15 @@ nfsd_access(struct svc_rqst *rqstp, struct svc_fh *fhp, u32 *access, u32 *suppor
+> diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+> index 9089e6b9..d8f744e 100644
+> --- a/fs/nfsd/nfs4pnfsd.c
+> +++ b/fs/nfsd/nfs4pnfsd.c
+> @@ -402,7 +402,8 @@ init_layout(struct nfs4_layout_state *ls,
+>  	    struct nfs4_client *clp,
+>  	    struct svc_fh *current_fh,
+>  	    struct nfsd4_layout_seg *seg,
+> -	    stateid_t *stateid)
+> +	    stateid_t *stateid,
+> +	    bool roc)
+>  {
+>  	dprintk("pNFS %s: ls %p lp %p clp %p fp %p ino %p\n", __func__,
+>  		ls, lp, clp, fp, fp->fi_inode);
+> @@ -412,6 +413,7 @@ init_layout(struct nfs4_layout_state *ls,
+>  	lp->lo_file = fp;
+>  	get_layout_state(ls);
+>  	lp->lo_state = ls;
+> +	lp->lo_roc = roc;
+>  	memcpy(&lp->lo_seg, seg, sizeof(lp->lo_seg));
+>  	spin_lock(&layout_lock);
+>  	update_layout_stateid(ls, stateid);
+> @@ -914,7 +916,8 @@ nfs4_pnfs_get_layout(struct nfsd4_pnfs_layoutget *lgp,
+>  		goto out_freelayout;
+>  
+>  	/* Can't merge, so let's initialize this new layout */
+> -	init_layout(ls, lp, fp, clp, lgp->lg_fhp, &res.lg_seg, &lgp->lg_sid);
+> +	init_layout(ls, lp, fp, clp, lgp->lg_fhp, &res.lg_seg, &lgp->lg_sid,
+> +		    res.lg_return_on_close);
+>  out_unlock:
+>  	if (ls)
+>  		put_layout_state(ls);
+> @@ -1328,6 +1331,43 @@ nomatching_layout(struct nfs4_layoutrecall *clr)
+>  	iput(inode);
 >  }
->  #endif /* CONFIG_NFSD_V3 */
 >  
-> +static int nfsd_open_break_lease(struct inode *inode, int access)
+> +/* Return On Close:
+> + *   Look for all layouts of @fp that belong to @clp, if ROC is set, remove
+> + *   the layout and simulate a layout_return. Surly the client has forgotten
+> + *   these layouts or it would return them before the close.
+> + */
+> +void pnfs_roc(struct nfs4_client *clp, struct nfs4_file *fp,
+> +	      enum pnfs_iomode iomode)
 > +{
-> +	unsigned int mode;
->  
-> +	if (access & NFSD_MAY_NOT_BREAK_LEASE)
-> +		return 0;
-> +	mode = (access & NFSD_MAY_WRITE) ? O_WRONLY : O_RDONLY;
-> +	return break_lease(inode, mode | O_NONBLOCK);
+> +	struct nfs4_layout *lo, *nextlp;
+> +
+> +	spin_lock(&layout_lock);
+> +	list_for_each_entry_safe (lo, nextlp, &fp->fi_layouts, lo_perfile) {
+> +		struct nfsd4_pnfs_layoutreturn lr;
+> +		bool empty;
+> +
+> +		/* Check for a match */
+> +		if (!lo->lo_roc ||
+> +		    (lo->lo_client != clp) ||
+> +		    ((iomode != IOMODE_ANY) && (lo->lo_seg.iomode != iomode))
+> +		)
+> +			continue;
+> +
+> +		/* Return the layout */
+> +		memset(&lr, 0, sizeof(lr));
+> +		lr.args.lr_return_type = RETURN_FILE;
+> +		lr.args.lr_seg = lo->lo_seg;
+> +		dequeue_layout(lo);
+> +		destroy_layout(lo); /* do not access lp after this */
+> +
+> +		empty = list_empty(&fp->fi_layouts);
+> +		fs_layout_return(fp->fi_inode->i_sb, fp->fi_inode, &lr,
+> +				 LR_FLAG_EXPIRE,
+> +				 empty ? PNFS_LAST_LAYOUT_NO_RECALLS : NULL);
+> +	}
+> +	spin_unlock(&layout_lock);
 > +}
+> +
+>  void pnfs_expire_client(struct nfs4_client *clp)
+>  {
+>  	for (;;) {
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 66f6f48..a116e41 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -3592,6 +3592,9 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	/* release_stateid() calls nfsd_close() if needed */
+>  	release_open_stateid(stp);
 >  
->  /*
->   * Open an existing file or directory.
-> @@ -744,12 +752,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
->  	if (!inode->i_fop)
->  		goto out;
->  
-> -	/*
-> -	 * Check to see if there are any leases on this file.
-> -	 * This may block while leases are broken.
-> -	 */
-> -	if (!(access & NFSD_MAY_NOT_BREAK_LEASE))
-> -		host_err = break_lease(inode, O_NONBLOCK | ((access & NFSD_MAY_WRITE) ? O_WRONLY : 0));
-> +	 host_err = nfsd_open_break_lease(inode, access);
+> +	/* RFC: what to do with IOMODE */
+> +	pnfs_roc(stp->st_stateowner->so_client, stp->st_file, IOMODE_ANY);
+> +
 
-nit: looks like there's an extra space before "host_err ="...
+Ouch, moving this call before release_open_stateid as it frees stop.
+(and removing the iomode parameter)
 
 Benny
 
->  	if (host_err) /* NOMEM or WOULDBLOCK */
->  		goto out_nfserr;
+>  	/* place unused nfs4_stateowners on so_close_lru list to be
+>  	 * released by the laundromat service after the lease period
+>  	 * to enable us to handle CLOSE replay
+> diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
+> index c11d93d..fcb16d2 100644
+> --- a/fs/nfsd/pnfsd.h
+> +++ b/fs/nfsd/pnfsd.h
+> @@ -59,6 +59,7 @@ struct nfs4_layout {
+>  	struct nfs4_client		*lo_client;
+>  	struct nfs4_layout_state	*lo_state;
+>  	struct nfsd4_layout_seg 	lo_seg;
+> +	bool				lo_roc;
+>  };
 >  
+>  struct pnfs_inval_state {
+> @@ -124,6 +125,8 @@ int nfs4_pnfs_cb_change_state(struct pnfs_get_state *);
+>  void nfs4_ds_get_verifier(stateid_t *, struct super_block *, u32 *);
+>  int put_layoutrecall(struct nfs4_layoutrecall *);
+>  void nomatching_layout(struct nfs4_layoutrecall *);
+> +void pnfs_roc(struct nfs4_client *clp, struct nfs4_file *fp,
+> +	      enum pnfs_iomode iomode);
+>  void *layoutrecall_done(struct nfs4_layoutrecall *);
+>  void nfsd4_cb_layout(struct nfs4_layoutrecall *);
+>  int nfsd_layout_recall_cb(struct super_block *, struct inode *,
