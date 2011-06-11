@@ -1,84 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:42472 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:19263 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751985Ab1FLTMW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 12 Jun 2011 15:12:22 -0400
-Date: Sun, 12 Jun 2011 15:12:20 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mimi Zohar <zohar@linux.vnet.ibm.com>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        samba-technical@lists.samba.org, Christoph Hellwig <hch@infradead.org>,
-        Eric Paris <eparis@redhat.com>
-Subject: Re: [PATCH 1/2] locks: introduce i_blockleases to close lease races
-Message-ID: <20110612191220.GK12149@fieldses.org>
-References: <20110610000944.GC22215@fieldses.org>
- <20110610001011.GD22215@fieldses.org>
- <1307737440.3281.5.camel@localhost.localdomain>
- <20110610213446.GC27837@fieldses.org>
- <20110612040826.GD9246@fieldses.org>
- <1307905804.3564.28.camel@localhost.localdomain>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1307905804.3564.28.camel@localhost.localdomain>
+	id S1758249Ab1FKAw2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 20:52:28 -0400
+Subject: Re: [patch 1/1]: fix bug in CREATE_SESSION encoding
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <benny@tonian.com>
+Cc: Sid Moore <learnmost@gmail.com>, linux-nfs@vger.kernel.org
+Date: Fri, 10 Jun 2011 20:52:27 -0400
+In-Reply-To: <4DF276A0.6080504@tonian.com>
+References: <BANLkTikv_vi7eR8Xu-_K5F5D5Smrj=goog@mail.gmail.com>
+	 <4DF276A0.6080504@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1307753547.3421.6.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, Jun 12, 2011 at 03:10:04PM -0400, Mimi Zohar wrote:
-> On Sun, 2011-06-12 at 00:08 -0400, J. Bruce Fields wrote:
-> > On Fri, Jun 10, 2011 at 05:34:46PM -0400, J. Bruce Fields wrote:
-> > > On Fri, Jun 10, 2011 at 04:24:00PM -0400, Mimi Zohar wrote:
-> > > > On Thu, 2011-06-09 at 20:10 -0400, J. Bruce Fields wrote:
-> > > > > From: J. Bruce Fields <bfields@redhat.com>
-> > > > > 
-> > > > > Since break_lease is called before i_writecount is incremented, there's
-> > > > > a window between the two where a setlease call would have no way to know
-> > > > > that an open is about to happen.
-> > > > 
-> > > > So unless the break_lease() call is moved from may_open() to after 
-> > > > nameidata_to_filp(), I don't see any other options.
-> > > 
-> > > Actually, offhand I can't see why that wouldn't be OK.
-> > > 
-> > > Though I think we still end up needing something like i_blockleases to
-> > > handle unlink, link, rename, chown, and chmod.
+On Fri, 2011-06-10 at 15:55 -0400, Benny Halevy wrote: 
+> On 2011-06-10 02:32, Sid Moore wrote:
+> > Hi
 > > 
-> > Well, I guess there's a bizarre alternative that wouldn't require a new
-> > inode field:
+> > I think it might be an error when typing. see the patch below.
+> > 
+> > 
+> > --- a/fs/nfs/nfs4xdr.c
+> > +++ b/fs/nfs/nfs4xdr.c
+> > @@ -1772,7 +1772,7 @@ static void encode_create_session(struct xdr_stream *xdr,
+> >         *p++ = cpu_to_be32(0);                          /* rdmachannel_attrs */
+> > 
+> >         /* Back Channel */
+> > -       *p++ = cpu_to_be32(args->fc_attrs.headerpadsz); /* header
+> > padding size */
+> > +       *p++ = cpu_to_be32(args->bc_attrs.headerpadsz); /* header
+> > padding size */
+> >         *p++ = cpu_to_be32(args->bc_attrs.max_rqst_sz); /* max req size */
+> >         *p++ = cpu_to_be32(args->bc_attrs.max_resp_sz); /* max resp size */
+> >         *p++ = cpu_to_be32(args->bc_attrs.max_resp_sz_cached);  /* Max
+> > resp sz cached */
+> > 
+> > --
+> > Sid
+> > --
 > 
-> In lieu of adding a new inode field, another possible option, a bit
-> kludgy, would be extending i_flock with an additional fl_flag
-> FL_BLOCKLEASE.
-> 
-> #define IS_BLOCKLEASE(fl)    (fl->fl_flags & FL_BLOCKLEASE)
+> Thanks for spotting this!
+> Since we don't support header padding yet the following patch
+> might be more appropriate.
+> Trond, what do you think?
 
-Alas, that would mean adding and removing one of these file locks around
-every single link, unlink, rename,....
+Agreed. If it is unused, then let's ditch it...
 
---b.
+Cheers
+  Trond
 
-> 
-> Mimi
-> 
-> > What we care about is conflicts between read leases and operations that
-> > modify the metadata of the inode or the set of names pointing to it.
-> > 
-> > As far as I can tell those operations all take the i_mutex either on the
-> > inode itself or on the parents of one of its aliases.
-> > 
-> > So, you could prevent break_lease/setlease races by calling setlease
-> > under *all* of those i_mutexes:
-> > 
-> > 	- take i_mutex on the inode
-> > 	- take i_lock to prevent the set of aliases from changing
-> > 	- take i_mutex for parent of each alias
-> > 	- set the lease
-> > 	- drop the parent i_mutexes, etc.
-> > 
-> > where the i_mutexes would all be taken with mutex_trylock, and we'd just
-> > fail the whole setlease if any of them failed.
-> > 
-> > ???
-> > 
-> > --b.
-> 
-> 
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
