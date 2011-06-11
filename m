@@ -1,62 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:16364 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750854Ab1FJEGd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 00:06:33 -0400
-Message-ID: <4DF19841.5030904@panasas.com>
-Date: Fri, 10 Jun 2011 00:06:25 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/5] NFSv4.1: Add an initialisation callback for pNFS
-References: <1307669462-15764-1-git-send-email-Trond.Myklebust@netapp.com> <1307669462-15764-2-git-send-email-Trond.Myklebust@netapp.com> <1307669462-15764-3-git-send-email-Trond.Myklebust@netapp.com> <1307669462-15764-4-git-send-email-Trond.Myklebust@netapp.com> <4DF1871C.1070001@panasas.com>
-In-Reply-To: <4DF1871C.1070001@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:40289 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752943Ab1FKX7i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 11 Jun 2011 19:59:38 -0400
+Date: Sat, 11 Jun 2011 19:59:37 -0400
+To: Sid Moore <learnmost@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Question about EXCHANGE_ID on server.
+Message-ID: <20110611235937.GB9246@fieldses.org>
+References: <BANLkTikmtvLWVRX+wBx345QR-50P_Y_g5g@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <BANLkTikmtvLWVRX+wBx345QR-50P_Y_g5g@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-06-09 22:53, Boaz Harrosh wrote:
-> On 06/09/2011 06:31 PM, Trond Myklebust wrote:
-> <snip>
->> +void
->> +pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
->> +{
->> +	BUG_ON(pgio->pg_lseg != NULL);
->> +
->> +	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
->> +					   req->wb_context,
->> +					   req_offset(req),
->> +					   req->wb_bytes,
->> +					   IOMODE_READ,
->> +					   GFP_KERNEL);
->> +}
->> +EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
->> +
->> +void
->> +pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
->> +{
->> +	BUG_ON(pgio->pg_lseg != NULL);
->> +
->> +	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
->> +					   req->wb_context,
->> +					   req_offset(req),
->> +					   req->wb_bytes,
->> +					   IOMODE_RW,
->> +					   GFP_NOFS);
->> +}
->> +EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
->> +
+On Sat, Jun 11, 2011 at 03:54:56PM +0800, Sid Moore wrote:
+> Hi
 > 
-> These two above are identical except the IOMODE_{READ,RW} variable.
-
-And the respective gfp flags...
-
-> Why don't you just have one and let the caller pass the IOMODE_ as a
-> 3rd parameter. Do you expect more code to be  added here?
+> on Linux NFSv4.1 server, nfsd4_exchange_id() is used for creating a
+> new client incarnation or updating a confirmed client incarnation. if
+> try to update a confirmed incarnation, EXCHGID4_FLAG_CONFIRMED_R
+> should be set in eir_flags according to section 18.35.3, RFC5661.
 > 
-> Boaz
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> but I found EXCHGID4_FLAG_CONFIRMED_R is cleared by "clid->flags =
+> new->cl_exchange_flags;", which is in nfsd4_set_ex_flags() called by
+> nfsd4_exchange_id().
+> 
+> so the sematics of RFC5661 is broken? am I correct?
+
+On a quick glance.... I think you're correct.  Patch welcomed.
+
+--b.
