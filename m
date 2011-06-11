@@ -1,158 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:52001 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753622Ab1FNCca (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:30 -0400
-Message-Id: <a9a8d6f2cfe27f1be595d6b9e0372d70f595d2a0.1308017749.git.rees@umich.edu>
-In-Reply-To: <cover.1308017749.git.rees@umich.edu>
-References: <cover.1308017749.git.rees@umich.edu>
-Subject: [PATCH 11/33] pnfsblock: add block device discovery pipe
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Date: Mon, 13 Jun 2011 22:32:27 -0400
-From: Jim Rees <rees@umich.edu>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:58711 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758480Ab1FKBgQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 21:36:16 -0400
+Received: by vxi39 with SMTP id 39so2613425vxi.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Jun 2011 18:36:15 -0700 (PDT)
+In-Reply-To: <4DF26F34.8080008@tonian.com>
+References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu>
+ <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu>
+ <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com>
+ <20110609114929.GA28157@merit.edu> <4DF0CB5D.60000@panasas.com>
+ <20110609135846.GA32565@merit.edu> <BANLkTi=0yr1ecyf30+OQcFipJsHOk=4Y4w@mail.gmail.com>
+ <4DF139B1.7070106@tonian.com> <F19688880B763E40B28B2B462677FBF805BED9D221@MX09A.corp.emc.com>
+ <4DF20F07.4090804@tonian.com> <F19688880B763E40B28B2B462677FBF805BED9D2AC@MX09A.corp.emc.com>
+ <4DF26F34.8080008@tonian.com>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Sat, 11 Jun 2011 09:35:53 +0800
+Message-ID: <BANLkTikpRy-iptNCmqv60pyfLf6dTBkjUg@mail.gmail.com>
+Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+To: Benny Halevy <benny@tonian.com>
+Cc: tao.peng@emc.com, rees@umich.edu, linux-nfs@vger.kernel.org,
+        honey@citi.umich.edu
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Eric Anderle <eanderle@umich.edu>
-Signed-off-by: Jim Rees <rees@umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/Makefile                      |    2 +-
- fs/nfs/blocklayout/block-device-discovery-pipe.c |   66 ++++++++++++++++++++++
- fs/nfs/blocklayout/blocklayout.c                 |    3 +
- fs/nfs/blocklayout/blocklayout.h                 |   14 +++++
- 4 files changed, 84 insertions(+), 1 deletions(-)
- create mode 100644 fs/nfs/blocklayout/block-device-discovery-pipe.c
+On Sat, Jun 11, 2011 at 3:23 AM, Benny Halevy <benny@tonian.com> wrote:
+> On 2011-06-10 10:09, tao.peng@emc.com wrote:
+>> Hi, Benny,
+>>
+>> -----Original Message-----
+>> From: Benny Halevy [mailto:benny@tonian.com]
+>> Sent: Friday, June 10, 2011 8:33 PM
+>> To: Peng, Tao
+>> Cc: bergwolf@gmail.com; rees@umich.edu; linux-nfs@vger.kernel.org; honey@citi.umich.edu
+>> Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+>>
+>> On 2011-06-10 02:00, tao.peng@emc.com wrote:
+>>> Hi, Benny,
+>>>
+>>> Cheers,
+>>> -Bergwolf
+>>>
+>>>
+>>> -----Original Message-----
+>>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Benny Halevy
+>>> Sent: Friday, June 10, 2011 5:23 AM
+>>> To: Peng Tao
+>>> Cc: Jim Rees; linux-nfs@vger.kernel.org; peter honeyman
+>>> Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+>>>
+>>> On 2011-06-09 08:07, Peng Tao wrote:
+>>>> Hi, Jim and Benny,
+>>>>
+>>>> On Thu, Jun 9, 2011 at 9:58 PM, Jim Rees <rees@umich.edu> wrote:
+>>>>> Benny Halevy wrote:
+>>>>>
+>>>>>  > My understanding is that layoutget specifies a min and max, and the server
+>>>>>
+>>>>>  There's a min.  What do you consider the max?
+>>>>>  Whatever gets into csa_fore_chan_attrs.ca_maxresponsesize?
+>>>>>
+>>>>> The spec doesn't say max, it says "desired."  I guess I assumed the server
+>>>>> wouldn't normally return more than desired.
+>>>> In fact server is returning "desired" length. The problem is that we
+>>>> call pnfs_update_layout in nfs_write_begin, and it will end up setting
+>>>> both minlength and length to page size. There is no space for client
+>>>> to collapse layoutget range in nfs_write_begin.
+>>>>
+>>>
+>>> That's a different issue.  Waiting with pnfs_update_layout to flush
+>>> time rather than write_begin if the whole page is written would help
+>>> sending a more meaningful desired range as well as avoiding needless
+>>> read-modify-writes in case the application also wrote the whole
+>>> preallocated block.
+>>> [PT] It is also the reason why we want to introduce layout prefetching, to get more segment than the page passed in nfs_write_begin.
+>>>
+>>
+>> Peng, I understand what you want to achieve but the proposed way
+>> just doesn't fly. The server knows better than the client its allocation policies
+>> and it knows better the combined workload of different client and possible
+>> conflicts between them therefore it should be making the ultimate decision
+>> about the actual segment sizes.
+>> [PT] Yes, you are right. Server should know combined workload of all clients and make its decision based on that.
+>> And it always has the right to return more than (or less than) specified in loga_length.
+>>
+>> That said, the client should indeed do its best to ask for the most appropriate
+>> segments size for its use and we should be making a better job at that.
+>> It's just that blindly asking for more is not a good strategy and requiring
+>> manual admin help to tune the clients is not acceptable.
+>> [PT] yeah, determing the most appropriate is always the hart part. Do you have any suggestions to that?
+>
+> A simple algorithm I can suggest is:
+> - on initialization, calculate and save, per layout driver
+>  - maximum layout size
+>    - take into account csr_fore_chan_attrs.ca_maxresponsesize and possible other parameters
+>  - keep a working copy of the maximum value and the calculated copy.
+>  - alignment value.
+> - on miss, see if there's an adjacent layout segment in cache
+Err, that's another issue. Generic layer should really merge adjacent
+layout segments when necessary, instead of letting lookup code find
+out what are adjacent...
 
-diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
-index 6bf49cd..d2bcd81 100644
---- a/fs/nfs/blocklayout/Makefile
-+++ b/fs/nfs/blocklayout/Makefile
-@@ -2,4 +2,4 @@
- # Makefile for the pNFS block layout driver kernel module
- #
- obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
--blocklayoutdriver-objs := blocklayout.o
-+blocklayoutdriver-objs := blocklayout.o block-device-discovery-pipe.o
-diff --git a/fs/nfs/blocklayout/block-device-discovery-pipe.c b/fs/nfs/blocklayout/block-device-discovery-pipe.c
-new file mode 100644
-index 0000000..e4c199f
---- /dev/null
-+++ b/fs/nfs/blocklayout/block-device-discovery-pipe.c
-@@ -0,0 +1,66 @@
-+#include <linux/module.h>
-+#include <linux/uaccess.h>
-+#include <linux/proc_fs.h>
-+#include <linux/string.h>
-+#include <linux/slab.h>
-+#include <linux/ctype.h>
-+#include <linux/sched.h>
-+#include "blocklayout.h"
-+
-+#define NFSDBG_FACILITY NFSDBG_PNFS_LD
-+
-+struct pipefs_list bl_device_list;
-+struct dentry *bl_device_pipe;
-+
-+ssize_t bl_pipe_downcall(struct file *filp, const char __user *src, size_t len)
-+{
-+	int err;
-+	struct pipefs_hdr *msg;
-+
-+	dprintk("Entering %s...\n", __func__);
-+
-+	msg = pipefs_readmsg(filp, src, len);
-+	if (IS_ERR(msg)) {
-+		dprintk("ERROR: unable to read pipefs message.\n");
-+		return PTR_ERR(msg);
-+	}
-+
-+	/* now assign the result, which wakes the blocked thread */
-+	err = pipefs_assign_upcall_reply(msg, &bl_device_list);
-+	if (err) {
-+		dprintk("ERROR: failed to assign upcall with id %u\n",
-+			msg->msgid);
-+		kfree(msg);
-+	}
-+	return len;
-+}
-+
-+static const struct rpc_pipe_ops bl_pipe_ops = {
-+	.upcall         = pipefs_generic_upcall,
-+	.downcall       = bl_pipe_downcall,
-+	.destroy_msg    = pipefs_generic_destroy_msg,
-+};
-+
-+int bl_pipe_init(void)
-+{
-+	dprintk("%s: block_device pipefs registering...\n", __func__);
-+	bl_device_pipe = pipefs_mkpipe("bl_device_pipe", &bl_pipe_ops, 1);
-+	if (IS_ERR(bl_device_pipe))
-+		dprintk("ERROR, unable to make block_device pipe\n");
-+
-+	if (!bl_device_pipe)
-+		dprintk("bl_device_pipe is NULL!\n");
-+	else
-+	dprintk("bl_device_pipe created!\n");
-+	pipefs_init_list(&bl_device_list);
-+	return 0;
-+}
-+
-+void bl_pipe_exit(void)
-+{
-+	dprintk("%s: block_device pipefs unregistering...\n", __func__);
-+	if (IS_ERR(bl_device_pipe))
-+		return ;
-+	pipefs_closepipe(bl_device_pipe);
-+	return;
-+}
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 08458c6..bc6a0b2 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -185,6 +185,8 @@ static int __init nfs4blocklayout_init(void)
- 	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
- 
- 	ret = pnfs_register_layoutdriver(&blocklayout_type);
-+	if (!ret)
-+		bl_pipe_init();
- 	return ret;
- }
- 
-@@ -194,6 +196,7 @@ static void __exit nfs4blocklayout_exit(void)
- 	       __func__);
- 
- 	pnfs_unregister_layoutdriver(&blocklayout_type);
-+	bl_pipe_exit();
- }
- 
- module_init(nfs4blocklayout_init);
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 49d69c7..4b8608c 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -87,4 +87,18 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
- 	return container_of(lo, struct pnfs_block_layout, bl_layout);
- }
- 
-+#include <linux/sunrpc/simple_rpc_pipefs.h>
-+
-+extern struct pipefs_list bl_device_list;
-+extern struct dentry *bl_device_pipe;
-+
-+int bl_pipe_init(void);
-+void bl_pipe_exit(void);
-+
-+#define BL_DEVICE_UMOUNT               0x0 /* Umount--delete devices */
-+#define BL_DEVICE_MOUNT                0x1 /* Mount--create devices*/
-+#define BL_DEVICE_REQUEST_INIT         0x0 /* Start request */
-+#define BL_DEVICE_REQUEST_PROC         0x1 /* User level process succeeds */
-+#define BL_DEVICE_REQUEST_ERR          0x2 /* User level process fails */
-+
- #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
+> - if found, ask for twice the found segment size, up to the maximum value,
+>  aligned on the alignment value.
+> - if the server returns less the layoutget range, keep note of the returned length
+>  (but not adjust maximum yet, as the server may return a short segment for various
+>   reasons)
+> - if the server is consistent about returning less than was asked, adjust the
+>  - working copy of the maximum length
+If server is consistent about returning more/less than asked, it is an
+indicator that server is adjust the range automatically. Then client
+should stop using this algorithm and trust server behavior...
+
+> - if the maximum was adjusted try bumping it up after X (TBD) layoutgets or T seconds
+>  to see if that was just due to high load or conflicts on the server
+> - on any error returned for LAYOUTGET reset the algorithm parameters
+> - on session reestablishment recalculate maximums.
+>
+> Benny
+>
+>>
+>> Thanks,
+>> Tao
+>
+
+
+
 -- 
-1.7.4.1
-
+Thanks,
+-Bergwolf
