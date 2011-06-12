@@ -1,216 +1,191 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:50609 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758969Ab1FVVh7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 17:37:59 -0400
-From: greearb@candelatech.com
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:60676 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754558Ab1FLXoT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2011 19:44:19 -0400
+Message-Id: <4c028f8c4ebe42c2c39ebbc601c2e3d8b279134d.1307921138.git.rees@umich.edu>
+In-Reply-To: <cover.1307921137.git.rees@umich.edu>
+References: <cover.1307921137.git.rees@umich.edu>
+Date: Sun, 12 Jun 2011 19:44:16 -0400
+Subject: [PATCH 12/34] pnfsblock: basic extent code
+From: Jim Rees <rees@umich.edu>
 To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH 10/11] nfs: Bind to srcaddr in rpcb_create.
-Date: Wed, 22 Jun 2011 14:36:50 -0700
-Message-Id: <1308778611-9370-11-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1308778611-9370-1-git-send-email-greearb@candelatech.com>
-References: <1308778611-9370-1-git-send-email-greearb@candelatech.com>
+Cc: peter honeyman <honey@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-This more properly clones the existing client connection
-settings, allowing rpc calls to take advantage of routing
-rules based on source IP addresses.
+Adds structures and basic create/delete code for extents.
 
-Signed-off-by: Ben Greear <greearb@candelatech.com>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Zhang Jingwang <Jingwang.Zhang@emc.com>
 ---
-:100644 100644 9a80a92... 4985e18... M	net/sunrpc/rpcb_clnt.c
-:100644 100644 90c292e... 22841e1... M	net/sunrpc/sunrpc.h
-:100644 100644 37299c0... 72408c2... M	net/sunrpc/xprtsock.c
- net/sunrpc/rpcb_clnt.c |   28 ++++++++++++++++++++++++++--
- net/sunrpc/sunrpc.h    |   45 +++++++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/xprtsock.c  |   43 -------------------------------------------
- 3 files changed, 71 insertions(+), 45 deletions(-)
+ fs/nfs/blocklayout/Makefile      |    2 +-
+ fs/nfs/blocklayout/blocklayout.c |   17 ++++++-
+ fs/nfs/blocklayout/blocklayout.h |    1 +
+ fs/nfs/blocklayout/extents.c     |   97 ++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 114 insertions(+), 3 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/extents.c
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 9a80a92..4985e18 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -28,6 +28,7 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/sched.h>
- #include <linux/sunrpc/xprtsock.h>
-+#include "sunrpc.h"
- 
- #ifdef RPC_DEBUG
- # define RPCDBG_FACILITY	RPCDBG_BIND
-@@ -292,11 +293,13 @@ out:
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+index d2bcd81..af39d19 100644
+--- a/fs/nfs/blocklayout/Makefile
++++ b/fs/nfs/blocklayout/Makefile
+@@ -2,4 +2,4 @@
+ # Makefile for the pNFS block layout driver kernel module
+ #
+ obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
+-blocklayoutdriver-objs := blocklayout.o block-device-discovery-pipe.o
++blocklayoutdriver-objs := blocklayout.o block-device-discovery-pipe.o extents.o
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 9932519..a245e73 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -53,12 +53,25 @@ bl_write_pagelist(struct nfs_write_data *wdata,
+ 	return PNFS_NOT_ATTEMPTED;
  }
  
- static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
--				    size_t salen, int proto, u32 version)
-+				    size_t salen, int proto, u32 version,
-+				    struct sockaddr *srcaddr)
+-/* STUB */
++/* FIXME - range ignored */
+ static void
+ release_extents(struct pnfs_block_layout *bl,
+ 		struct pnfs_layout_range *range)
  {
- 	struct rpc_create_args args = {
- 		.net		= &init_net,
- 		.protocol	= proto,
-+		.saddress	= srcaddr,
- 		.address	= srvaddr,
- 		.addrsize	= salen,
- 		.servername	= hostname,
-@@ -601,11 +604,32 @@ void rpcb_getport_async(struct rpc_task *task)
- 	struct rpc_task	*child;
- 	struct sockaddr_storage addr;
- 	struct sockaddr *sap = (struct sockaddr *)&addr;
-+	struct sockaddr_storage srcaddr;
-+	struct sockaddr *srcaddra = NULL;
- 	size_t salen;
- 	int status;
-+	struct sock_xprt *sxprt;
- 
- 	clnt = rpcb_find_transport_owner(task->tk_client);
- 	xprt = clnt->cl_xprt;
-+	sxprt = container_of(xprt, struct sock_xprt, xprt);
+-	return;
++        int i;
++        struct pnfs_block_extent *be;
 +
-+	/* We just want to bind to the IP, not the port */
-+	memset(&srcaddr, 0, sizeof(srcaddr));
-+	srcaddr.ss_family = sxprt->srcaddr.ss_family;
-+	if (sxprt->srcaddr.ss_family == AF_INET) {
-+		struct sockaddr_in *si = (struct sockaddr_in *)(&srcaddr);
-+		struct sockaddr_in *si2;
-+		si2 = (struct sockaddr_in *)(&sxprt->srcaddr);
-+		si->sin_addr.s_addr = si2->sin_addr.s_addr;
-+		srcaddra = (struct sockaddr *)(&srcaddr);
-+	} else if (sxprt->srcaddr.ss_family == AF_INET6) {
-+		struct sockaddr_in6 *si = (struct sockaddr_in6 *)(&srcaddr);
-+		struct sockaddr_in6 *si2;
-+		si2 = (struct sockaddr_in6 *)(&sxprt->srcaddr);
-+		memcpy(&si->sin6_addr, &si2->sin6_addr, sizeof(si2->sin6_addr));
-+		srcaddra = (struct sockaddr *)(&srcaddr);
++        spin_lock(&bl->bl_ext_lock);
++        for (i = 0; i < EXTENT_LISTS; i++) {
++                while (!list_empty(&bl->bl_extents[i])) {
++                        be = list_first_entry(&bl->bl_extents[i],
++					struct pnfs_block_extent,
++					be_node);
++                        list_del(&be->be_node);
++                        put_extent(be);
++                }
++        }
++        spin_unlock(&bl->bl_ext_lock);
+ }
+ 
+ /* STUB */
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 2a78462..ef1e64d 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -102,4 +102,5 @@ void bl_pipe_exit(void);
+ #define BL_DEVICE_REQUEST_PROC         0x1 /* User level process succeeds */
+ #define BL_DEVICE_REQUEST_ERR          0x2 /* User level process fails */
+ 
++void put_extent(struct pnfs_block_extent *be);
+ #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+new file mode 100644
+index 0000000..1283fa9
+--- /dev/null
++++ b/fs/nfs/blocklayout/extents.c
+@@ -0,0 +1,97 @@
++/*
++ *  linux/fs/nfs/blocklayout/blocklayout.h
++ *
++ *  Module for the NFSv4.1 pNFS block layout driver.
++ *
++ *  Copyright (c) 2006 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@citi.umich.edu>
++ *  Fred Isaman <iisaman@umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
++ */
++
++#include "blocklayout.h"
++#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
++
++static void print_bl_extent(struct pnfs_block_extent *be)
++{
++	dprintk("PRINT EXTENT extent %p\n", be);
++	if (be) {
++		dprintk("        be_f_offset %llu\n", (u64)be->be_f_offset);
++		dprintk("        be_length   %llu\n", (u64)be->be_length);
++		dprintk("        be_v_offset %llu\n", (u64)be->be_v_offset);
++		dprintk("        be_state    %d\n", be->be_state);
 +	}
- 
- 	dprintk("RPC: %5u %s(%s, %u, %u, %d)\n",
- 		task->tk_pid, __func__,
-@@ -660,7 +684,7 @@ void rpcb_getport_async(struct rpc_task *task)
- 		task->tk_pid, __func__, bind_version);
- 
- 	rpcb_clnt = rpcb_create(clnt->cl_server, sap, salen, xprt->prot,
--				bind_version);
-+				bind_version, srcaddra);
- 	if (IS_ERR(rpcb_clnt)) {
- 		status = PTR_ERR(rpcb_clnt);
- 		dprintk("RPC: %5u %s: rpcb_create failed, error %ld\n",
-diff --git a/net/sunrpc/sunrpc.h b/net/sunrpc/sunrpc.h
-index 90c292e..22841e1 100644
---- a/net/sunrpc/sunrpc.h
-+++ b/net/sunrpc/sunrpc.h
-@@ -37,6 +37,51 @@ struct rpc_buffer {
- 	char	data[];
- };
- 
-+struct sock_xprt {
-+	struct rpc_xprt		xprt;
++}
 +
-+	/*
-+	 * Network layer
-+	 */
-+	struct socket		*sock;
-+	struct sock		*inet;
++static void
++destroy_extent(struct kref *kref)
++{
++	struct pnfs_block_extent *be;
 +
-+	/*
-+	 * State of TCP reply receive
-+	 */
-+	__be32			tcp_fraghdr,
-+				tcp_xid,
-+				tcp_calldir;
++	be = container_of(kref, struct pnfs_block_extent, be_refcnt);
++	dprintk("%s be=%p\n", __func__, be);
++	kfree(be);
++}
 +
-+	u32			tcp_offset,
-+				tcp_reclen;
++void
++put_extent(struct pnfs_block_extent *be)
++{
++	if (be) {
++		dprintk("%s enter %p (%i)\n", __func__, be,
++			atomic_read(&be->be_refcnt.refcount));
++		kref_put(&be->be_refcnt, destroy_extent);
++	}
++}
 +
-+	unsigned long		tcp_copied,
-+				tcp_flags;
++struct pnfs_block_extent *alloc_extent(void)
++{
++	struct pnfs_block_extent *be;
 +
-+	/*
-+	 * Connection of transports
-+	 */
-+	struct delayed_work	connect_worker;
-+	struct sockaddr_storage	srcaddr;
-+	unsigned short		srcport;
++	be = kmalloc(sizeof(struct pnfs_block_extent), GFP_KERNEL);
++	if (!be)
++		return NULL;
++	INIT_LIST_HEAD(&be->be_node);
++	kref_init(&be->be_refcnt);
++	be->be_inval = NULL;
++	return be;
++}
 +
-+	/*
-+	 * UDP socket buffer size parameters
-+	 */
-+	size_t			rcvsize,
-+				sndsize;
++struct pnfs_block_extent *
++get_extent(struct pnfs_block_extent *be)
++{
++	if (be)
++		kref_get(&be->be_refcnt);
++	return be;
++}
 +
-+	/*
-+	 * Saved socket callback addresses
-+	 */
-+	void			(*old_data_ready)(struct sock *, int);
-+	void			(*old_state_change)(struct sock *);
-+	void			(*old_write_space)(struct sock *);
-+	void			(*old_error_report)(struct sock *);
-+};
-+
-+
- static inline int rpc_reply_expected(struct rpc_task *task)
- {
- 	return (task->tk_msg.rpc_proc != NULL) &&
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 37299c0..72408c2 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -202,49 +202,6 @@ static inline void xs_pktdump(char *msg, u32 *packet, unsigned int count)
- }
- #endif
- 
--struct sock_xprt {
--	struct rpc_xprt		xprt;
--
--	/*
--	 * Network layer
--	 */
--	struct socket *		sock;
--	struct sock *		inet;
--
--	/*
--	 * State of TCP reply receive
--	 */
--	__be32			tcp_fraghdr,
--				tcp_xid,
--				tcp_calldir;
--
--	u32			tcp_offset,
--				tcp_reclen;
--
--	unsigned long		tcp_copied,
--				tcp_flags;
--
--	/*
--	 * Connection of transports
--	 */
--	struct delayed_work	connect_worker;
--	struct sockaddr_storage	srcaddr;
--	unsigned short		srcport;
--
--	/*
--	 * UDP socket buffer size parameters
--	 */
--	size_t			rcvsize,
--				sndsize;
--
--	/*
--	 * Saved socket callback addresses
--	 */
--	void			(*old_data_ready)(struct sock *, int);
--	void			(*old_state_change)(struct sock *);
--	void			(*old_write_space)(struct sock *);
--	void			(*old_error_report)(struct sock *);
--};
- 
- /*
-  * TCP receive state flags
++void print_elist(struct list_head *list)
++{
++	struct pnfs_block_extent *be;
++	dprintk("****************\n");
++	dprintk("Extent list looks like:\n");
++	list_for_each_entry(be, list, be_node) {
++		print_bl_extent(be);
++	}
++	dprintk("****************\n");
++}
 -- 
-1.7.3.4
+1.7.4.1
 
