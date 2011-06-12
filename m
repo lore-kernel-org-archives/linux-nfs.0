@@ -1,108 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:47894 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756186Ab1FAT3w convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 15:29:52 -0400
-Subject: Re: [PATCH] NFS: filelayout should use nfs_generic_pg_test
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Weston Andros Adamson <dros@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>, trond@netapp.com,
-        linux-nfs@vger.kernel.org
-Date: Wed, 01 Jun 2011 15:29:51 -0400
-In-Reply-To: <4DE68F47.5080802@panasas.com>
-References: <1306898310-9229-1-git-send-email-dros@netapp.com>
-		 <4DE5D287.603@panasas.com>
-		 <09816808-BA7B-4EAF-A18A-866B5A98BF25@netapp.com>
-		 <4DE65202.2010502@panasas.com>
-	 <1306951621.3873.45.camel@lade.trondhjem.org>
-	 <4DE68F47.5080802@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1306956591.3873.69.camel@lade.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:41612 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753134Ab1FLOk4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2011 10:40:56 -0400
+Message-ID: <4DF4CFE9.7070000@panasas.com>
+Date: Sun, 12 Jun 2011 07:40:41 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Peng Tao <bergwolf@gmail.com>
+CC: Benny Halevy <benny@tonian.com>, tao.peng@emc.com, rees@umich.edu,
+        linux-nfs@vger.kernel.org, honey@citi.umich.edu
+Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu> <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu> <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com> <20110609114929.GA28157@merit.edu> <4DF0CB5D.60000@panasas.com> <20110609135846.GA32565@merit.edu> <BANLkTi=0yr1ecyf30+OQcFipJsHOk=4Y4w@mail.gmail.com> <4DF139B1.7070106@tonian.com> <F19688880B763E40B28B2B462677FBF805BED9D221@MX09A.corp.emc.com> <4DF20F07.4090804@tonian.com> <F19688880B763E40B28B2B462677FBF805BED9D2AC@MX09A.corp.emc.com> <4DF26F34.8080008@tonian.com> <4DF2A6AA.8050608@panasas.com> <BANLkTin+Z=sxrNkfyktqH_m5_dhsiHLf5w@mail.gmail.com>
+In-Reply-To: <BANLkTin+Z=sxrNkfyktqH_m5_dhsiHLf5w@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-06-01 at 22:13 +0300, Benny Halevy wrote: 
-> On 2011-06-01 21:07, Trond Myklebust wrote:
-> > On Wed, 2011-06-01 at 17:51 +0300, Benny Halevy wrote: 
-> >> I think the following should work:
-> >>
-> >> Benny
-> >>
-> >> git diff --stat -p -M
-> >>  fs/nfs/nfs4filelayout.c |   10 ++++++++++
-> >>  1 files changed, 10 insertions(+), 0 deletions(-)
-> >>
-> >> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> >> index 4269088..9f1d445 100644
-> >> --- a/fs/nfs/nfs4filelayout.c
-> >> +++ b/fs/nfs/nfs4filelayout.c
-> >> @@ -661,6 +661,16 @@ filelayout_pg_test(struct nfs_pageio_descriptor
-> >> *pgio, struct nfs_page *prev,
-> >>  	u64 p_stripe, r_stripe;
-> >>  	u32 stripe_unit;
-> >>
-> >> +	/*
-> >> +	 * FIXME: ideally we should be able to coalesce all requests
-> >> +	 * that are not block boundary aligned, but currently this
-> >> +	 * is problematic for the case of bsize < PAGE_CACHE_SIZE,
-> >> +	 * since nfs_flush_multi and nfs_pagein_multi assume you
-> >> +	 * can have only one struct nfs_page.
-> >> +	 */
-> >> +	if (desc->pg_bsize < PAGE_SIZE)
-> >> +		return 0;
-> >> +
-> >>  	if (!pnfs_generic_pg_test(pgio, prev, req))
-> >>  		return 0;
-> > 
-> > So, there are several things that bother me about pnfs_generic_pg_test()
-> > too now that I'm looking more closely at it:
-> > 
-> >      1. If the intention is to coalesce 'prev' and 'req', shouldn't we
-> >         be asking for a layout with req_offset(prev) instead of
-> >         req_offset(req)? 
-> >      2. If we're only requesting a layout of length pg_count, don't we
-> >         still need to test the layout length that the server actually
-> >         returned before we can allow the coalescing? 
-> >      3. if (!pgio->lseg), shouldn't we be returning an error of some
-> >         sort? Right now we're returning 'true', and allowing the
-> >         coalesce to occur. 
-> >      4. Furthermore, shouldn't that test guarding the
-> >         pnfs_update_layout() call rather be an 'if (pgio->pg_lseg ==
-> >         NULL)' instead of looking at the values of pg_count and
-> >         prev->wb_bytes?
-> > 
+On 06/10/2011 07:19 PM, Peng Tao wrote:
+> On Sat, Jun 11, 2011 at 7:20 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>> On 06/10/2011 12:23 PM, Benny Halevy wrote:
+>>> On 2011-06-10 10:09, tao.peng@emc.com wrote:
+>>>
+>>> A simple algorithm I can suggest is:
+>>> - on initialization, calculate and save, per layout driver
+>>>   - maximum layout size
+>>>     - take into account csr_fore_chan_attrs.ca_maxresponsesize and possible other parameters
+>>>   - keep a working copy of the maximum value and the calculated copy.
+>>>   - alignment value.
+>>> - on miss, see if there's an adjacent layout segment in cache
+>>> - if found, ask for twice the found segment size, up to the maximum value,
+>>>   aligned on the alignment value.
+>>> - if the server returns less the layoutget range, keep note of the returned length
+>>>   (but not adjust maximum yet, as the server may return a short segment for various
+>>>    reasons)
+>>> - if the server is consistent about returning less than was asked, adjust the
+>>>   - working copy of the maximum length
+>>> - if the maximum was adjusted try bumping it up after X (TBD) layoutgets or T seconds
+>>>   to see if that was just due to high load or conflicts on the server
+>>> - on any error returned for LAYOUTGET reset the algorithm parameters
+>>> - on session reestablishment recalculate maximums.
+>>>
+>>> Benny
+>>>
+>>
+>> I completely disagree with all this. NACK!
+>>
+>> The only proper thing a client can do is ask for what it needs, and only the application
+>> can do that, because at the VFS level it is only second guessing, and is completely
+>> pointless.
+>>
+>> The only one that can know about structure, alignments, optimal IO sizes and layouts
+>> is the server. The server even have more information to second guess the application
+>> from the file size information and it's share and lock disposition. Please see my
+>> simple Server side algorithm.
+> Well, IMO, client is closer to applications and should have a better
+> position at "guessing" application's workload.
 > 
-> or rather we get the layout for the first page in
-> nfs_pageio_do_add_request when desc->pg_count == 0?
+> A simple example, when a client asks for a layout, server would have
+> no idea if client is doing layout prefetch, or if it really need that
+> range to complete its work. But the client knows it for sure.
+> 
 
-I can live with a desc->pg_init() callback or rather, converting
-pg_test() and pg_doio() into a
+What is layout prefetch? we don't do any in the Linux client.
 
-struct nfs_pageio_ops {
-	int (*pg_init)(struct nfs_pageio_descriptor *desc, struct nfs_page *req);
-	bool (*pg_test)(struct nfs_pageio_descriptor *desc, struct nfs_page *prev, struct nfs_page *req);
-	int (*pg_doio)(struct nfs_pageio_descriptor *desc);
-};
+And your example does not make any sense. If a theoretical stupid client does
+"layout prefetch" what ever that means, how is it related to the application?
 
-and then replacing the two callback functions in the existing struct
-nfs_pageio_descriptor with a single pointer to a 'const struct
-nfs_pageio_ops'...
+There is not a single information a client has the the server does not. Look at
+your patch. Set an arbitrary value at client setup. That same arbitrary value
+can be setup at server. Look at benny's algorithm. It can be done just the same
+at the server side. (Which does not mean it is a good algorithm)
 
-> Then, this lseg would be useful for nfs_flush_multi
-> if we failed to coalesce, or we failed to get a layout
-> altogether we go the nfs path and can reset pg_test to
-> nfs_generic_pg_test.
+Just take that patch of yours, but instead of at client side. Put it at server
+side. You will achieve exact same results. Only you configure one server instead
+of every client.
 
-It would presumably also get rid of all those pnfs_update_layout() calls
-in read.c and write.c.
+And no way in hell I let that go into the Linux generic client!
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Boaz
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+>>
+>> Because you must understand one most important thing. Any smart decision a client can
+>> make will be after it received the layout (stripe_unit, number-of-devices etc..) But
+>> at that time it is too late it already sent the layout_get. Only the server knows
+>> before hand what is the most optimal size. The client should just be a transparent
+>> pipe from application to the server. It should never ever set policy. Only a Server
+>> can/should do that.
+>>
+>> Lets put the efforts and algorithms where they belong, please?
+>>
+>> Boaz
+>>
+> 
+> 
+> 
 
