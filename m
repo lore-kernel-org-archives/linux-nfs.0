@@ -1,60 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:43011 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752780Ab1FCOl6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Jun 2011 10:41:58 -0400
-Subject: Re: [PATCH] nfs4: v4 mounts should not need rpcbind running
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1307110290-30672-1-git-send-email-steved@redhat.com>
-Date: Fri, 3 Jun 2011 10:41:47 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <A51F73EF-B137-4279-91BC-4B7E868CDCB6@oracle.com>
-References: <1307110290-30672-1-git-send-email-steved@redhat.com>
-To: Steve Dickson <steved@redhat.com>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:60627 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754516Ab1FLXoF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2011 19:44:05 -0400
+Message-Id: <f67f031ef845429a5e3b08d662e33113f631d51c.1307921138.git.rees@umich.edu>
+In-Reply-To: <cover.1307921137.git.rees@umich.edu>
+References: <cover.1307921137.git.rees@umich.edu>
+Date: Sun, 12 Jun 2011 19:44:03 -0400
+Subject: [PATCH 07/34] pnfsblock: define PNFS_BLOCK Kconfig option
+From: Jim Rees <rees@umich.edu>
+To: linux-nfs@vger.kernel.org
+Cc: peter honeyman <honey@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hey-
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-On Jun 3, 2011, at 10:11 AM, Steve Dickson wrote:
+Define a configuration variable to enable/disable compilation of the
+block driver code.
 
-> When RPC services are created with svc_create() an
-> svc_unregister() is done to remove any stale registrations.
-> 
-> This unregister is not needed with the v4 callback
-> service and will cause the mount to hang if rpcbind
-> is not running.
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfs-block: fix CONFIG_PNFS_BLOCK dependencies]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/Kconfig              |    8 ++++++++
+ fs/nfs/Makefile             |    1 +
+ fs/nfs/blocklayout/Makefile |    5 +++++
+ 3 files changed, 14 insertions(+), 0 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/Makefile
 
-This should no longer be the case.  The kernel uses connected transports to contact rpcbind these days, and should be able to tell immediately that there is no rpcbind running.  If there is still a hang, something else is wrong.
-
-> This patch makes the nfs4 callback service a hide service
-> by setting the vs_hidden flag in the nfs4_callback_version4
-> structure
-
-One reason to continue to do this is to have some assurance that no-one else takes the same RPC program number.  Not a big deal.
-
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
-> fs/nfs/callback_xdr.c |    1 +
-> 1 files changed, 1 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-> index c6c86a7..7c8b800 100644
-> --- a/fs/nfs/callback_xdr.c
-> +++ b/fs/nfs/callback_xdr.c
-> @@ -996,4 +996,5 @@ struct svc_version nfs4_callback_version4 = {
-> 	.vs_proc = nfs4_callback_procedures1,
-> 	.vs_xdrsize = NFS4_CALLBACK_XDRSIZE,
-> 	.vs_dispatch = NULL,
-> +	.vs_hidden = 1,
-> };
-
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 8151554..3cebf1b 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -97,6 +97,14 @@ config PNFS_OBJLAYOUT
+ 
+ 	  If unsure, say N.
+ 
++config PNFS_BLOCK
++	tristate "Provide a pNFS block client (EXPERIMENTAL)"
++	depends on NFS_FS && PNFS
++	help
++	  Say M or y here if you want your pNfs client to support the block protocol
++
++	  If unsure, say N.
++
+ config ROOT_NFS
+ 	bool "Root file system on NFS"
+ 	depends on NFS_FS=y && IP_PNP
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 6a34f7d..b58613d 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -23,3 +23,4 @@ obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
+ nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
+ 
+ obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayout/
++obj-$(CONFIG_PNFS_BLOCK) += blocklayout/
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+new file mode 100644
+index 0000000..f214c1c
+--- /dev/null
++++ b/fs/nfs/blocklayout/Makefile
+@@ -0,0 +1,5 @@
++#
++# Makefile for the pNFS block layout driver kernel module
++#
++obj-$(CONFIG_PNFS_BLOCK) +=
++blocklayoutdriver-objs :=
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.4.1
 
