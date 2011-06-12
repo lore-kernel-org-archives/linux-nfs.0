@@ -1,143 +1,158 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:46265 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753570Ab1F2RL3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jun 2011 13:11:29 -0400
-Subject: Re: NFSv4 null request and compatibility with netapp
-Content-Type: text/plain; charset=us-ascii
-From: Thomas Haynes <thomas@netapp.com>
-In-Reply-To: <1309366237.12547.13.camel@lade.trondhjem.org>
-Date: Wed, 29 Jun 2011 12:11:24 -0500
-Cc: Franck Eyraud <franck.eyraud@jrc.ec.europa.eu>, linux-nfs@vger.kernel.org
-Message-Id: <C05920BC-8E0A-417B-9F99-FD14C0142099@netapp.com>
-References: <4E0B3897.40209@jrc.ec.europa.eu> <1309366237.12547.13.camel@lade.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:60667 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754498Ab1FLXoQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2011 19:44:16 -0400
+Message-Id: <5be5530d45a60a1667be0b9d6648223e9f2a5359.1307921138.git.rees@umich.edu>
+In-Reply-To: <cover.1307921137.git.rees@umich.edu>
+References: <cover.1307921137.git.rees@umich.edu>
+Date: Sun, 12 Jun 2011 19:44:14 -0400
+Subject: [PATCH 11/34] pnfs-block: Add block device discovery pipe
+From: Jim Rees <rees@umich.edu>
+To: linux-nfs@vger.kernel.org
+Cc: peter honeyman <honey@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Franck,
+Signed-off-by: Eric Anderle <eanderle@umich.edu>
+Signed-off-by: Jim Rees <rees@umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/Makefile                      |    2 +-
+ fs/nfs/blocklayout/block-device-discovery-pipe.c |   66 ++++++++++++++++++++++
+ fs/nfs/blocklayout/blocklayout.c                 |    3 +
+ fs/nfs/blocklayout/blocklayout.h                 |   14 +++++
+ 4 files changed, 84 insertions(+), 1 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/block-device-discovery-pipe.c
 
-What version of OnTap are you running?
-
-Actually, if you have a case number from NetApp, I can look at that internally.
-
-Thanks,
-Tom
-
-
-On Jun 29, 2011, at 11:50 AM, Trond Myklebust wrote:
-
-> On Wed, 2011-06-29 at 16:37 +0200, Franck Eyraud wrote: 
->> Dear nfs linux list,
->> 
->> I have an issue with NFSv4 clients running debian with linux kernel 
->> version 2.6.29 and above. The NFS4 server is n a NetApp NAS.
->> 
->> The problem arised when, after upgrading the kernel of our machines, the 
->> filer started to issue a lot of these messages :
->> 
->> Client 1XX.1XX.2XX.73 has an authentication error 2
->> Client 1XX.1XX.2XX.73 is sending bad rpc requests with error: RPC version mismatch or authentication error(73)
->> 
->> The NetApp team analyzed the tcp trace and sent us with this answer, basically saying that the fault is from client side :
->> 
->> Can someone on the list confirm that their affirmations are correct ?
->> 
->> I already opened a bug on debian http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=632074 where they said that maybe the client behavior is not that odd with respect with the RFC standard.
-> 
-> Without a trace, it is hard to affirm anything, but please note the
-> following:
-> 
->     1. The client will usually share the same TCP connection for _all_
->        mounts to any given server, so even if you didn't see the client
->        establish the rpcsec_gss session after the particular mount that
->        you used to test on, it may have been established by a previous
->        mount. 
->     2. Once the client is finished using an rpcsec_gss session, and
->        that session is kicked out of the cache (usually within 1 minute
->        of last use, but it may occasionally take longer), then the
->        client will send out a NULL call with the RPCSEC_GSS_DESTROY
->        message. 
->     3. The client doesn't know, before sending an RPC call, whether or
->        not the server has already expired the rpcsec_gss session. If
->        the server has expired it without the client's knowledge, then
->        it is unreasonable to declare the RPCSEC_GSS_DESTROY call to be
->        an error. The server should simply try to obey the call, and
->        then acknowledge it as a success, whether or not it actually
->        found an active session.
-> 
-> IOW: this all looks to me like a storm in a teacup brought about by a
-> server implementation that is logging errors in a case where it
-> shouldn't.
-> 
-> Cheers
->  Trond
-> 
->> ---------
->> Tue May 24 10:05:59 MEST [vcid@s-jrciprna004p: nfsd.rpc.request.bad:warning]: Client 1XX.1XX.2XX.73 is sending bad rpc requests with error: RPC version mismatch or
->> authentication error(73)
->> 
->> We looked in the code and the (73) has no significance here and is simply the error code number for "RPC version mismatch or authentication error".
->> 
->> What we see is that the following occurs at the time of these errors:
->> - The client has an established TCP session on which it does NFSv4.
->> - The NFSv4 calls uses Kerberos.
->> - On that TCP session, the client occasionally does a NULL call.
->> - The filer rejects it with an authentication error (auth state 2, client must begin new session)
->> - The client does a new NULL call on a separate TCP session without a GSS context.
->> - The filer responds and a new context is established.
->> - The client continues on the original TCP session with the new context.
->> 
->> This explains why no side effect is seen: the client simply establishes a new context and continues as if nothing had happened.
->> We have checked through the trace for vlan 240 and the pattern is the same throughout and the error always happens for NULL calls only (occasionally two replies may be
->> sent in the same TCP payload, but the error is always on the NULL reply, then).
->> We know that some Debian kernels do not exhibit this problem at any time, but others do. This (along with the problem being tied to NULL calls only)
->> suggest to us that this is due to client side behaviour.
->> 
->> Anyway, we tried to check for the first occurrence of the error, which warrants some chronology. We'll do references per clock second for ease.
->> - The first client call is at 10:04:16 in an established NFS mount.
->> - The initial part of the trace, the client only uses TCP port 1006.
->> - The client uses the same GSS context, with the exception of a SETCLIENTID and a SETCLIENTID_CONFIRM call.
->> - At 10:05:00 the client tears down four GSS sessions (used for Kerberos) using RPCSEC_GSS_DESTROY in an NFSv4 NULL call. This is done from TCP port 1006 but for four
->> different contexts. None of these have been used in the trace at that point.
->> - The client continues with more cals on port 1006 using the the same GSS context.
->> - Still at 10:05:00 (frame 1982792), the client uses an NFSv4 call to do a RPCSEC_GSS_INIT to establish a new GSS context.
->> - The client continues using the new GSS context and does not reuse the old context.
->> - The sequence described above on the NULL calls start.
->> 
->> Looking closer at these steps, we notice something important in the NULL calls.
->> Above, the client destroyed four GSS contexts that were not used during the trace. However, it did not destroy the GSS context it was using for a while there.
->> 
->> However, we now note the client actually does a RPCSEC_GSS_DESTROY in each of the NFSv4 NULL calls where we respond with an authentication error. As the error
->> indicates that the client has to begin a new session, this seems like a reasonable response to the call.
->> 
->> So to summarize:
->> - The filer logs these errors when the client destroys a GSS context.
->> - The error message is a logical response.
->> 
->> The decission to tear down the GSS context is with the client. So this would seem to be a client side issue after all, which just happens to get logged on the filer.
->> -------------
->> 
->> Thank you for your help,
->> 
->> Franck Eyraud
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+index 6bf49cd..d2bcd81 100644
+--- a/fs/nfs/blocklayout/Makefile
++++ b/fs/nfs/blocklayout/Makefile
+@@ -2,4 +2,4 @@
+ # Makefile for the pNFS block layout driver kernel module
+ #
+ obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
+-blocklayoutdriver-objs := blocklayout.o
++blocklayoutdriver-objs := blocklayout.o block-device-discovery-pipe.o
+diff --git a/fs/nfs/blocklayout/block-device-discovery-pipe.c b/fs/nfs/blocklayout/block-device-discovery-pipe.c
+new file mode 100644
+index 0000000..e4c199f
+--- /dev/null
++++ b/fs/nfs/blocklayout/block-device-discovery-pipe.c
+@@ -0,0 +1,66 @@
++#include <linux/module.h>
++#include <linux/uaccess.h>
++#include <linux/proc_fs.h>
++#include <linux/string.h>
++#include <linux/slab.h>
++#include <linux/ctype.h>
++#include <linux/sched.h>
++#include "blocklayout.h"
++
++#define NFSDBG_FACILITY NFSDBG_PNFS_LD
++
++struct pipefs_list bl_device_list;
++struct dentry *bl_device_pipe;
++
++ssize_t bl_pipe_downcall(struct file *filp, const char __user *src, size_t len)
++{
++	int err;
++	struct pipefs_hdr *msg;
++
++	dprintk("Entering %s...\n", __func__);
++
++	msg = pipefs_readmsg(filp, src, len);
++	if (IS_ERR(msg)) {
++		dprintk("ERROR: unable to read pipefs message.\n");
++		return PTR_ERR(msg);
++	}
++
++	/* now assign the result, which wakes the blocked thread */
++	err = pipefs_assign_upcall_reply(msg, &bl_device_list);
++	if (err) {
++		dprintk("ERROR: failed to assign upcall with id %u\n",
++			msg->msgid);
++		kfree(msg);
++	}
++	return len;
++}
++
++static const struct rpc_pipe_ops bl_pipe_ops = {
++	.upcall         = pipefs_generic_upcall,
++	.downcall       = bl_pipe_downcall,
++	.destroy_msg    = pipefs_generic_destroy_msg,
++};
++
++int bl_pipe_init(void)
++{
++	dprintk("%s: block_device pipefs registering...\n", __func__);
++	bl_device_pipe = pipefs_mkpipe("bl_device_pipe", &bl_pipe_ops, 1);
++	if (IS_ERR(bl_device_pipe))
++		dprintk("ERROR, unable to make block_device pipe\n");
++
++	if (!bl_device_pipe)
++		dprintk("bl_device_pipe is NULL!\n");
++	else
++	dprintk("bl_device_pipe created!\n");
++	pipefs_init_list(&bl_device_list);
++	return 0;
++}
++
++void bl_pipe_exit(void)
++{
++	dprintk("%s: block_device pipefs unregistering...\n", __func__);
++	if (IS_ERR(bl_device_pipe))
++		return ;
++	pipefs_closepipe(bl_device_pipe);
++	return;
++}
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 8218d54..9932519 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -186,6 +186,8 @@ static int __init nfs4blocklayout_init(void)
+ 	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
+ 
+ 	ret = pnfs_register_layoutdriver(&blocklayout_type);
++	if (!ret)
++		bl_pipe_init();
+ 	return ret;
+ }
+ 
+@@ -195,6 +197,7 @@ static void __exit nfs4blocklayout_exit(void)
+ 	       __func__);
+ 
+ 	pnfs_unregister_layoutdriver(&blocklayout_type);
++	bl_pipe_exit();
+ }
+ 
+ module_init(nfs4blocklayout_init);
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 8ea82b8..2a78462 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -88,4 +88,18 @@ BLK_LO2EXT(struct pnfs_layout_hdr *lo)
+         return container_of(lo, struct pnfs_block_layout, bl_layout);
+ }
+ 
++#include <linux/sunrpc/simple_rpc_pipefs.h>
++
++extern struct pipefs_list bl_device_list;
++extern struct dentry *bl_device_pipe;
++
++int bl_pipe_init(void);
++void bl_pipe_exit(void);
++
++#define BL_DEVICE_UMOUNT               0x0 /* Umount--delete devices */
++#define BL_DEVICE_MOUNT                0x1 /* Mount--create devices*/
++#define BL_DEVICE_REQUEST_INIT         0x0 /* Start request */
++#define BL_DEVICE_REQUEST_PROC         0x1 /* User level process succeeds */
++#define BL_DEVICE_REQUEST_ERR          0x2 /* User level process fails */
++
+ #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
+-- 
+1.7.4.1
 
