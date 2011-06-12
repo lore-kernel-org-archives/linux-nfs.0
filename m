@@ -1,164 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:27994 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754299Ab1FMW0B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Jun 2011 18:26:01 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 4 1/1] NFSv4.1: allow nfs_fhget to succeed with mounted on fileid
-Date: Mon, 13 Jun 2011 18:25:56 -0400
-Message-Id: <1308003956-2201-1-git-send-email-andros@netapp.com>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:60772 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754543Ab1FLXoj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2011 19:44:39 -0400
+Message-Id: <aa30701c41cb8ced39020e79e5a3060280211ec4.1307921138.git.rees@umich.edu>
+In-Reply-To: <cover.1307921137.git.rees@umich.edu>
+References: <cover.1307921137.git.rees@umich.edu>
+Date: Sun, 12 Jun 2011 19:44:37 -0400
+Subject: [PATCH 20/34] pnfsblock: find_get_extent
+From: Jim Rees <rees@umich.edu>
+To: linux-nfs@vger.kernel.org
+Cc: peter honeyman <honey@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+From: Fred <iisaman@citi.umich.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-Commit 28331a46d88459788c8fca72dbb0415cd7f514c9 "Ensure we request the
-ordinary fileid when doing readdirplus"
-changed the meaning of NFS_ATTR_FATTR_FILEID which used to be set when
-FATTR4_WORD1_MOUNTED_ON_FILED was requested.
+Implement find_get_extent(), one of the core extent manipulation
+routines.
 
-Allow nfs_fhget to succeed with only a mounted on fileid when crossing
-a mountpoint or a referral.
+[pnfsblock: Lookup list entry of layouts and tags in reverse order]
+Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 
-Ask for the fileid of the absent file system if mounted_on_fileid is not
-supported.
+pnfsblock: fix print format warnings for sector_t and size_t
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-cc:stable@kernel.org [2.6.39]
+gcc spews warnings about these on x86_64, e.g.:
+fs/nfs/blocklayout/blocklayout.c:74: warning: format ‘%Lu’ expects type ‘long long unsigned int’, but argument 2 has type ‘sector_t’
+fs/nfs/blocklayout/blocklayout.c:388: warning: format ‘%d’ expects type ‘int’, but argument 5 has type ‘size_t’
+
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/inode.c    |    3 ++-
- fs/nfs/internal.h |   11 +++++++++++
- fs/nfs/nfs4proc.c |   33 +++++++++++++++++++++++----------
- 3 files changed, 36 insertions(+), 11 deletions(-)
+ fs/nfs/blocklayout/blocklayout.h |    3 ++
+ fs/nfs/blocklayout/extents.c     |   47 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 50 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 144f2a3..d24984b 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -256,7 +256,8 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 
- 	nfs_attr_check_mountpoint(sb, fattr);
- 
--	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) == 0 && (fattr->valid & NFS_ATTR_FATTR_MOUNTPOINT) == 0)
-+	if (((fattr->valid & NFS_ATTR_FATTR_FILEID) == 0) &&
-+	    !nfs_attr_use_mounted_on_fileid(fattr))
- 		goto out_no_inode;
- 	if ((fattr->valid & NFS_ATTR_FATTR_TYPE) == 0)
- 		goto out_no_inode;
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 1ff5820..31e8b50 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -45,6 +45,17 @@ static inline void nfs_attr_check_mountpoint(struct super_block *parent, struct
- 		fattr->valid |= NFS_ATTR_FATTR_MOUNTPOINT;
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 293f009..06aa36a 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -219,6 +219,9 @@ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+ /* blocklayoutdm.c */
+ void free_block_dev(struct pnfs_block_dev *bdev);
+ /* extents.c */
++struct pnfs_block_extent *
++find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
++		struct pnfs_block_extent **cow_read);
+ void put_extent(struct pnfs_block_extent *be);
+ struct pnfs_block_extent *alloc_extent(void);
+ int add_and_merge_extent(struct pnfs_block_layout *bl,
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 26c263f..f0b3f13 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -201,3 +201,50 @@ add_and_merge_extent(struct pnfs_block_layout *bl,
+ 	put_extent(new);
+ 	return -EIO;
  }
- 
-+static inline int nfs_attr_use_mounted_on_fileid(struct nfs_fattr *fattr)
-+{
-+	if (((fattr->valid & NFS_ATTR_FATTR_MOUNTED_ON_FILEID) == 0) ||
-+	    (((fattr->valid & NFS_ATTR_FATTR_MOUNTPOINT) == 0) &&
-+	     ((fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) == 0)))
-+		return 0;
 +
-+	fattr->fileid = fattr->mounted_on_fileid;
-+	return 1;
-+}
-+
- struct nfs_clone_mount {
- 	const struct super_block *sb;
- 	const struct dentry *dentry;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 59fc918..eb8a211 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2283,12 +2283,14 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 	return nfs4_map_errors(status);
- }
- 
-+static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr);
- /*
-  * Get locations and (maybe) other attributes of a referral.
-  * Note that we'll actually follow the referral later when
-  * we detect fsid mismatch in inode revalidation
-  */
--static int nfs4_get_referral(struct inode *dir, const struct qstr *name, struct nfs_fattr *fattr, struct nfs_fh *fhandle)
-+static int nfs4_get_referral(struct inode *dir, const struct qstr *name,
-+			     struct nfs_fattr *fattr, struct nfs_fh *fhandle)
- {
- 	int status = -ENOMEM;
- 	struct page *page = NULL;
-@@ -2306,15 +2308,16 @@ static int nfs4_get_referral(struct inode *dir, const struct qstr *name, struct
- 		goto out;
- 	/* Make sure server returned a different fsid for the referral */
- 	if (nfs_fsid_equal(&NFS_SERVER(dir)->fsid, &locations->fattr.fsid)) {
--		dprintk("%s: server did not return a different fsid for a referral at %s\n", __func__, name->name);
-+		dprintk("%s: server did not return a different fsid for"
-+			" a referral at %s\n", __func__, name->name);
- 		status = -EIO;
- 		goto out;
- 	}
-+	/* Fixup attributes for the nfs_lookup() call to nfs_fhget() */
-+	nfs_fixup_referral_attributes(&locations->fattr);
- 
-+	/* replace the lookup nfs_fattr with the locations nfs_fattr */
- 	memcpy(fattr, &locations->fattr, sizeof(struct nfs_fattr));
--	fattr->valid |= NFS_ATTR_FATTR_V4_REFERRAL;
--	if (!fattr->mode)
--		fattr->mode = S_IFDIR;
- 	memset(fhandle, 0, sizeof(struct nfs_fh));
- out:
- 	if (page)
-@@ -4699,11 +4702,15 @@ static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
- 	return len;
- }
- 
-+/*
-+ * nfs_fhget will use either the mounted_on_fileid or the fileid
++/* Returns extent, or NULL.  If a second READ extent exists, it is returned
++ * in cow_read, if given.
++ *
++ * The extents are kept in two seperate ordered lists, one for READ and NONE,
++ * one for READWRITE and INVALID.  Within each list, we assume:
++ * 1. Extents are ordered by file offset.
++ * 2. For any given isect, there is at most one extents that matches.
 + */
- static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
- {
--	if (!((fattr->valid & NFS_ATTR_FATTR_FILEID) &&
--		(fattr->valid & NFS_ATTR_FATTR_FSID) &&
--		(fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)))
-+	if (!(((fattr->valid & NFS_ATTR_FATTR_MOUNTED_ON_FILEID) ||
-+	       (fattr->valid & NFS_ATTR_FATTR_FILEID)) &&
-+	      (fattr->valid & NFS_ATTR_FATTR_FSID) &&
-+	      (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)))
- 		return;
- 
- 	fattr->valid |= NFS_ATTR_FATTR_TYPE | NFS_ATTR_FATTR_MODE |
-@@ -4718,7 +4725,6 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 	struct nfs_server *server = NFS_SERVER(dir);
- 	u32 bitmask[2] = {
- 		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
--		[1] = FATTR4_WORD1_MOUNTED_ON_FILEID,
- 	};
- 	struct nfs4_fs_locations_arg args = {
- 		.dir_fh = NFS_FH(dir),
-@@ -4737,11 +4743,18 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 	int status;
- 
- 	dprintk("%s: start\n", __func__);
++struct pnfs_block_extent *
++find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
++	    struct pnfs_block_extent **cow_read)
++{
++	struct pnfs_block_extent *be, *cow, *ret;
++	int i;
 +
-+	/* Ask for the fileid of the absent filesystem if mounted_on_fileid
-+	 * is not supported */
-+	if (NFS_SERVER(dir)->attr_bitmask[1] & FATTR4_WORD1_MOUNTED_ON_FILEID)
-+		bitmask[1] |= FATTR4_WORD1_MOUNTED_ON_FILEID;
-+	else
-+		bitmask[0] |= FATTR4_WORD0_FILEID;
-+
- 	nfs_fattr_init(&fs_locations->fattr);
- 	fs_locations->server = server;
- 	fs_locations->nlocations = 0;
- 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
--	nfs_fixup_referral_attributes(&fs_locations->fattr);
- 	dprintk("%s: returned status = %d\n", __func__, status);
- 	return status;
- }
++	dprintk("%s enter with isect %llu\n", __func__, (u64)isect);
++	cow = ret = NULL;
++	spin_lock(&bl->bl_ext_lock);
++	for (i = 0; i < EXTENT_LISTS; i++) {
++		if (ret &&
++		    (!cow_read || ret->be_state != PNFS_BLOCK_INVALID_DATA))
++			break;
++		list_for_each_entry_reverse(be, &bl->bl_extents[i], be_node) {
++			if (isect >= be->be_f_offset + be->be_length)
++				break;
++			if (isect >= be->be_f_offset) {
++				/* We have found an extent */
++				dprintk("%s Get %p (%i)\n", __func__, be,
++					atomic_read(&be->be_refcnt.refcount));
++				kref_get(&be->be_refcnt);
++				if (!ret)
++					ret = be;
++				else if (be->be_state != PNFS_BLOCK_READ_DATA)
++					put_extent(be);
++				else
++					cow = be;
++				break;
++			}
++		}
++	}
++	spin_unlock(&bl->bl_ext_lock);
++	if (cow_read)
++		*cow_read = cow;
++	print_bl_extent(ret);
++	return ret;
++}
 -- 
-1.7.3.1
+1.7.4.1
 
