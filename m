@@ -1,132 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:5591 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756852Ab1FJBbH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Jun 2011 21:31:07 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:60707 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754463Ab1FLXo0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2011 19:44:26 -0400
+Message-Id: <4752592e870fddcabe8a706d0194c405faf8292e.1307921138.git.rees@umich.edu>
+In-Reply-To: <cover.1307921137.git.rees@umich.edu>
+References: <cover.1307921137.git.rees@umich.edu>
+Date: Sun, 12 Jun 2011 19:44:24 -0400
+Subject: [PATCH 15/34] pnfsblock: lseg alloc and free
+From: Jim Rees <rees@umich.edu>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 5/5] NFSv4.1: Fall back to ordinary i/o through the mds if we have no layout segment
-Date: Thu,  9 Jun 2011 21:31:02 -0400
-Message-Id: <1307669462-15764-5-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1307669462-15764-4-git-send-email-Trond.Myklebust@netapp.com>
-References: <1307669462-15764-1-git-send-email-Trond.Myklebust@netapp.com>
- <1307669462-15764-2-git-send-email-Trond.Myklebust@netapp.com>
- <1307669462-15764-3-git-send-email-Trond.Myklebust@netapp.com>
- <1307669462-15764-4-git-send-email-Trond.Myklebust@netapp.com>
+Cc: peter honeyman <honey@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/internal.h            |    6 ++++++
- fs/nfs/nfs4filelayout.c      |    4 +---
- fs/nfs/objlayout/objio_osd.c |    3 ---
- fs/nfs/pnfs.c                |    7 +++++++
- fs/nfs/read.c                |    2 +-
- fs/nfs/write.c               |    2 +-
- 6 files changed, 16 insertions(+), 8 deletions(-)
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index b9056cb..9f4386a 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -282,7 +282,13 @@ extern int nfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
- 			     const struct rpc_call_ops *call_ops);
- extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
- 
-+struct nfs_pageio_descriptor;
-+extern void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
-+		struct inode *inode);
-+
- /* write.c */
-+extern void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
-+				  struct inode *inode, int ioflags);
- extern void nfs_commit_free(struct nfs_write_data *p);
- extern int nfs_initiate_write(struct nfs_write_data *data,
- 			      struct rpc_clnt *clnt,
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 93c5bae1f..c3857f4 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -662,10 +662,8 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 	u32 stripe_unit;
- 
- 	if (!pnfs_generic_pg_test(pgio, prev, req))
--		return 0;
-+		return false;
- 
--	if (!pgio->pg_lseg)
--		return 1;
- 	p_stripe = (u64)prev->wb_index << PAGE_CACHE_SHIFT;
- 	r_stripe = (u64)req->wb_index << PAGE_CACHE_SHIFT;
- 	stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 84b5fb7..f014038 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -1001,9 +1001,6 @@ static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
- 	if (!pnfs_generic_pg_test(pgio, prev, req))
- 		return false;
- 
--	if (pgio->pg_lseg == NULL)
--		return true;
--
- 	return pgio->pg_count + req->wb_bytes <=
- 			OBJIO_LSEG(pgio->pg_lseg)->max_io_size;
- }
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index e9a8072..b848a7e 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1054,6 +1054,10 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
- 					   req->wb_bytes,
- 					   IOMODE_READ,
- 					   GFP_KERNEL);
-+	/* If no lseg, fall back to read through mds */
-+	if (pgio->pg_lseg == NULL)
-+		nfs_pageio_init_read_mds(pgio, pgio->pg_inode);
-+
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
- 
-@@ -1068,6 +1072,9 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *
- 					   req->wb_bytes,
- 					   IOMODE_RW,
- 					   GFP_NOFS);
-+	/* If no lseg, fall back to write through mds */
-+	if (pgio->pg_lseg == NULL)
-+		nfs_pageio_init_write_mds(pgio, pgio->pg_inode, pgio->pg_ioflags);
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
- 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index dbb89a3..9c5cf57 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -114,7 +114,7 @@ static void nfs_readpage_truncate_uninitialised_page(struct nfs_read_data *data)
- 	}
- }
- 
--static void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
-+void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
- 		struct inode *inode)
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: fix bug getting pnfs_layout_type in translate_devid().]
+Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Zhang Jingwang <Jingwang.Zhang@emc.com>
+---
+ fs/nfs/blocklayout/blocklayout.c    |   30 +++++++++++++++++++++++++++++-
+ fs/nfs/blocklayout/blocklayout.h    |    6 ++++++
+ fs/nfs/blocklayout/blocklayoutdev.c |    8 ++++++++
+ 3 files changed, 43 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index a245e73..88b9d1a 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -115,13 +115,41 @@ bl_alloc_layout_hdr(struct inode *inode, gfp_t gfp_flags)
+ static void
+ bl_free_lseg(struct pnfs_layout_segment *lseg)
  {
- 	nfs_pageio_init(pgio, inode, &nfs_pageio_read_ops,
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index f0ce0c3..70f1ef0 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1043,7 +1043,7 @@ static const struct nfs_pageio_ops nfs_pageio_write_ops = {
- 	.pg_doio = nfs_generic_pg_writepages,
- };
++        dprintk("%s enter\n", __func__);
++        kfree(lseg);
+ }
  
--static void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
-+void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
- 				  struct inode *inode, int ioflags)
++/* Because the generic infrastructure does not correctly merge layouts,
++ * we pretty much ignore lseg, and store all data layout wide, so we
++ * can correctly merge.  Eventually we should push some correct merge
++ * behavior up to the generic code, as the current behavior tends to
++ * cause lots of unnecessary overlapping LAYOUTGET requests.
++ */
+ static struct pnfs_layout_segment *
+ bl_alloc_lseg(struct pnfs_layout_hdr *lo,
+ 	      struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
  {
- 	nfs_pageio_init(pgio, inode, &nfs_pageio_write_ops,
+-	return NULL;
++        struct pnfs_layout_segment *lseg;
++        int status;
++
++        dprintk("%s enter\n", __func__);
++        lseg = kzalloc(sizeof(*lseg) + 0, gfp_flags);
++        if (!lseg)
++                return NULL;
++        status = nfs4_blk_process_layoutget(lo, lgr, gfp_flags);
++        if (status) {
++                /* We don't want to call the full-blown bl_free_lseg,
++                 * since on error extents were not touched.
++                 */
++                /* STUB - we really want to distinguish between 2 error
++                 * conditions here.  This lseg failed, but lo data structures
++                 * are OK, or we hosed the lo data structures.  The calling
++                 * code probably needs to distinguish this too.
++                 */
++                kfree(lseg);
++                return ERR_PTR(status);
++        }
++        return lseg;
+ }
+ 
+ static void
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index e5ee11c..3cd447f 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -94,6 +94,12 @@ BLK_LO2EXT(struct pnfs_layout_hdr *lo)
+         return container_of(lo, struct pnfs_block_layout, bl_layout);
+ }
+ 
++static inline struct pnfs_block_layout *
++BLK_LSEG2EXT(struct pnfs_layout_segment *lseg)
++{
++        return BLK_LO2EXT(lseg->pls_layout);
++}
++
+ /* blocklayoutdev.c */
+ struct block_device *nfs4_blkdev_get(dev_t dev);
+ int nfs4_blkdev_put(struct block_device *bdev);
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+index 9a65a66..0fedf50 100644
+--- a/fs/nfs/blocklayout/blocklayoutdev.c
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -149,3 +149,11 @@ out_err:
+ 		kfree(msg);
+ 	return NULL;
+ }
++
++int
++nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
++			   struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
++{
++	/* STUB */
++	return -EIO;
++}
 -- 
-1.7.5.2
+1.7.4.1
 
