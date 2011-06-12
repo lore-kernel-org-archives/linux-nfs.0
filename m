@@ -1,223 +1,424 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:46925 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758211Ab1FVXh1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 19:37:27 -0400
-In-Reply-To: <1308785675.30458.15.camel@lade.trondhjem.org>
-References: <BANLkTik9J3qcdPcp+DdfRq9kj+DMKnjKZw@mail.gmail.com>
-	<1308767449.14997.10.camel@lade.trondhjem.org>
-	<BANLkTimyCA0QyF1TNc0SU2GYobOt-sAsNQ@mail.gmail.com>
-	<1308769054.14997.18.camel@lade.trondhjem.org>
-	<BANLkTi=b1UJzYinAeW2VJj2AHzsAnwUpGg@mail.gmail.com>
-	<1308779507.25875.7.camel@lade.trondhjem.org>
-	<BANLkTin0HnH7rufrHJGgEuPc-ZPjkZe3iw@mail.gmail.com>
-	<1308783190.25875.25.camel@lade.trondhjem.org>
-	<BANLkTimvMeF94O_S0rpSgy=5Z4obU9pPfg@mail.gmail.com>
-	<1308784142.25875.37.camel@lade.trondhjem.org>
-	<BANLkTi=mQeMHG-Z=UhQdbR6fWbOpUZFtTQ@mail.gmail.com>
-	<1308785675.30458.15.camel@lade.trondhjem.org>
-Date: Wed, 22 Jun 2011 16:37:25 -0700
-Message-ID: <BANLkTin_ESgabt2zxeiJLYJGsDb8jJoA+A@mail.gmail.com>
-Subject: Re: Issue with Race Condition on NFS4 with KRB
-From: Joshua Scoggins <theoretically.x64@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:60576 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754233Ab1FLXn6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2011 19:43:58 -0400
+Message-Id: <ea5e2bf59d726fbfec6f63af9eda83dbc15cb96d.1307921137.git.rees@umich.edu>
+In-Reply-To: <cover.1307921137.git.rees@umich.edu>
+References: <cover.1307921137.git.rees@umich.edu>
+Date: Sun, 12 Jun 2011 19:43:55 -0400
+Subject: [PATCH 04/34] pnfs: hook nfs_write_begin/end to allow layout driver manipulation
+From: Jim Rees <rees@umich.edu>
+To: linux-nfs@vger.kernel.org
+Cc: peter honeyman <honey@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-I mean it compiled but when I rebooted into the patched kernel. I got
-the same nfs error output
-in dmesg.
+From: Peng Tao <bergwolf@gmail.com>
 
-Sorry about not being specific.
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Reported-by: Alexandros Batsakis <batsakis@netapp.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Peng Tao <bergwolf@gmail.com>
+---
+ fs/nfs/file.c          |   26 ++++++++++-
+ fs/nfs/pnfs.c          |   41 +++++++++++++++++
+ fs/nfs/pnfs.h          |  115 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/write.c         |   12 +++--
+ include/linux/nfs_fs.h |    3 +-
+ 5 files changed, 189 insertions(+), 8 deletions(-)
 
--Josh
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 2f093ed..1768762 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -384,12 +384,15 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
+ 	pgoff_t index = pos >> PAGE_CACHE_SHIFT;
+ 	struct page *page;
+ 	int once_thru = 0;
++	struct pnfs_layout_segment *lseg;
+ 
+ 	dfprintk(PAGECACHE, "NFS: write_begin(%s/%s(%ld), %u@%lld)\n",
+ 		file->f_path.dentry->d_parent->d_name.name,
+ 		file->f_path.dentry->d_name.name,
+ 		mapping->host->i_ino, len, (long long) pos);
+-
++	lseg = pnfs_update_layout(mapping->host,
++				  nfs_file_open_context(file),
++				  pos, len, IOMODE_RW, GFP_NOFS);
+ start:
+ 	/*
+ 	 * Prevent starvation issues if someone is doing a consistency
+@@ -409,6 +412,9 @@ start:
+ 	if (ret) {
+ 		unlock_page(page);
+ 		page_cache_release(page);
++		*pagep = NULL;
++		*fsdata = NULL;
++		goto out;
+ 	} else if (!once_thru &&
+ 		   nfs_want_read_modify_write(file, page, pos, len)) {
+ 		once_thru = 1;
+@@ -417,6 +423,12 @@ start:
+ 		if (!ret)
+ 			goto start;
+ 	}
++	ret = pnfs_write_begin(file, page, pos, len, lseg, fsdata);
++ out:
++	if (ret) {
++		put_lseg(lseg);
++		*fsdata = NULL;
++	}
+ 	return ret;
+ }
+ 
+@@ -426,6 +438,7 @@ static int nfs_write_end(struct file *file, struct address_space *mapping,
+ {
+ 	unsigned offset = pos & (PAGE_CACHE_SIZE - 1);
+ 	int status;
++	struct pnfs_layout_segment *lseg;
+ 
+ 	dfprintk(PAGECACHE, "NFS: write_end(%s/%s(%ld), %u@%lld)\n",
+ 		file->f_path.dentry->d_parent->d_name.name,
+@@ -452,10 +465,17 @@ static int nfs_write_end(struct file *file, struct address_space *mapping,
+ 			zero_user_segment(page, pglen, PAGE_CACHE_SIZE);
+ 	}
+ 
+-	status = nfs_updatepage(file, page, offset, copied);
++	lseg = nfs4_pull_lseg_from_fsdata(file, fsdata);
++	status = pnfs_write_end(file, page, pos, len, copied, lseg);
++	if (status)
++		goto out;
++	status = nfs_updatepage(file, page, offset, copied, lseg, fsdata);
+ 
++out:
+ 	unlock_page(page);
+ 	page_cache_release(page);
++	pnfs_write_end_cleanup(file, fsdata);
++	put_lseg(lseg);
+ 
+ 	if (status < 0)
+ 		return status;
+@@ -577,7 +597,7 @@ static int nfs_vm_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 
+ 	ret = VM_FAULT_LOCKED;
+ 	if (nfs_flush_incompatible(filp, page) == 0 &&
+-	    nfs_updatepage(filp, page, 0, pagelen) == 0)
++	    nfs_updatepage(filp, page, 0, pagelen, NULL, NULL) == 0)
+ 		goto out;
+ 
+ 	ret = VM_FAULT_SIGBUS;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index f03a5e0..e693718 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1138,6 +1138,41 @@ pnfs_try_to_write_data(struct nfs_write_data *wdata,
+ }
+ 
+ /*
++ * This gives the layout driver an opportunity to read in page "around"
++ * the data to be written.  It returns 0 on success, otherwise an error code
++ * which will either be passed up to user, or ignored if
++ * some previous part of write succeeded.
++ * Note the range [pos, pos+len-1] is entirely within the page.
++ */
++int _pnfs_write_begin(struct inode *inode, struct page *page,
++		      loff_t pos, unsigned len,
++		      struct pnfs_layout_segment *lseg,
++		      struct pnfs_fsdata **fsdata)
++{
++	struct pnfs_fsdata *data;
++	int status = 0;
++
++	dprintk("--> %s: pos=%llu len=%u\n",
++		__func__, (unsigned long long)pos, len);
++	data = kzalloc(sizeof(struct pnfs_fsdata), GFP_KERNEL);
++	if (!data) {
++		status = -ENOMEM;
++		goto out;
++	}
++	data->lseg = lseg; /* refcount passed into data to be managed there */
++	status = NFS_SERVER(inode)->pnfs_curr_ld->write_begin(
++						lseg, page, pos, len, data);
++	if (status) {
++		kfree(data);
++		data = NULL;
++	}
++out:
++	*fsdata = data;
++	dprintk("<-- %s: status=%d\n", __func__, status);
++	return status;
++}
++
++/*
+  * Called by non rpc-based layout drivers
+  */
+ int
+@@ -1237,6 +1272,12 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ }
+ EXPORT_SYMBOL_GPL(pnfs_set_layoutcommit);
+ 
++void pnfs_free_fsdata(struct pnfs_fsdata *fsdata)
++{
++	/* lseg refcounting handled directly in nfs_write_end */
++	kfree(fsdata);
++}
++
+ /*
+  * For the LAYOUT4_NFSV4_1_FILES layout type, NFS_DATA_SYNC WRITEs and
+  * NFS_UNSTABLE WRITEs with a COMMIT to data servers must store enough
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index a3fc0f2..525ec55 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -54,6 +54,12 @@ enum pnfs_try_status {
+ 	PNFS_NOT_ATTEMPTED = 1,
+ };
+ 
++struct pnfs_fsdata {
++	struct pnfs_layout_segment *lseg;
++	int bypass_eof;
++	void *private;
++};
++
+ #ifdef CONFIG_NFS_V4_1
+ 
+ #define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
+@@ -106,6 +112,14 @@ struct pnfs_layoutdriver_type {
+ 	 */
+ 	enum pnfs_try_status (*read_pagelist) (struct nfs_read_data *nfs_data);
+ 	enum pnfs_try_status (*write_pagelist) (struct nfs_write_data *nfs_data, int how);
++	int (*write_begin) (struct pnfs_layout_segment *lseg, struct page *page,
++			    loff_t pos, unsigned count,
++			    struct pnfs_fsdata *fsdata);
++	int (*write_end)(struct inode *inode, struct page *page, loff_t pos,
++			 unsigned count, unsigned copied,
++			 struct pnfs_layout_segment *lseg);
++	void (*write_end_cleanup)(struct file *filp,
++				  struct pnfs_fsdata *fsdata);
+ 
+ 	void (*free_deviceid_node) (struct nfs4_deviceid_node *);
+ 
+@@ -175,6 +189,7 @@ enum pnfs_try_status pnfs_try_to_write_data(struct nfs_write_data *,
+ enum pnfs_try_status pnfs_try_to_read_data(struct nfs_read_data *,
+ 					    const struct rpc_call_ops *);
+ bool pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev, struct nfs_page *req);
++void pnfs_free_fsdata(struct pnfs_fsdata *fsdata);
+ int pnfs_layout_process(struct nfs4_layoutget *lgp);
+ void pnfs_free_lseg_list(struct list_head *tmp_list);
+ void pnfs_destroy_layout(struct nfs_inode *);
+@@ -186,6 +201,10 @@ void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+ int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
+ 				  struct pnfs_layout_hdr *lo,
+ 				  struct nfs4_state *open_state);
++int _pnfs_write_begin(struct inode *inode, struct page *page,
++		      loff_t pos, unsigned len,
++		      struct pnfs_layout_segment *lseg,
++		      struct pnfs_fsdata **fsdata);
+ int mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 				struct list_head *tmp_list,
+ 				struct pnfs_layout_range *recall_range);
+@@ -287,6 +306,13 @@ static inline void pnfs_clear_request_commit(struct nfs_page *req)
+ 		put_lseg(req->wb_commit_lseg);
+ }
+ 
++static inline int pnfs_grow_ok(struct pnfs_layout_segment *lseg,
++			       struct pnfs_fsdata *fsdata)
++{
++	return !fsdata  || ((struct pnfs_layout_segment *)fsdata == lseg) ||
++		!fsdata->bypass_eof;
++}
++
+ /* Should the pNFS client commit and return the layout upon a setattr */
+ static inline bool
+ pnfs_ld_layoutret_on_setattr(struct inode *inode)
+@@ -297,6 +323,49 @@ pnfs_ld_layoutret_on_setattr(struct inode *inode)
+ 		PNFS_LAYOUTRET_ON_SETATTR;
+ }
+ 
++static inline int pnfs_write_begin(struct file *filp, struct page *page,
++				   loff_t pos, unsigned len,
++				   struct pnfs_layout_segment *lseg,
++				   void **fsdata)
++{
++	struct inode *inode = filp->f_dentry->d_inode;
++	struct nfs_server *nfss = NFS_SERVER(inode);
++	int status = 0;
++
++	*fsdata = lseg;
++	if (lseg && nfss->pnfs_curr_ld->write_begin)
++		status = _pnfs_write_begin(inode, page, pos, len, lseg,
++					   (struct pnfs_fsdata **) fsdata);
++	return status;
++}
++
++/* CAREFUL - what happens if copied < len??? */
++static inline int pnfs_write_end(struct file *filp, struct page *page,
++				 loff_t pos, unsigned len, unsigned copied,
++				 struct pnfs_layout_segment *lseg)
++{
++	struct inode *inode = filp->f_dentry->d_inode;
++	struct nfs_server *nfss = NFS_SERVER(inode);
++
++	if (nfss->pnfs_curr_ld && nfss->pnfs_curr_ld->write_end)
++		return nfss->pnfs_curr_ld->write_end(inode, page, pos, len,
++						     copied, lseg);
++	else
++		return 0;
++}
++
++static inline void pnfs_write_end_cleanup(struct file *filp, void *fsdata)
++{
++	struct nfs_server *nfss = NFS_SERVER(filp->f_dentry->d_inode);
++
++	if (fsdata && nfss->pnfs_curr_ld) {
++		if (nfss->pnfs_curr_ld->write_end_cleanup)
++			nfss->pnfs_curr_ld->write_end_cleanup(filp, fsdata);
++		if (nfss->pnfs_curr_ld->write_begin)
++			pnfs_free_fsdata(fsdata);
++	}
++}
++
+ static inline int pnfs_return_layout(struct inode *ino)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+@@ -317,6 +386,19 @@ static inline void pnfs_pageio_init(struct nfs_pageio_descriptor *pgio,
+ 		pgio->pg_test = ld->pg_test;
+ }
+ 
++static inline struct pnfs_layout_segment *
++nfs4_pull_lseg_from_fsdata(struct file *filp, void *fsdata)
++{
++	if (fsdata) {
++		struct nfs_server *nfss = NFS_SERVER(filp->f_dentry->d_inode);
++
++		if (nfss->pnfs_curr_ld && nfss->pnfs_curr_ld->write_begin)
++			return ((struct pnfs_fsdata *) fsdata)->lseg;
++		return (struct pnfs_layout_segment *)fsdata;
++	}
++	return NULL;
++}
++
+ #else  /* CONFIG_NFS_V4_1 */
+ 
+ static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
+@@ -345,6 +427,12 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+ 	return NULL;
+ }
+ 
++static inline int pnfs_grow_ok(struct pnfs_layout_segment *lseg,
++			       struct pnfs_fsdata *fsdata)
++{
++	return 1;
++}
++
+ static inline enum pnfs_try_status
+ pnfs_try_to_read_data(struct nfs_read_data *data,
+ 		      const struct rpc_call_ops *call_ops)
+@@ -364,6 +452,26 @@ static inline int pnfs_return_layout(struct inode *ino)
+ 	return 0;
+ }
+ 
++static inline int pnfs_write_begin(struct file *filp, struct page *page,
++				   loff_t pos, unsigned len,
++				   struct pnfs_layout_segment *lseg,
++				   void **fsdata)
++{
++	*fsdata = NULL;
++	return 0;
++}
++
++static inline int pnfs_write_end(struct file *filp, struct page *page,
++				 loff_t pos, unsigned len, unsigned copied,
++				 struct pnfs_layout_segment *lseg)
++{
++	return 0;
++}
++
++static inline void pnfs_write_end_cleanup(struct file *filp, void *fsdata)
++{
++}
++
+ static inline bool
+ pnfs_ld_layoutret_on_setattr(struct inode *inode)
+ {
+@@ -435,6 +543,13 @@ static inline int pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ static inline void nfs4_deviceid_purge_client(struct nfs_client *ncl)
+ {
+ }
++
++static inline struct pnfs_layout_segment *
++nfs4_pull_lseg_from_fsdata(struct file *filp, void *fsdata)
++{
++	return NULL;
++}
++
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ #endif /* FS_NFS_PNFS_H */
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index e268e3b..75e2a6b 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -673,7 +673,9 @@ out:
+ }
+ 
+ static int nfs_writepage_setup(struct nfs_open_context *ctx, struct page *page,
+-		unsigned int offset, unsigned int count)
++		unsigned int offset, unsigned int count,
++		struct pnfs_layout_segment *lseg, void *fsdata)
++
+ {
+ 	struct nfs_page	*req;
+ 
+@@ -681,7 +683,8 @@ static int nfs_writepage_setup(struct nfs_open_context *ctx, struct page *page,
+ 	if (IS_ERR(req))
+ 		return PTR_ERR(req);
+ 	/* Update file length */
+-	nfs_grow_file(page, offset, count);
++	if (pnfs_grow_ok(lseg, fsdata))
++		nfs_grow_file(page, offset, count);
+ 	nfs_mark_uptodate(page, req->wb_pgbase, req->wb_bytes);
+ 	nfs_mark_request_dirty(req);
+ 	nfs_clear_page_tag_locked(req);
+@@ -734,7 +737,8 @@ static int nfs_write_pageuptodate(struct page *page, struct inode *inode)
+  * things with a page scheduled for an RPC call (e.g. invalidate it).
+  */
+ int nfs_updatepage(struct file *file, struct page *page,
+-		unsigned int offset, unsigned int count)
++		unsigned int offset, unsigned int count,
++		struct pnfs_layout_segment *lseg, void *fsdata)
+ {
+ 	struct nfs_open_context *ctx = nfs_file_open_context(file);
+ 	struct inode	*inode = page->mapping->host;
+@@ -759,7 +763,7 @@ int nfs_updatepage(struct file *file, struct page *page,
+ 		offset = 0;
+ 	}
+ 
+-	status = nfs_writepage_setup(ctx, page, offset, count);
++	status = nfs_writepage_setup(ctx, page, offset, count, lseg, fsdata);
+ 	if (status < 0)
+ 		nfs_set_pageerror(page);
+ 
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 1b93b9c..be1ac1d 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -510,7 +510,8 @@ extern int  nfs_congestion_kb;
+ extern int  nfs_writepage(struct page *page, struct writeback_control *wbc);
+ extern int  nfs_writepages(struct address_space *, struct writeback_control *);
+ extern int  nfs_flush_incompatible(struct file *file, struct page *page);
+-extern int  nfs_updatepage(struct file *, struct page *, unsigned int, unsigned int);
++extern int  nfs_updatepage(struct file *, struct page *, unsigned int, unsigned int,
++			struct pnfs_layout_segment *, void *);
+ extern void nfs_writeback_done(struct rpc_task *, struct nfs_write_data *);
+ 
+ /*
+-- 
+1.7.4.1
 
-On Wed, Jun 22, 2011 at 4:34 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> On Wed, 2011-06-22 at 16:23 -0700, Joshua Scoggins wrote:
->> It's the same error.
->
-> What mailer are you using to save the attachment? I just grabbed the
-> patch from the reflected email that I received from
-> linux-nfs@vger.kernel.org and again, that applies just fine to both
-> v2.6.39 and the latest kernel from Linus' git tree:
->
-> [trondmy@lade linux-2.6]$ git checkout -f v2.6.39
-> Warning: you are leaving 1 commit behind, not connected to
-> any of your branches:
->
->  9895aa0 SUNRPC: Fix a potential race in between xprt_complete_rqst and xprt_transmit
->
-> If you want to keep it by creating a new branch, this may be a good time
-> to do so with:
->
->  git branch new_branch_name 9895aa06065dd9d457d465f2526a267bec5651a0
->
-> HEAD is now at 61c4f2c... Linux 2.6.39
-> [trondmy@lade linux-2.6]$ patch -p1 -s -i ~/Desktop/0001-SUNRPC-Fix-a-potential-race-in-between-xprt_complete.patch
-> [trondmy@lade linux-2.6]$
->
->
-> That part of the code has not changed for quite some time, so there
-> should be no compatibility problems.
->
->> -Josh
->>
->> On Wed, Jun 22, 2011 at 4:09 PM, Trond Myklebust
->> <Trond.Myklebust@netapp.com> wrote:
->> > On Wed, 2011-06-22 at 16:01 -0700, Joshua Scoggins wrote:
->> >> I just manually applied the patch as I'm using the gentoo sources.
->> >
->> > If they're not modifying the source, then it should just apply provided
->> > that your mailer saved it correctly. If gentoo are applying their own
->> > patches, then I suggest grabbing a copy of the original 2.6.39 from
->> > www.kernel.org.
->> >
->> >> Josh
->> >>
->> >> On Wed, Jun 22, 2011 at 3:53 PM, Trond Myklebust
->> >> <Trond.Myklebust@netapp.com> wrote:
->> >> > On Wed, 2011-06-22 at 15:40 -0700, Joshua Scoggins wrote:
->> >> >> The patch isn't applying to the 2.6.39 kernel sources.
->> >> >
->> >> > It does for me:
->> >> >
->> >> > [trondmy@lade linux-2.6]$ git checkout v2.6.39
->> >> > HEAD is now at 61c4f2c... Linux 2.6.39
->> >> > [trondmy@lade linux-2.6]$ git am ~/Desktop/bugfixes/0001-SUNRPC-Fix-a-potential-race-in-between-xprt_complete.patch
->> >> > Applying: SUNRPC: Fix a potential race in between xprt_complete_rqst and xprt_transmit
->> >> > [trondmy@lade linux-2.6]$
->> >> >
->> >> > Are you perhaps using some distro kernel instead of the regular one from
->> >> > Linus' repository?
->> >> >
->> >> > Cheers
->> >> >  Trond
->> >> >
->> >> >> -Josh
->> >> >>
->> >> >> On Wed, Jun 22, 2011 at 2:51 PM, Trond Myklebust
->> >> >> <Trond.Myklebust@netapp.com> wrote:
->> >> >> > On Wed, 2011-06-22 at 12:18 -0700, Joshua Scoggins wrote:
->> >> >> >> According to the it guys they are running solaris 10 as the server platform.
->> >> >> >
->> >> >> > Ok. That should not be subject to the race I was thinking of...
->> >> >> >
->> >> >> >> On Wed, Jun 22, 2011 at 11:57 AM, Trond Myklebust
->> >> >> >> <Trond.Myklebust@netapp.com> wrote:
->> >> >> >> > On Wed, 2011-06-22 at 11:37 -0700, Joshua Scoggins wrote:
->> >> >> >> >> Here are our mount options from auto.master
->> >> >> >> >>
->> >> >> >> >> /user -fstype=nfs4,sec=krb5p,noresvport,noatime
->> >> >> >> >> /group -fstype=nfs4,sec=krb5p,noresvport,noatime
->> >> >> >> >>
->> >> >> >> >> As for the server, we don't control it. It's actually run by the
->> >> >> >> >> campus wide it department we are just lab support for CS. I can
->> >> >> >> >> potentially get the server information but I need to know what you want
->> >> >> >> >> specifically as they're pretty paranoid about giving out information about
->> >> >> >> >> their servers.
->> >> >> >> >
->> >> >> >> > I would just want to know _what_ server platform you are running
->> >> >> >> > against. I know of at least one server bug that might explain what you
->> >> >> >> > are seeing, and I'd like to eliminate that as a possibility.
->> >> >> >> >
->> >> >> >> > Trond
->> >> >> >> >
->> >> >> >> >> Joshua Scoggins
->> >> >> >> >>
->> >> >> >> >> On Wed, Jun 22, 2011 at 11:30 AM, Trond Myklebust
->> >> >> >> >> <Trond.Myklebust@netapp.com> wrote:
->> >> >> >> >> > On Wed, 2011-06-22 at 11:21 -0700, Joshua Scoggins wrote:
->> >> >> >> >> >> Hello,
->> >> >> >> >> >>
->> >> >> >> >> >> We are trying to update our linux images in our CS lab and have it a
->> >> >> >> >> >> bit of an issue. We are
->> >> >> >> >> >> using nfs to load user home folder. While testing the new image we
->> >> >> >> >> >> found that the nfs4 module will
->> >> >> >> >> >>  crash when using firefox 3.6.17 for an extended period of time. Some
->> >> >> >> >> >> research via google yielded that
->> >> >> >> >> >> it's a potential race condition specific to nfs with krb auth with
->> >> >> >> >> >> newer kernels. Our old image doesn't have
->> >> >> >> >> >> this issue and it seems that its due to it running a far older kernel version.
->> >> >> >> >> >>
->> >> >> >> >> >> We have two images and both are having this problem. One is running
->> >> >> >> >> >> 2.6.39 and the other is 2.6.38.
->> >> >> >> >> >> Here is what dmesg spit out from the machine running 2.6.39 on one occasion:
->> >> >> >> >> >>
->> >> >> >> >> >> [  678.632061] ------------[ cut here ]------------
->> >> >> >> >> >> [  678.632068] WARNING: at net/sunrpc/clnt.c:1567 call_decode+0xb2/0x69c()
->> >> >> >> >> >> [  678.632070] Hardware name: OptiPlex 755
->> >> >> >> >> >> [  678.632072] Modules linked in: nvidia(P) scsi_wait_scan
->> >> >> >> >> >> [  678.632078] Pid: 3882, comm: kworker/0:2 Tainted: P
->> >> >> >> >> >> 2.6.39-gentoo-r1 #1
->> >> >> >> >> >> [  678.632080] Call Trace:
->> >> >> >> >> >> [  678.632086]  [<ffffffff81035b20>] warn_slowpath_common+0x80/0x98
->> >> >> >> >> >> [  678.632091]  [<ffffffff8117231e>] ? nfs4_xdr_dec_readdir+0xba/0xba
->> >> >> >> >> >> [  678.632094]  [<ffffffff81035b4d>] warn_slowpath_null+0x15/0x17
->> >> >> >> >> >> [  678.632097]  [<ffffffff81426f48>] call_decode+0xb2/0x69c
->> >> >> >> >> >> [  678.632101]  [<ffffffff8142d2b5>] __rpc_execute+0x78/0x24b
->> >> >> >> >> >> [  678.632104]  [<ffffffff8142d4c9>] ? rpc_execute+0x41/0x41
->> >> >> >> >> >> [  678.632107]  [<ffffffff8142d4d9>] rpc_async_schedule+0x10/0x12
->> >> >> >> >> >> [  678.632111]  [<ffffffff8104a49d>] process_one_work+0x1d9/0x2e7
->> >> >> >> >> >> [  678.632114]  [<ffffffff8104c402>] worker_thread+0x133/0x24f
->> >> >> >> >> >> [  678.632118]  [<ffffffff8104c2cf>] ? manage_workers+0x18d/0x18d
->> >> >> >> >> >> [  678.632121]  [<ffffffff8104f6a0>] kthread+0x7d/0x85
->> >> >> >> >> >> [  678.632125]  [<ffffffff8145e314>] kernel_thread_helper+0x4/0x10
->> >> >> >> >> >> [  678.632128]  [<ffffffff8104f623>] ? kthread_worker_fn+0x13a/0x13a
->> >> >> >> >> >> [  678.632131]  [<ffffffff8145e310>] ? gs_change+0xb/0xb
->> >> >> >> >> >> [  678.632133] ---[ end trace 6bfae002a63e020e ]---
->> >> >> >
->> >> >> > Looking at the code, there is only one way I can see for that warning to
->> >> >> > occur, and that is if we put the request back on the 'xprt->recv' list
->> >> >> > after it has already received a reply from the server.
->> >> >> >
->> >> >> > Can you reproduce the problem with the attached patch?
->> >> >> >
->> >> >> > Trond
->> >> >> >
->> >> >> > --
->> >> >> > Trond Myklebust
->> >> >> > Linux NFS client maintainer
->> >> >> >
->> >> >> > NetApp
->> >> >> > Trond.Myklebust@netapp.com
->> >> >> > www.netapp.com
->> >> >> >
->> >> >> >
->> >> >
->> >> > --
->> >> > Trond Myklebust
->> >> > Linux NFS client maintainer
->> >> >
->> >> > NetApp
->> >> > Trond.Myklebust@netapp.com
->> >> > www.netapp.com
->> >> >
->> >> >
->> >> --
->> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> >> the body of a message to majordomo@vger.kernel.org
->> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> >
->> > --
->> > Trond Myklebust
->> > Linux NFS client maintainer
->> >
->> > NetApp
->> > Trond.Myklebust@netapp.com
->> > www.netapp.com
->> >
->> >
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
->
