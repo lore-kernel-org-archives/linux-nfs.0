@@ -1,19 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mtaout22.012.net.il ([80.179.55.172]:63420 "EHLO
-	mtaout22.012.net.il" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756220Ab1FEWaK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Jun 2011 18:30:10 -0400
-Date: Mon, 06 Jun 2011 07:39:08 -0700
-From: Microsoft <m.loto.yahoo.co.uk@[66.241.164.64]>
-Subject: winner
-To: Undisclosed recipients:;
-Reply-to: microsoft_draws0233@yahoo.com.hk
-Message-id: <0LMC00JZO8UV0730@a-mtaout22.012.net.il>
-Content-type: text/plain; charset=Windows-1251
+Received: from fieldses.org ([174.143.236.118]:42472 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751985Ab1FLTMW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 12 Jun 2011 15:12:22 -0400
+Date: Sun, 12 Jun 2011 15:12:20 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mimi Zohar <zohar@linux.vnet.ibm.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        samba-technical@lists.samba.org, Christoph Hellwig <hch@infradead.org>,
+        Eric Paris <eparis@redhat.com>
+Subject: Re: [PATCH 1/2] locks: introduce i_blockleases to close lease races
+Message-ID: <20110612191220.GK12149@fieldses.org>
+References: <20110610000944.GC22215@fieldses.org>
+ <20110610001011.GD22215@fieldses.org>
+ <1307737440.3281.5.camel@localhost.localdomain>
+ <20110610213446.GC27837@fieldses.org>
+ <20110612040826.GD9246@fieldses.org>
+ <1307905804.3564.28.camel@localhost.localdomain>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1307905804.3564.28.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-You have won 500.000 GBP
-send your phone number
-and address
+On Sun, Jun 12, 2011 at 03:10:04PM -0400, Mimi Zohar wrote:
+> On Sun, 2011-06-12 at 00:08 -0400, J. Bruce Fields wrote:
+> > On Fri, Jun 10, 2011 at 05:34:46PM -0400, J. Bruce Fields wrote:
+> > > On Fri, Jun 10, 2011 at 04:24:00PM -0400, Mimi Zohar wrote:
+> > > > On Thu, 2011-06-09 at 20:10 -0400, J. Bruce Fields wrote:
+> > > > > From: J. Bruce Fields <bfields@redhat.com>
+> > > > > 
+> > > > > Since break_lease is called before i_writecount is incremented, there's
+> > > > > a window between the two where a setlease call would have no way to know
+> > > > > that an open is about to happen.
+> > > > 
+> > > > So unless the break_lease() call is moved from may_open() to after 
+> > > > nameidata_to_filp(), I don't see any other options.
+> > > 
+> > > Actually, offhand I can't see why that wouldn't be OK.
+> > > 
+> > > Though I think we still end up needing something like i_blockleases to
+> > > handle unlink, link, rename, chown, and chmod.
+> > 
+> > Well, I guess there's a bizarre alternative that wouldn't require a new
+> > inode field:
+> 
+> In lieu of adding a new inode field, another possible option, a bit
+> kludgy, would be extending i_flock with an additional fl_flag
+> FL_BLOCKLEASE.
+> 
+> #define IS_BLOCKLEASE(fl)    (fl->fl_flags & FL_BLOCKLEASE)
+
+Alas, that would mean adding and removing one of these file locks around
+every single link, unlink, rename,....
+
+--b.
+
+> 
+> Mimi
+> 
+> > What we care about is conflicts between read leases and operations that
+> > modify the metadata of the inode or the set of names pointing to it.
+> > 
+> > As far as I can tell those operations all take the i_mutex either on the
+> > inode itself or on the parents of one of its aliases.
+> > 
+> > So, you could prevent break_lease/setlease races by calling setlease
+> > under *all* of those i_mutexes:
+> > 
+> > 	- take i_mutex on the inode
+> > 	- take i_lock to prevent the set of aliases from changing
+> > 	- take i_mutex for parent of each alias
+> > 	- set the lease
+> > 	- drop the parent i_mutexes, etc.
+> > 
+> > where the i_mutexes would all be taken with mutex_trylock, and we'd just
+> > fail the whole setlease if any of them failed.
+> > 
+> > ???
+> > 
+> > --b.
+> 
+> 
