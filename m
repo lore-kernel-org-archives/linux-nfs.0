@@ -1,39 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:38508 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751741Ab1FBOgW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Jun 2011 10:36:22 -0400
-Message-ID: <4DE79FDD.90104@candelatech.com>
-Date: Thu, 02 Jun 2011 07:36:13 -0700
-From: Ben Greear <greearb@candelatech.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Ranjith Kumar <ranjitbat@gmail.com>, linux-nfs@vger.kernel.org
-Subject: Re: Bind NFS Services to specific IP address
-References: <BANLkTimiv7LXs9Jo7ABA5Mc+0Vn+Q1UEug@mail.gmail.com> <BANLkTimH+UPaKbzDnWE4NAPF=b=f+x5aag@mail.gmail.com> <A842031D-AB09-4CCC-B338-5CA8AD5534C9@oracle.com>
-In-Reply-To: <A842031D-AB09-4CCC-B338-5CA8AD5534C9@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:45673 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754707Ab1FLXo5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2011 19:44:57 -0400
+Message-Id: <2b17966620201541dee62149d8470e6ddfebf937.1307921138.git.rees@umich.edu>
+In-Reply-To: <cover.1307921137.git.rees@umich.edu>
+References: <cover.1307921137.git.rees@umich.edu>
+Date: Sun, 12 Jun 2011 19:44:55 -0400
+Subject: [PATCH 27/34] pnfsblock: write_end
+From: Jim Rees <rees@umich.edu>
+To: linux-nfs@vger.kernel.org
+Cc: peter honeyman <honey@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 06/02/2011 05:53 AM, Chuck Lever wrote:
->
-> On Jun 2, 2011, at 4:01 AM, Ranjith Kumar wrote:
->
->> Hi,
->>
->> How you bind the nfs services to specific IP address?
->
-> As far as I know, the kernel NFSD does not allow binding to any other address than ADDR_ANY.
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-I have patches to do the client-side, at least....  Never had any luck getting
-them accepted upstream though.
+Implements bl_write_end, which basically just calls SetPageUptodate.
 
-Ben
+[pnfsblock: write_end adjust for removed ok_to_use_pnfs]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
->
-
-
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 5d7cb86..8914143 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -775,10 +775,15 @@ bl_write_begin(struct pnfs_layout_segment *lseg, struct page *page, loff_t pos,
+ 	return ret;
+ }
+ 
++/* CAREFUL - what happens if copied < count??? */
+ static int
+ bl_write_end(struct inode *inode, struct page *page, loff_t pos,
+ 	     unsigned count, unsigned copied, struct pnfs_layout_segment *lseg)
+ {
++	dprintk("%s enter, %u@%lld, lseg=%p\n", __func__, count, pos, lseg);
++	print_page(page);
++	if (lseg)
++		SetPageUptodate(page);
+ 	return 0;
+ }
+ 
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+1.7.4.1
+
