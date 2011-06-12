@@ -1,139 +1,179 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:55408 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754442Ab1FMV1j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 17:27:39 -0400
-From: greearb@candelatech.com
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:60695 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754463Ab1FLXoY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2011 19:44:24 -0400
+Message-Id: <a702af417872abc11fc5f5639d605f0154059cf2.1307921138.git.rees@umich.edu>
+In-Reply-To: <cover.1307921137.git.rees@umich.edu>
+References: <cover.1307921137.git.rees@umich.edu>
+Date: Sun, 12 Jun 2011 19:44:22 -0400
+Subject: [PATCH 14/34] pnfsblock: remove device operations
+From: Jim Rees <rees@umich.edu>
 To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH v4 3/6] nfs-utils:  Implement srcaddr binding in rpc_socket
-Date: Mon, 13 Jun 2011 14:26:45 -0700
-Message-Id: <1308000408-13690-4-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1308000408-13690-1-git-send-email-greearb@candelatech.com>
-References: <1308000408-13690-1-git-send-email-greearb@candelatech.com>
+Cc: peter honeyman <honey@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
-
-This implements the actual binding, if we are passed
-a non-null local_ip structure.
-
-Signed-off-by: Ben Greear <greearb@candelatech.com>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
-:100644 100644 5652f6c... 936319b... M	support/nfs/rpc_socket.c
- support/nfs/rpc_socket.c |   59 +++++++++++++++++++++++++++++++++++----------
- 1 files changed, 46 insertions(+), 13 deletions(-)
+ fs/nfs/blocklayout/Makefile        |    2 +-
+ fs/nfs/blocklayout/blocklayout.h   |    2 +
+ fs/nfs/blocklayout/blocklayoutdm.c |  120 ++++++++++++++++++++++++++++++++++++
+ 3 files changed, 123 insertions(+), 1 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
 
-diff --git a/support/nfs/rpc_socket.c b/support/nfs/rpc_socket.c
-index 5652f6c..936319b 100644
---- a/support/nfs/rpc_socket.c
-+++ b/support/nfs/rpc_socket.c
-@@ -115,6 +115,8 @@ static CLIENT *nfs_get_localclient(const struct sockaddr *sap,
- static int nfs_bind(const int sock, const sa_family_t family,
- 		    struct local_bind_info *local_ip)
- {
-+	struct sockaddr *sa = NULL;
-+	socklen_t salen = 0;
- 	struct sockaddr_in sin = {
- 		.sin_family		= AF_INET,
- 		.sin_addr.s_addr	= htonl(INADDR_ANY),
-@@ -124,15 +126,26 @@ static int nfs_bind(const int sock, const sa_family_t family,
- 		.sin6_addr		= IN6ADDR_ANY_INIT,
- 	};
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+index bd69aad..bdbf180 100644
+--- a/fs/nfs/blocklayout/Makefile
++++ b/fs/nfs/blocklayout/Makefile
+@@ -2,4 +2,4 @@
+ # Makefile for the pNFS block layout driver kernel module
+ #
+ obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
+-blocklayoutdriver-objs := blocklayout.o block-device-discovery-pipe.o extents.o blocklayoutdev.o
++blocklayoutdriver-objs := blocklayout.o block-device-discovery-pipe.o extents.o blocklayoutdev.o blocklayoutdm.o
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 6c01d8c..e5ee11c 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -102,6 +102,8 @@ struct pnfs_block_dev *nfs4_blk_decode_device(struct nfs_server *server,
+ 						struct list_head *sdlist);
+ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+ 				struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
++/* blocklayoutdm.c */
++void free_block_dev(struct pnfs_block_dev *bdev);
  
--	switch (family) {
--	case AF_INET:
--		return bind(sock, (struct sockaddr *)(char *)&sin,
--					(socklen_t)sizeof(sin));
--	case AF_INET6:
--		return bind(sock, (struct sockaddr *)(char *)&sin6,
--					(socklen_t)sizeof(sin6));
-+	if (local_ip) {
-+		sa = &local_ip->addr.sa;
-+		salen = local_ip->addrlen;
-+	} else {
-+		switch (family) {
-+		case AF_INET:
-+			sa = (struct sockaddr *)&sin;
-+			salen = sizeof(sin);
-+			break;
-+		case AF_INET6:
-+			sa = (struct sockaddr *)&sin6;
-+			salen = sizeof(sin6);
-+		default:
-+			break;
-+		}
- 	}
+ #include <linux/sunrpc/simple_rpc_pipefs.h>
  
-+	if (sa)
-+		return bind(sock, sa, salen);
+diff --git a/fs/nfs/blocklayout/blocklayoutdm.c b/fs/nfs/blocklayout/blocklayoutdm.c
+new file mode 100644
+index 0000000..097dd05
+--- /dev/null
++++ b/fs/nfs/blocklayout/blocklayoutdm.c
+@@ -0,0 +1,120 @@
++/*
++ *  linux/fs/nfs/blocklayout/blocklayoutdm.c
++ *
++ *  Module for the NFSv4.1 pNFS block layout driver.
++ *
++ *  Copyright (c) 2007 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Fred Isaman <iisaman@umich.edu>
++ *  Andy Adamson <andros@citi.umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
++ */
 +
- 	errno = EAFNOSUPPORT;
- 	return -1;
- }
-@@ -148,6 +161,7 @@ static int nfs_bind(const int sock, const sa_family_t family,
- static int nfs_bindresvport(const int sock, const sa_family_t family,
- 			    struct local_bind_info *local_ip)
- {
-+	struct sockaddr *sa = NULL;
- 	struct sockaddr_in sin = {
- 		.sin_family		= AF_INET,
- 		.sin_addr.s_addr	= htonl(INADDR_ANY),
-@@ -157,13 +171,23 @@ static int nfs_bindresvport(const int sock, const sa_family_t family,
- 		.sin6_addr		= IN6ADDR_ANY_INIT,
- 	};
- 
--	switch (family) {
--	case AF_INET:
--		return bindresvport_sa(sock, (struct sockaddr *)(char *)&sin);
--	case AF_INET6:
--		return bindresvport_sa(sock, (struct sockaddr *)(char *)&sin6);
-+	if (local_ip) {
-+		sa = &local_ip->addr.sa;
-+	} else {
-+		switch (family) {
-+		case AF_INET:
-+			sa = (struct sockaddr *)&sin;
-+			break;
-+		case AF_INET6:
-+			sa = (struct sockaddr *)&sin6;
-+		default:
-+			break;
-+		}
- 	}
- 
-+	if (sa)
-+		return bindresvport_sa(sock, sa);
++#include <linux/genhd.h> /* gendisk - used in a dprintk*/
++#include <linux/sched.h>
++#include <linux/hash.h>
 +
- 	errno = EAFNOSUPPORT;
- 	return -1;
- }
-@@ -179,12 +203,21 @@ static int nfs_bindresvport(const int sock, const sa_family_t family,
- static int nfs_bindresvport(const int sock, const sa_family_t family,
- 			    struct local_bind_info *local_ip)
- {
-+	struct sockaddr_in laddr;
- 	if (family != AF_INET) {
- 		errno = EAFNOSUPPORT;
- 		return -1;
- 	}
- 
--	return bindresvport(sock, NULL);
-+	laddr.sin_family = family;
-+	laddr.sin_port = 0;
-+	if (local_ip) {
-+		struct sockaddr_in *si = &local_ip->addr.s4;
-+		laddr.sin_addr.s_addr = si->sin_addr.s_addr;
-+	} else {
-+		laddr.sin_addr.s_addr = htonl(INADDR_ANY);
++#include "blocklayout.h"
++
++#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
++
++/* Defines used for calculating memory usage in nfs4_blk_flatten() */
++#define ARGSIZE   24    /* Max bytes needed for linear target arg string */
++#define SPECSIZE (sizeof8(struct dm_target_spec) + ARGSIZE)
++#define SPECS_PER_PAGE (PAGE_SIZE / SPECSIZE)
++#define SPEC_HEADER_ADJUST (SPECS_PER_PAGE - \
++			    (PAGE_SIZE - sizeof8(struct dm_ioctl)) / SPECSIZE)
++#define roundup8(x) (((x)+7) & ~7)
++#define sizeof8(x) roundup8(sizeof(x))
++
++static int dev_remove(dev_t dev)
++{
++	int ret = 1;
++	struct pipefs_hdr *msg = NULL, *reply = NULL;
++	uint64_t bl_dev;
++	uint32_t major = MAJOR(dev), minor = MINOR(dev);
++
++	dprintk("Entering %s\n", __func__);
++
++	if (IS_ERR(bl_device_pipe))
++		return ret;
++
++	memcpy((void *)&bl_dev, &major, sizeof(uint32_t));
++	memcpy((void *)&bl_dev + sizeof(uint32_t), &minor, sizeof(uint32_t));
++	msg = pipefs_alloc_init_msg(0, BL_DEVICE_UMOUNT, 0, (void *)&bl_dev,
++				    sizeof(uint64_t));
++	if (IS_ERR(msg)) {
++		dprintk("ERROR: couldn't make pipefs message.\n");
++		goto out;
 +	}
-+	return bindresvport(sock, &laddr);
- }
- 
- #endif	/* !HAVE_LIBTIRPC */
++	msg->msgid = hash_ptr(&msg, sizeof(msg->msgid) * 8);
++	msg->status = BL_DEVICE_REQUEST_INIT;
++
++	reply = pipefs_queue_upcall_waitreply(bl_device_pipe, msg,
++					      &bl_device_list, 0, 0);
++	if (IS_ERR(reply)) {
++		dprintk("ERROR: upcall_waitreply failed\n");
++		goto out;
++	}
++
++	if (reply->status == BL_DEVICE_REQUEST_PROC)
++		ret = 0; /*TODO: what to return*/
++out:
++	if (!IS_ERR(reply))
++		kfree(reply);
++	if (!IS_ERR(msg))
++		kfree(msg);
++	return ret;
++}
++
++/*
++ * Release meta device
++ */
++static int nfs4_blk_metadev_release(struct pnfs_block_dev *bdev)
++{
++	int rv;
++
++	dprintk("%s Releasing\n", __func__);
++	/* XXX Check return? */
++	rv = nfs4_blkdev_put(bdev->bm_mdev);
++	dprintk("%s nfs4_blkdev_put returns %d\n", __func__, rv);
++
++	rv = dev_remove(bdev->bm_mdev->bd_dev);
++	dprintk("%s Returns %d\n", __func__, rv);
++	return rv;
++}
++
++void free_block_dev(struct pnfs_block_dev *bdev)
++{
++	if (bdev) {
++		if (bdev->bm_mdev) {
++			dprintk("%s Removing DM device: %d:%d\n",
++				__func__,
++				MAJOR(bdev->bm_mdev->bd_dev),
++				MINOR(bdev->bm_mdev->bd_dev));
++			/* XXX Check status ?? */
++			nfs4_blk_metadev_release(bdev);
++		}
++		kfree(bdev);
++	}
++}
 -- 
-1.7.3.4
+1.7.4.1
 
