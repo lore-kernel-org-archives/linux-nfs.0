@@ -1,25 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:14271 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932263Ab1FPUCk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Jun 2011 16:02:40 -0400
-Received: from [10.30.28.173] (vpn2ntap-169007.hq.netapp.com [10.30.28.173] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id p5GK2Nih017611
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Jun 2011 13:02:24 -0700 (PDT)
-Message-ID: <4DFA614E.2070407@netapp.com>
-Date: Thu, 16 Jun 2011 16:02:22 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Jenkins NFS
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:60794 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754543Ab1FLXoo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2011 19:44:44 -0400
+Message-Id: <497dbd6147e55dd3a57f9b11be61637d128fbac3.1307921138.git.rees@umich.edu>
+In-Reply-To: <cover.1307921137.git.rees@umich.edu>
+References: <cover.1307921137.git.rees@umich.edu>
+Date: Sun, 12 Jun 2011 19:44:42 -0400
+Subject: [PATCH 22/34] pnfsblock: merge rw extents
+From: Jim Rees <rees@umich.edu>
+To: linux-nfs@vger.kernel.org
+Cc: peter honeyman <honey@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-As promised during my bake-a-thon talk, here is the git url for my NFS jenkins setup:
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-git://git.linux-nfs.org/projects/bjschuma/jenkins-nfs.git
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/extents.c |   47 ++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 47 insertions(+), 0 deletions(-)
 
-It's mostly tailored towards testing the NFS client right now, but I'm sure server support could be added in easily enough.  Feel free to send me questions / suggestions / enhancements!
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 3d36f66..43a3601 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -501,3 +501,50 @@ find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
+ 	print_bl_extent(ret);
+ 	return ret;
+ }
++
++/* Helper function to set_to_rw that initialize a new extent */
++static void
++_prep_new_extent(struct pnfs_block_extent *new,
++		 struct pnfs_block_extent *orig,
++		 sector_t offset, sector_t length, int state)
++{
++	kref_init(&new->be_refcnt);
++	/* don't need to INIT_LIST_HEAD(&new->be_node) */
++	memcpy(&new->be_devid, &orig->be_devid, sizeof(struct nfs4_deviceid));
++	new->be_mdev = orig->be_mdev;
++	new->be_f_offset = offset;
++	new->be_length = length;
++	new->be_v_offset = orig->be_v_offset - orig->be_f_offset + offset;
++	new->be_state = state;
++	new->be_inval = orig->be_inval;
++}
++
++/* Tries to merge be with extent in front of it in list.
++ * Frees storage if not used.
++ */
++static struct pnfs_block_extent *
++_front_merge(struct pnfs_block_extent *be, struct list_head *head,
++	     struct pnfs_block_extent *storage)
++{
++	struct pnfs_block_extent *prev;
++
++	if (!storage)
++		goto no_merge;
++	if (&be->be_node == head || be->be_node.prev == head)
++		goto no_merge;
++	prev = list_entry(be->be_node.prev, struct pnfs_block_extent, be_node);
++	if ((prev->be_f_offset + prev->be_length != be->be_f_offset) ||
++	    !extents_consistent(prev, be))
++		goto no_merge;
++	_prep_new_extent(storage, prev, prev->be_f_offset,
++			 prev->be_length + be->be_length, prev->be_state);
++	list_replace(&prev->be_node, &storage->be_node);
++	put_extent(prev);
++	list_del(&be->be_node);
++	put_extent(be);
++	return storage;
++
++ no_merge:
++	kfree(storage);
++	return be;
++}
+-- 
+1.7.4.1
 
-- Bryan
