@@ -1,187 +1,131 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:52023 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754060Ab1FNCcn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:43 -0400
-Message-Id: <d6a55f8815266f7e552240dd8980714557e77b44.1308017749.git.rees@umich.edu>
-In-Reply-To: <cover.1308017749.git.rees@umich.edu>
-References: <cover.1308017749.git.rees@umich.edu>
-Subject: [PATCH 16/33] pnfsblock: merge extents
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Date: Mon, 13 Jun 2011 22:32:40 -0400
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:60550 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753379Ab1FLXnr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2011 19:43:47 -0400
+Message-Id: <cover.1307921137.git.rees@umich.edu>
+Date: Sun, 12 Jun 2011 19:43:45 -0400
+Content-Type: text/plain; charset=UTF-8
+Subject: [PATCH 00/34] pnfs block layout driver based on v3.0-rc2
 From: Jim Rees <rees@umich.edu>
+To: linux-nfs@vger.kernel.org
+Cc: peter honeyman <honey@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+For review only.  This patch set adds the pnfs block layout driver to the
+nfs client.  It is roughly equivalent to the 88-patch set I sent earlier,
+but is re-organized and based on v3.0-rc2.
 
-Replace a stub, so that extents underlying the layouts are properly
-added, merged, or ignored as necessary.
+There are several style problems, mostly white space and line
+length problems, and I'll deal with those.  I'm interested in comments on
+the structure of the patch set, and of course the logic and functionality.
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfsblock: delete the new node before put it]
-Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/blocklayout/blocklayout.h |   14 +++++-
- fs/nfs/blocklayout/extents.c     |  106 ++++++++++++++++++++++++++++++++++++++
- 2 files changed, 119 insertions(+), 1 deletions(-)
+Date: Sun, 12 Jun 2011 19:43:45 -0400
 
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 5c1ccc1..6705b10 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -77,6 +77,14 @@ enum extentclass4 {
- 	EXTENT_LISTS    = 2,
- };
- 
-+static inline int choose_list(enum exstate4 state)
-+{
-+	if (state == PNFS_BLOCK_READ_DATA || state == PNFS_BLOCK_NONE_DATA)
-+		return RO_EXTENT;
-+	else
-+		return RW_EXTENT;
-+}
-+
- struct pnfs_block_layout {
- 	struct pnfs_layout_hdr bl_layout;
- 	struct pnfs_inval_markings bl_inval; /* tracks INVAL->RW transition */
-@@ -109,6 +117,11 @@ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
- 				struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
- /* blocklayoutdm.c */
- void free_block_dev(struct pnfs_block_dev *bdev);
-+/* extents.c */
-+void put_extent(struct pnfs_block_extent *be);
-+struct pnfs_block_extent *alloc_extent(void);
-+int add_and_merge_extent(struct pnfs_block_layout *bl,
-+			 struct pnfs_block_extent *new);
- 
- #include <linux/sunrpc/simple_rpc_pipefs.h>
- 
-@@ -124,5 +137,4 @@ void bl_pipe_exit(void);
- #define BL_DEVICE_REQUEST_PROC         0x1 /* User level process succeeds */
- #define BL_DEVICE_REQUEST_ERR          0x2 /* User level process fails */
- 
--void put_extent(struct pnfs_block_extent *be);
- #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 1283fa9..26c263f 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -95,3 +95,109 @@ void print_elist(struct list_head *list)
- 	}
- 	dprintk("****************\n");
- }
-+
-+static inline int
-+extents_consistent(struct pnfs_block_extent *old, struct pnfs_block_extent *new)
-+{
-+	/* Note this assumes new->be_f_offset >= old->be_f_offset */
-+	return (new->be_state == old->be_state) &&
-+		((new->be_state == PNFS_BLOCK_NONE_DATA) ||
-+		 ((new->be_v_offset - old->be_v_offset ==
-+		   new->be_f_offset - old->be_f_offset) &&
-+		  new->be_mdev == old->be_mdev));
-+}
-+
-+/* Adds new to appropriate list in bl, modifying new and removing existing
-+ * extents as appropriate to deal with overlaps.
-+ *
-+ * See find_get_extent for list constraints.
-+ *
-+ * Refcount on new is already set.  If end up not using it, or error out,
-+ * need to put the reference.
-+ *
-+ * Lock is held by caller.
-+ */
-+int
-+add_and_merge_extent(struct pnfs_block_layout *bl,
-+		     struct pnfs_block_extent *new)
-+{
-+	struct pnfs_block_extent *be, *tmp;
-+	sector_t end = new->be_f_offset + new->be_length;
-+	struct list_head *list;
-+
-+	dprintk("%s enter with be=%p\n", __func__, new);
-+	print_bl_extent(new);
-+	list = &bl->bl_extents[choose_list(new->be_state)];
-+	print_elist(list);
-+
-+	/* Scan for proper place to insert, extending new to the left
-+	 * as much as possible.
-+	 */
-+	list_for_each_entry_safe(be, tmp, list, be_node) {
-+		if (new->be_f_offset < be->be_f_offset)
-+			break;
-+		if (end <= be->be_f_offset + be->be_length) {
-+			/* new is a subset of existing be*/
-+			if (extents_consistent(be, new)) {
-+				dprintk("%s: new is subset, ignoring\n",
-+					__func__);
-+				put_extent(new);
-+				return 0;
-+			} else
-+				goto out_err;
-+		} else if (new->be_f_offset <=
-+				be->be_f_offset + be->be_length) {
-+			/* new overlaps or abuts existing be */
-+			if (extents_consistent(be, new)) {
-+				/* extend new to fully replace be */
-+				new->be_length += new->be_f_offset -
-+						  be->be_f_offset;
-+				new->be_f_offset = be->be_f_offset;
-+				new->be_v_offset = be->be_v_offset;
-+				dprintk("%s: removing %p\n", __func__, be);
-+				list_del(&be->be_node);
-+				put_extent(be);
-+			} else if (new->be_f_offset !=
-+				   be->be_f_offset + be->be_length)
-+				goto out_err;
-+		}
-+	}
-+	/* Note that if we never hit the above break, be will not point to a
-+	 * valid extent.  However, in that case &be->be_node==list.
-+	 */
-+	list_add_tail(&new->be_node, &be->be_node);
-+	dprintk("%s: inserting new\n", __func__);
-+	print_elist(list);
-+	/* Scan forward for overlaps.  If we find any, extend new and
-+	 * remove the overlapped extent.
-+	 */
-+	be = list_prepare_entry(new, list, be_node);
-+	list_for_each_entry_safe_continue(be, tmp, list, be_node) {
-+		if (end < be->be_f_offset)
-+			break;
-+		/* new overlaps or abuts existing be */
-+		if (extents_consistent(be, new)) {
-+			if (end < be->be_f_offset + be->be_length) {
-+				/* extend new to fully cover be */
-+				end = be->be_f_offset + be->be_length;
-+				new->be_length = end - new->be_f_offset;
-+			}
-+			dprintk("%s: removing %p\n", __func__, be);
-+			list_del(&be->be_node);
-+			put_extent(be);
-+		} else if (end != be->be_f_offset) {
-+			list_del(&new->be_node);
-+			goto out_err;
-+		}
-+	}
-+	dprintk("%s: after merging\n", __func__);
-+	print_elist(list);
-+	/* STUB - The per-list consistency checks have all been done,
-+	 * should now check cross-list consistency.
-+	 */
-+	return 0;
-+
-+ out_err:
-+	put_extent(new);
-+	return -EIO;
-+}
+Among these patches, the first 6 patches are generic layer change that is
+needed for block layout driver.
+
+Patch 7~32 are block driver code.
+
+Patch 33 is the layout prefetch patch, which Benny agrees to take in for BAT
+with the default value set to 0.
+
+Patch 34 is the fix for layoutcommit vs. update_inode. Trond hasn't merged
+it so I put it here as block driver need it to pass cthon hole file test.
+
+Although the code is almost same as previous one, we did not have much time
+fully testing it. It seems increased segment number (by reducing the layout
+segment size) will sometimes cause client hang in cthon test. There may be
+some bugs in either generic layer segment management or block driver extent
+management (we already fixed some bugs in both parts). We will do more
+investigation on it tomorrow.
+
+Andy Adamson (1):
+  pnfs: GETDEVICELIST
+
+Benny Halevy (1):
+  pnfs: add set-clear layoutdriver interface
+
+Fred (1):
+  pnfsblock: find_get_extent
+
+Fred Isaman (21):
+  pnfsblock: define PNFS_BLOCK Kconfig option
+  pnfsblock: blocklayout stub
+  pnfsblock: layout alloc and free
+  Add support for simple rpc pipefs
+  pnfsblock: basic extent code
+  pnfsblock: lseg alloc and free
+  pnfsblock: merge extents
+  pnfsblock: call and parse getdevicelist
+  pnfsblock: allow use of PG_owner_priv_1 flag
+  pnfsblock: xdr decode pnfs_block_layout4
+  pnfsblock: SPLITME: add extent manipulation functions
+  pnfsblock: merge rw extents
+  pnfsblock: encode_layoutcommit
+  pnfsblock: cleanup_layoutcommit
+  pnfsblock: bl_read_pagelist
+  pnfsblock: write_begin
+  pnfsblock: write_end
+  pnfsblock: write_end_cleanup
+  pnfsblock: bl_write_pagelist support functions
+  pnfsblock: bl_write_pagelist
+  pnfsblock: note written INVAL areas for layoutcommit
+
+Jim Rees (3):
+  pnfs-block: Add block device discovery pipe
+  pnfsblock: add device operations
+  pnfsblock: remove device operations
+
+Peng Tao (6):
+  pnfs: let layoutcommit code handle multiple segments
+  pnfs: hook nfs_write_begin/end to allow layout driver manipulation
+  pnfs: ask for layout_blksize and save it in nfs_server
+  pnfs: cleanup_layoutcommit
+  Add configurable prefetch size for layoutget
+  NFS41: do not update isize if inode needs layoutcommit
+
+Zhang Jingwang (1):
+  pnfsblock: Implement release_inval_marks
+
+ fs/nfs/Kconfig                                   |    8 +
+ fs/nfs/Makefile                                  |    1 +
+ fs/nfs/blocklayout/Makefile                      |    5 +
+ fs/nfs/blocklayout/block-device-discovery-pipe.c |   66 ++
+ fs/nfs/blocklayout/blocklayout.c                 | 1089 ++++++++++++++++++++++
+ fs/nfs/blocklayout/blocklayout.h                 |  287 ++++++
+ fs/nfs/blocklayout/blocklayoutdev.c              |  346 +++++++
+ fs/nfs/blocklayout/blocklayoutdm.c               |  120 +++
+ fs/nfs/blocklayout/extents.c                     |  941 +++++++++++++++++++
+ fs/nfs/client.c                                  |    8 +-
+ fs/nfs/file.c                                    |   26 +-
+ fs/nfs/inode.c                                   |    3 +-
+ fs/nfs/nfs4_fs.h                                 |    2 +-
+ fs/nfs/nfs4proc.c                                |   53 +-
+ fs/nfs/nfs4xdr.c                                 |  232 +++++-
+ fs/nfs/pnfs.c                                    |  105 ++-
+ fs/nfs/pnfs.h                                    |  141 +++-
+ fs/nfs/sysctl.c                                  |   10 +
+ fs/nfs/write.c                                   |   12 +-
+ include/linux/nfs4.h                             |    1 +
+ include/linux/nfs_fs.h                           |    3 +-
+ include/linux/nfs_fs_sb.h                        |    4 +-
+ include/linux/nfs_xdr.h                          |   15 +-
+ include/linux/sunrpc/simple_rpc_pipefs.h         |  105 +++
+ net/sunrpc/simple_rpc_pipefs.c                   |  423 +++++++++
+ 25 files changed, 3962 insertions(+), 44 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/Makefile
+ create mode 100644 fs/nfs/blocklayout/block-device-discovery-pipe.c
+ create mode 100644 fs/nfs/blocklayout/blocklayout.c
+ create mode 100644 fs/nfs/blocklayout/blocklayout.h
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdev.c
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
+ create mode 100644 fs/nfs/blocklayout/extents.c
+ create mode 100644 include/linux/sunrpc/simple_rpc_pipefs.h
+ create mode 100644 net/sunrpc/simple_rpc_pipefs.c
+
 -- 
 1.7.4.1
 
