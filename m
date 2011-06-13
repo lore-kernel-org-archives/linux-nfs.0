@@ -1,198 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:48091 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753622Ab1FNCcY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:24 -0400
-Message-Id: <ea65cf87947c05192bfa1f83450abc701793cf69.1308017749.git.rees@umich.edu>
-In-Reply-To: <cover.1308017749.git.rees@umich.edu>
-References: <cover.1308017749.git.rees@umich.edu>
-Subject: [PATCH 09/33] pnfsblock: layout alloc and free
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Date: Mon, 13 Jun 2011 22:32:22 -0400
-From: Jim Rees <rees@umich.edu>
+Received: from daytona.panasas.com ([67.152.220.89]:28941 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754958Ab1FMWSi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 18:18:38 -0400
+Message-ID: <4DF68CB4.3030802@panasas.com>
+Date: Mon, 13 Jun 2011 18:18:28 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: quanli gui <gqlxj1987@gmail.com>
+CC: linux-pnfs <linux-nfs@vger.kernel.org>
+Subject: Re: [pnfs]-10008
+References: <BANLkTimEiaA2_9QN9TXiO8PCEmVOTHoesw@mail.gmail.com>
+In-Reply-To: <BANLkTimEiaA2_9QN9TXiO8PCEmVOTHoesw@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+First, please send email to linux-nfs@vger.kernel.org as plain text only.
+no html whatsoever (not even as multipart) as it gets bounced off the list.
 
-Allocate the empty list-heads that will hold all the extent data
-for the layout.
+The 10008 error is NFS4ERR_DELAY and it can be returned from many places,
+some of them due to memory allocation failures.
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfs: move pnfs_layout_type inline in nfs_inode]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/blocklayout.c |   44 ++++++++++++++++--
- fs/nfs/blocklayout/blocklayout.h |   90 ++++++++++++++++++++++++++++++++++++++
- 2 files changed, 129 insertions(+), 5 deletions(-)
- create mode 100644 fs/nfs/blocklayout/blocklayout.h
+That said, we don't have the resources yet to support old versions of the code
+and in order to get to the bottom of that please upgrade to the latest tree,
+currently based off of v3.0-rc2, and try to reproduce the problem.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 2e0d41a..08458c6 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -32,7 +32,7 @@
- #include <linux/module.h>
- #include <linux/init.h>
- 
--#include "../pnfs.h"
-+#include "blocklayout.h"
- 
- #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
- 
-@@ -53,15 +53,49 @@ bl_write_pagelist(struct nfs_write_data *wdata,
- 	return PNFS_NOT_ATTEMPTED;
- }
- 
-+/* STUB */
- static void
--bl_free_layout_hdr(struct pnfs_layout_hdr *lo)
-+release_extents(struct pnfs_block_layout *bl,
-+		struct pnfs_layout_range *range)
- {
-+	return;
- }
- 
--static struct pnfs_layout_hdr *
--bl_alloc_layout_hdr(struct inode *inode, gfp_t gfp_flags)
-+/* STUB */
-+static void
-+release_inval_marks(struct pnfs_inval_markings *marks)
- {
--	return NULL;
-+	return;
-+}
-+
-+static void bl_free_layout_hdr(struct pnfs_layout_hdr *lo)
-+{
-+	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
-+
-+	dprintk("%s enter\n", __func__);
-+	release_extents(bl, NULL);
-+	release_inval_marks(&bl->bl_inval);
-+	kfree(bl);
-+}
-+
-+static struct pnfs_layout_hdr *bl_alloc_layout_hdr(struct inode *inode,
-+						   gfp_t gfp_flags)
-+{
-+	struct pnfs_block_layout *bl;
-+
-+	dprintk("%s enter\n", __func__);
-+	bl = kzalloc(sizeof(*bl), gfp_flags);
-+	if (!bl)
-+		return NULL;
-+	spin_lock_init(&bl->bl_ext_lock);
-+	INIT_LIST_HEAD(&bl->bl_extents[0]);
-+	INIT_LIST_HEAD(&bl->bl_extents[1]);
-+	INIT_LIST_HEAD(&bl->bl_commit);
-+	INIT_LIST_HEAD(&bl->bl_committing);
-+	bl->bl_count = 0;
-+	bl->bl_blocksize = NFS_SERVER(inode)->pnfs_blksize >> 9;
-+	INIT_INVAL_MARKS(&bl->bl_inval, bl->bl_blocksize);
-+	return &bl->bl_layout;
- }
- 
- static void
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-new file mode 100644
-index 0000000..49d69c7
---- /dev/null
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -0,0 +1,90 @@
-+/*
-+ *  linux/fs/nfs/blocklayout/blocklayout.h
-+ *
-+ *  Module for the NFSv4.1 pNFS block layout driver.
-+ *
-+ *  Copyright (c) 2006 The Regents of the University of Michigan.
-+ *  All rights reserved.
-+ *
-+ *  Andy Adamson <andros@citi.umich.edu>
-+ *  Fred Isaman <iisaman@umich.edu>
-+ *
-+ * permission is granted to use, copy, create derivative works and
-+ * redistribute this software and such derivative works for any purpose,
-+ * so long as the name of the university of michigan is not used in
-+ * any advertising or publicity pertaining to the use or distribution
-+ * of this software without specific, written prior authorization.  if
-+ * the above copyright notice or any other identification of the
-+ * university of michigan is included in any copy of any portion of
-+ * this software, then the disclaimer below must also be included.
-+ *
-+ * this software is provided as is, without representation from the
-+ * university of michigan as to its fitness for any purpose, and without
-+ * warranty by the university of michigan of any kind, either express
-+ * or implied, including without limitation the implied warranties of
-+ * merchantability and fitness for a particular purpose.  the regents
-+ * of the university of michigan shall not be liable for any damages,
-+ * including special, indirect, incidental, or consequential damages,
-+ * with respect to any claim arising out or in connection with the use
-+ * of the software, even if it has been or is hereafter advised of the
-+ * possibility of such damages.
-+ */
-+#ifndef FS_NFS_NFS4BLOCKLAYOUT_H
-+#define FS_NFS_NFS4BLOCKLAYOUT_H
-+
-+#include <linux/nfs_fs.h>
-+#include "../pnfs.h"
-+
-+enum exstate4 {
-+	PNFS_BLOCK_READWRITE_DATA	= 0,
-+	PNFS_BLOCK_READ_DATA		= 1,
-+	PNFS_BLOCK_INVALID_DATA		= 2, /* mapped, but data is invalid */
-+	PNFS_BLOCK_NONE_DATA		= 3  /* unmapped, it's a hole */
-+};
-+
-+struct pnfs_inval_markings {
-+	/* STUB */
-+};
-+
-+/* sector_t fields are all in 512-byte sectors */
-+struct pnfs_block_extent {
-+	struct kref	be_refcnt;
-+	struct list_head be_node;	/* link into lseg list */
-+	struct nfs4_deviceid be_devid;  /* STUB - remevable??? */
-+	struct block_device *be_mdev;
-+	sector_t	be_f_offset;	/* the starting offset in the file */
-+	sector_t	be_length;	/* the size of the extent */
-+	sector_t	be_v_offset;	/* the starting offset in the volume */
-+	enum exstate4	be_state;	/* the state of this extent */
-+	struct pnfs_inval_markings *be_inval; /* tracks INVAL->RW transition */
-+};
-+
-+static inline void
-+INIT_INVAL_MARKS(struct pnfs_inval_markings *marks, sector_t blocksize)
-+{
-+	/* STUB */
-+}
-+
-+enum extentclass4 {
-+	RW_EXTENT       = 0, /* READWRTE and INVAL */
-+	RO_EXTENT       = 1, /* READ and NONE */
-+	EXTENT_LISTS    = 2,
-+};
-+
-+struct pnfs_block_layout {
-+	struct pnfs_layout_hdr bl_layout;
-+	struct pnfs_inval_markings bl_inval; /* tracks INVAL->RW transition */
-+	spinlock_t		bl_ext_lock;   /* Protects list manipulation */
-+	struct list_head	bl_extents[EXTENT_LISTS]; /* R and RW extents */
-+	struct list_head	bl_commit;	/* Needs layout commit */
-+	struct list_head	bl_committing;	/* Layout committing */
-+	unsigned int		bl_count;	/* entries in bl_commit */
-+	sector_t		bl_blocksize;  /* Server blocksize in sectors */
-+};
-+
-+static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
-+{
-+	return container_of(lo, struct pnfs_block_layout, bl_layout);
-+}
-+
-+#endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
--- 
-1.7.4.1
+Regards,
 
+Benny
+
+On 2011-06-10 04:16, quanli gui wrote:
+> In the kernel of 2.6.36, when I write file every time, there would be a problem in the write process, that is the -10008 error. From the rfc5661, -10008 means that the DS is not ready to server the request. But every time I write a file, the error would appear. Why this error appear every time? Thanks for giving me some help.
