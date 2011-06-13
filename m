@@ -1,44 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:50899 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932116Ab1FGRbA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:31:00 -0400
-Date: Tue, 7 Jun 2011 13:30:58 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 42/88] SQUASHME: pnfsblock: Fix a memory leak
-Message-ID: <b1224e7ad7399d145cbdb0a73379bd65bab9f0c7.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+Received: from mail.candelatech.com ([208.74.158.172]:55399 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754518Ab1FMV0z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 17:26:55 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH v4 0/6] nfs-utils:  Support binding to source address.
+Date: Mon, 13 Jun 2011 14:26:42 -0700
+Message-Id: <1308000408-13690-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+From: Ben Greear <greearb@candelatech.com>
 
-Array storage is allocated but not freed, free it.
+This lets one specify the source IP address for
+sockets, allowing users to leverage routing rules
+on multi-homed systems.
 
-Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
-Acked-by: J. Bruce Fields <bfields@fieldses.org>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/extents.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+Kernel patches to RPC and NFS are needed to complete
+full functionality.
 
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 09a7c5c..288a38a 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -181,6 +181,7 @@ static int _preload_range(struct my_tree_t *tree, u64 offset, u64 length)
- 			break;
- 		kfree(storage[i]);
- 	}
-+	kfree(storage);
- 	return status;
- }
- 
+v6:  Remove is_set flag from local_bind_info struct.  Just pass in
+       NULL if local IP is not specified.
+     Use family of server when parsing local IP address.  This makes
+       sure that we do not get a family mis-match between server and
+       local ip.
+     Rename parse_local_bind to nfs_parse_local_bind
+     Clean up a few nits (don't check for null before freeing something).
+
+v5:  Fix compile error with ipv6 enabled.  One minor
+       change to patch 1.
+
+v4:  Remove get_socket() modifications: stropt mount doesn't use them.
+       (This removed old patch 4, and modified patch 1)
+     Remove open-parsing of srcaddr= in mount logic.  Move parsing
+       to nfs_validate_options()
+
+*** BLURB HERE ***
+
+Ben Greear (6):
+  nfs-utils:  Add structure for passing local binding info.
+  nfs-utils:  Add patch to parse srcaddr= option.
+  nfs-utils:  Implement srcaddr binding in rpc_socket
+  nfs-utils:  Support srcaddr=n option for string mount.
+  nfs-utils:  Implement srcaddr=n binding for unmount.
+  nfs-utils:  Update man page for srcaddr= option.
+
+ support/include/nfsrpc.h   |   23 ++++++---
+ support/include/sockaddr.h |    5 ++
+ support/nfs/getport.c      |   39 +++++++++-----
+ support/nfs/rpc_socket.c   |   96 ++++++++++++++++++++++++----------
+ utils/gssd/gssd.h          |    2 +
+ utils/gssd/gssd_proc.c     |   33 +++++++-----
+ utils/mount/network.c      |  125 +++++++++++++++++++++++++++++++++++---------
+ utils/mount/network.h      |   17 ++++--
+ utils/mount/nfs.man        |    7 +++
+ utils/mount/nfsmount.c     |    2 +-
+ utils/mount/nfsumount.c    |   28 ++++++++--
+ utils/mount/stropts.c      |   28 ++++++++--
+ utils/mount/utils.c        |    6 ++-
+ utils/mount/utils.h        |    4 +-
+ 14 files changed, 310 insertions(+), 105 deletions(-)
+
 -- 
-1.7.4.1
+1.7.3.4
 
