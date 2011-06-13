@@ -1,193 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:48107 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754025Ab1FNCcd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:33 -0400
-Message-Id: <31f0be8266146dbed9a360fd2fe8da84f02cc36c.1308017749.git.rees@umich.edu>
-In-Reply-To: <cover.1308017749.git.rees@umich.edu>
-References: <cover.1308017749.git.rees@umich.edu>
-Subject: [PATCH 12/33] pnfsblock: basic extent code
-To: Benny Halevy <bhalevy@panasas.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:52177 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751802Ab1FMOgd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 10:36:33 -0400
+Received: by gxk21 with SMTP id 21so2921998gxk.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Jun 2011 07:36:33 -0700 (PDT)
+In-Reply-To: <9f228c643de1f0378835d6ec9a493c1320bf001d.1307921137.git.rees@umich.edu>
+References: <cover.1307921137.git.rees@umich.edu>
+	<9f228c643de1f0378835d6ec9a493c1320bf001d.1307921137.git.rees@umich.edu>
+Date: Mon, 13 Jun 2011 10:36:32 -0400
+Message-ID: <BANLkTi=Pw-mO25APweSFxyA5bhtYwt5f2Q@mail.gmail.com>
+Subject: Re: [PATCH 03/34] pnfs: let layoutcommit code handle multiple segments
+From: Fred Isaman <iisaman@netapp.com>
+To: Jim Rees <rees@umich.edu>
 Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Date: Mon, 13 Jun 2011 22:32:30 -0400
-From: Jim Rees <rees@umich.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+On Sun, Jun 12, 2011 at 7:43 PM, Jim Rees <rees@umich.edu> wrote:
+> From: Peng Tao <bergwolf@gmail.com>
+>
+> Some layout driver like block will have multiple segments.
+> Generic code should be able to handle it.
+>
+> Signed-off-by: Peng Tao <peng_tao@emc.com>
+> ---
+>  fs/nfs/pnfs.c |   17 +++++++++++++----
+>  fs/nfs/pnfs.h |    1 +
+>  2 files changed, 14 insertions(+), 4 deletions(-)
+>
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index e3d618b..f03a5e0 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -892,7 +892,7 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
+>        dprintk("%s:Begin\n", __func__);
+>
+>        assert_spin_locked(&lo->plh_inode->i_lock);
+> -       list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
+> +       list_for_each_entry_reverse(lseg, &lo->plh_segs, pls_list) {
 
-Adds structures and basic create/delete code for extents.
+This is a sortred list, and the order of search matters.  You can't
+just reverse it here.
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Zhang Jingwang <Jingwang.Zhang@emc.com>
----
- fs/nfs/blocklayout/Makefile      |    2 +-
- fs/nfs/blocklayout/blocklayout.c |   20 ++++++--
- fs/nfs/blocklayout/blocklayout.h |    1 +
- fs/nfs/blocklayout/extents.c     |   97 ++++++++++++++++++++++++++++++++++++++
- 4 files changed, 115 insertions(+), 5 deletions(-)
- create mode 100644 fs/nfs/blocklayout/extents.c
+>                if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
+>                    is_matching_lseg(&lseg->pls_range, range)) {
+>                        ret = get_lseg(lseg);
+> @@ -1193,10 +1193,18 @@ pnfs_try_to_read_data(struct nfs_read_data *rdata,
+>  static struct pnfs_layout_segment *pnfs_list_write_lseg(struct inode *inode)
+>  {
+>        struct pnfs_layout_segment *lseg, *rv = NULL;
+> +       loff_t max_pos = 0;
+> +
+> +       list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list) {
+> +               if (lseg->pls_range.iomode == IOMODE_RW) {
+> +                       if (max_pos < lseg->pls_end_pos)
+> +                               max_pos = lseg->pls_end_pos;
+> +                       if (test_and_clear_bit(NFS_LSEG_LAYOUTCOMMIT, &lseg->pls_flags))
+> +                               rv = lseg;
+> +               }
+> +       }
+> +       rv->pls_end_pos = max_pos;
+>
 
-diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
-index d2bcd81..af39d19 100644
---- a/fs/nfs/blocklayout/Makefile
-+++ b/fs/nfs/blocklayout/Makefile
-@@ -2,4 +2,4 @@
- # Makefile for the pNFS block layout driver kernel module
- #
- obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
--blocklayoutdriver-objs := blocklayout.o block-device-discovery-pipe.o
-+blocklayoutdriver-objs := blocklayout.o block-device-discovery-pipe.o extents.o
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index bc6a0b2..4ca0838 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -53,12 +53,24 @@ bl_write_pagelist(struct nfs_write_data *wdata,
- 	return PNFS_NOT_ATTEMPTED;
- }
- 
--/* STUB */
-+/* FIXME - range ignored */
- static void
--release_extents(struct pnfs_block_layout *bl,
--		struct pnfs_layout_range *range)
--{
--	return;
-+release_extents(struct pnfs_block_layout *bl, struct pnfs_layout_range *range)
-+{
-+	int i;
-+	struct pnfs_block_extent *be;
-+
-+	spin_lock(&bl->bl_ext_lock);
-+	for (i = 0; i < EXTENT_LISTS; i++) {
-+		while (!list_empty(&bl->bl_extents[i])) {
-+			be = list_first_entry(&bl->bl_extents[i],
-+					      struct pnfs_block_extent,
-+					      be_node);
-+			list_del(&be->be_node);
-+			put_extent(be);
-+		}
-+	}
-+	spin_unlock(&bl->bl_ext_lock);
- }
- 
- /* STUB */
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 4b8608c..c1825ae 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -101,4 +101,5 @@ void bl_pipe_exit(void);
- #define BL_DEVICE_REQUEST_PROC         0x1 /* User level process succeeds */
- #define BL_DEVICE_REQUEST_ERR          0x2 /* User level process fails */
- 
-+void put_extent(struct pnfs_block_extent *be);
- #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-new file mode 100644
-index 0000000..1283fa9
---- /dev/null
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -0,0 +1,97 @@
-+/*
-+ *  linux/fs/nfs/blocklayout/blocklayout.h
-+ *
-+ *  Module for the NFSv4.1 pNFS block layout driver.
-+ *
-+ *  Copyright (c) 2006 The Regents of the University of Michigan.
-+ *  All rights reserved.
-+ *
-+ *  Andy Adamson <andros@citi.umich.edu>
-+ *  Fred Isaman <iisaman@umich.edu>
-+ *
-+ * permission is granted to use, copy, create derivative works and
-+ * redistribute this software and such derivative works for any purpose,
-+ * so long as the name of the university of michigan is not used in
-+ * any advertising or publicity pertaining to the use or distribution
-+ * of this software without specific, written prior authorization.  if
-+ * the above copyright notice or any other identification of the
-+ * university of michigan is included in any copy of any portion of
-+ * this software, then the disclaimer below must also be included.
-+ *
-+ * this software is provided as is, without representation from the
-+ * university of michigan as to its fitness for any purpose, and without
-+ * warranty by the university of michigan of any kind, either express
-+ * or implied, including without limitation the implied warranties of
-+ * merchantability and fitness for a particular purpose.  the regents
-+ * of the university of michigan shall not be liable for any damages,
-+ * including special, indirect, incidental, or consequential damages,
-+ * with respect to any claim arising out or in connection with the use
-+ * of the software, even if it has been or is hereafter advised of the
-+ * possibility of such damages.
-+ */
-+
-+#include "blocklayout.h"
-+#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
-+
-+static void print_bl_extent(struct pnfs_block_extent *be)
-+{
-+	dprintk("PRINT EXTENT extent %p\n", be);
-+	if (be) {
-+		dprintk("        be_f_offset %llu\n", (u64)be->be_f_offset);
-+		dprintk("        be_length   %llu\n", (u64)be->be_length);
-+		dprintk("        be_v_offset %llu\n", (u64)be->be_v_offset);
-+		dprintk("        be_state    %d\n", be->be_state);
-+	}
-+}
-+
-+static void
-+destroy_extent(struct kref *kref)
-+{
-+	struct pnfs_block_extent *be;
-+
-+	be = container_of(kref, struct pnfs_block_extent, be_refcnt);
-+	dprintk("%s be=%p\n", __func__, be);
-+	kfree(be);
-+}
-+
-+void
-+put_extent(struct pnfs_block_extent *be)
-+{
-+	if (be) {
-+		dprintk("%s enter %p (%i)\n", __func__, be,
-+			atomic_read(&be->be_refcnt.refcount));
-+		kref_put(&be->be_refcnt, destroy_extent);
-+	}
-+}
-+
-+struct pnfs_block_extent *alloc_extent(void)
-+{
-+	struct pnfs_block_extent *be;
-+
-+	be = kmalloc(sizeof(struct pnfs_block_extent), GFP_KERNEL);
-+	if (!be)
-+		return NULL;
-+	INIT_LIST_HEAD(&be->be_node);
-+	kref_init(&be->be_refcnt);
-+	be->be_inval = NULL;
-+	return be;
-+}
-+
-+struct pnfs_block_extent *
-+get_extent(struct pnfs_block_extent *be)
-+{
-+	if (be)
-+		kref_get(&be->be_refcnt);
-+	return be;
-+}
-+
-+void print_elist(struct list_head *list)
-+{
-+	struct pnfs_block_extent *be;
-+	dprintk("****************\n");
-+	dprintk("Extent list looks like:\n");
-+	list_for_each_entry(be, list, be_node) {
-+		print_bl_extent(be);
-+	}
-+	dprintk("****************\n");
-+}
--- 
-1.7.4.1
+The idea here was that it could be extended to use segment by
+returning a list of affected lsegs,
+not so,e random one.  Because otherwise you have problems with the
+fact that relevant but not
+returned lsegs are going to get there refcounts messed up.
 
+Fred
+
+> -       list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list)
+> -               if (lseg->pls_range.iomode == IOMODE_RW)
+> -                       rv = lseg;
+>        return rv;
+>  }
+>
+> @@ -1211,6 +1219,7 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+>        if (!test_and_set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
+>                /* references matched in nfs4_layoutcommit_release */
+>                get_lseg(wdata->lseg);
+> +               set_bit(NFS_LSEG_LAYOUTCOMMIT, &wdata->lseg->pls_flags);
+>                wdata->lseg->pls_lc_cred =
+>                        get_rpccred(wdata->args.context->state->owner->so_cred);
+>                mark_as_dirty = true;
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index b071b56..a3fc0f2 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -36,6 +36,7 @@
+>  enum {
+>        NFS_LSEG_VALID = 0,     /* cleared when lseg is recalled/returned */
+>        NFS_LSEG_ROC,           /* roc bit received from server */
+> +       NFS_LSEG_LAYOUTCOMMIT,  /* layoutcommit bit set for layoutcommit */
+>  };
+>
+>  struct pnfs_layout_segment {
+> --
+> 1.7.4.1
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
