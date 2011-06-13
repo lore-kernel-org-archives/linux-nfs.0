@@ -1,102 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f46.google.com ([209.85.215.46]:64822 "EHLO
-	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751519Ab1FOPBS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jun 2011 11:01:18 -0400
-Received: by ewy4 with SMTP id 4so197098ewy.19
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Jun 2011 08:01:17 -0700 (PDT)
-Message-ID: <4DF8C939.6070704@gmail.com>
-Date: Wed, 15 Jun 2011 11:01:13 -0400
-From: Benny Halevy <bhalevy.lists@gmail.com>
-To: andros@netapp.com
-CC: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH Bakeathon version 2 1/1] NFSv4.1: fix hlist_del in _deviceid_purge_client
-References: <1308147910-17057-1-git-send-email-andros@netapp.com>
-In-Reply-To: <1308147910-17057-1-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:26860 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751959Ab1FMVpO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 17:45:14 -0400
+Message-ID: <4DF684E2.3090900@panasas.com>
+Date: Mon, 13 Jun 2011 17:45:06 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH] pnfs-obj: pnfs_osd_xdr: Remove dead code and cleanup
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-06-15 10:25, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> cc:stable@kernel.org [2.6.39]
-> ---
->  fs/nfs/inode.c    |    2 ++
->  fs/nfs/pnfs.h     |    1 +
->  fs/nfs/pnfs_dev.c |   14 +++++++++++++-
->  3 files changed, 16 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index 6f4850d..55ba1b0 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -1595,6 +1595,8 @@ static int __init init_nfs_fs(void)
->  	if (err)
->  		goto out0;
->  
-> +	nfs4_init_deviceid_cache();
-> +
->  #ifdef CONFIG_PROC_FS
->  	rpc_proc_register(&nfs_rpcstat);
->  #endif
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index e46edac..67400bc 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -212,6 +212,7 @@ void nfs4_init_deviceid_node(struct nfs4_deviceid_node *,
->  struct nfs4_deviceid_node *nfs4_insert_deviceid_node(struct nfs4_deviceid_node *);
->  bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
->  void nfs4_deviceid_purge_client(const struct nfs_client *);
-> +void nfs4_init_deviceid_cache(void);
->  
->  static inline int lo_fail_bit(u32 iomode)
->  {
-> diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
-> index 037a5c6..923a9da 100644
-> --- a/fs/nfs/pnfs_dev.c
-> +++ b/fs/nfs/pnfs_dev.c
-> @@ -161,6 +161,15 @@ nfs4_init_deviceid_node(struct nfs4_deviceid_node *d,
->  }
->  EXPORT_SYMBOL_GPL(nfs4_init_deviceid_node);
->  
-> +void
-> +nfs4_init_deviceid_cache()
-> +{
-> +	long h;
-> +
-> +	for (h = 0; h < NFS4_DEVICE_ID_HASH_SIZE; h++)
-> +		INIT_HLIST_HEAD(&nfs4_deviceid_cache[h]);
-> +}
-> +
->  /*
->   * Uniquely initialize and insert a deviceid node into cache
->   *
-> @@ -236,9 +245,10 @@ _deviceid_purge_client(const struct nfs_client *clp, long hash)
->  
->  	synchronize_rcu();
->  	while (!hlist_empty(&tmp)) {
-> +		d = hlist_entry(tmp.first, struct nfs4_deviceid_node, tmpnode);
-> +		hlist_del_init(&d->tmpnode);
 
-nit: hlist_del rather than hlist_del_init should be enough here...
+* Some leftovers from ancient times.
+* This file will only define common types and client API.
+  Remove server from comments
 
-Benny
+Signed-off-by: Boaz Harrosh <Boaz Harrosh bharrosh@panasas.com>
+---
+ include/linux/pnfs_osd_xdr.h |   31 ++-----------------------------
+ 1 files changed, 2 insertions(+), 29 deletions(-)
 
->  		if (atomic_dec_and_test(&d->ref))
->  			d->ld->free_deviceid_node(d);
-> -		hlist_del_init(&d->tmpnode);
->  	}
->  }
->  
-> @@ -247,6 +257,8 @@ nfs4_deviceid_purge_client(const struct nfs_client *clp)
->  {
->  	long h;
->  
-> +	if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS))
-> +		return;
->  	for (h = 0; h < NFS4_DEVICE_ID_HASH_SIZE; h++)
->  		_deviceid_purge_client(clp, h);
->  }
+diff --git a/include/linux/pnfs_osd_xdr.h b/include/linux/pnfs_osd_xdr.h
+index 76efbdd..435dd5f 100644
+--- a/include/linux/pnfs_osd_xdr.h
++++ b/include/linux/pnfs_osd_xdr.h
+@@ -41,9 +41,6 @@
+ 
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_page.h>
+-#include <scsi/osd_protocol.h>
+-
+-#define PNFS_OSD_OSDNAME_MAXSIZE 256
+ 
+ /*
+  * draft-ietf-nfsv4-minorversion-22
+@@ -99,12 +96,6 @@ struct pnfs_osd_objid {
+ #define _DEVID_HI(oid_device_id) \
+ 	(unsigned long long)be64_to_cpup(((__be64 *)(oid_device_id)->data) + 1)
+ 
+-static inline int
+-pnfs_osd_objid_xdr_sz(void)
+-{
+-	return (NFS4_DEVICEID4_SIZE / 4) + 2 + 2;
+-}
+-
+ enum pnfs_osd_version {
+ 	PNFS_OSD_MISSING              = 0,
+ 	PNFS_OSD_VERSION_1            = 1,
+@@ -189,8 +180,6 @@ struct pnfs_osd_targetid {
+ 	struct nfs4_string		oti_scsi_device_id;
+ };
+ 
+-enum { PNFS_OSD_TARGETID_MAX = 1 + PNFS_OSD_OSDNAME_MAXSIZE / 4 };
+-
+ /*   struct netaddr4 {
+  *       // see struct rpcb in RFC1833
+  *       string r_netid<>;    // network id
+@@ -207,12 +196,6 @@ struct pnfs_osd_targetaddr {
+ 	struct pnfs_osd_net_addr	ota_netaddr;
+ };
+ 
+-enum {
+-	NETWORK_ID_MAX = 16 / 4,
+-	UNIVERSAL_ADDRESS_MAX = 64 / 4,
+-	PNFS_OSD_TARGETADDR_MAX = 3 +  NETWORK_ID_MAX + UNIVERSAL_ADDRESS_MAX,
+-};
+-
+ struct pnfs_osd_deviceaddr {
+ 	struct pnfs_osd_targetid	oda_targetid;
+ 	struct pnfs_osd_targetaddr	oda_targetaddr;
+@@ -222,15 +205,6 @@ struct pnfs_osd_deviceaddr {
+ 	struct nfs4_string		oda_osdname;
+ };
+ 
+-enum {
+-	ODA_OSDNAME_MAX = PNFS_OSD_OSDNAME_MAXSIZE / 4,
+-	PNFS_OSD_DEVICEADDR_MAX =
+-		PNFS_OSD_TARGETID_MAX + PNFS_OSD_TARGETADDR_MAX +
+-		2 /*oda_lun*/ +
+-		1 + OSD_SYSTEMID_LEN +
+-		1 + ODA_OSDNAME_MAX,
+-};
+-
+ /* LAYOUTCOMMIT: layoutupdate */
+ 
+ /*   union pnfs_osd_deltaspaceused4 switch (bool dsu_valid) {
+@@ -279,7 +253,7 @@ struct pnfs_osd_ioerr {
+ 	u32			oer_errno;
+ };
+ 
+-/* OSD XDR API */
++/* OSD XDR Client API */
+ /* Layout helpers */
+ /* Layout decoding is done in two parts:
+  * 1. First Call pnfs_osd_xdr_decode_layout_map to read in only the header part
+@@ -337,8 +311,7 @@ extern int
+ pnfs_osd_xdr_encode_layoutupdate(struct xdr_stream *xdr,
+ 				 struct pnfs_osd_layoutupdate *lou);
+ 
+-/* osd_ioerror encoding/decoding (layout_return) */
+-/* Client */
++/* osd_ioerror encoding (layout_return) */
+ extern __be32 *pnfs_osd_xdr_ioerr_reserve_space(struct xdr_stream *xdr);
+ extern void pnfs_osd_xdr_encode_ioerr(__be32 *p, struct pnfs_osd_ioerr *ioerr);
+ 
+-- 
+1.7.3.4
+
