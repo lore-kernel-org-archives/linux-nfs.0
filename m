@@ -1,51 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41487 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756856Ab1FAOkK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 10:40:10 -0400
-Subject: Re: [PATCH] NFS: fix umount of pnfs filesystems
-Content-Type: text/plain; charset=us-ascii
-From: Weston Andros Adamson <dros@netapp.com>
-In-Reply-To: <4DE5DE71.2090601@panasas.com>
-Date: Wed, 1 Jun 2011 10:39:54 -0400
-Cc: trond@netapp.com, linux-nfs@vger.kernel.org
-Message-Id: <9D92A547-5DA1-427E-A0A9-127AD83C3A45@netapp.com>
-References: <1306891804-8070-1-git-send-email-dros@netapp.com> <4DE5DE71.2090601@panasas.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:64606 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750899Ab1FMO7T (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 10:59:19 -0400
+Received: by iwn34 with SMTP id 34so3861309iwn.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Jun 2011 07:59:18 -0700 (PDT)
+Message-ID: <1399027233-1307977155-cardhu_decombobulator_blackberry.rim.net-1477776010-@b27.c3.bise3.blackberry>
+Reply-To: benny@tonian.com
+References: <BANLkTin4DBf=oW3HtJcSBQOLzySoX_7SdA@mail.gmail.com>
+In-Reply-To: <BANLkTin4DBf=oW3HtJcSBQOLzySoX_7SdA@mail.gmail.com>
+Subject: Re: 3.0.0-rc1 kernel oops
+To: "Olga Kornievskaia" <aglo@citi.umich.edu>, olga.kornievskaia@gmail.com
+Cc: "linux-nfs" <linux-nfs@vger.kernel.org>
+From: "Benny Halevy" <benny@tonian.com>
+Date: Mon, 13 Jun 2011 14:59:13 +0000
+Content-Type: text/plain; charset="Windows-1252"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Jun 1, 2011, at 2:38 AM, Boaz Harrosh wrote:
-
-> On 06/01/2011 04:30 AM, Weston Andros Adamson wrote:
->> Unmounting a pnfs filesystem hangs using filelayout and possibly others.
->> This fixes the use of the rcu protected node by making use of a new 'tmpnode'
->> for the temporary purge list. Also, the spinlock shouldn't be held when calling
->> synchronize_rcu().
->> 
-> 
-> I like the new code, but I have two questions:
-> 
-> * Why didn't I see this hang? (Maybe because I run uni-processor)
-> * How do you have this problem. Usually with the regular usage of device-cache
->  all deviceids get released when layouts go away. So by the time client_purge comes
->  in there are no more devices in the cache. At objects-ld I take an extra ref at
->  first add_dev which is then get released in client_purge?
-> 
-> Thanks
-> Boaz
-
-Yeah, I saw the hangs on a vmware guest with two processors.
-
-I believe it looked like this (I can revert and test again if you want the full traces):
-
-1) Umount process calls client_purge, calls synchronize_rcu while holding lock
-2) another process notices that it should call client_purge, spins trying acquire lock
-
-With the file layout, there are definitely devices in the cache when umount is called.
-Note, I could only reproduce this by: mounting remote fs, write one byte to a file on remote fs, umount.
-If I get rid of the "write one byte" step, there is no hang.
-
--dros
+VGhhbmtzISBJJ20gb24gYSBjYWxsIHdpdGggSXNyYWVsIHJpZ2h0IG5vdy4gSSdsbCBsb29rIGlu
+dG8gaXQgYXNhcC4NCg0KQmVubnkNClNlbnQgZnJvbSBteSBCbGFja0JlcnJ5riBzbWFydHBob25l
+IGZyb20gb3JhbmdlDQoNCi0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQpGcm9tOiBPbGdhIEtv
+cm5pZXZza2FpYSA8YWdsb0BjaXRpLnVtaWNoLmVkdT4NClNlbmRlcjogb2xnYS5rb3JuaWV2c2th
+aWFAZ21haWwuY29tDQpEYXRlOiBNb24sIDEzIEp1biAyMDExIDEwOjU0OjI1IA0KVG86IEJlbm55
+IEhhbGV2eTxiZW5ueUB0b25pYW4uY29tPg0KQ2M6IGxpbnV4LW5mczxsaW51eC1uZnNAdmdlci5r
+ZXJuZWwub3JnPg0KU3ViamVjdDogMy4wLjAtcmMxIGtlcm5lbCBvb3BzDQoNCnBuZnMga2VybmVs
+IHZlcnNpb24gMy4wLjAtcmMxLiB3aXJlc2hhcmsgdHJhY2UgaXMgYXR0YWNoZWQuDQoNCklORk86
+IHRhc2sgbmZzZDoxMzg1IGJsb2NrZWQgZm9yIG1vcmUgdGhhbiAxMjAgc2Vjb25kcy4NCiJlY2hv
+IDAgPiAvcHJvYy9zeXMva2VybmVsL2h1bmdfdGFza190aW1lb3V0X3NlY3MiIGRpc2FibGVzIHRo
+aXMgbWVzc2FnZS4NCm5mc2QgICAgICAgICAgICBEIDAwMDAwMDAwMDAwMDAwMDEgICAgIDAgIDEz
+ODUgICAgICAyIDB4MDAwMDAwODANCiBmZmZmODgwMDNjYmUzOWIwIDAwMDAwMDAwMDAwMDAwNDYg
+ZmZmZmZmZmY4MTQ3NjEwZSBmZmZmODgwMDNjYmUzOWIwDQogZmZmZjg4MDAzY2JlMjAxMCBmZmZm
+ODgwMDNiNzBjNTYwIDAwMDAwMDAwMDAwMTI1NDAgZmZmZjg4MDAzY2JlM2ZkOA0KIGZmZmY4ODAw
+M2NiZTNmZDggMDAwMDAwMDAwMDAxMjU0MCBmZmZmODgwMDNkZWUxNzIwIGZmZmY4ODAwM2I3MGM1
+NjANCkNhbGwgVHJhY2U6DQogWzxmZmZmZmZmZjgxNDc2MTBlPl0gPyBhcGljX3RpbWVyX2ludGVy
+cnVwdCsweGUvMHgyMA0KIFs8ZmZmZmZmZmY4MTQ2ZGQ4OD5dIF9fbXV0ZXhfbG9ja19jb21tb24r
+MHgxMTUvMHgxNzYNCiBbPGZmZmZmZmZmODE0NmRlMDQ+XSBfX211dGV4X2xvY2tfc2xvd3BhdGgr
+MHgxYi8weDFkDQogWzxmZmZmZmZmZjgxNDZkZjFjPl0gbXV0ZXhfbG9jaysweDM2LzB4NGENCiBb
+PGZmZmZmZmZmYTAyNjM5ZWY+XSBuZnM0X2xvY2tfc3RhdGUrMHgxNS8weDI3IFtuZnNkXQ0KIFs8
+ZmZmZmZmZmZhMDI2YmRhYz5dIG5mc2RfbGF5b3V0X3JlY2FsbF9jYisweGE5LzB4MzIwIFtuZnNk
+XQ0KIFs8ZmZmZmZmZmZhMDI2ZjZmMj5dIHBuZnNkX2xleHBfcmVjYWxsX2xheW91dCsweGZiLzB4
+MjQzIFtuZnNkXQ0KIFs8ZmZmZmZmZmZhMDI0Y2JiND5dID8gbmZzZF9wZXJtaXNzaW9uKzB4NDQv
+MHhmNyBbbmZzZF0NCiBbPGZmZmZmZmZmYTAyNGU1NTA+XSBuZnNkX3NldGF0dHIrMHgxMjQvMHgy
+YjMgW25mc2RdDQogWzxmZmZmZmZmZmEwMjY0NGM2Pl0gbmZzZDRfcHJvY2Vzc19vcGVuMisweDJl
+MC8weDk1NiBbbmZzZF0NCiBbPGZmZmZmZmZmYTAyNTkxMWI+XSBuZnNkNF9vcGVuKzB4Mjk2LzB4
+MmNkIFtuZnNkXQ0KIFs8ZmZmZmZmZmZhMDI1ODY4ZD5dIG5mc2Q0X3Byb2NfY29tcG91bmQrMHgy
+MzIvMHg0MjIgW25mc2RdDQogWzxmZmZmZmZmZmEwMjQ5MzhmPl0gbmZzZF9kaXNwYXRjaCsweGYx
+LzB4MWQ1IFtuZnNkXQ0KIFs8ZmZmZmZmZmZhMDFjYjVhMj5dIHN2Y19wcm9jZXNzX2NvbW1vbisw
+eDJlMS8weDRkOCBbc3VucnBjXQ0KIFs8ZmZmZmZmZmZhMDI0OTg1YT5dID8gbmZzZF9zdmMrMHgx
+ODYvMHgxODYgW25mc2RdDQogWzxmZmZmZmZmZmEwMWNiOWJjPl0gc3ZjX3Byb2Nlc3MrMHgxMWMv
+MHgxM2MgW3N1bnJwY10NCiBbPGZmZmZmZmZmYTAyNDk5NTA+XSBuZnNkKzB4ZjYvMHgxM2YgW25m
+c2RdDQogWzxmZmZmZmZmZjgxMDY4ZjllPl0ga3RocmVhZCsweDgyLzB4OGENCiBbPGZmZmZmZmZm
+ODE0NzY4NjQ+XSBrZXJuZWxfdGhyZWFkX2hlbHBlcisweDQvMHgxMA0KIFs8ZmZmZmZmZmY4MTA2
+OGYxYz5dID8ga3RocmVhZF93b3JrZXJfZm4rMHgxNGMvMHgxNGMNCiBbPGZmZmZmZmZmODE0NzY4
+NjA+XSA/IGdzX2NoYW5nZSsweDEzLzB4MTMNCg0KTounsubscribefromthislistsendtheline
+unsubscribelinuxnfsinthebodyofamessagetomajordomovgerkernelorgMoremajordomoi
+nfoathttp//vgerkernelorg/majordomoinfohtmg==
