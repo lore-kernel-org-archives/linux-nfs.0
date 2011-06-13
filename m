@@ -1,98 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:51044 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752067Ab1FGRb1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:31:27 -0400
-Date: Tue, 7 Jun 2011 13:31:24 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 45/88] SQUASHME: pnfsblock: Implement release_inval_marks
-Message-ID: <12097a1c787be91438d2afedde71a72f95a61665.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+Received: from mail.candelatech.com ([208.74.158.172]:55405 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754409Ab1FMV11 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 17:27:27 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH v4 2/6] nfs-utils:  Add patch to parse srcaddr= option.
+Date: Mon, 13 Jun 2011 14:26:44 -0700
+Message-Id: <1308000408-13690-3-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1308000408-13690-1-git-send-email-greearb@candelatech.com>
+References: <1308000408-13690-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+From: Ben Greear <greearb@candelatech.com>
 
-Leaving it unimplemented will cause memory leak.
+This will be used to parse the IP address used for
+binding to a particular local IP address.
 
-Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Ben Greear <greearb@candelatech.com>
 ---
- fs/nfs/blocklayout/blocklayout.c |   11 ++++++++---
- fs/nfs/blocklayout/blocklayout.h |    6 ++++++
- fs/nfs/blocklayout/extents.c     |    6 ------
- 3 files changed, 14 insertions(+), 9 deletions(-)
+:100644 100644 bbe92e9... b046874... M	utils/mount/network.c
+:100644 100644 4debfaa... 292ad1f... M	utils/mount/network.h
+ utils/mount/network.c |   51 +++++++++++++++++++++++++++++++++++++++++++++++++
+ utils/mount/network.h |    3 ++
+ 2 files changed, 54 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index db008e6..b0ad836 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -541,10 +541,15 @@ release_extents(struct pnfs_block_layout *bl,
- 	spin_unlock(&bl->bl_ext_lock);
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index bbe92e9..b046874 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -405,6 +405,57 @@ out:
  }
  
--/* STUB */
- static void
--release_inval_marks(void)
-+release_inval_marks(struct pnfs_inval_markings *marks)
- {
-+	struct pnfs_inval_tracking *pos, *temp;
+ /*
++ *  node should be an IPv4 or IPv6 address numeric notation.
++ *  The value will be parsed in placed into laddr.
++ *  Returns < 0 on failure to parse.
++ */
++int
++nfs_parse_local_bind(struct local_bind_info *laddr, const char* node,
++		     sa_family_t family) {
++	/* str is an IP address. */
++	int aiErr;
++	struct addrinfo *aiHead;
++	struct addrinfo hints;
 +
-+	list_for_each_entry_safe(pos, temp, &marks->im_tree.mtt_stub, it_link) {
-+		list_del(&pos->it_link);
-+		kfree(pos);
++	memset(&hints, 0, sizeof(hints));
++
++	hints.ai_flags  = AI_NUMERICSERV;
++	hints.ai_socktype = SOCK_STREAM;
++	hints.ai_protocol = IPPROTO_TCP;
++	hints.ai_family = family;
++
++	aiErr = getaddrinfo(node, NULL, &hints, &aiHead);
++
++	if (aiErr != 0) {
++		char *f;
++		switch (family) {
++		case AF_INET:
++			f = "AF_INET";
++			break;
++		case AF_INET6:
++			f = "AF_INET6";
++			break;
++		default:
++			f = "UNKNOWN";
++			break;
++		}
++
++		nfs_error(_("%s: parse srcaddr failed, "
++			    "node: %s family: %s  aiErr: %i %s\n"),
++			  progname, node, f, aiErr, gai_strerror(aiErr));
++	} else {
++		if (aiHead) {
++			memcpy(&laddr->addr, aiHead->ai_addr,
++			       aiHead->ai_addrlen);
++			laddr->addrlen = aiHead->ai_addrlen;
++			freeaddrinfo(aiHead);
++			return 0;
++		}
 +	}
- 	return;
- }
- 
-@@ -556,7 +561,7 @@ bl_free_layout(void *p)
- 
- 	dprintk("%s enter\n", __func__);
- 	release_extents(bl, NULL);
--	release_inval_marks();
-+	release_inval_marks(&bl->bl_inval);
- 	kfree(bl);
- 	return;
- }
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index ca36e61..45939e1 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -126,6 +126,12 @@ struct pnfs_inval_markings {
- 	sector_t	im_block_size;	/* Server blocksize in sectors */
- };
- 
-+struct pnfs_inval_tracking {
-+	struct list_head it_link;
-+	int		 it_sector;
-+	int		 it_tags;
-+};
++	return -1;
++}
 +
- /* sector_t fields are all in 512-byte sectors */
- struct pnfs_block_extent {
- 	struct kref	be_refcnt;
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 4722899..cf5b3a3 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -40,12 +40,6 @@
- #define INTERNAL_EXISTS    MY_MAX_TAGS
- #define INTERNAL_MASK      ((1 << INTERNAL_EXISTS) - 1)
++/*
+  * Create a socket that is locally bound to a reserved or non-reserved port.
+  *
+  * The caller should check rpc_createerr to determine the cause of any error.
+diff --git a/utils/mount/network.h b/utils/mount/network.h
+index 4debfaa..292ad1f 100644
+--- a/utils/mount/network.h
++++ b/utils/mount/network.h
+@@ -36,6 +36,9 @@ typedef struct {
+ 	struct pmap pmap;
+ } clnt_addr_t;
  
--struct pnfs_inval_tracking {
--	struct list_head it_link;
--	int		 it_sector;
--	int		 it_tags;
--};
--
- /* Returns largest t<=s s.t. t%base==0 */
- static inline sector_t normalize(sector_t s, int base)
- {
++int nfs_parse_local_bind(struct local_bind_info *laddr, const char* str,
++			 sa_family_t family);
++
+ /* RPC call timeout values */
+ static const struct timeval TIMEOUT = { 20, 0 };
+ static const struct timeval RETRY_TIMEOUT = { 3, 0 };
 -- 
-1.7.4.1
+1.7.3.4
 
