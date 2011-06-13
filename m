@@ -1,85 +1,146 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:38574 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751341Ab1FIGMH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 02:12:07 -0400
-Message-ID: <4DF06430.1040608@candelatech.com>
-Date: Wed, 08 Jun 2011 23:12:00 -0700
-From: Ben Greear <greearb@candelatech.com>
-To: NeilBrown <neilb@suse.de>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs-utils:  Support binding to source address.
-References: <1307554748-31757-1-git-send-email-greearb@candelatech.com> <20110609154719.5be627ca@notabene.brown>
-In-Reply-To: <20110609154719.5be627ca@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:62558 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750864Ab1FMPpR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 11:45:17 -0400
+Received: by vxi39 with SMTP id 39so3700225vxi.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Jun 2011 08:45:16 -0700 (PDT)
+In-Reply-To: <tsl8vtbyt74.fsf@mit.edu>
+References: <tsl1uz57fa1.fsf@mit.edu>
+	<20110609013756.GA5304@master.debian.org>
+	<BANLkTikKC5jdJG0KtrKxONmnSWSTm-9iyA@mail.gmail.com>
+	<tsl8vtbyt74.fsf@mit.edu>
+Date: Mon, 13 Jun 2011 11:45:14 -0400
+Message-ID: <BANLkTin42TV27xWd=4UwPT6Af6hQ_g76iQ@mail.gmail.com>
+Subject: Re: libgssglue: incompatible with krb5 1.9
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: Sam Hartman <hartmans@debian.org>
+Cc: Didier Raboud <odyx@debian.org>, linux-nfs@vger.kernel.org,
+        629553@bugs.debian.org, 629692@bugs.debian.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 06/08/2011 10:47 PM, NeilBrown wrote:
-> On Wed,  8 Jun 2011 10:39:08 -0700 greearb@candelatech.com wrote:
+Hi,
+Here is a patch that fixed the compile and seems to run fine.  I'll be
+putting out a new version of libgssglue, but it may take a few days
+for me to get around to that.  Meanwhile, hopefully this fixes your
+immediate issue.
+
+K.C.
+
+diff --git a/src/gssglue/gssapi/gssapi.h.in b/src/gssglue/gssapi/gssapi.h.in
+index 8d3fe99..81df675 100644
+--- a/src/gssglue/gssapi/gssapi.h.in
++++ b/src/gssglue/gssapi/gssapi.h.in
+@@ -850,4 +850,15 @@ PROTOTYPE( (OM_uint32  *,          /* minor_status */
+ /* XXXX This is a necessary evil until the spec is fixed */
+ #define GSS_S_CRED_UNAVAIL GSS_S_FAILURE
+
++/*
++ * RFC 5587
++ */
++typedef const gss_buffer_desc *gss_const_buffer_t;
++typedef const struct gss_channel_bindings_struct *gss_const_channel_bindings_t;
++typedef const struct gss_ctx_id_struct gss_const_ctx_id_t;
++typedef const struct gss_cred_id_struct gss_const_cred_id_t;
++typedef const struct gss_name_struct gss_const_name_t;
++typedef const gss_OID_desc *gss_const_OID;
++typedef const gss_OID_set_desc *gss_const_OID_set;
++
+ #endif /* _GSSAPI_H_GLUE_ */
+
+
+On Thu, Jun 9, 2011 at 10:29 AM, Sam Hartman <hartmans@debian.org> wrote:
+> Here's the MIT diff that introduces the types:
+> commit 21479bb4df589793a4fc25aedb59d599043eb95b
+> Author: lhoward <lhoward@dc483132-0cff-0310-8789-dd5450dbe970>
+> Date:   Sun Apr 3 08:02:53 2011 +0000
 >
->> From: Ben Greear<greearb@candelatech.com>
->>
->> This lets one specify the source IP address for
->> sockets, allowing users to leverage routing rules
->> on multi-homed systems.
->>
+>    Use RFC 5587 const types for draft-josefsson-gss-capsulate APIs
 >
-> I gotta say I think this is rather horrible.....
-
-And you haven't even seen the kernel side yet ;)
-
-> As I understand it, the problem is bindresvport.
-> It binds to a port number before making a connection, so the local address
-> that is bound to is the 'default' rather than the best one to reach the given
-> target.  And in some network configs this can be bad, because e.g. the target
-> may not be able to reply to that 'default' address.
+>    git-svn-id: svn://anonsvn.mit.edu/svn/krb5/trunk@24821 dc483132-0cff-0310-8789-dd5450dbe970
+>    (cherry picked from commit 4a46936a36f47e54134b24d7083cfd45a2d009bc)
 >
-> So you want to be able to specify the local endpoint fully when you bind, so
-> you require/allow the user to specify the local endpoint.
+> diff --git a/src/lib/gssapi/generic/gssapi_ext.h b/src/lib/gssapi/generic/gssapi_ext.h
+> index a2a8bcd..31d972b 100644
+> --- a/src/lib/gssapi/generic/gssapi_ext.h
+> +++ b/src/lib/gssapi/generic/gssapi_ext.h
+> @@ -387,22 +387,22 @@ OM_uint32 KRB5_CALLCONV gss_release_any_name_mapping
+>  /* draft-josefsson-gss-capsulate */
+>  OM_uint32 KRB5_CALLCONV gss_encapsulate_token
+>  (
+> -    const gss_buffer_t, /* input_token */
+> -    const gss_OID,      /* token_oid */
+> -    const gss_buffer_t  /* output_token */
+> +    gss_const_buffer_t, /* input_token */
+> +    gss_const_OID,      /* token_oid */
+> +    gss_buffer_t        /* output_token */
+>  );
 >
-> Wouldn't it be soooo much nicer if the tools could just figure out the
-> 'correct' local endpoint and just use that?  Obviously "yes" but maybe that
-> isn't straight forward.  Have you looked into that at all?
-
-Not nicer in all cases.
-
-Sometimes a user knows best, and may want to use non-obvious
-routing setups, such as rules that send pkts to different gateways
-if they are from different source addresses.
-
-> Worst case (which may be so incredibly bad it isn't worth considering) is
-> that we could extract the routing table from the kernel and "figure it out".
-
-There are potentially multiple routing tables.
-
-> But I suspect there is an easier way...  What if you create a UDP socket,
-> 'connect' to some arbitrary port on the target machine, and then use
-> getsockname to get the local endpoint address of that socket.  That wouldn't
-> generate any network traffic, but should give you the preferred local
-> endpoint for talking to that peer??
+>  OM_uint32 KRB5_CALLCONV gss_decapsulate_token
+>  (
+> -    const gss_buffer_t, /* input_token */
+> -    const gss_OID,      /* token_oid */
+> +    gss_const_buffer_t, /* input_token */
+> +    gss_const_OID,      /* token_oid */
+>     gss_buffer_t        /* output_token */
+>  );
 >
-> For the in-kernel code I wouldn't accept a trick like that, but there is
-> presumably some way to find the preferred local endpoint for some address
-> more directly ... certainly worth asking on net-dev if we cannot figure one
-> out.
+>  int KRB5_CALLCONV gss_oid_equal
+>  (
+> -    const gss_OID,      /* first_oid */
+> -    const gss_OID       /* second_oid */
+> +    gss_const_OID,      /* first_oid */
+> +    gss_const_OID       /* second_oid */
+>  );
+>
+>  #ifdef __cplusplus
+> diff --git a/src/lib/gssapi/mechglue/g_decapsulate_token.c b/src/lib/gssapi/mechglue/g_decapsulate_token.c
+> index a12d8f7..42b9e07 100644
+> --- a/src/lib/gssapi/mechglue/g_decapsulate_token.c
+> +++ b/src/lib/gssapi/mechglue/g_decapsulate_token.c
+> @@ -33,8 +33,8 @@
+>  #include "mglueP.h"
+>
+>  OM_uint32
+> -gss_decapsulate_token(const gss_buffer_t input_token,
+> -                      const gss_OID token_oid,
+> +gss_decapsulate_token(gss_const_buffer_t input_token,
+> +                      gss_const_OID token_oid,
+>                       gss_buffer_t output_token)
+>  {
+>     OM_uint32 minor;
+> diff --git a/src/lib/gssapi/mechglue/g_encapsulate_token.c b/src/lib/gssapi/mechglue/g_encapsulate_token.c
+> index a60c796..b26e147 100644
+> --- a/src/lib/gssapi/mechglue/g_encapsulate_token.c
+> +++ b/src/lib/gssapi/mechglue/g_encapsulate_token.c
+> @@ -33,8 +33,8 @@
+>  #include "mglueP.h"
+>
+>  OM_uint32
+> -gss_encapsulate_token(const gss_buffer_t input_token,
+> -                      const gss_OID token_oid,
+> +gss_encapsulate_token(gss_const_buffer_t input_token,
+> +                      gss_const_OID token_oid,
+>                       gss_buffer_t output_token)
+>  {
+>     unsigned int tokenSize;
+> diff --git a/src/lib/gssapi/mechglue/g_oid_ops.c b/src/lib/gssapi/mechglue/g_oid_ops.c
+> index aa6d807..db3cd78 100644
+> --- a/src/lib/gssapi/mechglue/g_oid_ops.c
+> +++ b/src/lib/gssapi/mechglue/g_oid_ops.c
+> @@ -111,8 +111,8 @@ gssint_copy_oid_set(
+>
+>  int
+>  gss_oid_equal(
+> -    const gss_OID first_oid,
+> -    const gss_OID second_oid)
+> +    gss_const_OID first_oid,
+> +    gss_const_OID second_oid)
+>  {
+>     return g_OID_equal(first_oid, second_oid);
+>  }
 >
 >
-> So I'm thinking:  yes, there is a real need, but I think there must be a
-> better solution.
->
-> What think you?
-
-I think I really do want to specify the local IP address.  There
-are lots of other tools that allow this (ping, ssh, cifs, etc),
-and there is a good reason for allowing it, primarily when used
-in conjunction with routing rules that are based on source
-IP.
-
-Thanks,
-Ben
-
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
