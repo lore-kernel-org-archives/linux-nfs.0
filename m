@@ -1,34 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:51301 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933414Ab1FBMxs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Jun 2011 08:53:48 -0400
-Subject: Re: Bind NFS Services to specific IP address
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <BANLkTimH+UPaKbzDnWE4NAPF=b=f+x5aag@mail.gmail.com>
-Date: Thu, 2 Jun 2011 08:53:37 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <A842031D-AB09-4CCC-B338-5CA8AD5534C9@oracle.com>
-References: <BANLkTimiv7LXs9Jo7ABA5Mc+0Vn+Q1UEug@mail.gmail.com> <BANLkTimH+UPaKbzDnWE4NAPF=b=f+x5aag@mail.gmail.com>
-To: Ranjith Kumar <ranjitbat@gmail.com>
+Received: from daytona.panasas.com ([67.152.220.89]:22823 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752537Ab1FMUys (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 16:54:48 -0400
+Message-ID: <4DF67918.6010202@panasas.com>
+Date: Mon, 13 Jun 2011 16:54:48 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/2] nfs_xdr: Move nfs4_string definition out of #ifdef CONFIG_NFS_V4
+References: <4DF678C5.1080001@panasas.com>
+In-Reply-To: <4DF678C5.1080001@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
-On Jun 2, 2011, at 4:01 AM, Ranjith Kumar wrote:
+exofs file system wants to use pnfs_osd_xdr.h file instead of
+redefining pnfs-objects types in it's private "pnfs.h" headr.
 
-> Hi,
-> 
-> How you bind the nfs services to specific IP address?
+Before we do the switch we must make sure pnfs_osd_xdr.h is
+compilable also under NFS versions smaller than 4.1. Since now
+it is needed regardless of version, by the exofs code.
 
-As far as I know, the kernel NFSD does not allow binding to any other address than ADDR_ANY.
+Only miss-out is nfs4_string move it to global scope.
 
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ include/linux/nfs_xdr.h |   10 +++++-----
+ 1 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 0a21844..7372921 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -774,6 +774,11 @@ struct nfs3_getaclres {
+ 	struct posix_acl *	acl_default;
+ };
+ 
++struct nfs4_string {
++	unsigned int len;
++	char *data;
++};
++
+ #ifdef CONFIG_NFS_V4
+ 
+ typedef u64 clientid4;
+@@ -964,11 +969,6 @@ struct nfs4_server_caps_res {
+ 	struct nfs4_sequence_res	seq_res;
+ };
+ 
+-struct nfs4_string {
+-	unsigned int len;
+-	char *data;
+-};
+-
+ #define NFS4_PATHNAME_MAXCOMPONENTS 512
+ struct nfs4_pathname {
+ 	unsigned int ncomponents;
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+1.7.3.4
 
 
