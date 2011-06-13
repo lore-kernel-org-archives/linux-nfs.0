@@ -1,60 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pv0-f174.google.com ([74.125.83.174]:36745 "EHLO
-	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751341Ab1FIGGX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 02:06:23 -0400
-Received: by pvg12 with SMTP id 12so585071pvg.19
-        for <linux-nfs@vger.kernel.org>; Wed, 08 Jun 2011 23:06:23 -0700 (PDT)
-Message-ID: <4DF062D6.7010304@panasas.com>
-Date: Thu, 09 Jun 2011 02:06:14 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
-References: <cover.1307464381.git.rees@umich.edu>	<09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu>	<4DEED80A.4000102@panasas.com>	<20110608021852.GA20998@merit.edu> <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com>
-In-Reply-To: <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:50073 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751156Ab1FMUcx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 16:32:53 -0400
+Received: by pzk9 with SMTP id 9so2297122pzk.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Jun 2011 13:32:53 -0700 (PDT)
+Message-ID: <4DF673F2.4020707@gmail.com>
+Date: Mon, 13 Jun 2011 16:32:50 -0400
+From: Benny Halevy <bhalevy.lists@gmail.com>
+To: andros@netapp.com
+CC: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH Bakeathon 1/2] NFSv4.1: allow zero fh array in filelayout
+ decode layout
+References: <1307995906-4177-1-git-send-email-andros@netapp.com>
+In-Reply-To: <1307995906-4177-1-git-send-email-andros@netapp.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-06-08 03:15, Peng Tao wrote:
-> On 6/8/11, Jim Rees <rees@umich.edu> wrote:
->> Benny Halevy wrote:
->>
->>   NAK.
->>   This affects all layout types.  In particular it is undesired
->>   for write layouts that extend the file with the objects layout.
->>   The server can extend the layout segments range
->>   over what the client requested so why would the client
->>   ask for artificially large layouts?
->>
->> This has actually been the subject of some debate over Thursday night
->> beers.  The problem we're trying to solve is that the client is spending 98%
->> of its time in layoutget.  This patch gives us something like a 10x
->> speedup.  But many of us think it's not the right fix.  I suggest we discuss
->> next week.
->>
+On 2011-06-13 16:11, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> cc:stable@kernel.org [2.6.39]
+> ---
+>  fs/nfs/nfs4filelayout.c |   13 ++++++++-----
+>  1 files changed, 8 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+> index 2cfeaeb..3a8bd92 100644
+> --- a/fs/nfs/nfs4filelayout.c
+> +++ b/fs/nfs/nfs4filelayout.c
+> @@ -551,13 +551,16 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
+>  		__func__, nfl_util, fl->num_fh, fl->first_stripe_index,
+>  		fl->pattern_offset);
+>  
+> -	if (!fl->num_fh)
+> +	if (fl->num_fh < 0 || fl->num_fh >
 
-Sure.
-
->> But note that this patch doesn't change anything unless you set the sysctl.
-> there is a default value of 2M. maybe we can set it to page size by
-> default so other layout are not affected and block layout can let
-> users set it by hand if they care about performance. does this make
-> sense?
-
-If doing it at all why use a sysctl rather than a mount option?
-Or maybe coding the logic for prefetching the layout iff sequential
-access is detected is the right thing to do.
+num_fh is unsigned so checking for < 0 is not really needed.
 
 Benny
 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> 
-> 
+> +	    max(NFS4_PNFS_MAX_STRIPE_CNT, NFS4_PNFS_MAX_MULTI_CNT))
+>  		goto out_err;
+>  
+> -	fl->fh_array = kzalloc(fl->num_fh * sizeof(struct nfs_fh *),
+> -			       gfp_flags);
+> -	if (!fl->fh_array)
+> -		goto out_err;
+> +	if (fl->num_fh > 0) {
+> +		fl->fh_array = kzalloc(fl->num_fh * sizeof(struct nfs_fh *),
+> +				       gfp_flags);
+> +		if (!fl->fh_array)
+> +			goto out_err;
+> +	}
+>  
+>  	for (i = 0; i < fl->num_fh; i++) {
+>  		/* Do we want to use a mempool here? */
