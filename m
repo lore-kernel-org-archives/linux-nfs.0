@@ -1,95 +1,175 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:39452 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751296Ab1F3SZO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Jun 2011 14:25:14 -0400
-Date: Thu, 30 Jun 2011 14:25:13 -0400
-To: Ben Greear <greearb@candelatech.com>
-Cc: linux-nfs@vger.kernel.org,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Subject: Re: NFS crash in un-modified 3.0.0-rc3+, list corruption.
-Message-ID: <20110630182513.GC18713@fieldses.org>
-References: <4DFFCCDC.2070106@candelatech.com>
- <4DFFD738.2080608@candelatech.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4DFFD738.2080608@candelatech.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail.candelatech.com ([208.74.158.172]:55413 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754518Ab1FMV1w (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 17:27:52 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH v4 5/6] nfs-utils:  Implement srcaddr=n binding for unmount.
+Date: Mon, 13 Jun 2011 14:26:47 -0700
+Message-Id: <1308000408-13690-6-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1308000408-13690-1-git-send-email-greearb@candelatech.com>
+References: <1308000408-13690-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, Jun 20, 2011 at 04:26:48PM -0700, Ben Greear wrote:
-> On 06/20/2011 03:42 PM, Ben Greear wrote:
-> >This machine is acting as a server.  It is from linux-2.6, pulled
-> >today:
-> >
-> >commit de505e709ffb09a7382ca8e0d8c7dbb171ba5830
-> >
-> >We are hitting it with 200 clients reading and writing, mounting and
-> >un-mounting.
-> >This bug is fairly reproducible (twice today).
-> >
-> >Large amounts of debugging options are enabled.
-> 
-> We were also starting/stopping NFS on the server machine.
-> It appears that this crash happens during the
-> /etc/init.d/nfs stop
-> command.
+From: Ben Greear <greearb@candelatech.com>
 
-I'll be submitting the below.
+This fully implements binding to a local IP address when
+attempting to un-mount.
 
-The bug's been there for a really long time and we're getting late into
-the release cycle so I'll probably just save it for 3.1 (but it'll go to
-stable as well then).
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+:100644 100644 b046874... 348211e... M	utils/mount/network.c
+:100644 100644 8cd2852... 63fb37c... M	utils/mount/nfsumount.c
+:100644 100644 eb50074... d146d82... M	utils/mount/utils.c
+:100644 100644 3fcd504... f9fbc90... M	utils/mount/utils.h
+ utils/mount/network.c   |   10 +++++++++-
+ utils/mount/nfsumount.c |   28 ++++++++++++++++++++++++----
+ utils/mount/utils.c     |    6 ++++--
+ utils/mount/utils.h     |    4 +++-
+ 4 files changed, 40 insertions(+), 8 deletions(-)
 
---b.
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index b046874..348211e 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -1733,6 +1733,8 @@ int nfs_umount_do_umnt(struct mount_options *options,
+ 	socklen_t salen = sizeof(address);
+ 	struct pmap nfs_pmap, mnt_pmap;
+ 	sa_family_t family;
++	struct local_bind_info local_ip;
++	struct local_bind_info *lipp = NULL;
+ 
+ 	if (!nfs_options2pmap(options, &nfs_pmap, &mnt_pmap))
+ 		return EX_FAIL;
+@@ -1753,7 +1755,13 @@ int nfs_umount_do_umnt(struct mount_options *options,
+ 		/* nfs_lookup reports any errors */
+ 		return EX_FAIL;
+ 
+-	if (nfs_advise_umount(sap, salen, &mnt_pmap, dirname, NULL) == 0)
++	if (local_ip_opt &&
++	    nfs_parse_local_bind(&local_ip, local_ip_opt,
++				 sap->sa_family) >= 0) {
++		lipp = &local_ip;
++	}
++
++	if (nfs_advise_umount(sap, salen, &mnt_pmap, dirname, lipp) == 0)
+ 		/* nfs_advise_umount reports any errors */
+ 		return EX_FAIL;
+ 
+diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
+index 8cd2852..63fb37c 100644
+--- a/utils/mount/nfsumount.c
++++ b/utils/mount/nfsumount.c
+@@ -239,6 +239,8 @@ int nfsumount(int argc, char *argv[])
+ 	int c, ret;
+ 	char *spec;
+ 	struct mntentchn *mc;
++	char *opt;
++	char *local_ip = NULL;
+ 
+ 	if (argc < 2) {
+ 		umount_usage();
+@@ -314,7 +316,7 @@ int nfsumount(int argc, char *argv[])
+ 			return EX_USAGE;
+ 		}
+ 		if (hasmntopt(&mc->m, "users") == NULL) {
+-			char *opt = hasmntopt(&mc->m, "user");
++			opt = hasmntopt(&mc->m, "user");
+ 			struct passwd *pw;
+ 			char *comma;
+ 			size_t len;
+@@ -334,6 +336,20 @@ int nfsumount(int argc, char *argv[])
+ 		}
+ 	}
+ 
++	if (mc) {
++		opt = hasmntopt(&mc->m, "srcaddr");
++		if ((opt != NULL) && strlen(opt) > strlen("srcaddr=")) {
++			local_ip = xstrdup(opt + strlen("srcaddr="));
++			unsigned int z;
++			for (z = 0; z < strlen(local_ip); z++) {
++				if (local_ip[z] == ',') {
++					local_ip[z] = 0;
++					break;
++				}
++			}
++		}
++	}
++
+ 	ret = EX_SUCCESS;
+ 	if (mc) {
+ 		if (!lazy) {
+@@ -344,20 +360,24 @@ int nfsumount(int argc, char *argv[])
+ 				 * we don't want to signal an error, as that
+ 				 * could cause /sbin/mount to retry!
+ 				 */
+-				nfs_umount23(mc->m.mnt_fsname, mc->m.mnt_opts);
++				nfs_umount23(mc->m.mnt_fsname, mc->m.mnt_opts,
++					     local_ip);
+ 				break;
+ 			case 1:
+ 				break;
+ 			default:
+-				return EX_FAIL;
++				ret = EX_FAIL;
++				goto out;
+ 			}
+ 		}
+ 		ret = del_mtab(mc->m.mnt_fsname, mc->m.mnt_dir);
+ 	} else if (*spec != '/') {
+ 		if (!lazy)
+-			ret = nfs_umount23(spec, "tcp,v3");
++			ret = nfs_umount23(spec, "tcp,v3", local_ip);
+ 	} else
+ 		ret = del_mtab(NULL, spec);
+ 
++out:
++	free(local_ip);
+ 	return ret;
+ }
+diff --git a/utils/mount/utils.c b/utils/mount/utils.c
+index eb50074..d146d82 100644
+--- a/utils/mount/utils.c
++++ b/utils/mount/utils.c
+@@ -153,7 +153,8 @@ int chk_mountpoint(const char *mount_point)
+  * pmap tuple.  If the GETPORT call later fails to disambiguate them,
+  * then we fail.
+  */
+-int nfs_umount23(const char *devname, char *string)
++int nfs_umount23(const char *devname, char *string,
++		 char *local_ip_opt)
+ {
+ 	char *hostname = NULL, *dirname = NULL;
+ 	struct mount_options *options;
+@@ -164,7 +165,8 @@ int nfs_umount23(const char *devname, char *string)
+ 
+ 	options = po_split(string);
+ 	if (options) {
+-		result = nfs_umount_do_umnt(options, &hostname, &dirname, NULL);
++		result = nfs_umount_do_umnt(options, &hostname, &dirname,
++					    local_ip_opt);
+ 		po_destroy(options);
+ 	} else
+ 		nfs_error(_("%s: option parsing error"), progname);
+diff --git a/utils/mount/utils.h b/utils/mount/utils.h
+index 3fcd504..f9fbc90 100644
+--- a/utils/mount/utils.h
++++ b/utils/mount/utils.h
+@@ -31,6 +31,8 @@ void mount_usage(void);
+ void umount_usage(void);
+ int chk_mountpoint(const char *mount_point);
+ 
+-int nfs_umount23(const char *devname, char *string);
++struct local_bind_info;
++int nfs_umount23(const char *devname, char *string,
++		 char *local_ip_opt);
+ 
+ #endif	/* !_NFS_UTILS_MOUNT_UTILS_H */
+-- 
+1.7.3.4
 
-commit 0f4bb2521a0e300443e9d80b10778f5a93cc0dbc
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Wed Jun 29 16:49:04 2011 -0400
-
-    svcrpc: fix list-corrupting race on nfsd shutdown
-    
-    After commit 3262c816a3d7fb1eaabce633caa317887ed549ae "[PATCH] knfsd:
-    split svc_serv into pools", svc_delete_xprt (then svc_delete_socket) no
-    longer removed its xpt_ready (then sk_ready) field from whatever list it
-    was on, noting that there was no point since the whole list was about to
-    be destroyed anyway.
-    
-    That was mostly true, but forgot that a few svc_xprt_enqueue()'s might
-    still be hanging around playing with the about-to-be-destroyed list, and
-    could get themselves into trouble writing to freed memory if we left
-    this xprt on the list after freeing it.
-    
-    (This is actually functionally identical to a patch made first by Ben
-    Greear, but with more comments.)
-    
-    Cc: stable@kernel.org
-    Cc: gnb@fmeh.org
-    Reported-by: Ben Greear <greearb@candelatech.com>
-    Tested-by: Ben Greear <greearb@candelatech.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index ab86b79..bd31208 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -902,12 +902,13 @@ void svc_delete_xprt(struct svc_xprt *xprt)
- 	if (!test_and_set_bit(XPT_DETACHED, &xprt->xpt_flags))
- 		list_del_init(&xprt->xpt_list);
- 	/*
--	 * We used to delete the transport from whichever list
--	 * it's sk_xprt.xpt_ready node was on, but we don't actually
--	 * need to.  This is because the only time we're called
--	 * while still attached to a queue, the queue itself
--	 * is about to be destroyed (in svc_destroy).
-+	 * The only time we're called while xpt_ready is still on a list
-+	 * is while the list itself is about to be destroyed (in
-+	 * svc_destroy).  BUT svc_xprt_enqueue could still be attempting
-+	 * to add new entries to the sp_sockets list, so we can't leave
-+	 * a freed xprt on it.
- 	 */
-+	list_del_init(&xprt->xpt_ready);
- 	if (test_bit(XPT_TEMP, &xprt->xpt_flags))
- 		serv->sv_tmpcnt--;
- 	spin_unlock_bh(&serv->sv_lock);
