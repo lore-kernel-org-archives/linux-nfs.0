@@ -1,123 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:53961 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755935Ab1FGRaI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:30:08 -0400
-Date: Tue, 7 Jun 2011 13:30:06 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 35/88] pnfsblock: bl_setup_layoutcommit
-Message-ID: <4a06ec26e425a51d092f53fe6358d08bef9e594f.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+Received: from daytona.panasas.com ([67.152.220.89]:22898 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752665Ab1FMU4Q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 16:56:16 -0400
+Message-ID: <4DF6796F.9020707@panasas.com>
+Date: Mon, 13 Jun 2011 16:56:15 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/2] exofs: pnfs-tree: Remove pnfs-osd private definitions
+References: <4DF678C5.1080001@panasas.com>
+In-Reply-To: <4DF678C5.1080001@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
 
-In blocklayout driver. There are two things happening
-while layoutcommit/cleanup.
-1. the modified extents are encoded.
-2. On cleanup the extents are put back on the layout rw
-   extents list, for reads.
+Now that pnfs-osd has hit mainline we can remove exofs's
+private header. (And the FIXME comment)
 
-In the new system where actual xdr encoding is done in
-encode_layoutcommit() directly into xdr buffer, these are
-the new commit stages:
-
-1. On setup_layoutcommit, the range is adjusted as before
-   and a structure is allocated for communication with
-   bl_encode_layoutcommit && bl_cleanup_layoutcommit
-   (Generic layer provides a void-star to hang it on)
-
-2. bl_encode_layoutcommit is called to do the actual
-   encoding directly into xdr. The commit-extent-list is not
-   freed and is stored on above structure.
-   FIXME: The code is not yet converted to the new XDR cleanup
-
-3. On cleanup the commit-extent-list is put back by a call
-   to set_to_rw() as before, but with no need for XDR decoding
-   of the list as before. And the commit-extent-list is freed.
-   Finally allocated structure is freed.
-
-[pnfsblock: fix 64-bit compiler warnings for setup_layoutcommit]
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[blocklayout: encode_layoutcommit implementation]
 Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/blocklayout/blocklayout.c |   10 +++++++++-
- fs/nfs/blocklayout/blocklayout.h |   19 +++++++++++++++++++
- 2 files changed, 28 insertions(+), 1 deletions(-)
+ fs/exofs/exofs.h |    6 +-----
+ fs/exofs/pnfs.h  |   45 ---------------------------------------------
+ 2 files changed, 1 insertions(+), 50 deletions(-)
+ delete mode 100644 fs/exofs/pnfs.h
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index d4396d6..0277974 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -625,7 +625,7 @@ bl_setup_layoutcommit(struct pnfs_layout_type *lo,
- 		      struct pnfs_layoutcommit_arg *arg)
- {
- 	struct nfs_server *nfss = PNFS_NFS_SERVER(lo);
--	struct pnfs_layoutcommit_arg *arg = &data->args;
-+	struct bl_layoutupdate_data *layoutupdate_data;
+diff --git a/fs/exofs/exofs.h b/fs/exofs/exofs.h
+index c965806..e103dbd 100644
+--- a/fs/exofs/exofs.h
++++ b/fs/exofs/exofs.h
+@@ -36,13 +36,9 @@
+ #include <linux/fs.h>
+ #include <linux/time.h>
+ #include <linux/backing-dev.h>
++#include <linux/pnfs_osd_xdr.h>
+ #include "common.h"
  
- 	dprintk("%s enter\n", __func__);
- 	/* Need to ensure commit is block-size aligned */
-@@ -637,6 +637,14 @@ bl_setup_layoutcommit(struct pnfs_layout_type *lo,
- 		arg->lseg.length += offset + mask;
- 		arg->lseg.length &= ~mask;
- 	}
-+
-+	layoutupdate_data = kmalloc(sizeof(struct bl_layoutupdate_data),
-+					 GFP_KERNEL);
-+	if (unlikely(!layoutupdate_data))
-+		return -ENOMEM;
-+	INIT_LIST_HEAD(&layoutupdate_data->ranges);
-+	arg->layoutdriver_data = layoutupdate_data;
-+
- 	return 0;
- }
+-/* FIXME: Remove once pnfs hits mainline
+- * #include <linux/exportfs/pnfs_osd_xdr.h>
+- */
+-#include "pnfs.h"
+-
+ #define EXOFS_ERR(fmt, a...) printk(KERN_ERR "exofs: " fmt, ##a)
  
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 1ec9bff..780d757 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -181,6 +181,13 @@ struct pnfs_block_layout {
- 	sector_t		bl_blocksize;  /* Server blocksize in sectors */
- };
- 
-+/* this struct is comunicated between:
-+ * bl_setup_layoutcommit && bl_encode_layoutcommit && bl_cleanup_layoutcommit
-+ */
-+struct bl_layoutupdate_data {
-+	struct list_head ranges;
-+};
-+
- #define BLK_ID(lo)     ((struct block_mount_id *)(PNFS_MOUNTID(lo)->mountid))
- #define BLK_LSEG2EXT(lseg) ((struct pnfs_block_layout *)lseg->layout->ld_data)
- #define BLK_LO2EXT(lo) ((struct pnfs_block_layout *)lo->ld_data)
-@@ -218,6 +225,18 @@ uint32_t *blk_overflow(uint32_t *p, uint32_t *end, size_t nbytes);
- 	(x) = tmp >> 9; \
- } while (0)
- 
-+#define WRITE32(n)               do { \
-+	*p++ = htonl(n); \
-+	} while (0)
-+#define WRITE64(n)               do {                           \
-+	*p++ = htonl((uint32_t)((n) >> 32));			\
-+	*p++ = htonl((uint32_t)(n));				\
-+} while (0)
-+#define WRITEMEM(ptr, nbytes)     do {                          \
-+	p = xdr_encode_opaque_fixed(p, ptr, nbytes);	\
-+} while (0)
-+#define WRITE_DEVID(x)  WRITEMEM((x)->data, NFS4_PNFS_DEVICEID4_SIZE)
-+
- /* blocklayoutdev.c */
- struct block_device *nfs4_blkdev_get(dev_t dev);
- int nfs4_blkdev_put(struct block_device *bdev);
+ #ifdef CONFIG_EXOFS_DEBUG
+diff --git a/fs/exofs/pnfs.h b/fs/exofs/pnfs.h
+deleted file mode 100644
+index c52e988..0000000
+--- a/fs/exofs/pnfs.h
++++ /dev/null
+@@ -1,45 +0,0 @@
+-/*
+- * Copyright (C) 2008, 2009
+- * Boaz Harrosh <bharrosh@panasas.com>
+- *
+- * This file is part of exofs.
+- *
+- * exofs is free software; you can redistribute it and/or modify it under the
+- * terms of the GNU General Public License  version 2 as published by the Free
+- * Software Foundation.
+- *
+- */
+-
+-/* FIXME: Remove this file once pnfs hits mainline */
+-
+-#ifndef __EXOFS_PNFS_H__
+-#define __EXOFS_PNFS_H__
+-
+-#if ! defined(__PNFS_OSD_XDR_H__)
+-
+-enum pnfs_iomode {
+-	IOMODE_READ = 1,
+-	IOMODE_RW = 2,
+-	IOMODE_ANY = 3,
+-};
+-
+-/* Layout Structure */
+-enum pnfs_osd_raid_algorithm4 {
+-	PNFS_OSD_RAID_0		= 1,
+-	PNFS_OSD_RAID_4		= 2,
+-	PNFS_OSD_RAID_5		= 3,
+-	PNFS_OSD_RAID_PQ	= 4     /* Reed-Solomon P+Q */
+-};
+-
+-struct pnfs_osd_data_map {
+-	u32	odm_num_comps;
+-	u64	odm_stripe_unit;
+-	u32	odm_group_width;
+-	u32	odm_group_depth;
+-	u32	odm_mirror_cnt;
+-	u32	odm_raid_algorithm;
+-};
+-
+-#endif /* ! defined(__PNFS_OSD_XDR_H__) */
+-
+-#endif /* __EXOFS_PNFS_H__ */
 -- 
-1.7.4.1
+1.7.3.4
+
 
