@@ -1,95 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:32923 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:53358 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754947Ab1FOOY5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Jun 2011 10:24:57 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Bakeathon version 2 1/1] NFSv4.1: fix hlist_del in _deviceid_purge_client
-Date: Wed, 15 Jun 2011 10:25:10 -0400
-Message-Id: <1308147910-17057-1-git-send-email-andros@netapp.com>
+	id S1752535Ab1FMMTl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Jun 2011 08:19:41 -0400
+Date: Mon, 13 Jun 2011 08:19:39 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mimi Zohar <zohar@linux.vnet.ibm.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        samba-technical@lists.samba.org, Christoph Hellwig <hch@infradead.org>,
+        Eric Paris <eparis@redhat.com>
+Subject: Re: [PATCH 1/2] locks: introduce i_blockleases to close lease races
+Message-ID: <20110613121939.GL12149@fieldses.org>
+References: <20110610000944.GC22215@fieldses.org>
+ <20110610001011.GD22215@fieldses.org>
+ <1307737440.3281.5.camel@localhost.localdomain>
+ <20110610213446.GC27837@fieldses.org>
+ <20110612040826.GD9246@fieldses.org>
+ <1307905804.3564.28.camel@localhost.localdomain>
+ <20110612191220.GK12149@fieldses.org>
+ <1307912073.3564.80.camel@localhost.localdomain>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1307912073.3564.80.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Sun, Jun 12, 2011 at 04:54:33PM -0400, Mimi Zohar wrote:
+> On Sun, 2011-06-12 at 15:12 -0400, J. Bruce Fields wrote: 
+> > On Sun, Jun 12, 2011 at 03:10:04PM -0400, Mimi Zohar wrote:
+> > > On Sun, 2011-06-12 at 00:08 -0400, J. Bruce Fields wrote:
+> > > > On Fri, Jun 10, 2011 at 05:34:46PM -0400, J. Bruce Fields wrote:
+> > > > > On Fri, Jun 10, 2011 at 04:24:00PM -0400, Mimi Zohar wrote:
+> > > > > > On Thu, 2011-06-09 at 20:10 -0400, J. Bruce Fields wrote:
+> > > > > > > From: J. Bruce Fields <bfields@redhat.com>
+> > > > > > > 
+> > > > > > > Since break_lease is called before i_writecount is incremented, there's
+> > > > > > > a window between the two where a setlease call would have no way to know
+> > > > > > > that an open is about to happen.
+> > > > > > 
+> > > > > > So unless the break_lease() call is moved from may_open() to after 
+> > > > > > nameidata_to_filp(), I don't see any other options.
+> > > > > 
+> > > > > Actually, offhand I can't see why that wouldn't be OK.
+> > > > > 
+> > > > > Though I think we still end up needing something like i_blockleases to
+> > > > > handle unlink, link, rename, chown, and chmod.
+> > > > 
+> > > > Well, I guess there's a bizarre alternative that wouldn't require a new
+> > > > inode field:
+> > > 
+> > > In lieu of adding a new inode field, another possible option, a bit
+> > > kludgy, would be extending i_flock with an additional fl_flag
+> > > FL_BLOCKLEASE.
+> > > 
+> > > #define IS_BLOCKLEASE(fl)    (fl->fl_flags & FL_BLOCKLEASE)
+> > 
+> > Alas, that would mean adding and removing one of these file locks around
+> > every single link, unlink, rename,....
+> > 
+> > --b.
+> 
+> You're adding a call to break_lease() for each of them.  Currently
+> __break_lease() is only called if a lease exists. Assuming there aren't
+> any existing leases, couldn't break_lease() call something like
+> block_lease()?  The free would be after the link, unlink, ...,
+> completed/failed.
+> 
+> (You wouldn't actually need to alloc/free the 'struct file_lock' each
+> time, just set the pointer and reset to NULL.)
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-cc:stable@kernel.org [2.6.39]
----
- fs/nfs/inode.c    |    2 ++
- fs/nfs/pnfs.h     |    1 +
- fs/nfs/pnfs_dev.c |   14 +++++++++++++-
- 3 files changed, 16 insertions(+), 1 deletions(-)
+Well, the pointer has to be set to something.  I suppose we could put a
+struct file_lock on the stack.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 6f4850d..55ba1b0 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1595,6 +1595,8 @@ static int __init init_nfs_fs(void)
- 	if (err)
- 		goto out0;
- 
-+	nfs4_init_deviceid_cache();
-+
- #ifdef CONFIG_PROC_FS
- 	rpc_proc_register(&nfs_rpcstat);
- #endif
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index e46edac..67400bc 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -212,6 +212,7 @@ void nfs4_init_deviceid_node(struct nfs4_deviceid_node *,
- struct nfs4_deviceid_node *nfs4_insert_deviceid_node(struct nfs4_deviceid_node *);
- bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
- void nfs4_deviceid_purge_client(const struct nfs_client *);
-+void nfs4_init_deviceid_cache(void);
- 
- static inline int lo_fail_bit(u32 iomode)
- {
-diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
-index 037a5c6..923a9da 100644
---- a/fs/nfs/pnfs_dev.c
-+++ b/fs/nfs/pnfs_dev.c
-@@ -161,6 +161,15 @@ nfs4_init_deviceid_node(struct nfs4_deviceid_node *d,
- }
- EXPORT_SYMBOL_GPL(nfs4_init_deviceid_node);
- 
-+void
-+nfs4_init_deviceid_cache()
-+{
-+	long h;
-+
-+	for (h = 0; h < NFS4_DEVICE_ID_HASH_SIZE; h++)
-+		INIT_HLIST_HEAD(&nfs4_deviceid_cache[h]);
-+}
-+
- /*
-  * Uniquely initialize and insert a deviceid node into cache
-  *
-@@ -236,9 +245,10 @@ _deviceid_purge_client(const struct nfs_client *clp, long hash)
- 
- 	synchronize_rcu();
- 	while (!hlist_empty(&tmp)) {
-+		d = hlist_entry(tmp.first, struct nfs4_deviceid_node, tmpnode);
-+		hlist_del_init(&d->tmpnode);
- 		if (atomic_dec_and_test(&d->ref))
- 			d->ld->free_deviceid_node(d);
--		hlist_del_init(&d->tmpnode);
- 	}
- }
- 
-@@ -247,6 +257,8 @@ nfs4_deviceid_purge_client(const struct nfs_client *clp)
- {
- 	long h;
- 
-+	if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS))
-+		return;
- 	for (h = 0; h < NFS4_DEVICE_ID_HASH_SIZE; h++)
- 		_deviceid_purge_client(clp, h);
- }
--- 
-1.7.3.1
-
+--b.
