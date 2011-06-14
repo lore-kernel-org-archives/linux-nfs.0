@@ -1,117 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:54635 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932248Ab1FVTSM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 15:18:12 -0400
-In-Reply-To: <1308769054.14997.18.camel@lade.trondhjem.org>
-References: <BANLkTik9J3qcdPcp+DdfRq9kj+DMKnjKZw@mail.gmail.com>
-	<1308767449.14997.10.camel@lade.trondhjem.org>
-	<BANLkTimyCA0QyF1TNc0SU2GYobOt-sAsNQ@mail.gmail.com>
-	<1308769054.14997.18.camel@lade.trondhjem.org>
-Date: Wed, 22 Jun 2011 12:18:12 -0700
-Message-ID: <BANLkTi=b1UJzYinAeW2VJj2AHzsAnwUpGg@mail.gmail.com>
-Subject: Re: Issue with Race Condition on NFS4 with KRB
-From: Joshua Scoggins <theoretically.x64@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:61902 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753894Ab1FNWY1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2011 18:24:27 -0400
+Received: by vws1 with SMTP id 1so4877714vws.19
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Jun 2011 15:24:26 -0700 (PDT)
+Message-ID: <4DF7DF98.6090406@gmail.com>
+Date: Tue, 14 Jun 2011 18:24:24 -0400
+From: Benny Halevy <bhalevy.lists@gmail.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
+        open-osd <osd-dev@open-osd.org>
+Subject: Re: [PATCHSET 0/8] pnfsd-exofs: New set of exofs pnfs export patches
+References: <4DF7CA2F.7030407@panasas.com> <4DF7CBE6.1050406@tonian.com>
+In-Reply-To: <4DF7CBE6.1050406@tonian.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-According to the it guys they are running solaris 10 as the server platform.
+OK, I took this in under pnfs-all-3.0-rc3-2011-06-14-2
+The new tree structure is:
 
-On Wed, Jun 22, 2011 at 11:57 AM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> On Wed, 2011-06-22 at 11:37 -0700, Joshua Scoggins wrote:
->> Here are our mount options from auto.master
+master (at nfs-2.6/nfs-for-bakeathon, based off of v3.0-rc3)
+	nfs-upstream
+		pnfs-block
+			pnfs-obj
+	nfsd-upstream
+		nfsd41-all
+			pnfsd-all
+				pnfsd-exofs-all
+					pnfsd-lexp-all
+						spnfs-all
+							spnfs-block-all
+								pnfs-all-latest
+								+pnfs-obj (that's a merge :)
+
+Benny
+
+On 2011-06-14 17:00, Benny Halevy wrote:
+> On 2011-06-14 16:53, Boaz Harrosh wrote:
 >>
->> /user -fstype=nfs4,sec=krb5p,noresvport,noatime
->> /group -fstype=nfs4,sec=krb5p,noresvport,noatime
+>> Benny hi
 >>
->> As for the server, we don't control it. It's actually run by the
->> campus wide it department we are just lab support for CS. I can
->> potentially get the server information but I need to know what you want
->> specifically as they're pretty paranoid about giving out information about
->> their servers.
->
-> I would just want to know _what_ server platform you are running
-> against. I know of at least one server bug that might explain what you
-> are seeing, and I'd like to eliminate that as a possibility.
->
-> Trond
->
->> Joshua Scoggins
+>> I'm submitting a new SQUASHED set of exofs patches. These should completely
+>> replace the patches you have now in the pnfsd-exofs{-all} branch
 >>
->> On Wed, Jun 22, 2011 at 11:30 AM, Trond Myklebust
->> <Trond.Myklebust@netapp.com> wrote:
->> > On Wed, 2011-06-22 at 11:21 -0700, Joshua Scoggins wrote:
->> >> Hello,
->> >>
->> >> We are trying to update our linux images in our CS lab and have it a
->> >> bit of an issue. We are
->> >> using nfs to load user home folder. While testing the new image we
->> >> found that the nfs4 module will
->> >>  crash when using firefox 3.6.17 for an extended period of time. Some
->> >> research via google yielded that
->> >> it's a potential race condition specific to nfs with krb auth with
->> >> newer kernels. Our old image doesn't have
->> >> this issue and it seems that its due to it running a far older kernel version.
->> >>
->> >> We have two images and both are having this problem. One is running
->> >> 2.6.39 and the other is 2.6.38.
->> >> Here is what dmesg spit out from the machine running 2.6.39 on one occasion:
->> >>
->> >> [  678.632061] ------------[ cut here ]------------
->> >> [  678.632068] WARNING: at net/sunrpc/clnt.c:1567 call_decode+0xb2/0x69c()
->> >> [  678.632070] Hardware name: OptiPlex 755
->> >> [  678.632072] Modules linked in: nvidia(P) scsi_wait_scan
->> >> [  678.632078] Pid: 3882, comm: kworker/0:2 Tainted: P
->> >> 2.6.39-gentoo-r1 #1
->> >> [  678.632080] Call Trace:
->> >> [  678.632086]  [<ffffffff81035b20>] warn_slowpath_common+0x80/0x98
->> >> [  678.632091]  [<ffffffff8117231e>] ? nfs4_xdr_dec_readdir+0xba/0xba
->> >> [  678.632094]  [<ffffffff81035b4d>] warn_slowpath_null+0x15/0x17
->> >> [  678.632097]  [<ffffffff81426f48>] call_decode+0xb2/0x69c
->> >> [  678.632101]  [<ffffffff8142d2b5>] __rpc_execute+0x78/0x24b
->> >> [  678.632104]  [<ffffffff8142d4c9>] ? rpc_execute+0x41/0x41
->> >> [  678.632107]  [<ffffffff8142d4d9>] rpc_async_schedule+0x10/0x12
->> >> [  678.632111]  [<ffffffff8104a49d>] process_one_work+0x1d9/0x2e7
->> >> [  678.632114]  [<ffffffff8104c402>] worker_thread+0x133/0x24f
->> >> [  678.632118]  [<ffffffff8104c2cf>] ? manage_workers+0x18d/0x18d
->> >> [  678.632121]  [<ffffffff8104f6a0>] kthread+0x7d/0x85
->> >> [  678.632125]  [<ffffffff8145e314>] kernel_thread_helper+0x4/0x10
->> >> [  678.632128]  [<ffffffff8104f623>] ? kthread_worker_fn+0x13a/0x13a
->> >> [  678.632131]  [<ffffffff8145e310>] ? gs_change+0xb/0xb
->> >> [  678.632133] ---[ end trace 6bfae002a63e020e ]---
->> >>
->> >> Is there some sort of work around?
->> >
->> > Cced the linux-nfs mailing list.
->> >
->> > The above warning is not specific to krb5, but indicates a likely race
->> > between replies after a resend of the RPC call.
->> >
->> > Can you please tell us what your mount options are, and also tell us a
->> > bit more about what kind of server you are running against?
->> >
->> > Trond
->> > --
->> > Trond Myklebust
->> > Linux NFS client maintainer
->> >
->> > NetApp
->> > Trond.Myklebust@netapp.com
->> > www.netapp.com
->> >
->> >
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
->
+> 
+> Great, thanks!
+> 
+>> If anyone is curios I'll send a SQUASHME patchset as reply to this mail.
+>>
+>> I Think the pnfsd-exofs branch should advance down to before the pnfsd-exp-all.
+>> It should be the first or second candidate for inclusion.
+> 
+> makes sense
+> 
+>>
+>> BTW: You forgot to branch the pnfs-blocks branch last time.
+> 
+> Already fixed... (pnfs-block is there)
+> 
+>>
+>> I think that now, since most of the client code is in-tree and all the common code
+>> is in. It would be easier to work with a tree that has two separate branches for the
+>> 1.block-layout and 2.server branches. And the pnfs-all-latest which merges the two.
+>>
+>> something like:
+>>
+>>
+>>                 |----pnfsd(including gfs2_---pnfsd-exofs---pnfsd-exp----pnfsd-spnfs----pnfsd-spnfs-blocks ---|
+>> nfs-linux-next--|                                                                                            + --- pnfs-all-latest
+>>                 | --------pnfs-blocks------------------------------------------------------------------------|
+> 
+> Good point, I'll try it out.
+> 
+>>
+>> * "+" means a merge
+>>
+>> It will be much easier to develop this way
+>>
+>> usual list of patches:
+>>
+>> [PATCH 1/8] nfs_xdr: Move nfs4_string definition out of #ifdef CONFIG_NFS_V4
+>> [PATCH 2/8] exofs: pnfs-tree: Remove pnfs-osd private definitions
+>> [PATCH 3/8] pnfs-obj: pnfs_osd_xdr: Remove dead code and cleanup
+>>  
+>>     Intended for upstream
+>>
+>> [PATCH 4/8] pnfsd-exofs: pnfs objects server XDR functions
+>> [PATCH 5/8] pnfsd-exofs: Add pNFS export support
+>> [PATCH 6/8] pnfsd-exofs: get_device_info implementation.
+>> [PATCH 7/8] pnfsd-exofs: Recall layouts on truncate
+>> [PATCH 8/8] pnfsd-exofs: layoutreturn pnfs-obj information decoding
+>>
+>>    New exofs pnfs export patches
+> 
+> Where are the patches? :)
+> 
+> Benny
+> 
+>>
+>> Thanks
+>> Boaz
+>>
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
