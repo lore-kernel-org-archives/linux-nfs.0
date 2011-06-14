@@ -1,54 +1,231 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:64175 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758172Ab1FJWiJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 18:38:09 -0400
-Subject: Re: [PATCH v3 3/6] nfs-utils:  Implement srcaddr binding in rpc_socket
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4DF2985E.9010300@candelatech.com>
-Date: Fri, 10 Jun 2011 18:37:59 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <FFBB00C7-4264-4EBD-A097-95979ABA1978@oracle.com>
-References: <1307740096-19933-1-git-send-email-greearb@candelatech.com> <1307740096-19933-4-git-send-email-greearb@candelatech.com> <A2323BA3-3082-4416-A4C4-062726F15D6F@oracle.com> <4DF2985E.9010300@candelatech.com>
-To: Ben Greear <greearb@candelatech.com>
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:52008 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753973Ab1FNCcg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:36 -0400
+Message-Id: <dd1e04dbb7b8b7671d7183d871feb66310b9d49d.1308017749.git.rees@umich.edu>
+In-Reply-To: <cover.1308017749.git.rees@umich.edu>
+References: <cover.1308017749.git.rees@umich.edu>
+Subject: [PATCH 13/33] pnfsblock: add device operations
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Date: Mon, 13 Jun 2011 22:32:33 -0400
+From: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Signed-off-by: Jim Rees <rees@umich.edu>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/Makefile         |    2 +-
+ fs/nfs/blocklayout/blocklayout.h    |   15 ++++
+ fs/nfs/blocklayout/blocklayoutdev.c |  151 +++++++++++++++++++++++++++++++++++
+ 3 files changed, 167 insertions(+), 1 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdev.c
 
-On Jun 10, 2011, at 6:19 PM, Ben Greear wrote:
-
-> On 06/10/2011 03:06 PM, Chuck Lever wrote:
->> 
->> On Jun 10, 2011, at 5:08 PM, greearb@candelatech.com wrote:
->> 
->>> From: Ben Greear<greearb@candelatech.com>
->>> 
->>> This implements the actual binding, if we are passed
->>> a non-null local_ip structure.
->> 
->> Why not _always_ pass a valid local_ip structure, and simply set .addr to an appropriate ANYADDR by default?  Then .is_set wouldn't be necessary, would it?  It would also simplify the logic in nfs_validate_options().
-> 
-> I like it as is because almost none of the new code is actually
-> used unless users pass in the srcaddr= option.  So, if I *did*
-> introduce any bugs, hopefully they would be limited to users
-> of the new option, and not a real regression.
-
-It should be pretty obvious if something here breaks.
-
-> Maybe after the srcaddr= code is used a bit I could go back and
-> do that cleanup.
-> 
-> But, I don't feel strongly about it, so if you think it's
-> worth the bother, I'll try changing the code as you suggest.
-
-In the long-term, if my suggestion works out, this code would be simpler, and to me that's better than the risk of a little short-term instability.
-
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+index af39d19..bd69aad 100644
+--- a/fs/nfs/blocklayout/Makefile
++++ b/fs/nfs/blocklayout/Makefile
+@@ -2,4 +2,4 @@
+ # Makefile for the pNFS block layout driver kernel module
+ #
+ obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
+-blocklayoutdriver-objs := blocklayout.o block-device-discovery-pipe.o extents.o
++blocklayoutdriver-objs := blocklayout.o block-device-discovery-pipe.o extents.o blocklayoutdev.o
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index c1825ae..cda7ea1 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -35,6 +35,12 @@
+ #include <linux/nfs_fs.h>
+ #include "../pnfs.h"
+ 
++struct pnfs_block_dev {
++	struct list_head		bm_node;
++	struct nfs4_deviceid		bm_mdevid;    /* associated devid */
++	struct block_device		*bm_mdev;     /* meta device itself */
++};
++
+ enum exstate4 {
+ 	PNFS_BLOCK_READWRITE_DATA	= 0,
+ 	PNFS_BLOCK_READ_DATA		= 1,
+@@ -87,6 +93,15 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
+ 	return container_of(lo, struct pnfs_block_layout, bl_layout);
+ }
+ 
++/* blocklayoutdev.c */
++struct block_device *nfs4_blkdev_get(dev_t dev);
++int nfs4_blkdev_put(struct block_device *bdev);
++struct pnfs_block_dev *nfs4_blk_decode_device(struct nfs_server *server,
++						struct pnfs_device *dev,
++						struct list_head *sdlist);
++int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
++				struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
++
+ #include <linux/sunrpc/simple_rpc_pipefs.h>
+ 
+ extern struct pipefs_list bl_device_list;
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+new file mode 100644
+index 0000000..9a65a66
+--- /dev/null
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -0,0 +1,151 @@
++/*
++ *  linux/fs/nfs/blocklayout/blocklayoutdev.c
++ *
++ *  Device operations for the pnfs nfs4 file layout driver.
++ *
++ *  Copyright (c) 2006 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@citi.umich.edu>
++ *  Fred Isaman <iisaman@umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
++ */
++#include <linux/module.h>
++#include <linux/buffer_head.h> /* __bread */
++
++#include <linux/genhd.h>
++#include <linux/blkdev.h>
++#include <linux/hash.h>
++
++#include "blocklayout.h"
++
++#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
++
++uint32_t *blk_overflow(uint32_t *p, uint32_t *end, size_t nbytes)
++{
++	uint32_t *q = p + XDR_QUADLEN(nbytes);
++	if (unlikely(q > end || q < p))
++		return NULL;
++	return p;
++}
++EXPORT_SYMBOL(blk_overflow);
++
++/* Open a block_device by device number. */
++struct block_device *nfs4_blkdev_get(dev_t dev)
++{
++	struct block_device *bd;
++
++	dprintk("%s enter\n", __func__);
++	bd = blkdev_get_by_dev(dev, FMODE_READ, NULL);
++	if (IS_ERR(bd))
++		goto fail;
++	return bd;
++fail:
++	dprintk("%s failed to open device : %ld\n",
++			__func__, PTR_ERR(bd));
++	return NULL;
++}
++
++/*
++ * Release the block device
++ */
++int nfs4_blkdev_put(struct block_device *bdev)
++{
++	dprintk("%s for device %d:%d\n", __func__, MAJOR(bdev->bd_dev),
++			MINOR(bdev->bd_dev));
++	return blkdev_put(bdev, FMODE_READ);
++}
++
++/* Decodes pnfs_block_deviceaddr4 (draft-8) which is XDR encoded
++ * in dev->dev_addr_buf.
++ */
++struct pnfs_block_dev *
++nfs4_blk_decode_device(struct nfs_server *server,
++		       struct pnfs_device *dev,
++		       struct list_head *sdlist)
++{
++	struct pnfs_block_dev *rv = NULL;
++	struct block_device *bd = NULL;
++	struct pipefs_hdr *msg = NULL, *reply = NULL;
++	uint32_t major, minor;
++
++	dprintk("%s enter\n", __func__);
++
++	if (IS_ERR(bl_device_pipe))
++		return NULL;
++	dprintk("%s CREATING PIPEFS MESSAGE\n", __func__);
++	dprintk("%s: deviceid: %s, mincount: %d\n", __func__, dev->dev_id.data,
++		dev->mincount);
++	msg = pipefs_alloc_init_msg(0, BL_DEVICE_MOUNT, 0, dev->area,
++				    dev->mincount);
++	if (IS_ERR(msg)) {
++		dprintk("ERROR: couldn't make pipefs message.\n");
++		goto out_err;
++	}
++	msg->msgid = hash_ptr(&msg, sizeof(msg->msgid) * 8);
++	msg->status = BL_DEVICE_REQUEST_INIT;
++
++	dprintk("%s CALLING USERSPACE DAEMON\n", __func__);
++	reply = pipefs_queue_upcall_waitreply(bl_device_pipe, msg,
++					      &bl_device_list, 0, 0);
++
++	if (IS_ERR(reply)) {
++		dprintk("ERROR: upcall_waitreply failed\n");
++		goto out_err;
++	}
++	if (reply->status != BL_DEVICE_REQUEST_PROC) {
++		dprintk("%s failed to open device: %ld\n",
++			__func__, PTR_ERR(bd));
++		goto out_err;
++	}
++	memcpy(&major, (uint32_t *)(payload_of(reply)), sizeof(uint32_t));
++	memcpy(&minor, (uint32_t *)(payload_of(reply) + sizeof(uint32_t)),
++		sizeof(uint32_t));
++	bd = nfs4_blkdev_get(MKDEV(major, minor));
++	if (IS_ERR(bd)) {
++		dprintk("%s failed to open device : %ld\n",
++			__func__, PTR_ERR(bd));
++		goto out_err;
++	}
++
++	rv = kzalloc(sizeof(*rv), GFP_KERNEL);
++	if (!rv)
++		goto out_err;
++
++	rv->bm_mdev = bd;
++	memcpy(&rv->bm_mdevid, &dev->dev_id, sizeof(struct nfs4_deviceid));
++	dprintk("%s Created device %s with bd_block_size %u\n",
++		__func__,
++		bd->bd_disk->disk_name,
++		bd->bd_block_size);
++	kfree(reply);
++	kfree(msg);
++	return rv;
++
++out_err:
++	kfree(rv);
++	if (!IS_ERR(reply))
++		kfree(reply);
++	if (!IS_ERR(msg))
++		kfree(msg);
++	return NULL;
++}
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.4.1
 
