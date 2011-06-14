@@ -1,41 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:34817 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752614Ab1FBTHi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Jun 2011 15:07:38 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH] NFS: Fix decode_secinfo_maxsz
-Date: Thu,  2 Jun 2011 15:07:35 -0400
-Message-Id: <1307041655-17529-1-git-send-email-bjschuma@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:37925 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750947Ab1FNVci (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2011 17:32:38 -0400
+Message-ID: <4DF7D36F.9070602@panasas.com>
+Date: Tue, 14 Jun 2011 17:32:31 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
+        open-osd <osd-dev@open-osd.org>
+Subject: [PATCHSET 0/10] pnfsd-exofs: SQUASHMES that went into last changes
+References: <4DF7CA2F.7030407@panasas.com>
+In-Reply-To: <4DF7CA2F.7030407@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Bryan Schumaker <bjschuma@netapp.com>
 
-I initially did the calculation in bytes, and not words
+here are the list of changes done to the old tree
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4xdr.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+[PATCH 01/10] SQUASHME: pnfsd-exofs xdr_srv: Wrong type in comments
+[PATCH 02/10] SQUASHME: pnfsd-exofs: Move all Server xdr definisions to separate header
+[PATCH 03/10] SQUASHME: pnfsd-exofs: Prettify pnfs_osd_xdr_srv.h
+[PATCH 04/10] SQUASHME: pnfsd-exofs: Change layout encoding to two pass
+[PATCH 05/10] SQUASHME: pnfsd-exofs: osd_xdr_srv: Convert XDR API to return enum nfsstat4
+[PATCH 06/10] SQUASHME: pnfsd-exofs: Server xdr definisions were moved to a separate header
+[PATCH 07/10] SQUASHME: pnfsd-exofs: osd_xdr_srv header moved
+[PATCH 08/10] SQUASHME: pnfsd-exofs: layout encoding was Changed to two pass
+[PATCH 09/10] SQUASHME: pnfsd-exofs: Convert XDR API to return enum nfsstat4
+[PATCH 09/10] SQUASHME: pnfsd-exofs: checkpatch love and a dprint
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index fcf2f33..43ac47d 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -255,7 +255,7 @@ static int nfs4_stat_to_errno(int);
- #define decode_fs_locations_maxsz \
- 				(0)
- #define encode_secinfo_maxsz	(op_encode_hdr_maxsz + nfs4_name_maxsz)
--#define decode_secinfo_maxsz	(op_decode_hdr_maxsz + 4 + (NFS_MAX_SECFLAVORS * (16 + GSS_OID_MAX_LEN)))
-+#define decode_secinfo_maxsz	(op_decode_hdr_maxsz + 1 + ((NFS_MAX_SECFLAVORS * (16 + GSS_OID_MAX_LEN)) / 4))
- 
- #if defined(CONFIG_NFS_V4_1)
- #define NFS4_MAX_MACHINE_NAME_LEN (64)
--- 
-1.7.5.2
+
+Boaz
 
