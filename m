@@ -1,74 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:49274 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754264Ab1FWO7c convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2011 10:59:32 -0400
-Subject: Re: [PATCH 00/11] NFS: Support binding to source address
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1308778611-9370-1-git-send-email-greearb@candelatech.com>
-Date: Thu, 23 Jun 2011 08:59:23 -0600
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <F37E8424-9A40-4C4F-A2F6-431FDA831E0D@oracle.com>
-References: <1308778611-9370-1-git-send-email-greearb@candelatech.com>
-To: greearb@candelatech.com
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:48213 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754390Ab1FNCdP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:33:15 -0400
+Message-Id: <7abae6a47d5750528e8b91e364ab58eedadda97a.1308017749.git.rees@umich.edu>
+In-Reply-To: <cover.1308017749.git.rees@umich.edu>
+References: <cover.1308017749.git.rees@umich.edu>
+Subject: [PATCH 29/33] pnfsblock: bl_write_pagelist support functions
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Date: Mon, 13 Jun 2011 22:33:13 -0400
+From: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-On Jun 22, 2011, at 3:36 PM, greearb@candelatech.com wrote:
+[pnfsblock: SQUASHME: adjust to API change]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: fixup blksize alignment in bl_setup_layoutcommit]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |   13 +++++++++++++
+ 1 files changed, 13 insertions(+), 0 deletions(-)
 
-> From: Ben Greear <greearb@candelatech.com>
-> 
-> This lets one specify the source IP address for
-> sockets, allowing users to leverage routing rules
-> on multi-homed systems.
-
-Do you need changes to send NLM requests from the right source address?
-
-> Patches are also needed to nfs-utils.  These have been
-> posted and will be accepted if the kernel support is
-> accepted.
-> 
-> Ben Greear (11):
->  sunrpc:  Don't attempt to bind to AF_UNSPEC address.
->  nfs:  Two AF_UNSPEC addresses should always match each other.
->  nfs:  Add srcaddr member to nfs_client.
->  nfs:  Use request destination addr as callback source addr.
->  nfs:  Pay attention to srcaddr in v4.1 callback logic.
->  nfs:  Use srcaddr in nfs_match_client.
->  nfs:  Add srcaddr to /proc/fs/nfsfs/servers
->  nfs:  Pass srcaddr into mount request.
->  nfs:  Propagate src-addr in client code.
->  nfs: Bind to srcaddr in rpcb_create.
->  nfs: Support srcaddr= to bind to specific IP address.
-> 
-> fs/nfs/callback.h          |    3 ++
-> fs/nfs/callback_proc.c     |    3 +-
-> fs/nfs/callback_xdr.c      |    3 ++
-> fs/nfs/client.c            |   72 +++++++++++++++++++++++++++++++++++++++++--
-> fs/nfs/internal.h          |   10 +++++-
-> fs/nfs/mount_clnt.c        |    1 +
-> fs/nfs/super.c             |   33 +++++++++++++++++++-
-> include/linux/nfs_fs_sb.h  |    4 ++
-> include/linux/sunrpc/svc.h |    5 +++
-> net/sunrpc/rpcb_clnt.c     |   28 ++++++++++++++++-
-> net/sunrpc/sunrpc.h        |   45 +++++++++++++++++++++++++++
-> net/sunrpc/xprtsock.c      |   47 +---------------------------
-> 12 files changed, 200 insertions(+), 54 deletions(-)
-> 
-> -- 
-> 1.7.3.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index cbf74d8..01fe089 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -70,6 +70,19 @@ static int is_hole(struct pnfs_block_extent *be, sector_t isect)
+ 		return !is_sector_initialized(be->be_inval, isect);
+ }
+ 
++/* Given the be associated with isect, determine if page data can be
++ * written to disk.
++ */
++static int is_writable(struct pnfs_block_extent *be, sector_t isect)
++{
++	if (be->be_state == PNFS_BLOCK_READWRITE_DATA)
++		return 1;
++	else if (be->be_state != PNFS_BLOCK_INVALID_DATA)
++		return 0;
++	else
++		return is_sector_initialized(be->be_inval, isect);
++}
++
+ static int
+ dont_like_caller(struct nfs_page *req)
+ {
+-- 
+1.7.4.1
 
