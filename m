@@ -1,91 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:57609 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753517Ab1FNVAZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2011 17:00:25 -0400
-Received: by iwn34 with SMTP id 34so4992399iwn.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Jun 2011 14:00:24 -0700 (PDT)
-Message-ID: <4DF7CBE6.1050406@tonian.com>
-Date: Tue, 14 Jun 2011 17:00:22 -0400
-From: Benny Halevy <benny@tonian.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
-        open-osd <osd-dev@open-osd.org>
-Subject: Re: [PATCHSET 0/8] pnfsd-exofs: New set of exofs pnfs export patches
-References: <4DF7CA2F.7030407@panasas.com>
-In-Reply-To: <4DF7CA2F.7030407@panasas.com>
+Received: from mail-yi0-f46.google.com ([209.85.218.46]:56386 "EHLO
+	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750947Ab1FNQWq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2011 12:22:46 -0400
+Received: by yia27 with SMTP id 27so1642135yia.19
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Jun 2011 09:22:45 -0700 (PDT)
+In-Reply-To: <4DF78929.6050205@gmail.com>
+References: <cover.1307921137.git.rees@umich.edu>
+	<e2fb9618168391b74186ebc670b7741bacc1f835.1307921138.git.rees@umich.edu>
+	<4DF78929.6050205@gmail.com>
+Date: Tue, 14 Jun 2011 12:22:44 -0400
+Message-ID: <BANLkTinG5XsjLavpW2oj0arSrNN+6eUaWA@mail.gmail.com>
+Subject: Re: [PATCH 34/34] NFS41: do not update isize if inode needs layoutcommit
+From: Fred Isaman <iisaman@netapp.com>
+To: Benny Halevy <bhalevy.lists@gmail.com>
+Cc: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-06-14 16:53, Boaz Harrosh wrote:
-> 
-> Benny hi
-> 
-> I'm submitting a new SQUASHED set of exofs patches. These should completely
-> replace the patches you have now in the pnfsd-exofs{-all} branch
-> 
+On Tue, Jun 14, 2011 at 12:15 PM, Benny Halevy <bhalevy.lists@gmail.com> wrote:
+> reminder: this is a generic patch that should be pushed upstream
+> separately.
+>
+> Benny
+>
 
-Great, thanks!
+And which in fact is currently in Trond's  bugfixes branch
 
-> If anyone is curios I'll send a SQUASHME patchset as reply to this mail.
-> 
-> I Think the pnfsd-exofs branch should advance down to before the pnfsd-exp-all.
-> It should be the first or second candidate for inclusion.
+Fred
 
-makes sense
-
-> 
-> BTW: You forgot to branch the pnfs-blocks branch last time.
-
-Already fixed... (pnfs-block is there)
-
-> 
-> I think that now, since most of the client code is in-tree and all the common code
-> is in. It would be easier to work with a tree that has two separate branches for the
-> 1.block-layout and 2.server branches. And the pnfs-all-latest which merges the two.
-> 
-> something like:
-> 
-> 
->                 |----pnfsd(including gfs2_---pnfsd-exofs---pnfsd-exp----pnfsd-spnfs----pnfsd-spnfs-blocks ---|
-> nfs-linux-next--|                                                                                            + --- pnfs-all-latest
->                 | --------pnfs-blocks------------------------------------------------------------------------|
-
-Good point, I'll try it out.
-
-> 
-> * "+" means a merge
-> 
-> It will be much easier to develop this way
-> 
-> usual list of patches:
-> 
-> [PATCH 1/8] nfs_xdr: Move nfs4_string definition out of #ifdef CONFIG_NFS_V4
-> [PATCH 2/8] exofs: pnfs-tree: Remove pnfs-osd private definitions
-> [PATCH 3/8] pnfs-obj: pnfs_osd_xdr: Remove dead code and cleanup
->  
->     Intended for upstream
-> 
-> [PATCH 4/8] pnfsd-exofs: pnfs objects server XDR functions
-> [PATCH 5/8] pnfsd-exofs: Add pNFS export support
-> [PATCH 6/8] pnfsd-exofs: get_device_info implementation.
-> [PATCH 7/8] pnfsd-exofs: Recall layouts on truncate
-> [PATCH 8/8] pnfsd-exofs: layoutreturn pnfs-obj information decoding
-> 
->    New exofs pnfs export patches
-
-Where are the patches? :)
-
-Benny
-
-> 
-> Thanks
-> Boaz
-> 
-> 
+> On 2011-06-12 19:45, Jim Rees wrote:
+>> From: Peng Tao <bergwolf@gmail.com>
+>>
+>> Layout commit is supposed to set server file size similiar to nfs pages.
+>> We should not update client file size for the same reason.
+>> Otherwise we will lose what we have at hand.
+>>
+>> Signed-off-by: Peng Tao <peng_tao@emc.com>
+>> ---
+>>  fs/nfs/inode.c |    3 ++-
+>>  1 files changed, 2 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+>> index 144f2a3..3f1eb81 100644
+>> --- a/fs/nfs/inode.c
+>> +++ b/fs/nfs/inode.c
+>> @@ -1294,7 +1294,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+>>               if (new_isize != cur_isize) {
+>>                       /* Do we perhaps have any outstanding writes, or has
+>>                        * the file grown beyond our last write? */
+>> -                     if (nfsi->npages == 0 || new_isize > cur_isize) {
+>> +                     if ((nfsi->npages == 0 && !test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) ||
+>> +                          new_isize > cur_isize) {
+>>                               i_size_write(inode, new_isize);
+>>                               invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
+>>                       }
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
