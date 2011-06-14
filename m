@@ -1,75 +1,202 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:63612 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756366Ab1FEW45 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Jun 2011 18:56:57 -0400
-Received: by iyb14 with SMTP id 14so2701849iyb.19
-        for <linux-nfs@vger.kernel.org>; Sun, 05 Jun 2011 15:56:57 -0700 (PDT)
-References: <1307288638-32215-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1307288638-32215-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain;
-	charset=us-ascii
-Message-Id: <44DFB4C2-AD75-412F-B211-D6DB1B9D2ACE@gmail.com>
-Cc: Libtirpc Devel List <libtirpc-devel@lists.sourceforge.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Chuck Lever <chucklever@gmail.com>
-Subject: Re: [Libtirpc-devel] [PATCH] Do not skip records with nonblocking connections
-Date: Sun, 5 Jun 2011 18:57:01 -0400
-To: Steve Dickson <steved@redhat.com>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:48222 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754429Ab1FNCdS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:33:18 -0400
+Message-Id: <b14d71b0bd5764d32f9995b3572ed55ae587ced2.1308017749.git.rees@umich.edu>
+In-Reply-To: <cover.1308017749.git.rees@umich.edu>
+References: <cover.1308017749.git.rees@umich.edu>
+Subject: [PATCH 30/33] pnfsblock: bl_write_pagelist
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Date: Mon, 13 Jun 2011 22:33:16 -0400
+From: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Fred Isaman <iisaman@citi.umich.edu>
 
+Note: When upper layer's read/write request cannot be fulfilled, the block
+layout driver shouldn't silently mark the page as error. It should do
+what can be done and  leave the rest to the upper layer. To do so, we
+should set rdata/wdata->res.count properly.
 
-Sent from my iPad
+When upper layer re-send the read/write request to finish the rest
+part of the request, pgbase is the position where we should start at.
 
-On Jun 5, 2011, at 11:43 AM, Steve Dickson <steved@redhat.com> wrote:
+[pnfsblock: bl_write_pagelist adjust for missing PG_USE_PNFS]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: handle errors when read or write pagelist.]
+Signed-off-by: Zhang Jingwang <yyalone@gmail.com>
+[pnfs-block: use new write_pagelist api]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |  146 +++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 145 insertions(+), 1 deletions(-)
 
-> With non-blocking connections, do not skip records when receiving
-> the streams since entire value messages can be ignored which
-> in cause the entire stream to become out of sync.
-> 
-> For example, two mounts simultaneously send two unmaps
-> commands. The first one is read, then the second thrown
-> away due to skipping the record. Skipping this record
-> will cause XDR error later in processing of the stream.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
-> src/svc_vc.c |    5 +++++
-> 1 files changed, 5 insertions(+), 0 deletions(-)
-> 
-> diff --git a/src/svc_vc.c b/src/svc_vc.c
-> index aaaf2d7..15dac18 100644
-> --- a/src/svc_vc.c
-> +++ b/src/svc_vc.c
-> @@ -610,6 +610,11 @@ svc_vc_recv(xprt, msg)
->    }
-> 
->    xdrs->x_op = XDR_DECODE;
-> +    /*
-> +     * No need skip records with nonblocking connections
-> +     */
-> +    if (cd->nonblock == FALSE)
-> +        (void)xdrrec_skiprecord(xdrs);
->    (void)xdrrec_skiprecord(xdrs);
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 01fe089..6fe039c8 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -320,11 +320,155 @@ bl_read_pagelist(struct nfs_read_data *rdata)
+ 	return PNFS_NOT_ATTEMPTED;
+ }
+ 
++/* STUB - this needs thought */
++static inline void
++bl_done_with_wpage(struct page *page, const int ok)
++{
++	if (!ok) {
++		SetPageError(page);
++		SetPagePnfsErr(page);
++		/* This is an inline copy of nfs_zap_mapping */
++		/* This is oh so fishy, and needs deep thought */
++		if (page->mapping->nrpages != 0) {
++			struct inode *inode = page->mapping->host;
++			spin_lock(&inode->i_lock);
++			NFS_I(inode)->cache_validity |= NFS_INO_INVALID_DATA;
++			spin_unlock(&inode->i_lock);
++		}
++	}
++	/* end_page_writeback called in rpc_release.  Should be done here. */
++}
++
++/* This is basically copied from mpage_end_io_read */
++static void bl_end_io_write(struct bio *bio, int err)
++{
++	void *data = bio->bi_private;
++	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
++	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
++
++	do {
++		struct page *page = bvec->bv_page;
++
++		if (--bvec >= bio->bi_io_vec)
++			prefetchw(&bvec->bv_page->flags);
++		bl_done_with_wpage(page, uptodate);
++	} while (bvec >= bio->bi_io_vec);
++	bio_put(bio);
++	put_parallel(data);
++}
++
++/* Function scheduled for call during bl_end_par_io_write,
++ * it marks sectors as written and extends the commitlist.
++ */
++static void bl_write_cleanup(struct work_struct *work)
++{
++	struct rpc_task *task;
++	struct nfs_write_data *wdata;
++	dprintk("%s enter\n", __func__);
++	task = container_of(work, struct rpc_task, u.tk_work);
++	wdata = container_of(task, struct nfs_write_data, task);
++	pnfs_ld_write_done(wdata);
++}
++
++/* Called when last of bios associated with a bl_write_pagelist call finishes */
++static void
++bl_end_par_io_write(void *data)
++{
++	struct nfs_write_data *wdata = data;
++
++	/* STUB - ignoring error handling */
++	wdata->task.tk_status = 0;
++	wdata->verf.committed = NFS_FILE_SYNC;
++	INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
++	schedule_work(&wdata->task.u.tk_work);
++}
++
+ static enum pnfs_try_status
+ bl_write_pagelist(struct nfs_write_data *wdata,
+ 		  int sync)
+ {
+-	return PNFS_NOT_ATTEMPTED;
++	int i;
++	struct bio *bio = NULL;
++	struct pnfs_block_extent *be = NULL;
++	sector_t isect, extent_length = 0;
++	struct parallel_io *par;
++	loff_t offset = wdata->args.offset;
++	size_t count = wdata->args.count;
++	struct page **pages = wdata->args.pages;
++	int pg_index = wdata->args.pgbase >> PAGE_CACHE_SHIFT;
++
++	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
++	if (!wdata->lseg) {
++		dprintk("%s no lseg, falling back to MDS\n", __func__);
++		return PNFS_NOT_ATTEMPTED;
++	}
++	if (dont_like_caller(wdata->req)) {
++		dprintk("%s dont_like_caller failed\n", __func__);
++		return PNFS_NOT_ATTEMPTED;
++	}
++	/* At this point, wdata->pages is a (sequential) list of nfs_pages.
++	 * We want to write each, and if there is an error remove it from
++	 * list and call
++	 * nfs_retry_request(req) to have it redone using nfs.
++	 * QUEST? Do as block or per req?  Think have to do per block
++	 * as part of end_bio
++	 */
++	par = alloc_parallel(wdata);
++	if (!par)
++		return PNFS_NOT_ATTEMPTED;
++	par->call_ops = *wdata->mds_ops;
++	par->call_ops.rpc_call_done = bl_rpc_do_nothing;
++	par->pnfs_callback = bl_end_par_io_write;
++	/* At this point, have to be more careful with error handling */
++
++	isect = (sector_t) ((offset & (long)PAGE_CACHE_MASK) >> 9);
++	for (i = pg_index; i < wdata->npages ; i++) {
++		if (!extent_length) {
++			/* We've used up the previous extent */
++			put_extent(be);
++			bio = bl_submit_bio(WRITE, bio);
++			/* Get the next one */
++			be = find_get_extent(BLK_LSEG2EXT(wdata->lseg),
++					     isect, NULL);
++			if (!be || !is_writable(be, isect)) {
++				/* FIXME */
++				bl_done_with_wpage(pages[i], 0);
++				break;
++			}
++			extent_length = be->be_length -
++				(isect - be->be_f_offset);
++		}
++		for (;;) {
++			if (!bio) {
++				bio = bio_alloc(GFP_NOIO, wdata->npages - i);
++				if (!bio) {
++					/* Error out this page */
++					/* FIXME */
++					bl_done_with_wpage(pages[i], 0);
++					break;
++				}
++				bio->bi_sector = isect - be->be_f_offset +
++					be->be_v_offset;
++				bio->bi_bdev = be->be_mdev;
++				bio->bi_end_io = bl_end_io_write;
++				bio->bi_private = par;
++			}
++			if (bio_add_page(bio, pages[i], PAGE_SIZE, 0))
++				break;
++			bio = bl_submit_bio(WRITE, bio);
++		}
++		isect += PAGE_CACHE_SIZE >> 9;
++		extent_length -= PAGE_CACHE_SIZE >> 9;
++	}
++	wdata->res.count = (isect << 9) - (offset);
++	if (count < wdata->res.count)
++		wdata->res.count = count;
++	/* pnfs_set_layoutcommit needs this */
++	wdata->mds_offset = offset;
++	put_extent(be);
++	bl_submit_bio(WRITE, bio);
++	put_parallel(par);
++	return PNFS_ATTEMPTED;
+ }
+ 
+ /* FIXME - range ignored */
+-- 
+1.7.4.1
 
-Do you want to delete the unconditional invocation of xdrrec_skiprecord() here?
-
->    if (xdr_callmsg(xdrs, msg)) {
->        cd->x_id = msg->rm_xid;
-> -- 
-> 1.7.4.4
-> 
-> 
-> ------------------------------------------------------------------------------
-> Simplify data backup and recovery for your virtual environment with vRanger.
-> Installation's a snap, and flexible recovery options mean your data is safe,
-> secure and there when you need it. Discover what all the cheering's about.
-> Get your free trial download today. 
-> http://p.sf.net/sfu/quest-dev2dev2 
-> _______________________________________________
-> Libtirpc-devel mailing list
-> Libtirpc-devel@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
