@@ -1,46 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:52989 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932074Ab1FGR1T (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:27:19 -0400
-Date: Tue, 7 Jun 2011 13:27:17 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 12/88] pnfsblock: expose scsi interface
-Message-ID: <1363fd163b64fafa016d970e4d07eecf30aad319.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+Received: from daytona.panasas.com ([67.152.220.89]:38109 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753956Ab1FNVgA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2011 17:36:00 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>, open-osd <osd-dev@open-osd.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 02/10] SQUASHME: pnfsd-exofs: Move all Server xdr definisions to separate header
+Date: Tue, 14 Jun 2011 17:35:59 -0400
+Message-Id: <1308087359-13095-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DF7D36F.9070602@panasas.com>
+References: <4DF7D36F.9070602@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+Server XDR definitions are defined in there own header
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- drivers/scsi/hosts.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+ fs/exportfs/pnfs_osd_xdr_srv.c        |    3 ++-
+ include/linux/nfsd/pnfs_osd_xdr_srv.h |   17 +++++++++++++++++
+ 2 files changed, 19 insertions(+), 1 deletions(-)
+ create mode 100644 include/linux/nfsd/pnfs_osd_xdr_srv.h
 
-diff --git a/drivers/scsi/hosts.c b/drivers/scsi/hosts.c
-index 4f7a582..7d91903 100644
---- a/drivers/scsi/hosts.c
-+++ b/drivers/scsi/hosts.c
-@@ -50,10 +50,11 @@ static void scsi_host_cls_release(struct device *dev)
- 	put_device(&class_to_shost(dev)->shost_gendev);
- }
+diff --git a/fs/exportfs/pnfs_osd_xdr_srv.c b/fs/exportfs/pnfs_osd_xdr_srv.c
+index 444798c..67564f6 100644
+--- a/fs/exportfs/pnfs_osd_xdr_srv.c
++++ b/fs/exportfs/pnfs_osd_xdr_srv.c
+@@ -38,7 +38,8 @@
+  */
  
--static struct class shost_class = {
-+struct class shost_class = {
- 	.name		= "scsi_host",
- 	.dev_release	= scsi_host_cls_release,
- };
-+EXPORT_SYMBOL(shost_class);
+ #include <linux/nfsd/nfsd4_pnfs.h>
+-#include <linux/pnfs_osd_xdr.h>
++
++#include "linux/nfsd/pnfs_osd_xdr_srv.h"
  
- /**
-  *	scsi_host_set_state - Take the given host through the host state model.
+ /*
+  * struct pnfs_osd_data_map {
+diff --git a/include/linux/nfsd/pnfs_osd_xdr_srv.h b/include/linux/nfsd/pnfs_osd_xdr_srv.h
+new file mode 100644
+index 0000000..65de588
+--- /dev/null
++++ b/include/linux/nfsd/pnfs_osd_xdr_srv.h
+@@ -0,0 +1,17 @@
++#include <linux/pnfs_osd_xdr.h>
++#include <linux/exp_xdr.h>
++
++/* Layout encoding */
++extern int pnfs_osd_xdr_encode_layout(
++	struct exp_xdr_stream *xdr,
++	struct pnfs_osd_layout *layout);
++
++/* deviceaddr for Servers */
++extern int pnfs_osd_xdr_encode_deviceaddr(
++	struct exp_xdr_stream *xdr, struct pnfs_osd_deviceaddr *devaddr);
++
++extern __be32 * pnfs_osd_xdr_decode_layoutupdate(
++	struct pnfs_osd_layoutupdate *lou, __be32 *p);
++
++extern bool pnfs_osd_xdr_decode_ioerr(
++	struct pnfs_osd_ioerr *ioerr, struct exp_xdr_stream *xdr);
 -- 
-1.7.4.1
+1.7.3.4
 
