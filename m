@@ -1,59 +1,158 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:34695 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750897Ab1FISNH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 14:13:07 -0400
-Subject: Re: [PATCH 2/3] NFS: Cleanup of the nfs_pageio code in preparation
- for a pnfs bugfix
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
-Date: Thu, 09 Jun 2011 14:13:15 -0400
-In-Reply-To: <4DF10804.7000104@panasas.com>
-References: <1307399551-17489-1-git-send-email-Trond.Myklebust@netapp.com>
-		 <1307399551-17489-2-git-send-email-Trond.Myklebust@netapp.com>
-		 <4DEEDECF.4090104@panasas.com>
-	 <1307637452.20245.11.camel@lade.trondhjem.org>
-	 <4DF10804.7000104@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1307643195.25848.10.camel@lade.trondhjem.org>
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:52001 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753622Ab1FNCca (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:30 -0400
+Message-Id: <a9a8d6f2cfe27f1be595d6b9e0372d70f595d2a0.1308017749.git.rees@umich.edu>
+In-Reply-To: <cover.1308017749.git.rees@umich.edu>
+References: <cover.1308017749.git.rees@umich.edu>
+Subject: [PATCH 11/33] pnfsblock: add block device discovery pipe
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Date: Mon, 13 Jun 2011 22:32:27 -0400
+From: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2011-06-09 at 10:51 -0700, Boaz Harrosh wrote:
+Signed-off-by: Eric Anderle <eanderle@umich.edu>
+Signed-off-by: Jim Rees <rees@umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/Makefile                      |    2 +-
+ fs/nfs/blocklayout/block-device-discovery-pipe.c |   66 ++++++++++++++++++++++
+ fs/nfs/blocklayout/blocklayout.c                 |    3 +
+ fs/nfs/blocklayout/blocklayout.h                 |   14 +++++
+ 4 files changed, 84 insertions(+), 1 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/block-device-discovery-pipe.c
 
-> 1. We will then need to go through the ld in .pg_init
-
-No. I'll fix nfs_pageio_init_read() and friends by replacing
-pnfs_get_read_ops() by something more appropriate.
-
-> 2. What happens in the none pnfs-IO error case pg_bsize will need to be
->    saved and restored to MDS value.
-
-Yes, but if you are falling back to read/write-through-mds, then you
-need to re-run the coalescing _anyway_, since the total length of the
-request needs to fit in an rsize/wsize sized request.
-
-> 3. At least in objects there is no such constant limit, it all depends on
->    the layout, start and end. I thought the all point of .pg_test was
->    exactly for avoiding a constant pg_bsize. (This is what we had before)
-> 4. All "the tests make no sense..." should be moved to the no-pnfs case
->    please point these you found out, we'll need to fix them.
-> 
-> Please understand that for none-files layouts pg_bsize is when IO goes
-> through MDS only.
-
-As I said, I don't see how fallback to MDS can work correctly today for
-the objects case for arbitrary values of rsize/wsize.
-
-Cheers
-  Trond
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+index 6bf49cd..d2bcd81 100644
+--- a/fs/nfs/blocklayout/Makefile
++++ b/fs/nfs/blocklayout/Makefile
+@@ -2,4 +2,4 @@
+ # Makefile for the pNFS block layout driver kernel module
+ #
+ obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
+-blocklayoutdriver-objs := blocklayout.o
++blocklayoutdriver-objs := blocklayout.o block-device-discovery-pipe.o
+diff --git a/fs/nfs/blocklayout/block-device-discovery-pipe.c b/fs/nfs/blocklayout/block-device-discovery-pipe.c
+new file mode 100644
+index 0000000..e4c199f
+--- /dev/null
++++ b/fs/nfs/blocklayout/block-device-discovery-pipe.c
+@@ -0,0 +1,66 @@
++#include <linux/module.h>
++#include <linux/uaccess.h>
++#include <linux/proc_fs.h>
++#include <linux/string.h>
++#include <linux/slab.h>
++#include <linux/ctype.h>
++#include <linux/sched.h>
++#include "blocklayout.h"
++
++#define NFSDBG_FACILITY NFSDBG_PNFS_LD
++
++struct pipefs_list bl_device_list;
++struct dentry *bl_device_pipe;
++
++ssize_t bl_pipe_downcall(struct file *filp, const char __user *src, size_t len)
++{
++	int err;
++	struct pipefs_hdr *msg;
++
++	dprintk("Entering %s...\n", __func__);
++
++	msg = pipefs_readmsg(filp, src, len);
++	if (IS_ERR(msg)) {
++		dprintk("ERROR: unable to read pipefs message.\n");
++		return PTR_ERR(msg);
++	}
++
++	/* now assign the result, which wakes the blocked thread */
++	err = pipefs_assign_upcall_reply(msg, &bl_device_list);
++	if (err) {
++		dprintk("ERROR: failed to assign upcall with id %u\n",
++			msg->msgid);
++		kfree(msg);
++	}
++	return len;
++}
++
++static const struct rpc_pipe_ops bl_pipe_ops = {
++	.upcall         = pipefs_generic_upcall,
++	.downcall       = bl_pipe_downcall,
++	.destroy_msg    = pipefs_generic_destroy_msg,
++};
++
++int bl_pipe_init(void)
++{
++	dprintk("%s: block_device pipefs registering...\n", __func__);
++	bl_device_pipe = pipefs_mkpipe("bl_device_pipe", &bl_pipe_ops, 1);
++	if (IS_ERR(bl_device_pipe))
++		dprintk("ERROR, unable to make block_device pipe\n");
++
++	if (!bl_device_pipe)
++		dprintk("bl_device_pipe is NULL!\n");
++	else
++	dprintk("bl_device_pipe created!\n");
++	pipefs_init_list(&bl_device_list);
++	return 0;
++}
++
++void bl_pipe_exit(void)
++{
++	dprintk("%s: block_device pipefs unregistering...\n", __func__);
++	if (IS_ERR(bl_device_pipe))
++		return ;
++	pipefs_closepipe(bl_device_pipe);
++	return;
++}
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 08458c6..bc6a0b2 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -185,6 +185,8 @@ static int __init nfs4blocklayout_init(void)
+ 	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
+ 
+ 	ret = pnfs_register_layoutdriver(&blocklayout_type);
++	if (!ret)
++		bl_pipe_init();
+ 	return ret;
+ }
+ 
+@@ -194,6 +196,7 @@ static void __exit nfs4blocklayout_exit(void)
+ 	       __func__);
+ 
+ 	pnfs_unregister_layoutdriver(&blocklayout_type);
++	bl_pipe_exit();
+ }
+ 
+ module_init(nfs4blocklayout_init);
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 49d69c7..4b8608c 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -87,4 +87,18 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
+ 	return container_of(lo, struct pnfs_block_layout, bl_layout);
+ }
+ 
++#include <linux/sunrpc/simple_rpc_pipefs.h>
++
++extern struct pipefs_list bl_device_list;
++extern struct dentry *bl_device_pipe;
++
++int bl_pipe_init(void);
++void bl_pipe_exit(void);
++
++#define BL_DEVICE_UMOUNT               0x0 /* Umount--delete devices */
++#define BL_DEVICE_MOUNT                0x1 /* Mount--create devices*/
++#define BL_DEVICE_REQUEST_INIT         0x0 /* Start request */
++#define BL_DEVICE_REQUEST_PROC         0x1 /* User level process succeeds */
++#define BL_DEVICE_REQUEST_ERR          0x2 /* User level process fails */
++
+ #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.4.1
 
