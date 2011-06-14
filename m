@@ -1,56 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:44308 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751587Ab1F3Lv7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jun 2011 07:51:59 -0400
-Date: Thu, 30 Jun 2011 07:51:56 -0400
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:48081 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753381Ab1FNCcT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:19 -0400
+Message-Id: <f923ec713a320635f3cf2a38472a810658185313.1308017749.git.rees@umich.edu>
+In-Reply-To: <cover.1308017749.git.rees@umich.edu>
+References: <cover.1308017749.git.rees@umich.edu>
+Subject: [PATCH 07/33] pnfsblock: define PNFS_BLOCK Kconfig option
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Date: Mon, 13 Jun 2011 22:32:17 -0400
 From: Jim Rees <rees@umich.edu>
-To: faizan husain <faizanh@linux.vnet.ibm.com>
-Cc: linux-nfs@vger.kernel.org, Frank S Filz <ffilz@us.ibm.com>,
-        jvrao@linux.vnet.ibm.com
-Subject: Re: [PATCH] nfs4-acl-tools : nfs4_setfacl' failed with unexpected
- messages if the format of the input file is incorrect.
-Message-ID: <20110630115156.GA2347@merit.edu>
-References: <4E0AD278.3000503@linux.vnet.ibm.com>
- <20110629121854.GA5105@merit.edu>
- <4E0C1285.1060601@linux.vnet.ibm.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E0C1285.1060601@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-faizan husain wrote:
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-  problem was this part of code in parse_alloc_fields() function:
-  if (count != 3)
-           goto out_free;
-  at this point memory is not allocated for fields leading to double
-  free of memory once inside parse_alloc_fields() and again inside
-  nfs4_ace_from_string().
-  
-  instead we can change the  code:
-  if (count != 3)
-      return -EINVAL; /*Invalid argument*/
-  
-  This look to me as more foolproof solution.
-  what do you say?
+Define a configuration variable to enable/disable compilation of the
+block driver code.
 
-That looks correct.  It should return EINVAL here, and there is no need to
-free.  But I don't see why it fixes your segfault.  fields[] should be all
-NULL at this point, so free_fields shouldn't do anything.
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfs-block: fix CONFIG_PNFS_BLOCK dependencies]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/Kconfig              |   10 ++++++++++
+ fs/nfs/Makefile             |    1 +
+ fs/nfs/blocklayout/Makefile |    5 +++++
+ 3 files changed, 16 insertions(+), 0 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/Makefile
 
-The test in free_fields() is redundant, since free(NULL) doesn't do
-anything.  But it could be made more foolproof by zeroing the array so you
-can't get a double free:
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 8151554..b613820 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -97,6 +97,16 @@ config PNFS_OBJLAYOUT
+ 
+ 	  If unsure, say N.
+ 
++config PNFS_BLOCK
++	tristate "Provide a pNFS block client (EXPERIMENTAL)"
++	depends on NFS_FS && NFS_V4_1
++	select MD
++	select BLK_DEV_DM
++	help
++	  Say M or y here if you want your pNfs client to support the block protocol
++
++	  If unsure, say N.
++
+ config ROOT_NFS
+ 	bool "Root file system on NFS"
+ 	depends on NFS_FS=y && IP_PNP
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 6a34f7d..b58613d 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -23,3 +23,4 @@ obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
+ nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
+ 
+ obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayout/
++obj-$(CONFIG_PNFS_BLOCK) += blocklayout/
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+new file mode 100644
+index 0000000..f214c1c
+--- /dev/null
++++ b/fs/nfs/blocklayout/Makefile
+@@ -0,0 +1,5 @@
++#
++# Makefile for the pNFS block layout driver kernel module
++#
++obj-$(CONFIG_PNFS_BLOCK) +=
++blocklayoutdriver-objs :=
+-- 
+1.7.4.1
 
-void
-free_fields(char *fields[NUMFIELDS])
-{
-	int i;
-
-	for (i = 0; i < NUMFIELDS; i++) {
-		free(fields[i]);
-		fields[i] = NULL;
-	}
-}
