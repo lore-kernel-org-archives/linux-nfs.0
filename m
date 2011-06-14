@@ -1,81 +1,143 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:5591 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756809Ab1FJBbH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Jun 2011 21:31:07 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/5] NFSv4.1: Fix some issues with pnfs_generic_pg_test
-Date: Thu,  9 Jun 2011 21:30:58 -0400
-Message-Id: <1307669462-15764-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:48061 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752246Ab1FNCcJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:09 -0400
+Message-Id: <d714bfc7d80c469b3f527b2f2ef4b1146d803eb4.1308017749.git.rees@umich.edu>
+In-Reply-To: <cover.1308017749.git.rees@umich.edu>
+References: <cover.1308017749.git.rees@umich.edu>
+Subject: [PATCH 02/33] pnfs: add set-clear layoutdriver interface
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Date: Mon, 13 Jun 2011 22:32:04 -0400
+From: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-1. If the intention is to coalesce requests 'prev' and 'req' then we
-   have to ensure at least that we have a layout starting at
-   req_offset(prev).
+From: Benny Halevy <bhalevy@panasas.com>
 
-2. If we're only requesting a minimal layout of length desc->pg_count,
-   we need to test the length actually returned by the server before
-   we allow the coalescing to occur.
+To allow layout driver to issue getdevicelist at mount time, and clean up
+at umount time.
 
-3. We need to deal correctly with (pgio->lseg == NULL)
-
-4. Fixup the test guarding the pnfs_update_layout.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+[fixup non NFS_V4_1 set_pnfs_layoutdriver definition]
+[pnfs: pass mntfh down the init_pnfs path]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/objlayout/objio_osd.c |    3 +++
- fs/nfs/pnfs.c                |   12 +++++++-----
- 2 files changed, 10 insertions(+), 5 deletions(-)
+ fs/nfs/client.c |    8 +++++---
+ fs/nfs/pnfs.c   |   16 ++++++++++++++--
+ fs/nfs/pnfs.h   |    8 ++++++--
+ 3 files changed, 25 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 9cf208d..4c41a60 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -1001,6 +1001,9 @@ static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
- 	if (!pnfs_generic_pg_test(pgio, prev, req))
- 		return false;
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index b3dc2b8..d630bb7 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -906,7 +906,9 @@ error:
+ /*
+  * Load up the server record from information gained in an fsinfo record
+  */
+-static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *fsinfo)
++static void nfs_server_set_fsinfo(struct nfs_server *server,
++				  struct nfs_fh *mntfh,
++				  struct nfs_fsinfo *fsinfo)
+ {
+ 	unsigned long max_rpc_payload;
  
-+	if (pgio->pg_lseg == NULL)
-+		return true;
-+
- 	return pgio->pg_count + req->wb_bytes <=
- 			OBJIO_LSEG(pgio->pg_lseg)->max_io_size;
- }
+@@ -936,7 +938,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
+ 	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
+ 		server->wsize = NFS_MAX_FILE_IO_SIZE;
+ 	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
+-	set_pnfs_layoutdriver(server, fsinfo->layouttype);
++	set_pnfs_layoutdriver(server, mntfh, fsinfo->layouttype);
+ 
+ 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
+ 
+@@ -982,7 +984,7 @@ static int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, str
+ 	if (error < 0)
+ 		goto out_error;
+ 
+-	nfs_server_set_fsinfo(server, &fsinfo);
++	nfs_server_set_fsinfo(server, mntfh, &fsinfo);
+ 
+ 	/* Get some general file system info */
+ 	if (server->namelen == 0) {
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 8c1309d..12b53ef 100644
+index b848a7e..593a9aa 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1059,19 +1059,21 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 		gfp_flags = GFP_NOFS;
- 	}
+@@ -75,8 +75,11 @@ find_pnfs_driver(u32 id)
+ void
+ unset_pnfs_layoutdriver(struct nfs_server *nfss)
+ {
+-	if (nfss->pnfs_curr_ld)
++	if (nfss->pnfs_curr_ld) {
++		if (nfss->pnfs_curr_ld->clear_layoutdriver)
++			nfss->pnfs_curr_ld->clear_layoutdriver(nfss);
+ 		module_put(nfss->pnfs_curr_ld->owner);
++	}
+ 	nfss->pnfs_curr_ld = NULL;
+ }
  
--	if (pgio->pg_count == prev->wb_bytes) {
-+	if (pgio->pg_lseg == NULL) {
-+		if (pgio->pg_count != prev->wb_bytes)
-+			return true;
- 		/* This is first coelesce call for a series of nfs_pages */
- 		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 						   prev->wb_context,
--						   req_offset(req),
-+						   req_offset(prev),
- 						   pgio->pg_count,
- 						   access_type,
- 						   gfp_flags);
--		return true;
-+		if (pgio->pg_lseg == NULL)
-+			return true;
- 	}
+@@ -87,7 +90,8 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
+  * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
+  */
+ void
+-set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
++set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
++		      u32 id)
+ {
+ 	struct pnfs_layoutdriver_type *ld_type = NULL;
  
--	if (pgio->pg_lseg &&
--	    req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
-+	if (req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
- 					 pgio->pg_lseg->pls_range.length))
- 		return false;
+@@ -114,6 +118,14 @@ set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
+ 		goto out_no_driver;
+ 	}
+ 	server->pnfs_curr_ld = ld_type;
++	if (ld_type->set_layoutdriver
++	    && ld_type->set_layoutdriver(server, mntfh)) {
++		printk(KERN_ERR
++		       "%s: Error initializing mount point for layout driver %u.\n",
++		       __func__, id);
++		module_put(ld_type->owner);
++		goto out_no_driver;
++	}
+ 
+ 	dprintk("%s: pNFS module for %u set\n", __func__, id);
+ 	return;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 9dc950c..f984598 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -80,6 +80,9 @@ struct pnfs_layoutdriver_type {
+ 	struct module *owner;
+ 	unsigned flags;
+ 
++	int (*set_layoutdriver) (struct nfs_server *, const struct nfs_fh *);
++	int (*clear_layoutdriver) (struct nfs_server *);
++
+ 	struct pnfs_layout_hdr * (*alloc_layout_hdr) (struct inode *inode, gfp_t gfp_flags);
+ 	void (*free_layout_hdr) (struct pnfs_layout_hdr *);
+ 
+@@ -165,7 +168,7 @@ void put_lseg(struct pnfs_layout_segment *lseg);
+ bool pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
+ bool pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *, int);
+ 
+-void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
++void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
+ enum pnfs_try_status pnfs_try_to_write_data(struct nfs_write_data *,
+ 					     const struct rpc_call_ops *, int);
+@@ -375,7 +378,8 @@ pnfs_roc_drain(struct inode *ino, u32 *barrier)
+ 	return false;
+ }
+ 
+-static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
++static inline void set_pnfs_layoutdriver(struct nfs_server *s,
++					 const struct nfs_fh *mntfh, u32 id);
+ {
+ }
  
 -- 
-1.7.5.2
+1.7.4.1
 
