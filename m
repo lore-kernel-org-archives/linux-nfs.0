@@ -1,96 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:36033 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753244Ab1FXOBK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Jun 2011 10:01:10 -0400
-Date: Fri, 24 Jun 2011 10:01:05 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond@netapp.com>
-Subject: Re: autoload rpcsec_gss_krb5
-Message-ID: <20110624140105.GA18829@fieldses.org>
-References: <20110622213209.GA3010@fieldses.org>
- <20110623155947.GC8911@fieldses.org>
- <BANLkTikS+Y-V=f3Pm8AF-AUoeYVo==4SzA@mail.gmail.com>
- <20110623201117.GB12357@fieldses.org>
- <20110623203012.GD12357@fieldses.org>
- <4E03F4EA.5050206@panasas.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E03F4EA.5050206@panasas.com>
+Received: from daytona.panasas.com ([67.152.220.89]:38119 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754004Ab1FNVgI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2011 17:36:08 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>, open-osd <osd-dev@open-osd.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 03/10] SQUASHME: pnfsd-exofs: Prettify pnfs_osd_xdr_srv.h
+Date: Tue, 14 Jun 2011 17:36:07 -0400
+Message-Id: <1308087367-13123-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DF7D36F.9070602@panasas.com>
+References: <4DF7D36F.9070602@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, Jun 23, 2011 at 07:22:34PM -0700, Boaz Harrosh wrote:
-> On 06/23/2011 01:30 PM, J. Bruce Fields wrote:
-> > On Thu, Jun 23, 2011 at 04:11:17PM -0400, J. Bruce Fields wrote:
-> >> On Thu, Jun 23, 2011 at 10:06:14PM +0200, Tigran Mkrtchyan wrote:
-> >>> I recall a discussion at connectaton 2010, where Peter Staubach from
-> >>> RedHat ( at that time )
-> >>> requested a way to disable pNFS without rebuilding the kernel.
-> >>>
-> >>> Probably that's why autoload is not implemented.
-> >>
-> >> Well, autoload *is* implemented, you just have to add an alias command
-> >> to modprobe.conf before it'll work.
-> >>
-> >> And if we embed the alias in the module instead, it will still be
-> >> possible to disable autloading by adding a "backlist <modulename>" to
-> >> modproble.conf.
-> >>
-> >> So I don't *think* that's the issue, unless I've missed something.
-> > 
-> > So can we just do this?  (Untested.)
-> > 
-> > --b.
-> > 
-> > commit 8b3065071b5469c428d70052c80f1df3cb398da6
-> > Author: J. Bruce Fields <bfields@redhat.com>
-> > Date:   Thu Jun 23 16:15:39 2011 -0400
-> > 
-> >     pnfs: simplify pnfs files module autoloading
-> >     
-> >     Embed the necessary alias into the module rather than waiting for
-> >     someone to add it to /etc/modprobe.conf
-> >     
-> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > 
-> > diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> > index 4269088..eb65f82 100644
-> > --- a/fs/nfs/nfs4filelayout.c
-> > +++ b/fs/nfs/nfs4filelayout.c
-> > @@ -896,5 +896,7 @@ static void __exit nfs4filelayout_exit(void)
-> >  	pnfs_unregister_layoutdriver(&filelayout_type);
-> >  }
-> >  
-> > +MODULE_ALIAS("nfs-layouttype4-1");
-> > +
-> >  module_init(nfs4filelayout_init);
-> >  module_exit(nfs4filelayout_exit);
-> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-> index 70272d5..dd6a453 100644
-> --- a/fs/nfs/objlayout/objio_osd.c
-> +++ b/fs/nfs/objlayout/objio_osd.c
-> @@ -1065,5 +1065,7 @@ objlayout_exit(void)
->  	       __func__);
->  }
->  
-> +MODULE_ALIAS("nfs-layouttype4-2");
-> +
->  module_init(objlayout_init);
->  module_exit(objlayout_exit);
-> ---
-> 
-> nfs-layouttype4-1
-> nfs-layouttype4-2
-> ...
-> 
-> Can we use a name here or it must be the number?
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ include/linux/nfsd/pnfs_osd_xdr_srv.h |   29 ++++++++++++++++++++++++-----
+ 1 files changed, 24 insertions(+), 5 deletions(-)
 
-Looks like it needs a number; see the request_module() call in
-set_pnfs_layoutdriver:
+diff --git a/include/linux/nfsd/pnfs_osd_xdr_srv.h b/include/linux/nfsd/pnfs_osd_xdr_srv.h
+index 65de588..256a7e07 100644
+--- a/include/linux/nfsd/pnfs_osd_xdr_srv.h
++++ b/include/linux/nfsd/pnfs_osd_xdr_srv.h
+@@ -1,17 +1,36 @@
++/*
++ * pnfs-objects Server XDR definitions and API
++ *
++ * Copyright (C) from 2011 Panasas Inc.  All rights reserved.
++ *
++ * Authors:
++ *   Boaz Harrosh <bharrosh@panasas.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2
++ *
++ */
++#ifndef __PNFS_OSD_XDR_SRV_H__
++#define __PNFS_OSD_XDR_SRV_H__
++
+ #include <linux/pnfs_osd_xdr.h>
+ #include <linux/exp_xdr.h>
+ 
+ /* Layout encoding */
+-extern int pnfs_osd_xdr_encode_layout(
++int pnfs_osd_xdr_encode_layout(
+ 	struct exp_xdr_stream *xdr,
+ 	struct pnfs_osd_layout *layout);
+ 
+-/* deviceaddr for Servers */
+-extern int pnfs_osd_xdr_encode_deviceaddr(
++/* deviceaddr encoding */
++int pnfs_osd_xdr_encode_deviceaddr(
+ 	struct exp_xdr_stream *xdr, struct pnfs_osd_deviceaddr *devaddr);
+ 
+-extern __be32 * pnfs_osd_xdr_decode_layoutupdate(
++/* layout_commit decoding */
++__be32 * pnfs_osd_xdr_decode_layoutupdate(
+ 	struct pnfs_osd_layoutupdate *lou, __be32 *p);
+ 
+-extern bool pnfs_osd_xdr_decode_ioerr(
++/* layout_return decoding */
++bool pnfs_osd_xdr_decode_ioerr(
+ 	struct pnfs_osd_ioerr *ioerr, struct exp_xdr_stream *xdr);
++
++#endif /* __PNFS_OSD_XDR_SRV_H__ */
+-- 
+1.7.3.4
 
-	request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
-
---b.
