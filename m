@@ -1,83 +1,180 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:34139 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752855Ab1FATNR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 15:13:17 -0400
-Received: by wya21 with SMTP id 21so89016wya.19
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Jun 2011 12:13:15 -0700 (PDT)
-Message-ID: <4DE68F47.5080802@panasas.com>
-Date: Wed, 01 Jun 2011 22:13:11 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Weston Andros Adamson <dros@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>, trond@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS: filelayout should use nfs_generic_pg_test
-References: <1306898310-9229-1-git-send-email-dros@netapp.com>	 <4DE5D287.603@panasas.com>	 <09816808-BA7B-4EAF-A18A-866B5A98BF25@netapp.com>	 <4DE65202.2010502@panasas.com> <1306951621.3873.45.camel@lade.trondhjem.org>
-In-Reply-To: <1306951621.3873.45.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:52016 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754073Ab1FNCci (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:38 -0400
+Message-Id: <00c2ae19b7c276db0430383679db94c7412d7181.1308017749.git.rees@umich.edu>
+In-Reply-To: <cover.1308017749.git.rees@umich.edu>
+References: <cover.1308017749.git.rees@umich.edu>
+Subject: [PATCH 14/33] pnfsblock: remove device operations
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Date: Mon, 13 Jun 2011 22:32:36 -0400
+From: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-06-01 21:07, Trond Myklebust wrote:
-> On Wed, 2011-06-01 at 17:51 +0300, Benny Halevy wrote: 
->> I think the following should work:
->>
->> Benny
->>
->> git diff --stat -p -M
->>  fs/nfs/nfs4filelayout.c |   10 ++++++++++
->>  1 files changed, 10 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->> index 4269088..9f1d445 100644
->> --- a/fs/nfs/nfs4filelayout.c
->> +++ b/fs/nfs/nfs4filelayout.c
->> @@ -661,6 +661,16 @@ filelayout_pg_test(struct nfs_pageio_descriptor
->> *pgio, struct nfs_page *prev,
->>  	u64 p_stripe, r_stripe;
->>  	u32 stripe_unit;
->>
->> +	/*
->> +	 * FIXME: ideally we should be able to coalesce all requests
->> +	 * that are not block boundary aligned, but currently this
->> +	 * is problematic for the case of bsize < PAGE_CACHE_SIZE,
->> +	 * since nfs_flush_multi and nfs_pagein_multi assume you
->> +	 * can have only one struct nfs_page.
->> +	 */
->> +	if (desc->pg_bsize < PAGE_SIZE)
->> +		return 0;
->> +
->>  	if (!pnfs_generic_pg_test(pgio, prev, req))
->>  		return 0;
-> 
-> So, there are several things that bother me about pnfs_generic_pg_test()
-> too now that I'm looking more closely at it:
-> 
->      1. If the intention is to coalesce 'prev' and 'req', shouldn't we
->         be asking for a layout with req_offset(prev) instead of
->         req_offset(req)? 
->      2. If we're only requesting a layout of length pg_count, don't we
->         still need to test the layout length that the server actually
->         returned before we can allow the coalescing? 
->      3. if (!pgio->lseg), shouldn't we be returning an error of some
->         sort? Right now we're returning 'true', and allowing the
->         coalesce to occur. 
->      4. Furthermore, shouldn't that test guarding the
->         pnfs_update_layout() call rather be an 'if (pgio->pg_lseg ==
->         NULL)' instead of looking at the values of pg_count and
->         prev->wb_bytes?
-> 
+Signed-off-by: Jim Rees <rees@umich.edu>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/Makefile        |    2 +-
+ fs/nfs/blocklayout/blocklayout.h   |    2 +
+ fs/nfs/blocklayout/blocklayoutdm.c |  120 ++++++++++++++++++++++++++++++++++++
+ 3 files changed, 123 insertions(+), 1 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
 
-or rather we get the layout for the first page in
-nfs_pageio_do_add_request when desc->pg_count == 0?
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+index bd69aad..bdbf180 100644
+--- a/fs/nfs/blocklayout/Makefile
++++ b/fs/nfs/blocklayout/Makefile
+@@ -2,4 +2,4 @@
+ # Makefile for the pNFS block layout driver kernel module
+ #
+ obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
+-blocklayoutdriver-objs := blocklayout.o block-device-discovery-pipe.o extents.o blocklayoutdev.o
++blocklayoutdriver-objs := blocklayout.o block-device-discovery-pipe.o extents.o blocklayoutdev.o blocklayoutdm.o
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index cda7ea1..839b81d 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -101,6 +101,8 @@ struct pnfs_block_dev *nfs4_blk_decode_device(struct nfs_server *server,
+ 						struct list_head *sdlist);
+ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+ 				struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
++/* blocklayoutdm.c */
++void free_block_dev(struct pnfs_block_dev *bdev);
+ 
+ #include <linux/sunrpc/simple_rpc_pipefs.h>
+ 
+diff --git a/fs/nfs/blocklayout/blocklayoutdm.c b/fs/nfs/blocklayout/blocklayoutdm.c
+new file mode 100644
+index 0000000..097dd05
+--- /dev/null
++++ b/fs/nfs/blocklayout/blocklayoutdm.c
+@@ -0,0 +1,120 @@
++/*
++ *  linux/fs/nfs/blocklayout/blocklayoutdm.c
++ *
++ *  Module for the NFSv4.1 pNFS block layout driver.
++ *
++ *  Copyright (c) 2007 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Fred Isaman <iisaman@umich.edu>
++ *  Andy Adamson <andros@citi.umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
++ */
++
++#include <linux/genhd.h> /* gendisk - used in a dprintk*/
++#include <linux/sched.h>
++#include <linux/hash.h>
++
++#include "blocklayout.h"
++
++#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
++
++/* Defines used for calculating memory usage in nfs4_blk_flatten() */
++#define ARGSIZE   24    /* Max bytes needed for linear target arg string */
++#define SPECSIZE (sizeof8(struct dm_target_spec) + ARGSIZE)
++#define SPECS_PER_PAGE (PAGE_SIZE / SPECSIZE)
++#define SPEC_HEADER_ADJUST (SPECS_PER_PAGE - \
++			    (PAGE_SIZE - sizeof8(struct dm_ioctl)) / SPECSIZE)
++#define roundup8(x) (((x)+7) & ~7)
++#define sizeof8(x) roundup8(sizeof(x))
++
++static int dev_remove(dev_t dev)
++{
++	int ret = 1;
++	struct pipefs_hdr *msg = NULL, *reply = NULL;
++	uint64_t bl_dev;
++	uint32_t major = MAJOR(dev), minor = MINOR(dev);
++
++	dprintk("Entering %s\n", __func__);
++
++	if (IS_ERR(bl_device_pipe))
++		return ret;
++
++	memcpy((void *)&bl_dev, &major, sizeof(uint32_t));
++	memcpy((void *)&bl_dev + sizeof(uint32_t), &minor, sizeof(uint32_t));
++	msg = pipefs_alloc_init_msg(0, BL_DEVICE_UMOUNT, 0, (void *)&bl_dev,
++				    sizeof(uint64_t));
++	if (IS_ERR(msg)) {
++		dprintk("ERROR: couldn't make pipefs message.\n");
++		goto out;
++	}
++	msg->msgid = hash_ptr(&msg, sizeof(msg->msgid) * 8);
++	msg->status = BL_DEVICE_REQUEST_INIT;
++
++	reply = pipefs_queue_upcall_waitreply(bl_device_pipe, msg,
++					      &bl_device_list, 0, 0);
++	if (IS_ERR(reply)) {
++		dprintk("ERROR: upcall_waitreply failed\n");
++		goto out;
++	}
++
++	if (reply->status == BL_DEVICE_REQUEST_PROC)
++		ret = 0; /*TODO: what to return*/
++out:
++	if (!IS_ERR(reply))
++		kfree(reply);
++	if (!IS_ERR(msg))
++		kfree(msg);
++	return ret;
++}
++
++/*
++ * Release meta device
++ */
++static int nfs4_blk_metadev_release(struct pnfs_block_dev *bdev)
++{
++	int rv;
++
++	dprintk("%s Releasing\n", __func__);
++	/* XXX Check return? */
++	rv = nfs4_blkdev_put(bdev->bm_mdev);
++	dprintk("%s nfs4_blkdev_put returns %d\n", __func__, rv);
++
++	rv = dev_remove(bdev->bm_mdev->bd_dev);
++	dprintk("%s Returns %d\n", __func__, rv);
++	return rv;
++}
++
++void free_block_dev(struct pnfs_block_dev *bdev)
++{
++	if (bdev) {
++		if (bdev->bm_mdev) {
++			dprintk("%s Removing DM device: %d:%d\n",
++				__func__,
++				MAJOR(bdev->bm_mdev->bd_dev),
++				MINOR(bdev->bm_mdev->bd_dev));
++			/* XXX Check status ?? */
++			nfs4_blk_metadev_release(bdev);
++		}
++		kfree(bdev);
++	}
++}
+-- 
+1.7.4.1
 
-Then, this lseg would be useful for nfs_flush_multi
-if we failed to coalesce, or we failed to get a layout
-altogether we go the nfs path and can reset pg_test to
-nfs_generic_pg_test.
-
-Otherwise I agree with your assertions above.
-
-Benny
