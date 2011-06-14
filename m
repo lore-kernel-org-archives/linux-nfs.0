@@ -1,33 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:60883 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752285Ab1FICFf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jun 2011 22:05:35 -0400
-Date: Wed, 8 Jun 2011 22:05:33 -0400
-From: Jim Rees <rees@umich.edu>
-To: =?utf-8?B?5a6L5ZOy?= <songzhe@cintel.net.cn>
-Cc: "SteveD@redhat.com" <SteveD@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Re: does nfs-util have a api-manual?
-Message-ID: <20110609020533.GA26285@merit.edu>
-References: <777962.29188.qm@web15806.mail.cnb.yahoo.com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <777962.29188.qm@web15806.mail.cnb.yahoo.com>
+Received: from daytona.panasas.com ([67.152.220.89]:38125 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753956Ab1FNVgP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2011 17:36:15 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>, open-osd <osd-dev@open-osd.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 04/10] SQUASHME: pnfsd-exofs: Change layout encoding to two pass
+Date: Tue, 14 Jun 2011 17:36:14 -0400
+Message-Id: <1308087374-13151-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DF7D36F.9070602@panasas.com>
+References: <4DF7D36F.9070602@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-宋哲 wrote:
+This way there is No need for dynamic allocation of the creds
+array.
 
-  I have wrote a server application that record audio files to a nfs 
-  directory, and I write to the directory just like it is a local disk.
-  
-  But when some error occurs with the nfs-connection, the "write" 
-  operation is just hanged up and does not return any errors, so I want to 
-  use nfs-utils, and I think I can handle the error above with the tools. 
-  But I almost know nothing about nfs-utils. Can you help me?
+TODO: We can now remove the olo_comps pointer from
+      struct pnfs_osd_layout neither the server nor client use
+      it any more. (rename it to pnfs_osd_layout_hdr)
 
-I don't think you need nfs-utils.  The write() system call will hang
-indefinitely if there is a problem with the mount.  If you want it to fail
-when the server goes away, you need a soft mount, and adjust the timeo and
-retrans mount options to suit.  See mount.nfs(8) and nfs(5).
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/exportfs/pnfs_osd_xdr_srv.c        |   16 +++++-----------
+ include/linux/nfsd/pnfs_osd_xdr_srv.h |    6 +++++-
+ 2 files changed, 10 insertions(+), 12 deletions(-)
+
+diff --git a/fs/exportfs/pnfs_osd_xdr_srv.c b/fs/exportfs/pnfs_osd_xdr_srv.c
+index 67564f6..ec814c1 100644
+--- a/fs/exportfs/pnfs_osd_xdr_srv.c
++++ b/fs/exportfs/pnfs_osd_xdr_srv.c
+@@ -110,7 +110,7 @@ static inline int pnfs_osd_xdr_encode_objid(
+  * 	struct pnfs_osd_opaque_cred	oc_cap;
+  * };
+  */
+-static int pnfs_osd_xdr_encode_object_cred(
++int pnfs_osd_xdr_encode_layout_cred(
+ 	struct exp_xdr_stream *xdr,
+ 	struct pnfs_osd_object_cred *olo_comp)
+ {
+@@ -136,6 +136,7 @@ static int pnfs_osd_xdr_encode_object_cred(
+ 
+ 	return 0;
+ }
++EXPORT_SYMBOL(pnfs_osd_xdr_encode_layout_cred);
+ 
+ /*
+  * struct pnfs_osd_layout {
+@@ -145,12 +146,11 @@ static int pnfs_osd_xdr_encode_object_cred(
+  * 	struct pnfs_osd_object_cred	*olo_comps;
+  * };
+  */
+-int pnfs_osd_xdr_encode_layout(
++int pnfs_osd_xdr_encode_layout_hdr(
+ 	struct exp_xdr_stream *xdr,
+ 	struct pnfs_osd_layout *pol)
+ {
+ 	__be32 *p;
+-	u32 i;
+ 	int err;
+ 
+ 	err = pnfs_osd_xdr_encode_data_map(xdr, &pol->olo_map);
+@@ -164,15 +164,9 @@ int pnfs_osd_xdr_encode_layout(
+ 	p = exp_xdr_encode_u32(p, pol->olo_comps_index);
+ 	p = exp_xdr_encode_u32(p, pol->olo_num_comps);
+ 
+-	for (i = 0; i < pol->olo_num_comps; i++) {
+-		err = pnfs_osd_xdr_encode_object_cred(xdr, &pol->olo_comps[i]);
+-		if (err)
+-			return err;
+-	}
+-
+ 	return 0;
+ }
+-EXPORT_SYMBOL(pnfs_osd_xdr_encode_layout);
++EXPORT_SYMBOL(pnfs_osd_xdr_encode_layout_hdr);
+ 
+ static int _encode_string(struct exp_xdr_stream *xdr,
+ 			  const struct nfs4_string *str)
+@@ -217,7 +211,7 @@ int pnfs_osd_xdr_encode_deviceaddr(
+ 	if (err)
+ 		return err;
+ 
+-	err = pnfs_osd_xdr_encode_object_cred(xdr,
++	err = pnfs_osd_xdr_encode_layout_cred(xdr,
+ 					      &devaddr->oda_root_obj_cred);
+ 	if (err)
+ 		return err;
+diff --git a/include/linux/nfsd/pnfs_osd_xdr_srv.h b/include/linux/nfsd/pnfs_osd_xdr_srv.h
+index 256a7e07..e9a2187 100644
+--- a/include/linux/nfsd/pnfs_osd_xdr_srv.h
++++ b/include/linux/nfsd/pnfs_osd_xdr_srv.h
+@@ -17,10 +17,14 @@
+ #include <linux/exp_xdr.h>
+ 
+ /* Layout encoding */
+-int pnfs_osd_xdr_encode_layout(
++int pnfs_osd_xdr_encode_layout_hdr(
+ 	struct exp_xdr_stream *xdr,
+ 	struct pnfs_osd_layout *layout);
+ 
++int pnfs_osd_xdr_encode_layout_cred(
++	struct exp_xdr_stream *xdr,
++	struct pnfs_osd_object_cred *cred);
++
+ /* deviceaddr encoding */
+ int pnfs_osd_xdr_encode_deviceaddr(
+ 	struct exp_xdr_stream *xdr, struct pnfs_osd_deviceaddr *devaddr);
+-- 
+1.7.3.4
+
