@@ -1,91 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e23smtp04.au.ibm.com ([202.81.31.146]:40249 "EHLO
-	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753804Ab1F1Klo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jun 2011 06:41:44 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.31.245])
-	by e23smtp04.au.ibm.com (8.14.4/8.13.1) with ESMTP id p5SAZTY9019011
-	for <linux-nfs@vger.kernel.org>; Tue, 28 Jun 2011 20:35:29 +1000
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p5SAfd69438378
-	for <linux-nfs@vger.kernel.org>; Tue, 28 Jun 2011 20:41:39 +1000
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p5SAfdnB019403
-	for <linux-nfs@vger.kernel.org>; Tue, 28 Jun 2011 20:41:39 +1000
-Received: from localhost ([9.77.125.199])
-	by d23av01.au.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p5SAfcxF019386
-	for <linux-nfs@vger.kernel.org>; Tue, 28 Jun 2011 20:41:39 +1000
-Date: Tue, 28 Jun 2011 16:11:38 +0530
-From: Prem Karat <prem.karat@linux.vnet.ibm.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/1] nfs-utils: Don't hard code source and destination args
-Message-ID: <20110628104138.GB6600@d6fc318.ibm.com>
-Content-Type: text/plain; charset=us-ascii
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:48119 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754060Ab1FNCcl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:41 -0400
+Message-Id: <a35a43caa31b3e66f678cd2a7ffbcd0625a14a0c.1308017749.git.rees@umich.edu>
+In-Reply-To: <cover.1308017749.git.rees@umich.edu>
+References: <cover.1308017749.git.rees@umich.edu>
+Subject: [PATCH 15/33] pnfsblock: lseg alloc and free
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Date: Mon, 13 Jun 2011 22:32:38 -0400
+From: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-Currently souce and destination parameters should be passed as first and 
-second paramter while using mount.nfs. This patch allows them to be passed 
-anywhere while mounting.
-
-Current functionality is
-	mount.nfs source destn -o <options>
-This patch will allow to do this
-	mount.nfs -o <options> source destn
-		or
-	mount.nfs -o <options> source -o <options> destn
-
-Signed-off-by: Prem Karat <prem.karat@linux.vnet.ibm.com>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: fix bug getting pnfs_layout_type in translate_devid().]
+Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Zhang Jingwang <Jingwang.Zhang@emc.com>
 ---
- utils/mount/mount.c |   13 +++++++++----
- 1 files changed, 9 insertions(+), 4 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c    |   39 +++++++++++++++++++++++++++++-----
+ fs/nfs/blocklayout/blocklayout.h    |    6 +++++
+ fs/nfs/blocklayout/blocklayoutdev.c |    8 +++++++
+ 3 files changed, 47 insertions(+), 6 deletions(-)
 
-diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index f3f0a83..62115bb 100644
---- a/utils/mount/mount.c
-+++ b/utils/mount/mount.c
-@@ -374,7 +374,7 @@ static int try_mount(char *spec, char *mount_point, int flags,
- int main(int argc, char *argv[])
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 4ca0838..992fd31 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -110,16 +110,43 @@ static struct pnfs_layout_hdr *bl_alloc_layout_hdr(struct inode *inode,
+ 	return &bl->bl_layout;
+ }
+ 
+-static void
+-bl_free_lseg(struct pnfs_layout_segment *lseg)
++static void bl_free_lseg(struct pnfs_layout_segment *lseg)
  {
- 	int c, flags = 0, mnt_err = 1, fake = 0;
--	char *spec, *mount_point, *fs_type = "nfs";
-+	char *spec = NULL, *mount_point = NULL, *fs_type = "nfs";
- 	char *extra_opts = NULL, *mount_opts = NULL;
- 	uid_t uid = getuid();
++	dprintk("%s enter\n", __func__);
++	kfree(lseg);
+ }
  
-@@ -398,9 +398,6 @@ int main(int argc, char *argv[])
- 		exit(EX_USAGE);
- 	}
+-static struct pnfs_layout_segment *
+-bl_alloc_lseg(struct pnfs_layout_hdr *lo,
+-	      struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
++/* Because the generic infrastructure does not correctly merge layouts,
++ * we pretty much ignore lseg, and store all data layout wide, so we
++ * can correctly merge.  Eventually we should push some correct merge
++ * behavior up to the generic code, as the current behavior tends to
++ * cause lots of unnecessary overlapping LAYOUTGET requests.
++ */
++static struct pnfs_layout_segment *bl_alloc_lseg(struct pnfs_layout_hdr *lo,
++						 struct nfs4_layoutget_res *lgr,
++						 gfp_t gfp_flags)
+ {
+-	return NULL;
++	struct pnfs_layout_segment *lseg;
++	int status;
++
++	dprintk("%s enter\n", __func__);
++	lseg = kzalloc(sizeof(*lseg) + 0, gfp_flags);
++	if (!lseg)
++		return NULL;
++	status = nfs4_blk_process_layoutget(lo, lgr, gfp_flags);
++	if (status) {
++		/* We don't want to call the full-blown bl_free_lseg,
++		 * since on error extents were not touched.
++		 */
++		/* STUB - we really want to distinguish between 2 error
++		 * conditions here.  This lseg failed, but lo data structures
++		 * are OK, or we hosed the lo data structures.  The calling
++		 * code probably needs to distinguish this too.
++		 */
++		kfree(lseg);
++		return ERR_PTR(status);
++	}
++	return lseg;
+ }
  
--	spec = argv[1];
--	mount_point = argv[2];
--
- 	mount_config_init(progname);
+ static void
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 839b81d..5c1ccc1 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -93,6 +93,12 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
+ 	return container_of(lo, struct pnfs_block_layout, bl_layout);
+ }
  
- 	argv[2] = argv[0]; /* so that getopt error messages are correct */
-@@ -447,6 +444,14 @@ int main(int argc, char *argv[])
- 	if (optind != argc - 2) {
- 		mount_usage();
- 		goto out_usage;
-+	} else {
-+		while (optind < argc) {
-+			if (!spec)
-+				spec = argv[optind];
-+			else
-+				mount_point = argv[optind];
-+			optind++;
-+		}
- 	}
- 
- 	if (strcmp(progname, "mount.nfs4") == 0)
++static inline struct pnfs_block_layout *
++BLK_LSEG2EXT(struct pnfs_layout_segment *lseg)
++{
++	return BLK_LO2EXT(lseg->pls_layout);
++}
++
+ /* blocklayoutdev.c */
+ struct block_device *nfs4_blkdev_get(dev_t dev);
+ int nfs4_blkdev_put(struct block_device *bdev);
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+index 9a65a66..0fedf50 100644
+--- a/fs/nfs/blocklayout/blocklayoutdev.c
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -149,3 +149,11 @@ out_err:
+ 		kfree(msg);
+ 	return NULL;
+ }
++
++int
++nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
++			   struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
++{
++	/* STUB */
++	return -EIO;
++}
 -- 
-1.7.4
+1.7.4.1
 
--- 
-Cheers,
-Prem
-Linux Technology Center,
-IBM Systems & Technology Labs
-DID: 41776362
