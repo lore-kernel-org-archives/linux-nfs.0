@@ -1,60 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp04.online.nl ([194.134.41.34]:52211 "EHLO smtp04.online.nl"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752458Ab1FCHjS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Jun 2011 03:39:18 -0400
-Received: from smtp04.online.nl (localhost [127.0.0.1])
-	by smtp04.online.nl (Postfix) with ESMTP id 8FAB2E1D6
-	for <linux-nfs@vger.kernel.org>; Fri,  3 Jun 2011 09:29:20 +0200 (CEST)
-Received: from srv2.net.home (s5375c22f.adsl.wanadoo.nl [83.117.194.47])
-	by smtp04.online.nl (Postfix) with ESMTP
-	for <linux-nfs@vger.kernel.org>; Fri,  3 Jun 2011 09:29:20 +0200 (CEST)
-Received: from localhost (localhost [127.0.0.1])
-	by srv2.net.home (Postfix) with ESMTP id 33964624F0
-	for <linux-nfs@vger.kernel.org>; Fri,  3 Jun 2011 09:29:20 +0200 (CEST)
-Received: from srv2.net.home ([127.0.0.1])
-	by localhost (webmail.net.home [127.0.0.1]) (amavisd-new, port 10024)
-	with LMTP id fEehDnH2GisO for <linux-nfs@vger.kernel.org>;
-	Fri,  3 Jun 2011 09:29:20 +0200 (CEST)
-Received: from [192.168.1.2] (vovan.net.home [192.168.1.2])
-	by srv2.net.home (Postfix) with ESMTPS id E06FE624EE
-	for <linux-nfs@vger.kernel.org>; Fri,  3 Jun 2011 09:29:19 +0200 (CEST)
-Subject: NFS3 + kerberos: performance issues
-From: Vladimir Elisseev <vovan@vovan.nl>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 03 Jun 2011 09:29:19 +0200
-Message-ID: <1307086159.1052.19.camel@vovan.net.home>
+Received: from daytona.panasas.com ([67.152.220.89]:36604 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753928Ab1FNVDc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2011 17:03:32 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>, open-osd <osd-dev@open-osd.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 6/8] pnfsd-exofs: get_device_info implementation.
+Date: Tue, 14 Jun 2011 17:03:31 -0400
+Message-Id: <1308085411-12630-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DF7CA2F.7030407@panasas.com>
+References: <4DF7CA2F.7030407@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hello,
+Implement a .get_device_info operation from the
+pnfs_export_operations.
 
-After using nfs3 with kerberos for a while I discovered very poor
-performance for some file operations like creation of files. There are
-two observations:
-- the overal nfs3 performance is good: for instance copying large files
-works fine
-- this poor performance is definitely related to kerberos as the same
-volume exported without sec=krb5 works ~10 times faster with creating
-files
-I'd appreciate if somebody can explain this behaviour?
+Retrieve to system_id and osdname for the requested
+devices.
 
-Below are some details about NFS server and client:
-server:
-- kernel 2.6.36
-- export options rw,sec=krb5,no_root_squash,no_subtree_check
-- nfs-utils 1.2.3
+TODO: Return also UNC hints for the device login
+information.
 
-client:
-- kernel 2.6.38 or 2.6.39 
-- mout options (from /proc/mounts):
-rw,nosuid,nodev,noatime,vers=3,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=krb5,mountaddr=192.168.1.219,mountvers=3,mountport=32767,mountproto=tcp,local_lock=none,addr=192.168.1.219
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/exofs/export.c |   54 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 54 insertions(+), 0 deletions(-)
 
-when the same volume exported without sec=krb5, the only option changes
-in /proc/mounts is sec=sys
-
-Regards,
-Vlad.
+diff --git a/fs/exofs/export.c b/fs/exofs/export.c
+index 0a068b7..23c1666 100644
+--- a/fs/exofs/export.c
++++ b/fs/exofs/export.c
+@@ -185,11 +185,65 @@ static int exofs_layout_return(
+ 	return 0;
+ }
+ 
++int exofs_get_device_info(struct super_block *sb, struct exp_xdr_stream *xdr,
++			  u32 layout_type,
++			  const struct nfsd4_pnfs_deviceid *devid)
++{
++	struct exofs_sb_info *sbi = sb->s_fs_info;
++	struct pnfs_osd_deviceaddr devaddr;
++	const struct osd_dev_info *odi;
++	u64 devno = devid->devid;
++	__be32 *start;
++	int err;
++
++	memset(&devaddr, 0, sizeof(devaddr));
++
++	if (unlikely(devno >= sbi->layout.s_numdevs)) {
++		EXOFS_DBGMSG("Error: Device((%llx,%llx) does not exist\n",
++			     devid->sbid, devno);
++		return -ENODEV;
++	}
++
++	odi = osduld_device_info(sbi->layout.s_ods[devno]);
++
++	devaddr.oda_systemid.len = odi->systemid_len;
++	devaddr.oda_systemid.data = (void *)odi->systemid; /* !const cast */
++
++	devaddr.oda_osdname.len = odi->osdname_len ;
++	devaddr.oda_osdname.data = (void *)odi->osdname;/* !const cast */
++
++	/* skip opaque size, will be filled-in later */
++	start = exp_xdr_reserve_qwords(xdr, 1);
++	if (!start) {
++		err = -ETOOSMALL;
++		goto err;
++	}
++
++	err = pnfs_osd_xdr_encode_deviceaddr(xdr, &devaddr);
++	if (err) {
++		err = -ETOOSMALL;
++		goto err;
++	}
++
++	exp_xdr_encode_opaque_len(start, xdr->p);
++
++	EXOFS_DBGMSG("xdr_bytes=%Zu devid=(%llx,%llx) osdname-%s\n",
++		     exp_xdr_qbytes(xdr->p - start), devid->sbid, devno,
++		     odi->osdname);
++	return 0;
++
++err:
++	EXOFS_DBGMSG("Error: err=%d at_byte=%zu\n",
++		     err, exp_xdr_qbytes(xdr->p - start));
++	return err;
++}
++
+ struct pnfs_export_operations exofs_pnfs_ops = {
+ 	.layout_type	= exofs_layout_type,
+ 	.layout_get	= exofs_layout_get,
+ 	.layout_commit	= exofs_layout_commit,
+ 	.layout_return	= exofs_layout_return,
++	.get_device_info = exofs_get_device_info,
+ };
+ 
+ void exofs_init_export(struct super_block *sb)
+-- 
+1.7.3.4
 
