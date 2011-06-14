@@ -1,339 +1,321 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:58445 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751391Ab1FNO6O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Jun 2011 10:58:14 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Steve Dickson <steved@redhat.com>
-Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/4] mountd: move fsidtype-specific code to helpers
-Date: Tue, 14 Jun 2011 10:58:11 -0400
-Message-Id: <1308063492-30103-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1308063492-30103-1-git-send-email-bfields@redhat.com>
-References: <1308063492-30103-1-git-send-email-bfields@redhat.com>
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:52051 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754073Ab1FNCdB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:33:01 -0400
+Message-Id: <5947aa685de51b38a77f0c49a47c6085b574faf0.1308017749.git.rees@umich.edu>
+In-Reply-To: <cover.1308017749.git.rees@umich.edu>
+References: <cover.1308017749.git.rees@umich.edu>
+Subject: [PATCH 23/33] pnfsblock: encode_layoutcommit
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Date: Mon, 13 Jun 2011 22:32:58 -0400
+From: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Now we can move these big switch statements into helper functions.
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+In blocklayout driver. There are two things happening
+while layoutcommit/cleanup.
+1. the modified extents are encoded.
+2. On cleanup the extents are put back on the layout rw
+   extents list, for reads.
+
+In the new system where actual xdr encoding is done in
+encode_layoutcommit() directly into xdr buffer, these are
+the new commit stages:
+
+1. On setup_layoutcommit, the range is adjusted as before
+   and a structure is allocated for communication with
+   bl_encode_layoutcommit && bl_cleanup_layoutcommit
+   (Generic layer provides a void-star to hang it on)
+
+2. bl_encode_layoutcommit is called to do the actual
+   encoding directly into xdr. The commit-extent-list is not
+   freed and is stored on above structure.
+   FIXME: The code is not yet converted to the new XDR cleanup
+
+3. On cleanup the commit-extent-list is put back by a call
+   to set_to_rw() as before, but with no need for XDR decoding
+   of the list as before. And the commit-extent-list is freed.
+   Finally allocated structure is freed.
+
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[blocklayout: encode_layoutcommit implementation]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+[pnfsblock: fix bug setting up layoutcommit.]
+Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+[pnfsblock: prevent commit list corruption]
+[pnfsblock: fix layoutcommit with an empty opaque]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- utils/mountd/cache.c |  240 +++++++++++++++++++++++++++-----------------------
- 1 files changed, 129 insertions(+), 111 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c |    2 +
+ fs/nfs/blocklayout/blocklayout.h |   12 +++
+ fs/nfs/blocklayout/extents.c     |  175 ++++++++++++++++++++++++++++----------
+ 3 files changed, 145 insertions(+), 44 deletions(-)
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 897d61d..d2ae4563 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -364,60 +364,26 @@ struct parsed_fsid {
- 	char *fhuuid;
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 243ce3f..6d0844c 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -153,6 +153,8 @@ static void
+ bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
+ 		       const struct nfs4_layoutcommit_args *arg)
+ {
++	dprintk("%s enter\n", __func__);
++	encode_pnfs_block_layoutupdate(BLK_LO2EXT(lo), xdr, arg);
+ }
+ 
+ static void
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 364540a..c3b41f4 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -135,6 +135,15 @@ struct pnfs_block_extent {
+ 	struct pnfs_inval_markings *be_inval; /* tracks INVAL->RW transition */
  };
  
--static void nfsd_fh(FILE *f)
-+int parse_fsid(int fsidtype, int fsidlen, char *fsid, struct parsed_fsid *parsed)
++/* Shortened extent used by LAYOUTCOMMIT */
++struct pnfs_block_short_extent {
++	struct list_head bse_node;
++	struct nfs4_deviceid bse_devid;	/* STUB - removable??? */
++	struct block_device *bse_mdev;
++	sector_t	bse_f_offset;	/* the starting offset in the file */
++	sector_t	bse_length;	/* the size of the extent */
++};
++
+ static inline void
+ INIT_INVAL_MARKS(struct pnfs_inval_markings *marks, sector_t blocksize)
  {
--	/* request are:
--	 *  domain fsidtype fsid
--	 * interpret fsid, find export point and options, and write:
--	 *  domain fsidtype fsid expiry path
--	 */
--	char *cp;
--	char *dom;
--	int fsidtype;
--	int fsidlen;
--	unsigned long long inode64;
- 	unsigned int dev;
--	char fsid[32];
--	struct parsed_fsid parsed;
--	struct exportent *found = NULL;
--	struct addrinfo *ai = NULL;
--	char *found_path = NULL;
--	nfs_export *exp;
--	int i;
--	int dev_missing = 0;
--
--	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
--		return;
--
--	xlog(D_CALL, "nfsd_fh: inbuf '%s'", lbuf);
-+	unsigned long long inode64;
+@@ -250,6 +259,9 @@ void put_extent(struct pnfs_block_extent *be);
+ struct pnfs_block_extent *alloc_extent(void);
+ struct pnfs_block_extent *get_extent(struct pnfs_block_extent *be);
+ int is_sector_initialized(struct pnfs_inval_markings *marks, sector_t isect);
++int encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
++				   struct xdr_stream *xdr,
++				   const struct nfs4_layoutcommit_args *arg);
+ int add_and_merge_extent(struct pnfs_block_layout *bl,
+ 			 struct pnfs_block_extent *new);
  
--	cp = lbuf;
--	
--	dom = malloc(strlen(cp));
--	if (dom == NULL)
--		return;
--	if (qword_get(&cp, dom, strlen(cp)) <= 0)
--		goto out;
--	if (qword_get_int(&cp, &fsidtype) != 0)
--		goto out;
--	if (fsidtype < 0 || fsidtype > 7)
--		goto out; /* unknown type */
--	if ((fsidlen = qword_get(&cp, fsid, 32)) <= 0)
--		goto out;
-+	parsed->fsidtype = fsidtype;
- 	switch(fsidtype) {
- 	case FSID_DEV: /* 4 bytes: 2 major, 2 minor, 4 inode */
- 		if (fsidlen != 8)
--			goto out;
-+			return -1;
- 		memcpy(&dev, fsid, 4);
--		memcpy(&parsed.inode, fsid+4, 4);
--		parsed.major = ntohl(dev)>>16;
--		parsed.minor = ntohl(dev) & 0xFFFF;
-+		memcpy(&parsed->inode, fsid+4, 4);
-+		parsed->major = ntohl(dev)>>16;
-+		parsed->minor = ntohl(dev) & 0xFFFF;
- 		break;
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 43a3601..e754d32 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -286,6 +286,47 @@ int mark_initialized_sectors(struct pnfs_inval_markings *marks,
+ 	return -ENOMEM;
+ }
  
- 	case FSID_NUM: /* 4 bytes - fsid */
- 		if (fsidlen != 4)
--			goto out;
--		memcpy(&parsed.fsidnum, fsid, 4);
-+			return -1;
-+		memcpy(&parsed->fsidnum, fsid, 4);
- 		break;
- 
- 	case FSID_MAJOR_MINOR: /* 12 bytes: 4 major, 4 minor, 4 inode 
-@@ -425,12 +391,12 @@ static void nfsd_fh(FILE *f)
- 		 * an historical accident
- 		 */
- 		if (fsidlen != 12)
--			goto out;
-+			return -1;
- 		memcpy(&dev, fsid, 4);
--		parsed.major = ntohl(dev);
-+		parsed->major = ntohl(dev);
- 		memcpy(&dev, fsid+4, 4);
--		parsed.minor = ntohl(dev);
--		memcpy(&parsed.inode, fsid+8, 4);
-+		parsed->minor = ntohl(dev);
-+		memcpy(&parsed->inode, fsid+8, 4);
- 		break;
- 
- 	case FSID_ENCODE_DEV: /* 8 bytes: 4 byte packed device number, 4 inode */
-@@ -438,41 +404,137 @@ static void nfsd_fh(FILE *f)
- 		 * no-one outside this host has any business interpreting it
- 		 */
- 		if (fsidlen != 8)
--			goto out;
-+			return -1;
- 		memcpy(&dev, fsid, 4);
--		memcpy(&parsed.inode, fsid+4, 4);
--		parsed.major = (dev & 0xfff00) >> 8;
--		parsed.minor = (dev & 0xff) | ((dev >> 12) & 0xfff00);
-+		memcpy(&parsed->inode, fsid+4, 4);
-+		parsed->major = (dev & 0xfff00) >> 8;
-+		parsed->minor = (dev & 0xff) | ((dev >> 12) & 0xfff00);
- 		break;
- 
- 	case FSID_UUID4_INUM: /* 4 byte inode number and 4 byte uuid */
- 		if (fsidlen != 8)
--			goto out;
--		memcpy(&parsed.inode, fsid, 4);
--		parsed.uuidlen = 4;
--		parsed.fhuuid = fsid+4;
-+			return -1;
-+		memcpy(&parsed->inode, fsid, 4);
-+		parsed->uuidlen = 4;
-+		parsed->fhuuid = fsid+4;
- 		break;
- 	case FSID_UUID8: /* 8 byte uuid */
- 		if (fsidlen != 8)
--			goto out;
--		parsed.uuidlen = 8;
--		parsed.fhuuid = fsid;
-+			return -1;
-+		parsed->uuidlen = 8;
-+		parsed->fhuuid = fsid;
- 		break;
- 	case FSID_UUID16: /* 16 byte uuid */
- 		if (fsidlen != 16)
--			goto out;
--		parsed.uuidlen = 16;
--		parsed.fhuuid = fsid;
-+			return -1;
-+		parsed->uuidlen = 16;
-+		parsed->fhuuid = fsid;
- 		break;
- 	case FSID_UUID16_INUM: /* 8 byte inode number and 16 byte uuid */
- 		if (fsidlen != 24)
--			goto out;
-+			return -1;
- 		memcpy(&inode64, fsid, 8);
--		parsed.inode = inode64;
--		parsed.uuidlen = 16;
--		parsed.fhuuid = fsid+8;
-+		parsed->inode = inode64;
-+		parsed->uuidlen = 16;
-+		parsed->fhuuid = fsid+8;
- 		break;
++/* Marks sectors in [offest, offset+length) as having been written to disk.
++ * All lengths should be block aligned.
++ */
++int mark_written_sectors(struct pnfs_inval_markings *marks,
++			 sector_t offset, sector_t length)
++{
++	int status;
++
++	dprintk("%s(offset=%llu,len=%llu) enter\n", __func__,
++		(u64)offset, (u64)length);
++	spin_lock(&marks->im_lock);
++	status = _set_range(&marks->im_tree, EXTENT_WRITTEN, offset, length);
++	spin_unlock(&marks->im_lock);
++	return status;
++}
++
++static void print_short_extent(struct pnfs_block_short_extent *be)
++{
++	dprintk("PRINT SHORT EXTENT extent %p\n", be);
++	if (be) {
++		dprintk("        be_f_offset %llu\n", (u64)be->bse_f_offset);
++		dprintk("        be_length   %llu\n", (u64)be->bse_length);
++	}
++}
++
++void print_clist(struct list_head *list, unsigned int count)
++{
++	struct pnfs_block_short_extent *be;
++	unsigned int i = 0;
++
++	dprintk("****************\n");
++	dprintk("Extent list looks like:\n");
++	list_for_each_entry(be, list, bse_node) {
++		i++;
++		print_short_extent(be);
++	}
++	if (i != count)
++		dprintk("\n\nExpected %u entries\n\n\n", count);
++	dprintk("****************\n");
++}
++
+ static void print_bl_extent(struct pnfs_block_extent *be)
+ {
+ 	dprintk("PRINT EXTENT extent %p\n", be);
+@@ -386,65 +427,67 @@ add_and_merge_extent(struct pnfs_block_layout *bl,
+ 	/* Scan for proper place to insert, extending new to the left
+ 	 * as much as possible.
+ 	 */
+-	list_for_each_entry_safe(be, tmp, list, be_node) {
+-		if (new->be_f_offset < be->be_f_offset)
++	list_for_each_entry_safe_reverse(be, tmp, list, be_node) {
++		if (new->be_f_offset >= be->be_f_offset + be->be_length)
+ 			break;
+-		if (end <= be->be_f_offset + be->be_length) {
+-			/* new is a subset of existing be*/
++		if (new->be_f_offset >= be->be_f_offset) {
++			if (end <= be->be_f_offset + be->be_length) {
++				/* new is a subset of existing be*/
++				if (extents_consistent(be, new)) {
++					dprintk("%s: new is subset, ignoring\n",
++						__func__);
++					put_extent(new);
++					return 0;
++				} else {
++					goto out_err;
++				}
++			} else {
++				/* |<--   be   -->|
++				 *          |<--   new   -->| */
++				if (extents_consistent(be, new)) {
++					/* extend new to fully replace be */
++					new->be_length += new->be_f_offset -
++						be->be_f_offset;
++					new->be_f_offset = be->be_f_offset;
++					new->be_v_offset = be->be_v_offset;
++					dprintk("%s: removing %p\n", __func__, be);
++					list_del(&be->be_node);
++					put_extent(be);
++				} else {
++					goto out_err;
++				}
++			}
++		} else if (end >= be->be_f_offset + be->be_length) {
++			/* new extent overlap existing be */
+ 			if (extents_consistent(be, new)) {
+-				dprintk("%s: new is subset, ignoring\n",
+-					__func__);
+-				put_extent(new);
+-				return 0;
+-			} else
++				/* extend new to fully replace be */
++				dprintk("%s: removing %p\n", __func__, be);
++				list_del(&be->be_node);
++				put_extent(be);
++			} else {
+ 				goto out_err;
+-		} else if (new->be_f_offset <=
+-				be->be_f_offset + be->be_length) {
+-			/* new overlaps or abuts existing be */
+-			if (extents_consistent(be, new)) {
++			}
++		} else if (end > be->be_f_offset) {
++			/*           |<--   be   -->|
++			 *|<--   new   -->| */
++			if (extents_consistent(new, be)) {
+ 				/* extend new to fully replace be */
+-				new->be_length += new->be_f_offset -
+-						  be->be_f_offset;
+-				new->be_f_offset = be->be_f_offset;
+-				new->be_v_offset = be->be_v_offset;
++				new->be_length += be->be_f_offset + be->be_length -
++					new->be_f_offset - new->be_length;
+ 				dprintk("%s: removing %p\n", __func__, be);
+ 				list_del(&be->be_node);
+ 				put_extent(be);
+-			} else if (new->be_f_offset !=
+-				   be->be_f_offset + be->be_length)
++			} else {
+ 				goto out_err;
++			}
+ 		}
  	}
+ 	/* Note that if we never hit the above break, be will not point to a
+ 	 * valid extent.  However, in that case &be->be_node==list.
+ 	 */
+-	list_add_tail(&new->be_node, &be->be_node);
++	list_add(&new->be_node, &be->be_node);
+ 	dprintk("%s: inserting new\n", __func__);
+ 	print_elist(list);
+-	/* Scan forward for overlaps.  If we find any, extend new and
+-	 * remove the overlapped extent.
+-	 */
+-	be = list_prepare_entry(new, list, be_node);
+-	list_for_each_entry_safe_continue(be, tmp, list, be_node) {
+-		if (end < be->be_f_offset)
+-			break;
+-		/* new overlaps or abuts existing be */
+-		if (extents_consistent(be, new)) {
+-			if (end < be->be_f_offset + be->be_length) {
+-				/* extend new to fully cover be */
+-				end = be->be_f_offset + be->be_length;
+-				new->be_length = end - new->be_f_offset;
+-			}
+-			dprintk("%s: removing %p\n", __func__, be);
+-			list_del(&be->be_node);
+-			put_extent(be);
+-		} else if (end != be->be_f_offset) {
+-			list_del(&new->be_node);
+-			goto out_err;
+-		}
+-	}
+-	dprintk("%s: after merging\n", __func__);
+-	print_elist(list);
+ 	/* STUB - The per-list consistency checks have all been done,
+ 	 * should now check cross-list consistency.
+ 	 */
+@@ -502,6 +545,50 @@ find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
+ 	return ret;
+ }
+ 
++int
++encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
++			       struct xdr_stream *xdr,
++			       const struct nfs4_layoutcommit_args *arg)
++{
++	struct pnfs_block_short_extent *lce, *save;
++	unsigned int count = 0;
++	struct list_head *ranges = &bl->bl_committing;
++	__be32 *p, *xdr_start;
++
++	dprintk("%s enter\n", __func__);
++	/* BUG - creation of bl_commit is buggy - need to wait for
++	 * entire block to be marked WRITTEN before it can be added.
++	 */
++	spin_lock(&bl->bl_ext_lock);
++	/* Want to adjust for possible truncate */
++	/* We now want to adjust argument range */
++
++	/* XDR encode the ranges found */
++	xdr_start = xdr_reserve_space(xdr, 8);
++	if (!xdr_start)
++		goto out;
++	list_for_each_entry_safe(lce, save, &bl->bl_commit, bse_node) {
++		p = xdr_reserve_space(xdr, 7 * 4 + sizeof(lce->bse_devid.data));
++		if (!p)
++			break;
++		WRITE_DEVID(&lce->bse_devid);
++		WRITE64(lce->bse_f_offset << 9);
++		WRITE64(lce->bse_length << 9);
++		WRITE64(0LL);
++		WRITE32(PNFS_BLOCK_READWRITE_DATA);
++		list_del(&lce->bse_node);
++		list_add_tail(&lce->bse_node, ranges);
++		bl->bl_count--;
++		count++;
++	}
++	xdr_start[0] = cpu_to_be32((xdr->p - xdr_start - 1) * 4);
++	xdr_start[1] = cpu_to_be32(count);
++out:
++	spin_unlock(&bl->bl_ext_lock);
++	dprintk("%s found %i ranges\n", __func__, count);
 +	return 0;
 +}
 +
-+static bool match_fsid(struct parsed_fsid *parsed, nfs_export *exp, char *path)
-+{
-+	struct stat stb;
-+	int type;
-+	char u[16];
-+
-+	if (stat(path, &stb) != 0)
-+		return false;
-+	if (!S_ISDIR(stb.st_mode) && !S_ISREG(stb.st_mode))
-+		return false;
-+
-+	switch (parsed->fsidtype) {
-+	case FSID_DEV:
-+	case FSID_MAJOR_MINOR:
-+	case FSID_ENCODE_DEV:
-+		if (stb.st_ino != parsed->inode)
-+			return false;
-+		if (parsed->major != major(stb.st_dev) ||
-+		    parsed->minor != minor(stb.st_dev))
-+			return false;
-+		return true;
-+	case FSID_NUM:
-+		if (((exp->m_export.e_flags & NFSEXP_FSID) == 0 ||
-+		     exp->m_export.e_fsid != parsed->fsidnum))
-+			return false;
-+		return true;
-+	case FSID_UUID4_INUM:
-+	case FSID_UUID16_INUM:
-+		if (stb.st_ino != parsed->inode)
-+			return false;
-+		goto check_uuid;
-+	case FSID_UUID8:
-+	case FSID_UUID16:
-+		if (!is_mountpoint(path))
-+			return false;
-+	check_uuid:
-+		if (exp->m_export.e_uuid)
-+			get_uuid(exp->m_export.e_uuid, parsed->uuidlen, u);
-+		else
-+			for (type = 0;
-+			     uuid_by_path(path, type, parsed->uuidlen, u);
-+			     type++)
-+				if (memcmp(u, parsed->fhuuid, parsed->uuidlen) == 0)
-+					return true;
-+
-+		if (memcmp(u, parsed->fhuuid, parsed->uuidlen) != 0)
-+			return false;
-+		return true;
-+	}
-+	/* Well, unreachable, actually: */
-+	return false;
-+}
-+
-+static void nfsd_fh(FILE *f)
-+{
-+	/* request are:
-+	 *  domain fsidtype fsid
-+	 * interpret fsid, find export point and options, and write:
-+	 *  domain fsidtype fsid expiry path
-+	 */
-+	char *cp;
-+	char *dom;
-+	int fsidtype;
-+	int fsidlen;
-+	char fsid[32];
-+	struct parsed_fsid parsed;
-+	struct exportent *found = NULL;
-+	struct addrinfo *ai = NULL;
-+	char *found_path = NULL;
-+	nfs_export *exp;
-+	int i;
-+	int dev_missing = 0;
-+
-+	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
-+		return;
-+
-+	xlog(D_CALL, "nfsd_fh: inbuf '%s'", lbuf);
-+
-+	cp = lbuf;
-+
-+	dom = malloc(strlen(cp));
-+	if (dom == NULL)
-+		return;
-+	if (qword_get(&cp, dom, strlen(cp)) <= 0)
-+		goto out;
-+	if (qword_get_int(&cp, &fsidtype) != 0)
-+		goto out;
-+	if (fsidtype < 0 || fsidtype > 7)
-+		goto out; /* unknown type */
-+	if ((fsidlen = qword_get(&cp, fsid, 32)) <= 0)
-+		goto out;
-+	if (parse_fsid(fsidtype, fsidlen, fsid, &parsed))
-+		goto out;
- 
- 	auth_reload();
- 
-@@ -480,10 +542,7 @@ static void nfsd_fh(FILE *f)
- 	for (i=0 ; i < MCL_MAXTYPES; i++) {
- 		nfs_export *next_exp;
- 		for (exp = exportlist[i].p_head; exp; exp = next_exp) {
--			struct stat stb;
--			char u[16];
- 			char *path;
--			int type;
- 
- 			if (exp->m_export.e_flags & NFSEXP_CROSSMOUNT) {
- 				static nfs_export *prev = NULL;
-@@ -516,50 +575,9 @@ static void nfsd_fh(FILE *f)
- 					   exp->m_export.e_mountpoint:
- 					   exp->m_export.e_path))
- 				dev_missing ++;
--			if (stat(path, &stb) != 0)
--				continue;
--			if (!S_ISDIR(stb.st_mode) && !S_ISREG(stb.st_mode)) {
-+
-+			if (!match_fsid(&parsed, exp, path))
- 				continue;
--			}
--			switch(fsidtype){
--			case FSID_DEV:
--			case FSID_MAJOR_MINOR:
--			case FSID_ENCODE_DEV:
--				if (stb.st_ino != parsed.inode)
--					continue;
--				if (parsed.major != major(stb.st_dev) ||
--				    parsed.minor != minor(stb.st_dev))
--					continue;
--				break;
--			case FSID_NUM:
--				if (((exp->m_export.e_flags & NFSEXP_FSID) == 0 ||
--				     exp->m_export.e_fsid != parsed.fsidnum))
--					continue;
--				break;
--			case FSID_UUID4_INUM:
--			case FSID_UUID16_INUM:
--				if (stb.st_ino != parsed.inode)
--					continue;
--				goto check_uuid;
--			case FSID_UUID8:
--			case FSID_UUID16:
--				if (!is_mountpoint(path))
--					continue;
--			check_uuid:
--				if (exp->m_export.e_uuid)
--					get_uuid(exp->m_export.e_uuid,
--						 parsed.uuidlen, u);
--				else
--					for (type = 0;
--					     uuid_by_path(path, type, parsed.uuidlen, u);
--					     type++)
--						if (memcmp(u, parsed.fhuuid, parsed.uuidlen) == 0)
--							break;
--
--				if (memcmp(u, parsed.fhuuid, parsed.uuidlen) != 0)
--					continue;
--				break;
--			}
- 			if (use_ipaddr) {
- 				if (ai == NULL) {
- 					struct addrinfo *tmp;
+ /* Helper function to set_to_rw that initialize a new extent */
+ static void
+ _prep_new_extent(struct pnfs_block_extent *new,
 -- 
 1.7.4.1
 
