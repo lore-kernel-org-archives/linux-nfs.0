@@ -1,211 +1,175 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:59985 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757961Ab1FVXfE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 19:35:04 -0400
-Subject: Re: Issue with Race Condition on NFS4 with KRB
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Joshua Scoggins <theoretically.x64@gmail.com>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 22 Jun 2011 19:34:35 -0400
-In-Reply-To: <BANLkTi=mQeMHG-Z=UhQdbR6fWbOpUZFtTQ@mail.gmail.com>
-References: <BANLkTik9J3qcdPcp+DdfRq9kj+DMKnjKZw@mail.gmail.com>
-	 <1308767449.14997.10.camel@lade.trondhjem.org>
-	 <BANLkTimyCA0QyF1TNc0SU2GYobOt-sAsNQ@mail.gmail.com>
-	 <1308769054.14997.18.camel@lade.trondhjem.org>
-	 <BANLkTi=b1UJzYinAeW2VJj2AHzsAnwUpGg@mail.gmail.com>
-	 <1308779507.25875.7.camel@lade.trondhjem.org>
-	 <BANLkTin0HnH7rufrHJGgEuPc-ZPjkZe3iw@mail.gmail.com>
-	 <1308783190.25875.25.camel@lade.trondhjem.org>
-	 <BANLkTimvMeF94O_S0rpSgy=5Z4obU9pPfg@mail.gmail.com>
-	 <1308784142.25875.37.camel@lade.trondhjem.org>
-	 <BANLkTi=mQeMHG-Z=UhQdbR6fWbOpUZFtTQ@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1308785675.30458.15.camel@lade.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:38142 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753956Ab1FNVgW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2011 17:36:22 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>, open-osd <osd-dev@open-osd.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 05/10] SQUASHME: pnfsd-exofs: osd_xdr_srv: Convert XDR API to return enum nfsstat4
+Date: Tue, 14 Jun 2011 17:36:21 -0400
+Message-Id: <1308087381-13179-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DF7D36F.9070602@panasas.com>
+References: <4DF7D36F.9070602@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 2011-06-22 at 16:23 -0700, Joshua Scoggins wrote: 
-> It's the same error.
+* Change pnfs_osd_xdr_srv API to return nfs4 errors
 
-What mailer are you using to save the attachment? I just grabbed the
-patch from the reflected email that I received from
-linux-nfs@vger.kernel.org and again, that applies just fine to both
-v2.6.39 and the latest kernel from Linus' git tree:
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/exportfs/pnfs_osd_xdr_srv.c        |   30 +++++++++++++++---------------
+ include/linux/nfsd/pnfs_osd_xdr_srv.h |    6 +++---
+ 2 files changed, 18 insertions(+), 18 deletions(-)
 
-[trondmy@lade linux-2.6]$ git checkout -f v2.6.39
-Warning: you are leaving 1 commit behind, not connected to
-any of your branches:
-
-  9895aa0 SUNRPC: Fix a potential race in between xprt_complete_rqst and xprt_transmit
-
-If you want to keep it by creating a new branch, this may be a good time
-to do so with:
-
- git branch new_branch_name 9895aa06065dd9d457d465f2526a267bec5651a0
-
-HEAD is now at 61c4f2c... Linux 2.6.39
-[trondmy@lade linux-2.6]$ patch -p1 -s -i ~/Desktop/0001-SUNRPC-Fix-a-potential-race-in-between-xprt_complete.patch
-[trondmy@lade linux-2.6]$ 
-
-
-That part of the code has not changed for quite some time, so there
-should be no compatibility problems.
-
-> -Josh
-> 
-> On Wed, Jun 22, 2011 at 4:09 PM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> > On Wed, 2011-06-22 at 16:01 -0700, Joshua Scoggins wrote:
-> >> I just manually applied the patch as I'm using the gentoo sources.
-> >
-> > If they're not modifying the source, then it should just apply provided
-> > that your mailer saved it correctly. If gentoo are applying their own
-> > patches, then I suggest grabbing a copy of the original 2.6.39 from
-> > www.kernel.org.
-> >
-> >> Josh
-> >>
-> >> On Wed, Jun 22, 2011 at 3:53 PM, Trond Myklebust
-> >> <Trond.Myklebust@netapp.com> wrote:
-> >> > On Wed, 2011-06-22 at 15:40 -0700, Joshua Scoggins wrote:
-> >> >> The patch isn't applying to the 2.6.39 kernel sources.
-> >> >
-> >> > It does for me:
-> >> >
-> >> > [trondmy@lade linux-2.6]$ git checkout v2.6.39
-> >> > HEAD is now at 61c4f2c... Linux 2.6.39
-> >> > [trondmy@lade linux-2.6]$ git am ~/Desktop/bugfixes/0001-SUNRPC-Fix-a-potential-race-in-between-xprt_complete.patch
-> >> > Applying: SUNRPC: Fix a potential race in between xprt_complete_rqst and xprt_transmit
-> >> > [trondmy@lade linux-2.6]$
-> >> >
-> >> > Are you perhaps using some distro kernel instead of the regular one from
-> >> > Linus' repository?
-> >> >
-> >> > Cheers
-> >> >  Trond
-> >> >
-> >> >> -Josh
-> >> >>
-> >> >> On Wed, Jun 22, 2011 at 2:51 PM, Trond Myklebust
-> >> >> <Trond.Myklebust@netapp.com> wrote:
-> >> >> > On Wed, 2011-06-22 at 12:18 -0700, Joshua Scoggins wrote:
-> >> >> >> According to the it guys they are running solaris 10 as the server platform.
-> >> >> >
-> >> >> > Ok. That should not be subject to the race I was thinking of...
-> >> >> >
-> >> >> >> On Wed, Jun 22, 2011 at 11:57 AM, Trond Myklebust
-> >> >> >> <Trond.Myklebust@netapp.com> wrote:
-> >> >> >> > On Wed, 2011-06-22 at 11:37 -0700, Joshua Scoggins wrote:
-> >> >> >> >> Here are our mount options from auto.master
-> >> >> >> >>
-> >> >> >> >> /user -fstype=nfs4,sec=krb5p,noresvport,noatime
-> >> >> >> >> /group -fstype=nfs4,sec=krb5p,noresvport,noatime
-> >> >> >> >>
-> >> >> >> >> As for the server, we don't control it. It's actually run by the
-> >> >> >> >> campus wide it department we are just lab support for CS. I can
-> >> >> >> >> potentially get the server information but I need to know what you want
-> >> >> >> >> specifically as they're pretty paranoid about giving out information about
-> >> >> >> >> their servers.
-> >> >> >> >
-> >> >> >> > I would just want to know _what_ server platform you are running
-> >> >> >> > against. I know of at least one server bug that might explain what you
-> >> >> >> > are seeing, and I'd like to eliminate that as a possibility.
-> >> >> >> >
-> >> >> >> > Trond
-> >> >> >> >
-> >> >> >> >> Joshua Scoggins
-> >> >> >> >>
-> >> >> >> >> On Wed, Jun 22, 2011 at 11:30 AM, Trond Myklebust
-> >> >> >> >> <Trond.Myklebust@netapp.com> wrote:
-> >> >> >> >> > On Wed, 2011-06-22 at 11:21 -0700, Joshua Scoggins wrote:
-> >> >> >> >> >> Hello,
-> >> >> >> >> >>
-> >> >> >> >> >> We are trying to update our linux images in our CS lab and have it a
-> >> >> >> >> >> bit of an issue. We are
-> >> >> >> >> >> using nfs to load user home folder. While testing the new image we
-> >> >> >> >> >> found that the nfs4 module will
-> >> >> >> >> >>  crash when using firefox 3.6.17 for an extended period of time. Some
-> >> >> >> >> >> research via google yielded that
-> >> >> >> >> >> it's a potential race condition specific to nfs with krb auth with
-> >> >> >> >> >> newer kernels. Our old image doesn't have
-> >> >> >> >> >> this issue and it seems that its due to it running a far older kernel version.
-> >> >> >> >> >>
-> >> >> >> >> >> We have two images and both are having this problem. One is running
-> >> >> >> >> >> 2.6.39 and the other is 2.6.38.
-> >> >> >> >> >> Here is what dmesg spit out from the machine running 2.6.39 on one occasion:
-> >> >> >> >> >>
-> >> >> >> >> >> [  678.632061] ------------[ cut here ]------------
-> >> >> >> >> >> [  678.632068] WARNING: at net/sunrpc/clnt.c:1567 call_decode+0xb2/0x69c()
-> >> >> >> >> >> [  678.632070] Hardware name: OptiPlex 755
-> >> >> >> >> >> [  678.632072] Modules linked in: nvidia(P) scsi_wait_scan
-> >> >> >> >> >> [  678.632078] Pid: 3882, comm: kworker/0:2 Tainted: P
-> >> >> >> >> >> 2.6.39-gentoo-r1 #1
-> >> >> >> >> >> [  678.632080] Call Trace:
-> >> >> >> >> >> [  678.632086]  [<ffffffff81035b20>] warn_slowpath_common+0x80/0x98
-> >> >> >> >> >> [  678.632091]  [<ffffffff8117231e>] ? nfs4_xdr_dec_readdir+0xba/0xba
-> >> >> >> >> >> [  678.632094]  [<ffffffff81035b4d>] warn_slowpath_null+0x15/0x17
-> >> >> >> >> >> [  678.632097]  [<ffffffff81426f48>] call_decode+0xb2/0x69c
-> >> >> >> >> >> [  678.632101]  [<ffffffff8142d2b5>] __rpc_execute+0x78/0x24b
-> >> >> >> >> >> [  678.632104]  [<ffffffff8142d4c9>] ? rpc_execute+0x41/0x41
-> >> >> >> >> >> [  678.632107]  [<ffffffff8142d4d9>] rpc_async_schedule+0x10/0x12
-> >> >> >> >> >> [  678.632111]  [<ffffffff8104a49d>] process_one_work+0x1d9/0x2e7
-> >> >> >> >> >> [  678.632114]  [<ffffffff8104c402>] worker_thread+0x133/0x24f
-> >> >> >> >> >> [  678.632118]  [<ffffffff8104c2cf>] ? manage_workers+0x18d/0x18d
-> >> >> >> >> >> [  678.632121]  [<ffffffff8104f6a0>] kthread+0x7d/0x85
-> >> >> >> >> >> [  678.632125]  [<ffffffff8145e314>] kernel_thread_helper+0x4/0x10
-> >> >> >> >> >> [  678.632128]  [<ffffffff8104f623>] ? kthread_worker_fn+0x13a/0x13a
-> >> >> >> >> >> [  678.632131]  [<ffffffff8145e310>] ? gs_change+0xb/0xb
-> >> >> >> >> >> [  678.632133] ---[ end trace 6bfae002a63e020e ]---
-> >> >> >
-> >> >> > Looking at the code, there is only one way I can see for that warning to
-> >> >> > occur, and that is if we put the request back on the 'xprt->recv' list
-> >> >> > after it has already received a reply from the server.
-> >> >> >
-> >> >> > Can you reproduce the problem with the attached patch?
-> >> >> >
-> >> >> > Trond
-> >> >> >
-> >> >> > --
-> >> >> > Trond Myklebust
-> >> >> > Linux NFS client maintainer
-> >> >> >
-> >> >> > NetApp
-> >> >> > Trond.Myklebust@netapp.com
-> >> >> > www.netapp.com
-> >> >> >
-> >> >> >
-> >> >
-> >> > --
-> >> > Trond Myklebust
-> >> > Linux NFS client maintainer
-> >> >
-> >> > NetApp
-> >> > Trond.Myklebust@netapp.com
-> >> > www.netapp.com
-> >> >
-> >> >
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >
-> > --
-> > Trond Myklebust
-> > Linux NFS client maintainer
-> >
-> > NetApp
-> > Trond.Myklebust@netapp.com
-> > www.netapp.com
-> >
-> >
-
+diff --git a/fs/exportfs/pnfs_osd_xdr_srv.c b/fs/exportfs/pnfs_osd_xdr_srv.c
+index ec814c1..4d92f1c 100644
+--- a/fs/exportfs/pnfs_osd_xdr_srv.c
++++ b/fs/exportfs/pnfs_osd_xdr_srv.c
+@@ -51,14 +51,14 @@
+  * 	u32	odm_raid_algorithm;
+  * };
+  */
+-static int pnfs_osd_xdr_encode_data_map(
++static enum nfsstat4 pnfs_osd_xdr_encode_data_map(
+ 	struct exp_xdr_stream *xdr,
+ 	struct pnfs_osd_data_map *data_map)
+ {
+ 	__be32 *p = exp_xdr_reserve_qwords(xdr, 1+2+1+1+1+1);
+ 
+ 	if (!p)
+-		return -E2BIG;
++		return NFS4ERR_TOOSMALL;
+ 
+ 	p = exp_xdr_encode_u32(p, data_map->odm_num_comps);
+ 	p = exp_xdr_encode_u64(p, data_map->odm_stripe_unit);
+@@ -77,7 +77,7 @@ static int pnfs_osd_xdr_encode_data_map(
+  * 	u64			oid_object_id;
+  * };
+  */
+-static inline int pnfs_osd_xdr_encode_objid(
++static inline enum nfsstat4 pnfs_osd_xdr_encode_objid(
+ 	struct exp_xdr_stream *xdr,
+ 	struct pnfs_osd_objid *object_id)
+ {
+@@ -86,7 +86,7 @@ static inline int pnfs_osd_xdr_encode_objid(
+ 		(struct nfsd4_pnfs_deviceid *)&object_id->oid_device_id;
+ 
+ 	if (!p)
+-		return -E2BIG;
++		return NFS4ERR_TOOSMALL;
+ 
+ 	p = exp_xdr_encode_u64(p, dev_id->fsid);
+ 	p = exp_xdr_encode_u64(p, dev_id->devid);
+@@ -110,12 +110,12 @@ static inline int pnfs_osd_xdr_encode_objid(
+  * 	struct pnfs_osd_opaque_cred	oc_cap;
+  * };
+  */
+-int pnfs_osd_xdr_encode_layout_cred(
++enum nfsstat4 pnfs_osd_xdr_encode_layout_cred(
+ 	struct exp_xdr_stream *xdr,
+ 	struct pnfs_osd_object_cred *olo_comp)
+ {
+ 	__be32 *p;
+-	int err;
++	enum nfsstat4 err;
+ 
+ 	err = pnfs_osd_xdr_encode_objid(xdr, &olo_comp->oc_object_id);
+ 	if (err)
+@@ -123,7 +123,7 @@ int pnfs_osd_xdr_encode_layout_cred(
+ 
+ 	p = exp_xdr_reserve_space(xdr, 3*4 + 4+olo_comp->oc_cap.cred_len);
+ 	if (!p)
+-		return -E2BIG;
++		return NFS4ERR_TOOSMALL;
+ 
+ 	p = exp_xdr_encode_u32(p, olo_comp->oc_osd_version);
+ 
+@@ -146,12 +146,12 @@ EXPORT_SYMBOL(pnfs_osd_xdr_encode_layout_cred);
+  * 	struct pnfs_osd_object_cred	*olo_comps;
+  * };
+  */
+-int pnfs_osd_xdr_encode_layout_hdr(
++enum nfsstat4 pnfs_osd_xdr_encode_layout_hdr(
+ 	struct exp_xdr_stream *xdr,
+ 	struct pnfs_osd_layout *pol)
+ {
+ 	__be32 *p;
+-	int err;
++	enum nfsstat4 err;
+ 
+ 	err = pnfs_osd_xdr_encode_data_map(xdr, &pol->olo_map);
+ 	if (err)
+@@ -159,7 +159,7 @@ int pnfs_osd_xdr_encode_layout_hdr(
+ 
+ 	p = exp_xdr_reserve_qwords(xdr, 2);
+ 	if (!p)
+-		return -E2BIG;
++		return NFS4ERR_TOOSMALL;
+ 
+ 	p = exp_xdr_encode_u32(p, pol->olo_comps_index);
+ 	p = exp_xdr_encode_u32(p, pol->olo_num_comps);
+@@ -168,13 +168,13 @@ int pnfs_osd_xdr_encode_layout_hdr(
+ }
+ EXPORT_SYMBOL(pnfs_osd_xdr_encode_layout_hdr);
+ 
+-static int _encode_string(struct exp_xdr_stream *xdr,
++static enum nfsstat4 _encode_string(struct exp_xdr_stream *xdr,
+ 			  const struct nfs4_string *str)
+ {
+ 	__be32 *p = exp_xdr_reserve_space(xdr, 4 + str->len);
+ 
+ 	if (!p)
+-		return -E2BIG;
++		return NFS4ERR_TOOSMALL;
+ 	exp_xdr_encode_opaque(p, str->data, str->len);
+ 	return 0;
+ }
+@@ -188,15 +188,15 @@ static int _encode_string(struct exp_xdr_stream *xdr,
+  * 	struct nfs4_string		oda_osdname;
+  * };
+  */
+-int pnfs_osd_xdr_encode_deviceaddr(
++enum nfsstat4 pnfs_osd_xdr_encode_deviceaddr(
+ 	struct exp_xdr_stream *xdr, struct pnfs_osd_deviceaddr *devaddr)
+ {
+ 	__be32 *p;
+-	int err;
++	enum nfsstat4 err;
+ 
+ 	p = exp_xdr_reserve_space(xdr, 4 + 4 + sizeof(devaddr->oda_lun));
+ 	if (!p)
+-		return -E2BIG;
++		return NFS4ERR_TOOSMALL;
+ 
+ 	/* Empty oda_targetid */
+ 	p = exp_xdr_encode_u32(p, OBJ_TARGET_ANON);
+diff --git a/include/linux/nfsd/pnfs_osd_xdr_srv.h b/include/linux/nfsd/pnfs_osd_xdr_srv.h
+index e9a2187..2909fbe 100644
+--- a/include/linux/nfsd/pnfs_osd_xdr_srv.h
++++ b/include/linux/nfsd/pnfs_osd_xdr_srv.h
+@@ -17,16 +17,16 @@
+ #include <linux/exp_xdr.h>
+ 
+ /* Layout encoding */
+-int pnfs_osd_xdr_encode_layout_hdr(
++enum nfsstat4 pnfs_osd_xdr_encode_layout_hdr(
+ 	struct exp_xdr_stream *xdr,
+ 	struct pnfs_osd_layout *layout);
+ 
+-int pnfs_osd_xdr_encode_layout_cred(
++enum nfsstat4 pnfs_osd_xdr_encode_layout_cred(
+ 	struct exp_xdr_stream *xdr,
+ 	struct pnfs_osd_object_cred *cred);
+ 
+ /* deviceaddr encoding */
+-int pnfs_osd_xdr_encode_deviceaddr(
++enum nfsstat4 pnfs_osd_xdr_encode_deviceaddr(
+ 	struct exp_xdr_stream *xdr, struct pnfs_osd_deviceaddr *devaddr);
+ 
+ /* layout_commit decoding */
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.3.4
 
