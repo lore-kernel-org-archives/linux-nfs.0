@@ -1,139 +1,200 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:44596 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756617Ab1FJVI5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 17:08:57 -0400
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH v3 5/6] nfs-utils:  Implement srcaddr=n binding for unmount.
-Date: Fri, 10 Jun 2011 14:08:15 -0700
-Message-Id: <1307740096-19933-6-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1307740096-19933-1-git-send-email-greearb@candelatech.com>
-References: <1307740096-19933-1-git-send-email-greearb@candelatech.com>
+Received: from daytona.panasas.com ([67.152.220.89]:38298 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754167Ab1FNViz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2011 17:38:55 -0400
+Message-ID: <4DF7D4EE.80109@panasas.com>
+Date: Tue, 14 Jun 2011 17:38:54 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
+        open-osd <osd-dev@open-osd.org>
+Subject: [PATCH 10/10] SQUASHME: pnfsd-exofs: checkpatch love and a dprint
+References: <4DF7CA2F.7030407@panasas.com> <4DF7D36F.9070602@panasas.com>
+In-Reply-To: <4DF7D36F.9070602@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
 
-This fully implements binding to a local IP address when
-attempting to un-mount.
+Singed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 
-Signed-off-by: Ben Greear <greearb@candelatech.com>
 ---
-:100644 100644 8cd2852... ef5ec17... M	utils/mount/nfsumount.c
-:100644 100644 eb50074... c3d3467... M	utils/mount/utils.c
-:100644 100644 3fcd504... ef71814... M	utils/mount/utils.h
- utils/mount/nfsumount.c |   26 +++++++++++++++++++++++---
- utils/mount/utils.c     |    6 ++++--
- utils/mount/utils.h     |    4 +++-
- 3 files changed, 30 insertions(+), 6 deletions(-)
-
-diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
-index 8cd2852..ef5ec17 100644
---- a/utils/mount/nfsumount.c
-+++ b/utils/mount/nfsumount.c
-@@ -239,6 +239,9 @@ int nfsumount(int argc, char *argv[])
- 	int c, ret;
- 	char *spec;
- 	struct mntentchn *mc;
-+	char *opt;
-+	struct local_bind_info local_ip;
-+	memset(&local_ip, 0, sizeof(local_ip));
+diff --git a/fs/exofs/export.c b/fs/exofs/export.c
+index c153ad6..8281c85 100644
+--- a/fs/exofs/export.c
++++ b/fs/exofs/export.c
+@@ -85,8 +85,8 @@ static enum nfsstat4 exofs_layout_get(
+ 	struct pnfs_osd_object_cred *creds = NULL;
+ 	struct pnfs_osd_layout layout;
+ 	__be32 *start;
++	unsigned i;
+ 	bool in_recall;
+-	int i;
+ 	enum nfsstat4 nfserr;
  
- 	if (argc < 2) {
- 		umount_usage();
-@@ -314,7 +317,7 @@ int nfsumount(int argc, char *argv[])
- 			return EX_USAGE;
- 		}
- 		if (hasmntopt(&mc->m, "users") == NULL) {
--			char *opt = hasmntopt(&mc->m, "user");
-+			opt = hasmntopt(&mc->m, "user");
- 			struct passwd *pw;
- 			char *comma;
- 			size_t len;
-@@ -334,6 +337,22 @@ int nfsumount(int argc, char *argv[])
- 		}
- 	}
+ 	res->lg_seg.offset = 0;
+@@ -285,8 +285,11 @@ int exofs_get_device_info(struct super_block *sb, struct exp_xdr_stream *xdr,
  
-+	if (mc) {
-+		opt = hasmntopt(&mc->m, "srcaddr");
-+		if ((opt != NULL) && strlen(opt) > strlen("srcaddr=")) {
-+			char *sa = xstrdup(opt + strlen("srcaddr="));
-+			unsigned int z;
-+			for (z = 0; z < strlen(sa); z++) {
-+				if (sa[z] == ',') {
-+					sa[z] = 0;
-+					break;
-+				}
-+			}
-+			parse_local_bind(&local_ip, sa);
-+			free(sa);
-+		}
+ 	memset(&devaddr, 0, sizeof(devaddr));
+ 
+-	if (unlikely(devno >= sbi->layout.s_numdevs))
++	if (unlikely(devno >= sbi->layout.s_numdevs)) {
++		EXOFS_DBGMSG("Error: Device((%llx,%llx) does not exist\n",
++			     devid->sbid, devno);
+ 		return -ENODEV;
 +	}
-+
- 	ret = EX_SUCCESS;
- 	if (mc) {
- 		if (!lazy) {
-@@ -344,7 +363,8 @@ int nfsumount(int argc, char *argv[])
- 				 * we don't want to signal an error, as that
- 				 * could cause /sbin/mount to retry!
- 				 */
--				nfs_umount23(mc->m.mnt_fsname, mc->m.mnt_opts);
-+				nfs_umount23(mc->m.mnt_fsname, mc->m.mnt_opts,
-+					     &local_ip);
- 				break;
- 			case 1:
- 				break;
-@@ -355,7 +375,7 @@ int nfsumount(int argc, char *argv[])
- 		ret = del_mtab(mc->m.mnt_fsname, mc->m.mnt_dir);
- 	} else if (*spec != '/') {
- 		if (!lazy)
--			ret = nfs_umount23(spec, "tcp,v3");
-+			ret = nfs_umount23(spec, "tcp,v3", &local_ip);
- 	} else
- 		ret = del_mtab(NULL, spec);
  
-diff --git a/utils/mount/utils.c b/utils/mount/utils.c
-index eb50074..c3d3467 100644
---- a/utils/mount/utils.c
-+++ b/utils/mount/utils.c
-@@ -153,7 +153,8 @@ int chk_mountpoint(const char *mount_point)
-  * pmap tuple.  If the GETPORT call later fails to disambiguate them,
-  * then we fail.
+ 	odi = osduld_device_info(sbi->layout.s_ods[devno]);
+ 
+diff --git a/fs/exportfs/pnfs_osd_xdr_srv.c b/fs/exportfs/pnfs_osd_xdr_srv.c
+index 01b0e53..12a3bda 100644
+--- a/fs/exportfs/pnfs_osd_xdr_srv.c
++++ b/fs/exportfs/pnfs_osd_xdr_srv.c
+@@ -43,12 +43,12 @@
+ 
+ /*
+  * struct pnfs_osd_data_map {
+- * 	u32	odm_num_comps;
+- * 	u64	odm_stripe_unit;
+- * 	u32	odm_group_width;
+- * 	u32	odm_group_depth;
+- * 	u32	odm_mirror_cnt;
+- * 	u32	odm_raid_algorithm;
++ *	u32	odm_num_comps;
++ *	u64	odm_stripe_unit;
++ *	u32	odm_group_width;
++ *	u32	odm_group_depth;
++ *	u32	odm_mirror_cnt;
++ *	u32	odm_raid_algorithm;
+  * };
   */
--int nfs_umount23(const char *devname, char *string)
-+int nfs_umount23(const char *devname, char *string,
-+		 struct local_bind_info *local_ip)
- {
- 	char *hostname = NULL, *dirname = NULL;
- 	struct mount_options *options;
-@@ -164,7 +165,8 @@ int nfs_umount23(const char *devname, char *string)
+ static enum nfsstat4 pnfs_osd_xdr_encode_data_map(
+@@ -72,9 +72,9 @@ static enum nfsstat4 pnfs_osd_xdr_encode_data_map(
  
- 	options = po_split(string);
- 	if (options) {
--		result = nfs_umount_do_umnt(options, &hostname, &dirname, NULL);
-+		result = nfs_umount_do_umnt(options, &hostname, &dirname,
-+					    local_ip);
- 		po_destroy(options);
- 	} else
- 		nfs_error(_("%s: option parsing error"), progname);
-diff --git a/utils/mount/utils.h b/utils/mount/utils.h
-index 3fcd504..ef71814 100644
---- a/utils/mount/utils.h
-+++ b/utils/mount/utils.h
-@@ -31,6 +31,8 @@ void mount_usage(void);
- void umount_usage(void);
- int chk_mountpoint(const char *mount_point);
+ /*
+  * struct pnfs_osd_objid {
+- * 	struct nfs4_deviceid	oid_device_id;
+- * 	u64			oid_partition_id;
+- * 	u64			oid_object_id;
++ *	struct nfs4_deviceid	oid_device_id;
++ *	u64			oid_partition_id;
++ *	u64			oid_object_id;
+  * };
+  */
+ static inline enum nfsstat4 pnfs_osd_xdr_encode_objid(
+@@ -98,16 +98,16 @@ static inline enum nfsstat4 pnfs_osd_xdr_encode_objid(
  
--int nfs_umount23(const char *devname, char *string);
-+struct local_bind_info;
-+int nfs_umount23(const char *devname, char *string,
-+		 struct local_bind_info *local_ip);
+ /*
+  * enum pnfs_osd_cap_key_sec4 {
+- * 	PNFS_OSD_CAP_KEY_SEC_NONE = 0,
+- * 	PNFS_OSD_CAP_KEY_SEC_SSV  = 1
++ *	PNFS_OSD_CAP_KEY_SEC_NONE = 0,
++ *	PNFS_OSD_CAP_KEY_SEC_SSV  = 1
+  * };
+  *
+  * struct pnfs_osd_object_cred {
+- * 	struct pnfs_osd_objid		oc_object_id;
+- * 	u32				oc_osd_version;
+- * 	u32				oc_cap_key_sec;
+- * 	struct pnfs_osd_opaque_cred	oc_cap_key
+- * 	struct pnfs_osd_opaque_cred	oc_cap;
++ *	struct pnfs_osd_objid		oc_object_id;
++ *	u32				oc_osd_version;
++ *	u32				oc_cap_key_sec;
++ *	struct pnfs_osd_opaque_cred	oc_cap_key
++ *	struct pnfs_osd_opaque_cred	oc_cap;
+  * };
+  */
+ enum nfsstat4 pnfs_osd_xdr_encode_layout_cred(
+@@ -140,10 +140,10 @@ EXPORT_SYMBOL(pnfs_osd_xdr_encode_layout_cred);
  
- #endif	/* !_NFS_UTILS_MOUNT_UTILS_H */
--- 
-1.7.3.4
+ /*
+  * struct pnfs_osd_layout {
+- * 	struct pnfs_osd_data_map	olo_map;
+- * 	u32				olo_comps_index;
+- * 	u32				olo_num_comps;
+- * 	struct pnfs_osd_object_cred	*olo_comps;
++ *	struct pnfs_osd_data_map	olo_map;
++ *	u32				olo_comps_index;
++ *	u32				olo_num_comps;
++ *	struct pnfs_osd_object_cred	*olo_comps;
+  * };
+  */
+ enum nfsstat4 pnfs_osd_xdr_encode_layout_hdr(
+@@ -180,12 +180,12 @@ static enum nfsstat4 _encode_string(struct exp_xdr_stream *xdr,
+ }
+ 
+ /* struct pnfs_osd_deviceaddr {
+- * 	struct pnfs_osd_targetid	oda_targetid;
+- * 	struct pnfs_osd_targetaddr	oda_targetaddr;
+- * 	u8				oda_lun[8];
+- * 	struct nfs4_string		oda_systemid;
+- * 	struct pnfs_osd_object_cred	oda_root_obj_cred;
+- * 	struct nfs4_string		oda_osdname;
++ *	struct pnfs_osd_targetid	oda_targetid;
++ *	struct pnfs_osd_targetaddr	oda_targetaddr;
++ *	u8				oda_lun[8];
++ *	struct nfs4_string		oda_systemid;
++ *	struct pnfs_osd_object_cred	oda_root_obj_cred;
++ *	struct nfs4_string		oda_osdname;
+  * };
+  */
+ enum nfsstat4 pnfs_osd_xdr_encode_deviceaddr(
+@@ -226,9 +226,9 @@ EXPORT_SYMBOL(pnfs_osd_xdr_encode_deviceaddr);
+ 
+ /*
+  * struct pnfs_osd_layoutupdate {
+- * 	u32	dsu_valid;
+- * 	s64	dsu_delta;
+- * 	u32	olu_ioerr_flag;
++ *	u32	dsu_valid;
++ *	s64	dsu_delta;
++ *	u32	olu_ioerr_flag;
+  * };
+  */
+ __be32 *
+@@ -244,9 +244,9 @@ EXPORT_SYMBOL(pnfs_osd_xdr_decode_layoutupdate);
+ 
+ /*
+  * struct pnfs_osd_objid {
+- * 	struct nfs4_deviceid	oid_device_id;
+- * 	u64			oid_partition_id;
+- * 	u64			oid_object_id;
++ *	struct nfs4_deviceid	oid_device_id;
++ *	u64			oid_partition_id;
++ *	u64			oid_object_id;
+  * }; xdr size 32
+  */
+ static inline __be32 *
+@@ -263,11 +263,11 @@ pnfs_osd_xdr_decode_objid(__be32 *p, struct pnfs_osd_objid *objid)
+ 
+ /*
+  * struct pnfs_osd_ioerr {
+- * 	struct pnfs_osd_objid	oer_component;
+- * 	u64			oer_comp_offset;
+- * 	u64			oer_comp_length;
+- * 	u32			oer_iswrite;
+- * 	u32			oer_errno;
++ *	struct pnfs_osd_objid	oer_component;
++ *	u64			oer_comp_offset;
++ *	u64			oer_comp_length;
++ *	u32			oer_iswrite;
++ *	u32			oer_errno;
+  * }; xdr size 32 + 24
+  */
+ bool pnfs_osd_xdr_decode_ioerr(struct pnfs_osd_ioerr *ioerr,
+diff --git a/include/linux/nfsd/pnfs_osd_xdr_srv.h b/include/linux/nfsd/pnfs_osd_xdr_srv.h
+index 2909fbe..fab244e 100644
+--- a/include/linux/nfsd/pnfs_osd_xdr_srv.h
++++ b/include/linux/nfsd/pnfs_osd_xdr_srv.h
+@@ -30,7 +30,7 @@ enum nfsstat4 pnfs_osd_xdr_encode_deviceaddr(
+ 	struct exp_xdr_stream *xdr, struct pnfs_osd_deviceaddr *devaddr);
+ 
+ /* layout_commit decoding */
+-__be32 * pnfs_osd_xdr_decode_layoutupdate(
++__be32 *pnfs_osd_xdr_decode_layoutupdate(
+ 	struct pnfs_osd_layoutupdate *lou, __be32 *p);
+ 
+ /* layout_return decoding */
 
