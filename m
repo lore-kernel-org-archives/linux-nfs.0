@@ -1,72 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:61884 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751060Ab1FJDGE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 23:06:04 -0400
-Received: by iwn34 with SMTP id 34so1850391iwn.19
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Jun 2011 20:06:02 -0700 (PDT)
-Message-ID: <4DF139B1.7070106@tonian.com>
-Date: Thu, 09 Jun 2011 14:22:57 -0700
-From: Benny Halevy <benny@tonian.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
-References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu> <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu> <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com> <20110609114929.GA28157@merit.edu> <4DF0CB5D.60000@panasas.com> <20110609135846.GA32565@merit.edu> <BANLkTi=0yr1ecyf30+OQcFipJsHOk=4Y4w@mail.gmail.com>
-In-Reply-To: <BANLkTi=0yr1ecyf30+OQcFipJsHOk=4Y4w@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:36616 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753958Ab1FNVDk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2011 17:03:40 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>, open-osd <osd-dev@open-osd.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 8/8] pnfsd-exofs: layoutreturn pnfs-obj information decoding
+Date: Tue, 14 Jun 2011 17:03:39 -0400
+Message-Id: <1308085419-12686-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4DF7CA2F.7030407@panasas.com>
+References: <4DF7CA2F.7030407@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-06-09 08:07, Peng Tao wrote:
-> Hi, Jim and Benny,
-> 
-> On Thu, Jun 9, 2011 at 9:58 PM, Jim Rees <rees@umich.edu> wrote:
->> Benny Halevy wrote:
->>
->>  > My understanding is that layoutget specifies a min and max, and the server
->>
->>  There's a min.  What do you consider the max?
->>  Whatever gets into csa_fore_chan_attrs.ca_maxresponsesize?
->>
->> The spec doesn't say max, it says "desired."  I guess I assumed the server
->> wouldn't normally return more than desired.
-> In fact server is returning "desired" length. The problem is that we
-> call pnfs_update_layout in nfs_write_begin, and it will end up setting
-> both minlength and length to page size. There is no space for client
-> to collapse layoutget range in nfs_write_begin.
-> 
+Use pnfs_osd_xdr_decode_ioerr() in exofs_layout_return,
+and print the received errors.
 
-That's a different issue.  Waiting with pnfs_update_layout to flush
-time rather than write_begin if the whole page is written would help
-sending a more meaningful desired range as well as avoiding needless
-read-modify-writes in case the application also wrote the whole
-preallocated block.
+TODO: Call exofs_file_recovery() on errors that need it.
+      (When it's implemented)
 
-Benny
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/exofs/export.c |   22 +++++++++++++++++++++-
+ 1 files changed, 21 insertions(+), 1 deletions(-)
 
->>
->> 18.43.3.  DESCRIPTION
->> ...
->>
->>   The LAYOUTGET operation returns layout information for the specified
->>   byte-range: a layout.  The client actually specifies two ranges, both
->>   starting at the offset in the loga_offset field.  The first range is
->>   between loga_offset and loga_offset + loga_length - 1 inclusive.
->>   This range indicates the desired range the client wants the layout to
->>   cover.  The second range is between loga_offset and loga_offset +
->>   loga_minlength - 1 inclusive.  This range indicates the required
->>   range the client needs the layout to cover.  Thus, loga_minlength
->>   MUST be less than or equal to loga_length.
->>
-> 
-> 
-> 
-
+diff --git a/fs/exofs/export.c b/fs/exofs/export.c
+index c0705df..8281c85 100644
+--- a/fs/exofs/export.c
++++ b/fs/exofs/export.c
+@@ -229,11 +229,31 @@ static int exofs_layout_commit(
+ 	return 0;
+ }
+ 
++static void exofs_handle_error(struct pnfs_osd_ioerr *ioerr)
++{
++	EXOFS_ERR("exofs_handle_error: errno=%d is_write=%d obj=0x%llx "
++		  "offset=0x%llx length=0x%llx\n",
++		  ioerr->oer_errno, ioerr->oer_iswrite,
++		  _LLU(ioerr->oer_component.oid_object_id),
++		  _LLU(ioerr->oer_comp_offset),
++		  _LLU(ioerr->oer_comp_length));
++}
++
+ static int exofs_layout_return(
+ 	struct inode *inode,
+ 	const struct nfsd4_pnfs_layoutreturn_arg *args)
+ {
+-	/* TODO: Decode the pnfs_osd_ioerr if lrf_body_len > 0 */
++	struct exp_xdr_stream xdr = {
++		.p = args->lrf_body,
++		.end = args->lrf_body + exp_xdr_qwords(args->lrf_body_len),
++	};
++	struct pnfs_osd_ioerr ioerr;
++
++	EXOFS_DBGMSG("(0x%lx) cookie %p body_len %d\n",
++		     inode->i_ino, args->lr_cookie, args->lrf_body_len);
++
++	while (pnfs_osd_xdr_decode_ioerr(&ioerr, &xdr))
++		exofs_handle_error(&ioerr);
+ 
+ 	if (args->lr_cookie) {
+ 		struct exofs_i_info *oi = exofs_i(inode);
 -- 
-Benny Halevy
-CTO, Tonian Inc.
+1.7.3.4
 
-Tel: +972-54-802-8340
-benny@tonian.com
