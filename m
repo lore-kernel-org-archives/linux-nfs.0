@@ -1,90 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f52.google.com ([209.85.161.52]:64004 "EHLO
-	mail-fx0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751146Ab1F3PmH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jun 2011 11:42:07 -0400
-Received: by fxd18 with SMTP id 18so2387139fxd.11
-        for <linux-nfs@vger.kernel.org>; Thu, 30 Jun 2011 08:42:05 -0700 (PDT)
-Message-ID: <4E0C994A.2060302@panasas.com>
-Date: Thu, 30 Jun 2011 18:42:02 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Andy Adamson <andros@netapp.com>, quanli gui <gqlxj1987@gmail.com>,
-        Benny Halevy <bhalevy@tonian.com>, linux-nfs@vger.kernel.org,
-        "Mueller, Brian" <bmueller@panasas.com>
-Subject: Re: [nfsv4]nfs client bug
-References: <BANLkTi=xcQseTx8BTWEzg-1DO=ayJuMLrw@mail.gmail.com>		 <4E0B52BB.8090003@tonian.com>		 <BANLkTinxF+obzedP+xupMCDZcgRTFDsQMg@mail.gmail.com>		 <4CC6F947-FE93-47E4-9FD9-C0EB4D8033A6@netapp.com>	 <1309443867.9544.59.camel@lade.trondhjem.org>	 <4E0C9284.5000804@panasas.com> <1309448157.9544.88.camel@lade.trondhjem.org>
-In-Reply-To: <1309448157.9544.88.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:48155 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754073Ab1FNCc6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:58 -0400
+Message-Id: <b8f14a840bc2da395edbb90c257c580ab5d82b35.1308017749.git.rees@umich.edu>
+In-Reply-To: <cover.1308017749.git.rees@umich.edu>
+References: <cover.1308017749.git.rees@umich.edu>
+Subject: [PATCH 22/33] pnfsblock: merge rw extents
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Date: Mon, 13 Jun 2011 22:32:56 -0400
+From: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-06-30 18:35, Trond Myklebust wrote:
-> On Thu, 2011-06-30 at 18:13 +0300, Benny Halevy wrote: 
->> On 2011-06-30 17:24, Trond Myklebust wrote:
->>> On Thu, 2011-06-30 at 09:36 -0400, Andy Adamson wrote: 
->>>> On Jun 29, 2011, at 10:32 PM, quanli gui wrote:
->>>>
->>>>> When I use the iperf tools for one client to 4 ds, the network
->>>>> throughput is 890MB/S. It reflect that it is indeed 10GE non-blocking.
->>>>>
->>>>> a. about block size, I use bs=1M when I use dd
->>>>> b. we indeed use the tcp (doesn't the nfsv4 use the tcp defaultly?)
->>>>> c. the jumbo frames is what? how set mtu automatically?
->>>>>
->>>>> Brian, do you have some more tips?
->>>>
->>>> 1) Set the mtu on both the client and the server 10G interface. Sometimes 9000 is too high. My setup uses 8000.
->>>> To set MTU on interface eth0.
->>>>
->>>> % ifconfig eth0 mtu 9000
->>>>
->>>> iperf will report the MTU of the full path between client and server - use it to verify the MTU of the connection.
->>>>
->>>> 2) Increase the # of rpc_slots on the client.
->>>> % echo 128 > /proc/sys/sunrpc/tcp_slot_table_entries
->>>>
->>>> 3) Increase the # of server threads
->>>>
->>>> % echo 128 > /proc/fs/nfsd/threads
->>>> % service nfs restart
->>>>
->>>> 4) Ensure the TCP buffers on both the client and the server are large enough for the TCP window.
->>>> Calculate the required buffer size by pinging the server from the client with the MTU packet size and multiply the round trip time by the interface capacity
->>>>
->>>> % ping -s 9000 server  - say 108 ms average
->>>>
->>>> 10Gbits/sec = 1,250,000,000 Bytes/sec * .108 sec = 135,000,000 bytes
->>>>
->>>> Use this number to set the following: 
->>>> sysctl -w net.core.rmem_max = 135000000
->>>> sysctl -w net.core.wmem_max 135000000
->>>> sysctl -w "net.ipv4.tcp_rmem <first number unchaged> <second unchanged> 135000000"
->>>> sysctl net.ipv4.tcp_wmem  <first number unchaged> <second unchanged> 135000000"
->>>>
->>>> 5) mount with rsize=131072,wsize=131072
->>>
->>> 6) Note that NFS always guarantees that the file is _on_disk_ after
->>> close(), so if you are using 'dd' to test, then you should be using the
->>> 'conv=fsync' flag (i.e 'dd if=/dev/zero of=test count=20k conv=fsync')
->>> in order to obtain a fair comparison between the NFS and local disk
->>> performance. Otherwise, you are comparing NFS and local _pagecache_
->>> performance.
->>
->> FWIW, modern versions of gnu dd (not sure exactly which version changed that)
->> calculate and report throughput after close()ing the output file.
-> 
-> ...but not after syncing it unless you explicitly request that.
-> 
-> On most (all?) local filesystems, close() does not imply fsync().
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-Right.  My point is that for benchmarking NFS, conv=fsync won't show
-any noticeable difference. We're in complete agreement that it's required
-for benchmarking local file system performance.
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/blocklayout/extents.c |   47 ++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 47 insertions(+), 0 deletions(-)
 
-Benny
-
-> 
-> Trond
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 3d36f66..43a3601 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -501,3 +501,50 @@ find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
+ 	print_bl_extent(ret);
+ 	return ret;
+ }
++
++/* Helper function to set_to_rw that initialize a new extent */
++static void
++_prep_new_extent(struct pnfs_block_extent *new,
++		 struct pnfs_block_extent *orig,
++		 sector_t offset, sector_t length, int state)
++{
++	kref_init(&new->be_refcnt);
++	/* don't need to INIT_LIST_HEAD(&new->be_node) */
++	memcpy(&new->be_devid, &orig->be_devid, sizeof(struct nfs4_deviceid));
++	new->be_mdev = orig->be_mdev;
++	new->be_f_offset = offset;
++	new->be_length = length;
++	new->be_v_offset = orig->be_v_offset - orig->be_f_offset + offset;
++	new->be_state = state;
++	new->be_inval = orig->be_inval;
++}
++
++/* Tries to merge be with extent in front of it in list.
++ * Frees storage if not used.
++ */
++static struct pnfs_block_extent *
++_front_merge(struct pnfs_block_extent *be, struct list_head *head,
++	     struct pnfs_block_extent *storage)
++{
++	struct pnfs_block_extent *prev;
++
++	if (!storage)
++		goto no_merge;
++	if (&be->be_node == head || be->be_node.prev == head)
++		goto no_merge;
++	prev = list_entry(be->be_node.prev, struct pnfs_block_extent, be_node);
++	if ((prev->be_f_offset + prev->be_length != be->be_f_offset) ||
++	    !extents_consistent(prev, be))
++		goto no_merge;
++	_prep_new_extent(storage, prev, prev->be_f_offset,
++			 prev->be_length + be->be_length, prev->be_state);
++	list_replace(&prev->be_node, &storage->be_node);
++	put_extent(prev);
++	list_del(&be->be_node);
++	put_extent(be);
++	return storage;
++
++ no_merge:
++	kfree(storage);
++	return be;
++}
+-- 
+1.7.4.1
 
