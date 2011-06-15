@@ -1,124 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46531 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758487Ab1FVVcK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Jun 2011 17:32:10 -0400
-Received: from bfields by fieldses.org with local (Exim 4.72)
-	(envelope-from <bfields@fieldses.org>)
-	id 1QZV1t-00017F-5t
-	for linux-nfs@vger.kernel.org; Wed, 22 Jun 2011 17:32:09 -0400
-Date: Wed, 22 Jun 2011 17:32:09 -0400
-To: linux-nfs@vger.kernel.org
-Subject: autoload rpcsec_gss_krb5
-Message-ID: <20110622213209.GA3010@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from daytona.panasas.com ([67.152.220.89]:1646 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752383Ab1FOVnr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jun 2011 17:43:47 -0400
+Message-ID: <4DF9278A.5010103@panasas.com>
+Date: Wed, 15 Jun 2011 17:43:38 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] FIXME: BUG wdata->mds_offset never gets set
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-There are three layers of modules required for rpcsec_gss to work:
-auth_gss, a mechanism (rpcsec_gss_krb5), and then any crypto algorithms.
 
-We autoload all of those except rpcsec_gss_krb5.
+The fileslayout and blockslayout drivers had a set of
+wdata->mds_offset in their .write_pagelist member.
 
-Objections?
+The objects driver did not. Which breaks layout_commit.
 
-(I suppose another option would be to get rid of the gss mechanism layer
-entirely, now that we've only got one of them.  But I'd rather keep it.)
+FIXME: Since all drivers set mds_offset in exactly the same place
+to the same value. And then never touch it. It calls for the
+generic layer to take care of it.
+(I'll send the fix tomorrow)
 
---b.
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/objlayout/objlayout.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-commit 027c33f5a292b5a4bbfc1ad9ced19ad4626d056b
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Wed Jun 22 10:50:08 2011 -0400
-
-    rpc: allow autoloading of gss mechanisms
-    
-    Remove the need for an explicit modprobe of rpcsec_gss_krb5.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index 0a9a2ec..5c33926 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -743,6 +743,13 @@ static struct pf_desc gss_kerberos_pfs[] = {
- 	},
- };
- 
-+MODULE_ALIAS("rpc-auth-gss-krb5");
-+MODULE_ALIAS("rpc-auth-gss-krb5i");
-+MODULE_ALIAS("rpc-auth-gss-krb5p");
-+MODULE_ALIAS("rpc-auth-gss-390003");
-+MODULE_ALIAS("rpc-auth-gss-390004");
-+MODULE_ALIAS("rpc-auth-gss-390005");
-+
- static struct gss_api_mech gss_kerberos_mech = {
- 	.gm_name	= "krb5",
- 	.gm_owner	= THIS_MODULE,
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index e3c36a2..ca8cad8 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -141,7 +141,7 @@ gss_mech_get(struct gss_api_mech *gm)
- EXPORT_SYMBOL_GPL(gss_mech_get);
- 
- struct gss_api_mech *
--gss_mech_get_by_name(const char *name)
-+_gss_mech_get_by_name(const char *name)
- {
- 	struct gss_api_mech	*pos, *gm = NULL;
- 
-@@ -158,6 +158,17 @@ gss_mech_get_by_name(const char *name)
- 
+diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+index dc3956c..96dd474 100644
+--- a/fs/nfs/objlayout/objlayout.c
++++ b/fs/nfs/objlayout/objlayout.c
+@@ -430,6 +430,8 @@ objlayout_write_pagelist(struct nfs_write_data *wdata,
+ 	status = objio_write_pagelist(state, how & FLUSH_STABLE);
+  out:
+ 	dprintk("%s: Return status %Zd\n", __func__, status);
++	/* pnfs_set_layoutcommit needs this */
++	wdata->mds_offset = wdata->args.offset;
+ 	wdata->pnfs_error = status;
+ 	return PNFS_ATTEMPTED;
  }
- 
-+struct gss_api_mech * gss_mech_get_by_name(const char *name)
-+{
-+	struct gss_api_mech *gm = NULL;
-+
-+	gm = _gss_mech_get_by_name(name);
-+	if (!gm) {
-+		request_module("rpc-auth-gss-%s", name);
-+		gm = _gss_mech_get_by_name(name);
-+	}
-+	return gm;
-+}
- EXPORT_SYMBOL_GPL(gss_mech_get_by_name);
- 
- struct gss_api_mech *
-@@ -194,10 +205,9 @@ mech_supports_pseudoflavor(struct gss_api_mech *gm, u32 pseudoflavor)
- 	return 0;
- }
- 
--struct gss_api_mech *
--gss_mech_get_by_pseudoflavor(u32 pseudoflavor)
-+struct gss_api_mech *_gss_mech_get_by_pseudoflavor(u32 pseudoflavor)
- {
--	struct gss_api_mech *pos, *gm = NULL;
-+	struct gss_api_mech *gm = NULL, *pos;
- 
- 	spin_lock(&registered_mechs_lock);
- 	list_for_each_entry(pos, &registered_mechs, gm_list) {
-@@ -213,6 +223,20 @@ gss_mech_get_by_pseudoflavor(u32 pseudoflavor)
- 	return gm;
- }
- 
-+struct gss_api_mech *
-+gss_mech_get_by_pseudoflavor(u32 pseudoflavor)
-+{
-+	struct gss_api_mech *gm;
-+
-+	gm = _gss_mech_get_by_pseudoflavor(pseudoflavor);
-+
-+	if (!gm) {
-+		request_module("rpc-auth-gss-%u", pseudoflavor);
-+		gm = _gss_mech_get_by_pseudoflavor(pseudoflavor);
-+	}
-+	return gm;
-+}
-+
- EXPORT_SYMBOL_GPL(gss_mech_get_by_pseudoflavor);
- 
- int gss_mech_list_pseudoflavors(rpc_authflavor_t *array_ptr)
+-- 
+1.7.3.4
+
