@@ -1,47 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1473 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:30001 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752559Ab1F0QXX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Jun 2011 12:23:23 -0400
-Message-ID: <4E08AE76.6030508@RedHat.com>
-Date: Mon, 27 Jun 2011 12:23:18 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Jim Rees <rees@umich.edu>
-CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH 2/2] remove -fwritable-strings for gcc 4.0
-References: <cover.1308241259.git.rees@umich.edu> <41c8992e9446c712542515a85a8b4abb83476a9d.1308241259.git.rees@umich.edu>
-In-Reply-To: <41c8992e9446c712542515a85a8b4abb83476a9d.1308241259.git.rees@umich.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1754618Ab1FOOSK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Jun 2011 10:18:10 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Bakeathon 1/1] NFSv4.1: fix hlist_del in _deviceid_purge_client
+Date: Wed, 15 Jun 2011 10:18:22 -0400
+Message-Id: <1308147502-15181-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Andy Adamson <andros@netapp.com>
 
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/inode.c    |    2 ++
+ fs/nfs/pnfs.h     |    1 +
+ fs/nfs/pnfs_dev.c |   14 +++++++++++++-
+ 3 files changed, 16 insertions(+), 1 deletions(-)
 
-On 06/16/2011 12:23 PM, Jim Rees wrote:
-> Signed-off-by: Jim Rees <rees@umich.edu>
-> ---
->  tests.init |    7 +++++++
->  1 files changed, 7 insertions(+), 0 deletions(-)
-> 
-> diff --git a/tests.init b/tests.init
-> index 69b51bf..5d93eb5 100644
-> --- a/tests.init
-> +++ b/tests.init
-> @@ -210,6 +210,13 @@ LOCKTESTS=`echo tlocklfs tlock64`
->  #UMOUNT=/bin/umount
->  #LOCKTESTS=`echo tlocklfs tlock64`
->  
-> +# Use with Linux 2.6 / gcc 4.0
-> +CFLAGS=`echo -DLINUX -DGLIBC=22 -DMMAP -DSTDARG`
-> +LIBS=`echo -lnsl`
-> +MOUNT=/bin/mount
-> +UMOUNT=/bin/umount
-> +LOCKTESTS=`echo tlocklfs tlock64`
-> +
->  # Use with Linux if your distro doesn't provide a "cc".
->  #CC=gcc
->  
-Committed on the git://linux-nfs.org/~steved/exports/cthon04 tree
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 6f4850d..55ba1b0 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1595,6 +1595,8 @@ static int __init init_nfs_fs(void)
+ 	if (err)
+ 		goto out0;
+ 
++	nfs4_init_deviceid_cache();
++
+ #ifdef CONFIG_PROC_FS
+ 	rpc_proc_register(&nfs_rpcstat);
+ #endif
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index e46edac..67400bc 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -212,6 +212,7 @@ void nfs4_init_deviceid_node(struct nfs4_deviceid_node *,
+ struct nfs4_deviceid_node *nfs4_insert_deviceid_node(struct nfs4_deviceid_node *);
+ bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
+ void nfs4_deviceid_purge_client(const struct nfs_client *);
++void nfs4_init_deviceid_cache(void);
+ 
+ static inline int lo_fail_bit(u32 iomode)
+ {
+diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+index 037a5c6..923a9da 100644
+--- a/fs/nfs/pnfs_dev.c
++++ b/fs/nfs/pnfs_dev.c
+@@ -161,6 +161,15 @@ nfs4_init_deviceid_node(struct nfs4_deviceid_node *d,
+ }
+ EXPORT_SYMBOL_GPL(nfs4_init_deviceid_node);
+ 
++void
++nfs4_init_deviceid_cache()
++{
++	long h;
++
++	for (h = 0; h < NFS4_DEVICE_ID_HASH_SIZE; h++)
++		INIT_HLIST_HEAD(&nfs4_deviceid_cache[h]);
++}
++
+ /*
+  * Uniquely initialize and insert a deviceid node into cache
+  *
+@@ -236,9 +245,10 @@ _deviceid_purge_client(const struct nfs_client *clp, long hash)
+ 
+ 	synchronize_rcu();
+ 	while (!hlist_empty(&tmp)) {
++		d = hlist_entry(tmp.first, struct nfs4_deviceid_node, tmpnode);
++		hlist_del_init(&d->tmpnode);
+ 		if (atomic_dec_and_test(&d->ref))
+ 			d->ld->free_deviceid_node(d);
+-		hlist_del_init(&d->tmpnode);
+ 	}
+ }
+ 
+@@ -247,6 +257,8 @@ nfs4_deviceid_purge_client(const struct nfs_client *clp)
+ {
+ 	long h;
+ 
++	if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS))
++		return;
+ 	for (h = 0; h < NFS4_DEVICE_ID_HASH_SIZE; h++)
+ 		_deviceid_purge_client(clp, h);
+ }
+-- 
+1.7.3.1
 
-steved.
