@@ -1,111 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:61902 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753894Ab1FNWY1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2011 18:24:27 -0400
-Received: by vws1 with SMTP id 1so4877714vws.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Jun 2011 15:24:26 -0700 (PDT)
-Message-ID: <4DF7DF98.6090406@gmail.com>
-Date: Tue, 14 Jun 2011 18:24:24 -0400
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:59647 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753026Ab1FOO6a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jun 2011 10:58:30 -0400
+Received: by eyx24 with SMTP id 24so195300eyx.19
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Jun 2011 07:58:29 -0700 (PDT)
+Message-ID: <4DF8C891.6030402@gmail.com>
+Date: Wed, 15 Jun 2011 10:58:25 -0400
 From: Benny Halevy <bhalevy.lists@gmail.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
-        open-osd <osd-dev@open-osd.org>
-Subject: Re: [PATCHSET 0/8] pnfsd-exofs: New set of exofs pnfs export patches
-References: <4DF7CA2F.7030407@panasas.com> <4DF7CBE6.1050406@tonian.com>
-In-Reply-To: <4DF7CBE6.1050406@tonian.com>
+To: andros@netapp.com
+CC: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH Bakeathon version 2 1/1] NFSv4.1: fix hlist_del in _deviceid_purge_client
+References: <1308147910-17057-1-git-send-email-andros@netapp.com>
+In-Reply-To: <1308147910-17057-1-git-send-email-andros@netapp.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-OK, I took this in under pnfs-all-3.0-rc3-2011-06-14-2
-The new tree structure is:
+On 2011-06-15 10:25, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> cc:stable@kernel.org [2.6.39]
 
-master (at nfs-2.6/nfs-for-bakeathon, based off of v3.0-rc3)
-	nfs-upstream
-		pnfs-block
-			pnfs-obj
-	nfsd-upstream
-		nfsd41-all
-			pnfsd-all
-				pnfsd-exofs-all
-					pnfsd-lexp-all
-						spnfs-all
-							spnfs-block-all
-								pnfs-all-latest
-								+pnfs-obj (that's a merge :)
+Looks good to me.
 
 Benny
 
-On 2011-06-14 17:00, Benny Halevy wrote:
-> On 2011-06-14 16:53, Boaz Harrosh wrote:
->>
->> Benny hi
->>
->> I'm submitting a new SQUASHED set of exofs patches. These should completely
->> replace the patches you have now in the pnfsd-exofs{-all} branch
->>
+> ---
+>  fs/nfs/inode.c    |    2 ++
+>  fs/nfs/pnfs.h     |    1 +
+>  fs/nfs/pnfs_dev.c |   14 +++++++++++++-
+>  3 files changed, 16 insertions(+), 1 deletions(-)
 > 
-> Great, thanks!
-> 
->> If anyone is curios I'll send a SQUASHME patchset as reply to this mail.
->>
->> I Think the pnfsd-exofs branch should advance down to before the pnfsd-exp-all.
->> It should be the first or second candidate for inclusion.
-> 
-> makes sense
-> 
->>
->> BTW: You forgot to branch the pnfs-blocks branch last time.
-> 
-> Already fixed... (pnfs-block is there)
-> 
->>
->> I think that now, since most of the client code is in-tree and all the common code
->> is in. It would be easier to work with a tree that has two separate branches for the
->> 1.block-layout and 2.server branches. And the pnfs-all-latest which merges the two.
->>
->> something like:
->>
->>
->>                 |----pnfsd(including gfs2_---pnfsd-exofs---pnfsd-exp----pnfsd-spnfs----pnfsd-spnfs-blocks ---|
->> nfs-linux-next--|                                                                                            + --- pnfs-all-latest
->>                 | --------pnfs-blocks------------------------------------------------------------------------|
-> 
-> Good point, I'll try it out.
-> 
->>
->> * "+" means a merge
->>
->> It will be much easier to develop this way
->>
->> usual list of patches:
->>
->> [PATCH 1/8] nfs_xdr: Move nfs4_string definition out of #ifdef CONFIG_NFS_V4
->> [PATCH 2/8] exofs: pnfs-tree: Remove pnfs-osd private definitions
->> [PATCH 3/8] pnfs-obj: pnfs_osd_xdr: Remove dead code and cleanup
->>  
->>     Intended for upstream
->>
->> [PATCH 4/8] pnfsd-exofs: pnfs objects server XDR functions
->> [PATCH 5/8] pnfsd-exofs: Add pNFS export support
->> [PATCH 6/8] pnfsd-exofs: get_device_info implementation.
->> [PATCH 7/8] pnfsd-exofs: Recall layouts on truncate
->> [PATCH 8/8] pnfsd-exofs: layoutreturn pnfs-obj information decoding
->>
->>    New exofs pnfs export patches
-> 
-> Where are the patches? :)
-> 
-> Benny
-> 
->>
->> Thanks
->> Boaz
->>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 6f4850d..55ba1b0 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -1595,6 +1595,8 @@ static int __init init_nfs_fs(void)
+>  	if (err)
+>  		goto out0;
+>  
+> +	nfs4_init_deviceid_cache();
+> +
+>  #ifdef CONFIG_PROC_FS
+>  	rpc_proc_register(&nfs_rpcstat);
+>  #endif
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index e46edac..67400bc 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -212,6 +212,7 @@ void nfs4_init_deviceid_node(struct nfs4_deviceid_node *,
+>  struct nfs4_deviceid_node *nfs4_insert_deviceid_node(struct nfs4_deviceid_node *);
+>  bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
+>  void nfs4_deviceid_purge_client(const struct nfs_client *);
+> +void nfs4_init_deviceid_cache(void);
+>  
+>  static inline int lo_fail_bit(u32 iomode)
+>  {
+> diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+> index 037a5c6..923a9da 100644
+> --- a/fs/nfs/pnfs_dev.c
+> +++ b/fs/nfs/pnfs_dev.c
+> @@ -161,6 +161,15 @@ nfs4_init_deviceid_node(struct nfs4_deviceid_node *d,
+>  }
+>  EXPORT_SYMBOL_GPL(nfs4_init_deviceid_node);
+>  
+> +void
+> +nfs4_init_deviceid_cache()
+> +{
+> +	long h;
+> +
+> +	for (h = 0; h < NFS4_DEVICE_ID_HASH_SIZE; h++)
+> +		INIT_HLIST_HEAD(&nfs4_deviceid_cache[h]);
+> +}
+> +
+>  /*
+>   * Uniquely initialize and insert a deviceid node into cache
+>   *
+> @@ -236,9 +245,10 @@ _deviceid_purge_client(const struct nfs_client *clp, long hash)
+>  
+>  	synchronize_rcu();
+>  	while (!hlist_empty(&tmp)) {
+> +		d = hlist_entry(tmp.first, struct nfs4_deviceid_node, tmpnode);
+> +		hlist_del_init(&d->tmpnode);
+>  		if (atomic_dec_and_test(&d->ref))
+>  			d->ld->free_deviceid_node(d);
+> -		hlist_del_init(&d->tmpnode);
+>  	}
+>  }
+>  
+> @@ -247,6 +257,8 @@ nfs4_deviceid_purge_client(const struct nfs_client *clp)
+>  {
+>  	long h;
+>  
+> +	if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS))
+> +		return;
+>  	for (h = 0; h < NFS4_DEVICE_ID_HASH_SIZE; h++)
+>  		_deviceid_purge_client(clp, h);
+>  }
