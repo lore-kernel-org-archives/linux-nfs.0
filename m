@@ -1,32 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:54674 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756726Ab1FVW6S (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 18:58:18 -0400
-Date: Wed, 22 Jun 2011 23:58:15 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [nfs, rpc] crap with refcounting and rmmod races
-Message-ID: <20110622225815.GG11521@ZenIV.linux.org.uk>
-References: <20110622191239.GD11521@ZenIV.linux.org.uk>
- <20110622215145.GF11521@ZenIV.linux.org.uk>
- <1308782934.25875.22.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1308782934.25875.22.camel@lade.trondhjem.org>
+Received: from mx2.netapp.com ([216.240.18.37]:15866 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751779Ab1FOScF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Jun 2011 14:32:05 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH 1/1] nfs4.1: mark layout as bad on error path in _pnfs_return_layout
+Date: Wed, 15 Jun 2011 14:32:02 -0400
+Message-Id: <1308162722-16248-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Jun 22, 2011 at 06:48:54PM -0400, Trond Myklebust wrote:
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-> It is fairly trivial to define a 'struct nfs_path' that takes a
-> reference to the dentry and a reference to the super block if you'd
-> prefer that we get rid of the 'struct path' in nfs_open_context.
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index ebac718..dec239f 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -658,6 +658,8 @@ _pnfs_return_layout(struct inode *ino)
+ 	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
+ 	if (unlikely(lrp == NULL)) {
+ 		status = -ENOMEM;
++		set_bit(NFS_LAYOUT_RW_FAILED, &lo->plh_flags);
++		set_bit(NFS_LAYOUT_RO_FAILED, &lo->plh_flags);
+ 		put_layout_hdr(lo);
+ 		goto out;
+ 	}
+-- 
+1.7.2.1
 
-Er...  as opposed to struct dentry *dentry and its ->d_sb? ;-)
-See the last few patches in #untested (vfs-2.6.git) doing more
-or less that (and nfs4_closedata is just fine with data->inode->i_sb -
-it doesn't need to pin any dentries at all; nfs4_opendata and
-nfs_open_context need dentry, of course).
