@@ -1,351 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:51961 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752246Ab1FNCcP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:15 -0400
-Message-Id: <cdef40ef23730695a2c1127d03e0827a72880f90.1308017749.git.rees@umich.edu>
-In-Reply-To: <cover.1308017749.git.rees@umich.edu>
-References: <cover.1308017749.git.rees@umich.edu>
-Subject: [PATCH 05/33] pnfs: ask for layout_blksize and save it in nfs_server
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Date: Mon, 13 Jun 2011 22:32:12 -0400
-From: Jim Rees <rees@umich.edu>
+Received: from mx2.netapp.com ([216.240.18.37]:32923 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754947Ab1FOOY5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Jun 2011 10:24:57 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Bakeathon version 2 1/1] NFSv4.1: fix hlist_del in _deviceid_purge_client
+Date: Wed, 15 Jun 2011 10:25:10 -0400
+Message-Id: <1308147910-17057-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Peng Tao <bergwolf@gmail.com>
+From: Andy Adamson <andros@netapp.com>
 
-Block layout needs it to determine IO size.
-
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Tao Guo <glorioustao@gmail.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Peng Tao <bergwolf@gmail.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+cc:stable@kernel.org [2.6.39]
 ---
- fs/nfs/client.c           |    1 +
- fs/nfs/nfs4_fs.h          |    2 +-
- fs/nfs/nfs4proc.c         |    5 +-
- fs/nfs/nfs4xdr.c          |  101 +++++++++++++++++++++++++++++++++++++--------
- include/linux/nfs_fs_sb.h |    4 +-
- include/linux/nfs_xdr.h   |    3 +-
- 6 files changed, 93 insertions(+), 23 deletions(-)
+ fs/nfs/inode.c    |    2 ++
+ fs/nfs/pnfs.h     |    1 +
+ fs/nfs/pnfs_dev.c |   14 +++++++++++++-
+ 3 files changed, 16 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index d630bb7..3b75943 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -938,6 +938,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server,
- 	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
- 		server->wsize = NFS_MAX_FILE_IO_SIZE;
- 	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
-+	server->pnfs_blksize = fsinfo->blksize;
- 	set_pnfs_layoutdriver(server, mntfh, fsinfo->layouttype);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 6f4850d..55ba1b0 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1595,6 +1595,8 @@ static int __init init_nfs_fs(void)
+ 	if (err)
+ 		goto out0;
  
- 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index c4a6983..5725a7e 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -315,7 +315,7 @@ extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
- extern const u32 nfs4_fattr_bitmap[2];
- extern const u32 nfs4_statfs_bitmap[2];
- extern const u32 nfs4_pathconf_bitmap[2];
--extern const u32 nfs4_fsinfo_bitmap[2];
-+extern const u32 nfs4_fsinfo_bitmap[3];
- extern const u32 nfs4_fs_locations_bitmap[2];
- 
- /* nfs4renewd.c */
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ec580a8..04450bf 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -137,12 +137,13 @@ const u32 nfs4_pathconf_bitmap[2] = {
- 	0
- };
- 
--const u32 nfs4_fsinfo_bitmap[2] = { FATTR4_WORD0_MAXFILESIZE
-+const u32 nfs4_fsinfo_bitmap[3] = { FATTR4_WORD0_MAXFILESIZE
- 			| FATTR4_WORD0_MAXREAD
- 			| FATTR4_WORD0_MAXWRITE
- 			| FATTR4_WORD0_LEASE_TIME,
- 			FATTR4_WORD1_TIME_DELTA
--			| FATTR4_WORD1_FS_LAYOUT_TYPES
-+			| FATTR4_WORD1_FS_LAYOUT_TYPES,
-+			FATTR4_WORD2_LAYOUT_BLKSIZE
- };
- 
- const u32 nfs4_fs_locations_bitmap[2] = {
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 60e9d44..b8f375e 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -91,7 +91,7 @@ static int nfs4_stat_to_errno(int);
- #define encode_getfh_maxsz      (op_encode_hdr_maxsz)
- #define decode_getfh_maxsz      (op_decode_hdr_maxsz + 1 + \
- 				((3+NFS4_FHSIZE) >> 2))
--#define nfs4_fattr_bitmap_maxsz 3
-+#define nfs4_fattr_bitmap_maxsz 4
- #define encode_getattr_maxsz    (op_encode_hdr_maxsz + nfs4_fattr_bitmap_maxsz)
- #define nfs4_name_maxsz		(1 + ((3 + NFS4_MAXNAMLEN) >> 2))
- #define nfs4_path_maxsz		(1 + ((3 + NFS4_MAXPATHLEN) >> 2))
-@@ -113,7 +113,11 @@ static int nfs4_stat_to_errno(int);
- #define encode_restorefh_maxsz  (op_encode_hdr_maxsz)
- #define decode_restorefh_maxsz  (op_decode_hdr_maxsz)
- #define encode_fsinfo_maxsz	(encode_getattr_maxsz)
--#define decode_fsinfo_maxsz	(op_decode_hdr_maxsz + 15)
-+/* The 5 accounts for the PNFS attributes, and assumes that at most three
-+ * layout types will be returned.
-+ */
-+#define decode_fsinfo_maxsz	(op_decode_hdr_maxsz + \
-+				 nfs4_fattr_bitmap_maxsz + 4 + 8 + 5)
- #define encode_renew_maxsz	(op_encode_hdr_maxsz + 3)
- #define decode_renew_maxsz	(op_decode_hdr_maxsz)
- #define encode_setclientid_maxsz \
-@@ -1095,6 +1099,35 @@ static void encode_getattr_two(struct xdr_stream *xdr, uint32_t bm0, uint32_t bm
- 	hdr->replen += decode_getattr_maxsz;
- }
- 
-+static void
-+encode_getattr_three(struct xdr_stream *xdr,
-+		     uint32_t bm0, uint32_t bm1, uint32_t bm2,
-+		     struct compound_hdr *hdr)
-+{
-+	__be32 *p;
++	nfs4_init_deviceid_cache();
 +
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(OP_GETATTR);
-+	if (bm2) {
-+		p = reserve_space(xdr, 16);
-+		*p++ = cpu_to_be32(3);
-+		*p++ = cpu_to_be32(bm0);
-+		*p++ = cpu_to_be32(bm1);
-+		*p = cpu_to_be32(bm2);
-+	} else if (bm1) {
-+		p = reserve_space(xdr, 12);
-+		*p++ = cpu_to_be32(2);
-+		*p++ = cpu_to_be32(bm0);
-+		*p = cpu_to_be32(bm1);
-+	} else {
-+		p = reserve_space(xdr, 8);
-+		*p++ = cpu_to_be32(1);
-+		*p = cpu_to_be32(bm0);
-+	}
-+	hdr->nops++;
-+	hdr->replen += decode_getattr_maxsz;
-+}
-+
- static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
- {
- 	encode_getattr_two(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
-@@ -1103,8 +1136,11 @@ static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct c
- 
- static void encode_fsinfo(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
- {
--	encode_getattr_two(xdr, bitmask[0] & nfs4_fsinfo_bitmap[0],
--			   bitmask[1] & nfs4_fsinfo_bitmap[1], hdr);
-+	encode_getattr_three(xdr,
-+			     bitmask[0] & nfs4_fsinfo_bitmap[0],
-+			     bitmask[1] & nfs4_fsinfo_bitmap[1],
-+			     bitmask[2] & nfs4_fsinfo_bitmap[2],
-+			     hdr);
- }
- 
- static void encode_fs_locations(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
-@@ -2575,7 +2611,7 @@ static void nfs4_xdr_enc_setclientid_confirm(struct rpc_rqst *req,
- 	struct compound_hdr hdr = {
- 		.nops	= 0,
- 	};
--	const u32 lease_bitmap[2] = { FATTR4_WORD0_LEASE_TIME, 0 };
-+	const u32 lease_bitmap[3] = { FATTR4_WORD0_LEASE_TIME, 0, 0 };
- 
- 	encode_compound_hdr(xdr, req, &hdr);
- 	encode_setclientid_confirm(xdr, arg, &hdr);
-@@ -2719,7 +2755,7 @@ static void nfs4_xdr_enc_get_lease_time(struct rpc_rqst *req,
- 	struct compound_hdr hdr = {
- 		.minorversion = nfs4_xdr_minorversion(&args->la_seq_args),
- 	};
--	const u32 lease_bitmap[2] = { FATTR4_WORD0_LEASE_TIME, 0 };
-+	const u32 lease_bitmap[3] = { FATTR4_WORD0_LEASE_TIME, 0, 0 };
- 
- 	encode_compound_hdr(xdr, req, &hdr);
- 	encode_sequence(xdr, &args->la_seq_args, &hdr);
-@@ -2947,14 +2983,17 @@ static int decode_attr_bitmap(struct xdr_stream *xdr, uint32_t *bitmap)
- 		goto out_overflow;
- 	bmlen = be32_to_cpup(p);
- 
--	bitmap[0] = bitmap[1] = 0;
-+	bitmap[0] = bitmap[1] = bitmap[2] = 0;
- 	p = xdr_inline_decode(xdr, (bmlen << 2));
- 	if (unlikely(!p))
- 		goto out_overflow;
- 	if (bmlen > 0) {
- 		bitmap[0] = be32_to_cpup(p++);
--		if (bmlen > 1)
--			bitmap[1] = be32_to_cpup(p);
-+		if (bmlen > 1) {
-+			bitmap[1] = be32_to_cpup(p++);
-+			if (bmlen > 2)
-+				bitmap[2] = be32_to_cpup(p);
-+		}
- 	}
- 	return 0;
- out_overflow:
-@@ -2986,8 +3025,9 @@ static int decode_attr_supported(struct xdr_stream *xdr, uint32_t *bitmap, uint3
- 			return ret;
- 		bitmap[0] &= ~FATTR4_WORD0_SUPPORTED_ATTRS;
- 	} else
--		bitmask[0] = bitmask[1] = 0;
--	dprintk("%s: bitmask=%08x:%08x\n", __func__, bitmask[0], bitmask[1]);
-+		bitmask[0] = bitmask[1] = bitmask[2] = 0;
-+	dprintk("%s: bitmask=%08x:%08x:%08x\n", __func__,
-+		bitmask[0], bitmask[1], bitmask[2]);
- 	return 0;
- }
- 
-@@ -4041,7 +4081,7 @@ out_overflow:
- static int decode_server_caps(struct xdr_stream *xdr, struct nfs4_server_caps_res *res)
- {
- 	__be32 *savep;
--	uint32_t attrlen, bitmap[2] = {0};
-+	uint32_t attrlen, bitmap[3] = {0};
- 	int status;
- 
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
-@@ -4067,7 +4107,7 @@ xdr_error:
- static int decode_statfs(struct xdr_stream *xdr, struct nfs_fsstat *fsstat)
- {
- 	__be32 *savep;
--	uint32_t attrlen, bitmap[2] = {0};
-+	uint32_t attrlen, bitmap[3] = {0};
- 	int status;
- 
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
-@@ -4099,7 +4139,7 @@ xdr_error:
- static int decode_pathconf(struct xdr_stream *xdr, struct nfs_pathconf *pathconf)
- {
- 	__be32 *savep;
--	uint32_t attrlen, bitmap[2] = {0};
-+	uint32_t attrlen, bitmap[3] = {0};
- 	int status;
- 
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
-@@ -4239,7 +4279,7 @@ static int decode_getfattr_generic(struct xdr_stream *xdr, struct nfs_fattr *fat
- {
- 	__be32 *savep;
- 	uint32_t attrlen,
--		 bitmap[2] = {0};
-+		 bitmap[3] = {0};
- 	int status;
- 
- 	status = decode_op_hdr(xdr, OP_GETATTR);
-@@ -4325,10 +4365,32 @@ static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
- 	return status;
- }
- 
-+/*
-+ * The prefered block size for layout directed io
-+ */
-+static int decode_attr_layout_blksize(struct xdr_stream *xdr, uint32_t *bitmap,
-+				      uint32_t *res)
-+{
-+	__be32 *p;
-+
-+	dprintk("%s: bitmap is %x\n", __func__, bitmap[2]);
-+	*res = 0;
-+	if (bitmap[2] & FATTR4_WORD2_LAYOUT_BLKSIZE) {
-+		p = xdr_inline_decode(xdr, 4);
-+		if (unlikely(!p)) {
-+			print_overflow_msg(__func__, xdr);
-+			return -EIO;
-+		}
-+		*res = be32_to_cpup(p);
-+		bitmap[2] &= ~FATTR4_WORD2_LAYOUT_BLKSIZE;
-+	}
-+	return 0;
-+}
-+
- static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
- {
- 	__be32 *savep;
--	uint32_t attrlen, bitmap[2];
-+	uint32_t attrlen, bitmap[3];
- 	int status;
- 
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
-@@ -4356,6 +4418,9 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
- 	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttype);
- 	if (status != 0)
- 		goto xdr_error;
-+	status = decode_attr_layout_blksize(xdr, bitmap, &fsinfo->blksize);
-+	if (status)
-+		goto xdr_error;
- 
- 	status = verify_attr_len(xdr, savep, attrlen);
- xdr_error:
-@@ -4775,7 +4840,7 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
- {
- 	__be32 *savep;
- 	uint32_t attrlen,
--		 bitmap[2] = {0};
-+		 bitmap[3] = {0};
- 	struct kvec *iov = req->rq_rcv_buf.head;
- 	int status;
- 
-@@ -6607,7 +6672,7 @@ out:
- int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
- 		       int plus)
- {
--	uint32_t bitmap[2] = {0};
-+	uint32_t bitmap[3] = {0};
- 	uint32_t len;
- 	__be32 *p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 87694ca..79cc4ca 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -130,7 +130,7 @@ struct nfs_server {
+ #ifdef CONFIG_PROC_FS
+ 	rpc_proc_register(&nfs_rpcstat);
  #endif
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index e46edac..67400bc 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -212,6 +212,7 @@ void nfs4_init_deviceid_node(struct nfs4_deviceid_node *,
+ struct nfs4_deviceid_node *nfs4_insert_deviceid_node(struct nfs4_deviceid_node *);
+ bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
+ void nfs4_deviceid_purge_client(const struct nfs_client *);
++void nfs4_init_deviceid_cache(void);
  
- #ifdef CONFIG_NFS_V4
--	u32			attr_bitmask[2];/* V4 bitmask representing the set
-+	u32			attr_bitmask[3];/* V4 bitmask representing the set
- 						   of attributes supported on this
- 						   filesystem */
- 	u32			cache_consistency_bitmask[2];
-@@ -143,6 +143,8 @@ struct nfs_server {
- 						   filesystem */
- 	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
- 	struct rpc_wait_queue	roc_rpcwaitq;
-+	void			*pnfs_ld_data; /* per mount point data */
-+	u32			pnfs_blksize; /* layout_blksize attr */
+ static inline int lo_fail_bit(u32 iomode)
+ {
+diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+index 037a5c6..923a9da 100644
+--- a/fs/nfs/pnfs_dev.c
++++ b/fs/nfs/pnfs_dev.c
+@@ -161,6 +161,15 @@ nfs4_init_deviceid_node(struct nfs4_deviceid_node *d,
+ }
+ EXPORT_SYMBOL_GPL(nfs4_init_deviceid_node);
  
- 	/* the following fields are protected by nfs_client->cl_lock */
- 	struct rb_root		state_owners;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 0863228..1fa6f7a 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -122,6 +122,7 @@ struct nfs_fsinfo {
- 	struct timespec		time_delta; /* server time granularity */
- 	__u32			lease_time; /* in seconds */
- 	__u32			layouttype; /* supported pnfs layout driver */
-+	__u32			blksize; /* preferred pnfs io block size */
- };
++void
++nfs4_init_deviceid_cache()
++{
++	long h;
++
++	for (h = 0; h < NFS4_DEVICE_ID_HASH_SIZE; h++)
++		INIT_HLIST_HEAD(&nfs4_deviceid_cache[h]);
++}
++
+ /*
+  * Uniquely initialize and insert a deviceid node into cache
+  *
+@@ -236,9 +245,10 @@ _deviceid_purge_client(const struct nfs_client *clp, long hash)
  
- struct nfs_fsstat {
-@@ -953,7 +954,7 @@ struct nfs4_server_caps_arg {
- };
+ 	synchronize_rcu();
+ 	while (!hlist_empty(&tmp)) {
++		d = hlist_entry(tmp.first, struct nfs4_deviceid_node, tmpnode);
++		hlist_del_init(&d->tmpnode);
+ 		if (atomic_dec_and_test(&d->ref))
+ 			d->ld->free_deviceid_node(d);
+-		hlist_del_init(&d->tmpnode);
+ 	}
+ }
  
- struct nfs4_server_caps_res {
--	u32				attr_bitmask[2];
-+	u32				attr_bitmask[3];
- 	u32				acl_bitmask;
- 	u32				has_links;
- 	u32				has_symlinks;
+@@ -247,6 +257,8 @@ nfs4_deviceid_purge_client(const struct nfs_client *clp)
+ {
+ 	long h;
+ 
++	if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS))
++		return;
+ 	for (h = 0; h < NFS4_DEVICE_ID_HASH_SIZE; h++)
+ 		_deviceid_purge_client(clp, h);
+ }
 -- 
-1.7.4.1
+1.7.3.1
 
