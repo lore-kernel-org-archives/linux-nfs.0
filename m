@@ -1,39 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:38163 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754044Ab1FNVgm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2011 17:36:42 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>, open-osd <osd-dev@open-osd.org>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 07/10] SQUASHME: pnfsd-exofs: osd_xdr_srv header moved
-Date: Tue, 14 Jun 2011 17:36:41 -0400
-Message-Id: <1308087401-13235-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4DF7D36F.9070602@panasas.com>
-References: <4DF7D36F.9070602@panasas.com>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:37312 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755162Ab1FPCuQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jun 2011 22:50:16 -0400
+Received: by vws1 with SMTP id 1so846174vws.19
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Jun 2011 19:50:15 -0700 (PDT)
+Message-ID: <4DF96F5E.5010109@tonian.com>
+Date: Wed, 15 Jun 2011 22:50:06 -0400
+From: Benny Halevy <benny@tonian.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] FIXME: BUG wdata->mds_offset never gets set
+References: <4DF9278A.5010103@panasas.com>
+In-Reply-To: <4DF9278A.5010103@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/exofs/export.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+On 2011-06-15 17:43, Boaz Harrosh wrote:
+> 
+> The fileslayout and blockslayout drivers had a set of
+> wdata->mds_offset in their .write_pagelist member.
+> 
+> The objects driver did not. Which breaks layout_commit.
+> 
+> FIXME: Since all drivers set mds_offset in exactly the same place
+> to the same value. And then never touch it. It calls for the
+> generic layer to take care of it.
+> (I'll send the fix tomorrow)
 
-diff --git a/fs/exofs/export.c b/fs/exofs/export.c
-index 20969bf..616cf5d 100644
---- a/fs/exofs/export.c
-+++ b/fs/exofs/export.c
-@@ -27,7 +27,7 @@
- #include <linux/nfsd/nfsd4_pnfs.h>
- #include "exofs.h"
- 
--#include "../exportfs/pnfs_osd_xdr_srv.h"
-+#include "linux/nfsd/pnfs_osd_xdr_srv.h"
- 
- static int exofs_layout_type(struct super_block *sb)
- {
+Thanks, that's indeed a fallout from 4b8ee2b
+"nfs41: Correct offset for LAYOUTCOMMIT"
+
+I merged this also for pnfs-all-2.6.39
+
+Benny
+
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/nfs/objlayout/objlayout.c |    2 ++
+>  1 files changed, 2 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+> index dc3956c..96dd474 100644
+> --- a/fs/nfs/objlayout/objlayout.c
+> +++ b/fs/nfs/objlayout/objlayout.c
+> @@ -430,6 +430,8 @@ objlayout_write_pagelist(struct nfs_write_data *wdata,
+>  	status = objio_write_pagelist(state, how & FLUSH_STABLE);
+>   out:
+>  	dprintk("%s: Return status %Zd\n", __func__, status);
+> +	/* pnfs_set_layoutcommit needs this */
+> +	wdata->mds_offset = wdata->args.offset;
+>  	wdata->pnfs_error = status;
+>  	return PNFS_ATTEMPTED;
+>  }
+
 -- 
-1.7.3.4
+Benny Halevy
+CTO, Tonian Inc.
 
+Tel: +972-54-802-8340
+benny@tonian.com
