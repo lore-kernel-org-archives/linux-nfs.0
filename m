@@ -1,43 +1,30 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:23188 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751646Ab1FNN5B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Jun 2011 09:57:01 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 1/1] nfs4.1: pnfs_find_lseg only looks at first element in list
-Date: Tue, 14 Jun 2011 09:56:28 -0400
-Message-Id: <1308059788-17381-1-git-send-email-iisaman@netapp.com>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:55842 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752698Ab1FPQX0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jun 2011 12:23:26 -0400
+Message-Id: <cover.1308241259.git.rees@umich.edu>
+Subject: [PATCH 0/2] minor patches to cthon tests for gcc 4.0
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Date: Thu, 16 Jun 2011 12:23:23 -0400
+From: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-The break condition to skip out of the loop if we've gone too far was
-reversed, causing the function to abort after looking at the first
-list entry.
+First patch adds some generated files to .gitignore.  Second removes
+-fwritable-strings from the COPTS for gcc 4.0.
 
-Reported-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/pnfs.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Jim Rees (2):
+  add generated .c files to .gitignore
+  remove -fwritable-strings for gcc 4.0
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 1abb300..c640f91 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -895,7 +895,7 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
- 			ret = get_lseg(lseg);
- 			break;
- 		}
--		if (cmp_layout(range, &lseg->pls_range) > 0)
-+		if (cmp_layout(range, &lseg->pls_range) < 0)
- 			break;
- 	}
- 
+ .gitignore |    3 +++
+ tests.init |    7 +++++++
+ 2 files changed, 10 insertions(+), 0 deletions(-)
+
 -- 
-1.7.2.1
+1.7.4.1
 
