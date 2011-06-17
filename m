@@ -1,49 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:60466 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1750990Ab1FCOd1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Jun 2011 10:33:27 -0400
-Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
-	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
-	(envelope-from <steved@redhat.com>)
-	id 1QSV63-0005K7-JG
-	for linux-nfs@vger.kernel.org; Fri, 03 Jun 2011 10:11:31 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH] nfs4: v4 mounts should not need rpcbind running
-Date: Fri,  3 Jun 2011 10:11:30 -0400
-Message-Id: <1307110290-30672-1-git-send-email-steved@redhat.com>
+Received: from daytona.panasas.com ([67.152.220.89]:16252 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752970Ab1FQUZv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Jun 2011 16:25:51 -0400
+Message-ID: <4DFBB84F.2040708@panasas.com>
+Date: Fri, 17 Jun 2011 16:25:51 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] pnfs-obj: No longer needed to take an extra ref at add_device
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-When RPC services are created with svc_create() an
-svc_unregister() is done to remove any stale registrations.
 
-This unregister is not needed with the v4 callback
-service and will cause the mount to hang if rpcbind
-is not running.
+Andy's last device_cache patches, already take an extra
+reference on the newly inserted device_id. So we can remove it
+from obj-io.
 
-This patch makes the nfs4 callback service a hide service
-by setting the vs_hidden flag in the nfs4_callback_version4
-structure
+Without this patch the device_ids are leaked. 
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Andy's patches are not in Linus tree yet. So I'm not sure if they are
+scheduled for this Kernel or the next. This patch should be added as
+part of these.
+
+CC: Andy Adamson <andros@netapp.com>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- fs/nfs/callback_xdr.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ fs/nfs/objlayout/objio_osd.c |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index c6c86a7..7c8b800 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -996,4 +996,5 @@ struct svc_version nfs4_callback_version4 = {
- 	.vs_proc = nfs4_callback_procedures1,
- 	.vs_xdrsize = NFS4_CALLBACK_XDRSIZE,
- 	.vs_dispatch = NULL,
-+	.vs_hidden = 1,
- };
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index f014038..70272d5 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -108,7 +108,6 @@ _dev_list_add(const struct nfs_server *nfss,
+ 		de = n;
+ 	}
+ 
+-	atomic_inc(&de->id_node.ref);
+ 	return de;
+ }
+ 
 -- 
-1.7.4.4
+1.7.3.4
 
