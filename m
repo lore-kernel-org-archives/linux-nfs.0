@@ -1,110 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:37405 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754511Ab1FAQBP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 12:01:15 -0400
-Received: by gxk21 with SMTP id 21so2263523gxk.19
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Jun 2011 09:01:14 -0700 (PDT)
-In-Reply-To: <4DE65202.2010502@panasas.com>
-References: <1306898310-9229-1-git-send-email-dros@netapp.com>
-	<4DE5D287.603@panasas.com>
-	<09816808-BA7B-4EAF-A18A-866B5A98BF25@netapp.com>
-	<4DE65202.2010502@panasas.com>
-Date: Wed, 1 Jun 2011 12:01:13 -0400
-Message-ID: <BANLkTi=Bwuuar76phVyEguB1Amqn4Q70Fw@mail.gmail.com>
-Subject: Re: [PATCH] NFS: filelayout should use nfs_generic_pg_test
-From: Fred Isaman <iisaman@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Weston Andros Adamson <dros@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>, trond@netapp.com,
-        linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:57300 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755075Ab1FQJ5F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Jun 2011 05:57:05 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <BANLkTimxJ5kHOODSPqRPcgbObjZbfT59uw@mail.gmail.com>
+References: <BANLkTimxJ5kHOODSPqRPcgbObjZbfT59uw@mail.gmail.com> <20110616235600.14345.16839.stgit@warthog.procyon.org.uk>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: dhowells@redhat.com, akpm@linux-foundation.org, jmorris@namei.org,
+        shirishpargaonkar@gmail.com, keyrings@linux-nfs.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        Eric Paris <eparis@redhat.com>
+Subject: Re: [PATCH] KEYS/DNS: Fix ____call_usermodehelper() to not lose the session keyring
+Date: Fri, 17 Jun 2011 10:56:51 +0100
+Message-ID: <23040.1308304611@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Jun 1, 2011 at 10:51 AM, Benny Halevy <bhalevy@panasas.com> wrote:
-> On 2011-06-01 17:44, Weston Andros Adamson wrote:
->>
->> On Jun 1, 2011, at 1:47 AM, Boaz Harrosh wrote:
->>
->>> On 06/01/2011 06:18 AM, Weston Andros Adamson wrote:
->>>> Use nfs_generic_pg_test instead of pnfs_generic_pg_test.
->>>>
->>>> This fixes the BUG at fs/nfs/write.c:941 introduced by
->>>> 89a58e32d9105c01022a757fb32ddc3b51bf0025.
->>>>
->>>> I was able to trigger this BUG reliably using pynfs in pnfs mode,
->>>> by using dd(1) to write many small blocks.
->>>>
->>>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->>>> ---
->>>> Fix proposed by Trond.
->>>>
->>>> Benny- Does this make sense?
->>>>
->>>> fs/nfs/nfs4filelayout.c  |    2 +-
->>>> fs/nfs/pagelist.c        |    5 ++++-
->>>> include/linux/nfs_page.h |    3 ++-
->>>> 3 files changed, 7 insertions(+), 3 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->>>> index 4269088..1c3bb72 100644
->>>> --- a/fs/nfs/nfs4filelayout.c
->>>> +++ b/fs/nfs/nfs4filelayout.c
->>>> @@ -661,7 +661,7 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
->>>>     u64 p_stripe, r_stripe;
->>>>     u32 stripe_unit;
->>>>
->>>> -   if (!pnfs_generic_pg_test(pgio, prev, req))
->>>> +   if (!nfs_generic_pg_test(pgio, prev, req))
->>>>             return 0;
->>>>
->>>
->>> pnfs_generic_pg_test is the one that gets the layout.
->>>
->>> What you've done is revert to MDS IO
->>>
->>> Boaz
->>
->> Ah, you're right - I didn't even notice that!  I usually confirm client -> DS communication with tcpdump.  I was working for too long yesterday :)
->>
->> Patch: recalled.  Discussion about a real fix: started.
->>
->> -dros
->
-> I think the following should work:
->
-> Benny
->
-> git diff --stat -p -M
->  fs/nfs/nfs4filelayout.c |   10 ++++++++++
->  1 files changed, 10 insertions(+), 0 deletions(-)
->
-> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> index 4269088..9f1d445 100644
-> --- a/fs/nfs/nfs4filelayout.c
-> +++ b/fs/nfs/nfs4filelayout.c
-> @@ -661,6 +661,16 @@ filelayout_pg_test(struct nfs_pageio_descriptor
-> *pgio, struct nfs_page *prev,
->        u64 p_stripe, r_stripe;
->        u32 stripe_unit;
->
-> +       /*
-> +        * FIXME: ideally we should be able to coalesce all requests
-> +        * that are not block boundary aligned, but currently this
-> +        * is problematic for the case of bsize < PAGE_CACHE_SIZE,
-> +        * since nfs_flush_multi and nfs_pagein_multi assume you
-> +        * can have only one struct nfs_page.
-> +        */
-> +       if (desc->pg_bsize < PAGE_SIZE)
-> +               return 0;
-> +
->        if (!pnfs_generic_pg_test(pgio, prev, req))
->                return 0;
->
+Linus Torvalds <torvalds@linux-foundation.org> wrote:
 
-Note this moves a test that was once part of the plain nfs code into
-the file layout driver.  Why don't other drivers need this test?
+> PS. Possibly it might make more sense to just put the "struct cred *"
+> pointer into the "struct subprocess_info" and not change any of the
+> function prototypes at all?
 
-Fred
+That's the way I did it originally, but someone thought doing it with an init
+function was a better idea:-/
+
+Your suggestion is slightly complicated by the capability restriction stuff
+that caused the breakage.  That needs to hack the creds at some point.
+
+David
