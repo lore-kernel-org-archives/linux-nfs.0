@@ -1,46 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49810 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751369Ab1FNX41 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Jun 2011 19:56:27 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH] NFS: (d)printks should use %zd for ssize_t arguments
-Cc: David Howells <dhowells@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Date: Wed, 15 Jun 2011 00:55:44 +0100
-Message-ID: <20110614235544.4403.36702.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
-To: unlisted-recipients:; (no To-header on input)
+Received: from rcsinet10.oracle.com ([148.87.113.121]:18620 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751105Ab1FRRBG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Jun 2011 13:01:06 -0400
+Subject: Re: [PATCH] Do not skip records with nonblocking connections (take 2)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1308405706-3467-1-git-send-email-steved@redhat.com>
+Date: Sat, 18 Jun 2011 13:00:48 -0400
+Cc: Libtirpc Devel List <libtirpc-devel@lists.sourceforge.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <8E8BD58F-1427-48F5-A6FA-819EEB0C6680@oracle.com>
+References: <1308405706-3467-1-git-send-email-steved@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-(d)printks should use %zd for ssize_t arguments not %ld, otherwise they might
-get a warning.  I see the following with MN10300.
 
-fs/nfs/objlayout/objlayout.c: In function 'objlayout_read_done':
-fs/nfs/objlayout/objlayout.c:294: warning: format '%ld' expects type 'long int', but argument 3 has type 'ssize_t'
+On Jun 18, 2011, at 10:01 AM, Steve Dickson wrote:
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-cc: linux-nfs@vger.kernel.org
----
+> With non-blocking connections, do not skip records when receiving
+> the streams since entire value messages can be ignored which
+> in cause the entire stream to become out of sync.
+> 
+> For example, two mounts simultaneously send two unmaps
+> commands. The first one is read, then the second thrown
+> away due to skipping the record. Skipping this record
+> will cause XDR error later in processing of the stream.
 
- fs/nfs/objlayout/objlayout.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+I notice that xdrrec_skiprecord() also does a __xdrrec_getrec() on nonblocking connections.  In the current code, then, __xdrrec_getrec() is likely invoked twice in svc_vc_recv() on non-blocking connections.  After this patch, it is only invoked once.
 
-diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-index dc3956c..1d06f8e 100644
---- a/fs/nfs/objlayout/objlayout.c
-+++ b/fs/nfs/objlayout/objlayout.c
-@@ -291,7 +291,7 @@ objlayout_read_done(struct objlayout_io_state *state, ssize_t status, bool sync)
- 	struct nfs_read_data *rdata;
- 
- 	state->status = status;
--	dprintk("%s: Begin status=%ld eof=%d\n", __func__, status, eof);
-+	dprintk("%s: Begin status=%zd eof=%d\n", __func__, status, eof);
- 	rdata = state->rpcdata;
- 	rdata->task.tk_status = status;
- 	if (status >= 0) {
+Invoking __xdrrec_getrec() just once in both the blocking and non-blocking cases feels more correct to me, but I don't have a deep understanding of this code.  So this patch seems like the right thing to do.
+
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+> src/svc_vc.c |    6 +++++-
+> 1 files changed, 5 insertions(+), 1 deletions(-)
+> 
+> diff --git a/src/svc_vc.c b/src/svc_vc.c
+> index aaaf2d7..87406f1 100644
+> --- a/src/svc_vc.c
+> +++ b/src/svc_vc.c
+> @@ -610,7 +610,11 @@ svc_vc_recv(xprt, msg)
+> 	}
+> 
+> 	xdrs->x_op = XDR_DECODE;
+> -	(void)xdrrec_skiprecord(xdrs);
+> +	/*
+> +	 * No need skip records with nonblocking connections
+> +	 */
+> +	if (cd->nonblock == FALSE)
+> +		(void)xdrrec_skiprecord(xdrs);
+
+cd->nonblock is already checked just before this code block.  As a minor optimization, I'd suggest reordering slightly so cd->nonblock is checked only once:
+
+	xdrs->x_op = XDR_DECODE;
+	if (cd->nonblock) {
+		if (!__xdrrec_getrec(xdrs, &cd->strm_stat, TRUE))
+			return FALSE;
+	} else 
+		(void)xdrrec_skiprecord(xdrs);
+
+As long as __xdrrec_getrec() doesn't care about the value of xdrs->x_op, this should be OK to do.
+
+> 	if (xdr_callmsg(xdrs, msg)) {
+> 		cd->x_id = msg->rm_xid;
+> 		return (TRUE);
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
