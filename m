@@ -1,61 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:62042 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752817Ab1FIPH5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 11:07:57 -0400
-Received: by vws1 with SMTP id 1so1240425vws.19
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Jun 2011 08:07:56 -0700 (PDT)
-In-Reply-To: <20110609135846.GA32565@merit.edu>
-References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu>
- <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu>
- <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com>
- <20110609114929.GA28157@merit.edu> <4DF0CB5D.60000@panasas.com> <20110609135846.GA32565@merit.edu>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Thu, 9 Jun 2011 23:07:36 +0800
-Message-ID: <BANLkTi=0yr1ecyf30+OQcFipJsHOk=4Y4w@mail.gmail.com>
-Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
-To: Jim Rees <rees@umich.edu>
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:33896 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752167Ab1FTTij (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Jun 2011 15:38:39 -0400
+Date: Mon, 20 Jun 2011 15:38:34 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org, chuck.lever@oracle.com
+Subject: Re: [PATCH] manpage: add info about IPv6 configuration to
+ exports(5)
+Message-ID: <20110620153834.126e6bbc@tlielax.poochiereds.net>
+In-Reply-To: <1308597604-1198-1-git-send-email-jlayton@redhat.com>
+References: <1308597604-1198-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi, Jim and Benny,
+On Mon, 20 Jun 2011 15:20:04 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
 
-On Thu, Jun 9, 2011 at 9:58 PM, Jim Rees <rees@umich.edu> wrote:
-> Benny Halevy wrote:
->
->  > My understanding is that layoutget specifies a min and max, and the server
->
->  There's a min.  What do you consider the max?
->  Whatever gets into csa_fore_chan_attrs.ca_maxresponsesize?
->
-> The spec doesn't say max, it says "desired."  I guess I assumed the server
-> wouldn't normally return more than desired.
-In fact server is returning "desired" length. The problem is that we
-call pnfs_update_layout in nfs_write_begin, and it will end up setting
-both minlength and length to page size. There is no space for client
-to collapse layoutget range in nfs_write_begin.
+> The parts of the exports(5) manpage that discuss IP addressing neglect
+> IPv6 configuration. Update to include info on how to export to IPv6
+> subnets and addresses, and add a line demonstrating that to the EXAMPLE
+> section.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  utils/exportfs/exports.man |    8 +++++---
+>  1 files changed, 5 insertions(+), 3 deletions(-)
+> 
+> diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
+> index 241b3af..cf5f365 100644
+> --- a/utils/exportfs/exports.man
+> +++ b/utils/exportfs/exports.man
+> @@ -47,7 +47,7 @@ NFS clients may be specified in a number of ways:
+>  .IP "single host
+>  This is the most common format. You may specify a host either by an
+>  abbreviated name recognized be the resolver, the fully qualified domain
+> -name, or an IP address.
+> +name, an IPv4 address, or an IPv6 address enclosed in square brackets.
+>  .IP "IP networks
+>  You can also export directories to all hosts on an IP (sub-) network
+>  simultaneously. This is done by specifying an IP address and netmask pair
+> @@ -57,7 +57,7 @@ where the netmask can be specified in dotted-decimal format, or as a
+>  contiguous mask length.
+>  For example, either `/255.255.252.0' or `/22' appended
+>  to the network base IPv4 address results in identical subnetworks with 10 bits of
+> -host. Wildcard characters generally do not work on IP addresses, though they
+> +host. IPv6 addresses must use a contiguous mask length and be enclosed in square brackets. Wildcard characters generally do not work on IP addresses, though they
+>  may work by accident when reverse DNS lookups fail.
+>  .IP "wildcards
+>  Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
+> @@ -486,6 +486,7 @@ The format for extra export tables is the same as
+>  /home/joe       pc001(rw,all_squash,anonuid=150,anongid=100)
+>  /pub            *(ro,insecure,all_squash)
+>  /srv/www        \-sync,rw server @trusted @external(ro)
+> +/foo            [2001:321:9:e54::/64](rw) 192.168.1.0/24(rw)
+>  '''/pub/private    (noaccess)
+>  .fi
+>  .PP
+> @@ -501,7 +502,8 @@ option in this entry also allows clients with NFS implementations that
+>  don't use a reserved port for NFS.
+>  The sixth line exports a directory read-write to the machine 'server'
+>  as well as the `@trusted' netgroup, and read-only to netgroup `@external',
+> -all three mounts with the `sync' option enabled.
+> +all three mounts with the `sync' option enabled. The seventh line exports
+> +a directory to both an IPv6 and an IPv4 subnet.
+>  ''' The last line denies all NFS clients
+>  '''access to the private directory.
+>  '''.SH CAVEATS
 
->
-> 18.43.3.  DESCRIPTION
-> ...
->
->   The LAYOUTGET operation returns layout information for the specified
->   byte-range: a layout.  The client actually specifies two ranges, both
->   starting at the offset in the loga_offset field.  The first range is
->   between loga_offset and loga_offset + loga_length - 1 inclusive.
->   This range indicates the desired range the client wants the layout to
->   cover.  The second range is between loga_offset and loga_offset +
->   loga_minlength - 1 inclusive.  This range indicates the required
->   range the client needs the layout to cover.  Thus, loga_minlength
->   MUST be less than or equal to loga_length.
->
-
-
+Self NAK on this, as brackets don't seem to be required after all. I'll
+respin and resend once I get that straightened out.
 
 -- 
-Thanks,
--Bergwolf
+Jeff Layton <jlayton@redhat.com>
