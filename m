@@ -1,40 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:53391 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753427Ab1FOTPz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Jun 2011 15:15:55 -0400
-From: Fred Isaman <iisaman@netapp.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:63269 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755709Ab1FTTGl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jun 2011 15:06:41 -0400
+Received: by fxm17 with SMTP id 17so1178053fxm.19
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Jun 2011 12:06:40 -0700 (PDT)
+Reply-To: tigran.mkrtchyan@desy.de
+Date: Mon, 20 Jun 2011 21:06:40 +0200
+Message-ID: <BANLkTinoJ9eeYxQHRB2wVRfF0dS8R88dcQ@mail.gmail.com>
+Subject: missing verifier with rpcsec_gss
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 1/1] nfs4.1: check for whole file layouts is comparing against uninitialized values
-Date: Wed, 15 Jun 2011 15:15:35 -0400
-Message-Id: <1308165335-29609-1-git-send-email-iisaman@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4filelayout.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+this is what I am observing with v4.0 and v4.1.
+sometimes, mostly on RPCSEC_GSS_DESTROY,
+in the PC calls missing verifier. This is against my
+server and linux server.
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 88aa8a0..7fe8e19 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -428,8 +428,8 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
- 	dprintk("--> %s\n", __func__);
- 
- 	/* FIXME: remove this check when layout segment support is added */
--	if (fl->generic_hdr.pls_range.offset != 0 ||
--	    fl->generic_hdr.pls_range.length != NFS4_MAX_UINT64) {
-+	if (lgr->range.offset != 0 ||
-+	    lgr->range.length != NFS4_MAX_UINT64) {
- 		dprintk("%s Only whole file layouts supported. Use MDS i/o\n",
- 			__func__);
- 		goto out;
--- 
-1.7.2.1
+Packets attached. Look at them packet 15.
+100% reproducible.
 
+
+I tried vanilla 2.6.39 and 3.0.0-rc3 from
+git://linux-nfs.org/~trondmy/nfs-2.6.git<http://linux-nfs.org/~trondmy/nfs-2.6.git
+ 9cff1ffd4d477f541d5644f0ec25ee origin/linux-next
+
+Regards,
+ Tigran.
