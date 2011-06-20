@@ -1,42 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41657 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756977Ab1FUR45 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Jun 2011 13:56:57 -0400
-Date: Tue, 21 Jun 2011 13:56:55 -0400
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: missing verifier in rpcsec_gss calls
-Message-ID: <20110621175655.GA26923@fieldses.org>
-References: <4E005383.6030206@desy.de>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E005383.6030206@desy.de>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:60774 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751106Ab1FTTUT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jun 2011 15:20:19 -0400
+Received: by qwk3 with SMTP id 3so944401qwk.19
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Jun 2011 12:20:18 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
+Subject: [PATCH] manpage: add info about IPv6 configuration to exports(5)
+Date: Mon, 20 Jun 2011 15:20:04 -0400
+Message-Id: <1308597604-1198-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Jun 21, 2011 at 10:17:07AM +0200, Tigran Mkrtchyan wrote:
-> this is what I am observing with v4.0 and v4.1.
-> sometimes, mostly on RPCSEC_GSS_DESTROY,
-> in the PC calls missing verifier. This is against my
-> server and linux server.
-> 
-> Packets attached. Please have a look at the packet 15.
-> 100% reproducible.
-> 
-> 
-> I tried vanilla 2.6.39 and 3.0.0-rc3 from
-> git://linux-nfs.org/~trondmy/nfs-2.6.git
->    9cff1ffd4d477f541d5644f0ec25ee40025fa806 origin/linux-next
+The parts of the exports(5) manpage that discuss IP addressing neglect
+IPv6 configuration. Update to include info on how to export to IPv6
+subnets and addresses, and add a line demonstrating that to the EXAMPLE
+section.
 
-Looking at the code quickly:
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/exportfs/exports.man |    8 +++++---
+ 1 files changed, 5 insertions(+), 3 deletions(-)
 
-The only place I see gss headers encoded is in gss_marshal(), which
-unconditionally encodes the verifier.
+diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
+index 241b3af..cf5f365 100644
+--- a/utils/exportfs/exports.man
++++ b/utils/exportfs/exports.man
+@@ -47,7 +47,7 @@ NFS clients may be specified in a number of ways:
+ .IP "single host
+ This is the most common format. You may specify a host either by an
+ abbreviated name recognized be the resolver, the fully qualified domain
+-name, or an IP address.
++name, an IPv4 address, or an IPv6 address enclosed in square brackets.
+ .IP "IP networks
+ You can also export directories to all hosts on an IP (sub-) network
+ simultaneously. This is done by specifying an IP address and netmask pair
+@@ -57,7 +57,7 @@ where the netmask can be specified in dotted-decimal format, or as a
+ contiguous mask length.
+ For example, either `/255.255.252.0' or `/22' appended
+ to the network base IPv4 address results in identical subnetworks with 10 bits of
+-host. Wildcard characters generally do not work on IP addresses, though they
++host. IPv6 addresses must use a contiguous mask length and be enclosed in square brackets. Wildcard characters generally do not work on IP addresses, though they
+ may work by accident when reverse DNS lookups fail.
+ .IP "wildcards
+ Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
+@@ -486,6 +486,7 @@ The format for extra export tables is the same as
+ /home/joe       pc001(rw,all_squash,anonuid=150,anongid=100)
+ /pub            *(ro,insecure,all_squash)
+ /srv/www        \-sync,rw server @trusted @external(ro)
++/foo            [2001:321:9:e54::/64](rw) 192.168.1.0/24(rw)
+ '''/pub/private    (noaccess)
+ .fi
+ .PP
+@@ -501,7 +502,8 @@ option in this entry also allows clients with NFS implementations that
+ don't use a reserved port for NFS.
+ The sixth line exports a directory read-write to the machine 'server'
+ as well as the `@trusted' netgroup, and read-only to netgroup `@external',
+-all three mounts with the `sync' option enabled.
++all three mounts with the `sync' option enabled. The seventh line exports
++a directory to both an IPv6 and an IPv4 subnet.
+ ''' The last line denies all NFS clients
+ '''access to the private directory.
+ '''.SH CAVEATS
+-- 
+1.7.5.4
 
-So the length must be getting messed up after that?
-
-I don't see it....
-
---b.
