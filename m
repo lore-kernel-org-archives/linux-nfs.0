@@ -1,52 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f181.google.com ([209.85.216.181]:41073 "EHLO
-	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756011Ab1FJMgF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 08:36:05 -0400
-Received: by qyg14 with SMTP id 14so1385931qyg.19
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Jun 2011 05:36:05 -0700 (PDT)
-Message-ID: <4DF20FB3.6030603@tonian.com>
-Date: Fri, 10 Jun 2011 08:36:03 -0400
-From: Benny Halevy <benny@tonian.com>
-To: tao.peng@emc.com
-CC: rees@umich.edu, bergwolf@gmail.com, linux-nfs@vger.kernel.org,
-        honey@citi.umich.edu
-Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
-References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu> <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu> <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com> <20110609114929.GA28157@merit.edu> <4DF0CB5D.60000@panasas.com> <20110609135846.GA32565@merit.edu> <4DF139D0.1080200@tonian.com> <F19688880B763E40B28B2B462677FBF805BED9D217@MX09A.corp.emc.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805BED9D217@MX09A.corp.emc.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from smtp-out-3.desy.de ([131.169.56.86]:37676 "EHLO
+	smtp-out-3.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753834Ab1FTOJd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jun 2011 10:09:33 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-out-3.desy.de (DESY_OUT_3) with ESMTP id 19C2C1186
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Jun 2011 16:09:32 +0200 (MEST)
+Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 12219110C
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Jun 2011 16:09:32 +0200 (MEST)
+Received: from smtp-intra-2.desy.de (lb-40-26.desy.de) by ZITSWEEP2.win.desy.de
+ (Clearswift SMTPRS 5.4.1) with ESMTP id <T9dba39226d83a96160ae8@ZITSWEEP2.win.desy.de> for <linux-nfs@vger.kernel.org>;
+ Mon, 20 Jun 2011 16:09:32 +0200
+Received: from [131.169.185.68] (anahit.desy.de [131.169.185.68])
+	by smtp-intra-2.desy.de (DESY-INTRA-2) with ESMTP id DE7E0D2F
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Jun 2011 16:09:31 +0200 (MEST)
+Message-ID: <4DFF548C.4030805@desy.de>
+Date: Mon, 20 Jun 2011 16:09:16 +0200
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: missing verifier in rpcsec_gss calls
+Content-Type: multipart/mixed;
+ boundary="------------030604050705090901080002"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-06-10 01:36, tao.peng@emc.com wrote:
-> Hi, Benny,
-> 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Benny Halevy
-> Sent: Friday, June 10, 2011 5:23 AM
-> To: Jim Rees
-> Cc: Peng Tao; linux-nfs@vger.kernel.org; peter honeyman
-> Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
-> 
-> On 2011-06-09 06:58, Jim Rees wrote:
->> Benny Halevy wrote:
->>
->>   > My understanding is that layoutget specifies a min and max, and the server
->>   
->>   There's a min.  What do you consider the max?
->>   Whatever gets into csa_fore_chan_attrs.ca_maxresponsesize?
->>
->> The spec doesn't say max, it says "desired."  I guess I assumed the server
->> wouldn't normally return more than desired.
-> 
-> No, the server may freely upgrade the returned layout segment by returning
-> a layout for a larger byte range or even returning a RW layout where a READ
-> layout was asked for.
-> [PT] It is true that server can upgrade the layout segment freely. But there is always a price to pay. Server has to be dealing with all kind of clients.
-> If server returns more than being asked for, it may hurt other clients.
+--------------030604050705090901080002
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-And if all clients ask for more than they need and the server just
-gives it to them, what do you get out of that?
 
-Benny
+this is what I am observing with v4.0 and v4.1.
+sometimes, mostly on RPCSEC_GSS_DESTROY,
+in the PC calls missing verifier. This is against my
+server and linux server.
+
+Packets attached. Look at them packet 15.
+100% reproducible.
+
+
+I tried vanilla 2.6.39 and 3.0.0-rc3 from
+git://linux-nfs.org/~trondmy/nfs-2.6.git
+    9cff1ffd4d477f541d5644f0ec25ee40025fa806 origin/linux-next
+
+Regards,
+    Tigran.
+
+
+--------------030604050705090901080002
+Content-Type: application/octet-stream;
+ name="mount-krb5i.dump"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="mount-krb5i.dump"
+
+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
+jOUA2Yzl
+
+--------------030604050705090901080002--
