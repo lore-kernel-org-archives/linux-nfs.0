@@ -1,59 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:5591 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:52125 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756921Ab1FJBbI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Jun 2011 21:31:08 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/5] NFSv4.1: Fix an off-by-one error in pnfs_generic_pg_test
-Date: Thu,  9 Jun 2011 21:30:59 -0400
-Message-Id: <1307669462-15764-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1307669462-15764-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1307669462-15764-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752422Ab1FTU1e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Jun 2011 16:27:34 -0400
+Date: Mon, 20 Jun 2011 16:27:31 -0400
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: nfsd bugfixes for 3.0
+Message-ID: <20110620202731.GB18369@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-And document what is going on there...
+The for-2.6.40 branch at
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/pnfs.c |   21 ++++++++++++++++-----
- 1 files changed, 16 insertions(+), 5 deletions(-)
+  git://linux-nfs.org/~bfields/linux.git for-2.6.40
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 12b53ef..9a4ce7c 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1073,11 +1073,22 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 			return true;
- 	}
- 
--	if (req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
--					 pgio->pg_lseg->pls_range.length))
--		return false;
--
--	return true;
-+	/*
-+	 * Test if a nfs_page is fully contained in the pnfs_layout_range.
-+	 * Note that this test makes several assumptions:
-+	 * - that the previous nfs_page in the struct nfs_pageio_descriptor
-+	 *   is known to lie within the range.
-+	 *   - that the nfs_page being tested is known to be contiguous with the
-+	 *   previous nfs_page.
-+	 *   - Layout ranges are page aligned, so we only have to test the
-+	 *   start offset of the request.
-+	 *
-+	 * Please also note that 'end_offset' is actually the offset of the
-+	 * first byte that lies outside the pnfs_layout_range. FIXME?
-+	 *
-+	 */
-+	return req_offset(req) < end_offset(pgio->pg_lseg->pls_range.offset,
-+					 pgio->pg_lseg->pls_range.length);
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
- 
--- 
-1.7.5.2
+has some bugfixes that would be appropriate for 3.0.
 
+(Yeah, yeah, so my branch naming is obsolete.)
+
+--b.
+
+Casey Bodley (1):
+      nfsd: link returns nfserr_delay when breaking lease
+
+J. Bruce Fields (2):
+      nfsd: fix dependency of nfsd on auth_rpcgss
+      nfsd4: fix break_lease flags on nfsd open
+
+Randy Dunlap (1):
+      nfsd: v4 support requires CRYPTO
+
+ fs/nfsd/Kconfig                          |    1 +
+ fs/nfsd/nfsctl.c                         |   19 ++++++-------------
+ fs/nfsd/vfs.c                            |   19 ++++++++++++-------
+ include/linux/sunrpc/gss_krb5_enctypes.h |    4 ++++
+ net/sunrpc/auth_gss/gss_krb5_mech.c      |    3 ++-
+ 5 files changed, 25 insertions(+), 21 deletions(-)
+ create mode 100644 include/linux/sunrpc/gss_krb5_enctypes.h
