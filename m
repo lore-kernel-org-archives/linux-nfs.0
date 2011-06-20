@@ -1,76 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5837 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757921Ab1FVWie (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Jun 2011 18:38:34 -0400
-Message-ID: <4E026EE6.2090204@RedHat.com>
-Date: Wed, 22 Jun 2011 18:38:30 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org, neilb@suse.de
-Subject: Re: [PATCH] manpage: add section on character class matches to exports(5)
-References: <1308749673-8183-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1308749673-8183-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from natasha.panasas.com ([67.152.220.90]:50852 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755332Ab1FTS45 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jun 2011 14:56:57 -0400
+Message-ID: <4DFF97C4.1050106@panasas.com>
+Date: Mon, 20 Jun 2011 11:56:04 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: "Halevy, Benny" <bhalevy@panasas.com>, Fred Isaman <iisaman@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, Peng Tao <bergwolf@gmail.com>
+Subject: Re: [PATCH] FIXME: pnfs: BUG in layout_commit logic
+References: <4DFBB71F.3050703@panasas.com>
+In-Reply-To: <4DFBB71F.3050703@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-
-On 06/22/2011 09:34 AM, Jeff Layton wrote:
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  utils/exportfs/exports.man |   13 ++++++++-----
->  1 files changed, 8 insertions(+), 5 deletions(-)
+On 06/17/2011 01:20 PM, Boaz Harrosh wrote:
 > 
-> diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
-> index d9486e8..b202583 100644
-> --- a/utils/exportfs/exports.man
-> +++ b/utils/exportfs/exports.man
-> @@ -47,7 +47,9 @@ NFS clients may be specified in a number of ways:
->  .IP "single host
->  You may specify a host either by an
->  abbreviated name recognized be the resolver, the fully qualified domain
-> -name, an IPv4 address, or an IPv6 address.
-> +name, an IPv4 address, or an IPv6 address. IPv6 addresses must not be
-> +inside square brackets in /etc/exports lest they be confused with
-> +character-class wildcard matches.
->  .IP "IP networks
->  You can also export directories to all hosts on an IP (sub-) network
->  simultaneously. This is done by specifying an IP address and netmask pair
-> @@ -57,11 +59,10 @@ where the netmask can be specified in dotted-decimal format, or as a
->  contiguous mask length.
->  For example, either `/255.255.252.0' or `/22' appended
->  to the network base IPv4 address results in identical subnetworks with 10 bits
-> -of host. IPv6 addresses must use a contiguous mask length. Wildcard characters
-> -generally do not work on IP addresses, though they
-> +of host. IPv6 addresses must use a contiguous mask length and must not be inside square brackets to avoid confusion with character-class wildcards. Wildcard characters generally do not work on IP addresses, though they
->  may work by accident when reverse DNS lookups fail.
->  .IP "wildcards
-> -Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
-> +Machine names may contain the wildcard characters \fI*\fR and \fI?\fR, or may contain character class lists within [square brackets].
->  This can be used to make the \fIexports\fR file more compact; for instance,
->  \fI*.cs.foo.edu\fR matches all hosts in the domain
->  \fIcs.foo.edu\fR.  As these characters also match the dots in a domain
-> @@ -488,6 +489,7 @@ The format for extra export tables is the same as
->  /pub            *(ro,insecure,all_squash)
->  /srv/www        \-sync,rw server @trusted @external(ro)
->  /foo            2001:db8:9:e54::/64(rw) 192.0.2.0/24(rw)
-> +/build          buildhost[0-9].local.domain(rw)
->  '''/pub/private    (noaccess)
->  .fi
->  .PP
-> @@ -504,7 +506,8 @@ don't use a reserved port for NFS.
->  The sixth line exports a directory read-write to the machine 'server'
->  as well as the `@trusted' netgroup, and read-only to netgroup `@external',
->  all three mounts with the `sync' option enabled. The seventh line exports
-> -a directory to both an IPv6 and an IPv4 subnet.
-> +a directory to both an IPv6 and an IPv4 subnet. The eighth line demonstrates
-> +a character class wildcard match.
->  ''' The last line denies all NFS clients
->  '''access to the private directory.
->  '''.SH CAVEATS
-Committed...
+> When segments are used with the pnfs-objects driver (which supports them)
+> I get a crash in layout commit do to unbalanced lseg reference counting.
+> (under reference)
+> 
+> With this patch taken from the blocks layout part of the patchset this
+> problem goes away. But looking at the code it looks scary to me
+> (I just don't understand it fully).
+> 
+> Fred please review this code, to see if you like what it does.
+> 
+> I will need a fix for the v3.0 Kernel
+> 
+> SOB: Boaz
+<snip>
 
-steved.
+Benny, Fred, Hi.
+
+This patch is from the pnfsblock branch:
+	[0e5ef56b] pnfs: let layoutcommit code handle multiple segments
+		   by: Peng Tao<bergwolf@gmail.com>
+
+Except the above patch has one obvious bug where segments are not found
+(See below)
+
+Fred I'm not sure I like this patch it looks wrong to me. But it does
+solve my immediate problem (Needed for this Kernel). Have you had a
+chance to look at this code and think about what we should do?
+
+Thanks
+Boaz
+---
+SQUASHME: Fix BUG in: [0e5ef56b] pnfs: let layoutcommit code handle multiple segments
+
+The patch: [0e5ef56b] pnfs: let layoutcommit code handle multiple segments
+Broke pnfs_find_lseg because now with the new break, the smaller then last layouts
+are never found.
+(Though I agree that searching in reverse might be an optimization since the
+ last one is usually what we need. (Perhaps reverse the offset test))
+
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index d9ffaab..169fe92 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -905,7 +905,7 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
+ 	dprintk("%s:Begin\n", __func__);
+ 
+ 	assert_spin_locked(&lo->plh_inode->i_lock);
+-	list_for_each_entry_reverse(lseg, &lo->plh_segs, pls_list) {
++	list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
+ 		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
+ 		    is_matching_lseg(&lseg->pls_range, range)) {
+ 			ret = get_lseg(lseg);
