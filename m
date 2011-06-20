@@ -1,70 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:55399 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754518Ab1FMV0z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 17:26:55 -0400
-From: greearb@candelatech.com
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:47832 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751352Ab1FTT23 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jun 2011 15:28:29 -0400
+Received: by fxm17 with SMTP id 17so1190849fxm.19
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Jun 2011 12:28:28 -0700 (PDT)
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <BANLkTinoJ9eeYxQHRB2wVRfF0dS8R88dcQ@mail.gmail.com>
+References: <BANLkTinoJ9eeYxQHRB2wVRfF0dS8R88dcQ@mail.gmail.com>
+Date: Mon, 20 Jun 2011 21:28:27 +0200
+Message-ID: <BANLkTik3EAyjyePPU7jbufmx90J180JgsA@mail.gmail.com>
+Subject: Re: missing verifier with rpcsec_gss
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH v4 0/6] nfs-utils:  Support binding to source address.
-Date: Mon, 13 Jun 2011 14:26:42 -0700
-Message-Id: <1308000408-13690-1-git-send-email-greearb@candelatech.com>
+Content-Type: multipart/mixed; boundary=0015173fe97060b4c104a629bda3
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
+--0015173fe97060b4c104a629bda3
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 
-This lets one specify the source IP address for
-sockets, allowing users to leverage routing rules
-on multi-homed systems.
+and dump :)
 
-Kernel patches to RPC and NFS are needed to complete
-full functionality.
+On Mon, Jun 20, 2011 at 9:06 PM, Tigran Mkrtchyan
+<tigran.mkrtchyan@desy.de> wrote:
+> this is what I am observing with v4.0 and v4.1.
+> sometimes, mostly on RPCSEC_GSS_DESTROY,
+> in the PC calls missing verifier. This is against my
+> server and linux server.
+>
+> Packets attached. Look at them packet 15.
+> 100% reproducible.
+>
+>
+> I tried vanilla 2.6.39 and 3.0.0-rc3 from
+> git://linux-nfs.org/~trondmy/nfs-2.6.git<http://linux-nfs.org/~trondmy/nf=
+s-2.6.git
+> =C2=A09cff1ffd4d477f541d5644f0ec25ee origin/linux-next
+>
+> Regards,
+> =C2=A0Tigran.
+>
 
-v6:  Remove is_set flag from local_bind_info struct.  Just pass in
-       NULL if local IP is not specified.
-     Use family of server when parsing local IP address.  This makes
-       sure that we do not get a family mis-match between server and
-       local ip.
-     Rename parse_local_bind to nfs_parse_local_bind
-     Clean up a few nits (don't check for null before freeing something).
+--0015173fe97060b4c104a629bda3
+Content-Type: application/octet-stream; name="mount-krb5i.dump"
+Content-Disposition: attachment; filename="mount-krb5i.dump"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_gp5t1q440
 
-v5:  Fix compile error with ipv6 enabled.  One minor
-       change to patch 1.
+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
+jOUA2Yzl
 
-v4:  Remove get_socket() modifications: stropt mount doesn't use them.
-       (This removed old patch 4, and modified patch 1)
-     Remove open-parsing of srcaddr= in mount logic.  Move parsing
-       to nfs_validate_options()
-
-*** BLURB HERE ***
-
-Ben Greear (6):
-  nfs-utils:  Add structure for passing local binding info.
-  nfs-utils:  Add patch to parse srcaddr= option.
-  nfs-utils:  Implement srcaddr binding in rpc_socket
-  nfs-utils:  Support srcaddr=n option for string mount.
-  nfs-utils:  Implement srcaddr=n binding for unmount.
-  nfs-utils:  Update man page for srcaddr= option.
-
- support/include/nfsrpc.h   |   23 ++++++---
- support/include/sockaddr.h |    5 ++
- support/nfs/getport.c      |   39 +++++++++-----
- support/nfs/rpc_socket.c   |   96 ++++++++++++++++++++++++----------
- utils/gssd/gssd.h          |    2 +
- utils/gssd/gssd_proc.c     |   33 +++++++-----
- utils/mount/network.c      |  125 +++++++++++++++++++++++++++++++++++---------
- utils/mount/network.h      |   17 ++++--
- utils/mount/nfs.man        |    7 +++
- utils/mount/nfsmount.c     |    2 +-
- utils/mount/nfsumount.c    |   28 ++++++++--
- utils/mount/stropts.c      |   28 ++++++++--
- utils/mount/utils.c        |    6 ++-
- utils/mount/utils.h        |    4 +-
- 14 files changed, 310 insertions(+), 105 deletions(-)
-
--- 
-1.7.3.4
-
+--0015173fe97060b4c104a629bda3--
