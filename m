@@ -1,30 +1,56 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
-Subject: Linux pNFS status meeting - NO MEETING THIS WEEK
-Date: Wed, 29 Jun 2011 15:52:05 -0700
-Message-ID: <OFD745A827.1D155EB6-ON882578BE.007D79DF-882578BE.007D99D9@us.ibm.com>
-References: <OF07F10F47.59A5D112-ON882578A3.000C836E-882578A3.000C9F59@us.ibm.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [Libtirpc-devel] [PATCH] Do not skip records with nonblocking
+ connections (take 2)
+Date: Tue, 21 Jun 2011 14:43:41 -0400
+Message-ID: <4E00E65D.604@RedHat.com>
+References: <1308405706-3467-1-git-send-email-steved@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Libtirpc Devel List <libtirpc-devel@lists.sourceforge.net>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Steve Dickson <steved@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:35268 "EHLO e1.ny.us.ibm.com"
+Received: from mx1.redhat.com ([209.132.183.28]:7720 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753340Ab1F2WwL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Jun 2011 18:52:11 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e1.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p5TMe9fX021127
-	for <linux-nfs@vger.kernel.org>; Wed, 29 Jun 2011 18:40:09 -0400
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p5TMqAWw458852
-	for <linux-nfs@vger.kernel.org>; Wed, 29 Jun 2011 18:52:10 -0400
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p5TMq9kc020375
-	for <linux-nfs@vger.kernel.org>; Wed, 29 Jun 2011 18:52:10 -0400
-Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p5TMq9s8020365
-	for <linux-nfs@vger.kernel.org>; Wed, 29 Jun 2011 18:52:09 -0400
-In-Reply-To: <OF07F10F47.59A5D112-ON882578A3.000C836E-882578A3.000C9F59@us.ibm.com>
+	id S1751929Ab1FUSnt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Jun 2011 14:43:49 -0400
+In-Reply-To: <1308405706-3467-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Committed...
 
+steved.
+
+On 06/18/2011 10:01 AM, Steve Dickson wrote:
+> With non-blocking connections, do not skip records when receiving
+> the streams since entire value messages can be ignored which
+> in cause the entire stream to become out of sync.
+> 
+> For example, two mounts simultaneously send two unmaps
+> commands. The first one is read, then the second thrown
+> away due to skipping the record. Skipping this record
+> will cause XDR error later in processing of the stream.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  src/svc_vc.c |    6 +++++-
+>  1 files changed, 5 insertions(+), 1 deletions(-)
+> 
+> diff --git a/src/svc_vc.c b/src/svc_vc.c
+> index aaaf2d7..87406f1 100644
+> --- a/src/svc_vc.c
+> +++ b/src/svc_vc.c
+> @@ -610,7 +610,11 @@ svc_vc_recv(xprt, msg)
+>  	}
+>  
+>  	xdrs->x_op = XDR_DECODE;
+> -	(void)xdrrec_skiprecord(xdrs);
+> +	/*
+> +	 * No need skip records with nonblocking connections
+> +	 */
+> +	if (cd->nonblock == FALSE)
+> +		(void)xdrrec_skiprecord(xdrs);
+>  	if (xdr_callmsg(xdrs, msg)) {
+>  		cd->x_id = msg->rm_xid;
+>  		return (TRUE);
