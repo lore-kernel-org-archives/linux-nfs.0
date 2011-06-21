@@ -1,73 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from moh1-ve2.go2.pl ([193.17.41.132]:53647 "EHLO moh1-ve2.go2.pl"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754650Ab1FQKHr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Jun 2011 06:07:47 -0400
-Received: from moh1-ve2.go2.pl (unknown [10.0.0.132])
-	by moh1-ve2.go2.pl (Postfix) with ESMTP id 0502810660A0
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Jun 2011 11:48:34 +0200 (CEST)
-Received: from o2.pl (unknown [10.0.0.33])
-	by moh1-ve2.go2.pl (Postfix) with SMTP
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Jun 2011 11:48:34 +0200 (CEST)
-Subject: =?UTF-8?Q?rpc-srv/tcp:_nfsd:_got_error_-104?=
-	=?UTF-8?Q?_when_sending_140_bytes_-_shutting_down_socket_?=
-From: =?UTF-8?Q?larith?= <larith@go2.pl>
-To: linux-nfs@vger.kernel.org
-Message-ID: <67100fe7.28c0fd91.4dfb22f0.e5a90@go2.pl>
-Date: Fri, 17 Jun 2011 11:48:32 +0200
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail132.messagelabs.com ([216.82.242.115]:64715 "EHLO
+	mail132.messagelabs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755974Ab1FUAzK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jun 2011 20:55:10 -0400
+From: H Hartley Sweeten <hartleys@visionengravers.com>
+To: Linux Kernel <linux-kernel@vger.kernel.org>
+Subject: [PATCH] svcsock.c: include sunrpc.h to quite sparse noise
+Date: Mon, 20 Jun 2011 17:54:51 -0700
+CC: <netdev@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        <Trond.Myklebust@netapp.com>, <bfields@fieldses.org>, <neilb@suse.de>,
+        <davem@davemloft.net>
+Content-Type: text/plain; charset="utf-8"
+Message-ID: <201106201754.51704.hartleys@visionengravers.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I have problem with nfs-kernel-server 1.1.2-6lenny2 on system Debian lenny. My kernel 2.6.26-bpo.1-xen-amd64 panic. NFS working on drbd 8.0.14-2+lenny1
+Include the private header sunrpc.h to pickup the declaration of the
+function svc_send_common to quiet the following sparse noise:
 
-[553662.371435] rpc-srv/tcp: nfsd: got error -104 when sending 140 bytes - shutting down socket
-[553662.371919] rpc-srv/tcp: nfsd: got error -32 when sending 8620 bytes - shutting down socket
-[553662.375095] rpc-srv/tcp: nfsd: got error -104 when sending 240 bytes - shutting down socket
-[578802.236483] kswapd0: page allocation failure. order:0, mode:0x20
-[578802.236505] Pid: 118, comm: kswapd0 Not tainted 2.6.26-bpo.1-xen-amd64 #1
-[578802.236511]
-[578802.236512] Call Trace:
-[578802.236518]  <IRQ>  [<ffffffff80269dc6>] __alloc_pages_internal+0x399/0x3b2
-[578802.236548]  [<ffffffff80287bb1>] cache_alloc_refill+0x2ad/0x564
-[578802.236556]  [<ffffffff80287f05>] __kmalloc+0x9d/0xf8
-[578802.236564]  [<ffffffff803c2c07>] __alloc_skb+0x56/0x11c
-[578802.236572]  [<ffffffff803fb86d>] tcp_send_ack+0x28/0xca
-[578802.236579]  [<ffffffff803fa770>] tcp_rcv_established+0x842/0x8d2
-[578802.236587]  [<ffffffff80400208>] tcp_v4_do_rcv+0x2bd/0x492
-[578802.236600]  [<ffffffff803e1c2c>] nf_iterate+0x41/0x7d
-[578802.236607]  [<ffffffff80229f63>] check_preempt_wakeup+0xbd/0xe9
-[578802.236614]  [<ffffffff803ee587>] __inet_lookup_established+0xf1/0x192
-[578802.236622]  [<ffffffff8040237a>] tcp_v4_rcv+0x69b/0x701
-[578802.236629]  [<ffffffff803e7523>] ip_local_deliver_finish+0x120/0x1dd
-[578802.236636]  [<ffffffff803e73e0>] ip_rcv_finish+0x300/0x323
-[578802.236644]  [<ffffffff803911b6>] netif_poll+0x9c8/0xc1a
-[578802.236652]  [<ffffffff802fee41>] elv_next_request+0x1f0/0x200
-[578802.236662]  [<ffffffff803c99c5>] net_rx_action+0xd9/0x24c
-[578802.236670]  [<ffffffff80231f30>] __do_softirq+0x77/0x103
-[578802.236677]  [<ffffffff8020c13c>] call_softirq+0x1c/0x28
-[578802.236684]  [<ffffffff8020e0a0>] do_softirq+0x55/0xbb
-[578802.236690]  [<ffffffff8020e183>] do_IRQ+0x7d/0x9a
-[578802.236704]  [<ffffffff8037ec44>] evtchn_do_upcall+0x13c/0x1fb
-[578802.236711]  [<ffffffff8020bbde>] do_hypervisor_callback+0x1e/0x30
-[578802.236716]  <EOI>  [<ffffffff8037df12>] force_evtchn_callback+0xa/0xb
-[578802.236768]  [<ffffffffa0227e7f>] :xfs:xfs_finish_reclaim+0x187/0x195
-[578802.236801]  [<ffffffffa023482a>] :xfs:xfs_fs_clear_inode+0xe2/0x103
-[578802.236810]  [<ffffffff8029dcc4>] clear_inode+0xad/0x104
-[578802.236816]  [<ffffffff8029e412>] dispose_list+0x56/0x132
-[578802.236823]  [<ffffffff8029e6fe>] shrink_icache_memory+0x210/0x23f
-[578802.236831]  [<ffffffff8026eabe>] shrink_slab+0xe2/0x15a
-[578802.236837]  [<ffffffff8026f248>] kswapd+0x325/0x4ac
-[578802.236845]  [<ffffffff8026d657>] isolate_pages_global+0x0/0x2f
-[578802.236853]  [<ffffffff8023fa2d>] autoremove_wake_function+0x0/0x2e
-[578802.236860]  [<ffffffff8022178f>] __wake_up_common+0x41/0x74
-[578802.236868]  [<ffffffff8026ef23>] kswapd+0x0/0x4ac
-[578802.236874]  [<ffffffff8023f8ff>] kthread+0x47/0x74
-[578802.236881]  [<ffffffff80228580>] schedule_tail+0x27/0x5c
-[578802.236887]  [<ffffffff8020be28>] child_rip+0xa/0x12
-[578802.236895]  [<ffffffff8023f8b8>] kthread+0x0/0x74
-[578802.236900]  [<ffffffff8020be1e>] child_rip+0x0/0x12
+warning: symbol 'svc_send_common' was not declared. Should it be static?
 
+Signed-off-by: H Hartley Sweeten <hsweeten@visionengravers.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Neil Brown <neilb@suse.de>
+Cc: "David S. Miller" <davem@davemloft.net>
 
-is some known bug ?
+---
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index af04f77..f2cb5b8 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -51,6 +51,8 @@
+ #include <linux/sunrpc/stats.h>
+ #include <linux/sunrpc/xprt.h>
+ 
++#include "sunrpc.h"
++
+ #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
+ 
+ 
