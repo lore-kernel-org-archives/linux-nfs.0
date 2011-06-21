@@ -1,52 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:15293 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:30923 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751819Ab1FHDMx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Jun 2011 23:12:53 -0400
-Message-ID: <4DEEE8B1.8040001@RedHat.com>
-Date: Tue, 07 Jun 2011 23:12:49 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Ben Greear <greearb@candelatech.com>
-CC: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Fix build on Fedora 13.
-References: <1307469531-20595-1-git-send-email-greearb@candelatech.com> <E9E39B04-8045-44EF-970B-A1F1779C5A69@oracle.com> <4DEE6CEA.8000909@candelatech.com> <4DEE9C55.4040805@candelatech.com>
-In-Reply-To: <4DEE9C55.4040805@candelatech.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751005Ab1FUQHJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Jun 2011 12:07:09 -0400
+Date: Tue, 21 Jun 2011 12:07:04 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org, chuck.lever@oracle.com
+Subject: Re: [PATCH] manpage: add info about IPv6 configuration to
+ exports(5) (try #2)
+Message-ID: <20110621120704.3b256de4@tlielax.poochiereds.net>
+In-Reply-To: <20110621160057.GC25534@fieldses.org>
+References: <1308665441-16704-1-git-send-email-jlayton@redhat.com>
+	<20110621160057.GC25534@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Tue, 21 Jun 2011 12:00:57 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-
-On 06/07/2011 05:47 PM, Ben Greear wrote:
-> On 06/07/2011 11:24 AM, Ben Greear wrote:
->> On 06/07/2011 11:14 AM, Chuck Lever wrote:
->>> Hi Ben-
->>>
->>> On Jun 7, 2011, at 1:58 PM, greearb@candelatech.com wrote:
->>>
->>>> From: Ben Greear<greearb@candelatech.com>
->>>>
->>>> Need sys/stat.h for S_ISDIR and S_ISREG symbols.
->>>
->>> Can you tell when this problem was introduced? What ./configure
->>> options might be relevant?
->>
->> I haven't compiled nfs-utils in years. Since I can't get ./configure to
->> find libgssapi,
->> I'm compiling with:
->>
->> ./configure --disable-gss
+> On Tue, Jun 21, 2011 at 10:10:41AM -0400, Jeff Layton wrote:
+> > The parts of the exports(5) manpage that discuss IP addressing neglect
+> > IPv6 configuration. Update to include info on how to export to IPv6
+> > subnets and addresses, and add a line demonstrating that to the EXAMPLE
+> > section.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  utils/exportfs/exports.man |   11 +++++++----
+> >  1 files changed, 7 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
+> > index 241b3af..f53da4e 100644
+> > --- a/utils/exportfs/exports.man
+> > +++ b/utils/exportfs/exports.man
+> > @@ -47,7 +47,7 @@ NFS clients may be specified in a number of ways:
+> >  .IP "single host
+> >  This is the most common format. You may specify a host either by an
+> >  abbreviated name recognized be the resolver, the fully qualified domain
+> > -name, or an IP address.
+> > +name, an IPv4 address, or an IPv6 address.
+> >  .IP "IP networks
+> >  You can also export directories to all hosts on an IP (sub-) network
+> >  simultaneously. This is done by specifying an IP address and netmask pair
+> > @@ -56,8 +56,9 @@ as
+> >  where the netmask can be specified in dotted-decimal format, or as a
+> >  contiguous mask length.
+> >  For example, either `/255.255.252.0' or `/22' appended
+> > -to the network base IPv4 address results in identical subnetworks with 10 bits of
+> > -host. Wildcard characters generally do not work on IP addresses, though they
+> > +to the network base IPv4 address results in identical subnetworks with 10 bits
+> > +of host. IPv6 addresses must use a contiguous mask length. Wildcard characters
 > 
-> I think I was given a bad git repo suggestion in a previous email.
+> People use non-contiguous masks?
 > 
-> I was using:  git://git.infradead.org/users/steved/nfs-utils.git
-> which hasn't been updated in years.
+
+No, I was just trying to be clear that you can't use a dotted-decimal
+netmask for IPv6.
+
+> > +generally do not work on IP addresses, though they
+> >  may work by accident when reverse DNS lookups fail.
+> >  .IP "wildcards
+> >  Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
+> > @@ -486,6 +487,7 @@ The format for extra export tables is the same as
+> >  /home/joe       pc001(rw,all_squash,anonuid=150,anongid=100)
+> >  /pub            *(ro,insecure,all_squash)
+> >  /srv/www        \-sync,rw server @trusted @external(ro)
+> > +/foo            2001:321:9:e54::/64(rw) 192.168.1.0/24(rw)
 > 
-> Let me start all over again with
-> git://git.linux-nfs.org/projects/steved/nfs-utils.git
-Here is the correct path:
-    git://linux-nfs.org/~steved/exports/nfs-utils
+> (Any reason for that particular example address?  Just curious.)
+> 
+> --b.
+> 
 
-steved.
+Nope -- pulled that out of my nether regions.
 
+> >  '''/pub/private    (noaccess)
+> >  .fi
+> >  .PP
+> > @@ -501,7 +503,8 @@ option in this entry also allows clients with NFS implementations that
+> >  don't use a reserved port for NFS.
+> >  The sixth line exports a directory read-write to the machine 'server'
+> >  as well as the `@trusted' netgroup, and read-only to netgroup `@external',
+> > -all three mounts with the `sync' option enabled.
+> > +all three mounts with the `sync' option enabled. The seventh line exports
+> > +a directory to both an IPv6 and an IPv4 subnet.
+> >  ''' The last line denies all NFS clients
+> >  '''access to the private directory.
+> >  '''.SH CAVEATS
+> > -- 
+> > 1.7.5.4
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+-- 
+Jeff Layton <jlayton@redhat.com>
