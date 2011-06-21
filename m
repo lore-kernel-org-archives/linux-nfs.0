@@ -1,85 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12190 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758135Ab1FVO3s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Jun 2011 10:29:48 -0400
-Message-ID: <4E01FC5B.1000509@RedHat.com>
-Date: Wed, 22 Jun 2011 10:29:47 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Ben Greear <greearb@candelatech.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 0/6] nfs-utils:  Support binding to source address.
-References: <1308000408-13690-1-git-send-email-greearb@candelatech.com> <4DFF8604.1050508@candelatech.com>
-In-Reply-To: <4DFF8604.1050508@candelatech.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qy0-f181.google.com ([209.85.216.181]:61024 "EHLO
+	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751623Ab1FUOKq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jun 2011 10:10:46 -0400
+Received: by qyk9 with SMTP id 9so1701433qyk.19
+        for <linux-nfs@vger.kernel.org>; Tue, 21 Jun 2011 07:10:45 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
+Subject: [PATCH] manpage: add info about IPv6 configuration to exports(5) (try #2)
+Date: Tue, 21 Jun 2011 10:10:41 -0400
+Message-Id: <1308665441-16704-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Sorry for the delay.. I was traveling last week.. 
+The parts of the exports(5) manpage that discuss IP addressing neglect
+IPv6 configuration. Update to include info on how to export to IPv6
+subnets and addresses, and add a line demonstrating that to the EXAMPLE
+section.
 
-On 06/20/2011 01:40 PM, Ben Greear wrote:
-> On 06/13/2011 02:26 PM, greearb@candelatech.com wrote:
->> From: Ben Greear<greearb@candelatech.com>
->>
->> This lets one specify the source IP address for
->> sockets, allowing users to leverage routing rules
->> on multi-homed systems.
->>
->> Kernel patches to RPC and NFS are needed to complete
->> full functionality.
-> 
-> Any feedback on this?  Good enough for inclusion upstream?
-Question, are there kernel patches needed to complete this work?
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/exportfs/exports.man |   11 +++++++----
+ 1 files changed, 7 insertions(+), 4 deletions(-)
 
-steved.
+diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
+index 241b3af..f53da4e 100644
+--- a/utils/exportfs/exports.man
++++ b/utils/exportfs/exports.man
+@@ -47,7 +47,7 @@ NFS clients may be specified in a number of ways:
+ .IP "single host
+ This is the most common format. You may specify a host either by an
+ abbreviated name recognized be the resolver, the fully qualified domain
+-name, or an IP address.
++name, an IPv4 address, or an IPv6 address.
+ .IP "IP networks
+ You can also export directories to all hosts on an IP (sub-) network
+ simultaneously. This is done by specifying an IP address and netmask pair
+@@ -56,8 +56,9 @@ as
+ where the netmask can be specified in dotted-decimal format, or as a
+ contiguous mask length.
+ For example, either `/255.255.252.0' or `/22' appended
+-to the network base IPv4 address results in identical subnetworks with 10 bits of
+-host. Wildcard characters generally do not work on IP addresses, though they
++to the network base IPv4 address results in identical subnetworks with 10 bits
++of host. IPv6 addresses must use a contiguous mask length. Wildcard characters
++generally do not work on IP addresses, though they
+ may work by accident when reverse DNS lookups fail.
+ .IP "wildcards
+ Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
+@@ -486,6 +487,7 @@ The format for extra export tables is the same as
+ /home/joe       pc001(rw,all_squash,anonuid=150,anongid=100)
+ /pub            *(ro,insecure,all_squash)
+ /srv/www        \-sync,rw server @trusted @external(ro)
++/foo            2001:321:9:e54::/64(rw) 192.168.1.0/24(rw)
+ '''/pub/private    (noaccess)
+ .fi
+ .PP
+@@ -501,7 +503,8 @@ option in this entry also allows clients with NFS implementations that
+ don't use a reserved port for NFS.
+ The sixth line exports a directory read-write to the machine 'server'
+ as well as the `@trusted' netgroup, and read-only to netgroup `@external',
+-all three mounts with the `sync' option enabled.
++all three mounts with the `sync' option enabled. The seventh line exports
++a directory to both an IPv6 and an IPv4 subnet.
+ ''' The last line denies all NFS clients
+ '''access to the private directory.
+ '''.SH CAVEATS
+-- 
+1.7.5.4
 
-> 
-> Thanks,
-> Ben
-> 
->>
->> v6:  Remove is_set flag from local_bind_info struct.  Just pass in
->>         NULL if local IP is not specified.
->>       Use family of server when parsing local IP address.  This makes
->>         sure that we do not get a family mis-match between server and
->>         local ip.
->>       Rename parse_local_bind to nfs_parse_local_bind
->>       Clean up a few nits (don't check for null before freeing something).
->>
->> v5:  Fix compile error with ipv6 enabled.  One minor
->>         change to patch 1.
->>
->> v4:  Remove get_socket() modifications: stropt mount doesn't use them.
->>         (This removed old patch 4, and modified patch 1)
->>       Remove open-parsing of srcaddr= in mount logic.  Move parsing
->>         to nfs_validate_options()
->>
->> *** BLURB HERE ***
->>
->> Ben Greear (6):
->>    nfs-utils:  Add structure for passing local binding info.
->>    nfs-utils:  Add patch to parse srcaddr= option.
->>    nfs-utils:  Implement srcaddr binding in rpc_socket
->>    nfs-utils:  Support srcaddr=n option for string mount.
->>    nfs-utils:  Implement srcaddr=n binding for unmount.
->>    nfs-utils:  Update man page for srcaddr= option.
->>
->>   support/include/nfsrpc.h   |   23 ++++++---
->>   support/include/sockaddr.h |    5 ++
->>   support/nfs/getport.c      |   39 +++++++++-----
->>   support/nfs/rpc_socket.c   |   96 ++++++++++++++++++++++++----------
->>   utils/gssd/gssd.h          |    2 +
->>   utils/gssd/gssd_proc.c     |   33 +++++++-----
->>   utils/mount/network.c      |  125 +++++++++++++++++++++++++++++++++++---------
->>   utils/mount/network.h      |   17 ++++--
->>   utils/mount/nfs.man        |    7 +++
->>   utils/mount/nfsmount.c     |    2 +-
->>   utils/mount/nfsumount.c    |   28 ++++++++--
->>   utils/mount/stropts.c      |   28 ++++++++--
->>   utils/mount/utils.c        |    6 ++-
->>   utils/mount/utils.h        |    4 +-
->>   14 files changed, 310 insertions(+), 105 deletions(-)
->>
-> 
-> 
