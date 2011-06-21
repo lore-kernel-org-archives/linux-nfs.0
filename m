@@ -1,180 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:52016 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754073Ab1FNCci (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:38 -0400
-Message-Id: <00c2ae19b7c276db0430383679db94c7412d7181.1308017749.git.rees@umich.edu>
-In-Reply-To: <cover.1308017749.git.rees@umich.edu>
-References: <cover.1308017749.git.rees@umich.edu>
-Subject: [PATCH 14/33] pnfsblock: remove device operations
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Date: Mon, 13 Jun 2011 22:32:36 -0400
-From: Jim Rees <rees@umich.edu>
+Received: from mail-qy0-f181.google.com ([209.85.216.181]:61624 "EHLO
+	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751344Ab1FURLa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jun 2011 13:11:30 -0400
+Received: by qyk9 with SMTP id 9so1820231qyk.19
+        for <linux-nfs@vger.kernel.org>; Tue, 21 Jun 2011 10:11:29 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com, bfields@fieldses.org,
+        sweet_f_a@gmx.de
+Subject: [PATCH] manpage: add info about IPv6 configuration to exports(5) (try #3)
+Date: Tue, 21 Jun 2011 13:11:24 -0400
+Message-Id: <1308676284-20731-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Jim Rees <rees@umich.edu>
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/Makefile        |    2 +-
- fs/nfs/blocklayout/blocklayout.h   |    2 +
- fs/nfs/blocklayout/blocklayoutdm.c |  120 ++++++++++++++++++++++++++++++++++++
- 3 files changed, 123 insertions(+), 1 deletions(-)
- create mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
+The parts of the exports(5) manpage that discuss IP addressing neglect
+IPv6 configuration. Update to include info on how to export to IPv6
+subnets and addresses, and add a line demonstrating that to the EXAMPLE
+section.
 
-diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
-index bd69aad..bdbf180 100644
---- a/fs/nfs/blocklayout/Makefile
-+++ b/fs/nfs/blocklayout/Makefile
-@@ -2,4 +2,4 @@
- # Makefile for the pNFS block layout driver kernel module
- #
- obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
--blocklayoutdriver-objs := blocklayout.o block-device-discovery-pipe.o extents.o blocklayoutdev.o
-+blocklayoutdriver-objs := blocklayout.o block-device-discovery-pipe.o extents.o blocklayoutdev.o blocklayoutdm.o
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index cda7ea1..839b81d 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -101,6 +101,8 @@ struct pnfs_block_dev *nfs4_blk_decode_device(struct nfs_server *server,
- 						struct list_head *sdlist);
- int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
- 				struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
-+/* blocklayoutdm.c */
-+void free_block_dev(struct pnfs_block_dev *bdev);
- 
- #include <linux/sunrpc/simple_rpc_pipefs.h>
- 
-diff --git a/fs/nfs/blocklayout/blocklayoutdm.c b/fs/nfs/blocklayout/blocklayoutdm.c
-new file mode 100644
-index 0000000..097dd05
---- /dev/null
-+++ b/fs/nfs/blocklayout/blocklayoutdm.c
-@@ -0,0 +1,120 @@
-+/*
-+ *  linux/fs/nfs/blocklayout/blocklayoutdm.c
-+ *
-+ *  Module for the NFSv4.1 pNFS block layout driver.
-+ *
-+ *  Copyright (c) 2007 The Regents of the University of Michigan.
-+ *  All rights reserved.
-+ *
-+ *  Fred Isaman <iisaman@umich.edu>
-+ *  Andy Adamson <andros@citi.umich.edu>
-+ *
-+ * permission is granted to use, copy, create derivative works and
-+ * redistribute this software and such derivative works for any purpose,
-+ * so long as the name of the university of michigan is not used in
-+ * any advertising or publicity pertaining to the use or distribution
-+ * of this software without specific, written prior authorization.  if
-+ * the above copyright notice or any other identification of the
-+ * university of michigan is included in any copy of any portion of
-+ * this software, then the disclaimer below must also be included.
-+ *
-+ * this software is provided as is, without representation from the
-+ * university of michigan as to its fitness for any purpose, and without
-+ * warranty by the university of michigan of any kind, either express
-+ * or implied, including without limitation the implied warranties of
-+ * merchantability and fitness for a particular purpose.  the regents
-+ * of the university of michigan shall not be liable for any damages,
-+ * including special, indirect, incidental, or consequential damages,
-+ * with respect to any claim arising out or in connection with the use
-+ * of the software, even if it has been or is hereafter advised of the
-+ * possibility of such damages.
-+ */
-+
-+#include <linux/genhd.h> /* gendisk - used in a dprintk*/
-+#include <linux/sched.h>
-+#include <linux/hash.h>
-+
-+#include "blocklayout.h"
-+
-+#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
-+
-+/* Defines used for calculating memory usage in nfs4_blk_flatten() */
-+#define ARGSIZE   24    /* Max bytes needed for linear target arg string */
-+#define SPECSIZE (sizeof8(struct dm_target_spec) + ARGSIZE)
-+#define SPECS_PER_PAGE (PAGE_SIZE / SPECSIZE)
-+#define SPEC_HEADER_ADJUST (SPECS_PER_PAGE - \
-+			    (PAGE_SIZE - sizeof8(struct dm_ioctl)) / SPECSIZE)
-+#define roundup8(x) (((x)+7) & ~7)
-+#define sizeof8(x) roundup8(sizeof(x))
-+
-+static int dev_remove(dev_t dev)
-+{
-+	int ret = 1;
-+	struct pipefs_hdr *msg = NULL, *reply = NULL;
-+	uint64_t bl_dev;
-+	uint32_t major = MAJOR(dev), minor = MINOR(dev);
-+
-+	dprintk("Entering %s\n", __func__);
-+
-+	if (IS_ERR(bl_device_pipe))
-+		return ret;
-+
-+	memcpy((void *)&bl_dev, &major, sizeof(uint32_t));
-+	memcpy((void *)&bl_dev + sizeof(uint32_t), &minor, sizeof(uint32_t));
-+	msg = pipefs_alloc_init_msg(0, BL_DEVICE_UMOUNT, 0, (void *)&bl_dev,
-+				    sizeof(uint64_t));
-+	if (IS_ERR(msg)) {
-+		dprintk("ERROR: couldn't make pipefs message.\n");
-+		goto out;
-+	}
-+	msg->msgid = hash_ptr(&msg, sizeof(msg->msgid) * 8);
-+	msg->status = BL_DEVICE_REQUEST_INIT;
-+
-+	reply = pipefs_queue_upcall_waitreply(bl_device_pipe, msg,
-+					      &bl_device_list, 0, 0);
-+	if (IS_ERR(reply)) {
-+		dprintk("ERROR: upcall_waitreply failed\n");
-+		goto out;
-+	}
-+
-+	if (reply->status == BL_DEVICE_REQUEST_PROC)
-+		ret = 0; /*TODO: what to return*/
-+out:
-+	if (!IS_ERR(reply))
-+		kfree(reply);
-+	if (!IS_ERR(msg))
-+		kfree(msg);
-+	return ret;
-+}
-+
-+/*
-+ * Release meta device
-+ */
-+static int nfs4_blk_metadev_release(struct pnfs_block_dev *bdev)
-+{
-+	int rv;
-+
-+	dprintk("%s Releasing\n", __func__);
-+	/* XXX Check return? */
-+	rv = nfs4_blkdev_put(bdev->bm_mdev);
-+	dprintk("%s nfs4_blkdev_put returns %d\n", __func__, rv);
-+
-+	rv = dev_remove(bdev->bm_mdev->bd_dev);
-+	dprintk("%s Returns %d\n", __func__, rv);
-+	return rv;
-+}
-+
-+void free_block_dev(struct pnfs_block_dev *bdev)
-+{
-+	if (bdev) {
-+		if (bdev->bm_mdev) {
-+			dprintk("%s Removing DM device: %d:%d\n",
-+				__func__,
-+				MAJOR(bdev->bm_mdev->bd_dev),
-+				MINOR(bdev->bm_mdev->bd_dev));
-+			/* XXX Check status ?? */
-+			nfs4_blk_metadev_release(bdev);
-+		}
-+		kfree(bdev);
-+	}
-+}
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/exportfs/exports.man |   11 +++++++----
+ 1 files changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
+index 241b3af..8e6f880 100644
+--- a/utils/exportfs/exports.man
++++ b/utils/exportfs/exports.man
+@@ -47,7 +47,7 @@ NFS clients may be specified in a number of ways:
+ .IP "single host
+ This is the most common format. You may specify a host either by an
+ abbreviated name recognized be the resolver, the fully qualified domain
+-name, or an IP address.
++name, an IPv4 address, or an IPv6 address.
+ .IP "IP networks
+ You can also export directories to all hosts on an IP (sub-) network
+ simultaneously. This is done by specifying an IP address and netmask pair
+@@ -56,8 +56,9 @@ as
+ where the netmask can be specified in dotted-decimal format, or as a
+ contiguous mask length.
+ For example, either `/255.255.252.0' or `/22' appended
+-to the network base IPv4 address results in identical subnetworks with 10 bits of
+-host. Wildcard characters generally do not work on IP addresses, though they
++to the network base IPv4 address results in identical subnetworks with 10 bits
++of host. IPv6 addresses must use a contiguous mask length. Wildcard characters
++generally do not work on IP addresses, though they
+ may work by accident when reverse DNS lookups fail.
+ .IP "wildcards
+ Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
+@@ -486,6 +487,7 @@ The format for extra export tables is the same as
+ /home/joe       pc001(rw,all_squash,anonuid=150,anongid=100)
+ /pub            *(ro,insecure,all_squash)
+ /srv/www        \-sync,rw server @trusted @external(ro)
++/foo            2001:db8:9:e54::/64(rw) 192.0.2.0/24(rw)
+ '''/pub/private    (noaccess)
+ .fi
+ .PP
+@@ -501,7 +503,8 @@ option in this entry also allows clients with NFS implementations that
+ don't use a reserved port for NFS.
+ The sixth line exports a directory read-write to the machine 'server'
+ as well as the `@trusted' netgroup, and read-only to netgroup `@external',
+-all three mounts with the `sync' option enabled.
++all three mounts with the `sync' option enabled. The seventh line exports
++a directory to both an IPv6 and an IPv4 subnet.
+ ''' The last line denies all NFS clients
+ '''access to the private directory.
+ '''.SH CAVEATS
 -- 
-1.7.4.1
+1.7.5.4
 
