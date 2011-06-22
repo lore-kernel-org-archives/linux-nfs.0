@@ -1,108 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:34530 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756550Ab1FIXEV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 19:04:21 -0400
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [RFC 04/11] nfs:  Use request destination addr as callback source addr.
-Date: Thu,  9 Jun 2011 16:02:48 -0700
-Message-Id: <1307660575-6994-5-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1307660575-6994-1-git-send-email-greearb@candelatech.com>
-References: <1307660575-6994-1-git-send-email-greearb@candelatech.com>
+Received: from mx2.netapp.com ([216.240.18.37]:43373 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751599Ab1FVWxL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 18:53:11 -0400
+Subject: Re: Issue with Race Condition on NFS4 with KRB
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Joshua Scoggins <theoretically.x64@gmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Wed, 22 Jun 2011 18:53:10 -0400
+In-Reply-To: <BANLkTin0HnH7rufrHJGgEuPc-ZPjkZe3iw@mail.gmail.com>
+References: <BANLkTik9J3qcdPcp+DdfRq9kj+DMKnjKZw@mail.gmail.com>
+	 <1308767449.14997.10.camel@lade.trondhjem.org>
+	 <BANLkTimyCA0QyF1TNc0SU2GYobOt-sAsNQ@mail.gmail.com>
+	 <1308769054.14997.18.camel@lade.trondhjem.org>
+	 <BANLkTi=b1UJzYinAeW2VJj2AHzsAnwUpGg@mail.gmail.com>
+	 <1308779507.25875.7.camel@lade.trondhjem.org>
+	 <BANLkTin0HnH7rufrHJGgEuPc-ZPjkZe3iw@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1308783190.25875.25.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
+On Wed, 2011-06-22 at 15:40 -0700, Joshua Scoggins wrote: 
+> The patch isn't applying to the 2.6.39 kernel sources.
 
-This helps make sure that responses use the correct
-source address on multi-homed machines.
+It does for me:
 
-Signed-off-by: Ben Greear <greearb@candelatech.com>
----
-:100644 100644 b257383... 00902ec... M	fs/nfs/callback.h
-:100644 100644 c6c86a7... ed5be89... M	fs/nfs/callback_xdr.c
-:100644 100644 ea29330... 45d5d7c... M	include/linux/sunrpc/svc.h
- fs/nfs/callback.h          |    3 +++
- fs/nfs/callback_xdr.c      |    3 +++
- include/linux/sunrpc/svc.h |    5 +++++
- 3 files changed, 11 insertions(+), 0 deletions(-)
+[trondmy@lade linux-2.6]$ git checkout v2.6.39
+HEAD is now at 61c4f2c... Linux 2.6.39
+[trondmy@lade linux-2.6]$ git am ~/Desktop/bugfixes/0001-SUNRPC-Fix-a-potential-race-in-between-xprt_complete.patch
+Applying: SUNRPC: Fix a potential race in between xprt_complete_rqst and xprt_transmit
+[trondmy@lade linux-2.6]$ 
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index b257383..00902ec 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -57,6 +57,7 @@ struct cb_compound_hdr_res {
- 
- struct cb_getattrargs {
- 	struct sockaddr *addr;
-+	struct sockaddr *srcaddr;
- 	struct nfs_fh fh;
- 	uint32_t bitmap[2];
- };
-@@ -72,6 +73,7 @@ struct cb_getattrres {
- 
- struct cb_recallargs {
- 	struct sockaddr *addr;
-+	struct sockaddr *srcaddr;
- 	struct nfs_fh fh;
- 	nfs4_stateid stateid;
- 	uint32_t truncate;
-@@ -92,6 +94,7 @@ struct referring_call_list {
- 
- struct cb_sequenceargs {
- 	struct sockaddr			*csa_addr;
-+	struct sockaddr                 *csa_daddr;
- 	struct nfs4_sessionid		csa_sessionid;
- 	uint32_t			csa_sequenceid;
- 	uint32_t			csa_slotid;
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index c6c86a7..ed5be89 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -196,6 +196,7 @@ static __be32 decode_getattr_args(struct svc_rqst *rqstp, struct xdr_stream *xdr
- 	if (unlikely(status != 0))
- 		goto out;
- 	args->addr = svc_addr(rqstp);
-+	args->srcaddr = svc_daddr(rqstp);
- 	status = decode_bitmap(xdr, args->bitmap);
- out:
- 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
-@@ -208,6 +209,7 @@ static __be32 decode_recall_args(struct svc_rqst *rqstp, struct xdr_stream *xdr,
- 	__be32 status;
- 
- 	args->addr = svc_addr(rqstp);
-+	args->srcaddr = svc_daddr(rqstp);
- 	status = decode_stateid(xdr, &args->stateid);
- 	if (unlikely(status != 0))
- 		goto out;
-@@ -442,6 +444,7 @@ static __be32 decode_cb_sequence_args(struct svc_rqst *rqstp,
- 		goto out;
- 
- 	args->csa_addr = svc_addr(rqstp);
-+	args->csa_daddr = svc_daddr(rqstp);
- 	args->csa_sequenceid = ntohl(*p++);
- 	args->csa_slotid = ntohl(*p++);
- 	args->csa_highestslotid = ntohl(*p++);
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index ea29330..45d5d7c 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -299,6 +299,11 @@ static inline struct sockaddr *svc_addr(const struct svc_rqst *rqst)
- 	return (struct sockaddr *) &rqst->rq_addr;
- }
- 
-+static inline struct sockaddr *svc_daddr(struct svc_rqst *rqst)
-+{
-+	return (struct sockaddr *) &rqst->rq_daddr;
-+}
-+
- /*
-  * Check buffer bounds after decoding arguments
-  */
+Are you perhaps using some distro kernel instead of the regular one from
+Linus' repository?
+
+Cheers
+  Trond
+
+> -Josh
+> 
+> On Wed, Jun 22, 2011 at 2:51 PM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+> > On Wed, 2011-06-22 at 12:18 -0700, Joshua Scoggins wrote:
+> >> According to the it guys they are running solaris 10 as the server platform.
+> >
+> > Ok. That should not be subject to the race I was thinking of...
+> >
+> >> On Wed, Jun 22, 2011 at 11:57 AM, Trond Myklebust
+> >> <Trond.Myklebust@netapp.com> wrote:
+> >> > On Wed, 2011-06-22 at 11:37 -0700, Joshua Scoggins wrote:
+> >> >> Here are our mount options from auto.master
+> >> >>
+> >> >> /user -fstype=nfs4,sec=krb5p,noresvport,noatime
+> >> >> /group -fstype=nfs4,sec=krb5p,noresvport,noatime
+> >> >>
+> >> >> As for the server, we don't control it. It's actually run by the
+> >> >> campus wide it department we are just lab support for CS. I can
+> >> >> potentially get the server information but I need to know what you want
+> >> >> specifically as they're pretty paranoid about giving out information about
+> >> >> their servers.
+> >> >
+> >> > I would just want to know _what_ server platform you are running
+> >> > against. I know of at least one server bug that might explain what you
+> >> > are seeing, and I'd like to eliminate that as a possibility.
+> >> >
+> >> > Trond
+> >> >
+> >> >> Joshua Scoggins
+> >> >>
+> >> >> On Wed, Jun 22, 2011 at 11:30 AM, Trond Myklebust
+> >> >> <Trond.Myklebust@netapp.com> wrote:
+> >> >> > On Wed, 2011-06-22 at 11:21 -0700, Joshua Scoggins wrote:
+> >> >> >> Hello,
+> >> >> >>
+> >> >> >> We are trying to update our linux images in our CS lab and have it a
+> >> >> >> bit of an issue. We are
+> >> >> >> using nfs to load user home folder. While testing the new image we
+> >> >> >> found that the nfs4 module will
+> >> >> >>  crash when using firefox 3.6.17 for an extended period of time. Some
+> >> >> >> research via google yielded that
+> >> >> >> it's a potential race condition specific to nfs with krb auth with
+> >> >> >> newer kernels. Our old image doesn't have
+> >> >> >> this issue and it seems that its due to it running a far older kernel version.
+> >> >> >>
+> >> >> >> We have two images and both are having this problem. One is running
+> >> >> >> 2.6.39 and the other is 2.6.38.
+> >> >> >> Here is what dmesg spit out from the machine running 2.6.39 on one occasion:
+> >> >> >>
+> >> >> >> [  678.632061] ------------[ cut here ]------------
+> >> >> >> [  678.632068] WARNING: at net/sunrpc/clnt.c:1567 call_decode+0xb2/0x69c()
+> >> >> >> [  678.632070] Hardware name: OptiPlex 755
+> >> >> >> [  678.632072] Modules linked in: nvidia(P) scsi_wait_scan
+> >> >> >> [  678.632078] Pid: 3882, comm: kworker/0:2 Tainted: P
+> >> >> >> 2.6.39-gentoo-r1 #1
+> >> >> >> [  678.632080] Call Trace:
+> >> >> >> [  678.632086]  [<ffffffff81035b20>] warn_slowpath_common+0x80/0x98
+> >> >> >> [  678.632091]  [<ffffffff8117231e>] ? nfs4_xdr_dec_readdir+0xba/0xba
+> >> >> >> [  678.632094]  [<ffffffff81035b4d>] warn_slowpath_null+0x15/0x17
+> >> >> >> [  678.632097]  [<ffffffff81426f48>] call_decode+0xb2/0x69c
+> >> >> >> [  678.632101]  [<ffffffff8142d2b5>] __rpc_execute+0x78/0x24b
+> >> >> >> [  678.632104]  [<ffffffff8142d4c9>] ? rpc_execute+0x41/0x41
+> >> >> >> [  678.632107]  [<ffffffff8142d4d9>] rpc_async_schedule+0x10/0x12
+> >> >> >> [  678.632111]  [<ffffffff8104a49d>] process_one_work+0x1d9/0x2e7
+> >> >> >> [  678.632114]  [<ffffffff8104c402>] worker_thread+0x133/0x24f
+> >> >> >> [  678.632118]  [<ffffffff8104c2cf>] ? manage_workers+0x18d/0x18d
+> >> >> >> [  678.632121]  [<ffffffff8104f6a0>] kthread+0x7d/0x85
+> >> >> >> [  678.632125]  [<ffffffff8145e314>] kernel_thread_helper+0x4/0x10
+> >> >> >> [  678.632128]  [<ffffffff8104f623>] ? kthread_worker_fn+0x13a/0x13a
+> >> >> >> [  678.632131]  [<ffffffff8145e310>] ? gs_change+0xb/0xb
+> >> >> >> [  678.632133] ---[ end trace 6bfae002a63e020e ]---
+> >
+> > Looking at the code, there is only one way I can see for that warning to
+> > occur, and that is if we put the request back on the 'xprt->recv' list
+> > after it has already received a reply from the server.
+> >
+> > Can you reproduce the problem with the attached patch?
+> >
+> > Trond
+> >
+> > --
+> > Trond Myklebust
+> > Linux NFS client maintainer
+> >
+> > NetApp
+> > Trond.Myklebust@netapp.com
+> > www.netapp.com
+> >
+> >
+
 -- 
-1.7.3.4
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
