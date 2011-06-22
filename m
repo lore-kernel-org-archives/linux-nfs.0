@@ -1,59 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:52054 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755799Ab1FGReG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:34:06 -0400
-Date: Tue, 7 Jun 2011 13:34:05 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 68/88] SQUASHME: pnfs-block: Revert "pnfsblock: expose
- block_class interface"
-Message-ID: <95b0dfe374f28fc29651467dc0e87e271373ba7b.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:62443 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753924Ab1FVMdY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 08:33:24 -0400
+Received: by qwk3 with SMTP id 3so347016qwk.19
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Jun 2011 05:33:23 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, neilb@suse.de, chuck.lever@oracle.com,
+        bfields@fieldses.org
+Subject: [PATCH] nfs: fix host_reliable_addrinfo
+Date: Wed, 22 Jun 2011 08:33:19 -0400
+Message-Id: <1308745999-6551-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+According to Neil Brown:
 
-Following 462557a pnfs-block: Remove device creation from kernel
-exporting block_class is not needed anymore.
+    The point of the word 'reliable' is to check that the name we get
+    really does belong to the host in question - ie that both the
+    forward and reverse maps agree.
 
-This reverts commit f0004c24a5c923af2eba64506055bb83882bcf0e.
+    But the new code doesn't do that check at all.  Rather it simply
+    maps the address to a name, then discards the address and maps the
+    name back to a list of addresses and uses that list of addresses as
+    "where the request came from" for permission checking.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Fix this by instead using the forward lookup of the hostname just to
+verify that the original address is in the list. Then do a numeric
+lookup using the address and stick the hostname in the ai_canonname.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Reviewed-by: NeilBrown <neilb@suse.de>
 ---
- block/genhd.c        |    1 -
- drivers/scsi/hosts.c |    1 +
- 2 files changed, 1 insertions(+), 1 deletions(-)
+ support/export/hostname.c |   26 ++++++++++++++++++++++++--
+ 1 files changed, 24 insertions(+), 2 deletions(-)
 
-diff --git a/block/genhd.c b/block/genhd.c
-index 6f19558..95822ae 100644
---- a/block/genhd.c
-+++ b/block/genhd.c
-@@ -1108,7 +1108,6 @@ static void disk_release(struct device *dev)
- struct class block_class = {
- 	.name		= "block",
- };
--EXPORT_SYMBOL(block_class);
- 
- static char *block_devnode(struct device *dev, mode_t *mode)
+diff --git a/support/export/hostname.c b/support/export/hostname.c
+index efcb75c..595333e 100644
+--- a/support/export/hostname.c
++++ b/support/export/hostname.c
+@@ -268,7 +268,7 @@ __attribute_malloc__
+ struct addrinfo *
+ host_reliable_addrinfo(const struct sockaddr *sap)
  {
-diff --git a/drivers/scsi/hosts.c b/drivers/scsi/hosts.c
-index ac24f02..7d91903 100644
---- a/drivers/scsi/hosts.c
-+++ b/drivers/scsi/hosts.c
-@@ -54,6 +54,7 @@ struct class shost_class = {
- 	.name		= "scsi_host",
- 	.dev_release	= scsi_host_cls_release,
- };
-+EXPORT_SYMBOL(shost_class);
+-	struct addrinfo *ai;
++	struct addrinfo *ai, *a;
+ 	char *hostname;
+ 
+ 	hostname = host_canonname(sap);
+@@ -276,9 +276,31 @@ host_reliable_addrinfo(const struct sockaddr *sap)
+ 		return NULL;
+ 
+ 	ai = host_addrinfo(hostname);
++	if (!ai)
++		goto out_free_hostname;
+ 
+-	free(hostname);
++	/* make sure there's a matching address in the list */
++	for (a = ai; a; a = a->ai_next)
++		if (nfs_compare_sockaddr(a->ai_addr, sap))
++			break;
++
++	freeaddrinfo(ai);
++	if (!a)
++		goto out_free_hostname;
++
++	/* get addrinfo with just the original address */
++	ai = host_numeric_addrinfo(sap);
++	if (!ai)
++		goto out_free_hostname;
++
++	/* and populate its ai_canonname field */
++	free(ai->ai_canonname);
++	ai->ai_canonname = hostname;
+ 	return ai;
++
++out_free_hostname:
++	free(hostname);
++	return NULL;
+ }
  
  /**
-  *	scsi_host_set_state - Take the given host through the host state model.
 -- 
-1.7.4.1
+1.7.5.4
 
