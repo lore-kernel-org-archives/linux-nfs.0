@@ -1,59 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47950 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750991Ab1F3LkR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Jun 2011 07:40:17 -0400
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p5UBeGaT029257
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 30 Jun 2011 07:40:16 -0400
-Message-ID: <4E0C609F.10301@RedHat.com>
-Date: Thu, 30 Jun 2011 07:40:15 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail.candelatech.com ([208.74.158.172]:51911 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757939Ab1FVOyA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 10:54:00 -0400
+Message-ID: <4E020205.1000308@candelatech.com>
+Date: Wed, 22 Jun 2011 07:53:57 -0700
+From: Ben Greear <greearb@candelatech.com>
 To: Steve Dickson <SteveD@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: ANNOUNCE: nfs-utils-1.2.4 released.
-References: <4E0B3A7B.9080006@RedHat.com>
-In-Reply-To: <4E0B3A7B.9080006@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 0/6] nfs-utils:  Support binding to source address.
+References: <1308000408-13690-1-git-send-email-greearb@candelatech.com> <4DFF8604.1050508@candelatech.com> <4E01FC5B.1000509@RedHat.com>
+In-Reply-To: <4E01FC5B.1000509@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello,
-
-Please hold off on download this version since the mount
-command is broken when libmount code is not enabled. The 
-breakage was missed due to a misconfiguration in my 
-testing... My apologies! 
-
-Shortly I will be re-issuing a new 1.2.4 release.
-
-steved.  
-
-On 06/29/2011 10:45 AM, Steve Dickson wrote:
-> New Features in this release:
-> 
->    * Added the --enable-libmount-mount configuration 
->      flag that enables the mount command to use the new
->      libmount code.
-> 
->    * A large number of bug fixes.
-> 
-> The tarballs can be found at:
-> 
->   http://www.kernel.org/pub/linux/utils/nfs/
->   http://sourceforge.net/projects/nfs
-> 
-> The git tree is at:
->    git://linux-nfs.org/nfs-utils
-> 
-> The change log:
-> 
-> http://www.kernel.org/pub/linux/utils/nfs/ChangeLog-nfs-utils-1.2.4
-> 
+On 06/22/2011 07:29 AM, Steve Dickson wrote:
+> Sorry for the delay.. I was traveling last week..
+>
+> On 06/20/2011 01:40 PM, Ben Greear wrote:
+>> On 06/13/2011 02:26 PM, greearb@candelatech.com wrote:
+>>> From: Ben Greear<greearb@candelatech.com>
+>>>
+>>> This lets one specify the source IP address for
+>>> sockets, allowing users to leverage routing rules
+>>> on multi-homed systems.
+>>>
+>>> Kernel patches to RPC and NFS are needed to complete
+>>> full functionality.
+>>
+>> Any feedback on this?  Good enough for inclusion upstream?
+> Question, are there kernel patches needed to complete this work?
+>
 > steved.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+Yes, posted a week or two ago as RFC:
+
+http://www.spinics.net/lists/linux-nfs/msg21802.html
+
+Thanks,
+Ben
+
+>
+>>
+>> Thanks,
+>> Ben
+>>
+>>>
+>>> v6:  Remove is_set flag from local_bind_info struct.  Just pass in
+>>>          NULL if local IP is not specified.
+>>>        Use family of server when parsing local IP address.  This makes
+>>>          sure that we do not get a family mis-match between server and
+>>>          local ip.
+>>>        Rename parse_local_bind to nfs_parse_local_bind
+>>>        Clean up a few nits (don't check for null before freeing something).
+>>>
+>>> v5:  Fix compile error with ipv6 enabled.  One minor
+>>>          change to patch 1.
+>>>
+>>> v4:  Remove get_socket() modifications: stropt mount doesn't use them.
+>>>          (This removed old patch 4, and modified patch 1)
+>>>        Remove open-parsing of srcaddr= in mount logic.  Move parsing
+>>>          to nfs_validate_options()
+>>>
+>>> *** BLURB HERE ***
+>>>
+>>> Ben Greear (6):
+>>>     nfs-utils:  Add structure for passing local binding info.
+>>>     nfs-utils:  Add patch to parse srcaddr= option.
+>>>     nfs-utils:  Implement srcaddr binding in rpc_socket
+>>>     nfs-utils:  Support srcaddr=n option for string mount.
+>>>     nfs-utils:  Implement srcaddr=n binding for unmount.
+>>>     nfs-utils:  Update man page for srcaddr= option.
+>>>
+>>>    support/include/nfsrpc.h   |   23 ++++++---
+>>>    support/include/sockaddr.h |    5 ++
+>>>    support/nfs/getport.c      |   39 +++++++++-----
+>>>    support/nfs/rpc_socket.c   |   96 ++++++++++++++++++++++++----------
+>>>    utils/gssd/gssd.h          |    2 +
+>>>    utils/gssd/gssd_proc.c     |   33 +++++++-----
+>>>    utils/mount/network.c      |  125 +++++++++++++++++++++++++++++++++++---------
+>>>    utils/mount/network.h      |   17 ++++--
+>>>    utils/mount/nfs.man        |    7 +++
+>>>    utils/mount/nfsmount.c     |    2 +-
+>>>    utils/mount/nfsumount.c    |   28 ++++++++--
+>>>    utils/mount/stropts.c      |   28 ++++++++--
+>>>    utils/mount/utils.c        |    6 ++-
+>>>    utils/mount/utils.h        |    4 +-
+>>>    14 files changed, 310 insertions(+), 105 deletions(-)
+>>>
+>>
+>>
+
+
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
