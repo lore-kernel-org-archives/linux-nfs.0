@@ -1,50 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41381 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:12190 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756665Ab1FUWoU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Jun 2011 18:44:20 -0400
-Date: Tue, 21 Jun 2011 18:44:18 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: H Hartley Sweeten <hartleys@visionengravers.com>
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>, netdev@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com, neilb@suse.de,
-        davem@davemloft.net
-Subject: Re: [PATCH] svcsock.c: include sunrpc.h to quite sparse noise
-Message-ID: <20110621224418.GB28047@fieldses.org>
-References: <201106201754.51704.hartleys@visionengravers.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <201106201754.51704.hartleys@visionengravers.com>
+	id S1758135Ab1FVO3s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Jun 2011 10:29:48 -0400
+Message-ID: <4E01FC5B.1000509@RedHat.com>
+Date: Wed, 22 Jun 2011 10:29:47 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Ben Greear <greearb@candelatech.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 0/6] nfs-utils:  Support binding to source address.
+References: <1308000408-13690-1-git-send-email-greearb@candelatech.com> <4DFF8604.1050508@candelatech.com>
+In-Reply-To: <4DFF8604.1050508@candelatech.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Jun 20, 2011 at 05:54:51PM -0700, H Hartley Sweeten wrote:
-> Include the private header sunrpc.h to pickup the declaration of the
-> function svc_send_common to quiet the following sparse noise:
-> 
-> warning: symbol 'svc_send_common' was not declared. Should it be static?
+Sorry for the delay.. I was traveling last week.. 
 
-Thanks, applying for 3.1--b.
+On 06/20/2011 01:40 PM, Ben Greear wrote:
+> On 06/13/2011 02:26 PM, greearb@candelatech.com wrote:
+>> From: Ben Greear<greearb@candelatech.com>
+>>
+>> This lets one specify the source IP address for
+>> sockets, allowing users to leverage routing rules
+>> on multi-homed systems.
+>>
+>> Kernel patches to RPC and NFS are needed to complete
+>> full functionality.
+> 
+> Any feedback on this?  Good enough for inclusion upstream?
+Question, are there kernel patches needed to complete this work?
+
+steved.
 
 > 
-> Signed-off-by: H Hartley Sweeten <hsweeten@visionengravers.com>
-> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> Cc: Neil Brown <neilb@suse.de>
-> Cc: "David S. Miller" <davem@davemloft.net>
+> Thanks,
+> Ben
 > 
-> ---
+>>
+>> v6:  Remove is_set flag from local_bind_info struct.  Just pass in
+>>         NULL if local IP is not specified.
+>>       Use family of server when parsing local IP address.  This makes
+>>         sure that we do not get a family mis-match between server and
+>>         local ip.
+>>       Rename parse_local_bind to nfs_parse_local_bind
+>>       Clean up a few nits (don't check for null before freeing something).
+>>
+>> v5:  Fix compile error with ipv6 enabled.  One minor
+>>         change to patch 1.
+>>
+>> v4:  Remove get_socket() modifications: stropt mount doesn't use them.
+>>         (This removed old patch 4, and modified patch 1)
+>>       Remove open-parsing of srcaddr= in mount logic.  Move parsing
+>>         to nfs_validate_options()
+>>
+>> *** BLURB HERE ***
+>>
+>> Ben Greear (6):
+>>    nfs-utils:  Add structure for passing local binding info.
+>>    nfs-utils:  Add patch to parse srcaddr= option.
+>>    nfs-utils:  Implement srcaddr binding in rpc_socket
+>>    nfs-utils:  Support srcaddr=n option for string mount.
+>>    nfs-utils:  Implement srcaddr=n binding for unmount.
+>>    nfs-utils:  Update man page for srcaddr= option.
+>>
+>>   support/include/nfsrpc.h   |   23 ++++++---
+>>   support/include/sockaddr.h |    5 ++
+>>   support/nfs/getport.c      |   39 +++++++++-----
+>>   support/nfs/rpc_socket.c   |   96 ++++++++++++++++++++++++----------
+>>   utils/gssd/gssd.h          |    2 +
+>>   utils/gssd/gssd_proc.c     |   33 +++++++-----
+>>   utils/mount/network.c      |  125 +++++++++++++++++++++++++++++++++++---------
+>>   utils/mount/network.h      |   17 ++++--
+>>   utils/mount/nfs.man        |    7 +++
+>>   utils/mount/nfsmount.c     |    2 +-
+>>   utils/mount/nfsumount.c    |   28 ++++++++--
+>>   utils/mount/stropts.c      |   28 ++++++++--
+>>   utils/mount/utils.c        |    6 ++-
+>>   utils/mount/utils.h        |    4 +-
+>>   14 files changed, 310 insertions(+), 105 deletions(-)
+>>
 > 
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index af04f77..f2cb5b8 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -51,6 +51,8 @@
->  #include <linux/sunrpc/stats.h>
->  #include <linux/sunrpc/xprt.h>
->  
-> +#include "sunrpc.h"
-> +
->  #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
->  
->  
+> 
