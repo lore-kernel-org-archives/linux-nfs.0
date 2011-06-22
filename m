@@ -1,264 +1,158 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:52028 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755799Ab1FGReD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:34:03 -0400
-Date: Tue, 7 Jun 2011 13:33:59 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 67/88] SQUASHME: pnfs-block: apply types rename
-Message-ID: <db277a3157cc934f0706bab1b803fe3e8e0e690e.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:39838 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751229Ab1FVQxS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 12:53:18 -0400
+Received: by vws1 with SMTP id 1so725843vws.19
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Jun 2011 09:53:17 -0700 (PDT)
+In-Reply-To: <4E01F1A4.4080204@RedHat.com>
+References: <4E00A214.2060306@indiana.edu>
+	<4E01F1A4.4080204@RedHat.com>
+Date: Wed, 22 Jun 2011 12:53:17 -0400
+Message-ID: <BANLkTim1J8czGEXKFF2bn3BW5-ke2teEVA@mail.gmail.com>
+Subject: Re: NFSv4 plus Kerberos with RHEL5 servers and RHEL6 clients using a
+ Windows KDC (SOLVED)
+From: Kevin Coffman <kwc@umich.edu>
+To: Rob Henderson <robh@indiana.edu>, Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+Rob,
+I am not clear what initial issues (symptoms) you were seeing.  In
+general, it is never a good idea to set default_tgs_enctypes or
+default_tkt_enctypes in /etc/krb5.conf unless absolutely necessary.
+The Kerberos libraries will attempt to negotiate the strongest
+algorithm supported by both sides, and setting these values limits
+what the Kerberos libraries are able to negotiate for ALL Kerberos
+services on the machine.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/blocklayout.c    |   32 ++++++++++++++++----------------
- fs/nfs/blocklayout/blocklayout.h    |   13 ++++++-------
- fs/nfs/blocklayout/blocklayoutdev.c |   16 ++++++++--------
- fs/nfs/blocklayout/extents.c        |    8 ++++----
- 4 files changed, 34 insertions(+), 35 deletions(-)
+If it is necessary to set default_tgs_enctypes or default_tkt_enctypes
+to get NFS working, then we still have some work to do!
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index e3cd75f..f49c68c 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -515,7 +515,7 @@ bl_write_pagelist(struct nfs_write_data *wdata,
- /* FIXME - range ignored */
- static void
- release_extents(struct pnfs_block_layout *bl,
--		struct nfs4_pnfs_layout_segment *range)
-+		struct pnfs_layout_range *range)
- {
- 	int i;
- 	struct pnfs_block_extent *be;
-@@ -547,7 +547,7 @@ release_inval_marks(struct pnfs_inval_markings *marks)
- 
- /* Note we are relying on caller locking to prevent nasty races. */
- static void
--bl_free_layout(struct pnfs_layout_type *lo)
-+bl_free_layout(struct pnfs_layout_hdr *lo)
- {
- 	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
- 
-@@ -557,7 +557,7 @@ bl_free_layout(struct pnfs_layout_type *lo)
- 	kfree(bl);
- }
- 
--static struct pnfs_layout_type *
-+static struct pnfs_layout_hdr *
- bl_alloc_layout(struct inode *inode)
- {
- 	struct pnfs_block_layout	*bl;
-@@ -590,8 +590,8 @@ bl_free_lseg(struct pnfs_layout_segment *lseg)
-  * cause lots of unnecessary overlapping LAYOUTGET requests.
-  */
- static struct pnfs_layout_segment *
--bl_alloc_lseg(struct pnfs_layout_type *lo,
--	      struct nfs4_pnfs_layoutget_res *lgr)
-+bl_alloc_lseg(struct pnfs_layout_hdr *lo,
-+	      struct nfs4_layoutget_res *lgr)
- {
- 	struct pnfs_layout_segment *lseg;
- 	int status;
-@@ -617,8 +617,8 @@ bl_alloc_lseg(struct pnfs_layout_type *lo,
- }
- 
- static int
--bl_setup_layoutcommit(struct pnfs_layout_type *lo,
--		      struct pnfs_layoutcommit_arg *arg)
-+bl_setup_layoutcommit(struct pnfs_layout_hdr *lo,
-+		      struct nfs4_layoutcommit_args *arg)
- {
- 	struct nfs_server *nfss = PNFS_NFS_SERVER(lo);
- 	struct bl_layoutupdate_data *layoutupdate_data;
-@@ -627,11 +627,11 @@ bl_setup_layoutcommit(struct pnfs_layout_type *lo,
- 	/* Need to ensure commit is block-size aligned */
- 	if (nfss->pnfs_blksize) {
- 		u64 mask = nfss->pnfs_blksize - 1;
--		u64 offset = arg->lseg.offset & mask;
-+		u64 offset = arg->range.offset & mask;
- 
--		arg->lseg.offset -= offset;
--		arg->lseg.length += offset + mask;
--		arg->lseg.length &= ~mask;
-+		arg->range.offset -= offset;
-+		arg->range.length += offset + mask;
-+		arg->range.length &= ~mask;
- 	}
- 
- 	layoutupdate_data = kmalloc(sizeof(struct bl_layoutupdate_data),
-@@ -645,16 +645,16 @@ bl_setup_layoutcommit(struct pnfs_layout_type *lo,
- }
- 
- static void
--bl_encode_layoutcommit(struct pnfs_layout_type *lo, struct xdr_stream *xdr,
--		       const struct pnfs_layoutcommit_arg *arg)
-+bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
-+		       const struct nfs4_layoutcommit_args *arg)
- {
- 	dprintk("%s enter\n", __func__);
- 	encode_pnfs_block_layoutupdate(BLK_LO2EXT(lo), xdr, arg);
- }
- 
- static void
--bl_cleanup_layoutcommit(struct pnfs_layout_type *lo,
--			struct pnfs_layoutcommit_arg *arg, int status)
-+bl_cleanup_layoutcommit(struct pnfs_layout_hdr *lo,
-+			struct nfs4_layoutcommit_args *arg, int status)
- {
- 	dprintk("%s enter\n", __func__);
- 	clean_pnfs_block_layoutupdate(BLK_LO2EXT(lo), arg, status);
-@@ -1087,7 +1087,7 @@ bl_write_end_cleanup(struct file *filp, struct pnfs_fsdata *fsdata)
- }
- 
- static ssize_t
--bl_get_stripesize(struct pnfs_layout_type *lo)
-+bl_get_stripesize(struct pnfs_layout_hdr *lo)
- {
- 	dprintk("%s enter\n", __func__);
- 	return 0;
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 8931944..ab61a19 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -33,7 +33,6 @@
- #define FS_NFS_NFS4BLOCKLAYOUT_H
- 
- #include <linux/nfs_fs.h>
--#include <linux/pnfs_xdr.h> /* Needed by nfs4_pnfs.h */
- #include <linux/nfs4_pnfs.h>
- #include <linux/dm-ioctl.h> /* Needed for struct dm_ioctl*/
- 
-@@ -176,7 +175,7 @@ static inline int choose_list(enum exstate4 state)
- }
- 
- struct pnfs_block_layout {
--	struct pnfs_layout_type bl_layout;
-+	struct pnfs_layout_hdr bl_layout;
- 	struct pnfs_inval_markings bl_inval; /* tracks INVAL->RW transition */
- 	spinlock_t		bl_ext_lock;   /* Protects list manipulation */
- 	struct list_head	bl_extents[EXTENT_LISTS]; /* R and RW extents */
-@@ -195,7 +194,7 @@ struct bl_layoutupdate_data {
- #define BLK_ID(lo) ((struct block_mount_id *)(PNFS_NFS_SERVER(lo)->pnfs_ld_data))
- 
- static inline struct pnfs_block_layout *
--BLK_LO2EXT(struct pnfs_layout_type *lo)
-+BLK_LO2EXT(struct pnfs_layout_hdr *lo)
- {
- 	return container_of(lo, struct pnfs_block_layout, bl_layout);
- }
-@@ -257,8 +256,8 @@ int nfs4_blkdev_put(struct block_device *bdev);
- struct pnfs_block_dev *nfs4_blk_decode_device(struct nfs_server *server,
- 					      struct pnfs_device *dev,
- 					      struct list_head *sdlist);
--int nfs4_blk_process_layoutget(struct pnfs_layout_type *lo,
--			       struct nfs4_pnfs_layoutget_res *lgr);
-+int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
-+			       struct nfs4_layoutget_res *lgr);
- int nfs4_blk_create_block_disk_list(struct list_head *);
- void nfs4_blk_destroy_disk_list(struct list_head *);
- /* blocklayoutdm.c */
-@@ -277,9 +276,9 @@ struct pnfs_block_extent *get_extent(struct pnfs_block_extent *be);
- int is_sector_initialized(struct pnfs_inval_markings *marks, sector_t isect);
- int encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
- 				   struct xdr_stream *xdr,
--				   const struct pnfs_layoutcommit_arg *arg);
-+				   const struct nfs4_layoutcommit_args *arg);
- void clean_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
--				   const struct pnfs_layoutcommit_arg *arg,
-+				   const struct nfs4_layoutcommit_args *arg,
- 				   int status);
- int add_and_merge_extent(struct pnfs_block_layout *bl,
- 			 struct pnfs_block_extent *new);
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index 98ec92b3..e9ea86a 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -152,7 +152,7 @@ out_err:
- }
- 
- /* Map deviceid returned by the server to constructed block_device */
--static struct block_device *translate_devid(struct pnfs_layout_type *lo,
-+static struct block_device *translate_devid(struct pnfs_layout_hdr *lo,
- 					    struct pnfs_deviceid *id)
- {
- 	struct block_device *rv = NULL;
-@@ -231,8 +231,8 @@ static int verify_extent(struct pnfs_block_extent *be,
- 
- /* XDR decode pnfs_block_layout4 structure */
- int
--nfs4_blk_process_layoutget(struct pnfs_layout_type *lo,
--			   struct nfs4_pnfs_layoutget_res *lgr)
-+nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
-+			   struct nfs4_layoutget_res *lgr)
- {
- 	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
- 	uint32_t *p = (uint32_t *)lgr->layout.buf;
-@@ -242,10 +242,10 @@ nfs4_blk_process_layoutget(struct pnfs_layout_type *lo,
- 	struct pnfs_block_extent *be = NULL, *save;
- 	uint64_t tmp; /* Used by READSECTOR */
- 	struct layout_verification lv = {
--		.mode = lgr->lseg.iomode,
--		.start = lgr->lseg.offset >> 9,
--		.inval = lgr->lseg.offset >> 9,
--		.cowread = lgr->lseg.offset >> 9,
-+		.mode = lgr->range.iomode,
-+		.start = lgr->range.offset >> 9,
-+		.inval = lgr->range.offset >> 9,
-+		.cowread = lgr->range.offset >> 9,
- 	};
- 
- 	LIST_HEAD(extents);
-@@ -290,7 +290,7 @@ nfs4_blk_process_layoutget(struct pnfs_layout_type *lo,
- 		be = NULL;
- 		goto out_err;
- 	}
--	if (lgr->lseg.offset + lgr->lseg.length != lv.start << 9) {
-+	if (lgr->range.offset + lgr->range.length != lv.start << 9) {
- 		dprintk("%s Final length mismatch\n", __func__);
- 		be = NULL;
- 		goto out_err;
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 6c26cd4..20cc863 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -738,7 +738,7 @@ find_get_extent_locked(struct pnfs_block_layout *bl, sector_t isect)
- int
- encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
- 			       struct xdr_stream *xdr,
--			       const struct pnfs_layoutcommit_arg *arg)
-+			       const struct nfs4_layoutcommit_args *arg)
- {
- 	sector_t start, end;
- 	struct pnfs_block_short_extent *lce, *save;
-@@ -748,8 +748,8 @@ encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
- 	__be32 *p, *xdr_start;
- 
- 	dprintk("%s enter\n", __func__);
--	start = arg->lseg.offset >> 9;
--	end = start + (arg->lseg.length >> 9);
-+	start = arg->range.offset >> 9;
-+	end = start + (arg->range.length >> 9);
- 	dprintk("%s set start=%llu, end=%llu\n",
- 		__func__, (u64)start, (u64)end);
- 
-@@ -922,7 +922,7 @@ set_to_rw(struct pnfs_block_layout *bl, u64 offset, u64 length)
- 
- void
- clean_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
--			      const struct pnfs_layoutcommit_arg *arg,
-+			      const struct nfs4_layoutcommit_args *arg,
- 			      int status)
- {
- 	struct bl_layoutupdate_data *bld = arg->layoutdriver_data;
--- 
-1.7.4.1
+I believe that in RHEL5 the nfs kernel code only has DES support, and
+uses MIT Kerberos 1.6.1.  If that is true, your keytab generation for
+your server is incorrect.  It should only include DES key(s) for the
+NFS service.  See
+https://www.citi.umich.edu/projects/nfsv4/linux/krb5-setup.html.
+Offhand, I do not know the correct syntax to accomplish this with a
+Windows KDC.
 
+K.C.
+
+On Wed, Jun 22, 2011 at 9:44 AM, Steve Dickson <SteveD@redhat.com> wrote:
+> Hey Rob,
+>
+> Thanks for the info... I was thought the correct default enctypes
+> for Window KDCs where
+>    default_tgs_enctypes = des-cbc-md5
+>    default_tkt_enctypes = des-cbc-md5
+>
+> Maybe we should add this finding to the the NFS FAQ (http://nfs.sourceforge.net/) ?
+>
+> steved.
+>
+> On 06/21/2011 09:52 AM, Rob Henderson wrote:
+>> We had trouble getting kerberized nfsv4 working in our environment with RHEL5 servers and RHEL6 clients using the campus Windows 2008 AD servers as our KDC.  We've resolved the issue now but I just wanted to summarize our solution in case others are fighting the same problem.
+>>
+>> The key issue seems related to encryption since 1) the older RHEL5 kernels only support DES for nfs and 2) it appears that limiting the keytabs to only DES causes a failure to communicate with our campus Windows KDC.  I found a number of discussions that suggested limiting the encryption types to only DES and this seems to be the common fix when using a standard MIT kerberos server.  However, in our environment we are using a Windows KDC and that solution did not work for us.  I don't know if that is a generic problem with a Windows KDC or something particular to the configuration of our campus servers.
+>>
+>> Cutting to the chase, here is the configuration in the /etc/krb5.conf on the RHEL6 client that worked for us:
+>>
+>>     [libdefaults]
+>>         default_tkt_enctypes = des-cbc-crc aes256-cts-hmac-sha1-96 arcfour-hmac
+>>         allow_weak_crypto = 1
+>>
+>>
+>> All the gory details are below for anyone interested.
+>>
+>>    --Rob
+>>
+>> Disclaimer:  I am not saying this is the only and/or best solution, but it is working for us... :)
+>>
+>> ===================================================================
+>>
+>>
+>> Keytab Generation
+>> =================
+>>
+>> The campus Windows AD admins generate nfs keytabs for us using the "/crypto ALL" argument to ktpass.  They also set the NO_AUTH_DATA_REQUIRED UAC flag on the associated machine accounts.  Keytabs are generated using the same procedure for both servers and clients.
+>>
+>>
+>> RHEL5 NFS Server
+>> ================
+>>
+>> The keytabs are installed on the RHEL5 server and look like this:
+>>
+>> # klist -kte
+>>
+>> Keytab name: FILE:/etc/krb5.keytab
+>> KVNO Timestamp         Principal
+>> ---- ----------------- --------------------------------------------------------
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (DES cbc mode with CRC-32)
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (DES cbc mode with RSA-MD5)
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (ArcFour with HMAC/md5)
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (AES-256 CTS mode with 96-bit SHA-1 HMAC)
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (AES-128 CTS mode with 96-bit SHA-1 HMAC)
+>>
+>> There is nothing special in the /etc/krb5.conf on the server side.
+>>
+>>
+>> RHEL6 NFS Client
+>> ================
+>>
+>> The keytabs for the client are generated in the same way as for the server and look exactly like that for the server (with the exception that the encryption types are displayed differently with the newer version of klist).  They look like this:
+>>
+>> # klist -kte
+>> Keytab name: WRFILE:/etc/krb5.keytab
+>> KVNO Timestamp         Principal
+>> ---- ----------------- --------------------------------------------------------
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (des-cbc-crc)
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (des-cbc-md5)
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (arcfour-hmac)
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (aes256-cts-hmac-sha1-96)
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (aes128-cts-hmac-sha1-96)
+>>
+>>
+>> The following are added to the /etc/krb5.conf:
+>>
+>>      [libdefaults]
+>>         default_tkt_enctypes = des-cbc-crc aes256-cts-hmac-sha1-96 arcfour-hmac
+>>         allow_weak_crypto = 1
+>>
+>> After the mount, the machine credentials on the client look like this:
+>>
+>>       # klist -e /tmp/krb5cc_machine_[REALM]
+>>       Ticket cache: FILE:/tmp/krb5cc_machine_[REALM]
+>>       Default principal: nfs/[client hostname]@[REALM]
+>>
+>>       Valid starting     Expires            Service principal
+>>       06/21/11 02:44:18  06/21/11 12:44:18  krbtgt/[REALM]@[REALM]
+>>               renew until 06/28/11 02:44:18, Etype (skey, tkt): des-cbc-crc, aes256-cts-hmac-sha1-96
+>>       06/21/11 02:44:18  06/21/11 12:44:18  nfs/[server hostname]@[REALM]
+>>               renew until 06/28/11 02:44:18, Etype (skey, tkt): des-cbc-crc, aes256-cts-hmac-sha1-96
+>>
+>> And, the user sees the following:
+>>
+>>       $ klist -e
+>>       Ticket cache: FILE:/tmp/krb5cc_[UID]_EfGvpD
+>>       Default principal: [USERNAME]@[REALM]
+>>
+>>       Valid starting     Expires            Service principal
+>>       06/21/11 09:33:01  06/21/11 19:33:01  krbtgt/[REALM]@[REALM]
+>>               renew until 06/28/11 09:33:01, Etype (skey, tkt): des-cbc-crc, aes256-cts-hmac-sha1-96
+>>       06/21/11 09:33:03  06/21/11 19:33:01  nfs/[server hostname]@[REALM]
+>>              renew until 06/28/11 09:33:01, Etype (skey, tkt): des-cbc-crc, aes256-cts-hmac-sha1-96
+>>
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
