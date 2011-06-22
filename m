@@ -1,49 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:16252 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752970Ab1FQUZv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Jun 2011 16:25:51 -0400
-Message-ID: <4DFBB84F.2040708@panasas.com>
-Date: Fri, 17 Jun 2011 16:25:51 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] pnfs-obj: No longer needed to take an extra ref at add_device
-Content-Type: text/plain; charset=UTF-8
+Received: from mail.candelatech.com ([208.74.158.172]:50595 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758920Ab1FVVhQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 17:37:16 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH 01/11] sunrpc:  Don't attempt to bind to AF_UNSPEC address.
+Date: Wed, 22 Jun 2011 14:36:41 -0700
+Message-Id: <1308778611-9370-2-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1308778611-9370-1-git-send-email-greearb@candelatech.com>
+References: <1308778611-9370-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Ben Greear <greearb@candelatech.com>
 
-Andy's last device_cache patches, already take an extra
-reference on the newly inserted device_id. So we can remove it
-from obj-io.
+This lets calling code simply pass AF_UNSPEC addresses
+instead of adding lots of checks to conditionally pass
+NULL addresses.
 
-Without this patch the device_ids are leaked. 
-
-Andy's patches are not in Linus tree yet. So I'm not sure if they are
-scheduled for this Kernel or the next. This patch should be added as
-part of these.
-
-CC: Andy Adamson <andros@netapp.com>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Ben Greear <greearb@candelatech.com>
 ---
- fs/nfs/objlayout/objio_osd.c |    1 -
- 1 files changed, 0 insertions(+), 1 deletions(-)
+:100644 100644 72abb73... 37299c0... M	net/sunrpc/xprtsock.c
+ net/sunrpc/xprtsock.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index f014038..70272d5 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -108,7 +108,6 @@ _dev_list_add(const struct nfs_server *nfss,
- 		de = n;
- 	}
- 
--	atomic_inc(&de->id_node.ref);
- 	return de;
- }
- 
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 72abb73..37299c0 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2509,9 +2509,9 @@ static struct rpc_xprt *xs_setup_xprt(struct xprt_create *args,
+ 	new = container_of(xprt, struct sock_xprt, xprt);
+ 	memcpy(&xprt->addr, args->dstaddr, args->addrlen);
+ 	xprt->addrlen = args->addrlen;
+-	if (args->srcaddr)
++	if (args->srcaddr && (args->srcaddr->sa_family != AF_UNSPEC)) {
+ 		memcpy(&new->srcaddr, args->srcaddr, args->addrlen);
+-	else {
++	} else {
+ 		int err;
+ 		err = xs_init_anyaddr(args->dstaddr->sa_family,
+ 					(struct sockaddr *)&new->srcaddr);
 -- 
 1.7.3.4
 
