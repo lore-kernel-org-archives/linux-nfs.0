@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:53563 "EHLO
+Received: from mail.candelatech.com ([208.74.158.172]:60819 "EHLO
 	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757806Ab1FJSKn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 14:10:43 -0400
+	with ESMTP id S1758994Ab1FVVix (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 17:38:53 -0400
 From: greearb@candelatech.com
 To: linux-nfs@vger.kernel.org
 Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH 4/7] nfs-utils:  Implement srcaddr binding in network.c
-Date: Fri, 10 Jun 2011 11:09:36 -0700
-Message-Id: <1307729379-7702-5-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1307729379-7702-1-git-send-email-greearb@candelatech.com>
-References: <1307729379-7702-1-git-send-email-greearb@candelatech.com>
+Subject: [PATCH 06/11] nfs:  Use srcaddr in nfs_match_client.
+Date: Wed, 22 Jun 2011 14:36:46 -0700
+Message-Id: <1308778611-9370-7-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1308778611-9370-1-git-send-email-greearb@candelatech.com>
+References: <1308778611-9370-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
@@ -18,59 +18,52 @@ MIME-Version: 1.0
 
 From: Ben Greear <greearb@candelatech.com>
 
-Implement binding logic in get_socket() if local_ip
-argument is not NULL.
-
-Note that this method had issues with supporting IPv6 before
-this patch, and this patch does NOT resolve them.
+For bound clients, we have to make sure we do not re-use
+a client that is bound differently.
 
 Signed-off-by: Ben Greear <greearb@candelatech.com>
 ---
-:100644 100644 36c2e94... 5419c5d... M	utils/mount/network.c
- utils/mount/network.c |   21 ++++++++++++++++++---
- 1 files changed, 18 insertions(+), 3 deletions(-)
+:100644 100644 c571a97... 5d8998a... M	fs/nfs/client.c
+ fs/nfs/client.c |   12 ++++++++++++
+ 1 files changed, 12 insertions(+), 0 deletions(-)
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 36c2e94..5419c5d 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -461,19 +461,34 @@ static int get_socket(struct sockaddr_in *saddr, unsigned int p_prot,
- 	int so, cc, type;
- 	struct sockaddr_in laddr;
- 	socklen_t namelen = sizeof(laddr);
-+	int f = AF_INET;
-+
-+	if (local_ip && local_ip->is_set)
-+		f = local_ip->addr.sa.sa_family;
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index c571a97..5d8998a 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -131,7 +131,9 @@ struct rpc_program		nfsacl_program = {
+ struct nfs_client_initdata {
+ 	const char *hostname;
+ 	const struct sockaddr *addr;
++	const struct sockaddr *srcaddr;
+ 	size_t addrlen;
++	size_t srcaddrlen;
+ 	const struct nfs_rpc_ops *rpc_ops;
+ 	int proto;
+ 	u32 minorversion;
+@@ -463,6 +465,9 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
  
- 	type = (p_prot == IPPROTO_UDP ? SOCK_DGRAM : SOCK_STREAM);
--	if ((so = socket (AF_INET, type, p_prot)) < 0)
+ 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
+ 	        const struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
++		const struct sockaddr *sa;
++		sa = (const struct sockaddr *)&clp->srcaddr;
 +
-+	so = socket(f, type, p_prot);
-+	if (so < 0)
- 		goto err_socket;
+ 		/* Don't match clients that failed to initialise properly */
+ 		if (clp->cl_cons_state < 0)
+ 			continue;
+@@ -480,6 +485,13 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+ 		if (!nfs_sockaddr_cmp(sap, clap))
+ 			continue;
  
--	laddr.sin_family = AF_INET;
-+	laddr.sin_family = f;
- 	laddr.sin_port = 0;
- 	laddr.sin_addr.s_addr = htonl(INADDR_ANY);
- 	if (resvp) {
-+		/* TODO:  Support IPv6 */
-+		if (local_ip && local_ip->is_set
-+		    && local_ip->addr.sa.sa_family == AF_INET) {
-+			struct sockaddr_in *si = &local_ip->addr.s4;
-+			laddr.sin_addr.s_addr = si->sin_addr.s_addr;
-+		}
- 		if (bindresvport(so, &laddr) < 0)
- 			goto err_bindresvport;
- 	} else {
--		cc = bind(so, SAFE_SOCKADDR(&laddr), namelen);
-+		if (local_ip && local_ip->is_set)
-+			cc = bind(so, &local_ip->addr.sa, local_ip->addrlen);
-+		else
-+			cc = bind(so, SAFE_SOCKADDR(&laddr), namelen);
- 		if (cc < 0)
- 			goto err_bind;
++		/* Check to make sure local-IP bindings match,
++		 * but just the IP-addr.
++		 */
++		if (data->srcaddr &&
++		    !nfs_sockaddr_match_ipaddr(data->srcaddr, sa))
++			continue;
++
+ 		atomic_inc(&clp->cl_count);
+ 		return clp;
  	}
 -- 
 1.7.3.4
