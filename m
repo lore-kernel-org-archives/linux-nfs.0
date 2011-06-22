@@ -1,204 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from newman.cs.indiana.edu ([129.79.247.4]:33668 "EHLO
-	newman.cs.indiana.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752785Ab1FXVkK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jun 2011 17:40:10 -0400
-Message-ID: <4E050433.8010408@indiana.edu>
-Date: Fri, 24 Jun 2011 17:40:03 -0400
-From: Rob Henderson <robh@indiana.edu>
-To: Kevin Coffman <kwc@umich.edu>
-CC: Vladimir Elisseev <vovan@vovan.nl>, Steve Dickson <SteveD@redhat.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 plus Kerberos with RHEL5 servers and RHEL6 clients using
- a Windows KDC (SOLVED)
-References: <4E00A214.2060306@indiana.edu>	<4E01F1A4.4080204@RedHat.com>	<BANLkTim1J8czGEXKFF2bn3BW5-ke2teEVA@mail.gmail.com>	<1308762828.2427.8.camel@vovan.net.home> <BANLkTikn3bN91d0=Fc9iC5+z4nOyAXwv3A@mail.gmail.com>
-In-Reply-To: <BANLkTikn3bN91d0=Fc9iC5+z4nOyAXwv3A@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:45159 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757493Ab1FVAxd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Jun 2011 20:53:33 -0400
+Date: Tue, 21 Jun 2011 20:55:06 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: NeilBrown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com, bfields@fieldses.org
+Subject: Re: rpc.mountd and character class matches
+Message-ID: <20110621205506.71261a43@corrin.poochiereds.net>
+In-Reply-To: <20110622083344.3575a424@notabene.brown>
+References: <20110621112645.5e9e3d09@tlielax.poochiereds.net>
+	<20110622083344.3575a424@notabene.brown>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I'm not sure I can give you all the details you'd like since much of my testing was done when we first set this up with RHEL5 servers and clients a couple years ago.  In fact, we first set this up when our campus had a genuine MIT kerberos server and things went quite smoothly.  Then, they ditched the MIT kerberos server and pushed us into using the Windows KDC and that was the start of all our troubles... ;-)  If you want to see some of our earlier pain, search the list archives for:
+On Wed, 22 Jun 2011 08:33:44 +1000
+NeilBrown <neilb@suse.de> wrote:
 
-   Migration from MIT KDC to AD: mount succeeds, user access yields"Failed to create krb5 context for user with uid 500"
-
-But, when we first moved to using AD I tried for the longest time generating only keytabs with DES-base enctypes and it never worked.  I recall errors about missing keytab entries but am sorry I don't have all the details (tho some information is in the thread with the above subject).  All I know is that once I started generating keytabs with 'ktpass /crypto ALL' I got it to work and we've been using these keytabs on both RHEL5 servers and clients (with no default_tgs_enctypes or default_tkt_enctypes settings whatsoever in our krb5.conf files) for the past 2 years with no problems.
-
-When RHEL6 came out I started trying to get it to talk to our RHEL5 servers which led to the working config that I posted.  I kept a series of notes about what I tried and you are welcome to look at that:
-
-  http://www.cs.indiana.edu/~robh/nfsv4+rhel6.html
-
-These notes were never meant for public consumption so I make no guarantees as to their suitability for any purpose whatsoever... :)
-
-Thanks,
-
-  --Rob
-
-
-Kevin Coffman wrote:
-> Can somone point me to a description of the symptoms you were seeing?
-> I'd like to better understand what is going on.  You say AD doesn't
-> allow DES, but Rob's tickets had des session keys.
+> On Tue, 21 Jun 2011 11:26:45 -0400 Jeff Layton <jlayton@redhat.com> wrote:
 > 
-> In any case, a keytab with all enctypes is incorrect for a RHEL5 NFS server.
+> > I was writing up the manpage update for exports to include info about
+> > IPv6 addressing, and made a mistake on my first pass. I put the IPv6
+> > address in brackets. It turned out that this worked because mountd
+> > treats stuff in brackets as a character class wildcard match.
+> > 
+> > This behavior is undocumented in the manpage and it doesn't seem to
+> > work correctly, but it's hard to be sure as I'm not sure what correct
+> > behavior is for this.
+> > 
+> > For instance, I have a host with a valid hostname (tlielax) in DNS on
+> > my subnet, and when I put this in /etc/exports:
+> > 
+> >     /export [whiskeytangofoxtrot](rw)
+> > 
+> > ...mountd allowed me to mount that. Normally a character class like
+> > that should only match if you had a single-character hostname that
+> > matches one of the characters in the brackets.
+> > 
+> > My question is -- do we want to continue to allow this sort of wildcard
+> > match in mountd? Given that it's not documented, it's hard to imagine
+> > anyone relying on it.
 > 
-> Thanks,
-> K.C.
+> No, it isn't documented.  But the documentation does talk about
+> 'wildcards' (though it only mentions '*' and '?') and [foo] is often a valid
+> wildcard, so people could try to use it and if they find that it works...
 > 
-> On Wed, Jun 22, 2011 at 1:13 PM, Vladimir Elisseev <vovan@vovan.nl> wrote:
->> I had about the same issues and I can prove that the configs posted by
->> Rob _has_ to be used in order to get Linux working with AD (the latest
->> patches don't allow des) RHEL5 works perfectly fine with arcfour-hmac.
->> As for negotiation, theoretically it should work, but not with AD
->> AFAIK... The part about nfs, with the latest nfs-utils you can use
->> aes-256 without any problems.
->>
->> Regards,
->> Vlad.
->>
->> On Wed, 2011-06-22 at 12:53 -0400, Kevin Coffman wrote:
->>> Rob,
->>> I am not clear what initial issues (symptoms) you were seeing.  In
->>> general, it is never a good idea to set default_tgs_enctypes or
->>> default_tkt_enctypes in /etc/krb5.conf unless absolutely necessary.
->>> The Kerberos libraries will attempt to negotiate the strongest
->>> algorithm supported by both sides, and setting these values limits
->>> what the Kerberos libraries are able to negotiate for ALL Kerberos
->>> services on the machine.
->>>
->>> If it is necessary to set default_tgs_enctypes or default_tkt_enctypes
->>> to get NFS working, then we still have some work to do!
->>>
->>> I believe that in RHEL5 the nfs kernel code only has DES support, and
->>> uses MIT Kerberos 1.6.1.  If that is true, your keytab generation for
->>> your server is incorrect.  It should only include DES key(s) for the
->>> NFS service.  See
->>> https://www.citi.umich.edu/projects/nfsv4/linux/krb5-setup.html.
->>> Offhand, I do not know the correct syntax to accomplish this with a
->>> Windows KDC.
->>>
->>> K.C.
->>>
->>> On Wed, Jun 22, 2011 at 9:44 AM, Steve Dickson <SteveD@redhat.com> wrote:
->>>> Hey Rob,
->>>>
->>>> Thanks for the info... I was thought the correct default enctypes
->>>> for Window KDCs where
->>>>    default_tgs_enctypes = des-cbc-md5
->>>>    default_tkt_enctypes = des-cbc-md5
->>>>
->>>> Maybe we should add this finding to the the NFS FAQ (http://nfs.sourceforge.net/) ?
->>>>
->>>> steved.
->>>>
->>>> On 06/21/2011 09:52 AM, Rob Henderson wrote:
->>>>> We had trouble getting kerberized nfsv4 working in our environment with RHEL5 servers and RHEL6 clients using the campus Windows 2008 AD servers as our KDC.  We've resolved the issue now but I just wanted to summarize our solution in case others are fighting the same problem.
->>>>>
->>>>> The key issue seems related to encryption since 1) the older RHEL5 kernels only support DES for nfs and 2) it appears that limiting the keytabs to only DES causes a failure to communicate with our campus Windows KDC.  I found a number of discussions that suggested limiting the encryption types to only DES and this seems to be the common fix when using a standard MIT kerberos server.  However, in our environment we are using a Windows KDC and that solution did not work for us.  I don't know if that is a generic problem with a Windows KDC or something particular to the configuration of our campus servers.
->>>>>
->>>>> Cutting to the chase, here is the configuration in the /etc/krb5.conf on the RHEL6 client that worked for us:
->>>>>
->>>>>     [libdefaults]
->>>>>         default_tkt_enctypes = des-cbc-crc aes256-cts-hmac-sha1-96 arcfour-hmac
->>>>>         allow_weak_crypto = 1
->>>>>
->>>>>
->>>>> All the gory details are below for anyone interested.
->>>>>
->>>>>    --Rob
->>>>>
->>>>> Disclaimer:  I am not saying this is the only and/or best solution, but it is working for us... :)
->>>>>
->>>>> ===================================================================
->>>>>
->>>>>
->>>>> Keytab Generation
->>>>> =================
->>>>>
->>>>> The campus Windows AD admins generate nfs keytabs for us using the "/crypto ALL" argument to ktpass.  They also set the NO_AUTH_DATA_REQUIRED UAC flag on the associated machine accounts.  Keytabs are generated using the same procedure for both servers and clients.
->>>>>
->>>>>
->>>>> RHEL5 NFS Server
->>>>> ================
->>>>>
->>>>> The keytabs are installed on the RHEL5 server and look like this:
->>>>>
->>>>> # klist -kte
->>>>>
->>>>> Keytab name: FILE:/etc/krb5.keytab
->>>>> KVNO Timestamp         Principal
->>>>> ---- ----------------- --------------------------------------------------------
->>>>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (DES cbc mode with CRC-32)
->>>>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (DES cbc mode with RSA-MD5)
->>>>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (ArcFour with HMAC/md5)
->>>>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (AES-256 CTS mode with 96-bit SHA-1 HMAC)
->>>>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (AES-128 CTS mode with 96-bit SHA-1 HMAC)
->>>>>
->>>>> There is nothing special in the /etc/krb5.conf on the server side.
->>>>>
->>>>>
->>>>> RHEL6 NFS Client
->>>>> ================
->>>>>
->>>>> The keytabs for the client are generated in the same way as for the server and look exactly like that for the server (with the exception that the encryption types are displayed differently with the newer version of klist).  They look like this:
->>>>>
->>>>> # klist -kte
->>>>> Keytab name: WRFILE:/etc/krb5.keytab
->>>>> KVNO Timestamp         Principal
->>>>> ---- ----------------- --------------------------------------------------------
->>>>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (des-cbc-crc)
->>>>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (des-cbc-md5)
->>>>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (arcfour-hmac)
->>>>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (aes256-cts-hmac-sha1-96)
->>>>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (aes128-cts-hmac-sha1-96)
->>>>>
->>>>>
->>>>> The following are added to the /etc/krb5.conf:
->>>>>
->>>>>      [libdefaults]
->>>>>         default_tkt_enctypes = des-cbc-crc aes256-cts-hmac-sha1-96 arcfour-hmac
->>>>>         allow_weak_crypto = 1
->>>>>
->>>>> After the mount, the machine credentials on the client look like this:
->>>>>
->>>>>       # klist -e /tmp/krb5cc_machine_[REALM]
->>>>>       Ticket cache: FILE:/tmp/krb5cc_machine_[REALM]
->>>>>       Default principal: nfs/[client hostname]@[REALM]
->>>>>
->>>>>       Valid starting     Expires            Service principal
->>>>>       06/21/11 02:44:18  06/21/11 12:44:18  krbtgt/[REALM]@[REALM]
->>>>>               renew until 06/28/11 02:44:18, Etype (skey, tkt): des-cbc-crc, aes256-cts-hmac-sha1-96
->>>>>       06/21/11 02:44:18  06/21/11 12:44:18  nfs/[server hostname]@[REALM]
->>>>>               renew until 06/28/11 02:44:18, Etype (skey, tkt): des-cbc-crc, aes256-cts-hmac-sha1-96
->>>>>
->>>>> And, the user sees the following:
->>>>>
->>>>>       $ klist -e
->>>>>       Ticket cache: FILE:/tmp/krb5cc_[UID]_EfGvpD
->>>>>       Default principal: [USERNAME]@[REALM]
->>>>>
->>>>>       Valid starting     Expires            Service principal
->>>>>       06/21/11 09:33:01  06/21/11 19:33:01  krbtgt/[REALM]@[REALM]
->>>>>               renew until 06/28/11 09:33:01, Etype (skey, tkt): des-cbc-crc, aes256-cts-hmac-sha1-96
->>>>>       06/21/11 09:33:03  06/21/11 19:33:01  nfs/[server hostname]@[REALM]
->>>>>              renew until 06/28/11 09:33:01, Etype (skey, tkt): des-cbc-crc, aes256-cts-hmac-sha1-96
->>>>>
->>>>>
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I tried your example and it didn't work for me. I could not (from 'notabene')
+> mount
+>     /home [whiskeytangofoxtrot](rw,no_root_squash,async,no_subtree_check)
+> 
+> or
+>     /home [notabene](rw,no_root_squash,async,no_subtree_check)
+> 
+> but I could mount
+> 
+>     /home [notabene]*(rw,no_root_squash,async,no_subtree_check)
+> 
+> and looking at the code (in support/nfs/wildmat.c) I cannot see how your
+> pattern would match anything other than a single character hostname...
+> 
+> You did of course run "exportfs -r" after changing /etc/exports....
+> 
+> > 
+> > If we do want to keep it, what's the behavior we should be shooting for
+> > here?
+> > 
+> > Thoughts?
+> 
+> I think we should leave the current functionality in place (once we confirm
+> that it works correctly as I think it does), possibly document it, but if the
+> hostname looked like an IPv6 address in [], then special case that in much
+> the same way that we special-case IP address.
+> ie.   192.168.1.2 is a /32 subnetmask
+>       one.nine.one.two is a host name
+> 
+
+I was pretty sure that I did that before, but I think you're correct
+that I must have made a mistake in testing. I redid the above test and
+it didn't allow me to mount. I also did some investigation and figured
+out why having this was making it behave strangely:
+
+    https://bugzilla.redhat.com/show_bug.cgi?id=714977#c4
+
+I also played around with the test program in wildmat.c and I think the
+character class matches are working as intended. Given that I don't see
+any need to rip the code out, but I think we probably should document
+it. I'll roll up a patch to do that soon.
+
+I think with that, I don't really see any need to special case IPv6
+addresses inside brackets. There's really no reason to use brackets
+around them in /etc/exports as it doesn't use ':' as a delimiter. When
+I do the patch to document character class wildcards, I'll also add a
+note to the parts about IPv6 addresses and mention that brackets should
+not be used around them in /etc/exports.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
