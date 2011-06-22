@@ -1,57 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.jrc.it ([139.191.1.110]:56420 "EHLO mx2.jrc.it"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752917Ab1F3HFd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Jun 2011 03:05:33 -0400
-Received: from irelay.jrc.it (irelay.jrc.it [139.191.254.63])
-	by mx2.jrc.it (LMC5614Amx2) with ESMTP id p5U75Vii029931
-	for <linux-nfs@vger.kernel.org>; Thu, 30 Jun 2011 09:05:31 +0200 (CEST)
-Received: from mail-zone.jrc.it (mail-zone.jrc.it [139.191.244.42])
-        by irelay.jrc.it (LMC5614Ainternal) with SMTP id p5U75Vs8021128
-        for <linux-nfs@vger.kernel.org>; Thu, 30 Jun 2011 09:05:31 +0200 (MEST)
-Content-type: text/plain; CHARSET=US-ASCII; format=flowed
-Received: from email-02-ext.jrc.it ([unknown] [139.191.244.20])
- by mail-zone.jrc.it
- (Sun Java(tm) System Messaging Server 7.3-11.01 64bit (built Sep  1 2009))
- with ESMTP id <0LNL0043PD12ED20@mail-zone.jrc.it> for
- linux-nfs@vger.kernel.org; Thu, 30 Jun 2011 09:05:26 +0200 (CEST)
-Received: from [139.191.142.132] ([unknown] [139.191.229.250])
- by email-02-ext.jrc.it
- (Sun Java(tm) System Messaging Server 7.3-11.01 64bit (built Sep  1 2009))
- with ESMTPA id <0LNL00A81D11WM60@email-02-ext.jrc.it> for
- linux-nfs@vger.kernel.org; Thu, 30 Jun 2011 09:05:25 +0200 (CEST)
-Message-id: <4E0C2027.9000807@jrc.ec.europa.eu>
-Date: Thu, 30 Jun 2011 09:05:11 +0200
-From: Franck Eyraud <franck.eyraud@jrc.ec.europa.eu>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:54635 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932248Ab1FVTSM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 15:18:12 -0400
+In-Reply-To: <1308769054.14997.18.camel@lade.trondhjem.org>
+References: <BANLkTik9J3qcdPcp+DdfRq9kj+DMKnjKZw@mail.gmail.com>
+	<1308767449.14997.10.camel@lade.trondhjem.org>
+	<BANLkTimyCA0QyF1TNc0SU2GYobOt-sAsNQ@mail.gmail.com>
+	<1308769054.14997.18.camel@lade.trondhjem.org>
+Date: Wed, 22 Jun 2011 12:18:12 -0700
+Message-ID: <BANLkTi=b1UJzYinAeW2VJj2AHzsAnwUpGg@mail.gmail.com>
+Subject: Re: Issue with Race Condition on NFS4 with KRB
+From: Joshua Scoggins <theoretically.x64@gmail.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 null request and compatibility with netapp
-References: <4E0B3897.40209@jrc.ec.europa.eu>
- <1309366237.12547.13.camel@lade.trondhjem.org>
-In-reply-to: <1309366237.12547.13.camel@lade.trondhjem.org>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Trond,
+According to the it guys they are running solaris 10 as the server platform.
 
-On 29/06/2011 18:50, Trond Myklebust wrote:
-> On Wed, 2011-06-29 at 16:37 +0200, Franck Eyraud wrote:
+On Wed, Jun 22, 2011 at 11:57 AM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> On Wed, 2011-06-22 at 11:37 -0700, Joshua Scoggins wrote:
+>> Here are our mount options from auto.master
+>>
+>> /user -fstype=nfs4,sec=krb5p,noresvport,noatime
+>> /group -fstype=nfs4,sec=krb5p,noresvport,noatime
+>>
+>> As for the server, we don't control it. It's actually run by the
+>> campus wide it department we are just lab support for CS. I can
+>> potentially get the server information but I need to know what you want
+>> specifically as they're pretty paranoid about giving out information about
+>> their servers.
 >
-> Without a trace, it is hard to affirm anything, but please note the
-> following:
-I can provide one, but it is wuite huge (in fact, we are working with 
-big data, and this usually occurs while there is a heavy traffic, but I 
-can't say if this is because of some collisions due to too many 
-requests, or if just statically it happens when there is traffic)
-> IOW: this all looks to me like a storm in a teacup brought about by a
-> server implementation that is logging errors in a case where it
-> shouldn't.
-Yes, I agree, this is what I think from the beginning, but our 
-colleagues managing the server are overwhelmed with these messages and 
-can't easily detect real problems; the support from netapp didn't 
-provide a way to avoid the logging of these messages. And since it has 
-been told that the problem is on client side, I was trying to find a 
-solution to that.
-
-Franck
+> I would just want to know _what_ server platform you are running
+> against. I know of at least one server bug that might explain what you
+> are seeing, and I'd like to eliminate that as a possibility.
+>
+> Trond
+>
+>> Joshua Scoggins
+>>
+>> On Wed, Jun 22, 2011 at 11:30 AM, Trond Myklebust
+>> <Trond.Myklebust@netapp.com> wrote:
+>> > On Wed, 2011-06-22 at 11:21 -0700, Joshua Scoggins wrote:
+>> >> Hello,
+>> >>
+>> >> We are trying to update our linux images in our CS lab and have it a
+>> >> bit of an issue. We are
+>> >> using nfs to load user home folder. While testing the new image we
+>> >> found that the nfs4 module will
+>> >>  crash when using firefox 3.6.17 for an extended period of time. Some
+>> >> research via google yielded that
+>> >> it's a potential race condition specific to nfs with krb auth with
+>> >> newer kernels. Our old image doesn't have
+>> >> this issue and it seems that its due to it running a far older kernel version.
+>> >>
+>> >> We have two images and both are having this problem. One is running
+>> >> 2.6.39 and the other is 2.6.38.
+>> >> Here is what dmesg spit out from the machine running 2.6.39 on one occasion:
+>> >>
+>> >> [  678.632061] ------------[ cut here ]------------
+>> >> [  678.632068] WARNING: at net/sunrpc/clnt.c:1567 call_decode+0xb2/0x69c()
+>> >> [  678.632070] Hardware name: OptiPlex 755
+>> >> [  678.632072] Modules linked in: nvidia(P) scsi_wait_scan
+>> >> [  678.632078] Pid: 3882, comm: kworker/0:2 Tainted: P
+>> >> 2.6.39-gentoo-r1 #1
+>> >> [  678.632080] Call Trace:
+>> >> [  678.632086]  [<ffffffff81035b20>] warn_slowpath_common+0x80/0x98
+>> >> [  678.632091]  [<ffffffff8117231e>] ? nfs4_xdr_dec_readdir+0xba/0xba
+>> >> [  678.632094]  [<ffffffff81035b4d>] warn_slowpath_null+0x15/0x17
+>> >> [  678.632097]  [<ffffffff81426f48>] call_decode+0xb2/0x69c
+>> >> [  678.632101]  [<ffffffff8142d2b5>] __rpc_execute+0x78/0x24b
+>> >> [  678.632104]  [<ffffffff8142d4c9>] ? rpc_execute+0x41/0x41
+>> >> [  678.632107]  [<ffffffff8142d4d9>] rpc_async_schedule+0x10/0x12
+>> >> [  678.632111]  [<ffffffff8104a49d>] process_one_work+0x1d9/0x2e7
+>> >> [  678.632114]  [<ffffffff8104c402>] worker_thread+0x133/0x24f
+>> >> [  678.632118]  [<ffffffff8104c2cf>] ? manage_workers+0x18d/0x18d
+>> >> [  678.632121]  [<ffffffff8104f6a0>] kthread+0x7d/0x85
+>> >> [  678.632125]  [<ffffffff8145e314>] kernel_thread_helper+0x4/0x10
+>> >> [  678.632128]  [<ffffffff8104f623>] ? kthread_worker_fn+0x13a/0x13a
+>> >> [  678.632131]  [<ffffffff8145e310>] ? gs_change+0xb/0xb
+>> >> [  678.632133] ---[ end trace 6bfae002a63e020e ]---
+>> >>
+>> >> Is there some sort of work around?
+>> >
+>> > Cced the linux-nfs mailing list.
+>> >
+>> > The above warning is not specific to krb5, but indicates a likely race
+>> > between replies after a resend of the RPC call.
+>> >
+>> > Can you please tell us what your mount options are, and also tell us a
+>> > bit more about what kind of server you are running against?
+>> >
+>> > Trond
+>> > --
+>> > Trond Myklebust
+>> > Linux NFS client maintainer
+>> >
+>> > NetApp
+>> > Trond.Myklebust@netapp.com
+>> > www.netapp.com
+>> >
+>> >
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>
+>
