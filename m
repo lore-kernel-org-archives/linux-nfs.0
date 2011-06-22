@@ -1,42 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:52241 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753624Ab1FGReh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:34:37 -0400
-Date: Tue, 7 Jun 2011 13:34:35 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 73/88] SQUASHME: pnfsblock: no dev_notify_types
-Message-ID: <a953821012dee6741b4b6a33def6098e834bd412.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+Received: from mail.candelatech.com ([208.74.158.172]:50606 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758920Ab1FVVhv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 17:37:51 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH 04/11] nfs:  Use request destination addr as callback source addr.
+Date: Wed, 22 Jun 2011 14:36:44 -0700
+Message-Id: <1308778611-9370-5-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1308778611-9370-1-git-send-email-greearb@candelatech.com>
+References: <1308778611-9370-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+From: Ben Greear <greearb@candelatech.com>
 
-not supported yet
+This helps make sure that responses use the correct
+source address on multi-homed machines.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Ben Greear <greearb@candelatech.com>
 ---
- fs/nfs/blocklayout/blocklayout.c |    1 -
- 1 files changed, 0 insertions(+), 1 deletions(-)
+:100644 100644 b257383... 00902ec... M	fs/nfs/callback.h
+:100644 100644 c6c86a7... ed5be89... M	fs/nfs/callback_xdr.c
+:100644 100644 ea29330... 45d5d7c... M	include/linux/sunrpc/svc.h
+ fs/nfs/callback.h          |    3 +++
+ fs/nfs/callback_xdr.c      |    3 +++
+ include/linux/sunrpc/svc.h |    5 +++++
+ 3 files changed, 11 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 5e50c93..ac53a3f 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -725,7 +725,6 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index b257383..00902ec 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -57,6 +57,7 @@ struct cb_compound_hdr_res {
  
- 	memcpy(&dev->dev_id, d_id, sizeof(*d_id));
- 	dev->layout_type = LAYOUT_BLOCK_VOLUME;
--	dev->dev_notify_types = 0;
- 	dev->pages = pages;
- 	dev->pgbase = 0;
- 	dev->pglen = PAGE_SIZE * max_pages;
+ struct cb_getattrargs {
+ 	struct sockaddr *addr;
++	struct sockaddr *srcaddr;
+ 	struct nfs_fh fh;
+ 	uint32_t bitmap[2];
+ };
+@@ -72,6 +73,7 @@ struct cb_getattrres {
+ 
+ struct cb_recallargs {
+ 	struct sockaddr *addr;
++	struct sockaddr *srcaddr;
+ 	struct nfs_fh fh;
+ 	nfs4_stateid stateid;
+ 	uint32_t truncate;
+@@ -92,6 +94,7 @@ struct referring_call_list {
+ 
+ struct cb_sequenceargs {
+ 	struct sockaddr			*csa_addr;
++	struct sockaddr                 *csa_daddr;
+ 	struct nfs4_sessionid		csa_sessionid;
+ 	uint32_t			csa_sequenceid;
+ 	uint32_t			csa_slotid;
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index c6c86a7..ed5be89 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -196,6 +196,7 @@ static __be32 decode_getattr_args(struct svc_rqst *rqstp, struct xdr_stream *xdr
+ 	if (unlikely(status != 0))
+ 		goto out;
+ 	args->addr = svc_addr(rqstp);
++	args->srcaddr = svc_daddr(rqstp);
+ 	status = decode_bitmap(xdr, args->bitmap);
+ out:
+ 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+@@ -208,6 +209,7 @@ static __be32 decode_recall_args(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+ 	__be32 status;
+ 
+ 	args->addr = svc_addr(rqstp);
++	args->srcaddr = svc_daddr(rqstp);
+ 	status = decode_stateid(xdr, &args->stateid);
+ 	if (unlikely(status != 0))
+ 		goto out;
+@@ -442,6 +444,7 @@ static __be32 decode_cb_sequence_args(struct svc_rqst *rqstp,
+ 		goto out;
+ 
+ 	args->csa_addr = svc_addr(rqstp);
++	args->csa_daddr = svc_daddr(rqstp);
+ 	args->csa_sequenceid = ntohl(*p++);
+ 	args->csa_slotid = ntohl(*p++);
+ 	args->csa_highestslotid = ntohl(*p++);
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index ea29330..45d5d7c 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -299,6 +299,11 @@ static inline struct sockaddr *svc_addr(const struct svc_rqst *rqst)
+ 	return (struct sockaddr *) &rqst->rq_addr;
+ }
+ 
++static inline struct sockaddr *svc_daddr(struct svc_rqst *rqst)
++{
++	return (struct sockaddr *) &rqst->rq_daddr;
++}
++
+ /*
+  * Check buffer bounds after decoding arguments
+  */
 -- 
-1.7.4.1
+1.7.3.4
 
