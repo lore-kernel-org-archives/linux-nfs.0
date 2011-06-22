@@ -1,85 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:38684 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756966Ab1FJMri (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 08:47:38 -0400
-Received: by qyk7 with SMTP id 7so3048647qyk.19
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Jun 2011 05:47:37 -0700 (PDT)
-Message-ID: <4DF21267.9060706@panasas.com>
-Date: Fri, 10 Jun 2011 08:47:35 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: tao.peng@emc.com
-CC: bergwolf@gmail.com, rees@umich.edu, linux-nfs@vger.kernel.org,
-        honey@citi.umich.edu
-Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
-References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu> <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu> <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com> <BANLkTi=SMQhUNHEy=-ZPqFtCgKcnCtks=w@mail.gmail.com> <4DF13B65.5030401@panasas.com> <F19688880B763E40B28B2B462677FBF805BED9D222@MX09A.corp.emc.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805BED9D222@MX09A.corp.emc.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:2638 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757427Ab1FVSaz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 14:30:55 -0400
+Subject: Re: Issue with Race Condition on NFS4 with KRB
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Joshua Scoggins <theoretically.x64@gmail.com>
+Cc: linux-kernel@vger.kernel.org
+Date: Wed, 22 Jun 2011 14:30:49 -0400
+In-Reply-To: <BANLkTik9J3qcdPcp+DdfRq9kj+DMKnjKZw@mail.gmail.com>
+References: <BANLkTik9J3qcdPcp+DdfRq9kj+DMKnjKZw@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1308767449.14997.10.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-06-10 02:02, tao.peng@emc.com wrote:
-> Hi, Benny,
+On Wed, 2011-06-22 at 11:21 -0700, Joshua Scoggins wrote: 
+> Hello,
 > 
-> Cheers,
-> -Bergwolf
+> We are trying to update our linux images in our CS lab and have it a
+> bit of an issue. We are
+> using nfs to load user home folder. While testing the new image we
+> found that the nfs4 module will
+>  crash when using firefox 3.6.17 for an extended period of time. Some
+> research via google yielded that
+> it's a potential race condition specific to nfs with krb auth with
+> newer kernels. Our old image doesn't have
+> this issue and it seems that its due to it running a far older kernel version.
 > 
+> We have two images and both are having this problem. One is running
+> 2.6.39 and the other is 2.6.38.
+> Here is what dmesg spit out from the machine running 2.6.39 on one occasion:
 > 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Benny Halevy
-> Sent: Friday, June 10, 2011 5:30 AM
-> To: Peng Tao
-> Cc: Jim Rees; linux-nfs@vger.kernel.org; peter honeyman
-> Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+> [  678.632061] ------------[ cut here ]------------
+> [  678.632068] WARNING: at net/sunrpc/clnt.c:1567 call_decode+0xb2/0x69c()
+> [  678.632070] Hardware name: OptiPlex 755
+> [  678.632072] Modules linked in: nvidia(P) scsi_wait_scan
+> [  678.632078] Pid: 3882, comm: kworker/0:2 Tainted: P
+> 2.6.39-gentoo-r1 #1
+> [  678.632080] Call Trace:
+> [  678.632086]  [<ffffffff81035b20>] warn_slowpath_common+0x80/0x98
+> [  678.632091]  [<ffffffff8117231e>] ? nfs4_xdr_dec_readdir+0xba/0xba
+> [  678.632094]  [<ffffffff81035b4d>] warn_slowpath_null+0x15/0x17
+> [  678.632097]  [<ffffffff81426f48>] call_decode+0xb2/0x69c
+> [  678.632101]  [<ffffffff8142d2b5>] __rpc_execute+0x78/0x24b
+> [  678.632104]  [<ffffffff8142d4c9>] ? rpc_execute+0x41/0x41
+> [  678.632107]  [<ffffffff8142d4d9>] rpc_async_schedule+0x10/0x12
+> [  678.632111]  [<ffffffff8104a49d>] process_one_work+0x1d9/0x2e7
+> [  678.632114]  [<ffffffff8104c402>] worker_thread+0x133/0x24f
+> [  678.632118]  [<ffffffff8104c2cf>] ? manage_workers+0x18d/0x18d
+> [  678.632121]  [<ffffffff8104f6a0>] kthread+0x7d/0x85
+> [  678.632125]  [<ffffffff8145e314>] kernel_thread_helper+0x4/0x10
+> [  678.632128]  [<ffffffff8104f623>] ? kthread_worker_fn+0x13a/0x13a
+> [  678.632131]  [<ffffffff8145e310>] ? gs_change+0xb/0xb
+> [  678.632133] ---[ end trace 6bfae002a63e020e ]---
 > 
-> On 2011-06-09 07:54, Peng Tao wrote:
->> On Thu, Jun 9, 2011 at 2:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
->>> On 2011-06-08 03:15, Peng Tao wrote:
->>>> On 6/8/11, Jim Rees <rees@umich.edu> wrote:
->>>>> Benny Halevy wrote:
->>>>>
->>>>>   NAK.
->>>>>   This affects all layout types.  In particular it is undesired
->>>>>   for write layouts that extend the file with the objects layout.
->>>>>   The server can extend the layout segments range
->>>>>   over what the client requested so why would the client
->>>>>   ask for artificially large layouts?
->>>>>
->>>>> This has actually been the subject of some debate over Thursday night
->>>>> beers.  The problem we're trying to solve is that the client is spending 98%
->>>>> of its time in layoutget.  This patch gives us something like a 10x
->>>>> speedup.  But many of us think it's not the right fix.  I suggest we discuss
->>>>> next week.
->>>>>
->>>
->>> Sure.
->>>
->>>>> But note that this patch doesn't change anything unless you set the sysctl.
->>>> there is a default value of 2M. maybe we can set it to page size by
->>>> default so other layout are not affected and block layout can let
->>>> users set it by hand if they care about performance. does this make
->>>> sense?
->>>
->>> If doing it at all why use a sysctl rather than a mount option?
->> The purpose of using a sysctl is to give client the ability to change
->> it on the fly. In theory, layout prefetching can benefit all layout
->> types. So the patch tries to solve it in the pnfs generic layer.
->>
-> 
-> But the need for this varies per-server and many times per application.
-> Think sequential vs. random I/O.  Therefore a mount option would help
-> tuning the behavior on a per-use basis.  Global behavior must be implemented
-> using a dynamic algorithm that would take both the workload and the server
-> observed behavior into account.
-> [PT] Indeed. Dynamic algorithm is supposed to be able to solve all this. And it often takes longer to be designed/accepted. It has to prove to be better in most scenarios and does not hurt the left.
+> Is there some sort of work around?
 
-We need to find an acceptable solution to push this driver upstream.
-I understand that developing a dynamic algorithm in the given time frame is
-too big of a challenge, but hacking yet another client tunable is out of the
-question either.   For testing in the Bakeathon I'd consider taking a DEVONLY version
-of this patch that is enabled using a config option and defaults to zero to have no effect
-in run-time until the sysctl is sets it differently.
-But keep in mind this is not suitable for pushing upstream.
+Cced the linux-nfs mailing list.
 
-Benny
+The above warning is not specific to krb5, but indicates a likely race
+between replies after a resend of the RPC call.
+
+Can you please tell us what your mount options are, and also tell us a
+bit more about what kind of server you are running against?
+
+Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
