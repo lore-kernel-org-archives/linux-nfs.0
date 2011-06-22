@@ -1,45 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:61233 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751988Ab1FCP1X convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Jun 2011 11:27:23 -0400
-Subject: Re: [PATCH] nfs4: v4 mounts should not need rpcbind running
+Received: from zeniv.linux.org.uk ([195.92.253.2]:42616 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758544Ab1FVTbT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 15:31:19 -0400
+Date: Wed, 22 Jun 2011 20:31:18 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: linux-nfs@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [nfs, rpc] crap with refcounting and rmmod races
+Message-ID: <20110622193118.GE11521@ZenIV.linux.org.uk>
+References: <20110622191239.GD11521@ZenIV.linux.org.uk>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4DE8FA35.4010606@RedHat.com>
-Date: Fri, 3 Jun 2011 11:27:11 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <D41B8574-7412-4815-85C7-9287E13FAB26@oracle.com>
-References: <1307110290-30672-1-git-send-email-steved@redhat.com> <A51F73EF-B137-4279-91BC-4B7E868CDCB6@oracle.com> <4DE8FA35.4010606@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <20110622191239.GD11521@ZenIV.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, Jun 22, 2011 at 08:12:40PM +0100, Al Viro wrote:
 
-On Jun 3, 2011, at 11:13 AM, Steve Dickson wrote:
+> 	Note that extra references to vfsmount do not prevent umount from
+> removing the sucker from the tree and dropping the preexisting reference
+> to it.  umount -l will do that just fine.
+> 
+> 	This thing is called as ->rpc_release(); do we have anything
+> protecting the issuer of rpc_run_task() from being rmmod'ed before (or
+> during) the call of ->rpc_release()?
 
-> On 06/03/2011 10:41 AM, Chuck Lever wrote:
->> Hey-
->> 
->> On Jun 3, 2011, at 10:11 AM, Steve Dickson wrote:
->> 
->>> This patch makes the nfs4 callback service a hide service
->>> by setting the vs_hidden flag in the nfs4_callback_version4
->>> structure
->> 
->> One reason to continue to do this is to have some assurance that no-one else takes the same RPC program number.  Not a big deal.
-> Personally I think its a waste of cycles especially when a large
-> number of mounts are happening at once... Its completely overkill IMHO...
-
-Agreed, and I'm not objecting to this specific change.  The above was just a generic observation.
-
-My overall concern, though, was that we might still be hanging at mount or umount time if rpcbind was absent.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+While we are at it, is ->rpc_release() allowed to trigger rpc_shutdown_client()
+on out ->tk_client?
