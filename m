@@ -1,99 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:44144 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758237Ab1F1QCd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jun 2011 12:02:33 -0400
-Subject: Re: [PATCH 1/1] nfs-utils: Don't hard code source and destination args
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20110628104138.GB6600@d6fc318.ibm.com>
-Date: Tue, 28 Jun 2011 12:02:17 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <FA506314-750E-4E20-B80C-B507D032D962@oracle.com>
-References: <20110628104138.GB6600@d6fc318.ibm.com>
-To: Prem Karat <prem.karat@linux.vnet.ibm.com>
+Received: from mail.candelatech.com ([208.74.158.172]:50593 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758920Ab1FVVhM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 17:37:12 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH 11/11] nfs: Support srcaddr= to bind to specific IP address.
+Date: Wed, 22 Jun 2011 14:36:51 -0700
+Message-Id: <1308778611-9370-12-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1308778611-9370-1-git-send-email-greearb@candelatech.com>
+References: <1308778611-9370-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Ben Greear <greearb@candelatech.com>
 
-On Jun 28, 2011, at 6:41 AM, Prem Karat wrote:
+In order to have more control on multi-homed machines, it is
+nice to be able to bind to a specific IP address.  This can aid
+with interface selection, policy based routing, multiple unique
+mounts to the same server, and similar things.
 
-> 
-> Currently souce and destination parameters should be passed as first and 
-> second paramter while using mount.nfs. This patch allows them to be passed 
-> anywhere while mounting.
-> 
-> Current functionality is
-> 	mount.nfs source destn -o <options>
-> This patch will allow to do this
-> 	mount.nfs -o <options> source destn
-> 		or
-> 	mount.nfs -o <options> source -o <options> destn
+This patch allows srcaddr= option for NFS.  The key 'srcaddr'
+was chosen to match the similar patch for cifs.
 
-Yep, that's clear, but why is this desirable?  mount.nfs should be invoked only by the mount command.  It's not meant to be run by humans.
+For NFSv4, if one is specifying clientaddr, it must be the same as
+srcaddr or things may not work properly.
 
-> Signed-off-by: Prem Karat <prem.karat@linux.vnet.ibm.com>
-> ---
-> utils/mount/mount.c |   13 +++++++++----
-> 1 files changed, 9 insertions(+), 4 deletions(-)
-> 
-> diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-> index f3f0a83..62115bb 100644
-> --- a/utils/mount/mount.c
-> +++ b/utils/mount/mount.c
-> @@ -374,7 +374,7 @@ static int try_mount(char *spec, char *mount_point, int flags,
-> int main(int argc, char *argv[])
-> {
-> 	int c, flags = 0, mnt_err = 1, fake = 0;
-> -	char *spec, *mount_point, *fs_type = "nfs";
-> +	char *spec = NULL, *mount_point = NULL, *fs_type = "nfs";
-> 	char *extra_opts = NULL, *mount_opts = NULL;
-> 	uid_t uid = getuid();
-> 
-> @@ -398,9 +398,6 @@ int main(int argc, char *argv[])
-> 		exit(EX_USAGE);
-> 	}
-> 
-> -	spec = argv[1];
-> -	mount_point = argv[2];
-> -
-> 	mount_config_init(progname);
-> 
-> 	argv[2] = argv[0]; /* so that getopt error messages are correct */
-> @@ -447,6 +444,14 @@ int main(int argc, char *argv[])
-> 	if (optind != argc - 2) {
-> 		mount_usage();
-> 		goto out_usage;
-> +	} else {
-> +		while (optind < argc) {
-> +			if (!spec)
-> +				spec = argv[optind];
-> +			else
-> +				mount_point = argv[optind];
-> +			optind++;
-> +		}
-> 	}
-> 
-> 	if (strcmp(progname, "mount.nfs4") == 0)
-> -- 
-> 1.7.4
-> 
-> -- 
-> Cheers,
-> Prem
-> Linux Technology Center,
-> IBM Systems & Technology Labs
-> DID: 41776362
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+NFSv3, NFSv4 over TCP/IPv4 and TCP/IPv6 has been successfully tested.
 
+Usage:
+  mount -t nfs4 [2002::1]:/rpool/ben /mnt/foo/ben-1 -o srcaddr=2002::2,clientaddr=2002::2
+  mount -t nfs4 192.168.100.3:/foo /mnt/foo/ben-2 -o srcaddr=192.168.100.174
+
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+:100644 100644 e45f616... 5d88e7b... M	fs/nfs/super.c
+ fs/nfs/super.c |   29 ++++++++++++++++++++++++++++-
+ 1 files changed, 28 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index e45f616..5d88e7b 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -103,7 +103,7 @@ enum {
+ 
+ 	/* Mount options that take string arguments */
+ 	Opt_sec, Opt_proto, Opt_mountproto, Opt_mounthost,
+-	Opt_addr, Opt_mountaddr, Opt_clientaddr,
++	Opt_addr, Opt_mountaddr, Opt_clientaddr, Opt_srcaddr,
+ 	Opt_lookupcache,
+ 	Opt_fscache_uniq,
+ 	Opt_local_lock,
+@@ -173,6 +173,7 @@ static const match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_mountproto, "mountproto=%s" },
+ 	{ Opt_addr, "addr=%s" },
+ 	{ Opt_clientaddr, "clientaddr=%s" },
++	{ Opt_srcaddr, "srcaddr=%s" },
+ 	{ Opt_mounthost, "mounthost=%s" },
+ 	{ Opt_mountaddr, "mountaddr=%s" },
+ 
+@@ -695,6 +696,15 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
+ 	else
+ 		nfs_show_nfsv4_options(m, nfss, showdefaults);
+ 
++	if (clp->srcaddr.ss_family == AF_INET6) {
++		struct sockaddr_in6 *sin6;
++		sin6 = (struct sockaddr_in6 *)(&clp->srcaddr);
++		seq_printf(m, ",srcaddr=%pI6c", &sin6->sin6_addr);
++	} else if (clp->srcaddr.ss_family == AF_INET) {
++		struct sockaddr_in *sin = (struct sockaddr_in *)&clp->srcaddr;
++		seq_printf(m, ",srcaddr=%pI4", &sin->sin_addr.s_addr);
++	}
++
+ 	if (nfss->options & NFS_OPTION_FSCACHE)
+ 		seq_printf(m, ",fsc");
+ 
+@@ -1448,6 +1458,23 @@ static int nfs_parse_mount_options(char *raw,
+ 				goto out_nomem;
+ 			mnt->options |= NFS_OPTION_FSCACHE;
+ 			break;
++		case Opt_srcaddr:
++			string = match_strdup(args);
++			if (string == NULL)
++				goto out_nomem;
++			mnt->srcaddr.addrlen =
++				rpc_pton(string, strlen(string),
++					 (struct sockaddr *)
++					 &mnt->srcaddr.address,
++					 sizeof(mnt->srcaddr.address));
++			kfree(string);
++			if (mnt->srcaddr.addrlen == 0) {
++				printk(KERN_WARNING
++				       "nfs: Could not parse srcaddr: %s\n",
++				       string);
++				goto out_invalid_address;
++			}
++			break;
+ 		case Opt_local_lock:
+ 			string = match_strdup(args);
+ 			if (string == NULL)
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.3.4
 
