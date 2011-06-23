@@ -1,63 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36111 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753060Ab1FIRSN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Jun 2011 13:18:13 -0400
-Message-ID: <4DF10053.9050901@RedHat.com>
-Date: Thu, 09 Jun 2011 13:18:11 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: greearb@candelatech.com
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] nfs-utils:  Support binding to source address.
-References: <1307574083-27608-1-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1307574083-27608-1-git-send-email-greearb@candelatech.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from frankvm.xs4all.nl ([83.163.148.79]:56588 "EHLO
+	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1759256Ab1FWNw5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2011 09:52:57 -0400
+Date: Thu, 23 Jun 2011 15:39:45 +0200
+From: Frank van Maarseveen <frankvm@frankvm.com>
+To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: mount.nfs->nfs_idmap_new(): page allocation failure. order:4,
+ mode:0xc0d0
+Message-ID: <20110623133945.GA18017@janus>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello,
+The automounter for /net triggered this:
+
+kernel: mount.nfs: page allocation failure. order:4, mode:0xc0d0
+kernel: Pid: 27787, comm: mount.nfs Not tainted 2.6.39.1-x257lm #1
+kernel: Call Trace:
+kernel: [<ffffffff810ea32f>] __alloc_pages_nodemask+0x73f/0x800
+kernel: [<ffffffff810ea492>] __get_free_pages+0x12/0x50
+kernel: [<ffffffff81231122>] nfs_idmap_new+0x32/0x100
+kernel: [<ffffffff81200918>] nfs4_init_client+0x88/0x1c0
+kernel: [<ffffffff81200e2b>] nfs_get_client+0x23b/0x320
+kernel: [<ffffffff819121c1>] ? __mutex_lock_slowpath+0x2a1/0x350
+kernel: [<ffffffff81200f76>] nfs4_set_client+0x66/0xf0
+kernel: [<ffffffff81911d49>] ? mutex_unlock+0x9/0x10
+kernel: [<ffffffff812010c7>] nfs4_init_server+0xc7/0x2b0
+kernel: [<ffffffff81201d8b>] nfs4_create_server+0x3b/0xe0
+kernel: [<ffffffff8120d04b>] nfs4_remote_mount+0x5b/0x1c0
+kernel: [<ffffffff8111f234>] mount_fs+0x14/0xd0
+kernel: [<ffffffff8113ae95>] vfs_kern_mount+0x65/0xc0
+kernel: [<ffffffff8120d41a>] nfs_do_root_mount+0x7a/0xa0
+kernel: [<ffffffff8120d7ee>] nfs4_try_mount+0x4e/0xd0
+kernel: [<ffffffff8120ea4f>] nfs_fs_mount+0x1af/0x410
+kernel: [<ffffffff8111f234>] mount_fs+0x14/0xd0
+kernel: [<ffffffff8113ae95>] vfs_kern_mount+0x65/0xc0
+kernel: [<ffffffff8113be5e>] do_kern_mount+0x4e/0x100
+kernel: [<ffffffff8113d570>] do_mount+0x1f0/0x240
+kernel: [<ffffffff81163ae7>] compat_sys_mount+0xc7/0x230
+kernel: [<ffffffff8103d01d>] ? math_state_restore+0x3d/0x60
+kernel: [<ffffffff819156dc>] sysenter_dispatch+0x7/0x32
+
+Page allocation order 4 is quite a lot.
 
 
-On 06/08/2011 07:01 PM, greearb@candelatech.com wrote:
-> From: Ben Greear <greearb@candelatech.com>
-> 
-> This lets one specify the source IP address for
-> sockets, allowing users to leverage routing rules
-> on multi-homed systems.
-Right out of the box I do think some support like 
-this would be good... but I not convinced on how needed
-something like this is which means there is a lot of 
-change here for basically not... But lets continue 
-to talk about to see where we end up.... 
-
-One thing you must do is break up this patch in to
-a more readable patch series. There is no way I going
-to commit a patch that is close to 1500 lines
-that so invasive. 
-
-Here is how I create patch series. 
-
-git pull devel-tree
-git checkout -b devel-branch
-
-make changes
-git commit -s -a 
-make more changes 
-git commit -s -a 
-[Note, each one of the commits (or patches) have to be stand-alone patches ]
-[Which means after each commit the tree has to compile and be functional   ]
-
-When all the changes are done, create the patches like:
-
-git format-patch -n -o /tmp/sumbit --cover-letter  commit1^..commitN
-
-edit /tmp/summit/*cover* to explain your changes
-
-Then post the patches with git send-email command:
-
-git send-email $DRYRUN  --suppress-cc=all --suppress-from --no-chain-reply-to --from "Your Name <emailaddress@foobar.com>" --to Linux NFS Mailing list <linux-nfs@vger.kernel.org>" --smtp-server smtp.foobar.com /tmp/submit/*.patch
-
-Note, I'm not sure the --smtp argument is needed... but it works..
-
-steved.
+-- 
+Frank
