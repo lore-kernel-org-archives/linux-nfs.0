@@ -1,43 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:37272 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932217Ab1F2Tyt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Jun 2011 15:54:49 -0400
-Date: Wed, 29 Jun 2011 15:54:47 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] NFSD: Added TEST_STATEID operation
-Message-ID: <20110629195447.GC3279@fieldses.org>
-References: <1305922380-8162-1-git-send-email-bjschuma@netapp.com>
- <1305922380-8162-3-git-send-email-bjschuma@netapp.com>
- <4E0B81B6.8060005@netapp.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:48774 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932170Ab1FWCsM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 22:48:12 -0400
+Date: Thu, 23 Jun 2011 03:48:09 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [heads-up] mknod() broken on nfs4
+Message-ID: <20110623024809.GI11521@ZenIV.linux.org.uk>
+References: <20110621235900.GB11521@ZenIV.linux.org.uk>
+ <20110622002359.GC11521@ZenIV.linux.org.uk>
+ <1308783620.25875.30.camel@lade.trondhjem.org>
+ <20110622231946.GH11521@ZenIV.linux.org.uk>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E0B81B6.8060005@netapp.com>
+In-Reply-To: <20110622231946.GH11521@ZenIV.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Jun 29, 2011 at 03:49:10PM -0400, Bryan Schumaker wrote:
-> On 05/20/2011 04:13 PM, bjschuma@netapp.com wrote:
-> > +__be32
-> > +nfsd4_do_test_stateid(stateid_t *stateid, int flags)
-> > +{
-> > +	__be32 ret = nfs4_validate_stateid(stateid, flags);
-> > +	if (!ret)
-> > +		ret = nfs4_validate_stateid(stateid, flags);
-> > +	return ret;
-> 
-> Looking back at this, I'm not convinced that I need to call nfs4_validate_stateid() twice with the same stateid and flags.  What is the status of these patches?  Should I resubmit everything or send in a small patch to fix this?
+On Thu, Jun 23, 2011 at 12:19:46AM +0100, Al Viro wrote:
 
-Whoops, lazy review on my part....
+> It always worked that way, all the way back to Unix v6 (and I'm fairly sure
+> to earlier than that; don't have v5 kernel source, unfortunately).  Worked
+> that way in Linux since 0.02/0.03/0.10, when Linus first added mknod(2)
+> (presumably 0.01 had been tested with /dev populated by Minix ;-)
 
-Looks like I'd applied that locally but not pushed it out to my public
-tree yet, so I could still take a replacement.
+After looking around on the net: in v3 kernel, ken/sys2.c:
 
-How are you testing these, by the way?  On second thoughts, I think I
-may have already asked you that, and forgotten the answer, so don't
-bother answering here--just add some text to the changelog and then I'll
-know how to find the answer next time.
+mknod()
+{
+        int *ip;
+        extern uchar;
 
---b.
+        if(suser()) {
+                ip = namei(&uchar, 1);
+                if(ip != NULL) {
+                        u.u_error = EEXIST;
+                        goto out;
+                }
+        }
+        if(u.u_error)
+                return;
+        ip = maknode(u.u_arg[1]);
+        ip->i_addr[0] = u.u_arg[2];
+
+out:
+        iput(ip);
+}
+
+IOW, mknod(path, 0777, 0) will, indeed, create a regular file.  Root-only,
+back then.
+
+; ls -l ken/sys2.c 
+-rw-r--r-- 1 al al 3060 Aug 30  1973 ken/sys2.c
+
+v3 manpages don't mention mknod(2) at all; it *is* wired in syscall table
+(syscall 14).  Section 2 manpages give syscall numbers; what they have for
+#14 is makdir (not mentioned by that name in the kernel, described as
+creating an empty directory with given pathname and mode sans . and ..
+links - i.e. exactly what mknod(2) did all the way to v7 when given
+S_IFDIR | something).
