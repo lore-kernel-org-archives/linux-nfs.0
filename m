@@ -1,47 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:44245 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757432Ab1FGRgQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:36:16 -0400
-Date: Tue, 7 Jun 2011 13:36:14 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 88/88] NFS41: do not update isize if inode needs layoutcommit
-Message-ID: <8d4549ecda23f5ada0c88677c9505cba2830dad5.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+Received: from mail.candelatech.com ([208.74.158.172]:43997 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932729Ab1FWTaT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2011 15:30:19 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH v2 02/12] nfs: Two AF_UNSPEC addresses should always match each other.
+Date: Thu, 23 Jun 2011 12:29:36 -0700
+Message-Id: <1308857388-12243-3-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
+References: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Peng Tao <bergwolf@gmail.com>
+From: Ben Greear <greearb@candelatech.com>
 
-Layout commit is supposed to set server file size similiar to nfs pages.
-We should not update client file size for the same reason.
-Otherwise we will lose what we have at hand.
-
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Jim Rees <rees@umich.edu>
+Signed-off-by: Ben Greear <greearb@candelatech.com>
 ---
- fs/nfs/inode.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+:100644 100644 b3dc2b8... 8ba7e1a... M	fs/nfs/client.c
+ fs/nfs/client.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 144f2a3..3f1eb81 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1294,7 +1294,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 		if (new_isize != cur_isize) {
- 			/* Do we perhaps have any outstanding writes, or has
- 			 * the file grown beyond our last write? */
--			if (nfsi->npages == 0 || new_isize > cur_isize) {
-+			if ((nfsi->npages == 0 && !test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) ||
-+			     new_isize > cur_isize) {
- 				i_size_write(inode, new_isize);
- 				invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
- 			}
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index b3dc2b8..8ba7e1a 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -403,6 +403,8 @@ static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
+ 		return nfs_sockaddr_match_ipaddr4(sa1, sa2);
+ 	case AF_INET6:
+ 		return nfs_sockaddr_match_ipaddr6(sa1, sa2);
++	case AF_UNSPEC:
++		return 1; /* two UNSPEC addresses match */
+ 	}
+ 	return 0;
+ }
 -- 
-1.7.4.1
+1.7.3.4
 
