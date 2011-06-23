@@ -1,100 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:28676 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752509Ab1FJOc2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 10:32:28 -0400
-From: <tao.peng@emc.com>
-To: <bhalevy@panasas.com>
-CC: <bergwolf@gmail.com>, <rees@umich.edu>, <linux-nfs@vger.kernel.org>,
-        <honey@citi.umich.edu>
-Date: Fri, 10 Jun 2011 10:30:58 -0400
-Subject: RE: [PATCH 87/88] Add configurable prefetch size for layoutget
-Message-ID: <F19688880B763E40B28B2B462677FBF805BED9D2AE@MX09A.corp.emc.com>
-References: <cover.1307464381.git.rees@umich.edu>
- <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu>
- <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu>
- <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com>
- <4DF062D6.7010304@panasas.com>
- <BANLkTi=SMQhUNHEy=-ZPqFtCgKcnCtks=w@mail.gmail.com>
- <4DF13B65.5030401@panasas.com>
- <F19688880B763E40B28B2B462677FBF805BED9D222@MX09A.corp.emc.com>
- <4DF21267.9060706@panasas.com>
-In-Reply-To: <4DF21267.9060706@panasas.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from rcsinet10.oracle.com ([148.87.113.121]:22287 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758276Ab1FWQJs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2011 12:09:48 -0400
+Subject: Re: [PATCH/RFC] mount: improve signal management when locking mtab.
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20110623092052.414d78a8@notabene.brown>
+Date: Thu, 23 Jun 2011 10:09:33 -0600
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <4D5CF8CE-FDFE-491D-99A4-D35853DDEA61@oracle.com>
+References: <20110622163852.71a2ae80@notabene.brown> <B1677B7E-3A7E-418B-9CCA-0844510B59C8@oracle.com> <20110623092052.414d78a8@notabene.brown>
+To: NeilBrown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
------Original Message-----
-From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Benny Halevy
-Sent: Friday, June 10, 2011 8:48 PM
-To: Peng, Tao
-Cc: bergwolf@gmail.com; rees@umich.edu; linux-nfs@vger.kernel.org; honey@citi.umich.edu
-Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+On Jun 22, 2011, at 5:20 PM, NeilBrown wrote:
 
-On 2011-06-10 02:02, tao.peng@emc.com wrote:
-> Hi, Benny,
+> On Wed, 22 Jun 2011 09:08:25 -0600 Chuck Lever <chuck.lever@oracle.com> wrote:
 > 
-> Cheers,
-> -Bergwolf
+>> Since we are going to adopt libmount for mount.nfs in the near future, would it be better to update libmount instead?
 > 
+> How near?
 > 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Benny Halevy
-> Sent: Friday, June 10, 2011 5:30 AM
-> To: Peng Tao
-> Cc: Jim Rees; linux-nfs@vger.kernel.org; peter honeyman
-> Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
+> Libmount appears to get signal handling right already (though I haven't
+> tested it).  It blocks all signals rather than catching some of them.
 > 
-> On 2011-06-09 07:54, Peng Tao wrote:
->> On Thu, Jun 9, 2011 at 2:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
->>> On 2011-06-08 03:15, Peng Tao wrote:
->>>> On 6/8/11, Jim Rees <rees@umich.edu> wrote:
->>>>> Benny Halevy wrote:
->>>>>
->>>>>   NAK.
->>>>>   This affects all layout types.  In particular it is undesired
->>>>>   for write layouts that extend the file with the objects layout.
->>>>>   The server can extend the layout segments range
->>>>>   over what the client requested so why would the client
->>>>>   ask for artificially large layouts?
->>>>>
->>>>> This has actually been the subject of some debate over Thursday night
->>>>> beers.  The problem we're trying to solve is that the client is spending 98%
->>>>> of its time in layoutget.  This patch gives us something like a 10x
->>>>> speedup.  But many of us think it's not the right fix.  I suggest we discuss
->>>>> next week.
->>>>>
->>>
->>> Sure.
->>>
->>>>> But note that this patch doesn't change anything unless you set the sysctl.
->>>> there is a default value of 2M. maybe we can set it to page size by
->>>> default so other layout are not affected and block layout can let
->>>> users set it by hand if they care about performance. does this make
->>>> sense?
->>>
->>> If doing it at all why use a sysctl rather than a mount option?
->> The purpose of using a sysctl is to give client the ability to change
->> it on the fly. In theory, layout prefetching can benefit all layout
->> types. So the patch tries to solve it in the pnfs generic layer.
->>
-> 
-> But the need for this varies per-server and many times per application.
-> Think sequential vs. random I/O.  Therefore a mount option would help
-> tuning the behavior on a per-use basis.  Global behavior must be implemented
-> using a dynamic algorithm that would take both the workload and the server
-> observed behavior into account.
-> [PT] Indeed. Dynamic algorithm is supposed to be able to solve all this. And it often takes longer to be designed/accepted. It has to prove to be better in most scenarios and does not hurt the left.
+> So switching to libmount would a perfectly reasonably response.  However if
+> that is more than a few weeks away I think I would rather see this fixed up
+> anyway...
 
-We need to find an acceptable solution to push this driver upstream.
-I understand that developing a dynamic algorithm in the given time frame is
-too big of a challenge, but hacking yet another client tunable is out of the
-question either.   For testing in the Bakeathon I'd consider taking a DEVONLY version
-of this patch that is enabled using a config option and defaults to zero to have no effect
-in run-time until the sysctl is sets it differently.
-But keep in mind this is not suitable for pushing upstream.
-[PT] Thanks for your understanding. We truly want to solve the performance problem and are open to suggestions. And this will be a feature that benefits all layout types, am I right?
+We have a libmount-based mount.nfs already in the nfs-utils tree, IIRC.  I don't think we yet have a generic plan for switching to installing that one by default.  Steve?
 
--Tao
+> Thanks,
+> NeilBrown
+> 
+> 
+>> 
+>> On Jun 22, 2011, at 12:38 AM, NeilBrown wrote:
+>> 
+>>> 
+>>> From: Neil Brown <neilb@suse.de>
+>>> Date: Wed, 22 Jun 2011 16:15:45 +1000
+>>> Subject: [PATCH] mount: improve signal management when locking mtab.
+>>> 
+>>> As mount.nfs can run setuid it must be careful about how the user can
+>>> interact with in.  In particular it needs to ensure it does not
+>>> respond badly to any signals that the user might be able to generate.
+>>> 
+>>> This is particularly an issue while updating /etc/mtab (when that is
+>>> not linked to /proc/mounts).  If the user can generate a signal which
+>>> kills mount.nfs while /etc/mtab is locked, then it will leave the file
+>>> locked, and could possibly corrupt mtab (particularly if 'ulimit 1'
+>>> was previously issued).
+>>> 
+>>> Currently lock_mtab does set some handlers for signals, but not
+>>> enough.  It arranges for every signal up to (but not including)
+>>> SIGCHLD to cause mount.nfs to unlock mdadm promptly exit ... even if
+>>> the default behaviour would be to ignore the signal.  SIGALRM is
+>>> handled specially, and signals after SIGCHLD are left with their
+>>> default behaviour.  This includes for example SIGXFSZ which can be
+>>> generated by the user running "ulimit 1".
+>>> 
+>>> So: change this so that some signals are left unchanged, SIGALRM is
+>>> handled as required, and all signals that the user can generate are
+>>> explicitly ignored.
+>>> 
+>>> The remainder still cause mount.nfs to print a message, unlock mtab, and exit.
+>>> 
+>>> Signed-off-by: NeilBrown <neilb@suse.de>
+>>> ---
+>>> utils/mount/fstab.c |   37 ++++++++++++++++++++++++++++++++-----
+>>> 1 files changed, 32 insertions(+), 5 deletions(-)
+>>> 
+>>> diff --git a/utils/mount/fstab.c b/utils/mount/fstab.c
+>>> index a742e64..1fc9efe 100644
+>>> --- a/utils/mount/fstab.c
+>>> +++ b/utils/mount/fstab.c
+>>> @@ -331,16 +331,43 @@ lock_mtab (void) {
+>>> 		int sig = 0;
+>>> 		struct sigaction sa;
+>>> 
+>>> -		sa.sa_handler = handler;
+>>> 		sa.sa_flags = 0;
+>>> 		sigfillset (&sa.sa_mask);
+>>> 
+>>> -		while (sigismember (&sa.sa_mask, ++sig) != -1
+>>> -		       && sig != SIGCHLD) {
+>>> -			if (sig == SIGALRM)
+>>> +		while (sigismember (&sa.sa_mask, ++sig) != -1) {
+>>> +			switch(sig) {
+>>> +			case SIGCHLD:
+>>> +			case SIGKILL:
+>>> +			case SIGCONT:
+>>> +			case SIGSTOP:
+>>> +				/* The cannot be caught, or should not,
+>>> +				 * so don't even try.
+>>> +				 */
+>>> +				continue;
+>>> +			case SIGALRM:
+>>> 				sa.sa_handler = setlkw_timeout;
+>>> -			else
+>>> +				break;
+>>> +			case SIGHUP:
+>>> +			case SIGINT:
+>>> +			case SIGQUIT:
+>>> +			case SIGWINCH:
+>>> +			case SIGTSTP:
+>>> +			case SIGTTIN:
+>>> +			case SIGTTOU:
+>>> +			case SIGPIPE:
+>>> +			case SIGXFSZ:
+>>> +			case SIGXCPU:
+>>> +				/* non-priv user can cause these to be
+>>> +				 * generated, so ignore them.
+>>> +				 */
+>>> +				sa.sa_handler = SIG_IGN;
+>>> +				break;
+>>> +			default:
+>>> +				/* The rest should not be possible, so just
+>>> +				 * print a message and unlock mtab.
+>>> +				 */
+>>> 				sa.sa_handler = handler;
+>>> +			}
+>>> 			sigaction (sig, &sa, (struct sigaction *) 0);
+>>> 		}
+>>> 		signals_have_been_setup = 1;
+>>> -- 
+>>> 1.7.3.4
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>> 
+>> 
+> 
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
