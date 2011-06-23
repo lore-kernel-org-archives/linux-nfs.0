@@ -1,82 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60078 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760829Ab1F1TKF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Jun 2011 15:10:05 -0400
-Date: Tue, 28 Jun 2011 15:10:04 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] NFS: Allow sec=none mounts in certain cases
-Message-ID: <20110628191004.GC26517@fieldses.org>
-References: <20110628181324.2866.98154.stgit@seurat.1015granger.net>
- <20110628182540.2866.42553.stgit@seurat.1015granger.net>
- <20110628190640.GB26517@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110628190640.GB26517@fieldses.org>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:36821 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758449Ab1FWC0A (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 22:26:00 -0400
+Received: by gwaa18 with SMTP id a18so561504gwa.19
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Jun 2011 19:25:59 -0700 (PDT)
+From: Tom Haynes <loghyr@gmail.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Tom Haynes <tdh@excfb.com>
+Subject: [PATCH 2/2] Make the stat command handle leading blank spaces
+Date: Wed, 22 Jun 2011 21:26:07 -0500
+Message-Id: <1308795967-7605-3-git-send-email-tdh@excfb.com>
+In-Reply-To: <1308795967-7605-1-git-send-email-tdh@excfb.com>
+References: <1308795967-7605-1-git-send-email-tdh@excfb.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Jun 28, 2011 at 03:06:40PM -0400, bfields wrote:
-> On Tue, Jun 28, 2011 at 02:25:41PM -0400, Chuck Lever wrote:
-> > There is an undocumented convention (verified by reviewing network
-> > traces from a NetApp filer and a Solaris NFS server) where a server
-> > that returns a mount authflavor list containing an AUTH_NULL entry
-> > is actually indicating it will accept any security flavor for the
-> > export being mounted.
-> 
-> This is only in the case of NLM?  (Not v4 secinfo?)
-			      ^^^
-			      (Sorry, I meant MOUNT !)
-> 
-> --b.
-> 
-> > 
-> > This might be used when the server maps all security flavors into the
-> > same security mode.  For example, the server treats all accessors as,
-> > say, UID 17.
-> > 
-> > Essentially, AUTH_NULL is treated as a wildcard that matches the
-> > flavor the mounter requested.
-> > 
-> > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> > ---
-> > 
-> >  fs/nfs/super.c |   15 +++++++++++----
-> >  1 files changed, 11 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> > index 4625a4c..543cf9f 100644
-> > --- a/fs/nfs/super.c
-> > +++ b/fs/nfs/super.c
-> > @@ -1570,13 +1570,20 @@ static int nfs_walk_authlist(struct nfs_parsed_mount_data *args,
-> >  	 * the first flavor in the list that it supports, on the
-> >  	 * assumption that the best access is provided by the first
-> >  	 * flavor."
-> > +	 *
-> > +	 * By convention we treat AUTH_NULL in the returned list as
-> > +	 * a wild card.  The server will map our requested flavor to
-> > +	 * something else.
-> >  	 */
-> > -	for (i = 0; i < args->auth_flavor_len; i++)
-> > -		for (j = 0; j < server_authlist_len; j++)
-> > -			if (args->auth_flavors[i] == server->auth_flavs[j]) {
-> > -				args->auth_flavors[0] = server->auth_flavs[j];
-> > +	for (i = 0; i < server_authlist_len; i++) {
-> > +		if (server->auth_flavs[i] == RPC_AUTH_NULL)
-> > +			goto out;
-> > +		for (j = 0; j < args->auth_flavor_len; j++)
-> > +			if (server->auth_flavs[i] == args->auth_flavors[j]) {
-> > +				args->auth_flavors[0] = server->auth_flavs[i];
-> >  				goto out;
-> >  			}
-> > +	}
-> >  
-> >  	dfprintk(MOUNT, "NFS: server does not support requested auth flavor\n");
-> >  	nfs_umount(server);
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+Signed-off-by: Tom Haynes <tdh@excfb.com>
+---
+ general/stat.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
+
+diff --git a/general/stat.c b/general/stat.c
+index 2ce604e..b9128ae 100644
+--- a/general/stat.c
++++ b/general/stat.c
+@@ -52,7 +52,9 @@ getnewch:
+ 		exit(1);
+ 	}
+ 	c = i & 0x7f;
+-	if (c == '\n' || c == '\r' || c == 'r')
++	if (c == ' ' || c == '\t')
++		goto getnewch;
++	else if (c == '\n' || c == '\r' || c == 'r')
+ 		attfmt = 1;
+ 	else if (isdigit(c))
+ 		fmt = "%lf %*s %lf %*s %lf %*s";	/* BSD fmt */
+-- 
+1.7.3.4
+
