@@ -1,44 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:36770 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755932Ab1FFSXT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jun 2011 14:23:19 -0400
-Date: Mon, 6 Jun 2011 11:22:17 -0700
-From: Randy Dunlap <randy.dunlap@oracle.com>
-To: Wakko Warner <wakko@animx.eu.org>, linux-nfs@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
-        Neil Brown <neilb@suse.de>
-Subject: [PATCH] nfsd: v4 support requires CRYPTO
-Message-Id: <20110606112217.9648b8ff.randy.dunlap@oracle.com>
-In-Reply-To: <20110603174528.GA1368@animx.eu.org>
-References: <20110603174528.GA1368@animx.eu.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail.candelatech.com ([208.74.158.172]:44052 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932619Ab1FWTdA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2011 15:33:00 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH v2 09/12] nfs: Propagate src-addr in client code.
+Date: Thu, 23 Jun 2011 12:29:43 -0700
+Message-Id: <1308857388-12243-10-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
+References: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Randy Dunlap <randy.dunlap@oracle.com>
+From: Ben Greear <greearb@candelatech.com>
 
-nfsd V4 support uses crypto interfaces, so select CRYPTO
-to fix build errors in 2.6.39:
+This ties the srcaddr supplied by mount to the
+rpc code.
 
-ERROR: "crypto_destroy_tfm" [fs/nfsd/nfsd.ko] undefined!
-ERROR: "crypto_alloc_base" [fs/nfsd/nfsd.ko] undefined!
-
-Reported-by: Wakko Warner <wakko@animx.eu.org>
-Signed-off-by: Randy Dunlap <randy.dunlap@oracle.com>
-Cc: stable@kernel.org
+Signed-off-by: Ben Greear <greearb@candelatech.com>
 ---
- fs/nfsd/Kconfig |    1 +
- 1 file changed, 1 insertion(+)
+:100644 100644 223785f... 8b8766a... M	fs/nfs/client.c
+ fs/nfs/client.c |   13 +++++++++++++
+ 1 files changed, 13 insertions(+), 0 deletions(-)
 
---- linux-2.6.39.orig/fs/nfsd/Kconfig
-+++ linux-2.6.39/fs/nfsd/Kconfig
-@@ -82,6 +82,7 @@ config NFSD_V4
- 	select NFSD_V3
- 	select FS_POSIX_ACL
- 	select SUNRPC_GSS
-+	select CRYPTO
- 	help
- 	  This option enables support in your system's NFS server for
- 	  version 4 of the NFS protocol (RFC 3530).
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 223785f..8b8766a 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -161,6 +161,8 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ 
+ 	memcpy(&clp->cl_addr, cl_init->addr, cl_init->addrlen);
+ 	clp->cl_addrlen = cl_init->addrlen;
++	memcpy(&clp->srcaddr, cl_init->srcaddr, cl_init->srcaddrlen);
++	clp->srcaddrlen = cl_init->srcaddrlen;
+ 
+ 	if (cl_init->hostname) {
+ 		err = -ENOMEM;
+@@ -655,6 +657,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
+ 		.net		= &init_net,
+ 		.protocol	= clp->cl_proto,
+ 		.address	= (struct sockaddr *)&clp->cl_addr,
++		.saddress	= (struct sockaddr *)&clp->srcaddr,
+ 		.addrsize	= clp->cl_addrlen,
+ 		.timeout	= timeparms,
+ 		.servername	= clp->cl_hostname,
+@@ -839,6 +842,8 @@ static int nfs_init_server(struct nfs_server *server,
+ 		.hostname = data->nfs_server.hostname,
+ 		.addr = (const struct sockaddr *)&data->nfs_server.address,
+ 		.addrlen = data->nfs_server.addrlen,
++		.srcaddr = (const struct sockaddr *)&data->srcaddr.address,
++		.srcaddrlen = data->srcaddr.addrlen,
+ 		.rpc_ops = &nfs_v2_clientops,
+ 		.proto = data->nfs_server.protocol,
+ 	};
+@@ -1419,6 +1424,8 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		const struct sockaddr *addr,
+ 		const size_t addrlen,
+ 		const char *ip_addr,
++		const struct sockaddr *srcaddr,
++		const size_t srcaddrlen,
+ 		rpc_authflavor_t authflavour,
+ 		int proto, const struct rpc_timeout *timeparms,
+ 		u32 minorversion)
+@@ -1430,6 +1437,8 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		.rpc_ops = &nfs_v4_clientops,
+ 		.proto = proto,
+ 		.minorversion = minorversion,
++		.srcaddr = srcaddr,
++		.srcaddrlen = srcaddrlen,
+ 	};
+ 	struct nfs_client *clp;
+ 	int error;
+@@ -1604,6 +1613,8 @@ static int nfs4_init_server(struct nfs_server *server,
+ 			(const struct sockaddr *)&data->nfs_server.address,
+ 			data->nfs_server.addrlen,
+ 			data->client_address,
++			(const struct sockaddr *)&data->srcaddr.address,
++			data->srcaddr.addrlen,
+ 			data->auth_flavors[0],
+ 			data->nfs_server.protocol,
+ 			&timeparms,
+@@ -1701,6 +1712,8 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
+ 				data->addr,
+ 				data->addrlen,
+ 				parent_client->cl_ipaddr,
++				(const struct sockaddr *)&parent_client->srcaddr,
++				parent_client->srcaddrlen,
+ 				data->authflavor,
+ 				parent_server->client->cl_xprt->prot,
+ 				parent_server->client->cl_timeout,
+-- 
+1.7.3.4
+
