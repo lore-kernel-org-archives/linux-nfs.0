@@ -1,139 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:60026 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756617Ab1FJTzR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 15:55:17 -0400
-Received: by iwn34 with SMTP id 34so2430663iwn.19
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Jun 2011 12:55:16 -0700 (PDT)
-Message-ID: <4DF276A0.6080504@tonian.com>
-Date: Fri, 10 Jun 2011 15:55:12 -0400
-From: Benny Halevy <benny@tonian.com>
-To: Sid Moore <learnmost@gmail.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [patch 1/1]: fix bug in CREATE_SESSION encoding
-References: <BANLkTikv_vi7eR8Xu-_K5F5D5Smrj=goog@mail.gmail.com>
-In-Reply-To: <BANLkTikv_vi7eR8Xu-_K5F5D5Smrj=goog@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail.candelatech.com ([208.74.158.172]:44003 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933061Ab1FWTag (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2011 15:30:36 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH v2 04/12] nfs: Use request destination addr as callback source addr.
+Date: Thu, 23 Jun 2011 12:29:38 -0700
+Message-Id: <1308857388-12243-5-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
+References: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-06-10 02:32, Sid Moore wrote:
-> Hi
-> 
-> I think it might be an error when typing. see the patch below.
-> 
-> 
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -1772,7 +1772,7 @@ static void encode_create_session(struct xdr_stream *xdr,
->         *p++ = cpu_to_be32(0);                          /* rdmachannel_attrs */
-> 
->         /* Back Channel */
-> -       *p++ = cpu_to_be32(args->fc_attrs.headerpadsz); /* header
-> padding size */
-> +       *p++ = cpu_to_be32(args->bc_attrs.headerpadsz); /* header
-> padding size */
->         *p++ = cpu_to_be32(args->bc_attrs.max_rqst_sz); /* max req size */
->         *p++ = cpu_to_be32(args->bc_attrs.max_resp_sz); /* max resp size */
->         *p++ = cpu_to_be32(args->bc_attrs.max_resp_sz_cached);  /* Max
-> resp sz cached */
-> 
-> --
-> Sid
-> --
+From: Ben Greear <greearb@candelatech.com>
 
-Thanks for spotting this!
-Since we don't support header padding yet the following patch
-might be more appropriate.
-Trond, what do you think?
+This helps make sure that responses use the correct
+source address on multi-homed machines.
 
-Benny
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+:100644 100644 b257383... 00902ec... M	fs/nfs/callback.h
+:100644 100644 c6c86a7... ed5be89... M	fs/nfs/callback_xdr.c
+:100644 100644 ea29330... 45d5d7c... M	include/linux/sunrpc/svc.h
+ fs/nfs/callback.h          |    3 +++
+ fs/nfs/callback_xdr.c      |    3 +++
+ include/linux/sunrpc/svc.h |    5 +++++
+ 3 files changed, 11 insertions(+), 0 deletions(-)
 
-git diff --stat -p -M
- fs/nfs/nfs4proc.c       |    4 ----
- fs/nfs/nfs4xdr.c        |   10 ++++++----
- include/linux/nfs_xdr.h |    1 -
- 3 files changed, 6 insertions(+), 9 deletions(-)
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index b257383..00902ec 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -57,6 +57,7 @@ struct cb_compound_hdr_res {
+ 
+ struct cb_getattrargs {
+ 	struct sockaddr *addr;
++	struct sockaddr *srcaddr;
+ 	struct nfs_fh fh;
+ 	uint32_t bitmap[2];
+ };
+@@ -72,6 +73,7 @@ struct cb_getattrres {
+ 
+ struct cb_recallargs {
+ 	struct sockaddr *addr;
++	struct sockaddr *srcaddr;
+ 	struct nfs_fh fh;
+ 	nfs4_stateid stateid;
+ 	uint32_t truncate;
+@@ -92,6 +94,7 @@ struct referring_call_list {
+ 
+ struct cb_sequenceargs {
+ 	struct sockaddr			*csa_addr;
++	struct sockaddr                 *csa_daddr;
+ 	struct nfs4_sessionid		csa_sessionid;
+ 	uint32_t			csa_sequenceid;
+ 	uint32_t			csa_slotid;
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index c6c86a7..ed5be89 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -196,6 +196,7 @@ static __be32 decode_getattr_args(struct svc_rqst *rqstp, struct xdr_stream *xdr
+ 	if (unlikely(status != 0))
+ 		goto out;
+ 	args->addr = svc_addr(rqstp);
++	args->srcaddr = svc_daddr(rqstp);
+ 	status = decode_bitmap(xdr, args->bitmap);
+ out:
+ 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+@@ -208,6 +209,7 @@ static __be32 decode_recall_args(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+ 	__be32 status;
+ 
+ 	args->addr = svc_addr(rqstp);
++	args->srcaddr = svc_daddr(rqstp);
+ 	status = decode_stateid(xdr, &args->stateid);
+ 	if (unlikely(status != 0))
+ 		goto out;
+@@ -442,6 +444,7 @@ static __be32 decode_cb_sequence_args(struct svc_rqst *rqstp,
+ 		goto out;
+ 
+ 	args->csa_addr = svc_addr(rqstp);
++	args->csa_daddr = svc_daddr(rqstp);
+ 	args->csa_sequenceid = ntohl(*p++);
+ 	args->csa_slotid = ntohl(*p++);
+ 	args->csa_highestslotid = ntohl(*p++);
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index ea29330..45d5d7c 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -299,6 +299,11 @@ static inline struct sockaddr *svc_addr(const struct svc_rqst *rqst)
+ 	return (struct sockaddr *) &rqst->rq_addr;
+ }
+ 
++static inline struct sockaddr *svc_daddr(struct svc_rqst *rqst)
++{
++	return (struct sockaddr *) &rqst->rq_daddr;
++}
++
+ /*
+  * Check buffer bounds after decoding arguments
+  */
+-- 
+1.7.3.4
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 987260c..e7ef0b1 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5099,7 +5099,6 @@ static void nfs4_init_channel_attrs(struct nfs41_create_session_args *args)
- 	if (mxresp_sz == 0)
- 		mxresp_sz = NFS_MAX_FILE_IO_SIZE;
- 	/* Fore channel attributes */
--	args->fc_attrs.headerpadsz = 0;
- 	args->fc_attrs.max_rqst_sz = mxrqst_sz;
- 	args->fc_attrs.max_resp_sz = mxresp_sz;
- 	args->fc_attrs.max_ops = NFS4_MAX_OPS;
-@@ -5112,7 +5111,6 @@ static void nfs4_init_channel_attrs(struct nfs41_create_session_args *args)
- 		args->fc_attrs.max_ops, args->fc_attrs.max_reqs);
-
- 	/* Back channel attributes */
--	args->bc_attrs.headerpadsz = 0;
- 	args->bc_attrs.max_rqst_sz = PAGE_SIZE;
- 	args->bc_attrs.max_resp_sz = PAGE_SIZE;
- 	args->bc_attrs.max_resp_sz_cached = 0;
-@@ -5132,8 +5130,6 @@ static int nfs4_verify_fore_channel_attrs(struct nfs41_create_session_args *args
- 	struct nfs4_channel_attrs *sent = &args->fc_attrs;
- 	struct nfs4_channel_attrs *rcvd = &session->fc_attrs;
-
--	if (rcvd->headerpadsz > sent->headerpadsz)
--		return -EINVAL;
- 	if (rcvd->max_resp_sz > sent->max_resp_sz)
- 		return -EINVAL;
- 	/*
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 73f18f4..7afc8df 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1780,7 +1780,7 @@ static void encode_create_session(struct xdr_stream *xdr,
- 	*p++ = cpu_to_be32(args->flags);			/*flags */
-
- 	/* Fore Channel */
--	*p++ = cpu_to_be32(args->fc_attrs.headerpadsz);	/* header padding size */
-+	*p++ = cpu_to_be32(0);				/* header padding size */
- 	*p++ = cpu_to_be32(args->fc_attrs.max_rqst_sz);	/* max req size */
- 	*p++ = cpu_to_be32(args->fc_attrs.max_resp_sz);	/* max resp size */
- 	*p++ = cpu_to_be32(max_resp_sz_cached);		/* Max resp sz cached */
-@@ -1789,7 +1789,7 @@ static void encode_create_session(struct xdr_stream *xdr,
- 	*p++ = cpu_to_be32(0);				/* rdmachannel_attrs */
-
- 	/* Back Channel */
--	*p++ = cpu_to_be32(args->fc_attrs.headerpadsz);	/* header padding size */
-+	*p++ = cpu_to_be32(0);				/* header padding size */
- 	*p++ = cpu_to_be32(args->bc_attrs.max_rqst_sz);	/* max req size */
- 	*p++ = cpu_to_be32(args->bc_attrs.max_resp_sz);	/* max resp size */
- 	*p++ = cpu_to_be32(args->bc_attrs.max_resp_sz_cached);	/* Max resp sz cached */
-@@ -5119,12 +5119,14 @@ static int decode_chan_attrs(struct xdr_stream *xdr,
- 			     struct nfs4_channel_attrs *attrs)
- {
- 	__be32 *p;
--	u32 nr_attrs;
-+	u32 nr_attrs, val;
-
- 	p = xdr_inline_decode(xdr, 28);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	attrs->headerpadsz = be32_to_cpup(p++);
-+	val = be32_to_cpup(p++);	/* headerpadsz */
-+	if (val)
-+		return -EINVAL;		/* no support for header padding yet */
- 	attrs->max_rqst_sz = be32_to_cpup(p++);
- 	attrs->max_resp_sz = be32_to_cpup(p++);
- 	attrs->max_resp_sz_cached = be32_to_cpup(p++);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index d1f9c27..0a21844 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -161,7 +161,6 @@ struct nfs_seqid;
-
- /* nfs41 sessions channel attributes */
- struct nfs4_channel_attrs {
--	u32			headerpadsz;
- 	u32			max_rqst_sz;
- 	u32			max_resp_sz;
- 	u32			max_resp_sz_cached;
