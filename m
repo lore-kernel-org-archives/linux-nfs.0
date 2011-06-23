@@ -1,37 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251]:36375 "EHLO
-	moving-picture.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754416Ab1FFMON (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jun 2011 08:14:13 -0400
-Message-ID: <4DECC493.7070107@moving-picture.com>
-Date: Mon, 06 Jun 2011 13:14:11 +0100
-From: James Pearson <james-p@moving-picture.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: Re: How to control the order of different export options for different
- client formats?
-References: <4DD2A084.1040905@moving-picture.com> <20110518080106.1159c5b8@notabene.brown> <4DD39D39.7010805@moving-picture.com> <20110518162050.GB16835@fieldses.org> <4DD66EC6.7090706@moving-picture.com> <20110520164147.GA11176@fieldses.org> <4DE79236.1080808@moving-picture.com> <20110604182011.GB23099@fieldses.org>
-In-Reply-To: <20110604182011.GB23099@fieldses.org>
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Received: from mail.candelatech.com ([208.74.158.172]:44023 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932619Ab1FWTbT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2011 15:31:19 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH v2 07/12] nfs: Add srcaddr to /proc/fs/nfsfs/servers
+Date: Thu, 23 Jun 2011 12:29:41 -0700
+Message-Id: <1308857388-12243-8-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
+References: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-J. Bruce Fields wrote:
-> Looks good to me, thanks.
-> 
-> My one quibble is with the statement that "single host" "is the most
-> common format".  (I don't think we know that.)
-> 
-> Fix that, and just resend with a brief changelog comment and a
-> 
-> 	Signed-off-by: James Pearson <etc...>
-> 
-> and steved should get around to applying it eventually....
+From: Ben Greear <greearb@candelatech.com>
 
-The "This is the most common format" statement is in the existing 
-exports man page - i.e. nothing to do with my patch ...
+Helps users understand whether a server instance is
+bound to a local IP or not.
 
-However, I'll remove that statement as well and submit the patch
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+:100644 100644 5d8998a... 223785f... M	fs/nfs/client.c
+ fs/nfs/client.c |   18 ++++++++++++++++--
+ 1 files changed, 16 insertions(+), 2 deletions(-)
 
-James Pearson
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 5d8998a..223785f 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1895,20 +1895,34 @@ static int nfs_server_list_show(struct seq_file *m, void *v)
+ 
+ 	/* display header on line 1 */
+ 	if (v == &nfs_client_list) {
+-		seq_puts(m, "NV SERVER   PORT USE HOSTNAME\n");
++		seq_puts(m, "NV SERVER   PORT USE HOSTNAME"
++			 "           SRCADDR\n");
+ 		return 0;
+ 	}
+ 
+ 	/* display one transport per line on subsequent lines */
+ 	clp = list_entry(v, struct nfs_client, cl_share_link);
+ 
+-	seq_printf(m, "v%u %s %s %3d %s\n",
++	seq_printf(m, "v%u %s %s %3d %s",
+ 		   clp->rpc_ops->version,
+ 		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_ADDR),
+ 		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_PORT),
+ 		   atomic_read(&clp->cl_count),
+ 		   clp->cl_hostname);
+ 
++	if (clp->srcaddr.ss_family == AF_INET) {
++		const struct sockaddr_in *sin;
++		sin = (const struct sockaddr_in *)&clp->srcaddr;
++		seq_printf(m, "   %pI4\n", &sin->sin_addr.s_addr);
++	} else if (clp->srcaddr.ss_family == AF_INET6) {
++		const struct sockaddr_in6 *sin6;
++		sin6 = (const struct sockaddr_in6 *)&clp->srcaddr;
++		seq_printf(m, "   %pI6c\n", &sin6->sin6_addr);
++	} else if (clp->srcaddr.ss_family == AF_UNSPEC)
++		seq_printf(m, "   ANY\n");
++	else
++		seq_printf(m, "   UNKNOWN_%i\n", (int)(clp->srcaddr.ss_family));
++
+ 	return 0;
+ }
+ 
+-- 
+1.7.3.4
+
