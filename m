@@ -1,107 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:43987 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932729Ab1FWT35 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2011 15:29:57 -0400
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH v2 11/12] nfs: Support srcaddr= to bind to specific IP address.
-Date: Thu, 23 Jun 2011 12:29:46 -0700
-Message-Id: <1308857388-12243-13-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
-References: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:35699 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752130Ab1FWFht (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2011 01:37:49 -0400
+Date: Thu, 23 Jun 2011 06:37:45 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [heads-up] mknod() broken on nfs4
+Message-ID: <20110623053745.GJ11521@ZenIV.linux.org.uk>
+References: <20110621235900.GB11521@ZenIV.linux.org.uk>
+ <20110622002359.GC11521@ZenIV.linux.org.uk>
+ <1308783620.25875.30.camel@lade.trondhjem.org>
+ <20110622231946.GH11521@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110622231946.GH11521@ZenIV.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
+On Thu, Jun 23, 2011 at 12:19:46AM +0100, Al Viro wrote:
+> It always worked that way, all the way back to Unix v6 (and I'm fairly sure
+> to earlier than that; don't have v5 kernel source, unfortunately).  Worked
+> that way in Linux since 0.02/0.03/0.10, when Linus first added mknod(2)
+> (presumably 0.01 had been tested with /dev populated by Minix ;-)
+> 
+> As for POSIX, what it says is
+>      The only portable use of mknod() is to create a FIFO-special file.         
+>      If mode is not S_IFIFO or dev is not 0, the behaviour of mknod() is        
+>      unspecified.                                                               
+> and we support it for all non-directories.  Always had...
+> 
+> 	Note that the right thing to do is to issue CLOSE and _not_ call
+> lookup_instantiate_filp() if we are called from sys_mknodat().  We don't
+> want to leak stateid...
 
-In order to have more control on multi-homed machines, it is
-nice to be able to bind to a specific IP address.  This can aid
-with interface selection, policy based routing, multiple unique
-mounts to the same server, and similar things.
+OK...  See #untested in vfs-2.6.git; the last 5 commits there.  The actual
+fixes are in the last one; to get rid of the dependency on the previous
+we'd just need to pass open_flags as additional argument to
+nameidata_to_nfs_open_context() (like untested@{1}, but without removal
+of nameidata argument - that part depends on earlier commits and is, IMO,
+a good idea anyway).
 
-This patch allows srcaddr= option for NFS.  The key 'srcaddr'
-was chosen to match the similar patch for cifs.
-
-For NFSv4, if one is specifying clientaddr, it must be the same as
-srcaddr or things may not work properly.
-
-NFSv3, NFSv4 over TCP/IPv4 and TCP/IPv6 has been successfully tested.
-
-Usage:
-  mount -t nfs4 [2002::1]:/rpool/ben /mnt/foo/ben-1 -o srcaddr=2002::2,clientaddr=2002::2
-  mount -t nfs4 192.168.100.3:/foo /mnt/foo/ben-2 -o srcaddr=192.168.100.174
-
-Signed-off-by: Ben Greear <greearb@candelatech.com>
----
-:100644 100644 e45f616... 5d88e7b... M	fs/nfs/super.c
- fs/nfs/super.c |   29 ++++++++++++++++++++++++++++-
- 1 files changed, 28 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index e45f616..5d88e7b 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -103,7 +103,7 @@ enum {
- 
- 	/* Mount options that take string arguments */
- 	Opt_sec, Opt_proto, Opt_mountproto, Opt_mounthost,
--	Opt_addr, Opt_mountaddr, Opt_clientaddr,
-+	Opt_addr, Opt_mountaddr, Opt_clientaddr, Opt_srcaddr,
- 	Opt_lookupcache,
- 	Opt_fscache_uniq,
- 	Opt_local_lock,
-@@ -173,6 +173,7 @@ static const match_table_t nfs_mount_option_tokens = {
- 	{ Opt_mountproto, "mountproto=%s" },
- 	{ Opt_addr, "addr=%s" },
- 	{ Opt_clientaddr, "clientaddr=%s" },
-+	{ Opt_srcaddr, "srcaddr=%s" },
- 	{ Opt_mounthost, "mounthost=%s" },
- 	{ Opt_mountaddr, "mountaddr=%s" },
- 
-@@ -695,6 +696,15 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
- 	else
- 		nfs_show_nfsv4_options(m, nfss, showdefaults);
- 
-+	if (clp->srcaddr.ss_family == AF_INET6) {
-+		struct sockaddr_in6 *sin6;
-+		sin6 = (struct sockaddr_in6 *)(&clp->srcaddr);
-+		seq_printf(m, ",srcaddr=%pI6c", &sin6->sin6_addr);
-+	} else if (clp->srcaddr.ss_family == AF_INET) {
-+		struct sockaddr_in *sin = (struct sockaddr_in *)&clp->srcaddr;
-+		seq_printf(m, ",srcaddr=%pI4", &sin->sin_addr.s_addr);
-+	}
-+
- 	if (nfss->options & NFS_OPTION_FSCACHE)
- 		seq_printf(m, ",fsc");
- 
-@@ -1448,6 +1458,23 @@ static int nfs_parse_mount_options(char *raw,
- 				goto out_nomem;
- 			mnt->options |= NFS_OPTION_FSCACHE;
- 			break;
-+		case Opt_srcaddr:
-+			string = match_strdup(args);
-+			if (string == NULL)
-+				goto out_nomem;
-+			mnt->srcaddr.addrlen =
-+				rpc_pton(string, strlen(string),
-+					 (struct sockaddr *)
-+					 &mnt->srcaddr.address,
-+					 sizeof(mnt->srcaddr.address));
-+			kfree(string);
-+			if (mnt->srcaddr.addrlen == 0) {
-+				printk(KERN_WARNING
-+				       "nfs: Could not parse srcaddr: %s\n",
-+				       string);
-+				goto out_invalid_address;
-+			}
-+			break;
- 		case Opt_local_lock:
- 			string = match_strdup(args);
- 			if (string == NULL)
--- 
-1.7.3.4
-
+It seems to work here.  Testing and comments would be welcome...
