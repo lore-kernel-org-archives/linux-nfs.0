@@ -1,47 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:47482 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754116Ab1F0ViV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jun 2011 17:38:21 -0400
-Date: Mon, 27 Jun 2011 17:38:19 -0400
-From: Jim Rees <rees@umich.edu>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] comment out linux 2.6 section
-Message-ID: <20110627213819.GA4872@merit.edu>
-Content-Type: text/plain; charset=us-ascii
+Received: from mail.candelatech.com ([208.74.158.172]:43993 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932729Ab1FWTaL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2011 15:30:11 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH v2 01/12] sunrpc: Don't attempt to bind to AF_UNSPEC address.
+Date: Thu, 23 Jun 2011 12:29:35 -0700
+Message-Id: <1308857388-12243-2-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
+References: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-These should have been commented out in my previous patch that added these
-lines.  Linux users will uncomment them as needed.
+From: Ben Greear <greearb@candelatech.com>
 
-Signed-off-by: Jim Rees <rees@umich.edu>
+This lets calling code simply pass AF_UNSPEC addresses
+instead of adding lots of checks to conditionally pass
+NULL addresses.
+
+Signed-off-by: Ben Greear <greearb@candelatech.com>
 ---
- tests.init |   10 +++++-----
- 1 files changed, 5 insertions(+), 5 deletions(-)
+:100644 100644 72abb73... 37299c0... M	net/sunrpc/xprtsock.c
+ net/sunrpc/xprtsock.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/tests.init b/tests.init
-index 5d93eb5..4e68930 100644
---- a/tests.init
-+++ b/tests.init
-@@ -211,11 +211,11 @@ LOCKTESTS=`echo tlocklfs tlock64`
- #LOCKTESTS=`echo tlocklfs tlock64`
- 
- # Use with Linux 2.6 / gcc 4.0
--CFLAGS=`echo -DLINUX -DGLIBC=22 -DMMAP -DSTDARG`
--LIBS=`echo -lnsl`
--MOUNT=/bin/mount
--UMOUNT=/bin/umount
--LOCKTESTS=`echo tlocklfs tlock64`
-+#CFLAGS=`echo -DLINUX -DGLIBC=22 -DMMAP -DSTDARG`
-+#LIBS=`echo -lnsl`
-+#MOUNT=/bin/mount
-+#UMOUNT=/bin/umount
-+#LOCKTESTS=`echo tlocklfs tlock64`
- 
- # Use with Linux if your distro doesn't provide a "cc".
- #CC=gcc
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 72abb73..37299c0 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2509,9 +2509,9 @@ static struct rpc_xprt *xs_setup_xprt(struct xprt_create *args,
+ 	new = container_of(xprt, struct sock_xprt, xprt);
+ 	memcpy(&xprt->addr, args->dstaddr, args->addrlen);
+ 	xprt->addrlen = args->addrlen;
+-	if (args->srcaddr)
++	if (args->srcaddr && (args->srcaddr->sa_family != AF_UNSPEC)) {
+ 		memcpy(&new->srcaddr, args->srcaddr, args->addrlen);
+-	else {
++	} else {
+ 		int err;
+ 		err = xs_init_anyaddr(args->dstaddr->sa_family,
+ 					(struct sockaddr *)&new->srcaddr);
 -- 
-1.7.4.1
+1.7.3.4
+
