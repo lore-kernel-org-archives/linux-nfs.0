@@ -1,46 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:59383 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751123Ab1F2MS6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jun 2011 08:18:58 -0400
-Date: Wed, 29 Jun 2011 08:18:54 -0400
-From: Jim Rees <rees@umich.edu>
-To: faizan husain <faizanh@linux.vnet.ibm.com>
-Cc: linux-nfs@vger.kernel.org, Frank S Filz <ffilz@us.ibm.com>,
-        jvrao@linux.vnet.ibm.com
-Subject: Re: [PATCH] nfs4-acl-tools : nfs4_setfacl' failed with unexpected
- messages if the format of the input file is incorrect.
-Message-ID: <20110629121854.GA5105@merit.edu>
-References: <4E0AD278.3000503@linux.vnet.ibm.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E0AD278.3000503@linux.vnet.ibm.com>
+Received: from mail.candelatech.com ([208.74.158.172]:44042 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932619Ab1FWTcY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2011 15:32:24 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH v2 08/12] nfs: Pass srcaddr into mount request.
+Date: Thu, 23 Jun 2011 12:29:42 -0700
+Message-Id: <1308857388-12243-9-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
+References: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-faizan husain wrote:
+From: Ben Greear <greearb@candelatech.com>
 
-  On RHEL5.5 and above releases,
-  read ACL entries to set from file leads to a segmentation fault on pp64,
-  more over the same problem does not show up for x86_64 architecture.
+This starts tying the srcaddr logic together.
 
-...
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+:100644 100644 60a36a2... eaf9c66... M	fs/nfs/internal.h
+:100644 100644 d4c2d6b... 5ca6e12... M	fs/nfs/mount_clnt.c
+:100644 100644 cb41131... e45f616... M	fs/nfs/super.c
+ fs/nfs/internal.h   |    1 +
+ fs/nfs/mount_clnt.c |    1 +
+ fs/nfs/super.c      |    2 ++
+ 3 files changed, 4 insertions(+), 0 deletions(-)
 
-  diff --git a/libnfs4acl/nfs4_ace_from_string.c
-  b/libnfs4acl/nfs4_ace_from_string.c
-  index 9d877fb..1cc220e 100644
-  --- a/libnfs4acl/nfs4_ace_from_string.c
-  +++ b/libnfs4acl/nfs4_ace_from_string.c
-  @@ -125,7 +125,6 @@ parse_alloc_fields(char *buf, char *fields[NUMFIELDS])
-  
-          return 0;
-   out_free:
-  -       free_fields(fields);
-          return -ENOMEM;
-   }
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 60a36a2..eaf9c66 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -133,6 +133,7 @@ struct nfs_parsed_mount_data {
+ /* mount_clnt.c */
+ struct nfs_mount_request {
+ 	struct sockaddr		*sap;
++	struct sockaddr         *srcaddr;
+ 	size_t			salen;
+ 	char			*hostname;
+ 	char			*dirpath;
+diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+index d4c2d6b..5ca6e12 100644
+--- a/fs/nfs/mount_clnt.c
++++ b/fs/nfs/mount_clnt.c
+@@ -155,6 +155,7 @@ int nfs_mount(struct nfs_mount_request *info)
+ 	struct rpc_create_args args = {
+ 		.net		= &init_net,
+ 		.protocol	= info->protocol,
++		.saddress	= info->srcaddr,
+ 		.address	= info->sap,
+ 		.addrsize	= info->salen,
+ 		.servername	= info->hostname,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index cb41131..e45f616 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1600,6 +1600,8 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
+ 	struct nfs_mount_request request = {
+ 		.sap		= (struct sockaddr *)
+ 						&args->mount_server.address,
++		.salen		= args->mount_server.addrlen,
++		.srcaddr	= (struct sockaddr *)&args->srcaddr.address,
+ 		.dirpath	= args->nfs_server.export_path,
+ 		.protocol	= args->mount_server.protocol,
+ 		.fh		= root_fh,
+-- 
+1.7.3.4
 
-If this fix is correct, shouldn't the name of the label be changed?  Better
-yet eliminate the gotos and label.
-
-However, I don't think the fix is correct.  I suspect you need a test for
-strsep() returning NULL.
