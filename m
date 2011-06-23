@@ -1,312 +1,162 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:35366 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757473Ab1FFWcz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Jun 2011 18:32:55 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mail.candelatech.com ([208.74.158.172]:44034 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932619Ab1FWTbt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2011 15:31:49 -0400
+From: greearb@candelatech.com
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] NFSv4.1: Add an initialisation callback for pNFS
-Date: Mon,  6 Jun 2011 18:32:31 -0400
-Message-Id: <1307399551-17489-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1307399551-17489-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1307399551-17489-1-git-send-email-Trond.Myklebust@netapp.com>
- <1307399551-17489-2-git-send-email-Trond.Myklebust@netapp.com>
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH v2 11/12] lockd:  Support binding nlm client to specific address.
+Date: Thu, 23 Jun 2011 12:29:45 -0700
+Message-Id: <1308857388-12243-12-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
+References: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Ensure that we always get a layout before setting up the i/o request.
+From: Ben Greear <greearb@candelatech.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+This ensures that file locking messages use the proper
+source IP address if the file system has been mounted
+with a specified source IP address.
+
+Signed-off-by: Ben Greear <greearb@candelatech.com>
 ---
- fs/nfs/nfs4filelayout.c      |    2 +
- fs/nfs/objlayout/objio_osd.c |    2 +
- fs/nfs/pagelist.c            |    2 +
- fs/nfs/pnfs.c                |   57 ++++++++++++++++++++++-------------------
- fs/nfs/pnfs.h                |   14 +---------
- fs/nfs/read.c                |   16 +++---------
- fs/nfs/write.c               |   12 ++------
- include/linux/nfs_page.h     |    1 +
- 8 files changed, 47 insertions(+), 59 deletions(-)
+:100644 100644 8d4ea83... e8dff8d... M	fs/lockd/clntlock.c
+:100644 100644 b7c99bf... 140fccc... M	fs/lockd/host.c
+:100644 100644 8b8766a... 39c7667... M	fs/nfs/client.c
+:100644 100644 fbc48f8... 822bcc3... M	include/linux/lockd/bind.h
+:100644 100644 ff9abff... b69ef3b... M	include/linux/lockd/lockd.h
+:100644 100644 db7bcaf... adfe318... M	include/linux/sunrpc/clnt.h
+ fs/lockd/clntlock.c         |    3 ++-
+ fs/lockd/host.c             |   17 ++++++++++++++++-
+ fs/nfs/client.c             |    1 +
+ include/linux/lockd/bind.h  |    1 +
+ include/linux/lockd/lockd.h |    1 +
+ include/linux/sunrpc/clnt.h |    2 ++
+ 6 files changed, 23 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index e9b9b82..93c5bae1f 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -677,11 +677,13 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- }
+diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+index 8d4ea83..e8dff8d 100644
+--- a/fs/lockd/clntlock.c
++++ b/fs/lockd/clntlock.c
+@@ -60,7 +60,8 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
+ 	if (status < 0)
+ 		return ERR_PTR(status);
  
- static const struct nfs_pageio_ops filelayout_pg_read_ops = {
-+	.pg_init = pnfs_generic_pg_init_read,
- 	.pg_test = filelayout_pg_test,
- 	.pg_doio = nfs_generic_pg_readpages,
- };
+-	host = nlmclnt_lookup_host(nlm_init->address, nlm_init->addrlen,
++	host = nlmclnt_lookup_host(nlm_init->address, nlm_init->srcaddr,
++				   nlm_init->addrlen,
+ 				   nlm_init->protocol, nlm_version,
+ 				   nlm_init->hostname, nlm_init->noresvport);
+ 	if (host == NULL) {
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index b7c99bf..140fccc 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -48,6 +48,7 @@ static void			nlm_gc_hosts(void);
+ struct nlm_lookup_host_info {
+ 	const int		server;		/* search for server|client */
+ 	const struct sockaddr	*sap;		/* address to search for */
++	const struct sockaddr   *src_addr;      /* source address */
+ 	const size_t		salen;		/* it's length */
+ 	const unsigned short	protocol;	/* transport to search for*/
+ 	const u32		version;	/* NLM version to search for */
+@@ -130,7 +131,12 @@ static struct nlm_host *nlm_alloc_host(struct nlm_lookup_host_info *ni,
+ 	memcpy(nlm_addr(host), ni->sap, ni->salen);
+ 	host->h_addrlen    = ni->salen;
+ 	rpc_set_port(nlm_addr(host), 0);
+-	host->h_srcaddrlen = 0;
++	if (ni->src_addr && ni->src_addr->sa_family != AF_UNSPEC) {
++		memcpy(nlm_srcaddr(host), ni->src_addr, ni->salen);
++		host->h_srcaddrlen = ni->salen;
++	} else {
++		host->h_srcaddrlen = 0;
++	}
  
- static const struct nfs_pageio_ops filelayout_pg_write_ops = {
-+	.pg_init = pnfs_generic_pg_init_write,
- 	.pg_test = filelayout_pg_test,
- 	.pg_doio = nfs_generic_pg_writepages,
- };
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 31088f3..84b5fb7 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -1009,11 +1009,13 @@ static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
- }
- 
- static const struct nfs_pageio_ops objio_pg_read_ops = {
-+	.pg_init = pnfs_generic_pg_init_read,
- 	.pg_test = objio_pg_test,
- 	.pg_doio = nfs_generic_pg_readpages,
- };
- 
- static const struct nfs_pageio_ops objio_pg_write_ops = {
-+	.pg_init = pnfs_generic_pg_init_write,
- 	.pg_test = objio_pg_test,
- 	.pg_doio = nfs_generic_pg_writepages,
- };
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 2b71ad0..ed68d78 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -295,6 +295,8 @@ static int nfs_pageio_do_add_request(struct nfs_pageio_descriptor *desc,
- 			return 0;
- 	} else {
- 		desc->pg_base = req->wb_pgbase;
-+		if (desc->pg_ops->pg_init)
-+			desc->pg_ops->pg_init(desc, req);
- 	}
- 	nfs_list_remove_request(req);
- 	nfs_list_add_request(req, &desc->pg_list);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 12b53ef..dec4533 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -900,7 +900,7 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
-  * Layout segment is retreived from the server if not cached.
-  * The appropriate layout segment is referenced and returned to the caller.
+ 	host->h_rpcclnt    = NULL;
+ 	host->h_name	   = nsm->sm_name;
+@@ -202,6 +208,7 @@ static void nlm_destroy_host_locked(struct nlm_host *host)
+  * created and returned.
   */
--struct pnfs_layout_segment *
-+static struct pnfs_layout_segment *
- pnfs_update_layout(struct inode *ino,
- 		   struct nfs_open_context *ctx,
- 		   loff_t pos,
-@@ -1043,35 +1043,40 @@ out_forget_reply:
- 	goto out;
- }
+ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
++				     const struct sockaddr *srcaddr,
+ 				     const size_t salen,
+ 				     const unsigned short protocol,
+ 				     const u32 version,
+@@ -216,6 +223,7 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
+ 		.version	= version,
+ 		.hostname	= hostname,
+ 		.hostname_len	= strlen(hostname),
++		.src_addr       = srcaddr,
+ 		.noresvport	= noresvport,
+ 	};
+ 	struct hlist_head *chain;
+@@ -234,6 +242,13 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
+ 		if (!rpc_cmp_addr(nlm_addr(host), sap))
+ 			continue;
  
-+void
-+pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-+{
-+	BUG_ON(pgio->pg_lseg != NULL);
++		/* Check for local binding match only if user
++		 * has specified the source-address.
++		 */
++		if (srcaddr && srcaddr->sa_family != AF_UNSPEC &&
++		    !rpc_cmp_addr(nlm_srcaddr(host), srcaddr))
++			continue;
 +
-+	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
-+					   req->wb_context,
-+					   req_offset(req),
-+					   req->wb_bytes,
-+					   IOMODE_READ,
-+					   GFP_KERNEL);
-+}
-+EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
-+
-+void
-+pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-+{
-+	BUG_ON(pgio->pg_lseg != NULL);
-+
-+	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
-+					   req->wb_context,
-+					   req_offset(req),
-+					   req->wb_bytes,
-+					   IOMODE_RW,
-+					   GFP_NOFS);
-+}
-+EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
-+
- bool
- pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 		     struct nfs_page *req)
- {
--	enum pnfs_iomode access_type;
--	gfp_t gfp_flags;
--
--	/* We assume that pg_ioflags == 0 iff we're reading a page */
--	if (pgio->pg_ioflags == 0) {
--		access_type = IOMODE_READ;
--		gfp_flags = GFP_KERNEL;
--	} else {
--		access_type = IOMODE_RW;
--		gfp_flags = GFP_NOFS;
--	}
--
--	if (pgio->pg_lseg == NULL) {
--		if (pgio->pg_count != prev->wb_bytes)
--			return true;
--		/* This is first coelesce call for a series of nfs_pages */
--		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
--						   prev->wb_context,
--						   req_offset(prev),
--						   pgio->pg_count,
--						   access_type,
--						   gfp_flags);
--		if (pgio->pg_lseg == NULL)
--			return true;
--	}
-+	if (pgio->pg_lseg == NULL)
-+		return nfs_generic_pg_test(pgio, prev, req);
- 
- 	if (req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
- 					 pgio->pg_lseg->pls_range.length))
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 8d063c0..b1babde 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -149,16 +149,14 @@ extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
- /* pnfs.c */
- void get_layout_hdr(struct pnfs_layout_hdr *lo);
- void put_lseg(struct pnfs_layout_segment *lseg);
--struct pnfs_layout_segment *
--pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
--		   loff_t pos, u64 count, enum pnfs_iomode access_type,
--		   gfp_t gfp_flags);
- void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
- void unset_pnfs_layoutdriver(struct nfs_server *);
- enum pnfs_try_status pnfs_try_to_write_data(struct nfs_write_data *,
- 					     const struct rpc_call_ops *, int);
- enum pnfs_try_status pnfs_try_to_read_data(struct nfs_read_data *,
- 					    const struct rpc_call_ops *);
-+void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
-+void pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *, struct nfs_page *);
- bool pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev, struct nfs_page *req);
- int pnfs_layout_process(struct nfs4_layoutget *lgp);
- void pnfs_free_lseg_list(struct list_head *tmp_list);
-@@ -331,14 +329,6 @@ static inline void put_lseg(struct pnfs_layout_segment *lseg)
- {
- }
- 
--static inline struct pnfs_layout_segment *
--pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
--		   loff_t pos, u64 count, enum pnfs_iomode access_type,
--		   gfp_t gfp_flags)
--{
--	return NULL;
--}
--
- static inline enum pnfs_try_status
- pnfs_try_to_read_data(struct nfs_read_data *data,
- 		      const struct rpc_call_ops *call_ops)
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index b0f5c19..5b65338 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -146,9 +146,7 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
- 		zero_user_segment(page, len, PAGE_CACHE_SIZE);
- 
- 	nfs_pageio_init_read(&pgio, inode);
--	nfs_list_add_request(new, &pgio.pg_list);
--	pgio.pg_count = len;
--
-+	nfs_pageio_add_request(&pgio, new);
- 	nfs_pageio_complete(&pgio);
- 	return 0;
- }
-@@ -280,7 +278,7 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc)
- 	unsigned int offset;
- 	int requests = 0;
- 	int ret = 0;
--	struct pnfs_layout_segment *lseg;
-+	struct pnfs_layout_segment *lseg = desc->pg_lseg;
- 	LIST_HEAD(list);
- 
- 	nfs_list_remove_request(req);
-@@ -298,10 +296,6 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc)
- 	} while(nbytes != 0);
- 	atomic_set(&req->wb_complete, requests);
- 
--	BUG_ON(desc->pg_lseg != NULL);
--	lseg = pnfs_update_layout(desc->pg_inode, req->wb_context,
--				  req_offset(req), desc->pg_count,
--				  IOMODE_READ, GFP_KERNEL);
- 	ClearPageError(page);
- 	offset = 0;
- 	nbytes = desc->pg_count;
-@@ -335,6 +329,8 @@ out_bad:
+ 		/* Same address. Share an NSM handle if we already have one */
+ 		if (nsm == NULL)
+ 			nsm = host->h_nsmhandle;
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 8b8766a..39c7667 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -705,6 +705,7 @@ static int nfs_start_lockd(struct nfs_server *server)
+ 	struct nlmclnt_initdata nlm_init = {
+ 		.hostname	= clp->cl_hostname,
+ 		.address	= (struct sockaddr *)&clp->cl_addr,
++		.srcaddr        = (struct sockaddr *)&clp->srcaddr,
+ 		.addrlen	= clp->cl_addrlen,
+ 		.nfs_version	= clp->rpc_ops->version,
+ 		.noresvport	= server->flags & NFS_MOUNT_NORESVPORT ?
+diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
+index fbc48f8..822bcc3 100644
+--- a/include/linux/lockd/bind.h
++++ b/include/linux/lockd/bind.h
+@@ -38,6 +38,7 @@ extern struct nlmsvc_binding *	nlmsvc_ops;
+ struct nlmclnt_initdata {
+ 	const char		*hostname;
+ 	const struct sockaddr	*address;
++	const struct sockaddr   *srcaddr;
+ 	size_t			addrlen;
+ 	unsigned short		protocol;
+ 	u32			nfs_version;
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index ff9abff..b69ef3b 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -218,6 +218,7 @@ void		  nlmclnt_next_cookie(struct nlm_cookie *);
+  * Host cache
+  */
+ struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr *sap,
++					const struct sockaddr *bindaddr,
+ 					const size_t salen,
+ 					const unsigned short protocol,
+ 					const u32 version,
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index db7bcaf..adfe318 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -262,6 +262,8 @@ static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
+ 			return __rpc_cmp_addr4(sap1, sap2);
+ 		case AF_INET6:
+ 			return __rpc_cmp_addr6(sap1, sap2);
++		case AF_UNSPEC:
++			return true;
+ 		}
  	}
- 	SetPageError(page);
- 	nfs_readpage_release(req);
-+	put_lseg(lseg);
-+	desc->pg_lseg = NULL;
- 	return -ENOMEM;
- }
- 
-@@ -363,10 +359,6 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc)
- 		*pages++ = req->wb_page;
- 	}
- 	req = nfs_list_entry(data->pages.next);
--	if ((!lseg) && list_is_singular(&data->pages))
--		lseg = pnfs_update_layout(desc->pg_inode, req->wb_context,
--					  req_offset(req), desc->pg_count,
--					  IOMODE_READ, GFP_KERNEL);
- 
- 	ret = nfs_read_rpcsetup(req, data, &nfs_read_full_ops, desc->pg_count,
- 				0, lseg);
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index c379c86..eb56829 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -914,7 +914,7 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc)
- 	unsigned int offset;
- 	int requests = 0;
- 	int ret = 0;
--	struct pnfs_layout_segment *lseg;
-+	struct pnfs_layout_segment *lseg = desc->pg_lseg;
- 	LIST_HEAD(list);
- 
- 	nfs_list_remove_request(req);
-@@ -938,10 +938,6 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc)
- 	} while (nbytes != 0);
- 	atomic_set(&req->wb_complete, requests);
- 
--	BUG_ON(desc->pg_lseg);
--	lseg = pnfs_update_layout(desc->pg_inode, req->wb_context,
--				  req_offset(req), desc->pg_count,
--				  IOMODE_RW, GFP_NOFS);
- 	ClearPageError(page);
- 	offset = 0;
- 	nbytes = desc->pg_count;
-@@ -974,6 +970,8 @@ out_bad:
- 		nfs_writedata_free(data);
- 	}
- 	nfs_redirty_request(req);
-+	put_lseg(lseg);
-+	desc->pg_lseg = NULL;
- 	return -ENOMEM;
- }
- 
-@@ -1019,10 +1017,6 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc)
- 		*pages++ = req->wb_page;
- 	}
- 	req = nfs_list_entry(data->pages.next);
--	if ((!lseg) && list_is_singular(&data->pages))
--		lseg = pnfs_update_layout(desc->pg_inode, req->wb_context,
--					  req_offset(req), desc->pg_count,
--					  IOMODE_RW, GFP_NOFS);
- 
- 	if ((desc->pg_ioflags & FLUSH_COND_STABLE) &&
- 	    (desc->pg_moreio || NFS_I(desc->pg_inode)->ncommit))
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index b0e26c0..2927ecd 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -57,6 +57,7 @@ struct nfs_page {
- 
- struct nfs_pageio_descriptor;
- struct nfs_pageio_ops {
-+	void	(*pg_init)(struct nfs_pageio_descriptor *, struct nfs_page *);
- 	bool	(*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
- 	int	(*pg_doio)(struct nfs_pageio_descriptor *);
- };
+ 	return false;
 -- 
-1.7.5.2
+1.7.3.4
 
