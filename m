@@ -1,55 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:31580 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752248Ab1FIRvJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 13:51:09 -0400
-Message-ID: <4DF10804.7000104@panasas.com>
-Date: Thu, 09 Jun 2011 10:51:00 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/3] NFS: Cleanup of the nfs_pageio code in preparation
- for a pnfs bugfix
-References: <1307399551-17489-1-git-send-email-Trond.Myklebust@netapp.com>	 <1307399551-17489-2-git-send-email-Trond.Myklebust@netapp.com>	 <4DEEDECF.4090104@panasas.com> <1307637452.20245.11.camel@lade.trondhjem.org>
-In-Reply-To: <1307637452.20245.11.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:57006 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932831Ab1FWUaP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Jun 2011 16:30:15 -0400
+Date: Thu, 23 Jun 2011 16:30:12 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trond@netapp.com>
+Subject: Re: autoload rpcsec_gss_krb5
+Message-ID: <20110623203012.GD12357@fieldses.org>
+References: <20110622213209.GA3010@fieldses.org>
+ <20110623155947.GC8911@fieldses.org>
+ <BANLkTikS+Y-V=f3Pm8AF-AUoeYVo==4SzA@mail.gmail.com>
+ <20110623201117.GB12357@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110623201117.GB12357@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 06/09/2011 09:37 AM, Trond Myklebust wrote:
->> How about using the follwing?
->>
->> int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
->> {
->> 	return desc->pg_lseg ? nfs_pagein_one(desc) : nfs_generic_pg_readpages(desc);
->> }
->> EXPORT_SYMBOL_GPL(pnfs_generic_pg_readpages);
->>
->> int pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
->> {
->> 	return desc->pg_lseg ? nfs_flush_one(desc) : nfs_generic_pg_writepages(desc);
->> }
->> EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
->>
->> Benny
+On Thu, Jun 23, 2011 at 04:11:17PM -0400, J. Bruce Fields wrote:
+> On Thu, Jun 23, 2011 at 10:06:14PM +0200, Tigran Mkrtchyan wrote:
+> > I recall a discussion at connectaton 2010, where Peter Staubach from
+> > RedHat ( at that time )
+> > requested a way to disable pNFS without rebuilding the kernel.
+> > 
+> > Probably that's why autoload is not implemented.
 > 
-> I'd prefer to have the objects and blocks set desc->pg_bsize correctly
-> according to their requirements. Otherwise, some of the tests make no
-> sense...
+> Well, autoload *is* implemented, you just have to add an alias command
+> to modprobe.conf before it'll work.
 > 
+> And if we embed the alias in the module instead, it will still be
+> possible to disable autloading by adding a "backlist <modulename>" to
+> modproble.conf.
+> 
+> So I don't *think* that's the issue, unless I've missed something.
 
-1. We will then need to go through the ld in .pg_init
-2. What happens in the none pnfs-IO error case pg_bsize will need to be
-   saved and restored to MDS value.
-3. At least in objects there is no such constant limit, it all depends on
-   the layout, start and end. I thought the all point of .pg_test was
-   exactly for avoiding a constant pg_bsize. (This is what we had before)
-4. All "the tests make no sense..." should be moved to the no-pnfs case
-   please point these you found out, we'll need to fix them.
+So can we just do this?  (Untested.)
 
-Please understand that for none-files layouts pg_bsize is when IO goes
-through MDS only.
+--b.
 
-Thanks
-Boaz
+commit 8b3065071b5469c428d70052c80f1df3cb398da6
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Thu Jun 23 16:15:39 2011 -0400
+
+    pnfs: simplify pnfs files module autoloading
+    
+    Embed the necessary alias into the module rather than waiting for
+    someone to add it to /etc/modprobe.conf
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 4269088..eb65f82 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -896,5 +896,7 @@ static void __exit nfs4filelayout_exit(void)
+ 	pnfs_unregister_layoutdriver(&filelayout_type);
+ }
+ 
++MODULE_ALIAS("nfs-layouttype4-1");
++
+ module_init(nfs4filelayout_init);
+ module_exit(nfs4filelayout_exit);
