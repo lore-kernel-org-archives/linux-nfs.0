@@ -1,204 +1,142 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:52707 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756711Ab1FGR0a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:26:30 -0400
-Date: Tue, 7 Jun 2011 13:26:26 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 05/88] pnfs: xdr support for three word attribute bitmap
-Message-ID: <02f0129fe5370e69e08f839debc9eb90b642af51.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+Received: from newman.cs.indiana.edu ([129.79.247.4]:46954 "EHLO
+	newman.cs.indiana.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751719Ab1FXUre (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jun 2011 16:47:34 -0400
+Message-ID: <4E04F7E1.2080708@indiana.edu>
+Date: Fri, 24 Jun 2011 16:47:29 -0400
+From: Rob Henderson <robh@indiana.edu>
+To: Steve Dickson <SteveD@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 plus Kerberos with RHEL5 servers and RHEL6 clients using
+ a Windows KDC (SOLVED)
+References: <4E00A214.2060306@indiana.edu> <4E01F1A4.4080204@RedHat.com>
+In-Reply-To: <4E01F1A4.4080204@RedHat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+When I try the settings you suggest, the mount is actually successful.  However, when I login as a normal user and try to obtain a tgt I see the following:
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfs: clean up xdr]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4xdr.c          |   59 +++++++++++++++++++++++++++++++++++----------
- include/linux/nfs_fs_sb.h |    2 +-
- include/linux/nfs_xdr.h   |    2 +-
- 3 files changed, 48 insertions(+), 15 deletions(-)
+  $ kinit
+  kinit: KDC has no support for encryption type while getting initial credentials
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index aeb7bc2..5e4447c 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -91,7 +91,7 @@ static int nfs4_stat_to_errno(int);
- #define encode_getfh_maxsz      (op_encode_hdr_maxsz)
- #define decode_getfh_maxsz      (op_decode_hdr_maxsz + 1 + \
- 				((3+NFS4_FHSIZE) >> 2))
--#define nfs4_fattr_bitmap_maxsz 3
-+#define nfs4_fattr_bitmap_maxsz 4
- #define encode_getattr_maxsz    (op_encode_hdr_maxsz + nfs4_fattr_bitmap_maxsz)
- #define nfs4_name_maxsz		(1 + ((3 + NFS4_MAXNAMLEN) >> 2))
- #define nfs4_path_maxsz		(1 + ((3 + NFS4_MAXPATHLEN) >> 2))
-@@ -1095,6 +1095,35 @@ static void encode_getattr_two(struct xdr_stream *xdr, uint32_t bm0, uint32_t bm
- 	hdr->replen += decode_getattr_maxsz;
- }
- 
-+static void
-+encode_getattr_three(struct xdr_stream *xdr,
-+		     uint32_t bm0, uint32_t bm1, uint32_t bm2,
-+		     struct compound_hdr *hdr)
-+{
-+	__be32 *p;
-+
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(OP_GETATTR);
-+	if (bm2) {
-+		p = reserve_space(xdr, 16);
-+		*p++ = cpu_to_be32(3);
-+		*p++ = cpu_to_be32(bm0);
-+		*p++ = cpu_to_be32(bm1);
-+		*p = cpu_to_be32(bm2);
-+	} else if (bm1) {
-+		p = reserve_space(xdr, 12);
-+		*p++ = cpu_to_be32(2);
-+		*p++ = cpu_to_be32(bm0);
-+		*p = cpu_to_be32(bm1);
-+	} else {
-+		p = reserve_space(xdr, 8);
-+		*p++ = cpu_to_be32(1);
-+		*p = cpu_to_be32(bm0);
-+	}
-+	hdr->nops++;
-+	hdr->replen += decode_getattr_maxsz;
-+}
-+
- static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
- {
- 	encode_getattr_two(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
-@@ -2947,14 +2976,17 @@ static int decode_attr_bitmap(struct xdr_stream *xdr, uint32_t *bitmap)
- 		goto out_overflow;
- 	bmlen = be32_to_cpup(p);
- 
--	bitmap[0] = bitmap[1] = 0;
-+	bitmap[0] = bitmap[1] = bitmap[2] = 0;
- 	p = xdr_inline_decode(xdr, (bmlen << 2));
- 	if (unlikely(!p))
- 		goto out_overflow;
- 	if (bmlen > 0) {
- 		bitmap[0] = be32_to_cpup(p++);
--		if (bmlen > 1)
--			bitmap[1] = be32_to_cpup(p);
-+		if (bmlen > 1) {
-+			bitmap[1] = be32_to_cpup(p++);
-+			if (bmlen > 2)
-+				bitmap[2] = be32_to_cpup(p);
-+		}
- 	}
- 	return 0;
- out_overflow:
-@@ -2986,8 +3018,9 @@ static int decode_attr_supported(struct xdr_stream *xdr, uint32_t *bitmap, uint3
- 			return ret;
- 		bitmap[0] &= ~FATTR4_WORD0_SUPPORTED_ATTRS;
- 	} else
--		bitmask[0] = bitmask[1] = 0;
--	dprintk("%s: bitmask=%08x:%08x\n", __func__, bitmask[0], bitmask[1]);
-+		bitmask[0] = bitmask[1] = bitmask[2] = 0;
-+	dprintk("%s: bitmask=%08x:%08x:%08x\n", __func__,
-+		bitmask[0], bitmask[1], bitmask[2]);
- 	return 0;
- }
- 
-@@ -4041,7 +4074,7 @@ out_overflow:
- static int decode_server_caps(struct xdr_stream *xdr, struct nfs4_server_caps_res *res)
- {
- 	__be32 *savep;
--	uint32_t attrlen, bitmap[2] = {0};
-+	uint32_t attrlen, bitmap[3] = {0};
- 	int status;
- 
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
-@@ -4067,7 +4100,7 @@ xdr_error:
- static int decode_statfs(struct xdr_stream *xdr, struct nfs_fsstat *fsstat)
- {
- 	__be32 *savep;
--	uint32_t attrlen, bitmap[2] = {0};
-+	uint32_t attrlen, bitmap[3] = {0};
- 	int status;
- 
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
-@@ -4099,7 +4132,7 @@ xdr_error:
- static int decode_pathconf(struct xdr_stream *xdr, struct nfs_pathconf *pathconf)
- {
- 	__be32 *savep;
--	uint32_t attrlen, bitmap[2] = {0};
-+	uint32_t attrlen, bitmap[3] = {0};
- 	int status;
- 
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
-@@ -4239,7 +4272,7 @@ static int decode_getfattr_generic(struct xdr_stream *xdr, struct nfs_fattr *fat
- {
- 	__be32 *savep;
- 	uint32_t attrlen,
--		 bitmap[2] = {0};
-+		 bitmap[3] = {0};
- 	int status;
- 
- 	status = decode_op_hdr(xdr, OP_GETATTR);
-@@ -4328,7 +4361,7 @@ static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
- static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
- {
- 	__be32 *savep;
--	uint32_t attrlen, bitmap[2];
-+	uint32_t attrlen, bitmap[3];
- 	int status;
- 
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
-@@ -4775,7 +4808,7 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
- {
- 	__be32 *savep;
- 	uint32_t attrlen,
--		 bitmap[2] = {0};
-+		 bitmap[3] = {0};
- 	struct kvec *iov = req->rq_rcv_buf.head;
- 	int status;
- 
-@@ -6606,7 +6639,7 @@ out:
- int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
- 		       int plus)
- {
--	uint32_t bitmap[2] = {0};
-+	uint32_t bitmap[3] = {0};
- 	uint32_t len;
- 	__be32 *p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 87694ca..61052fc 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -130,7 +130,7 @@ struct nfs_server {
- #endif
- 
- #ifdef CONFIG_NFS_V4
--	u32			attr_bitmask[2];/* V4 bitmask representing the set
-+	u32			attr_bitmask[3];/* V4 bitmask representing the set
- 						   of attributes supported on this
- 						   filesystem */
- 	u32			cache_consistency_bitmask[2];
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index a4f3dd6..6c32c9d 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -957,7 +957,7 @@ struct nfs4_server_caps_arg {
- };
- 
- struct nfs4_server_caps_res {
--	u32				attr_bitmask[2];
-+	u32				attr_bitmask[3];
- 	u32				acl_bitmask;
- 	u32				has_links;
- 	u32				has_symlinks;
--- 
-1.7.4.1
+As soon as I add arcfour-hmac to default_tgs_enctypes the kinit then works.  However, it doesn't appear that nfs actually work properly until I add both es256-cts-hmac-sha1-96 and arcfour-hmac to this list, tho I haven't tested that extensively.
 
+  --Rob
+
+
+Steve Dickson wrote:
+> Hey Rob,
+> 
+> Thanks for the info... I was thought the correct default enctypes
+> for Window KDCs where 
+>     default_tgs_enctypes = des-cbc-md5
+>     default_tkt_enctypes = des-cbc-md5
+> 
+> Maybe we should add this finding to the the NFS FAQ (http://nfs.sourceforge.net/) ?
+> 
+> steved.
+> 
+> On 06/21/2011 09:52 AM, Rob Henderson wrote:
+>> We had trouble getting kerberized nfsv4 working in our environment with RHEL5 servers and RHEL6 clients using the campus Windows 2008 AD servers as our KDC.  We've resolved the issue now but I just wanted to summarize our solution in case others are fighting the same problem.
+>>
+>> The key issue seems related to encryption since 1) the older RHEL5 kernels only support DES for nfs and 2) it appears that limiting the keytabs to only DES causes a failure to communicate with our campus Windows KDC.  I found a number of discussions that suggested limiting the encryption types to only DES and this seems to be the common fix when using a standard MIT kerberos server.  However, in our environment we are using a Windows KDC and that solution did not work for us.  I don't know if that is a generic problem with a Windows KDC or something particular to the configuration of our campus servers.
+>>
+>> Cutting to the chase, here is the configuration in the /etc/krb5.conf on the RHEL6 client that worked for us:
+>>
+>>     [libdefaults]
+>>         default_tkt_enctypes = des-cbc-crc aes256-cts-hmac-sha1-96 arcfour-hmac
+>>         allow_weak_crypto = 1
+>>
+>>
+>> All the gory details are below for anyone interested.
+>>
+>>    --Rob
+>>
+>> Disclaimer:  I am not saying this is the only and/or best solution, but it is working for us... :)
+>>
+>> ===================================================================
+>>
+>>
+>> Keytab Generation
+>> =================
+>>
+>> The campus Windows AD admins generate nfs keytabs for us using the "/crypto ALL" argument to ktpass.  They also set the NO_AUTH_DATA_REQUIRED UAC flag on the associated machine accounts.  Keytabs are generated using the same procedure for both servers and clients.
+>>
+>>
+>> RHEL5 NFS Server
+>> ================
+>>
+>> The keytabs are installed on the RHEL5 server and look like this:
+>>
+>> # klist -kte
+>>
+>> Keytab name: FILE:/etc/krb5.keytab
+>> KVNO Timestamp         Principal
+>> ---- ----------------- --------------------------------------------------------
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (DES cbc mode with CRC-32)
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (DES cbc mode with RSA-MD5) 
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (ArcFour with HMAC/md5) 
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (AES-256 CTS mode with 96-bit SHA-1 HMAC) 
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (AES-128 CTS mode with 96-bit SHA-1 HMAC) 
+>>
+>> There is nothing special in the /etc/krb5.conf on the server side.
+>>
+>>
+>> RHEL6 NFS Client
+>> ================
+>>
+>> The keytabs for the client are generated in the same way as for the server and look exactly like that for the server (with the exception that the encryption types are displayed differently with the newer version of klist).  They look like this:
+>>
+>> # klist -kte
+>> Keytab name: WRFILE:/etc/krb5.keytab
+>> KVNO Timestamp         Principal
+>> ---- ----------------- --------------------------------------------------------
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (des-cbc-crc) 
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (des-cbc-md5) 
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (arcfour-hmac) 
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (aes256-cts-hmac-sha1-96) 
+>>    3 12/31/69 19:00:00 nfs/[hostname]@[REALM] (aes128-cts-hmac-sha1-96)
+>>
+>>
+>> The following are added to the /etc/krb5.conf:
+>>
+>>      [libdefaults]
+>>         default_tkt_enctypes = des-cbc-crc aes256-cts-hmac-sha1-96 arcfour-hmac
+>>         allow_weak_crypto = 1
+>>
+>> After the mount, the machine credentials on the client look like this:
+>>
+>>       # klist -e /tmp/krb5cc_machine_[REALM]
+>>       Ticket cache: FILE:/tmp/krb5cc_machine_[REALM]
+>>       Default principal: nfs/[client hostname]@[REALM]
+>>
+>>       Valid starting     Expires            Service principal
+>>       06/21/11 02:44:18  06/21/11 12:44:18  krbtgt/[REALM]@[REALM]
+>>               renew until 06/28/11 02:44:18, Etype (skey, tkt): des-cbc-crc, aes256-cts-hmac-sha1-96
+>>       06/21/11 02:44:18  06/21/11 12:44:18  nfs/[server hostname]@[REALM]
+>>               renew until 06/28/11 02:44:18, Etype (skey, tkt): des-cbc-crc, aes256-cts-hmac-sha1-96
+>>
+>> And, the user sees the following:
+>>
+>>       $ klist -e
+>>       Ticket cache: FILE:/tmp/krb5cc_[UID]_EfGvpD
+>>       Default principal: [USERNAME]@[REALM]
+>>
+>>       Valid starting     Expires            Service principal
+>>       06/21/11 09:33:01  06/21/11 19:33:01  krbtgt/[REALM]@[REALM]
+>>               renew until 06/28/11 09:33:01, Etype (skey, tkt): des-cbc-crc, aes256-cts-hmac-sha1-96 
+>>       06/21/11 09:33:03  06/21/11 19:33:01  nfs/[server hostname]@[REALM]
+>>              renew until 06/28/11 09:33:01, Etype (skey, tkt): des-cbc-crc, aes256-cts-hmac-sha1-96 
+>>
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
