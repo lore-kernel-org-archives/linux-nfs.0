@@ -1,51 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48572 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:1034 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756356Ab1FGURL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Jun 2011 16:17:11 -0400
-Message-ID: <4DEE873F.70607@RedHat.com>
-Date: Tue, 07 Jun 2011 16:17:03 -0400
+	id S1752759Ab1F0Qgc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Jun 2011 12:36:32 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p5RGaVJj004803
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 27 Jun 2011 12:36:31 -0400
+Message-ID: <4E08B18E.20104@RedHat.com>
+Date: Mon, 27 Jun 2011 12:36:30 -0400
 From: Steve Dickson <SteveD@redhat.com>
-To: Jim Rees <rees@umich.edu>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Mi Jinlong <mijinlong@cn.fujitsu.com>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2] rpc.mountd: let mountd consult /etc/services for port
-References: <4DAD48C7.9090808@cn.fujitsu.com> <4DE0C380.7040608@cn.fujitsu.com> <20110528132953.GA8525@merit.edu> <D3F4AA10-8A35-4600-815B-D63CB7EF7315@oracle.com> <20110528164502.GA9188@merit.edu>
-In-Reply-To: <20110528164502.GA9188@merit.edu>
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/4] mountd: don't automatically add subexports to kernel
+ cache
+References: <1308063492-30103-1-git-send-email-bfields@redhat.com> <1308063492-30103-5-git-send-email-bfields@redhat.com> <4E026D08.5070309@RedHat.com> <20110622223412.GB7395@pad.home.fieldses.org>
+In-Reply-To: <20110622223412.GB7395@pad.home.fieldses.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/28/2011 12:45 PM, Jim Rees wrote:
-> Chuck Lever wrote:
+
+
+On 06/22/2011 06:34 PM, J. Bruce Fields wrote:
+> On Wed, Jun 22, 2011 at 06:30:32PM -0400, Steve Dickson wrote:
+>> Hey Bruce,
+>>
+>> This patch breaks cross mounts... Here is my set up
+>>
+>> /home/fs1 two different file systems:
+>>
+>> Filesystem           1K-blocks      Used Available Use% Mounted on
+>> /dev/mapper/VolGroup00-HomeDirs
+>>                       15236080   9439036   5010612  66% /home
+>> RedHat# df /home/fs1
+>> Filesystem           1K-blocks      Used Available Use% Mounted on
+>> /dev/mapper/VolGroup00-FS1
+>>                       10321208    154468   9642452   2% /home/fs1
+>>
+>> The export is:
+>>   /home *(rw,crossmnt,nohide,sec=sys:krb5:krb5i:krb5p)
+>>
+>> when I mount from a f15 client
+>>     mount -v -o v3 redhat:/home/fs1/tmp/tophat /mnt/tmp
+>> I get:
+>>     mount.nfs: mount(2): Stale NFS file handle
+>>
+>> When I revert the patch, the mount works.
 > 
->   So, we could also address this by getting rid of the legacy RPC behavior
->   instead.  However, in cases like this, I typically choose to stick with
->   legacy behavior, since that improves backwards compatibility.  It already
->   works like this for legacy RPC builds, so in some sense we are stuck with
->   it.
+> Oh, crap, I didn't check v3.  And, OK, it makes sense that v3 might need
+> this.
 > 
-> Ok.  I remember the earlier discussion but forgot that the patch simply
-> restores older behavior that was changed by tirpc.  In that case I'll go
-> along with Mi's patch.
-I am all for restoring the older behavior, but unfortunately this patch
-does not do it. 
-
-I when back and took a look at how the  nfs-utils-1.2.2 code worked.
-While its true both mountd and statd read ports from /etc/service, 
-they did not fail when those ports were already taken. They just 
-bound to random ephemeral ports, which is probably the reason none of 
-us noticed they were reading ports out of /etc/services. With
-Mi's patch, both daemons fail when the ports in /etc/service are
-already taken. 
-
-Mi, unfortunately I am not going to have any cycles to look
-at this, due to the upcoming Bakeathon. So, could you please,
-look into why the 1.2.2 recovered when ports in /etc/services
-were taken and your patch does not.
-
-tia,
+>> Unfortunately I'm going to be taking the next few days off
+>> so I am not going be able to debug this... So I'm going to 
+>> wait on the entire patch series until we can sort this out...
+> 
+> No problem.  But if you want to apply the rest of the series and drop
+> just this one patch, that would be fine too.  (That's probably what will
+> end up being the fix anyway.)
+Ok... I just committed the first three patches of this series...
 
 steved.
- 
