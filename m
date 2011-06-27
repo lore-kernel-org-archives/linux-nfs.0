@@ -1,55 +1,167 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:45703 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754708Ab1FLXpC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2011 19:45:02 -0400
-Message-Id: <eef50878b5052d94da20ea69b4f5c935122f8611.1307921138.git.rees@umich.edu>
-In-Reply-To: <cover.1307921137.git.rees@umich.edu>
-References: <cover.1307921137.git.rees@umich.edu>
-Date: Sun, 12 Jun 2011 19:45:00 -0400
-Subject: [PATCH 29/34] pnfsblock: bl_write_pagelist support functions
-From: Jim Rees <rees@umich.edu>
-To: linux-nfs@vger.kernel.org
-Cc: peter honeyman <honey@citi.umich.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:60438 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752938Ab1F0RD1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Jun 2011 13:03:27 -0400
+Message-ID: <4E08B7D8.6050405@RedHat.com>
+Date: Mon, 27 Jun 2011 13:03:20 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: NeilBrown <neilb@suse.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH/RFC] mount: improve signal management when locking mtab.
+References: <20110622163852.71a2ae80@notabene.brown> <B1677B7E-3A7E-418B-9CCA-0844510B59C8@oracle.com> <20110623092052.414d78a8@notabene.brown> <4D5CF8CE-FDFE-491D-99A4-D35853DDEA61@oracle.com>
+In-Reply-To: <4D5CF8CE-FDFE-491D-99A4-D35853DDEA61@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
 
-[pnfsblock: SQUASHME: adjust to API change]
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfsblock: fixup blksize alignment in bl_setup_layoutcommit]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/blocklayout.c |   13 +++++++++++++
- 1 files changed, 13 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index a40616b..9361e5b 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -70,6 +70,19 @@ static int is_hole(struct pnfs_block_extent *be, sector_t isect)
- 		return !is_sector_initialized(be->be_inval, isect);
- }
- 
-+/* Given the be associated with isect, determine if page data can be
-+ * written to disk.
-+ */
-+static int is_writable(struct pnfs_block_extent *be, sector_t isect)
-+{
-+	if (be->be_state == PNFS_BLOCK_READWRITE_DATA)
-+		return 1;
-+	else if (be->be_state != PNFS_BLOCK_INVALID_DATA)
-+		return 0;
-+	else
-+		return is_sector_initialized(be->be_inval, isect);
-+}
-+
- static int
- dont_like_caller(struct nfs_page *req)
- {
--- 
-1.7.4.1
+On 06/23/2011 12:09 PM, Chuck Lever wrote:
+> 
+> On Jun 22, 2011, at 5:20 PM, NeilBrown wrote:
+> 
+>> On Wed, 22 Jun 2011 09:08:25 -0600 Chuck Lever <chuck.lever@oracle.com> wrote:
+>>
+>>> Since we are going to adopt libmount for mount.nfs in the near future, would it be better to update libmount instead?
+>>
+>> How near?
+>>
+>> Libmount appears to get signal handling right already (though I haven't
+>> tested it).  It blocks all signals rather than catching some of them.
+>>
+>> So switching to libmount would a perfectly reasonably response.  However if
+>> that is more than a few weeks away I think I would rather see this fixed up
+>> anyway...
+> 
+> We have a libmount-based mount.nfs already in the nfs-utils tree, IIRC.  I don't think we yet have a generic plan for switching to installing that one by default.  Steve?
+Well a while back I did add the libmount code along with --enable-libmount-mount 
+configure flag. This flag has been enabled for a while now in the 
+pre release of Fedora 16 so it will on in the release of f16. 
 
+Plus I am looking to make a nfs-utils release... I'm in the process of
+clean things up just to do that. So I would be willing to enable the libmount
+code to be on by default. But I am concern not all distros do include
+the libmount code... 
+
+Some clarity... If the libmount code is enabled, this patch is not needed?
+
+steved.
+
+>> Thanks,
+>> NeilBrown
+>>
+>>
+>>>
+>>> On Jun 22, 2011, at 12:38 AM, NeilBrown wrote:
+>>>
+>>>>
+>>>> From: Neil Brown <neilb@suse.de>
+>>>> Date: Wed, 22 Jun 2011 16:15:45 +1000
+>>>> Subject: [PATCH] mount: improve signal management when locking mtab.
+>>>>
+>>>> As mount.nfs can run setuid it must be careful about how the user can
+>>>> interact with in.  In particular it needs to ensure it does not
+>>>> respond badly to any signals that the user might be able to generate.
+>>>>
+>>>> This is particularly an issue while updating /etc/mtab (when that is
+>>>> not linked to /proc/mounts).  If the user can generate a signal which
+>>>> kills mount.nfs while /etc/mtab is locked, then it will leave the file
+>>>> locked, and could possibly corrupt mtab (particularly if 'ulimit 1'
+>>>> was previously issued).
+>>>>
+>>>> Currently lock_mtab does set some handlers for signals, but not
+>>>> enough.  It arranges for every signal up to (but not including)
+>>>> SIGCHLD to cause mount.nfs to unlock mdadm promptly exit ... even if
+>>>> the default behaviour would be to ignore the signal.  SIGALRM is
+>>>> handled specially, and signals after SIGCHLD are left with their
+>>>> default behaviour.  This includes for example SIGXFSZ which can be
+>>>> generated by the user running "ulimit 1".
+>>>>
+>>>> So: change this so that some signals are left unchanged, SIGALRM is
+>>>> handled as required, and all signals that the user can generate are
+>>>> explicitly ignored.
+>>>>
+>>>> The remainder still cause mount.nfs to print a message, unlock mtab, and exit.
+>>>>
+>>>> Signed-off-by: NeilBrown <neilb@suse.de>
+>>>> ---
+>>>> utils/mount/fstab.c |   37 ++++++++++++++++++++++++++++++++-----
+>>>> 1 files changed, 32 insertions(+), 5 deletions(-)
+>>>>
+>>>> diff --git a/utils/mount/fstab.c b/utils/mount/fstab.c
+>>>> index a742e64..1fc9efe 100644
+>>>> --- a/utils/mount/fstab.c
+>>>> +++ b/utils/mount/fstab.c
+>>>> @@ -331,16 +331,43 @@ lock_mtab (void) {
+>>>> 		int sig = 0;
+>>>> 		struct sigaction sa;
+>>>>
+>>>> -		sa.sa_handler = handler;
+>>>> 		sa.sa_flags = 0;
+>>>> 		sigfillset (&sa.sa_mask);
+>>>>
+>>>> -		while (sigismember (&sa.sa_mask, ++sig) != -1
+>>>> -		       && sig != SIGCHLD) {
+>>>> -			if (sig == SIGALRM)
+>>>> +		while (sigismember (&sa.sa_mask, ++sig) != -1) {
+>>>> +			switch(sig) {
+>>>> +			case SIGCHLD:
+>>>> +			case SIGKILL:
+>>>> +			case SIGCONT:
+>>>> +			case SIGSTOP:
+>>>> +				/* The cannot be caught, or should not,
+>>>> +				 * so don't even try.
+>>>> +				 */
+>>>> +				continue;
+>>>> +			case SIGALRM:
+>>>> 				sa.sa_handler = setlkw_timeout;
+>>>> -			else
+>>>> +				break;
+>>>> +			case SIGHUP:
+>>>> +			case SIGINT:
+>>>> +			case SIGQUIT:
+>>>> +			case SIGWINCH:
+>>>> +			case SIGTSTP:
+>>>> +			case SIGTTIN:
+>>>> +			case SIGTTOU:
+>>>> +			case SIGPIPE:
+>>>> +			case SIGXFSZ:
+>>>> +			case SIGXCPU:
+>>>> +				/* non-priv user can cause these to be
+>>>> +				 * generated, so ignore them.
+>>>> +				 */
+>>>> +				sa.sa_handler = SIG_IGN;
+>>>> +				break;
+>>>> +			default:
+>>>> +				/* The rest should not be possible, so just
+>>>> +				 * print a message and unlock mtab.
+>>>> +				 */
+>>>> 				sa.sa_handler = handler;
+>>>> +			}
+>>>> 			sigaction (sig, &sa, (struct sigaction *) 0);
+>>>> 		}
+>>>> 		signals_have_been_setup = 1;
+>>>> -- 
+>>>> 1.7.3.4
+>>>>
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>>> --
+>>> Chuck Lever
+>>> chuck[dot]lever[at]oracle[dot]com
+>>>
+>>>
+>>
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
