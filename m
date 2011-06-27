@@ -1,158 +1,415 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:56975 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:26018 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756172Ab1FJVeu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Jun 2011 17:34:50 -0400
-Date: Fri, 10 Jun 2011 17:34:46 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mimi Zohar <zohar@linux.vnet.ibm.com>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        samba-technical@lists.samba.org, Christoph Hellwig <hch@infradead.org>,
-        Eric Paris <eparis@redhat.com>
-Subject: Re: [PATCH 1/2] locks: introduce i_blockleases to close lease races
-Message-ID: <20110610213446.GC27837@fieldses.org>
-References: <20110610000944.GC22215@fieldses.org>
- <20110610001011.GD22215@fieldses.org>
- <1307737440.3281.5.camel@localhost.localdomain>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1307737440.3281.5.camel@localhost.localdomain>
+	id S932155Ab1F0Mml (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Jun 2011 08:42:41 -0400
+Message-ID: <4E087ABE.5090108@netapp.com>
+Date: Mon, 27 Jun 2011 08:42:38 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC v2] NFSD: Added basic fault injection
+References: <4DD6AF42.5050502@netapp.com> <20110623195526.GA12357@fieldses.org>
+In-Reply-To: <20110623195526.GA12357@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Jun 10, 2011 at 04:24:00PM -0400, Mimi Zohar wrote:
-> On Thu, 2011-06-09 at 20:10 -0400, J. Bruce Fields wrote:
-> > From: J. Bruce Fields <bfields@redhat.com>
-> > 
-> > Since break_lease is called before i_writecount is incremented, there's
-> > a window between the two where a setlease call would have no way to know
-> > that an open is about to happen.
+On 06/23/2011 03:55 PM, J. Bruce Fields wrote:
+> On Fri, May 20, 2011 at 02:13:22PM -0400, Bryan Schumaker wrote:
+>> I have been looking at adding fault injection to the NFS server in order
+>> to test the client's state manager and recovery threads.  Simulating
+>> errors on the server seems like the easiest way to guarentee that
+>> specific errors happen, and happen when we tell them to.
+>>
+>> This patch uses debugfs to add a simple framework for fault injection to
+>> the server.  This framework is a config option, and can be enabled
+>> through CONFIG_NFSD_FAULT_INJECTION.  Assuming you have debugfs mounted
+>> to /sys/debug, a set of files will be created in /sys/debug/nfsd/.
+>> Writing to any of these files will cause the corresponding action and
+>> write a log entry to dmesg.
+>>
+>> Changes in v2:
+>> - Replaced "forget all state owners" with "forget all open owners"
+>> - Include fs/nfsd/fault_inject.c in the patch
+>>
+>> Suggestions?  Comments?
 > 
-> So unless the break_lease() call is moved from may_open() to after 
-> nameidata_to_filp(), I don't see any other options.
+> If this is still the most recent version of the patch, and if you can
+> confirm that this has been tried and found useful for testing the
+> client, then I'll go ahead and apply for 3.1.
 
-Actually, offhand I can't see why that wouldn't be OK.
+Yes, this is the most recent version of the patch.  It is part of my Jenkins setup, but I haven't been running it on a regular basis recently.
 
-Though I think we still end up needing something like i_blockleases to
-handle unlink, link, rename, chown, and chmod.
-
---b.
+- Bryan
 
 > 
-> Mimi
+> --b.
 > 
-> > We fix this by adding a new inode field, i_blockleases, that is
-> > incremented while a lease-breaking operation is in progress.
-> > 
-> > We will later reuse i_blockleases to enforce lease-breaking for rename,
-> > unlink, etc.
-> > 
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > ---
-> >  fs/inode.c         |    1 +
-> >  fs/locks.c         |   28 ++++++++++++++++++++++++++++
-> >  fs/namei.c         |    6 +++++-
-> >  include/linux/fs.h |    3 +++
-> >  4 files changed, 37 insertions(+), 1 deletions(-)
-> > 
-> > diff --git a/fs/inode.c b/fs/inode.c
-> > index 33c963d..4f253a2 100644
-> > --- a/fs/inode.c
-> > +++ b/fs/inode.c
-> > @@ -198,6 +198,7 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
-> >  	inode->i_uid = 0;
-> >  	inode->i_gid = 0;
-> >  	atomic_set(&inode->i_writecount, 0);
-> > +	atomic_set(&inode->i_blockleases, 0);
-> >  	inode->i_size = 0;
-> >  	inode->i_blocks = 0;
-> >  	inode->i_bytes = 0;
-> > diff --git a/fs/locks.c b/fs/locks.c
-> > index 0a4f50d..7699b1b 100644
-> > --- a/fs/locks.c
-> > +++ b/fs/locks.c
-> > @@ -1164,6 +1164,32 @@ static void time_out_leases(struct inode *inode)
-> >  	}
-> >  }
-> > 
-> > +/* Disallow all leases (read or write): */
-> > +void disallow_leases(struct inode *inode, int flags)
-> > +{
-> > +	if (!inode)
-> > +		return;
-> > +	if (!S_ISREG(inode->i_mode))
-> > +		return;
-> > +	if ((flags & O_ACCMODE) == O_RDONLY)
-> > +		return;
-> > +	atomic_inc(&inode->i_blockleases);
-> > +}
-> > +EXPORT_SYMBOL_GPL(disallow_leases);
-> > +
-> > +void reallow_leases(struct inode *inode, int flags)
-> > +{
-> > +	if (!inode)
-> > +		return;
-> > +	if (!S_ISREG(inode->i_mode))
-> > +		return;
-> > +	if ((flags & O_ACCMODE) == O_RDONLY)
-> > +		return;
-> > +	BUG_ON(atomic_read(&inode->i_blockleases) <= 0);
-> > +	atomic_dec(&inode->i_blockleases);
-> > +}
-> > +EXPORT_SYMBOL_GPL(reallow_leases);
-> > +
-> >  /**
-> >   *	__break_lease	-	revoke all outstanding leases on file
-> >   *	@inode: the inode of the file to return
-> > @@ -1369,6 +1395,8 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
-> > 
-> >  	if (arg != F_UNLCK) {
-> >  		error = -EAGAIN;
-> > +		if (atomic_read(&inode->i_blockleases))
-> > +			goto out;
-> >  		if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
-> >  			goto out;
-> >  		if ((arg == F_WRLCK)
-> > diff --git a/fs/namei.c b/fs/namei.c
-> > index 3cb616d..079e68c 100644
-> > --- a/fs/namei.c
-> > +++ b/fs/namei.c
-> > @@ -2277,10 +2277,14 @@ ok:
-> >  		want_write = 1;
-> >  	}
-> >  common:
-> > +	disallow_leases(nd->path.dentry->d_inode, open_flag);
-> >  	error = may_open(&nd->path, acc_mode, open_flag);
-> > -	if (error)
-> > +	if (error) {
-> > +		reallow_leases(nd->path.dentry->d_inode, open_flag);
-> >  		goto exit;
-> > +	}
-> >  	filp = nameidata_to_filp(nd);
-> > +	reallow_leases(nd->path.dentry->d_inode, open_flag);
-> >  	if (!IS_ERR(filp)) {
-> >  		error = ima_file_check(filp, op->acc_mode);
-> >  		if (error) {
-> > diff --git a/include/linux/fs.h b/include/linux/fs.h
-> > index 1b95af3..daf8443 100644
-> > --- a/include/linux/fs.h
-> > +++ b/include/linux/fs.h
-> > @@ -796,6 +796,7 @@ struct inode {
-> >  #ifdef CONFIG_IMA
-> >  	atomic_t		i_readcount; /* struct files open RO */
-> >  #endif
-> > +	atomic_t		i_blockleases; /* setlease fails when >0 */
-> >  	atomic_t		i_writecount;
-> >  #ifdef CONFIG_SECURITY
-> >  	void			*i_security;
-> > @@ -1161,6 +1162,8 @@ extern void lease_get_mtime(struct inode *, struct timespec *time);
-> >  extern int generic_setlease(struct file *, long, struct file_lock **);
-> >  extern int vfs_setlease(struct file *, long, struct file_lock **);
-> >  extern int lease_modify(struct file_lock **, int);
-> > +extern void disallow_leases(struct inode *, int flags);
-> > +extern void reallow_leases(struct inode *, int flags);
-> >  extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
-> >  extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
-> >  extern void lock_flocks(void);
-> 
-> 
+>>
+>> - Bryan
+>> ---
+>> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+>> index 18b3e89..8c02eab 100644
+>> --- a/fs/nfsd/Kconfig
+>> +++ b/fs/nfsd/Kconfig
+>> @@ -91,3 +91,16 @@ config NFSD_V4
+>>  	  available from http://linux-nfs.org/.
+>>  
+>>  	  If unsure, say N.
+>> +
+>> +config NFSD_FAULT_INJECTION
+>> +	bool "NFS server manual fault injection"
+>> +	depends on NFSD_V4 && DEBUG_KERNEL
+>> +	help
+>> +	  This option enables support for manually injecting faults
+>> +	  into the NFS server.  This is intended to be used for
+>> +	  testing error recovery on the NFS client.
+>> +	  
+>> +	  If unsure, say N.
+>> +
+>> +
+>> +
+>> diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
+>> index 9b118ee..69eae75 100644
+>> --- a/fs/nfsd/Makefile
+>> +++ b/fs/nfsd/Makefile
+>> @@ -5,7 +5,8 @@
+>>  obj-$(CONFIG_NFSD)	+= nfsd.o
+>>  
+>>  nfsd-y 			:= nfssvc.o nfsctl.o nfsproc.o nfsfh.o vfs.o \
+>> -			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o
+>> +			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o \
+>> +			   fault_inject.o
+>>  nfsd-$(CONFIG_NFSD_V2_ACL) += nfs2acl.o
+>>  nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
+>>  nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
+>> diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+>> new file mode 100644
+>> index 0000000..3dd1c32
+>> --- /dev/null
+>> +++ b/fs/nfsd/fault_inject.c
+>> @@ -0,0 +1,106 @@
+>> +
+>> +#ifdef CONFIG_NFSD_FAULT_INJECTION
+>> +
+>> +#include <linux/types.h>
+>> +#include <linux/fs.h>
+>> +#include <linux/debugfs.h>
+>> +#include <linux/module.h>
+>> +
+>> +#include "state.h"
+>> +#include "nfsd.h"
+>> +
+>> +static void nfsd_forget_everything(void);
+>> +
+>> +struct nfsd_fault_inject_op {
+>> +	char *name;
+>> +	char *text;
+>> +	int file_data;
+>> +	void (*func)(void);
+>> +};
+>> +
+>> +#define INJECTION_OP(op_name, op_text, op_func) \
+>> +{				\
+>> +	.name = op_name,	\
+>> +	.text = op_text,	\
+>> +	.func = op_func,	\
+>> +}
+>> +
+>> +static struct nfsd_fault_inject_op inject_ops[] = {
+>> +	INJECTION_OP("forget_clients",     "forget all clients",     nfsd_forget_all_clients),
+>> +	INJECTION_OP("forget_locks",       "forget all locks",       nfsd_forget_all_locks),
+>> +	INJECTION_OP("forget_open_owners", "forget all open owners", nfsd_forget_all_open_owners),
+>> +	INJECTION_OP("forget_delegations", "forget all delegations", nfsd_forget_all_delegations),
+>> +	INJECTION_OP("forget_everything",  "forget everything",      nfsd_forget_everything),
+>> +	INJECTION_OP("recall_delegations", "recall all delegations", nfsd_recall_all_delegations),
+>> +};
+>> +
+>> +static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
+>> +static struct dentry *debug_dir;
+>> +
+>> +static void nfsd_forget_everything(void)
+>> +{
+>> +	nfsd_forget_all_clients();
+>> +	nfsd_forget_all_locks();
+>> +	nfsd_forget_all_open_owners();
+>> +	nfsd_forget_all_delegations();
+>> +}
+>> +
+>> +static int nfsd_inject_set(void *data, u64 val)
+>> +{
+>> +	int i;
+>> +	for (i = 0; i < NUM_INJECT_OPS; i++) {
+>> +		if (&inject_ops[i].file_data == data) {
+>> +			printk(KERN_INFO "%s %s Server will %s", __FILE__, __func__, inject_ops[i].text);
+>> +			inject_ops[i].func();
+>> +		}
+>> +	}
+>> +	return 0;
+>> +}
+>> +
+>> +static int nfsd_inject_get(void *data, u64 *val)
+>> +{
+>> +	return 0;
+>> +}
+>> +
+>> +DEFINE_SIMPLE_ATTRIBUTE(fops_nfsd, nfsd_inject_get, nfsd_inject_set, "%llu\n");
+>> +
+>> +void
+>> +nfsd_cleanup_fault_inject(void)
+>> +{
+>> +	debugfs_remove_recursive(debug_dir);
+>> +}
+>> +
+>> +int
+>> +nfsd_fault_inject_init(void)
+>> +{
+>> +	unsigned int i;
+>> +	struct nfsd_fault_inject_op *op;
+>> +	mode_t mode = S_IFREG | S_IRUSR | S_IWUSR;
+>> +
+>> +	debug_dir = debugfs_create_dir("nfsd", NULL);
+>> +	if (!debug_dir)
+>> +		goto fail;
+>> +
+>> +	for (i = 0; i < NUM_INJECT_OPS; i++) {
+>> +		op = &inject_ops[i];
+>> +		debugfs_create_file(op->name, mode, debug_dir, &op->file_data, &fops_nfsd);
+>> +	}
+>> +	return 0;
+>> +fail:
+>> +	nfsd_cleanup_fault_inject();
+>> +	return -ENOMEM;
+>> +}
+>> +
+>> +#else /* CONFIG_NFSD_FAULT_INJECTION */
+>> +
+>> +inline void
+>> +nfsd_cleanup_fault_inject(void)
+>> +{}
+>> +
+>> +inline int
+>> +nfsd_fault_inject_init(void)
+>> +{
+>> +	return 0;
+>> +}
+>> +
+>> +#endif /* CONFIG_NFSD_FAULT_INJECTION */
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 4cf04e1..f555e02 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -4274,6 +4274,144 @@ nfs4_check_open_reclaim(clientid_t *clid)
+>>  	return nfs4_find_reclaim_client(clid) ? nfs_ok : nfserr_reclaim_bad;
+>>  }
+>>  
+>> +#ifdef CONFIG_NFSD_FAULT_INJECTION
+>> +
+>> +void nfsd_forget_all_clients(void)
+>> +{
+>> +	struct nfs4_client *clp;
+>> +	struct list_head *pos, *next, reaplist;
+>> +	int count = 0;
+>> +
+>> +	nfs4_lock_state();
+>> +	INIT_LIST_HEAD(&reaplist);
+>> +
+>> +	spin_lock(&client_lock);
+>> +	list_for_each_safe(pos, next, &client_lru) {
+>> +		clp = list_entry(pos, struct nfs4_client, cl_lru);
+>> +		unhash_client_locked(clp);
+>> +		list_add(&clp->cl_lru, &reaplist);
+>> +		count ++;
+>> +	}
+>> +	spin_unlock(&client_lock);
+>> +	list_for_each_safe(pos, next, &reaplist) {
+>> +		clp = list_entry(pos, struct nfs4_client, cl_lru);
+>> +		nfsd4_remove_clid_dir(clp);
+>> +		expire_client(clp);
+>> +	}
+>> +
+>> +	nfs4_unlock_state();
+>> +	printk(KERN_INFO "%s %s Forgot %d clients", __FILE__, __func__, count);
+>> +}
+>> +
+>> +void nfsd_forget_all_locks(void)
+>> +{
+>> +	struct nfs4_stateid *stp;
+>> +	struct nfs4_stateowner *sop;
+>> +	struct list_head reaplist;
+>> +	int count = 0;
+>> +	int i;
+>> +
+>> +	INIT_LIST_HEAD(&reaplist);
+>> +	nfs4_lock_state();
+>> +	for (i = 0; i < LOCK_HASH_SIZE; i++) {
+>> +		list_for_each_entry(sop, &lock_ownerid_hashtbl[i], so_idhash) {
+>> +			list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
+>> +				list_add(&sop->so_perclient, &reaplist);
+>> +			}
+>> +		}
+>> +	}
+>> +
+>> +	while (!list_empty(&reaplist)) {
+>> +		sop = list_entry(reaplist.next, struct nfs4_stateowner, so_perclient);
+>> +		list_del(&sop->so_perclient);
+>> +		release_lockowner(sop);
+>> +		count ++;
+>> +	}
+>> +	nfs4_unlock_state();
+>> +
+>> +	printk(KERN_INFO "%s %s Forgot %d locks", __FILE__, __func__, count);
+>> +}
+>> +
+>> +void nfsd_forget_all_open_owners(void)
+>> +{
+>> +	struct nfs4_stateid *stp, *next;
+>> +	unsigned int i;
+>> +	int count = 0;
+>> +
+>> +	nfs4_lock_state();
+>> +	for (i = 0; i < STATEID_HASH_SIZE; i++) {
+>> +		list_for_each_entry_safe(stp, next, &stateid_hashtbl[i], st_hash) {
+>> +			if (stp->st_openstp == NULL) {
+>> +				release_openowner(stp->st_stateowner);
+>> +				count++;
+>> +			}
+>> +		}
+>> +	}
+>> +	nfs4_unlock_state();
+>> +	printk(KERN_INFO "%s %s Forgot %d open owners", __FILE__, __func__, count);
+>> +}
+>> +
+>> +void nfsd_forget_all_delegations(void)
+>> +{
+>> +	struct nfs4_file *fp;
+>> +	struct nfs4_delegation *dp;
+>> +	struct list_head *pos, *next, reaplist;
+>> +	unsigned int i;
+>> +	unsigned int count = 0;
+>> +
+>> +	INIT_LIST_HEAD(&reaplist);
+>> +
+>> +	nfs4_lock_state();
+>> +	spin_lock(&recall_lock);
+>> +	for (i = 0; i < FILE_HASH_SIZE; i++) {
+>> +		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
+>> +			list_for_each(pos, &fp->fi_delegations) {
+>> +				dp = list_entry(pos, struct nfs4_delegation, dl_perfile);
+>> +				list_del_init(&dp->dl_perclnt);
+>> +				list_move(&dp->dl_recall_lru, &reaplist);
+>> +			}
+>> +		}
+>> +	}
+>> +
+>> +	spin_unlock(&recall_lock);
+>> +	list_for_each_safe(pos, next, &reaplist) {
+>> +		dp = list_entry(pos, struct nfs4_delegation, dl_recall_lru);
+>> +		list_del_init(&dp->dl_recall_lru);
+>> +		unhash_delegation(dp);
+>> +		count++;
+>> +	}
+>> +	nfs4_unlock_state();
+>> +
+>> +	printk(KERN_INFO "%s %s Forgot %d delegations", __FILE__, __func__, count);
+>> +}
+>> +
+>> +void nfsd_recall_all_delegations(void)
+>> +{
+>> +	struct nfs4_file *fp;
+>> +	struct nfs4_delegation *dp;
+>> +	struct list_head *pos;
+>> +	unsigned int i;
+>> +	unsigned int count = 0;
+>> +
+>> +	nfs4_lock_state();
+>> +	spin_lock(&recall_lock);
+>> +	for (i = 0; i < FILE_HASH_SIZE; i++) {
+>> +		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
+>> +			list_for_each(pos, &fp->fi_delegations) {
+>> +				dp = list_entry(pos, struct nfs4_delegation, dl_perfile);
+>> +				nfsd_break_one_deleg(dp);
+>> +				count++;
+>> +			}
+>> +		}
+>> +	}
+>> +	spin_unlock(&recall_lock);
+>> +	nfs4_unlock_state();
+>> +	printk(KERN_INFO "%s %s Recalled %d delegations", __FILE__, __func__, count);
+>> +}
+>> +
+>> +#endif /* CONFIG_NFSD_FAULT_INJECTION */
+>> +
+>> +
+>>  /* initialization to perform at module load time: */
+>>  
+>>  int
+>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+>> index 1f5eae4..1eb3e92 100644
+>> --- a/fs/nfsd/nfsctl.c
+>> +++ b/fs/nfsd/nfsctl.c
+>> @@ -1481,6 +1481,9 @@ static int __init init_nfsd(void)
+>>  	retval = nfs4_state_init(); /* nfs4 locking state */
+>>  	if (retval)
+>>  		return retval;
+>> +	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
+>> +	if (retval)
+>> +		goto out_cleanup_fault_injection;
+>>  	nfsd_stat_init();	/* Statistics */
+>>  	retval = nfsd_reply_cache_init();
+>>  	if (retval)
+>> @@ -1512,6 +1515,8 @@ out_free_cache:
+>>  out_free_stat:
+>>  	nfsd_stat_shutdown();
+>>  	nfsd4_free_slabs();
+>> +out_cleanup_fault_injection:
+>> +	nfsd_cleanup_fault_inject();
+>>  	return retval;
+>>  }
+>>  
+>> @@ -1525,6 +1530,7 @@ static void __exit exit_nfsd(void)
+>>  	nfsd_lockd_shutdown();
+>>  	nfsd_idmap_shutdown();
+>>  	nfsd4_free_slabs();
+>> +	nfsd_cleanup_fault_inject();
+>>  	unregister_filesystem(&nfsd_fs_type);
+>>  }
+>>  
+>> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+>> index 7ecfa24..4a6cded 100644
+>> --- a/fs/nfsd/nfsd.h
+>> +++ b/fs/nfsd/nfsd.h
+>> @@ -79,11 +79,18 @@ static inline int nfsd_v4client(struct svc_rqst *rq)
+>>  #ifdef CONFIG_NFSD_V4
+>>  extern unsigned int max_delegations;
+>>  int nfs4_state_init(void);
+>> +int nfsd_fault_inject_init(void);
+>> +void nfsd_cleanup_fault_inject(void);
+>>  void nfsd4_free_slabs(void);
+>>  int nfs4_state_start(void);
+>>  void nfs4_state_shutdown(void);
+>>  void nfs4_reset_lease(time_t leasetime);
+>>  int nfs4_reset_recoverydir(char *recdir);
+>> +void nfsd_forget_all_clients(void);
+>> +void nfsd_forget_all_locks(void);
+>> +void nfsd_forget_all_open_owners(void);
+>> +void nfsd_forget_all_delegations(void);
+>> +void nfsd_recall_all_delegations(void);
+>>  #else
+>>  static inline int nfs4_state_init(void) { return 0; }
+>>  static inline void nfsd4_free_slabs(void) { }
+>> @@ -91,6 +98,11 @@ static inline int nfs4_state_start(void) { return 0; }
+>>  static inline void nfs4_state_shutdown(void) { }
+>>  static inline void nfs4_reset_lease(time_t leasetime) { }
+>>  static inline int nfs4_reset_recoverydir(char *recdir) { return 0; }
+>> +static inline void nfsd_forget_all_clients(void) {};
+>> +static inline void nfsd_forget_all_locks(void) {};
+>> +static inline void nfsd_forget_all_open_owners(void) {};
+>> +static inline void nfsd_forget_all_delegations(void) {};
+>> +static inline void nfsd_recall_all_delegations(void) {};
+>>  #endif
+>>  
+>>  /*
+
