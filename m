@@ -1,47 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:43988 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932347Ab1FVXTr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 19:19:47 -0400
-Date: Thu, 23 Jun 2011 00:19:46 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [heads-up] mknod() broken on nfs4
-Message-ID: <20110622231946.GH11521@ZenIV.linux.org.uk>
-References: <20110621235900.GB11521@ZenIV.linux.org.uk>
- <20110622002359.GC11521@ZenIV.linux.org.uk>
- <1308783620.25875.30.camel@lade.trondhjem.org>
+Received: from fieldses.org ([174.143.236.118]:44472 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755034Ab1F0WDR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Jun 2011 18:03:17 -0400
+Date: Mon, 27 Jun 2011 18:03:16 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC v2] NFSD: Added basic fault injection
+Message-ID: <20110627220316.GA11688@fieldses.org>
+References: <4DD6AF42.5050502@netapp.com>
+ <20110623195526.GA12357@fieldses.org>
+ <4E087ABE.5090108@netapp.com>
+ <4E08E1A0.9020101@netapp.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1308783620.25875.30.camel@lade.trondhjem.org>
+In-Reply-To: <4E08E1A0.9020101@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Jun 22, 2011 at 07:00:20PM -0400, Trond Myklebust wrote:
-> > Folks, how is that code supposed to work?  lookup_instantiate_filp() should
-> > *not* be called by vfs_create() triggered by mknod().  And I don't see any
-> > codepath in nfs_open_create() that would not step into that.  ctx == NULL
-> > is the only thing that would skip it and it definitely isn't survivable
-> > by nfs4_proc_create().  Moreover, we need the rpc_cred to come from somewhere
-> > and nfs4_proc_create() needs to get it from us.
+On Mon, Jun 27, 2011 at 04:01:36PM -0400, Bryan Schumaker wrote:
+> On 06/27/2011 08:42 AM, Bryan Schumaker wrote:
+> > On 06/23/2011 03:55 PM, J. Bruce Fields wrote:
+> >> On Fri, May 20, 2011 at 02:13:22PM -0400, Bryan Schumaker wrote:
+> >>> I have been looking at adding fault injection to the NFS server in order
+> >>> to test the client's state manager and recovery threads.  Simulating
+> >>> errors on the server seems like the easiest way to guarentee that
+> >>> specific errors happen, and happen when we tell them to.
+> >>>
+> >>> This patch uses debugfs to add a simple framework for fault injection to
+> >>> the server.  This framework is a config option, and can be enabled
+> >>> through CONFIG_NFSD_FAULT_INJECTION.  Assuming you have debugfs mounted
+> >>> to /sys/debug, a set of files will be created in /sys/debug/nfsd/.
+> >>> Writing to any of these files will cause the corresponding action and
+> >>> write a log entry to dmesg.
+> >>>
+> >>> Changes in v2:
+> >>> - Replaced "forget all state owners" with "forget all open owners"
+> >>> - Include fs/nfsd/fault_inject.c in the patch
+> >>>
+> >>> Suggestions?  Comments?
+> >>
+> >> If this is still the most recent version of the patch, and if you can
+> >> confirm that this has been tried and found useful for testing the
+> >> client, then I'll go ahead and apply for 3.1.
+> > 
+> > Yes, this is the most recent version of the patch.  It is part of my Jenkins setup, but I haven't been running it on a regular basis recently.
 > 
-> I agree that we should error out gracefully instead of blowing up, but I
-> fail to see why we want to support mknod for a regular file: it's not a
-> posix interface, nor is it substantially different from open(O_CREAT|
-> O_EXCL|O_NOFOLLOW). What is it's purpose?
+> Trond and I just talked about more things to add in for fault injection, so I'll hopefully have a new version sometime in the near future.
 
-It always worked that way, all the way back to Unix v6 (and I'm fairly sure
-to earlier than that; don't have v5 kernel source, unfortunately).  Worked
-that way in Linux since 0.02/0.03/0.10, when Linus first added mknod(2)
-(presumably 0.01 had been tested with /dev populated by Minix ;-)
+OK, I'll hold off applying this for now.
 
-As for POSIX, what it says is
-     The only portable use of mknod() is to create a FIFO-special file.         
-     If mode is not S_IFIFO or dev is not 0, the behaviour of mknod() is        
-     unspecified.                                                               
-and we support it for all non-directories.  Always had...
-
-	Note that the right thing to do is to issue CLOSE and _not_ call
-lookup_instantiate_filp() if we are called from sys_mknodat().  We don't
-want to leak stateid...
+--b.
