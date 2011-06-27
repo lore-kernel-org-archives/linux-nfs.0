@@ -1,70 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:60819 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758994Ab1FVVix (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2011 17:38:53 -0400
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH 06/11] nfs:  Use srcaddr in nfs_match_client.
-Date: Wed, 22 Jun 2011 14:36:46 -0700
-Message-Id: <1308778611-9370-7-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1308778611-9370-1-git-send-email-greearb@candelatech.com>
-References: <1308778611-9370-1-git-send-email-greearb@candelatech.com>
+Received: from mx1.redhat.com ([209.132.183.28]:32513 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752482Ab1F0QXc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Jun 2011 12:23:32 -0400
+Message-ID: <4E08AE80.8030505@RedHat.com>
+Date: Mon, 27 Jun 2011 12:23:28 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Tom Haynes <loghyr@gmail.com>
+CC: linux-nfs@vger.kernel.org, Tom Haynes <tdh@excfb.com>
+Subject: Re: [PATCH 0/2] minor patches to cthon tests for FreeBSD
+References: <1308795967-7605-1-git-send-email-tdh@excfb.com>
+In-Reply-To: <1308795967-7605-1-git-send-email-tdh@excfb.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
 
-For bound clients, we have to make sure we do not re-use
-a client that is bound differently.
 
-Signed-off-by: Ben Greear <greearb@candelatech.com>
----
-:100644 100644 c571a97... 5d8998a... M	fs/nfs/client.c
- fs/nfs/client.c |   12 ++++++++++++
- 1 files changed, 12 insertions(+), 0 deletions(-)
+On 06/22/2011 10:26 PM, Tom Haynes wrote:
+> First allows FreeBSD 9.0 to compile and second allows
+> for leading space in the time output.
+> 
+> Tom Haynes (2):
+>   Multiple clnt_broadcast, rename static reference
+>   Make the stat command handle leading blank spaces
+> 
+>  general/stat.c  |    4 +++-
+>  tools/pmapbrd.c |    7 ++++---
+>  2 files changed, 7 insertions(+), 4 deletions(-)
+> 
+Both committed on the git://linux-nfs.org/~steved/exports/cthon04 tree
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index c571a97..5d8998a 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -131,7 +131,9 @@ struct rpc_program		nfsacl_program = {
- struct nfs_client_initdata {
- 	const char *hostname;
- 	const struct sockaddr *addr;
-+	const struct sockaddr *srcaddr;
- 	size_t addrlen;
-+	size_t srcaddrlen;
- 	const struct nfs_rpc_ops *rpc_ops;
- 	int proto;
- 	u32 minorversion;
-@@ -463,6 +465,9 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
- 
- 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
- 	        const struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
-+		const struct sockaddr *sa;
-+		sa = (const struct sockaddr *)&clp->srcaddr;
-+
- 		/* Don't match clients that failed to initialise properly */
- 		if (clp->cl_cons_state < 0)
- 			continue;
-@@ -480,6 +485,13 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
- 		if (!nfs_sockaddr_cmp(sap, clap))
- 			continue;
- 
-+		/* Check to make sure local-IP bindings match,
-+		 * but just the IP-addr.
-+		 */
-+		if (data->srcaddr &&
-+		    !nfs_sockaddr_match_ipaddr(data->srcaddr, sa))
-+			continue;
-+
- 		atomic_inc(&clp->cl_count);
- 		return clp;
- 	}
--- 
-1.7.3.4
-
+steved.
