@@ -1,65 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:52386 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754456Ab1FGRfD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:35:03 -0400
-Date: Tue, 7 Jun 2011 13:35:01 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 77/88] move include lines out of include file
-Message-ID: <756f1079ab4fab5692f021ee6a48cef26931f791.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:27460 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760020Ab1F1R3Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Jun 2011 13:29:25 -0400
+Message-ID: <4E0A0F71.9080207@RedHat.com>
+Date: Tue, 28 Jun 2011 13:29:21 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Prem Karat <prem.karat@linux.vnet.ibm.com>
+CC: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/1] nfs-utils: Don't hard code source and destination
+ args
+References: <20110628104138.GB6600@d6fc318.ibm.com> <FA506314-750E-4E20-B80C-B507D032D962@oracle.com> <20110628165954.GA13059@d6fc318.ibm.com>
+In-Reply-To: <20110628165954.GA13059@d6fc318.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Signed-off-by: Jim Rees <rees@umich.edu>
-[This patch does *not* break the header's independence]
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- include/linux/sunrpc/simple_rpc_pipefs.h |    6 ------
- net/sunrpc/simple_rpc_pipefs.c           |    5 ++---
- 2 files changed, 2 insertions(+), 9 deletions(-)
 
-diff --git a/include/linux/sunrpc/simple_rpc_pipefs.h b/include/linux/sunrpc/simple_rpc_pipefs.h
-index 02e8147..f6a1227 100644
---- a/include/linux/sunrpc/simple_rpc_pipefs.h
-+++ b/include/linux/sunrpc/simple_rpc_pipefs.h
-@@ -39,14 +39,8 @@
- #ifndef _SIMPLE_RPC_PIPEFS_H_
- #define _SIMPLE_RPC_PIPEFS_H_
- 
--#include <linux/fs.h>
--#include <linux/list.h>
--#include <linux/mount.h>
--#include <linux/sched.h>
--#include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/rpc_pipe_fs.h>
- 
--
- #define payload_of(headerp)  ((void *)(headerp + 1))
- 
- /*
-diff --git a/net/sunrpc/simple_rpc_pipefs.c b/net/sunrpc/simple_rpc_pipefs.c
-index c9306aa..24af0a1 100644
---- a/net/sunrpc/simple_rpc_pipefs.c
-+++ b/net/sunrpc/simple_rpc_pipefs.c
-@@ -38,9 +38,8 @@
-  *  With thanks to CITI's project sponsor and partner, IBM.
-  */
- 
--#include <linux/completion.h>
--#include <linux/uaccess.h>
--#include <linux/module.h>
-+#include <linux/mount.h>
-+#include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/simple_rpc_pipefs.h>
- 
- 
--- 
-1.7.4.1
 
+On 06/28/2011 12:59 PM, Prem Karat wrote:
+> On 06/28/11 12:02pm, Chuck Lever wrote:
+>>
+>> On Jun 28, 2011, at 6:41 AM, Prem Karat wrote:
+>>
+>>>
+>>> Currently souce and destination parameters should be passed as first and 
+>>> second paramter while using mount.nfs. This patch allows them to be passed 
+>>> anywhere while mounting.
+>>>
+>>> Current functionality is
+>>> 	mount.nfs source destn -o <options>
+>>> This patch will allow to do this
+>>> 	mount.nfs -o <options> source destn
+>>> 		or
+>>> 	mount.nfs -o <options> source -o <options> destn
+>>
+>> Yep, that's clear, but why is this desirable?  mount.nfs should be invoked only by the mount command.  It's not meant to be run by humans.
+> Bare with me if my understanding is incorrect, however the man page does say that
+> it can be used as a standalone command with limited functionality.
+> 
+> Also it makes sense to use it if a newbie wants to know the nfs specific
+> options. The mount.nfs command shows a pointer to the correct man page for
+> nfs specific options.
+I agree.... I always thought it as a bit annoying that the command
+would only take arguments in an unnatural way...
+
+steved. 
