@@ -1,128 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:55410 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754518Ab1FMV1o (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 17:27:44 -0400
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH v4 4/6] nfs-utils:  Support srcaddr=n option for string mount.
-Date: Mon, 13 Jun 2011 14:26:46 -0700
-Message-Id: <1308000408-13690-5-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1308000408-13690-1-git-send-email-greearb@candelatech.com>
-References: <1308000408-13690-1-git-send-email-greearb@candelatech.com>
+Received: from eastrmfepo102.cox.net ([68.230.241.214]:58151 "EHLO
+	eastrmfepo102.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751328Ab1F1W1w (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jun 2011 18:27:52 -0400
+From: Tom Haynes <tdh@excfb.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Tom Haynes <tdh@excfb.com>
+Subject: [PATCH 0/1] Remove warnings on various platforms
+Date: Tue, 28 Jun 2011 17:22:02 -0500
+Message-Id: <1309299723-31539-1-git-send-email-tdh@excfb.com>
+In-Reply-To: <y>
+References: <y>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
+I cleaned up some various warnings under FreeBSD, Linux, and
+Solaris 11 Express. I tested on these platforms with both
+NFSv3 and NFSv4.0.
 
-Look for and parse the srcaddr=n argument.  If parsing
-succeeds, pass this down the call chain.  This fully
-implements binding to a specified source address when
-mounting.
+loghyr (1):
+  Remove warnings on various platforms
 
-Signed-off-by: Ben Greear <greearb@candelatech.com>
----
-:100644 100644 71417df... 1f9c372... M	utils/mount/stropts.c
- utils/mount/stropts.c |   28 ++++++++++++++++++++++++----
- 1 files changed, 24 insertions(+), 4 deletions(-)
+ basic/subr.c       |    5 ++++-
+ basic/test1.c      |    1 +
+ basic/test2.c      |    1 +
+ basic/test3.c      |    1 +
+ basic/test4.c      |    1 +
+ basic/test4a.c     |    1 +
+ basic/test5.c      |    1 +
+ basic/test5a.c     |    1 +
+ basic/test5b.c     |    1 +
+ basic/test6.c      |    1 +
+ basic/test7.c      |    1 +
+ basic/test7a.c     |    1 +
+ basic/test7b.c     |    1 +
+ basic/test8.c      |    1 +
+ basic/test9.c      |    1 +
+ domount.c          |    3 +++
+ general/large.c    |    1 +
+ general/stat.c     |    1 +
+ getopt.c           |    3 +++
+ special/dupreq.c   |    1 +
+ special/negseek.c  |    1 +
+ special/nfsidem.c  |    1 +
+ special/nstat.c    |    1 +
+ special/rename.c   |    1 +
+ special/rewind.c   |    6 +++++-
+ special/stat.c     |    1 +
+ special/touchn.c   |    6 ++++--
+ special/truncate.c |    6 +++++-
+ tools/dirdmp.c     |    1 +
+ tools/dirprt.c     |    1 +
+ tools/pmapbrd.c    |   15 ++++++++-------
+ tools/tcpd.c       |    2 +-
+ tools/udp.c        |    2 +-
+ tools/udpd.c       |    2 +-
+ 34 files changed, 59 insertions(+), 15 deletions(-)
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 71417df..1f9c372 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -92,6 +92,7 @@ struct nfsmount_info {
- 	int			flags,		/* MS_ flags */
- 				fake,		/* actually do the mount? */
- 				child;		/* forked bg child? */
-+	struct local_bind_info  *local_ip;      /* Local IP binding info */
- };
- 
- #ifdef MOUNT_CONFIG
-@@ -345,6 +346,7 @@ static int nfs_validate_options(struct nfsmount_info *mi)
- 	};
- 	sa_family_t family;
- 	int error;
-+	char *option;
- 
- 	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
- 		return 0;
-@@ -371,6 +373,20 @@ static int nfs_validate_options(struct nfsmount_info *mi)
- 					mi->address->ai_addrlen, mi->options))
- 		return 0;
- 
-+	option = po_get(mi->options, "srcaddr");
-+	if (option) {
-+		struct local_bind_info *local_ip;
-+		local_ip = malloc(sizeof(*local_ip));
-+		memset(local_ip, 0, sizeof(*local_ip));
-+		if (nfs_parse_local_bind(local_ip, option,
-+					 mi->address->ai_addr->sa_family) >= 0) {
-+			mi->local_ip = local_ip;
-+		} else {
-+			free(local_ip);
-+			return 0;
-+		}
-+	}
-+
- 	return 1;
- }
- 
-@@ -484,7 +500,8 @@ static int nfs_construct_new_options(struct mount_options *options,
-  * FALSE is returned if some failure occurred.
-  */
- static int
--nfs_rewrite_pmap_mount_options(struct mount_options *options)
-+nfs_rewrite_pmap_mount_options(struct mount_options *options,
-+			       struct local_bind_info *local_ip)
- {
- 	union nfs_sockaddr nfs_address;
- 	struct sockaddr *nfs_saddr = &nfs_address.sa;
-@@ -534,7 +551,8 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
- 	 * negotiate.  Bail now if we can't contact it.
- 	 */
- 	if (!nfs_probe_bothports(mnt_saddr, mnt_salen, &mnt_pmap,
--				 nfs_saddr, nfs_salen, &nfs_pmap, NULL)) {
-+				 nfs_saddr, nfs_salen, &nfs_pmap,
-+				 local_ip)) {
- 		errno = ESPIPE;
- 		if (rpc_createerr.cf_stat == RPC_PROGNOTREGISTERED)
- 			errno = EOPNOTSUPP;
-@@ -589,7 +607,7 @@ static int nfs_sys_mount(struct nfsmount_info *mi, struct mount_options *opts)
- }
- 
- static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
--		struct sockaddr *sap, socklen_t salen)
-+			     struct sockaddr *sap, socklen_t salen)
- {
- 	struct mount_options *options = po_dup(mi->options);
- 	int result = 0;
-@@ -631,7 +649,7 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
- 		printf(_("%s: trying text-based options '%s'\n"),
- 			progname, *mi->extra_opts);
- 
--	if (!nfs_rewrite_pmap_mount_options(options))
-+	if (!nfs_rewrite_pmap_mount_options(options, mi->local_ip))
- 		goto out_fail;
- 
- 	result = nfs_sys_mount(mi, options);
-@@ -1039,6 +1057,7 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
- 		.flags		= flags,
- 		.fake		= fake,
- 		.child		= child,
-+		.local_ip	= NULL,
- 	};
- 	int retval = EX_FAIL;
- 
-@@ -1051,5 +1070,6 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
- 
- 	freeaddrinfo(mi.address);
- 	free(mi.hostname);
-+	free(mi.local_ip);
- 	return retval;
- }
 -- 
-1.7.3.4
+1.7.5.4
 
