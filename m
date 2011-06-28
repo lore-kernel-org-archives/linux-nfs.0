@@ -1,55 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:48073 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752942Ab1FAS6R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 14:58:17 -0400
-Received: by bwz15 with SMTP id 15so307379bwz.19
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Jun 2011 11:58:16 -0700 (PDT)
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] mountd: Fix missing varialble assignment in auth_unix_gid
-Date: Wed,  1 Jun 2011 22:57:21 +0400
-Message-Id: <1306954641-2560-1-git-send-email-piastry@etersoft.ru>
+Received: from mx1.redhat.com ([209.132.183.28]:59138 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760167Ab1F1RaY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Jun 2011 13:30:24 -0400
+Message-ID: <4E0A0FA9.6080707@RedHat.com>
+Date: Tue, 28 Jun 2011 13:30:17 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: NeilBrown <neilb@suse.de>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH/RFC] mount: improve signal management when locking mtab.
+References: <20110622163852.71a2ae80@notabene.brown>	<B1677B7E-3A7E-418B-9CCA-0844510B59C8@oracle.com>	<20110623092052.414d78a8@notabene.brown>	<4D5CF8CE-FDFE-491D-99A4-D35853DDEA61@oracle.com>	<4E08B7D8.6050405@RedHat.com> <20110628121144.0afb228e@notabene.brown>
+In-Reply-To: <20110628121144.0afb228e@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-When we get into auth_unix_gid at the second time, groups_len
-is not 0 and ngroups variable leave as 0. Then we use ngroups
-in getgrouplist that fails in this case. This patch fixes it.
 
-Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
----
- utils/mountd/cache.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index df6b38f..dbe20e9 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -138,7 +138,7 @@ static void auth_unix_gid(FILE *f)
- 	static gid_t *groups = NULL;
- 	static int groups_len = 0;
- 	gid_t *more_groups;
--	int ngroups = 0;
-+	int ngroups;
- 	int rv, i;
- 	char *cp;
- 
-@@ -147,9 +147,11 @@ static void auth_unix_gid(FILE *f)
- 		if (!groups)
- 			return;
- 
--		groups_len = ngroups = INITIAL_MANAGED_GROUPS;
-+		groups_len = INITIAL_MANAGED_GROUPS;
- 	}
- 
-+	ngroups = groups_len;
-+
- 	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
- 		return;
- 
--- 
-1.7.4.5
+On 06/27/2011 10:11 PM, NeilBrown wrote:
+> On Mon, 27 Jun 2011 13:03:20 -0400 Steve Dickson <SteveD@redhat.com> wrote:
+> 
+>>
+>>
+>> On 06/23/2011 12:09 PM, Chuck Lever wrote:
+>>>
+>>> On Jun 22, 2011, at 5:20 PM, NeilBrown wrote:
+>>>
+>>>> On Wed, 22 Jun 2011 09:08:25 -0600 Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>
+>>>>> Since we are going to adopt libmount for mount.nfs in the near future, would it be better to update libmount instead?
+>>>>
+>>>> How near?
+>>>>
+>>>> Libmount appears to get signal handling right already (though I haven't
+>>>> tested it).  It blocks all signals rather than catching some of them.
+>>>>
+>>>> So switching to libmount would a perfectly reasonably response.  However if
+>>>> that is more than a few weeks away I think I would rather see this fixed up
+>>>> anyway...
+>>>
+>>> We have a libmount-based mount.nfs already in the nfs-utils tree, IIRC.  I don't think we yet have a generic plan for switching to installing that one by default.  Steve?
+>> Well a while back I did add the libmount code along with --enable-libmount-mount 
+>> configure flag. This flag has been enabled for a while now in the 
+>> pre release of Fedora 16 so it will on in the release of f16. 
+>>
+>> Plus I am looking to make a nfs-utils release... I'm in the process of
+>> clean things up just to do that. So I would be willing to enable the libmount
+>> code to be on by default. But I am concern not all distros do include
+>> the libmount code... 
+>>
+>> Some clarity... If the libmount code is enabled, this patch is not needed?
+>>
+> 
+> No it is not ... however it would be nice if the affected code wasn't even
+> compiled in.
+> 
+> i.e. which a patch like this, it will not even compile the offending code if
+> libmount is selected.
+> 
+> NeilBrown
+> 
+> 
+> diff --git a/utils/mount/Makefile.am b/utils/mount/Makefile.am
+> index 056293c..7bc3e2b 100644
+> --- a/utils/mount/Makefile.am
+> +++ b/utils/mount/Makefile.am
+> @@ -9,11 +9,10 @@ man5_MANS	= nfs.man
+>  
+>  sbin_PROGRAMS	= mount.nfs
+>  EXTRA_DIST = nfsmount.x $(man8_MANS) $(man5_MANS)
+> -mount_common = error.c network.c fstab.c token.c \
+> +mount_common = error.c network.c token.c \
+>  		    parse_opt.c parse_dev.c \
+>  		    nfsmount.c nfs4mount.c stropts.c\
+> -		    nfsumount.c \
+> -		    mount_constants.h error.h network.h fstab.h token.h \
+> +		    mount_constants.h error.h network.h token.h \
+>  		    parse_opt.h parse_dev.h \
+>  		    nfs4_mount.h nfs_mount4.h stropts.h version.h \
+>  		    mount_config.h utils.c utils.h
+> @@ -33,7 +32,8 @@ if CONFIG_LIBMOUNT
+>  mount_nfs_SOURCES += mount_libmount.c
+>  mount_nfs_LDADD += $(LIBMOUNT)
+>  else
+> -mount_nfs_SOURCES += mount.c
+> +mount_nfs_SOURCES += mount.c fstab.c nfsumount.c fstab.h
+> +
+>  endif
+>  
+>  MAINTAINERCLEANFILES = Makefile.in
+Good point.... I will take both patches...
 
+steved.
