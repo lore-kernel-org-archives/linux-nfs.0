@@ -1,115 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:33395 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:60085 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750959Ab1FIQbY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 12:31:24 -0400
-Subject: Re: [PATCH 1/3] NFSv4.1: Fix some issues with pnfs_generic_pg_test
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
+	id S1760553Ab1F1TGk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Jun 2011 15:06:40 -0400
+Date: Tue, 28 Jun 2011 15:06:40 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
 Cc: linux-nfs@vger.kernel.org
-Date: Thu, 09 Jun 2011 12:31:09 -0400
-In-Reply-To: <4DEEDD59.5030902@panasas.com>
-References: <1307399551-17489-1-git-send-email-Trond.Myklebust@netapp.com>
-		 <4DEEC808.40205@panasas.com> <1307495548.12587.5.camel@lade.trondhjem.org>
-	 <4DEEDD59.5030902@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1307637069.20245.8.camel@lade.trondhjem.org>
+Subject: Re: [PATCH 2/2] NFS: Allow sec=none mounts in certain cases
+Message-ID: <20110628190640.GB26517@fieldses.org>
+References: <20110628181324.2866.98154.stgit@seurat.1015granger.net>
+ <20110628182540.2866.42553.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110628182540.2866.42553.stgit@seurat.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-06-07 at 22:24 -0400, Benny Halevy wrote: 
-> On 2011-06-07 21:12, Trond Myklebust wrote:
-> > On Tue, 2011-06-07 at 20:53 -0400, Benny Halevy wrote: 
-> >> On 2011-06-06 18:32, Trond Myklebust wrote:
-> >>> 1. If the intention is to coalesce requests 'prev' and 'req' then we
-> >>>    have to ensure at least that we have a layout starting at
-> >>>    req_offset(prev).
-> >>>
-> >>> 2. If we're only requesting a minimal layout of length desc->pg_count,
-> >>>    we need to test the length actually returned by the server before
-> >>>    we allow the coalescing to occur.
-> >>>
-> >>> 3. We need to deal correctly with (pgio->lseg == NULL)
-> >>>
-> >>> 4. Fixup the test guarding the pnfs_update_layout.
-> >>>
-> >>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> >>> ---
-> >>>  fs/nfs/objlayout/objio_osd.c |    3 +++
-> >>>  fs/nfs/pnfs.c                |   12 +++++++-----
-> >>>  2 files changed, 10 insertions(+), 5 deletions(-)
-> >>>
-> >>> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-> >>> index 9cf208d..4c41a60 100644
-> >>> --- a/fs/nfs/objlayout/objio_osd.c
-> >>> +++ b/fs/nfs/objlayout/objio_osd.c
-> >>> @@ -1001,6 +1001,9 @@ static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
-> >>>  	if (!pnfs_generic_pg_test(pgio, prev, req))
-> >>>  		return false;
-> >>>  
-> >>> +	if (pgio->pg_lseg == NULL)
-> >>> +		return true;
-> >>> +
-> >>>  	return pgio->pg_count + req->wb_bytes <=
-> >>>  			OBJIO_LSEG(pgio->pg_lseg)->max_io_size;
-> >>>  }
-> >>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> >>> index 8c1309d..12b53ef 100644
-> >>> --- a/fs/nfs/pnfs.c
-> >>> +++ b/fs/nfs/pnfs.c
-> >>> @@ -1059,19 +1059,21 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
-> >>>  		gfp_flags = GFP_NOFS;
-> >>>  	}
-> >>>  
-> >>> -	if (pgio->pg_count == prev->wb_bytes) {
-> >>> +	if (pgio->pg_lseg == NULL) {
-> >>> +		if (pgio->pg_count != prev->wb_bytes)
-> >>> +			return true;
-> >>>  		/* This is first coelesce call for a series of nfs_pages */
-> >>>  		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
-> >>>  						   prev->wb_context,
-> >>> -						   req_offset(req),
-> >>> +						   req_offset(prev),
-> >>>  						   pgio->pg_count,
-> >>>  						   access_type,
-> >>>  						   gfp_flags);
-> >>> -		return true;
-> >>> +		if (pgio->pg_lseg == NULL)
-> >>> +			return true;
-> >>>  	}
-> >>>  
-> >>> -	if (pgio->pg_lseg &&
-> >>> -	    req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
-> >>> +	if (req_offset(req) > end_offset(pgio->pg_lseg->pls_range.offset,
-> >>
-> >> One more issue to fix: the condition should be for ">=", not ">"
-> > 
-> > Hmm.... Shouldn't it rather be:
-> > 
-> > if (end_offset(req_offset(req), req->wb_bytes) > end_offset(pgio->pg_lseg->pls_range.offset,
-> > 		pgio->pg_lseg->pls_range.length))
-> > 	return false;
-> > 
-> > Otherwise you don't know if the entire request fits in this layout
-> > segment...
+On Tue, Jun 28, 2011 at 02:25:41PM -0400, Chuck Lever wrote:
+> There is an undocumented convention (verified by reviewing network
+> traces from a NetApp filer and a Solaris NFS server) where a server
+> that returns a mount authflavor list containing an AUTH_NULL entry
+> is actually indicating it will accept any security flavor for the
+> export being mounted.
+
+This is only in the case of NLM?  (Not v4 secinfo?)
+
+--b.
+
 > 
-> True.
-> Though since we make sure the layout segments are page aligned
-> having the first offset covered is enough, this is the correct
-> way to express the condition.
-
-Ugh... That definitely would require a comment, and probably deserves a
-helper function of its own.
-
-Also, the name 'end_offset()' is rather confusing. It really is the
-offset of the first byte that lies _outside_ the actual layout segment.
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+> This might be used when the server maps all security flavors into the
+> same security mode.  For example, the server treats all accessors as,
+> say, UID 17.
+> 
+> Essentially, AUTH_NULL is treated as a wildcard that matches the
+> flavor the mounter requested.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/nfs/super.c |   15 +++++++++++----
+>  1 files changed, 11 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index 4625a4c..543cf9f 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -1570,13 +1570,20 @@ static int nfs_walk_authlist(struct nfs_parsed_mount_data *args,
+>  	 * the first flavor in the list that it supports, on the
+>  	 * assumption that the best access is provided by the first
+>  	 * flavor."
+> +	 *
+> +	 * By convention we treat AUTH_NULL in the returned list as
+> +	 * a wild card.  The server will map our requested flavor to
+> +	 * something else.
+>  	 */
+> -	for (i = 0; i < args->auth_flavor_len; i++)
+> -		for (j = 0; j < server_authlist_len; j++)
+> -			if (args->auth_flavors[i] == server->auth_flavs[j]) {
+> -				args->auth_flavors[0] = server->auth_flavs[j];
+> +	for (i = 0; i < server_authlist_len; i++) {
+> +		if (server->auth_flavs[i] == RPC_AUTH_NULL)
+> +			goto out;
+> +		for (j = 0; j < args->auth_flavor_len; j++)
+> +			if (server->auth_flavs[i] == args->auth_flavors[j]) {
+> +				args->auth_flavors[0] = server->auth_flavs[i];
+>  				goto out;
+>  			}
+> +	}
+>  
+>  	dfprintk(MOUNT, "NFS: server does not support requested auth flavor\n");
+>  	nfs_umount(server);
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
