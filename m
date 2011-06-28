@@ -1,117 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:37373 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752150Ab1FNVUZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2011 17:20:25 -0400
-Message-ID: <4DF7D092.5020405@panasas.com>
-Date: Tue, 14 Jun 2011 17:20:18 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>, open-osd <osd-dev@open-osd.org>,
-        NFS list <linux-nfs@vger.kernel.org>
-CC: Boaz Harrosh <"Boaz Harrosh bharrosh"@panasas.com>
-Subject: [PATCH 3/8] pnfs-obj: pnfs_osd_xdr: Remove dead code and cleanup
-References: <4DF7CA2F.7030407@panasas.com>
-In-Reply-To: <4DF7CA2F.7030407@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from e28smtp05.in.ibm.com ([122.248.162.5]:57810 "EHLO
+	e28smtp05.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757873Ab1F1PLL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jun 2011 11:11:11 -0400
+Received: from d28relay05.in.ibm.com (d28relay05.in.ibm.com [9.184.220.62])
+	by e28smtp05.in.ibm.com (8.14.4/8.13.1) with ESMTP id p5SFB84A009590
+	for <linux-nfs@vger.kernel.org>; Tue, 28 Jun 2011 20:41:08 +0530
+Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
+	by d28relay05.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p5SFB8G52162914
+	for <linux-nfs@vger.kernel.org>; Tue, 28 Jun 2011 20:41:08 +0530
+Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
+	by d28av04.in.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p5SFB7KD024906
+	for <linux-nfs@vger.kernel.org>; Wed, 29 Jun 2011 01:11:07 +1000
+Received: from localhost ([9.77.203.81])
+	by d28av04.in.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p5SFB6Iq024688
+	for <linux-nfs@vger.kernel.org>; Wed, 29 Jun 2011 01:11:06 +1000
+Date: Tue, 28 Jun 2011 20:41:05 +0530
+From: Prem Karat <prem.karat@linux.vnet.ibm.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs-utils: Don't hard code source and destination args
+Message-ID: <20110628151105.GD7675@d6fc318.ibm.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Boaz Harrosh <Boaz Harrosh bharrosh@panasas.com>
+Currently souce and destination parameters should be passed as first and 
+second paramter while using mount.nfs. This patch allows them to be passed 
+anywhere while mounting.
 
-* Some leftovers from ancient times.
-* This file will only define common types and client API.
-  Remove server from comments
+Current functionality is
+	mount.nfs source destn -o <options>
+This patch will allow to do this
+	mount.nfs -o <options> source destn
+		or
+	mount.nfs -o <options> source -o <options> destn
 
-Signed-off-by: Boaz Harrosh <Boaz Harrosh bharrosh@panasas.com>
+Signed-off-by: Prem Karat <prem.karat@linux.vnet.ibm.com>
 ---
- include/linux/pnfs_osd_xdr.h |   31 ++-----------------------------
- 1 files changed, 2 insertions(+), 29 deletions(-)
+ utils/mount/mount.c |   13 +++++++++----
+ 1 files changed, 9 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/pnfs_osd_xdr.h b/include/linux/pnfs_osd_xdr.h
-index 76efbdd..435dd5f 100644
---- a/include/linux/pnfs_osd_xdr.h
-+++ b/include/linux/pnfs_osd_xdr.h
-@@ -41,9 +41,6 @@
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index f3f0a83..62115bb 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -374,7 +374,7 @@ static int try_mount(char *spec, char *mount_point, int flags,
+ int main(int argc, char *argv[])
+ {
+ 	int c, flags = 0, mnt_err = 1, fake = 0;
+-	char *spec, *mount_point, *fs_type = "nfs";
++	char *spec = NULL, *mount_point = NULL, *fs_type = "nfs";
+ 	char *extra_opts = NULL, *mount_opts = NULL;
+ 	uid_t uid = getuid();
  
- #include <linux/nfs_fs.h>
- #include <linux/nfs_page.h>
--#include <scsi/osd_protocol.h>
+@@ -398,9 +398,6 @@ int main(int argc, char *argv[])
+ 		exit(EX_USAGE);
+ 	}
+ 
+-	spec = argv[1];
+-	mount_point = argv[2];
 -
--#define PNFS_OSD_OSDNAME_MAXSIZE 256
+ 	mount_config_init(progname);
  
- /*
-  * draft-ietf-nfsv4-minorversion-22
-@@ -99,12 +96,6 @@ struct pnfs_osd_objid {
- #define _DEVID_HI(oid_device_id) \
- 	(unsigned long long)be64_to_cpup(((__be64 *)(oid_device_id)->data) + 1)
+ 	argv[2] = argv[0]; /* so that getopt error messages are correct */
+@@ -447,6 +444,14 @@ int main(int argc, char *argv[])
+ 	if (optind != argc - 2) {
+ 		mount_usage();
+ 		goto out_usage;
++	} else {
++		while (optind < argc) {
++			if (!spec)
++				spec = argv[optind];
++			else
++				mount_point = argv[optind];
++			optind++;
++		}
+ 	}
  
--static inline int
--pnfs_osd_objid_xdr_sz(void)
--{
--	return (NFS4_DEVICEID4_SIZE / 4) + 2 + 2;
--}
--
- enum pnfs_osd_version {
- 	PNFS_OSD_MISSING              = 0,
- 	PNFS_OSD_VERSION_1            = 1,
-@@ -189,8 +180,6 @@ struct pnfs_osd_targetid {
- 	struct nfs4_string		oti_scsi_device_id;
- };
- 
--enum { PNFS_OSD_TARGETID_MAX = 1 + PNFS_OSD_OSDNAME_MAXSIZE / 4 };
--
- /*   struct netaddr4 {
-  *       // see struct rpcb in RFC1833
-  *       string r_netid<>;    // network id
-@@ -207,12 +196,6 @@ struct pnfs_osd_targetaddr {
- 	struct pnfs_osd_net_addr	ota_netaddr;
- };
- 
--enum {
--	NETWORK_ID_MAX = 16 / 4,
--	UNIVERSAL_ADDRESS_MAX = 64 / 4,
--	PNFS_OSD_TARGETADDR_MAX = 3 +  NETWORK_ID_MAX + UNIVERSAL_ADDRESS_MAX,
--};
--
- struct pnfs_osd_deviceaddr {
- 	struct pnfs_osd_targetid	oda_targetid;
- 	struct pnfs_osd_targetaddr	oda_targetaddr;
-@@ -222,15 +205,6 @@ struct pnfs_osd_deviceaddr {
- 	struct nfs4_string		oda_osdname;
- };
- 
--enum {
--	ODA_OSDNAME_MAX = PNFS_OSD_OSDNAME_MAXSIZE / 4,
--	PNFS_OSD_DEVICEADDR_MAX =
--		PNFS_OSD_TARGETID_MAX + PNFS_OSD_TARGETADDR_MAX +
--		2 /*oda_lun*/ +
--		1 + OSD_SYSTEMID_LEN +
--		1 + ODA_OSDNAME_MAX,
--};
--
- /* LAYOUTCOMMIT: layoutupdate */
- 
- /*   union pnfs_osd_deltaspaceused4 switch (bool dsu_valid) {
-@@ -279,7 +253,7 @@ struct pnfs_osd_ioerr {
- 	u32			oer_errno;
- };
- 
--/* OSD XDR API */
-+/* OSD XDR Client API */
- /* Layout helpers */
- /* Layout decoding is done in two parts:
-  * 1. First Call pnfs_osd_xdr_decode_layout_map to read in only the header part
-@@ -337,8 +311,7 @@ extern int
- pnfs_osd_xdr_encode_layoutupdate(struct xdr_stream *xdr,
- 				 struct pnfs_osd_layoutupdate *lou);
- 
--/* osd_ioerror encoding/decoding (layout_return) */
--/* Client */
-+/* osd_ioerror encoding (layout_return) */
- extern __be32 *pnfs_osd_xdr_ioerr_reserve_space(struct xdr_stream *xdr);
- extern void pnfs_osd_xdr_encode_ioerr(__be32 *p, struct pnfs_osd_ioerr *ioerr);
- 
+ 	if (strcmp(progname, "mount.nfs4") == 0)
 -- 
-1.7.3.4
+1.7.4
 
+-- 
+Cheers,
+Prem
+Linux Technology Center,
+IBM Systems & Technology Labs
+DID: 41776362
