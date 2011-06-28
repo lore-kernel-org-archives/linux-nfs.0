@@ -1,34 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57300 "EHLO mx1.redhat.com"
+Received: from smtp3.ugent.be ([157.193.49.127]:36397 "EHLO smtp3.UGent.be"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755075Ab1FQJ5F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Jun 2011 05:57:05 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <BANLkTimxJ5kHOODSPqRPcgbObjZbfT59uw@mail.gmail.com>
-References: <BANLkTimxJ5kHOODSPqRPcgbObjZbfT59uw@mail.gmail.com> <20110616235600.14345.16839.stgit@warthog.procyon.org.uk>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: dhowells@redhat.com, akpm@linux-foundation.org, jmorris@namei.org,
-        shirishpargaonkar@gmail.com, keyrings@linux-nfs.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        Eric Paris <eparis@redhat.com>
-Subject: Re: [PATCH] KEYS/DNS: Fix ____call_usermodehelper() to not lose the session keyring
-Date: Fri, 17 Jun 2011 10:56:51 +0100
-Message-ID: <23040.1308304611@redhat.com>
+	id S932277Ab1F1R6S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Jun 2011 13:58:18 -0400
+Message-ID: <4E0A166B.1000707@debian.org>
+Date: Tue, 28 Jun 2011 19:59:07 +0200
+From: Luk Claes <luk@debian.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Prem Karat <prem.karat@linux.vnet.ibm.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/1] nfs-utils: Don't hard code source and destination
+ args
+References: <20110628104138.GB6600@d6fc318.ibm.com> <FA506314-750E-4E20-B80C-B507D032D962@oracle.com> <20110628165954.GA13059@d6fc318.ibm.com> <42653612-BD54-4049-B8F8-ACDFB6FE6DA3@oracle.com>
+In-Reply-To: <42653612-BD54-4049-B8F8-ACDFB6FE6DA3@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Linus Torvalds <torvalds@linux-foundation.org> wrote:
+On 06/28/2011 07:49 PM, Chuck Lever wrote:
+> 
+> On Jun 28, 2011, at 12:59 PM, Prem Karat wrote:
+> 
+>> On 06/28/11 12:02pm, Chuck Lever wrote:
+>>>
+>>> On Jun 28, 2011, at 6:41 AM, Prem Karat wrote:
+>>>
+>>>>
+>>>> Currently souce and destination parameters should be passed as first and 
+>>>> second paramter while using mount.nfs. This patch allows them to be passed 
+>>>> anywhere while mounting.
+>>>>
+>>>> Current functionality is
+>>>> 	mount.nfs source destn -o <options>
+>>>> This patch will allow to do this
+>>>> 	mount.nfs -o <options> source destn
+>>>> 		or
+>>>> 	mount.nfs -o <options> source -o <options> destn
+>>>
+>>> Yep, that's clear, but why is this desirable?  mount.nfs should be invoked only by the mount command.  It's not meant to be run by humans.
+>> Bare with me if my understanding is incorrect, however the man page does say that
+>> it can be used as a standalone command with limited functionality.
+> 
+> Yes, it can be used that way, but it rarely is, and that's by design.
+> 
+>> Also it makes sense to use it if a newbie wants to know the nfs specific
+>> options. The mount.nfs command shows a pointer to the correct man page for
+>> nfs specific options.
+> 
+> I don't understand.  Why would a "newbie" invoke mount.nfs?  Is there a new use case that requires the additional flexibility?
+> 
+> I don't have a specific objection here, but this seems like an arbitrary change.
 
-> PS. Possibly it might make more sense to just put the "struct cred *"
-> pointer into the "struct subprocess_info" and not change any of the
-> function prototypes at all?
+When debugging, it's quite handy that one can switch from mount to
+mount.nfs without having to change the order of the arguments.
 
-That's the way I did it originally, but someone thought doing it with an init
-function was a better idea:-/
+Cheers
 
-Your suggestion is slightly complicated by the capability restriction stuff
-that caused the breakage.  That needs to hack the creds at some point.
-
-David
+Luk
