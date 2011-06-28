@@ -1,66 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:14539 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755849Ab1FAOoO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 10:44:14 -0400
-Subject: Re: [PATCH] NFS: filelayout should use nfs_generic_pg_test
+Received: from rcsinet10.oracle.com ([148.87.113.121]:52935 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751060Ab1F1Tel convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jun 2011 15:34:41 -0400
+Subject: Re: [PATCH 2/2] NFS: Allow sec=none mounts in certain cases
 Content-Type: text/plain; charset=us-ascii
-From: Weston Andros Adamson <dros@netapp.com>
-In-Reply-To: <4DE5D287.603@panasas.com>
-Date: Wed, 1 Jun 2011 10:44:14 -0400
-Cc: trond@netapp.com, linux-nfs@vger.kernel.org
-Message-Id: <09816808-BA7B-4EAF-A18A-866B5A98BF25@netapp.com>
-References: <1306898310-9229-1-git-send-email-dros@netapp.com> <4DE5D287.603@panasas.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20110628191004.GC26517@fieldses.org>
+Date: Tue, 28 Jun 2011 15:34:24 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <831D46A4-2C46-4895-8ABE-3C64533E2CBA@oracle.com>
+References: <20110628181324.2866.98154.stgit@seurat.1015granger.net> <20110628182540.2866.42553.stgit@seurat.1015granger.net> <20110628190640.GB26517@fieldses.org> <20110628191004.GC26517@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
-On Jun 1, 2011, at 1:47 AM, Boaz Harrosh wrote:
+On Jun 28, 2011, at 3:10 PM, J. Bruce Fields wrote:
 
-> On 06/01/2011 06:18 AM, Weston Andros Adamson wrote:
->> Use nfs_generic_pg_test instead of pnfs_generic_pg_test.
+> On Tue, Jun 28, 2011 at 03:06:40PM -0400, bfields wrote:
+>> On Tue, Jun 28, 2011 at 02:25:41PM -0400, Chuck Lever wrote:
+>>> There is an undocumented convention (verified by reviewing network
+>>> traces from a NetApp filer and a Solaris NFS server) where a server
+>>> that returns a mount authflavor list containing an AUTH_NULL entry
+>>> is actually indicating it will accept any security flavor for the
+>>> export being mounted.
 >> 
->> This fixes the BUG at fs/nfs/write.c:941 introduced by
->> 89a58e32d9105c01022a757fb32ddc3b51bf0025.
->> 
->> I was able to trigger this BUG reliably using pynfs in pnfs mode,
->> by using dd(1) to write many small blocks.
->> 
->> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->> ---
->> Fix proposed by Trond.
->> 
->> Benny- Does this make sense?
->> 
->> fs/nfs/nfs4filelayout.c  |    2 +-
->> fs/nfs/pagelist.c        |    5 ++++-
->> include/linux/nfs_page.h |    3 ++-
->> 3 files changed, 7 insertions(+), 3 deletions(-)
->> 
->> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->> index 4269088..1c3bb72 100644
->> --- a/fs/nfs/nfs4filelayout.c
->> +++ b/fs/nfs/nfs4filelayout.c
->> @@ -661,7 +661,7 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
->> 	u64 p_stripe, r_stripe;
->> 	u32 stripe_unit;
->> 
->> -	if (!pnfs_generic_pg_test(pgio, prev, req))
->> +	if (!nfs_generic_pg_test(pgio, prev, req))
->> 		return 0;
->> 
-> 
-> pnfs_generic_pg_test is the one that gets the layout.
-> 
-> What you've done is revert to MDS IO
-> 
-> Boaz
+>> This is only in the case of NLM?  (Not v4 secinfo?)
+> 			      ^^^
+> 			      (Sorry, I meant MOUNT !)
 
-Ah, you're right - I didn't even notice that!  I usually confirm client -> DS communication with tcpdump.  I was working for too long yesterday :)
+Right, this fix is specifically for the kernel's NFSv3 mount client.  I expect that SECINFO is probably the area where NFSv4 spec changes might help, but I haven't touched that in these patches.
 
-Patch: recalled.  Discussion about a real fix: started.
+At some point Bryan, Trond, and I should discuss how we can unify these pieces, and teach them how to determine the list of locally supported authflavors.  Maybe this is done already?
 
--dros
+>> 
+>> --b.
+>> 
+>>> 
+>>> This might be used when the server maps all security flavors into the
+>>> same security mode.  For example, the server treats all accessors as,
+>>> say, UID 17.
+>>> 
+>>> Essentially, AUTH_NULL is treated as a wildcard that matches the
+>>> flavor the mounter requested.
+>>> 
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>> 
+>>> fs/nfs/super.c |   15 +++++++++++----
+>>> 1 files changed, 11 insertions(+), 4 deletions(-)
+>>> 
+>>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>>> index 4625a4c..543cf9f 100644
+>>> --- a/fs/nfs/super.c
+>>> +++ b/fs/nfs/super.c
+>>> @@ -1570,13 +1570,20 @@ static int nfs_walk_authlist(struct nfs_parsed_mount_data *args,
+>>> 	 * the first flavor in the list that it supports, on the
+>>> 	 * assumption that the best access is provided by the first
+>>> 	 * flavor."
+>>> +	 *
+>>> +	 * By convention we treat AUTH_NULL in the returned list as
+>>> +	 * a wild card.  The server will map our requested flavor to
+>>> +	 * something else.
+>>> 	 */
+>>> -	for (i = 0; i < args->auth_flavor_len; i++)
+>>> -		for (j = 0; j < server_authlist_len; j++)
+>>> -			if (args->auth_flavors[i] == server->auth_flavs[j]) {
+>>> -				args->auth_flavors[0] = server->auth_flavs[j];
+>>> +	for (i = 0; i < server_authlist_len; i++) {
+>>> +		if (server->auth_flavs[i] == RPC_AUTH_NULL)
+>>> +			goto out;
+>>> +		for (j = 0; j < args->auth_flavor_len; j++)
+>>> +			if (server->auth_flavs[i] == args->auth_flavors[j]) {
+>>> +				args->auth_flavors[0] = server->auth_flavs[i];
+>>> 				goto out;
+>>> 			}
+>>> +	}
+>>> 
+>>> 	dfprintk(MOUNT, "NFS: server does not support requested auth flavor\n");
+>>> 	nfs_umount(server);
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
