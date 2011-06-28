@@ -1,281 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:52967 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932074Ab1FGR1N (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2011 13:27:13 -0400
-Date: Tue, 7 Jun 2011 13:27:11 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 11/88] pnfsblock: blocklayout stub
-Message-ID: <4904fc8cad92728785e9eec0cbefa4559397d805.1307464382.git.rees@umich.edu>
-References: <cover.1307464381.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1307464381.git.rees@umich.edu>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:44869 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760495Ab1F1SZo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jun 2011 14:25:44 -0400
+Received: by mail-iy0-f174.google.com with SMTP id 12so373005iyb.19
+        for <linux-nfs@vger.kernel.org>; Tue, 28 Jun 2011 11:25:44 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/2] NFS: Allow sec=none mounts in certain cases
+To: linux-nfs@vger.kernel.org
+Date: Tue, 28 Jun 2011 14:25:41 -0400
+Message-ID: <20110628182540.2866.42553.stgit@seurat.1015granger.net>
+In-Reply-To: <20110628181324.2866.98154.stgit@seurat.1015granger.net>
+References: <20110628181324.2866.98154.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+There is an undocumented convention (verified by reviewing network
+traces from a NetApp filer and a Solaris NFS server) where a server
+that returns a mount authflavor list containing an AUTH_NULL entry
+is actually indicating it will accept any security flavor for the
+export being mounted.
 
-Adds the minimal structure for a pnfs block layout driver,
-with all function pointers aimed at stubs.
+This might be used when the server maps all security flavors into the
+same security mode.  For example, the server treats all accessors as,
+say, UID 17.
 
-[pnfsblock: SQUASHME: adjust to API change]
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfs: move pnfs_layout_type inline in nfs_inode]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[blocklayout: encode_layoutcommit implementation]
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Essentially, AUTH_NULL is treated as a wildcard that matches the
+flavor the mounter requested.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/blocklayout/Makefile      |    4 +-
- fs/nfs/blocklayout/blocklayout.c |  224 ++++++++++++++++++++++++++++++++++++++
- 2 files changed, 226 insertions(+), 2 deletions(-)
- create mode 100644 fs/nfs/blocklayout/blocklayout.c
 
-diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
-index f214c1c..6bf49cd 100644
---- a/fs/nfs/blocklayout/Makefile
-+++ b/fs/nfs/blocklayout/Makefile
-@@ -1,5 +1,5 @@
- #
- # Makefile for the pNFS block layout driver kernel module
- #
--obj-$(CONFIG_PNFS_BLOCK) +=
--blocklayoutdriver-objs :=
-+obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
-+blocklayoutdriver-objs := blocklayout.o
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-new file mode 100644
-index 0000000..1312849
---- /dev/null
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -0,0 +1,224 @@
-+/*
-+ *  linux/fs/nfs/blocklayout/blocklayout.c
-+ *
-+ *  Module for the NFSv4.1 pNFS block layout driver.
-+ *
-+ *  Copyright (c) 2006 The Regents of the University of Michigan.
-+ *  All rights reserved.
-+ *
-+ *  Andy Adamson <andros@citi.umich.edu>
-+ *  Fred Isaman <iisaman@umich.edu>
-+ *
-+ * permission is granted to use, copy, create derivative works and
-+ * redistribute this software and such derivative works for any purpose,
-+ * so long as the name of the university of michigan is not used in
-+ * any advertising or publicity pertaining to the use or distribution
-+ * of this software without specific, written prior authorization.  if
-+ * the above copyright notice or any other identification of the
-+ * university of michigan is included in any copy of any portion of
-+ * this software, then the disclaimer below must also be included.
-+ *
-+ * this software is provided as is, without representation from the
-+ * university of michigan as to its fitness for any purpose, and without
-+ * warranty by the university of michigan of any kind, either express
-+ * or implied, including without limitation the implied warranties of
-+ * merchantability and fitness for a particular purpose.  the regents
-+ * of the university of michigan shall not be liable for any damages,
-+ * including special, indirect, incidental, or consequential damages,
-+ * with respect to any claim arising out or in connection with the use
-+ * of the software, even if it has been or is hereafter advised of the
-+ * possibility of such damages.
-+ */
-+#include <linux/module.h>
-+#include <linux/init.h>
-+
-+#include <linux/nfs_fs.h>
-+#include <linux/pnfs_xdr.h> /* Needed by nfs4_pnfs.h */
-+#include <linux/nfs4_pnfs.h>
-+
-+#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
-+
-+MODULE_LICENSE("GPL");
-+MODULE_AUTHOR("Andy Adamson <andros@citi.umich.edu>");
-+MODULE_DESCRIPTION("The NFSv4.1 pNFS Block layout driver");
-+
-+/* Callback operations to the pNFS client */
-+struct pnfs_client_operations *pnfs_callback_ops;
-+
-+static enum pnfs_try_status
-+bl_commit(struct pnfs_layout_type *lo,
-+		int sync,
-+		struct nfs_write_data *nfs_data)
-+{
-+	dprintk("%s enter\n", __func__);
-+	return PNFS_NOT_ATTEMPTED;
-+}
-+
-+static enum pnfs_try_status
-+bl_read_pagelist(struct pnfs_layout_type *lo,
-+		struct page **pages,
-+		unsigned int pgbase,
-+		unsigned nr_pages,
-+		loff_t offset,
-+		size_t count,
-+		struct nfs_read_data *nfs_data)
-+{
-+	dprintk("%s enter\n", __func__);
-+	return PNFS_NOT_ATTEMPTED;
-+}
-+
-+/* FRED - It can indicate bytes written in wdata->res.count.
-+ * It can indicate error status in wdata->task.tk_status.
-+ */
-+static enum pnfs_try_status
-+bl_write_pagelist(struct pnfs_layout_type *lo,
-+		struct page **pages,
-+		unsigned int pgbase,
-+		unsigned nr_pages,
-+		loff_t offset,
-+		size_t count,
-+		int sync,
-+		struct nfs_write_data *wdata)
-+{
-+	dprintk("%s enter - just using nfs\n", __func__);
-+	return PNFS_NOT_ATTEMPTED;
-+}
-+
-+static void
-+bl_free_layout(void *p)
-+{
-+	dprintk("%s enter\n", __func__);
-+	return;
-+}
-+
-+static void *
-+bl_alloc_layout(struct pnfs_mount_type *mtype, struct inode *inode)
-+{
-+	dprintk("%s enter\n", __func__);
-+	return NULL;
-+}
-+
-+static void
-+bl_free_lseg(struct pnfs_layout_segment *lseg)
-+{
-+	dprintk("%s enter\n", __func__);
-+	return;
-+}
-+
-+static struct pnfs_layout_segment *
-+bl_alloc_lseg(struct pnfs_layout_type *lo,
-+	      struct nfs4_pnfs_layoutget_res *lgr)
-+{
-+	dprintk("%s enter\n", __func__);
-+	return NULL;
-+}
-+
-+static int
-+bl_setup_layoutcommit(struct pnfs_layout_type *lo,
-+		      struct pnfs_layoutcommit_arg *arg)
-+{
-+	dprintk("%s enter\n", __func__);
-+	return 0;
-+}
-+
-+static void
-+bl_encode_layoutcommit(struct pnfs_layout_type *lo, struct xdr_stream *xdr,
-+		       const struct pnfs_layoutcommit_arg *arg)
-+{
-+	dprintk("%s enter\n", __func__);
-+}
-+
-+static void
-+bl_cleanup_layoutcommit(struct pnfs_layout_type *lo,
-+			struct pnfs_layoutcommit_arg *arg, int status)
-+{
-+	dprintk("%s enter\n", __func__);
-+}
-+
-+static struct pnfs_mount_type *
-+bl_initialize_mountpoint(struct super_block *sb, struct nfs_fh *fh)
-+{
-+	dprintk("%s enter\n", __func__);
-+	return NULL;
-+}
-+
-+static int
-+bl_uninitialize_mountpoint(struct pnfs_mount_type *mtype)
-+{
-+	dprintk("%s enter\n", __func__);
-+	return 0;
-+}
-+
-+static ssize_t
-+bl_get_stripesize(struct pnfs_layout_type *lo)
-+{
-+	dprintk("%s enter\n", __func__);
-+	return 0;
-+}
-+
-+static ssize_t
-+bl_get_io_threshold(struct pnfs_layout_type *lo, struct inode *inode)
-+{
-+	dprintk("%s enter\n", __func__);
-+	return 0;
-+}
-+
-+/* This is called by nfs_can_coalesce_requests via nfs_pageio_do_add_request.
-+ * Should return False if there is a reason requests can not be coalesced,
-+ * otherwise, should default to returning True.
-+ */
-+static int
-+bl_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
-+	   struct nfs_page *req)
-+{
-+	dprintk("%s enter\n", __func__);
-+	return 1;
-+}
-+
-+static struct layoutdriver_io_operations blocklayout_io_operations = {
-+	.commit				= bl_commit,
-+	.read_pagelist			= bl_read_pagelist,
-+	.write_pagelist			= bl_write_pagelist,
-+	.alloc_layout			= bl_alloc_layout,
-+	.free_layout			= bl_free_layout,
-+	.alloc_lseg			= bl_alloc_lseg,
-+	.free_lseg			= bl_free_lseg,
-+	.setup_layoutcommit		= bl_setup_layoutcommit,
-+	.encode_layoutcommit		= bl_encode_layoutcommit,
-+	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
-+	.initialize_mountpoint		= bl_initialize_mountpoint,
-+	.uninitialize_mountpoint	= bl_uninitialize_mountpoint,
-+};
-+
-+static struct layoutdriver_policy_operations blocklayout_policy_operations = {
-+	.get_stripesize			= bl_get_stripesize,
-+	.get_read_threshold		= bl_get_io_threshold,
-+	.get_write_threshold		= bl_get_io_threshold,
-+	.pg_test			= bl_pg_test,
-+};
-+
-+static struct pnfs_layoutdriver_type blocklayout_type = {
-+	.id = LAYOUT_BLOCK_VOLUME,
-+	.name = "LAYOUT_BLOCK_VOLUME",
-+	.ld_io_ops = &blocklayout_io_operations,
-+	.ld_policy_ops = &blocklayout_policy_operations,
-+};
-+
-+static int __init nfs4blocklayout_init(void)
-+{
-+	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
-+
-+	pnfs_callback_ops = pnfs_register_layoutdriver(&blocklayout_type);
-+	return 0;
-+}
-+
-+static void __exit nfs4blocklayout_exit(void)
-+{
-+	dprintk("%s: NFSv4 Block Layout Driver Unregistering...\n",
-+	       __func__);
-+
-+	pnfs_unregister_layoutdriver(&blocklayout_type);
-+}
-+
-+module_init(nfs4blocklayout_init);
-+module_exit(nfs4blocklayout_exit);
--- 
-1.7.4.1
+ fs/nfs/super.c |   15 +++++++++++----
+ 1 files changed, 11 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 4625a4c..543cf9f 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1570,13 +1570,20 @@ static int nfs_walk_authlist(struct nfs_parsed_mount_data *args,
+ 	 * the first flavor in the list that it supports, on the
+ 	 * assumption that the best access is provided by the first
+ 	 * flavor."
++	 *
++	 * By convention we treat AUTH_NULL in the returned list as
++	 * a wild card.  The server will map our requested flavor to
++	 * something else.
+ 	 */
+-	for (i = 0; i < args->auth_flavor_len; i++)
+-		for (j = 0; j < server_authlist_len; j++)
+-			if (args->auth_flavors[i] == server->auth_flavs[j]) {
+-				args->auth_flavors[0] = server->auth_flavs[j];
++	for (i = 0; i < server_authlist_len; i++) {
++		if (server->auth_flavs[i] == RPC_AUTH_NULL)
++			goto out;
++		for (j = 0; j < args->auth_flavor_len; j++)
++			if (server->auth_flavs[i] == args->auth_flavors[j]) {
++				args->auth_flavors[0] = server->auth_flavs[i];
+ 				goto out;
+ 			}
++	}
+ 
+ 	dfprintk(MOUNT, "NFS: server does not support requested auth flavor\n");
+ 	nfs_umount(server);
 
