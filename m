@@ -1,85 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:65047 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752641Ab1F3Ccb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jun 2011 22:32:31 -0400
-Received: by gxk21 with SMTP id 21so700755gxk.19
-        for <linux-nfs@vger.kernel.org>; Wed, 29 Jun 2011 19:32:30 -0700 (PDT)
-In-Reply-To: <4E0B52BB.8090003@tonian.com>
-References: <BANLkTi=xcQseTx8BTWEzg-1DO=ayJuMLrw@mail.gmail.com>
-	<4E0B52BB.8090003@tonian.com>
-Date: Thu, 30 Jun 2011 10:32:29 +0800
-Message-ID: <BANLkTinxF+obzedP+xupMCDZcgRTFDsQMg@mail.gmail.com>
-Subject: Re: [nfsv4]nfs client bug
-From: quanli gui <gqlxj1987@gmail.com>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: linux-nfs@vger.kernel.org, "Mueller, Brian" <bmueller@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from e23smtp04.au.ibm.com ([202.81.31.146]:40249 "EHLO
+	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753804Ab1F1Klo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jun 2011 06:41:44 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.31.245])
+	by e23smtp04.au.ibm.com (8.14.4/8.13.1) with ESMTP id p5SAZTY9019011
+	for <linux-nfs@vger.kernel.org>; Tue, 28 Jun 2011 20:35:29 +1000
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p5SAfd69438378
+	for <linux-nfs@vger.kernel.org>; Tue, 28 Jun 2011 20:41:39 +1000
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p5SAfdnB019403
+	for <linux-nfs@vger.kernel.org>; Tue, 28 Jun 2011 20:41:39 +1000
+Received: from localhost ([9.77.125.199])
+	by d23av01.au.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p5SAfcxF019386
+	for <linux-nfs@vger.kernel.org>; Tue, 28 Jun 2011 20:41:39 +1000
+Date: Tue, 28 Jun 2011 16:11:38 +0530
+From: Prem Karat <prem.karat@linux.vnet.ibm.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/1] nfs-utils: Don't hard code source and destination args
+Message-ID: <20110628104138.GB6600@d6fc318.ibm.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-When I use the iperf tools for one client to 4 ds, the network
-throughput is 890MB/S. It reflect that it is indeed 10GE non-blocking.
 
-a. about block size, I use bs=1M when I use dd
-b. we indeed use the tcp (doesn't the nfsv4 use the tcp defaultly?)
-c. the jumbo frames is what? how set mtu automatically?
+Currently souce and destination parameters should be passed as first and 
+second paramter while using mount.nfs. This patch allows them to be passed 
+anywhere while mounting.
 
-Brian, do you have some more tips?
+Current functionality is
+	mount.nfs source destn -o <options>
+This patch will allow to do this
+	mount.nfs -o <options> source destn
+		or
+	mount.nfs -o <options> source -o <options> destn
 
+Signed-off-by: Prem Karat <prem.karat@linux.vnet.ibm.com>
+---
+ utils/mount/mount.c |   13 +++++++++----
+ 1 files changed, 9 insertions(+), 4 deletions(-)
 
-On Thu, Jun 30, 2011 at 12:28 AM, Benny Halevy <bhalevy@tonian.com> wrote:
->
-> Hi,
->
-> First, please use plain text only when sending to linux-nfs@vger.kernel.org
-> as multi-part / html messages are automatically blocked by the spam filter.
->
-> I'm not so sure that the nfs client is to blame for the performance
-> you're seeing.  The problem could arise from too small of a block size
-> by dd / iozone
->
-> I'd try:
-> a. using a larger block size (e.g.  dd bs=4096k)
-> b. tuning your tcp better for high bandwidth
-> c. using jumbo frames all the way, and making sure that the mtu is discovered
-> automatically and set properly to 9000.
->
-> Also, what's you network look like?
-> what's the switch you're using
-> is it indeed 10 Gbps non-blocking
-> are there any linecard / chip bottlenecks or over subscription
->
-> Do you see better throughput with iperf?
->
-> Brian, you's probably have even more tips and tricks :)
->
-> Regards,
->
-> Benny
->
-> On 2011-06-28 11:26, quanli gui wrote:
-> > Hi,
-> > Recently I test the nfsv4 speed, I found that there is something wrong in
-> > the nfs client, that is the one nfs client can only provide 400MB/S to the
-> > server.
-> > My tests as follow:
-> > machine:one client, four server; hardware: all 16core, 16G memory, 5T disk;
-> > os: all suse 11 enterprise server, 2.6.31-pnfs-kernel; network: client,
-> > 10GE, server, 2GE(bond, 1GE*2);
-> > test method: on the client, mkdir four independent directory, mount the four
-> > server via nfsv4 protocol, every time increase one;
-> > test tool: iozone, or dd if=/dev/zero of=test count=20K,then cat
-> > test>/dev/null
-> > test result:(force on read speed, and watch the client/server network
-> > input/output by the sar command)
-> > 1 client vs 1 server: 200MB/S
-> > 1 client vs 2 server: 380MB/S, every server: 190MB/S
-> > 1 client vs 3 server: 380MB/S, every server: 130MB/S
-> > 1 client vs 4 server: 385MB/S, every server: 95MB/S
-> >
-> > From above, we found that 400MB/S is the max-speed for one client. This
-> > speed is the limition? How to increase this speed?
-> >
->
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index f3f0a83..62115bb 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -374,7 +374,7 @@ static int try_mount(char *spec, char *mount_point, int flags,
+ int main(int argc, char *argv[])
+ {
+ 	int c, flags = 0, mnt_err = 1, fake = 0;
+-	char *spec, *mount_point, *fs_type = "nfs";
++	char *spec = NULL, *mount_point = NULL, *fs_type = "nfs";
+ 	char *extra_opts = NULL, *mount_opts = NULL;
+ 	uid_t uid = getuid();
+ 
+@@ -398,9 +398,6 @@ int main(int argc, char *argv[])
+ 		exit(EX_USAGE);
+ 	}
+ 
+-	spec = argv[1];
+-	mount_point = argv[2];
+-
+ 	mount_config_init(progname);
+ 
+ 	argv[2] = argv[0]; /* so that getopt error messages are correct */
+@@ -447,6 +444,14 @@ int main(int argc, char *argv[])
+ 	if (optind != argc - 2) {
+ 		mount_usage();
+ 		goto out_usage;
++	} else {
++		while (optind < argc) {
++			if (!spec)
++				spec = argv[optind];
++			else
++				mount_point = argv[optind];
++			optind++;
++		}
+ 	}
+ 
+ 	if (strcmp(progname, "mount.nfs4") == 0)
+-- 
+1.7.4
+
+-- 
+Cheers,
+Prem
+Linux Technology Center,
+IBM Systems & Technology Labs
+DID: 41776362
