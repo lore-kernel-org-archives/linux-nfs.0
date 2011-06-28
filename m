@@ -1,92 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:26558 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751368Ab1FAOcM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 10:32:12 -0400
-Message-ID: <4DE64D67.1000709@panasas.com>
-Date: Wed, 01 Jun 2011 17:32:07 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Boaz Harrosh <bharrosh@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Weston Andros Adamson <dros@netapp.com>, trond@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS: filelayout should use nfs_generic_pg_test
-References: <1306898310-9229-1-git-send-email-dros@netapp.com>	 <4DE5D287.603@panasas.com> <1306930452.25992.61.camel@lade.trondhjem.org> <4DE64069.7080103@panasas.com> <4DE641EE.9000607@panasas.com>
-In-Reply-To: <4DE641EE.9000607@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet10.oracle.com ([148.87.113.121]:50253 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758781Ab1F1SeS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jun 2011 14:34:18 -0400
+Subject: Re: [PATCH 1/1] nfs-utils: Don't hard code source and destination args
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4E0A166B.1000707@debian.org>
+Date: Tue, 28 Jun 2011 14:33:56 -0400
+Cc: Prem Karat <prem.karat@linux.vnet.ibm.com>, linux-nfs@vger.kernel.org
+Message-Id: <CAC69680-53D9-4676-B6CF-7145D17014BE@oracle.com>
+References: <20110628104138.GB6600@d6fc318.ibm.com> <FA506314-750E-4E20-B80C-B507D032D962@oracle.com> <20110628165954.GA13059@d6fc318.ibm.com> <42653612-BD54-4049-B8F8-ACDFB6FE6DA3@oracle.com> <4E0A166B.1000707@debian.org>
+To: Luk Claes <luk@debian.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I guess the culprit is the moving of the
-desc->pg_bsize < PAGE_SIZE condition to nfs_generic_pg_test
-in 5b36c7dc.
 
-Previously, it stopped coalescing early for both nfs and pnfs
-but with this patch it is performed only when pnfs is disabled.
+On Jun 28, 2011, at 1:59 PM, Luk Claes wrote:
 
-Benny
+> On 06/28/2011 07:49 PM, Chuck Lever wrote:
+>> 
+>> On Jun 28, 2011, at 12:59 PM, Prem Karat wrote:
+>> 
+>>> On 06/28/11 12:02pm, Chuck Lever wrote:
+>>>> 
+>>>> On Jun 28, 2011, at 6:41 AM, Prem Karat wrote:
+>>>> 
+>>>>> 
+>>>>> Currently souce and destination parameters should be passed as first and 
+>>>>> second paramter while using mount.nfs. This patch allows them to be passed 
+>>>>> anywhere while mounting.
+>>>>> 
+>>>>> Current functionality is
+>>>>> 	mount.nfs source destn -o <options>
+>>>>> This patch will allow to do this
+>>>>> 	mount.nfs -o <options> source destn
+>>>>> 		or
+>>>>> 	mount.nfs -o <options> source -o <options> destn
+>>>> 
+>>>> Yep, that's clear, but why is this desirable?  mount.nfs should be invoked only by the mount command.  It's not meant to be run by humans.
+>>> Bare with me if my understanding is incorrect, however the man page does say that
+>>> it can be used as a standalone command with limited functionality.
+>> 
+>> Yes, it can be used that way, but it rarely is, and that's by design.
+>> 
+>>> Also it makes sense to use it if a newbie wants to know the nfs specific
+>>> options. The mount.nfs command shows a pointer to the correct man page for
+>>> nfs specific options.
 
-On 2011-06-01 16:43, Benny Halevy wrote:
-> On 2011-06-01 16:36, Boaz Harrosh wrote:
->> On 06/01/2011 03:14 PM, Trond Myklebust wrote:
->>> On Wed, 2011-06-01 at 08:47 +0300, Boaz Harrosh wrote: 
->>>> On 06/01/2011 06:18 AM, Weston Andros Adamson wrote:
->>>>
->>>> pnfs_generic_pg_test is the one that gets the layout.
->>>>
->>>> What you've done is revert to MDS IO
->>>
->>> The "files" layout type always gets the layout in the pg_doio() method
->>> instead of the pg_test().
->>>
->>
->> Well I don't see where? I fought this all day, when trying to make the
->> new code run with objlayout, which was missing the implementation of pg_test().
->> And never got a pnfs-IO.
->>
->> I've searched the full tree for calls to pnfs_update_layout() the only
->> one I can see are in:
->> nfs_pagein_multi() - which means within a single page, right?
->> nfs_pagein_one()   - But is protected with list_is_singular() so only in the
->>                      single page case
->> nfs_flush_multi()  - Same as nfs_pagein_multi
->> nfs_flush_one()    - Also here protected with list_is_singular()
->>
->> and the all mighty
->> pnfs_generic_pg_test()
->>
->> I cannot see where the filelayout is different then other layouts
->> in that respect. Sorry to be slow, I would like to understand?
->>
->> And also be careful with nfs_generic_pg_test() it inspects
->> desc->bsize which is negotiated with MDS, it's very small.
->>
+The mount(8) man page already has a pointer to nfs(5), it looks like.  IMO mount(8) probably shouldn't even mention mount.nfs.
+
+>> I don't understand.  Why would a "newbie" invoke mount.nfs?  Is there a new use case that requires the additional flexibility?
+>> 
+>> I don't have a specific objection here, but this seems like an arbitrary change.
 > 
-> I'm also looking into this.
-> The call to pnfs_generic_pg_test wasn't a typo.
-> As pre dfed206 "NFSv4.1: unify pnfs_pageio_init functions"
-> we were setting pg_pgio->test to pnfs_write_pg_test
-> which is equivalent to pnfs_generic_pg_test
-> and 89a58e3 "NFSv4.1: use pnfs_generic_pg_test directly by layout driver"
-> only reversed the call from pnfs_generic_pg_test to ld->pg_test
-> to a call from ld->pg_test to pnfs_generic_pg_test
-> 
-> Benny
-> 
->>> Cheers
->>>   Trond
->>>
->>
->> Thanks
->> Boaz
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> When debugging, it's quite handy that one can switch from mount to
+> mount.nfs without having to change the order of the arguments.
+
+Do any of the other mount subcommands (eg. mount.fuse, mount.cifs, mount.tmpfs) need this change too?
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
