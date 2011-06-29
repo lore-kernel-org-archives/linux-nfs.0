@@ -1,47 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:47864 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751197Ab1FTRRs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jun 2011 13:17:48 -0400
-Message-ID: <4DFF7B3B.7040109@panasas.com>
-Date: Mon, 20 Jun 2011 09:54:19 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: "'linux-nfs@vger.kernel.org'" <linux-nfs@vger.kernel.org>,
-        "Assarsson, Emil" <Emil.Assarsson@sonyericsson.com>
-Subject: Re: Exports stops working with permission denied.
-References: <2BF070A7A2375D46BA1B6087F8D5DCB67E82926EBD@seldmbx01.corpusers.net>
-In-Reply-To: <2BF070A7A2375D46BA1B6087F8D5DCB67E82926EBD@seldmbx01.corpusers.net>
-Content-Type: text/plain; charset="UTF-8"
+Received: from fieldses.org ([174.143.236.118]:41450 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752595Ab1F2UlC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Jun 2011 16:41:02 -0400
+Date: Wed, 29 Jun 2011 16:40:59 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] NFSD: Added TEST_STATEID operation
+Message-ID: <20110629204058.GA6894@fieldses.org>
+References: <1305922380-8162-1-git-send-email-bjschuma@netapp.com>
+ <1305922380-8162-3-git-send-email-bjschuma@netapp.com>
+ <4E0B81B6.8060005@netapp.com>
+ <20110629195447.GC3279@fieldses.org>
+ <4E0B8C5E.1090505@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E0B8C5E.1090505@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 06/17/2011 05:23 AM, Assarsson, Emil wrote:
-> Hi,
+On Wed, Jun 29, 2011 at 04:34:38PM -0400, Bryan Schumaker wrote:
+> On 06/29/2011 03:54 PM, J. Bruce Fields wrote:
+> > On Wed, Jun 29, 2011 at 03:49:10PM -0400, Bryan Schumaker wrote:
+> >> On 05/20/2011 04:13 PM, bjschuma@netapp.com wrote:
+> >>> +__be32
+> >>> +nfsd4_do_test_stateid(stateid_t *stateid, int flags)
+> >>> +{
+> >>> +	__be32 ret = nfs4_validate_stateid(stateid, flags);
+> >>> +	if (!ret)
+> >>> +		ret = nfs4_validate_stateid(stateid, flags);
+> >>> +	return ret;
+> >>
+> >> Looking back at this, I'm not convinced that I need to call nfs4_validate_stateid() twice with the same stateid and flags.  What is the status of these patches?  Should I resubmit everything or send in a small patch to fix this?
+> > 
+> > Whoops, lazy review on my part....
+> > 
+> > Looks like I'd applied that locally but not pushed it out to my public
+> > tree yet, so I could still take a replacement.
 > 
-> Emil Assarsson Sony Ericsson Mobile Communications AB
+> Ok, sounds good.
+> > 
+> > How are you testing these, by the way?  On second thoughts, I think I
+> > may have already asked you that, and forgotten the answer, so don't
+> > bother answering here--just add some text to the changelog and then I'll
+> > know how to find the answer next time.
 > 
-> "The information in this email, and attachment(s) thereto, is
-> strictly confidential and may be legally privileged. It is intended
-> solely for the named recipient(s), and access to this e-mail, or any
-> attachment(s) thereto, by anyone else is unauthorized. Violations
-> hereof may result in legal actions. Any attachment(s) to this e-mail
-> has been checked for viruses, but please rely on your own
-> virus-checker and procedures. If you contact us by e-mail, we will
-> store your name and address to facilitate communications in the
-> matter concerned. If you do not consent to us storing your name and
-> address for above stated purpose, please notify the sender promptly.
-> Also, if you are not the intended recipient please inform the sender
-> by replying to this transmission, and delete the e-mail, its
-> attachment(s), and any copies of it without, disclosing it."
-> 
-> 
+> I found this as I was going through my fault injection code.  I'm going to double check these with my fault injection changes and then try to send in updates for both next week.
 
-No it is *NOT* !! For the record: I disagree with everything
-stated in above paragraph, and will not comply, nor will I
-"result in legal actions". !!
-
-Please remove any such crap from a public mailing list post
-
-Rrrr
-Boaz
+Sounds good, thanks Bryan.--b.
