@@ -1,89 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251]:36759 "EHLO
-	moving-picture.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754559Ab1FFMTE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jun 2011 08:19:04 -0400
-Message-ID: <4DECC5B6.8040009@moving-picture.com>
-Date: Mon, 06 Jun 2011 13:19:02 +0100
-From: James Pearson <james-p@moving-picture.com>
-To: linux-nfs@vger.kernel.org
-CC: steved@redhat.com, bfields@fieldses.org
-Subject: [PATCH] nfs-utils: add client match order information to exports.man
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:61777 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754330Ab1F2Quk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jun 2011 12:50:40 -0400
+Subject: Re: NFSv4 null request and compatibility with netapp
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Franck Eyraud <franck.eyraud@jrc.ec.europa.eu>
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 29 Jun 2011 12:50:37 -0400
+In-Reply-To: <4E0B3897.40209@jrc.ec.europa.eu>
+References: <4E0B3897.40209@jrc.ec.europa.eu>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1309366237.12547.13.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Add details to the exports man page on the client match order against 
-the various Machine Name Format specifications.
+On Wed, 2011-06-29 at 16:37 +0200, Franck Eyraud wrote: 
+> Dear nfs linux list,
+> 
+> I have an issue with NFSv4 clients running debian with linux kernel 
+> version 2.6.29 and above. The NFS4 server is n a NetApp NAS.
+> 
+> The problem arised when, after upgrading the kernel of our machines, the 
+> filer started to issue a lot of these messages :
+> 
+> Client 1XX.1XX.2XX.73 has an authentication error 2
+> Client 1XX.1XX.2XX.73 is sending bad rpc requests with error: RPC version mismatch or authentication error(73)
+> 
+> The NetApp team analyzed the tcp trace and sent us with this answer, basically saying that the fault is from client side :
+> 
+> Can someone on the list confirm that their affirmations are correct ?
+> 
+> I already opened a bug on debian http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=632074 where they said that maybe the client behavior is not that odd with respect with the RFC standard.
 
-Signed-off-by: James Pearson <james-p@moving-picture.com>
+Without a trace, it is hard to affirm anything, but please note the
+following:
 
---- a/utils/exportfs/exports.man        2010-09-28 13:24:16.000000000 +0100
-+++ b/utils/exportfs/exports.man        2011-06-05 22:57:55.232662000 +0100
-@@ -45,22 +45,8 @@
-  .SS Machine Name Formats
-  NFS clients may be specified in a number of ways:
-  .IP "single host
--This is the most common format. You may specify a host either by an
--abbreviated name recognized be the resolver, the fully qualified domain
--name, or an IP address.
--.IP "netgroups
--NIS netgroups may be given as
--.IR @group .
--Only the host part of each
--netgroup members is consider in checking for membership.  Empty host
--parts or those containing a single dash (\-) are ignored.
--.IP "wildcards
--Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
--This can be used to make the \fIexports\fR file more compact; for instance,
--\fI*.cs.foo.edu\fR matches all hosts in the domain
--\fIcs.foo.edu\fR.  As these characters also match the dots in a domain
--name, the given pattern will also match all hosts within any subdomain
--of \fIcs.foo.edu\fR.
-+You may specify a host either by an abbreviated name recognized be the
-+resolver, the fully qualified domain name, or an IP address.
-  .IP "IP networks
-  You can also export directories to all hosts on an IP (sub-) network
-  simultaneously. This is done by specifying an IP address and netmask pair
-@@ -72,6 +58,25 @@
-  to the network base IPv4 address results in identical subnetworks with 
-10 bits of
-  host. Wildcard characters generally do not work on IP addresses, 
-though they
-  may work by accident when reverse DNS lookups fail.
-+.IP "wildcards
-+Machine names may contain the wildcard characters \fI*\fR and \fI?\fR.
-+This can be used to make the \fIexports\fR file more compact; for instance,
-+\fI*.cs.foo.edu\fR matches all hosts in the domain
-+\fIcs.foo.edu\fR.  As these characters also match the dots in a domain
-+name, the given pattern will also match all hosts within any subdomain
-+of \fIcs.foo.edu\fR.
-+.IP "netgroups
-+NIS netgroups may be given as
-+.IR @group .
-+Only the host part of each
-+netgroup members is consider in checking for membership.  Empty host
-+parts or those containing a single dash (\-) are ignored.
-+.IP "anonymous
-+This is specified by a single
-+.I *
-+character (not to be confused with the
-+.I wildcard
-+entry above) and will match all clients.
-  '''.TP
-  '''.B =public
-  '''This is a special ``hostname'' that identifies the given directory name
-@@ -92,6 +97,12 @@
-  '''.B \-\-public\-root
-  '''option. Multiple specifications of a public root will be ignored.
-  .PP
-+If a client matches more than one of the specifications above, then
-+the first match from the above list order takes precedence - regardless of
-+the order they appear on the export line. However, if a client matches
-+more than one of the same type of specification (e.g. two netgroups),
-+then the first match from the order they appear on the export line takes
-+precedence.
-  .SS RPCSEC_GSS security
-  You may use the special strings "gss/krb5", "gss/krb5i", or "gss/krb5p"
-  to restrict access to clients using rpcsec_gss security.  However, this
+     1. The client will usually share the same TCP connection for _all_
+        mounts to any given server, so even if you didn't see the client
+        establish the rpcsec_gss session after the particular mount that
+        you used to test on, it may have been established by a previous
+        mount. 
+     2. Once the client is finished using an rpcsec_gss session, and
+        that session is kicked out of the cache (usually within 1 minute
+        of last use, but it may occasionally take longer), then the
+        client will send out a NULL call with the RPCSEC_GSS_DESTROY
+        message. 
+     3. The client doesn't know, before sending an RPC call, whether or
+        not the server has already expired the rpcsec_gss session. If
+        the server has expired it without the client's knowledge, then
+        it is unreasonable to declare the RPCSEC_GSS_DESTROY call to be
+        an error. The server should simply try to obey the call, and
+        then acknowledge it as a success, whether or not it actually
+        found an active session.
+
+IOW: this all looks to me like a storm in a teacup brought about by a
+server implementation that is logging errors in a case where it
+shouldn't.
+
+Cheers
+  Trond
+
+> ---------
+> Tue May 24 10:05:59 MEST [vcid@s-jrciprna004p: nfsd.rpc.request.bad:warning]: Client 1XX.1XX.2XX.73 is sending bad rpc requests with error: RPC version mismatch or
+> authentication error(73)
+> 
+> We looked in the code and the (73) has no significance here and is simply the error code number for "RPC version mismatch or authentication error".
+> 
+> What we see is that the following occurs at the time of these errors:
+> - The client has an established TCP session on which it does NFSv4.
+> - The NFSv4 calls uses Kerberos.
+> - On that TCP session, the client occasionally does a NULL call.
+> - The filer rejects it with an authentication error (auth state 2, client must begin new session)
+> - The client does a new NULL call on a separate TCP session without a GSS context.
+> - The filer responds and a new context is established.
+> - The client continues on the original TCP session with the new context.
+> 
+> This explains why no side effect is seen: the client simply establishes a new context and continues as if nothing had happened.
+> We have checked through the trace for vlan 240 and the pattern is the same throughout and the error always happens for NULL calls only (occasionally two replies may be
+> sent in the same TCP payload, but the error is always on the NULL reply, then).
+> We know that some Debian kernels do not exhibit this problem at any time, but others do. This (along with the problem being tied to NULL calls only)
+> suggest to us that this is due to client side behaviour.
+> 
+> Anyway, we tried to check for the first occurrence of the error, which warrants some chronology. We'll do references per clock second for ease.
+> - The first client call is at 10:04:16 in an established NFS mount.
+> - The initial part of the trace, the client only uses TCP port 1006.
+> - The client uses the same GSS context, with the exception of a SETCLIENTID and a SETCLIENTID_CONFIRM call.
+> - At 10:05:00 the client tears down four GSS sessions (used for Kerberos) using RPCSEC_GSS_DESTROY in an NFSv4 NULL call. This is done from TCP port 1006 but for four
+> different contexts. None of these have been used in the trace at that point.
+> - The client continues with more cals on port 1006 using the the same GSS context.
+> - Still at 10:05:00 (frame 1982792), the client uses an NFSv4 call to do a RPCSEC_GSS_INIT to establish a new GSS context.
+> - The client continues using the new GSS context and does not reuse the old context.
+> - The sequence described above on the NULL calls start.
+> 
+> Looking closer at these steps, we notice something important in the NULL calls.
+> Above, the client destroyed four GSS contexts that were not used during the trace. However, it did not destroy the GSS context it was using for a while there.
+> 
+> However, we now note the client actually does a RPCSEC_GSS_DESTROY in each of the NFSv4 NULL calls where we respond with an authentication error. As the error
+> indicates that the client has to begin a new session, this seems like a reasonable response to the call.
+> 
+> So to summarize:
+> - The filer logs these errors when the client destroys a GSS context.
+> - The error message is a logical response.
+> 
+> The decission to tear down the GSS context is with the client. So this would seem to be a client side issue after all, which just happens to get logged on the filer.
+> -------------
+> 
+> Thank you for your help,
+> 
+> Franck Eyraud
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
