@@ -1,112 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:26860 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751959Ab1FMVpO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 17:45:14 -0400
-Message-ID: <4DF684E2.3090900@panasas.com>
-Date: Mon, 13 Jun 2011 17:45:06 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH] pnfs-obj: pnfs_osd_xdr: Remove dead code and cleanup
-Content-Type: text/plain; charset=UTF-8
+Received: from e23smtp04.au.ibm.com ([202.81.31.146]:37676 "EHLO
+	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751830Ab1F2HVw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jun 2011 03:21:52 -0400
+Received: from d23relay05.au.ibm.com (d23relay05.au.ibm.com [202.81.31.247])
+	by e23smtp04.au.ibm.com (8.14.4/8.13.1) with ESMTP id p5T7FWAL009462
+	for <linux-nfs@vger.kernel.org>; Wed, 29 Jun 2011 17:15:32 +1000
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay05.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p5T7KNIQ979122
+	for <linux-nfs@vger.kernel.org>; Wed, 29 Jun 2011 17:20:23 +1000
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p5T7LfJp011832
+	for <linux-nfs@vger.kernel.org>; Wed, 29 Jun 2011 17:21:42 +1000
+Message-ID: <4E0AD278.3000503@linux.vnet.ibm.com>
+Date: Wed, 29 Jun 2011 12:51:28 +0530
+From: faizan husain <faizanh@linux.vnet.ibm.com>
+To: linux-nfs@vger.kernel.org
+CC: Frank S Filz <ffilz@us.ibm.com>, jvrao@linux.vnet.ibm.com
+Subject: [PATCH] nfs4-acl-tools : nfs4_setfacl' failed with unexpected messages
+ if the format of the input file is incorrect.
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On RHEL5.5 and above releases,
+read ACL entries to set from file leads to a segmentation fault on pp64,
+more over the same problem does not show up for x86_64 architecture.
 
-* Some leftovers from ancient times.
-* This file will only define common types and client API.
-  Remove server from comments
+here is what i tried.
+mounted a file system over nfs4.
 
-Signed-off-by: Boaz Harrosh <Boaz Harrosh bharrosh@panasas.com>
+#rpm -qa | grep nfs4
+nfs4-acl-tools-0.3.3-5.el6.ppc64
+
+'nfs4_setfacl' failed with unexpected message:
+#nfs4_setfacl -S file4 file1
+*** glibc detected *** nfs4_setfacl: double free or corruption (out):
+0x08007760 ***
+expected out should be like
+Scanning ACE string 'abcd' failed.
+Failed while inserting ACE(s).
+
+
+ From b8333732964780394518be74ab0b7c61a7e4be4f Mon Sep 17 00:00:00 2001
+From: faizan <faizan.husain@xxxxxxx>
+Date: Tue, 28 Jun 2011 16:06:47 +0530
+Subject: [PATCH][BUILD]] FIX - 'nfs4_setfacl' failed with unexpected 
+messages iff
+the format of the input file is incorrect.
+
+
+Signed-off-by: faizan <faizan.husain@xxxxxxxx>
 ---
- include/linux/pnfs_osd_xdr.h |   31 ++-----------------------------
- 1 files changed, 2 insertions(+), 29 deletions(-)
+  libnfs4acl/nfs4_ace_from_string.c |    1 -
+  1 files changed, 0 insertions(+), 1 deletions(-)
 
-diff --git a/include/linux/pnfs_osd_xdr.h b/include/linux/pnfs_osd_xdr.h
-index 76efbdd..435dd5f 100644
---- a/include/linux/pnfs_osd_xdr.h
-+++ b/include/linux/pnfs_osd_xdr.h
-@@ -41,9 +41,6 @@
- 
- #include <linux/nfs_fs.h>
- #include <linux/nfs_page.h>
--#include <scsi/osd_protocol.h>
--
--#define PNFS_OSD_OSDNAME_MAXSIZE 256
- 
- /*
-  * draft-ietf-nfsv4-minorversion-22
-@@ -99,12 +96,6 @@ struct pnfs_osd_objid {
- #define _DEVID_HI(oid_device_id) \
- 	(unsigned long long)be64_to_cpup(((__be64 *)(oid_device_id)->data) + 1)
- 
--static inline int
--pnfs_osd_objid_xdr_sz(void)
--{
--	return (NFS4_DEVICEID4_SIZE / 4) + 2 + 2;
--}
--
- enum pnfs_osd_version {
- 	PNFS_OSD_MISSING              = 0,
- 	PNFS_OSD_VERSION_1            = 1,
-@@ -189,8 +180,6 @@ struct pnfs_osd_targetid {
- 	struct nfs4_string		oti_scsi_device_id;
- };
- 
--enum { PNFS_OSD_TARGETID_MAX = 1 + PNFS_OSD_OSDNAME_MAXSIZE / 4 };
--
- /*   struct netaddr4 {
-  *       // see struct rpcb in RFC1833
-  *       string r_netid<>;    // network id
-@@ -207,12 +196,6 @@ struct pnfs_osd_targetaddr {
- 	struct pnfs_osd_net_addr	ota_netaddr;
- };
- 
--enum {
--	NETWORK_ID_MAX = 16 / 4,
--	UNIVERSAL_ADDRESS_MAX = 64 / 4,
--	PNFS_OSD_TARGETADDR_MAX = 3 +  NETWORK_ID_MAX + UNIVERSAL_ADDRESS_MAX,
--};
--
- struct pnfs_osd_deviceaddr {
- 	struct pnfs_osd_targetid	oda_targetid;
- 	struct pnfs_osd_targetaddr	oda_targetaddr;
-@@ -222,15 +205,6 @@ struct pnfs_osd_deviceaddr {
- 	struct nfs4_string		oda_osdname;
- };
- 
--enum {
--	ODA_OSDNAME_MAX = PNFS_OSD_OSDNAME_MAXSIZE / 4,
--	PNFS_OSD_DEVICEADDR_MAX =
--		PNFS_OSD_TARGETID_MAX + PNFS_OSD_TARGETADDR_MAX +
--		2 /*oda_lun*/ +
--		1 + OSD_SYSTEMID_LEN +
--		1 + ODA_OSDNAME_MAX,
--};
--
- /* LAYOUTCOMMIT: layoutupdate */
- 
- /*   union pnfs_osd_deltaspaceused4 switch (bool dsu_valid) {
-@@ -279,7 +253,7 @@ struct pnfs_osd_ioerr {
- 	u32			oer_errno;
- };
- 
--/* OSD XDR API */
-+/* OSD XDR Client API */
- /* Layout helpers */
- /* Layout decoding is done in two parts:
-  * 1. First Call pnfs_osd_xdr_decode_layout_map to read in only the header part
-@@ -337,8 +311,7 @@ extern int
- pnfs_osd_xdr_encode_layoutupdate(struct xdr_stream *xdr,
- 				 struct pnfs_osd_layoutupdate *lou);
- 
--/* osd_ioerror encoding/decoding (layout_return) */
--/* Client */
-+/* osd_ioerror encoding (layout_return) */
- extern __be32 *pnfs_osd_xdr_ioerr_reserve_space(struct xdr_stream *xdr);
- extern void pnfs_osd_xdr_encode_ioerr(__be32 *p, struct pnfs_osd_ioerr *ioerr);
- 
--- 
-1.7.3.4
+diff --git a/libnfs4acl/nfs4_ace_from_string.c 
+b/libnfs4acl/nfs4_ace_from_string.c
+index 9d877fb..1cc220e 100644
+--- a/libnfs4acl/nfs4_ace_from_string.c
++++ b/libnfs4acl/nfs4_ace_from_string.c
+@@ -125,7 +125,6 @@ parse_alloc_fields(char *buf, char *fields[NUMFIELDS])
+
+         return 0;
+  out_free:
+-       free_fields(fields);
+         return -ENOMEM;
+  }
+
+--
+1.7.1
+
+Regards
+Faizan
 
