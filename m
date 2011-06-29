@@ -1,72 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:34544 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756650Ab1FIXFY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 19:05:24 -0400
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [RFC 08/11] nfs:  Pass srcaddr into mount request.
-Date: Thu,  9 Jun 2011 16:02:52 -0700
-Message-Id: <1307660575-6994-9-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1307660575-6994-1-git-send-email-greearb@candelatech.com>
-References: <1307660575-6994-1-git-send-email-greearb@candelatech.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:28286 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754009Ab1F2SXZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jun 2011 14:23:25 -0400
+From: <peter.staubach@emc.com>
+To: <tdh@excfb.com>
+CC: <SteveD@redhat.com>, <linux-nfs@vger.kernel.org>
+Date: Wed, 29 Jun 2011 14:16:24 -0400
+Subject: RE: [PATCH 1/1] Remove warnings on various platforms
+Message-ID: <5E6794FC7B8FCA41A704019BE3C70E8B8285F3CB@MX31A.corp.emc.com>
+References: <y> <1309299723-31539-2-git-send-email-tdh@excfb.com>
+ <5E6794FC7B8FCA41A704019BE3C70E8B8285F299@MX31A.corp.emc.com>
+ <20110629172858.GA6258@adept.internal.excfb.com>
+In-Reply-To: <20110629172858.GA6258@adept.internal.excfb.com>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
+Hmmm.  Yes, make sense.
 
-This starts tying the srcaddr logic together.
+That said, I think that it would be better to attempt to do it the right way and then let people tell us when it isn't quite right yet.  We should eventually be able to come to a set of changes which are right, for everyone.
 
-Signed-off-by: Ben Greear <greearb@candelatech.com>
----
-:100644 100644 59c3a26... 2faac84... M	fs/nfs/internal.h
-:100644 100644 d4c2d6b... 5ca6e12... M	fs/nfs/mount_clnt.c
-:100644 100644 cb41131... e45f616... M	fs/nfs/super.c
- fs/nfs/internal.h   |    1 +
- fs/nfs/mount_clnt.c |    1 +
- fs/nfs/super.c      |    2 ++
- 3 files changed, 4 insertions(+), 0 deletions(-)
+Compiling on Linux, Solaris, and FreeBSD should be a good start.  Perhaps Olga or someone else could help with the Windows compiles.  I suspect that we could find someone with access to AIX or HP/UX or ...  :-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 59c3a26..2faac84 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -122,6 +122,7 @@ struct nfs_parsed_mount_data {
- /* mount_clnt.c */
- struct nfs_mount_request {
- 	struct sockaddr		*sap;
-+	struct sockaddr         *srcaddr;
- 	size_t			salen;
- 	char			*hostname;
- 	char			*dirpath;
-diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index d4c2d6b..5ca6e12 100644
---- a/fs/nfs/mount_clnt.c
-+++ b/fs/nfs/mount_clnt.c
-@@ -155,6 +155,7 @@ int nfs_mount(struct nfs_mount_request *info)
- 	struct rpc_create_args args = {
- 		.net		= &init_net,
- 		.protocol	= info->protocol,
-+		.saddress	= info->srcaddr,
- 		.address	= info->sap,
- 		.addrsize	= info->salen,
- 		.servername	= info->hostname,
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index cb41131..e45f616 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1600,6 +1600,8 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 	struct nfs_mount_request request = {
- 		.sap		= (struct sockaddr *)
- 						&args->mount_server.address,
-+		.salen		= args->mount_server.addrlen,
-+		.srcaddr	= (struct sockaddr *)&args->srcaddr.address,
- 		.dirpath	= args->nfs_server.export_path,
- 		.protocol	= args->mount_server.protocol,
- 		.fh		= root_fh,
+Perhaps we could also consider cleaning up tests.init?  The lists of commented out options seems quite unwieldly to me.  Do we really need all of that stuff, especially for the much older systems?
+
+	Thanx...
+
+		ps
+
+
+-----Original Message-----
+From: Tom Haynes [mailto:tdh@excfb.com] 
+Sent: Wednesday, June 29, 2011 1:29 PM
+To: Staubach, Peter
+Cc: tdh@excfb.com; SteveD@redhat.com; linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/1] Remove warnings on various platforms
+
+On Wed, Jun 29, 2011 at 07:53:19AM -0400, peter.staubach@emc.com wrote:
+> Hi.
+> 
+> For some of these new casts, wouldn't be it better to simply declare the variable to be the correct type to start with instead of casting some other type?  For example, the socklen_t variables?
+> 
+> It seems funny that all of those XDR routines need to be casted as well.
+> 
+> 	Thanx...
+> 
+> 		ps
+
+I tried to go with the most innocent changes I could. My main concern
+is lack of access to different platforms to do sanity compiles
+and unit testing.
+
 -- 
-1.7.3.4
+Tom Haynes
+ex-cfb
 
