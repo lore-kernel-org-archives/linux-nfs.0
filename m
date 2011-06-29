@@ -1,41 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:38155 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753956Ab1FNVgf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2011 17:36:35 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>, open-osd <osd-dev@open-osd.org>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 06/10] SQUASHME: pnfsd-exofs: Server xdr definisions were moved to a separate header
-Date: Tue, 14 Jun 2011 17:36:34 -0400
-Message-Id: <1308087394-13207-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4DF7D36F.9070602@panasas.com>
-References: <4DF7D36F.9070602@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:37272 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932217Ab1F2Tyt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Jun 2011 15:54:49 -0400
+Date: Wed, 29 Jun 2011 15:54:47 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] NFSD: Added TEST_STATEID operation
+Message-ID: <20110629195447.GC3279@fieldses.org>
+References: <1305922380-8162-1-git-send-email-bjschuma@netapp.com>
+ <1305922380-8162-3-git-send-email-bjschuma@netapp.com>
+ <4E0B81B6.8060005@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E0B81B6.8060005@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Include from export.c the server XDR header
+On Wed, Jun 29, 2011 at 03:49:10PM -0400, Bryan Schumaker wrote:
+> On 05/20/2011 04:13 PM, bjschuma@netapp.com wrote:
+> > +__be32
+> > +nfsd4_do_test_stateid(stateid_t *stateid, int flags)
+> > +{
+> > +	__be32 ret = nfs4_validate_stateid(stateid, flags);
+> > +	if (!ret)
+> > +		ret = nfs4_validate_stateid(stateid, flags);
+> > +	return ret;
+> 
+> Looking back at this, I'm not convinced that I need to call nfs4_validate_stateid() twice with the same stateid and flags.  What is the status of these patches?  Should I resubmit everything or send in a small patch to fix this?
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/exofs/export.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+Whoops, lazy review on my part....
 
-diff --git a/fs/exofs/export.c b/fs/exofs/export.c
-index c8a7d46..20969bf 100644
---- a/fs/exofs/export.c
-+++ b/fs/exofs/export.c
-@@ -27,6 +27,8 @@
- #include <linux/nfsd/nfsd4_pnfs.h>
- #include "exofs.h"
- 
-+#include "../exportfs/pnfs_osd_xdr_srv.h"
-+
- static int exofs_layout_type(struct super_block *sb)
- {
- 	return LAYOUT_OSD2_OBJECTS;
--- 
-1.7.3.4
+Looks like I'd applied that locally but not pushed it out to my public
+tree yet, so I could still take a replacement.
 
+How are you testing these, by the way?  On second thoughts, I think I
+may have already asked you that, and forgotten the answer, so don't
+bother answering here--just add some text to the changelog and then I'll
+know how to find the answer next time.
+
+--b.
