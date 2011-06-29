@@ -1,367 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:48147 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754060Ab1FNCc4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 22:32:56 -0400
-Message-Id: <97fa1bd77e6e8e970e1ec350a2b4a94eb019f264.1308017749.git.rees@umich.edu>
-In-Reply-To: <cover.1308017749.git.rees@umich.edu>
-References: <cover.1308017749.git.rees@umich.edu>
-Subject: [PATCH 21/33] pnfsblock: SPLITME: add extent manipulation functions
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Date: Mon, 13 Jun 2011 22:32:53 -0400
-From: Jim Rees <rees@umich.edu>
+Received: from mx2.jrc.it ([139.191.1.110]:34624 "EHLO mx2.jrc.it"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754128Ab1F2Prp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Jun 2011 11:47:45 -0400
+Received: from irelay.jrc.it (irelay.jrc.it [139.191.254.63])
+	by mx2.jrc.it (LMC5614Amx2) with ESMTP id p5TEbUNE004538
+	for <linux-nfs@vger.kernel.org>; Wed, 29 Jun 2011 16:37:30 +0200 (CEST)
+Received: from mail-zone.jrc.it (mail-zone.jrc.it [139.191.244.42])
+        by irelay.jrc.it (LMC5614Ainternal) with SMTP id p5TEbTp0002551
+        for <linux-nfs@vger.kernel.org>; Wed, 29 Jun 2011 16:37:29 +0200 (MEST)
+Content-type: text/plain; CHARSET=US-ASCII; format=flowed
+Received: from email-02-ext.jrc.it ([unknown] [139.191.244.20])
+ by mail-zone.jrc.it
+ (Sun Java(tm) System Messaging Server 7.3-11.01 64bit (built Sep  1 2009))
+ with ESMTP id <0LNK00AOW3ACWG50@mail-zone.jrc.it> for
+ linux-nfs@vger.kernel.org; Wed, 29 Jun 2011 16:37:24 +0200 (CEST)
+Received: from [139.191.142.132] ([unknown] [139.191.229.250])
+ by email-02-ext.jrc.it
+ (Sun Java(tm) System Messaging Server 7.3-11.01 64bit (built Sep  1 2009))
+ with ESMTPA id <0LNK003N43AB2B20@email-02-ext.jrc.it> for
+ linux-nfs@vger.kernel.org; Wed, 29 Jun 2011 16:37:24 +0200 (CEST)
+Message-id: <4E0B3897.40209@jrc.ec.europa.eu>
+Date: Wed, 29 Jun 2011 16:37:11 +0200
+From: Franck Eyraud <franck.eyraud@jrc.ec.europa.eu>
+To: linux-nfs@vger.kernel.org
+Subject: NFSv4 null request and compatibility with netapp
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+Dear nfs linux list,
 
-Adds working implementations of various support functions
-to handle INVAL extents, needed by writes, such as
-mark_initialized_sectors and is_sector_initialized.
+I have an issue with NFSv4 clients running debian with linux kernel 
+version 2.6.29 and above. The NFS4 server is n a NetApp NAS.
 
-SPLIT: this needs to be split into the exported functions, and the
-range support functions (which will be replaced eventually.)
+The problem arised when, after upgrading the kernel of our machines, the 
+filer started to issue a lot of these messages :
 
-[pnfsblock: fix 64-bit compiler warnings for extent manipulation]
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/blocklayout.h |   30 ++++-
- fs/nfs/blocklayout/extents.c     |  253 ++++++++++++++++++++++++++++++++++++++
- 2 files changed, 281 insertions(+), 2 deletions(-)
+Client 1XX.1XX.2XX.73 has an authentication error 2
+Client 1XX.1XX.2XX.73 is sending bad rpc requests with error: RPC version mismatch or authentication error(73)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 04eb6de..364540a 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -35,6 +35,8 @@
- #include <linux/nfs_fs.h>
- #include "../pnfs.h"
- 
-+#define PAGE_CACHE_SECTORS (PAGE_CACHE_SIZE >> 9)
-+
- #define PG_pnfserr PG_owner_priv_1
- #define PagePnfsErr(page)	test_bit(PG_pnfserr, &(page)->flags)
- #define SetPagePnfsErr(page)	set_bit(PG_pnfserr, &(page)->flags)
-@@ -101,8 +103,23 @@ enum exstate4 {
- 	PNFS_BLOCK_NONE_DATA		= 3  /* unmapped, it's a hole */
- };
- 
-+#define MY_MAX_TAGS (15) /* tag bitnums used must be less than this */
-+
-+struct my_tree_t {
-+	sector_t		mtt_step_size;	/* Internal sector alignment */
-+	struct list_head	mtt_stub; /* Should be a radix tree */
-+};
-+
- struct pnfs_inval_markings {
--	/* STUB */
-+	spinlock_t	im_lock;
-+	struct my_tree_t im_tree;	/* Sectors that need LAYOUTCOMMIT */
-+	sector_t	im_block_size;	/* Server blocksize in sectors */
-+};
-+
-+struct pnfs_inval_tracking {
-+	struct list_head it_link;
-+	int		 it_sector;
-+	int		 it_tags;
- };
- 
- /* sector_t fields are all in 512-byte sectors */
-@@ -121,7 +138,11 @@ struct pnfs_block_extent {
- static inline void
- INIT_INVAL_MARKS(struct pnfs_inval_markings *marks, sector_t blocksize)
- {
--	/* STUB */
-+	spin_lock_init(&marks->im_lock);
-+	INIT_LIST_HEAD(&marks->im_tree.mtt_stub);
-+	marks->im_block_size = blocksize;
-+	marks->im_tree.mtt_step_size = min((sector_t)PAGE_CACHE_SECTORS,
-+					   blocksize);
- }
- 
- enum extentclass4 {
-@@ -222,8 +243,13 @@ void free_block_dev(struct pnfs_block_dev *bdev);
- struct pnfs_block_extent *
- find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
- 		struct pnfs_block_extent **cow_read);
-+int mark_initialized_sectors(struct pnfs_inval_markings *marks,
-+			     sector_t offset, sector_t length,
-+			     sector_t **pages);
- void put_extent(struct pnfs_block_extent *be);
- struct pnfs_block_extent *alloc_extent(void);
-+struct pnfs_block_extent *get_extent(struct pnfs_block_extent *be);
-+int is_sector_initialized(struct pnfs_inval_markings *marks, sector_t isect);
- int add_and_merge_extent(struct pnfs_block_layout *bl,
- 			 struct pnfs_block_extent *new);
- 
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index f0b3f13..3d36f66 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -33,6 +33,259 @@
- #include "blocklayout.h"
- #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
- 
-+/* Bit numbers */
-+#define EXTENT_INITIALIZED 0
-+#define EXTENT_WRITTEN     1
-+#define EXTENT_IN_COMMIT   2
-+#define INTERNAL_EXISTS    MY_MAX_TAGS
-+#define INTERNAL_MASK      ((1 << INTERNAL_EXISTS) - 1)
-+
-+/* Returns largest t<=s s.t. t%base==0 */
-+static inline sector_t normalize(sector_t s, int base)
-+{
-+	sector_t tmp = s; /* Since do_div modifies its argument */
-+	return s - do_div(tmp, base);
-+}
-+
-+static inline sector_t normalize_up(sector_t s, int base)
-+{
-+	return normalize(s + base - 1, base);
-+}
-+
-+/* Complete stub using list while determine API wanted */
-+
-+/* Returns tags, or negative */
-+static int32_t _find_entry(struct my_tree_t *tree, u64 s)
-+{
-+	struct pnfs_inval_tracking *pos;
-+
-+	dprintk("%s(%llu) enter\n", __func__, s);
-+	list_for_each_entry_reverse(pos, &tree->mtt_stub, it_link) {
-+		if (pos->it_sector > s)
-+			continue;
-+		else if (pos->it_sector == s)
-+			return pos->it_tags & INTERNAL_MASK;
-+		else
-+			break;
-+	}
-+	return -ENOENT;
-+}
-+
-+static inline
-+int _has_tag(struct my_tree_t *tree, u64 s, int32_t tag)
-+{
-+	int32_t tags;
-+
-+	dprintk("%s(%llu, %i) enter\n", __func__, s, tag);
-+	s = normalize(s, tree->mtt_step_size);
-+	tags = _find_entry(tree, s);
-+	if ((tags < 0) || !(tags & (1 << tag)))
-+		return 0;
-+	else
-+		return 1;
-+}
-+
-+/* Creates entry with tag, or if entry already exists, unions tag to it.
-+ * If storage is not NULL, newly created entry will use it.
-+ * Returns number of entries added, or negative on error.
-+ */
-+static int _add_entry(struct my_tree_t *tree, u64 s, int32_t tag,
-+		      struct pnfs_inval_tracking *storage)
-+{
-+	int found = 0;
-+	struct pnfs_inval_tracking *pos;
-+
-+	dprintk("%s(%llu, %i, %p) enter\n", __func__, s, tag, storage);
-+	list_for_each_entry_reverse(pos, &tree->mtt_stub, it_link) {
-+		if (pos->it_sector > s)
-+			continue;
-+		else if (pos->it_sector == s) {
-+			found = 1;
-+			break;
-+		} else
-+			break;
-+	}
-+	if (found) {
-+		pos->it_tags |= (1 << tag);
-+		return 0;
-+	} else {
-+		struct pnfs_inval_tracking *new;
-+		if (storage)
-+			new = storage;
-+		else {
-+			new = kmalloc(sizeof(*new), GFP_KERNEL);
-+			if (!new)
-+				return -ENOMEM;
-+		}
-+		new->it_sector = s;
-+		new->it_tags = (1 << tag);
-+		list_add(&new->it_link, &pos->it_link);
-+		return 1;
-+	}
-+}
-+
-+/* XXXX Really want option to not create */
-+/* Over range, unions tag with existing entries, else creates entry with tag */
-+static int _set_range(struct my_tree_t *tree, int32_t tag, u64 s, u64 length)
-+{
-+	u64 i;
-+
-+	dprintk("%s(%i, %llu, %llu) enter\n", __func__, tag, s, length);
-+	for (i = normalize(s, tree->mtt_step_size); i < s + length;
-+	     i += tree->mtt_step_size)
-+		if (_add_entry(tree, i, tag, NULL))
-+			return -ENOMEM;
-+	return 0;
-+}
-+
-+/* Ensure that future operations on given range of tree will not malloc */
-+static int _preload_range(struct my_tree_t *tree, u64 offset, u64 length)
-+{
-+	u64 start, end, s;
-+	int count, i, used = 0, status = -ENOMEM;
-+	struct pnfs_inval_tracking **storage;
-+
-+	dprintk("%s(%llu, %llu) enter\n", __func__, offset, length);
-+	start = normalize(offset, tree->mtt_step_size);
-+	end = normalize_up(offset + length, tree->mtt_step_size);
-+	count = (int)(end - start) / (int)tree->mtt_step_size;
-+
-+	/* Pre-malloc what memory we might need */
-+	storage = kmalloc(sizeof(*storage) * count, GFP_KERNEL);
-+	if (!storage)
-+		return -ENOMEM;
-+	for (i = 0; i < count; i++) {
-+		storage[i] = kmalloc(sizeof(struct pnfs_inval_tracking),
-+				     GFP_KERNEL);
-+		if (!storage[i])
-+			goto out_cleanup;
-+	}
-+
-+	/* Now need lock - HOW??? */
-+
-+	for (s = start; s < end; s += tree->mtt_step_size)
-+		used += _add_entry(tree, s, INTERNAL_EXISTS, storage[used]);
-+
-+	/* Unlock - HOW??? */
-+	status = 0;
-+
-+ out_cleanup:
-+	for (i = used; i < count; i++) {
-+		if (!storage[i])
-+			break;
-+		kfree(storage[i]);
-+	}
-+	kfree(storage);
-+	return status;
-+}
-+
-+static void set_needs_init(sector_t *array, sector_t offset)
-+{
-+	sector_t *p = array;
-+
-+	dprintk("%s enter\n", __func__);
-+	if (!p)
-+		return;
-+	while (*p < offset)
-+		p++;
-+	if (*p == offset)
-+		return;
-+	else if (*p == ~0) {
-+		*p++ = offset;
-+		*p = ~0;
-+		return;
-+	} else {
-+		sector_t *save = p;
-+		dprintk("%s Adding %llu\n", __func__, (u64)offset);
-+		while (*p != ~0)
-+			p++;
-+		p++;
-+		memmove(save + 1, save, (char *)p - (char *)save);
-+		*save = offset;
-+		return;
-+	}
-+}
-+
-+/* We are relying on page lock to serialize this */
-+int is_sector_initialized(struct pnfs_inval_markings *marks, sector_t isect)
-+{
-+	int rv;
-+
-+	spin_lock(&marks->im_lock);
-+	rv = _has_tag(&marks->im_tree, isect, EXTENT_INITIALIZED);
-+	spin_unlock(&marks->im_lock);
-+	return rv;
-+}
-+
-+/* Marks sectors in [offest, offset_length) as having been initialized.
-+ * All lengths are step-aligned, where step is min(pagesize, blocksize).
-+ * Notes where partial block is initialized, and helps prepare it for
-+ * complete initialization later.
-+ */
-+/* Currently assumes offset is page-aligned */
-+int mark_initialized_sectors(struct pnfs_inval_markings *marks,
-+			     sector_t offset, sector_t length,
-+			     sector_t **pages)
-+{
-+	sector_t s, start, end;
-+	sector_t *array = NULL; /* Pages to mark */
-+
-+	dprintk("%s(offset=%llu,len=%llu) enter\n",
-+		__func__, (u64)offset, (u64)length);
-+	s = max((sector_t) 3,
-+		2 * (marks->im_block_size / (PAGE_CACHE_SECTORS)));
-+	dprintk("%s set max=%llu\n", __func__, (u64)s);
-+	if (pages) {
-+		array = kmalloc(s * sizeof(sector_t), GFP_KERNEL);
-+		if (!array)
-+			goto outerr;
-+		array[0] = ~0;
-+	}
-+
-+	start = normalize(offset, marks->im_block_size);
-+	end = normalize_up(offset + length, marks->im_block_size);
-+	if (_preload_range(&marks->im_tree, start, end - start))
-+		goto outerr;
-+
-+	spin_lock(&marks->im_lock);
-+
-+	for (s = normalize_up(start, PAGE_CACHE_SECTORS);
-+	     s < offset; s += PAGE_CACHE_SECTORS) {
-+		dprintk("%s pre-area pages\n", __func__);
-+		/* Portion of used block is not initialized */
-+		if (!_has_tag(&marks->im_tree, s, EXTENT_INITIALIZED))
-+			set_needs_init(array, s);
-+	}
-+	if (_set_range(&marks->im_tree, EXTENT_INITIALIZED, offset, length))
-+		goto out_unlock;
-+	for (s = normalize_up(offset + length, PAGE_CACHE_SECTORS);
-+	     s < end; s += PAGE_CACHE_SECTORS) {
-+		dprintk("%s post-area pages\n", __func__);
-+		if (!_has_tag(&marks->im_tree, s, EXTENT_INITIALIZED))
-+			set_needs_init(array, s);
-+	}
-+
-+	spin_unlock(&marks->im_lock);
-+
-+	if (pages) {
-+		if (array[0] == ~0) {
-+			kfree(array);
-+			*pages = NULL;
-+		} else
-+			*pages = array;
-+	}
-+	return 0;
-+
-+ out_unlock:
-+	spin_unlock(&marks->im_lock);
-+ outerr:
-+	if (pages) {
-+		kfree(array);
-+		*pages = NULL;
-+	}
-+	return -ENOMEM;
-+}
-+
- static void print_bl_extent(struct pnfs_block_extent *be)
- {
- 	dprintk("PRINT EXTENT extent %p\n", be);
--- 
-1.7.4.1
+The NetApp team analyzed the tcp trace and sent us with this answer, basically saying that the fault is from client side :
+
+Can someone on the list confirm that their affirmations are correct ?
+
+I already opened a bug on debian http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=632074 where they said that maybe the client behavior is not that odd with respect with the RFC standard.
+
+---------
+Tue May 24 10:05:59 MEST [vcid@s-jrciprna004p: nfsd.rpc.request.bad:warning]: Client 1XX.1XX.2XX.73 is sending bad rpc requests with error: RPC version mismatch or
+authentication error(73)
+
+We looked in the code and the (73) has no significance here and is simply the error code number for "RPC version mismatch or authentication error".
+
+What we see is that the following occurs at the time of these errors:
+- The client has an established TCP session on which it does NFSv4.
+- The NFSv4 calls uses Kerberos.
+- On that TCP session, the client occasionally does a NULL call.
+- The filer rejects it with an authentication error (auth state 2, client must begin new session)
+- The client does a new NULL call on a separate TCP session without a GSS context.
+- The filer responds and a new context is established.
+- The client continues on the original TCP session with the new context.
+
+This explains why no side effect is seen: the client simply establishes a new context and continues as if nothing had happened.
+We have checked through the trace for vlan 240 and the pattern is the same throughout and the error always happens for NULL calls only (occasionally two replies may be
+sent in the same TCP payload, but the error is always on the NULL reply, then).
+We know that some Debian kernels do not exhibit this problem at any time, but others do. This (along with the problem being tied to NULL calls only)
+suggest to us that this is due to client side behaviour.
+
+Anyway, we tried to check for the first occurrence of the error, which warrants some chronology. We'll do references per clock second for ease.
+- The first client call is at 10:04:16 in an established NFS mount.
+- The initial part of the trace, the client only uses TCP port 1006.
+- The client uses the same GSS context, with the exception of a SETCLIENTID and a SETCLIENTID_CONFIRM call.
+- At 10:05:00 the client tears down four GSS sessions (used for Kerberos) using RPCSEC_GSS_DESTROY in an NFSv4 NULL call. This is done from TCP port 1006 but for four
+different contexts. None of these have been used in the trace at that point.
+- The client continues with more cals on port 1006 using the the same GSS context.
+- Still at 10:05:00 (frame 1982792), the client uses an NFSv4 call to do a RPCSEC_GSS_INIT to establish a new GSS context.
+- The client continues using the new GSS context and does not reuse the old context.
+- The sequence described above on the NULL calls start.
+
+Looking closer at these steps, we notice something important in the NULL calls.
+Above, the client destroyed four GSS contexts that were not used during the trace. However, it did not destroy the GSS context it was using for a while there.
+
+However, we now note the client actually does a RPCSEC_GSS_DESTROY in each of the NFSv4 NULL calls where we respond with an authentication error. As the error
+indicates that the client has to begin a new session, this seems like a reasonable response to the call.
+
+So to summarize:
+- The filer logs these errors when the client destroys a GSS context.
+- The error message is a logical response.
+
+The decission to tear down the GSS context is with the client. So this would seem to be a client side issue after all, which just happens to get logged on the filer.
+-------------
+
+Thank you for your help,
+
+Franck Eyraud
 
