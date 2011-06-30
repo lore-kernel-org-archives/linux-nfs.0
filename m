@@ -1,187 +1,185 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:60722 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754463Ab1FLXo3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2011 19:44:29 -0400
-Message-Id: <8f168cae6e5b1369d25650a3973c0d4b3a20a6d0.1307921138.git.rees@umich.edu>
-In-Reply-To: <cover.1307921137.git.rees@umich.edu>
-References: <cover.1307921137.git.rees@umich.edu>
-Date: Sun, 12 Jun 2011 19:44:26 -0400
-Subject: [PATCH 16/34] pnfsblock: merge extents
-From: Jim Rees <rees@umich.edu>
-To: linux-nfs@vger.kernel.org
-Cc: peter honeyman <honey@citi.umich.edu>
+Received: from mx2.jrc.it ([139.191.1.110]:56474 "EHLO mx2.jrc.it"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753730Ab1F3HH2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Jun 2011 03:07:28 -0400
+Received: from irelay.jrc.it (irelay.jrc.it [139.191.254.63])
+	by mx2.jrc.it (LMC5614Amx2) with ESMTP id p5U77R7H000084
+	for <linux-nfs@vger.kernel.org>; Thu, 30 Jun 2011 09:07:27 +0200 (CEST)
+Received: from mail-zone.jrc.it (mail-zone.jrc.it [139.191.244.42])
+        by irelay.jrc.it (LMC5614Ainternal) with SMTP id p5U77RUY021366
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Jun 2011 09:07:27 +0200 (MEST)
+Content-type: text/plain; CHARSET=US-ASCII; format=flowed
+Received: from email-02-ext.jrc.it ([unknown] [139.191.244.20])
+ by mail-zone.jrc.it
+ (Sun Java(tm) System Messaging Server 7.3-11.01 64bit (built Sep  1 2009))
+ with ESMTP id <0LNL0045PD49ED20@mail-zone.jrc.it> for
+ linux-nfs@vger.kernel.org; Thu, 30 Jun 2011 09:07:22 +0200 (CEST)
+Received: from [139.191.142.132] ([unknown] [139.191.229.250])
+ by email-02-ext.jrc.it
+ (Sun Java(tm) System Messaging Server 7.3-11.01 64bit (built Sep  1 2009))
+ with ESMTPA id <0LNL00A9KD49WM60@email-02-ext.jrc.it> for
+ linux-nfs@vger.kernel.org; Thu, 30 Jun 2011 09:07:21 +0200 (CEST)
+Message-id: <4E0C209B.5060405@jrc.ec.europa.eu>
+Date: Thu, 30 Jun 2011 09:07:07 +0200
+From: Franck Eyraud <franck.eyraud@jrc.ec.europa.eu>
+To: Thomas Haynes <thomas@netapp.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 null request and compatibility with netapp
+References: <4E0B3897.40209@jrc.ec.europa.eu>
+ <1309366237.12547.13.camel@lade.trondhjem.org>
+ <C05920BC-8E0A-417B-9F99-FD14C0142099@netapp.com>
+In-reply-to: <C05920BC-8E0A-417B-9F99-FD14C0142099@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+Hi Tom,
 
-Replace a stub, so that extents underlying the layouts are properly
-added, merged, or ignored as necessary.
+Thanks for the answer. It seems from our colleagues managing the filer 
+that it is running Data OnTap version 7.3.3 P5.
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfsblock: delete the new node before put it]
-Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/blocklayout/blocklayout.h |   14 +++++-
- fs/nfs/blocklayout/extents.c     |  106 ++++++++++++++++++++++++++++++++++++++
- 2 files changed, 119 insertions(+), 1 deletions(-)
+A ticket has been opened to our technical support for NetApp (Telindus) 
+with number ISS ISS00094182 but I think it is not a NetApp case number. 
+I will ask them if they can provide me this case number.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 3cd447f..6bbfc3d 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -77,6 +77,14 @@ enum extentclass4 {
-         EXTENT_LISTS    = 2,
- };
- 
-+static inline int choose_list(enum exstate4 state)
-+{
-+	if (state == PNFS_BLOCK_READ_DATA || state == PNFS_BLOCK_NONE_DATA)
-+		return RO_EXTENT;
-+	else
-+		return RW_EXTENT;
-+}
-+
- struct pnfs_block_layout {
- 	struct pnfs_layout_hdr bl_layout;
- 	struct pnfs_inval_markings bl_inval; /* tracks INVAL->RW transition */
-@@ -110,6 +118,11 @@ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
- 				struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
- /* blocklayoutdm.c */
- void free_block_dev(struct pnfs_block_dev *bdev);
-+/* extents.c */
-+void put_extent(struct pnfs_block_extent *be);
-+struct pnfs_block_extent *alloc_extent(void);
-+int add_and_merge_extent(struct pnfs_block_layout *bl,
-+			 struct pnfs_block_extent *new);
- 
- #include <linux/sunrpc/simple_rpc_pipefs.h>
- 
-@@ -125,5 +138,4 @@ void bl_pipe_exit(void);
- #define BL_DEVICE_REQUEST_PROC         0x1 /* User level process succeeds */
- #define BL_DEVICE_REQUEST_ERR          0x2 /* User level process fails */
- 
--void put_extent(struct pnfs_block_extent *be);
- #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 1283fa9..26c263f 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -95,3 +95,109 @@ void print_elist(struct list_head *list)
- 	}
- 	dprintk("****************\n");
- }
-+
-+static inline int
-+extents_consistent(struct pnfs_block_extent *old, struct pnfs_block_extent *new)
-+{
-+	/* Note this assumes new->be_f_offset >= old->be_f_offset */
-+	return (new->be_state == old->be_state) &&
-+		((new->be_state == PNFS_BLOCK_NONE_DATA) ||
-+		 ((new->be_v_offset - old->be_v_offset ==
-+		   new->be_f_offset - old->be_f_offset) &&
-+		  new->be_mdev == old->be_mdev));
-+}
-+
-+/* Adds new to appropriate list in bl, modifying new and removing existing
-+ * extents as appropriate to deal with overlaps.
-+ *
-+ * See find_get_extent for list constraints.
-+ *
-+ * Refcount on new is already set.  If end up not using it, or error out,
-+ * need to put the reference.
-+ *
-+ * Lock is held by caller.
-+ */
-+int
-+add_and_merge_extent(struct pnfs_block_layout *bl,
-+		     struct pnfs_block_extent *new)
-+{
-+	struct pnfs_block_extent *be, *tmp;
-+	sector_t end = new->be_f_offset + new->be_length;
-+	struct list_head *list;
-+
-+	dprintk("%s enter with be=%p\n", __func__, new);
-+	print_bl_extent(new);
-+	list = &bl->bl_extents[choose_list(new->be_state)];
-+	print_elist(list);
-+
-+	/* Scan for proper place to insert, extending new to the left
-+	 * as much as possible.
-+	 */
-+	list_for_each_entry_safe(be, tmp, list, be_node) {
-+		if (new->be_f_offset < be->be_f_offset)
-+			break;
-+		if (end <= be->be_f_offset + be->be_length) {
-+			/* new is a subset of existing be*/
-+			if (extents_consistent(be, new)) {
-+				dprintk("%s: new is subset, ignoring\n",
-+					__func__);
-+				put_extent(new);
-+				return 0;
-+			} else
-+				goto out_err;
-+		} else if (new->be_f_offset <=
-+				be->be_f_offset + be->be_length) {
-+			/* new overlaps or abuts existing be */
-+			if (extents_consistent(be, new)) {
-+				/* extend new to fully replace be */
-+				new->be_length += new->be_f_offset -
-+						  be->be_f_offset;
-+				new->be_f_offset = be->be_f_offset;
-+				new->be_v_offset = be->be_v_offset;
-+				dprintk("%s: removing %p\n", __func__, be);
-+				list_del(&be->be_node);
-+				put_extent(be);
-+			} else if (new->be_f_offset !=
-+				   be->be_f_offset + be->be_length)
-+				goto out_err;
-+		}
-+	}
-+	/* Note that if we never hit the above break, be will not point to a
-+	 * valid extent.  However, in that case &be->be_node==list.
-+	 */
-+	list_add_tail(&new->be_node, &be->be_node);
-+	dprintk("%s: inserting new\n", __func__);
-+	print_elist(list);
-+	/* Scan forward for overlaps.  If we find any, extend new and
-+	 * remove the overlapped extent.
-+	 */
-+	be = list_prepare_entry(new, list, be_node);
-+	list_for_each_entry_safe_continue(be, tmp, list, be_node) {
-+		if (end < be->be_f_offset)
-+			break;
-+		/* new overlaps or abuts existing be */
-+		if (extents_consistent(be, new)) {
-+			if (end < be->be_f_offset + be->be_length) {
-+				/* extend new to fully cover be */
-+				end = be->be_f_offset + be->be_length;
-+				new->be_length = end - new->be_f_offset;
-+			}
-+			dprintk("%s: removing %p\n", __func__, be);
-+			list_del(&be->be_node);
-+			put_extent(be);
-+		} else if (end != be->be_f_offset) {
-+			list_del(&new->be_node);
-+			goto out_err;
-+		}
-+	}
-+	dprintk("%s: after merging\n", __func__);
-+	print_elist(list);
-+	/* STUB - The per-list consistency checks have all been done,
-+	 * should now check cross-list consistency.
-+	 */
-+	return 0;
-+
-+ out_err:
-+	put_extent(new);
-+	return -EIO;
-+}
+Franck
+
+On 29/06/2011 19:11, Thomas Haynes wrote:
+> Franck,
+>
+> What version of OnTap are you running?
+>
+> Actually, if you have a case number from NetApp, I can look at that internally.
+>
+> Thanks,
+> Tom
+>
+>
+> On Jun 29, 2011, at 11:50 AM, Trond Myklebust wrote:
+>
+>> On Wed, 2011-06-29 at 16:37 +0200, Franck Eyraud wrote:
+>>> Dear nfs linux list,
+>>>
+>>> I have an issue with NFSv4 clients running debian with linux kernel
+>>> version 2.6.29 and above. The NFS4 server is n a NetApp NAS.
+>>>
+>>> The problem arised when, after upgrading the kernel of our machines, the
+>>> filer started to issue a lot of these messages :
+>>>
+>>> Client 1XX.1XX.2XX.73 has an authentication error 2
+>>> Client 1XX.1XX.2XX.73 is sending bad rpc requests with error: RPC version mismatch or authentication error(73)
+>>>
+>>> The NetApp team analyzed the tcp trace and sent us with this answer, basically saying that the fault is from client side :
+>>>
+>>> Can someone on the list confirm that their affirmations are correct ?
+>>>
+>>> I already opened a bug on debianhttp://bugs.debian.org/cgi-bin/bugreport.cgi?bug=632074  where they said that maybe the client behavior is not that odd with respect with the RFC standard.
+>> Without a trace, it is hard to affirm anything, but please note the
+>> following:
+>>
+>>      1. The client will usually share the same TCP connection for _all_
+>>         mounts to any given server, so even if you didn't see the client
+>>         establish the rpcsec_gss session after the particular mount that
+>>         you used to test on, it may have been established by a previous
+>>         mount.
+>>      2. Once the client is finished using an rpcsec_gss session, and
+>>         that session is kicked out of the cache (usually within 1 minute
+>>         of last use, but it may occasionally take longer), then the
+>>         client will send out a NULL call with the RPCSEC_GSS_DESTROY
+>>         message.
+>>      3. The client doesn't know, before sending an RPC call, whether or
+>>         not the server has already expired the rpcsec_gss session. If
+>>         the server has expired it without the client's knowledge, then
+>>         it is unreasonable to declare the RPCSEC_GSS_DESTROY call to be
+>>         an error. The server should simply try to obey the call, and
+>>         then acknowledge it as a success, whether or not it actually
+>>         found an active session.
+>>
+>> IOW: this all looks to me like a storm in a teacup brought about by a
+>> server implementation that is logging errors in a case where it
+>> shouldn't.
+>>
+>> Cheers
+>>   Trond
+>>
+>>> ---------
+>>> Tue May 24 10:05:59 MEST [vcid@s-jrciprna004p: nfsd.rpc.request.bad:warning]: Client 1XX.1XX.2XX.73 is sending bad rpc requests with error: RPC version mismatch or
+>>> authentication error(73)
+>>>
+>>> We looked in the code and the (73) has no significance here and is simply the error code number for "RPC version mismatch or authentication error".
+>>>
+>>> What we see is that the following occurs at the time of these errors:
+>>> - The client has an established TCP session on which it does NFSv4.
+>>> - The NFSv4 calls uses Kerberos.
+>>> - On that TCP session, the client occasionally does a NULL call.
+>>> - The filer rejects it with an authentication error (auth state 2, client must begin new session)
+>>> - The client does a new NULL call on a separate TCP session without a GSS context.
+>>> - The filer responds and a new context is established.
+>>> - The client continues on the original TCP session with the new context.
+>>>
+>>> This explains why no side effect is seen: the client simply establishes a new context and continues as if nothing had happened.
+>>> We have checked through the trace for vlan 240 and the pattern is the same throughout and the error always happens for NULL calls only (occasionally two replies may be
+>>> sent in the same TCP payload, but the error is always on the NULL reply, then).
+>>> We know that some Debian kernels do not exhibit this problem at any time, but others do. This (along with the problem being tied to NULL calls only)
+>>> suggest to us that this is due to client side behaviour.
+>>>
+>>> Anyway, we tried to check for the first occurrence of the error, which warrants some chronology. We'll do references per clock second for ease.
+>>> - The first client call is at 10:04:16 in an established NFS mount.
+>>> - The initial part of the trace, the client only uses TCP port 1006.
+>>> - The client uses the same GSS context, with the exception of a SETCLIENTID and a SETCLIENTID_CONFIRM call.
+>>> - At 10:05:00 the client tears down four GSS sessions (used for Kerberos) using RPCSEC_GSS_DESTROY in an NFSv4 NULL call. This is done from TCP port 1006 but for four
+>>> different contexts. None of these have been used in the trace at that point.
+>>> - The client continues with more cals on port 1006 using the the same GSS context.
+>>> - Still at 10:05:00 (frame 1982792), the client uses an NFSv4 call to do a RPCSEC_GSS_INIT to establish a new GSS context.
+>>> - The client continues using the new GSS context and does not reuse the old context.
+>>> - The sequence described above on the NULL calls start.
+>>>
+>>> Looking closer at these steps, we notice something important in the NULL calls.
+>>> Above, the client destroyed four GSS contexts that were not used during the trace. However, it did not destroy the GSS context it was using for a while there.
+>>>
+>>> However, we now note the client actually does a RPCSEC_GSS_DESTROY in each of the NFSv4 NULL calls where we respond with an authentication error. As the error
+>>> indicates that the client has to begin a new session, this seems like a reasonable response to the call.
+>>>
+>>> So to summarize:
+>>> - The filer logs these errors when the client destroys a GSS context.
+>>> - The error message is a logical response.
+>>>
+>>> The decission to tear down the GSS context is with the client. So this would seem to be a client side issue after all, which just happens to get logged on the filer.
+>>> -------------
+>>>
+>>> Thank you for your help,
+>>>
+>>> Franck Eyraud
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message tomajordomo@vger.kernel.org
+>>> More majordomo info athttp://vger.kernel.org/majordomo-info.html
+>> -- 
+>> Trond Myklebust
+>> Linux NFS client maintainer
+>>
+>> NetApp
+>> Trond.Myklebust@netapp.com
+>> www.netapp.com
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message tomajordomo@vger.kernel.org
+>> More majordomo info athttp://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message tomajordomo@vger.kernel.org
+> More majordomo info athttp://vger.kernel.org/majordomo-info.html
+>
+
 -- 
-1.7.4.1
+Franck Eyraud
+European Commission - Joint Research Centre
+Institute for Environment and Sustainability
+MARS Unit - Community Image Data Portal
+
+TP 266, Via E. Fermi 2749, I-21027 Ispra (VA), Italy
+Tel: +39 0332 78 9486   Fax: +39 0332 78 5162
 
