@@ -1,81 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp3-g21.free.fr ([212.27.42.3]:54634 "EHLO smtp3-g21.free.fr"
+Received: from mx1.redhat.com ([209.132.183.28]:39408 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750788Ab1F1VTU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Jun 2011 17:19:20 -0400
-From: Arnaud Giersch <arnaud.giersch@free.fr>
-To: Alexander Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH][Resend] coredump: call vfs_getattr() to get inode attributes
-Date: Tue, 28 Jun 2011 23:19:10 +0200
-Message-ID: <87tyb9r6wh.fsf@free.fr>
-Content-Type: text/plain; charset=us-ascii
+	id S1751323Ab1F3LTP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Jun 2011 07:19:15 -0400
+Message-ID: <4E0C5BB0.5030004@RedHat.com>
+Date: Thu, 30 Jun 2011 07:19:12 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: NeilBrown <neilb@suse.de>
+CC: Prem Karat <prem.karat@linux.vnet.ibm.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/1] nfs-utils: Don't hard code source and destination
+ args
+References: <20110628104138.GB6600@d6fc318.ibm.com>	<4E0B3687.6060209@RedHat.com>	<20110630090932.10caeca6@notabene.brown>	<4E0C56BC.7010606@RedHat.com> <20110630211026.66f1b7b4@notabene.brown>
+In-Reply-To: <20110630211026.66f1b7b4@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Arnaud Giersch <arnaud.giersch@free.fr>
 
-In do_coredump(), call vfs_getattr() to get inode attributes, and do not
-get them directly from the fields of the inode struct.
 
-Without this patch, when dumping core on an NFSv4 mount, and the i_uid
-field is not correctly filled at open time, the uid check fails, and an
-empty core dump is produced.
+On 06/30/2011 07:10 AM, NeilBrown wrote:
+> On Thu, 30 Jun 2011 06:58:04 -0400 Steve Dickson <SteveD@redhat.com> wrote:
+> 
+>>
+>>
+>> On 06/29/2011 07:09 PM, NeilBrown wrote:
+>>> On Wed, 29 Jun 2011 10:28:23 -0400 Steve Dickson <SteveD@redhat.com> wrote:
+>>>
+>>>>
+>>>>
+>>>> On 06/28/2011 06:41 AM, Prem Karat wrote:
+>>>>>
+>>>>> Currently souce and destination parameters should be passed as first and 
+>>>>> second paramter while using mount.nfs. This patch allows them to be passed 
+>>>>> anywhere while mounting.
+>>>>>
+>>>>> Current functionality is
+>>>>> 	mount.nfs source destn -o <options>
+>>>>> This patch will allow to do this
+>>>>> 	mount.nfs -o <options> source destn
+>>>>> 		or
+>>>>> 	mount.nfs -o <options> source -o <options> destn
+>>>>>
+>>>>> Signed-off-by: Prem Karat <prem.karat@linux.vnet.ibm.com>
+>>>> Committed...
+>>>
+>>> Uhmm... that's unfortunate because the patch is badly broken.
+>>>
+>>> With the patch in place, argv[2] gets destroyed.
+>>> i.e. mount cannot possibly work correctly now.
+>>>
+>>> And that is just the start of the problems.
+>>>
+>>> This patch has clearly never been tested.
+>> Hmm... well this is not true... I have 1.2.4 running
+>> on a number of machines and without a problem...
+> 
+> I'm guessing you used --enable-libmount-mount which causes the patched code
+> to not be compiled.  So while you did test nfs-utils, I don't think you
+> tested the patch :-(
+Thats exactly what happen... With your latest patch I never even compiled
+the code... darn!
 
-This apparently only happens when there was no "core" file before the
-dump.  If a "core" file owned by the current user is already present, it
-is correctly filled.
+hmm... I wonder if its time to throw the enable-libmount-mount-on-by-default 
+switch... 
 
-The reason is that decode_attr_owner() in fs/nfs/nfs4xdr.c is not
-allowed to call the idmapper when it receives may_sleep = 0 (see commit
-80e52aced138bb41b045a8595a87510f27d8d8c5, and some explanations in
-http://article.gmane.org/gmane.linux.nfs/33391).
+Well Let me figure out what to do... I'll probably just reissue 1.2.4 
 
-Signed-off-by: Arnaud Giersch <arnaud.giersch@free.fr>
----
- fs/exec.c |   12 +++++++-----
- 1 files changed, 7 insertions(+), 5 deletions(-)
-
-diff --git a/fs/exec.c b/fs/exec.c
-index 6075a1e..a016756 100644
---- a/fs/exec.c
-+++ b/fs/exec.c
-@@ -2147,7 +2147,7 @@ void do_coredump(long signr, int exit_code, struct pt_regs *regs)
- 			goto close_fail;
-  		}
- 	} else {
--		struct inode *inode;
-+		struct kstat stat;
- 
- 		if (cprm.limit < binfmt->min_coredump)
- 			goto fail_unlock;
-@@ -2158,8 +2158,10 @@ void do_coredump(long signr, int exit_code, struct pt_regs *regs)
- 		if (IS_ERR(cprm.file))
- 			goto fail_unlock;
- 
--		inode = cprm.file->f_path.dentry->d_inode;
--		if (inode->i_nlink > 1)
-+		if (vfs_getattr(cprm.file->f_path.mnt, cprm.file->f_path.dentry,
-+				&stat))
-+			goto close_fail;
-+		if (stat.nlink > 1)
- 			goto close_fail;
- 		if (d_unhashed(cprm.file->f_path.dentry))
- 			goto close_fail;
-@@ -2167,13 +2169,13 @@ void do_coredump(long signr, int exit_code, struct pt_regs *regs)
- 		 * AK: actually i see no reason to not allow this for named
- 		 * pipes etc, but keep the previous behaviour for now.
- 		 */
--		if (!S_ISREG(inode->i_mode))
-+		if (!S_ISREG(stat.mode))
- 			goto close_fail;
- 		/*
- 		 * Dont allow local users get cute and trick others to coredump
- 		 * into their pre-created files.
- 		 */
--		if (inode->i_uid != current_fsuid())
-+		if (stat.uid != current_fsuid())
- 			goto close_fail;
- 		if (!cprm.file->f_op || !cprm.file->f_op->write)
- 			goto close_fail;
+steved.
