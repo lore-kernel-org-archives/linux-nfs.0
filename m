@@ -1,54 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:34952 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753258Ab1FPPjS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jun 2011 11:39:18 -0400
-Received: by vxi39 with SMTP id 39so1256271vxi.19
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Jun 2011 08:39:17 -0700 (PDT)
-From: Benny Halevy <benny@tonian.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <benny@tonian.com>
-Subject: [PATCH] NFSD: allow OP_DESTROY_CLIENTID to be only op in COMPOUND
-Date: Thu, 16 Jun 2011 11:39:10 -0400
-Message-Id: <1308238750-9822-1-git-send-email-benny@tonian.com>
+Received: from e23smtp09.au.ibm.com ([202.81.31.142]:47829 "EHLO
+	e23smtp09.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751308Ab1F3K4h (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jun 2011 06:56:37 -0400
+Received: from d23relay05.au.ibm.com (d23relay05.au.ibm.com [202.81.31.247])
+	by e23smtp09.au.ibm.com (8.14.4/8.13.1) with ESMTP id p5UAuTgR005222
+	for <linux-nfs@vger.kernel.org>; Thu, 30 Jun 2011 20:56:29 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay05.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p5UAt85S1073234
+	for <linux-nfs@vger.kernel.org>; Thu, 30 Jun 2011 20:55:08 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p5UAuS0i032480
+	for <linux-nfs@vger.kernel.org>; Thu, 30 Jun 2011 20:56:28 +1000
+Date: Thu, 30 Jun 2011 16:26:26 +0530
+From: Prem Karat <prem.karat@linux.vnet.ibm.com>
+To: linux-nfs@vger.kernel.org
+Cc: Steve Dickson <SteveD@redhat.com>, NeilBrown <neilb@suse.de>
+Subject: [PATCH] nfs-utils: fix for the bug in v1.2.4 that breaks mount.nfs
+Message-ID: <20110630105626.GB25648@d6fc318.ibm.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
->From RFC5661, section 18.50:
-   DESTROY_CLIENTID MAY be preceded with a SEQUENCE operation as long as
-   the client ID derived from the session ID of SEQUENCE is not the same
-   as the client ID to be destroyed.  If the client IDs are the same,
-   then the server MUST return NFS4ERR_CLIENTID_BUSY.
+commit 30ebf04700654deddbf5f57d95e84ec69cea8610 failed to include these changes that breaks mount.nfs.
+mount.nfs would continue to work fine with these changes
 
-(that's not implemented yet)
-
-   If DESTROY_CLIENTID is not prefixed by SEQUENCE, it MUST be the only
-   operation in the COMPOUND request (otherwise, the server MUST return
-   NFS4ERR_NOT_ONLY_OP).
-
-Signed-off-by: Benny Halevy <benny@tonian.com>
+Signed-off-by: Prem Karat <prem.karat@linux.vnet.ibm.com>
 ---
- fs/nfsd/nfs4proc.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+ utils/mount/mount.c |   11 +----------
+ 1 files changed, 1 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 730b6e7..02adcc3 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1773,6 +1773,11 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_AS_FIRST_OP,
- 		.op_name = "OP_SEQUENCE",
- 	},
-+	[OP_DESTROY_CLIENTID] = {
-+		.op_func = NULL,
-+		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_AS_FIRST_OP,
-+		.op_name = "OP_DESTROY_CLIENTID",
-+	},
- 	[OP_RECLAIM_COMPLETE] = {
- 		.op_func = (nfsd4op_func)nfsd4_reclaim_complete,
- 		.op_flags = ALLOWED_WITHOUT_FH,
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index 62115bb..eea00af 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -385,14 +385,6 @@ int main(int argc, char *argv[])
+ 	if(!strncmp(progname, "umount", strlen("umount")))
+ 		exit(nfsumount(argc, argv));
+ 
+-	if (argv[1] && argv[1][0] == '-') {
+-		if(argv[1][1] == 'V')
+-			printf("%s ("PACKAGE_STRING")\n", progname);
+-		else
+-			mount_usage();
+-		exit(EX_SUCCESS);
+-	}
+-
+ 	if ((argc < 3)) {
+ 		mount_usage();
+ 		exit(EX_USAGE);
+@@ -400,8 +392,7 @@ int main(int argc, char *argv[])
+ 
+ 	mount_config_init(progname);
+ 
+-	argv[2] = argv[0]; /* so that getopt error messages are correct */
+-	while ((c = getopt_long(argc - 2, argv + 2, "rvVwfno:hs",
++	while ((c = getopt_long(argc, argv, "rvVwfno:hs",
+ 				longopts, NULL)) != -1) {
+ 		switch (c) {
+ 		case 'r':
 -- 
-1.7.4.4
+1.7.4
 
+-- 
+Cheers,
+Prem
+Linux Technology Center,
+IBM Systems & Technology Labs
+DID: 41776362
