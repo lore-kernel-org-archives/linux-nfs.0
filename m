@@ -1,47 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:53573 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757733Ab1FJSLX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2011 14:11:23 -0400
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH 7/7] nfs-utils:  Update man page for srcaddr= option.
-Date: Fri, 10 Jun 2011 11:09:39 -0700
-Message-Id: <1307729379-7702-8-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1307729379-7702-1-git-send-email-greearb@candelatech.com>
-References: <1307729379-7702-1-git-send-email-greearb@candelatech.com>
+Received: from mx1.redhat.com ([209.132.183.28]:27026 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751115Ab1F3PXB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Jun 2011 11:23:01 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p5UFN1V7006026
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 30 Jun 2011 11:23:01 -0400
+Received: from badhat.bos.devel.redhat.com (badhat.boston.devel.redhat.com [10.16.60.49])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p5UFN0N3006937
+	for <linux-nfs@vger.kernel.org>; Thu, 30 Jun 2011 11:23:01 -0400
+Message-ID: <4E0C94D4.50205@RedHat.com>
+Date: Thu, 30 Jun 2011 11:23:00 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: ANNOUNCE: nfs-utils-1.2.4 re-released.
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
+I just make a re-release of 1.2.4 this that corrects the mount problem.
+Again, my apologies for not catching this problem before the release.
+Its something I will avoid in the feature...  
 
-Signed-off-by: Ben Greear <greearb@candelatech.com>
----
-:100644 100644 be91a25... 622d7cb... M	utils/mount/nfs.man
- utils/mount/nfs.man |    7 +++++++
- 1 files changed, 7 insertions(+), 0 deletions(-)
+New Features in this release:
 
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index be91a25..622d7cb 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -463,6 +463,13 @@ by other clients, but can impact application and server performance.
- .IP
- The DATA AND METADATA COHERENCE section contains a
- detailed discussion of these trade-offs.
-+.TP 1.5i
-+.BI srcaddr= n
-+Specifies a single IPv4 or IPv6 address
-+to which the NFS client will bind its sockets.
-+This can help force NFS to use a particular IP
-+address on a multi-homed machine.  This option is not required
-+in most cases.
- .SS "Options for NFS versions 2 and 3 only"
- Use these options, along with the options in the above subsection,
- for NFS versions 2 and 3 only.
--- 
-1.7.3.4
+   * Added the --enable-libmount-mount configuration 
+     flag that enables the mount command to use the new
+     libmount code.
 
+   * A large number of bug fixes.
+
+The tarballs can be found at:
+
+  http://www.kernel.org/pub/linux/utils/nfs/
+  http://sourceforge.net/projects/nfs
+
+The git tree is at:
+   git://linux-nfs.org/nfs-utils
+
+The change log:
+
+http://www.kernel.org/pub/linux/utils/nfs/ChangeLog-nfs-utils-1.2.4
+
+steved.
