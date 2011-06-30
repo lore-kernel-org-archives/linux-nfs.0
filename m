@@ -1,71 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-px0-f179.google.com ([209.85.212.179]:37403 "EHLO
-	mail-px0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758024Ab1FINcR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2011 09:32:17 -0400
-Received: by pxi2 with SMTP id 2so1047058pxi.10
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Jun 2011 06:32:16 -0700 (PDT)
-Message-ID: <4DF0CB5D.60000@panasas.com>
-Date: Thu, 09 Jun 2011 09:32:13 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Jim Rees <rees@umich.edu>
-CC: Peng Tao <bergwolf@gmail.com>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH 87/88] Add configurable prefetch size for layoutget
-References: <cover.1307464381.git.rees@umich.edu> <09142112ff0115f7f22124a69ead7b9bb5e0958f.1307464382.git.rees@umich.edu> <4DEED80A.4000102@panasas.com> <20110608021852.GA20998@merit.edu> <BANLkTi=HcQcGbTKTq2MSg8XeW=fKwG4-tw@mail.gmail.com> <4DF062D6.7010304@panasas.com> <20110609114929.GA28157@merit.edu>
-In-Reply-To: <20110609114929.GA28157@merit.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from citi.umich.edu ([141.212.112.111]:56470 "EHLO citi.umich.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752574Ab1F3Acb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Jun 2011 20:32:31 -0400
+From: Kevin Coffman <kwc@citi.umich.edu>
+Subject: [PATCH] Include config.h in more source files
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 29 Jun 2011 20:32:30 -0400
+Message-ID: <20110630003230.6143.28663.stgit@jazz.citi.umich.edu>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-06-09 07:49, Jim Rees wrote:
-> Benny Halevy wrote:
-> 
->   >> But note that this patch doesn't change anything unless you set the sysctl.
->   > there is a default value of 2M. maybe we can set it to page size by
->   > default so other layout are not affected and block layout can let
->   > users set it by hand if they care about performance. does this make
->   > sense?
->   
->   If doing it at all why use a sysctl rather than a mount option?
->   Or maybe coding the logic for prefetching the layout iff sequential
->   access is detected is the right thing to do.
-> 
-> I would rather see some automatic solution than to add either a sysctl or a
-> mount option.  For now you can just drop that patch, as it's not needed for
-> basic pnfs block.
-> 
-> My understanding is that layoutget specifies a min and max, and the server
+Commit 9acc85db makes it necessary to include config.h in
+source files.  umich_ldap.c needs ENABLE_LDAP defined to
+do anything useful.  Since it doesn't include config.h,
+nothing is compiled, and the plugin fails to load with
+the following messages:
 
-There's a min.  What do you consider the max?
-Whatever gets into csa_fore_chan_attrs.ca_maxresponsesize?
+rpc.idmapd[8117]: libnfsidmap: Unable to get init function:
+  /lib64/libnfsidmap/umich_ldap.so: undefined symbol:
+  libnfsidmap_plugin_init
+rpc.idmapd[8117]: libnfsidmap: requested translation method,
+  'umich_ldap', is not available
+---
 
-> is returning the min.  Trond and Fred believe this should be fixed on the
-> server.  
+ cfg.c        |    2 ++
+ gums.c       |    2 ++
+ libtest.c    |    2 ++
+ nss.c        |    2 ++
+ static.c     |    2 ++
+ umich_ldap.c |    2 ++
+ 6 files changed, 12 insertions(+), 0 deletions(-)
 
-Agreed.
+diff --git a/cfg.c b/cfg.c
+index c615d24..3fe1b1c 100644
+--- a/cfg.c
++++ b/cfg.c
+@@ -30,6 +30,8 @@
+  * This code was written under funding by Ericsson Radio Systems.
+  */
+ 
++#include "config.h"
++
+ #include <sys/param.h>
+ #include <sys/mman.h>
+ #include <sys/socket.h>
+diff --git a/gums.c b/gums.c
+index 2b12d95..db2c8af 100644
+--- a/gums.c
++++ b/gums.c
+@@ -32,6 +32,8 @@
+  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ 
++#include "config.h"
++
+ #include <sys/types.h>
+ #include <errno.h>
+ #include <unistd.h>
+diff --git a/libtest.c b/libtest.c
+index 1c717b8..e88e6be 100644
+--- a/libtest.c
++++ b/libtest.c
+@@ -44,6 +44,8 @@
+  *
+  */
+ 
++#include "config.h"
++
+ #include <stdio.h>
+ #include <string.h>
+ #include <sys/types.h>
+diff --git a/nss.c b/nss.c
+index 04aff19..58a3df4 100644
+--- a/nss.c
++++ b/nss.c
+@@ -34,6 +34,8 @@
+  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ 
++#include "config.h"
++
+ #include <sys/types.h>
+ #include <errno.h>
+ #include <unistd.h>
+diff --git a/static.c b/static.c
+index fffd458..f14cf9c 100644
+--- a/static.c
++++ b/static.c
+@@ -32,6 +32,8 @@
+  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ 
++#include "config.h"
++
+ #include <unistd.h>
+ #include <stdlib.h>
+ #include <string.h>
+diff --git a/umich_ldap.c b/umich_ldap.c
+index f482b0a..b1ab602 100644
+--- a/umich_ldap.c
++++ b/umich_ldap.c
+@@ -32,6 +32,8 @@
+  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ 
++#include "config.h"
++
+ #ifdef ENABLE_LDAP
+ 
+ #include <sys/types.h>
 
-Benny
-
-> Here's the original report of the problem:
-> 
-> From: Bergwolf
-> 
-> From the network trace for pnfs, we can see the root cause for slow performance
-> is too many small layoutget. In specific, client asks for a layout of only 4K
-> pagesize (and server returns 8K due to block size alignment) at each time.
-> 
-> The total IO time is 256/1.68 = 152 second.
-> There are 256*1024/8 = 32768 layoutget for the 256MB file.
-> On average, the time spent on each layoutget is 0.00456 second according to the
-> trace.
-> The total layoutget time is 32768* 0.00456 = 149 second, which takes up about
-> 98% of total IO time.
-> 
-> So we should optimize layoutget's granularity to get better performance. For
-> instance, use a configurable prefetch size of 2MB or so.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
