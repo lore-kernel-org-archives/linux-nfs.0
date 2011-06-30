@@ -1,61 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:50073 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751156Ab1FMUcx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2011 16:32:53 -0400
-Received: by pzk9 with SMTP id 9so2297122pzk.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Jun 2011 13:32:53 -0700 (PDT)
-Message-ID: <4DF673F2.4020707@gmail.com>
-Date: Mon, 13 Jun 2011 16:32:50 -0400
-From: Benny Halevy <bhalevy.lists@gmail.com>
-To: andros@netapp.com
-CC: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH Bakeathon 1/2] NFSv4.1: allow zero fh array in filelayout
- decode layout
-References: <1307995906-4177-1-git-send-email-andros@netapp.com>
-In-Reply-To: <1307995906-4177-1-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:39452 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751296Ab1F3SZO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Jun 2011 14:25:14 -0400
+Date: Thu, 30 Jun 2011 14:25:13 -0400
+To: Ben Greear <greearb@candelatech.com>
+Cc: linux-nfs@vger.kernel.org,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Subject: Re: NFS crash in un-modified 3.0.0-rc3+, list corruption.
+Message-ID: <20110630182513.GC18713@fieldses.org>
+References: <4DFFCCDC.2070106@candelatech.com>
+ <4DFFD738.2080608@candelatech.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4DFFD738.2080608@candelatech.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-06-13 16:11, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
+On Mon, Jun 20, 2011 at 04:26:48PM -0700, Ben Greear wrote:
+> On 06/20/2011 03:42 PM, Ben Greear wrote:
+> >This machine is acting as a server.  It is from linux-2.6, pulled
+> >today:
+> >
+> >commit de505e709ffb09a7382ca8e0d8c7dbb171ba5830
+> >
+> >We are hitting it with 200 clients reading and writing, mounting and
+> >un-mounting.
+> >This bug is fairly reproducible (twice today).
+> >
+> >Large amounts of debugging options are enabled.
 > 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> cc:stable@kernel.org [2.6.39]
-> ---
->  fs/nfs/nfs4filelayout.c |   13 ++++++++-----
->  1 files changed, 8 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> index 2cfeaeb..3a8bd92 100644
-> --- a/fs/nfs/nfs4filelayout.c
-> +++ b/fs/nfs/nfs4filelayout.c
-> @@ -551,13 +551,16 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
->  		__func__, nfl_util, fl->num_fh, fl->first_stripe_index,
->  		fl->pattern_offset);
->  
-> -	if (!fl->num_fh)
-> +	if (fl->num_fh < 0 || fl->num_fh >
+> We were also starting/stopping NFS on the server machine.
+> It appears that this crash happens during the
+> /etc/init.d/nfs stop
+> command.
 
-num_fh is unsigned so checking for < 0 is not really needed.
+I'll be submitting the below.
 
-Benny
+The bug's been there for a really long time and we're getting late into
+the release cycle so I'll probably just save it for 3.1 (but it'll go to
+stable as well then).
 
-> +	    max(NFS4_PNFS_MAX_STRIPE_CNT, NFS4_PNFS_MAX_MULTI_CNT))
->  		goto out_err;
->  
-> -	fl->fh_array = kzalloc(fl->num_fh * sizeof(struct nfs_fh *),
-> -			       gfp_flags);
-> -	if (!fl->fh_array)
-> -		goto out_err;
-> +	if (fl->num_fh > 0) {
-> +		fl->fh_array = kzalloc(fl->num_fh * sizeof(struct nfs_fh *),
-> +				       gfp_flags);
-> +		if (!fl->fh_array)
-> +			goto out_err;
-> +	}
->  
->  	for (i = 0; i < fl->num_fh; i++) {
->  		/* Do we want to use a mempool here? */
+--b.
+
+commit 0f4bb2521a0e300443e9d80b10778f5a93cc0dbc
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Wed Jun 29 16:49:04 2011 -0400
+
+    svcrpc: fix list-corrupting race on nfsd shutdown
+    
+    After commit 3262c816a3d7fb1eaabce633caa317887ed549ae "[PATCH] knfsd:
+    split svc_serv into pools", svc_delete_xprt (then svc_delete_socket) no
+    longer removed its xpt_ready (then sk_ready) field from whatever list it
+    was on, noting that there was no point since the whole list was about to
+    be destroyed anyway.
+    
+    That was mostly true, but forgot that a few svc_xprt_enqueue()'s might
+    still be hanging around playing with the about-to-be-destroyed list, and
+    could get themselves into trouble writing to freed memory if we left
+    this xprt on the list after freeing it.
+    
+    (This is actually functionally identical to a patch made first by Ben
+    Greear, but with more comments.)
+    
+    Cc: stable@kernel.org
+    Cc: gnb@fmeh.org
+    Reported-by: Ben Greear <greearb@candelatech.com>
+    Tested-by: Ben Greear <greearb@candelatech.com>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index ab86b79..bd31208 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -902,12 +902,13 @@ void svc_delete_xprt(struct svc_xprt *xprt)
+ 	if (!test_and_set_bit(XPT_DETACHED, &xprt->xpt_flags))
+ 		list_del_init(&xprt->xpt_list);
+ 	/*
+-	 * We used to delete the transport from whichever list
+-	 * it's sk_xprt.xpt_ready node was on, but we don't actually
+-	 * need to.  This is because the only time we're called
+-	 * while still attached to a queue, the queue itself
+-	 * is about to be destroyed (in svc_destroy).
++	 * The only time we're called while xpt_ready is still on a list
++	 * is while the list itself is about to be destroyed (in
++	 * svc_destroy).  BUT svc_xprt_enqueue could still be attempting
++	 * to add new entries to the sp_sockets list, so we can't leave
++	 * a freed xprt on it.
+ 	 */
++	list_del_init(&xprt->xpt_ready);
+ 	if (test_bit(XPT_TEMP, &xprt->xpt_flags))
+ 		serv->sv_tmpcnt--;
+ 	spin_unlock_bh(&serv->sv_lock);
