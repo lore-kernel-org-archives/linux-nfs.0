@@ -1,116 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.212.112.111]:56470 "EHLO citi.umich.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752574Ab1F3Acb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Jun 2011 20:32:31 -0400
-From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [PATCH] Include config.h in more source files
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 29 Jun 2011 20:32:30 -0400
-Message-ID: <20110630003230.6143.28663.stgit@jazz.citi.umich.edu>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-fx0-f52.google.com ([209.85.161.52]:64004 "EHLO
+	mail-fx0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751146Ab1F3PmH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jun 2011 11:42:07 -0400
+Received: by fxd18 with SMTP id 18so2387139fxd.11
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Jun 2011 08:42:05 -0700 (PDT)
+Message-ID: <4E0C994A.2060302@panasas.com>
+Date: Thu, 30 Jun 2011 18:42:02 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Andy Adamson <andros@netapp.com>, quanli gui <gqlxj1987@gmail.com>,
+        Benny Halevy <bhalevy@tonian.com>, linux-nfs@vger.kernel.org,
+        "Mueller, Brian" <bmueller@panasas.com>
+Subject: Re: [nfsv4]nfs client bug
+References: <BANLkTi=xcQseTx8BTWEzg-1DO=ayJuMLrw@mail.gmail.com>		 <4E0B52BB.8090003@tonian.com>		 <BANLkTinxF+obzedP+xupMCDZcgRTFDsQMg@mail.gmail.com>		 <4CC6F947-FE93-47E4-9FD9-C0EB4D8033A6@netapp.com>	 <1309443867.9544.59.camel@lade.trondhjem.org>	 <4E0C9284.5000804@panasas.com> <1309448157.9544.88.camel@lade.trondhjem.org>
+In-Reply-To: <1309448157.9544.88.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Commit 9acc85db makes it necessary to include config.h in
-source files.  umich_ldap.c needs ENABLE_LDAP defined to
-do anything useful.  Since it doesn't include config.h,
-nothing is compiled, and the plugin fails to load with
-the following messages:
+On 2011-06-30 18:35, Trond Myklebust wrote:
+> On Thu, 2011-06-30 at 18:13 +0300, Benny Halevy wrote: 
+>> On 2011-06-30 17:24, Trond Myklebust wrote:
+>>> On Thu, 2011-06-30 at 09:36 -0400, Andy Adamson wrote: 
+>>>> On Jun 29, 2011, at 10:32 PM, quanli gui wrote:
+>>>>
+>>>>> When I use the iperf tools for one client to 4 ds, the network
+>>>>> throughput is 890MB/S. It reflect that it is indeed 10GE non-blocking.
+>>>>>
+>>>>> a. about block size, I use bs=1M when I use dd
+>>>>> b. we indeed use the tcp (doesn't the nfsv4 use the tcp defaultly?)
+>>>>> c. the jumbo frames is what? how set mtu automatically?
+>>>>>
+>>>>> Brian, do you have some more tips?
+>>>>
+>>>> 1) Set the mtu on both the client and the server 10G interface. Sometimes 9000 is too high. My setup uses 8000.
+>>>> To set MTU on interface eth0.
+>>>>
+>>>> % ifconfig eth0 mtu 9000
+>>>>
+>>>> iperf will report the MTU of the full path between client and server - use it to verify the MTU of the connection.
+>>>>
+>>>> 2) Increase the # of rpc_slots on the client.
+>>>> % echo 128 > /proc/sys/sunrpc/tcp_slot_table_entries
+>>>>
+>>>> 3) Increase the # of server threads
+>>>>
+>>>> % echo 128 > /proc/fs/nfsd/threads
+>>>> % service nfs restart
+>>>>
+>>>> 4) Ensure the TCP buffers on both the client and the server are large enough for the TCP window.
+>>>> Calculate the required buffer size by pinging the server from the client with the MTU packet size and multiply the round trip time by the interface capacity
+>>>>
+>>>> % ping -s 9000 server  - say 108 ms average
+>>>>
+>>>> 10Gbits/sec = 1,250,000,000 Bytes/sec * .108 sec = 135,000,000 bytes
+>>>>
+>>>> Use this number to set the following: 
+>>>> sysctl -w net.core.rmem_max = 135000000
+>>>> sysctl -w net.core.wmem_max 135000000
+>>>> sysctl -w "net.ipv4.tcp_rmem <first number unchaged> <second unchanged> 135000000"
+>>>> sysctl net.ipv4.tcp_wmem  <first number unchaged> <second unchanged> 135000000"
+>>>>
+>>>> 5) mount with rsize=131072,wsize=131072
+>>>
+>>> 6) Note that NFS always guarantees that the file is _on_disk_ after
+>>> close(), so if you are using 'dd' to test, then you should be using the
+>>> 'conv=fsync' flag (i.e 'dd if=/dev/zero of=test count=20k conv=fsync')
+>>> in order to obtain a fair comparison between the NFS and local disk
+>>> performance. Otherwise, you are comparing NFS and local _pagecache_
+>>> performance.
+>>
+>> FWIW, modern versions of gnu dd (not sure exactly which version changed that)
+>> calculate and report throughput after close()ing the output file.
+> 
+> ...but not after syncing it unless you explicitly request that.
+> 
+> On most (all?) local filesystems, close() does not imply fsync().
 
-rpc.idmapd[8117]: libnfsidmap: Unable to get init function:
-  /lib64/libnfsidmap/umich_ldap.so: undefined symbol:
-  libnfsidmap_plugin_init
-rpc.idmapd[8117]: libnfsidmap: requested translation method,
-  'umich_ldap', is not available
----
+Right.  My point is that for benchmarking NFS, conv=fsync won't show
+any noticeable difference. We're in complete agreement that it's required
+for benchmarking local file system performance.
 
- cfg.c        |    2 ++
- gums.c       |    2 ++
- libtest.c    |    2 ++
- nss.c        |    2 ++
- static.c     |    2 ++
- umich_ldap.c |    2 ++
- 6 files changed, 12 insertions(+), 0 deletions(-)
+Benny
 
-diff --git a/cfg.c b/cfg.c
-index c615d24..3fe1b1c 100644
---- a/cfg.c
-+++ b/cfg.c
-@@ -30,6 +30,8 @@
-  * This code was written under funding by Ericsson Radio Systems.
-  */
- 
-+#include "config.h"
-+
- #include <sys/param.h>
- #include <sys/mman.h>
- #include <sys/socket.h>
-diff --git a/gums.c b/gums.c
-index 2b12d95..db2c8af 100644
---- a/gums.c
-+++ b/gums.c
-@@ -32,6 +32,8 @@
-  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  */
- 
-+#include "config.h"
-+
- #include <sys/types.h>
- #include <errno.h>
- #include <unistd.h>
-diff --git a/libtest.c b/libtest.c
-index 1c717b8..e88e6be 100644
---- a/libtest.c
-+++ b/libtest.c
-@@ -44,6 +44,8 @@
-  *
-  */
- 
-+#include "config.h"
-+
- #include <stdio.h>
- #include <string.h>
- #include <sys/types.h>
-diff --git a/nss.c b/nss.c
-index 04aff19..58a3df4 100644
---- a/nss.c
-+++ b/nss.c
-@@ -34,6 +34,8 @@
-  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  */
- 
-+#include "config.h"
-+
- #include <sys/types.h>
- #include <errno.h>
- #include <unistd.h>
-diff --git a/static.c b/static.c
-index fffd458..f14cf9c 100644
---- a/static.c
-+++ b/static.c
-@@ -32,6 +32,8 @@
-  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  */
- 
-+#include "config.h"
-+
- #include <unistd.h>
- #include <stdlib.h>
- #include <string.h>
-diff --git a/umich_ldap.c b/umich_ldap.c
-index f482b0a..b1ab602 100644
---- a/umich_ldap.c
-+++ b/umich_ldap.c
-@@ -32,6 +32,8 @@
-  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  */
- 
-+#include "config.h"
-+
- #ifdef ENABLE_LDAP
- 
- #include <sys/types.h>
+> 
+> Trond
 
