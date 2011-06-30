@@ -1,79 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:55426 "EHLO mx2.netapp.com"
+Received: from mx2.jrc.it ([139.191.1.110]:56420 "EHLO mx2.jrc.it"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752823Ab1FASHG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2011 14:07:06 -0400
-Subject: Re: [PATCH] NFS: filelayout should use nfs_generic_pg_test
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Weston Andros Adamson <dros@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>, trond@netapp.com,
-        linux-nfs@vger.kernel.org
-Date: Wed, 01 Jun 2011 14:07:01 -0400
-In-Reply-To: <4DE65202.2010502@panasas.com>
-References: <1306898310-9229-1-git-send-email-dros@netapp.com>
-	 <4DE5D287.603@panasas.com>
-	 <09816808-BA7B-4EAF-A18A-866B5A98BF25@netapp.com>
-	 <4DE65202.2010502@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1306951621.3873.45.camel@lade.trondhjem.org>
+	id S1752917Ab1F3HFd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Jun 2011 03:05:33 -0400
+Received: from irelay.jrc.it (irelay.jrc.it [139.191.254.63])
+	by mx2.jrc.it (LMC5614Amx2) with ESMTP id p5U75Vii029931
+	for <linux-nfs@vger.kernel.org>; Thu, 30 Jun 2011 09:05:31 +0200 (CEST)
+Received: from mail-zone.jrc.it (mail-zone.jrc.it [139.191.244.42])
+        by irelay.jrc.it (LMC5614Ainternal) with SMTP id p5U75Vs8021128
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Jun 2011 09:05:31 +0200 (MEST)
+Content-type: text/plain; CHARSET=US-ASCII; format=flowed
+Received: from email-02-ext.jrc.it ([unknown] [139.191.244.20])
+ by mail-zone.jrc.it
+ (Sun Java(tm) System Messaging Server 7.3-11.01 64bit (built Sep  1 2009))
+ with ESMTP id <0LNL0043PD12ED20@mail-zone.jrc.it> for
+ linux-nfs@vger.kernel.org; Thu, 30 Jun 2011 09:05:26 +0200 (CEST)
+Received: from [139.191.142.132] ([unknown] [139.191.229.250])
+ by email-02-ext.jrc.it
+ (Sun Java(tm) System Messaging Server 7.3-11.01 64bit (built Sep  1 2009))
+ with ESMTPA id <0LNL00A81D11WM60@email-02-ext.jrc.it> for
+ linux-nfs@vger.kernel.org; Thu, 30 Jun 2011 09:05:25 +0200 (CEST)
+Message-id: <4E0C2027.9000807@jrc.ec.europa.eu>
+Date: Thu, 30 Jun 2011 09:05:11 +0200
+From: Franck Eyraud <franck.eyraud@jrc.ec.europa.eu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 null request and compatibility with netapp
+References: <4E0B3897.40209@jrc.ec.europa.eu>
+ <1309366237.12547.13.camel@lade.trondhjem.org>
+In-reply-to: <1309366237.12547.13.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-06-01 at 17:51 +0300, Benny Halevy wrote: 
-> I think the following should work:
-> 
-> Benny
-> 
-> git diff --stat -p -M
->  fs/nfs/nfs4filelayout.c |   10 ++++++++++
->  1 files changed, 10 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> index 4269088..9f1d445 100644
-> --- a/fs/nfs/nfs4filelayout.c
-> +++ b/fs/nfs/nfs4filelayout.c
-> @@ -661,6 +661,16 @@ filelayout_pg_test(struct nfs_pageio_descriptor
-> *pgio, struct nfs_page *prev,
->  	u64 p_stripe, r_stripe;
->  	u32 stripe_unit;
-> 
-> +	/*
-> +	 * FIXME: ideally we should be able to coalesce all requests
-> +	 * that are not block boundary aligned, but currently this
-> +	 * is problematic for the case of bsize < PAGE_CACHE_SIZE,
-> +	 * since nfs_flush_multi and nfs_pagein_multi assume you
-> +	 * can have only one struct nfs_page.
-> +	 */
-> +	if (desc->pg_bsize < PAGE_SIZE)
-> +		return 0;
-> +
->  	if (!pnfs_generic_pg_test(pgio, prev, req))
->  		return 0;
+Hi Trond,
 
-So, there are several things that bother me about pnfs_generic_pg_test()
-too now that I'm looking more closely at it:
+On 29/06/2011 18:50, Trond Myklebust wrote:
+> On Wed, 2011-06-29 at 16:37 +0200, Franck Eyraud wrote:
+>
+> Without a trace, it is hard to affirm anything, but please note the
+> following:
+I can provide one, but it is wuite huge (in fact, we are working with 
+big data, and this usually occurs while there is a heavy traffic, but I 
+can't say if this is because of some collisions due to too many 
+requests, or if just statically it happens when there is traffic)
+> IOW: this all looks to me like a storm in a teacup brought about by a
+> server implementation that is logging errors in a case where it
+> shouldn't.
+Yes, I agree, this is what I think from the beginning, but our 
+colleagues managing the server are overwhelmed with these messages and 
+can't easily detect real problems; the support from netapp didn't 
+provide a way to avoid the logging of these messages. And since it has 
+been told that the problem is on client side, I was trying to find a 
+solution to that.
 
-     1. If the intention is to coalesce 'prev' and 'req', shouldn't we
-        be asking for a layout with req_offset(prev) instead of
-        req_offset(req)? 
-     2. If we're only requesting a layout of length pg_count, don't we
-        still need to test the layout length that the server actually
-        returned before we can allow the coalescing? 
-     3. if (!pgio->lseg), shouldn't we be returning an error of some
-        sort? Right now we're returning 'true', and allowing the
-        coalesce to occur. 
-     4. Furthermore, shouldn't that test guarding the
-        pnfs_update_layout() call rather be an 'if (pgio->pg_lseg ==
-        NULL)' instead of looking at the values of pg_count and
-        prev->wb_bytes?
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Franck
