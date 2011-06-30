@@ -1,179 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:60695 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754463Ab1FLXoY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2011 19:44:24 -0400
-Message-Id: <a702af417872abc11fc5f5639d605f0154059cf2.1307921138.git.rees@umich.edu>
-In-Reply-To: <cover.1307921137.git.rees@umich.edu>
-References: <cover.1307921137.git.rees@umich.edu>
-Date: Sun, 12 Jun 2011 19:44:22 -0400
-Subject: [PATCH 14/34] pnfsblock: remove device operations
-From: Jim Rees <rees@umich.edu>
-To: linux-nfs@vger.kernel.org
-Cc: peter honeyman <honey@citi.umich.edu>
+Received: from fieldses.org ([174.143.236.118]:37032 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751977Ab1F3RkJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Jun 2011 13:40:09 -0400
+Date: Thu, 30 Jun 2011 13:40:05 -0400
+To: Steve Dickson <SteveD@redhat.com>
+Cc: NeilBrown <neilb@suse.de>, Prem Karat <prem.karat@linux.vnet.ibm.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/1] nfs-utils: Don't hard code source and destination
+ args
+Message-ID: <20110630174005.GA18713@fieldses.org>
+References: <20110628104138.GB6600@d6fc318.ibm.com>
+ <4E0B3687.6060209@RedHat.com>
+ <20110630090932.10caeca6@notabene.brown>
+ <4E0C56BC.7010606@RedHat.com>
+ <20110630211026.66f1b7b4@notabene.brown>
+ <4E0C5BB0.5030004@RedHat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E0C5BB0.5030004@RedHat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/Makefile        |    2 +-
- fs/nfs/blocklayout/blocklayout.h   |    2 +
- fs/nfs/blocklayout/blocklayoutdm.c |  120 ++++++++++++++++++++++++++++++++++++
- 3 files changed, 123 insertions(+), 1 deletions(-)
- create mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
+On Thu, Jun 30, 2011 at 07:19:12AM -0400, Steve Dickson wrote:
+> 
+> 
+> On 06/30/2011 07:10 AM, NeilBrown wrote:
+> > On Thu, 30 Jun 2011 06:58:04 -0400 Steve Dickson <SteveD@redhat.com> wrote:
+> > 
+> >>
+> >>
+> >> On 06/29/2011 07:09 PM, NeilBrown wrote:
+> >>> On Wed, 29 Jun 2011 10:28:23 -0400 Steve Dickson <SteveD@redhat.com> wrote:
+> >>>
+> >>>>
+> >>>>
+> >>>> On 06/28/2011 06:41 AM, Prem Karat wrote:
+> >>>>>
+> >>>>> Currently souce and destination parameters should be passed as first and 
+> >>>>> second paramter while using mount.nfs. This patch allows them to be passed 
+> >>>>> anywhere while mounting.
+> >>>>>
+> >>>>> Current functionality is
+> >>>>> 	mount.nfs source destn -o <options>
+> >>>>> This patch will allow to do this
+> >>>>> 	mount.nfs -o <options> source destn
+> >>>>> 		or
+> >>>>> 	mount.nfs -o <options> source -o <options> destn
+> >>>>>
+> >>>>> Signed-off-by: Prem Karat <prem.karat@linux.vnet.ibm.com>
+> >>>> Committed...
+> >>>
+> >>> Uhmm... that's unfortunate because the patch is badly broken.
+> >>>
+> >>> With the patch in place, argv[2] gets destroyed.
+> >>> i.e. mount cannot possibly work correctly now.
+> >>>
+> >>> And that is just the start of the problems.
+> >>>
+> >>> This patch has clearly never been tested.
+> >> Hmm... well this is not true... I have 1.2.4 running
+> >> on a number of machines and without a problem...
+> > 
+> > I'm guessing you used --enable-libmount-mount which causes the patched code
+> > to not be compiled.  So while you did test nfs-utils, I don't think you
+> > tested the patch :-(
+> Thats exactly what happen... With your latest patch I never even compiled
+> the code... darn!
+> 
+> hmm... I wonder if its time to throw the enable-libmount-mount-on-by-default 
+> switch... 
 
-diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
-index bd69aad..bdbf180 100644
---- a/fs/nfs/blocklayout/Makefile
-+++ b/fs/nfs/blocklayout/Makefile
-@@ -2,4 +2,4 @@
- # Makefile for the pNFS block layout driver kernel module
- #
- obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
--blocklayoutdriver-objs := blocklayout.o block-device-discovery-pipe.o extents.o blocklayoutdev.o
-+blocklayoutdriver-objs := blocklayout.o block-device-discovery-pipe.o extents.o blocklayoutdev.o blocklayoutdm.o
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 6c01d8c..e5ee11c 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -102,6 +102,8 @@ struct pnfs_block_dev *nfs4_blk_decode_device(struct nfs_server *server,
- 						struct list_head *sdlist);
- int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
- 				struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
-+/* blocklayoutdm.c */
-+void free_block_dev(struct pnfs_block_dev *bdev);
- 
- #include <linux/sunrpc/simple_rpc_pipefs.h>
- 
-diff --git a/fs/nfs/blocklayout/blocklayoutdm.c b/fs/nfs/blocklayout/blocklayoutdm.c
-new file mode 100644
-index 0000000..097dd05
---- /dev/null
-+++ b/fs/nfs/blocklayout/blocklayoutdm.c
-@@ -0,0 +1,120 @@
-+/*
-+ *  linux/fs/nfs/blocklayout/blocklayoutdm.c
-+ *
-+ *  Module for the NFSv4.1 pNFS block layout driver.
-+ *
-+ *  Copyright (c) 2007 The Regents of the University of Michigan.
-+ *  All rights reserved.
-+ *
-+ *  Fred Isaman <iisaman@umich.edu>
-+ *  Andy Adamson <andros@citi.umich.edu>
-+ *
-+ * permission is granted to use, copy, create derivative works and
-+ * redistribute this software and such derivative works for any purpose,
-+ * so long as the name of the university of michigan is not used in
-+ * any advertising or publicity pertaining to the use or distribution
-+ * of this software without specific, written prior authorization.  if
-+ * the above copyright notice or any other identification of the
-+ * university of michigan is included in any copy of any portion of
-+ * this software, then the disclaimer below must also be included.
-+ *
-+ * this software is provided as is, without representation from the
-+ * university of michigan as to its fitness for any purpose, and without
-+ * warranty by the university of michigan of any kind, either express
-+ * or implied, including without limitation the implied warranties of
-+ * merchantability and fitness for a particular purpose.  the regents
-+ * of the university of michigan shall not be liable for any damages,
-+ * including special, indirect, incidental, or consequential damages,
-+ * with respect to any claim arising out or in connection with the use
-+ * of the software, even if it has been or is hereafter advised of the
-+ * possibility of such damages.
-+ */
-+
-+#include <linux/genhd.h> /* gendisk - used in a dprintk*/
-+#include <linux/sched.h>
-+#include <linux/hash.h>
-+
-+#include "blocklayout.h"
-+
-+#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
-+
-+/* Defines used for calculating memory usage in nfs4_blk_flatten() */
-+#define ARGSIZE   24    /* Max bytes needed for linear target arg string */
-+#define SPECSIZE (sizeof8(struct dm_target_spec) + ARGSIZE)
-+#define SPECS_PER_PAGE (PAGE_SIZE / SPECSIZE)
-+#define SPEC_HEADER_ADJUST (SPECS_PER_PAGE - \
-+			    (PAGE_SIZE - sizeof8(struct dm_ioctl)) / SPECSIZE)
-+#define roundup8(x) (((x)+7) & ~7)
-+#define sizeof8(x) roundup8(sizeof(x))
-+
-+static int dev_remove(dev_t dev)
-+{
-+	int ret = 1;
-+	struct pipefs_hdr *msg = NULL, *reply = NULL;
-+	uint64_t bl_dev;
-+	uint32_t major = MAJOR(dev), minor = MINOR(dev);
-+
-+	dprintk("Entering %s\n", __func__);
-+
-+	if (IS_ERR(bl_device_pipe))
-+		return ret;
-+
-+	memcpy((void *)&bl_dev, &major, sizeof(uint32_t));
-+	memcpy((void *)&bl_dev + sizeof(uint32_t), &minor, sizeof(uint32_t));
-+	msg = pipefs_alloc_init_msg(0, BL_DEVICE_UMOUNT, 0, (void *)&bl_dev,
-+				    sizeof(uint64_t));
-+	if (IS_ERR(msg)) {
-+		dprintk("ERROR: couldn't make pipefs message.\n");
-+		goto out;
-+	}
-+	msg->msgid = hash_ptr(&msg, sizeof(msg->msgid) * 8);
-+	msg->status = BL_DEVICE_REQUEST_INIT;
-+
-+	reply = pipefs_queue_upcall_waitreply(bl_device_pipe, msg,
-+					      &bl_device_list, 0, 0);
-+	if (IS_ERR(reply)) {
-+		dprintk("ERROR: upcall_waitreply failed\n");
-+		goto out;
-+	}
-+
-+	if (reply->status == BL_DEVICE_REQUEST_PROC)
-+		ret = 0; /*TODO: what to return*/
-+out:
-+	if (!IS_ERR(reply))
-+		kfree(reply);
-+	if (!IS_ERR(msg))
-+		kfree(msg);
-+	return ret;
-+}
-+
-+/*
-+ * Release meta device
-+ */
-+static int nfs4_blk_metadev_release(struct pnfs_block_dev *bdev)
-+{
-+	int rv;
-+
-+	dprintk("%s Releasing\n", __func__);
-+	/* XXX Check return? */
-+	rv = nfs4_blkdev_put(bdev->bm_mdev);
-+	dprintk("%s nfs4_blkdev_put returns %d\n", __func__, rv);
-+
-+	rv = dev_remove(bdev->bm_mdev->bd_dev);
-+	dprintk("%s Returns %d\n", __func__, rv);
-+	return rv;
-+}
-+
-+void free_block_dev(struct pnfs_block_dev *bdev)
-+{
-+	if (bdev) {
-+		if (bdev->bm_mdev) {
-+			dprintk("%s Removing DM device: %d:%d\n",
-+				__func__,
-+				MAJOR(bdev->bm_mdev->bd_dev),
-+				MINOR(bdev->bm_mdev->bd_dev));
-+			/* XXX Check status ?? */
-+			nfs4_blk_metadev_release(bdev);
-+		}
-+		kfree(bdev);
-+	}
-+}
--- 
-1.7.4.1
+Dumb question, as I haven't been following the libmount stuff, but: how
+soon before we can throw out the non-libmount code?
 
+Looks like patching and maintaining both is a pain.
+
+Could we get away with saying "if you want a non-libmount-based mount,
+feel free to go checkout 1.2.4 or earlier, and backport security fixes
+to it yourself if you want", and just rip it out now?
+
+--b.
