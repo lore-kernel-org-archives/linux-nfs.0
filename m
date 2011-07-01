@@ -1,40 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp3.ugent.be ([157.193.49.127]:47894 "EHLO smtp3.UGent.be"
+Received: from mail.perches.com ([173.55.12.10]:3427 "EHLO mail.perches.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757119Ab1GDQ2c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Jul 2011 12:28:32 -0400
-Message-ID: <4E11EA30.9070302@debian.org>
-Date: Mon, 04 Jul 2011 18:28:32 +0200
-From: Luk Claes <luk@debian.org>
-To: Jim Rees <rees@umich.edu>
-CC: NeilBrown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>,
+	id S1751711Ab1GATnc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jul 2011 15:43:32 -0400
+From: Joe Perches <joe@perches.com>
+To: linux-decnet-user@lists.sourceforge.net, netfilter-devel@vger.kernel.org,
+        netfilter@vger.kernel.org, coreteam@netfilter.org,
+        netdev@vger.kernel.org, linux-x25@vger.kernel.org,
+        linux-hams@vger.kernel.org, linux-sctp@vger.kernel.org,
         linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Do not segfault because of kernel version
-References: <1309617149-3993-1-git-send-email-luk@debian.org> <20110703150421.2db09d94@notabene.brown> <4E100E17.5000304@debian.org> <20110703130237.GA9889@merit.edu> <4E106A56.1050802@debian.org> <20110703132605.GC9889@merit.edu> <4E106E91.8080208@debian.org> <20110703141134.GA10071@merit.edu>
-In-Reply-To: <20110703141134.GA10071@merit.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-kernel@vger.kernel.org
+Subject: [PATCH 00/12] net switch/case reformatting
+Date: Fri,  1 Jul 2011 12:43:01 -0700
+Message-Id: <cover.1309549243.git.joe@perches.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 07/03/2011 04:11 PM, Jim Rees wrote:
-> Luk Claes wrote:
-> 
->   > Yes, just return UINT_MAX.  Fix the other error return too, the one where
->   > uname fails.  And put in a comment if you can briefly summarize Linus's
->   > argument.
->   
->   I thought that a real error like uname failing should still get the
->   'wrong' return 0, no?
-> 
-> No.  As I read it, Linus argues that you should only run the backward
-> compatibility code path when you know you're running an older kernel.  If
-> you don't know, then you should assume you're running a newer kernel.
+Just whitespace cleanups with a couple trivial corrections
 
-So, if uname fails we treat it as a newer kernel, shouldn't we treat
-that as an error? So treating it as a special case instead of running
-backward compatibility or as a newer kernel?
+Joe Perches (12):
+  appletalk: Reduce switch/case indent
+  decnet: Reduce switch/case indent
+  econet: Reduce switch/case indent
+  ipconfig: Reduce switch/case indent
+  netfilter: Reduce switch/case indent
+  ipv4: Reduce switch/case indent
+  ipv6: Reduce switch/case indent
+  lapb: Reduce switch/case indent
+  netrom:  Reduce switch/case indent
+  sctp: Reduce switch/case indent
+  sunrpc: Reduce switch/case indent
+  x25: Reduce switch/case indent
 
-Cheers
+ net/appletalk/aarp.c                   |  138 +++---
+ net/appletalk/ddp.c                    |  398 +++++++-------
+ net/decnet/af_decnet.c                 |  697 +++++++++++++-------------
+ net/decnet/dn_dev.c                    |   70 ++--
+ net/decnet/dn_fib.c                    |   77 ++--
+ net/decnet/dn_neigh.c                  |   14 +-
+ net/decnet/dn_nsp_in.c                 |  182 ++++----
+ net/decnet/dn_route.c                  |  102 ++--
+ net/decnet/dn_table.c                  |   23 +-
+ net/decnet/netfilter/dn_rtmsg.c        |   18 +-
+ net/decnet/sysctl_net_decnet.c         |   17 +-
+ net/econet/af_econet.c                 |   23 +-
+ net/ipv4/ipconfig.c                    |   73 ++--
+ net/ipv4/netfilter/ipt_CLUSTERIP.c     |   26 +-
+ net/ipv4/netfilter/nf_nat_snmp_basic.c |  210 ++++----
+ net/ipv4/raw.c                         |   36 +-
+ net/ipv4/route.c                       |   28 +-
+ net/ipv6/raw.c                         |  145 +++---
+ net/lapb/lapb_iface.c                  |   30 +-
+ net/lapb/lapb_in.c                     |  881 ++++++++++++++++----------------
+ net/netfilter/xt_HL.c                  |   64 ++--
+ net/netfilter/xt_hl.c                  |   32 +-
+ net/netrom/nr_route.c                  |   22 +-
+ net/sctp/sm_statefuns.c                |   51 +-
+ net/sctp/socket.c                      |   10 +-
+ net/sunrpc/auth_gss/auth_gss.c         |   46 +-
+ net/sunrpc/clnt.c                      |   25 +-
+ net/sunrpc/rpc_pipe.c                  |   14 +-
+ net/x25/af_x25.c                       |  473 +++++++++---------
+ net/x25/x25_dev.c                      |   44 +-
+ net/x25/x25_in.c                       |  118 +++---
+ net/x25/x25_link.c                     |   87 ++--
+ net/x25/x25_subr.c                     |   78 ++--
+ 33 files changed, 2111 insertions(+), 2141 deletions(-)
 
-Luk
+-- 
+1.7.6.rc1
+
