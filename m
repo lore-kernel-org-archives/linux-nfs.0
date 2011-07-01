@@ -1,115 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:37704 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752771Ab1GaAx1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 20:53:27 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v7 18/26] pnfsblock: bl_find_get_extent
-Date: Sat, 30 Jul 2011 20:52:48 -0400
-Message-Id: <1312073576-11024-19-git-send-email-rees@umich.edu>
-In-Reply-To: <1312073576-11024-1-git-send-email-rees@umich.edu>
-References: <1312073576-11024-1-git-send-email-rees@umich.edu>
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:58518 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756716Ab1GAU4S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jul 2011 16:56:18 -0400
+Date: Fri, 1 Jul 2011 16:56:14 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: NeilBrown <neilb@suse.de>, Prem Karat <prem.karat@linux.vnet.ibm.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/1] nfs-utils: Don't hard code source and destination
+ args
+Message-ID: <20110701205614.GB28203@fieldses.org>
+References: <20110628104138.GB6600@d6fc318.ibm.com>
+ <4E0B3687.6060209@RedHat.com>
+ <20110630090932.10caeca6@notabene.brown>
+ <4E0C56BC.7010606@RedHat.com>
+ <20110630211026.66f1b7b4@notabene.brown>
+ <4E0C5BB0.5030004@RedHat.com>
+ <20110630174005.GA18713@fieldses.org>
+ <4E0E284C.9020802@RedHat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E0E284C.9020802@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+On Fri, Jul 01, 2011 at 04:04:28PM -0400, Steve Dickson wrote:
+> On 06/30/2011 01:40 PM, J. Bruce Fields wrote:
+> > Dumb question, as I haven't been following the libmount stuff, but: how
+> > soon before we can throw out the non-libmount code?
+> The switch has been throw in Fedora Rawhide/Fedora 16.
+> 
+> > 
+> > Looks like patching and maintaining both is a pain.
+> Likes like??  Boy, you have 20/20 8-) 
+>  
+> > 
+> > Could we get away with saying "if you want a non-libmount-based mount,
+> > feel free to go checkout 1.2.4 or earlier, and backport security fixes
+> > to it yourself if you want", and just rip it out now?
+> Well we would not rip it out the code, we would just change the default to 
+> always use the libmount code and have a --disable-libmount config flag
+> for people that don't have the libmount code.... I'm thinking that
+> patch would fairly trivial... 
 
-Implement bl_find_get_extent(), one of the core extent manipulation
-routines.
+Yeah, understood, that's why I was asking when we could actually rip out
+all the code.  As long as it's still there, people may be tempted to use
+it, which means you're stuck maintaining it.
 
-[pnfsblock: Lookup list entry of layouts and tags in reverse order]
-Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Jim Rees <rees@umich.edu>
-
-pnfsblock: fix print format warnings for sector_t and size_t
-
-gcc spews warnings about these on x86_64, e.g.:
-fs/nfs/blocklayout/blocklayout.c:74: warning: format ‘%Lu’ expects type ‘long long unsigned int’, but argument 2 has type ‘sector_t’
-fs/nfs/blocklayout/blocklayout.c:388: warning: format ‘%d’ expects type ‘int’, but argument 5 has type ‘size_t’
-
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- fs/nfs/blocklayout/blocklayout.h |    3 ++
- fs/nfs/blocklayout/extents.c     |   47 ++++++++++++++++++++++++++++++++++++++
- 2 files changed, 50 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index d645880..3e1b5fc 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -153,6 +153,9 @@ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
- void bl_free_block_dev(struct pnfs_block_dev *bdev);
- 
- /* extents.c */
-+struct pnfs_block_extent *
-+bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
-+		struct pnfs_block_extent **cow_read);
- void bl_put_extent(struct pnfs_block_extent *be);
- struct pnfs_block_extent *bl_alloc_extent(void);
- int bl_add_merge_extent(struct pnfs_block_layout *bl,
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index ee4891f..8fa93e2 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -193,3 +193,50 @@ bl_add_merge_extent(struct pnfs_block_layout *bl,
- 	bl_put_extent(new);
- 	return -EIO;
- }
-+
-+/* Returns extent, or NULL.  If a second READ extent exists, it is returned
-+ * in cow_read, if given.
-+ *
-+ * The extents are kept in two seperate ordered lists, one for READ and NONE,
-+ * one for READWRITE and INVALID.  Within each list, we assume:
-+ * 1. Extents are ordered by file offset.
-+ * 2. For any given isect, there is at most one extents that matches.
-+ */
-+struct pnfs_block_extent *
-+bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
-+	    struct pnfs_block_extent **cow_read)
-+{
-+	struct pnfs_block_extent *be, *cow, *ret;
-+	int i;
-+
-+	dprintk("%s enter with isect %llu\n", __func__, (u64)isect);
-+	cow = ret = NULL;
-+	spin_lock(&bl->bl_ext_lock);
-+	for (i = 0; i < EXTENT_LISTS; i++) {
-+		list_for_each_entry_reverse(be, &bl->bl_extents[i], be_node) {
-+			if (isect >= be->be_f_offset + be->be_length)
-+				break;
-+			if (isect >= be->be_f_offset) {
-+				/* We have found an extent */
-+				dprintk("%s Get %p (%i)\n", __func__, be,
-+					atomic_read(&be->be_refcnt.refcount));
-+				kref_get(&be->be_refcnt);
-+				if (!ret)
-+					ret = be;
-+				else if (be->be_state != PNFS_BLOCK_READ_DATA)
-+					bl_put_extent(be);
-+				else
-+					cow = be;
-+				break;
-+			}
-+		}
-+		if (ret &&
-+		    (!cow_read || ret->be_state != PNFS_BLOCK_INVALID_DATA))
-+			break;
-+	}
-+	spin_unlock(&bl->bl_ext_lock);
-+	if (cow_read)
-+		*cow_read = cow;
-+	print_bl_extent(ret);
-+	return ret;
-+}
--- 
-1.7.4.1
-
+--b.
