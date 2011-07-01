@@ -1,105 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:62722 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750962Ab1GICQ6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Jul 2011 22:16:58 -0400
-Message-ID: <4E17BACC.8030901@cn.fujitsu.com>
-Date: Sat, 09 Jul 2011 10:19:56 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2 v3] nfsd41: check the size of request
-References: <4E0EDEBE.8040902@cn.fujitsu.com> <20110706164306.GC30349@fieldses.org> <4E16CA48.3030308@cn.fujitsu.com> <20110708200319.GC13886@fieldses.org>
-In-Reply-To: <20110708200319.GC13886@fieldses.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:38335 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757559Ab1GAWrQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jul 2011 18:47:16 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p61MlG8h002509
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 1 Jul 2011 18:47:16 -0400
+Received: from localhost6.localdomain6 (vpn1-7-70.ams2.redhat.com [10.36.7.70])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p61MlEiB002660
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Fri, 1 Jul 2011 18:47:15 -0400
+Received: from localhost6.localdomain6 (alice [127.0.0.1])
+	by localhost6.localdomain6 (8.14.4/8.14.4) with ESMTP id p61MlCUo012424
+	for <linux-nfs@vger.kernel.org>; Sat, 2 Jul 2011 00:47:13 +0200
+From: Michal Schmidt <mschmidt@redhat.com>
+Subject: [PATCH] sunrpc: add MODULE_ALIAS to match the filesystem name
+To: linux-nfs@vger.kernel.org
+Date: Sat, 02 Jul 2011 00:47:12 +0200
+Message-ID: <20110701224712.12393.10369.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This patch checks request's size when it consists SEQUENCE.
-Also modifies the format of some function which length exceed 80.
+sunrpc implements the rpc_pipefs filesystem type.
+Add the alias to have the module requested automatically by the kernel
+when the filesystem is mounted.
 
-v3:
-   remove the check about only SEQUENCE operation.
-   check the size immediately after find session.
-   modify some function's format which length exceed 80.
-
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Signed-off-by: Michal Schmidt <mschmidt@redhat.com>
 ---
- fs/nfsd/nfs4state.c |   24 ++++++++++++++++++++----
- 1 files changed, 20 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e98f3c2..9cce11c 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1645,7 +1645,8 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
- 	return status;
- }
- 
--static bool nfsd4_compound_in_session(struct nfsd4_session *session, struct nfs4_sessionid *sid)
-+static bool nfsd4_compound_in_session(struct nfsd4_session *session,
-+				      struct nfs4_sessionid *sid)
- {
- 	if (!session)
- 		return 0;
-@@ -1695,7 +1696,8 @@ out:
- 	return status;
- }
- 
--static struct nfsd4_conn *__nfsd4_find_conn(struct svc_xprt *xpt, struct nfsd4_session *s)
-+static struct nfsd4_conn *__nfsd4_find_conn(struct svc_xprt *xpt,
-+					    struct nfsd4_session *s)
- {
- 	struct nfsd4_conn *c;
- 
-@@ -1707,7 +1709,8 @@ static struct nfsd4_conn *__nfsd4_find_conn(struct svc_xprt *xpt, struct nfsd4_s
- 	return NULL;
- }
- 
--static void nfsd4_sequence_check_conn(struct nfsd4_conn *new, struct nfsd4_session *ses)
-+static void nfsd4_sequence_check_conn(struct nfsd4_conn *new,
-+				      struct nfsd4_session *ses)
- {
- 	struct nfs4_client *clp = ses->se_client;
- 	struct nfsd4_conn *c;
-@@ -1729,13 +1732,22 @@ static void nfsd4_sequence_check_conn(struct nfsd4_conn *new, struct nfsd4_sessi
- 	return;
- }
- 
--static bool nfsd4_session_too_many_ops(struct svc_rqst *rqstp, struct nfsd4_session *session)
-+static bool nfsd4_session_too_many_ops(struct svc_rqst *rqstp,
-+				       struct nfsd4_session *session)
- {
- 	struct nfsd4_compoundargs *args = rqstp->rq_argp;
- 
- 	return args->opcnt > session->se_fchannel.maxops;
- }
- 
-+static bool nfsd4_request_too_big(struct svc_rqst *rqstp,
-+				  struct nfsd4_session *session)
-+{
-+	struct xdr_buf *xb = &rqstp->rq_arg;
-+
-+	return xb->len > session->se_fchannel.maxreq_sz;
-+}
-+
- __be32
- nfsd4_sequence(struct svc_rqst *rqstp,
- 	       struct nfsd4_compound_state *cstate,
-@@ -1768,6 +1780,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	if (nfsd4_session_too_many_ops(rqstp, session))
- 		goto out;
- 
-+	status = nfserr_req_too_big;
-+	if (nfsd4_request_too_big(rqstp, session))
-+		goto out;
-+
- 	status = nfserr_badslot;
- 	if (seq->slotid >= session->se_fchannel.maxreqs)
- 		goto out;
--- 
-1.7.5.4
+ net/sunrpc/rpc_pipe.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
-
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 72bc536..c1d1996 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -1084,3 +1084,6 @@ void unregister_rpc_pipefs(void)
+ 	kmem_cache_destroy(rpc_inode_cachep);
+ 	unregister_filesystem(&rpc_pipe_fs_type);
+ }
++
++/* Make 'mount -t rpc_pipefs ...' autoload this module. */
++MODULE_ALIAS("rpc_pipefs");
 
