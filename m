@@ -1,134 +1,159 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pz0-f42.google.com ([209.85.210.42]:54175 "EHLO
-	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752119Ab1GYO1A (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jul 2011 10:27:00 -0400
-Received: by pzk37 with SMTP id 37so8592804pzk.1
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Jul 2011 07:27:00 -0700 (PDT)
-Message-ID: <4E2D7D2E.50204@tonian.com>
-Date: Mon, 25 Jul 2011 10:26:54 -0400
-From: Benny Halevy <bhalevy@tonian.com>
-To: Jim Rees <rees@umich.edu>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH v2 06/25] pnfs: cleanup_layoutcommit
-References: <1311276865-29484-1-git-send-email-rees@umich.edu> <1311276865-29484-7-git-send-email-rees@umich.edu>
-In-Reply-To: <1311276865-29484-7-git-send-email-rees@umich.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail.perches.com ([173.55.12.10]:3478 "EHLO mail.perches.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932178Ab1GATnx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jul 2011 15:43:53 -0400
+From: Joe Perches <joe@perches.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH 11/12] sunrpc: Reduce switch/case indent
+Date: Fri,  1 Jul 2011 12:43:12 -0700
+Message-Id: <c0a6d5adc9030bc97bf905b92a4406bdcd638810.1309549244.git.joe@perches.com>
+In-Reply-To: <cover.1309549243.git.joe@perches.com>
+References: <cover.1309549243.git.joe@perches.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-07-21 15:34, Jim Rees wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> This gives layout driver a chance to cleanup structures they put in at
-> encode_layoutcommit.
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> [fixup layout header pointer for layoutcommit]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> Signed-off-by: Benny Halevy <benny@tonian.com>
-> ---
->  fs/nfs/nfs4proc.c       |    1 +
->  fs/nfs/nfs4xdr.c        |    3 ++-
->  fs/nfs/pnfs.c           |   10 ++++++++++
->  fs/nfs/pnfs.h           |    5 +++++
->  include/linux/nfs_xdr.h |    1 +
->  5 files changed, 19 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index e02f545..795033c5 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -5965,6 +5965,7 @@ static void nfs4_layoutcommit_release(void *calldata)
->  	struct nfs4_layoutcommit_data *data = calldata;
->  	struct pnfs_layout_segment *lseg, *tmp;
->  
-> +	pnfs_cleanup_layoutcommit(data->args.inode, data);
->  	/* Matched by references in pnfs_set_layoutcommit */
->  	list_for_each_entry_safe(lseg, tmp, &data->lseg_list, pls_lc_list) {
->  		list_del_init(&lseg->pls_lc_list);
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 5ce3c64..07c41b2 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -1991,7 +1991,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
->  	*p++ = cpu_to_be32(OP_LAYOUTCOMMIT);
->  	/* Only whole file layouts */
->  	p = xdr_encode_hyper(p, 0); /* offset */
-> -	p = xdr_encode_hyper(p, NFS4_MAX_UINT64); /* length */
-> +	p = xdr_encode_hyper(p, args->lastbytewritten+1); /* length */
+Make the case labels the same indent as the switch.
 
-This particular change seems to be related to [PATCH 03/25]
-"NFS41: Let layoutcommit handle multiple segments"
+git diff -w shows 80 column line reflowing.
 
-Benny
+Signed-off-by: Joe Perches <joe@perches.com>
+---
+ net/sunrpc/auth_gss/auth_gss.c |   46 +++++++++++++++++++--------------------
+ net/sunrpc/clnt.c              |   25 ++++++++++-----------
+ net/sunrpc/rpc_pipe.c          |   14 ++++++------
+ 3 files changed, 41 insertions(+), 44 deletions(-)
 
->  	*p++ = cpu_to_be32(0); /* reclaim */
->  	p = xdr_encode_opaque_fixed(p, args->stateid.data, NFS4_STATEID_SIZE);
->  	*p++ = cpu_to_be32(1); /* newoffset = TRUE */
-> @@ -5596,6 +5596,7 @@ static int decode_layoutcommit(struct xdr_stream *xdr,
->  	int status;
->  
->  	status = decode_op_hdr(xdr, OP_LAYOUTCOMMIT);
-> +	res->status = status;
->  	if (status)
->  		return status;
->  
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index fbebd2a..3b20753 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -1411,6 +1411,16 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
->  }
->  EXPORT_SYMBOL_GPL(pnfs_set_layoutcommit);
->  
-> +void pnfs_cleanup_layoutcommit(struct inode *inode,
-> +			       struct nfs4_layoutcommit_data *data)
-> +{
-> +	struct nfs_server *nfss = NFS_SERVER(inode);
-> +
-> +	if (nfss->pnfs_curr_ld->cleanup_layoutcommit)
-> +		nfss->pnfs_curr_ld->cleanup_layoutcommit(NFS_I(inode)->layout,
-> +							 data);
-> +}
-> +
->  /*
->   * For the LAYOUT4_NFSV4_1_FILES layout type, NFS_DATA_SYNC WRITEs and
->   * NFS_UNSTABLE WRITEs with a COMMIT to data servers must store enough
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index bddd8b9..f271425 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -113,6 +113,9 @@ struct pnfs_layoutdriver_type {
->  				     struct xdr_stream *xdr,
->  				     const struct nfs4_layoutreturn_args *args);
->  
-> +	void (*cleanup_layoutcommit) (struct pnfs_layout_hdr *layoutid,
-> +				      struct nfs4_layoutcommit_data *data);
-> +
->  	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
->  				     struct xdr_stream *xdr,
->  				     const struct nfs4_layoutcommit_args *args);
-> @@ -196,6 +199,8 @@ void pnfs_roc_release(struct inode *ino);
->  void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
->  bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
->  void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
-> +void pnfs_cleanup_layoutcommit(struct inode *inode,
-> +			       struct nfs4_layoutcommit_data *data);
->  int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
->  int _pnfs_return_layout(struct inode *);
->  int pnfs_ld_write_done(struct nfs_write_data *);
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 94f27e5..569ea5b 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -269,6 +269,7 @@ struct nfs4_layoutcommit_res {
->  	struct nfs_fattr *fattr;
->  	const struct nfs_server *server;
->  	struct nfs4_sequence_res seq_res;
-> +	int status;
->  };
->  
->  struct nfs4_layoutcommit_data {
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 339ba64..16177d2 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1421,18 +1421,16 @@ gss_wrap_req(struct rpc_task *task,
+ 		goto out;
+ 	}
+ 	switch (gss_cred->gc_service) {
+-		case RPC_GSS_SVC_NONE:
+-			gss_wrap_req_encode(encode, rqstp, p, obj);
+-			status = 0;
+-			break;
+-		case RPC_GSS_SVC_INTEGRITY:
+-			status = gss_wrap_req_integ(cred, ctx, encode,
+-								rqstp, p, obj);
+-			break;
+-		case RPC_GSS_SVC_PRIVACY:
+-			status = gss_wrap_req_priv(cred, ctx, encode,
+-					rqstp, p, obj);
+-			break;
++	case RPC_GSS_SVC_NONE:
++		gss_wrap_req_encode(encode, rqstp, p, obj);
++		status = 0;
++		break;
++	case RPC_GSS_SVC_INTEGRITY:
++		status = gss_wrap_req_integ(cred, ctx, encode, rqstp, p, obj);
++		break;
++	case RPC_GSS_SVC_PRIVACY:
++		status = gss_wrap_req_priv(cred, ctx, encode, rqstp, p, obj);
++		break;
+ 	}
+ out:
+ 	gss_put_ctx(ctx);
+@@ -1531,18 +1529,18 @@ gss_unwrap_resp(struct rpc_task *task,
+ 	if (ctx->gc_proc != RPC_GSS_PROC_DATA)
+ 		goto out_decode;
+ 	switch (gss_cred->gc_service) {
+-		case RPC_GSS_SVC_NONE:
+-			break;
+-		case RPC_GSS_SVC_INTEGRITY:
+-			status = gss_unwrap_resp_integ(cred, ctx, rqstp, &p);
+-			if (status)
+-				goto out;
+-			break;
+-		case RPC_GSS_SVC_PRIVACY:
+-			status = gss_unwrap_resp_priv(cred, ctx, rqstp, &p);
+-			if (status)
+-				goto out;
+-			break;
++	case RPC_GSS_SVC_NONE:
++		break;
++	case RPC_GSS_SVC_INTEGRITY:
++		status = gss_unwrap_resp_integ(cred, ctx, rqstp, &p);
++		if (status)
++			goto out;
++		break;
++	case RPC_GSS_SVC_PRIVACY:
++		status = gss_unwrap_resp_priv(cred, ctx, rqstp, &p);
++		if (status)
++			goto out;
++		break;
+ 	}
+ 	/* take into account extra slack for integrity and privacy cases: */
+ 	cred->cr_auth->au_rslack = cred->cr_auth->au_verfsize + (p - savedp)
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index b84d739..2c1ffb9 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1663,19 +1663,18 @@ rpc_verify_header(struct rpc_task *task)
+ 		if (--len < 0)
+ 			goto out_overflow;
+ 		switch ((n = ntohl(*p++))) {
+-			case RPC_AUTH_ERROR:
+-				break;
+-			case RPC_MISMATCH:
+-				dprintk("RPC: %5u %s: RPC call version "
+-						"mismatch!\n",
+-						task->tk_pid, __func__);
+-				error = -EPROTONOSUPPORT;
+-				goto out_err;
+-			default:
+-				dprintk("RPC: %5u %s: RPC call rejected, "
+-						"unknown error: %x\n",
+-						task->tk_pid, __func__, n);
+-				goto out_eio;
++		case RPC_AUTH_ERROR:
++			break;
++		case RPC_MISMATCH:
++			dprintk("RPC: %5u %s: RPC call version mismatch!\n",
++				task->tk_pid, __func__);
++			error = -EPROTONOSUPPORT;
++			goto out_err;
++		default:
++			dprintk("RPC: %5u %s: RPC call rejected, "
++				"unknown error: %x\n",
++				task->tk_pid, __func__, n);
++			goto out_eio;
+ 		}
+ 		if (--len < 0)
+ 			goto out_overflow;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 72bc536..b181e34 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -456,13 +456,13 @@ rpc_get_inode(struct super_block *sb, umode_t mode)
+ 	inode->i_ino = get_next_ino();
+ 	inode->i_mode = mode;
+ 	inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
+-	switch(mode & S_IFMT) {
+-		case S_IFDIR:
+-			inode->i_fop = &simple_dir_operations;
+-			inode->i_op = &simple_dir_inode_operations;
+-			inc_nlink(inode);
+-		default:
+-			break;
++	switch (mode & S_IFMT) {
++	case S_IFDIR:
++		inode->i_fop = &simple_dir_operations;
++		inode->i_op = &simple_dir_inode_operations;
++		inc_nlink(inode);
++	default:
++		break;
+ 	}
+ 	return inode;
+ }
+-- 
+1.7.6.rc1
+
