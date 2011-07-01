@@ -1,174 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:38089 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752686Ab1GaAxT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 20:53:19 -0400
-From: Jim Rees <rees@umich.edu>
+Received: from mail.candelatech.com ([208.74.158.172]:37627 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755293Ab1GASsc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Jul 2011 14:48:32 -0400
+Message-ID: <4E0E166A.7080908@candelatech.com>
+Date: Fri, 01 Jul 2011 11:48:10 -0700
+From: Ben Greear <greearb@candelatech.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v7 13/26] pnfsblock: remove device operations
-Date: Sat, 30 Jul 2011 20:52:43 -0400
-Message-Id: <1312073576-11024-14-git-send-email-rees@umich.edu>
-In-Reply-To: <1312073576-11024-1-git-send-email-rees@umich.edu>
-References: <1312073576-11024-1-git-send-email-rees@umich.edu>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Potential locking issue in sunrpc
+References: <4E0CE5E9.2090401@candelatech.com> <1309545459.5230.25.camel@lade.trondhjem.org>
+In-Reply-To: <1309545459.5230.25.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Jim Rees <rees@umich.edu>
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
-[upcall bugfixes]
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/blocklayout/Makefile        |    2 +-
- fs/nfs/blocklayout/blocklayout.h   |    3 +
- fs/nfs/blocklayout/blocklayoutdm.c |  111 ++++++++++++++++++++++++++++++++++++
- 3 files changed, 115 insertions(+), 1 deletions(-)
- create mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
+On 07/01/2011 11:37 AM, Trond Myklebust wrote:
+> On Thu, 2011-06-30 at 14:08 -0700, Ben Greear wrote:
+>> This method in sched.c says we should have a lock for ASYNC
+>>
+>> /*
+>>    * Make an RPC task runnable.
+>>    *
+>>    * Note: If the task is ASYNC, this must be called with
+>>    * the spinlock held to protect the wait queue operation.
+>>    */
+>> static void rpc_make_runnable(struct rpc_task *task)
+>>
+>> However, I don't think the lock is being taken for
+>> the call path starting with rpcb_call_async in
+>> rpcb_clnt.c:
+>>
+>> rpcb_call_async
+>> rpc_run_task
+>> rpc_execute
+>> rpc_make_runnable
+>>
+>> Is the comment on the make_runnable method wrong, or are we missing locking?
+>
+> Neither. In the above case, we are not waking up from a wait queue, so
+> there are no locks involved.
 
-diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
-index 5bf3409..d581550 100644
---- a/fs/nfs/blocklayout/Makefile
-+++ b/fs/nfs/blocklayout/Makefile
-@@ -2,4 +2,4 @@
- # Makefile for the pNFS block layout driver kernel module
- #
- obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
--blocklayoutdriver-objs := blocklayout.o extents.o blocklayoutdev.o
-+blocklayoutdriver-objs := blocklayout.o extents.o blocklayoutdev.o blocklayoutdm.o
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index dd25f1b..1527f88 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -128,5 +128,8 @@ struct pnfs_block_dev *nfs4_blk_decode_device(struct nfs_server *server,
- int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
- 				struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
- 
-+/* blocklayoutdm.c */
-+void bl_free_block_dev(struct pnfs_block_dev *bdev);
-+
- void bl_put_extent(struct pnfs_block_extent *be);
- #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-diff --git a/fs/nfs/blocklayout/blocklayoutdm.c b/fs/nfs/blocklayout/blocklayoutdm.c
-new file mode 100644
-index 0000000..d055c75
---- /dev/null
-+++ b/fs/nfs/blocklayout/blocklayoutdm.c
-@@ -0,0 +1,111 @@
-+/*
-+ *  linux/fs/nfs/blocklayout/blocklayoutdm.c
-+ *
-+ *  Module for the NFSv4.1 pNFS block layout driver.
-+ *
-+ *  Copyright (c) 2007 The Regents of the University of Michigan.
-+ *  All rights reserved.
-+ *
-+ *  Fred Isaman <iisaman@umich.edu>
-+ *  Andy Adamson <andros@citi.umich.edu>
-+ *
-+ * permission is granted to use, copy, create derivative works and
-+ * redistribute this software and such derivative works for any purpose,
-+ * so long as the name of the university of michigan is not used in
-+ * any advertising or publicity pertaining to the use or distribution
-+ * of this software without specific, written prior authorization.  if
-+ * the above copyright notice or any other identification of the
-+ * university of michigan is included in any copy of any portion of
-+ * this software, then the disclaimer below must also be included.
-+ *
-+ * this software is provided as is, without representation from the
-+ * university of michigan as to its fitness for any purpose, and without
-+ * warranty by the university of michigan of any kind, either express
-+ * or implied, including without limitation the implied warranties of
-+ * merchantability and fitness for a particular purpose.  the regents
-+ * of the university of michigan shall not be liable for any damages,
-+ * including special, indirect, incidental, or consequential damages,
-+ * with respect to any claim arising out or in connection with the use
-+ * of the software, even if it has been or is hereafter advised of the
-+ * possibility of such damages.
-+ */
-+
-+#include <linux/genhd.h> /* gendisk - used in a dprintk*/
-+#include <linux/sched.h>
-+#include <linux/hash.h>
-+
-+#include "blocklayout.h"
-+
-+#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
-+
-+static void dev_remove(dev_t dev)
-+{
-+	struct rpc_pipe_msg msg;
-+	struct bl_dev_msg bl_umount_request;
-+	struct bl_msg_hdr bl_msg = {
-+		.type = BL_DEVICE_UMOUNT,
-+		.totallen = sizeof(bl_umount_request),
-+	};
-+	uint8_t *dataptr;
-+	DECLARE_WAITQUEUE(wq, current);
-+
-+	dprintk("Entering %s\n", __func__);
-+
-+	memset(&msg, 0, sizeof(msg));
-+	msg.data = kzalloc(1 + sizeof(bl_umount_request), GFP_NOFS);
-+	if (!msg.data)
-+		goto out;
-+
-+	memset(&bl_umount_request, 0, sizeof(bl_umount_request));
-+	bl_umount_request.major = MAJOR(dev);
-+	bl_umount_request.minor = MINOR(dev);
-+
-+	memcpy(msg.data, &bl_msg, sizeof(bl_msg));
-+	dataptr = (uint8_t *) msg.data;
-+	memcpy(&dataptr[sizeof(bl_msg)], &bl_umount_request, sizeof(bl_umount_request));
-+	msg.len = sizeof(bl_msg) + bl_msg.totallen;
-+
-+	add_wait_queue(&bl_wq, &wq);
-+	if (rpc_queue_upcall(bl_device_pipe->d_inode, &msg) < 0) {
-+		remove_wait_queue(&bl_wq, &wq);
-+		goto out;
-+	}
-+
-+	set_current_state(TASK_UNINTERRUPTIBLE);
-+	schedule();
-+	__set_current_state(TASK_RUNNING);
-+	remove_wait_queue(&bl_wq, &wq);
-+
-+out:
-+	kfree(msg.data);
-+}
-+
-+/*
-+ * Release meta device
-+ */
-+static void nfs4_blk_metadev_release(struct pnfs_block_dev *bdev)
-+{
-+	int rv;
-+
-+	dprintk("%s Releasing\n", __func__);
-+	rv = nfs4_blkdev_put(bdev->bm_mdev);
-+	if (rv)
-+		printk(KERN_ERR "%s nfs4_blkdev_put returns %d\n",
-+				__func__, rv);
-+
-+	dev_remove(bdev->bm_mdev->bd_dev);
-+}
-+
-+void bl_free_block_dev(struct pnfs_block_dev *bdev)
-+{
-+	if (bdev) {
-+		if (bdev->bm_mdev) {
-+			dprintk("%s Removing DM device: %d:%d\n",
-+				__func__,
-+				MAJOR(bdev->bm_mdev->bd_dev),
-+				MINOR(bdev->bm_mdev->bd_dev));
-+			nfs4_blk_metadev_release(bdev);
-+		}
-+		kfree(bdev);
-+	}
-+}
+Ok.  That MUST in the comment could have a caveat, but either way,
+looks like that locking isn't an issue so I'll have to look elsewhere.
+
+I'm seeing a worker-thread making calls on tasks that have
+already been freed.  Takes very long time (hours or days) to reproduce,
+as well as my patches to support lots of client mounts by binding to IP.
+
+Our test case is to create 200 client mounts, start low-speed O_DIRECT
+traffic on each mount, run for 15-45 seconds, un-mount, repeat.
+
+Do you have any suggestions for how this sort of thing might happen?
+
+Like if something added the task to the work-queue, and then deleted it
+before the task was run, or perhaps some sort of corruption/race while
+adding it to the work-queue?
+
+Calling memset to zero out the task right before giving it back to the
+mempool makes it much harder to reproduce, but eventually we do see
+a null-pointer exception with something trying to access that task's
+memory.
+
+It seems reliably related to rpcb_clnt logic that creates an async, dynamic
+task.
+
+I'll be happy to re-post the traces from slub debugging
+if you have interest in seeing them.
+
+Thanks,
+Ben
+
+
+>
+> Trond
+>
+
+
 -- 
-1.7.4.1
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
