@@ -1,193 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:43412 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752104Ab1G2PzG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 11:55:06 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v5 12/27] pnfsblock: basic extent code
-Date: Fri, 29 Jul 2011 11:54:37 -0400
-Message-Id: <1311954892-22038-13-git-send-email-rees@umich.edu>
-In-Reply-To: <1311954892-22038-1-git-send-email-rees@umich.edu>
-References: <1311954892-22038-1-git-send-email-rees@umich.edu>
+Received: from jacques.telenet-ops.be ([195.130.132.50]:36378 "EHLO
+	jacques.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752003Ab1GBOcu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Jul 2011 10:32:50 -0400
+From: Luk Claes <luk@debian.org>
+To: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+Cc: Luk Claes <luk@debian.org>
+Subject: [PATCH] Do not segfault because of kernel version
+Date: Sat,  2 Jul 2011 16:32:29 +0200
+Message-Id: <1309617149-3993-1-git-send-email-luk@debian.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+mount.nfs segfaults if kernel version number does not contain
+at least 3 components delimited with a dot.
 
-Adds structures and basic create/delete code for extents.
+Avoid this by matching up to three unsigned integers inialised
+to zero, separated by dots.
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Zhang Jingwang <Jingwang.Zhang@emc.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+Signed-off-by: Luk Claes <luk@debian.org>
 ---
- fs/nfs/blocklayout/Makefile      |    2 +-
- fs/nfs/blocklayout/blocklayout.c |   20 ++++++--
- fs/nfs/blocklayout/blocklayout.h |    1 +
- fs/nfs/blocklayout/extents.c     |   97 ++++++++++++++++++++++++++++++++++++++
- 4 files changed, 115 insertions(+), 5 deletions(-)
- create mode 100644 fs/nfs/blocklayout/extents.c
+ utils/mount/version.h |   11 +++++------
+ 1 files changed, 5 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
-index 6bf49cd..5cfadf6 100644
---- a/fs/nfs/blocklayout/Makefile
-+++ b/fs/nfs/blocklayout/Makefile
-@@ -2,4 +2,4 @@
- # Makefile for the pNFS block layout driver kernel module
- #
- obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
--blocklayoutdriver-objs := blocklayout.o
-+blocklayoutdriver-objs := blocklayout.o extents.o
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index e341c62..252917d 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -53,12 +53,24 @@ bl_write_pagelist(struct nfs_write_data *wdata,
- 	return PNFS_NOT_ATTEMPTED;
- }
+diff --git a/utils/mount/version.h b/utils/mount/version.h
+index af61a6f..2642eab 100644
+--- a/utils/mount/version.h
++++ b/utils/mount/version.h
+@@ -23,8 +23,7 @@
+ #ifndef _NFS_UTILS_MOUNT_VERSION_H
+ #define _NFS_UTILS_MOUNT_VERSION_H
  
--/* STUB */
-+/* FIXME - range ignored */
- static void
--release_extents(struct pnfs_block_layout *bl,
--		struct pnfs_layout_range *range)
-+release_extents(struct pnfs_block_layout *bl, struct pnfs_layout_range *range)
+-#include <stdlib.h>
+-#include <string.h>
++#include <stdio.h>
+ 
+ #include <sys/utsname.h>
+ 
+@@ -37,14 +36,14 @@ static inline unsigned int MAKE_VERSION(unsigned int p, unsigned int q,
+ static inline unsigned int linux_version_code(void)
  {
--	return;
-+	int i;
-+	struct pnfs_block_extent *be;
-+
-+	spin_lock(&bl->bl_ext_lock);
-+	for (i = 0; i < EXTENT_LISTS; i++) {
-+		while (!list_empty(&bl->bl_extents[i])) {
-+			be = list_first_entry(&bl->bl_extents[i],
-+					      struct pnfs_block_extent,
-+					      be_node);
-+			list_del(&be->be_node);
-+			bl_put_extent(be);
-+		}
-+	}
-+	spin_unlock(&bl->bl_ext_lock);
+ 	struct utsname my_utsname;
+-	unsigned int p, q, r;
++	unsigned int p, q = 0, r = 0;
+ 
+ 	if (uname(&my_utsname))
+ 		return 0;
+ 
+-	p = (unsigned int)atoi(strtok(my_utsname.release, "."));
+-	q = (unsigned int)atoi(strtok(NULL, "."));
+-	r = (unsigned int)atoi(strtok(NULL, "."));
++	if (sscanf(my_utsname.release, "%u.%u.%u", &p, &q, &r) < 1)
++		return 0;
++	
+ 	return MAKE_VERSION(p, q, r);
  }
  
- /* STUB */
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 0e6ae06..3fec302 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -88,4 +88,5 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
- 	return container_of(lo, struct pnfs_block_layout, bl_layout);
- }
- 
-+void bl_put_extent(struct pnfs_block_extent *be);
- #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-new file mode 100644
-index 0000000..44c3364
---- /dev/null
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -0,0 +1,97 @@
-+/*
-+ *  linux/fs/nfs/blocklayout/blocklayout.h
-+ *
-+ *  Module for the NFSv4.1 pNFS block layout driver.
-+ *
-+ *  Copyright (c) 2006 The Regents of the University of Michigan.
-+ *  All rights reserved.
-+ *
-+ *  Andy Adamson <andros@citi.umich.edu>
-+ *  Fred Isaman <iisaman@umich.edu>
-+ *
-+ * permission is granted to use, copy, create derivative works and
-+ * redistribute this software and such derivative works for any purpose,
-+ * so long as the name of the university of michigan is not used in
-+ * any advertising or publicity pertaining to the use or distribution
-+ * of this software without specific, written prior authorization.  if
-+ * the above copyright notice or any other identification of the
-+ * university of michigan is included in any copy of any portion of
-+ * this software, then the disclaimer below must also be included.
-+ *
-+ * this software is provided as is, without representation from the
-+ * university of michigan as to its fitness for any purpose, and without
-+ * warranty by the university of michigan of any kind, either express
-+ * or implied, including without limitation the implied warranties of
-+ * merchantability and fitness for a particular purpose.  the regents
-+ * of the university of michigan shall not be liable for any damages,
-+ * including special, indirect, incidental, or consequential damages,
-+ * with respect to any claim arising out or in connection with the use
-+ * of the software, even if it has been or is hereafter advised of the
-+ * possibility of such damages.
-+ */
-+
-+#include "blocklayout.h"
-+#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
-+
-+static void print_bl_extent(struct pnfs_block_extent *be)
-+{
-+	dprintk("PRINT EXTENT extent %p\n", be);
-+	if (be) {
-+		dprintk("        be_f_offset %llu\n", (u64)be->be_f_offset);
-+		dprintk("        be_length   %llu\n", (u64)be->be_length);
-+		dprintk("        be_v_offset %llu\n", (u64)be->be_v_offset);
-+		dprintk("        be_state    %d\n", be->be_state);
-+	}
-+}
-+
-+static void
-+destroy_extent(struct kref *kref)
-+{
-+	struct pnfs_block_extent *be;
-+
-+	be = container_of(kref, struct pnfs_block_extent, be_refcnt);
-+	dprintk("%s be=%p\n", __func__, be);
-+	kfree(be);
-+}
-+
-+void
-+bl_put_extent(struct pnfs_block_extent *be)
-+{
-+	if (be) {
-+		dprintk("%s enter %p (%i)\n", __func__, be,
-+			atomic_read(&be->be_refcnt.refcount));
-+		kref_put(&be->be_refcnt, destroy_extent);
-+	}
-+}
-+
-+struct pnfs_block_extent *alloc_extent(void)
-+{
-+	struct pnfs_block_extent *be;
-+
-+	be = kmalloc(sizeof(struct pnfs_block_extent), GFP_NOFS);
-+	if (!be)
-+		return NULL;
-+	INIT_LIST_HEAD(&be->be_node);
-+	kref_init(&be->be_refcnt);
-+	be->be_inval = NULL;
-+	return be;
-+}
-+
-+struct pnfs_block_extent *
-+get_extent(struct pnfs_block_extent *be)
-+{
-+	if (be)
-+		kref_get(&be->be_refcnt);
-+	return be;
-+}
-+
-+void print_elist(struct list_head *list)
-+{
-+	struct pnfs_block_extent *be;
-+	dprintk("****************\n");
-+	dprintk("Extent list looks like:\n");
-+	list_for_each_entry(be, list, be_node) {
-+		print_bl_extent(be);
-+	}
-+	dprintk("****************\n");
-+}
 -- 
-1.7.4.1
+1.7.5.4
 
