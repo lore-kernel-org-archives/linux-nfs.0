@@ -1,74 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:41072 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752162Ab1GTFw4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jul 2011 01:52:56 -0400
-From: <tao.peng@emc.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, <bhalevy@tonian.com>, <bergwolf@gmail.com>
-Date: Wed, 20 Jul 2011 01:52:39 -0400
-Subject: RE: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
-Message-ID: <F19688880B763E40B28B2B462677FBF805BF0610CE@MX09A.corp.emc.com>
-References: <1309743002-1658-1-git-send-email-bergwolf@gmail.com>
- <4E18614C.4010002@tonian.com>
-In-Reply-To: <4E18614C.4010002@tonian.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from rcsinet15.oracle.com ([148.87.113.117]:58564 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753641Ab1GCOzs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Jul 2011 10:55:48 -0400
+Subject: Re: [PATCH] nfs: Don't deref potentially NULL pointer returned by strsep
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <alpine.LNX.2.00.1107030938430.16316@swampdragon.chaosbits.net>
+Date: Sun, 3 Jul 2011 10:09:32 -0400
+Cc: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-kernel@vger.kernel.org, Gero Kuhlmann <gero@gkminix.han.de>
+Message-Id: <14B45086-2D98-4706-B1FE-7EBB8E777EEF@oracle.com>
+References: <alpine.LNX.2.00.1107030938430.16316@swampdragon.chaosbits.net>
+To: Jesper Juhl <jj@chaosbits.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi, Trond,
 
-Any comments on this patch? I still get kernel crash when pnfs write is attempted but fails and calls pnfs_ld_write_done(). It seems object layout uses the same code path as well. But I don't find the patch in either your tree or Benny's tree. Are there any concerns?
+On Jul 3, 2011, at 3:40 AM, Jesper Juhl wrote:
 
-Thanks,
-Tao
+> In fs/nfs/nfsroot.c:root_nfs_parse_options() we call strsep(), which
+> may return NULL, but we do not test the return value before
+> dereferencing the pointer.
+> 
+> Signed-off-by: Jesper Juhl <jj@chaosbits.net>
+> ---
+> fs/nfs/nfsroot.c |    2 ++
+> 1 files changed, 2 insertions(+), 0 deletions(-)
+> 
+>  Compile tested only.
+> 
+> diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
+> index c4744e1..b6ac860 100644
+> --- a/fs/nfs/nfsroot.c
+> +++ b/fs/nfs/nfsroot.c
+> @@ -191,6 +191,8 @@ static int __init root_nfs_parse_options(char *incoming, char *exppath,
+> 	 * Set the NFS remote path
+> 	 */
+> 	p = strsep(&incoming, ",");
+> +	if (!p)
+> +		return -1;
 
-> -----Original Message-----
-> From: Benny Halevy [mailto:bhalevy@tonian.com]
-> Sent: Saturday, July 09, 2011 10:10 PM
-> To: Peng Tao
-> Cc: Trond.Myklebust@netapp.com; linux-nfs@vger.kernel.org; Peng, Tao
-> Subject: Re: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
-> 
-> On 2011-07-04 04:30, Peng Tao wrote:
-> > There is no need to keep lseg reference when read/write through MDS.
-> > This fixes a null pointer crash at nfs_post_op_update_inode_force_wcc
-> > because nfs4_proc_write_setup will unset wdata->res.fattr if wdata->lseg
-> > is not NULL.
-> >
-> > Signed-off-by: Peng Tao <peng_tao@emc.com>
-> 
-> Looks good to me.
-> 
-> Benny
-> 
-> > ---
-> >  fs/nfs/pnfs.c |    6 ++++++
-> >  1 files changed, 6 insertions(+), 0 deletions(-)
-> >
-> > diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> > index 30a0394..55fdf02 100644
-> > --- a/fs/nfs/pnfs.c
-> > +++ b/fs/nfs/pnfs.c
-> > @@ -1193,6 +1193,9 @@ pnfs_ld_write_done(struct nfs_write_data *data)
-> >
-> >  	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
-> >  		data->pnfs_error);
-> > +
-> > +	put_lseg(data->lseg);
-> > +	data->lseg = NULL;
-> >  	status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
-> >  				    data->mds_ops, NFS_FILE_SYNC);
-> >  	return status ? : -EAGAIN;
-> > @@ -1240,6 +1243,9 @@ pnfs_ld_read_done(struct nfs_read_data *data)
-> >
-> >  	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
-> >  		data->pnfs_error);
-> > +
-> > +	put_lseg(data->lseg);
-> > +	data->lseg = NULL;
-> >  	status = nfs_initiate_read(data, NFS_CLIENT(data->inode),
-> >  				   data->mds_ops);
-> >  	return status ? : -EAGAIN;
+strsep() may return NULL only if the value of "incoming" is NULL.  But callers ensure that "incoming" always contains the address of a fixed buffer.  Thus if strsep() returns NULL here there is some kind of programming error; it's not the result of invalid input.
+
+Do you have a reproducible test case to make this fail?
+
+> 	if (*p != '\0' && strcmp(p, "default") != 0)
+> 		if (root_nfs_copy(exppath, p, exppathlen))
+> 			return -1;
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
