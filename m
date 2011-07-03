@@ -1,75 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:27022 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750924Ab1GONH2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2011 09:07:28 -0400
-Subject: Re: [PATCH] NFS: fix return value of nfs_pagein_one/nfs_flush_one
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: tao.peng@emc.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 15 Jul 2011 09:07:26 -0400
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805BEFF0EF1@MX09A.corp.emc.com>
-References: <F19688880B763E40B28B2B462677FBF805BEFF0EF1@MX09A.corp.emc.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1310735246.4381.1.camel@lade.trondhjem.org>
+Received: from swampdragon.chaosbits.net ([90.184.90.115]:22196 "EHLO
+	swampdragon.chaosbits.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751824Ab1GCHtb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Jul 2011 03:49:31 -0400
+Date: Sun, 3 Jul 2011 09:40:12 +0200 (CEST)
+From: Jesper Juhl <jj@chaosbits.net>
+To: linux-nfs@vger.kernel.org
+cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-kernel@vger.kernel.org,
+        Gero Kuhlmann <gero@gkminix.han.de>
+Subject: [PATCH] nfs: Don't deref potentially NULL pointer returned by
+ strsep
+Message-ID: <alpine.LNX.2.00.1107030938430.16316@swampdragon.chaosbits.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2011-07-15 at 03:33 -0400, tao.peng@emc.com wrote: 
-> From: Peng Tao <bergwolf@gmail.com>
-> 
-> Signed-off-by: Peng Tao <peng_tao@emc.com>
-> ---
-> This applies to Trond's nfs-for-next branch. Should some minor typos.
->  fs/nfs/read.c  |    3 ++-
->  fs/nfs/write.c |    2 +-
->  2 files changed, 3 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-> index 1472933..7cba228 100644
-> --- a/fs/nfs/read.c
-> +++ b/fs/nfs/read.c
-> @@ -342,12 +342,13 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc, struct list_head *
->  	struct page		**pages;
->  	struct nfs_read_data	*data;
->  	struct list_head *head = &desc->pg_list;
-> -	int ret = -ENOMEM;
-> +	int ret = 0;
->  
->  	data = nfs_readdata_alloc(nfs_page_array_len(desc->pg_base,
->  						     desc->pg_count));
->  	if (!data) {
->  		nfs_async_read_error(head);
-> +		ret = -ENOMEM;
->  		goto out;
->  	}
->  
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 525fb02..9fba527 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -992,7 +992,7 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc, struct list_head *r
->  	struct page		**pages;
->  	struct nfs_write_data	*data;
->  	struct list_head *head = &desc->pg_list;
-> -	int ret;
-> +	int ret = 0;
->  
->  	data = nfs_writedata_alloc(nfs_page_array_len(desc->pg_base,
->  						      desc->pg_count));
+In fs/nfs/nfsroot.c:root_nfs_parse_options() we call strsep(), which
+may return NULL, but we do not test the return value before
+dereferencing the pointer.
 
-Agreed. I think I'd like to insert this patch a little bit earlier in
-the series so that we don't break bisectability.
+Signed-off-by: Jesper Juhl <jj@chaosbits.net>
+---
+ fs/nfs/nfsroot.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-Cheers
-  Trond
+  Compile tested only.
+
+diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
+index c4744e1..b6ac860 100644
+--- a/fs/nfs/nfsroot.c
++++ b/fs/nfs/nfsroot.c
+@@ -191,6 +191,8 @@ static int __init root_nfs_parse_options(char *incoming, char *exppath,
+ 	 * Set the NFS remote path
+ 	 */
+ 	p = strsep(&incoming, ",");
++	if (!p)
++		return -1;
+ 	if (*p != '\0' && strcmp(p, "default") != 0)
+ 		if (root_nfs_copy(exppath, p, exppathlen))
+ 			return -1;
+-- 
+1.7.6
+
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Jesper Juhl <jj@chaosbits.net>       http://www.chaosbits.net/
+Don't top-post http://www.catb.org/jargon/html/T/top-post.html
+Plain text mails only, please.
 
