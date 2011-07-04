@@ -1,67 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43874 "EHLO mx1.redhat.com"
+Received: from odpn1.odpn.net ([212.40.96.53]:45367 "EHLO odpn1.odpn.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751571Ab1GVLHt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Jul 2011 07:07:49 -0400
-Date: Fri, 22 Jul 2011 07:07:42 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: misch@schwartzkopff.org
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 grace time
-Message-ID: <20110722070742.776ae99d@tlielax.poochiereds.net>
-In-Reply-To: <201107211540.05673.misch@schwartzkopff.org>
-References: <201107211540.05673.misch@schwartzkopff.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1753336Ab1GDGjG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Jul 2011 02:39:06 -0400
+From: "Gabor Z. Papp" <gzp@papp.hu>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: nfs-utils 1.2.4
+References: <x6tyb65wxk@gzp> <4E0E30A7.90209@RedHat.com>
+Date: Mon, 04 Jul 2011 08:39:03 +0200
+Message-ID: <x6zkku8s8o@gzp>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 21 Jul 2011 15:40:05 +0200
-Michael Schwartzkopff <misch@schwartzkopff.org> wrote:
+* Steve Dickson <SteveD@redhat.com>:
 
-> Hi,
-> 
-> setting up a linux NFS server cluster I experience a strange problem during a 
-> failover. A client can access a file only after 60 to 90 seconds. On the line I 
-> see a NFS4ERR_GRACE from the server to the client.
-> 
-> I already set the /proc/fs/nfsd/nfsv4leastime to 10.
-> 
-> Any other idea?
-> 
-> For the tests I have a simple setup:
-> 
-> One host with a simple script that simulates failover:
-> 
-> #!/bin/bash
-> 
-> ip a d 1.2.3.4/24 dev eth0
-> exportfs -u *:/srv/nfs/home
-> exportfs -u *:/srv/nfs
-> /etc/init.d/nfsserver stop
-> #
-> /etc/init.d/nfsserver start
-> exportfs -o fsid=0,rw,crossmnt,no_root_squash *:/srv/nfs
-> exportfs -o fsid=1000,rw,mountpoint,no_root_squash *:/srv/nfs/home
-> ip a a 1.2.3.4/24 dev eth0
-> 
+| The following patch seems to take care of the problem... The 
+| problem stemmed from the use of the --disable-nfsv4, which
+| I will throw into my unit tests... Please let me know
+| if this fixes the problem... 
 
-This is normal. The grace period is there to allow clients to reclaim
-their state without other clients racing in and grabbing their locks on
-the new server, etc.
+| [PATCH] Make sure CONFIG_NFSIDMAP is always defined.
 
-You can play with /proc/fs/nfsd/nfsv4gracetime too but I'd be very
-leery of setting that too low. It should never be lower than the
-previous leasetime (see the comments on write_gracetime in the kernel).
+| CONFIG_NFSIDMAP always need to be define either
+| negatively or positive whether nfsv4 is or is not
+| defined.
 
-Note that setting the leasetime that small has an effect on performance
-too as the clients have to renew their state more frequently.
-
-It also affects the resiliency of your entire setup in the face of
-network partitions (including the network partition that occurs during
-failover). If the client can't reclaim its state during the grace
-period, then it's lost and nasty things can occur (like other clients
-stealing posix locks out from under you).
-
--- 
-Jeff Layton <jlayton@redhat.com>
+Yes, problem fixed. Thanks.
