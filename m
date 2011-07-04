@@ -1,94 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:63076 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1753213Ab1GNGsL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Jul 2011 02:48:11 -0400
-Message-ID: <4E1E91A9.1@cn.fujitsu.com>
-Date: Thu, 14 Jul 2011 14:50:17 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/2 v4] nfsd41: error out when client sets maxreq_sz or, maxresp_sz
- too small
-References: <4E0EDE78.1060208@cn.fujitsu.com> <20110706162650.GB30349@fieldses.org> <4E17CE8C.8000504@cn.fujitsu.com> <20110712110950.GC2162@fieldses.org>
-In-Reply-To: <20110712110950.GC2162@fieldses.org>
+Received: from smtp3.ugent.be ([157.193.49.127]:47894 "EHLO smtp3.UGent.be"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757119Ab1GDQ2c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Jul 2011 12:28:32 -0400
+Message-ID: <4E11EA30.9070302@debian.org>
+Date: Mon, 04 Jul 2011 18:28:32 +0200
+From: Luk Claes <luk@debian.org>
+To: Jim Rees <rees@umich.edu>
+CC: NeilBrown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Do not segfault because of kernel version
+References: <1309617149-3993-1-git-send-email-luk@debian.org> <20110703150421.2db09d94@notabene.brown> <4E100E17.5000304@debian.org> <20110703130237.GA9889@merit.edu> <4E106A56.1050802@debian.org> <20110703132605.GC9889@merit.edu> <4E106E91.8080208@debian.org> <20110703141134.GA10071@merit.edu>
+In-Reply-To: <20110703141134.GA10071@merit.edu>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-According to RFC5661, 18.36.3, 
+On 07/03/2011 04:11 PM, Jim Rees wrote:
+> Luk Claes wrote:
+> 
+>   > Yes, just return UINT_MAX.  Fix the other error return too, the one where
+>   > uname fails.  And put in a comment if you can briefly summarize Linus's
+>   > argument.
+>   
+>   I thought that a real error like uname failing should still get the
+>   'wrong' return 0, no?
+> 
+> No.  As I read it, Linus argues that you should only run the backward
+> compatibility code path when you know you're running an older kernel.  If
+> you don't know, then you should assume you're running a newer kernel.
 
- "if the client selects a value for ca_maxresponsesize such that
-  a replier on a channel could never send a response,the server
-  SHOULD return NFS4ERR_TOOSMALL in the CREATE_SESSION reply."
+So, if uname fails we treat it as a newer kernel, shouldn't we treat
+that as an error? So treating it as a special case instead of running
+backward compatibility or as a newer kernel?
 
-This patch let server error out when client sets maxreq_sz less than
-SEQUENCE request size, and maxresp_sz less than a SEQUENCE reply size.
+Cheers
 
-v4:
-    Bruce said "Let's not bother with check_backchannel_attrs()
-    until it actually does something.". So delete the function, 
-    only check fore channel attr.
-
-v3:
-    use constant for min request size and min response size,
-    add two function for channel attrs checking(back channel checking
-    not be implement),
-    move size check from xdr create_session to nfsd4_create_session,
-
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
----
- fs/nfsd/nfs4state.c |   27 +++++++++++++++++++++++++++
- 1 files changed, 27 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e98f3c2..72899ec 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1507,6 +1507,29 @@ nfsd4_replay_create_session(struct nfsd4_create_session *cr_ses,
- 	return slot->sl_status;
- }
- 
-+#define NFSD_MIN_REQ_HDR_SEQ_SZ	((\
-+			2 * 2 + /* credential,verifier: AUTH_NULL, length 0 */ \
-+			1 +	/* MIN tag is length with zero, only length */ \
-+			3 +	/* version, opcount, opcode */ \
-+			XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + \
-+				/* seqid, slotID, slotID, cache */ \
-+			4 ) * sizeof(__be32))
-+
-+#define NFSD_MIN_RESP_HDR_SEQ_SZ ((\
-+			2 +	/* verifier: AUTH_NULL, length 0 */\
-+			1 +	/* status */ \
-+			1 +	/* MIN tag is length with zero, only length */ \
-+			3 +	/* opcount, opcode, opstatus*/ \
-+			XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + \
-+				/* seqid, slotID, slotID, slotID, status */ \
-+			5 ) * sizeof(__be32))
-+
-+static __be32 check_forechannel_attrs(struct nfsd4_channel_attrs fchannel)
-+{
-+	return fchannel.maxreq_sz < NFSD_MIN_REQ_HDR_SEQ_SZ
-+		|| fchannel.maxresp_sz < NFSD_MIN_RESP_HDR_SEQ_SZ;
-+}
-+
- __be32
- nfsd4_create_session(struct svc_rqst *rqstp,
- 		     struct nfsd4_compound_state *cstate,
-@@ -1575,6 +1598,10 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 	cr_ses->flags &= ~SESSION4_PERSIST;
- 	cr_ses->flags &= ~SESSION4_RDMA;
- 
-+	status = nfserr_toosmall;
-+	if (check_forechannel_attrs(cr_ses->fore_channel))
-+		goto out;
-+
- 	status = nfserr_jukebox;
- 	new = alloc_init_session(rqstp, conf, cr_ses);
- 	if (!new)
--- 
-1.7.5.4
-
-
-
+Luk
