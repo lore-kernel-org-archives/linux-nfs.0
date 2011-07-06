@@ -1,70 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:55745 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752552Ab1G2Qxu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Jul 2011 12:53:50 -0400
-Date: Fri, 29 Jul 2011 12:53:45 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Greg Banks <gnb@fastmail.fm>
-Cc: Eric Dumazet <eric.dumazet@gmail.com>,
-        Christoph Hellwig <hch@infradead.org>, NeilBrown <neilb@suse.de>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: use better NUMA affinities
-Message-ID: <20110729165345.GM23194@fieldses.org>
-References: <20110729153207.17af3085@notabene.brown>
- <4E324DB4.7060600@fastmail.fm>
- <1311921035.7845.10.camel@edumazet-laptop>
- <4E3258E1.6020000@fastmail.fm>
- <20110729103634.GA12050@infradead.org>
- <5933F48C-49D6-492D-AB7B-B76A3ADDB6C6@fastmail.fm>
- <1311941491.2843.7.camel@edumazet-HP-Compaq-6005-Pro-SFF-PC>
- <F67B6E82-9FA8-464E-B3FB-DC0D4EC18BB0@fastmail.fm>
- <20110729164836.GL23194@fieldses.org>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20110729164836.GL23194@fieldses.org>
+Received: from mail.candelatech.com ([208.74.158.172]:52534 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751894Ab1GFWtt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jul 2011 18:49:49 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [RFC] sunrpc:  Fix race between work-queue and rpc_killall_tasks.
+Date: Wed,  6 Jul 2011 15:49:41 -0700
+Message-Id: <1309992581-25199-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, Jul 29, 2011 at 12:48:36PM -0400, bfields wrote:
-> On Fri, Jul 29, 2011 at 11:30:05PM +1000, Greg Banks wrote:
-> > 
-> > 
-> > Sent from my iPhone
-> > 
-> > On 29/07/2011, at 22:11, Eric Dumazet <eric.dumazet@gmail.com> wrote:
-> > 
-> > > Le vendredi 29 juillet 2011 à 21:58 +1000, Greg Banks a écrit :
-> > >
-> > >>
-> > >> Sure, and a whole lot of the callsites are ("..._%d", cpu), hence the
-> > >> unfortune :(
-> > >
-> > > BTW, we could name nfsd threads differently :
-> > >
-> > > Currently, they all are named : "nfsd"
-> > >
-> > > If SVC_POOL_PERCPU is selected, we could name them :
-> > > nfsd_c0 -> nfsd_cN
-> > >
-> > > If SVC_POOL_PERNODE is selected, we could name them :
-> > > nfsd_n0  -> nfsd_nN
-> > >
-> > > That would help to check with "ps aux" which cpu/nodes are under  
-> > > stress.
-> > >
-> > >
-> > 
-> > I like it!
-> 
-> Yup, patch welcomed.--b.
+From: Ben Greear <greearb@candelatech.com>
 
-(Annoying fact: some initscripts stop nfsd using a rough equivalent of
-"killall nfsd".  So the name of the threads is arguably ABI.  I think
-those initscripts are nuts and deserve what they get, but that may be
-because I'm forgetting the reason they do that.)
+The rpc_killall_tasks logic is not locked against
+the work-queue thread, but it still directly modifies
+function pointers and data in the task objects.
 
---b.
+This patch changes the killall-tasks logic to set a flag
+that tells the work-queue thread to terminate the task
+instead of directly calling the terminate logic.
+
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+
+NOTE:  This needs review, as I am still struggling to understand
+the rpc code, and it's quite possible this patch either doesn't
+fully fix the problem or actually causes other issues.  That said,
+my nfs stress test seems to run a bit more stable with this patch applied.
+
+:100644 100644 fe2d8e6... b238944... M	include/linux/sunrpc/sched.h
+:100644 100644 8c91415... 6851f84... M	net/sunrpc/clnt.c
+:100644 100644 1cbbed5... 0fc559e... M	net/sunrpc/sched.c
+ include/linux/sunrpc/sched.h |   10 ++++++++++
+ net/sunrpc/clnt.c            |    3 +--
+ net/sunrpc/sched.c           |    6 ++++++
+ 3 files changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index fe2d8e6..b238944 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -76,6 +76,7 @@ struct rpc_task {
+ 
+ 	pid_t			tk_owner;	/* Process id for batching tasks */
+ 	int			tk_status;	/* result of last operation */
++	int			tk_killme_errno;/* For RPC_TASK_KILLME */
+ 	unsigned short		tk_flags;	/* misc flags */
+ 	unsigned short		tk_timeouts;	/* maj timeouts */
+ 
+@@ -130,6 +131,7 @@ struct rpc_task_setup {
+ #define RPC_TASK_SOFTCONN	0x0400		/* Fail if can't connect */
+ #define RPC_TASK_SENT		0x0800		/* message was sent */
+ #define RPC_TASK_TIMEOUT	0x1000		/* fail with ETIMEDOUT on timeout */
++#define RPC_TASK_KILLME		0x2000		/* Need to die ASAP. */
+ 
+ #define RPC_IS_ASYNC(t)		((t)->tk_flags & RPC_TASK_ASYNC)
+ #define RPC_IS_SWAPPER(t)	((t)->tk_flags & RPC_TASK_SWAPPER)
+@@ -138,6 +140,7 @@ struct rpc_task_setup {
+ #define RPC_IS_SOFT(t)		((t)->tk_flags & (RPC_TASK_SOFT|RPC_TASK_TIMEOUT))
+ #define RPC_IS_SOFTCONN(t)	((t)->tk_flags & RPC_TASK_SOFTCONN)
+ #define RPC_WAS_SENT(t)		((t)->tk_flags & RPC_TASK_SENT)
++#define RPC_SHOULD_KILLME(t)	((t)->tk_flags & RPC_TASK_KILLME)
+ 
+ #define RPC_TASK_RUNNING	0
+ #define RPC_TASK_QUEUED		1
+@@ -269,4 +272,11 @@ static inline const char * rpc_qname(struct rpc_wait_queue *q)
+ }
+ #endif
+ 
++static inline void rpc_task_killme(struct rpc_task *task, int exit_errno)
++{
++	task->tk_killme_errno = exit_errno;
++	task->tk_flags |= RPC_TASK_KILLME;
++}
++
++
+ #endif /* _LINUX_SUNRPC_SCHED_H_ */
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 8c91415..6851f84 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -437,8 +437,7 @@ void rpc_killall_tasks(struct rpc_clnt *clnt)
+ 		if (!RPC_IS_ACTIVATED(rovr))
+ 			continue;
+ 		if (!(rovr->tk_flags & RPC_TASK_KILLED)) {
+-			rovr->tk_flags |= RPC_TASK_KILLED;
+-			rpc_exit(rovr, -EIO);
++			rpc_task_killme(rovr, -EIO);
+ 			if (RPC_IS_QUEUED(rovr))
+ 				rpc_wake_up_queued_task(rovr->tk_waitqueue,
+ 							rovr);
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 1cbbed5..0fc559e 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -646,6 +646,12 @@ static void __rpc_execute(struct rpc_task *task)
+ 			task->tk_action(task);
+ 		}
+ 
++		/* If we should die, do it now. */
++		if (RPC_SHOULD_KILLME(task)) {
++			task->tk_flags |= RPC_TASK_KILLED;
++			rpc_exit(task, task->tk_killme_errno);
++		}
++
+ 		/*
+ 		 * Lockless check for whether task is sleeping or not.
+ 		 */
+-- 
+1.7.3.4
+
