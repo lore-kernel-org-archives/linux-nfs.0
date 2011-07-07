@@ -1,48 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:7278 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751425Ab1GUHu7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Jul 2011 03:50:59 -0400
-Message-ID: <4E27DA40.7040207@parallels.com>
-Date: Thu, 21 Jul 2011 11:50:24 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 0/9] sunrpc: Create sockets in namespaces
-References: <4CA32AB4.2090808@parallels.com> <20110720211040.GC27871@fieldses.org>
-In-Reply-To: <20110720211040.GC27871@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-yi0-f46.google.com ([209.85.218.46]:61889 "EHLO
+	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756288Ab1GGOcR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jul 2011 10:32:17 -0400
+Received: by yia27 with SMTP id 27so394135yia.19
+        for <linux-nfs@vger.kernel.org>; Thu, 07 Jul 2011 07:32:17 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] sunrpc: when call_bind fails with -EACCES, don't exit with -EIO
+Date: Thu,  7 Jul 2011 10:32:13 -0400
+Message-Id: <1310049133-10255-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 07/21/2011 01:10 AM, J. Bruce Fields wrote:
-> Just curious--is there still work left on nfs and rpc containerization?
-> And what's left to do there?
+Commit 0b760113a fixed the client not to loop indefinitely if the
+rpcbind was continually failing. When this occurs though, the rpc_task
+now exits with a status of -EIO. If the tk_status is -EACCES, it seems
+like we should preserve that in this situation.
 
-Yes, there's still more work todo. Unfortunately it is stalled now, but
-I plan to return back to it soon. Sorry about it.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ net/sunrpc/clnt.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-> --b.
-> 
-> On Wed, Sep 29, 2010 at 04:01:56PM +0400, Pavel Emelyanov wrote:
->> v3 changes:
->> Moved the generic xprt alloc/free code to xprt.c.
->> Got David's ack on the 8th patch :)
->>
->> v2 changes:
->> Fixed comments from Chuck and Trond.
->> Added one patch, that factors out rpc_xprt allocation as well.
->>
->> v1:
->> This set implements pulling the net * argument down to the existing
->> sock_create_kern calls in the sunrpc layer and creating the sockets
->> in the given net.
->>
->> Thanks,
->> Pavel
-> .
-> 
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 8c91415..77f6c0c 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1175,8 +1175,10 @@ call_bind_status(struct rpc_task *task)
+ 			status = -EOPNOTSUPP;
+ 			break;
+ 		}
+-		if (task->tk_rebind_retry == 0)
++		if (task->tk_rebind_retry == 0) {
++			status = task->tk_status;
+ 			break;
++		}
+ 		task->tk_rebind_retry--;
+ 		rpc_delay(task, 3*HZ);
+ 		goto retry_timeout;
+-- 
+1.7.6
 
