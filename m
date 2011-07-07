@@ -1,111 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46869 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753546Ab1GFQ0v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Jul 2011 12:26:51 -0400
-Date: Wed, 6 Jul 2011 12:26:50 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2 v2] nfsd41: error out when client sets maxreq_sz
- or, maxresp_sz too small
-Message-ID: <20110706162650.GB30349@fieldses.org>
-References: <4E0EDE78.1060208@cn.fujitsu.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E0EDE78.1060208@cn.fujitsu.com>
+Received: from mail.candelatech.com ([208.74.158.172]:53009 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751156Ab1GGV0Z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jul 2011 17:26:25 -0400
+Message-ID: <4E16247D.4060307@candelatech.com>
+Date: Thu, 07 Jul 2011 14:26:21 -0700
+From: Ben Greear <greearb@candelatech.com>
+To: greearb@candelatech.com
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 00/12] NFS: Support binding to source address
+References: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1308857388-12243-1-git-send-email-greearb@candelatech.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, Jul 02, 2011 at 05:01:44PM +0800, Mi Jinlong wrote:
-> According to RFC5661, 18.36.3, 
-> 
->  "if the client selects a value for ca_maxresponsesize such that
->   a replier on a channel could never send a response,the server
->   SHOULD return NFS4ERR_TOOSMALL in the CREATE_SESSION reply."
-> 
-> This patch let server error out when client sets maxreq_sz less than
-> SEQUENCE request size, and maxresp_sz less than a SEQUENCE reply size.
-> 
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
->  fs/nfsd/nfs4xdr.c |   26 +++++++++++++++++++++++++-
->  1 files changed, 25 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 9901811..bece272 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -1135,11 +1135,25 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
->  {
->  	DECODE_HEAD;
->  
-> -	u32 dummy;
-> +	struct xdr_buf *xb = &argp->rqstp->rq_arg;
-> +	u32 dummy, minreqlen = 0, minresplen = 0;
->  	char *machine_name;
->  	int i;
->  	int nr_secflavs;
->  
-> +	/* RPC header length and tag, minorversion, Opt count*/
-> +	minreqlen = (char *)argp->p - ((char *)argp->end - xb->len);
-> +	/* length with a SEQUENCE operation */
-> +	minreqlen = minreqlen + sizeof(struct nfs4_sessionid)
-> +		    + 4 * sizeof(__be32);
-> +
-> +	/* RPC header, status, tag len */
-> +	minresplen = argp->rqstp->rq_res.head[0].iov_len + 2 * sizeof(__be32)
-> +		     /* tag, opt count, opcode, op status */
-> +		     + ALIGN(argp->taglen, 4) + 3 * sizeof(__be32)
-> +		     /* sessionid, seqid, 3 * slotid, status*/
-> +		     + sizeof(struct nfs4_sessionid) + 5 * sizeof(__be32);
-> +
+On 06/23/2011 12:29 PM, greearb@candelatech.com wrote:
+> From: Ben Greear<greearb@candelatech.com>
+>
+> This lets one specify the source IP address for
+> sockets, allowing users to leverage routing rules
+> on multi-homed systems.
+>
+> Patches are also needed to nfs-utils.  These have been
+> posted and will be accepted if the kernel support is
+> accepted.
+>
+> v2:  Add patch 11 to bind the NLM client to the proper
+>       source address as well.
 
-Could you just calculate this as a constant, assuming the smallest
-possible credential and verifier?  NFSD_MIN_HDR_SEQ_SZ may be what you
-need for the reply.
+Any comments on these patches?  Now that the work-queue v/s
+rpc_killall_tasks race has been fixed, this code appears
+stable under heavy load.
 
-Calculating it dynamically here using the cred and verifier size from
-the create_session request might be more accurate--or it might not, as
-there's no guarantee the same size cred adn verifier will be used for
-later rpc's.
+I'd love to see this accepted upstream!
 
-But that's OK, our goal here isn't to get this 100% correct, as that's
-not possible, it's just to add a sanity check that may help catch a
-crazy client.
+Thanks,
+Ben
 
->  	READ_BUF(16);
->  	COPYMEM(&sess->clientid, 8);
->  	READ32(sess->seqid);
-> @@ -1149,7 +1163,17 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
->  	READ_BUF(28);
->  	READ32(dummy); /* headerpadsz is always 0 */
->  	READ32(sess->fore_channel.maxreq_sz);
-> +	if (sess->fore_channel.maxreq_sz < minreqlen) {
-> +		status = nfserr_toosmall;
+>
+> Ben Greear (12):
+>    sunrpc: Don't attempt to bind to AF_UNSPEC address.
+>    nfs: Two AF_UNSPEC addresses should always match each other.
+>    nfs: Add srcaddr member to nfs_client.
+>    nfs: Use request destination addr as callback source addr.
+>    nfs: Pay attention to srcaddr in v4.1 callback logic.
+>    nfs: Use srcaddr in nfs_match_client.
+>    nfs: Add srcaddr to /proc/fs/nfsfs/servers
+>    nfs: Pass srcaddr into mount request.
+>    nfs: Propagate src-addr in client code.
+>    nfs: Bind to srcaddr in rpcb_create.
+>    lockd:  Support binding nlm client to specific address.
+>    nfs: Support srcaddr= to bind to specific IP address.
+>
+>   fs/lockd/clntlock.c         |    3 +-
+>   fs/lockd/host.c             |   17 +++++++++-
+>   fs/nfs/callback.h           |    3 ++
+>   fs/nfs/callback_proc.c      |    3 +-
+>   fs/nfs/callback_xdr.c       |    3 ++
+>   fs/nfs/client.c             |   73 ++++++++++++++++++++++++++++++++++++++++--
+>   fs/nfs/internal.h           |   10 +++++-
+>   fs/nfs/mount_clnt.c         |    1 +
+>   fs/nfs/super.c              |   33 +++++++++++++++++++-
+>   include/linux/lockd/bind.h  |    1 +
+>   include/linux/lockd/lockd.h |    1 +
+>   include/linux/nfs_fs_sb.h   |    4 ++
+>   include/linux/sunrpc/clnt.h |    2 +
+>   include/linux/sunrpc/svc.h  |    5 +++
+>   net/sunrpc/rpcb_clnt.c      |   28 +++++++++++++++-
+>   net/sunrpc/sunrpc.h         |   45 ++++++++++++++++++++++++++
+>   net/sunrpc/xprtsock.c       |   47 +--------------------------
+>   17 files changed, 223 insertions(+), 56 deletions(-)
+>
 
-Have you checked whether that error actually gets back to the client?
 
-I think it gets turned into a bad_xdr error at some point.
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
-We probably want this in nfsd4_create_session instead.
-
---b.
-
-> +		goto out;
-> +	}
-> +
->  	READ32(sess->fore_channel.maxresp_sz);
-> +	if (sess->fore_channel.maxresp_sz < minresplen) {
-> +		status = nfserr_toosmall;
-> +		goto out;
-> +	}
-> +
->  	READ32(sess->fore_channel.maxresp_cached);
->  	READ32(sess->fore_channel.maxops);
->  	READ32(sess->fore_channel.maxreqs);
-> -- 
-> 1.7.5.4
-> 
-> 
-> 
