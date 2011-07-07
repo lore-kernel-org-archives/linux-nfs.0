@@ -1,55 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:16694 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:46054 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754877Ab1GVSjS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jul 2011 14:39:18 -0400
-Subject: Re: [PATCH 13/13] sunrpc: use SKB fragment destructors to delay
- completion until page is released by network stack.
+	id S1754823Ab1GGNrP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jul 2011 09:47:15 -0400
+Subject: Re: NFS/TCP timeout sequence
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Ian Campbell <ian.campbell@citrix.com>
-Cc: netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>, Neil Brown <neilb@suse.de>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Date: Fri, 22 Jul 2011 14:39:16 -0400
-In-Reply-To: <1311340653-19336-13-git-send-email-ian.campbell@citrix.com>
-References: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
-	 <1311340653-19336-13-git-send-email-ian.campbell@citrix.com>
+To: Max Matveev <makc@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 07 Jul 2011 09:47:19 -0400
+In-Reply-To: <19989.27202.793003.725608@regina.usersys.redhat.com>
+References: <19989.27202.793003.725608@regina.usersys.redhat.com>
 Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1311359956.13553.8.camel@lade.trondhjem.org>
+Message-ID: <1310046439.3863.30.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2011-07-22 at 14:17 +0100, Ian Campbell wrote: 
-> This prevents an issue where an ACK is delayed, a retransmit is queued (either
-> at the RPC or TCP level) and the ACK arrives before the retransmission hits the
-> wire. If this happens to an NFS WRITE RPC then the write() system call
-> completes and the userspace process can continue, potentially modifying data
-> referenced by the retransmission before the retransmission occurs.
+On Thu, 2011-07-07 at 18:11 +1000, Max Matveev wrote: 
+> I've had to look at the way NFS/TCP does its timeouts and backoff
+> and it does not make a lot of sense to me: according to the
+> following paragram from nfs(5) on Fedora 14 (I'm using Fedora 14
+> because it has more text then the same page in nfs-utils):
 > 
-> Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
-> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: "David S. Miller" <davem@davemloft.net>
-> Cc: Neil Brown <neilb@suse.de>
-> Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> Cc: linux-nfs@vger.kernel.org
-> Cc: netdev@vger.kernel.org
-> [since v1:
->   Push down from NFS layer into RPM layer
-> ]
-> ---
->  include/linux/sunrpc/xdr.h  |    2 ++
->  include/linux/sunrpc/xprt.h |    5 ++++-
->  net/sunrpc/clnt.c           |   27 ++++++++++++++++++++++-----
->  net/sunrpc/svcsock.c        |    2 +-
->  net/sunrpc/xprt.c           |   13 +++++++++++++
->  net/sunrpc/xprtsock.c       |    2 +-
->  6 files changed, 43 insertions(+), 8 deletions(-)
+>       timeo=n    The time (in tenths of a second) the  NFS  client  waits
+>                  for a response before it retries an NFS request. If this
+>                  option is not specified, requests are retried  every  60
+>                  seconds  for NFS over TCP.  The NFS client does not per‐
+>                  form any kind of timeout backoff for NFS over TCP.
+> 
+> but if I try the mount with timeo=20,retrans=7 then I'm getting
+> retransmits which are 2, 4, 6, 8, 2, 4, 6, 8 seconds apart, i.e.
+> there is a) linear backoff and b) the backoff is not long enough to
+> let the complete sequence of 7 retransmits run its course.
 
-This looks good to me. Thanks, Ian!
+Sigh... Firstly, 2 second timeouts are complete lunacy when using a
+protocol that guarantees reliable delivery, such as TCP does. Anyone who
+tries it deserves exactly what they get: poor unreliable performance.
 
-Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Secondly, the _other_ fix for this problem is to fix the documentation.
 
+Trond
 -- 
 Trond Myklebust
 Linux NFS client maintainer
