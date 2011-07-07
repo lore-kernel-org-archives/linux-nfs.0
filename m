@@ -1,124 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:42158 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755393Ab1G1RbL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:31:11 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v4 00/27] add block layout driver to pnfs client
-Date: Thu, 28 Jul 2011 13:30:49 -0400
-Message-Id: <1311874276-1386-1-git-send-email-rees@umich.edu>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:61771 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756267Ab1GGOQu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jul 2011 10:16:50 -0400
+Subject: Re: NFS/TCP timeout sequence
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Max Matveev <makc@redhat.com>, linux-nfs@vger.kernel.org
+Date: Thu, 07 Jul 2011 10:16:53 -0400
+In-Reply-To: <5F749FAD-94B0-4D9D-84F6-F7D9662A1CF6@oracle.com>
+References: <19989.27202.793003.725608@regina.usersys.redhat.com>
+	 <1310046439.3863.30.camel@lade.trondhjem.org>
+	 <5F749FAD-94B0-4D9D-84F6-F7D9662A1CF6@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1310048213.3863.37.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This patch set adds a block layout driver to the pNFS client.  It passes
-Connectathon tests and is bisectable.  It requires an updated version of
-nfs-utils, and patches for that have been sent separately to the nfs-utils
-maintainer.
+On Thu, 2011-07-07 at 10:04 -0400, Chuck Lever wrote: 
+> On Jul 7, 2011, at 9:47 AM, Trond Myklebust wrote:
+> 
+> > On Thu, 2011-07-07 at 18:11 +1000, Max Matveev wrote: 
+> >> I've had to look at the way NFS/TCP does its timeouts and backoff
+> >> and it does not make a lot of sense to me: according to the
+> >> following paragram from nfs(5) on Fedora 14 (I'm using Fedora 14
+> >> because it has more text then the same page in nfs-utils):
+> >> 
+> >>      timeo=n    The time (in tenths of a second) the  NFS  client  waits
+> >>                 for a response before it retries an NFS request. If this
+> >>                 option is not specified, requests are retried  every  60
+> >>                 seconds  for NFS over TCP.  The NFS client does not per‐
+> >>                 form any kind of timeout backoff for NFS over TCP.
+> >> 
+> >> but if I try the mount with timeo=20,retrans=7 then I'm getting
+> >> retransmits which are 2, 4, 6, 8, 2, 4, 6, 8 seconds apart, i.e.
+> >> there is a) linear backoff and b) the backoff is not long enough to
+> >> let the complete sequence of 7 retransmits run its course.
+> > 
+> > Sigh... Firstly, 2 second timeouts are complete lunacy when using a
+> > protocol that guarantees reliable delivery, such as TCP does. Anyone who
+> > tries it deserves exactly what they get: poor unreliable performance.
+> 
+> We shouldn't allow such low settings.
+> 
+> > Secondly, the _other_ fix for this problem is to fix the documentation.
+> 
+> How is the documentation incorrect?  We do not want any kind of back-off for stream transports.
 
-This patch set is also available on the for-trond branch of the git repo at
-git://citi.umich.edu/projects/linux-pnfs-blk.git
+The documentation states that we don't do back off, but as Max points
+out, in practice the kernel does a linear back off (and has always done
+so).
 
-This is version 4 of this patch set.  Changes since version 3:
-
-- Rebase to trond/nfs-for-3.1 (commit ed1e6211a0).
-- Change return value NFS4ERR_REP_TOO_BIG to EIO in decode_getdevicelist.
-- fix error message in set_pnfs_layoutdriver.
-- remove dont_like_caller from read_pagelist and write_pagelist.
-- rename mark_for_commit to bl_mark_for_commit
-- split the patch "NFS41: Let layoutcommit handle multiple segments" into 4
-  patches each does one task only.
-- fix race in saving cred in layout header.
-- move the patch "NFS41: save layoutcommit cred after first successful
-  layoutget" to an earlier place.
-- "[PATCH v3 25/25] NFS41: Drop lseg ref before fallthru to MDS" is dropped.   
-- move GETDEVICELIST to end of nfs4_procedures[]
-
-Changes since version 2:
-
-- Rebase to trond/nfs-for-next (commit ed1e6211a0).
-- Fix Fred's and Benny's email addresses.
-- Use FIXME to flag code that needs more work.
-- Remove obsolete comments.
-- Minor patch re-orgs per reviewer comments.
-
-Changes since version 1:
-
-NFS41: Drop lseg ref before fallthru to MDS
-SQUASHME: pnfsblock: get rid of vmap and deviceid->area structure
-SQUASHME: pnfsblock: define module alias
-SQUASHME: pnfsblock: bl_find_get_extent optimization: mv break clause to end of loop
-SQUASHME: pnfsblock: test debug bit once for multiple dprintks
-SQUASHME: pnfsblock: typo
-SQUASHME: pnfsblock: get rid of unused leftovers from device mapping removal
-
-Andy Adamson (2):
-  pnfs: GETDEVICELIST
-  pnfs: cleanup_layoutcommit
-
-Benny Halevy (2):
-  pnfs: add set-clear layoutdriver interface
-  pnfsblock: use pageio_ops api
-
-Fred Isaman (15):
-  pnfs: ask for layout_blksize and save it in nfs_server
-  pnfsblock: add blocklayout Kconfig option, Makefile, and stubs
-  pnfsblock: basic extent code
-  pnfsblock: lseg alloc and free
-  pnfsblock: merge extents
-  pnfsblock: call and parse getdevicelist
-  pnfsblock: xdr decode pnfs_block_layout4
-  pnfsblock: bl_find_get_extent
-  pnfsblock: add extent manipulation functions
-  pnfsblock: merge rw extents
-  pnfsblock: encode_layoutcommit
-  pnfsblock: cleanup_layoutcommit
-  pnfsblock: bl_read_pagelist
-  pnfsblock: bl_write_pagelist
-  pnfsblock: note written INVAL areas for layoutcommit
-
-Jim Rees (2):
-  pnfsblock: add device operations
-  pnfsblock: remove device operations
-
-Peng Tao (6):
-  pnfs: save layoutcommit lwb at layout header
-  pnfs: save layoutcommit cred at layout header
-  pnfs: let layoutcommit handle a list of lseg
-  pnfs: use lwb as layoutcommit length
-  NFS41: save layoutcommit cred in layout header init
-  pnfsblock: write_pagelist handle zero invalid extents
-
- fs/nfs/Kconfig                      |    8 +-
- fs/nfs/Makefile                     |    1 +
- fs/nfs/blocklayout/Makefile         |    5 +
- fs/nfs/blocklayout/blocklayout.c    | 1018 +++++++++++++++++++++++++++++++++++
- fs/nfs/blocklayout/blocklayout.h    |  208 +++++++
- fs/nfs/blocklayout/blocklayoutdev.c |  410 ++++++++++++++
- fs/nfs/blocklayout/blocklayoutdm.c  |  111 ++++
- fs/nfs/blocklayout/extents.c        |  943 ++++++++++++++++++++++++++++++++
- fs/nfs/client.c                     |   11 +-
- fs/nfs/nfs4_fs.h                    |    2 +-
- fs/nfs/nfs4filelayout.c             |    2 +-
- fs/nfs/nfs4proc.c                   |   62 ++-
- fs/nfs/nfs4xdr.c                    |  233 ++++++++-
- fs/nfs/pnfs.c                       |   88 ++--
- fs/nfs/pnfs.h                       |   30 +-
- include/linux/nfs.h                 |    2 +
- include/linux/nfs4.h                |    1 +
- include/linux/nfs_fs_sb.h           |    4 +-
- include/linux/nfs_xdr.h             |   17 +-
- 19 files changed, 3089 insertions(+), 67 deletions(-)
- create mode 100644 fs/nfs/blocklayout/Makefile
- create mode 100644 fs/nfs/blocklayout/blocklayout.c
- create mode 100644 fs/nfs/blocklayout/blocklayout.h
- create mode 100644 fs/nfs/blocklayout/blocklayoutdev.c
- create mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
- create mode 100644 fs/nfs/blocklayout/extents.c
+Anyway, why shouldn't we back off if the server is failing to respond?
 
 -- 
-1.7.4.1
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
