@@ -1,47 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.ctxuk.citrix.com ([62.200.22.115]:28550 "EHLO
-	SMTP.EU.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754488Ab1GVOQH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jul 2011 10:16:07 -0400
-Subject: Re: [PATCH 08/13] net: convert drivers to paged frag API.
-From: Ian Campbell <Ian.Campbell@eu.citrix.com>
-To: David Miller <davem@davemloft.net>
-CC: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Chas Williams <chas@cmf.nrl.navy.mil>,
-        <linux-atm-general@lists.sourceforge.net>
-In-Reply-To: <20110722.071217.607687554920673786.davem@davemloft.net>
-References: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
-	 <1311340653-19336-8-git-send-email-ian.campbell@citrix.com>
-	 <20110722.071217.607687554920673786.davem@davemloft.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 22 Jul 2011 15:16:04 +0100
-Message-ID: <1311344164.12772.78.camel@zakaz.uk.xensource.com>
+Received: from mx1.redhat.com ([209.132.183.28]:44402 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752104Ab1GGILu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jul 2011 04:11:50 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p678BnOx018952
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 7 Jul 2011 04:11:50 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p678Bnuc024175
+	for <linux-nfs@vger.kernel.org>; Thu, 7 Jul 2011 04:11:49 -0400
+Received: from regina.usersys.redhat.com (dhcp-176-225.mel.redhat.com [10.64.176.225])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id p678BmKO015118
+	for <linux-nfs@vger.kernel.org>; Thu, 7 Jul 2011 04:11:48 -0400
+Content-Type: text/plain; charset=utf-8
+Message-ID: <19989.27202.793003.725608@regina.usersys.redhat.com>
+Date: Thu, 7 Jul 2011 18:11:46 +1000
+From: Max Matveev <makc@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: NFS/TCP timeout sequence
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2011-07-22 at 15:12 +0100, David Miller wrote:
-> From: Ian Campbell <ian.campbell@citrix.com>
-> Date: Fri, 22 Jul 2011 14:17:28 +0100
-> 
-> > -				put_dma(tx->index,eni_dev->dma,&j,(unsigned long)
-> > -				    skb_shinfo(skb)->frags[i].page + skb_shinfo(skb)->frags[i].page_offset,
-> > +				put_dma(tx->index,eni_dev->dma,&j,
-> > +				    (unsigned long)skb_frag_address(&skb_shinfo(skb)->frags[i]),
-> 
-> This is not an equivalent transformation.
-> 
-> skb_frag_address() does a page_address() on the frag page, but that is
-> not what the code was doing here previously.
-> 
-> It's possible the code was buggy, but you can't do a fix like that
-> amidst what is supposed to be a semantically NOP transformation.
 
-Ouch, you are absolutely right, I didn't spot that, sorry.
+I've had to look at the way NFS/TCP does its timeouts and backoff
+and it does not make a lot of sense to me: according to the
+following paragram from nfs(5) on Fedora 14 (I'm using Fedora 14
+because it has more text then the same page in nfs-utils):
 
-The original code does look pretty bogus though, indexing off a struct
-page * like that -- CC'ing the ATM maintainer + list.
+      timeo=n    The time (in tenths of a second) the  NFS  client  waits
+                 for a response before it retries an NFS request. If this
+                 option is not specified, requests are retried  every  60
+                 seconds  for NFS over TCP.  The NFS client does not per‐
+                 form any kind of timeout backoff for NFS over TCP.
 
-Ian.
+but if I try the mount with timeo=20,retrans=7 then I'm getting
+retransmits which are 2, 4, 6, 8, 2, 4, 6, 8 seconds apart, i.e.
+there is a) linear backoff and b) the backoff is not long enough to
+let the complete sequence of 7 retransmits run its course.
 
+This is happening because to_maxval for NFS_TCP is too short to
+accomodate the linear backoff - we need to either increase the
+to_maxval to something like:
+
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -606,7 +606,8 @@ static void nfs_init_timeout_values(struct rpc_timeout *to, 
+                if (to->to_initval > NFS_MAX_TCP_TIMEOUT)
+                        to->to_initval = NFS_MAX_TCP_TIMEOUT;
+                to->to_increment = to->to_initval;
+-               to->to_maxval = to->to_initval + (to->to_increment * to->to_retries);
++               to->to_maxval = to->to_increment * (to->to_retries + 1) 
++                             * (to->to_retries + 2) / 2;
+                if (to->to_maxval > NFS_MAX_TCP_TIMEOUT)
+                        to->to_maxval = NFS_MAX_TCP_TIMEOUT;
+                if (to->to_maxval < to->to_initval)
+
+or don't do the linear backoff
+
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -546,7 +546,7 @@ static void xprt_reset_majortimeo(struct rpc_rqst *req)
+        if (to->to_exponential)
+                req->rq_majortimeo <<= to->to_retries;
+        else
+-               req->rq_majortimeo += to->to_increment * to->to_retries;
++               req->rq_majortimeo += to->to_increment;
+        if (req->rq_majortimeo > to->to_maxval || req->rq_majortimeo == 0)
+                req->rq_majortimeo = to->to_maxval;
+        req->rq_majortimeo += jiffies;
+
+max
