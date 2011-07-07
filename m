@@ -1,133 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51150 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758293Ab1GKR6h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Jul 2011 13:58:37 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 1/2] NFS: Test and Free stateid should take a stateid argument
-Date: Mon, 11 Jul 2011 13:58:29 -0400
-Message-Id: <1310407110-20600-1-git-send-email-bjschuma@netapp.com>
+Received: from mail.candelatech.com ([208.74.158.172]:53961 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754017Ab1GGAHi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jul 2011 20:07:38 -0400
+Message-ID: <4E14F8C4.2010508@candelatech.com>
+Date: Wed, 06 Jul 2011 17:07:32 -0700
+From: Ben Greear <greearb@candelatech.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [RFC] sunrpc:  Fix race between work-queue and rpc_killall_tasks.
+References: <1309992581-25199-1-git-send-email-greearb@candelatech.com> <1309995932.5447.6.camel@lade.trondhjem.org>
+In-Reply-To: <1309995932.5447.6.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On 07/06/2011 04:45 PM, Trond Myklebust wrote:
+> On Wed, 2011-07-06 at 15:49 -0700, greearb@candelatech.com wrote:
+>> From: Ben Greear<greearb@candelatech.com>
+>>
+>> The rpc_killall_tasks logic is not locked against
+>> the work-queue thread, but it still directly modifies
+>> function pointers and data in the task objects.
+>>
+>> This patch changes the killall-tasks logic to set a flag
+>> that tells the work-queue thread to terminate the task
+>> instead of directly calling the terminate logic.
+>>
+>> Signed-off-by: Ben Greear<greearb@candelatech.com>
+>> ---
+>>
+>> NOTE:  This needs review, as I am still struggling to understand
+>> the rpc code, and it's quite possible this patch either doesn't
+>> fully fix the problem or actually causes other issues.  That said,
+>> my nfs stress test seems to run a bit more stable with this patch applied.
+>
+> Yes, but I don't see why you are adding a new flag, nor do I see why we
+> want to keep checking for that flag in the rpc_execute() loop.
+> rpc_killall_tasks() is not a frequent operation that we want to optimise
+> for.
 
-Passing the nfs4_state doesn't guarantee that the correct stateid will
-be used.  The correct stateid can be determined during lock_expired() or
-open_expired() and then passed to these functions.
+I was hoping that if the killall logic never set anything that was also
+set by the work-queue thread it would be lock-safe without needing
+explicit locking.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4proc.c |   31 +++++++++++++++++--------------
- 1 files changed, 17 insertions(+), 14 deletions(-)
+I was a bit concerned that my flags |= KILLME logic would potentially
+over-write flags that were being simultaneously written elsewhere
+(so maybe I'd have to add a completely new variable for that KILLME flag
+to really be safe.)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 93ef776..f37218b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -81,8 +81,8 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 			    struct nfs_fattr *fattr, struct iattr *sattr,
- 			    struct nfs4_state *state);
- #ifdef CONFIG_NFS_V4_1
--static int nfs41_test_stateid(struct nfs_server *, struct nfs4_state *);
--static int nfs41_free_stateid(struct nfs_server *, struct nfs4_state *);
-+static int nfs41_test_stateid(struct nfs_server *, nfs4_stateid *);
-+static int nfs41_free_stateid(struct nfs_server *, nfs4_stateid *);
- #endif
- /* Prevent leaks of NFSv4 errors into userland */
- static int nfs4_map_errors(int err)
-@@ -1696,10 +1696,10 @@ static int nfs41_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *st
- 	int status;
- 	struct nfs_server *server = NFS_SERVER(state->inode);
- 
--	status = nfs41_test_stateid(server, state);
-+	status = nfs41_test_stateid(server, &state->open_stateid);
- 	if (status == NFS_OK)
- 		return 0;
--	nfs41_free_stateid(server, state);
-+	nfs41_free_stateid(server, &state->open_stateid);
- 	return nfs4_open_expired(sp, state);
- }
- #endif
-@@ -4466,11 +4466,14 @@ static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *reques
- {
- 	int status;
- 	struct nfs_server *server = NFS_SERVER(state->inode);
-+	struct nfs4_lock_state *lock_state = request->fl_u.nfs4_fl.owner;
-+	nfs4_stateid *stateid = &lock_state->ls_stateid;
- 
--	status = nfs41_test_stateid(server, state);
-+	status = nfs41_test_stateid(server, stateid);
- 	if (status == NFS_OK)
- 		return 0;
--	nfs41_free_stateid(server, state);
-+	nfs41_free_stateid(server, stateid);
-+	lock_state->ls_seqid.flags &= !NFS_SEQID_CONFIRMED;
- 	return nfs4_lock_expired(state, request);
- }
- #endif
-@@ -6046,11 +6049,11 @@ out_freepage:
- out:
- 	return err;
- }
--static int _nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *state)
-+static int _nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
- {
- 	int status;
- 	struct nfs41_test_stateid_args args = {
--		.stateid = &state->stateid,
-+		.stateid = stateid,
- 	};
- 	struct nfs41_test_stateid_res res;
- 	struct rpc_message msg = {
-@@ -6063,23 +6066,23 @@ static int _nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *sta
- 	return status;
- }
- 
--static int nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *state)
-+static int nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
- {
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(server,
--				_nfs41_test_stateid(server, state),
-+				_nfs41_test_stateid(server, stateid),
- 				&exception);
- 	} while (exception.retry);
- 	return err;
- }
- 
--static int _nfs4_free_stateid(struct nfs_server *server, struct nfs4_state *state)
-+static int _nfs4_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
- {
- 	int status;
- 	struct nfs41_free_stateid_args args = {
--		.stateid = &state->stateid,
-+		.stateid = stateid,
- 	};
- 	struct nfs41_free_stateid_res res;
- 	struct rpc_message msg = {
-@@ -6093,13 +6096,13 @@ static int _nfs4_free_stateid(struct nfs_server *server, struct nfs4_state *stat
- 	return status;
- }
- 
--static int nfs41_free_stateid(struct nfs_server *server, struct nfs4_state *state)
-+static int nfs41_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
- {
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(server,
--				_nfs4_free_stateid(server, state),
-+				_nfs4_free_stateid(server, stateid),
- 				&exception);
- 	} while (exception.retry);
- 	return err;
+>
+> How about the following instead?
+
+I think it still races..more comments below.
+
+>
+> 8<----------------------------------------------------------------------------------
+>  From ecb7244b661c3f9d2008ef6048733e5cea2f98ab Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust<Trond.Myklebust@netapp.com>
+> Date: Wed, 6 Jul 2011 19:44:52 -0400
+> Subject: [PATCH] SUNRPC: Fix a race between work-queue and rpc_killall_tasks
+>
+> Since rpc_killall_tasks may modify the rpc_task's tk_action field
+> without any locking, we need to be careful when dereferencing it.
+
+> +		do_action = task->tk_callback;
+> +		task->tk_callback = NULL;
+> +		if (do_action == NULL) {
+
+I think the race still exists, though it would be harder to hit.
+What if the killall logic sets task->tk_callback right after you assign do_action, but before
+you set tk_callback to NULL?  Or after you set tk_callback to NULL for
+that matter.
+
+>   			/*
+>   			 * Perform the next FSM step.
+> -			 * tk_action may be NULL when the task has been killed
+> -			 * by someone else.
+> +			 * tk_action may be NULL if the task has been killed.
+> +			 * In particular, note that rpc_killall_tasks may
+> +			 * do this at any time, so beware when dereferencing.
+>   			 */
+> -			if (task->tk_action == NULL)
+> +			do_action = task->tk_action;
+> +			if (do_action == NULL)
+>   				break;
+> -			task->tk_action(task);
+>   		}
+> +		do_action(task);
+>
+>   		/*
+>   		 * Lockless check for whether task is sleeping or not.
+
+Thanks,
+Ben
+
 -- 
-1.7.6
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
