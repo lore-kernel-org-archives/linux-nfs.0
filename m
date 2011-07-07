@@ -1,186 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:38080 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752686Ab1GaAxP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 20:53:15 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v7 11/26] pnfsblock: basic extent code
-Date: Sat, 30 Jul 2011 20:52:41 -0400
-Message-Id: <1312073576-11024-12-git-send-email-rees@umich.edu>
-In-Reply-To: <1312073576-11024-1-git-send-email-rees@umich.edu>
-References: <1312073576-11024-1-git-send-email-rees@umich.edu>
+Received: from mx2.netapp.com ([216.240.18.37]:32356 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752115Ab1GGASB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jul 2011 20:18:01 -0400
+Subject: Re: [RFC] sunrpc:  Fix race between work-queue and
+ rpc_killall_tasks.
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Ben Greear <greearb@candelatech.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Wed, 06 Jul 2011 20:17:59 -0400
+In-Reply-To: <4E14F8C4.2010508@candelatech.com>
+References: <1309992581-25199-1-git-send-email-greearb@candelatech.com>
+	 <1309995932.5447.6.camel@lade.trondhjem.org>
+	 <4E14F8C4.2010508@candelatech.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1309997879.5447.12.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+On Wed, 2011-07-06 at 17:07 -0700, Ben Greear wrote: 
+> On 07/06/2011 04:45 PM, Trond Myklebust wrote:
+> > On Wed, 2011-07-06 at 15:49 -0700, greearb@candelatech.com wrote:
+> >> From: Ben Greear<greearb@candelatech.com>
+> >>
+> >> The rpc_killall_tasks logic is not locked against
+> >> the work-queue thread, but it still directly modifies
+> >> function pointers and data in the task objects.
+> >>
+> >> This patch changes the killall-tasks logic to set a flag
+> >> that tells the work-queue thread to terminate the task
+> >> instead of directly calling the terminate logic.
+> >>
+> >> Signed-off-by: Ben Greear<greearb@candelatech.com>
+> >> ---
+> >>
+> >> NOTE:  This needs review, as I am still struggling to understand
+> >> the rpc code, and it's quite possible this patch either doesn't
+> >> fully fix the problem or actually causes other issues.  That said,
+> >> my nfs stress test seems to run a bit more stable with this patch applied.
+> >
+> > Yes, but I don't see why you are adding a new flag, nor do I see why we
+> > want to keep checking for that flag in the rpc_execute() loop.
+> > rpc_killall_tasks() is not a frequent operation that we want to optimise
+> > for.
+> 
+> I was hoping that if the killall logic never set anything that was also
+> set by the work-queue thread it would be lock-safe without needing
+> explicit locking.
+> 
+> I was a bit concerned that my flags |= KILLME logic would potentially
+> over-write flags that were being simultaneously written elsewhere
+> (so maybe I'd have to add a completely new variable for that KILLME flag
+> to really be safe.)
+> 
+> >
+> > How about the following instead?
+> 
+> I think it still races..more comments below.
+> 
+> >
+> > 8<----------------------------------------------------------------------------------
+> >  From ecb7244b661c3f9d2008ef6048733e5cea2f98ab Mon Sep 17 00:00:00 2001
+> > From: Trond Myklebust<Trond.Myklebust@netapp.com>
+> > Date: Wed, 6 Jul 2011 19:44:52 -0400
+> > Subject: [PATCH] SUNRPC: Fix a race between work-queue and rpc_killall_tasks
+> >
+> > Since rpc_killall_tasks may modify the rpc_task's tk_action field
+> > without any locking, we need to be careful when dereferencing it.
+> 
+> > +		do_action = task->tk_callback;
+> > +		task->tk_callback = NULL;
+> > +		if (do_action == NULL) {
+> 
+> I think the race still exists, though it would be harder to hit.
+> What if the killall logic sets task->tk_callback right after you assign do_action, but before
+> you set tk_callback to NULL?  Or after you set tk_callback to NULL for
+> that matter.
 
-Adds structures and basic create/delete code for extents.
+What if it does? The rpc call will continue to execute until it
+completes.
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Zhang Jingwang <Jingwang.Zhang@emc.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- fs/nfs/blocklayout/Makefile      |    2 +-
- fs/nfs/blocklayout/blocklayout.c |   20 +++++++--
- fs/nfs/blocklayout/blocklayout.h |    1 +
- fs/nfs/blocklayout/extents.c     |   89 ++++++++++++++++++++++++++++++++++++++
- 4 files changed, 107 insertions(+), 5 deletions(-)
- create mode 100644 fs/nfs/blocklayout/extents.c
+rpc_killall_tasks is really only useful for signalling to tasks that are
+hanging on a completely unresponsive server that we want them to stop.
+The only case where we really care is in rpc_shutdown_client(), where we
+sleep and loop anyway.
 
-diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
-index 6bf49cd..5cfadf6 100644
---- a/fs/nfs/blocklayout/Makefile
-+++ b/fs/nfs/blocklayout/Makefile
-@@ -2,4 +2,4 @@
- # Makefile for the pNFS block layout driver kernel module
- #
- obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
--blocklayoutdriver-objs := blocklayout.o
-+blocklayoutdriver-objs := blocklayout.o extents.o
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 1f5287c..8dde372 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -53,12 +53,24 @@ bl_write_pagelist(struct nfs_write_data *wdata,
- 	return PNFS_NOT_ATTEMPTED;
- }
- 
--/* STUB */
-+/* FIXME - range ignored */
- static void
--release_extents(struct pnfs_block_layout *bl,
--		struct pnfs_layout_range *range)
-+release_extents(struct pnfs_block_layout *bl, struct pnfs_layout_range *range)
- {
--	return;
-+	int i;
-+	struct pnfs_block_extent *be;
-+
-+	spin_lock(&bl->bl_ext_lock);
-+	for (i = 0; i < EXTENT_LISTS; i++) {
-+		while (!list_empty(&bl->bl_extents[i])) {
-+			be = list_first_entry(&bl->bl_extents[i],
-+					      struct pnfs_block_extent,
-+					      be_node);
-+			list_del(&be->be_node);
-+			bl_put_extent(be);
-+		}
-+	}
-+	spin_unlock(&bl->bl_ext_lock);
- }
- 
- /* STUB */
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 8bfa466..98e2f60 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -88,4 +88,5 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
- 	return container_of(lo, struct pnfs_block_layout, bl_layout);
- }
- 
-+void bl_put_extent(struct pnfs_block_extent *be);
- #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-new file mode 100644
-index 0000000..d0ca760
---- /dev/null
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -0,0 +1,89 @@
-+/*
-+ *  linux/fs/nfs/blocklayout/blocklayout.h
-+ *
-+ *  Module for the NFSv4.1 pNFS block layout driver.
-+ *
-+ *  Copyright (c) 2006 The Regents of the University of Michigan.
-+ *  All rights reserved.
-+ *
-+ *  Andy Adamson <andros@citi.umich.edu>
-+ *  Fred Isaman <iisaman@umich.edu>
-+ *
-+ * permission is granted to use, copy, create derivative works and
-+ * redistribute this software and such derivative works for any purpose,
-+ * so long as the name of the university of michigan is not used in
-+ * any advertising or publicity pertaining to the use or distribution
-+ * of this software without specific, written prior authorization.  if
-+ * the above copyright notice or any other identification of the
-+ * university of michigan is included in any copy of any portion of
-+ * this software, then the disclaimer below must also be included.
-+ *
-+ * this software is provided as is, without representation from the
-+ * university of michigan as to its fitness for any purpose, and without
-+ * warranty by the university of michigan of any kind, either express
-+ * or implied, including without limitation the implied warranties of
-+ * merchantability and fitness for a particular purpose.  the regents
-+ * of the university of michigan shall not be liable for any damages,
-+ * including special, indirect, incidental, or consequential damages,
-+ * with respect to any claim arising out or in connection with the use
-+ * of the software, even if it has been or is hereafter advised of the
-+ * possibility of such damages.
-+ */
-+
-+#include "blocklayout.h"
-+#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
-+
-+static void print_bl_extent(struct pnfs_block_extent *be)
-+{
-+	dprintk("PRINT EXTENT extent %p\n", be);
-+	if (be) {
-+		dprintk("        be_f_offset %llu\n", (u64)be->be_f_offset);
-+		dprintk("        be_length   %llu\n", (u64)be->be_length);
-+		dprintk("        be_v_offset %llu\n", (u64)be->be_v_offset);
-+		dprintk("        be_state    %d\n", be->be_state);
-+	}
-+}
-+
-+static void
-+destroy_extent(struct kref *kref)
-+{
-+	struct pnfs_block_extent *be;
-+
-+	be = container_of(kref, struct pnfs_block_extent, be_refcnt);
-+	dprintk("%s be=%p\n", __func__, be);
-+	kfree(be);
-+}
-+
-+void
-+bl_put_extent(struct pnfs_block_extent *be)
-+{
-+	if (be) {
-+		dprintk("%s enter %p (%i)\n", __func__, be,
-+			atomic_read(&be->be_refcnt.refcount));
-+		kref_put(&be->be_refcnt, destroy_extent);
-+	}
-+}
-+
-+struct pnfs_block_extent *bl_alloc_extent(void)
-+{
-+	struct pnfs_block_extent *be;
-+
-+	be = kmalloc(sizeof(struct pnfs_block_extent), GFP_NOFS);
-+	if (!be)
-+		return NULL;
-+	INIT_LIST_HEAD(&be->be_node);
-+	kref_init(&be->be_refcnt);
-+	be->be_inval = NULL;
-+	return be;
-+}
-+
-+static void print_elist(struct list_head *list)
-+{
-+	struct pnfs_block_extent *be;
-+	dprintk("****************\n");
-+	dprintk("Extent list looks like:\n");
-+	list_for_each_entry(be, list, be_node) {
-+		print_bl_extent(be);
-+	}
-+	dprintk("****************\n");
-+}
+IOW: I really don't care about 'fixing' rpc_killall_tasks to perfection.
+All I care about is that it doesn't Oops.
+
 -- 
-1.7.4.1
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
