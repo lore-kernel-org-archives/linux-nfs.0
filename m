@@ -1,101 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:40234 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753668Ab1GUTee (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 15:34:34 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v2 04/25] NFS41: save layoutcommit cred after first successful layoutget
-Date: Thu, 21 Jul 2011 15:34:04 -0400
-Message-Id: <1311276865-29484-5-git-send-email-rees@umich.edu>
-In-Reply-To: <1311276865-29484-1-git-send-email-rees@umich.edu>
-References: <1311276865-29484-1-git-send-email-rees@umich.edu>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:39141 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756661Ab1GGOk2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jul 2011 10:40:28 -0400
+Received: by wyg8 with SMTP id 8so693502wyg.19
+        for <linux-nfs@vger.kernel.org>; Thu, 07 Jul 2011 07:40:26 -0700 (PDT)
+Message-ID: <4E15C555.9030002@fubra.com>
+Date: Thu, 07 Jul 2011 15:40:21 +0100
+From: Matthew Ward <matthew.ward@fubra.com>
+To: linux-nfs@vger.kernel.org
+Subject: Issue with NFS and LDAP, attribute caching with "Permission denied"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Peng Tao <bergwolf@gmail.com>
+Hi all,
 
-Save it in layout header instead of in every segment.
+I'm having a particular issue with NFS and LDAP permissions causing 
+"Permission denied" when trying to access directories where my apache 
+user is a member of another's group, and there seems to be some kind of 
+caching of permissions that are stopping me from getting into 
+directories until the NFS server is restarted. I've tried reducing 
+attribute caching timeouts as well as turning attribute caching off with 
+noac, which help to alleviate the problem on the client side but still 
+require a restart of NFS on the server side otherwise there is a long 
+(up to 15 minute) wait. The setup is as follows:
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/pnfs.c |   12 ++++++------
- fs/nfs/pnfs.h |    1 -
- 2 files changed, 6 insertions(+), 7 deletions(-)
+1) A random user and group are added to LDAP on the LDAP server, for 
+example `matt`
+2) `apache` is added as a memberUid to the group `matt` so that `apache` 
+has access to everything that the `group` matt can read
+3) Checking the groups for the `apache` user on the client shows it's a 
+member of the `matt` group
+4) Trying to access directories that are group-read/executable to `matt` 
+(drwxr-x---) from `apache` produces "Permission denied"
+5) Restarting the NFS server then allows the `apache` user to access the 
+`matt`-owned directory
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index dae19dd..fbebd2a 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -211,6 +211,7 @@ destroy_layout_hdr(struct pnfs_layout_hdr *lo)
- 	dprintk("%s: freeing layout cache %p\n", __func__, lo);
- 	BUG_ON(!list_empty(&lo->plh_layouts));
- 	NFS_I(lo->plh_inode)->layout = NULL;
-+	put_rpccred(lo->plh_lc_cred);
- 	pnfs_free_layout_hdr(lo);
- }
- 
-@@ -1007,6 +1008,10 @@ pnfs_update_layout(struct inode *ino,
- 		list_del_init(&lo->plh_layouts);
- 		spin_unlock(&clp->cl_lock);
- 	}
-+	if (first) {
-+		lo->plh_lc_cred =
-+			get_rpccred(ctx->state->owner->so_cred);
-+	}
- 	atomic_dec(&lo->plh_outstanding);
- 	put_layout_hdr(lo);
- out:
-@@ -1386,8 +1391,6 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
- 	spin_lock(&nfsi->vfs_inode.i_lock);
- 	if (!test_and_set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
- 		mark_as_dirty = true;
--		nfsi->layout->plh_lc_cred =
--			get_rpccred(wdata->args.context->state->owner->so_cred);
- 		dprintk("%s: Set layoutcommit for inode %lu ",
- 			__func__, wdata->inode->i_ino);
- 	}
-@@ -1421,7 +1424,6 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- {
- 	struct nfs4_layoutcommit_data *data;
- 	struct nfs_inode *nfsi = NFS_I(inode);
--	struct rpc_cred *cred;
- 	loff_t end_pos;
- 	int status = 0;
- 
-@@ -1449,16 +1451,14 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- 	pnfs_list_write_lseg(inode, &data->lseg_list);
- 
- 	end_pos = nfsi->layout->plh_lwb;
--	cred = nfsi->layout->plh_lc_cred;
- 	nfsi->layout->plh_lwb = 0;
--	nfsi->layout->plh_lc_cred = NULL;
- 
- 	memcpy(&data->args.stateid.data, nfsi->layout->plh_stateid.data,
- 		sizeof(nfsi->layout->plh_stateid.data));
- 	spin_unlock(&inode->i_lock);
- 
- 	data->args.inode = inode;
--	data->cred = cred;
-+	data->cred = get_rpccred(nfsi->layout->plh_lc_cred);
- 	nfs_fattr_init(&data->fattr);
- 	data->args.bitmask = NFS_SERVER(inode)->cache_consistency_bitmask;
- 	data->res.fattr = &data->fattr;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 5f1b532..bddd8b9 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -46,7 +46,6 @@ struct pnfs_layout_segment {
- 	atomic_t pls_refcount;
- 	unsigned long pls_flags;
- 	struct pnfs_layout_hdr *pls_layout;
--	struct rpc_cred	*pls_lc_cred; /* LAYOUTCOMMIT credential */
- };
- 
- enum pnfs_try_status {
--- 
-1.7.4.1
+Originally, we didn't have the noac option on the client-side mount and 
+even after restarting the NFS server it would still be anywhere between 
+30 seconds and 15 minutes before the `apache` user had access to the 
+directory, but since turning on noac (or reducing actimeo to something 
+small) means that after an NFS server restart we're able to use `apache` 
+to access the directory straight away.
+
+I'm just wondering if there's some sort of cache on the server side that 
+also needs to be reduced so that we don't have to restart the NFS server 
+to avoid the 15 minute wait as well?
+
+NFS-specific files and commands are as follows
+
+/etc/exports (on the server):
+-----------------------------
+/my/shared/dir x.x.x.x(rw,nohide,insecure,no_subtree_check,async)
+
+/etc/fstab (on the client):
+---------------------------
+x.x.x.x:/my/shared/dir /my/shared/dir nfs defaults,noatime,actimeo=1 1 1
+
+commands on the client (as the `apache` LDAP user):
+---------------------------------------------------
+$ whoami
+apache
+$ groups
+apache matt
+$ cd /my/shared/dir
+$ ls -l
+drwxr-s--- 7 matt matt 4096 Jul 6 16:56 matt
+$ ls -a matt
+ls: cannot open directory matt: Permission denied
+(RESTART NFS SERVER)
+$ ls -a matt
+. ..
+$
+
+============
+Matthew Ward
+Web and Mobile Application Developer
+Fubra Limited
+
+w: www.fubra.com
+e: matthew.ward@fubra.com
+
+------------------------------
+
+Fubra is a company limited by shares and registered in England and
+Wales with number 3967214 at Anstey Park House, Anstey Road,
+Alton, Hampshire, GU34 2RL. We are registered for VAT with number
+GB733667024, and as a data controller with number Z5193400.
+We are members of RIPE, Nominet, The Italian RA and registered
+with OfCom as a provider of electronic communications services.
 
