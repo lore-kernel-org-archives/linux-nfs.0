@@ -1,58 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from esrismtp2.esri.com ([198.102.62.103]:10820 "EHLO esri3.esri.com"
+Received: from mx2.netapp.com ([216.240.18.37]:35451 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751545Ab1GTTnY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jul 2011 15:43:24 -0400
-Received: from leoray.esri.com (leoray.esri.com [10.27.102.12])
-	by esri3.esri.com (8.11.7p3+Sun/8.11.7) with ESMTP id p6KJNgS00956
-	for <linux-nfs@vger.kernel.org>; Wed, 20 Jul 2011 12:23:42 -0700 (PDT)
-Received: from leoray.esri.com (leoray.esri.com [127.0.0.1])
-	by leoray.esri.com (8.14.4/8.14.3) with ESMTP id p6KJNgqv018317
-	for <linux-nfs@vger.kernel.org>; Wed, 20 Jul 2011 12:23:42 -0700
-Received: (from ray5147@localhost)
-	by leoray.esri.com (8.14.4/8.14.3/Submit) id p6KJNgQR018315
-	for linux-nfs@vger.kernel.org; Wed, 20 Jul 2011 12:23:42 -0700
-Date: Wed, 20 Jul 2011 12:23:42 -0700
-From: Ray Van Dolson <rvandolson@esri.com>
-To: linux-nfs@vger.kernel.org
-Subject: NFS server responds to SYN with ACK only
-Message-ID: <20110720192341.GA18167@esri.com>
-Content-Type: text/plain; charset=us-ascii
+	id S1751434Ab1GHWO4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Jul 2011 18:14:56 -0400
+Content-Type: text/plain;
+	charset="utf-8"
+Subject: RE: [RFC] sunrpc:  Fix race between work-queue and rpc_killall_tasks.
+Date: Fri, 8 Jul 2011 15:14:54 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A198E69@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <4E177EA8.60109@candelatech.com>
+References: <1309992581-25199-1-git-send-email-greearb@candelatech.com> <1309995932.5447.6.camel@lade.trondhjem.org> <4E173BE6.9000005@candelatech.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A198C7C@SACMVEXC2-PRD.hq.netapp.com> <4E177EA8.60109@candelatech.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Ben Greear" <greearb@candelatech.com>
+Cc: <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We have a couple legacy CentOS (RHEL)-based appliances with slightly
-dated NFS implementations.
-
-Server (CentOS 4 based):
-
-    nfs-utils-1.0.6-70.EL4
-    Kernel 2.6.9-42.0.10.plus.c4smp
-
-Client (CentOS 5 based):
-
-    nfs-utils-1.0.9-42.el5.x86_64
-    Kernel 2.6.18-164.15.1.el5
-
-The client has a long-lived NFSv3 mount to the server that sometimes
-stops responding (blocks).  We can lazy unmount it, but subsequent
-mount requests hang and the following is observed via tcpdump:
-
-    1. Client GETPORT for NFS service succeeds.
-    2. Client GETPORT for MOUNT succeeds
-    3. Client MNT call succeeds (server gives valid response including
-       file handle)
-    4. Client sends a SYN packet to NFS port on server
-    5. Server responds with ACK *only*
-
-When we bounce the NFS daemon on the server, everything starts working
-and in step 5 above, we get a SYN,ACK as expected in response to #4,
-and everything proceeds along nicely.
-
-Does this jog anybody on a long-ago fixed bug?  I'm thinking updating
-the kernel and nfs-utils on the server will likely help, but would love
-to find where behavior like the above is referenced as a "bug".
-
-Thanks,
-Ray
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBCZW4gR3JlZWFyIFttYWlsdG86
+Z3JlZWFyYkBjYW5kZWxhdGVjaC5jb21dDQo+IFNlbnQ6IEZyaWRheSwgSnVseSAwOCwgMjAxMSA2
+OjAzIFBNDQo+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+IENjOiBsaW51eC1uZnNAdmdlci5rZXJu
+ZWwub3JnOyBsaW51eC1rZXJuZWxAdmdlci5rZXJuZWwub3JnDQo+IFN1YmplY3Q6IFJlOiBbUkZD
+XSBzdW5ycGM6IEZpeCByYWNlIGJldHdlZW4gd29yay1xdWV1ZSBhbmQNCj4gcnBjX2tpbGxhbGxf
+dGFza3MuDQo+IA0KPiBPbiAwNy8wOC8yMDExIDExOjExIEFNLCBNeWtsZWJ1c3QsIFRyb25kIHdy
+b3RlOg0KPiA+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+PiBGcm9tOiBCZW4gR3Jl
+ZWFyIFttYWlsdG86Z3JlZWFyYkBjYW5kZWxhdGVjaC5jb21dDQo+ID4+IFNlbnQ6IEZyaWRheSwg
+SnVseSAwOCwgMjAxMSAxOjE5IFBNDQo+ID4+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+ID4+IENj
+OiBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyBsaW51eC1rZXJuZWxAdmdlci5rZXJuZWwub3Jn
+DQo+ID4+IFN1YmplY3Q6IFJlOiBbUkZDXSBzdW5ycGM6IEZpeCByYWNlIGJldHdlZW4gd29yay1x
+dWV1ZSBhbmQNCj4gPj4gcnBjX2tpbGxhbGxfdGFza3MuDQo+ID4+DQo+ID4+IE9uIDA3LzA2LzIw
+MTEgMDQ6NDUgUE0sIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gPj4+IE9uIFdlZCwgMjAxMS0w
+Ny0wNiBhdCAxNTo0OSAtMDcwMCwgZ3JlZWFyYkBjYW5kZWxhdGVjaC5jb20gd3JvdGU6DQo+ID4+
+Pj4gRnJvbTogQmVuIEdyZWVhcjxncmVlYXJiQGNhbmRlbGF0ZWNoLmNvbT4NCj4gPj4+Pg0KPiA+
+Pj4+IFRoZSBycGNfa2lsbGFsbF90YXNrcyBsb2dpYyBpcyBub3QgbG9ja2VkIGFnYWluc3QNCj4g
+Pj4+PiB0aGUgd29yay1xdWV1ZSB0aHJlYWQsIGJ1dCBpdCBzdGlsbCBkaXJlY3RseSBtb2RpZmll
+cw0KPiA+Pj4+IGZ1bmN0aW9uIHBvaW50ZXJzIGFuZCBkYXRhIGluIHRoZSB0YXNrIG9iamVjdHMu
+DQo+ID4+Pj4NCj4gPj4+PiBUaGlzIHBhdGNoIGNoYW5nZXMgdGhlIGtpbGxhbGwtdGFza3MgbG9n
+aWMgdG8gc2V0IGEgZmxhZw0KPiA+Pj4+IHRoYXQgdGVsbHMgdGhlIHdvcmstcXVldWUgdGhyZWFk
+IHRvIHRlcm1pbmF0ZSB0aGUgdGFzaw0KPiA+Pj4+IGluc3RlYWQgb2YgZGlyZWN0bHkgY2FsbGlu
+ZyB0aGUgdGVybWluYXRlIGxvZ2ljLg0KPiA+Pj4+DQo+ID4+Pj4gU2lnbmVkLW9mZi1ieTogQmVu
+IEdyZWVhcjxncmVlYXJiQGNhbmRlbGF0ZWNoLmNvbT4NCj4gPj4+PiAtLS0NCj4gPj4+Pg0KPiA+
+Pj4+IE5PVEU6ICBUaGlzIG5lZWRzIHJldmlldywgYXMgSSBhbSBzdGlsbCBzdHJ1Z2dsaW5nIHRv
+IHVuZGVyc3RhbmQNCj4gPj4+PiB0aGUgcnBjIGNvZGUsIGFuZCBpdCdzIHF1aXRlIHBvc3NpYmxl
+IHRoaXMgcGF0Y2ggZWl0aGVyIGRvZXNuJ3QNCj4gPj4+PiBmdWxseSBmaXggdGhlIHByb2JsZW0g
+b3IgYWN0dWFsbHkgY2F1c2VzIG90aGVyIGlzc3Vlcy4gIFRoYXQgc2FpZCwNCj4gPj4+PiBteSBu
+ZnMgc3RyZXNzIHRlc3Qgc2VlbXMgdG8gcnVuIGEgYml0IG1vcmUgc3RhYmxlIHdpdGggdGhpcyBw
+YXRjaA0KPiA+PiBhcHBsaWVkLg0KPiA+Pj4NCj4gPj4+IFllcywgYnV0IEkgZG9uJ3Qgc2VlIHdo
+eSB5b3UgYXJlIGFkZGluZyBhIG5ldyBmbGFnLCBub3IgZG8gSSBzZWUNCj4gd2h5DQo+ID4+IHdl
+DQo+ID4+PiB3YW50IHRvIGtlZXAgY2hlY2tpbmcgZm9yIHRoYXQgZmxhZyBpbiB0aGUgcnBjX2V4
+ZWN1dGUoKSBsb29wLg0KPiA+Pj4gcnBjX2tpbGxhbGxfdGFza3MoKSBpcyBub3QgYSBmcmVxdWVu
+dCBvcGVyYXRpb24gdGhhdCB3ZSB3YW50IHRvDQo+ID4+IG9wdGltaXNlDQo+ID4+PiBmb3IuDQo+
+ID4+Pg0KPiA+Pj4gSG93IGFib3V0IHRoZSBmb2xsb3dpbmcgaW5zdGVhZD8NCj4gPj4NCj4gPj4g
+T2ssIEkgbG9va2VkIGF0IHlvdXIgcGF0Y2ggY2xvc2VyLiAgSSB0aGluayBpdCBjYW4gc3RpbGwg
+Y2F1c2UNCj4gPj4gYmFkIHJhY2UgY29uZGl0aW9ucy4NCj4gPj4NCj4gPj4gRm9yIGluc3RhbmNl
+Og0KPiA+Pg0KPiA+PiBBc3N1bWUgdGhhdCB0a19jYWxsYmFjayBpcyBOVUxMIGF0IGJlZ2lubmlu
+ZyBvZiB3aGlsZSBsb29wIGluDQo+ID4+IF9fcnBjX2V4ZWN1dGUsDQo+ID4+IGFuZCB0a19hY3Rp
+b24gaXMgcnBjX2V4aXRfdGFzay4NCj4gPj4NCj4gPj4gV2hpbGUgZG9fYWN0aW9uKHRhc2spIGlz
+IGJlaW5nIGNhbGxlZCwgdGtfYWN0aW9uIGlzIHNldCB0byBOVUxMIGluDQo+ID4+IHJwY19leGl0
+X3Rhc2suDQo+ID4+DQo+ID4+IEJ1dCwgcmlnaHQgYWZ0ZXIgdGtfYWN0aW9uIGlzIHNldCB0byBO
+VUxMIGluIHJwY19leGl0X3Rhc2ssIHRoZQ0KPiA+PiBycGNfa2lsbGFsbF90YXNrcw0KPiA+PiBt
+ZXRob2QgY2FsbHMgcnBjX2V4aXQsIHdoaWNoIHNldHMgdGtfYWN0aW9uIGJhY2sgdG8gcnBjX2V4
+aXRfdGFzay4NCj4gPj4NCj4gPj4gSSBiZWxpZXZlIHRoaXMgY291bGQgY2F1c2UgdGhlIHhwcnRf
+cmVsZWFzZSh0YXNrKSBsb2dpYyB0byBiZSBjYWxsZWQNCj4gaW4NCj4gPj4gdGhlDQo+ID4+IHdv
+cmstcXVldWUncyBleGVjdXRpb24gb2YgcnBjX2V4aXRfdGFzayBkdWUgdG8gdGtfYWN0aW9uICE9
+IE5VTEwNCj4gd2hlbg0KPiA+PiBpdCBzaG91bGQgbm90IGJlLg0KPiA+DQo+ID4gV2h5IHdvdWxk
+IHRoaXMgYmUgYSBwcm9ibGVtPyB4cHJ0X3JlbGVhc2UoKSBjYW4gY2VydGFpbmx5IGJlIGNhbGxl
+ZA0KPiBtdWx0aXBsZSB0aW1lcyBvbiBhbiBycGNfdGFzay4gRGl0dG8gcnBiY19nZXRwb3J0X2Rv
+bmUuDQo+ID4NCj4gPiBUaGUgb25seSB0aGluZyB0aGF0IGlzIG5vdCByZS1lbnRyYW50IHRoZXJl
+IGlzIHJwY2JfbWFwX3JlbGVhc2UsDQo+IHdoaWNoIHNob3VsZCBvbmx5IGV2ZXIgYmUgY2FsbGVk
+IG9uY2Ugd2hldGhlciBvciBub3Qgc29tZXRoaW5nIGNhbGxzDQo+IHJwY19raWxsYWxsX3Rhc2tz
+Lg0KPiANCj4gDQo+ICBGcm9tIHRoZSB0cmFjZSBJIHBvc3RlZCwgdGhpcyBzdGFjayB0cmFjZSBi
+ZWxvdyBpcyBiZWluZw0KPiBjYWxsZWQgd2l0aCB0aGUgdm9pZCAqZGF0YSBvYmplY3QgYWxyZWFk
+eSBmcmVlZC4NCj4gDQo+IE9uZSB3YXkgZm9yIHRoaXMgdG8gaGFwcGVuIHdvdWxkIGJlIHRvIGhh
+dmUgcnBjX2V4aXRfdGFzayBjYWxsIHRhc2stDQo+ID50a19vcHMtPnJwY19jYWxsX2RvbmUNCj4g
+bW9yZSB0aGFuIG9uY2UgKEkgYmVsaWV2ZSkuICBUd28gY2FsbHMgdG8gcnBjX2V4aXRfdGFzayBj
+b3VsZCBkbyB0aGF0LA0KPiBhbmQgc2luY2UgdGhlDQo+IHJwY19leGl0X3Rhc2sgbWV0aG9kIGlz
+IGFzc2lnbmVkIHRvIHRrX2FjdGlvbiwgSSAqdGhpbmsqIHRoZSByYWNlIEkNCj4gbWVudGlvbiBh
+Ym92ZSBjb3VsZCBjYXVzZQ0KPiBycGNfZXhpdF90YXNrIHRvIGJlIGNhbGxlZCB0d2ljZS4NCj4g
+DQo+ICAgWzxmZmZmZmZmZjgxMTA1OTA3Pl0gcHJpbnRfdHJhaWxlcisweDEzMS8weDEzYQ0KPiAg
+IFs8ZmZmZmZmZmY4MTEwNTk0NT5dIG9iamVjdF9lcnIrMHgzNS8weDNlDQo+ICAgWzxmZmZmZmZm
+ZjgxMTA3N2IzPl0gdmVyaWZ5X21lbV9ub3RfZGVsZXRlZCsweDdhLzB4YjcNCj4gICBbPGZmZmZm
+ZmZmYTAyODkxZTU+XSBycGNiX2dldHBvcnRfZG9uZSsweDIzLzB4MTI2IFtzdW5ycGNdDQo+ICAg
+WzxmZmZmZmZmZmEwMjgxMGRmPl0gcnBjX2V4aXRfdGFzaysweDNmLzB4NmQgW3N1bnJwY10NCj4g
+ICBbPGZmZmZmZmZmYTAyODE0ZDg+XSBfX3JwY19leGVjdXRlKzB4ODAvMHgyNTMgW3N1bnJwY10N
+Cj4gICBbPGZmZmZmZmZmYTAyODE2ZWQ+XSA/IHJwY19leGVjdXRlKzB4NDIvMHg0MiBbc3VucnBj
+XQ0KPiAgIFs8ZmZmZmZmZmZhMDI4MTZmZD5dIHJwY19hc3luY19zY2hlZHVsZSsweDEwLzB4MTIg
+W3N1bnJwY10NCj4gICBbPGZmZmZmZmZmODEwNjEzNDM+XSBwcm9jZXNzX29uZV93b3JrKzB4MjMw
+LzB4NDFkDQo+ICAgWzxmZmZmZmZmZjgxMDYxMjhlPl0gPyBwcm9jZXNzX29uZV93b3JrKzB4MTdi
+LzB4NDFkDQo+ICAgWzxmZmZmZmZmZjgxMDYzNzlmPl0gd29ya2VyX3RocmVhZCsweDEzMy8weDIx
+Nw0KPiAgIFs8ZmZmZmZmZmY4MTA2MzY2Yz5dID8gbWFuYWdlX3dvcmtlcnMrMHgxOTEvMHgxOTEN
+Cj4gICBbPGZmZmZmZmZmODEwNjZmOWM+XSBrdGhyZWFkKzB4N2QvMHg4NQ0KPiAgIFs8ZmZmZmZm
+ZmY4MTQ4NWVlND5dIGtlcm5lbF90aHJlYWRfaGVscGVyKzB4NC8weDEwDQo+ICAgWzxmZmZmZmZm
+ZjgxNDdmMGQ4Pl0gPyByZXRpbnRfcmVzdG9yZV9hcmdzKzB4MTMvMHgxMw0KPiAgIFs8ZmZmZmZm
+ZmY4MTA2NmYxZj5dID8gX19pbml0X2t0aHJlYWRfd29ya2VyKzB4NTYvMHg1Ng0KPiAgIFs8ZmZm
+ZmZmZmY4MTQ4NWVlMD5dID8gZ3NfY2hhbmdlKzB4MTMvMHgxMw0KDQpUaGUgY2FsbGRhdGEgZ2V0
+cyBmcmVlZCBpbiB0aGUgcnBjX2ZpbmFsX3B1dF90YXNrKCkgd2hpY2ggc2hvdWxkbid0IGV2ZXIg
+YmUgcnVuIHdoaWxlIHRoZSB0YXNrIGlzIHN0aWxsIHJlZmVyZW5jZWQgaW4gX19ycGNfZXhlY3V0
+ZQ0KDQpJT1c6IGl0IHNob3VsZCBiZSBpbXBvc3NpYmxlIHRvIGNhbGwgcnBjX2V4aXRfdGFzaygp
+IGFmdGVyIHJwY19maW5hbF9wdXRfdGFzaw0KTu+/ve+/ve+/ve+/ve+/vXLvv73vv71577+977+9
+77+9Yu+/vVjvv73vv73Hp3bvv71e77+9Kd66ey5u77+9K++/ve+/ve+/ve+/vXvvv73vv73vv70i
+77+977+9Xm7vv71y77+977+977+9eu+/vRrvv73vv71o77+977+977+977+9Ju+/ve+/vR7vv71H
+77+977+977+9aO+/vQMo77+96ZqO77+93aJqIu+/ve+/vRrvv70bbe+/ve+/ve+/ve+/ve+/vXrv
+v73elu+/ve+/ve+/vWbvv73vv73vv71o77+977+977+9fu+/vW3vv70=
