@@ -1,79 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from chilli.pcug.org.au ([203.10.76.44]:48730 "EHLO smtps.tip.net.au"
+Received: from mx2.netapp.com ([216.240.18.37]:23224 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752123Ab1HAA5v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 31 Jul 2011 20:57:51 -0400
-Date: Mon, 1 Aug 2011 10:57:39 +1000
-From: Stephen Rothwell <sfr@canb.auug.org.au>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Jens Axboe <jaxboe@fusionio.com>, Christoph Hellwig <hch@infradead.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: Please pull NFS client changes
-Message-Id: <20110801105739.4dd1244f1a6f5f13e1b486b8@canb.auug.org.au>
-In-Reply-To: <1312142325.7127.3.camel@lade.trondhjem.org>
-References: <1312082377.10882.1.camel@lade.trondhjem.org>
-	<20110731182406.GA16470@infradead.org>
-	<4E35A9B1.9090309@fusionio.com>
-	<1312141193.7127.1.camel@lade.trondhjem.org>
-	<4E35B126.8050009@fusionio.com>
-	<1312142325.7127.3.camel@lade.trondhjem.org>
-Content-Type: multipart/signed; protocol="application/pgp-signature";
- micalg="PGP-SHA1";
- boundary="Signature=_Mon__1_Aug_2011_10_57_39_+1000_xAa/oHeQzkERkSvM"
+	id S1753100Ab1GHUqC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Jul 2011 16:46:02 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 1/2] NFSD: Clean up fault injection file creation
+Date: Fri,  8 Jul 2011 16:45:58 -0400
+Message-Id: <1310157959-11429-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1310157959-11429-1-git-send-email-bjschuma@netapp.com>
+References: <1310157959-11429-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
---Signature=_Mon__1_Aug_2011_10_57_39_+1000_xAa/oHeQzkERkSvM
-Content-Type: text/plain; charset=US-ASCII
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Hi all,
+I think it is easier to specify an action and an item (such as "forget" and
+"clients") once, rather than having to state them multiple times for the same
+macro.
 
-On Sun, 31 Jul 2011 15:58:45 -0400 Trond Myklebust <Trond.Myklebust@netapp.=
-com> wrote:
->
-> How's this?
->=20
-> 8<-----------------------------------------------------------------------=
----------------=20
-> From e01e56eb7013a11f3e09bd8a8562332777f9e100 Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date: Sun, 31 Jul 2011 15:33:26 -0400
-> Subject: [PATCH v2] NFS: Re-enable compilation of nfs with !CONFIG_NFS_V4=
- ||
->  !CONFIG_NFS_V4_1
->=20
-> Fix a typo in fs/nfs/pnfs.h
-> Move the pnfs_blksize declaration outside the CONFIG_NFS_V4 section in
-> struct nfs_server.
->=20
-> Reported-by: Jens Axboe <jaxboe@fusionio.com>
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 
-I have applied this the linux-next today ..
+---
+ fs/nfsd/fault_inject.c |   39 ++++++++++++++++++++++-----------------
+ 1 files changed, 22 insertions(+), 17 deletions(-)
 
---=20
-Cheers,
-Stephen Rothwell                    sfr@canb.auug.org.au
-http://www.canb.auug.org.au/~sfr/
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 3dd1c32..7f5ac83 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -12,26 +12,28 @@
+ static void nfsd_forget_everything(void);
+ 
+ struct nfsd_fault_inject_op {
+-	char *name;
+-	char *text;
++	char *action;
++	char *item;
++	char *file;
+ 	int file_data;
+ 	void (*func)(void);
+ };
+ 
+-#define INJECTION_OP(op_name, op_text, op_func) \
+-{				\
+-	.name = op_name,	\
+-	.text = op_text,	\
+-	.func = op_func,	\
++#define INJECTION_OP(op_action, op_item, op_func) \
++{					\
++	.action = op_action,		\
++	.item = op_item,		\
++	.file = op_action"_"op_item,	\
++	.func = op_func,		\
+ }
+ 
+ static struct nfsd_fault_inject_op inject_ops[] = {
+-	INJECTION_OP("forget_clients",     "forget all clients",     nfsd_forget_all_clients),
+-	INJECTION_OP("forget_locks",       "forget all locks",       nfsd_forget_all_locks),
+-	INJECTION_OP("forget_open_owners", "forget all open owners", nfsd_forget_all_open_owners),
+-	INJECTION_OP("forget_delegations", "forget all delegations", nfsd_forget_all_delegations),
+-	INJECTION_OP("forget_everything",  "forget everything",      nfsd_forget_everything),
+-	INJECTION_OP("recall_delegations", "recall all delegations", nfsd_recall_all_delegations),
++	INJECTION_OP("forget", "clients",     nfsd_forget_all_clients),
++	INJECTION_OP("forget", "locks",       nfsd_forget_all_locks),
++	INJECTION_OP("forget", "open_owners", nfsd_forget_all_open_owners),
++	INJECTION_OP("forget", "delegations", nfsd_forget_all_delegations),
++	INJECTION_OP("forget", "everything",  nfsd_forget_everything),
++	INJECTION_OP("recall", "delegations", nfsd_recall_all_delegations),
+ };
+ 
+ static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
+@@ -48,10 +50,13 @@ static void nfsd_forget_everything(void)
+ static int nfsd_inject_set(void *data, u64 val)
+ {
+ 	int i;
++	struct nfsd_fault_inject_op *op;
+ 	for (i = 0; i < NUM_INJECT_OPS; i++) {
+-		if (&inject_ops[i].file_data == data) {
+-			printk(KERN_INFO "%s %s Server will %s", __FILE__, __func__, inject_ops[i].text);
+-			inject_ops[i].func();
++		op = &inject_ops[i];
++		if (&op->file_data == data) {
++			printk(KERN_INFO "%s %s Server will %s all %s", __FILE__,
++				__func__, op->action, op->item);
++			op->func();
+ 		}
+ 	}
+ 	return 0;
+@@ -83,7 +88,7 @@ nfsd_fault_inject_init(void)
+ 
+ 	for (i = 0; i < NUM_INJECT_OPS; i++) {
+ 		op = &inject_ops[i];
+-		debugfs_create_file(op->name, mode, debug_dir, &op->file_data, &fops_nfsd);
++		debugfs_create_file(op->file, mode, debug_dir, &op->file_data, &fops_nfsd);
+ 	}
+ 	return 0;
+ fail:
+-- 
+1.7.6
 
---Signature=_Mon__1_Aug_2011_10_57_39_+1000_xAa/oHeQzkERkSvM
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-
-iQEcBAEBAgAGBQJONfoDAAoJEDMEi1NhKgbsTewH+gPrqxgWi3GjnhEyRbWBUVFJ
-zYmhFt3tgOLeYLjc6VVAihwauJ6tzs567ztJB+NpOA6ZMdfFGS10l379dS3Z6G2Q
-3D37t5zo2PsIgUp4jwONPOTF6HLHxr0ucxATufn3ZpfYzFv6pMBXARZA4cGBJkF2
-fAbGTKt5G5dXL+CwdIJVHHmLVWcSjmITuHAxh0YmlfV3kq+ctixwtA7SOsSjrC/6
-ov0263LM3Pay36TVM1f5LWr9CxGcM3HWeEZPjFeT1d94hwtnprU4sSTAu3ZcHS1f
-1Ga3dKAaB8Ew0aEU8O03IEAcZwX8iwRywLxZFJayUZAoKxABSS4uwTUFAtEYOCE=
-=GdBh
------END PGP SIGNATURE-----
-
---Signature=_Mon__1_Aug_2011_10_57_39_+1000_xAa/oHeQzkERkSvM--
