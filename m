@@ -1,57 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:57732 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750756Ab1G2TNf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 15:13:35 -0400
-Date: Fri, 29 Jul 2011 15:13:41 -0400
-From: Jim Rees <rees@umich.edu>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH v4 00/27] add block layout driver to pnfs client
-Message-ID: <20110729191341.GC23061@merit.edu>
-References: <1311874276-1386-1-git-send-email-rees@umich.edu>
- <20110729155136.GB28306@infradead.org>
- <20110729185415.GA23061@merit.edu>
- <20110729190133.GA10946@infradead.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110729190133.GA10946@infradead.org>
+Received: from mx2.netapp.com ([216.240.18.37]:4740 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755116Ab1GHU2m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Jul 2011 16:28:42 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v4 0/2]  NFSD: add FREE_STATEID and TEST_STATEID operations
+Date: Fri,  8 Jul 2011 16:28:38 -0400
+Message-Id: <1310156920-10065-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Christoph Hellwig wrote:
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-  On Fri, Jul 29, 2011 at 02:54:15PM -0400, Jim Rees wrote:
-  > xfstests does require a small patch to work with NFSv4, which I can supply
-  > if anyone is interested.
-  
-  Please send it to xfs@oss.sgi.com with a proper description and signoff.
+These patches add FREE_STATEID and TEST_STATEID to the NFS server.  I initially
+tested them by hard coding calls both before and after the client completes a
+CLOSE operation.  Eventually, I modified the client's state recovery code to
+place these calls.  I would turn off networking on the client for two minutes
+so it would expired on the server and force recovery once networking was
+reenabled.
 
-I don't have a proper patch, just one that works for me.  But I'll send a
-bug report.  It has to do with the mismatch between nfs and nfs4 mount
-types, so it's not really a xfstests bug.  I think this will fix itself when
-the nfsvers=4 changes fully propagate.
+I later added in a fault injection framework on the server.  I would have the
+client acquire a lock, tell the server to delete it, and then have the client
+use TEST_STATEID and FREE_STATEID to recover the lock.
 
-  It seems like you didn't set up the SCRATCH_DEV variable properly.
+v2:
+- FREE_STATEID
+  - Free open, lock, and delegation state ids correctly
+  - Use the check_for_locks() function to check for locks
 
-I was just skipping those tests so I could get to the one that fails.  I've
-also tested with the SCRATCH_DEV tests in other runs.
+  - TEST_STATEID
+    - Remove openmode check
+    - Sanity check on size of stateid list
+    - Delay decoding stateid list until encoding the reply
 
-  > Message from syslogd@rhcl1 at Jul 29 14:42:05 ...
-  >  kernel:------------[ cut here ]------------
-  > 
-  > Message from syslogd@rhcl1 at Jul 29 14:42:05 ...
-  >  kernel:invalid opcode: 0000 [#1] SMP 
-  > 
-  > Message from syslogd@rhcl1 at Jul 29 14:42:05 ...
-  >  kernel:Stack:
-  > 
-  > Message from syslogd@rhcl1 at Jul 29 14:42:05 ...
-  >  kernel:Call Trace:
-  > 
-  > Message from syslogd@rhcl1 at Jul 29 14:42:05 ...
-  
-  Looks like we did find a bug in NFS.
+v3:
+  - FREE_STATEID
+    - Open stateids and delegations are never freeable (return nfserr_locks_held)
 
-It kind of looks that way.
+  - TEST_STATEID
+    - Remove unused arguments from a function call
+    - Store and use the HAS_SESSION flag for validating stateids
+
+v4:
+  - FREE_STATEID
+    - Remove unused argument from nfs4_free_lock_stateid()
+
+  - TEST_STATEID
+    - Remove double call to nfs4_validate_stateid()
+
+- Bryan
