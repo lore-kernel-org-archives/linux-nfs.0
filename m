@@ -1,113 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:36772 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755979Ab1G1Rb6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:31:58 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v4 19/27] pnfsblock: bl_find_get_extent
-Date: Thu, 28 Jul 2011 13:31:08 -0400
-Message-Id: <1311874276-1386-20-git-send-email-rees@umich.edu>
-In-Reply-To: <1311874276-1386-1-git-send-email-rees@umich.edu>
-References: <1311874276-1386-1-git-send-email-rees@umich.edu>
-Content-Type: text/plain; charset=UTF-8
+Received: from out5.smtp.messagingengine.com ([66.111.4.29]:47228 "EHLO
+	out5.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754873Ab1GHUBQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jul 2011 16:01:16 -0400
+Date: Fri, 8 Jul 2011 13:00:02 -0700
+From: Greg KH <greg@kroah.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>, neilb@suse.de,
+        linux-nfs@vger.kernel.org, stable@kernel.org
+Subject: Re: [stable] compile error with 2.6.39.3-rc1 kernel
+Message-ID: <20110708200002.GB14592@kroah.com>
+References: <201107081921.38800.toralf.foerster@gmx.de>
+ <20110708191039.GB13886@fieldses.org>
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <20110708191039.GB13886@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+On Fri, Jul 08, 2011 at 03:10:39PM -0400, J. Bruce Fields wrote:
+> On Fri, Jul 08, 2011 at 07:21:38PM +0200, Toralf F�rster wrote:
+> > I get with the attached config under an almost stable Gentoo :
+> > 
+> >   CHK     include/generated/compile.h
+> >   CC [M]  fs/nfsd/nfsctl.o
+> > fs/nfsd/nfsctl.c:16:44: error: linux/sunrpc/gss_krb5_enctypes.h: No such file 
+> > or directory
+> 
+> That file was added to upstream by
+> b084f598df36b62dfae83c10ed17f0b66b50f442 "nfsd: fix dependency of nfsd
+> on auth_rpcgss".  Did that get left out of the stable version of the
+> patch somehow?
 
-Implement bl_find_get_extent(), one of the core extent manipulation
-routines.
+Yes it did, that is why I released the 2.6.39.3-rc2 kernel a few hours
+afterward.
 
-[pnfsblock: Lookup list entry of layouts and tags in reverse order]
-Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Toralf, can you try that one and let me know if this is resolved or not?
 
-pnfsblock: fix print format warnings for sector_t and size_t
+thanks,
 
-gcc spews warnings about these on x86_64, e.g.:
-fs/nfs/blocklayout/blocklayout.c:74: warning: format ‘%Lu’ expects type ‘long long unsigned int’, but argument 2 has type ‘sector_t’
-fs/nfs/blocklayout/blocklayout.c:388: warning: format ‘%d’ expects type ‘int’, but argument 5 has type ‘size_t’
-
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfs/blocklayout/blocklayout.h |    3 ++
- fs/nfs/blocklayout/extents.c     |   47 ++++++++++++++++++++++++++++++++++++++
- 2 files changed, 50 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 3105b96..25c3153 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -153,6 +153,9 @@ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
- void free_block_dev(struct pnfs_block_dev *bdev);
- 
- /* extents.c */
-+struct pnfs_block_extent *
-+bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
-+		struct pnfs_block_extent **cow_read);
- void bl_put_extent(struct pnfs_block_extent *be);
- struct pnfs_block_extent *alloc_extent(void);
- int bl_add_merge_extent(struct pnfs_block_layout *bl,
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 3591084..c306616 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -201,3 +201,50 @@ bl_add_merge_extent(struct pnfs_block_layout *bl,
- 	bl_put_extent(new);
- 	return -EIO;
- }
-+
-+/* Returns extent, or NULL.  If a second READ extent exists, it is returned
-+ * in cow_read, if given.
-+ *
-+ * The extents are kept in two seperate ordered lists, one for READ and NONE,
-+ * one for READWRITE and INVALID.  Within each list, we assume:
-+ * 1. Extents are ordered by file offset.
-+ * 2. For any given isect, there is at most one extents that matches.
-+ */
-+struct pnfs_block_extent *
-+bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
-+	    struct pnfs_block_extent **cow_read)
-+{
-+	struct pnfs_block_extent *be, *cow, *ret;
-+	int i;
-+
-+	dprintk("%s enter with isect %llu\n", __func__, (u64)isect);
-+	cow = ret = NULL;
-+	spin_lock(&bl->bl_ext_lock);
-+	for (i = 0; i < EXTENT_LISTS; i++) {
-+		list_for_each_entry_reverse(be, &bl->bl_extents[i], be_node) {
-+			if (isect >= be->be_f_offset + be->be_length)
-+				break;
-+			if (isect >= be->be_f_offset) {
-+				/* We have found an extent */
-+				dprintk("%s Get %p (%i)\n", __func__, be,
-+					atomic_read(&be->be_refcnt.refcount));
-+				kref_get(&be->be_refcnt);
-+				if (!ret)
-+					ret = be;
-+				else if (be->be_state != PNFS_BLOCK_READ_DATA)
-+					bl_put_extent(be);
-+				else
-+					cow = be;
-+				break;
-+			}
-+		}
-+		if (ret &&
-+		    (!cow_read || ret->be_state != PNFS_BLOCK_INVALID_DATA))
-+			break;
-+	}
-+	spin_unlock(&bl->bl_ext_lock);
-+	if (cow_read)
-+		*cow_read = cow;
-+	print_bl_extent(ret);
-+	return ret;
-+}
--- 
-1.7.4.1
-
+greg k-h
