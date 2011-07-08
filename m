@@ -1,99 +1,290 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:46853 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752484Ab1GGAf7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jul 2011 20:35:59 -0400
-Message-ID: <4E14FF6E.6060601@candelatech.com>
-Date: Wed, 06 Jul 2011 17:35:58 -0700
-From: Ben Greear <greearb@candelatech.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [RFC] sunrpc:  Fix race between work-queue and rpc_killall_tasks.
-References: <1309992581-25199-1-git-send-email-greearb@candelatech.com>	 <1309995932.5447.6.camel@lade.trondhjem.org>	 <4E14F8C4.2010508@candelatech.com> <1309997879.5447.12.camel@lade.trondhjem.org>
-In-Reply-To: <1309997879.5447.12.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:4740 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755126Ab1GHU2n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Jul 2011 16:28:43 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v4 1/2] NFSD: added FREE_STATEID operation
+Date: Fri,  8 Jul 2011 16:28:39 -0400
+Message-Id: <1310156920-10065-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1310156920-10065-1-git-send-email-bjschuma@netapp.com>
+References: <1310156920-10065-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 07/06/2011 05:17 PM, Trond Myklebust wrote:
-> On Wed, 2011-07-06 at 17:07 -0700, Ben Greear wrote:
->> On 07/06/2011 04:45 PM, Trond Myklebust wrote:
->>> On Wed, 2011-07-06 at 15:49 -0700, greearb@candelatech.com wrote:
->>>> From: Ben Greear<greearb@candelatech.com>
->>>>
->>>> The rpc_killall_tasks logic is not locked against
->>>> the work-queue thread, but it still directly modifies
->>>> function pointers and data in the task objects.
->>>>
->>>> This patch changes the killall-tasks logic to set a flag
->>>> that tells the work-queue thread to terminate the task
->>>> instead of directly calling the terminate logic.
->>>>
->>>> Signed-off-by: Ben Greear<greearb@candelatech.com>
->>>> ---
->>>>
->>>> NOTE:  This needs review, as I am still struggling to understand
->>>> the rpc code, and it's quite possible this patch either doesn't
->>>> fully fix the problem or actually causes other issues.  That said,
->>>> my nfs stress test seems to run a bit more stable with this patch applied.
->>>
->>> Yes, but I don't see why you are adding a new flag, nor do I see why we
->>> want to keep checking for that flag in the rpc_execute() loop.
->>> rpc_killall_tasks() is not a frequent operation that we want to optimise
->>> for.
->>
->> I was hoping that if the killall logic never set anything that was also
->> set by the work-queue thread it would be lock-safe without needing
->> explicit locking.
->>
->> I was a bit concerned that my flags |= KILLME logic would potentially
->> over-write flags that were being simultaneously written elsewhere
->> (so maybe I'd have to add a completely new variable for that KILLME flag
->> to really be safe.)
->>
->>>
->>> How about the following instead?
->>
->> I think it still races..more comments below.
->>
->>>
->>> 8<----------------------------------------------------------------------------------
->>>   From ecb7244b661c3f9d2008ef6048733e5cea2f98ab Mon Sep 17 00:00:00 2001
->>> From: Trond Myklebust<Trond.Myklebust@netapp.com>
->>> Date: Wed, 6 Jul 2011 19:44:52 -0400
->>> Subject: [PATCH] SUNRPC: Fix a race between work-queue and rpc_killall_tasks
->>>
->>> Since rpc_killall_tasks may modify the rpc_task's tk_action field
->>> without any locking, we need to be careful when dereferencing it.
->>
->>> +		do_action = task->tk_callback;
->>> +		task->tk_callback = NULL;
->>> +		if (do_action == NULL) {
->>
->> I think the race still exists, though it would be harder to hit.
->> What if the killall logic sets task->tk_callback right after you assign do_action, but before
->> you set tk_callback to NULL?  Or after you set tk_callback to NULL for
->> that matter.
->
-> What if it does? The rpc call will continue to execute until it
-> completes.
->
-> rpc_killall_tasks is really only useful for signalling to tasks that are
-> hanging on a completely unresponsive server that we want them to stop.
-> The only case where we really care is in rpc_shutdown_client(), where we
-> sleep and loop anyway.
->
-> IOW: I really don't care about 'fixing' rpc_killall_tasks to perfection.
-> All I care about is that it doesn't Oops.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-That is my concern as well.  I'll try your patch and see if it fixes
-the crashes I'm seeing in this area.
+This operation is used by the client to tell the server to free a
+stateid.
 
-Thanks,
-Ben
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/nfs4proc.c  |    5 +++
+ fs/nfsd/nfs4state.c |  101 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs4xdr.c   |   32 +++++++++++++++-
+ fs/nfsd/xdr4.h      |    8 ++++
+ 4 files changed, 144 insertions(+), 2 deletions(-)
 
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 3a6dbd7..7e00116 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1412,6 +1412,11 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = OP_HANDLES_WRONGSEC,
+ 		.op_name = "OP_SECINFO_NO_NAME",
+ 	},
++	[OP_FREE_STATEID] = {
++		.op_func = (nfsd4op_func)nfsd4_free_stateid,
++		.op_flags = ALLOWED_WITHOUT_FH,
++		.op_name = "OP_FREE_STATEID",
++	},
+ };
+ 
+ static const char *nfsd4_op_name(unsigned opnum)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e98f3c2..5819a10 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -60,9 +60,12 @@ static u64 current_sessionid = 1;
+ 
+ /* forward declarations */
+ static struct nfs4_stateid * find_stateid(stateid_t *stid, int flags);
++static struct nfs4_stateid * search_for_stateid(stateid_t *stid);
++static struct nfs4_delegation * search_for_delegation(stateid_t *stid);
+ static struct nfs4_delegation * find_delegation_stateid(struct inode *ino, stateid_t *stid);
+ static char user_recovery_dirname[PATH_MAX] = "/var/lib/nfs/v4recovery";
+ static void nfs4_set_recdir(char *recdir);
++static int check_for_locks(struct nfs4_file *filp, struct nfs4_stateowner *lowner);
+ 
+ /* Locking: */
+ 
+@@ -3137,6 +3140,11 @@ static int is_delegation_stateid(stateid_t *stateid)
+ 	return stateid->si_fileid == 0;
+ }
+ 
++static int is_open_stateid(struct nfs4_stateid *stateid)
++{
++	return stateid->st_openstp == NULL;
++}
++
+ /*
+ * Checks for stateid operations
+ */
+@@ -3216,6 +3224,53 @@ out:
+ 	return status;
+ }
+ 
++static __be32
++nfsd4_free_delegation_stateid(stateid_t *stateid)
++{
++	struct nfs4_delegation *dp = search_for_delegation(stateid);
++	if (dp)
++		return nfserr_locks_held;
++	return nfserr_bad_stateid;
++}
++
++static __be32
++nfsd4_free_lock_stateid(struct nfs4_stateid *stp)
++{
++	if (check_for_locks(stp->st_file, stp->st_stateowner))
++		return nfserr_locks_held;
++	release_lock_stateid(stp);
++	return nfs_ok;
++}
++
++/*
++ * Free a state id
++ */
++__be32
++nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
++		   struct nfsd4_free_stateid *free_stateid)
++{
++	stateid_t *stateid = &free_stateid->fr_stateid;
++	struct nfs4_stateid *stp;
++
++	if (is_delegation_stateid(stateid))
++		return nfsd4_free_delegation_stateid(stateid);
++
++	stp = search_for_stateid(stateid);
++	if (!stp)
++		return nfserr_bad_stateid;
++	if (stateid->si_generation != 0) {
++		if (stateid->si_generation < stp->st_stateid.si_generation)
++			return nfserr_old_stateid;
++		if (stateid->si_generation > stp->st_stateid.si_generation)
++			return nfserr_bad_stateid;
++	}
++
++	if (is_open_stateid(stp))
++		return nfserr_locks_held;
++	else
++		return nfsd4_free_lock_stateid(stp);
++}
++
+ static inline int
+ setlkflg (int type)
+ {
+@@ -3594,6 +3649,14 @@ static struct list_head lock_ownerid_hashtbl[LOCK_HASH_SIZE];
+ static struct list_head	lock_ownerstr_hashtbl[LOCK_HASH_SIZE];
+ static struct list_head lockstateid_hashtbl[STATEID_HASH_SIZE];
+ 
++static int
++same_stateid(stateid_t *id_one, stateid_t *id_two)
++{
++	if (id_one->si_stateownerid != id_two->si_stateownerid)
++		return 0;
++	return id_one->si_fileid == id_two->si_fileid;
++}
++
+ static struct nfs4_stateid *
+ find_stateid(stateid_t *stid, int flags)
+ {
+@@ -3623,6 +3686,44 @@ find_stateid(stateid_t *stid, int flags)
+ 	return NULL;
+ }
+ 
++static struct nfs4_stateid *
++search_for_stateid(stateid_t *stid)
++{
++	struct nfs4_stateid *local;
++	unsigned int hashval = stateid_hashval(stid->si_stateownerid, stid->si_fileid);
++
++	list_for_each_entry(local, &lockstateid_hashtbl[hashval], st_hash) {
++		if (same_stateid(&local->st_stateid, stid))
++			return local;
++	}
++
++	list_for_each_entry(local, &stateid_hashtbl[hashval], st_hash) {
++		if (same_stateid(&local->st_stateid, stid))
++			return local;
++	}
++	return NULL;
++}
++
++static struct nfs4_delegation *
++search_for_delegation(stateid_t *stid)
++{
++	struct nfs4_file *fp;
++	struct nfs4_delegation *dp;
++	struct list_head *pos;
++	int i;
++
++	for (i = 0; i < FILE_HASH_SIZE; i++) {
++		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
++			list_for_each(pos, &fp->fi_delegations) {
++				dp = list_entry(pos, struct nfs4_delegation, dl_perfile);
++				if (same_stateid(&dp->dl_stateid, stid))
++					return dp;
++			}
++		}
++	}
++	return NULL;
++}
++
+ static struct nfs4_delegation *
+ find_delegation_stateid(struct inode *ino, stateid_t *stid)
+ {
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 9901811..ef9bd6f 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1246,6 +1246,19 @@ nfsd4_decode_destroy_session(struct nfsd4_compoundargs *argp,
+ }
+ 
+ static __be32
++nfsd4_decode_free_stateid(struct nfsd4_compoundargs *argp,
++			  struct nfsd4_free_stateid *free_stateid)
++{
++	DECODE_HEAD;
++
++	READ_BUF(sizeof(stateid_t));
++	READ32(free_stateid->fr_stateid.si_generation);
++	COPYMEM(&free_stateid->fr_stateid.si_opaque, sizeof(stateid_opaque_t));
++
++	DECODE_TAIL;
++}
++
++static __be32
+ nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
+ 		      struct nfsd4_sequence *seq)
+ {
+@@ -1370,7 +1383,7 @@ static nfsd4_dec nfsd41_dec_ops[] = {
+ 	[OP_EXCHANGE_ID]	= (nfsd4_dec)nfsd4_decode_exchange_id,
+ 	[OP_CREATE_SESSION]	= (nfsd4_dec)nfsd4_decode_create_session,
+ 	[OP_DESTROY_SESSION]	= (nfsd4_dec)nfsd4_decode_destroy_session,
+-	[OP_FREE_STATEID]	= (nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_FREE_STATEID]	= (nfsd4_dec)nfsd4_decode_free_stateid,
+ 	[OP_GET_DIR_DELEGATION]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_GETDEVICEINFO]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_GETDEVICELIST]	= (nfsd4_dec)nfsd4_decode_notsupp,
+@@ -3116,6 +3129,21 @@ nfsd4_encode_destroy_session(struct nfsd4_compoundres *resp, int nfserr,
+ }
+ 
+ static __be32
++nfsd4_encode_free_stateid(struct nfsd4_compoundres *resp, int nfserr,
++			  struct nfsd4_free_stateid *free_stateid)
++{
++	__be32 *p;
++
++	if (nfserr)
++		return nfserr;
++
++	RESERVE_SPACE(4);
++	WRITE32(nfserr);
++	ADJUST_ARGS();
++	return nfserr;
++}
++
++static __be32
+ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
+ 		      struct nfsd4_sequence *seq)
+ {
+@@ -3196,7 +3224,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+ 	[OP_EXCHANGE_ID]	= (nfsd4_enc)nfsd4_encode_exchange_id,
+ 	[OP_CREATE_SESSION]	= (nfsd4_enc)nfsd4_encode_create_session,
+ 	[OP_DESTROY_SESSION]	= (nfsd4_enc)nfsd4_encode_destroy_session,
+-	[OP_FREE_STATEID]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_FREE_STATEID]	= (nfsd4_enc)nfsd4_encode_free_stateid,
+ 	[OP_GET_DIR_DELEGATION]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_GETDEVICEINFO]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_GETDEVICELIST]	= (nfsd4_enc)nfsd4_encode_noop,
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 366401e..ed1784d 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -342,6 +342,11 @@ struct nfsd4_setclientid_confirm {
+ 	nfs4_verifier	sc_confirm;
+ };
+ 
++struct nfsd4_free_stateid {
++	stateid_t	fr_stateid;         /* request */
++	__be32		fr_status;          /* response */
++};
++
+ /* also used for NVERIFY */
+ struct nfsd4_verify {
+ 	u32		ve_bmval[3];        /* request */
+@@ -432,6 +437,7 @@ struct nfsd4_op {
+ 		struct nfsd4_destroy_session	destroy_session;
+ 		struct nfsd4_sequence		sequence;
+ 		struct nfsd4_reclaim_complete	reclaim_complete;
++		struct nfsd4_free_stateid	free_stateid;
+ 	} u;
+ 	struct nfs4_replay *			replay;
+ };
+@@ -564,6 +570,8 @@ extern __be32 nfsd4_delegreturn(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *, struct nfsd4_delegreturn *dr);
+ extern __be32 nfsd4_renew(struct svc_rqst *rqstp,
+ 			  struct nfsd4_compound_state *, clientid_t *clid);
++extern __be32 nfsd4_free_stateid(struct svc_rqst *rqstp,
++		struct nfsd4_compound_state *, struct nfsd4_free_stateid *free_stateid);
+ #endif
+ 
+ /*
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+1.7.6
 
