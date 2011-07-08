@@ -1,105 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:44548 "EHLO plane.gmane.org"
+Received: from mx2.netapp.com ([216.240.18.37]:62684 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752890Ab1GZJTZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Jul 2011 05:19:25 -0400
-Received: from public by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <public@plane.gmane.org>)
-	id 1QldnM-0007CU-NH
-	for linux-nfs@vger.kernel.org; Tue, 26 Jul 2011 11:19:20 +0200
-Message-ID: <4E2E64AA.1090408@linux.vnet.ibm.com>
-Date: Mon, 25 Jul 2011 23:54:34 -0700
-From: Venkateswararao Jujjuri <jvrao@linux.vnet.ibm.com>
-To: Malahal Naineni
-	<public-malahal-r/Jw6+rmf7HQT0dZR+AlfA@plane.gmane.org>
-CC: public-linux-nfs-u79uwXL29TY76Z2rM5mHXA@plane.gmane.org
-Subject: Re: [PATCH 1/2] nfs4-acl-tools: Fix segfault if format of the input
- file is incorrect
-References: <1311280507-28957-1-git-send-email-malahal@us.ibm.com>
-In-Reply-To: <1311280507-28957-1-git-send-email-malahal@us.ibm.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+	id S1753430Ab1GHSLz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Jul 2011 14:11:55 -0400
+Content-Type: text/plain;
+	charset="utf-8"
+Subject: RE: [RFC] sunrpc:  Fix race between work-queue and rpc_killall_tasks.
+Date: Fri, 8 Jul 2011 11:11:37 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A198C7C@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <4E173BE6.9000005@candelatech.com>
+References: <1309992581-25199-1-git-send-email-greearb@candelatech.com> <1309995932.5447.6.camel@lade.trondhjem.org> <4E173BE6.9000005@candelatech.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Ben Greear" <greearb@candelatech.com>
+Cc: <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-
-
-On 07/21/2011 01:35 PM, Malahal Naineni wrote:
-> The sizeof operator, when applied to a parameter declared to have array,
-> yields the size of the adjusted (pointer) type, even if the parameter
-> declaration specifies a length.
->
-> Signed-off-by: Malahal Naineni<malahal-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org>
-> ---
->   libnfs4acl/nfs4_ace_from_string.c |    2 +-
->   1 files changed, 1 insertions(+), 1 deletions(-)
->
-> diff --git a/libnfs4acl/nfs4_ace_from_string.c b/libnfs4acl/nfs4_ace_from_string.c
-> index 9d877fb..462fcc0 100644
-> --- a/libnfs4acl/nfs4_ace_from_string.c
-> +++ b/libnfs4acl/nfs4_ace_from_string.c
-> @@ -100,7 +100,7 @@ parse_alloc_fields(char *buf, char *fields[NUMFIELDS])
->   	if (!buf)
->   		return -EINVAL;
->
-> -	memset(fields, 0, sizeof(fields));
-> +	memset(fields, 0, sizeof(char *) * NUMFIELDS);
->
->   	for (i = 0; buf[i] != '\0'; i++) {
->   		if (buf[i] == ':')
-
-Could it be compiler specific? It is working fine for me
-
-
-Test]$ cat sizeof.c
-===========
-#include <stdio.h>
-#define NUMFIELDS 10
-main()
-{
-	char *fields1[NUMFIELDS];
-	char fields2[NUMFIELDS];
-
-	printf("sizeof(fields1):%d sizeof(char *)*NUMFIELDS:%d\n", 
-sizeof(fields1), sizeof(char *)*NUMFIELDS);
-	printf("sizeof(fields2):%d sizeof(char)*NUMFIELDS:%d\n", 
-sizeof(fields2), sizeof(char)*NUMFIELDS);
-}
-============
-
-[jvrao Test]$ make sizeof
-cc     sizeof.c   -o sizeof
-[jvrao Test]$ ./sizeof
-sizeof(fields1):80 sizeof(char *)*NUMFIELDS:80
-sizeof(fields2):10 sizeof(char)*NUMFIELDS:10
-
-
-[jvrao Test]$ cc -v
-Using built-in specs.
-Target: x86_64-redhat-linux
-Configured with: ../configure --prefix=/usr --mandir=/usr/share/man 
---infodir=/usr/share/info 
---with-bugurl=http://bugzilla.redhat.com/bugzilla --enable-bootstrap 
---enable-shared --enable-threads=posix --enable-checking=release 
---with-system-zlib --enable-__cxa_atexit --disable-libunwind-exceptions 
---enable-gnu-unique-object 
---enable-languages=c,c++,objc,obj-c++,java,fortran,ada 
---enable-java-awt=gtk --disable-dssi 
---with-java-home=/usr/lib/jvm/java-1.5.0-gcj-1.5.0.0/jre 
---enable-libgcj-multifile --enable-java-maintainer-mode 
---with-ecj-jar=/usr/share/java/eclipse-ecj.jar 
---disable-libjava-multilib --with-ppl --with-cloog --with-tune=generic 
---with-arch_32=i686 --build=x86_64-redhat-linux
-Thread model: posix
-gcc version 4.4.4 20100726 (Red Hat 4.4.4-13) (GCC)
-
-
-
-
-
-
-
-
-
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBCZW4gR3JlZWFyIFttYWlsdG86
+Z3JlZWFyYkBjYW5kZWxhdGVjaC5jb21dDQo+IFNlbnQ6IEZyaWRheSwgSnVseSAwOCwgMjAxMSAx
+OjE5IFBNDQo+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+IENjOiBsaW51eC1uZnNAdmdlci5rZXJu
+ZWwub3JnOyBsaW51eC1rZXJuZWxAdmdlci5rZXJuZWwub3JnDQo+IFN1YmplY3Q6IFJlOiBbUkZD
+XSBzdW5ycGM6IEZpeCByYWNlIGJldHdlZW4gd29yay1xdWV1ZSBhbmQNCj4gcnBjX2tpbGxhbGxf
+dGFza3MuDQo+IA0KPiBPbiAwNy8wNi8yMDExIDA0OjQ1IFBNLCBUcm9uZCBNeWtsZWJ1c3Qgd3Jv
+dGU6DQo+ID4gT24gV2VkLCAyMDExLTA3LTA2IGF0IDE1OjQ5IC0wNzAwLCBncmVlYXJiQGNhbmRl
+bGF0ZWNoLmNvbSB3cm90ZToNCj4gPj4gRnJvbTogQmVuIEdyZWVhcjxncmVlYXJiQGNhbmRlbGF0
+ZWNoLmNvbT4NCj4gPj4NCj4gPj4gVGhlIHJwY19raWxsYWxsX3Rhc2tzIGxvZ2ljIGlzIG5vdCBs
+b2NrZWQgYWdhaW5zdA0KPiA+PiB0aGUgd29yay1xdWV1ZSB0aHJlYWQsIGJ1dCBpdCBzdGlsbCBk
+aXJlY3RseSBtb2RpZmllcw0KPiA+PiBmdW5jdGlvbiBwb2ludGVycyBhbmQgZGF0YSBpbiB0aGUg
+dGFzayBvYmplY3RzLg0KPiA+Pg0KPiA+PiBUaGlzIHBhdGNoIGNoYW5nZXMgdGhlIGtpbGxhbGwt
+dGFza3MgbG9naWMgdG8gc2V0IGEgZmxhZw0KPiA+PiB0aGF0IHRlbGxzIHRoZSB3b3JrLXF1ZXVl
+IHRocmVhZCB0byB0ZXJtaW5hdGUgdGhlIHRhc2sNCj4gPj4gaW5zdGVhZCBvZiBkaXJlY3RseSBj
+YWxsaW5nIHRoZSB0ZXJtaW5hdGUgbG9naWMuDQo+ID4+DQo+ID4+IFNpZ25lZC1vZmYtYnk6IEJl
+biBHcmVlYXI8Z3JlZWFyYkBjYW5kZWxhdGVjaC5jb20+DQo+ID4+IC0tLQ0KPiA+Pg0KPiA+PiBO
+T1RFOiAgVGhpcyBuZWVkcyByZXZpZXcsIGFzIEkgYW0gc3RpbGwgc3RydWdnbGluZyB0byB1bmRl
+cnN0YW5kDQo+ID4+IHRoZSBycGMgY29kZSwgYW5kIGl0J3MgcXVpdGUgcG9zc2libGUgdGhpcyBw
+YXRjaCBlaXRoZXIgZG9lc24ndA0KPiA+PiBmdWxseSBmaXggdGhlIHByb2JsZW0gb3IgYWN0dWFs
+bHkgY2F1c2VzIG90aGVyIGlzc3Vlcy4gIFRoYXQgc2FpZCwNCj4gPj4gbXkgbmZzIHN0cmVzcyB0
+ZXN0IHNlZW1zIHRvIHJ1biBhIGJpdCBtb3JlIHN0YWJsZSB3aXRoIHRoaXMgcGF0Y2gNCj4gYXBw
+bGllZC4NCj4gPg0KPiA+IFllcywgYnV0IEkgZG9uJ3Qgc2VlIHdoeSB5b3UgYXJlIGFkZGluZyBh
+IG5ldyBmbGFnLCBub3IgZG8gSSBzZWUgd2h5DQo+IHdlDQo+ID4gd2FudCB0byBrZWVwIGNoZWNr
+aW5nIGZvciB0aGF0IGZsYWcgaW4gdGhlIHJwY19leGVjdXRlKCkgbG9vcC4NCj4gPiBycGNfa2ls
+bGFsbF90YXNrcygpIGlzIG5vdCBhIGZyZXF1ZW50IG9wZXJhdGlvbiB0aGF0IHdlIHdhbnQgdG8N
+Cj4gb3B0aW1pc2UNCj4gPiBmb3IuDQo+ID4NCj4gPiBIb3cgYWJvdXQgdGhlIGZvbGxvd2luZyBp
+bnN0ZWFkPw0KPiANCj4gT2ssIEkgbG9va2VkIGF0IHlvdXIgcGF0Y2ggY2xvc2VyLiAgSSB0aGlu
+ayBpdCBjYW4gc3RpbGwgY2F1c2UNCj4gYmFkIHJhY2UgY29uZGl0aW9ucy4NCj4gDQo+IEZvciBp
+bnN0YW5jZToNCj4gDQo+IEFzc3VtZSB0aGF0IHRrX2NhbGxiYWNrIGlzIE5VTEwgYXQgYmVnaW5u
+aW5nIG9mIHdoaWxlIGxvb3AgaW4NCj4gX19ycGNfZXhlY3V0ZSwNCj4gYW5kIHRrX2FjdGlvbiBp
+cyBycGNfZXhpdF90YXNrLg0KPiANCj4gV2hpbGUgZG9fYWN0aW9uKHRhc2spIGlzIGJlaW5nIGNh
+bGxlZCwgdGtfYWN0aW9uIGlzIHNldCB0byBOVUxMIGluDQo+IHJwY19leGl0X3Rhc2suDQo+IA0K
+PiBCdXQsIHJpZ2h0IGFmdGVyIHRrX2FjdGlvbiBpcyBzZXQgdG8gTlVMTCBpbiBycGNfZXhpdF90
+YXNrLCB0aGUNCj4gcnBjX2tpbGxhbGxfdGFza3MNCj4gbWV0aG9kIGNhbGxzIHJwY19leGl0LCB3
+aGljaCBzZXRzIHRrX2FjdGlvbiBiYWNrIHRvIHJwY19leGl0X3Rhc2suDQo+IA0KPiBJIGJlbGll
+dmUgdGhpcyBjb3VsZCBjYXVzZSB0aGUgeHBydF9yZWxlYXNlKHRhc2spIGxvZ2ljIHRvIGJlIGNh
+bGxlZCBpbg0KPiB0aGUNCj4gd29yay1xdWV1ZSdzIGV4ZWN1dGlvbiBvZiBycGNfZXhpdF90YXNr
+IGR1ZSB0byB0a19hY3Rpb24gIT0gTlVMTCB3aGVuDQo+IGl0IHNob3VsZCBub3QgYmUuDQoNCldo
+eSB3b3VsZCB0aGlzIGJlIGEgcHJvYmxlbT8geHBydF9yZWxlYXNlKCkgY2FuIGNlcnRhaW5seSBi
+ZSBjYWxsZWQgbXVsdGlwbGUgdGltZXMgb24gYW4gcnBjX3Rhc2suIERpdHRvIHJwYmNfZ2V0cG9y
+dF9kb25lLg0KDQpUaGUgb25seSB0aGluZyB0aGF0IGlzIG5vdCByZS1lbnRyYW50IHRoZXJlIGlz
+IHJwY2JfbWFwX3JlbGVhc2UsIHdoaWNoIHNob3VsZCBvbmx5IGV2ZXIgYmUgY2FsbGVkIG9uY2Ug
+d2hldGhlciBvciBub3Qgc29tZXRoaW5nIGNhbGxzIHJwY19raWxsYWxsX3Rhc2tzLg0KDQogDQo+
+IEkgaGF2ZSBubyBoYXJkIGV2aWRlbmNlIHRoaXMgZXhhY3Qgc2NlbmFyaW8gaXMgaGFwcGVuaW5n
+IGluIG15IGNhc2UsDQo+IGJ1dCBJDQo+IGJlbGlldmUgdGhlIGNvZGUgaXMgc3RpbGwgcmFjeSB3
+aXRoIHlvdXIgcGF0Y2guDQo+IA0KPiBGb3IgdGhhdCBtYXR0ZXIsIGlzIGl0IHNhZmUgdG8gbW9k
+aWZ5IHRoZSBmbGFncyBpbiBycGNfa2lsbGFsbF90YXNrczoNCj4gDQo+IHJvdnItPnRrX2ZsYWdz
+IHw9IFJQQ19UQVNLX0tJTExFRDsNCj4gDQo+IElzIHRoYXQgZ3VhcmFudGVlZCB0byBiZSBhdG9t
+aWMgd2l0aCBhbnkgb3RoZXIgbW9kaWZpY2F0aW9uIG9mIGZsYWdzPw0KDQpUYXNrLT50a19mbGFn
+cyBzaG91bGQgbmV2ZXIgY2hhbmdlIGFmdGVyIHRoZSBycGNfdGFzayBpcyBzZXQgdXAuIFRoZSBv
+bmx5IGFsbG93ZWQgY2hhbmdlIGlzIHRoZSBSUENfVEFTS19LSUxMRUQuIFdlIGNvdWxkIGNvbnZl
+cnQgdGhhdCBpbnRvIGFuIGF0b21pYyBiaXQgaW4gdGFzay0+dGtfcnVuc3RhdGUsIGJ1dCBhZ2Fp
+biwgdGhpcyBpc24ndCBzb21ldGhpbmcgdGhhdCBpcyBsaWtlbHkgdG8gYmUgcmVzcG9uc2libGUg
+Zm9yIHRoZSBwcm9ibGVtIHlvdSBhcmUgc2VlaW5nLg0KDQoT77+977+97Lm7HO+/vSbvv71+77+9
+Ju+/vRjvv73vv70rLe+/ve+/vd22F++/ve+/vXfvv73vv73Lm++/ve+/ve+/vW3vv71i77+977+9
+Z37Ip++/vRfvv73vv73cqH3vv73vv73vv73GoHrvv70majordu+/ve+/ve+/vQfvv73vv73vv73v
+v716Wivvv73vv70rembvv73vv73vv71o77+977+977+9fu+/ve+/ve+/ve+/vWnvv73vv73vv716
+77+9Hu+/vXfvv73vv73vv70/77+977+977+977+9Ju+/vSnfohtm
