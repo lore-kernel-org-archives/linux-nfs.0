@@ -1,27 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:60868 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755579Ab1G1UE2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 16:04:28 -0400
-Message-ID: <4E31C0C9.7050803@itwm.fraunhofer.de>
-Date: Thu, 28 Jul 2011 22:04:25 +0200
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-CC: linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
-        adilger@whamcloud.com, tytso@mit.edu
-Subject: Re: [PATCH 1/3] Return 32/64-bit dir name hash according to usage
- type
-References: <20110727110148.204979.49551.stgit@localhost.localdomain> <20110727110249.204979.58769.stgit@localhost.localdomain>
-In-Reply-To: <20110727110249.204979.58769.stgit@localhost.localdomain>
+Received: from mail.candelatech.com ([208.74.158.172]:60477 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753351Ab1GIQec (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 9 Jul 2011 12:34:32 -0400
+Message-ID: <4E188315.2040907@candelatech.com>
+Date: Sat, 09 Jul 2011 09:34:29 -0700
+From: Ben Greear <greearb@candelatech.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [RFC] sunrpc:  Fix race between work-queue and rpc_killall_tasks.
+References: <1309992581-25199-1-git-send-email-greearb@candelatech.com> <1309995932.5447.6.camel@lade.trondhjem.org> <4E173BE6.9000005@candelatech.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A198C7C@SACMVEXC2-PRD.hq.netapp.com> <4E177EA8.60109@candelatech.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A198E69@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A198E69@SACMVEXC2-PRD.hq.netapp.com>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Ooops, something important slipped through the tests and the current 
-patch doesn't work at all. Please disregard it for now. Updated patches 
-probably tomorrow.
+On 07/08/2011 03:14 PM, Myklebust, Trond wrote:
 
+> The calldata gets freed in the rpc_final_put_task() which shouldn't ever be run while the task is still referenced in __rpc_execute
+
+Ok, please go ahead and use your patch for the killall tasks race.  My problem remains with or without
+your patch, and with or without my version.  So, I'm hitting something else.
+
+I'm real low on ideas of how exactly I am hitting the bug..but will keep poking around.
 
 Thanks,
-Bernd
+Ben
+
+>
+> IOW: it should be impossible to call rpc_exit_task() after rpc_final_put_task
+> N�����r��y���b�X��ǧv�^�)޺{.n�+����{���"��^n�r��z���h����&���G���h�(�階�ݢj"���m�����z�ޖ���f���h���~�mml==
+
+
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
