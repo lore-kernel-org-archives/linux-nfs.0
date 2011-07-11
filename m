@@ -1,77 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp02.citrix.com ([66.165.176.63]:36190 "EHLO
-	SMTP02.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754362Ab1GVNRx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jul 2011 09:17:53 -0400
-From: Ian Campbell <ian.campbell@citrix.com>
-To: netdev@vger.kernel.org, linux-nfs@vger.kernel.org
-CC: Ian Campbell <ian.campbell@citrix.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
-        "Pekka Savola (ipv6)" <pekkas@netcore.fi>,
-        James Morris <jmorris@namei.org>,
-        Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
-        Patrick McHardy <kaber@trash.net>
-Subject: [PATCH 06/13] net: ipv6: convert to SKB frag APIs
-Date: Fri, 22 Jul 2011 14:17:26 +0100
-Message-ID: <1311340653-19336-6-git-send-email-ian.campbell@citrix.com>
-In-Reply-To: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
-References: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
-Content-Type: text/plain
+Received: from smtp2.uvm.edu ([132.198.101.169]:55784 "EHLO smtp2.uvm.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758342Ab1GKSqw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jul 2011 14:46:52 -0400
+Subject: Re: svcgssd problem against libgssapi_krb5
+Content-Type: text/plain; charset=us-ascii
+From: Benjamin Coddington <bcodding@uvm.edu>
+In-Reply-To: <822CE753-04C1-44BE-888A-A258D6737E7A@uvm.edu>
+Date: Mon, 11 Jul 2011 14:46:49 -0400
+Cc: Benjamin Coddington <bcodding@uvm.edu>
+Message-Id: <FE208962-EC0E-4880-8814-63E11A847AD4@uvm.edu>
+References: <822CE753-04C1-44BE-888A-A258D6737E7A@uvm.edu>
+To: linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>
-Cc: "Pekka Savola (ipv6)" <pekkas@netcore.fi>
-Cc: James Morris <jmorris@namei.org>
-Cc: Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>
-Cc: Patrick McHardy <kaber@trash.net>
-Cc: netdev@vger.kernel.org
----
- net/ipv6/ip6_output.c |    8 +++++---
- 1 files changed, 5 insertions(+), 3 deletions(-)
+This problem is caused by including -ltirpc, where libtirpc.la lists -lgssglue as a dependency.  Libtool (2.2.6b) then re-evaluates the order of linked libraries putting libgssglue behind libgssapi_krb5.
 
-diff --git a/net/ipv6/ip6_output.c b/net/ipv6/ip6_output.c
-index 9d4b165..fdd4f61 100644
---- a/net/ipv6/ip6_output.c
-+++ b/net/ipv6/ip6_output.c
-@@ -1441,14 +1441,14 @@ alloc_new_skb:
- 			if (page && (left = PAGE_SIZE - off) > 0) {
- 				if (copy >= left)
- 					copy = left;
--				if (page != frag->page) {
-+				if (page != skb_frag_page(frag)) {
- 					if (i == MAX_SKB_FRAGS) {
- 						err = -EMSGSIZE;
- 						goto error;
- 					}
--					get_page(page);
- 					skb_fill_page_desc(skb, i, page, sk->sk_sndmsg_off, 0);
- 					frag = &skb_shinfo(skb)->frags[i];
-+					__skb_frag_ref(frag);
- 				}
- 			} else if(i < MAX_SKB_FRAGS) {
- 				if (copy > PAGE_SIZE)
-@@ -1461,13 +1461,15 @@ alloc_new_skb:
- 				sk->sk_sndmsg_page = page;
- 				sk->sk_sndmsg_off = 0;
- 
-+				/* XXX no ref ? */
- 				skb_fill_page_desc(skb, i, page, 0, 0);
- 				frag = &skb_shinfo(skb)->frags[i];
- 			} else {
- 				err = -EMSGSIZE;
- 				goto error;
- 			}
--			if (getfrag(from, page_address(frag->page)+frag->page_offset+frag->size, offset, copy, skb->len, skb) < 0) {
-+			if (getfrag(from, skb_frag_address(frag)+frag->size,
-+				    offset, copy, skb->len, skb) < 0) {
- 				err = -EFAULT;
- 				goto error;
- 			}
--- 
-1.7.2.5
+I fixed this by specifying -lgssglue with -Wl, which is ignored by libtool:
+
+GSSGLUE_CFLAGS="-Wl,-lgssglue" ./configure
+
+Ben
+
+On Jul 11, 2011, at 12:30 PM, Benjamin Coddington wrote:
+
+> I have a problem building svcgssd from nfs-utils-1.2.3:
+> 
+> svcgssd[15145]: DEBUG: serialize_krb5_ctx: lucid version!
+> svcgssd[15145]: ERROR: GSS-API: error in gss_export_lucid_sec_context(): GSS_S_NO_CONTEXT (No context has been established) - (0x00007fff)
+> svcgssd[15145]: ERROR: failed serializing krb5 context for kernel
+> svcgssd[15145]: WARNING: handle_nullreq: serialize_context_for_kernel failed
+> 
+> I found that the svcgssd I built ran differently than the one that works from a major distro.
+> 
+> My broken one does this:
+> 
+> gssint_mechglue_initialize_library () at g_initialize.c:135
+> 135	{
+> (gdb) bt
+> #0  gssint_mechglue_initialize_library () at g_initialize.c:135
+> #1  0x00007ffff79a9f75 in gss_indicate_mechs (minorStatus=0x7fffffffe50c, mechSet_out=0x7fffffffe500) at g_initialize.c:220
+> #2  0x00000000004021ae in gssd_check_mechs () at gss_util.c:241
+> #3  0x0000000000402777 in main (argc=3, argv=<value optimized out>) at svcgssd.c:239
+> 
+> 
+> But if I remove -lgssapi_krb5, svcgssd works fine, and behaves like the one from the distro:
+> 
+> gss_initialize () at g_initialize.c:148
+> 148	{
+> (gdb) bt
+> #0  gss_initialize () at g_initialize.c:148
+> #1  0x00007ffff6e82f6e in gss_indicate_mechs (minor_status=0x7fffffffe50c, mech_set=0x7fffffffe500) at g_indicate_mechs.c:54
+> #2  0x000000000040216e in gssd_check_mechs () at gss_util.c:241
+> #3  0x0000000000402737 in main (argc=3, argv=<value optimized out>) at svcgssd.c:239
+> 
+> 
+> Ben--
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
