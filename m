@@ -1,133 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from hub024-nj-5.exch024.serverdata.net ([206.225.165.120]:23036
-	"EHLO HUB024-nj-5.exch024.serverdata.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753555Ab1G0K4b (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 06:56:31 -0400
-From: Anand Avati <avati@gluster.com>
-To: <miklos@szeredi.hu>
-CC: <fuse-devel@lists.sourceforge.net>, <linux-fsdevel@vger.kernel.org>,
-        <linux-nfs@vger.kernel.org>, Anand Avati <avati@gluster.com>
-Subject: [PATCH v2 1/2] vfs: pass 'struct file *' as parameter to ->check_flags() methods
-Date: Wed, 27 Jul 2011 03:56:18 -0700
-Message-ID: <1311764179-20326-1-git-send-email-avati@gluster.com>
-In-Reply-To: <n>
-References: <n>
-Content-Type: text/plain
+Received: from mx2.netapp.com ([216.240.18.37]:55062 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964842Ab1GKStv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jul 2011 14:49:51 -0400
+Received: from sacrsexc1-prd.hq.netapp.com (sacrsexc1-prd.hq.netapp.com [10.99.115.27])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id p6BInoMQ014389
+	for <linux-nfs@vger.kernel.org>; Mon, 11 Jul 2011 11:49:51 -0700 (PDT)
+Subject: Re: [PATCH 1/1] NFSv4.1: handle decoding of three attribute bitmaps
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Andy Adamson <andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 11 Jul 2011 14:49:49 -0400
+In-Reply-To: <C42C21AC-EABC-48F2-85DE-79EF1EEEA13B@netapp.com>
+References: <1310406847-31297-1-git-send-email-andros@netapp.com>
+	 <1310407708.12660.2.camel@lade.trondhjem.org>
+	 <C42C21AC-EABC-48F2-85DE-79EF1EEEA13B@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1310410189.12660.13.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-FUSE needs to selectively permit ->check_flags() on a per-file basis as it
-does not support setting/unsetting O_DIRECT flag on an open file. Hence
-passing 'struct file *' as a parameter to ->check_flags() is necessary to
-inspect and compare file->f_flags with the new flags.
+On Mon, 2011-07-11 at 14:30 -0400, Andy Adamson wrote: 
+> On Jul 11, 2011, at 2:08 PM, Trond Myklebust wrote:
+> 
+> > On Mon, 2011-07-11 at 13:54 -0400, andros@netapp.com wrote: 
+> >> From: Andy Adamson <andros@netapp.com>
+> >> 
+> >> Attribute IDs assigned in RFC 5661 now require three bitmaps.
+> >> 
+> >> Signed-off-by: Andy Adamson <andros@netapp.com>
+> >> Cc:stable@kernel.org [2.6.39]
+> > 
+> > Is this really so urgent?
+> > 
+> > [trondmy@lade linux-2.6]$ git grep FATTR4_WORD2 fs/nfs include/linux
+> > include/linux/nfs4.h:#define FATTR4_WORD2_SUPPATTR_EXCLCREAT (1UL << 11)
+> > include/linux/nfs4.h:#define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
+> > 
+> > IOW: we don't appear to be using any of those bits, and so the current
+> > default behaviour of just ignoring any bitmap values that we don't
+> > recognise would seem to be sufficient.
+> 
+> I should have given more context :)
+> 
+> In testing nfs4_getfacl,  OnTap returns three attribute bits which triggered a BUG_ON in xdr_shrink_bufhead
+> as the third bitmap was incorrectly interpreted as the length.
+> 
+> Plus, RFC 5661 defines suppattr_exclcreat bit 75 as a mandatory attribute which means it can/will be returned with any supported attributes query.
+> 
+> So, I think this needed and is a candidate for stable.
 
-Signed-off-by: Anand Avati <avati@gluster.com>
----
- Documentation/filesystems/Locking |    2 +-
- Documentation/filesystems/vfs.txt |    2 +-
- fs/bad_inode.c                    |    2 +-
- fs/fcntl.c                        |    2 +-
- fs/nfs/file.c                     |    6 +++---
- include/linux/fs.h                |    2 +-
- 6 files changed, 8 insertions(+), 8 deletions(-)
+You missed my point. The only part that should make any difference in
+your patch is the bit which changes the declaration of
+nfs4_fattr_bitmap_maxsz.
 
-diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
-index 57d827d..9619841 100644
---- a/Documentation/filesystems/Locking
-+++ b/Documentation/filesystems/Locking
-@@ -426,7 +426,7 @@ prototypes:
- 			loff_t *, int);
- 	unsigned long (*get_unmapped_area)(struct file *, unsigned long,
- 			unsigned long, unsigned long, unsigned long);
--	int (*check_flags)(int);
-+	int (*check_flags)(struct file *, int);
- 	int (*flock) (struct file *, int, struct file_lock *);
- 	ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, loff_t *,
- 			size_t, unsigned int);
-diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
-index 88b9f55..442aefb 100644
---- a/Documentation/filesystems/vfs.txt
-+++ b/Documentation/filesystems/vfs.txt
-@@ -764,7 +764,7 @@ struct file_operations {
- 	ssize_t (*sendfile) (struct file *, loff_t *, size_t, read_actor_t, void *);
- 	ssize_t (*sendpage) (struct file *, struct page *, int, size_t, loff_t *, int);
- 	unsigned long (*get_unmapped_area)(struct file *, unsigned long, unsigned long, unsigned long, unsigned long);
--	int (*check_flags)(int);
-+	int (*check_flags)(struct file *, int);
- 	int (*flock) (struct file *, int, struct file_lock *);
- 	ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, size_t, unsigned int);
- 	ssize_t (*splice_read)(struct file *, struct pipe_inode_info *, size_t, unsigned int);
-diff --git a/fs/bad_inode.c b/fs/bad_inode.c
-index bfcb18f..c7eef18 100644
---- a/fs/bad_inode.c
-+++ b/fs/bad_inode.c
-@@ -120,7 +120,7 @@ static unsigned long bad_file_get_unmapped_area(struct file *file,
- 	return -EIO;
- }
- 
--static int bad_file_check_flags(int flags)
-+static int bad_file_check_flags(struct file *filp, int flags)
- {
- 	return -EIO;
- }
-diff --git a/fs/fcntl.c b/fs/fcntl.c
-index 22764c7..1a2a6d3 100644
---- a/fs/fcntl.c
-+++ b/fs/fcntl.c
-@@ -174,7 +174,7 @@ static int setfl(int fd, struct file * filp, unsigned long arg)
- 	}
- 
- 	if (filp->f_op && filp->f_op->check_flags)
--		error = filp->f_op->check_flags(arg);
-+		error = filp->f_op->check_flags(filp, arg);
- 	if (error)
- 		return error;
- 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 2f093ed..9f96a8b 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -56,7 +56,7 @@ static ssize_t nfs_file_write(struct kiocb *, const struct iovec *iov,
- 				unsigned long nr_segs, loff_t pos);
- static int  nfs_file_flush(struct file *, fl_owner_t id);
- static int  nfs_file_fsync(struct file *, int datasync);
--static int nfs_check_flags(int flags);
-+static int nfs_check_flags(struct file *, int flags);
- static int nfs_lock(struct file *filp, int cmd, struct file_lock *fl);
- static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl);
- static int nfs_setlease(struct file *file, long arg, struct file_lock **fl);
-@@ -105,7 +105,7 @@ const struct inode_operations nfs3_file_inode_operations = {
- # define IS_SWAPFILE(inode)	(0)
- #endif
- 
--static int nfs_check_flags(int flags)
-+static int nfs_check_flags(struct file *filp, int flags)
- {
- 	if ((flags & (O_APPEND | O_DIRECT)) == (O_APPEND | O_DIRECT))
- 		return -EINVAL;
-@@ -126,7 +126,7 @@ nfs_file_open(struct inode *inode, struct file *filp)
- 			filp->f_path.dentry->d_name.name);
- 
- 	nfs_inc_stats(inode, NFSIOS_VFSOPEN);
--	res = nfs_check_flags(filp->f_flags);
-+	res = nfs_check_flags(filp, filp->f_flags);
- 	if (res)
- 		return res;
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index b5b9792..98ce7c7 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1564,7 +1564,7 @@ struct file_operations {
- 	int (*lock) (struct file *, int, struct file_lock *);
- 	ssize_t (*sendpage) (struct file *, struct page *, int, size_t, loff_t *, int);
- 	unsigned long (*get_unmapped_area)(struct file *, unsigned long, unsigned long, unsigned long, unsigned long);
--	int (*check_flags)(int);
-+	int (*check_flags)(struct file *, int);
- 	int (*flock) (struct file *, int, struct file_lock *);
- 	ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, loff_t *, size_t, unsigned int);
- 	ssize_t (*splice_read)(struct file *, loff_t *, struct pipe_inode_info *, size_t, unsigned int);
+The rest shouldn't be needed because the bits in the WORD2 range should
+all be zero: our client doesn't ever request any of those attributes.
+
+Cheers
+  Trond
+
 -- 
-1.7.4.4
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
