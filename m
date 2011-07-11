@@ -1,78 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:25965 "EHLO mx2.netapp.com"
+Received: from smtp1.uvm.edu ([132.198.101.168]:40444 "EHLO smtp1.uvm.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753315Ab1GLCbh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jul 2011 22:31:37 -0400
-Subject: Re: [PATCH 2/2] NFS: Send SIGIO on lost locks
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: bjschuma@netapp.com, linux-nfs@vger.kernel.org
-Date: Mon, 11 Jul 2011 22:31:03 -0400
-In-Reply-To: <20110711204729.7f2433b4@corrin.poochiereds.net>
-References: <1310407110-20600-1-git-send-email-bjschuma@netapp.com>
-	 <1310407110-20600-2-git-send-email-bjschuma@netapp.com>
-	 <20110711160851.13814fa1@tlielax.poochiereds.net>
-	 <1310415144.12660.32.camel@lade.trondhjem.org>
-	 <20110711204729.7f2433b4@corrin.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1310437863.12660.50.camel@lade.trondhjem.org>
+	id S1758083Ab1GKQjA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jul 2011 12:39:00 -0400
+Received: from planck.uvm.edu (planck.uvm.edu [132.198.104.181])
+	(authenticated bits=0)
+	by smtp1.uvm.edu (8.14.2/8.14.2) with ESMTP id p6BGUhuw031102
+	(version=TLSv1/SSLv3 cipher=AES128-SHA bits=128 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Mon, 11 Jul 2011 12:30:44 -0400
+From: Benjamin Coddington <bcodding@uvm.edu>
+Content-Type: text/plain; charset=us-ascii
+Subject: svcgssd problem against libgssapi_krb5
+Date: Mon, 11 Jul 2011 12:30:42 -0400
+Message-Id: <822CE753-04C1-44BE-888A-A258D6737E7A@uvm.edu>
+To: linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2011-07-11 at 20:47 -0400, Jeff Layton wrote: 
-> On Mon, 11 Jul 2011 16:12:24 -0400
-> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> 
-> > On Mon, 2011-07-11 at 16:08 -0400, Jeff Layton wrote: 
-> > > On Mon, 11 Jul 2011 13:58:30 -0400
-> > > bjschuma@netapp.com wrote:
-> > > 
-> > > > From: Bryan Schumaker <bjschuma@netapp.com>
-> > > > 
-> > > > If the client loses a lock, we send SIGIO to the application to notify
-> > > > it.  The application can then handle the error from there.
-> > > > 
-> > > > Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> > > 
-> > > Would SIGLOST be a better choice? Linux hasn't supported that
-> > > historically, but we could add it.
-> > 
-> > SIGLOST is 'defined' in the kernel as follows:
-> > 
-> > #define SIGIO           29
-> > #define SIGPOLL         SIGIO
-> > /*
-> > #define SIGLOST         29
-> > */
-> > 
-> > IOW: it is synonymous with SIGPOLL and SIGIO. This explains Bryan's
-> > choice.
-> > 
-> > Cheers
-> >   Trond
-> > 
-> 
-> Right. I just wonder whether we'd be better off making this a distinct
-> signal with its own number. It seems like there would be value in being
-> able to distinguish between SIGLOST and SIGIO.
+I have a problem building svcgssd from nfs-utils-1.2.3:
 
-Actually, I think there is value in distinguishing between SIGIO and
-SIGPOLL too, but it would appear that it is a bit late to do that.
+svcgssd[15145]: DEBUG: serialize_krb5_ctx: lucid version!
+svcgssd[15145]: ERROR: GSS-API: error in gss_export_lucid_sec_context(): GSS_S_NO_CONTEXT (No context has been established) - (0x00007fff)
+svcgssd[15145]: ERROR: failed serializing krb5 context for kernel
+svcgssd[15145]: WARNING: handle_nullreq: serialize_context_for_kernel failed
 
-Note that we can (and probably should) use a siginfo structure to pass a
-bit more info to the application. That would mean filling out a siginfo
-and then replacing kill_pid() with kill_pid_info(), but that should be
-easily doable and can be made to resolve the above ambiguities.
+I found that the svcgssd I built ran differently than the one that works from a major distro.
 
-Cheers
-  Trond
+My broken one does this:
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+gssint_mechglue_initialize_library () at g_initialize.c:135
+135	{
+(gdb) bt
+#0  gssint_mechglue_initialize_library () at g_initialize.c:135
+#1  0x00007ffff79a9f75 in gss_indicate_mechs (minorStatus=0x7fffffffe50c, mechSet_out=0x7fffffffe500) at g_initialize.c:220
+#2  0x00000000004021ae in gssd_check_mechs () at gss_util.c:241
+#3  0x0000000000402777 in main (argc=3, argv=<value optimized out>) at svcgssd.c:239
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
 
+But if I remove -lgssapi_krb5, svcgssd works fine, and behaves like the one from the distro:
+
+gss_initialize () at g_initialize.c:148
+148	{
+(gdb) bt
+#0  gss_initialize () at g_initialize.c:148
+#1  0x00007ffff6e82f6e in gss_indicate_mechs (minor_status=0x7fffffffe50c, mech_set=0x7fffffffe500) at g_indicate_mechs.c:54
+#2  0x000000000040216e in gssd_check_mechs () at gss_util.c:241
+#3  0x0000000000402737 in main (argc=3, argv=<value optimized out>) at svcgssd.c:239
+
+
+Ben
