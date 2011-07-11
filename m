@@ -1,46 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:50243 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753436Ab1G3Gdo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 02:33:44 -0400
-Message-ID: <4E33A5BB.8000407@panasas.com>
-Date: Fri, 29 Jul 2011 23:33:31 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>, Jim Rees <rees@umich.edu>,
-        Peng Tao <bergwolf@gmail.com>, NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 4/6] pnfs: use lwb as layoutcommit length
-References: <4E33A288.80403@panasas.com>
-In-Reply-To: <4E33A288.80403@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mx2.netapp.com ([216.240.18.37]:23589 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758084Ab1GKSab convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jul 2011 14:30:31 -0400
+Subject: Re: [PATCH 1/1] NFSv4.1: handle decoding of three attribute bitmaps
+Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <1310407708.12660.2.camel@lade.trondhjem.org>
+Date: Mon, 11 Jul 2011 14:30:14 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <C42C21AC-EABC-48F2-85DE-79EF1EEEA13B@netapp.com>
+References: <1310406847-31297-1-git-send-email-andros@netapp.com> <1310407708.12660.2.camel@lade.trondhjem.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Peng Tao <bergwolf@gmail.com>
 
-Using NFS4_MAX_UINT64 will break current protocol.
+On Jul 11, 2011, at 2:08 PM, Trond Myklebust wrote:
 
-[Needed in v3.0]
-CC: Stable Tree <stable@kernel.org>
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/nfs4xdr.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+> On Mon, 2011-07-11 at 13:54 -0400, andros@netapp.com wrote: 
+>> From: Andy Adamson <andros@netapp.com>
+>> 
+>> Attribute IDs assigned in RFC 5661 now require three bitmaps.
+>> 
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> Cc:stable@kernel.org [2.6.39]
+> 
+> Is this really so urgent?
+> 
+> [trondmy@lade linux-2.6]$ git grep FATTR4_WORD2 fs/nfs include/linux
+> include/linux/nfs4.h:#define FATTR4_WORD2_SUPPATTR_EXCLCREAT (1UL << 11)
+> include/linux/nfs4.h:#define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
+> 
+> IOW: we don't appear to be using any of those bits, and so the current
+> default behaviour of just ignoring any bitmap values that we don't
+> recognise would seem to be sufficient.
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index e6e8f3b..fc97fd5 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1888,7 +1888,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
- 	*p++ = cpu_to_be32(OP_LAYOUTCOMMIT);
- 	/* Only whole file layouts */
- 	p = xdr_encode_hyper(p, 0); /* offset */
--	p = xdr_encode_hyper(p, NFS4_MAX_UINT64); /* length */
-+	p = xdr_encode_hyper(p, args->lastbytewritten + 1);	/* length */
- 	*p++ = cpu_to_be32(0); /* reclaim */
- 	p = xdr_encode_opaque_fixed(p, args->stateid.data, NFS4_STATEID_SIZE);
- 	*p++ = cpu_to_be32(1); /* newoffset = TRUE */
--- 
-1.7.6
+I should have given more context :)
 
+In testing nfs4_getfacl,  OnTap returns three attribute bits which triggered a BUG_ON in xdr_shrink_bufhead
+as the third bitmap was incorrectly interpreted as the length.
+
+Plus, RFC 5661 defines suppattr_exclcreat bit 75 as a mandatory attribute which means it can/will be returned with any supported attributes query.
+
+So, I think this needed and is a candidate for stable.
+
+-->Andy
+
+> 
+> Cheers
+>  Trond
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
 
