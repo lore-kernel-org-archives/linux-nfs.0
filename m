@@ -1,105 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:61951 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753691Ab1GZQfC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2011 12:35:02 -0400
-Received: by qwk3 with SMTP id 3so297570qwk.19
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Jul 2011 09:35:01 -0700 (PDT)
-Message-ID: <4E2EECAD.9000301@tonian.com>
-Date: Tue, 26 Jul 2011 12:34:53 -0400
-From: Benny Halevy <bhalevy@tonian.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: tao.peng@emc.com, linux-nfs@vger.kernel.org, bergwolf@gmail.com
-Subject: Re: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
-References: <1309743002-1658-1-git-send-email-bergwolf@gmail.com>	 <4E18614C.4010002@tonian.com>	 <F19688880B763E40B28B2B462677FBF805BF0610CE@MX09A.corp.emc.com> <1311621204.28209.14.camel@lade.trondhjem.org>
-In-Reply-To: <1311621204.28209.14.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:49418 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752091Ab1GLMiZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Jul 2011 08:38:25 -0400
+Date: Tue, 12 Jul 2011 21:38:17 +0900 (JST)
+Message-Id: <20110712.213817.1045173784079879730.yamato@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: [PATCH v2] closing fd associated with /proc/fs/nfsd/export_features
+From: Masatake YAMATO <yamato@redhat.com>
+In-Reply-To: <20110712104652.GA2162@fieldses.org>
+References: <20110712.114700.814616059257545652.yamato@redhat.com>
+	<20110712104652.GA2162@fieldses.org>
+Content-Type: Text/Plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-07-25 15:13, Trond Myklebust wrote:
-> On Wed, 2011-07-20 at 01:52 -0400, tao.peng@emc.com wrote: 
->> Hi, Trond,
->>
->> Any comments on this patch? I still get kernel crash when pnfs write is attempted but fails and calls pnfs_ld_write_done(). It seems object layout uses the same code path as well. But I don't find the patch in either your tree or Benny's tree. Are there any concerns?
->>
->> Thanks,
->> Tao
-> 
-> The whole pnfs_ld_write_done thing is bogus and needs to be replaced
-> with something sane. It is trying to initiate a WRITE RPC call with the
-> wrong block size,
+Sorry, my patch has a serious bug.
+The value returned from read() is stored to fd.
+So fd should not be passed to close().
 
-I was under the impression that your re-coalesce work will take
-care of that. Is there anything else that needs to be done?
+I rearranged the code as below.
 
-> and is calling the MDS rpc_call_done() and
-> rpc_release() with an uninitialised rpc task pointer.
+Signed-off-by: Masatake YAMATO <yamato@redhat.com>
 
-So on this path there is indeed no active rpc task so we're using the
-task structure in the struct nfs_write_data.  I agree that having
-a helper function at the rpc layer to initialize it to a meaningful
-value indicating there is no active rpc task would be a useful thing.
+diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+index c250383..744c01b 100644
+--- a/support/nfs/exports.c
++++ b/support/nfs/exports.c
+@@ -784,9 +784,10 @@ struct export_features *get_export_features(void)
+ 	fd = open(path, O_RDONLY);
+ 	if (fd == -1)
+ 		goto good;
+-	fd = read(fd, buf, 50);
+-	if (fd == -1)
++	c = read(fd, buf, 50);
++	if (c == -1)
+ 		goto err;
++	close(fd);
+ 	c = sscanf(buf, "%x %x", &ef.flags, &ef.secinfo_flags);
+ 	if (c != 2)
+ 		goto err;
 
-But the fix Peng sent is for the fallback path where we initiate
-I/O to the MDS and we do build a rpc task properly.  On this path
-lseg indeed needs to be put and set to NULL.
 
-Benny
-
-> 
-> Ditto for pnfs_ld_read_done.
-> 
-> Cheers
->   Trond
-> 
->>> -----Original Message-----
->>> From: Benny Halevy [mailto:bhalevy@tonian.com]
->>> Sent: Saturday, July 09, 2011 10:10 PM
->>> To: Peng Tao
->>> Cc: Trond.Myklebust@netapp.com; linux-nfs@vger.kernel.org; Peng, Tao
->>> Subject: Re: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
->>>
->>> On 2011-07-04 04:30, Peng Tao wrote:
->>>> There is no need to keep lseg reference when read/write through MDS.
->>>> This fixes a null pointer crash at nfs_post_op_update_inode_force_wcc
->>>> because nfs4_proc_write_setup will unset wdata->res.fattr if wdata->lseg
->>>> is not NULL.
->>>>
->>>> Signed-off-by: Peng Tao <peng_tao@emc.com>
->>>
->>> Looks good to me.
->>>
->>> Benny
->>>
->>>> ---
->>>>  fs/nfs/pnfs.c |    6 ++++++
->>>>  1 files changed, 6 insertions(+), 0 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>>> index 30a0394..55fdf02 100644
->>>> --- a/fs/nfs/pnfs.c
->>>> +++ b/fs/nfs/pnfs.c
->>>> @@ -1193,6 +1193,9 @@ pnfs_ld_write_done(struct nfs_write_data *data)
->>>>
->>>>  	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
->>>>  		data->pnfs_error);
->>>> +
->>>> +	put_lseg(data->lseg);
->>>> +	data->lseg = NULL;
->>>>  	status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
->>>>  				    data->mds_ops, NFS_FILE_SYNC);
->>>>  	return status ? : -EAGAIN;
->>>> @@ -1240,6 +1243,9 @@ pnfs_ld_read_done(struct nfs_read_data *data)
->>>>
->>>>  	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
->>>>  		data->pnfs_error);
->>>> +
->>>> +	put_lseg(data->lseg);
->>>> +	data->lseg = NULL;
->>>>  	status = nfs_initiate_read(data, NFS_CLIENT(data->inode),
->>>>  				   data->mds_ops);
->>>>  	return status ? : -EAGAIN;
->>
-> 
+> On Tue, Jul 12, 2011 at 11:47:00AM +0900, Masatake YAMATO wrote:
+>> A fd associated with /proc/fs/nfsd/export_features opened in get_export_features is 
+>> not closed.
+>> 
+>> 
+>> Signed-off-by: Masatake YAMATO <yamato@redhat.com>
+> Acked-by: J. Bruce Fields <bfields@redhat.com>
+>> 
+>> diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+>> index c250383..819a18a 100644
+>> --- a/support/nfs/exports.c
+>> +++ b/support/nfs/exports.c
+>> @@ -787,6 +787,7 @@ struct export_features *get_export_features(void)
+>>  	fd = read(fd, buf, 50);
+>>  	if (fd == -1)
+>>  		goto err;
+>> +	close(fd);
+>>  	c = sscanf(buf, "%x %x", &ef.flags, &ef.secinfo_flags);
+>>  	if (c != 2)
+>>  		goto err;
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
