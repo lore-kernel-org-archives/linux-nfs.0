@@ -1,76 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:43328 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751815Ab1G2Pyv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 11:54:51 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v5 04/27] pnfs: save layoutcommit cred at layout header
-Date: Fri, 29 Jul 2011 11:54:29 -0400
-Message-Id: <1311954892-22038-5-git-send-email-rees@umich.edu>
-In-Reply-To: <1311954892-22038-1-git-send-email-rees@umich.edu>
-References: <1311954892-22038-1-git-send-email-rees@umich.edu>
+Received: from fieldses.org ([174.143.236.118]:58362 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752201Ab1GLOUU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Jul 2011 10:20:20 -0400
+Date: Tue, 12 Jul 2011 10:20:19 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Masatake YAMATO <yamato@redhat.com>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: Re: [PATCH v3] closing fd associated with
+ /proc/fs/nfsd/export_features
+Message-ID: <20110712142019.GE2162@fieldses.org>
+References: <20110712.114700.814616059257545652.yamato@redhat.com>
+ <20110712104652.GA2162@fieldses.org>
+ <20110712.213817.1045173784079879730.yamato@redhat.com>
+ <20110712.220109.419121694701200961.yamato@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110712.220109.419121694701200961.yamato@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Peng Tao <bergwolf@gmail.com>
+On Tue, Jul 12, 2011 at 10:01:09PM +0900, Masatake YAMATO wrote:
+> Very sorry for posting again and again.
 
-No need to save it for every lseg.
+Whoops, shows how carefully I was reviewing....
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/pnfs.c |    6 +++---
- fs/nfs/pnfs.h |    2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
+> fd shuold be closed even if read is failed.
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 3e0989d..201165e 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1384,7 +1384,7 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
- 	if (!test_and_set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
- 		/* references matched in nfs4_layoutcommit_release */
- 		get_lseg(wdata->lseg);
--		wdata->lseg->pls_lc_cred =
-+		nfsi->layout->plh_lc_cred =
- 			get_rpccred(wdata->args.context->state->owner->so_cred);
- 		mark_as_dirty = true;
- 		dprintk("%s: Set layoutcommit for inode %lu ",
-@@ -1447,9 +1447,9 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- 	lseg = pnfs_list_write_lseg(inode);
- 
- 	end_pos = nfsi->layout->plh_lwb;
--	cred = lseg->pls_lc_cred;
-+	cred = nfsi->layout->plh_lc_cred;
- 	nfsi->layout->plh_lwb = 0;
--	lseg->pls_lc_cred = NULL;
-+	nfsi->layout->plh_lc_cred = NULL;
- 
- 	memcpy(&data->args.stateid.data, nfsi->layout->plh_stateid.data,
- 		sizeof(nfsi->layout->plh_stateid.data));
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 044cb3e..ac86c36 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -44,7 +44,6 @@ struct pnfs_layout_segment {
- 	atomic_t pls_refcount;
- 	unsigned long pls_flags;
- 	struct pnfs_layout_hdr *pls_layout;
--	struct rpc_cred	*pls_lc_cred; /* LAYOUTCOMMIT credential */
- };
- 
- enum pnfs_try_status {
-@@ -128,6 +127,7 @@ struct pnfs_layout_hdr {
- 	u32			plh_barrier; /* ignore lower seqids */
- 	unsigned long		plh_flags;
- 	loff_t			plh_lwb; /* last write byte for layoutcommit */
-+	struct rpc_cred		*plh_lc_cred; /* layoutcommit cred */
- 	struct inode		*plh_inode;
- };
- 
--- 
-1.7.4.1
+Looks good to me.
 
+--b.
+
+> 
+> Signed-off-by: Masatake YAMATO <yamato@redhat.com>
+> 
+> diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+> index c250383..c96500f 100644
+> --- a/support/nfs/exports.c
+> +++ b/support/nfs/exports.c
+> @@ -784,8 +784,9 @@ struct export_features *get_export_features(void)
+>  	fd = open(path, O_RDONLY);
+>  	if (fd == -1)
+>  		goto good;
+> -	fd = read(fd, buf, 50);
+> -	if (fd == -1)
+> +	c = read(fd, buf, 50);
+> +	close(fd);
+> +	if (c == -1)
+>  		goto err;
+>  	c = sscanf(buf, "%x %x", &ef.flags, &ef.secinfo_flags);
+>  	if (c != 2)
+> 
+> > Sorry, my patch has a serious bug.
+> > The value returned from read() is stored to fd.
+> > So fd should not be passed to close().
+> > 
+> > I rearranged the code as below.
+> > 
+> > Signed-off-by: Masatake YAMATO <yamato@redhat.com>
+> > 
+> > diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+> > index c250383..744c01b 100644
+> > --- a/support/nfs/exports.c
+> > +++ b/support/nfs/exports.c
+> > @@ -784,9 +784,10 @@ struct export_features *get_export_features(void)
+> >  	fd = open(path, O_RDONLY);
+> >  	if (fd == -1)
+> >  		goto good;
+> > -	fd = read(fd, buf, 50);
+> > -	if (fd == -1)
+> > +	c = read(fd, buf, 50);
+> > +	if (c == -1)
+> >  		goto err;
+> > +	close(fd);
+> >  	c = sscanf(buf, "%x %x", &ef.flags, &ef.secinfo_flags);
+> >  	if (c != 2)
+> >  		goto err;
+> > 
+> > 
+> >> On Tue, Jul 12, 2011 at 11:47:00AM +0900, Masatake YAMATO wrote:
+> >>> A fd associated with /proc/fs/nfsd/export_features opened in get_export_features is 
+> >>> not closed.
+> >>> 
+> >>> 
+> >>> Signed-off-by: Masatake YAMATO <yamato@redhat.com>
+> >> Acked-by: J. Bruce Fields <bfields@redhat.com>
+> >>> 
+> >>> diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+> >>> index c250383..819a18a 100644
+> >>> --- a/support/nfs/exports.c
+> >>> +++ b/support/nfs/exports.c
+> >>> @@ -787,6 +787,7 @@ struct export_features *get_export_features(void)
+> >>>  	fd = read(fd, buf, 50);
+> >>>  	if (fd == -1)
+> >>>  		goto err;
+> >>> +	close(fd);
+> >>>  	c = sscanf(buf, "%x %x", &ef.flags, &ef.secinfo_flags);
+> >>>  	if (c != 2)
+> >>>  		goto err;
+> >>> --
+> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>> the body of a message to majordomo@vger.kernel.org
+> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
