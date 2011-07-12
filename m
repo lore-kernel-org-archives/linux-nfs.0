@@ -1,85 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:40355 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753046Ab1GUTeo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 15:34:44 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v2 17/25] pnfsblock: merge rw extents
-Date: Thu, 21 Jul 2011 15:34:17 -0400
-Message-Id: <1311276865-29484-18-git-send-email-rees@umich.edu>
-In-Reply-To: <1311276865-29484-1-git-send-email-rees@umich.edu>
-References: <1311276865-29484-1-git-send-email-rees@umich.edu>
+Received: from mail.candelatech.com ([208.74.158.172]:56160 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751846Ab1GLR2C (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Jul 2011 13:28:02 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH] SUNRPC:  Fix use of static variable in rpcb_getport_async
+Date: Tue, 12 Jul 2011 10:27:55 -0700
+Message-Id: <1310491675-1699-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+From: Ben Greear <greearb@candelatech.com>
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <benny@tonian.com>
+Because struct rpcbind_args *map was declared static, if two
+threads entered this method at the same time, the values
+assigned to map could be sent two two differen tasks.
+This could cause all sorts of problems, include use-after-free
+and double-free of memory.
+
+Fix this by removing the static declaration so that the map
+pointer is on the stack.
+
+Signed-off-by: Ben Greear <greearb@candelatech.com>
 ---
- fs/nfs/blocklayout/extents.c |   47 ++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 47 insertions(+), 0 deletions(-)
+:100644 100644 353234c... 1695c73... M	net/sunrpc/rpcb_clnt.c
+ net/sunrpc/rpcb_clnt.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 4b58412..ed62cd8 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -501,3 +501,50 @@ bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
- 	print_bl_extent(ret);
- 	return ret;
- }
-+
-+/* Helper function to set_to_rw that initialize a new extent */
-+static void
-+_prep_new_extent(struct pnfs_block_extent *new,
-+		 struct pnfs_block_extent *orig,
-+		 sector_t offset, sector_t length, int state)
-+{
-+	kref_init(&new->be_refcnt);
-+	/* don't need to INIT_LIST_HEAD(&new->be_node) */
-+	memcpy(&new->be_devid, &orig->be_devid, sizeof(struct nfs4_deviceid));
-+	new->be_mdev = orig->be_mdev;
-+	new->be_f_offset = offset;
-+	new->be_length = length;
-+	new->be_v_offset = orig->be_v_offset - orig->be_f_offset + offset;
-+	new->be_state = state;
-+	new->be_inval = orig->be_inval;
-+}
-+
-+/* Tries to merge be with extent in front of it in list.
-+ * Frees storage if not used.
-+ */
-+static struct pnfs_block_extent *
-+_front_merge(struct pnfs_block_extent *be, struct list_head *head,
-+	     struct pnfs_block_extent *storage)
-+{
-+	struct pnfs_block_extent *prev;
-+
-+	if (!storage)
-+		goto no_merge;
-+	if (&be->be_node == head || be->be_node.prev == head)
-+		goto no_merge;
-+	prev = list_entry(be->be_node.prev, struct pnfs_block_extent, be_node);
-+	if ((prev->be_f_offset + prev->be_length != be->be_f_offset) ||
-+	    !extents_consistent(prev, be))
-+		goto no_merge;
-+	_prep_new_extent(storage, prev, prev->be_f_offset,
-+			 prev->be_length + be->be_length, prev->be_state);
-+	list_replace(&prev->be_node, &storage->be_node);
-+	bl_put_extent(prev);
-+	list_del(&be->be_node);
-+	bl_put_extent(be);
-+	return storage;
-+
-+ no_merge:
-+	kfree(storage);
-+	return be;
-+}
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 353234c..1695c73 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -600,7 +600,7 @@ void rpcb_getport_async(struct rpc_task *task)
+ 	u32 bind_version;
+ 	struct rpc_xprt *xprt;
+ 	struct rpc_clnt	*rpcb_clnt;
+-	static struct rpcbind_args *map;
++	struct rpcbind_args *map;
+ 	struct rpc_task	*child;
+ 	struct sockaddr_storage addr;
+ 	struct sockaddr *sap = (struct sockaddr *)&addr;
 -- 
-1.7.4.1
+1.7.3.4
 
