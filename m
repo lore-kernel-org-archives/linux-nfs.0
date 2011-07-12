@@ -1,72 +1,134 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:57297 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752491Ab1GZOnt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2011 10:43:49 -0400
-Received: by gwaa18 with SMTP id a18so284191gwa.19
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Jul 2011 07:43:48 -0700 (PDT)
-Message-ID: <4E2ED2A0.4030401@marcanoonline.com>
-Date: Tue, 26 Jul 2011 10:13:44 -0430
-From: Robert Marcano <robert@marcanoonline.com>
+Received: from mx2.netapp.com ([216.240.18.37]:55428 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754107Ab1GLTaI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Jul 2011 15:30:08 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: NFSv4 / POSIX ACL mapping bug?
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Subject: [PATCH 3/8] NFS: Cache rpc_ops in struct nfs_pageio_descriptor
+Date: Tue, 12 Jul 2011 15:29:49 -0400
+Message-Id: <1310498994-12685-4-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1310498994-12685-3-git-send-email-Trond.Myklebust@netapp.com>
+References: <1310498994-12685-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1310498994-12685-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1310498994-12685-3-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi, This question is probably too simple for this nfs developer list, 
-but I am intrigued to know if this is a bug or not, I do not find any 
-other reference to anyone with this problem
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/read.c            |   19 ++++++++-----------
+ fs/nfs/write.c           |   20 +++++++-------------
+ include/linux/nfs_page.h |    1 +
+ 3 files changed, 16 insertions(+), 24 deletions(-)
 
-Ineed some help clarifying this issue in order to know if this is a bug 
-or limits of the NFSv4 / POSIX ACL mapping before reporting it
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index d30d6de..b2e9aad 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -327,6 +327,7 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc, struct list_head
+ 	} while(nbytes != 0);
+ 	atomic_set(&req->wb_complete, requests);
+ 	ClearPageError(page);
++	desc->pg_rpc_callops = &nfs_read_partial_ops;
+ 	return ret;
+ out_bad:
+ 	while (!list_empty(res)) {
+@@ -366,6 +367,7 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc, struct list_head *
+ 
+ 	nfs_read_rpcsetup(req, data, desc->pg_count, 0);
+ 	list_add(&data->list, res);
++	desc->pg_rpc_callops = &nfs_read_full_ops;
+ out:
+ 	return ret;
+ }
+@@ -375,19 +377,14 @@ int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+ 	LIST_HEAD(head);
+ 	int ret;
+ 
+-	if (desc->pg_bsize < PAGE_CACHE_SIZE) {
++	if (desc->pg_bsize < PAGE_CACHE_SIZE)
+ 		ret = nfs_pagein_multi(desc, &head);
+-		if (ret == 0)
+-			ret = nfs_do_multiple_reads(&head,
+-					&nfs_read_partial_ops,
+-					desc->pg_lseg);
+-	} else {
++	else
+ 		ret = nfs_pagein_one(desc, &head);
+-		if (ret == 0)
+-			ret = nfs_do_multiple_reads(&head,
+-					&nfs_read_full_ops,
+-					desc->pg_lseg);
+-	}
++
++	if (ret == 0)
++		ret = nfs_do_multiple_reads(&head, desc->pg_rpc_callops,
++				desc->pg_lseg);
+ 	put_lseg(desc->pg_lseg);
+ 	desc->pg_lseg = NULL;
+ 	return ret;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 89cc687..8fa7def 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -975,6 +975,7 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc, struct list_head
+ 		offset += len;
+ 	} while (nbytes != 0);
+ 	atomic_set(&req->wb_complete, requests);
++	desc->pg_rpc_callops = &nfs_write_partial_ops;
+ 	return ret;
+ 
+ out_bad:
+@@ -1031,6 +1032,7 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc, struct list_head *r
+ 	/* Set up the argument struct */
+ 	nfs_write_rpcsetup(req, data, desc->pg_count, 0, desc->pg_ioflags);
+ 	list_add(&data->list, res);
++	desc->pg_rpc_callops = &nfs_write_full_ops;
+ out:
+ 	return ret;
+ }
+@@ -1040,21 +1042,13 @@ int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ 	LIST_HEAD(head);
+ 	int ret;
+ 
+-	if (desc->pg_bsize < PAGE_CACHE_SIZE) {
++	if (desc->pg_bsize < PAGE_CACHE_SIZE)
+ 		ret = nfs_flush_multi(desc, &head);
+-		if (ret == 0)
+-			ret = nfs_do_multiple_writes(&head,
+-					&nfs_write_partial_ops,
+-					desc->pg_lseg,
+-					desc->pg_ioflags);
+-	} else {
++	else
+ 		ret = nfs_flush_one(desc, &head);
+-		if (ret == 0)
+-			ret = nfs_do_multiple_writes(&head,
+-					&nfs_write_full_ops,
+-					desc->pg_lseg,
+-					desc->pg_ioflags);
+-	}
++	if (ret == 0)
++		ret = nfs_do_multiple_writes(&head, desc->pg_rpc_callops,
++				desc->pg_lseg, desc->pg_ioflags);
+ 	put_lseg(desc->pg_lseg);
+ 	desc->pg_lseg = NULL;
+ 	return ret;
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 9ac2dd1..db3194f 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -74,6 +74,7 @@ struct nfs_pageio_descriptor {
+ 	const struct nfs_pageio_ops *pg_ops;
+ 	int 			pg_ioflags;
+ 	int			pg_error;
++	const struct rpc_call_ops *pg_rpc_callops;
+ 	struct pnfs_layout_segment *pg_lseg;
+ };
+ 
+-- 
+1.7.6
 
-Creating a directory on the server with the following POSIX ACLs, rwx 
-for the group "sharedgroup" and same defaults:
-
-############################################################
-# file: directory
-# owner: root
-# group: root
-user::rwx
-group::r-x
-group:sharedgroup:rwx
-mask::rwx
-other::---
-default:user::rwx
-default:group::r-x
-default:group:sharedgroup:rwx
-default:mask::rwx
-default:other::---
-############################################################
-
-Creating files with the same user with umask 022 on the server an on the 
-NFS client, the files do not get the same POSIX ACL mask:
-
-############################################################
-# file: client
-# owner: test
-# group: testgroup
-user::rw-
-group::r-x                   #effective:r--
-group:sharedgroup:rwx        #effective:r--
-mask::r--
-other::r--
-
-# file: server
-# owner: test
-# group: testgroup
-user::rw-
-group::r-x                   #effective:r--
-group:sharedgroup:rwx        #effective:rw-
-mask::rw-
-other::r--
-############################################################
-
-Is this normal or a bug?, My interpretation is that even that the 
-mapping of the ACLs is not 100% perfect this simple example should not 
-be a problem. Is it impossible using NFS to create a shared directory 
-for a group of users?
-
-Thanks in advance
