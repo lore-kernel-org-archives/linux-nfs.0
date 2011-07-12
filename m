@@ -1,51 +1,148 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:41973 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754460Ab1G0LCr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 07:02:47 -0400
-Subject: [PATCH 0/3] 32/64 bit llseek hashes
-To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
-        adilger@whamcloud.com, tytso@mit.edu
-Date: Wed, 27 Jul 2011 13:02:44 +0200
-Message-ID: <20110727110148.204979.49551.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:55428 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754872Ab1GLTaJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Jul 2011 15:30:09 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 5/8] NFS: Allow the nfs_pageio_descriptor to signal that a re-coalesce is needed
+Date: Tue, 12 Jul 2011 15:29:51 -0400
+Message-Id: <1310498994-12685-6-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1310498994-12685-5-git-send-email-Trond.Myklebust@netapp.com>
+References: <1310498994-12685-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1310498994-12685-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1310498994-12685-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1310498994-12685-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1310498994-12685-5-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-With the ext3/ext4 directory index implementation hashes are used to specify
-offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
-on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
-hashes and therefore the probability of hash collisions for larger directories
-is rather high. As recently reported on the NFS mailing list that theoretical
-problem also happens on real systems:
-http://comments.gmane.org/gmane.linux.nfs/40863
+If an attempt to do pNFS fails, and we have to fall back to writing through
+the MDS, then we may want to re-coalesce the requests that we already have
+since the block size for the MDS read/writes may be different to that of
+the DS read/writes.
 
-The following series adds two new open flags to tell ext4
-to to 32-bit or 64-bit hash values for llseek() calls.
-These flags are then used by NFS to use 32-bit (NFSv2) or 64-bit
-offsets (hashes in case of ext3/ext4) for readdir and seekdir.
-User space does not need to specify these flags, but usually the check
-for is_32bit_api() should be sufficient.
-
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
+ fs/nfs/pagelist.c        |   57 +++++++++++++++++++++++++++++++++++++++++++--
+ include/linux/nfs_page.h |    3 +-
+ 2 files changed, 56 insertions(+), 4 deletions(-)
 
-Bernd Schubert (2):
-      Remove check for a 32-bit cookie in nfsd4_readdir()
-      nfsd: vfs_llseek() with O_32BITHASH or O_64BITHASH
-
-Fan Yong (1):
-      Return 32/64-bit dir name hash according to usage type
-
-
- fs/ext4/dir.c               |  160 ++++++++++++++++++++++++++++++++++---------
- fs/fcntl.c                  |    5 +
- fs/nfsd/nfs4proc.c          |    2 -
- fs/nfsd/vfs.c               |    6 ++
- include/asm-generic/fcntl.h |    9 ++
- 5 files changed, 145 insertions(+), 37 deletions(-)
-
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index d421e19..7139dbf 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -240,6 +240,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 	desc->pg_bsize = bsize;
+ 	desc->pg_base = 0;
+ 	desc->pg_moreio = 0;
++	desc->pg_recoalesce = 0;
+ 	desc->pg_inode = inode;
+ 	desc->pg_ops = pg_ops;
+ 	desc->pg_ioflags = io_flags;
+@@ -331,7 +332,7 @@ static void nfs_pageio_doio(struct nfs_pageio_descriptor *desc)
+  * Returns true if the request 'req' was successfully coalesced into the
+  * existing list of pages 'desc'.
+  */
+-int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
++static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 			   struct nfs_page *req)
+ {
+ 	while (!nfs_pageio_do_add_request(desc, req)) {
+@@ -340,17 +341,67 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 		if (desc->pg_error < 0)
+ 			return 0;
+ 		desc->pg_moreio = 0;
++		if (desc->pg_recoalesce)
++			return 0;
+ 	}
+ 	return 1;
+ }
+ 
++static int nfs_do_recoalesce(struct nfs_pageio_descriptor *desc)
++{
++	LIST_HEAD(head);
++
++	do {
++		list_splice_init(&desc->pg_list, &head);
++		desc->pg_bytes_written -= desc->pg_count;
++		desc->pg_count = 0;
++		desc->pg_base = 0;
++		desc->pg_recoalesce = 0;
++
++		while (!list_empty(&head)) {
++			struct nfs_page *req;
++
++			req = list_first_entry(&head, struct nfs_page, wb_list);
++			nfs_list_remove_request(req);
++			if (__nfs_pageio_add_request(desc, req))
++				continue;
++			if (desc->pg_error < 0)
++				return 0;
++			break;
++		}
++	} while (desc->pg_recoalesce);
++	return 1;
++}
++
++int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
++		struct nfs_page *req)
++{
++	int ret;
++
++	do {
++		ret = __nfs_pageio_add_request(desc, req);
++		if (ret)
++			break;
++		if (desc->pg_error < 0)
++			break;
++		ret = nfs_do_recoalesce(desc);
++	} while (ret);
++	return ret;
++}
++
+ /**
+  * nfs_pageio_complete - Complete I/O on an nfs_pageio_descriptor
+  * @desc: pointer to io descriptor
+  */
+ void nfs_pageio_complete(struct nfs_pageio_descriptor *desc)
+ {
+-	nfs_pageio_doio(desc);
++	for (;;) {
++		nfs_pageio_doio(desc);
++		if (!desc->pg_recoalesce)
++			break;
++		if (!nfs_do_recoalesce(desc))
++			break;
++	}
+ }
+ 
+ /**
+@@ -369,7 +420,7 @@ void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *desc, pgoff_t index)
+ 	if (!list_empty(&desc->pg_list)) {
+ 		struct nfs_page *prev = nfs_list_entry(desc->pg_list.prev);
+ 		if (index != prev->wb_index + 1)
+-			nfs_pageio_doio(desc);
++			nfs_pageio_complete(desc);
+ 	}
+ }
+ 
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index db3194f..7241b2a 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -68,7 +68,8 @@ struct nfs_pageio_descriptor {
+ 	size_t			pg_count;
+ 	size_t			pg_bsize;
+ 	unsigned int		pg_base;
+-	char			pg_moreio;
++	unsigned char		pg_moreio : 1,
++				pg_recoalesce : 1;
+ 
+ 	struct inode		*pg_inode;
+ 	const struct nfs_pageio_ops *pg_ops;
 -- 
-Bernd Schubert
+1.7.6
+
