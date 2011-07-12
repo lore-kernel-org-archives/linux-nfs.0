@@ -1,59 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:9803 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:55415 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754640Ab1GLApb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Jul 2011 20:45:31 -0400
-Date: Mon, 11 Jul 2011 20:47:29 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: bjschuma@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] NFS: Send SIGIO on lost locks
-Message-ID: <20110711204729.7f2433b4@corrin.poochiereds.net>
-In-Reply-To: <1310415144.12660.32.camel@lade.trondhjem.org>
-References: <1310407110-20600-1-git-send-email-bjschuma@netapp.com>
-	<1310407110-20600-2-git-send-email-bjschuma@netapp.com>
-	<20110711160851.13814fa1@tlielax.poochiereds.net>
-	<1310415144.12660.32.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1754107Ab1GLTaF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Jul 2011 15:30:05 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/8] pNFS read/write cleanup
+Date: Tue, 12 Jul 2011 15:29:46 -0400
+Message-Id: <1310498994-12685-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, 11 Jul 2011 16:12:24 -0400
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+The following cleanups apply on top of the nfs-for-next branch, and is
+designed to allow the objects and blocks code to use different read/write
+block sizes than the write-through-MDS.
 
-> On Mon, 2011-07-11 at 16:08 -0400, Jeff Layton wrote: 
-> > On Mon, 11 Jul 2011 13:58:30 -0400
-> > bjschuma@netapp.com wrote:
-> > 
-> > > From: Bryan Schumaker <bjschuma@netapp.com>
-> > > 
-> > > If the client loses a lock, we send SIGIO to the application to notify
-> > > it.  The application can then handle the error from there.
-> > > 
-> > > Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> > 
-> > Would SIGLOST be a better choice? Linux hasn't supported that
-> > historically, but we could add it.
-> 
-> SIGLOST is 'defined' in the kernel as follows:
-> 
-> #define SIGIO           29
-> #define SIGPOLL         SIGIO
-> /*
-> #define SIGLOST         29
-> */
-> 
-> IOW: it is synonymous with SIGPOLL and SIGIO. This explains Bryan's
-> choice.
-> 
-> Cheers
->   Trond
-> 
+It also pushes a lot of the pNFS code back down into pnfs.c where it
+belongs...
 
-Right. I just wonder whether we'd be better off making this a distinct
-signal with its own number. It seems like there would be value in being
-able to distinguish between SIGLOST and SIGIO.
+Cheers
+  Trond
+
+Trond Myklebust (8):
+  NFS: Clean up nfs_read_rpcsetup and nfs_write_rpcsetup
+  NFS: Clean up: split out the RPC transmission from
+    nfs_pagein_multi/one
+  NFS: Cache rpc_ops in struct nfs_pageio_descriptor
+  NFS: Use the nfs_pageio_descriptor->pg_bsize in the read/write
+    request
+  NFS: Allow the nfs_pageio_descriptor to signal that a re-coalesce is
+    needed
+  NFS: Move the pnfs read code into pnfs.c
+  NFS: Move the pnfs write code into pnfs.c
+  NFS: Clean up - simplify the switch to read/write-through-MDS
+
+ fs/nfs/internal.h            |   12 +++--
+ fs/nfs/nfs4filelayout.c      |    9 ++--
+ fs/nfs/objlayout/objio_osd.c |    4 +-
+ fs/nfs/pagelist.c            |   57 +++++++++++++++++++-
+ fs/nfs/pnfs.c                |  118 ++++++++++++++++++++++++++++++++++++++--
+ fs/nfs/pnfs.h                |   20 +------
+ fs/nfs/read.c                |  121 ++++++++++++++++++++++--------------------
+ fs/nfs/write.c               |  119 +++++++++++++++++++++++------------------
+ include/linux/nfs_page.h     |    8 +--
+ include/linux/nfs_xdr.h      |    2 +
+ 10 files changed, 317 insertions(+), 153 deletions(-)
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.6
+
