@@ -1,85 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:50637 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752661Ab1GBI6h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 2 Jul 2011 04:58:37 -0400
-Message-ID: <4E0EDE78.1060208@cn.fujitsu.com>
-Date: Sat, 02 Jul 2011 17:01:44 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/2 v2] nfsd41: error out when client sets maxreq_sz or, maxresp_sz
- too small
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from mx1.redhat.com ([209.132.183.28]:60013 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753934Ab1GLVWe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Jul 2011 17:22:34 -0400
+Message-ID: <4E1CBB11.2090309@RedHat.com>
+Date: Tue, 12 Jul 2011 17:22:25 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: "Gabor Z. Papp" <gzp@papp.hu>, linux-nfs@vger.kernel.org
+Subject: Re: nfs-utils 1.2.4
+References: <x6tyb65wxk@gzp> <4E0E30A7.90209@RedHat.com>
+In-Reply-To: <4E0E30A7.90209@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-According to RFC5661, 18.36.3, 
-
- "if the client selects a value for ca_maxresponsesize such that
-  a replier on a channel could never send a response,the server
-  SHOULD return NFS4ERR_TOOSMALL in the CREATE_SESSION reply."
-
-This patch let server error out when client sets maxreq_sz less than
-SEQUENCE request size, and maxresp_sz less than a SEQUENCE reply size.
-
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
----
- fs/nfsd/nfs4xdr.c |   26 +++++++++++++++++++++++++-
- 1 files changed, 25 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 9901811..bece272 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1135,11 +1135,25 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
- {
- 	DECODE_HEAD;
- 
--	u32 dummy;
-+	struct xdr_buf *xb = &argp->rqstp->rq_arg;
-+	u32 dummy, minreqlen = 0, minresplen = 0;
- 	char *machine_name;
- 	int i;
- 	int nr_secflavs;
- 
-+	/* RPC header length and tag, minorversion, Opt count*/
-+	minreqlen = (char *)argp->p - ((char *)argp->end - xb->len);
-+	/* length with a SEQUENCE operation */
-+	minreqlen = minreqlen + sizeof(struct nfs4_sessionid)
-+		    + 4 * sizeof(__be32);
-+
-+	/* RPC header, status, tag len */
-+	minresplen = argp->rqstp->rq_res.head[0].iov_len + 2 * sizeof(__be32)
-+		     /* tag, opt count, opcode, op status */
-+		     + ALIGN(argp->taglen, 4) + 3 * sizeof(__be32)
-+		     /* sessionid, seqid, 3 * slotid, status*/
-+		     + sizeof(struct nfs4_sessionid) + 5 * sizeof(__be32);
-+
- 	READ_BUF(16);
- 	COPYMEM(&sess->clientid, 8);
- 	READ32(sess->seqid);
-@@ -1149,7 +1163,17 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
- 	READ_BUF(28);
- 	READ32(dummy); /* headerpadsz is always 0 */
- 	READ32(sess->fore_channel.maxreq_sz);
-+	if (sess->fore_channel.maxreq_sz < minreqlen) {
-+		status = nfserr_toosmall;
-+		goto out;
-+	}
-+
- 	READ32(sess->fore_channel.maxresp_sz);
-+	if (sess->fore_channel.maxresp_sz < minresplen) {
-+		status = nfserr_toosmall;
-+		goto out;
-+	}
-+
- 	READ32(sess->fore_channel.maxresp_cached);
- 	READ32(sess->fore_channel.maxops);
- 	READ32(sess->fore_channel.maxreqs);
--- 
-1.7.5.4
 
 
+On 07/01/2011 04:40 PM, Steve Dickson wrote:
+> On 07/01/2011 02:36 AM, Gabor Z. Papp wrote:
+>> lo lo,
+>>
+>> trying to configure nfs-utils 1.2.4 with the options below:
+>>
+>> --disable-gss --disable-kprefix --enable-mount --enable-nfsv3
+>> --disable-nfsv4 --with-statduser=nobody --with-statedir=/var/lib/nfs"
+>> --without-tcp-wrappers --disable-tirpc
+>>
+>> but getting the following error:
+>>
+>> [...]
+>> checking size of socklen_t... 4
+>> configure: error: conditional "CONFIG_NFSIDMAP" was never defined.
+>> Usually this means the macro was only invoked conditionally.
+> The following patch seems to take care of the problem... The 
+> problem stemmed from the use of the --disable-nfsv4, which
+> I will throw into my unit tests... Please let me know
+> if this fixes the problem... 
+> 
+> steved.
+> 
+> 
+> [PATCH] Make sure CONFIG_NFSIDMAP is always defined.
+> 
+> CONFIG_NFSIDMAP always need to be define either
+> negatively or positive whether nfsv4 is or is not
+> defined.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  configure.ac |    6 +++---
+>  1 files changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/configure.ac b/configure.ac
+> index ca12f9e..f8b0796 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -249,6 +249,9 @@ AC_CHECK_FUNC([getservbyname], ,
+>  
+>  AC_CHECK_LIB([crypt], [crypt], [LIBCRYPT="-lcrypt"])
+>  
+> +dnl enable nfsidmap when its support by libnfsidmap
+> +AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$enable_nfsidmap" = "yes"])
+> +
+>  if test "$enable_nfsv4" = yes; then
+>    dnl check for libevent libraries and headers
+>    AC_LIBEVENT
+> @@ -256,9 +259,6 @@ if test "$enable_nfsv4" = yes; then
+>    dnl check for nfsidmap libraries and headers
+>    AC_LIBNFSIDMAP
+>  
+> -  dnl enable nfsidmap when its support by libnfsidmap
+> -  AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$enable_nfsidmap" = "yes"])
+> -
+>    dnl check for the keyutils libraries and headers
+>    AC_KEYUTILS
+>  
+Committed....
 
+steved.
