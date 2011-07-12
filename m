@@ -1,37 +1,58 @@
-From: philippe.deniel@cea.fr
-Subject: Fall Bake-A-Thon 2011 ?
-Date: Mon, 11 Jul 2011 10:48:01 +0200
-Message-ID: <4E1AB8C1.6000403@cea.fr>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 2/2] NFSD: Added TEST_STATEID operation
+Date: Tue, 12 Jul 2011 06:59:46 -0400
+Message-ID: <20110712105946.GB2162@fieldses.org>
+References: <1305922380-8162-1-git-send-email-bjschuma@netapp.com>
+ <1305922380-8162-3-git-send-email-bjschuma@netapp.com>
+ <4E0B81B6.8060005@netapp.com>
+ <20110629195447.GC3279@fieldses.org>
+ <4E0B8C5E.1090505@netapp.com>
+ <20110629204058.GA6894@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-To: linux-nfs@vger.kernel.org, faibish_sorin@emc.com
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Bryan Schumaker <bjschuma@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from sainfoin-out.extra.cea.fr ([132.167.192.144]:34561 "EHLO
-	sainfoin-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751227Ab1GKJYV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jul 2011 05:24:21 -0400
-Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
-	by sainfoin.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.2) with ESMTP id p6B8m2Y3027778
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Mon, 11 Jul 2011 10:48:02 +0200
-Received: from muguet2.intra.cea.fr (muguet2.intra.cea.fr [132.166.192.7])
-	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id p6B8m2xK018276
-	for <linux-nfs@vger.kernel.org>; Mon, 11 Jul 2011 10:48:02 +0200
-	(envelope-from philippe.deniel@cea.fr)
-Received: from zia.esteban.ctsi (esteban.dam.intra.cea.fr [132.165.76.10])
-	by muguet2.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.1) with SMTP id p6B8m1bi009652
-	for <linux-nfs@vger.kernel.org>; Mon, 11 Jul 2011 10:48:01 +0200
+Received: from fieldses.org ([174.143.236.118]:33240 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752948Ab1GLK7s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Jul 2011 06:59:48 -0400
+In-Reply-To: <20110629204058.GA6894@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Wed, Jun 29, 2011 at 04:40:59PM -0400, J. Bruce Fields wrote:
+> On Wed, Jun 29, 2011 at 04:34:38PM -0400, Bryan Schumaker wrote:
+> > On 06/29/2011 03:54 PM, J. Bruce Fields wrote:
+> > > On Wed, Jun 29, 2011 at 03:49:10PM -0400, Bryan Schumaker wrote:
+> > >> On 05/20/2011 04:13 PM, bjschuma@netapp.com wrote:
+> > >>> +__be32
+> > >>> +nfsd4_do_test_stateid(stateid_t *stateid, int flags)
+> > >>> +{
+> > >>> +	__be32 ret = nfs4_validate_stateid(stateid, flags);
+> > >>> +	if (!ret)
+> > >>> +		ret = nfs4_validate_stateid(stateid, flags);
+> > >>> +	return ret;
+> > >>
+> > >> Looking back at this, I'm not convinced that I need to call nfs4_validate_stateid() twice with the same stateid and flags.  What is the status of these patches?  Should I resubmit everything or send in a small patch to fix this?
+> > > 
+> > > Whoops, lazy review on my part....
+> > > 
+> > > Looks like I'd applied that locally but not pushed it out to my public
+> > > tree yet, so I could still take a replacement.
+> > 
+> > Ok, sounds good.
+> > > 
+> > > How are you testing these, by the way?  On second thoughts, I think I
+> > > may have already asked you that, and forgotten the answer, so don't
+> > > bother answering here--just add some text to the changelog and then I'll
+> > > know how to find the answer next time.
+> > 
+> > I found this as I was going through my fault injection code.  I'm going to double check these with my fault injection changes and then try to send in updates for both next week.
+> 
+> Sounds good, thanks Bryan.--b.
 
-does someone know if there will be a Fall bake-A-Thon this year ? If 
-yes, what are the dates for this event ?
+Are those still on the way?  (Or did you send and I missed them?  If so,
+if you wouldn't mind resending....)
 
-    Regards
-
-       Philippe
-
-PS: I cc'ed Sorin to this message (he'll probably receive this message 
-twice because he probably belongs to this list).
+--b.
