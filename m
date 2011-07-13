@@ -1,81 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:23710 "EHLO mx2.netapp.com"
+Received: from citi.umich.edu ([141.212.112.111]:56148 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753040Ab1G2WEN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 18:04:13 -0400
-Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Justin Piszcz <jpiszcz@lucidpixels.com>
-Cc: Bryan Schumaker <bjschuma@netapp.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Date: Fri, 29 Jul 2011 18:03:36 -0400
-In-Reply-To: <alpine.DEB.2.02.1107291656340.25432@p34.internal.lan>
-References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan>
-	   <20110727160752.GC974@fieldses.org>
-	   <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan>
-	   <20110727181111.GA23009@infradead.org>
-	   <alpine.DEB.2.02.1107271530340.1451@p34.internal.lan>
-	 <20110727193937.GA5354@infradead.org>
-	   <alpine.DEB.2.02.1107271540100.1451@p34.internal.lan>
-	   <20110727194722.GA9345@infradead.org>
-	   <1311799021.25645.41.camel@lade.trondhjem.org>
-	   <1311800051.25645.43.camel@lade.trondhjem.org>
-	  <1311800195.25645.45.camel@lade.trondhjem.org>
-	  <alpine.DEB.2.02.1107271723500.25432@p34.internal.lan>
-	  <alpine.DEB.2.02.1107271844100.25432@p34.internal.lan>
-	 <1311886137.27285.2.camel@lade.trondhjem.org> <4E331D86.7060801@netapp.com>
-	 <alpine.DEB.2.02.1107291656340.25432@p34.internal.lan>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1311977016.16078.10.camel@lade.trondhjem.org>
+	id S1756388Ab1GMQy0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Jul 2011 12:54:26 -0400
+From: Kevin Coffman <kwc@citi.umich.edu>
+Subject: [PATCH] svcgssd: use correct defaults in call to
+ gss_set_allowable_enctypes
+To: steved@redhat.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Date: Wed, 13 Jul 2011 12:54:26 -0400
+Message-ID: <20110713165425.7469.23269.stgit@jazz.citi.umich.edu>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2011-07-29 at 16:59 -0400, Justin Piszcz wrote: 
-> On Fri, 29 Jul 2011, Bryan Schumaker wrote:
-> 
-> > How does this look for printing out more information when a cookie loop is detected?  Is there anything else that should be printed out?  My patch applies on top of Trond's from yesterday.
-> 
-> 
-> Hi,
-> 
-> This fails against 2.6.38:
-> 
-> patching file fs/nfs/dir.c
-> Hunk #1 FAILED at 134.
-> Hunk #2 FAILED at 173.
-> Hunk #3 FAILED at 323.
-> Hunk #4 FAILED at 336.
-> Hunk #5 FAILED at 349.
-> Hunk #6 succeeded at 320 (offset -48 lines).
-> Hunk #7 FAILED at 741.
-> Hunk #8 succeeded at 716 (offset -59 lines).
-> Hunk #9 succeeded at 749 (offset -59 lines).
-> Hunk #10 succeeded at 763 (offset -59 lines).
-> 6 out of 10 hunks FAILED -- saving rejects to file fs/nfs/dir.c.rej
-> patching file include/linux/nfs_fs.h
-> Hunk #1 FAILED at 99.
-> 1 out of 1 hunk FAILED -- saving rejects to file include/linux/nfs_fs.h.rej
-> atom:/usr/src/linux#
-> 
-> And the 3.0 kernel is broken for my wireless adapter:
-> http://www.gossamer-threads.com/lists/linux/kernel/1411576
-> 
-> If you can make a combined patch for 2.6.38 I can try it, 2.6.39+ have a
-> horrible driver (rt2800usb) and 1 person emailed me as well stating the
-> same thing off-list (they stick with the manufacturer's driver or the *sta
-> one).
+For the window of kernels between 2.6.35 (when the support
+for newer encryption was added) and 2.6.39 (when the ability
+to read the supported enctypes from the kernel was added),
+use a default of all enctypes when the kernel supported
+enctypes file cannot be read.
 
-I don't understand. The readdir loop detection code was first merged
-upstream in 2.6.39. 2.6.38 doesn't report any loops...
+For kernels before 2.6.35, continue to use a default of
+only DES enctypes.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Note that the version of Kerberos must also support the use of
+gss_set_allowable_enctypes for service-side negotiations.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+See also: http://bugzilla.redhat.com/show_bug.cgi?id=719776
+
+Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
+---
+
+ utils/gssd/svcgssd_krb5.c |   37 ++++++++++++++++++++++++++++++-------
+ 1 files changed, 30 insertions(+), 7 deletions(-)
+
+diff --git a/utils/gssd/svcgssd_krb5.c b/utils/gssd/svcgssd_krb5.c
+index fc67a6f..6c34faf 100644
+--- a/utils/gssd/svcgssd_krb5.c
++++ b/utils/gssd/svcgssd_krb5.c
+@@ -45,6 +45,7 @@
+ #include "gss_oids.h"
+ #include "err_util.h"
+ #include "svcgssd_krb5.h"
++#include "../mount/version.h"
+ 
+ #define MYBUFLEN 1024
+ 
+@@ -169,22 +170,44 @@ svcgssd_limit_krb5_enctypes(void)
+ {
+ #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
+ 	u_int maj_stat, min_stat;
+-	krb5_enctype default_enctypes[] = { ENCTYPE_DES_CBC_CRC,
+-					    ENCTYPE_DES_CBC_MD5,
+-					    ENCTYPE_DES_CBC_MD4 };
+-	int default_num_enctypes =
+-		sizeof(default_enctypes) / sizeof(default_enctypes[0]);
+-	krb5_enctype *enctypes;
+-	int num_enctypes;
++	krb5_enctype old_kernel_enctypes[] = {
++		ENCTYPE_DES_CBC_CRC,
++		ENCTYPE_DES_CBC_MD5,
++		ENCTYPE_DES_CBC_MD4 };
++	krb5_enctype new_kernel_enctypes[] = {
++		ENCTYPE_AES256_CTS_HMAC_SHA1_96,
++		ENCTYPE_AES128_CTS_HMAC_SHA1_96,
++		ENCTYPE_DES3_CBC_SHA1,
++		ENCTYPE_ARCFOUR_HMAC,
++		ENCTYPE_DES_CBC_CRC,
++		ENCTYPE_DES_CBC_MD5,
++		ENCTYPE_DES_CBC_MD4 };
++	krb5_enctype *default_enctypes, *enctypes;
++	int default_num_enctypes, num_enctypes;
++
++
++	if (linux_version_code() < MAKE_VERSION(2, 6, 35)) {
++		default_enctypes = old_kernel_enctypes;
++		default_num_enctypes =
++			sizeof(old_kernel_enctypes) / sizeof(old_kernel_enctypes[0]);
++	} else {
++		default_enctypes = new_kernel_enctypes;
++		default_num_enctypes =
++			sizeof(new_kernel_enctypes) / sizeof(new_kernel_enctypes[0]);
++	}
+ 
+ 	get_kernel_supported_enctypes();
+ 
+ 	if (parsed_enctypes != NULL) {
+ 		enctypes = parsed_enctypes;
+ 		num_enctypes = parsed_num_enctypes;
++		printerr(2, "%s: Calling gss_set_allowable_enctypes with %d "
++			"enctypes from the kernel\n", __func__, num_enctypes);
+ 	} else {
+ 		enctypes = default_enctypes;
+ 		num_enctypes = default_num_enctypes;
++		printerr(2, "%s: Calling gss_set_allowable_enctypes with %d "
++			"enctypes from defaults\n", __func__, num_enctypes);
+ 	}
+ 
+ 	maj_stat = gss_set_allowable_enctypes(&min_stat, gssd_creds,
 
