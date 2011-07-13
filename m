@@ -1,225 +1,305 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:46594 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753684Ab1GUTee (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 15:34:34 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v2 03/25] NFS41: Let layoutcommit handle multiple segments
-Date: Thu, 21 Jul 2011 15:34:03 -0400
-Message-Id: <1311276865-29484-4-git-send-email-rees@umich.edu>
-In-Reply-To: <1311276865-29484-1-git-send-email-rees@umich.edu>
-References: <1311276865-29484-1-git-send-email-rees@umich.edu>
+Received: from mx2.netapp.com ([216.240.18.37]:10766 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754548Ab1GMOuv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Jul 2011 10:50:51 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v5 0/2]  NFSD: add FREE_STATEID and TEST_STATEID operations
+Date: Wed, 13 Jul 2011 10:50:47 -0400
+Message-Id: <1310568648-11109-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1310568648-11109-1-git-send-email-bjschuma@netapp.com>
+References: <1310568648-11109-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Peng Tao <bergwolf@gmail.com>
+This operation is used by the client to tell the server to free a
+stateid.
 
-Some layout drivers like block will have multiple segments.  Generic code
-should be able to handle it.  Layoutcommit takes a list of segments and last
-write offset is saved at inode level.
-
-Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/nfs4filelayout.c |    2 +-
- fs/nfs/nfs4proc.c       |    8 ++++++-
- fs/nfs/pnfs.c           |   50 ++++++++++++++++++++++++----------------------
- fs/nfs/pnfs.h           |    5 +++-
- include/linux/nfs_xdr.h |    2 +-
- 5 files changed, 39 insertions(+), 28 deletions(-)
+ fs/nfsd/nfs4proc.c  |    5 ++
+ fs/nfsd/nfs4state.c |  118 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs4xdr.c   |   32 +++++++++++++-
+ fs/nfsd/xdr4.h      |    8 +++
+ 4 files changed, 161 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index be93a62..e8915d4 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -170,7 +170,7 @@ filelayout_set_layoutcommit(struct nfs_write_data *wdata)
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 3a6dbd7..7e00116 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1412,6 +1412,11 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = OP_HANDLES_WRONGSEC,
+ 		.op_name = "OP_SECINFO_NO_NAME",
+ 	},
++	[OP_FREE_STATEID] = {
++		.op_func = (nfsd4op_func)nfsd4_free_stateid,
++		.op_flags = ALLOWED_WITHOUT_FH,
++		.op_name = "OP_FREE_STATEID",
++	},
+ };
  
- 	pnfs_set_layoutcommit(wdata);
- 	dprintk("%s ionde %lu pls_end_pos %lu\n", __func__, wdata->inode->i_ino,
--		(unsigned long) wdata->lseg->pls_end_pos);
-+		(unsigned long) NFS_I(wdata->inode)->layout->plh_lwb);
+ static const char *nfsd4_op_name(unsigned opnum)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e98f3c2..55c36e2 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -60,9 +60,12 @@ static u64 current_sessionid = 1;
+ 
+ /* forward declarations */
+ static struct nfs4_stateid * find_stateid(stateid_t *stid, int flags);
++static struct nfs4_stateid * search_for_stateid(stateid_t *stid);
++static struct nfs4_delegation * search_for_delegation(stateid_t *stid);
+ static struct nfs4_delegation * find_delegation_stateid(struct inode *ino, stateid_t *stid);
+ static char user_recovery_dirname[PATH_MAX] = "/var/lib/nfs/v4recovery";
+ static void nfs4_set_recdir(char *recdir);
++static int check_for_locks(struct nfs4_file *filp, struct nfs4_stateowner *lowner);
+ 
+ /* Locking: */
+ 
+@@ -3137,6 +3140,11 @@ static int is_delegation_stateid(stateid_t *stateid)
+ 	return stateid->si_fileid == 0;
  }
  
- /*
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8ceda46..784c1a2 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5962,9 +5962,15 @@ nfs4_layoutcommit_done(struct rpc_task *task, void *calldata)
- static void nfs4_layoutcommit_release(void *calldata)
- {
- 	struct nfs4_layoutcommit_data *data = calldata;
-+	struct pnfs_layout_segment *lseg, *tmp;
- 
- 	/* Matched by references in pnfs_set_layoutcommit */
--	put_lseg(data->lseg);
-+	list_for_each_entry_safe(lseg, tmp, &data->lseg_list, pls_lc_list) {
-+		list_del_init(&lseg->pls_lc_list);
-+		if (test_and_clear_bit(NFS_LSEG_LAYOUTCOMMIT,
-+				       &lseg->pls_flags))
-+			put_lseg(lseg);
-+	}
- 	put_rpccred(data->cred);
- 	kfree(data);
- }
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 8e72724..dae19dd 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -236,6 +236,7 @@ static void
- init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
- {
- 	INIT_LIST_HEAD(&lseg->pls_list);
-+	INIT_LIST_HEAD(&lseg->pls_lc_list);
- 	atomic_set(&lseg->pls_refcount, 1);
- 	smp_mb();
- 	set_bit(NFS_LSEG_VALID, &lseg->pls_flags);
-@@ -1362,16 +1363,17 @@ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_readpages);
- 
- /*
-- * Currently there is only one (whole file) write lseg.
-+ * There can be multiple RW segments.
-  */
--static struct pnfs_layout_segment *pnfs_list_write_lseg(struct inode *inode)
-+static void pnfs_list_write_lseg(struct inode *inode, struct list_head *listp)
- {
--	struct pnfs_layout_segment *lseg, *rv = NULL;
-+	struct pnfs_layout_segment *lseg;
- 
--	list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list)
--		if (lseg->pls_range.iomode == IOMODE_RW)
--			rv = lseg;
--	return rv;
-+	list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list) {
-+		if (lseg->pls_range.iomode == IOMODE_RW &&
-+		    test_bit(NFS_LSEG_LAYOUTCOMMIT, &lseg->pls_flags))
-+			list_add(&lseg->pls_lc_list, listp);
-+	}
- }
- 
- void
-@@ -1383,17 +1385,21 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
- 
- 	spin_lock(&nfsi->vfs_inode.i_lock);
- 	if (!test_and_set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
--		/* references matched in nfs4_layoutcommit_release */
--		get_lseg(wdata->lseg);
--		wdata->lseg->pls_lc_cred =
--			get_rpccred(wdata->args.context->state->owner->so_cred);
- 		mark_as_dirty = true;
-+		nfsi->layout->plh_lc_cred =
-+			get_rpccred(wdata->args.context->state->owner->so_cred);
- 		dprintk("%s: Set layoutcommit for inode %lu ",
- 			__func__, wdata->inode->i_ino);
- 	}
--	if (end_pos > wdata->lseg->pls_end_pos)
--		wdata->lseg->pls_end_pos = end_pos;
-+	if (!test_and_set_bit(NFS_LSEG_LAYOUTCOMMIT, &wdata->lseg->pls_flags)) {
-+		/* references matched in nfs4_layoutcommit_release */
-+		get_lseg(wdata->lseg);
-+	}
-+	if (end_pos > nfsi->layout->plh_lwb)
-+		nfsi->layout->plh_lwb = end_pos;
- 	spin_unlock(&nfsi->vfs_inode.i_lock);
-+	dprintk("%s: lseg %p end_pos %llu\n",
-+		__func__, wdata->lseg, nfsi->layout->plh_lwb);
- 
- 	/* if pnfs_layoutcommit_inode() runs between inode locks, the next one
- 	 * will be a noop because NFS_INO_LAYOUTCOMMIT will not be set */
-@@ -1415,7 +1421,6 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- {
- 	struct nfs4_layoutcommit_data *data;
- 	struct nfs_inode *nfsi = NFS_I(inode);
--	struct pnfs_layout_segment *lseg;
- 	struct rpc_cred *cred;
- 	loff_t end_pos;
- 	int status = 0;
-@@ -1433,29 +1438,26 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- 		goto out;
- 	}
- 
-+	INIT_LIST_HEAD(&data->lseg_list);
- 	spin_lock(&inode->i_lock);
- 	if (!test_and_clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
- 		spin_unlock(&inode->i_lock);
- 		kfree(data);
- 		goto out;
- 	}
--	/*
--	 * Currently only one (whole file) write lseg which is referenced
--	 * in pnfs_set_layoutcommit and will be found.
--	 */
--	lseg = pnfs_list_write_lseg(inode);
- 
--	end_pos = lseg->pls_end_pos;
--	cred = lseg->pls_lc_cred;
--	lseg->pls_end_pos = 0;
--	lseg->pls_lc_cred = NULL;
-+	pnfs_list_write_lseg(inode, &data->lseg_list);
++static int is_open_stateid(struct nfs4_stateid *stateid)
++{
++	return stateid->st_openstp == NULL;
++}
 +
-+	end_pos = nfsi->layout->plh_lwb;
-+	cred = nfsi->layout->plh_lc_cred;
-+	nfsi->layout->plh_lwb = 0;
-+	nfsi->layout->plh_lc_cred = NULL;
+ /*
+ * Checks for stateid operations
+ */
+@@ -3216,6 +3224,70 @@ out:
+ 	return status;
+ }
  
- 	memcpy(&data->args.stateid.data, nfsi->layout->plh_stateid.data,
- 		sizeof(nfsi->layout->plh_stateid.data));
- 	spin_unlock(&inode->i_lock);
++static __be32
++nfsd4_free_delegation_stateid(stateid_t *stateid)
++{
++	struct nfs4_delegation *dp = search_for_delegation(stateid);
++	if (dp)
++		return nfserr_locks_held;
++	return nfserr_bad_stateid;
++}
++
++static __be32
++nfsd4_free_lock_stateid(struct nfs4_stateid *stp)
++{
++	if (check_for_locks(stp->st_file, stp->st_stateowner))
++		return nfserr_locks_held;
++	release_lock_stateid(stp);
++	return nfs_ok;
++}
++
++/*
++ * Free a state id
++ */
++__be32
++nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
++		   struct nfsd4_free_stateid *free_stateid)
++{
++	stateid_t *stateid = &free_stateid->fr_stateid;
++	struct nfs4_stateid *stp;
++	__be32 ret;
++
++	nfs4_lock_state();
++	if (is_delegation_stateid(stateid)) {
++		ret = nfsd4_free_delegation_stateid(stateid);
++		goto out;
++	}
++
++	stp = search_for_stateid(stateid);
++	if (!stp) {
++		ret = nfserr_bad_stateid;
++		goto out;
++	}
++	if (stateid->si_generation != 0) {
++		if (stateid->si_generation < stp->st_stateid.si_generation) {
++			ret = nfserr_old_stateid;
++			goto out;
++		}
++		if (stateid->si_generation > stp->st_stateid.si_generation) {
++			ret = nfserr_bad_stateid;
++			goto out;
++		}
++	}
++
++	if (is_open_stateid(stp)) {
++		ret = nfserr_locks_held;
++		goto out;
++	} else {
++		ret = nfsd4_free_lock_stateid(stp);
++		goto out;
++	}
++
++out:
++	nfs4_unlock_state();
++	return ret;
++}
++
+ static inline int
+ setlkflg (int type)
+ {
+@@ -3594,6 +3666,14 @@ static struct list_head lock_ownerid_hashtbl[LOCK_HASH_SIZE];
+ static struct list_head	lock_ownerstr_hashtbl[LOCK_HASH_SIZE];
+ static struct list_head lockstateid_hashtbl[STATEID_HASH_SIZE];
  
- 	data->args.inode = inode;
--	data->lseg = lseg;
- 	data->cred = cred;
- 	nfs_fattr_init(&data->fattr);
- 	data->args.bitmask = NFS_SERVER(inode)->cache_consistency_bitmask;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 23d8267..5f1b532 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -36,16 +36,17 @@
- enum {
- 	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
- 	NFS_LSEG_ROC,		/* roc bit received from server */
-+	NFS_LSEG_LAYOUTCOMMIT,	/* layoutcommit bit set for layoutcommit */
++static int
++same_stateid(stateid_t *id_one, stateid_t *id_two)
++{
++	if (id_one->si_stateownerid != id_two->si_stateownerid)
++		return 0;
++	return id_one->si_fileid == id_two->si_fileid;
++}
++
+ static struct nfs4_stateid *
+ find_stateid(stateid_t *stid, int flags)
+ {
+@@ -3623,6 +3703,44 @@ find_stateid(stateid_t *stid, int flags)
+ 	return NULL;
+ }
+ 
++static struct nfs4_stateid *
++search_for_stateid(stateid_t *stid)
++{
++	struct nfs4_stateid *local;
++	unsigned int hashval = stateid_hashval(stid->si_stateownerid, stid->si_fileid);
++
++	list_for_each_entry(local, &lockstateid_hashtbl[hashval], st_hash) {
++		if (same_stateid(&local->st_stateid, stid))
++			return local;
++	}
++
++	list_for_each_entry(local, &stateid_hashtbl[hashval], st_hash) {
++		if (same_stateid(&local->st_stateid, stid))
++			return local;
++	}
++	return NULL;
++}
++
++static struct nfs4_delegation *
++search_for_delegation(stateid_t *stid)
++{
++	struct nfs4_file *fp;
++	struct nfs4_delegation *dp;
++	struct list_head *pos;
++	int i;
++
++	for (i = 0; i < FILE_HASH_SIZE; i++) {
++		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
++			list_for_each(pos, &fp->fi_delegations) {
++				dp = list_entry(pos, struct nfs4_delegation, dl_perfile);
++				if (same_stateid(&dp->dl_stateid, stid))
++					return dp;
++			}
++		}
++	}
++	return NULL;
++}
++
+ static struct nfs4_delegation *
+ find_delegation_stateid(struct inode *ino, stateid_t *stid)
+ {
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 9901811..ef9bd6f 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1246,6 +1246,19 @@ nfsd4_decode_destroy_session(struct nfsd4_compoundargs *argp,
+ }
+ 
+ static __be32
++nfsd4_decode_free_stateid(struct nfsd4_compoundargs *argp,
++			  struct nfsd4_free_stateid *free_stateid)
++{
++	DECODE_HEAD;
++
++	READ_BUF(sizeof(stateid_t));
++	READ32(free_stateid->fr_stateid.si_generation);
++	COPYMEM(&free_stateid->fr_stateid.si_opaque, sizeof(stateid_opaque_t));
++
++	DECODE_TAIL;
++}
++
++static __be32
+ nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
+ 		      struct nfsd4_sequence *seq)
+ {
+@@ -1370,7 +1383,7 @@ static nfsd4_dec nfsd41_dec_ops[] = {
+ 	[OP_EXCHANGE_ID]	= (nfsd4_dec)nfsd4_decode_exchange_id,
+ 	[OP_CREATE_SESSION]	= (nfsd4_dec)nfsd4_decode_create_session,
+ 	[OP_DESTROY_SESSION]	= (nfsd4_dec)nfsd4_decode_destroy_session,
+-	[OP_FREE_STATEID]	= (nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_FREE_STATEID]	= (nfsd4_dec)nfsd4_decode_free_stateid,
+ 	[OP_GET_DIR_DELEGATION]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_GETDEVICEINFO]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_GETDEVICELIST]	= (nfsd4_dec)nfsd4_decode_notsupp,
+@@ -3116,6 +3129,21 @@ nfsd4_encode_destroy_session(struct nfsd4_compoundres *resp, int nfserr,
+ }
+ 
+ static __be32
++nfsd4_encode_free_stateid(struct nfsd4_compoundres *resp, int nfserr,
++			  struct nfsd4_free_stateid *free_stateid)
++{
++	__be32 *p;
++
++	if (nfserr)
++		return nfserr;
++
++	RESERVE_SPACE(4);
++	WRITE32(nfserr);
++	ADJUST_ARGS();
++	return nfserr;
++}
++
++static __be32
+ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
+ 		      struct nfsd4_sequence *seq)
+ {
+@@ -3196,7 +3224,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+ 	[OP_EXCHANGE_ID]	= (nfsd4_enc)nfsd4_encode_exchange_id,
+ 	[OP_CREATE_SESSION]	= (nfsd4_enc)nfsd4_encode_create_session,
+ 	[OP_DESTROY_SESSION]	= (nfsd4_enc)nfsd4_encode_destroy_session,
+-	[OP_FREE_STATEID]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_FREE_STATEID]	= (nfsd4_enc)nfsd4_encode_free_stateid,
+ 	[OP_GET_DIR_DELEGATION]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_GETDEVICEINFO]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_GETDEVICELIST]	= (nfsd4_enc)nfsd4_encode_noop,
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 366401e..ed1784d 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -342,6 +342,11 @@ struct nfsd4_setclientid_confirm {
+ 	nfs4_verifier	sc_confirm;
  };
  
- struct pnfs_layout_segment {
- 	struct list_head pls_list;
-+	struct list_head pls_lc_list;
- 	struct pnfs_layout_range pls_range;
- 	atomic_t pls_refcount;
- 	unsigned long pls_flags;
- 	struct pnfs_layout_hdr *pls_layout;
- 	struct rpc_cred	*pls_lc_cred; /* LAYOUTCOMMIT credential */
--	loff_t pls_end_pos; /* LAYOUTCOMMIT write end */
++struct nfsd4_free_stateid {
++	stateid_t	fr_stateid;         /* request */
++	__be32		fr_status;          /* response */
++};
++
+ /* also used for NVERIFY */
+ struct nfsd4_verify {
+ 	u32		ve_bmval[3];        /* request */
+@@ -432,6 +437,7 @@ struct nfsd4_op {
+ 		struct nfsd4_destroy_session	destroy_session;
+ 		struct nfsd4_sequence		sequence;
+ 		struct nfsd4_reclaim_complete	reclaim_complete;
++		struct nfsd4_free_stateid	free_stateid;
+ 	} u;
+ 	struct nfs4_replay *			replay;
  };
+@@ -564,6 +570,8 @@ extern __be32 nfsd4_delegreturn(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *, struct nfsd4_delegreturn *dr);
+ extern __be32 nfsd4_renew(struct svc_rqst *rqstp,
+ 			  struct nfsd4_compound_state *, clientid_t *clid);
++extern __be32 nfsd4_free_stateid(struct svc_rqst *rqstp,
++		struct nfsd4_compound_state *, struct nfsd4_free_stateid *free_stateid);
+ #endif
  
- enum pnfs_try_status {
-@@ -128,6 +129,8 @@ struct pnfs_layout_hdr {
- 	unsigned long		plh_block_lgets; /* block LAYOUTGET if >0 */
- 	u32			plh_barrier; /* ignore lower seqids */
- 	unsigned long		plh_flags;
-+	loff_t			plh_lwb; /* last write byte for layoutcommit */
-+	struct rpc_cred		*plh_lc_cred; /* layoutcommit cred */
- 	struct inode		*plh_inode;
- };
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index a07b682..21f333e 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -273,7 +273,7 @@ struct nfs4_layoutcommit_res {
- struct nfs4_layoutcommit_data {
- 	struct rpc_task task;
- 	struct nfs_fattr fattr;
--	struct pnfs_layout_segment *lseg;
-+	struct list_head lseg_list;
- 	struct rpc_cred *cred;
- 	struct nfs4_layoutcommit_args args;
- 	struct nfs4_layoutcommit_res res;
+ /*
 -- 
-1.7.4.1
+1.7.6
 
