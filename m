@@ -1,48 +1,27 @@
-From: Thomas Haynes <thomas@netapp.com>
-Subject: Re: Fall Bake-A-Thon 2011 ?
-Date: Tue, 12 Jul 2011 11:09:59 -0700
-Message-ID: <E51C8A78-EA4A-40C0-8512-29FED49931FD@netapp.com>
-References: <4E1AB8C1.6000403@cea.fr>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Cc: NFS list <linux-nfs@vger.kernel.org>, faibish_sorin@emc.com,
-	nfsv4@ietf.org
-To: philippe.deniel@cea.fr
+From: Dean <seattleplus@gmail.com>
+Subject: Linux pNFS status meeting 7/14/11
+Date: Wed, 13 Jul 2011 10:47:30 -0700
+Message-ID: <4E1DDA32.9000509@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:26545 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754638Ab1GLSKG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Jul 2011 14:10:06 -0400
-In-Reply-To: <4E1AB8C1.6000403@cea.fr>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:59369 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964816Ab1GMRrh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jul 2011 13:47:37 -0400
+Received: by iwn6 with SMTP id 6so5810441iwn.19
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2011 10:47:36 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Meeting on Thursday 7/14/11 at 9:30 AM PST (12:30 PM EST)
 
-On Jul 11, 2011, at 1:48 AM, philippe.deniel@cea.fr wrote:
+USA Toll-Free: 888-426-6840
+USA Caller Paid: 215-861-6239
+Israel Toll-Free: 1-809-417-783
 
-> Hi,
-> 
-> does someone know if there will be a Fall bake-A-Thon this year ? If yes, what are the dates for this event ?
-> 
->   Regards
-> 
->      Philippe
-> 
-> PS: I cc'ed Sorin to this message (he'll probably receive this message twice because he probably belongs to this list).
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Participant Code: 8792872
 
-
-
-Philippe,
-
-The NFSv4 WG alias is better place for questions on Bakeathons.
-
-In any event, it will be at the NetApp campus in Sunnyvale, CA
-during the week of October 17th - 21st.
-
-Thanks,
-Tom
-
+Dean Hildebrand
+IBM
