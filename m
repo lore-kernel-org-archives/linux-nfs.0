@@ -1,38 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:22148 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:35890 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751223Ab1GYPS2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Jul 2011 11:18:28 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p6PFISTU008170
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 25 Jul 2011 11:18:28 -0400
-Message-ID: <4E2D8942.9020602@RedHat.com>
-Date: Mon, 25 Jul 2011 11:18:26 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Max Matveev <makc@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Ben England <bengland@redhat.com>
-Subject: Re: [PATCH] RDMA: Increasing RPCRDMA_MAX_DATA_SEGS
-References: <1311270542-2021-1-git-send-email-steved@redhat.com> <20009.12921.103429.724673@regina.usersys.redhat.com>
-In-Reply-To: <20009.12921.103429.724673@regina.usersys.redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1752643Ab1GMHeh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Jul 2011 03:34:37 -0400
+Date: Wed, 13 Jul 2011 17:34:26 +1000
+From: NeilBrown <neilb@suse.de>
+To: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <SteveD@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: mounting via udp from legacy multi-homed servers...
+Message-ID: <20110713173426.03576562@notabene.brown>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Sorry for the delayed response... I took a day off..  
 
-On 07/22/2011 04:19 AM, Max Matveev wrote:
-> On Thu, 21 Jul 2011 13:49:02 -0400, Steve Dickson wrote:
-> 
->  steved> Our performance team has noticed that increasing
->  steved> RPCRDMA_MAX_DATA_SEGS from 8 to 64 significantly
->  steved> increases throughput when using the RDMA transport.
-> 
-> Did they try new client with old server and vice versa?
-> Both read and write?
-I believe it was done on the server side, but I've cc-ed the
-person who did the testing.... 
 
-steved.
+This problem doesn't seem to go away, does it :-(
+
+
+While modern Linux always replies to UDP requests from the same address that
+the request was sent to, some legacy systems do not, and some customers use
+these legacy systems and cannot upgrade.
+
+And as they are legacy systems, it is often the case that UDP is more
+performant than TCP.
+
+nfs-utils always uses a connected UDP socket to talk to servers (which I think
+is correct so we get errors when reported by ICMP-unreachable messages) and so
+fails to talk to these legacy systems (when UDP is requested).
+
+I had such a case recently and managed to make it work by using:
+
+   proto=udp,mountproto=tcp,port=2049
+
+By setting mountproto=tcp, nfs-utils uses tcp for almost all communication
+with the server.
+The one little problem is that mount does a portmap lookup to check the
+port number to talk to the NFS server and seeing we requested UDP for NFS,
+it talks to portmap via UDP and never sees the reply.
+Setting "port=2049" avoids this lookup so the mount succeeds.
+
+We could just decide that that is the way it is, document that this is how to
+talk to systems over UDP when they have a broken portmaper and move on.
+
+But it would be nice if we could find a way to make a solution less ugly and
+easier to find.
+
+So some thoughts:
+
+1/ We could use tcp for all rpcbind lookups if tcp was requested for either
+   MOUNT or NFS.
+
+2/ If '-v' was given and a UDP lookup to portmap timedout, we could retry
+   without connecting (and with a shorter timeout), and print an explanatory 
+   message if that succeeded.
+
+3/ We could have a mount option "bindproto=tcp" or maybe "bind=noconnect"
+   which could be recommended by the above explanatory message.
+
+
+Does anyone else have any good ideas, or any deep aversions to any of the
+above.
+I'm tempted to go for '1' and possibly add '2', but not bother with '3'.
+
+??
+
+Thanks,
+NeilBrown
