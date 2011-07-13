@@ -1,54 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41497 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:10766 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754585Ab1GNNQt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Jul 2011 09:16:49 -0400
-Date: Thu, 14 Jul 2011 09:16:47 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: krb5 failures with recent nfs-utils
-Message-ID: <20110714131647.GC13000@fieldses.org>
-References: <20110713225939.GA13000@fieldses.org>
- <4E1E9725.5020707@desy.de>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E1E9725.5020707@desy.de>
+	id S1754548Ab1GMOuu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Jul 2011 10:50:50 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v5 0/2]  NFSD: add FREE_STATEID and TEST_STATEID operations
+Date: Wed, 13 Jul 2011 10:50:46 -0400
+Message-Id: <1310568648-11109-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, Jul 14, 2011 at 09:13:41AM +0200, Tigran Mkrtchyan wrote:
-> On 07/14/2011 12:59 AM, J. Bruce Fields wrote:
-> >On Fedora 15 I'm seeing odd krb5 behavior: the context initialization
-> >appears to work fine, but then gssd sends a malformed RPCSEC_GSS_DESTROY
-> >packet just before closing the connection.  The client's first operation
-> >to the server using the context is rejected because the server's mic
-> >verification fails.
-> >
-> >Has anyone else seen this?
-> 
-> I have reported the same issue couple of weeks ago
-> 
-> http://www.spinics.net/lists/linux-nfs/msg22142.html
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-I thought it looked familiar....
+These patches add FREE_STATEID and TEST_STATEID to the NFS server.  I initially
+tested them by hard coding calls both before and after the client completes a
+CLOSE operation.  Eventually, I modified the client's state recovery code to
+place these calls.  I would turn off networking on the client for two minutes
+so it would expired on the server and force recovery once networking was
+reenabled.
 
-> I use suse 11.4 x86_64 and can reproduce it with native kernel
-> 2.6.37.xxx and 3.0.0-rc5.
-> 
-> To me it looks like that in rpc packet missing verifier.
+I later added in a fault injection framework on the server.  I would have the
+client acquire a lock, tell the server to delete it, and then have the client
+use TEST_STATEID and FREE_STATEID to recover the lock.
 
-Yes.
+v2:
+- FREE_STATEID
+  - Free open, lock, and delegation state ids correctly
+  - Use the check_for_locks() function to check for locks
 
-> Nevertheless
-> the message length is up to verifier. What I failed to find out it
-> the message length did not take verifier in the account or verifier
-> is missing in the first place. I was looking the the kernel code,
-> but may be problem is in gssd. I don't know which part of gss
-> handling in user space and which part is in the kernel.
+  - TEST_STATEID
+    - Remove openmode check
+    - Sanity check on size of stateid list
+    - Delay decoding stateid list until encoding the reply
 
-It's gssd that handles the init_sec_context, and (what I didn't notice
-before) you can see that the destroy rpc goes over the same tcp
-connection as the init_sec_context exchange.
+v3:
+  - FREE_STATEID
+    - Open stateids and delegations are never freeable (return nfserr_locks_held)
 
---b.
+  - TEST_STATEID
+    - Remove unused arguments from a function call
+    - Store and use the HAS_SESSION flag for validating stateids
+
+v4:
+  - FREE_STATEID
+    - Remove unused argument from nfs4_free_lock_stateid()
+
+  - TEST_STATEID
+    - Remove double call to nfs4_validate_stateid()
+
+v5:
+  - FREE_STATEID
+    - Acquire the state lock before using the state lists
+
+  - TEST_STATEID
+    - Acquire the state lock before using the state lists
+
+- Bryan
