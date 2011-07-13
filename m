@@ -1,181 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:42288 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755979Ab1G1Rbv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:31:51 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v4 16/27] pnfsblock: merge extents
-Date: Thu, 28 Jul 2011 13:31:05 -0400
-Message-Id: <1311874276-1386-17-git-send-email-rees@umich.edu>
-In-Reply-To: <1311874276-1386-1-git-send-email-rees@umich.edu>
-References: <1311874276-1386-1-git-send-email-rees@umich.edu>
+Received: from fieldses.org ([174.143.236.118]:37483 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753267Ab1GMAZY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Jul 2011 20:25:24 -0400
+Date: Tue, 12 Jul 2011 20:25:22 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2 v3] nfsd41: check the size of request
+Message-ID: <20110713002522.GJ2162@fieldses.org>
+References: <4E0EDEBE.8040902@cn.fujitsu.com>
+ <20110706164306.GC30349@fieldses.org>
+ <4E16CA48.3030308@cn.fujitsu.com>
+ <20110708200319.GC13886@fieldses.org>
+ <4E17BACC.8030901@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E17BACC.8030901@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+On Sat, Jul 09, 2011 at 10:19:56AM +0800, Mi Jinlong wrote:
+> This patch checks request's size when it consists SEQUENCE.
+> Also modifies the format of some function which length exceed 80.
+> 
+> v3:
+>    remove the check about only SEQUENCE operation.
+>    check the size immediately after find session.
+>    modify some function's format which length exceed 80.
 
-Replace a stub, so that extents underlying the layouts are properly
-added, merged, or ignored as necessary.
+No, please don't ever mix unrelated formatting changes into a patch.
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfsblock: delete the new node before put it]
-Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfs/blocklayout/blocklayout.h |   13 +++++
- fs/nfs/blocklayout/extents.c     |  106 ++++++++++++++++++++++++++++++++++++++
- 2 files changed, 119 insertions(+), 0 deletions(-)
+We can leave those lines alone; the occasional long line isn't a big
+problem.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 744c7a5..4411f77 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -80,6 +80,14 @@ enum extentclass4 {
- 	EXTENT_LISTS    = 2,
- };
- 
-+static inline int choose_list(enum exstate4 state)
-+{
-+	if (state == PNFS_BLOCK_READ_DATA || state == PNFS_BLOCK_NONE_DATA)
-+		return RO_EXTENT;
-+	else
-+		return RW_EXTENT;
-+}
-+
- struct pnfs_block_layout {
- 	struct pnfs_layout_hdr bl_layout;
- 	struct pnfs_inval_markings bl_inval; /* tracks INVAL->RW transition */
-@@ -137,5 +145,10 @@ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
- /* blocklayoutdm.c */
- void free_block_dev(struct pnfs_block_dev *bdev);
- 
-+/* extents.c */
- void bl_put_extent(struct pnfs_block_extent *be);
-+struct pnfs_block_extent *alloc_extent(void);
-+int bl_add_merge_extent(struct pnfs_block_layout *bl,
-+			 struct pnfs_block_extent *new);
-+
- #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 44c3364..3591084 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -95,3 +95,109 @@ void print_elist(struct list_head *list)
- 	}
- 	dprintk("****************\n");
- }
-+
-+static inline int
-+extents_consistent(struct pnfs_block_extent *old, struct pnfs_block_extent *new)
-+{
-+	/* Note this assumes new->be_f_offset >= old->be_f_offset */
-+	return (new->be_state == old->be_state) &&
-+		((new->be_state == PNFS_BLOCK_NONE_DATA) ||
-+		 ((new->be_v_offset - old->be_v_offset ==
-+		   new->be_f_offset - old->be_f_offset) &&
-+		  new->be_mdev == old->be_mdev));
-+}
-+
-+/* Adds new to appropriate list in bl, modifying new and removing existing
-+ * extents as appropriate to deal with overlaps.
-+ *
-+ * See bl_find_get_extent for list constraints.
-+ *
-+ * Refcount on new is already set.  If end up not using it, or error out,
-+ * need to put the reference.
-+ *
-+ * bl->bl_ext_lock is held by caller.
-+ */
-+int
-+bl_add_merge_extent(struct pnfs_block_layout *bl,
-+		     struct pnfs_block_extent *new)
-+{
-+	struct pnfs_block_extent *be, *tmp;
-+	sector_t end = new->be_f_offset + new->be_length;
-+	struct list_head *list;
-+
-+	dprintk("%s enter with be=%p\n", __func__, new);
-+	print_bl_extent(new);
-+	list = &bl->bl_extents[choose_list(new->be_state)];
-+	print_elist(list);
-+
-+	/* Scan for proper place to insert, extending new to the left
-+	 * as much as possible.
-+	 */
-+	list_for_each_entry_safe(be, tmp, list, be_node) {
-+		if (new->be_f_offset < be->be_f_offset)
-+			break;
-+		if (end <= be->be_f_offset + be->be_length) {
-+			/* new is a subset of existing be*/
-+			if (extents_consistent(be, new)) {
-+				dprintk("%s: new is subset, ignoring\n",
-+					__func__);
-+				bl_put_extent(new);
-+				return 0;
-+			} else
-+				goto out_err;
-+		} else if (new->be_f_offset <=
-+				be->be_f_offset + be->be_length) {
-+			/* new overlaps or abuts existing be */
-+			if (extents_consistent(be, new)) {
-+				/* extend new to fully replace be */
-+				new->be_length += new->be_f_offset -
-+						  be->be_f_offset;
-+				new->be_f_offset = be->be_f_offset;
-+				new->be_v_offset = be->be_v_offset;
-+				dprintk("%s: removing %p\n", __func__, be);
-+				list_del(&be->be_node);
-+				bl_put_extent(be);
-+			} else if (new->be_f_offset !=
-+				   be->be_f_offset + be->be_length)
-+				goto out_err;
-+		}
-+	}
-+	/* Note that if we never hit the above break, be will not point to a
-+	 * valid extent.  However, in that case &be->be_node==list.
-+	 */
-+	list_add_tail(&new->be_node, &be->be_node);
-+	dprintk("%s: inserting new\n", __func__);
-+	print_elist(list);
-+	/* Scan forward for overlaps.  If we find any, extend new and
-+	 * remove the overlapped extent.
-+	 */
-+	be = list_prepare_entry(new, list, be_node);
-+	list_for_each_entry_safe_continue(be, tmp, list, be_node) {
-+		if (end < be->be_f_offset)
-+			break;
-+		/* new overlaps or abuts existing be */
-+		if (extents_consistent(be, new)) {
-+			if (end < be->be_f_offset + be->be_length) {
-+				/* extend new to fully cover be */
-+				end = be->be_f_offset + be->be_length;
-+				new->be_length = end - new->be_f_offset;
-+			}
-+			dprintk("%s: removing %p\n", __func__, be);
-+			list_del(&be->be_node);
-+			bl_put_extent(be);
-+		} else if (end != be->be_f_offset) {
-+			list_del(&new->be_node);
-+			goto out_err;
-+		}
-+	}
-+	dprintk("%s: after merging\n", __func__);
-+	print_elist(list);
-+	/* FIXME - The per-list consistency checks have all been done,
-+	 * should now check cross-list consistency.
-+	 */
-+	return 0;
-+
-+ out_err:
-+	bl_put_extent(new);
-+	return -EIO;
-+}
--- 
-1.7.4.1
+--b.
 
+> 
+> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> ---
+>  fs/nfsd/nfs4state.c |   24 ++++++++++++++++++++----
+>  1 files changed, 20 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index e98f3c2..9cce11c 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1645,7 +1645,8 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
+>  	return status;
+>  }
+>  
+> -static bool nfsd4_compound_in_session(struct nfsd4_session *session, struct nfs4_sessionid *sid)
+> +static bool nfsd4_compound_in_session(struct nfsd4_session *session,
+> +				      struct nfs4_sessionid *sid)
+>  {
+>  	if (!session)
+>  		return 0;
+> @@ -1695,7 +1696,8 @@ out:
+>  	return status;
+>  }
+>  
+> -static struct nfsd4_conn *__nfsd4_find_conn(struct svc_xprt *xpt, struct nfsd4_session *s)
+> +static struct nfsd4_conn *__nfsd4_find_conn(struct svc_xprt *xpt,
+> +					    struct nfsd4_session *s)
+>  {
+>  	struct nfsd4_conn *c;
+>  
+> @@ -1707,7 +1709,8 @@ static struct nfsd4_conn *__nfsd4_find_conn(struct svc_xprt *xpt, struct nfsd4_s
+>  	return NULL;
+>  }
+>  
+> -static void nfsd4_sequence_check_conn(struct nfsd4_conn *new, struct nfsd4_session *ses)
+> +static void nfsd4_sequence_check_conn(struct nfsd4_conn *new,
+> +				      struct nfsd4_session *ses)
+>  {
+>  	struct nfs4_client *clp = ses->se_client;
+>  	struct nfsd4_conn *c;
+> @@ -1729,13 +1732,22 @@ static void nfsd4_sequence_check_conn(struct nfsd4_conn *new, struct nfsd4_sessi
+>  	return;
+>  }
+>  
+> -static bool nfsd4_session_too_many_ops(struct svc_rqst *rqstp, struct nfsd4_session *session)
+> +static bool nfsd4_session_too_many_ops(struct svc_rqst *rqstp,
+> +				       struct nfsd4_session *session)
+>  {
+>  	struct nfsd4_compoundargs *args = rqstp->rq_argp;
+>  
+>  	return args->opcnt > session->se_fchannel.maxops;
+>  }
+>  
+> +static bool nfsd4_request_too_big(struct svc_rqst *rqstp,
+> +				  struct nfsd4_session *session)
+> +{
+> +	struct xdr_buf *xb = &rqstp->rq_arg;
+> +
+> +	return xb->len > session->se_fchannel.maxreq_sz;
+> +}
+> +
+>  __be32
+>  nfsd4_sequence(struct svc_rqst *rqstp,
+>  	       struct nfsd4_compound_state *cstate,
+> @@ -1768,6 +1780,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+>  	if (nfsd4_session_too_many_ops(rqstp, session))
+>  		goto out;
+>  
+> +	status = nfserr_req_too_big;
+> +	if (nfsd4_request_too_big(rqstp, session))
+> +		goto out;
+> +
+>  	status = nfserr_badslot;
+>  	if (seq->slotid >= session->se_fchannel.maxreqs)
+>  		goto out;
+> -- 
+> 1.7.5.4
+> 
+> 
+> 
