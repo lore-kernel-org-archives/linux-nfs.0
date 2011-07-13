@@ -1,113 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:43476 "EHLO
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:50302 "EHLO
 	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752108Ab1G2PzT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 11:55:19 -0400
+	with ESMTP id S965021Ab1GMLID (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jul 2011 07:08:03 -0400
+Date: Wed, 13 Jul 2011 07:08:00 -0400
 From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v5 19/27] pnfsblock: bl_find_get_extent
-Date: Fri, 29 Jul 2011 11:54:44 -0400
-Message-Id: <1311954892-22038-20-git-send-email-rees@umich.edu>
-In-Reply-To: <1311954892-22038-1-git-send-email-rees@umich.edu>
-References: <1311954892-22038-1-git-send-email-rees@umich.edu>
-Content-Type: text/plain; charset=UTF-8
+To: NeilBrown <neilb@suse.de>
+Cc: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: mounting via udp from legacy multi-homed servers...
+Message-ID: <20110713110800.GA25370@merit.edu>
+References: <20110713173426.03576562@notabene.brown>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110713173426.03576562@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+NeilBrown wrote:
 
-Implement bl_find_get_extent(), one of the core extent manipulation
-routines.
+  1/ We could use tcp for all rpcbind lookups if tcp was requested for either
+     MOUNT or NFS.
 
-[pnfsblock: Lookup list entry of layouts and tags in reverse order]
-Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+If I requested tcp for mount and then also got tcp for rpcbind, I would find
+that natural and useful.
 
-pnfsblock: fix print format warnings for sector_t and size_t
+  2/ If '-v' was given and a UDP lookup to portmap timedout, we could retry
+     without connecting (and with a shorter timeout), and print an explanatory 
+     message if that succeeded.
 
-gcc spews warnings about these on x86_64, e.g.:
-fs/nfs/blocklayout/blocklayout.c:74: warning: format ‘%Lu’ expects type ‘long long unsigned int’, but argument 2 has type ‘sector_t’
-fs/nfs/blocklayout/blocklayout.c:388: warning: format ‘%d’ expects type ‘int’, but argument 5 has type ‘size_t’
-
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfs/blocklayout/blocklayout.h |    3 ++
- fs/nfs/blocklayout/extents.c     |   47 ++++++++++++++++++++++++++++++++++++++
- 2 files changed, 50 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 3105b96..25c3153 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -153,6 +153,9 @@ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
- void free_block_dev(struct pnfs_block_dev *bdev);
- 
- /* extents.c */
-+struct pnfs_block_extent *
-+bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
-+		struct pnfs_block_extent **cow_read);
- void bl_put_extent(struct pnfs_block_extent *be);
- struct pnfs_block_extent *alloc_extent(void);
- int bl_add_merge_extent(struct pnfs_block_layout *bl,
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 3591084..c306616 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -201,3 +201,50 @@ bl_add_merge_extent(struct pnfs_block_layout *bl,
- 	bl_put_extent(new);
- 	return -EIO;
- }
-+
-+/* Returns extent, or NULL.  If a second READ extent exists, it is returned
-+ * in cow_read, if given.
-+ *
-+ * The extents are kept in two seperate ordered lists, one for READ and NONE,
-+ * one for READWRITE and INVALID.  Within each list, we assume:
-+ * 1. Extents are ordered by file offset.
-+ * 2. For any given isect, there is at most one extents that matches.
-+ */
-+struct pnfs_block_extent *
-+bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
-+	    struct pnfs_block_extent **cow_read)
-+{
-+	struct pnfs_block_extent *be, *cow, *ret;
-+	int i;
-+
-+	dprintk("%s enter with isect %llu\n", __func__, (u64)isect);
-+	cow = ret = NULL;
-+	spin_lock(&bl->bl_ext_lock);
-+	for (i = 0; i < EXTENT_LISTS; i++) {
-+		list_for_each_entry_reverse(be, &bl->bl_extents[i], be_node) {
-+			if (isect >= be->be_f_offset + be->be_length)
-+				break;
-+			if (isect >= be->be_f_offset) {
-+				/* We have found an extent */
-+				dprintk("%s Get %p (%i)\n", __func__, be,
-+					atomic_read(&be->be_refcnt.refcount));
-+				kref_get(&be->be_refcnt);
-+				if (!ret)
-+					ret = be;
-+				else if (be->be_state != PNFS_BLOCK_READ_DATA)
-+					bl_put_extent(be);
-+				else
-+					cow = be;
-+				break;
-+			}
-+		}
-+		if (ret &&
-+		    (!cow_read || ret->be_state != PNFS_BLOCK_INVALID_DATA))
-+			break;
-+	}
-+	spin_unlock(&bl->bl_ext_lock);
-+	if (cow_read)
-+		*cow_read = cow;
-+	print_bl_extent(ret);
-+	return ret;
-+}
--- 
-1.7.4.1
-
+If '-v' actually changed the behavior of the mount command rather than just
+increasing the verbosity I would find that surprising.
