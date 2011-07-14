@@ -1,71 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59005 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752753Ab1GUVlH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Jul 2011 17:41:07 -0400
-Date: Thu, 21 Jul 2011 17:41:06 -0400
-To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>, tom@ogc.us,
-        tmtalpey@gmail.com
-Subject: Re: [PATCH] RDMA: Increasing RPCRDMA_MAX_DATA_SEGS
-Message-ID: <20110721214106.GB3341@fieldses.org>
-References: <1311270542-2021-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1311270542-2021-1-git-send-email-steved@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from seldrel01.sonyericsson.com ([212.209.106.2]:19615 "EHLO
+	seldrel01.sonyericsson.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754955Ab1GNN3w convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Jul 2011 09:29:52 -0400
+From: "Assarsson, Emil" <Emil.Assarsson@sonyericsson.com>
+To: "'Richard Smits'" <R.Smits@tudelft.nl>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Thu, 14 Jul 2011 15:29:49 +0200
+Subject: RE: krb5 mount with large group membership
+Message-ID: <2BF070A7A2375D46BA1B6087F8D5DCB67E846BA793@seldmbx01.corpusers.net>
+References: <4E1EB72E.5080803@tudelft.nl>
+ <2BF070A7A2375D46BA1B6087F8D5DCB67E846BA792@seldmbx01.corpusers.net>
+ <4E1EE908.5030204@tudelft.nl>
+In-Reply-To: <4E1EE908.5030204@tudelft.nl>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Jul 21, 2011 at 01:49:02PM -0400, Steve Dickson wrote:
-> Our performance team has noticed that increasing
-> RPCRDMA_MAX_DATA_SEGS from 8 to 64 significantly
-> increases throughput when using the RDMA transport.
+Hi,
 
-The main risk that I can see being that we have on the stack in two
-places:
+Pre-authentication errors:
 
-	rpcrdma_register_fmr_external(struct rpcrdma_mr_seg *seg, ...
-	{
-		...
-		u64 physaddrs[RPCRDMA_MAX_DATA_SEGS];
+Try to limit the /etc/krb5.conf to use the 3 closest KDC's only.
+I'm using winbind and link /etc/krb5.conf to /var/run/samba/smb_krb5/krb5.conf.* (there should be a "locate" module for mit-krb5 but lucid doesn't provide it).
 
-	rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg, ...
-	{
-		...
-		struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS]; 
+It can be solved with do not require but I think it's better to solve the real problem.
+--
+Emil Assarsson
 
-Where ip_phys_buf is 16 bytes.
-
-So that's 512 bytes in the first case, 1024 in the second.  This is
-called from rpciod--what are our rules about allocating memory from
-rpciod?
-
---b.
-
+> -----Original Message-----
+> From: Richard Smits [mailto:R.Smits@tudelft.nl]
+> Sent: torsdag den 14 juli 2011 15:03
+> To: linux-nfs@vger.kernel.org
+> Cc: Assarsson, Emil
+> Subject: Re: krb5 mount with large group membership
 > 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
+> Hi,
 > 
-> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-> index cae761a..5d1cfe5 100644
-> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
-> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-> @@ -109,7 +109,7 @@ struct rpcrdma_ep {
->   */
->  
->  /* temporary static scatter/gather max */
-> -#define RPCRDMA_MAX_DATA_SEGS	(8)	/* max scatter/gather */
-> +#define RPCRDMA_MAX_DATA_SEGS	(64)	/* max scatter/gather */
->  #define RPCRDMA_MAX_SEGS 	(RPCRDMA_MAX_DATA_SEGS + 2) /* head+tail = 2 */
->  #define MAX_RPCRDMAHDR	(\
->  	/* max supported RPC/RDMA header */ \
-> -- 
-> 1.7.6
+> Good tip. Thank you.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> note : If I check the "Do not require Kerberos preauthentication" in the
+> AD on my testaccount, it works...
+> 
+> So now i have to look what else this breaks.
+> 
+> Greetings .. Richard
+> 
+> On 07/14/2011 01:14 PM, Assarsson, Emil wrote:
+> > Hi,
+> >
+> > Your ticket is probably oversized for the NFS server.
+> > Try set NO_AUTH_DATA_REQUIRED (google msn) on the object holding the servers
+> SPN.
+> >
+> > --
+> > Emil Assarsson
+> >
+> >> -----Original Message-----
+> >> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org]
+> >> On Behalf Of Richard Smits
+> >> Sent: torsdag den 14 juli 2011 11:30
+> >> To: linux-nfs@vger.kernel.org
+> >> Subject: krb5 mount with large group membership
+> >>
+> >> Hello list,
+> >>
+> >> I am running into a problem. Perhaps someone understands what is
+> >> happening here. I will explain.
+> >>
+> >> I have a Redhat 5.4 client that is accessing a nfs export on a NFS
+> >> server. (Redhat 6.1)
+> >>
+> >> Our KDC is a Windows AD.
+> >>
+> >> The client is using samba-winbind. If a user is a member of 23 groups or
+> >> lower, I can access the export. If a user is a member of more groups,
+> >> the mount fails with a "Permission denied"
+> >>
+> >> mount /data
+> >> -bash-3.2$ cd /data
+> >> -bash: cd: /data: Permission denied
+> >>
+> >> Thew odd thing is if I try a mount to our Netapp filer with also a krb5
+> >> export, there is no problem.
+> >>
+> >> This has to do something with the ticket size in combination with
+> >> memberships to a large number of groups.
+> >>
+> >> So what must i do to get this Redhat server working with this setup ? It
+> >> seems that Netapp did something to get this working ?
+> >>
+> >> Does this sound familiar to anyone, or should i provide more information ?
+> >>
+> >> Versions server side :
+> >> nfs-utils-1.2.3-7
+> >> krb5-workstation-1.9-9
+> >>
+> >> Greetings ... Richard Smits
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
