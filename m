@@ -1,38 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:33034
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751197Ab1GPBxu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2011 21:53:50 -0400
-Date: Fri, 15 Jul 2011 21:53:46 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>, xfs-masters@oss.sgi.com,
-        linux-nfs@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: [xfs-masters] [PATCH] xfs: failure mapping nfs fh to inode
- should return ESTALE
-Message-ID: <20110716015346.GA589@infradead.org>
-References: <20110714205036.GA19457@fieldses.org>
- <20110714223126.GA28694@infradead.org>
- <20110716015014.GF21663@dastard>
+Received: from fieldses.org ([174.143.236.118]:41497 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754585Ab1GNNQt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Jul 2011 09:16:49 -0400
+Date: Thu, 14 Jul 2011 09:16:47 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: krb5 failures with recent nfs-utils
+Message-ID: <20110714131647.GC13000@fieldses.org>
+References: <20110713225939.GA13000@fieldses.org>
+ <4E1E9725.5020707@desy.de>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110716015014.GF21663@dastard>
+In-Reply-To: <4E1E9725.5020707@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, Jul 16, 2011 at 11:50:14AM +1000, Dave Chinner wrote:
-> Bulkstat also checks for ENOENT returns from xfs_iget() as the
-> lookup it does is inherently racy. That is, if the inode is
-> allocated when it is read from the IBT, but then has been unlinked
-> before the actual xfs_iget() call, it expects to get back an ENOENT
-> to tell it the inode has been unlinked and shouldn't be included in
-> the bulkstat output. Otherwise, it returns the error to userspace.
+On Thu, Jul 14, 2011 at 09:13:41AM +0200, Tigran Mkrtchyan wrote:
+> On 07/14/2011 12:59 AM, J. Bruce Fields wrote:
+> >On Fedora 15 I'm seeing odd krb5 behavior: the context initialization
+> >appears to work fine, but then gssd sends a malformed RPCSEC_GSS_DESTROY
+> >packet just before closing the connection.  The client's first operation
+> >to the server using the context is rejected because the server's mic
+> >verification fails.
+> >
+> >Has anyone else seen this?
 > 
-> So converting the mode checks to return ESTALE definitely has the
-> chance of breaking stuff that uses bulkstat (e.g. xfsdump) because
-> it will return errors now where it previously just skipped the
-> (unlinked) inode.
+> I have reported the same issue couple of weeks ago
+> 
+> http://www.spinics.net/lists/linux-nfs/msg22142.html
 
-Sounds like we should simply go with the original version of the patch
-then.
+I thought it looked familiar....
+
+> I use suse 11.4 x86_64 and can reproduce it with native kernel
+> 2.6.37.xxx and 3.0.0-rc5.
+> 
+> To me it looks like that in rpc packet missing verifier.
+
+Yes.
+
+> Nevertheless
+> the message length is up to verifier. What I failed to find out it
+> the message length did not take verifier in the account or verifier
+> is missing in the first place. I was looking the the kernel code,
+> but may be problem is in gssd. I don't know which part of gss
+> handling in user space and which part is in the kernel.
+
+It's gssd that handles the init_sec_context, and (what I didn't notice
+before) you can see that the destroy rpc goes over the same tcp
+connection as the init_sec_context exchange.
+
+--b.
