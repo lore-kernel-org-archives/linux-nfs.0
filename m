@@ -1,63 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:38073 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752582Ab1GaAxN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 20:53:13 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v7 10/26] pnfsblock: use pageio_ops api
-Date: Sat, 30 Jul 2011 20:52:40 -0400
-Message-Id: <1312073576-11024-11-git-send-email-rees@umich.edu>
-In-Reply-To: <1312073576-11024-1-git-send-email-rees@umich.edu>
-References: <1312073576-11024-1-git-send-email-rees@umich.edu>
+Received: from fieldses.org ([174.143.236.118]:34043 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932140Ab1GNUuh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Jul 2011 16:50:37 -0400
+Date: Thu, 14 Jul 2011 16:50:36 -0400
+To: Alex Elder <aelder@sgi.com>, xfs-masters@oss.sgi.com
+Cc: xfs@oss.sgi.com, linux-nfs@vger.kernel.org
+Subject: [PATCH] xfs: failure mapping nfs fh to inode should return ESTALE
+Message-ID: <20110714205036.GA19457@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+From: J. Bruce Fields <bfields@redhat.com>
 
-[pnfsblock: use pnfs_generic_pg_init_read/write]
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Jim Rees <rees@umich.edu>
+On xfs exports, nfsd is incorrectly returning ENOENT instead of ESTALE
+on attempts to use a filehandle of a deleted file (spotted with pynfs
+test PUTFH3).  The ENOENT was coming from xfs_iget.
+
+(It's tempting to wonder whether we should just map all xfs_iget errors
+to ESTALE, but I don't believe so--xfs_iget can also return ENOMEM at
+least, which we wouldn't want mapped to ESTALE.)
+
+While we're at it, the other return of ENOENT in xfs_nfs_get_inode()
+also looks wrong.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/blocklayout/blocklayout.c |   14 ++++++++++++++
- 1 files changed, 14 insertions(+), 0 deletions(-)
+ fs/xfs/linux-2.6/xfs_export.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 44562cb..1f5287c 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -135,6 +135,18 @@ bl_clear_layoutdriver(struct nfs_server *server)
- 	return 0;
- }
+diff --git a/fs/xfs/linux-2.6/xfs_export.c b/fs/xfs/linux-2.6/xfs_export.c
+index f4f878f..75e5d32 100644
+--- a/fs/xfs/linux-2.6/xfs_export.c
++++ b/fs/xfs/linux-2.6/xfs_export.c
+@@ -151,14 +151,14 @@ xfs_nfs_get_inode(
+ 		 * We don't use ESTALE directly down the chain to not
+ 		 * confuse applications using bulkstat that expect EINVAL.
+ 		 */
+-		if (error == EINVAL)
++		if (error == EINVAL || error == ENOENT)
+ 			error = ESTALE;
+ 		return ERR_PTR(-error);
+ 	}
  
-+static const struct nfs_pageio_ops bl_pg_read_ops = {
-+	.pg_init = pnfs_generic_pg_init_read,
-+	.pg_test = pnfs_generic_pg_test,
-+	.pg_doio = pnfs_generic_pg_readpages,
-+};
-+
-+static const struct nfs_pageio_ops bl_pg_write_ops = {
-+	.pg_init = pnfs_generic_pg_init_write,
-+	.pg_test = pnfs_generic_pg_test,
-+	.pg_doio = pnfs_generic_pg_writepages,
-+};
-+
- static struct pnfs_layoutdriver_type blocklayout_type = {
- 	.id				= LAYOUT_BLOCK_VOLUME,
- 	.name				= "LAYOUT_BLOCK_VOLUME",
-@@ -148,6 +160,8 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
- 	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
- 	.set_layoutdriver		= bl_set_layoutdriver,
- 	.clear_layoutdriver		= bl_clear_layoutdriver,
-+	.pg_read_ops			= &bl_pg_read_ops,
-+	.pg_write_ops			= &bl_pg_write_ops,
- };
+ 	if (ip->i_d.di_gen != generation) {
+ 		IRELE(ip);
+-		return ERR_PTR(-ENOENT);
++		return ERR_PTR(-ESTALE);
+ 	}
  
- static int __init nfs4blocklayout_init(void)
+ 	return VFS_I(ip);
 -- 
 1.7.4.1
 
