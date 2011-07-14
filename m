@@ -1,46 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:45051 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754502Ab1GNLZ0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jul 2011 07:25:26 -0400
-Date: Thu, 14 Jul 2011 07:25:19 -0400
-From: Jim Rees <rees@umich.edu>
-To: tao.peng@emc.com
-Cc: bhalevy@tonian.com, linux-nfs@vger.kernel.org, honey@citi.umich.edu
-Subject: Re: [PATCH 1/6] SQUASHME: pnfs-block: Remove write_begin/end hooks
-Message-ID: <20110714112519.GA619@merit.edu>
-References: <cover.1310055433.git.rees@umich.edu>
- <ce801968be38153f6d75dfe227eb03631eee1baa.1310055433.git.rees@umich.edu>
- <4E1D950D.4030404@tonian.com>
- <F19688880B763E40B28B2B462677FBF805BEFF0D64@MX09A.corp.emc.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805BEFF0D64@MX09A.corp.emc.com>
+Received: from mail-fx0-f52.google.com ([209.85.161.52]:50063 "EHLO
+	mail-fx0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754942Ab1GNR7L (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jul 2011 13:59:11 -0400
+Received: by fxd18 with SMTP id 18so1439958fxd.11
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Jul 2011 10:59:10 -0700 (PDT)
+Message-ID: <4E1F2E66.5050903@tonian.com>
+Date: Thu, 14 Jul 2011 20:59:02 +0300
+From: Benny Halevy <bhalevy@tonian.com>
+To: Janson <haozi_sdu@163.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: A problem about pnfs+ext4
+References: <6b2497dd.90ba.1310f94bd6e.Coremail.haozi_sdu@163.com>
+In-Reply-To: <6b2497dd.90ba.1310f94bd6e.Coremail.haozi_sdu@163.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-tao.peng@emc.com wrote:
+Hi Janson, I started looking at this.
+This seems is a genuine issue with the current implementation.
+It might take me a while to give you a patch to test
+due to other burning stuff on my queue.
+But anyhow, thanks for reporting this!
 
-  > > + * map_block:  map a requested I/0 block (isect) into an offset in the LVM
-  > > + * meta block_device
-  >
-  > What's a "meta block_device"?
-  We can remove the *meta* if you don't like the name.
+Benny
 
-I've been calling this the "mapped device."  It's produced by blkmapd, which
-is short for "block map daemon."  In the kernel it's consistently called the
-"meta device."  I'm not crazy about the name either but it needs to be
-consistent.  Should I change it?
-
-I just noticed too that there are some outdated comments left over from when
-the mapping was done in the kernel:
-
-		/* For each device returned in dlist, call GETDEVICEINFO, and
-		 * decode the opaque topology encoding to create a flat
-		 * volume topology, matching VOLUME_SIMPLE disk signatures
-		 * to disks in the visible block disk list.
-		 * Construct an LVM meta device from the flat volume topology.
-		 */
-
-What's really going on here is the devices are just being added to a list.
-The device is constructed later by the daemon.  I will fix this comment.
+On 2011-07-09 18:47, Janson wrote:
+> In the pnfs + ext4 test,we found a problem: when writting a file in pnfs 
+> we can not read the contents from ext4. After studying we found that 
+> ext4 extent have a  initialize flag, when pnfs call fallocate, the flag will 
+> be set to 1, but after pnfs writting data by truncate, the flags can not 
+> be set to 0. If the flag is 1,ext4 can not read the content.
+> Now,in ext4 code,The only wan that ext4 set the flag to 0 is DIO. 
+> Do you know how to solve this problem?
+> 
+> 
+> Best regards,
+> Janson
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
