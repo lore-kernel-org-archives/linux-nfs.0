@@ -1,39 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:24359 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756744Ab1GGOta (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Jul 2011 10:49:30 -0400
-Date: Thu, 7 Jul 2011 10:49:28 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] sunrpc: when call_bind fails with -EACCES, don't exit
- with -EIO
-Message-ID: <20110707104928.062a54a6@barsoom.rdu.redhat.com>
-In-Reply-To: <1310049356.3863.45.camel@lade.trondhjem.org>
-References: <1310049133-10255-1-git-send-email-jlayton@redhat.com>
-	<1310049356.3863.45.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail.candelatech.com ([208.74.158.172]:58967 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755882Ab1GOR6A (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2011 13:58:00 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH (RESEND) 08/12] nfs:  Pass srcaddr into mount request.
+Date: Fri, 15 Jul 2011 10:56:04 -0700
+Message-Id: <1310752568-21280-9-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
+References: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 07 Jul 2011 10:35:56 -0400
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+From: Ben Greear <greearb@candelatech.com>
 
-> On Thu, 2011-07-07 at 10:32 -0400, Jeff Layton wrote: 
-> > Commit 0b760113a fixed the client not to loop indefinitely if the
-> > rpcbind was continually failing. When this occurs though, the rpc_task
-> > now exits with a status of -EIO. If the tk_status is -EACCES, it seems
-> > like we should preserve that in this situation.
-> 
-> Why? This isn't the POSIX EACCES error, but a sign that the server is
-> once again refusing to do business with us: usually that means EIO.
-> 
+This starts tying the srcaddr logic together.
 
-Fair enough. I figured that an EACCES error would better describe the
-situation than EIO, but I'll defer to your judgement on this.
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+:100644 100644 60a36a2... eaf9c66... M	fs/nfs/internal.h
+:100644 100644 d4c2d6b... 5ca6e12... M	fs/nfs/mount_clnt.c
+:100644 100644 cb41131... e45f616... M	fs/nfs/super.c
+ fs/nfs/internal.h   |    1 +
+ fs/nfs/mount_clnt.c |    1 +
+ fs/nfs/super.c      |    2 ++
+ 3 files changed, 4 insertions(+), 0 deletions(-)
 
-Cheers,
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 60a36a2..eaf9c66 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -133,6 +133,7 @@ struct nfs_parsed_mount_data {
+ /* mount_clnt.c */
+ struct nfs_mount_request {
+ 	struct sockaddr		*sap;
++	struct sockaddr         *srcaddr;
+ 	size_t			salen;
+ 	char			*hostname;
+ 	char			*dirpath;
+diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+index d4c2d6b..5ca6e12 100644
+--- a/fs/nfs/mount_clnt.c
++++ b/fs/nfs/mount_clnt.c
+@@ -155,6 +155,7 @@ int nfs_mount(struct nfs_mount_request *info)
+ 	struct rpc_create_args args = {
+ 		.net		= &init_net,
+ 		.protocol	= info->protocol,
++		.saddress	= info->srcaddr,
+ 		.address	= info->sap,
+ 		.addrsize	= info->salen,
+ 		.servername	= info->hostname,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index cb41131..e45f616 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1600,6 +1600,8 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
+ 	struct nfs_mount_request request = {
+ 		.sap		= (struct sockaddr *)
+ 						&args->mount_server.address,
++		.salen		= args->mount_server.addrlen,
++		.srcaddr	= (struct sockaddr *)&args->srcaddr.address,
+ 		.dirpath	= args->nfs_server.export_path,
+ 		.protocol	= args->mount_server.protocol,
+ 		.fh		= root_fh,
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.3.4
+
