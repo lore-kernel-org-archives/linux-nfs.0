@@ -1,35 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from planck.uvm.edu ([132.198.104.181]:55058 "EHLO planck.uvm.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751400Ab1GTNas (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jul 2011 09:30:48 -0400
-From: Benjamin Coddington <bcodding@uvm.edu>
-Date: Wed, 20 Jul 2011 09:20:20 -0400
-Subject: [PATCH] gssd: Fix typo in debug string
-To: linux-nfs@vger.kernel.org
-Message-Id: <20110720132306.A21B063D40BF@planck.uvm.edu>
+Received: from mail.candelatech.com ([208.74.158.172]:58947 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755744Ab1GOR5U (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2011 13:57:20 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH (RESEND) 04/12] nfs:  Use request destination addr as callback source addr.
+Date: Fri, 15 Jul 2011 10:56:00 -0700
+Message-Id: <1310752568-21280-5-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
+References: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
----
- utils/gssd/context_lucid.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+From: Ben Greear <greearb@candelatech.com>
 
-diff --git a/utils/gssd/context_lucid.c b/utils/gssd/context_lucid.c
-index b8d4734..3e695ab 100644
---- a/utils/gssd/context_lucid.c
-+++ b/utils/gssd/context_lucid.c
-@@ -305,7 +305,7 @@ serialize_krb5_ctx(gss_ctx_id_t ctx, gss_buffer_desc *buf, int32_t *endtime)
+This helps make sure that responses use the correct
+source address on multi-homed machines.
+
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+:100644 100644 b257383... 00902ec... M	fs/nfs/callback.h
+:100644 100644 c6c86a7... ed5be89... M	fs/nfs/callback_xdr.c
+:100644 100644 ea29330... 45d5d7c... M	include/linux/sunrpc/svc.h
+ fs/nfs/callback.h          |    3 +++
+ fs/nfs/callback_xdr.c      |    3 +++
+ include/linux/sunrpc/svc.h |    5 +++++
+ 3 files changed, 11 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index b257383..00902ec 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -57,6 +57,7 @@ struct cb_compound_hdr_res {
  
- 	maj_stat = gss_free_lucid_sec_context(&min_stat, ctx, return_ctx);
- 	if (maj_stat != GSS_S_COMPLETE) {
--		pgsserr("gss_export_lucid_sec_context",
-+		pgsserr("gss_free_lucid_sec_context",
- 			maj_stat, min_stat, &krb5oid);
- 		printerr(0, "WARN: failed to free lucid sec context\n");
- 	}
+ struct cb_getattrargs {
+ 	struct sockaddr *addr;
++	struct sockaddr *srcaddr;
+ 	struct nfs_fh fh;
+ 	uint32_t bitmap[2];
+ };
+@@ -72,6 +73,7 @@ struct cb_getattrres {
+ 
+ struct cb_recallargs {
+ 	struct sockaddr *addr;
++	struct sockaddr *srcaddr;
+ 	struct nfs_fh fh;
+ 	nfs4_stateid stateid;
+ 	uint32_t truncate;
+@@ -92,6 +94,7 @@ struct referring_call_list {
+ 
+ struct cb_sequenceargs {
+ 	struct sockaddr			*csa_addr;
++	struct sockaddr                 *csa_daddr;
+ 	struct nfs4_sessionid		csa_sessionid;
+ 	uint32_t			csa_sequenceid;
+ 	uint32_t			csa_slotid;
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index c6c86a7..ed5be89 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -196,6 +196,7 @@ static __be32 decode_getattr_args(struct svc_rqst *rqstp, struct xdr_stream *xdr
+ 	if (unlikely(status != 0))
+ 		goto out;
+ 	args->addr = svc_addr(rqstp);
++	args->srcaddr = svc_daddr(rqstp);
+ 	status = decode_bitmap(xdr, args->bitmap);
+ out:
+ 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+@@ -208,6 +209,7 @@ static __be32 decode_recall_args(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+ 	__be32 status;
+ 
+ 	args->addr = svc_addr(rqstp);
++	args->srcaddr = svc_daddr(rqstp);
+ 	status = decode_stateid(xdr, &args->stateid);
+ 	if (unlikely(status != 0))
+ 		goto out;
+@@ -442,6 +444,7 @@ static __be32 decode_cb_sequence_args(struct svc_rqst *rqstp,
+ 		goto out;
+ 
+ 	args->csa_addr = svc_addr(rqstp);
++	args->csa_daddr = svc_daddr(rqstp);
+ 	args->csa_sequenceid = ntohl(*p++);
+ 	args->csa_slotid = ntohl(*p++);
+ 	args->csa_highestslotid = ntohl(*p++);
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index ea29330..45d5d7c 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -299,6 +299,11 @@ static inline struct sockaddr *svc_addr(const struct svc_rqst *rqst)
+ 	return (struct sockaddr *) &rqst->rq_addr;
+ }
+ 
++static inline struct sockaddr *svc_daddr(struct svc_rqst *rqst)
++{
++	return (struct sockaddr *) &rqst->rq_daddr;
++}
++
+ /*
+  * Check buffer bounds after decoding arguments
+  */
 -- 
-1.7.5
+1.7.3.4
 
