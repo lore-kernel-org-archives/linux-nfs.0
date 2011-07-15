@@ -1,77 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:47630 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752655Ab1GHUDU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Jul 2011 16:03:20 -0400
-Date: Fri, 8 Jul 2011 16:03:19 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2 v2] nfsd41: check the size of request
-Message-ID: <20110708200319.GC13886@fieldses.org>
-References: <4E0EDEBE.8040902@cn.fujitsu.com>
- <20110706164306.GC30349@fieldses.org>
- <4E16CA48.3030308@cn.fujitsu.com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <4E16CA48.3030308@cn.fujitsu.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:25686 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755198Ab1GOHrL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2011 03:47:11 -0400
+From: <tao.peng@emc.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+Date: Fri, 15 Jul 2011 03:33:42 -0400
+Subject: [PATCH] NFS: fix return value of nfs_pagein_one/nfs_flush_one
+Message-ID: <F19688880B763E40B28B2B462677FBF805BEFF0EF1@MX09A.corp.emc.com>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Jul 08, 2011 at 05:13:44PM +0800, Mi Jinlong wrote:
-> 
-> 
-> J. Bruce Fields 写道:
-> > On Sat, Jul 02, 2011 at 05:02:54PM +0800, Mi Jinlong wrote:
-> >> This patch just check request's size when it consists SEQUENCE.
-> >>
-> >> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> >> ---
-> >>  fs/nfsd/nfs4state.c |   16 ++++++++++++++++
-> >>  1 files changed, 16 insertions(+), 0 deletions(-)
-> >>
-> >> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> >> index e98f3c2..17e30bf 100644
-> >> --- a/fs/nfsd/nfs4state.c
-> >> +++ b/fs/nfsd/nfs4state.c
-> >> @@ -1736,6 +1736,21 @@ static bool nfsd4_session_too_many_ops(struct svc_rqst *rqstp, struct nfsd4_sess
-> >>  	return args->opcnt > session->se_fchannel.maxops;
-> >>  }
-> >>  
-> >> +static int nfsd4_check_request_size(struct nfsd4_compoundargs *args,
-> >> +				    struct nfsd4_session *session)
-> >> +{
-> >> +	struct xdr_buf *xb = &args->rqstp->rq_arg;
-> >> +
-> >> +	/* Only SEQUENCE operation */
-> >> +	if (args->opcnt == 1)
-> >> +		return 0;
-> > 
-> > Do we need this special check?
-> > 
-> > Sure, it's possible that a crazy client could set se_fchannel.maxreq_sz
-> > too small, and then we'd get a failure here even when they only sent a
-> > single sequence.  Such a client gets what it deserves.
-> 
->   If kernel err out when crazy client sets maxreq_sz to small, 
->   only SEQUENCE operation's size will never exceed maxreq_sz.
-> 
->   According to RFC5661 18.36.3, if client set maxreq_sz too small, 
->   the server SHOULD return NFS4ERR_TOOSMALL in the CREATE_SESSION reply.
+From: Peng Tao <bergwolf@gmail.com>
 
-The rpc header size can vary.  If you reject any CREATE_SESSION attempts
-with maxreq_sz smaller than
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+This applies to Trond's nfs-for-next branch. Should some minor typos.
+ fs/nfs/read.c  |    3 ++-
+ fs/nfs/write.c |    2 +-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
 
-	largest possible rpc header + SEQUENCE
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 1472933..7cba228 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -342,12 +342,13 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc, struct list_head *
+ 	struct page		**pages;
+ 	struct nfs_read_data	*data;
+ 	struct list_head *head = &desc->pg_list;
+-	int ret = -ENOMEM;
++	int ret = 0;
+ 
+ 	data = nfs_readdata_alloc(nfs_page_array_len(desc->pg_base,
+ 						     desc->pg_count));
+ 	if (!data) {
+ 		nfs_async_read_error(head);
++		ret = -ENOMEM;
+ 		goto out;
+ 	}
+ 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 525fb02..9fba527 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -992,7 +992,7 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc, struct list_head *r
+ 	struct page		**pages;
+ 	struct nfs_write_data	*data;
+ 	struct list_head *head = &desc->pg_list;
+-	int ret;
++	int ret = 0;
+ 
+ 	data = nfs_writedata_alloc(nfs_page_array_len(desc->pg_base,
+ 						      desc->pg_count));
+-- 
+1.7.4.2
 
-then you risk rejecting some legitimate CREATE_SESSIONs.
-
-But if you allow maxreq_sz's less than that, then it becomes possible
-for a client to send a single-SEQUENCE compound that still exceeds
-maxreq_sz.
-
-So let's not try to safe every broken client from itself.  Instead,
-let's keep things simple, catch those client errors that are easy to
-catch, and that we know are errors, and don't worry about the rest.
-
---b.
