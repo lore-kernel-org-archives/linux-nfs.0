@@ -1,52 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lucidpixels.com ([72.73.18.11]:33709 "EHLO lucidpixels.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751974Ab1G0ToV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jul 2011 15:44:21 -0400
-Date: Wed, 27 Jul 2011 15:44:20 -0400 (EDT)
-From: Justin Piszcz <jpiszcz@lucidpixels.com>
-To: Christoph Hellwig <hch@infradead.org>
-cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
-In-Reply-To: <20110727193937.GA5354@infradead.org>
-Message-ID: <alpine.DEB.2.02.1107271540100.1451@p34.internal.lan>
-References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan> <20110727160752.GC974@fieldses.org> <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan> <20110727181111.GA23009@infradead.org> <alpine.DEB.2.02.1107271530340.1451@p34.internal.lan>
- <20110727193937.GA5354@infradead.org>
-Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+Received: from mail.candelatech.com ([208.74.158.172]:58969 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755825Ab1GOR6J (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2011 13:58:09 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH (RESEND) 09/12] nfs:  Propagate src-addr in client code.
+Date: Fri, 15 Jul 2011 10:56:05 -0700
+Message-Id: <1310752568-21280-10-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
+References: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Ben Greear <greearb@candelatech.com>
 
+This ties the srcaddr supplied by mount to the
+rpc code.
 
-On Wed, 27 Jul 2011, Christoph Hellwig wrote:
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+:100644 100644 223785f... 8b8766a... M	fs/nfs/client.c
+ fs/nfs/client.c |   13 +++++++++++++
+ 1 files changed, 13 insertions(+), 0 deletions(-)
 
-> On Wed, Jul 27, 2011 at 03:35:01PM -0400, Justin Piszcz wrote:
->> Currently I do not see any dupes, however I have a script that moves
->> images out of the directory once an hour:
->> 0 * * * * /usr/local/bin/move_to_old2.sh > /dev/null 2>&1
->
-> Do you keep adding files to the directory while you move files out?
-Yes, otherwise there are too many files in the directory and viewers, e.g.,
-each geeqie (picture viewer) will use > 4-6GB of memory, so I try to keep
-it around 5,000 pictures or less.
-
-> What's the rate of additions/removals to the directory?
-Additions it depends, around 5,000 over a 12hr period, 416/hr, current:
-
-atom:/d1/motion# find cam1|wc
-    5215    5215  166853
-atom:/d1/motion# find cam2|wc
-    5069    5069  162181
-atom:/d1/motion# find cam3|wc
-    5594    5594  178981
-atom:/d1/motion#
-
->
-> If we add files to the directory while removing others we could easily
-> re-use the same offset for a different file.
->
-
-Justin.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 223785f..8b8766a 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -161,6 +161,8 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ 
+ 	memcpy(&clp->cl_addr, cl_init->addr, cl_init->addrlen);
+ 	clp->cl_addrlen = cl_init->addrlen;
++	memcpy(&clp->srcaddr, cl_init->srcaddr, cl_init->srcaddrlen);
++	clp->srcaddrlen = cl_init->srcaddrlen;
+ 
+ 	if (cl_init->hostname) {
+ 		err = -ENOMEM;
+@@ -655,6 +657,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
+ 		.net		= &init_net,
+ 		.protocol	= clp->cl_proto,
+ 		.address	= (struct sockaddr *)&clp->cl_addr,
++		.saddress	= (struct sockaddr *)&clp->srcaddr,
+ 		.addrsize	= clp->cl_addrlen,
+ 		.timeout	= timeparms,
+ 		.servername	= clp->cl_hostname,
+@@ -839,6 +842,8 @@ static int nfs_init_server(struct nfs_server *server,
+ 		.hostname = data->nfs_server.hostname,
+ 		.addr = (const struct sockaddr *)&data->nfs_server.address,
+ 		.addrlen = data->nfs_server.addrlen,
++		.srcaddr = (const struct sockaddr *)&data->srcaddr.address,
++		.srcaddrlen = data->srcaddr.addrlen,
+ 		.rpc_ops = &nfs_v2_clientops,
+ 		.proto = data->nfs_server.protocol,
+ 	};
+@@ -1419,6 +1424,8 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		const struct sockaddr *addr,
+ 		const size_t addrlen,
+ 		const char *ip_addr,
++		const struct sockaddr *srcaddr,
++		const size_t srcaddrlen,
+ 		rpc_authflavor_t authflavour,
+ 		int proto, const struct rpc_timeout *timeparms,
+ 		u32 minorversion)
+@@ -1430,6 +1437,8 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		.rpc_ops = &nfs_v4_clientops,
+ 		.proto = proto,
+ 		.minorversion = minorversion,
++		.srcaddr = srcaddr,
++		.srcaddrlen = srcaddrlen,
+ 	};
+ 	struct nfs_client *clp;
+ 	int error;
+@@ -1604,6 +1613,8 @@ static int nfs4_init_server(struct nfs_server *server,
+ 			(const struct sockaddr *)&data->nfs_server.address,
+ 			data->nfs_server.addrlen,
+ 			data->client_address,
++			(const struct sockaddr *)&data->srcaddr.address,
++			data->srcaddr.addrlen,
+ 			data->auth_flavors[0],
+ 			data->nfs_server.protocol,
+ 			&timeparms,
+@@ -1701,6 +1712,8 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
+ 				data->addr,
+ 				data->addrlen,
+ 				parent_client->cl_ipaddr,
++				(const struct sockaddr *)&parent_client->srcaddr,
++				parent_client->srcaddrlen,
+ 				data->authflavor,
+ 				parent_server->client->cl_xprt->prot,
+ 				parent_server->client->cl_timeout,
+-- 
+1.7.3.4
 
