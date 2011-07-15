@@ -1,85 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:40865 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:44358 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750923Ab1G3GGa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 02:06:30 -0400
-Date: Sat, 30 Jul 2011 16:06:10 +1000
-From: NeilBrown <neilb@suse.de>
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Greg Banks <gnb@fastmail.fm>,
-        Christoph Hellwig <hch@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: use better NUMA affinities
-Message-ID: <20110730160610.0b751ffd@notabene.brown>
-In-Reply-To: <1311998914.2873.27.camel@edumazet-laptop>
-References: <1311921035.7845.10.camel@edumazet-laptop>
-	<4E3258E1.6020000@fastmail.fm>
-	<20110729103634.GA12050@infradead.org>
-	<5933F48C-49D6-492D-AB7B-B76A3ADDB6C6@fastmail.fm>
-	<1311941491.2843.7.camel@edumazet-HP-Compaq-6005-Pro-SFF-PC>
-	<F67B6E82-9FA8-464E-B3FB-DC0D4EC18BB0@fastmail.fm>
-	<20110729164836.GL23194@fieldses.org>
-	<20110729165345.GM23194@fieldses.org>
-	<F562C6F4-3FC2-4952-A903-8E87E9EF2D9D@fastmail.fm>
-	<20110730093025.716f3f50@notabene.brown>
-	<20110729234857.GA30941@fieldses.org>
-	<1311998914.2873.27.camel@edumazet-laptop>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1753868Ab1GOXSn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Jul 2011 19:18:43 -0400
+Date: Fri, 15 Jul 2011 19:18:42 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] pnfs: simplify pnfs files module autoloading
+Message-ID: <20110715231842.GF28012@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, 30 Jul 2011 06:08:34 +0200 Eric Dumazet <eric.dumazet@gmail.com>
-wrote:
+From: J. Bruce Fields <bfields@redhat.com>
 
-> Le vendredi 29 juillet 2011 à 19:48 -0400, J. Bruce Fields a écrit :
-> > On Sat, Jul 30, 2011 at 09:30:25AM +1000, NeilBrown wrote:
-> > > 
-> > > rpc.nfsd 0
-> > > 
-> > > will stop all nfsd threads.  Follow with
-> > > 
-> > >   exportfs -f
-> > > 
-> > > and you should be done.  I'm not 100% sure about the nfsv4 thread though -
-> > > would need to check.
-> > 
-> > Should be fine.
-> > 
-> 
-> What are the needed steps to be able to unload nfsd module ?
-> 
-> So far, I am unable to perform this without using -f option.
-> 
-> 
-> 
-> 
+Embed the necessary alias into the module rather than waiting for
+someone to add it to /etc/modprobe.conf
 
-Kill all nfsd threads.
-   This can be done with 'kill' or 'rpc.nfsd 0' or
-     echo 0 > /proc/fs/nfsd/threads
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfs/nfs4filelayout.c      |    2 ++
+ fs/nfs/objlayout/objio_osd.c |    2 ++
+ 2 files changed, 4 insertions(+), 0 deletions(-)
 
-kill mountd
-   killall rpc.mountd
+Oops, got Trond's address wrong!
 
-kill idmapd
-
-unexport everything.
-   This can be done with 'exportfs -f' and checked by
-    grep . /proc/net/rpc/*/content
-   this should only contain comments
-
-unmount the 'nfsd' filesystem
-   umount /proc/fs/nfsd
-
-rmmod nfsd
-
-
-(it look me ages to remember idmapd - but 
-   lsof /proc/net/rpc/*/*
- gave it away)
-
-NeilBrown
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 0bafcc9..a288abc 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -903,5 +903,7 @@ static void __exit nfs4filelayout_exit(void)
+ 	pnfs_unregister_layoutdriver(&filelayout_type);
+ }
+ 
++MODULE_ALIAS("nfs-layouttype4-1");
++
+ module_init(nfs4filelayout_init);
+ module_exit(nfs4filelayout_exit);
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 8ff2ea3..aba9577 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -1055,5 +1055,7 @@ objlayout_exit(void)
+ 	       __func__);
+ }
+ 
++MODULE_ALIAS("nfs-layouttype4-2");
++
+ module_init(objlayout_init);
+ module_exit(objlayout_exit);
+-- 
+1.7.4.1
