@@ -1,59 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:47608 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750816Ab1G2Rpu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 13:45:50 -0400
-Received: by vxh35 with SMTP id 35so2860074vxh.19
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Jul 2011 10:45:49 -0700 (PDT)
-In-Reply-To: <20110729155136.GB28306@infradead.org>
-References: <1311874276-1386-1-git-send-email-rees@umich.edu> <20110729155136.GB28306@infradead.org>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Sat, 30 Jul 2011 01:45:29 +0800
-Message-ID: <CA+a=Yy78jFNm+fqmX9FeK5MivT4A3homrV2=ZQLHgzusZZ0x+Q@mail.gmail.com>
-Subject: Re: [PATCH v4 00/27] add block layout driver to pnfs client
+Received: from fieldses.org ([174.143.236.118]:56284 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751019Ab1GOUdU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Jul 2011 16:33:20 -0400
+Date: Fri, 15 Jul 2011 16:33:17 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Christoph Hellwig <hch@infradead.org>
-Cc: Jim Rees <rees@umich.edu>, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Content-Type: text/plain; charset=UTF-8
+Cc: Alex Elder <aelder@sgi.com>, xfs-masters@oss.sgi.com, xfs@oss.sgi.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] xfs: failure mapping nfs fh to inode should return
+ ESTALE
+Message-ID: <20110715203317.GA25772@fieldses.org>
+References: <20110714205036.GA19457@fieldses.org>
+ <20110714223126.GA28694@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110714223126.GA28694@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi, Christoph,
+On Thu, Jul 14, 2011 at 06:31:26PM -0400, Christoph Hellwig wrote:
+> On Thu, Jul 14, 2011 at 04:50:36PM -0400, J. Bruce Fields wrote:
+> > From: J. Bruce Fields <bfields@redhat.com>
+> > 
+> > On xfs exports, nfsd is incorrectly returning ENOENT instead of ESTALE
+> > on attempts to use a filehandle of a deleted file (spotted with pynfs
+> > test PUTFH3).  The ENOENT was coming from xfs_iget.
+> 
+> With that you mean the ip->i_d.di_mode checks?  Given that we should
+> only be bale to get these from NFS or the handle ioctls I suspect just
+> turning them into ESTALE should be fine.
+> 
 
-On Fri, Jul 29, 2011 at 11:51 PM, Christoph Hellwig <hch@infradead.org> wrote:
-> How well is the I/O code tested?  It's a full reimplementation of
-> code full of nasty traps.  Did you run xfstests over it?  It supports
-> nfs, so pointing it to a pnfs share should probably just work.
-We have been testing the code with cthon04 for some time and all cased
-are passed since the earliest version.
+Like the following?  That passes my test.  I wouldn't have thought of
+doing it that way because I wouldn't know how to check that
 
-And I just had a try with xfstests. It seems it does not support NFSv4
-right now. I had to modify common.rc to make "./check -nfs" runable.
-Otherwise it failed with:
-common.rc: Error: $TEST_DEV (10.244.82.74:/s4fs1/) is not a MOUNTED
-nfs filesystem
-I tried mounting TEST_DIR both w/ and w/o pnfs. The same errors.
+	- the change will only affect nfsd and the handle ioctls, and
+	- those are the only two places under xfs_iget that will
+	  generate an ENOENT (which will never be the right error return
+	  on failure to find a filehandle).
 
-After fixing common.rc, "./check -nfs" can run but failed and stopped
-at case 088. Both pnfs block and NFSv4 failed at the same case. Did
-anyone run xfstests over NFSv4 before? I'm wondering whether it is a
-regression or if case 088 is valid for NFSv4.
-088      - output mismatch (see 088.out.bad)
---- 088.out     2011-07-29 07:33:58.180218573 -0400
-+++ 088.out.bad 2011-07-29 08:50:55.242319901 -0400
-@@ -1,9 +1,2 @@
- QA output created by 088
--access(TEST_DIR/t_access, 0) returns 0
--access(TEST_DIR/t_access, R_OK) returns 0
--access(TEST_DIR/t_access, W_OK) returns 0
--access(TEST_DIR/t_access, X_OK) returns -1
--access(TEST_DIR/t_access, R_OK | W_OK) returns 0
--access(TEST_DIR/t_access, R_OK | X_OK) returns -1
--access(TEST_DIR/t_access, W_OK | X_OK) returns -1
--access(TEST_DIR/t_access, R_OK | W_OK | X_OK) returns -1
-+fchown: Invalid argument
+If those are true, great.
 
--- 
-Thanks,
-Tao
+--b.
+
+commit 94578e7d1c3e00ad29608c70fae314f85a465840
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Thu Jul 14 15:39:49 2011 -0400
+
+    xfs: failure mapping nfs fh to inode should return ESTALE
+    
+    On xfs exports, nfsd is incorrectly returning ENOENT instead of ESTALE
+    on attempts to use a filehandle of a deleted file (spotted with pynfs
+    test PUTFH3).  The ENOENT was coming from xfs_iget.
+    
+    While we're at it, the other return of ENOENT in xfs_nfs_get_inode()
+    also looks wrong.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/xfs/linux-2.6/xfs_export.c b/fs/xfs/linux-2.6/xfs_export.c
+index f4f878f..9e94d57 100644
+--- a/fs/xfs/linux-2.6/xfs_export.c
++++ b/fs/xfs/linux-2.6/xfs_export.c
+@@ -158,7 +158,7 @@ xfs_nfs_get_inode(
+ 
+ 	if (ip->i_d.di_gen != generation) {
+ 		IRELE(ip);
+-		return ERR_PTR(-ENOENT);
++		return ERR_PTR(-ESTALE);
+ 	}
+ 
+ 	return VFS_I(ip);
+diff --git a/fs/xfs/xfs_iget.c b/fs/xfs/xfs_iget.c
+index 3631783..19752451 100644
+--- a/fs/xfs/xfs_iget.c
++++ b/fs/xfs/xfs_iget.c
+@@ -222,7 +222,7 @@ xfs_iget_cache_hit(
+ 	 * If lookup is racing with unlink return an error immediately.
+ 	 */
+ 	if (ip->i_d.di_mode == 0 && !(flags & XFS_IGET_CREATE)) {
+-		error = ENOENT;
++		error = ESTALE;
+ 		goto out_error;
+ 	}
+ 
+@@ -333,7 +333,7 @@ xfs_iget_cache_miss(
+ 	trace_xfs_iget_miss(ip);
+ 
+ 	if ((ip->i_d.di_mode == 0) && !(flags & XFS_IGET_CREATE)) {
+-		error = ENOENT;
++		error = ESTALE;
+ 		goto out_destroy;
+ 	}
+ 
