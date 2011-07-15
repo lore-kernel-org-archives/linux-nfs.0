@@ -1,61 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:50081 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:53223 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752477Ab1GGOfw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jul 2011 10:35:52 -0400
-Subject: Re: [PATCH] sunrpc: when call_bind fails with -EACCES, don't exit
- with -EIO
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 07 Jul 2011 10:35:56 -0400
-In-Reply-To: <1310049133-10255-1-git-send-email-jlayton@redhat.com>
-References: <1310049133-10255-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1310049356.3863.45.camel@lade.trondhjem.org>
+	id S1753868Ab1GOXUS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Jul 2011 19:20:18 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>, stable@kernel.org
+Subject: [PATCH 1/2] nfsd4: remember to put RW access on stateid destruction
+Date: Fri, 15 Jul 2011 19:20:14 -0400
+Message-Id: <1310772015-29056-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2011-07-07 at 10:32 -0400, Jeff Layton wrote: 
-> Commit 0b760113a fixed the client not to loop indefinitely if the
-> rpcbind was continually failing. When this occurs though, the rpc_task
-> now exits with a status of -EIO. If the tk_status is -EACCES, it seems
-> like we should preserve that in this situation.
+Without this, for example,
 
-Why? This isn't the POSIX EACCES error, but a sign that the server is
-once again refusing to do business with us: usually that means EIO.
+	open read
+	open read+write
+	close
 
-Cheers
-  Trond
+will result in a struct file leak.
 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  net/sunrpc/clnt.c |    4 +++-
->  1 files changed, 3 insertions(+), 1 deletions(-)
-> 
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 8c91415..77f6c0c 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -1175,8 +1175,10 @@ call_bind_status(struct rpc_task *task)
->  			status = -EOPNOTSUPP;
->  			break;
->  		}
-> -		if (task->tk_rebind_retry == 0)
-> +		if (task->tk_rebind_retry == 0) {
-> +			status = task->tk_status;
->  			break;
-> +		}
->  		task->tk_rebind_retry--;
->  		rpc_delay(task, 3*HZ);
->  		goto retry_timeout;
+Regression from 7d94784293096c0a46897acdb83be5abd9278ece "nfsd4: fix
+downgrade/lock logic".
 
+Cc: stable@kernel.org
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   17 ++++++-----------
+ 1 files changed, 6 insertions(+), 11 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 12244ce..5e8806a 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -385,14 +385,6 @@ static int nfs4_access_to_omode(u32 access)
+ 	BUG();
+ }
+ 
+-static int nfs4_access_bmap_to_omode(struct nfs4_stateid *stp)
+-{
+-	unsigned int access;
+-
+-	set_access(&access, stp->st_access_bmap);
+-	return nfs4_access_to_omode(access);
+-}
+-
+ static void unhash_generic_stateid(struct nfs4_stateid *stp)
+ {
+ 	list_del(&stp->st_hash);
+@@ -402,11 +394,14 @@ static void unhash_generic_stateid(struct nfs4_stateid *stp)
+ 
+ static void free_generic_stateid(struct nfs4_stateid *stp)
+ {
+-	int oflag;
++	int i;
+ 
+ 	if (stp->st_access_bmap) {
+-		oflag = nfs4_access_bmap_to_omode(stp);
+-		nfs4_file_put_access(stp->st_file, oflag);
++		for (i = 1; i < 4; i++) {
++			if (test_bit(i, &stp->st_access_bmap))
++				nfs4_file_put_access(stp->st_file,
++						nfs4_access_to_omode(i));
++		}
+ 	}
+ 	put_nfs4_file(stp->st_file);
+ 	kmem_cache_free(stateid_slab, stp);
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.4.1
 
