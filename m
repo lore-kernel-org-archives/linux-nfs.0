@@ -1,47 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.123]:61011 "EHLO
-	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751150Ab1G3ExZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 00:53:25 -0400
-Received: from [192.168.0.251] (PBENDER1.bendercasa.net [192.168.0.251])
-	(authenticated bits=0)
-	by server.bendercasa.net (8.13.8/8.13.8) with ESMTP id p6U4rN4s005678
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Fri, 29 Jul 2011 21:53:24 -0700
-Message-ID: <4E338E44.40705@san.rr.com>
-Date: Fri, 29 Jul 2011 21:53:24 -0700
-From: Paul Bender <pebender@san.rr.com>
-Reply-To: pebender@san.rr.com
-To: linux-nfs@vger.kernel.org
-Subject: problem with running configure with the dash shell
-Content-Type: multipart/mixed;
- boundary="------------030902060109080101070000"
+Received: from mx2.netapp.com ([216.240.18.37]:48186 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751921Ab1GOOCG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2011 10:02:06 -0400
+Subject: Re: [PATCH 09/10] nfs: use sk fragment destructors to delay I/O
+ completion until page is released by network stack.
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Ian Campbell <ian.campbell@citrix.com>
+Cc: netdev@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Fri, 15 Jul 2011 10:01:29 -0400
+In-Reply-To: <1310728031-19569-9-git-send-email-ian.campbell@citrix.com>
+References: <1310728006.20648.3.camel@zakaz.uk.xensource.com>
+	 <1310728031-19569-9-git-send-email-ian.campbell@citrix.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1310738489.4381.20.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---------------030902060109080101070000
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+On Fri, 2011-07-15 at 12:07 +0100, Ian Campbell wrote: 
+> Thos prevents an issue where an ACK is delayed, a retransmit is queued (either
+> at the RPC or TCP level) and the ACK arrives before the retransmission hits the
+> wire. If this happens then the write() system call and the userspace process
+> can continue potentially modifying the data before the retransmission occurs.
+> 
+> NB: this only covers the O_DIRECT write() case. I expect other cases to need
+> handling as well.
 
-nfs-utils' configure script fails to run when /bin/sh is the dash shell. 
-The attached patch fixes the problem for me.
+That is why this belongs entirely in the RPC layer, and really should
+not touch the NFS layer.
+If you move your callback to the RPC layer and have it notify the
+rpc_task when the pages have been sent, then it should be possible to
+achieve the same thing.
 
---------------030902060109080101070000
-Content-Type: application/gzip;
- name="nfs-utils-1.2.4-dash.patch.gz"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="nfs-utils-1.2.4-dash.patch.gz"
+IOW: Add an extra state machine step after call_decode() which checks if
+all the page data has been transmitted and if not, puts the rpc_task on
+a wait queue, and has it wait for the fragment destructor callback
+before calling rpc_exit_task().
 
-H4sICDwFM04AA25mcy11dGlscy0xLjIuNC1kYXNoLnBhdGNoAJ1SXYviMBR9tr/ibvFBqbGpirKK
-YMftOoLbEXWfREo/Ug0TktI08/HvN53qTrvDMLB5SG9Ozzk53JuEpikgP1Q58FQiVVAmkdMf9EdI
-sMSOBU/pWeWkH8YfCJw8NwgGQuhLl9YAOw7CYzTEgMdTjKejQR/fFiA8wdiwLOvL265GEzT4Do4z
-HY6nw8kHo8UCkOOMes4IrOt3sTCglWfxmfAgC4vLvP1Mi8tTyHr/4K9EQldju+1y5fnB1j3czw3U
-oikURBZgtmtkE+ZzMLXCnEFxIdywPuU1aNACvVKRQwaUg61kbjMRh8yOKLcrYYXWz+/11SARcLsO
-pdDOoLKHevQ3NMpJ+DiDlOo6EZxoPWGfJP2mo1JekJyHrJm3YVvT6N8p1Zu7DPa/7/aHTo3Y1a1z
-fwXLB//H+rB+8N1NR9c/16ugIvXgeA1RE1VtNU9d3c//EVda0Hnc3SrwfPdu43WUokk566OG773N
-Ntgfdmt/1TkilFAZRoygknLSpt5LzFRCoDyDVFkm8gIKAeGT0ECkzudXYDSK2KPmd0+l63szCS+9
-9MP6O/TbWOKLEJIEb7Lymc2AMEmaMBflmHrGHyvQX8+hAwAA
+Cheers
+  Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
---------------030902060109080101070000--
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
