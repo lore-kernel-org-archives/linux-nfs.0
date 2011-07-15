@@ -1,265 +1,216 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:53760 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752108Ab1G2PzS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 11:55:18 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v5 18/27] pnfsblock: xdr decode pnfs_block_layout4
-Date: Fri, 29 Jul 2011 11:54:43 -0400
-Message-Id: <1311954892-22038-19-git-send-email-rees@umich.edu>
-In-Reply-To: <1311954892-22038-1-git-send-email-rees@umich.edu>
-References: <1311954892-22038-1-git-send-email-rees@umich.edu>
+Received: from mail.candelatech.com ([208.74.158.172]:58930 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755623Ab1GOR4d (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2011 13:56:33 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH (RESEND) 10/12] nfs: Bind to srcaddr in rpcb_create.
+Date: Fri, 15 Jul 2011 10:56:06 -0700
+Message-Id: <1310752568-21280-11-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
+References: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+From: Ben Greear <greearb@candelatech.com>
 
-XDR decodes the block layout payload sent in LAYOUTGET result, storing
-the result in an extent list.
+This more properly clones the existing client connection
+settings, allowing rpc calls to take advantage of routing
+rules based on source IP addresses.
 
-[pnfsblock: get rid of deprecated xdr macros]
-Signed-off-by: Jim Rees <rees@umich.edu>
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfsblock: fix bug getting pnfs_layout_type in translate_devid().]
-Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+Signed-off-by: Ben Greear <greearb@candelatech.com>
 ---
- fs/nfs/blocklayout/blocklayoutdev.c |  208 ++++++++++++++++++++++++++++++++++-
- 1 files changed, 206 insertions(+), 2 deletions(-)
+:100644 100644 e45d2fb... 13dae70... M	net/sunrpc/rpcb_clnt.c
+:100644 100644 90c292e... 22841e1... M	net/sunrpc/sunrpc.h
+:100644 100644 37299c0... 72408c2... M	net/sunrpc/xprtsock.c
+ net/sunrpc/rpcb_clnt.c |   28 ++++++++++++++++++++++++++--
+ net/sunrpc/sunrpc.h    |   45 +++++++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/xprtsock.c  |   43 -------------------------------------------
+ 3 files changed, 71 insertions(+), 45 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index b23fe60..3bf8358 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -40,6 +40,19 @@
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index e45d2fb..13dae70 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -28,6 +28,7 @@
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/sched.h>
+ #include <linux/sunrpc/xprtsock.h>
++#include "sunrpc.h"
  
- #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
- 
-+static int decode_sector_number(__be32 **rp, sector_t *sp)
-+{
-+	uint64_t s;
-+
-+	*rp = xdr_decode_hyper(*rp, &s);
-+	if (s & 0x1ff) {
-+		printk(KERN_WARNING "%s: sector not aligned\n", __func__);
-+		return -1;
-+	}
-+	*sp = s >> SECTOR_SHIFT;
-+	return 0;
-+}
-+
- /* Open a block_device by device number. */
- struct block_device *nfs4_blkdev_get(dev_t dev)
- {
-@@ -197,10 +210,201 @@ out:
- 	return rv;
+ #ifdef RPC_DEBUG
+ # define RPCDBG_FACILITY	RPCDBG_BIND
+@@ -292,11 +293,13 @@ out:
  }
  
-+/* Map deviceid returned by the server to constructed block_device */
-+static struct block_device *translate_devid(struct pnfs_layout_hdr *lo,
-+					    struct nfs4_deviceid *id)
-+{
-+	struct block_device *rv = NULL;
-+	struct block_mount_id *mid;
-+	struct pnfs_block_dev *dev;
+ static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
+-				    size_t salen, int proto, u32 version)
++				    size_t salen, int proto, u32 version,
++				    struct sockaddr *srcaddr)
+ {
+ 	struct rpc_create_args args = {
+ 		.net		= &init_net,
+ 		.protocol	= proto,
++		.saddress	= srcaddr,
+ 		.address	= srvaddr,
+ 		.addrsize	= salen,
+ 		.servername	= hostname,
+@@ -601,11 +604,32 @@ void rpcb_getport_async(struct rpc_task *task)
+ 	struct rpc_task	*child;
+ 	struct sockaddr_storage addr;
+ 	struct sockaddr *sap = (struct sockaddr *)&addr;
++	struct sockaddr_storage srcaddr;
++	struct sockaddr *srcaddra = NULL;
+ 	size_t salen;
+ 	int status;
++	struct sock_xprt *sxprt;
+ 
+ 	clnt = rpcb_find_transport_owner(task->tk_client);
+ 	xprt = clnt->cl_xprt;
++	sxprt = container_of(xprt, struct sock_xprt, xprt);
 +
-+	dprintk("%s enter, lo=%p, id=%p\n", __func__, lo, id);
-+	mid = BLK_ID(lo);
-+	spin_lock(&mid->bm_lock);
-+	list_for_each_entry(dev, &mid->bm_devlist, bm_node) {
-+		if (memcmp(id->data, dev->bm_mdevid.data,
-+			   NFS4_DEVICEID4_SIZE) == 0) {
-+			rv = dev->bm_mdev;
-+			goto out;
-+		}
++	/* We just want to bind to the IP, not the port */
++	memset(&srcaddr, 0, sizeof(srcaddr));
++	srcaddr.ss_family = sxprt->srcaddr.ss_family;
++	if (sxprt->srcaddr.ss_family == AF_INET) {
++		struct sockaddr_in *si = (struct sockaddr_in *)(&srcaddr);
++		struct sockaddr_in *si2;
++		si2 = (struct sockaddr_in *)(&sxprt->srcaddr);
++		si->sin_addr.s_addr = si2->sin_addr.s_addr;
++		srcaddra = (struct sockaddr *)(&srcaddr);
++	} else if (sxprt->srcaddr.ss_family == AF_INET6) {
++		struct sockaddr_in6 *si = (struct sockaddr_in6 *)(&srcaddr);
++		struct sockaddr_in6 *si2;
++		si2 = (struct sockaddr_in6 *)(&sxprt->srcaddr);
++		memcpy(&si->sin6_addr, &si2->sin6_addr, sizeof(si2->sin6_addr));
++		srcaddra = (struct sockaddr *)(&srcaddr);
 +	}
-+ out:
-+	spin_unlock(&mid->bm_lock);
-+	dprintk("%s returning %p\n", __func__, rv);
-+	return rv;
-+}
+ 
+ 	dprintk("RPC: %5u %s(%s, %u, %u, %d)\n",
+ 		task->tk_pid, __func__,
+@@ -660,7 +684,7 @@ void rpcb_getport_async(struct rpc_task *task)
+ 		task->tk_pid, __func__, bind_version);
+ 
+ 	rpcb_clnt = rpcb_create(clnt->cl_server, sap, salen, xprt->prot,
+-				bind_version);
++				bind_version, srcaddra);
+ 	if (IS_ERR(rpcb_clnt)) {
+ 		status = PTR_ERR(rpcb_clnt);
+ 		dprintk("RPC: %5u %s: rpcb_create failed, error %ld\n",
+diff --git a/net/sunrpc/sunrpc.h b/net/sunrpc/sunrpc.h
+index 90c292e..22841e1 100644
+--- a/net/sunrpc/sunrpc.h
++++ b/net/sunrpc/sunrpc.h
+@@ -37,6 +37,51 @@ struct rpc_buffer {
+ 	char	data[];
+ };
+ 
++struct sock_xprt {
++	struct rpc_xprt		xprt;
 +
-+/* Tracks info needed to ensure extents in layout obey constraints of spec */
-+struct layout_verification {
-+	u32 mode;	/* R or RW */
-+	u64 start;	/* Expected start of next non-COW extent */
-+	u64 inval;	/* Start of INVAL coverage */
-+	u64 cowread;	/* End of COW read coverage */
++	/*
++	 * Network layer
++	 */
++	struct socket		*sock;
++	struct sock		*inet;
++
++	/*
++	 * State of TCP reply receive
++	 */
++	__be32			tcp_fraghdr,
++				tcp_xid,
++				tcp_calldir;
++
++	u32			tcp_offset,
++				tcp_reclen;
++
++	unsigned long		tcp_copied,
++				tcp_flags;
++
++	/*
++	 * Connection of transports
++	 */
++	struct delayed_work	connect_worker;
++	struct sockaddr_storage	srcaddr;
++	unsigned short		srcport;
++
++	/*
++	 * UDP socket buffer size parameters
++	 */
++	size_t			rcvsize,
++				sndsize;
++
++	/*
++	 * Saved socket callback addresses
++	 */
++	void			(*old_data_ready)(struct sock *, int);
++	void			(*old_state_change)(struct sock *);
++	void			(*old_write_space)(struct sock *);
++	void			(*old_error_report)(struct sock *);
 +};
 +
-+/* Verify the extent meets the layout requirements of the pnfs-block draft,
-+ * section 2.3.1.
-+ */
-+static int verify_extent(struct pnfs_block_extent *be,
-+			 struct layout_verification *lv)
-+{
-+	if (lv->mode == IOMODE_READ) {
-+		if (be->be_state == PNFS_BLOCK_READWRITE_DATA ||
-+		    be->be_state == PNFS_BLOCK_INVALID_DATA)
-+			return -EIO;
-+		if (be->be_f_offset != lv->start)
-+			return -EIO;
-+		lv->start += be->be_length;
-+		return 0;
-+	}
-+	/* lv->mode == IOMODE_RW */
-+	if (be->be_state == PNFS_BLOCK_READWRITE_DATA) {
-+		if (be->be_f_offset != lv->start)
-+			return -EIO;
-+		if (lv->cowread > lv->start)
-+			return -EIO;
-+		lv->start += be->be_length;
-+		lv->inval = lv->start;
-+		return 0;
-+	} else if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
-+		if (be->be_f_offset != lv->start)
-+			return -EIO;
-+		lv->start += be->be_length;
-+		return 0;
-+	} else if (be->be_state == PNFS_BLOCK_READ_DATA) {
-+		if (be->be_f_offset > lv->start)
-+			return -EIO;
-+		if (be->be_f_offset < lv->inval)
-+			return -EIO;
-+		if (be->be_f_offset < lv->cowread)
-+			return -EIO;
-+		/* It looks like you might want to min this with lv->start,
-+		 * but you really don't.
-+		 */
-+		lv->inval = lv->inval + be->be_length;
-+		lv->cowread = be->be_f_offset + be->be_length;
-+		return 0;
-+	} else
-+		return -EIO;
-+}
 +
-+/* XDR decode pnfs_block_layout4 structure */
- int
- nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
- 			   struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
+ static inline int rpc_reply_expected(struct rpc_task *task)
  {
--	/* STUB */
--	return -EIO;
-+	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
-+	int i, status = -EIO;
-+	uint32_t count;
-+	struct pnfs_block_extent *be = NULL, *save;
-+	struct xdr_stream stream;
-+	struct xdr_buf buf;
-+	struct page *scratch;
-+	__be32 *p;
-+	struct layout_verification lv = {
-+		.mode = lgr->range.iomode,
-+		.start = lgr->range.offset >> SECTOR_SHIFT,
-+		.inval = lgr->range.offset >> SECTOR_SHIFT,
-+		.cowread = lgr->range.offset >> SECTOR_SHIFT,
-+	};
-+	LIST_HEAD(extents);
-+
-+	dprintk("---> %s\n", __func__);
-+
-+	scratch = alloc_page(gfp_flags);
-+	if (!scratch)
-+		return -ENOMEM;
-+
-+	xdr_init_decode_pages(&stream, &buf, lgr->layoutp->pages, lgr->layoutp->len);
-+	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
-+
-+	p = xdr_inline_decode(&stream, 4);
-+	if (unlikely(!p))
-+		goto out_err;
-+
-+	count = be32_to_cpup(p++);
-+
-+	dprintk("%s enter, number of extents %i\n", __func__, count);
-+	p = xdr_inline_decode(&stream, (28 + NFS4_DEVICEID4_SIZE) * count);
-+	if (unlikely(!p))
-+		goto out_err;
-+
-+	/* Decode individual extents, putting them in temporary
-+	 * staging area until whole layout is decoded to make error
-+	 * recovery easier.
-+	 */
-+	for (i = 0; i < count; i++) {
-+		be = alloc_extent();
-+		if (!be) {
-+			status = -ENOMEM;
-+			goto out_err;
-+		}
-+		memcpy(&be->be_devid, p, NFS4_DEVICEID4_SIZE);
-+		p += XDR_QUADLEN(NFS4_DEVICEID4_SIZE);
-+		be->be_mdev = translate_devid(lo, &be->be_devid);
-+		if (!be->be_mdev)
-+			goto out_err;
-+
-+		/* The next three values are read in as bytes,
-+		 * but stored as 512-byte sector lengths
-+		 */
-+		if (decode_sector_number(&p, &be->be_f_offset) < 0)
-+			goto out_err;
-+		if (decode_sector_number(&p, &be->be_length) < 0)
-+			goto out_err;
-+		if (decode_sector_number(&p, &be->be_v_offset) < 0)
-+			goto out_err;
-+		be->be_state = be32_to_cpup(p++);
-+		if (be->be_state == PNFS_BLOCK_INVALID_DATA)
-+			be->be_inval = &bl->bl_inval;
-+		if (verify_extent(be, &lv)) {
-+			dprintk("%s verify failed\n", __func__);
-+			goto out_err;
-+		}
-+		list_add_tail(&be->be_node, &extents);
-+	}
-+	if (lgr->range.offset + lgr->range.length !=
-+			lv.start << SECTOR_SHIFT) {
-+		dprintk("%s Final length mismatch\n", __func__);
-+		be = NULL;
-+		goto out_err;
-+	}
-+	if (lv.start < lv.cowread) {
-+		dprintk("%s Final uncovered COW extent\n", __func__);
-+		be = NULL;
-+		goto out_err;
-+	}
-+	/* Extents decoded properly, now try to merge them in to
-+	 * existing layout extents.
-+	 */
-+	spin_lock(&bl->bl_ext_lock);
-+	list_for_each_entry_safe(be, save, &extents, be_node) {
-+		list_del(&be->be_node);
-+		status = bl_add_merge_extent(bl, be);
-+		if (status) {
-+			spin_unlock(&bl->bl_ext_lock);
-+			/* This is a fairly catastrophic error, as the
-+			 * entire layout extent lists are now corrupted.
-+			 * We should have some way to distinguish this.
-+			 */
-+			be = NULL;
-+			goto out_err;
-+		}
-+	}
-+	spin_unlock(&bl->bl_ext_lock);
-+	status = 0;
-+ out:
-+	__free_page(scratch);
-+	dprintk("%s returns %i\n", __func__, status);
-+	return status;
-+
-+ out_err:
-+	bl_put_extent(be);
-+	while (!list_empty(&extents)) {
-+		be = list_first_entry(&extents, struct pnfs_block_extent,
-+				      be_node);
-+		list_del(&be->be_node);
-+		bl_put_extent(be);
-+	}
-+	goto out;
+ 	return (task->tk_msg.rpc_proc != NULL) &&
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 37299c0..72408c2 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -202,49 +202,6 @@ static inline void xs_pktdump(char *msg, u32 *packet, unsigned int count)
  }
+ #endif
+ 
+-struct sock_xprt {
+-	struct rpc_xprt		xprt;
+-
+-	/*
+-	 * Network layer
+-	 */
+-	struct socket *		sock;
+-	struct sock *		inet;
+-
+-	/*
+-	 * State of TCP reply receive
+-	 */
+-	__be32			tcp_fraghdr,
+-				tcp_xid,
+-				tcp_calldir;
+-
+-	u32			tcp_offset,
+-				tcp_reclen;
+-
+-	unsigned long		tcp_copied,
+-				tcp_flags;
+-
+-	/*
+-	 * Connection of transports
+-	 */
+-	struct delayed_work	connect_worker;
+-	struct sockaddr_storage	srcaddr;
+-	unsigned short		srcport;
+-
+-	/*
+-	 * UDP socket buffer size parameters
+-	 */
+-	size_t			rcvsize,
+-				sndsize;
+-
+-	/*
+-	 * Saved socket callback addresses
+-	 */
+-	void			(*old_data_ready)(struct sock *, int);
+-	void			(*old_state_change)(struct sock *);
+-	void			(*old_write_space)(struct sock *);
+-	void			(*old_error_report)(struct sock *);
+-};
+ 
+ /*
+  * TCP receive state flags
 -- 
-1.7.4.1
+1.7.3.4
 
