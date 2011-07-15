@@ -1,80 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:57031 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754807Ab1G0UhD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 16:37:03 -0400
-Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Christoph Hellwig <hch@infradead.org>,
-        Bryan Schumaker <bjschuma@netapp.com>
-Cc: Justin Piszcz <jpiszcz@lucidpixels.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Date: Wed, 27 Jul 2011 16:37:01 -0400
-In-Reply-To: <20110727194722.GA9345@infradead.org>
-References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan>
-	 <20110727160752.GC974@fieldses.org>
-	 <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan>
-	 <20110727181111.GA23009@infradead.org>
-	 <alpine.DEB.2.02.1107271530340.1451@p34.internal.lan>
-	 <20110727193937.GA5354@infradead.org>
-	 <alpine.DEB.2.02.1107271540100.1451@p34.internal.lan>
-	 <20110727194722.GA9345@infradead.org>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1311799021.25645.41.camel@lade.trondhjem.org>
+Received: from mail.candelatech.com ([208.74.158.172]:58955 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755644Ab1GOR5g (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2011 13:57:36 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH (RESEND) 06/12] nfs:  Use srcaddr in nfs_match_client.
+Date: Fri, 15 Jul 2011 10:56:02 -0700
+Message-Id: <1310752568-21280-7-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
+References: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 2011-07-27 at 15:47 -0400, Christoph Hellwig wrote: 
-> On Wed, Jul 27, 2011 at 03:44:20PM -0400, Justin Piszcz wrote:
-> > 
-> > 
-> > On Wed, 27 Jul 2011, Christoph Hellwig wrote:
-> > 
-> > >On Wed, Jul 27, 2011 at 03:35:01PM -0400, Justin Piszcz wrote:
-> > >>Currently I do not see any dupes, however I have a script that moves
-> > >>images out of the directory once an hour:
-> > >>0 * * * * /usr/local/bin/move_to_old2.sh > /dev/null 2>&1
-> > >
-> > >Do you keep adding files to the directory while you move files out?
-> > Yes, otherwise there are too many files in the directory and viewers, e.g.,
-> > each geeqie (picture viewer) will use > 4-6GB of memory, so I try to keep
-> > it around 5,000 pictures or less.
-> > 
-> > >What's the rate of additions/removals to the directory?
-> > Additions it depends, around 5,000 over a 12hr period, 416/hr, current:
-> > 
-> > atom:/d1/motion# find cam1|wc
-> >    5215    5215  166853
-> > atom:/d1/motion# find cam2|wc
-> >    5069    5069  162181
-> > atom:/d1/motion# find cam3|wc
-> >    5594    5594  178981
-> > atom:/d1/motion#
-> 
-> This sounds a lot like xfs simply filling up the directory index slots
-> of files that you just moved out with new files, and nfs falsely
-> claiming that this is a problem.
+From: Ben Greear <greearb@candelatech.com>
 
-Yep. There is an existing bugzilla report for this bug at
+For bound clients, we have to make sure we do not re-use
+a client that is bound differently.
 
-   https://bugzilla.kernel.org/show_bug.cgi?id=38572
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+:100644 100644 c571a97... 5d8998a... M	fs/nfs/client.c
+ fs/nfs/client.c |   12 ++++++++++++
+ 1 files changed, 12 insertions(+), 0 deletions(-)
 
-I have a preliminary patch there that attempts to turn off the loop
-detection when the directory is seen to change, however that patch still
-appears to have a bug in it, and I haven't had time to figure out what
-is wrong yet.
-
-Can you perhaps take a look, Bryan?
-
-Cheers
-  Trond
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index c571a97..5d8998a 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -131,7 +131,9 @@ struct rpc_program		nfsacl_program = {
+ struct nfs_client_initdata {
+ 	const char *hostname;
+ 	const struct sockaddr *addr;
++	const struct sockaddr *srcaddr;
+ 	size_t addrlen;
++	size_t srcaddrlen;
+ 	const struct nfs_rpc_ops *rpc_ops;
+ 	int proto;
+ 	u32 minorversion;
+@@ -463,6 +465,9 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+ 
+ 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
+ 	        const struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
++		const struct sockaddr *sa;
++		sa = (const struct sockaddr *)&clp->srcaddr;
++
+ 		/* Don't match clients that failed to initialise properly */
+ 		if (clp->cl_cons_state < 0)
+ 			continue;
+@@ -480,6 +485,13 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+ 		if (!nfs_sockaddr_cmp(sap, clap))
+ 			continue;
+ 
++		/* Check to make sure local-IP bindings match,
++		 * but just the IP-addr.
++		 */
++		if (data->srcaddr &&
++		    !nfs_sockaddr_match_ipaddr(data->srcaddr, sa))
++			continue;
++
+ 		atomic_inc(&clp->cl_count);
+ 		return clp;
+ 	}
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.3.4
 
