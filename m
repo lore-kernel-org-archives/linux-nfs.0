@@ -1,55 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:48245 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751894Ab1GaT6r convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jul 2011 15:58:47 -0400
-Subject: Re: Please pull NFS client changes
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jens Axboe <jaxboe@fusionio.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Sun, 31 Jul 2011 15:58:45 -0400
-In-Reply-To: <4E35B126.8050009@fusionio.com>
-References: <1312082377.10882.1.camel@lade.trondhjem.org>
-	  <20110731182406.GA16470@infradead.org> <4E35A9B1.9090309@fusionio.com>
-	 <1312141193.7127.1.camel@lade.trondhjem.org>
-	 <4E35B126.8050009@fusionio.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1312142325.7127.3.camel@lade.trondhjem.org>
+Received: from mail.candelatech.com ([208.74.158.172]:58936 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755771Ab1GOR4q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2011 13:56:46 -0400
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [PATCH (RESEND) 01/12] sunrpc:  Don't attempt to bind to AF_UNSPEC address.
+Date: Fri, 15 Jul 2011 10:55:57 -0700
+Message-Id: <1310752568-21280-2-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
+References: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Sun, 2011-07-31 at 21:46 +0200, Jens Axboe wrote: 
-> On 2011-07-31 21:39, Trond Myklebust wrote:
-> > On Sun, 2011-07-31 at 21:14 +0200, Jens Axboe wrote: 
-> >> On 2011-07-31 20:24, Christoph Hellwig wrote:
-> >>> How does this manage to include the pnfs block code, which only was posted
-> >>> on the list a few hours before the pull request, and which doesn't
-> >>> appear to past testing very well (although the major issue seems to be
-> >>> core nfs code)?
-> >>
-> >> And it doesn't even compile:
-> >>
-> >> In file included from fs/nfs/client.c:51:0:
-> >> fs/nfs/pnfs.h:384:1: error: expected identifier or ‘(’ before ‘{’ token
-> >> fs/nfs/client.c: In function ‘nfs_server_set_fsinfo’:
-> >> fs/nfs/client.c:939:8: error: ‘struct nfs_server’ has no member named
-> >> ‘pnfs_blksize’
-> >> fs/nfs/client.c: At top level:
-> >> fs/nfs/pnfs.h:382:20: warning: ‘set_pnfs_layoutdriver’ used but never
-> >> defined [enabled by default]
-> >> make[2]: *** [fs/nfs/client.o] Error 1
-> > 
-> > Sigh. This should fix it...
-> 
-> Only the first one, there are two independent places it broke. You
-> missed this bit:
-> 
-> fs/nfs/client.c:939:8: error: ‘struct nfs_server’ has no member named
+From: Ben Greear <greearb@candelatech.com>
 
-How's this?
+This lets calling code simply pass AF_UNSPEC addresses
+instead of adding lots of checks to conditionally pass
+NULL addresses.
 
-8<-------------------------------------------------------------------------------------- 
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+:100644 100644 72abb73... 37299c0... M	net/sunrpc/xprtsock.c
+ net/sunrpc/xprtsock.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 72abb73..37299c0 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2509,9 +2509,9 @@ static struct rpc_xprt *xs_setup_xprt(struct xprt_create *args,
+ 	new = container_of(xprt, struct sock_xprt, xprt);
+ 	memcpy(&xprt->addr, args->dstaddr, args->addrlen);
+ 	xprt->addrlen = args->addrlen;
+-	if (args->srcaddr)
++	if (args->srcaddr && (args->srcaddr->sa_family != AF_UNSPEC)) {
+ 		memcpy(&new->srcaddr, args->srcaddr, args->addrlen);
+-	else {
++	} else {
+ 		int err;
+ 		err = xs_init_anyaddr(args->dstaddr->sa_family,
+ 					(struct sockaddr *)&new->srcaddr);
+-- 
+1.7.3.4
+
