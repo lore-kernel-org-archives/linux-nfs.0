@@ -1,62 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:54474 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754558Ab1G0Sl3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 14:41:29 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v3 23/25] pnfsblock: use pageio_ops api
-Date: Wed, 27 Jul 2011 14:40:46 -0400
-Message-Id: <1311792048-12551-24-git-send-email-rees@umich.edu>
-In-Reply-To: <1311792048-12551-1-git-send-email-rees@umich.edu>
-References: <1311792048-12551-1-git-send-email-rees@umich.edu>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:33034
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751197Ab1GPBxu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2011 21:53:50 -0400
+Date: Fri, 15 Jul 2011 21:53:46 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: Dave Chinner <david@fromorbit.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, xfs-masters@oss.sgi.com,
+        linux-nfs@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: [xfs-masters] [PATCH] xfs: failure mapping nfs fh to inode
+ should return ESTALE
+Message-ID: <20110716015346.GA589@infradead.org>
+References: <20110714205036.GA19457@fieldses.org>
+ <20110714223126.GA28694@infradead.org>
+ <20110716015014.GF21663@dastard>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110716015014.GF21663@dastard>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+On Sat, Jul 16, 2011 at 11:50:14AM +1000, Dave Chinner wrote:
+> Bulkstat also checks for ENOENT returns from xfs_iget() as the
+> lookup it does is inherently racy. That is, if the inode is
+> allocated when it is read from the IBT, but then has been unlinked
+> before the actual xfs_iget() call, it expects to get back an ENOENT
+> to tell it the inode has been unlinked and shouldn't be included in
+> the bulkstat output. Otherwise, it returns the error to userspace.
+> 
+> So converting the mode checks to return ESTALE definitely has the
+> chance of breaking stuff that uses bulkstat (e.g. xfsdump) because
+> it will return errors now where it previously just skipped the
+> (unlinked) inode.
 
-[pnfsblock: use pnfs_generic_pg_init_read/write]
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/blocklayout.c |   14 ++++++++++++++
- 1 files changed, 14 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 22de05c..502d384 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -762,6 +762,18 @@ bl_clear_layoutdriver(struct nfs_server *server)
- 	return 0;
- }
- 
-+static const struct nfs_pageio_ops bl_pg_read_ops = {
-+	.pg_init = pnfs_generic_pg_init_read,
-+	.pg_test = pnfs_generic_pg_test,
-+	.pg_doio = pnfs_generic_pg_readpages,
-+};
-+
-+static const struct nfs_pageio_ops bl_pg_write_ops = {
-+	.pg_init = pnfs_generic_pg_init_write,
-+	.pg_test = pnfs_generic_pg_test,
-+	.pg_doio = pnfs_generic_pg_writepages,
-+};
-+
- static struct pnfs_layoutdriver_type blocklayout_type = {
- 	.id				= LAYOUT_BLOCK_VOLUME,
- 	.name				= "LAYOUT_BLOCK_VOLUME",
-@@ -775,6 +787,8 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
- 	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
- 	.set_layoutdriver		= bl_set_layoutdriver,
- 	.clear_layoutdriver		= bl_clear_layoutdriver,
-+	.pg_read_ops			= &bl_pg_read_ops,
-+	.pg_write_ops			= &bl_pg_write_ops,
- };
- 
- static const struct rpc_pipe_ops bl_upcall_ops = {
--- 
-1.7.4.1
-
+Sounds like we should simply go with the original version of the patch
+then.
