@@ -1,83 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:22489 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750877Ab1GSAJV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Jul 2011 20:09:21 -0400
-Date: Mon, 18 Jul 2011 20:09:15 -0400
-Subject: Re: [PATCH] nfs: open-associated setattr shouldn't invalidate own cache
-Content-Type: text/plain;
-	charset="utf-8"
-Message-ID: <02f301cc45a8$1ad15db6$78be630a@hq.netapp.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@redhat.com>, <trond@netapp.com>
-Cc: <linux-nfs@vger.kernel.org>
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:24961 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751197Ab1GPBzV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2011 21:55:21 -0400
+Date: Sat, 16 Jul 2011 11:50:14 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, xfs-masters@oss.sgi.com,
+        linux-nfs@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: [xfs-masters] [PATCH] xfs: failure mapping nfs fh to inode
+ should return ESTALE
+Message-ID: <20110716015014.GF21663@dastard>
+References: <20110714205036.GA19457@fieldses.org>
+ <20110714223126.GA28694@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110714223126.GA28694@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We should already optimize away the unnecessary setting of the size. The problem is that truncate() still requires you to set the ctime, whereas ftruncate() does not iirc.
+On Thu, Jul 14, 2011 at 06:31:26PM -0400, Christoph Hellwig wrote:
+> On Thu, Jul 14, 2011 at 04:50:36PM -0400, J. Bruce Fields wrote:
+> > From: J. Bruce Fields <bfields@redhat.com>
+> > 
+> > On xfs exports, nfsd is incorrectly returning ENOENT instead of ESTALE
+> > on attempts to use a filehandle of a deleted file (spotted with pynfs
+> > test PUTFH3).  The ENOENT was coming from xfs_iget.
+> 
+> With that you mean the ip->i_d.di_mode checks?  Given that we should
+> only be bale to get these from NFS or the handle ioctls I suspect just
+> turning them into ESTALE should be fine.
 
-"J. Bruce Fields" <bfields@redhat.com> wrote:
+Bulkstat also checks for ENOENT returns from xfs_iget() as the
+lookup it does is inherently racy. That is, if the inode is
+allocated when it is read from the IBT, but then has been unlinked
+before the actual xfs_iget() call, it expects to get back an ENOENT
+to tell it the inode has been unlinked and shouldn't be included in
+the bulkstat output. Otherwise, it returns the error to userspace.
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+So converting the mode checks to return ESTALE definitely has the
+chance of breaking stuff that uses bulkstat (e.g. xfsdump) because
+it will return errors now where it previously just skipped the
+(unlinked) inode.
 
-We recently noticed that NFSv4 iozone read tests that should have been
-performing at local-cache speeds were running at wire speeds, and found
-that currently,
+Cheers,
 
-	open(O_RDWR|O_TRUNC)
-	write()
-	close()
-	open(O_RDONLY)
-	read()
-
-results in an over-the-wire read (due to a setattr triggered by
-O_TRUNC).  Even non-O_TRUNC opens send setattrs (of timestamps) in some
-cases, causing the same problem.
-
-In discussion with Trond, he blames a VFS bug for breaking what should
-be a single open into an open followed by a setattr.
-
-However, it may make sense even in a case like
-
-	open(O_RDWR)
-	write()
-	setattr()
-	close()
-	open(O_RDONLY)
-	read()
-
-to treat the setattr similarly to the write, and not invalidate the
-client's own cache as long as the setattr is performed under a write
-open.
-
-(That said, I don't know if this is the correct place in the code to
-implement that behavior.)
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfs/inode.c |    7 ++++++-
- 1 files changed, 6 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 6f4850d..d4eed06 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -438,8 +438,13 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
- 	if ((attr->ia_valid & (ATTR_MODE|ATTR_UID|ATTR_GID)) != 0)
- 		nfs_inode_return_delegation(inode);
- 	error = NFS_PROTO(inode)->setattr(dentry, fattr, attr);
--	if (error == 0)
-+	if (error)
-+		goto out_free;
-+	if (attr->ia_valid & ATTR_FILE)
-+		nfs_post_op_update_inode_force_wcc(inode, fattr);
-+	else
- 		nfs_refresh_inode(inode, fattr);
-+out_free:
- 	nfs_free_fattr(fattr);
- out:
- 	return error;
+Dave.
 -- 
-1.7.6
-
+Dave Chinner
+david@fromorbit.com
