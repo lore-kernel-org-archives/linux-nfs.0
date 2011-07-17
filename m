@@ -1,15 +1,15 @@
 From: Jim Rees <rees@umich.edu>
-Subject: [PATCH v1 18/25] pnfsblock: encode_layoutcommit
-Date: Sun, 17 Jul 2011 19:59:05 -0400
-Message-ID: <1310947152-12255-19-git-send-email-rees@umich.edu>
+Subject: [PATCH v1 19/25] pnfsblock: cleanup_layoutcommit
+Date: Sun, 17 Jul 2011 19:59:06 -0400
+Message-ID: <1310947152-12255-20-git-send-email-rees@umich.edu>
 References: <1310947152-12255-1-git-send-email-rees@umich.edu>
 Cc: linux-nfs@vger.kernel.org
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:48985 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756413Ab1GQX7o (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Jul 2011 19:59:44 -0400
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:37622 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756413Ab1GQX7p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Jul 2011 19:59:45 -0400
 In-Reply-To: <1310947152-12255-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -41,283 +41,283 @@ the new commit stages:
    of the list as before. And the commit-extent-list is freed.
    Finally allocated structure is freed.
 
-[pnfsblock: get rid of deprecated xdr macros]
-Signed-off-by: Jim Rees <rees@umich.edu>
-[pnfsblock: SQUASHME: port block layout code]
+[SQUASHME: pnfs: blocklayout: port block layout code]
 Signed-off-by: Peng Tao <peng_tao@emc.com>
+[pnfsblock: SQUASHME: adjust to API change]
 Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
 [blocklayout: encode_layoutcommit implementation]
 Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 [pnfsblock: fix bug setting up layoutcommit.]
 Signed-off-by: Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
-[pnfsblock: prevent commit list corruption]
-[pnfsblock: fix layoutcommit with an empty opaque]
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: cleanup_layoutcommit wants a status parameter]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 Signed-off-by: Benny Halevy <benny@tonian.com>
 ---
  fs/nfs/blocklayout/blocklayout.c |    2 +
- fs/nfs/blocklayout/blocklayout.h |   12 +++
- fs/nfs/blocklayout/extents.c     |  174 ++++++++++++++++++++++++++++----------
- 3 files changed, 144 insertions(+), 44 deletions(-)
+ fs/nfs/blocklayout/blocklayout.h |    3 +
+ fs/nfs/blocklayout/extents.c     |  210 ++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 215 insertions(+), 0 deletions(-)
 
 diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 01d85cf..79e147a 100644
+index 79e147a..ca22903 100644
 --- a/fs/nfs/blocklayout/blocklayout.c
 +++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -156,6 +156,8 @@ static void
- bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
- 		       const struct nfs4_layoutcommit_args *arg)
+@@ -164,6 +164,8 @@ static void
+ bl_cleanup_layoutcommit(struct pnfs_layout_hdr *lo,
+ 			struct nfs4_layoutcommit_data *lcdata)
  {
 +	dprintk("%s enter\n", __func__);
-+	encode_pnfs_block_layoutupdate(BLK_LO2EXT(lo), xdr, arg);
++	clean_pnfs_block_layoutupdate(BLK_LO2EXT(lo), &lcdata->args, lcdata->res.status);
  }
  
- static void
+ static void free_blk_mountid(struct block_mount_id *mid)
 diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index fa3d51d..c526564 100644
+index c526564..c430ac1 100644
 --- a/fs/nfs/blocklayout/blocklayout.h
 +++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -134,6 +134,15 @@ struct pnfs_block_extent {
- 	struct pnfs_inval_markings *be_inval; /* tracks INVAL->RW transition */
- };
- 
-+/* Shortened extent used by LAYOUTCOMMIT */
-+struct pnfs_block_short_extent {
-+	struct list_head bse_node;
-+	struct nfs4_deviceid bse_devid;	/* STUB - removable??? */
-+	struct block_device *bse_mdev;
-+	sector_t	bse_f_offset;	/* the starting offset in the file */
-+	sector_t	bse_length;	/* the size of the extent */
-+};
-+
- static inline void
- INIT_INVAL_MARKS(struct pnfs_inval_markings *marks, sector_t blocksize)
- {
-@@ -229,6 +238,9 @@ void bl_put_extent(struct pnfs_block_extent *be);
- struct pnfs_block_extent *alloc_extent(void);
- struct pnfs_block_extent *get_extent(struct pnfs_block_extent *be);
- int is_sector_initialized(struct pnfs_inval_markings *marks, sector_t isect);
-+int encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
-+				   struct xdr_stream *xdr,
-+				   const struct nfs4_layoutcommit_args *arg);
+@@ -241,6 +241,9 @@ int is_sector_initialized(struct pnfs_inval_markings *marks, sector_t isect);
+ int encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
+ 				   struct xdr_stream *xdr,
+ 				   const struct nfs4_layoutcommit_args *arg);
++void clean_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
++				   const struct nfs4_layoutcommit_args *arg,
++				   int status);
  int bl_add_merge_extent(struct pnfs_block_layout *bl,
  			 struct pnfs_block_extent *new);
  
 diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 2bc901b..d2cf22d 100644
+index d2cf22d..4adfcb5 100644
 --- a/fs/nfs/blocklayout/extents.c
 +++ b/fs/nfs/blocklayout/extents.c
-@@ -286,6 +286,47 @@ int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
- 	return -ENOMEM;
+@@ -327,6 +327,73 @@ void print_clist(struct list_head *list, unsigned int count)
+ 	dprintk("****************\n");
  }
  
-+/* Marks sectors in [offest, offset+length) as having been written to disk.
-+ * All lengths should be block aligned.
++/* Note: In theory, we should do more checking that devid's match between
++ * old and new, but if they don't, the lists are too corrupt to salvage anyway.
 + */
-+int mark_written_sectors(struct pnfs_inval_markings *marks,
-+			 sector_t offset, sector_t length)
++/* Note this is very similar to bl_add_merge_extent */
++static void add_to_commitlist(struct pnfs_block_layout *bl,
++			      struct pnfs_block_short_extent *new)
 +{
-+	int status;
++	struct list_head *clist = &bl->bl_commit;
++	struct pnfs_block_short_extent *old, *save;
++	sector_t end = new->bse_f_offset + new->bse_length;
 +
-+	dprintk("%s(offset=%llu,len=%llu) enter\n", __func__,
-+		(u64)offset, (u64)length);
-+	spin_lock(&marks->im_lock);
-+	status = _set_range(&marks->im_tree, EXTENT_WRITTEN, offset, length);
-+	spin_unlock(&marks->im_lock);
-+	return status;
-+}
-+
-+static void print_short_extent(struct pnfs_block_short_extent *be)
-+{
-+	dprintk("PRINT SHORT EXTENT extent %p\n", be);
-+	if (be) {
-+		dprintk("        be_f_offset %llu\n", (u64)be->bse_f_offset);
-+		dprintk("        be_length   %llu\n", (u64)be->bse_length);
++	dprintk("%s enter\n", __func__);
++	print_short_extent(new);
++	print_clist(clist, bl->bl_count);
++	bl->bl_count++;
++	/* Scan for proper place to insert, extending new to the left
++	 * as much as possible.
++	 */
++	list_for_each_entry_safe(old, save, clist, bse_node) {
++		if (new->bse_f_offset < old->bse_f_offset)
++			break;
++		if (end <= old->bse_f_offset + old->bse_length) {
++			/* Range is already in list */
++			bl->bl_count--;
++			kfree(new);
++			return;
++		} else if (new->bse_f_offset <=
++				old->bse_f_offset + old->bse_length) {
++			/* new overlaps or abuts existing be */
++			if (new->bse_mdev == old->bse_mdev) {
++				/* extend new to fully replace old */
++				new->bse_length += new->bse_f_offset -
++						old->bse_f_offset;
++				new->bse_f_offset = old->bse_f_offset;
++				list_del(&old->bse_node);
++				bl->bl_count--;
++				kfree(old);
++			}
++		}
 +	}
-+}
-+
-+void print_clist(struct list_head *list, unsigned int count)
-+{
-+	struct pnfs_block_short_extent *be;
-+	unsigned int i = 0;
-+
-+	dprintk("****************\n");
-+	dprintk("Extent list looks like:\n");
-+	list_for_each_entry(be, list, bse_node) {
-+		i++;
-+		print_short_extent(be);
++	/* Note that if we never hit the above break, old will not point to a
++	 * valid extent.  However, in that case &old->bse_node==list.
++	 */
++	list_add_tail(&new->bse_node, &old->bse_node);
++	/* Scan forward for overlaps.  If we find any, extend new and
++	 * remove the overlapped extent.
++	 */
++	old = list_prepare_entry(new, clist, bse_node);
++	list_for_each_entry_safe_continue(old, save, clist, bse_node) {
++		if (end < old->bse_f_offset)
++			break;
++		/* new overlaps or abuts old */
++		if (new->bse_mdev == old->bse_mdev) {
++			if (end < old->bse_f_offset + old->bse_length) {
++				/* extend new to fully cover old */
++				end = old->bse_f_offset + old->bse_length;
++				new->bse_length = end - new->bse_f_offset;
++			}
++			list_del(&old->bse_node);
++			bl->bl_count--;
++			kfree(old);
++		}
 +	}
-+	if (i != count)
-+		dprintk("\n\nExpected %u entries\n\n\n", count);
-+	dprintk("****************\n");
++	dprintk("%s: after merging\n", __func__);
++	print_clist(clist, bl->bl_count);
 +}
 +
  static void print_bl_extent(struct pnfs_block_extent *be)
  {
  	dprintk("PRINT EXTENT extent %p\n", be);
-@@ -386,65 +427,67 @@ bl_add_merge_extent(struct pnfs_block_layout *bl,
- 	/* Scan for proper place to insert, extending new to the left
- 	 * as much as possible.
- 	 */
--	list_for_each_entry_safe(be, tmp, list, be_node) {
--		if (new->be_f_offset < be->be_f_offset)
-+	list_for_each_entry_safe_reverse(be, tmp, list, be_node) {
-+		if (new->be_f_offset >= be->be_f_offset + be->be_length)
- 			break;
--		if (end <= be->be_f_offset + be->be_length) {
--			/* new is a subset of existing be*/
-+		if (new->be_f_offset >= be->be_f_offset) {
-+			if (end <= be->be_f_offset + be->be_length) {
-+				/* new is a subset of existing be*/
-+				if (extents_consistent(be, new)) {
-+					dprintk("%s: new is subset, ignoring\n",
-+						__func__);
-+					bl_put_extent(new);
-+					return 0;
-+				} else {
-+					goto out_err;
-+				}
-+			} else {
-+				/* |<--   be   -->|
-+				 *          |<--   new   -->| */
-+				if (extents_consistent(be, new)) {
-+					/* extend new to fully replace be */
-+					new->be_length += new->be_f_offset -
-+						be->be_f_offset;
-+					new->be_f_offset = be->be_f_offset;
-+					new->be_v_offset = be->be_v_offset;
-+					dprintk("%s: removing %p\n", __func__, be);
-+					list_del(&be->be_node);
-+					bl_put_extent(be);
-+				} else {
-+					goto out_err;
-+				}
-+			}
-+		} else if (end >= be->be_f_offset + be->be_length) {
-+			/* new extent overlap existing be */
- 			if (extents_consistent(be, new)) {
--				dprintk("%s: new is subset, ignoring\n",
--					__func__);
--				bl_put_extent(new);
--				return 0;
--			} else
-+				/* extend new to fully replace be */
-+				dprintk("%s: removing %p\n", __func__, be);
-+				list_del(&be->be_node);
-+				bl_put_extent(be);
-+			} else {
- 				goto out_err;
--		} else if (new->be_f_offset <=
--				be->be_f_offset + be->be_length) {
--			/* new overlaps or abuts existing be */
--			if (extents_consistent(be, new)) {
-+			}
-+		} else if (end > be->be_f_offset) {
-+			/*           |<--   be   -->|
-+			 *|<--   new   -->| */
-+			if (extents_consistent(new, be)) {
- 				/* extend new to fully replace be */
--				new->be_length += new->be_f_offset -
--						  be->be_f_offset;
--				new->be_f_offset = be->be_f_offset;
--				new->be_v_offset = be->be_v_offset;
-+				new->be_length += be->be_f_offset + be->be_length -
-+					new->be_f_offset - new->be_length;
- 				dprintk("%s: removing %p\n", __func__, be);
- 				list_del(&be->be_node);
- 				bl_put_extent(be);
--			} else if (new->be_f_offset !=
--				   be->be_f_offset + be->be_length)
-+			} else {
- 				goto out_err;
-+			}
- 		}
- 	}
- 	/* Note that if we never hit the above break, be will not point to a
- 	 * valid extent.  However, in that case &be->be_node==list.
- 	 */
--	list_add_tail(&new->be_node, &be->be_node);
-+	list_add(&new->be_node, &be->be_node);
- 	dprintk("%s: inserting new\n", __func__);
- 	print_elist(list);
--	/* Scan forward for overlaps.  If we find any, extend new and
--	 * remove the overlapped extent.
--	 */
--	be = list_prepare_entry(new, list, be_node);
--	list_for_each_entry_safe_continue(be, tmp, list, be_node) {
--		if (end < be->be_f_offset)
--			break;
--		/* new overlaps or abuts existing be */
--		if (extents_consistent(be, new)) {
--			if (end < be->be_f_offset + be->be_length) {
--				/* extend new to fully cover be */
--				end = be->be_f_offset + be->be_length;
--				new->be_length = end - new->be_f_offset;
--			}
--			dprintk("%s: removing %p\n", __func__, be);
--			list_del(&be->be_node);
--			bl_put_extent(be);
--		} else if (end != be->be_f_offset) {
--			list_del(&new->be_node);
--			goto out_err;
--		}
--	}
--	dprintk("%s: after merging\n", __func__);
--	print_elist(list);
- 	/* STUB - The per-list consistency checks have all been done,
- 	 * should now check cross-list consistency.
- 	 */
-@@ -502,6 +545,49 @@ bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
+@@ -545,6 +612,34 @@ bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
  	return ret;
  }
  
-+int
-+encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
-+			       struct xdr_stream *xdr,
-+			       const struct nfs4_layoutcommit_args *arg)
++/* Similar to bl_find_get_extent, but called with lock held, and ignores cow */
++static struct pnfs_block_extent *
++bl_find_get_extent_locked(struct pnfs_block_layout *bl, sector_t isect)
 +{
-+	struct pnfs_block_short_extent *lce, *save;
-+	unsigned int count = 0;
-+	__be32 *p, *xdr_start;
++	struct pnfs_block_extent *be, *ret = NULL;
++	int i;
 +
-+	dprintk("%s enter\n", __func__);
-+	/* BUG - creation of bl_commit is buggy - need to wait for
-+	 * entire block to be marked WRITTEN before it can be added.
-+	 */
-+	spin_lock(&bl->bl_ext_lock);
-+	/* Want to adjust for possible truncate */
-+	/* We now want to adjust argument range */
-+
-+	/* XDR encode the ranges found */
-+	xdr_start = xdr_reserve_space(xdr, 8);
-+	if (!xdr_start)
-+		goto out;
-+	list_for_each_entry_safe(lce, save, &bl->bl_commit, bse_node) {
-+		p = xdr_reserve_space(xdr, 7 * 4 + sizeof(lce->bse_devid.data));
-+		if (!p)
++	dprintk("%s enter with isect %llu\n", __func__, (u64)isect);
++	for (i = 0; i < EXTENT_LISTS; i++) {
++		if (ret)
 +			break;
-+		p = xdr_encode_opaque_fixed(p, lce->bse_devid.data, NFS4_DEVICEID4_SIZE);
-+		p = xdr_encode_hyper(p, lce->bse_f_offset << SECTOR_SHIFT);
-+		p = xdr_encode_hyper(p, lce->bse_length << SECTOR_SHIFT);
-+		p = xdr_encode_hyper(p, 0LL);
-+		*p++ = cpu_to_be32(PNFS_BLOCK_READWRITE_DATA);
-+		list_del(&lce->bse_node);
-+		list_add_tail(&lce->bse_node, &bl->bl_committing);
-+		bl->bl_count--;
-+		count++;
++		list_for_each_entry_reverse(be, &bl->bl_extents[i], be_node) {
++			if (isect >= be->be_f_offset + be->be_length)
++				break;
++			if (isect >= be->be_f_offset) {
++				/* We have found an extent */
++				dprintk("%s Get %p (%i)\n", __func__, be,
++					atomic_read(&be->be_refcnt.refcount));
++				kref_get(&be->be_refcnt);
++				ret = be;
++				break;
++			}
++		}
 +	}
-+	xdr_start[0] = cpu_to_be32((xdr->p - xdr_start - 1) * 4);
-+	xdr_start[1] = cpu_to_be32(count);
-+out:
-+	spin_unlock(&bl->bl_ext_lock);
-+	dprintk("%s found %i ranges\n", __func__, count);
-+	return 0;
++	print_bl_extent(ret);
++	return ret;
 +}
 +
- /* Helper function to set_to_rw that initialize a new extent */
- static void
- _prep_new_extent(struct pnfs_block_extent *new,
+ int
+ encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
+ 			       struct xdr_stream *xdr,
+@@ -634,3 +729,118 @@ _front_merge(struct pnfs_block_extent *be, struct list_head *head,
+ 	kfree(storage);
+ 	return be;
+ }
++
++static u64
++set_to_rw(struct pnfs_block_layout *bl, u64 offset, u64 length)
++{
++	u64 rv = offset + length;
++	struct pnfs_block_extent *be, *e1, *e2, *e3, *new, *old;
++	struct pnfs_block_extent *children[3];
++	struct pnfs_block_extent *merge1 = NULL, *merge2 = NULL;
++	int i = 0, j;
++
++	dprintk("%s(%llu, %llu)\n", __func__, offset, length);
++	/* Create storage for up to three new extents e1, e2, e3 */
++	e1 = kmalloc(sizeof(*e1), GFP_ATOMIC);
++	e2 = kmalloc(sizeof(*e2), GFP_ATOMIC);
++	e3 = kmalloc(sizeof(*e3), GFP_ATOMIC);
++	/* BUG - we are ignoring any failure */
++	if (!e1 || !e2 || !e3)
++		goto out_nosplit;
++
++	spin_lock(&bl->bl_ext_lock);
++	be = bl_find_get_extent_locked(bl, offset);
++	rv = be->be_f_offset + be->be_length;
++	if (be->be_state != PNFS_BLOCK_INVALID_DATA) {
++		spin_unlock(&bl->bl_ext_lock);
++		goto out_nosplit;
++	}
++	/* Add e* to children, bumping e*'s krefs */
++	if (be->be_f_offset != offset) {
++		_prep_new_extent(e1, be, be->be_f_offset,
++				 offset - be->be_f_offset,
++				 PNFS_BLOCK_INVALID_DATA);
++		children[i++] = e1;
++		print_bl_extent(e1);
++	} else
++		merge1 = e1;
++	_prep_new_extent(e2, be, offset,
++			 min(length, be->be_f_offset + be->be_length - offset),
++			 PNFS_BLOCK_READWRITE_DATA);
++	children[i++] = e2;
++	print_bl_extent(e2);
++	if (offset + length < be->be_f_offset + be->be_length) {
++		_prep_new_extent(e3, be, e2->be_f_offset + e2->be_length,
++				 be->be_f_offset + be->be_length -
++				 offset - length,
++				 PNFS_BLOCK_INVALID_DATA);
++		children[i++] = e3;
++		print_bl_extent(e3);
++	} else
++		merge2 = e3;
++
++	/* Remove be from list, and insert the e* */
++	/* We don't get refs on e*, since this list is the base reference
++	 * set when init'ed.
++	 */
++	if (i < 3)
++		children[i] = NULL;
++	new = children[0];
++	list_replace(&be->be_node, &new->be_node);
++	bl_put_extent(be);
++	new = _front_merge(new, &bl->bl_extents[RW_EXTENT], merge1);
++	for (j = 1; j < i; j++) {
++		old = new;
++		new = children[j];
++		list_add(&new->be_node, &old->be_node);
++	}
++	if (merge2) {
++		/* This is a HACK, should just create a _back_merge function */
++		new = list_entry(new->be_node.next,
++				 struct pnfs_block_extent, be_node);
++		new = _front_merge(new, &bl->bl_extents[RW_EXTENT], merge2);
++	}
++	spin_unlock(&bl->bl_ext_lock);
++
++	/* Since we removed the base reference above, be is now scheduled for
++	 * destruction.
++	 */
++	bl_put_extent(be);
++	dprintk("%s returns %llu after split\n", __func__, rv);
++	return rv;
++
++ out_nosplit:
++	kfree(e1);
++	kfree(e2);
++	kfree(e3);
++	dprintk("%s returns %llu without splitting\n", __func__, rv);
++	return rv;
++}
++
++void
++clean_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
++			      const struct nfs4_layoutcommit_args *arg,
++			      int status)
++{
++	struct pnfs_block_short_extent *lce, *save;
++
++	dprintk("%s status %d\n", __func__, status);
++	list_for_each_entry_safe(lce, save, &bl->bl_committing, bse_node) {
++		if (likely(!status)) {
++			u64 offset = lce->bse_f_offset;
++			u64 end = offset + lce->bse_length;
++
++			do {
++				offset = set_to_rw(bl, offset, end - offset);
++			} while (offset < end);
++			list_del(&lce->bse_node);
++
++			kfree(lce);
++		} else {
++			list_del(&lce->bse_node);
++			spin_lock(&bl->bl_ext_lock);
++			add_to_commitlist(bl, lce);
++			spin_unlock(&bl->bl_ext_lock);
++		}
++	}
++}
 -- 
 1.7.4.1
 
