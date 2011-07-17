@@ -1,104 +1,71 @@
 From: Jim Rees <rees@umich.edu>
-Subject: [PATCH v1 08/25] pnfsblock: basic extent code
-Date: Sun, 17 Jul 2011 19:58:55 -0400
-Message-ID: <1310947152-12255-9-git-send-email-rees@umich.edu>
+Subject: [PATCH v1 10/25] pnfsblock: remove device operations
+Date: Sun, 17 Jul 2011 19:58:57 -0400
+Message-ID: <1310947152-12255-11-git-send-email-rees@umich.edu>
 References: <1310947152-12255-1-git-send-email-rees@umich.edu>
 Cc: linux-nfs@vger.kernel.org
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:48939 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756393Ab1GQX73 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Jul 2011 19:59:29 -0400
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:37579 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756393Ab1GQX7c (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Jul 2011 19:59:32 -0400
 In-Reply-To: <1310947152-12255-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Fred Isaman <iisaman@citi.umich.edu>
-
-Adds structures and basic create/delete code for extents.
-
+Signed-off-by: Jim Rees <rees@umich.edu>
 Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Zhang Jingwang <Jingwang.Zhang@emc.com>
 Signed-off-by: Benny Halevy <benny@tonian.com>
+[upcall bugfixes]
+Signed-off-by: Peng Tao <peng_tao@emc.com>
 ---
- fs/nfs/blocklayout/Makefile      |    2 +-
- fs/nfs/blocklayout/blocklayout.c |   20 ++++++--
- fs/nfs/blocklayout/blocklayout.h |    1 +
- fs/nfs/blocklayout/extents.c     |   97 ++++++++++++++++++++++++++++++++++++++
- 4 files changed, 115 insertions(+), 5 deletions(-)
- create mode 100644 fs/nfs/blocklayout/extents.c
+ fs/nfs/blocklayout/Makefile        |    2 +-
+ fs/nfs/blocklayout/blocklayout.h   |    3 +
+ fs/nfs/blocklayout/blocklayoutdm.c |  111 ++++++++++++++++++++++++++++++++++++
+ 3 files changed, 115 insertions(+), 1 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
 
 diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
-index 6bf49cd..5cfadf6 100644
+index 5bf3409..d581550 100644
 --- a/fs/nfs/blocklayout/Makefile
 +++ b/fs/nfs/blocklayout/Makefile
 @@ -2,4 +2,4 @@
  # Makefile for the pNFS block layout driver kernel module
  #
  obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
--blocklayoutdriver-objs := blocklayout.o
-+blocklayoutdriver-objs := blocklayout.o extents.o
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 1e0aa49..6223b19 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -53,12 +53,24 @@ bl_write_pagelist(struct nfs_write_data *wdata,
- 	return PNFS_NOT_ATTEMPTED;
- }
- 
--/* STUB */
-+/* FIXME - range ignored */
- static void
--release_extents(struct pnfs_block_layout *bl,
--		struct pnfs_layout_range *range)
-+release_extents(struct pnfs_block_layout *bl, struct pnfs_layout_range *range)
- {
--	return;
-+	int i;
-+	struct pnfs_block_extent *be;
-+
-+	spin_lock(&bl->bl_ext_lock);
-+	for (i = 0; i < EXTENT_LISTS; i++) {
-+		while (!list_empty(&bl->bl_extents[i])) {
-+			be = list_first_entry(&bl->bl_extents[i],
-+					      struct pnfs_block_extent,
-+					      be_node);
-+			list_del(&be->be_node);
-+			bl_put_extent(be);
-+		}
-+	}
-+	spin_unlock(&bl->bl_ext_lock);
- }
- 
- /* STUB */
+-blocklayoutdriver-objs := blocklayout.o extents.o blocklayoutdev.o
++blocklayoutdriver-objs := blocklayout.o extents.o blocklayoutdev.o blocklayoutdm.o
 diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index b4f954f..4b0d2a3 100644
+index 71729d1..d8d8881 100644
 --- a/fs/nfs/blocklayout/blocklayout.h
 +++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -88,4 +88,5 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
- 	return container_of(lo, struct pnfs_block_layout, bl_layout);
- }
+@@ -128,5 +128,8 @@ struct pnfs_block_dev *nfs4_blk_decode_device(struct nfs_server *server,
+ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+ 				struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
  
-+void bl_put_extent(struct pnfs_block_extent *be);
++/* blocklayoutdm.c */
++void free_block_dev(struct pnfs_block_dev *bdev);
++
+ void bl_put_extent(struct pnfs_block_extent *be);
  #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+diff --git a/fs/nfs/blocklayout/blocklayoutdm.c b/fs/nfs/blocklayout/blocklayoutdm.c
 new file mode 100644
-index 0000000..44c3364
+index 0000000..eab95f3
 --- /dev/null
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -0,0 +1,97 @@
++++ b/fs/nfs/blocklayout/blocklayoutdm.c
+@@ -0,0 +1,111 @@
 +/*
-+ *  linux/fs/nfs/blocklayout/blocklayout.h
++ *  linux/fs/nfs/blocklayout/blocklayoutdm.c
 + *
 + *  Module for the NFSv4.1 pNFS block layout driver.
 + *
-+ *  Copyright (c) 2006 The Regents of the University of Michigan.
++ *  Copyright (c) 2007 The Regents of the University of Michigan.
 + *  All rights reserved.
 + *
-+ *  Andy Adamson <andros@citi.umich.edu>
 + *  Fred Isaman <iisaman@umich.edu>
++ *  Andy Adamson <andros@citi.umich.edu>
 + *
 + * permission is granted to use, copy, create derivative works and
 + * redistribute this software and such derivative works for any purpose,
@@ -121,70 +88,84 @@ index 0000000..44c3364
 + * possibility of such damages.
 + */
 +
++#include <linux/genhd.h> /* gendisk - used in a dprintk*/
++#include <linux/sched.h>
++#include <linux/hash.h>
++
 +#include "blocklayout.h"
++
 +#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
 +
-+static void print_bl_extent(struct pnfs_block_extent *be)
++static void dev_remove(dev_t dev)
 +{
-+	dprintk("PRINT EXTENT extent %p\n", be);
-+	if (be) {
-+		dprintk("        be_f_offset %llu\n", (u64)be->be_f_offset);
-+		dprintk("        be_length   %llu\n", (u64)be->be_length);
-+		dprintk("        be_v_offset %llu\n", (u64)be->be_v_offset);
-+		dprintk("        be_state    %d\n", be->be_state);
++	struct rpc_pipe_msg msg;
++	struct bl_dev_msg bl_umount_request;
++	struct bl_msg_hdr bl_msg = {
++		.type = BL_DEVICE_UMOUNT,
++		.totallen = sizeof(bl_umount_request),
++	};
++	uint8_t *dataptr;
++	DECLARE_WAITQUEUE(wq, current);
++
++	dprintk("Entering %s\n", __func__);
++
++	memset(&msg, 0, sizeof(msg));
++	msg.data = kzalloc(1 + sizeof(bl_umount_request), GFP_NOFS);
++	if (!msg.data)
++		goto out;
++
++	memset(&bl_umount_request, 0, sizeof(bl_umount_request));
++	bl_umount_request.major = MAJOR(dev);
++	bl_umount_request.minor = MINOR(dev);
++
++	memcpy(msg.data, &bl_msg, sizeof(bl_msg));
++	dataptr = (uint8_t *) msg.data;
++	memcpy(&dataptr[sizeof(bl_msg)], &bl_umount_request, sizeof(bl_umount_request));
++	msg.len = sizeof(bl_msg) + bl_msg.totallen;
++
++	add_wait_queue(&bl_wq, &wq);
++	if (rpc_queue_upcall(bl_device_pipe->d_inode, &msg) < 0) {
++		remove_wait_queue(&bl_wq, &wq);
++		goto out;
 +	}
++
++	set_current_state(TASK_UNINTERRUPTIBLE);
++	schedule();
++	__set_current_state(TASK_RUNNING);
++	remove_wait_queue(&bl_wq, &wq);
++
++out:
++	kfree(msg.data);
 +}
 +
-+static void
-+destroy_extent(struct kref *kref)
++/*
++ * Release meta device
++ */
++static void nfs4_blk_metadev_release(struct pnfs_block_dev *bdev)
 +{
-+	struct pnfs_block_extent *be;
++	int rv;
 +
-+	be = container_of(kref, struct pnfs_block_extent, be_refcnt);
-+	dprintk("%s be=%p\n", __func__, be);
-+	kfree(be);
++	dprintk("%s Releasing\n", __func__);
++	rv = nfs4_blkdev_put(bdev->bm_mdev);
++	if (rv)
++		printk(KERN_ERR "%s nfs4_blkdev_put returns %d\n",
++				__func__, rv);
++
++	dev_remove(bdev->bm_mdev->bd_dev);
 +}
 +
-+void
-+bl_put_extent(struct pnfs_block_extent *be)
++void free_block_dev(struct pnfs_block_dev *bdev)
 +{
-+	if (be) {
-+		dprintk("%s enter %p (%i)\n", __func__, be,
-+			atomic_read(&be->be_refcnt.refcount));
-+		kref_put(&be->be_refcnt, destroy_extent);
++	if (bdev) {
++		if (bdev->bm_mdev) {
++			dprintk("%s Removing DM device: %d:%d\n",
++				__func__,
++				MAJOR(bdev->bm_mdev->bd_dev),
++				MINOR(bdev->bm_mdev->bd_dev));
++			nfs4_blk_metadev_release(bdev);
++		}
++		kfree(bdev);
 +	}
-+}
-+
-+struct pnfs_block_extent *alloc_extent(void)
-+{
-+	struct pnfs_block_extent *be;
-+
-+	be = kmalloc(sizeof(struct pnfs_block_extent), GFP_NOFS);
-+	if (!be)
-+		return NULL;
-+	INIT_LIST_HEAD(&be->be_node);
-+	kref_init(&be->be_refcnt);
-+	be->be_inval = NULL;
-+	return be;
-+}
-+
-+struct pnfs_block_extent *
-+get_extent(struct pnfs_block_extent *be)
-+{
-+	if (be)
-+		kref_get(&be->be_refcnt);
-+	return be;
-+}
-+
-+void print_elist(struct list_head *list)
-+{
-+	struct pnfs_block_extent *be;
-+	dprintk("****************\n");
-+	dprintk("Extent list looks like:\n");
-+	list_for_each_entry(be, list, be_node) {
-+		print_bl_extent(be);
-+	}
-+	dprintk("****************\n");
 +}
 -- 
 1.7.4.1
