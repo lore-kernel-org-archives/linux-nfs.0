@@ -1,340 +1,125 @@
 From: Jim Rees <rees@umich.edu>
-Subject: [PATCH v1 05/25] pnfs: ask for layout_blksize and save it in nfs_server
-Date: Sun, 17 Jul 2011 19:58:52 -0400
-Message-ID: <1310947152-12255-6-git-send-email-rees@umich.edu>
+Subject: [PATCH v1 06/25] pnfs: cleanup_layoutcommit
+Date: Sun, 17 Jul 2011 19:58:53 -0400
+Message-ID: <1310947152-12255-7-git-send-email-rees@umich.edu>
 References: <1310947152-12255-1-git-send-email-rees@umich.edu>
 Cc: linux-nfs@vger.kernel.org
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:37552 "EHLO
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:37561 "EHLO
 	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756385Ab1GQX7Z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Jul 2011 19:59:25 -0400
+	with ESMTP id S1756366Ab1GQX70 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Jul 2011 19:59:26 -0400
 In-Reply-To: <1310947152-12255-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+From: Andy Adamson <andros@netapp.com>
 
-Block layout needs it to determine IO size.
+This gives layout driver a chance to cleanup structures they put in at
+encode_layoutcommit.
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Tao Guo <glorioustao@gmail.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[fixup layout header pointer for layoutcommit]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 Signed-off-by: Benny Halevy <benny@tonian.com>
 ---
- fs/nfs/client.c           |    1 +
- fs/nfs/nfs4_fs.h          |    2 +-
- fs/nfs/nfs4proc.c         |    5 +-
- fs/nfs/nfs4xdr.c          |   99 +++++++++++++++++++++++++++++++++++++--------
- include/linux/nfs_fs_sb.h |    4 +-
- include/linux/nfs_xdr.h   |    3 +-
- 6 files changed, 92 insertions(+), 22 deletions(-)
+ fs/nfs/nfs4proc.c       |    1 +
+ fs/nfs/nfs4xdr.c        |    3 ++-
+ fs/nfs/pnfs.c           |   10 ++++++++++
+ fs/nfs/pnfs.h           |    5 +++++
+ include/linux/nfs_xdr.h |    1 +
+ 5 files changed, 19 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index a9b1848..de00a37 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -936,6 +936,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server,
- 	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
- 		server->wsize = NFS_MAX_FILE_IO_SIZE;
- 	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
-+	server->pnfs_blksize = fsinfo->blksize;
- 	set_pnfs_layoutdriver(server, mntfh, fsinfo->layouttype);
- 
- 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index c30aed2..b7ad2f0 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -318,7 +318,7 @@ extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
- extern const u32 nfs4_fattr_bitmap[2];
- extern const u32 nfs4_statfs_bitmap[2];
- extern const u32 nfs4_pathconf_bitmap[2];
--extern const u32 nfs4_fsinfo_bitmap[2];
-+extern const u32 nfs4_fsinfo_bitmap[3];
- extern const u32 nfs4_fs_locations_bitmap[2];
- 
- /* nfs4renewd.c */
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 784c1a2..e02f545 100644
+index e02f545..795033c5 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -140,12 +140,13 @@ const u32 nfs4_pathconf_bitmap[2] = {
- 	0
- };
+@@ -5965,6 +5965,7 @@ static void nfs4_layoutcommit_release(void *calldata)
+ 	struct nfs4_layoutcommit_data *data = calldata;
+ 	struct pnfs_layout_segment *lseg, *tmp;
  
--const u32 nfs4_fsinfo_bitmap[2] = { FATTR4_WORD0_MAXFILESIZE
-+const u32 nfs4_fsinfo_bitmap[3] = { FATTR4_WORD0_MAXFILESIZE
- 			| FATTR4_WORD0_MAXREAD
- 			| FATTR4_WORD0_MAXWRITE
- 			| FATTR4_WORD0_LEASE_TIME,
- 			FATTR4_WORD1_TIME_DELTA
--			| FATTR4_WORD1_FS_LAYOUT_TYPES
-+			| FATTR4_WORD1_FS_LAYOUT_TYPES,
-+			FATTR4_WORD2_LAYOUT_BLKSIZE
- };
- 
- const u32 nfs4_fs_locations_bitmap[2] = {
++	pnfs_cleanup_layoutcommit(data->args.inode, data);
+ 	/* Matched by references in pnfs_set_layoutcommit */
+ 	list_for_each_entry_safe(lseg, tmp, &data->lseg_list, pls_lc_list) {
+ 		list_del_init(&lseg->pls_lc_list);
 diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index a82dd40..5ce3c64 100644
+index 5ce3c64..07c41b2 100644
 --- a/fs/nfs/nfs4xdr.c
 +++ b/fs/nfs/nfs4xdr.c
-@@ -113,7 +113,11 @@ static int nfs4_stat_to_errno(int);
- #define encode_restorefh_maxsz  (op_encode_hdr_maxsz)
- #define decode_restorefh_maxsz  (op_decode_hdr_maxsz)
- #define encode_fsinfo_maxsz	(encode_getattr_maxsz)
--#define decode_fsinfo_maxsz	(op_decode_hdr_maxsz + 15)
-+/* The 5 accounts for the PNFS attributes, and assumes that at most three
-+ * layout types will be returned.
-+ */
-+#define decode_fsinfo_maxsz	(op_decode_hdr_maxsz + \
-+				 nfs4_fattr_bitmap_maxsz + 4 + 8 + 5)
- #define encode_renew_maxsz	(op_encode_hdr_maxsz + 3)
- #define decode_renew_maxsz	(op_decode_hdr_maxsz)
- #define encode_setclientid_maxsz \
-@@ -1123,6 +1127,35 @@ static void encode_getattr_two(struct xdr_stream *xdr, uint32_t bm0, uint32_t bm
- 	hdr->replen += decode_getattr_maxsz;
- }
+@@ -1991,7 +1991,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
+ 	*p++ = cpu_to_be32(OP_LAYOUTCOMMIT);
+ 	/* Only whole file layouts */
+ 	p = xdr_encode_hyper(p, 0); /* offset */
+-	p = xdr_encode_hyper(p, NFS4_MAX_UINT64); /* length */
++	p = xdr_encode_hyper(p, args->lastbytewritten+1); /* length */
+ 	*p++ = cpu_to_be32(0); /* reclaim */
+ 	p = xdr_encode_opaque_fixed(p, args->stateid.data, NFS4_STATEID_SIZE);
+ 	*p++ = cpu_to_be32(1); /* newoffset = TRUE */
+@@ -5596,6 +5596,7 @@ static int decode_layoutcommit(struct xdr_stream *xdr,
+ 	int status;
  
-+static void
-+encode_getattr_three(struct xdr_stream *xdr,
-+		     uint32_t bm0, uint32_t bm1, uint32_t bm2,
-+		     struct compound_hdr *hdr)
+ 	status = decode_op_hdr(xdr, OP_LAYOUTCOMMIT);
++	res->status = status;
+ 	if (status)
+ 		return status;
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index fbebd2a..3b20753 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1411,6 +1411,16 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ }
+ EXPORT_SYMBOL_GPL(pnfs_set_layoutcommit);
+ 
++void pnfs_cleanup_layoutcommit(struct inode *inode,
++			       struct nfs4_layoutcommit_data *data)
 +{
-+	__be32 *p;
++	struct nfs_server *nfss = NFS_SERVER(inode);
 +
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(OP_GETATTR);
-+	if (bm2) {
-+		p = reserve_space(xdr, 16);
-+		*p++ = cpu_to_be32(3);
-+		*p++ = cpu_to_be32(bm0);
-+		*p++ = cpu_to_be32(bm1);
-+		*p = cpu_to_be32(bm2);
-+	} else if (bm1) {
-+		p = reserve_space(xdr, 12);
-+		*p++ = cpu_to_be32(2);
-+		*p++ = cpu_to_be32(bm0);
-+		*p = cpu_to_be32(bm1);
-+	} else {
-+		p = reserve_space(xdr, 8);
-+		*p++ = cpu_to_be32(1);
-+		*p = cpu_to_be32(bm0);
-+	}
-+	hdr->nops++;
-+	hdr->replen += decode_getattr_maxsz;
++	if (nfss->pnfs_curr_ld->cleanup_layoutcommit)
++		nfss->pnfs_curr_ld->cleanup_layoutcommit(NFS_I(inode)->layout,
++							 data);
 +}
 +
- static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
- {
- 	encode_getattr_two(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
-@@ -1131,8 +1164,11 @@ static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct c
+ /*
+  * For the LAYOUT4_NFSV4_1_FILES layout type, NFS_DATA_SYNC WRITEs and
+  * NFS_UNSTABLE WRITEs with a COMMIT to data servers must store enough
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index bddd8b9..f271425 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -113,6 +113,9 @@ struct pnfs_layoutdriver_type {
+ 				     struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutreturn_args *args);
  
- static void encode_fsinfo(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
- {
--	encode_getattr_two(xdr, bitmask[0] & nfs4_fsinfo_bitmap[0],
--			   bitmask[1] & nfs4_fsinfo_bitmap[1], hdr);
-+	encode_getattr_three(xdr,
-+			     bitmask[0] & nfs4_fsinfo_bitmap[0],
-+			     bitmask[1] & nfs4_fsinfo_bitmap[1],
-+			     bitmask[2] & nfs4_fsinfo_bitmap[2],
-+			     hdr);
- }
- 
- static void encode_fs_locations(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
-@@ -2643,7 +2679,7 @@ static void nfs4_xdr_enc_setclientid_confirm(struct rpc_rqst *req,
- 	struct compound_hdr hdr = {
- 		.nops	= 0,
- 	};
--	const u32 lease_bitmap[2] = { FATTR4_WORD0_LEASE_TIME, 0 };
-+	const u32 lease_bitmap[3] = { FATTR4_WORD0_LEASE_TIME };
- 
- 	encode_compound_hdr(xdr, req, &hdr);
- 	encode_setclientid_confirm(xdr, arg, &hdr);
-@@ -2787,7 +2823,7 @@ static void nfs4_xdr_enc_get_lease_time(struct rpc_rqst *req,
- 	struct compound_hdr hdr = {
- 		.minorversion = nfs4_xdr_minorversion(&args->la_seq_args),
- 	};
--	const u32 lease_bitmap[2] = { FATTR4_WORD0_LEASE_TIME, 0 };
-+	const u32 lease_bitmap[3] = { FATTR4_WORD0_LEASE_TIME };
- 
- 	encode_compound_hdr(xdr, req, &hdr);
- 	encode_sequence(xdr, &args->la_seq_args, &hdr);
-@@ -3068,14 +3104,17 @@ static int decode_attr_bitmap(struct xdr_stream *xdr, uint32_t *bitmap)
- 		goto out_overflow;
- 	bmlen = be32_to_cpup(p);
- 
--	bitmap[0] = bitmap[1] = 0;
-+	bitmap[0] = bitmap[1] = bitmap[2] = 0;
- 	p = xdr_inline_decode(xdr, (bmlen << 2));
- 	if (unlikely(!p))
- 		goto out_overflow;
- 	if (bmlen > 0) {
- 		bitmap[0] = be32_to_cpup(p++);
--		if (bmlen > 1)
--			bitmap[1] = be32_to_cpup(p);
-+		if (bmlen > 1) {
-+			bitmap[1] = be32_to_cpup(p++);
-+			if (bmlen > 2)
-+				bitmap[2] = be32_to_cpup(p);
-+		}
- 	}
- 	return 0;
- out_overflow:
-@@ -3107,8 +3146,9 @@ static int decode_attr_supported(struct xdr_stream *xdr, uint32_t *bitmap, uint3
- 			return ret;
- 		bitmap[0] &= ~FATTR4_WORD0_SUPPORTED_ATTRS;
- 	} else
--		bitmask[0] = bitmask[1] = 0;
--	dprintk("%s: bitmask=%08x:%08x\n", __func__, bitmask[0], bitmask[1]);
-+		bitmask[0] = bitmask[1] = bitmask[2] = 0;
-+	dprintk("%s: bitmask=%08x:%08x:%08x\n", __func__,
-+		bitmask[0], bitmask[1], bitmask[2]);
- 	return 0;
- }
- 
-@@ -4162,7 +4202,7 @@ out_overflow:
- static int decode_server_caps(struct xdr_stream *xdr, struct nfs4_server_caps_res *res)
- {
- 	__be32 *savep;
--	uint32_t attrlen, bitmap[2] = {0};
-+	uint32_t attrlen, bitmap[3] = {0};
- 	int status;
- 
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
-@@ -4188,7 +4228,7 @@ xdr_error:
- static int decode_statfs(struct xdr_stream *xdr, struct nfs_fsstat *fsstat)
- {
- 	__be32 *savep;
--	uint32_t attrlen, bitmap[2] = {0};
-+	uint32_t attrlen, bitmap[3] = {0};
- 	int status;
- 
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
-@@ -4220,7 +4260,7 @@ xdr_error:
- static int decode_pathconf(struct xdr_stream *xdr, struct nfs_pathconf *pathconf)
- {
- 	__be32 *savep;
--	uint32_t attrlen, bitmap[2] = {0};
-+	uint32_t attrlen, bitmap[3] = {0};
- 	int status;
- 
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
-@@ -4360,7 +4400,7 @@ static int decode_getfattr_generic(struct xdr_stream *xdr, struct nfs_fattr *fat
- {
- 	__be32 *savep;
- 	uint32_t attrlen,
--		 bitmap[2] = {0};
-+		 bitmap[3] = {0};
- 	int status;
- 
- 	status = decode_op_hdr(xdr, OP_GETATTR);
-@@ -4446,10 +4486,32 @@ static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
- 	return status;
- }
- 
-+/*
-+ * The prefered block size for layout directed io
-+ */
-+static int decode_attr_layout_blksize(struct xdr_stream *xdr, uint32_t *bitmap,
-+				      uint32_t *res)
-+{
-+	__be32 *p;
++	void (*cleanup_layoutcommit) (struct pnfs_layout_hdr *layoutid,
++				      struct nfs4_layoutcommit_data *data);
 +
-+	dprintk("%s: bitmap is %x\n", __func__, bitmap[2]);
-+	*res = 0;
-+	if (bitmap[2] & FATTR4_WORD2_LAYOUT_BLKSIZE) {
-+		p = xdr_inline_decode(xdr, 4);
-+		if (unlikely(!p)) {
-+			print_overflow_msg(__func__, xdr);
-+			return -EIO;
-+		}
-+		*res = be32_to_cpup(p);
-+		bitmap[2] &= ~FATTR4_WORD2_LAYOUT_BLKSIZE;
-+	}
-+	return 0;
-+}
-+
- static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
- {
- 	__be32 *savep;
--	uint32_t attrlen, bitmap[2];
-+	uint32_t attrlen, bitmap[3];
- 	int status;
- 
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
-@@ -4477,6 +4539,9 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
- 	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttype);
- 	if (status != 0)
- 		goto xdr_error;
-+	status = decode_attr_layout_blksize(xdr, bitmap, &fsinfo->blksize);
-+	if (status)
-+		goto xdr_error;
- 
- 	status = verify_attr_len(xdr, savep, attrlen);
- xdr_error:
-@@ -4896,7 +4961,7 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
- {
- 	__be32 *savep;
- 	uint32_t attrlen,
--		 bitmap[2] = {0};
-+		 bitmap[3] = {0};
- 	struct kvec *iov = req->rq_rcv_buf.head;
- 	int status;
- 
-@@ -6849,7 +6914,7 @@ out:
- int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
- 		       int plus)
- {
--	uint32_t bitmap[2] = {0};
-+	uint32_t bitmap[3] = {0};
- 	uint32_t len;
- 	__be32 *p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 4faeac8..6e6ab4a 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -132,7 +132,7 @@ struct nfs_server {
- #endif
- 
- #ifdef CONFIG_NFS_V4
--	u32			attr_bitmask[2];/* V4 bitmask representing the set
-+	u32			attr_bitmask[3];/* V4 bitmask representing the set
- 						   of attributes supported on this
- 						   filesystem */
- 	u32			cache_consistency_bitmask[2];
-@@ -145,6 +145,8 @@ struct nfs_server {
- 						   filesystem */
- 	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
- 	struct rpc_wait_queue	roc_rpcwaitq;
-+	void			*pnfs_ld_data; /* per mount point data */
-+	u32			pnfs_blksize; /* layout_blksize attr */
- 
- 	/* the following fields are protected by nfs_client->cl_lock */
- 	struct rb_root		state_owners;
+ 	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
+ 				     struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutcommit_args *args);
+@@ -196,6 +199,8 @@ void pnfs_roc_release(struct inode *ino);
+ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+ bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
++void pnfs_cleanup_layoutcommit(struct inode *inode,
++			       struct nfs4_layoutcommit_data *data);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+ int _pnfs_return_layout(struct inode *);
+ int pnfs_ld_write_done(struct nfs_write_data *);
 diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 21f333e..94f27e5 100644
+index 94f27e5..569ea5b 100644
 --- a/include/linux/nfs_xdr.h
 +++ b/include/linux/nfs_xdr.h
-@@ -122,6 +122,7 @@ struct nfs_fsinfo {
- 	struct timespec		time_delta; /* server time granularity */
- 	__u32			lease_time; /* in seconds */
- 	__u32			layouttype; /* supported pnfs layout driver */
-+	__u32			blksize; /* preferred pnfs io block size */
+@@ -269,6 +269,7 @@ struct nfs4_layoutcommit_res {
+ 	struct nfs_fattr *fattr;
+ 	const struct nfs_server *server;
+ 	struct nfs4_sequence_res seq_res;
++	int status;
  };
  
- struct nfs_fsstat {
-@@ -954,7 +955,7 @@ struct nfs4_server_caps_arg {
- };
- 
- struct nfs4_server_caps_res {
--	u32				attr_bitmask[2];
-+	u32				attr_bitmask[3];
- 	u32				acl_bitmask;
- 	u32				has_links;
- 	u32				has_symlinks;
+ struct nfs4_layoutcommit_data {
 -- 
 1.7.4.1
 
