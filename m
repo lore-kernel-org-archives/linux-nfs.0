@@ -1,123 +1,83 @@
 From: Jim Rees <rees@umich.edu>
-Subject: [PATCH v1 15/25] pnfsblock: bl_find_get_extent
-Date: Sun, 17 Jul 2011 19:59:02 -0400
-Message-ID: <1310947152-12255-16-git-send-email-rees@umich.edu>
+Subject: [PATCH v1 17/25] pnfsblock: merge rw extents
+Date: Sun, 17 Jul 2011 19:59:04 -0400
+Message-ID: <1310947152-12255-18-git-send-email-rees@umich.edu>
 References: <1310947152-12255-1-git-send-email-rees@umich.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Cc: linux-nfs@vger.kernel.org
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:37600 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756404Ab1GQX7j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Jul 2011 19:59:39 -0400
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:48979 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756408Ab1GQX7m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Jul 2011 19:59:42 -0400
 In-Reply-To: <1310947152-12255-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-=46rom: Fred <iisaman@citi.umich.edu>
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-Implement bl_find_get_extent(), one of the core extent manipulation
-routines.
-
-[pnfsblock: Lookup list entry of layouts and tags in reverse order]
-Signed-off-by: Zhang Jingwang <zhangjingwang-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
 Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-
-pnfsblock: fix print format warnings for sector_t and size_t
-
-gcc spews warnings about these on x86_64, e.g.:
-fs/nfs/blocklayout/blocklayout.c:74: warning: format =E2=80=98%Lu=E2=80=
-=99 expects type =E2=80=98long long unsigned int=E2=80=99, but argument=
- 2 has type =E2=80=98sector_t=E2=80=99
-fs/nfs/blocklayout/blocklayout.c:388: warning: format =E2=80=98%d=E2=80=
-=99 expects type =E2=80=98int=E2=80=99, but argument 5 has type =E2=80=98=
-size_t=E2=80=99
-
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 Signed-off-by: Benny Halevy <benny@tonian.com>
 ---
- fs/nfs/blocklayout/blocklayout.h |    3 ++
- fs/nfs/blocklayout/extents.c     |   47 ++++++++++++++++++++++++++++++=
-++++++++
- 2 files changed, 50 insertions(+), 0 deletions(-)
+ fs/nfs/blocklayout/extents.c |   47 ++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 47 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/bloc=
-klayout.h
-index ee402c7..4e61b52 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -197,6 +197,9 @@ int nfs4_blk_process_layoutget(struct pnfs_layout_h=
-dr *lo,
- void free_block_dev(struct pnfs_block_dev *bdev);
-=20
- /* extents.c */
-+struct pnfs_block_extent *
-+bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
-+		struct pnfs_block_extent **cow_read);
- void bl_put_extent(struct pnfs_block_extent *be);
- struct pnfs_block_extent *alloc_extent(void);
- int bl_add_merge_extent(struct pnfs_block_layout *bl,
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.=
-c
-index d76bb43..14065ca 100644
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 9ace614..2bc901b 100644
 --- a/fs/nfs/blocklayout/extents.c
 +++ b/fs/nfs/blocklayout/extents.c
-@@ -201,3 +201,50 @@ bl_add_merge_extent(struct pnfs_block_layout *bl,
- 	bl_put_extent(new);
- 	return -EIO;
+@@ -501,3 +501,50 @@ bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
+ 	print_bl_extent(ret);
+ 	return ret;
  }
 +
-+/* Returns extent, or NULL.  If a second READ extent exists, it is ret=
-urned
-+ * in cow_read, if given.
-+ *
-+ * The extents are kept in two seperate ordered lists, one for READ an=
-d NONE,
-+ * one for READWRITE and INVALID.  Within each list, we assume:
-+ * 1. Extents are ordered by file offset.
-+ * 2. For any given isect, there is at most one extents that matches.
-+ */
-+struct pnfs_block_extent *
-+bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
-+	    struct pnfs_block_extent **cow_read)
++/* Helper function to set_to_rw that initialize a new extent */
++static void
++_prep_new_extent(struct pnfs_block_extent *new,
++		 struct pnfs_block_extent *orig,
++		 sector_t offset, sector_t length, int state)
 +{
-+	struct pnfs_block_extent *be, *cow, *ret;
-+	int i;
-+
-+	dprintk("%s enter with isect %llu\n", __func__, (u64)isect);
-+	cow =3D ret =3D NULL;
-+	spin_lock(&bl->bl_ext_lock);
-+	for (i =3D 0; i < EXTENT_LISTS; i++) {
-+		if (ret &&
-+		    (!cow_read || ret->be_state !=3D PNFS_BLOCK_INVALID_DATA))
-+			break;
-+		list_for_each_entry_reverse(be, &bl->bl_extents[i], be_node) {
-+			if (isect >=3D be->be_f_offset + be->be_length)
-+				break;
-+			if (isect >=3D be->be_f_offset) {
-+				/* We have found an extent */
-+				dprintk("%s Get %p (%i)\n", __func__, be,
-+					atomic_read(&be->be_refcnt.refcount));
-+				kref_get(&be->be_refcnt);
-+				if (!ret)
-+					ret =3D be;
-+				else if (be->be_state !=3D PNFS_BLOCK_READ_DATA)
-+					bl_put_extent(be);
-+				else
-+					cow =3D be;
-+				break;
-+			}
-+		}
-+	}
-+	spin_unlock(&bl->bl_ext_lock);
-+	if (cow_read)
-+		*cow_read =3D cow;
-+	print_bl_extent(ret);
-+	return ret;
++	kref_init(&new->be_refcnt);
++	/* don't need to INIT_LIST_HEAD(&new->be_node) */
++	memcpy(&new->be_devid, &orig->be_devid, sizeof(struct nfs4_deviceid));
++	new->be_mdev = orig->be_mdev;
++	new->be_f_offset = offset;
++	new->be_length = length;
++	new->be_v_offset = orig->be_v_offset - orig->be_f_offset + offset;
++	new->be_state = state;
++	new->be_inval = orig->be_inval;
 +}
---=20
++
++/* Tries to merge be with extent in front of it in list.
++ * Frees storage if not used.
++ */
++static struct pnfs_block_extent *
++_front_merge(struct pnfs_block_extent *be, struct list_head *head,
++	     struct pnfs_block_extent *storage)
++{
++	struct pnfs_block_extent *prev;
++
++	if (!storage)
++		goto no_merge;
++	if (&be->be_node == head || be->be_node.prev == head)
++		goto no_merge;
++	prev = list_entry(be->be_node.prev, struct pnfs_block_extent, be_node);
++	if ((prev->be_f_offset + prev->be_length != be->be_f_offset) ||
++	    !extents_consistent(prev, be))
++		goto no_merge;
++	_prep_new_extent(storage, prev, prev->be_f_offset,
++			 prev->be_length + be->be_length, prev->be_state);
++	list_replace(&prev->be_node, &storage->be_node);
++	bl_put_extent(prev);
++	list_del(&be->be_node);
++	bl_put_extent(be);
++	return storage;
++
++ no_merge:
++	kfree(storage);
++	return be;
++}
+-- 
 1.7.4.1
 
