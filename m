@@ -1,15 +1,15 @@
 From: Jim Rees <rees@umich.edu>
-Subject: [PATCH v1 10/25] pnfsblock: remove device operations
-Date: Sun, 17 Jul 2011 19:58:57 -0400
-Message-ID: <1310947152-12255-11-git-send-email-rees@umich.edu>
+Subject: [PATCH v1 09/25] pnfsblock: add device operations
+Date: Sun, 17 Jul 2011 19:58:56 -0400
+Message-ID: <1310947152-12255-10-git-send-email-rees@umich.edu>
 References: <1310947152-12255-1-git-send-email-rees@umich.edu>
 Cc: linux-nfs@vger.kernel.org
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:37579 "EHLO
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:37573 "EHLO
 	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756393Ab1GQX7c (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Jul 2011 19:59:32 -0400
+	with ESMTP id S1756393Ab1GQX7b (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Jul 2011 19:59:31 -0400
 In-Reply-To: <1310947152-12255-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -21,51 +21,181 @@ Signed-off-by: Benny Halevy <benny@tonian.com>
 [upcall bugfixes]
 Signed-off-by: Peng Tao <peng_tao@emc.com>
 ---
- fs/nfs/blocklayout/Makefile        |    2 +-
- fs/nfs/blocklayout/blocklayout.h   |    3 +
- fs/nfs/blocklayout/blocklayoutdm.c |  111 ++++++++++++++++++++++++++++++++++++
- 3 files changed, 115 insertions(+), 1 deletions(-)
- create mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
+ fs/nfs/blocklayout/Makefile         |    2 +-
+ fs/nfs/blocklayout/blocklayout.c    |   42 ++++++++
+ fs/nfs/blocklayout/blocklayout.h    |   40 +++++++
+ fs/nfs/blocklayout/blocklayoutdev.c |  191 +++++++++++++++++++++++++++++++++++
+ fs/nfs/client.c                     |    2 +-
+ include/linux/nfs.h                 |    2 +
+ 6 files changed, 277 insertions(+), 2 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdev.c
 
 diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
-index 5bf3409..d581550 100644
+index 5cfadf6..5bf3409 100644
 --- a/fs/nfs/blocklayout/Makefile
 +++ b/fs/nfs/blocklayout/Makefile
 @@ -2,4 +2,4 @@
  # Makefile for the pNFS block layout driver kernel module
  #
  obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
--blocklayoutdriver-objs := blocklayout.o extents.o blocklayoutdev.o
-+blocklayoutdriver-objs := blocklayout.o extents.o blocklayoutdev.o blocklayoutdm.o
+-blocklayoutdriver-objs := blocklayout.o extents.o
++blocklayoutdriver-objs := blocklayout.o extents.o blocklayoutdev.o
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 6223b19..97f805a 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -31,6 +31,8 @@
+  */
+ #include <linux/module.h>
+ #include <linux/init.h>
++#include <linux/mount.h>
++#include <linux/namei.h>
+ 
+ #include "blocklayout.h"
+ 
+@@ -40,6 +42,9 @@ MODULE_LICENSE("GPL");
+ MODULE_AUTHOR("Andy Adamson <andros@citi.umich.edu>");
+ MODULE_DESCRIPTION("The NFSv4.1 pNFS Block layout driver");
+ 
++struct dentry *bl_device_pipe;
++wait_queue_head_t bl_wq;
++
+ static enum pnfs_try_status
+ bl_read_pagelist(struct nfs_read_data *rdata)
+ {
+@@ -163,13 +168,49 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
+ 	.clear_layoutdriver		= bl_clear_layoutdriver,
+ };
+ 
++static const struct rpc_pipe_ops bl_upcall_ops = {
++	.upcall		= bl_pipe_upcall,
++	.downcall	= bl_pipe_downcall,
++	.destroy_msg	= bl_pipe_destroy_msg,
++};
++
+ static int __init nfs4blocklayout_init(void)
+ {
++	struct nameidata nd;
++	struct path path;
+ 	int ret;
+ 
+ 	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
+ 
+ 	ret = pnfs_register_layoutdriver(&blocklayout_type);
++	if (ret)
++		goto out;
++
++	init_waitqueue_head(&bl_wq);
++
++	path.mnt = rpc_get_mount();
++	if (IS_ERR(path.mnt)) {
++		ret = PTR_ERR(path.mnt);
++		goto out_remove;
++	}
++
++	ret = vfs_path_lookup(path.mnt->mnt_root,
++			      path.mnt,
++			      NFS_PIPE_DIRNAME, 0, &nd);
++	if (ret)
++		goto out_remove;
++
++	bl_device_pipe = rpc_mkpipe(nd.path.dentry, "blocklayout", NULL,
++				    &bl_upcall_ops, 0);
++	if (IS_ERR(bl_device_pipe)) {
++		ret = PTR_ERR(bl_device_pipe);
++		goto out_remove;
++	}
++out:
++	return ret;
++
++out_remove:
++	pnfs_unregister_layoutdriver(&blocklayout_type);
+ 	return ret;
+ }
+ 
+@@ -179,6 +220,7 @@ static void __exit nfs4blocklayout_exit(void)
+ 	       __func__);
+ 
+ 	pnfs_unregister_layoutdriver(&blocklayout_type);
++	rpc_unlink(bl_device_pipe);
+ }
+ 
+ module_init(nfs4blocklayout_init);
 diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 71729d1..d8d8881 100644
+index 4b0d2a3..71729d1 100644
 --- a/fs/nfs/blocklayout/blocklayout.h
 +++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -128,5 +128,8 @@ struct pnfs_block_dev *nfs4_blk_decode_device(struct nfs_server *server,
- int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
- 				struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
+@@ -34,8 +34,16 @@
  
-+/* blocklayoutdm.c */
-+void free_block_dev(struct pnfs_block_dev *bdev);
+ #include <linux/device-mapper.h>
+ #include <linux/nfs_fs.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
++
+ #include "../pnfs.h"
+ 
++struct pnfs_block_dev {
++	struct list_head		bm_node;
++	struct nfs4_deviceid		bm_mdevid;    /* associated devid */
++	struct block_device		*bm_mdev;     /* meta device itself */
++};
++
+ enum exstate4 {
+ 	PNFS_BLOCK_READWRITE_DATA	= 0,
+ 	PNFS_BLOCK_READ_DATA		= 1,
+@@ -88,5 +96,37 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
+ 	return container_of(lo, struct pnfs_block_layout, bl_layout);
+ }
+ 
++struct bl_dev_msg {
++	int status;
++	uint32_t major, minor;
++};
++
++struct bl_msg_hdr {
++	u8  type;
++	u16 totallen; /* length of entire message, including hdr itself */
++};
++
++extern struct dentry *bl_device_pipe;
++extern wait_queue_head_t bl_wq;
++
++#define BL_DEVICE_UMOUNT               0x0 /* Umount--delete devices */
++#define BL_DEVICE_MOUNT                0x1 /* Mount--create devices*/
++#define BL_DEVICE_REQUEST_INIT         0x0 /* Start request */
++#define BL_DEVICE_REQUEST_PROC         0x1 /* User level process succeeds */
++#define BL_DEVICE_REQUEST_ERR          0x2 /* User level process fails */
++
++/* blocklayoutdev.c */
++ssize_t bl_pipe_upcall(struct file *, struct rpc_pipe_msg *,
++		       char __user *, size_t);
++ssize_t bl_pipe_downcall(struct file *, const char __user *, size_t);
++void bl_pipe_destroy_msg(struct rpc_pipe_msg *);
++struct block_device *nfs4_blkdev_get(dev_t dev);
++int nfs4_blkdev_put(struct block_device *bdev);
++struct pnfs_block_dev *nfs4_blk_decode_device(struct nfs_server *server,
++						struct pnfs_device *dev,
++						struct list_head *sdlist);
++int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
++				struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
 +
  void bl_put_extent(struct pnfs_block_extent *be);
  #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-diff --git a/fs/nfs/blocklayout/blocklayoutdm.c b/fs/nfs/blocklayout/blocklayoutdm.c
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
 new file mode 100644
-index 0000000..eab95f3
+index 0000000..7e1377f
 --- /dev/null
-+++ b/fs/nfs/blocklayout/blocklayoutdm.c
-@@ -0,0 +1,111 @@
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -0,0 +1,191 @@
 +/*
-+ *  linux/fs/nfs/blocklayout/blocklayoutdm.c
++ *  linux/fs/nfs/blocklayout/blocklayoutdev.c
 + *
-+ *  Module for the NFSv4.1 pNFS block layout driver.
++ *  Device operations for the pnfs nfs4 file layout driver.
 + *
-+ *  Copyright (c) 2007 The Regents of the University of Michigan.
++ *  Copyright (c) 2006 The Regents of the University of Michigan.
 + *  All rights reserved.
 + *
-+ *  Fred Isaman <iisaman@umich.edu>
 + *  Andy Adamson <andros@citi.umich.edu>
++ *  Fred Isaman <iisaman@umich.edu>
 + *
 + * permission is granted to use, copy, create derivative works and
 + * redistribute this software and such derivative works for any purpose,
@@ -87,42 +217,124 @@ index 0000000..eab95f3
 + * of the software, even if it has been or is hereafter advised of the
 + * possibility of such damages.
 + */
++#include <linux/module.h>
++#include <linux/buffer_head.h> /* __bread */
 +
-+#include <linux/genhd.h> /* gendisk - used in a dprintk*/
-+#include <linux/sched.h>
++#include <linux/genhd.h>
++#include <linux/blkdev.h>
 +#include <linux/hash.h>
 +
 +#include "blocklayout.h"
 +
 +#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
 +
-+static void dev_remove(dev_t dev)
++/* Open a block_device by device number. */
++struct block_device *nfs4_blkdev_get(dev_t dev)
 +{
++	struct block_device *bd;
++
++	dprintk("%s enter\n", __func__);
++	bd = blkdev_get_by_dev(dev, FMODE_READ, NULL);
++	if (IS_ERR(bd))
++		goto fail;
++	return bd;
++fail:
++	dprintk("%s failed to open device : %ld\n",
++			__func__, PTR_ERR(bd));
++	return NULL;
++}
++
++/*
++ * Release the block device
++ */
++int nfs4_blkdev_put(struct block_device *bdev)
++{
++	dprintk("%s for device %d:%d\n", __func__, MAJOR(bdev->bd_dev),
++			MINOR(bdev->bd_dev));
++	return blkdev_put(bdev, FMODE_READ);
++}
++
++/*
++ * Shouldn't there be a rpc_generic_upcall() to do this for us?
++ */
++ssize_t bl_pipe_upcall(struct file *filp, struct rpc_pipe_msg *msg,
++		       char __user *dst, size_t buflen)
++{
++	char *data = (char *)msg->data + msg->copied;
++	size_t mlen = min(msg->len - msg->copied, buflen);
++	unsigned long left;
++
++	left = copy_to_user(dst, data, mlen);
++	if (left == mlen) {
++		msg->errno = -EFAULT;
++		return -EFAULT;
++	}
++
++	mlen -= left;
++	msg->copied += mlen;
++	msg->errno = 0;
++	return mlen;
++}
++
++static struct bl_dev_msg bl_mount_reply;
++
++ssize_t bl_pipe_downcall(struct file *filp, const char __user *src,
++			 size_t mlen)
++{
++	if (mlen != sizeof (struct bl_dev_msg))
++		return -EINVAL;
++
++	if (copy_from_user(&bl_mount_reply, src, mlen) != 0)
++		return -EFAULT;
++
++	wake_up(&bl_wq);
++
++	return mlen;
++}
++
++void bl_pipe_destroy_msg(struct rpc_pipe_msg *msg)
++{
++	if (msg->errno >= 0)
++		return;
++	wake_up(&bl_wq);
++}
++
++/*
++ * Decodes pnfs_block_deviceaddr4 which is XDR encoded in dev->dev_addr_buf.
++ */
++struct pnfs_block_dev *
++nfs4_blk_decode_device(struct nfs_server *server,
++		       struct pnfs_device *dev,
++		       struct list_head *sdlist)
++{
++	struct pnfs_block_dev *rv = NULL;
++	struct block_device *bd = NULL;
 +	struct rpc_pipe_msg msg;
-+	struct bl_dev_msg bl_umount_request;
 +	struct bl_msg_hdr bl_msg = {
-+		.type = BL_DEVICE_UMOUNT,
-+		.totallen = sizeof(bl_umount_request),
++		.type = BL_DEVICE_MOUNT,
++		.totallen = dev->mincount,
 +	};
 +	uint8_t *dataptr;
 +	DECLARE_WAITQUEUE(wq, current);
++	struct bl_dev_msg *reply = &bl_mount_reply;
 +
-+	dprintk("Entering %s\n", __func__);
++	dprintk("%s CREATING PIPEFS MESSAGE\n", __func__);
++	dprintk("%s: deviceid: %s, mincount: %d\n", __func__, dev->dev_id.data,
++		dev->mincount);
 +
 +	memset(&msg, 0, sizeof(msg));
-+	msg.data = kzalloc(1 + sizeof(bl_umount_request), GFP_NOFS);
-+	if (!msg.data)
++	msg.data = kzalloc(sizeof(bl_msg) + dev->mincount, GFP_NOFS);
++	if (!msg.data) {
++		rv = ERR_PTR(-ENOMEM);
 +		goto out;
-+
-+	memset(&bl_umount_request, 0, sizeof(bl_umount_request));
-+	bl_umount_request.major = MAJOR(dev);
-+	bl_umount_request.minor = MINOR(dev);
++	}
 +
 +	memcpy(msg.data, &bl_msg, sizeof(bl_msg));
 +	dataptr = (uint8_t *) msg.data;
-+	memcpy(&dataptr[sizeof(bl_msg)], &bl_umount_request, sizeof(bl_umount_request));
-+	msg.len = sizeof(bl_msg) + bl_msg.totallen;
++	memcpy(&dataptr[sizeof(bl_msg)], dev->area, dev->mincount);
++	msg.len = sizeof(bl_msg) + dev->mincount;
 +
++	dprintk("%s CALLING USERSPACE DAEMON\n", __func__);
 +	add_wait_queue(&bl_wq, &wq);
 +	if (rpc_queue_upcall(bl_device_pipe->d_inode, &msg) < 0) {
 +		remove_wait_queue(&bl_wq, &wq);
@@ -134,39 +346,63 @@ index 0000000..eab95f3
 +	__set_current_state(TASK_RUNNING);
 +	remove_wait_queue(&bl_wq, &wq);
 +
++	if (reply->status != BL_DEVICE_REQUEST_PROC) {
++		dprintk("%s failed to open device: %d\n",
++			__func__, reply->status);
++		rv = ERR_PTR(-EINVAL);
++		goto out;
++	}
++
++	bd = nfs4_blkdev_get(MKDEV(reply->major, reply->minor));
++	if (IS_ERR(bd)) {
++		dprintk("%s failed to open device : %ld\n",
++			__func__, PTR_ERR(bd));
++		goto out;
++	}
++
++	rv = kzalloc(sizeof(*rv), GFP_NOFS);
++	if (!rv) {
++		rv = ERR_PTR(-ENOMEM);
++		goto out;
++	}
++
++	rv->bm_mdev = bd;
++	memcpy(&rv->bm_mdevid, &dev->dev_id, sizeof(struct nfs4_deviceid));
++	dprintk("%s Created device %s with bd_block_size %u\n",
++		__func__,
++		bd->bd_disk->disk_name,
++		bd->bd_block_size);
++
 +out:
 +	kfree(msg.data);
++	return rv;
 +}
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index de00a37..5833fbb 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -105,7 +105,7 @@ struct rpc_program nfs_program = {
+ 	.nrvers			= ARRAY_SIZE(nfs_version),
+ 	.version		= nfs_version,
+ 	.stats			= &nfs_rpcstat,
+-	.pipe_dir_name		= "/nfs",
++	.pipe_dir_name		= NFS_PIPE_DIRNAME,
+ };
+ 
+ struct rpc_stat nfs_rpcstat = {
+diff --git a/include/linux/nfs.h b/include/linux/nfs.h
+index f387919..8c6ee44 100644
+--- a/include/linux/nfs.h
++++ b/include/linux/nfs.h
+@@ -29,6 +29,8 @@
+ #define NFS_MNT_VERSION		1
+ #define NFS_MNT3_VERSION	3
+ 
++#define NFS_PIPE_DIRNAME "/nfs"
 +
-+/*
-+ * Release meta device
-+ */
-+static void nfs4_blk_metadev_release(struct pnfs_block_dev *bdev)
-+{
-+	int rv;
-+
-+	dprintk("%s Releasing\n", __func__);
-+	rv = nfs4_blkdev_put(bdev->bm_mdev);
-+	if (rv)
-+		printk(KERN_ERR "%s nfs4_blkdev_put returns %d\n",
-+				__func__, rv);
-+
-+	dev_remove(bdev->bm_mdev->bd_dev);
-+}
-+
-+void free_block_dev(struct pnfs_block_dev *bdev)
-+{
-+	if (bdev) {
-+		if (bdev->bm_mdev) {
-+			dprintk("%s Removing DM device: %d:%d\n",
-+				__func__,
-+				MAJOR(bdev->bm_mdev->bd_dev),
-+				MINOR(bdev->bm_mdev->bd_dev));
-+			nfs4_blk_metadev_release(bdev);
-+		}
-+		kfree(bdev);
-+	}
-+}
+ /*
+  * NFS stats. The good thing with these values is that NFSv3 errors are
+  * a superset of NFSv2 errors (with the exception of NFSERR_WFLUSH which
 -- 
 1.7.4.1
 
