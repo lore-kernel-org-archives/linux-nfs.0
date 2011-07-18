@@ -1,134 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:56435 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752224Ab1G3RIw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 13:08:52 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v6 00/26] add block layout driver to pnfs client
-Date: Sat, 30 Jul 2011 13:08:23 -0400
-Message-Id: <1312045729-27554-1-git-send-email-rees@umich.edu>
-Content-Type: text/plain; charset=UTF-8
+Received: from ironport01-1.csupomona.edu ([134.71.187.41]:9124 "EHLO
+	ironport01-1.csupomona.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750933Ab1GRUKc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Jul 2011 16:10:32 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by sparky.unx.csupomona.edu (Postfix) with ESMTP id 979C0DC7DC
+	for <linux-nfs@vger.kernel.org>; Mon, 18 Jul 2011 13:01:04 -0700 (PDT)
+Received: from sparky.unx.csupomona.edu ([127.0.0.1])
+	by localhost (sparky.unx.csupomona.edu [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id tX0od0FFeFHY for <linux-nfs@vger.kernel.org>;
+	Mon, 18 Jul 2011 13:01:04 -0700 (PDT)
+Received: from woof (woof.iitsystems.csupomona.edu [134.71.248.29])
+	(using TLSv1 with cipher DHE-RSA-AES128-SHA (128/128 bits))
+	(No client certificate requested)
+	(Authenticated sender: bldewolf)
+	by sparky.unx.csupomona.edu (Postfix) with ESMTPSA id 6F8C8DC792
+	for <linux-nfs@vger.kernel.org>; Mon, 18 Jul 2011 13:01:04 -0700 (PDT)
+Date: Mon, 18 Jul 2011 13:01:03 -0700
+From: Brian De Wolf <bldewolf@csupomona.edu>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Warning call traces when NFS under load
+Message-ID: <20110718130103.20918542@woof>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This patch set adds a block layout driver to the pNFS client.  It passes
-Connectathon tests and is bisectable.  It requires an updated version of
-nfs-utils, and patches for that have been sent separately to the nfs-utils
-maintainer.
+Hello,
 
-This patch set is also available on the for-trond branch of the git repo at
-git://citi.umich.edu/projects/linux-pnfs-blk.git
+We recently upgraded from 2.6.34 to 2.6.37 and now we get call traces
+when NFS is under load.  An example call trace:
 
-This is version 6 of this patch set.  Changes since version 5:
+Jul 14 11:53:59 crabtree kernel: ------------[ cut here ]------------
+Jul 14 11:53:59 crabtree kernel: WARNING: at net/sunrpc/clnt.c:1562 call_decode+0xa7/0x696()
+Jul 14 11:53:59 crabtree kernel: Hardware name: Sun Fire X4100 M2
+Jul 14 11:53:59 crabtree kernel: Modules linked in: sha1_generic autofs4 ipt_LOG xt_limit xt_tcpudp nf_conntrack_ipv4 nf_defrag_ipv4 xt_state iptable_filter xt_hashlimit xt_conntrack nf_conntrack ip_tables x_t
+ables ipmi_watchdog ipmi_devintf ipmi_si ipmi_msghandler e1000
+Jul 14 11:53:59 crabtree kernel: Pid: 381, comm: kworker/2:1 Not tainted 2.6.37-gentoo-r4 #2
+Jul 14 11:53:59 crabtree kernel: Call Trace:
+Jul 14 11:53:59 crabtree kernel: [<ffffffff8103252d>] ? warn_slowpath_common+0x78/0x8c
+Jul 14 11:53:59 crabtree kernel: [<ffffffff811297e1>] ? nfs4_xdr_dec_read+0x0/0xf0
+Jul 14 11:53:59 crabtree kernel: [<ffffffff812de609>] ? call_decode+0xa7/0x696
+Jul 14 11:53:59 crabtree kernel: [<ffffffff812e44d7>] ? __rpc_execute+0x6f/0x1cb
+Jul 14 11:53:59 crabtree kernel: [<ffffffff812e466b>] ? rpc_async_schedule+0x0/0x11
+Jul 14 11:53:59 crabtree kernel: [<ffffffff81043a70>] ? process_one_work+0x20e/0x34e
+Jul 14 11:53:59 crabtree kernel: [<ffffffff81043faf>] ? worker_thread+0x1c9/0x33e
+Jul 14 11:53:59 crabtree kernel: [<ffffffff8102812a>] ? __wake_up_common+0x41/0x78
+Jul 14 11:53:59 crabtree kernel: [<ffffffff81043de6>] ? worker_thread+0x0/0x33e
+Jul 14 11:53:59 crabtree kernel: [<ffffffff81043de6>] ? worker_thread+0x0/0x33e
+Jul 14 11:53:59 crabtree kernel: [<ffffffff81046a7b>] ? kthread+0x7a/0x82
+Jul 14 11:53:59 crabtree kernel: [<ffffffff81002c14>] ? kernel_thread_helper+0x4/0x10
+Jul 14 11:53:59 crabtree kernel: [<ffffffff81046a01>] ? kthread+0x0/0x82
+Jul 14 11:53:59 crabtree kernel: [<ffffffff81002c10>] ? kernel_thread_helper+0x0/0x10
+Jul 14 11:53:59 crabtree kernel: ---[ end trace b49f8814787e2cbd ]---
 
-- rearrange layoutcommit lwb and cred patches per Boaz
-  "[PATCHSET 0/6] Patches needed for Stable" 29 Jul 2011 23:19:52 -0700
-  and put these patches first
-- add prefix to exported symbols, or make them static
+These might look familiar because Joshua Scoggins reported the issue
+last month but ended up switching to an older kernel (I work in the
+department that provides the NFS services).
 
-Changes since version 4:
+The setup is a Linux NFSv4 client using sec=krb5p to a Solaris 10u9
+NFSv4 server.
 
-- rm inode and pnfs_layout_hdr args from cleanup_layoutcommit()
+Since it's been reported already, I decided to do my homework before
+sending this email and ran through a git bisect.  The issue itself is
+fairly easy to reproduce with a few runs of bonnie++ on the NFSv4 share
+and tends to show up during the "Rewriting..." test phase (if that
+helps).  The guilty commit is:
+http://git.kernel.org/?p=linux/kernel/git/next/linux-next.git;a=commit;h=4018bf3eec5ff6bf1234a602a4e72518757a7f55
 
-Changes since version 3:
+Any ideas on a fix or on more debugging to do?  I'd love to help make
+these things no longer show up (although I don't really want to
+sacrifice 3DES for it).
 
-- Rebase to trond/nfs-for-3.1 (commit ed1e6211a0).
-- Change return value NFS4ERR_REP_TOO_BIG to EIO in decode_getdevicelist.
-- fix error message in set_pnfs_layoutdriver.
-- remove dont_like_caller from read_pagelist and write_pagelist.
-- rename mark_for_commit to bl_mark_for_commit
-- split the patch "NFS41: Let layoutcommit handle multiple segments" into 4
-  patches each does one task only.
-- fix race in saving cred in layout header.
-- move the patch "NFS41: save layoutcommit cred after first successful
-  layoutget" to an earlier place.
-- "[PATCH v3 25/25] NFS41: Drop lseg ref before fallthru to MDS" is dropped.   
-- move GETDEVICELIST to end of nfs4_procedures[]
 
-Changes since version 2:
+Also, what impact do these warnings have?  Is the I/O during the
+process lost/corrupted?
 
-- Rebase to trond/nfs-for-next (commit ed1e6211a0).
-- Fix Fred's and Benny's email addresses.
-- Use FIXME to flag code that needs more work.
-- Remove obsolete comments.
-- Minor patch re-orgs per reviewer comments.
-
-Changes since version 1:
-
-NFS41: Drop lseg ref before fallthru to MDS
-SQUASHME: pnfsblock: get rid of vmap and deviceid->area structure
-SQUASHME: pnfsblock: define module alias
-SQUASHME: pnfsblock: bl_find_get_extent optimization: mv break clause to end of loop
-SQUASHME: pnfsblock: test debug bit once for multiple dprintks
-SQUASHME: pnfsblock: typo
-SQUASHME: pnfsblock: get rid of unused leftovers from device mapping removal
-
-Andy Adamson (2):
-  pnfs: GETDEVICELIST
-  pnfs: cleanup_layoutcommit
-
-Benny Halevy (2):
-  pnfs: add set-clear layoutdriver interface
-  pnfsblock: use pageio_ops api
-
-Fred Isaman (15):
-  pnfs: ask for layout_blksize and save it in nfs_server
-  pnfsblock: add blocklayout Kconfig option, Makefile, and stubs
-  pnfsblock: basic extent code
-  pnfsblock: lseg alloc and free
-  pnfsblock: merge extents
-  pnfsblock: call and parse getdevicelist
-  pnfsblock: xdr decode pnfs_block_layout4
-  pnfsblock: bl_find_get_extent
-  pnfsblock: add extent manipulation functions
-  pnfsblock: merge rw extents
-  pnfsblock: encode_layoutcommit
-  pnfsblock: cleanup_layoutcommit
-  pnfsblock: bl_read_pagelist
-  pnfsblock: bl_write_pagelist
-  pnfsblock: note written INVAL areas for layoutcommit
-
-Jim Rees (2):
-  pnfsblock: add device operations
-  pnfsblock: remove device operations
-
-Peng Tao (5):
-  pnfs: save layoutcommit lwb at layout header
-  pnfs: save layoutcommit cred at layout header init
-  pnfs: let layoutcommit handle a list of lseg
-  pnfs: use lwb as layoutcommit length
-  pnfsblock: write_pagelist handle zero invalid extents
-
- fs/nfs/Kconfig                      |    8 +-
- fs/nfs/Makefile                     |    1 +
- fs/nfs/blocklayout/Makefile         |    5 +
- fs/nfs/blocklayout/blocklayout.c    | 1019 +++++++++++++++++++++++++++++++++++
- fs/nfs/blocklayout/blocklayout.h    |  207 +++++++
- fs/nfs/blocklayout/blocklayoutdev.c |  410 ++++++++++++++
- fs/nfs/blocklayout/blocklayoutdm.c  |  111 ++++
- fs/nfs/blocklayout/extents.c        |  935 ++++++++++++++++++++++++++++++++
- fs/nfs/client.c                     |   11 +-
- fs/nfs/nfs4_fs.h                    |    2 +-
- fs/nfs/nfs4filelayout.c             |    2 +-
- fs/nfs/nfs4proc.c                   |   62 ++-
- fs/nfs/nfs4xdr.c                    |  233 ++++++++-
- fs/nfs/pnfs.c                       |   86 ++--
- fs/nfs/pnfs.h                       |   28 +-
- include/linux/nfs.h                 |    2 +
- include/linux/nfs4.h                |    1 +
- include/linux/nfs_fs_sb.h           |    4 +-
- include/linux/nfs_xdr.h             |   17 +-
- 19 files changed, 3077 insertions(+), 67 deletions(-)
- create mode 100644 fs/nfs/blocklayout/Makefile
- create mode 100644 fs/nfs/blocklayout/blocklayout.c
- create mode 100644 fs/nfs/blocklayout/blocklayout.h
- create mode 100644 fs/nfs/blocklayout/blocklayoutdev.c
- create mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
- create mode 100644 fs/nfs/blocklayout/extents.c
-
--- 
-1.7.4.1
-
+Thanks,
+Brian De Wolf
