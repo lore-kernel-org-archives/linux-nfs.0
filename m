@@ -1,61 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59623 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750844Ab1G2QmT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Jul 2011 12:42:19 -0400
-Date: Fri, 29 Jul 2011 12:42:14 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, Neil Brown <neilb@suse.de>,
-        David Miller <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev <netdev@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Greg Banks <gnb@fastmail.fm>
-Subject: Re: [PATCH] sunrpc: use better NUMA affinities
-Message-ID: <20110729164214.GI23194@fieldses.org>
-References: <1311876249.2346.39.camel@edumazet-HP-Compaq-6005-Pro-SFF-PC>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:48286 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752754Ab1GRRpR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Jul 2011 13:45:17 -0400
+Date: Mon, 18 Jul 2011 18:45:15 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH] nfs: don't use d_move in nfs_async_rename_done
+Message-ID: <20110718174514.GD11013@ZenIV.linux.org.uk>
+References: <1311002790-6650-1-git-send-email-jlayton@redhat.com>
+ <1311010514.23313.4.camel@lade.trondhjem.org>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1311876249.2346.39.camel@edumazet-HP-Compaq-6005-Pro-SFF-PC>
+In-Reply-To: <1311010514.23313.4.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Jul 28, 2011 at 08:04:09PM +0200, Eric Dumazet wrote:
-> Use NUMA aware allocations to reduce latencies and increase throughput.
+On Mon, Jul 18, 2011 at 01:35:14PM -0400, Trond Myklebust wrote:
+> On Mon, 2011-07-18 at 11:26 -0400, Jeff Layton wrote: 
+> > If the task that initiated the sillyrename ends up being killed by a
+> > fatal signal, then it will eventually return back to userspace and end
+> > up releasing the i_mutex. d_move however needs to be done while holding
+> > the i_mutex.
 > 
-> sunrpc kthreads can use kthread_create_on_node() if pool_mode is
-> "percpu" or "pernode", and svc_prepare_thread()/svc_init_buffer() can
-> also take into account NUMA node affinity for memory allocations.
-...
-> @@ -662,14 +675,16 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
->  		nrservs--;
->  		chosen_pool = choose_pool(serv, pool, &state);
->  
-> -		rqstp = svc_prepare_thread(serv, chosen_pool);
-> +		node = svc_pool_map_get_node(chosen_pool->sp_id);
-> +		rqstp = svc_prepare_thread(serv, chosen_pool, node);
+> Umm... Where is this requirement documented? I thought the rename_lock
+> was there to protect against lookup races etc with d_move.
 
-The only correct value for the third argument there is
-svc_pool_map_get_node(chosen_pool->sp_id), so let's have
-svc_prepare_thread() call that itself.
+It protects lookup against d_move().  It does *NOT* protect the i_mutex
+locking scheme from deadlocks a-sodding-plenty and it does not protect
+->d_parent/->d_name accesses in directory methods (->i_mutex does).  The
+latter is not a big deal, but the former is.
 
-Seems OK otherwise.
+> Besides, NFS already has
+> nfs_block_sillyrename()/nfs_unblock_sillyrename() to provide further
+> exclusion between dentry lookups and revalidations and the silly-unlink
+> code.
 
-Any suggestions on how we should test this?
+It's broken.  We are dealing with more than just NFS data structures.
+Don't change ->d_parent unless you hold ->i_mutex on parent(s) involved
+and if they are different you need ->s_vfs_rename_mutex as well.  See
+lock_rename() in fs/namei.c and Documentation/filesystems/directory-locking.
 
---b.
+Moreover, I would be very sceptical about the code trying to grap ->i_mutex
+on ->d_parent of preexisting dentry, unless you have very good reasons to
+be sure that it couldn't be moved around in the meanwhile.
 
->  		if (IS_ERR(rqstp)) {
->  			error = PTR_ERR(rqstp);
->  			break;
->  		}
->  
->  		__module_get(serv->sv_module);
-> -		task = kthread_create(serv->sv_function, rqstp, serv->sv_name);
-> +		task = kthread_create_on_node(serv->sv_function, rqstp,
-> +					      node, serv->sv_name);
->  		if (IS_ERR(task)) {
->  			error = PTR_ERR(task);
->  			module_put(serv->sv_module);
-> 
-> 
+d_move() in async rename is really broken...
