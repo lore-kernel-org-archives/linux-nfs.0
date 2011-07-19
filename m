@@ -1,65 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:65070 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:22489 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753057Ab1G0Tyw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jul 2011 15:54:52 -0400
-Message-ID: <4E306D09.5030704@netapp.com>
-Date: Wed, 27 Jul 2011 15:54:49 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: Christoph Hellwig <hch@infradead.org>
-CC: Justin Piszcz <jpiszcz@lucidpixels.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
-References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan> <20110727160752.GC974@fieldses.org> <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan> <20110727181111.GA23009@infradead.org> <alpine.DEB.2.02.1107271530340.1451@p34.internal.lan> <20110727193937.GA5354@infradead.org> <alpine.DEB.2.02.1107271540100.1451@p34.internal.lan> <20110727194722.GA9345@infradead.org>
-In-Reply-To: <20110727194722.GA9345@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1750877Ab1GSAJV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Jul 2011 20:09:21 -0400
+Date: Mon, 18 Jul 2011 20:09:15 -0400
+Subject: Re: [PATCH] nfs: open-associated setattr shouldn't invalidate own cache
+Content-Type: text/plain;
+	charset="utf-8"
+Message-ID: <02f301cc45a8$1ad15db6$78be630a@hq.netapp.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@redhat.com>, <trond@netapp.com>
+Cc: <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 07/27/2011 03:47 PM, Christoph Hellwig wrote:
-> On Wed, Jul 27, 2011 at 03:44:20PM -0400, Justin Piszcz wrote:
->>
->>
->> On Wed, 27 Jul 2011, Christoph Hellwig wrote:
->>
->>> On Wed, Jul 27, 2011 at 03:35:01PM -0400, Justin Piszcz wrote:
->>>> Currently I do not see any dupes, however I have a script that moves
->>>> images out of the directory once an hour:
->>>> 0 * * * * /usr/local/bin/move_to_old2.sh > /dev/null 2>&1
->>>
->>> Do you keep adding files to the directory while you move files out?
->> Yes, otherwise there are too many files in the directory and viewers, e.g.,
->> each geeqie (picture viewer) will use > 4-6GB of memory, so I try to keep
->> it around 5,000 pictures or less.
->>
->>> What's the rate of additions/removals to the directory?
->> Additions it depends, around 5,000 over a 12hr period, 416/hr, current:
->>
->> atom:/d1/motion# find cam1|wc
->>    5215    5215  166853
->> atom:/d1/motion# find cam2|wc
->>    5069    5069  162181
->> atom:/d1/motion# find cam3|wc
->>    5594    5594  178981
->> atom:/d1/motion#
-> 
-> This sounds a lot like xfs simply filling up the directory index slots
-> of files that you just moved out with new files, and nfs falsely
-> claiming that this is a problem.
-> 
-> Any chance to figure out if the file you hit the printk with was one
-> that got either recently added or moved when you hit it?  (I can't
-> follow the nfs code enough to check if it prints the first or second hit
-> of the same cookie)
+We should already optimize away the unnecessary setting of the size. The problem is that truncate() still requires you to set the ctime, whereas ftruncate() does not iirc.
 
-It should be printing on the second hit of a cookie.
+"J. Bruce Fields" <bfields@redhat.com> wrote:
 
-- Bryan
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+We recently noticed that NFSv4 iozone read tests that should have been
+performing at local-cache speeds were running at wire speeds, and found
+that currently,
+
+	open(O_RDWR|O_TRUNC)
+	write()
+	close()
+	open(O_RDONLY)
+	read()
+
+results in an over-the-wire read (due to a setattr triggered by
+O_TRUNC).  Even non-O_TRUNC opens send setattrs (of timestamps) in some
+cases, causing the same problem.
+
+In discussion with Trond, he blames a VFS bug for breaking what should
+be a single open into an open followed by a setattr.
+
+However, it may make sense even in a case like
+
+	open(O_RDWR)
+	write()
+	setattr()
+	close()
+	open(O_RDONLY)
+	read()
+
+to treat the setattr similarly to the write, and not invalidate the
+client's own cache as long as the setattr is performed under a write
+open.
+
+(That said, I don't know if this is the correct place in the code to
+implement that behavior.)
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfs/inode.c |    7 ++++++-
+ 1 files changed, 6 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 6f4850d..d4eed06 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -438,8 +438,13 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
+ 	if ((attr->ia_valid & (ATTR_MODE|ATTR_UID|ATTR_GID)) != 0)
+ 		nfs_inode_return_delegation(inode);
+ 	error = NFS_PROTO(inode)->setattr(dentry, fattr, attr);
+-	if (error == 0)
++	if (error)
++		goto out_free;
++	if (attr->ia_valid & ATTR_FILE)
++		nfs_post_op_update_inode_force_wcc(inode, fattr);
++	else
+ 		nfs_refresh_inode(inode, fattr);
++out_free:
+ 	nfs_free_fattr(fattr);
+ out:
+ 	return error;
+-- 
+1.7.6
 
