@@ -1,115 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:10774 "EHLO mx1.redhat.com"
+Received: from esrismtp2.esri.com ([198.102.62.103]:10820 "EHLO esri3.esri.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751223Ab1G0A6C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Jul 2011 20:58:02 -0400
-Subject: Re: [Libtirpc-devel] [PATCH] Autofs configure fails to detect IPv6
- when libtirpc is enabled
-From: Ian Kent <ikent@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Chuck Lever <chucklever@gmail.com>,
-        autofs mailing list <autofs@linux.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Libtirpc Devel List <libtirpc-devel@lists.sourceforge.net>
-In-Reply-To: <4E2F2DE6.5030500@RedHat.com>
-References: <1311683346-16881-1-git-send-email-steved@redhat.com>
-	 <8A84CF7D-9579-4645-AE5D-FE8358F466C0@gmail.com>
-	 <4E2F2DE6.5030500@RedHat.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 27 Jul 2011 08:57:11 +0800
-Message-ID: <1311728231.3473.7.camel@perseus.themaw.net>
+	id S1751545Ab1GTTnY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jul 2011 15:43:24 -0400
+Received: from leoray.esri.com (leoray.esri.com [10.27.102.12])
+	by esri3.esri.com (8.11.7p3+Sun/8.11.7) with ESMTP id p6KJNgS00956
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Jul 2011 12:23:42 -0700 (PDT)
+Received: from leoray.esri.com (leoray.esri.com [127.0.0.1])
+	by leoray.esri.com (8.14.4/8.14.3) with ESMTP id p6KJNgqv018317
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Jul 2011 12:23:42 -0700
+Received: (from ray5147@localhost)
+	by leoray.esri.com (8.14.4/8.14.3/Submit) id p6KJNgQR018315
+	for linux-nfs@vger.kernel.org; Wed, 20 Jul 2011 12:23:42 -0700
+Date: Wed, 20 Jul 2011 12:23:42 -0700
+From: Ray Van Dolson <rvandolson@esri.com>
+To: linux-nfs@vger.kernel.org
+Subject: NFS server responds to SYN with ACK only
+Message-ID: <20110720192341.GA18167@esri.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-07-26 at 17:13 -0400, Steve Dickson wrote:
-> 
-> On 07/26/2011 10:50 AM, Chuck Lever wrote:
-> > 
-> > On Jul 26, 2011, at 2:29 PM, Steve Dickson wrote:
-> > 
-> >> From: Ian Kent <raven@themaw.net>
-> >>
-> >> The IPv6 client functions clntudp6_bufcreate(), clntudp6_create and
-> >> clnttcp6_create and the server functions svcudp6_bufcreate(),
-> >> svctcp6_create() and svcudp6_create() are not included in the library
-> >> whe libtirpc is built.
-> > 
-> > Are these part of the libtirpc standard API?  I'm not sure why we would need them if, say, Solaris does not support these.
-> It appears they are not since they are not mentioned the man pages.....
-> But, at least in the autofs code, they are expected
->    https://bugzilla.redhat.com/show_bug.cgi?id=711956#c0
-> 
-> Ian, where else are these routines defined? 
+We have a couple legacy CentOS (RHEL)-based appliances with slightly
+dated NFS implementations.
 
-Now that I look I can't find the original source tar that was used for
-libtirpc, thought I had it.
+Server (CentOS 4 based):
 
-The story is that long ago when I changed autofs to use libtirpc (to
-make it ready for IPv6) I found these functions in the source and they
-were (obviously) the IPv6 counterparts for the corresponding IPv4
-functions which I was already using, so I used them. It took me quite a
-while to realize my code wasn't working and then I found that somewhere
-along the line they have been excluded, oops!
+    nfs-utils-1.0.6-70.EL4
+    Kernel 2.6.9-42.0.10.plus.c4smp
 
-If there are to be no IPv6 counterparts for the corresponding IPv4
-functions which functions should I use then?
+Client (CentOS 5 based):
 
-> 
-> steved
-> 
-> > 
-> >> Signed-off-by: Steve Dickson <steved@redhat.com>
-> >> ---
-> >> src/rpc_soc.c |    4 ++--
-> >> 1 files changed, 2 insertions(+), 2 deletions(-)
-> >>
-> >> diff --git a/src/rpc_soc.c b/src/rpc_soc.c
-> >> index c678429..584ac71 100644
-> >> --- a/src/rpc_soc.c
-> >> +++ b/src/rpc_soc.c
-> >> @@ -236,7 +236,7 @@ clnttcp_create(raddr, prog, vers, sockp, sendsz, recvsz)
-> >>
-> >> /* IPv6 version of clnt*_*create */
-> >>
-> >> -#ifdef INET6_NOT_USED
-> >> +#ifdef INET6
-> >>
-> >> CLIENT *
-> >> clntudp6_bufcreate(raddr, prog, vers, wait, sockp, sendsz, recvsz)
-> >> @@ -392,7 +392,7 @@ svcraw_create()
-> >>
-> >>
-> >> /* IPV6 version */
-> >> -#ifdef INET6_NOT_USED
-> >> +#ifdef INET6
-> >> SVCXPRT *
-> >> svcudp6_bufcreate(fd, sendsz, recvsz)
-> >> 	int fd;
-> >> -- 
-> >> 1.7.6
-> >>
-> >>
-> >> ------------------------------------------------------------------------------
-> >> Magic Quadrant for Content-Aware Data Loss Prevention
-> >> Research study explores the data loss prevention market. Includes in-depth
-> >> analysis on the changes within the DLP market, and the criteria used to
-> >> evaluate the strengths and weaknesses of these DLP solutions.
-> >> http://www.accelacomm.com/jaw/sfnl/114/51385063/
-> >> _______________________________________________
-> >> Libtirpc-devel mailing list
-> >> Libtirpc-devel@lists.sourceforge.net
-> >> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
-> > 
-> 
-> ------------------------------------------------------------------------------
-> Got Input?   Slashdot Needs You.
-> Take our quick survey online.  Come on, we don't ask for help often.
-> Plus, you'll get a chance to win $100 to spend on ThinkGeek.
-> http://p.sf.net/sfu/slashdot-survey
-> _______________________________________________
-> Libtirpc-devel mailing list
-> Libtirpc-devel@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
+    nfs-utils-1.0.9-42.el5.x86_64
+    Kernel 2.6.18-164.15.1.el5
 
+The client has a long-lived NFSv3 mount to the server that sometimes
+stops responding (blocks).  We can lazy unmount it, but subsequent
+mount requests hang and the following is observed via tcpdump:
 
+    1. Client GETPORT for NFS service succeeds.
+    2. Client GETPORT for MOUNT succeeds
+    3. Client MNT call succeeds (server gives valid response including
+       file handle)
+    4. Client sends a SYN packet to NFS port on server
+    5. Server responds with ACK *only*
+
+When we bounce the NFS daemon on the server, everything starts working
+and in step 5 above, we get a SYN,ACK as expected in response to #4,
+and everything proceeds along nicely.
+
+Does this jog anybody on a long-ago fixed bug?  I'm thinking updating
+the kernel and nfs-utils on the server will likely help, but would love
+to find where behavior like the above is referenced as a "bug".
+
+Thanks,
+Ray
