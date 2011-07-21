@@ -1,320 +1,389 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:12763 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752598Ab1G2Uw0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Jul 2011 16:52:26 -0400
-Message-ID: <4E331D86.7060801@netapp.com>
-Date: Fri, 29 Jul 2011 16:52:22 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:46601 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753688Ab1GUTef (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 15:34:35 -0400
+From: Jim Rees <rees@umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Justin Piszcz <jpiszcz@lucidpixels.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
-References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan>   <20110727160752.GC974@fieldses.org>   <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan>   <20110727181111.GA23009@infradead.org>   <alpine.DEB.2.02.1107271530340.1451@p34.internal.lan>   <20110727193937.GA5354@infradead.org>   <alpine.DEB.2.02.1107271540100.1451@p34.internal.lan>   <20110727194722.GA9345@infradead.org>   <1311799021.25645.41.camel@lade.trondhjem.org>   <1311800051.25645.43.camel@lade.trondhjem.org>  <1311800195.25645.45.camel@lade.trondhjem.org>  <alpine.DEB.2.02.1107271723500.25432@p34.internal.lan>  <alpine.DEB.2.02.1107271844100.25432@p34.internal.lan> <1311886137.27285.2.camel@lade.trondhjem.org>
-In-Reply-To: <1311886137.27285.2.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v2 07/25] pnfsblock: add blocklayout Kconfig option, Makefile, and stubs
+Date: Thu, 21 Jul 2011 15:34:07 -0400
+Message-Id: <1311276865-29484-8-git-send-email-rees@umich.edu>
+In-Reply-To: <1311276865-29484-1-git-send-email-rees@umich.edu>
+References: <1311276865-29484-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 07/28/2011 04:48 PM, Trond Myklebust wrote:
-> On Wed, 2011-07-27 at 18:44 -0400, Justin Piszcz wrote: 
->>
->> On Wed, 27 Jul 2011, Justin Piszcz wrote:
->>
->>>
->>>
->>> On Wed, 27 Jul 2011, Trond Myklebust wrote:
->>>
->>>> On Wed, 2011-07-27 at 16:54 -0400, Trond Myklebust wrote:
->>>>> On Wed, 2011-07-27 at 16:37 -0400, Trond Myklebust wrote:
->>>>>> On Wed, 2011-07-27 at 15:47 -0400, Christoph Hellwig wrote:
->>>>>>> On Wed, Jul 27, 2011 at 03:44:20PM -0400, Justin Piszcz wrote:
->>>>>>>>
->>>>>>>>
->>>>>>>> On Wed, 27 Jul 2011, Christoph Hellwig wrote:
->>>>>>>>
->>>>>>>>> On Wed, Jul 27, 2011 at 03:35:01PM -0400, Justin Piszcz wrote:
->>>>>>>>>> Currently I do not see any dupes, however I have a script that moves
->>>>>>>>>> images out of the directory once an hour:
->>>>>>>>>> 0 * * * * /usr/local/bin/move_to_old2.sh > /dev/null 2>&1
->>>>>>>>>
->>>>>>>>> Do you keep adding files to the directory while you move files out?
->>>>>>>> Yes, otherwise there are too many files in the directory and viewers, e.g.,
->>>>>>>> each geeqie (picture viewer) will use > 4-6GB of memory, so I try to keep
->>>>>>>> it around 5,000 pictures or less.
->>>>>>>>
->>>>>>>>> What's the rate of additions/removals to the directory?
->>>>>>>> Additions it depends, around 5,000 over a 12hr period, 416/hr, current:
->>>>>>>>
->>>>>>>> atom:/d1/motion# find cam1|wc
->>>>>>>>    5215    5215  166853
->>>>>>>> atom:/d1/motion# find cam2|wc
->>>>>>>>    5069    5069  162181
->>>>>>>> atom:/d1/motion# find cam3|wc
->>>>>>>>    5594    5594  178981
->>>>>>>> atom:/d1/motion#
->>>>>>>
->>>>>>> This sounds a lot like xfs simply filling up the directory index slots
->>>>>>> of files that you just moved out with new files, and nfs falsely
->>>>>>> claiming that this is a problem.
->>>>>>
->>>>>> Yep. There is an existing bugzilla report for this bug at
->>>>>>
->>>>>>    https://bugzilla.kernel.org/show_bug.cgi?id=38572
->>>>>>
->>>>>> I have a preliminary patch there that attempts to turn off the loop
->>>>>> detection when the directory is seen to change, however that patch still
->>>>>> appears to have a bug in it, and I haven't had time to figure out what
->>>>>> is wrong yet.
->>>>>>
->>>>>> Can you perhaps take a look, Bryan?
->>>>>
->>>>> Actually, Justin, can you test the following slight variant on the patch
->>>>> in the bugzilla?
->>>>
->>>> Doh! This one will actually compile....
->>>
->>> Hi,
->>>
->>> Should I try 3.0 first or retry 2.6.38 w/ this patch?
->>>
->>> Justin.
->>>
->>>
->>
->> I'll give 3.0 a go first.
-> 
-> I had Bryan do some more tests, which revealed a couple more issues. The
-> attached patch should fix those, and has resisted everything we've
-> thrown at it so far. It should apply to 2.6.39 and newer.
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-This patch still looks good (after testing it a bit more today).
+Define a configuration variable to enable/disable compilation of the
+block driver code.
 
-How does this look for printing out more information when a cookie loop is detected?  Is there anything else that should be printed out?  My patch applies on top of Trond's from yesterday.
+Add the minimal structure for a pnfs block layout driver, and empty
+list-heads that will hold the extent data
 
-- Bryan
-
-8<-----------------------------------------------------------------------
->From 4d74863dc2bcd4e603a873b3725f0a05afd21f1f Mon Sep 17 00:00:00 2001
-From: Bryan Schumaker <bjschuma@netapp.com>
-Date: Fri, 29 Jul 2011 11:49:06 -0400
-Subject: [PATCH] Additional readdir cookie loop information
-
-Print out the name of the file that triggers the cookie loop  message to
-make it slightly easier to track down the cause.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+[pnfsblock: make NFS_V4_1 select PNFS_BLOCK]
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfs-block: fix CONFIG_PNFS_BLOCK dependencies]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <benny@tonian.com>
+[pnfsblock: SQUASHME: port block layout code]
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+[pnfsblock: SQUASHME: adjust to API change]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfs: move pnfs_layout_type inline in nfs_inode]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[blocklayout: encode_layoutcommit implementation]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <benny@tonian.com>
+[pnfsblock: layout alloc and free]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfs: move pnfs_layout_type inline in nfs_inode]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <benny@tonian.com>
+[pnfsblock: define module alias]
+Signed-off-by: Peng Tao <peng_tao@emc.com>
 ---
- fs/nfs/dir.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+ fs/nfs/Kconfig                   |    8 ++-
+ fs/nfs/Makefile                  |    1 +
+ fs/nfs/blocklayout/Makefile      |    5 +
+ fs/nfs/blocklayout/blocklayout.c |  175 ++++++++++++++++++++++++++++++++++++++
+ fs/nfs/blocklayout/blocklayout.h |   91 ++++++++++++++++++++
+ 5 files changed, 279 insertions(+), 1 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/Makefile
+ create mode 100644 fs/nfs/blocklayout/blocklayout.c
+ create mode 100644 fs/nfs/blocklayout/blocklayout.h
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index d23108b..b238d95 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -365,9 +365,10 @@ int nfs_readdir_search_for_cookie(struct nfs_cache_array *array, nfs_readdir_des
- 					if (printk_ratelimit()) {
- 						pr_notice("NFS: directory %s/%s contains a readdir loop."
- 								"Please contact your server vendor.  "
--								"Offending cookie: %llu\n",
-+								"The file: %s has duplicate cookie %llu\n",
- 								desc->file->f_dentry->d_parent->d_name.name,
- 								desc->file->f_dentry->d_name.name,
-+								array->array[i].string.name,
- 								*desc->dir_cookie);
- 					}
- 					status = -ELOOP;
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 2cde5d9..be02077 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -79,15 +79,21 @@ config NFS_V4_1
+ 	depends on NFS_FS && NFS_V4 && EXPERIMENTAL
+ 	select SUNRPC_BACKCHANNEL
+ 	select PNFS_FILE_LAYOUT
++	select PNFS_BLOCK
++	select MD
++	select BLK_DEV_DM
+ 	help
+ 	  This option enables support for minor version 1 of the NFSv4 protocol
+-	  (RFC 5661) in the kernel's NFS client.
++	  (RFC 5661 and RFC 5663) in the kernel's NFS client.
+ 
+ 	  If unsure, say N.
+ 
+ config PNFS_FILE_LAYOUT
+ 	tristate
+ 
++config PNFS_BLOCK
++	tristate
++
+ config PNFS_OBJLAYOUT
+ 	tristate "Provide support for the pNFS Objects Layout Driver for NFSv4.1 pNFS (EXPERIMENTAL)"
+ 	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 6a34f7d..b58613d 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -23,3 +23,4 @@ obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
+ nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
+ 
+ obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayout/
++obj-$(CONFIG_PNFS_BLOCK) += blocklayout/
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+new file mode 100644
+index 0000000..6bf49cd
+--- /dev/null
++++ b/fs/nfs/blocklayout/Makefile
+@@ -0,0 +1,5 @@
++#
++# Makefile for the pNFS block layout driver kernel module
++#
++obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
++blocklayoutdriver-objs := blocklayout.o
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+new file mode 100644
+index 0000000..55a2a95
+--- /dev/null
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -0,0 +1,175 @@
++/*
++ *  linux/fs/nfs/blocklayout/blocklayout.c
++ *
++ *  Module for the NFSv4.1 pNFS block layout driver.
++ *
++ *  Copyright (c) 2006 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@citi.umich.edu>
++ *  Fred Isaman <iisaman@umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
++ */
++#include <linux/module.h>
++#include <linux/init.h>
++
++#include "blocklayout.h"
++
++#define NFSDBG_FACILITY	NFSDBG_PNFS_LD
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("Andy Adamson <andros@citi.umich.edu>");
++MODULE_DESCRIPTION("The NFSv4.1 pNFS Block layout driver");
++
++static enum pnfs_try_status
++bl_read_pagelist(struct nfs_read_data *rdata)
++{
++	return PNFS_NOT_ATTEMPTED;
++}
++
++static enum pnfs_try_status
++bl_write_pagelist(struct nfs_write_data *wdata,
++		  int sync)
++{
++	return PNFS_NOT_ATTEMPTED;
++}
++
++/* STUB */
++static void
++release_extents(struct pnfs_block_layout *bl,
++		struct pnfs_layout_range *range)
++{
++	return;
++}
++
++/* STUB */
++static void
++release_inval_marks(struct pnfs_inval_markings *marks)
++{
++	return;
++}
++
++static void bl_free_layout_hdr(struct pnfs_layout_hdr *lo)
++{
++	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
++
++	dprintk("%s enter\n", __func__);
++	release_extents(bl, NULL);
++	release_inval_marks(&bl->bl_inval);
++	kfree(bl);
++}
++
++static struct pnfs_layout_hdr *bl_alloc_layout_hdr(struct inode *inode,
++						   gfp_t gfp_flags)
++{
++	struct pnfs_block_layout *bl;
++
++	dprintk("%s enter\n", __func__);
++	bl = kzalloc(sizeof(*bl), gfp_flags);
++	if (!bl)
++		return NULL;
++	spin_lock_init(&bl->bl_ext_lock);
++	INIT_LIST_HEAD(&bl->bl_extents[0]);
++	INIT_LIST_HEAD(&bl->bl_extents[1]);
++	INIT_LIST_HEAD(&bl->bl_commit);
++	INIT_LIST_HEAD(&bl->bl_committing);
++	bl->bl_count = 0;
++	bl->bl_blocksize = NFS_SERVER(inode)->pnfs_blksize >> SECTOR_SHIFT;
++	INIT_INVAL_MARKS(&bl->bl_inval, bl->bl_blocksize);
++	return &bl->bl_layout;
++}
++
++static void
++bl_free_lseg(struct pnfs_layout_segment *lseg)
++{
++}
++
++static struct pnfs_layout_segment *
++bl_alloc_lseg(struct pnfs_layout_hdr *lo,
++	      struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
++{
++	return NULL;
++}
++
++static void
++bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
++		       const struct nfs4_layoutcommit_args *arg)
++{
++}
++
++static void
++bl_cleanup_layoutcommit(struct pnfs_layout_hdr *lo,
++			struct nfs4_layoutcommit_data *lcdata)
++{
++}
++
++static int
++bl_set_layoutdriver(struct nfs_server *server, const struct nfs_fh *fh)
++{
++	dprintk("%s enter\n", __func__);
++	return 0;
++}
++
++static int
++bl_clear_layoutdriver(struct nfs_server *server)
++{
++	dprintk("%s enter\n", __func__);
++	return 0;
++}
++
++static struct pnfs_layoutdriver_type blocklayout_type = {
++	.id				= LAYOUT_BLOCK_VOLUME,
++	.name				= "LAYOUT_BLOCK_VOLUME",
++	.read_pagelist			= bl_read_pagelist,
++	.write_pagelist			= bl_write_pagelist,
++	.alloc_layout_hdr		= bl_alloc_layout_hdr,
++	.free_layout_hdr		= bl_free_layout_hdr,
++	.alloc_lseg			= bl_alloc_lseg,
++	.free_lseg			= bl_free_lseg,
++	.encode_layoutcommit		= bl_encode_layoutcommit,
++	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
++	.set_layoutdriver		= bl_set_layoutdriver,
++	.clear_layoutdriver		= bl_clear_layoutdriver,
++};
++
++static int __init nfs4blocklayout_init(void)
++{
++	int ret;
++
++	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
++
++	ret = pnfs_register_layoutdriver(&blocklayout_type);
++	return ret;
++}
++
++static void __exit nfs4blocklayout_exit(void)
++{
++	dprintk("%s: NFSv4 Block Layout Driver Unregistering...\n",
++	       __func__);
++
++	pnfs_unregister_layoutdriver(&blocklayout_type);
++}
++
++MODULE_ALIAS("nfs-layouttype4-3");
++
++module_init(nfs4blocklayout_init);
++module_exit(nfs4blocklayout_exit);
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+new file mode 100644
+index 0000000..bda87e0
+--- /dev/null
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -0,0 +1,91 @@
++/*
++ *  linux/fs/nfs/blocklayout/blocklayout.h
++ *
++ *  Module for the NFSv4.1 pNFS block layout driver.
++ *
++ *  Copyright (c) 2006 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@citi.umich.edu>
++ *  Fred Isaman <iisaman@umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
++ */
++#ifndef FS_NFS_NFS4BLOCKLAYOUT_H
++#define FS_NFS_NFS4BLOCKLAYOUT_H
++
++#include <linux/device-mapper.h>
++#include <linux/nfs_fs.h>
++#include "../pnfs.h"
++
++enum exstate4 {
++	PNFS_BLOCK_READWRITE_DATA	= 0,
++	PNFS_BLOCK_READ_DATA		= 1,
++	PNFS_BLOCK_INVALID_DATA		= 2, /* mapped, but data is invalid */
++	PNFS_BLOCK_NONE_DATA		= 3  /* unmapped, it's a hole */
++};
++
++struct pnfs_inval_markings {
++	/* STUB */
++};
++
++/* sector_t fields are all in 512-byte sectors */
++struct pnfs_block_extent {
++	struct kref	be_refcnt;
++	struct list_head be_node;	/* link into lseg list */
++	struct nfs4_deviceid be_devid;  /* STUB - removable??? */
++	struct block_device *be_mdev;
++	sector_t	be_f_offset;	/* the starting offset in the file */
++	sector_t	be_length;	/* the size of the extent */
++	sector_t	be_v_offset;	/* the starting offset in the volume */
++	enum exstate4	be_state;	/* the state of this extent */
++	struct pnfs_inval_markings *be_inval; /* tracks INVAL->RW transition */
++};
++
++static inline void
++INIT_INVAL_MARKS(struct pnfs_inval_markings *marks, sector_t blocksize)
++{
++	/* STUB */
++}
++
++enum extentclass4 {
++	RW_EXTENT       = 0, /* READWRTE and INVAL */
++	RO_EXTENT       = 1, /* READ and NONE */
++	EXTENT_LISTS    = 2,
++};
++
++struct pnfs_block_layout {
++	struct pnfs_layout_hdr bl_layout;
++	struct pnfs_inval_markings bl_inval; /* tracks INVAL->RW transition */
++	spinlock_t		bl_ext_lock;   /* Protects list manipulation */
++	struct list_head	bl_extents[EXTENT_LISTS]; /* R and RW extents */
++	struct list_head	bl_commit;	/* Needs layout commit */
++	struct list_head	bl_committing;	/* Layout committing */
++	unsigned int		bl_count;	/* entries in bl_commit */
++	sector_t		bl_blocksize;  /* Server blocksize in sectors */
++};
++
++static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
++{
++	return container_of(lo, struct pnfs_block_layout, bl_layout);
++}
++
++#endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
 -- 
-1.7.6
-
-
-> 
-> Cheers
->   Trond
-> 8<----------------------------------------------------------------------- 
-> From 75c0387540737a6663338d4ec0538bd6fb724173 Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date: Thu, 28 Jul 2011 16:34:33 -0400
-> Subject: [PATCH v3] NFS: Fix spurious readdir cookie loop messages
-> 
-> If the directory contents change, then we have to accept that the
-> file->f_pos value may shrink if we do a 'search-by-cookie'. In that
-> case, we should turn off the loop detection and let the NFS client
-> try to recover.
-> 
-> The patch also fixes a second loop detection bug by ensuring
-> that after turning on the ctx->duped flag, we read at least one new
-> cookie into ctx->dir_cookie before attempting to match with
-> ctx->dup_cookie.
-> 
-> Reported-by: Petr Vandrovec <petr@vandrovec.name>
-> Cc: stable@kernel.org [2.6.39+]
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->  fs/nfs/dir.c           |   56 ++++++++++++++++++++++++++++-------------------
->  include/linux/nfs_fs.h |    3 +-
->  2 files changed, 35 insertions(+), 24 deletions(-)
-> 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index 57f578e..d23108b 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -134,18 +134,19 @@ const struct inode_operations nfs4_dir_inode_operations = {
->  
->  #endif /* CONFIG_NFS_V4 */
->  
-> -static struct nfs_open_dir_context *alloc_nfs_open_dir_context(struct rpc_cred *cred)
-> +static struct nfs_open_dir_context *alloc_nfs_open_dir_context(struct inode *dir, struct rpc_cred *cred)
->  {
->  	struct nfs_open_dir_context *ctx;
->  	ctx = kmalloc(sizeof(*ctx), GFP_KERNEL);
->  	if (ctx != NULL) {
->  		ctx->duped = 0;
-> +		ctx->attr_gencount = NFS_I(dir)->attr_gencount;
->  		ctx->dir_cookie = 0;
->  		ctx->dup_cookie = 0;
->  		ctx->cred = get_rpccred(cred);
-> -	} else
-> -		ctx = ERR_PTR(-ENOMEM);
-> -	return ctx;
-> +		return ctx;
-> +	}
-> +	return  ERR_PTR(-ENOMEM);
->  }
->  
->  static void put_nfs_open_dir_context(struct nfs_open_dir_context *ctx)
-> @@ -173,7 +174,7 @@ nfs_opendir(struct inode *inode, struct file *filp)
->  	cred = rpc_lookup_cred();
->  	if (IS_ERR(cred))
->  		return PTR_ERR(cred);
-> -	ctx = alloc_nfs_open_dir_context(cred);
-> +	ctx = alloc_nfs_open_dir_context(inode, cred);
->  	if (IS_ERR(ctx)) {
->  		res = PTR_ERR(ctx);
->  		goto out;
-> @@ -323,7 +324,6 @@ int nfs_readdir_search_for_pos(struct nfs_cache_array *array, nfs_readdir_descri
->  {
->  	loff_t diff = desc->file->f_pos - desc->current_index;
->  	unsigned int index;
-> -	struct nfs_open_dir_context *ctx = desc->file->private_data;
->  
->  	if (diff < 0)
->  		goto out_eof;
-> @@ -336,7 +336,6 @@ int nfs_readdir_search_for_pos(struct nfs_cache_array *array, nfs_readdir_descri
->  	index = (unsigned int)diff;
->  	*desc->dir_cookie = array->array[index].cookie;
->  	desc->cache_entry_index = index;
-> -	ctx->duped = 0;
->  	return 0;
->  out_eof:
->  	desc->eof = 1;
-> @@ -349,14 +348,33 @@ int nfs_readdir_search_for_cookie(struct nfs_cache_array *array, nfs_readdir_des
->  	int i;
->  	loff_t new_pos;
->  	int status = -EAGAIN;
-> -	struct nfs_open_dir_context *ctx = desc->file->private_data;
->  
->  	for (i = 0; i < array->size; i++) {
->  		if (array->array[i].cookie == *desc->dir_cookie) {
-> +			struct nfs_inode *nfsi = NFS_I(desc->file->f_path.dentry->d_inode);
-> +			struct nfs_open_dir_context *ctx = desc->file->private_data;
-> +
->  			new_pos = desc->current_index + i;
-> -			if (new_pos < desc->file->f_pos) {
-> +			if (ctx->attr_gencount != nfsi->attr_gencount
-> +			    || (nfsi->cache_validity & (NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA))) {
-> +				ctx->duped = 0;
-> +				ctx->attr_gencount = nfsi->attr_gencount;
-> +			} else if (new_pos < desc->file->f_pos) {
-> +				if (ctx->duped > 0
-> +				    && ctx->dup_cookie == *desc->dir_cookie) {
-> +					if (printk_ratelimit()) {
-> +						pr_notice("NFS: directory %s/%s contains a readdir loop."
-> +								"Please contact your server vendor.  "
-> +								"Offending cookie: %llu\n",
-> +								desc->file->f_dentry->d_parent->d_name.name,
-> +								desc->file->f_dentry->d_name.name,
-> +								*desc->dir_cookie);
-> +					}
-> +					status = -ELOOP;
-> +					goto out;
-> +				}
->  				ctx->dup_cookie = *desc->dir_cookie;
-> -				ctx->duped = 1;
-> +				ctx->duped = -1;
->  			}
->  			desc->file->f_pos = new_pos;
->  			desc->cache_entry_index = i;
-> @@ -368,6 +386,7 @@ int nfs_readdir_search_for_cookie(struct nfs_cache_array *array, nfs_readdir_des
->  		if (*desc->dir_cookie == array->last_cookie)
->  			desc->eof = 1;
->  	}
-> +out:
->  	return status;
->  }
->  
-> @@ -740,19 +759,6 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc, void *dirent,
->  	struct nfs_cache_array *array = NULL;
->  	struct nfs_open_dir_context *ctx = file->private_data;
->  
-> -	if (ctx->duped != 0 && ctx->dup_cookie == *desc->dir_cookie) {
-> -		if (printk_ratelimit()) {
-> -			pr_notice("NFS: directory %s/%s contains a readdir loop.  "
-> -				"Please contact your server vendor.  "
-> -				"Offending cookie: %llu\n",
-> -				file->f_dentry->d_parent->d_name.name,
-> -				file->f_dentry->d_name.name,
-> -				*desc->dir_cookie);
-> -		}
-> -		res = -ELOOP;
-> -		goto out;
-> -	}
-> -
->  	array = nfs_readdir_get_array(desc->page);
->  	if (IS_ERR(array)) {
->  		res = PTR_ERR(array);
-> @@ -774,6 +780,8 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc, void *dirent,
->  			*desc->dir_cookie = array->array[i+1].cookie;
->  		else
->  			*desc->dir_cookie = array->last_cookie;
-> +		if (ctx->duped != 0)
-> +			ctx->duped = 1;
->  	}
->  	if (array->eof_index >= 0)
->  		desc->eof = 1;
-> @@ -805,6 +813,7 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc, void *dirent,
->  	struct page	*page = NULL;
->  	int		status;
->  	struct inode *inode = desc->file->f_path.dentry->d_inode;
-> +	struct nfs_open_dir_context *ctx = desc->file->private_data;
->  
->  	dfprintk(DIRCACHE, "NFS: uncached_readdir() searching for cookie %Lu\n",
->  			(unsigned long long)*desc->dir_cookie);
-> @@ -818,6 +827,7 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc, void *dirent,
->  	desc->page_index = 0;
->  	desc->last_cookie = *desc->dir_cookie;
->  	desc->page = page;
-> +	ctx->duped = 0;
->  
->  	status = nfs_readdir_xdr_to_array(desc, page, inode);
->  	if (status < 0)
-> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-> index 8b579be..b96fb99 100644
-> --- a/include/linux/nfs_fs.h
-> +++ b/include/linux/nfs_fs.h
-> @@ -99,9 +99,10 @@ struct nfs_open_context {
->  
->  struct nfs_open_dir_context {
->  	struct rpc_cred *cred;
-> +	unsigned long attr_gencount;
->  	__u64 dir_cookie;
->  	__u64 dup_cookie;
-> -	int duped;
-> +	signed char duped;
->  };
->  
->  /*
+1.7.4.1
 
