@@ -1,55 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:33827 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:49343 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753148Ab1G0UWl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 16:22:41 -0400
-Subject: Re: [PATCH v3 03/25] NFS41: Let layoutcommit handle multiple
- segments
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Date: Wed, 27 Jul 2011 16:22:39 -0400
-In-Reply-To: <4E306F84.6030808@panasas.com>
-References: <1311792048-12551-1-git-send-email-rees@umich.edu>
-	 <1311792048-12551-4-git-send-email-rees@umich.edu>
-	 <4E306F84.6030808@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1311798159.25645.32.camel@lade.trondhjem.org>
+	id S1752079Ab1GUQf3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Jul 2011 12:35:29 -0400
+Date: Thu, 21 Jul 2011 12:35:20 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeremy Allison <jra@samba.org>
+Cc: Volker Lendecke <Volker.Lendecke@SerNet.DE>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, samba-technical@lists.samba.org,
+        Casey Bodley <cbodley@citi.umich.edu>
+Subject: Re: [PATCH] locks: breaking read lease should not block read open
+Message-ID: <20110721163520.GC1114@fieldses.org>
+References: <20110609231606.GB22215@fieldses.org>
+ <E1QUwaT-00HRZw-74@intern.SerNet.DE>
+ <20110610134859.GA27837@fieldses.org>
+ <20110721000758.GD27871@fieldses.org>
+ <20110721001542.GA15644@samba2>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110721001542.GA15644@samba2>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-07-27 at 13:05 -0700, Boaz Harrosh wrote: 
-> On 07/27/2011 11:40 AM, Jim Rees wrote:
-> > From: Peng Tao <bergwolf@gmail.com>
+On Wed, Jul 20, 2011 at 05:15:42PM -0700, Jeremy Allison wrote:
+> On Wed, Jul 20, 2011 at 08:07:58PM -0400, J. Bruce Fields wrote:
+> > On Fri, Jun 10, 2011 at 09:48:59AM -0400, J. Bruce Fields wrote:
+> > > On Fri, Jun 10, 2011 at 09:56:49AM +0200, Volker Lendecke wrote:
+> > > > Without having looked too deeply, just let me point out that
+> > > > Samba here has a plain flaw. Early Linux Kernel versions
+> > > > that we programmed against did not properly support read
+> > > > only leases, so we did not implement that initially. If I
+> > > > remember correctly we never got around to finally do it once
+> > > > it became available. Eventually we will probably, as read
+> > > > only leases are a pretty important feature to present to
+> > > > CIFS clients.
+> > > 
+> > > Thanks, I didn't know that.  (Or I did, and I forgot.)
+> > > 
+> > > When you *do* implement that, is there any chance you'd have this need
+> > > to be able to downgrade to a read lease in the case of a conflict?
 > > 
-> > Some layout drivers like block will have multiple segments.  Generic code
-> > should be able to handle it.  Layoutcommit takes a list of segments and last
-> > write offset is saved at inode level.
+> > So it's a question about the protocols samba implements:
 > > 
-> > Signed-off-by: Peng Tao <peng_tao@emc.com>
+> > 	- Do they allow an atomic downgrade from an exclusive to a
+> > 	  shared oplock?  (Or to a level 2 oplock, or whatever the right
+> > 	  term is).
 > 
-> Trond Hi
+> Yes. Exclusive can go to level 2 - in fact that's the default
+> downgrade we do (unless an smb.conf option explicity denies it).
 > 
-> Could you please add this patch to the current Merge window? And also include
+> > 	- If so, can that happen as a response to a conflicting open?
+> > 	  (So, if you're holding an exclusive oplock, and a conflicting
+> > 	  open comes in, can the server-to-client break message say "now
+> > 	  you're getting a shared oplock instead"?  Or is the client
+> > 	  left without any oplock until it requests a new one?)
 > 
-> CC: Stable <stable@vger.kernel.org>
+> Yes, this can happen.
+> 
+> In SMB, we only break to no lease when a write request comes
+> in on a exclusive or level2 oplock (read-lease) handle.
 
-Nope.
+Ok, thanks, that means we need a more complicated fix here--I'll work on
+that....
 
-Firstly it exacerbates an existing bug in the current code (see my
-comments).
-
-Secondly, it does several things at once (adding multiple segment
-handling, fixing last-byte handling in layoutcommit and credential
-handling). Which of these features are actually needed for stable?
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+--b.
