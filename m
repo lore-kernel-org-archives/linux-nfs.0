@@ -1,99 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:33776 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751191Ab1GUQqI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 12:46:08 -0400
-Message-ID: <4E2857CA.7000905@candelatech.com>
-Date: Thu, 21 Jul 2011 09:46:02 -0700
-From: Ben Greear <greearb@candelatech.com>
-To: greearb@candelatech.com
-CC: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH (RESEND) 00/12] Support binding nfs/rpc to local IP address.
-References: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:40234 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753668Ab1GUTee (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 15:34:34 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v2 04/25] NFS41: save layoutcommit cred after first successful layoutget
+Date: Thu, 21 Jul 2011 15:34:04 -0400
+Message-Id: <1311276865-29484-5-git-send-email-rees@umich.edu>
+In-Reply-To: <1311276865-29484-1-git-send-email-rees@umich.edu>
+References: <1311276865-29484-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 07/15/2011 10:55 AM, greearb@candelatech.com wrote:
-> From: Ben Greear<greearb@candelatech.com>
->
->
-> This patch series allows binding the nfs and rpc logic to a specific local
-> IP address.
+From: Peng Tao <bergwolf@gmail.com>
 
-Any comments on this?  I'd love to get these merged in time for 3.1!
+Save it in layout header instead of in every segment.
 
-With recent 3.0 RCU fixes, my stress test runs clean over-night, so
-it has been pretty well tested....
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/pnfs.c |   12 ++++++------
+ fs/nfs/pnfs.h |    1 -
+ 2 files changed, 6 insertions(+), 7 deletions(-)
 
-Thanks,
-Ben
-
->
-> Features/Benefits:
->
-> *  Allow multiple unique mounts to the same server using unique
->     source IP addresses on client system.
->
->     Routing rules can then be created based on the source IP address for
->     advanced routing of the NFS traffic.
->
->     This could allow someone to use two 1G interfaces to access a
->     server with 10G connectivity and allow aggregate 2Gbps transfer,
->     for instance.
->
->     This is also useful for load testing NFS servers as well as the
->     client-side NFS logic (note the bugs&  fixed found while testing
->     this code!)
->
-> *  Allow using a specific IP address on multi-homed system.  This could
->     increase security in some cases and in general gives the user more
->     control over how the services are configured.
->
-> This code has been tested under load on 3.0 and a similar version has
-> been tested under load on 2.6.38 and previous kernels.
->
-> Full implementation of this feature requires patches to mount.nfs,
-> which have been agreed to be accepted if the kernel patches are accepted.
->
-> Ben Greear (12):
->    sunrpc:  Don't attempt to bind to AF_UNSPEC address.
->    nfs:  Two AF_UNSPEC addresses should always match each other.
->    nfs:  Add srcaddr member to nfs_client.
->    nfs:  Use request destination addr as callback source addr.
->    nfs:  Pay attention to srcaddr in v4.1 callback logic.
->    nfs:  Use srcaddr in nfs_match_client.
->    nfs:  Add srcaddr to /proc/fs/nfsfs/servers
->    nfs:  Pass srcaddr into mount request.
->    nfs:  Propagate src-addr in client code.
->    nfs: Bind to srcaddr in rpcb_create.
->    nfs: Support srcaddr= to bind to specific IP address.
->    lockd: Support binding nlm client to specific address.
->
->   fs/lockd/clntlock.c         |    3 +-
->   fs/lockd/host.c             |   17 +++++++++-
->   fs/nfs/callback.h           |    3 ++
->   fs/nfs/callback_proc.c      |    3 +-
->   fs/nfs/callback_xdr.c       |    3 ++
->   fs/nfs/client.c             |   73 ++++++++++++++++++++++++++++++++++++++++--
->   fs/nfs/internal.h           |   10 +++++-
->   fs/nfs/mount_clnt.c         |    1 +
->   fs/nfs/super.c              |   33 +++++++++++++++++++-
->   include/linux/lockd/bind.h  |    1 +
->   include/linux/lockd/lockd.h |    1 +
->   include/linux/nfs_fs_sb.h   |    4 ++
->   include/linux/sunrpc/clnt.h |    2 +
->   include/linux/sunrpc/svc.h  |    5 +++
->   net/sunrpc/rpcb_clnt.c      |   28 +++++++++++++++-
->   net/sunrpc/sunrpc.h         |   45 ++++++++++++++++++++++++++
->   net/sunrpc/xprtsock.c       |   47 +--------------------------
->   17 files changed, 223 insertions(+), 56 deletions(-)
->
-
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index dae19dd..fbebd2a 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -211,6 +211,7 @@ destroy_layout_hdr(struct pnfs_layout_hdr *lo)
+ 	dprintk("%s: freeing layout cache %p\n", __func__, lo);
+ 	BUG_ON(!list_empty(&lo->plh_layouts));
+ 	NFS_I(lo->plh_inode)->layout = NULL;
++	put_rpccred(lo->plh_lc_cred);
+ 	pnfs_free_layout_hdr(lo);
+ }
+ 
+@@ -1007,6 +1008,10 @@ pnfs_update_layout(struct inode *ino,
+ 		list_del_init(&lo->plh_layouts);
+ 		spin_unlock(&clp->cl_lock);
+ 	}
++	if (first) {
++		lo->plh_lc_cred =
++			get_rpccred(ctx->state->owner->so_cred);
++	}
+ 	atomic_dec(&lo->plh_outstanding);
+ 	put_layout_hdr(lo);
+ out:
+@@ -1386,8 +1391,6 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+ 	if (!test_and_set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
+ 		mark_as_dirty = true;
+-		nfsi->layout->plh_lc_cred =
+-			get_rpccred(wdata->args.context->state->owner->so_cred);
+ 		dprintk("%s: Set layoutcommit for inode %lu ",
+ 			__func__, wdata->inode->i_ino);
+ 	}
+@@ -1421,7 +1424,6 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ {
+ 	struct nfs4_layoutcommit_data *data;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+-	struct rpc_cred *cred;
+ 	loff_t end_pos;
+ 	int status = 0;
+ 
+@@ -1449,16 +1451,14 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 	pnfs_list_write_lseg(inode, &data->lseg_list);
+ 
+ 	end_pos = nfsi->layout->plh_lwb;
+-	cred = nfsi->layout->plh_lc_cred;
+ 	nfsi->layout->plh_lwb = 0;
+-	nfsi->layout->plh_lc_cred = NULL;
+ 
+ 	memcpy(&data->args.stateid.data, nfsi->layout->plh_stateid.data,
+ 		sizeof(nfsi->layout->plh_stateid.data));
+ 	spin_unlock(&inode->i_lock);
+ 
+ 	data->args.inode = inode;
+-	data->cred = cred;
++	data->cred = get_rpccred(nfsi->layout->plh_lc_cred);
+ 	nfs_fattr_init(&data->fattr);
+ 	data->args.bitmask = NFS_SERVER(inode)->cache_consistency_bitmask;
+ 	data->res.fattr = &data->fattr;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 5f1b532..bddd8b9 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -46,7 +46,6 @@ struct pnfs_layout_segment {
+ 	atomic_t pls_refcount;
+ 	unsigned long pls_flags;
+ 	struct pnfs_layout_hdr *pls_layout;
+-	struct rpc_cred	*pls_lc_cred; /* LAYOUTCOMMIT credential */
+ };
+ 
+ enum pnfs_try_status {
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+1.7.4.1
 
