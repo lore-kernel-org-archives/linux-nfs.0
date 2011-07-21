@@ -1,133 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21976 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755011Ab1G2NuJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Jul 2011 09:50:09 -0400
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p6TDo9wO004883
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 29 Jul 2011 09:50:09 -0400
-Received: from [10.33.0.52] (sprabhu.fab.redhat.com [10.33.0.52])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id p6TDo8eA015400
-	for <linux-nfs@vger.kernel.org>; Fri, 29 Jul 2011 09:50:08 -0400
-Subject: [PATCH] nfs: Do not allow multiple mounts on same mountpoint when
- using -o noac
-From: Sachin Prabhu <sprabhu@redhat.com>
-To: NFS <linux-nfs@vger.kernel.org>
-Date: Fri, 29 Jul 2011 14:50:08 +0100
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1311947408.29400.40.camel@sprabhu.fab.redhat.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:31743 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751257Ab1GUJGJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 05:06:09 -0400
+Subject: Re: Subject: [PATCH] Statd should always 'chdir' to its state directory.
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20110721104032.38e289aa@notabene.brown>
+Date: Thu, 21 Jul 2011 10:05:43 +0100
+Cc: Steve Dickson <SteveD@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <AF968511-9AD4-4BAB-BD05-6E21205F0EE7@oracle.com>
+References: <20110721104032.38e289aa@notabene.brown>
+To: NeilBrown <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-When you normally attempt to mount a share twice on the same mountpoint,
-a check in do_add_mount causes it to return an error
 
-# mount localhost:/nfsv3 /mnt
-# mount localhost:/nfsv3 /mnt
-mount.nfs: /mnt is already mounted or busy
+On Jul 21, 2011, at 1:40 AM, NeilBrown wrote:
 
-However when using the option 'noac', the user is able to mount the same
-share on the same mountpoint multiple times. This happens because a
-share mounted with the noac option is automatically assigned the 'sync'
-flag MS_SYNCHRONOUS in nfs_initialise_sb(). This flag is set after the
-check for already existing superblocks is done in sget(). The check for
-the mount flags in nfs_compare_mount_options() does not take into
-account the 'sync' flag applied later on in the code path. This means
-that when using 'noac', a new superblock structure is assigned for every
-new mount of the same share and multiple shares on the same mountpoint
-are allowed.
+> 
+> Subject: [PATCH] Statd should always 'chdir' to its state directory.
+> 
+> As statd can be started by 'mount' which can sometimes be run by a
+> normal user, the current-working-directory could be anything.  In
+> partcular it could be in a mounted filesystem.  As 'statd' continues
+> running as a daemon it could keep prevent that filesystem from being
+> unmounted.
+> 
+> statd does currently 'chdir' to the state directory, but only if the
+> state directory is not owned by root.  This is wrong - it should check
+> for root after the chdir, not before.
+> 
+> So swap the two if statements around.
 
-ie. 
-# mount -onoac localhost:/nfsv3 /mnt
-can be run multiple times.
+Seems reasonable.
 
-The patch checks for noac and assigns the sync flag before sget() is
-called to obtain an already existing superblock structure.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> 
+> --
+> looks like this regression slipped in around January 2010 with the big libnsm clean up.
+> -NB
+> 
+> 
+> diff --git a/support/nsm/file.c b/support/nsm/file.c
+> index 98b47bf..a12c753 100644
+> --- a/support/nsm/file.c
+> +++ b/support/nsm/file.c
+> @@ -395,18 +395,18 @@ nsm_drop_privileges(const int pidfd)
+> 		return false;
+> 	}
+> 
+> -	if (st.st_uid == 0) {
+> -		xlog_warn("Running as root.  "
+> -			"chown %s to choose different user", nsm_base_dirname);
+> -		return true;
+> -	}
+> -
+> 	if (chdir(nsm_base_dirname) == -1) {
+> 		xlog(L_ERROR, "Failed to change working directory to %s: %m",
+> 				nsm_base_dirname);
+> 		return false;
+> 	}
+> 
+> +	if (st.st_uid == 0) {
+> +		xlog_warn("Running as root.  "
+> +			"chown %s to choose different user", nsm_base_dirname);
+> +		return true;
+> +	}
+> +
+> 	/*
+> 	 * If the pidfile happens to reside on NFS, dropping privileges
+> 	 * will probably cause us to lose access, even though we are
 
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Signed-off-by: Sachin Prabhu <sprabhu@redhat.com>
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index b961cea..9b7dd70 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2035,9 +2035,6 @@ static inline void nfs_initialise_sb(struct
-super_block *sb)
- 		sb->s_blocksize = nfs_block_bits(server->wsize,
- 						 &sb->s_blocksize_bits);
- 
--	if (server->flags & NFS_MOUNT_NOAC)
--		sb->s_flags |= MS_SYNCHRONOUS;
--
- 	sb->s_bdi = &server->backing_dev_info;
- 
- 	nfs_super_set_maxbytes(sb, server->maxfilesize);
-@@ -2249,6 +2246,10 @@ static struct dentry *nfs_fs_mount(struct
-file_system_type *fs_type,
- 	if (server->flags & NFS_MOUNT_UNSHARED)
- 		compare_super = NULL;
- 
-+	/* -o noac implies -o sync */
-+	if (server->flags & NFS_MOUNT_NOAC)
-+		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
-+
- 	/* Get a superblock - note that we may end up sharing one that already
-exists */
- 	s = sget(fs_type, compare_super, nfs_set_super, &sb_mntdata);
- 	if (IS_ERR(s)) {
-@@ -2361,6 +2362,10 @@ nfs_xdev_mount(struct file_system_type *fs_type,
-int flags,
- 	if (server->flags & NFS_MOUNT_UNSHARED)
- 		compare_super = NULL;
- 
-+	/* -o noac implies -o sync */
-+	if (server->flags & NFS_MOUNT_NOAC)
-+		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
-+
- 	/* Get a superblock - note that we may end up sharing one that already
-exists */
- 	s = sget(&nfs_fs_type, compare_super, nfs_set_super, &sb_mntdata);
- 	if (IS_ERR(s)) {
-@@ -2628,6 +2633,10 @@ nfs4_remote_mount(struct file_system_type
-*fs_type, int flags,
- 	if (server->flags & NFS4_MOUNT_UNSHARED)
- 		compare_super = NULL;
- 
-+	/* -o noac implies -o sync */
-+	if (server->flags & NFS_MOUNT_NOAC)
-+		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
-+
- 	/* Get a superblock - note that we may end up sharing one that already
-exists */
- 	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
- 	if (IS_ERR(s)) {
-@@ -2916,6 +2925,10 @@ nfs4_xdev_mount(struct file_system_type *fs_type,
-int flags,
- 	if (server->flags & NFS4_MOUNT_UNSHARED)
- 		compare_super = NULL;
- 
-+	/* -o noac implies -o sync */
-+	if (server->flags & NFS_MOUNT_NOAC)
-+		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
-+
- 	/* Get a superblock - note that we may end up sharing one that already
-exists */
- 	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
- 	if (IS_ERR(s)) {
-@@ -3003,6 +3016,10 @@ nfs4_remote_referral_mount(struct
-file_system_type *fs_type, int flags,
- 	if (server->flags & NFS4_MOUNT_UNSHARED)
- 		compare_super = NULL;
- 
-+	/* -o noac implies -o sync */
-+	if (server->flags & NFS_MOUNT_NOAC)
-+		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
-+
- 	/* Get a superblock - note that we may end up sharing one that already
-exists */
- 	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
- 	if (IS_ERR(s)) {
 
 
