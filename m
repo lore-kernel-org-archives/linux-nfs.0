@@ -1,96 +1,219 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:56284 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751019Ab1GOUdU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Jul 2011 16:33:20 -0400
-Date: Fri, 15 Jul 2011 16:33:17 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Alex Elder <aelder@sgi.com>, xfs-masters@oss.sgi.com, xfs@oss.sgi.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] xfs: failure mapping nfs fh to inode should return
- ESTALE
-Message-ID: <20110715203317.GA25772@fieldses.org>
-References: <20110714205036.GA19457@fieldses.org>
- <20110714223126.GA28694@infradead.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110714223126.GA28694@infradead.org>
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:40417 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753745Ab1GUTet (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 15:34:49 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v2 21/25] pnfsblock: bl_write_pagelist
+Date: Thu, 21 Jul 2011 15:34:21 -0400
+Message-Id: <1311276865-29484-22-git-send-email-rees@umich.edu>
+In-Reply-To: <1311276865-29484-1-git-send-email-rees@umich.edu>
+References: <1311276865-29484-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, Jul 14, 2011 at 06:31:26PM -0400, Christoph Hellwig wrote:
-> On Thu, Jul 14, 2011 at 04:50:36PM -0400, J. Bruce Fields wrote:
-> > From: J. Bruce Fields <bfields@redhat.com>
-> > 
-> > On xfs exports, nfsd is incorrectly returning ENOENT instead of ESTALE
-> > on attempts to use a filehandle of a deleted file (spotted with pynfs
-> > test PUTFH3).  The ENOENT was coming from xfs_iget.
-> 
-> With that you mean the ip->i_d.di_mode checks?  Given that we should
-> only be bale to get these from NFS or the handle ioctls I suspect just
-> turning them into ESTALE should be fine.
-> 
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-Like the following?  That passes my test.  I wouldn't have thought of
-doing it that way because I wouldn't know how to check that
+Note: When upper layer's read/write request cannot be fulfilled, the block
+layout driver shouldn't silently mark the page as error. It should do
+what can be done and  leave the rest to the upper layer. To do so, we
+should set rdata/wdata->res.count properly.
 
-	- the change will only affect nfsd and the handle ioctls, and
-	- those are the only two places under xfs_iget that will
-	  generate an ENOENT (which will never be the right error return
-	  on failure to find a filehandle).
+When upper layer re-send the read/write request to finish the rest
+part of the request, pgbase is the position where we should start at.
 
-If those are true, great.
+[pnfsblock: bl_write_pagelist support functions]
+[pnfsblock: bl_write_pagelist adjust for missing PG_USE_PNFS]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: handle errors when read or write pagelist.]
+Signed-off-by: Zhang Jingwang <yyalone@gmail.com>
+[pnfs-block: use new write_pagelist api]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <benny@tonian.com>
 
---b.
+[SQUASHME: pnfsblock: mds_offset is set in the generic layer]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <benny@tonian.com>
 
-commit 94578e7d1c3e00ad29608c70fae314f85a465840
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Jul 14 15:39:49 2011 -0400
+[pnfsblock: mark IO error with NFS_LAYOUT_{RW|RO}_FAILED]
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+[pnfsblock: SQUASHME: adjust to API change]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: fixup blksize alignment in bl_setup_layoutcommit]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <benny@tonian.com>
+[pnfsblock: bl_write_pagelist adjust for missing PG_USE_PNFS]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: handle errors when read or write pagelist.]
+Signed-off-by: Zhang Jingwang <yyalone@gmail.com>
+[pnfs-block: use new write_pagelist api]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <benny@tonian.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |  137 +++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 134 insertions(+), 3 deletions(-)
 
-    xfs: failure mapping nfs fh to inode should return ESTALE
-    
-    On xfs exports, nfsd is incorrectly returning ENOENT instead of ESTALE
-    on attempts to use a filehandle of a deleted file (spotted with pynfs
-    test PUTFH3).  The ENOENT was coming from xfs_iget.
-    
-    While we're at it, the other return of ENOENT in xfs_nfs_get_inode()
-    also looks wrong.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/xfs/linux-2.6/xfs_export.c b/fs/xfs/linux-2.6/xfs_export.c
-index f4f878f..9e94d57 100644
---- a/fs/xfs/linux-2.6/xfs_export.c
-+++ b/fs/xfs/linux-2.6/xfs_export.c
-@@ -158,7 +158,7 @@ xfs_nfs_get_inode(
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 764096c..6d6ac0e 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -74,6 +74,19 @@ static int is_hole(struct pnfs_block_extent *be, sector_t isect)
+ 		return !is_sector_initialized(be->be_inval, isect);
+ }
  
- 	if (ip->i_d.di_gen != generation) {
- 		IRELE(ip);
--		return ERR_PTR(-ENOENT);
-+		return ERR_PTR(-ESTALE);
- 	}
++/* Given the be associated with isect, determine if page data can be
++ * written to disk.
++ */
++static int is_writable(struct pnfs_block_extent *be, sector_t isect)
++{
++	if (be->be_state == PNFS_BLOCK_READWRITE_DATA)
++		return 1;
++	else if (be->be_state != PNFS_BLOCK_INVALID_DATA)
++		return 0;
++	else
++		return is_sector_initialized(be->be_inval, isect);
++}
++
+ static int
+ dont_like_caller(struct nfs_page *req)
+ {
+@@ -333,11 +346,129 @@ out:
+ 	return PNFS_NOT_ATTEMPTED;
+ }
  
- 	return VFS_I(ip);
-diff --git a/fs/xfs/xfs_iget.c b/fs/xfs/xfs_iget.c
-index 3631783..19752451 100644
---- a/fs/xfs/xfs_iget.c
-+++ b/fs/xfs/xfs_iget.c
-@@ -222,7 +222,7 @@ xfs_iget_cache_hit(
- 	 * If lookup is racing with unlink return an error immediately.
- 	 */
- 	if (ip->i_d.di_mode == 0 && !(flags & XFS_IGET_CREATE)) {
--		error = ENOENT;
-+		error = ESTALE;
- 		goto out_error;
- 	}
++/* This is basically copied from mpage_end_io_read */
++static void bl_end_io_write(struct bio *bio, int err)
++{
++	struct parallel_io *par = bio->bi_private;
++	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
++	struct nfs_write_data *wdata = (struct nfs_write_data *)par->data;
++
++	if (!uptodate) {
++		if (!wdata->pnfs_error)
++			wdata->pnfs_error = -EIO;
++		bl_set_lo_fail(wdata->lseg);
++	}
++	bio_put(bio);
++	put_parallel(par);
++}
++
++/* Function scheduled for call during bl_end_par_io_write,
++ * it marks sectors as written and extends the commitlist.
++ */
++static void bl_write_cleanup(struct work_struct *work)
++{
++	struct rpc_task *task;
++	struct nfs_write_data *wdata;
++	dprintk("%s enter\n", __func__);
++	task = container_of(work, struct rpc_task, u.tk_work);
++	wdata = container_of(task, struct nfs_write_data, task);
++	pnfs_ld_write_done(wdata);
++}
++
++/* Called when last of bios associated with a bl_write_pagelist call finishes */
++static void
++bl_end_par_io_write(void *data)
++{
++	struct nfs_write_data *wdata = data;
++
++	/* STUB - ignoring error handling */
++	wdata->task.tk_status = 0;
++	wdata->verf.committed = NFS_FILE_SYNC;
++	INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
++	schedule_work(&wdata->task.u.tk_work);
++}
++
+ static enum pnfs_try_status
+-bl_write_pagelist(struct nfs_write_data *wdata,
+-		  int sync)
++bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ {
+-	return PNFS_NOT_ATTEMPTED;
++	int i;
++	struct bio *bio = NULL;
++	struct pnfs_block_extent *be = NULL;
++	sector_t isect, extent_length = 0;
++	struct parallel_io *par;
++	loff_t offset = wdata->args.offset;
++	size_t count = wdata->args.count;
++	struct page **pages = wdata->args.pages;
++	int pg_index = wdata->args.pgbase >> PAGE_CACHE_SHIFT;
++
++	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
++	if (!wdata->lseg) {
++		dprintk("%s no lseg, falling back to MDS\n", __func__);
++		return PNFS_NOT_ATTEMPTED;
++	}
++	if (dont_like_caller(wdata->req)) {
++		dprintk("%s dont_like_caller failed\n", __func__);
++		return PNFS_NOT_ATTEMPTED;
++	}
++	/* At this point, wdata->pages is a (sequential) list of nfs_pages.
++	 * We want to write each, and if there is an error remove it from
++	 * list and call
++	 * nfs_retry_request(req) to have it redone using nfs.
++	 * QUEST? Do as block or per req?  Think have to do per block
++	 * as part of end_bio
++	 */
++	par = alloc_parallel(wdata);
++	if (!par)
++		return PNFS_NOT_ATTEMPTED;
++	par->call_ops = *wdata->mds_ops;
++	par->call_ops.rpc_call_done = bl_rpc_do_nothing;
++	par->pnfs_callback = bl_end_par_io_write;
++	/* At this point, have to be more careful with error handling */
++
++	isect = (sector_t) ((offset & (long)PAGE_CACHE_MASK) >> SECTOR_SHIFT);
++	for (i = pg_index; i < wdata->npages ; i++) {
++		if (!extent_length) {
++			/* We've used up the previous extent */
++			bl_put_extent(be);
++			bio = bl_submit_bio(WRITE, bio);
++			/* Get the next one */
++			be = bl_find_get_extent(BLK_LSEG2EXT(wdata->lseg),
++					     isect, NULL);
++			if (!be || !is_writable(be, isect)) {
++				wdata->pnfs_error = -ENOMEM;
++				goto out;
++			}
++			extent_length = be->be_length -
++				(isect - be->be_f_offset);
++		}
++		for (;;) {
++			if (!bio) {
++				bio = bio_alloc(GFP_NOIO, wdata->npages - i);
++				if (!bio) {
++					wdata->pnfs_error = -ENOMEM;
++					goto out;
++				}
++				bio->bi_sector = isect - be->be_f_offset +
++					be->be_v_offset;
++				bio->bi_bdev = be->be_mdev;
++				bio->bi_end_io = bl_end_io_write;
++				bio->bi_private = par;
++			}
++			if (bio_add_page(bio, pages[i], PAGE_SIZE, 0))
++				break;
++			bio = bl_submit_bio(WRITE, bio);
++		}
++		isect += PAGE_CACHE_SECTORS;
++		extent_length -= PAGE_CACHE_SECTORS;
++	}
++	wdata->res.count = (isect << SECTOR_SHIFT) - (offset);
++	if (count < wdata->res.count)
++		wdata->res.count = count;
++out:
++	bl_put_extent(be);
++	bl_submit_bio(WRITE, bio);
++	put_parallel(par);
++	return PNFS_ATTEMPTED;
+ }
  
-@@ -333,7 +333,7 @@ xfs_iget_cache_miss(
- 	trace_xfs_iget_miss(ip);
- 
- 	if ((ip->i_d.di_mode == 0) && !(flags & XFS_IGET_CREATE)) {
--		error = ENOENT;
-+		error = ESTALE;
- 		goto out_destroy;
- 	}
- 
+ /* FIXME - range ignored */
+-- 
+1.7.4.1
+
