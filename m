@@ -1,78 +1,144 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52552 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750868Ab1GRWXp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Jul 2011 18:23:45 -0400
-Date: Mon, 18 Jul 2011 18:23:24 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: trond@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: open-associated setattr shouldn't invalidate own cache
-Message-ID: <20110718222323.GB16711@pad.fieldses.org>
-Content-Type: text/plain; charset=us-ascii
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:46547 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753668Ab1GUTea (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 15:34:30 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v2 02/25] pnfs: add set-clear layoutdriver interface
+Date: Thu, 21 Jul 2011 15:34:02 -0400
+Message-Id: <1311276865-29484-3-git-send-email-rees@umich.edu>
+In-Reply-To: <1311276865-29484-1-git-send-email-rees@umich.edu>
+References: <1311276865-29484-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Benny Halevy <bhalevy@panasas.com>
 
-We recently noticed that NFSv4 iozone read tests that should have been
-performing at local-cache speeds were running at wire speeds, and found
-that currently,
+To allow layout driver to issue getdevicelist at mount time, and clean up
+at umount time.
 
-	open(O_RDWR|O_TRUNC)
-	write()
-	close()
-	open(O_RDONLY)
-	read()
-
-results in an over-the-wire read (due to a setattr triggered by
-O_TRUNC).  Even non-O_TRUNC opens send setattrs (of timestamps) in some
-cases, causing the same problem.
-
-In discussion with Trond, he blames a VFS bug for breaking what should
-be a single open into an open followed by a setattr.
-
-However, it may make sense even in a case like
-
-	open(O_RDWR)
-	write()
-	setattr()
-	close()
-	open(O_RDONLY)
-	read()
-
-to treat the setattr similarly to the write, and not invalidate the
-client's own cache as long as the setattr is performed under a write
-open.
-
-(That said, I don't know if this is the correct place in the code to
-implement that behavior.)
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+[fixup non NFS_V4_1 set_pnfs_layoutdriver definition]
+[pnfs: pass mntfh down the init_pnfs path]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <benny@tonian.com>
 ---
- fs/nfs/inode.c |    7 ++++++-
- 1 files changed, 6 insertions(+), 1 deletions(-)
+ fs/nfs/client.c |    8 +++++---
+ fs/nfs/pnfs.c   |   16 ++++++++++++++--
+ fs/nfs/pnfs.h   |    8 ++++++--
+ 3 files changed, 25 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 6f4850d..d4eed06 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -438,8 +438,13 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
- 	if ((attr->ia_valid & (ATTR_MODE|ATTR_UID|ATTR_GID)) != 0)
- 		nfs_inode_return_delegation(inode);
- 	error = NFS_PROTO(inode)->setattr(dentry, fattr, attr);
--	if (error == 0)
-+	if (error)
-+		goto out_free;
-+	if (attr->ia_valid & ATTR_FILE)
-+		nfs_post_op_update_inode_force_wcc(inode, fattr);
-+	else
- 		nfs_refresh_inode(inode, fattr);
-+out_free:
- 	nfs_free_fattr(fattr);
- out:
- 	return error;
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 19ea7d9..a9b1848 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -904,7 +904,9 @@ error:
+ /*
+  * Load up the server record from information gained in an fsinfo record
+  */
+-static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *fsinfo)
++static void nfs_server_set_fsinfo(struct nfs_server *server,
++				  struct nfs_fh *mntfh,
++				  struct nfs_fsinfo *fsinfo)
+ {
+ 	unsigned long max_rpc_payload;
+ 
+@@ -934,7 +936,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
+ 	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
+ 		server->wsize = NFS_MAX_FILE_IO_SIZE;
+ 	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
+-	set_pnfs_layoutdriver(server, fsinfo->layouttype);
++	set_pnfs_layoutdriver(server, mntfh, fsinfo->layouttype);
+ 
+ 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
+ 
+@@ -980,7 +982,7 @@ static int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, str
+ 	if (error < 0)
+ 		goto out_error;
+ 
+-	nfs_server_set_fsinfo(server, &fsinfo);
++	nfs_server_set_fsinfo(server, mntfh, &fsinfo);
+ 
+ 	/* Get some general file system info */
+ 	if (server->namelen == 0) {
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 38e5508..8e72724 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -76,8 +76,11 @@ find_pnfs_driver(u32 id)
+ void
+ unset_pnfs_layoutdriver(struct nfs_server *nfss)
+ {
+-	if (nfss->pnfs_curr_ld)
++	if (nfss->pnfs_curr_ld) {
++		if (nfss->pnfs_curr_ld->clear_layoutdriver)
++			nfss->pnfs_curr_ld->clear_layoutdriver(nfss);
+ 		module_put(nfss->pnfs_curr_ld->owner);
++	}
+ 	nfss->pnfs_curr_ld = NULL;
+ }
+ 
+@@ -88,7 +91,8 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
+  * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
+  */
+ void
+-set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
++set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
++		      u32 id)
+ {
+ 	struct pnfs_layoutdriver_type *ld_type = NULL;
+ 
+@@ -115,6 +119,14 @@ set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
+ 		goto out_no_driver;
+ 	}
+ 	server->pnfs_curr_ld = ld_type;
++	if (ld_type->set_layoutdriver
++	    && ld_type->set_layoutdriver(server, mntfh)) {
++		printk(KERN_ERR
++		       "%s: Error initializing mount point for layout driver %u.\n",
++		       __func__, id);
++		module_put(ld_type->owner);
++		goto out_no_driver;
++	}
+ 
+ 	dprintk("%s: pNFS module for %u set\n", __func__, id);
+ 	return;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index ffea314..23d8267 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -80,6 +80,9 @@ struct pnfs_layoutdriver_type {
+ 	struct module *owner;
+ 	unsigned flags;
+ 
++	int (*set_layoutdriver) (struct nfs_server *, const struct nfs_fh *);
++	int (*clear_layoutdriver) (struct nfs_server *);
++
+ 	struct pnfs_layout_hdr * (*alloc_layout_hdr) (struct inode *inode, gfp_t gfp_flags);
+ 	void (*free_layout_hdr) (struct pnfs_layout_hdr *);
+ 
+@@ -165,7 +168,7 @@ void put_lseg(struct pnfs_layout_segment *lseg);
+ bool pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
+ bool pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *, int);
+ 
+-void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
++void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
+ void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
+ int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
+@@ -372,7 +375,8 @@ pnfs_roc_drain(struct inode *ino, u32 *barrier)
+ 	return false;
+ }
+ 
+-static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
++static inline void set_pnfs_layoutdriver(struct nfs_server *s,
++					 const struct nfs_fh *mntfh, u32 id);
+ {
+ }
+ 
 -- 
-1.7.6
+1.7.4.1
 
