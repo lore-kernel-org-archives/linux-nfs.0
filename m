@@ -1,75 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:62626 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752417Ab1GZOuL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2011 10:50:11 -0400
-Received: by yxi11 with SMTP id 11so290202yxi.19
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Jul 2011 07:50:11 -0700 (PDT)
-Subject: Re: [Libtirpc-devel] [PATCH] Autofs configure fails to detect IPv6 when libtirpc is enabled
+Received: from fieldses.org ([174.143.236.118]:45585 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751701Ab1GUAIB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jul 2011 20:08:01 -0400
+Date: Wed, 20 Jul 2011 20:07:58 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Volker Lendecke <Volker.Lendecke@SerNet.DE>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        samba-technical@lists.samba.org, Casey Bodley <cbodley@citi.umich.edu>
+Subject: Re: [PATCH] locks: breaking read lease should not block read open
+Message-ID: <20110721000758.GD27871@fieldses.org>
+References: <20110609231606.GB22215@fieldses.org>
+ <E1QUwaT-00HRZw-74@intern.SerNet.DE>
+ <20110610134859.GA27837@fieldses.org>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <1311683346-16881-1-git-send-email-steved@redhat.com>
-Date: Tue, 26 Jul 2011 16:50:06 +0200
-Cc: Libtirpc Devel List <libtirpc-devel@lists.sourceforge.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <8A84CF7D-9579-4645-AE5D-FE8358F466C0@gmail.com>
-References: <1311683346-16881-1-git-send-email-steved@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <20110610134859.GA27837@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Fri, Jun 10, 2011 at 09:48:59AM -0400, J. Bruce Fields wrote:
+> On Fri, Jun 10, 2011 at 09:56:49AM +0200, Volker Lendecke wrote:
+> > Without having looked too deeply, just let me point out that
+> > Samba here has a plain flaw. Early Linux Kernel versions
+> > that we programmed against did not properly support read
+> > only leases, so we did not implement that initially. If I
+> > remember correctly we never got around to finally do it once
+> > it became available. Eventually we will probably, as read
+> > only leases are a pretty important feature to present to
+> > CIFS clients.
+> 
+> Thanks, I didn't know that.  (Or I did, and I forgot.)
+> 
+> When you *do* implement that, is there any chance you'd have this need
+> to be able to downgrade to a read lease in the case of a conflict?
 
-On Jul 26, 2011, at 2:29 PM, Steve Dickson wrote:
+So it's a question about the protocols samba implements:
 
-> From: Ian Kent <raven@themaw.net>
-> 
-> The IPv6 client functions clntudp6_bufcreate(), clntudp6_create and
-> clnttcp6_create and the server functions svcudp6_bufcreate(),
-> svctcp6_create() and svcudp6_create() are not included in the library
-> whe libtirpc is built.
+	- Do they allow an atomic downgrade from an exclusive to a
+	  shared oplock?  (Or to a level 2 oplock, or whatever the right
+	  term is).
+	- If so, can that happen as a response to a conflicting open?
+	  (So, if you're holding an exclusive oplock, and a conflicting
+	  open comes in, can the server-to-client break message say "now
+	  you're getting a shared oplock instead"?  Or is the client
+	  left without any oplock until it requests a new one?)
 
-Are these part of the libtirpc standard API?  I'm not sure why we would need them if, say, Solaris does not support these.
+I'm not sure how to approach the lease code.
 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
-> src/rpc_soc.c |    4 ++--
-> 1 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/src/rpc_soc.c b/src/rpc_soc.c
-> index c678429..584ac71 100644
-> --- a/src/rpc_soc.c
-> +++ b/src/rpc_soc.c
-> @@ -236,7 +236,7 @@ clnttcp_create(raddr, prog, vers, sockp, sendsz, recvsz)
-> 
-> /* IPv6 version of clnt*_*create */
-> 
-> -#ifdef INET6_NOT_USED
-> +#ifdef INET6
-> 
-> CLIENT *
-> clntudp6_bufcreate(raddr, prog, vers, wait, sockp, sendsz, recvsz)
-> @@ -392,7 +392,7 @@ svcraw_create()
-> 
-> 
-> /* IPV6 version */
-> -#ifdef INET6_NOT_USED
-> +#ifdef INET6
-> SVCXPRT *
-> svcudp6_bufcreate(fd, sendsz, recvsz)
-> 	int fd;
-> -- 
-> 1.7.6
-> 
-> 
-> ------------------------------------------------------------------------------
-> Magic Quadrant for Content-Aware Data Loss Prevention
-> Research study explores the data loss prevention market. Includes in-depth
-> analysis on the changes within the DLP market, and the criteria used to
-> evaluate the strengths and weaknesses of these DLP solutions.
-> http://www.accelacomm.com/jaw/sfnl/114/51385063/
-> _______________________________________________
-> Libtirpc-devel mailing list
-> Libtirpc-devel@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
+On the one hand, I've never seen any evidence that anyone outside Samba
+and NFSv4 has ever used it, and both currently make extremely limited
+use of it.  So we could probably get away with "fixing" the lease code
+to do whatever both of us need.
 
+On the other hand, I don't know how to figure out what exactly Samba
+will actually need.  And the conservative thing to do would be to leave
+leases alone.
+
+So maybe I'm better off with a new "NFSv4 delegation lock type" that
+does exactly what I need it to, and that's only available from inside
+the kernel for now.
+
+Then later if it proves useful to Samba as well, we could figure out how
+to export an interface for it to userspace.
+
+I'm not sure.
+
+--b.
