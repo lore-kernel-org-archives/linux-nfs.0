@@ -1,120 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.citrix.com ([66.165.176.89]:23859 "EHLO SMTP.CITRIX.COM"
+Received: from mx1.redhat.com ([209.132.183.28]:31094 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754354Ab1GVNRw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Jul 2011 09:17:52 -0400
-From: Ian Campbell <ian.campbell@citrix.com>
-To: netdev@vger.kernel.org, linux-nfs@vger.kernel.org
-CC: Ian Campbell <ian.campbell@citrix.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
-        "Pekka Savola (ipv6)" <pekkas@netcore.fi>,
-        James Morris <jmorris@namei.org>,
-        Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
-        Patrick McHardy <kaber@trash.net>
-Subject: [PATCH 05/13] net: ipv4: convert to SKB frag APIs
-Date: Fri, 22 Jul 2011 14:17:25 +0100
-Message-ID: <1311340653-19336-5-git-send-email-ian.campbell@citrix.com>
-In-Reply-To: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
-References: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
-Content-Type: text/plain
+	id S1752770Ab1GUTYd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Jul 2011 15:24:33 -0400
+Message-ID: <4E287CEE.7010706@RedHat.com>
+Date: Thu, 21 Jul 2011 15:24:30 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Kevin Coffman <kwc@citi.umich.edu>
+CC: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] svcgssd: use correct defaults in call to gss_set_allowable_enctypes
+References: <20110713165425.7469.23269.stgit@jazz.citi.umich.edu>
+In-Reply-To: <20110713165425.7469.23269.stgit@jazz.citi.umich.edu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>
-Cc: "Pekka Savola (ipv6)" <pekkas@netcore.fi>
-Cc: James Morris <jmorris@namei.org>
-Cc: Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>
-Cc: Patrick McHardy <kaber@trash.net>
-Cc: netdev@vger.kernel.org
----
- net/ipv4/inet_lro.c   |    2 +-
- net/ipv4/ip_output.c  |    8 +++++---
- net/ipv4/tcp.c        |    3 ++-
- net/ipv4/tcp_output.c |    2 +-
- 4 files changed, 9 insertions(+), 6 deletions(-)
 
-diff --git a/net/ipv4/inet_lro.c b/net/ipv4/inet_lro.c
-index 85a0f75..63f3def 100644
---- a/net/ipv4/inet_lro.c
-+++ b/net/ipv4/inet_lro.c
-@@ -449,7 +449,7 @@ static struct sk_buff *__lro_proc_segment(struct net_lro_mgr *lro_mgr,
- 	if (!lro_mgr->get_frag_header ||
- 	    lro_mgr->get_frag_header(frags, (void *)&mac_hdr, (void *)&iph,
- 				     (void *)&tcph, &flags, priv)) {
--		mac_hdr = page_address(frags->page) + frags->page_offset;
-+		mac_hdr = skb_frag_address(frags);
- 		goto out1;
- 	}
- 
-diff --git a/net/ipv4/ip_output.c b/net/ipv4/ip_output.c
-index 84f26e8..3aa3c91 100644
---- a/net/ipv4/ip_output.c
-+++ b/net/ipv4/ip_output.c
-@@ -982,14 +982,14 @@ alloc_new_skb:
- 			if (page && (left = PAGE_SIZE - off) > 0) {
- 				if (copy >= left)
- 					copy = left;
--				if (page != frag->page) {
-+				if (page != skb_frag_page(frag)) {
- 					if (i == MAX_SKB_FRAGS) {
- 						err = -EMSGSIZE;
- 						goto error;
- 					}
--					get_page(page);
- 					skb_fill_page_desc(skb, i, page, off, 0);
- 					frag = &skb_shinfo(skb)->frags[i];
-+					__skb_frag_ref(frag);
- 				}
- 			} else if (i < MAX_SKB_FRAGS) {
- 				if (copy > PAGE_SIZE)
-@@ -1002,13 +1002,15 @@ alloc_new_skb:
- 				cork->page = page;
- 				cork->off = 0;
- 
-+				/* XXX no ref ? */
- 				skb_fill_page_desc(skb, i, page, 0, 0);
- 				frag = &skb_shinfo(skb)->frags[i];
- 			} else {
- 				err = -EMSGSIZE;
- 				goto error;
- 			}
--			if (getfrag(from, page_address(frag->page)+frag->page_offset+frag->size, offset, copy, skb->len, skb) < 0) {
-+			if (getfrag(from, skb_frag_address(frag)+frag->size,
-+				    offset, copy, skb->len, skb) < 0) {
- 				err = -EFAULT;
- 				goto error;
- 			}
-diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
-index 46febca..ac47ab3 100644
---- a/net/ipv4/tcp.c
-+++ b/net/ipv4/tcp.c
-@@ -3035,7 +3035,8 @@ int tcp_md5_hash_skb_data(struct tcp_md5sig_pool *hp,
- 
- 	for (i = 0; i < shi->nr_frags; ++i) {
- 		const struct skb_frag_struct *f = &shi->frags[i];
--		sg_set_page(&sg, f->page, f->size, f->page_offset);
-+		struct page *page = __skb_frag_page(f); /* XXX */
-+		sg_set_page(&sg, page, f->size, f->page_offset);
- 		if (crypto_hash_update(desc, &sg, f->size))
- 			return 1;
- 	}
-diff --git a/net/ipv4/tcp_output.c b/net/ipv4/tcp_output.c
-index 882e0b0..0377c06 100644
---- a/net/ipv4/tcp_output.c
-+++ b/net/ipv4/tcp_output.c
-@@ -1095,7 +1095,7 @@ static void __pskb_trim_head(struct sk_buff *skb, int len)
- 	k = 0;
- 	for (i = 0; i < skb_shinfo(skb)->nr_frags; i++) {
- 		if (skb_shinfo(skb)->frags[i].size <= eat) {
--			put_page(skb_shinfo(skb)->frags[i].page);
-+			skb_frag_unref(skb, i);
- 			eat -= skb_shinfo(skb)->frags[i].size;
- 		} else {
- 			skb_shinfo(skb)->frags[k] = skb_shinfo(skb)->frags[i];
--- 
-1.7.2.5
 
+On 07/13/2011 12:54 PM, Kevin Coffman wrote:
+> For the window of kernels between 2.6.35 (when the support
+> for newer encryption was added) and 2.6.39 (when the ability
+> to read the supported enctypes from the kernel was added),
+> use a default of all enctypes when the kernel supported
+> enctypes file cannot be read.
+> 
+> For kernels before 2.6.35, continue to use a default of
+> only DES enctypes.
+> 
+> Note that the version of Kerberos must also support the use of
+> gss_set_allowable_enctypes for service-side negotiations.
+> 
+> See also: http://bugzilla.redhat.com/show_bug.cgi?id=719776
+> 
+> Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
+Committed..
+
+steved.
+> ---
+> 
+>  utils/gssd/svcgssd_krb5.c |   37 ++++++++++++++++++++++++++++++-------
+>  1 files changed, 30 insertions(+), 7 deletions(-)
+> 
+> diff --git a/utils/gssd/svcgssd_krb5.c b/utils/gssd/svcgssd_krb5.c
+> index fc67a6f..6c34faf 100644
+> --- a/utils/gssd/svcgssd_krb5.c
+> +++ b/utils/gssd/svcgssd_krb5.c
+> @@ -45,6 +45,7 @@
+>  #include "gss_oids.h"
+>  #include "err_util.h"
+>  #include "svcgssd_krb5.h"
+> +#include "../mount/version.h"
+>  
+>  #define MYBUFLEN 1024
+>  
+> @@ -169,22 +170,44 @@ svcgssd_limit_krb5_enctypes(void)
+>  {
+>  #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
+>  	u_int maj_stat, min_stat;
+> -	krb5_enctype default_enctypes[] = { ENCTYPE_DES_CBC_CRC,
+> -					    ENCTYPE_DES_CBC_MD5,
+> -					    ENCTYPE_DES_CBC_MD4 };
+> -	int default_num_enctypes =
+> -		sizeof(default_enctypes) / sizeof(default_enctypes[0]);
+> -	krb5_enctype *enctypes;
+> -	int num_enctypes;
+> +	krb5_enctype old_kernel_enctypes[] = {
+> +		ENCTYPE_DES_CBC_CRC,
+> +		ENCTYPE_DES_CBC_MD5,
+> +		ENCTYPE_DES_CBC_MD4 };
+> +	krb5_enctype new_kernel_enctypes[] = {
+> +		ENCTYPE_AES256_CTS_HMAC_SHA1_96,
+> +		ENCTYPE_AES128_CTS_HMAC_SHA1_96,
+> +		ENCTYPE_DES3_CBC_SHA1,
+> +		ENCTYPE_ARCFOUR_HMAC,
+> +		ENCTYPE_DES_CBC_CRC,
+> +		ENCTYPE_DES_CBC_MD5,
+> +		ENCTYPE_DES_CBC_MD4 };
+> +	krb5_enctype *default_enctypes, *enctypes;
+> +	int default_num_enctypes, num_enctypes;
+> +
+> +
+> +	if (linux_version_code() < MAKE_VERSION(2, 6, 35)) {
+> +		default_enctypes = old_kernel_enctypes;
+> +		default_num_enctypes =
+> +			sizeof(old_kernel_enctypes) / sizeof(old_kernel_enctypes[0]);
+> +	} else {
+> +		default_enctypes = new_kernel_enctypes;
+> +		default_num_enctypes =
+> +			sizeof(new_kernel_enctypes) / sizeof(new_kernel_enctypes[0]);
+> +	}
+>  
+>  	get_kernel_supported_enctypes();
+>  
+>  	if (parsed_enctypes != NULL) {
+>  		enctypes = parsed_enctypes;
+>  		num_enctypes = parsed_num_enctypes;
+> +		printerr(2, "%s: Calling gss_set_allowable_enctypes with %d "
+> +			"enctypes from the kernel\n", __func__, num_enctypes);
+>  	} else {
+>  		enctypes = default_enctypes;
+>  		num_enctypes = default_num_enctypes;
+> +		printerr(2, "%s: Calling gss_set_allowable_enctypes with %d "
+> +			"enctypes from defaults\n", __func__, num_enctypes);
+>  	}
+>  
+>  	maj_stat = gss_set_allowable_enctypes(&min_stat, gssd_creds,
+> 
