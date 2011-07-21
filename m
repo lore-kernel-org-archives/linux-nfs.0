@@ -1,88 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:32091 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751245Ab1G1EOg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 00:14:36 -0400
-From: <tao.peng@emc.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <rees@umich.edu>, <linux-nfs@vger.kernel.org>, <honey@citi.umich.edu>
-Date: Thu, 28 Jul 2011 00:10:42 -0400
-Subject: RE: [PATCH v3 23/25] pnfsblock: use pageio_ops api
-Message-ID: <F19688880B763E40B28B2B462677FBF805BF0618DF@MX09A.corp.emc.com>
-References: <1311792048-12551-1-git-send-email-rees@umich.edu>
-	 <1311792048-12551-24-git-send-email-rees@umich.edu>
-	 <1311797712.25645.27.camel@lade.trondhjem.org>
-	 <F19688880B763E40B28B2B462677FBF805BF061890@MX09A.corp.emc.com>
- <1311825164.5633.3.camel@lade.trondhjem.org>
-In-Reply-To: <1311825164.5633.3.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:40170 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753650Ab1GUTe1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 15:34:27 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v2 00/25] add block layout driver to pnfs client
+Date: Thu, 21 Jul 2011 15:34:00 -0400
+Message-Id: <1311276865-29484-1-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
-ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10NCj4g
-T24gQmVoYWxmIE9mIFRyb25kIE15a2xlYnVzdA0KPiBTZW50OiBUaHVyc2RheSwgSnVseSAyOCwg
-MjAxMSAxMTo1MyBBTQ0KPiBUbzogUGVuZywgVGFvDQo+IENjOiByZWVzQHVtaWNoLmVkdTsgbGlu
-dXgtbmZzQHZnZXIua2VybmVsLm9yZzsgaG9uZXlAY2l0aS51bWljaC5lZHUNCj4gU3ViamVjdDog
-UkU6IFtQQVRDSCB2MyAyMy8yNV0gcG5mc2Jsb2NrOiB1c2UgcGFnZWlvX29wcyBhcGkNCj4gDQo+
-IE9uIFdlZCwgMjAxMS0wNy0yNyBhdCAyMjoyNyAtMDQwMCwgdGFvLnBlbmdAZW1jLmNvbSB3cm90
-ZToNCj4gPiA+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+ID4gPiBGcm9tOiBsaW51eC1u
-ZnMtb3duZXJAdmdlci5rZXJuZWwub3JnDQo+IFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIu
-a2VybmVsLm9yZ10NCj4gPiA+IE9uIEJlaGFsZiBPZiBUcm9uZCBNeWtsZWJ1c3QNCj4gPiA+IFNl
-bnQ6IFRodXJzZGF5LCBKdWx5IDI4LCAyMDExIDQ6MTUgQU0NCj4gPiA+IFRvOiBKaW0gUmVlcw0K
-PiA+ID4gQ2M6IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc7IHBldGVyIGhvbmV5bWFuDQo+ID4g
-PiBTdWJqZWN0OiBSZTogW1BBVENIIHYzIDIzLzI1XSBwbmZzYmxvY2s6IHVzZSBwYWdlaW9fb3Bz
-IGFwaQ0KPiA+ID4NCj4gPiA+IE9uIFdlZCwgMjAxMS0wNy0yNyBhdCAxNDo0MCAtMDQwMCwgSmlt
-IFJlZXMgd3JvdGU6DQo+ID4gPiA+IEZyb206IEJlbm55IEhhbGV2eSA8YmhhbGV2eUBwYW5hc2Fz
-LmNvbT4NCj4gPiA+ID4NCj4gPiA+ID4gW3BuZnNibG9jazogdXNlIHBuZnNfZ2VuZXJpY19wZ19p
-bml0X3JlYWQvd3JpdGVdDQo+ID4gPiA+IFNpZ25lZC1vZmYtYnk6IFBlbmcgVGFvIDxwZW5nX3Rh
-b0BlbWMuY29tPg0KPiA+ID4gPiBTaWduZWQtb2ZmLWJ5OiBCZW5ueSBIYWxldnkgPGJoYWxldnlA
-cGFuYXNhcy5jb20+DQo+ID4gPiA+IC0tLQ0KPiA+ID4gPiAgZnMvbmZzL2Jsb2NrbGF5b3V0L2Js
-b2NrbGF5b3V0LmMgfCAgIDE0ICsrKysrKysrKysrKysrDQo+ID4gPiA+ICAxIGZpbGVzIGNoYW5n
-ZWQsIDE0IGluc2VydGlvbnMoKyksIDAgZGVsZXRpb25zKC0pDQo+ID4gPiA+DQo+ID4gPiA+IGRp
-ZmYgLS1naXQgYS9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYw0KPiBiL2ZzL25mcy9i
-bG9ja2xheW91dC9ibG9ja2xheW91dC5jDQo+ID4gPiA+IGluZGV4IDIyZGUwNWMuLjUwMmQzODQg
-MTAwNjQ0DQo+ID4gPiA+IC0tLSBhL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5jDQo+
-ID4gPiA+ICsrKyBiL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5jDQo+ID4gPiA+IEBA
-IC03NjIsNiArNzYyLDE4IEBAIGJsX2NsZWFyX2xheW91dGRyaXZlcihzdHJ1Y3QgbmZzX3NlcnZl
-ciAqc2VydmVyKQ0KPiA+ID4gPiAgCXJldHVybiAwOw0KPiA+ID4gPiAgfQ0KPiA+ID4gPg0KPiA+
-ID4gPiArc3RhdGljIGNvbnN0IHN0cnVjdCBuZnNfcGFnZWlvX29wcyBibF9wZ19yZWFkX29wcyA9
-IHsNCj4gPiA+ID4gKwkucGdfaW5pdCA9IHBuZnNfZ2VuZXJpY19wZ19pbml0X3JlYWQsDQo+ID4g
-PiA+ICsJLnBnX3Rlc3QgPSBwbmZzX2dlbmVyaWNfcGdfdGVzdCwNCj4gPiA+ID4gKwkucGdfZG9p
-byA9IHBuZnNfZ2VuZXJpY19wZ19yZWFkcGFnZXMsDQo+ID4gPiA+ICt9Ow0KPiA+ID4gPiArDQo+
-ID4gPiA+ICtzdGF0aWMgY29uc3Qgc3RydWN0IG5mc19wYWdlaW9fb3BzIGJsX3BnX3dyaXRlX29w
-cyA9IHsNCj4gPiA+ID4gKwkucGdfaW5pdCA9IHBuZnNfZ2VuZXJpY19wZ19pbml0X3dyaXRlLA0K
-PiA+ID4gPiArCS5wZ190ZXN0ID0gcG5mc19nZW5lcmljX3BnX3Rlc3QsDQo+ID4gPiA+ICsJLnBn
-X2RvaW8gPSBwbmZzX2dlbmVyaWNfcGdfd3JpdGVwYWdlcywNCj4gPiA+ID4gK307DQo+ID4gPiA+
-ICsNCj4gPiA+ID4gIHN0YXRpYyBzdHJ1Y3QgcG5mc19sYXlvdXRkcml2ZXJfdHlwZSBibG9ja2xh
-eW91dF90eXBlID0gew0KPiA+ID4gPiAgCS5pZAkJCQk9IExBWU9VVF9CTE9DS19WT0xVTUUsDQo+
-ID4gPiA+ICAJLm5hbWUJCQkJPSAiTEFZT1VUX0JMT0NLX1ZPTFVNRSIsDQo+ID4gPiA+IEBAIC03
-NzUsNiArNzg3LDggQEAgc3RhdGljIHN0cnVjdCBwbmZzX2xheW91dGRyaXZlcl90eXBlIGJsb2Nr
-bGF5b3V0X3R5cGUNCj4gPSB7DQo+ID4gPiA+ICAJLmNsZWFudXBfbGF5b3V0Y29tbWl0CQk9IGJs
-X2NsZWFudXBfbGF5b3V0Y29tbWl0LA0KPiA+ID4gPiAgCS5zZXRfbGF5b3V0ZHJpdmVyCQk9IGJs
-X3NldF9sYXlvdXRkcml2ZXIsDQo+ID4gPiA+ICAJLmNsZWFyX2xheW91dGRyaXZlcgkJPSBibF9j
-bGVhcl9sYXlvdXRkcml2ZXIsDQo+ID4gPiA+ICsJLnBnX3JlYWRfb3BzCQkJPSAmYmxfcGdfcmVh
-ZF9vcHMsDQo+ID4gPiA+ICsJLnBnX3dyaXRlX29wcwkJCT0gJmJsX3BnX3dyaXRlX29wcywNCj4g
-PiA+ID4gIH07DQo+ID4gPiA+DQo+ID4gPiBIb3cgZGlkIHRoaXMgd29yayBwcmV2aW91c2x5Pw0K
-PiA+IGJsb2NrIGxheW91dCB1c2VkIHRvIHVzZSAucGdfdGVzdCBpbnRlcmZhY2UgaW4gcG5mc19s
-YXlvdXRkcml2ZXJfdHlwZSBidXQgaXQgZ290DQo+IHJlbW92ZWQgaW4gdGhlIDMuMCBtZXJnZSB3
-aW5kb3cuDQo+IA0KPiBSaWdodCwgYnV0IHdvbid0IHRoZSBlbnRpcmUgYmxvY2tzIGludGVyZmFj
-ZSBibG93IHVwIGluIHlvdXIgZmFjZSB1bnRpbA0KPiB5b3UgbWVyZ2UgdGhpcyBwYXRjaD8gSWYg
-aXQganVzdCBmYWxscyBiYWNrIHRvIHdyaXRlIHRocm91Z2ggTURTLCB0aGVuDQo+IEknbSBmaW5l
-LCBidXQgbXkgd29ycnkgaXMgdGhhdCBzb21lb25lIHdobyBnaXQgYmlzZWN0cyBpbiBvcmRlciB0
-byB0cmFjaw0KPiBkb3duIGEgcGF0Y2ggbWF5IGVuZCB1cCBzZWVpbmcgbmV3IHBhbmljcyBkdWUg
-dG8gdGhlIGxhY2sgb2YgYQ0KPiB3ZWxsLWRlZmluZWQgc3RydWN0IG5mc19wYWdlaW9fb3BzIGlu
-IGJsb2Nrcy4NCkkgc2VlIHlvdXIgcG9pbnQuIFdlIHdpbGwgbW92ZSB0aGlzIHBhdGNoIHRvIGVh
-cmxpZXIgcGxhY2Ugc28gaXQgZG9lc24ndCBicmVhayBiaXNlY3QuDQoNClRoYW5rcywNClRhbw0K
-DQo+IA0KPiBDaGVlcnMNCj4gICBUcm9uZA0KPiANCj4gLS0NCj4gVHJvbmQgTXlrbGVidXN0DQo+
-IExpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KPiANCj4gTmV0QXBwDQo+IFRyb25kLk15a2xl
-YnVzdEBuZXRhcHAuY29tDQo+IHd3dy5uZXRhcHAuY29tDQo+IA0KPiAtLQ0KPiBUbyB1bnN1YnNj
-cmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZz
-IiBpbg0KPiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9y
-Zw0KPiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9y
-ZG9tby1pbmZvLmh0bWwNCg0KTu+/ve+/ve+/ve+/ve+/vXLvv73vv71577+977+977+9Yu+/vVjv
-v73vv73Hp3bvv71e77+9Kd66ey5u77+9K++/ve+/ve+/ve+/vXvvv73vv73vv70i77+977+9Xm7v
-v71y77+977+977+9eu+/vRrvv73vv71o77+977+977+977+9Ju+/ve+/vR7vv71H77+977+977+9
-aO+/vQMo77+96ZqO77+93aJqIu+/ve+/vRrvv70bbe+/ve+/ve+/ve+/ve+/vXrvv73elu+/ve+/
-ve+/vWbvv73vv73vv71o77+977+977+9fu+/vW3vv70=
+This patch set adds a block layout driver to the pNFS client.  It passes
+Connectathon tests and is bisectable.  It requires an updated version of
+nfs-utils, and patches for that have been sent separately to the nfs-utils
+maintainer.
+
+This patch set is also available on the for-trond branch of the git repo at
+git://citi.umich.edu/projects/linux-pnfs-blk.git
+
+This is version 2 of this patch set.  Changes since version 1:
+
+NFS41: Drop lseg ref before fallthru to MDS
+SQUASHME: pnfsblock: get rid of vmap and deviceid->area structure
+SQUASHME: pnfsblock: define module alias
+SQUASHME: pnfsblock: bl_find_get_extent optimization: mv break clause to end of loop
+SQUASHME: pnfsblock: test debug bit once for multiple dprintks
+SQUASHME: pnfsblock: typo
+SQUASHME: pnfsblock: get rid of unused leftovers from device mapping removal
+
+Andy Adamson (2):
+  pnfs: GETDEVICELIST
+  pnfs: cleanup_layoutcommit
+
+Benny Halevy (2):
+  pnfs: add set-clear layoutdriver interface
+  pnfsblock: use pageio_ops api
+
+Fred (1):
+  pnfsblock: bl_find_get_extent
+
+Fred Isaman (14):
+  pnfs: ask for layout_blksize and save it in nfs_server
+  pnfsblock: add blocklayout Kconfig option, Makefile, and stubs
+  pnfsblock: basic extent code
+  pnfsblock: lseg alloc and free
+  pnfsblock: merge extents
+  pnfsblock: call and parse getdevicelist
+  pnfsblock: xdr decode pnfs_block_layout4
+  pnfsblock: add extent manipulation functions
+  pnfsblock: merge rw extents
+  pnfsblock: encode_layoutcommit
+  pnfsblock: cleanup_layoutcommit
+  pnfsblock: bl_read_pagelist
+  pnfsblock: bl_write_pagelist
+  pnfsblock: note written INVAL areas for layoutcommit
+
+Jim Rees (2):
+  pnfsblock: add device operations
+  pnfsblock: remove device operations
+
+Peng Tao (4):
+  NFS41: Let layoutcommit handle multiple segments
+  NFS41: save layoutcommit cred after first successful layoutget
+  pnfsblock: write_pagelist handle zero invalid extents
+  NFS41: Drop lseg ref before fallthru to MDS
+
+ fs/nfs/Kconfig                      |    8 +-
+ fs/nfs/Makefile                     |    1 +
+ fs/nfs/blocklayout/Makefile         |    5 +
+ fs/nfs/blocklayout/blocklayout.c    | 1048 +++++++++++++++++++++++++++++++++++
+ fs/nfs/blocklayout/blocklayout.h    |  208 +++++++
+ fs/nfs/blocklayout/blocklayoutdev.c |  410 ++++++++++++++
+ fs/nfs/blocklayout/blocklayoutdm.c  |  111 ++++
+ fs/nfs/blocklayout/extents.c        |  943 +++++++++++++++++++++++++++++++
+ fs/nfs/client.c                     |   11 +-
+ fs/nfs/nfs4_fs.h                    |    2 +-
+ fs/nfs/nfs4filelayout.c             |    2 +-
+ fs/nfs/nfs4proc.c                   |   62 ++-
+ fs/nfs/nfs4xdr.c                    |  230 +++++++-
+ fs/nfs/pnfs.c                       |   86 ++-
+ fs/nfs/pnfs.h                       |   30 +-
+ include/linux/nfs.h                 |    2 +
+ include/linux/nfs4.h                |    1 +
+ include/linux/nfs_fs_sb.h           |    4 +-
+ include/linux/nfs_xdr.h             |   17 +-
+ 19 files changed, 3118 insertions(+), 63 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/Makefile
+ create mode 100644 fs/nfs/blocklayout/blocklayout.c
+ create mode 100644 fs/nfs/blocklayout/blocklayout.h
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdev.c
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
+ create mode 100644 fs/nfs/blocklayout/extents.c
+
+-- 
+1.7.4.1
+
