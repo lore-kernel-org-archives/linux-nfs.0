@@ -1,49 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:17848 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:30767 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751452Ab1GaSbJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jul 2011 14:31:09 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: Please pull NFS client changes
-Date: Sun, 31 Jul 2011 11:30:48 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A777FE7@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <20110731182406.GA16470@infradead.org>
-References: <1312082377.10882.1.camel@lade.trondhjem.org> <20110731182406.GA16470@infradead.org>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Christoph Hellwig" <hch@infradead.org>
-Cc: "Linus Torvalds" <torvalds@linux-foundation.org>,
-        <linux-fsdevel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>
+	id S1751304Ab1GUT0I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Jul 2011 15:26:08 -0400
+Message-ID: <4E287D48.3020605@RedHat.com>
+Date: Thu, 21 Jul 2011 15:26:00 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: NeilBrown <neilb@suse.de>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Subject: [PATCH] Statd should always 'chdir' to its state directory.
+References: <20110721104032.38e289aa@notabene.brown>
+In-Reply-To: <20110721104032.38e289aa@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> -----Original Message-----
-> From: Christoph Hellwig [mailto:hch@infradead.org]
-> Sent: Sunday, July 31, 2011 2:24 PM
-> To: Myklebust, Trond
-> Cc: Linus Torvalds; linux-fsdevel@vger.kernel.org; linux-
-> nfs@vger.kernel.org; linux-kernel@vger.kernel.org
-> Subject: Re: Please pull NFS client changes
+
+
+On 07/20/2011 08:40 PM, NeilBrown wrote:
 > 
-> How does this manage to include the pnfs block code, which only was
-> posted
-> on the list a few hours before the pull request, and which doesn't
-> appear to past testing very well (although the major issue seems to be
-> core nfs code)?
+> Subject: [PATCH] Statd should always 'chdir' to its state directory.
+> 
+> As statd can be started by 'mount' which can sometimes be run by a
+> normal user, the current-working-directory could be anything.  In
+> partcular it could be in a mounted filesystem.  As 'statd' continues
+> running as a daemon it could keep prevent that filesystem from being
+> unmounted.
+> 
+> statd does currently 'chdir' to the state directory, but only if the
+> state directory is not owned by root.  This is wrong - it should check
+> for root after the chdir, not before.
+> 
+> So swap the two if statements around.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+Committed...
 
-The majority of that code has been ready for several weeks and has been
-posted several times for review. The main stuff that was addressed in
-the last week were smaller issues such as the naming of functions that
-are globally visible (i.e. not polluting the kernel namespace), a few
-bisectability issues and (in the last iteraction) the lack of a
-signed-off-by: from Jim.
+steved.
 
-I agree that we have to address the bug that Peng found, but that
-appears to be linked to the NFSv4.1 back channel, which these patches
-did not change.
-
-The other point to note is that the patches do not touch the main
-read/write code and only lightly change the pNFS code paths. The impact
-of any residual bugs is therefore going to be limited.
+> 
+> --
+> looks like this regression slipped in around January 2010 with the big libnsm clean up.
+> -NB
+> 
+> 
+> diff --git a/support/nsm/file.c b/support/nsm/file.c
+> index 98b47bf..a12c753 100644
+> --- a/support/nsm/file.c
+> +++ b/support/nsm/file.c
+> @@ -395,18 +395,18 @@ nsm_drop_privileges(const int pidfd)
+>  		return false;
+>  	}
+>  
+> -	if (st.st_uid == 0) {
+> -		xlog_warn("Running as root.  "
+> -			"chown %s to choose different user", nsm_base_dirname);
+> -		return true;
+> -	}
+> -
+>  	if (chdir(nsm_base_dirname) == -1) {
+>  		xlog(L_ERROR, "Failed to change working directory to %s: %m",
+>  				nsm_base_dirname);
+>  		return false;
+>  	}
+>  
+> +	if (st.st_uid == 0) {
+> +		xlog_warn("Running as root.  "
+> +			"chown %s to choose different user", nsm_base_dirname);
+> +		return true;
+> +	}
+> +
+>  	/*
+>  	 * If the pidfile happens to reside on NFS, dropping privileges
+>  	 * will probably cause us to lose access, even though we are
