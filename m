@@ -1,143 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:53642 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751693Ab1G2Pyr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 11:54:47 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v5 02/27] pnfs: add set-clear layoutdriver interface
-Date: Fri, 29 Jul 2011 11:54:27 -0400
-Message-Id: <1311954892-22038-3-git-send-email-rees@umich.edu>
-In-Reply-To: <1311954892-22038-1-git-send-email-rees@umich.edu>
-References: <1311954892-22038-1-git-send-email-rees@umich.edu>
+Received: from fn.samba.org ([216.83.154.106]:47122 "EHLO lists.samba.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751699Ab1GUAZd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jul 2011 20:25:33 -0400
+Date: Wed, 20 Jul 2011 17:15:42 -0700
+From: Jeremy Allison <jra@samba.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Volker Lendecke <Volker.Lendecke@SerNet.DE>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, samba-technical@lists.samba.org,
+        Casey Bodley <cbodley@citi.umich.edu>
+Subject: Re: [PATCH] locks: breaking read lease should not block read open
+Message-ID: <20110721001542.GA15644@samba2>
+Reply-To: Jeremy Allison <jra@samba.org>
+References: <20110609231606.GB22215@fieldses.org>
+ <E1QUwaT-00HRZw-74@intern.SerNet.DE>
+ <20110610134859.GA27837@fieldses.org>
+ <20110721000758.GD27871@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110721000758.GD27871@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+On Wed, Jul 20, 2011 at 08:07:58PM -0400, J. Bruce Fields wrote:
+> On Fri, Jun 10, 2011 at 09:48:59AM -0400, J. Bruce Fields wrote:
+> > On Fri, Jun 10, 2011 at 09:56:49AM +0200, Volker Lendecke wrote:
+> > > Without having looked too deeply, just let me point out that
+> > > Samba here has a plain flaw. Early Linux Kernel versions
+> > > that we programmed against did not properly support read
+> > > only leases, so we did not implement that initially. If I
+> > > remember correctly we never got around to finally do it once
+> > > it became available. Eventually we will probably, as read
+> > > only leases are a pretty important feature to present to
+> > > CIFS clients.
+> > 
+> > Thanks, I didn't know that.  (Or I did, and I forgot.)
+> > 
+> > When you *do* implement that, is there any chance you'd have this need
+> > to be able to downgrade to a read lease in the case of a conflict?
+> 
+> So it's a question about the protocols samba implements:
+> 
+> 	- Do they allow an atomic downgrade from an exclusive to a
+> 	  shared oplock?  (Or to a level 2 oplock, or whatever the right
+> 	  term is).
 
-To allow layout driver to issue getdevicelist at mount time, and clean up
-at umount time.
+Yes. Exclusive can go to level 2 - in fact that's the default
+downgrade we do (unless an smb.conf option explicity denies it).
 
-[fixup non NFS_V4_1 set_pnfs_layoutdriver definition]
-[pnfs: pass mntfh down the init_pnfs path]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfs/client.c |    8 +++++---
- fs/nfs/pnfs.c   |   15 +++++++++++++--
- fs/nfs/pnfs.h   |    8 ++++++--
- 3 files changed, 24 insertions(+), 7 deletions(-)
+> 	- If so, can that happen as a response to a conflicting open?
+> 	  (So, if you're holding an exclusive oplock, and a conflicting
+> 	  open comes in, can the server-to-client break message say "now
+> 	  you're getting a shared oplock instead"?  Or is the client
+> 	  left without any oplock until it requests a new one?)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 19ea7d9..a9b1848 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -904,7 +904,9 @@ error:
- /*
-  * Load up the server record from information gained in an fsinfo record
-  */
--static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *fsinfo)
-+static void nfs_server_set_fsinfo(struct nfs_server *server,
-+				  struct nfs_fh *mntfh,
-+				  struct nfs_fsinfo *fsinfo)
- {
- 	unsigned long max_rpc_payload;
- 
-@@ -934,7 +936,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
- 	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
- 		server->wsize = NFS_MAX_FILE_IO_SIZE;
- 	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
--	set_pnfs_layoutdriver(server, fsinfo->layouttype);
-+	set_pnfs_layoutdriver(server, mntfh, fsinfo->layouttype);
- 
- 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
- 
-@@ -980,7 +982,7 @@ static int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, str
- 	if (error < 0)
- 		goto out_error;
- 
--	nfs_server_set_fsinfo(server, &fsinfo);
-+	nfs_server_set_fsinfo(server, mntfh, &fsinfo);
- 
- 	/* Get some general file system info */
- 	if (server->namelen == 0) {
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 38e5508..037d310 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -76,8 +76,11 @@ find_pnfs_driver(u32 id)
- void
- unset_pnfs_layoutdriver(struct nfs_server *nfss)
- {
--	if (nfss->pnfs_curr_ld)
-+	if (nfss->pnfs_curr_ld) {
-+		if (nfss->pnfs_curr_ld->clear_layoutdriver)
-+			nfss->pnfs_curr_ld->clear_layoutdriver(nfss);
- 		module_put(nfss->pnfs_curr_ld->owner);
-+	}
- 	nfss->pnfs_curr_ld = NULL;
- }
- 
-@@ -88,7 +91,8 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
-  * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
-  */
- void
--set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
-+set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
-+		      u32 id)
- {
- 	struct pnfs_layoutdriver_type *ld_type = NULL;
- 
-@@ -115,6 +119,13 @@ set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
- 		goto out_no_driver;
- 	}
- 	server->pnfs_curr_ld = ld_type;
-+	if (ld_type->set_layoutdriver
-+	    && ld_type->set_layoutdriver(server, mntfh)) {
-+		printk(KERN_ERR "%s: Error initializing pNFS layout driver %u.\n",
-+				__func__, id);
-+		module_put(ld_type->owner);
-+		goto out_no_driver;
-+	}
- 
- 	dprintk("%s: pNFS module for %u set\n", __func__, id);
- 	return;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index ffea314..23d8267 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -80,6 +80,9 @@ struct pnfs_layoutdriver_type {
- 	struct module *owner;
- 	unsigned flags;
- 
-+	int (*set_layoutdriver) (struct nfs_server *, const struct nfs_fh *);
-+	int (*clear_layoutdriver) (struct nfs_server *);
-+
- 	struct pnfs_layout_hdr * (*alloc_layout_hdr) (struct inode *inode, gfp_t gfp_flags);
- 	void (*free_layout_hdr) (struct pnfs_layout_hdr *);
- 
-@@ -165,7 +168,7 @@ void put_lseg(struct pnfs_layout_segment *lseg);
- bool pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
- bool pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *, int);
- 
--void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
-+void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
- void unset_pnfs_layoutdriver(struct nfs_server *);
- void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
- int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
-@@ -372,7 +375,8 @@ pnfs_roc_drain(struct inode *ino, u32 *barrier)
- 	return false;
- }
- 
--static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
-+static inline void set_pnfs_layoutdriver(struct nfs_server *s,
-+					 const struct nfs_fh *mntfh, u32 id);
- {
- }
- 
--- 
-1.7.4.1
+Yes, this can happen.
 
+In SMB, we only break to no lease when a write request comes
+in on a exclusive or level2 oplock (read-lease) handle.
+
+Jeremy.
