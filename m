@@ -1,88 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:40748 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754353Ab1GLRa1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Jul 2011 13:30:27 -0400
-Message-ID: <4E1C84B2.2020807@candelatech.com>
-Date: Tue, 12 Jul 2011 10:30:26 -0700
-From: Ben Greear <greearb@candelatech.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [RFC] sunrpc:  Fix race between work-queue and rpc_killall_tasks.
-References: <1309992581-25199-1-git-send-email-greearb@candelatech.com> <1309995932.5447.6.camel@lade.trondhjem.org> <4E173BE6.9000005@candelatech.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A198C7C@SACMVEXC2-PRD.hq.netapp.com> <4E177EA8.60109@candelatech.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A198E69@SACMVEXC2-PRD.hq.netapp.com> <4E1C8108.3020006@candelatech.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A295494@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A295494@SACMVEXC2-PRD.hq.netapp.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:46695 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753720Ab1GUTen (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 15:34:43 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v2 15/25] pnfsblock: bl_find_get_extent
+Date: Thu, 21 Jul 2011 15:34:15 -0400
+Message-Id: <1311276865-29484-16-git-send-email-rees@umich.edu>
+In-Reply-To: <1311276865-29484-1-git-send-email-rees@umich.edu>
+References: <1311276865-29484-1-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 07/12/2011 10:25 AM, Myklebust, Trond wrote:
->> -----Original Message-----
->> From: Ben Greear [mailto:greearb@candelatech.com]
->> Sent: Tuesday, July 12, 2011 1:15 PM
->> To: Myklebust, Trond
->> Cc: linux-nfs@vger.kernel.org; linux-kernel@vger.kernel.org
->> Subject: Re: [RFC] sunrpc: Fix race between work-queue and
->> rpc_killall_tasks.
->>
->> On 07/08/2011 03:14 PM, Myklebust, Trond wrote:
->>
->>>>     [<ffffffff81105907>] print_trailer+0x131/0x13a
->>>>     [<ffffffff81105945>] object_err+0x35/0x3e
->>>>     [<ffffffff811077b3>] verify_mem_not_deleted+0x7a/0xb7
->>>>     [<ffffffffa02891e5>] rpcb_getport_done+0x23/0x126 [sunrpc]
->>>>     [<ffffffffa02810df>] rpc_exit_task+0x3f/0x6d [sunrpc]
->>>>     [<ffffffffa02814d8>] __rpc_execute+0x80/0x253 [sunrpc]
->>>>     [<ffffffffa02816ed>] ? rpc_execute+0x42/0x42 [sunrpc]
->>>>     [<ffffffffa02816fd>] rpc_async_schedule+0x10/0x12 [sunrpc]
->>>>     [<ffffffff81061343>] process_one_work+0x230/0x41d
->>>>     [<ffffffff8106128e>] ? process_one_work+0x17b/0x41d
->>>>     [<ffffffff8106379f>] worker_thread+0x133/0x217
->>>>     [<ffffffff8106366c>] ? manage_workers+0x191/0x191
->>>>     [<ffffffff81066f9c>] kthread+0x7d/0x85
->>>>     [<ffffffff81485ee4>] kernel_thread_helper+0x4/0x10
->>>>     [<ffffffff8147f0d8>] ? retint_restore_args+0x13/0x13
->>>>     [<ffffffff81066f1f>] ? __init_kthread_worker+0x56/0x56
->>>>     [<ffffffff81485ee0>] ? gs_change+0x13/0x13
->>>
->>> The calldata gets freed in the rpc_final_put_task() which shouldn't
->> ever be run while the task is still referenced in __rpc_execute
->>>
->>> IOW: it should be impossible to call rpc_exit_task() after
->> rpc_final_put_task
->>
->> I added lots of locking around the calldata, work-queue logic, and
->> such, and
->> still the problem persists w/out hitting any of the debug warnings or
->> poisoned
->> values I put in.  It almost seems like tk_calldata is just assigned to
->> two
->> different tasks.
->>
->> While poking through the code, I noticed that 'map' is static in
->> rpcb_getport_async.
->>
->> That would seem to cause problems if two threads called this method at
->> the same time, possibly causing tk_calldata to be assigned to two
->> different
->> tasks???
->>
->> Any idea why it is static?
->
-> Doh! That is clearly a typo dating all the way back to when Chuck wrote that function.
->
-> Yes, that would definitely explain your problem.
+From: Fred <iisaman@citi.umich.edu>
 
-Ok, patch sent.  I assume someone will propagate this to stable
-as desired?
+Implement bl_find_get_extent(), one of the core extent manipulation
+routines.
 
-And assuming this fixes it, can I get some brownie points towards
-review of the ip-addr binding patches? :)
+[pnfsblock: Lookup list entry of layouts and tags in reverse order]
+Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 
-Thanks,
-Ben
+pnfsblock: fix print format warnings for sector_t and size_t
 
+gcc spews warnings about these on x86_64, e.g.:
+fs/nfs/blocklayout/blocklayout.c:74: warning: format ‘%Lu’ expects type ‘long long unsigned int’, but argument 2 has type ‘sector_t’
+fs/nfs/blocklayout/blocklayout.c:388: warning: format ‘%d’ expects type ‘int’, but argument 5 has type ‘size_t’
+
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <benny@tonian.com>
+---
+ fs/nfs/blocklayout/blocklayout.h |    3 ++
+ fs/nfs/blocklayout/extents.c     |   47 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 50 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index ed6253e..05f2e54 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -153,6 +153,9 @@ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+ void free_block_dev(struct pnfs_block_dev *bdev);
+ 
+ /* extents.c */
++struct pnfs_block_extent *
++bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
++		struct pnfs_block_extent **cow_read);
+ void bl_put_extent(struct pnfs_block_extent *be);
+ struct pnfs_block_extent *alloc_extent(void);
+ int bl_add_merge_extent(struct pnfs_block_layout *bl,
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index d76bb43..086ce36 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -201,3 +201,50 @@ bl_add_merge_extent(struct pnfs_block_layout *bl,
+ 	bl_put_extent(new);
+ 	return -EIO;
+ }
++
++/* Returns extent, or NULL.  If a second READ extent exists, it is returned
++ * in cow_read, if given.
++ *
++ * The extents are kept in two seperate ordered lists, one for READ and NONE,
++ * one for READWRITE and INVALID.  Within each list, we assume:
++ * 1. Extents are ordered by file offset.
++ * 2. For any given isect, there is at most one extents that matches.
++ */
++struct pnfs_block_extent *
++bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
++	    struct pnfs_block_extent **cow_read)
++{
++	struct pnfs_block_extent *be, *cow, *ret;
++	int i;
++
++	dprintk("%s enter with isect %llu\n", __func__, (u64)isect);
++	cow = ret = NULL;
++	spin_lock(&bl->bl_ext_lock);
++	for (i = 0; i < EXTENT_LISTS; i++) {
++		list_for_each_entry_reverse(be, &bl->bl_extents[i], be_node) {
++			if (isect >= be->be_f_offset + be->be_length)
++				break;
++			if (isect >= be->be_f_offset) {
++				/* We have found an extent */
++				dprintk("%s Get %p (%i)\n", __func__, be,
++					atomic_read(&be->be_refcnt.refcount));
++				kref_get(&be->be_refcnt);
++				if (!ret)
++					ret = be;
++				else if (be->be_state != PNFS_BLOCK_READ_DATA)
++					bl_put_extent(be);
++				else
++					cow = be;
++				break;
++			}
++		}
++		if (ret &&
++		    (!cow_read || ret->be_state != PNFS_BLOCK_INVALID_DATA))
++			break;
++	}
++	spin_unlock(&bl->bl_ext_lock);
++	if (cow_read)
++		*cow_read = cow;
++	print_bl_extent(ret);
++	return ret;
++}
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+1.7.4.1
 
