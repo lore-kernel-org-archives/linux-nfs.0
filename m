@@ -1,76 +1,193 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:17063 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753516Ab1GAUkR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jul 2011 16:40:17 -0400
-Message-ID: <4E0E30A7.90209@RedHat.com>
-Date: Fri, 01 Jul 2011 16:40:07 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: "Gabor Z. Papp" <gzp@papp.hu>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: nfs-utils 1.2.4
-References: <x6tyb65wxk@gzp>
-In-Reply-To: <x6tyb65wxk@gzp>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:40266 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753465Ab1GUTeg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 15:34:36 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v2 08/25] pnfsblock: basic extent code
+Date: Thu, 21 Jul 2011 15:34:08 -0400
+Message-Id: <1311276865-29484-9-git-send-email-rees@umich.edu>
+In-Reply-To: <1311276865-29484-1-git-send-email-rees@umich.edu>
+References: <1311276865-29484-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 07/01/2011 02:36 AM, Gabor Z. Papp wrote:
-> lo lo,
-> 
-> trying to configure nfs-utils 1.2.4 with the options below:
-> 
-> --disable-gss --disable-kprefix --enable-mount --enable-nfsv3
-> --disable-nfsv4 --with-statduser=nobody --with-statedir=/var/lib/nfs"
-> --without-tcp-wrappers --disable-tirpc
-> 
-> but getting the following error:
-> 
-> [...]
-> checking size of socklen_t... 4
-> configure: error: conditional "CONFIG_NFSIDMAP" was never defined.
-> Usually this means the macro was only invoked conditionally.
-The following patch seems to take care of the problem... The 
-problem stemmed from the use of the --disable-nfsv4, which
-I will throw into my unit tests... Please let me know
-if this fixes the problem... 
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-steved.
+Adds structures and basic create/delete code for extents.
 
-
-[PATCH] Make sure CONFIG_NFSIDMAP is always defined.
-
-CONFIG_NFSIDMAP always need to be define either
-negatively or positive whether nfsv4 is or is not
-defined.
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Zhang Jingwang <Jingwang.Zhang@emc.com>
+Signed-off-by: Benny Halevy <benny@tonian.com>
 ---
- configure.ac |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+ fs/nfs/blocklayout/Makefile      |    2 +-
+ fs/nfs/blocklayout/blocklayout.c |   20 ++++++--
+ fs/nfs/blocklayout/blocklayout.h |    1 +
+ fs/nfs/blocklayout/extents.c     |   97 ++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 115 insertions(+), 5 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/extents.c
 
-diff --git a/configure.ac b/configure.ac
-index ca12f9e..f8b0796 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -249,6 +249,9 @@ AC_CHECK_FUNC([getservbyname], ,
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+index 6bf49cd..5cfadf6 100644
+--- a/fs/nfs/blocklayout/Makefile
++++ b/fs/nfs/blocklayout/Makefile
+@@ -2,4 +2,4 @@
+ # Makefile for the pNFS block layout driver kernel module
+ #
+ obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
+-blocklayoutdriver-objs := blocklayout.o
++blocklayoutdriver-objs := blocklayout.o extents.o
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 55a2a95..291cc01 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -53,12 +53,24 @@ bl_write_pagelist(struct nfs_write_data *wdata,
+ 	return PNFS_NOT_ATTEMPTED;
+ }
  
- AC_CHECK_LIB([crypt], [crypt], [LIBCRYPT="-lcrypt"])
- 
-+dnl enable nfsidmap when its support by libnfsidmap
-+AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$enable_nfsidmap" = "yes"])
+-/* STUB */
++/* FIXME - range ignored */
+ static void
+-release_extents(struct pnfs_block_layout *bl,
+-		struct pnfs_layout_range *range)
++release_extents(struct pnfs_block_layout *bl, struct pnfs_layout_range *range)
+ {
+-	return;
++	int i;
++	struct pnfs_block_extent *be;
 +
- if test "$enable_nfsv4" = yes; then
-   dnl check for libevent libraries and headers
-   AC_LIBEVENT
-@@ -256,9 +259,6 @@ if test "$enable_nfsv4" = yes; then
-   dnl check for nfsidmap libraries and headers
-   AC_LIBNFSIDMAP
++	spin_lock(&bl->bl_ext_lock);
++	for (i = 0; i < EXTENT_LISTS; i++) {
++		while (!list_empty(&bl->bl_extents[i])) {
++			be = list_first_entry(&bl->bl_extents[i],
++					      struct pnfs_block_extent,
++					      be_node);
++			list_del(&be->be_node);
++			bl_put_extent(be);
++		}
++	}
++	spin_unlock(&bl->bl_ext_lock);
+ }
  
--  dnl enable nfsidmap when its support by libnfsidmap
--  AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$enable_nfsidmap" = "yes"])
--
-   dnl check for the keyutils libraries and headers
-   AC_KEYUTILS
+ /* STUB */
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index bda87e0..825d651 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -88,4 +88,5 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
+ 	return container_of(lo, struct pnfs_block_layout, bl_layout);
+ }
  
++void bl_put_extent(struct pnfs_block_extent *be);
+ #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+new file mode 100644
+index 0000000..44c3364
+--- /dev/null
++++ b/fs/nfs/blocklayout/extents.c
+@@ -0,0 +1,97 @@
++/*
++ *  linux/fs/nfs/blocklayout/blocklayout.h
++ *
++ *  Module for the NFSv4.1 pNFS block layout driver.
++ *
++ *  Copyright (c) 2006 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@citi.umich.edu>
++ *  Fred Isaman <iisaman@umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
++ */
++
++#include "blocklayout.h"
++#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
++
++static void print_bl_extent(struct pnfs_block_extent *be)
++{
++	dprintk("PRINT EXTENT extent %p\n", be);
++	if (be) {
++		dprintk("        be_f_offset %llu\n", (u64)be->be_f_offset);
++		dprintk("        be_length   %llu\n", (u64)be->be_length);
++		dprintk("        be_v_offset %llu\n", (u64)be->be_v_offset);
++		dprintk("        be_state    %d\n", be->be_state);
++	}
++}
++
++static void
++destroy_extent(struct kref *kref)
++{
++	struct pnfs_block_extent *be;
++
++	be = container_of(kref, struct pnfs_block_extent, be_refcnt);
++	dprintk("%s be=%p\n", __func__, be);
++	kfree(be);
++}
++
++void
++bl_put_extent(struct pnfs_block_extent *be)
++{
++	if (be) {
++		dprintk("%s enter %p (%i)\n", __func__, be,
++			atomic_read(&be->be_refcnt.refcount));
++		kref_put(&be->be_refcnt, destroy_extent);
++	}
++}
++
++struct pnfs_block_extent *alloc_extent(void)
++{
++	struct pnfs_block_extent *be;
++
++	be = kmalloc(sizeof(struct pnfs_block_extent), GFP_NOFS);
++	if (!be)
++		return NULL;
++	INIT_LIST_HEAD(&be->be_node);
++	kref_init(&be->be_refcnt);
++	be->be_inval = NULL;
++	return be;
++}
++
++struct pnfs_block_extent *
++get_extent(struct pnfs_block_extent *be)
++{
++	if (be)
++		kref_get(&be->be_refcnt);
++	return be;
++}
++
++void print_elist(struct list_head *list)
++{
++	struct pnfs_block_extent *be;
++	dprintk("****************\n");
++	dprintk("Extent list looks like:\n");
++	list_for_each_entry(be, list, be_node) {
++		print_bl_extent(be);
++	}
++	dprintk("****************\n");
++}
+-- 
+1.7.4.1
+
