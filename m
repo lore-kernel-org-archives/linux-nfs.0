@@ -1,49 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:36508 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758403Ab1GKSI3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jul 2011 14:08:29 -0400
-Received: from svlrsexc1-prd.hq.netapp.com (svlrsexc1-prd.hq.netapp.com [10.57.115.30])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id p6BI8Txm002417
-	for <linux-nfs@vger.kernel.org>; Mon, 11 Jul 2011 11:08:29 -0700 (PDT)
-Subject: Re: [PATCH 1/1] NFSv4.1: handle decoding of three attribute bitmaps
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: andros@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 11 Jul 2011 14:08:28 -0400
-In-Reply-To: <1310406847-31297-1-git-send-email-andros@netapp.com>
-References: <1310406847-31297-1-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1310407708.12660.2.camel@lade.trondhjem.org>
+Received: from vr160.rayconnect.de ([213.155.88.90]:50385 "EHLO
+	mail.schwartzkopff.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751123Ab1GUNpz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 09:45:55 -0400
+Received: from nb002.localnet (cl-1872.cgn-01.de.sixxs.net [IPv6:2001:4dd0:ff00:74f::2])
+	(Authenticated sender: misch)
+	by mail.schwartzkopff.org (Postfix) with ESMTPSA id 71738129164
+	for <linux-nfs@vger.kernel.org>; Thu, 21 Jul 2011 15:40:06 +0200 (CEST)
+From: Michael Schwartzkopff <misch@schwartzkopff.org>
+Reply-To: misch@schwartzkopff.org
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: NFSv4 grace time
+Date: Thu, 21 Jul 2011 15:40:05 +0200
+Content-Type: multipart/signed;
+  boundary="nextPart2937924.h2s9kaPMiY";
+  protocol="application/pgp-signature";
+  micalg=pgp-sha1
+Message-Id: <201107211540.05673.misch@schwartzkopff.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2011-07-11 at 13:54 -0400, andros@netapp.com wrote: 
-> From: Andy Adamson <andros@netapp.com>
-> 
-> Attribute IDs assigned in RFC 5661 now require three bitmaps.
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> Cc:stable@kernel.org [2.6.39]
+--nextPart2937924.h2s9kaPMiY
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-Is this really so urgent?
+Hi,
 
-[trondmy@lade linux-2.6]$ git grep FATTR4_WORD2 fs/nfs include/linux
-include/linux/nfs4.h:#define FATTR4_WORD2_SUPPATTR_EXCLCREAT (1UL << 11)
-include/linux/nfs4.h:#define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
+setting up a linux NFS server cluster I experience a strange problem during=
+ a=20
+failover. A client can access a file only after 60 to 90 seconds. On the li=
+ne I=20
+see a NFS4ERR_GRACE from the server to the client.
 
-IOW: we don't appear to be using any of those bits, and so the current
-default behaviour of just ignoring any bitmap values that we don't
-recognise would seem to be sufficient.
+I already set the /proc/fs/nfsd/nfsv4leastime to 10.
 
-Cheers
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Any other idea?
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+=46or the tests I have a simple setup:
 
+One host with a simple script that simulates failover:
+
+#!/bin/bash
+
+ip a d 1.2.3.4/24 dev eth0
+exportfs -u *:/srv/nfs/home
+exportfs -u *:/srv/nfs
+/etc/init.d/nfsserver stop
+#
+/etc/init.d/nfsserver start
+exportfs -o fsid=3D0,rw,crossmnt,no_root_squash *:/srv/nfs
+exportfs -o fsid=3D1000,rw,mountpoint,no_root_squash *:/srv/nfs/home
+ip a a 1.2.3.4/24 dev eth0
+
+=2D-=20
+Dr. Michael Schwartzkopff
+Guardinistr. 63
+81375 M=FCnchen
+
+Tel: (0163) 172 50 98
+=46ax: (089) 620 304 13
+
+--nextPart2937924.h2s9kaPMiY
+Content-Type: application/pgp-signature; name=signature.asc 
+Content-Description: This is a digitally signed message part.
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
+
+iEYEABECAAYFAk4oLDUACgkQH8fVuZhm6xyGygCgj4YJxtMbeQs8HXr8lOmcjlTZ
+X38Anj0oBf3WW4ObKaYkP63CywMfPbcL
+=egXE
+-----END PGP SIGNATURE-----
+
+--nextPart2937924.h2s9kaPMiY--
