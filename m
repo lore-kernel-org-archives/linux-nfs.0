@@ -1,77 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from esrismtp2.esri.com ([198.102.62.103]:51111 "EHLO Vail.esri.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751296Ab1GUQvv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Jul 2011 12:51:51 -0400
-Received: from leoray.esri.com (leoray.esri.com [10.27.102.12])
-	by Vail.esri.com (8.13.7+Sun/8.13.7) with ESMTP id p6LGppi8006067
-	for <linux-nfs@vger.kernel.org>; Thu, 21 Jul 2011 09:51:51 -0700 (PDT)
-Received: from leoray.esri.com (leoray.esri.com [127.0.0.1])
-	by leoray.esri.com (8.14.4/8.14.3) with ESMTP id p6LGpplo018519
-	for <linux-nfs@vger.kernel.org>; Thu, 21 Jul 2011 09:51:51 -0700
-Received: (from ray5147@localhost)
-	by leoray.esri.com (8.14.4/8.14.3/Submit) id p6LGpprN018518
-	for linux-nfs@vger.kernel.org; Thu, 21 Jul 2011 09:51:51 -0700
-Date: Thu, 21 Jul 2011 09:51:51 -0700
-From: Ray Van Dolson <rvandolson@esri.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFS server responds to SYN with ACK only
-Message-ID: <20110721165150.GA18456@esri.com>
-References: <20110720192341.GA18167@esri.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110720192341.GA18167@esri.com>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:46584 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752515Ab1GUTee (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 15:34:34 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v2 06/25] pnfs: cleanup_layoutcommit
+Date: Thu, 21 Jul 2011 15:34:06 -0400
+Message-Id: <1311276865-29484-7-git-send-email-rees@umich.edu>
+In-Reply-To: <1311276865-29484-1-git-send-email-rees@umich.edu>
+References: <1311276865-29484-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Jul 20, 2011 at 12:23:42PM -0700, Ray Van Dolson wrote:
-> We have a couple legacy CentOS (RHEL)-based appliances with slightly
-> dated NFS implementations.
-> 
-> Server (CentOS 4 based):
-> 
->     nfs-utils-1.0.6-70.EL4
->     Kernel 2.6.9-42.0.10.plus.c4smp
-> 
-> Client (CentOS 5 based):
-> 
->     nfs-utils-1.0.9-42.el5.x86_64
->     Kernel 2.6.18-164.15.1.el5
-> 
-> The client has a long-lived NFSv3 mount to the server that sometimes
-> stops responding (blocks).  We can lazy unmount it, but subsequent
-> mount requests hang and the following is observed via tcpdump:
-> 
->     1. Client GETPORT for NFS service succeeds.
->     2. Client GETPORT for MOUNT succeeds
->     3. Client MNT call succeeds (server gives valid response including
->        file handle)
->     4. Client sends a SYN packet to NFS port on server
->     5. Server responds with ACK *only*
-> 
-> When we bounce the NFS daemon on the server, everything starts working
-> and in step 5 above, we get a SYN,ACK as expected in response to #4,
-> and everything proceeds along nicely.
-> 
-> Does this jog anybody on a long-ago fixed bug?  I'm thinking updating
-> the kernel and nfs-utils on the server will likely help, but would love
-> to find where behavior like the above is referenced as a "bug".
-> 
-> Thanks,
-> Ray
+From: Andy Adamson <andros@netapp.com>
 
-After thinking on this a bit more, I'm wondering if perhaps the server
-side had a connection still "open" (didn't check with netstat) and thus
-sent back only the ACK.
+This gives layout driver a chance to cleanup structures they put in at
+encode_layoutcommit.
 
-Maybe in this case the client should respond with a RST or something
-else to indicate we need to start from scratch?
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[fixup layout header pointer for layoutcommit]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <benny@tonian.com>
+---
+ fs/nfs/nfs4proc.c       |    1 +
+ fs/nfs/nfs4xdr.c        |    3 ++-
+ fs/nfs/pnfs.c           |   10 ++++++++++
+ fs/nfs/pnfs.h           |    5 +++++
+ include/linux/nfs_xdr.h |    1 +
+ 5 files changed, 19 insertions(+), 1 deletions(-)
 
-Is there a way, on the server side to kill an ESTABLISHED TCP
-connection (specifically an NFS connection?)?  Probably setting a
-connection timeout value via /proc ...
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index e02f545..795033c5 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5965,6 +5965,7 @@ static void nfs4_layoutcommit_release(void *calldata)
+ 	struct nfs4_layoutcommit_data *data = calldata;
+ 	struct pnfs_layout_segment *lseg, *tmp;
+ 
++	pnfs_cleanup_layoutcommit(data->args.inode, data);
+ 	/* Matched by references in pnfs_set_layoutcommit */
+ 	list_for_each_entry_safe(lseg, tmp, &data->lseg_list, pls_lc_list) {
+ 		list_del_init(&lseg->pls_lc_list);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 5ce3c64..07c41b2 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1991,7 +1991,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
+ 	*p++ = cpu_to_be32(OP_LAYOUTCOMMIT);
+ 	/* Only whole file layouts */
+ 	p = xdr_encode_hyper(p, 0); /* offset */
+-	p = xdr_encode_hyper(p, NFS4_MAX_UINT64); /* length */
++	p = xdr_encode_hyper(p, args->lastbytewritten+1); /* length */
+ 	*p++ = cpu_to_be32(0); /* reclaim */
+ 	p = xdr_encode_opaque_fixed(p, args->stateid.data, NFS4_STATEID_SIZE);
+ 	*p++ = cpu_to_be32(1); /* newoffset = TRUE */
+@@ -5596,6 +5596,7 @@ static int decode_layoutcommit(struct xdr_stream *xdr,
+ 	int status;
+ 
+ 	status = decode_op_hdr(xdr, OP_LAYOUTCOMMIT);
++	res->status = status;
+ 	if (status)
+ 		return status;
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index fbebd2a..3b20753 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1411,6 +1411,16 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ }
+ EXPORT_SYMBOL_GPL(pnfs_set_layoutcommit);
+ 
++void pnfs_cleanup_layoutcommit(struct inode *inode,
++			       struct nfs4_layoutcommit_data *data)
++{
++	struct nfs_server *nfss = NFS_SERVER(inode);
++
++	if (nfss->pnfs_curr_ld->cleanup_layoutcommit)
++		nfss->pnfs_curr_ld->cleanup_layoutcommit(NFS_I(inode)->layout,
++							 data);
++}
++
+ /*
+  * For the LAYOUT4_NFSV4_1_FILES layout type, NFS_DATA_SYNC WRITEs and
+  * NFS_UNSTABLE WRITEs with a COMMIT to data servers must store enough
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index bddd8b9..f271425 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -113,6 +113,9 @@ struct pnfs_layoutdriver_type {
+ 				     struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutreturn_args *args);
+ 
++	void (*cleanup_layoutcommit) (struct pnfs_layout_hdr *layoutid,
++				      struct nfs4_layoutcommit_data *data);
++
+ 	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
+ 				     struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutcommit_args *args);
+@@ -196,6 +199,8 @@ void pnfs_roc_release(struct inode *ino);
+ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+ bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
++void pnfs_cleanup_layoutcommit(struct inode *inode,
++			       struct nfs4_layoutcommit_data *data);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+ int _pnfs_return_layout(struct inode *);
+ int pnfs_ld_write_done(struct nfs_write_data *);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 94f27e5..569ea5b 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -269,6 +269,7 @@ struct nfs4_layoutcommit_res {
+ 	struct nfs_fattr *fattr;
+ 	const struct nfs_server *server;
+ 	struct nfs4_sequence_res seq_res;
++	int status;
+ };
+ 
+ struct nfs4_layoutcommit_data {
+-- 
+1.7.4.1
 
-I'm thinking on the client side I could inject a RST packet to the
-server to clean things up?
-
-Ray
