@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:40347 "EHLO
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:40178 "EHLO
 	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753725Ab1GUTeo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 15:34:44 -0400
+	with ESMTP id S1753650Ab1GUTe3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 15:34:29 -0400
 From: Jim Rees <rees@umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v2 16/25] pnfsblock: add extent manipulation functions
-Date: Thu, 21 Jul 2011 15:34:16 -0400
-Message-Id: <1311276865-29484-17-git-send-email-rees@umich.edu>
+Subject: [PATCH v2 01/25] pnfs: GETDEVICELIST
+Date: Thu, 21 Jul 2011 15:34:01 -0400
+Message-Id: <1311276865-29484-2-git-send-email-rees@umich.edu>
 In-Reply-To: <1311276865-29484-1-git-send-email-rees@umich.edu>
 References: <1311276865-29484-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -16,375 +16,329 @@ List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+From: Andy Adamson <andros@netapp.com>
 
-Adds working implementations of various support functions
-to handle INVAL extents, needed by writes, such as
-bl_mark_sectors_init and is_sector_initialized.
+The block driver uses GETDEVICELIST
 
-[pnfsblock: fix 64-bit compiler warnings for extent manipulation]
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[pass struct nfs_server * to getdevicelist]
+[get machince creds for getdevicelist]
+[fix getdevicelist decode sizing]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 Signed-off-by: Benny Halevy <benny@tonian.com>
-[Implement release_inval_marks]
-Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
 ---
- fs/nfs/blocklayout/blocklayout.c |    7 +-
- fs/nfs/blocklayout/blocklayout.h |   31 +++++-
- fs/nfs/blocklayout/extents.c     |  253 ++++++++++++++++++++++++++++++++++++++
- 3 files changed, 288 insertions(+), 3 deletions(-)
+ fs/nfs/nfs4proc.c       |   48 ++++++++++++++++++
+ fs/nfs/nfs4xdr.c        |  128 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.h           |   12 ++++
+ include/linux/nfs4.h    |    1 +
+ include/linux/nfs_xdr.h |   11 ++++
+ 5 files changed, 200 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 3bf60e3..c4b584b 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -78,10 +78,15 @@ release_extents(struct pnfs_block_layout *bl, struct pnfs_layout_range *range)
- 	spin_unlock(&bl->bl_ext_lock);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 93ef776..8ceda46 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5836,6 +5836,54 @@ int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp)
+ 	return status;
  }
  
--/* STUB */
- static void
- release_inval_marks(struct pnfs_inval_markings *marks)
- {
-+	struct pnfs_inval_tracking *pos, *temp;
-+
-+	list_for_each_entry_safe(pos, temp, &marks->im_tree.mtt_stub, it_link) {
-+		list_del(&pos->it_link);
-+		kfree(pos);
-+	}
- 	return;
- }
- 
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 05f2e54..37e5989 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -38,6 +38,9 @@
- 
- #include "../pnfs.h"
- 
-+#define PAGE_CACHE_SECTORS (PAGE_CACHE_SIZE >> SECTOR_SHIFT)
-+#define PAGE_CACHE_SECTOR_SHIFT (PAGE_CACHE_SHIFT - SECTOR_SHIFT)
-+
- struct block_mount_id {
- 	spinlock_t			bm_lock;    /* protects list */
- 	struct list_head		bm_devlist; /* holds pnfs_block_dev */
-@@ -56,8 +59,23 @@ enum exstate4 {
- 	PNFS_BLOCK_NONE_DATA		= 3  /* unmapped, it's a hole */
- };
- 
-+#define MY_MAX_TAGS (15) /* tag bitnums used must be less than this */
-+
-+struct my_tree {
-+	sector_t		mtt_step_size;	/* Internal sector alignment */
-+	struct list_head	mtt_stub; /* Should be a radix tree */
-+};
-+
- struct pnfs_inval_markings {
--	/* STUB */
-+	spinlock_t	im_lock;
-+	struct my_tree	im_tree;	/* Sectors that need LAYOUTCOMMIT */
-+	sector_t	im_block_size;	/* Server blocksize in sectors */
-+};
-+
-+struct pnfs_inval_tracking {
-+	struct list_head it_link;
-+	int		 it_sector;
-+	int		 it_tags;
- };
- 
- /* sector_t fields are all in 512-byte sectors */
-@@ -76,7 +94,11 @@ struct pnfs_block_extent {
- static inline void
- INIT_INVAL_MARKS(struct pnfs_inval_markings *marks, sector_t blocksize)
- {
--	/* STUB */
-+	spin_lock_init(&marks->im_lock);
-+	INIT_LIST_HEAD(&marks->im_tree.mtt_stub);
-+	marks->im_block_size = blocksize;
-+	marks->im_tree.mtt_step_size = min((sector_t)PAGE_CACHE_SECTORS,
-+					   blocksize);
- }
- 
- enum extentclass4 {
-@@ -156,8 +178,13 @@ void free_block_dev(struct pnfs_block_dev *bdev);
- struct pnfs_block_extent *
- bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
- 		struct pnfs_block_extent **cow_read);
-+int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
-+			     sector_t offset, sector_t length,
-+			     sector_t **pages);
- void bl_put_extent(struct pnfs_block_extent *be);
- struct pnfs_block_extent *alloc_extent(void);
-+struct pnfs_block_extent *get_extent(struct pnfs_block_extent *be);
-+int is_sector_initialized(struct pnfs_inval_markings *marks, sector_t isect);
- int bl_add_merge_extent(struct pnfs_block_layout *bl,
- 			 struct pnfs_block_extent *new);
- 
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 086ce36..4b58412 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -33,6 +33,259 @@
- #include "blocklayout.h"
- #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
- 
-+/* Bit numbers */
-+#define EXTENT_INITIALIZED 0
-+#define EXTENT_WRITTEN     1
-+#define EXTENT_IN_COMMIT   2
-+#define INTERNAL_EXISTS    MY_MAX_TAGS
-+#define INTERNAL_MASK      ((1 << INTERNAL_EXISTS) - 1)
-+
-+/* Returns largest t<=s s.t. t%base==0 */
-+static inline sector_t normalize(sector_t s, int base)
-+{
-+	sector_t tmp = s; /* Since do_div modifies its argument */
-+	return s - do_div(tmp, base);
-+}
-+
-+static inline sector_t normalize_up(sector_t s, int base)
-+{
-+	return normalize(s + base - 1, base);
-+}
-+
-+/* Complete stub using list while determine API wanted */
-+
-+/* Returns tags, or negative */
-+static int32_t _find_entry(struct my_tree *tree, u64 s)
-+{
-+	struct pnfs_inval_tracking *pos;
-+
-+	dprintk("%s(%llu) enter\n", __func__, s);
-+	list_for_each_entry_reverse(pos, &tree->mtt_stub, it_link) {
-+		if (pos->it_sector > s)
-+			continue;
-+		else if (pos->it_sector == s)
-+			return pos->it_tags & INTERNAL_MASK;
-+		else
-+			break;
-+	}
-+	return -ENOENT;
-+}
-+
-+static inline
-+int _has_tag(struct my_tree *tree, u64 s, int32_t tag)
-+{
-+	int32_t tags;
-+
-+	dprintk("%s(%llu, %i) enter\n", __func__, s, tag);
-+	s = normalize(s, tree->mtt_step_size);
-+	tags = _find_entry(tree, s);
-+	if ((tags < 0) || !(tags & (1 << tag)))
-+		return 0;
-+	else
-+		return 1;
-+}
-+
-+/* Creates entry with tag, or if entry already exists, unions tag to it.
-+ * If storage is not NULL, newly created entry will use it.
-+ * Returns number of entries added, or negative on error.
++/*
++ * Retrieve the list of Data Server devices from the MDS.
 + */
-+static int _add_entry(struct my_tree *tree, u64 s, int32_t tag,
-+		      struct pnfs_inval_tracking *storage)
++static int _nfs4_getdevicelist(struct nfs_server *server,
++				    const struct nfs_fh *fh,
++				    struct pnfs_devicelist *devlist)
 +{
-+	int found = 0;
-+	struct pnfs_inval_tracking *pos;
++	struct nfs4_getdevicelist_args args = {
++		.fh = fh,
++		.layoutclass = server->pnfs_curr_ld->id,
++	};
++	struct nfs4_getdevicelist_res res = {
++		.devlist = devlist,
++	};
++	struct rpc_message msg = {
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_GETDEVICELIST],
++		.rpc_argp = &args,
++		.rpc_resp = &res,
++	};
++	int status;
 +
-+	dprintk("%s(%llu, %i, %p) enter\n", __func__, s, tag, storage);
-+	list_for_each_entry_reverse(pos, &tree->mtt_stub, it_link) {
-+		if (pos->it_sector > s)
-+			continue;
-+		else if (pos->it_sector == s) {
-+			found = 1;
-+			break;
-+		} else
-+			break;
-+	}
-+	if (found) {
-+		pos->it_tags |= (1 << tag);
-+		return 0;
-+	} else {
-+		struct pnfs_inval_tracking *new;
-+		if (storage)
-+			new = storage;
-+		else {
-+			new = kmalloc(sizeof(*new), GFP_NOFS);
-+			if (!new)
-+				return -ENOMEM;
-+		}
-+		new->it_sector = s;
-+		new->it_tags = (1 << tag);
-+		list_add(&new->it_link, &pos->it_link);
-+		return 1;
-+	}
-+}
-+
-+/* XXXX Really want option to not create */
-+/* Over range, unions tag with existing entries, else creates entry with tag */
-+static int _set_range(struct my_tree *tree, int32_t tag, u64 s, u64 length)
-+{
-+	u64 i;
-+
-+	dprintk("%s(%i, %llu, %llu) enter\n", __func__, tag, s, length);
-+	for (i = normalize(s, tree->mtt_step_size); i < s + length;
-+	     i += tree->mtt_step_size)
-+		if (_add_entry(tree, i, tag, NULL))
-+			return -ENOMEM;
-+	return 0;
-+}
-+
-+/* Ensure that future operations on given range of tree will not malloc */
-+static int _preload_range(struct my_tree *tree, u64 offset, u64 length)
-+{
-+	u64 start, end, s;
-+	int count, i, used = 0, status = -ENOMEM;
-+	struct pnfs_inval_tracking **storage;
-+
-+	dprintk("%s(%llu, %llu) enter\n", __func__, offset, length);
-+	start = normalize(offset, tree->mtt_step_size);
-+	end = normalize_up(offset + length, tree->mtt_step_size);
-+	count = (int)(end - start) / (int)tree->mtt_step_size;
-+
-+	/* Pre-malloc what memory we might need */
-+	storage = kmalloc(sizeof(*storage) * count, GFP_NOFS);
-+	if (!storage)
-+		return -ENOMEM;
-+	for (i = 0; i < count; i++) {
-+		storage[i] = kmalloc(sizeof(struct pnfs_inval_tracking),
-+				     GFP_NOFS);
-+		if (!storage[i])
-+			goto out_cleanup;
-+	}
-+
-+	/* Now need lock - HOW??? */
-+
-+	for (s = start; s < end; s += tree->mtt_step_size)
-+		used += _add_entry(tree, s, INTERNAL_EXISTS, storage[used]);
-+
-+	/* Unlock - HOW??? */
-+	status = 0;
-+
-+ out_cleanup:
-+	for (i = used; i < count; i++) {
-+		if (!storage[i])
-+			break;
-+		kfree(storage[i]);
-+	}
-+	kfree(storage);
++	dprintk("--> %s\n", __func__);
++	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args,
++				&res.seq_res, 0);
++	dprintk("<-- %s status=%d\n", __func__, status);
 +	return status;
 +}
 +
-+static void set_needs_init(sector_t *array, sector_t offset)
++int nfs4_proc_getdevicelist(struct nfs_server *server,
++			    const struct nfs_fh *fh,
++			    struct pnfs_devicelist *devlist)
 +{
-+	sector_t *p = array;
++	struct nfs4_exception exception = { };
++	int err;
 +
-+	dprintk("%s enter\n", __func__);
-+	if (!p)
-+		return;
-+	while (*p < offset)
-+		p++;
-+	if (*p == offset)
-+		return;
-+	else if (*p == ~0) {
-+		*p++ = offset;
-+		*p = ~0;
-+		return;
-+	} else {
-+		sector_t *save = p;
-+		dprintk("%s Adding %llu\n", __func__, (u64)offset);
-+		while (*p != ~0)
-+			p++;
-+		p++;
-+		memmove(save + 1, save, (char *)p - (char *)save);
-+		*save = offset;
-+		return;
-+	}
++	do {
++		err = nfs4_handle_exception(server,
++				_nfs4_getdevicelist(server, fh, devlist),
++				&exception);
++	} while (exception.retry);
++
++	dprintk("%s: err=%d, num_devs=%u\n", __func__,
++		err, devlist->num_devs);
++
++	return err;
 +}
++EXPORT_SYMBOL_GPL(nfs4_proc_getdevicelist);
 +
-+/* We are relying on page lock to serialize this */
-+int is_sector_initialized(struct pnfs_inval_markings *marks, sector_t isect)
-+{
-+	int rv;
-+
-+	spin_lock(&marks->im_lock);
-+	rv = _has_tag(&marks->im_tree, isect, EXTENT_INITIALIZED);
-+	spin_unlock(&marks->im_lock);
-+	return rv;
-+}
-+
-+/* Marks sectors in [offest, offset_length) as having been initialized.
-+ * All lengths are step-aligned, where step is min(pagesize, blocksize).
-+ * Notes where partial block is initialized, and helps prepare it for
-+ * complete initialization later.
-+ */
-+/* Currently assumes offset is page-aligned */
-+int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
-+			     sector_t offset, sector_t length,
-+			     sector_t **pages)
-+{
-+	sector_t s, start, end;
-+	sector_t *array = NULL; /* Pages to mark */
-+
-+	dprintk("%s(offset=%llu,len=%llu) enter\n",
-+		__func__, (u64)offset, (u64)length);
-+	s = max((sector_t) 3,
-+		2 * (marks->im_block_size / (PAGE_CACHE_SECTORS)));
-+	dprintk("%s set max=%llu\n", __func__, (u64)s);
-+	if (pages) {
-+		array = kmalloc(s * sizeof(sector_t), GFP_NOFS);
-+		if (!array)
-+			goto outerr;
-+		array[0] = ~0;
-+	}
-+
-+	start = normalize(offset, marks->im_block_size);
-+	end = normalize_up(offset + length, marks->im_block_size);
-+	if (_preload_range(&marks->im_tree, start, end - start))
-+		goto outerr;
-+
-+	spin_lock(&marks->im_lock);
-+
-+	for (s = normalize_up(start, PAGE_CACHE_SECTORS);
-+	     s < offset; s += PAGE_CACHE_SECTORS) {
-+		dprintk("%s pre-area pages\n", __func__);
-+		/* Portion of used block is not initialized */
-+		if (!_has_tag(&marks->im_tree, s, EXTENT_INITIALIZED))
-+			set_needs_init(array, s);
-+	}
-+	if (_set_range(&marks->im_tree, EXTENT_INITIALIZED, offset, length))
-+		goto out_unlock;
-+	for (s = normalize_up(offset + length, PAGE_CACHE_SECTORS);
-+	     s < end; s += PAGE_CACHE_SECTORS) {
-+		dprintk("%s post-area pages\n", __func__);
-+		if (!_has_tag(&marks->im_tree, s, EXTENT_INITIALIZED))
-+			set_needs_init(array, s);
-+	}
-+
-+	spin_unlock(&marks->im_lock);
-+
-+	if (pages) {
-+		if (array[0] == ~0) {
-+			kfree(array);
-+			*pages = NULL;
-+		} else
-+			*pages = array;
-+	}
-+	return 0;
-+
-+ out_unlock:
-+	spin_unlock(&marks->im_lock);
-+ outerr:
-+	if (pages) {
-+		kfree(array);
-+		*pages = NULL;
-+	}
-+	return -ENOMEM;
-+}
-+
- static void print_bl_extent(struct pnfs_block_extent *be)
+ static int
+ _nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
  {
- 	dprintk("PRINT EXTENT extent %p\n", be);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c191a9b..a82dd40 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -314,6 +314,17 @@ static int nfs4_stat_to_errno(int);
+ 				XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + 5)
+ #define encode_reclaim_complete_maxsz	(op_encode_hdr_maxsz + 4)
+ #define decode_reclaim_complete_maxsz	(op_decode_hdr_maxsz + 4)
++#define encode_getdevicelist_maxsz (op_encode_hdr_maxsz + 4 + \
++				encode_verifier_maxsz)
++#define decode_getdevicelist_maxsz (op_decode_hdr_maxsz + \
++				2 /* nfs_cookie4 gdlr_cookie */ + \
++				decode_verifier_maxsz \
++				  /* verifier4 gdlr_verifier */ + \
++				1 /* gdlr_deviceid_list count */ + \
++				XDR_QUADLEN(NFS4_PNFS_GETDEVLIST_MAXNUM * \
++					    NFS4_DEVICEID4_SIZE) \
++				  /* gdlr_deviceid_list */ + \
++				1 /* bool gdlr_eof */)
+ #define encode_getdeviceinfo_maxsz (op_encode_hdr_maxsz + 4 + \
+ 				XDR_QUADLEN(NFS4_DEVICEID4_SIZE))
+ #define decode_getdeviceinfo_maxsz (op_decode_hdr_maxsz + \
+@@ -748,6 +759,14 @@ static int nfs4_stat_to_errno(int);
+ #define NFS4_dec_reclaim_complete_sz	(compound_decode_hdr_maxsz + \
+ 					 decode_sequence_maxsz + \
+ 					 decode_reclaim_complete_maxsz)
++#define NFS4_enc_getdevicelist_sz (compound_encode_hdr_maxsz + \
++				encode_sequence_maxsz + \
++				encode_putfh_maxsz + \
++				encode_getdevicelist_maxsz)
++#define NFS4_dec_getdevicelist_sz (compound_decode_hdr_maxsz + \
++				decode_sequence_maxsz + \
++				decode_putfh_maxsz + \
++				decode_getdevicelist_maxsz)
+ #define NFS4_enc_getdeviceinfo_sz (compound_encode_hdr_maxsz +    \
+ 				encode_sequence_maxsz +\
+ 				encode_getdeviceinfo_maxsz)
+@@ -1855,6 +1874,26 @@ static void encode_sequence(struct xdr_stream *xdr,
+ 
+ #ifdef CONFIG_NFS_V4_1
+ static void
++encode_getdevicelist(struct xdr_stream *xdr,
++		     const struct nfs4_getdevicelist_args *args,
++		     struct compound_hdr *hdr)
++{
++	__be32 *p;
++	nfs4_verifier dummy = {
++		.data = "dummmmmy",
++	};
++
++	p = reserve_space(xdr, 20);
++	*p++ = cpu_to_be32(OP_GETDEVICELIST);
++	*p++ = cpu_to_be32(args->layoutclass);
++	*p++ = cpu_to_be32(NFS4_PNFS_GETDEVLIST_MAXNUM);
++	xdr_encode_hyper(p, 0ULL);                          /* cookie */
++	encode_nfs4_verifier(xdr, &dummy);
++	hdr->nops++;
++	hdr->replen += decode_getdevicelist_maxsz;
++}
++
++static void
+ encode_getdeviceinfo(struct xdr_stream *xdr,
+ 		     const struct nfs4_getdeviceinfo_args *args,
+ 		     struct compound_hdr *hdr)
+@@ -2775,6 +2814,24 @@ static void nfs4_xdr_enc_reclaim_complete(struct rpc_rqst *req,
+ }
+ 
+ /*
++ * Encode GETDEVICELIST request
++ */
++static void nfs4_xdr_enc_getdevicelist(struct rpc_rqst *req,
++				       struct xdr_stream *xdr,
++				       struct nfs4_getdevicelist_args *args)
++{
++	struct compound_hdr hdr = {
++		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
++	};
++
++	encode_compound_hdr(xdr, req, &hdr);
++	encode_sequence(xdr, &args->seq_args, &hdr);
++	encode_putfh(xdr, args->fh, &hdr);
++	encode_getdevicelist(xdr, args, &hdr);
++	encode_nops(&hdr);
++}
++
++/*
+  * Encode GETDEVICEINFO request
+  */
+ static void nfs4_xdr_enc_getdeviceinfo(struct rpc_rqst *req,
+@@ -5268,6 +5325,50 @@ out_overflow:
+ }
+ 
+ #if defined(CONFIG_NFS_V4_1)
++/*
++ * TODO: Need to handle case when EOF != true;
++ */
++static int decode_getdevicelist(struct xdr_stream *xdr,
++				struct pnfs_devicelist *res)
++{
++	__be32 *p;
++	int status, i;
++	struct nfs_writeverf verftemp;
++
++	status = decode_op_hdr(xdr, OP_GETDEVICELIST);
++	if (status)
++		return status;
++
++	p = xdr_inline_decode(xdr, 8 + 8 + 4);
++	if (unlikely(!p))
++		goto out_overflow;
++
++	/* TODO: Skip cookie for now */
++	p += 2;
++
++	/* Read verifier */
++	p = xdr_decode_opaque_fixed(p, verftemp.verifier, 8);
++
++	res->num_devs = be32_to_cpup(p);
++
++	dprintk("%s: num_dev %d\n", __func__, res->num_devs);
++
++	if (res->num_devs > NFS4_PNFS_GETDEVLIST_MAXNUM)
++		return -NFS4ERR_REP_TOO_BIG;
++
++	p = xdr_inline_decode(xdr,
++			      res->num_devs * NFS4_DEVICEID4_SIZE + 4);
++	if (unlikely(!p))
++		goto out_overflow;
++	for (i = 0; i < res->num_devs; i++)
++		p = xdr_decode_opaque_fixed(p, res->dev_id[i].data,
++					    NFS4_DEVICEID4_SIZE);
++	res->eof = be32_to_cpup(p);
++	return 0;
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++}
+ 
+ static int decode_getdeviceinfo(struct xdr_stream *xdr,
+ 				struct pnfs_device *pdev)
+@@ -6542,6 +6643,32 @@ static int nfs4_xdr_dec_reclaim_complete(struct rpc_rqst *rqstp,
+ }
+ 
+ /*
++ * Decode GETDEVICELIST response
++ */
++static int nfs4_xdr_dec_getdevicelist(struct rpc_rqst *rqstp,
++				      struct xdr_stream *xdr,
++				      struct nfs4_getdevicelist_res *res)
++{
++	struct compound_hdr hdr;
++	int status;
++
++	dprintk("encoding getdevicelist!\n");
++
++	status = decode_compound_hdr(xdr, &hdr);
++	if (status != 0)
++		goto out;
++	status = decode_sequence(xdr, &res->seq_res, rqstp);
++	if (status != 0)
++		goto out;
++	status = decode_putfh(xdr);
++	if (status != 0)
++		goto out;
++	status = decode_getdevicelist(xdr, res->devlist);
++out:
++	return status;
++}
++
++/*
+  * Decode GETDEVINFO response
+  */
+ static int nfs4_xdr_dec_getdeviceinfo(struct rpc_rqst *rqstp,
+@@ -6902,6 +7029,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+ 	PROC(GET_LEASE_TIME,	enc_get_lease_time,	dec_get_lease_time),
+ 	PROC(RECLAIM_COMPLETE,	enc_reclaim_complete,	dec_reclaim_complete),
+ 	PROC(GETDEVICEINFO,	enc_getdeviceinfo,	dec_getdeviceinfo),
++	PROC(GETDEVICELIST,	enc_getdevicelist,	dec_getdevicelist),
+ 	PROC(LAYOUTGET,		enc_layoutget,		dec_layoutget),
+ 	PROC(LAYOUTCOMMIT,	enc_layoutcommit,	dec_layoutcommit),
+ 	PROC(LAYOUTRETURN,	enc_layoutreturn,	dec_layoutreturn),
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 078670d..ffea314 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -133,14 +133,26 @@ struct pnfs_device {
+ 	unsigned int  layout_type;
+ 	unsigned int  mincount;
+ 	struct page **pages;
++	void          *area;
+ 	unsigned int  pgbase;
+ 	unsigned int  pglen;
+ };
+ 
++#define NFS4_PNFS_GETDEVLIST_MAXNUM 16
++
++struct pnfs_devicelist {
++	unsigned int		eof;
++	unsigned int		num_devs;
++	struct nfs4_deviceid	dev_id[NFS4_PNFS_GETDEVLIST_MAXNUM];
++};
++
+ extern int pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *);
+ extern void pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *);
+ 
+ /* nfs4proc.c */
++extern int nfs4_proc_getdevicelist(struct nfs_server *server,
++				   const struct nfs_fh *fh,
++				   struct pnfs_devicelist *devlist);
+ extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
+ 				   struct pnfs_device *dev);
+ extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index a3c4bc8..76f99e8 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -566,6 +566,7 @@ enum {
+ 	NFSPROC4_CLNT_SECINFO_NO_NAME,
+ 	NFSPROC4_CLNT_TEST_STATEID,
+ 	NFSPROC4_CLNT_FREE_STATEID,
++	NFSPROC4_CLNT_GETDEVICELIST,
+ };
+ 
+ /* nfs41 types */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 5b11595..a07b682 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -235,6 +235,17 @@ struct nfs4_layoutget {
+ 	gfp_t gfp_flags;
+ };
+ 
++struct nfs4_getdevicelist_args {
++	const struct nfs_fh *fh;
++	u32 layoutclass;
++	struct nfs4_sequence_args seq_args;
++};
++
++struct nfs4_getdevicelist_res {
++	struct pnfs_devicelist *devlist;
++	struct nfs4_sequence_res seq_res;
++};
++
+ struct nfs4_getdeviceinfo_args {
+ 	struct pnfs_device *pdev;
+ 	struct nfs4_sequence_args seq_args;
 -- 
 1.7.4.1
 
