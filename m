@@ -1,101 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:40170 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753650Ab1GUTe1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 15:34:27 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v2 00/25] add block layout driver to pnfs client
-Date: Thu, 21 Jul 2011 15:34:00 -0400
-Message-Id: <1311276865-29484-1-git-send-email-rees@umich.edu>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-fx0-f52.google.com ([209.85.161.52]:58136 "EHLO
+	mail-fx0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752833Ab1GVNcm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jul 2011 09:32:42 -0400
+From: Miklos Szeredi <miklos@szeredi.hu>
+To: Anand Avati <avati@gluster.com>
+Cc: <fuse-devel@lists.sourceforge.net>, <linux-fsdevel@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] fuse: permit O_DIRECT flag in open()
+References: <1311323606-15040-1-git-send-email-avati@gluster.com>
+	<1311323606-15040-2-git-send-email-avati@gluster.com>
+Date: Fri, 22 Jul 2011 15:33:36 +0200
+In-Reply-To: <1311323606-15040-2-git-send-email-avati@gluster.com> (Anand
+	Avati's message of "Fri, 22 Jul 2011 01:33:26 -0700")
+Message-ID: <87livqfnin.fsf@tucsk.pomaz.szeredi.hu>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This patch set adds a block layout driver to the pNFS client.  It passes
-Connectathon tests and is bisectable.  It requires an updated version of
-nfs-utils, and patches for that have been sent separately to the nfs-utils
-maintainer.
+Anand Avati <avati@gluster.com> writes:
 
-This patch set is also available on the for-trond branch of the git repo at
-git://citi.umich.edu/projects/linux-pnfs-blk.git
+> but do not permit setting of O_DIRECT flag via fcntl() (or unsetting)
 
-This is version 2 of this patch set.  Changes since version 1:
+Again, some more verbose description would be good, as well as a
+Signed-off-by.
 
-NFS41: Drop lseg ref before fallthru to MDS
-SQUASHME: pnfsblock: get rid of vmap and deviceid->area structure
-SQUASHME: pnfsblock: define module alias
-SQUASHME: pnfsblock: bl_find_get_extent optimization: mv break clause to end of loop
-SQUASHME: pnfsblock: test debug bit once for multiple dprintks
-SQUASHME: pnfsblock: typo
-SQUASHME: pnfsblock: get rid of unused leftovers from device mapping removal
+> ---
+>  fs/fuse/file.c |   27 +++++++++++++++++++++++----
+>  1 files changed, 23 insertions(+), 4 deletions(-)
+>
+> diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+> index 82a6646..f30a7c6 100644
+> --- a/fs/fuse/file.c
+> +++ b/fs/fuse/file.c
+> @@ -154,6 +154,18 @@ int fuse_do_open(struct fuse_conn *fc, u64 nodeid, struct file *file,
+>  		return err;
+>  	}
+>  
+> +        if (file->f_flags & O_DIRECT) {
 
-Andy Adamson (2):
-  pnfs: GETDEVICELIST
-  pnfs: cleanup_layoutcommit
+Please use tabs, not spaces.
 
-Benny Halevy (2):
-  pnfs: add set-clear layoutdriver interface
-  pnfsblock: use pageio_ops api
+Before submission you should run your patch through
+scripts/checkpatch.pl to filter out such problems.
 
-Fred (1):
-  pnfsblock: bl_find_get_extent
+> +                /* set fuse_direct_io_file_operations as fops in
+> +                   fuse_finish_open as though the FS enforced direct_io
+> +                */
+> +                outarg.open_flags |= FOPEN_DIRECT_IO;
 
-Fred Isaman (14):
-  pnfs: ask for layout_blksize and save it in nfs_server
-  pnfsblock: add blocklayout Kconfig option, Makefile, and stubs
-  pnfsblock: basic extent code
-  pnfsblock: lseg alloc and free
-  pnfsblock: merge extents
-  pnfsblock: call and parse getdevicelist
-  pnfsblock: xdr decode pnfs_block_layout4
-  pnfsblock: add extent manipulation functions
-  pnfsblock: merge rw extents
-  pnfsblock: encode_layoutcommit
-  pnfsblock: cleanup_layoutcommit
-  pnfsblock: bl_read_pagelist
-  pnfsblock: bl_write_pagelist
-  pnfsblock: note written INVAL areas for layoutcommit
+As I said earlier, I don't like this.  Rather the userspace filesystem
+should set FOPEN_DIRECT_IO on O_DIRECT if it wants to.
 
-Jim Rees (2):
-  pnfsblock: add device operations
-  pnfsblock: remove device operations
+And if the userspace filesystem has not set FOPEN_DIRECT_IO and O_DIRECT
+is set then we should return -EINVAL.
 
-Peng Tao (4):
-  NFS41: Let layoutcommit handle multiple segments
-  NFS41: save layoutcommit cred after first successful layoutget
-  pnfsblock: write_pagelist handle zero invalid extents
-  NFS41: Drop lseg ref before fallthru to MDS
+Thanks,
+Miklos
 
- fs/nfs/Kconfig                      |    8 +-
- fs/nfs/Makefile                     |    1 +
- fs/nfs/blocklayout/Makefile         |    5 +
- fs/nfs/blocklayout/blocklayout.c    | 1048 +++++++++++++++++++++++++++++++++++
- fs/nfs/blocklayout/blocklayout.h    |  208 +++++++
- fs/nfs/blocklayout/blocklayoutdev.c |  410 ++++++++++++++
- fs/nfs/blocklayout/blocklayoutdm.c  |  111 ++++
- fs/nfs/blocklayout/extents.c        |  943 +++++++++++++++++++++++++++++++
- fs/nfs/client.c                     |   11 +-
- fs/nfs/nfs4_fs.h                    |    2 +-
- fs/nfs/nfs4filelayout.c             |    2 +-
- fs/nfs/nfs4proc.c                   |   62 ++-
- fs/nfs/nfs4xdr.c                    |  230 +++++++-
- fs/nfs/pnfs.c                       |   86 ++-
- fs/nfs/pnfs.h                       |   30 +-
- include/linux/nfs.h                 |    2 +
- include/linux/nfs4.h                |    1 +
- include/linux/nfs_fs_sb.h           |    4 +-
- include/linux/nfs_xdr.h             |   17 +-
- 19 files changed, 3118 insertions(+), 63 deletions(-)
- create mode 100644 fs/nfs/blocklayout/Makefile
- create mode 100644 fs/nfs/blocklayout/blocklayout.c
- create mode 100644 fs/nfs/blocklayout/blocklayout.h
- create mode 100644 fs/nfs/blocklayout/blocklayoutdev.c
- create mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
- create mode 100644 fs/nfs/blocklayout/extents.c
-
--- 
-1.7.4.1
-
+> +
+> +                /* make VFS believe we don't support O_DIRECT till we
+> +                   implement a_ops->direct_IO
+> +                */
+> +                file->f_flags &= ~O_DIRECT;
+> +        }
+> +
+>  	if (isdir)
+>  		outarg.open_flags &= ~FOPEN_DIRECT_IO;
+>  
+> @@ -193,10 +205,6 @@ int fuse_open_common(struct inode *inode, struct file *file, bool isdir)
+>  	struct fuse_conn *fc = get_fuse_conn(inode);
+>  	int err;
+>  
+> -	/* VFS checks this, but only _after_ ->open() */
+> -	if (file->f_flags & O_DIRECT)
+> -		return -EINVAL;
+> -
+>  	err = generic_file_open(inode, file);
+>  	if (err)
+>  		return err;
+> @@ -2132,6 +2140,15 @@ int fuse_notify_poll_wakeup(struct fuse_conn *fc,
+>  	return 0;
+>  }
+>  
+> +
+> +static int fuse_check_flags(struct file *filp, int flags)
+> +{
+> +        if ((filp->f_flags ^ flags) & O_DIRECT)
+> +                return -EINVAL;
+> +	return 0;
+> +}
+> +
+> +
+>  static const struct file_operations fuse_file_operations = {
+>  	.llseek		= fuse_file_llseek,
+>  	.read		= do_sync_read,
+> @@ -2149,6 +2166,7 @@ static const struct file_operations fuse_file_operations = {
+>  	.unlocked_ioctl	= fuse_file_ioctl,
+>  	.compat_ioctl	= fuse_file_compat_ioctl,
+>  	.poll		= fuse_file_poll,
+> +        .check_flags    = fuse_check_flags,
+>  };
+>  
+>  static const struct file_operations fuse_direct_io_file_operations = {
+> @@ -2165,6 +2183,7 @@ static const struct file_operations fuse_direct_io_file_operations = {
+>  	.unlocked_ioctl	= fuse_file_ioctl,
+>  	.compat_ioctl	= fuse_file_compat_ioctl,
+>  	.poll		= fuse_file_poll,
+> +        .check_flags    = fuse_check_flags,
+>  	/* no splice_read */
+>  };
