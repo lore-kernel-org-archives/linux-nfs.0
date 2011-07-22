@@ -1,40 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:51723 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753875Ab1G0VJm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 17:09:42 -0400
-Message-ID: <4E307E6F.6090309@panasas.com>
-Date: Wed, 27 Jul 2011 14:09:03 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Jim Rees <rees@umich.edu>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
-        peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH v3 03/25] NFS41: Let layoutcommit handle multiple segments
-References: <1311792048-12551-1-git-send-email-rees@umich.edu> <1311792048-12551-4-git-send-email-rees@umich.edu> <4E306F84.6030808@panasas.com> <1311798159.25645.32.camel@lade.trondhjem.org> <4E30762E.4000508@panasas.com> <20110727205804.GA13698@merit.edu>
-In-Reply-To: <20110727205804.GA13698@merit.edu>
+Received: from smtp.ctxuk.citrix.com ([62.200.22.115]:28550 "EHLO
+	SMTP.EU.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754488Ab1GVOQH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jul 2011 10:16:07 -0400
+Subject: Re: [PATCH 08/13] net: convert drivers to paged frag API.
+From: Ian Campbell <Ian.Campbell@eu.citrix.com>
+To: David Miller <davem@davemloft.net>
+CC: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Chas Williams <chas@cmf.nrl.navy.mil>,
+        <linux-atm-general@lists.sourceforge.net>
+In-Reply-To: <20110722.071217.607687554920673786.davem@davemloft.net>
+References: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
+	 <1311340653-19336-8-git-send-email-ian.campbell@citrix.com>
+	 <20110722.071217.607687554920673786.davem@davemloft.net>
 Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 22 Jul 2011 15:16:04 +0100
+Message-ID: <1311344164.12772.78.camel@zakaz.uk.xensource.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 07/27/2011 01:58 PM, Jim Rees wrote:
->   But I thought for simplicity since this patchset was reviewed then, I've
->   tested with this patch and it works good as well. If you are going to
->   break things up, I can test with the minimal patches and report what is
->   need in Stable. (Is anyone working on it?)
+On Fri, 2011-07-22 at 15:12 +0100, David Miller wrote:
+> From: Ian Campbell <ian.campbell@citrix.com>
+> Date: Fri, 22 Jul 2011 14:17:28 +0100
 > 
-> We may have over-squashed that one for block layout.  I can dig up the
-> original patches if necessary, but I'm guessing you probably have them.
+> > -				put_dma(tx->index,eni_dev->dma,&j,(unsigned long)
+> > -				    skb_shinfo(skb)->frags[i].page + skb_shinfo(skb)->frags[i].page_offset,
+> > +				put_dma(tx->index,eni_dev->dma,&j,
+> > +				    (unsigned long)skb_frag_address(&skb_shinfo(skb)->frags[i]),
+> 
+> This is not an equivalent transformation.
+> 
+> skb_frag_address() does a page_address() on the frag page, but that is
+> not what the code was doing here previously.
+> 
+> It's possible the code was buggy, but you can't do a fix like that
+> amidst what is supposed to be a semantically NOP transformation.
 
-Please do. Because by now I'm confused. the first I discovered it was
-by git diff of a branch that worked. I lost tracked of where the code
-was originated from.
+Ouch, you are absolutely right, I didn't spot that, sorry.
 
-But Trond just for simplicity sake can't we just submit the patch as is.
-It is all related to layoutcommit breakage and it is all bits that we
-eventually need. both objects and blocks (and files when they do segments).
-I don't think it is that "too bloated" that it can't be sent to stable.
-What are the risks you are anticipating?
+The original code does look pretty bogus though, indexing off a struct
+page * like that -- CC'ing the ATM maintainer + list.
 
-Thanks
-Boaz
+Ian.
+
