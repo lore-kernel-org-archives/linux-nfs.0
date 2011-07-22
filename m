@@ -1,37 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:33376 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754345Ab1G0QRS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 12:17:18 -0400
-Received: by vws1 with SMTP id 1so1226773vws.19
-        for <linux-nfs@vger.kernel.org>; Wed, 27 Jul 2011 09:17:17 -0700 (PDT)
-Message-ID: <4E303A09.10906@marcanoonline.com>
-Date: Wed, 27 Jul 2011 11:47:13 -0430
-From: Robert Marcano <robert@marcanoonline.com>
-To: linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 / POSIX ACL mapping bug?
-References: <4E2ED2A0.4030401@marcanoonline.com> <20110727154736.GB974@fieldses.org>
-In-Reply-To: <20110727154736.GB974@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from smtp.ctxuk.citrix.com ([62.200.22.115]:40077 "EHLO
+	SMTP.EU.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751418Ab1GVOST (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jul 2011 10:18:19 -0400
+Subject: Re: [PATCH/RFC v2 0/13] enable SKB paged fragment lifetime
+ visibility
+From: Ian Campbell <Ian.Campbell@eu.citrix.com>
+To: David Miller <davem@davemloft.net>
+CC: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <20110722.071349.1486529438674839197.davem@davemloft.net>
+References: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
+	 <20110722.071349.1486529438674839197.davem@davemloft.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 22 Jul 2011 15:18:16 +0100
+Message-ID: <1311344296.12772.80.camel@zakaz.uk.xensource.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 07/27/2011 11:17 AM, J. Bruce Fields wrote:
-> On Tue, Jul 26, 2011 at 10:13:44AM -0430, Robert Marcano wrote:
-...
->> Is this normal or a bug?, My interpretation is that even that the
->> mapping of the ACLs is not 100% perfect this simple example should
->> not be a problem. Is it impossible using NFS to create a shared
->> directory for a group of users?
->
-> Without looking at your example carefully, it sounds like the same
-> problem as discussed here:
->
-> 	http://marc.info/?t=123739823200003&r=1&w=2
+On Fri, 2011-07-22 at 15:13 +0100, David Miller wrote:
+> Well, Ian, because you put all of these "struct page *" MM layer
+> const changes in here I can't just apply this series once you
+> get it ready enough from a networking perspective.
+> 
+> Why not do the const crap later, so it can be done independently
+> of these changes and not be a dependency upon them?
 
-Thanks, exactly the same problem, current user umask getting in the way 
-of ACL inheritance, looks like the answers is that this is currently not 
-possible because the umask is applied client side and the NFSv4 protocol 
-does not help to send that info to the server. No workaround available 
-(mount option or something like that)
+Initially it was to help me find locations which needed consideration
+(since it caused build failures) but I can flip it round now, sure.
+
+> I know you want to pass const page structs down as far as possible,
+> but that can wait for later, make the networking bits work on
+> non-const pointers for now.
+
+Will do.
+
+Ian.
+
