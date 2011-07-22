@@ -1,79 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:2978 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755182Ab1G0VAH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 17:00:07 -0400
-Subject: Re: [PATCH v3 06/25] pnfs: cleanup_layoutcommit
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Date: Wed, 27 Jul 2011 16:59:48 -0400
-In-Reply-To: <4E307839.4020609@panasas.com>
-References: <1311792048-12551-1-git-send-email-rees@umich.edu>
-			 <1311792048-12551-7-git-send-email-rees@umich.edu>
-		 <1311796389.25645.20.camel@lade.trondhjem.org>
-		 <4E3072F3.7090802@panasas.com>
-	 <1311798322.25645.35.camel@lade.trondhjem.org>
-	 <4E307839.4020609@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1311800388.25645.48.camel@lade.trondhjem.org>
+Received: from smtp02.citrix.com ([66.165.176.63]:36190 "EHLO
+	SMTP02.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754362Ab1GVNRx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jul 2011 09:17:53 -0400
+From: Ian Campbell <ian.campbell@citrix.com>
+To: netdev@vger.kernel.org, linux-nfs@vger.kernel.org
+CC: Ian Campbell <ian.campbell@citrix.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
+        "Pekka Savola (ipv6)" <pekkas@netcore.fi>,
+        James Morris <jmorris@namei.org>,
+        Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
+        Patrick McHardy <kaber@trash.net>
+Subject: [PATCH 06/13] net: ipv6: convert to SKB frag APIs
+Date: Fri, 22 Jul 2011 14:17:26 +0100
+Message-ID: <1311340653-19336-6-git-send-email-ian.campbell@citrix.com>
+In-Reply-To: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
+References: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-07-27 at 13:42 -0700, Boaz Harrosh wrote: 
-> On 07/27/2011 01:25 PM, Trond Myklebust wrote:
-> > On Wed, 2011-07-27 at 13:20 -0700, Boaz Harrosh wrote: 
-> >> On 07/27/2011 12:53 PM, Trond Myklebust wrote:
-> >>>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> >>>> index bddd8b9..f271425 100644
-> >>>> --- a/fs/nfs/pnfs.h
-> >>>> +++ b/fs/nfs/pnfs.h
-> >>>> @@ -113,6 +113,9 @@ struct pnfs_layoutdriver_type {
-> >>>>  				     struct xdr_stream *xdr,
-> >>>>  				     const struct nfs4_layoutreturn_args *args);
-> >>>>  
-> >>>> +	void (*cleanup_layoutcommit) (struct pnfs_layout_hdr *layoutid,
-> >>>> +				      struct nfs4_layoutcommit_data *data);
-> >>>> +
-> >>>>  	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
-> >>>>  				     struct xdr_stream *xdr,
-> >>>>  				     const struct nfs4_layoutcommit_args *args);
-> >>>
-> >>> This really needs to go. We should have
-> >>>
-> >>>       int (*layoutcommit)()...
-> >>>
-> >>> instead of 'encode' and 'cleanup' methods...
-> >>>
-> >>
-> >> Theoretically it is not possible because the blocks-layout protocol mandates
-> >> different handling depending on the "error" response from the Server which
-> >> will be received on RPC done.
-> > 
-> > ???? If the blocks code is in charge of actually doing the RPC call, why
-> > would it not be able to perform its own error handling?
-> > 
-> 
-> Is it? I thought it was the Generic layer that was Initiating the layoutcommit
-> (From the pnfs_layoutcommit_inode called from nfs_write_inode)
-> 
-> The LD only has a chance to encode the payload on rpc-setup and here the blocks
-> code needs cleanup depending on the return-status of rpc-done
-> 
-> [I do think that setup and done might be better names to reflect the rpc states)
+Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>
+Cc: "Pekka Savola (ipv6)" <pekkas@netcore.fi>
+Cc: James Morris <jmorris@namei.org>
+Cc: Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>
+Cc: Patrick McHardy <kaber@trash.net>
+Cc: netdev@vger.kernel.org
+---
+ net/ipv6/ip6_output.c |    8 +++++---
+ 1 files changed, 5 insertions(+), 3 deletions(-)
 
-I'm suggesting replacing the version in the generic layer with
-per-layout-type variants. When the only thing that is common between the
-3 variants is a couple of lines of xdr, then it doesn't make sense IMO
-to try to share.
-
+diff --git a/net/ipv6/ip6_output.c b/net/ipv6/ip6_output.c
+index 9d4b165..fdd4f61 100644
+--- a/net/ipv6/ip6_output.c
++++ b/net/ipv6/ip6_output.c
+@@ -1441,14 +1441,14 @@ alloc_new_skb:
+ 			if (page && (left = PAGE_SIZE - off) > 0) {
+ 				if (copy >= left)
+ 					copy = left;
+-				if (page != frag->page) {
++				if (page != skb_frag_page(frag)) {
+ 					if (i == MAX_SKB_FRAGS) {
+ 						err = -EMSGSIZE;
+ 						goto error;
+ 					}
+-					get_page(page);
+ 					skb_fill_page_desc(skb, i, page, sk->sk_sndmsg_off, 0);
+ 					frag = &skb_shinfo(skb)->frags[i];
++					__skb_frag_ref(frag);
+ 				}
+ 			} else if(i < MAX_SKB_FRAGS) {
+ 				if (copy > PAGE_SIZE)
+@@ -1461,13 +1461,15 @@ alloc_new_skb:
+ 				sk->sk_sndmsg_page = page;
+ 				sk->sk_sndmsg_off = 0;
+ 
++				/* XXX no ref ? */
+ 				skb_fill_page_desc(skb, i, page, 0, 0);
+ 				frag = &skb_shinfo(skb)->frags[i];
+ 			} else {
+ 				err = -EMSGSIZE;
+ 				goto error;
+ 			}
+-			if (getfrag(from, page_address(frag->page)+frag->page_offset+frag->size, offset, copy, skb->len, skb) < 0) {
++			if (getfrag(from, skb_frag_address(frag)+frag->size,
++				    offset, copy, skb->len, skb) < 0) {
+ 				err = -EFAULT;
+ 				goto error;
+ 			}
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.2.5
 
