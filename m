@@ -1,45 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:42040 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754541Ab1G0LC4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 07:02:56 -0400
-Subject: [PATCH 2/3] Remove check for a 32-bit cookie in nfsd4_readdir()
-To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
-        adilger@whamcloud.com, tytso@mit.edu
-Date: Wed, 27 Jul 2011 13:02:54 +0200
-Message-ID: <20110727110254.204979.34074.stgit@localhost.localdomain>
-In-Reply-To: <20110727110148.204979.49551.stgit@localhost.localdomain>
-References: <20110727110148.204979.49551.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:16694 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754877Ab1GVSjS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jul 2011 14:39:18 -0400
+Subject: Re: [PATCH 13/13] sunrpc: use SKB fragment destructors to delay
+ completion until page is released by network stack.
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Ian Campbell <ian.campbell@citrix.com>
+Cc: netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>, Neil Brown <neilb@suse.de>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Date: Fri, 22 Jul 2011 14:39:16 -0400
+In-Reply-To: <1311340653-19336-13-git-send-email-ian.campbell@citrix.com>
+References: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
+	 <1311340653-19336-13-git-send-email-ian.campbell@citrix.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1311359956.13553.8.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Fan Yong <yong.fan@whamcloud.com>  noticed simply setting
-O_64BITHASH wouldn't work with nfsd v4, as
-nfsd4_readdir() checks for a 32 bit cookie. However, according to RFC 3530
-cookies have a 64 bit type and it is also defined as u64
-'struct nfsd4_readdir'.
-So remove the test for >32-bit values.
+On Fri, 2011-07-22 at 14:17 +0100, Ian Campbell wrote: 
+> This prevents an issue where an ACK is delayed, a retransmit is queued (either
+> at the RPC or TCP level) and the ACK arrives before the retransmission hits the
+> wire. If this happens to an NFS WRITE RPC then the write() system call
+> completes and the userspace process can continue, potentially modifying data
+> referenced by the retransmission before the retransmission occurs.
+> 
+> Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
+> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: "David S. Miller" <davem@davemloft.net>
+> Cc: Neil Brown <neilb@suse.de>
+> Cc: "J. Bruce Fields" <bfields@fieldses.org>
+> Cc: linux-nfs@vger.kernel.org
+> Cc: netdev@vger.kernel.org
+> [since v1:
+>   Push down from NFS layer into RPM layer
+> ]
+> ---
+>  include/linux/sunrpc/xdr.h  |    2 ++
+>  include/linux/sunrpc/xprt.h |    5 ++++-
+>  net/sunrpc/clnt.c           |   27 ++++++++++++++++++++++-----
+>  net/sunrpc/svcsock.c        |    2 +-
+>  net/sunrpc/xprt.c           |   13 +++++++++++++
+>  net/sunrpc/xprtsock.c       |    2 +-
+>  6 files changed, 43 insertions(+), 8 deletions(-)
 
-Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
----
- fs/nfsd/nfs4proc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+This looks good to me. Thanks, Ian!
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 3a6dbd7..f7799d3 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -682,7 +682,7 @@ nfsd4_readdir(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	readdir->rd_bmval[1] &= nfsd_suppattrs1(cstate->minorversion);
- 	readdir->rd_bmval[2] &= nfsd_suppattrs2(cstate->minorversion);
- 
--	if ((cookie > ~(u32)0) || (cookie == 1) || (cookie == 2) ||
-+	if ((cookie == 1) || (cookie == 2) ||
- 	    (cookie == 0 && memcmp(readdir->rd_verf.data, zeroverf.data, NFS4_VERIFIER_SIZE)))
- 		return nfserr_bad_cookie;
- 
+Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
