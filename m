@@ -1,181 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:43460 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752108Ab1G2PzN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 11:55:13 -0400
-From: Jim Rees <rees@umich.edu>
+Received: from fieldses.org ([174.143.236.118]:39423 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751599Ab1GVBzH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Jul 2011 21:55:07 -0400
+Date: Thu, 21 Jul 2011 21:55:03 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v5 16/27] pnfsblock: merge extents
-Date: Fri, 29 Jul 2011 11:54:41 -0400
-Message-Id: <1311954892-22038-17-git-send-email-rees@umich.edu>
-In-Reply-To: <1311954892-22038-1-git-send-email-rees@umich.edu>
-References: <1311954892-22038-1-git-send-email-rees@umich.edu>
+Cc: Steve Dickson <steved@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>, tom@ogc.us,
+        tmtalpey@gmail.com
+Subject: Re: [PATCH] RDMA: Increasing RPCRDMA_MAX_DATA_SEGS
+Message-ID: <20110722015503.GA4749@fieldses.org>
+References: <1311270542-2021-1-git-send-email-steved@redhat.com>
+ <20110721214106.GB3341@fieldses.org>
+ <1311298924.29521.2.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1311298924.29521.2.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+On Thu, Jul 21, 2011 at 09:42:04PM -0400, Trond Myklebust wrote:
+> On Thu, 2011-07-21 at 17:41 -0400, J. Bruce Fields wrote: 
+> > On Thu, Jul 21, 2011 at 01:49:02PM -0400, Steve Dickson wrote:
+> > > Our performance team has noticed that increasing
+> > > RPCRDMA_MAX_DATA_SEGS from 8 to 64 significantly
+> > > increases throughput when using the RDMA transport.
+> > 
+> > The main risk that I can see being that we have on the stack in two
+> > places:
+> > 
+> > 	rpcrdma_register_fmr_external(struct rpcrdma_mr_seg *seg, ...
+> > 	{
+> > 		...
+> > 		u64 physaddrs[RPCRDMA_MAX_DATA_SEGS];
+> > 
+> > 	rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg, ...
+> > 	{
+> > 		...
+> > 		struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS]; 
+> > 
+> > Where ip_phys_buf is 16 bytes.
+> > 
+> > So that's 512 bytes in the first case, 1024 in the second.  This is
+> > called from rpciod--what are our rules about allocating memory from
+> > rpciod?
+> 
+> Is that allocated on the stack? We should always try to avoid 1024-byte
+> allocations on the stack, since that eats up a full 1/8th (or 1/4 in the
+> case of 4k stacks) of the total stack space.
 
-Replace a stub, so that extents underlying the layouts are properly
-added, merged, or ignored as necessary.
+Right, it's on the stack, so I was wondering what we should do
+instead....
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfsblock: delete the new node before put it]
-Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfs/blocklayout/blocklayout.h |   13 +++++
- fs/nfs/blocklayout/extents.c     |  106 ++++++++++++++++++++++++++++++++++++++
- 2 files changed, 119 insertions(+), 0 deletions(-)
+> If, OTOH, that memory is being allocated dynamically, then the rule is
+> "don't let rpciod sleep".
 
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 744c7a5..4411f77 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -80,6 +80,14 @@ enum extentclass4 {
- 	EXTENT_LISTS    = 2,
- };
- 
-+static inline int choose_list(enum exstate4 state)
-+{
-+	if (state == PNFS_BLOCK_READ_DATA || state == PNFS_BLOCK_NONE_DATA)
-+		return RO_EXTENT;
-+	else
-+		return RW_EXTENT;
-+}
-+
- struct pnfs_block_layout {
- 	struct pnfs_layout_hdr bl_layout;
- 	struct pnfs_inval_markings bl_inval; /* tracks INVAL->RW transition */
-@@ -137,5 +145,10 @@ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
- /* blocklayoutdm.c */
- void free_block_dev(struct pnfs_block_dev *bdev);
- 
-+/* extents.c */
- void bl_put_extent(struct pnfs_block_extent *be);
-+struct pnfs_block_extent *alloc_extent(void);
-+int bl_add_merge_extent(struct pnfs_block_layout *bl,
-+			 struct pnfs_block_extent *new);
-+
- #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 44c3364..3591084 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -95,3 +95,109 @@ void print_elist(struct list_head *list)
- 	}
- 	dprintk("****************\n");
- }
-+
-+static inline int
-+extents_consistent(struct pnfs_block_extent *old, struct pnfs_block_extent *new)
-+{
-+	/* Note this assumes new->be_f_offset >= old->be_f_offset */
-+	return (new->be_state == old->be_state) &&
-+		((new->be_state == PNFS_BLOCK_NONE_DATA) ||
-+		 ((new->be_v_offset - old->be_v_offset ==
-+		   new->be_f_offset - old->be_f_offset) &&
-+		  new->be_mdev == old->be_mdev));
-+}
-+
-+/* Adds new to appropriate list in bl, modifying new and removing existing
-+ * extents as appropriate to deal with overlaps.
-+ *
-+ * See bl_find_get_extent for list constraints.
-+ *
-+ * Refcount on new is already set.  If end up not using it, or error out,
-+ * need to put the reference.
-+ *
-+ * bl->bl_ext_lock is held by caller.
-+ */
-+int
-+bl_add_merge_extent(struct pnfs_block_layout *bl,
-+		     struct pnfs_block_extent *new)
-+{
-+	struct pnfs_block_extent *be, *tmp;
-+	sector_t end = new->be_f_offset + new->be_length;
-+	struct list_head *list;
-+
-+	dprintk("%s enter with be=%p\n", __func__, new);
-+	print_bl_extent(new);
-+	list = &bl->bl_extents[choose_list(new->be_state)];
-+	print_elist(list);
-+
-+	/* Scan for proper place to insert, extending new to the left
-+	 * as much as possible.
-+	 */
-+	list_for_each_entry_safe(be, tmp, list, be_node) {
-+		if (new->be_f_offset < be->be_f_offset)
-+			break;
-+		if (end <= be->be_f_offset + be->be_length) {
-+			/* new is a subset of existing be*/
-+			if (extents_consistent(be, new)) {
-+				dprintk("%s: new is subset, ignoring\n",
-+					__func__);
-+				bl_put_extent(new);
-+				return 0;
-+			} else
-+				goto out_err;
-+		} else if (new->be_f_offset <=
-+				be->be_f_offset + be->be_length) {
-+			/* new overlaps or abuts existing be */
-+			if (extents_consistent(be, new)) {
-+				/* extend new to fully replace be */
-+				new->be_length += new->be_f_offset -
-+						  be->be_f_offset;
-+				new->be_f_offset = be->be_f_offset;
-+				new->be_v_offset = be->be_v_offset;
-+				dprintk("%s: removing %p\n", __func__, be);
-+				list_del(&be->be_node);
-+				bl_put_extent(be);
-+			} else if (new->be_f_offset !=
-+				   be->be_f_offset + be->be_length)
-+				goto out_err;
-+		}
-+	}
-+	/* Note that if we never hit the above break, be will not point to a
-+	 * valid extent.  However, in that case &be->be_node==list.
-+	 */
-+	list_add_tail(&new->be_node, &be->be_node);
-+	dprintk("%s: inserting new\n", __func__);
-+	print_elist(list);
-+	/* Scan forward for overlaps.  If we find any, extend new and
-+	 * remove the overlapped extent.
-+	 */
-+	be = list_prepare_entry(new, list, be_node);
-+	list_for_each_entry_safe_continue(be, tmp, list, be_node) {
-+		if (end < be->be_f_offset)
-+			break;
-+		/* new overlaps or abuts existing be */
-+		if (extents_consistent(be, new)) {
-+			if (end < be->be_f_offset + be->be_length) {
-+				/* extend new to fully cover be */
-+				end = be->be_f_offset + be->be_length;
-+				new->be_length = end - new->be_f_offset;
-+			}
-+			dprintk("%s: removing %p\n", __func__, be);
-+			list_del(&be->be_node);
-+			bl_put_extent(be);
-+		} else if (end != be->be_f_offset) {
-+			list_del(&new->be_node);
-+			goto out_err;
-+		}
-+	}
-+	dprintk("%s: after merging\n", __func__);
-+	print_elist(list);
-+	/* FIXME - The per-list consistency checks have all been done,
-+	 * should now check cross-list consistency.
-+	 */
-+	return 0;
-+
-+ out_err:
-+	bl_put_extent(new);
-+	return -EIO;
-+}
--- 
-1.7.4.1
+OK, so, looking around, the buf_alloc methods might provide examples to
+follow for dynamic allocation here?
 
+--b.
