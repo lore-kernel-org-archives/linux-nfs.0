@@ -1,54 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet15.oracle.com ([141.146.126.227]:65426 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751404Ab1GGOFA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jul 2011 10:05:00 -0400
-Subject: Re: NFS/TCP timeout sequence
-Content-Type: text/plain; charset=utf-8
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1310046439.3863.30.camel@lade.trondhjem.org>
-Date: Thu, 7 Jul 2011 10:04:47 -0400
-Cc: Max Matveev <makc@redhat.com>, linux-nfs@vger.kernel.org
-Message-Id: <5F749FAD-94B0-4D9D-84F6-F7D9662A1CF6@oracle.com>
-References: <19989.27202.793003.725608@regina.usersys.redhat.com> <1310046439.3863.30.camel@lade.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from smtp.citrix.com ([66.165.176.89]:23859 "EHLO SMTP.CITRIX.COM"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754368Ab1GVNRz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Jul 2011 09:17:55 -0400
+From: Ian Campbell <ian.campbell@citrix.com>
+To: netdev@vger.kernel.org, linux-nfs@vger.kernel.org
+CC: Ian Campbell <ian.campbell@citrix.com>,
+        "David S. Miller" <davem@davemloft.net>
+Subject: [PATCH 07/13] net: xfrm: convert to SKB frag APIs
+Date: Fri, 22 Jul 2011 14:17:27 +0100
+Message-ID: <1311340653-19336-7-git-send-email-ian.campbell@citrix.com>
+In-Reply-To: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
+References: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: netdev@vger.kernel.org
+---
+ net/xfrm/xfrm_ipcomp.c |   11 +++++++----
+ 1 files changed, 7 insertions(+), 4 deletions(-)
 
-On Jul 7, 2011, at 9:47 AM, Trond Myklebust wrote:
-
-> On Thu, 2011-07-07 at 18:11 +1000, Max Matveev wrote: 
->> I've had to look at the way NFS/TCP does its timeouts and backoff
->> and it does not make a lot of sense to me: according to the
->> following paragram from nfs(5) on Fedora 14 (I'm using Fedora 14
->> because it has more text then the same page in nfs-utils):
->> 
->>      timeo=n    The time (in tenths of a second) the  NFS  client  waits
->>                 for a response before it retries an NFS request. If this
->>                 option is not specified, requests are retried  every  60
->>                 seconds  for NFS over TCP.  The NFS client does not per‐
->>                 form any kind of timeout backoff for NFS over TCP.
->> 
->> but if I try the mount with timeo=20,retrans=7 then I'm getting
->> retransmits which are 2, 4, 6, 8, 2, 4, 6, 8 seconds apart, i.e.
->> there is a) linear backoff and b) the backoff is not long enough to
->> let the complete sequence of 7 retransmits run its course.
-> 
-> Sigh... Firstly, 2 second timeouts are complete lunacy when using a
-> protocol that guarantees reliable delivery, such as TCP does. Anyone who
-> tries it deserves exactly what they get: poor unreliable performance.
-
-We shouldn't allow such low settings.
-
-> Secondly, the _other_ fix for this problem is to fix the documentation.
-
-How is the documentation incorrect?  We do not want any kind of back-off for stream transports.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/net/xfrm/xfrm_ipcomp.c b/net/xfrm/xfrm_ipcomp.c
+index fc91ad7..f781b9a 100644
+--- a/net/xfrm/xfrm_ipcomp.c
++++ b/net/xfrm/xfrm_ipcomp.c
+@@ -70,26 +70,29 @@ static int ipcomp_decompress(struct xfrm_state *x, struct sk_buff *skb)
+ 
+ 	while ((scratch += len, dlen -= len) > 0) {
+ 		skb_frag_t *frag;
++		struct page *page;
+ 
+ 		err = -EMSGSIZE;
+ 		if (WARN_ON(skb_shinfo(skb)->nr_frags >= MAX_SKB_FRAGS))
+ 			goto out;
+ 
+ 		frag = skb_shinfo(skb)->frags + skb_shinfo(skb)->nr_frags;
+-		frag->page = alloc_page(GFP_ATOMIC);
++		page = alloc_page(GFP_ATOMIC);
+ 
+ 		err = -ENOMEM;
+-		if (!frag->page)
++		if (!page)
+ 			goto out;
+ 
++		__skb_frag_set_page(frag, page);
++
+ 		len = PAGE_SIZE;
+ 		if (dlen < len)
+ 			len = dlen;
+ 
+-		memcpy(page_address(frag->page), scratch, len);
+-
+ 		frag->page_offset = 0;
+ 		frag->size = len;
++		memcpy(skb_frag_address(frag), scratch, len);
++
+ 		skb->truesize += len;
+ 		skb->data_len += len;
+ 		skb->len += len;
+-- 
+1.7.2.5
 
