@@ -1,59 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:53311 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752732Ab1GGQ0M (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jul 2011 12:26:12 -0400
-Message-Id: <cover.1310055433.git.rees@umich.edu>
-Subject: [PATCH 0/6] pnfs block layout updates
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Date: Thu,  7 Jul 2011 12:26:06 -0400
-From: Jim Rees <rees@umich.edu>
+Received: from fieldses.org ([174.143.236.118]:49376 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753084Ab1GVRQJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Jul 2011 13:16:09 -0400
+Date: Fri, 22 Jul 2011 13:16:05 -0400
+To: Jeff Layton <jlayton@redhat.com>
+Cc: misch@schwartzkopff.org,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 grace time
+Message-ID: <20110722171605.GC7670@fieldses.org>
+References: <201107211540.05673.misch@schwartzkopff.org>
+ <20110722070742.776ae99d@tlielax.poochiereds.net>
+ <201107221324.22512.misch@schwartzkopff.org>
+ <20110722074108.2213498d@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110722074108.2213498d@tlielax.poochiereds.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This patch set applies to the pnfs-block branch of your git repo.  Together
-with the previous 34 patch set this adds the pnfs block layout client to
-pnfs.  I am soliciting comments on this set.  The final patch set will
-differ in three small ways:
+On Fri, Jul 22, 2011 at 07:41:08AM -0400, Jeff Layton wrote:
+> On Fri, 22 Jul 2011 13:24:22 +0200
+> Michael Schwartzkopff <misch@schwartzkopff.org> wrote:
+> 
+> > > On Thu, 21 Jul 2011 15:40:05 +0200
+> > > 
+> > > Michael Schwartzkopff <misch@schwartzkopff.org> wrote:
+> > > > Hi,
+> > > > 
+> > > > setting up a linux NFS server cluster I experience a strange problem
+> > > > during a failover. A client can access a file only after 60 to 90
+> > > > seconds. On the line I see a NFS4ERR_GRACE from the server to the
+> > > > client.
+> > > > 
+> > > > I already set the /proc/fs/nfsd/nfsv4leastime to 10.
+> > > > 
+> > > > Any other idea?
+> > > > 
+> > > > For the tests I have a simple setup:
+> > > > 
+> > > > One host with a simple script that simulates failover:
+> > > > 
+> > > > #!/bin/bash
+> > > > 
+> > > > ip a d 1.2.3.4/24 dev eth0
+> > > > exportfs -u *:/srv/nfs/home
+> > > > exportfs -u *:/srv/nfs
+> > > > /etc/init.d/nfsserver stop
+> > > > #
+> > > > /etc/init.d/nfsserver start
+> > > > exportfs -o fsid=0,rw,crossmnt,no_root_squash *:/srv/nfs
+> > > > exportfs -o fsid=1000,rw,mountpoint,no_root_squash *:/srv/nfs/home
+> > > > ip a a 1.2.3.4/24 dev eth0
+> > > 
+> > > This is normal. The grace period is there to allow clients to reclaim
+> > > their state without other clients racing in and grabbing their locks on
+> > > the new server, etc.
+> > 
+> > Ok. But this is the same client that cannot its own data.
+> >  
+> 
+> That may be the case in your situation, but the protocol has to allow for that.
 
-1. Removal of some debug printks
-2. Removal of the DEVONLY patch
-3. Fix up some signed-offs
+We could be a bit smarter here:
 
-I believe this set addresses the comments since the previous patch set,
-including rewriting the I/O path to eliminate write_begin/end and defer
-layoutget to flush time.
+	- Use the NFSv4.1 RECLAIM_COMPLETE to identify when all clients
+	  have reclaimed state, if possible.
+	- Skip the grace period when we *know* no clients held open
+	  state on the previous boot.  (But we'd have to think about
+	  v2/v3 clients: the kernel doesn't know about them.  Possibly
+	  we can assume they don't use share locks, hence don't need to
+	  wait on them for v4 opens.  But we *do* actually have share lock
+	  procedures in NLM--I wonder if anyone uses them?  They aren't
+	  consistent with v4 opens, argh.)
 
-This set is also available on the for-benny branch of
-git://citi.umich.edu/projects/linux-pnfs-blk.git .
+> > > You can play with /proc/fs/nfsd/nfsv4gracetime too but I'd be very
+> > > leery of setting that too low. It should never be lower than the
+> > > previous leasetime (see the comments on write_gracetime in the kernel).
+> > 
+> > I did already set this to 10 seconds without success. The client still has to 
+> > wait 60 seconds to access its data.
+> > 
+> 
+> You may need to restart the server and remount the clients in order for it to work.
 
-Jim Rees (2):
-  get rid of deprecated xdr macros
-  reindent
+Note /proc/sys/fs/nfs/nlm_grace_period needs to be shrunk too.
 
-Peng Tao (4):
-  SQUASHME: pnfs-block: Remove write_begin/end hooks
-  SQUASHME: pnfs-block: skip sectors already initialized
-  SQUASHME: pnfs: teach layoutcommit handle multiple segments
-  pnfs-block: mark IO error with NFS_LAYOUT_{RW|RO}_FAILED
+--b.
 
- fs/nfs/blocklayout/blocklayout.c    |  716 ++++++++++++++++-------------------
- fs/nfs/blocklayout/blocklayout.h    |   51 +---
- fs/nfs/blocklayout/blocklayoutdev.c |   30 ++-
- fs/nfs/blocklayout/extents.c        |  115 +++---
- fs/nfs/file.c                       |   26 +--
- fs/nfs/nfs4filelayout.c             |    2 +-
- fs/nfs/nfs4proc.c                   |    8 +-
- fs/nfs/pnfs.c                       |  101 ++----
- fs/nfs/pnfs.h                       |  119 +------
- fs/nfs/write.c                      |   12 +-
- include/linux/nfs_fs.h              |    3 +-
- include/linux/nfs_xdr.h             |    2 +-
- 12 files changed, 459 insertions(+), 726 deletions(-)
-
--- 
-1.7.4.1
-
+> 
+> > By the way: Is there a nice way to set this during startup of the nfsserver, 
+> > i.e. a mount option for nfsd?
+> > 
+> 
+> Not currently, but a module parm for this would seem to make more sense
+> than this file in /proc.
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
