@@ -1,47 +1,234 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:38196
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751838Ab1G0Ura (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 16:47:30 -0400
-Date: Wed, 27 Jul 2011 16:47:24 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: R?diger Meier <sweet_f_a@gmx.de>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Bryan Schumaker <bjschuma@netapp.com>,
-        Justin Piszcz <jpiszcz@lucidpixels.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
-Message-ID: <20110727204724.GA21314@infradead.org>
-References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan>
- <4E306D09.5030704@netapp.com>
- <20110727200240.GA16054@infradead.org>
- <201107272227.03265.sweet_f_a@gmx.de>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <201107272227.03265.sweet_f_a@gmx.de>
+Received: from smtp02.citrix.com ([66.165.176.63]:4118 "EHLO SMTP02.CITRIX.COM"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754411Ab1GVNSM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Jul 2011 09:18:12 -0400
+From: Ian Campbell <ian.campbell@citrix.com>
+To: netdev@vger.kernel.org, linux-nfs@vger.kernel.org
+CC: Ian Campbell <ian.campbell@citrix.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>, Neil Brown <neilb@suse.de>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH 13/13] sunrpc: use SKB fragment destructors to delay completion until page is released by network stack.
+Date: Fri, 22 Jul 2011 14:17:33 +0100
+Message-ID: <1311340653-19336-13-git-send-email-ian.campbell@citrix.com>
+In-Reply-To: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
+References: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Jul 27, 2011 at 10:26:55PM +0200, R?diger Meier wrote:
-> At the time I've started this thread
-> http://comments.gmane.org/gmane.linux.nfs/40863
-> I had the feeling that the readdir cache changings in 2.6.37 have 
-> something to do with these loop problems.
-> 
-> After that thread I've accepted that's a general problem with 
-> ext4/dirindex and nfs but seeing it again on xfs with just 5000 files 
-> I'm in doubt again.
+This prevents an issue where an ACK is delayed, a retransmit is queued (either
+at the RPC or TCP level) and the ACK arrives before the retransmission hits the
+wire. If this happens to an NFS WRITE RPC then the write() system call
+completes and the userspace process can continue, potentially modifying data
+referenced by the retransmission before the retransmission occurs.
 
-Two separate issues.  For one thing the nfs code simply doesn't seem
-to handle changing directories very well, and one and a half the Linux
-NFS server might even send incoherent readdir output in a single
-protocol reply.
+Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: Neil Brown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Cc: netdev@vger.kernel.org
+[since v1:
+  Push down from NFS layer into RPM layer
+]
+---
+ include/linux/sunrpc/xdr.h  |    2 ++
+ include/linux/sunrpc/xprt.h |    5 ++++-
+ net/sunrpc/clnt.c           |   27 ++++++++++++++++++++++-----
+ net/sunrpc/svcsock.c        |    2 +-
+ net/sunrpc/xprt.c           |   13 +++++++++++++
+ net/sunrpc/xprtsock.c       |    2 +-
+ 6 files changed, 43 insertions(+), 8 deletions(-)
 
-Issue two is that the ext3/4 hashed directory format is too simply (not
-to say dumb) to provide a proper 32-bit linear value for the dirent
-d_off field.  It's not a complex task, and the first relatively simple
-generation of xfs btree directories couldn't handle it either.  The
-v2 directory format handles it fine, but at the cost of a much more
-complex codebase.
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index a20970e..172f81e 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -16,6 +16,7 @@
+ #include <asm/byteorder.h>
+ #include <asm/unaligned.h>
+ #include <linux/scatterlist.h>
++#include <linux/skbuff.h>
+ 
+ /*
+  * Buffer adjustment
+@@ -57,6 +58,7 @@ struct xdr_buf {
+ 			tail[1];	/* Appended after page data */
+ 
+ 	struct page **	pages;		/* Array of contiguous pages */
++	struct skb_frag_destructor *destructor;
+ 	unsigned int	page_base,	/* Start of page data */
+ 			page_len,	/* Length of page data */
+ 			flags;		/* Flags for data disposition */
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 81cce3b..0de6bc3 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -91,7 +91,10 @@ struct rpc_rqst {
+ 						/* A cookie used to track the
+ 						   state of the transport
+ 						   connection */
+-	
++	struct skb_frag_destructor destructor;	/* SKB paged fragment
++						 * destructor for
++						 * transmitted pages*/
++
+ 	/*
+ 	 * Partial send handling
+ 	 */
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 8c91415..1145a19 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -61,6 +61,7 @@ static void	call_reserve(struct rpc_task *task);
+ static void	call_reserveresult(struct rpc_task *task);
+ static void	call_allocate(struct rpc_task *task);
+ static void	call_decode(struct rpc_task *task);
++static void	call_complete(struct rpc_task *task);
+ static void	call_bind(struct rpc_task *task);
+ static void	call_bind_status(struct rpc_task *task);
+ static void	call_transmit(struct rpc_task *task);
+@@ -1114,6 +1115,8 @@ rpc_xdr_encode(struct rpc_task *task)
+ 			 (char *)req->rq_buffer + req->rq_callsize,
+ 			 req->rq_rcvsize);
+ 
++	req->rq_snd_buf.destructor = &req->destructor;
++
+ 	p = rpc_encode_header(task);
+ 	if (p == NULL) {
+ 		printk(KERN_INFO "RPC: couldn't encode RPC header, exit EIO\n");
+@@ -1277,6 +1280,7 @@ call_connect_status(struct rpc_task *task)
+ static void
+ call_transmit(struct rpc_task *task)
+ {
++	struct rpc_rqst *req = task->tk_rqstp;
+ 	dprint_status(task);
+ 
+ 	task->tk_action = call_status;
+@@ -1310,8 +1314,8 @@ call_transmit(struct rpc_task *task)
+ 	call_transmit_status(task);
+ 	if (rpc_reply_expected(task))
+ 		return;
+-	task->tk_action = rpc_exit_task;
+-	rpc_wake_up_queued_task(&task->tk_xprt->pending, task);
++	task->tk_action = call_complete;
++	skb_frag_destructor_unref(&req->destructor);
+ }
+ 
+ /*
+@@ -1384,7 +1388,8 @@ call_bc_transmit(struct rpc_task *task)
+ 		return;
+ 	}
+ 
+-	task->tk_action = rpc_exit_task;
++	task->tk_action = call_complete;
++	skb_frag_destructor_unref(&req->destructor);
+ 	if (task->tk_status < 0) {
+ 		printk(KERN_NOTICE "RPC: Could not send backchannel reply "
+ 			"error: %d\n", task->tk_status);
+@@ -1424,7 +1429,6 @@ call_bc_transmit(struct rpc_task *task)
+ 			"error: %d\n", task->tk_status);
+ 		break;
+ 	}
+-	rpc_wake_up_queued_task(&req->rq_xprt->pending, task);
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+@@ -1591,12 +1595,14 @@ call_decode(struct rpc_task *task)
+ 		return;
+ 	}
+ 
+-	task->tk_action = rpc_exit_task;
++	task->tk_action = call_complete;
+ 
+ 	if (decode) {
+ 		task->tk_status = rpcauth_unwrap_resp(task, decode, req, p,
+ 						      task->tk_msg.rpc_resp);
+ 	}
++	rpc_sleep_on(&req->rq_xprt->pending, task, NULL);
++	skb_frag_destructor_unref(&req->destructor);
+ 	dprintk("RPC: %5u call_decode result %d\n", task->tk_pid,
+ 			task->tk_status);
+ 	return;
+@@ -1611,6 +1617,17 @@ out_retry:
+ 	}
+ }
+ 
++/*
++ * 8.	Wait for pages to be released by the network stack.
++ */
++static void
++call_complete(struct rpc_task *task)
++{
++	struct rpc_rqst	*req = task->tk_rqstp;
++	dprintk("RPC: %5u call_complete result %d\n", task->tk_pid, task->tk_status);
++	task->tk_action = rpc_exit_task;
++}
++
+ static __be32 *
+ rpc_encode_header(struct rpc_task *task)
+ {
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index a80b1d3..40c2420 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -194,7 +194,7 @@ int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
+ 	while (pglen > 0) {
+ 		if (slen == size)
+ 			flags = 0;
+-		result = kernel_sendpage(sock, *ppage, NULL, base, size, flags);
++		result = kernel_sendpage(sock, *ppage, xdr->destructor, base, size, flags);
+ 		if (result > 0)
+ 			len += result;
+ 		if (result != size)
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index ce5eb68..62f52a3 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1017,6 +1017,16 @@ static inline void xprt_init_xid(struct rpc_xprt *xprt)
+ 	xprt->xid = net_random();
+ }
+ 
++static int xprt_complete_skb_pages(void *calldata)
++{
++	struct rpc_task *task = calldata;
++	struct rpc_rqst	*req = task->tk_rqstp;
++
++	dprintk("RPC: %5u completing skb pages\n", task->tk_pid);
++	rpc_wake_up_queued_task(&req->rq_xprt->pending, task);
++	return 0;
++}
++
+ static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
+ {
+ 	struct rpc_rqst	*req = task->tk_rqstp;
+@@ -1028,6 +1038,9 @@ static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
+ 	req->rq_xid     = xprt_alloc_xid(xprt);
+ 	req->rq_release_snd_buf = NULL;
+ 	xprt_reset_majortimeo(req);
++	atomic_set(&req->destructor.ref, 1);
++	req->destructor.destroy = &xprt_complete_skb_pages;
++	req->destructor.data = task;
+ 	dprintk("RPC: %5u reserved req %p xid %08x\n", task->tk_pid,
+ 			req, ntohl(req->rq_xid));
+ }
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index d027621..ca1643b 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -397,7 +397,7 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
+ 		remainder -= len;
+ 		if (remainder != 0 || more)
+ 			flags |= MSG_MORE;
+-		err = sock->ops->sendpage(sock, *ppage, NULL, base, len, flags);
++		err = sock->ops->sendpage(sock, *ppage, xdr->destructor, base, len, flags);
+ 		if (remainder == 0 || err != len)
+ 			break;
+ 		sent += err;
+-- 
+1.7.2.5
 
