@@ -1,216 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:58930 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755623Ab1GOR4d (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2011 13:56:33 -0400
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH (RESEND) 10/12] nfs: Bind to srcaddr in rpcb_create.
-Date: Fri, 15 Jul 2011 10:56:06 -0700
-Message-Id: <1310752568-21280-11-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
-References: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
+Received: from hub024-nj-1.exch024.serverdata.net ([206.225.165.116]:24402
+	"EHLO HUB024-nj-1.exch024.serverdata.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752247Ab1GVIn5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jul 2011 04:43:57 -0400
+From: Anand Avati <avati@gluster.com>
+To: <miklos@szeredi.hu>
+CC: <fuse-devel@lists.sourceforge.net>, <linux-fsdevel@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>, Anand Avati <avati@gluster.com>
+Subject: [PATCH 1/2] vfs: pass 'struct file *' as parameter to ->check_flags() methods
+Date: Fri, 22 Jul 2011 01:33:25 -0700
+Message-ID: <1311323606-15040-1-git-send-email-avati@gluster.com>
+In-Reply-To: <y>
+References: <y>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
+Along with corresponding changes in -
 
-This more properly clones the existing client connection
-settings, allowing rpc calls to take advantage of routing
-rules based on source IP addresses.
-
-Signed-off-by: Ben Greear <greearb@candelatech.com>
+- Documentation/
+- nfs
+- bad_inodes.c
+- fcntl.c
 ---
-:100644 100644 e45d2fb... 13dae70... M	net/sunrpc/rpcb_clnt.c
-:100644 100644 90c292e... 22841e1... M	net/sunrpc/sunrpc.h
-:100644 100644 37299c0... 72408c2... M	net/sunrpc/xprtsock.c
- net/sunrpc/rpcb_clnt.c |   28 ++++++++++++++++++++++++++--
- net/sunrpc/sunrpc.h    |   45 +++++++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/xprtsock.c  |   43 -------------------------------------------
- 3 files changed, 71 insertions(+), 45 deletions(-)
+ Documentation/filesystems/Locking |    2 +-
+ Documentation/filesystems/vfs.txt |    2 +-
+ fs/bad_inode.c                    |    2 +-
+ fs/fcntl.c                        |    2 +-
+ fs/nfs/file.c                     |    6 +++---
+ include/linux/fs.h                |    2 +-
+ 6 files changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index e45d2fb..13dae70 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -28,6 +28,7 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/sched.h>
- #include <linux/sunrpc/xprtsock.h>
-+#include "sunrpc.h"
- 
- #ifdef RPC_DEBUG
- # define RPCDBG_FACILITY	RPCDBG_BIND
-@@ -292,11 +293,13 @@ out:
+diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
+index 57d827d..9619841 100644
+--- a/Documentation/filesystems/Locking
++++ b/Documentation/filesystems/Locking
+@@ -426,7 +426,7 @@ prototypes:
+ 			loff_t *, int);
+ 	unsigned long (*get_unmapped_area)(struct file *, unsigned long,
+ 			unsigned long, unsigned long, unsigned long);
+-	int (*check_flags)(int);
++	int (*check_flags)(struct file *, int);
+ 	int (*flock) (struct file *, int, struct file_lock *);
+ 	ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, loff_t *,
+ 			size_t, unsigned int);
+diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
+index 88b9f55..442aefb 100644
+--- a/Documentation/filesystems/vfs.txt
++++ b/Documentation/filesystems/vfs.txt
+@@ -764,7 +764,7 @@ struct file_operations {
+ 	ssize_t (*sendfile) (struct file *, loff_t *, size_t, read_actor_t, void *);
+ 	ssize_t (*sendpage) (struct file *, struct page *, int, size_t, loff_t *, int);
+ 	unsigned long (*get_unmapped_area)(struct file *, unsigned long, unsigned long, unsigned long, unsigned long);
+-	int (*check_flags)(int);
++	int (*check_flags)(struct file *, int);
+ 	int (*flock) (struct file *, int, struct file_lock *);
+ 	ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, size_t, unsigned int);
+ 	ssize_t (*splice_read)(struct file *, struct pipe_inode_info *, size_t, unsigned int);
+diff --git a/fs/bad_inode.c b/fs/bad_inode.c
+index bfcb18f..c7eef18 100644
+--- a/fs/bad_inode.c
++++ b/fs/bad_inode.c
+@@ -120,7 +120,7 @@ static unsigned long bad_file_get_unmapped_area(struct file *file,
+ 	return -EIO;
  }
  
- static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
--				    size_t salen, int proto, u32 version)
-+				    size_t salen, int proto, u32 version,
-+				    struct sockaddr *srcaddr)
+-static int bad_file_check_flags(int flags)
++static int bad_file_check_flags(struct file *filp, int flags)
  {
- 	struct rpc_create_args args = {
- 		.net		= &init_net,
- 		.protocol	= proto,
-+		.saddress	= srcaddr,
- 		.address	= srvaddr,
- 		.addrsize	= salen,
- 		.servername	= hostname,
-@@ -601,11 +604,32 @@ void rpcb_getport_async(struct rpc_task *task)
- 	struct rpc_task	*child;
- 	struct sockaddr_storage addr;
- 	struct sockaddr *sap = (struct sockaddr *)&addr;
-+	struct sockaddr_storage srcaddr;
-+	struct sockaddr *srcaddra = NULL;
- 	size_t salen;
- 	int status;
-+	struct sock_xprt *sxprt;
- 
- 	clnt = rpcb_find_transport_owner(task->tk_client);
- 	xprt = clnt->cl_xprt;
-+	sxprt = container_of(xprt, struct sock_xprt, xprt);
-+
-+	/* We just want to bind to the IP, not the port */
-+	memset(&srcaddr, 0, sizeof(srcaddr));
-+	srcaddr.ss_family = sxprt->srcaddr.ss_family;
-+	if (sxprt->srcaddr.ss_family == AF_INET) {
-+		struct sockaddr_in *si = (struct sockaddr_in *)(&srcaddr);
-+		struct sockaddr_in *si2;
-+		si2 = (struct sockaddr_in *)(&sxprt->srcaddr);
-+		si->sin_addr.s_addr = si2->sin_addr.s_addr;
-+		srcaddra = (struct sockaddr *)(&srcaddr);
-+	} else if (sxprt->srcaddr.ss_family == AF_INET6) {
-+		struct sockaddr_in6 *si = (struct sockaddr_in6 *)(&srcaddr);
-+		struct sockaddr_in6 *si2;
-+		si2 = (struct sockaddr_in6 *)(&sxprt->srcaddr);
-+		memcpy(&si->sin6_addr, &si2->sin6_addr, sizeof(si2->sin6_addr));
-+		srcaddra = (struct sockaddr *)(&srcaddr);
-+	}
- 
- 	dprintk("RPC: %5u %s(%s, %u, %u, %d)\n",
- 		task->tk_pid, __func__,
-@@ -660,7 +684,7 @@ void rpcb_getport_async(struct rpc_task *task)
- 		task->tk_pid, __func__, bind_version);
- 
- 	rpcb_clnt = rpcb_create(clnt->cl_server, sap, salen, xprt->prot,
--				bind_version);
-+				bind_version, srcaddra);
- 	if (IS_ERR(rpcb_clnt)) {
- 		status = PTR_ERR(rpcb_clnt);
- 		dprintk("RPC: %5u %s: rpcb_create failed, error %ld\n",
-diff --git a/net/sunrpc/sunrpc.h b/net/sunrpc/sunrpc.h
-index 90c292e..22841e1 100644
---- a/net/sunrpc/sunrpc.h
-+++ b/net/sunrpc/sunrpc.h
-@@ -37,6 +37,51 @@ struct rpc_buffer {
- 	char	data[];
- };
- 
-+struct sock_xprt {
-+	struct rpc_xprt		xprt;
-+
-+	/*
-+	 * Network layer
-+	 */
-+	struct socket		*sock;
-+	struct sock		*inet;
-+
-+	/*
-+	 * State of TCP reply receive
-+	 */
-+	__be32			tcp_fraghdr,
-+				tcp_xid,
-+				tcp_calldir;
-+
-+	u32			tcp_offset,
-+				tcp_reclen;
-+
-+	unsigned long		tcp_copied,
-+				tcp_flags;
-+
-+	/*
-+	 * Connection of transports
-+	 */
-+	struct delayed_work	connect_worker;
-+	struct sockaddr_storage	srcaddr;
-+	unsigned short		srcport;
-+
-+	/*
-+	 * UDP socket buffer size parameters
-+	 */
-+	size_t			rcvsize,
-+				sndsize;
-+
-+	/*
-+	 * Saved socket callback addresses
-+	 */
-+	void			(*old_data_ready)(struct sock *, int);
-+	void			(*old_state_change)(struct sock *);
-+	void			(*old_write_space)(struct sock *);
-+	void			(*old_error_report)(struct sock *);
-+};
-+
-+
- static inline int rpc_reply_expected(struct rpc_task *task)
- {
- 	return (task->tk_msg.rpc_proc != NULL) &&
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 37299c0..72408c2 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -202,49 +202,6 @@ static inline void xs_pktdump(char *msg, u32 *packet, unsigned int count)
+ 	return -EIO;
  }
+diff --git a/fs/fcntl.c b/fs/fcntl.c
+index 22764c7..1a2a6d3 100644
+--- a/fs/fcntl.c
++++ b/fs/fcntl.c
+@@ -174,7 +174,7 @@ static int setfl(int fd, struct file * filp, unsigned long arg)
+ 	}
+ 
+ 	if (filp->f_op && filp->f_op->check_flags)
+-		error = filp->f_op->check_flags(arg);
++		error = filp->f_op->check_flags(filp, arg);
+ 	if (error)
+ 		return error;
+ 
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 2f093ed..9f96a8b 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -56,7 +56,7 @@ static ssize_t nfs_file_write(struct kiocb *, const struct iovec *iov,
+ 				unsigned long nr_segs, loff_t pos);
+ static int  nfs_file_flush(struct file *, fl_owner_t id);
+ static int  nfs_file_fsync(struct file *, int datasync);
+-static int nfs_check_flags(int flags);
++static int nfs_check_flags(struct file *, int flags);
+ static int nfs_lock(struct file *filp, int cmd, struct file_lock *fl);
+ static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl);
+ static int nfs_setlease(struct file *file, long arg, struct file_lock **fl);
+@@ -105,7 +105,7 @@ const struct inode_operations nfs3_file_inode_operations = {
+ # define IS_SWAPFILE(inode)	(0)
  #endif
  
--struct sock_xprt {
--	struct rpc_xprt		xprt;
--
--	/*
--	 * Network layer
--	 */
--	struct socket *		sock;
--	struct sock *		inet;
--
--	/*
--	 * State of TCP reply receive
--	 */
--	__be32			tcp_fraghdr,
--				tcp_xid,
--				tcp_calldir;
--
--	u32			tcp_offset,
--				tcp_reclen;
--
--	unsigned long		tcp_copied,
--				tcp_flags;
--
--	/*
--	 * Connection of transports
--	 */
--	struct delayed_work	connect_worker;
--	struct sockaddr_storage	srcaddr;
--	unsigned short		srcport;
--
--	/*
--	 * UDP socket buffer size parameters
--	 */
--	size_t			rcvsize,
--				sndsize;
--
--	/*
--	 * Saved socket callback addresses
--	 */
--	void			(*old_data_ready)(struct sock *, int);
--	void			(*old_state_change)(struct sock *);
--	void			(*old_write_space)(struct sock *);
--	void			(*old_error_report)(struct sock *);
--};
+-static int nfs_check_flags(int flags)
++static int nfs_check_flags(struct file *filp, int flags)
+ {
+ 	if ((flags & (O_APPEND | O_DIRECT)) == (O_APPEND | O_DIRECT))
+ 		return -EINVAL;
+@@ -126,7 +126,7 @@ nfs_file_open(struct inode *inode, struct file *filp)
+ 			filp->f_path.dentry->d_name.name);
  
- /*
-  * TCP receive state flags
+ 	nfs_inc_stats(inode, NFSIOS_VFSOPEN);
+-	res = nfs_check_flags(filp->f_flags);
++	res = nfs_check_flags(filp, filp->f_flags);
+ 	if (res)
+ 		return res;
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index b5b9792..98ce7c7 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1564,7 +1564,7 @@ struct file_operations {
+ 	int (*lock) (struct file *, int, struct file_lock *);
+ 	ssize_t (*sendpage) (struct file *, struct page *, int, size_t, loff_t *, int);
+ 	unsigned long (*get_unmapped_area)(struct file *, unsigned long, unsigned long, unsigned long, unsigned long);
+-	int (*check_flags)(int);
++	int (*check_flags)(struct file *, int);
+ 	int (*flock) (struct file *, int, struct file_lock *);
+ 	ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, loff_t *, size_t, unsigned int);
+ 	ssize_t (*splice_read)(struct file *, loff_t *, struct pipe_inode_info *, size_t, unsigned int);
 -- 
-1.7.3.4
+1.7.4.4
 
