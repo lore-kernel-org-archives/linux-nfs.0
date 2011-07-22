@@ -1,68 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:49602 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751084Ab1GNGxl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Jul 2011 02:53:41 -0400
-Message-ID: <4E1E9302.4080504@cn.fujitsu.com>
-Date: Thu, 14 Jul 2011 14:56:02 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2 v4] nfsd41: check the size of request
-References: <4E0EDEBE.8040902@cn.fujitsu.com> <20110706164306.GC30349@fieldses.org> <4E16CA48.3030308@cn.fujitsu.com> <20110708200319.GC13886@fieldses.org> <4E17BACC.8030901@cn.fujitsu.com> <20110713002522.GJ2162@fieldses.org>
-In-Reply-To: <20110713002522.GJ2162@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from shards.monkeyblade.net ([198.137.202.13]:37968 "EHLO
+	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754263Ab1GVOMV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jul 2011 10:12:21 -0400
+Date: Fri, 22 Jul 2011 07:12:17 -0700 (PDT)
+Message-Id: <20110722.071217.607687554920673786.davem@davemloft.net>
+To: ian.campbell@citrix.com
+Cc: netdev@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 08/13] net: convert drivers to paged frag API.
+From: David Miller <davem@davemloft.net>
+In-Reply-To: <1311340653-19336-8-git-send-email-ian.campbell@citrix.com>
+References: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
+	<1311340653-19336-8-git-send-email-ian.campbell@citrix.com>
+Content-Type: Text/Plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This patch checks request's size when it consists SEQUENCE.
+From: Ian Campbell <ian.campbell@citrix.com>
+Date: Fri, 22 Jul 2011 14:17:28 +0100
 
-v4:
-   delete format fixing which length exceed 80
+> -				put_dma(tx->index,eni_dev->dma,&j,(unsigned long)
+> -				    skb_shinfo(skb)->frags[i].page + skb_shinfo(skb)->frags[i].page_offset,
+> +				put_dma(tx->index,eni_dev->dma,&j,
+> +				    (unsigned long)skb_frag_address(&skb_shinfo(skb)->frags[i]),
 
-v3:
-   remove the check about only SEQUENCE operation.
-   check the size immediately after find session.
-   modify some function's format which length exceed 80.
+This is not an equivalent transformation.
 
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
----
- fs/nfsd/nfs4state.c |   12 ++++++++++++
- 1 files changed, 12 insertions(+), 0 deletions(-)
+skb_frag_address() does a page_address() on the frag page, but that is
+not what the code was doing here previously.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 72899ec..cc20587 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1763,6 +1763,14 @@ static bool nfsd4_session_too_many_ops(struct svc_rqst *rqstp, struct nfsd4_sess
- 	return args->opcnt > session->se_fchannel.maxops;
- }
- 
-+static bool nfsd4_request_too_big(struct svc_rqst *rqstp,
-+				  struct nfsd4_session *session)
-+{
-+	struct xdr_buf *xb = &rqstp->rq_arg;
-+
-+	return xb->len > session->se_fchannel.maxreq_sz;
-+}
-+
- __be32
- nfsd4_sequence(struct svc_rqst *rqstp,
- 	       struct nfsd4_compound_state *cstate,
-@@ -1795,6 +1803,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	if (nfsd4_session_too_many_ops(rqstp, session))
- 		goto out;
- 
-+	status = nfserr_req_too_big;
-+	if (nfsd4_request_too_big(rqstp, session))
-+		goto out;
-+
- 	status = nfserr_badslot;
- 	if (seq->slotid >= session->se_fchannel.maxreqs)
- 		goto out;
--- 
-1.7.5.4
-
-
-
+It's possible the code was buggy, but you can't do a fix like that
+amidst what is supposed to be a semantically NOP transformation.
