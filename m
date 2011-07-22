@@ -1,114 +1,364 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:36747 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755979Ab1G1Rbt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:31:49 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v4 15/27] pnfsblock: lseg alloc and free
-Date: Thu, 28 Jul 2011 13:31:04 -0400
-Message-Id: <1311874276-1386-16-git-send-email-rees@umich.edu>
-In-Reply-To: <1311874276-1386-1-git-send-email-rees@umich.edu>
-References: <1311874276-1386-1-git-send-email-rees@umich.edu>
+Received: from smtp.citrix.com ([66.165.176.89]:23859 "EHLO SMTP.CITRIX.COM"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754382Ab1GVNSA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Jul 2011 09:18:00 -0400
+From: Ian Campbell <ian.campbell@citrix.com>
+To: netdev@vger.kernel.org, linux-nfs@vger.kernel.org
+CC: Ian Campbell <ian.campbell@citrix.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        "James E.J. Bottomley" <JBottomley@parallels.com>,
+        Dimitris Michailidis <dm@chelsio.com>,
+        Casey Leedom <leedom@chelsio.com>,
+        Yevgeny Petrilin <yevgenyp@mellanox.co.il>,
+        Eric Dumazet <eric.dumazet@gmail.com>,
+        =?UTF-8?q?Micha=C5=82=20Miros=C5=82aw?= <mirq-linux@rere.qmqm.pl>,
+        linux-scsi@vger.kernel.org
+Subject: [PATCH 09/13] net: add support for per-paged-fragment destructors
+Date: Fri, 22 Jul 2011 14:17:29 +0100
+Message-ID: <1311340653-19336-9-git-send-email-ian.campbell@citrix.com>
+In-Reply-To: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
+References: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+Entities which care about the complete lifecycle of pages which they inject
+into the network stack via an skb paged fragment can choose to set this
+destructor in order to receive a callback when the stack is really finished
+with a page (including all clones, retransmits, pull-ups etc etc).
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfsblock: fix bug getting pnfs_layout_type in translate_devid().]
-Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Zhang Jingwang <Jingwang.Zhang@emc.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+This destructor will always be propagated alongside the struct page when
+copying skb_frag_t->page. This is the reason I chose to embed the destructor in
+a "struct { } page" within the skb_frag_t, rather than as a separate field,
+since it allows existing code which propagates ->frags[N].page to Just
+Work(tm).
+
+When the destructor is present the page reference counting is done slightly
+differently. No references are held by the network stack on the struct page (it
+is up to the caller to manage this as necessary) instead the network stack will
+track references via the count embedded in the destructor structure. When this
+reference count reaches zero then the destructor will be called and the caller
+can take the necesary steps to release the page (i.e. release the struct page
+reference itself).
+
+The intention is that callers can use this callback to delay completion to
+_their_ callers until the network stack has completely released the page, in
+order to prevent use-after-free or modification of data pages which are still
+in use by the stack.
+
+It is allowable (indeed expected) for a caller to share a single destructor
+instance between multiple pages injected into the stack e.g. a group of pages
+included in a single higher level operation might share a destructor which is
+used to complete that higher level operation.
+
+NB: a small number of drivers use skb_frag_t independently of struct sk_buff so
+this patch is slightly larger than necessary. I did consider leaving skb_frag_t
+alone and defining a new (but similar) structure to be used in the struct
+sk_buff itself. This would also have the advantage of more clearly separating
+the two uses, which is useful since there are now special reference counting
+accessors for skb_frag_t within a struct sk_buff but not (necessarily) for
+those used outside of an skb.
+
+Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: "James E.J. Bottomley" <JBottomley@parallels.com>
+Cc: Dimitris Michailidis <dm@chelsio.com>
+Cc: Casey Leedom <leedom@chelsio.com>
+Cc: Yevgeny Petrilin <yevgenyp@mellanox.co.il>
+Cc: Eric Dumazet <eric.dumazet@gmail.com>
+Cc: "Michał Mirosław" <mirq-linux@rere.qmqm.pl>
+Cc: netdev@vger.kernel.org
+Cc: linux-scsi@vger.kernel.org
 ---
- fs/nfs/blocklayout/blocklayout.c    |   31 +++++++++++++++++++++++++------
- fs/nfs/blocklayout/blocklayout.h    |    6 ++++++
- fs/nfs/blocklayout/blocklayoutdev.c |    8 ++++++++
- 3 files changed, 39 insertions(+), 6 deletions(-)
+ drivers/net/cxgb4/sge.c       |   14 +++++++-------
+ drivers/net/cxgb4vf/sge.c     |   18 +++++++++---------
+ drivers/net/mlx4/en_rx.c      |    2 +-
+ drivers/scsi/cxgbi/libcxgbi.c |    2 +-
+ include/linux/skbuff.h        |   31 ++++++++++++++++++++++++++-----
+ net/core/skbuff.c             |   17 +++++++++++++++++
+ 6 files changed, 61 insertions(+), 23 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index c11c105..96c848a 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -115,16 +115,35 @@ static struct pnfs_layout_hdr *bl_alloc_layout_hdr(struct inode *inode,
- 	return &bl->bl_layout;
+diff --git a/drivers/net/cxgb4/sge.c b/drivers/net/cxgb4/sge.c
+index f1813b5..3e7c4b3 100644
+--- a/drivers/net/cxgb4/sge.c
++++ b/drivers/net/cxgb4/sge.c
+@@ -1416,7 +1416,7 @@ static inline void copy_frags(struct sk_buff *skb,
+ 	unsigned int n;
+ 
+ 	/* usually there's just one frag */
+-	skb_frag_set_page(skb, 0, gl->frags[0].page);
++	skb_frag_set_page(skb, 0, gl->frags[0].page.p);	/* XXX */
+ 	ssi->frags[0].page_offset = gl->frags[0].page_offset + offset;
+ 	ssi->frags[0].size = gl->frags[0].size - offset;
+ 	ssi->nr_frags = gl->nfrags;
+@@ -1425,7 +1425,7 @@ static inline void copy_frags(struct sk_buff *skb,
+ 		memcpy(&ssi->frags[1], &gl->frags[1], n * sizeof(skb_frag_t));
+ 
+ 	/* get a reference to the last page, we don't own it */
+-	get_page(gl->frags[n].page);
++	get_page(gl->frags[n].page.p);	/* XXX */
  }
  
--static void
--bl_free_lseg(struct pnfs_layout_segment *lseg)
-+static void bl_free_lseg(struct pnfs_layout_segment *lseg)
- {
-+	dprintk("%s enter\n", __func__);
-+	kfree(lseg);
+ /**
+@@ -1482,7 +1482,7 @@ static void t4_pktgl_free(const struct pkt_gl *gl)
+ 	const skb_frag_t *p;
+ 
+ 	for (p = gl->frags, n = gl->nfrags - 1; n--; p++)
+-		put_page(p->page);
++		put_page(p->page.p); /* XXX */
  }
  
--static struct pnfs_layout_segment *
--bl_alloc_lseg(struct pnfs_layout_hdr *lo,
--	      struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
-+/* We pretty much ignore lseg, and store all data layout wide, so we
-+ * can correctly merge.
-+ */
-+static struct pnfs_layout_segment *bl_alloc_lseg(struct pnfs_layout_hdr *lo,
-+						 struct nfs4_layoutget_res *lgr,
-+						 gfp_t gfp_flags)
- {
--	return NULL;
-+	struct pnfs_layout_segment *lseg;
-+	int status;
+ /*
+@@ -1635,7 +1635,7 @@ static void restore_rx_bufs(const struct pkt_gl *si, struct sge_fl *q,
+ 		else
+ 			q->cidx--;
+ 		d = &q->sdesc[q->cidx];
+-		d->page = si->frags[frags].page;
++		d->page = si->frags[frags].page.p; /* XXX */
+ 		d->dma_addr |= RX_UNMAPPED_BUF;
+ 		q->avail++;
+ 	}
+@@ -1717,7 +1717,7 @@ static int process_responses(struct sge_rspq *q, int budget)
+ 			for (frags = 0, fp = si.frags; ; frags++, fp++) {
+ 				rsd = &rxq->fl.sdesc[rxq->fl.cidx];
+ 				bufsz = get_buf_size(rsd);
+-				fp->page = rsd->page;
++				fp->page.p = rsd->page; /* XXX */
+ 				fp->page_offset = q->offset;
+ 				fp->size = min(bufsz, len);
+ 				len -= fp->size;
+@@ -1734,8 +1734,8 @@ static int process_responses(struct sge_rspq *q, int budget)
+ 						get_buf_addr(rsd),
+ 						fp->size, DMA_FROM_DEVICE);
+ 
+-			si.va = page_address(si.frags[0].page) +
+-				si.frags[0].page_offset;
++			si.va = page_address(si.frags[0].page.p) +
++				si.frags[0].page_offset; /* XXX */
+ 
+ 			prefetch(si.va);
+ 
+diff --git a/drivers/net/cxgb4vf/sge.c b/drivers/net/cxgb4vf/sge.c
+index f4c4480..0a0dda1 100644
+--- a/drivers/net/cxgb4vf/sge.c
++++ b/drivers/net/cxgb4vf/sge.c
+@@ -1397,7 +1397,7 @@ struct sk_buff *t4vf_pktgl_to_skb(const struct pkt_gl *gl,
+ 		skb_copy_to_linear_data(skb, gl->va, pull_len);
+ 
+ 		ssi = skb_shinfo(skb);
+-		skb_frag_set_page(skb, 0, gl->frags[0].page);
++		skb_frag_set_page(skb, 0, gl->frags[0].page.p); /* XXX */
+ 		ssi->frags[0].page_offset = gl->frags[0].page_offset + pull_len;
+ 		ssi->frags[0].size = gl->frags[0].size - pull_len;
+ 		if (gl->nfrags > 1)
+@@ -1410,7 +1410,7 @@ struct sk_buff *t4vf_pktgl_to_skb(const struct pkt_gl *gl,
+ 		skb->truesize += skb->data_len;
+ 
+ 		/* Get a reference for the last page, we don't own it */
+-		get_page(gl->frags[gl->nfrags - 1].page);
++		get_page(gl->frags[gl->nfrags - 1].page.p); /* XXX */
+ 	}
+ 
+ out:
+@@ -1430,7 +1430,7 @@ void t4vf_pktgl_free(const struct pkt_gl *gl)
+ 
+ 	frag = gl->nfrags - 1;
+ 	while (frag--)
+-		put_page(gl->frags[frag].page);
++		put_page(gl->frags[frag].page.p); /* XXX */
+ }
+ 
+ /**
+@@ -1450,7 +1450,7 @@ static inline void copy_frags(struct sk_buff *skb,
+ 	unsigned int n;
+ 
+ 	/* usually there's just one frag */
+-	skb_frag_set_page(skb, 0, gl->frags[0].page);
++	skb_frag_set_page(skb, 0, gl->frags[0].page.p);	/* XXX */
+ 	si->frags[0].page_offset = gl->frags[0].page_offset + offset;
+ 	si->frags[0].size = gl->frags[0].size - offset;
+ 	si->nr_frags = gl->nfrags;
+@@ -1460,7 +1460,7 @@ static inline void copy_frags(struct sk_buff *skb,
+ 		memcpy(&si->frags[1], &gl->frags[1], n * sizeof(skb_frag_t));
+ 
+ 	/* get a reference to the last page, we don't own it */
+-	get_page(gl->frags[n].page);
++	get_page(gl->frags[n].page.p); /* XXX */
+ }
+ 
+ /**
+@@ -1633,7 +1633,7 @@ static void restore_rx_bufs(const struct pkt_gl *gl, struct sge_fl *fl,
+ 		else
+ 			fl->cidx--;
+ 		sdesc = &fl->sdesc[fl->cidx];
+-		sdesc->page = gl->frags[frags].page;
++		sdesc->page = gl->frags[frags].page.p; /* XXX */
+ 		sdesc->dma_addr |= RX_UNMAPPED_BUF;
+ 		fl->avail++;
+ 	}
+@@ -1721,7 +1721,7 @@ int process_responses(struct sge_rspq *rspq, int budget)
+ 				BUG_ON(rxq->fl.avail == 0);
+ 				sdesc = &rxq->fl.sdesc[rxq->fl.cidx];
+ 				bufsz = get_buf_size(sdesc);
+-				fp->page = sdesc->page;
++				fp->page.p = sdesc->page; /* XXX */
+ 				fp->page_offset = rspq->offset;
+ 				fp->size = min(bufsz, len);
+ 				len -= fp->size;
+@@ -1739,8 +1739,8 @@ int process_responses(struct sge_rspq *rspq, int budget)
+ 			dma_sync_single_for_cpu(rspq->adapter->pdev_dev,
+ 						get_buf_addr(sdesc),
+ 						fp->size, DMA_FROM_DEVICE);
+-			gl.va = (page_address(gl.frags[0].page) +
+-				 gl.frags[0].page_offset);
++			gl.va = (page_address(gl.frags[0].page.p) +
++				 gl.frags[0].page_offset); /* XXX */
+ 			prefetch(gl.va);
+ 
+ 			/*
+diff --git a/drivers/net/mlx4/en_rx.c b/drivers/net/mlx4/en_rx.c
+index 21a89e0..c5d01ce 100644
+--- a/drivers/net/mlx4/en_rx.c
++++ b/drivers/net/mlx4/en_rx.c
+@@ -418,7 +418,7 @@ static int mlx4_en_complete_rx_desc(struct mlx4_en_priv *priv,
+ 			break;
+ 
+ 		/* Save page reference in skb */
+-		__skb_frag_set_page(&skb_frags_rx[nr], skb_frags[nr].page);
++		__skb_frag_set_page(&skb_frags_rx[nr], skb_frags[nr].page.p); /* XXX */
+ 		skb_frags_rx[nr].size = skb_frags[nr].size;
+ 		skb_frags_rx[nr].page_offset = skb_frags[nr].page_offset;
+ 		dma = be64_to_cpu(rx_desc->data[nr].addr);
+diff --git a/drivers/scsi/cxgbi/libcxgbi.c b/drivers/scsi/cxgbi/libcxgbi.c
+index 949ee48..8d16a74 100644
+--- a/drivers/scsi/cxgbi/libcxgbi.c
++++ b/drivers/scsi/cxgbi/libcxgbi.c
+@@ -1823,7 +1823,7 @@ static int sgl_read_to_frags(struct scatterlist *sg, unsigned int sgoffset,
+ 				return -EINVAL;
+ 			}
+ 
+-			frags[i].page = page;
++			frags[i].page.p = page;
+ 			frags[i].page_offset = sg->offset + sgoffset;
+ 			frags[i].size = copy;
+ 			i++;
+diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+index bc6bd24..9818fe2 100644
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -135,8 +135,17 @@ struct sk_buff;
+ 
+ typedef struct skb_frag_struct skb_frag_t;
+ 
++struct skb_frag_destructor {
++	atomic_t ref;
++	int (*destroy)(void *data);
++	void *data;
++};
 +
-+	dprintk("%s enter\n", __func__);
-+	lseg = kzalloc(sizeof(*lseg), gfp_flags);
-+	if (!lseg)
-+		return ERR_PTR(-ENOMEM);
-+	status = nfs4_blk_process_layoutget(lo, lgr, gfp_flags);
-+	if (status) {
-+		/* We don't want to call the full-blown bl_free_lseg,
-+		 * since on error extents were not touched.
-+		 */
-+		kfree(lseg);
-+		return ERR_PTR(status);
+ struct skb_frag_struct {
+-	struct page *page;
++	struct {
++		struct page *p;
++		struct skb_frag_destructor *destructor;
++	} page;
+ #if (BITS_PER_LONG > 32) || (PAGE_SIZE >= 65536)
+ 	__u32 page_offset;
+ 	__u32 size;
+@@ -1129,7 +1138,8 @@ static inline void __skb_fill_page_desc(struct sk_buff *skb, int i,
+ {
+ 	skb_frag_t *frag = &skb_shinfo(skb)->frags[i];
+ 
+-	frag->page		  = page;
++	frag->page.p		  = page;
++	frag->page.destructor     = NULL;
+ 	frag->page_offset	  = off;
+ 	frag->size		  = size;
+ }
+@@ -1648,7 +1658,7 @@ static inline void netdev_free_page(struct net_device *dev, struct page *page)
+  */
+ static inline struct page *__skb_frag_page(const skb_frag_t *frag)
+ {
+-	return frag->page;
++	return frag->page.p;
+ }
+ 
+ /**
+@@ -1659,9 +1669,12 @@ static inline struct page *__skb_frag_page(const skb_frag_t *frag)
+  */
+ static inline const struct page *skb_frag_page(const skb_frag_t *frag)
+ {
+-	return frag->page;
++	return frag->page.p;
+ }
+ 
++extern void skb_frag_destructor_ref(struct skb_frag_destructor *destroy);
++extern void skb_frag_destructor_unref(struct skb_frag_destructor *destroy);
++
+ /**
+  * __skb_frag_ref - take an addition reference on a paged fragment.
+  * @frag: the paged fragment
+@@ -1670,6 +1683,10 @@ static inline const struct page *skb_frag_page(const skb_frag_t *frag)
+  */
+ static inline void __skb_frag_ref(skb_frag_t *frag)
+ {
++	if (unlikely(frag->page.destructor)) {
++		skb_frag_destructor_ref(frag->page.destructor);
++		return;
 +	}
-+	return lseg;
+ 	get_page(__skb_frag_page(frag));
  }
  
- static void
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 9b88918..744c7a5 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -96,6 +96,12 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
- 	return container_of(lo, struct pnfs_block_layout, bl_layout);
+@@ -1693,6 +1710,10 @@ static inline void skb_frag_ref(struct sk_buff *skb, int f)
+  */
+ static inline void __skb_frag_unref(skb_frag_t *frag)
+ {
++	if (unlikely(frag->page.destructor)) {
++		skb_frag_destructor_unref(frag->page.destructor);
++		return;
++	}
+ 	put_page(__skb_frag_page(frag));
  }
  
-+static inline struct pnfs_block_layout *
-+BLK_LSEG2EXT(struct pnfs_layout_segment *lseg)
-+{
-+	return BLK_LO2EXT(lseg->pls_layout);
-+}
-+
- struct bl_dev_msg {
- 	int status;
- 	uint32_t major, minor;
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index 7e1377f..64da33a 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -189,3 +189,11 @@ out:
- 	kfree(msg.data);
- 	return rv;
+@@ -1745,7 +1766,7 @@ static inline void *skb_frag_address_safe(const skb_frag_t *frag)
+  */
+ static inline void __skb_frag_set_page(skb_frag_t *frag, struct page *page)
+ {
+-	frag->page = page;
++	frag->page.p = page;
+ 	__skb_frag_ref(frag);
  }
-+
-+int
-+nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
-+			   struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
+ 
+diff --git a/net/core/skbuff.c b/net/core/skbuff.c
+index 2133600..bdc6f6e 100644
+--- a/net/core/skbuff.c
++++ b/net/core/skbuff.c
+@@ -292,6 +292,23 @@ struct sk_buff *dev_alloc_skb(unsigned int length)
+ }
+ EXPORT_SYMBOL(dev_alloc_skb);
+ 
++void skb_frag_destructor_ref(struct skb_frag_destructor *destroy)
 +{
-+	/* STUB */
-+	return -EIO;
++	BUG_ON(destroy == NULL);
++	atomic_inc(&destroy->ref);
 +}
++EXPORT_SYMBOL(skb_frag_destructor_ref);
++
++void skb_frag_destructor_unref(struct skb_frag_destructor *destroy)
++{
++	if (destroy == NULL)
++		return;
++
++	if (atomic_dec_and_test(&destroy->ref))
++		destroy->destroy(destroy->data);
++}
++EXPORT_SYMBOL(skb_frag_destructor_unref);
++
+ static void skb_drop_list(struct sk_buff **listp)
+ {
+ 	struct sk_buff *list = *listp;
 -- 
-1.7.4.1
+1.7.2.5
 
