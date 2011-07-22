@@ -1,144 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:37648 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751486Ab1GaAxL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 20:53:11 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v7 06/26] pnfs: add set-clear layoutdriver interface
-Date: Sat, 30 Jul 2011 20:52:36 -0400
-Message-Id: <1312073576-11024-7-git-send-email-rees@umich.edu>
-In-Reply-To: <1312073576-11024-1-git-send-email-rees@umich.edu>
-References: <1312073576-11024-1-git-send-email-rees@umich.edu>
+Received: from smtp.citrix.com ([66.165.176.89]:23859 "EHLO SMTP.CITRIX.COM"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754354Ab1GVNRw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Jul 2011 09:17:52 -0400
+From: Ian Campbell <ian.campbell@citrix.com>
+To: netdev@vger.kernel.org, linux-nfs@vger.kernel.org
+CC: Ian Campbell <ian.campbell@citrix.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
+        "Pekka Savola (ipv6)" <pekkas@netcore.fi>,
+        James Morris <jmorris@namei.org>,
+        Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
+        Patrick McHardy <kaber@trash.net>
+Subject: [PATCH 05/13] net: ipv4: convert to SKB frag APIs
+Date: Fri, 22 Jul 2011 14:17:25 +0100
+Message-ID: <1311340653-19336-5-git-send-email-ian.campbell@citrix.com>
+In-Reply-To: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
+References: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
-
-To allow layout driver to issue getdevicelist at mount time, and clean up
-at umount time.
-
-[fixup non NFS_V4_1 set_pnfs_layoutdriver definition]
-[pnfs: pass mntfh down the init_pnfs path]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
-Signed-off-by: Jim Rees <rees@umich.edu>
+Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>
+Cc: "Pekka Savola (ipv6)" <pekkas@netcore.fi>
+Cc: James Morris <jmorris@namei.org>
+Cc: Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>
+Cc: Patrick McHardy <kaber@trash.net>
+Cc: netdev@vger.kernel.org
 ---
- fs/nfs/client.c |    8 +++++---
- fs/nfs/pnfs.c   |   15 +++++++++++++--
- fs/nfs/pnfs.h   |    8 ++++++--
- 3 files changed, 24 insertions(+), 7 deletions(-)
+ net/ipv4/inet_lro.c   |    2 +-
+ net/ipv4/ip_output.c  |    8 +++++---
+ net/ipv4/tcp.c        |    3 ++-
+ net/ipv4/tcp_output.c |    2 +-
+ 4 files changed, 9 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 19ea7d9..a9b1848 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -904,7 +904,9 @@ error:
- /*
-  * Load up the server record from information gained in an fsinfo record
-  */
--static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *fsinfo)
-+static void nfs_server_set_fsinfo(struct nfs_server *server,
-+				  struct nfs_fh *mntfh,
-+				  struct nfs_fsinfo *fsinfo)
- {
- 	unsigned long max_rpc_payload;
- 
-@@ -934,7 +936,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
- 	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
- 		server->wsize = NFS_MAX_FILE_IO_SIZE;
- 	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
--	set_pnfs_layoutdriver(server, fsinfo->layouttype);
-+	set_pnfs_layoutdriver(server, mntfh, fsinfo->layouttype);
- 
- 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
- 
-@@ -980,7 +982,7 @@ static int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, str
- 	if (error < 0)
- 		goto out_error;
- 
--	nfs_server_set_fsinfo(server, &fsinfo);
-+	nfs_server_set_fsinfo(server, mntfh, &fsinfo);
- 
- 	/* Get some general file system info */
- 	if (server->namelen == 0) {
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index a7e5f17..3a47f7c 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -76,8 +76,11 @@ find_pnfs_driver(u32 id)
- void
- unset_pnfs_layoutdriver(struct nfs_server *nfss)
- {
--	if (nfss->pnfs_curr_ld)
-+	if (nfss->pnfs_curr_ld) {
-+		if (nfss->pnfs_curr_ld->clear_layoutdriver)
-+			nfss->pnfs_curr_ld->clear_layoutdriver(nfss);
- 		module_put(nfss->pnfs_curr_ld->owner);
-+	}
- 	nfss->pnfs_curr_ld = NULL;
- }
- 
-@@ -88,7 +91,8 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
-  * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
-  */
- void
--set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
-+set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
-+		      u32 id)
- {
- 	struct pnfs_layoutdriver_type *ld_type = NULL;
- 
-@@ -115,6 +119,13 @@ set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
- 		goto out_no_driver;
+diff --git a/net/ipv4/inet_lro.c b/net/ipv4/inet_lro.c
+index 85a0f75..63f3def 100644
+--- a/net/ipv4/inet_lro.c
++++ b/net/ipv4/inet_lro.c
+@@ -449,7 +449,7 @@ static struct sk_buff *__lro_proc_segment(struct net_lro_mgr *lro_mgr,
+ 	if (!lro_mgr->get_frag_header ||
+ 	    lro_mgr->get_frag_header(frags, (void *)&mac_hdr, (void *)&iph,
+ 				     (void *)&tcph, &flags, priv)) {
+-		mac_hdr = page_address(frags->page) + frags->page_offset;
++		mac_hdr = skb_frag_address(frags);
+ 		goto out1;
  	}
- 	server->pnfs_curr_ld = ld_type;
-+	if (ld_type->set_layoutdriver
-+	    && ld_type->set_layoutdriver(server, mntfh)) {
-+		printk(KERN_ERR "%s: Error initializing pNFS layout driver %u.\n",
-+				__func__, id);
-+		module_put(ld_type->owner);
-+		goto out_no_driver;
-+	}
  
- 	dprintk("%s: pNFS module for %u set\n", __func__, id);
- 	return;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 7074394..bddd8b9 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -80,6 +80,9 @@ struct pnfs_layoutdriver_type {
- 	struct module *owner;
- 	unsigned flags;
+diff --git a/net/ipv4/ip_output.c b/net/ipv4/ip_output.c
+index 84f26e8..3aa3c91 100644
+--- a/net/ipv4/ip_output.c
++++ b/net/ipv4/ip_output.c
+@@ -982,14 +982,14 @@ alloc_new_skb:
+ 			if (page && (left = PAGE_SIZE - off) > 0) {
+ 				if (copy >= left)
+ 					copy = left;
+-				if (page != frag->page) {
++				if (page != skb_frag_page(frag)) {
+ 					if (i == MAX_SKB_FRAGS) {
+ 						err = -EMSGSIZE;
+ 						goto error;
+ 					}
+-					get_page(page);
+ 					skb_fill_page_desc(skb, i, page, off, 0);
+ 					frag = &skb_shinfo(skb)->frags[i];
++					__skb_frag_ref(frag);
+ 				}
+ 			} else if (i < MAX_SKB_FRAGS) {
+ 				if (copy > PAGE_SIZE)
+@@ -1002,13 +1002,15 @@ alloc_new_skb:
+ 				cork->page = page;
+ 				cork->off = 0;
  
-+	int (*set_layoutdriver) (struct nfs_server *, const struct nfs_fh *);
-+	int (*clear_layoutdriver) (struct nfs_server *);
-+
- 	struct pnfs_layout_hdr * (*alloc_layout_hdr) (struct inode *inode, gfp_t gfp_flags);
- 	void (*free_layout_hdr) (struct pnfs_layout_hdr *);
++				/* XXX no ref ? */
+ 				skb_fill_page_desc(skb, i, page, 0, 0);
+ 				frag = &skb_shinfo(skb)->frags[i];
+ 			} else {
+ 				err = -EMSGSIZE;
+ 				goto error;
+ 			}
+-			if (getfrag(from, page_address(frag->page)+frag->page_offset+frag->size, offset, copy, skb->len, skb) < 0) {
++			if (getfrag(from, skb_frag_address(frag)+frag->size,
++				    offset, copy, skb->len, skb) < 0) {
+ 				err = -EFAULT;
+ 				goto error;
+ 			}
+diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
+index 46febca..ac47ab3 100644
+--- a/net/ipv4/tcp.c
++++ b/net/ipv4/tcp.c
+@@ -3035,7 +3035,8 @@ int tcp_md5_hash_skb_data(struct tcp_md5sig_pool *hp,
  
-@@ -167,7 +170,7 @@ void put_lseg(struct pnfs_layout_segment *lseg);
- bool pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
- bool pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *, int);
- 
--void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
-+void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
- void unset_pnfs_layoutdriver(struct nfs_server *);
- void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
- int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
-@@ -374,7 +377,8 @@ pnfs_roc_drain(struct inode *ino, u32 *barrier)
- 	return false;
- }
- 
--static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
-+static inline void set_pnfs_layoutdriver(struct nfs_server *s,
-+					 const struct nfs_fh *mntfh, u32 id);
- {
- }
- 
+ 	for (i = 0; i < shi->nr_frags; ++i) {
+ 		const struct skb_frag_struct *f = &shi->frags[i];
+-		sg_set_page(&sg, f->page, f->size, f->page_offset);
++		struct page *page = __skb_frag_page(f); /* XXX */
++		sg_set_page(&sg, page, f->size, f->page_offset);
+ 		if (crypto_hash_update(desc, &sg, f->size))
+ 			return 1;
+ 	}
+diff --git a/net/ipv4/tcp_output.c b/net/ipv4/tcp_output.c
+index 882e0b0..0377c06 100644
+--- a/net/ipv4/tcp_output.c
++++ b/net/ipv4/tcp_output.c
+@@ -1095,7 +1095,7 @@ static void __pskb_trim_head(struct sk_buff *skb, int len)
+ 	k = 0;
+ 	for (i = 0; i < skb_shinfo(skb)->nr_frags; i++) {
+ 		if (skb_shinfo(skb)->frags[i].size <= eat) {
+-			put_page(skb_shinfo(skb)->frags[i].page);
++			skb_frag_unref(skb, i);
+ 			eat -= skb_shinfo(skb)->frags[i].size;
+ 		} else {
+ 			skb_shinfo(skb)->frags[k] = skb_shinfo(skb)->frags[i];
 -- 
-1.7.4.1
+1.7.2.5
 
