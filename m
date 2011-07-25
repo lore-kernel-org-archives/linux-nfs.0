@@ -1,41 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:54948 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751584Ab1GTVKq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jul 2011 17:10:46 -0400
-Date: Wed, 20 Jul 2011 17:10:40 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Pavel Emelyanov <xemul@parallels.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 0/9] sunrpc: Create sockets in namespaces
-Message-ID: <20110720211040.GC27871@fieldses.org>
-References: <4CA32AB4.2090808@parallels.com>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:43045 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752829Ab1GYVfl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jul 2011 17:35:41 -0400
+Date: Mon, 25 Jul 2011 17:35:38 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: tao.peng@emc.com, linux-nfs@vger.kernel.org, bhalevy@tonian.com,
+        bergwolf@gmail.com
+Subject: Re: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
+Message-ID: <20110725213538.GB7717@merit.edu>
+References: <1309743002-1658-1-git-send-email-bergwolf@gmail.com>
+ <4E18614C.4010002@tonian.com>
+ <F19688880B763E40B28B2B462677FBF805BF0610CE@MX09A.corp.emc.com>
+ <1311621204.28209.14.camel@lade.trondhjem.org>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4CA32AB4.2090808@parallels.com>
+In-Reply-To: <1311621204.28209.14.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Just curious--is there still work left on nfs and rpc containerization?
-And what's left to do there?
+Trond Myklebust wrote:
 
---b.
+  On Wed, 2011-07-20 at 01:52 -0400, tao.peng@emc.com wrote: 
+  > Hi, Trond,
+  > 
+  > Any comments on this patch? I still get kernel crash when pnfs write is attempted but fails and calls pnfs_ld_write_done(). It seems object layout uses the same code path as well. But I don't find the patch in either your tree or Benny's tree. Are there any concerns?
+  > 
+  > Thanks,
+  > Tao
+  
+  The whole pnfs_ld_write_done thing is bogus and needs to be replaced
+  with something sane. It is trying to initiate a WRITE RPC call with the
+  wrong block size, and is calling the MDS rpc_call_done() and
+  rpc_release() with an uninitialised rpc task pointer.
+  
+  Ditto for pnfs_ld_read_done.
 
-On Wed, Sep 29, 2010 at 04:01:56PM +0400, Pavel Emelyanov wrote:
-> v3 changes:
-> Moved the generic xprt alloc/free code to xprt.c.
-> Got David's ack on the 8th patch :)
-> 
-> v2 changes:
-> Fixed comments from Chuck and Trond.
-> Added one patch, that factors out rpc_xprt allocation as well.
-> 
-> v1:
-> This set implements pulling the net * argument down to the existing
-> sock_create_kern calls in the sunrpc layer and creating the sockets
-> in the given net.
-> 
-> Thanks,
-> Pavel
+Benny / Boaz, have you run into this problem with object layout?
