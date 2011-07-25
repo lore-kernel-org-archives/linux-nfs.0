@@ -1,80 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:2455 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:11176 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751900Ab1G0U4g convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 16:56:36 -0400
-Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
+	id S1751364Ab1GYTNl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jul 2011 15:13:41 -0400
+Subject: RE: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Bryan Schumaker <bjschuma@netapp.com>,
-        Justin Piszcz <jpiszcz@lucidpixels.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Date: Wed, 27 Jul 2011 16:56:35 -0400
-In-Reply-To: <1311800051.25645.43.camel@lade.trondhjem.org>
-References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan>
-	 <20110727160752.GC974@fieldses.org>
-	 <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan>
-	 <20110727181111.GA23009@infradead.org>
-	 <alpine.DEB.2.02.1107271530340.1451@p34.internal.lan>
-	 <20110727193937.GA5354@infradead.org>
-	 <alpine.DEB.2.02.1107271540100.1451@p34.internal.lan>
-	 <20110727194722.GA9345@infradead.org>
-	 <1311799021.25645.41.camel@lade.trondhjem.org>
-	 <1311800051.25645.43.camel@lade.trondhjem.org>
+To: tao.peng@emc.com
+Cc: linux-nfs@vger.kernel.org, bhalevy@tonian.com, bergwolf@gmail.com
+Date: Mon, 25 Jul 2011 15:13:24 -0400
+In-Reply-To: <F19688880B763E40B28B2B462677FBF805BF0610CE@MX09A.corp.emc.com>
+References: <1309743002-1658-1-git-send-email-bergwolf@gmail.com>
+	 <4E18614C.4010002@tonian.com>
+	 <F19688880B763E40B28B2B462677FBF805BF0610CE@MX09A.corp.emc.com>
 Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1311800195.25645.45.camel@lade.trondhjem.org>
+Message-ID: <1311621204.28209.14.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-07-27 at 16:54 -0400, Trond Myklebust wrote: 
-> On Wed, 2011-07-27 at 16:37 -0400, Trond Myklebust wrote: 
-> > On Wed, 2011-07-27 at 15:47 -0400, Christoph Hellwig wrote: 
-> > > On Wed, Jul 27, 2011 at 03:44:20PM -0400, Justin Piszcz wrote:
-> > > > 
-> > > > 
-> > > > On Wed, 27 Jul 2011, Christoph Hellwig wrote:
-> > > > 
-> > > > >On Wed, Jul 27, 2011 at 03:35:01PM -0400, Justin Piszcz wrote:
-> > > > >>Currently I do not see any dupes, however I have a script that moves
-> > > > >>images out of the directory once an hour:
-> > > > >>0 * * * * /usr/local/bin/move_to_old2.sh > /dev/null 2>&1
-> > > > >
-> > > > >Do you keep adding files to the directory while you move files out?
-> > > > Yes, otherwise there are too many files in the directory and viewers, e.g.,
-> > > > each geeqie (picture viewer) will use > 4-6GB of memory, so I try to keep
-> > > > it around 5,000 pictures or less.
-> > > > 
-> > > > >What's the rate of additions/removals to the directory?
-> > > > Additions it depends, around 5,000 over a 12hr period, 416/hr, current:
-> > > > 
-> > > > atom:/d1/motion# find cam1|wc
-> > > >    5215    5215  166853
-> > > > atom:/d1/motion# find cam2|wc
-> > > >    5069    5069  162181
-> > > > atom:/d1/motion# find cam3|wc
-> > > >    5594    5594  178981
-> > > > atom:/d1/motion#
-> > > 
-> > > This sounds a lot like xfs simply filling up the directory index slots
-> > > of files that you just moved out with new files, and nfs falsely
-> > > claiming that this is a problem.
-> > 
-> > Yep. There is an existing bugzilla report for this bug at
-> > 
-> >    https://bugzilla.kernel.org/show_bug.cgi?id=38572
-> > 
-> > I have a preliminary patch there that attempts to turn off the loop
-> > detection when the directory is seen to change, however that patch still
-> > appears to have a bug in it, and I haven't had time to figure out what
-> > is wrong yet.
-> > 
-> > Can you perhaps take a look, Bryan?
+On Wed, 2011-07-20 at 01:52 -0400, tao.peng@emc.com wrote: 
+> Hi, Trond,
 > 
-> Actually, Justin, can you test the following slight variant on the patch
-> in the bugzilla?
+> Any comments on this patch? I still get kernel crash when pnfs write is attempted but fails and calls pnfs_ld_write_done(). It seems object layout uses the same code path as well. But I don't find the patch in either your tree or Benny's tree. Are there any concerns?
+> 
+> Thanks,
+> Tao
 
-Doh! This one will actually compile....
+The whole pnfs_ld_write_done thing is bogus and needs to be replaced
+with something sane. It is trying to initiate a WRITE RPC call with the
+wrong block size, and is calling the MDS rpc_call_done() and
+rpc_release() with an uninitialised rpc task pointer.
 
-> 8<--------------------------------------------------------- 
+Ditto for pnfs_ld_read_done.
+
+Cheers
+  Trond
+
+> > -----Original Message-----
+> > From: Benny Halevy [mailto:bhalevy@tonian.com]
+> > Sent: Saturday, July 09, 2011 10:10 PM
+> > To: Peng Tao
+> > Cc: Trond.Myklebust@netapp.com; linux-nfs@vger.kernel.org; Peng, Tao
+> > Subject: Re: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
+> > 
+> > On 2011-07-04 04:30, Peng Tao wrote:
+> > > There is no need to keep lseg reference when read/write through MDS.
+> > > This fixes a null pointer crash at nfs_post_op_update_inode_force_wcc
+> > > because nfs4_proc_write_setup will unset wdata->res.fattr if wdata->lseg
+> > > is not NULL.
+> > >
+> > > Signed-off-by: Peng Tao <peng_tao@emc.com>
+> > 
+> > Looks good to me.
+> > 
+> > Benny
+> > 
+> > > ---
+> > >  fs/nfs/pnfs.c |    6 ++++++
+> > >  1 files changed, 6 insertions(+), 0 deletions(-)
+> > >
+> > > diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> > > index 30a0394..55fdf02 100644
+> > > --- a/fs/nfs/pnfs.c
+> > > +++ b/fs/nfs/pnfs.c
+> > > @@ -1193,6 +1193,9 @@ pnfs_ld_write_done(struct nfs_write_data *data)
+> > >
+> > >  	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
+> > >  		data->pnfs_error);
+> > > +
+> > > +	put_lseg(data->lseg);
+> > > +	data->lseg = NULL;
+> > >  	status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
+> > >  				    data->mds_ops, NFS_FILE_SYNC);
+> > >  	return status ? : -EAGAIN;
+> > > @@ -1240,6 +1243,9 @@ pnfs_ld_read_done(struct nfs_read_data *data)
+> > >
+> > >  	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
+> > >  		data->pnfs_error);
+> > > +
+> > > +	put_lseg(data->lseg);
+> > > +	data->lseg = NULL;
+> > >  	status = nfs_initiate_read(data, NFS_CLIENT(data->inode),
+> > >  				   data->mds_ops);
+> > >  	return status ? : -EAGAIN;
+> 
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
