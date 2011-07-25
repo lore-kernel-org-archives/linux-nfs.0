@@ -1,74 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.perches.com ([173.55.12.10]:3427 "EHLO mail.perches.com"
+Received: from mx2.netapp.com ([216.240.18.37]:16802 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751711Ab1GATnc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jul 2011 15:43:32 -0400
-From: Joe Perches <joe@perches.com>
-To: linux-decnet-user@lists.sourceforge.net, netfilter-devel@vger.kernel.org,
-        netfilter@vger.kernel.org, coreteam@netfilter.org,
-        netdev@vger.kernel.org, linux-x25@vger.kernel.org,
-        linux-hams@vger.kernel.org, linux-sctp@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Subject: [PATCH 00/12] net switch/case reformatting
-Date: Fri,  1 Jul 2011 12:43:01 -0700
-Message-Id: <cover.1309549243.git.joe@perches.com>
+	id S1751595Ab1GYTa7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jul 2011 15:30:59 -0400
+Subject: Re: Umount and delegation release thread syncronization
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Ian Kent <raven@themaw.net>
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+Date: Mon, 25 Jul 2011 15:30:52 -0400
+In-Reply-To: <1310442708.25348.10.camel@perseus.themaw.net>
+References: <1308555929.3306.43.camel@perseus.themaw.net>
+	 <1310442708.25348.10.camel@perseus.themaw.net>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1311622252.28209.21.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Just whitespace cleanups with a couple trivial corrections
+On Tue, 2011-07-12 at 11:51 +0800, Ian Kent wrote: 
+> On Mon, 2011-06-20 at 15:45 +0800, Ian Kent wrote:
+> > Hi all,
+> > 
+> > I'm having difficulty working out how delegation release threads are
+> > synchronized with umount.
+> > 
+> > For an information about the problem please see
+> > https://bugzilla.kernel.org/show_bug.cgi?id=30882 and in particular
+> > comment #28.
+> > 
+> > Can someone please give me a description of the sequence of events at
+> > umount (aka. nfs4_kill_super() function calls). In particular how does
+> > nfs_free_server() know that if nfs_super_return_all_delegations() starts
+> > a thread that it is finished before freeing the server struct.
+> 
+> No response in almost a month. everyone must be really busy.
+> 
+> But does no-one know how this works?
+> 
+> Trond, could you have a look at the above bug and offer your input
+> please.
 
-Joe Perches (12):
-  appletalk: Reduce switch/case indent
-  decnet: Reduce switch/case indent
-  econet: Reduce switch/case indent
-  ipconfig: Reduce switch/case indent
-  netfilter: Reduce switch/case indent
-  ipv4: Reduce switch/case indent
-  ipv6: Reduce switch/case indent
-  lapb: Reduce switch/case indent
-  netrom:  Reduce switch/case indent
-  sctp: Reduce switch/case indent
-  sunrpc: Reduce switch/case indent
-  x25: Reduce switch/case indent
+The only code that seems dubious there is the line
 
- net/appletalk/aarp.c                   |  138 +++---
- net/appletalk/ddp.c                    |  398 +++++++-------
- net/decnet/af_decnet.c                 |  697 +++++++++++++-------------
- net/decnet/dn_dev.c                    |   70 ++--
- net/decnet/dn_fib.c                    |   77 ++--
- net/decnet/dn_neigh.c                  |   14 +-
- net/decnet/dn_nsp_in.c                 |  182 ++++----
- net/decnet/dn_route.c                  |  102 ++--
- net/decnet/dn_table.c                  |   23 +-
- net/decnet/netfilter/dn_rtmsg.c        |   18 +-
- net/decnet/sysctl_net_decnet.c         |   17 +-
- net/econet/af_econet.c                 |   23 +-
- net/ipv4/ipconfig.c                    |   73 ++--
- net/ipv4/netfilter/ipt_CLUSTERIP.c     |   26 +-
- net/ipv4/netfilter/nf_nat_snmp_basic.c |  210 ++++----
- net/ipv4/raw.c                         |   36 +-
- net/ipv4/route.c                       |   28 +-
- net/ipv6/raw.c                         |  145 +++---
- net/lapb/lapb_iface.c                  |   30 +-
- net/lapb/lapb_in.c                     |  881 ++++++++++++++++----------------
- net/netfilter/xt_HL.c                  |   64 ++--
- net/netfilter/xt_hl.c                  |   32 +-
- net/netrom/nr_route.c                  |   22 +-
- net/sctp/sm_statefuns.c                |   51 +-
- net/sctp/socket.c                      |   10 +-
- net/sunrpc/auth_gss/auth_gss.c         |   46 +-
- net/sunrpc/clnt.c                      |   25 +-
- net/sunrpc/rpc_pipe.c                  |   14 +-
- net/x25/af_x25.c                       |  473 +++++++++---------
- net/x25/x25_dev.c                      |   44 +-
- net/x25/x25_in.c                       |  118 +++---
- net/x25/x25_link.c                     |   87 ++--
- net/x25/x25_subr.c                     |   78 ++--
- 33 files changed, 2111 insertions(+), 2141 deletions(-)
+clp = NFS_SERVER(delegation->inode)->nfs_client;
+
+Both the delegation and the nfs_client are guaranteed to still be around
+whenever nfs_expire_unreferenced_delegations() is called: the RCU
+protection of the clp->cl_superblock and server->delegations lists
+ensures that.
+
+However the delegation->inode is not guaranteed to still exist...
+
+The obvious fix is to pass the struct nfs_server as a parameter to
+nfs_mark_return_delegation() instead of trying to derive it from the
+inode.
+
+Cheers
+  Trond
 
 -- 
-1.7.6.rc1
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
