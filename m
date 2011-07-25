@@ -1,69 +1,128 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:45585 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751701Ab1GUAIB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jul 2011 20:08:01 -0400
-Date: Wed, 20 Jul 2011 20:07:58 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Volker Lendecke <Volker.Lendecke@SerNet.DE>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        samba-technical@lists.samba.org, Casey Bodley <cbodley@citi.umich.edu>
-Subject: Re: [PATCH] locks: breaking read lease should not block read open
-Message-ID: <20110721000758.GD27871@fieldses.org>
-References: <20110609231606.GB22215@fieldses.org>
- <E1QUwaT-00HRZw-74@intern.SerNet.DE>
- <20110610134859.GA27837@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110610134859.GA27837@fieldses.org>
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:54594 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751849Ab1GYOoE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jul 2011 10:44:04 -0400
+Received: by pzk37 with SMTP id 37so8615537pzk.1
+        for <linux-nfs@vger.kernel.org>; Mon, 25 Jul 2011 07:44:03 -0700 (PDT)
+Message-ID: <4E2D812A.6010203@tonian.com>
+Date: Mon, 25 Jul 2011 10:43:54 -0400
+From: Benny Halevy <bhalevy@tonian.com>
+To: Jim Rees <rees@umich.edu>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH v2 11/25] pnfsblock: lseg alloc and free
+References: <1311276865-29484-1-git-send-email-rees@umich.edu> <1311276865-29484-12-git-send-email-rees@umich.edu>
+In-Reply-To: <1311276865-29484-12-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Jun 10, 2011 at 09:48:59AM -0400, J. Bruce Fields wrote:
-> On Fri, Jun 10, 2011 at 09:56:49AM +0200, Volker Lendecke wrote:
-> > Without having looked too deeply, just let me point out that
-> > Samba here has a plain flaw. Early Linux Kernel versions
-> > that we programmed against did not properly support read
-> > only leases, so we did not implement that initially. If I
-> > remember correctly we never got around to finally do it once
-> > it became available. Eventually we will probably, as read
-> > only leases are a pretty important feature to present to
-> > CIFS clients.
+On 2011-07-21 15:34, Jim Rees wrote:
+> From: Fred Isaman <iisaman@citi.umich.edu>
 > 
-> Thanks, I didn't know that.  (Or I did, and I forgot.)
+> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+> [pnfsblock: fix bug getting pnfs_layout_type in translate_devid().]
+> Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> Signed-off-by: Zhang Jingwang <Jingwang.Zhang@emc.com>
+> Signed-off-by: Benny Halevy <benny@tonian.com>
+> ---
+>  fs/nfs/blocklayout/blocklayout.c    |   36 +++++++++++++++++++++++++++++-----
+>  fs/nfs/blocklayout/blocklayout.h    |    6 +++++
+>  fs/nfs/blocklayout/blocklayoutdev.c |    8 +++++++
+>  3 files changed, 44 insertions(+), 6 deletions(-)
 > 
-> When you *do* implement that, is there any chance you'd have this need
-> to be able to downgrade to a read lease in the case of a conflict?
+> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+> index 3afe363..1858743 100644
+> --- a/fs/nfs/blocklayout/blocklayout.c
+> +++ b/fs/nfs/blocklayout/blocklayout.c
+> @@ -115,16 +115,40 @@ static struct pnfs_layout_hdr *bl_alloc_layout_hdr(struct inode *inode,
+>  	return &bl->bl_layout;
+>  }
+>  
+> -static void
+> -bl_free_lseg(struct pnfs_layout_segment *lseg)
+> +static void bl_free_lseg(struct pnfs_layout_segment *lseg)
+>  {
+> +	dprintk("%s enter\n", __func__);
+> +	kfree(lseg);
+>  }
+>  
+> -static struct pnfs_layout_segment *
+> -bl_alloc_lseg(struct pnfs_layout_hdr *lo,
+> -	      struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
+> +/* We pretty much ignore lseg, and store all data layout wide, so we
+> + * can correctly merge.
+> + */
+> +static struct pnfs_layout_segment *bl_alloc_lseg(struct pnfs_layout_hdr *lo,
+> +						 struct nfs4_layoutget_res *lgr,
+> +						 gfp_t gfp_flags)
+>  {
+> -	return NULL;
+> +	struct pnfs_layout_segment *lseg;
+> +	int status;
+> +
+> +	dprintk("%s enter\n", __func__);
+> +	lseg = kzalloc(sizeof(*lseg), gfp_flags);
+> +	if (!lseg)
+> +		return ERR_PTR(-ENOMEM);
+> +	status = nfs4_blk_process_layoutget(lo, lgr, gfp_flags);
+> +	if (status) {
+> +		/* We don't want to call the full-blown bl_free_lseg,
+> +		 * since on error extents were not touched.
+> +		 */
+> +		/* STUB - we really want to distinguish between 2 error
 
-So it's a question about the protocols samba implements:
+please use "FIXME:" or "TODO:" to label further work that needs to be done.
+The latter part of the second comment actually contradicts the first one
+if I understand it correctly.  Is the code exposed to this error case where the lo
+data structure is hosed?  When does it happen, what is the risk?
 
-	- Do they allow an atomic downgrade from an exclusive to a
-	  shared oplock?  (Or to a level 2 oplock, or whatever the right
-	  term is).
-	- If so, can that happen as a response to a conflicting open?
-	  (So, if you're holding an exclusive oplock, and a conflicting
-	  open comes in, can the server-to-client break message say "now
-	  you're getting a shared oplock instead"?  Or is the client
-	  left without any oplock until it requests a new one?)
+Benny
 
-I'm not sure how to approach the lease code.
-
-On the one hand, I've never seen any evidence that anyone outside Samba
-and NFSv4 has ever used it, and both currently make extremely limited
-use of it.  So we could probably get away with "fixing" the lease code
-to do whatever both of us need.
-
-On the other hand, I don't know how to figure out what exactly Samba
-will actually need.  And the conservative thing to do would be to leave
-leases alone.
-
-So maybe I'm better off with a new "NFSv4 delegation lock type" that
-does exactly what I need it to, and that's only available from inside
-the kernel for now.
-
-Then later if it proves useful to Samba as well, we could figure out how
-to export an interface for it to userspace.
-
-I'm not sure.
-
---b.
+> +		 * conditions here.  This lseg failed, but lo data structures
+> +		 * are OK, or we hosed the lo data structures.  The calling
+> +		 * code probably needs to distinguish this too.
+> +		 */
+> +		kfree(lseg);
+> +		return ERR_PTR(status);
+> +	}
+> +	return lseg;
+>  }
+>  
+>  static void
+> diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+> index 08b4d6f..7dab978 100644
+> --- a/fs/nfs/blocklayout/blocklayout.h
+> +++ b/fs/nfs/blocklayout/blocklayout.h
+> @@ -96,6 +96,12 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
+>  	return container_of(lo, struct pnfs_block_layout, bl_layout);
+>  }
+>  
+> +static inline struct pnfs_block_layout *
+> +BLK_LSEG2EXT(struct pnfs_layout_segment *lseg)
+> +{
+> +	return BLK_LO2EXT(lseg->pls_layout);
+> +}
+> +
+>  struct bl_dev_msg {
+>  	int status;
+>  	uint32_t major, minor;
+> diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+> index 7e1377f..64da33a 100644
+> --- a/fs/nfs/blocklayout/blocklayoutdev.c
+> +++ b/fs/nfs/blocklayout/blocklayoutdev.c
+> @@ -189,3 +189,11 @@ out:
+>  	kfree(msg.data);
+>  	return rv;
+>  }
+> +
+> +int
+> +nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+> +			   struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
+> +{
+> +	/* STUB */
+> +	return -EIO;
+> +}
