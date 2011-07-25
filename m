@@ -1,50 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:46054 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:22148 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754823Ab1GGNrP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jul 2011 09:47:15 -0400
-Subject: Re: NFS/TCP timeout sequence
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+	id S1751223Ab1GYPS2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Jul 2011 11:18:28 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p6PFISTU008170
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 25 Jul 2011 11:18:28 -0400
+Message-ID: <4E2D8942.9020602@RedHat.com>
+Date: Mon, 25 Jul 2011 11:18:26 -0400
+From: Steve Dickson <SteveD@redhat.com>
 To: Max Matveev <makc@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 07 Jul 2011 09:47:19 -0400
-In-Reply-To: <19989.27202.793003.725608@regina.usersys.redhat.com>
-References: <19989.27202.793003.725608@regina.usersys.redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1310046439.3863.30.camel@lade.trondhjem.org>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        Ben England <bengland@redhat.com>
+Subject: Re: [PATCH] RDMA: Increasing RPCRDMA_MAX_DATA_SEGS
+References: <1311270542-2021-1-git-send-email-steved@redhat.com> <20009.12921.103429.724673@regina.usersys.redhat.com>
+In-Reply-To: <20009.12921.103429.724673@regina.usersys.redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2011-07-07 at 18:11 +1000, Max Matveev wrote: 
-> I've had to look at the way NFS/TCP does its timeouts and backoff
-> and it does not make a lot of sense to me: according to the
-> following paragram from nfs(5) on Fedora 14 (I'm using Fedora 14
-> because it has more text then the same page in nfs-utils):
+Sorry for the delayed response... I took a day off..  
+
+On 07/22/2011 04:19 AM, Max Matveev wrote:
+> On Thu, 21 Jul 2011 13:49:02 -0400, Steve Dickson wrote:
 > 
->       timeo=n    The time (in tenths of a second) the  NFS  client  waits
->                  for a response before it retries an NFS request. If this
->                  option is not specified, requests are retried  every  60
->                  seconds  for NFS over TCP.  The NFS client does not per‐
->                  form any kind of timeout backoff for NFS over TCP.
+>  steved> Our performance team has noticed that increasing
+>  steved> RPCRDMA_MAX_DATA_SEGS from 8 to 64 significantly
+>  steved> increases throughput when using the RDMA transport.
 > 
-> but if I try the mount with timeo=20,retrans=7 then I'm getting
-> retransmits which are 2, 4, 6, 8, 2, 4, 6, 8 seconds apart, i.e.
-> there is a) linear backoff and b) the backoff is not long enough to
-> let the complete sequence of 7 retransmits run its course.
+> Did they try new client with old server and vice versa?
+> Both read and write?
+I believe it was done on the server side, but I've cc-ed the
+person who did the testing.... 
 
-Sigh... Firstly, 2 second timeouts are complete lunacy when using a
-protocol that guarantees reliable delivery, such as TCP does. Anyone who
-tries it deserves exactly what they get: poor unreliable performance.
-
-Secondly, the _other_ fix for this problem is to fix the documentation.
-
-Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+steved.
