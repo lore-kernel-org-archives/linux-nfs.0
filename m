@@ -1,102 +1,170 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:53961 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754017Ab1GGAHi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jul 2011 20:07:38 -0400
-Message-ID: <4E14F8C4.2010508@candelatech.com>
-Date: Wed, 06 Jul 2011 17:07:32 -0700
-From: Ben Greear <greearb@candelatech.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [RFC] sunrpc:  Fix race between work-queue and rpc_killall_tasks.
-References: <1309992581-25199-1-git-send-email-greearb@candelatech.com> <1309995932.5447.6.camel@lade.trondhjem.org>
-In-Reply-To: <1309995932.5447.6.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:46045 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752570Ab1GYS05 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jul 2011 14:26:57 -0400
+Received: by qwk3 with SMTP id 3so2184358qwk.19
+        for <linux-nfs@vger.kernel.org>; Mon, 25 Jul 2011 11:26:57 -0700 (PDT)
+Message-ID: <4E2DB56A.9010908@tonian.com>
+Date: Mon, 25 Jul 2011 14:26:50 -0400
+From: Benny Halevy <bhalevy@tonian.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH v2 07/25] pnfsblock: add blocklayout Kconfig option, Makefile,
+ and stubs
+References: <1311276865-29484-1-git-send-email-rees@umich.edu> <1311276865-29484-8-git-send-email-rees@umich.edu> <4E2D7E0D.60808@tonian.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A517B56@SACMVEXC2-PRD.hq.netapp.com> <4E2D82AB.6060502@tonian.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A517C9D@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A517C9D@SACMVEXC2-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 07/06/2011 04:45 PM, Trond Myklebust wrote:
-> On Wed, 2011-07-06 at 15:49 -0700, greearb@candelatech.com wrote:
->> From: Ben Greear<greearb@candelatech.com>
+On 2011-07-25 13:25, Myklebust, Trond wrote:
+>> -----Original Message-----
+>> From: Benny Halevy [mailto:bhalevy@tonian.com]
+>> Sent: Monday, July 25, 2011 10:50 AM
+>> To: Myklebust, Trond
+>> Cc: Jim Rees; linux-nfs@vger.kernel.org; peter honeyman
+>> Subject: Re: [PATCH v2 07/25] pnfsblock: add blocklayout Kconfig
+>> option, Makefile, and stubs
 >>
->> The rpc_killall_tasks logic is not locked against
->> the work-queue thread, but it still directly modifies
->> function pointers and data in the task objects.
+>> On 2011-07-25 10:38, Myklebust, Trond wrote:
+>>>> -----Original Message-----
+>>>> From: Benny Halevy [mailto:bhalevy@tonian.com]
+>>>> Sent: Monday, July 25, 2011 10:31 AM
+>>>> To: Jim Rees
+>>>> Cc: Myklebust, Trond; linux-nfs@vger.kernel.org; peter honeyman
+>>>> Subject: Re: [PATCH v2 07/25] pnfsblock: add blocklayout Kconfig
+>>>> option, Makefile, and stubs
+>>>>
+>>>> On 2011-07-21 15:34, Jim Rees wrote:
+>>>>> From: Fred Isaman <iisaman@citi.umich.edu>
+>>>>>
+>>>>> Define a configuration variable to enable/disable compilation of
+>> the
+>>>>> block driver code.
+>>>>>
+>>>>> Add the minimal structure for a pnfs block layout driver, and
+> empty
+>>>>> list-heads that will hold the extent data
+>>>>>
+>>>>> [pnfsblock: make NFS_V4_1 select PNFS_BLOCK]
+>>>>> Signed-off-by: Peng Tao <peng_tao@emc.com>
+>>>>> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+>>>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>>>>> [pnfs-block: fix CONFIG_PNFS_BLOCK dependencies]
+>>>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>>>>> Signed-off-by: Benny Halevy <benny@tonian.com>
+>>>>> [pnfsblock: SQUASHME: port block layout code]
+>>>>> Signed-off-by: Peng Tao <peng_tao@emc.com>
+>>>>> [pnfsblock: SQUASHME: adjust to API change]
+>>>>> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+>>>>> [pnfs: move pnfs_layout_type inline in nfs_inode]
+>>>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>>>>> [blocklayout: encode_layoutcommit implementation]
+>>>>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+>>>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>>>>> Signed-off-by: Benny Halevy <benny@tonian.com>
+>>>>> [pnfsblock: layout alloc and free]
+>>>>> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+>>>>> [pnfs: move pnfs_layout_type inline in nfs_inode]
+>>>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>>>>> Signed-off-by: Benny Halevy <benny@tonian.com>
+>>>>> [pnfsblock: define module alias]
+>>>>> Signed-off-by: Peng Tao <peng_tao@emc.com>
+>>>>> ---
+>>>>>  fs/nfs/Kconfig                   |    8 ++-
+>>>>>  fs/nfs/Makefile                  |    1 +
+>>>>>  fs/nfs/blocklayout/Makefile      |    5 +
+>>>>>  fs/nfs/blocklayout/blocklayout.c |  175
+>>>> ++++++++++++++++++++++++++++++++++++++
+>>>>>  fs/nfs/blocklayout/blocklayout.h |   91 ++++++++++++++++++++
+>>>>>  5 files changed, 279 insertions(+), 1 deletions(-)
+>>>>>  create mode 100644 fs/nfs/blocklayout/Makefile
+>>>>>  create mode 100644 fs/nfs/blocklayout/blocklayout.c
+>>>>>  create mode 100644 fs/nfs/blocklayout/blocklayout.h
+>>>>>
+>>>>> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+>>>>> index 2cde5d9..be02077 100644
+>>>>> --- a/fs/nfs/Kconfig
+>>>>> +++ b/fs/nfs/Kconfig
+>>>>> @@ -79,15 +79,21 @@ config NFS_V4_1
+>>>>>  	depends on NFS_FS && NFS_V4 && EXPERIMENTAL
+>>>>>  	select SUNRPC_BACKCHANNEL
+>>>>>  	select PNFS_FILE_LAYOUT
+>>>>> +	select PNFS_BLOCK
+>>>>> +	select MD
+>>>>> +	select BLK_DEV_DM
+>>>>
+>>>> Why is PNFS_BLOCK enabled automatically in all cases?
+>>>> That renders the use of modules for layout drivers totally useless.
+>>>> I sort of understand that for PNFS_FILE_LAYOUT (when my
+>>>> arm is twisted really hard behind my back :) since it
+>>>> is an integral part of RFC5661 but what's the justification
+>>>> for PNFS_BLOCK? and why blocks and not objects?
+>>>
+>>> The question is rather why did objects add a selectable compile
+>> option?
 >>
->> This patch changes the killall-tasks logic to set a flag
->> that tells the work-queue thread to terminate the task
->> instead of directly calling the terminate logic.
+>> Just good citizenship :)
 >>
->> Signed-off-by: Ben Greear<greearb@candelatech.com>
->> ---
+>>> What is the point of not compiling a given layout driver if all the
+>>> dependencies are met?
 >>
->> NOTE:  This needs review, as I am still struggling to understand
->> the rpc code, and it's quite possible this patch either doesn't
->> fully fix the problem or actually causes other issues.  That said,
->> my nfs stress test seems to run a bit more stable with this patch applied.
->
-> Yes, but I don't see why you are adding a new flag, nor do I see why we
-> want to keep checking for that flag in the rpc_execute() loop.
-> rpc_killall_tasks() is not a frequent operation that we want to optimise
-> for.
+>> Reducing build times...
+>> Building a smaller kernel when modules are disabled...
+> 
+> 
+> You can add a line with
+> 	depends on m
+> 
+> to ensure that it is always compiled as a module. I think that might be
+> a good thing until we have nailed down all the issues with pNFS.
+> 
 
-I was hoping that if the killall logic never set anything that was also
-set by the work-queue thread it would be lock-safe without needing
-explicit locking.
+I'd rather leave it as is so it's easier to test without CONFIG_MODULES.
 
-I was a bit concerned that my flags |= KILLME logic would potentially
-over-write flags that were being simultaneously written elsewhere
-(so maybe I'd have to add a completely new variable for that KILLME flag
-to really be safe.)
+>> We're fine in terms of memory consumption when CONFIG_MODULES=y since
+>> the
+>> layout driver is loaded on demand but shouldn't be worried about
+>> the other case?
+>>
+>>>
+>>> IOW: The only thing I'd change above is the select MD and select
+>>> BLK_DEV_DM: I'd prefer something like
+>>>
+>>> config PNFS_BLOCK
+>>> 	depends on NFS_V4_1 && MD && BLK_DEV_DM
+>>> 	default y
+>>
+>> This is closer to the original version.
+>> However, selecting MD and BLK_DEV_DM was proven useful to
+> automatically
+>> take
+>> care of the module dependencies without having to dive into details.
+> 
+> Yes, but since the MD is a completely different layer that is not under
+> our control (well, OK, Neil is still an NFS maintainer and an MD
+> maintainer) then I'd prefer to leave it as a dependency.
+> 
+> We can always add something like
+> 
+> comment
+> 	depends on NFS_V4_1 && !BLK_DEV_DM
+> 	Please enable BLK_DEV_MD if you wish to enable the pNFS block
+> driver.
 
->
-> How about the following instead?
+I never new you can enable comments conditionally this way...
+It looks ok to me, I'll try it out and see how it shows in make *config
 
-I think it still races..more comments below.
+Benny
 
->
-> 8<----------------------------------------------------------------------------------
->  From ecb7244b661c3f9d2008ef6048733e5cea2f98ab Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust<Trond.Myklebust@netapp.com>
-> Date: Wed, 6 Jul 2011 19:44:52 -0400
-> Subject: [PATCH] SUNRPC: Fix a race between work-queue and rpc_killall_tasks
->
-> Since rpc_killall_tasks may modify the rpc_task's tk_action field
-> without any locking, we need to be careful when dereferencing it.
-
-> +		do_action = task->tk_callback;
-> +		task->tk_callback = NULL;
-> +		if (do_action == NULL) {
-
-I think the race still exists, though it would be harder to hit.
-What if the killall logic sets task->tk_callback right after you assign do_action, but before
-you set tk_callback to NULL?  Or after you set tk_callback to NULL for
-that matter.
-
->   			/*
->   			 * Perform the next FSM step.
-> -			 * tk_action may be NULL when the task has been killed
-> -			 * by someone else.
-> +			 * tk_action may be NULL if the task has been killed.
-> +			 * In particular, note that rpc_killall_tasks may
-> +			 * do this at any time, so beware when dereferencing.
->   			 */
-> -			if (task->tk_action == NULL)
-> +			do_action = task->tk_action;
-> +			if (do_action == NULL)
->   				break;
-> -			task->tk_action(task);
->   		}
-> +		do_action(task);
->
->   		/*
->   		 * Lockless check for whether task is sleeping or not.
-
-Thanks,
-Ben
-
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
-
+> 
+> 
+> Cheers
+>   Trond
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
