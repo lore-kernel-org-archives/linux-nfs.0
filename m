@@ -1,61 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f52.google.com ([209.85.161.52]:64551 "EHLO
-	mail-fx0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753509Ab1GIOKZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 9 Jul 2011 10:10:25 -0400
-Received: by fxd18 with SMTP id 18so2763105fxd.11
-        for <linux-nfs@vger.kernel.org>; Sat, 09 Jul 2011 07:10:24 -0700 (PDT)
-Message-ID: <4E18614C.4010002@tonian.com>
-Date: Sat, 09 Jul 2011 17:10:20 +0300
-From: Benny Halevy <bhalevy@tonian.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        Peng Tao <peng_tao@emc.com>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:52359 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752090Ab1GZQIX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2011 12:08:23 -0400
+Date: Tue, 26 Jul 2011 12:08:05 -0400
+From: Jim Rees <rees@umich.edu>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Peng Tao <bergwolf@gmail.com>, tao.peng@emc.com, linux-nfs@vger.kernel.org,
+        bhalevy@tonian.com
 Subject: Re: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
+Message-ID: <20110726160805.GA1922@merit.edu>
 References: <1309743002-1658-1-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1309743002-1658-1-git-send-email-bergwolf@gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+ <4E18614C.4010002@tonian.com>
+ <F19688880B763E40B28B2B462677FBF805BF0610CE@MX09A.corp.emc.com>
+ <1311621204.28209.14.camel@lade.trondhjem.org>
+ <CA+a=Yy59HXXjd4HgrqeANaQZKO9rRPKzM+r3NNq2KSMV_L4S_w@mail.gmail.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A51825D@SACMVEXC2-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A51825D@SACMVEXC2-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-07-04 04:30, Peng Tao wrote:
-> There is no need to keep lseg reference when read/write through MDS.
-> This fixes a null pointer crash at nfs_post_op_update_inode_force_wcc
-> because nfs4_proc_write_setup will unset wdata->res.fattr if wdata->lseg
-> is not NULL.
-> 
-> Signed-off-by: Peng Tao <peng_tao@emc.com>
+Myklebust, Trond wrote:
 
-Looks good to me.
+  > Thanks for your explanation. Is there any plan on how to fix
+  > pnfs_ld_read/write_done? Basically, we would need an interface that
+  > can redirect the IO to MDS if pnfs_error is set or do all necessary
+  > cleanup work to end read/write if pnfs_error is 0. IMHO, the
+  > recoalesce logic need to access nfs_pageio_descriptor but we do not
+  > have that information at pnfs_ld_read/write_done.
+  
+  As far as I can see, the right thing to do is to mark the layout as
+  invalid and then redirty the page. It should be easy to have fsync()
+  re-send the pages in this case. These should be extremely rare events,
+  since we expect to catch most of the pNFS failures when we do the actual
+  LAYOUTGET in the ->pg_init().
+  
+  My main worry is for aio/dio where there is no good mechanism for
+  retrying. I'm still working on that...
 
-Benny
-
-> ---
->  fs/nfs/pnfs.c |    6 ++++++
->  1 files changed, 6 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 30a0394..55fdf02 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -1193,6 +1193,9 @@ pnfs_ld_write_done(struct nfs_write_data *data)
->  
->  	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
->  		data->pnfs_error);
-> +
-> +	put_lseg(data->lseg);
-> +	data->lseg = NULL;
->  	status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
->  				    data->mds_ops, NFS_FILE_SYNC);
->  	return status ? : -EAGAIN;
-> @@ -1240,6 +1243,9 @@ pnfs_ld_read_done(struct nfs_read_data *data)
->  
->  	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
->  		data->pnfs_error);
-> +
-> +	put_lseg(data->lseg);
-> +	data->lseg = NULL;
->  	status = nfs_initiate_read(data, NFS_CLIENT(data->inode),
->  				   data->mds_ops);
->  	return status ? : -EAGAIN;
+What do you suggest we do for the current set of patches that add block
+layout to pnfs?
