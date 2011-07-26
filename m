@@ -1,157 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:55428 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754893Ab1GLTaM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Jul 2011 15:30:12 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 8/8] NFS: Clean up - simplify the switch to read/write-through-MDS
-Date: Tue, 12 Jul 2011 15:29:54 -0400
-Message-Id: <1310498994-12685-9-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1310498994-12685-8-git-send-email-Trond.Myklebust@netapp.com>
-References: <1310498994-12685-1-git-send-email-Trond.Myklebust@netapp.com>
- <1310498994-12685-2-git-send-email-Trond.Myklebust@netapp.com>
- <1310498994-12685-3-git-send-email-Trond.Myklebust@netapp.com>
- <1310498994-12685-4-git-send-email-Trond.Myklebust@netapp.com>
- <1310498994-12685-5-git-send-email-Trond.Myklebust@netapp.com>
- <1310498994-12685-6-git-send-email-Trond.Myklebust@netapp.com>
- <1310498994-12685-7-git-send-email-Trond.Myklebust@netapp.com>
- <1310498994-12685-8-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:40338 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751377Ab1GZR5j convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2011 13:57:39 -0400
+Received: by vxh35 with SMTP id 35so503124vxh.19
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Jul 2011 10:57:38 -0700 (PDT)
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A51838E@SACMVEXC2-PRD.hq.netapp.com>
+References: <1309743002-1658-1-git-send-email-bergwolf@gmail.com>
+ <4E18614C.4010002@tonian.com> <F19688880B763E40B28B2B462677FBF805BF0610CE@MX09A.corp.emc.com>
+ <1311621204.28209.14.camel@lade.trondhjem.org> <CA+a=Yy59HXXjd4HgrqeANaQZKO9rRPKzM+r3NNq2KSMV_L4S_w@mail.gmail.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A51825D@SACMVEXC2-PRD.hq.netapp.com>
+ <CA+a=Yy7sCuFE3N_bBsMShr1tLLg4jz9tSpBU9aH08aHCn5uvFQ@mail.gmail.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A51838E@SACMVEXC2-PRD.hq.netapp.com>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Wed, 27 Jul 2011 01:57:18 +0800
+Message-ID: <CA+a=Yy7Vj6mNOdQ-uDLajngibisET1ttHLgZLmzxeMMWTyrHSQ@mail.gmail.com>
+Subject: Re: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: tao.peng@emc.com, linux-nfs@vger.kernel.org, bhalevy@tonian.com
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Use nfs_pageio_reset_read_mds and nfs_pageio_reset_write_mds instead of
-completely reinitialising the struct nfs_pageio_descriptor.
+On Wed, Jul 27, 2011 at 1:37 AM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+>> -----Original Message-----
+>> From: Peng Tao [mailto:bergwolf@gmail.com]
+>> Sent: Tuesday, July 26, 2011 1:33 PM
+>> To: Myklebust, Trond
+>> Cc: tao.peng@emc.com; linux-nfs@vger.kernel.org; bhalevy@tonian.com
+>> Subject: Re: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
+>>
+>> On Tue, Jul 26, 2011 at 11:50 PM, Myklebust, Trond
+>> <Trond.Myklebust@netapp.com> wrote:
+>> >> -----Original Message-----
+>> >> From: Peng Tao [mailto:bergwolf@gmail.com]
+>> >> Sent: Tuesday, July 26, 2011 11:37 AM
+>> >> To: Myklebust, Trond
+>> >> Cc: tao.peng@emc.com; linux-nfs@vger.kernel.org; bhalevy@tonian.com
+>> >> Subject: Re: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
+>> >>
+>> >> Hi, Trond,
+>> >>
+>> >> On Tue, Jul 26, 2011 at 3:13 AM, Trond Myklebust
+>> >> <Trond.Myklebust@netapp.com> wrote:
+>> >> > On Wed, 2011-07-20 at 01:52 -0400, tao.peng@emc.com wrote:
+>> >> >> Hi, Trond,
+>> >> >>
+>> >> >> Any comments on this patch? I still get kernel crash when pnfs
+>> write
+>> >> is attempted but fails and calls pnfs_ld_write_done(). It seems
+>> object
+>> >> layout uses the same code path as well. But I don't find the patch
+>> in
+>> >> either your tree or Benny's tree. Are there any concerns?
+>> >> >>
+>> >> >> Thanks,
+>> >> >> Tao
+>> >> >
+>> >> > The whole pnfs_ld_write_done thing is bogus and needs to be
+>> replaced
+>> >> > with something sane. It is trying to initiate a WRITE RPC call
+>> with
+>> >> the
+>> >> > wrong block size, and is calling the MDS rpc_call_done() and
+>> >> > rpc_release() with an uninitialised rpc task pointer.
+>> >> >
+>> >> > Ditto for pnfs_ld_read_done.
+>> >> Thanks for your explanation. Is there any plan on how to fix
+>> >> pnfs_ld_read/write_done? Basically, we would need an interface that
+>> >> can redirect the IO to MDS if pnfs_error is set or do all necessary
+>> >> cleanup work to end read/write if pnfs_error is 0. IMHO, the
+>> >> recoalesce logic need to access nfs_pageio_descriptor but we do not
+>> >> have that information at pnfs_ld_read/write_done.
+>> >
+>> > As far as I can see, the right thing to do is to mark the layout as
+>> invalid and then redirty the page. It should be easy to have fsync()
+>> re-send the pages in this case. These should be extremely rare events,
+>> since we expect to catch most of the pNFS failures when we do the
+>> actual LAYOUTGET in the ->pg_init().
+>> Agreed. This should be easier than re-coalescing and sending to MDS at
+>> read/write_done.
+>>
+>> >
+>> > My main worry is for aio/dio where there is no good mechanism for
+>> retrying. I'm still working on that...
+>> For dio, we may have to send the failed pages to MDS instead of
+>> relying on next fsync() to retry.
+>
+> The problem isn't what to do, it is more one of _who_ does it. The rpciod/nfsiod queues aren't the ideal place to set up a resend since it involves allocating memory.
+How about having a pnfs private workqueue to take care of the resend?
+There are some other places default workqueue is used in io path in
+both block and object layout code. It can be problematic if the
+default workqueue is blocked.  e.g. if someone on the default
+workqueue allocates memory and reclaim code comes into pnfs path.
+Using default workqueue here can cause application hang forever. If we
+have a private workqueue, these problems can be solve IMO.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/internal.h       |    4 ----
- fs/nfs/nfs4filelayout.c |    5 ++---
- fs/nfs/pnfs.c           |    4 ++--
- fs/nfs/read.c           |    4 ++--
- fs/nfs/write.c          |    4 ++--
- 5 files changed, 8 insertions(+), 13 deletions(-)
+Best,
+Tao
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 758db89..38b1ffc 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -299,16 +299,12 @@ extern int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
- 		struct list_head *head);
- 
- struct nfs_pageio_descriptor;
--extern void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
--		struct inode *inode);
- extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
- extern void nfs_readdata_release(struct nfs_read_data *rdata);
- 
- /* write.c */
- extern int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
- 		struct list_head *head);
--extern void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
--				  struct inode *inode, int ioflags);
- extern void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio);
- extern void nfs_writedata_release(struct nfs_write_data *wdata);
- extern void nfs_commit_free(struct nfs_write_data *p);
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index fbc5b42..f0b37e1 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -711,7 +711,7 @@ filelayout_pg_init_read(struct nfs_pageio_descriptor *pgio,
- 					   GFP_KERNEL);
- 	/* If no lseg, fall back to read through mds */
- 	if (pgio->pg_lseg == NULL)
--		nfs_pageio_init_read_mds(pgio, pgio->pg_inode);
-+		nfs_pageio_reset_read_mds(pgio);
- }
- 
- void
-@@ -728,8 +728,7 @@ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
- 					   GFP_NOFS);
- 	/* If no lseg, fall back to write through mds */
- 	if (pgio->pg_lseg == NULL)
--		nfs_pageio_init_write_mds(pgio, pgio->pg_inode,
--					  pgio->pg_ioflags);
-+		nfs_pageio_reset_write_mds(pgio);
- }
- 
- static const struct nfs_pageio_ops filelayout_pg_read_ops = {
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 93c7329..38e5508 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1075,7 +1075,7 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
- 					   GFP_KERNEL);
- 	/* If no lseg, fall back to read through mds */
- 	if (pgio->pg_lseg == NULL)
--		nfs_pageio_init_read_mds(pgio, pgio->pg_inode);
-+		nfs_pageio_reset_read_mds(pgio);
- 
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
-@@ -1093,7 +1093,7 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *
- 					   GFP_NOFS);
- 	/* If no lseg, fall back to write through mds */
- 	if (pgio->pg_lseg == NULL)
--		nfs_pageio_init_write_mds(pgio, pgio->pg_inode, pgio->pg_ioflags);
-+		nfs_pageio_reset_write_mds(pgio);
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
- 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 3745eed..1472933 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -112,19 +112,19 @@ static void nfs_readpage_truncate_uninitialised_page(struct nfs_read_data *data)
- 	}
- }
- 
--void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
-+static void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
- 		struct inode *inode)
- {
- 	nfs_pageio_init(pgio, inode, &nfs_pageio_read_ops,
- 			NFS_SERVER(inode)->rsize, 0);
- }
--EXPORT_SYMBOL_GPL(nfs_pageio_init_read_mds);
- 
- void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio)
- {
- 	pgio->pg_ops = &nfs_pageio_read_ops;
- 	pgio->pg_bsize = NFS_SERVER(pgio->pg_inode)->rsize;
- }
-+EXPORT_SYMBOL_GPL(nfs_pageio_reset_read_mds);
- 
- static void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 		struct inode *inode)
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index e18d842..525fb02 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1051,19 +1051,19 @@ static const struct nfs_pageio_ops nfs_pageio_write_ops = {
- 	.pg_doio = nfs_generic_pg_writepages,
- };
- 
--void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
-+static void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
- 				  struct inode *inode, int ioflags)
- {
- 	nfs_pageio_init(pgio, inode, &nfs_pageio_write_ops,
- 				NFS_SERVER(inode)->wsize, ioflags);
- }
--EXPORT_SYMBOL_GPL(nfs_pageio_init_write_mds);
- 
- void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio)
- {
- 	pgio->pg_ops = &nfs_pageio_write_ops;
- 	pgio->pg_bsize = NFS_SERVER(pgio->pg_inode)->wsize;
- }
-+EXPORT_SYMBOL_GPL(nfs_pageio_reset_write_mds);
- 
- static void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
- 				  struct inode *inode, int ioflags)
+
+>
+> Cheers
+>  Trond
+>
+
+
+
 -- 
-1.7.6
-
+Thanks,
+-Bergwolf
