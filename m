@@ -1,49 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:36604 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752051Ab1GOXJK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Jul 2011 19:09:10 -0400
-Date: Fri, 15 Jul 2011 19:09:08 -0400
-To: Trond Myklebust <trond@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: document nfsv4 sillyrename issues
-Message-ID: <20110715230908.GD28012@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:62993 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751925Ab1GZRc6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2011 13:32:58 -0400
+Received: by vxh35 with SMTP id 35so485491vxh.19
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Jul 2011 10:32:58 -0700 (PDT)
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A51825D@SACMVEXC2-PRD.hq.netapp.com>
+References: <1309743002-1658-1-git-send-email-bergwolf@gmail.com>
+ <4E18614C.4010002@tonian.com> <F19688880B763E40B28B2B462677FBF805BF0610CE@MX09A.corp.emc.com>
+ <1311621204.28209.14.camel@lade.trondhjem.org> <CA+a=Yy59HXXjd4HgrqeANaQZKO9rRPKzM+r3NNq2KSMV_L4S_w@mail.gmail.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A51825D@SACMVEXC2-PRD.hq.netapp.com>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Wed, 27 Jul 2011 01:32:38 +0800
+Message-ID: <CA+a=Yy7sCuFE3N_bBsMShr1tLLg4jz9tSpBU9aH08aHCn5uvFQ@mail.gmail.com>
+Subject: Re: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: tao.peng@emc.com, linux-nfs@vger.kernel.org, bhalevy@tonian.com
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@redhat.com>
+On Tue, Jul 26, 2011 at 11:50 PM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+>> -----Original Message-----
+>> From: Peng Tao [mailto:bergwolf@gmail.com]
+>> Sent: Tuesday, July 26, 2011 11:37 AM
+>> To: Myklebust, Trond
+>> Cc: tao.peng@emc.com; linux-nfs@vger.kernel.org; bhalevy@tonian.com
+>> Subject: Re: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
+>>
+>> Hi, Trond,
+>>
+>> On Tue, Jul 26, 2011 at 3:13 AM, Trond Myklebust
+>> <Trond.Myklebust@netapp.com> wrote:
+>> > On Wed, 2011-07-20 at 01:52 -0400, tao.peng@emc.com wrote:
+>> >> Hi, Trond,
+>> >>
+>> >> Any comments on this patch? I still get kernel crash when pnfs write
+>> is attempted but fails and calls pnfs_ld_write_done(). It seems object
+>> layout uses the same code path as well. But I don't find the patch in
+>> either your tree or Benny's tree. Are there any concerns?
+>> >>
+>> >> Thanks,
+>> >> Tao
+>> >
+>> > The whole pnfs_ld_write_done thing is bogus and needs to be replaced
+>> > with something sane. It is trying to initiate a WRITE RPC call with
+>> the
+>> > wrong block size, and is calling the MDS rpc_call_done() and
+>> > rpc_release() with an uninitialised rpc task pointer.
+>> >
+>> > Ditto for pnfs_ld_read_done.
+>> Thanks for your explanation. Is there any plan on how to fix
+>> pnfs_ld_read/write_done? Basically, we would need an interface that
+>> can redirect the IO to MDS if pnfs_error is set or do all necessary
+>> cleanup work to end read/write if pnfs_error is 0. IMHO, the
+>> recoalesce logic need to access nfs_pageio_descriptor but we do not
+>> have that information at pnfs_ld_read/write_done.
+>
+> As far as I can see, the right thing to do is to mark the layout as invalid and then redirty the page. It should be easy to have fsync() re-send the pages in this case. These should be extremely rare events, since we expect to catch most of the pNFS failures when we do the actual LAYOUTGET in the ->pg_init().
+Agreed. This should be easier than re-coalescing and sending to MDS at
+read/write_done.
 
-Somebody working on this code asked what the deal was with NFSv4, since
-this comment notes that it's v2/v3's statelessness that requires
-sillyrename.  Shouldn't hurt to document the answer.
+>
+> My main worry is for aio/dio where there is no good mechanism for retrying. I'm still working on that...
+For dio, we may have to send the failed pages to MDS instead of
+relying on next fsync() to retry.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfs/unlink.c |    8 ++++++++
- 1 files changed, 8 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index 8d6864c..981298c 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -501,6 +501,14 @@ nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
-  * and only performs the unlink once the last reference to it is put.
-  *
-  * The final cleanup is done during dentry_iput.
-+ *
-+ * (Note: NFSv4 is stateful, and has opens, so in theory an NFSv4 server
-+ * could take responsibility for keeping open files referenced.  The server
-+ * would also need to ensure that opened-but-deleted files were kept over
-+ * reboots.  However, we may not assume a server does so.  (RFC 5661
-+ * does provide an OPEN4_RESULT_PRESERVE_UNLINKED flag that a server can
-+ * use to advertise that it does this; some day we may take advantage of
-+ * it.))
-  */
- int
- nfs_sillyrename(struct inode *dir, struct dentry *dentry)
--- 
-1.7.4.1
+Thanks,
+Tao
 
+>
+> Cheers
+>  Trond
+>
