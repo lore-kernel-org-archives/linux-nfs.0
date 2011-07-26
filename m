@@ -1,127 +1,32 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:46584 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752515Ab1GUTee (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 15:34:34 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v2 06/25] pnfs: cleanup_layoutcommit
-Date: Thu, 21 Jul 2011 15:34:06 -0400
-Message-Id: <1311276865-29484-7-git-send-email-rees@umich.edu>
-In-Reply-To: <1311276865-29484-1-git-send-email-rees@umich.edu>
-References: <1311276865-29484-1-git-send-email-rees@umich.edu>
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:40809 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753663Ab1GZTd5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2011 15:33:57 -0400
+Received: by qyk29 with SMTP id 29so1691670qyk.19
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Jul 2011 12:33:56 -0700 (PDT)
+Message-ID: <4E2F16A0.80105@marcanoonline.com>
+Date: Tue, 26 Jul 2011 15:03:52 -0430
+From: Robert Marcano <robert@marcanoonline.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 / POSIX ACL mapping bug?
+References: <4E2ED2A0.4030401@marcanoonline.com> <D7BF98E9-394A-4364-8124-1E39BEBE85DC@netapp.com> <4E2F1584.60901@marcanoonline.com>
+In-Reply-To: <4E2F1584.60901@marcanoonline.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On 07/26/2011 02:59 PM, Robert Marcano wrote:
+> On 07/26/2011 02:03 PM, Andy Adamson wrote:
+>> Hi
+>>
+>> Which client, which server (distro and uname -a output) did you use?
+>> Also, what commands (setfacl,getfacl? nfs4_setfacl, nfs4_getfacl ?
+>> plus version) and parameters did you use?
 
-This gives layout driver a chance to cleanup structures they put in at
-encode_layoutcommit.
+Adding missing versions on the CentOS NFS Server
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[fixup layout header pointer for layoutcommit]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <benny@tonian.com>
----
- fs/nfs/nfs4proc.c       |    1 +
- fs/nfs/nfs4xdr.c        |    3 ++-
- fs/nfs/pnfs.c           |   10 ++++++++++
- fs/nfs/pnfs.h           |    5 +++++
- include/linux/nfs_xdr.h |    1 +
- 5 files changed, 19 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index e02f545..795033c5 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5965,6 +5965,7 @@ static void nfs4_layoutcommit_release(void *calldata)
- 	struct nfs4_layoutcommit_data *data = calldata;
- 	struct pnfs_layout_segment *lseg, *tmp;
- 
-+	pnfs_cleanup_layoutcommit(data->args.inode, data);
- 	/* Matched by references in pnfs_set_layoutcommit */
- 	list_for_each_entry_safe(lseg, tmp, &data->lseg_list, pls_lc_list) {
- 		list_del_init(&lseg->pls_lc_list);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 5ce3c64..07c41b2 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1991,7 +1991,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
- 	*p++ = cpu_to_be32(OP_LAYOUTCOMMIT);
- 	/* Only whole file layouts */
- 	p = xdr_encode_hyper(p, 0); /* offset */
--	p = xdr_encode_hyper(p, NFS4_MAX_UINT64); /* length */
-+	p = xdr_encode_hyper(p, args->lastbytewritten+1); /* length */
- 	*p++ = cpu_to_be32(0); /* reclaim */
- 	p = xdr_encode_opaque_fixed(p, args->stateid.data, NFS4_STATEID_SIZE);
- 	*p++ = cpu_to_be32(1); /* newoffset = TRUE */
-@@ -5596,6 +5596,7 @@ static int decode_layoutcommit(struct xdr_stream *xdr,
- 	int status;
- 
- 	status = decode_op_hdr(xdr, OP_LAYOUTCOMMIT);
-+	res->status = status;
- 	if (status)
- 		return status;
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index fbebd2a..3b20753 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1411,6 +1411,16 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
- }
- EXPORT_SYMBOL_GPL(pnfs_set_layoutcommit);
- 
-+void pnfs_cleanup_layoutcommit(struct inode *inode,
-+			       struct nfs4_layoutcommit_data *data)
-+{
-+	struct nfs_server *nfss = NFS_SERVER(inode);
-+
-+	if (nfss->pnfs_curr_ld->cleanup_layoutcommit)
-+		nfss->pnfs_curr_ld->cleanup_layoutcommit(NFS_I(inode)->layout,
-+							 data);
-+}
-+
- /*
-  * For the LAYOUT4_NFSV4_1_FILES layout type, NFS_DATA_SYNC WRITEs and
-  * NFS_UNSTABLE WRITEs with a COMMIT to data servers must store enough
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index bddd8b9..f271425 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -113,6 +113,9 @@ struct pnfs_layoutdriver_type {
- 				     struct xdr_stream *xdr,
- 				     const struct nfs4_layoutreturn_args *args);
- 
-+	void (*cleanup_layoutcommit) (struct pnfs_layout_hdr *layoutid,
-+				      struct nfs4_layoutcommit_data *data);
-+
- 	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
- 				     struct xdr_stream *xdr,
- 				     const struct nfs4_layoutcommit_args *args);
-@@ -196,6 +199,8 @@ void pnfs_roc_release(struct inode *ino);
- void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
- bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
- void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
-+void pnfs_cleanup_layoutcommit(struct inode *inode,
-+			       struct nfs4_layoutcommit_data *data);
- int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
- int _pnfs_return_layout(struct inode *);
- int pnfs_ld_write_done(struct nfs_write_data *);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 94f27e5..569ea5b 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -269,6 +269,7 @@ struct nfs4_layoutcommit_res {
- 	struct nfs_fattr *fattr;
- 	const struct nfs_server *server;
- 	struct nfs4_sequence_res seq_res;
-+	int status;
- };
- 
- struct nfs4_layoutcommit_data {
--- 
-1.7.4.1
+setfacl 2.2.39
+getfacl 2.2.39
 
