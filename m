@@ -1,79 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55427 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750848Ab1GLOmM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Jul 2011 10:42:12 -0400
-Message-ID: <4E1C5D41.6020403@RedHat.com>
-Date: Tue, 12 Jul 2011 10:42:09 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Luk Claes <luk@debian.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Do not segfault because of kernel version
-References: <20110704190003.GB12668@merit.edu> <1309844538-16008-1-git-send-email-luk@debian.org> <1309844538-16008-2-git-send-email-luk@debian.org>
-In-Reply-To: <1309844538-16008-2-git-send-email-luk@debian.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:57263
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753565Ab1G0SLR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 14:11:17 -0400
+Date: Wed, 27 Jul 2011 14:11:11 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: Justin Piszcz <jpiszcz@lucidpixels.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
+Message-ID: <20110727181111.GA23009@infradead.org>
+References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan>
+ <20110727160752.GC974@fieldses.org>
+ <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan>
+Content-Type: multipart/mixed; boundary="ibTvN161/egqYuK8"
+In-Reply-To: <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+--ibTvN161/egqYuK8
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+Justin,
+
+can you please run the attached test program on the affected directory
+on the server, and see if you see duplicates in the d_off colum.  Unless
+you have privacy concerns I would also love to see the full output.
 
 
-On 07/05/2011 01:42 AM, Luk Claes wrote:
-> mount.nfs segfaults if kernel version number does not contain
-> at least 3 components delimited with a dot.
-> 
-> Avoid this by matching up to three unsigned integers inialised
-> to zero, separated by dots.
-> 
-> A version that does not start with an integer is probably a future
-> version where the versioning evolved to another scheme.
-> Return UINT_MAX which is guaranteed to be higher than existing
-> versions. This would also make it possible to easily identify
-> versions that do not start with an integer.
-> 
-> Signed-off-by: Luk Claes <luk@debian.org>
-Committed....
+--ibTvN161/egqYuK8
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="getdents.c"
 
-steved.
+#define _GNU_SOURCE
 
-> ---
->  utils/mount/version.h |   16 +++++++++-------
->  1 files changed, 9 insertions(+), 7 deletions(-)
-> 
-> diff --git a/utils/mount/version.h b/utils/mount/version.h
-> index af61a6f..531cf68 100644
-> --- a/utils/mount/version.h
-> +++ b/utils/mount/version.h
-> @@ -23,8 +23,8 @@
->  #ifndef _NFS_UTILS_MOUNT_VERSION_H
->  #define _NFS_UTILS_MOUNT_VERSION_H
->  
-> -#include <stdlib.h>
-> -#include <string.h>
-> +#include <stdio.h>
-> +#include <limits.h>
->  
->  #include <sys/utsname.h>
->  
-> @@ -37,14 +37,16 @@ static inline unsigned int MAKE_VERSION(unsigned int p, unsigned int q,
->  static inline unsigned int linux_version_code(void)
->  {
->  	struct utsname my_utsname;
-> -	unsigned int p, q, r;
-> +	unsigned int p, q = 0, r = 0;
->  
-> +	/* UINT_MAX as backward compatibility code should not be run */
->  	if (uname(&my_utsname))
-> -		return 0;
-> +		return UINT_MAX;
->  
-> -	p = (unsigned int)atoi(strtok(my_utsname.release, "."));
-> -	q = (unsigned int)atoi(strtok(NULL, "."));
-> -	r = (unsigned int)atoi(strtok(NULL, "."));
-> +	/* UINT_MAX as future versions might not start with an integer */
-> +	if (sscanf(my_utsname.release, "%u.%u.%u", &p, &q, &r) < 1)
-> +		return UINT_MAX;
-> +	
->  	return MAKE_VERSION(p, q, r);
->  }
->  
+#include <dirent.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+
+#define handle_error(msg) \
+               do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+struct linux_dirent64 {
+	unsigned long long d_ino;
+	long long d_off;
+	unsigned short d_reclen;
+	unsigned char d_type;
+	char d_name[];
+};
+
+#define BUF_SIZE 131072
+
+int main(int argc, char *argv[])
+{
+	int fd, nread;
+	char buf[BUF_SIZE];
+	struct linux_dirent64 *d;
+	int bpos;
+
+	fd = open(argc > 1 ? argv[1] : ".", O_RDONLY | O_DIRECTORY);
+	if (fd == -1)
+		handle_error("open");
+
+	for (;;) {
+		nread = syscall(SYS_getdents64, fd, buf, BUF_SIZE);
+		if (nread == -1)
+			handle_error("getdents");
+
+		if (nread == 0)
+			break;
+
+		printf("--------------- nread=%d ---------------\n", nread);
+		printf("i-node#          type  d_reclen  d_off   d_name\n");
+		for (bpos = 0; bpos < nread;) {
+			d = (struct linux_dirent64 *)(buf + bpos);
+			printf("%16lld  ", d->d_ino);
+			printf("%4d %10lld  %s\n", d->d_reclen,
+			       d->d_off, d->d_name);
+			bpos += d->d_reclen;
+		}
+	}
+
+	exit(EXIT_SUCCESS);
+}
+
+--ibTvN161/egqYuK8--
