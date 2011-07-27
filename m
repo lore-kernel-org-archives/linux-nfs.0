@@ -1,328 +1,252 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:38125 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752857Ab1GaAxc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 20:53:32 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:44389 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751974Ab1G0Td5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 15:33:57 -0400
+Subject: Re: [PATCH v3 01/25] pnfs: GETDEVICELIST
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jim Rees <rees@umich.edu>
 Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v7 21/26] pnfsblock: encode_layoutcommit
-Date: Sat, 30 Jul 2011 20:52:51 -0400
-Message-Id: <1312073576-11024-22-git-send-email-rees@umich.edu>
-In-Reply-To: <1312073576-11024-1-git-send-email-rees@umich.edu>
-References: <1312073576-11024-1-git-send-email-rees@umich.edu>
+Date: Wed, 27 Jul 2011 15:33:39 -0400
+In-Reply-To: <1311792048-12551-2-git-send-email-rees@umich.edu>
+References: <1311792048-12551-1-git-send-email-rees@umich.edu>
+	 <1311792048-12551-2-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1311795219.25645.9.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+On Wed, 2011-07-27 at 14:40 -0400, Jim Rees wrote: 
+> From: Andy Adamson <andros@netapp.com>
+> 
+> The block driver uses GETDEVICELIST
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> [pass struct nfs_server * to getdevicelist]
+> [get machince creds for getdevicelist]
+> [fix getdevicelist decode sizing]
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+> ---
+>  fs/nfs/nfs4proc.c       |   48 ++++++++++++++++++
+>  fs/nfs/nfs4xdr.c        |  128 +++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfs/pnfs.h           |   12 ++++
+>  include/linux/nfs4.h    |    1 +
+>  include/linux/nfs_xdr.h |   11 ++++
+>  5 files changed, 200 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 079614d..ebb6f1a 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -5834,6 +5834,54 @@ int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp)
+>  	return status;
+>  }
+>  
+> +/*
+> + * Retrieve the list of Data Server devices from the MDS.
+> + */
+> +static int _nfs4_getdevicelist(struct nfs_server *server,
+> +				    const struct nfs_fh *fh,
+> +				    struct pnfs_devicelist *devlist)
+> +{
+> +	struct nfs4_getdevicelist_args args = {
+> +		.fh = fh,
+> +		.layoutclass = server->pnfs_curr_ld->id,
+> +	};
+> +	struct nfs4_getdevicelist_res res = {
+> +		.devlist = devlist,
+> +	};
+> +	struct rpc_message msg = {
+> +		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_GETDEVICELIST],
+> +		.rpc_argp = &args,
+> +		.rpc_resp = &res,
+> +	};
+> +	int status;
+> +
+> +	dprintk("--> %s\n", __func__);
+> +	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args,
+> +				&res.seq_res, 0);
+> +	dprintk("<-- %s status=%d\n", __func__, status);
+> +	return status;
+> +}
+> +
+> +int nfs4_proc_getdevicelist(struct nfs_server *server,
+> +			    const struct nfs_fh *fh,
+> +			    struct pnfs_devicelist *devlist)
+> +{
+> +	struct nfs4_exception exception = { };
+> +	int err;
+> +
+> +	do {
+> +		err = nfs4_handle_exception(server,
+> +				_nfs4_getdevicelist(server, fh, devlist),
+> +				&exception);
+> +	} while (exception.retry);
+> +
+> +	dprintk("%s: err=%d, num_devs=%u\n", __func__,
+> +		err, devlist->num_devs);
+> +
+> +	return err;
+> +}
+> +EXPORT_SYMBOL_GPL(nfs4_proc_getdevicelist);
+> +
+>  static int
+>  _nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
+>  {
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index c191a9b..a82dd40 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -314,6 +314,17 @@ static int nfs4_stat_to_errno(int);
+>  				XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + 5)
+>  #define encode_reclaim_complete_maxsz	(op_encode_hdr_maxsz + 4)
+>  #define decode_reclaim_complete_maxsz	(op_decode_hdr_maxsz + 4)
+> +#define encode_getdevicelist_maxsz (op_encode_hdr_maxsz + 4 + \
+> +				encode_verifier_maxsz)
+> +#define decode_getdevicelist_maxsz (op_decode_hdr_maxsz + \
+> +				2 /* nfs_cookie4 gdlr_cookie */ + \
+> +				decode_verifier_maxsz \
+> +				  /* verifier4 gdlr_verifier */ + \
+> +				1 /* gdlr_deviceid_list count */ + \
+> +				XDR_QUADLEN(NFS4_PNFS_GETDEVLIST_MAXNUM * \
+> +					    NFS4_DEVICEID4_SIZE) \
+> +				  /* gdlr_deviceid_list */ + \
+> +				1 /* bool gdlr_eof */)
+>  #define encode_getdeviceinfo_maxsz (op_encode_hdr_maxsz + 4 + \
+>  				XDR_QUADLEN(NFS4_DEVICEID4_SIZE))
+>  #define decode_getdeviceinfo_maxsz (op_decode_hdr_maxsz + \
+> @@ -748,6 +759,14 @@ static int nfs4_stat_to_errno(int);
+>  #define NFS4_dec_reclaim_complete_sz	(compound_decode_hdr_maxsz + \
+>  					 decode_sequence_maxsz + \
+>  					 decode_reclaim_complete_maxsz)
+> +#define NFS4_enc_getdevicelist_sz (compound_encode_hdr_maxsz + \
+> +				encode_sequence_maxsz + \
+> +				encode_putfh_maxsz + \
+> +				encode_getdevicelist_maxsz)
+> +#define NFS4_dec_getdevicelist_sz (compound_decode_hdr_maxsz + \
+> +				decode_sequence_maxsz + \
+> +				decode_putfh_maxsz + \
+> +				decode_getdevicelist_maxsz)
+>  #define NFS4_enc_getdeviceinfo_sz (compound_encode_hdr_maxsz +    \
+>  				encode_sequence_maxsz +\
+>  				encode_getdeviceinfo_maxsz)
+> @@ -1855,6 +1874,26 @@ static void encode_sequence(struct xdr_stream *xdr,
+>  
+>  #ifdef CONFIG_NFS_V4_1
+>  static void
+> +encode_getdevicelist(struct xdr_stream *xdr,
+> +		     const struct nfs4_getdevicelist_args *args,
+> +		     struct compound_hdr *hdr)
+> +{
+> +	__be32 *p;
+> +	nfs4_verifier dummy = {
+> +		.data = "dummmmmy",
+> +	};
+> +
+> +	p = reserve_space(xdr, 20);
+> +	*p++ = cpu_to_be32(OP_GETDEVICELIST);
+> +	*p++ = cpu_to_be32(args->layoutclass);
+> +	*p++ = cpu_to_be32(NFS4_PNFS_GETDEVLIST_MAXNUM);
+> +	xdr_encode_hyper(p, 0ULL);                          /* cookie */
+> +	encode_nfs4_verifier(xdr, &dummy);
+> +	hdr->nops++;
+> +	hdr->replen += decode_getdevicelist_maxsz;
+> +}
+> +
+> +static void
+>  encode_getdeviceinfo(struct xdr_stream *xdr,
+>  		     const struct nfs4_getdeviceinfo_args *args,
+>  		     struct compound_hdr *hdr)
+> @@ -2775,6 +2814,24 @@ static void nfs4_xdr_enc_reclaim_complete(struct rpc_rqst *req,
+>  }
+>  
+>  /*
+> + * Encode GETDEVICELIST request
+> + */
+> +static void nfs4_xdr_enc_getdevicelist(struct rpc_rqst *req,
+> +				       struct xdr_stream *xdr,
+> +				       struct nfs4_getdevicelist_args *args)
+> +{
+> +	struct compound_hdr hdr = {
+> +		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
+> +	};
+> +
+> +	encode_compound_hdr(xdr, req, &hdr);
+> +	encode_sequence(xdr, &args->seq_args, &hdr);
+> +	encode_putfh(xdr, args->fh, &hdr);
+> +	encode_getdevicelist(xdr, args, &hdr);
+> +	encode_nops(&hdr);
+> +}
+> +
+> +/*
+>   * Encode GETDEVICEINFO request
+>   */
+>  static void nfs4_xdr_enc_getdeviceinfo(struct rpc_rqst *req,
+> @@ -5268,6 +5325,50 @@ out_overflow:
+>  }
+>  
+>  #if defined(CONFIG_NFS_V4_1)
+> +/*
+> + * TODO: Need to handle case when EOF != true;
+> + */
+> +static int decode_getdevicelist(struct xdr_stream *xdr,
+> +				struct pnfs_devicelist *res)
+> +{
+> +	__be32 *p;
+> +	int status, i;
+> +	struct nfs_writeverf verftemp;
+> +
+> +	status = decode_op_hdr(xdr, OP_GETDEVICELIST);
+> +	if (status)
+> +		return status;
+> +
+> +	p = xdr_inline_decode(xdr, 8 + 8 + 4);
+> +	if (unlikely(!p))
+> +		goto out_overflow;
+> +
+> +	/* TODO: Skip cookie for now */
+> +	p += 2;
+> +
+> +	/* Read verifier */
+> +	p = xdr_decode_opaque_fixed(p, verftemp.verifier, 8);
+> +
+> +	res->num_devs = be32_to_cpup(p);
+> +
+> +	dprintk("%s: num_dev %d\n", __func__, res->num_devs);
+> +
+> +	if (res->num_devs > NFS4_PNFS_GETDEVLIST_MAXNUM)
+> +		return -NFS4ERR_REP_TOO_BIG;
 
-In blocklayout driver. There are two things happening
-while layoutcommit/cleanup.
-1. the modified extents are encoded.
-2. On cleanup the extents are put back on the layout rw
-   extents list, for reads.
+The client shouldn't ever be using NFS4ERR_REP_TOO_BIG (or any other NFS
+protocol error) to pass messages to itself. For one thing, we can't map
+that to a POSIX error, and secondly its use above conflicts with the
+protocol meaning of the same error.
 
-In the new system where actual xdr encoding is done in
-encode_layoutcommit() directly into xdr buffer, these are
-the new commit stages:
+So please change the above to 'EIO', and perhaps add a ratelimited
+printk() so that syslog can capture why the error is happening.
 
-1. On setup_layoutcommit, the range is adjusted as before
-   and a structure is allocated for communication with
-   bl_encode_layoutcommit && bl_cleanup_layoutcommit
-   (Generic layer provides a void-star to hang it on)
 
-2. bl_encode_layoutcommit is called to do the actual
-   encoding directly into xdr. The commit-extent-list is not
-   freed and is stored on above structure.
-   FIXME: The code is not yet converted to the new XDR cleanup
+> @@ -6902,6 +7029,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+>  	PROC(GET_LEASE_TIME,	enc_get_lease_time,	dec_get_lease_time),
+>  	PROC(RECLAIM_COMPLETE,	enc_reclaim_complete,	dec_reclaim_complete),
+>  	PROC(GETDEVICEINFO,	enc_getdeviceinfo,	dec_getdeviceinfo),
+> +	PROC(GETDEVICELIST,	enc_getdevicelist,	dec_getdevicelist),
 
-3. On cleanup the commit-extent-list is put back by a call
-   to set_to_rw() as before, but with no need for XDR decoding
-   of the list as before. And the commit-extent-list is freed.
-   Finally allocated structure is freed.
+This needs to go at the end of the list of procedures in order to work
+correctly with nfsstat.
 
-[rm inode and pnfs_layout_hdr args from cleanup_layoutcommit()]
-[pnfsblock: get rid of deprecated xdr macros]
-Signed-off-by: Jim Rees <rees@umich.edu>
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[blocklayout: encode_layoutcommit implementation]
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-[pnfsblock: fix bug setting up layoutcommit.]
-Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
-[pnfsblock: prevent commit list corruption]
-[pnfsblock: fix layoutcommit with an empty opaque]
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- fs/nfs/blocklayout/blocklayout.c |    2 +
- fs/nfs/blocklayout/blocklayout.h |   12 +++
- fs/nfs/blocklayout/extents.c     |  176 ++++++++++++++++++++++++++++----------
- 3 files changed, 146 insertions(+), 44 deletions(-)
+> 	PROC(LAYOUTGET,		enc_layoutget,		dec_layoutget),
+>  	PROC(LAYOUTCOMMIT,	enc_layoutcommit,	dec_layoutcommit),
+>  	PROC(LAYOUTRETURN,	enc_layoutreturn,	dec_layoutreturn),
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 8c29a18..d096835 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -155,6 +155,8 @@ static void
- bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
- 		       const struct nfs4_layoutcommit_args *arg)
- {
-+	dprintk("%s enter\n", __func__);
-+	encode_pnfs_block_layoutupdate(BLK_LO2EXT(lo), xdr, arg);
- }
- 
- static void
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index fcf47b5..3caaefc 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -91,6 +91,15 @@ struct pnfs_block_extent {
- 	struct pnfs_inval_markings *be_inval; /* tracks INVAL->RW transition */
- };
- 
-+/* Shortened extent used by LAYOUTCOMMIT */
-+struct pnfs_block_short_extent {
-+	struct list_head bse_node;
-+	struct nfs4_deviceid bse_devid;
-+	struct block_device *bse_mdev;
-+	sector_t	bse_f_offset;	/* the starting offset in the file */
-+	sector_t	bse_length;	/* the size of the extent */
-+};
-+
- static inline void
- BL_INIT_INVAL_MARKS(struct pnfs_inval_markings *marks, sector_t blocksize)
- {
-@@ -184,6 +193,9 @@ int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
- void bl_put_extent(struct pnfs_block_extent *be);
- struct pnfs_block_extent *bl_alloc_extent(void);
- int bl_is_sector_init(struct pnfs_inval_markings *marks, sector_t isect);
-+int encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
-+				   struct xdr_stream *xdr,
-+				   const struct nfs4_layoutcommit_args *arg);
- int bl_add_merge_extent(struct pnfs_block_layout *bl,
- 			 struct pnfs_block_extent *new);
- 
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 292aadf..84bf240 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -286,6 +286,49 @@ int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
- 	return -ENOMEM;
- }
- 
-+/* Marks sectors in [offest, offset+length) as having been written to disk.
-+ * All lengths should be block aligned.
-+ */
-+static int mark_written_sectors(struct pnfs_inval_markings *marks,
-+				sector_t offset, sector_t length)
-+{
-+	int status;
-+
-+	dprintk("%s(offset=%llu,len=%llu) enter\n", __func__,
-+		(u64)offset, (u64)length);
-+	spin_lock(&marks->im_lock);
-+	status = _set_range(&marks->im_tree, EXTENT_WRITTEN, offset, length);
-+	spin_unlock(&marks->im_lock);
-+	return status;
-+}
-+
-+static void print_short_extent(struct pnfs_block_short_extent *be)
-+{
-+	dprintk("PRINT SHORT EXTENT extent %p\n", be);
-+	if (be) {
-+		dprintk("        be_f_offset %llu\n", (u64)be->bse_f_offset);
-+		dprintk("        be_length   %llu\n", (u64)be->bse_length);
-+	}
-+}
-+
-+static void print_clist(struct list_head *list, unsigned int count)
-+{
-+	struct pnfs_block_short_extent *be;
-+	unsigned int i = 0;
-+
-+	ifdebug(FACILITY) {
-+		printk(KERN_DEBUG "****************\n");
-+		printk(KERN_DEBUG "Extent list looks like:\n");
-+		list_for_each_entry(be, list, bse_node) {
-+			i++;
-+			print_short_extent(be);
-+		}
-+		if (i != count)
-+			printk(KERN_DEBUG "\n\nExpected %u entries\n\n\n", count);
-+		printk(KERN_DEBUG "****************\n");
-+	}
-+}
-+
- static void print_bl_extent(struct pnfs_block_extent *be)
- {
- 	dprintk("PRINT EXTENT extent %p\n", be);
-@@ -378,65 +421,67 @@ bl_add_merge_extent(struct pnfs_block_layout *bl,
- 	/* Scan for proper place to insert, extending new to the left
- 	 * as much as possible.
- 	 */
--	list_for_each_entry_safe(be, tmp, list, be_node) {
--		if (new->be_f_offset < be->be_f_offset)
-+	list_for_each_entry_safe_reverse(be, tmp, list, be_node) {
-+		if (new->be_f_offset >= be->be_f_offset + be->be_length)
- 			break;
--		if (end <= be->be_f_offset + be->be_length) {
--			/* new is a subset of existing be*/
-+		if (new->be_f_offset >= be->be_f_offset) {
-+			if (end <= be->be_f_offset + be->be_length) {
-+				/* new is a subset of existing be*/
-+				if (extents_consistent(be, new)) {
-+					dprintk("%s: new is subset, ignoring\n",
-+						__func__);
-+					bl_put_extent(new);
-+					return 0;
-+				} else {
-+					goto out_err;
-+				}
-+			} else {
-+				/* |<--   be   -->|
-+				 *          |<--   new   -->| */
-+				if (extents_consistent(be, new)) {
-+					/* extend new to fully replace be */
-+					new->be_length += new->be_f_offset -
-+						be->be_f_offset;
-+					new->be_f_offset = be->be_f_offset;
-+					new->be_v_offset = be->be_v_offset;
-+					dprintk("%s: removing %p\n", __func__, be);
-+					list_del(&be->be_node);
-+					bl_put_extent(be);
-+				} else {
-+					goto out_err;
-+				}
-+			}
-+		} else if (end >= be->be_f_offset + be->be_length) {
-+			/* new extent overlap existing be */
- 			if (extents_consistent(be, new)) {
--				dprintk("%s: new is subset, ignoring\n",
--					__func__);
--				bl_put_extent(new);
--				return 0;
--			} else
-+				/* extend new to fully replace be */
-+				dprintk("%s: removing %p\n", __func__, be);
-+				list_del(&be->be_node);
-+				bl_put_extent(be);
-+			} else {
- 				goto out_err;
--		} else if (new->be_f_offset <=
--				be->be_f_offset + be->be_length) {
--			/* new overlaps or abuts existing be */
--			if (extents_consistent(be, new)) {
-+			}
-+		} else if (end > be->be_f_offset) {
-+			/*           |<--   be   -->|
-+			 *|<--   new   -->| */
-+			if (extents_consistent(new, be)) {
- 				/* extend new to fully replace be */
--				new->be_length += new->be_f_offset -
--						  be->be_f_offset;
--				new->be_f_offset = be->be_f_offset;
--				new->be_v_offset = be->be_v_offset;
-+				new->be_length += be->be_f_offset + be->be_length -
-+					new->be_f_offset - new->be_length;
- 				dprintk("%s: removing %p\n", __func__, be);
- 				list_del(&be->be_node);
- 				bl_put_extent(be);
--			} else if (new->be_f_offset !=
--				   be->be_f_offset + be->be_length)
-+			} else {
- 				goto out_err;
-+			}
- 		}
- 	}
- 	/* Note that if we never hit the above break, be will not point to a
- 	 * valid extent.  However, in that case &be->be_node==list.
- 	 */
--	list_add_tail(&new->be_node, &be->be_node);
-+	list_add(&new->be_node, &be->be_node);
- 	dprintk("%s: inserting new\n", __func__);
- 	print_elist(list);
--	/* Scan forward for overlaps.  If we find any, extend new and
--	 * remove the overlapped extent.
--	 */
--	be = list_prepare_entry(new, list, be_node);
--	list_for_each_entry_safe_continue(be, tmp, list, be_node) {
--		if (end < be->be_f_offset)
--			break;
--		/* new overlaps or abuts existing be */
--		if (extents_consistent(be, new)) {
--			if (end < be->be_f_offset + be->be_length) {
--				/* extend new to fully cover be */
--				end = be->be_f_offset + be->be_length;
--				new->be_length = end - new->be_f_offset;
--			}
--			dprintk("%s: removing %p\n", __func__, be);
--			list_del(&be->be_node);
--			bl_put_extent(be);
--		} else if (end != be->be_f_offset) {
--			list_del(&new->be_node);
--			goto out_err;
--		}
--	}
--	dprintk("%s: after merging\n", __func__);
--	print_elist(list);
- 	/* FIXME - The per-list consistency checks have all been done,
- 	 * should now check cross-list consistency.
- 	 */
-@@ -494,6 +539,49 @@ bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
- 	return ret;
- }
- 
-+int
-+encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
-+			       struct xdr_stream *xdr,
-+			       const struct nfs4_layoutcommit_args *arg)
-+{
-+	struct pnfs_block_short_extent *lce, *save;
-+	unsigned int count = 0;
-+	__be32 *p, *xdr_start;
-+
-+	dprintk("%s enter\n", __func__);
-+	/* BUG - creation of bl_commit is buggy - need to wait for
-+	 * entire block to be marked WRITTEN before it can be added.
-+	 */
-+	spin_lock(&bl->bl_ext_lock);
-+	/* Want to adjust for possible truncate */
-+	/* We now want to adjust argument range */
-+
-+	/* XDR encode the ranges found */
-+	xdr_start = xdr_reserve_space(xdr, 8);
-+	if (!xdr_start)
-+		goto out;
-+	list_for_each_entry_safe(lce, save, &bl->bl_commit, bse_node) {
-+		p = xdr_reserve_space(xdr, 7 * 4 + sizeof(lce->bse_devid.data));
-+		if (!p)
-+			break;
-+		p = xdr_encode_opaque_fixed(p, lce->bse_devid.data, NFS4_DEVICEID4_SIZE);
-+		p = xdr_encode_hyper(p, lce->bse_f_offset << SECTOR_SHIFT);
-+		p = xdr_encode_hyper(p, lce->bse_length << SECTOR_SHIFT);
-+		p = xdr_encode_hyper(p, 0LL);
-+		*p++ = cpu_to_be32(PNFS_BLOCK_READWRITE_DATA);
-+		list_del(&lce->bse_node);
-+		list_add_tail(&lce->bse_node, &bl->bl_committing);
-+		bl->bl_count--;
-+		count++;
-+	}
-+	xdr_start[0] = cpu_to_be32((xdr->p - xdr_start - 1) * 4);
-+	xdr_start[1] = cpu_to_be32(count);
-+out:
-+	spin_unlock(&bl->bl_ext_lock);
-+	dprintk("%s found %i ranges\n", __func__, count);
-+	return 0;
-+}
-+
- /* Helper function to set_to_rw that initialize a new extent */
- static void
- _prep_new_extent(struct pnfs_block_extent *new,
+
 -- 
-1.7.4.1
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
