@@ -1,85 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:40439 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932139Ab1GNRZH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Jul 2011 13:25:07 -0400
-Date: Thu, 14 Jul 2011 13:25:05 -0400
-To: "Assarsson, Emil" <Emil.Assarsson@sonyericsson.com>
-Cc: "'Richard Smits'" <R.Smits@tudelft.nl>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: krb5 mount with large group membership
-Message-ID: <20110714172504.GA19003@fieldses.org>
-References: <4E1EB72E.5080803@tudelft.nl>
- <2BF070A7A2375D46BA1B6087F8D5DCB67E846BA792@seldmbx01.corpusers.net>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2BF070A7A2375D46BA1B6087F8D5DCB67E846BA792@seldmbx01.corpusers.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:34548 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754257Ab1G0SlG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 14:41:06 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v3 11/25] pnfsblock: lseg alloc and free
+Date: Wed, 27 Jul 2011 14:40:34 -0400
+Message-Id: <1311792048-12551-12-git-send-email-rees@umich.edu>
+In-Reply-To: <1311792048-12551-1-git-send-email-rees@umich.edu>
+References: <1311792048-12551-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, Jul 14, 2011 at 01:14:07PM +0200, Assarsson, Emil wrote:
-> Hi,
-> 
-> Your ticket is probably oversized for the NFS server.
-> Try set NO_AUTH_DATA_REQUIRED (google msn) on the object holding the servers SPN.
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-The server has trouble with init_sec_context tokens that are longer than
-a few k--I'd have to check the exact limit.  (I wonder how big this one
-is?)
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: fix bug getting pnfs_layout_type in translate_devid().]
+Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Zhang Jingwang <Jingwang.Zhang@emc.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/blocklayout/blocklayout.c    |   31 +++++++++++++++++++++++++------
+ fs/nfs/blocklayout/blocklayout.h    |    6 ++++++
+ fs/nfs/blocklayout/blocklayoutdev.c |    8 ++++++++
+ 3 files changed, 39 insertions(+), 6 deletions(-)
 
---b.
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 3afe363..bec68ca 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -115,16 +115,35 @@ static struct pnfs_layout_hdr *bl_alloc_layout_hdr(struct inode *inode,
+ 	return &bl->bl_layout;
+ }
+ 
+-static void
+-bl_free_lseg(struct pnfs_layout_segment *lseg)
++static void bl_free_lseg(struct pnfs_layout_segment *lseg)
+ {
++	dprintk("%s enter\n", __func__);
++	kfree(lseg);
+ }
+ 
+-static struct pnfs_layout_segment *
+-bl_alloc_lseg(struct pnfs_layout_hdr *lo,
+-	      struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
++/* We pretty much ignore lseg, and store all data layout wide, so we
++ * can correctly merge.
++ */
++static struct pnfs_layout_segment *bl_alloc_lseg(struct pnfs_layout_hdr *lo,
++						 struct nfs4_layoutget_res *lgr,
++						 gfp_t gfp_flags)
+ {
+-	return NULL;
++	struct pnfs_layout_segment *lseg;
++	int status;
++
++	dprintk("%s enter\n", __func__);
++	lseg = kzalloc(sizeof(*lseg), gfp_flags);
++	if (!lseg)
++		return ERR_PTR(-ENOMEM);
++	status = nfs4_blk_process_layoutget(lo, lgr, gfp_flags);
++	if (status) {
++		/* We don't want to call the full-blown bl_free_lseg,
++		 * since on error extents were not touched.
++		 */
++		kfree(lseg);
++		return ERR_PTR(status);
++	}
++	return lseg;
+ }
+ 
+ static void
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 9b88918..744c7a5 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -96,6 +96,12 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
+ 	return container_of(lo, struct pnfs_block_layout, bl_layout);
+ }
+ 
++static inline struct pnfs_block_layout *
++BLK_LSEG2EXT(struct pnfs_layout_segment *lseg)
++{
++	return BLK_LO2EXT(lseg->pls_layout);
++}
++
+ struct bl_dev_msg {
+ 	int status;
+ 	uint32_t major, minor;
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+index 7e1377f..64da33a 100644
+--- a/fs/nfs/blocklayout/blocklayoutdev.c
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -189,3 +189,11 @@ out:
+ 	kfree(msg.data);
+ 	return rv;
+ }
++
++int
++nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
++			   struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
++{
++	/* STUB */
++	return -EIO;
++}
+-- 
+1.7.4.1
 
-> 
-> --
-> Emil Assarsson
-> 
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org]
-> > On Behalf Of Richard Smits
-> > Sent: torsdag den 14 juli 2011 11:30
-> > To: linux-nfs@vger.kernel.org
-> > Subject: krb5 mount with large group membership
-> > 
-> > Hello list,
-> > 
-> > I am running into a problem. Perhaps someone understands what is
-> > happening here. I will explain.
-> > 
-> > I have a Redhat 5.4 client that is accessing a nfs export on a NFS
-> > server. (Redhat 6.1)
-> > 
-> > Our KDC is a Windows AD.
-> > 
-> > The client is using samba-winbind. If a user is a member of 23 groups or
-> > lower, I can access the export. If a user is a member of more groups,
-> > the mount fails with a "Permission denied"
-> > 
-> > mount /data
-> > -bash-3.2$ cd /data
-> > -bash: cd: /data: Permission denied
-> > 
-> > Thew odd thing is if I try a mount to our Netapp filer with also a krb5
-> > export, there is no problem.
-> > 
-> > This has to do something with the ticket size in combination with
-> > memberships to a large number of groups.
-> > 
-> > So what must i do to get this Redhat server working with this setup ? It
-> > seems that Netapp did something to get this working ?
-> > 
-> > Does this sound familiar to anyone, or should i provide more information ?
-> > 
-> > Versions server side :
-> > nfs-utils-1.2.3-7
-> > krb5-workstation-1.9-9
-> > 
-> > Greetings ... Richard Smits
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
