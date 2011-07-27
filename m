@@ -1,58 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:58564 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753641Ab1GCOzs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Jul 2011 10:55:48 -0400
-Subject: Re: [PATCH] nfs: Don't deref potentially NULL pointer returned by strsep
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <alpine.LNX.2.00.1107030938430.16316@swampdragon.chaosbits.net>
-Date: Sun, 3 Jul 2011 10:09:32 -0400
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-kernel@vger.kernel.org, Gero Kuhlmann <gero@gkminix.han.de>
-Message-Id: <14B45086-2D98-4706-B1FE-7EBB8E777EEF@oracle.com>
-References: <alpine.LNX.2.00.1107030938430.16316@swampdragon.chaosbits.net>
-To: Jesper Juhl <jj@chaosbits.net>
+Received: from natasha.panasas.com ([67.152.220.90]:50541 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751838Ab1G0UUZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 16:20:25 -0400
+Message-ID: <4E3072F3.7090802@panasas.com>
+Date: Wed, 27 Jul 2011 13:20:03 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Jim Rees <rees@umich.edu>, <linux-nfs@vger.kernel.org>,
+        peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH v3 06/25] pnfs: cleanup_layoutcommit
+References: <1311792048-12551-1-git-send-email-rees@umich.edu>	 <1311792048-12551-7-git-send-email-rees@umich.edu> <1311796389.25645.20.camel@lade.trondhjem.org>
+In-Reply-To: <1311796389.25645.20.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Jul 3, 2011, at 3:40 AM, Jesper Juhl wrote:
-
-> In fs/nfs/nfsroot.c:root_nfs_parse_options() we call strsep(), which
-> may return NULL, but we do not test the return value before
-> dereferencing the pointer.
+On 07/27/2011 12:53 PM, Trond Myklebust wrote:
+>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+>> index bddd8b9..f271425 100644
+>> --- a/fs/nfs/pnfs.h
+>> +++ b/fs/nfs/pnfs.h
+>> @@ -113,6 +113,9 @@ struct pnfs_layoutdriver_type {
+>>  				     struct xdr_stream *xdr,
+>>  				     const struct nfs4_layoutreturn_args *args);
+>>  
+>> +	void (*cleanup_layoutcommit) (struct pnfs_layout_hdr *layoutid,
+>> +				      struct nfs4_layoutcommit_data *data);
+>> +
+>>  	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
+>>  				     struct xdr_stream *xdr,
+>>  				     const struct nfs4_layoutcommit_args *args);
 > 
-> Signed-off-by: Jesper Juhl <jj@chaosbits.net>
-> ---
-> fs/nfs/nfsroot.c |    2 ++
-> 1 files changed, 2 insertions(+), 0 deletions(-)
+> This really needs to go. We should have
 > 
->  Compile tested only.
+>       int (*layoutcommit)()...
 > 
-> diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
-> index c4744e1..b6ac860 100644
-> --- a/fs/nfs/nfsroot.c
-> +++ b/fs/nfs/nfsroot.c
-> @@ -191,6 +191,8 @@ static int __init root_nfs_parse_options(char *incoming, char *exppath,
-> 	 * Set the NFS remote path
-> 	 */
-> 	p = strsep(&incoming, ",");
-> +	if (!p)
-> +		return -1;
+> instead of 'encode' and 'cleanup' methods...
+> 
 
-strsep() may return NULL only if the value of "incoming" is NULL.  But callers ensure that "incoming" always contains the address of a fixed buffer.  Thus if strsep() returns NULL here there is some kind of programming error; it's not the result of invalid input.
+Theoretically it is not possible because the blocks-layout protocol mandates
+different handling depending on the "error" response from the Server which
+will be received on RPC done.
 
-Do you have a reproducible test case to make this fail?
+Though, Last I was diving into this code, The proper handling was missing.
+(It was a while back though things might have changed)
 
-> 	if (*p != '\0' && strcmp(p, "default") != 0)
-> 		if (root_nfs_copy(exppath, p, exppathlen))
-> 			return -1;
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+Boaz
 
