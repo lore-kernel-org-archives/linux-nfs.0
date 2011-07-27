@@ -1,54 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:6033 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752667Ab1G0QkR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jul 2011 12:40:17 -0400
-Message-ID: <4E303F6F.8010706@netapp.com>
-Date: Wed, 27 Jul 2011 12:40:15 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: Justin Piszcz <jpiszcz@lucidpixels.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
-References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan> <20110727160752.GC974@fieldses.org> <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan>
-In-Reply-To: <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:53860 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754238Ab1G0Skz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 14:40:55 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v3 06/25] pnfs: cleanup_layoutcommit
+Date: Wed, 27 Jul 2011 14:40:29 -0400
+Message-Id: <1311792048-12551-7-git-send-email-rees@umich.edu>
+In-Reply-To: <1311792048-12551-1-git-send-email-rees@umich.edu>
+References: <1311792048-12551-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 07/27/2011 12:28 PM, Justin Piszcz wrote:
-> 
-> 
-> On Wed, 27 Jul 2011, J. Bruce Fields wrote:
-> 
->> On Wed, Jul 27, 2011 at 09:54:09AM -0400, Justin Piszcz wrote:
->>> Hi,
->>>
->>> Kernel 2.6.30 on client.
->>> Kernel 2.6.28 on server.
->>>
->>> p34 kernel: [92223.918892] NFS: directory motion/cam2 contains a
->>> readdir loop.  Please contact your server vendor.  Offending cookie: 10272
->>
->> What filesystem on the server are you exporting?
-> 
-> Hi,
-> 
-> xfs.
-> /dev/sda1 on / type xfs (rw,noatime)
-> 
-> Nothing special, thoughts?
+From: Andy Adamson <andros@netapp.com>
 
-Are there a lot of files in the directory you're exporting?  It looks like cookie 10272 is mapped to multiple files. When the client tries to resume reading from this cookie, xfs will reply from the first matching file and cause the client to enter a loop.
+This gives layout driver a chance to cleanup structures they put in at
+encode_layoutcommit.
 
-- Bryan
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[fixup layout header pointer for layoutcommit]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/nfs4proc.c       |    1 +
+ fs/nfs/nfs4xdr.c        |    1 +
+ fs/nfs/pnfs.c           |   10 ++++++++++
+ fs/nfs/pnfs.h           |    5 +++++
+ include/linux/nfs_xdr.h |    1 +
+ 5 files changed, 18 insertions(+), 0 deletions(-)
 
-> 
-> Justin.
-> 
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index e86de79..6cb84b4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5963,6 +5963,7 @@ static void nfs4_layoutcommit_release(void *calldata)
+ 	struct nfs4_layoutcommit_data *data = calldata;
+ 	struct pnfs_layout_segment *lseg, *tmp;
+ 
++	pnfs_cleanup_layoutcommit(data->args.inode, data);
+ 	/* Matched by references in pnfs_set_layoutcommit */
+ 	list_for_each_entry_safe(lseg, tmp, &data->lseg_list, pls_lc_list) {
+ 		list_del_init(&lseg->pls_lc_list);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index f32dde9..ea2da30 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -5596,6 +5596,7 @@ static int decode_layoutcommit(struct xdr_stream *xdr,
+ 	int status;
+ 
+ 	status = decode_op_hdr(xdr, OP_LAYOUTCOMMIT);
++	res->status = status;
+ 	if (status)
+ 		return status;
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index fbebd2a..3b20753 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1411,6 +1411,16 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ }
+ EXPORT_SYMBOL_GPL(pnfs_set_layoutcommit);
+ 
++void pnfs_cleanup_layoutcommit(struct inode *inode,
++			       struct nfs4_layoutcommit_data *data)
++{
++	struct nfs_server *nfss = NFS_SERVER(inode);
++
++	if (nfss->pnfs_curr_ld->cleanup_layoutcommit)
++		nfss->pnfs_curr_ld->cleanup_layoutcommit(NFS_I(inode)->layout,
++							 data);
++}
++
+ /*
+  * For the LAYOUT4_NFSV4_1_FILES layout type, NFS_DATA_SYNC WRITEs and
+  * NFS_UNSTABLE WRITEs with a COMMIT to data servers must store enough
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index bddd8b9..f271425 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -113,6 +113,9 @@ struct pnfs_layoutdriver_type {
+ 				     struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutreturn_args *args);
+ 
++	void (*cleanup_layoutcommit) (struct pnfs_layout_hdr *layoutid,
++				      struct nfs4_layoutcommit_data *data);
++
+ 	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
+ 				     struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutcommit_args *args);
+@@ -196,6 +199,8 @@ void pnfs_roc_release(struct inode *ino);
+ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+ bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
++void pnfs_cleanup_layoutcommit(struct inode *inode,
++			       struct nfs4_layoutcommit_data *data);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+ int _pnfs_return_layout(struct inode *);
+ int pnfs_ld_write_done(struct nfs_write_data *);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 94f27e5..569ea5b 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -269,6 +269,7 @@ struct nfs4_layoutcommit_res {
+ 	struct nfs_fattr *fattr;
+ 	const struct nfs_server *server;
+ 	struct nfs4_sequence_res seq_res;
++	int status;
+ };
+ 
+ struct nfs4_layoutcommit_data {
+-- 
+1.7.4.1
 
