@@ -1,180 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:50222 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753417Ab1G3Gch (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 02:32:37 -0400
-Message-ID: <4E33A579.5060803@panasas.com>
-Date: Fri, 29 Jul 2011 23:32:25 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>, Jim Rees <rees@umich.edu>,
-        Peng Tao <bergwolf@gmail.com>, NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 3/6] pnfs: let layoutcommit handle a list of lseg
-References: <4E33A288.80403@panasas.com>
-In-Reply-To: <4E33A288.80403@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from hub024-nj-5.exch024.serverdata.net ([206.225.165.120]:38414
+	"EHLO HUB024-nj-5.exch024.serverdata.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753555Ab1G0K4q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 06:56:46 -0400
+From: Anand Avati <avati@gluster.com>
+To: <miklos@szeredi.hu>
+CC: <fuse-devel@lists.sourceforge.net>, <linux-fsdevel@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>, Anand Avati <avati@gluster.com>
+Subject: [PATCH v2 2/2] fuse: permit O_DIRECT flag in open()
+Date: Wed, 27 Jul 2011 03:56:19 -0700
+Message-ID: <1311764179-20326-2-git-send-email-avati@gluster.com>
+In-Reply-To: <1311764179-20326-1-git-send-email-avati@gluster.com>
+References: <n>
+ <1311764179-20326-1-git-send-email-avati@gluster.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Peng Tao <peng_tao@emc.com>
+FUSE currently disallows O_DIRECT flag in open(). It is tricky dealing with
+setting/unsetting of O_DIRECT flag on an open file. There are applications
+(primarily VMs and databases) which open files with O_DIRECT flag. These
+applications do not work on FUSE due to this limitation.
 
-There can be multiple lseg per file, so layoutcommit should be
-able to handle it.
+The approach with this patch is to permit opens with O_DIRECT, but instead
+disable setting/unsetting of the O_DIRECT flag no matter how the file was
+opened. This limitation is for more practical than disallowing O_DIRECT
+altogether.
 
-[Needed in v3.0]
-CC: Stable Tree <stable@kernel.org>
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Anand Avati <avati@gluster.com>
 ---
- fs/nfs/nfs4proc.c       |    8 +++++++-
- fs/nfs/pnfs.c           |   32 ++++++++++++++++----------------
- fs/nfs/pnfs.h           |    2 ++
- include/linux/nfs_xdr.h |    2 +-
- 4 files changed, 26 insertions(+), 18 deletions(-)
+ fs/fuse/file.c |   36 ++++++++++++++++++++++++++++++++----
+ 1 files changed, 32 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5879b23..92cfd2e 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5850,9 +5850,15 @@ nfs4_layoutcommit_done(struct rpc_task *task, void *calldata)
- static void nfs4_layoutcommit_release(void *calldata)
- {
- 	struct nfs4_layoutcommit_data *data = calldata;
-+	struct pnfs_layout_segment *lseg, *tmp;
- 
- 	/* Matched by references in pnfs_set_layoutcommit */
--	put_lseg(data->lseg);
-+	list_for_each_entry_safe(lseg, tmp, &data->lseg_list, pls_lc_list) {
-+		list_del_init(&lseg->pls_lc_list);
-+		if (test_and_clear_bit(NFS_LSEG_LAYOUTCOMMIT,
-+				       &lseg->pls_flags))
-+			put_lseg(lseg);
-+	}
- 	put_rpccred(data->cred);
- 	kfree(data);
- }
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index baa2a04..a726c0a 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -224,6 +224,7 @@ static void
- init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
- {
- 	INIT_LIST_HEAD(&lseg->pls_list);
-+	INIT_LIST_HEAD(&lseg->pls_lc_list);
- 	atomic_set(&lseg->pls_refcount, 1);
- 	smp_mb();
- 	set_bit(NFS_LSEG_VALID, &lseg->pls_flags);
-@@ -1201,16 +1202,17 @@ pnfs_try_to_read_data(struct nfs_read_data *rdata,
- }
- 
- /*
-- * Currently there is only one (whole file) write lseg.
-+ * There can be multiple RW segments.
-  */
--static struct pnfs_layout_segment *pnfs_list_write_lseg(struct inode *inode)
-+static void pnfs_list_write_lseg(struct inode *inode, struct list_head *listp)
- {
--	struct pnfs_layout_segment *lseg, *rv = NULL;
-+	struct pnfs_layout_segment *lseg;
- 
--	list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list)
--		if (lseg->pls_range.iomode == IOMODE_RW)
--			rv = lseg;
--	return rv;
-+	list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list) {
-+		if (lseg->pls_range.iomode == IOMODE_RW &&
-+		    test_bit(NFS_LSEG_LAYOUTCOMMIT, &lseg->pls_flags))
-+			list_add(&lseg->pls_lc_list, listp);
-+	}
- }
- 
- void
-@@ -1222,12 +1224,14 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
- 
- 	spin_lock(&nfsi->vfs_inode.i_lock);
- 	if (!test_and_set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
--		/* references matched in nfs4_layoutcommit_release */
--		get_lseg(wdata->lseg);
- 		mark_as_dirty = true;
- 		dprintk("%s: Set layoutcommit for inode %lu ",
- 			__func__, wdata->inode->i_ino);
- 	}
-+	if (!test_and_set_bit(NFS_LSEG_LAYOUTCOMMIT, &wdata->lseg->pls_flags)) {
-+		/* references matched in nfs4_layoutcommit_release */
-+		get_lseg(wdata->lseg);
-+	}
- 	if (end_pos > nfsi->layout->plh_lwb)
- 		nfsi->layout->plh_lwb = end_pos;
- 	spin_unlock(&nfsi->vfs_inode.i_lock);
-@@ -1254,7 +1258,6 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- {
- 	struct nfs4_layoutcommit_data *data;
- 	struct nfs_inode *nfsi = NFS_I(inode);
--	struct pnfs_layout_segment *lseg;
- 	loff_t end_pos;
- 	int status = 0;
- 
-@@ -1271,17 +1274,15 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- 		goto out;
+diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+index 82a6646..355c30f 100644
+--- a/fs/fuse/file.c
++++ b/fs/fuse/file.c
+@@ -154,6 +154,27 @@ int fuse_do_open(struct fuse_conn *fc, u64 nodeid, struct file *file,
+ 		return err;
  	}
  
-+	INIT_LIST_HEAD(&data->lseg_list);
- 	spin_lock(&inode->i_lock);
- 	if (!test_and_clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
- 		spin_unlock(&inode->i_lock);
- 		kfree(data);
- 		goto out;
- 	}
--	/*
--	 * Currently only one (whole file) write lseg which is referenced
--	 * in pnfs_set_layoutcommit and will be found.
--	 */
--	lseg = pnfs_list_write_lseg(inode);
++	if (file->f_flags & O_DIRECT) {
++		if (!(outarg.open_flags & FOPEN_DIRECT_IO)) {
++			/* filesystem process did not acknowledge the O_DIRECT
++			   flag with FOPEN_DIRECT_IO bit in ourarg. Hence
++			   we fail the open().
 +
-+	pnfs_list_write_lseg(inode, &data->lseg_list);
++			   Notify the filesystem process about the failed
++			   open with fuse_sync_release right here itself as
++			   file->private_data is not yet set up for release
++			   notification.
++			*/
++			fuse_sync_release(ff, file->f_flags);
++			return -EINVAL;
++		}
++
++		/* make VFS believe we don't support O_DIRECT till we
++		   implement a_ops->direct_IO
++		*/
++		file->f_flags &= ~O_DIRECT;
++	}
++
+ 	if (isdir)
+ 		outarg.open_flags &= ~FOPEN_DIRECT_IO;
  
- 	end_pos = nfsi->layout->plh_lwb;
- 	nfsi->layout->plh_lwb = 0;
-@@ -1291,7 +1292,6 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- 	spin_unlock(&inode->i_lock);
+@@ -193,10 +214,6 @@ int fuse_open_common(struct inode *inode, struct file *file, bool isdir)
+ 	struct fuse_conn *fc = get_fuse_conn(inode);
+ 	int err;
  
- 	data->args.inode = inode;
--	data->lseg = lseg;
- 	data->cred = get_rpccred(nfsi->layout->plh_lc_cred);
- 	nfs_fattr_init(&data->fattr);
- 	data->args.bitmask = NFS_SERVER(inode)->cache_consistency_bitmask;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 6969594..9d147d9 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -36,10 +36,12 @@
- enum {
- 	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
- 	NFS_LSEG_ROC,		/* roc bit received from server */
-+	NFS_LSEG_LAYOUTCOMMIT,	/* layoutcommit bit set for layoutcommit */
+-	/* VFS checks this, but only _after_ ->open() */
+-	if (file->f_flags & O_DIRECT)
+-		return -EINVAL;
+-
+ 	err = generic_file_open(inode, file);
+ 	if (err)
+ 		return err;
+@@ -2132,6 +2149,15 @@ int fuse_notify_poll_wakeup(struct fuse_conn *fc,
+ 	return 0;
+ }
+ 
++
++static int fuse_check_flags(struct file *filp, int flags)
++{
++	if ((filp->f_flags ^ flags) & O_DIRECT)
++		return -EINVAL;
++	return 0;
++}
++
++
+ static const struct file_operations fuse_file_operations = {
+ 	.llseek		= fuse_file_llseek,
+ 	.read		= do_sync_read,
+@@ -2149,6 +2175,7 @@ static const struct file_operations fuse_file_operations = {
+ 	.unlocked_ioctl	= fuse_file_ioctl,
+ 	.compat_ioctl	= fuse_file_compat_ioctl,
+ 	.poll		= fuse_file_poll,
++	.check_flags	= fuse_check_flags,
  };
  
- struct pnfs_layout_segment {
- 	struct list_head pls_list;
-+	struct list_head pls_lc_list;
- 	struct pnfs_layout_range pls_range;
- 	atomic_t pls_refcount;
- 	unsigned long pls_flags;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 00848d8..be2eba7 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -262,7 +262,7 @@ struct nfs4_layoutcommit_res {
- struct nfs4_layoutcommit_data {
- 	struct rpc_task task;
- 	struct nfs_fattr fattr;
--	struct pnfs_layout_segment *lseg;
-+	struct list_head lseg_list;
- 	struct rpc_cred *cred;
- 	struct nfs4_layoutcommit_args args;
- 	struct nfs4_layoutcommit_res res;
+ static const struct file_operations fuse_direct_io_file_operations = {
+@@ -2165,6 +2192,7 @@ static const struct file_operations fuse_direct_io_file_operations = {
+ 	.unlocked_ioctl	= fuse_file_ioctl,
+ 	.compat_ioctl	= fuse_file_compat_ioctl,
+ 	.poll		= fuse_file_poll,
++	.check_flags	= fuse_check_flags,
+ 	/* no splice_read */
+ };
+ 
 -- 
-1.7.6
-
+1.7.4.4
 
