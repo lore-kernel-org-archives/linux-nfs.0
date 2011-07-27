@@ -1,59 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lucidpixels.com ([72.73.18.11]:41801 "EHLO lucidpixels.com"
+Received: from lucidpixels.com ([72.73.18.11]:39849 "EHLO lucidpixels.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752372Ab1G2U7R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Jul 2011 16:59:17 -0400
-Date: Fri, 29 Jul 2011 16:59:15 -0400 (EDT)
+	id S1755139Ab1G0RRf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jul 2011 13:17:35 -0400
+Date: Wed, 27 Jul 2011 13:17:35 -0400 (EDT)
 From: Justin Piszcz <jpiszcz@lucidpixels.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
-cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+To: Ruediger Meier <sweet_f_a@gmx.de>
+cc: Bryan Schumaker <bjschuma@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, xfs@oss.sgi.com
 Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
-In-Reply-To: <4E331D86.7060801@netapp.com>
-Message-ID: <alpine.DEB.2.02.1107291656340.25432@p34.internal.lan>
-References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan>   <20110727160752.GC974@fieldses.org>   <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan>   <20110727181111.GA23009@infradead.org>   <alpine.DEB.2.02.1107271530340.1451@p34.internal.lan>
-   <20110727193937.GA5354@infradead.org>   <alpine.DEB.2.02.1107271540100.1451@p34.internal.lan>   <20110727194722.GA9345@infradead.org>   <1311799021.25645.41.camel@lade.trondhjem.org>   <1311800051.25645.43.camel@lade.trondhjem.org>
- <1311800195.25645.45.camel@lade.trondhjem.org>  <alpine.DEB.2.02.1107271723500.25432@p34.internal.lan>  <alpine.DEB.2.02.1107271844100.25432@p34.internal.lan> <1311886137.27285.2.camel@lade.trondhjem.org> <4E331D86.7060801@netapp.com>
+In-Reply-To: <201107271900.11091.sweet_f_a@gmx.de>
+Message-ID: <alpine.DEB.2.02.1107271316140.1451@p34.internal.lan>
+References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan> <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan> <4E303F6F.8010706@netapp.com> <201107271900.11091.sweet_f_a@gmx.de>
 Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
-On Fri, 29 Jul 2011, Bryan Schumaker wrote:
 
-> How does this look for printing out more information when a cookie loop is detected?  Is there anything else that should be printed out?  My patch applies on top of Trond's from yesterday.
+On Wed, 27 Jul 2011, Ruediger Meier wrote:
 
+> On Wednesday 27 July 2011, Bryan Schumaker wrote:
+>> On 07/27/2011 12:28 PM, Justin Piszcz wrote:
+>>> On Wed, 27 Jul 2011, J. Bruce Fields wrote:
+>>>>
+>>>> What filesystem on the server are you exporting?
+>>>
+>>> xfs.
+>>> /dev/sda1 on / type xfs (rw,noatime)
+>>>
+>>> Nothing special, thoughts?
+>>
+>> Are there a lot of files in the directory you're exporting?  It looks
+>> like cookie 10272 is mapped to multiple files.
+>
+> I thought xfs is immune to readdir loops!?
+> Is your export directory really located directly within / on /dev/sda1?
 
 Hi,
 
-This fails against 2.6.38:
+I was sharing out a directory on the NFS server:
+/d1         192.168.0.0/24(async,rw,no_root_squash,no_subtree_check,fsid=1)
 
-patching file fs/nfs/dir.c
-Hunk #1 FAILED at 134.
-Hunk #2 FAILED at 173.
-Hunk #3 FAILED at 323.
-Hunk #4 FAILED at 336.
-Hunk #5 FAILED at 349.
-Hunk #6 succeeded at 320 (offset -48 lines).
-Hunk #7 FAILED at 741.
-Hunk #8 succeeded at 716 (offset -59 lines).
-Hunk #9 succeeded at 749 (offset -59 lines).
-Hunk #10 succeeded at 763 (offset -59 lines).
-6 out of 10 hunks FAILED -- saving rejects to file fs/nfs/dir.c.rej
-patching file include/linux/nfs_fs.h
-Hunk #1 FAILED at 99.
-1 out of 1 hunk FAILED -- saving rejects to file include/linux/nfs_fs.h.rej
-atom:/usr/src/linux#
+Should I share out / instead?
+Is this a known problem?
 
-And the 3.0 kernel is broken for my wireless adapter:
-http://www.gossamer-threads.com/lists/linux/kernel/1411576
-
-If you can make a combined patch for 2.6.38 I can try it, 2.6.39+ have a
-horrible driver (rt2800usb) and 1 person emailed me as well stating the
-same thing off-list (they stick with the manufacturer's driver or the *sta
-one).
+$ df -h
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/sda1              30G   13G   18G  43% /
+tmpfs                 2.0G  8.0K  2.0G   1% /lib/init/rw
+udev                   10M  192K  9.9M   2% /dev
+tmpfs                 2.0G     0  2.0G   0% /dev/shm
+$
 
 Justin.
+
+
