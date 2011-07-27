@@ -1,66 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet15.oracle.com ([141.146.126.227]:28658 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751765Ab1G2Rk3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 13:40:29 -0400
-Subject: Re: [NLM] support for a per-mount grace period.
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20110729171126.GN23194@fieldses.org>
-Date: Fri, 29 Jul 2011 13:40:07 -0400
-Cc: Frank van Maarseveen <frankvm@frankvm.com>, linux-nfs@vger.kernel.org,
-        Pavel Emelyanov <xemul@openvz.org>, jlayton@redhat.com
-Message-Id: <1B4AE155-0809-4CF4-9A53-80A318050D8F@oracle.com>
-References: <1311878660-24482-1-git-send-email-frankvm@frankvm.com> <20110729171126.GN23194@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:33827 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753148Ab1G0UWl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 16:22:41 -0400
+Subject: Re: [PATCH v3 03/25] NFS41: Let layoutcommit handle multiple
+ segments
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Date: Wed, 27 Jul 2011 16:22:39 -0400
+In-Reply-To: <4E306F84.6030808@panasas.com>
+References: <1311792048-12551-1-git-send-email-rees@umich.edu>
+	 <1311792048-12551-4-git-send-email-rees@umich.edu>
+	 <4E306F84.6030808@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1311798159.25645.32.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Jul 29, 2011, at 1:11 PM, J. Bruce Fields wrote:
-
-> On Thu, Jul 28, 2011 at 08:44:18PM +0200, Frank van Maarseveen wrote:
->> The following two patches implement support for a per-mount NLM
->> grace period. The first patch is a minor cleanup which pushes
->> down locks_in_grace() calls into functions shared by NFS[234]. Two
->> locks_in_grace() tests have been reordered to avoid duplicate calls at
->> run-time (assuming gcc is smart enough). nlmsvc_grace_period is now a
->> function instead of an unused variable.
->> 
->> The second patch is the actual implementation. It is currently in use for
->> a number of NFSv3 virtual servers on one physical machine running 2.6.39.3
->> where the virtualization is based on using different IPv4 addresses.
+On Wed, 2011-07-27 at 13:05 -0700, Boaz Harrosh wrote: 
+> On 07/27/2011 11:40 AM, Jim Rees wrote:
+> > From: Peng Tao <bergwolf@gmail.com>
+> > 
+> > Some layout drivers like block will have multiple segments.  Generic code
+> > should be able to handle it.  Layoutcommit takes a list of segments and last
+> > write offset is saved at inode level.
+> > 
+> > Signed-off-by: Peng Tao <peng_tao@emc.com>
 > 
-> Thanks, that is something we'd like to have working well.
+> Trond Hi
 > 
-> Off the top of my head:
-> 	- Do you have a plan for dealing with NFSv4?
-> 	- Do you need any more kernel changes to get this working?
-> 	- What about userspace changes?
-> 	- Do you support migrating/failing over virtual nfs service
-> 	  between machines, and if so, how are you doing it?
+> Could you please add this patch to the current Merge window? And also include
+> 
+> CC: Stable <stable@vger.kernel.org>
 
-Nit: At one point we had considered doing something like killing sm-notify when the grace period ends on the server.  This would make that harder to do, I would think.
+Nope.
 
-> I've also been trying to work out whether it would be cleaner to do this
-> sort of thing by building on top of Pavel Emelyanov's container
-> work--cc'd.
-> 
-> (Obnoxious of me, because I know he's working on something else right
-> now, but perhaps he won't mind setting this email aside for now and
-> responding when he gets some time back....)
-> 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Firstly it exacerbates an existing bug in the current code (see my
+comments).
+
+Secondly, it does several things at once (adding multiple segment
+handling, fixing last-byte handling in layoutcommit and credential
+handling). Which of these features are actually needed for stable?
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Trond Myklebust
+Linux NFS client maintainer
 
-
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
