@@ -1,78 +1,149 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:62993 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751925Ab1GZRc6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2011 13:32:58 -0400
-Received: by vxh35 with SMTP id 35so485491vxh.19
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Jul 2011 10:32:58 -0700 (PDT)
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A51825D@SACMVEXC2-PRD.hq.netapp.com>
-References: <1309743002-1658-1-git-send-email-bergwolf@gmail.com>
- <4E18614C.4010002@tonian.com> <F19688880B763E40B28B2B462677FBF805BF0610CE@MX09A.corp.emc.com>
- <1311621204.28209.14.camel@lade.trondhjem.org> <CA+a=Yy59HXXjd4HgrqeANaQZKO9rRPKzM+r3NNq2KSMV_L4S_w@mail.gmail.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A51825D@SACMVEXC2-PRD.hq.netapp.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Wed, 27 Jul 2011 01:32:38 +0800
-Message-ID: <CA+a=Yy7sCuFE3N_bBsMShr1tLLg4jz9tSpBU9aH08aHCn5uvFQ@mail.gmail.com>
-Subject: Re: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: tao.peng@emc.com, linux-nfs@vger.kernel.org, bhalevy@tonian.com
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:60992 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751532Ab1G0CKc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2011 22:10:32 -0400
+Received: by qwk3 with SMTP id 3so577765qwk.19
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Jul 2011 19:10:31 -0700 (PDT)
+Subject: Re: [Libtirpc-devel] [PATCH] Autofs configure fails to detect IPv6 when libtirpc is enabled
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chucklever@gmail.com>
+In-Reply-To: <1311732168.3473.16.camel@perseus.themaw.net>
+Date: Tue, 26 Jul 2011 22:10:29 -0400
+Cc: Steve Dickson <SteveD@redhat.com>,
+        autofs mailing list <autofs@linux.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Libtirpc Devel List <libtirpc-devel@lists.sourceforge.net>
+Message-Id: <455B4D01-1D8C-4B1A-B706-0F239E54306B@gmail.com>
+References: <1311683346-16881-1-git-send-email-steved@redhat.com> <8A84CF7D-9579-4645-AE5D-FE8358F466C0@gmail.com> <4E2F2DE6.5030500@RedHat.com>  <1311728231.3473.7.camel@perseus.themaw.net> <1311729784.3473.14.camel@perseus.themaw.net> <1311732168.3473.16.camel@perseus.themaw.net>
+To: Ian Kent <ikent@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Jul 26, 2011 at 11:50 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
->> -----Original Message-----
->> From: Peng Tao [mailto:bergwolf@gmail.com]
->> Sent: Tuesday, July 26, 2011 11:37 AM
->> To: Myklebust, Trond
->> Cc: tao.peng@emc.com; linux-nfs@vger.kernel.org; bhalevy@tonian.com
->> Subject: Re: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
->>
->> Hi, Trond,
->>
->> On Tue, Jul 26, 2011 at 3:13 AM, Trond Myklebust
->> <Trond.Myklebust@netapp.com> wrote:
->> > On Wed, 2011-07-20 at 01:52 -0400, tao.peng@emc.com wrote:
->> >> Hi, Trond,
->> >>
->> >> Any comments on this patch? I still get kernel crash when pnfs write
->> is attempted but fails and calls pnfs_ld_write_done(). It seems object
->> layout uses the same code path as well. But I don't find the patch in
->> either your tree or Benny's tree. Are there any concerns?
->> >>
->> >> Thanks,
->> >> Tao
->> >
->> > The whole pnfs_ld_write_done thing is bogus and needs to be replaced
->> > with something sane. It is trying to initiate a WRITE RPC call with
->> the
->> > wrong block size, and is calling the MDS rpc_call_done() and
->> > rpc_release() with an uninitialised rpc task pointer.
->> >
->> > Ditto for pnfs_ld_read_done.
->> Thanks for your explanation. Is there any plan on how to fix
->> pnfs_ld_read/write_done? Basically, we would need an interface that
->> can redirect the IO to MDS if pnfs_error is set or do all necessary
->> cleanup work to end read/write if pnfs_error is 0. IMHO, the
->> recoalesce logic need to access nfs_pageio_descriptor but we do not
->> have that information at pnfs_ld_read/write_done.
->
-> As far as I can see, the right thing to do is to mark the layout as invalid and then redirty the page. It should be easy to have fsync() re-send the pages in this case. These should be extremely rare events, since we expect to catch most of the pNFS failures when we do the actual LAYOUTGET in the ->pg_init().
-Agreed. This should be easier than re-coalescing and sending to MDS at
-read/write_done.
 
->
-> My main worry is for aio/dio where there is no good mechanism for retrying. I'm still working on that...
-For dio, we may have to send the failed pages to MDS instead of
-relying on next fsync() to retry.
+On Jul 26, 2011, at 10:02 PM, Ian Kent wrote:
 
+> On Wed, 2011-07-27 at 09:23 +0800, Ian Kent wrote:
+>> On Wed, 2011-07-27 at 08:57 +0800, Ian Kent wrote:
+>>> On Tue, 2011-07-26 at 17:13 -0400, Steve Dickson wrote:
+>>>> 
+>>>> On 07/26/2011 10:50 AM, Chuck Lever wrote:
+>>>>> 
+>>>>> On Jul 26, 2011, at 2:29 PM, Steve Dickson wrote:
+>>>>> 
+>>>>>> From: Ian Kent <raven@themaw.net>
+>>>>>> 
+>>>>>> The IPv6 client functions clntudp6_bufcreate(), clntudp6_create and
+>>>>>> clnttcp6_create and the server functions svcudp6_bufcreate(),
+>>>>>> svctcp6_create() and svcudp6_create() are not included in the library
+>>>>>> whe libtirpc is built.
+>>>>> 
+>>>>> Are these part of the libtirpc standard API?  I'm not sure why we would need them if, say, Solaris does not support these.
+>>>> It appears they are not since they are not mentioned the man pages.....
+>>>> But, at least in the autofs code, they are expected
+>>>>   https://bugzilla.redhat.com/show_bug.cgi?id=711956#c0
+>>>> 
+>>>> Ian, where else are these routines defined? 
+>>> 
+>>> Now that I look I can't find the original source tar that was used for
+>>> libtirpc, thought I had it.
+>> 
+>> Found what I had.
+>> 
+>> AFAICT what I think was the original source doesn't have any IPv6 code
+>> that I can see.
+>> 
+>> Worse, these functions were excluded with the "#ifdef INET6_NOT_USED"
+>> macro as far back as libtirpc version 0.1.5 so, my bad, sorry.
+>> 
+>>> 
+>>> The story is that long ago when I changed autofs to use libtirpc (to
+>>> make it ready for IPv6) I found these functions in the source and they
+>>> were (obviously) the IPv6 counterparts for the corresponding IPv4
+>>> functions which I was already using, so I used them. It took me quite a
+>>> while to realize my code wasn't working and then I found that somewhere
+>>> along the line they have been excluded, oops!
+>>> 
+>>> If there are to be no IPv6 counterparts for the corresponding IPv4
+>>> functions which functions should I use then?
+>> 
+>> So what can I use?
+>> 
+>> It seems to me that these functions would be useful for people porting
+>> code that uses the corresponding IPv4 functions so could we define them
+>> please. At some point someone must have had that same idea ....
+> 
+> Found one more thing that looks relevant, these functions were defined
+> in glibc in 2000-01-23 so they may be used by others as well.
 
-Thanks,
-Tao
+I checked in glibc 2.7 (though not thoroughly) and did not find them.
 
->
-> Cheers
->  Trond
->
+> 
+>> 
+>>> 
+>>>> 
+>>>> steved
+>>>> 
+>>>>> 
+>>>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>>>>>> ---
+>>>>>> src/rpc_soc.c |    4 ++--
+>>>>>> 1 files changed, 2 insertions(+), 2 deletions(-)
+>>>>>> 
+>>>>>> diff --git a/src/rpc_soc.c b/src/rpc_soc.c
+>>>>>> index c678429..584ac71 100644
+>>>>>> --- a/src/rpc_soc.c
+>>>>>> +++ b/src/rpc_soc.c
+>>>>>> @@ -236,7 +236,7 @@ clnttcp_create(raddr, prog, vers, sockp, sendsz, recvsz)
+>>>>>> 
+>>>>>> /* IPv6 version of clnt*_*create */
+>>>>>> 
+>>>>>> -#ifdef INET6_NOT_USED
+>>>>>> +#ifdef INET6
+>>>>>> 
+>>>>>> CLIENT *
+>>>>>> clntudp6_bufcreate(raddr, prog, vers, wait, sockp, sendsz, recvsz)
+>>>>>> @@ -392,7 +392,7 @@ svcraw_create()
+>>>>>> 
+>>>>>> 
+>>>>>> /* IPV6 version */
+>>>>>> -#ifdef INET6_NOT_USED
+>>>>>> +#ifdef INET6
+>>>>>> SVCXPRT *
+>>>>>> svcudp6_bufcreate(fd, sendsz, recvsz)
+>>>>>> 	int fd;
+>>>>>> -- 
+>>>>>> 1.7.6
+>>>>>> 
+>>>>>> 
+>>>>>> ------------------------------------------------------------------------------
+>>>>>> Magic Quadrant for Content-Aware Data Loss Prevention
+>>>>>> Research study explores the data loss prevention market. Includes in-depth
+>>>>>> analysis on the changes within the DLP market, and the criteria used to
+>>>>>> evaluate the strengths and weaknesses of these DLP solutions.
+>>>>>> http://www.accelacomm.com/jaw/sfnl/114/51385063/
+>>>>>> _______________________________________________
+>>>>>> Libtirpc-devel mailing list
+>>>>>> Libtirpc-devel@lists.sourceforge.net
+>>>>>> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
+>>>>> 
+>>>> 
+>>>> ------------------------------------------------------------------------------
+>>>> Got Input?   Slashdot Needs You.
+>>>> Take our quick survey online.  Come on, we don't ask for help often.
+>>>> Plus, you'll get a chance to win $100 to spend on ThinkGeek.
+>>>> http://p.sf.net/sfu/slashdot-survey
+>>>> _______________________________________________
+>>>> Libtirpc-devel mailing list
+>>>> Libtirpc-devel@lists.sourceforge.net
+>>>> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
+>>> 
+>> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
