@@ -1,29 +1,28 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([198.137.202.13]:60337 "EHLO
-	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751178Ab1GOPRj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2011 11:17:39 -0400
-Date: Fri, 15 Jul 2011 08:17:35 -0700 (PDT)
-Message-Id: <20110715.081735.2057304107637222967.davem@davemloft.net>
-To: Ian.Campbell@citrix.com
-Cc: netdev@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC 0/10] enable SKB paged fragment lifetime visibility
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <1310728006.20648.3.camel@zakaz.uk.xensource.com>
-References: <1310728006.20648.3.camel@zakaz.uk.xensource.com>
-Content-Type: Text/Plain; charset=us-ascii
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:34104
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754774Ab1G0VDo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 17:03:44 -0400
+Date: Wed, 27 Jul 2011 17:03:44 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+        adilger@whamcloud.com, tytso@mit.edu
+Subject: Re: [PATCH 3/3] nfsd: vfs_llseek() with O_32BITHASH or O_64BITHASH
+Message-ID: <20110727210344.GC9066@infradead.org>
+References: <20110727110148.204979.49551.stgit@localhost.localdomain>
+ <20110727110259.204979.56782.stgit@localhost.localdomain>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110727110259.204979.56782.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Ian Campbell <Ian.Campbell@citrix.com>
-Date: Fri, 15 Jul 2011 12:06:46 +0100
+On Wed, Jul 27, 2011 at 01:02:59PM +0200, Bernd Schubert wrote:
+> Use 32-bit or 64-bit llseek() hashes for directory offsets depending on
+> the NFS version. NFSv2 gets 32-bit hashes only.
 
-> What is the general feeling regarding this approach?
+Independent of the O_ vs FMODE thing make sure you pass the correct
+flag at open time, instead of racy runtime modifications.
 
-Not bad, I like that only the users of destructors pay the price of
-the extra atomics.
-
-Like you say in patch #8, I wouldn't bother adding a whole new
-->sendpage_destructor() OP, just add the new argument to the existing
-method.
