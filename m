@@ -1,65 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out4.smtp.messagingengine.com ([66.111.4.28]:60941 "EHLO
-	out4.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754520Ab1G2GFq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 02:05:46 -0400
-Message-ID: <4E324DB4.7060600@fastmail.fm>
-Date: Fri, 29 Jul 2011 16:05:40 +1000
-From: Greg Banks <gnb@fastmail.fm>
-To: NeilBrown <neilb@suse.de>
-CC: linux-nfs@vger.kernel.org, David Miller <davem@davemloft.net>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>, Eric Dumazet <eric.dumazet@gmail.com>
-Subject: Re: Fw: [PATCH] sunrpc: use better NUMA affinities
-References: <20110729153207.17af3085@notabene.brown>
-In-Reply-To: <20110729153207.17af3085@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from natasha.panasas.com ([67.152.220.90]:51723 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753875Ab1G0VJm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 17:09:42 -0400
+Message-ID: <4E307E6F.6090309@panasas.com>
+Date: Wed, 27 Jul 2011 14:09:03 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Jim Rees <rees@umich.edu>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
+        peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH v3 03/25] NFS41: Let layoutcommit handle multiple segments
+References: <1311792048-12551-1-git-send-email-rees@umich.edu> <1311792048-12551-4-git-send-email-rees@umich.edu> <4E306F84.6030808@panasas.com> <1311798159.25645.32.camel@lade.trondhjem.org> <4E30762E.4000508@panasas.com> <20110727205804.GA13698@merit.edu>
+In-Reply-To: <20110727205804.GA13698@merit.edu>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 29/07/11 15:32, NeilBrown wrote:
->
-> Hi Greg,
->   I saw this patch float past and thought of you... You may not be interested
->   any more, and it may be a perfectly good patch that does not need any
->   comment, but I thought I would let you know anyway.
+On 07/27/2011 01:58 PM, Jim Rees wrote:
+>   But I thought for simplicity since this patchset was reviewed then, I've
+>   tested with this patch and it works good as well. If you are going to
+>   break things up, I can test with the minimal patches and report what is
+>   need in Stable. (Is anyone working on it?)
+> 
+> We may have over-squashed that one for block layout.  I can dig up the
+> original patches if necessary, but I'm guessing you probably have them.
 
-Thanks Neil.
+Please do. Because by now I'm confused. the first I discovered it was
+by git diff of a branch that worked. I lost tracked of where the code
+was originated from.
 
-I've trimmed the cc list to limit the number of copies Trond and Bruce get:)
+But Trond just for simplicity sake can't we just submit the patch as is.
+It is all related to layoutcommit breakage and it is all bits that we
+eventually need. both objects and blocks (and files when they do segments).
+I don't think it is that "too bloated" that it can't be sent to stable.
+What are the risks you are anticipating?
 
-> From: Eric Dumazet<eric.dumazet@gmail.com>
-> To: Trond Myklebust<Trond.Myklebust@netapp.com>
-> Cc: "J. Bruce Fields"<bfields@fieldses.org>, Neil Brown<neilb@suse.de>,
-> David Miller<davem@davemloft.net>, linux-nfs@vger.kernel.org, netdev
-> <netdev@vger.kernel.org>, linux-kernel<linux-kernel@vger.kernel.org>
-> Subject: [PATCH] sunrpc: use better NUMA affinities
->
->
-> Use NUMA aware allocations to reduce latencies and increase throughput.
-
-
-Briefly looking at the patch, it doesn't seem wrong but I'm surprised 
-it's (still) necessary.
-
-Some years ago at SGI we encountered that same problem; we solved it by 
-delaying all the allocation of data structures associated with a thread 
-so that they were performed in the thread itself, after the thread had 
-been limited to run on a certain set of CPUs.  Thus the thread's normal 
-allocation behaviour resulted in all of it's allocations being from 
-node-local pages.  It was a pretty ugly patch, but it worked and made a 
-huge difference to NFS throughput on large NUMA boxes.
-
-Later Jeff Layton converted the sunrpc svc startup code to use kthreads 
-and at the time I read his patches, pointed out this problem, and posted 
-my patch for comparison
-
-http://linux-nfs.org/pipermail/nfsv4/2008-May/008760.html
-
-I seem to remember coming to the conclusion that Jeff eventually 
-addressed this problem...am I misremembering or did something regress?
-
--- 
-Greg.
-
+Thanks
+Boaz
