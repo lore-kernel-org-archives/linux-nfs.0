@@ -1,101 +1,310 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from vr160.rayconnect.de ([213.155.88.90]:38392 "EHLO
-	mail.schwartzkopff.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752260Ab1GVLYZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jul 2011 07:24:25 -0400
-Received: from nb002.localnet (cl-1872.cgn-01.de.sixxs.net [IPv6:2001:4dd0:ff00:74f::2])
-	(Authenticated sender: misch)
-	by mail.schwartzkopff.org (Postfix) with ESMTPSA id 6A158129164
-	for <linux-nfs@vger.kernel.org>; Fri, 22 Jul 2011 13:24:24 +0200 (CEST)
-From: Michael Schwartzkopff <misch@schwartzkopff.org>
-Reply-To: misch@schwartzkopff.org
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 grace time
-Date: Fri, 22 Jul 2011 13:24:22 +0200
-References: <201107211540.05673.misch@schwartzkopff.org> <20110722070742.776ae99d@tlielax.poochiereds.net>
-In-Reply-To: <20110722070742.776ae99d@tlielax.poochiereds.net>
-Content-Type: multipart/signed;
-  boundary="nextPart17493502.tP6OnvOam0";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
-Message-Id: <201107221324.22512.misch@schwartzkopff.org>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:42023 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754460Ab1G0LCv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 07:02:51 -0400
+Subject: [PATCH 1/3] Return 32/64-bit dir name hash according to usage type
+To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+        adilger@whamcloud.com, tytso@mit.edu
+Date: Wed, 27 Jul 2011 13:02:49 +0200
+Message-ID: <20110727110249.204979.58769.stgit@localhost.localdomain>
+In-Reply-To: <20110727110148.204979.49551.stgit@localhost.localdomain>
+References: <20110727110148.204979.49551.stgit@localhost.localdomain>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---nextPart17493502.tP6OnvOam0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+From: Fan Yong <yong.fan@whamcloud.com>
 
-> On Thu, 21 Jul 2011 15:40:05 +0200
->=20
-> Michael Schwartzkopff <misch@schwartzkopff.org> wrote:
-> > Hi,
-> >=20
-> > setting up a linux NFS server cluster I experience a strange problem
-> > during a failover. A client can access a file only after 60 to 90
-> > seconds. On the line I see a NFS4ERR_GRACE from the server to the
-> > client.
-> >=20
-> > I already set the /proc/fs/nfsd/nfsv4leastime to 10.
-> >=20
-> > Any other idea?
-> >=20
-> > For the tests I have a simple setup:
-> >=20
-> > One host with a simple script that simulates failover:
-> >=20
-> > #!/bin/bash
-> >=20
-> > ip a d 1.2.3.4/24 dev eth0
-> > exportfs -u *:/srv/nfs/home
-> > exportfs -u *:/srv/nfs
-> > /etc/init.d/nfsserver stop
-> > #
-> > /etc/init.d/nfsserver start
-> > exportfs -o fsid=3D0,rw,crossmnt,no_root_squash *:/srv/nfs
-> > exportfs -o fsid=3D1000,rw,mountpoint,no_root_squash *:/srv/nfs/home
-> > ip a a 1.2.3.4/24 dev eth0
->=20
-> This is normal. The grace period is there to allow clients to reclaim
-> their state without other clients racing in and grabbing their locks on
-> the new server, etc.
+Traditionally ext2/3/4 has returned a 32-bit hash value from llseek()
+to appease NFSv2, which can only handle a 32-bit cookie for seekdir()
+and telldir().  However, this causes problems if there are 32-bit hash
+collisions, since the NFSv2 server can get stuck resending the same
+entries from the directory repeatedly.
 
-Ok. But this is the same client that cannot its own data.
-=20
-> You can play with /proc/fs/nfsd/nfsv4gracetime too but I'd be very
-> leery of setting that too low. It should never be lower than the
-> previous leasetime (see the comments on write_gracetime in the kernel).
+Allow ext4 to return a full 64-bit hash (both major and minor) for
+telldir to decrease the chance of hash collisions.  This still needs
+integration on the NFS side.
 
-I did already set this to 10 seconds without success. The client still has =
-to=20
-wait 60 seconds to access its data.
+Signed-off-by: Fan Yong <yong.fan@whamcloud.com>
+Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+---
+ fs/ext4/dir.c               |  160 ++++++++++++++++++++++++++++++++++---------
+ fs/fcntl.c                  |    5 +
+ include/asm-generic/fcntl.h |    9 ++
+ 3 files changed, 138 insertions(+), 36 deletions(-)
 
-By the way: Is there a nice way to set this during startup of the nfsserver=
-,=20
-i.e. a mount option for nfsd?
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index 164c560..8258240 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -32,24 +32,8 @@ static unsigned char ext4_filetype_table[] = {
+ 	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
+ };
+ 
+-static int ext4_readdir(struct file *, void *, filldir_t);
+ static int ext4_dx_readdir(struct file *filp,
+ 			   void *dirent, filldir_t filldir);
+-static int ext4_release_dir(struct inode *inode,
+-				struct file *filp);
+-
+-const struct file_operations ext4_dir_operations = {
+-	.llseek		= ext4_llseek,
+-	.read		= generic_read_dir,
+-	.readdir	= ext4_readdir,		/* we take BKL. needed?*/
+-	.unlocked_ioctl = ext4_ioctl,
+-#ifdef CONFIG_COMPAT
+-	.compat_ioctl	= ext4_compat_ioctl,
+-#endif
+-	.fsync		= ext4_sync_file,
+-	.release	= ext4_release_dir,
+-};
+-
+ 
+ static unsigned char get_dtype(struct super_block *sb, int filetype)
+ {
+@@ -254,22 +238,117 @@ out:
+ 	return ret;
+ }
+ 
++static inline int is_32bit_api(void)
++{
++#ifdef HAVE_IS_COMPAT_TASK
++	return is_compat_task();
++#else
++	return (BITS_PER_LONG == 32);
++#endif
++}
++
+ /*
+  * These functions convert from the major/minor hash to an f_pos
+  * value.
+  *
+- * Currently we only use major hash numer.  This is unfortunate, but
+- * on 32-bit machines, the same VFS interface is used for lseek and
+- * llseek, so if we use the 64 bit offset, then the 32-bit versions of
+- * lseek/telldir/seekdir will blow out spectacularly, and from within
+- * the ext2 low-level routine, we don't know if we're being called by
+- * a 64-bit version of the system call or the 32-bit version of the
+- * system call.  Worse yet, NFSv2 only allows for a 32-bit readdir
+- * cookie.  Sigh.
++ * Upper layer should specify O_32BITHASH or O_64BITHASH explicitly.
++ * On the other hand, we allow ext4 to be mounted directly on both 32-bit
++ * and 64-bit nodes, under such case, neither O_32BITHASH nor O_64BITHASH
++ * is specified.
+  */
+-#define hash2pos(major, minor)	(major >> 1)
+-#define pos2maj_hash(pos)	((pos << 1) & 0xffffffff)
+-#define pos2min_hash(pos)	(0)
++static inline loff_t hash2pos(struct file *filp, __u32 major, __u32 minor)
++{
++	if ((filp->f_flags & O_32BITHASH) ||
++	    (!(filp->f_flags & O_64BITHASH) && is_32bit_api()))
++		return major >> 1;
++	else
++		return ((__u64)(major >> 1) << 32) | (__u64)minor;
++}
++
++static inline __u32 pos2maj_hash(struct file *filp, loff_t pos)
++{
++	if ((filp->f_flags & O_32BITHASH) ||
++	    (!(filp->f_flags & O_64BITHASH) && is_32bit_api()))
++		return (pos << 1) & 0xffffffff;
++	else
++		return ((pos >> 32) << 1) & 0xffffffff;
++}
++
++static inline __u32 pos2min_hash(struct file *filp, loff_t pos)
++{
++	if ((filp->f_flags & O_32BITHASH) ||
++	    (!(filp->f_flags & O_64BITHASH) && is_32bit_api()))
++		return 0;
++	else
++		return pos & 0xffffffff;
++}
++
++/*
++ * ext4_dir_llseek() based on generic_file_llseek() to handle both
++ * non-htree and htree directories, where the "offset" is in terms
++ * of the filename hash value instead of the byte offset.
++ *
++ * NOTE: offsets obtained *before* ext4_set_inode_flag(dir, EXT4_INODE_INDEX)
++ *       will be invalid once the directory was converted into a dx directory
++ */
++loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
++{
++	struct inode *inode = file->f_mapping->host;
++	loff_t ret = -EINVAL;
++	int is_dx_dir = ext4_test_inode_flag(inode, EXT4_INODE_INDEX);
++
++	mutex_lock(&inode->i_mutex);
++
++	switch (origin) {
++	case SEEK_END:
++		if (unlikely(offset > 0))
++			goto out_err; /* not supported for directories */
++		if (is_dx_dir)
++			offset = EXT4_HTREE_EOF;
++		else
++			offset = inode->i_size;
++		break;
++	case SEEK_CUR:
++		/*
++		 * Here we special-case the lseek(fd, 0, SEEK_CUR)
++		 * position-querying operation.  Avoid rewriting the "same"
++		 * f_pos value back to the file because a concurrent read(),
++		 * write() or lseek() might have altered it
++		 */
++		if (offset == 0) {
++			offset = file->f_pos;
++			goto out_ok;
++		}
++
++		/* NOTE: relative offsets with dx directories might not work
++		 *       as expected, as it is difficult to figure out the
++		 *       correct offset between dx hashes */
++		offset += file->f_pos;
++		break;
++	}
++
++	if (unlikely(offset < 0))
++		goto out_err;
++
++	if (!is_dx_dir) {
++		if (offset > inode->i_sb->s_maxbytes)
++			goto out_err;
++	} else if (offset > EXT4_HTREE_EOF)
++		goto out_err;
++
++	/* Special lock needed here? */
++	if (offset != file->f_pos) {
++		file->f_pos = offset;
++		file->f_version = 0;
++	}
++
++out_ok:
++	ret = offset;
++out_err:
++	mutex_unlock(&inode->i_mutex);
++
++	return ret;
++}
+ 
+ /*
+  * This structure holds the nodes of the red-black tree used to store
+@@ -330,15 +409,16 @@ static void free_rb_tree_fname(struct rb_root *root)
+ }
+ 
+ 
+-static struct dir_private_info *ext4_htree_create_dir_info(loff_t pos)
++static struct dir_private_info *ext4_htree_create_dir_info(struct file *filp,
++							   loff_t pos)
+ {
+ 	struct dir_private_info *p;
+ 
+ 	p = kzalloc(sizeof(struct dir_private_info), GFP_KERNEL);
+ 	if (!p)
+ 		return NULL;
+-	p->curr_hash = pos2maj_hash(pos);
+-	p->curr_minor_hash = pos2min_hash(pos);
++	p->curr_hash = pos2maj_hash(filp, pos);
++	p->curr_minor_hash = pos2min_hash(filp, pos);
+ 	return p;
+ }
+ 
+@@ -429,7 +509,7 @@ static int call_filldir(struct file *filp, void *dirent,
+ 		       "null fname?!?\n");
+ 		return 0;
+ 	}
+-	curr_pos = hash2pos(fname->hash, fname->minor_hash);
++	curr_pos = hash2pos(filp, fname->hash, fname->minor_hash);
+ 	while (fname) {
+ 		error = filldir(dirent, fname->name,
+ 				fname->name_len, curr_pos,
+@@ -454,7 +534,7 @@ static int ext4_dx_readdir(struct file *filp,
+ 	int	ret;
+ 
+ 	if (!info) {
+-		info = ext4_htree_create_dir_info(filp->f_pos);
++		info = ext4_htree_create_dir_info(filp, filp->f_pos);
+ 		if (!info)
+ 			return -ENOMEM;
+ 		filp->private_data = info;
+@@ -468,8 +548,8 @@ static int ext4_dx_readdir(struct file *filp,
+ 		free_rb_tree_fname(&info->root);
+ 		info->curr_node = NULL;
+ 		info->extra_fname = NULL;
+-		info->curr_hash = pos2maj_hash(filp->f_pos);
+-		info->curr_minor_hash = pos2min_hash(filp->f_pos);
++		info->curr_hash = pos2maj_hash(filp, filp->f_pos);
++		info->curr_minor_hash = pos2min_hash(filp, filp->f_pos);
+ 	}
+ 
+ 	/*
+@@ -540,3 +620,15 @@ static int ext4_release_dir(struct inode *inode, struct file *filp)
+ 
+ 	return 0;
+ }
++
++const struct file_operations ext4_dir_operations = {
++	.llseek		= ext4_dir_llseek,
++	.read		= generic_read_dir,
++	.readdir	= ext4_readdir,
++	.unlocked_ioctl = ext4_ioctl,
++#ifdef CONFIG_COMPAT
++	.compat_ioctl	= ext4_compat_ioctl,
++#endif
++	.fsync		= ext4_sync_file,
++	.release	= ext4_release_dir,
++};
+diff --git a/fs/fcntl.c b/fs/fcntl.c
+index 22764c7..cb6ef40 100644
+--- a/fs/fcntl.c
++++ b/fs/fcntl.c
+@@ -835,14 +835,15 @@ static int __init fcntl_init(void)
+ 	 * Exceptions: O_NONBLOCK is a two bit define on parisc; O_NDELAY
+ 	 * is defined as O_NONBLOCK on some platforms and not on others.
+ 	 */
+-	BUILD_BUG_ON(19 - 1 /* for O_RDONLY being 0 */ != HWEIGHT32(
++	BUILD_BUG_ON(21 - 1 /* for O_RDONLY being 0 */ != HWEIGHT32(
+ 		O_RDONLY	| O_WRONLY	| O_RDWR	|
+ 		O_CREAT		| O_EXCL	| O_NOCTTY	|
+ 		O_TRUNC		| O_APPEND	| /* O_NONBLOCK	| */
+ 		__O_SYNC	| O_DSYNC	| FASYNC	|
+ 		O_DIRECT	| O_LARGEFILE	| O_DIRECTORY	|
+ 		O_NOFOLLOW	| O_NOATIME	| O_CLOEXEC	|
+-		__FMODE_EXEC	| O_PATH
++		__FMODE_EXEC	| O_PATH        | O_32BITHASH   |
++		O_64BITHASH
+ 		));
+ 
+ 	fasync_cache = kmem_cache_create("fasync_cache",
+diff --git a/include/asm-generic/fcntl.h b/include/asm-generic/fcntl.h
+index 84793c7..a40e1d5 100644
+--- a/include/asm-generic/fcntl.h
++++ b/include/asm-generic/fcntl.h
+@@ -84,10 +84,19 @@
+ #define O_PATH		010000000
+ #endif
+ 
++
+ #ifndef O_NDELAY
+ #define O_NDELAY	O_NONBLOCK
+ #endif
+ 
++#ifndef O_32BITHASH
++#define O_32BITHASH	020000000	/* use 64 bit hash from dir llseek() */
++#endif
++#ifndef O_64BITHASH
++#define O_64BITHASH	040000000	/* use 32 bit hash from dir llseek() */
++#endif
++
++
+ #define F_DUPFD		0	/* dup */
+ #define F_GETFD		1	/* get close_on_exec */
+ #define F_SETFD		2	/* set/clear close_on_exec */
 
-Greetings,
-
-=2D-=20
-Dr. Michael Schwartzkopff
-Guardinistr. 63
-81375 M=FCnchen
-
-Tel: (0163) 172 50 98
-=46ax: (089) 620 304 13
-
---nextPart17493502.tP6OnvOam0
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.10 (GNU/Linux)
-
-iEYEABECAAYFAk4pXeYACgkQH8fVuZhm6xw5kACeJbxKfCvI40Z9qLXtJNZkxGeI
-3EkAoJBTFUD86XPBizIL8yuIKcwtf51X
-=wB6n
------END PGP SIGNATURE-----
-
---nextPart17493502.tP6OnvOam0--
