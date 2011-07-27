@@ -1,62 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:10766 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:65070 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754548Ab1GMOuu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Jul 2011 10:50:50 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v5 0/2]  NFSD: add FREE_STATEID and TEST_STATEID operations
-Date: Wed, 13 Jul 2011 10:50:46 -0400
-Message-Id: <1310568648-11109-1-git-send-email-bjschuma@netapp.com>
+	id S1753057Ab1G0Tyw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jul 2011 15:54:52 -0400
+Message-ID: <4E306D09.5030704@netapp.com>
+Date: Wed, 27 Jul 2011 15:54:49 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: Christoph Hellwig <hch@infradead.org>
+CC: Justin Piszcz <jpiszcz@lucidpixels.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
+References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan> <20110727160752.GC974@fieldses.org> <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan> <20110727181111.GA23009@infradead.org> <alpine.DEB.2.02.1107271530340.1451@p34.internal.lan> <20110727193937.GA5354@infradead.org> <alpine.DEB.2.02.1107271540100.1451@p34.internal.lan> <20110727194722.GA9345@infradead.org>
+In-Reply-To: <20110727194722.GA9345@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On 07/27/2011 03:47 PM, Christoph Hellwig wrote:
+> On Wed, Jul 27, 2011 at 03:44:20PM -0400, Justin Piszcz wrote:
+>>
+>>
+>> On Wed, 27 Jul 2011, Christoph Hellwig wrote:
+>>
+>>> On Wed, Jul 27, 2011 at 03:35:01PM -0400, Justin Piszcz wrote:
+>>>> Currently I do not see any dupes, however I have a script that moves
+>>>> images out of the directory once an hour:
+>>>> 0 * * * * /usr/local/bin/move_to_old2.sh > /dev/null 2>&1
+>>>
+>>> Do you keep adding files to the directory while you move files out?
+>> Yes, otherwise there are too many files in the directory and viewers, e.g.,
+>> each geeqie (picture viewer) will use > 4-6GB of memory, so I try to keep
+>> it around 5,000 pictures or less.
+>>
+>>> What's the rate of additions/removals to the directory?
+>> Additions it depends, around 5,000 over a 12hr period, 416/hr, current:
+>>
+>> atom:/d1/motion# find cam1|wc
+>>    5215    5215  166853
+>> atom:/d1/motion# find cam2|wc
+>>    5069    5069  162181
+>> atom:/d1/motion# find cam3|wc
+>>    5594    5594  178981
+>> atom:/d1/motion#
+> 
+> This sounds a lot like xfs simply filling up the directory index slots
+> of files that you just moved out with new files, and nfs falsely
+> claiming that this is a problem.
+> 
+> Any chance to figure out if the file you hit the printk with was one
+> that got either recently added or moved when you hit it?  (I can't
+> follow the nfs code enough to check if it prints the first or second hit
+> of the same cookie)
 
-These patches add FREE_STATEID and TEST_STATEID to the NFS server.  I initially
-tested them by hard coding calls both before and after the client completes a
-CLOSE operation.  Eventually, I modified the client's state recovery code to
-place these calls.  I would turn off networking on the client for two minutes
-so it would expired on the server and force recovery once networking was
-reenabled.
-
-I later added in a fault injection framework on the server.  I would have the
-client acquire a lock, tell the server to delete it, and then have the client
-use TEST_STATEID and FREE_STATEID to recover the lock.
-
-v2:
-- FREE_STATEID
-  - Free open, lock, and delegation state ids correctly
-  - Use the check_for_locks() function to check for locks
-
-  - TEST_STATEID
-    - Remove openmode check
-    - Sanity check on size of stateid list
-    - Delay decoding stateid list until encoding the reply
-
-v3:
-  - FREE_STATEID
-    - Open stateids and delegations are never freeable (return nfserr_locks_held)
-
-  - TEST_STATEID
-    - Remove unused arguments from a function call
-    - Store and use the HAS_SESSION flag for validating stateids
-
-v4:
-  - FREE_STATEID
-    - Remove unused argument from nfs4_free_lock_stateid()
-
-  - TEST_STATEID
-    - Remove double call to nfs4_validate_stateid()
-
-v5:
-  - FREE_STATEID
-    - Acquire the state lock before using the state lists
-
-  - TEST_STATEID
-    - Acquire the state lock before using the state lists
+It should be printing on the second hit of a cookie.
 
 - Bryan
+
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
