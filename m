@@ -1,53 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:7162 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:6033 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751426Ab1GAShl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Jul 2011 14:37:41 -0400
-Subject: Re: Potential locking issue in sunrpc
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Ben Greear <greearb@candelatech.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 01 Jul 2011 14:37:39 -0400
-In-Reply-To: <4E0CE5E9.2090401@candelatech.com>
-References: <4E0CE5E9.2090401@candelatech.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1309545459.5230.25.camel@lade.trondhjem.org>
+	id S1752667Ab1G0QkR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jul 2011 12:40:17 -0400
+Message-ID: <4E303F6F.8010706@netapp.com>
+Date: Wed, 27 Jul 2011 12:40:15 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: Justin Piszcz <jpiszcz@lucidpixels.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
+References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan> <20110727160752.GC974@fieldses.org> <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan>
+In-Reply-To: <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2011-06-30 at 14:08 -0700, Ben Greear wrote: 
-> This method in sched.c says we should have a lock for ASYNC
+On 07/27/2011 12:28 PM, Justin Piszcz wrote:
 > 
-> /*
->   * Make an RPC task runnable.
->   *
->   * Note: If the task is ASYNC, this must be called with
->   * the spinlock held to protect the wait queue operation.
->   */
-> static void rpc_make_runnable(struct rpc_task *task)
 > 
-> However, I don't think the lock is being taken for
-> the call path starting with rpcb_call_async in
-> rpcb_clnt.c:
+> On Wed, 27 Jul 2011, J. Bruce Fields wrote:
 > 
-> rpcb_call_async
-> rpc_run_task
-> rpc_execute
-> rpc_make_runnable
+>> On Wed, Jul 27, 2011 at 09:54:09AM -0400, Justin Piszcz wrote:
+>>> Hi,
+>>>
+>>> Kernel 2.6.30 on client.
+>>> Kernel 2.6.28 on server.
+>>>
+>>> p34 kernel: [92223.918892] NFS: directory motion/cam2 contains a
+>>> readdir loop.  Please contact your server vendor.  Offending cookie: 10272
+>>
+>> What filesystem on the server are you exporting?
 > 
-> Is the comment on the make_runnable method wrong, or are we missing locking?
+> Hi,
+> 
+> xfs.
+> /dev/sda1 on / type xfs (rw,noatime)
+> 
+> Nothing special, thoughts?
 
-Neither. In the above case, we are not waking up from a wait queue, so
-there are no locks involved.
+Are there a lot of files in the directory you're exporting?  It looks like cookie 10272 is mapped to multiple files. When the client tries to resume reading from this cookie, xfs will reply from the first matching file and cause the client to enter a loop.
 
-Trond
+- Bryan
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> 
+> Justin.
+> 
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
