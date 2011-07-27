@@ -1,62 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:52790 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752661Ab1GBI7m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 2 Jul 2011 04:59:42 -0400
-Message-ID: <4E0EDEBE.8040902@cn.fujitsu.com>
-Date: Sat, 02 Jul 2011 17:02:54 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2 v2] nfsd41: check the size of request
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from mx2.netapp.com ([216.240.18.37]:2455 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751900Ab1G0U4g convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 16:56:36 -0400
+Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Bryan Schumaker <bjschuma@netapp.com>,
+        Justin Piszcz <jpiszcz@lucidpixels.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+Date: Wed, 27 Jul 2011 16:56:35 -0400
+In-Reply-To: <1311800051.25645.43.camel@lade.trondhjem.org>
+References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan>
+	 <20110727160752.GC974@fieldses.org>
+	 <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan>
+	 <20110727181111.GA23009@infradead.org>
+	 <alpine.DEB.2.02.1107271530340.1451@p34.internal.lan>
+	 <20110727193937.GA5354@infradead.org>
+	 <alpine.DEB.2.02.1107271540100.1451@p34.internal.lan>
+	 <20110727194722.GA9345@infradead.org>
+	 <1311799021.25645.41.camel@lade.trondhjem.org>
+	 <1311800051.25645.43.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1311800195.25645.45.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This patch just check request's size when it consists SEQUENCE.
+On Wed, 2011-07-27 at 16:54 -0400, Trond Myklebust wrote: 
+> On Wed, 2011-07-27 at 16:37 -0400, Trond Myklebust wrote: 
+> > On Wed, 2011-07-27 at 15:47 -0400, Christoph Hellwig wrote: 
+> > > On Wed, Jul 27, 2011 at 03:44:20PM -0400, Justin Piszcz wrote:
+> > > > 
+> > > > 
+> > > > On Wed, 27 Jul 2011, Christoph Hellwig wrote:
+> > > > 
+> > > > >On Wed, Jul 27, 2011 at 03:35:01PM -0400, Justin Piszcz wrote:
+> > > > >>Currently I do not see any dupes, however I have a script that moves
+> > > > >>images out of the directory once an hour:
+> > > > >>0 * * * * /usr/local/bin/move_to_old2.sh > /dev/null 2>&1
+> > > > >
+> > > > >Do you keep adding files to the directory while you move files out?
+> > > > Yes, otherwise there are too many files in the directory and viewers, e.g.,
+> > > > each geeqie (picture viewer) will use > 4-6GB of memory, so I try to keep
+> > > > it around 5,000 pictures or less.
+> > > > 
+> > > > >What's the rate of additions/removals to the directory?
+> > > > Additions it depends, around 5,000 over a 12hr period, 416/hr, current:
+> > > > 
+> > > > atom:/d1/motion# find cam1|wc
+> > > >    5215    5215  166853
+> > > > atom:/d1/motion# find cam2|wc
+> > > >    5069    5069  162181
+> > > > atom:/d1/motion# find cam3|wc
+> > > >    5594    5594  178981
+> > > > atom:/d1/motion#
+> > > 
+> > > This sounds a lot like xfs simply filling up the directory index slots
+> > > of files that you just moved out with new files, and nfs falsely
+> > > claiming that this is a problem.
+> > 
+> > Yep. There is an existing bugzilla report for this bug at
+> > 
+> >    https://bugzilla.kernel.org/show_bug.cgi?id=38572
+> > 
+> > I have a preliminary patch there that attempts to turn off the loop
+> > detection when the directory is seen to change, however that patch still
+> > appears to have a bug in it, and I haven't had time to figure out what
+> > is wrong yet.
+> > 
+> > Can you perhaps take a look, Bryan?
+> 
+> Actually, Justin, can you test the following slight variant on the patch
+> in the bugzilla?
 
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
----
- fs/nfsd/nfs4state.c |   16 ++++++++++++++++
- 1 files changed, 16 insertions(+), 0 deletions(-)
+Doh! This one will actually compile....
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e98f3c2..17e30bf 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1736,6 +1736,21 @@ static bool nfsd4_session_too_many_ops(struct svc_rqst *rqstp, struct nfsd4_sess
- 	return args->opcnt > session->se_fchannel.maxops;
- }
- 
-+static int nfsd4_check_request_size(struct nfsd4_compoundargs *args,
-+				    struct nfsd4_session *session)
-+{
-+	struct xdr_buf *xb = &args->rqstp->rq_arg;
-+
-+	/* Only SEQUENCE operation */
-+	if (args->opcnt == 1)
-+		return 0;
-+
-+	if (xb->len > session->se_fchannel.maxreq_sz)
-+		return nfserr_req_too_big;
-+
-+	return 0;
-+}
-+
- __be32
- nfsd4_sequence(struct svc_rqst *rqstp,
- 	       struct nfsd4_compound_state *cstate,
-@@ -1804,6 +1819,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	cstate->slot = slot;
- 	cstate->session = session;
- 
-+	status = nfsd4_check_request_size(rqstp->rq_argp, session);
- out:
- 	/* Hold a session reference until done processing the compound. */
- 	if (cstate->session) {
--- 
-1.7.5.4
-
-
-
+> 8<--------------------------------------------------------- 
