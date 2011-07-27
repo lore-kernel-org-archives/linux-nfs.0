@@ -1,46 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:37635 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754879Ab1G0RJl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jul 2011 13:09:41 -0400
-Message-ID: <4E304652.5090708@netapp.com>
-Date: Wed, 27 Jul 2011 13:09:38 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: Ruediger Meier <sweet_f_a@gmx.de>
-CC: Justin Piszcz <jpiszcz@lucidpixels.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
-References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan> <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan> <4E303F6F.8010706@netapp.com> <201107271900.11091.sweet_f_a@gmx.de>
-In-Reply-To: <201107271900.11091.sweet_f_a@gmx.de>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:34673 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754558Ab1G0SlN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 14:41:13 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v3 15/25] pnfsblock: bl_find_get_extent
+Date: Wed, 27 Jul 2011 14:40:38 -0400
+Message-Id: <1311792048-12551-16-git-send-email-rees@umich.edu>
+In-Reply-To: <1311792048-12551-1-git-send-email-rees@umich.edu>
+References: <1311792048-12551-1-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 07/27/2011 01:00 PM, Ruediger Meier wrote:
-> On Wednesday 27 July 2011, Bryan Schumaker wrote:
->> On 07/27/2011 12:28 PM, Justin Piszcz wrote:
->>> On Wed, 27 Jul 2011, J. Bruce Fields wrote:
->>>>
->>>> What filesystem on the server are you exporting?
->>>
->>> xfs.
->>> /dev/sda1 on / type xfs (rw,noatime)
->>>
->>> Nothing special, thoughts?
->>
->> Are there a lot of files in the directory you're exporting?  It looks
->> like cookie 10272 is mapped to multiple files.
-> 
-> I thought xfs is immune to readdir loops!?
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-I guess that depends how it generates the cookie... I want to try out the ext4 patches that were posted earlier today.  I'll double check xfs while I'm at it.
+Implement bl_find_get_extent(), one of the core extent manipulation
+routines.
 
-- Bryan
+[pnfsblock: Lookup list entry of layouts and tags in reverse order]
+Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 
-> Is your export directory really located directly within / on /dev/sda1?
-> 
-> cu,
-> Rudi
+pnfsblock: fix print format warnings for sector_t and size_t
+
+gcc spews warnings about these on x86_64, e.g.:
+fs/nfs/blocklayout/blocklayout.c:74: warning: format ‘%Lu’ expects type ‘long long unsigned int’, but argument 2 has type ‘sector_t’
+fs/nfs/blocklayout/blocklayout.c:388: warning: format ‘%d’ expects type ‘int’, but argument 5 has type ‘size_t’
+
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/blocklayout/blocklayout.h |    3 ++
+ fs/nfs/blocklayout/extents.c     |   47 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 50 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 3105b96..25c3153 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -153,6 +153,9 @@ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+ void free_block_dev(struct pnfs_block_dev *bdev);
+ 
+ /* extents.c */
++struct pnfs_block_extent *
++bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
++		struct pnfs_block_extent **cow_read);
+ void bl_put_extent(struct pnfs_block_extent *be);
+ struct pnfs_block_extent *alloc_extent(void);
+ int bl_add_merge_extent(struct pnfs_block_layout *bl,
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 3591084..c306616 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -201,3 +201,50 @@ bl_add_merge_extent(struct pnfs_block_layout *bl,
+ 	bl_put_extent(new);
+ 	return -EIO;
+ }
++
++/* Returns extent, or NULL.  If a second READ extent exists, it is returned
++ * in cow_read, if given.
++ *
++ * The extents are kept in two seperate ordered lists, one for READ and NONE,
++ * one for READWRITE and INVALID.  Within each list, we assume:
++ * 1. Extents are ordered by file offset.
++ * 2. For any given isect, there is at most one extents that matches.
++ */
++struct pnfs_block_extent *
++bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
++	    struct pnfs_block_extent **cow_read)
++{
++	struct pnfs_block_extent *be, *cow, *ret;
++	int i;
++
++	dprintk("%s enter with isect %llu\n", __func__, (u64)isect);
++	cow = ret = NULL;
++	spin_lock(&bl->bl_ext_lock);
++	for (i = 0; i < EXTENT_LISTS; i++) {
++		list_for_each_entry_reverse(be, &bl->bl_extents[i], be_node) {
++			if (isect >= be->be_f_offset + be->be_length)
++				break;
++			if (isect >= be->be_f_offset) {
++				/* We have found an extent */
++				dprintk("%s Get %p (%i)\n", __func__, be,
++					atomic_read(&be->be_refcnt.refcount));
++				kref_get(&be->be_refcnt);
++				if (!ret)
++					ret = be;
++				else if (be->be_state != PNFS_BLOCK_READ_DATA)
++					bl_put_extent(be);
++				else
++					cow = be;
++				break;
++			}
++		}
++		if (ret &&
++		    (!cow_read || ret->be_state != PNFS_BLOCK_INVALID_DATA))
++			break;
++	}
++	spin_unlock(&bl->bl_ext_lock);
++	if (cow_read)
++		*cow_read = cow;
++	print_bl_extent(ret);
++	return ret;
++}
+-- 
+1.7.4.1
 
