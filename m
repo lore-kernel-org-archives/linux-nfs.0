@@ -1,133 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:37301 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:46000 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751149Ab1GRRxi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Jul 2011 13:53:38 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v2 1/2] NFS: Test and Free stateid should take a stateid argument
-Date: Mon, 18 Jul 2011 13:53:35 -0400
-Message-Id: <1311011616-11503-1-git-send-email-bjschuma@netapp.com>
+	id S1753607Ab1G0UPN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 16:15:13 -0400
+Subject: Re: [PATCH v3 23/25] pnfsblock: use pageio_ops api
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jim Rees <rees@umich.edu>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Date: Wed, 27 Jul 2011 16:15:12 -0400
+In-Reply-To: <1311792048-12551-24-git-send-email-rees@umich.edu>
+References: <1311792048-12551-1-git-send-email-rees@umich.edu>
+	 <1311792048-12551-24-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1311797712.25645.27.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Wed, 2011-07-27 at 14:40 -0400, Jim Rees wrote: 
+> From: Benny Halevy <bhalevy@panasas.com>
+> 
+> [pnfsblock: use pnfs_generic_pg_init_read/write]
+> Signed-off-by: Peng Tao <peng_tao@emc.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  fs/nfs/blocklayout/blocklayout.c |   14 ++++++++++++++
+>  1 files changed, 14 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+> index 22de05c..502d384 100644
+> --- a/fs/nfs/blocklayout/blocklayout.c
+> +++ b/fs/nfs/blocklayout/blocklayout.c
+> @@ -762,6 +762,18 @@ bl_clear_layoutdriver(struct nfs_server *server)
+>  	return 0;
+>  }
+>  
+> +static const struct nfs_pageio_ops bl_pg_read_ops = {
+> +	.pg_init = pnfs_generic_pg_init_read,
+> +	.pg_test = pnfs_generic_pg_test,
+> +	.pg_doio = pnfs_generic_pg_readpages,
+> +};
+> +
+> +static const struct nfs_pageio_ops bl_pg_write_ops = {
+> +	.pg_init = pnfs_generic_pg_init_write,
+> +	.pg_test = pnfs_generic_pg_test,
+> +	.pg_doio = pnfs_generic_pg_writepages,
+> +};
+> +
+>  static struct pnfs_layoutdriver_type blocklayout_type = {
+>  	.id				= LAYOUT_BLOCK_VOLUME,
+>  	.name				= "LAYOUT_BLOCK_VOLUME",
+> @@ -775,6 +787,8 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
+>  	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
+>  	.set_layoutdriver		= bl_set_layoutdriver,
+>  	.clear_layoutdriver		= bl_clear_layoutdriver,
+> +	.pg_read_ops			= &bl_pg_read_ops,
+> +	.pg_write_ops			= &bl_pg_write_ops,
+>  };
+>  
+How did this work previously?
 
-Passing the nfs4_state doesn't guarantee that the correct stateid will
-be used.  The correct stateid can be determined during lock_expired() or
-open_expired() and then passed to these functions.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4proc.c |   31 +++++++++++++++++--------------
- 1 files changed, 17 insertions(+), 14 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 93ef776..f37218b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -81,8 +81,8 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 			    struct nfs_fattr *fattr, struct iattr *sattr,
- 			    struct nfs4_state *state);
- #ifdef CONFIG_NFS_V4_1
--static int nfs41_test_stateid(struct nfs_server *, struct nfs4_state *);
--static int nfs41_free_stateid(struct nfs_server *, struct nfs4_state *);
-+static int nfs41_test_stateid(struct nfs_server *, nfs4_stateid *);
-+static int nfs41_free_stateid(struct nfs_server *, nfs4_stateid *);
- #endif
- /* Prevent leaks of NFSv4 errors into userland */
- static int nfs4_map_errors(int err)
-@@ -1696,10 +1696,10 @@ static int nfs41_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *st
- 	int status;
- 	struct nfs_server *server = NFS_SERVER(state->inode);
- 
--	status = nfs41_test_stateid(server, state);
-+	status = nfs41_test_stateid(server, &state->open_stateid);
- 	if (status == NFS_OK)
- 		return 0;
--	nfs41_free_stateid(server, state);
-+	nfs41_free_stateid(server, &state->open_stateid);
- 	return nfs4_open_expired(sp, state);
- }
- #endif
-@@ -4466,11 +4466,14 @@ static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *reques
- {
- 	int status;
- 	struct nfs_server *server = NFS_SERVER(state->inode);
-+	struct nfs4_lock_state *lock_state = request->fl_u.nfs4_fl.owner;
-+	nfs4_stateid *stateid = &lock_state->ls_stateid;
- 
--	status = nfs41_test_stateid(server, state);
-+	status = nfs41_test_stateid(server, stateid);
- 	if (status == NFS_OK)
- 		return 0;
--	nfs41_free_stateid(server, state);
-+	nfs41_free_stateid(server, stateid);
-+	lock_state->ls_seqid.flags &= !NFS_SEQID_CONFIRMED;
- 	return nfs4_lock_expired(state, request);
- }
- #endif
-@@ -6046,11 +6049,11 @@ out_freepage:
- out:
- 	return err;
- }
--static int _nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *state)
-+static int _nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
- {
- 	int status;
- 	struct nfs41_test_stateid_args args = {
--		.stateid = &state->stateid,
-+		.stateid = stateid,
- 	};
- 	struct nfs41_test_stateid_res res;
- 	struct rpc_message msg = {
-@@ -6063,23 +6066,23 @@ static int _nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *sta
- 	return status;
- }
- 
--static int nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *state)
-+static int nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
- {
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(server,
--				_nfs41_test_stateid(server, state),
-+				_nfs41_test_stateid(server, stateid),
- 				&exception);
- 	} while (exception.retry);
- 	return err;
- }
- 
--static int _nfs4_free_stateid(struct nfs_server *server, struct nfs4_state *state)
-+static int _nfs4_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
- {
- 	int status;
- 	struct nfs41_free_stateid_args args = {
--		.stateid = &state->stateid,
-+		.stateid = stateid,
- 	};
- 	struct nfs41_free_stateid_res res;
- 	struct rpc_message msg = {
-@@ -6093,13 +6096,13 @@ static int _nfs4_free_stateid(struct nfs_server *server, struct nfs4_state *stat
- 	return status;
- }
- 
--static int nfs41_free_stateid(struct nfs_server *server, struct nfs4_state *state)
-+static int nfs41_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
- {
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(server,
--				_nfs4_free_stateid(server, state),
-+				_nfs4_free_stateid(server, stateid),
- 				&exception);
- 	} while (exception.retry);
- 	return err;
 -- 
-1.7.6
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
