@@ -1,211 +1,174 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:57655 "EHLO
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:53997 "EHLO
 	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755772Ab1G1RcP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:32:15 -0400
+	with ESMTP id S1754257Ab1G0SlD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 14:41:03 -0400
 From: Jim Rees <rees@umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v4 25/27] pnfsblock: bl_write_pagelist
-Date: Thu, 28 Jul 2011 13:31:14 -0400
-Message-Id: <1311874276-1386-26-git-send-email-rees@umich.edu>
-In-Reply-To: <1311874276-1386-1-git-send-email-rees@umich.edu>
-References: <1311874276-1386-1-git-send-email-rees@umich.edu>
+Subject: [PATCH v3 10/25] pnfsblock: remove device operations
+Date: Wed, 27 Jul 2011 14:40:33 -0400
+Message-Id: <1311792048-12551-11-git-send-email-rees@umich.edu>
+In-Reply-To: <1311792048-12551-1-git-send-email-rees@umich.edu>
+References: <1311792048-12551-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
-
-Note: When upper layer's read/write request cannot be fulfilled, the block
-layout driver shouldn't silently mark the page as error. It should do
-what can be done and  leave the rest to the upper layer. To do so, we
-should set rdata/wdata->res.count properly.
-
-When upper layer re-send the read/write request to finish the rest
-part of the request, pgbase is the position where we should start at.
-
-[pnfsblock: bl_write_pagelist support functions]
-[pnfsblock: bl_write_pagelist adjust for missing PG_USE_PNFS]
+Signed-off-by: Jim Rees <rees@umich.edu>
 Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfsblock: handle errors when read or write pagelist.]
-Signed-off-by: Zhang Jingwang <yyalone@gmail.com>
-[pnfs-block: use new write_pagelist api]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 Signed-off-by: Benny Halevy <bhalevy@tonian.com>
-
-[SQUASHME: pnfsblock: mds_offset is set in the generic layer]
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
-
-[pnfsblock: mark IO error with NFS_LAYOUT_{RW|RO}_FAILED]
+[upcall bugfixes]
 Signed-off-by: Peng Tao <peng_tao@emc.com>
-[pnfsblock: SQUASHME: adjust to API change]
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfsblock: fixup blksize alignment in bl_setup_layoutcommit]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
-[pnfsblock: bl_write_pagelist adjust for missing PG_USE_PNFS]
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfsblock: handle errors when read or write pagelist.]
-Signed-off-by: Zhang Jingwang <yyalone@gmail.com>
-[pnfs-block: use new write_pagelist api]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
- fs/nfs/blocklayout/blocklayout.c |  129 +++++++++++++++++++++++++++++++++++++-
- 1 files changed, 126 insertions(+), 3 deletions(-)
+ fs/nfs/blocklayout/Makefile        |    2 +-
+ fs/nfs/blocklayout/blocklayout.h   |    3 +
+ fs/nfs/blocklayout/blocklayoutdm.c |  111 ++++++++++++++++++++++++++++++++++++
+ 3 files changed, 115 insertions(+), 1 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index aecd73b..c5ed569 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -74,6 +74,19 @@ static int is_hole(struct pnfs_block_extent *be, sector_t isect)
- 		return !is_sector_initialized(be->be_inval, isect);
- }
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+index 5bf3409..d581550 100644
+--- a/fs/nfs/blocklayout/Makefile
++++ b/fs/nfs/blocklayout/Makefile
+@@ -2,4 +2,4 @@
+ # Makefile for the pNFS block layout driver kernel module
+ #
+ obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
+-blocklayoutdriver-objs := blocklayout.o extents.o blocklayoutdev.o
++blocklayoutdriver-objs := blocklayout.o extents.o blocklayoutdev.o blocklayoutdm.o
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 3dcc971..9b88918 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -128,5 +128,8 @@ struct pnfs_block_dev *nfs4_blk_decode_device(struct nfs_server *server,
+ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+ 				struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
  
-+/* Given the be associated with isect, determine if page data can be
-+ * written to disk.
++/* blocklayoutdm.c */
++void free_block_dev(struct pnfs_block_dev *bdev);
++
+ void bl_put_extent(struct pnfs_block_extent *be);
+ #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
+diff --git a/fs/nfs/blocklayout/blocklayoutdm.c b/fs/nfs/blocklayout/blocklayoutdm.c
+new file mode 100644
+index 0000000..eab95f3
+--- /dev/null
++++ b/fs/nfs/blocklayout/blocklayoutdm.c
+@@ -0,0 +1,111 @@
++/*
++ *  linux/fs/nfs/blocklayout/blocklayoutdm.c
++ *
++ *  Module for the NFSv4.1 pNFS block layout driver.
++ *
++ *  Copyright (c) 2007 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Fred Isaman <iisaman@umich.edu>
++ *  Andy Adamson <andros@citi.umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
 + */
-+static int is_writable(struct pnfs_block_extent *be, sector_t isect)
-+{
-+	if (be->be_state == PNFS_BLOCK_READWRITE_DATA)
-+		return 1;
-+	else if (be->be_state != PNFS_BLOCK_INVALID_DATA)
-+		return 0;
-+	else
-+		return is_sector_initialized(be->be_inval, isect);
-+}
 +
- /* The data we are handed might be spread across several bios.  We need
-  * to track when the last one is finished.
-  */
-@@ -316,11 +329,121 @@ out:
- 	return PNFS_NOT_ATTEMPTED;
- }
- 
-+/* This is basically copied from mpage_end_io_read */
-+static void bl_end_io_write(struct bio *bio, int err)
-+{
-+	struct parallel_io *par = bio->bi_private;
-+	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
-+	struct nfs_write_data *wdata = (struct nfs_write_data *)par->data;
++#include <linux/genhd.h> /* gendisk - used in a dprintk*/
++#include <linux/sched.h>
++#include <linux/hash.h>
 +
-+	if (!uptodate) {
-+		if (!wdata->pnfs_error)
-+			wdata->pnfs_error = -EIO;
-+		bl_set_lo_fail(wdata->lseg);
++#include "blocklayout.h"
++
++#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
++
++static void dev_remove(dev_t dev)
++{
++	struct rpc_pipe_msg msg;
++	struct bl_dev_msg bl_umount_request;
++	struct bl_msg_hdr bl_msg = {
++		.type = BL_DEVICE_UMOUNT,
++		.totallen = sizeof(bl_umount_request),
++	};
++	uint8_t *dataptr;
++	DECLARE_WAITQUEUE(wq, current);
++
++	dprintk("Entering %s\n", __func__);
++
++	memset(&msg, 0, sizeof(msg));
++	msg.data = kzalloc(1 + sizeof(bl_umount_request), GFP_NOFS);
++	if (!msg.data)
++		goto out;
++
++	memset(&bl_umount_request, 0, sizeof(bl_umount_request));
++	bl_umount_request.major = MAJOR(dev);
++	bl_umount_request.minor = MINOR(dev);
++
++	memcpy(msg.data, &bl_msg, sizeof(bl_msg));
++	dataptr = (uint8_t *) msg.data;
++	memcpy(&dataptr[sizeof(bl_msg)], &bl_umount_request, sizeof(bl_umount_request));
++	msg.len = sizeof(bl_msg) + bl_msg.totallen;
++
++	add_wait_queue(&bl_wq, &wq);
++	if (rpc_queue_upcall(bl_device_pipe->d_inode, &msg) < 0) {
++		remove_wait_queue(&bl_wq, &wq);
++		goto out;
 +	}
-+	bio_put(bio);
-+	put_parallel(par);
-+}
 +
-+/* Function scheduled for call during bl_end_par_io_write,
-+ * it marks sectors as written and extends the commitlist.
-+ */
-+static void bl_write_cleanup(struct work_struct *work)
-+{
-+	struct rpc_task *task;
-+	struct nfs_write_data *wdata;
-+	dprintk("%s enter\n", __func__);
-+	task = container_of(work, struct rpc_task, u.tk_work);
-+	wdata = container_of(task, struct nfs_write_data, task);
-+	pnfs_ld_write_done(wdata);
-+}
++	set_current_state(TASK_UNINTERRUPTIBLE);
++	schedule();
++	__set_current_state(TASK_RUNNING);
++	remove_wait_queue(&bl_wq, &wq);
 +
-+/* Called when last of bios associated with a bl_write_pagelist call finishes */
-+static void
-+bl_end_par_io_write(void *data)
-+{
-+	struct nfs_write_data *wdata = data;
-+
-+	/* STUB - ignoring error handling */
-+	wdata->task.tk_status = 0;
-+	wdata->verf.committed = NFS_FILE_SYNC;
-+	INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
-+	schedule_work(&wdata->task.u.tk_work);
-+}
-+
- static enum pnfs_try_status
--bl_write_pagelist(struct nfs_write_data *wdata,
--		  int sync)
-+bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- {
--	return PNFS_NOT_ATTEMPTED;
-+	int i;
-+	struct bio *bio = NULL;
-+	struct pnfs_block_extent *be = NULL;
-+	sector_t isect, extent_length = 0;
-+	struct parallel_io *par;
-+	loff_t offset = wdata->args.offset;
-+	size_t count = wdata->args.count;
-+	struct page **pages = wdata->args.pages;
-+	int pg_index = wdata->args.pgbase >> PAGE_CACHE_SHIFT;
-+
-+	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
-+	/* At this point, wdata->pages is a (sequential) list of nfs_pages.
-+	 * We want to write each, and if there is an error remove it from
-+	 * list and call
-+	 * nfs_retry_request(req) to have it redone using nfs.
-+	 * QUEST? Do as block or per req?  Think have to do per block
-+	 * as part of end_bio
-+	 */
-+	par = alloc_parallel(wdata);
-+	if (!par)
-+		return PNFS_NOT_ATTEMPTED;
-+	par->call_ops = *wdata->mds_ops;
-+	par->call_ops.rpc_call_done = bl_rpc_do_nothing;
-+	par->pnfs_callback = bl_end_par_io_write;
-+	/* At this point, have to be more careful with error handling */
-+
-+	isect = (sector_t) ((offset & (long)PAGE_CACHE_MASK) >> SECTOR_SHIFT);
-+	for (i = pg_index; i < wdata->npages ; i++) {
-+		if (!extent_length) {
-+			/* We've used up the previous extent */
-+			bl_put_extent(be);
-+			bio = bl_submit_bio(WRITE, bio);
-+			/* Get the next one */
-+			be = bl_find_get_extent(BLK_LSEG2EXT(wdata->lseg),
-+					     isect, NULL);
-+			if (!be || !is_writable(be, isect)) {
-+				wdata->pnfs_error = -ENOMEM;
-+				goto out;
-+			}
-+			extent_length = be->be_length -
-+				(isect - be->be_f_offset);
-+		}
-+		for (;;) {
-+			if (!bio) {
-+				bio = bio_alloc(GFP_NOIO, wdata->npages - i);
-+				if (!bio) {
-+					wdata->pnfs_error = -ENOMEM;
-+					goto out;
-+				}
-+				bio->bi_sector = isect - be->be_f_offset +
-+					be->be_v_offset;
-+				bio->bi_bdev = be->be_mdev;
-+				bio->bi_end_io = bl_end_io_write;
-+				bio->bi_private = par;
-+			}
-+			if (bio_add_page(bio, pages[i], PAGE_SIZE, 0))
-+				break;
-+			bio = bl_submit_bio(WRITE, bio);
-+		}
-+		isect += PAGE_CACHE_SECTORS;
-+		extent_length -= PAGE_CACHE_SECTORS;
-+	}
-+	wdata->res.count = (isect << SECTOR_SHIFT) - (offset);
-+	if (count < wdata->res.count)
-+		wdata->res.count = count;
 +out:
-+	bl_put_extent(be);
-+	bl_submit_bio(WRITE, bio);
-+	put_parallel(par);
-+	return PNFS_ATTEMPTED;
- }
- 
- /* FIXME - range ignored */
++	kfree(msg.data);
++}
++
++/*
++ * Release meta device
++ */
++static void nfs4_blk_metadev_release(struct pnfs_block_dev *bdev)
++{
++	int rv;
++
++	dprintk("%s Releasing\n", __func__);
++	rv = nfs4_blkdev_put(bdev->bm_mdev);
++	if (rv)
++		printk(KERN_ERR "%s nfs4_blkdev_put returns %d\n",
++				__func__, rv);
++
++	dev_remove(bdev->bm_mdev->bd_dev);
++}
++
++void free_block_dev(struct pnfs_block_dev *bdev)
++{
++	if (bdev) {
++		if (bdev->bm_mdev) {
++			dprintk("%s Removing DM device: %d:%d\n",
++				__func__,
++				MAJOR(bdev->bm_mdev->bd_dev),
++				MINOR(bdev->bm_mdev->bd_dev));
++			nfs4_blk_metadev_release(bdev);
++		}
++		kfree(bdev);
++	}
++}
 -- 
 1.7.4.1
 
