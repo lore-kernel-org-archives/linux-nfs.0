@@ -1,41 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:59851 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932113Ab1GNRJr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jul 2011 13:09:47 -0400
-Date: Thu, 14 Jul 2011 13:09:24 -0400
-From: Jim Rees <rees@umich.edu>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: block layout patches
-Message-ID: <20110714170924.GC2607@merit.edu>
-References: <20110714165004.GA2607@merit.edu>
- <20110714165348.GA13287@infradead.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110714165348.GA13287@infradead.org>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:40538 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753077Ab1G0KRW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 06:17:22 -0400
+From: <tao.peng@emc.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, <bhalevy@tonian.com>
+Date: Wed, 27 Jul 2011 06:17:02 -0400
+Subject: RE: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
+Message-ID: <F19688880B763E40B28B2B462677FBF805BF06181F@MX09A.corp.emc.com>
+References: <1309743002-1658-1-git-send-email-bergwolf@gmail.com>
+ <4E18614C.4010002@tonian.com>
+ <F19688880B763E40B28B2B462677FBF805BF0610CE@MX09A.corp.emc.com>
+ <1311621204.28209.14.camel@lade.trondhjem.org>
+ <CA+a=Yy59HXXjd4HgrqeANaQZKO9rRPKzM+r3NNq2KSMV_L4S_w@mail.gmail.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A51825D@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A51825D@SACMVEXC2-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Christoph Hellwig wrote:
-
-  Err, what about actually posting them for review first?  The only thing
-  so far has been all that squashme mess.
-
-Sorry for the missing context.  About a month ago I sent out an 88 patch set
-for pNFS Bakeathon.  That was a squashme mess.  Later I sent a 35 patch set,
-and got back a number of comments.  That's had a number of re-writes
-resulting in the current patch set, which is 28 patches.
-
-While you're certainly welcome to review what's there now, it's mostly meant
-for Benny to pull into his tree to resolve any issues merging with other
-pNFS patches that haven't gone upstream yet.
-
-I have a couple more changes to make before sending upstream:
-
-1. replace the upcall mechanism
-2. rebase on Trond's IO changes that are now in his nfs-for-next branch
-
-After that I will be sending the entire patch set to the list and soliciting
-comments from reviewers.  I would very much appreciate it if you could take
-the time to look them over when I do.
+SGksIFRyb25kLA0KDQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IGxpbnV4
+LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmcgW21haWx0bzpsaW51eC1uZnMtb3duZXJAdmdlci5r
+ZXJuZWwub3JnXQ0KPiBPbiBCZWhhbGYgT2YgTXlrbGVidXN0LCBUcm9uZA0KPiBTZW50OiBUdWVz
+ZGF5LCBKdWx5IDI2LCAyMDExIDExOjUwIFBNDQo+IFRvOiBQZW5nIFRhbw0KPiBDYzogUGVuZywg
+VGFvOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyBiaGFsZXZ5QHRvbmlhbi5jb20NCj4gU3Vi
+amVjdDogUkU6IFtQQVRDSF0gTkZTNDE6IERyb3AgbHNlZyByZWYgYmVmb3JlIGZhbGx0aHJ1IHRv
+IE1EUw0KPiANCj4gPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+IEZyb206IFBlbmcg
+VGFvIFttYWlsdG86YmVyZ3dvbGZAZ21haWwuY29tXQ0KPiA+IFNlbnQ6IFR1ZXNkYXksIEp1bHkg
+MjYsIDIwMTEgMTE6MzcgQU0NCj4gPiBUbzogTXlrbGVidXN0LCBUcm9uZA0KPiA+IENjOiB0YW8u
+cGVuZ0BlbWMuY29tOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyBiaGFsZXZ5QHRvbmlhbi5j
+b20NCj4gPiBTdWJqZWN0OiBSZTogW1BBVENIXSBORlM0MTogRHJvcCBsc2VnIHJlZiBiZWZvcmUg
+ZmFsbHRocnUgdG8gTURTDQo+ID4NCj4gPiBIaSwgVHJvbmQsDQo+ID4NCj4gPiBPbiBUdWUsIEp1
+bCAyNiwgMjAxMSBhdCAzOjEzIEFNLCBUcm9uZCBNeWtsZWJ1c3QNCj4gPiA8VHJvbmQuTXlrbGVi
+dXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+ID4gT24gV2VkLCAyMDExLTA3LTIwIGF0IDAxOjUy
+IC0wNDAwLCB0YW8ucGVuZ0BlbWMuY29tIHdyb3RlOg0KPiA+ID4+IEhpLCBUcm9uZCwNCj4gPiA+
+Pg0KPiA+ID4+IEFueSBjb21tZW50cyBvbiB0aGlzIHBhdGNoPyBJIHN0aWxsIGdldCBrZXJuZWwg
+Y3Jhc2ggd2hlbiBwbmZzIHdyaXRlDQo+ID4gaXMgYXR0ZW1wdGVkIGJ1dCBmYWlscyBhbmQgY2Fs
+bHMgcG5mc19sZF93cml0ZV9kb25lKCkuIEl0IHNlZW1zIG9iamVjdA0KPiA+IGxheW91dCB1c2Vz
+IHRoZSBzYW1lIGNvZGUgcGF0aCBhcyB3ZWxsLiBCdXQgSSBkb24ndCBmaW5kIHRoZSBwYXRjaCBp
+bg0KPiA+IGVpdGhlciB5b3VyIHRyZWUgb3IgQmVubnkncyB0cmVlLiBBcmUgdGhlcmUgYW55IGNv
+bmNlcm5zPw0KPiA+ID4+DQo+ID4gPj4gVGhhbmtzLA0KPiA+ID4+IFRhbw0KPiA+ID4NCj4gPiA+
+IFRoZSB3aG9sZSBwbmZzX2xkX3dyaXRlX2RvbmUgdGhpbmcgaXMgYm9ndXMgYW5kIG5lZWRzIHRv
+IGJlIHJlcGxhY2VkDQo+ID4gPiB3aXRoIHNvbWV0aGluZyBzYW5lLiBJdCBpcyB0cnlpbmcgdG8g
+aW5pdGlhdGUgYSBXUklURSBSUEMgY2FsbCB3aXRoDQo+ID4gdGhlDQo+ID4gPiB3cm9uZyBibG9j
+ayBzaXplLCBhbmQgaXMgY2FsbGluZyB0aGUgTURTIHJwY19jYWxsX2RvbmUoKSBhbmQNCj4gPiA+
+IHJwY19yZWxlYXNlKCkgd2l0aCBhbiB1bmluaXRpYWxpc2VkIHJwYyB0YXNrIHBvaW50ZXIuDQo+
+ID4gPg0KPiA+ID4gRGl0dG8gZm9yIHBuZnNfbGRfcmVhZF9kb25lLg0KPiA+IFRoYW5rcyBmb3Ig
+eW91ciBleHBsYW5hdGlvbi4gSXMgdGhlcmUgYW55IHBsYW4gb24gaG93IHRvIGZpeA0KPiA+IHBu
+ZnNfbGRfcmVhZC93cml0ZV9kb25lPyBCYXNpY2FsbHksIHdlIHdvdWxkIG5lZWQgYW4gaW50ZXJm
+YWNlIHRoYXQNCj4gPiBjYW4gcmVkaXJlY3QgdGhlIElPIHRvIE1EUyBpZiBwbmZzX2Vycm9yIGlz
+IHNldCBvciBkbyBhbGwgbmVjZXNzYXJ5DQo+ID4gY2xlYW51cCB3b3JrIHRvIGVuZCByZWFkL3dy
+aXRlIGlmIHBuZnNfZXJyb3IgaXMgMC4gSU1ITywgdGhlDQo+ID4gcmVjb2FsZXNjZSBsb2dpYyBu
+ZWVkIHRvIGFjY2VzcyBuZnNfcGFnZWlvX2Rlc2NyaXB0b3IgYnV0IHdlIGRvIG5vdA0KPiA+IGhh
+dmUgdGhhdCBpbmZvcm1hdGlvbiBhdCBwbmZzX2xkX3JlYWQvd3JpdGVfZG9uZS4NCj4gDQo+IEFz
+IGZhciBhcyBJIGNhbiBzZWUsIHRoZSByaWdodCB0aGluZyB0byBkbyBpcyB0byBtYXJrIHRoZSBs
+YXlvdXQgYXMgaW52YWxpZCBhbmQgdGhlbg0KPiByZWRpcnR5IHRoZSBwYWdlLiBJdCBzaG91bGQg
+YmUgZWFzeSB0byBoYXZlIGZzeW5jKCkgcmUtc2VuZCB0aGUgcGFnZXMgaW4gdGhpcyBjYXNlLg0K
+PiBUaGVzZSBzaG91bGQgYmUgZXh0cmVtZWx5IHJhcmUgZXZlbnRzLCBzaW5jZSB3ZSBleHBlY3Qg
+dG8gY2F0Y2ggbW9zdCBvZiB0aGUgcE5GUw0KPiBmYWlsdXJlcyB3aGVuIHdlIGRvIHRoZSBhY3R1
+YWwgTEFZT1VUR0VUIGluIHRoZSAtPnBnX2luaXQoKS4NCkFub3RoZXIgcHJvYmxlbSB0aGF0IGp1
+c3QgY29tZXMgaW50byBteSBoZWFkIGlzIHJlYWRwYWdlIGZhaWx1cmVzLiBIb3cgZG8gd2UgcmVz
+Y2hkdWxlIHJlYWQgZmFpbHVyZXMgaWYgbm90IHJlLXNlbmRpbmcgaXQgdG8gTURTPw0KDQpUaGFu
+a3MsDQpUYW8NCj4gDQo+IE15IG1haW4gd29ycnkgaXMgZm9yIGFpby9kaW8gd2hlcmUgdGhlcmUg
+aXMgbm8gZ29vZCBtZWNoYW5pc20gZm9yIHJldHJ5aW5nLiBJJ20gc3RpbGwNCj4gd29ya2luZyBv
+biB0aGF0Li4uDQo+IA0KPiBDaGVlcnMNCj4gICBUcm9uZA0KPiAE77+9ey5u77+9K++/ve+/ve+/
+ve+/ve+/ve+/ve+/vSsl77+977+9bHp3be+/ve+/vWLvv73rp7Lvv73vv71y77+977+9eljvv73v
+v70Z37Ip77+977+977+9dyoNCj4gamfvv73vv73vv70e77+977+977+977+977+93aJqL++/ve+/
+ve+/vXrvv73elu+/ve+/vTLvv73eme+/ve+/ve+/vSbvv70p36Hvv71h77+977+9f++/ve+/vR7v
+v71H77+977+977+9aO+/vQ/vv71qOit277+977+977+9d++/vdmlDQoT77+977+97Lm7HO+/vSbv
+v71+77+9Ju+/vRjvv73vv70rLe+/ve+/vd22F++/ve+/vXfvv73vv73Lm++/ve+/ve+/vW3vv71i
+77+977+9Z37Ip++/vRfvv73vv73cqH3vv73vv73vv73GoHrvv70majordu+/ve+/ve+/vQfvv73v
+v73vv73vv716Wivvv73vv70rembvv73vv73vv71o77+977+977+9fu+/ve+/ve+/ve+/vWnvv73v
+v73vv71677+9Hu+/vXfvv73vv73vv70/77+977+977+977+9Ju+/vSnfohtm
