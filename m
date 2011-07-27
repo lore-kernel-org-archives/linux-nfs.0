@@ -1,58 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:34043 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932140Ab1GNUuh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Jul 2011 16:50:37 -0400
-Date: Thu, 14 Jul 2011 16:50:36 -0400
-To: Alex Elder <aelder@sgi.com>, xfs-masters@oss.sgi.com
-Cc: xfs@oss.sgi.com, linux-nfs@vger.kernel.org
-Subject: [PATCH] xfs: failure mapping nfs fh to inode should return ESTALE
-Message-ID: <20110714205036.GA19457@fieldses.org>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:52002 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751435Ab1G0Xkg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 19:40:36 -0400
+Date: Wed, 27 Jul 2011 19:40:41 -0400
+From: Jim Rees <rees@umich.edu>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH v3 03/25] NFS41: Let layoutcommit handle multiple segments
+Message-ID: <20110727234041.GC14319@merit.edu>
+References: <1311792048-12551-1-git-send-email-rees@umich.edu>
+ <1311792048-12551-4-git-send-email-rees@umich.edu>
+ <4E306F84.6030808@panasas.com>
+ <1311798159.25645.32.camel@lade.trondhjem.org>
+ <4E30762E.4000508@panasas.com>
+ <20110727205804.GA13698@merit.edu>
+ <4E307E6F.6090309@panasas.com>
 Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <4E307E6F.6090309@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@redhat.com>
+Boaz Harrosh wrote:
 
-On xfs exports, nfsd is incorrectly returning ENOENT instead of ESTALE
-on attempts to use a filehandle of a deleted file (spotted with pynfs
-test PUTFH3).  The ENOENT was coming from xfs_iget.
+  On 07/27/2011 01:58 PM, Jim Rees wrote:
+  >   But I thought for simplicity since this patchset was reviewed then, I've
+  >   tested with this patch and it works good as well. If you are going to
+  >   break things up, I can test with the minimal patches and report what is
+  >   need in Stable. (Is anyone working on it?)
+  > 
+  > We may have over-squashed that one for block layout.  I can dig up the
+  > original patches if necessary, but I'm guessing you probably have them.
+  
+  Please do. Because by now I'm confused. the first I discovered it was
+  by git diff of a branch that worked. I lost tracked of where the code
+  was originated from.
 
-(It's tempting to wonder whether we should just map all xfs_iget errors
-to ESTALE, but I don't believe so--xfs_iget can also return ENOMEM at
-least, which we wouldn't want mapped to ESTALE.)
+Here is just the original multiple segments patch.  This is from the
+88-patch set I sent out before Bakeathon.  I don't know if this would still
+apply separately.
 
-While we're at it, the other return of ENOENT in xfs_nfs_get_inode()
-also looks wrong.
+>From fc3381fa66adfcee4203b5a55ca6605bcfc8dafb Mon Sep 17 00:00:00 2001
+From: Peng Tao <bergwolf@gmail.com>
+Date: Tue, 31 May 2011 00:42:56 -0400
+Subject: [PATCH 03/89] pnfs: let layoutcommit code handle multiple segments
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Some layout driver like block will have multiple segments.
+Generic code should be able to handle it.
 ---
- fs/xfs/linux-2.6/xfs_export.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ fs/nfs/pnfs.c |   15 ++++++++++++---
+ fs/nfs/pnfs.h |    1 +
+ 2 files changed, 13 insertions(+), 3 deletions(-)
 
-diff --git a/fs/xfs/linux-2.6/xfs_export.c b/fs/xfs/linux-2.6/xfs_export.c
-index f4f878f..75e5d32 100644
---- a/fs/xfs/linux-2.6/xfs_export.c
-+++ b/fs/xfs/linux-2.6/xfs_export.c
-@@ -151,14 +151,14 @@ xfs_nfs_get_inode(
- 		 * We don't use ESTALE directly down the chain to not
- 		 * confuse applications using bulkstat that expect EINVAL.
- 		 */
--		if (error == EINVAL)
-+		if (error == EINVAL || error == ENOENT)
- 			error = ESTALE;
- 		return ERR_PTR(-error);
- 	}
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index e3d618b..c18cda0 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1193,10 +1193,18 @@ pnfs_try_to_read_data(struct nfs_read_data *rdata,
+ static struct pnfs_layout_segment *pnfs_list_write_lseg(struct inode *inode)
+ {
+ 	struct pnfs_layout_segment *lseg, *rv = NULL;
++	loff_t max_pos = 0;
++
++	list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list) {
++		if (lseg->pls_range.iomode == IOMODE_RW) {
++			if (max_pos < lseg->pls_end_pos)
++				max_pos = lseg->pls_end_pos;
++			if (test_and_clear_bit(NFS_LSEG_LAYOUTCOMMIT, &lseg->pls_flags))
++				rv = lseg;
++		}
++	}
++	rv->pls_end_pos = max_pos;
  
- 	if (ip->i_d.di_gen != generation) {
- 		IRELE(ip);
--		return ERR_PTR(-ENOENT);
-+		return ERR_PTR(-ESTALE);
- 	}
+-	list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list)
+-		if (lseg->pls_range.iomode == IOMODE_RW)
+-			rv = lseg;
+ 	return rv;
+ }
  
- 	return VFS_I(ip);
+@@ -1211,6 +1219,7 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ 	if (!test_and_set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
+ 		/* references matched in nfs4_layoutcommit_release */
+ 		get_lseg(wdata->lseg);
++		set_bit(NFS_LSEG_LAYOUTCOMMIT, &wdata->lseg->pls_flags);
+ 		wdata->lseg->pls_lc_cred =
+ 			get_rpccred(wdata->args.context->state->owner->so_cred);
+ 		mark_as_dirty = true;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 53819d0..c6a9af2 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -36,6 +36,7 @@
+ enum {
+ 	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
+ 	NFS_LSEG_ROC,		/* roc bit received from server */
++	NFS_LSEG_LAYOUTCOMMIT,	/* layoutcommit bit set for layoutcommit */
+ };
+ 
+ struct pnfs_layout_segment {
 -- 
-1.7.4.1
-
+1.7.4.2
