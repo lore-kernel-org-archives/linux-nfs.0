@@ -1,113 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f52.google.com ([209.85.161.52]:58136 "EHLO
-	mail-fx0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752833Ab1GVNcm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jul 2011 09:32:42 -0400
-From: Miklos Szeredi <miklos@szeredi.hu>
-To: Anand Avati <avati@gluster.com>
-Cc: <fuse-devel@lists.sourceforge.net>, <linux-fsdevel@vger.kernel.org>,
-        <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] fuse: permit O_DIRECT flag in open()
-References: <1311323606-15040-1-git-send-email-avati@gluster.com>
-	<1311323606-15040-2-git-send-email-avati@gluster.com>
-Date: Fri, 22 Jul 2011 15:33:36 +0200
-In-Reply-To: <1311323606-15040-2-git-send-email-avati@gluster.com> (Anand
-	Avati's message of "Fri, 22 Jul 2011 01:33:26 -0700")
-Message-ID: <87livqfnin.fsf@tucsk.pomaz.szeredi.hu>
-Content-Type: text/plain; charset=us-ascii
+Received: from mx2.netapp.com ([216.240.18.37]:26952 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752792Ab1G0UNS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 16:13:18 -0400
+Subject: Re: [PATCH v3 22/25] pnfsblock: note written INVAL areas for
+ layoutcommit
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jim Rees <rees@umich.edu>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Date: Wed, 27 Jul 2011 16:13:17 -0400
+In-Reply-To: <1311792048-12551-23-git-send-email-rees@umich.edu>
+References: <1311792048-12551-1-git-send-email-rees@umich.edu>
+	 <1311792048-12551-23-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1311797597.25645.26.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Anand Avati <avati@gluster.com> writes:
+On Wed, 2011-07-27 at 14:40 -0400, Jim Rees wrote: 
+> From: Fred Isaman <iisaman@citi.umich.edu>
+> 
+> [SQUASHME: pnfs: blocklayout: port block layout code]
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ?
 
-> but do not permit setting of O_DIRECT flag via fcntl() (or unsetting)
 
-Again, some more verbose description would be good, as well as a
-Signed-off-by.
 
-> ---
->  fs/fuse/file.c |   27 +++++++++++++++++++++++----
->  1 files changed, 23 insertions(+), 4 deletions(-)
->
-> diff --git a/fs/fuse/file.c b/fs/fuse/file.c
-> index 82a6646..f30a7c6 100644
-> --- a/fs/fuse/file.c
-> +++ b/fs/fuse/file.c
-> @@ -154,6 +154,18 @@ int fuse_do_open(struct fuse_conn *fc, u64 nodeid, struct file *file,
->  		return err;
->  	}
->  
-> +        if (file->f_flags & O_DIRECT) {
 
-Please use tabs, not spaces.
+> +int mark_for_commit(struct pnfs_block_extent *be,
+> +		    sector_t offset, sector_t length);
 
-Before submission you should run your patch through
-scripts/checkpatch.pl to filter out such problems.
+This is an externally visible function, so it needs a prefix.
 
-> +                /* set fuse_direct_io_file_operations as fops in
-> +                   fuse_finish_open as though the FS enforced direct_io
-> +                */
-> +                outarg.open_flags |= FOPEN_DIRECT_IO;
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-As I said earlier, I don't like this.  Rather the userspace filesystem
-should set FOPEN_DIRECT_IO on O_DIRECT if it wants to.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
-And if the userspace filesystem has not set FOPEN_DIRECT_IO and O_DIRECT
-is set then we should return -EINVAL.
-
-Thanks,
-Miklos
-
-> +
-> +                /* make VFS believe we don't support O_DIRECT till we
-> +                   implement a_ops->direct_IO
-> +                */
-> +                file->f_flags &= ~O_DIRECT;
-> +        }
-> +
->  	if (isdir)
->  		outarg.open_flags &= ~FOPEN_DIRECT_IO;
->  
-> @@ -193,10 +205,6 @@ int fuse_open_common(struct inode *inode, struct file *file, bool isdir)
->  	struct fuse_conn *fc = get_fuse_conn(inode);
->  	int err;
->  
-> -	/* VFS checks this, but only _after_ ->open() */
-> -	if (file->f_flags & O_DIRECT)
-> -		return -EINVAL;
-> -
->  	err = generic_file_open(inode, file);
->  	if (err)
->  		return err;
-> @@ -2132,6 +2140,15 @@ int fuse_notify_poll_wakeup(struct fuse_conn *fc,
->  	return 0;
->  }
->  
-> +
-> +static int fuse_check_flags(struct file *filp, int flags)
-> +{
-> +        if ((filp->f_flags ^ flags) & O_DIRECT)
-> +                return -EINVAL;
-> +	return 0;
-> +}
-> +
-> +
->  static const struct file_operations fuse_file_operations = {
->  	.llseek		= fuse_file_llseek,
->  	.read		= do_sync_read,
-> @@ -2149,6 +2166,7 @@ static const struct file_operations fuse_file_operations = {
->  	.unlocked_ioctl	= fuse_file_ioctl,
->  	.compat_ioctl	= fuse_file_compat_ioctl,
->  	.poll		= fuse_file_poll,
-> +        .check_flags    = fuse_check_flags,
->  };
->  
->  static const struct file_operations fuse_direct_io_file_operations = {
-> @@ -2165,6 +2183,7 @@ static const struct file_operations fuse_direct_io_file_operations = {
->  	.unlocked_ioctl	= fuse_file_ioctl,
->  	.compat_ioctl	= fuse_file_compat_ioctl,
->  	.poll		= fuse_file_poll,
-> +        .check_flags    = fuse_check_flags,
->  	/* no splice_read */
->  };
