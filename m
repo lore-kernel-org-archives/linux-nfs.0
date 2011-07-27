@@ -1,89 +1,193 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25871 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753567Ab1GML5z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Jul 2011 07:57:55 -0400
-Message-ID: <4E1D883B.2080605@RedHat.com>
-Date: Wed, 13 Jul 2011 07:57:47 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: NeilBrown <neilb@suse.de>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: mounting via udp from legacy multi-homed servers...
-References: <20110713173426.03576562@notabene.brown>
-In-Reply-To: <20110713173426.03576562@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:34436 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754238Ab1G0Sk6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 14:40:58 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v3 08/25] pnfsblock: basic extent code
+Date: Wed, 27 Jul 2011 14:40:31 -0400
+Message-Id: <1311792048-12551-9-git-send-email-rees@umich.edu>
+In-Reply-To: <1311792048-12551-1-git-send-email-rees@umich.edu>
+References: <1311792048-12551-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Fred Isaman <iisaman@citi.umich.edu>
 
+Adds structures and basic create/delete code for extents.
 
-On 07/13/2011 03:34 AM, NeilBrown wrote:
-> 
-> 
-> This problem doesn't seem to go away, does it :-(
-> 
-> 
-> While modern Linux always replies to UDP requests from the same address that
-> the request was sent to, some legacy systems do not, and some customers use
-> these legacy systems and cannot upgrade.
-> 
-> And as they are legacy systems, it is often the case that UDP is more
-> performant than TCP.
-> 
-> nfs-utils always uses a connected UDP socket to talk to servers (which I think
-> is correct so we get errors when reported by ICMP-unreachable messages) and so
-> fails to talk to these legacy systems (when UDP is requested).
-> 
-> I had such a case recently and managed to make it work by using:
-> 
->    proto=udp,mountproto=tcp,port=2049
-> 
-> By setting mountproto=tcp, nfs-utils uses tcp for almost all communication
-> with the server.
-> The one little problem is that mount does a portmap lookup to check the
-> port number to talk to the NFS server and seeing we requested UDP for NFS,
-> it talks to portmap via UDP and never sees the reply.
-> Setting "port=2049" avoids this lookup so the mount succeeds.
-> 
-> We could just decide that that is the way it is, document that this is how to
-> talk to systems over UDP when they have a broken portmaper and move on.
-> 
-> But it would be nice if we could find a way to make a solution less ugly and
-> easier to find.
-> 
-> So some thoughts:
-> 
-> 1/ We could use tcp for all rpcbind lookups if tcp was requested for either
->    MOUNT or NFS.
-Doing this would burn reserver ports, by putting it into TIME_WAIT which
-means they would not be available for actual mounts during mount storms
-via automount....
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Zhang Jingwang <Jingwang.Zhang@emc.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/blocklayout/Makefile      |    2 +-
+ fs/nfs/blocklayout/blocklayout.c |   20 ++++++--
+ fs/nfs/blocklayout/blocklayout.h |    1 +
+ fs/nfs/blocklayout/extents.c     |   97 ++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 115 insertions(+), 5 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/extents.c
 
-> 
-> 2/ If '-v' was given and a UDP lookup to portmap timedout, we could retry
->    without connecting (and with a shorter timeout), and print an explanatory 
->    message if that succeeded.
-I agree with Jim. Making '-v' change behavior would be unexpected...
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+index 6bf49cd..5cfadf6 100644
+--- a/fs/nfs/blocklayout/Makefile
++++ b/fs/nfs/blocklayout/Makefile
+@@ -2,4 +2,4 @@
+ # Makefile for the pNFS block layout driver kernel module
+ #
+ obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
+-blocklayoutdriver-objs := blocklayout.o
++blocklayoutdriver-objs := blocklayout.o extents.o
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 55a2a95..291cc01 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -53,12 +53,24 @@ bl_write_pagelist(struct nfs_write_data *wdata,
+ 	return PNFS_NOT_ATTEMPTED;
+ }
  
-> 
-> 3/ We could have a mount option "bindproto=tcp" or maybe "bind=noconnect"
->    which could be recommended by the above explanatory message.
-I would like to avoid adding something like this... 
-
-> 
-> 
-> Does anyone else have any good ideas, or any deep aversions to any of the
-> above.
-> I'm tempted to go for '1' and possibly add '2', but not bother with '3'.
-> 
-> ??
-Personally, explicitly setting the protocols and port is probably
-the best way to handle this... Thats what the arguments are there 
-for. Plus these are legacy machines so those setting will only be
-needed for a small subset machines...  
-
-steved.
-
+-/* STUB */
++/* FIXME - range ignored */
+ static void
+-release_extents(struct pnfs_block_layout *bl,
+-		struct pnfs_layout_range *range)
++release_extents(struct pnfs_block_layout *bl, struct pnfs_layout_range *range)
+ {
+-	return;
++	int i;
++	struct pnfs_block_extent *be;
++
++	spin_lock(&bl->bl_ext_lock);
++	for (i = 0; i < EXTENT_LISTS; i++) {
++		while (!list_empty(&bl->bl_extents[i])) {
++			be = list_first_entry(&bl->bl_extents[i],
++					      struct pnfs_block_extent,
++					      be_node);
++			list_del(&be->be_node);
++			bl_put_extent(be);
++		}
++	}
++	spin_unlock(&bl->bl_ext_lock);
+ }
+ 
+ /* STUB */
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 0e6ae06..3fec302 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -88,4 +88,5 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
+ 	return container_of(lo, struct pnfs_block_layout, bl_layout);
+ }
+ 
++void bl_put_extent(struct pnfs_block_extent *be);
+ #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+new file mode 100644
+index 0000000..44c3364
+--- /dev/null
++++ b/fs/nfs/blocklayout/extents.c
+@@ -0,0 +1,97 @@
++/*
++ *  linux/fs/nfs/blocklayout/blocklayout.h
++ *
++ *  Module for the NFSv4.1 pNFS block layout driver.
++ *
++ *  Copyright (c) 2006 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@citi.umich.edu>
++ *  Fred Isaman <iisaman@umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
++ */
++
++#include "blocklayout.h"
++#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
++
++static void print_bl_extent(struct pnfs_block_extent *be)
++{
++	dprintk("PRINT EXTENT extent %p\n", be);
++	if (be) {
++		dprintk("        be_f_offset %llu\n", (u64)be->be_f_offset);
++		dprintk("        be_length   %llu\n", (u64)be->be_length);
++		dprintk("        be_v_offset %llu\n", (u64)be->be_v_offset);
++		dprintk("        be_state    %d\n", be->be_state);
++	}
++}
++
++static void
++destroy_extent(struct kref *kref)
++{
++	struct pnfs_block_extent *be;
++
++	be = container_of(kref, struct pnfs_block_extent, be_refcnt);
++	dprintk("%s be=%p\n", __func__, be);
++	kfree(be);
++}
++
++void
++bl_put_extent(struct pnfs_block_extent *be)
++{
++	if (be) {
++		dprintk("%s enter %p (%i)\n", __func__, be,
++			atomic_read(&be->be_refcnt.refcount));
++		kref_put(&be->be_refcnt, destroy_extent);
++	}
++}
++
++struct pnfs_block_extent *alloc_extent(void)
++{
++	struct pnfs_block_extent *be;
++
++	be = kmalloc(sizeof(struct pnfs_block_extent), GFP_NOFS);
++	if (!be)
++		return NULL;
++	INIT_LIST_HEAD(&be->be_node);
++	kref_init(&be->be_refcnt);
++	be->be_inval = NULL;
++	return be;
++}
++
++struct pnfs_block_extent *
++get_extent(struct pnfs_block_extent *be)
++{
++	if (be)
++		kref_get(&be->be_refcnt);
++	return be;
++}
++
++void print_elist(struct list_head *list)
++{
++	struct pnfs_block_extent *be;
++	dprintk("****************\n");
++	dprintk("Extent list looks like:\n");
++	list_for_each_entry(be, list, be_node) {
++		print_bl_extent(be);
++	}
++	dprintk("****************\n");
++}
+-- 
+1.7.4.1
 
