@@ -1,86 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:17533 "EHLO mx1.redhat.com"
+Received: from lucidpixels.com ([72.73.18.11]:38202 "EHLO lucidpixels.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753112Ab1GZVOA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Jul 2011 17:14:00 -0400
-Message-ID: <4E2F2DE6.5030500@RedHat.com>
-Date: Tue, 26 Jul 2011 17:13:10 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Chuck Lever <chucklever@gmail.com>
-CC: Libtirpc Devel List <libtirpc-devel@lists.sourceforge.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        autofs mailing list <autofs@linux.kernel.org>
-Subject: Re: [Libtirpc-devel] [PATCH] Autofs configure fails to detect IPv6
- when libtirpc is enabled
-References: <1311683346-16881-1-git-send-email-steved@redhat.com> <8A84CF7D-9579-4645-AE5D-FE8358F466C0@gmail.com>
-In-Reply-To: <8A84CF7D-9579-4645-AE5D-FE8358F466C0@gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1754879Ab1G0RPy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jul 2011 13:15:54 -0400
+Date: Wed, 27 Jul 2011 13:15:53 -0400 (EDT)
+From: Justin Piszcz <jpiszcz@lucidpixels.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
+cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
+In-Reply-To: <4E303F6F.8010706@netapp.com>
+Message-ID: <alpine.DEB.2.02.1107271315290.1451@p34.internal.lan>
+References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan> <20110727160752.GC974@fieldses.org> <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan> <4E303F6F.8010706@netapp.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
 
-On 07/26/2011 10:50 AM, Chuck Lever wrote:
-> 
-> On Jul 26, 2011, at 2:29 PM, Steve Dickson wrote:
-> 
->> From: Ian Kent <raven@themaw.net>
->>
->> The IPv6 client functions clntudp6_bufcreate(), clntudp6_create and
->> clnttcp6_create and the server functions svcudp6_bufcreate(),
->> svctcp6_create() and svcudp6_create() are not included in the library
->> whe libtirpc is built.
-> 
-> Are these part of the libtirpc standard API?  I'm not sure why we would need them if, say, Solaris does not support these.
-It appears they are not since they are not mentioned the man pages.....
-But, at least in the autofs code, they are expected
-   https://bugzilla.redhat.com/show_bug.cgi?id=711956#c0
+On Wed, 27 Jul 2011, Bryan Schumaker wrote:
 
-Ian, where else are these routines defined? 
+> On 07/27/2011 12:28 PM, Justin Piszcz wrote:
+>>
+>>
+>> On Wed, 27 Jul 2011, J. Bruce Fields wrote:
+>>
+>>> On Wed, Jul 27, 2011 at 09:54:09AM -0400, Justin Piszcz wrote:
+>>>> Hi,
+>>>>
+>>>> Kernel 2.6.30 on client.
+>>>> Kernel 2.6.28 on server.
+>>>>
+>>>> p34 kernel: [92223.918892] NFS: directory motion/cam2 contains a
+>>>> readdir loop.  Please contact your server vendor.  Offending cookie: 10272
+>>>
+>>> What filesystem on the server are you exporting?
+>>
+>> Hi,
+>>
+>> xfs.
+>> /dev/sda1 on / type xfs (rw,noatime)
+>>
+>> Nothing special, thoughts?
+>
+> Are there a lot of files in the directory you're exporting?  It looks like cookie 10272 is mapped to multiple files. When the client tries to resume reading from this cookie, xfs will reply from the first matching file and cause the client to enter a loop.
 
-steved
+Should I be using a different filesystem?
 
-> 
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> ---
->> src/rpc_soc.c |    4 ++--
->> 1 files changed, 2 insertions(+), 2 deletions(-)
->>
->> diff --git a/src/rpc_soc.c b/src/rpc_soc.c
->> index c678429..584ac71 100644
->> --- a/src/rpc_soc.c
->> +++ b/src/rpc_soc.c
->> @@ -236,7 +236,7 @@ clnttcp_create(raddr, prog, vers, sockp, sendsz, recvsz)
->>
->> /* IPv6 version of clnt*_*create */
->>
->> -#ifdef INET6_NOT_USED
->> +#ifdef INET6
->>
->> CLIENT *
->> clntudp6_bufcreate(raddr, prog, vers, wait, sockp, sendsz, recvsz)
->> @@ -392,7 +392,7 @@ svcraw_create()
->>
->>
->> /* IPV6 version */
->> -#ifdef INET6_NOT_USED
->> +#ifdef INET6
->> SVCXPRT *
->> svcudp6_bufcreate(fd, sendsz, recvsz)
->> 	int fd;
->> -- 
->> 1.7.6
->>
->>
->> ------------------------------------------------------------------------------
->> Magic Quadrant for Content-Aware Data Loss Prevention
->> Research study explores the data loss prevention market. Includes in-depth
->> analysis on the changes within the DLP market, and the criteria used to
->> evaluate the strengths and weaknesses of these DLP solutions.
->> http://www.accelacomm.com/jaw/sfnl/114/51385063/
->> _______________________________________________
->> Libtirpc-devel mailing list
->> Libtirpc-devel@lists.sourceforge.net
->> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
-> 
+user@atom:/d1$ cd /d1/motion/cam1
+user@atom:/d1/motion/cam1$ ls|wc
+    5198    5198  140346
+user@atom:/d1/motion/cam1$
+
+Justin.
+
+
