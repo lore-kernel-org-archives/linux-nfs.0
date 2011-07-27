@@ -1,43 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:56446 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751634Ab1GRNhT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Jul 2011 09:37:19 -0400
-Date: Mon, 18 Jul 2011 09:37:10 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Dave Chinner <david@fromorbit.com>, xfs-masters@oss.sgi.com,
-        linux-nfs@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: [xfs-masters] [PATCH] xfs: failure mapping nfs fh to inode
- should return ESTALE
-Message-ID: <20110718133710.GB9741@fieldses.org>
-References: <20110714205036.GA19457@fieldses.org>
- <20110714223126.GA28694@infradead.org>
- <20110716015014.GF21663@dastard>
- <20110716015346.GA589@infradead.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110716015346.GA589@infradead.org>
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:54283 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753935Ab1G0SlS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 14:41:18 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v3 17/25] pnfsblock: merge rw extents
+Date: Wed, 27 Jul 2011 14:40:40 -0400
+Message-Id: <1311792048-12551-18-git-send-email-rees@umich.edu>
+In-Reply-To: <1311792048-12551-1-git-send-email-rees@umich.edu>
+References: <1311792048-12551-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, Jul 15, 2011 at 09:53:46PM -0400, Christoph Hellwig wrote:
-> On Sat, Jul 16, 2011 at 11:50:14AM +1000, Dave Chinner wrote:
-> > Bulkstat also checks for ENOENT returns from xfs_iget() as the
-> > lookup it does is inherently racy. That is, if the inode is
-> > allocated when it is read from the IBT, but then has been unlinked
-> > before the actual xfs_iget() call, it expects to get back an ENOENT
-> > to tell it the inode has been unlinked and shouldn't be included in
-> > the bulkstat output. Otherwise, it returns the error to userspace.
-> > 
-> > So converting the mode checks to return ESTALE definitely has the
-> > chance of breaking stuff that uses bulkstat (e.g. xfsdump) because
-> > it will return errors now where it previously just skipped the
-> > (unlinked) inode.
-> 
-> Sounds like we should simply go with the original version of the patch
-> then.
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-OK.  Let me know if someone needs that resent....
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/blocklayout/extents.c |   47 ++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 47 insertions(+), 0 deletions(-)
 
---b.
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 3528d36..7beae7c 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -501,3 +501,50 @@ bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
+ 	print_bl_extent(ret);
+ 	return ret;
+ }
++
++/* Helper function to set_to_rw that initialize a new extent */
++static void
++_prep_new_extent(struct pnfs_block_extent *new,
++		 struct pnfs_block_extent *orig,
++		 sector_t offset, sector_t length, int state)
++{
++	kref_init(&new->be_refcnt);
++	/* don't need to INIT_LIST_HEAD(&new->be_node) */
++	memcpy(&new->be_devid, &orig->be_devid, sizeof(struct nfs4_deviceid));
++	new->be_mdev = orig->be_mdev;
++	new->be_f_offset = offset;
++	new->be_length = length;
++	new->be_v_offset = orig->be_v_offset - orig->be_f_offset + offset;
++	new->be_state = state;
++	new->be_inval = orig->be_inval;
++}
++
++/* Tries to merge be with extent in front of it in list.
++ * Frees storage if not used.
++ */
++static struct pnfs_block_extent *
++_front_merge(struct pnfs_block_extent *be, struct list_head *head,
++	     struct pnfs_block_extent *storage)
++{
++	struct pnfs_block_extent *prev;
++
++	if (!storage)
++		goto no_merge;
++	if (&be->be_node == head || be->be_node.prev == head)
++		goto no_merge;
++	prev = list_entry(be->be_node.prev, struct pnfs_block_extent, be_node);
++	if ((prev->be_f_offset + prev->be_length != be->be_f_offset) ||
++	    !extents_consistent(prev, be))
++		goto no_merge;
++	_prep_new_extent(storage, prev, prev->be_f_offset,
++			 prev->be_length + be->be_length, prev->be_state);
++	list_replace(&prev->be_node, &storage->be_node);
++	bl_put_extent(prev);
++	list_del(&be->be_node);
++	bl_put_extent(be);
++	return storage;
++
++ no_merge:
++	kfree(storage);
++	return be;
++}
+-- 
+1.7.4.1
+
