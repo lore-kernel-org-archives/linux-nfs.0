@@ -1,332 +1,83 @@
-From: Jim Rees <rees@umich.edu>
-Subject: [PATCH v6 23/26] pnfsblock: bl_read_pagelist
-Date: Sat, 30 Jul 2011 13:08:46 -0400
-Message-ID: <1312045729-27554-24-git-send-email-rees@umich.edu>
-References: <1312045729-27554-1-git-send-email-rees@umich.edu>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+From: Justin Piszcz <jpiszcz-BP4nVm5VUdNhbmWW9KSYcQ@public.gmane.org>
+Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
+Date: Wed, 27 Jul 2011 17:24:09 -0400 (EDT)
+Message-ID: <alpine.DEB.2.02.1107271723500.25432@p34.internal.lan>
+References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan>  <20110727160752.GC974@fieldses.org>  <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan>  <20110727181111.GA23009@infradead.org>  <alpine.DEB.2.02.1107271530340.1451@p34.internal.lan>
+ <20110727193937.GA5354@infradead.org>  <alpine.DEB.2.02.1107271540100.1451@p34.internal.lan>  <20110727194722.GA9345@infradead.org>  <1311799021.25645.41.camel@lade.trondhjem.org>  <1311800051.25645.43.camel@lade.trondhjem.org>
+ <1311800195.25645.45.camel@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Bryan Schumaker <bjschuma@netapp.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:56557 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752464Ab1G3RJa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 13:09:30 -0400
-In-Reply-To: <1312045729-27554-1-git-send-email-rees@umich.edu>
+Received: from lucidpixels.com ([72.73.18.11]:57172 "EHLO lucidpixels.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755069Ab1G0VYK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jul 2011 17:24:10 -0400
+In-Reply-To: <1311800195.25645.45.camel-SyLVLa/KEI9HwK5hSS5vWB2eb7JE58TQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Fred Isaman <iisaman@citi.umich.edu>
 
-Note: When upper layer's read/write request cannot be fulfilled, the block
-layout driver shouldn't silently mark the page as error. It should do
-what can be done and  leave the rest to the upper layer. To do so, we
-should set rdata/wdata->res.count properly.
 
-When upper layer re-send the read/write request to finish the rest
-part of the request, pgbase is the position where we should start at.
+On Wed, 27 Jul 2011, Trond Myklebust wrote:
 
-[pnfsblock: mark IO error with NFS_LAYOUT_{RW|RO}_FAILED]
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-[pnfsblock: read path error handling]
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfsblock: handle errors when read or write pagelist.]
-Signed-off-by: Zhang Jingwang <yyalone@gmail.com>
-[pnfs-block: use new read_pagelist api]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfs/blocklayout/blocklayout.c |  265 ++++++++++++++++++++++++++++++++++++++
- 1 files changed, 265 insertions(+), 0 deletions(-)
+> On Wed, 2011-07-27 at 16:54 -0400, Trond Myklebust wrote:
+>> On Wed, 2011-07-27 at 16:37 -0400, Trond Myklebust wrote:
+>>> On Wed, 2011-07-27 at 15:47 -0400, Christoph Hellwig wrote:
+>>>> On Wed, Jul 27, 2011 at 03:44:20PM -0400, Justin Piszcz wrote:
+>>>>>
+>>>>>
+>>>>> On Wed, 27 Jul 2011, Christoph Hellwig wrote:
+>>>>>
+>>>>>> On Wed, Jul 27, 2011 at 03:35:01PM -0400, Justin Piszcz wrote:
+>>>>>>> Currently I do not see any dupes, however I have a script that moves
+>>>>>>> images out of the directory once an hour:
+>>>>>>> 0 * * * * /usr/local/bin/move_to_old2.sh > /dev/null 2>&1
+>>>>>>
+>>>>>> Do you keep adding files to the directory while you move files out?
+>>>>> Yes, otherwise there are too many files in the directory and viewers, e.g.,
+>>>>> each geeqie (picture viewer) will use > 4-6GB of memory, so I try to keep
+>>>>> it around 5,000 pictures or less.
+>>>>>
+>>>>>> What's the rate of additions/removals to the directory?
+>>>>> Additions it depends, around 5,000 over a 12hr period, 416/hr, current:
+>>>>>
+>>>>> atom:/d1/motion# find cam1|wc
+>>>>>    5215    5215  166853
+>>>>> atom:/d1/motion# find cam2|wc
+>>>>>    5069    5069  162181
+>>>>> atom:/d1/motion# find cam3|wc
+>>>>>    5594    5594  178981
+>>>>> atom:/d1/motion#
+>>>>
+>>>> This sounds a lot like xfs simply filling up the directory index slots
+>>>> of files that you just moved out with new files, and nfs falsely
+>>>> claiming that this is a problem.
+>>>
+>>> Yep. There is an existing bugzilla report for this bug at
+>>>
+>>>    https://bugzilla.kernel.org/show_bug.cgi?id=38572
+>>>
+>>> I have a preliminary patch there that attempts to turn off the loop
+>>> detection when the directory is seen to change, however that patch still
+>>> appears to have a bug in it, and I haven't had time to figure out what
+>>> is wrong yet.
+>>>
+>>> Can you perhaps take a look, Bryan?
+>>
+>> Actually, Justin, can you test the following slight variant on the patch
+>> in the bugzilla?
+>
+> Doh! This one will actually compile....
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 6c1bafb..facb5ba 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -29,10 +29,12 @@
-  * of the software, even if it has been or is hereafter advised of the
-  * possibility of such damages.
-  */
-+
- #include <linux/module.h>
- #include <linux/init.h>
- #include <linux/mount.h>
- #include <linux/namei.h>
-+#include <linux/bio.h>		/* struct bio */
- 
- #include "blocklayout.h"
- 
-@@ -45,9 +47,272 @@ MODULE_DESCRIPTION("The NFSv4.1 pNFS Block layout driver");
- struct dentry *bl_device_pipe;
- wait_queue_head_t bl_wq;
- 
-+static void print_page(struct page *page)
-+{
-+	dprintk("PRINTPAGE page %p\n", page);
-+	dprintk("	PagePrivate %d\n", PagePrivate(page));
-+	dprintk("	PageUptodate %d\n", PageUptodate(page));
-+	dprintk("	PageError %d\n", PageError(page));
-+	dprintk("	PageDirty %d\n", PageDirty(page));
-+	dprintk("	PageReferenced %d\n", PageReferenced(page));
-+	dprintk("	PageLocked %d\n", PageLocked(page));
-+	dprintk("	PageWriteback %d\n", PageWriteback(page));
-+	dprintk("	PageMappedToDisk %d\n", PageMappedToDisk(page));
-+	dprintk("\n");
-+}
-+
-+/* Given the be associated with isect, determine if page data needs to be
-+ * initialized.
-+ */
-+static int is_hole(struct pnfs_block_extent *be, sector_t isect)
-+{
-+	if (be->be_state == PNFS_BLOCK_NONE_DATA)
-+		return 1;
-+	else if (be->be_state != PNFS_BLOCK_INVALID_DATA)
-+		return 0;
-+	else
-+		return !bl_is_sector_init(be->be_inval, isect);
-+}
-+
-+/* The data we are handed might be spread across several bios.  We need
-+ * to track when the last one is finished.
-+ */
-+struct parallel_io {
-+	struct kref refcnt;
-+	struct rpc_call_ops call_ops;
-+	void (*pnfs_callback) (void *data);
-+	void *data;
-+};
-+
-+static inline struct parallel_io *alloc_parallel(void *data)
-+{
-+	struct parallel_io *rv;
-+
-+	rv  = kmalloc(sizeof(*rv), GFP_NOFS);
-+	if (rv) {
-+		rv->data = data;
-+		kref_init(&rv->refcnt);
-+	}
-+	return rv;
-+}
-+
-+static inline void get_parallel(struct parallel_io *p)
-+{
-+	kref_get(&p->refcnt);
-+}
-+
-+static void destroy_parallel(struct kref *kref)
-+{
-+	struct parallel_io *p = container_of(kref, struct parallel_io, refcnt);
-+
-+	dprintk("%s enter\n", __func__);
-+	p->pnfs_callback(p->data);
-+	kfree(p);
-+}
-+
-+static inline void put_parallel(struct parallel_io *p)
-+{
-+	kref_put(&p->refcnt, destroy_parallel);
-+}
-+
-+static struct bio *
-+bl_submit_bio(int rw, struct bio *bio)
-+{
-+	if (bio) {
-+		get_parallel(bio->bi_private);
-+		dprintk("%s submitting %s bio %u@%llu\n", __func__,
-+			rw == READ ? "read" : "write",
-+			bio->bi_size, (unsigned long long)bio->bi_sector);
-+		submit_bio(rw, bio);
-+	}
-+	return NULL;
-+}
-+
-+static struct bio *bl_alloc_init_bio(int npg, sector_t isect,
-+				     struct pnfs_block_extent *be,
-+				     void (*end_io)(struct bio *, int err),
-+				     struct parallel_io *par)
-+{
-+	struct bio *bio;
-+
-+	bio = bio_alloc(GFP_NOIO, npg);
-+	if (!bio)
-+		return NULL;
-+
-+	bio->bi_sector = isect - be->be_f_offset + be->be_v_offset;
-+	bio->bi_bdev = be->be_mdev;
-+	bio->bi_end_io = end_io;
-+	bio->bi_private = par;
-+	return bio;
-+}
-+
-+static struct bio *bl_add_page_to_bio(struct bio *bio, int npg, int rw,
-+				      sector_t isect, struct page *page,
-+				      struct pnfs_block_extent *be,
-+				      void (*end_io)(struct bio *, int err),
-+				      struct parallel_io *par)
-+{
-+retry:
-+	if (!bio) {
-+		bio = bl_alloc_init_bio(npg, isect, be, end_io, par);
-+		if (!bio)
-+			return ERR_PTR(-ENOMEM);
-+	}
-+	if (bio_add_page(bio, page, PAGE_CACHE_SIZE, 0) < PAGE_CACHE_SIZE) {
-+		bio = bl_submit_bio(rw, bio);
-+		goto retry;
-+	}
-+	return bio;
-+}
-+
-+static void bl_set_lo_fail(struct pnfs_layout_segment *lseg)
-+{
-+	if (lseg->pls_range.iomode == IOMODE_RW) {
-+		dprintk("%s Setting layout IOMODE_RW fail bit\n", __func__);
-+		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
-+	} else {
-+		dprintk("%s Setting layout IOMODE_READ fail bit\n", __func__);
-+		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
-+	}
-+}
-+
-+/* This is basically copied from mpage_end_io_read */
-+static void bl_end_io_read(struct bio *bio, int err)
-+{
-+	struct parallel_io *par = bio->bi_private;
-+	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
-+	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
-+	struct nfs_read_data *rdata = (struct nfs_read_data *)par->data;
-+
-+	do {
-+		struct page *page = bvec->bv_page;
-+
-+		if (--bvec >= bio->bi_io_vec)
-+			prefetchw(&bvec->bv_page->flags);
-+		if (uptodate)
-+			SetPageUptodate(page);
-+	} while (bvec >= bio->bi_io_vec);
-+	if (!uptodate) {
-+		if (!rdata->pnfs_error)
-+			rdata->pnfs_error = -EIO;
-+		bl_set_lo_fail(rdata->lseg);
-+	}
-+	bio_put(bio);
-+	put_parallel(par);
-+}
-+
-+static void bl_read_cleanup(struct work_struct *work)
-+{
-+	struct rpc_task *task;
-+	struct nfs_read_data *rdata;
-+	dprintk("%s enter\n", __func__);
-+	task = container_of(work, struct rpc_task, u.tk_work);
-+	rdata = container_of(task, struct nfs_read_data, task);
-+	pnfs_ld_read_done(rdata);
-+}
-+
-+static void
-+bl_end_par_io_read(void *data)
-+{
-+	struct nfs_read_data *rdata = data;
-+
-+	INIT_WORK(&rdata->task.u.tk_work, bl_read_cleanup);
-+	schedule_work(&rdata->task.u.tk_work);
-+}
-+
-+/* We don't want normal .rpc_call_done callback used, so we replace it
-+ * with this stub.
-+ */
-+static void bl_rpc_do_nothing(struct rpc_task *task, void *calldata)
-+{
-+	return;
-+}
-+
- static enum pnfs_try_status
- bl_read_pagelist(struct nfs_read_data *rdata)
- {
-+	int i, hole;
-+	struct bio *bio = NULL;
-+	struct pnfs_block_extent *be = NULL, *cow_read = NULL;
-+	sector_t isect, extent_length = 0;
-+	struct parallel_io *par;
-+	loff_t f_offset = rdata->args.offset;
-+	size_t count = rdata->args.count;
-+	struct page **pages = rdata->args.pages;
-+	int pg_index = rdata->args.pgbase >> PAGE_CACHE_SHIFT;
-+
-+	dprintk("%s enter nr_pages %u offset %lld count %Zd\n", __func__,
-+	       rdata->npages, f_offset, count);
-+
-+	par = alloc_parallel(rdata);
-+	if (!par)
-+		goto use_mds;
-+	par->call_ops = *rdata->mds_ops;
-+	par->call_ops.rpc_call_done = bl_rpc_do_nothing;
-+	par->pnfs_callback = bl_end_par_io_read;
-+	/* At this point, we can no longer jump to use_mds */
-+
-+	isect = (sector_t) (f_offset >> SECTOR_SHIFT);
-+	/* Code assumes extents are page-aligned */
-+	for (i = pg_index; i < rdata->npages; i++) {
-+		if (!extent_length) {
-+			/* We've used up the previous extent */
-+			bl_put_extent(be);
-+			bl_put_extent(cow_read);
-+			bio = bl_submit_bio(READ, bio);
-+			/* Get the next one */
-+			be = bl_find_get_extent(BLK_LSEG2EXT(rdata->lseg),
-+					     isect, &cow_read);
-+			if (!be) {
-+				rdata->pnfs_error = -EIO;
-+				goto out;
-+			}
-+			extent_length = be->be_length -
-+				(isect - be->be_f_offset);
-+			if (cow_read) {
-+				sector_t cow_length = cow_read->be_length -
-+					(isect - cow_read->be_f_offset);
-+				extent_length = min(extent_length, cow_length);
-+			}
-+		}
-+		hole = is_hole(be, isect);
-+		if (hole && !cow_read) {
-+			bio = bl_submit_bio(READ, bio);
-+			/* Fill hole w/ zeroes w/o accessing device */
-+			dprintk("%s Zeroing page for hole\n", __func__);
-+			zero_user_segment(pages[i], 0, PAGE_CACHE_SIZE);
-+			print_page(pages[i]);
-+			SetPageUptodate(pages[i]);
-+		} else {
-+			struct pnfs_block_extent *be_read;
-+
-+			be_read = (hole && cow_read) ? cow_read : be;
-+			bio = bl_add_page_to_bio(bio, rdata->npages - i, READ,
-+						 isect, pages[i], be_read,
-+						 bl_end_io_read, par);
-+			if (IS_ERR(bio)) {
-+				rdata->pnfs_error = PTR_ERR(bio);
-+				goto out;
-+			}
-+		}
-+		isect += PAGE_CACHE_SECTORS;
-+		extent_length -= PAGE_CACHE_SECTORS;
-+	}
-+	if ((isect << SECTOR_SHIFT) >= rdata->inode->i_size) {
-+		rdata->res.eof = 1;
-+		rdata->res.count = rdata->inode->i_size - f_offset;
-+	} else {
-+		rdata->res.count = (isect << SECTOR_SHIFT) - f_offset;
-+	}
-+out:
-+	bl_put_extent(be);
-+	bl_put_extent(cow_read);
-+	bl_submit_bio(READ, bio);
-+	put_parallel(par);
-+	return PNFS_ATTEMPTED;
-+
-+ use_mds:
-+	dprintk("Giving up and using normal NFS\n");
- 	return PNFS_NOT_ATTEMPTED;
- }
- 
--- 
-1.7.4.1
+Hi,
+
+Should I try 3.0 first or retry 2.6.38 w/ this patch?
+
+Justin.
 
