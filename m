@@ -1,30 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:45056 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932084Ab1GNQuF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jul 2011 12:50:05 -0400
-Received: from localhost (localhost.localdomain [127.0.0.1])
-	by merit-proxy01.merit.edu (Postfix) with ESMTP id 181B02039875
-	for <linux-nfs@vger.kernel.org>; Thu, 14 Jul 2011 12:50:05 -0400 (EDT)
-Received: from merit-proxy01.merit.edu ([127.0.0.1])
-	by localhost (merit-proxy01.merit.edu [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id rpO2Jr+7PbQ4 for <linux-nfs@vger.kernel.org>;
-	Thu, 14 Jul 2011 12:50:04 -0400 (EDT)
-Received: from merit.edu (pietrapertosa.merit.edu [198.108.62.155])
-	by merit-proxy01.merit.edu (Postfix) with ESMTPSA id C01DF2039854
-	for <linux-nfs@vger.kernel.org>; Thu, 14 Jul 2011 12:50:04 -0400 (EDT)
-Date: Thu, 14 Jul 2011 12:50:04 -0400
-From: Jim Rees <rees@umich.edu>
-To: linux-nfs@vger.kernel.org
-Subject: block layout patches
-Message-ID: <20110714165004.GA2607@merit.edu>
+Received: from fieldses.org ([174.143.236.118]:60568 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753570Ab1G0QHx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jul 2011 12:07:53 -0400
+Date: Wed, 27 Jul 2011 12:07:53 -0400
+To: Justin Piszcz <jpiszcz@lucidpixels.com>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
+Message-ID: <20110727160752.GC974@fieldses.org>
+References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan>
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-You can pull the current block layout patches from the for-trond branch of:
-git://citi.umich.edu/projects/linux-pnfs-blk.git
+On Wed, Jul 27, 2011 at 09:54:09AM -0400, Justin Piszcz wrote:
+> Hi,
+> 
+> Kernel 2.6.30 on client.
+> Kernel 2.6.28 on server.
+> 
+> p34 kernel: [92223.918892] NFS: directory motion/cam2 contains a
+> readdir loop.  Please contact your server vendor.  Offending cookie: 10272
 
-This is based on Linux v3.0-rc5 but will soon be rebased on Trond's
-nfs-for-next.
+What filesystem on the server are you exporting?
+
+> In the past I used NFS to push -> imagery -> NFS server.
+> Now I've flipped it so I am storing the images locally and viewing
+> them remotely, what causes this?
+
+Sorry, I don't understand what you mean.
+
+--b.
