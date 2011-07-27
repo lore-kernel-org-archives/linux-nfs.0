@@ -1,44 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:11320 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754315Ab1GRRfe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Jul 2011 13:35:34 -0400
-Subject: Re: [PATCH] nfs: don't use d_move in nfs_async_rename_done
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        viro@ZenIV.linux.org.uk
-Date: Mon, 18 Jul 2011 13:35:14 -0400
-In-Reply-To: <1311002790-6650-1-git-send-email-jlayton@redhat.com>
-References: <1311002790-6650-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1311010514.23313.4.camel@lade.trondhjem.org>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:34838 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754558Ab1G0Sld (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 14:41:33 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v3 25/25] NFS41: Drop lseg ref before fallthru to MDS
+Date: Wed, 27 Jul 2011 14:40:48 -0400
+Message-Id: <1311792048-12551-26-git-send-email-rees@umich.edu>
+In-Reply-To: <1311792048-12551-1-git-send-email-rees@umich.edu>
+References: <1311792048-12551-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, 2011-07-18 at 11:26 -0400, Jeff Layton wrote: 
-> If the task that initiated the sillyrename ends up being killed by a
-> fatal signal, then it will eventually return back to userspace and end
-> up releasing the i_mutex. d_move however needs to be done while holding
-> the i_mutex.
+From: Peng Tao <bergwolf@gmail.com>
 
-Umm... Where is this requirement documented? I thought the rename_lock
-was there to protect against lookup races etc with d_move.
+There is no need to keep lseg reference when read/write through MDS.
+This fixes a null pointer crash at nfs_post_op_update_inode_force_wcc
+because nfs4_proc_write_setup will unset wdata->res.fattr if wdata->lseg
+is not NULL.
 
-Besides, NFS already has
-nfs_block_sillyrename()/nfs_unblock_sillyrename() to provide further
-exclusion between dentry lookups and revalidations and the silly-unlink
-code.
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/pnfs.c |    6 ++++++
+ 1 files changed, 6 insertions(+), 0 deletions(-)
 
-Cheers
-  Trond
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 3b20753..fda3019 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1182,6 +1182,9 @@ pnfs_ld_write_done(struct nfs_write_data *data)
+ 
+ 	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
+ 		data->pnfs_error);
++
++	put_lseg(data->lseg);
++	data->lseg = NULL;
+ 	status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
+ 				    data->mds_ops, NFS_FILE_SYNC);
+ 	return status ? : -EAGAIN;
+@@ -1282,6 +1285,9 @@ pnfs_ld_read_done(struct nfs_read_data *data)
+ 
+ 	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
+ 		data->pnfs_error);
++
++	put_lseg(data->lseg);
++	data->lseg = NULL;
+ 	status = nfs_initiate_read(data, NFS_CLIENT(data->inode),
+ 				   data->mds_ops);
+ 	return status ? : -EAGAIN;
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.4.1
 
