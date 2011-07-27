@@ -1,106 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from seldrel01.sonyericsson.com ([212.209.106.2]:19615 "EHLO
-	seldrel01.sonyericsson.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754955Ab1GNN3w convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Jul 2011 09:29:52 -0400
-From: "Assarsson, Emil" <Emil.Assarsson@sonyericsson.com>
-To: "'Richard Smits'" <R.Smits@tudelft.nl>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Thu, 14 Jul 2011 15:29:49 +0200
-Subject: RE: krb5 mount with large group membership
-Message-ID: <2BF070A7A2375D46BA1B6087F8D5DCB67E846BA793@seldmbx01.corpusers.net>
-References: <4E1EB72E.5080803@tudelft.nl>
- <2BF070A7A2375D46BA1B6087F8D5DCB67E846BA792@seldmbx01.corpusers.net>
- <4E1EE908.5030204@tudelft.nl>
-In-Reply-To: <4E1EE908.5030204@tudelft.nl>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mx2.netapp.com ([216.240.18.37]:9744 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753057Ab1G0TxK convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 15:53:10 -0400
+Subject: Re: [PATCH v3 06/25] pnfs: cleanup_layoutcommit
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jim Rees <rees@umich.edu>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Date: Wed, 27 Jul 2011 15:53:09 -0400
+In-Reply-To: <1311792048-12551-7-git-send-email-rees@umich.edu>
+References: <1311792048-12551-1-git-send-email-rees@umich.edu>
+	 <1311792048-12551-7-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1311796389.25645.20.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+On Wed, 2011-07-27 at 14:40 -0400, Jim Rees wrote: 
+> From: Andy Adamson <andros@netapp.com>
+> 
+> This gives layout driver a chance to cleanup structures they put in at
+> encode_layoutcommit.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> [fixup layout header pointer for layoutcommit]
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+> ---
+>  fs/nfs/nfs4proc.c       |    1 +
+>  fs/nfs/nfs4xdr.c        |    1 +
+>  fs/nfs/pnfs.c           |   10 ++++++++++
+>  fs/nfs/pnfs.h           |    5 +++++
+>  include/linux/nfs_xdr.h |    1 +
+>  5 files changed, 18 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index e86de79..6cb84b4 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -5963,6 +5963,7 @@ static void nfs4_layoutcommit_release(void *calldata)
+>  	struct nfs4_layoutcommit_data *data = calldata;
+>  	struct pnfs_layout_segment *lseg, *tmp;
+>  
+> +	pnfs_cleanup_layoutcommit(data->args.inode, data);
+>  	/* Matched by references in pnfs_set_layoutcommit */
+>  	list_for_each_entry_safe(lseg, tmp, &data->lseg_list, pls_lc_list) {
+>  		list_del_init(&lseg->pls_lc_list);
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index f32dde9..ea2da30 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -5596,6 +5596,7 @@ static int decode_layoutcommit(struct xdr_stream *xdr,
+>  	int status;
+>  
+>  	status = decode_op_hdr(xdr, OP_LAYOUTCOMMIT);
+> +	res->status = status;
+>  	if (status)
+>  		return status;
+>  
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index fbebd2a..3b20753 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -1411,6 +1411,16 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+>  }
+>  EXPORT_SYMBOL_GPL(pnfs_set_layoutcommit);
+>  
+> +void pnfs_cleanup_layoutcommit(struct inode *inode,
+> +			       struct nfs4_layoutcommit_data *data)
+> +{
+> +	struct nfs_server *nfss = NFS_SERVER(inode);
+> +
+> +	if (nfss->pnfs_curr_ld->cleanup_layoutcommit)
+> +		nfss->pnfs_curr_ld->cleanup_layoutcommit(NFS_I(inode)->layout,
+> +							 data);
+> +}
+> +
+>  /*
+>   * For the LAYOUT4_NFSV4_1_FILES layout type, NFS_DATA_SYNC WRITEs and
+>   * NFS_UNSTABLE WRITEs with a COMMIT to data servers must store enough
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index bddd8b9..f271425 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -113,6 +113,9 @@ struct pnfs_layoutdriver_type {
+>  				     struct xdr_stream *xdr,
+>  				     const struct nfs4_layoutreturn_args *args);
+>  
+> +	void (*cleanup_layoutcommit) (struct pnfs_layout_hdr *layoutid,
+> +				      struct nfs4_layoutcommit_data *data);
+> +
+>  	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
+>  				     struct xdr_stream *xdr,
+>  				     const struct nfs4_layoutcommit_args *args);
 
-Pre-authentication errors:
+This really needs to go. We should have
 
-Try to limit the /etc/krb5.conf to use the 3 closest KDC's only.
-I'm using winbind and link /etc/krb5.conf to /var/run/samba/smb_krb5/krb5.conf.* (there should be a "locate" module for mit-krb5 but lucid doesn't provide it).
+      int (*layoutcommit)()...
 
-It can be solved with do not require but I think it's better to solve the real problem.
---
-Emil Assarsson
+instead of 'encode' and 'cleanup' methods...
 
-> -----Original Message-----
-> From: Richard Smits [mailto:R.Smits@tudelft.nl]
-> Sent: torsdag den 14 juli 2011 15:03
-> To: linux-nfs@vger.kernel.org
-> Cc: Assarsson, Emil
-> Subject: Re: krb5 mount with large group membership
-> 
-> Hi,
-> 
-> Good tip. Thank you.
-> 
-> note : If I check the "Do not require Kerberos preauthentication" in the
-> AD on my testaccount, it works...
-> 
-> So now i have to look what else this breaks.
-> 
-> Greetings .. Richard
-> 
-> On 07/14/2011 01:14 PM, Assarsson, Emil wrote:
-> > Hi,
-> >
-> > Your ticket is probably oversized for the NFS server.
-> > Try set NO_AUTH_DATA_REQUIRED (google msn) on the object holding the servers
-> SPN.
-> >
-> > --
-> > Emil Assarsson
-> >
-> >> -----Original Message-----
-> >> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> owner@vger.kernel.org]
-> >> On Behalf Of Richard Smits
-> >> Sent: torsdag den 14 juli 2011 11:30
-> >> To: linux-nfs@vger.kernel.org
-> >> Subject: krb5 mount with large group membership
-> >>
-> >> Hello list,
-> >>
-> >> I am running into a problem. Perhaps someone understands what is
-> >> happening here. I will explain.
-> >>
-> >> I have a Redhat 5.4 client that is accessing a nfs export on a NFS
-> >> server. (Redhat 6.1)
-> >>
-> >> Our KDC is a Windows AD.
-> >>
-> >> The client is using samba-winbind. If a user is a member of 23 groups or
-> >> lower, I can access the export. If a user is a member of more groups,
-> >> the mount fails with a "Permission denied"
-> >>
-> >> mount /data
-> >> -bash-3.2$ cd /data
-> >> -bash: cd: /data: Permission denied
-> >>
-> >> Thew odd thing is if I try a mount to our Netapp filer with also a krb5
-> >> export, there is no problem.
-> >>
-> >> This has to do something with the ticket size in combination with
-> >> memberships to a large number of groups.
-> >>
-> >> So what must i do to get this Redhat server working with this setup ? It
-> >> seems that Netapp did something to get this working ?
-> >>
-> >> Does this sound familiar to anyone, or should i provide more information ?
-> >>
-> >> Versions server side :
-> >> nfs-utils-1.2.3-7
-> >> krb5-workstation-1.9-9
-> >>
-> >> Greetings ... Richard Smits
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> @@ -196,6 +199,8 @@ void pnfs_roc_release(struct inode *ino);
+>  void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+>  bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+>  void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
+> +void pnfs_cleanup_layoutcommit(struct inode *inode,
+> +			       struct nfs4_layoutcommit_data *data);
+>  int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+>  int _pnfs_return_layout(struct inode *);
+>  int pnfs_ld_write_done(struct nfs_write_data *);
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 94f27e5..569ea5b 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -269,6 +269,7 @@ struct nfs4_layoutcommit_res {
+>  	struct nfs_fattr *fattr;
+>  	const struct nfs_server *server;
+>  	struct nfs4_sequence_res seq_res;
+> +	int status;
+>  };
+>  
+>  struct nfs4_layoutcommit_data {
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
