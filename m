@@ -1,98 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:42905 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751185Ab1GaG7D (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jul 2011 02:59:03 -0400
-Subject: Re: [PATCH] sunrpc: use better NUMA affinities
-From: Eric Dumazet <eric.dumazet@gmail.com>
-To: NeilBrown <neilb@suse.de>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Greg Banks <gnb@fastmail.fm>,
-        Christoph Hellwig <hch@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>
-In-Reply-To: <1312006990.2873.75.camel@edumazet-laptop>
-References: <1311921035.7845.10.camel@edumazet-laptop>
-	 <4E3258E1.6020000@fastmail.fm> <20110729103634.GA12050@infradead.org>
-	 <5933F48C-49D6-492D-AB7B-B76A3ADDB6C6@fastmail.fm>
-	 <1311941491.2843.7.camel@edumazet-HP-Compaq-6005-Pro-SFF-PC>
-	 <F67B6E82-9FA8-464E-B3FB-DC0D4EC18BB0@fastmail.fm>
-	 <20110729164836.GL23194@fieldses.org> <20110729165345.GM23194@fieldses.org>
-	 <F562C6F4-3FC2-4952-A903-8E87E9EF2D9D@fastmail.fm>
-	 <20110730093025.716f3f50@notabene.brown>
-	 <20110729234857.GA30941@fieldses.org>
-	 <1311998914.2873.27.camel@edumazet-laptop>
-	 <20110730160610.0b751ffd@notabene.brown>
-	 <1312006990.2873.75.camel@edumazet-laptop>
+Received: from mx2.netapp.com ([216.240.18.37]:6076 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751838Ab1G0UKZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 16:10:25 -0400
+Subject: Re: [PATCH v3 20/25] pnfsblock: bl_read_pagelist
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jim Rees <rees@umich.edu>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Date: Wed, 27 Jul 2011 16:09:57 -0400
+In-Reply-To: <1311792048-12551-21-git-send-email-rees@umich.edu>
+References: <1311792048-12551-1-git-send-email-rees@umich.edu>
+	 <1311792048-12551-21-git-send-email-rees@umich.edu>
 Content-Type: text/plain; charset="UTF-8"
-Date: Sun, 31 Jul 2011 08:58:54 +0200
-Message-ID: <1312095534.2873.108.camel@edumazet-laptop>
+Message-ID: <1311797397.25645.23.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Le samedi 30 juillet 2011 à 08:23 +0200, Eric Dumazet a écrit :
-> Le samedi 30 juillet 2011 à 16:06 +1000, NeilBrown a écrit :
-> > umount /proc/fs/nfsd
-> > 
-> > 
+On Wed, 2011-07-27 at 14:40 -0400, Jim Rees wrote: 
+> From: Fred Isaman <iisaman@citi.umich.edu>
 > 
-> Thans  a lot, this was the thing I missed !
+> Note: When upper layer's read/write request cannot be fulfilled, the block
+> layout driver shouldn't silently mark the page as error. It should do
+> what can be done and  leave the rest to the upper layer. To do so, we
+> should set rdata/wdata->res.count properly.
 > 
+> When upper layer re-send the read/write request to finish the rest
+> part of the request, pgbase is the position where we should start at.
 > 
+> [pnfsblock: mark IO error with NFS_LAYOUT_{RW|RO}_FAILED]
+> Signed-off-by: Peng Tao <peng_tao@emc.com>
+> [pnfsblock: read path error handling]
+> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+> [pnfsblock: handle errors when read or write pagelist.]
+> Signed-off-by: Zhang Jingwang <yyalone@gmail.com>
+> [pnfs-block: use new read_pagelist api]
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+> ---
+>  fs/nfs/blocklayout/blocklayout.c |  282 ++++++++++++++++++++++++++++++++++++++
+>  1 files changed, 282 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+> index c63296d..6e90371 100644
+> --- a/fs/nfs/blocklayout/blocklayout.c
+> +++ b/fs/nfs/blocklayout/blocklayout.c
+> @@ -29,10 +29,12 @@
+>   * of the software, even if it has been or is hereafter advised of the
+>   * possibility of such damages.
+>   */
+> +
+>  #include <linux/module.h>
+>  #include <linux/init.h>
+>  #include <linux/mount.h>
+>  #include <linux/namei.h>
+> +#include <linux/bio.h>		/* struct bio */
+>  
+>  #include "blocklayout.h"
+>  
+> @@ -45,9 +47,289 @@ MODULE_DESCRIPTION("The NFSv4.1 pNFS Block layout driver");
+>  struct dentry *bl_device_pipe;
+>  wait_queue_head_t bl_wq;
+>  
+> +static void print_page(struct page *page)
+> +{
+> +	dprintk("PRINTPAGE page %p\n", page);
+> +	dprintk("	PagePrivate %d\n", PagePrivate(page));
+> +	dprintk("	PageUptodate %d\n", PageUptodate(page));
+> +	dprintk("	PageError %d\n", PageError(page));
+> +	dprintk("	PageDirty %d\n", PageDirty(page));
+> +	dprintk("	PageReferenced %d\n", PageReferenced(page));
+> +	dprintk("	PageLocked %d\n", PageLocked(page));
+> +	dprintk("	PageWriteback %d\n", PageWriteback(page));
+> +	dprintk("	PageMappedToDisk %d\n", PageMappedToDisk(page));
+> +	dprintk("\n");
+> +}
+> +
+> +/* Given the be associated with isect, determine if page data needs to be
+> + * initialized.
+> + */
+> +static int is_hole(struct pnfs_block_extent *be, sector_t isect)
+> +{
+> +	if (be->be_state == PNFS_BLOCK_NONE_DATA)
+> +		return 1;
+> +	else if (be->be_state != PNFS_BLOCK_INVALID_DATA)
+> +		return 0;
+> +	else
+> +		return !is_sector_initialized(be->be_inval, isect);
+> +}
+> +
+> +static int
+> +dont_like_caller(struct nfs_page *req)
+> +{
+> +	if (atomic_read(&req->wb_complete)) {
+> +		/* Called by _multi */
+> +		return 1;
+> +	} else {
+> +		/* Called by _one */
+> +		return 0;
+> +	}
+> +}
 
-Hmm, after this, I left things as the were (nfsd module loaded, but a 0
-use count )
+Why is this still needed? If everything was set up correctly in the
+nfs_pageio_ops, then you should never get to bl_read_pagelist if you
+don't like the block size. 
 
-I got a BUG while updatedb was running,
-(I tried this on a debian machine/kernel)
 
-Same bug on :
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-cat /proc/self/mounts 
-
-I'll take a look at this issue later, after my vacations, unless someone
-wants to take a look before me ;)
-
-[1020029.301174] BUG: unable to handle kernel paging request at ffffffffa03da0d0
-[1020029.301318] IP: [<ffffffff811105bd>] show_type+0x17/0x5a
-[1020029.301436] PGD 1605067 PUD 1609063 PMD 127353067 PTE 0
-[1020029.301574] Oops: 0000 [#1] SMP 
-[1020029.301637] last sysfs file: /sys/module/nfsd/initstate
-[1020029.301722] CPU 6 
-[1020029.301765] Modules linked in: nfsd fuse btrfs zlib_deflate crc32c libcrc32c ufs qnx4 hfsplus hfs minix ntfs vfat msdos fat jfs xfs reiserfs ext4 jbd2 crc16 ext2 dm_mod nls_utf8 isofs lockd fscache auth_rpcgss nfs_acl sunrpc loop i5000_edac radeon edac_core ttm drm_kms_helper snd_pcm drm snd_timer snd i2c_algo_bit soundcore i2c_core snd_page_alloc i5k_amb power_supply ipmi_si evdev psmouse rng_core ipmi_msghandler hpilo hpwdt shpchp processor button pcspkr serio_raw pci_hotplug container ext3 jbd mbcache hpsa usbhid hid uhci_hcd cciss scsi_mod ehci_hcd usbcore bnx2 thermal thermal_sys [last unloaded: nfsd]
-[1020029.303561] 
-[1020029.303588] Pid: 23460, comm: updatedb.mlocat Tainted: G  R          2.6.39-2-amd64 #1 HP ProLiant BL460c G1
-[1020029.303751] RIP: 0010:[<ffffffff811105bd>]  [<ffffffff811105bd>] show_type+0x17/0x5a
-[1020029.303866] RSP: 0018:ffff880011da7e48  EFLAGS: 00010296
-[1020029.303953] RAX: ffffffffa03da0d0 RBX: ffff8801288a4a80 RCX: 0000000000007774
-[1020029.304061] RDX: ffffffff814c9935 RSI: ffff880129ea3800 RDI: ffff8801288a4a80
-[1020029.304169] RBP: ffff880129ea3800 R08: ffff880011da7e68 R09: ffffffffffffffff
-[1020029.304263] R10: ffff880011d883b2 R11: 0000000000000007 R12: ffff88012794a2c0
-[1020029.304263] R13: ffff8801288a4a80 R14: ffff88012794a338 R15: 0000000000000000
-[1020029.304263] FS:  00007f9cf0dec700(0000) GS:ffff88012fd80000(0000) knlGS:0000000000000000
-[1020029.304263] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[1020029.304263] CR2: ffffffffa03da0d0 CR3: 0000000058f90000 CR4: 00000000000006e0
-[1020029.304263] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-[1020029.304263] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-[1020029.304263] Process updatedb.mlocat (pid: 23460, threadinfo ffff880011da6000, task ffff88002741a440)
-[1020029.304263] Stack:
-[1020029.304263]  ffff8801288a4a80 ffff8801288a4a80 ffff88012794a338 ffffffff81110abf
-[1020029.304263]  ffff88012794a2c0 ffff88010d992440 0000000000000400 00007f9cf0df3000
-[1020029.304263]  ffff880127960cc0 ffff8801288a4a80 ffff88012794a338 ffffffff8111427a
-[1020029.304263] Call Trace:
-[1020029.304263]  [<ffffffff81110abf>] ? show_vfsmnt+0x9b/0x134
-[1020029.304263]  [<ffffffff8111427a>] ? seq_read+0x276/0x350
-[1020029.304263]  [<ffffffff810fc207>] ? vfs_read+0xa1/0xfb
-[1020029.304263]  [<ffffffff810d8052>] ? sys_mmap_pgoff+0x127/0x15a
-[1020029.304263]  [<ffffffff810fc317>] ? sys_read+0x45/0x6e
-[1020029.304263]  [<ffffffff81338e52>] ? system_call_fastpath+0x16/0x1b
-[1020029.304263] Code: 01 00 65 48 03 14 25 20 dc 00 00 66 ff 02 c3 f0 ff 47 38 c3 55 48 89 f5 48 c7 c2 35 99 4c 81 53 48 89 fb 48 83 ec 08 48 8b 46 28 
-[1020029.304263]  8b 30 e8 c7 36 00 00 48 8b 85 b8 02 00 00 48 85 c0 74 2b 80 
-[1020029.304263] RIP  [<ffffffff811105bd>] show_type+0x17/0x5a
-[1020029.304263]  RSP <ffff880011da7e48>
-[1020029.304263] CR2: ffffffffa03da0d0
-[1020029.311417] ---[ end trace ebf19aff1e083659 ]---
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
