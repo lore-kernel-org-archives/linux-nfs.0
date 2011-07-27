@@ -1,25 +1,27 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:53228
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:34094
 	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752616Ab1GaSYM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jul 2011 14:24:12 -0400
-Date: Sun, 31 Jul 2011 14:24:06 -0400
+	by vger.kernel.org with ESMTP id S1754774Ab1G0VCs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 17:02:48 -0400
+Date: Wed, 27 Jul 2011 17:02:44 -0400
 From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: Please pull NFS client changes
-Message-ID: <20110731182406.GA16470@infradead.org>
-References: <1312082377.10882.1.camel@lade.trondhjem.org>
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+        adilger@whamcloud.com, tytso@mit.edu
+Subject: Re: [PATCH 1/3] Return 32/64-bit dir name hash according to usage
+ type
+Message-ID: <20110727210244.GB9066@infradead.org>
+References: <20110727110148.204979.49551.stgit@localhost.localdomain>
+ <20110727110249.204979.58769.stgit@localhost.localdomain>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1312082377.10882.1.camel@lade.trondhjem.org>
+In-Reply-To: <20110727110249.204979.58769.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-How does this manage to include the pnfs block code, which only was posted
-on the list a few hours before the pull request, and which doesn't
-appear to past testing very well (although the major issue seems to be
-core nfs code)?
+Please don't mix fs-specific and generic changes in a single patch.
+
+Also adding an O_ constant for a kernel-internal flag is wrong,
+use the FMODE_ namespace for it.
 
