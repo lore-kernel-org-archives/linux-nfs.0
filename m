@@ -1,101 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:53791 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754257Ab1G0Skv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 14:40:51 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v3 04/25] NFS41: save layoutcommit cred after first successful layoutget
-Date: Wed, 27 Jul 2011 14:40:27 -0400
-Message-Id: <1311792048-12551-5-git-send-email-rees@umich.edu>
-In-Reply-To: <1311792048-12551-1-git-send-email-rees@umich.edu>
-References: <1311792048-12551-1-git-send-email-rees@umich.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:62149 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753005Ab1G0CDE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Jul 2011 22:03:04 -0400
+Subject: Re: [Libtirpc-devel] [PATCH] Autofs configure fails to detect IPv6
+ when libtirpc is enabled
+From: Ian Kent <ikent@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Chuck Lever <chucklever@gmail.com>,
+        autofs mailing list <autofs@linux.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Libtirpc Devel List <libtirpc-devel@lists.sourceforge.net>
+In-Reply-To: <1311729784.3473.14.camel@perseus.themaw.net>
+References: <1311683346-16881-1-git-send-email-steved@redhat.com>
+	 <8A84CF7D-9579-4645-AE5D-FE8358F466C0@gmail.com>
+	 <4E2F2DE6.5030500@RedHat.com>  <1311728231.3473.7.camel@perseus.themaw.net>
+	 <1311729784.3473.14.camel@perseus.themaw.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 27 Jul 2011 10:02:48 +0800
+Message-ID: <1311732168.3473.16.camel@perseus.themaw.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Peng Tao <bergwolf@gmail.com>
+On Wed, 2011-07-27 at 09:23 +0800, Ian Kent wrote:
+> On Wed, 2011-07-27 at 08:57 +0800, Ian Kent wrote:
+> > On Tue, 2011-07-26 at 17:13 -0400, Steve Dickson wrote:
+> > > 
+> > > On 07/26/2011 10:50 AM, Chuck Lever wrote:
+> > > > 
+> > > > On Jul 26, 2011, at 2:29 PM, Steve Dickson wrote:
+> > > > 
+> > > >> From: Ian Kent <raven@themaw.net>
+> > > >>
+> > > >> The IPv6 client functions clntudp6_bufcreate(), clntudp6_create and
+> > > >> clnttcp6_create and the server functions svcudp6_bufcreate(),
+> > > >> svctcp6_create() and svcudp6_create() are not included in the library
+> > > >> whe libtirpc is built.
+> > > > 
+> > > > Are these part of the libtirpc standard API?  I'm not sure why we would need them if, say, Solaris does not support these.
+> > > It appears they are not since they are not mentioned the man pages.....
+> > > But, at least in the autofs code, they are expected
+> > >    https://bugzilla.redhat.com/show_bug.cgi?id=711956#c0
+> > > 
+> > > Ian, where else are these routines defined? 
+> > 
+> > Now that I look I can't find the original source tar that was used for
+> > libtirpc, thought I had it.
+> 
+> Found what I had.
+> 
+> AFAICT what I think was the original source doesn't have any IPv6 code
+> that I can see.
+> 
+> Worse, these functions were excluded with the "#ifdef INET6_NOT_USED"
+> macro as far back as libtirpc version 0.1.5 so, my bad, sorry.
+> 
+> > 
+> > The story is that long ago when I changed autofs to use libtirpc (to
+> > make it ready for IPv6) I found these functions in the source and they
+> > were (obviously) the IPv6 counterparts for the corresponding IPv4
+> > functions which I was already using, so I used them. It took me quite a
+> > while to realize my code wasn't working and then I found that somewhere
+> > along the line they have been excluded, oops!
+> > 
+> > If there are to be no IPv6 counterparts for the corresponding IPv4
+> > functions which functions should I use then?
+> 
+> So what can I use?
+> 
+> It seems to me that these functions would be useful for people porting
+> code that uses the corresponding IPv4 functions so could we define them
+> please. At some point someone must have had that same idea ....
 
-Save it in layout header instead of in every segment.
+Found one more thing that looks relevant, these functions were defined
+in glibc in 2000-01-23 so they may be used by others as well.
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/pnfs.c |   12 ++++++------
- fs/nfs/pnfs.h |    1 -
- 2 files changed, 6 insertions(+), 7 deletions(-)
+> 
+> > 
+> > > 
+> > > steved
+> > > 
+> > > > 
+> > > >> Signed-off-by: Steve Dickson <steved@redhat.com>
+> > > >> ---
+> > > >> src/rpc_soc.c |    4 ++--
+> > > >> 1 files changed, 2 insertions(+), 2 deletions(-)
+> > > >>
+> > > >> diff --git a/src/rpc_soc.c b/src/rpc_soc.c
+> > > >> index c678429..584ac71 100644
+> > > >> --- a/src/rpc_soc.c
+> > > >> +++ b/src/rpc_soc.c
+> > > >> @@ -236,7 +236,7 @@ clnttcp_create(raddr, prog, vers, sockp, sendsz, recvsz)
+> > > >>
+> > > >> /* IPv6 version of clnt*_*create */
+> > > >>
+> > > >> -#ifdef INET6_NOT_USED
+> > > >> +#ifdef INET6
+> > > >>
+> > > >> CLIENT *
+> > > >> clntudp6_bufcreate(raddr, prog, vers, wait, sockp, sendsz, recvsz)
+> > > >> @@ -392,7 +392,7 @@ svcraw_create()
+> > > >>
+> > > >>
+> > > >> /* IPV6 version */
+> > > >> -#ifdef INET6_NOT_USED
+> > > >> +#ifdef INET6
+> > > >> SVCXPRT *
+> > > >> svcudp6_bufcreate(fd, sendsz, recvsz)
+> > > >> 	int fd;
+> > > >> -- 
+> > > >> 1.7.6
+> > > >>
+> > > >>
+> > > >> ------------------------------------------------------------------------------
+> > > >> Magic Quadrant for Content-Aware Data Loss Prevention
+> > > >> Research study explores the data loss prevention market. Includes in-depth
+> > > >> analysis on the changes within the DLP market, and the criteria used to
+> > > >> evaluate the strengths and weaknesses of these DLP solutions.
+> > > >> http://www.accelacomm.com/jaw/sfnl/114/51385063/
+> > > >> _______________________________________________
+> > > >> Libtirpc-devel mailing list
+> > > >> Libtirpc-devel@lists.sourceforge.net
+> > > >> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
+> > > > 
+> > > 
+> > > ------------------------------------------------------------------------------
+> > > Got Input?   Slashdot Needs You.
+> > > Take our quick survey online.  Come on, we don't ask for help often.
+> > > Plus, you'll get a chance to win $100 to spend on ThinkGeek.
+> > > http://p.sf.net/sfu/slashdot-survey
+> > > _______________________________________________
+> > > Libtirpc-devel mailing list
+> > > Libtirpc-devel@lists.sourceforge.net
+> > > https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
+> > 
+> 
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index dae19dd..fbebd2a 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -211,6 +211,7 @@ destroy_layout_hdr(struct pnfs_layout_hdr *lo)
- 	dprintk("%s: freeing layout cache %p\n", __func__, lo);
- 	BUG_ON(!list_empty(&lo->plh_layouts));
- 	NFS_I(lo->plh_inode)->layout = NULL;
-+	put_rpccred(lo->plh_lc_cred);
- 	pnfs_free_layout_hdr(lo);
- }
- 
-@@ -1007,6 +1008,10 @@ pnfs_update_layout(struct inode *ino,
- 		list_del_init(&lo->plh_layouts);
- 		spin_unlock(&clp->cl_lock);
- 	}
-+	if (first) {
-+		lo->plh_lc_cred =
-+			get_rpccred(ctx->state->owner->so_cred);
-+	}
- 	atomic_dec(&lo->plh_outstanding);
- 	put_layout_hdr(lo);
- out:
-@@ -1386,8 +1391,6 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
- 	spin_lock(&nfsi->vfs_inode.i_lock);
- 	if (!test_and_set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
- 		mark_as_dirty = true;
--		nfsi->layout->plh_lc_cred =
--			get_rpccred(wdata->args.context->state->owner->so_cred);
- 		dprintk("%s: Set layoutcommit for inode %lu ",
- 			__func__, wdata->inode->i_ino);
- 	}
-@@ -1421,7 +1424,6 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- {
- 	struct nfs4_layoutcommit_data *data;
- 	struct nfs_inode *nfsi = NFS_I(inode);
--	struct rpc_cred *cred;
- 	loff_t end_pos;
- 	int status = 0;
- 
-@@ -1449,16 +1451,14 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- 	pnfs_list_write_lseg(inode, &data->lseg_list);
- 
- 	end_pos = nfsi->layout->plh_lwb;
--	cred = nfsi->layout->plh_lc_cred;
- 	nfsi->layout->plh_lwb = 0;
--	nfsi->layout->plh_lc_cred = NULL;
- 
- 	memcpy(&data->args.stateid.data, nfsi->layout->plh_stateid.data,
- 		sizeof(nfsi->layout->plh_stateid.data));
- 	spin_unlock(&inode->i_lock);
- 
- 	data->args.inode = inode;
--	data->cred = cred;
-+	data->cred = get_rpccred(nfsi->layout->plh_lc_cred);
- 	nfs_fattr_init(&data->fattr);
- 	data->args.bitmask = NFS_SERVER(inode)->cache_consistency_bitmask;
- 	data->res.fattr = &data->fattr;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 5f1b532..bddd8b9 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -46,7 +46,6 @@ struct pnfs_layout_segment {
- 	atomic_t pls_refcount;
- 	unsigned long pls_flags;
- 	struct pnfs_layout_hdr *pls_layout;
--	struct rpc_cred	*pls_lc_cred; /* LAYOUTCOMMIT credential */
- };
- 
- enum pnfs_try_status {
--- 
-1.7.4.1
 
