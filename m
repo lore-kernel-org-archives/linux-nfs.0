@@ -1,83 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailservice.tudelft.nl ([130.161.131.5]:59026 "EHLO
-	mailservice.tudelft.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754564Ab1GNNDH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jul 2011 09:03:07 -0400
-Message-ID: <4E1EE908.5030204@tudelft.nl>
-Date: Thu, 14 Jul 2011 15:03:04 +0200
-From: Richard Smits <R.Smits@tudelft.nl>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: "Assarsson, Emil" <Emil.Assarsson@sonyericsson.com>
-Subject: Re: krb5 mount with large group membership
-References: <4E1EB72E.5080803@tudelft.nl> <2BF070A7A2375D46BA1B6087F8D5DCB67E846BA792@seldmbx01.corpusers.net>
-In-Reply-To: <2BF070A7A2375D46BA1B6087F8D5DCB67E846BA792@seldmbx01.corpusers.net>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:5658 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754759Ab1G1U6H convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 16:58:07 -0400
+Subject: Re: NFSv4 vs NFSv3 with MPICH2-1.4
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Gregory Magoon <gmagoon@MIT.EDU>
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 28 Jul 2011 16:58:04 -0400
+In-Reply-To: <20110728152306.219iz5wpkcokoo4c@webmail.mit.edu>
+References: <20110728152306.219iz5wpkcokoo4c@webmail.mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1311886684.27285.8.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
-
-Good tip. Thank you.
-
-note : If I check the "Do not require Kerberos preauthentication" in the 
-AD on my testaccount, it works...
-
-So now i have to look what else this breaks.
-
-Greetings .. Richard
-
-On 07/14/2011 01:14 PM, Assarsson, Emil wrote:
+On Thu, 2011-07-28 at 15:23 -0400, Gregory Magoon wrote: 
 > Hi,
->
-> Your ticket is probably oversized for the NFS server.
-> Try set NO_AUTH_DATA_REQUIRED (google msn) on the object holding the servers SPN.
->
-> --
-> Emil Assarsson
->
->> -----Original Message-----
->> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org]
->> On Behalf Of Richard Smits
->> Sent: torsdag den 14 juli 2011 11:30
->> To: linux-nfs@vger.kernel.org
->> Subject: krb5 mount with large group membership
->>
->> Hello list,
->>
->> I am running into a problem. Perhaps someone understands what is
->> happening here. I will explain.
->>
->> I have a Redhat 5.4 client that is accessing a nfs export on a NFS
->> server. (Redhat 6.1)
->>
->> Our KDC is a Windows AD.
->>
->> The client is using samba-winbind. If a user is a member of 23 groups or
->> lower, I can access the export. If a user is a member of more groups,
->> the mount fails with a "Permission denied"
->>
->> mount /data
->> -bash-3.2$ cd /data
->> -bash: cd: /data: Permission denied
->>
->> Thew odd thing is if I try a mount to our Netapp filer with also a krb5
->> export, there is no problem.
->>
->> This has to do something with the ticket size in combination with
->> memberships to a large number of groups.
->>
->> So what must i do to get this Redhat server working with this setup ? It
->> seems that Netapp did something to get this working ?
->>
->> Does this sound familiar to anyone, or should i provide more information ?
->>
->> Versions server side :
->> nfs-utils-1.2.3-7
->> krb5-workstation-1.9-9
->>
->> Greetings ... Richard Smits
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I have been having issues when running MPICH2-1.4 on a NFSv4 filesystem (they
+> both seem to work fine on their own). When I mount as NFS version 4, I get lots
+> of NFS traffic on my internal network (seen when I run sudo iftop -i eth1) and
+> the mpich2 tests time out or give i/o errors. However, when I mount the NFS as
+> version 3, the MPICH2 tests seem to work without any major problems. Even
+> though I can get this working by switching to NFSv3, I would like to get MPICH2
+> working with NFSv4, if possible. Is there something in my NFS configuration (see
+> below) that is not possible with NFSv4 or is this some sort of conflict between
+> MPICH2-1.4 and NFSv4?
+> 
+> Thanks,
+> Greg
+> 
+> 
+> Here is the /etc/exports on the NFS server:
+> /usr/local 192.168.2.0/24(async,fsid=1,ro,no_root_squash,no_subtree_check)
+> /home 192.168.2.0/24(async,fsid=2,rw,no_root_squash,no_subtree_check)
+> 
+> Here are the NFS mounting details from "nfsstat -m":
+> 
+> NFSv4 (hangs and times out, with large quantity of NFS traffic):
+>  /home from 192.168.2.11:/home/
+>  Flags:
+>  rw,relatime,vers=4,rsize=8192,wsize=8192,namlen=255,hard,proto=tcp,port=0,timeo=20,retrans=32,sec=sys,clientaddr=192.168.2.1,minorversion=0,local_lock=none,addr=192.168.2.11
+> 
+
+This is getting to be a FAQ...
+
+2 second timeouts over TCP are just plain wrong: they will cause you to
+continuously disconnect and reconnect (as 'netstat -t' is bound to show
+you). Please don't muck with the default timeo=600.
+
+There is also no reason to mess with rsize and wsize: allow the client
+and server to autonegotiate.
+
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
