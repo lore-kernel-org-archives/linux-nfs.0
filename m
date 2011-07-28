@@ -1,116 +1,211 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:47581 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752588Ab1G3DTn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 23:19:43 -0400
-Message-ID: <4E337844.2070800@panasas.com>
-Date: Fri, 29 Jul 2011 20:19:32 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Gregory Magoon <gmagoon@mit.edu>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@citi.umich.edu>,
-        "Loewe, Bill" <bloewe@panasas.com>
-Subject: Re: NFSv4 vs NFSv3 with MPICH2-1.4
-References: <20110728152306.219iz5wpkcokoo4c@webmail.mit.edu> <1311886684.27285.8.camel@lade.trondhjem.org> <20110728172449.8wxxte4jg0s8kcgs@webmail.mit.edu> <1311889677.27285.14.camel@lade.trondhjem.org> <20110728180120.bf6gq5zyos8wwg4s@webmail.mit.edu> <4E31E336.9090702@panasas.com> <20110728191519.ql5la3phk4000ko4@webmail.mit.edu>
-In-Reply-To: <20110728191519.ql5la3phk4000ko4@webmail.mit.edu>
-Content-Type: text/plain; charset="UTF-8"
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:57655 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755772Ab1G1RcP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:32:15 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v4 25/27] pnfsblock: bl_write_pagelist
+Date: Thu, 28 Jul 2011 13:31:14 -0400
+Message-Id: <1311874276-1386-26-git-send-email-rees@umich.edu>
+In-Reply-To: <1311874276-1386-1-git-send-email-rees@umich.edu>
+References: <1311874276-1386-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 07/28/2011 04:15 PM, Gregory Magoon wrote:
-> Unfortunately, I'm not familiar enough with MPICH2 to have an idea about
-> significant changes between version 1.3 and 1.4, but other evidence suggests
-> that the version is not the issue and that I would have the same problem with
-> v1.3.
-> 
-> I'm using the MPICH2 test suite invoked by "make testing" (see below 
-> for initial
-> output).
-> 
-> I'm using the nfs-kernel-server and nfs-common Ubuntu packages (natty 
-> release).
-> 
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-You have not answered the most important question:
->> Also are you using the builtin nfs-client driver or the POSIX interface?
+Note: When upper layer's read/write request cannot be fulfilled, the block
+layout driver shouldn't silently mark the page as error. It should do
+what can be done and  leave the rest to the upper layer. To do so, we
+should set rdata/wdata->res.count properly.
 
-Which I'll assume means you don't know. So I'll try to elaborate. Just for
-background, I've never used "make tests" before all I used was IOR & mdtest.
+When upper layer re-send the read/write request to finish the rest
+part of the request, pgbase is the position where we should start at.
 
-Now if you print the usage string for IOR you get this option:
+[pnfsblock: bl_write_pagelist support functions]
+[pnfsblock: bl_write_pagelist adjust for missing PG_USE_PNFS]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: handle errors when read or write pagelist.]
+Signed-off-by: Zhang Jingwang <yyalone@gmail.com>
+[pnfs-block: use new write_pagelist api]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 
-	-a S  api --  API for I/O [POSIX|MPIIO|HDF5|NCMPI]
+[SQUASHME: pnfsblock: mds_offset is set in the generic layer]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 
-I'm not familiar with the code but what I understand is only "-a POSIX" will actually
-use the regular Kernel VFS interface for read/writing of files. The other options
-have different drivers for different protocols. I do not know first hand, but I once
-heard in a conference that -a MPIIO has a special NFS driver that uses better NFS
-semantics and avoids the POSIX semantics which are bad for big cluster performance.
-All this is speculations and rumors on my part, and you will need to consult with the
-mpich guys.
+[pnfsblock: mark IO error with NFS_LAYOUT_{RW|RO}_FAILED]
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+[pnfsblock: SQUASHME: adjust to API change]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: fixup blksize alignment in bl_setup_layoutcommit]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+[pnfsblock: bl_write_pagelist adjust for missing PG_USE_PNFS]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: handle errors when read or write pagelist.]
+Signed-off-by: Zhang Jingwang <yyalone@gmail.com>
+[pnfs-block: use new write_pagelist api]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |  129 +++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 126 insertions(+), 3 deletions(-)
 
-Now I can imagine that a "make tests" would try all possible combinations of "-a S"
-So you'll need to dig out what is the falling test and is it really using the Kernel
-NFS driver at that point. (I bet if you do a tcpdump like Bruce said the guys here will
-be able to see if this is a Linux NFS or not)
-
-I CC: Bill Loewe that might know much more then me about this subject. And please do
-speak with the MPICH people (But keep us in the loop it is interesting to know)
-
-Thanks
-Boaz
-
-> Thanks,
-> Greg
-> 
-> user@node01:~/Molpro/src/mpich2-1.4$ make testing
-> (cd test && make testing)
-> make[1]: Entering directory `/home/user/Molpro/src/mpich2-1.4/test'
-> (NOXMLCLOSE=YES && export NOXMLCLOSE && cd mpi && make testing)
-> make[2]: Entering directory `/home/user/Molpro/src/mpich2-1.4/test/mpi'
-> ./runtests -srcdir=. -tests=testlist \
->                     -mpiexec=/home/user/Molpro/src/mpich2-install/bin/mpiexec \
->                     -xmlfile=summary.xml
-> Looking in ./testlist
-> Processing directory attr
-> Looking in ./attr/testlist
-> Processing directory coll
-> Looking in ./coll/testlist
-> Unexpected output in allred: [mpiexec@node01] APPLICATION TIMED OUT
-> Unexpected output in allred: [proxy:0:0@node01] HYD_pmcd_pmip_control_cmd_cb
-> (./pm/pmiserv/pmip_cb.c:906): assert (!closed) failed
-> Unexpected output in allred: [proxy:0:0@node01] HYDT_dmxu_poll_wait_for_event
-> (./tools/demux/demux_poll.c:77): callback returned error status
-> Unexpected output in allred: [proxy:0:0@node01] main 
-> (./pm/pmiserv/pmip.c:226):
-> demux engine error waiting for event
-> Unexpected output in allred: [mpiexec@node01] HYDT_bscu_wait_for_completion
-> (./tools/bootstrap/utils/bscu_wait.c:70): one of the processes terminated
-> badly; aborting
-> Unexpected output in allred: [mpiexec@node01] HYDT_bsci_wait_for_completion
-> (./tools/bootstrap/src/bsci_wait.c:23): launcher returned error waiting for
-> completion
-> Unexpected output in allred: [mpiexec@node01] HYD_pmci_wait_for_completion
-> (./pm/pmiserv/pmiserv_pmci.c:189): launcher returned error waiting for
-> completion
-> Unexpected output in allred: [mpiexec@node01] main (./ui/mpich/mpiexec.c:397):
-> process manager error waiting for completion
-> Program allred exited without No Errors
-> 
->>
->> Hi Gregory
->>
->> We are using MPICH2-1.3.1 and the IOR mpich test. as well as the mdtest
->> test. And have had no issues so far with nfsv4 nfsv4.1 and pnfs. In fact
->> this is our standard performance test.
->>
->> What tests are you using?
->> Do you know of any major changes between MPICH2-1.3.1 and MPICH2-1.4?
->> Also are you using the builtin nfs-client driver or the POSIX interface?
->>
->> Boaz
->>
-> 
-> 
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index aecd73b..c5ed569 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -74,6 +74,19 @@ static int is_hole(struct pnfs_block_extent *be, sector_t isect)
+ 		return !is_sector_initialized(be->be_inval, isect);
+ }
+ 
++/* Given the be associated with isect, determine if page data can be
++ * written to disk.
++ */
++static int is_writable(struct pnfs_block_extent *be, sector_t isect)
++{
++	if (be->be_state == PNFS_BLOCK_READWRITE_DATA)
++		return 1;
++	else if (be->be_state != PNFS_BLOCK_INVALID_DATA)
++		return 0;
++	else
++		return is_sector_initialized(be->be_inval, isect);
++}
++
+ /* The data we are handed might be spread across several bios.  We need
+  * to track when the last one is finished.
+  */
+@@ -316,11 +329,121 @@ out:
+ 	return PNFS_NOT_ATTEMPTED;
+ }
+ 
++/* This is basically copied from mpage_end_io_read */
++static void bl_end_io_write(struct bio *bio, int err)
++{
++	struct parallel_io *par = bio->bi_private;
++	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
++	struct nfs_write_data *wdata = (struct nfs_write_data *)par->data;
++
++	if (!uptodate) {
++		if (!wdata->pnfs_error)
++			wdata->pnfs_error = -EIO;
++		bl_set_lo_fail(wdata->lseg);
++	}
++	bio_put(bio);
++	put_parallel(par);
++}
++
++/* Function scheduled for call during bl_end_par_io_write,
++ * it marks sectors as written and extends the commitlist.
++ */
++static void bl_write_cleanup(struct work_struct *work)
++{
++	struct rpc_task *task;
++	struct nfs_write_data *wdata;
++	dprintk("%s enter\n", __func__);
++	task = container_of(work, struct rpc_task, u.tk_work);
++	wdata = container_of(task, struct nfs_write_data, task);
++	pnfs_ld_write_done(wdata);
++}
++
++/* Called when last of bios associated with a bl_write_pagelist call finishes */
++static void
++bl_end_par_io_write(void *data)
++{
++	struct nfs_write_data *wdata = data;
++
++	/* STUB - ignoring error handling */
++	wdata->task.tk_status = 0;
++	wdata->verf.committed = NFS_FILE_SYNC;
++	INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
++	schedule_work(&wdata->task.u.tk_work);
++}
++
+ static enum pnfs_try_status
+-bl_write_pagelist(struct nfs_write_data *wdata,
+-		  int sync)
++bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ {
+-	return PNFS_NOT_ATTEMPTED;
++	int i;
++	struct bio *bio = NULL;
++	struct pnfs_block_extent *be = NULL;
++	sector_t isect, extent_length = 0;
++	struct parallel_io *par;
++	loff_t offset = wdata->args.offset;
++	size_t count = wdata->args.count;
++	struct page **pages = wdata->args.pages;
++	int pg_index = wdata->args.pgbase >> PAGE_CACHE_SHIFT;
++
++	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
++	/* At this point, wdata->pages is a (sequential) list of nfs_pages.
++	 * We want to write each, and if there is an error remove it from
++	 * list and call
++	 * nfs_retry_request(req) to have it redone using nfs.
++	 * QUEST? Do as block or per req?  Think have to do per block
++	 * as part of end_bio
++	 */
++	par = alloc_parallel(wdata);
++	if (!par)
++		return PNFS_NOT_ATTEMPTED;
++	par->call_ops = *wdata->mds_ops;
++	par->call_ops.rpc_call_done = bl_rpc_do_nothing;
++	par->pnfs_callback = bl_end_par_io_write;
++	/* At this point, have to be more careful with error handling */
++
++	isect = (sector_t) ((offset & (long)PAGE_CACHE_MASK) >> SECTOR_SHIFT);
++	for (i = pg_index; i < wdata->npages ; i++) {
++		if (!extent_length) {
++			/* We've used up the previous extent */
++			bl_put_extent(be);
++			bio = bl_submit_bio(WRITE, bio);
++			/* Get the next one */
++			be = bl_find_get_extent(BLK_LSEG2EXT(wdata->lseg),
++					     isect, NULL);
++			if (!be || !is_writable(be, isect)) {
++				wdata->pnfs_error = -ENOMEM;
++				goto out;
++			}
++			extent_length = be->be_length -
++				(isect - be->be_f_offset);
++		}
++		for (;;) {
++			if (!bio) {
++				bio = bio_alloc(GFP_NOIO, wdata->npages - i);
++				if (!bio) {
++					wdata->pnfs_error = -ENOMEM;
++					goto out;
++				}
++				bio->bi_sector = isect - be->be_f_offset +
++					be->be_v_offset;
++				bio->bi_bdev = be->be_mdev;
++				bio->bi_end_io = bl_end_io_write;
++				bio->bi_private = par;
++			}
++			if (bio_add_page(bio, pages[i], PAGE_SIZE, 0))
++				break;
++			bio = bl_submit_bio(WRITE, bio);
++		}
++		isect += PAGE_CACHE_SECTORS;
++		extent_length -= PAGE_CACHE_SECTORS;
++	}
++	wdata->res.count = (isect << SECTOR_SHIFT) - (offset);
++	if (count < wdata->res.count)
++		wdata->res.count = count;
++out:
++	bl_put_extent(be);
++	bl_submit_bio(WRITE, bio);
++	put_parallel(par);
++	return PNFS_ATTEMPTED;
+ }
+ 
+ /* FIXME - range ignored */
+-- 
+1.7.4.1
 
