@@ -1,57 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:58274 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754837Ab1G2C2C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Jul 2011 22:28:02 -0400
-Date: Thu, 28 Jul 2011 22:27:58 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeremy Allison <jra@samba.org>
-Cc: Volker Lendecke <Volker.Lendecke@SerNet.DE>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, samba-technical@lists.samba.org,
-        Casey Bodley <cbodley@citi.umich.edu>
-Subject: Re: [PATCH] locks: breaking read lease should not block read open
-Message-ID: <20110729022758.GC20317@fieldses.org>
-References: <20110609231606.GB22215@fieldses.org>
- <E1QUwaT-00HRZw-74@intern.SerNet.DE>
- <20110610134859.GA27837@fieldses.org>
- <20110721000758.GD27871@fieldses.org>
- <20110721001542.GA15644@samba2>
- <20110721163520.GC1114@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110721163520.GC1114@fieldses.org>
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:42158 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755393Ab1G1RbL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:31:11 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v4 00/27] add block layout driver to pnfs client
+Date: Thu, 28 Jul 2011 13:30:49 -0400
+Message-Id: <1311874276-1386-1-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Jul 21, 2011 at 12:35:20PM -0400, J. Bruce Fields wrote:
-> On Wed, Jul 20, 2011 at 05:15:42PM -0700, Jeremy Allison wrote:
-> > On Wed, Jul 20, 2011 at 08:07:58PM -0400, J. Bruce Fields wrote:
-> > > So it's a question about the protocols samba implements:
-> > > 
-> > > 	- Do they allow an atomic downgrade from an exclusive to a
-> > > 	  shared oplock?  (Or to a level 2 oplock, or whatever the right
-> > > 	  term is).
-> > 
-> > Yes. Exclusive can go to level 2 - in fact that's the default
-> > downgrade we do (unless an smb.conf option explicity denies it).
-> > 
-> > > 	- If so, can that happen as a response to a conflicting open?
-> > > 	  (So, if you're holding an exclusive oplock, and a conflicting
-> > > 	  open comes in, can the server-to-client break message say "now
-> > > 	  you're getting a shared oplock instead"?  Or is the client
-> > > 	  left without any oplock until it requests a new one?)
-> > 
-> > Yes, this can happen.
-> > 
-> > In SMB, we only break to no lease when a write request comes
-> > in on a exclusive or level2 oplock (read-lease) handle.
-> 
-> Ok, thanks, that means we need a more complicated fix here--I'll work on
-> that....
+This patch set adds a block layout driver to the pNFS client.  It passes
+Connectathon tests and is bisectable.  It requires an updated version of
+nfs-utils, and patches for that have been sent separately to the nfs-utils
+maintainer.
 
-My attempt follows.  Lightly tested.
+This patch set is also available on the for-trond branch of the git repo at
+git://citi.umich.edu/projects/linux-pnfs-blk.git
 
-I'll probably try writing a test or two for it, then queueing up
-something like this for 3.2, absent objections.
+This is version 4 of this patch set.  Changes since version 3:
 
---b.
+- Rebase to trond/nfs-for-3.1 (commit ed1e6211a0).
+- Change return value NFS4ERR_REP_TOO_BIG to EIO in decode_getdevicelist.
+- fix error message in set_pnfs_layoutdriver.
+- remove dont_like_caller from read_pagelist and write_pagelist.
+- rename mark_for_commit to bl_mark_for_commit
+- split the patch "NFS41: Let layoutcommit handle multiple segments" into 4
+  patches each does one task only.
+- fix race in saving cred in layout header.
+- move the patch "NFS41: save layoutcommit cred after first successful
+  layoutget" to an earlier place.
+- "[PATCH v3 25/25] NFS41: Drop lseg ref before fallthru to MDS" is dropped.   
+- move GETDEVICELIST to end of nfs4_procedures[]
+
+Changes since version 2:
+
+- Rebase to trond/nfs-for-next (commit ed1e6211a0).
+- Fix Fred's and Benny's email addresses.
+- Use FIXME to flag code that needs more work.
+- Remove obsolete comments.
+- Minor patch re-orgs per reviewer comments.
+
+Changes since version 1:
+
+NFS41: Drop lseg ref before fallthru to MDS
+SQUASHME: pnfsblock: get rid of vmap and deviceid->area structure
+SQUASHME: pnfsblock: define module alias
+SQUASHME: pnfsblock: bl_find_get_extent optimization: mv break clause to end of loop
+SQUASHME: pnfsblock: test debug bit once for multiple dprintks
+SQUASHME: pnfsblock: typo
+SQUASHME: pnfsblock: get rid of unused leftovers from device mapping removal
+
+Andy Adamson (2):
+  pnfs: GETDEVICELIST
+  pnfs: cleanup_layoutcommit
+
+Benny Halevy (2):
+  pnfs: add set-clear layoutdriver interface
+  pnfsblock: use pageio_ops api
+
+Fred Isaman (15):
+  pnfs: ask for layout_blksize and save it in nfs_server
+  pnfsblock: add blocklayout Kconfig option, Makefile, and stubs
+  pnfsblock: basic extent code
+  pnfsblock: lseg alloc and free
+  pnfsblock: merge extents
+  pnfsblock: call and parse getdevicelist
+  pnfsblock: xdr decode pnfs_block_layout4
+  pnfsblock: bl_find_get_extent
+  pnfsblock: add extent manipulation functions
+  pnfsblock: merge rw extents
+  pnfsblock: encode_layoutcommit
+  pnfsblock: cleanup_layoutcommit
+  pnfsblock: bl_read_pagelist
+  pnfsblock: bl_write_pagelist
+  pnfsblock: note written INVAL areas for layoutcommit
+
+Jim Rees (2):
+  pnfsblock: add device operations
+  pnfsblock: remove device operations
+
+Peng Tao (6):
+  pnfs: save layoutcommit lwb at layout header
+  pnfs: save layoutcommit cred at layout header
+  pnfs: let layoutcommit handle a list of lseg
+  pnfs: use lwb as layoutcommit length
+  NFS41: save layoutcommit cred in layout header init
+  pnfsblock: write_pagelist handle zero invalid extents
+
+ fs/nfs/Kconfig                      |    8 +-
+ fs/nfs/Makefile                     |    1 +
+ fs/nfs/blocklayout/Makefile         |    5 +
+ fs/nfs/blocklayout/blocklayout.c    | 1018 +++++++++++++++++++++++++++++++++++
+ fs/nfs/blocklayout/blocklayout.h    |  208 +++++++
+ fs/nfs/blocklayout/blocklayoutdev.c |  410 ++++++++++++++
+ fs/nfs/blocklayout/blocklayoutdm.c  |  111 ++++
+ fs/nfs/blocklayout/extents.c        |  943 ++++++++++++++++++++++++++++++++
+ fs/nfs/client.c                     |   11 +-
+ fs/nfs/nfs4_fs.h                    |    2 +-
+ fs/nfs/nfs4filelayout.c             |    2 +-
+ fs/nfs/nfs4proc.c                   |   62 ++-
+ fs/nfs/nfs4xdr.c                    |  233 ++++++++-
+ fs/nfs/pnfs.c                       |   88 ++--
+ fs/nfs/pnfs.h                       |   30 +-
+ include/linux/nfs.h                 |    2 +
+ include/linux/nfs4.h                |    1 +
+ include/linux/nfs_fs_sb.h           |    4 +-
+ include/linux/nfs_xdr.h             |   17 +-
+ 19 files changed, 3089 insertions(+), 67 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/Makefile
+ create mode 100644 fs/nfs/blocklayout/blocklayout.c
+ create mode 100644 fs/nfs/blocklayout/blocklayout.h
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdev.c
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
+ create mode 100644 fs/nfs/blocklayout/extents.c
+
+-- 
+1.7.4.1
+
