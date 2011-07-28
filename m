@@ -1,121 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:58951 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755662Ab1GOR52 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2011 13:57:28 -0400
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH (RESEND) 05/12] nfs:  Pay attention to srcaddr in v4.1 callback logic.
-Date: Fri, 15 Jul 2011 10:56:01 -0700
-Message-Id: <1310752568-21280-6-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
-References: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
+Received: from DMZ-MAILSEC-SCANNER-5.MIT.EDU ([18.7.68.34]:62929 "EHLO
+	dmz-mailsec-scanner-5.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754799Ab1G1TXJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 15:23:09 -0400
+Received: from outgoing-legacy.mit.edu (OUTGOING-LEGACY.MIT.EDU [18.7.22.104])
+	by mailhub-4.mit.edu (8.13.8/8.9.2) with ESMTP id p6SJN8VT003426
+	for <linux-nfs@vger.kernel.org>; Thu, 28 Jul 2011 15:23:08 -0400
+Received: from webmail-4.mit.edu (WEBMAIL-4.MIT.EDU [18.9.23.14])
+	)
+	by outgoing-legacy.mit.edu (8.13.6/8.12.4) with ESMTP id p6SJOspU019448
+	for <linux-nfs@vger.kernel.org>; Thu, 28 Jul 2011 15:24:55 -0400 (EDT)
+Received: (from nobody@localhost)
+	by webmail-4.mit.edu (8.13.8/8.13.8/Submit) id p6SJN65Z010779
+	for linux-nfs@vger.kernel.org; Thu, 28 Jul 2011 15:23:06 -0400
+Message-ID: <20110728152306.219iz5wpkcokoo4c@webmail.mit.edu>
+Date: Thu, 28 Jul 2011 15:23:06 -0400
+From: Gregory Magoon <gmagoon@MIT.EDU>
+To: linux-nfs@vger.kernel.org
+Subject: NFSv4 vs NFSv3 with MPICH2-1.4
+Content-Type: text/plain;
+	charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
+Hi,
+I have been having issues when running MPICH2-1.4 on a NFSv4 filesystem (they
+both seem to work fine on their own). When I mount as NFS version 4, I get lots
+of NFS traffic on my internal network (seen when I run sudo iftop -i eth1) and
+the mpich2 tests time out or give i/o errors. However, when I mount the NFS as
+version 3, the MPICH2 tests seem to work without any major problems. Even
+though I can get this working by switching to NFSv3, I would like to get MPICH2
+working with NFSv4, if possible. Is there something in my NFS configuration (see
+below) that is not possible with NFSv4 or is this some sort of conflict between
+MPICH2-1.4 and NFSv4?
 
-Signed-off-by: Ben Greear <greearb@candelatech.com>
----
-:100644 100644 d4d1954... 5b20987... M	fs/nfs/callback_proc.c
-:100644 100644 8ba7e1a... c571a97... M	fs/nfs/client.c
-:100644 100644 93979a9... 60a36a2... M	fs/nfs/internal.h
- fs/nfs/callback_proc.c |    3 ++-
- fs/nfs/client.c        |   27 +++++++++++++++++++++++++--
- fs/nfs/internal.h      |    4 +++-
- 3 files changed, 30 insertions(+), 4 deletions(-)
+Thanks,
+Greg
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index d4d1954..5b20987 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -424,7 +424,8 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 
- 	cps->clp = NULL;
- 
--	clp = nfs4_find_client_sessionid(args->csa_addr, &args->csa_sessionid);
-+	clp = nfs4_find_client_sessionid(args->csa_daddr, args->csa_addr,
-+					 &args->csa_sessionid);
- 	if (clp == NULL)
- 		goto out;
- 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 8ba7e1a..c571a97 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1233,10 +1233,12 @@ nfs4_find_client_ident(int cb_ident)
-  * Returns NULL if no such client
-  */
- struct nfs_client *
--nfs4_find_client_sessionid(const struct sockaddr *addr,
-+nfs4_find_client_sessionid(const struct sockaddr *srcaddr,
-+			   const struct sockaddr *addr,
- 			   struct nfs4_sessionid *sid)
- {
- 	struct nfs_client *clp;
-+	struct nfs_client *ok_fit = NULL;
- 
- 	spin_lock(&nfs_client_lock);
- 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
-@@ -1251,10 +1253,30 @@ nfs4_find_client_sessionid(const struct sockaddr *addr,
- 		    sid->data, NFS4_MAX_SESSIONID_LEN) != 0)
- 			continue;
- 
-+		if (srcaddr) {
-+			const struct sockaddr *sa;
-+			sa = (const struct sockaddr *)&clp->cl_addr;
-+			if (!nfs_sockaddr_match_ipaddr(srcaddr, sa)) {
-+				/* If clp doesn't bind to srcaddr, then
-+				 * it is a potential match if we don't find
-+				 * a better one.
-+				 */
-+				if (sa->sa_family == AF_UNSPEC && !ok_fit)
-+					ok_fit = clp;
-+				continue;
-+			}
-+		}
-+found_one:
- 		atomic_inc(&clp->cl_count);
- 		spin_unlock(&nfs_client_lock);
- 		return clp;
- 	}
-+
-+	if (ok_fit) {
-+		clp = ok_fit;
-+		goto found_one;
-+	}
-+
- 	spin_unlock(&nfs_client_lock);
- 	return NULL;
- }
-@@ -1262,7 +1284,8 @@ nfs4_find_client_sessionid(const struct sockaddr *addr,
- #else /* CONFIG_NFS_V4_1 */
- 
- struct nfs_client *
--nfs4_find_client_sessionid(const struct sockaddr *addr,
-+nfs4_find_client_sessionid(const struct sockaddr *srcaddr,
-+			   const struct sockaddr *addr,
- 			   struct nfs4_sessionid *sid)
- {
- 	return NULL;
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 93979a9..60a36a2 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -155,7 +155,9 @@ extern void nfs_put_client(struct nfs_client *);
- extern struct nfs_client *nfs4_find_client_no_ident(const struct sockaddr *);
- extern struct nfs_client *nfs4_find_client_ident(int);
- extern struct nfs_client *
--nfs4_find_client_sessionid(const struct sockaddr *, struct nfs4_sessionid *);
-+nfs4_find_client_sessionid(const struct sockaddr *srcaddr,
-+			   const struct sockaddr *addr,
-+			   struct nfs4_sessionid *);
- extern struct nfs_server *nfs_create_server(
- 					const struct nfs_parsed_mount_data *,
- 					struct nfs_fh *);
--- 
-1.7.3.4
+
+Here is the /etc/exports on the NFS server:
+/usr/local 192.168.2.0/24(async,fsid=1,ro,no_root_squash,no_subtree_check)
+/home 192.168.2.0/24(async,fsid=2,rw,no_root_squash,no_subtree_check)
+
+Here are the NFS mounting details from "nfsstat -m":
+
+NFSv4 (hangs and times out, with large quantity of NFS traffic):
+ /home from 192.168.2.11:/home/
+ Flags:
+ rw,relatime,vers=4,rsize=8192,wsize=8192,namlen=255,hard,proto=tcp,port=0,timeo=20,retrans=32,sec=sys,clientaddr=192.168.2.1,minorversion=0,local_lock=none,addr=192.168.2.11
+
+/usr/local from 192.168.2.11:/usr/local/
+ Flags:
+ ro,relatime,vers=4,rsize=8192,wsize=8192,namlen=255,hard,proto=tcp,port=0,timeo=20,retrans=32,sec=sys,clientaddr=192.168.2.1,minorversion=0,local_lock=none,addr=192.168.2.11
+
+NFSv3 (works; mounted in fstab same as above except with nfs replacing nfs4 and
+ nfsv and an extra option nfsvers=3):
+ /home from 192.168.2.11:/home
+ Flags:
+ rw,relatime,vers=3,rsize=8192,wsize=8192,namlen=255,hard,proto=tcp,timeo=20,retrans=32,sec=sys,mountaddr=192.168.2.11,mountvers=3,mountport=55359,mountproto=udp,local_lock=none,addr=192.168.2.11
+
+/usr/local from 192.168.2.11:/usr/local
+ Flags:
+ ro,relatime,vers=3,rsize=8192,wsize=8192,namlen=255,hard,proto=tcp,timeo=20,retrans=32,sec=sys,mountaddr=192.168.2.11,mountvers=3,mountport=55359,mountproto=udp,local_lock=none,addr=192.168.2.11
+
 
