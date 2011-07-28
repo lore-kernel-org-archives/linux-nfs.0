@@ -1,98 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lucidpixels.com ([72.73.18.11]:49804 "EHLO lucidpixels.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750816Ab1G3J6O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 30 Jul 2011 05:58:14 -0400
-Date: Sat, 30 Jul 2011 05:58:13 -0400 (EDT)
-From: Justin Piszcz <jpiszcz@lucidpixels.com>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:36772 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755979Ab1G1Rb6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:31:58 -0400
+From: Jim Rees <rees@umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-cc: Bryan Schumaker <bjschuma@netapp.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
-In-Reply-To: <alpine.DEB.2.02.1107291820560.25432@p34.internal.lan>
-Message-ID: <alpine.DEB.2.02.1107300553300.10141@p34.internal.lan>
-References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan>    <20110727160752.GC974@fieldses.org>    <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan>    <20110727181111.GA23009@infradead.org>    <alpine.DEB.2.02.1107271530340.1451@p34.internal.lan>
-  <20110727193937.GA5354@infradead.org>    <alpine.DEB.2.02.1107271540100.1451@p34.internal.lan>    <20110727194722.GA9345@infradead.org>    <1311799021.25645.41.camel@lade.trondhjem.org>    <1311800051.25645.43.camel@lade.trondhjem.org>  
- <1311800195.25645.45.camel@lade.trondhjem.org>   <alpine.DEB.2.02.1107271723500.25432@p34.internal.lan>   <alpine.DEB.2.02.1107271844100.25432@p34.internal.lan>  <1311886137.27285.2.camel@lade.trondhjem.org> <4E331D86.7060801@netapp.com>
- <alpine.DEB.2.02.1107291656340.25432@p34.internal.lan> <1311977016.16078.10.camel@lade.trondhjem.org> <alpine.DEB.2.02.1107291820560.25432@p34.internal.lan>
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v4 19/27] pnfsblock: bl_find_get_extent
+Date: Thu, 28 Jul 2011 13:31:08 -0400
+Message-Id: <1311874276-1386-20-git-send-email-rees@umich.edu>
+In-Reply-To: <1311874276-1386-1-git-send-email-rees@umich.edu>
+References: <1311874276-1386-1-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+From: Fred Isaman <iisaman@citi.umich.edu>
 
+Implement bl_find_get_extent(), one of the core extent manipulation
+routines.
 
-On Fri, 29 Jul 2011, Justin Piszcz wrote:
+[pnfsblock: Lookup list entry of layouts and tags in reverse order]
+Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 
-> 
-> 
-> On Fri, 29 Jul 2011, Trond Myklebust wrote:
-> 
-> > On Fri, 2011-07-29 at 16:59 -0400, Justin Piszcz wrote:
-> >> On Fri, 29 Jul 2011, Bryan Schumaker wrote:
-> >>
-> >>> How does this look for printing out more information when a cookie loop is detected?  Is there anything else that should be printed out?  My patch applies on top of Trond's from yesterday.
-> >>
-> >>
-> >> Hi,
-> >>
-> >> This fails against 2.6.38:
-> >>
-> >> patching file fs/nfs/dir.c
-> >> Hunk #1 FAILED at 134.
-> >> Hunk #2 FAILED at 173.
-> >> Hunk #3 FAILED at 323.
-> >> Hunk #4 FAILED at 336.
-> >> Hunk #5 FAILED at 349.
-> >> Hunk #6 succeeded at 320 (offset -48 lines).
-> >> Hunk #7 FAILED at 741.
-> >> Hunk #8 succeeded at 716 (offset -59 lines).
-> >> Hunk #9 succeeded at 749 (offset -59 lines).
-> >> Hunk #10 succeeded at 763 (offset -59 lines).
-> >> 6 out of 10 hunks FAILED -- saving rejects to file fs/nfs/dir.c.rej
-> >> patching file include/linux/nfs_fs.h
-> >> Hunk #1 FAILED at 99.
-> >> 1 out of 1 hunk FAILED -- saving rejects to file include/linux/nfs_fs.h.rej
-> >> atom:/usr/src/linux#
-> >>
-> >> And the 3.0 kernel is broken for my wireless adapter:
-> >> http://www.gossamer-threads.com/lists/linux/kernel/1411576
-> >>
-> >> If you can make a combined patch for 2.6.38 I can try it, 2.6.39+ have a
-> >> horrible driver (rt2800usb) and 1 person emailed me as well stating the
-> >> same thing off-list (they stick with the manufacturer's driver or the *sta
-> >> one).
-> >
-> > I don't understand. The readdir loop detection code was first merged
-> > upstream in 2.6.39. 2.6.38 doesn't report any loops...
-> 
-> Hi,
-> 
-> Sorry--(my error) this is meant for the client, patched & will e-mail when 
-> it happens again.
-> 
-> # patch -p1 < /home/jpiszcz/patch1
-> patching file fs/nfs/dir.c
-> patching file include/linux/nfs_fs.h
-> 
-> # patch -p1 < /home/jpiszcz/patch2
-> patching file fs/nfs/dir.c
-> 
-> (recompile->reboot->waiting for next error)
-> 
-> Justin.
+pnfsblock: fix print format warnings for sector_t and size_t
 
-So I have been running Linux 2.6.37-(.. 3.0 recently) since Jan of this year on these new hosts and I have never had so much as a kernel OOPS, with these 
-patches, there were several kernel lockups/problems but the nfs/loop did 
-not show up.
+gcc spews warnings about these on x86_64, e.g.:
+fs/nfs/blocklayout/blocklayout.c:74: warning: format ‘%Lu’ expects type ‘long long unsigned int’, but argument 2 has type ‘sector_t’
+fs/nfs/blocklayout/blocklayout.c:388: warning: format ‘%d’ expects type ‘int’, but argument 5 has type ‘size_t’
 
-I've went back to the previous (non-patched) kernel, is there a less invasive
-patch?
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/blocklayout/blocklayout.h |    3 ++
+ fs/nfs/blocklayout/extents.c     |   47 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 50 insertions(+), 0 deletions(-)
 
-http://home.comcast.net/~jpiszcz/20110730/kernel-error.txt
-
-Justin.
-
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 3105b96..25c3153 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -153,6 +153,9 @@ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+ void free_block_dev(struct pnfs_block_dev *bdev);
+ 
+ /* extents.c */
++struct pnfs_block_extent *
++bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
++		struct pnfs_block_extent **cow_read);
+ void bl_put_extent(struct pnfs_block_extent *be);
+ struct pnfs_block_extent *alloc_extent(void);
+ int bl_add_merge_extent(struct pnfs_block_layout *bl,
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 3591084..c306616 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -201,3 +201,50 @@ bl_add_merge_extent(struct pnfs_block_layout *bl,
+ 	bl_put_extent(new);
+ 	return -EIO;
+ }
++
++/* Returns extent, or NULL.  If a second READ extent exists, it is returned
++ * in cow_read, if given.
++ *
++ * The extents are kept in two seperate ordered lists, one for READ and NONE,
++ * one for READWRITE and INVALID.  Within each list, we assume:
++ * 1. Extents are ordered by file offset.
++ * 2. For any given isect, there is at most one extents that matches.
++ */
++struct pnfs_block_extent *
++bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
++	    struct pnfs_block_extent **cow_read)
++{
++	struct pnfs_block_extent *be, *cow, *ret;
++	int i;
++
++	dprintk("%s enter with isect %llu\n", __func__, (u64)isect);
++	cow = ret = NULL;
++	spin_lock(&bl->bl_ext_lock);
++	for (i = 0; i < EXTENT_LISTS; i++) {
++		list_for_each_entry_reverse(be, &bl->bl_extents[i], be_node) {
++			if (isect >= be->be_f_offset + be->be_length)
++				break;
++			if (isect >= be->be_f_offset) {
++				/* We have found an extent */
++				dprintk("%s Get %p (%i)\n", __func__, be,
++					atomic_read(&be->be_refcnt.refcount));
++				kref_get(&be->be_refcnt);
++				if (!ret)
++					ret = be;
++				else if (be->be_state != PNFS_BLOCK_READ_DATA)
++					bl_put_extent(be);
++				else
++					cow = be;
++				break;
++			}
++		}
++		if (ret &&
++		    (!cow_read || ret->be_state != PNFS_BLOCK_INVALID_DATA))
++			break;
++	}
++	spin_unlock(&bl->bl_ext_lock);
++	if (cow_read)
++		*cow_read = cow;
++	print_bl_extent(ret);
++	return ret;
++}
+-- 
+1.7.4.1
 
