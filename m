@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:42202 "EHLO
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:57664 "EHLO
 	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755880Ab1G1Rb3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:31:29 -0400
+	with ESMTP id S1756005Ab1G1RcQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:32:16 -0400
 From: Jim Rees <rees@umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v4 07/27] NFS41: save layoutcommit cred in layout header init
-Date: Thu, 28 Jul 2011 13:30:56 -0400
-Message-Id: <1311874276-1386-8-git-send-email-rees@umich.edu>
+Subject: [PATCH v4 24/27] pnfsblock: bl_read_pagelist
+Date: Thu, 28 Jul 2011 13:31:13 -0400
+Message-Id: <1311874276-1386-25-git-send-email-rees@umich.edu>
 In-Reply-To: <1311874276-1386-1-git-send-email-rees@umich.edu>
 References: <1311874276-1386-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -16,107 +16,319 @@ List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Peng Tao <bergwolf@gmail.com>
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-No need to save it at every pnfs_set_layoutcommit.
+Note: When upper layer's read/write request cannot be fulfilled, the block
+layout driver shouldn't silently mark the page as error. It should do
+what can be done and  leave the rest to the upper layer. To do so, we
+should set rdata/wdata->res.count properly.
 
+When upper layer re-send the read/write request to finish the rest
+part of the request, pgbase is the position where we should start at.
+
+[pnfsblock: mark IO error with NFS_LAYOUT_{RW|RO}_FAILED]
 Signed-off-by: Peng Tao <peng_tao@emc.com>
+[pnfsblock: read path error handling]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: handle errors when read or write pagelist.]
+Signed-off-by: Zhang Jingwang <yyalone@gmail.com>
+[pnfs-block: use new read_pagelist api]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
- fs/nfs/pnfs.c |   21 +++++++++++----------
- 1 files changed, 11 insertions(+), 10 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c |  265 ++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 265 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index e2c1eb4..3a47f7c 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -201,6 +201,7 @@ static void
- pnfs_free_layout_hdr(struct pnfs_layout_hdr *lo)
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 65f885d..aecd73b 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -29,10 +29,12 @@
+  * of the software, even if it has been or is hereafter advised of the
+  * possibility of such damages.
+  */
++
+ #include <linux/module.h>
+ #include <linux/init.h>
+ #include <linux/mount.h>
+ #include <linux/namei.h>
++#include <linux/bio.h>		/* struct bio */
+ 
+ #include "blocklayout.h"
+ 
+@@ -45,9 +47,272 @@ MODULE_DESCRIPTION("The NFSv4.1 pNFS Block layout driver");
+ struct dentry *bl_device_pipe;
+ wait_queue_head_t bl_wq;
+ 
++static void print_page(struct page *page)
++{
++	dprintk("PRINTPAGE page %p\n", page);
++	dprintk("	PagePrivate %d\n", PagePrivate(page));
++	dprintk("	PageUptodate %d\n", PageUptodate(page));
++	dprintk("	PageError %d\n", PageError(page));
++	dprintk("	PageDirty %d\n", PageDirty(page));
++	dprintk("	PageReferenced %d\n", PageReferenced(page));
++	dprintk("	PageLocked %d\n", PageLocked(page));
++	dprintk("	PageWriteback %d\n", PageWriteback(page));
++	dprintk("	PageMappedToDisk %d\n", PageMappedToDisk(page));
++	dprintk("\n");
++}
++
++/* Given the be associated with isect, determine if page data needs to be
++ * initialized.
++ */
++static int is_hole(struct pnfs_block_extent *be, sector_t isect)
++{
++	if (be->be_state == PNFS_BLOCK_NONE_DATA)
++		return 1;
++	else if (be->be_state != PNFS_BLOCK_INVALID_DATA)
++		return 0;
++	else
++		return !is_sector_initialized(be->be_inval, isect);
++}
++
++/* The data we are handed might be spread across several bios.  We need
++ * to track when the last one is finished.
++ */
++struct parallel_io {
++	struct kref refcnt;
++	struct rpc_call_ops call_ops;
++	void (*pnfs_callback) (void *data);
++	void *data;
++};
++
++static inline struct parallel_io *alloc_parallel(void *data)
++{
++	struct parallel_io *rv;
++
++	rv  = kmalloc(sizeof(*rv), GFP_NOFS);
++	if (rv) {
++		rv->data = data;
++		kref_init(&rv->refcnt);
++	}
++	return rv;
++}
++
++static inline void get_parallel(struct parallel_io *p)
++{
++	kref_get(&p->refcnt);
++}
++
++static void destroy_parallel(struct kref *kref)
++{
++	struct parallel_io *p = container_of(kref, struct parallel_io, refcnt);
++
++	dprintk("%s enter\n", __func__);
++	p->pnfs_callback(p->data);
++	kfree(p);
++}
++
++static inline void put_parallel(struct parallel_io *p)
++{
++	kref_put(&p->refcnt, destroy_parallel);
++}
++
++static struct bio *
++bl_submit_bio(int rw, struct bio *bio)
++{
++	if (bio) {
++		get_parallel(bio->bi_private);
++		dprintk("%s submitting %s bio %u@%llu\n", __func__,
++			rw == READ ? "read" : "write",
++			bio->bi_size, (unsigned long long)bio->bi_sector);
++		submit_bio(rw, bio);
++	}
++	return NULL;
++}
++
++static struct bio *bl_alloc_init_bio(int npg, sector_t isect,
++				     struct pnfs_block_extent *be,
++				     void (*end_io)(struct bio *, int err),
++				     struct parallel_io *par)
++{
++	struct bio *bio;
++
++	bio = bio_alloc(GFP_NOIO, npg);
++	if (!bio)
++		return NULL;
++
++	bio->bi_sector = isect - be->be_f_offset + be->be_v_offset;
++	bio->bi_bdev = be->be_mdev;
++	bio->bi_end_io = end_io;
++	bio->bi_private = par;
++	return bio;
++}
++
++static struct bio *bl_add_page_to_bio(struct bio *bio, int npg, int rw,
++				      sector_t isect, struct page *page,
++				      struct pnfs_block_extent *be,
++				      void (*end_io)(struct bio *, int err),
++				      struct parallel_io *par)
++{
++retry:
++	if (!bio) {
++		bio = bl_alloc_init_bio(npg, isect, be, end_io, par);
++		if (!bio)
++			return ERR_PTR(-ENOMEM);
++	}
++	if (bio_add_page(bio, page, PAGE_CACHE_SIZE, 0) < PAGE_CACHE_SIZE) {
++		bio = bl_submit_bio(rw, bio);
++		goto retry;
++	}
++	return bio;
++}
++
++static void bl_set_lo_fail(struct pnfs_layout_segment *lseg)
++{
++	if (lseg->pls_range.iomode == IOMODE_RW) {
++		dprintk("%s Setting layout IOMODE_RW fail bit\n", __func__);
++		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
++	} else {
++		dprintk("%s Setting layout IOMODE_READ fail bit\n", __func__);
++		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
++	}
++}
++
++/* This is basically copied from mpage_end_io_read */
++static void bl_end_io_read(struct bio *bio, int err)
++{
++	struct parallel_io *par = bio->bi_private;
++	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
++	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
++	struct nfs_read_data *rdata = (struct nfs_read_data *)par->data;
++
++	do {
++		struct page *page = bvec->bv_page;
++
++		if (--bvec >= bio->bi_io_vec)
++			prefetchw(&bvec->bv_page->flags);
++		if (uptodate)
++			SetPageUptodate(page);
++	} while (bvec >= bio->bi_io_vec);
++	if (!uptodate) {
++		if (!rdata->pnfs_error)
++			rdata->pnfs_error = -EIO;
++		bl_set_lo_fail(rdata->lseg);
++	}
++	bio_put(bio);
++	put_parallel(par);
++}
++
++static void bl_read_cleanup(struct work_struct *work)
++{
++	struct rpc_task *task;
++	struct nfs_read_data *rdata;
++	dprintk("%s enter\n", __func__);
++	task = container_of(work, struct rpc_task, u.tk_work);
++	rdata = container_of(task, struct nfs_read_data, task);
++	pnfs_ld_read_done(rdata);
++}
++
++static void
++bl_end_par_io_read(void *data)
++{
++	struct nfs_read_data *rdata = data;
++
++	INIT_WORK(&rdata->task.u.tk_work, bl_read_cleanup);
++	schedule_work(&rdata->task.u.tk_work);
++}
++
++/* We don't want normal .rpc_call_done callback used, so we replace it
++ * with this stub.
++ */
++static void bl_rpc_do_nothing(struct rpc_task *task, void *calldata)
++{
++	return;
++}
++
+ static enum pnfs_try_status
+ bl_read_pagelist(struct nfs_read_data *rdata)
  {
- 	struct pnfs_layoutdriver_type *ld = NFS_SERVER(lo->plh_inode)->pnfs_curr_ld;
-+	put_rpccred(lo->plh_lc_cred);
- 	return ld->alloc_layout_hdr ? ld->free_layout_hdr(lo) : kfree(lo);
++	int i, hole;
++	struct bio *bio = NULL;
++	struct pnfs_block_extent *be = NULL, *cow_read = NULL;
++	sector_t isect, extent_length = 0;
++	struct parallel_io *par;
++	loff_t f_offset = rdata->args.offset;
++	size_t count = rdata->args.count;
++	struct page **pages = rdata->args.pages;
++	int pg_index = rdata->args.pgbase >> PAGE_CACHE_SHIFT;
++
++	dprintk("%s enter nr_pages %u offset %lld count %Zd\n", __func__,
++	       rdata->npages, f_offset, count);
++
++	par = alloc_parallel(rdata);
++	if (!par)
++		goto use_mds;
++	par->call_ops = *rdata->mds_ops;
++	par->call_ops.rpc_call_done = bl_rpc_do_nothing;
++	par->pnfs_callback = bl_end_par_io_read;
++	/* At this point, we can no longer jump to use_mds */
++
++	isect = (sector_t) (f_offset >> SECTOR_SHIFT);
++	/* Code assumes extents are page-aligned */
++	for (i = pg_index; i < rdata->npages; i++) {
++		if (!extent_length) {
++			/* We've used up the previous extent */
++			bl_put_extent(be);
++			bl_put_extent(cow_read);
++			bio = bl_submit_bio(READ, bio);
++			/* Get the next one */
++			be = bl_find_get_extent(BLK_LSEG2EXT(rdata->lseg),
++					     isect, &cow_read);
++			if (!be) {
++				rdata->pnfs_error = -EIO;
++				goto out;
++			}
++			extent_length = be->be_length -
++				(isect - be->be_f_offset);
++			if (cow_read) {
++				sector_t cow_length = cow_read->be_length -
++					(isect - cow_read->be_f_offset);
++				extent_length = min(extent_length, cow_length);
++			}
++		}
++		hole = is_hole(be, isect);
++		if (hole && !cow_read) {
++			bio = bl_submit_bio(READ, bio);
++			/* Fill hole w/ zeroes w/o accessing device */
++			dprintk("%s Zeroing page for hole\n", __func__);
++			zero_user_segment(pages[i], 0, PAGE_CACHE_SIZE);
++			print_page(pages[i]);
++			SetPageUptodate(pages[i]);
++		} else {
++			struct pnfs_block_extent *be_read;
++
++			be_read = (hole && cow_read) ? cow_read : be;
++			bio = bl_add_page_to_bio(bio, rdata->npages - i, READ,
++						 isect, pages[i], be_read,
++						 bl_end_io_read, par);
++			if (IS_ERR(bio)) {
++				rdata->pnfs_error = PTR_ERR(bio);
++				goto out;
++			}
++		}
++		isect += PAGE_CACHE_SECTORS;
++		extent_length -= PAGE_CACHE_SECTORS;
++	}
++	if ((isect << SECTOR_SHIFT) >= rdata->inode->i_size) {
++		rdata->res.eof = 1;
++		rdata->res.count = rdata->inode->i_size - f_offset;
++	} else {
++		rdata->res.count = (isect << SECTOR_SHIFT) - f_offset;
++	}
++out:
++	bl_put_extent(be);
++	bl_put_extent(cow_read);
++	bl_submit_bio(READ, bio);
++	put_parallel(par);
++	return PNFS_ATTEMPTED;
++
++ use_mds:
++	dprintk("Giving up and using normal NFS\n");
+ 	return PNFS_NOT_ATTEMPTED;
  }
  
-@@ -828,7 +829,9 @@ out:
- }
- 
- static struct pnfs_layout_hdr *
--alloc_init_layout_hdr(struct inode *ino, gfp_t gfp_flags)
-+alloc_init_layout_hdr(struct inode *ino,
-+		      struct nfs_open_context *ctx,
-+		      gfp_t gfp_flags)
- {
- 	struct pnfs_layout_hdr *lo;
- 
-@@ -840,11 +843,14 @@ alloc_init_layout_hdr(struct inode *ino, gfp_t gfp_flags)
- 	INIT_LIST_HEAD(&lo->plh_segs);
- 	INIT_LIST_HEAD(&lo->plh_bulk_recall);
- 	lo->plh_inode = ino;
-+	lo->plh_lc_cred = get_rpccred(ctx->state->owner->so_cred);
- 	return lo;
- }
- 
- static struct pnfs_layout_hdr *
--pnfs_find_alloc_layout(struct inode *ino, gfp_t gfp_flags)
-+pnfs_find_alloc_layout(struct inode *ino,
-+		       struct nfs_open_context *ctx,
-+		       gfp_t gfp_flags)
- {
- 	struct nfs_inode *nfsi = NFS_I(ino);
- 	struct pnfs_layout_hdr *new = NULL;
-@@ -859,7 +865,7 @@ pnfs_find_alloc_layout(struct inode *ino, gfp_t gfp_flags)
- 			return nfsi->layout;
- 	}
- 	spin_unlock(&ino->i_lock);
--	new = alloc_init_layout_hdr(ino, gfp_flags);
-+	new = alloc_init_layout_hdr(ino, ctx, gfp_flags);
- 	spin_lock(&ino->i_lock);
- 
- 	if (likely(nfsi->layout == NULL))	/* Won the race? */
-@@ -952,7 +958,7 @@ pnfs_update_layout(struct inode *ino,
- 	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
- 		return NULL;
- 	spin_lock(&ino->i_lock);
--	lo = pnfs_find_alloc_layout(ino, gfp_flags);
-+	lo = pnfs_find_alloc_layout(ino, ctx, gfp_flags);
- 	if (lo == NULL) {
- 		dprintk("%s ERROR: can't get pnfs_layout_hdr\n", __func__);
- 		goto out_unlock;
-@@ -1385,8 +1391,6 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
- 	spin_lock(&nfsi->vfs_inode.i_lock);
- 	if (!test_and_set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
- 		mark_as_dirty = true;
--		nfsi->layout->plh_lc_cred =
--			get_rpccred(wdata->args.context->state->owner->so_cred);
- 		dprintk("%s: Set layoutcommit for inode %lu ",
- 			__func__, wdata->inode->i_ino);
- 	}
-@@ -1420,7 +1424,6 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- {
- 	struct nfs4_layoutcommit_data *data;
- 	struct nfs_inode *nfsi = NFS_I(inode);
--	struct rpc_cred *cred;
- 	loff_t end_pos;
- 	int status = 0;
- 
-@@ -1448,16 +1451,14 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- 	pnfs_list_write_lseg(inode, &data->lseg_list);
- 
- 	end_pos = nfsi->layout->plh_lwb;
--	cred = nfsi->layout->plh_lc_cred;
- 	nfsi->layout->plh_lwb = 0;
--	nfsi->layout->plh_lc_cred = NULL;
- 
- 	memcpy(&data->args.stateid.data, nfsi->layout->plh_stateid.data,
- 		sizeof(nfsi->layout->plh_stateid.data));
- 	spin_unlock(&inode->i_lock);
- 
- 	data->args.inode = inode;
--	data->cred = cred;
-+	data->cred = get_rpccred(nfsi->layout->plh_lc_cred);
- 	nfs_fattr_init(&data->fattr);
- 	data->args.bitmask = NFS_SERVER(inode)->cache_consistency_bitmask;
- 	data->res.fattr = &data->fattr;
 -- 
 1.7.4.1
 
