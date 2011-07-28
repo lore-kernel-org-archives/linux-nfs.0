@@ -1,266 +1,347 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:38107 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752771Ab1GaAxZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 20:53:25 -0400
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:42170 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755393Ab1G1RbO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:31:14 -0400
 From: Jim Rees <rees@umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v7 17/26] pnfsblock: xdr decode pnfs_block_layout4
-Date: Sat, 30 Jul 2011 20:52:47 -0400
-Message-Id: <1312073576-11024-18-git-send-email-rees@umich.edu>
-In-Reply-To: <1312073576-11024-1-git-send-email-rees@umich.edu>
-References: <1312073576-11024-1-git-send-email-rees@umich.edu>
+Subject: [PATCH v4 01/27] pnfs: GETDEVICELIST
+Date: Thu, 28 Jul 2011 13:30:50 -0400
+Message-Id: <1311874276-1386-2-git-send-email-rees@umich.edu>
+In-Reply-To: <1311874276-1386-1-git-send-email-rees@umich.edu>
+References: <1311874276-1386-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+From: Andy Adamson <andros@netapp.com>
 
-XDR decodes the block layout payload sent in LAYOUTGET result, storing
-the result in an extent list.
+The block driver uses GETDEVICELIST
 
-[pnfsblock: get rid of deprecated xdr macros]
-Signed-off-by: Jim Rees <rees@umich.edu>
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfsblock: fix bug getting pnfs_layout_type in translate_devid().]
-Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[pass struct nfs_server * to getdevicelist]
+[get machince creds for getdevicelist]
+[fix getdevicelist decode sizing]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 Signed-off-by: Benny Halevy <bhalevy@tonian.com>
-Signed-off-by: Jim Rees <rees@umich.edu>
 ---
- fs/nfs/blocklayout/blocklayoutdev.c |  208 ++++++++++++++++++++++++++++++++++-
- 1 files changed, 206 insertions(+), 2 deletions(-)
+ fs/nfs/nfs4proc.c       |   48 +++++++++++++++++
+ fs/nfs/nfs4xdr.c        |  131 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.h           |   12 ++++
+ include/linux/nfs4.h    |    1 +
+ include/linux/nfs_xdr.h |   11 ++++
+ 5 files changed, 203 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index b23fe60..a83b393 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -40,6 +40,19 @@
- 
- #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
- 
-+static int decode_sector_number(__be32 **rp, sector_t *sp)
-+{
-+	uint64_t s;
-+
-+	*rp = xdr_decode_hyper(*rp, &s);
-+	if (s & 0x1ff) {
-+		printk(KERN_WARNING "%s: sector not aligned\n", __func__);
-+		return -1;
-+	}
-+	*sp = s >> SECTOR_SHIFT;
-+	return 0;
-+}
-+
- /* Open a block_device by device number. */
- struct block_device *nfs4_blkdev_get(dev_t dev)
- {
-@@ -197,10 +210,201 @@ out:
- 	return rv;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 079614d..ebb6f1a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5834,6 +5834,54 @@ int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp)
+ 	return status;
  }
  
-+/* Map deviceid returned by the server to constructed block_device */
-+static struct block_device *translate_devid(struct pnfs_layout_hdr *lo,
-+					    struct nfs4_deviceid *id)
++/*
++ * Retrieve the list of Data Server devices from the MDS.
++ */
++static int _nfs4_getdevicelist(struct nfs_server *server,
++				    const struct nfs_fh *fh,
++				    struct pnfs_devicelist *devlist)
 +{
-+	struct block_device *rv = NULL;
-+	struct block_mount_id *mid;
-+	struct pnfs_block_dev *dev;
++	struct nfs4_getdevicelist_args args = {
++		.fh = fh,
++		.layoutclass = server->pnfs_curr_ld->id,
++	};
++	struct nfs4_getdevicelist_res res = {
++		.devlist = devlist,
++	};
++	struct rpc_message msg = {
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_GETDEVICELIST],
++		.rpc_argp = &args,
++		.rpc_resp = &res,
++	};
++	int status;
 +
-+	dprintk("%s enter, lo=%p, id=%p\n", __func__, lo, id);
-+	mid = BLK_ID(lo);
-+	spin_lock(&mid->bm_lock);
-+	list_for_each_entry(dev, &mid->bm_devlist, bm_node) {
-+		if (memcmp(id->data, dev->bm_mdevid.data,
-+			   NFS4_DEVICEID4_SIZE) == 0) {
-+			rv = dev->bm_mdev;
-+			goto out;
-+		}
-+	}
-+ out:
-+	spin_unlock(&mid->bm_lock);
-+	dprintk("%s returning %p\n", __func__, rv);
-+	return rv;
++	dprintk("--> %s\n", __func__);
++	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args,
++				&res.seq_res, 0);
++	dprintk("<-- %s status=%d\n", __func__, status);
++	return status;
 +}
 +
-+/* Tracks info needed to ensure extents in layout obey constraints of spec */
-+struct layout_verification {
-+	u32 mode;	/* R or RW */
-+	u64 start;	/* Expected start of next non-COW extent */
-+	u64 inval;	/* Start of INVAL coverage */
-+	u64 cowread;	/* End of COW read coverage */
++int nfs4_proc_getdevicelist(struct nfs_server *server,
++			    const struct nfs_fh *fh,
++			    struct pnfs_devicelist *devlist)
++{
++	struct nfs4_exception exception = { };
++	int err;
++
++	do {
++		err = nfs4_handle_exception(server,
++				_nfs4_getdevicelist(server, fh, devlist),
++				&exception);
++	} while (exception.retry);
++
++	dprintk("%s: err=%d, num_devs=%u\n", __func__,
++		err, devlist->num_devs);
++
++	return err;
++}
++EXPORT_SYMBOL_GPL(nfs4_proc_getdevicelist);
++
+ static int
+ _nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
+ {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c191a9b..0a1a7b8 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -314,6 +314,17 @@ static int nfs4_stat_to_errno(int);
+ 				XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + 5)
+ #define encode_reclaim_complete_maxsz	(op_encode_hdr_maxsz + 4)
+ #define decode_reclaim_complete_maxsz	(op_decode_hdr_maxsz + 4)
++#define encode_getdevicelist_maxsz (op_encode_hdr_maxsz + 4 + \
++				encode_verifier_maxsz)
++#define decode_getdevicelist_maxsz (op_decode_hdr_maxsz + \
++				2 /* nfs_cookie4 gdlr_cookie */ + \
++				decode_verifier_maxsz \
++				  /* verifier4 gdlr_verifier */ + \
++				1 /* gdlr_deviceid_list count */ + \
++				XDR_QUADLEN(NFS4_PNFS_GETDEVLIST_MAXNUM * \
++					    NFS4_DEVICEID4_SIZE) \
++				  /* gdlr_deviceid_list */ + \
++				1 /* bool gdlr_eof */)
+ #define encode_getdeviceinfo_maxsz (op_encode_hdr_maxsz + 4 + \
+ 				XDR_QUADLEN(NFS4_DEVICEID4_SIZE))
+ #define decode_getdeviceinfo_maxsz (op_decode_hdr_maxsz + \
+@@ -748,6 +759,14 @@ static int nfs4_stat_to_errno(int);
+ #define NFS4_dec_reclaim_complete_sz	(compound_decode_hdr_maxsz + \
+ 					 decode_sequence_maxsz + \
+ 					 decode_reclaim_complete_maxsz)
++#define NFS4_enc_getdevicelist_sz (compound_encode_hdr_maxsz + \
++				encode_sequence_maxsz + \
++				encode_putfh_maxsz + \
++				encode_getdevicelist_maxsz)
++#define NFS4_dec_getdevicelist_sz (compound_decode_hdr_maxsz + \
++				decode_sequence_maxsz + \
++				decode_putfh_maxsz + \
++				decode_getdevicelist_maxsz)
+ #define NFS4_enc_getdeviceinfo_sz (compound_encode_hdr_maxsz +    \
+ 				encode_sequence_maxsz +\
+ 				encode_getdeviceinfo_maxsz)
+@@ -1855,6 +1874,26 @@ static void encode_sequence(struct xdr_stream *xdr,
+ 
+ #ifdef CONFIG_NFS_V4_1
+ static void
++encode_getdevicelist(struct xdr_stream *xdr,
++		     const struct nfs4_getdevicelist_args *args,
++		     struct compound_hdr *hdr)
++{
++	__be32 *p;
++	nfs4_verifier dummy = {
++		.data = "dummmmmy",
++	};
++
++	p = reserve_space(xdr, 20);
++	*p++ = cpu_to_be32(OP_GETDEVICELIST);
++	*p++ = cpu_to_be32(args->layoutclass);
++	*p++ = cpu_to_be32(NFS4_PNFS_GETDEVLIST_MAXNUM);
++	xdr_encode_hyper(p, 0ULL);                          /* cookie */
++	encode_nfs4_verifier(xdr, &dummy);
++	hdr->nops++;
++	hdr->replen += decode_getdevicelist_maxsz;
++}
++
++static void
+ encode_getdeviceinfo(struct xdr_stream *xdr,
+ 		     const struct nfs4_getdeviceinfo_args *args,
+ 		     struct compound_hdr *hdr)
+@@ -2775,6 +2814,24 @@ static void nfs4_xdr_enc_reclaim_complete(struct rpc_rqst *req,
+ }
+ 
+ /*
++ * Encode GETDEVICELIST request
++ */
++static void nfs4_xdr_enc_getdevicelist(struct rpc_rqst *req,
++				       struct xdr_stream *xdr,
++				       struct nfs4_getdevicelist_args *args)
++{
++	struct compound_hdr hdr = {
++		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
++	};
++
++	encode_compound_hdr(xdr, req, &hdr);
++	encode_sequence(xdr, &args->seq_args, &hdr);
++	encode_putfh(xdr, args->fh, &hdr);
++	encode_getdevicelist(xdr, args, &hdr);
++	encode_nops(&hdr);
++}
++
++/*
+  * Encode GETDEVICEINFO request
+  */
+ static void nfs4_xdr_enc_getdeviceinfo(struct rpc_rqst *req,
+@@ -5268,6 +5325,53 @@ out_overflow:
+ }
+ 
+ #if defined(CONFIG_NFS_V4_1)
++/*
++ * TODO: Need to handle case when EOF != true;
++ */
++static int decode_getdevicelist(struct xdr_stream *xdr,
++				struct pnfs_devicelist *res)
++{
++	__be32 *p;
++	int status, i;
++	struct nfs_writeverf verftemp;
++
++	status = decode_op_hdr(xdr, OP_GETDEVICELIST);
++	if (status)
++		return status;
++
++	p = xdr_inline_decode(xdr, 8 + 8 + 4);
++	if (unlikely(!p))
++		goto out_overflow;
++
++	/* TODO: Skip cookie for now */
++	p += 2;
++
++	/* Read verifier */
++	p = xdr_decode_opaque_fixed(p, verftemp.verifier, 8);
++
++	res->num_devs = be32_to_cpup(p);
++
++	dprintk("%s: num_dev %d\n", __func__, res->num_devs);
++
++	if (res->num_devs > NFS4_PNFS_GETDEVLIST_MAXNUM) {
++		printk(KERN_ERR "%s too many result dev_num %u\n",
++				__func__, res->num_devs);
++		return -EIO;
++	}
++
++	p = xdr_inline_decode(xdr,
++			      res->num_devs * NFS4_DEVICEID4_SIZE + 4);
++	if (unlikely(!p))
++		goto out_overflow;
++	for (i = 0; i < res->num_devs; i++)
++		p = xdr_decode_opaque_fixed(p, res->dev_id[i].data,
++					    NFS4_DEVICEID4_SIZE);
++	res->eof = be32_to_cpup(p);
++	return 0;
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++}
+ 
+ static int decode_getdeviceinfo(struct xdr_stream *xdr,
+ 				struct pnfs_device *pdev)
+@@ -6542,6 +6646,32 @@ static int nfs4_xdr_dec_reclaim_complete(struct rpc_rqst *rqstp,
+ }
+ 
+ /*
++ * Decode GETDEVICELIST response
++ */
++static int nfs4_xdr_dec_getdevicelist(struct rpc_rqst *rqstp,
++				      struct xdr_stream *xdr,
++				      struct nfs4_getdevicelist_res *res)
++{
++	struct compound_hdr hdr;
++	int status;
++
++	dprintk("encoding getdevicelist!\n");
++
++	status = decode_compound_hdr(xdr, &hdr);
++	if (status != 0)
++		goto out;
++	status = decode_sequence(xdr, &res->seq_res, rqstp);
++	if (status != 0)
++		goto out;
++	status = decode_putfh(xdr);
++	if (status != 0)
++		goto out;
++	status = decode_getdevicelist(xdr, res->devlist);
++out:
++	return status;
++}
++
++/*
+  * Decode GETDEVINFO response
+  */
+ static int nfs4_xdr_dec_getdeviceinfo(struct rpc_rqst *rqstp,
+@@ -6908,6 +7038,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+ 	PROC(SECINFO_NO_NAME,	enc_secinfo_no_name,	dec_secinfo_no_name),
+ 	PROC(TEST_STATEID,	enc_test_stateid,	dec_test_stateid),
+ 	PROC(FREE_STATEID,	enc_free_stateid,	dec_free_stateid),
++	PROC(GETDEVICELIST,	enc_getdevicelist,	dec_getdevicelist),
+ #endif /* CONFIG_NFS_V4_1 */
+ };
+ 
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 078670d..ffea314 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -133,14 +133,26 @@ struct pnfs_device {
+ 	unsigned int  layout_type;
+ 	unsigned int  mincount;
+ 	struct page **pages;
++	void          *area;
+ 	unsigned int  pgbase;
+ 	unsigned int  pglen;
+ };
+ 
++#define NFS4_PNFS_GETDEVLIST_MAXNUM 16
++
++struct pnfs_devicelist {
++	unsigned int		eof;
++	unsigned int		num_devs;
++	struct nfs4_deviceid	dev_id[NFS4_PNFS_GETDEVLIST_MAXNUM];
 +};
 +
-+/* Verify the extent meets the layout requirements of the pnfs-block draft,
-+ * section 2.3.1.
-+ */
-+static int verify_extent(struct pnfs_block_extent *be,
-+			 struct layout_verification *lv)
-+{
-+	if (lv->mode == IOMODE_READ) {
-+		if (be->be_state == PNFS_BLOCK_READWRITE_DATA ||
-+		    be->be_state == PNFS_BLOCK_INVALID_DATA)
-+			return -EIO;
-+		if (be->be_f_offset != lv->start)
-+			return -EIO;
-+		lv->start += be->be_length;
-+		return 0;
-+	}
-+	/* lv->mode == IOMODE_RW */
-+	if (be->be_state == PNFS_BLOCK_READWRITE_DATA) {
-+		if (be->be_f_offset != lv->start)
-+			return -EIO;
-+		if (lv->cowread > lv->start)
-+			return -EIO;
-+		lv->start += be->be_length;
-+		lv->inval = lv->start;
-+		return 0;
-+	} else if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
-+		if (be->be_f_offset != lv->start)
-+			return -EIO;
-+		lv->start += be->be_length;
-+		return 0;
-+	} else if (be->be_state == PNFS_BLOCK_READ_DATA) {
-+		if (be->be_f_offset > lv->start)
-+			return -EIO;
-+		if (be->be_f_offset < lv->inval)
-+			return -EIO;
-+		if (be->be_f_offset < lv->cowread)
-+			return -EIO;
-+		/* It looks like you might want to min this with lv->start,
-+		 * but you really don't.
-+		 */
-+		lv->inval = lv->inval + be->be_length;
-+		lv->cowread = be->be_f_offset + be->be_length;
-+		return 0;
-+	} else
-+		return -EIO;
-+}
+ extern int pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *);
+ extern void pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *);
+ 
+ /* nfs4proc.c */
++extern int nfs4_proc_getdevicelist(struct nfs_server *server,
++				   const struct nfs_fh *fh,
++				   struct pnfs_devicelist *devlist);
+ extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
+ 				   struct pnfs_device *dev);
+ extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index a3c4bc8..76f99e8 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -566,6 +566,7 @@ enum {
+ 	NFSPROC4_CLNT_SECINFO_NO_NAME,
+ 	NFSPROC4_CLNT_TEST_STATEID,
+ 	NFSPROC4_CLNT_FREE_STATEID,
++	NFSPROC4_CLNT_GETDEVICELIST,
+ };
+ 
+ /* nfs41 types */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 5b11595..a07b682 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -235,6 +235,17 @@ struct nfs4_layoutget {
+ 	gfp_t gfp_flags;
+ };
+ 
++struct nfs4_getdevicelist_args {
++	const struct nfs_fh *fh;
++	u32 layoutclass;
++	struct nfs4_sequence_args seq_args;
++};
 +
-+/* XDR decode pnfs_block_layout4 structure */
- int
- nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
- 			   struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
- {
--	/* STUB */
--	return -EIO;
-+	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
-+	int i, status = -EIO;
-+	uint32_t count;
-+	struct pnfs_block_extent *be = NULL, *save;
-+	struct xdr_stream stream;
-+	struct xdr_buf buf;
-+	struct page *scratch;
-+	__be32 *p;
-+	struct layout_verification lv = {
-+		.mode = lgr->range.iomode,
-+		.start = lgr->range.offset >> SECTOR_SHIFT,
-+		.inval = lgr->range.offset >> SECTOR_SHIFT,
-+		.cowread = lgr->range.offset >> SECTOR_SHIFT,
-+	};
-+	LIST_HEAD(extents);
++struct nfs4_getdevicelist_res {
++	struct pnfs_devicelist *devlist;
++	struct nfs4_sequence_res seq_res;
++};
 +
-+	dprintk("---> %s\n", __func__);
-+
-+	scratch = alloc_page(gfp_flags);
-+	if (!scratch)
-+		return -ENOMEM;
-+
-+	xdr_init_decode_pages(&stream, &buf, lgr->layoutp->pages, lgr->layoutp->len);
-+	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
-+
-+	p = xdr_inline_decode(&stream, 4);
-+	if (unlikely(!p))
-+		goto out_err;
-+
-+	count = be32_to_cpup(p++);
-+
-+	dprintk("%s enter, number of extents %i\n", __func__, count);
-+	p = xdr_inline_decode(&stream, (28 + NFS4_DEVICEID4_SIZE) * count);
-+	if (unlikely(!p))
-+		goto out_err;
-+
-+	/* Decode individual extents, putting them in temporary
-+	 * staging area until whole layout is decoded to make error
-+	 * recovery easier.
-+	 */
-+	for (i = 0; i < count; i++) {
-+		be = bl_alloc_extent();
-+		if (!be) {
-+			status = -ENOMEM;
-+			goto out_err;
-+		}
-+		memcpy(&be->be_devid, p, NFS4_DEVICEID4_SIZE);
-+		p += XDR_QUADLEN(NFS4_DEVICEID4_SIZE);
-+		be->be_mdev = translate_devid(lo, &be->be_devid);
-+		if (!be->be_mdev)
-+			goto out_err;
-+
-+		/* The next three values are read in as bytes,
-+		 * but stored as 512-byte sector lengths
-+		 */
-+		if (decode_sector_number(&p, &be->be_f_offset) < 0)
-+			goto out_err;
-+		if (decode_sector_number(&p, &be->be_length) < 0)
-+			goto out_err;
-+		if (decode_sector_number(&p, &be->be_v_offset) < 0)
-+			goto out_err;
-+		be->be_state = be32_to_cpup(p++);
-+		if (be->be_state == PNFS_BLOCK_INVALID_DATA)
-+			be->be_inval = &bl->bl_inval;
-+		if (verify_extent(be, &lv)) {
-+			dprintk("%s verify failed\n", __func__);
-+			goto out_err;
-+		}
-+		list_add_tail(&be->be_node, &extents);
-+	}
-+	if (lgr->range.offset + lgr->range.length !=
-+			lv.start << SECTOR_SHIFT) {
-+		dprintk("%s Final length mismatch\n", __func__);
-+		be = NULL;
-+		goto out_err;
-+	}
-+	if (lv.start < lv.cowread) {
-+		dprintk("%s Final uncovered COW extent\n", __func__);
-+		be = NULL;
-+		goto out_err;
-+	}
-+	/* Extents decoded properly, now try to merge them in to
-+	 * existing layout extents.
-+	 */
-+	spin_lock(&bl->bl_ext_lock);
-+	list_for_each_entry_safe(be, save, &extents, be_node) {
-+		list_del(&be->be_node);
-+		status = bl_add_merge_extent(bl, be);
-+		if (status) {
-+			spin_unlock(&bl->bl_ext_lock);
-+			/* This is a fairly catastrophic error, as the
-+			 * entire layout extent lists are now corrupted.
-+			 * We should have some way to distinguish this.
-+			 */
-+			be = NULL;
-+			goto out_err;
-+		}
-+	}
-+	spin_unlock(&bl->bl_ext_lock);
-+	status = 0;
-+ out:
-+	__free_page(scratch);
-+	dprintk("%s returns %i\n", __func__, status);
-+	return status;
-+
-+ out_err:
-+	bl_put_extent(be);
-+	while (!list_empty(&extents)) {
-+		be = list_first_entry(&extents, struct pnfs_block_extent,
-+				      be_node);
-+		list_del(&be->be_node);
-+		bl_put_extent(be);
-+	}
-+	goto out;
- }
+ struct nfs4_getdeviceinfo_args {
+ 	struct pnfs_device *pdev;
+ 	struct nfs4_sequence_args seq_args;
 -- 
 1.7.4.1
 
