@@ -1,130 +1,387 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:43180 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752603Ab1G1S1V (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 14:27:21 -0400
-Message-ID: <4E31A9F3.9090205@panasas.com>
-Date: Thu, 28 Jul 2011 11:26:59 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Jim Rees <rees@umich.edu>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
-        peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH v4 09/27] pnfs: cleanup_layoutcommit
-References: <1311874276-1386-1-git-send-email-rees@umich.edu> <1311874276-1386-10-git-send-email-rees@umich.edu>
-In-Reply-To: <1311874276-1386-10-git-send-email-rees@umich.edu>
-Content-Type: text/plain; charset="UTF-8"
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:42220 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755772Ab1G1Rbh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:31:37 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v4 10/27] pnfsblock: add blocklayout Kconfig option, Makefile, and stubs
+Date: Thu, 28 Jul 2011 13:30:59 -0400
+Message-Id: <1311874276-1386-11-git-send-email-rees@umich.edu>
+In-Reply-To: <1311874276-1386-1-git-send-email-rees@umich.edu>
+References: <1311874276-1386-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 07/28/2011 10:30 AM, Jim Rees wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> This gives layout driver a chance to cleanup structures they put in at
-> encode_layoutcommit.
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> [fixup layout header pointer for layoutcommit]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
-> ---
->  fs/nfs/nfs4proc.c       |    1 +
->  fs/nfs/nfs4xdr.c        |    1 +
->  fs/nfs/pnfs.c           |   10 ++++++++++
->  fs/nfs/pnfs.h           |    5 +++++
->  include/linux/nfs_xdr.h |    1 +
->  5 files changed, 18 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index e86de79..6cb84b4 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -5963,6 +5963,7 @@ static void nfs4_layoutcommit_release(void *calldata)
->  	struct nfs4_layoutcommit_data *data = calldata;
->  	struct pnfs_layout_segment *lseg, *tmp;
->  
-> +	pnfs_cleanup_layoutcommit(data->args.inode, data);
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-If inode is part of @data, which is also passed as argument then we can simplify
-the API by just passing @data
+Define a configuration variable to enable/disable compilation of the
+block driver code.
 
->  	/* Matched by references in pnfs_set_layoutcommit */
->  	list_for_each_entry_safe(lseg, tmp, &data->lseg_list, pls_lc_list) {
->  		list_del_init(&lseg->pls_lc_list);
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 0261669..1dce12f 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -5599,6 +5599,7 @@ static int decode_layoutcommit(struct xdr_stream *xdr,
->  	int status;
->  
->  	status = decode_op_hdr(xdr, OP_LAYOUTCOMMIT);
-> +	res->status = status;
->  	if (status)
->  		return status;
->  
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 3a47f7c..c1cc216 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -1411,6 +1411,16 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
->  }
->  EXPORT_SYMBOL_GPL(pnfs_set_layoutcommit);
->  
-> +void pnfs_cleanup_layoutcommit(struct inode *inode,
-> +			       struct nfs4_layoutcommit_data *data)
-> +{
-> +	struct nfs_server *nfss = NFS_SERVER(inode);
-> +
-> +	if (nfss->pnfs_curr_ld->cleanup_layoutcommit)
-> +		nfss->pnfs_curr_ld->cleanup_layoutcommit(NFS_I(inode)->layout,
-> +							 data);
+Add the minimal structure for a pnfs block layout driver, and empty
+list-heads that will hold the extent data
 
-Here too since data has inode then the LD can do the:
-	NFS_I(data->args.inode)->layout
+[pnfsblock: make NFS_V4_1 select PNFS_BLOCK]
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfs-block: fix CONFIG_PNFS_BLOCK dependencies]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+[pnfsblock: SQUASHME: adjust to API change]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfs: move pnfs_layout_type inline in nfs_inode]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[blocklayout: encode_layoutcommit implementation]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+[pnfsblock: layout alloc and free]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfs: move pnfs_layout_type inline in nfs_inode]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+[pnfsblock: define module alias]
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/Kconfig                   |    8 ++-
+ fs/nfs/Makefile                  |    1 +
+ fs/nfs/blocklayout/Makefile      |    5 +
+ fs/nfs/blocklayout/blocklayout.c |  175 ++++++++++++++++++++++++++++++++++++++
+ fs/nfs/blocklayout/blocklayout.h |   91 ++++++++++++++++++++
+ 5 files changed, 279 insertions(+), 1 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/Makefile
+ create mode 100644 fs/nfs/blocklayout/blocklayout.c
+ create mode 100644 fs/nfs/blocklayout/blocklayout.h
 
-de-reference, and only pass @data as argument
-
-Boaz
-
-> +}
-> +
->  /*
->   * For the LAYOUT4_NFSV4_1_FILES layout type, NFS_DATA_SYNC WRITEs and
->   * NFS_UNSTABLE WRITEs with a COMMIT to data servers must store enough
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index bddd8b9..f271425 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -113,6 +113,9 @@ struct pnfs_layoutdriver_type {
->  				     struct xdr_stream *xdr,
->  				     const struct nfs4_layoutreturn_args *args);
->  
-> +	void (*cleanup_layoutcommit) (struct pnfs_layout_hdr *layoutid,
-> +				      struct nfs4_layoutcommit_data *data);
-> +
->  	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
->  				     struct xdr_stream *xdr,
->  				     const struct nfs4_layoutcommit_args *args);
-> @@ -196,6 +199,8 @@ void pnfs_roc_release(struct inode *ino);
->  void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
->  bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
->  void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
-> +void pnfs_cleanup_layoutcommit(struct inode *inode,
-> +			       struct nfs4_layoutcommit_data *data);
->  int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
->  int _pnfs_return_layout(struct inode *);
->  int pnfs_ld_write_done(struct nfs_write_data *);
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 94f27e5..569ea5b 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -269,6 +269,7 @@ struct nfs4_layoutcommit_res {
->  	struct nfs_fattr *fattr;
->  	const struct nfs_server *server;
->  	struct nfs4_sequence_res seq_res;
-> +	int status;
->  };
->  
->  struct nfs4_layoutcommit_data {
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 2cde5d9..be02077 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -79,15 +79,21 @@ config NFS_V4_1
+ 	depends on NFS_FS && NFS_V4 && EXPERIMENTAL
+ 	select SUNRPC_BACKCHANNEL
+ 	select PNFS_FILE_LAYOUT
++	select PNFS_BLOCK
++	select MD
++	select BLK_DEV_DM
+ 	help
+ 	  This option enables support for minor version 1 of the NFSv4 protocol
+-	  (RFC 5661) in the kernel's NFS client.
++	  (RFC 5661 and RFC 5663) in the kernel's NFS client.
+ 
+ 	  If unsure, say N.
+ 
+ config PNFS_FILE_LAYOUT
+ 	tristate
+ 
++config PNFS_BLOCK
++	tristate
++
+ config PNFS_OBJLAYOUT
+ 	tristate "Provide support for the pNFS Objects Layout Driver for NFSv4.1 pNFS (EXPERIMENTAL)"
+ 	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 6a34f7d..b58613d 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -23,3 +23,4 @@ obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
+ nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
+ 
+ obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayout/
++obj-$(CONFIG_PNFS_BLOCK) += blocklayout/
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+new file mode 100644
+index 0000000..6bf49cd
+--- /dev/null
++++ b/fs/nfs/blocklayout/Makefile
+@@ -0,0 +1,5 @@
++#
++# Makefile for the pNFS block layout driver kernel module
++#
++obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
++blocklayoutdriver-objs := blocklayout.o
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+new file mode 100644
+index 0000000..55a2a95
+--- /dev/null
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -0,0 +1,175 @@
++/*
++ *  linux/fs/nfs/blocklayout/blocklayout.c
++ *
++ *  Module for the NFSv4.1 pNFS block layout driver.
++ *
++ *  Copyright (c) 2006 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@citi.umich.edu>
++ *  Fred Isaman <iisaman@umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
++ */
++#include <linux/module.h>
++#include <linux/init.h>
++
++#include "blocklayout.h"
++
++#define NFSDBG_FACILITY	NFSDBG_PNFS_LD
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("Andy Adamson <andros@citi.umich.edu>");
++MODULE_DESCRIPTION("The NFSv4.1 pNFS Block layout driver");
++
++static enum pnfs_try_status
++bl_read_pagelist(struct nfs_read_data *rdata)
++{
++	return PNFS_NOT_ATTEMPTED;
++}
++
++static enum pnfs_try_status
++bl_write_pagelist(struct nfs_write_data *wdata,
++		  int sync)
++{
++	return PNFS_NOT_ATTEMPTED;
++}
++
++/* STUB */
++static void
++release_extents(struct pnfs_block_layout *bl,
++		struct pnfs_layout_range *range)
++{
++	return;
++}
++
++/* STUB */
++static void
++release_inval_marks(struct pnfs_inval_markings *marks)
++{
++	return;
++}
++
++static void bl_free_layout_hdr(struct pnfs_layout_hdr *lo)
++{
++	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
++
++	dprintk("%s enter\n", __func__);
++	release_extents(bl, NULL);
++	release_inval_marks(&bl->bl_inval);
++	kfree(bl);
++}
++
++static struct pnfs_layout_hdr *bl_alloc_layout_hdr(struct inode *inode,
++						   gfp_t gfp_flags)
++{
++	struct pnfs_block_layout *bl;
++
++	dprintk("%s enter\n", __func__);
++	bl = kzalloc(sizeof(*bl), gfp_flags);
++	if (!bl)
++		return NULL;
++	spin_lock_init(&bl->bl_ext_lock);
++	INIT_LIST_HEAD(&bl->bl_extents[0]);
++	INIT_LIST_HEAD(&bl->bl_extents[1]);
++	INIT_LIST_HEAD(&bl->bl_commit);
++	INIT_LIST_HEAD(&bl->bl_committing);
++	bl->bl_count = 0;
++	bl->bl_blocksize = NFS_SERVER(inode)->pnfs_blksize >> SECTOR_SHIFT;
++	INIT_INVAL_MARKS(&bl->bl_inval, bl->bl_blocksize);
++	return &bl->bl_layout;
++}
++
++static void
++bl_free_lseg(struct pnfs_layout_segment *lseg)
++{
++}
++
++static struct pnfs_layout_segment *
++bl_alloc_lseg(struct pnfs_layout_hdr *lo,
++	      struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
++{
++	return NULL;
++}
++
++static void
++bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
++		       const struct nfs4_layoutcommit_args *arg)
++{
++}
++
++static void
++bl_cleanup_layoutcommit(struct pnfs_layout_hdr *lo,
++			struct nfs4_layoutcommit_data *lcdata)
++{
++}
++
++static int
++bl_set_layoutdriver(struct nfs_server *server, const struct nfs_fh *fh)
++{
++	dprintk("%s enter\n", __func__);
++	return 0;
++}
++
++static int
++bl_clear_layoutdriver(struct nfs_server *server)
++{
++	dprintk("%s enter\n", __func__);
++	return 0;
++}
++
++static struct pnfs_layoutdriver_type blocklayout_type = {
++	.id				= LAYOUT_BLOCK_VOLUME,
++	.name				= "LAYOUT_BLOCK_VOLUME",
++	.read_pagelist			= bl_read_pagelist,
++	.write_pagelist			= bl_write_pagelist,
++	.alloc_layout_hdr		= bl_alloc_layout_hdr,
++	.free_layout_hdr		= bl_free_layout_hdr,
++	.alloc_lseg			= bl_alloc_lseg,
++	.free_lseg			= bl_free_lseg,
++	.encode_layoutcommit		= bl_encode_layoutcommit,
++	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
++	.set_layoutdriver		= bl_set_layoutdriver,
++	.clear_layoutdriver		= bl_clear_layoutdriver,
++};
++
++static int __init nfs4blocklayout_init(void)
++{
++	int ret;
++
++	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
++
++	ret = pnfs_register_layoutdriver(&blocklayout_type);
++	return ret;
++}
++
++static void __exit nfs4blocklayout_exit(void)
++{
++	dprintk("%s: NFSv4 Block Layout Driver Unregistering...\n",
++	       __func__);
++
++	pnfs_unregister_layoutdriver(&blocklayout_type);
++}
++
++MODULE_ALIAS("nfs-layouttype4-3");
++
++module_init(nfs4blocklayout_init);
++module_exit(nfs4blocklayout_exit);
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+new file mode 100644
+index 0000000..0e6ae06
+--- /dev/null
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -0,0 +1,91 @@
++/*
++ *  linux/fs/nfs/blocklayout/blocklayout.h
++ *
++ *  Module for the NFSv4.1 pNFS block layout driver.
++ *
++ *  Copyright (c) 2006 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@citi.umich.edu>
++ *  Fred Isaman <iisaman@umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
++ */
++#ifndef FS_NFS_NFS4BLOCKLAYOUT_H
++#define FS_NFS_NFS4BLOCKLAYOUT_H
++
++#include <linux/device-mapper.h>
++#include <linux/nfs_fs.h>
++#include "../pnfs.h"
++
++enum exstate4 {
++	PNFS_BLOCK_READWRITE_DATA	= 0,
++	PNFS_BLOCK_READ_DATA		= 1,
++	PNFS_BLOCK_INVALID_DATA		= 2, /* mapped, but data is invalid */
++	PNFS_BLOCK_NONE_DATA		= 3  /* unmapped, it's a hole */
++};
++
++struct pnfs_inval_markings {
++	/* STUB */
++};
++
++/* sector_t fields are all in 512-byte sectors */
++struct pnfs_block_extent {
++	struct kref	be_refcnt;
++	struct list_head be_node;	/* link into lseg list */
++	struct nfs4_deviceid be_devid;  /* FIXME: could use device cache instead */
++	struct block_device *be_mdev;
++	sector_t	be_f_offset;	/* the starting offset in the file */
++	sector_t	be_length;	/* the size of the extent */
++	sector_t	be_v_offset;	/* the starting offset in the volume */
++	enum exstate4	be_state;	/* the state of this extent */
++	struct pnfs_inval_markings *be_inval; /* tracks INVAL->RW transition */
++};
++
++static inline void
++INIT_INVAL_MARKS(struct pnfs_inval_markings *marks, sector_t blocksize)
++{
++	/* STUB */
++}
++
++enum extentclass4 {
++	RW_EXTENT       = 0, /* READWRTE and INVAL */
++	RO_EXTENT       = 1, /* READ and NONE */
++	EXTENT_LISTS    = 2,
++};
++
++struct pnfs_block_layout {
++	struct pnfs_layout_hdr bl_layout;
++	struct pnfs_inval_markings bl_inval; /* tracks INVAL->RW transition */
++	spinlock_t		bl_ext_lock;   /* Protects list manipulation */
++	struct list_head	bl_extents[EXTENT_LISTS]; /* R and RW extents */
++	struct list_head	bl_commit;	/* Needs layout commit */
++	struct list_head	bl_committing;	/* Layout committing */
++	unsigned int		bl_count;	/* entries in bl_commit */
++	sector_t		bl_blocksize;  /* Server blocksize in sectors */
++};
++
++static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
++{
++	return container_of(lo, struct pnfs_block_layout, bl_layout);
++}
++
++#endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
+-- 
+1.7.4.1
 
