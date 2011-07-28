@@ -1,84 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:58924 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754092Ab1GOR4X (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2011 13:56:23 -0400
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH (RESEND) 00/12] Support binding nfs/rpc to local IP address.
-Date: Fri, 15 Jul 2011 10:55:56 -0700
-Message-Id: <1310752568-21280-1-git-send-email-greearb@candelatech.com>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:36698 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755880Ab1G1Rbe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:31:34 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v4 09/27] pnfs: cleanup_layoutcommit
+Date: Thu, 28 Jul 2011 13:30:58 -0400
+Message-Id: <1311874276-1386-10-git-send-email-rees@umich.edu>
+In-Reply-To: <1311874276-1386-1-git-send-email-rees@umich.edu>
+References: <1311874276-1386-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
+From: Andy Adamson <andros@netapp.com>
 
+This gives layout driver a chance to cleanup structures they put in at
+encode_layoutcommit.
 
-This patch series allows binding the nfs and rpc logic to a specific local
-IP address.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[fixup layout header pointer for layoutcommit]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/nfs4proc.c       |    1 +
+ fs/nfs/nfs4xdr.c        |    1 +
+ fs/nfs/pnfs.c           |   10 ++++++++++
+ fs/nfs/pnfs.h           |    5 +++++
+ include/linux/nfs_xdr.h |    1 +
+ 5 files changed, 18 insertions(+), 0 deletions(-)
 
-Features/Benefits:
-
-*  Allow multiple unique mounts to the same server using unique
-   source IP addresses on client system.
-
-   Routing rules can then be created based on the source IP address for
-   advanced routing of the NFS traffic.
-
-   This could allow someone to use two 1G interfaces to access a
-   server with 10G connectivity and allow aggregate 2Gbps transfer,
-   for instance.
-
-   This is also useful for load testing NFS servers as well as the
-   client-side NFS logic (note the bugs & fixed found while testing
-   this code!)
-
-*  Allow using a specific IP address on multi-homed system.  This could
-   increase security in some cases and in general gives the user more
-   control over how the services are configured.
-
-This code has been tested under load on 3.0 and a similar version has
-been tested under load on 2.6.38 and previous kernels.
-
-Full implementation of this feature requires patches to mount.nfs,
-which have been agreed to be accepted if the kernel patches are accepted.
-
-Ben Greear (12):
-  sunrpc:  Don't attempt to bind to AF_UNSPEC address.
-  nfs:  Two AF_UNSPEC addresses should always match each other.
-  nfs:  Add srcaddr member to nfs_client.
-  nfs:  Use request destination addr as callback source addr.
-  nfs:  Pay attention to srcaddr in v4.1 callback logic.
-  nfs:  Use srcaddr in nfs_match_client.
-  nfs:  Add srcaddr to /proc/fs/nfsfs/servers
-  nfs:  Pass srcaddr into mount request.
-  nfs:  Propagate src-addr in client code.
-  nfs: Bind to srcaddr in rpcb_create.
-  nfs: Support srcaddr= to bind to specific IP address.
-  lockd: Support binding nlm client to specific address.
-
- fs/lockd/clntlock.c         |    3 +-
- fs/lockd/host.c             |   17 +++++++++-
- fs/nfs/callback.h           |    3 ++
- fs/nfs/callback_proc.c      |    3 +-
- fs/nfs/callback_xdr.c       |    3 ++
- fs/nfs/client.c             |   73 ++++++++++++++++++++++++++++++++++++++++--
- fs/nfs/internal.h           |   10 +++++-
- fs/nfs/mount_clnt.c         |    1 +
- fs/nfs/super.c              |   33 +++++++++++++++++++-
- include/linux/lockd/bind.h  |    1 +
- include/linux/lockd/lockd.h |    1 +
- include/linux/nfs_fs_sb.h   |    4 ++
- include/linux/sunrpc/clnt.h |    2 +
- include/linux/sunrpc/svc.h  |    5 +++
- net/sunrpc/rpcb_clnt.c      |   28 +++++++++++++++-
- net/sunrpc/sunrpc.h         |   45 ++++++++++++++++++++++++++
- net/sunrpc/xprtsock.c       |   47 +--------------------------
- 17 files changed, 223 insertions(+), 56 deletions(-)
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index e86de79..6cb84b4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5963,6 +5963,7 @@ static void nfs4_layoutcommit_release(void *calldata)
+ 	struct nfs4_layoutcommit_data *data = calldata;
+ 	struct pnfs_layout_segment *lseg, *tmp;
+ 
++	pnfs_cleanup_layoutcommit(data->args.inode, data);
+ 	/* Matched by references in pnfs_set_layoutcommit */
+ 	list_for_each_entry_safe(lseg, tmp, &data->lseg_list, pls_lc_list) {
+ 		list_del_init(&lseg->pls_lc_list);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 0261669..1dce12f 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -5599,6 +5599,7 @@ static int decode_layoutcommit(struct xdr_stream *xdr,
+ 	int status;
+ 
+ 	status = decode_op_hdr(xdr, OP_LAYOUTCOMMIT);
++	res->status = status;
+ 	if (status)
+ 		return status;
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 3a47f7c..c1cc216 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1411,6 +1411,16 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ }
+ EXPORT_SYMBOL_GPL(pnfs_set_layoutcommit);
+ 
++void pnfs_cleanup_layoutcommit(struct inode *inode,
++			       struct nfs4_layoutcommit_data *data)
++{
++	struct nfs_server *nfss = NFS_SERVER(inode);
++
++	if (nfss->pnfs_curr_ld->cleanup_layoutcommit)
++		nfss->pnfs_curr_ld->cleanup_layoutcommit(NFS_I(inode)->layout,
++							 data);
++}
++
+ /*
+  * For the LAYOUT4_NFSV4_1_FILES layout type, NFS_DATA_SYNC WRITEs and
+  * NFS_UNSTABLE WRITEs with a COMMIT to data servers must store enough
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index bddd8b9..f271425 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -113,6 +113,9 @@ struct pnfs_layoutdriver_type {
+ 				     struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutreturn_args *args);
+ 
++	void (*cleanup_layoutcommit) (struct pnfs_layout_hdr *layoutid,
++				      struct nfs4_layoutcommit_data *data);
++
+ 	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
+ 				     struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutcommit_args *args);
+@@ -196,6 +199,8 @@ void pnfs_roc_release(struct inode *ino);
+ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+ bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
++void pnfs_cleanup_layoutcommit(struct inode *inode,
++			       struct nfs4_layoutcommit_data *data);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+ int _pnfs_return_layout(struct inode *);
+ int pnfs_ld_write_done(struct nfs_write_data *);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 94f27e5..569ea5b 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -269,6 +269,7 @@ struct nfs4_layoutcommit_res {
+ 	struct nfs_fattr *fattr;
+ 	const struct nfs_server *server;
+ 	struct nfs4_sequence_res seq_res;
++	int status;
+ };
+ 
+ struct nfs4_layoutcommit_data {
 -- 
-1.7.3.4
+1.7.4.1
 
