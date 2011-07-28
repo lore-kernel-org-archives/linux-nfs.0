@@ -1,76 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f181.google.com ([209.85.216.181]:38914 "EHLO
-	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932297Ab1GVVo0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jul 2011 17:44:26 -0400
-In-Reply-To: <1311368872.4027.76.camel@dagon.hellion.org.uk>
-References: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
- <1311340653-19336-10-git-send-email-ian.campbell@citrix.com>
- <CAHXqBFLQFKqK=ORpDQx6s2ud8mWkx=YC_AT60GVS+4XK0H61pw@mail.gmail.com> <1311368872.4027.76.camel@dagon.hellion.org.uk>
-From: =?ISO-8859-2?Q?Micha=B3_Miros=B3aw?= <mirqus@gmail.com>
-Date: Fri, 22 Jul 2011 23:44:05 +0200
-Message-ID: <CAHXqBF+TJrBvEo+fd4tfXxDucEx5QaCgfBWPQ2B5UPjYQUAUgg@mail.gmail.com>
-Subject: Re: [PATCH 10/13] net: add paged frag destructor to skb_fill_page_desc()
-To: Ian Campbell <Ian.Campbell@eu.citrix.com>
-Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        "James E.J. Bottomley" <JBottomley@parallels.com>,
-        Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
-        "Pekka Savola (ipv6)" <pekkas@netcore.fi>,
-        James Morris <jmorris@namei.org>,
-        Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
-        Patrick McHardy <kaber@trash.net>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-s390@vger.kernel.org" <linux-s390@vger.kernel.org>,
-        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
-        "devel@open-fcoe.org" <devel@open-fcoe.org>
-Content-Type: text/plain; charset=ISO-8859-2
+Received: from natasha.panasas.com ([67.152.220.90]:43180 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752603Ab1G1S1V (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 14:27:21 -0400
+Message-ID: <4E31A9F3.9090205@panasas.com>
+Date: Thu, 28 Jul 2011 11:26:59 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Jim Rees <rees@umich.edu>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
+        peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH v4 09/27] pnfs: cleanup_layoutcommit
+References: <1311874276-1386-1-git-send-email-rees@umich.edu> <1311874276-1386-10-git-send-email-rees@umich.edu>
+In-Reply-To: <1311874276-1386-10-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-W dniu 22 lipca 2011 23:07 u¿ytkownik Ian Campbell
-<Ian.Campbell@eu.citrix.com> napisa³:
-> On Fri, 2011-07-22 at 20:58 +0100, Micha³ Miros³aw wrote:
->> 2011/7/22 Ian Campbell <ian.campbell@citrix.com>:
->> > diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
->> > index 9818fe2..faee8d3 100644
->> > --- a/include/linux/skbuff.h
->> > +++ b/include/linux/skbuff.h
->> > @@ -1134,12 +1134,14 @@ static inline int skb_pagelen(const struct sk_buff *skb)
->> >  * Does not take any additional reference on the fragment.
->> >  */
->> >  static inline void __skb_fill_page_desc(struct sk_buff *skb, int i,
->> > -                                       struct page *page, int off, int size)
->> > +                                       struct page *page,
->> > +                                       struct skb_frag_destructor *destroy,
->> > +                                       int off, int size)
->> >  {
->> >        skb_frag_t *frag = &skb_shinfo(skb)->frags[i];
->> >
->> >        frag->page.p              = page;
->> > -       frag->page.destructor     = NULL;
->> > +       frag->page.destructor     = destroy;
->> >        frag->page_offset         = off;
->> >        frag->size                = size;
->> >  }
->>
->> You could just rename this function to e.g.
->> __skb_fill_fragile_page_desc() (or whatever name) add an inline
->> wrapper calling it with destroy == NULL. This will avoid touching all
->> those drivers which won't ever need this functionality.
->
-> I could call this variant __skb_frag_init (which I think better fits
-> into the pattern of the new functions) and leave the existing
-> __skb_fill_page_desc as a compat wrapper if that's preferred but I was
-> trying to avoid duplicating up constructors just for different sets of
-> defaults.
+On 07/28/2011 10:30 AM, Jim Rees wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> This gives layout driver a chance to cleanup structures they put in at
+> encode_layoutcommit.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> [fixup layout header pointer for layoutcommit]
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+> ---
+>  fs/nfs/nfs4proc.c       |    1 +
+>  fs/nfs/nfs4xdr.c        |    1 +
+>  fs/nfs/pnfs.c           |   10 ++++++++++
+>  fs/nfs/pnfs.h           |    5 +++++
+>  include/linux/nfs_xdr.h |    1 +
+>  5 files changed, 18 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index e86de79..6cb84b4 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -5963,6 +5963,7 @@ static void nfs4_layoutcommit_release(void *calldata)
+>  	struct nfs4_layoutcommit_data *data = calldata;
+>  	struct pnfs_layout_segment *lseg, *tmp;
+>  
+> +	pnfs_cleanup_layoutcommit(data->args.inode, data);
 
-It's just Huffman coding: since most users need destroy = NULL, it's
-good to have a wrapper for this case as it will then take less time to
-write and understand the code (you won't need to think what is this
-NULL for in all those places).
+If inode is part of @data, which is also passed as argument then we can simplify
+the API by just passing @data
 
-Best Regards,
-Micha³ Miros³aw
+>  	/* Matched by references in pnfs_set_layoutcommit */
+>  	list_for_each_entry_safe(lseg, tmp, &data->lseg_list, pls_lc_list) {
+>  		list_del_init(&lseg->pls_lc_list);
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 0261669..1dce12f 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -5599,6 +5599,7 @@ static int decode_layoutcommit(struct xdr_stream *xdr,
+>  	int status;
+>  
+>  	status = decode_op_hdr(xdr, OP_LAYOUTCOMMIT);
+> +	res->status = status;
+>  	if (status)
+>  		return status;
+>  
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 3a47f7c..c1cc216 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -1411,6 +1411,16 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+>  }
+>  EXPORT_SYMBOL_GPL(pnfs_set_layoutcommit);
+>  
+> +void pnfs_cleanup_layoutcommit(struct inode *inode,
+> +			       struct nfs4_layoutcommit_data *data)
+> +{
+> +	struct nfs_server *nfss = NFS_SERVER(inode);
+> +
+> +	if (nfss->pnfs_curr_ld->cleanup_layoutcommit)
+> +		nfss->pnfs_curr_ld->cleanup_layoutcommit(NFS_I(inode)->layout,
+> +							 data);
+
+Here too since data has inode then the LD can do the:
+	NFS_I(data->args.inode)->layout
+
+de-reference, and only pass @data as argument
+
+Boaz
+
+> +}
+> +
+>  /*
+>   * For the LAYOUT4_NFSV4_1_FILES layout type, NFS_DATA_SYNC WRITEs and
+>   * NFS_UNSTABLE WRITEs with a COMMIT to data servers must store enough
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index bddd8b9..f271425 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -113,6 +113,9 @@ struct pnfs_layoutdriver_type {
+>  				     struct xdr_stream *xdr,
+>  				     const struct nfs4_layoutreturn_args *args);
+>  
+> +	void (*cleanup_layoutcommit) (struct pnfs_layout_hdr *layoutid,
+> +				      struct nfs4_layoutcommit_data *data);
+> +
+>  	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
+>  				     struct xdr_stream *xdr,
+>  				     const struct nfs4_layoutcommit_args *args);
+> @@ -196,6 +199,8 @@ void pnfs_roc_release(struct inode *ino);
+>  void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+>  bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+>  void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
+> +void pnfs_cleanup_layoutcommit(struct inode *inode,
+> +			       struct nfs4_layoutcommit_data *data);
+>  int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+>  int _pnfs_return_layout(struct inode *);
+>  int pnfs_ld_write_done(struct nfs_write_data *);
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 94f27e5..569ea5b 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -269,6 +269,7 @@ struct nfs4_layoutcommit_res {
+>  	struct nfs_fattr *fattr;
+>  	const struct nfs_server *server;
+>  	struct nfs4_sequence_res seq_res;
+> +	int status;
+>  };
+>  
+>  struct nfs4_layoutcommit_data {
+
