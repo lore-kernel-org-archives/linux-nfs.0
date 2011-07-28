@@ -1,77 +1,174 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30767 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751304Ab1GUT0I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Jul 2011 15:26:08 -0400
-Message-ID: <4E287D48.3020605@RedHat.com>
-Date: Thu, 21 Jul 2011 15:26:00 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: NeilBrown <neilb@suse.de>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Subject: [PATCH] Statd should always 'chdir' to its state directory.
-References: <20110721104032.38e289aa@notabene.brown>
-In-Reply-To: <20110721104032.38e289aa@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:42251 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755979Ab1G1Rbq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:31:46 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v4 14/27] pnfsblock: remove device operations
+Date: Thu, 28 Jul 2011 13:31:03 -0400
+Message-Id: <1311874276-1386-15-git-send-email-rees@umich.edu>
+In-Reply-To: <1311874276-1386-1-git-send-email-rees@umich.edu>
+References: <1311874276-1386-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Signed-off-by: Jim Rees <rees@umich.edu>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+[upcall bugfixes]
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/blocklayout/Makefile        |    2 +-
+ fs/nfs/blocklayout/blocklayout.h   |    3 +
+ fs/nfs/blocklayout/blocklayoutdm.c |  111 ++++++++++++++++++++++++++++++++++++
+ 3 files changed, 115 insertions(+), 1 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
 
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+index 5bf3409..d581550 100644
+--- a/fs/nfs/blocklayout/Makefile
++++ b/fs/nfs/blocklayout/Makefile
+@@ -2,4 +2,4 @@
+ # Makefile for the pNFS block layout driver kernel module
+ #
+ obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
+-blocklayoutdriver-objs := blocklayout.o extents.o blocklayoutdev.o
++blocklayoutdriver-objs := blocklayout.o extents.o blocklayoutdev.o blocklayoutdm.o
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 3dcc971..9b88918 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -128,5 +128,8 @@ struct pnfs_block_dev *nfs4_blk_decode_device(struct nfs_server *server,
+ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+ 				struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
+ 
++/* blocklayoutdm.c */
++void free_block_dev(struct pnfs_block_dev *bdev);
++
+ void bl_put_extent(struct pnfs_block_extent *be);
+ #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
+diff --git a/fs/nfs/blocklayout/blocklayoutdm.c b/fs/nfs/blocklayout/blocklayoutdm.c
+new file mode 100644
+index 0000000..eab95f3
+--- /dev/null
++++ b/fs/nfs/blocklayout/blocklayoutdm.c
+@@ -0,0 +1,111 @@
++/*
++ *  linux/fs/nfs/blocklayout/blocklayoutdm.c
++ *
++ *  Module for the NFSv4.1 pNFS block layout driver.
++ *
++ *  Copyright (c) 2007 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Fred Isaman <iisaman@umich.edu>
++ *  Andy Adamson <andros@citi.umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
++ */
++
++#include <linux/genhd.h> /* gendisk - used in a dprintk*/
++#include <linux/sched.h>
++#include <linux/hash.h>
++
++#include "blocklayout.h"
++
++#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
++
++static void dev_remove(dev_t dev)
++{
++	struct rpc_pipe_msg msg;
++	struct bl_dev_msg bl_umount_request;
++	struct bl_msg_hdr bl_msg = {
++		.type = BL_DEVICE_UMOUNT,
++		.totallen = sizeof(bl_umount_request),
++	};
++	uint8_t *dataptr;
++	DECLARE_WAITQUEUE(wq, current);
++
++	dprintk("Entering %s\n", __func__);
++
++	memset(&msg, 0, sizeof(msg));
++	msg.data = kzalloc(1 + sizeof(bl_umount_request), GFP_NOFS);
++	if (!msg.data)
++		goto out;
++
++	memset(&bl_umount_request, 0, sizeof(bl_umount_request));
++	bl_umount_request.major = MAJOR(dev);
++	bl_umount_request.minor = MINOR(dev);
++
++	memcpy(msg.data, &bl_msg, sizeof(bl_msg));
++	dataptr = (uint8_t *) msg.data;
++	memcpy(&dataptr[sizeof(bl_msg)], &bl_umount_request, sizeof(bl_umount_request));
++	msg.len = sizeof(bl_msg) + bl_msg.totallen;
++
++	add_wait_queue(&bl_wq, &wq);
++	if (rpc_queue_upcall(bl_device_pipe->d_inode, &msg) < 0) {
++		remove_wait_queue(&bl_wq, &wq);
++		goto out;
++	}
++
++	set_current_state(TASK_UNINTERRUPTIBLE);
++	schedule();
++	__set_current_state(TASK_RUNNING);
++	remove_wait_queue(&bl_wq, &wq);
++
++out:
++	kfree(msg.data);
++}
++
++/*
++ * Release meta device
++ */
++static void nfs4_blk_metadev_release(struct pnfs_block_dev *bdev)
++{
++	int rv;
++
++	dprintk("%s Releasing\n", __func__);
++	rv = nfs4_blkdev_put(bdev->bm_mdev);
++	if (rv)
++		printk(KERN_ERR "%s nfs4_blkdev_put returns %d\n",
++				__func__, rv);
++
++	dev_remove(bdev->bm_mdev->bd_dev);
++}
++
++void free_block_dev(struct pnfs_block_dev *bdev)
++{
++	if (bdev) {
++		if (bdev->bm_mdev) {
++			dprintk("%s Removing DM device: %d:%d\n",
++				__func__,
++				MAJOR(bdev->bm_mdev->bd_dev),
++				MINOR(bdev->bm_mdev->bd_dev));
++			nfs4_blk_metadev_release(bdev);
++		}
++		kfree(bdev);
++	}
++}
+-- 
+1.7.4.1
 
-On 07/20/2011 08:40 PM, NeilBrown wrote:
-> 
-> Subject: [PATCH] Statd should always 'chdir' to its state directory.
-> 
-> As statd can be started by 'mount' which can sometimes be run by a
-> normal user, the current-working-directory could be anything.  In
-> partcular it could be in a mounted filesystem.  As 'statd' continues
-> running as a daemon it could keep prevent that filesystem from being
-> unmounted.
-> 
-> statd does currently 'chdir' to the state directory, but only if the
-> state directory is not owned by root.  This is wrong - it should check
-> for root after the chdir, not before.
-> 
-> So swap the two if statements around.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-Committed...
-
-steved.
-
-> 
-> --
-> looks like this regression slipped in around January 2010 with the big libnsm clean up.
-> -NB
-> 
-> 
-> diff --git a/support/nsm/file.c b/support/nsm/file.c
-> index 98b47bf..a12c753 100644
-> --- a/support/nsm/file.c
-> +++ b/support/nsm/file.c
-> @@ -395,18 +395,18 @@ nsm_drop_privileges(const int pidfd)
->  		return false;
->  	}
->  
-> -	if (st.st_uid == 0) {
-> -		xlog_warn("Running as root.  "
-> -			"chown %s to choose different user", nsm_base_dirname);
-> -		return true;
-> -	}
-> -
->  	if (chdir(nsm_base_dirname) == -1) {
->  		xlog(L_ERROR, "Failed to change working directory to %s: %m",
->  				nsm_base_dirname);
->  		return false;
->  	}
->  
-> +	if (st.st_uid == 0) {
-> +		xlog_warn("Running as root.  "
-> +			"chown %s to choose different user", nsm_base_dirname);
-> +		return true;
-> +	}
-> +
->  	/*
->  	 * If the pidfile happens to reside on NFS, dropping privileges
->  	 * will probably cause us to lose access, even though we are
