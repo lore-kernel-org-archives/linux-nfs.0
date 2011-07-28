@@ -1,77 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from vr160.rayconnect.de ([213.155.88.90]:50385 "EHLO
-	mail.schwartzkopff.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751123Ab1GUNpz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 09:45:55 -0400
-Received: from nb002.localnet (cl-1872.cgn-01.de.sixxs.net [IPv6:2001:4dd0:ff00:74f::2])
-	(Authenticated sender: misch)
-	by mail.schwartzkopff.org (Postfix) with ESMTPSA id 71738129164
-	for <linux-nfs@vger.kernel.org>; Thu, 21 Jul 2011 15:40:06 +0200 (CEST)
-From: Michael Schwartzkopff <misch@schwartzkopff.org>
-Reply-To: misch@schwartzkopff.org
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: NFSv4 grace time
-Date: Thu, 21 Jul 2011 15:40:05 +0200
-Content-Type: multipart/signed;
-  boundary="nextPart2937924.h2s9kaPMiY";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
-Message-Id: <201107211540.05673.misch@schwartzkopff.org>
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:42202 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755880Ab1G1Rb3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:31:29 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v4 07/27] NFS41: save layoutcommit cred in layout header init
+Date: Thu, 28 Jul 2011 13:30:56 -0400
+Message-Id: <1311874276-1386-8-git-send-email-rees@umich.edu>
+In-Reply-To: <1311874276-1386-1-git-send-email-rees@umich.edu>
+References: <1311874276-1386-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
---nextPart2937924.h2s9kaPMiY
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+From: Peng Tao <bergwolf@gmail.com>
 
-Hi,
+No need to save it at every pnfs_set_layoutcommit.
 
-setting up a linux NFS server cluster I experience a strange problem during=
- a=20
-failover. A client can access a file only after 60 to 90 seconds. On the li=
-ne I=20
-see a NFS4ERR_GRACE from the server to the client.
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/pnfs.c |   21 +++++++++++----------
+ 1 files changed, 11 insertions(+), 10 deletions(-)
 
-I already set the /proc/fs/nfsd/nfsv4leastime to 10.
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index e2c1eb4..3a47f7c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -201,6 +201,7 @@ static void
+ pnfs_free_layout_hdr(struct pnfs_layout_hdr *lo)
+ {
+ 	struct pnfs_layoutdriver_type *ld = NFS_SERVER(lo->plh_inode)->pnfs_curr_ld;
++	put_rpccred(lo->plh_lc_cred);
+ 	return ld->alloc_layout_hdr ? ld->free_layout_hdr(lo) : kfree(lo);
+ }
+ 
+@@ -828,7 +829,9 @@ out:
+ }
+ 
+ static struct pnfs_layout_hdr *
+-alloc_init_layout_hdr(struct inode *ino, gfp_t gfp_flags)
++alloc_init_layout_hdr(struct inode *ino,
++		      struct nfs_open_context *ctx,
++		      gfp_t gfp_flags)
+ {
+ 	struct pnfs_layout_hdr *lo;
+ 
+@@ -840,11 +843,14 @@ alloc_init_layout_hdr(struct inode *ino, gfp_t gfp_flags)
+ 	INIT_LIST_HEAD(&lo->plh_segs);
+ 	INIT_LIST_HEAD(&lo->plh_bulk_recall);
+ 	lo->plh_inode = ino;
++	lo->plh_lc_cred = get_rpccred(ctx->state->owner->so_cred);
+ 	return lo;
+ }
+ 
+ static struct pnfs_layout_hdr *
+-pnfs_find_alloc_layout(struct inode *ino, gfp_t gfp_flags)
++pnfs_find_alloc_layout(struct inode *ino,
++		       struct nfs_open_context *ctx,
++		       gfp_t gfp_flags)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+ 	struct pnfs_layout_hdr *new = NULL;
+@@ -859,7 +865,7 @@ pnfs_find_alloc_layout(struct inode *ino, gfp_t gfp_flags)
+ 			return nfsi->layout;
+ 	}
+ 	spin_unlock(&ino->i_lock);
+-	new = alloc_init_layout_hdr(ino, gfp_flags);
++	new = alloc_init_layout_hdr(ino, ctx, gfp_flags);
+ 	spin_lock(&ino->i_lock);
+ 
+ 	if (likely(nfsi->layout == NULL))	/* Won the race? */
+@@ -952,7 +958,7 @@ pnfs_update_layout(struct inode *ino,
+ 	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
+ 		return NULL;
+ 	spin_lock(&ino->i_lock);
+-	lo = pnfs_find_alloc_layout(ino, gfp_flags);
++	lo = pnfs_find_alloc_layout(ino, ctx, gfp_flags);
+ 	if (lo == NULL) {
+ 		dprintk("%s ERROR: can't get pnfs_layout_hdr\n", __func__);
+ 		goto out_unlock;
+@@ -1385,8 +1391,6 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+ 	if (!test_and_set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
+ 		mark_as_dirty = true;
+-		nfsi->layout->plh_lc_cred =
+-			get_rpccred(wdata->args.context->state->owner->so_cred);
+ 		dprintk("%s: Set layoutcommit for inode %lu ",
+ 			__func__, wdata->inode->i_ino);
+ 	}
+@@ -1420,7 +1424,6 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ {
+ 	struct nfs4_layoutcommit_data *data;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+-	struct rpc_cred *cred;
+ 	loff_t end_pos;
+ 	int status = 0;
+ 
+@@ -1448,16 +1451,14 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 	pnfs_list_write_lseg(inode, &data->lseg_list);
+ 
+ 	end_pos = nfsi->layout->plh_lwb;
+-	cred = nfsi->layout->plh_lc_cred;
+ 	nfsi->layout->plh_lwb = 0;
+-	nfsi->layout->plh_lc_cred = NULL;
+ 
+ 	memcpy(&data->args.stateid.data, nfsi->layout->plh_stateid.data,
+ 		sizeof(nfsi->layout->plh_stateid.data));
+ 	spin_unlock(&inode->i_lock);
+ 
+ 	data->args.inode = inode;
+-	data->cred = cred;
++	data->cred = get_rpccred(nfsi->layout->plh_lc_cred);
+ 	nfs_fattr_init(&data->fattr);
+ 	data->args.bitmask = NFS_SERVER(inode)->cache_consistency_bitmask;
+ 	data->res.fattr = &data->fattr;
+-- 
+1.7.4.1
 
-Any other idea?
-
-=46or the tests I have a simple setup:
-
-One host with a simple script that simulates failover:
-
-#!/bin/bash
-
-ip a d 1.2.3.4/24 dev eth0
-exportfs -u *:/srv/nfs/home
-exportfs -u *:/srv/nfs
-/etc/init.d/nfsserver stop
-#
-/etc/init.d/nfsserver start
-exportfs -o fsid=3D0,rw,crossmnt,no_root_squash *:/srv/nfs
-exportfs -o fsid=3D1000,rw,mountpoint,no_root_squash *:/srv/nfs/home
-ip a a 1.2.3.4/24 dev eth0
-
-=2D-=20
-Dr. Michael Schwartzkopff
-Guardinistr. 63
-81375 M=FCnchen
-
-Tel: (0163) 172 50 98
-=46ax: (089) 620 304 13
-
---nextPart2937924.h2s9kaPMiY
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.10 (GNU/Linux)
-
-iEYEABECAAYFAk4oLDUACgkQH8fVuZhm6xyGygCgj4YJxtMbeQs8HXr8lOmcjlTZ
-X38Anj0oBf3WW4ObKaYkP63CywMfPbcL
-=egXE
------END PGP SIGNATURE-----
-
---nextPart2937924.h2s9kaPMiY--
