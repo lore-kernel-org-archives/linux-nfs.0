@@ -1,118 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:36698 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755880Ab1G1Rbe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:31:34 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v4 09/27] pnfs: cleanup_layoutcommit
-Date: Thu, 28 Jul 2011 13:30:58 -0400
-Message-Id: <1311874276-1386-10-git-send-email-rees@umich.edu>
-In-Reply-To: <1311874276-1386-1-git-send-email-rees@umich.edu>
-References: <1311874276-1386-1-git-send-email-rees@umich.edu>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:12459 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752380Ab1G1C1l (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 22:27:41 -0400
+From: <tao.peng@emc.com>
+To: <Trond.Myklebust@netapp.com>, <rees@umich.edu>
+CC: <linux-nfs@vger.kernel.org>, <honey@citi.umich.edu>
+Date: Wed, 27 Jul 2011 22:27:21 -0400
+Subject: RE: [PATCH v3 23/25] pnfsblock: use pageio_ops api
+Message-ID: <F19688880B763E40B28B2B462677FBF805BF061890@MX09A.corp.emc.com>
+References: <1311792048-12551-1-git-send-email-rees@umich.edu>
+	 <1311792048-12551-24-git-send-email-rees@umich.edu>
+ <1311797712.25645.27.camel@lade.trondhjem.org>
+In-Reply-To: <1311797712.25645.27.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
-
-This gives layout driver a chance to cleanup structures they put in at
-encode_layoutcommit.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[fixup layout header pointer for layoutcommit]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfs/nfs4proc.c       |    1 +
- fs/nfs/nfs4xdr.c        |    1 +
- fs/nfs/pnfs.c           |   10 ++++++++++
- fs/nfs/pnfs.h           |    5 +++++
- include/linux/nfs_xdr.h |    1 +
- 5 files changed, 18 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index e86de79..6cb84b4 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5963,6 +5963,7 @@ static void nfs4_layoutcommit_release(void *calldata)
- 	struct nfs4_layoutcommit_data *data = calldata;
- 	struct pnfs_layout_segment *lseg, *tmp;
- 
-+	pnfs_cleanup_layoutcommit(data->args.inode, data);
- 	/* Matched by references in pnfs_set_layoutcommit */
- 	list_for_each_entry_safe(lseg, tmp, &data->lseg_list, pls_lc_list) {
- 		list_del_init(&lseg->pls_lc_list);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 0261669..1dce12f 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5599,6 +5599,7 @@ static int decode_layoutcommit(struct xdr_stream *xdr,
- 	int status;
- 
- 	status = decode_op_hdr(xdr, OP_LAYOUTCOMMIT);
-+	res->status = status;
- 	if (status)
- 		return status;
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 3a47f7c..c1cc216 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1411,6 +1411,16 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
- }
- EXPORT_SYMBOL_GPL(pnfs_set_layoutcommit);
- 
-+void pnfs_cleanup_layoutcommit(struct inode *inode,
-+			       struct nfs4_layoutcommit_data *data)
-+{
-+	struct nfs_server *nfss = NFS_SERVER(inode);
-+
-+	if (nfss->pnfs_curr_ld->cleanup_layoutcommit)
-+		nfss->pnfs_curr_ld->cleanup_layoutcommit(NFS_I(inode)->layout,
-+							 data);
-+}
-+
- /*
-  * For the LAYOUT4_NFSV4_1_FILES layout type, NFS_DATA_SYNC WRITEs and
-  * NFS_UNSTABLE WRITEs with a COMMIT to data servers must store enough
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index bddd8b9..f271425 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -113,6 +113,9 @@ struct pnfs_layoutdriver_type {
- 				     struct xdr_stream *xdr,
- 				     const struct nfs4_layoutreturn_args *args);
- 
-+	void (*cleanup_layoutcommit) (struct pnfs_layout_hdr *layoutid,
-+				      struct nfs4_layoutcommit_data *data);
-+
- 	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
- 				     struct xdr_stream *xdr,
- 				     const struct nfs4_layoutcommit_args *args);
-@@ -196,6 +199,8 @@ void pnfs_roc_release(struct inode *ino);
- void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
- bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
- void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
-+void pnfs_cleanup_layoutcommit(struct inode *inode,
-+			       struct nfs4_layoutcommit_data *data);
- int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
- int _pnfs_return_layout(struct inode *);
- int pnfs_ld_write_done(struct nfs_write_data *);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 94f27e5..569ea5b 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -269,6 +269,7 @@ struct nfs4_layoutcommit_res {
- 	struct nfs_fattr *fattr;
- 	const struct nfs_server *server;
- 	struct nfs4_sequence_res seq_res;
-+	int status;
- };
- 
- struct nfs4_layoutcommit_data {
--- 
-1.7.4.1
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10NCj4g
+T24gQmVoYWxmIE9mIFRyb25kIE15a2xlYnVzdA0KPiBTZW50OiBUaHVyc2RheSwgSnVseSAyOCwg
+MjAxMSA0OjE1IEFNDQo+IFRvOiBKaW0gUmVlcw0KPiBDYzogbGludXgtbmZzQHZnZXIua2VybmVs
+Lm9yZzsgcGV0ZXIgaG9uZXltYW4NCj4gU3ViamVjdDogUmU6IFtQQVRDSCB2MyAyMy8yNV0gcG5m
+c2Jsb2NrOiB1c2UgcGFnZWlvX29wcyBhcGkNCj4gDQo+IE9uIFdlZCwgMjAxMS0wNy0yNyBhdCAx
+NDo0MCAtMDQwMCwgSmltIFJlZXMgd3JvdGU6DQo+ID4gRnJvbTogQmVubnkgSGFsZXZ5IDxiaGFs
+ZXZ5QHBhbmFzYXMuY29tPg0KPiA+DQo+ID4gW3BuZnNibG9jazogdXNlIHBuZnNfZ2VuZXJpY19w
+Z19pbml0X3JlYWQvd3JpdGVdDQo+ID4gU2lnbmVkLW9mZi1ieTogUGVuZyBUYW8gPHBlbmdfdGFv
+QGVtYy5jb20+DQo+ID4gU2lnbmVkLW9mZi1ieTogQmVubnkgSGFsZXZ5IDxiaGFsZXZ5QHBhbmFz
+YXMuY29tPg0KPiA+IC0tLQ0KPiA+ICBmcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYyB8
+ICAgMTQgKysrKysrKysrKysrKysNCj4gPiAgMSBmaWxlcyBjaGFuZ2VkLCAxNCBpbnNlcnRpb25z
+KCspLCAwIGRlbGV0aW9ucygtKQ0KPiA+DQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9ibG9ja2xh
+eW91dC9ibG9ja2xheW91dC5jIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMNCj4g
+PiBpbmRleCAyMmRlMDVjLi41MDJkMzg0IDEwMDY0NA0KPiA+IC0tLSBhL2ZzL25mcy9ibG9ja2xh
+eW91dC9ibG9ja2xheW91dC5jDQo+ID4gKysrIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5
+b3V0LmMNCj4gPiBAQCAtNzYyLDYgKzc2MiwxOCBAQCBibF9jbGVhcl9sYXlvdXRkcml2ZXIoc3Ry
+dWN0IG5mc19zZXJ2ZXIgKnNlcnZlcikNCj4gPiAgCXJldHVybiAwOw0KPiA+ICB9DQo+ID4NCj4g
+PiArc3RhdGljIGNvbnN0IHN0cnVjdCBuZnNfcGFnZWlvX29wcyBibF9wZ19yZWFkX29wcyA9IHsN
+Cj4gPiArCS5wZ19pbml0ID0gcG5mc19nZW5lcmljX3BnX2luaXRfcmVhZCwNCj4gPiArCS5wZ190
+ZXN0ID0gcG5mc19nZW5lcmljX3BnX3Rlc3QsDQo+ID4gKwkucGdfZG9pbyA9IHBuZnNfZ2VuZXJp
+Y19wZ19yZWFkcGFnZXMsDQo+ID4gK307DQo+ID4gKw0KPiA+ICtzdGF0aWMgY29uc3Qgc3RydWN0
+IG5mc19wYWdlaW9fb3BzIGJsX3BnX3dyaXRlX29wcyA9IHsNCj4gPiArCS5wZ19pbml0ID0gcG5m
+c19nZW5lcmljX3BnX2luaXRfd3JpdGUsDQo+ID4gKwkucGdfdGVzdCA9IHBuZnNfZ2VuZXJpY19w
+Z190ZXN0LA0KPiA+ICsJLnBnX2RvaW8gPSBwbmZzX2dlbmVyaWNfcGdfd3JpdGVwYWdlcywNCj4g
+PiArfTsNCj4gPiArDQo+ID4gIHN0YXRpYyBzdHJ1Y3QgcG5mc19sYXlvdXRkcml2ZXJfdHlwZSBi
+bG9ja2xheW91dF90eXBlID0gew0KPiA+ICAJLmlkCQkJCT0gTEFZT1VUX0JMT0NLX1ZPTFVNRSwN
+Cj4gPiAgCS5uYW1lCQkJCT0gIkxBWU9VVF9CTE9DS19WT0xVTUUiLA0KPiA+IEBAIC03NzUsNiAr
+Nzg3LDggQEAgc3RhdGljIHN0cnVjdCBwbmZzX2xheW91dGRyaXZlcl90eXBlIGJsb2NrbGF5b3V0
+X3R5cGUgPSB7DQo+ID4gIAkuY2xlYW51cF9sYXlvdXRjb21taXQJCT0gYmxfY2xlYW51cF9sYXlv
+dXRjb21taXQsDQo+ID4gIAkuc2V0X2xheW91dGRyaXZlcgkJPSBibF9zZXRfbGF5b3V0ZHJpdmVy
+LA0KPiA+ICAJLmNsZWFyX2xheW91dGRyaXZlcgkJPSBibF9jbGVhcl9sYXlvdXRkcml2ZXIsDQo+
+ID4gKwkucGdfcmVhZF9vcHMJCQk9ICZibF9wZ19yZWFkX29wcywNCj4gPiArCS5wZ193cml0ZV9v
+cHMJCQk9ICZibF9wZ193cml0ZV9vcHMsDQo+ID4gIH07DQo+ID4NCj4gSG93IGRpZCB0aGlzIHdv
+cmsgcHJldmlvdXNseT8NCmJsb2NrIGxheW91dCB1c2VkIHRvIHVzZSAucGdfdGVzdCBpbnRlcmZh
+Y2UgaW4gcG5mc19sYXlvdXRkcml2ZXJfdHlwZSBidXQgaXQgZ290IHJlbW92ZWQgaW4gdGhlIDMu
+MCBtZXJnZSB3aW5kb3cuDQoNClRoYW5rcywNClRhbw0KDQo+IA0KPiAtLQ0KPiBUcm9uZCBNeWts
+ZWJ1c3QNCj4gTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQo+IA0KPiBOZXRBcHANCj4gVHJv
+bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCj4gd3d3Lm5ldGFwcC5jb20NCj4gDQo+IC0tDQo+IFRv
+IHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBs
+aW51eC1uZnMiIGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5r
+ZXJuZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5v
+cmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQoT77+977+97Lm7HO+/vSbvv71+77+9Ju+/vRjvv73v
+v70rLe+/ve+/vd22F++/ve+/vXfvv73vv73Lm++/ve+/ve+/vW3vv71i77+977+9Z37Ip++/vRfv
+v73vv73cqH3vv73vv73vv73GoHrvv70majordu+/ve+/ve+/vQfvv73vv73vv73vv716Wivvv73v
+v70rembvv73vv73vv71o77+977+977+9fu+/ve+/ve+/ve+/vWnvv73vv73vv71677+9Hu+/vXfv
+v73vv73vv70/77+977+977+977+9Ju+/vSnfohtm
