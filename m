@@ -1,48 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38335 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757559Ab1GAWrQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jul 2011 18:47:16 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p61MlG8h002509
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 1 Jul 2011 18:47:16 -0400
-Received: from localhost6.localdomain6 (vpn1-7-70.ams2.redhat.com [10.36.7.70])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p61MlEiB002660
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Fri, 1 Jul 2011 18:47:15 -0400
-Received: from localhost6.localdomain6 (alice [127.0.0.1])
-	by localhost6.localdomain6 (8.14.4/8.14.4) with ESMTP id p61MlCUo012424
-	for <linux-nfs@vger.kernel.org>; Sat, 2 Jul 2011 00:47:13 +0200
-From: Michal Schmidt <mschmidt@redhat.com>
-Subject: [PATCH] sunrpc: add MODULE_ALIAS to match the filesystem name
-To: linux-nfs@vger.kernel.org
-Date: Sat, 02 Jul 2011 00:47:12 +0200
-Message-ID: <20110701224712.12393.10369.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:42228 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755798Ab1G1Rbi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:31:38 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v4 11/27] pnfsblock: use pageio_ops api
+Date: Thu, 28 Jul 2011 13:31:00 -0400
+Message-Id: <1311874276-1386-12-git-send-email-rees@umich.edu>
+In-Reply-To: <1311874276-1386-1-git-send-email-rees@umich.edu>
+References: <1311874276-1386-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-sunrpc implements the rpc_pipefs filesystem type.
-Add the alias to have the module requested automatically by the kernel
-when the filesystem is mounted.
+From: Benny Halevy <bhalevy@panasas.com>
 
-Signed-off-by: Michal Schmidt <mschmidt@redhat.com>
+[pnfsblock: use pnfs_generic_pg_init_read/write]
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
+ fs/nfs/blocklayout/blocklayout.c |   14 ++++++++++++++
+ 1 files changed, 14 insertions(+), 0 deletions(-)
 
- net/sunrpc/rpc_pipe.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
-
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 72bc536..c1d1996 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -1084,3 +1084,6 @@ void unregister_rpc_pipefs(void)
- 	kmem_cache_destroy(rpc_inode_cachep);
- 	unregister_filesystem(&rpc_pipe_fs_type);
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 55a2a95..e341c62 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -136,6 +136,18 @@ bl_clear_layoutdriver(struct nfs_server *server)
+ 	return 0;
  }
+ 
++static const struct nfs_pageio_ops bl_pg_read_ops = {
++	.pg_init = pnfs_generic_pg_init_read,
++	.pg_test = pnfs_generic_pg_test,
++	.pg_doio = pnfs_generic_pg_readpages,
++};
 +
-+/* Make 'mount -t rpc_pipefs ...' autoload this module. */
-+MODULE_ALIAS("rpc_pipefs");
++static const struct nfs_pageio_ops bl_pg_write_ops = {
++	.pg_init = pnfs_generic_pg_init_write,
++	.pg_test = pnfs_generic_pg_test,
++	.pg_doio = pnfs_generic_pg_writepages,
++};
++
+ static struct pnfs_layoutdriver_type blocklayout_type = {
+ 	.id				= LAYOUT_BLOCK_VOLUME,
+ 	.name				= "LAYOUT_BLOCK_VOLUME",
+@@ -149,6 +161,8 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
+ 	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
+ 	.set_layoutdriver		= bl_set_layoutdriver,
+ 	.clear_layoutdriver		= bl_clear_layoutdriver,
++	.pg_read_ops			= &bl_pg_read_ops,
++	.pg_write_ops			= &bl_pg_write_ops,
+ };
+ 
+ static int __init nfs4blocklayout_init(void)
+-- 
+1.7.4.1
 
