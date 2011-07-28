@@ -1,45 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:34715 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755333Ab1G2MLf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 08:11:35 -0400
-Subject: Re: [PATCH] sunrpc: use better NUMA affinities
-From: Eric Dumazet <eric.dumazet@gmail.com>
-To: Greg Banks <gnb@fastmail.fm>
-Cc: Christoph Hellwig <hch@infradead.org>, NeilBrown <neilb@suse.de>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>
-In-Reply-To: <5933F48C-49D6-492D-AB7B-B76A3ADDB6C6@fastmail.fm>
-References: <20110729153207.17af3085@notabene.brown>
-	 <4E324DB4.7060600@fastmail.fm> <1311921035.7845.10.camel@edumazet-laptop>
-	 <4E3258E1.6020000@fastmail.fm> <20110729103634.GA12050@infradead.org>
-	 <5933F48C-49D6-492D-AB7B-B76A3ADDB6C6@fastmail.fm>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 29 Jul 2011 14:11:31 +0200
-Message-ID: <1311941491.2843.7.camel@edumazet-HP-Compaq-6005-Pro-SFF-PC>
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:42192 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755605Ab1G1Rb0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:31:26 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v4 06/27] pnfs: use lwb as layoutcommit length
+Date: Thu, 28 Jul 2011 13:30:55 -0400
+Message-Id: <1311874276-1386-7-git-send-email-rees@umich.edu>
+In-Reply-To: <1311874276-1386-1-git-send-email-rees@umich.edu>
+References: <1311874276-1386-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Le vendredi 29 juillet 2011 à 21:58 +1000, Greg Banks a écrit :
+From: Peng Tao <bergwolf@gmail.com>
 
-> 
-> Sure, and a whole lot of the callsites are ("..._%d", cpu), hence the  
-> unfortune :(
+Using NFS4_MAX_UINT64 will break current protocol.
 
-BTW, we could name nfsd threads differently :
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/nfs4xdr.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Currently, they all are named : "nfsd"
-
-If SVC_POOL_PERCPU is selected, we could name them : 
-nfsd_c0 -> nfsd_cN
-
-If SVC_POOL_PERNODE is selected, we could name them :
-nfsd_n0  -> nfsd_nN
-
-That would help to check with "ps aux" which cpu/nodes are under stress.
-
-
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 0a1a7b8..5f769f8 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1955,7 +1955,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
+ 	*p++ = cpu_to_be32(OP_LAYOUTCOMMIT);
+ 	/* Only whole file layouts */
+ 	p = xdr_encode_hyper(p, 0); /* offset */
+-	p = xdr_encode_hyper(p, NFS4_MAX_UINT64); /* length */
++	p = xdr_encode_hyper(p, args->lastbytewritten + 1);	/* length */
+ 	*p++ = cpu_to_be32(0); /* reclaim */
+ 	p = xdr_encode_opaque_fixed(p, args->stateid.data, NFS4_STATEID_SIZE);
+ 	*p++ = cpu_to_be32(1); /* newoffset = TRUE */
+-- 
+1.7.4.1
 
