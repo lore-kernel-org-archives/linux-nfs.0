@@ -1,91 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:24497 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:32160 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751824Ab1G1Dwo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 23:52:44 -0400
-Subject: RE: [PATCH v3 23/25] pnfsblock: use pageio_ops api
+	id S1754748Ab1G1Utx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 16:49:53 -0400
+Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: tao.peng@emc.com
-Cc: rees@umich.edu, linux-nfs@vger.kernel.org, honey@citi.umich.edu
-Date: Wed, 27 Jul 2011 23:52:44 -0400
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805BF061890@MX09A.corp.emc.com>
-References: <1311792048-12551-1-git-send-email-rees@umich.edu>
-	 <1311792048-12551-24-git-send-email-rees@umich.edu>
-	 <1311797712.25645.27.camel@lade.trondhjem.org>
-	 <F19688880B763E40B28B2B462677FBF805BF061890@MX09A.corp.emc.com>
+To: Justin Piszcz <jpiszcz@lucidpixels.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Bryan Schumaker <bjschuma@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+Date: Thu, 28 Jul 2011 16:48:57 -0400
+In-Reply-To: <alpine.DEB.2.02.1107271844100.25432@p34.internal.lan>
+References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan>
+	  <20110727160752.GC974@fieldses.org>
+	  <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan>
+	  <20110727181111.GA23009@infradead.org>
+	  <alpine.DEB.2.02.1107271530340.1451@p34.internal.lan>
+	  <20110727193937.GA5354@infradead.org>
+	  <alpine.DEB.2.02.1107271540100.1451@p34.internal.lan>
+	  <20110727194722.GA9345@infradead.org>
+	  <1311799021.25645.41.camel@lade.trondhjem.org>
+	  <1311800051.25645.43.camel@lade.trondhjem.org>
+	 <1311800195.25645.45.camel@lade.trondhjem.org>
+	 <alpine.DEB.2.02.1107271723500.25432@p34.internal.lan>
+	 <alpine.DEB.2.02.1107271844100.25432@p34.internal.lan>
 Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1311825164.5633.3.camel@lade.trondhjem.org>
+Message-ID: <1311886137.27285.2.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-07-27 at 22:27 -0400, tao.peng@emc.com wrote: 
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org]
-> > On Behalf Of Trond Myklebust
-> > Sent: Thursday, July 28, 2011 4:15 AM
-> > To: Jim Rees
-> > Cc: linux-nfs@vger.kernel.org; peter honeyman
-> > Subject: Re: [PATCH v3 23/25] pnfsblock: use pageio_ops api
+On Wed, 2011-07-27 at 18:44 -0400, Justin Piszcz wrote: 
+> 
+> On Wed, 27 Jul 2011, Justin Piszcz wrote:
+> 
 > > 
-> > On Wed, 2011-07-27 at 14:40 -0400, Jim Rees wrote:
-> > > From: Benny Halevy <bhalevy@panasas.com>
+> > 
+> > On Wed, 27 Jul 2011, Trond Myklebust wrote:
+> > 
+> > > On Wed, 2011-07-27 at 16:54 -0400, Trond Myklebust wrote:
+> > >> On Wed, 2011-07-27 at 16:37 -0400, Trond Myklebust wrote:
+> > >>> On Wed, 2011-07-27 at 15:47 -0400, Christoph Hellwig wrote:
+> > >>>> On Wed, Jul 27, 2011 at 03:44:20PM -0400, Justin Piszcz wrote:
+> > >>>>>
+> > >>>>>
+> > >>>>> On Wed, 27 Jul 2011, Christoph Hellwig wrote:
+> > >>>>>
+> > >>>>>> On Wed, Jul 27, 2011 at 03:35:01PM -0400, Justin Piszcz wrote:
+> > >>>>>>> Currently I do not see any dupes, however I have a script that moves
+> > >>>>>>> images out of the directory once an hour:
+> > >>>>>>> 0 * * * * /usr/local/bin/move_to_old2.sh > /dev/null 2>&1
+> > >>>>>>
+> > >>>>>> Do you keep adding files to the directory while you move files out?
+> > >>>>> Yes, otherwise there are too many files in the directory and viewers, e.g.,
+> > >>>>> each geeqie (picture viewer) will use > 4-6GB of memory, so I try to keep
+> > >>>>> it around 5,000 pictures or less.
+> > >>>>>
+> > >>>>>> What's the rate of additions/removals to the directory?
+> > >>>>> Additions it depends, around 5,000 over a 12hr period, 416/hr, current:
+> > >>>>>
+> > >>>>> atom:/d1/motion# find cam1|wc
+> > >>>>>    5215    5215  166853
+> > >>>>> atom:/d1/motion# find cam2|wc
+> > >>>>>    5069    5069  162181
+> > >>>>> atom:/d1/motion# find cam3|wc
+> > >>>>>    5594    5594  178981
+> > >>>>> atom:/d1/motion#
+> > >>>>
+> > >>>> This sounds a lot like xfs simply filling up the directory index slots
+> > >>>> of files that you just moved out with new files, and nfs falsely
+> > >>>> claiming that this is a problem.
+> > >>>
+> > >>> Yep. There is an existing bugzilla report for this bug at
+> > >>>
+> > >>>    https://bugzilla.kernel.org/show_bug.cgi?id=38572
+> > >>>
+> > >>> I have a preliminary patch there that attempts to turn off the loop
+> > >>> detection when the directory is seen to change, however that patch still
+> > >>> appears to have a bug in it, and I haven't had time to figure out what
+> > >>> is wrong yet.
+> > >>>
+> > >>> Can you perhaps take a look, Bryan?
+> > >>
+> > >> Actually, Justin, can you test the following slight variant on the patch
+> > >> in the bugzilla?
 > > >
-> > > [pnfsblock: use pnfs_generic_pg_init_read/write]
-> > > Signed-off-by: Peng Tao <peng_tao@emc.com>
-> > > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> > > ---
-> > >  fs/nfs/blocklayout/blocklayout.c |   14 ++++++++++++++
-> > >  1 files changed, 14 insertions(+), 0 deletions(-)
-> > >
-> > > diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-> > > index 22de05c..502d384 100644
-> > > --- a/fs/nfs/blocklayout/blocklayout.c
-> > > +++ b/fs/nfs/blocklayout/blocklayout.c
-> > > @@ -762,6 +762,18 @@ bl_clear_layoutdriver(struct nfs_server *server)
-> > >  	return 0;
-> > >  }
-> > >
-> > > +static const struct nfs_pageio_ops bl_pg_read_ops = {
-> > > +	.pg_init = pnfs_generic_pg_init_read,
-> > > +	.pg_test = pnfs_generic_pg_test,
-> > > +	.pg_doio = pnfs_generic_pg_readpages,
-> > > +};
-> > > +
-> > > +static const struct nfs_pageio_ops bl_pg_write_ops = {
-> > > +	.pg_init = pnfs_generic_pg_init_write,
-> > > +	.pg_test = pnfs_generic_pg_test,
-> > > +	.pg_doio = pnfs_generic_pg_writepages,
-> > > +};
-> > > +
-> > >  static struct pnfs_layoutdriver_type blocklayout_type = {
-> > >  	.id				= LAYOUT_BLOCK_VOLUME,
-> > >  	.name				= "LAYOUT_BLOCK_VOLUME",
-> > > @@ -775,6 +787,8 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
-> > >  	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
-> > >  	.set_layoutdriver		= bl_set_layoutdriver,
-> > >  	.clear_layoutdriver		= bl_clear_layoutdriver,
-> > > +	.pg_read_ops			= &bl_pg_read_ops,
-> > > +	.pg_write_ops			= &bl_pg_write_ops,
-> > >  };
-> > >
-> > How did this work previously?
-> block layout used to use .pg_test interface in pnfs_layoutdriver_type but it got removed in the 3.0 merge window.
+> > > Doh! This one will actually compile....
+> > 
+> > Hi,
+> > 
+> > Should I try 3.0 first or retry 2.6.38 w/ this patch?
+> > 
+> > Justin.
+> > 
+> >
+> 
+> I'll give 3.0 a go first.
 
-Right, but won't the entire blocks interface blow up in your face until
-you merge this patch? If it just falls back to write through MDS, then
-I'm fine, but my worry is that someone who git bisects in order to track
-down a patch may end up seeing new panics due to the lack of a
-well-defined struct nfs_pageio_ops in blocks.
+I had Bryan do some more tests, which revealed a couple more issues. The
+attached patch should fix those, and has resisted everything we've
+thrown at it so far. It should apply to 2.6.39 and newer.
 
 Cheers
   Trond
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+8<----------------------------------------------------------------------- 
