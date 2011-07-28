@@ -1,70 +1,462 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet14.oracle.com ([141.146.126.236]:41989 "EHLO
-	acsinet14.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755700Ab1GDQAq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Jul 2011 12:00:46 -0400
-Subject: Re: [PATCH] nfs: Don't deref potentially NULL pointer returned by strsep
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <alpine.LNX.2.00.1107041102001.24059@swampdragon.chaosbits.net>
-Date: Mon, 4 Jul 2011 10:34:48 -0400
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-kernel@vger.kernel.org, Gero Kuhlmann <gero@gkminix.han.de>
-Message-Id: <EEDBC51B-F721-451D-9156-0B5B28240015@oracle.com>
-References: <alpine.LNX.2.00.1107030938430.16316@swampdragon.chaosbits.net> <14B45086-2D98-4706-B1FE-7EBB8E777EEF@oracle.com> <alpine.LNX.2.00.1107041102001.24059@swampdragon.chaosbits.net>
-To: Jesper Juhl <jj@chaosbits.net>
+Received: from fieldses.org ([174.143.236.118]:59040 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755488Ab1G1UDR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Jul 2011 16:03:17 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Fred Isaman <iisaman@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Mi Jinlong <mijinlong@cn.fujitsu.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 6/6] Share testmod.py between nfs4.0 and nfs4.1
+Date: Thu, 28 Jul 2011 16:03:04 -0400
+Message-Id: <1311883384-20260-7-git-send-email-bfields@redhat.com>
+In-Reply-To: <1311883384-20260-1-git-send-email-bfields@redhat.com>
+References: <1311883384-20260-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+The nfs4.0 copy is really just an older version of the one in nfs4.1.
+Probably this should go in some common directory, but I don't know
+where, so I'm just replacing the nfs4.0 copy by a symlink to nfs4.1's.
 
-On Jul 4, 2011, at 5:04 AM, Jesper Juhl wrote:
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ nfs4.0/lib/testmod.py |  417 +------------------------------------------------
+ 1 files changed, 1 insertions(+), 416 deletions(-)
+ mode change 100644 => 120000 nfs4.0/lib/testmod.py
 
-> On Sun, 3 Jul 2011, Chuck Lever wrote:
-> 
->> 
->> On Jul 3, 2011, at 3:40 AM, Jesper Juhl wrote:
->> 
->>> In fs/nfs/nfsroot.c:root_nfs_parse_options() we call strsep(), which
->>> may return NULL, but we do not test the return value before
->>> dereferencing the pointer.
->>> 
->>> Signed-off-by: Jesper Juhl <jj@chaosbits.net>
->>> ---
->>> fs/nfs/nfsroot.c |    2 ++
->>> 1 files changed, 2 insertions(+), 0 deletions(-)
->>> 
->>> Compile tested only.
->>> 
->>> diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
->>> index c4744e1..b6ac860 100644
->>> --- a/fs/nfs/nfsroot.c
->>> +++ b/fs/nfs/nfsroot.c
->>> @@ -191,6 +191,8 @@ static int __init root_nfs_parse_options(char *incoming, char *exppath,
->>> 	 * Set the NFS remote path
->>> 	 */
->>> 	p = strsep(&incoming, ",");
->>> +	if (!p)
->>> +		return -1;
->> 
->> strsep() may return NULL only if the value of "incoming" is NULL.  But 
->> callers ensure that "incoming" always contains the address of a fixed 
->> buffer.  Thus if strsep() returns NULL here there is some kind of 
->> programming error; it's not the result of invalid input.
->> 
->> Do you have a reproducible test case to make this fail?
->> 
-> Nope. I simply spotted the unchecked strsep() call and thought that it 
-> would be better to be defensive and check it in case callers change in the 
-> future and a bug creeps in that causes a NULL incoming to be passed. 
-> Perhaps a BUG_ON(!incoming) would be better - or perhaps just forget about 
-> it.
-
-While I personally prefer an explicit assertion in cases like this one, the community preference is to avoid cluttering the code with BUG_ONs, since the code would crash anyway in that case.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/nfs4.0/lib/testmod.py b/nfs4.0/lib/testmod.py
+deleted file mode 100644
+index 6d2bf68..0000000
+--- a/nfs4.0/lib/testmod.py
++++ /dev/null
+@@ -1,416 +0,0 @@
+-# testmod.py - run tests from a suite
+-#
+-# Requires python 2.3
+-# 
+-# Written by Fred Isaman <iisaman@citi.umich.edu>
+-# Copyright (C) 2004 University of Michigan, Center for 
+-#                    Information Technology Integration
+-#
+-import nfs4.nfs4lib
+-import re
+-import sys
+-from traceback import format_exception
+-
+-if 'sum' not in __builtins__:
+-    def sum(seq, start=0):
+-        return reduce(lambda x,y: x+y, seq, start)
+-
+-# Possible outcomes
+-TEST_NOTRUN  = 0    # Not yet considered
+-TEST_RUNNING = 1    # Test actually running
+-TEST_WAIT    = 2    # Waiting for dependencies to run
+-TEST_OMIT    = 3    # Test skipped
+-TEST_FAIL    = 4    # Test failed
+-TEST_NOTSUP  = 5    # Counts as WARN, but considered a failed dependency
+-TEST_WARN    = 6    # Technically a PASS, but there was a better way
+-TEST_PASS    = 7    # Test passed
+-DEP_FUNCT    = 100  # Used for depency functions
+-
+-class Result(object):
+-    outcome_names = { TEST_NOTRUN : "NOT RUN",
+-                      TEST_RUNNING: "RUNNING",
+-                      TEST_WAIT   : "WAITING TO RUN",
+-                      TEST_OMIT   : "OMIT",
+-                      TEST_FAIL   : "FAILURE",
+-                      TEST_NOTSUP : "UNSUPPORTED",
+-                      TEST_WARN   : "WARNING",
+-                      TEST_PASS   : "PASS",
+-                      DEP_FUNCT   : "DEPENDENCY FUNCTION"
+-                      }
+-
+-    def __init__(self, outcome=TEST_NOTRUN, msg="", tb=None, default=False):
+-        self.outcome = outcome
+-        self.msg = str(msg)
+-        self.default = default
+-        if tb is None:
+-            self.tb = []
+-        else:
+-            #self.tb = ''.join(format_exception(*tb))
+-            self.tb = format_exception(*tb)
+-
+-    def __str__(self):
+-        return self.outcome_names[self.outcome]
+-
+-    def __repr__(self):
+-        return '\n'.join([self.__str__(), self.msg])
+-
+-    def __eq__(self, other):
+-        if type(other) == type(0):
+-            return self.outcome == other
+-        else:
+-            return id(self) == id(other)
+-
+-    def __ne__(self, other):
+-        if type(other) == type(0):
+-            return self.outcome != other
+-        else:
+-            return id(self) != id(other)
+-
+-class TestException(Exception):
+-    pass
+-
+-class UnsupportedException(TestException):
+-    def __init__(self, *args):
+-        self.type = TEST_NOTSUP
+-        TestException.__init__(self, *args)
+-
+-class FailureException(TestException):
+-    def __init__(self, *args):
+-        self.type = TEST_FAIL
+-        TestException.__init__(self, *args)
+-
+-class WarningException(TestException):
+-    def __init__(self, *args):
+-        self.type = TEST_WARN
+-        TestException.__init__(self, *args)
+-
+-class Test(object):
+-    _keywords = ["FLAGS", "DEPEND", "CODE"]
+-    _pass_result = Result(TEST_PASS, default=True)
+-    _run_result = Result(TEST_RUNNING, default=True)
+-    _wait_result = Result(TEST_WAIT, "Circular dependency", default=True)
+-    _omit_result = Result(TEST_OMIT, "Failed runfilter", default=True)
+-    _funct_result = Result(DEP_FUNCT, default=True)
+-    __re = re.compile(r'(\D*)(\d*)(.*)')
+-
+-    def __init__(self, function, module=""):
+-        """Needs function to be run"""
+-        self.runtest = function
+-        self.name = function.__name__
+-        if module:
+-            self.fullname = module.split('.')[-1] + '.' + self.name
+-        else:
+-            self.fullname = self.name
+-        self.doc = function.__doc__.split('\n')[0].strip()
+-        #self.doc = function.__doc__.strip()
+-        self.result = Result()
+-        self._read_docstr(function.__doc__)
+-
+-    def _read_docstr(self, s):
+-        """Searches s for 'keyword: list' and stores resulting lists"""
+-        for key in self._keywords:
+-            p = re.compile(r'^\s*' + key +':(.*$)', re.MULTILINE)
+-            match = p.search(str(s))
+-            if match is None:
+-                setattr(self, key.lower() + '_list', [])
+-            else:
+-                setattr(self, key.lower() + '_list', match.group(1).split())
+-
+-    def __getstate__(self):
+-        """Remove function reference when pickling
+-
+-        This vastly reduce size of the output file, while at the same
+-        time making it more robust to function/class renames.  However,
+-        if we need to restore this info for some reason, will need a
+-        __setstate__ function to try and recover it.
+-        """
+-        d = self.__dict__.copy()
+-        del d["runtest"]
+-        del d["dependencies"]
+-        del d["flags"]
+-        return d
+-
+-##     def __cmp__(self, other):
+-##         if self.code < other.code:
+-##             return -1
+-##         elif self.code == other.code:
+-##             return 0
+-##         else:
+-##             return 1
+-
+-    def __cmp__(self, other):
+-        me = self.__re.match(self.code)
+-        me = (me.group(1), int(me.group(2).zfill(1)), me.group(3))
+-        you = self.__re.match(other.code)
+-        you = (you.group(1), int(you.group(2).zfill(1)), you.group(3))
+-        if me < you:
+-            return -1
+-        elif me == you:
+-            return 0
+-        else:
+-            return 1
+-
+-    def __str__(self):
+-        return "%-8s %s" % ( self.code, self.fullname)
+-
+-    def __repr__(self):
+-        if self.result.msg:
+-            return "%-65s : %s\n%s" % (self, self.result, self._format(self.result.msg))
+-        else:
+-            return "%-65s : %s" % (self, self.result)
+-
+-    def display(self, showdoc=False, showtrace=False):
+-        out = "%-65s : %s" % (str(self), str(self.result))
+-        if showdoc:
+-            out += "\n%s" % self._format(self.doc, 5, 70)
+-        if showtrace and self.result.tb:
+-            out += "\n%s" % ''.join(self.result.tb)
+-        elif self.result.msg:
+-            out += "\n%s" % self._format(self.result.msg, 11, 64)
+-        return out
+-
+-
+-    def _format(self, s, start_col=11, end_col=64):
+-        s = str(s)
+-        indent = ' ' * (start_col - 1)
+-        out = indent
+-        lout = len(out)
+-        words = s.split()
+-        for w in words:
+-            lw = len(w)
+-            if lout + lw > end_col and lout > start_col:
+-                out += '\n' + indent
+-                lout = start_col - 1
+-            out += ' ' + w
+-            lout += lw + 1
+-        return out
+-            
+-    def fail(self, msg):
+-        raise FailureException(msg)
+-
+-    def fail_support(self, msg):
+-        raise UnsupportedException(msg)
+-
+-    def pass_warn(self, msg):
+-        raise WarningException(msg)
+-
+-    def __info(self):
+-        #return sys.exc_info()
+-        exctype, excvalue, tb = sys.exc_info()
+-        if sys.platform[:4] == 'java': ## tracebacks look different in Jython
+-            return (exctype, excvalue, tb)
+-        newtb = tb.tb_next
+-        if newtb is None:
+-            return (exctype, excvalue, tb)
+-        return (exctype, excvalue, newtb)
+-
+-    def run(self, environment, verbose=False):
+-        """Run self.runtest, storing result"""
+-        #print "*********Running test %s (%s)" % (self.name, self.code)
+-        self.result = self._run_result
+-        if verbose:
+-            print repr(self)
+-        try:
+-            environment.startUp()
+-            self.runtest(self, environment)
+-            self.result = self._pass_result
+-        except KeyboardInterrupt:
+-            raise
+-        except TestException, e:
+-            self.result = Result(e.type, e, sys.exc_info())
+-        except StandardError, e:
+-            self.result = Result(TEST_FAIL, '', sys.exc_info())
+-            self.result.msg = self.result.tb[-1]
+-        except Exception, e:
+-            self.result = Result(TEST_FAIL, e, sys.exc_info())
+-        try:
+-            environment.shutDown()
+-        except StandardError, e:
+-            self.result = Result(TEST_FAIL, '', sys.exc_info())
+-            self.result.msg = self.result.tb[-1]
+-        if verbose:
+-            print repr(self)
+-
+-class Environment(object):
+-    """Base class for a test environment"""
+-    def __init__(self, opts):
+-        self.opts = opts
+-
+-    def init(self):
+-        """Run once before any test is run"""
+-        pass
+-
+-    def finish(self):
+-        """Run once after all tests are run"""
+-        pass
+-
+-    def startUp(self):
+-        """Run before each test"""
+-        pass
+-
+-    def shutDown(self):
+-        """Run after each test"""
+-        pass
+-        
+-def _run_filter(test, options):
+-    """Returns True if test should be run, False if it should be skipped"""
+-    return True
+-
+-def runtests(tests, options, environment, runfilter=_run_filter):
+-    """tests is an array of test objects, to be run in order
+-    
+-    (as much as possible)
+-    """
+-    for t in tests:
+-        if t.result == TEST_NOTRUN:
+-            _runtree(t, options, environment, runfilter)
+-        else:
+-            # Test has already been run in a dependency tree
+-            pass
+-
+-def _runtree(t, options, environment, runfilter=_run_filter):
+-    if t.result == TEST_WAIT:
+-        return
+-    t.result = t._wait_result
+-    if not runfilter(t, options):
+-        # Check flags to see if test should be omitted
+-        t.result = t._omit_result
+-        return
+-    if options.rundeps:
+-        runfilter = lambda x, y : True
+-    for dep in t.dependencies:
+-        if dep.result == DEP_FUNCT:
+-            if (not options.force) and (not dep(t, environment)):
+-                t.result = Result(TEST_OMIT, 
+-                                  "Dependency function %s failed" %
+-                                  dep.__name__)
+-                return
+-            continue
+-        if dep.result == t._omit_result and options.rundeps:
+-            _runtree(dep, options, environment, runfilter)
+-        elif dep.result in [TEST_NOTRUN, TEST_WAIT]:
+-            _runtree(dep, options, environment, runfilter)
+-            # Note dep.result has now changed
+-        if dep.result == TEST_WAIT:
+-            return
+-        elif (not options.force) and \
+-                 (dep.result in [TEST_OMIT, TEST_FAIL, TEST_NOTSUP]):
+-            t.result = Result(TEST_OMIT, 
+-                              "Dependency %s had status %s." % \
+-                              (dep, dep.result))
+-            return
+-    t.run(environment, getattr(options, 'verbose', False))
+-
+-def _import_by_name(name):
+-    mod = __import__(name)
+-    components = name.split('.')
+-    for comp in components[1:]:
+-        mod = getattr(mod, comp)
+-    return mod
+-
+-def createtests(testdir):
+-    """ Tests are functions that start with "test".  Their docstring must
+-    contain a line starting with "FLAGS:" and a line starting with "CODE:".
+-    It may optionall contain a line starting with "DEPEND:".  Each test must
+-    have a unique code string.  The space seperated list of flags must
+-    not contain any code names.  The depend list is a list of code names for
+-    tests that must be run before the given test.
+-    """
+-    # Find all tests in testdir
+-    tests = []
+-    package = _import_by_name(testdir)
+-    for testfile in package.__all__:
+-        if testfile.endswith('.py'):
+-            testfile = testfile[:-3]
+-        testmod = ".".join([testdir, testfile])
+-        mod = _import_by_name(testmod)
+-        for attr in dir(mod):
+-            if attr.startswith("test"):
+-                f = getattr(mod, attr)
+-                tests.append(Test(f, testmod))
+-    # Reduce doc string info into format easier to work with
+-    used_codes = {}
+-    flag_dict = {}
+-    bit = 1L
+-    for t in tests:
+-        if not t.flags_list:
+-            raise("%s has no flags" % t.fullname)
+-        for f in t.flags_list:
+-            if f not in flag_dict:
+-                flag_dict[f] = bit
+-                bit <<= 1
+-        if len(t.code_list) != 1:
+-            raise("%s needs exactly one code" % t.fullname)
+-        t.code = t.code_list[0]
+-        if t.code in used_codes:
+-            raise("%s trying to use a code already used"  % t.fullname)
+-        used_codes[t.code] = t
+-        del t.code_list
+-    # Check that flags don't contain a code word
+-    for f in flag_dict:
+-        if f in used_codes:
+-            raise("flag %s is also used as a test code" % f)
+-    # Now turn dependency names into pointers, and flags into a bitmask
+-    for t in tests:
+-        t.flags = sum([flag_dict[x] for x in t.flags_list])
+-        t.dependencies = []
+-        for d in t.depend_list:
+-            if d in used_codes:
+-                t.dependencies.append(used_codes[d])
+-            else:
+-                mod = _import_by_name(t.runtest.__module__)
+-                if not hasattr(mod, d):
+-                    raise("Could not find reference to dependency %s" % str(d))
+-                funct = getattr(mod, d)
+-                if not callable(funct):
+-                    raise("Dependency %s of %s does not exist" %
+-                          (d, t.fullname))
+-                funct.result = t._funct_result
+-                t.dependencies.append(funct)
+-    return tests, flag_dict, used_codes
+-
+-                 
+-def printresults(tests, opts, file=None):
+-    NOTRUN, OMIT, SKIP, FAIL, WARN, PASS = range(6)
+-    count = [0] * 6
+-    for t in tests:
+-        if not hasattr(t, "result"):
+-            print dir(t)
+-            print t.__dict__
+-            raise
+-        if t.result == TEST_NOTRUN:
+-            count[NOTRUN] += 1
+-        elif t.result == TEST_OMIT and t.result.default:
+-            count[OMIT] += 1
+-        elif t.result in [TEST_WAIT, TEST_OMIT]:
+-            count[SKIP] += 1
+-        elif t.result == TEST_FAIL:
+-            count[FAIL] += 1
+-        elif t.result in [TEST_NOTSUP, TEST_WARN]:
+-            count[WARN] += 1
+-        elif t.result == TEST_PASS:
+-            count[PASS] += 1
+-    print >> file, "*"*50 
+-    for t in tests:
+-        if t.result == TEST_NOTRUN:
+-            continue
+-        if t.result == TEST_OMIT and t.result.default:
+-            continue
+-        if (not opts.showomit) and t.result == TEST_OMIT:
+-            continue
+-        if (not opts.showpass) and t.result == TEST_PASS:
+-            continue
+-        if (not opts.showwarn) and t.result in [TEST_NOTSUP, TEST_WARN]:
+-            continue
+-        if (not opts.showfail) and t.result == TEST_FAIL:
+-            continue
+-        print >> file, t.display(0,0)
+-    print >> file, "*"*50
+-    if count[NOTRUN]:
+-        print >> file, "Tests interrupted! Only %i tests run" % \
+-              sum(count[SKIP:])
+-    else:
+-        print >> file, "Command line asked for %i of %i tests" % \
+-              (sum(count[SKIP:]), len(tests))
+-    print >> file, "Of those: %i Skipped, %i Failed, %i Warned, %i Passed" % \
+-          (count[SKIP], count[FAIL], count[WARN], count[PASS])
+diff --git a/nfs4.0/lib/testmod.py b/nfs4.0/lib/testmod.py
+new file mode 120000
+index 0000000..d4e0902
+--- /dev/null
++++ b/nfs4.0/lib/testmod.py
+@@ -0,0 +1 @@
++../../nfs4.1/testmod.py
+\ No newline at end of file
+-- 
+1.7.4.1
 
