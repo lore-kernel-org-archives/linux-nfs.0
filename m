@@ -1,30 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:52016
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754455Ab1GNWb2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jul 2011 18:31:28 -0400
-Date: Thu, 14 Jul 2011 18:31:26 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Alex Elder <aelder@sgi.com>, xfs-masters@oss.sgi.com, xfs@oss.sgi.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] xfs: failure mapping nfs fh to inode should return ESTALE
-Message-ID: <20110714223126.GA28694@infradead.org>
-References: <20110714205036.GA19457@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110714205036.GA19457@fieldses.org>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:57336 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752017Ab1G1CC7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 22:02:59 -0400
+From: <tao.peng@emc.com>
+To: <bharrosh@panasas.com>, <rees@umich.edu>
+CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
+        <honey@citi.umich.edu>
+Date: Wed, 27 Jul 2011 22:02:39 -0400
+Subject: RE: [PATCH v3 03/25] NFS41: Let layoutcommit handle multiple
+ segments
+Message-ID: <F19688880B763E40B28B2B462677FBF805BF061882@MX09A.corp.emc.com>
+References: <1311792048-12551-1-git-send-email-rees@umich.edu>
+ <1311792048-12551-4-git-send-email-rees@umich.edu>
+ <4E306F84.6030808@panasas.com>
+ <1311798159.25645.32.camel@lade.trondhjem.org>
+ <4E30762E.4000508@panasas.com> <20110727205804.GA13698@merit.edu>
+ <4E307E6F.6090309@panasas.com> <20110727234041.GC14319@merit.edu>
+ <4E30A957.7080804@panasas.com>
+In-Reply-To: <4E30A957.7080804@panasas.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Jul 14, 2011 at 04:50:36PM -0400, J. Bruce Fields wrote:
-> From: J. Bruce Fields <bfields@redhat.com>
-> 
-> On xfs exports, nfsd is incorrectly returning ENOENT instead of ESTALE
-> on attempts to use a filehandle of a deleted file (spotted with pynfs
-> test PUTFH3).  The ENOENT was coming from xfs_iget.
-
-With that you mean the ip->i_d.di_mode checks?  Given that we should
-only be bale to get these from NFS or the handle ioctls I suspect just
-turning them into ESTALE should be fine.
-
+SGksIEJvYXosDQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogbGludXgt
+bmZzLW93bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRvOmxpbnV4LW5mcy1vd25lckB2Z2VyLmtl
+cm5lbC5vcmddDQo+IE9uIEJlaGFsZiBPZiBCb2F6IEhhcnJvc2gNCj4gU2VudDogVGh1cnNkYXks
+IEp1bHkgMjgsIDIwMTEgODoxMiBBTQ0KPiBUbzogSmltIFJlZXMNCj4gQ2M6IFRyb25kIE15a2xl
+YnVzdDsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgcGV0ZXIgaG9uZXltYW4NCj4gU3ViamVj
+dDogUmU6IFtQQVRDSCB2MyAwMy8yNV0gTkZTNDE6IExldCBsYXlvdXRjb21taXQgaGFuZGxlIG11
+bHRpcGxlIHNlZ21lbnRzDQo+IA0KPiBPbiAwNy8yNy8yMDExIDA0OjQwIFBNLCBKaW0gUmVlcyB3
+cm90ZToNCj4gPiBCb2F6IEhhcnJvc2ggd3JvdGU6DQo+ID4NCj4gPiAgIE9uIDA3LzI3LzIwMTEg
+MDE6NTggUE0sIEppbSBSZWVzIHdyb3RlOg0KPiA+ICAgPiAgIEJ1dCBJIHRob3VnaHQgZm9yIHNp
+bXBsaWNpdHkgc2luY2UgdGhpcyBwYXRjaHNldCB3YXMgcmV2aWV3ZWQgdGhlbiwgSSd2ZQ0KPiA+
+ICAgPiAgIHRlc3RlZCB3aXRoIHRoaXMgcGF0Y2ggYW5kIGl0IHdvcmtzIGdvb2QgYXMgd2VsbC4g
+SWYgeW91IGFyZSBnb2luZyB0bw0KPiA+ICAgPiAgIGJyZWFrIHRoaW5ncyB1cCwgSSBjYW4gdGVz
+dCB3aXRoIHRoZSBtaW5pbWFsIHBhdGNoZXMgYW5kIHJlcG9ydCB3aGF0IGlzDQo+ID4gICA+ICAg
+bmVlZCBpbiBTdGFibGUuIChJcyBhbnlvbmUgd29ya2luZyBvbiBpdD8pDQo+ID4gICA+DQo+ID4g
+ICA+IFdlIG1heSBoYXZlIG92ZXItc3F1YXNoZWQgdGhhdCBvbmUgZm9yIGJsb2NrIGxheW91dC4g
+IEkgY2FuIGRpZyB1cCB0aGUNCj4gPiAgID4gb3JpZ2luYWwgcGF0Y2hlcyBpZiBuZWNlc3Nhcnks
+IGJ1dCBJJ20gZ3Vlc3NpbmcgeW91IHByb2JhYmx5IGhhdmUgdGhlbS4NCj4gPg0KPiA+ICAgUGxl
+YXNlIGRvLiBCZWNhdXNlIGJ5IG5vdyBJJ20gY29uZnVzZWQuIHRoZSBmaXJzdCBJIGRpc2NvdmVy
+ZWQgaXQgd2FzDQo+ID4gICBieSBnaXQgZGlmZiBvZiBhIGJyYW5jaCB0aGF0IHdvcmtlZC4gSSBs
+b3N0IHRyYWNrZWQgb2Ygd2hlcmUgdGhlIGNvZGUNCj4gPiAgIHdhcyBvcmlnaW5hdGVkIGZyb20u
+DQo+ID4NCj4gPiBIZXJlIGlzIGp1c3QgdGhlIG9yaWdpbmFsIG11bHRpcGxlIHNlZ21lbnRzIHBh
+dGNoLiAgVGhpcyBpcyBmcm9tIHRoZQ0KPiA+IDg4LXBhdGNoIHNldCBJIHNlbnQgb3V0IGJlZm9y
+ZSBCYWtlYXRob24uICBJIGRvbid0IGtub3cgaWYgdGhpcyB3b3VsZCBzdGlsbA0KPiA+IGFwcGx5
+IHNlcGFyYXRlbHkuDQo+ID4NCj4gDQo+IE9LIFRoYW5rcyB0aGF0IG9uZSBsb29rcyBmYW1pbGlh
+ciBlbm91Z2guIEknbGwgdGVzdCBqdXN0IHdpdGggdGhpcyBvbmUuDQpBcyBGcmVkIHBvaW50ZWQg
+b3V0IGVhcmxpZXIsIHRoaXMgb25lIGhhcyBzb21lIHByb2JsZW0gb2YgcmV0dXJuaW5nIGEgcmFu
+ZG9tIGxzZWcuIEkgd2lsbCBzcGxpdCB0aGUgZmluYWwgdmVyc2lvbiBhbmQgeW91IGNhbiB0ZXN0
+IHdoaWNoIHBhdGNoIHlvdSBuZWVkIGZvciBzdGFibGUuDQoNCkNoZWVycywNClRhbw0KDQo+IA0K
+PiBXaGVyZSBkaWQgdGhlIG90aGVyIGNoYW5nZXMgY29tZSBmcm9tPyBJcyB0aGVyZSBhIEJlbm55
+J3MgYnJhbmNoIHRoYXQNCj4gaGF2ZSB0aGVtIHNlcGFyYXRlZCBzbyBJIGNhbiBoYXZlIGEgbG9v
+ay4gSSBzdXNwZWN0IEkgYWxzbyBuZWVkIHRoZSBvbmUNCj4gdGhhdCBlbmNvZGVzIHRoZSBsYXN0
+X2J5dGVfd3JpdHRlbi4NCj4gDQo+IFRoYW5rcw0KPiBCb2F6DQo+IA0KPiA+IEZyb20gZmMzMzgx
+ZmE2NmFkZmNlZTQyMDNiNWE1NWNhNjYwNWJjZmM4ZGFmYiBNb24gU2VwIDE3IDAwOjAwOjAwIDIw
+MDENCj4gPiBGcm9tOiBQZW5nIFRhbyA8YmVyZ3dvbGZAZ21haWwuY29tPg0KPiA+IERhdGU6IFR1
+ZSwgMzEgTWF5IDIwMTEgMDA6NDI6NTYgLTA0MDANCj4gPiBTdWJqZWN0OiBbUEFUQ0ggMDMvODld
+IHBuZnM6IGxldCBsYXlvdXRjb21taXQgY29kZSBoYW5kbGUgbXVsdGlwbGUgc2VnbWVudHMNCj4g
+Pg0KPiA+IFNvbWUgbGF5b3V0IGRyaXZlciBsaWtlIGJsb2NrIHdpbGwgaGF2ZSBtdWx0aXBsZSBz
+ZWdtZW50cy4NCj4gPiBHZW5lcmljIGNvZGUgc2hvdWxkIGJlIGFibGUgdG8gaGFuZGxlIGl0Lg0K
+PiA+IC0tLQ0KPiA+ICBmcy9uZnMvcG5mcy5jIHwgICAxNSArKysrKysrKysrKystLS0NCj4gPiAg
+ZnMvbmZzL3BuZnMuaCB8ICAgIDEgKw0KPiA+ICAyIGZpbGVzIGNoYW5nZWQsIDEzIGluc2VydGlv
+bnMoKyksIDMgZGVsZXRpb25zKC0pDQo+ID4NCj4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL3BuZnMu
+YyBiL2ZzL25mcy9wbmZzLmMNCj4gPiBpbmRleCBlM2Q2MThiLi5jMThjZGEwIDEwMDY0NA0KPiA+
+IC0tLSBhL2ZzL25mcy9wbmZzLmMNCj4gPiArKysgYi9mcy9uZnMvcG5mcy5jDQo+ID4gQEAgLTEx
+OTMsMTAgKzExOTMsMTggQEAgcG5mc190cnlfdG9fcmVhZF9kYXRhKHN0cnVjdCBuZnNfcmVhZF9k
+YXRhICpyZGF0YSwNCj4gPiAgc3RhdGljIHN0cnVjdCBwbmZzX2xheW91dF9zZWdtZW50ICpwbmZz
+X2xpc3Rfd3JpdGVfbHNlZyhzdHJ1Y3QgaW5vZGUgKmlub2RlKQ0KPiA+ICB7DQo+ID4gIAlzdHJ1
+Y3QgcG5mc19sYXlvdXRfc2VnbWVudCAqbHNlZywgKnJ2ID0gTlVMTDsNCj4gPiArCWxvZmZfdCBt
+YXhfcG9zID0gMDsNCj4gPiArDQo+ID4gKwlsaXN0X2Zvcl9lYWNoX2VudHJ5KGxzZWcsICZORlNf
+SShpbm9kZSktPmxheW91dC0+cGxoX3NlZ3MsIHBsc19saXN0KSB7DQo+ID4gKwkJaWYgKGxzZWct
+PnBsc19yYW5nZS5pb21vZGUgPT0gSU9NT0RFX1JXKSB7DQo+ID4gKwkJCWlmIChtYXhfcG9zIDwg
+bHNlZy0+cGxzX2VuZF9wb3MpDQo+ID4gKwkJCQltYXhfcG9zID0gbHNlZy0+cGxzX2VuZF9wb3M7
+DQo+ID4gKwkJCWlmICh0ZXN0X2FuZF9jbGVhcl9iaXQoTkZTX0xTRUdfTEFZT1VUQ09NTUlULCAm
+bHNlZy0+cGxzX2ZsYWdzKSkNCj4gPiArCQkJCXJ2ID0gbHNlZzsNCj4gPiArCQl9DQo+ID4gKwl9
+DQo+ID4gKwlydi0+cGxzX2VuZF9wb3MgPSBtYXhfcG9zOw0KPiA+DQo+ID4gLQlsaXN0X2Zvcl9l
+YWNoX2VudHJ5KGxzZWcsICZORlNfSShpbm9kZSktPmxheW91dC0+cGxoX3NlZ3MsIHBsc19saXN0
+KQ0KPiA+IC0JCWlmIChsc2VnLT5wbHNfcmFuZ2UuaW9tb2RlID09IElPTU9ERV9SVykNCj4gPiAt
+CQkJcnYgPSBsc2VnOw0KPiA+ICAJcmV0dXJuIHJ2Ow0KPiA+ICB9DQo+ID4NCj4gPiBAQCAtMTIx
+MSw2ICsxMjE5LDcgQEAgcG5mc19zZXRfbGF5b3V0Y29tbWl0KHN0cnVjdCBuZnNfd3JpdGVfZGF0
+YSAqd2RhdGEpDQo+ID4gIAlpZiAoIXRlc3RfYW5kX3NldF9iaXQoTkZTX0lOT19MQVlPVVRDT01N
+SVQsICZuZnNpLT5mbGFncykpIHsNCj4gPiAgCQkvKiByZWZlcmVuY2VzIG1hdGNoZWQgaW4gbmZz
+NF9sYXlvdXRjb21taXRfcmVsZWFzZSAqLw0KPiA+ICAJCWdldF9sc2VnKHdkYXRhLT5sc2VnKTsN
+Cj4gPiArCQlzZXRfYml0KE5GU19MU0VHX0xBWU9VVENPTU1JVCwgJndkYXRhLT5sc2VnLT5wbHNf
+ZmxhZ3MpOw0KPiA+ICAJCXdkYXRhLT5sc2VnLT5wbHNfbGNfY3JlZCA9DQo+ID4gIAkJCWdldF9y
+cGNjcmVkKHdkYXRhLT5hcmdzLmNvbnRleHQtPnN0YXRlLT5vd25lci0+c29fY3JlZCk7DQo+ID4g
+IAkJbWFya19hc19kaXJ0eSA9IHRydWU7DQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9wbmZzLmgg
+Yi9mcy9uZnMvcG5mcy5oDQo+ID4gaW5kZXggNTM4MTlkMC4uYzZhOWFmMiAxMDA2NDQNCj4gPiAt
+LS0gYS9mcy9uZnMvcG5mcy5oDQo+ID4gKysrIGIvZnMvbmZzL3BuZnMuaA0KPiA+IEBAIC0zNiw2
+ICszNiw3IEBADQo+ID4gIGVudW0gew0KPiA+ICAJTkZTX0xTRUdfVkFMSUQgPSAwLAkvKiBjbGVh
+cmVkIHdoZW4gbHNlZyBpcyByZWNhbGxlZC9yZXR1cm5lZCAqLw0KPiA+ICAJTkZTX0xTRUdfUk9D
+LAkJLyogcm9jIGJpdCByZWNlaXZlZCBmcm9tIHNlcnZlciAqLw0KPiA+ICsJTkZTX0xTRUdfTEFZ
+T1VUQ09NTUlULAkvKiBsYXlvdXRjb21taXQgYml0IHNldCBmb3IgbGF5b3V0Y29tbWl0ICovDQo+
+ID4gIH07DQo+ID4NCj4gPiAgc3RydWN0IHBuZnNfbGF5b3V0X3NlZ21lbnQgew0KPiANCj4gLS0N
+Cj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2Ny
+aWJlIGxpbnV4LW5mcyIgaW4NCj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2
+Z2VyLmtlcm5lbC5vcmcNCj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2Vy
+bmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQoNCgTvv717Lm7vv70r77+977+977+977+977+9
+77+977+9KyXvv73vv71sendt77+977+9Yu+/veunsu+/ve+/vXLvv73vv716WO+/ve+/vRnfsinv
+v73vv73vv713Kh9qZ++/ve+/ve+/vR7vv73vv73vv73vv73vv73domov77+977+977+9eu+/vd6W
+77+977+9Mu+/vd6Z77+977+977+9Ju+/vSnfoe+/vWHvv73vv71/77+977+9Hu+/vUfvv73vv73v
+v71o77+9D++/vWo6K3bvv73vv73vv71377+92aU=
