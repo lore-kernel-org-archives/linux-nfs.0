@@ -1,95 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:50264 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755821Ab1GFUTV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Jul 2011 16:19:21 -0400
-Date: Wed, 6 Jul 2011 16:19:20 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC][PATCH 2/2] nfsd41: try to check reply size before
- operation
-Message-ID: <20110706201920.GA32275@fieldses.org>
-References: <4E0C31B5.9090302@cn.fujitsu.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E0C31B5.9090302@cn.fujitsu.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:24820 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753425Ab1G1Ddc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 23:33:32 -0400
+From: <tao.peng@emc.com>
+To: <Trond.Myklebust@netapp.com>, <rees@umich.edu>
+CC: <linux-nfs@vger.kernel.org>, <honey@citi.umich.edu>
+Date: Wed, 27 Jul 2011 23:29:41 -0400
+Subject: RE: [PATCH v3 04/25] NFS41: save layoutcommit cred after first
+ successful layoutget
+Message-ID: <F19688880B763E40B28B2B462677FBF805BF0618C1@MX09A.corp.emc.com>
+References: <1311792048-12551-1-git-send-email-rees@umich.edu>
+	 <1311792048-12551-5-git-send-email-rees@umich.edu>
+ <1311796041.25645.17.camel@lade.trondhjem.org>
+In-Reply-To: <1311796041.25645.17.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Jun 30, 2011 at 04:20:05PM +0800, Mi Jinlong wrote:
-> Implementing each operation's enc_size, and try to check reply size 
-> before operation.
-
-This is one of our remaining server 4.1 todo's, and it's a lot of
-not-especially-fun work--thanks for taking it on.
-
-> @@ -3161,222 +3244,313 @@ struct nfsd4_enc_op {
->  static struct nfsd4_enc_op nfsd4_enc_ops[] = {
->  	[OP_ACCESS] = {
->  		.enc_func = (nfsd4_enc)nfsd4_encode_access,
-> +		.enc_size = nfsd4_enc_access_sz,
-
-Perhaps the new enc_size field should go into the nfsd4_operation array
-instead of here in the nfsd4_enc_op array.
-
-> +static u32 get_ops_max_rsz(struct nfsd4_compoundres *resp)
-> +{
-> +	struct nfsd4_compoundargs *args = resp->rqstp->rq_argp;
-> +	struct nfsd4_op op = args->ops[resp->opcnt];
-> +	int length = 0, maxcount = 0;
-> +
-> +	switch (op.opnum) {
-> +	case OP_READ:
-> +		maxcount = svc_max_payload(resp->rqstp);
-> +		if (maxcount > op.u.read.rd_length)
-> +			length = op.u.read.rd_length;
-> +		else
-> +			length = maxcount;
-> +		break;
-> +
-> +	case OP_READDIR:
-> +		if (op.u.readdir.rd_maxcount < PAGE_SIZE)
-> +			length = op.u.readdir.rd_maxcount;
-> +		else
-> +			length = PAGE_SIZE;
-> +		break;
-> +	case OP_READLINK:
-> +		length = PATH_MAX;
-> +		break;
-
-OP_GETATTR also needs special handling, as it may include
-arbitrary-length acls and file owners.
-
-Maybe we can enforce a small limit on file owners and not have to
-calculate that on the fly.  ACLs, though, can definitely be very large.
-
-Also, to prevent this switch from getting too long, I think it would be
-better to add something like a get_max_resp_size() callback as another
-field of the nfsd4_operation structure, and allow it to be NULL for most
-operations (in which case enc_size will be used instead).
-
->  void
-> @@ -3396,7 +3570,7 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
->  	       !nfsd4_enc_ops[op->opnum].enc_func);
->  	op->status = nfsd4_enc_ops[op->opnum].enc_func(resp, op->status, &op->u);
->  	/* nfsd4_check_drc_limit guarantees enough room for error status */
-> -	if (!op->status && nfsd4_check_drc_limit(resp))
-> +	if (!op->status && nfsd4_check_resp_limit(resp))
->  		op->status = nfserr_rep_too_big_to_cache;
->  status:
-
-By the time we get here it's too late--we've already performed the
-operation.
-
-For getattr, readlink, readdir, etc., I think that's OK, as those
-operations don't change anything.
-
-But if it's a CREATE that crosses the limit, for example, then this
-would be a problem: we'd create the file, and *then* return
-rep_too_big_to_cache.
-
-So I think this check should go in nfsd4_proc_compound(), before the
-call to op_func().
-
---b.
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10NCj4g
+T24gQmVoYWxmIE9mIFRyb25kIE15a2xlYnVzdA0KPiBTZW50OiBUaHVyc2RheSwgSnVseSAyOCwg
+MjAxMSAzOjQ3IEFNDQo+IFRvOiBKaW0gUmVlcw0KPiBDYzogbGludXgtbmZzQHZnZXIua2VybmVs
+Lm9yZzsgcGV0ZXIgaG9uZXltYW4NCj4gU3ViamVjdDogUmU6IFtQQVRDSCB2MyAwNC8yNV0gTkZT
+NDE6IHNhdmUgbGF5b3V0Y29tbWl0IGNyZWQgYWZ0ZXIgZmlyc3Qgc3VjY2Vzc2Z1bA0KPiBsYXlv
+dXRnZXQNCj4gDQo+IE9uIFdlZCwgMjAxMS0wNy0yNyBhdCAxNDo0MCAtMDQwMCwgSmltIFJlZXMg
+d3JvdGU6DQo+ID4gRnJvbTogUGVuZyBUYW8gPGJlcmd3b2xmQGdtYWlsLmNvbT4NCj4gPg0KPiA+
+IFNhdmUgaXQgaW4gbGF5b3V0IGhlYWRlciBpbnN0ZWFkIG9mIGluIGV2ZXJ5IHNlZ21lbnQuDQo+
+ID4NCj4gPiBTaWduZWQtb2ZmLWJ5OiBQZW5nIFRhbyA8cGVuZ190YW9AZW1jLmNvbT4NCj4gPiAt
+LS0NCj4gPiAgZnMvbmZzL3BuZnMuYyB8ICAgMTIgKysrKysrLS0tLS0tDQo+ID4gIGZzL25mcy9w
+bmZzLmggfCAgICAxIC0NCj4gPiAgMiBmaWxlcyBjaGFuZ2VkLCA2IGluc2VydGlvbnMoKyksIDcg
+ZGVsZXRpb25zKC0pDQo+ID4NCj4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL3BuZnMuYyBiL2ZzL25m
+cy9wbmZzLmMNCj4gPiBpbmRleCBkYWUxOWRkLi5mYmViZDJhIDEwMDY0NA0KPiA+IC0tLSBhL2Zz
+L25mcy9wbmZzLmMNCj4gPiArKysgYi9mcy9uZnMvcG5mcy5jDQo+ID4gQEAgLTIxMSw2ICsyMTEs
+NyBAQCBkZXN0cm95X2xheW91dF9oZHIoc3RydWN0IHBuZnNfbGF5b3V0X2hkciAqbG8pDQo+ID4g
+IAlkcHJpbnRrKCIlczogZnJlZWluZyBsYXlvdXQgY2FjaGUgJXBcbiIsIF9fZnVuY19fLCBsbyk7
+DQo+ID4gIAlCVUdfT04oIWxpc3RfZW1wdHkoJmxvLT5wbGhfbGF5b3V0cykpOw0KPiA+ICAJTkZT
+X0kobG8tPnBsaF9pbm9kZSktPmxheW91dCA9IE5VTEw7DQo+ID4gKwlwdXRfcnBjY3JlZChsby0+
+cGxoX2xjX2NyZWQpOw0KPiA+ICAJcG5mc19mcmVlX2xheW91dF9oZHIobG8pOw0KPiA+ICB9DQo+
+ID4NCj4gPiBAQCAtMTAwNyw2ICsxMDA4LDEwIEBAIHBuZnNfdXBkYXRlX2xheW91dChzdHJ1Y3Qg
+aW5vZGUgKmlubywNCj4gPiAgCQlsaXN0X2RlbF9pbml0KCZsby0+cGxoX2xheW91dHMpOw0KPiA+
+ICAJCXNwaW5fdW5sb2NrKCZjbHAtPmNsX2xvY2spOw0KPiA+ICAJfQ0KPiA+ICsJaWYgKGZpcnN0
+KSB7DQo+ID4gKwkJbG8tPnBsaF9sY19jcmVkID0NCj4gPiArCQkJZ2V0X3JwY2NyZWQoY3R4LT5z
+dGF0ZS0+b3duZXItPnNvX2NyZWQpOw0KPiA+ICsJfQ0KPiANCj4gSG1tLi4uIFRoaXMgd2hvbGUg
+J2ZpcnN0JyB0aGluZyBpcyBpbmhlcmVudGx5IHJhY3kuIFdoYXQgaWYgdHdvIHRocmVhZHMNCj4g
+YXJlIGNhbGxpbmcgcG5mc191cGRhdGVfbGF5b3V0IGF0IHRoZSBzYW1lIHRpbWU6IHRoZXkgYm90
+aCBzZWUNCj4gbGlzdF9lbXB0eSgmbG8tPnBsaF9zZWdzKSwgYW5kIGJvdGggY29uY2x1ZGUgdGhh
+dCB0aGV5IG5lZWQgdG8NCj4gaW5pdGlhbGlzZSB0aGUgbGF5b3V0IGhlYWRlci4gX0JPT01fLi4u
+Lg0KPiANCj4gVGhlIGNvcnJlY3QgdGhpbmcgdG8gZG8gaGVyZSBpcyBlaXRoZXIgdG8gaW5pdGlh
+bGlzZSB0aGUgbGF5b3V0IGhlYWRlcg0KPiBjb3JyZWN0bHkgaW5zaWRlIHBuZnNfZmluZF9hbGxv
+Y19sYXlvdXQoKSwgb3IgdG8gYWRkIGEgZmxhZyBmb3INCj4gLT5wbGhfZmxhZ3MgdGhhdCBjYW4g
+YmUgdXNlZCB3aXRoIHRlc3RfYW5kX2NsZWFyX2JpdCgpIHRvIGdldCBfb25lXyBvZg0KPiB0aGUg
+cHJvY2Vzc2VzIHRvIHBlcmZvcm0gdGhlIGluaXRpYWxpc2F0aW9uLg0KPiBQZXJzb25hbGx5LCBJ
+J2QgcHJlZmVyIHRoZSBmb3JtZXIuDQpXaWxsIG1vdmUgaXQgaW5zaWRlIGxheW91dCBoZWFkZXIg
+aW5pdC4gVGhhbmtzLg0KDQpDaGVlcnMsDQpUYW8NCj4gDQo+IA0KPiAtLQ0KPiBUcm9uZCBNeWts
+ZWJ1c3QNCj4gTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQo+IA0KPiBOZXRBcHANCj4gVHJv
+bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCj4gd3d3Lm5ldGFwcC5jb20NCj4gDQo+IC0tDQo+IFRv
+IHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBs
+aW51eC1uZnMiIGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5r
+ZXJuZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5v
+cmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQoT77+977+97Lm7HO+/vSbvv71+77+9Ju+/vRjvv73v
+v70rLe+/ve+/vd22F++/ve+/vXfvv73vv73Lm++/ve+/ve+/vW3vv71i77+977+9Z37Ip++/vRfv
+v73vv73cqH3vv73vv73vv73GoHrvv70majordu+/ve+/ve+/vQfvv73vv73vv73vv716Wivvv73v
+v70rembvv73vv73vv71o77+977+977+9fu+/ve+/ve+/ve+/vWnvv73vv73vv71677+9Hu+/vXfv
+v73vv73vv70/77+977+977+977+9Ju+/vSnfohtm
