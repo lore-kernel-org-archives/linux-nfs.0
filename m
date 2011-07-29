@@ -1,295 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:40332 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753697Ab1GUTel (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 15:34:41 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v2 13/25] pnfsblock: call and parse getdevicelist
-Date: Thu, 21 Jul 2011 15:34:13 -0400
-Message-Id: <1311276865-29484-14-git-send-email-rees@umich.edu>
-In-Reply-To: <1311276865-29484-1-git-send-email-rees@umich.edu>
-References: <1311276865-29484-1-git-send-email-rees@umich.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:21976 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755011Ab1G2NuJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Jul 2011 09:50:09 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p6TDo9wO004883
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 29 Jul 2011 09:50:09 -0400
+Received: from [10.33.0.52] (sprabhu.fab.redhat.com [10.33.0.52])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id p6TDo8eA015400
+	for <linux-nfs@vger.kernel.org>; Fri, 29 Jul 2011 09:50:08 -0400
+Subject: [PATCH] nfs: Do not allow multiple mounts on same mountpoint when
+ using -o noac
+From: Sachin Prabhu <sprabhu@redhat.com>
+To: NFS <linux-nfs@vger.kernel.org>
+Date: Fri, 29 Jul 2011 14:50:08 +0100
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1311947408.29400.40.camel@sprabhu.fab.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+When you normally attempt to mount a share twice on the same mountpoint,
+a check in do_add_mount causes it to return an error
 
-Call GETDEVICELIST during mount, then call and parse GETDEVICEINFO
-for each device returned.
+# mount localhost:/nfsv3 /mnt
+# mount localhost:/nfsv3 /mnt
+mount.nfs: /mnt is already mounted or busy
 
-[pnfsblock: get rid of deprecated xdr macros]
-Signed-off-by: Jim Rees <rees@umich.edu>
-[pnfsblock: fix pnfs_deviceid references]
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfsblock: fix print format warnings for sector_t and size_t]
-[pnfs-block: #include <linux/vmalloc.h>]
-[pnfsblock: no PNFS_NFS_SERVER]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[pnfsblock: fix bug determining size of striped volume]
-[pnfsblock: fix oops when using multiple devices]
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <benny@tonian.com>
-[pnfsblock: get rid of vmap and deviceid->area structure]
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/blocklayout/blocklayout.c    |  138 ++++++++++++++++++++++++++++++++++-
- fs/nfs/blocklayout/blocklayout.h    |   13 +++-
- fs/nfs/blocklayout/blocklayoutdev.c |   13 +++-
- fs/nfs/pnfs.h                       |    1 -
- 4 files changed, 157 insertions(+), 8 deletions(-)
+However when using the option 'noac', the user is able to mount the same
+share on the same mountpoint multiple times. This happens because a
+share mounted with the noac option is automatically assigned the 'sync'
+flag MS_SYNCHRONOUS in nfs_initialise_sb(). This flag is set after the
+check for already existing superblocks is done in sget(). The check for
+the mount flags in nfs_compare_mount_options() does not take into
+account the 'sync' flag applied later on in the code path. This means
+that when using 'noac', a new superblock structure is assigned for every
+new mount of the same share and multiple shares on the same mountpoint
+are allowed.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 1858743..3bf60e3 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -163,17 +163,153 @@ bl_cleanup_layoutcommit(struct pnfs_layout_hdr *lo,
- {
- }
+ie. 
+# mount -onoac localhost:/nfsv3 /mnt
+can be run multiple times.
+
+The patch checks for noac and assigns the sync flag before sget() is
+called to obtain an already existing superblock structure.
+
+
+Signed-off-by: Sachin Prabhu <sprabhu@redhat.com>
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index b961cea..9b7dd70 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2035,9 +2035,6 @@ static inline void nfs_initialise_sb(struct
+super_block *sb)
+ 		sb->s_blocksize = nfs_block_bits(server->wsize,
+ 						 &sb->s_blocksize_bits);
  
-+static void free_blk_mountid(struct block_mount_id *mid)
-+{
-+	if (mid) {
-+		struct pnfs_block_dev *dev;
-+		spin_lock(&mid->bm_lock);
-+		while (!list_empty(&mid->bm_devlist)) {
-+			dev = list_first_entry(&mid->bm_devlist,
-+					       struct pnfs_block_dev,
-+					       bm_node);
-+			list_del(&dev->bm_node);
-+			free_block_dev(dev);
-+		}
-+		spin_unlock(&mid->bm_lock);
-+		kfree(mid);
-+	}
-+}
-+
-+/* This is mostly copied from the filelayout's get_device_info function.
-+ * It seems much of this should be at the generic pnfs level.
-+ */
-+static struct pnfs_block_dev *
-+nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
-+			struct nfs4_deviceid *d_id)
-+{
-+	struct pnfs_device *dev;
-+	struct pnfs_block_dev *rv = NULL;
-+	u32 max_resp_sz;
-+	int max_pages;
-+	struct page **pages = NULL;
-+	int i, rc;
-+
-+	/*
-+	 * Use the session max response size as the basis for setting
-+	 * GETDEVICEINFO's maxcount
-+	 */
-+	max_resp_sz = server->nfs_client->cl_session->fc_attrs.max_resp_sz;
-+	max_pages = max_resp_sz >> PAGE_SHIFT;
-+	dprintk("%s max_resp_sz %u max_pages %d\n",
-+		__func__, max_resp_sz, max_pages);
-+
-+	dev = kmalloc(sizeof(*dev), GFP_NOFS);
-+	if (!dev) {
-+		dprintk("%s kmalloc failed\n", __func__);
-+		return NULL;
-+	}
-+
-+	pages = kzalloc(max_pages * sizeof(struct page *), GFP_NOFS);
-+	if (pages == NULL) {
-+		kfree(dev);
-+		return NULL;
-+	}
-+	for (i = 0; i < max_pages; i++) {
-+		pages[i] = alloc_page(GFP_NOFS);
-+		if (!pages[i])
-+			goto out_free;
-+	}
-+
-+	memcpy(&dev->dev_id, d_id, sizeof(*d_id));
-+	dev->layout_type = LAYOUT_BLOCK_VOLUME;
-+	dev->pages = pages;
-+	dev->pgbase = 0;
-+	dev->pglen = PAGE_SIZE * max_pages;
-+	dev->mincount = 0;
-+
-+	dprintk("%s: dev_id: %s\n", __func__, dev->dev_id.data);
-+	rc = nfs4_proc_getdeviceinfo(server, dev);
-+	dprintk("%s getdevice info returns %d\n", __func__, rc);
-+	if (rc)
-+		goto out_free;
-+
-+	rv = nfs4_blk_decode_device(server, dev);
-+ out_free:
-+	for (i = 0; i < max_pages; i++)
-+		__free_page(pages[i]);
-+	kfree(pages);
-+	kfree(dev);
-+	return rv;
-+}
-+
- static int
- bl_set_layoutdriver(struct nfs_server *server, const struct nfs_fh *fh)
- {
-+	struct block_mount_id *b_mt_id = NULL;
-+	struct pnfs_devicelist *dlist = NULL;
-+	struct pnfs_block_dev *bdev;
-+	LIST_HEAD(block_disklist);
-+	int status = 0, i;
-+
- 	dprintk("%s enter\n", __func__);
--	return 0;
-+
-+	if (server->pnfs_blksize == 0) {
-+		dprintk("%s Server did not return blksize\n", __func__);
-+		return -EINVAL;
-+	}
-+	b_mt_id = kzalloc(sizeof(struct block_mount_id), GFP_NOFS);
-+	if (!b_mt_id) {
-+		status = -ENOMEM;
-+		goto out_error;
-+	}
-+	/* Initialize nfs4 block layout mount id */
-+	spin_lock_init(&b_mt_id->bm_lock);
-+	INIT_LIST_HEAD(&b_mt_id->bm_devlist);
-+
-+	dlist = kmalloc(sizeof(struct pnfs_devicelist), GFP_NOFS);
-+	if (!dlist) {
-+		status = -ENOMEM;
-+		goto out_error;
-+	}
-+	dlist->eof = 0;
-+	while (!dlist->eof) {
-+		status = nfs4_proc_getdevicelist(server, fh, dlist);
-+		if (status)
-+			goto out_error;
-+		dprintk("%s GETDEVICELIST numdevs=%i, eof=%i\n",
-+			__func__, dlist->num_devs, dlist->eof);
-+		for (i = 0; i < dlist->num_devs; i++) {
-+			bdev = nfs4_blk_get_deviceinfo(server, fh,
-+						       &dlist->dev_id[i]);
-+			if (!bdev) {
-+				status = -ENODEV;
-+				goto out_error;
-+			}
-+			spin_lock(&b_mt_id->bm_lock);
-+			list_add(&bdev->bm_node, &b_mt_id->bm_devlist);
-+			spin_unlock(&b_mt_id->bm_lock);
-+		}
-+	}
-+	dprintk("%s SUCCESS\n", __func__);
-+	server->pnfs_ld_data = b_mt_id;
-+
-+ out_return:
-+	kfree(dlist);
-+	return status;
-+
-+ out_error:
-+	free_blk_mountid(b_mt_id);
-+	goto out_return;
- }
+-	if (server->flags & NFS_MOUNT_NOAC)
+-		sb->s_flags |= MS_SYNCHRONOUS;
+-
+ 	sb->s_bdi = &server->backing_dev_info;
  
- static int
- bl_clear_layoutdriver(struct nfs_server *server)
- {
-+	struct block_mount_id *b_mt_id = server->pnfs_ld_data;
+ 	nfs_super_set_maxbytes(sb, server->maxfilesize);
+@@ -2249,6 +2246,10 @@ static struct dentry *nfs_fs_mount(struct
+file_system_type *fs_type,
+ 	if (server->flags & NFS_MOUNT_UNSHARED)
+ 		compare_super = NULL;
+ 
++	/* -o noac implies -o sync */
++	if (server->flags & NFS_MOUNT_NOAC)
++		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
 +
- 	dprintk("%s enter\n", __func__);
-+	free_blk_mountid(b_mt_id);
-+	dprintk("%s RETURNS\n", __func__);
- 	return 0;
- }
+ 	/* Get a superblock - note that we may end up sharing one that already
+exists */
+ 	s = sget(fs_type, compare_super, nfs_set_super, &sb_mntdata);
+ 	if (IS_ERR(s)) {
+@@ -2361,6 +2362,10 @@ nfs_xdev_mount(struct file_system_type *fs_type,
+int flags,
+ 	if (server->flags & NFS_MOUNT_UNSHARED)
+ 		compare_super = NULL;
  
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index ff140e7..ed6253e 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -38,6 +38,11 @@
- 
- #include "../pnfs.h"
- 
-+struct block_mount_id {
-+	spinlock_t			bm_lock;    /* protects list */
-+	struct list_head		bm_devlist; /* holds pnfs_block_dev */
-+};
++	/* -o noac implies -o sync */
++	if (server->flags & NFS_MOUNT_NOAC)
++		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
 +
- struct pnfs_block_dev {
- 	struct list_head		bm_node;
- 	struct nfs4_deviceid		bm_mdevid;    /* associated devid */
-@@ -99,7 +104,10 @@ struct pnfs_block_layout {
- 	sector_t		bl_blocksize;  /* Server blocksize in sectors */
- };
+ 	/* Get a superblock - note that we may end up sharing one that already
+exists */
+ 	s = sget(&nfs_fs_type, compare_super, nfs_set_super, &sb_mntdata);
+ 	if (IS_ERR(s)) {
+@@ -2628,6 +2633,10 @@ nfs4_remote_mount(struct file_system_type
+*fs_type, int flags,
+ 	if (server->flags & NFS4_MOUNT_UNSHARED)
+ 		compare_super = NULL;
  
--static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
-+#define BLK_ID(lo) ((struct block_mount_id *)(NFS_SERVER(lo->plh_inode)->pnfs_ld_data))
++	/* -o noac implies -o sync */
++	if (server->flags & NFS_MOUNT_NOAC)
++		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
 +
-+static inline struct pnfs_block_layout *
-+BLK_LO2EXT(struct pnfs_layout_hdr *lo)
- {
- 	return container_of(lo, struct pnfs_block_layout, bl_layout);
- }
-@@ -137,8 +145,7 @@ void bl_pipe_destroy_msg(struct rpc_pipe_msg *);
- struct block_device *nfs4_blkdev_get(dev_t dev);
- int nfs4_blkdev_put(struct block_device *bdev);
- struct pnfs_block_dev *nfs4_blk_decode_device(struct nfs_server *server,
--						struct pnfs_device *dev,
--						struct list_head *sdlist);
-+						struct pnfs_device *dev);
- int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
- 				struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
+ 	/* Get a superblock - note that we may end up sharing one that already
+exists */
+ 	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
+ 	if (IS_ERR(s)) {
+@@ -2916,6 +2925,10 @@ nfs4_xdev_mount(struct file_system_type *fs_type,
+int flags,
+ 	if (server->flags & NFS4_MOUNT_UNSHARED)
+ 		compare_super = NULL;
  
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index 64da33a..b23fe60 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -116,8 +116,7 @@ void bl_pipe_destroy_msg(struct rpc_pipe_msg *msg)
-  */
- struct pnfs_block_dev *
- nfs4_blk_decode_device(struct nfs_server *server,
--		       struct pnfs_device *dev,
--		       struct list_head *sdlist)
-+		       struct pnfs_device *dev)
- {
- 	struct pnfs_block_dev *rv = NULL;
- 	struct block_device *bd = NULL;
-@@ -129,6 +128,7 @@ nfs4_blk_decode_device(struct nfs_server *server,
- 	uint8_t *dataptr;
- 	DECLARE_WAITQUEUE(wq, current);
- 	struct bl_dev_msg *reply = &bl_mount_reply;
-+	int offset, len, i;
++	/* -o noac implies -o sync */
++	if (server->flags & NFS_MOUNT_NOAC)
++		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
++
+ 	/* Get a superblock - note that we may end up sharing one that already
+exists */
+ 	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
+ 	if (IS_ERR(s)) {
+@@ -3003,6 +3016,10 @@ nfs4_remote_referral_mount(struct
+file_system_type *fs_type, int flags,
+ 	if (server->flags & NFS4_MOUNT_UNSHARED)
+ 		compare_super = NULL;
  
- 	dprintk("%s CREATING PIPEFS MESSAGE\n", __func__);
- 	dprintk("%s: deviceid: %s, mincount: %d\n", __func__, dev->dev_id.data,
-@@ -143,7 +143,14 @@ nfs4_blk_decode_device(struct nfs_server *server,
- 
- 	memcpy(msg.data, &bl_msg, sizeof(bl_msg));
- 	dataptr = (uint8_t *) msg.data;
--	memcpy(&dataptr[sizeof(bl_msg)], dev->area, dev->mincount);
-+	len = dev->mincount;
-+	offset = sizeof(bl_msg);
-+	for (i = 0; len > 0; i++) {
-+		memcpy(&dataptr[offset], page_address(dev->pages[i]),
-+				len < PAGE_CACHE_SIZE ? len : PAGE_CACHE_SIZE);
-+		len -= PAGE_CACHE_SIZE;
-+		offset += PAGE_CACHE_SIZE;
-+	}
- 	msg.len = sizeof(bl_msg) + dev->mincount;
- 
- 	dprintk("%s CALLING USERSPACE DAEMON\n", __func__);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index f271425..82dde37 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -141,7 +141,6 @@ struct pnfs_device {
- 	unsigned int  layout_type;
- 	unsigned int  mincount;
- 	struct page **pages;
--	void          *area;
- 	unsigned int  pgbase;
- 	unsigned int  pglen;
- };
--- 
-1.7.4.1
++	/* -o noac implies -o sync */
++	if (server->flags & NFS_MOUNT_NOAC)
++		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
++
+ 	/* Get a superblock - note that we may end up sharing one that already
+exists */
+ 	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
+ 	if (IS_ERR(s)) {
+
 
