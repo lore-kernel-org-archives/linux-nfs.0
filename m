@@ -1,126 +1,150 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:48416 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750896Ab1G3ETJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 00:19:09 -0400
-From: "Loewe, Bill" <bloewe@panasas.com>
-To: "Harrosh, Boaz" <bharrosh@panasas.com>, Gregory Magoon <gmagoon@mit.edu>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: RE: NFSv4 vs NFSv3 with MPICH2-1.4
-Date: Sat, 30 Jul 2011 03:56:40 +0000
-Message-ID: <717300C842BCD249A6A8CADE9995E130093FDE07@seabiscuit.int.panasas.com>
-References: <20110728152306.219iz5wpkcokoo4c@webmail.mit.edu>
- <1311886684.27285.8.camel@lade.trondhjem.org>
- <20110728172449.8wxxte4jg0s8kcgs@webmail.mit.edu>
- <1311889677.27285.14.camel@lade.trondhjem.org>
- <20110728180120.bf6gq5zyos8wwg4s@webmail.mit.edu>
- <4E31E336.9090702@panasas.com>
- <20110728191519.ql5la3phk4000ko4@webmail.mit.edu>
- <4E337844.2070800@panasas.com>
-In-Reply-To: <4E337844.2070800@panasas.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:35052 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751175Ab1G2DQo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 23:16:44 -0400
+Date: Thu, 28 Jul 2011 23:16:50 -0400
+From: Jim Rees <rees@umich.edu>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH v4 09/27] pnfs: cleanup_layoutcommit
+Message-ID: <20110729031650.GA19579@merit.edu>
+References: <1311874276-1386-1-git-send-email-rees@umich.edu>
+ <1311874276-1386-10-git-send-email-rees@umich.edu>
+ <4E31A9F3.9090205@panasas.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E31A9F3.9090205@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-SGkgR3JlZywNCg0KSU9SIGlzIGluZGVwZW5kZW50IG9mIE1QSUNIMiwgYnV0IGRvZXMgcmVxdWly
-ZSBNUEkgZm9yIHByb2Nlc3MgY29vcmRpbmF0aW9uLiAgQnkgZGVmYXVsdCwgSU9SIHdpbGwgdXNl
-IHRoZSAiLWEgUE9TSVgiIG9wdGlvbiBmb3Igc3RhbmRhcmQgUE9TSVggSS9PIC0tIG9wZW4oKSwg
-d3JpdGUoKSwgY2xvc2UoKSwgZXRjLg0KDQpJbiBhZGRpdGlvbiwgSU9SIGNhbiB1c2UgdGhlIE1Q
-SS1JTyBsaWJyYXJ5IGNhbGxzIChNUElfRmlsZV9vcGVuKCksIGV0Yy4pIHRvIHBlcmZvcm0gSS9P
-Lg0KDQpGb3IgdGhlIGJ1aWxkIHByb2Nlc3Mgb2YgTVBJQ0gyICJtYWtlIHRlc3RzIiBleGVyY2lz
-ZXMgdGhpcyBNUEktSU8gKFJPTUlPKSBpbnRlcmZhY2Ugd2hpY2ggdXNlcyBhbiBBRElPIChBYnN0
-cmFjdC1EZXZpY2UgSW50ZXJmYWNlIGZvciBJL08pIGxheWVyLiAgQURJTyBjYW4gaW50ZXJmYWNl
-IHRvIGRpZmZlcmVudCBmaWxlIHN5c3RlbXMgKE5GUywgUGFuRlMsIFBWRlMyLCBMdXN0cmUsIGUu
-Zy4pLg0KDQpUaGUgZXJyb3JzIHlvdSdyZSBlbmNvdW50ZXJpbmcgaW4gIm1ha2UgdGVzdHMiIGZv
-ciBNUElDSDIgZG8gbm90IGFwcGVhciB0byBiZSB0ZXN0aW5nIHRoZSBJL08sIGhvd2V2ZXIsIGJ1
-dCBzZWVtIHRvIGJlIGFuIGlzc3VlIHdpdGggdGhlIGxhdW5jaGVyIGZvciB0aGUgdGVzdHMgaW4g
-Z2VuZXJhbC4gIEkgYWdyZWUgd2l0aCBCb2F6IHRoYXQgaXQgbWF5IG1ha2Ugc2Vuc2UgdG8gZm9s
-bG93IHVwIHdpdGggdGhlIE1QSUNIIGRldmVsb3BlcnMgZm9yIHRoaXMuICBVbmRlciB0aGVpciBt
-YWluIHBhZ2UgKGh0dHA6Ly93d3cubWNzLmFubC5nb3YvcmVzZWFyY2gvcHJvamVjdHMvbXBpY2gy
-LykgdGhleSBoYXZlIGEgc3VwcG9ydCBwdWxsZG93biB3aXRoIEZBUSBhbmQgYSBtYWlsaW5nIGxp
-c3QuICBUaGV5IG1heSBiZSBhYmxlIHRvIGhlbHAgcmVzb2x2ZSB0aGlzIGZvciB5b3UuDQoNClRo
-YW5rcywNCg0KLS1CaWxsLg0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogSGFy
-cm9zaCwgQm9heiANClNlbnQ6IEZyaWRheSwgSnVseSAyOSwgMjAxMSA4OjIwIFBNDQpUbzogR3Jl
-Z29yeSBNYWdvb24NCkNjOiBUcm9uZCBNeWtsZWJ1c3Q7IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5v
-cmc7IEouIEJydWNlIEZpZWxkczsgTG9ld2UsIEJpbGwNClN1YmplY3Q6IFJlOiBORlN2NCB2cyBO
-RlN2MyB3aXRoIE1QSUNIMi0xLjQNCg0KT24gMDcvMjgvMjAxMSAwNDoxNSBQTSwgR3JlZ29yeSBN
-YWdvb24gd3JvdGU6DQo+IFVuZm9ydHVuYXRlbHksIEknbSBub3QgZmFtaWxpYXIgZW5vdWdoIHdp
-dGggTVBJQ0gyIHRvIGhhdmUgYW4gaWRlYSBhYm91dA0KPiBzaWduaWZpY2FudCBjaGFuZ2VzIGJl
-dHdlZW4gdmVyc2lvbiAxLjMgYW5kIDEuNCwgYnV0IG90aGVyIGV2aWRlbmNlIHN1Z2dlc3RzDQo+
-IHRoYXQgdGhlIHZlcnNpb24gaXMgbm90IHRoZSBpc3N1ZSBhbmQgdGhhdCBJIHdvdWxkIGhhdmUg
-dGhlIHNhbWUgcHJvYmxlbSB3aXRoDQo+IHYxLjMuDQo+IA0KPiBJJ20gdXNpbmcgdGhlIE1QSUNI
-MiB0ZXN0IHN1aXRlIGludm9rZWQgYnkgIm1ha2UgdGVzdGluZyIgKHNlZSBiZWxvdyANCj4gZm9y
-IGluaXRpYWwNCj4gb3V0cHV0KS4NCj4gDQo+IEknbSB1c2luZyB0aGUgbmZzLWtlcm5lbC1zZXJ2
-ZXIgYW5kIG5mcy1jb21tb24gVWJ1bnR1IHBhY2thZ2VzIChuYXR0eSANCj4gcmVsZWFzZSkuDQo+
-IA0KDQpZb3UgaGF2ZSBub3QgYW5zd2VyZWQgdGhlIG1vc3QgaW1wb3J0YW50IHF1ZXN0aW9uOg0K
-Pj4gQWxzbyBhcmUgeW91IHVzaW5nIHRoZSBidWlsdGluIG5mcy1jbGllbnQgZHJpdmVyIG9yIHRo
-ZSBQT1NJWCBpbnRlcmZhY2U/DQoNCldoaWNoIEknbGwgYXNzdW1lIG1lYW5zIHlvdSBkb24ndCBr
-bm93LiBTbyBJJ2xsIHRyeSB0byBlbGFib3JhdGUuIEp1c3QgZm9yDQpiYWNrZ3JvdW5kLCBJJ3Zl
-IG5ldmVyIHVzZWQgIm1ha2UgdGVzdHMiIGJlZm9yZSBhbGwgSSB1c2VkIHdhcyBJT1IgJiBtZHRl
-c3QuDQoNCk5vdyBpZiB5b3UgcHJpbnQgdGhlIHVzYWdlIHN0cmluZyBmb3IgSU9SIHlvdSBnZXQg
-dGhpcyBvcHRpb246DQoNCgktYSBTICBhcGkgLS0gIEFQSSBmb3IgSS9PIFtQT1NJWHxNUElJT3xI
-REY1fE5DTVBJXQ0KDQpJJ20gbm90IGZhbWlsaWFyIHdpdGggdGhlIGNvZGUgYnV0IHdoYXQgSSB1
-bmRlcnN0YW5kIGlzIG9ubHkgIi1hIFBPU0lYIiB3aWxsIGFjdHVhbGx5DQp1c2UgdGhlIHJlZ3Vs
-YXIgS2VybmVsIFZGUyBpbnRlcmZhY2UgZm9yIHJlYWQvd3JpdGluZyBvZiBmaWxlcy4gVGhlIG90
-aGVyIG9wdGlvbnMNCmhhdmUgZGlmZmVyZW50IGRyaXZlcnMgZm9yIGRpZmZlcmVudCBwcm90b2Nv
-bHMuIEkgZG8gbm90IGtub3cgZmlyc3QgaGFuZCwgYnV0IEkgb25jZQ0KaGVhcmQgaW4gYSBjb25m
-ZXJlbmNlIHRoYXQgLWEgTVBJSU8gaGFzIGEgc3BlY2lhbCBORlMgZHJpdmVyIHRoYXQgdXNlcyBi
-ZXR0ZXIgTkZTDQpzZW1hbnRpY3MgYW5kIGF2b2lkcyB0aGUgUE9TSVggc2VtYW50aWNzIHdoaWNo
-IGFyZSBiYWQgZm9yIGJpZyBjbHVzdGVyIHBlcmZvcm1hbmNlLg0KQWxsIHRoaXMgaXMgc3BlY3Vs
-YXRpb25zIGFuZCBydW1vcnMgb24gbXkgcGFydCwgYW5kIHlvdSB3aWxsIG5lZWQgdG8gY29uc3Vs
-dCB3aXRoIHRoZQ0KbXBpY2ggZ3V5cy4NCg0KTm93IEkgY2FuIGltYWdpbmUgdGhhdCBhICJtYWtl
-IHRlc3RzIiB3b3VsZCB0cnkgYWxsIHBvc3NpYmxlIGNvbWJpbmF0aW9ucyBvZiAiLWEgUyINClNv
-IHlvdSdsbCBuZWVkIHRvIGRpZyBvdXQgd2hhdCBpcyB0aGUgZmFsbGluZyB0ZXN0IGFuZCBpcyBp
-dCByZWFsbHkgdXNpbmcgdGhlIEtlcm5lbA0KTkZTIGRyaXZlciBhdCB0aGF0IHBvaW50LiAoSSBi
-ZXQgaWYgeW91IGRvIGEgdGNwZHVtcCBsaWtlIEJydWNlIHNhaWQgdGhlIGd1eXMgaGVyZSB3aWxs
-DQpiZSBhYmxlIHRvIHNlZSBpZiB0aGlzIGlzIGEgTGludXggTkZTIG9yIG5vdCkNCg0KSSBDQzog
-QmlsbCBMb2V3ZSB0aGF0IG1pZ2h0IGtub3cgbXVjaCBtb3JlIHRoZW4gbWUgYWJvdXQgdGhpcyBz
-dWJqZWN0LiBBbmQgcGxlYXNlIGRvDQpzcGVhayB3aXRoIHRoZSBNUElDSCBwZW9wbGUgKEJ1dCBr
-ZWVwIHVzIGluIHRoZSBsb29wIGl0IGlzIGludGVyZXN0aW5nIHRvIGtub3cpDQoNClRoYW5rcw0K
-Qm9heg0KDQo+IFRoYW5rcywNCj4gR3JlZw0KPiANCj4gdXNlckBub2RlMDE6fi9Nb2xwcm8vc3Jj
-L21waWNoMi0xLjQkIG1ha2UgdGVzdGluZw0KPiAoY2QgdGVzdCAmJiBtYWtlIHRlc3RpbmcpDQo+
-IG1ha2VbMV06IEVudGVyaW5nIGRpcmVjdG9yeSBgL2hvbWUvdXNlci9Nb2xwcm8vc3JjL21waWNo
-Mi0xLjQvdGVzdCcNCj4gKE5PWE1MQ0xPU0U9WUVTICYmIGV4cG9ydCBOT1hNTENMT1NFICYmIGNk
-IG1waSAmJiBtYWtlIHRlc3RpbmcpDQo+IG1ha2VbMl06IEVudGVyaW5nIGRpcmVjdG9yeSBgL2hv
-bWUvdXNlci9Nb2xwcm8vc3JjL21waWNoMi0xLjQvdGVzdC9tcGknDQo+IC4vcnVudGVzdHMgLXNy
-Y2Rpcj0uIC10ZXN0cz10ZXN0bGlzdCBcDQo+ICAgICAgICAgICAgICAgICAgICAgLW1waWV4ZWM9
-L2hvbWUvdXNlci9Nb2xwcm8vc3JjL21waWNoMi1pbnN0YWxsL2Jpbi9tcGlleGVjIFwNCj4gICAg
-ICAgICAgICAgICAgICAgICAteG1sZmlsZT1zdW1tYXJ5LnhtbA0KPiBMb29raW5nIGluIC4vdGVz
-dGxpc3QNCj4gUHJvY2Vzc2luZyBkaXJlY3RvcnkgYXR0cg0KPiBMb29raW5nIGluIC4vYXR0ci90
-ZXN0bGlzdA0KPiBQcm9jZXNzaW5nIGRpcmVjdG9yeSBjb2xsDQo+IExvb2tpbmcgaW4gLi9jb2xs
-L3Rlc3RsaXN0DQo+IFVuZXhwZWN0ZWQgb3V0cHV0IGluIGFsbHJlZDogW21waWV4ZWNAbm9kZTAx
-XSBBUFBMSUNBVElPTiBUSU1FRCBPVVQNCj4gVW5leHBlY3RlZCBvdXRwdXQgaW4gYWxscmVkOiBb
-cHJveHk6MDowQG5vZGUwMV0gSFlEX3BtY2RfcG1pcF9jb250cm9sX2NtZF9jYg0KPiAoLi9wbS9w
-bWlzZXJ2L3BtaXBfY2IuYzo5MDYpOiBhc3NlcnQgKCFjbG9zZWQpIGZhaWxlZA0KPiBVbmV4cGVj
-dGVkIG91dHB1dCBpbiBhbGxyZWQ6IFtwcm94eTowOjBAbm9kZTAxXSBIWURUX2RteHVfcG9sbF93
-YWl0X2Zvcl9ldmVudA0KPiAoLi90b29scy9kZW11eC9kZW11eF9wb2xsLmM6NzcpOiBjYWxsYmFj
-ayByZXR1cm5lZCBlcnJvciBzdGF0dXMNCj4gVW5leHBlY3RlZCBvdXRwdXQgaW4gYWxscmVkOiBb
-cHJveHk6MDowQG5vZGUwMV0gbWFpbiANCj4gKC4vcG0vcG1pc2Vydi9wbWlwLmM6MjI2KToNCj4g
-ZGVtdXggZW5naW5lIGVycm9yIHdhaXRpbmcgZm9yIGV2ZW50DQo+IFVuZXhwZWN0ZWQgb3V0cHV0
-IGluIGFsbHJlZDogW21waWV4ZWNAbm9kZTAxXSBIWURUX2JzY3Vfd2FpdF9mb3JfY29tcGxldGlv
-bg0KPiAoLi90b29scy9ib290c3RyYXAvdXRpbHMvYnNjdV93YWl0LmM6NzApOiBvbmUgb2YgdGhl
-IHByb2Nlc3NlcyB0ZXJtaW5hdGVkDQo+IGJhZGx5OyBhYm9ydGluZw0KPiBVbmV4cGVjdGVkIG91
-dHB1dCBpbiBhbGxyZWQ6IFttcGlleGVjQG5vZGUwMV0gSFlEVF9ic2NpX3dhaXRfZm9yX2NvbXBs
-ZXRpb24NCj4gKC4vdG9vbHMvYm9vdHN0cmFwL3NyYy9ic2NpX3dhaXQuYzoyMyk6IGxhdW5jaGVy
-IHJldHVybmVkIGVycm9yIHdhaXRpbmcgZm9yDQo+IGNvbXBsZXRpb24NCj4gVW5leHBlY3RlZCBv
-dXRwdXQgaW4gYWxscmVkOiBbbXBpZXhlY0Bub2RlMDFdIEhZRF9wbWNpX3dhaXRfZm9yX2NvbXBs
-ZXRpb24NCj4gKC4vcG0vcG1pc2Vydi9wbWlzZXJ2X3BtY2kuYzoxODkpOiBsYXVuY2hlciByZXR1
-cm5lZCBlcnJvciB3YWl0aW5nIGZvcg0KPiBjb21wbGV0aW9uDQo+IFVuZXhwZWN0ZWQgb3V0cHV0
-IGluIGFsbHJlZDogW21waWV4ZWNAbm9kZTAxXSBtYWluICguL3VpL21waWNoL21waWV4ZWMuYzoz
-OTcpOg0KPiBwcm9jZXNzIG1hbmFnZXIgZXJyb3Igd2FpdGluZyBmb3IgY29tcGxldGlvbg0KPiBQ
-cm9ncmFtIGFsbHJlZCBleGl0ZWQgd2l0aG91dCBObyBFcnJvcnMNCj4gDQo+Pg0KPj4gSGkgR3Jl
-Z29yeQ0KPj4NCj4+IFdlIGFyZSB1c2luZyBNUElDSDItMS4zLjEgYW5kIHRoZSBJT1IgbXBpY2gg
-dGVzdC4gYXMgd2VsbCBhcyB0aGUgbWR0ZXN0DQo+PiB0ZXN0LiBBbmQgaGF2ZSBoYWQgbm8gaXNz
-dWVzIHNvIGZhciB3aXRoIG5mc3Y0IG5mc3Y0LjEgYW5kIHBuZnMuIEluIGZhY3QNCj4+IHRoaXMg
-aXMgb3VyIHN0YW5kYXJkIHBlcmZvcm1hbmNlIHRlc3QuDQo+Pg0KPj4gV2hhdCB0ZXN0cyBhcmUg
-eW91IHVzaW5nPw0KPj4gRG8geW91IGtub3cgb2YgYW55IG1ham9yIGNoYW5nZXMgYmV0d2VlbiBN
-UElDSDItMS4zLjEgYW5kIE1QSUNIMi0xLjQ/DQo+PiBBbHNvIGFyZSB5b3UgdXNpbmcgdGhlIGJ1
-aWx0aW4gbmZzLWNsaWVudCBkcml2ZXIgb3IgdGhlIFBPU0lYIGludGVyZmFjZT8NCj4+DQo+PiBC
-b2F6DQo+Pg0KPiANCj4gDQoNCgTvv717Lm7vv70r77+977+977+977+977+977+977+9KyXvv73v
-v71sendt77+977+9Yu+/veunsu+/ve+/vXLvv73vv716WO+/ve+/vRnfsinvv73vv73vv713Kh9q
-Z++/ve+/ve+/vR7vv73vv73vv73vv73vv73domov77+977+977+9eu+/vd6W77+977+9Mu+/vd6Z
-77+977+977+9Ju+/vSnfoe+/vWHvv73vv71/77+977+9Hu+/vUfvv73vv73vv71o77+9D++/vWo6
-K3bvv73vv73vv71377+92aU=
+Boaz Harrosh wrote:
+
+  On 07/28/2011 10:30 AM, Jim Rees wrote:
+  > From: Andy Adamson <andros@netapp.com>
+  > 
+  > This gives layout driver a chance to cleanup structures they put in at
+  > encode_layoutcommit.
+  > 
+  > Signed-off-by: Andy Adamson <andros@netapp.com>
+  > [fixup layout header pointer for layoutcommit]
+  > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+  > Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+  > ---
+  >  fs/nfs/nfs4proc.c       |    1 +
+  >  fs/nfs/nfs4xdr.c        |    1 +
+  >  fs/nfs/pnfs.c           |   10 ++++++++++
+  >  fs/nfs/pnfs.h           |    5 +++++
+  >  include/linux/nfs_xdr.h |    1 +
+  >  5 files changed, 18 insertions(+), 0 deletions(-)
+  > 
+  > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+  > index e86de79..6cb84b4 100644
+  > --- a/fs/nfs/nfs4proc.c
+  > +++ b/fs/nfs/nfs4proc.c
+  > @@ -5963,6 +5963,7 @@ static void nfs4_layoutcommit_release(void *calldata)
+  >  	struct nfs4_layoutcommit_data *data = calldata;
+  >  	struct pnfs_layout_segment *lseg, *tmp;
+  >  
+  > +	pnfs_cleanup_layoutcommit(data->args.inode, data);
+  
+  If inode is part of @data, which is also passed as argument then we can simplify
+  the API by just passing @data
+
+Thanks, I've applied the following patch, which will be squashed and
+included in the next version of the patch set.  Which I will probably send
+tomorrow.
+
+>From b757a45f208f31f8eff5ec499f1e99895713a17c Mon Sep 17 00:00:00 2001
+From: Jim Rees <rees@umich.edu>
+Date: Thu, 28 Jul 2011 15:26:49 -0400
+Subject: [PATCH] SQUASHME: rm inode and pnfs_layout_hdr args from cleanup_layoutcommit()
+
+Signed-off-by: Jim Rees <rees@umich.edu>
+---
+ fs/nfs/blocklayout/blocklayout.c |    5 +++--
+ fs/nfs/nfs4proc.c                |    2 +-
+ fs/nfs/pnfs.c                    |    8 +++-----
+ fs/nfs/pnfs.h                    |    6 ++----
+ 4 files changed, 9 insertions(+), 12 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 81efa05..7450309 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -771,9 +771,10 @@ bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
+ }
+ 
+ static void
+-bl_cleanup_layoutcommit(struct pnfs_layout_hdr *lo,
+-			struct nfs4_layoutcommit_data *lcdata)
++bl_cleanup_layoutcommit(struct nfs4_layoutcommit_data *lcdata)
+ {
++	struct pnfs_layout_hdr *lo = NFS_I(lcdata->args.inode)->layout;
++
+ 	dprintk("%s enter\n", __func__);
+ 	clean_pnfs_block_layoutupdate(BLK_LO2EXT(lo), &lcdata->args, lcdata->res.status);
+ }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6cb84b4..8c77039 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5963,7 +5963,7 @@ static void nfs4_layoutcommit_release(void *calldata)
+ 	struct nfs4_layoutcommit_data *data = calldata;
+ 	struct pnfs_layout_segment *lseg, *tmp;
+ 
+-	pnfs_cleanup_layoutcommit(data->args.inode, data);
++	pnfs_cleanup_layoutcommit(data);
+ 	/* Matched by references in pnfs_set_layoutcommit */
+ 	list_for_each_entry_safe(lseg, tmp, &data->lseg_list, pls_lc_list) {
+ 		list_del_init(&lseg->pls_lc_list);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index c1cc216..e550e88 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1411,14 +1411,12 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ }
+ EXPORT_SYMBOL_GPL(pnfs_set_layoutcommit);
+ 
+-void pnfs_cleanup_layoutcommit(struct inode *inode,
+-			       struct nfs4_layoutcommit_data *data)
++void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data)
+ {
+-	struct nfs_server *nfss = NFS_SERVER(inode);
++	struct nfs_server *nfss = NFS_SERVER(data->args.inode);
+ 
+ 	if (nfss->pnfs_curr_ld->cleanup_layoutcommit)
+-		nfss->pnfs_curr_ld->cleanup_layoutcommit(NFS_I(inode)->layout,
+-							 data);
++		nfss->pnfs_curr_ld->cleanup_layoutcommit(data);
+ }
+ 
+ /*
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 82dde37..e0b5d80 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -113,8 +113,7 @@ struct pnfs_layoutdriver_type {
+ 				     struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutreturn_args *args);
+ 
+-	void (*cleanup_layoutcommit) (struct pnfs_layout_hdr *layoutid,
+-				      struct nfs4_layoutcommit_data *data);
++	void (*cleanup_layoutcommit) (struct nfs4_layoutcommit_data *data);
+ 
+ 	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
+ 				     struct xdr_stream *xdr,
+@@ -198,8 +197,7 @@ void pnfs_roc_release(struct inode *ino);
+ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+ bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
+-void pnfs_cleanup_layoutcommit(struct inode *inode,
+-			       struct nfs4_layoutcommit_data *data);
++void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+ int _pnfs_return_layout(struct inode *);
+ int pnfs_ld_write_done(struct nfs_write_data *);
+-- 
+1.7.4.1
+
