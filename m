@@ -1,107 +1,181 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:57490 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932217Ab1GOBYK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jul 2011 21:24:10 -0400
-Received: by gxk21 with SMTP id 21so358312gxk.19
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Jul 2011 18:24:09 -0700 (PDT)
-Date: Thu, 14 Jul 2011 20:24:09 -0500
-Message-ID: <CABrM6wnF-zmobE75cMXstzu0Y-wWwRT-srKxWJeZeVDyv0EEWw@mail.gmail.com>
-Subject: Why killing processes that access NFS results in the output directory inaccessible?
-From: Peng Yu <pengyu.ut@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:43460 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752108Ab1G2PzN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 11:55:13 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v5 16/27] pnfsblock: merge extents
+Date: Fri, 29 Jul 2011 11:54:41 -0400
+Message-Id: <1311954892-22038-17-git-send-email-rees@umich.edu>
+In-Reply-To: <1311954892-22038-1-git-send-email-rees@umich.edu>
+References: <1311954892-22038-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi All,
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-I have an NFS server using the Solaris package version
-11.11,REV=2009.11.11, and an NFS client of version 1:1.2.0-4ubuntu4.1
-(Ubuntu 10.04LTS).
+Replace a stub, so that extents underlying the layouts are properly
+added, merged, or ignored as necessary.
 
-I use the following Makefile to start (using the command 'make -j')
-muliple gunzip processes to unzip the gz files (each gz file is of
-several GBs, the decompressed files are about 2 times of the original
-files).
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: delete the new node before put it]
+Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/blocklayout/blocklayout.h |   13 +++++
+ fs/nfs/blocklayout/extents.c     |  106 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 119 insertions(+), 0 deletions(-)
 
-I wait for make to run a while so that all the gunzip processes start.
-White the process are running, I try to type ctrl-C to kill the make
-processes, but it doesn't kill it. Then I use the command 'kill' to
-kill make. However, the gnuzip processes are not killed automatically.
-I have to use 'kill -9' to kill all gunzip processes. But the
-directory txtfiles is not accessible anymore.
-
-Has anybody seen a similar problem when kill processes accessing NFS?
-Is there a way to fix this issue by tuning configurations of NFS
-client or server?
-
-$ cat Makefile
-.PHONY: all
-
-INFILES:=$(wildcard gzfiles/*.txt.gz)
-OUTFILES:=$(patsubst gzfiles/%.txt.gz,txtfiles/%.txt,$(INFILES))
-
-all: $(OUTFILES)
-
-$(OUTFILES): txtfiles/%.txt: gzfiles/%.txt.gz
-       mkdir -p $(dir $@); gunzip -c $< > $@
-
-clean:
-       $(RM) -rf txtfiles
-
-$ ll gzfiles/*
--rw------- 1 nobody nogroup 5853805021 2011-07-13 20:43
-gzfiles/28121s_1_export.txt.gz
--rw------- 1 nobody nogroup 4153603765 2011-07-13 20:23
-gzfiles/28121s_1_sequence.txt.gz
--rw------- 1 nobody nogroup 3296029841 2011-07-13 20:30
-gzfiles/28121s_1_sorted.txt.gz
--rw------- 1 nobody nogroup 5002426991 2011-07-13 20:19
-gzfiles/28122s_2_export.txt.gz
--rw------- 1 nobody nogroup 3680452360 2011-07-13 20:35
-gzfiles/28122s_2_sequence.txt.gz
--rw------- 1 nobody nogroup 2915028714 2011-07-13 20:46
-gzfiles/28122s_2_sorted.txt.gz
--rw------- 1 nobody nogroup 4723638261 2011-07-13 20:47
-gzfiles/28123s_3_export.txt.gz
--rw------- 1 nobody nogroup 3562493399 2011-07-13 20:26
-gzfiles/28123s_3_sequence.txt.gz
--rw------- 1 nobody nogroup 2824516625 2011-07-13 20:17
-gzfiles/28123s_3_sorted.txt.gz
--rw------- 1 nobody nogroup 5642735164 2011-07-13 20:50
-gzfiles/28124s_4_export.txt.gz
--rw------- 1 nobody nogroup 4072595214 2011-07-13 20:44
-gzfiles/28124s_4_sequence.txt.gz
--rw------- 1 nobody nogroup 3239995460 2011-07-13 20:22
-gzfiles/28124s_4_sorted.txt.gz
--rw------- 1 nobody nogroup 4795738475 2011-07-13 20:20
-gzfiles/28125s_5_export.txt.gz
--rw------- 1 nobody nogroup 3595104934 2011-07-13 20:32
-gzfiles/28125s_5_sequence.txt.gz
--rw------- 1 nobody nogroup 2900122747 2011-07-13 20:51
-gzfiles/28125s_5_sorted.txt.gz
--rw------- 1 nobody nogroup 4157690024 2011-07-13 20:41
-gzfiles/28126s_6_export.txt.gz
--rw------- 1 nobody nogroup 3187369090 2011-07-13 20:38
-gzfiles/28126s_6_sequence.txt.gz
--rw------- 1 nobody nogroup 2426049205 2011-07-13 20:27
-gzfiles/28126s_6_sorted.txt.gz
--rw------- 1 nobody nogroup 3857633332 2011-07-13 20:29
-gzfiles/28182s_7_export.txt.gz
--rw------- 1 nobody nogroup 3005082989 2011-07-13 20:25
-gzfiles/28182s_7_sequence.txt.gz
--rw------- 1 nobody nogroup 2225189693 2011-07-13 20:39
-gzfiles/28182s_7_sorted.txt.gz
--rw------- 1 nobody nogroup 3942981571 2011-07-13 20:33
-gzfiles/28183s_8_export.txt.gz
--rw------- 1 nobody nogroup 3053659952 2011-07-13 20:37
-gzfiles/28183s_8_sequence.txt.gz
--rw------- 1 nobody nogroup 2350022326 2011-07-13 20:36
-gzfiles/28183s_8_sorted.txt.gz
-
-
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 744c7a5..4411f77 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -80,6 +80,14 @@ enum extentclass4 {
+ 	EXTENT_LISTS    = 2,
+ };
+ 
++static inline int choose_list(enum exstate4 state)
++{
++	if (state == PNFS_BLOCK_READ_DATA || state == PNFS_BLOCK_NONE_DATA)
++		return RO_EXTENT;
++	else
++		return RW_EXTENT;
++}
++
+ struct pnfs_block_layout {
+ 	struct pnfs_layout_hdr bl_layout;
+ 	struct pnfs_inval_markings bl_inval; /* tracks INVAL->RW transition */
+@@ -137,5 +145,10 @@ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+ /* blocklayoutdm.c */
+ void free_block_dev(struct pnfs_block_dev *bdev);
+ 
++/* extents.c */
+ void bl_put_extent(struct pnfs_block_extent *be);
++struct pnfs_block_extent *alloc_extent(void);
++int bl_add_merge_extent(struct pnfs_block_layout *bl,
++			 struct pnfs_block_extent *new);
++
+ #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 44c3364..3591084 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -95,3 +95,109 @@ void print_elist(struct list_head *list)
+ 	}
+ 	dprintk("****************\n");
+ }
++
++static inline int
++extents_consistent(struct pnfs_block_extent *old, struct pnfs_block_extent *new)
++{
++	/* Note this assumes new->be_f_offset >= old->be_f_offset */
++	return (new->be_state == old->be_state) &&
++		((new->be_state == PNFS_BLOCK_NONE_DATA) ||
++		 ((new->be_v_offset - old->be_v_offset ==
++		   new->be_f_offset - old->be_f_offset) &&
++		  new->be_mdev == old->be_mdev));
++}
++
++/* Adds new to appropriate list in bl, modifying new and removing existing
++ * extents as appropriate to deal with overlaps.
++ *
++ * See bl_find_get_extent for list constraints.
++ *
++ * Refcount on new is already set.  If end up not using it, or error out,
++ * need to put the reference.
++ *
++ * bl->bl_ext_lock is held by caller.
++ */
++int
++bl_add_merge_extent(struct pnfs_block_layout *bl,
++		     struct pnfs_block_extent *new)
++{
++	struct pnfs_block_extent *be, *tmp;
++	sector_t end = new->be_f_offset + new->be_length;
++	struct list_head *list;
++
++	dprintk("%s enter with be=%p\n", __func__, new);
++	print_bl_extent(new);
++	list = &bl->bl_extents[choose_list(new->be_state)];
++	print_elist(list);
++
++	/* Scan for proper place to insert, extending new to the left
++	 * as much as possible.
++	 */
++	list_for_each_entry_safe(be, tmp, list, be_node) {
++		if (new->be_f_offset < be->be_f_offset)
++			break;
++		if (end <= be->be_f_offset + be->be_length) {
++			/* new is a subset of existing be*/
++			if (extents_consistent(be, new)) {
++				dprintk("%s: new is subset, ignoring\n",
++					__func__);
++				bl_put_extent(new);
++				return 0;
++			} else
++				goto out_err;
++		} else if (new->be_f_offset <=
++				be->be_f_offset + be->be_length) {
++			/* new overlaps or abuts existing be */
++			if (extents_consistent(be, new)) {
++				/* extend new to fully replace be */
++				new->be_length += new->be_f_offset -
++						  be->be_f_offset;
++				new->be_f_offset = be->be_f_offset;
++				new->be_v_offset = be->be_v_offset;
++				dprintk("%s: removing %p\n", __func__, be);
++				list_del(&be->be_node);
++				bl_put_extent(be);
++			} else if (new->be_f_offset !=
++				   be->be_f_offset + be->be_length)
++				goto out_err;
++		}
++	}
++	/* Note that if we never hit the above break, be will not point to a
++	 * valid extent.  However, in that case &be->be_node==list.
++	 */
++	list_add_tail(&new->be_node, &be->be_node);
++	dprintk("%s: inserting new\n", __func__);
++	print_elist(list);
++	/* Scan forward for overlaps.  If we find any, extend new and
++	 * remove the overlapped extent.
++	 */
++	be = list_prepare_entry(new, list, be_node);
++	list_for_each_entry_safe_continue(be, tmp, list, be_node) {
++		if (end < be->be_f_offset)
++			break;
++		/* new overlaps or abuts existing be */
++		if (extents_consistent(be, new)) {
++			if (end < be->be_f_offset + be->be_length) {
++				/* extend new to fully cover be */
++				end = be->be_f_offset + be->be_length;
++				new->be_length = end - new->be_f_offset;
++			}
++			dprintk("%s: removing %p\n", __func__, be);
++			list_del(&be->be_node);
++			bl_put_extent(be);
++		} else if (end != be->be_f_offset) {
++			list_del(&new->be_node);
++			goto out_err;
++		}
++	}
++	dprintk("%s: after merging\n", __func__);
++	print_elist(list);
++	/* FIXME - The per-list consistency checks have all been done,
++	 * should now check cross-list consistency.
++	 */
++	return 0;
++
++ out_err:
++	bl_put_extent(new);
++	return -EIO;
++}
 -- 
-Regards,
-Peng
+1.7.4.1
+
