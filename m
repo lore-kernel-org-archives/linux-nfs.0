@@ -1,92 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12679 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:58278 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751874Ab1GAUEi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jul 2011 16:04:38 -0400
-Message-ID: <4E0E284C.9020802@RedHat.com>
-Date: Fri, 01 Jul 2011 16:04:28 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NeilBrown <neilb@suse.de>, Prem Karat <prem.karat@linux.vnet.ibm.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/1] nfs-utils: Don't hard code source and destination
- args
-References: <20110628104138.GB6600@d6fc318.ibm.com> <4E0B3687.6060209@RedHat.com> <20110630090932.10caeca6@notabene.brown> <4E0C56BC.7010606@RedHat.com> <20110630211026.66f1b7b4@notabene.brown> <4E0C5BB0.5030004@RedHat.com> <20110630174005.GA18713@fieldses.org>
-In-Reply-To: <20110630174005.GA18713@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1754872Ab1G2C3N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Jul 2011 22:29:13 -0400
+Date: Thu, 28 Jul 2011 22:29:11 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeremy Allison <jra@samba.org>
+Cc: Volker Lendecke <Volker.Lendecke@SerNet.DE>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, samba-technical@lists.samba.org,
+        Casey Bodley <cbodley@citi.umich.edu>
+Subject: [PATCH 1/3] locks: minor lease cleanup
+Message-ID: <20110729022911.GA23194@fieldses.org>
+References: <20110609231606.GB22215@fieldses.org>
+ <E1QUwaT-00HRZw-74@intern.SerNet.DE>
+ <20110610134859.GA27837@fieldses.org>
+ <20110721000758.GD27871@fieldses.org>
+ <20110721001542.GA15644@samba2>
+ <20110721163520.GC1114@fieldses.org>
+ <20110729022758.GC20317@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110729022758.GC20317@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+From: J. Bruce Fields <bfields@redhat.com>
 
+Use a helper function, to simplify upcoming changes.
 
-On 06/30/2011 01:40 PM, J. Bruce Fields wrote:
-> On Thu, Jun 30, 2011 at 07:19:12AM -0400, Steve Dickson wrote:
->>
->>
->> On 06/30/2011 07:10 AM, NeilBrown wrote:
->>> On Thu, 30 Jun 2011 06:58:04 -0400 Steve Dickson <SteveD@redhat.com> wrote:
->>>
->>>>
->>>>
->>>> On 06/29/2011 07:09 PM, NeilBrown wrote:
->>>>> On Wed, 29 Jun 2011 10:28:23 -0400 Steve Dickson <SteveD@redhat.com> wrote:
->>>>>
->>>>>>
->>>>>>
->>>>>> On 06/28/2011 06:41 AM, Prem Karat wrote:
->>>>>>>
->>>>>>> Currently souce and destination parameters should be passed as first and 
->>>>>>> second paramter while using mount.nfs. This patch allows them to be passed 
->>>>>>> anywhere while mounting.
->>>>>>>
->>>>>>> Current functionality is
->>>>>>> 	mount.nfs source destn -o <options>
->>>>>>> This patch will allow to do this
->>>>>>> 	mount.nfs -o <options> source destn
->>>>>>> 		or
->>>>>>> 	mount.nfs -o <options> source -o <options> destn
->>>>>>>
->>>>>>> Signed-off-by: Prem Karat <prem.karat@linux.vnet.ibm.com>
->>>>>> Committed...
->>>>>
->>>>> Uhmm... that's unfortunate because the patch is badly broken.
->>>>>
->>>>> With the patch in place, argv[2] gets destroyed.
->>>>> i.e. mount cannot possibly work correctly now.
->>>>>
->>>>> And that is just the start of the problems.
->>>>>
->>>>> This patch has clearly never been tested.
->>>> Hmm... well this is not true... I have 1.2.4 running
->>>> on a number of machines and without a problem...
->>>
->>> I'm guessing you used --enable-libmount-mount which causes the patched code
->>> to not be compiled.  So while you did test nfs-utils, I don't think you
->>> tested the patch :-(
->> Thats exactly what happen... With your latest patch I never even compiled
->> the code... darn!
->>
->> hmm... I wonder if its time to throw the enable-libmount-mount-on-by-default 
->> switch... 
-> 
-> Dumb question, as I haven't been following the libmount stuff, but: how
-> soon before we can throw out the non-libmount code?
-The switch has been throw in Fedora Rawhide/Fedora 16.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/locks.c |   15 ++++++++++-----
+ 1 files changed, 10 insertions(+), 5 deletions(-)
 
-> 
-> Looks like patching and maintaining both is a pain.
-Likes like??  Boy, you have 20/20 8-) 
+diff --git a/fs/locks.c b/fs/locks.c
+index 703f545..c528522 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -133,6 +133,11 @@
+ #define IS_FLOCK(fl)	(fl->fl_flags & FL_FLOCK)
+ #define IS_LEASE(fl)	(fl->fl_flags & FL_LEASE)
  
-> 
-> Could we get away with saying "if you want a non-libmount-based mount,
-> feel free to go checkout 1.2.4 or earlier, and backport security fixes
-> to it yourself if you want", and just rip it out now?
-Well we would not rip it out the code, we would just change the default to 
-always use the libmount code and have a --disable-libmount config flag
-for people that don't have the libmount code.... I'm thinking that
-patch would fairly trivial... 
-
-steved.
-
++static bool lease_breaking(struct file_lock *fl)
++{
++	return fl->fl_type & F_INPROGRESS;
++}
++
+ int leases_enable = 1;
+ int lease_break_time = 45;
+ 
+@@ -1141,7 +1146,7 @@ static void time_out_leases(struct inode *inode)
+ 	struct file_lock *fl;
+ 
+ 	before = &inode->i_flock;
+-	while ((fl = *before) && IS_LEASE(fl) && (fl->fl_type & F_INPROGRESS)) {
++	while ((fl = *before) && IS_LEASE(fl) && lease_breaking(fl)) {
+ 		if ((fl->fl_break_time == 0)
+ 				|| time_before(jiffies, fl->fl_break_time)) {
+ 			before = &fl->fl_next;
+@@ -1189,7 +1194,7 @@ int __break_lease(struct inode *inode, unsigned int mode)
+ 	if (want_write) {
+ 		/* If we want write access, we have to revoke any lease. */
+ 		future = F_UNLCK | F_INPROGRESS;
+-	} else if (flock->fl_type & F_INPROGRESS) {
++	} else if (lease_breaking(flock)) {
+ 		/* If the lease is already being broken, we just leave it */
+ 		future = flock->fl_type;
+ 	} else if (flock->fl_type & F_WRLCK) {
+@@ -1246,7 +1251,7 @@ restart:
+ 		/* Wait for the next lease that has not been broken yet */
+ 		for (flock = inode->i_flock; flock && IS_LEASE(flock);
+ 				flock = flock->fl_next) {
+-			if (flock->fl_type & F_INPROGRESS)
++			if (lease_breaking(flock))
+ 				goto restart;
+ 		}
+ 		error = 0;
+@@ -2126,7 +2131,7 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
+ 		}
+ 	} else if (IS_LEASE(fl)) {
+ 		seq_printf(f, "LEASE  ");
+-		if (fl->fl_type & F_INPROGRESS)
++		if (lease_breaking(fl))
+ 			seq_printf(f, "BREAKING  ");
+ 		else if (fl->fl_file)
+ 			seq_printf(f, "ACTIVE    ");
+@@ -2142,7 +2147,7 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
+ 			       : (fl->fl_type & LOCK_WRITE) ? "WRITE" : "NONE ");
+ 	} else {
+ 		seq_printf(f, "%s ",
+-			       (fl->fl_type & F_INPROGRESS)
++			       (lease_breaking(fl))
+ 			       ? (fl->fl_type & F_UNLCK) ? "UNLCK" : "READ "
+ 			       : (fl->fl_type & F_WRLCK) ? "WRITE" : "READ ");
+ 	}
+-- 
+1.7.4.1
 
