@@ -1,118 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:37483 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753267Ab1GMAZY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Jul 2011 20:25:24 -0400
-Date: Tue, 12 Jul 2011 20:25:22 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2 v3] nfsd41: check the size of request
-Message-ID: <20110713002522.GJ2162@fieldses.org>
-References: <4E0EDEBE.8040902@cn.fujitsu.com>
- <20110706164306.GC30349@fieldses.org>
- <4E16CA48.3030308@cn.fujitsu.com>
- <20110708200319.GC13886@fieldses.org>
- <4E17BACC.8030901@cn.fujitsu.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E17BACC.8030901@cn.fujitsu.com>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:43328 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751815Ab1G2Pyv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 11:54:51 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v5 04/27] pnfs: save layoutcommit cred at layout header
+Date: Fri, 29 Jul 2011 11:54:29 -0400
+Message-Id: <1311954892-22038-5-git-send-email-rees@umich.edu>
+In-Reply-To: <1311954892-22038-1-git-send-email-rees@umich.edu>
+References: <1311954892-22038-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Sat, Jul 09, 2011 at 10:19:56AM +0800, Mi Jinlong wrote:
-> This patch checks request's size when it consists SEQUENCE.
-> Also modifies the format of some function which length exceed 80.
-> 
-> v3:
->    remove the check about only SEQUENCE operation.
->    check the size immediately after find session.
->    modify some function's format which length exceed 80.
+From: Peng Tao <bergwolf@gmail.com>
 
-No, please don't ever mix unrelated formatting changes into a patch.
+No need to save it for every lseg.
 
-We can leave those lines alone; the occasional long line isn't a big
-problem.
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/pnfs.c |    6 +++---
+ fs/nfs/pnfs.h |    2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
---b.
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 3e0989d..201165e 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1384,7 +1384,7 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ 	if (!test_and_set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
+ 		/* references matched in nfs4_layoutcommit_release */
+ 		get_lseg(wdata->lseg);
+-		wdata->lseg->pls_lc_cred =
++		nfsi->layout->plh_lc_cred =
+ 			get_rpccred(wdata->args.context->state->owner->so_cred);
+ 		mark_as_dirty = true;
+ 		dprintk("%s: Set layoutcommit for inode %lu ",
+@@ -1447,9 +1447,9 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 	lseg = pnfs_list_write_lseg(inode);
+ 
+ 	end_pos = nfsi->layout->plh_lwb;
+-	cred = lseg->pls_lc_cred;
++	cred = nfsi->layout->plh_lc_cred;
+ 	nfsi->layout->plh_lwb = 0;
+-	lseg->pls_lc_cred = NULL;
++	nfsi->layout->plh_lc_cred = NULL;
+ 
+ 	memcpy(&data->args.stateid.data, nfsi->layout->plh_stateid.data,
+ 		sizeof(nfsi->layout->plh_stateid.data));
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 044cb3e..ac86c36 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -44,7 +44,6 @@ struct pnfs_layout_segment {
+ 	atomic_t pls_refcount;
+ 	unsigned long pls_flags;
+ 	struct pnfs_layout_hdr *pls_layout;
+-	struct rpc_cred	*pls_lc_cred; /* LAYOUTCOMMIT credential */
+ };
+ 
+ enum pnfs_try_status {
+@@ -128,6 +127,7 @@ struct pnfs_layout_hdr {
+ 	u32			plh_barrier; /* ignore lower seqids */
+ 	unsigned long		plh_flags;
+ 	loff_t			plh_lwb; /* last write byte for layoutcommit */
++	struct rpc_cred		*plh_lc_cred; /* layoutcommit cred */
+ 	struct inode		*plh_inode;
+ };
+ 
+-- 
+1.7.4.1
 
-> 
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
->  fs/nfsd/nfs4state.c |   24 ++++++++++++++++++++----
->  1 files changed, 20 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index e98f3c2..9cce11c 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1645,7 +1645,8 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
->  	return status;
->  }
->  
-> -static bool nfsd4_compound_in_session(struct nfsd4_session *session, struct nfs4_sessionid *sid)
-> +static bool nfsd4_compound_in_session(struct nfsd4_session *session,
-> +				      struct nfs4_sessionid *sid)
->  {
->  	if (!session)
->  		return 0;
-> @@ -1695,7 +1696,8 @@ out:
->  	return status;
->  }
->  
-> -static struct nfsd4_conn *__nfsd4_find_conn(struct svc_xprt *xpt, struct nfsd4_session *s)
-> +static struct nfsd4_conn *__nfsd4_find_conn(struct svc_xprt *xpt,
-> +					    struct nfsd4_session *s)
->  {
->  	struct nfsd4_conn *c;
->  
-> @@ -1707,7 +1709,8 @@ static struct nfsd4_conn *__nfsd4_find_conn(struct svc_xprt *xpt, struct nfsd4_s
->  	return NULL;
->  }
->  
-> -static void nfsd4_sequence_check_conn(struct nfsd4_conn *new, struct nfsd4_session *ses)
-> +static void nfsd4_sequence_check_conn(struct nfsd4_conn *new,
-> +				      struct nfsd4_session *ses)
->  {
->  	struct nfs4_client *clp = ses->se_client;
->  	struct nfsd4_conn *c;
-> @@ -1729,13 +1732,22 @@ static void nfsd4_sequence_check_conn(struct nfsd4_conn *new, struct nfsd4_sessi
->  	return;
->  }
->  
-> -static bool nfsd4_session_too_many_ops(struct svc_rqst *rqstp, struct nfsd4_session *session)
-> +static bool nfsd4_session_too_many_ops(struct svc_rqst *rqstp,
-> +				       struct nfsd4_session *session)
->  {
->  	struct nfsd4_compoundargs *args = rqstp->rq_argp;
->  
->  	return args->opcnt > session->se_fchannel.maxops;
->  }
->  
-> +static bool nfsd4_request_too_big(struct svc_rqst *rqstp,
-> +				  struct nfsd4_session *session)
-> +{
-> +	struct xdr_buf *xb = &rqstp->rq_arg;
-> +
-> +	return xb->len > session->se_fchannel.maxreq_sz;
-> +}
-> +
->  __be32
->  nfsd4_sequence(struct svc_rqst *rqstp,
->  	       struct nfsd4_compound_state *cstate,
-> @@ -1768,6 +1780,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
->  	if (nfsd4_session_too_many_ops(rqstp, session))
->  		goto out;
->  
-> +	status = nfserr_req_too_big;
-> +	if (nfsd4_request_too_big(rqstp, session))
-> +		goto out;
-> +
->  	status = nfserr_badslot;
->  	if (seq->slotid >= session->se_fchannel.maxreqs)
->  		goto out;
-> -- 
-> 1.7.5.4
-> 
-> 
-> 
