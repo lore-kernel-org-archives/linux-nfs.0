@@ -1,43 +1,30 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:53669 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751815Ab1G2Pyy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 11:54:54 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v5 06/27] pnfs: use lwb as layoutcommit length
-Date: Fri, 29 Jul 2011 11:54:31 -0400
-Message-Id: <1311954892-22038-7-git-send-email-rees@umich.edu>
-In-Reply-To: <1311954892-22038-1-git-send-email-rees@umich.edu>
-References: <1311954892-22038-1-git-send-email-rees@umich.edu>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:60746
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752313Ab1G2SpA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 14:45:00 -0400
+Date: Fri, 29 Jul 2011 14:44:55 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: Peng Tao <bergwolf@gmail.com>
+Cc: Christoph Hellwig <hch@infradead.org>, Jim Rees <rees@umich.edu>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH v4 00/27] add block layout driver to pnfs client
+Message-ID: <20110729184455.GA30678@infradead.org>
+References: <1311874276-1386-1-git-send-email-rees@umich.edu>
+ <20110729155136.GB28306@infradead.org>
+ <CA+a=Yy78jFNm+fqmX9FeK5MivT4A3homrV2=ZQLHgzusZZ0x+Q@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CA+a=Yy78jFNm+fqmX9FeK5MivT4A3homrV2=ZQLHgzusZZ0x+Q@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Peng Tao <bergwolf@gmail.com>
+On Sat, Jul 30, 2011 at 01:45:29AM +0800, Peng Tao wrote:
+> After fixing common.rc, "./check -nfs" can run but failed and stopped
+> at case 088. Both pnfs block and NFSv4 failed at the same case. Did
+> anyone run xfstests over NFSv4 before? I'm wondering whether it is a
+> regression or if case 088 is valid for NFSv4.
 
-Using NFS4_MAX_UINT64 will break current protocol.
-
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/nfs4xdr.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 0a1a7b8..5f769f8 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1955,7 +1955,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
- 	*p++ = cpu_to_be32(OP_LAYOUTCOMMIT);
- 	/* Only whole file layouts */
- 	p = xdr_encode_hyper(p, 0); /* offset */
--	p = xdr_encode_hyper(p, NFS4_MAX_UINT64); /* length */
-+	p = xdr_encode_hyper(p, args->lastbytewritten + 1);	/* length */
- 	*p++ = cpu_to_be32(0); /* reclaim */
- 	p = xdr_encode_opaque_fixed(p, args->stateid.data, NFS4_STATEID_SIZE);
- 	*p++ = cpu_to_be32(1); /* newoffset = TRUE */
--- 
-1.7.4.1
+I've only tested it on NFSv3, and can't remember 088 failing.
 
