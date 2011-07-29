@@ -1,107 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:53648 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754247Ab1G0Sko (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 14:40:44 -0400
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:43319 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751815Ab1G2Pyt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 11:54:49 -0400
 From: Jim Rees <rees@umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v3 00/25] add block layout driver to pnfs client
-Date: Wed, 27 Jul 2011 14:40:23 -0400
-Message-Id: <1311792048-12551-1-git-send-email-rees@umich.edu>
-Content-Type: text/plain; charset=UTF-8
+Subject: [PATCH v5 03/27] pnfs: save layoutcommit lwb at layout header
+Date: Fri, 29 Jul 2011 11:54:28 -0400
+Message-Id: <1311954892-22038-4-git-send-email-rees@umich.edu>
+In-Reply-To: <1311954892-22038-1-git-send-email-rees@umich.edu>
+References: <1311954892-22038-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-This patch set adds a block layout driver to the pNFS client.  It passes
-Connectathon tests and is bisectable.  It requires an updated version of
-nfs-utils, and patches for that have been sent separately to the nfs-utils
-maintainer.
+From: Peng Tao <bergwolf@gmail.com>
 
-This patch set is also available on the for-trond branch of the git repo at
-git://citi.umich.edu/projects/linux-pnfs-blk.git
+No need to save it for every lseg.
 
-This is version 3 of this patch set.  Changes since version 2:
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/nfs4filelayout.c |    2 +-
+ fs/nfs/pnfs.c           |   10 ++++++----
+ fs/nfs/pnfs.h           |    2 +-
+ 3 files changed, 8 insertions(+), 6 deletions(-)
 
-- Rebase to trond/nfs-for-next (commit ed1e6211a0).
-- Fix Fred's and Benny's email addresses.
-- Use FIXME to flag code that needs more work.
-- Remove obsolete comments.
-- Minor patch re-orgs per reviewer comments.
-
-Changes since version 1:
-
-NFS41: Drop lseg ref before fallthru to MDS
-SQUASHME: pnfsblock: get rid of vmap and deviceid->area structure
-SQUASHME: pnfsblock: define module alias
-SQUASHME: pnfsblock: bl_find_get_extent optimization: mv break clause to end of loop
-SQUASHME: pnfsblock: test debug bit once for multiple dprintks
-SQUASHME: pnfsblock: typo
-SQUASHME: pnfsblock: get rid of unused leftovers from device mapping removal
-
-Andy Adamson (2):
-  pnfs: GETDEVICELIST
-  pnfs: cleanup_layoutcommit
-
-Benny Halevy (2):
-  pnfs: add set-clear layoutdriver interface
-  pnfsblock: use pageio_ops api
-
-Fred Isaman (15):
-  pnfs: ask for layout_blksize and save it in nfs_server
-  pnfsblock: add blocklayout Kconfig option, Makefile, and stubs
-  pnfsblock: basic extent code
-  pnfsblock: lseg alloc and free
-  pnfsblock: merge extents
-  pnfsblock: call and parse getdevicelist
-  pnfsblock: xdr decode pnfs_block_layout4
-  pnfsblock: bl_find_get_extent
-  pnfsblock: add extent manipulation functions
-  pnfsblock: merge rw extents
-  pnfsblock: encode_layoutcommit
-  pnfsblock: cleanup_layoutcommit
-  pnfsblock: bl_read_pagelist
-  pnfsblock: bl_write_pagelist
-  pnfsblock: note written INVAL areas for layoutcommit
-
-Jim Rees (2):
-  pnfsblock: add device operations
-  pnfsblock: remove device operations
-
-Peng Tao (4):
-  NFS41: Let layoutcommit handle multiple segments
-  NFS41: save layoutcommit cred after first successful layoutget
-  pnfsblock: write_pagelist handle zero invalid extents
-  NFS41: Drop lseg ref before fallthru to MDS
-
- fs/nfs/Kconfig                      |    8 +-
- fs/nfs/Makefile                     |    1 +
- fs/nfs/blocklayout/Makefile         |    5 +
- fs/nfs/blocklayout/blocklayout.c    | 1043 +++++++++++++++++++++++++++++++++++
- fs/nfs/blocklayout/blocklayout.h    |  208 +++++++
- fs/nfs/blocklayout/blocklayoutdev.c |  410 ++++++++++++++
- fs/nfs/blocklayout/blocklayoutdm.c  |  111 ++++
- fs/nfs/blocklayout/extents.c        |  943 +++++++++++++++++++++++++++++++
- fs/nfs/client.c                     |   11 +-
- fs/nfs/nfs4_fs.h                    |    2 +-
- fs/nfs/nfs4filelayout.c             |    2 +-
- fs/nfs/nfs4proc.c                   |   62 ++-
- fs/nfs/nfs4xdr.c                    |  230 +++++++-
- fs/nfs/pnfs.c                       |   86 ++-
- fs/nfs/pnfs.h                       |   30 +-
- include/linux/nfs.h                 |    2 +
- include/linux/nfs4.h                |    1 +
- include/linux/nfs_fs_sb.h           |    4 +-
- include/linux/nfs_xdr.h             |   17 +-
- 19 files changed, 3113 insertions(+), 63 deletions(-)
- create mode 100644 fs/nfs/blocklayout/Makefile
- create mode 100644 fs/nfs/blocklayout/blocklayout.c
- create mode 100644 fs/nfs/blocklayout/blocklayout.h
- create mode 100644 fs/nfs/blocklayout/blocklayoutdev.c
- create mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
- create mode 100644 fs/nfs/blocklayout/extents.c
-
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index be93a62..e8915d4 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -170,7 +170,7 @@ filelayout_set_layoutcommit(struct nfs_write_data *wdata)
+ 
+ 	pnfs_set_layoutcommit(wdata);
+ 	dprintk("%s ionde %lu pls_end_pos %lu\n", __func__, wdata->inode->i_ino,
+-		(unsigned long) wdata->lseg->pls_end_pos);
++		(unsigned long) NFS_I(wdata->inode)->layout->plh_lwb);
+ }
+ 
+ /*
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 037d310..3e0989d 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1390,9 +1390,11 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ 		dprintk("%s: Set layoutcommit for inode %lu ",
+ 			__func__, wdata->inode->i_ino);
+ 	}
+-	if (end_pos > wdata->lseg->pls_end_pos)
+-		wdata->lseg->pls_end_pos = end_pos;
++	if (end_pos > nfsi->layout->plh_lwb)
++		nfsi->layout->plh_lwb = end_pos;
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
++	dprintk("%s: lseg %p end_pos %llu\n",
++		__func__, wdata->lseg, nfsi->layout->plh_lwb);
+ 
+ 	/* if pnfs_layoutcommit_inode() runs between inode locks, the next one
+ 	 * will be a noop because NFS_INO_LAYOUTCOMMIT will not be set */
+@@ -1444,9 +1446,9 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 	 */
+ 	lseg = pnfs_list_write_lseg(inode);
+ 
+-	end_pos = lseg->pls_end_pos;
++	end_pos = nfsi->layout->plh_lwb;
+ 	cred = lseg->pls_lc_cred;
+-	lseg->pls_end_pos = 0;
++	nfsi->layout->plh_lwb = 0;
+ 	lseg->pls_lc_cred = NULL;
+ 
+ 	memcpy(&data->args.stateid.data, nfsi->layout->plh_stateid.data,
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 23d8267..044cb3e 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -45,7 +45,6 @@ struct pnfs_layout_segment {
+ 	unsigned long pls_flags;
+ 	struct pnfs_layout_hdr *pls_layout;
+ 	struct rpc_cred	*pls_lc_cred; /* LAYOUTCOMMIT credential */
+-	loff_t pls_end_pos; /* LAYOUTCOMMIT write end */
+ };
+ 
+ enum pnfs_try_status {
+@@ -128,6 +127,7 @@ struct pnfs_layout_hdr {
+ 	unsigned long		plh_block_lgets; /* block LAYOUTGET if >0 */
+ 	u32			plh_barrier; /* ignore lower seqids */
+ 	unsigned long		plh_flags;
++	loff_t			plh_lwb; /* last write byte for layoutcommit */
+ 	struct inode		*plh_inode;
+ };
+ 
 -- 
 1.7.4.1
 
