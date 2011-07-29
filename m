@@ -1,40 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:43045 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752829Ab1GYVfl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jul 2011 17:35:41 -0400
-Date: Mon, 25 Jul 2011 17:35:38 -0400
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:53681 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751815Ab1G2PzA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 11:55:00 -0400
 From: Jim Rees <rees@umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: tao.peng@emc.com, linux-nfs@vger.kernel.org, bhalevy@tonian.com,
-        bergwolf@gmail.com
-Subject: Re: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
-Message-ID: <20110725213538.GB7717@merit.edu>
-References: <1309743002-1658-1-git-send-email-bergwolf@gmail.com>
- <4E18614C.4010002@tonian.com>
- <F19688880B763E40B28B2B462677FBF805BF0610CE@MX09A.corp.emc.com>
- <1311621204.28209.14.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1311621204.28209.14.camel@lade.trondhjem.org>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v5 09/27] pnfs: cleanup_layoutcommit
+Date: Fri, 29 Jul 2011 11:54:34 -0400
+Message-Id: <1311954892-22038-10-git-send-email-rees@umich.edu>
+In-Reply-To: <1311954892-22038-1-git-send-email-rees@umich.edu>
+References: <1311954892-22038-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Trond Myklebust wrote:
+From: Andy Adamson <andros@netapp.com>
 
-  On Wed, 2011-07-20 at 01:52 -0400, tao.peng@emc.com wrote: 
-  > Hi, Trond,
-  > 
-  > Any comments on this patch? I still get kernel crash when pnfs write is attempted but fails and calls pnfs_ld_write_done(). It seems object layout uses the same code path as well. But I don't find the patch in either your tree or Benny's tree. Are there any concerns?
-  > 
-  > Thanks,
-  > Tao
-  
-  The whole pnfs_ld_write_done thing is bogus and needs to be replaced
-  with something sane. It is trying to initiate a WRITE RPC call with the
-  wrong block size, and is calling the MDS rpc_call_done() and
-  rpc_release() with an uninitialised rpc task pointer.
-  
-  Ditto for pnfs_ld_read_done.
+This gives layout driver a chance to cleanup structures they put in at
+encode_layoutcommit.
 
-Benny / Boaz, have you run into this problem with object layout?
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[fixup layout header pointer for layoutcommit]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/nfs4proc.c       |    1 +
+ fs/nfs/nfs4xdr.c        |    1 +
+ fs/nfs/pnfs.c           |   10 ++++++++++
+ fs/nfs/pnfs.h           |    5 +++++
+ include/linux/nfs_xdr.h |    1 +
+ 5 files changed, 18 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index e86de79..6cb84b4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5963,6 +5963,7 @@ static void nfs4_layoutcommit_release(void *calldata)
+ 	struct nfs4_layoutcommit_data *data = calldata;
+ 	struct pnfs_layout_segment *lseg, *tmp;
+ 
++	pnfs_cleanup_layoutcommit(data->args.inode, data);
+ 	/* Matched by references in pnfs_set_layoutcommit */
+ 	list_for_each_entry_safe(lseg, tmp, &data->lseg_list, pls_lc_list) {
+ 		list_del_init(&lseg->pls_lc_list);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 0261669..1dce12f 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -5599,6 +5599,7 @@ static int decode_layoutcommit(struct xdr_stream *xdr,
+ 	int status;
+ 
+ 	status = decode_op_hdr(xdr, OP_LAYOUTCOMMIT);
++	res->status = status;
+ 	if (status)
+ 		return status;
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 3a47f7c..c1cc216 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1411,6 +1411,16 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ }
+ EXPORT_SYMBOL_GPL(pnfs_set_layoutcommit);
+ 
++void pnfs_cleanup_layoutcommit(struct inode *inode,
++			       struct nfs4_layoutcommit_data *data)
++{
++	struct nfs_server *nfss = NFS_SERVER(inode);
++
++	if (nfss->pnfs_curr_ld->cleanup_layoutcommit)
++		nfss->pnfs_curr_ld->cleanup_layoutcommit(NFS_I(inode)->layout,
++							 data);
++}
++
+ /*
+  * For the LAYOUT4_NFSV4_1_FILES layout type, NFS_DATA_SYNC WRITEs and
+  * NFS_UNSTABLE WRITEs with a COMMIT to data servers must store enough
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index bddd8b9..f271425 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -113,6 +113,9 @@ struct pnfs_layoutdriver_type {
+ 				     struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutreturn_args *args);
+ 
++	void (*cleanup_layoutcommit) (struct pnfs_layout_hdr *layoutid,
++				      struct nfs4_layoutcommit_data *data);
++
+ 	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
+ 				     struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutcommit_args *args);
+@@ -196,6 +199,8 @@ void pnfs_roc_release(struct inode *ino);
+ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+ bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
++void pnfs_cleanup_layoutcommit(struct inode *inode,
++			       struct nfs4_layoutcommit_data *data);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+ int _pnfs_return_layout(struct inode *);
+ int pnfs_ld_write_done(struct nfs_write_data *);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 94f27e5..569ea5b 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -269,6 +269,7 @@ struct nfs4_layoutcommit_res {
+ 	struct nfs_fattr *fattr;
+ 	const struct nfs_server *server;
+ 	struct nfs4_sequence_res seq_res;
++	int status;
+ };
+ 
+ struct nfs4_layoutcommit_data {
+-- 
+1.7.4.1
+
