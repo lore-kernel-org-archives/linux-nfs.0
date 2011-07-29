@@ -1,234 +1,410 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:36277 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754732Ab1GCCHc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Jul 2011 22:07:32 -0400
-In-Reply-To: <BANLkTin_ESgabt2zxeiJLYJGsDb8jJoA+A@mail.gmail.com>
-References: <BANLkTik9J3qcdPcp+DdfRq9kj+DMKnjKZw@mail.gmail.com>
-	<1308767449.14997.10.camel@lade.trondhjem.org>
-	<BANLkTimyCA0QyF1TNc0SU2GYobOt-sAsNQ@mail.gmail.com>
-	<1308769054.14997.18.camel@lade.trondhjem.org>
-	<BANLkTi=b1UJzYinAeW2VJj2AHzsAnwUpGg@mail.gmail.com>
-	<1308779507.25875.7.camel@lade.trondhjem.org>
-	<BANLkTin0HnH7rufrHJGgEuPc-ZPjkZe3iw@mail.gmail.com>
-	<1308783190.25875.25.camel@lade.trondhjem.org>
-	<BANLkTimvMeF94O_S0rpSgy=5Z4obU9pPfg@mail.gmail.com>
-	<1308784142.25875.37.camel@lade.trondhjem.org>
-	<BANLkTi=mQeMHG-Z=UhQdbR6fWbOpUZFtTQ@mail.gmail.com>
-	<1308785675.30458.15.camel@lade.trondhjem.org>
-	<BANLkTin_ESgabt2zxeiJLYJGsDb8jJoA+A@mail.gmail.com>
-Date: Sat, 2 Jul 2011 19:07:29 -0700
-Message-ID: <CAK3Hsqs2u0FVhkMDaFmSAAEcDeOL0=CqKjbpPrqj9T-+r_FLkg@mail.gmail.com>
-Subject: Re: Issue with Race Condition on NFS4 with KRB
-From: Joshua Scoggins <theoretically.x64@gmail.com>
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:53709 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752108Ab1G2PzI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 11:55:08 -0400
+From: Jim Rees <rees@umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v5 13/27] pnfsblock: add device operations
+Date: Fri, 29 Jul 2011 11:54:38 -0400
+Message-Id: <1311954892-22038-14-git-send-email-rees@umich.edu>
+In-Reply-To: <1311954892-22038-1-git-send-email-rees@umich.edu>
+References: <1311954892-22038-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Alright, we finally got the issue solved by rolling back to 2.6.32. It
-is faster and that issue hasn't cropped up at all. Hope that helps
-you.
+Signed-off-by: Jim Rees <rees@umich.edu>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+[upcall bugfixes]
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/blocklayout/Makefile         |    2 +-
+ fs/nfs/blocklayout/blocklayout.c    |   42 ++++++++
+ fs/nfs/blocklayout/blocklayout.h    |   40 +++++++
+ fs/nfs/blocklayout/blocklayoutdev.c |  191 +++++++++++++++++++++++++++++++++++
+ fs/nfs/client.c                     |    2 +-
+ include/linux/nfs.h                 |    2 +
+ 6 files changed, 277 insertions(+), 2 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdev.c
 
-Joshua Scoggins
-Theoretically.x64@gmail.com
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+index 5cfadf6..5bf3409 100644
+--- a/fs/nfs/blocklayout/Makefile
++++ b/fs/nfs/blocklayout/Makefile
+@@ -2,4 +2,4 @@
+ # Makefile for the pNFS block layout driver kernel module
+ #
+ obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
+-blocklayoutdriver-objs := blocklayout.o extents.o
++blocklayoutdriver-objs := blocklayout.o extents.o blocklayoutdev.o
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 252917d..c11c105 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -31,6 +31,8 @@
+  */
+ #include <linux/module.h>
+ #include <linux/init.h>
++#include <linux/mount.h>
++#include <linux/namei.h>
+ 
+ #include "blocklayout.h"
+ 
+@@ -40,6 +42,9 @@ MODULE_LICENSE("GPL");
+ MODULE_AUTHOR("Andy Adamson <andros@citi.umich.edu>");
+ MODULE_DESCRIPTION("The NFSv4.1 pNFS Block layout driver");
+ 
++struct dentry *bl_device_pipe;
++wait_queue_head_t bl_wq;
++
+ static enum pnfs_try_status
+ bl_read_pagelist(struct nfs_read_data *rdata)
+ {
+@@ -177,13 +182,49 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
+ 	.pg_write_ops			= &bl_pg_write_ops,
+ };
+ 
++static const struct rpc_pipe_ops bl_upcall_ops = {
++	.upcall		= bl_pipe_upcall,
++	.downcall	= bl_pipe_downcall,
++	.destroy_msg	= bl_pipe_destroy_msg,
++};
++
+ static int __init nfs4blocklayout_init(void)
+ {
++	struct vfsmount *mnt;
++	struct path path;
+ 	int ret;
+ 
+ 	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
+ 
+ 	ret = pnfs_register_layoutdriver(&blocklayout_type);
++	if (ret)
++		goto out;
++
++	init_waitqueue_head(&bl_wq);
++
++	mnt = rpc_get_mount();
++	if (IS_ERR(mnt)) {
++		ret = PTR_ERR(mnt);
++		goto out_remove;
++	}
++
++	ret = vfs_path_lookup(mnt->mnt_root,
++			      mnt,
++			      NFS_PIPE_DIRNAME, 0, &path);
++	if (ret)
++		goto out_remove;
++
++	bl_device_pipe = rpc_mkpipe(path.dentry, "blocklayout", NULL,
++				    &bl_upcall_ops, 0);
++	if (IS_ERR(bl_device_pipe)) {
++		ret = PTR_ERR(bl_device_pipe);
++		goto out_remove;
++	}
++out:
++	return ret;
++
++out_remove:
++	pnfs_unregister_layoutdriver(&blocklayout_type);
+ 	return ret;
+ }
+ 
+@@ -193,6 +234,7 @@ static void __exit nfs4blocklayout_exit(void)
+ 	       __func__);
+ 
+ 	pnfs_unregister_layoutdriver(&blocklayout_type);
++	rpc_unlink(bl_device_pipe);
+ }
+ 
+ MODULE_ALIAS("nfs-layouttype4-3");
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 3fec302..3dcc971 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -34,8 +34,16 @@
+ 
+ #include <linux/device-mapper.h>
+ #include <linux/nfs_fs.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
++
+ #include "../pnfs.h"
+ 
++struct pnfs_block_dev {
++	struct list_head		bm_node;
++	struct nfs4_deviceid		bm_mdevid;    /* associated devid */
++	struct block_device		*bm_mdev;     /* meta device itself */
++};
++
+ enum exstate4 {
+ 	PNFS_BLOCK_READWRITE_DATA	= 0,
+ 	PNFS_BLOCK_READ_DATA		= 1,
+@@ -88,5 +96,37 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
+ 	return container_of(lo, struct pnfs_block_layout, bl_layout);
+ }
+ 
++struct bl_dev_msg {
++	int status;
++	uint32_t major, minor;
++};
++
++struct bl_msg_hdr {
++	u8  type;
++	u16 totallen; /* length of entire message, including hdr itself */
++};
++
++extern struct dentry *bl_device_pipe;
++extern wait_queue_head_t bl_wq;
++
++#define BL_DEVICE_UMOUNT               0x0 /* Umount--delete devices */
++#define BL_DEVICE_MOUNT                0x1 /* Mount--create devices*/
++#define BL_DEVICE_REQUEST_INIT         0x0 /* Start request */
++#define BL_DEVICE_REQUEST_PROC         0x1 /* User level process succeeds */
++#define BL_DEVICE_REQUEST_ERR          0x2 /* User level process fails */
++
++/* blocklayoutdev.c */
++ssize_t bl_pipe_upcall(struct file *, struct rpc_pipe_msg *,
++		       char __user *, size_t);
++ssize_t bl_pipe_downcall(struct file *, const char __user *, size_t);
++void bl_pipe_destroy_msg(struct rpc_pipe_msg *);
++struct block_device *nfs4_blkdev_get(dev_t dev);
++int nfs4_blkdev_put(struct block_device *bdev);
++struct pnfs_block_dev *nfs4_blk_decode_device(struct nfs_server *server,
++						struct pnfs_device *dev,
++						struct list_head *sdlist);
++int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
++				struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
++
+ void bl_put_extent(struct pnfs_block_extent *be);
+ #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+new file mode 100644
+index 0000000..7e1377f
+--- /dev/null
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -0,0 +1,191 @@
++/*
++ *  linux/fs/nfs/blocklayout/blocklayoutdev.c
++ *
++ *  Device operations for the pnfs nfs4 file layout driver.
++ *
++ *  Copyright (c) 2006 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@citi.umich.edu>
++ *  Fred Isaman <iisaman@umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
++ */
++#include <linux/module.h>
++#include <linux/buffer_head.h> /* __bread */
++
++#include <linux/genhd.h>
++#include <linux/blkdev.h>
++#include <linux/hash.h>
++
++#include "blocklayout.h"
++
++#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
++
++/* Open a block_device by device number. */
++struct block_device *nfs4_blkdev_get(dev_t dev)
++{
++	struct block_device *bd;
++
++	dprintk("%s enter\n", __func__);
++	bd = blkdev_get_by_dev(dev, FMODE_READ, NULL);
++	if (IS_ERR(bd))
++		goto fail;
++	return bd;
++fail:
++	dprintk("%s failed to open device : %ld\n",
++			__func__, PTR_ERR(bd));
++	return NULL;
++}
++
++/*
++ * Release the block device
++ */
++int nfs4_blkdev_put(struct block_device *bdev)
++{
++	dprintk("%s for device %d:%d\n", __func__, MAJOR(bdev->bd_dev),
++			MINOR(bdev->bd_dev));
++	return blkdev_put(bdev, FMODE_READ);
++}
++
++/*
++ * Shouldn't there be a rpc_generic_upcall() to do this for us?
++ */
++ssize_t bl_pipe_upcall(struct file *filp, struct rpc_pipe_msg *msg,
++		       char __user *dst, size_t buflen)
++{
++	char *data = (char *)msg->data + msg->copied;
++	size_t mlen = min(msg->len - msg->copied, buflen);
++	unsigned long left;
++
++	left = copy_to_user(dst, data, mlen);
++	if (left == mlen) {
++		msg->errno = -EFAULT;
++		return -EFAULT;
++	}
++
++	mlen -= left;
++	msg->copied += mlen;
++	msg->errno = 0;
++	return mlen;
++}
++
++static struct bl_dev_msg bl_mount_reply;
++
++ssize_t bl_pipe_downcall(struct file *filp, const char __user *src,
++			 size_t mlen)
++{
++	if (mlen != sizeof (struct bl_dev_msg))
++		return -EINVAL;
++
++	if (copy_from_user(&bl_mount_reply, src, mlen) != 0)
++		return -EFAULT;
++
++	wake_up(&bl_wq);
++
++	return mlen;
++}
++
++void bl_pipe_destroy_msg(struct rpc_pipe_msg *msg)
++{
++	if (msg->errno >= 0)
++		return;
++	wake_up(&bl_wq);
++}
++
++/*
++ * Decodes pnfs_block_deviceaddr4 which is XDR encoded in dev->dev_addr_buf.
++ */
++struct pnfs_block_dev *
++nfs4_blk_decode_device(struct nfs_server *server,
++		       struct pnfs_device *dev,
++		       struct list_head *sdlist)
++{
++	struct pnfs_block_dev *rv = NULL;
++	struct block_device *bd = NULL;
++	struct rpc_pipe_msg msg;
++	struct bl_msg_hdr bl_msg = {
++		.type = BL_DEVICE_MOUNT,
++		.totallen = dev->mincount,
++	};
++	uint8_t *dataptr;
++	DECLARE_WAITQUEUE(wq, current);
++	struct bl_dev_msg *reply = &bl_mount_reply;
++
++	dprintk("%s CREATING PIPEFS MESSAGE\n", __func__);
++	dprintk("%s: deviceid: %s, mincount: %d\n", __func__, dev->dev_id.data,
++		dev->mincount);
++
++	memset(&msg, 0, sizeof(msg));
++	msg.data = kzalloc(sizeof(bl_msg) + dev->mincount, GFP_NOFS);
++	if (!msg.data) {
++		rv = ERR_PTR(-ENOMEM);
++		goto out;
++	}
++
++	memcpy(msg.data, &bl_msg, sizeof(bl_msg));
++	dataptr = (uint8_t *) msg.data;
++	memcpy(&dataptr[sizeof(bl_msg)], dev->area, dev->mincount);
++	msg.len = sizeof(bl_msg) + dev->mincount;
++
++	dprintk("%s CALLING USERSPACE DAEMON\n", __func__);
++	add_wait_queue(&bl_wq, &wq);
++	if (rpc_queue_upcall(bl_device_pipe->d_inode, &msg) < 0) {
++		remove_wait_queue(&bl_wq, &wq);
++		goto out;
++	}
++
++	set_current_state(TASK_UNINTERRUPTIBLE);
++	schedule();
++	__set_current_state(TASK_RUNNING);
++	remove_wait_queue(&bl_wq, &wq);
++
++	if (reply->status != BL_DEVICE_REQUEST_PROC) {
++		dprintk("%s failed to open device: %d\n",
++			__func__, reply->status);
++		rv = ERR_PTR(-EINVAL);
++		goto out;
++	}
++
++	bd = nfs4_blkdev_get(MKDEV(reply->major, reply->minor));
++	if (IS_ERR(bd)) {
++		dprintk("%s failed to open device : %ld\n",
++			__func__, PTR_ERR(bd));
++		goto out;
++	}
++
++	rv = kzalloc(sizeof(*rv), GFP_NOFS);
++	if (!rv) {
++		rv = ERR_PTR(-ENOMEM);
++		goto out;
++	}
++
++	rv->bm_mdev = bd;
++	memcpy(&rv->bm_mdevid, &dev->dev_id, sizeof(struct nfs4_deviceid));
++	dprintk("%s Created device %s with bd_block_size %u\n",
++		__func__,
++		bd->bd_disk->disk_name,
++		bd->bd_block_size);
++
++out:
++	kfree(msg.data);
++	return rv;
++}
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index de00a37..5833fbb 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -105,7 +105,7 @@ struct rpc_program nfs_program = {
+ 	.nrvers			= ARRAY_SIZE(nfs_version),
+ 	.version		= nfs_version,
+ 	.stats			= &nfs_rpcstat,
+-	.pipe_dir_name		= "/nfs",
++	.pipe_dir_name		= NFS_PIPE_DIRNAME,
+ };
+ 
+ struct rpc_stat nfs_rpcstat = {
+diff --git a/include/linux/nfs.h b/include/linux/nfs.h
+index f387919..8c6ee44 100644
+--- a/include/linux/nfs.h
++++ b/include/linux/nfs.h
+@@ -29,6 +29,8 @@
+ #define NFS_MNT_VERSION		1
+ #define NFS_MNT3_VERSION	3
+ 
++#define NFS_PIPE_DIRNAME "/nfs"
++
+ /*
+  * NFS stats. The good thing with these values is that NFSv3 errors are
+  * a superset of NFSv2 errors (with the exception of NFSERR_WFLUSH which
+-- 
+1.7.4.1
 
-On Wed, Jun 22, 2011 at 4:37 PM, Joshua Scoggins
-<theoretically.x64@gmail.com> wrote:
-> I mean it compiled but when I rebooted into the patched kernel. I got
-> the same nfs error output
-> in dmesg.
->
-> Sorry about not being specific.
->
-> -Josh
->
-> On Wed, Jun 22, 2011 at 4:34 PM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
->> On Wed, 2011-06-22 at 16:23 -0700, Joshua Scoggins wrote:
->>> It's the same error.
->>
->> What mailer are you using to save the attachment? I just grabbed the
->> patch from the reflected email that I received from
->> linux-nfs@vger.kernel.org and again, that applies just fine to both
->> v2.6.39 and the latest kernel from Linus' git tree:
->>
->> [trondmy@lade linux-2.6]$ git checkout -f v2.6.39
->> Warning: you are leaving 1 commit behind, not connected to
->> any of your branches:
->>
->>  9895aa0 SUNRPC: Fix a potential race in between xprt_complete_rqst and xprt_transmit
->>
->> If you want to keep it by creating a new branch, this may be a good time
->> to do so with:
->>
->>  git branch new_branch_name 9895aa06065dd9d457d465f2526a267bec5651a0
->>
->> HEAD is now at 61c4f2c... Linux 2.6.39
->> [trondmy@lade linux-2.6]$ patch -p1 -s -i ~/Desktop/0001-SUNRPC-Fix-a-potential-race-in-between-xprt_complete.patch
->> [trondmy@lade linux-2.6]$
->>
->>
->> That part of the code has not changed for quite some time, so there
->> should be no compatibility problems.
->>
->>> -Josh
->>>
->>> On Wed, Jun 22, 2011 at 4:09 PM, Trond Myklebust
->>> <Trond.Myklebust@netapp.com> wrote:
->>> > On Wed, 2011-06-22 at 16:01 -0700, Joshua Scoggins wrote:
->>> >> I just manually applied the patch as I'm using the gentoo sources.
->>> >
->>> > If they're not modifying the source, then it should just apply provided
->>> > that your mailer saved it correctly. If gentoo are applying their own
->>> > patches, then I suggest grabbing a copy of the original 2.6.39 from
->>> > www.kernel.org.
->>> >
->>> >> Josh
->>> >>
->>> >> On Wed, Jun 22, 2011 at 3:53 PM, Trond Myklebust
->>> >> <Trond.Myklebust@netapp.com> wrote:
->>> >> > On Wed, 2011-06-22 at 15:40 -0700, Joshua Scoggins wrote:
->>> >> >> The patch isn't applying to the 2.6.39 kernel sources.
->>> >> >
->>> >> > It does for me:
->>> >> >
->>> >> > [trondmy@lade linux-2.6]$ git checkout v2.6.39
->>> >> > HEAD is now at 61c4f2c... Linux 2.6.39
->>> >> > [trondmy@lade linux-2.6]$ git am ~/Desktop/bugfixes/0001-SUNRPC-Fix-a-potential-race-in-between-xprt_complete.patch
->>> >> > Applying: SUNRPC: Fix a potential race in between xprt_complete_rqst and xprt_transmit
->>> >> > [trondmy@lade linux-2.6]$
->>> >> >
->>> >> > Are you perhaps using some distro kernel instead of the regular one from
->>> >> > Linus' repository?
->>> >> >
->>> >> > Cheers
->>> >> >  Trond
->>> >> >
->>> >> >> -Josh
->>> >> >>
->>> >> >> On Wed, Jun 22, 2011 at 2:51 PM, Trond Myklebust
->>> >> >> <Trond.Myklebust@netapp.com> wrote:
->>> >> >> > On Wed, 2011-06-22 at 12:18 -0700, Joshua Scoggins wrote:
->>> >> >> >> According to the it guys they are running solaris 10 as the server platform.
->>> >> >> >
->>> >> >> > Ok. That should not be subject to the race I was thinking of...
->>> >> >> >
->>> >> >> >> On Wed, Jun 22, 2011 at 11:57 AM, Trond Myklebust
->>> >> >> >> <Trond.Myklebust@netapp.com> wrote:
->>> >> >> >> > On Wed, 2011-06-22 at 11:37 -0700, Joshua Scoggins wrote:
->>> >> >> >> >> Here are our mount options from auto.master
->>> >> >> >> >>
->>> >> >> >> >> /user -fstype=nfs4,sec=krb5p,noresvport,noatime
->>> >> >> >> >> /group -fstype=nfs4,sec=krb5p,noresvport,noatime
->>> >> >> >> >>
->>> >> >> >> >> As for the server, we don't control it. It's actually run by the
->>> >> >> >> >> campus wide it department we are just lab support for CS. I can
->>> >> >> >> >> potentially get the server information but I need to know what you want
->>> >> >> >> >> specifically as they're pretty paranoid about giving out information about
->>> >> >> >> >> their servers.
->>> >> >> >> >
->>> >> >> >> > I would just want to know _what_ server platform you are running
->>> >> >> >> > against. I know of at least one server bug that might explain what you
->>> >> >> >> > are seeing, and I'd like to eliminate that as a possibility.
->>> >> >> >> >
->>> >> >> >> > Trond
->>> >> >> >> >
->>> >> >> >> >> Joshua Scoggins
->>> >> >> >> >>
->>> >> >> >> >> On Wed, Jun 22, 2011 at 11:30 AM, Trond Myklebust
->>> >> >> >> >> <Trond.Myklebust@netapp.com> wrote:
->>> >> >> >> >> > On Wed, 2011-06-22 at 11:21 -0700, Joshua Scoggins wrote:
->>> >> >> >> >> >> Hello,
->>> >> >> >> >> >>
->>> >> >> >> >> >> We are trying to update our linux images in our CS lab and have it a
->>> >> >> >> >> >> bit of an issue. We are
->>> >> >> >> >> >> using nfs to load user home folder. While testing the new image we
->>> >> >> >> >> >> found that the nfs4 module will
->>> >> >> >> >> >>  crash when using firefox 3.6.17 for an extended period of time. Some
->>> >> >> >> >> >> research via google yielded that
->>> >> >> >> >> >> it's a potential race condition specific to nfs with krb auth with
->>> >> >> >> >> >> newer kernels. Our old image doesn't have
->>> >> >> >> >> >> this issue and it seems that its due to it running a far older kernel version.
->>> >> >> >> >> >>
->>> >> >> >> >> >> We have two images and both are having this problem. One is running
->>> >> >> >> >> >> 2.6.39 and the other is 2.6.38.
->>> >> >> >> >> >> Here is what dmesg spit out from the machine running 2.6.39 on one occasion:
->>> >> >> >> >> >>
->>> >> >> >> >> >> [  678.632061] ------------[ cut here ]------------
->>> >> >> >> >> >> [  678.632068] WARNING: at net/sunrpc/clnt.c:1567 call_decode+0xb2/0x69c()
->>> >> >> >> >> >> [  678.632070] Hardware name: OptiPlex 755
->>> >> >> >> >> >> [  678.632072] Modules linked in: nvidia(P) scsi_wait_scan
->>> >> >> >> >> >> [  678.632078] Pid: 3882, comm: kworker/0:2 Tainted: P
->>> >> >> >> >> >> 2.6.39-gentoo-r1 #1
->>> >> >> >> >> >> [  678.632080] Call Trace:
->>> >> >> >> >> >> [  678.632086]  [<ffffffff81035b20>] warn_slowpath_common+0x80/0x98
->>> >> >> >> >> >> [  678.632091]  [<ffffffff8117231e>] ? nfs4_xdr_dec_readdir+0xba/0xba
->>> >> >> >> >> >> [  678.632094]  [<ffffffff81035b4d>] warn_slowpath_null+0x15/0x17
->>> >> >> >> >> >> [  678.632097]  [<ffffffff81426f48>] call_decode+0xb2/0x69c
->>> >> >> >> >> >> [  678.632101]  [<ffffffff8142d2b5>] __rpc_execute+0x78/0x24b
->>> >> >> >> >> >> [  678.632104]  [<ffffffff8142d4c9>] ? rpc_execute+0x41/0x41
->>> >> >> >> >> >> [  678.632107]  [<ffffffff8142d4d9>] rpc_async_schedule+0x10/0x12
->>> >> >> >> >> >> [  678.632111]  [<ffffffff8104a49d>] process_one_work+0x1d9/0x2e7
->>> >> >> >> >> >> [  678.632114]  [<ffffffff8104c402>] worker_thread+0x133/0x24f
->>> >> >> >> >> >> [  678.632118]  [<ffffffff8104c2cf>] ? manage_workers+0x18d/0x18d
->>> >> >> >> >> >> [  678.632121]  [<ffffffff8104f6a0>] kthread+0x7d/0x85
->>> >> >> >> >> >> [  678.632125]  [<ffffffff8145e314>] kernel_thread_helper+0x4/0x10
->>> >> >> >> >> >> [  678.632128]  [<ffffffff8104f623>] ? kthread_worker_fn+0x13a/0x13a
->>> >> >> >> >> >> [  678.632131]  [<ffffffff8145e310>] ? gs_change+0xb/0xb
->>> >> >> >> >> >> [  678.632133] ---[ end trace 6bfae002a63e020e ]---
->>> >> >> >
->>> >> >> > Looking at the code, there is only one way I can see for that warning to
->>> >> >> > occur, and that is if we put the request back on the 'xprt->recv' list
->>> >> >> > after it has already received a reply from the server.
->>> >> >> >
->>> >> >> > Can you reproduce the problem with the attached patch?
->>> >> >> >
->>> >> >> > Trond
->>> >> >> >
->>> >> >> > --
->>> >> >> > Trond Myklebust
->>> >> >> > Linux NFS client maintainer
->>> >> >> >
->>> >> >> > NetApp
->>> >> >> > Trond.Myklebust@netapp.com
->>> >> >> > www.netapp.com
->>> >> >> >
->>> >> >> >
->>> >> >
->>> >> > --
->>> >> > Trond Myklebust
->>> >> > Linux NFS client maintainer
->>> >> >
->>> >> > NetApp
->>> >> > Trond.Myklebust@netapp.com
->>> >> > www.netapp.com
->>> >> >
->>> >> >
->>> >> --
->>> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> >> the body of a message to majordomo@vger.kernel.org
->>> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> >
->>> > --
->>> > Trond Myklebust
->>> > Linux NFS client maintainer
->>> >
->>> > NetApp
->>> > Trond.Myklebust@netapp.com
->>> > www.netapp.com
->>> >
->>> >
->>
->> --
->> Trond Myklebust
->> Linux NFS client maintainer
->>
->> NetApp
->> Trond.Myklebust@netapp.com
->> www.netapp.com
->>
->>
->
