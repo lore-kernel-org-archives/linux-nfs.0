@@ -1,59 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailservice.tudelft.nl ([130.161.131.5]:54596 "EHLO
-	mailservice.tudelft.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752606Ab1GNJaY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jul 2011 05:30:24 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by amavis (Postfix) with ESMTP id 65A75108C036
-	for <linux-nfs@vger.kernel.org>; Thu, 14 Jul 2011 11:30:23 +0200 (CEST)
-Received: from mailservice.tudelft.nl ([130.161.131.74])
-	by localhost (tudelft.nl [127.0.0.1]) (amavisd-new, port 10026)
-	with ESMTP id BXqv0Du8WIz6 for <linux-nfs@vger.kernel.org>;
-	Thu, 14 Jul 2011 11:30:22 +0200 (CEST)
-Received: from pc-rsmits.dto.tudelft.nl (pc-rsmits.dto.tudelft.nl [131.180.97.81])
-	by mx3.tudelft.nl (Postfix) with ESMTP id D1D2B108C02E
-	for <linux-nfs@vger.kernel.org>; Thu, 14 Jul 2011 11:30:22 +0200 (CEST)
-Message-ID: <4E1EB72E.5080803@tudelft.nl>
-Date: Thu, 14 Jul 2011 11:30:22 +0200
-From: Richard Smits <R.Smits@tudelft.nl>
-To: linux-nfs@vger.kernel.org
-Subject: krb5 mount with large group membership
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from fieldses.org ([174.143.236.118]:48973 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751290Ab1G2Qp5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Jul 2011 12:45:57 -0400
+Date: Fri, 29 Jul 2011 12:45:53 -0400
+To: Greg Banks <gnb@fastmail.fm>
+Cc: Eric Dumazet <eric.dumazet@gmail.com>, NeilBrown <neilb@suse.de>,
+        linux-nfs@vger.kernel.org, David Miller <davem@davemloft.net>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>
+Subject: Re: Fw: [PATCH] sunrpc: use better NUMA affinities
+Message-ID: <20110729164553.GJ23194@fieldses.org>
+References: <20110729153207.17af3085@notabene.brown>
+ <4E324DB4.7060600@fastmail.fm>
+ <1311921035.7845.10.camel@edumazet-laptop>
+ <4E3258E1.6020000@fastmail.fm>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <4E3258E1.6020000@fastmail.fm>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello list,
+On Fri, Jul 29, 2011 at 04:53:21PM +1000, Greg Banks wrote:
+> On 29/07/11 16:30, Eric Dumazet wrote:
+> >Le vendredi 29 juillet 2011 à 16:05 +1000, Greg Banks a écrit :
+> >>On 29/07/11 15:32, NeilBrown wrote:
+> >>
+> >>I seem to remember coming to the conclusion that Jeff eventually
+> >>addressed this problem...am I misremembering or did something regress?
+> >>
+> >Currently, all nfsd kthreads use memory for their kernel stack and
+> >various initial data from a _single_ node, even if you use
+> >sunrpc.pool_mode=pernode  (or percpu)
+> 
+> That's just plain broken and I'm very pleased to see you fix it.
 
-I am running into a problem. Perhaps someone understands what is 
-happening here. I will explain.
+Should I take that as a "Reviewed-by"?
 
-I have a Redhat 5.4 client that is accessing a nfs export on a NFS 
-server. (Redhat 6.1)
+> I was just surprised that it was still broken and wondering how that
+> happened.  Looking at ToT I see that because I dropped the ball in
+> 2008, Jeff's patches didn't address the problem.  In ToT
+> svc_pool_map_set_cpumask() is called *after* kthread_create() and
+> applies to the child thread, *after* it's stack has been allocated
+> on the wrong node.  In the working SGI code,
+> svc_pool_map_set_cpumask() is called by the parent node on itself
+> *before* calling kernel_thread() or doing any of the data structure
+> allocations, thus ensuring that everything gets allocated using the
+> default memory allocation policy, which on SGI NFS servers was
+> globally tuned to be "node-local".
 
-Our KDC is a Windows AD.
+OK, so would it be enough to just move the svc_pool_map_set_cpumask()
+back a few lines, or do we want Eric's approach, in order to have
+something that will work better with other memory allocation policies?
 
-The client is using samba-winbind. If a user is a member of 23 groups or 
-lower, I can access the export. If a user is a member of more groups, 
-the mount fails with a "Permission denied"
+--b.
 
-mount /data
--bash-3.2$ cd /data
--bash: cd: /data: Permission denied
-
-Thew odd thing is if I try a mount to our Netapp filer with also a krb5 
-export, there is no problem.
-
-This has to do something with the ticket size in combination with 
-memberships to a large number of groups.
-
-So what must i do to get this Redhat server working with this setup ? It 
-seems that Netapp did something to get this working ?
-
-Does this sound familiar to anyone, or should i provide more information ?
-
-Versions server side :
-nfs-utils-1.2.3-7
-krb5-workstation-1.9-9
-
-Greetings ... Richard Smits
+> 
+> >With my patch, we make sure each thread gets its stack from its local
+> >node.
+> >
+> >Check commit 94dcf29a11b3d20a (kthread: use kthread_create_on_node()) to
+> >see how this strategy already was adopted for ksoftirqd, kworker,
+> >migration, and pktgend kthreads.
+> 
+> Ah, I see.  It's unfortunate that the kthread_create() API ends up
+> being passed a CPU number but that's only used to format the name
+> and not for sensible things :(
+> 
+> -- 
+> Greg.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
