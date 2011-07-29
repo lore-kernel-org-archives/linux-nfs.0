@@ -1,57 +1,38 @@
-From: "Sorin Faibish" <sfaibish@emc.com>
-Subject: Re: [PATCH v6 00/26] add block layout driver to pnfs client
-Date: Sat, 30 Jul 2011 14:54:16 -0400
-Message-ID: <op.vzf34qyjrwwil4@sfaibish1.corp.emc.com>
-References: <1312045729-27554-1-git-send-email-rees@umich.edu>
- <1312051292.26265.3.camel@lade.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Fw: [PATCH] sunrpc: use better NUMA affinities
+Date: Fri, 29 Jul 2011 12:48:11 -0400
+Message-ID: <20110729164811.GK23194@fieldses.org>
+References: <20110729153207.17af3085@notabene.brown>
+ <4E324DB4.7060600@fastmail.fm>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15;
-	format=flowed	delsp=yes
-Cc: linux-nfs@vger.kernel.org, "peter honeyman" <honey@citi.umich.edu>
-To: "Trond Myklebust" <Trond.Myklebust@netapp.com>,
-	"Jim Rees" <rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org,
+	David Miller <davem@davemloft.net>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	netdev <netdev@vger.kernel.org>,
+	Eric Dumazet <eric.dumazet@gmail.com>
+To: Greg Banks <gnb@fastmail.fm>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:22444 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752265Ab1G3St1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 14:49:27 -0400
-In-Reply-To: <1312051292.26265.3.camel-SyLVLa/KEI9HwK5hSS5vWB2eb7JE58TQ@public.gmane.org>
+Received: from fieldses.org ([174.143.236.118]:48978 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751136Ab1G2QsP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Jul 2011 12:48:15 -0400
+In-Reply-To: <4E324DB4.7060600@fastmail.fm>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 30 Jul 2011 14:41:32 -0400, Trond Myklebust =20
-<Trond.Myklebust@netapp.com> wrote:
+On Fri, Jul 29, 2011 at 04:05:40PM +1000, Greg Banks wrote:
+> On 29/07/11 15:32, NeilBrown wrote:
+> >
+> >Hi Greg,
+> >  I saw this patch float past and thought of you... You may not be interested
+> >  any more, and it may be a perfectly good patch that does not need any
+> >  comment, but I thought I would let you know anyway.
+> 
+> Thanks Neil.
+> 
+> I've trimmed the cc list to limit the number of copies Trond and Bruce get:)
 
-> On Sat, 2011-07-30 at 13:08 -0400, Jim Rees wrote:
->> This patch set adds a block layout driver to the pNFS client.  It pa=
-sses
->> Connectathon tests and is bisectable.  It requires an updated versio=
-n of
->> nfs-utils, and patches for that have been sent separately to the =20
->> nfs-utils
->> maintainer.
->
-> There is one more thing I need in order to apply these: your signoff =
-on
-> all these patches.
-  :)
+I appreciate the thought, but in future please don't trim cc's.
 
-/Sorin
-
->
->
-
-
-
---=20
-Best Regards
-Sorin Faibish
-Corporate Distinguished Engineer
-Unified Storage Division
-
-        EMC=B2
-where information lives
-
-Phone: 508-435-1000 x 48545
-Cellphone: 617-510-0422
-Email : sfaibish@emc.com
+--b.
