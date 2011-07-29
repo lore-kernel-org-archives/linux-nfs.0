@@ -1,99 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:32356 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752115Ab1GGASB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jul 2011 20:18:01 -0400
-Subject: Re: [RFC] sunrpc:  Fix race between work-queue and
- rpc_killall_tasks.
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Ben Greear <greearb@candelatech.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Wed, 06 Jul 2011 20:17:59 -0400
-In-Reply-To: <4E14F8C4.2010508@candelatech.com>
-References: <1309992581-25199-1-git-send-email-greearb@candelatech.com>
-	 <1309995932.5447.6.camel@lade.trondhjem.org>
-	 <4E14F8C4.2010508@candelatech.com>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:39915 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754723Ab1G2Gam (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 02:30:42 -0400
+Subject: Re: Fw: [PATCH] sunrpc: use better NUMA affinities
+From: Eric Dumazet <eric.dumazet@gmail.com>
+To: Greg Banks <gnb@fastmail.fm>
+Cc: NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org,
+        David Miller <davem@davemloft.net>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>
+In-Reply-To: <4E324DB4.7060600@fastmail.fm>
+References: <20110729153207.17af3085@notabene.brown>
+	 <4E324DB4.7060600@fastmail.fm>
 Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1309997879.5447.12.camel@lade.trondhjem.org>
+Date: Fri, 29 Jul 2011 08:30:35 +0200
+Message-ID: <1311921035.7845.10.camel@edumazet-laptop>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-07-06 at 17:07 -0700, Ben Greear wrote: 
-> On 07/06/2011 04:45 PM, Trond Myklebust wrote:
-> > On Wed, 2011-07-06 at 15:49 -0700, greearb@candelatech.com wrote:
-> >> From: Ben Greear<greearb@candelatech.com>
-> >>
-> >> The rpc_killall_tasks logic is not locked against
-> >> the work-queue thread, but it still directly modifies
-> >> function pointers and data in the task objects.
-> >>
-> >> This patch changes the killall-tasks logic to set a flag
-> >> that tells the work-queue thread to terminate the task
-> >> instead of directly calling the terminate logic.
-> >>
-> >> Signed-off-by: Ben Greear<greearb@candelatech.com>
-> >> ---
-> >>
-> >> NOTE:  This needs review, as I am still struggling to understand
-> >> the rpc code, and it's quite possible this patch either doesn't
-> >> fully fix the problem or actually causes other issues.  That said,
-> >> my nfs stress test seems to run a bit more stable with this patch applied.
+Le vendredi 29 juillet 2011 à 16:05 +1000, Greg Banks a écrit :
+> On 29/07/11 15:32, NeilBrown wrote:
 > >
-> > Yes, but I don't see why you are adding a new flag, nor do I see why we
-> > want to keep checking for that flag in the rpc_execute() loop.
-> > rpc_killall_tasks() is not a frequent operation that we want to optimise
-> > for.
+> > Hi Greg,
+> >   I saw this patch float past and thought of you... You may not be interested
+> >   any more, and it may be a perfectly good patch that does not need any
+> >   comment, but I thought I would let you know anyway.
 > 
-> I was hoping that if the killall logic never set anything that was also
-> set by the work-queue thread it would be lock-safe without needing
-> explicit locking.
+> Thanks Neil.
 > 
-> I was a bit concerned that my flags |= KILLME logic would potentially
-> over-write flags that were being simultaneously written elsewhere
-> (so maybe I'd have to add a completely new variable for that KILLME flag
-> to really be safe.)
+> I've trimmed the cc list to limit the number of copies Trond and Bruce get:)
 > 
+> > From: Eric Dumazet<eric.dumazet@gmail.com>
+> > To: Trond Myklebust<Trond.Myklebust@netapp.com>
+> > Cc: "J. Bruce Fields"<bfields@fieldses.org>, Neil Brown<neilb@suse.de>,
+> > David Miller<davem@davemloft.net>, linux-nfs@vger.kernel.org, netdev
+> > <netdev@vger.kernel.org>, linux-kernel<linux-kernel@vger.kernel.org>
+> > Subject: [PATCH] sunrpc: use better NUMA affinities
 > >
-> > How about the following instead?
-> 
-> I think it still races..more comments below.
-> 
 > >
-> > 8<----------------------------------------------------------------------------------
-> >  From ecb7244b661c3f9d2008ef6048733e5cea2f98ab Mon Sep 17 00:00:00 2001
-> > From: Trond Myklebust<Trond.Myklebust@netapp.com>
-> > Date: Wed, 6 Jul 2011 19:44:52 -0400
-> > Subject: [PATCH] SUNRPC: Fix a race between work-queue and rpc_killall_tasks
-> >
-> > Since rpc_killall_tasks may modify the rpc_task's tk_action field
-> > without any locking, we need to be careful when dereferencing it.
+> > Use NUMA aware allocations to reduce latencies and increase throughput.
 > 
-> > +		do_action = task->tk_callback;
-> > +		task->tk_callback = NULL;
-> > +		if (do_action == NULL) {
 > 
-> I think the race still exists, though it would be harder to hit.
-> What if the killall logic sets task->tk_callback right after you assign do_action, but before
-> you set tk_callback to NULL?  Or after you set tk_callback to NULL for
-> that matter.
+> Briefly looking at the patch, it doesn't seem wrong but I'm surprised 
+> it's (still) necessary.
+> 
+> Some years ago at SGI we encountered that same problem; we solved it by 
+> delaying all the allocation of data structures associated with a thread 
+> so that they were performed in the thread itself, after the thread had 
+> been limited to run on a certain set of CPUs.  Thus the thread's normal 
+> allocation behaviour resulted in all of it's allocations being from 
+> node-local pages.  It was a pretty ugly patch, but it worked and made a 
+> huge difference to NFS throughput on large NUMA boxes.
+> 
+> Later Jeff Layton converted the sunrpc svc startup code to use kthreads 
+> and at the time I read his patches, pointed out this problem, and posted 
+> my patch for comparison
+> 
+> http://linux-nfs.org/pipermail/nfsv4/2008-May/008760.html
+> 
+> I seem to remember coming to the conclusion that Jeff eventually 
+> addressed this problem...am I misremembering or did something regress?
+> 
 
-What if it does? The rpc call will continue to execute until it
-completes.
+Currently, all nfsd kthreads use memory for their kernel stack and
+various initial data from a _single_ node, even if you use
+sunrpc.pool_mode=pernode  (or percpu)
 
-rpc_killall_tasks is really only useful for signalling to tasks that are
-hanging on a completely unresponsive server that we want them to stop.
-The only case where we really care is in rpc_shutdown_client(), where we
-sleep and loop anyway.
+With my patch, we make sure each thread gets its stack from its local
+node.
 
-IOW: I really don't care about 'fixing' rpc_killall_tasks to perfection.
-All I care about is that it doesn't Oops.
+Check commit 94dcf29a11b3d20a (kthread: use kthread_create_on_node()) to
+see how this strategy already was adopted for ksoftirqd, kworker,
+migration, and pktgend kthreads.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+I only have small machines here (two nodes), so I cannot post
+significative bench results, but it seems quite obvious to expect a good
+increase.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+
 
