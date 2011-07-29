@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:36688 "EHLO
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:43484 "EHLO
 	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755772Ab1G1Rbb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:31:31 -0400
+	with ESMTP id S1752108Ab1G2PzW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 11:55:22 -0400
 From: Jim Rees <rees@umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v4 08/27] pnfs: ask for layout_blksize and save it in nfs_server
-Date: Thu, 28 Jul 2011 13:30:57 -0400
-Message-Id: <1311874276-1386-9-git-send-email-rees@umich.edu>
-In-Reply-To: <1311874276-1386-1-git-send-email-rees@umich.edu>
-References: <1311874276-1386-1-git-send-email-rees@umich.edu>
+Subject: [PATCH v5 20/27] pnfsblock: add extent manipulation functions
+Date: Fri, 29 Jul 2011 11:54:45 -0400
+Message-Id: <1311954892-22038-21-git-send-email-rees@umich.edu>
+In-Reply-To: <1311954892-22038-1-git-send-email-rees@umich.edu>
+References: <1311954892-22038-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
@@ -18,324 +18,373 @@ MIME-Version: 1.0
 
 From: Fred Isaman <iisaman@citi.umich.edu>
 
-Block layout needs it to determine IO size.
+Adds working implementations of various support functions
+to handle INVAL extents, needed by writes, such as
+bl_mark_sectors_init and is_sector_initialized.
 
+[pnfsblock: fix 64-bit compiler warnings for extent manipulation]
 Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Tao Guo <glorioustao@gmail.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+[Implement release_inval_marks]
+Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
 ---
- fs/nfs/client.c           |    1 +
- fs/nfs/nfs4_fs.h          |    2 +-
- fs/nfs/nfs4proc.c         |    5 +-
- fs/nfs/nfs4xdr.c          |   99 +++++++++++++++++++++++++++++++++++++--------
- include/linux/nfs_fs_sb.h |    3 +-
- include/linux/nfs_xdr.h   |    3 +-
- 6 files changed, 91 insertions(+), 22 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c |    7 +-
+ fs/nfs/blocklayout/blocklayout.h |   31 +++++-
+ fs/nfs/blocklayout/extents.c     |  253 ++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 288 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index a9b1848..de00a37 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -936,6 +936,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server,
- 	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
- 		server->wsize = NFS_MAX_FILE_IO_SIZE;
- 	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
-+	server->pnfs_blksize = fsinfo->blksize;
- 	set_pnfs_layoutdriver(server, mntfh, fsinfo->layouttype);
- 
- 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 1909ee8..1ec1a85 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -318,7 +318,7 @@ extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
- extern const u32 nfs4_fattr_bitmap[2];
- extern const u32 nfs4_statfs_bitmap[2];
- extern const u32 nfs4_pathconf_bitmap[2];
--extern const u32 nfs4_fsinfo_bitmap[2];
-+extern const u32 nfs4_fsinfo_bitmap[3];
- extern const u32 nfs4_fs_locations_bitmap[2];
- 
- /* nfs4renewd.c */
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index af32d3d..e86de79 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -140,12 +140,13 @@ const u32 nfs4_pathconf_bitmap[2] = {
- 	0
- };
- 
--const u32 nfs4_fsinfo_bitmap[2] = { FATTR4_WORD0_MAXFILESIZE
-+const u32 nfs4_fsinfo_bitmap[3] = { FATTR4_WORD0_MAXFILESIZE
- 			| FATTR4_WORD0_MAXREAD
- 			| FATTR4_WORD0_MAXWRITE
- 			| FATTR4_WORD0_LEASE_TIME,
- 			FATTR4_WORD1_TIME_DELTA
--			| FATTR4_WORD1_FS_LAYOUT_TYPES
-+			| FATTR4_WORD1_FS_LAYOUT_TYPES,
-+			FATTR4_WORD2_LAYOUT_BLKSIZE
- };
- 
- const u32 nfs4_fs_locations_bitmap[2] = {
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 5f769f8..0261669 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -113,7 +113,11 @@ static int nfs4_stat_to_errno(int);
- #define encode_restorefh_maxsz  (op_encode_hdr_maxsz)
- #define decode_restorefh_maxsz  (op_decode_hdr_maxsz)
- #define encode_fsinfo_maxsz	(encode_getattr_maxsz)
--#define decode_fsinfo_maxsz	(op_decode_hdr_maxsz + 15)
-+/* The 5 accounts for the PNFS attributes, and assumes that at most three
-+ * layout types will be returned.
-+ */
-+#define decode_fsinfo_maxsz	(op_decode_hdr_maxsz + \
-+				 nfs4_fattr_bitmap_maxsz + 4 + 8 + 5)
- #define encode_renew_maxsz	(op_encode_hdr_maxsz + 3)
- #define decode_renew_maxsz	(op_decode_hdr_maxsz)
- #define encode_setclientid_maxsz \
-@@ -1123,6 +1127,35 @@ static void encode_getattr_two(struct xdr_stream *xdr, uint32_t bm0, uint32_t bm
- 	hdr->replen += decode_getattr_maxsz;
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 507761e..c8db55e 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -78,10 +78,15 @@ release_extents(struct pnfs_block_layout *bl, struct pnfs_layout_range *range)
+ 	spin_unlock(&bl->bl_ext_lock);
  }
  
-+static void
-+encode_getattr_three(struct xdr_stream *xdr,
-+		     uint32_t bm0, uint32_t bm1, uint32_t bm2,
-+		     struct compound_hdr *hdr)
-+{
-+	__be32 *p;
+-/* STUB */
+ static void
+ release_inval_marks(struct pnfs_inval_markings *marks)
+ {
++	struct pnfs_inval_tracking *pos, *temp;
 +
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(OP_GETATTR);
-+	if (bm2) {
-+		p = reserve_space(xdr, 16);
-+		*p++ = cpu_to_be32(3);
-+		*p++ = cpu_to_be32(bm0);
-+		*p++ = cpu_to_be32(bm1);
-+		*p = cpu_to_be32(bm2);
-+	} else if (bm1) {
-+		p = reserve_space(xdr, 12);
-+		*p++ = cpu_to_be32(2);
-+		*p++ = cpu_to_be32(bm0);
-+		*p = cpu_to_be32(bm1);
-+	} else {
-+		p = reserve_space(xdr, 8);
-+		*p++ = cpu_to_be32(1);
-+		*p = cpu_to_be32(bm0);
++	list_for_each_entry_safe(pos, temp, &marks->im_tree.mtt_stub, it_link) {
++		list_del(&pos->it_link);
++		kfree(pos);
 +	}
-+	hdr->nops++;
-+	hdr->replen += decode_getattr_maxsz;
+ 	return;
+ }
+ 
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 25c3153..c002aa2 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -38,6 +38,9 @@
+ 
+ #include "../pnfs.h"
+ 
++#define PAGE_CACHE_SECTORS (PAGE_CACHE_SIZE >> SECTOR_SHIFT)
++#define PAGE_CACHE_SECTOR_SHIFT (PAGE_CACHE_SHIFT - SECTOR_SHIFT)
++
+ struct block_mount_id {
+ 	spinlock_t			bm_lock;    /* protects list */
+ 	struct list_head		bm_devlist; /* holds pnfs_block_dev */
+@@ -56,8 +59,23 @@ enum exstate4 {
+ 	PNFS_BLOCK_NONE_DATA		= 3  /* unmapped, it's a hole */
+ };
+ 
++#define MY_MAX_TAGS (15) /* tag bitnums used must be less than this */
++
++struct my_tree {
++	sector_t		mtt_step_size;	/* Internal sector alignment */
++	struct list_head	mtt_stub; /* Should be a radix tree */
++};
++
+ struct pnfs_inval_markings {
+-	/* STUB */
++	spinlock_t	im_lock;
++	struct my_tree	im_tree;	/* Sectors that need LAYOUTCOMMIT */
++	sector_t	im_block_size;	/* Server blocksize in sectors */
++};
++
++struct pnfs_inval_tracking {
++	struct list_head it_link;
++	int		 it_sector;
++	int		 it_tags;
+ };
+ 
+ /* sector_t fields are all in 512-byte sectors */
+@@ -76,7 +94,11 @@ struct pnfs_block_extent {
+ static inline void
+ INIT_INVAL_MARKS(struct pnfs_inval_markings *marks, sector_t blocksize)
+ {
+-	/* STUB */
++	spin_lock_init(&marks->im_lock);
++	INIT_LIST_HEAD(&marks->im_tree.mtt_stub);
++	marks->im_block_size = blocksize;
++	marks->im_tree.mtt_step_size = min((sector_t)PAGE_CACHE_SECTORS,
++					   blocksize);
+ }
+ 
+ enum extentclass4 {
+@@ -156,8 +178,13 @@ void free_block_dev(struct pnfs_block_dev *bdev);
+ struct pnfs_block_extent *
+ bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
+ 		struct pnfs_block_extent **cow_read);
++int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
++			     sector_t offset, sector_t length,
++			     sector_t **pages);
+ void bl_put_extent(struct pnfs_block_extent *be);
+ struct pnfs_block_extent *alloc_extent(void);
++struct pnfs_block_extent *get_extent(struct pnfs_block_extent *be);
++int is_sector_initialized(struct pnfs_inval_markings *marks, sector_t isect);
+ int bl_add_merge_extent(struct pnfs_block_layout *bl,
+ 			 struct pnfs_block_extent *new);
+ 
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index c306616..3528d36 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -33,6 +33,259 @@
+ #include "blocklayout.h"
+ #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
+ 
++/* Bit numbers */
++#define EXTENT_INITIALIZED 0
++#define EXTENT_WRITTEN     1
++#define EXTENT_IN_COMMIT   2
++#define INTERNAL_EXISTS    MY_MAX_TAGS
++#define INTERNAL_MASK      ((1 << INTERNAL_EXISTS) - 1)
++
++/* Returns largest t<=s s.t. t%base==0 */
++static inline sector_t normalize(sector_t s, int base)
++{
++	sector_t tmp = s; /* Since do_div modifies its argument */
++	return s - do_div(tmp, base);
 +}
 +
- static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
- {
- 	encode_getattr_two(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
-@@ -1131,8 +1164,11 @@ static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct c
- 
- static void encode_fsinfo(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
- {
--	encode_getattr_two(xdr, bitmask[0] & nfs4_fsinfo_bitmap[0],
--			   bitmask[1] & nfs4_fsinfo_bitmap[1], hdr);
-+	encode_getattr_three(xdr,
-+			     bitmask[0] & nfs4_fsinfo_bitmap[0],
-+			     bitmask[1] & nfs4_fsinfo_bitmap[1],
-+			     bitmask[2] & nfs4_fsinfo_bitmap[2],
-+			     hdr);
- }
- 
- static void encode_fs_locations(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
-@@ -2643,7 +2679,7 @@ static void nfs4_xdr_enc_setclientid_confirm(struct rpc_rqst *req,
- 	struct compound_hdr hdr = {
- 		.nops	= 0,
- 	};
--	const u32 lease_bitmap[2] = { FATTR4_WORD0_LEASE_TIME, 0 };
-+	const u32 lease_bitmap[3] = { FATTR4_WORD0_LEASE_TIME };
- 
- 	encode_compound_hdr(xdr, req, &hdr);
- 	encode_setclientid_confirm(xdr, arg, &hdr);
-@@ -2787,7 +2823,7 @@ static void nfs4_xdr_enc_get_lease_time(struct rpc_rqst *req,
- 	struct compound_hdr hdr = {
- 		.minorversion = nfs4_xdr_minorversion(&args->la_seq_args),
- 	};
--	const u32 lease_bitmap[2] = { FATTR4_WORD0_LEASE_TIME, 0 };
-+	const u32 lease_bitmap[3] = { FATTR4_WORD0_LEASE_TIME };
- 
- 	encode_compound_hdr(xdr, req, &hdr);
- 	encode_sequence(xdr, &args->la_seq_args, &hdr);
-@@ -3068,14 +3104,17 @@ static int decode_attr_bitmap(struct xdr_stream *xdr, uint32_t *bitmap)
- 		goto out_overflow;
- 	bmlen = be32_to_cpup(p);
- 
--	bitmap[0] = bitmap[1] = 0;
-+	bitmap[0] = bitmap[1] = bitmap[2] = 0;
- 	p = xdr_inline_decode(xdr, (bmlen << 2));
- 	if (unlikely(!p))
- 		goto out_overflow;
- 	if (bmlen > 0) {
- 		bitmap[0] = be32_to_cpup(p++);
--		if (bmlen > 1)
--			bitmap[1] = be32_to_cpup(p);
-+		if (bmlen > 1) {
-+			bitmap[1] = be32_to_cpup(p++);
-+			if (bmlen > 2)
-+				bitmap[2] = be32_to_cpup(p);
-+		}
- 	}
- 	return 0;
- out_overflow:
-@@ -3107,8 +3146,9 @@ static int decode_attr_supported(struct xdr_stream *xdr, uint32_t *bitmap, uint3
- 			return ret;
- 		bitmap[0] &= ~FATTR4_WORD0_SUPPORTED_ATTRS;
- 	} else
--		bitmask[0] = bitmask[1] = 0;
--	dprintk("%s: bitmask=%08x:%08x\n", __func__, bitmask[0], bitmask[1]);
-+		bitmask[0] = bitmask[1] = bitmask[2] = 0;
-+	dprintk("%s: bitmask=%08x:%08x:%08x\n", __func__,
-+		bitmask[0], bitmask[1], bitmask[2]);
- 	return 0;
- }
- 
-@@ -4162,7 +4202,7 @@ out_overflow:
- static int decode_server_caps(struct xdr_stream *xdr, struct nfs4_server_caps_res *res)
- {
- 	__be32 *savep;
--	uint32_t attrlen, bitmap[2] = {0};
-+	uint32_t attrlen, bitmap[3] = {0};
- 	int status;
- 
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
-@@ -4188,7 +4228,7 @@ xdr_error:
- static int decode_statfs(struct xdr_stream *xdr, struct nfs_fsstat *fsstat)
- {
- 	__be32 *savep;
--	uint32_t attrlen, bitmap[2] = {0};
-+	uint32_t attrlen, bitmap[3] = {0};
- 	int status;
- 
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
-@@ -4220,7 +4260,7 @@ xdr_error:
- static int decode_pathconf(struct xdr_stream *xdr, struct nfs_pathconf *pathconf)
- {
- 	__be32 *savep;
--	uint32_t attrlen, bitmap[2] = {0};
-+	uint32_t attrlen, bitmap[3] = {0};
- 	int status;
- 
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
-@@ -4360,7 +4400,7 @@ static int decode_getfattr_generic(struct xdr_stream *xdr, struct nfs_fattr *fat
- {
- 	__be32 *savep;
- 	uint32_t attrlen,
--		 bitmap[2] = {0};
-+		 bitmap[3] = {0};
- 	int status;
- 
- 	status = decode_op_hdr(xdr, OP_GETATTR);
-@@ -4446,10 +4486,32 @@ static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
- 	return status;
- }
- 
-+/*
-+ * The prefered block size for layout directed io
-+ */
-+static int decode_attr_layout_blksize(struct xdr_stream *xdr, uint32_t *bitmap,
-+				      uint32_t *res)
++static inline sector_t normalize_up(sector_t s, int base)
 +{
-+	__be32 *p;
++	return normalize(s + base - 1, base);
++}
 +
-+	dprintk("%s: bitmap is %x\n", __func__, bitmap[2]);
-+	*res = 0;
-+	if (bitmap[2] & FATTR4_WORD2_LAYOUT_BLKSIZE) {
-+		p = xdr_inline_decode(xdr, 4);
-+		if (unlikely(!p)) {
-+			print_overflow_msg(__func__, xdr);
-+			return -EIO;
-+		}
-+		*res = be32_to_cpup(p);
-+		bitmap[2] &= ~FATTR4_WORD2_LAYOUT_BLKSIZE;
++/* Complete stub using list while determine API wanted */
++
++/* Returns tags, or negative */
++static int32_t _find_entry(struct my_tree *tree, u64 s)
++{
++	struct pnfs_inval_tracking *pos;
++
++	dprintk("%s(%llu) enter\n", __func__, s);
++	list_for_each_entry_reverse(pos, &tree->mtt_stub, it_link) {
++		if (pos->it_sector > s)
++			continue;
++		else if (pos->it_sector == s)
++			return pos->it_tags & INTERNAL_MASK;
++		else
++			break;
 +	}
++	return -ENOENT;
++}
++
++static inline
++int _has_tag(struct my_tree *tree, u64 s, int32_t tag)
++{
++	int32_t tags;
++
++	dprintk("%s(%llu, %i) enter\n", __func__, s, tag);
++	s = normalize(s, tree->mtt_step_size);
++	tags = _find_entry(tree, s);
++	if ((tags < 0) || !(tags & (1 << tag)))
++		return 0;
++	else
++		return 1;
++}
++
++/* Creates entry with tag, or if entry already exists, unions tag to it.
++ * If storage is not NULL, newly created entry will use it.
++ * Returns number of entries added, or negative on error.
++ */
++static int _add_entry(struct my_tree *tree, u64 s, int32_t tag,
++		      struct pnfs_inval_tracking *storage)
++{
++	int found = 0;
++	struct pnfs_inval_tracking *pos;
++
++	dprintk("%s(%llu, %i, %p) enter\n", __func__, s, tag, storage);
++	list_for_each_entry_reverse(pos, &tree->mtt_stub, it_link) {
++		if (pos->it_sector > s)
++			continue;
++		else if (pos->it_sector == s) {
++			found = 1;
++			break;
++		} else
++			break;
++	}
++	if (found) {
++		pos->it_tags |= (1 << tag);
++		return 0;
++	} else {
++		struct pnfs_inval_tracking *new;
++		if (storage)
++			new = storage;
++		else {
++			new = kmalloc(sizeof(*new), GFP_NOFS);
++			if (!new)
++				return -ENOMEM;
++		}
++		new->it_sector = s;
++		new->it_tags = (1 << tag);
++		list_add(&new->it_link, &pos->it_link);
++		return 1;
++	}
++}
++
++/* XXXX Really want option to not create */
++/* Over range, unions tag with existing entries, else creates entry with tag */
++static int _set_range(struct my_tree *tree, int32_t tag, u64 s, u64 length)
++{
++	u64 i;
++
++	dprintk("%s(%i, %llu, %llu) enter\n", __func__, tag, s, length);
++	for (i = normalize(s, tree->mtt_step_size); i < s + length;
++	     i += tree->mtt_step_size)
++		if (_add_entry(tree, i, tag, NULL))
++			return -ENOMEM;
 +	return 0;
 +}
 +
- static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
++/* Ensure that future operations on given range of tree will not malloc */
++static int _preload_range(struct my_tree *tree, u64 offset, u64 length)
++{
++	u64 start, end, s;
++	int count, i, used = 0, status = -ENOMEM;
++	struct pnfs_inval_tracking **storage;
++
++	dprintk("%s(%llu, %llu) enter\n", __func__, offset, length);
++	start = normalize(offset, tree->mtt_step_size);
++	end = normalize_up(offset + length, tree->mtt_step_size);
++	count = (int)(end - start) / (int)tree->mtt_step_size;
++
++	/* Pre-malloc what memory we might need */
++	storage = kmalloc(sizeof(*storage) * count, GFP_NOFS);
++	if (!storage)
++		return -ENOMEM;
++	for (i = 0; i < count; i++) {
++		storage[i] = kmalloc(sizeof(struct pnfs_inval_tracking),
++				     GFP_NOFS);
++		if (!storage[i])
++			goto out_cleanup;
++	}
++
++	/* Now need lock - HOW??? */
++
++	for (s = start; s < end; s += tree->mtt_step_size)
++		used += _add_entry(tree, s, INTERNAL_EXISTS, storage[used]);
++
++	/* Unlock - HOW??? */
++	status = 0;
++
++ out_cleanup:
++	for (i = used; i < count; i++) {
++		if (!storage[i])
++			break;
++		kfree(storage[i]);
++	}
++	kfree(storage);
++	return status;
++}
++
++static void set_needs_init(sector_t *array, sector_t offset)
++{
++	sector_t *p = array;
++
++	dprintk("%s enter\n", __func__);
++	if (!p)
++		return;
++	while (*p < offset)
++		p++;
++	if (*p == offset)
++		return;
++	else if (*p == ~0) {
++		*p++ = offset;
++		*p = ~0;
++		return;
++	} else {
++		sector_t *save = p;
++		dprintk("%s Adding %llu\n", __func__, (u64)offset);
++		while (*p != ~0)
++			p++;
++		p++;
++		memmove(save + 1, save, (char *)p - (char *)save);
++		*save = offset;
++		return;
++	}
++}
++
++/* We are relying on page lock to serialize this */
++int is_sector_initialized(struct pnfs_inval_markings *marks, sector_t isect)
++{
++	int rv;
++
++	spin_lock(&marks->im_lock);
++	rv = _has_tag(&marks->im_tree, isect, EXTENT_INITIALIZED);
++	spin_unlock(&marks->im_lock);
++	return rv;
++}
++
++/* Marks sectors in [offest, offset_length) as having been initialized.
++ * All lengths are step-aligned, where step is min(pagesize, blocksize).
++ * Notes where partial block is initialized, and helps prepare it for
++ * complete initialization later.
++ */
++/* Currently assumes offset is page-aligned */
++int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
++			     sector_t offset, sector_t length,
++			     sector_t **pages)
++{
++	sector_t s, start, end;
++	sector_t *array = NULL; /* Pages to mark */
++
++	dprintk("%s(offset=%llu,len=%llu) enter\n",
++		__func__, (u64)offset, (u64)length);
++	s = max((sector_t) 3,
++		2 * (marks->im_block_size / (PAGE_CACHE_SECTORS)));
++	dprintk("%s set max=%llu\n", __func__, (u64)s);
++	if (pages) {
++		array = kmalloc(s * sizeof(sector_t), GFP_NOFS);
++		if (!array)
++			goto outerr;
++		array[0] = ~0;
++	}
++
++	start = normalize(offset, marks->im_block_size);
++	end = normalize_up(offset + length, marks->im_block_size);
++	if (_preload_range(&marks->im_tree, start, end - start))
++		goto outerr;
++
++	spin_lock(&marks->im_lock);
++
++	for (s = normalize_up(start, PAGE_CACHE_SECTORS);
++	     s < offset; s += PAGE_CACHE_SECTORS) {
++		dprintk("%s pre-area pages\n", __func__);
++		/* Portion of used block is not initialized */
++		if (!_has_tag(&marks->im_tree, s, EXTENT_INITIALIZED))
++			set_needs_init(array, s);
++	}
++	if (_set_range(&marks->im_tree, EXTENT_INITIALIZED, offset, length))
++		goto out_unlock;
++	for (s = normalize_up(offset + length, PAGE_CACHE_SECTORS);
++	     s < end; s += PAGE_CACHE_SECTORS) {
++		dprintk("%s post-area pages\n", __func__);
++		if (!_has_tag(&marks->im_tree, s, EXTENT_INITIALIZED))
++			set_needs_init(array, s);
++	}
++
++	spin_unlock(&marks->im_lock);
++
++	if (pages) {
++		if (array[0] == ~0) {
++			kfree(array);
++			*pages = NULL;
++		} else
++			*pages = array;
++	}
++	return 0;
++
++ out_unlock:
++	spin_unlock(&marks->im_lock);
++ outerr:
++	if (pages) {
++		kfree(array);
++		*pages = NULL;
++	}
++	return -ENOMEM;
++}
++
+ static void print_bl_extent(struct pnfs_block_extent *be)
  {
- 	__be32 *savep;
--	uint32_t attrlen, bitmap[2];
-+	uint32_t attrlen, bitmap[3];
- 	int status;
- 
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
-@@ -4477,6 +4539,9 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
- 	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttype);
- 	if (status != 0)
- 		goto xdr_error;
-+	status = decode_attr_layout_blksize(xdr, bitmap, &fsinfo->blksize);
-+	if (status)
-+		goto xdr_error;
- 
- 	status = verify_attr_len(xdr, savep, attrlen);
- xdr_error:
-@@ -4896,7 +4961,7 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
- {
- 	__be32 *savep;
- 	uint32_t attrlen,
--		 bitmap[2] = {0};
-+		 bitmap[3] = {0};
- 	struct kvec *iov = req->rq_rcv_buf.head;
- 	int status;
- 
-@@ -6852,7 +6917,7 @@ out:
- int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
- 		       int plus)
- {
--	uint32_t bitmap[2] = {0};
-+	uint32_t bitmap[3] = {0};
- 	uint32_t len;
- 	__be32 *p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 4faeac8..b2ea8b8 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -132,7 +132,7 @@ struct nfs_server {
- #endif
- 
- #ifdef CONFIG_NFS_V4
--	u32			attr_bitmask[2];/* V4 bitmask representing the set
-+	u32			attr_bitmask[3];/* V4 bitmask representing the set
- 						   of attributes supported on this
- 						   filesystem */
- 	u32			cache_consistency_bitmask[2];
-@@ -145,6 +145,7 @@ struct nfs_server {
- 						   filesystem */
- 	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
- 	struct rpc_wait_queue	roc_rpcwaitq;
-+	u32			pnfs_blksize;	/* layout_blksize attr */
- 
- 	/* the following fields are protected by nfs_client->cl_lock */
- 	struct rb_root		state_owners;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 21f333e..94f27e5 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -122,6 +122,7 @@ struct nfs_fsinfo {
- 	struct timespec		time_delta; /* server time granularity */
- 	__u32			lease_time; /* in seconds */
- 	__u32			layouttype; /* supported pnfs layout driver */
-+	__u32			blksize; /* preferred pnfs io block size */
- };
- 
- struct nfs_fsstat {
-@@ -954,7 +955,7 @@ struct nfs4_server_caps_arg {
- };
- 
- struct nfs4_server_caps_res {
--	u32				attr_bitmask[2];
-+	u32				attr_bitmask[3];
- 	u32				acl_bitmask;
- 	u32				has_links;
- 	u32				has_symlinks;
+ 	dprintk("PRINT EXTENT extent %p\n", be);
 -- 
 1.7.4.1
 
