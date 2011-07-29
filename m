@@ -1,73 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:50067 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752624Ab1G3GUG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 02:20:06 -0400
-Message-ID: <4E33A288.80403@panasas.com>
-Date: Fri, 29 Jul 2011 23:19:52 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>, Jim Rees <rees@umich.edu>,
-        Peng Tao <bergwolf@gmail.com>, NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCHSET 0/6] Patches needed for Stable
+Received: from mx2.netapp.com ([216.240.18.37]:23710 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753040Ab1G2WEN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 18:04:13 -0400
+Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Justin Piszcz <jpiszcz@lucidpixels.com>
+Cc: Bryan Schumaker <bjschuma@netapp.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+Date: Fri, 29 Jul 2011 18:03:36 -0400
+In-Reply-To: <alpine.DEB.2.02.1107291656340.25432@p34.internal.lan>
+References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan>
+	   <20110727160752.GC974@fieldses.org>
+	   <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan>
+	   <20110727181111.GA23009@infradead.org>
+	   <alpine.DEB.2.02.1107271530340.1451@p34.internal.lan>
+	 <20110727193937.GA5354@infradead.org>
+	   <alpine.DEB.2.02.1107271540100.1451@p34.internal.lan>
+	   <20110727194722.GA9345@infradead.org>
+	   <1311799021.25645.41.camel@lade.trondhjem.org>
+	   <1311800051.25645.43.camel@lade.trondhjem.org>
+	  <1311800195.25645.45.camel@lade.trondhjem.org>
+	  <alpine.DEB.2.02.1107271723500.25432@p34.internal.lan>
+	  <alpine.DEB.2.02.1107271844100.25432@p34.internal.lan>
+	 <1311886137.27285.2.camel@lade.trondhjem.org> <4E331D86.7060801@netapp.com>
+	 <alpine.DEB.2.02.1107291656340.25432@p34.internal.lan>
 Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1311977016.16078.10.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Trond Hi
+On Fri, 2011-07-29 at 16:59 -0400, Justin Piszcz wrote: 
+> On Fri, 29 Jul 2011, Bryan Schumaker wrote:
+> 
+> > How does this look for printing out more information when a cookie loop is detected?  Is there anything else that should be printed out?  My patch applies on top of Trond's from yesterday.
+> 
+> 
+> Hi,
+> 
+> This fails against 2.6.38:
+> 
+> patching file fs/nfs/dir.c
+> Hunk #1 FAILED at 134.
+> Hunk #2 FAILED at 173.
+> Hunk #3 FAILED at 323.
+> Hunk #4 FAILED at 336.
+> Hunk #5 FAILED at 349.
+> Hunk #6 succeeded at 320 (offset -48 lines).
+> Hunk #7 FAILED at 741.
+> Hunk #8 succeeded at 716 (offset -59 lines).
+> Hunk #9 succeeded at 749 (offset -59 lines).
+> Hunk #10 succeeded at 763 (offset -59 lines).
+> 6 out of 10 hunks FAILED -- saving rejects to file fs/nfs/dir.c.rej
+> patching file include/linux/nfs_fs.h
+> Hunk #1 FAILED at 99.
+> 1 out of 1 hunk FAILED -- saving rejects to file include/linux/nfs_fs.h.rej
+> atom:/usr/src/linux#
+> 
+> And the 3.0 kernel is broken for my wireless adapter:
+> http://www.gossamer-threads.com/lists/linux/kernel/1411576
+> 
+> If you can make a combined patch for 2.6.38 I can try it, 2.6.39+ have a
+> horrible driver (rt2800usb) and 1 person emailed me as well stating the
+> same thing off-list (they stick with the manufacturer's driver or the *sta
+> one).
 
-I've played all day with these commit patches and I came to the conclusion
-that we will need all 5 of Peng's commit patches. The minimal set is the first
-4 and without the 5th one, is as you pointed out, might be very racy. Let me
-explain.
+I don't understand. The readdir loop detection code was first merged
+upstream in 2.6.39. 2.6.38 doesn't report any loops...
 
-At first I thought all I needed was:
-	[PATCH v4 05/27] pnfs: let layoutcommit handle a list of lseg
-	[PATCH v4 06/27] pnfs: use lwb as layoutcommit length
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-But They do not apply as is, and would not work. 
-I tried to, instead of taking the creds and lwb from the *header*, take them
-from the *first segment*. But this is an ugly hack (I tried, it's really ugly)
-and is scary as hell. Because it is code we never tested as opposed to this code
-that was the only one I actually tested since before last bakeathon. I would
-hate to put such under-tested code in Stable when we will change it hopefully
-in this Kernel and is ugly as hell.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
-So Introducing these two:
-	[PATCH v4 03/27] pnfs: save layoutcommit lwb at layout header
-	[PATCH v4 04/27] pnfs: save layoutcommit cred at layout header
-Just makes sense.
-
-Now also:
-	[PATCH v4 07/27] NFS41: save layoutcommit cred in layout header init
-
-Was pointed by you as fixing a potential race, which I agree completely, and
-I think it should be just merged with:
-	[PATCH 2/6] pnfs: save layoutcommit cred at layout header
-Which are the same exact issue only done better
-
-I'm adding two more patches I'll need for Stable which are bug fixes we found
-in the large testing we did here after Bakeathon:
-	[PATCH 5/6] pnfs-obj: Bug when we are running out of bio
-	[PATCH 6/6] pnfs-obj: Fix the comp_index != 0 case
-
-----
-So here is the list of patches for stable:
-
-[PATCH 1/6] pnfs: save layoutcommit lwb at layout header
-[PATCH 2/6] pnfs: save layoutcommit cred at layout header init
-[PATCH 3/6] pnfs: let layoutcommit handle a list of lseg
-[PATCH 4/6] pnfs: use lwb as layoutcommit length
-
-	These 4 are Peng's 5 layoutcommit patches. I've combined 
-	  [PATCH v4 04/27] pnfs: save layoutcommit cred at layout header
-	and
-	  [PATCH v4 07/27] NFS41: save layoutcommit cred in layout header init
-	Which are just the same issue. And rebased the last one on top of that.
-	And added CC: Stable.
-
-[PATCH 5/6] pnfs-obj: Bug when we are running out of bio
-[PATCH 6/6] pnfs-obj: Fix the comp_index != 0 case
-
-Thanks
-Boaz
