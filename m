@@ -1,58 +1,265 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:49665 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752848Ab1GZPuJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Jul 2011 11:50:09 -0400
-Content-Type: text/plain;
-	charset="utf-8"
-Subject: RE: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
-Date: Tue, 26 Jul 2011 08:50:06 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A51825D@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <CA+a=Yy59HXXjd4HgrqeANaQZKO9rRPKzM+r3NNq2KSMV_L4S_w@mail.gmail.com>
-References: <1309743002-1658-1-git-send-email-bergwolf@gmail.com> <4E18614C.4010002@tonian.com> <F19688880B763E40B28B2B462677FBF805BF0610CE@MX09A.corp.emc.com> <1311621204.28209.14.camel@lade.trondhjem.org> <CA+a=Yy59HXXjd4HgrqeANaQZKO9rRPKzM+r3NNq2KSMV_L4S_w@mail.gmail.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Peng Tao" <bergwolf@gmail.com>
-Cc: <tao.peng@emc.com>, <linux-nfs@vger.kernel.org>, <bhalevy@tonian.com>
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:53760 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752108Ab1G2PzS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 11:55:18 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v5 18/27] pnfsblock: xdr decode pnfs_block_layout4
+Date: Fri, 29 Jul 2011 11:54:43 -0400
+Message-Id: <1311954892-22038-19-git-send-email-rees@umich.edu>
+In-Reply-To: <1311954892-22038-1-git-send-email-rees@umich.edu>
+References: <1311954892-22038-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBQZW5nIFRhbyBbbWFpbHRvOmJl
-cmd3b2xmQGdtYWlsLmNvbV0NCj4gU2VudDogVHVlc2RheSwgSnVseSAyNiwgMjAxMSAxMTozNyBB
-TQ0KPiBUbzogTXlrbGVidXN0LCBUcm9uZA0KPiBDYzogdGFvLnBlbmdAZW1jLmNvbTsgbGludXgt
-bmZzQHZnZXIua2VybmVsLm9yZzsgYmhhbGV2eUB0b25pYW4uY29tDQo+IFN1YmplY3Q6IFJlOiBb
-UEFUQ0hdIE5GUzQxOiBEcm9wIGxzZWcgcmVmIGJlZm9yZSBmYWxsdGhydSB0byBNRFMNCj4gDQo+
-IEhpLCBUcm9uZCwNCj4gDQo+IE9uIFR1ZSwgSnVsIDI2LCAyMDExIGF0IDM6MTMgQU0sIFRyb25k
-IE15a2xlYnVzdA0KPiA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+IE9u
-IFdlZCwgMjAxMS0wNy0yMCBhdCAwMTo1MiAtMDQwMCwgdGFvLnBlbmdAZW1jLmNvbSB3cm90ZToN
-Cj4gPj4gSGksIFRyb25kLA0KPiA+Pg0KPiA+PiBBbnkgY29tbWVudHMgb24gdGhpcyBwYXRjaD8g
-SSBzdGlsbCBnZXQga2VybmVsIGNyYXNoIHdoZW4gcG5mcyB3cml0ZQ0KPiBpcyBhdHRlbXB0ZWQg
-YnV0IGZhaWxzIGFuZCBjYWxscyBwbmZzX2xkX3dyaXRlX2RvbmUoKS4gSXQgc2VlbXMgb2JqZWN0
-DQo+IGxheW91dCB1c2VzIHRoZSBzYW1lIGNvZGUgcGF0aCBhcyB3ZWxsLiBCdXQgSSBkb24ndCBm
-aW5kIHRoZSBwYXRjaCBpbg0KPiBlaXRoZXIgeW91ciB0cmVlIG9yIEJlbm55J3MgdHJlZS4gQXJl
-IHRoZXJlIGFueSBjb25jZXJucz8NCj4gPj4NCj4gPj4gVGhhbmtzLA0KPiA+PiBUYW8NCj4gPg0K
-PiA+IFRoZSB3aG9sZSBwbmZzX2xkX3dyaXRlX2RvbmUgdGhpbmcgaXMgYm9ndXMgYW5kIG5lZWRz
-IHRvIGJlIHJlcGxhY2VkDQo+ID4gd2l0aCBzb21ldGhpbmcgc2FuZS4gSXQgaXMgdHJ5aW5nIHRv
-IGluaXRpYXRlIGEgV1JJVEUgUlBDIGNhbGwgd2l0aA0KPiB0aGUNCj4gPiB3cm9uZyBibG9jayBz
-aXplLCBhbmQgaXMgY2FsbGluZyB0aGUgTURTIHJwY19jYWxsX2RvbmUoKSBhbmQNCj4gPiBycGNf
-cmVsZWFzZSgpIHdpdGggYW4gdW5pbml0aWFsaXNlZCBycGMgdGFzayBwb2ludGVyLg0KPiA+DQo+
-ID4gRGl0dG8gZm9yIHBuZnNfbGRfcmVhZF9kb25lLg0KPiBUaGFua3MgZm9yIHlvdXIgZXhwbGFu
-YXRpb24uIElzIHRoZXJlIGFueSBwbGFuIG9uIGhvdyB0byBmaXgNCj4gcG5mc19sZF9yZWFkL3dy
-aXRlX2RvbmU/IEJhc2ljYWxseSwgd2Ugd291bGQgbmVlZCBhbiBpbnRlcmZhY2UgdGhhdA0KPiBj
-YW4gcmVkaXJlY3QgdGhlIElPIHRvIE1EUyBpZiBwbmZzX2Vycm9yIGlzIHNldCBvciBkbyBhbGwg
-bmVjZXNzYXJ5DQo+IGNsZWFudXAgd29yayB0byBlbmQgcmVhZC93cml0ZSBpZiBwbmZzX2Vycm9y
-IGlzIDAuIElNSE8sIHRoZQ0KPiByZWNvYWxlc2NlIGxvZ2ljIG5lZWQgdG8gYWNjZXNzIG5mc19w
-YWdlaW9fZGVzY3JpcHRvciBidXQgd2UgZG8gbm90DQo+IGhhdmUgdGhhdCBpbmZvcm1hdGlvbiBh
-dCBwbmZzX2xkX3JlYWQvd3JpdGVfZG9uZS4NCg0KQXMgZmFyIGFzIEkgY2FuIHNlZSwgdGhlIHJp
-Z2h0IHRoaW5nIHRvIGRvIGlzIHRvIG1hcmsgdGhlIGxheW91dCBhcyBpbnZhbGlkIGFuZCB0aGVu
-IHJlZGlydHkgdGhlIHBhZ2UuIEl0IHNob3VsZCBiZSBlYXN5IHRvIGhhdmUgZnN5bmMoKSByZS1z
-ZW5kIHRoZSBwYWdlcyBpbiB0aGlzIGNhc2UuIFRoZXNlIHNob3VsZCBiZSBleHRyZW1lbHkgcmFy
-ZSBldmVudHMsIHNpbmNlIHdlIGV4cGVjdCB0byBjYXRjaCBtb3N0IG9mIHRoZSBwTkZTIGZhaWx1
-cmVzIHdoZW4gd2UgZG8gdGhlIGFjdHVhbCBMQVlPVVRHRVQgaW4gdGhlIC0+cGdfaW5pdCgpLg0K
-DQpNeSBtYWluIHdvcnJ5IGlzIGZvciBhaW8vZGlvIHdoZXJlIHRoZXJlIGlzIG5vIGdvb2QgbWVj
-aGFuaXNtIGZvciByZXRyeWluZy4gSSdtIHN0aWxsIHdvcmtpbmcgb24gdGhhdC4uLg0KDQpDaGVl
-cnMNCiAgVHJvbmQNCgTvv717Lm7vv70r77+977+977+977+977+977+977+9KyXvv73vv71sendt
-77+977+9Yu+/veunsu+/ve+/vXLvv73vv716WO+/ve+/vRnfsinvv73vv73vv713Kh9qZ++/ve+/
-ve+/vR7vv73vv73vv73vv73vv73domov77+977+977+9eu+/vd6W77+977+9Mu+/vd6Z77+977+9
-77+9Ju+/vSnfoe+/vWHvv73vv71/77+977+9Hu+/vUfvv73vv73vv71o77+9D++/vWo6K3bvv73v
-v73vv71377+92aU=
+From: Fred Isaman <iisaman@citi.umich.edu>
+
+XDR decodes the block layout payload sent in LAYOUTGET result, storing
+the result in an extent list.
+
+[pnfsblock: get rid of deprecated xdr macros]
+Signed-off-by: Jim Rees <rees@umich.edu>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: fix bug getting pnfs_layout_type in translate_devid().]
+Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/blocklayout/blocklayoutdev.c |  208 ++++++++++++++++++++++++++++++++++-
+ 1 files changed, 206 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+index b23fe60..3bf8358 100644
+--- a/fs/nfs/blocklayout/blocklayoutdev.c
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -40,6 +40,19 @@
+ 
+ #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
+ 
++static int decode_sector_number(__be32 **rp, sector_t *sp)
++{
++	uint64_t s;
++
++	*rp = xdr_decode_hyper(*rp, &s);
++	if (s & 0x1ff) {
++		printk(KERN_WARNING "%s: sector not aligned\n", __func__);
++		return -1;
++	}
++	*sp = s >> SECTOR_SHIFT;
++	return 0;
++}
++
+ /* Open a block_device by device number. */
+ struct block_device *nfs4_blkdev_get(dev_t dev)
+ {
+@@ -197,10 +210,201 @@ out:
+ 	return rv;
+ }
+ 
++/* Map deviceid returned by the server to constructed block_device */
++static struct block_device *translate_devid(struct pnfs_layout_hdr *lo,
++					    struct nfs4_deviceid *id)
++{
++	struct block_device *rv = NULL;
++	struct block_mount_id *mid;
++	struct pnfs_block_dev *dev;
++
++	dprintk("%s enter, lo=%p, id=%p\n", __func__, lo, id);
++	mid = BLK_ID(lo);
++	spin_lock(&mid->bm_lock);
++	list_for_each_entry(dev, &mid->bm_devlist, bm_node) {
++		if (memcmp(id->data, dev->bm_mdevid.data,
++			   NFS4_DEVICEID4_SIZE) == 0) {
++			rv = dev->bm_mdev;
++			goto out;
++		}
++	}
++ out:
++	spin_unlock(&mid->bm_lock);
++	dprintk("%s returning %p\n", __func__, rv);
++	return rv;
++}
++
++/* Tracks info needed to ensure extents in layout obey constraints of spec */
++struct layout_verification {
++	u32 mode;	/* R or RW */
++	u64 start;	/* Expected start of next non-COW extent */
++	u64 inval;	/* Start of INVAL coverage */
++	u64 cowread;	/* End of COW read coverage */
++};
++
++/* Verify the extent meets the layout requirements of the pnfs-block draft,
++ * section 2.3.1.
++ */
++static int verify_extent(struct pnfs_block_extent *be,
++			 struct layout_verification *lv)
++{
++	if (lv->mode == IOMODE_READ) {
++		if (be->be_state == PNFS_BLOCK_READWRITE_DATA ||
++		    be->be_state == PNFS_BLOCK_INVALID_DATA)
++			return -EIO;
++		if (be->be_f_offset != lv->start)
++			return -EIO;
++		lv->start += be->be_length;
++		return 0;
++	}
++	/* lv->mode == IOMODE_RW */
++	if (be->be_state == PNFS_BLOCK_READWRITE_DATA) {
++		if (be->be_f_offset != lv->start)
++			return -EIO;
++		if (lv->cowread > lv->start)
++			return -EIO;
++		lv->start += be->be_length;
++		lv->inval = lv->start;
++		return 0;
++	} else if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
++		if (be->be_f_offset != lv->start)
++			return -EIO;
++		lv->start += be->be_length;
++		return 0;
++	} else if (be->be_state == PNFS_BLOCK_READ_DATA) {
++		if (be->be_f_offset > lv->start)
++			return -EIO;
++		if (be->be_f_offset < lv->inval)
++			return -EIO;
++		if (be->be_f_offset < lv->cowread)
++			return -EIO;
++		/* It looks like you might want to min this with lv->start,
++		 * but you really don't.
++		 */
++		lv->inval = lv->inval + be->be_length;
++		lv->cowread = be->be_f_offset + be->be_length;
++		return 0;
++	} else
++		return -EIO;
++}
++
++/* XDR decode pnfs_block_layout4 structure */
+ int
+ nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+ 			   struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
+ {
+-	/* STUB */
+-	return -EIO;
++	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
++	int i, status = -EIO;
++	uint32_t count;
++	struct pnfs_block_extent *be = NULL, *save;
++	struct xdr_stream stream;
++	struct xdr_buf buf;
++	struct page *scratch;
++	__be32 *p;
++	struct layout_verification lv = {
++		.mode = lgr->range.iomode,
++		.start = lgr->range.offset >> SECTOR_SHIFT,
++		.inval = lgr->range.offset >> SECTOR_SHIFT,
++		.cowread = lgr->range.offset >> SECTOR_SHIFT,
++	};
++	LIST_HEAD(extents);
++
++	dprintk("---> %s\n", __func__);
++
++	scratch = alloc_page(gfp_flags);
++	if (!scratch)
++		return -ENOMEM;
++
++	xdr_init_decode_pages(&stream, &buf, lgr->layoutp->pages, lgr->layoutp->len);
++	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
++
++	p = xdr_inline_decode(&stream, 4);
++	if (unlikely(!p))
++		goto out_err;
++
++	count = be32_to_cpup(p++);
++
++	dprintk("%s enter, number of extents %i\n", __func__, count);
++	p = xdr_inline_decode(&stream, (28 + NFS4_DEVICEID4_SIZE) * count);
++	if (unlikely(!p))
++		goto out_err;
++
++	/* Decode individual extents, putting them in temporary
++	 * staging area until whole layout is decoded to make error
++	 * recovery easier.
++	 */
++	for (i = 0; i < count; i++) {
++		be = alloc_extent();
++		if (!be) {
++			status = -ENOMEM;
++			goto out_err;
++		}
++		memcpy(&be->be_devid, p, NFS4_DEVICEID4_SIZE);
++		p += XDR_QUADLEN(NFS4_DEVICEID4_SIZE);
++		be->be_mdev = translate_devid(lo, &be->be_devid);
++		if (!be->be_mdev)
++			goto out_err;
++
++		/* The next three values are read in as bytes,
++		 * but stored as 512-byte sector lengths
++		 */
++		if (decode_sector_number(&p, &be->be_f_offset) < 0)
++			goto out_err;
++		if (decode_sector_number(&p, &be->be_length) < 0)
++			goto out_err;
++		if (decode_sector_number(&p, &be->be_v_offset) < 0)
++			goto out_err;
++		be->be_state = be32_to_cpup(p++);
++		if (be->be_state == PNFS_BLOCK_INVALID_DATA)
++			be->be_inval = &bl->bl_inval;
++		if (verify_extent(be, &lv)) {
++			dprintk("%s verify failed\n", __func__);
++			goto out_err;
++		}
++		list_add_tail(&be->be_node, &extents);
++	}
++	if (lgr->range.offset + lgr->range.length !=
++			lv.start << SECTOR_SHIFT) {
++		dprintk("%s Final length mismatch\n", __func__);
++		be = NULL;
++		goto out_err;
++	}
++	if (lv.start < lv.cowread) {
++		dprintk("%s Final uncovered COW extent\n", __func__);
++		be = NULL;
++		goto out_err;
++	}
++	/* Extents decoded properly, now try to merge them in to
++	 * existing layout extents.
++	 */
++	spin_lock(&bl->bl_ext_lock);
++	list_for_each_entry_safe(be, save, &extents, be_node) {
++		list_del(&be->be_node);
++		status = bl_add_merge_extent(bl, be);
++		if (status) {
++			spin_unlock(&bl->bl_ext_lock);
++			/* This is a fairly catastrophic error, as the
++			 * entire layout extent lists are now corrupted.
++			 * We should have some way to distinguish this.
++			 */
++			be = NULL;
++			goto out_err;
++		}
++	}
++	spin_unlock(&bl->bl_ext_lock);
++	status = 0;
++ out:
++	__free_page(scratch);
++	dprintk("%s returns %i\n", __func__, status);
++	return status;
++
++ out_err:
++	bl_put_extent(be);
++	while (!list_empty(&extents)) {
++		be = list_first_entry(&extents, struct pnfs_block_extent,
++				      be_node);
++		list_del(&be->be_node);
++		bl_put_extent(be);
++	}
++	goto out;
+ }
+-- 
+1.7.4.1
+
