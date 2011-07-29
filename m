@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:36719 "EHLO
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:43356 "EHLO
 	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755772Ab1G1Rbl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2011 13:31:41 -0400
+	with ESMTP id S1751815Ab1G2Py6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 11:54:58 -0400
 From: Jim Rees <rees@umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v4 12/27] pnfsblock: basic extent code
-Date: Thu, 28 Jul 2011 13:31:01 -0400
-Message-Id: <1311874276-1386-13-git-send-email-rees@umich.edu>
-In-Reply-To: <1311874276-1386-1-git-send-email-rees@umich.edu>
-References: <1311874276-1386-1-git-send-email-rees@umich.edu>
+Subject: [PATCH v5 08/27] pnfs: ask for layout_blksize and save it in nfs_server
+Date: Fri, 29 Jul 2011 11:54:33 -0400
+Message-Id: <1311954892-22038-9-git-send-email-rees@umich.edu>
+In-Reply-To: <1311954892-22038-1-git-send-email-rees@umich.edu>
+References: <1311954892-22038-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
@@ -18,176 +18,324 @@ MIME-Version: 1.0
 
 From: Fred Isaman <iisaman@citi.umich.edu>
 
-Adds structures and basic create/delete code for extents.
+Block layout needs it to determine IO size.
 
 Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Tao Guo <glorioustao@gmail.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Zhang Jingwang <Jingwang.Zhang@emc.com>
 Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
- fs/nfs/blocklayout/Makefile      |    2 +-
- fs/nfs/blocklayout/blocklayout.c |   20 ++++++--
- fs/nfs/blocklayout/blocklayout.h |    1 +
- fs/nfs/blocklayout/extents.c     |   97 ++++++++++++++++++++++++++++++++++++++
- 4 files changed, 115 insertions(+), 5 deletions(-)
- create mode 100644 fs/nfs/blocklayout/extents.c
+ fs/nfs/client.c           |    1 +
+ fs/nfs/nfs4_fs.h          |    2 +-
+ fs/nfs/nfs4proc.c         |    5 +-
+ fs/nfs/nfs4xdr.c          |   99 +++++++++++++++++++++++++++++++++++++--------
+ include/linux/nfs_fs_sb.h |    3 +-
+ include/linux/nfs_xdr.h   |    3 +-
+ 6 files changed, 91 insertions(+), 22 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
-index 6bf49cd..5cfadf6 100644
---- a/fs/nfs/blocklayout/Makefile
-+++ b/fs/nfs/blocklayout/Makefile
-@@ -2,4 +2,4 @@
- # Makefile for the pNFS block layout driver kernel module
- #
- obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
--blocklayoutdriver-objs := blocklayout.o
-+blocklayoutdriver-objs := blocklayout.o extents.o
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index e341c62..252917d 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -53,12 +53,24 @@ bl_write_pagelist(struct nfs_write_data *wdata,
- 	return PNFS_NOT_ATTEMPTED;
- }
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index a9b1848..de00a37 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -936,6 +936,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server,
+ 	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
+ 		server->wsize = NFS_MAX_FILE_IO_SIZE;
+ 	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
++	server->pnfs_blksize = fsinfo->blksize;
+ 	set_pnfs_layoutdriver(server, mntfh, fsinfo->layouttype);
  
--/* STUB */
-+/* FIXME - range ignored */
- static void
--release_extents(struct pnfs_block_layout *bl,
--		struct pnfs_layout_range *range)
-+release_extents(struct pnfs_block_layout *bl, struct pnfs_layout_range *range)
- {
--	return;
-+	int i;
-+	struct pnfs_block_extent *be;
-+
-+	spin_lock(&bl->bl_ext_lock);
-+	for (i = 0; i < EXTENT_LISTS; i++) {
-+		while (!list_empty(&bl->bl_extents[i])) {
-+			be = list_first_entry(&bl->bl_extents[i],
-+					      struct pnfs_block_extent,
-+					      be_node);
-+			list_del(&be->be_node);
-+			bl_put_extent(be);
-+		}
-+	}
-+	spin_unlock(&bl->bl_ext_lock);
- }
+ 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 1909ee8..1ec1a85 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -318,7 +318,7 @@ extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
+ extern const u32 nfs4_fattr_bitmap[2];
+ extern const u32 nfs4_statfs_bitmap[2];
+ extern const u32 nfs4_pathconf_bitmap[2];
+-extern const u32 nfs4_fsinfo_bitmap[2];
++extern const u32 nfs4_fsinfo_bitmap[3];
+ extern const u32 nfs4_fs_locations_bitmap[2];
  
- /* STUB */
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 0e6ae06..3fec302 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -88,4 +88,5 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
- 	return container_of(lo, struct pnfs_block_layout, bl_layout);
- }
+ /* nfs4renewd.c */
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index af32d3d..e86de79 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -140,12 +140,13 @@ const u32 nfs4_pathconf_bitmap[2] = {
+ 	0
+ };
  
-+void bl_put_extent(struct pnfs_block_extent *be);
- #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-new file mode 100644
-index 0000000..44c3364
---- /dev/null
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -0,0 +1,97 @@
-+/*
-+ *  linux/fs/nfs/blocklayout/blocklayout.h
-+ *
-+ *  Module for the NFSv4.1 pNFS block layout driver.
-+ *
-+ *  Copyright (c) 2006 The Regents of the University of Michigan.
-+ *  All rights reserved.
-+ *
-+ *  Andy Adamson <andros@citi.umich.edu>
-+ *  Fred Isaman <iisaman@umich.edu>
-+ *
-+ * permission is granted to use, copy, create derivative works and
-+ * redistribute this software and such derivative works for any purpose,
-+ * so long as the name of the university of michigan is not used in
-+ * any advertising or publicity pertaining to the use or distribution
-+ * of this software without specific, written prior authorization.  if
-+ * the above copyright notice or any other identification of the
-+ * university of michigan is included in any copy of any portion of
-+ * this software, then the disclaimer below must also be included.
-+ *
-+ * this software is provided as is, without representation from the
-+ * university of michigan as to its fitness for any purpose, and without
-+ * warranty by the university of michigan of any kind, either express
-+ * or implied, including without limitation the implied warranties of
-+ * merchantability and fitness for a particular purpose.  the regents
-+ * of the university of michigan shall not be liable for any damages,
-+ * including special, indirect, incidental, or consequential damages,
-+ * with respect to any claim arising out or in connection with the use
-+ * of the software, even if it has been or is hereafter advised of the
-+ * possibility of such damages.
+-const u32 nfs4_fsinfo_bitmap[2] = { FATTR4_WORD0_MAXFILESIZE
++const u32 nfs4_fsinfo_bitmap[3] = { FATTR4_WORD0_MAXFILESIZE
+ 			| FATTR4_WORD0_MAXREAD
+ 			| FATTR4_WORD0_MAXWRITE
+ 			| FATTR4_WORD0_LEASE_TIME,
+ 			FATTR4_WORD1_TIME_DELTA
+-			| FATTR4_WORD1_FS_LAYOUT_TYPES
++			| FATTR4_WORD1_FS_LAYOUT_TYPES,
++			FATTR4_WORD2_LAYOUT_BLKSIZE
+ };
+ 
+ const u32 nfs4_fs_locations_bitmap[2] = {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 5f769f8..0261669 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -113,7 +113,11 @@ static int nfs4_stat_to_errno(int);
+ #define encode_restorefh_maxsz  (op_encode_hdr_maxsz)
+ #define decode_restorefh_maxsz  (op_decode_hdr_maxsz)
+ #define encode_fsinfo_maxsz	(encode_getattr_maxsz)
+-#define decode_fsinfo_maxsz	(op_decode_hdr_maxsz + 15)
++/* The 5 accounts for the PNFS attributes, and assumes that at most three
++ * layout types will be returned.
 + */
-+
-+#include "blocklayout.h"
-+#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
-+
-+static void print_bl_extent(struct pnfs_block_extent *be)
-+{
-+	dprintk("PRINT EXTENT extent %p\n", be);
-+	if (be) {
-+		dprintk("        be_f_offset %llu\n", (u64)be->be_f_offset);
-+		dprintk("        be_length   %llu\n", (u64)be->be_length);
-+		dprintk("        be_v_offset %llu\n", (u64)be->be_v_offset);
-+		dprintk("        be_state    %d\n", be->be_state);
-+	}
-+}
-+
++#define decode_fsinfo_maxsz	(op_decode_hdr_maxsz + \
++				 nfs4_fattr_bitmap_maxsz + 4 + 8 + 5)
+ #define encode_renew_maxsz	(op_encode_hdr_maxsz + 3)
+ #define decode_renew_maxsz	(op_decode_hdr_maxsz)
+ #define encode_setclientid_maxsz \
+@@ -1123,6 +1127,35 @@ static void encode_getattr_two(struct xdr_stream *xdr, uint32_t bm0, uint32_t bm
+ 	hdr->replen += decode_getattr_maxsz;
+ }
+ 
 +static void
-+destroy_extent(struct kref *kref)
++encode_getattr_three(struct xdr_stream *xdr,
++		     uint32_t bm0, uint32_t bm1, uint32_t bm2,
++		     struct compound_hdr *hdr)
 +{
-+	struct pnfs_block_extent *be;
++	__be32 *p;
 +
-+	be = container_of(kref, struct pnfs_block_extent, be_refcnt);
-+	dprintk("%s be=%p\n", __func__, be);
-+	kfree(be);
-+}
-+
-+void
-+bl_put_extent(struct pnfs_block_extent *be)
-+{
-+	if (be) {
-+		dprintk("%s enter %p (%i)\n", __func__, be,
-+			atomic_read(&be->be_refcnt.refcount));
-+		kref_put(&be->be_refcnt, destroy_extent);
++	p = reserve_space(xdr, 4);
++	*p = cpu_to_be32(OP_GETATTR);
++	if (bm2) {
++		p = reserve_space(xdr, 16);
++		*p++ = cpu_to_be32(3);
++		*p++ = cpu_to_be32(bm0);
++		*p++ = cpu_to_be32(bm1);
++		*p = cpu_to_be32(bm2);
++	} else if (bm1) {
++		p = reserve_space(xdr, 12);
++		*p++ = cpu_to_be32(2);
++		*p++ = cpu_to_be32(bm0);
++		*p = cpu_to_be32(bm1);
++	} else {
++		p = reserve_space(xdr, 8);
++		*p++ = cpu_to_be32(1);
++		*p = cpu_to_be32(bm0);
 +	}
++	hdr->nops++;
++	hdr->replen += decode_getattr_maxsz;
 +}
 +
-+struct pnfs_block_extent *alloc_extent(void)
+ static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
+ {
+ 	encode_getattr_two(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
+@@ -1131,8 +1164,11 @@ static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct c
+ 
+ static void encode_fsinfo(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
+ {
+-	encode_getattr_two(xdr, bitmask[0] & nfs4_fsinfo_bitmap[0],
+-			   bitmask[1] & nfs4_fsinfo_bitmap[1], hdr);
++	encode_getattr_three(xdr,
++			     bitmask[0] & nfs4_fsinfo_bitmap[0],
++			     bitmask[1] & nfs4_fsinfo_bitmap[1],
++			     bitmask[2] & nfs4_fsinfo_bitmap[2],
++			     hdr);
+ }
+ 
+ static void encode_fs_locations(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
+@@ -2643,7 +2679,7 @@ static void nfs4_xdr_enc_setclientid_confirm(struct rpc_rqst *req,
+ 	struct compound_hdr hdr = {
+ 		.nops	= 0,
+ 	};
+-	const u32 lease_bitmap[2] = { FATTR4_WORD0_LEASE_TIME, 0 };
++	const u32 lease_bitmap[3] = { FATTR4_WORD0_LEASE_TIME };
+ 
+ 	encode_compound_hdr(xdr, req, &hdr);
+ 	encode_setclientid_confirm(xdr, arg, &hdr);
+@@ -2787,7 +2823,7 @@ static void nfs4_xdr_enc_get_lease_time(struct rpc_rqst *req,
+ 	struct compound_hdr hdr = {
+ 		.minorversion = nfs4_xdr_minorversion(&args->la_seq_args),
+ 	};
+-	const u32 lease_bitmap[2] = { FATTR4_WORD0_LEASE_TIME, 0 };
++	const u32 lease_bitmap[3] = { FATTR4_WORD0_LEASE_TIME };
+ 
+ 	encode_compound_hdr(xdr, req, &hdr);
+ 	encode_sequence(xdr, &args->la_seq_args, &hdr);
+@@ -3068,14 +3104,17 @@ static int decode_attr_bitmap(struct xdr_stream *xdr, uint32_t *bitmap)
+ 		goto out_overflow;
+ 	bmlen = be32_to_cpup(p);
+ 
+-	bitmap[0] = bitmap[1] = 0;
++	bitmap[0] = bitmap[1] = bitmap[2] = 0;
+ 	p = xdr_inline_decode(xdr, (bmlen << 2));
+ 	if (unlikely(!p))
+ 		goto out_overflow;
+ 	if (bmlen > 0) {
+ 		bitmap[0] = be32_to_cpup(p++);
+-		if (bmlen > 1)
+-			bitmap[1] = be32_to_cpup(p);
++		if (bmlen > 1) {
++			bitmap[1] = be32_to_cpup(p++);
++			if (bmlen > 2)
++				bitmap[2] = be32_to_cpup(p);
++		}
+ 	}
+ 	return 0;
+ out_overflow:
+@@ -3107,8 +3146,9 @@ static int decode_attr_supported(struct xdr_stream *xdr, uint32_t *bitmap, uint3
+ 			return ret;
+ 		bitmap[0] &= ~FATTR4_WORD0_SUPPORTED_ATTRS;
+ 	} else
+-		bitmask[0] = bitmask[1] = 0;
+-	dprintk("%s: bitmask=%08x:%08x\n", __func__, bitmask[0], bitmask[1]);
++		bitmask[0] = bitmask[1] = bitmask[2] = 0;
++	dprintk("%s: bitmask=%08x:%08x:%08x\n", __func__,
++		bitmask[0], bitmask[1], bitmask[2]);
+ 	return 0;
+ }
+ 
+@@ -4162,7 +4202,7 @@ out_overflow:
+ static int decode_server_caps(struct xdr_stream *xdr, struct nfs4_server_caps_res *res)
+ {
+ 	__be32 *savep;
+-	uint32_t attrlen, bitmap[2] = {0};
++	uint32_t attrlen, bitmap[3] = {0};
+ 	int status;
+ 
+ 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
+@@ -4188,7 +4228,7 @@ xdr_error:
+ static int decode_statfs(struct xdr_stream *xdr, struct nfs_fsstat *fsstat)
+ {
+ 	__be32 *savep;
+-	uint32_t attrlen, bitmap[2] = {0};
++	uint32_t attrlen, bitmap[3] = {0};
+ 	int status;
+ 
+ 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
+@@ -4220,7 +4260,7 @@ xdr_error:
+ static int decode_pathconf(struct xdr_stream *xdr, struct nfs_pathconf *pathconf)
+ {
+ 	__be32 *savep;
+-	uint32_t attrlen, bitmap[2] = {0};
++	uint32_t attrlen, bitmap[3] = {0};
+ 	int status;
+ 
+ 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
+@@ -4360,7 +4400,7 @@ static int decode_getfattr_generic(struct xdr_stream *xdr, struct nfs_fattr *fat
+ {
+ 	__be32 *savep;
+ 	uint32_t attrlen,
+-		 bitmap[2] = {0};
++		 bitmap[3] = {0};
+ 	int status;
+ 
+ 	status = decode_op_hdr(xdr, OP_GETATTR);
+@@ -4446,10 +4486,32 @@ static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
+ 	return status;
+ }
+ 
++/*
++ * The prefered block size for layout directed io
++ */
++static int decode_attr_layout_blksize(struct xdr_stream *xdr, uint32_t *bitmap,
++				      uint32_t *res)
 +{
-+	struct pnfs_block_extent *be;
++	__be32 *p;
 +
-+	be = kmalloc(sizeof(struct pnfs_block_extent), GFP_NOFS);
-+	if (!be)
-+		return NULL;
-+	INIT_LIST_HEAD(&be->be_node);
-+	kref_init(&be->be_refcnt);
-+	be->be_inval = NULL;
-+	return be;
-+}
-+
-+struct pnfs_block_extent *
-+get_extent(struct pnfs_block_extent *be)
-+{
-+	if (be)
-+		kref_get(&be->be_refcnt);
-+	return be;
-+}
-+
-+void print_elist(struct list_head *list)
-+{
-+	struct pnfs_block_extent *be;
-+	dprintk("****************\n");
-+	dprintk("Extent list looks like:\n");
-+	list_for_each_entry(be, list, be_node) {
-+		print_bl_extent(be);
++	dprintk("%s: bitmap is %x\n", __func__, bitmap[2]);
++	*res = 0;
++	if (bitmap[2] & FATTR4_WORD2_LAYOUT_BLKSIZE) {
++		p = xdr_inline_decode(xdr, 4);
++		if (unlikely(!p)) {
++			print_overflow_msg(__func__, xdr);
++			return -EIO;
++		}
++		*res = be32_to_cpup(p);
++		bitmap[2] &= ~FATTR4_WORD2_LAYOUT_BLKSIZE;
 +	}
-+	dprintk("****************\n");
++	return 0;
 +}
++
+ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
+ {
+ 	__be32 *savep;
+-	uint32_t attrlen, bitmap[2];
++	uint32_t attrlen, bitmap[3];
+ 	int status;
+ 
+ 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
+@@ -4477,6 +4539,9 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
+ 	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttype);
+ 	if (status != 0)
+ 		goto xdr_error;
++	status = decode_attr_layout_blksize(xdr, bitmap, &fsinfo->blksize);
++	if (status)
++		goto xdr_error;
+ 
+ 	status = verify_attr_len(xdr, savep, attrlen);
+ xdr_error:
+@@ -4896,7 +4961,7 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+ {
+ 	__be32 *savep;
+ 	uint32_t attrlen,
+-		 bitmap[2] = {0};
++		 bitmap[3] = {0};
+ 	struct kvec *iov = req->rq_rcv_buf.head;
+ 	int status;
+ 
+@@ -6852,7 +6917,7 @@ out:
+ int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+ 		       int plus)
+ {
+-	uint32_t bitmap[2] = {0};
++	uint32_t bitmap[3] = {0};
+ 	uint32_t len;
+ 	__be32 *p = xdr_inline_decode(xdr, 4);
+ 	if (unlikely(!p))
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 4faeac8..b2ea8b8 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -132,7 +132,7 @@ struct nfs_server {
+ #endif
+ 
+ #ifdef CONFIG_NFS_V4
+-	u32			attr_bitmask[2];/* V4 bitmask representing the set
++	u32			attr_bitmask[3];/* V4 bitmask representing the set
+ 						   of attributes supported on this
+ 						   filesystem */
+ 	u32			cache_consistency_bitmask[2];
+@@ -145,6 +145,7 @@ struct nfs_server {
+ 						   filesystem */
+ 	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
+ 	struct rpc_wait_queue	roc_rpcwaitq;
++	u32			pnfs_blksize;	/* layout_blksize attr */
+ 
+ 	/* the following fields are protected by nfs_client->cl_lock */
+ 	struct rb_root		state_owners;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 21f333e..94f27e5 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -122,6 +122,7 @@ struct nfs_fsinfo {
+ 	struct timespec		time_delta; /* server time granularity */
+ 	__u32			lease_time; /* in seconds */
+ 	__u32			layouttype; /* supported pnfs layout driver */
++	__u32			blksize; /* preferred pnfs io block size */
+ };
+ 
+ struct nfs_fsstat {
+@@ -954,7 +955,7 @@ struct nfs4_server_caps_arg {
+ };
+ 
+ struct nfs4_server_caps_res {
+-	u32				attr_bitmask[2];
++	u32				attr_bitmask[3];
+ 	u32				acl_bitmask;
+ 	u32				has_links;
+ 	u32				has_symlinks;
 -- 
 1.7.4.1
 
