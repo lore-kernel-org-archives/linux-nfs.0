@@ -1,72 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from seldrel01.sonyericsson.com ([212.209.106.2]:5873 "EHLO
-	seldrel01.sonyericsson.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754471Ab1GNLOK convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Jul 2011 07:14:10 -0400
-From: "Assarsson, Emil" <Emil.Assarsson@sonyericsson.com>
-To: "'Richard Smits'" <R.Smits@tudelft.nl>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Thu, 14 Jul 2011 13:14:07 +0200
-Subject: RE: krb5 mount with large group membership
-Message-ID: <2BF070A7A2375D46BA1B6087F8D5DCB67E846BA792@seldmbx01.corpusers.net>
-References: <4E1EB72E.5080803@tudelft.nl>
-In-Reply-To: <4E1EB72E.5080803@tudelft.nl>
-Content-Type: text/plain; charset="us-ascii"
+Received: from lucidpixels.com ([72.73.18.11]:41801 "EHLO lucidpixels.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752372Ab1G2U7R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Jul 2011 16:59:17 -0400
+Date: Fri, 29 Jul 2011 16:59:15 -0400 (EDT)
+From: Justin Piszcz <jpiszcz@lucidpixels.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
+cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: 2.6.xx: NFS: directory motion/cam2 contains a readdir loop
+In-Reply-To: <4E331D86.7060801@netapp.com>
+Message-ID: <alpine.DEB.2.02.1107291656340.25432@p34.internal.lan>
+References: <alpine.DEB.2.02.1107270952270.1451@p34.internal.lan>   <20110727160752.GC974@fieldses.org>   <alpine.DEB.2.02.1107271227340.1451@p34.internal.lan>   <20110727181111.GA23009@infradead.org>   <alpine.DEB.2.02.1107271530340.1451@p34.internal.lan>
+   <20110727193937.GA5354@infradead.org>   <alpine.DEB.2.02.1107271540100.1451@p34.internal.lan>   <20110727194722.GA9345@infradead.org>   <1311799021.25645.41.camel@lade.trondhjem.org>   <1311800051.25645.43.camel@lade.trondhjem.org>
+ <1311800195.25645.45.camel@lade.trondhjem.org>  <alpine.DEB.2.02.1107271723500.25432@p34.internal.lan>  <alpine.DEB.2.02.1107271844100.25432@p34.internal.lan> <1311886137.27285.2.camel@lade.trondhjem.org> <4E331D86.7060801@netapp.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+
+On Fri, 29 Jul 2011, Bryan Schumaker wrote:
+
+> How does this look for printing out more information when a cookie loop is detected?  Is there anything else that should be printed out?  My patch applies on top of Trond's from yesterday.
+
+
 Hi,
 
-Your ticket is probably oversized for the NFS server.
-Try set NO_AUTH_DATA_REQUIRED (google msn) on the object holding the servers SPN.
+This fails against 2.6.38:
 
---
-Emil Assarsson
+patching file fs/nfs/dir.c
+Hunk #1 FAILED at 134.
+Hunk #2 FAILED at 173.
+Hunk #3 FAILED at 323.
+Hunk #4 FAILED at 336.
+Hunk #5 FAILED at 349.
+Hunk #6 succeeded at 320 (offset -48 lines).
+Hunk #7 FAILED at 741.
+Hunk #8 succeeded at 716 (offset -59 lines).
+Hunk #9 succeeded at 749 (offset -59 lines).
+Hunk #10 succeeded at 763 (offset -59 lines).
+6 out of 10 hunks FAILED -- saving rejects to file fs/nfs/dir.c.rej
+patching file include/linux/nfs_fs.h
+Hunk #1 FAILED at 99.
+1 out of 1 hunk FAILED -- saving rejects to file include/linux/nfs_fs.h.rej
+atom:/usr/src/linux#
 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org]
-> On Behalf Of Richard Smits
-> Sent: torsdag den 14 juli 2011 11:30
-> To: linux-nfs@vger.kernel.org
-> Subject: krb5 mount with large group membership
-> 
-> Hello list,
-> 
-> I am running into a problem. Perhaps someone understands what is
-> happening here. I will explain.
-> 
-> I have a Redhat 5.4 client that is accessing a nfs export on a NFS
-> server. (Redhat 6.1)
-> 
-> Our KDC is a Windows AD.
-> 
-> The client is using samba-winbind. If a user is a member of 23 groups or
-> lower, I can access the export. If a user is a member of more groups,
-> the mount fails with a "Permission denied"
-> 
-> mount /data
-> -bash-3.2$ cd /data
-> -bash: cd: /data: Permission denied
-> 
-> Thew odd thing is if I try a mount to our Netapp filer with also a krb5
-> export, there is no problem.
-> 
-> This has to do something with the ticket size in combination with
-> memberships to a large number of groups.
-> 
-> So what must i do to get this Redhat server working with this setup ? It
-> seems that Netapp did something to get this working ?
-> 
-> Does this sound familiar to anyone, or should i provide more information ?
-> 
-> Versions server side :
-> nfs-utils-1.2.3-7
-> krb5-workstation-1.9-9
-> 
-> Greetings ... Richard Smits
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+And the 3.0 kernel is broken for my wireless adapter:
+http://www.gossamer-threads.com/lists/linux/kernel/1411576
+
+If you can make a combined patch for 2.6.38 I can try it, 2.6.39+ have a
+horrible driver (rt2800usb) and 1 person emailed me as well stating the
+same thing off-list (they stick with the manufacturer's driver or the *sta
+one).
+
+Justin.
