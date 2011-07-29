@@ -1,59 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:55428 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754281Ab1GLTaI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Jul 2011 15:30:08 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from cirse-out.extra.cea.fr ([132.167.192.142]:42874 "EHLO
+	cirse-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755147Ab1G2H2G (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 03:28:06 -0400
+Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
+	by cirse.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.2) with ESMTP id p6T7S3ji008607
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Fri, 29 Jul 2011 09:28:04 +0200
+Received: from muguet1.intra.cea.fr (muguet1.intra.cea.fr [132.166.192.6])
+	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id p6T7S30G003089
+	for <linux-nfs@vger.kernel.org>; Fri, 29 Jul 2011 09:28:03 +0200
+	(envelope-from philippe.deniel@cea.fr)
+Received: from zia.esteban.ctsi (esteban.dam.intra.cea.fr [132.165.76.10])
+	by muguet1.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.1) with SMTP id p6T7S3UU009828
+	for <linux-nfs@vger.kernel.org>; Fri, 29 Jul 2011 09:28:03 +0200
+Message-ID: <4E326103.6020003@cea.fr>
+Date: Fri, 29 Jul 2011 09:28:03 +0200
+From: DENIEL Philippe <philippe.deniel@cea.fr>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/8] NFS: Use the nfs_pageio_descriptor->pg_bsize in the read/write request
-Date: Tue, 12 Jul 2011 15:29:50 -0400
-Message-Id: <1310498994-12685-5-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1310498994-12685-4-git-send-email-Trond.Myklebust@netapp.com>
-References: <1310498994-12685-1-git-send-email-Trond.Myklebust@netapp.com>
- <1310498994-12685-2-git-send-email-Trond.Myklebust@netapp.com>
- <1310498994-12685-3-git-send-email-Trond.Myklebust@netapp.com>
- <1310498994-12685-4-git-send-email-Trond.Myklebust@netapp.com>
+Subject: pynfs and newpynfs for NFSv4 and NFSv4.1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Instead of looking up the rsize and wsize, the routines that generate the
-RPC requests should really be using the pg_bsize, since that is what we
-use when deciding whether or not to coalesce write requests...
+Hi,
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/read.c  |    2 +-
- fs/nfs/write.c |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+I had a look at the repositories listed here 
+(http://www.citi.umich.edu/projects/nfsv4/pynfs/) for pynfs. The page 
+lists two repositories, but when looking at them, even if their names 
+differ, they look pretty similar (same logm same commits).
+Are they different ? Can I use a single newpynfs do validate both 
+NFSv4.0 and NFSv4.1 ?
 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index b2e9aad..47f92c1 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -303,7 +303,7 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc, struct list_head
- 	struct nfs_page *req = nfs_list_entry(desc->pg_list.next);
- 	struct page *page = req->wb_page;
- 	struct nfs_read_data *data;
--	size_t rsize = NFS_SERVER(desc->pg_inode)->rsize, nbytes;
-+	size_t rsize = desc->pg_bsize, nbytes;
- 	unsigned int offset;
- 	int requests = 0;
- 	int ret = 0;
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 8fa7def..80bd74f 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -946,7 +946,7 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc, struct list_head
- 	struct nfs_page *req = nfs_list_entry(desc->pg_list.next);
- 	struct page *page = req->wb_page;
- 	struct nfs_write_data *data;
--	size_t wsize = NFS_SERVER(desc->pg_inode)->wsize, nbytes;
-+	size_t wsize = desc->pg_bsize, nbytes;
- 	unsigned int offset;
- 	int requests = 0;
- 	int ret = 0;
--- 
-1.7.6
+    Regards
 
+       Philippe
