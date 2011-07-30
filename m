@@ -1,94 +1,140 @@
 From: Jim Rees <rees@umich.edu>
-Subject: [PATCH v6 01/26] pnfs: save layoutcommit lwb at layout header
-Date: Sat, 30 Jul 2011 13:08:24 -0400
-Message-ID: <1312045729-27554-2-git-send-email-rees@umich.edu>
+Subject: [PATCH v6 06/26] pnfs: add set-clear layoutdriver interface
+Date: Sat, 30 Jul 2011 13:08:29 -0400
+Message-ID: <1312045729-27554-7-git-send-email-rees@umich.edu>
 References: <1312045729-27554-1-git-send-email-rees@umich.edu>
 Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:56457 "EHLO
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:56478 "EHLO
 	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752375Ab1G3RI7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 13:08:59 -0400
+	with ESMTP id S1752425Ab1G3RJD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 13:09:03 -0400
 In-Reply-To: <1312045729-27554-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Peng Tao <bergwolf@gmail.com>
+From: Benny Halevy <bhalevy@panasas.com>
 
-No need to save it for every lseg.
+To allow layout driver to issue getdevicelist at mount time, and clean up
+at umount time.
 
-[Needed in v3.0]
-CC: Stable Tree <stable@kernel.org>
-Signed-off-by: Peng Tao <peng_tao@emc.com>
+[fixup non NFS_V4_1 set_pnfs_layoutdriver definition]
+[pnfs: pass mntfh down the init_pnfs path]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
- fs/nfs/nfs4filelayout.c |    2 +-
- fs/nfs/pnfs.c           |   10 ++++++----
- fs/nfs/pnfs.h           |    2 +-
- 3 files changed, 8 insertions(+), 6 deletions(-)
+ fs/nfs/client.c |    8 +++++---
+ fs/nfs/pnfs.c   |   15 +++++++++++++--
+ fs/nfs/pnfs.h   |    8 ++++++--
+ 3 files changed, 24 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index be93a62..e8915d4 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -170,7 +170,7 @@ filelayout_set_layoutcommit(struct nfs_write_data *wdata)
- 
- 	pnfs_set_layoutcommit(wdata);
- 	dprintk("%s ionde %lu pls_end_pos %lu\n", __func__, wdata->inode->i_ino,
--		(unsigned long) wdata->lseg->pls_end_pos);
-+		(unsigned long) NFS_I(wdata->inode)->layout->plh_lwb);
- }
- 
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 19ea7d9..a9b1848 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -904,7 +904,9 @@ error:
  /*
+  * Load up the server record from information gained in an fsinfo record
+  */
+-static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *fsinfo)
++static void nfs_server_set_fsinfo(struct nfs_server *server,
++				  struct nfs_fh *mntfh,
++				  struct nfs_fsinfo *fsinfo)
+ {
+ 	unsigned long max_rpc_payload;
+ 
+@@ -934,7 +936,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
+ 	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
+ 		server->wsize = NFS_MAX_FILE_IO_SIZE;
+ 	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
+-	set_pnfs_layoutdriver(server, fsinfo->layouttype);
++	set_pnfs_layoutdriver(server, mntfh, fsinfo->layouttype);
+ 
+ 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
+ 
+@@ -980,7 +982,7 @@ static int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, str
+ 	if (error < 0)
+ 		goto out_error;
+ 
+-	nfs_server_set_fsinfo(server, &fsinfo);
++	nfs_server_set_fsinfo(server, mntfh, &fsinfo);
+ 
+ 	/* Get some general file system info */
+ 	if (server->namelen == 0) {
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 38e5508..7a948ab 100644
+index a7e5f17..3a47f7c 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1379,9 +1379,11 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
- 		dprintk("%s: Set layoutcommit for inode %lu ",
- 			__func__, wdata->inode->i_ino);
+@@ -76,8 +76,11 @@ find_pnfs_driver(u32 id)
+ void
+ unset_pnfs_layoutdriver(struct nfs_server *nfss)
+ {
+-	if (nfss->pnfs_curr_ld)
++	if (nfss->pnfs_curr_ld) {
++		if (nfss->pnfs_curr_ld->clear_layoutdriver)
++			nfss->pnfs_curr_ld->clear_layoutdriver(nfss);
+ 		module_put(nfss->pnfs_curr_ld->owner);
++	}
+ 	nfss->pnfs_curr_ld = NULL;
+ }
+ 
+@@ -88,7 +91,8 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
+  * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
+  */
+ void
+-set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
++set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
++		      u32 id)
+ {
+ 	struct pnfs_layoutdriver_type *ld_type = NULL;
+ 
+@@ -115,6 +119,13 @@ set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
+ 		goto out_no_driver;
  	}
--	if (end_pos > wdata->lseg->pls_end_pos)
--		wdata->lseg->pls_end_pos = end_pos;
-+	if (end_pos > nfsi->layout->plh_lwb)
-+		nfsi->layout->plh_lwb = end_pos;
- 	spin_unlock(&nfsi->vfs_inode.i_lock);
-+	dprintk("%s: lseg %p end_pos %llu\n",
-+		__func__, wdata->lseg, nfsi->layout->plh_lwb);
+ 	server->pnfs_curr_ld = ld_type;
++	if (ld_type->set_layoutdriver
++	    && ld_type->set_layoutdriver(server, mntfh)) {
++		printk(KERN_ERR "%s: Error initializing pNFS layout driver %u.\n",
++				__func__, id);
++		module_put(ld_type->owner);
++		goto out_no_driver;
++	}
  
- 	/* if pnfs_layoutcommit_inode() runs between inode locks, the next one
- 	 * will be a noop because NFS_INO_LAYOUTCOMMIT will not be set */
-@@ -1433,9 +1435,9 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- 	 */
- 	lseg = pnfs_list_write_lseg(inode);
- 
--	end_pos = lseg->pls_end_pos;
-+	end_pos = nfsi->layout->plh_lwb;
- 	cred = lseg->pls_lc_cred;
--	lseg->pls_end_pos = 0;
-+	nfsi->layout->plh_lwb = 0;
- 	lseg->pls_lc_cred = NULL;
- 
- 	memcpy(&data->args.stateid.data, nfsi->layout->plh_stateid.data,
+ 	dprintk("%s: pNFS module for %u set\n", __func__, id);
+ 	return;
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 078670d..1eb2c04 100644
+index 7074394..bddd8b9 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -45,7 +45,6 @@ struct pnfs_layout_segment {
- 	unsigned long pls_flags;
- 	struct pnfs_layout_hdr *pls_layout;
- 	struct rpc_cred	*pls_lc_cred; /* LAYOUTCOMMIT credential */
--	loff_t pls_end_pos; /* LAYOUTCOMMIT write end */
- };
+@@ -80,6 +80,9 @@ struct pnfs_layoutdriver_type {
+ 	struct module *owner;
+ 	unsigned flags;
  
- enum pnfs_try_status {
-@@ -125,6 +124,7 @@ struct pnfs_layout_hdr {
- 	unsigned long		plh_block_lgets; /* block LAYOUTGET if >0 */
- 	u32			plh_barrier; /* ignore lower seqids */
- 	unsigned long		plh_flags;
-+	loff_t			plh_lwb; /* last write byte for layoutcommit */
- 	struct inode		*plh_inode;
- };
++	int (*set_layoutdriver) (struct nfs_server *, const struct nfs_fh *);
++	int (*clear_layoutdriver) (struct nfs_server *);
++
+ 	struct pnfs_layout_hdr * (*alloc_layout_hdr) (struct inode *inode, gfp_t gfp_flags);
+ 	void (*free_layout_hdr) (struct pnfs_layout_hdr *);
+ 
+@@ -167,7 +170,7 @@ void put_lseg(struct pnfs_layout_segment *lseg);
+ bool pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
+ bool pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *, int);
+ 
+-void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
++void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
+ void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
+ int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
+@@ -374,7 +377,8 @@ pnfs_roc_drain(struct inode *ino, u32 *barrier)
+ 	return false;
+ }
+ 
+-static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
++static inline void set_pnfs_layoutdriver(struct nfs_server *s,
++					 const struct nfs_fh *mntfh, u32 id);
+ {
+ }
  
 -- 
 1.7.4.1
