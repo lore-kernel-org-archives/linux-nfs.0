@@ -1,14 +1,14 @@
 From: Jim Rees <rees@umich.edu>
-Subject: [PATCH v6 02/26] pnfs: save layoutcommit cred at layout header init
-Date: Sat, 30 Jul 2011 13:08:25 -0400
-Message-ID: <1312045729-27554-3-git-send-email-rees@umich.edu>
+Subject: [PATCH v6 01/26] pnfs: save layoutcommit lwb at layout header
+Date: Sat, 30 Jul 2011 13:08:24 -0400
+Message-ID: <1312045729-27554-2-git-send-email-rees@umich.edu>
 References: <1312045729-27554-1-git-send-email-rees@umich.edu>
 Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:49538 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752360Ab1G3RI7 (ORCPT
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:56457 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752375Ab1G3RI7 (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 13:08:59 -0400
 In-Reply-To: <1312045729-27554-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -17,127 +17,76 @@ List-ID: <linux-nfs.vger.kernel.org>
 From: Peng Tao <bergwolf@gmail.com>
 
 No need to save it for every lseg.
-No need to save it at every pnfs_set_layoutcommit.
 
 [Needed in v3.0]
 CC: Stable Tree <stable@kernel.org>
 Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- fs/nfs/pnfs.c |   21 +++++++++++----------
- fs/nfs/pnfs.h |    2 +-
- 2 files changed, 12 insertions(+), 11 deletions(-)
+ fs/nfs/nfs4filelayout.c |    2 +-
+ fs/nfs/pnfs.c           |   10 ++++++----
+ fs/nfs/pnfs.h           |    2 +-
+ 3 files changed, 8 insertions(+), 6 deletions(-)
 
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index be93a62..e8915d4 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -170,7 +170,7 @@ filelayout_set_layoutcommit(struct nfs_write_data *wdata)
+ 
+ 	pnfs_set_layoutcommit(wdata);
+ 	dprintk("%s ionde %lu pls_end_pos %lu\n", __func__, wdata->inode->i_ino,
+-		(unsigned long) wdata->lseg->pls_end_pos);
++		(unsigned long) NFS_I(wdata->inode)->layout->plh_lwb);
+ }
+ 
+ /*
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 7a948ab..ab2cb04 100644
+index 38e5508..7a948ab 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -190,6 +190,7 @@ static void
- pnfs_free_layout_hdr(struct pnfs_layout_hdr *lo)
- {
- 	struct pnfs_layoutdriver_type *ld = NFS_SERVER(lo->plh_inode)->pnfs_curr_ld;
-+	put_rpccred(lo->plh_lc_cred);
- 	return ld->alloc_layout_hdr ? ld->free_layout_hdr(lo) : kfree(lo);
- }
- 
-@@ -816,7 +817,9 @@ out:
- }
- 
- static struct pnfs_layout_hdr *
--alloc_init_layout_hdr(struct inode *ino, gfp_t gfp_flags)
-+alloc_init_layout_hdr(struct inode *ino,
-+		      struct nfs_open_context *ctx,
-+		      gfp_t gfp_flags)
- {
- 	struct pnfs_layout_hdr *lo;
- 
-@@ -828,11 +831,14 @@ alloc_init_layout_hdr(struct inode *ino, gfp_t gfp_flags)
- 	INIT_LIST_HEAD(&lo->plh_segs);
- 	INIT_LIST_HEAD(&lo->plh_bulk_recall);
- 	lo->plh_inode = ino;
-+	lo->plh_lc_cred = get_rpccred(ctx->state->owner->so_cred);
- 	return lo;
- }
- 
- static struct pnfs_layout_hdr *
--pnfs_find_alloc_layout(struct inode *ino, gfp_t gfp_flags)
-+pnfs_find_alloc_layout(struct inode *ino,
-+		       struct nfs_open_context *ctx,
-+		       gfp_t gfp_flags)
- {
- 	struct nfs_inode *nfsi = NFS_I(ino);
- 	struct pnfs_layout_hdr *new = NULL;
-@@ -847,7 +853,7 @@ pnfs_find_alloc_layout(struct inode *ino, gfp_t gfp_flags)
- 			return nfsi->layout;
- 	}
- 	spin_unlock(&ino->i_lock);
--	new = alloc_init_layout_hdr(ino, gfp_flags);
-+	new = alloc_init_layout_hdr(ino, ctx, gfp_flags);
- 	spin_lock(&ino->i_lock);
- 
- 	if (likely(nfsi->layout == NULL))	/* Won the race? */
-@@ -940,7 +946,7 @@ pnfs_update_layout(struct inode *ino,
- 	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
- 		return NULL;
- 	spin_lock(&ino->i_lock);
--	lo = pnfs_find_alloc_layout(ino, gfp_flags);
-+	lo = pnfs_find_alloc_layout(ino, ctx, gfp_flags);
- 	if (lo == NULL) {
- 		dprintk("%s ERROR: can't get pnfs_layout_hdr\n", __func__);
- 		goto out_unlock;
-@@ -1373,8 +1379,6 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
- 	if (!test_and_set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
- 		/* references matched in nfs4_layoutcommit_release */
- 		get_lseg(wdata->lseg);
--		wdata->lseg->pls_lc_cred =
--			get_rpccred(wdata->args.context->state->owner->so_cred);
- 		mark_as_dirty = true;
+@@ -1379,9 +1379,11 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
  		dprintk("%s: Set layoutcommit for inode %lu ",
  			__func__, wdata->inode->i_ino);
-@@ -1406,7 +1410,6 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- 	struct nfs4_layoutcommit_data *data;
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 	struct pnfs_layout_segment *lseg;
--	struct rpc_cred *cred;
- 	loff_t end_pos;
- 	int status = 0;
+ 	}
+-	if (end_pos > wdata->lseg->pls_end_pos)
+-		wdata->lseg->pls_end_pos = end_pos;
++	if (end_pos > nfsi->layout->plh_lwb)
++		nfsi->layout->plh_lwb = end_pos;
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
++	dprintk("%s: lseg %p end_pos %llu\n",
++		__func__, wdata->lseg, nfsi->layout->plh_lwb);
  
-@@ -1436,9 +1439,7 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 	/* if pnfs_layoutcommit_inode() runs between inode locks, the next one
+ 	 * will be a noop because NFS_INO_LAYOUTCOMMIT will not be set */
+@@ -1433,9 +1435,9 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 	 */
  	lseg = pnfs_list_write_lseg(inode);
  
- 	end_pos = nfsi->layout->plh_lwb;
--	cred = lseg->pls_lc_cred;
- 	nfsi->layout->plh_lwb = 0;
--	lseg->pls_lc_cred = NULL;
+-	end_pos = lseg->pls_end_pos;
++	end_pos = nfsi->layout->plh_lwb;
+ 	cred = lseg->pls_lc_cred;
+-	lseg->pls_end_pos = 0;
++	nfsi->layout->plh_lwb = 0;
+ 	lseg->pls_lc_cred = NULL;
  
  	memcpy(&data->args.stateid.data, nfsi->layout->plh_stateid.data,
- 		sizeof(nfsi->layout->plh_stateid.data));
-@@ -1446,7 +1447,7 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- 
- 	data->args.inode = inode;
- 	data->lseg = lseg;
--	data->cred = cred;
-+	data->cred = get_rpccred(nfsi->layout->plh_lc_cred);
- 	nfs_fattr_init(&data->fattr);
- 	data->args.bitmask = NFS_SERVER(inode)->cache_consistency_bitmask;
- 	data->res.fattr = &data->fattr;
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 1eb2c04..1f5cb47 100644
+index 078670d..1eb2c04 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -44,7 +44,6 @@ struct pnfs_layout_segment {
- 	atomic_t pls_refcount;
+@@ -45,7 +45,6 @@ struct pnfs_layout_segment {
  	unsigned long pls_flags;
  	struct pnfs_layout_hdr *pls_layout;
--	struct rpc_cred	*pls_lc_cred; /* LAYOUTCOMMIT credential */
+ 	struct rpc_cred	*pls_lc_cred; /* LAYOUTCOMMIT credential */
+-	loff_t pls_end_pos; /* LAYOUTCOMMIT write end */
  };
  
  enum pnfs_try_status {
 @@ -125,6 +124,7 @@ struct pnfs_layout_hdr {
+ 	unsigned long		plh_block_lgets; /* block LAYOUTGET if >0 */
  	u32			plh_barrier; /* ignore lower seqids */
  	unsigned long		plh_flags;
- 	loff_t			plh_lwb; /* last write byte for layoutcommit */
-+	struct rpc_cred		*plh_lc_cred; /* layoutcommit cred */
++	loff_t			plh_lwb; /* last write byte for layoutcommit */
  	struct inode		*plh_inode;
  };
  
