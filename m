@@ -1,345 +1,385 @@
 From: Jim Rees <rees@umich.edu>
-Subject: [PATCH v6 05/26] pnfs: GETDEVICELIST
-Date: Sat, 30 Jul 2011 13:08:28 -0400
-Message-ID: <1312045729-27554-6-git-send-email-rees@umich.edu>
+Subject: [PATCH v6 09/26] pnfsblock: add blocklayout Kconfig option, Makefile, and stubs
+Date: Sat, 30 Jul 2011 13:08:32 -0400
+Message-ID: <1312045729-27554-10-git-send-email-rees@umich.edu>
 References: <1312045729-27554-1-git-send-email-rees@umich.edu>
 Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:49550 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752386Ab1G3RJD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 13:09:03 -0400
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:56494 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752454Ab1G3RJH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 13:09:07 -0400
 In-Reply-To: <1312045729-27554-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-The block driver uses GETDEVICELIST
+Define a configuration variable to enable/disable compilation of the
+block driver code.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[pass struct nfs_server * to getdevicelist]
-[get machince creds for getdevicelist]
-[fix getdevicelist decode sizing]
+Add the minimal structure for a pnfs block layout driver, and empty
+list-heads that will hold the extent data
+
+[pnfsblock: make NFS_V4_1 select PNFS_BLOCK]
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfs-block: fix CONFIG_PNFS_BLOCK dependencies]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+[pnfsblock: SQUASHME: adjust to API change]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfs: move pnfs_layout_type inline in nfs_inode]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[blocklayout: encode_layoutcommit implementation]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+[pnfsblock: layout alloc and free]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfs: move pnfs_layout_type inline in nfs_inode]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+[pnfsblock: define module alias]
+Signed-off-by: Peng Tao <peng_tao@emc.com>
 ---
- fs/nfs/nfs4proc.c       |   48 +++++++++++++++++
- fs/nfs/nfs4xdr.c        |  131 +++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/pnfs.h           |   12 ++++
- include/linux/nfs4.h    |    1 +
- include/linux/nfs_xdr.h |   11 ++++
- 5 files changed, 203 insertions(+), 0 deletions(-)
+ fs/nfs/Kconfig                   |    8 ++-
+ fs/nfs/Makefile                  |    1 +
+ fs/nfs/blocklayout/Makefile      |    5 +
+ fs/nfs/blocklayout/blocklayout.c |  175 ++++++++++++++++++++++++++++++++++++++
+ fs/nfs/blocklayout/blocklayout.h |   91 ++++++++++++++++++++
+ 5 files changed, 279 insertions(+), 1 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/Makefile
+ create mode 100644 fs/nfs/blocklayout/blocklayout.c
+ create mode 100644 fs/nfs/blocklayout/blocklayout.h
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index efa6ae8..af32d3d 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5834,6 +5834,54 @@ int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp)
- 	return status;
- }
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 2cde5d9..be02077 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -79,15 +79,21 @@ config NFS_V4_1
+ 	depends on NFS_FS && NFS_V4 && EXPERIMENTAL
+ 	select SUNRPC_BACKCHANNEL
+ 	select PNFS_FILE_LAYOUT
++	select PNFS_BLOCK
++	select MD
++	select BLK_DEV_DM
+ 	help
+ 	  This option enables support for minor version 1 of the NFSv4 protocol
+-	  (RFC 5661) in the kernel's NFS client.
++	  (RFC 5661 and RFC 5663) in the kernel's NFS client.
  
+ 	  If unsure, say N.
+ 
+ config PNFS_FILE_LAYOUT
+ 	tristate
+ 
++config PNFS_BLOCK
++	tristate
++
+ config PNFS_OBJLAYOUT
+ 	tristate "Provide support for the pNFS Objects Layout Driver for NFSv4.1 pNFS (EXPERIMENTAL)"
+ 	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 6a34f7d..b58613d 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -23,3 +23,4 @@ obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
+ nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
+ 
+ obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayout/
++obj-$(CONFIG_PNFS_BLOCK) += blocklayout/
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+new file mode 100644
+index 0000000..6bf49cd
+--- /dev/null
++++ b/fs/nfs/blocklayout/Makefile
+@@ -0,0 +1,5 @@
++#
++# Makefile for the pNFS block layout driver kernel module
++#
++obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
++blocklayoutdriver-objs := blocklayout.o
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+new file mode 100644
+index 0000000..9230f84
+--- /dev/null
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -0,0 +1,175 @@
 +/*
-+ * Retrieve the list of Data Server devices from the MDS.
++ *  linux/fs/nfs/blocklayout/blocklayout.c
++ *
++ *  Module for the NFSv4.1 pNFS block layout driver.
++ *
++ *  Copyright (c) 2006 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@citi.umich.edu>
++ *  Fred Isaman <iisaman@umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
 + */
-+static int _nfs4_getdevicelist(struct nfs_server *server,
-+				    const struct nfs_fh *fh,
-+				    struct pnfs_devicelist *devlist)
-+{
-+	struct nfs4_getdevicelist_args args = {
-+		.fh = fh,
-+		.layoutclass = server->pnfs_curr_ld->id,
-+	};
-+	struct nfs4_getdevicelist_res res = {
-+		.devlist = devlist,
-+	};
-+	struct rpc_message msg = {
-+		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_GETDEVICELIST],
-+		.rpc_argp = &args,
-+		.rpc_resp = &res,
-+	};
-+	int status;
++#include <linux/module.h>
++#include <linux/init.h>
 +
-+	dprintk("--> %s\n", __func__);
-+	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args,
-+				&res.seq_res, 0);
-+	dprintk("<-- %s status=%d\n", __func__, status);
-+	return status;
++#include "blocklayout.h"
++
++#define NFSDBG_FACILITY	NFSDBG_PNFS_LD
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("Andy Adamson <andros@citi.umich.edu>");
++MODULE_DESCRIPTION("The NFSv4.1 pNFS Block layout driver");
++
++static enum pnfs_try_status
++bl_read_pagelist(struct nfs_read_data *rdata)
++{
++	return PNFS_NOT_ATTEMPTED;
 +}
 +
-+int nfs4_proc_getdevicelist(struct nfs_server *server,
-+			    const struct nfs_fh *fh,
-+			    struct pnfs_devicelist *devlist)
++static enum pnfs_try_status
++bl_write_pagelist(struct nfs_write_data *wdata,
++		  int sync)
 +{
-+	struct nfs4_exception exception = { };
-+	int err;
-+
-+	do {
-+		err = nfs4_handle_exception(server,
-+				_nfs4_getdevicelist(server, fh, devlist),
-+				&exception);
-+	} while (exception.retry);
-+
-+	dprintk("%s: err=%d, num_devs=%u\n", __func__,
-+		err, devlist->num_devs);
-+
-+	return err;
++	return PNFS_NOT_ATTEMPTED;
 +}
-+EXPORT_SYMBOL_GPL(nfs4_proc_getdevicelist);
 +
- static int
- _nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
- {
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index b851b56..5f769f8 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -314,6 +314,17 @@ static int nfs4_stat_to_errno(int);
- 				XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + 5)
- #define encode_reclaim_complete_maxsz	(op_encode_hdr_maxsz + 4)
- #define decode_reclaim_complete_maxsz	(op_decode_hdr_maxsz + 4)
-+#define encode_getdevicelist_maxsz (op_encode_hdr_maxsz + 4 + \
-+				encode_verifier_maxsz)
-+#define decode_getdevicelist_maxsz (op_decode_hdr_maxsz + \
-+				2 /* nfs_cookie4 gdlr_cookie */ + \
-+				decode_verifier_maxsz \
-+				  /* verifier4 gdlr_verifier */ + \
-+				1 /* gdlr_deviceid_list count */ + \
-+				XDR_QUADLEN(NFS4_PNFS_GETDEVLIST_MAXNUM * \
-+					    NFS4_DEVICEID4_SIZE) \
-+				  /* gdlr_deviceid_list */ + \
-+				1 /* bool gdlr_eof */)
- #define encode_getdeviceinfo_maxsz (op_encode_hdr_maxsz + 4 + \
- 				XDR_QUADLEN(NFS4_DEVICEID4_SIZE))
- #define decode_getdeviceinfo_maxsz (op_decode_hdr_maxsz + \
-@@ -748,6 +759,14 @@ static int nfs4_stat_to_errno(int);
- #define NFS4_dec_reclaim_complete_sz	(compound_decode_hdr_maxsz + \
- 					 decode_sequence_maxsz + \
- 					 decode_reclaim_complete_maxsz)
-+#define NFS4_enc_getdevicelist_sz (compound_encode_hdr_maxsz + \
-+				encode_sequence_maxsz + \
-+				encode_putfh_maxsz + \
-+				encode_getdevicelist_maxsz)
-+#define NFS4_dec_getdevicelist_sz (compound_decode_hdr_maxsz + \
-+				decode_sequence_maxsz + \
-+				decode_putfh_maxsz + \
-+				decode_getdevicelist_maxsz)
- #define NFS4_enc_getdeviceinfo_sz (compound_encode_hdr_maxsz +    \
- 				encode_sequence_maxsz +\
- 				encode_getdeviceinfo_maxsz)
-@@ -1855,6 +1874,26 @@ static void encode_sequence(struct xdr_stream *xdr,
- 
- #ifdef CONFIG_NFS_V4_1
- static void
-+encode_getdevicelist(struct xdr_stream *xdr,
-+		     const struct nfs4_getdevicelist_args *args,
-+		     struct compound_hdr *hdr)
++/* STUB */
++static void
++release_extents(struct pnfs_block_layout *bl,
++		struct pnfs_layout_range *range)
 +{
-+	__be32 *p;
-+	nfs4_verifier dummy = {
-+		.data = "dummmmmy",
-+	};
++	return;
++}
 +
-+	p = reserve_space(xdr, 20);
-+	*p++ = cpu_to_be32(OP_GETDEVICELIST);
-+	*p++ = cpu_to_be32(args->layoutclass);
-+	*p++ = cpu_to_be32(NFS4_PNFS_GETDEVLIST_MAXNUM);
-+	xdr_encode_hyper(p, 0ULL);                          /* cookie */
-+	encode_nfs4_verifier(xdr, &dummy);
-+	hdr->nops++;
-+	hdr->replen += decode_getdevicelist_maxsz;
++/* STUB */
++static void
++release_inval_marks(struct pnfs_inval_markings *marks)
++{
++	return;
++}
++
++static void bl_free_layout_hdr(struct pnfs_layout_hdr *lo)
++{
++	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
++
++	dprintk("%s enter\n", __func__);
++	release_extents(bl, NULL);
++	release_inval_marks(&bl->bl_inval);
++	kfree(bl);
++}
++
++static struct pnfs_layout_hdr *bl_alloc_layout_hdr(struct inode *inode,
++						   gfp_t gfp_flags)
++{
++	struct pnfs_block_layout *bl;
++
++	dprintk("%s enter\n", __func__);
++	bl = kzalloc(sizeof(*bl), gfp_flags);
++	if (!bl)
++		return NULL;
++	spin_lock_init(&bl->bl_ext_lock);
++	INIT_LIST_HEAD(&bl->bl_extents[0]);
++	INIT_LIST_HEAD(&bl->bl_extents[1]);
++	INIT_LIST_HEAD(&bl->bl_commit);
++	INIT_LIST_HEAD(&bl->bl_committing);
++	bl->bl_count = 0;
++	bl->bl_blocksize = NFS_SERVER(inode)->pnfs_blksize >> SECTOR_SHIFT;
++	BL_INIT_INVAL_MARKS(&bl->bl_inval, bl->bl_blocksize);
++	return &bl->bl_layout;
 +}
 +
 +static void
- encode_getdeviceinfo(struct xdr_stream *xdr,
- 		     const struct nfs4_getdeviceinfo_args *args,
- 		     struct compound_hdr *hdr)
-@@ -2775,6 +2814,24 @@ static void nfs4_xdr_enc_reclaim_complete(struct rpc_rqst *req,
- }
- 
- /*
-+ * Encode GETDEVICELIST request
-+ */
-+static void nfs4_xdr_enc_getdevicelist(struct rpc_rqst *req,
-+				       struct xdr_stream *xdr,
-+				       struct nfs4_getdevicelist_args *args)
++bl_free_lseg(struct pnfs_layout_segment *lseg)
 +{
-+	struct compound_hdr hdr = {
-+		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
-+	};
-+
-+	encode_compound_hdr(xdr, req, &hdr);
-+	encode_sequence(xdr, &args->seq_args, &hdr);
-+	encode_putfh(xdr, args->fh, &hdr);
-+	encode_getdevicelist(xdr, args, &hdr);
-+	encode_nops(&hdr);
 +}
 +
-+/*
-  * Encode GETDEVICEINFO request
-  */
- static void nfs4_xdr_enc_getdeviceinfo(struct rpc_rqst *req,
-@@ -5268,6 +5325,53 @@ out_overflow:
- }
- 
- #if defined(CONFIG_NFS_V4_1)
-+/*
-+ * TODO: Need to handle case when EOF != true;
-+ */
-+static int decode_getdevicelist(struct xdr_stream *xdr,
-+				struct pnfs_devicelist *res)
++static struct pnfs_layout_segment *
++bl_alloc_lseg(struct pnfs_layout_hdr *lo,
++	      struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
 +{
-+	__be32 *p;
-+	int status, i;
-+	struct nfs_writeverf verftemp;
++	return NULL;
++}
 +
-+	status = decode_op_hdr(xdr, OP_GETDEVICELIST);
-+	if (status)
-+		return status;
++static void
++bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
++		       const struct nfs4_layoutcommit_args *arg)
++{
++}
 +
-+	p = xdr_inline_decode(xdr, 8 + 8 + 4);
-+	if (unlikely(!p))
-+		goto out_overflow;
++static void
++bl_cleanup_layoutcommit(struct pnfs_layout_hdr *lo,
++			struct nfs4_layoutcommit_data *lcdata)
++{
++}
 +
-+	/* TODO: Skip cookie for now */
-+	p += 2;
-+
-+	/* Read verifier */
-+	p = xdr_decode_opaque_fixed(p, verftemp.verifier, 8);
-+
-+	res->num_devs = be32_to_cpup(p);
-+
-+	dprintk("%s: num_dev %d\n", __func__, res->num_devs);
-+
-+	if (res->num_devs > NFS4_PNFS_GETDEVLIST_MAXNUM) {
-+		printk(KERN_ERR "%s too many result dev_num %u\n",
-+				__func__, res->num_devs);
-+		return -EIO;
-+	}
-+
-+	p = xdr_inline_decode(xdr,
-+			      res->num_devs * NFS4_DEVICEID4_SIZE + 4);
-+	if (unlikely(!p))
-+		goto out_overflow;
-+	for (i = 0; i < res->num_devs; i++)
-+		p = xdr_decode_opaque_fixed(p, res->dev_id[i].data,
-+					    NFS4_DEVICEID4_SIZE);
-+	res->eof = be32_to_cpup(p);
++static int
++bl_set_layoutdriver(struct nfs_server *server, const struct nfs_fh *fh)
++{
++	dprintk("%s enter\n", __func__);
 +	return 0;
-+out_overflow:
-+	print_overflow_msg(__func__, xdr);
-+	return -EIO;
 +}
- 
- static int decode_getdeviceinfo(struct xdr_stream *xdr,
- 				struct pnfs_device *pdev)
-@@ -6542,6 +6646,32 @@ static int nfs4_xdr_dec_reclaim_complete(struct rpc_rqst *rqstp,
- }
- 
- /*
-+ * Decode GETDEVICELIST response
-+ */
-+static int nfs4_xdr_dec_getdevicelist(struct rpc_rqst *rqstp,
-+				      struct xdr_stream *xdr,
-+				      struct nfs4_getdevicelist_res *res)
++
++static int
++bl_clear_layoutdriver(struct nfs_server *server)
 +{
-+	struct compound_hdr hdr;
-+	int status;
-+
-+	dprintk("encoding getdevicelist!\n");
-+
-+	status = decode_compound_hdr(xdr, &hdr);
-+	if (status != 0)
-+		goto out;
-+	status = decode_sequence(xdr, &res->seq_res, rqstp);
-+	if (status != 0)
-+		goto out;
-+	status = decode_putfh(xdr);
-+	if (status != 0)
-+		goto out;
-+	status = decode_getdevicelist(xdr, res->devlist);
-+out:
-+	return status;
++	dprintk("%s enter\n", __func__);
++	return 0;
 +}
 +
++static struct pnfs_layoutdriver_type blocklayout_type = {
++	.id				= LAYOUT_BLOCK_VOLUME,
++	.name				= "LAYOUT_BLOCK_VOLUME",
++	.read_pagelist			= bl_read_pagelist,
++	.write_pagelist			= bl_write_pagelist,
++	.alloc_layout_hdr		= bl_alloc_layout_hdr,
++	.free_layout_hdr		= bl_free_layout_hdr,
++	.alloc_lseg			= bl_alloc_lseg,
++	.free_lseg			= bl_free_lseg,
++	.encode_layoutcommit		= bl_encode_layoutcommit,
++	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
++	.set_layoutdriver		= bl_set_layoutdriver,
++	.clear_layoutdriver		= bl_clear_layoutdriver,
++};
++
++static int __init nfs4blocklayout_init(void)
++{
++	int ret;
++
++	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
++
++	ret = pnfs_register_layoutdriver(&blocklayout_type);
++	return ret;
++}
++
++static void __exit nfs4blocklayout_exit(void)
++{
++	dprintk("%s: NFSv4 Block Layout Driver Unregistering...\n",
++	       __func__);
++
++	pnfs_unregister_layoutdriver(&blocklayout_type);
++}
++
++MODULE_ALIAS("nfs-layouttype4-3");
++
++module_init(nfs4blocklayout_init);
++module_exit(nfs4blocklayout_exit);
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+new file mode 100644
+index 0000000..8bfa466
+--- /dev/null
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -0,0 +1,91 @@
 +/*
-  * Decode GETDEVINFO response
-  */
- static int nfs4_xdr_dec_getdeviceinfo(struct rpc_rqst *rqstp,
-@@ -6908,6 +7038,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
- 	PROC(SECINFO_NO_NAME,	enc_secinfo_no_name,	dec_secinfo_no_name),
- 	PROC(TEST_STATEID,	enc_test_stateid,	dec_test_stateid),
- 	PROC(FREE_STATEID,	enc_free_stateid,	dec_free_stateid),
-+	PROC(GETDEVICELIST,	enc_getdevicelist,	dec_getdevicelist),
- #endif /* CONFIG_NFS_V4_1 */
- };
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index b94f874..7074394 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -135,14 +135,26 @@ struct pnfs_device {
- 	unsigned int  layout_type;
- 	unsigned int  mincount;
- 	struct page **pages;
-+	void          *area;
- 	unsigned int  pgbase;
- 	unsigned int  pglen;
- };
- 
-+#define NFS4_PNFS_GETDEVLIST_MAXNUM 16
++ *  linux/fs/nfs/blocklayout/blocklayout.h
++ *
++ *  Module for the NFSv4.1 pNFS block layout driver.
++ *
++ *  Copyright (c) 2006 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@citi.umich.edu>
++ *  Fred Isaman <iisaman@umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
++ */
++#ifndef FS_NFS_NFS4BLOCKLAYOUT_H
++#define FS_NFS_NFS4BLOCKLAYOUT_H
 +
-+struct pnfs_devicelist {
-+	unsigned int		eof;
-+	unsigned int		num_devs;
-+	struct nfs4_deviceid	dev_id[NFS4_PNFS_GETDEVLIST_MAXNUM];
++#include <linux/device-mapper.h>
++#include <linux/nfs_fs.h>
++#include "../pnfs.h"
++
++enum exstate4 {
++	PNFS_BLOCK_READWRITE_DATA	= 0,
++	PNFS_BLOCK_READ_DATA		= 1,
++	PNFS_BLOCK_INVALID_DATA		= 2, /* mapped, but data is invalid */
++	PNFS_BLOCK_NONE_DATA		= 3  /* unmapped, it's a hole */
 +};
 +
- extern int pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *);
- extern void pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *);
- 
- /* nfs4proc.c */
-+extern int nfs4_proc_getdevicelist(struct nfs_server *server,
-+				   const struct nfs_fh *fh,
-+				   struct pnfs_devicelist *devlist);
- extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
- 				   struct pnfs_device *dev);
- extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index a3c4bc8..76f99e8 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -566,6 +566,7 @@ enum {
- 	NFSPROC4_CLNT_SECINFO_NO_NAME,
- 	NFSPROC4_CLNT_TEST_STATEID,
- 	NFSPROC4_CLNT_FREE_STATEID,
-+	NFSPROC4_CLNT_GETDEVICELIST,
- };
- 
- /* nfs41 types */
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index feb3127..21f333e 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -235,6 +235,17 @@ struct nfs4_layoutget {
- 	gfp_t gfp_flags;
- };
- 
-+struct nfs4_getdevicelist_args {
-+	const struct nfs_fh *fh;
-+	u32 layoutclass;
-+	struct nfs4_sequence_args seq_args;
++struct pnfs_inval_markings {
++	/* STUB */
 +};
 +
-+struct nfs4_getdevicelist_res {
-+	struct pnfs_devicelist *devlist;
-+	struct nfs4_sequence_res seq_res;
++/* sector_t fields are all in 512-byte sectors */
++struct pnfs_block_extent {
++	struct kref	be_refcnt;
++	struct list_head be_node;	/* link into lseg list */
++	struct nfs4_deviceid be_devid;  /* FIXME: could use device cache instead */
++	struct block_device *be_mdev;
++	sector_t	be_f_offset;	/* the starting offset in the file */
++	sector_t	be_length;	/* the size of the extent */
++	sector_t	be_v_offset;	/* the starting offset in the volume */
++	enum exstate4	be_state;	/* the state of this extent */
++	struct pnfs_inval_markings *be_inval; /* tracks INVAL->RW transition */
 +};
 +
- struct nfs4_getdeviceinfo_args {
- 	struct pnfs_device *pdev;
- 	struct nfs4_sequence_args seq_args;
++static inline void
++BL_INIT_INVAL_MARKS(struct pnfs_inval_markings *marks, sector_t blocksize)
++{
++	/* STUB */
++}
++
++enum extentclass4 {
++	RW_EXTENT       = 0, /* READWRTE and INVAL */
++	RO_EXTENT       = 1, /* READ and NONE */
++	EXTENT_LISTS    = 2,
++};
++
++struct pnfs_block_layout {
++	struct pnfs_layout_hdr bl_layout;
++	struct pnfs_inval_markings bl_inval; /* tracks INVAL->RW transition */
++	spinlock_t		bl_ext_lock;   /* Protects list manipulation */
++	struct list_head	bl_extents[EXTENT_LISTS]; /* R and RW extents */
++	struct list_head	bl_commit;	/* Needs layout commit */
++	struct list_head	bl_committing;	/* Layout committing */
++	unsigned int		bl_count;	/* entries in bl_commit */
++	sector_t		bl_blocksize;  /* Server blocksize in sectors */
++};
++
++static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
++{
++	return container_of(lo, struct pnfs_block_layout, bl_layout);
++}
++
++#endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
 -- 
 1.7.4.1
 
