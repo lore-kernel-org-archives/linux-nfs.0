@@ -1,149 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:60992 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751532Ab1G0CKc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2011 22:10:32 -0400
-Received: by qwk3 with SMTP id 3so577765qwk.19
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Jul 2011 19:10:31 -0700 (PDT)
-Subject: Re: [Libtirpc-devel] [PATCH] Autofs configure fails to detect IPv6 when libtirpc is enabled
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <1311732168.3473.16.camel@perseus.themaw.net>
-Date: Tue, 26 Jul 2011 22:10:29 -0400
-Cc: Steve Dickson <SteveD@redhat.com>,
-        autofs mailing list <autofs@linux.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Libtirpc Devel List <libtirpc-devel@lists.sourceforge.net>
-Message-Id: <455B4D01-1D8C-4B1A-B706-0F239E54306B@gmail.com>
-References: <1311683346-16881-1-git-send-email-steved@redhat.com> <8A84CF7D-9579-4645-AE5D-FE8358F466C0@gmail.com> <4E2F2DE6.5030500@RedHat.com>  <1311728231.3473.7.camel@perseus.themaw.net> <1311729784.3473.14.camel@perseus.themaw.net> <1311732168.3473.16.camel@perseus.themaw.net>
-To: Ian Kent <ikent@redhat.com>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.123]:61011 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751150Ab1G3ExZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 00:53:25 -0400
+Received: from [192.168.0.251] (PBENDER1.bendercasa.net [192.168.0.251])
+	(authenticated bits=0)
+	by server.bendercasa.net (8.13.8/8.13.8) with ESMTP id p6U4rN4s005678
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Fri, 29 Jul 2011 21:53:24 -0700
+Message-ID: <4E338E44.40705@san.rr.com>
+Date: Fri, 29 Jul 2011 21:53:24 -0700
+From: Paul Bender <pebender@san.rr.com>
+Reply-To: pebender@san.rr.com
+To: linux-nfs@vger.kernel.org
+Subject: problem with running configure with the dash shell
+Content-Type: multipart/mixed;
+ boundary="------------030902060109080101070000"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+--------------030902060109080101070000
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On Jul 26, 2011, at 10:02 PM, Ian Kent wrote:
+nfs-utils' configure script fails to run when /bin/sh is the dash shell. 
+The attached patch fixes the problem for me.
 
-> On Wed, 2011-07-27 at 09:23 +0800, Ian Kent wrote:
->> On Wed, 2011-07-27 at 08:57 +0800, Ian Kent wrote:
->>> On Tue, 2011-07-26 at 17:13 -0400, Steve Dickson wrote:
->>>> 
->>>> On 07/26/2011 10:50 AM, Chuck Lever wrote:
->>>>> 
->>>>> On Jul 26, 2011, at 2:29 PM, Steve Dickson wrote:
->>>>> 
->>>>>> From: Ian Kent <raven@themaw.net>
->>>>>> 
->>>>>> The IPv6 client functions clntudp6_bufcreate(), clntudp6_create and
->>>>>> clnttcp6_create and the server functions svcudp6_bufcreate(),
->>>>>> svctcp6_create() and svcudp6_create() are not included in the library
->>>>>> whe libtirpc is built.
->>>>> 
->>>>> Are these part of the libtirpc standard API?  I'm not sure why we would need them if, say, Solaris does not support these.
->>>> It appears they are not since they are not mentioned the man pages.....
->>>> But, at least in the autofs code, they are expected
->>>>   https://bugzilla.redhat.com/show_bug.cgi?id=711956#c0
->>>> 
->>>> Ian, where else are these routines defined? 
->>> 
->>> Now that I look I can't find the original source tar that was used for
->>> libtirpc, thought I had it.
->> 
->> Found what I had.
->> 
->> AFAICT what I think was the original source doesn't have any IPv6 code
->> that I can see.
->> 
->> Worse, these functions were excluded with the "#ifdef INET6_NOT_USED"
->> macro as far back as libtirpc version 0.1.5 so, my bad, sorry.
->> 
->>> 
->>> The story is that long ago when I changed autofs to use libtirpc (to
->>> make it ready for IPv6) I found these functions in the source and they
->>> were (obviously) the IPv6 counterparts for the corresponding IPv4
->>> functions which I was already using, so I used them. It took me quite a
->>> while to realize my code wasn't working and then I found that somewhere
->>> along the line they have been excluded, oops!
->>> 
->>> If there are to be no IPv6 counterparts for the corresponding IPv4
->>> functions which functions should I use then?
->> 
->> So what can I use?
->> 
->> It seems to me that these functions would be useful for people porting
->> code that uses the corresponding IPv4 functions so could we define them
->> please. At some point someone must have had that same idea ....
-> 
-> Found one more thing that looks relevant, these functions were defined
-> in glibc in 2000-01-23 so they may be used by others as well.
+--------------030902060109080101070000
+Content-Type: application/gzip;
+ name="nfs-utils-1.2.4-dash.patch.gz"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="nfs-utils-1.2.4-dash.patch.gz"
 
-I checked in glibc 2.7 (though not thoroughly) and did not find them.
+H4sICDwFM04AA25mcy11dGlscy0xLjIuNC1kYXNoLnBhdGNoAJ1SXYviMBR9tr/ibvFBqbGpirKK
+YMftOoLbEXWfREo/Ug0TktI08/HvN53qTrvDMLB5SG9Ozzk53JuEpikgP1Q58FQiVVAmkdMf9EdI
+sMSOBU/pWeWkH8YfCJw8NwgGQuhLl9YAOw7CYzTEgMdTjKejQR/fFiA8wdiwLOvL265GEzT4Do4z
+HY6nw8kHo8UCkOOMes4IrOt3sTCglWfxmfAgC4vLvP1Mi8tTyHr/4K9EQldju+1y5fnB1j3czw3U
+oikURBZgtmtkE+ZzMLXCnEFxIdywPuU1aNACvVKRQwaUg61kbjMRh8yOKLcrYYXWz+/11SARcLsO
+pdDOoLKHevQ3NMpJ+DiDlOo6EZxoPWGfJP2mo1JekJyHrJm3YVvT6N8p1Zu7DPa/7/aHTo3Y1a1z
+fwXLB//H+rB+8N1NR9c/16ugIvXgeA1RE1VtNU9d3c//EVda0Hnc3SrwfPdu43WUokk566OG773N
+Ntgfdmt/1TkilFAZRoygknLSpt5LzFRCoDyDVFkm8gIKAeGT0ECkzudXYDSK2KPmd0+l63szCS+9
+9MP6O/TbWOKLEJIEb7Lymc2AMEmaMBflmHrGHyvQX8+hAwAA
 
-> 
->> 
->>> 
->>>> 
->>>> steved
->>>> 
->>>>> 
->>>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
->>>>>> ---
->>>>>> src/rpc_soc.c |    4 ++--
->>>>>> 1 files changed, 2 insertions(+), 2 deletions(-)
->>>>>> 
->>>>>> diff --git a/src/rpc_soc.c b/src/rpc_soc.c
->>>>>> index c678429..584ac71 100644
->>>>>> --- a/src/rpc_soc.c
->>>>>> +++ b/src/rpc_soc.c
->>>>>> @@ -236,7 +236,7 @@ clnttcp_create(raddr, prog, vers, sockp, sendsz, recvsz)
->>>>>> 
->>>>>> /* IPv6 version of clnt*_*create */
->>>>>> 
->>>>>> -#ifdef INET6_NOT_USED
->>>>>> +#ifdef INET6
->>>>>> 
->>>>>> CLIENT *
->>>>>> clntudp6_bufcreate(raddr, prog, vers, wait, sockp, sendsz, recvsz)
->>>>>> @@ -392,7 +392,7 @@ svcraw_create()
->>>>>> 
->>>>>> 
->>>>>> /* IPV6 version */
->>>>>> -#ifdef INET6_NOT_USED
->>>>>> +#ifdef INET6
->>>>>> SVCXPRT *
->>>>>> svcudp6_bufcreate(fd, sendsz, recvsz)
->>>>>> 	int fd;
->>>>>> -- 
->>>>>> 1.7.6
->>>>>> 
->>>>>> 
->>>>>> ------------------------------------------------------------------------------
->>>>>> Magic Quadrant for Content-Aware Data Loss Prevention
->>>>>> Research study explores the data loss prevention market. Includes in-depth
->>>>>> analysis on the changes within the DLP market, and the criteria used to
->>>>>> evaluate the strengths and weaknesses of these DLP solutions.
->>>>>> http://www.accelacomm.com/jaw/sfnl/114/51385063/
->>>>>> _______________________________________________
->>>>>> Libtirpc-devel mailing list
->>>>>> Libtirpc-devel@lists.sourceforge.net
->>>>>> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
->>>>> 
->>>> 
->>>> ------------------------------------------------------------------------------
->>>> Got Input?   Slashdot Needs You.
->>>> Take our quick survey online.  Come on, we don't ask for help often.
->>>> Plus, you'll get a chance to win $100 to spend on ThinkGeek.
->>>> http://p.sf.net/sfu/slashdot-survey
->>>> _______________________________________________
->>>> Libtirpc-devel mailing list
->>>> Libtirpc-devel@lists.sourceforge.net
->>>> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
->>> 
->> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+--------------030902060109080101070000--
