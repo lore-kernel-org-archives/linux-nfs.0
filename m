@@ -1,193 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:40266 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753465Ab1GUTeg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2011 15:34:36 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v2 08/25] pnfsblock: basic extent code
-Date: Thu, 21 Jul 2011 15:34:08 -0400
-Message-Id: <1311276865-29484-9-git-send-email-rees@umich.edu>
-In-Reply-To: <1311276865-29484-1-git-send-email-rees@umich.edu>
-References: <1311276865-29484-1-git-send-email-rees@umich.edu>
+Received: from natasha.panasas.com ([67.152.220.90]:50251 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753435Ab1G3Gel (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 02:34:41 -0400
+Message-ID: <4E33A5F6.8010803@panasas.com>
+Date: Fri, 29 Jul 2011 23:34:30 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>, Jim Rees <rees@umich.edu>,
+        Peng Tao <bergwolf@gmail.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 5/6] pnfs-obj: Bug when we are running out of bio
+References: <4E33A288.80403@panasas.com>
+In-Reply-To: <4E33A288.80403@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
 
-Adds structures and basic create/delete code for extents.
+When we have a situation that the number of pages we want
+to encode is bigger then the size of the bio. (Which can
+currently happen only when all IO is going to a single device
+.e.g group_width==1) then the IO is submitted short and we
+report back only the amount of bytes we actually wrote/read
+and all is fine. BUT ...
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Zhang Jingwang <Jingwang.Zhang@emc.com>
-Signed-off-by: Benny Halevy <benny@tonian.com>
+There was a bug that the current length counter was advanced
+before the fail to add the extra page, and we come to a situation
+that the CDB length was one-page longer then the actual bio size,
+which is of course rejected by the osd-target.
+
+While here also fix the bio size calculation, in the case
+that we received more then one group of devices.
+
+[Needed in v3.0]
+CC: Stable Tree <stable@kernel.org>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- fs/nfs/blocklayout/Makefile      |    2 +-
- fs/nfs/blocklayout/blocklayout.c |   20 ++++++--
- fs/nfs/blocklayout/blocklayout.h |    1 +
- fs/nfs/blocklayout/extents.c     |   97 ++++++++++++++++++++++++++++++++++++++
- 4 files changed, 115 insertions(+), 5 deletions(-)
- create mode 100644 fs/nfs/blocklayout/extents.c
+ fs/nfs/objlayout/objio_osd.c |   12 +++++-------
+ 1 files changed, 5 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
-index 6bf49cd..5cfadf6 100644
---- a/fs/nfs/blocklayout/Makefile
-+++ b/fs/nfs/blocklayout/Makefile
-@@ -2,4 +2,4 @@
- # Makefile for the pNFS block layout driver kernel module
- #
- obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
--blocklayoutdriver-objs := blocklayout.o
-+blocklayoutdriver-objs := blocklayout.o extents.o
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 55a2a95..291cc01 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -53,12 +53,24 @@ bl_write_pagelist(struct nfs_write_data *wdata,
- 	return PNFS_NOT_ATTEMPTED;
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 8ff2ea3..9aa9d67 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -589,22 +589,19 @@ static void _calc_stripe_info(struct objio_state *ios, u64 file_offset,
  }
  
--/* STUB */
-+/* FIXME - range ignored */
- static void
--release_extents(struct pnfs_block_layout *bl,
--		struct pnfs_layout_range *range)
-+release_extents(struct pnfs_block_layout *bl, struct pnfs_layout_range *range)
+ static int _add_stripe_unit(struct objio_state *ios,  unsigned *cur_pg,
+-		unsigned pgbase, struct _objio_per_comp *per_dev, int cur_len,
++		unsigned pgbase, struct _objio_per_comp *per_dev, int len,
+ 		gfp_t gfp_flags)
  {
--	return;
-+	int i;
-+	struct pnfs_block_extent *be;
-+
-+	spin_lock(&bl->bl_ext_lock);
-+	for (i = 0; i < EXTENT_LISTS; i++) {
-+		while (!list_empty(&bl->bl_extents[i])) {
-+			be = list_first_entry(&bl->bl_extents[i],
-+					      struct pnfs_block_extent,
-+					      be_node);
-+			list_del(&be->be_node);
-+			bl_put_extent(be);
-+		}
-+	}
-+	spin_unlock(&bl->bl_ext_lock);
- }
+ 	unsigned pg = *cur_pg;
++	int cur_len = len;
+ 	struct request_queue *q =
+ 			osd_request_queue(_io_od(ios, per_dev->dev));
  
- /* STUB */
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index bda87e0..825d651 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -88,4 +88,5 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
- 	return container_of(lo, struct pnfs_block_layout, bl_layout);
- }
+-	per_dev->length += cur_len;
+-
+ 	if (per_dev->bio == NULL) {
+-		unsigned stripes = ios->layout->num_comps /
+-						     ios->layout->mirrors_p1;
+-		unsigned pages_in_stripe = stripes *
++		unsigned pages_in_stripe = ios->layout->group_width *
+ 				      (ios->layout->stripe_unit / PAGE_SIZE);
+ 		unsigned bio_size = (ios->ol_state.nr_pages + pages_in_stripe) /
+-				    stripes;
++				    ios->layout->group_width;
  
-+void bl_put_extent(struct pnfs_block_extent *be);
- #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-new file mode 100644
-index 0000000..44c3364
---- /dev/null
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -0,0 +1,97 @@
-+/*
-+ *  linux/fs/nfs/blocklayout/blocklayout.h
-+ *
-+ *  Module for the NFSv4.1 pNFS block layout driver.
-+ *
-+ *  Copyright (c) 2006 The Regents of the University of Michigan.
-+ *  All rights reserved.
-+ *
-+ *  Andy Adamson <andros@citi.umich.edu>
-+ *  Fred Isaman <iisaman@umich.edu>
-+ *
-+ * permission is granted to use, copy, create derivative works and
-+ * redistribute this software and such derivative works for any purpose,
-+ * so long as the name of the university of michigan is not used in
-+ * any advertising or publicity pertaining to the use or distribution
-+ * of this software without specific, written prior authorization.  if
-+ * the above copyright notice or any other identification of the
-+ * university of michigan is included in any copy of any portion of
-+ * this software, then the disclaimer below must also be included.
-+ *
-+ * this software is provided as is, without representation from the
-+ * university of michigan as to its fitness for any purpose, and without
-+ * warranty by the university of michigan of any kind, either express
-+ * or implied, including without limitation the implied warranties of
-+ * merchantability and fitness for a particular purpose.  the regents
-+ * of the university of michigan shall not be liable for any damages,
-+ * including special, indirect, incidental, or consequential damages,
-+ * with respect to any claim arising out or in connection with the use
-+ * of the software, even if it has been or is hereafter advised of the
-+ * possibility of such damages.
-+ */
-+
-+#include "blocklayout.h"
-+#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
-+
-+static void print_bl_extent(struct pnfs_block_extent *be)
-+{
-+	dprintk("PRINT EXTENT extent %p\n", be);
-+	if (be) {
-+		dprintk("        be_f_offset %llu\n", (u64)be->be_f_offset);
-+		dprintk("        be_length   %llu\n", (u64)be->be_length);
-+		dprintk("        be_v_offset %llu\n", (u64)be->be_v_offset);
-+		dprintk("        be_state    %d\n", be->be_state);
-+	}
-+}
-+
-+static void
-+destroy_extent(struct kref *kref)
-+{
-+	struct pnfs_block_extent *be;
-+
-+	be = container_of(kref, struct pnfs_block_extent, be_refcnt);
-+	dprintk("%s be=%p\n", __func__, be);
-+	kfree(be);
-+}
-+
-+void
-+bl_put_extent(struct pnfs_block_extent *be)
-+{
-+	if (be) {
-+		dprintk("%s enter %p (%i)\n", __func__, be,
-+			atomic_read(&be->be_refcnt.refcount));
-+		kref_put(&be->be_refcnt, destroy_extent);
-+	}
-+}
-+
-+struct pnfs_block_extent *alloc_extent(void)
-+{
-+	struct pnfs_block_extent *be;
-+
-+	be = kmalloc(sizeof(struct pnfs_block_extent), GFP_NOFS);
-+	if (!be)
-+		return NULL;
-+	INIT_LIST_HEAD(&be->be_node);
-+	kref_init(&be->be_refcnt);
-+	be->be_inval = NULL;
-+	return be;
-+}
-+
-+struct pnfs_block_extent *
-+get_extent(struct pnfs_block_extent *be)
-+{
-+	if (be)
-+		kref_get(&be->be_refcnt);
-+	return be;
-+}
-+
-+void print_elist(struct list_head *list)
-+{
-+	struct pnfs_block_extent *be;
-+	dprintk("****************\n");
-+	dprintk("Extent list looks like:\n");
-+	list_for_each_entry(be, list, be_node) {
-+		print_bl_extent(be);
-+	}
-+	dprintk("****************\n");
-+}
+ 		if (BIO_MAX_PAGES_KMALLOC < bio_size)
+ 			bio_size = BIO_MAX_PAGES_KMALLOC;
+@@ -632,6 +629,7 @@ static int _add_stripe_unit(struct objio_state *ios,  unsigned *cur_pg,
+ 	}
+ 	BUG_ON(cur_len);
+ 
++	per_dev->length += len;
+ 	*cur_pg = pg;
+ 	return 0;
+ }
 -- 
-1.7.4.1
+1.7.6
+
 
