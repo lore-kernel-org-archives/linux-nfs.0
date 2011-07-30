@@ -1,104 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:35451 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751434Ab1GHWO4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Jul 2011 18:14:56 -0400
-Content-Type: text/plain;
-	charset="utf-8"
-Subject: RE: [RFC] sunrpc:  Fix race between work-queue and rpc_killall_tasks.
-Date: Fri, 8 Jul 2011 15:14:54 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A198E69@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <4E177EA8.60109@candelatech.com>
-References: <1309992581-25199-1-git-send-email-greearb@candelatech.com> <1309995932.5447.6.camel@lade.trondhjem.org> <4E173BE6.9000005@candelatech.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A198C7C@SACMVEXC2-PRD.hq.netapp.com> <4E177EA8.60109@candelatech.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Ben Greear" <greearb@candelatech.com>
-Cc: <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Received: from natasha.panasas.com ([67.152.220.90]:47581 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752588Ab1G3DTn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 23:19:43 -0400
+Message-ID: <4E337844.2070800@panasas.com>
+Date: Fri, 29 Jul 2011 20:19:32 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Gregory Magoon <gmagoon@mit.edu>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@citi.umich.edu>,
+        "Loewe, Bill" <bloewe@panasas.com>
+Subject: Re: NFSv4 vs NFSv3 with MPICH2-1.4
+References: <20110728152306.219iz5wpkcokoo4c@webmail.mit.edu> <1311886684.27285.8.camel@lade.trondhjem.org> <20110728172449.8wxxte4jg0s8kcgs@webmail.mit.edu> <1311889677.27285.14.camel@lade.trondhjem.org> <20110728180120.bf6gq5zyos8wwg4s@webmail.mit.edu> <4E31E336.9090702@panasas.com> <20110728191519.ql5la3phk4000ko4@webmail.mit.edu>
+In-Reply-To: <20110728191519.ql5la3phk4000ko4@webmail.mit.edu>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBCZW4gR3JlZWFyIFttYWlsdG86
-Z3JlZWFyYkBjYW5kZWxhdGVjaC5jb21dDQo+IFNlbnQ6IEZyaWRheSwgSnVseSAwOCwgMjAxMSA2
-OjAzIFBNDQo+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+IENjOiBsaW51eC1uZnNAdmdlci5rZXJu
-ZWwub3JnOyBsaW51eC1rZXJuZWxAdmdlci5rZXJuZWwub3JnDQo+IFN1YmplY3Q6IFJlOiBbUkZD
-XSBzdW5ycGM6IEZpeCByYWNlIGJldHdlZW4gd29yay1xdWV1ZSBhbmQNCj4gcnBjX2tpbGxhbGxf
-dGFza3MuDQo+IA0KPiBPbiAwNy8wOC8yMDExIDExOjExIEFNLCBNeWtsZWJ1c3QsIFRyb25kIHdy
-b3RlOg0KPiA+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+PiBGcm9tOiBCZW4gR3Jl
-ZWFyIFttYWlsdG86Z3JlZWFyYkBjYW5kZWxhdGVjaC5jb21dDQo+ID4+IFNlbnQ6IEZyaWRheSwg
-SnVseSAwOCwgMjAxMSAxOjE5IFBNDQo+ID4+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+ID4+IENj
-OiBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyBsaW51eC1rZXJuZWxAdmdlci5rZXJuZWwub3Jn
-DQo+ID4+IFN1YmplY3Q6IFJlOiBbUkZDXSBzdW5ycGM6IEZpeCByYWNlIGJldHdlZW4gd29yay1x
-dWV1ZSBhbmQNCj4gPj4gcnBjX2tpbGxhbGxfdGFza3MuDQo+ID4+DQo+ID4+IE9uIDA3LzA2LzIw
-MTEgMDQ6NDUgUE0sIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gPj4+IE9uIFdlZCwgMjAxMS0w
-Ny0wNiBhdCAxNTo0OSAtMDcwMCwgZ3JlZWFyYkBjYW5kZWxhdGVjaC5jb20gd3JvdGU6DQo+ID4+
-Pj4gRnJvbTogQmVuIEdyZWVhcjxncmVlYXJiQGNhbmRlbGF0ZWNoLmNvbT4NCj4gPj4+Pg0KPiA+
-Pj4+IFRoZSBycGNfa2lsbGFsbF90YXNrcyBsb2dpYyBpcyBub3QgbG9ja2VkIGFnYWluc3QNCj4g
-Pj4+PiB0aGUgd29yay1xdWV1ZSB0aHJlYWQsIGJ1dCBpdCBzdGlsbCBkaXJlY3RseSBtb2RpZmll
-cw0KPiA+Pj4+IGZ1bmN0aW9uIHBvaW50ZXJzIGFuZCBkYXRhIGluIHRoZSB0YXNrIG9iamVjdHMu
-DQo+ID4+Pj4NCj4gPj4+PiBUaGlzIHBhdGNoIGNoYW5nZXMgdGhlIGtpbGxhbGwtdGFza3MgbG9n
-aWMgdG8gc2V0IGEgZmxhZw0KPiA+Pj4+IHRoYXQgdGVsbHMgdGhlIHdvcmstcXVldWUgdGhyZWFk
-IHRvIHRlcm1pbmF0ZSB0aGUgdGFzaw0KPiA+Pj4+IGluc3RlYWQgb2YgZGlyZWN0bHkgY2FsbGlu
-ZyB0aGUgdGVybWluYXRlIGxvZ2ljLg0KPiA+Pj4+DQo+ID4+Pj4gU2lnbmVkLW9mZi1ieTogQmVu
-IEdyZWVhcjxncmVlYXJiQGNhbmRlbGF0ZWNoLmNvbT4NCj4gPj4+PiAtLS0NCj4gPj4+Pg0KPiA+
-Pj4+IE5PVEU6ICBUaGlzIG5lZWRzIHJldmlldywgYXMgSSBhbSBzdGlsbCBzdHJ1Z2dsaW5nIHRv
-IHVuZGVyc3RhbmQNCj4gPj4+PiB0aGUgcnBjIGNvZGUsIGFuZCBpdCdzIHF1aXRlIHBvc3NpYmxl
-IHRoaXMgcGF0Y2ggZWl0aGVyIGRvZXNuJ3QNCj4gPj4+PiBmdWxseSBmaXggdGhlIHByb2JsZW0g
-b3IgYWN0dWFsbHkgY2F1c2VzIG90aGVyIGlzc3Vlcy4gIFRoYXQgc2FpZCwNCj4gPj4+PiBteSBu
-ZnMgc3RyZXNzIHRlc3Qgc2VlbXMgdG8gcnVuIGEgYml0IG1vcmUgc3RhYmxlIHdpdGggdGhpcyBw
-YXRjaA0KPiA+PiBhcHBsaWVkLg0KPiA+Pj4NCj4gPj4+IFllcywgYnV0IEkgZG9uJ3Qgc2VlIHdo
-eSB5b3UgYXJlIGFkZGluZyBhIG5ldyBmbGFnLCBub3IgZG8gSSBzZWUNCj4gd2h5DQo+ID4+IHdl
-DQo+ID4+PiB3YW50IHRvIGtlZXAgY2hlY2tpbmcgZm9yIHRoYXQgZmxhZyBpbiB0aGUgcnBjX2V4
-ZWN1dGUoKSBsb29wLg0KPiA+Pj4gcnBjX2tpbGxhbGxfdGFza3MoKSBpcyBub3QgYSBmcmVxdWVu
-dCBvcGVyYXRpb24gdGhhdCB3ZSB3YW50IHRvDQo+ID4+IG9wdGltaXNlDQo+ID4+PiBmb3IuDQo+
-ID4+Pg0KPiA+Pj4gSG93IGFib3V0IHRoZSBmb2xsb3dpbmcgaW5zdGVhZD8NCj4gPj4NCj4gPj4g
-T2ssIEkgbG9va2VkIGF0IHlvdXIgcGF0Y2ggY2xvc2VyLiAgSSB0aGluayBpdCBjYW4gc3RpbGwg
-Y2F1c2UNCj4gPj4gYmFkIHJhY2UgY29uZGl0aW9ucy4NCj4gPj4NCj4gPj4gRm9yIGluc3RhbmNl
-Og0KPiA+Pg0KPiA+PiBBc3N1bWUgdGhhdCB0a19jYWxsYmFjayBpcyBOVUxMIGF0IGJlZ2lubmlu
-ZyBvZiB3aGlsZSBsb29wIGluDQo+ID4+IF9fcnBjX2V4ZWN1dGUsDQo+ID4+IGFuZCB0a19hY3Rp
-b24gaXMgcnBjX2V4aXRfdGFzay4NCj4gPj4NCj4gPj4gV2hpbGUgZG9fYWN0aW9uKHRhc2spIGlz
-IGJlaW5nIGNhbGxlZCwgdGtfYWN0aW9uIGlzIHNldCB0byBOVUxMIGluDQo+ID4+IHJwY19leGl0
-X3Rhc2suDQo+ID4+DQo+ID4+IEJ1dCwgcmlnaHQgYWZ0ZXIgdGtfYWN0aW9uIGlzIHNldCB0byBO
-VUxMIGluIHJwY19leGl0X3Rhc2ssIHRoZQ0KPiA+PiBycGNfa2lsbGFsbF90YXNrcw0KPiA+PiBt
-ZXRob2QgY2FsbHMgcnBjX2V4aXQsIHdoaWNoIHNldHMgdGtfYWN0aW9uIGJhY2sgdG8gcnBjX2V4
-aXRfdGFzay4NCj4gPj4NCj4gPj4gSSBiZWxpZXZlIHRoaXMgY291bGQgY2F1c2UgdGhlIHhwcnRf
-cmVsZWFzZSh0YXNrKSBsb2dpYyB0byBiZSBjYWxsZWQNCj4gaW4NCj4gPj4gdGhlDQo+ID4+IHdv
-cmstcXVldWUncyBleGVjdXRpb24gb2YgcnBjX2V4aXRfdGFzayBkdWUgdG8gdGtfYWN0aW9uICE9
-IE5VTEwNCj4gd2hlbg0KPiA+PiBpdCBzaG91bGQgbm90IGJlLg0KPiA+DQo+ID4gV2h5IHdvdWxk
-IHRoaXMgYmUgYSBwcm9ibGVtPyB4cHJ0X3JlbGVhc2UoKSBjYW4gY2VydGFpbmx5IGJlIGNhbGxl
-ZA0KPiBtdWx0aXBsZSB0aW1lcyBvbiBhbiBycGNfdGFzay4gRGl0dG8gcnBiY19nZXRwb3J0X2Rv
-bmUuDQo+ID4NCj4gPiBUaGUgb25seSB0aGluZyB0aGF0IGlzIG5vdCByZS1lbnRyYW50IHRoZXJl
-IGlzIHJwY2JfbWFwX3JlbGVhc2UsDQo+IHdoaWNoIHNob3VsZCBvbmx5IGV2ZXIgYmUgY2FsbGVk
-IG9uY2Ugd2hldGhlciBvciBub3Qgc29tZXRoaW5nIGNhbGxzDQo+IHJwY19raWxsYWxsX3Rhc2tz
-Lg0KPiANCj4gDQo+ICBGcm9tIHRoZSB0cmFjZSBJIHBvc3RlZCwgdGhpcyBzdGFjayB0cmFjZSBi
-ZWxvdyBpcyBiZWluZw0KPiBjYWxsZWQgd2l0aCB0aGUgdm9pZCAqZGF0YSBvYmplY3QgYWxyZWFk
-eSBmcmVlZC4NCj4gDQo+IE9uZSB3YXkgZm9yIHRoaXMgdG8gaGFwcGVuIHdvdWxkIGJlIHRvIGhh
-dmUgcnBjX2V4aXRfdGFzayBjYWxsIHRhc2stDQo+ID50a19vcHMtPnJwY19jYWxsX2RvbmUNCj4g
-bW9yZSB0aGFuIG9uY2UgKEkgYmVsaWV2ZSkuICBUd28gY2FsbHMgdG8gcnBjX2V4aXRfdGFzayBj
-b3VsZCBkbyB0aGF0LA0KPiBhbmQgc2luY2UgdGhlDQo+IHJwY19leGl0X3Rhc2sgbWV0aG9kIGlz
-IGFzc2lnbmVkIHRvIHRrX2FjdGlvbiwgSSAqdGhpbmsqIHRoZSByYWNlIEkNCj4gbWVudGlvbiBh
-Ym92ZSBjb3VsZCBjYXVzZQ0KPiBycGNfZXhpdF90YXNrIHRvIGJlIGNhbGxlZCB0d2ljZS4NCj4g
-DQo+ICAgWzxmZmZmZmZmZjgxMTA1OTA3Pl0gcHJpbnRfdHJhaWxlcisweDEzMS8weDEzYQ0KPiAg
-IFs8ZmZmZmZmZmY4MTEwNTk0NT5dIG9iamVjdF9lcnIrMHgzNS8weDNlDQo+ICAgWzxmZmZmZmZm
-ZjgxMTA3N2IzPl0gdmVyaWZ5X21lbV9ub3RfZGVsZXRlZCsweDdhLzB4YjcNCj4gICBbPGZmZmZm
-ZmZmYTAyODkxZTU+XSBycGNiX2dldHBvcnRfZG9uZSsweDIzLzB4MTI2IFtzdW5ycGNdDQo+ICAg
-WzxmZmZmZmZmZmEwMjgxMGRmPl0gcnBjX2V4aXRfdGFzaysweDNmLzB4NmQgW3N1bnJwY10NCj4g
-ICBbPGZmZmZmZmZmYTAyODE0ZDg+XSBfX3JwY19leGVjdXRlKzB4ODAvMHgyNTMgW3N1bnJwY10N
-Cj4gICBbPGZmZmZmZmZmYTAyODE2ZWQ+XSA/IHJwY19leGVjdXRlKzB4NDIvMHg0MiBbc3VucnBj
-XQ0KPiAgIFs8ZmZmZmZmZmZhMDI4MTZmZD5dIHJwY19hc3luY19zY2hlZHVsZSsweDEwLzB4MTIg
-W3N1bnJwY10NCj4gICBbPGZmZmZmZmZmODEwNjEzNDM+XSBwcm9jZXNzX29uZV93b3JrKzB4MjMw
-LzB4NDFkDQo+ICAgWzxmZmZmZmZmZjgxMDYxMjhlPl0gPyBwcm9jZXNzX29uZV93b3JrKzB4MTdi
-LzB4NDFkDQo+ICAgWzxmZmZmZmZmZjgxMDYzNzlmPl0gd29ya2VyX3RocmVhZCsweDEzMy8weDIx
-Nw0KPiAgIFs8ZmZmZmZmZmY4MTA2MzY2Yz5dID8gbWFuYWdlX3dvcmtlcnMrMHgxOTEvMHgxOTEN
-Cj4gICBbPGZmZmZmZmZmODEwNjZmOWM+XSBrdGhyZWFkKzB4N2QvMHg4NQ0KPiAgIFs8ZmZmZmZm
-ZmY4MTQ4NWVlND5dIGtlcm5lbF90aHJlYWRfaGVscGVyKzB4NC8weDEwDQo+ICAgWzxmZmZmZmZm
-ZjgxNDdmMGQ4Pl0gPyByZXRpbnRfcmVzdG9yZV9hcmdzKzB4MTMvMHgxMw0KPiAgIFs8ZmZmZmZm
-ZmY4MTA2NmYxZj5dID8gX19pbml0X2t0aHJlYWRfd29ya2VyKzB4NTYvMHg1Ng0KPiAgIFs8ZmZm
-ZmZmZmY4MTQ4NWVlMD5dID8gZ3NfY2hhbmdlKzB4MTMvMHgxMw0KDQpUaGUgY2FsbGRhdGEgZ2V0
-cyBmcmVlZCBpbiB0aGUgcnBjX2ZpbmFsX3B1dF90YXNrKCkgd2hpY2ggc2hvdWxkbid0IGV2ZXIg
-YmUgcnVuIHdoaWxlIHRoZSB0YXNrIGlzIHN0aWxsIHJlZmVyZW5jZWQgaW4gX19ycGNfZXhlY3V0
-ZQ0KDQpJT1c6IGl0IHNob3VsZCBiZSBpbXBvc3NpYmxlIHRvIGNhbGwgcnBjX2V4aXRfdGFzaygp
-IGFmdGVyIHJwY19maW5hbF9wdXRfdGFzaw0KTu+/ve+/ve+/ve+/ve+/vXLvv73vv71577+977+9
-77+9Yu+/vVjvv73vv73Hp3bvv71e77+9Kd66ey5u77+9K++/ve+/ve+/ve+/vXvvv73vv73vv70i
-77+977+9Xm7vv71y77+977+977+9eu+/vRrvv73vv71o77+977+977+977+9Ju+/ve+/vR7vv71H
-77+977+977+9aO+/vQMo77+96ZqO77+93aJqIu+/ve+/vRrvv70bbe+/ve+/ve+/ve+/ve+/vXrv
-v73elu+/ve+/ve+/vWbvv73vv73vv71o77+977+977+9fu+/vW3vv70=
+On 07/28/2011 04:15 PM, Gregory Magoon wrote:
+> Unfortunately, I'm not familiar enough with MPICH2 to have an idea about
+> significant changes between version 1.3 and 1.4, but other evidence suggests
+> that the version is not the issue and that I would have the same problem with
+> v1.3.
+> 
+> I'm using the MPICH2 test suite invoked by "make testing" (see below 
+> for initial
+> output).
+> 
+> I'm using the nfs-kernel-server and nfs-common Ubuntu packages (natty 
+> release).
+> 
+
+You have not answered the most important question:
+>> Also are you using the builtin nfs-client driver or the POSIX interface?
+
+Which I'll assume means you don't know. So I'll try to elaborate. Just for
+background, I've never used "make tests" before all I used was IOR & mdtest.
+
+Now if you print the usage string for IOR you get this option:
+
+	-a S  api --  API for I/O [POSIX|MPIIO|HDF5|NCMPI]
+
+I'm not familiar with the code but what I understand is only "-a POSIX" will actually
+use the regular Kernel VFS interface for read/writing of files. The other options
+have different drivers for different protocols. I do not know first hand, but I once
+heard in a conference that -a MPIIO has a special NFS driver that uses better NFS
+semantics and avoids the POSIX semantics which are bad for big cluster performance.
+All this is speculations and rumors on my part, and you will need to consult with the
+mpich guys.
+
+Now I can imagine that a "make tests" would try all possible combinations of "-a S"
+So you'll need to dig out what is the falling test and is it really using the Kernel
+NFS driver at that point. (I bet if you do a tcpdump like Bruce said the guys here will
+be able to see if this is a Linux NFS or not)
+
+I CC: Bill Loewe that might know much more then me about this subject. And please do
+speak with the MPICH people (But keep us in the loop it is interesting to know)
+
+Thanks
+Boaz
+
+> Thanks,
+> Greg
+> 
+> user@node01:~/Molpro/src/mpich2-1.4$ make testing
+> (cd test && make testing)
+> make[1]: Entering directory `/home/user/Molpro/src/mpich2-1.4/test'
+> (NOXMLCLOSE=YES && export NOXMLCLOSE && cd mpi && make testing)
+> make[2]: Entering directory `/home/user/Molpro/src/mpich2-1.4/test/mpi'
+> ./runtests -srcdir=. -tests=testlist \
+>                     -mpiexec=/home/user/Molpro/src/mpich2-install/bin/mpiexec \
+>                     -xmlfile=summary.xml
+> Looking in ./testlist
+> Processing directory attr
+> Looking in ./attr/testlist
+> Processing directory coll
+> Looking in ./coll/testlist
+> Unexpected output in allred: [mpiexec@node01] APPLICATION TIMED OUT
+> Unexpected output in allred: [proxy:0:0@node01] HYD_pmcd_pmip_control_cmd_cb
+> (./pm/pmiserv/pmip_cb.c:906): assert (!closed) failed
+> Unexpected output in allred: [proxy:0:0@node01] HYDT_dmxu_poll_wait_for_event
+> (./tools/demux/demux_poll.c:77): callback returned error status
+> Unexpected output in allred: [proxy:0:0@node01] main 
+> (./pm/pmiserv/pmip.c:226):
+> demux engine error waiting for event
+> Unexpected output in allred: [mpiexec@node01] HYDT_bscu_wait_for_completion
+> (./tools/bootstrap/utils/bscu_wait.c:70): one of the processes terminated
+> badly; aborting
+> Unexpected output in allred: [mpiexec@node01] HYDT_bsci_wait_for_completion
+> (./tools/bootstrap/src/bsci_wait.c:23): launcher returned error waiting for
+> completion
+> Unexpected output in allred: [mpiexec@node01] HYD_pmci_wait_for_completion
+> (./pm/pmiserv/pmiserv_pmci.c:189): launcher returned error waiting for
+> completion
+> Unexpected output in allred: [mpiexec@node01] main (./ui/mpich/mpiexec.c:397):
+> process manager error waiting for completion
+> Program allred exited without No Errors
+> 
+>>
+>> Hi Gregory
+>>
+>> We are using MPICH2-1.3.1 and the IOR mpich test. as well as the mdtest
+>> test. And have had no issues so far with nfsv4 nfsv4.1 and pnfs. In fact
+>> this is our standard performance test.
+>>
+>> What tests are you using?
+>> Do you know of any major changes between MPICH2-1.3.1 and MPICH2-1.4?
+>> Also are you using the builtin nfs-client driver or the POSIX interface?
+>>
+>> Boaz
+>>
+> 
+> 
+
