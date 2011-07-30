@@ -1,36 +1,43 @@
-From: Eric Dumazet <eric.dumazet@gmail.com>
-Subject: Re: [PATCH] sunrpc: use better NUMA affinities
-Date: Sat, 30 Jul 2011 08:23:10 +0200
-Message-ID: <1312006990.2873.75.camel@edumazet-laptop>
-References: <1311921035.7845.10.camel@edumazet-laptop>
-	 <4E3258E1.6020000@fastmail.fm> <20110729103634.GA12050@infradead.org>
-	 <5933F48C-49D6-492D-AB7B-B76A3ADDB6C6@fastmail.fm>
-	 <1311941491.2843.7.camel@edumazet-HP-Compaq-6005-Pro-SFF-PC>
-	 <F67B6E82-9FA8-464E-B3FB-DC0D4EC18BB0@fastmail.fm>
-	 <20110729164836.GL23194@fieldses.org> <20110729165345.GM23194@fieldses.org>
-	 <F562C6F4-3FC2-4952-A903-8E87E9EF2D9D@fastmail.fm>
-	 <20110730093025.716f3f50@notabene.brown>
-	 <20110729234857.GA30941@fieldses.org>
-	 <1311998914.2873.27.camel@edumazet-laptop>
-	 <20110730160610.0b751ffd@notabene.brown>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Greg Banks <gnb@fastmail.fm>,
-	Christoph Hellwig <hch@infradead.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	David Miller <davem@davemloft.net>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	netdev <netdev@vger.kernel.org>
-To: NeilBrown <neilb@suse.de>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20110730160610.0b751ffd@notabene.brown>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Jim Rees <rees@umich.edu>
+Subject: [PATCH v6 04/26] pnfs: use lwb as layoutcommit length
+Date: Sat, 30 Jul 2011 13:08:27 -0400
+Message-ID: <1312045729-27554-5-git-send-email-rees@umich.edu>
+References: <1312045729-27554-1-git-send-email-rees@umich.edu>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:49527 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752291Ab1G3RI6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 13:08:58 -0400
+In-Reply-To: <1312045729-27554-1-git-send-email-rees@umich.edu>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Le samedi 30 juillet 2011 =C3=A0 16:06 +1000, NeilBrown a =C3=A9crit :
-> umount /proc/fs/nfsd
->=20
->=20
+From: Peng Tao <bergwolf@gmail.com>
 
-Thans  a lot, this was the thing I missed !
+Using NFS4_MAX_UINT64 will break current protocol.
+
+[Needed in v3.0]
+CC: Stable Tree <stable@kernel.org>
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/nfs4xdr.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c191a9b..b851b56 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1916,7 +1916,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
+ 	*p++ = cpu_to_be32(OP_LAYOUTCOMMIT);
+ 	/* Only whole file layouts */
+ 	p = xdr_encode_hyper(p, 0); /* offset */
+-	p = xdr_encode_hyper(p, NFS4_MAX_UINT64); /* length */
++	p = xdr_encode_hyper(p, args->lastbytewritten + 1);	/* length */
+ 	*p++ = cpu_to_be32(0); /* reclaim */
+ 	p = xdr_encode_opaque_fixed(p, args->stateid.data, NFS4_STATEID_SIZE);
+ 	*p++ = cpu_to_be32(1); /* newoffset = TRUE */
+-- 
+1.7.4.1
+
