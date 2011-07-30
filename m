@@ -1,62 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:23589 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758084Ab1GKSab convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jul 2011 14:30:31 -0400
-Subject: Re: [PATCH 1/1] NFSv4.1: handle decoding of three attribute bitmaps
-Content-Type: text/plain; charset=us-ascii
-From: Andy Adamson <andros@netapp.com>
-In-Reply-To: <1310407708.12660.2.camel@lade.trondhjem.org>
-Date: Mon, 11 Jul 2011 14:30:14 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <C42C21AC-EABC-48F2-85DE-79EF1EEEA13B@netapp.com>
-References: <1310406847-31297-1-git-send-email-andros@netapp.com> <1310407708.12660.2.camel@lade.trondhjem.org>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:44951 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752953Ab1G3D0X (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 23:26:23 -0400
+Date: Fri, 29 Jul 2011 23:26:21 -0400
+From: Jim Rees <rees@umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH v4 00/27] add block layout driver to pnfs client
+Message-ID: <20110730032621.GB25188@merit.edu>
+References: <1311874276-1386-1-git-send-email-rees@umich.edu>
+ <20110729155136.GB28306@infradead.org>
+ <20110729185415.GA23061@merit.edu>
+ <20110729190133.GA10946@infradead.org>
+ <20110729191341.GC23061@merit.edu>
+ <1311988172.16078.15.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1311988172.16078.15.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Trond Myklebust wrote:
 
-On Jul 11, 2011, at 2:08 PM, Trond Myklebust wrote:
+  >   Looks like we did find a bug in NFS.
+  > 
+  > It kind of looks that way.
+  
+  Is that reproducible on the upstream kernel, or is it something that is
+  being introduced by the pNFS blocks code?
 
-> On Mon, 2011-07-11 at 13:54 -0400, andros@netapp.com wrote: 
->> From: Andy Adamson <andros@netapp.com>
->> 
->> Attribute IDs assigned in RFC 5661 now require three bitmaps.
->> 
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> Cc:stable@kernel.org [2.6.39]
-> 
-> Is this really so urgent?
-> 
-> [trondmy@lade linux-2.6]$ git grep FATTR4_WORD2 fs/nfs include/linux
-> include/linux/nfs4.h:#define FATTR4_WORD2_SUPPATTR_EXCLCREAT (1UL << 11)
-> include/linux/nfs4.h:#define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
-> 
-> IOW: we don't appear to be using any of those bits, and so the current
-> default behaviour of just ignoring any bitmap values that we don't
-> recognise would seem to be sufficient.
-
-I should have given more context :)
-
-In testing nfs4_getfacl,  OnTap returns three attribute bits which triggered a BUG_ON in xdr_shrink_bufhead
-as the third bitmap was incorrectly interpreted as the length.
-
-Plus, RFC 5661 defines suppattr_exclcreat bit 75 as a mandatory attribute which means it can/will be returned with any supported attributes query.
-
-So, I think this needed and is a candidate for stable.
-
--->Andy
-
-> 
-> Cheers
->  Trond
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
-
+It happens without the blocks module loaded, but it could be from something
+we did outside the module.  I will test this weekend when I get a chance.
