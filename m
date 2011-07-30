@@ -1,92 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet15.oracle.com ([141.146.126.227]:49207 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752051Ab1GOWzf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2011 18:55:35 -0400
-Subject: Re: mounting via udp from legacy multi-homed servers...
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20110713173426.03576562@notabene.brown>
-Date: Fri, 15 Jul 2011 23:55:19 +0100
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-Id: <BCA784C6-89A9-459E-96CD-9D7BA1227CAE@oracle.com>
-References: <20110713173426.03576562@notabene.brown>
-To: NeilBrown <neilb@suse.de>
+Received: from natasha.panasas.com ([67.152.220.90]:50243 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753436Ab1G3Gdo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 02:33:44 -0400
+Message-ID: <4E33A5BB.8000407@panasas.com>
+Date: Fri, 29 Jul 2011 23:33:31 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>, Jim Rees <rees@umich.edu>,
+        Peng Tao <bergwolf@gmail.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 4/6] pnfs: use lwb as layoutcommit length
+References: <4E33A288.80403@panasas.com>
+In-Reply-To: <4E33A288.80403@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+From: Peng Tao <bergwolf@gmail.com>
 
-On Jul 13, 2011, at 8:34 AM, NeilBrown wrote:
+Using NFS4_MAX_UINT64 will break current protocol.
 
-> 
-> 
-> This problem doesn't seem to go away, does it :-(
-> 
-> 
-> While modern Linux always replies to UDP requests from the same address that
-> the request was sent to, some legacy systems do not, and some customers use
-> these legacy systems and cannot upgrade.
-> 
-> And as they are legacy systems, it is often the case that UDP is more
-> performant than TCP.
-> 
-> nfs-utils always uses a connected UDP socket to talk to servers (which I think
-> is correct so we get errors when reported by ICMP-unreachable messages) and so
-> fails to talk to these legacy systems (when UDP is requested).
-> 
-> I had such a case recently and managed to make it work by using:
-> 
->   proto=udp,mountproto=tcp,port=2049
-> 
-> By setting mountproto=tcp, nfs-utils uses tcp for almost all communication
-> with the server.
-> The one little problem is that mount does a portmap lookup to check the
-> port number to talk to the NFS server and seeing we requested UDP for NFS,
-> it talks to portmap via UDP and never sees the reply.
-> Setting "port=2049" avoids this lookup so the mount succeeds.
-> 
-> We could just decide that that is the way it is, document that this is how to
-> talk to systems over UDP when they have a broken portmaper and move on.
+[Needed in v3.0]
+CC: Stable Tree <stable@kernel.org>
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/nfs4xdr.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-libtirpc will always perform the rpcbind query on the same transport as the original protocol wants to use, for example.  The libtirpc v2 portmap service I believe performs all queries via UDP.  I don't have the code in front of me to confirm that.
-
-> But it would be nice if we could find a way to make a solution less ugly and
-> easier to find.
-> 
-> So some thoughts:
-> 
-> 1/ We could use tcp for all rpcbind lookups if tcp was requested for either
->   MOUNT or NFS.
-
-This will probably break things that work today.
-
-> 2/ If '-v' was given and a UDP lookup to portmap timedout, we could retry
->   without connecting (and with a shorter timeout), and print an explanatory 
->   message if that succeeded.
-
-"-v" is already in use, as far as I know, and as has been pointed out.
-
-> 3/ We could have a mount option "bindproto=tcp" or maybe "bind=noconnect"
->   which could be recommended by the above explanatory message.
-
-And that would require some kernel mods too, since the kernel may also perform an rpcbind query in some cases.
-
-4.  nfs(5) could explain more clearly that the transport protocol used for the rpcbind goes with the "proto=" and "mountproto=" options.  "Doctor, it hurts when I do that..."  But you might provide your workaround, above, in the EXAMPLES section.
-
-> Does anyone else have any good ideas, or any deep aversions to any of the
-> above.
-> I'm tempted to go for '1' and possibly add '2', but not bother with '3'.
-> 
-> ??
-> 
-> Thanks,
-> NeilBrown
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index e6e8f3b..fc97fd5 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1888,7 +1888,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
+ 	*p++ = cpu_to_be32(OP_LAYOUTCOMMIT);
+ 	/* Only whole file layouts */
+ 	p = xdr_encode_hyper(p, 0); /* offset */
+-	p = xdr_encode_hyper(p, NFS4_MAX_UINT64); /* length */
++	p = xdr_encode_hyper(p, args->lastbytewritten + 1);	/* length */
+ 	*p++ = cpu_to_be32(0); /* reclaim */
+ 	p = xdr_encode_opaque_fixed(p, args->stateid.data, NFS4_STATEID_SIZE);
+ 	*p++ = cpu_to_be32(1); /* newoffset = TRUE */
+-- 
+1.7.6
 
 
