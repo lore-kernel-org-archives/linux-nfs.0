@@ -1,171 +1,149 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:49441 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753216Ab1GRJNW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Jul 2011 05:13:22 -0400
-Received: by wwe5 with SMTP id 5so2976506wwe.1
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Jul 2011 02:13:21 -0700 (PDT)
-Message-ID: <4E23F92D.1010705@tonian.com>
-Date: Mon, 18 Jul 2011 12:13:17 +0300
-From: Benny Halevy <bhalevy@tonian.com>
-To: Jim Rees <rees@umich.edu>
-CC: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] blkmapd: use new sunrpc pipefs interface
-References: <1310947592-12653-1-git-send-email-rees@umich.edu>
-In-Reply-To: <1310947592-12653-1-git-send-email-rees@umich.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from natasha.panasas.com ([67.152.220.90]:50208 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753417Ab1G3Ga4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 02:30:56 -0400
+Message-ID: <4E33A515.70605@panasas.com>
+Date: Fri, 29 Jul 2011 23:30:45 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>, Jim Rees <rees@umich.edu>,
+        Peng Tao <bergwolf@gmail.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/6] pnfs: save layoutcommit cred at layout header init
+References: <4E33A288.80403@panasas.com>
+In-Reply-To: <4E33A288.80403@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I submitted both patches to
-git://linux-nfs.org/~bhalevy/pnfs-nfs-utils.git
+From: Peng Tao <bergwolf@gmail.com>
 
-tag pnfs-nfs-utils-1-2-4-2011-07-18
+No need to save it for every lseg.
+No need to save it at every pnfs_set_layoutcommit.
 
-Benny
+[Needed in v3.0]
+CC: Stable Tree <stable@kernel.org>
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/pnfs.c |   21 +++++++++++----------
+ fs/nfs/pnfs.h |    2 +-
+ 2 files changed, 12 insertions(+), 11 deletions(-)
 
-On 2011-07-18 03:06, Jim Rees wrote:
-> From: Peng Tao <bergwolf@gmail.com>
-> 
-> Signed-off-by: Peng Tao <peng_tao@emc.com>
-> ---
->  utils/blkmapd/device-discovery.c |   48 +++++++++++--------------------------
->  utils/blkmapd/device-discovery.h |   12 +++++----
->  2 files changed, 21 insertions(+), 39 deletions(-)
-> 
-> diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
-> index b4cb8a4..c21de3e 100644
-> --- a/utils/blkmapd/device-discovery.c
-> +++ b/utils/blkmapd/device-discovery.c
-> @@ -50,7 +50,7 @@
->  
->  #include "device-discovery.h"
->  
-> -#define BL_PIPE_FILE	"/var/lib/nfs/rpc_pipefs/bl_device_pipe"
-> +#define BL_PIPE_FILE	"/var/lib/nfs/rpc_pipefs/nfs/blocklayout"
->  #define PID_FILE	"/var/run/blkmapd.pid"
->  
->  struct bl_disk *visible_disk_list;
-> @@ -265,20 +265,14 @@ int bl_discover_devices(void)
->  int bl_disk_inquiry_process(int fd)
->  {
->  	int ret = 0;
-> -	struct pipefs_hdr *head = NULL, *tmp;
-> +	struct bl_pipemsg_hdr head;
->  	char *buf = NULL;
->  	uint32_t major, minor;
->  	uint16_t buflen;
-> -	unsigned int len = 0;
-> -
-> -	head = calloc(1, sizeof(struct pipefs_hdr));
-> -	if (!head) {
-> -		BL_LOG_ERR("%s: Out of memory!\n", __func__);
-> -		return -ENOMEM;
-> -	}
-> +	struct bl_dev_msg reply;
->  
->  	/* read request */
-> -	if (atomicio(read, fd, head, sizeof(*head)) != sizeof(*head)) {
-> +	if (atomicio(read, fd, &head, sizeof(head)) != sizeof(head)) {
->  		/* Note that an error in this or the next read is pretty
->  		 * catastrophic, as there is no good way to resync into
->  		 * the pipe's stream.
-> @@ -288,7 +282,7 @@ int bl_disk_inquiry_process(int fd)
->  		goto out;
->  	}
->  
-> -	buflen = head->totallen - sizeof(*head);
-> +	buflen = head.totallen;
->  	buf = malloc(buflen);
->  	if (!buf) {
->  		BL_LOG_ERR("%s: Out of memory!\n", __func__);
-> @@ -302,9 +296,9 @@ int bl_disk_inquiry_process(int fd)
->  		goto out;
->  	}
->  
-> -	head->status = BL_DEVICE_REQUEST_PROC;
-> +	reply.status = BL_DEVICE_REQUEST_PROC;
->  
-> -	switch (head->type) {
-> +	switch (head.type) {
->  	case BL_DEVICE_MOUNT:
->  		/*
->  		 * It shouldn't be necessary to discover devices here, since
-> @@ -316,36 +310,24 @@ int bl_disk_inquiry_process(int fd)
->  		 */
->  		bl_discover_devices();
->  		if (!process_deviceinfo(buf, buflen, &major, &minor)) {
-> -			head->status = BL_DEVICE_REQUEST_ERR;
-> +			reply.status = BL_DEVICE_REQUEST_ERR;
->  			break;
->  		}
-> -		tmp = realloc(head, sizeof(major) + sizeof(minor) +
-> -			      sizeof(struct pipefs_hdr));
-> -		if (!tmp) {
-> -			BL_LOG_ERR("%s: Out of memory!\n", __func__);
-> -			ret = -ENOMEM;
-> -			goto out;
-> -		}
-> -		head = tmp;
-> -		memcpy((void *)head + sizeof(struct pipefs_hdr),
-> -		       &major, sizeof(major));
-> -		memcpy((void *)head + sizeof(struct pipefs_hdr) + sizeof(major),
-> -		       &minor, sizeof(minor));
-> -		len = sizeof(major) + sizeof(minor);
-> +		reply.major = major;
-> +		reply.minor = minor;
->  		break;
->  	case BL_DEVICE_UMOUNT:
->  		if (!dm_device_remove_all((uint64_t *) buf))
-> -			head->status = BL_DEVICE_REQUEST_ERR;
-> +			reply.status = BL_DEVICE_REQUEST_ERR;
->  		break;
->  	default:
-> -		head->status = BL_DEVICE_REQUEST_ERR;
-> +		reply.status = BL_DEVICE_REQUEST_ERR;
->  		break;
->  	}
->  
-> -	head->totallen = sizeof(struct pipefs_hdr) + len;
->  	/* write to pipefs */
-> -	if (atomicio((void *)write, fd, head, head->totallen)
-> -	    != head->totallen) {
-> +	if (atomicio((void *)write, fd, &reply, sizeof(reply))
-> +	    != sizeof(reply)) {
->  		BL_LOG_ERR("Write pipefs error!\n");
->  		ret = -EIO;
->  	}
-> @@ -353,8 +335,6 @@ int bl_disk_inquiry_process(int fd)
->   out:
->  	if (buf)
->  		free(buf);
-> -	if (head)
-> -		free(head);
->  	return ret;
->  }
->  
-> diff --git a/utils/blkmapd/device-discovery.h b/utils/blkmapd/device-discovery.h
-> index e25dd44..a86eed9 100644
-> --- a/utils/blkmapd/device-discovery.h
-> +++ b/utils/blkmapd/device-discovery.h
-> @@ -102,12 +102,14 @@ struct bl_dev_id {
->  	char data[0];
->  };
->  
-> -struct pipefs_hdr {
-> -	uint32_t msgid;
-> +struct bl_dev_msg {
-> +	int status;
-> +	uint32_t major, minor;
-> +};
-> +
-> +struct bl_pipemsg_hdr {
->  	uint8_t type;
-> -	uint8_t flags;
-> -	uint16_t totallen;		/* length of message including hdr */
-> -	uint32_t status;
-> +	uint16_t totallen;		/* length of message excluding hdr */
->  };
->  
->  #define BL_DEVICE_UMOUNT                0x0	/* Umount--delete devices */
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index fb1bcf1..baa2a04 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -189,6 +189,7 @@ static void
+ pnfs_free_layout_hdr(struct pnfs_layout_hdr *lo)
+ {
+ 	struct pnfs_layoutdriver_type *ld = NFS_SERVER(lo->plh_inode)->pnfs_curr_ld;
++	put_rpccred(lo->plh_lc_cred);
+ 	return ld->alloc_layout_hdr ? ld->free_layout_hdr(lo) : kfree(lo);
+ }
+ 
+@@ -805,7 +806,9 @@ out:
+ }
+ 
+ static struct pnfs_layout_hdr *
+-alloc_init_layout_hdr(struct inode *ino, gfp_t gfp_flags)
++alloc_init_layout_hdr(struct inode *ino,
++		      struct nfs_open_context *ctx,
++		      gfp_t gfp_flags)
+ {
+ 	struct pnfs_layout_hdr *lo;
+ 
+@@ -817,11 +820,14 @@ alloc_init_layout_hdr(struct inode *ino, gfp_t gfp_flags)
+ 	INIT_LIST_HEAD(&lo->plh_segs);
+ 	INIT_LIST_HEAD(&lo->plh_bulk_recall);
+ 	lo->plh_inode = ino;
++	lo->plh_lc_cred = get_rpccred(ctx->state->owner->so_cred);
+ 	return lo;
+ }
+ 
+ static struct pnfs_layout_hdr *
+-pnfs_find_alloc_layout(struct inode *ino, gfp_t gfp_flags)
++pnfs_find_alloc_layout(struct inode *ino,
++		       struct nfs_open_context *ctx,
++		       gfp_t gfp_flags)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+ 	struct pnfs_layout_hdr *new = NULL;
+@@ -836,7 +842,7 @@ pnfs_find_alloc_layout(struct inode *ino, gfp_t gfp_flags)
+ 			return nfsi->layout;
+ 	}
+ 	spin_unlock(&ino->i_lock);
+-	new = alloc_init_layout_hdr(ino, gfp_flags);
++	new = alloc_init_layout_hdr(ino, ctx, gfp_flags);
+ 	spin_lock(&ino->i_lock);
+ 
+ 	if (likely(nfsi->layout == NULL))	/* Won the race? */
+@@ -928,7 +934,7 @@ pnfs_update_layout(struct inode *ino,
+ 	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
+ 		return NULL;
+ 	spin_lock(&ino->i_lock);
+-	lo = pnfs_find_alloc_layout(ino, gfp_flags);
++	lo = pnfs_find_alloc_layout(ino, ctx, gfp_flags);
+ 	if (lo == NULL) {
+ 		dprintk("%s ERROR: can't get pnfs_layout_hdr\n", __func__);
+ 		goto out_unlock;
+@@ -1218,8 +1224,6 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ 	if (!test_and_set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
+ 		/* references matched in nfs4_layoutcommit_release */
+ 		get_lseg(wdata->lseg);
+-		wdata->lseg->pls_lc_cred =
+-			get_rpccred(wdata->args.context->state->owner->so_cred);
+ 		mark_as_dirty = true;
+ 		dprintk("%s: Set layoutcommit for inode %lu ",
+ 			__func__, wdata->inode->i_ino);
+@@ -1251,7 +1255,6 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 	struct nfs4_layoutcommit_data *data;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 	struct pnfs_layout_segment *lseg;
+-	struct rpc_cred *cred;
+ 	loff_t end_pos;
+ 	int status = 0;
+ 
+@@ -1281,9 +1284,7 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 	lseg = pnfs_list_write_lseg(inode);
+ 
+ 	end_pos = nfsi->layout->plh_lwb;
+-	cred = lseg->pls_lc_cred;
+ 	nfsi->layout->plh_lwb = 0;
+-	lseg->pls_lc_cred = NULL;
+ 
+ 	memcpy(&data->args.stateid.data, nfsi->layout->plh_stateid.data,
+ 		sizeof(nfsi->layout->plh_stateid.data));
+@@ -1291,7 +1292,7 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 
+ 	data->args.inode = inode;
+ 	data->lseg = lseg;
+-	data->cred = cred;
++	data->cred = get_rpccred(nfsi->layout->plh_lc_cred);
+ 	nfs_fattr_init(&data->fattr);
+ 	data->args.bitmask = NFS_SERVER(inode)->cache_consistency_bitmask;
+ 	data->res.fattr = &data->fattr;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 77e1b24..6969594 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -44,7 +44,6 @@ struct pnfs_layout_segment {
+ 	atomic_t pls_refcount;
+ 	unsigned long pls_flags;
+ 	struct pnfs_layout_hdr *pls_layout;
+-	struct rpc_cred	*pls_lc_cred; /* LAYOUTCOMMIT credential */
+ };
+ 
+ enum pnfs_try_status {
+@@ -124,6 +123,7 @@ struct pnfs_layout_hdr {
+ 	u32			plh_barrier; /* ignore lower seqids */
+ 	unsigned long		plh_flags;
+ 	loff_t			plh_lwb; /* last write byte for layoutcommit */
++	struct rpc_cred		*plh_lc_cred; /* layoutcommit cred */
+ 	struct inode		*plh_inode;
+ };
+ 
+-- 
+1.7.6
+
+
