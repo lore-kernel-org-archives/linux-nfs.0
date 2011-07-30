@@ -1,116 +1,183 @@
 From: Jim Rees <rees@umich.edu>
-Subject: [PATCH v6 08/26] pnfs: cleanup_layoutcommit
-Date: Sat, 30 Jul 2011 13:08:31 -0400
-Message-ID: <1312045729-27554-9-git-send-email-rees@umich.edu>
+Subject: [PATCH v6 11/26] pnfsblock: basic extent code
+Date: Sat, 30 Jul 2011 13:08:34 -0400
+Message-ID: <1312045729-27554-12-git-send-email-rees@umich.edu>
 References: <1312045729-27554-1-git-send-email-rees@umich.edu>
 Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:56500 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752464Ab1G3RJI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 13:09:08 -0400
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:49575 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752457Ab1G3RJK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 13:09:10 -0400
 In-Reply-To: <1312045729-27554-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-This gives layout driver a chance to cleanup structures they put in at
-encode_layoutcommit.
+Adds structures and basic create/delete code for extents.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[fixup layout header pointer for layoutcommit]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Zhang Jingwang <Jingwang.Zhang@emc.com>
 Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
- fs/nfs/nfs4proc.c       |    1 +
- fs/nfs/nfs4xdr.c        |    1 +
- fs/nfs/pnfs.c           |   10 ++++++++++
- fs/nfs/pnfs.h           |    5 +++++
- include/linux/nfs_xdr.h |    1 +
- 5 files changed, 18 insertions(+), 0 deletions(-)
+ fs/nfs/blocklayout/Makefile      |    2 +-
+ fs/nfs/blocklayout/blocklayout.c |   20 +++++++--
+ fs/nfs/blocklayout/blocklayout.h |    1 +
+ fs/nfs/blocklayout/extents.c     |   89 ++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 107 insertions(+), 5 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/extents.c
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index e86de79..6cb84b4 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5963,6 +5963,7 @@ static void nfs4_layoutcommit_release(void *calldata)
- 	struct nfs4_layoutcommit_data *data = calldata;
- 	struct pnfs_layout_segment *lseg, *tmp;
- 
-+	pnfs_cleanup_layoutcommit(data->args.inode, data);
- 	/* Matched by references in pnfs_set_layoutcommit */
- 	list_for_each_entry_safe(lseg, tmp, &data->lseg_list, pls_lc_list) {
- 		list_del_init(&lseg->pls_lc_list);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 0261669..1dce12f 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5599,6 +5599,7 @@ static int decode_layoutcommit(struct xdr_stream *xdr,
- 	int status;
- 
- 	status = decode_op_hdr(xdr, OP_LAYOUTCOMMIT);
-+	res->status = status;
- 	if (status)
- 		return status;
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 3a47f7c..c1cc216 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1411,6 +1411,16 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+index 6bf49cd..5cfadf6 100644
+--- a/fs/nfs/blocklayout/Makefile
++++ b/fs/nfs/blocklayout/Makefile
+@@ -2,4 +2,4 @@
+ # Makefile for the pNFS block layout driver kernel module
+ #
+ obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
+-blocklayoutdriver-objs := blocklayout.o
++blocklayoutdriver-objs := blocklayout.o extents.o
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index c6beb15..fd4fdb5a 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -53,12 +53,24 @@ bl_write_pagelist(struct nfs_write_data *wdata,
+ 	return PNFS_NOT_ATTEMPTED;
  }
- EXPORT_SYMBOL_GPL(pnfs_set_layoutcommit);
  
-+void pnfs_cleanup_layoutcommit(struct inode *inode,
-+			       struct nfs4_layoutcommit_data *data)
-+{
-+	struct nfs_server *nfss = NFS_SERVER(inode);
+-/* STUB */
++/* FIXME - range ignored */
+ static void
+-release_extents(struct pnfs_block_layout *bl,
+-		struct pnfs_layout_range *range)
++release_extents(struct pnfs_block_layout *bl, struct pnfs_layout_range *range)
+ {
+-	return;
++	int i;
++	struct pnfs_block_extent *be;
 +
-+	if (nfss->pnfs_curr_ld->cleanup_layoutcommit)
-+		nfss->pnfs_curr_ld->cleanup_layoutcommit(NFS_I(inode)->layout,
-+							 data);
++	spin_lock(&bl->bl_ext_lock);
++	for (i = 0; i < EXTENT_LISTS; i++) {
++		while (!list_empty(&bl->bl_extents[i])) {
++			be = list_first_entry(&bl->bl_extents[i],
++					      struct pnfs_block_extent,
++					      be_node);
++			list_del(&be->be_node);
++			bl_put_extent(be);
++		}
++	}
++	spin_unlock(&bl->bl_ext_lock);
+ }
+ 
+ /* STUB */
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 8bfa466..98e2f60 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -88,4 +88,5 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
+ 	return container_of(lo, struct pnfs_block_layout, bl_layout);
+ }
+ 
++void bl_put_extent(struct pnfs_block_extent *be);
+ #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+new file mode 100644
+index 0000000..d0ca760
+--- /dev/null
++++ b/fs/nfs/blocklayout/extents.c
+@@ -0,0 +1,89 @@
++/*
++ *  linux/fs/nfs/blocklayout/blocklayout.h
++ *
++ *  Module for the NFSv4.1 pNFS block layout driver.
++ *
++ *  Copyright (c) 2006 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@citi.umich.edu>
++ *  Fred Isaman <iisaman@umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
++ */
++
++#include "blocklayout.h"
++#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
++
++static void print_bl_extent(struct pnfs_block_extent *be)
++{
++	dprintk("PRINT EXTENT extent %p\n", be);
++	if (be) {
++		dprintk("        be_f_offset %llu\n", (u64)be->be_f_offset);
++		dprintk("        be_length   %llu\n", (u64)be->be_length);
++		dprintk("        be_v_offset %llu\n", (u64)be->be_v_offset);
++		dprintk("        be_state    %d\n", be->be_state);
++	}
 +}
 +
- /*
-  * For the LAYOUT4_NFSV4_1_FILES layout type, NFS_DATA_SYNC WRITEs and
-  * NFS_UNSTABLE WRITEs with a COMMIT to data servers must store enough
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index bddd8b9..f271425 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -113,6 +113,9 @@ struct pnfs_layoutdriver_type {
- 				     struct xdr_stream *xdr,
- 				     const struct nfs4_layoutreturn_args *args);
- 
-+	void (*cleanup_layoutcommit) (struct pnfs_layout_hdr *layoutid,
-+				      struct nfs4_layoutcommit_data *data);
++static void
++destroy_extent(struct kref *kref)
++{
++	struct pnfs_block_extent *be;
 +
- 	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
- 				     struct xdr_stream *xdr,
- 				     const struct nfs4_layoutcommit_args *args);
-@@ -196,6 +199,8 @@ void pnfs_roc_release(struct inode *ino);
- void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
- bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
- void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
-+void pnfs_cleanup_layoutcommit(struct inode *inode,
-+			       struct nfs4_layoutcommit_data *data);
- int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
- int _pnfs_return_layout(struct inode *);
- int pnfs_ld_write_done(struct nfs_write_data *);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 94f27e5..569ea5b 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -269,6 +269,7 @@ struct nfs4_layoutcommit_res {
- 	struct nfs_fattr *fattr;
- 	const struct nfs_server *server;
- 	struct nfs4_sequence_res seq_res;
-+	int status;
- };
- 
- struct nfs4_layoutcommit_data {
++	be = container_of(kref, struct pnfs_block_extent, be_refcnt);
++	dprintk("%s be=%p\n", __func__, be);
++	kfree(be);
++}
++
++void
++bl_put_extent(struct pnfs_block_extent *be)
++{
++	if (be) {
++		dprintk("%s enter %p (%i)\n", __func__, be,
++			atomic_read(&be->be_refcnt.refcount));
++		kref_put(&be->be_refcnt, destroy_extent);
++	}
++}
++
++struct pnfs_block_extent *bl_alloc_extent(void)
++{
++	struct pnfs_block_extent *be;
++
++	be = kmalloc(sizeof(struct pnfs_block_extent), GFP_NOFS);
++	if (!be)
++		return NULL;
++	INIT_LIST_HEAD(&be->be_node);
++	kref_init(&be->be_refcnt);
++	be->be_inval = NULL;
++	return be;
++}
++
++static void print_elist(struct list_head *list)
++{
++	struct pnfs_block_extent *be;
++	dprintk("****************\n");
++	dprintk("Extent list looks like:\n");
++	list_for_each_entry(be, list, be_node) {
++		print_bl_extent(be);
++	}
++	dprintk("****************\n");
++}
 -- 
 1.7.4.1
 
