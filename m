@@ -1,60 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:34280 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752473Ab1G2SCK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2011 14:02:10 -0400
-Subject: Re: [PATCH] sunrpc: use better NUMA affinities
-From: Eric Dumazet <eric.dumazet@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, Neil Brown <neilb@suse.de>,
-        David Miller <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev <netdev@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Greg Banks <gnb@fastmail.fm>
-In-Reply-To: <20110729164214.GI23194@fieldses.org>
-References: <1311876249.2346.39.camel@edumazet-HP-Compaq-6005-Pro-SFF-PC>
-	 <20110729164214.GI23194@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 29 Jul 2011 20:02:05 +0200
-Message-ID: <1311962525.2873.6.camel@edumazet-laptop>
+Received: from mx2.netapp.com ([216.240.18.37]:17848 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751452Ab1GaSbJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jul 2011 14:31:09 -0400
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: Please pull NFS client changes
+Date: Sun, 31 Jul 2011 11:30:48 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A777FE7@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <20110731182406.GA16470@infradead.org>
+References: <1312082377.10882.1.camel@lade.trondhjem.org> <20110731182406.GA16470@infradead.org>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Christoph Hellwig" <hch@infradead.org>
+Cc: "Linus Torvalds" <torvalds@linux-foundation.org>,
+        <linux-fsdevel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Le vendredi 29 juillet 2011 à 12:42 -0400, J. Bruce Fields a écrit :
-> On Thu, Jul 28, 2011 at 08:04:09PM +0200, Eric Dumazet wrote:
-> > Use NUMA aware allocations to reduce latencies and increase throughput.
-> > 
-> > sunrpc kthreads can use kthread_create_on_node() if pool_mode is
-> > "percpu" or "pernode", and svc_prepare_thread()/svc_init_buffer() can
-> > also take into account NUMA node affinity for memory allocations.
-> ...
-> > @@ -662,14 +675,16 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
-> >  		nrservs--;
-> >  		chosen_pool = choose_pool(serv, pool, &state);
-> >  
-> > -		rqstp = svc_prepare_thread(serv, chosen_pool);
-> > +		node = svc_pool_map_get_node(chosen_pool->sp_id);
-> > +		rqstp = svc_prepare_thread(serv, chosen_pool, node);
+> -----Original Message-----
+> From: Christoph Hellwig [mailto:hch@infradead.org]
+> Sent: Sunday, July 31, 2011 2:24 PM
+> To: Myklebust, Trond
+> Cc: Linus Torvalds; linux-fsdevel@vger.kernel.org; linux-
+> nfs@vger.kernel.org; linux-kernel@vger.kernel.org
+> Subject: Re: Please pull NFS client changes
 > 
-> The only correct value for the third argument there is
-> svc_pool_map_get_node(chosen_pool->sp_id), so let's have
-> svc_prepare_thread() call that itself.
-> 
+> How does this manage to include the pnfs block code, which only was
+> posted
+> on the list a few hours before the pull request, and which doesn't
+> appear to past testing very well (although the major issue seems to be
+> core nfs code)?
 
-I have no idea of what you mean ;)
+The majority of that code has been ready for several weeks and has been
+posted several times for review. The main stuff that was addressed in
+the last week were smaller issues such as the naming of functions that
+are globally visible (i.e. not polluting the kernel namespace), a few
+bisectability issues and (in the last iteraction) the lack of a
+signed-off-by: from Jim.
 
-I need 'node' for the following kthread_create_on_node()
+I agree that we have to address the bug that Peng found, but that
+appears to be linked to the NFSv4.1 back channel, which these patches
+did not change.
 
-
-> Seems OK otherwise.
-> 
-> Any suggestions on how we should test this?
-
-I did tests on my machine, seems good.
-
-I checked that stacks were now correct using :
-"echo t > /proc/sysrq-trigger"
-
-
-
+The other point to note is that the patches do not touch the main
+read/write code and only lightly change the pNFS code paths. The impact
+of any residual bugs is therefore going to be limited.
