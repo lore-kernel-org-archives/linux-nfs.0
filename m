@@ -1,144 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:34306 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754247Ab1G0Skr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 14:40:47 -0400
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:37704 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752771Ab1GaAx1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 20:53:27 -0400
 From: Jim Rees <rees@umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v3 02/25] pnfs: add set-clear layoutdriver interface
-Date: Wed, 27 Jul 2011 14:40:25 -0400
-Message-Id: <1311792048-12551-3-git-send-email-rees@umich.edu>
-In-Reply-To: <1311792048-12551-1-git-send-email-rees@umich.edu>
-References: <1311792048-12551-1-git-send-email-rees@umich.edu>
+Subject: [PATCH v7 18/26] pnfsblock: bl_find_get_extent
+Date: Sat, 30 Jul 2011 20:52:48 -0400
+Message-Id: <1312073576-11024-19-git-send-email-rees@umich.edu>
+In-Reply-To: <1312073576-11024-1-git-send-email-rees@umich.edu>
+References: <1312073576-11024-1-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-To allow layout driver to issue getdevicelist at mount time, and clean up
-at umount time.
+Implement bl_find_get_extent(), one of the core extent manipulation
+routines.
 
-[fixup non NFS_V4_1 set_pnfs_layoutdriver definition]
-[pnfs: pass mntfh down the init_pnfs path]
+[pnfsblock: Lookup list entry of layouts and tags in reverse order]
+Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
+
+pnfsblock: fix print format warnings for sector_t and size_t
+
+gcc spews warnings about these on x86_64, e.g.:
+fs/nfs/blocklayout/blocklayout.c:74: warning: format ‘%Lu’ expects type ‘long long unsigned int’, but argument 2 has type ‘sector_t’
+fs/nfs/blocklayout/blocklayout.c:388: warning: format ‘%d’ expects type ‘int’, but argument 5 has type ‘size_t’
+
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
 ---
- fs/nfs/client.c |    8 +++++---
- fs/nfs/pnfs.c   |   16 ++++++++++++++--
- fs/nfs/pnfs.h   |    8 ++++++--
- 3 files changed, 25 insertions(+), 7 deletions(-)
+ fs/nfs/blocklayout/blocklayout.h |    3 ++
+ fs/nfs/blocklayout/extents.c     |   47 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 50 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 19ea7d9..a9b1848 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -904,7 +904,9 @@ error:
- /*
-  * Load up the server record from information gained in an fsinfo record
-  */
--static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *fsinfo)
-+static void nfs_server_set_fsinfo(struct nfs_server *server,
-+				  struct nfs_fh *mntfh,
-+				  struct nfs_fsinfo *fsinfo)
- {
- 	unsigned long max_rpc_payload;
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index d645880..3e1b5fc 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -153,6 +153,9 @@ int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+ void bl_free_block_dev(struct pnfs_block_dev *bdev);
  
-@@ -934,7 +936,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
- 	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
- 		server->wsize = NFS_MAX_FILE_IO_SIZE;
- 	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
--	set_pnfs_layoutdriver(server, fsinfo->layouttype);
-+	set_pnfs_layoutdriver(server, mntfh, fsinfo->layouttype);
- 
- 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
- 
-@@ -980,7 +982,7 @@ static int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, str
- 	if (error < 0)
- 		goto out_error;
- 
--	nfs_server_set_fsinfo(server, &fsinfo);
-+	nfs_server_set_fsinfo(server, mntfh, &fsinfo);
- 
- 	/* Get some general file system info */
- 	if (server->namelen == 0) {
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 38e5508..8e72724 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -76,8 +76,11 @@ find_pnfs_driver(u32 id)
- void
- unset_pnfs_layoutdriver(struct nfs_server *nfss)
- {
--	if (nfss->pnfs_curr_ld)
-+	if (nfss->pnfs_curr_ld) {
-+		if (nfss->pnfs_curr_ld->clear_layoutdriver)
-+			nfss->pnfs_curr_ld->clear_layoutdriver(nfss);
- 		module_put(nfss->pnfs_curr_ld->owner);
-+	}
- 	nfss->pnfs_curr_ld = NULL;
+ /* extents.c */
++struct pnfs_block_extent *
++bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
++		struct pnfs_block_extent **cow_read);
+ void bl_put_extent(struct pnfs_block_extent *be);
+ struct pnfs_block_extent *bl_alloc_extent(void);
+ int bl_add_merge_extent(struct pnfs_block_layout *bl,
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index ee4891f..8fa93e2 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -193,3 +193,50 @@ bl_add_merge_extent(struct pnfs_block_layout *bl,
+ 	bl_put_extent(new);
+ 	return -EIO;
  }
- 
-@@ -88,7 +91,8 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
-  * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
-  */
- void
--set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
-+set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
-+		      u32 id)
- {
- 	struct pnfs_layoutdriver_type *ld_type = NULL;
- 
-@@ -115,6 +119,14 @@ set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
- 		goto out_no_driver;
- 	}
- 	server->pnfs_curr_ld = ld_type;
-+	if (ld_type->set_layoutdriver
-+	    && ld_type->set_layoutdriver(server, mntfh)) {
-+		printk(KERN_ERR
-+		       "%s: Error initializing mount point for layout driver %u.\n",
-+		       __func__, id);
-+		module_put(ld_type->owner);
-+		goto out_no_driver;
-+	}
- 
- 	dprintk("%s: pNFS module for %u set\n", __func__, id);
- 	return;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index ffea314..23d8267 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -80,6 +80,9 @@ struct pnfs_layoutdriver_type {
- 	struct module *owner;
- 	unsigned flags;
- 
-+	int (*set_layoutdriver) (struct nfs_server *, const struct nfs_fh *);
-+	int (*clear_layoutdriver) (struct nfs_server *);
 +
- 	struct pnfs_layout_hdr * (*alloc_layout_hdr) (struct inode *inode, gfp_t gfp_flags);
- 	void (*free_layout_hdr) (struct pnfs_layout_hdr *);
- 
-@@ -165,7 +168,7 @@ void put_lseg(struct pnfs_layout_segment *lseg);
- bool pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
- bool pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *, int);
- 
--void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
-+void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
- void unset_pnfs_layoutdriver(struct nfs_server *);
- void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
- int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
-@@ -372,7 +375,8 @@ pnfs_roc_drain(struct inode *ino, u32 *barrier)
- 	return false;
- }
- 
--static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
-+static inline void set_pnfs_layoutdriver(struct nfs_server *s,
-+					 const struct nfs_fh *mntfh, u32 id);
- {
- }
- 
++/* Returns extent, or NULL.  If a second READ extent exists, it is returned
++ * in cow_read, if given.
++ *
++ * The extents are kept in two seperate ordered lists, one for READ and NONE,
++ * one for READWRITE and INVALID.  Within each list, we assume:
++ * 1. Extents are ordered by file offset.
++ * 2. For any given isect, there is at most one extents that matches.
++ */
++struct pnfs_block_extent *
++bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
++	    struct pnfs_block_extent **cow_read)
++{
++	struct pnfs_block_extent *be, *cow, *ret;
++	int i;
++
++	dprintk("%s enter with isect %llu\n", __func__, (u64)isect);
++	cow = ret = NULL;
++	spin_lock(&bl->bl_ext_lock);
++	for (i = 0; i < EXTENT_LISTS; i++) {
++		list_for_each_entry_reverse(be, &bl->bl_extents[i], be_node) {
++			if (isect >= be->be_f_offset + be->be_length)
++				break;
++			if (isect >= be->be_f_offset) {
++				/* We have found an extent */
++				dprintk("%s Get %p (%i)\n", __func__, be,
++					atomic_read(&be->be_refcnt.refcount));
++				kref_get(&be->be_refcnt);
++				if (!ret)
++					ret = be;
++				else if (be->be_state != PNFS_BLOCK_READ_DATA)
++					bl_put_extent(be);
++				else
++					cow = be;
++				break;
++			}
++		}
++		if (ret &&
++		    (!cow_read || ret->be_state != PNFS_BLOCK_INVALID_DATA))
++			break;
++	}
++	spin_unlock(&bl->bl_ext_lock);
++	if (cow_read)
++		*cow_read = cow;
++	print_bl_extent(ret);
++	return ret;
++}
 -- 
 1.7.4.1
 
