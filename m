@@ -1,108 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:54608 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751435Ab1G1AMt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 20:12:49 -0400
-Message-ID: <4E30A957.7080804@panasas.com>
-Date: Wed, 27 Jul 2011 17:12:07 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Jim Rees <rees@umich.edu>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
-        peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH v3 03/25] NFS41: Let layoutcommit handle multiple segments
-References: <1311792048-12551-1-git-send-email-rees@umich.edu> <1311792048-12551-4-git-send-email-rees@umich.edu> <4E306F84.6030808@panasas.com> <1311798159.25645.32.camel@lade.trondhjem.org> <4E30762E.4000508@panasas.com> <20110727205804.GA13698@merit.edu> <4E307E6F.6090309@panasas.com> <20110727234041.GC14319@merit.edu>
-In-Reply-To: <20110727234041.GC14319@merit.edu>
-Content-Type: text/plain; charset="UTF-8"
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:37656 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752501Ab1GaAxM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 20:53:12 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v7 08/26] pnfs: cleanup_layoutcommit
+Date: Sat, 30 Jul 2011 20:52:38 -0400
+Message-Id: <1312073576-11024-9-git-send-email-rees@umich.edu>
+In-Reply-To: <1312073576-11024-1-git-send-email-rees@umich.edu>
+References: <1312073576-11024-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 07/27/2011 04:40 PM, Jim Rees wrote:
-> Boaz Harrosh wrote:
-> 
->   On 07/27/2011 01:58 PM, Jim Rees wrote:
->   >   But I thought for simplicity since this patchset was reviewed then, I've
->   >   tested with this patch and it works good as well. If you are going to
->   >   break things up, I can test with the minimal patches and report what is
->   >   need in Stable. (Is anyone working on it?)
->   > 
->   > We may have over-squashed that one for block layout.  I can dig up the
->   > original patches if necessary, but I'm guessing you probably have them.
->   
->   Please do. Because by now I'm confused. the first I discovered it was
->   by git diff of a branch that worked. I lost tracked of where the code
->   was originated from.
-> 
-> Here is just the original multiple segments patch.  This is from the
-> 88-patch set I sent out before Bakeathon.  I don't know if this would still
-> apply separately.
-> 
+From: Andy Adamson <andros@netapp.com>
 
-OK Thanks that one looks familiar enough. I'll test just with this one.
+This gives layout driver a chance to cleanup structures they put in at
+encode_layoutcommit.
 
-Where did the other changes come from? Is there a Benny's branch that
-have them separated so I can have a look. I suspect I also need the one
-that encodes the last_byte_written.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[fixup layout header pointer for layoutcommit]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+[rm inode and pnfs_layout_hdr args from cleanup_layoutcommit()]
+Signed-off-by: Jim Rees <rees@umich.edu>
+---
+ fs/nfs/nfs4proc.c       |    1 +
+ fs/nfs/nfs4xdr.c        |    1 +
+ fs/nfs/pnfs.c           |    8 ++++++++
+ fs/nfs/pnfs.h           |    3 +++
+ include/linux/nfs_xdr.h |    1 +
+ 5 files changed, 14 insertions(+), 0 deletions(-)
 
-Thanks
-Boaz
-
-> From fc3381fa66adfcee4203b5a55ca6605bcfc8dafb Mon Sep 17 00:00:00 2001
-> From: Peng Tao <bergwolf@gmail.com>
-> Date: Tue, 31 May 2011 00:42:56 -0400
-> Subject: [PATCH 03/89] pnfs: let layoutcommit code handle multiple segments
-> 
-> Some layout driver like block will have multiple segments.
-> Generic code should be able to handle it.
-> ---
->  fs/nfs/pnfs.c |   15 ++++++++++++---
->  fs/nfs/pnfs.h |    1 +
->  2 files changed, 13 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index e3d618b..c18cda0 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -1193,10 +1193,18 @@ pnfs_try_to_read_data(struct nfs_read_data *rdata,
->  static struct pnfs_layout_segment *pnfs_list_write_lseg(struct inode *inode)
->  {
->  	struct pnfs_layout_segment *lseg, *rv = NULL;
-> +	loff_t max_pos = 0;
-> +
-> +	list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list) {
-> +		if (lseg->pls_range.iomode == IOMODE_RW) {
-> +			if (max_pos < lseg->pls_end_pos)
-> +				max_pos = lseg->pls_end_pos;
-> +			if (test_and_clear_bit(NFS_LSEG_LAYOUTCOMMIT, &lseg->pls_flags))
-> +				rv = lseg;
-> +		}
-> +	}
-> +	rv->pls_end_pos = max_pos;
->  
-> -	list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list)
-> -		if (lseg->pls_range.iomode == IOMODE_RW)
-> -			rv = lseg;
->  	return rv;
->  }
->  
-> @@ -1211,6 +1219,7 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
->  	if (!test_and_set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
->  		/* references matched in nfs4_layoutcommit_release */
->  		get_lseg(wdata->lseg);
-> +		set_bit(NFS_LSEG_LAYOUTCOMMIT, &wdata->lseg->pls_flags);
->  		wdata->lseg->pls_lc_cred =
->  			get_rpccred(wdata->args.context->state->owner->so_cred);
->  		mark_as_dirty = true;
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index 53819d0..c6a9af2 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -36,6 +36,7 @@
->  enum {
->  	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
->  	NFS_LSEG_ROC,		/* roc bit received from server */
-> +	NFS_LSEG_LAYOUTCOMMIT,	/* layoutcommit bit set for layoutcommit */
->  };
->  
->  struct pnfs_layout_segment {
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index e86de79..8c77039 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5963,6 +5963,7 @@ static void nfs4_layoutcommit_release(void *calldata)
+ 	struct nfs4_layoutcommit_data *data = calldata;
+ 	struct pnfs_layout_segment *lseg, *tmp;
+ 
++	pnfs_cleanup_layoutcommit(data);
+ 	/* Matched by references in pnfs_set_layoutcommit */
+ 	list_for_each_entry_safe(lseg, tmp, &data->lseg_list, pls_lc_list) {
+ 		list_del_init(&lseg->pls_lc_list);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 0261669..1dce12f 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -5599,6 +5599,7 @@ static int decode_layoutcommit(struct xdr_stream *xdr,
+ 	int status;
+ 
+ 	status = decode_op_hdr(xdr, OP_LAYOUTCOMMIT);
++	res->status = status;
+ 	if (status)
+ 		return status;
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 3a47f7c..e550e88 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1411,6 +1411,14 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ }
+ EXPORT_SYMBOL_GPL(pnfs_set_layoutcommit);
+ 
++void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data)
++{
++	struct nfs_server *nfss = NFS_SERVER(data->args.inode);
++
++	if (nfss->pnfs_curr_ld->cleanup_layoutcommit)
++		nfss->pnfs_curr_ld->cleanup_layoutcommit(data);
++}
++
+ /*
+  * For the LAYOUT4_NFSV4_1_FILES layout type, NFS_DATA_SYNC WRITEs and
+  * NFS_UNSTABLE WRITEs with a COMMIT to data servers must store enough
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index bddd8b9..606fbde 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -113,6 +113,8 @@ struct pnfs_layoutdriver_type {
+ 				     struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutreturn_args *args);
+ 
++	void (*cleanup_layoutcommit) (struct nfs4_layoutcommit_data *data);
++
+ 	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
+ 				     struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutcommit_args *args);
+@@ -196,6 +198,7 @@ void pnfs_roc_release(struct inode *ino);
+ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+ bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
++void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+ int _pnfs_return_layout(struct inode *);
+ int pnfs_ld_write_done(struct nfs_write_data *);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 94f27e5..569ea5b 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -269,6 +269,7 @@ struct nfs4_layoutcommit_res {
+ 	struct nfs_fattr *fattr;
+ 	const struct nfs_server *server;
+ 	struct nfs4_sequence_res seq_res;
++	int status;
+ };
+ 
+ struct nfs4_layoutcommit_data {
+-- 
+1.7.4.1
 
