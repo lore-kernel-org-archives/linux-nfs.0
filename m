@@ -1,120 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:38906 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750962Ab1GGUi2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jul 2011 16:38:28 -0400
-Message-ID: <4E161942.4070907@candelatech.com>
-Date: Thu, 07 Jul 2011 13:38:26 -0700
-From: Ben Greear <greearb@candelatech.com>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:38043 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751997Ab1GaAxE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 20:53:04 -0400
+From: Jim Rees <rees@umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [RFC] sunrpc:  Fix race between work-queue and rpc_killall_tasks.
-References: <1309992581-25199-1-git-send-email-greearb@candelatech.com> <1309995932.5447.6.camel@lade.trondhjem.org>
-In-Reply-To: <1309995932.5447.6.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v7 00/26] add block layout driver to pnfs client
+Date: Sat, 30 Jul 2011 20:52:30 -0400
+Message-Id: <1312073576-11024-1-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 07/06/2011 04:45 PM, Trond Myklebust wrote:
-> On Wed, 2011-07-06 at 15:49 -0700, greearb@candelatech.com wrote:
->> From: Ben Greear<greearb@candelatech.com>
->>
->> The rpc_killall_tasks logic is not locked against
->> the work-queue thread, but it still directly modifies
->> function pointers and data in the task objects.
->>
->> This patch changes the killall-tasks logic to set a flag
->> that tells the work-queue thread to terminate the task
->> instead of directly calling the terminate logic.
->>
->> Signed-off-by: Ben Greear<greearb@candelatech.com>
->> ---
->>
->> NOTE:  This needs review, as I am still struggling to understand
->> the rpc code, and it's quite possible this patch either doesn't
->> fully fix the problem or actually causes other issues.  That said,
->> my nfs stress test seems to run a bit more stable with this patch applied.
->
-> Yes, but I don't see why you are adding a new flag, nor do I see why we
-> want to keep checking for that flag in the rpc_execute() loop.
-> rpc_killall_tasks() is not a frequent operation that we want to optimise
-> for.
->
-> How about the following instead?
->
-> 8<----------------------------------------------------------------------------------
->  From ecb7244b661c3f9d2008ef6048733e5cea2f98ab Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust<Trond.Myklebust@netapp.com>
-> Date: Wed, 6 Jul 2011 19:44:52 -0400
-> Subject: [PATCH] SUNRPC: Fix a race between work-queue and rpc_killall_tasks
->
-> Since rpc_killall_tasks may modify the rpc_task's tk_action field
-> without any locking, we need to be careful when dereferencing it.
->
-> Reported-by: Ben Greear<greearb@candelatech.com>
-> Signed-off-by: Trond Myklebust<Trond.Myklebust@netapp.com>
+This patch set adds a block layout driver to the pNFS client.  It passes
+Connectathon tests and is bisectable.  It requires an updated version of
+nfs-utils, and patches for that have been sent separately to the nfs-utils
+maintainer.
 
-I've been testing this for 4+ hours, and it seems to fix the problem.  We'll
-continue to burn on it for a day or two just in case we're
-getting (un)lucky in our testing.
+This patch set is also available on the for-trond branch of the git repo at
+git://citi.umich.edu/projects/linux-pnfs-blk.git
 
-Thanks,
-Ben
+This is version 7 of this patch set.  Changes since version 6:
 
-> ---
->   net/sunrpc/sched.c |   27 +++++++++++----------------
->   1 files changed, 11 insertions(+), 16 deletions(-)
->
-> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-> index a27406b..4814e24 100644
-> --- a/net/sunrpc/sched.c
-> +++ b/net/sunrpc/sched.c
-> @@ -616,30 +616,25 @@ static void __rpc_execute(struct rpc_task *task)
->   	BUG_ON(RPC_IS_QUEUED(task));
->
->   	for (;;) {
-> +		void (*do_action)(struct rpc_task *);
->
->   		/*
-> -		 * Execute any pending callback.
-> +		 * Execute any pending callback first.
->   		 */
-> -		if (task->tk_callback) {
-> -			void (*save_callback)(struct rpc_task *);
-> -
-> -			/*
-> -			 * We set tk_callback to NULL before calling it,
-> -			 * in case it sets the tk_callback field itself:
-> -			 */
-> -			save_callback = task->tk_callback;
-> -			task->tk_callback = NULL;
-> -			save_callback(task);
-> -		} else {
-> +		do_action = task->tk_callback;
-> +		task->tk_callback = NULL;
-> +		if (do_action == NULL) {
->   			/*
->   			 * Perform the next FSM step.
-> -			 * tk_action may be NULL when the task has been killed
-> -			 * by someone else.
-> +			 * tk_action may be NULL if the task has been killed.
-> +			 * In particular, note that rpc_killall_tasks may
-> +			 * do this at any time, so beware when dereferencing.
->   			 */
-> -			if (task->tk_action == NULL)
-> +			do_action = task->tk_action;
-> +			if (do_action == NULL)
->   				break;
-> -			task->tk_action(task);
->   		}
-> +		do_action(task);
->
->   		/*
->   		 * Lockless check for whether task is sleeping or not.
+- sign off on all patches
+- squash more of "rm inode and pnfs_layout_hdr args from cleanup_layoutcommit()"
 
+Changes since version 5:
+
+- rearrange layoutcommit lwb and cred patches per Boaz
+  "[PATCHSET 0/6] Patches needed for Stable" 29 Jul 2011 23:19:52 -0700
+  and put these patches first
+- add prefix to exported symbols, or make them static
+
+Changes since version 4:
+
+- rm inode and pnfs_layout_hdr args from cleanup_layoutcommit()
+
+Changes since version 3:
+
+- Rebase to trond/nfs-for-3.1 (commit ed1e6211a0).
+- Change return value NFS4ERR_REP_TOO_BIG to EIO in decode_getdevicelist.
+- fix error message in set_pnfs_layoutdriver.
+- remove dont_like_caller from read_pagelist and write_pagelist.
+- rename mark_for_commit to bl_mark_for_commit
+- split the patch "NFS41: Let layoutcommit handle multiple segments" into 4
+  patches each does one task only.
+- fix race in saving cred in layout header.
+- move the patch "NFS41: save layoutcommit cred after first successful
+  layoutget" to an earlier place.
+- "[PATCH v3 25/25] NFS41: Drop lseg ref before fallthru to MDS" is dropped.   
+- move GETDEVICELIST to end of nfs4_procedures[]
+
+Changes since version 2:
+
+- Rebase to trond/nfs-for-next (commit ed1e6211a0).
+- Fix Fred's and Benny's email addresses.
+- Use FIXME to flag code that needs more work.
+- Remove obsolete comments.
+- Minor patch re-orgs per reviewer comments.
+
+Changes since version 1:
+
+NFS41: Drop lseg ref before fallthru to MDS
+SQUASHME: pnfsblock: get rid of vmap and deviceid->area structure
+SQUASHME: pnfsblock: define module alias
+SQUASHME: pnfsblock: bl_find_get_extent optimization: mv break clause to end of loop
+SQUASHME: pnfsblock: test debug bit once for multiple dprintks
+SQUASHME: pnfsblock: typo
+SQUASHME: pnfsblock: get rid of unused leftovers from device mapping removal
+
+Andy Adamson (2):
+  pnfs: GETDEVICELIST
+  pnfs: cleanup_layoutcommit
+
+Benny Halevy (2):
+  pnfs: add set-clear layoutdriver interface
+  pnfsblock: use pageio_ops api
+
+Fred Isaman (15):
+  pnfs: ask for layout_blksize and save it in nfs_server
+  pnfsblock: add blocklayout Kconfig option, Makefile, and stubs
+  pnfsblock: basic extent code
+  pnfsblock: lseg alloc and free
+  pnfsblock: merge extents
+  pnfsblock: call and parse getdevicelist
+  pnfsblock: xdr decode pnfs_block_layout4
+  pnfsblock: bl_find_get_extent
+  pnfsblock: add extent manipulation functions
+  pnfsblock: merge rw extents
+  pnfsblock: encode_layoutcommit
+  pnfsblock: cleanup_layoutcommit
+  pnfsblock: bl_read_pagelist
+  pnfsblock: bl_write_pagelist
+  pnfsblock: note written INVAL areas for layoutcommit
+
+Jim Rees (2):
+  pnfsblock: add device operations
+  pnfsblock: remove device operations
+
+Peng Tao (5):
+  pnfs: save layoutcommit lwb at layout header
+  pnfs: save layoutcommit cred at layout header init
+  pnfs: let layoutcommit handle a list of lseg
+  pnfs: use lwb as layoutcommit length
+  pnfsblock: write_pagelist handle zero invalid extents
+
+ fs/nfs/Kconfig                      |    8 +-
+ fs/nfs/Makefile                     |    1 +
+ fs/nfs/blocklayout/Makefile         |    5 +
+ fs/nfs/blocklayout/blocklayout.c    | 1019 +++++++++++++++++++++++++++++++++++
+ fs/nfs/blocklayout/blocklayout.h    |  207 +++++++
+ fs/nfs/blocklayout/blocklayoutdev.c |  410 ++++++++++++++
+ fs/nfs/blocklayout/blocklayoutdm.c  |  111 ++++
+ fs/nfs/blocklayout/extents.c        |  935 ++++++++++++++++++++++++++++++++
+ fs/nfs/client.c                     |   11 +-
+ fs/nfs/nfs4_fs.h                    |    2 +-
+ fs/nfs/nfs4filelayout.c             |    2 +-
+ fs/nfs/nfs4proc.c                   |   62 ++-
+ fs/nfs/nfs4xdr.c                    |  233 ++++++++-
+ fs/nfs/pnfs.c                       |   86 ++--
+ fs/nfs/pnfs.h                       |   28 +-
+ include/linux/nfs.h                 |    2 +
+ include/linux/nfs4.h                |    1 +
+ include/linux/nfs_fs_sb.h           |    4 +-
+ include/linux/nfs_xdr.h             |   17 +-
+ 19 files changed, 3077 insertions(+), 67 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/Makefile
+ create mode 100644 fs/nfs/blocklayout/blocklayout.c
+ create mode 100644 fs/nfs/blocklayout/blocklayout.h
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdev.c
+ create mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
+ create mode 100644 fs/nfs/blocklayout/extents.c
 
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+1.7.4.1
 
