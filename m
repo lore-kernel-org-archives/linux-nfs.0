@@ -1,76 +1,394 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:40538 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753077Ab1G0KRW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2011 06:17:22 -0400
-From: <tao.peng@emc.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, <bhalevy@tonian.com>
-Date: Wed, 27 Jul 2011 06:17:02 -0400
-Subject: RE: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
-Message-ID: <F19688880B763E40B28B2B462677FBF805BF06181F@MX09A.corp.emc.com>
-References: <1309743002-1658-1-git-send-email-bergwolf@gmail.com>
- <4E18614C.4010002@tonian.com>
- <F19688880B763E40B28B2B462677FBF805BF0610CE@MX09A.corp.emc.com>
- <1311621204.28209.14.camel@lade.trondhjem.org>
- <CA+a=Yy59HXXjd4HgrqeANaQZKO9rRPKzM+r3NNq2KSMV_L4S_w@mail.gmail.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A51825D@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A51825D@SACMVEXC2-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:38146 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752936Ab1GaAxo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 20:53:44 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v7 26/26] pnfsblock: write_pagelist handle zero invalid extents
+Date: Sat, 30 Jul 2011 20:52:56 -0400
+Message-Id: <1312073576-11024-27-git-send-email-rees@umich.edu>
+In-Reply-To: <1312073576-11024-1-git-send-email-rees@umich.edu>
+References: <1312073576-11024-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-SGksIFRyb25kLA0KDQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IGxpbnV4
-LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmcgW21haWx0bzpsaW51eC1uZnMtb3duZXJAdmdlci5r
-ZXJuZWwub3JnXQ0KPiBPbiBCZWhhbGYgT2YgTXlrbGVidXN0LCBUcm9uZA0KPiBTZW50OiBUdWVz
-ZGF5LCBKdWx5IDI2LCAyMDExIDExOjUwIFBNDQo+IFRvOiBQZW5nIFRhbw0KPiBDYzogUGVuZywg
-VGFvOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyBiaGFsZXZ5QHRvbmlhbi5jb20NCj4gU3Vi
-amVjdDogUkU6IFtQQVRDSF0gTkZTNDE6IERyb3AgbHNlZyByZWYgYmVmb3JlIGZhbGx0aHJ1IHRv
-IE1EUw0KPiANCj4gPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+IEZyb206IFBlbmcg
-VGFvIFttYWlsdG86YmVyZ3dvbGZAZ21haWwuY29tXQ0KPiA+IFNlbnQ6IFR1ZXNkYXksIEp1bHkg
-MjYsIDIwMTEgMTE6MzcgQU0NCj4gPiBUbzogTXlrbGVidXN0LCBUcm9uZA0KPiA+IENjOiB0YW8u
-cGVuZ0BlbWMuY29tOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyBiaGFsZXZ5QHRvbmlhbi5j
-b20NCj4gPiBTdWJqZWN0OiBSZTogW1BBVENIXSBORlM0MTogRHJvcCBsc2VnIHJlZiBiZWZvcmUg
-ZmFsbHRocnUgdG8gTURTDQo+ID4NCj4gPiBIaSwgVHJvbmQsDQo+ID4NCj4gPiBPbiBUdWUsIEp1
-bCAyNiwgMjAxMSBhdCAzOjEzIEFNLCBUcm9uZCBNeWtsZWJ1c3QNCj4gPiA8VHJvbmQuTXlrbGVi
-dXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+ID4gT24gV2VkLCAyMDExLTA3LTIwIGF0IDAxOjUy
-IC0wNDAwLCB0YW8ucGVuZ0BlbWMuY29tIHdyb3RlOg0KPiA+ID4+IEhpLCBUcm9uZCwNCj4gPiA+
-Pg0KPiA+ID4+IEFueSBjb21tZW50cyBvbiB0aGlzIHBhdGNoPyBJIHN0aWxsIGdldCBrZXJuZWwg
-Y3Jhc2ggd2hlbiBwbmZzIHdyaXRlDQo+ID4gaXMgYXR0ZW1wdGVkIGJ1dCBmYWlscyBhbmQgY2Fs
-bHMgcG5mc19sZF93cml0ZV9kb25lKCkuIEl0IHNlZW1zIG9iamVjdA0KPiA+IGxheW91dCB1c2Vz
-IHRoZSBzYW1lIGNvZGUgcGF0aCBhcyB3ZWxsLiBCdXQgSSBkb24ndCBmaW5kIHRoZSBwYXRjaCBp
-bg0KPiA+IGVpdGhlciB5b3VyIHRyZWUgb3IgQmVubnkncyB0cmVlLiBBcmUgdGhlcmUgYW55IGNv
-bmNlcm5zPw0KPiA+ID4+DQo+ID4gPj4gVGhhbmtzLA0KPiA+ID4+IFRhbw0KPiA+ID4NCj4gPiA+
-IFRoZSB3aG9sZSBwbmZzX2xkX3dyaXRlX2RvbmUgdGhpbmcgaXMgYm9ndXMgYW5kIG5lZWRzIHRv
-IGJlIHJlcGxhY2VkDQo+ID4gPiB3aXRoIHNvbWV0aGluZyBzYW5lLiBJdCBpcyB0cnlpbmcgdG8g
-aW5pdGlhdGUgYSBXUklURSBSUEMgY2FsbCB3aXRoDQo+ID4gdGhlDQo+ID4gPiB3cm9uZyBibG9j
-ayBzaXplLCBhbmQgaXMgY2FsbGluZyB0aGUgTURTIHJwY19jYWxsX2RvbmUoKSBhbmQNCj4gPiA+
-IHJwY19yZWxlYXNlKCkgd2l0aCBhbiB1bmluaXRpYWxpc2VkIHJwYyB0YXNrIHBvaW50ZXIuDQo+
-ID4gPg0KPiA+ID4gRGl0dG8gZm9yIHBuZnNfbGRfcmVhZF9kb25lLg0KPiA+IFRoYW5rcyBmb3Ig
-eW91ciBleHBsYW5hdGlvbi4gSXMgdGhlcmUgYW55IHBsYW4gb24gaG93IHRvIGZpeA0KPiA+IHBu
-ZnNfbGRfcmVhZC93cml0ZV9kb25lPyBCYXNpY2FsbHksIHdlIHdvdWxkIG5lZWQgYW4gaW50ZXJm
-YWNlIHRoYXQNCj4gPiBjYW4gcmVkaXJlY3QgdGhlIElPIHRvIE1EUyBpZiBwbmZzX2Vycm9yIGlz
-IHNldCBvciBkbyBhbGwgbmVjZXNzYXJ5DQo+ID4gY2xlYW51cCB3b3JrIHRvIGVuZCByZWFkL3dy
-aXRlIGlmIHBuZnNfZXJyb3IgaXMgMC4gSU1ITywgdGhlDQo+ID4gcmVjb2FsZXNjZSBsb2dpYyBu
-ZWVkIHRvIGFjY2VzcyBuZnNfcGFnZWlvX2Rlc2NyaXB0b3IgYnV0IHdlIGRvIG5vdA0KPiA+IGhh
-dmUgdGhhdCBpbmZvcm1hdGlvbiBhdCBwbmZzX2xkX3JlYWQvd3JpdGVfZG9uZS4NCj4gDQo+IEFz
-IGZhciBhcyBJIGNhbiBzZWUsIHRoZSByaWdodCB0aGluZyB0byBkbyBpcyB0byBtYXJrIHRoZSBs
-YXlvdXQgYXMgaW52YWxpZCBhbmQgdGhlbg0KPiByZWRpcnR5IHRoZSBwYWdlLiBJdCBzaG91bGQg
-YmUgZWFzeSB0byBoYXZlIGZzeW5jKCkgcmUtc2VuZCB0aGUgcGFnZXMgaW4gdGhpcyBjYXNlLg0K
-PiBUaGVzZSBzaG91bGQgYmUgZXh0cmVtZWx5IHJhcmUgZXZlbnRzLCBzaW5jZSB3ZSBleHBlY3Qg
-dG8gY2F0Y2ggbW9zdCBvZiB0aGUgcE5GUw0KPiBmYWlsdXJlcyB3aGVuIHdlIGRvIHRoZSBhY3R1
-YWwgTEFZT1VUR0VUIGluIHRoZSAtPnBnX2luaXQoKS4NCkFub3RoZXIgcHJvYmxlbSB0aGF0IGp1
-c3QgY29tZXMgaW50byBteSBoZWFkIGlzIHJlYWRwYWdlIGZhaWx1cmVzLiBIb3cgZG8gd2UgcmVz
-Y2hkdWxlIHJlYWQgZmFpbHVyZXMgaWYgbm90IHJlLXNlbmRpbmcgaXQgdG8gTURTPw0KDQpUaGFu
-a3MsDQpUYW8NCj4gDQo+IE15IG1haW4gd29ycnkgaXMgZm9yIGFpby9kaW8gd2hlcmUgdGhlcmUg
-aXMgbm8gZ29vZCBtZWNoYW5pc20gZm9yIHJldHJ5aW5nLiBJJ20gc3RpbGwNCj4gd29ya2luZyBv
-biB0aGF0Li4uDQo+IA0KPiBDaGVlcnMNCj4gICBUcm9uZA0KPiAE77+9ey5u77+9K++/ve+/ve+/
-ve+/ve+/ve+/ve+/vSsl77+977+9bHp3be+/ve+/vWLvv73rp7Lvv73vv71y77+977+9eljvv73v
-v70Z37Ip77+977+977+9dyoNCj4gamfvv73vv73vv70e77+977+977+977+977+93aJqL++/ve+/
-ve+/vXrvv73elu+/ve+/vTLvv73eme+/ve+/ve+/vSbvv70p36Hvv71h77+977+9f++/ve+/vR7v
-v71H77+977+977+9aO+/vQ/vv71qOit277+977+977+9d++/vdmlDQoT77+977+97Lm7HO+/vSbv
-v71+77+9Ju+/vRjvv73vv70rLe+/ve+/vd22F++/ve+/vXfvv73vv73Lm++/ve+/ve+/vW3vv71i
-77+977+9Z37Ip++/vRfvv73vv73cqH3vv73vv73vv73GoHrvv70majordu+/ve+/ve+/vQfvv73v
-v73vv73vv716Wivvv73vv70rembvv73vv73vv71o77+977+977+9fu+/ve+/ve+/ve+/vWnvv73v
-v73vv71677+9Hu+/vXfvv73vv73vv70/77+977+977+977+9Ju+/vSnfohtm
+From: Peng Tao <bergwolf@gmail.com>
+
+For invalid extents, find other pages in the same fsblock and write them out.
+
+[pnfsblock: write_begin]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
+---
+ fs/nfs/blocklayout/blocklayout.c |  275 ++++++++++++++++++++++++++++++++------
+ 1 files changed, 233 insertions(+), 42 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 21efef7..e56564d 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -35,6 +35,7 @@
+ #include <linux/mount.h>
+ #include <linux/namei.h>
+ #include <linux/bio.h>		/* struct bio */
++#include <linux/buffer_head.h>	/* various write calls */
+ 
+ #include "blocklayout.h"
+ 
+@@ -79,12 +80,8 @@ static int is_hole(struct pnfs_block_extent *be, sector_t isect)
+  */
+ static int is_writable(struct pnfs_block_extent *be, sector_t isect)
+ {
+-	if (be->be_state == PNFS_BLOCK_READWRITE_DATA)
+-		return 1;
+-	else if (be->be_state != PNFS_BLOCK_INVALID_DATA)
+-		return 0;
+-	else
+-		return bl_is_sector_init(be->be_inval, isect);
++	return (be->be_state == PNFS_BLOCK_READWRITE_DATA ||
++		be->be_state == PNFS_BLOCK_INVALID_DATA);
+ }
+ 
+ /* The data we are handed might be spread across several bios.  We need
+@@ -353,6 +350,31 @@ static void mark_extents_written(struct pnfs_block_layout *bl,
+ 	}
+ }
+ 
++static void bl_end_io_write_zero(struct bio *bio, int err)
++{
++	struct parallel_io *par = bio->bi_private;
++	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
++	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
++	struct nfs_write_data *wdata = (struct nfs_write_data *)par->data;
++
++	do {
++		struct page *page = bvec->bv_page;
++
++		if (--bvec >= bio->bi_io_vec)
++			prefetchw(&bvec->bv_page->flags);
++		/* This is the zeroing page we added */
++		end_page_writeback(page);
++		page_cache_release(page);
++	} while (bvec >= bio->bi_io_vec);
++	if (!uptodate) {
++		if (!wdata->pnfs_error)
++			wdata->pnfs_error = -EIO;
++		bl_set_lo_fail(wdata->lseg);
++	}
++	bio_put(bio);
++	put_parallel(par);
++}
++
+ /* This is basically copied from mpage_end_io_read */
+ static void bl_end_io_write(struct bio *bio, int err)
+ {
+@@ -379,11 +401,8 @@ static void bl_write_cleanup(struct work_struct *work)
+ 	dprintk("%s enter\n", __func__);
+ 	task = container_of(work, struct rpc_task, u.tk_work);
+ 	wdata = container_of(task, struct nfs_write_data, task);
+-	if (!wdata->task.tk_status) {
++	if (!wdata->pnfs_error) {
+ 		/* Marks for LAYOUTCOMMIT */
+-		/* BUG - this should be called after each bio, not after
+-		 * all finish, unless have some way of storing success/failure
+-		 */
+ 		mark_extents_written(BLK_LSEG2EXT(wdata->lseg),
+ 				     wdata->args.offset, wdata->args.count);
+ 	}
+@@ -391,38 +410,110 @@ static void bl_write_cleanup(struct work_struct *work)
+ }
+ 
+ /* Called when last of bios associated with a bl_write_pagelist call finishes */
+-static void
+-bl_end_par_io_write(void *data)
++static void bl_end_par_io_write(void *data)
+ {
+ 	struct nfs_write_data *wdata = data;
+ 
+-	/* STUB - ignoring error handling */
+ 	wdata->task.tk_status = 0;
+ 	wdata->verf.committed = NFS_FILE_SYNC;
+ 	INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
+ 	schedule_work(&wdata->task.u.tk_work);
+ }
+ 
++/* FIXME STUB - mark intersection of layout and page as bad, so is not
++ * used again.
++ */
++static void mark_bad_read(void)
++{
++	return;
++}
++
++/*
++ * map_block:  map a requested I/0 block (isect) into an offset in the LVM
++ * block_device
++ */
++static void
++map_block(struct buffer_head *bh, sector_t isect, struct pnfs_block_extent *be)
++{
++	dprintk("%s enter be=%p\n", __func__, be);
++
++	set_buffer_mapped(bh);
++	bh->b_bdev = be->be_mdev;
++	bh->b_blocknr = (isect - be->be_f_offset + be->be_v_offset) >>
++	    (be->be_mdev->bd_inode->i_blkbits - SECTOR_SHIFT);
++
++	dprintk("%s isect %llu, bh->b_blocknr %ld, using bsize %Zd\n",
++		__func__, (unsigned long long)isect, (long)bh->b_blocknr,
++		bh->b_size);
++	return;
++}
++
++/* Given an unmapped page, zero it or read in page for COW, page is locked
++ * by caller.
++ */
++static int
++init_page_for_write(struct page *page, struct pnfs_block_extent *cow_read)
++{
++	struct buffer_head *bh = NULL;
++	int ret = 0;
++	sector_t isect;
++
++	dprintk("%s enter, %p\n", __func__, page);
++	BUG_ON(PageUptodate(page));
++	if (!cow_read) {
++		zero_user_segment(page, 0, PAGE_SIZE);
++		SetPageUptodate(page);
++		goto cleanup;
++	}
++
++	bh = alloc_page_buffers(page, PAGE_CACHE_SIZE, 0);
++	if (!bh) {
++		ret = -ENOMEM;
++		goto cleanup;
++	}
++
++	isect = (sector_t) page->index << PAGE_CACHE_SECTOR_SHIFT;
++	map_block(bh, isect, cow_read);
++	if (!bh_uptodate_or_lock(bh))
++		ret = bh_submit_read(bh);
++	if (ret)
++		goto cleanup;
++	SetPageUptodate(page);
++
++cleanup:
++	bl_put_extent(cow_read);
++	if (bh)
++		free_buffer_head(bh);
++	if (ret) {
++		/* Need to mark layout with bad read...should now
++		 * just use nfs4 for reads and writes.
++		 */
++		mark_bad_read();
++	}
++	return ret;
++}
++
+ static enum pnfs_try_status
+ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ {
+-	int i;
++	int i, ret, npg_zero, pg_index, last = 0;
+ 	struct bio *bio = NULL;
+-	struct pnfs_block_extent *be = NULL;
+-	sector_t isect, extent_length = 0;
++	struct pnfs_block_extent *be = NULL, *cow_read = NULL;
++	sector_t isect, last_isect = 0, extent_length = 0;
+ 	struct parallel_io *par;
+ 	loff_t offset = wdata->args.offset;
+ 	size_t count = wdata->args.count;
+ 	struct page **pages = wdata->args.pages;
+-	int pg_index = wdata->args.pgbase >> PAGE_CACHE_SHIFT;
++	struct page *page;
++	pgoff_t index;
++	u64 temp;
++	int npg_per_block =
++	    NFS_SERVER(wdata->inode)->pnfs_blksize >> PAGE_CACHE_SHIFT;
+ 
+ 	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
+ 	/* At this point, wdata->pages is a (sequential) list of nfs_pages.
+-	 * We want to write each, and if there is an error remove it from
+-	 * list and call
+-	 * nfs_retry_request(req) to have it redone using nfs.
+-	 * QUEST? Do as block or per req?  Think have to do per block
+-	 * as part of end_bio
++	 * We want to write each, and if there is an error set pnfs_error
++	 * to have it redone using nfs.
+ 	 */
+ 	par = alloc_parallel(wdata);
+ 	if (!par)
+@@ -433,7 +524,91 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ 	/* At this point, have to be more careful with error handling */
+ 
+ 	isect = (sector_t) ((offset & (long)PAGE_CACHE_MASK) >> SECTOR_SHIFT);
+-	for (i = pg_index; i < wdata->npages ; i++) {
++	be = bl_find_get_extent(BLK_LSEG2EXT(wdata->lseg), isect, &cow_read);
++	if (!be || !is_writable(be, isect)) {
++		dprintk("%s no matching extents!\n", __func__);
++		wdata->pnfs_error = -EINVAL;
++		goto out;
++	}
++
++	/* First page inside INVALID extent */
++	if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
++		temp = offset >> PAGE_CACHE_SHIFT;
++		npg_zero = do_div(temp, npg_per_block);
++		isect = (sector_t) (((offset - npg_zero * PAGE_CACHE_SIZE) &
++				     (long)PAGE_CACHE_MASK) >> SECTOR_SHIFT);
++		extent_length = be->be_length - (isect - be->be_f_offset);
++
++fill_invalid_ext:
++		dprintk("%s need to zero %d pages\n", __func__, npg_zero);
++		for (;npg_zero > 0; npg_zero--) {
++			/* page ref released in bl_end_io_write_zero */
++			index = isect >> PAGE_CACHE_SECTOR_SHIFT;
++			dprintk("%s zero %dth page: index %lu isect %llu\n",
++				__func__, npg_zero, index,
++				(unsigned long long)isect);
++			page =
++			    find_or_create_page(wdata->inode->i_mapping, index,
++						GFP_NOFS);
++			if (!page) {
++				dprintk("%s oom\n", __func__);
++				wdata->pnfs_error = -ENOMEM;
++				goto out;
++			}
++
++			/* PageDirty: Other will write this out
++			 * PageWriteback: Other is writing this out
++			 * PageUptodate: It was read before
++			 * sector_initialized: already written out
++			 */
++			if (PageDirty(page) || PageWriteback(page) ||
++			    bl_is_sector_init(be->be_inval, isect)) {
++				print_page(page);
++				unlock_page(page);
++				page_cache_release(page);
++				goto next_page;
++			}
++			if (!PageUptodate(page)) {
++				/* New page, readin or zero it */
++				init_page_for_write(page, cow_read);
++			}
++			set_page_writeback(page);
++			unlock_page(page);
++
++			ret = bl_mark_sectors_init(be->be_inval, isect,
++						       PAGE_CACHE_SECTORS,
++						       NULL);
++			if (unlikely(ret)) {
++				dprintk("%s bl_mark_sectors_init fail %d\n",
++					__func__, ret);
++				end_page_writeback(page);
++				page_cache_release(page);
++				wdata->pnfs_error = ret;
++				goto out;
++			}
++			bio = bl_add_page_to_bio(bio, npg_zero, WRITE,
++						 isect, page, be,
++						 bl_end_io_write_zero, par);
++			if (IS_ERR(bio)) {
++				wdata->pnfs_error = PTR_ERR(bio);
++				goto out;
++			}
++			/* FIXME: This should be done in bi_end_io */
++			mark_extents_written(BLK_LSEG2EXT(wdata->lseg),
++					     page->index << PAGE_CACHE_SHIFT,
++					     PAGE_CACHE_SIZE);
++next_page:
++			isect += PAGE_CACHE_SECTORS;
++			extent_length -= PAGE_CACHE_SECTORS;
++		}
++		if (last)
++			goto write_done;
++	}
++	bio = bl_submit_bio(WRITE, bio);
++
++	/* Middle pages */
++	pg_index = wdata->args.pgbase >> PAGE_CACHE_SHIFT;
++	for (i = pg_index; i < wdata->npages; i++) {
+ 		if (!extent_length) {
+ 			/* We've used up the previous extent */
+ 			bl_put_extent(be);
+@@ -442,35 +617,51 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ 			be = bl_find_get_extent(BLK_LSEG2EXT(wdata->lseg),
+ 					     isect, NULL);
+ 			if (!be || !is_writable(be, isect)) {
+-				wdata->pnfs_error = -ENOMEM;
++				wdata->pnfs_error = -EINVAL;
+ 				goto out;
+ 			}
+ 			extent_length = be->be_length -
+-				(isect - be->be_f_offset);
++			    (isect - be->be_f_offset);
+ 		}
+-		for (;;) {
+-			if (!bio) {
+-				bio = bio_alloc(GFP_NOIO, wdata->npages - i);
+-				if (!bio) {
+-					wdata->pnfs_error = -ENOMEM;
+-					goto out;
+-				}
+-				bio->bi_sector = isect - be->be_f_offset +
+-					be->be_v_offset;
+-				bio->bi_bdev = be->be_mdev;
+-				bio->bi_end_io = bl_end_io_write;
+-				bio->bi_private = par;
++		if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
++			ret = bl_mark_sectors_init(be->be_inval, isect,
++						       PAGE_CACHE_SECTORS,
++						       NULL);
++			if (unlikely(ret)) {
++				dprintk("%s bl_mark_sectors_init fail %d\n",
++					__func__, ret);
++				wdata->pnfs_error = ret;
++				goto out;
+ 			}
+-			if (bio_add_page(bio, pages[i], PAGE_SIZE, 0))
+-				break;
+-			bio = bl_submit_bio(WRITE, bio);
++		}
++		bio = bl_add_page_to_bio(bio, wdata->npages - i, WRITE,
++					 isect, pages[i], be,
++					 bl_end_io_write, par);
++		if (IS_ERR(bio)) {
++			wdata->pnfs_error = PTR_ERR(bio);
++			goto out;
+ 		}
+ 		isect += PAGE_CACHE_SECTORS;
++		last_isect = isect;
+ 		extent_length -= PAGE_CACHE_SECTORS;
+ 	}
+-	wdata->res.count = (isect << SECTOR_SHIFT) - (offset);
+-	if (count < wdata->res.count)
++
++	/* Last page inside INVALID extent */
++	if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
++		bio = bl_submit_bio(WRITE, bio);
++		temp = last_isect >> PAGE_CACHE_SECTOR_SHIFT;
++		npg_zero = npg_per_block - do_div(temp, npg_per_block);
++		if (npg_zero < npg_per_block) {
++			last = 1;
++			goto fill_invalid_ext;
++		}
++	}
++
++write_done:
++	wdata->res.count = (last_isect << SECTOR_SHIFT) - (offset);
++	if (count < wdata->res.count) {
+ 		wdata->res.count = count;
++	}
+ out:
+ 	bl_put_extent(be);
+ 	bl_submit_bio(WRITE, bio);
+-- 
+1.7.4.1
+
