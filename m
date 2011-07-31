@@ -1,145 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:53763 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753570Ab1GZT3M (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2011 15:29:12 -0400
-Received: by vxh35 with SMTP id 35so571688vxh.19
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Jul 2011 12:29:12 -0700 (PDT)
-Message-ID: <4E2F1584.60901@marcanoonline.com>
-Date: Tue, 26 Jul 2011 14:59:08 -0430
-From: Robert Marcano <robert@marcanoonline.com>
-To: linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 / POSIX ACL mapping bug?
-References: <4E2ED2A0.4030401@marcanoonline.com> <D7BF98E9-394A-4364-8124-1E39BEBE85DC@netapp.com>
-In-Reply-To: <D7BF98E9-394A-4364-8124-1E39BEBE85DC@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:42905 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751185Ab1GaG7D (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jul 2011 02:59:03 -0400
+Subject: Re: [PATCH] sunrpc: use better NUMA affinities
+From: Eric Dumazet <eric.dumazet@gmail.com>
+To: NeilBrown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, Greg Banks <gnb@fastmail.fm>,
+        Christoph Hellwig <hch@infradead.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>
+In-Reply-To: <1312006990.2873.75.camel@edumazet-laptop>
+References: <1311921035.7845.10.camel@edumazet-laptop>
+	 <4E3258E1.6020000@fastmail.fm> <20110729103634.GA12050@infradead.org>
+	 <5933F48C-49D6-492D-AB7B-B76A3ADDB6C6@fastmail.fm>
+	 <1311941491.2843.7.camel@edumazet-HP-Compaq-6005-Pro-SFF-PC>
+	 <F67B6E82-9FA8-464E-B3FB-DC0D4EC18BB0@fastmail.fm>
+	 <20110729164836.GL23194@fieldses.org> <20110729165345.GM23194@fieldses.org>
+	 <F562C6F4-3FC2-4952-A903-8E87E9EF2D9D@fastmail.fm>
+	 <20110730093025.716f3f50@notabene.brown>
+	 <20110729234857.GA30941@fieldses.org>
+	 <1311998914.2873.27.camel@edumazet-laptop>
+	 <20110730160610.0b751ffd@notabene.brown>
+	 <1312006990.2873.75.camel@edumazet-laptop>
+Content-Type: text/plain; charset="UTF-8"
+Date: Sun, 31 Jul 2011 08:58:54 +0200
+Message-ID: <1312095534.2873.108.camel@edumazet-laptop>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 07/26/2011 02:03 PM, Andy Adamson wrote:
-> Hi
->
-> Which client, which server (distro and uname -a output) did you use? Also, what commands (setfacl,getfacl? nfs4_setfacl, nfs4_getfacl ? plus version) and parameters did you use?
+Le samedi 30 juillet 2011 à 08:23 +0200, Eric Dumazet a écrit :
+> Le samedi 30 juillet 2011 à 16:06 +1000, NeilBrown a écrit :
+> > umount /proc/fs/nfsd
+> > 
+> > 
+> 
+> Thans  a lot, this was the thing I missed !
+> 
+> 
 
-Thanks, here is the missing data
+Hmm, after this, I left things as the were (nfsd module loaded, but a 0
+use count )
 
-NFS Server:
-   CentOS release 5.6
-   Linux *** 2.6.18-238.9.1.el5 #1 SMP Tue Apr 12 18:10:13 EDT 2011 
-x86_64 x86_64 x86_64 GNU/Linux
+I got a BUG while updatedb was running,
+(I tried this on a debian machine/kernel)
 
-Client:
-   Fedora 15
-   Linux *** 2.6.38.7-30.fc15.i686.PAE #1 SMP Fri May 27 05:44:56 UTC 
-2011 i686 i686 i386 GNU/Linux
+Same bug on :
 
-The acls are POSIX ACLs assigned server side
+cat /proc/self/mounts 
 
-=================================================
-Commands on the CentOS NFS server:
-not on the NFS mounted directory but on the source filesystem that is 
-exported, using root
-=================================================
-# umask 022
-# mkdir directory
-# setfacl -m d:g:sharedgroup:rwx directory
-# setfacl -m g:sharedgroup:rwx directory
-# touch directory/server
-# getfacl directory/server
+I'll take a look at this issue later, after my vacations, unless someone
+wants to take a look before me ;)
 
-# file: directory/server
-# owner: root
-# group: root
-user::rw-
-group::r-x			#effective:r--
-group:sharedgroup:rwx		#effective:rw-
-mask::rw-
-other::r--
+[1020029.301174] BUG: unable to handle kernel paging request at ffffffffa03da0d0
+[1020029.301318] IP: [<ffffffff811105bd>] show_type+0x17/0x5a
+[1020029.301436] PGD 1605067 PUD 1609063 PMD 127353067 PTE 0
+[1020029.301574] Oops: 0000 [#1] SMP 
+[1020029.301637] last sysfs file: /sys/module/nfsd/initstate
+[1020029.301722] CPU 6 
+[1020029.301765] Modules linked in: nfsd fuse btrfs zlib_deflate crc32c libcrc32c ufs qnx4 hfsplus hfs minix ntfs vfat msdos fat jfs xfs reiserfs ext4 jbd2 crc16 ext2 dm_mod nls_utf8 isofs lockd fscache auth_rpcgss nfs_acl sunrpc loop i5000_edac radeon edac_core ttm drm_kms_helper snd_pcm drm snd_timer snd i2c_algo_bit soundcore i2c_core snd_page_alloc i5k_amb power_supply ipmi_si evdev psmouse rng_core ipmi_msghandler hpilo hpwdt shpchp processor button pcspkr serio_raw pci_hotplug container ext3 jbd mbcache hpsa usbhid hid uhci_hcd cciss scsi_mod ehci_hcd usbcore bnx2 thermal thermal_sys [last unloaded: nfsd]
+[1020029.303561] 
+[1020029.303588] Pid: 23460, comm: updatedb.mlocat Tainted: G  R          2.6.39-2-amd64 #1 HP ProLiant BL460c G1
+[1020029.303751] RIP: 0010:[<ffffffff811105bd>]  [<ffffffff811105bd>] show_type+0x17/0x5a
+[1020029.303866] RSP: 0018:ffff880011da7e48  EFLAGS: 00010296
+[1020029.303953] RAX: ffffffffa03da0d0 RBX: ffff8801288a4a80 RCX: 0000000000007774
+[1020029.304061] RDX: ffffffff814c9935 RSI: ffff880129ea3800 RDI: ffff8801288a4a80
+[1020029.304169] RBP: ffff880129ea3800 R08: ffff880011da7e68 R09: ffffffffffffffff
+[1020029.304263] R10: ffff880011d883b2 R11: 0000000000000007 R12: ffff88012794a2c0
+[1020029.304263] R13: ffff8801288a4a80 R14: ffff88012794a338 R15: 0000000000000000
+[1020029.304263] FS:  00007f9cf0dec700(0000) GS:ffff88012fd80000(0000) knlGS:0000000000000000
+[1020029.304263] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[1020029.304263] CR2: ffffffffa03da0d0 CR3: 0000000058f90000 CR4: 00000000000006e0
+[1020029.304263] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+[1020029.304263] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+[1020029.304263] Process updatedb.mlocat (pid: 23460, threadinfo ffff880011da6000, task ffff88002741a440)
+[1020029.304263] Stack:
+[1020029.304263]  ffff8801288a4a80 ffff8801288a4a80 ffff88012794a338 ffffffff81110abf
+[1020029.304263]  ffff88012794a2c0 ffff88010d992440 0000000000000400 00007f9cf0df3000
+[1020029.304263]  ffff880127960cc0 ffff8801288a4a80 ffff88012794a338 ffffffff8111427a
+[1020029.304263] Call Trace:
+[1020029.304263]  [<ffffffff81110abf>] ? show_vfsmnt+0x9b/0x134
+[1020029.304263]  [<ffffffff8111427a>] ? seq_read+0x276/0x350
+[1020029.304263]  [<ffffffff810fc207>] ? vfs_read+0xa1/0xfb
+[1020029.304263]  [<ffffffff810d8052>] ? sys_mmap_pgoff+0x127/0x15a
+[1020029.304263]  [<ffffffff810fc317>] ? sys_read+0x45/0x6e
+[1020029.304263]  [<ffffffff81338e52>] ? system_call_fastpath+0x16/0x1b
+[1020029.304263] Code: 01 00 65 48 03 14 25 20 dc 00 00 66 ff 02 c3 f0 ff 47 38 c3 55 48 89 f5 48 c7 c2 35 99 4c 81 53 48 89 fb 48 83 ec 08 48 8b 46 28 
+[1020029.304263]  8b 30 e8 c7 36 00 00 48 8b 85 b8 02 00 00 48 85 c0 74 2b 80 
+[1020029.304263] RIP  [<ffffffff811105bd>] show_type+0x17/0x5a
+[1020029.304263]  RSP <ffff880011da7e48>
+[1020029.304263] CR2: ffffffffa03da0d0
+[1020029.311417] ---[ end trace ebf19aff1e083659 ]---
 
-
-=================================================
-Commands on the Fedora NFS client:
-using a non root user (a Kerberos authenticated user in our setup named 
-test)
-=================================================
-$ umask 022
-$ touch directory/client
-
-=================================================
-Commands on the CentOS NFS server:
-=================================================
-# getfacl directory/client
-
-# file: directory/client
-# owner: test
-# group: ipausers
-user::rw-
-group::r-x			#effective:r--
-group:sharedgroup:rwx		#effective:r--
-mask::r--
-other::r--
-
-When the file is created locally it gets the default ACL from 
-"directory" with mask "mask::rw-"
-
-Thanks in advance
-
-
->
-> -->Andy
-> On Jul 26, 2011, at 10:43 AM, Robert Marcano wrote:
->
->> Hi, This question is probably too simple for this nfs developer list, but I am intrigued to know if this is a bug or not, I do not find any other reference to anyone with this problem
->>
->> Ineed some help clarifying this issue in order to know if this is a bug or limits of the NFSv4 / POSIX ACL mapping before reporting it
->>
->> Creating a directory on the server with the following POSIX ACLs, rwx for the group "sharedgroup" and same defaults:
->>
->> ############################################################
->> # file: directory
->> # owner: root
->> # group: root
->> user::rwx
->> group::r-x
->> group:sharedgroup:rwx
->> mask::rwx
->> other::---
->> default:user::rwx
->> default:group::r-x
->> default:group:sharedgroup:rwx
->> default:mask::rwx
->> default:other::---
->> ############################################################
->>
->> Creating files with the same user with umask 022 on the server an on the NFS client, the files do not get the same POSIX ACL mask:
->>
->> ############################################################
->> # file: client
->> # owner: test
->> # group: testgroup
->> user::rw-
->> group::r-x                   #effective:r--
->> group:sharedgroup:rwx        #effective:r--
->> mask::r--
->> other::r--
->>
->> # file: server
->> # owner: test
->> # group: testgroup
->> user::rw-
->> group::r-x                   #effective:r--
->> group:sharedgroup:rwx        #effective:rw-
->> mask::rw-
->> other::r--
->> ############################################################
->>
->> Is this normal or a bug?, My interpretation is that even that the mapping of the ACLs is not 100% perfect this simple example should not be a problem. Is it impossible using NFS to create a shared directory for a group of users?
->>
->> Thanks in advance
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
 
