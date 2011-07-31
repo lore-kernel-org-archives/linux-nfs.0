@@ -1,281 +1,335 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp02.citrix.com ([66.165.176.63]:1493 "EHLO SMTP02.CITRIX.COM"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754329Ab1GVNRq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Jul 2011 09:17:46 -0400
-From: Ian Campbell <ian.campbell@citrix.com>
-To: netdev@vger.kernel.org, linux-nfs@vger.kernel.org
-CC: Ian Campbell <ian.campbell@citrix.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <eric.dumazet@gmail.com>,
-        =?UTF-8?q?Micha=C5=82=20Miros=C5=82aw?= <mirq-linux@rere.qmqm.pl>
-Subject: [PATCH 03/13] net: add APIs for manipulating skb page fragments.
-Date: Fri, 22 Jul 2011 14:17:23 +0100
-Message-ID: <1311340653-19336-3-git-send-email-ian.campbell@citrix.com>
-In-Reply-To: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
-References: <1311340095.12772.57.camel@zakaz.uk.xensource.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:37734 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752903Ab1GaAxj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 20:53:39 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v7 23/26] pnfsblock: bl_read_pagelist
+Date: Sat, 30 Jul 2011 20:52:53 -0400
+Message-Id: <1312073576-11024-24-git-send-email-rees@umich.edu>
+In-Reply-To: <1312073576-11024-1-git-send-email-rees@umich.edu>
+References: <1312073576-11024-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-The primary aim is to add skb_frag_(ref|unref) in order to remove the use of
-bare get/put_page on SKB pages fragments and to isolate users from subsequent
-changes to the skb_frag_t data structure.
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-The API also includes an accessor for the struct page itself. The default
-variant of this returns a *const* struct page in an attempt to catch bare uses
-of get/put_page (which take a non-const struct page).
+Note: When upper layer's read/write request cannot be fulfilled, the block
+layout driver shouldn't silently mark the page as error. It should do
+what can be done and  leave the rest to the upper layer. To do so, we
+should set rdata/wdata->res.count properly.
 
-Also included are helper APIs for passing a paged fragment to kmap and
-dma_map_page since I was seeing the same pattern a lot. A helper for
-pci_map_page is ommitted due to Michał Mirosław's recommendation that users
-should transition to pci_map_page instead.
+When upper layer re-send the read/write request to finish the rest
+part of the request, pgbase is the position where we should start at.
 
-Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: "Michał Mirosław" <mirq-linux@rere.qmqm.pl>
-Cc: netdev@vger.kernel.org
+[pnfsblock: mark IO error with NFS_LAYOUT_{RW|RO}_FAILED]
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+[pnfsblock: read path error handling]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: handle errors when read or write pagelist.]
+Signed-off-by: Zhang Jingwang <yyalone@gmail.com>
+[pnfs-block: use new read_pagelist api]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
 ---
- include/linux/skbuff.h |  204 +++++++++++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 202 insertions(+), 2 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c |  265 ++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 265 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-index c0a4f3a..f4034af 100644
---- a/include/linux/skbuff.h
-+++ b/include/linux/skbuff.h
-@@ -29,6 +29,8 @@
- #include <linux/rcupdate.h>
- #include <linux/dmaengine.h>
- #include <linux/hrtimer.h>
-+#include <linux/highmem.h>
-+#include <linux/pci.h>
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 6c1bafb..facb5ba 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -29,10 +29,12 @@
+  * of the software, even if it has been or is hereafter advised of the
+  * possibility of such damages.
+  */
++
+ #include <linux/module.h>
+ #include <linux/init.h>
+ #include <linux/mount.h>
+ #include <linux/namei.h>
++#include <linux/bio.h>		/* struct bio */
  
- /* Don't change this without changing skb_csum_unnecessary! */
- #define CHECKSUM_NONE 0
-@@ -1109,14 +1111,47 @@ static inline int skb_pagelen(const struct sk_buff *skb)
- 	return len + skb_headlen(skb);
- }
+ #include "blocklayout.h"
  
--static inline void skb_fill_page_desc(struct sk_buff *skb, int i,
--				      struct page *page, int off, int size)
-+/**
-+ * __skb_fill_page_desc - initialise a paged fragment in an skb
-+ * @skb: buffer containing fragment to be initialised
-+ * @i: paged fragment index to initialise
-+ * @page: the page to use for this fragment
-+ * @off: the offset to the data with @page
-+ * @size: the length of the data
-+ *
-+ * Initialises the @i'th fragment of @skb to point to &size bytes at
-+ * offset @off within @page.
-+ *
-+ * Does not take any additional reference on the fragment.
-+ */
-+static inline void __skb_fill_page_desc(struct sk_buff *skb, int i,
-+					struct page *page, int off, int size)
- {
- 	skb_frag_t *frag = &skb_shinfo(skb)->frags[i];
+@@ -45,9 +47,272 @@ MODULE_DESCRIPTION("The NFSv4.1 pNFS Block layout driver");
+ struct dentry *bl_device_pipe;
+ wait_queue_head_t bl_wq;
  
- 	frag->page		  = page;
- 	frag->page_offset	  = off;
- 	frag->size		  = size;
++static void print_page(struct page *page)
++{
++	dprintk("PRINTPAGE page %p\n", page);
++	dprintk("	PagePrivate %d\n", PagePrivate(page));
++	dprintk("	PageUptodate %d\n", PageUptodate(page));
++	dprintk("	PageError %d\n", PageError(page));
++	dprintk("	PageDirty %d\n", PageDirty(page));
++	dprintk("	PageReferenced %d\n", PageReferenced(page));
++	dprintk("	PageLocked %d\n", PageLocked(page));
++	dprintk("	PageWriteback %d\n", PageWriteback(page));
++	dprintk("	PageMappedToDisk %d\n", PageMappedToDisk(page));
++	dprintk("\n");
 +}
 +
-+/**
-+ * skb_fill_page_desc - initialise a paged fragment in an skb
-+ * @skb: buffer containing fragment to be initialised
-+ * @i: paged fragment index to initialise
-+ * @page: the page to use for this fragment
-+ * @off: the offset to the data with @page
-+ * @size: the length of the data
-+ *
-+ * As per __skb_fill_page_desc() -- initialises the @i'th fragment of
-+ * @skb to point to &size bytes at offset @off within @page. In
-+ * addition updates @skb such that @i is the last fragment.
-+ *
-+ * Does not take any additional reference on the fragment.
++/* Given the be associated with isect, determine if page data needs to be
++ * initialized.
 + */
-+static inline void skb_fill_page_desc(struct sk_buff *skb, int i,
-+				      struct page *page, int off, int size)
++static int is_hole(struct pnfs_block_extent *be, sector_t isect)
 +{
-+	__skb_fill_page_desc(skb, i, page, off, size);
- 	skb_shinfo(skb)->nr_frags = i + 1;
- }
- 
-@@ -1605,6 +1640,171 @@ static inline void netdev_free_page(struct net_device *dev, struct page *page)
- }
- 
- /**
-+ * __skb_frag_page - retrieve the page refered to by a paged fragment
-+ * @frag: the paged fragment
-+ *
-+ * Returns the &struct page associated with @frag. Where possible you
-+ * should use skb_frag_page() which returns a const &struct page.
-+ */
-+static inline struct page *__skb_frag_page(const skb_frag_t *frag)
-+{
-+	return frag->page;
++	if (be->be_state == PNFS_BLOCK_NONE_DATA)
++		return 1;
++	else if (be->be_state != PNFS_BLOCK_INVALID_DATA)
++		return 0;
++	else
++		return !bl_is_sector_init(be->be_inval, isect);
 +}
 +
-+/**
-+ * __skb_frag_page - retrieve the page refered to by a paged fragment
-+ * @frag: the paged fragment
-+ *
-+ * Returns the &struct page associated with @frag as a const.
++/* The data we are handed might be spread across several bios.  We need
++ * to track when the last one is finished.
 + */
-+static inline const struct page *skb_frag_page(const skb_frag_t *frag)
++struct parallel_io {
++	struct kref refcnt;
++	struct rpc_call_ops call_ops;
++	void (*pnfs_callback) (void *data);
++	void *data;
++};
++
++static inline struct parallel_io *alloc_parallel(void *data)
 +{
-+	return frag->page;
++	struct parallel_io *rv;
++
++	rv  = kmalloc(sizeof(*rv), GFP_NOFS);
++	if (rv) {
++		rv->data = data;
++		kref_init(&rv->refcnt);
++	}
++	return rv;
 +}
 +
-+/**
-+ * __skb_frag_ref - take an addition reference on a paged fragment.
-+ * @frag: the paged fragment
-+ *
-+ * Takes an additional reference on the paged fragment @frag.
-+ */
-+static inline void __skb_frag_ref(skb_frag_t *frag)
++static inline void get_parallel(struct parallel_io *p)
 +{
-+	get_page(__skb_frag_page(frag));
++	kref_get(&p->refcnt);
 +}
 +
-+/**
-+ * skb_frag_ref - take an addition reference on a paged fragment of an skb.
-+ * @skb: the buffer
-+ * @f: the fragment offset.
-+ *
-+ * Takes an additional reference on the @f'th paged fragment of @skb.
-+ */
-+static inline void skb_frag_ref(struct sk_buff *skb, int f)
++static void destroy_parallel(struct kref *kref)
 +{
-+	__skb_frag_ref(&skb_shinfo(skb)->frags[f]);
++	struct parallel_io *p = container_of(kref, struct parallel_io, refcnt);
++
++	dprintk("%s enter\n", __func__);
++	p->pnfs_callback(p->data);
++	kfree(p);
 +}
 +
-+/**
-+ * __skb_frag_unref - release a reference on a paged fragment.
-+ * @frag: the paged fragment
-+ *
-+ * Releases a reference on the paged fragment @frag.
-+ */
-+static inline void __skb_frag_unref(skb_frag_t *frag)
++static inline void put_parallel(struct parallel_io *p)
 +{
-+	put_page(__skb_frag_page(frag));
++	kref_put(&p->refcnt, destroy_parallel);
 +}
 +
-+/**
-+ * skb_frag_unref - release a reference on a paged fragment of an skb.
-+ * @skb: the buffer
-+ * @f: the fragment offset
-+ *
-+ * Releases a reference on the @f'th paged fragment of @skb.
-+ */
-+static inline void skb_frag_unref(struct sk_buff *skb, int f)
++static struct bio *
++bl_submit_bio(int rw, struct bio *bio)
 +{
-+	__skb_frag_unref(&skb_shinfo(skb)->frags[f]);
++	if (bio) {
++		get_parallel(bio->bi_private);
++		dprintk("%s submitting %s bio %u@%llu\n", __func__,
++			rw == READ ? "read" : "write",
++			bio->bi_size, (unsigned long long)bio->bi_sector);
++		submit_bio(rw, bio);
++	}
++	return NULL;
 +}
 +
-+/**
-+ * skb_frag_address - gets the address of the data contained in a paged fragment
-+ * @frag: the paged fragment buffer
-+ *
-+ * Returns the address of the data within @frag. The page must already
-+ * be mapped.
-+ */
-+static inline void *skb_frag_address(const skb_frag_t *frag)
++static struct bio *bl_alloc_init_bio(int npg, sector_t isect,
++				     struct pnfs_block_extent *be,
++				     void (*end_io)(struct bio *, int err),
++				     struct parallel_io *par)
 +{
-+	return page_address(skb_frag_page(frag)) + frag->page_offset;
-+}
++	struct bio *bio;
 +
-+/**
-+ * skb_frag_address_safe - gets the address of the data contained in a paged fragment
-+ * @frag: the paged fragment buffer
-+ *
-+ * Returns the address of the data within @frag. Checks that the page
-+ * is mapped and returns %NULL otherwise.
-+ */
-+static inline void *skb_frag_address_safe(const skb_frag_t *frag)
-+{
-+	void *ptr = page_address(skb_frag_page(frag));
-+	if (unlikely(!ptr))
++	bio = bio_alloc(GFP_NOIO, npg);
++	if (!bio)
 +		return NULL;
 +
-+	return ptr + frag->page_offset;
++	bio->bi_sector = isect - be->be_f_offset + be->be_v_offset;
++	bio->bi_bdev = be->be_mdev;
++	bio->bi_end_io = end_io;
++	bio->bi_private = par;
++	return bio;
 +}
 +
-+/**
-+ * __skb_frag_set_page - sets the page contained in a paged fragment
-+ * @frag: the paged fragment
-+ * @page: the page to set
-+ *
-+ * Sets the fragment @frag to contain @page.
-+ */
-+static inline void __skb_frag_set_page(skb_frag_t *frag, struct page *page)
++static struct bio *bl_add_page_to_bio(struct bio *bio, int npg, int rw,
++				      sector_t isect, struct page *page,
++				      struct pnfs_block_extent *be,
++				      void (*end_io)(struct bio *, int err),
++				      struct parallel_io *par)
 +{
-+	frag->page = page;
-+	__skb_frag_ref(frag);
++retry:
++	if (!bio) {
++		bio = bl_alloc_init_bio(npg, isect, be, end_io, par);
++		if (!bio)
++			return ERR_PTR(-ENOMEM);
++	}
++	if (bio_add_page(bio, page, PAGE_CACHE_SIZE, 0) < PAGE_CACHE_SIZE) {
++		bio = bl_submit_bio(rw, bio);
++		goto retry;
++	}
++	return bio;
 +}
 +
-+/**
-+ * skb_frag_set_page - sets the page contained in a paged fragment of an skb
-+ * @skb: the buffer
-+ * @f: the fragment offset
-+ * @page: the page to set
-+ *
-+ * Sets the @f'th fragment of @skb to contain @page.
-+ */
-+static inline void skb_frag_set_page(struct sk_buff *skb, int f,
-+				     struct page *page)
++static void bl_set_lo_fail(struct pnfs_layout_segment *lseg)
 +{
-+	__skb_frag_set_page(&skb_shinfo(skb)->frags[f], page);
++	if (lseg->pls_range.iomode == IOMODE_RW) {
++		dprintk("%s Setting layout IOMODE_RW fail bit\n", __func__);
++		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
++	} else {
++		dprintk("%s Setting layout IOMODE_READ fail bit\n", __func__);
++		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
++	}
 +}
 +
-+/**
-+ * skb_frag_kmap - kmaps a paged fragment
-+ * @frag: the paged fragment
-+ *
-+ * kmap()s the paged fragment @frag and returns the virtual address.
-+ */
-+static inline void *skb_frag_kmap(skb_frag_t *frag)
++/* This is basically copied from mpage_end_io_read */
++static void bl_end_io_read(struct bio *bio, int err)
 +{
-+	return kmap(__skb_frag_page(frag));
++	struct parallel_io *par = bio->bi_private;
++	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
++	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
++	struct nfs_read_data *rdata = (struct nfs_read_data *)par->data;
++
++	do {
++		struct page *page = bvec->bv_page;
++
++		if (--bvec >= bio->bi_io_vec)
++			prefetchw(&bvec->bv_page->flags);
++		if (uptodate)
++			SetPageUptodate(page);
++	} while (bvec >= bio->bi_io_vec);
++	if (!uptodate) {
++		if (!rdata->pnfs_error)
++			rdata->pnfs_error = -EIO;
++		bl_set_lo_fail(rdata->lseg);
++	}
++	bio_put(bio);
++	put_parallel(par);
 +}
 +
-+/**
-+ * skb_frag_kmap - kunmaps a paged fragment
-+ * @frag: the paged fragment
-+ *
-+ * kunmap()s the paged fragment @frag.
-+ */
-+static inline void skb_frag_kunmap(skb_frag_t *frag)
++static void bl_read_cleanup(struct work_struct *work)
 +{
-+	kunmap(__skb_frag_page(frag));
++	struct rpc_task *task;
++	struct nfs_read_data *rdata;
++	dprintk("%s enter\n", __func__);
++	task = container_of(work, struct rpc_task, u.tk_work);
++	rdata = container_of(task, struct nfs_read_data, task);
++	pnfs_ld_read_done(rdata);
 +}
 +
-+/**
-+ * skb_frag_dma_map - maps a paged fragment via the DMA API
-+ * @device: the device to map the fragment to
-+ * @frag: the paged fragment to map
-+ * @offset: the offset within the fragment (starting at the fragments own offset)
-+ * @size: the number of bytes to map
-+ * @direction: the direction of the mapping (%PCI_DMA_*)
-+ *
-+ * Maps the page associated with @frag to @device.
-+ */
-+static inline dma_addr_t skb_frag_dma_map(struct device *dev,
-+					  const skb_frag_t *frag,
-+					  size_t offset, size_t size,
-+					  enum dma_data_direction dir)
++static void
++bl_end_par_io_read(void *data)
 +{
-+	return dma_map_page(dev, __skb_frag_page(frag),
-+			    frag->page_offset + offset, size, dir);
++	struct nfs_read_data *rdata = data;
++
++	INIT_WORK(&rdata->task.u.tk_work, bl_read_cleanup);
++	schedule_work(&rdata->task.u.tk_work);
 +}
 +
-+/**
-  *	skb_clone_writable - is the header of a clone writable
-  *	@skb: buffer to check
-  *	@len: length up to which to write
++/* We don't want normal .rpc_call_done callback used, so we replace it
++ * with this stub.
++ */
++static void bl_rpc_do_nothing(struct rpc_task *task, void *calldata)
++{
++	return;
++}
++
+ static enum pnfs_try_status
+ bl_read_pagelist(struct nfs_read_data *rdata)
+ {
++	int i, hole;
++	struct bio *bio = NULL;
++	struct pnfs_block_extent *be = NULL, *cow_read = NULL;
++	sector_t isect, extent_length = 0;
++	struct parallel_io *par;
++	loff_t f_offset = rdata->args.offset;
++	size_t count = rdata->args.count;
++	struct page **pages = rdata->args.pages;
++	int pg_index = rdata->args.pgbase >> PAGE_CACHE_SHIFT;
++
++	dprintk("%s enter nr_pages %u offset %lld count %Zd\n", __func__,
++	       rdata->npages, f_offset, count);
++
++	par = alloc_parallel(rdata);
++	if (!par)
++		goto use_mds;
++	par->call_ops = *rdata->mds_ops;
++	par->call_ops.rpc_call_done = bl_rpc_do_nothing;
++	par->pnfs_callback = bl_end_par_io_read;
++	/* At this point, we can no longer jump to use_mds */
++
++	isect = (sector_t) (f_offset >> SECTOR_SHIFT);
++	/* Code assumes extents are page-aligned */
++	for (i = pg_index; i < rdata->npages; i++) {
++		if (!extent_length) {
++			/* We've used up the previous extent */
++			bl_put_extent(be);
++			bl_put_extent(cow_read);
++			bio = bl_submit_bio(READ, bio);
++			/* Get the next one */
++			be = bl_find_get_extent(BLK_LSEG2EXT(rdata->lseg),
++					     isect, &cow_read);
++			if (!be) {
++				rdata->pnfs_error = -EIO;
++				goto out;
++			}
++			extent_length = be->be_length -
++				(isect - be->be_f_offset);
++			if (cow_read) {
++				sector_t cow_length = cow_read->be_length -
++					(isect - cow_read->be_f_offset);
++				extent_length = min(extent_length, cow_length);
++			}
++		}
++		hole = is_hole(be, isect);
++		if (hole && !cow_read) {
++			bio = bl_submit_bio(READ, bio);
++			/* Fill hole w/ zeroes w/o accessing device */
++			dprintk("%s Zeroing page for hole\n", __func__);
++			zero_user_segment(pages[i], 0, PAGE_CACHE_SIZE);
++			print_page(pages[i]);
++			SetPageUptodate(pages[i]);
++		} else {
++			struct pnfs_block_extent *be_read;
++
++			be_read = (hole && cow_read) ? cow_read : be;
++			bio = bl_add_page_to_bio(bio, rdata->npages - i, READ,
++						 isect, pages[i], be_read,
++						 bl_end_io_read, par);
++			if (IS_ERR(bio)) {
++				rdata->pnfs_error = PTR_ERR(bio);
++				goto out;
++			}
++		}
++		isect += PAGE_CACHE_SECTORS;
++		extent_length -= PAGE_CACHE_SECTORS;
++	}
++	if ((isect << SECTOR_SHIFT) >= rdata->inode->i_size) {
++		rdata->res.eof = 1;
++		rdata->res.count = rdata->inode->i_size - f_offset;
++	} else {
++		rdata->res.count = (isect << SECTOR_SHIFT) - f_offset;
++	}
++out:
++	bl_put_extent(be);
++	bl_put_extent(cow_read);
++	bl_submit_bio(READ, bio);
++	put_parallel(par);
++	return PNFS_ATTEMPTED;
++
++ use_mds:
++	dprintk("Giving up and using normal NFS\n");
+ 	return PNFS_NOT_ATTEMPTED;
+ }
+ 
 -- 
-1.7.2.5
+1.7.4.1
 
