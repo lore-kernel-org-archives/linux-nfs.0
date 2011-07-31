@@ -1,154 +1,186 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:46172 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752133Ab1GYRZy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jul 2011 13:25:54 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: [PATCH v2 07/25] pnfsblock: add blocklayout Kconfig option, Makefile, and stubs
-Date: Mon, 25 Jul 2011 10:25:38 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A517C9D@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <4E2D82AB.6060502@tonian.com>
-References: <1311276865-29484-1-git-send-email-rees@umich.edu> <1311276865-29484-8-git-send-email-rees@umich.edu> <4E2D7E0D.60808@tonian.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A517B56@SACMVEXC2-PRD.hq.netapp.com> <4E2D82AB.6060502@tonian.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Benny Halevy" <bhalevy@tonian.com>
-Cc: "Jim Rees" <rees@umich.edu>, <linux-nfs@vger.kernel.org>,
-        "peter honeyman" <honey@citi.umich.edu>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:38080 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752686Ab1GaAxP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 20:53:15 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v7 11/26] pnfsblock: basic extent code
+Date: Sat, 30 Jul 2011 20:52:41 -0400
+Message-Id: <1312073576-11024-12-git-send-email-rees@umich.edu>
+In-Reply-To: <1312073576-11024-1-git-send-email-rees@umich.edu>
+References: <1312073576-11024-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-> -----Original Message-----
-> From: Benny Halevy [mailto:bhalevy@tonian.com]
-> Sent: Monday, July 25, 2011 10:50 AM
-> To: Myklebust, Trond
-> Cc: Jim Rees; linux-nfs@vger.kernel.org; peter honeyman
-> Subject: Re: [PATCH v2 07/25] pnfsblock: add blocklayout Kconfig
-> option, Makefile, and stubs
-> 
-> On 2011-07-25 10:38, Myklebust, Trond wrote:
-> >> -----Original Message-----
-> >> From: Benny Halevy [mailto:bhalevy@tonian.com]
-> >> Sent: Monday, July 25, 2011 10:31 AM
-> >> To: Jim Rees
-> >> Cc: Myklebust, Trond; linux-nfs@vger.kernel.org; peter honeyman
-> >> Subject: Re: [PATCH v2 07/25] pnfsblock: add blocklayout Kconfig
-> >> option, Makefile, and stubs
-> >>
-> >> On 2011-07-21 15:34, Jim Rees wrote:
-> >>> From: Fred Isaman <iisaman@citi.umich.edu>
-> >>>
-> >>> Define a configuration variable to enable/disable compilation of
-> the
-> >>> block driver code.
-> >>>
-> >>> Add the minimal structure for a pnfs block layout driver, and
-empty
-> >>> list-heads that will hold the extent data
-> >>>
-> >>> [pnfsblock: make NFS_V4_1 select PNFS_BLOCK]
-> >>> Signed-off-by: Peng Tao <peng_tao@emc.com>
-> >>> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-> >>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> >>> [pnfs-block: fix CONFIG_PNFS_BLOCK dependencies]
-> >>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> >>> Signed-off-by: Benny Halevy <benny@tonian.com>
-> >>> [pnfsblock: SQUASHME: port block layout code]
-> >>> Signed-off-by: Peng Tao <peng_tao@emc.com>
-> >>> [pnfsblock: SQUASHME: adjust to API change]
-> >>> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-> >>> [pnfs: move pnfs_layout_type inline in nfs_inode]
-> >>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> >>> [blocklayout: encode_layoutcommit implementation]
-> >>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> >>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> >>> Signed-off-by: Benny Halevy <benny@tonian.com>
-> >>> [pnfsblock: layout alloc and free]
-> >>> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-> >>> [pnfs: move pnfs_layout_type inline in nfs_inode]
-> >>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> >>> Signed-off-by: Benny Halevy <benny@tonian.com>
-> >>> [pnfsblock: define module alias]
-> >>> Signed-off-by: Peng Tao <peng_tao@emc.com>
-> >>> ---
-> >>>  fs/nfs/Kconfig                   |    8 ++-
-> >>>  fs/nfs/Makefile                  |    1 +
-> >>>  fs/nfs/blocklayout/Makefile      |    5 +
-> >>>  fs/nfs/blocklayout/blocklayout.c |  175
-> >> ++++++++++++++++++++++++++++++++++++++
-> >>>  fs/nfs/blocklayout/blocklayout.h |   91 ++++++++++++++++++++
-> >>>  5 files changed, 279 insertions(+), 1 deletions(-)
-> >>>  create mode 100644 fs/nfs/blocklayout/Makefile
-> >>>  create mode 100644 fs/nfs/blocklayout/blocklayout.c
-> >>>  create mode 100644 fs/nfs/blocklayout/blocklayout.h
-> >>>
-> >>> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-> >>> index 2cde5d9..be02077 100644
-> >>> --- a/fs/nfs/Kconfig
-> >>> +++ b/fs/nfs/Kconfig
-> >>> @@ -79,15 +79,21 @@ config NFS_V4_1
-> >>>  	depends on NFS_FS && NFS_V4 && EXPERIMENTAL
-> >>>  	select SUNRPC_BACKCHANNEL
-> >>>  	select PNFS_FILE_LAYOUT
-> >>> +	select PNFS_BLOCK
-> >>> +	select MD
-> >>> +	select BLK_DEV_DM
-> >>
-> >> Why is PNFS_BLOCK enabled automatically in all cases?
-> >> That renders the use of modules for layout drivers totally useless.
-> >> I sort of understand that for PNFS_FILE_LAYOUT (when my
-> >> arm is twisted really hard behind my back :) since it
-> >> is an integral part of RFC5661 but what's the justification
-> >> for PNFS_BLOCK? and why blocks and not objects?
-> >
-> > The question is rather why did objects add a selectable compile
-> option?
-> 
-> Just good citizenship :)
-> 
-> > What is the point of not compiling a given layout driver if all the
-> > dependencies are met?
-> 
-> Reducing build times...
-> Building a smaller kernel when modules are disabled...
+From: Fred Isaman <iisaman@citi.umich.edu>
 
+Adds structures and basic create/delete code for extents.
 
-You can add a line with
-	depends on m
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Zhang Jingwang <Jingwang.Zhang@emc.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
+---
+ fs/nfs/blocklayout/Makefile      |    2 +-
+ fs/nfs/blocklayout/blocklayout.c |   20 +++++++--
+ fs/nfs/blocklayout/blocklayout.h |    1 +
+ fs/nfs/blocklayout/extents.c     |   89 ++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 107 insertions(+), 5 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/extents.c
 
-to ensure that it is always compiled as a module. I think that might be
-a good thing until we have nailed down all the issues with pNFS.
+diff --git a/fs/nfs/blocklayout/Makefile b/fs/nfs/blocklayout/Makefile
+index 6bf49cd..5cfadf6 100644
+--- a/fs/nfs/blocklayout/Makefile
++++ b/fs/nfs/blocklayout/Makefile
+@@ -2,4 +2,4 @@
+ # Makefile for the pNFS block layout driver kernel module
+ #
+ obj-$(CONFIG_PNFS_BLOCK) += blocklayoutdriver.o
+-blocklayoutdriver-objs := blocklayout.o
++blocklayoutdriver-objs := blocklayout.o extents.o
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 1f5287c..8dde372 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -53,12 +53,24 @@ bl_write_pagelist(struct nfs_write_data *wdata,
+ 	return PNFS_NOT_ATTEMPTED;
+ }
+ 
+-/* STUB */
++/* FIXME - range ignored */
+ static void
+-release_extents(struct pnfs_block_layout *bl,
+-		struct pnfs_layout_range *range)
++release_extents(struct pnfs_block_layout *bl, struct pnfs_layout_range *range)
+ {
+-	return;
++	int i;
++	struct pnfs_block_extent *be;
++
++	spin_lock(&bl->bl_ext_lock);
++	for (i = 0; i < EXTENT_LISTS; i++) {
++		while (!list_empty(&bl->bl_extents[i])) {
++			be = list_first_entry(&bl->bl_extents[i],
++					      struct pnfs_block_extent,
++					      be_node);
++			list_del(&be->be_node);
++			bl_put_extent(be);
++		}
++	}
++	spin_unlock(&bl->bl_ext_lock);
+ }
+ 
+ /* STUB */
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 8bfa466..98e2f60 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -88,4 +88,5 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
+ 	return container_of(lo, struct pnfs_block_layout, bl_layout);
+ }
+ 
++void bl_put_extent(struct pnfs_block_extent *be);
+ #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+new file mode 100644
+index 0000000..d0ca760
+--- /dev/null
++++ b/fs/nfs/blocklayout/extents.c
+@@ -0,0 +1,89 @@
++/*
++ *  linux/fs/nfs/blocklayout/blocklayout.h
++ *
++ *  Module for the NFSv4.1 pNFS block layout driver.
++ *
++ *  Copyright (c) 2006 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@citi.umich.edu>
++ *  Fred Isaman <iisaman@umich.edu>
++ *
++ * permission is granted to use, copy, create derivative works and
++ * redistribute this software and such derivative works for any purpose,
++ * so long as the name of the university of michigan is not used in
++ * any advertising or publicity pertaining to the use or distribution
++ * of this software without specific, written prior authorization.  if
++ * the above copyright notice or any other identification of the
++ * university of michigan is included in any copy of any portion of
++ * this software, then the disclaimer below must also be included.
++ *
++ * this software is provided as is, without representation from the
++ * university of michigan as to its fitness for any purpose, and without
++ * warranty by the university of michigan of any kind, either express
++ * or implied, including without limitation the implied warranties of
++ * merchantability and fitness for a particular purpose.  the regents
++ * of the university of michigan shall not be liable for any damages,
++ * including special, indirect, incidental, or consequential damages,
++ * with respect to any claim arising out or in connection with the use
++ * of the software, even if it has been or is hereafter advised of the
++ * possibility of such damages.
++ */
++
++#include "blocklayout.h"
++#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
++
++static void print_bl_extent(struct pnfs_block_extent *be)
++{
++	dprintk("PRINT EXTENT extent %p\n", be);
++	if (be) {
++		dprintk("        be_f_offset %llu\n", (u64)be->be_f_offset);
++		dprintk("        be_length   %llu\n", (u64)be->be_length);
++		dprintk("        be_v_offset %llu\n", (u64)be->be_v_offset);
++		dprintk("        be_state    %d\n", be->be_state);
++	}
++}
++
++static void
++destroy_extent(struct kref *kref)
++{
++	struct pnfs_block_extent *be;
++
++	be = container_of(kref, struct pnfs_block_extent, be_refcnt);
++	dprintk("%s be=%p\n", __func__, be);
++	kfree(be);
++}
++
++void
++bl_put_extent(struct pnfs_block_extent *be)
++{
++	if (be) {
++		dprintk("%s enter %p (%i)\n", __func__, be,
++			atomic_read(&be->be_refcnt.refcount));
++		kref_put(&be->be_refcnt, destroy_extent);
++	}
++}
++
++struct pnfs_block_extent *bl_alloc_extent(void)
++{
++	struct pnfs_block_extent *be;
++
++	be = kmalloc(sizeof(struct pnfs_block_extent), GFP_NOFS);
++	if (!be)
++		return NULL;
++	INIT_LIST_HEAD(&be->be_node);
++	kref_init(&be->be_refcnt);
++	be->be_inval = NULL;
++	return be;
++}
++
++static void print_elist(struct list_head *list)
++{
++	struct pnfs_block_extent *be;
++	dprintk("****************\n");
++	dprintk("Extent list looks like:\n");
++	list_for_each_entry(be, list, be_node) {
++		print_bl_extent(be);
++	}
++	dprintk("****************\n");
++}
+-- 
+1.7.4.1
 
-> We're fine in terms of memory consumption when CONFIG_MODULES=y since
-> the
-> layout driver is loaded on demand but shouldn't be worried about
-> the other case?
-> 
-> >
-> > IOW: The only thing I'd change above is the select MD and select
-> > BLK_DEV_DM: I'd prefer something like
-> >
-> > config PNFS_BLOCK
-> > 	depends on NFS_V4_1 && MD && BLK_DEV_DM
-> > 	default y
-> 
-> This is closer to the original version.
-> However, selecting MD and BLK_DEV_DM was proven useful to
-automatically
-> take
-> care of the module dependencies without having to dive into details.
-
-Yes, but since the MD is a completely different layer that is not under
-our control (well, OK, Neil is still an NFS maintainer and an MD
-maintainer) then I'd prefer to leave it as a dependency.
-
-We can always add something like
-
-comment
-	depends on NFS_V4_1 && !BLK_DEV_DM
-	Please enable BLK_DEV_MD if you wish to enable the pNFS block
-driver.
-
-
-Cheers
-  Trond
