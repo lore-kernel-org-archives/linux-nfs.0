@@ -1,49 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:56160 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751846Ab1GLR2C (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Jul 2011 13:28:02 -0400
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [PATCH] SUNRPC:  Fix use of static variable in rpcb_getport_async
-Date: Tue, 12 Jul 2011 10:27:55 -0700
-Message-Id: <1310491675-1699-1-git-send-email-greearb@candelatech.com>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:38073 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752582Ab1GaAxN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 20:53:13 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v7 10/26] pnfsblock: use pageio_ops api
+Date: Sat, 30 Jul 2011 20:52:40 -0400
+Message-Id: <1312073576-11024-11-git-send-email-rees@umich.edu>
+In-Reply-To: <1312073576-11024-1-git-send-email-rees@umich.edu>
+References: <1312073576-11024-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ben Greear <greearb@candelatech.com>
+From: Benny Halevy <bhalevy@panasas.com>
 
-Because struct rpcbind_args *map was declared static, if two
-threads entered this method at the same time, the values
-assigned to map could be sent two two differen tasks.
-This could cause all sorts of problems, include use-after-free
-and double-free of memory.
-
-Fix this by removing the static declaration so that the map
-pointer is on the stack.
-
-Signed-off-by: Ben Greear <greearb@candelatech.com>
+[pnfsblock: use pnfs_generic_pg_init_read/write]
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
 ---
-:100644 100644 353234c... 1695c73... M	net/sunrpc/rpcb_clnt.c
- net/sunrpc/rpcb_clnt.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c |   14 ++++++++++++++
+ 1 files changed, 14 insertions(+), 0 deletions(-)
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 353234c..1695c73 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -600,7 +600,7 @@ void rpcb_getport_async(struct rpc_task *task)
- 	u32 bind_version;
- 	struct rpc_xprt *xprt;
- 	struct rpc_clnt	*rpcb_clnt;
--	static struct rpcbind_args *map;
-+	struct rpcbind_args *map;
- 	struct rpc_task	*child;
- 	struct sockaddr_storage addr;
- 	struct sockaddr *sap = (struct sockaddr *)&addr;
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 44562cb..1f5287c 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -135,6 +135,18 @@ bl_clear_layoutdriver(struct nfs_server *server)
+ 	return 0;
+ }
+ 
++static const struct nfs_pageio_ops bl_pg_read_ops = {
++	.pg_init = pnfs_generic_pg_init_read,
++	.pg_test = pnfs_generic_pg_test,
++	.pg_doio = pnfs_generic_pg_readpages,
++};
++
++static const struct nfs_pageio_ops bl_pg_write_ops = {
++	.pg_init = pnfs_generic_pg_init_write,
++	.pg_test = pnfs_generic_pg_test,
++	.pg_doio = pnfs_generic_pg_writepages,
++};
++
+ static struct pnfs_layoutdriver_type blocklayout_type = {
+ 	.id				= LAYOUT_BLOCK_VOLUME,
+ 	.name				= "LAYOUT_BLOCK_VOLUME",
+@@ -148,6 +160,8 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
+ 	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
+ 	.set_layoutdriver		= bl_set_layoutdriver,
+ 	.clear_layoutdriver		= bl_clear_layoutdriver,
++	.pg_read_ops			= &bl_pg_read_ops,
++	.pg_write_ops			= &bl_pg_write_ops,
+ };
+ 
+ static int __init nfs4blocklayout_init(void)
 -- 
-1.7.3.4
+1.7.4.1
 
