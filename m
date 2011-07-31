@@ -1,73 +1,213 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:65292 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751377Ab1GZRhu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Jul 2011 13:37:50 -0400
-Content-Type: text/plain;
-	charset="utf-8"
-Subject: RE: [PATCH] NFS41: Drop lseg ref before fallthru to MDS
-Date: Tue, 26 Jul 2011 10:37:47 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A51838E@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <CA+a=Yy7sCuFE3N_bBsMShr1tLLg4jz9tSpBU9aH08aHCn5uvFQ@mail.gmail.com>
-References: <1309743002-1658-1-git-send-email-bergwolf@gmail.com> <4E18614C.4010002@tonian.com> <F19688880B763E40B28B2B462677FBF805BF0610CE@MX09A.corp.emc.com> <1311621204.28209.14.camel@lade.trondhjem.org> <CA+a=Yy59HXXjd4HgrqeANaQZKO9rRPKzM+r3NNq2KSMV_L4S_w@mail.gmail.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A51825D@SACMVEXC2-PRD.hq.netapp.com> <CA+a=Yy7sCuFE3N_bBsMShr1tLLg4jz9tSpBU9aH08aHCn5uvFQ@mail.gmail.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Peng Tao" <bergwolf@gmail.com>
-Cc: <tao.peng@emc.com>, <linux-nfs@vger.kernel.org>, <bhalevy@tonian.com>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:38137 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752903Ab1GaAxk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 20:53:40 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v7 24/26] pnfsblock: bl_write_pagelist
+Date: Sat, 30 Jul 2011 20:52:54 -0400
+Message-Id: <1312073576-11024-25-git-send-email-rees@umich.edu>
+In-Reply-To: <1312073576-11024-1-git-send-email-rees@umich.edu>
+References: <1312073576-11024-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBQZW5nIFRhbyBbbWFpbHRvOmJl
-cmd3b2xmQGdtYWlsLmNvbV0NCj4gU2VudDogVHVlc2RheSwgSnVseSAyNiwgMjAxMSAxOjMzIFBN
-DQo+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+IENjOiB0YW8ucGVuZ0BlbWMuY29tOyBsaW51eC1u
-ZnNAdmdlci5rZXJuZWwub3JnOyBiaGFsZXZ5QHRvbmlhbi5jb20NCj4gU3ViamVjdDogUmU6IFtQ
-QVRDSF0gTkZTNDE6IERyb3AgbHNlZyByZWYgYmVmb3JlIGZhbGx0aHJ1IHRvIE1EUw0KPiANCj4g
-T24gVHVlLCBKdWwgMjYsIDIwMTEgYXQgMTE6NTAgUE0sIE15a2xlYnVzdCwgVHJvbmQNCj4gPFRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPj4gLS0tLS1PcmlnaW5hbCBNZXNz
-YWdlLS0tLS0NCj4gPj4gRnJvbTogUGVuZyBUYW8gW21haWx0bzpiZXJnd29sZkBnbWFpbC5jb21d
-DQo+ID4+IFNlbnQ6IFR1ZXNkYXksIEp1bHkgMjYsIDIwMTEgMTE6MzcgQU0NCj4gPj4gVG86IE15
-a2xlYnVzdCwgVHJvbmQNCj4gPj4gQ2M6IHRhby5wZW5nQGVtYy5jb207IGxpbnV4LW5mc0B2Z2Vy
-Lmtlcm5lbC5vcmc7IGJoYWxldnlAdG9uaWFuLmNvbQ0KPiA+PiBTdWJqZWN0OiBSZTogW1BBVENI
-XSBORlM0MTogRHJvcCBsc2VnIHJlZiBiZWZvcmUgZmFsbHRocnUgdG8gTURTDQo+ID4+DQo+ID4+
-IEhpLCBUcm9uZCwNCj4gPj4NCj4gPj4gT24gVHVlLCBKdWwgMjYsIDIwMTEgYXQgMzoxMyBBTSwg
-VHJvbmQgTXlrbGVidXN0DQo+ID4+IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6
-DQo+ID4+ID4gT24gV2VkLCAyMDExLTA3LTIwIGF0IDAxOjUyIC0wNDAwLCB0YW8ucGVuZ0BlbWMu
-Y29tIHdyb3RlOg0KPiA+PiA+PiBIaSwgVHJvbmQsDQo+ID4+ID4+DQo+ID4+ID4+IEFueSBjb21t
-ZW50cyBvbiB0aGlzIHBhdGNoPyBJIHN0aWxsIGdldCBrZXJuZWwgY3Jhc2ggd2hlbiBwbmZzDQo+
-IHdyaXRlDQo+ID4+IGlzIGF0dGVtcHRlZCBidXQgZmFpbHMgYW5kIGNhbGxzIHBuZnNfbGRfd3Jp
-dGVfZG9uZSgpLiBJdCBzZWVtcw0KPiBvYmplY3QNCj4gPj4gbGF5b3V0IHVzZXMgdGhlIHNhbWUg
-Y29kZSBwYXRoIGFzIHdlbGwuIEJ1dCBJIGRvbid0IGZpbmQgdGhlIHBhdGNoDQo+IGluDQo+ID4+
-IGVpdGhlciB5b3VyIHRyZWUgb3IgQmVubnkncyB0cmVlLiBBcmUgdGhlcmUgYW55IGNvbmNlcm5z
-Pw0KPiA+PiA+Pg0KPiA+PiA+PiBUaGFua3MsDQo+ID4+ID4+IFRhbw0KPiA+PiA+DQo+ID4+ID4g
-VGhlIHdob2xlIHBuZnNfbGRfd3JpdGVfZG9uZSB0aGluZyBpcyBib2d1cyBhbmQgbmVlZHMgdG8g
-YmUNCj4gcmVwbGFjZWQNCj4gPj4gPiB3aXRoIHNvbWV0aGluZyBzYW5lLiBJdCBpcyB0cnlpbmcg
-dG8gaW5pdGlhdGUgYSBXUklURSBSUEMgY2FsbA0KPiB3aXRoDQo+ID4+IHRoZQ0KPiA+PiA+IHdy
-b25nIGJsb2NrIHNpemUsIGFuZCBpcyBjYWxsaW5nIHRoZSBNRFMgcnBjX2NhbGxfZG9uZSgpIGFu
-ZA0KPiA+PiA+IHJwY19yZWxlYXNlKCkgd2l0aCBhbiB1bmluaXRpYWxpc2VkIHJwYyB0YXNrIHBv
-aW50ZXIuDQo+ID4+ID4NCj4gPj4gPiBEaXR0byBmb3IgcG5mc19sZF9yZWFkX2RvbmUuDQo+ID4+
-IFRoYW5rcyBmb3IgeW91ciBleHBsYW5hdGlvbi4gSXMgdGhlcmUgYW55IHBsYW4gb24gaG93IHRv
-IGZpeA0KPiA+PiBwbmZzX2xkX3JlYWQvd3JpdGVfZG9uZT8gQmFzaWNhbGx5LCB3ZSB3b3VsZCBu
-ZWVkIGFuIGludGVyZmFjZSB0aGF0DQo+ID4+IGNhbiByZWRpcmVjdCB0aGUgSU8gdG8gTURTIGlm
-IHBuZnNfZXJyb3IgaXMgc2V0IG9yIGRvIGFsbCBuZWNlc3NhcnkNCj4gPj4gY2xlYW51cCB3b3Jr
-IHRvIGVuZCByZWFkL3dyaXRlIGlmIHBuZnNfZXJyb3IgaXMgMC4gSU1ITywgdGhlDQo+ID4+IHJl
-Y29hbGVzY2UgbG9naWMgbmVlZCB0byBhY2Nlc3MgbmZzX3BhZ2Vpb19kZXNjcmlwdG9yIGJ1dCB3
-ZSBkbyBub3QNCj4gPj4gaGF2ZSB0aGF0IGluZm9ybWF0aW9uIGF0IHBuZnNfbGRfcmVhZC93cml0
-ZV9kb25lLg0KPiA+DQo+ID4gQXMgZmFyIGFzIEkgY2FuIHNlZSwgdGhlIHJpZ2h0IHRoaW5nIHRv
-IGRvIGlzIHRvIG1hcmsgdGhlIGxheW91dCBhcw0KPiBpbnZhbGlkIGFuZCB0aGVuIHJlZGlydHkg
-dGhlIHBhZ2UuIEl0IHNob3VsZCBiZSBlYXN5IHRvIGhhdmUgZnN5bmMoKQ0KPiByZS1zZW5kIHRo
-ZSBwYWdlcyBpbiB0aGlzIGNhc2UuIFRoZXNlIHNob3VsZCBiZSBleHRyZW1lbHkgcmFyZSBldmVu
-dHMsDQo+IHNpbmNlIHdlIGV4cGVjdCB0byBjYXRjaCBtb3N0IG9mIHRoZSBwTkZTIGZhaWx1cmVz
-IHdoZW4gd2UgZG8gdGhlDQo+IGFjdHVhbCBMQVlPVVRHRVQgaW4gdGhlIC0+cGdfaW5pdCgpLg0K
-PiBBZ3JlZWQuIFRoaXMgc2hvdWxkIGJlIGVhc2llciB0aGFuIHJlLWNvYWxlc2NpbmcgYW5kIHNl
-bmRpbmcgdG8gTURTIGF0DQo+IHJlYWQvd3JpdGVfZG9uZS4NCj4gDQo+ID4NCj4gPiBNeSBtYWlu
-IHdvcnJ5IGlzIGZvciBhaW8vZGlvIHdoZXJlIHRoZXJlIGlzIG5vIGdvb2QgbWVjaGFuaXNtIGZv
-cg0KPiByZXRyeWluZy4gSSdtIHN0aWxsIHdvcmtpbmcgb24gdGhhdC4uLg0KPiBGb3IgZGlvLCB3
-ZSBtYXkgaGF2ZSB0byBzZW5kIHRoZSBmYWlsZWQgcGFnZXMgdG8gTURTIGluc3RlYWQgb2YNCj4g
-cmVseWluZyBvbiBuZXh0IGZzeW5jKCkgdG8gcmV0cnkuDQoNClRoZSBwcm9ibGVtIGlzbid0IHdo
-YXQgdG8gZG8sIGl0IGlzIG1vcmUgb25lIG9mIF93aG9fIGRvZXMgaXQuIFRoZSBycGNpb2QvbmZz
-aW9kIHF1ZXVlcyBhcmVuJ3QgdGhlIGlkZWFsIHBsYWNlIHRvIHNldCB1cCBhIHJlc2VuZCBzaW5j
-ZSBpdCBpbnZvbHZlcyBhbGxvY2F0aW5nIG1lbW9yeS4NCg0KQ2hlZXJzDQogIFRyb25kDQoT77+9
-77+97Lm7HO+/vSbvv71+77+9Ju+/vRjvv73vv70rLe+/ve+/vd22F++/ve+/vXfvv73vv73Lm++/
-ve+/ve+/vW3vv71i77+977+9Z37Ip++/vRfvv73vv73cqH3vv73vv73vv73GoHrvv70majordu+/
-ve+/ve+/vQfvv73vv73vv73vv716Wivvv73vv70rembvv73vv73vv71o77+977+977+9fu+/ve+/
-ve+/ve+/vWnvv73vv73vv71677+9Hu+/vXfvv73vv73vv70/77+977+977+977+9Ju+/vSnfohtm
+From: Fred Isaman <iisaman@citi.umich.edu>
+
+Note: When upper layer's read/write request cannot be fulfilled, the block
+layout driver shouldn't silently mark the page as error. It should do
+what can be done and  leave the rest to the upper layer. To do so, we
+should set rdata/wdata->res.count properly.
+
+When upper layer re-send the read/write request to finish the rest
+part of the request, pgbase is the position where we should start at.
+
+[pnfsblock: bl_write_pagelist support functions]
+[pnfsblock: bl_write_pagelist adjust for missing PG_USE_PNFS]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: handle errors when read or write pagelist.]
+Signed-off-by: Zhang Jingwang <yyalone@gmail.com>
+[pnfs-block: use new write_pagelist api]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
+
+[SQUASHME: pnfsblock: mds_offset is set in the generic layer]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+
+[pnfsblock: mark IO error with NFS_LAYOUT_{RW|RO}_FAILED]
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+[pnfsblock: SQUASHME: adjust to API change]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: fixup blksize alignment in bl_setup_layoutcommit]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+[pnfsblock: bl_write_pagelist adjust for missing PG_USE_PNFS]
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: handle errors when read or write pagelist.]
+Signed-off-by: Zhang Jingwang <yyalone@gmail.com>
+[pnfs-block: use new write_pagelist api]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
+---
+ fs/nfs/blocklayout/blocklayout.c |  129 +++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 126 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index facb5ba..2e37382 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -74,6 +74,19 @@ static int is_hole(struct pnfs_block_extent *be, sector_t isect)
+ 		return !bl_is_sector_init(be->be_inval, isect);
+ }
+ 
++/* Given the be associated with isect, determine if page data can be
++ * written to disk.
++ */
++static int is_writable(struct pnfs_block_extent *be, sector_t isect)
++{
++	if (be->be_state == PNFS_BLOCK_READWRITE_DATA)
++		return 1;
++	else if (be->be_state != PNFS_BLOCK_INVALID_DATA)
++		return 0;
++	else
++		return bl_is_sector_init(be->be_inval, isect);
++}
++
+ /* The data we are handed might be spread across several bios.  We need
+  * to track when the last one is finished.
+  */
+@@ -316,11 +329,121 @@ out:
+ 	return PNFS_NOT_ATTEMPTED;
+ }
+ 
++/* This is basically copied from mpage_end_io_read */
++static void bl_end_io_write(struct bio *bio, int err)
++{
++	struct parallel_io *par = bio->bi_private;
++	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
++	struct nfs_write_data *wdata = (struct nfs_write_data *)par->data;
++
++	if (!uptodate) {
++		if (!wdata->pnfs_error)
++			wdata->pnfs_error = -EIO;
++		bl_set_lo_fail(wdata->lseg);
++	}
++	bio_put(bio);
++	put_parallel(par);
++}
++
++/* Function scheduled for call during bl_end_par_io_write,
++ * it marks sectors as written and extends the commitlist.
++ */
++static void bl_write_cleanup(struct work_struct *work)
++{
++	struct rpc_task *task;
++	struct nfs_write_data *wdata;
++	dprintk("%s enter\n", __func__);
++	task = container_of(work, struct rpc_task, u.tk_work);
++	wdata = container_of(task, struct nfs_write_data, task);
++	pnfs_ld_write_done(wdata);
++}
++
++/* Called when last of bios associated with a bl_write_pagelist call finishes */
++static void
++bl_end_par_io_write(void *data)
++{
++	struct nfs_write_data *wdata = data;
++
++	/* STUB - ignoring error handling */
++	wdata->task.tk_status = 0;
++	wdata->verf.committed = NFS_FILE_SYNC;
++	INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
++	schedule_work(&wdata->task.u.tk_work);
++}
++
+ static enum pnfs_try_status
+-bl_write_pagelist(struct nfs_write_data *wdata,
+-		  int sync)
++bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ {
+-	return PNFS_NOT_ATTEMPTED;
++	int i;
++	struct bio *bio = NULL;
++	struct pnfs_block_extent *be = NULL;
++	sector_t isect, extent_length = 0;
++	struct parallel_io *par;
++	loff_t offset = wdata->args.offset;
++	size_t count = wdata->args.count;
++	struct page **pages = wdata->args.pages;
++	int pg_index = wdata->args.pgbase >> PAGE_CACHE_SHIFT;
++
++	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
++	/* At this point, wdata->pages is a (sequential) list of nfs_pages.
++	 * We want to write each, and if there is an error remove it from
++	 * list and call
++	 * nfs_retry_request(req) to have it redone using nfs.
++	 * QUEST? Do as block or per req?  Think have to do per block
++	 * as part of end_bio
++	 */
++	par = alloc_parallel(wdata);
++	if (!par)
++		return PNFS_NOT_ATTEMPTED;
++	par->call_ops = *wdata->mds_ops;
++	par->call_ops.rpc_call_done = bl_rpc_do_nothing;
++	par->pnfs_callback = bl_end_par_io_write;
++	/* At this point, have to be more careful with error handling */
++
++	isect = (sector_t) ((offset & (long)PAGE_CACHE_MASK) >> SECTOR_SHIFT);
++	for (i = pg_index; i < wdata->npages ; i++) {
++		if (!extent_length) {
++			/* We've used up the previous extent */
++			bl_put_extent(be);
++			bio = bl_submit_bio(WRITE, bio);
++			/* Get the next one */
++			be = bl_find_get_extent(BLK_LSEG2EXT(wdata->lseg),
++					     isect, NULL);
++			if (!be || !is_writable(be, isect)) {
++				wdata->pnfs_error = -ENOMEM;
++				goto out;
++			}
++			extent_length = be->be_length -
++				(isect - be->be_f_offset);
++		}
++		for (;;) {
++			if (!bio) {
++				bio = bio_alloc(GFP_NOIO, wdata->npages - i);
++				if (!bio) {
++					wdata->pnfs_error = -ENOMEM;
++					goto out;
++				}
++				bio->bi_sector = isect - be->be_f_offset +
++					be->be_v_offset;
++				bio->bi_bdev = be->be_mdev;
++				bio->bi_end_io = bl_end_io_write;
++				bio->bi_private = par;
++			}
++			if (bio_add_page(bio, pages[i], PAGE_SIZE, 0))
++				break;
++			bio = bl_submit_bio(WRITE, bio);
++		}
++		isect += PAGE_CACHE_SECTORS;
++		extent_length -= PAGE_CACHE_SECTORS;
++	}
++	wdata->res.count = (isect << SECTOR_SHIFT) - (offset);
++	if (count < wdata->res.count)
++		wdata->res.count = count;
++out:
++	bl_put_extent(be);
++	bl_submit_bio(WRITE, bio);
++	put_parallel(par);
++	return PNFS_ATTEMPTED;
+ }
+ 
+ /* FIXME - range ignored */
+-- 
+1.7.4.1
+
