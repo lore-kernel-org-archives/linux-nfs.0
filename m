@@ -1,58 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.fusionio.com ([66.114.96.31]:45570 "EHLO mx2.fusionio.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752136Ab1GaUDi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 31 Jul 2011 16:03:38 -0400
-Message-ID: <4E35B510.5060109@fusionio.com>
-Date: Sun, 31 Jul 2011 22:03:28 +0200
-From: Jens Axboe <jaxboe@fusionio.com>
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:37688 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752763Ab1GaAxV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jul 2011 20:53:21 -0400
+From: Jim Rees <rees@umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Christoph Hellwig <hch@infradead.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: Please pull NFS client changes
-References: <1312082377.10882.1.camel@lade.trondhjem.org>   <20110731182406.GA16470@infradead.org> <4E35A9B1.9090309@fusionio.com>  <1312141193.7127.1.camel@lade.trondhjem.org>  <4E35B126.8050009@fusionio.com> <1312142325.7127.3.camel@lade.trondhjem.org>
-In-Reply-To: <1312142325.7127.3.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v7 14/26] pnfsblock: lseg alloc and free
+Date: Sat, 30 Jul 2011 20:52:44 -0400
+Message-Id: <1312073576-11024-15-git-send-email-rees@umich.edu>
+In-Reply-To: <1312073576-11024-1-git-send-email-rees@umich.edu>
+References: <1312073576-11024-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-07-31 21:58, Trond Myklebust wrote:
-> On Sun, 2011-07-31 at 21:46 +0200, Jens Axboe wrote: 
->> On 2011-07-31 21:39, Trond Myklebust wrote:
->>> On Sun, 2011-07-31 at 21:14 +0200, Jens Axboe wrote: 
->>>> On 2011-07-31 20:24, Christoph Hellwig wrote:
->>>>> How does this manage to include the pnfs block code, which only was posted
->>>>> on the list a few hours before the pull request, and which doesn't
->>>>> appear to past testing very well (although the major issue seems to be
->>>>> core nfs code)?
->>>>
->>>> And it doesn't even compile:
->>>>
->>>> In file included from fs/nfs/client.c:51:0:
->>>> fs/nfs/pnfs.h:384:1: error: expected identifier or ‘(’ before ‘{’ token
->>>> fs/nfs/client.c: In function ‘nfs_server_set_fsinfo’:
->>>> fs/nfs/client.c:939:8: error: ‘struct nfs_server’ has no member named
->>>> ‘pnfs_blksize’
->>>> fs/nfs/client.c: At top level:
->>>> fs/nfs/pnfs.h:382:20: warning: ‘set_pnfs_layoutdriver’ used but never
->>>> defined [enabled by default]
->>>> make[2]: *** [fs/nfs/client.o] Error 1
->>>
->>> Sigh. This should fix it...
->>
->> Only the first one, there are two independent places it broke. You
->> missed this bit:
->>
->> fs/nfs/client.c:939:8: error: ‘struct nfs_server’ has no member named
-> 
-> How's this?
+From: Fred Isaman <iisaman@citi.umich.edu>
 
-Yup, that gets both.
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+[pnfsblock: fix bug getting pnfs_layout_type in translate_devid().]
+Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Zhang Jingwang <Jingwang.Zhang@emc.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
+---
+ fs/nfs/blocklayout/blocklayout.c    |   31 +++++++++++++++++++++++++------
+ fs/nfs/blocklayout/blocklayout.h    |    6 ++++++
+ fs/nfs/blocklayout/blocklayoutdev.c |    8 ++++++++
+ 3 files changed, 39 insertions(+), 6 deletions(-)
 
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index c838784..e7bc7a5 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -115,16 +115,35 @@ static struct pnfs_layout_hdr *bl_alloc_layout_hdr(struct inode *inode,
+ 	return &bl->bl_layout;
+ }
+ 
+-static void
+-bl_free_lseg(struct pnfs_layout_segment *lseg)
++static void bl_free_lseg(struct pnfs_layout_segment *lseg)
+ {
++	dprintk("%s enter\n", __func__);
++	kfree(lseg);
+ }
+ 
+-static struct pnfs_layout_segment *
+-bl_alloc_lseg(struct pnfs_layout_hdr *lo,
+-	      struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
++/* We pretty much ignore lseg, and store all data layout wide, so we
++ * can correctly merge.
++ */
++static struct pnfs_layout_segment *bl_alloc_lseg(struct pnfs_layout_hdr *lo,
++						 struct nfs4_layoutget_res *lgr,
++						 gfp_t gfp_flags)
+ {
+-	return NULL;
++	struct pnfs_layout_segment *lseg;
++	int status;
++
++	dprintk("%s enter\n", __func__);
++	lseg = kzalloc(sizeof(*lseg), gfp_flags);
++	if (!lseg)
++		return ERR_PTR(-ENOMEM);
++	status = nfs4_blk_process_layoutget(lo, lgr, gfp_flags);
++	if (status) {
++		/* We don't want to call the full-blown bl_free_lseg,
++		 * since on error extents were not touched.
++		 */
++		kfree(lseg);
++		return ERR_PTR(status);
++	}
++	return lseg;
+ }
+ 
+ static void
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 1527f88..3e05b08 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -96,6 +96,12 @@ static inline struct pnfs_block_layout *BLK_LO2EXT(struct pnfs_layout_hdr *lo)
+ 	return container_of(lo, struct pnfs_block_layout, bl_layout);
+ }
+ 
++static inline struct pnfs_block_layout *
++BLK_LSEG2EXT(struct pnfs_layout_segment *lseg)
++{
++	return BLK_LO2EXT(lseg->pls_layout);
++}
++
+ struct bl_dev_msg {
+ 	int status;
+ 	uint32_t major, minor;
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+index 7e1377f..64da33a 100644
+--- a/fs/nfs/blocklayout/blocklayoutdev.c
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -189,3 +189,11 @@ out:
+ 	kfree(msg.data);
+ 	return rv;
+ }
++
++int
++nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
++			   struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
++{
++	/* STUB */
++	return -EIO;
++}
 -- 
-Jens Axboe
+1.7.4.1
 
