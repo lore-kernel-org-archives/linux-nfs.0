@@ -1,80 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:5713 "EHLO mx2.netapp.com"
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:34061 "EHLO e7.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754816Ab1HDSRz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2011 14:17:55 -0400
-Subject: Re: [NLM] fcntl(F_SETLKW) yields -ENOLCK when grace period expires.
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Frank van Maarseveen <frankvm@frankvm.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Date: Thu, 04 Aug 2011 14:17:35 -0400
-In-Reply-To: <20110804172710.GB18087@janus>
-References: <20110804103018.GA11727@janus>
-	 <20110804163452.GE12445@fieldses.org> <20110804164313.GA17572@janus>
-	 <20110804164913.GG12445@fieldses.org>
-	 <1312477820.8919.5.camel@lade.trondhjem.org> <20110804172710.GB18087@janus>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1312481855.8919.20.camel@lade.trondhjem.org>
+	id S1752243Ab1HATCn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Aug 2011 15:02:43 -0400
+Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
+	by e7.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p71IapVp011357
+	for <linux-nfs@vger.kernel.org>; Mon, 1 Aug 2011 14:36:51 -0400
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p71J2c5L168348
+	for <linux-nfs@vger.kernel.org>; Mon, 1 Aug 2011 15:02:38 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p71J2XBF000410
+	for <linux-nfs@vger.kernel.org>; Mon, 1 Aug 2011 15:02:34 -0400
+From: Matthew Treinish <treinish@linux.vnet.ibm.com>
+To: linux-nfs@vger.kernel.org
+Cc: Matthew Treinish <treinish@linux.vnet.ibm.com>
+Subject: [PATCH 2/2] mountd: Removed duplicate check from insert_groups
+Date: Mon,  1 Aug 2011 15:02:27 -0400
+Message-Id: <1312225347-11282-2-git-send-email-treinish@linux.vnet.ibm.com>
+In-Reply-To: <1312225347-11282-1-git-send-email-treinish@linux.vnet.ibm.com>
+References: <1312225347-11282-1-git-send-email-treinish@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2011-08-04 at 19:27 +0200, Frank van Maarseveen wrote: 
-> On Thu, Aug 04, 2011 at 01:10:20PM -0400, Trond Myklebust wrote:
-> > On Thu, 2011-08-04 at 12:49 -0400, J. Bruce Fields wrote: 
-> > > On Thu, Aug 04, 2011 at 06:43:13PM +0200, Frank van Maarseveen wrote:
-> > > > On Thu, Aug 04, 2011 at 12:34:52PM -0400, J. Bruce Fields wrote:
-> > > > > On Thu, Aug 04, 2011 at 12:30:19PM +0200, Frank van Maarseveen wrote:
-> > > > > > Both client- and server run 2.6.39.3, NFSv3 over UDP (without the
-> > > > > > relock_filesystem patch proposed earlier).
-> > > > > > 
-> > > > > > A second client has an exclusive lock on a file on the server. The
-> > > > > > client under test calls fcntl(F_SETLKW) to wait for the same exclusive
-> > > > > > lock. Wireshark sees NLM V4 LOCK calls resulting in NLM_BLOCKED.
-> > > > > > 
-> > > > > > Next the server is rebooted. The second client recovers the lock
-> > > > > > correctly. The client under test now receives NLM_DENIED_GRACE_PERIOD for
-> > > > > > every NLM V4 LOCK request resulting from the waiting fcntl(F_SETLKW). When
-> > > > > > this changes to NLM_BLOCKED after grace period expiration the fcntl
-> > > > > > returns -ENOLCK ("No locks available.") instead of continuing to wait.
-> > > > > 
-> > > > > So that sounds like a client bug, and correct behavior from the server
-> > > > > (assuming the second client was still holding the lock throughout).
-> > > > 
-> > > > yes.
-> > 
-> > Is the client actually asking for a blocking lock after the grace period
-> > expires?
-> 
-> yes, according to my interpretation of that of wireshark, see reply to Bruce.
-> 
+Upon further inspection of mountd the duplicate check in insert group is not
+needed. It seems that export_read() already filters out duplicates so the
+check for duplicates again in insert groups isn't needed.
 
-OK... Does the following patch help?
+Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
+---
+ utils/mountd/mountd.c |    5 -----
+ 1 files changed, 0 insertions(+), 5 deletions(-)
 
-Cheers
-  Trond
---- 
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index 8392cb8..40c0d88 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -270,6 +270,9 @@ nlmclnt_call(struct rpc_cred *cred, struct nlm_rqst *req, u32 proc)
- 			return -ENOLCK;
- 		msg.rpc_proc = &clnt->cl_procinfo[proc];
- 
-+		/* Reset the reply status */
-+		if (argp->block)
-+			resp->status = nlm_lck_blocked;
- 		/* Perform the RPC call. If an error occurs, try again */
- 		if ((status = rpc_call_sync(clnt, &msg, 0)) < 0) {
- 			dprintk("lockd: rpc_call returned error %d\n", -status);
-
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index bcf5080..9c27d6c 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -631,11 +631,6 @@ static exportnode *lookup_or_create_elist_entry(exports *elist, nfs_export *exp)
+ static void insert_group(struct exportnode *e, char *newname)
+ {
+ 	struct groupnode *g;
+-
+-	for (g = e->ex_groups; g; g = g->gr_next)
+-		if (!strcmp(g->gr_name, newname))
+-			return;
+-
+ 	g = xmalloc(sizeof(*g));
+ 	g->gr_name = xstrdup(newname);
+ 	g->gr_next = e->ex_groups;
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.4.4
 
