@@ -1,60 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:34110 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751526Ab1HUQud (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 21 Aug 2011 12:50:33 -0400
-Date: Sun, 21 Aug 2011 12:50:29 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jamie Lokier <jamie@shareable.org>
-Cc: Volker Lendecke <Volker.Lendecke@SerNet.DE>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, samba-technical@lists.samba.org,
-        Casey Bodley <cbodley@citi.umich.edu>
-Subject: Re: [PATCH] locks: breaking read lease should not block read open
-Message-ID: <20110821165029.GA9296@fieldses.org>
-References: <20110609231606.GB22215@fieldses.org>
- <E1QUwaT-00HRZw-74@intern.SerNet.DE>
- <20110610134859.GA27837@fieldses.org>
- <20110721000758.GD27871@fieldses.org>
- <20110819190829.GD11512@jl-vm1.vm.bytemark.co.uk>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110819190829.GD11512@jl-vm1.vm.bytemark.co.uk>
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:49314 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750703Ab1HANyf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Aug 2011 09:54:35 -0400
+Received: by pzk37 with SMTP id 37so11542821pzk.1
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Aug 2011 06:54:34 -0700 (PDT)
+Date: Mon, 1 Aug 2011 14:54:34 +0100
+Message-ID: <CAA4Z2ZR47Lfb_=172VUd-Qop7NiC3ewVAgUepn0WD=PDTr9k-A@mail.gmail.com>
+Subject: using non contiguous memory in nfs_idmap_new()
+From: Adrien Kunysz <adk@acunu.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 19, 2011 at 08:08:29PM +0100, Jamie Lokier wrote:
-> J. Bruce Fields wrote:
-> > I'm not sure how to approach the lease code.
-> > 
-> > On the one hand, I've never seen any evidence that anyone outside Samba
-> > and NFSv4 has ever used it, and both currently make extremely limited
-> > use of it.  So we could probably get away with "fixing" the lease code
-> > to do whatever both of us need.
-> 
-> I've never used it, but I've _nearly_ used it (project took a
-> different direction), in a web application framework.
-> 
-> Pretty much the way CIFS/NFS use it, to keep other things (remote
-> state, database state, derived files) transactionally coherent with
-> changes to file contents by programs that only know about the files
-> they access.
-> 
-> The SIGIO stuff is a horrible interface.
-> I could still see me trying to use it sometime in the future.
-> In which case I really don't mind if you make the semantics saner :-)
-> 
-> Now we have fanotify which does something very similar and could have
-> generalised leases, but unfortunately fanotify came from such a
-> different motivation that it's not well suited for ordinary user
-> applications.
+Dear linux-nfs,
 
-I'm not sure what you mean by that--mainly just because I'm not as
-familiar with fanotify as I should be.
+I have a box that has recently been victim of an OOM caused by
+nfs_idmap_new() attempting to allocate a large amount of contiguous
+memory. This problem has been reported previously here [0] and I
+understand the real fix is to use CONFIG_NFS_USE_NEW_IDMAPPER. However
+I was wondering whether using non contiguous memory instead would be a
+valid workaround, especially considering the new ID mapper is not
+enabled by default. I have actually written a patch to that effect as
+I don't see any specific reason why that struct would need to be in
+contiguous memory.
 
-For my case the important difference between leases and the various
-notification interfaces is that leases are synchronous--the lease-holder
-is notified and has a chance to clean up before releasing its lease and
-allowing the conflicting operation to continue--whereas the the various
-notification interfaces tell you "tough luck, something just happened".
+So before I do anything stupid with that patch,
+a) is there any good reason to use kzalloc() instead of vzalloc() in
+nfs_idmap_new()?
+b) would you consider a patch that would make the function use vzalloc()?
 
---b.
+Thanks,
+Adrien Kunysz
+
+[0] http://www.spinics.net/lists/linux-nfs/msg22248.html
