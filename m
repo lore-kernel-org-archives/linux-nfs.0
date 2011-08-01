@@ -1,74 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44402 "EHLO mx1.redhat.com"
+Received: from chilli.pcug.org.au ([203.10.76.44]:48730 "EHLO smtps.tip.net.au"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752104Ab1GGILu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jul 2011 04:11:50 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p678BnOx018952
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 7 Jul 2011 04:11:50 -0400
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p678Bnuc024175
-	for <linux-nfs@vger.kernel.org>; Thu, 7 Jul 2011 04:11:49 -0400
-Received: from regina.usersys.redhat.com (dhcp-176-225.mel.redhat.com [10.64.176.225])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id p678BmKO015118
-	for <linux-nfs@vger.kernel.org>; Thu, 7 Jul 2011 04:11:48 -0400
-Content-Type: text/plain; charset=utf-8
-Message-ID: <19989.27202.793003.725608@regina.usersys.redhat.com>
-Date: Thu, 7 Jul 2011 18:11:46 +1000
-From: Max Matveev <makc@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: NFS/TCP timeout sequence
+	id S1752123Ab1HAA5v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 31 Jul 2011 20:57:51 -0400
+Date: Mon, 1 Aug 2011 10:57:39 +1000
+From: Stephen Rothwell <sfr@canb.auug.org.au>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Jens Axboe <jaxboe@fusionio.com>, Christoph Hellwig <hch@infradead.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: Please pull NFS client changes
+Message-Id: <20110801105739.4dd1244f1a6f5f13e1b486b8@canb.auug.org.au>
+In-Reply-To: <1312142325.7127.3.camel@lade.trondhjem.org>
+References: <1312082377.10882.1.camel@lade.trondhjem.org>
+	<20110731182406.GA16470@infradead.org>
+	<4E35A9B1.9090309@fusionio.com>
+	<1312141193.7127.1.camel@lade.trondhjem.org>
+	<4E35B126.8050009@fusionio.com>
+	<1312142325.7127.3.camel@lade.trondhjem.org>
+Content-Type: multipart/signed; protocol="application/pgp-signature";
+ micalg="PGP-SHA1";
+ boundary="Signature=_Mon__1_Aug_2011_10_57_39_+1000_xAa/oHeQzkERkSvM"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+--Signature=_Mon__1_Aug_2011_10_57_39_+1000_xAa/oHeQzkERkSvM
+Content-Type: text/plain; charset=US-ASCII
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-I've had to look at the way NFS/TCP does its timeouts and backoff
-and it does not make a lot of sense to me: according to the
-following paragram from nfs(5) on Fedora 14 (I'm using Fedora 14
-because it has more text then the same page in nfs-utils):
+Hi all,
 
-      timeo=n    The time (in tenths of a second) the  NFS  client  waits
-                 for a response before it retries an NFS request. If this
-                 option is not specified, requests are retried  every  60
-                 seconds  for NFS over TCP.  The NFS client does not per‐
-                 form any kind of timeout backoff for NFS over TCP.
+On Sun, 31 Jul 2011 15:58:45 -0400 Trond Myklebust <Trond.Myklebust@netapp.=
+com> wrote:
+>
+> How's this?
+>=20
+> 8<-----------------------------------------------------------------------=
+---------------=20
+> From e01e56eb7013a11f3e09bd8a8562332777f9e100 Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Date: Sun, 31 Jul 2011 15:33:26 -0400
+> Subject: [PATCH v2] NFS: Re-enable compilation of nfs with !CONFIG_NFS_V4=
+ ||
+>  !CONFIG_NFS_V4_1
+>=20
+> Fix a typo in fs/nfs/pnfs.h
+> Move the pnfs_blksize declaration outside the CONFIG_NFS_V4 section in
+> struct nfs_server.
+>=20
+> Reported-by: Jens Axboe <jaxboe@fusionio.com>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-but if I try the mount with timeo=20,retrans=7 then I'm getting
-retransmits which are 2, 4, 6, 8, 2, 4, 6, 8 seconds apart, i.e.
-there is a) linear backoff and b) the backoff is not long enough to
-let the complete sequence of 7 retransmits run its course.
+I have applied this the linux-next today ..
 
-This is happening because to_maxval for NFS_TCP is too short to
-accomodate the linear backoff - we need to either increase the
-to_maxval to something like:
+--=20
+Cheers,
+Stephen Rothwell                    sfr@canb.auug.org.au
+http://www.canb.auug.org.au/~sfr/
 
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -606,7 +606,8 @@ static void nfs_init_timeout_values(struct rpc_timeout *to, 
-                if (to->to_initval > NFS_MAX_TCP_TIMEOUT)
-                        to->to_initval = NFS_MAX_TCP_TIMEOUT;
-                to->to_increment = to->to_initval;
--               to->to_maxval = to->to_initval + (to->to_increment * to->to_retries);
-+               to->to_maxval = to->to_increment * (to->to_retries + 1) 
-+                             * (to->to_retries + 2) / 2;
-                if (to->to_maxval > NFS_MAX_TCP_TIMEOUT)
-                        to->to_maxval = NFS_MAX_TCP_TIMEOUT;
-                if (to->to_maxval < to->to_initval)
+--Signature=_Mon__1_Aug_2011_10_57_39_+1000_xAa/oHeQzkERkSvM
+Content-Type: application/pgp-signature
 
-or don't do the linear backoff
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
 
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -546,7 +546,7 @@ static void xprt_reset_majortimeo(struct rpc_rqst *req)
-        if (to->to_exponential)
-                req->rq_majortimeo <<= to->to_retries;
-        else
--               req->rq_majortimeo += to->to_increment * to->to_retries;
-+               req->rq_majortimeo += to->to_increment;
-        if (req->rq_majortimeo > to->to_maxval || req->rq_majortimeo == 0)
-                req->rq_majortimeo = to->to_maxval;
-        req->rq_majortimeo += jiffies;
+iQEcBAEBAgAGBQJONfoDAAoJEDMEi1NhKgbsTewH+gPrqxgWi3GjnhEyRbWBUVFJ
+zYmhFt3tgOLeYLjc6VVAihwauJ6tzs567ztJB+NpOA6ZMdfFGS10l379dS3Z6G2Q
+3D37t5zo2PsIgUp4jwONPOTF6HLHxr0ucxATufn3ZpfYzFv6pMBXARZA4cGBJkF2
+fAbGTKt5G5dXL+CwdIJVHHmLVWcSjmITuHAxh0YmlfV3kq+ctixwtA7SOsSjrC/6
+ov0263LM3Pay36TVM1f5LWr9CxGcM3HWeEZPjFeT1d94hwtnprU4sSTAu3ZcHS1f
+1Ga3dKAaB8Ew0aEU8O03IEAcZwX8iwRywLxZFJayUZAoKxABSS4uwTUFAtEYOCE=
+=GdBh
+-----END PGP SIGNATURE-----
 
-max
+--Signature=_Mon__1_Aug_2011_10_57_39_+1000_xAa/oHeQzkERkSvM--
