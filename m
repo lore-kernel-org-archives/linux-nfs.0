@@ -1,41 +1,22 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from georges.telenet-ops.be ([195.130.137.68]:47560 "EHLO
-	georges.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752783Ab1HFJ7L (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2011 05:59:11 -0400
-From: Luk Claes <luk@debian.org>
-To: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-Cc: Luk Claes <luk@debian.org>
-Subject: [PATCH] start-statd: Use bash as -p is no POSIX
-Date: Sat,  6 Aug 2011 11:59:28 +0200
-Message-Id: <1312624768-2394-1-git-send-email-luk@debian.org>
+Received: from snt0-omc3-s31.snt0.hotmail.com ([65.55.90.170]:52749 "EHLO
+	snt0-omc3-s31.snt0.hotmail.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753027Ab1HBOwK convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Aug 2011 10:52:10 -0400
+Message-ID: <SNT124-W64CD9D41C92B91E501D45BF73B0@phx.gbl>
+From: Mrbuddy <buddy_sz@hotmail.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: A error about stat
+Date: Tue, 2 Aug 2011 14:52:09 +0000
+Content-Type: text/plain; charset="iso-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-sh -p is not guaranteed to be provided by POSIX shells. dash for instance does not provide this, so use bash explicitly.
 
-Signed-off-by: Luk Claes <luk@debian.org>
----
- utils/statd/start-statd |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/utils/statd/start-statd b/utils/statd/start-statd
-index c7805ee..1b345a5 100644
---- a/utils/statd/start-statd
-+++ b/utils/statd/start-statd
-@@ -1,8 +1,8 @@
--#!/bin/sh -p
-+#!/bin/bash -p
- # nfsmount calls this script when mounting a filesystem with locking
- # enabled, but when statd does not seem to be running (based on
- # /var/run/rpc.statd.pid).
--# It should run run statd with whatever flags are apropriate for this
-+# It should run statd with whatever flags are apropriate for this
- # site.
- PATH=/sbin:/usr/sbin
- exec rpc.statd --no-notify
--- 
-1.7.5.4
-
+    After I use open(TESTFILE,O_RDWR | O_CREAT,0644),and then close it, then I get gid and uid,I found that the uid and gid is -2.But after 3S, I can get the right uid and gid.     The reason is that when opening a file,we can get the right uid andgid.but after decode,we lost it and the client set the value to 2. whenclosing it,we also get the stat info,but only fo size,ctime and mtime.After 3s,local attribute become invalidated,and then ge the stat from disk.    In order to resolver that problem,I made a change innfs4_xdr_dec_open();
+change
+if(decode_getfatr(&xdr,res->f_attr,res->server,!RPC_IS_ASYNC(rqstp->rq_task))!=0)
+to
+if(decode_getfatr(&xdr,res->f_attr,res->server,1) 		 	   		  
