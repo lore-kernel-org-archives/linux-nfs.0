@@ -1,78 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:57914 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753028Ab1HDC5L convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Aug 2011 22:57:11 -0400
-Received: by vxh35 with SMTP id 35so1124932vxh.19
-        for <linux-nfs@vger.kernel.org>; Wed, 03 Aug 2011 19:57:11 -0700 (PDT)
-In-Reply-To: <20110804111357.0d0a6e85@notabene.brown>
-References: <20110804092141.3461c9ce@notabene.brown>
-	<CAKnQG+cs4SLD-YmLwpnXU_gDWrjfmx9+z-E=7J-SUcsP=KhfSg@mail.gmail.com>
-	<20110804111357.0d0a6e85@notabene.brown>
-Date: Wed, 3 Aug 2011 22:57:10 -0400
-Message-ID: <CAKnQG+dViSmrjhZV1cFZHj98kM0ixyKRLek9OWkJjFUS6YO3cw@mail.gmail.com>
-Subject: Re: Problems with kerberos auth - possibly against ADS - since nfs-utils-1.2.3
-From: Kevin Coffman <kwc@umich.edu>
-To: NeilBrown <neilb@suse.de>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:42435 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753206Ab1HBC3s convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Aug 2011 22:29:48 -0400
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: [PATCH v4 00/27] add block layout driver to pnfs client
+Date: Mon, 1 Aug 2011 19:29:30 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A778575@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <20110802022144.GA18157@merit.edu>
+References: <1311874276-1386-1-git-send-email-rees@umich.edu> <20110729155136.GB28306@infradead.org> <20110729185415.GA23061@merit.edu> <20110729190133.GA10946@infradead.org> <20110729191341.GC23061@merit.edu> <1311988172.16078.15.camel@lade.trondhjem.org> <20110730032621.GB25188@merit.edu> <CA+a=Yy5rmvrUHaDewLb_EbeaDYMKL_xv_E_MmzTvR_55SmYkqA@mail.gmail.com> <1312233006.23392.17.camel@lade.trondhjem.org> <1312238117.23392.19.camel@lade.trondhjem.org> <20110802022144.GA18157@merit.edu>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Jim Rees" <rees@umich.edu>
+Cc: "Peng Tao" <bergwolf@gmail.com>,
+        "Adamson, Andy" <William.Adamson@netapp.com>,
+        "Christoph Hellwig" <hch@infradead.org>, <linux-nfs@vger.kernel.org>,
+        "peter honeyman" <honey@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Aug 3, 2011 at 9:13 PM, NeilBrown <neilb@suse.de> wrote:
-> On Wed, 3 Aug 2011 20:51:52 -0400 Kevin Coffman <kwc@umich.edu> wrote:
->
->> On Wed, Aug 3, 2011 at 7:21 PM, NeilBrown <neilb@suse.de> wrote:
->> >
->> > Hi,
->> >  I have some reports of problems with kerberos auth in openSUSE 11.4 (using
->> >  1.2.3) which can be fixed by using the openSUSE 11.3 version of rpc.gssd
->> >  (from 1.2.1).
->> >
->> > https://bugzilla.novell.com/show_bug.cgi?id=614293
->> >
->> >  The important difference seems to be the list of enc_types used in
->> >  limit_krb5_enctypes.
->> >
->> >  In 1.2.1 this list is hard coded in the rpc.gssd to 1,3,2 (I think).
->> >  In 1.2.3 this list is taken from the kernel where is it hard coded
->> >  to  18,17,16,23,3,1,2.
->> >  When I patch the 11.4 code to use the old enctype list, it works perfectly.
->> >
->> >  So presumably it ends up negotiating one of those other enc_types and
->> >  gets confused by it.
->> >
->> >  I'll try to get a comparative tcp dump to see if that helps, but
->> >  if anyone has any idea what the problem might be I'd love to hear
->> >  suggestions.
->> >
->> >  The systems are running a 2.6.37 kernel in case that might make a difference.
->> >
->> > Thanks,
->> > NeilBrown
->>
->> Hi Niel,
->> Seeing the traffic might help.  It wasn't clear to me after reading
->> (most of) the bugzilla info what kernel version the NFS servers
->> involved are running.  If the servers don't have kernels with the
->> newer enctype support, this might be the "subkey assertion" issue.
->>
->
-> Hi Kevin,
->  thanks for the reply.  I've asked for that extra info (trace and server
->  details) - hopefully we'll get that in the next day or so.
->
->  The this is a buggy server issue, and it is wide-spread, I wonder if it
->  might make sense for gssd to fall back on the old enctype list if
->  negotiation fails with the new list.  Does that sound at all reasonable?
->
-> Thanks,
-> NeilBrown
+> -----Original Message-----
+> From: Jim Rees [mailto:rees@umich.edu]
+> Sent: Monday, August 01, 2011 10:22 PM
+> To: Myklebust, Trond
+> Cc: Peng Tao; Adamson, Andy; Christoph Hellwig; linux-
+> nfs@vger.kernel.org; peter honeyman
+> Subject: Re: [PATCH v4 00/27] add block layout driver to pnfs client
+> 
+> Trond Myklebust wrote:
+> 
+>   On Mon, 2011-08-01 at 17:10 -0400, Trond Myklebust wrote:
+>   > Looking at the callback code, I see that if tbl-
+> >highest_used_slotid !=
+>   > 0, then we BUG() while holding the backchannel's
+tbl->slot_tbl_lock
+>   > spinlock. That seems a likely candidate for the above hang.
+>   >
+>   > Andy, how we are guaranteed that tbl->highest_used_slotid won't
+> take
+>   > values other than 0, and why do we commit suicide when it does? As
+> far
+>   > as I can see, there is no guarantee that we call
+> nfs4_cb_take_slot() in
+>   > nfs4_callback_compound(), however we appear to unconditionally
+call
+>   > nfs4_cb_free_slot() provided there is a session.
+>   >
+>   > The other strangeness would be the fact that there is nothing
+> enforcing
+>   > the NFS4_SESSION_DRAINING flag. If the session is draining, then
+> the
+>   > back-channel simply ignores that and goes ahead with processing
+the
+>   > callback. Is this to avoid deadlocks with the server returning
+>   > NFS4ERR_BACK_CHAN_BUSY when the client does a DESTROY_SESSION?
+> 
+>   How about something like the following?
+> 
+> I applied this patch, along with Andy's htonl correction.  It now
+fails
+> in a
+> different way, with a deadlock.  The test runs several processes in
+> parallel.
+> 
+> INFO: task t_mtab:1767 blocked for more than 10 seconds.
+> "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this
+> message.
+> t_mtab          D 0000000000000000     0  1767   1634 0x00000080
+>  ffff8800376afd48 0000000000000086 ffff8800376afcd8 ffffffff00000000
+>  ffff8800376ae010 ffff880037ef4500 0000000000012c80 ffff8800376affd8
+>  ffff8800376affd8 0000000000012c80 ffffffff81a0c020 ffff880037ef4500
+> Call Trace:
+>  [<ffffffff8145411a>] __mutex_lock_common+0x110/0x171
+>  [<ffffffff81454191>] __mutex_lock_slowpath+0x16/0x18
+>  [<ffffffff81454257>] mutex_lock+0x1e/0x32
+>  [<ffffffff811169a2>] kern_path_create+0x75/0x11e
+>  [<ffffffff810fe836>] ? kmem_cache_alloc+0x5f/0xf1
+>  [<ffffffff812127d9>] ? strncpy_from_user+0x43/0x72
+>  [<ffffffff81114077>] ? getname_flags+0x158/0x1d2
+>  [<ffffffff81116a86>] user_path_create+0x3b/0x52
+>  [<ffffffff81117466>] sys_linkat+0x9a/0x120
+>  [<ffffffff8109932e>] ? audit_syscall_entry+0x119/0x145
+>  [<ffffffff81117505>] sys_link+0x19/0x1c
+>  [<ffffffff8145b612>] system_call_fastpath+0x16/0x1b
 
-Hi Niel,
-Not totally unreasonable, but if it is the acceptor subkey assertion
-issue, it might be less work to forward-port the svcgssd patches to
-limit the enctypes on the server side?
+That's a different issue. If you do an 'echo t >/proc/sysrq-trigger',
+then do you see any other process that is stuck in the nfs layer and
+that might be holding the inode->i_mutex?
 
-K.C.
+
