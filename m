@@ -1,94 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:53661 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753945Ab1H2S4v (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2011 14:56:51 -0400
-Received: by iabu26 with SMTP id u26so737334iab.19
-        for <linux-nfs@vger.kernel.org>; Mon, 29 Aug 2011 11:56:51 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/3] NFSD: Remove the ex_pathname field from struct svc_export
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 29 Aug 2011 14:49:00 -0400
-Message-ID: <20110829184900.3305.13531.stgit@matisse.1015granger.net>
-In-Reply-To: <20110829184608.3305.93648.stgit@matisse.1015granger.net>
-References: <20110829184608.3305.93648.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:35141 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754811Ab1HBSvF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Aug 2011 14:51:05 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Andy Adamson <andros@netapp.com>
+Cc: Peng Tao <bergwolf@gmail.com>, Jim Rees <rees@umich.edu>,
+        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v2 2/2] NFSv4.1: Return NFS4ERR_BADSESSION to callbacks during session resets
+Date: Tue,  2 Aug 2011 14:50:40 -0400
+Message-Id: <1312311040-9400-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1312311040-9400-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1312306214.2823.10.camel@lade.trondhjem.org>
+ <1312311040-9400-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+If the client is in the process of resetting the session when it receives
+a callback, then returning NFS4ERR_DELAY may cause a deadlock with the
+DESTROY_SESSION call.
 
-There are no more users...
+Basically, if the client returns NFS4ERR_DELAY in response to the
+CB_SEQUENCE call, then the server is entitled to believe that the
+client is busy because it is already processing that call. In that
+case, the server is perfectly entitled to respond with a
+NFS4ERR_BACK_CHAN_BUSY to any DESTROY_SESSION call.
 
+Fix this by having the client reply with a NFS4ERR_BADSESSION in
+response to the callback if it is resetting the session.
+
+Cc: stable@kernel.org [2.6.38+]
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
+ fs/nfs/callback_proc.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
- fs/nfsd/export.c            |   11 -----------
- include/linux/nfsd/export.h |    1 -
- 2 files changed, 0 insertions(+), 12 deletions(-)
-
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index d9a6611..bf985f7 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -318,7 +318,6 @@ static void svc_export_put(struct kref *ref)
- 	struct svc_export *exp = container_of(ref, struct svc_export, h.ref);
- 	path_put(&exp->ex_path);
- 	auth_domain_put(exp->ex_client);
--	kfree(exp->ex_pathname);
- 	nfsd4_fslocs_free(&exp->ex_fslocs);
- 	kfree(exp);
- }
-@@ -528,11 +527,6 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 0ab8202..43926ad 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -452,6 +452,11 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+ 	if (test_bit(NFS4_SESSION_DRAINING, &clp->cl_session->session_state)) {
+ 		spin_unlock(&tbl->slot_tbl_lock);
+ 		status = htonl(NFS4ERR_DELAY);
++		/* Return NFS4ERR_BADSESSION if we're draining the session
++		 * in order to reset it.
++		 */
++		if (test_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state))
++			status = htonl(NFS4ERR_BADSESSION);
+ 		goto out;
+ 	}
  
- 	exp.ex_client = dom;
- 
--	err = -ENOMEM;
--	exp.ex_pathname = kstrdup(buf, GFP_KERNEL);
--	if (!exp.ex_pathname)
--		goto out2;
--
- 	/* expiry */
- 	err = -EINVAL;
- 	exp.h.expiry_time = get_expiry(&mesg);
-@@ -613,8 +607,6 @@ out4:
- 	nfsd4_fslocs_free(&exp.ex_fslocs);
- 	kfree(exp.ex_uuid);
- out3:
--	kfree(exp.ex_pathname);
--out2:
- 	path_put(&exp.ex_path);
- out1:
- 	auth_domain_put(dom);
-@@ -678,7 +670,6 @@ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
- 	new->ex_client = item->ex_client;
- 	new->ex_path.dentry = dget(item->ex_path.dentry);
- 	new->ex_path.mnt = mntget(item->ex_path.mnt);
--	new->ex_pathname = NULL;
- 	new->ex_fslocs.locations = NULL;
- 	new->ex_fslocs.locations_count = 0;
- 	new->ex_fslocs.migrated = 0;
-@@ -696,8 +687,6 @@ static void export_update(struct cache_head *cnew, struct cache_head *citem)
- 	new->ex_fsid = item->ex_fsid;
- 	new->ex_uuid = item->ex_uuid;
- 	item->ex_uuid = NULL;
--	new->ex_pathname = item->ex_pathname;
--	item->ex_pathname = NULL;
- 	new->ex_fslocs.locations = item->ex_fslocs.locations;
- 	item->ex_fslocs.locations = NULL;
- 	new->ex_fslocs.locations_count = item->ex_fslocs.locations_count;
-diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
-index 7ba3fd4..f85308e 100644
---- a/include/linux/nfsd/export.h
-+++ b/include/linux/nfsd/export.h
-@@ -96,7 +96,6 @@ struct svc_export {
- 	struct auth_domain *	ex_client;
- 	int			ex_flags;
- 	struct path		ex_path;
--	char			*ex_pathname;
- 	uid_t			ex_anon_uid;
- 	gid_t			ex_anon_gid;
- 	int			ex_fsid;
+-- 
+1.7.6
 
