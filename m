@@ -1,66 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:47359 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756512Ab1HDBQP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Aug 2011 21:16:15 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e34.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p741GDZX024726
-	for <linux-nfs@vger.kernel.org>; Wed, 3 Aug 2011 19:16:13 -0600
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id p741GChN198132
-	for <linux-nfs@vger.kernel.org>; Wed, 3 Aug 2011 19:16:12 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p741GC4n012338
-	for <linux-nfs@vger.kernel.org>; Wed, 3 Aug 2011 19:16:12 -0600
-Received: from malahal ([9.47.25.235])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p741GCjW012330
-	for <linux-nfs@vger.kernel.org>; Wed, 3 Aug 2011 19:16:12 -0600
-Date: Wed, 3 Aug 2011 18:16:11 -0700
-From: Malahal Naineni <malahal@us.ibm.com>
-To: linux-nfs@vger.kernel.org
-Subject: Re: State of NFSv4 VolatileFilehandles
-Message-ID: <20110804011611.GA24568@us.ibm.com>
-References: <4E37E66D.90102@linux.vnet.ibm.com>
- <45F4FC20-ED44-4430-A5A9-E06459A194F3@oracle.com>
- <4E38F894.4070003@linux.vnet.ibm.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A778B9B@SACMVEXC2-PRD.hq.netapp.com>
- <20110804082311.21b7e73a@notabene.brown>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110804082311.21b7e73a@notabene.brown>
+Received: from mx2.netapp.com ([216.240.18.37]:31023 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754268Ab1HBRaQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Aug 2011 13:30:16 -0400
+Subject: Re: [PATCH v4 00/27] add block layout driver to pnfs client
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Andy Adamson <andros@netapp.com>
+Cc: Peng Tao <bergwolf@gmail.com>, Jim Rees <rees@umich.edu>,
+        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Date: Tue, 02 Aug 2011 13:30:14 -0400
+In-Reply-To: <1312240278.4616.7.camel@lade.trondhjem.org>
+References: <1311874276-1386-1-git-send-email-rees@umich.edu>
+	 <20110729155136.GB28306@infradead.org> <20110729185415.GA23061@merit.edu>
+	 <20110729190133.GA10946@infradead.org> <20110729191341.GC23061@merit.edu>
+	 <1311988172.16078.15.camel@lade.trondhjem.org>
+	 <20110730032621.GB25188@merit.edu>
+	 <CA+a=Yy5rmvrUHaDewLb_EbeaDYMKL_xv_E_MmzTvR_55SmYkqA@mail.gmail.com>
+	 <1312233006.23392.17.camel@lade.trondhjem.org>
+	 <1312238117.23392.19.camel@lade.trondhjem.org>
+	 <0A94625F-4E4F-4A88-A0DF-63D429924F66@netapp.com>
+	 <1312240278.4616.7.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1312306214.2823.10.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-NeilBrown [neilb@suse.de] wrote:
+On Mon, 2011-08-01 at 19:11 -0400, Trond Myklebust wrote: 
+> On Mon, 2011-08-01 at 18:57 -0400, Andy Adamson wrote: 
+> > On Aug 1, 2011, at 6:35 PM, Trond Myklebust wrote:
+> > > /*
+> > > @@ -433,26 +436,32 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+> > > 			      struct cb_sequenceres *res,
+> > > 			      struct cb_process_state *cps)
+> > > {
+> > > +	struct nfs4_slot_table *tbl;
+> > > 	struct nfs_client *clp;
+> > > 	int i;
+> > > 	__be32 status = htonl(NFS4ERR_BADSESSION);
+> > > 
+> > > -	cps->clp = NULL;
+> > > -
+> > > 	clp = nfs4_find_client_sessionid(args->csa_addr, &args->csa_sessionid);
+> > > 	if (clp == NULL)
+> > > 		goto out;
+> > > 
+> > > +	tbl = &clp->cl_session->bc_slot_table;
+> > > +
+> > > +	spin_lock(&tbl->slot_tbl_lock);
+> > > 	/* state manager is resetting the session */
+> > > 	if (test_bit(NFS4_SESSION_DRAINING, &clp->cl_session->session_state)) {
+> > > 		status = NFS4ERR_DELAY;
+> >                                  
+> > status = htonl(NFS4ERR_DELAY);
 > 
-> I substantially agree, though I think the implication can be refined a
-> little.
-> 
-> I would say that the implication is that a VFH is only really usable
-> when the complete path leading to the file in question is read-only.
-> We don't need to assume that other files in other parts of the
-> hierarchy which have stable file handles are read-only.
-> 
-> So if the server presents us with a VFH, it seems reasonable to assume
-> that we can use a repeated lookup of the same name to refresh the
-> filehandle simply because there is no other credible way to respond to
-> a FHEXPIRED.
+> Yep. I'll fix that too... 
 
-The spec seems to imply that repeated lookup of the same name to refresh
-the file handle is OK as long as the file is OPEN! It doesn't seem to imply
-anything for files that are not opened.
+Looking at this again, I'm not sure that the above is safe. If you
+return NFS4ERR_DELAY on the SEQUENCE operation, then that has a very
+specific meaning of "I'm executing your command, but it will take a
+while to complete.".
+It therefore seems to me that if we return NFS4ERR_DELAY, then we are
+basically setting ourselves up for a deadlock: 
+      * On the one hand, we're trying to destroy the session 
+      * On the other hand, we're telling the server that 'your callback
+        is being processed'.
+In that situation, it seems to me that it should be perfectly valid for
+the server to reject our DESTROY_SESSION call with a
+NFS4ERR_BACK_CHAN_BUSY until we process the callback.
 
-"RFC 3530, 4.2.3. Volatile Filehandle" states:
+Comments?
 
-"Servers which provide volatile filehandles that may expire while open
-(i.e., if FH4_VOL_MIGRATION or FH4_VOL_RENAME is set or if
-FH4_VOLATILE_ANY is set and FH4_NOEXPIRE_WITH_OPEN not set), should deny
-a RENAME or REMOVE that would affect an OPEN file of any of the
-components leading to the OPEN file.  In addition, the server should
-deny all RENAME or REMOVE requests during the grace period upon server
-restart."
+Cheers
+  Trond
 
-On the other hand, if FH4_NOEXPIRE_WITH_OPEN is set, then the file can
-be allowed to be renamed or removed by the server.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Thanks, Malahal.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
