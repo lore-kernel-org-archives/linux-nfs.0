@@ -1,55 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet15.oracle.com ([141.146.126.227]:32147 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753190Ab1HBOxp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Aug 2011 10:53:45 -0400
-Subject: Re: State of NFSv4 VolatileFilehandles
+Received: from fieldses.org ([174.143.236.118]:57668 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753134Ab1HBBJs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Aug 2011 21:09:48 -0400
+Date: Mon, 1 Aug 2011 21:09:46 -0400
+To: Robert Marcano <robert@marcanoonline.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 / POSIX ACL mapping bug?
+Message-ID: <20110802010945.GB16305@fieldses.org>
+References: <4E2ED2A0.4030401@marcanoonline.com>
+ <20110727154736.GB974@fieldses.org>
+ <4E303A09.10906@marcanoonline.com>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4E37E66D.90102@linux.vnet.ibm.com>
-Date: Tue, 2 Aug 2011 10:53:33 -0400
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com
-Message-Id: <45F4FC20-ED44-4430-A5A9-E06459A194F3@oracle.com>
-References: <4E37E66D.90102@linux.vnet.ibm.com>
-To: Venkateswararao Jujjuri <jvrao@linux.vnet.ibm.com>
+In-Reply-To: <4E303A09.10906@marcanoonline.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Aug 2, 2011, at 7:58 AM, Venkateswararao Jujjuri wrote:
-
-> We at IBM receiving multiple customer requests for supporting NFSv4 server migration.
-> I have referred to Trond and Chuck's presentations at 2011 Connectathon and there appears to be
-> sizable work remaining. I am not sure if there is any progress made since those talks.
+On Wed, Jul 27, 2011 at 11:47:13AM -0430, Robert Marcano wrote:
+> On 07/27/2011 11:17 AM, J. Bruce Fields wrote:
+> >On Tue, Jul 26, 2011 at 10:13:44AM -0430, Robert Marcano wrote:
+> ...
+> >>Is this normal or a bug?, My interpretation is that even that the
+> >>mapping of the ACLs is not 100% perfect this simple example should
+> >>not be a problem. Is it impossible using NFS to create a shared
+> >>directory for a group of users?
+> >
+> >Without looking at your example carefully, it sounds like the same
+> >problem as discussed here:
+> >
+> >	http://marc.info/?t=123739823200003&r=1&w=2
 > 
-> I would like to open up a discussion thread on the mailing list to understand the latest status.
-> Also would like to get the input on the Volatile Filehandles (VFH). I searched the mailing list, and could not
-> find any recent discussion on this.
-> 
-> Some discussion points:
-> - What are the pieces left to attain full client/server support for seamless server migration?
+> Thanks, exactly the same problem, current user umask getting in the
+> way of ACL inheritance, looks like the answers is that this is
+> currently not possible because the umask is applied client side and
+> the NFSv4 protocol does not help to send that info to the server. No
+> workaround available (mount option or something like that)
 
-The client migration implementation is code complete and in test now.  This includes both minor version 0 and 1.  We don't have any mv1 servers to test with at this time, so that support is provisional.  I hope to have patches ready for the 3.2 merge window, but you can see what I've got now on git.linux-nfs.org.
+I seem to recall there was a solution proposed in the above thread that
+Trond was OK with; if someone wants to read through it and implement
+that, I'm sure patches would be welcome....
 
-A problem is that there are corner cases in the v4.0 migration specification that are still unresolved.  We are working with the NFSv4 WG to get these addressed.  But I expect some minor changes even after the patches are merged upstream.
-
-We don't have firm plans for a server migration implementation on Linux at this time, but Bruce can maybe say more about that.
-
-> - Any discussion/sugestions on the way to implement VFH?  As described in RFC 3530 sections 4.2.3 and 4.2.4?
-
-I think we are avoiding volatile file handles as long as possible.  We don't have plans to implement them at the moment.
-
-> - Are there any community efforts going / about to start in this area? so that we can partner and get
->  things done instead of duplicating the work.
-> 
-> Thanks a lot for your help
-> JV
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+--b.
