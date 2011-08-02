@@ -1,198 +1,198 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:35219 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:35132 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751264Ab1HEV2u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Aug 2011 17:28:50 -0400
-Date: Fri, 5 Aug 2011 17:28:43 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, Neil Brown <neilb@suse.de>,
-        David Miller <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev <netdev@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: use better NUMA affinities
-Message-ID: <20110805212843.GA21997@fieldses.org>
-References: <1311876249.2346.39.camel@edumazet-HP-Compaq-6005-Pro-SFF-PC>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1311876249.2346.39.camel@edumazet-HP-Compaq-6005-Pro-SFF-PC>
+	id S1754704Ab1HBSvE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Aug 2011 14:51:04 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Andy Adamson <andros@netapp.com>
+Cc: Peng Tao <bergwolf@gmail.com>, Jim Rees <rees@umich.edu>,
+        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH v2 1/2] NFSv4.1: Fix the callback 'highest_used_slotid' behaviour
+Date: Tue,  2 Aug 2011 14:50:39 -0400
+Message-Id: <1312311040-9400-1-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1312306214.2823.10.camel@lade.trondhjem.org>
+References: <1312306214.2823.10.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, Jul 28, 2011 at 08:04:09PM +0200, Eric Dumazet wrote:
-> Use NUMA aware allocations to reduce latencies and increase throughput.
-> 
-> sunrpc kthreads can use kthread_create_on_node() if pool_mode is
-> "percpu" or "pernode", and svc_prepare_thread()/svc_init_buffer() can
-> also take into account NUMA node affinity for memory allocations.
+Currently, there is no guarantee that we will call nfs4_cb_take_slot() even
+though nfs4_callback_compound() will consistently call
+nfs4_cb_free_slot() provided the cb_process_state has set the 'clp' field.
+The result is that we can trigger the BUG_ON() upon the next call to
+nfs4_cb_take_slot().
 
-By the way, thanks, applying for 3.2 with one minor fixup below.--b.
+This patch fixes the above problem by using the slot id that was taken in
+the CB_SEQUENCE operation as a flag for whether or not we need to call
+nfs4_cb_free_slot().
+It also fixes an atomicity problem: we need to set tbl->highest_used_slotid
+atomically with the check for NFS4_SESSION_DRAINING, otherwise we end up
+racing with the various tests in nfs4_begin_drain_session().
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index ce620b5..516f337 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -199,7 +199,7 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
- 	INIT_LIST_HEAD(&serv->sv_cb_list);
- 	spin_lock_init(&serv->sv_cb_lock);
- 	init_waitqueue_head(&serv->sv_cb_waitq);
--	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
-+	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0], NUMA_NO_NODE);
- 	if (IS_ERR(rqstp)) {
- 		svc_xprt_put(serv->sv_bc_xprt);
- 		serv->sv_bc_xprt = NULL;
+Cc: stable@kernel.org [2.6.38+]
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/callback.h      |    2 +-
+ fs/nfs/callback_proc.c |   20 ++++++++++++++------
+ fs/nfs/callback_xdr.c  |   24 +++++++-----------------
+ 3 files changed, 22 insertions(+), 24 deletions(-)
 
-> 
-> Signed-off-by: Eric Dumazet <eric.dumazet@gmail.com>
-> CC: "J. Bruce Fields" <bfields@fieldses.org>
-> CC: Neil Brown <neilb@suse.de>
-> CC: David Miller <davem@davemloft.net>
-> ---
->  fs/lockd/svc.c             |    2 +-
->  fs/nfs/callback.c          |    2 +-
->  include/linux/sunrpc/svc.h |    2 +-
->  net/sunrpc/svc.c           |   33 ++++++++++++++++++++++++---------
->  4 files changed, 27 insertions(+), 12 deletions(-)
-> 
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index abfff9d..c061b9a 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -282,7 +282,7 @@ int lockd_up(void)
->  	/*
->  	 * Create the kernel thread and wait for it to start.
->  	 */
-> -	nlmsvc_rqst = svc_prepare_thread(serv, &serv->sv_pools[0]);
-> +	nlmsvc_rqst = svc_prepare_thread(serv, &serv->sv_pools[0], NUMA_NO_NODE);
->  	if (IS_ERR(nlmsvc_rqst)) {
->  		error = PTR_ERR(nlmsvc_rqst);
->  		nlmsvc_rqst = NULL;
-> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index e3d2942..ce620b5 100644
-> --- a/fs/nfs/callback.c
-> +++ b/fs/nfs/callback.c
-> @@ -125,7 +125,7 @@ nfs4_callback_up(struct svc_serv *serv)
->  	else
->  		goto out_err;
->  
-> -	return svc_prepare_thread(serv, &serv->sv_pools[0]);
-> +	return svc_prepare_thread(serv, &serv->sv_pools[0], NUMA_NO_NODE);
->  
->  out_err:
->  	if (ret == 0)
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index 223588a..a78a51e 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -404,7 +404,7 @@ struct svc_procedure {
->  struct svc_serv *svc_create(struct svc_program *, unsigned int,
->  			    void (*shutdown)(struct svc_serv *));
->  struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
-> -					struct svc_pool *pool);
-> +					struct svc_pool *pool, int node);
->  void		   svc_exit_thread(struct svc_rqst *);
->  struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
->  			void (*shutdown)(struct svc_serv *),
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index 6a69a11..30d70ab 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -295,6 +295,18 @@ svc_pool_map_put(void)
->  }
->  
->  
-> +static int svc_pool_map_get_node(unsigned int pidx)
-> +{
-> +	const struct svc_pool_map *m = &svc_pool_map;
-> +
-> +	if (m->count) {
-> +		if (m->mode == SVC_POOL_PERCPU)
-> +			return cpu_to_node(m->pool_to[pidx]);
-> +		if (m->mode == SVC_POOL_PERNODE)
-> +			return m->pool_to[pidx];
-> +	}
-> +	return NUMA_NO_NODE;
-> +}
->  /*
->   * Set the given thread's cpus_allowed mask so that it
->   * will only run on cpus in the given pool.
-> @@ -499,7 +511,7 @@ EXPORT_SYMBOL_GPL(svc_destroy);
->   * We allocate pages and place them in rq_argpages.
->   */
->  static int
-> -svc_init_buffer(struct svc_rqst *rqstp, unsigned int size)
-> +svc_init_buffer(struct svc_rqst *rqstp, unsigned int size, int node)
->  {
->  	unsigned int pages, arghi;
->  
-> @@ -513,7 +525,7 @@ svc_init_buffer(struct svc_rqst *rqstp, unsigned int size)
->  	arghi = 0;
->  	BUG_ON(pages > RPCSVC_MAXPAGES);
->  	while (pages) {
-> -		struct page *p = alloc_page(GFP_KERNEL);
-> +		struct page *p = alloc_pages_node(node, GFP_KERNEL, 0);
->  		if (!p)
->  			break;
->  		rqstp->rq_pages[arghi++] = p;
-> @@ -536,11 +548,11 @@ svc_release_buffer(struct svc_rqst *rqstp)
->  }
->  
->  struct svc_rqst *
-> -svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool)
-> +svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool, int node)
->  {
->  	struct svc_rqst	*rqstp;
->  
-> -	rqstp = kzalloc(sizeof(*rqstp), GFP_KERNEL);
-> +	rqstp = kzalloc_node(sizeof(*rqstp), GFP_KERNEL, node);
->  	if (!rqstp)
->  		goto out_enomem;
->  
-> @@ -554,15 +566,15 @@ svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool)
->  	rqstp->rq_server = serv;
->  	rqstp->rq_pool = pool;
->  
-> -	rqstp->rq_argp = kmalloc(serv->sv_xdrsize, GFP_KERNEL);
-> +	rqstp->rq_argp = kmalloc_node(serv->sv_xdrsize, GFP_KERNEL, node);
->  	if (!rqstp->rq_argp)
->  		goto out_thread;
->  
-> -	rqstp->rq_resp = kmalloc(serv->sv_xdrsize, GFP_KERNEL);
-> +	rqstp->rq_resp = kmalloc_node(serv->sv_xdrsize, GFP_KERNEL, node);
->  	if (!rqstp->rq_resp)
->  		goto out_thread;
->  
-> -	if (!svc_init_buffer(rqstp, serv->sv_max_mesg))
-> +	if (!svc_init_buffer(rqstp, serv->sv_max_mesg, node))
->  		goto out_thread;
->  
->  	return rqstp;
-> @@ -647,6 +659,7 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
->  	struct svc_pool *chosen_pool;
->  	int error = 0;
->  	unsigned int state = serv->sv_nrthreads-1;
-> +	int node;
->  
->  	if (pool == NULL) {
->  		/* The -1 assumes caller has done a svc_get() */
-> @@ -662,14 +675,16 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
->  		nrservs--;
->  		chosen_pool = choose_pool(serv, pool, &state);
->  
-> -		rqstp = svc_prepare_thread(serv, chosen_pool);
-> +		node = svc_pool_map_get_node(chosen_pool->sp_id);
-> +		rqstp = svc_prepare_thread(serv, chosen_pool, node);
->  		if (IS_ERR(rqstp)) {
->  			error = PTR_ERR(rqstp);
->  			break;
->  		}
->  
->  		__module_get(serv->sv_module);
-> -		task = kthread_create(serv->sv_function, rqstp, serv->sv_name);
-> +		task = kthread_create_on_node(serv->sv_function, rqstp,
-> +					      node, serv->sv_name);
->  		if (IS_ERR(task)) {
->  			error = PTR_ERR(task);
->  			module_put(serv->sv_module);
-> 
-> 
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index b257383..07df5f1 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -38,6 +38,7 @@ enum nfs4_callback_opnum {
+ struct cb_process_state {
+ 	__be32			drc_status;
+ 	struct nfs_client	*clp;
++	int			slotid;
+ };
+ 
+ struct cb_compound_hdr_arg {
+@@ -166,7 +167,6 @@ extern unsigned nfs4_callback_layoutrecall(
+ 	void *dummy, struct cb_process_state *cps);
+ 
+ extern void nfs4_check_drain_bc_complete(struct nfs4_session *ses);
+-extern void nfs4_cb_take_slot(struct nfs_client *clp);
+ 
+ struct cb_devicenotifyitem {
+ 	uint32_t		cbd_notify_type;
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 74780f9..0ab8202 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -348,7 +348,7 @@ validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
+ 	/* Normal */
+ 	if (likely(args->csa_sequenceid == slot->seq_nr + 1)) {
+ 		slot->seq_nr++;
+-		return htonl(NFS4_OK);
++		goto out_ok;
+ 	}
+ 
+ 	/* Replay */
+@@ -367,11 +367,14 @@ validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
+ 	/* Wraparound */
+ 	if (args->csa_sequenceid == 1 && (slot->seq_nr + 1) == 0) {
+ 		slot->seq_nr = 1;
+-		return htonl(NFS4_OK);
++		goto out_ok;
+ 	}
+ 
+ 	/* Misordered request */
+ 	return htonl(NFS4ERR_SEQ_MISORDERED);
++out_ok:
++	tbl->highest_used_slotid = args->csa_slotid;
++	return htonl(NFS4_OK);
+ }
+ 
+ /*
+@@ -433,26 +436,32 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+ 			      struct cb_sequenceres *res,
+ 			      struct cb_process_state *cps)
+ {
++	struct nfs4_slot_table *tbl;
+ 	struct nfs_client *clp;
+ 	int i;
+ 	__be32 status = htonl(NFS4ERR_BADSESSION);
+ 
+-	cps->clp = NULL;
+-
+ 	clp = nfs4_find_client_sessionid(args->csa_addr, &args->csa_sessionid);
+ 	if (clp == NULL)
+ 		goto out;
+ 
++	tbl = &clp->cl_session->bc_slot_table;
++
++	spin_lock(&tbl->slot_tbl_lock);
+ 	/* state manager is resetting the session */
+ 	if (test_bit(NFS4_SESSION_DRAINING, &clp->cl_session->session_state)) {
+-		status = NFS4ERR_DELAY;
++		spin_unlock(&tbl->slot_tbl_lock);
++		status = htonl(NFS4ERR_DELAY);
+ 		goto out;
+ 	}
+ 
+ 	status = validate_seqid(&clp->cl_session->bc_slot_table, args);
++	spin_unlock(&tbl->slot_tbl_lock);
+ 	if (status)
+ 		goto out;
+ 
++	cps->slotid = args->csa_slotid;
++
+ 	/*
+ 	 * Check for pending referring calls.  If a match is found, a
+ 	 * related callback was received before the response to the original
+@@ -469,7 +478,6 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+ 	res->csr_slotid = args->csa_slotid;
+ 	res->csr_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
+ 	res->csr_target_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
+-	nfs4_cb_take_slot(clp);
+ 
+ out:
+ 	cps->clp = clp; /* put in nfs4_callback_compound */
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index c6c86a7..918ad64 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -754,26 +754,15 @@ static void nfs4_callback_free_slot(struct nfs4_session *session)
+ 	 * Let the state manager know callback processing done.
+ 	 * A single slot, so highest used slotid is either 0 or -1
+ 	 */
+-	tbl->highest_used_slotid--;
++	tbl->highest_used_slotid = -1;
+ 	nfs4_check_drain_bc_complete(session);
+ 	spin_unlock(&tbl->slot_tbl_lock);
+ }
+ 
+-static void nfs4_cb_free_slot(struct nfs_client *clp)
++static void nfs4_cb_free_slot(struct cb_process_state *cps)
+ {
+-	if (clp && clp->cl_session)
+-		nfs4_callback_free_slot(clp->cl_session);
+-}
+-
+-/* A single slot, so highest used slotid is either 0 or -1 */
+-void nfs4_cb_take_slot(struct nfs_client *clp)
+-{
+-	struct nfs4_slot_table *tbl = &clp->cl_session->bc_slot_table;
+-
+-	spin_lock(&tbl->slot_tbl_lock);
+-	tbl->highest_used_slotid++;
+-	BUG_ON(tbl->highest_used_slotid != 0);
+-	spin_unlock(&tbl->slot_tbl_lock);
++	if (cps->slotid != -1)
++		nfs4_callback_free_slot(cps->clp->cl_session);
+ }
+ 
+ #else /* CONFIG_NFS_V4_1 */
+@@ -784,7 +773,7 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
+ 	return htonl(NFS4ERR_MINOR_VERS_MISMATCH);
+ }
+ 
+-static void nfs4_cb_free_slot(struct nfs_client *clp)
++static void nfs4_cb_free_slot(struct cb_process_state *cps)
+ {
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+@@ -866,6 +855,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
+ 	struct cb_process_state cps = {
+ 		.drc_status = 0,
+ 		.clp = NULL,
++		.slotid = -1,
+ 	};
+ 	unsigned int nops = 0;
+ 
+@@ -906,7 +896,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
+ 
+ 	*hdr_res.status = status;
+ 	*hdr_res.nops = htonl(nops);
+-	nfs4_cb_free_slot(cps.clp);
++	nfs4_cb_free_slot(&cps);
+ 	nfs_put_client(cps.clp);
+ 	dprintk("%s: done, status = %u\n", __func__, ntohl(status));
+ 	return rpc_success;
+-- 
+1.7.6
+
