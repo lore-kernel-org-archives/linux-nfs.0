@@ -1,77 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:35133 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:62903 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752650Ab1HDRav (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Aug 2011 13:30:51 -0400
-Date: Thu, 4 Aug 2011 13:30:46 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Venkateswararao Jujjuri <jvrao@linux.vnet.ibm.com>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: State of NFSv4 VolatileFilehandles
-Message-ID: <20110804173046.GI12445@fieldses.org>
-References: <45F4FC20-ED44-4430-A5A9-E06459A194F3@oracle.com>
- <4E38F894.4070003@linux.vnet.ibm.com>
- <2DD1BC2B-6113-4D00-9DD4-C5D431EA1F8A@oracle.com>
- <4E3A8225.1020309@linux.vnet.ibm.com>
- <20110804160344.GC12445@fieldses.org>
- <1312474244.5806.4.camel@lade.trondhjem.org>
- <20110804162721.GD12445@fieldses.org>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A8AA818@SACMVEXC2-PRD.hq.netapp.com>
- <20110804170313.GH12445@fieldses.org>
- <1312478492.8919.14.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1312478492.8919.14.camel@lade.trondhjem.org>
+	id S1754936Ab1HCMgX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Aug 2011 08:36:23 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p73CaNDH004815
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 3 Aug 2011 08:36:23 -0400
+From: Karel Zak <kzak@redhat.com>
+To: Steve Dickson <steved@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Karel Zak <kzak@redhat.com>
+Subject: [PATCH] mount: fix for libmount from util-linux >= 2.20
+Date: Wed,  3 Aug 2011 14:36:09 +0200
+Message-Id: <1312374969-15726-1-git-send-email-kzak@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, Aug 04, 2011 at 01:21:32PM -0400, Trond Myklebust wrote:
-> On Thu, 2011-08-04 at 13:03 -0400, J. Bruce Fields wrote: 
-> > On Thu, Aug 04, 2011 at 09:48:32AM -0700, Myklebust, Trond wrote:
-> > > > -----Original Message-----
-> > > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > > > Oh, neat, I'd forgotten that; you're thinking of STATUS4_FIXED?  But
-> > > > I'm
-> > > > not sure it does the job:
-> > > > 
-> > > > 	STATUS4_FIXED, which indicates a read-only image in the sense
-> > > > 	that it will never change.  The possibility is allowed that, as
-> > > > 	a result of migration or switch to a different image, changed
-> > > > 	data can be accessed, but within the confines of this instance,
-> > > > 	no change is allowed.  The client can use this fact to cache
-> > > > 	aggressively.
-> > > > 
-> > > > OK, so permission to set your attribute cache timeout very high,
-> > > > perhaps, but I don't see why "changed data" couldn't mean changed
-> > > > paths....
-> > > 
-> > > No, but you can presumably use the FSLI4BX_CLSIMUL flag from
-> > > fs_locations_info in order to find an equivalent replica.
-> > 
-> > I lost you.
-> > 
-> > Actually my real problem is that I don't understand the description of
-> > STATUS4_FIXED.  What does "or switch to a different image" mean?  Not
-> > "migration", or the sentence would have ended before the "or".
-> > 
-> > I read it as allowing a server admin to replace the filesystem image in
-> > place, in which case from the client's point of view this allows the
-> > filesystem to change at any time.  Which makes the whole thing not
-> > terribly useful, except (as the last sentence says) as a caching hint.
-> 
-> If the server admin replaces one filesystem, with a different
-> filesystem, then nothing is going to work anyway. I don't see how that
-> is relevant. That's a case of 'doctor it hurts...'
-> 
-> The bit that _is_ relevant is the 'migration' part, but since the
-> fs_locations_info FSLI4BX_CLSIMUL flag allows you to conclude that
-> replica is an exact replica at all times (i.e. contents are guaranteed
-> to be the same even if filehandles, directory cookies, etc are not) then
-> the STATUS4_FIXED flag does allow you to assume that paths have not
-> changed.
+The function mnt_fs_set_fs_options() has been removed from the final
+version of the libmount API.
 
-So you're position is that "or switch to a different image" in the above
-is redundant, or just a mistake?
+Signed-off-by: Karel Zak <kzak@redhat.com>
+---
+ utils/mount/mount_libmount.c |   15 ++++++++++++---
+ 1 files changed, 12 insertions(+), 3 deletions(-)
 
---b.
+diff --git a/utils/mount/mount_libmount.c b/utils/mount/mount_libmount.c
+index 6dd6484..cf6e58c 100644
+--- a/utils/mount/mount_libmount.c
++++ b/utils/mount/mount_libmount.c
+@@ -61,10 +61,19 @@ int nomtab;
+  * managed by libmount at all. We have to use "mount attributes" that are
+  * private for mount.<type> helpers.
+  */
+-static void store_mount_options(struct libmnt_fs *fs, const char *opts)
++static void store_mount_options(struct libmnt_fs *fs, const char *nfs_opts)
+ {
+-	mnt_fs_set_fs_options(fs, opts);	/* for mtab */
+-	mnt_fs_set_attributes(fs, opts);	/* for non-mtab systems */
++	char *o = NULL;
++
++	mnt_fs_set_attributes(fs, nfs_opts);	/* for non-mtab systems */
++
++	/* for mtab create a new options list */
++	mnt_optstr_append_option(&o, mnt_fs_get_vfs_options(fs), NULL);
++	mnt_optstr_append_option(&o, nfs_opts, NULL);
++	mnt_optstr_append_option(&o, mnt_fs_get_user_options(fs), NULL);
++
++	mnt_fs_set_options(fs, o);
++	free(o);
+ }
+ 
+ /*
+-- 
+1.7.6
+
