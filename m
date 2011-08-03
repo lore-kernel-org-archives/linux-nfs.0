@@ -1,42 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53240 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752615Ab1HZW2m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Aug 2011 18:28:42 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 11/15] nfsd4: remove redundant is_open_owner check
-Date: Fri, 26 Aug 2011 18:28:32 -0400
-Message-Id: <1314397716-18602-12-git-send-email-bfields@redhat.com>
-In-Reply-To: <1314397716-18602-1-git-send-email-bfields@redhat.com>
-References: <1314397716-18602-1-git-send-email-bfields@redhat.com>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:37019 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754943Ab1HCLtL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Aug 2011 07:49:11 -0400
+Date: Wed, 3 Aug 2011 07:49:08 -0400
+From: Jim Rees <rees@umich.edu>
+To: Peng Tao <bergwolf@gmail.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "Adamson, Andy" <William.Adamson@netapp.com>,
+        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH v4 00/27] add block layout driver to pnfs client
+Message-ID: <20110803114908.GA5453@merit.edu>
+References: <1312233006.23392.17.camel@lade.trondhjem.org>
+ <1312238117.23392.19.camel@lade.trondhjem.org>
+ <20110802022144.GA18157@merit.edu>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A778575@SACMVEXC2-PRD.hq.netapp.com>
+ <20110802032320.GA18296@merit.edu>
+ <1312288134.4616.21.camel@lade.trondhjem.org>
+ <20110803014808.GA4692@merit.edu>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A778AE2@SACMVEXC2-PRD.hq.netapp.com>
+ <20110803023805.GA4863@merit.edu>
+ <CA+a=Yy6ajY+Te6ij3KTM0sNSf-jjFVubReqWLJ5UnN8cuhdidQ@mail.gmail.com>
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <CA+a=Yy6ajY+Te6ij3KTM0sNSf-jjFVubReqWLJ5UnN8cuhdidQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-When called with OPEN_STATE, preprocess_seqid_op only returns an open
-stateid, hence only an open owner.
+Peng Tao wrote:
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+  On Wed, Aug 3, 2011 at 10:38 AM, Jim Rees <rees@umich.edu> wrote:
+  > Myklebust, Trond wrote:
+  >
+  >  Can you try to turn on the callback debugging ('echo 256 >
+  >  /proc/sys/sunrpc/nfs_debug')? A wireshark trace of what is going on
+  >  during the hang itself might also help.
+  >
+  > It doesn't fail with callback debugging turned on.  I suspect the output to
+  > my slow serial console disrupts the timing.
+  >
+  > The trace is in
+  > http://www.citi.umich.edu/projects/nfsv4/pnfs/block/download/089.pcap
+  In frame 8785, client returned NFS4ERR_DELAY in response to
+  CB_SEQUENCE and the next RPC was 12s later. So it should be the case
+  that Trond mentioned above.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index b8903b5..fc2f5d1 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4019,8 +4019,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 			goto out;
- 		status = nfserr_bad_stateid;
- 		open_sop = lock->lk_replay_owner;
--		if (!open_sop->so_is_open_owner)
--			goto out;
- 		if (!nfsd4_has_session(cstate) &&
- 				!same_clid(&open_sop->so_client->cl_clientid,
- 						&lock->v.new.clientid))
--- 
-1.7.4.1
-
+Yes, and there's some funny stuff earlier too.  In frame 6381 the client
+returns a delegation, then in 6387 the server tries to recall the same
+delegation.  Which I suppose is legal but I wonder why.  This is followed by
+another 12 sec delay.
