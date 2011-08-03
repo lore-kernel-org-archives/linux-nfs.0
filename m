@@ -1,88 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f46.google.com ([209.85.215.46]:42819 "EHLO
-	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751802Ab1HXPeZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Aug 2011 11:34:25 -0400
-Received: by mail-ew0-f46.google.com with SMTP id 4so527255ewy.19
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Aug 2011 08:34:25 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/5] exportfs: matchhostname() doesn't handle localhost
-	properly
-To: linux-nfs@vger.kernel.org
-Date: Wed, 24 Aug 2011 11:34:23 -0400
-Message-ID: <20110824153422.3138.49458.stgit@matisse.1015granger.net>
-In-Reply-To: <20110824153024.3138.63294.stgit@matisse.1015granger.net>
-References: <20110824153024.3138.63294.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:27148 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754448Ab1HCRqn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Aug 2011 13:46:43 -0400
+Message-ID: <4E398981.6030005@RedHat.com>
+Date: Wed, 03 Aug 2011 13:46:41 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Matthew Treinish <treinish@linux.vnet.ibm.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] mountd: Removed duplicate check from insert_groups
+References: <1312225347-11282-1-git-send-email-treinish@linux.vnet.ibm.com> <1312225347-11282-2-git-send-email-treinish@linux.vnet.ibm.com>
+In-Reply-To: <1312225347-11282-2-git-send-email-treinish@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Same change as statd_matchhostname() is necessary for the logic in
-exportfs.
 
-Recall that these are "separate but nearly equal" because the exportfs
-version requires extra expensive string checking that would be onerous
-for statd.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+On 08/01/2011 03:02 PM, Matthew Treinish wrote:
+> Upon further inspection of mountd the duplicate check in insert group is not
+> needed. It seems that export_read() already filters out duplicates so the
+> check for duplicates again in insert groups isn't needed.
+I think this check is still needed so for now I'm going to 
+leave it...
 
- utils/exportfs/exportfs.c |   34 ++++++++++++++++++++++++++++++++--
- 1 files changed, 32 insertions(+), 2 deletions(-)
+steved.
 
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index b107c7c..12e8bf1 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -448,6 +448,36 @@ is_hostname(const char *sp)
- 	return true;
- }
- 
-+/*
-+ * Take care to perform an explicit reverse lookup on presentation
-+ * addresses.  Otherwise we don't get a real canonical name or a
-+ * complete list of addresses.
-+ */
-+static struct addrinfo *
-+address_list(const char *hostname)
-+{
-+	struct addrinfo *ai;
-+	char *cname;
-+
-+	ai = host_pton(hostname);
-+	if (ai != NULL) {
-+		/* @hostname was a presentation address */
-+		cname = host_canonname(ai->ai_addr);
-+		freeaddrinfo(ai);
-+		if (cname != NULL)
-+			goto out;
-+	}
-+	/* @hostname was a hostname or had no reverse mapping */
-+	cname = strdup(hostname);
-+	if (cname == NULL)
-+		return NULL;
-+
-+out:
-+	ai = host_addrinfo(cname);
-+	free(cname);
-+	return ai;
-+}
-+
- static int
- matchhostname(const char *hostname1, const char *hostname2)
- {
-@@ -464,10 +494,10 @@ matchhostname(const char *hostname1, const char *hostname2)
- 	if (!is_hostname(hostname1) || !is_hostname(hostname2))
- 		return 0;
- 
--	results1 = host_addrinfo(hostname1);
-+	results1 = address_list(hostname1);
- 	if (results1 == NULL)
- 		goto out;
--	results2 = host_addrinfo(hostname2);
-+	results2 = address_list(hostname2);
- 	if (results2 == NULL)
- 		goto out;
- 
-
+> 
+> Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
+> ---
+>  utils/mountd/mountd.c |    5 -----
+>  1 files changed, 0 insertions(+), 5 deletions(-)
+> 
+> diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+> index bcf5080..9c27d6c 100644
+> --- a/utils/mountd/mountd.c
+> +++ b/utils/mountd/mountd.c
+> @@ -631,11 +631,6 @@ static exportnode *lookup_or_create_elist_entry(exports *elist, nfs_export *exp)
+>  static void insert_group(struct exportnode *e, char *newname)
+>  {
+>  	struct groupnode *g;
+> -
+> -	for (g = e->ex_groups; g; g = g->gr_next)
+> -		if (!strcmp(g->gr_name, newname))
+> -			return;
+> -
+>  	g = xmalloc(sizeof(*g));
+>  	g->gr_name = xstrdup(newname);
+>  	g->gr_next = e->ex_groups;
