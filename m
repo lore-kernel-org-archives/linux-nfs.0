@@ -1,76 +1,222 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from chilli.pcug.org.au ([203.10.76.44]:55837 "EHLO smtps.tip.net.au"
+Received: from mx1.redhat.com ([209.132.183.28]:38371 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754103Ab1H2W6B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Aug 2011 18:58:01 -0400
-Date: Tue, 30 Aug 2011 08:57:52 +1000
-From: Stephen Rothwell <sfr@canb.auug.org.au>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Ben Hutchings <ben@decadent.org.uk>, Neil Brown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-arch@vger.kernel.org
-Subject: Re: [PATCH] All Arch: remove linkage for sys_nfsservctl system call
-Message-Id: <20110830085752.6db1ffa600f4c82135b3f3eb@canb.auug.org.au>
-In-Reply-To: <20110826220311.GA18140@fieldses.org>
-References: <1312810169.2591.1153.camel@deadeye>
-	<20110808155538.GB904@fieldses.org>
-	<20110808180658.GC29924@decadent.org.uk>
-	<20110826220311.GA18140@fieldses.org>
-Content-Type: multipart/signed; protocol="application/pgp-signature";
- micalg="PGP-SHA1";
- boundary="Signature=_Tue__30_Aug_2011_08_57_52_+1000_Uw9KG.Cbr6Myuj=k"
+	id S1753169Ab1HCRwt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Aug 2011 13:52:49 -0400
+Message-ID: <4E398AEA.9080700@RedHat.com>
+Date: Wed, 03 Aug 2011 13:52:42 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+CC: NFS <linux-nfs@vger.kernel.org>, Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH v2] rpc.mountd: let mountd consult /etc/services for port
+References: <4DAD48C7.9090808@cn.fujitsu.com> <4DE0C380.7040608@cn.fujitsu.com>
+In-Reply-To: <4DE0C380.7040608@cn.fujitsu.com>
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---Signature=_Tue__30_Aug_2011_08_57_52_+1000_Uw9KG.Cbr6Myuj=k
-Content-Type: text/plain; charset=US-ASCII
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Hello Mi, 
 
-Hi Bruce,
+My apologizes for taking so long on this... It did fall off my radar...
+but after some unit testing, it appears things 
+work as expected.... 
 
-On Fri, 26 Aug 2011 18:03:11 -0400 "J. Bruce Fields" <bfields@fieldses.org>=
- wrote:
->
-> From: NeilBrown <neilb@suse.de>
->=20
-> The nfsservctl system call is now gone, so we should remove all
-> linkage for it.
->=20
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Committed!
+
+steved.
+
+On 05/28/2011 05:42 AM, Mi Jinlong wrote:
+> At RHEL, if user set port for mountd at /etc/services as 
+> "mount   12345/tcp", mountd should be bind to 12345, but the 
+> latest nfs-utils, mountd get a rand port, not 12345.
+> 
+> This patch make sure mountd be bind to the port which was set
+> at /etc/service.
+> 
+> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
 > ---
->=20
-> I don't normally have to deal with this kind of cross-architecture
-> patch; is this the right etiquette for it?
-
-It turns out (with hindsight) that my reaction to this patch should have
-been:
-
-If you haven't built this on all architectures (an noone expects you to
-actually do that), then it should spend a day or two in linux-next before
-being sent to Linus.
-
---=20
-Cheers,
-Stephen Rothwell                    sfr@canb.auug.org.au
-http://www.canb.auug.org.au/~sfr/
-
---Signature=_Tue__30_Aug_2011_08_57_52_+1000_Uw9KG.Cbr6Myuj=k
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-
-iQEcBAEBAgAGBQJOXBlwAAoJEDMEi1NhKgbssnMH/0Bb99IHgDTSfYa3/mtwN+Rg
-JFZiEYu/kaqLwT9lBx2xElHwjRBb+Moi+GHdFcQYV2YtOKldJqeVptEFHLQScuHK
-i2T3bYz2WjIRkfYjp58smmLk6pByLMDJBjO1E+x3MCiENvvze501nqooyrbd4eA0
-Oa7dwrIKosmZBNImuZfpBIdmOELQo6n5ewqyXqKFB+g/YRAiifhj2Pq1pMuawPxa
-JiEFywkrJuOSs8F6bk/p2WLydH70piIzdJsHxKisE0Pqvy1shHXS782gv/LTDWZp
-UjaQ2e+CdmmHmm/6lMCoemwOfYX13O0lmXdJa2kPKuBukadH/SsBsrpFv0UghVY=
-=zdQQ
------END PGP SIGNATURE-----
-
---Signature=_Tue__30_Aug_2011_08_57_52_+1000_Uw9KG.Cbr6Myuj=k--
+>  support/include/rpcmisc.h |    1 +
+>  support/nfs/svc_create.c  |    9 ++++-
+>  support/nfs/svc_socket.c  |   80 +++++++++++++++++++++------------------------
+>  utils/mountd/mountd.man   |    5 ++-
+>  utils/statd/statd.man     |    5 ++-
+>  5 files changed, 53 insertions(+), 47 deletions(-)
+> 
+> diff --git a/support/include/rpcmisc.h b/support/include/rpcmisc.h
+> index 0b06457..b806227 100644
+> --- a/support/include/rpcmisc.h
+> +++ b/support/include/rpcmisc.h
+> @@ -53,6 +53,7 @@ void		rpc_init(char *name, int prog, int vers,
+>  void		rpc_dispatch(struct svc_req *rq, SVCXPRT *xprt,
+>  				struct rpc_dtable *dtable, int nvers,
+>  				void *argp, void *resp);
+> +int		getservport(u_long number, const char *proto);
+>  
+>  extern int	_rpcpmstart;
+>  extern int	_rpcfdtype;
+> diff --git a/support/nfs/svc_create.c b/support/nfs/svc_create.c
+> index b3f75ed..c159fc8 100644
+> --- a/support/nfs/svc_create.c
+> +++ b/support/nfs/svc_create.c
+> @@ -393,7 +393,7 @@ nfs_svc_create(char *name, const rpcprog_t program, const rpcvers_t version,
+>  	const struct sigaction create_sigaction = {
+>  		.sa_handler	= SIG_IGN,
+>  	};
+> -	unsigned int visible, up;
+> +	unsigned int visible, up, servport;
+>  	struct netconfig *nconf;
+>  	void *handlep;
+>  
+> @@ -417,8 +417,13 @@ nfs_svc_create(char *name, const rpcprog_t program, const rpcvers_t version,
+>  		if (!(nconf->nc_flag & NC_VISIBLE))
+>  			continue;
+>  		visible++;
+> +		if (port == 0)
+> +			servport = getservport(program, nconf->nc_proto);
+> +		else
+> +			servport = port;
+> +
+>  		up += svc_create_nconf(name, program, version, dispatch,
+> -						port, nconf);
+> +						servport, nconf);
+>  	}
+>  
+>  	if (visible == 0)
+> diff --git a/support/nfs/svc_socket.c b/support/nfs/svc_socket.c
+> index 03a5325..c252f53 100644
+> --- a/support/nfs/svc_socket.c
+> +++ b/support/nfs/svc_socket.c
+> @@ -35,14 +35,43 @@
+>  # define __close(f)		close ((f))
+>  #endif
+>  
+> +int getservport(u_long number, const char *proto)
+> +{
+> +	char rpcdata[1024], servdata[1024];
+> +	struct rpcent rpcbuf, *rpcp;
+> +	struct servent servbuf, *servp = NULL;
+> +	int ret;
+> +
+> +	ret = getrpcbynumber_r(number, &rpcbuf, rpcdata, sizeof rpcdata,
+> +				&rpcp);
+> +	if (ret == 0 && rpcp != NULL) {
+> +		/* First try name.  */
+> +		ret = getservbyname_r(rpcp->r_name, proto, &servbuf, servdata,
+> +					sizeof servdata, &servp);
+> +		if ((ret != 0 || servp == NULL) && rpcp->r_aliases) {
+> +			const char **a;
+> +
+> +			/* Then we try aliases.  */
+> +			for (a = (const char **) rpcp->r_aliases; *a != NULL; a++) {
+> +				ret = getservbyname_r(*a, proto, &servbuf, servdata,
+> +							sizeof servdata, &servp);
+> +				if (ret == 0 && servp != NULL)
+> +					break;
+> +			}
+> +		}
+> +	}
+> +
+> +	if (ret == 0 && servp != NULL)
+> +		return ntohs(servp->s_port);
+> +
+> +	return 0;
+> +}
+> +
+>  static int
+>  svc_socket (u_long number, int type, int protocol, int reuse)
+>  {
+>    struct sockaddr_in addr;
+>    socklen_t len = sizeof (struct sockaddr_in);
+> -  char rpcdata [1024], servdata [1024];
+> -  struct rpcent rpcbuf, *rpcp;
+> -  struct servent servbuf, *servp = NULL;
+>    int sock, ret;
+>    const char *proto = protocol == IPPROTO_TCP ? "tcp" : "udp";
+>  
+> @@ -66,48 +95,13 @@ svc_socket (u_long number, int type, int protocol, int reuse)
+>  
+>    memset (&addr, 0, sizeof (addr));
+>    addr.sin_family = AF_INET;
+> +  addr.sin_port = htons(getservport(number, proto));
+>  
+> -  ret = getrpcbynumber_r (number, &rpcbuf, rpcdata, sizeof rpcdata,
+> -			  &rpcp);
+> -  if (ret == 0 && rpcp != NULL)
+> -    {
+> -      /* First try name.  */
+> -      ret = getservbyname_r (rpcp->r_name, proto, &servbuf, servdata,
+> -			     sizeof servdata, &servp);
+> -      if ((ret != 0 || servp == NULL) && rpcp->r_aliases)
+> -	{
+> -	  const char **a;
+> -
+> -	  /* Then we try aliases.  */
+> -	  for (a = (const char **) rpcp->r_aliases; *a != NULL; a++) 
+> -	    {
+> -	      ret = getservbyname_r (*a, proto, &servbuf, servdata,
+> -				     sizeof servdata, &servp);
+> -	      if (ret == 0 && servp != NULL)
+> -		break;
+> -	    }
+> -	}
+> -    }
+> -
+> -  if (ret == 0 && servp != NULL)
+> +  if (bind(sock, (struct sockaddr *) &addr, len) < 0)
+>      {
+> -      addr.sin_port = servp->s_port;
+> -      if (bind (sock, (struct sockaddr *) &addr, len) < 0)
+> -	{
+> -	  perror (_("svc_socket: bind problem"));
+> -	  (void) __close (sock);
+> -	  sock = -1;
+> -	}
+> -    }
+> -  else
+> -    {
+> -	  addr.sin_port = 0;
+> -	  if (bind (sock, (struct sockaddr *) &addr, len) < 0)
+> -	    {
+> -	      perror (_("svc_socket: bind problem"));
+> -	      (void) __close (sock);
+> -	      sock = -1;
+> -	    }
+> +      perror (_("svc_socket: bind problem"));
+> +      (void) __close(sock);
+> +      sock = -1;
+>      }
+>  
+>    if (sock >= 0)
+> diff --git a/utils/mountd/mountd.man b/utils/mountd/mountd.man
+> index 016a357..b322437 100644
+> --- a/utils/mountd/mountd.man
+> +++ b/utils/mountd/mountd.man
+> @@ -122,7 +122,10 @@ Ignored (compatibility with unfsd??).
+>  Specifies the port number used for RPC listener sockets.
+>  If this option is not specified,
+>  .B rpc.mountd
+> -chooses a random ephemeral port for each listener socket.
+> +will try to consult
+> +.IR /etc/services ,
+> +if gets port succeed, set the same port for all listener socket,
+> +otherwise chooses a random ephemeral port for each listener socket.
+>  .IP
+>  This option can be used to fix the port value of
+>  .BR rpc.mountd 's
+> diff --git a/utils/statd/statd.man b/utils/statd/statd.man
+> index b72236c..203f8c9 100644
+> --- a/utils/statd/statd.man
+> +++ b/utils/statd/statd.man
+> @@ -219,7 +219,10 @@ for details.
+>  Specifies the port number used for RPC listener sockets.
+>  If this option is not specified,
+>  .B rpc.statd
+> -chooses a random ephemeral port for each listener socket.
+> +will try to consult
+> +.IR /etc/services ,
+> +if gets port succeed, set the same port for all listener socket,
+> +otherwise chooses a random ephemeral port for each listener socket.
+>  .IP
+>  This option can be used to fix the port value of its listeners when
+>  SM_NOTIFY requests must traverse a firewall between clients and servers.
