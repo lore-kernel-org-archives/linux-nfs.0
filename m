@@ -1,77 +1,37 @@
-From: Olga Kornievskaia <aglo@citi.umich.edu>
-Subject: Re: Unable to Compile Latest Kernel from Git
-Date: Mon, 8 Aug 2011 15:01:43 -0400
-Message-ID: <CAN-5tyEmCx+1quj+545zDZ1ueQRVhHGgDzhdjZ1K1h6hCjOJvw@mail.gmail.com>
-References: <CALPVbefsY4Ddw6QOZu9BckCx+Q0YJg8tgbjK6xN5sQxbpdD16w@mail.gmail.com>
+From: Jim Rees <rees@umich.edu>
+Subject: Re: [PATCH v4 00/27] add block layout driver to pnfs client
+Date: Tue, 2 Aug 2011 22:11:12 -0400
+Message-ID: <20110803021112.GA4819@merit.edu>
+References: <20110730032621.GB25188@merit.edu>
+ <CA+a=Yy5rmvrUHaDewLb_EbeaDYMKL_xv_E_MmzTvR_55SmYkqA@mail.gmail.com>
+ <1312233006.23392.17.camel@lade.trondhjem.org>
+ <1312238117.23392.19.camel@lade.trondhjem.org>
+ <20110802022144.GA18157@merit.edu>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A778575@SACMVEXC2-PRD.hq.netapp.com>
+ <20110802032320.GA18296@merit.edu>
+ <1312288134.4616.21.camel@lade.trondhjem.org>
+ <20110803014808.GA4692@merit.edu>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A778AE2@SACMVEXC2-PRD.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Billy Hass <billdh16@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Peng Tao <bergwolf@gmail.com>,
+	"Adamson, Andy" <William.Adamson@netapp.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:58275 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751278Ab1HHTBo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Aug 2011 15:01:44 -0400
-Received: by gwaa12 with SMTP id a12so805343gwa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Aug 2011 12:01:44 -0700 (PDT)
-In-Reply-To: <CALPVbefsY4Ddw6QOZu9BckCx+Q0YJg8tgbjK6xN5sQxbpdD16w-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:56379 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751812Ab1HCCLO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Aug 2011 22:11:14 -0400
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A778AE2-hX7t0kiaRRrlMGe9HJ1VYQK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'd like to 2nd this.
+Myklebust, Trond wrote:
 
-Current pnfs server doesn't build if chosen to be build into the
-kernel. It does build, if built as a module.
+  Can you try to turn on the callback debugging ('echo 256 >
+  /proc/sys/sunrpc/nfs_debug')? A wireshark trace of what is going on
+  during the hang itself might also help.
 
-when client and server code is build into the kernel it seems that
-both sides try to define pnfs_roc() function and stepping on each
-others toes..
-
-On Fri, Aug 5, 2011 at 9:58 PM, Billy Hass <billdh16@gmail.com> wrote:
-> Hey all,
->
-> I am unable to compile the latest kernel from the git tree.
->
-> git clone git://git.linux-nfs.org/projects/bhalevy/linux-pnfs.git
-> cd linux-pnfs
-> make oldconfig
-> make -j5 -s
-> =A0=A0=A0=A0 [ ... ]
-> =A0=A0=A0=A0 [A lot of warnings, but no errors]
-> =A0=A0=A0=A0 [ ... ]
-> make install
-> =A0=A0=A0=A0 sh /usr/src/kernels/3.0.0/linux-
-> =A0 =A0 pnfs/arch/x86/boot/install.sh 3.0.0-pnfs arch/x86/boot/bzImag=
-e \
-> =A0=A0 =A0 =A0 =A0 System.map "/boot"
-> =A0 =A0 =A0 *** Missing file: arch/x86/boot/bzImage
-> =A0=A0=A0=A0=A0 *** You need to run "make" before "make install".
-> =A0=A0=A0=A0 make[1]: *** [install] Error 1
-> =A0=A0=A0=A0 make: *** [install] Error 2
->
-> When I try to do the make again, here is the output
-> make -j5 -s
-> =A0=A0=A0=A0 fs/nfsd/built-in.o: In function `pnfs_roc':
-> =A0=A0=A0=A0 (.text+0x226d1): multiple definition of `pnfs_roc'
-> =A0=A0=A0=A0 fs/nfs/built-in.o:(.text+0x304ee): first defined here
-> =A0=A0=A0=A0 make[1]: *** [fs/built-in.o] Error 1
-> =A0=A0=A0=A0 make: *** [fs] Error 2
-> =A0=A0=A0=A0 make: *** Waiting for unfinished jobs....
->
-> Thanks for any help!
->
-> Bill
->
-> --
-> Bill D. Hass
-> Major | Electrical Engineering BSE
-> Minor | Mathematics
-> University of Michigan '13
-> College of Engineering
-> (715) 923-8382
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+Will do, tomorrow morning.
