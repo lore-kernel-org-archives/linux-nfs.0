@@ -1,87 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:59567 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751041Ab1HKSS1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Aug 2011 14:18:27 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 2/2] blkmapd: add man page
-Date: Thu, 11 Aug 2011 14:18:21 -0400
-Message-Id: <1313086701-7103-2-git-send-email-rees@umich.edu>
-In-Reply-To: <1313086701-7103-1-git-send-email-rees@umich.edu>
-References: <1313086701-7103-1-git-send-email-rees@umich.edu>
+Received: from acsinet15.oracle.com ([141.146.126.227]:50714 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755574Ab1HCVS3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Aug 2011 17:18:29 -0400
+Subject: Re: [PATCH] rpc.statd: Bind downcall socket to loopback address
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4E398915.6070603@RedHat.com>
+Date: Wed, 3 Aug 2011 17:18:15 -0400
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-Id: <15B872DE-F8F7-40DE-AB66-0B3EB141AB1C@oracle.com>
+References: <20110801201129.3503.99913.stgit@seurat.1015granger.net> <4E398915.6070603@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- utils/blkmapd/blkmapd.man |   54 +++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 54 insertions(+), 0 deletions(-)
- create mode 100644 utils/blkmapd/blkmapd.man
 
-diff --git a/utils/blkmapd/blkmapd.man b/utils/blkmapd/blkmapd.man
-new file mode 100644
-index 0000000..fd38122
---- /dev/null
-+++ b/utils/blkmapd/blkmapd.man
-@@ -0,0 +1,54 @@
-+.\"
-+.\" Copyright 2011, Jim Rees.
-+.\"
-+.\" You may distribute under the terms of the GNU General Public
-+.\" License as specified in the file COPYING that comes with the
-+.\" nfs-utils distribution.
-+.\"
-+.TH blkmapd 8 "11 August 2011"
-+.SH NAME
-+blkmapd \- pNFS block layout mapping daemon
-+.SH SYNOPSIS
-+.B "blkmapd [-d] [-f]"
-+.SH DESCRIPTION
-+The
-+.B blkmapd
-+daemon performs device discovery and mapping for the parallel NFS (pNFS) block layout
-+client [RFC5663].
-+.PP
-+The pNFS block layout protocol builds a complex storage hierarchy from a set
-+of
-+.I simple volumes.
-+These simple volumes are addressed by content, using a signature on the
-+volume to uniquely name each one.
-+The daemon locates a volume by examining each block device in the system for
-+the given signature.
-+.PP
-+The topology typically consists of a hierarchy of volumes built by striping,
-+slicing, and concatenating the simple volumes.
-+The
-+.B blkmapd
-+daemon uses the device-mapper driver to construct logical devices that
-+reflect the server topology, and passes these devices to the kernel for use
-+by the pNFS block layout client.
-+.SH OPTIONS
-+.TP
-+.B -d
-+Performs device discovery only then exits.
-+.TP
-+.B -f
-+Runs
-+.B blkmapd
-+in the foreground and sends output to stderr (as opposed to syslogd)
-+.SH SEE ALSO
-+.BR nfs (5),
-+.BR dmsetup (8)
-+.sp
-+RFC 5661 for the NFS version 4.1 specification.
-+.br
-+RFC 5663 for the pNFS block layout specification.
-+.SH AUTHORS
-+.br
-+Haiying Tang <Tang_Haiying@emc.com>
-+.br
-+Jim Rees <rees@umich.edu>
--- 
-1.7.4.1
+On Aug 3, 2011, at 1:44 PM, Steve Dickson wrote:
+
+> 
+> 
+> On 08/01/2011 04:13 PM, Chuck Lever wrote:
+>> In the past, rpc.statd posted SM_NOTIFY requests using the same socket
+>> it used for sending downcalls to the kernel.  To receive replies from
+>> remote hosts, the socket was bound to INADDR_ANY.
+>> 
+>> With commit f113db52 "Remove notify functionality from statd in
+>> favour of sm-notify" (Mar 20, 2007), the downcall socket is no longer
+>> used for sending requests to remote hosts.  However, the downcall
+>> socket is still bound to INADDR_ANY.
+>> 
+>> Thus a remote host can inject data on this socket since it is an
+>> unconnected UDP socket listening for RPC replies.  Thanks to f113db52,
+>> the port number of this socket is no longer controlled by a command
+>> line option, making it difficult to firewall.
+>> 
+>> We have demonstrated that data injection on this socket can result in
+>> a DoS by causing rpc.statd to consume CPU and log bandwidth, but so
+>> far we have not found a breach.
+>> 
+>> To prevent unwanted data injection, bind this socket to the loopback
+>> address.
+>> 
+>> BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=177
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> Committed..
+
+Do you want to close out bz 177, or shall I?  Or we can wait for the next nfs-utils release (1.2.5?) to mark it FIXED.
+
+> steved.
+> 
+>> ---
+>> 
+>> Confirmed that reboot recovery still works, and that data injection
+>> is no longer possible.  This is an updated and final version of this
+>> patch.
+>> 
+>> utils/statd/rmtcall.c |    2 +-
+>> 1 files changed, 1 insertions(+), 1 deletions(-)
+>> 
+>> diff --git a/utils/statd/rmtcall.c b/utils/statd/rmtcall.c
+>> index 0e52fe2..4ecb03c 100644
+>> --- a/utils/statd/rmtcall.c
+>> +++ b/utils/statd/rmtcall.c
+>> @@ -85,7 +85,7 @@ statd_get_socket(void)
+>> 
+>> 		memset(&sin, 0, sizeof(sin));
+>> 		sin.sin_family = AF_INET;
+>> -		sin.sin_addr.s_addr = INADDR_ANY;
+>> +		sin.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+>> 
+>> 		if (bindresvport(sockfd, &sin) < 0) {
+>> 			xlog(D_GENERAL, "%s: can't bind to reserved port",
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
