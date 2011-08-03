@@ -1,198 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:35132 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57891 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754704Ab1HBSvE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Aug 2011 14:51:04 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Andy Adamson <andros@netapp.com>
-Cc: Peng Tao <bergwolf@gmail.com>, Jim Rees <rees@umich.edu>,
-        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v2 1/2] NFSv4.1: Fix the callback 'highest_used_slotid' behaviour
-Date: Tue,  2 Aug 2011 14:50:39 -0400
-Message-Id: <1312311040-9400-1-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1312306214.2823.10.camel@lade.trondhjem.org>
-References: <1312306214.2823.10.camel@lade.trondhjem.org>
+	id S1751655Ab1HCRo4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Aug 2011 13:44:56 -0400
+Message-ID: <4E398915.6070603@RedHat.com>
+Date: Wed, 03 Aug 2011 13:44:53 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] rpc.statd: Bind downcall socket to loopback address
+References: <20110801201129.3503.99913.stgit@seurat.1015granger.net>
+In-Reply-To: <20110801201129.3503.99913.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Currently, there is no guarantee that we will call nfs4_cb_take_slot() even
-though nfs4_callback_compound() will consistently call
-nfs4_cb_free_slot() provided the cb_process_state has set the 'clp' field.
-The result is that we can trigger the BUG_ON() upon the next call to
-nfs4_cb_take_slot().
 
-This patch fixes the above problem by using the slot id that was taken in
-the CB_SEQUENCE operation as a flag for whether or not we need to call
-nfs4_cb_free_slot().
-It also fixes an atomicity problem: we need to set tbl->highest_used_slotid
-atomically with the check for NFS4_SESSION_DRAINING, otherwise we end up
-racing with the various tests in nfs4_begin_drain_session().
 
-Cc: stable@kernel.org [2.6.38+]
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/callback.h      |    2 +-
- fs/nfs/callback_proc.c |   20 ++++++++++++++------
- fs/nfs/callback_xdr.c  |   24 +++++++-----------------
- 3 files changed, 22 insertions(+), 24 deletions(-)
+On 08/01/2011 04:13 PM, Chuck Lever wrote:
+> In the past, rpc.statd posted SM_NOTIFY requests using the same socket
+> it used for sending downcalls to the kernel.  To receive replies from
+> remote hosts, the socket was bound to INADDR_ANY.
+> 
+> With commit f113db52 "Remove notify functionality from statd in
+> favour of sm-notify" (Mar 20, 2007), the downcall socket is no longer
+> used for sending requests to remote hosts.  However, the downcall
+> socket is still bound to INADDR_ANY.
+> 
+> Thus a remote host can inject data on this socket since it is an
+> unconnected UDP socket listening for RPC replies.  Thanks to f113db52,
+> the port number of this socket is no longer controlled by a command
+> line option, making it difficult to firewall.
+> 
+> We have demonstrated that data injection on this socket can result in
+> a DoS by causing rpc.statd to consume CPU and log bandwidth, but so
+> far we have not found a breach.
+> 
+> To prevent unwanted data injection, bind this socket to the loopback
+> address.
+> 
+> BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=177
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Committed..
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index b257383..07df5f1 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -38,6 +38,7 @@ enum nfs4_callback_opnum {
- struct cb_process_state {
- 	__be32			drc_status;
- 	struct nfs_client	*clp;
-+	int			slotid;
- };
- 
- struct cb_compound_hdr_arg {
-@@ -166,7 +167,6 @@ extern unsigned nfs4_callback_layoutrecall(
- 	void *dummy, struct cb_process_state *cps);
- 
- extern void nfs4_check_drain_bc_complete(struct nfs4_session *ses);
--extern void nfs4_cb_take_slot(struct nfs_client *clp);
- 
- struct cb_devicenotifyitem {
- 	uint32_t		cbd_notify_type;
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 74780f9..0ab8202 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -348,7 +348,7 @@ validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
- 	/* Normal */
- 	if (likely(args->csa_sequenceid == slot->seq_nr + 1)) {
- 		slot->seq_nr++;
--		return htonl(NFS4_OK);
-+		goto out_ok;
- 	}
- 
- 	/* Replay */
-@@ -367,11 +367,14 @@ validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
- 	/* Wraparound */
- 	if (args->csa_sequenceid == 1 && (slot->seq_nr + 1) == 0) {
- 		slot->seq_nr = 1;
--		return htonl(NFS4_OK);
-+		goto out_ok;
- 	}
- 
- 	/* Misordered request */
- 	return htonl(NFS4ERR_SEQ_MISORDERED);
-+out_ok:
-+	tbl->highest_used_slotid = args->csa_slotid;
-+	return htonl(NFS4_OK);
- }
- 
- /*
-@@ -433,26 +436,32 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 			      struct cb_sequenceres *res,
- 			      struct cb_process_state *cps)
- {
-+	struct nfs4_slot_table *tbl;
- 	struct nfs_client *clp;
- 	int i;
- 	__be32 status = htonl(NFS4ERR_BADSESSION);
- 
--	cps->clp = NULL;
--
- 	clp = nfs4_find_client_sessionid(args->csa_addr, &args->csa_sessionid);
- 	if (clp == NULL)
- 		goto out;
- 
-+	tbl = &clp->cl_session->bc_slot_table;
-+
-+	spin_lock(&tbl->slot_tbl_lock);
- 	/* state manager is resetting the session */
- 	if (test_bit(NFS4_SESSION_DRAINING, &clp->cl_session->session_state)) {
--		status = NFS4ERR_DELAY;
-+		spin_unlock(&tbl->slot_tbl_lock);
-+		status = htonl(NFS4ERR_DELAY);
- 		goto out;
- 	}
- 
- 	status = validate_seqid(&clp->cl_session->bc_slot_table, args);
-+	spin_unlock(&tbl->slot_tbl_lock);
- 	if (status)
- 		goto out;
- 
-+	cps->slotid = args->csa_slotid;
-+
- 	/*
- 	 * Check for pending referring calls.  If a match is found, a
- 	 * related callback was received before the response to the original
-@@ -469,7 +478,6 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 	res->csr_slotid = args->csa_slotid;
- 	res->csr_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
- 	res->csr_target_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
--	nfs4_cb_take_slot(clp);
- 
- out:
- 	cps->clp = clp; /* put in nfs4_callback_compound */
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index c6c86a7..918ad64 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -754,26 +754,15 @@ static void nfs4_callback_free_slot(struct nfs4_session *session)
- 	 * Let the state manager know callback processing done.
- 	 * A single slot, so highest used slotid is either 0 or -1
- 	 */
--	tbl->highest_used_slotid--;
-+	tbl->highest_used_slotid = -1;
- 	nfs4_check_drain_bc_complete(session);
- 	spin_unlock(&tbl->slot_tbl_lock);
- }
- 
--static void nfs4_cb_free_slot(struct nfs_client *clp)
-+static void nfs4_cb_free_slot(struct cb_process_state *cps)
- {
--	if (clp && clp->cl_session)
--		nfs4_callback_free_slot(clp->cl_session);
--}
--
--/* A single slot, so highest used slotid is either 0 or -1 */
--void nfs4_cb_take_slot(struct nfs_client *clp)
--{
--	struct nfs4_slot_table *tbl = &clp->cl_session->bc_slot_table;
--
--	spin_lock(&tbl->slot_tbl_lock);
--	tbl->highest_used_slotid++;
--	BUG_ON(tbl->highest_used_slotid != 0);
--	spin_unlock(&tbl->slot_tbl_lock);
-+	if (cps->slotid != -1)
-+		nfs4_callback_free_slot(cps->clp->cl_session);
- }
- 
- #else /* CONFIG_NFS_V4_1 */
-@@ -784,7 +773,7 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
- 	return htonl(NFS4ERR_MINOR_VERS_MISMATCH);
- }
- 
--static void nfs4_cb_free_slot(struct nfs_client *clp)
-+static void nfs4_cb_free_slot(struct cb_process_state *cps)
- {
- }
- #endif /* CONFIG_NFS_V4_1 */
-@@ -866,6 +855,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 	struct cb_process_state cps = {
- 		.drc_status = 0,
- 		.clp = NULL,
-+		.slotid = -1,
- 	};
- 	unsigned int nops = 0;
- 
-@@ -906,7 +896,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 
- 	*hdr_res.status = status;
- 	*hdr_res.nops = htonl(nops);
--	nfs4_cb_free_slot(cps.clp);
-+	nfs4_cb_free_slot(&cps);
- 	nfs_put_client(cps.clp);
- 	dprintk("%s: done, status = %u\n", __func__, ntohl(status));
- 	return rpc_success;
--- 
-1.7.6
+steved.
 
+> ---
+> 
+> Confirmed that reboot recovery still works, and that data injection
+> is no longer possible.  This is an updated and final version of this
+> patch.
+> 
+>  utils/statd/rmtcall.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/utils/statd/rmtcall.c b/utils/statd/rmtcall.c
+> index 0e52fe2..4ecb03c 100644
+> --- a/utils/statd/rmtcall.c
+> +++ b/utils/statd/rmtcall.c
+> @@ -85,7 +85,7 @@ statd_get_socket(void)
+>  
+>  		memset(&sin, 0, sizeof(sin));
+>  		sin.sin_family = AF_INET;
+> -		sin.sin_addr.s_addr = INADDR_ANY;
+> +		sin.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+>  
+>  		if (bindresvport(sockfd, &sin) < 0) {
+>  			xlog(D_GENERAL, "%s: can't bind to reserved port",
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
