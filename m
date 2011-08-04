@@ -1,102 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:39239 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753930Ab1HXSfB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Aug 2011 14:35:01 -0400
-Subject: [PATCH 1/5] SUNRPC: introduce helpers for reference counted rpcbind
-	clients
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net
-Date: Wed, 24 Aug 2011 22:33:44 +0400
-Message-ID: <20110824183344.4924.33065.stgit@localhost6.localdomain6>
-In-Reply-To: <20110824183304.4924.94670.stgit@localhost6.localdomain6>
-References: <20110824183304.4924.94670.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:33730 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755913Ab1HDAvy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Aug 2011 20:51:54 -0400
+Received: by vxh35 with SMTP id 35so1070766vxh.19
+        for <linux-nfs@vger.kernel.org>; Wed, 03 Aug 2011 17:51:53 -0700 (PDT)
+In-Reply-To: <20110804092141.3461c9ce@notabene.brown>
+References: <20110804092141.3461c9ce@notabene.brown>
+Date: Wed, 3 Aug 2011 20:51:52 -0400
+Message-ID: <CAKnQG+cs4SLD-YmLwpnXU_gDWrjfmx9+z-E=7J-SUcsP=KhfSg@mail.gmail.com>
+Subject: Re: Problems with kerberos auth - possibly against ADS - since nfs-utils-1.2.3
+From: Kevin Coffman <kwc@umich.edu>
+To: NeilBrown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This helpers will be used for dynamical creation and destruction of rpcbind
-clients.
-Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
-client has been created already, then we just increase rpcb_users.
+On Wed, Aug 3, 2011 at 7:21 PM, NeilBrown <neilb@suse.de> wrote:
+>
+> Hi,
+>  I have some reports of problems with kerberos auth in openSUSE 11.4 (using
+>  1.2.3) which can be fixed by using the openSUSE 11.3 version of rpc.gssd
+>  (from 1.2.1).
+>
+> https://bugzilla.novell.com/show_bug.cgi?id=614293
+>
+>  The important difference seems to be the list of enc_types used in
+>  limit_krb5_enctypes.
+>
+>  In 1.2.1 this list is hard coded in the rpc.gssd to 1,3,2 (I think).
+>  In 1.2.3 this list is taken from the kernel where is it hard coded
+>  to  18,17,16,23,3,1,2.
+>  When I patch the 11.4 code to use the old enctype list, it works perfectly.
+>
+>  So presumably it ends up negotiating one of those other enc_types and
+>  gets confused by it.
+>
+>  I'll try to get a comparative tcp dump to see if that helps, but
+>  if anyone has any idea what the problem might be I'd love to hear
+>  suggestions.
+>
+>  The systems are running a 2.6.37 kernel in case that might make a difference.
+>
+> Thanks,
+> NeilBrown
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Hi Niel,
+Seeing the traffic might help.  It wasn't clear to me after reading
+(most of) the bugzilla info what kernel version the NFS servers
+involved are running.  If the servers don't have kernels with the
+newer enctype support, this might be the "subkey assertion" issue.
 
----
- net/sunrpc/rpcb_clnt.c |   51 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 51 insertions(+), 0 deletions(-)
-
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index e45d2fb..c84e6a3 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
- static struct rpc_clnt *	rpcb_local_clnt;
- static struct rpc_clnt *	rpcb_local_clnt4;
- 
-+DEFINE_SPINLOCK(rpcb_clnt_lock);
-+unsigned int			rpcb_users;
-+
- struct rpcbind_args {
- 	struct rpc_xprt *	r_xprt;
- 
-@@ -161,6 +164,54 @@ static void rpcb_map_release(void *data)
- 	kfree(map);
- }
- 
-+static int rpcb_get_local(void)
-+{
-+	spin_lock(&rpcb_clnt_lock);
-+	if (rpcb_users)
-+		rpcb_users++;
-+	spin_unlock(&rpcb_clnt_lock);
-+
-+	return rpcb_users;
-+}
-+
-+void rpcb_put_local(void)
-+{
-+	struct rpc_clnt *clnt = rpcb_local_clnt;
-+	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
-+	int shutdown;
-+
-+	spin_lock(&rpcb_clnt_lock);
-+	if (--rpcb_users == 0) {
-+		rpcb_local_clnt = NULL;
-+		rpcb_local_clnt4 = NULL;
-+	}
-+	shutdown = !rpcb_users;
-+	spin_unlock(&rpcb_clnt_lock);
-+
-+	if (shutdown) {
-+		/*
-+		 * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
-+		 */
-+		if (clnt4)
-+			rpc_shutdown_client(clnt4);
-+		if (clnt)
-+			rpc_shutdown_client(clnt);
-+	}
-+	return;
-+}
-+
-+static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
-+{
-+	/* Protected by rpcb_create_local_mutex */
-+	rpcb_local_clnt = clnt;
-+	rpcb_local_clnt4 = clnt4;
-+	rpcb_users++;
-+	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
-+			"0x%p, rpcb_local_clnt4: 0x%p)\n", rpcb_local_clnt,
-+			rpcb_local_clnt4);
-+
-+}
-+
- /*
-  * Returns zero on success, otherwise a negative errno value
-  * is returned.
-
+K.C.
