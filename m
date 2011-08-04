@@ -1,62 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:33699 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:5713 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751098Ab1HPLDY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Aug 2011 07:03:24 -0400
-Date: Tue, 16 Aug 2011 07:03:22 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com, nfsv4@ietf.org
-Subject: Re: open() of device special files
-Message-ID: <20110816110322.GC5829@fieldses.org>
-References: <20110815153637.GD28629@fieldses.org>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AA9B9FB@SACMVEXC2-PRD.hq.netapp.com>
- <20110815212539.GA32181@fieldses.org>
- <20110815222336.GB32181@fieldses.org>
- <20110815222721.GC32181@fieldses.org>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AA9BE53@SACMVEXC2-PRD.hq.netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AA9BE53@SACMVEXC2-PRD.hq.netapp.com>
+	id S1754816Ab1HDSRz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2011 14:17:55 -0400
+Subject: Re: [NLM] fcntl(F_SETLKW) yields -ENOLCK when grace period expires.
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Frank van Maarseveen <frankvm@frankvm.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Date: Thu, 04 Aug 2011 14:17:35 -0400
+In-Reply-To: <20110804172710.GB18087@janus>
+References: <20110804103018.GA11727@janus>
+	 <20110804163452.GE12445@fieldses.org> <20110804164313.GA17572@janus>
+	 <20110804164913.GG12445@fieldses.org>
+	 <1312477820.8919.5.camel@lade.trondhjem.org> <20110804172710.GB18087@janus>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1312481855.8919.20.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Aug 15, 2011 at 10:04:29PM -0700, Myklebust, Trond wrote:
-> > -----Original Message-----
-> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > And the change also makes a bunch of pynfs tests fail, complaining
-> that
-> > various operations against incompatible types should have returned
-> > INVAL
-> > and not SYMLINK.
+On Thu, 2011-08-04 at 19:27 +0200, Frank van Maarseveen wrote: 
+> On Thu, Aug 04, 2011 at 01:10:20PM -0400, Trond Myklebust wrote:
+> > On Thu, 2011-08-04 at 12:49 -0400, J. Bruce Fields wrote: 
+> > > On Thu, Aug 04, 2011 at 06:43:13PM +0200, Frank van Maarseveen wrote:
+> > > > On Thu, Aug 04, 2011 at 12:34:52PM -0400, J. Bruce Fields wrote:
+> > > > > On Thu, Aug 04, 2011 at 12:30:19PM +0200, Frank van Maarseveen wrote:
+> > > > > > Both client- and server run 2.6.39.3, NFSv3 over UDP (without the
+> > > > > > relock_filesystem patch proposed earlier).
+> > > > > > 
+> > > > > > A second client has an exclusive lock on a file on the server. The
+> > > > > > client under test calls fcntl(F_SETLKW) to wait for the same exclusive
+> > > > > > lock. Wireshark sees NLM V4 LOCK calls resulting in NLM_BLOCKED.
+> > > > > > 
+> > > > > > Next the server is rebooted. The second client recovers the lock
+> > > > > > correctly. The client under test now receives NLM_DENIED_GRACE_PERIOD for
+> > > > > > every NLM V4 LOCK request resulting from the waiting fcntl(F_SETLKW). When
+> > > > > > this changes to NLM_BLOCKED after grace period expiration the fcntl
+> > > > > > returns -ENOLCK ("No locks available.") instead of continuing to wait.
+> > > > > 
+> > > > > So that sounds like a client bug, and correct behavior from the server
+> > > > > (assuming the second client was still holding the lock throughout).
+> > > > 
+> > > > yes.
 > > 
-> > Not that I'm convinced pynfs is correct--at the very least it should
-> > have accepted a range of errors for those tests, I think--but anyone
-> > else that ran pynfs against their server may have assumed it pynfs was
-> > correct in these cases....
+> > Is the client actually asking for a blocking lock after the grace period
+> > expires?
 > 
-> Pynfs is not an authoritative source for anything.
+> yes, according to my interpretation of that of wireshark, see reply to Bruce.
+> 
 
-We should say that, for what it's worth.  (Below.)
+OK... Does the following patch help?
 
-But it's just another reason why servers may have been written to return
-something other than err_symlink....  I have in the past had to tell
-developers of more than one server that fixing error returns to make
-pynfs happy may not be a good idea.
+Cheers
+  Trond
+--- 
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index 8392cb8..40c0d88 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -270,6 +270,9 @@ nlmclnt_call(struct rpc_cred *cred, struct nlm_rqst *req, u32 proc)
+ 			return -ENOLCK;
+ 		msg.rpc_proc = &clnt->cl_procinfo[proc];
+ 
++		/* Reset the reply status */
++		if (argp->block)
++			resp->status = nlm_lck_blocked;
+ 		/* Perform the RPC call. If an error occurs, try again */
+ 		if ((status = rpc_call_sync(clnt, &msg, 0)) < 0) {
+ 			dprintk("lockd: rpc_call returned error %d\n", -status);
 
---b.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-diff --git a/README b/README
-index 0c34b2a..ecb2aa6 100644
---- a/README
-+++ b/README
-@@ -12,3 +12,9 @@ in place.
- For more details about 4.0 and 4.1 testing, see nfs4.0/README and
- nfs4.1/README, respectively.  For information about automatic code
- generation from an XDR file, see xdr/README.
-+
-+Note that test results should *not* be considered authoritative
-+statements about the protocol--if you find that a server fails a test,
-+you should consult the rfc's and think carefully before assuming that
-+the server is at fault.  (However, we do appreciate patches if you
-+find a test that requires incorrect behavior.)
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
