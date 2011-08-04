@@ -1,343 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:53122 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752249Ab1HPLyR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 07:54:17 -0400
-Subject: [PATCH 3 2/4] Return 32/64-bit dir name hash according to usage type
-To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: bfields@fieldses.org, tytso@mit.edu, bernd.schubert@fastmail.fm,
-        hch@infradead.org, adilger@whamcloud.com, yong.fan@whamcloud.com,
-        linux-fsdevel@vger.kernel.org
-Date: Tue, 16 Aug 2011 13:54:14 +0200
-Message-ID: <20110816115414.1810393.92169.stgit@localhost.localdomain>
-In-Reply-To: <20110816115404.1810393.47239.stgit@localhost.localdomain>
-References: <20110816115404.1810393.47239.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+Received: from e37.co.us.ibm.com ([32.97.110.158]:44940 "EHLO
+	e37.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752305Ab1HDL26 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2011 07:28:58 -0400
+Received: from d03relay01.boulder.ibm.com (d03relay01.boulder.ibm.com [9.17.195.226])
+	by e37.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p74BPle7021416
+	for <linux-nfs@vger.kernel.org>; Thu, 4 Aug 2011 05:25:47 -0600
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p74BRck0199262
+	for <linux-nfs@vger.kernel.org>; Thu, 4 Aug 2011 05:27:38 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p745R9Uq007969
+	for <linux-nfs@vger.kernel.org>; Wed, 3 Aug 2011 23:27:10 -0600
+Message-ID: <4E3A8225.1020309@linux.vnet.ibm.com>
+Date: Thu, 04 Aug 2011 04:27:33 -0700
+From: Venkateswararao Jujjuri <jvrao@linux.vnet.ibm.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com
+Subject: Re: State of NFSv4 VolatileFilehandles
+References: <4E37E66D.90102@linux.vnet.ibm.com> <45F4FC20-ED44-4430-A5A9-E06459A194F3@oracle.com> <4E38F894.4070003@linux.vnet.ibm.com> <2DD1BC2B-6113-4D00-9DD4-C5D431EA1F8A@oracle.com>
+In-Reply-To: <2DD1BC2B-6113-4D00-9DD4-C5D431EA1F8A@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Fan Yong <yong.fan@whamcloud.com>
+On 08/03/2011 03:13 PM, Chuck Lever wrote:
+> On Aug 3, 2011, at 3:28 AM, Venkateswararao Jujjuri wrote:
+>
+>> On 08/02/2011 07:53 AM, Chuck Lever wrote:
+>>> On Aug 2, 2011, at 7:58 AM, Venkateswararao Jujjuri wrote:
+>>>
+>>>> We at IBM receiving multiple customer requests for supporting NFSv4 server migration.
+>>>> I have referred to Trond and Chuck's presentations at 2011 Connectathon and there appears to be
+>>>> sizable work remaining. I am not sure if there is any progress made since those talks.
+>>>>
+>>>> I would like to open up a discussion thread on the mailing list to understand the latest status.
+>>>> Also would like to get the input on the Volatile Filehandles (VFH). I searched the mailing list, and could not
+>>>> find any recent discussion on this.
+>>>>
+>>>> Some discussion points:
+>>>> - What are the pieces left to attain full client/server support for seamless server migration?
+>>> The client migration implementation is code complete and in test now.  This includes both minor version 0 and 1.  We don't have any mv1 servers to test with at this time, so that support is provisional.  I hope to have patches ready for the 3.2 merge window, but you can see what I've got now on git.linux-nfs.org.
+>> Great I will take it from there. Is it your branch or Trand's ? Can you please give me which project/branch
+>> I should take from git.linux-nfs.org?
+> This source code is just for review and experimentation.  I would wait for the merged code upstream before basing any work on it, as it needs to be forward ported to 3.1 and I expect there will be some minor architectural changes soon.
+>
+>    git://git.linux-nfs.org/projects/cel/cel-2.6.git
+>
+>>> A problem is that there are corner cases in the v4.0 migration specification that are still unresolved.  We are working with the NFSv4 WG to get these addressed.  But I expect some minor changes even after the patches are merged upstream.
+>> What are those corner cases? Is it on any mailing list? Is it possible for us to see that discussion?
+> There has been a lot of face-to-face discussion about this over the past six months or so.  We are planning to bring the discussion to the nfsv4@ietf.org mailing list (which is public) very soon.
+>
+>>> We don't have firm plans for a server migration implementation on Linux at this time, but Bruce can maybe say more about that.
+>> Sure; would wait for Bruce's views on this. We are getting requirements for both client and server support.
+> Are you planning to work with the kernel's NFSD, or with Ganesha?
+Currently we are looking for kernel NFSD.
 
-Traditionally ext2/3/4 has returned a 32-bit hash value from llseek()
-to appease NFSv2, which can only handle a 32-bit cookie for seekdir()
-and telldir().  However, this causes problems if there are 32-bit hash
-collisions, since the NFSv2 server can get stuck resending the same
-entries from the directory repeatedly.
+>
+>>>> - Any discussion/sugestions on the way to implement VFH?  As described in RFC 3530 sections 4.2.3 and 4.2.4?
+>>> I think we are avoiding volatile file handles as long as possible.  We don't have plans to implement them at the moment.
+>> Hrm. How can we achieve the complete migration support without volatile filehandle support?
+>> What are the reasons for avoiding it? May be we can start looking into this but would like to understand
+>> the reasons (if any) for avoiding it.
+> Migration itself does not require volatile file handles (FHs).  If you are considering a simple-minded server implementation, like an rsync between heterogenous physical file systems, then yes, volatile FHs may be required.  But as Trond points out, volatile FHs are a troubled concept anyway, even without migration in the picture.
 
-Allow ext4 to return a full 64-bit hash (both major and minor) for
-telldir to decrease the chance of hash collisions.  This still needs
-integration on the NFS side.
+One of the usecase is rsync between two physical filesystems; but in 
+this particular use case the export
+is readonly (rootfs).  As trond mentioned Volatile FHs are fine in the 
+case of readonly exports.
+Is it something we can consider for upstream? VFH only for readonly 
+exports.?
 
-Patch-updated-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-(blame me if something is not correct)
+>
+> Passing a client between two servers that export the same cluster file system would be a simple and common use of migration where file handles don't have to (and probably won't) change.  We expect that the most common use cases for migration in the near term are going to involve scenarios with homogenous server OS and physical file systems, where FH format can be controlled and thus preserved across a migration event.
+>
+> Robust server migration implementations, in other words, will migrate not just data, but also file handles, write verifiers, and NFSv4 state.  This allows the greatest transparency for clients, and the smoothest possible migration recovery.  Clients can be made simpler if FH recovery is not needed.
 
-Signed-off-by: Fan Yong <yong.fan@whamcloud.com>
-Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
-Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
----
- fs/ext4/dir.c  |  185 ++++++++++++++++++++++++++++++++++++++++++++------------
- fs/ext4/ext4.h |    6 ++
- fs/ext4/hash.c |    4 +
- 3 files changed, 154 insertions(+), 41 deletions(-)
+Yes this totally makes sense.
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 164c560..cc47087 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -32,24 +32,8 @@ static unsigned char ext4_filetype_table[] = {
- 	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
- };
- 
--static int ext4_readdir(struct file *, void *, filldir_t);
- static int ext4_dx_readdir(struct file *filp,
- 			   void *dirent, filldir_t filldir);
--static int ext4_release_dir(struct inode *inode,
--				struct file *filp);
--
--const struct file_operations ext4_dir_operations = {
--	.llseek		= ext4_llseek,
--	.read		= generic_read_dir,
--	.readdir	= ext4_readdir,		/* we take BKL. needed?*/
--	.unlocked_ioctl = ext4_ioctl,
--#ifdef CONFIG_COMPAT
--	.compat_ioctl	= ext4_compat_ioctl,
--#endif
--	.fsync		= ext4_sync_file,
--	.release	= ext4_release_dir,
--};
--
- 
- static unsigned char get_dtype(struct super_block *sb, int filetype)
- {
-@@ -254,22 +238,134 @@ out:
- 	return ret;
- }
- 
-+static inline int is_32bit_api(void)
-+{
-+#ifdef HAVE_IS_COMPAT_TASK
-+	return is_compat_task();
-+#else
-+	return (BITS_PER_LONG == 32);
-+#endif
-+}
-+
- /*
-  * These functions convert from the major/minor hash to an f_pos
-- * value.
-+ * value for dx directories
-+ *
-+ * Upper layer (for example NFS) should specify FMODE_32BITHASH or
-+ * FMODE_64BITHASH explicitly. On the other hand, we allow ext4 to be mounted
-+ * directly on both 32-bit and 64-bit nodes, under such case, neither
-+ * FMODE_32BITHASH nor FMODE_64BITHASH is specified.
-+ */
-+static inline loff_t hash2pos(struct file *filp, __u32 major, __u32 minor)
-+{
-+	if ((filp->f_flags & FMODE_32BITHASH) ||
-+	    (!(filp->f_flags & FMODE_64BITHASH) && is_32bit_api()))
-+		return major >> 1;
-+	else
-+		return ((__u64)(major >> 1) << 32) | (__u64)minor;
-+}
-+
-+static inline __u32 pos2maj_hash(struct file *filp, loff_t pos)
-+{
-+	if ((filp->f_flags & FMODE_32BITHASH) ||
-+	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
-+		return (pos << 1) & 0xffffffff;
-+	else
-+		return ((pos >> 32) << 1) & 0xffffffff;
-+}
-+
-+static inline __u32 pos2min_hash(struct file *filp, loff_t pos)
-+{
-+	if ((filp->f_flags & FMODE_32BITHASH) ||
-+	    (!(filp->f_flags & FMODE_64BITHASH) && is_32bit_api()))
-+		return 0;
-+	else
-+		return pos & 0xffffffff;
-+}
-+
-+/*
-+ * Return 32- or 64-bit end-of-file for dx directories
-+ */
-+static inline loff_t ext4_get_htree_eof(struct file *filp)
-+{
-+	if ((filp->f_mode & FMODE_32BITHASH) ||
-+	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
-+		return EXT4_HTREE_EOF_32BIT;
-+	else
-+		return EXT4_HTREE_EOF_64BIT;
-+}
-+
-+
-+/*
-+ * ext4_dir_llseek() based on generic_file_llseek() to handle both
-+ * non-htree and htree directories, where the "offset" is in terms
-+ * of the filename hash value instead of the byte offset.
-  *
-- * Currently we only use major hash numer.  This is unfortunate, but
-- * on 32-bit machines, the same VFS interface is used for lseek and
-- * llseek, so if we use the 64 bit offset, then the 32-bit versions of
-- * lseek/telldir/seekdir will blow out spectacularly, and from within
-- * the ext2 low-level routine, we don't know if we're being called by
-- * a 64-bit version of the system call or the 32-bit version of the
-- * system call.  Worse yet, NFSv2 only allows for a 32-bit readdir
-- * cookie.  Sigh.
-+ * NOTE: offsets obtained *before* ext4_set_inode_flag(dir, EXT4_INODE_INDEX)
-+ *       will be invalid once the directory was converted into a dx directory
-  */
--#define hash2pos(major, minor)	(major >> 1)
--#define pos2maj_hash(pos)	((pos << 1) & 0xffffffff)
--#define pos2min_hash(pos)	(0)
-+loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
-+{
-+	struct inode *inode = file->f_mapping->host;
-+	loff_t ret = -EINVAL;
-+	int is_dx_dir = ext4_test_inode_flag(inode, EXT4_INODE_INDEX);
-+
-+	mutex_lock(&inode->i_mutex);
-+
-+	/* NOTE: relative offsets with dx directories might not work
-+	 *       as expected, as it is difficult to figure out the
-+	 *       correct offset between dx hashes */
-+
-+	switch (origin) {
-+	case SEEK_END:
-+		if (unlikely(offset > 0))
-+			goto out_err; /* not supported for directories */
-+
-+		/* so only negative offsets are left, does that have a
-+		 * meaning for directories at all? */
-+		if (is_dx_dir)
-+			offset += ext4_get_htree_eof(file);
-+		else
-+			offset += inode->i_size;
-+		break;
-+	case SEEK_CUR:
-+		/*
-+		 * Here we special-case the lseek(fd, 0, SEEK_CUR)
-+		 * position-querying operation.  Avoid rewriting the "same"
-+		 * f_pos value back to the file because a concurrent read(),
-+		 * write() or lseek() might have altered it
-+		 */
-+		if (offset == 0) {
-+			offset = file->f_pos;
-+			goto out_ok;
-+		}
-+
-+		offset += file->f_pos;
-+		break;
-+	}
-+
-+	if (unlikely(offset < 0))
-+		goto out_err;
-+
-+	if (!is_dx_dir) {
-+		if (offset > inode->i_sb->s_maxbytes)
-+			goto out_err;
-+	} else if (offset > ext4_get_htree_eof(file))
-+		goto out_err;
-+
-+	/* Special lock needed here? */
-+	if (offset != file->f_pos) {
-+		file->f_pos = offset;
-+		file->f_version = 0;
-+	}
-+
-+out_ok:
-+	ret = offset;
-+out_err:
-+	mutex_unlock(&inode->i_mutex);
-+
-+	return ret;
-+}
- 
- /*
-  * This structure holds the nodes of the red-black tree used to store
-@@ -330,15 +426,16 @@ static void free_rb_tree_fname(struct rb_root *root)
- }
- 
- 
--static struct dir_private_info *ext4_htree_create_dir_info(loff_t pos)
-+static struct dir_private_info *ext4_htree_create_dir_info(struct file *filp,
-+							   loff_t pos)
- {
- 	struct dir_private_info *p;
- 
- 	p = kzalloc(sizeof(struct dir_private_info), GFP_KERNEL);
- 	if (!p)
- 		return NULL;
--	p->curr_hash = pos2maj_hash(pos);
--	p->curr_minor_hash = pos2min_hash(pos);
-+	p->curr_hash = pos2maj_hash(filp, pos);
-+	p->curr_minor_hash = pos2min_hash(filp, pos);
- 	return p;
- }
- 
-@@ -429,7 +526,7 @@ static int call_filldir(struct file *filp, void *dirent,
- 		       "null fname?!?\n");
- 		return 0;
- 	}
--	curr_pos = hash2pos(fname->hash, fname->minor_hash);
-+	curr_pos = hash2pos(filp, fname->hash, fname->minor_hash);
- 	while (fname) {
- 		error = filldir(dirent, fname->name,
- 				fname->name_len, curr_pos,
-@@ -454,13 +551,13 @@ static int ext4_dx_readdir(struct file *filp,
- 	int	ret;
- 
- 	if (!info) {
--		info = ext4_htree_create_dir_info(filp->f_pos);
-+		info = ext4_htree_create_dir_info(filp, filp->f_pos);
- 		if (!info)
- 			return -ENOMEM;
- 		filp->private_data = info;
- 	}
- 
--	if (filp->f_pos == EXT4_HTREE_EOF)
-+	if (filp->f_pos == ext4_get_htree_eof(filp))
- 		return 0;	/* EOF */
- 
- 	/* Some one has messed with f_pos; reset the world */
-@@ -468,8 +565,8 @@ static int ext4_dx_readdir(struct file *filp,
- 		free_rb_tree_fname(&info->root);
- 		info->curr_node = NULL;
- 		info->extra_fname = NULL;
--		info->curr_hash = pos2maj_hash(filp->f_pos);
--		info->curr_minor_hash = pos2min_hash(filp->f_pos);
-+		info->curr_hash = pos2maj_hash(filp, filp->f_pos);
-+		info->curr_minor_hash = pos2min_hash(filp, filp->f_pos);
- 	}
- 
- 	/*
-@@ -501,7 +598,7 @@ static int ext4_dx_readdir(struct file *filp,
- 			if (ret < 0)
- 				return ret;
- 			if (ret == 0) {
--				filp->f_pos = EXT4_HTREE_EOF;
-+				filp->f_pos = ext4_get_htree_eof(filp);
- 				break;
- 			}
- 			info->curr_node = rb_first(&info->root);
-@@ -521,7 +618,7 @@ static int ext4_dx_readdir(struct file *filp,
- 			info->curr_minor_hash = fname->minor_hash;
- 		} else {
- 			if (info->next_hash == ~0) {
--				filp->f_pos = EXT4_HTREE_EOF;
-+				filp->f_pos = ext4_get_htree_eof(filp);
- 				break;
- 			}
- 			info->curr_hash = info->next_hash;
-@@ -540,3 +637,15 @@ static int ext4_release_dir(struct inode *inode, struct file *filp)
- 
- 	return 0;
- }
-+
-+const struct file_operations ext4_dir_operations = {
-+	.llseek		= ext4_dir_llseek,
-+	.read		= generic_read_dir,
-+	.readdir	= ext4_readdir,
-+	.unlocked_ioctl = ext4_ioctl,
-+#ifdef CONFIG_COMPAT
-+	.compat_ioctl	= ext4_compat_ioctl,
-+#endif
-+	.fsync		= ext4_sync_file,
-+	.release	= ext4_release_dir,
-+};
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e717dfd..31d9ba0 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1560,7 +1560,11 @@ struct dx_hash_info
- 	u32		*seed;
- };
- 
--#define EXT4_HTREE_EOF	0x7fffffff
-+
-+/* 32 and 64 bit signed EOF for dx directories */
-+#define EXT4_HTREE_EOF_32BIT   ((1UL  << (32 - 1)) - 1)
-+#define EXT4_HTREE_EOF_64BIT   ((1ULL << (64 - 1)) - 1)
-+
- 
- /*
-  * Control parameters used by ext4_htree_next_block
-diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
-index ac8f168..fa8e491 100644
---- a/fs/ext4/hash.c
-+++ b/fs/ext4/hash.c
-@@ -200,8 +200,8 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
- 		return -1;
- 	}
- 	hash = hash & ~1;
--	if (hash == (EXT4_HTREE_EOF << 1))
--		hash = (EXT4_HTREE_EOF-1) << 1;
-+	if (hash == (EXT4_HTREE_EOF_32BIT << 1))
-+		hash = (EXT4_HTREE_EOF_32BIT - 1) << 1;
- 	hinfo->hash = hash;
- 	hinfo->minor_hash = minor_hash;
- 	return 0;
+Thanks,
+JV
+
+>
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
 
