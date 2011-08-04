@@ -1,38 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:45962 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751068Ab1HDP4T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Aug 2011 11:56:19 -0400
-Date: Thu, 4 Aug 2011 11:56:15 -0400
-To: Venkateswararao Jujjuri <jvrao@linux.vnet.ibm.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        Trond.Myklebust@netapp.com
-Subject: Re: State of NFSv4 VolatileFilehandles
-Message-ID: <20110804155615.GB12445@fieldses.org>
-References: <4E37E66D.90102@linux.vnet.ibm.com>
- <45F4FC20-ED44-4430-A5A9-E06459A194F3@oracle.com>
- <4E38F894.4070003@linux.vnet.ibm.com>
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:39413 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753552Ab1HDMEE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2011 08:04:04 -0400
+Date: Thu, 4 Aug 2011 08:04:01 -0400
+From: Jim Rees <rees@umich.edu>
+To: Max Matveev <makc@redhat.com>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: Re: [PATCH] Update nfs(5) manpage - timeo for NFS/TCP
+Message-ID: <20110804120401.GB9984@merit.edu>
+References: <20026.13331.411712.805796@regina.usersys.redhat.com>
+ <20110804062858.EAD96813270B@regina.usersys.redhat.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E38F894.4070003@linux.vnet.ibm.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20110804062858.EAD96813270B@regina.usersys.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Aug 03, 2011 at 12:28:20AM -0700, Venkateswararao Jujjuri wrote:
-> On 08/02/2011 07:53 AM, Chuck Lever wrote:
-> >We don't have firm plans for a server migration implementation on Linux at this time, but Bruce can maybe say more about that.
-> Sure; would wait for Bruce's views on this. We are getting
-> requirements for both client and server support.
+Max Matveev wrote:
 
-We've been looking at migration and failover, backed by a cluster
-filesystem, using floating IP's as a way to get most of the benefits
-without quite as much fiddling with protocol issues and without
-requiring the absolute latest clients.
+  NFS/TCP does linear backoff then retransmiting - the manpage
+  was mistakenly asserting the "no backoff" theory.
+  
+  Signed-off-by: Max Matveev <makc@redhat.com>
+  ---
+   utils/mount/nfs.man |   14 +++++++++-----
+   1 files changed, 9 insertions(+), 5 deletions(-)
+  
+  diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+  index be91a25..7681b10 100644
+  --- a/utils/mount/nfs.man
+  +++ b/utils/mount/nfs.man
+  @@ -114,11 +114,15 @@ option.
+   .TP 1.5i
+   .BI timeo= n
+   The time (in tenths of a second) the NFS client waits for a
+  -response before it retries an NFS request. If this
+  -option is not specified, requests are retried every
+  -60 seconds for NFS over TCP.
+  -The NFS client does not perform any kind of timeout backoff
+  -for NFS over TCP.
+  +response before it retries an NFS request.
+  +.IP
+  +For NFS over TCP the default
+  +.B timeo
+  +value is 600 which equals to 60 seconds.
+  +The NFS client performs linear backoff  -
+  +after each retransmission the timeout is increased by
+  +.BR timeo /10
+  +seconds upto the maximum of 600 seconds.
 
-We'd likely look into NFSv4 protocol-based migration after that.  Is
-there some reason you require that in particular?  Is it only because
-you want to be able to migrate using rsync and count on the client
-recovering volatile filehandles?
+"upto" should be "up to".
 
---b.
+I'm not crazy about the wording.  How about
+
+  For NFS over TCP the default timeo is 600 (60 seconds).  The NFS client
+  performs linear backoff.  After each retransmission the timeout is
+  increased by timeo up to the maximum of 600 seconds.
+
+Finally, I would call them "deciseconds".
+
+timeo: The time in deciseconds (tenths of a second) ...
