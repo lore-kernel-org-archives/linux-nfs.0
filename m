@@ -1,23 +1,39 @@
-From: Jim Rees <rees@umich.edu>
+From: "Benny Halevy" <bhalevy@tonian.com>
 Subject: Re: no more phone calls?
-Date: Thu, 4 Aug 2011 13:27:38 -0400
-Message-ID: <20110804172738.GC12828@merit.edu>
-References: <702565409-1312478113-cardhu_decombobulator_blackberry.rim.net-1638968879-@b27.c3.bise3.blackberry>
+Date: Thu, 4 Aug 2011 17:53:57 +0000
+Message-ID: <675866116-1312480436-cardhu_decombobulator_blackberry.rim.net-313902020-@b27.c3.bise3.blackberry>
+Reply-To: bhalevy@tonian.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Cc: linux-nfs-owner@vger.kernel.org,
-	Marc Eshel <eshel@almaden.ibm.com>,
-	Andy Adamson <andros@netapp.com>,
+	"Marc Eshel" <eshel@almaden.ibm.com>,
+	"Andy Adamson" <andros@netapp.com>,
 	"linux-nfs@vger.kernel.org list" <linux-nfs@vger.kernel.org>
-To: Benny Halevy <bhalevy@tonian.com>
+To: "Jim Rees" <rees@umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:42955 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754383Ab1HDR1j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2011 13:27:39 -0400
-In-Reply-To: <702565409-1312478113-cardhu_decombobulator_blackberry.rim.net-1638968879--yxO4BFb37jUuAv5SCwTcTmwcY1zWLNb1@public.gmane.org>
+Received: from mail-iy0-f170.google.com ([209.85.210.170]:54533 "EHLO
+	mail-iy0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755182Ab1HDRyD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2011 13:54:03 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+
+Sorry for top posting I'm on my mobile...
+
+I do have a spnfsd branch right below the blkmapd branch. Its tip should be 7dace329
+
+I guess you also want patch 06f93dbc
+
+Benny
+------Original Message------
+From: Jim Rees
+To: Benny Halevy
+Cc: linux-nfs-owner@vger.kernel.org
+Cc: Marc Eshel
+Cc: Andy Adamson
+Cc: linux-nfs@vger.kernel.org list
+Subject: Re: no more phone calls?
+Sent: Aug 4, 2011 20:27
 
 Benny Halevy wrote:
 
@@ -29,3 +45,5 @@ have a branch that's just the blkmapd changes, do you?
 
 Other than that I do always appreciate the usual testing and commenting when
 I post patches.
+
+
