@@ -1,57 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53242 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:33841 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752728Ab1HZW2m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Aug 2011 18:28:42 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 09/15] nfsd4: simplify lock openmode check
-Date: Fri, 26 Aug 2011 18:28:30 -0400
-Message-Id: <1314397716-18602-10-git-send-email-bfields@redhat.com>
-In-Reply-To: <1314397716-18602-1-git-send-email-bfields@redhat.com>
-References: <1314397716-18602-1-git-send-email-bfields@redhat.com>
+	id S1751084Ab1HDQex (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Aug 2011 12:34:53 -0400
+Date: Thu, 4 Aug 2011 12:34:52 -0400
+To: Frank van Maarseveen <frankvm@frankvm.com>
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [NLM] fcntl(F_SETLKW) yields -ENOLCK when grace period expires.
+Message-ID: <20110804163452.GE12445@fieldses.org>
+References: <20110804103018.GA11727@janus>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110804103018.GA11727@janus>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Note that the special handling for the lock stateid case is already done
-by nfs4_check_openmode() (as of 02921914170e3b7fea1cd82dac9713685d2de5e2
-"nfsd4: fix openmode checking on IO using lock stateid") so we no longer
-need these two cases in the caller.
+On Thu, Aug 04, 2011 at 12:30:19PM +0200, Frank van Maarseveen wrote:
+> Both client- and server run 2.6.39.3, NFSv3 over UDP (without the
+> relock_filesystem patch proposed earlier).
+> 
+> A second client has an exclusive lock on a file on the server. The
+> client under test calls fcntl(F_SETLKW) to wait for the same exclusive
+> lock. Wireshark sees NLM V4 LOCK calls resulting in NLM_BLOCKED.
+> 
+> Next the server is rebooted. The second client recovers the lock
+> correctly. The client under test now receives NLM_DENIED_GRACE_PERIOD for
+> every NLM V4 LOCK request resulting from the waiting fcntl(F_SETLKW). When
+> this changes to NLM_BLOCKED after grace period expiration the fcntl
+> returns -ENOLCK ("No locks available.") instead of continuing to wait.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |   15 +++++----------
- 1 files changed, 5 insertions(+), 10 deletions(-)
+So that sounds like a client bug, and correct behavior from the server
+(assuming the second client was still holding the lock throughout).
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a77d8a5..3c4e7ef 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3455,16 +3455,11 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
- 			if (!nfsd4_has_session(cstate) &&
- 			    !same_clid(&clp->cl_clientid, lockclid))
- 				return nfserr_bad_stateid;
--			/* stp is the open stateid */
--			status = nfs4_check_openmode(stp, lkflg);
--			if (status)
--				return status;
--		} else {
--			/* stp is the lock stateid */
--			status = nfs4_check_openmode(stp->st_openstp, lkflg);
--			if (status)
--				return status;
--               }
-+		}
-+		/* stp is the open stateid */
-+		status = nfs4_check_openmode(stp, lkflg);
-+		if (status)
-+			return status;
- 	}
- 
- 	if (nfs4_check_fh(current_fh, stp)) {
--- 
-1.7.4.1
+> server:/proc/locks shows two entries for the file after the -ENOLCK. When
+> the second client gives up its lock because the program running there
+> is killed one entry in server:/proc/locks remains indefinately: as a
+> result no NFS client can lock the file anymore.
 
+But that sounds like a server bug--what do the two entries look like?
+
+Also, what filesystem are you exporting?
+
+--b.
