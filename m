@@ -1,53 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:53080 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751175Ab1HPLyH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 07:54:07 -0400
-Subject: [PATCH 0/2] 32/64 bit llseek hashes (v3)
-To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: bfields@fieldses.org, tytso@mit.edu, bernd.schubert@fastmail.fm,
-        hch@infradead.org, adilger@whamcloud.com, yong.fan@whamcloud.com,
-        linux-fsdevel@vger.kernel.org
-Date: Tue, 16 Aug 2011 13:54:04 +0200
-Message-ID: <20110816115404.1810393.47239.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+Received: from natasha.panasas.com ([67.152.220.90]:35224 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751162Ab1HDEyl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2011 00:54:41 -0400
+Message-ID: <4E3A2609.9050001@panasas.com>
+Date: Wed, 3 Aug 2011 21:54:33 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/2] pnfs-obj: Bug when we are running out of bio
+References: <1312082377.10882.1.camel@lade.trondhjem.org> <4E39DF02.80306@panasas.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A8AA600@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A8AA600@SACMVEXC2-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-With the ext3/ext4 directory index implementation hashes are used to specify
-offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
-on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
-hashes and therefore the probability of hash collisions for larger directories
-is rather high. As recently reported on the NFS mailing list that theoretical
-problem also happens on real systems:
-http://comments.gmane.org/gmane.linux.nfs/40863
 
-The following series adds two new f_mode flags to tell ext4
-to use 32-bit or 64-bit hash values for llseek() calls.
-These flags can then used by network file systems, such as NFS, to
-request 32-bit or 64-bit offsets (hashes).
+When we have a situation that the number of pages we want
+to encode is bigger then the size of the bio. (Which can
+currently happen only when all IO is going to a single device
+.e.g group_width==1) then the IO is submitted short and we
+report back only the amount of bytes we actually wrote/read
+and all is fine. BUT ...
 
-Version 3:
-- remove patch "RFC: Remove check for a 32-bit cookie in nfsd4_readdir()",
-  I think Bruce wanted to take it seperately as bug fix. It should be applied
-  before applying the remaining NFS patches, as without it NFSv4 will always
-  fail with the new 64-bit ext4 seek hashes.
-- split "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)" into two
-  two separate patches as suggested by Bruce, one patch to rename 
-  'access' to 'may_flags'. And the remainder of the original patch to set 
-  FMODE_32BITHASH/FMODE_64BITHASH flags and to introduce the new 
-  NFSD_MAY_64BIT_COOKIE flag
+There was a bug that the current length counter was advanced
+before the fail to add the extra page, and we come to a situation
+that the CDB length was one-page longer then the actual bio size,
+which is of course rejected by the osd-target.
 
-Version 2:
-- use f_mode instead of O_* flags and also in a separate patch
-- introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
-- fix SEEK_END in ext4_dir_llseek()
-- set f_mode flags in NFS code as early as possible and introduce a new
-  NFSD_MAY_64BIT_COOKIE flag for that
+While here also fix the bio size calculation, in the case
+that we received more then one group of devices.
 
---
-Bernd Schubert
-Fraunhofer ITWM
+CC: Stable Tree <stable@kernel.org>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/objlayout/objio_osd.c |   12 +++++-------
+ 1 files changed, 5 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 9383ca7..aa8663a 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -589,22 +589,19 @@ static void _calc_stripe_info(struct objio_state *ios, u64 file_offset,
+ }
+ 
+ static int _add_stripe_unit(struct objio_state *ios,  unsigned *cur_pg,
+-		unsigned pgbase, struct _objio_per_comp *per_dev, int cur_len,
++		unsigned pgbase, struct _objio_per_comp *per_dev, int len,
+ 		gfp_t gfp_flags)
+ {
+ 	unsigned pg = *cur_pg;
++	int cur_len = len;
+ 	struct request_queue *q =
+ 			osd_request_queue(_io_od(ios, per_dev->dev));
+ 
+-	per_dev->length += cur_len;
+-
+ 	if (per_dev->bio == NULL) {
+-		unsigned stripes = ios->layout->num_comps /
+-						     ios->layout->mirrors_p1;
+-		unsigned pages_in_stripe = stripes *
++		unsigned pages_in_stripe = ios->layout->group_width *
+ 				      (ios->layout->stripe_unit / PAGE_SIZE);
+ 		unsigned bio_size = (ios->ol_state.nr_pages + pages_in_stripe) /
+-				    stripes;
++				    ios->layout->group_width;
+ 
+ 		if (BIO_MAX_PAGES_KMALLOC < bio_size)
+ 			bio_size = BIO_MAX_PAGES_KMALLOC;
+@@ -632,6 +629,7 @@ static int _add_stripe_unit(struct objio_state *ios,  unsigned *cur_pg,
+ 	}
+ 	BUG_ON(cur_len);
+ 
++	per_dev->length += len;
+ 	*cur_pg = pg;
+ 	return 0;
+ }
+-- 
+1.7.6
+
 
