@@ -1,50 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:38863 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:34425 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751058Ab1HJTfR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Aug 2011 15:35:17 -0400
-Date: Wed, 10 Aug 2011 15:35:11 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org, hch@infradead.org,
-        yong.fan@whamcloud.com, linux-fsdevel@vger.kernel.org, tytso@mit.edu,
-        adilger@whamcloud.com
-Subject: Re: [PATCH 4/4] nfsd: vfs_llseek() with 32 or 64 bit offsets
- (hashes)
-Message-ID: <20110810193511.GB27784@fieldses.org>
-References: <20110808153432.1872437.85783.stgit@fsdevel3>
- <20110808153813.1872437.44997.stgit@fsdevel3>
- <20110809173342.GB16206@fieldses.org>
- <4E42D845.7060905@itwm.fraunhofer.de>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E42D845.7060905@itwm.fraunhofer.de>
+	id S1750837Ab1HDG3w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Aug 2011 02:29:52 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p746TpGC026085
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 4 Aug 2011 02:29:51 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p746Tpud026110
+	for <linux-nfs@vger.kernel.org>; Thu, 4 Aug 2011 02:29:51 -0400
+Received: from regina.usersys.redhat.com (dhcp-176-225.mel.redhat.com [10.64.176.225])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id p746ToGj029498
+	for <linux-nfs@vger.kernel.org>; Thu, 4 Aug 2011 02:29:50 -0400
+In-Reply-To: <20026.13331.411712.805796@regina.usersys.redhat.com>
+References: <20026.13331.411712.805796@regina.usersys.redhat.com>
+From: Max Matveev <makc@redhat.com>
+Date: Thu, 4 Aug 2011 15:42:26 +1000
+Subject: [PATCH] NFS: allow enough time for timeouts to run
+To: linux-nfs@vger.kernel.org
+Message-Id: <20110804062950.1A7B9813270B@regina.usersys.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Aug 10, 2011 at 09:13:09PM +0200, Bernd Schubert wrote:
-> On 08/09/2011 07:33 PM, J. Bruce Fields wrote:
-> >On Mon, Aug 08, 2011 at 05:38:13PM +0200, Bernd Schubert wrote:
-> >>Use 32-bit or 64-bit llseek() hashes for directory offsets depending on
-> >>the NFS version. NFSv2 gets 32-bit hashes only.
-> >>
-> >>NOTE: This patch got rather complex as Christoph asked to set the
-> >>filp->f_mode flag in the open call or immediatly after dentry_open()
-> >>in nfsd_open() to avoid races.
-> >>Personally I still do not see a reason for that and in my opinion
-> >>FMODE_32BITHASH/FMODE_64BITHASH flags could be set nfsd_readdir(), as it
-> >>follows directly after nfsd_open() without a chance of races.
-> >
-> >The bulk of the patch seems to be just an access->may_flags rename.
-> >Could you please split that into a separate patch?
-> 
-> Ok, shall I resend the entire patch series, but already remove the
-> 32-bit nfsd_readdir() cookie patch? Or only just this patch split
-> into to parts?
+NFS/TCP uses linear backoff when retransmiting requests but
+miscalculates the cut-off time for the timeout sequence resulting
+in premature major timeouts.
 
-Probably best to resend.  Who's going to take these patches?
+The cutoff should be the sum of first retransmits+1 numbers
+multiplied by the timeo, not the retransmits+1 multiplied by
+timeo.
 
-(Looked like it would probably make the most sense for an ext4 tree, as
-that looked like the trickiest part?  But I'll take the nfsd4 fix.)
+Signed-off-by: Max Matveev <makc@redhat.com>
+---
+ fs/nfs/client.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
---b.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 5833fbb..3d12d10 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -604,7 +604,8 @@ static void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
+ 		if (to->to_initval > NFS_MAX_TCP_TIMEOUT)
+ 			to->to_initval = NFS_MAX_TCP_TIMEOUT;
+ 		to->to_increment = to->to_initval;
+-		to->to_maxval = to->to_initval + (to->to_increment * to->to_retries);
++		to->to_maxval = (to->to_retries + 1) * (to->to_retries + 2) / 2;
++		to->to_maxval *= to->to_initval;
+ 		if (to->to_maxval > NFS_MAX_TCP_TIMEOUT)
+ 			to->to_maxval = NFS_MAX_TCP_TIMEOUT;
+ 		if (to->to_maxval < to->to_initval)
+-- 
+1.7.4.4
+
