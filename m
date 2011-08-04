@@ -1,184 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:35977 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:65353 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752920Ab1H0ArL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Aug 2011 20:47:11 -0400
-Date: Fri, 26 Aug 2011 20:47:08 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/2] nfsd4: simplify recovery dir setting ++
-Message-ID: <20110827004708.GA19967@fieldses.org>
-References: <4E45C594.1030609@panasas.com>
- <20110826201910.GB17196@fieldses.org>
- <4E5838E0.4090703@panasas.com>
- <20110827004618.GG18699@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110827004618.GG18699@fieldses.org>
+	id S1751612Ab1HDRKV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2011 13:10:21 -0400
+Subject: Re: [NLM] fcntl(F_SETLKW) yields -ENOLCK when grace period expires.
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Frank van Maarseveen <frankvm@frankvm.com>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Date: Thu, 04 Aug 2011 13:10:20 -0400
+In-Reply-To: <20110804164913.GG12445@fieldses.org>
+References: <20110804103018.GA11727@janus>
+	 <20110804163452.GE12445@fieldses.org> <20110804164313.GA17572@janus>
+	 <20110804164913.GG12445@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1312477820.8919.5.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@redhat.com>
+On Thu, 2011-08-04 at 12:49 -0400, J. Bruce Fields wrote: 
+> On Thu, Aug 04, 2011 at 06:43:13PM +0200, Frank van Maarseveen wrote:
+> > On Thu, Aug 04, 2011 at 12:34:52PM -0400, J. Bruce Fields wrote:
+> > > On Thu, Aug 04, 2011 at 12:30:19PM +0200, Frank van Maarseveen wrote:
+> > > > Both client- and server run 2.6.39.3, NFSv3 over UDP (without the
+> > > > relock_filesystem patch proposed earlier).
+> > > > 
+> > > > A second client has an exclusive lock on a file on the server. The
+> > > > client under test calls fcntl(F_SETLKW) to wait for the same exclusive
+> > > > lock. Wireshark sees NLM V4 LOCK calls resulting in NLM_BLOCKED.
+> > > > 
+> > > > Next the server is rebooted. The second client recovers the lock
+> > > > correctly. The client under test now receives NLM_DENIED_GRACE_PERIOD for
+> > > > every NLM V4 LOCK request resulting from the waiting fcntl(F_SETLKW). When
+> > > > this changes to NLM_BLOCKED after grace period expiration the fcntl
+> > > > returns -ENOLCK ("No locks available.") instead of continuing to wait.
+> > > 
+> > > So that sounds like a client bug, and correct behavior from the server
+> > > (assuming the second client was still holding the lock throughout).
+> > 
+> > yes.
 
-Move around some of this code, simplify a bit.
+Is the client actually asking for a blocking lock after the grace period
+expires?
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4recover.c |   36 ++++++++++++++++++++++++++++++++----
- fs/nfsd/nfs4state.c   |   41 +----------------------------------------
- fs/nfsd/state.h       |    2 +-
- 3 files changed, 34 insertions(+), 45 deletions(-)
+> > > 
+> > > > server:/proc/locks shows two entries for the file after the -ENOLCK. When
+> > > > the second client gives up its lock because the program running there
+> > > > is killed one entry in server:/proc/locks remains indefinately: as a
+> > > > result no NFS client can lock the file anymore.
+> > > 
+> > > But that sounds like a server bug--what do the two entries look like?
+> > 
+> > I think the server assumes correct client behavior; the client under
+> > test resulted in a '->' prefixed entry. The fcntl at the client just
+> > shouldn't have returned yet.
+> 
+> Oh, right, so did you see a granted callback returned to the client?
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 02eb38e..3e6ebcf 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -45,6 +45,7 @@
- 
- /* Globals */
- static struct file *rec_file;
-+static char user_recovery_dirname[PATH_MAX] = "/var/lib/nfs/v4recovery";
- 
- static int
- nfs4_save_creds(const struct cred **original_creds)
-@@ -354,13 +355,13 @@ nfsd4_recdir_load(void) {
-  */
- 
- void
--nfsd4_init_recdir(char *rec_dirname)
-+nfsd4_init_recdir()
- {
- 	const struct cred *original_cred;
- 	int status;
- 
- 	printk("NFSD: Using %s as the NFSv4 state recovery directory\n",
--			rec_dirname);
-+			user_recovery_dirname);
- 
- 	BUG_ON(rec_file);
- 
-@@ -372,10 +373,10 @@ nfsd4_init_recdir(char *rec_dirname)
- 		return;
- 	}
- 
--	rec_file = filp_open(rec_dirname, O_RDONLY | O_DIRECTORY, 0);
-+	rec_file = filp_open(user_recovery_dirname, O_RDONLY | O_DIRECTORY, 0);
- 	if (IS_ERR(rec_file)) {
- 		printk("NFSD: unable to find recovery directory %s\n",
--				rec_dirname);
-+				user_recovery_dirname);
- 		rec_file = NULL;
- 	}
- 
-@@ -390,3 +391,30 @@ nfsd4_shutdown_recdir(void)
- 	fput(rec_file);
- 	rec_file = NULL;
- }
-+
-+/*
-+ * Change the NFSv4 recovery directory to recdir.
-+ */
-+int
-+nfs4_reset_recoverydir(char *recdir)
-+{
-+	int status;
-+	struct path path;
-+
-+	status = kern_path(recdir, LOOKUP_FOLLOW, &path);
-+	if (status)
-+		return status;
-+	status = -ENOTDIR;
-+	if (S_ISDIR(path.dentry->d_inode->i_mode)) {
-+		strcpy(user_recovery_dirname, recdir);
-+		status = 0;
-+	}
-+	path_put(&path);
-+	return status;
-+}
-+
-+char *
-+nfs4_recoverydir(void)
-+{
-+	return user_recovery_dirname;
-+}
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index f71d73c..05e3f85 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -63,8 +63,6 @@ static u64 current_sessionid = 1;
- static struct nfs4_stateid * find_stateid(stateid_t *stid, int flags);
- static struct nfs4_delegation * search_for_delegation(stateid_t *stid);
- static struct nfs4_delegation * find_delegation_stateid(struct inode *ino, stateid_t *stid);
--static char user_recovery_dirname[PATH_MAX] = "/var/lib/nfs/v4recovery";
--static void nfs4_set_recdir(char *recdir);
- static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
- 
- /* Locking: */
-@@ -4475,7 +4473,7 @@ nfsd4_load_reboot_recovery_data(void)
- 	int status;
- 
- 	nfs4_lock_state();
--	nfsd4_init_recdir(user_recovery_dirname);
-+	nfsd4_init_recdir();
- 	status = nfsd4_recdir_load();
- 	nfs4_unlock_state();
- 	if (status)
-@@ -4584,40 +4582,3 @@ nfs4_state_shutdown(void)
- 	nfs4_unlock_state();
- 	nfsd4_destroy_callback_queue();
- }
--
--/*
-- * user_recovery_dirname is protected by the nfsd_mutex since it's only
-- * accessed when nfsd is starting.
-- */
--static void
--nfs4_set_recdir(char *recdir)
--{
--	strcpy(user_recovery_dirname, recdir);
--}
--
--/*
-- * Change the NFSv4 recovery directory to recdir.
-- */
--int
--nfs4_reset_recoverydir(char *recdir)
--{
--	int status;
--	struct path path;
--
--	status = kern_path(recdir, LOOKUP_FOLLOW, &path);
--	if (status)
--		return status;
--	status = -ENOTDIR;
--	if (S_ISDIR(path.dentry->d_inode->i_mode)) {
--		nfs4_set_recdir(recdir);
--		status = 0;
--	}
--	path_put(&path);
--	return status;
--}
--
--char *
--nfs4_recoverydir(void)
--{
--	return user_recovery_dirname;
--}
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 1f90cab..66179ac 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -493,7 +493,7 @@ extern void nfsd4_destroy_callback_queue(void);
- extern void nfsd4_shutdown_callback(struct nfs4_client *);
- extern void nfs4_put_delegation(struct nfs4_delegation *dp);
- extern __be32 nfs4_make_rec_clidname(char *clidname, struct xdr_netobj *clname);
--extern void nfsd4_init_recdir(char *recdir_name);
-+extern void nfsd4_init_recdir(void);
- extern int nfsd4_recdir_load(void);
- extern void nfsd4_shutdown_recdir(void);
- extern int nfs4_client_to_reclaim(const char *name);
+The client will reject any unsolicited GRANTED callbacks with an
+NLM_LCK_DENIED. As far as I can see, nlmsvc_grant_reply() then only
+removes the block, it doesn't cancel the lock...
+
 -- 
-1.7.4.1
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
