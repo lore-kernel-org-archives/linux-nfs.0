@@ -1,64 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:27083 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:32345 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751720Ab1HPLHu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Aug 2011 07:07:50 -0400
-Message-ID: <4E4A4FA9.7080600@parallels.com>
-Date: Tue, 16 Aug 2011 15:08:25 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, trond@netapp.com,
-        Pavel Emelianov <xemul@parallels.com>
-Subject: Re: NFS client virtualization plan
-References: <4E4A4DB1.2090105@parallels.com>
-In-Reply-To: <4E4A4DB1.2090105@parallels.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+	id S1755114Ab1HDRi7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2011 13:38:59 -0400
+Subject: Re: State of NFSv4 VolatileFilehandles
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Venkateswararao Jujjuri <jvrao@linux.vnet.ibm.com>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Date: Thu, 04 Aug 2011 13:38:57 -0400
+In-Reply-To: <20110804173046.GI12445@fieldses.org>
+References: <45F4FC20-ED44-4430-A5A9-E06459A194F3@oracle.com>
+	 <4E38F894.4070003@linux.vnet.ibm.com>
+	 <2DD1BC2B-6113-4D00-9DD4-C5D431EA1F8A@oracle.com>
+	 <4E3A8225.1020309@linux.vnet.ibm.com> <20110804160344.GC12445@fieldses.org>
+	 <1312474244.5806.4.camel@lade.trondhjem.org>
+	 <20110804162721.GD12445@fieldses.org>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A8AA818@SACMVEXC2-PRD.hq.netapp.com>
+	 <20110804170313.GH12445@fieldses.org>
+	 <1312478492.8919.14.camel@lade.trondhjem.org>
+	 <20110804173046.GI12445@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1312479537.8919.18.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Added maintainer to mail recipients.
-Trond, please, have a look.
-Sorry for inconvenience.
+On Thu, 2011-08-04 at 13:30 -0400, J. Bruce Fields wrote: 
+> On Thu, Aug 04, 2011 at 01:21:32PM -0400, Trond Myklebust wrote:
+> > On Thu, 2011-08-04 at 13:03 -0400, J. Bruce Fields wrote: 
+> > > On Thu, Aug 04, 2011 at 09:48:32AM -0700, Myklebust, Trond wrote:
+> > > > > -----Original Message-----
+> > > > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > > > > Oh, neat, I'd forgotten that; you're thinking of STATUS4_FIXED?  But
+> > > > > I'm
+> > > > > not sure it does the job:
+> > > > > 
+> > > > > 	STATUS4_FIXED, which indicates a read-only image in the sense
+> > > > > 	that it will never change.  The possibility is allowed that, as
+> > > > > 	a result of migration or switch to a different image, changed
+> > > > > 	data can be accessed, but within the confines of this instance,
+> > > > > 	no change is allowed.  The client can use this fact to cache
+> > > > > 	aggressively.
+> > > > > 
+> > > > > OK, so permission to set your attribute cache timeout very high,
+> > > > > perhaps, but I don't see why "changed data" couldn't mean changed
+> > > > > paths....
+> > > > 
+> > > > No, but you can presumably use the FSLI4BX_CLSIMUL flag from
+> > > > fs_locations_info in order to find an equivalent replica.
+> > > 
+> > > I lost you.
+> > > 
+> > > Actually my real problem is that I don't understand the description of
+> > > STATUS4_FIXED.  What does "or switch to a different image" mean?  Not
+> > > "migration", or the sentence would have ended before the "or".
+> > > 
+> > > I read it as allowing a server admin to replace the filesystem image in
+> > > place, in which case from the client's point of view this allows the
+> > > filesystem to change at any time.  Which makes the whole thing not
+> > > terribly useful, except (as the last sentence says) as a caching hint.
+> > 
+> > If the server admin replaces one filesystem, with a different
+> > filesystem, then nothing is going to work anyway. I don't see how that
+> > is relevant. That's a case of 'doctor it hurts...'
+> > 
+> > The bit that _is_ relevant is the 'migration' part, but since the
+> > fs_locations_info FSLI4BX_CLSIMUL flag allows you to conclude that
+> > replica is an exact replica at all times (i.e. contents are guaranteed
+> > to be the same even if filehandles, directory cookies, etc are not) then
+> > the STATUS4_FIXED flag does allow you to assume that paths have not
+> > changed.
+> 
+> So you're position is that "or switch to a different image" in the above
+> is redundant, or just a mistake?
 
-16.08.2011 15:00, Stanislav Kinsbursky пишет:
-> Hello.
-> I'm going to virtualize NFS in mainline and here is my plan for NFS client part.
-> Any suggestions or criticism are welcome.
->
-> ==============================================================================
->
-> "NFS client" virtualization plan:
->
-> _RPC layer_:
->
-> 1) Make rpcbind clients (rpcb_local_clnt and rpcb_local4_clnt) to be
-> per net namespace.
->
-> _NFS layer_:
->
-> 1) Net namespace inheritance (current->nsproxy->net have to be used instead
-> of init_net).
-> Pointer to net namespace can be stored on nfs_client structure, which will
-> give easy access to proper net namespace during RPC transports creation.
->
-> 2) Make Lockd kthread able to handle requests from different net namespaces.
->
-> 3) Make NFS callbacks kthreads (nfs4_callback_svc and nfs4.1_callback_svc) able
-> to handle requests from different net namespaces.
->
-> 4) Make NFS info lists (nfs_volume_list and nfs_client_list) to be per
-> net namespace in addition to global ones.
->
-> 5) Make NFS proc variables and it's internal content variables to be per
-> net namespace in addition to global ones.
->
-> 6) Make NFS sysctl variables and it's internal content variables to be per
-> net namespace in addition to global ones.
->
->
->
-
+It's redundant: STATUS4_VERSIONED, STATUS4_UPDATED, STATUS4_WRITABLE,
+and STATUS4_REFERRAL are also subject to the 'or switch to a different
+image' caveat.
 
 -- 
-Best regards,
-Stanislav Kinsbursky
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
