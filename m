@@ -1,59 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:35141 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:30680 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754811Ab1HBSvF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Aug 2011 14:51:05 -0400
+	id S1754245Ab1HDQLA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2011 12:11:00 -0400
+Subject: Re: State of NFSv4 VolatileFilehandles
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Andy Adamson <andros@netapp.com>
-Cc: Peng Tao <bergwolf@gmail.com>, Jim Rees <rees@umich.edu>,
-        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH v2 2/2] NFSv4.1: Return NFS4ERR_BADSESSION to callbacks during session resets
-Date: Tue,  2 Aug 2011 14:50:40 -0400
-Message-Id: <1312311040-9400-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1312311040-9400-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1312306214.2823.10.camel@lade.trondhjem.org>
- <1312311040-9400-1-git-send-email-Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Venkateswararao Jujjuri <jvrao@linux.vnet.ibm.com>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Date: Thu, 04 Aug 2011 12:10:44 -0400
+In-Reply-To: <20110804160344.GC12445@fieldses.org>
+References: <4E37E66D.90102@linux.vnet.ibm.com>
+	 <45F4FC20-ED44-4430-A5A9-E06459A194F3@oracle.com>
+	 <4E38F894.4070003@linux.vnet.ibm.com>
+	 <2DD1BC2B-6113-4D00-9DD4-C5D431EA1F8A@oracle.com>
+	 <4E3A8225.1020309@linux.vnet.ibm.com> <20110804160344.GC12445@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1312474244.5806.4.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-If the client is in the process of resetting the session when it receives
-a callback, then returning NFS4ERR_DELAY may cause a deadlock with the
-DESTROY_SESSION call.
+On Thu, 2011-08-04 at 12:03 -0400, J. Bruce Fields wrote: 
+> On Thu, Aug 04, 2011 at 04:27:33AM -0700, Venkateswararao Jujjuri wrote:
+> > One of the usecase is rsync between two physical filesystems; but in
+> > this particular use case the export
+> > is readonly (rootfs).  As trond mentioned Volatile FHs are fine in
+> > the case of readonly exports.
+> > Is it something we can consider for upstream? VFH only for readonly
+> > exports.?
+> 
+> The client has no way of knowing that an export is read only.  (Or that
+> the server guarantees the safety of looking up names again in the more
+> general cases Neil describes.)  Unless we decide that a server is making
+> an implicit guarantee of that just by exposing volatile filehandles at
+> all.  Doesn't sound like the existing spec really says that, though.
 
-Basically, if the client returns NFS4ERR_DELAY in response to the
-CB_SEQUENCE call, then the server is entitled to believe that the
-client is busy because it is already processing that call. In that
-case, the server is perfectly entitled to respond with a
-NFS4ERR_BACK_CHAN_BUSY to any DESTROY_SESSION call.
+NFSv4.1 introduces the 'fs_status' recommended attribute (see section
+11.11 in RFC5661), which does, in fact, allow the client to deduce that
+an export is read-only/won't ever change.
 
-Fix this by having the client reply with a NFS4ERR_BADSESSION in
-response to the callback if it is resetting the session.
+> If an examination of existing implementations and/or some sort of new
+> spec language could reassure us that servers will only ever expose
+> volatile filehandles when it's safe to do so, then maybe it would make
+> sense for the client to implement volatile filehandle recovery?
+> 
+> But if there's a chance of "unsafe" servers out there, then it would
+> seem like a trap for the unwary user....
+> 
+> Your rootfs's probably aren't terribly large--could you copy around
+> compressed block-level images instead of doing rsync?
 
-Cc: stable@kernel.org [2.6.38+]
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/callback_proc.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+Agreed.
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 0ab8202..43926ad 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -452,6 +452,11 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 	if (test_bit(NFS4_SESSION_DRAINING, &clp->cl_session->session_state)) {
- 		spin_unlock(&tbl->slot_tbl_lock);
- 		status = htonl(NFS4ERR_DELAY);
-+		/* Return NFS4ERR_BADSESSION if we're draining the session
-+		 * in order to reset it.
-+		 */
-+		if (test_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state))
-+			status = htonl(NFS4ERR_BADSESSION);
- 		goto out;
- 	}
- 
 -- 
-1.7.6
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
