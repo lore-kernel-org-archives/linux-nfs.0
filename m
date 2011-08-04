@@ -1,79 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:31023 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:57696 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754268Ab1HBRaQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Aug 2011 13:30:16 -0400
-Subject: Re: [PATCH v4 00/27] add block layout driver to pnfs client
+	id S1751836Ab1HDRVe convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2011 13:21:34 -0400
+Subject: Re: State of NFSv4 VolatileFilehandles
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Andy Adamson <andros@netapp.com>
-Cc: Peng Tao <bergwolf@gmail.com>, Jim Rees <rees@umich.edu>,
-        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Date: Tue, 02 Aug 2011 13:30:14 -0400
-In-Reply-To: <1312240278.4616.7.camel@lade.trondhjem.org>
-References: <1311874276-1386-1-git-send-email-rees@umich.edu>
-	 <20110729155136.GB28306@infradead.org> <20110729185415.GA23061@merit.edu>
-	 <20110729190133.GA10946@infradead.org> <20110729191341.GC23061@merit.edu>
-	 <1311988172.16078.15.camel@lade.trondhjem.org>
-	 <20110730032621.GB25188@merit.edu>
-	 <CA+a=Yy5rmvrUHaDewLb_EbeaDYMKL_xv_E_MmzTvR_55SmYkqA@mail.gmail.com>
-	 <1312233006.23392.17.camel@lade.trondhjem.org>
-	 <1312238117.23392.19.camel@lade.trondhjem.org>
-	 <0A94625F-4E4F-4A88-A0DF-63D429924F66@netapp.com>
-	 <1312240278.4616.7.camel@lade.trondhjem.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Venkateswararao Jujjuri <jvrao@linux.vnet.ibm.com>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Date: Thu, 04 Aug 2011 13:21:32 -0400
+In-Reply-To: <20110804170313.GH12445@fieldses.org>
+References: <4E37E66D.90102@linux.vnet.ibm.com>
+	 <45F4FC20-ED44-4430-A5A9-E06459A194F3@oracle.com>
+	 <4E38F894.4070003@linux.vnet.ibm.com>
+	 <2DD1BC2B-6113-4D00-9DD4-C5D431EA1F8A@oracle.com>
+	 <4E3A8225.1020309@linux.vnet.ibm.com> <20110804160344.GC12445@fieldses.org>
+	 <1312474244.5806.4.camel@lade.trondhjem.org>
+	 <20110804162721.GD12445@fieldses.org>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A8AA818@SACMVEXC2-PRD.hq.netapp.com>
+	 <20110804170313.GH12445@fieldses.org>
 Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1312306214.2823.10.camel@lade.trondhjem.org>
+Message-ID: <1312478492.8919.14.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2011-08-01 at 19:11 -0400, Trond Myklebust wrote: 
-> On Mon, 2011-08-01 at 18:57 -0400, Andy Adamson wrote: 
-> > On Aug 1, 2011, at 6:35 PM, Trond Myklebust wrote:
-> > > /*
-> > > @@ -433,26 +436,32 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
-> > > 			      struct cb_sequenceres *res,
-> > > 			      struct cb_process_state *cps)
-> > > {
-> > > +	struct nfs4_slot_table *tbl;
-> > > 	struct nfs_client *clp;
-> > > 	int i;
-> > > 	__be32 status = htonl(NFS4ERR_BADSESSION);
+On Thu, 2011-08-04 at 13:03 -0400, J. Bruce Fields wrote: 
+> On Thu, Aug 04, 2011 at 09:48:32AM -0700, Myklebust, Trond wrote:
+> > > -----Original Message-----
+> > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > > Oh, neat, I'd forgotten that; you're thinking of STATUS4_FIXED?  But
+> > > I'm
+> > > not sure it does the job:
 > > > 
-> > > -	cps->clp = NULL;
-> > > -
-> > > 	clp = nfs4_find_client_sessionid(args->csa_addr, &args->csa_sessionid);
-> > > 	if (clp == NULL)
-> > > 		goto out;
+> > > 	STATUS4_FIXED, which indicates a read-only image in the sense
+> > > 	that it will never change.  The possibility is allowed that, as
+> > > 	a result of migration or switch to a different image, changed
+> > > 	data can be accessed, but within the confines of this instance,
+> > > 	no change is allowed.  The client can use this fact to cache
+> > > 	aggressively.
 > > > 
-> > > +	tbl = &clp->cl_session->bc_slot_table;
-> > > +
-> > > +	spin_lock(&tbl->slot_tbl_lock);
-> > > 	/* state manager is resetting the session */
-> > > 	if (test_bit(NFS4_SESSION_DRAINING, &clp->cl_session->session_state)) {
-> > > 		status = NFS4ERR_DELAY;
-> >                                  
-> > status = htonl(NFS4ERR_DELAY);
+> > > OK, so permission to set your attribute cache timeout very high,
+> > > perhaps, but I don't see why "changed data" couldn't mean changed
+> > > paths....
+> > 
+> > No, but you can presumably use the FSLI4BX_CLSIMUL flag from
+> > fs_locations_info in order to find an equivalent replica.
 > 
-> Yep. I'll fix that too... 
+> I lost you.
+> 
+> Actually my real problem is that I don't understand the description of
+> STATUS4_FIXED.  What does "or switch to a different image" mean?  Not
+> "migration", or the sentence would have ended before the "or".
+> 
+> I read it as allowing a server admin to replace the filesystem image in
+> place, in which case from the client's point of view this allows the
+> filesystem to change at any time.  Which makes the whole thing not
+> terribly useful, except (as the last sentence says) as a caching hint.
 
-Looking at this again, I'm not sure that the above is safe. If you
-return NFS4ERR_DELAY on the SEQUENCE operation, then that has a very
-specific meaning of "I'm executing your command, but it will take a
-while to complete.".
-It therefore seems to me that if we return NFS4ERR_DELAY, then we are
-basically setting ourselves up for a deadlock: 
-      * On the one hand, we're trying to destroy the session 
-      * On the other hand, we're telling the server that 'your callback
-        is being processed'.
-In that situation, it seems to me that it should be perfectly valid for
-the server to reject our DESTROY_SESSION call with a
-NFS4ERR_BACK_CHAN_BUSY until we process the callback.
+If the server admin replaces one filesystem, with a different
+filesystem, then nothing is going to work anyway. I don't see how that
+is relevant. That's a case of 'doctor it hurts...'
 
-Comments?
-
-Cheers
-  Trond
+The bit that _is_ relevant is the 'migration' part, but since the
+fs_locations_info FSLI4BX_CLSIMUL flag allows you to conclude that
+replica is an exact replica at all times (i.e. contents are guaranteed
+to be the same even if filehandles, directory cookies, etc are not) then
+the STATUS4_FIXED flag does allow you to assume that paths have not
+changed.
 
 -- 
 Trond Myklebust
