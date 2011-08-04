@@ -1,68 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:65241 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45958 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751269Ab1HLPwX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Aug 2011 11:52:23 -0400
-Subject: Re: Grace period NEVER ends
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Date: Fri, 12 Aug 2011 11:52:05 -0400
-In-Reply-To: <4E4481F0.2050806@panasas.com>
-References: <4E44790A.8000106@panasas.com> <4E447EEB.501@panasas.com>
-	 <4E4481F0.2050806@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1313164325.10761.5.camel@lade.trondhjem.org>
+	id S1750951Ab1HDG3B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Aug 2011 02:29:01 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p746T12J025982
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 4 Aug 2011 02:29:01 -0400
+In-Reply-To: <20026.13331.411712.805796@regina.usersys.redhat.com>
+References: <20026.13331.411712.805796@regina.usersys.redhat.com>
+From: Max Matveev <makc@redhat.com>
+Date: Thu, 4 Aug 2011 15:47:33 +1000
+Subject: [PATCH] Update nfs(5) manpage - timeo for NFS/TCP
+To: linux-nfs@vger.kernel.org
+Cc: steved@redhat.com
+Message-Id: <20110804062858.EAD96813270B@regina.usersys.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2011-08-11 at 18:29 -0700, Boaz Harrosh wrote: 
-> With this patch I'm back to the previous behavior. That is
-> wait your grace period then continue.
-> 
-> ---
-> NFSD: Remove a wrong check in nfs4_open
-> 
-> We are already doing the proper grace period checking
-> farther down in nfs4_open. This check was just checking
-> nothing and was totally unrelated to the comment about
-> "RECLAIM_COMPLETE". It was a bug because if an open was
-> coming before the grace period end, it would then never
-> pass the condition of not being cl_firststate.
-> 
-> Boaz
-> 
-> ---
-> @@ -295,15 +295,6 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	if (open->op_create && open->op_claim_type != NFS4_OPEN_CLAIM_NULL)
->  		return nfserr_inval;
->  
-> -	/*
-> -	 * RFC5661 18.51.3
-> -	 * Before RECLAIM_COMPLETE done, server should deny new lock
-> -	 */
-> -	if (nfsd4_has_session(cstate) &&
-> -	    !cstate->session->se_client->cl_firststate &&
-> -	    open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
-> -		return nfserr_grace;
-> -
+NFS/TCP does linear backoff then retransmiting - the manpage
+was mistakenly asserting the "no backoff" theory.
 
-BTW: restricting opens to CLAIM_PREVIOUS only during the grace period
-seems wrong.
+Signed-off-by: Max Matveev <makc@redhat.com>
+---
+ utils/mount/nfs.man |   14 +++++++++-----
+ 1 files changed, 9 insertions(+), 5 deletions(-)
 
-If I have already reclaimed my delegation, then why shouldn't I be able
-to do a CLAIM_DELEGATE_CUR and/or CLAIM_DELEG_CUR_FH open? It is not as
-if those can ever cause a lock that will conflict with some other
-client's lock reclaims.
-
-Trond
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index be91a25..7681b10 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -114,11 +114,15 @@ option.
+ .TP 1.5i
+ .BI timeo= n
+ The time (in tenths of a second) the NFS client waits for a
+-response before it retries an NFS request. If this
+-option is not specified, requests are retried every
+-60 seconds for NFS over TCP.
+-The NFS client does not perform any kind of timeout backoff
+-for NFS over TCP.
++response before it retries an NFS request.
++.IP
++For NFS over TCP the default
++.B timeo
++value is 600 which equals to 60 seconds.
++The NFS client performs linear backoff  -
++after each retransmission the timeout is increased by
++.BR timeo /10
++seconds upto the maximum of 600 seconds.
+ .IP
+ However, for NFS over UDP, the client uses an adaptive
+ algorithm to estimate an appropriate timeout value for frequently used
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.4.4
 
