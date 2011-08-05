@@ -1,96 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:33955 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753418Ab1HWVul (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Aug 2011 17:50:41 -0400
-Date: Tue, 23 Aug 2011 17:50:40 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/4 v3] 4.1 CLNT: test reclaims after RECLAIM_COMPLETE
-Message-ID: <20110823215040.GE25350@fieldses.org>
-References: <4E4C7679.7000108@cn.fujitsu.com>
- <4E4C76F8.7060203@cn.fujitsu.com>
+Received: from frankvm.xs4all.nl ([83.163.148.79]:35342 "EHLO
+	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751644Ab1HEN2Z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Aug 2011 09:28:25 -0400
+Date: Fri, 5 Aug 2011 15:28:23 +0200
+From: Frank van Maarseveen <frankvm@frankvm.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [NLM] fcntl(F_SETLKW) yields -ENOLCK when grace period expires.
+Message-ID: <20110805132823.GA32305@janus>
+References: <20110804103018.GA11727@janus>
+ <20110804163452.GE12445@fieldses.org>
+ <20110804164313.GA17572@janus>
+ <20110804164913.GG12445@fieldses.org>
+ <1312477820.8919.5.camel@lade.trondhjem.org>
+ <20110804172710.GB18087@janus>
+ <1312481855.8919.20.camel@lade.trondhjem.org>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E4C76F8.7060203@cn.fujitsu.com>
+In-Reply-To: <1312481855.8919.20.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Aug 18, 2011 at 10:20:40AM +0800, Mi Jinlong wrote:
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
->  nfs4.1/server41tests/st_reclaim_complete.py |   30 ++++++++++++++++++++++++++-
->  1 files changed, 29 insertions(+), 1 deletions(-)
-
-Just nits:
-
+On Thu, Aug 04, 2011 at 02:17:35PM -0400, Trond Myklebust wrote:
+> On Thu, 2011-08-04 at 19:27 +0200, Frank van Maarseveen wrote: 
+> > On Thu, Aug 04, 2011 at 01:10:20PM -0400, Trond Myklebust wrote:
+> > > On Thu, 2011-08-04 at 12:49 -0400, J. Bruce Fields wrote: 
+> > > > On Thu, Aug 04, 2011 at 06:43:13PM +0200, Frank van Maarseveen wrote:
+> > > > > On Thu, Aug 04, 2011 at 12:34:52PM -0400, J. Bruce Fields wrote:
+> > > > > > On Thu, Aug 04, 2011 at 12:30:19PM +0200, Frank van Maarseveen wrote:
+> > > > > > > Both client- and server run 2.6.39.3, NFSv3 over UDP (without the
+> > > > > > > relock_filesystem patch proposed earlier).
+> > > > > > > 
+> > > > > > > A second client has an exclusive lock on a file on the server. The
+> > > > > > > client under test calls fcntl(F_SETLKW) to wait for the same exclusive
+> > > > > > > lock. Wireshark sees NLM V4 LOCK calls resulting in NLM_BLOCKED.
+> > > > > > > 
+> > > > > > > Next the server is rebooted. The second client recovers the lock
+> > > > > > > correctly. The client under test now receives NLM_DENIED_GRACE_PERIOD for
+> > > > > > > every NLM V4 LOCK request resulting from the waiting fcntl(F_SETLKW). When
+> > > > > > > this changes to NLM_BLOCKED after grace period expiration the fcntl
+> > > > > > > returns -ENOLCK ("No locks available.") instead of continuing to wait.
+> > > > > > 
+> > > > > > So that sounds like a client bug, and correct behavior from the server
+> > > > > > (assuming the second client was still holding the lock throughout).
+> > > > > 
+> > > > > yes.
+> > > 
+> > > Is the client actually asking for a blocking lock after the grace period
+> > > expires?
+> > 
+> > yes, according to my interpretation of that of wireshark, see reply to Bruce.
+> > 
 > 
-> diff --git a/nfs4.1/server41tests/st_reclaim_complete.py b/nfs4.1/server41tests/st_reclaim_complete.py
-> index a591ef5..3940b7b 100644
-> --- a/nfs4.1/server41tests/st_reclaim_complete.py
-> +++ b/nfs4.1/server41tests/st_reclaim_complete.py
-> @@ -1,6 +1,6 @@
->  from st_create_session import create_session
->  from nfs4_const import *
-> -from environment import check, fail
-> +from environment import check, fail, open_file, create_confirm
->  import nfs4_ops as op
->  import nfs4lib
+> OK... Does the following patch help?
+> 
+> Cheers
+>   Trond
+> --- 
+> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+> index 8392cb8..40c0d88 100644
+> --- a/fs/lockd/clntproc.c
+> +++ b/fs/lockd/clntproc.c
+> @@ -270,6 +270,9 @@ nlmclnt_call(struct rpc_cred *cred, struct nlm_rqst *req, u32 proc)
+>  			return -ENOLCK;
+>  		msg.rpc_proc = &clnt->cl_procinfo[proc];
 >  
-> @@ -19,3 +19,31 @@ def testSupported(t, env):
->  
->      res = sess.compound([op.reclaim_complete(FALSE)])
->      check(res)
-> +
-> +def testReclaimAfterRECC(t, env):
-> +    """If client does subsequent reclaims of locking state after
-> +       RECLAIM_COMPLETE is done, server will return NFS4ERR_NO_GRACE.
-> +       rfc5661 18.51.3
-> +
-> +    FLAGS: reclaim_complete all
-> +    CODE: RECC2
-> +    """
-> +    name = env.testname(t)
-> +    c = env.c1.new_client(name)
-> +    sess = c.create_session()
-> +
-> +    # RECLAIM_COMPLETE
-
-This comment doesn't explain anything not already obvious from the code.
-
-> +    res = sess.compound([op.reclaim_complete(FALSE)])
-> +    check(res)
-> +
-> +    owner = "owner_%s" % name
-> +    path = sess.c.homedir + [name]
-> +    fh, stateid = create_confirm(sess, owner)
-> +
-> +    # Try to reclaims after RECLAIM_COMPLETE
-
-Ditto.
-
-> +    res = open_file(sess, owner, path=fh, claim_type=CLAIM_PREVIOUS,
-> +                    access=OPEN4_SHARE_ACCESS_BOTH,
-> +                    deny=OPEN4_SHARE_DENY_NONE,
-> +                    deleg_type=OPEN_DELEGATE_NONE)
-> +
-> +    check(res,NFS4ERR_NO_GRACE)
-
-Make the "," a ", ".
-
-Also: in this case:
-
-	- the file we're trying to open doesn't exist
-	- the client we just created probably isn't allowed to reclaim
-
-So NFS4ERR_EXIST and NFS4ERR_RECLAIM_BAD are probably both legal error
-returns as well.  I don't think the spec mandates that these be checked
-in any particular order.
-
---b.
-
-> -- 
-> 1.7.6
+> +		/* Reset the reply status */
+> +		if (argp->block)
+> +			resp->status = nlm_lck_blocked;
+>  		/* Perform the RPC call. If an error occurs, try again */
+>  		if ((status = rpc_call_sync(clnt, &msg, 0)) < 0) {
+>  			dprintk("lockd: rpc_call returned error %d\n", -status);
 > 
-> 
+
+Negative. I've tried it on the client under test and I'm seeing three
+types of behavior, one good, two bad. In all cases the secondary
+client (unmodified) correctly regains the lock after the server has
+rebooted. Client under test behavior depends on whether it had queued
+the conflicting lock before of after the server reboot. Afterwards it
+seems to work with the above modification (don't know if that was the
+case before though).
+
+When the client under test tries to lock before the server reboot then
+the fcntl(F_SETLKW) returns either right after the NSM NOTIFY with
+-ENOLCK without any NLM trafic or it returns with -ENOLCK when the
+NLM_DENIED_GRACE_PERIOD changes into NLM_BLOCKED (the original report).
+
+-- 
+Frank
