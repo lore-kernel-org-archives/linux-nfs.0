@@ -1,37 +1,198 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([198.137.202.13]:44039 "EHLO
-	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754537Ab1H2WGB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2011 18:06:01 -0400
-Date: Mon, 29 Aug 2011 18:03:48 -0400 (EDT)
-Message-Id: <20110829.180348.1774953636752413432.davem@davemloft.net>
-To: bharrosh@panasas.com
-Cc: Trond.Myklebust@netapp.com, joe@perches.com, bfields@fieldses.org,
-        neilb@suse.de, linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 19/24] sunrpc: Remove unnecessary OOM logging messages
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <4E5C0AB3.90401@panasas.com>
-References: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AEB4EE9@SACMVEXC2-PRD.hq.netapp.com>
-	<20110829.143751.1153162956919885670.davem@davemloft.net>
-	<4E5C0AB3.90401@panasas.com>
-Content-Type: Text/Plain; charset=us-ascii
+Received: from fieldses.org ([174.143.236.118]:35219 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751264Ab1HEV2u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Aug 2011 17:28:50 -0400
+Date: Fri, 5 Aug 2011 17:28:43 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Eric Dumazet <eric.dumazet@gmail.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, Neil Brown <neilb@suse.de>,
+        David Miller <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev <netdev@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] sunrpc: use better NUMA affinities
+Message-ID: <20110805212843.GA21997@fieldses.org>
+References: <1311876249.2346.39.camel@edumazet-HP-Compaq-6005-Pro-SFF-PC>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1311876249.2346.39.camel@edumazet-HP-Compaq-6005-Pro-SFF-PC>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Boaz Harrosh <bharrosh@panasas.com>
-Date: Mon, 29 Aug 2011 14:54:59 -0700
+On Thu, Jul 28, 2011 at 08:04:09PM +0200, Eric Dumazet wrote:
+> Use NUMA aware allocations to reduce latencies and increase throughput.
+> 
+> sunrpc kthreads can use kthread_create_on_node() if pool_mode is
+> "percpu" or "pernode", and svc_prepare_thread()/svc_init_buffer() can
+> also take into account NUMA node affinity for memory allocations.
 
-> I have a question about that. Are the dprints going to show the stack backtrace?
+By the way, thanks, applying for 3.2 with one minor fixup below.--b.
 
-Yes, OOMs give full stack backtraces.
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index ce620b5..516f337 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -199,7 +199,7 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ 	INIT_LIST_HEAD(&serv->sv_cb_list);
+ 	spin_lock_init(&serv->sv_cb_lock);
+ 	init_waitqueue_head(&serv->sv_cb_waitq);
+-	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
++	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0], NUMA_NO_NODE);
+ 	if (IS_ERR(rqstp)) {
+ 		svc_xprt_put(serv->sv_bc_xprt);
+ 		serv->sv_bc_xprt = NULL;
 
-> If yes above? then I'm not sure I like it either, because am I'll be getting a full
-> stack backtrace for every failed allocation?
-
-They've been doing this for years, so obviously they haven't bothered you
-enough to care up to this point.
-
-All of this pushback is pure uneducated noise, please stop blocking progress
-with poorly informed objections.
+> 
+> Signed-off-by: Eric Dumazet <eric.dumazet@gmail.com>
+> CC: "J. Bruce Fields" <bfields@fieldses.org>
+> CC: Neil Brown <neilb@suse.de>
+> CC: David Miller <davem@davemloft.net>
+> ---
+>  fs/lockd/svc.c             |    2 +-
+>  fs/nfs/callback.c          |    2 +-
+>  include/linux/sunrpc/svc.h |    2 +-
+>  net/sunrpc/svc.c           |   33 ++++++++++++++++++++++++---------
+>  4 files changed, 27 insertions(+), 12 deletions(-)
+> 
+> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> index abfff9d..c061b9a 100644
+> --- a/fs/lockd/svc.c
+> +++ b/fs/lockd/svc.c
+> @@ -282,7 +282,7 @@ int lockd_up(void)
+>  	/*
+>  	 * Create the kernel thread and wait for it to start.
+>  	 */
+> -	nlmsvc_rqst = svc_prepare_thread(serv, &serv->sv_pools[0]);
+> +	nlmsvc_rqst = svc_prepare_thread(serv, &serv->sv_pools[0], NUMA_NO_NODE);
+>  	if (IS_ERR(nlmsvc_rqst)) {
+>  		error = PTR_ERR(nlmsvc_rqst);
+>  		nlmsvc_rqst = NULL;
+> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> index e3d2942..ce620b5 100644
+> --- a/fs/nfs/callback.c
+> +++ b/fs/nfs/callback.c
+> @@ -125,7 +125,7 @@ nfs4_callback_up(struct svc_serv *serv)
+>  	else
+>  		goto out_err;
+>  
+> -	return svc_prepare_thread(serv, &serv->sv_pools[0]);
+> +	return svc_prepare_thread(serv, &serv->sv_pools[0], NUMA_NO_NODE);
+>  
+>  out_err:
+>  	if (ret == 0)
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 223588a..a78a51e 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -404,7 +404,7 @@ struct svc_procedure {
+>  struct svc_serv *svc_create(struct svc_program *, unsigned int,
+>  			    void (*shutdown)(struct svc_serv *));
+>  struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
+> -					struct svc_pool *pool);
+> +					struct svc_pool *pool, int node);
+>  void		   svc_exit_thread(struct svc_rqst *);
+>  struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
+>  			void (*shutdown)(struct svc_serv *),
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index 6a69a11..30d70ab 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -295,6 +295,18 @@ svc_pool_map_put(void)
+>  }
+>  
+>  
+> +static int svc_pool_map_get_node(unsigned int pidx)
+> +{
+> +	const struct svc_pool_map *m = &svc_pool_map;
+> +
+> +	if (m->count) {
+> +		if (m->mode == SVC_POOL_PERCPU)
+> +			return cpu_to_node(m->pool_to[pidx]);
+> +		if (m->mode == SVC_POOL_PERNODE)
+> +			return m->pool_to[pidx];
+> +	}
+> +	return NUMA_NO_NODE;
+> +}
+>  /*
+>   * Set the given thread's cpus_allowed mask so that it
+>   * will only run on cpus in the given pool.
+> @@ -499,7 +511,7 @@ EXPORT_SYMBOL_GPL(svc_destroy);
+>   * We allocate pages and place them in rq_argpages.
+>   */
+>  static int
+> -svc_init_buffer(struct svc_rqst *rqstp, unsigned int size)
+> +svc_init_buffer(struct svc_rqst *rqstp, unsigned int size, int node)
+>  {
+>  	unsigned int pages, arghi;
+>  
+> @@ -513,7 +525,7 @@ svc_init_buffer(struct svc_rqst *rqstp, unsigned int size)
+>  	arghi = 0;
+>  	BUG_ON(pages > RPCSVC_MAXPAGES);
+>  	while (pages) {
+> -		struct page *p = alloc_page(GFP_KERNEL);
+> +		struct page *p = alloc_pages_node(node, GFP_KERNEL, 0);
+>  		if (!p)
+>  			break;
+>  		rqstp->rq_pages[arghi++] = p;
+> @@ -536,11 +548,11 @@ svc_release_buffer(struct svc_rqst *rqstp)
+>  }
+>  
+>  struct svc_rqst *
+> -svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool)
+> +svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool, int node)
+>  {
+>  	struct svc_rqst	*rqstp;
+>  
+> -	rqstp = kzalloc(sizeof(*rqstp), GFP_KERNEL);
+> +	rqstp = kzalloc_node(sizeof(*rqstp), GFP_KERNEL, node);
+>  	if (!rqstp)
+>  		goto out_enomem;
+>  
+> @@ -554,15 +566,15 @@ svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool)
+>  	rqstp->rq_server = serv;
+>  	rqstp->rq_pool = pool;
+>  
+> -	rqstp->rq_argp = kmalloc(serv->sv_xdrsize, GFP_KERNEL);
+> +	rqstp->rq_argp = kmalloc_node(serv->sv_xdrsize, GFP_KERNEL, node);
+>  	if (!rqstp->rq_argp)
+>  		goto out_thread;
+>  
+> -	rqstp->rq_resp = kmalloc(serv->sv_xdrsize, GFP_KERNEL);
+> +	rqstp->rq_resp = kmalloc_node(serv->sv_xdrsize, GFP_KERNEL, node);
+>  	if (!rqstp->rq_resp)
+>  		goto out_thread;
+>  
+> -	if (!svc_init_buffer(rqstp, serv->sv_max_mesg))
+> +	if (!svc_init_buffer(rqstp, serv->sv_max_mesg, node))
+>  		goto out_thread;
+>  
+>  	return rqstp;
+> @@ -647,6 +659,7 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
+>  	struct svc_pool *chosen_pool;
+>  	int error = 0;
+>  	unsigned int state = serv->sv_nrthreads-1;
+> +	int node;
+>  
+>  	if (pool == NULL) {
+>  		/* The -1 assumes caller has done a svc_get() */
+> @@ -662,14 +675,16 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
+>  		nrservs--;
+>  		chosen_pool = choose_pool(serv, pool, &state);
+>  
+> -		rqstp = svc_prepare_thread(serv, chosen_pool);
+> +		node = svc_pool_map_get_node(chosen_pool->sp_id);
+> +		rqstp = svc_prepare_thread(serv, chosen_pool, node);
+>  		if (IS_ERR(rqstp)) {
+>  			error = PTR_ERR(rqstp);
+>  			break;
+>  		}
+>  
+>  		__module_get(serv->sv_module);
+> -		task = kthread_create(serv->sv_function, rqstp, serv->sv_name);
+> +		task = kthread_create_on_node(serv->sv_function, rqstp,
+> +					      node, serv->sv_name);
+>  		if (IS_ERR(task)) {
+>  			error = PTR_ERR(task);
+>  			module_put(serv->sv_module);
+> 
+> 
