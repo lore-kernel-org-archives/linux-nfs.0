@@ -1,81 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:57355 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752463Ab1H2Sve (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2011 14:51:34 -0400
-Received: by iabu26 with SMTP id u26so733149iab.19
-        for <linux-nfs@vger.kernel.org>; Mon, 29 Aug 2011 11:51:33 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] NFSD: Add a cache for fs_locations information
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 29 Aug 2011 14:51:15 -0400
-Message-ID: <20110829185115.3413.92459.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:37901 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755733Ab1HETQR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Aug 2011 15:16:17 -0400
+Date: Fri, 5 Aug 2011 15:16:10 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Venkateswararao Jujjuri <jvrao@linux.vnet.ibm.com>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        Trond.Myklebust@netapp.com
+Subject: Re: State of NFSv4 VolatileFilehandles
+Message-ID: <20110805191610.GA16880@fieldses.org>
+References: <4E37E66D.90102@linux.vnet.ibm.com>
+ <45F4FC20-ED44-4430-A5A9-E06459A194F3@oracle.com>
+ <4E38F894.4070003@linux.vnet.ibm.com>
+ <2DD1BC2B-6113-4D00-9DD4-C5D431EA1F8A@oracle.com>
+ <4E3A8225.1020309@linux.vnet.ibm.com>
+ <20110804160344.GC12445@fieldses.org>
+ <20110805133833.GA2282@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110805133833.GA2282@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+On Fri, Aug 05, 2011 at 09:38:33AM -0400, Christoph Hellwig wrote:
+> On Thu, Aug 04, 2011 at 12:03:44PM -0400, J. Bruce Fields wrote:
+> > The client has no way of knowing that an export is read only.  (Or that
+> > the server guarantees the safety of looking up names again in the more
+> > general cases Neil describes.)  Unless we decide that a server is making
+> > an implicit guarantee of that just by exposing volatile filehandles at
+> > all.  Doesn't sound like the existing spec really says that, though.
+> > 
+> > If an examination of existing implementations and/or some sort of new
+> > spec language could reassure us that servers will only ever expose
+> > volatile filehandles when it's safe to do so, then maybe it would make
+> > sense for the client to implement volatile filehandle recovery?
+> > 
+> > But if there's a chance of "unsafe" servers out there, then it would
+> > seem like a trap for the unwary user....
+> > 
+> > Your rootfs's probably aren't terribly large--could you copy around
+> > compressed block-level images instead of doing rsync?
+> 
+> Another scheme is to disconnect the file handles from the inode number.
+> I implemented this a couple years ago for a customer.  Basically add
+> an extended attribute into each inode that contains the nfs file handle,
+> and that handle stays the same independent of the inode number.  The
+> added complexity is that you need a new lookup data structure mapping
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-[ cel: since this is server-side, use nfsd4_ prefix instead of nfs4_ prefix. ]
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+And that data structure should be persistent--how were you storing it?
 
- fs/nfsd/nfsd.h |    7 +++++++
- fs/nfsd/vfs.c  |   15 +++++++++++++++
- 2 files changed, 22 insertions(+), 0 deletions(-)
+> from your nfs handle to something that can be used to find the inode
+> (inode number typically).
 
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 7ecfa24..d314812 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -335,6 +335,13 @@ static inline u32 nfsd_suppattrs2(u32 minorversion)
- #define NFSD_SUPPATTR_EXCLCREAT_WORD2 \
- 	NFSD_WRITEABLE_ATTRS_WORD2
- 
-+extern int nfsd4_is_junction(struct dentry *dentry);
-+#else
-+static inline int nfsd4_is_junction(struct dentry *dentry)
-+{
-+	return 0;
-+}
-+
- #endif /* CONFIG_NFSD_V4 */
- 
- #endif /* LINUX_NFSD_NFSD_H */
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index fd0acca..5dac667 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -168,6 +168,8 @@ int nfsd_mountpoint(struct dentry *dentry, struct svc_export *exp)
- {
- 	if (d_mountpoint(dentry))
- 		return 1;
-+	if (nfsd4_is_junction(dentry))
-+		return 1;
- 	if (!(exp->ex_flags & NFSEXP_V4ROOT))
- 		return 0;
- 	return dentry->d_inode != NULL;
-@@ -592,6 +594,19 @@ nfsd4_get_nfs4_acl(struct svc_rqst *rqstp, struct dentry *dentry, struct nfs4_ac
- 	return error;
- }
- 
-+#define NFSD_XATTR_JUNCTION_PREFIX XATTR_TRUSTED_PREFIX "junction."
-+#define NFSD_XATTR_JUNCTION_TYPE NFSD_XATTR_JUNCTION_PREFIX "type"
-+int nfsd4_is_junction(struct dentry *dentry)
-+{
-+	ssize_t ret;
-+
-+	if (dentry->d_inode != NULL) {
-+		ret = vfs_getxattr(dentry, NFSD_XATTR_JUNCTION_TYPE, NULL, 0);
-+		if (ret > 0)
-+			return 1;
-+	}
-+	return 0;
-+}
- #endif /* defined(CONFIG_NFSD_V4) */
- 
- #ifdef CONFIG_NFSD_V3
+Interesting, I've wondered before how well that would work.  Any lessons
+learned?
 
+--b.
