@@ -1,53 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.eu.citrix.com ([62.200.22.115]:32040 "EHLO
-	SMTP.EU.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754766Ab1HSNpW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2011 09:45:22 -0400
-Subject: Re: [PATCH/RFC v3 0/75] enable SKB paged fragment lifetime
- visibility
-From: Ian Campbell <Ian.Campbell@eu.citrix.com>
-To: David Miller <davem@davemloft.net>
-CC: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <20110819.063410.475175569086272526.davem@davemloft.net>
-References: <1313760393.5010.356.camel@zakaz.uk.xensource.com>
-	 <20110819.062958.1560313540665582388.davem@davemloft.net>
-	 <20110819.063410.475175569086272526.davem@davemloft.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 19 Aug 2011 14:45:20 +0100
-Message-ID: <1313761520.5010.363.camel@zakaz.uk.xensource.com>
+Received: from gerard.telenet-ops.be ([195.130.132.48]:55187 "EHLO
+	gerard.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751024Ab1HFHl2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2011 03:41:28 -0400
+From: Luk Claes <luk@debian.org>
+To: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
+Cc: Luk Claes <luk@debian.org>
+Subject: [PATCH 2/6] nfs.man: man complains when line starts with quote
+Date: Sat,  6 Aug 2011 09:41:15 +0200
+Message-Id: <1312616479-312-3-git-send-email-luk@debian.org>
+In-Reply-To: <1312616479-312-1-git-send-email-luk@debian.org>
+References: <1312616479-312-1-git-send-email-luk@debian.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, 2011-08-19 at 14:34 +0100, David Miller wrote:
-> From: David Miller <davem@davemloft.net>
-> Date: Fri, 19 Aug 2011 06:29:58 -0700 (PDT)
-> 
-> > From: Ian Campbell <Ian.Campbell@citrix.com>
-> > Date: Fri, 19 Aug 2011 14:26:33 +0100
-> > 
-> >> This is v3 of my series to enable visibility into SKB paged fragment's
-> > 
-> > Please tone down the patch count :-/  I'm not going to review anything more
-> > than ~20 or so patches at a time from any one person.
+Fix "macro `local_lock=flock'.' not defined" by avoiding to put a quote at the beginning of the line.
 
-Unfortunately I didn't see any middle ground between one massive patch
-munging drivers with lots of different maintainers and one patch per
-maintainer (which is loads).
+Signed-off-by: Luk Claes <luk@debian.org>
+---
+ utils/mount/nfs.man |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-I'll resend in batches of ~20. After the first patch all the "convert to
-SKB paged frag API" patches are independent.
-
-Would you be willing to just review patches 1-20 of this series? In
-which case I could avoid spamming the list with those again now.
-
-> Also none of your patches will even apply to net-next GIT since nearly
-> all the ethernet drivers have been moved under drivers/net/ethernet
-
-Yes, I noted that in my intro mail and will rebase for v4. Since it's
-mostly just been code motion I think review in the old place will still
-be largely valid.
-
-Ian.
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index be91a25..6152235 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -752,8 +752,8 @@ If
+ is specified, the client assumes that POSIX locks are local and uses NLM
+ sideband protocol to lock files when flock locks are used.
+ .IP
+-To support legacy flock behavior similar to that of NFS clients < 2.6.12, use
+-'local_lock=flock'. This option is required when exporting NFS mounts via
++To support legacy flock behavior similar to that of NFS clients < 2.6.12, 
++use 'local_lock=flock'. This option is required when exporting NFS mounts via
+ Samba as Samba maps Windows share mode locks as flock. Since NFS clients >
+ 2.6.12 implement flock by emulating POSIX locks, this will result in
+ conflicting locks.
+-- 
+1.7.5.4
 
