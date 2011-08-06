@@ -1,182 +1,232 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:58646 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751886Ab1HWVjR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Aug 2011 17:39:17 -0400
-Date: Tue, 23 Aug 2011 17:39:16 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC][PATCH v2] nfsd41: try to check reply size before
- operation
-Message-ID: <20110823213916.GB25350@fieldses.org>
-References: <4E0C31B5.9090302@cn.fujitsu.com>
- <20110706201920.GA32275@fieldses.org>
- <4E4F8853.8080607@cn.fujitsu.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E4F8853.8080607@cn.fujitsu.com>
+Received: from juliette.telenet-ops.be ([195.130.137.74]:38172 "EHLO
+	juliette.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751024Ab1HFHlf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2011 03:41:35 -0400
+From: Luk Claes <luk@debian.org>
+To: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
+Cc: Luk Claes <luk@debian.org>, Ben Hutchings <ben@decadent.org.uk>
+Subject: [PATCH 5/6] exports.man: Fix comment syntax
+Date: Sat,  6 Aug 2011 09:41:18 +0200
+Message-Id: <1312616479-312-6-git-send-email-luk@debian.org>
+In-Reply-To: <1312616479-312-1-git-send-email-luk@debian.org>
+References: <1312616479-312-1-git-send-email-luk@debian.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Sat, Aug 20, 2011 at 06:11:31PM +0800, Mi Jinlong wrote:
-> For checking the size of reply before calling a operation, 
-> we need try to get maxsize of the operation's reply.
-> 
-> v1->v2:
->     move op_enc_size from nfsd4_enc_ops to nfsd4_operation;
->     add helper function to get payload len which is need as READ, READDIR ...
+Using three single-quotes for a comment sort of works because it
+results in invoking a nonexistent macro, but it results in a huge
+number of warnings when trying to validate the man page.
 
-I just want to make sure I understand the logic here.  So while
-encoding this operation, we estimate the size of the *next* operation:
+Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
+Signed-off-by: Luk Claes <luk@debian.org>
+---
+ utils/exportfs/exports.man |  152 ++++++++++++++++++++++----------------------
+ 1 files changed, 76 insertions(+), 76 deletions(-)
 
-> @@ -1466,6 +1791,22 @@ static const char *nfsd4_op_name(unsigned opnum)
->  	return "unknown_operation";
->  }
->  
-> +u32 get_ops_max_respz(struct svc_rqst * rqstp)
-> +{
-> +	struct nfsd4_compoundargs *args = rqstp->rq_argp;
-> +	struct nfsd4_compoundres *resp = rqstp->rq_resp;
-> +	__be32 opnum = args->ops[resp->opcnt].opnum;
-> +	__be32 length = 0;
-> +
-> +	length = nfsd4_ops[opnum].op_enc_size * 4;
-> +	if (nfsd4_ops[opnum].op_payload)
-> +		length += nfsd4_ops[opnum].op_payload(rqstp);
-> +
-> +	dprintk("%s opnum %u max reply %u\n", __func__, opnum, length);
-> +
-> +	return length;
-> +}
-> +
->  #define nfsd4_voidres			nfsd4_voidargs
->  struct nfsd4_voidargs { int dummy; };
+diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
+index f9e8304..54adfeb 100644
+--- a/utils/exportfs/exports.man
++++ b/utils/exportfs/exports.man
+@@ -80,25 +80,25 @@ This is specified by a single
+ character (not to be confused with the
+ .I wildcard
+ entry above) and will match all clients.
+-'''.TP
+-'''.B =public
+-'''This is a special ``hostname'' that identifies the given directory name
+-'''as the public root directory (see the section on WebNFS in
+-'''.BR nfsd (8)
+-'''for a discussion of WebNFS and the public root handle). When using this
+-'''convention,
+-'''.B =public
+-'''must be the only entry on this line, and must have no export options
+-'''associated with it. Note that this does
+-'''.I not
+-'''actually export the named directory; you still have to set the exports
+-'''options in a separate entry.
+-'''.PP
+-'''The public root path can also be specified by invoking
+-'''.I nfsd
+-'''with the
+-'''.B \-\-public\-root
+-'''option. Multiple specifications of a public root will be ignored.
++.\".TP
++.\".B =public
++.\"This is a special ``hostname'' that identifies the given directory name
++.\"as the public root directory (see the section on WebNFS in
++.\".BR nfsd (8)
++.\"for a discussion of WebNFS and the public root handle). When using this
++.\"convention,
++.\".B =public
++.\"must be the only entry on this line, and must have no export options
++.\"associated with it. Note that this does
++.\".I not
++.\"actually export the named directory; you still have to set the exports
++.\"options in a separate entry.
++.\".PP
++.\"The public root path can also be specified by invoking
++.\".I nfsd
++.\"with the
++.\".B \-\-public\-root
++.\"option. Multiple specifications of a public root will be ignored.
+ .PP
+ If a client matches more than one of the specifications above, then
+ the first match from the above list order takes precedence - regardless of
+@@ -311,24 +311,24 @@ with ACL support (i.e. by default,
+ .I no_acl
+ is off).
+ 
+-'''.TP
+-'''.I noaccess
+-'''This makes everything below the directory inaccessible for the named
+-'''client.  This is useful when you want to export a directory hierarchy to
+-'''a client, but exclude certain subdirectories. The client's view of a
+-'''directory flagged with noaccess is very limited; it is allowed to read
+-'''its attributes, and lookup `.' and `..'. These are also the only entries
+-'''returned by a readdir.
+-'''.TP
+-'''.IR link_relative
+-'''Convert absolute symbolic links (where the link contents start with a
+-'''slash) into relative links by prepending the necessary number of ../'s
+-'''to get from the directory containing the link to the root on the
+-'''server.  This has subtle, perhaps questionable, semantics when the file
+-'''hierarchy is not mounted at its root.
+-'''.TP
+-'''.IR link_absolute
+-'''Leave all symbolic link as they are. This is the default operation.
++.\".TP
++.\".I noaccess
++.\"This makes everything below the directory inaccessible for the named
++.\"client.  This is useful when you want to export a directory hierarchy to
++.\"a client, but exclude certain subdirectories. The client's view of a
++.\"directory flagged with noaccess is very limited; it is allowed to read
++.\"its attributes, and lookup `.' and `..'. These are also the only entries
++.\"returned by a readdir.
++.\".TP
++.\".IR link_relative
++.\"Convert absolute symbolic links (where the link contents start with a
++.\"slash) into relative links by prepending the necessary number of ../'s
++.\"to get from the directory containing the link to the root on the
++.\"server.  This has subtle, perhaps questionable, semantics when the file
++.\"hierarchy is not mounted at its root.
++.\".TP
++.\".IR link_absolute
++.\"Leave all symbolic link as they are. This is the default operation.
+ 
+ .TP
+ .IR mountpoint= path
+@@ -411,21 +411,21 @@ and can be turned off with
+ .IR no_root_squash .
+ .PP
+ By default,
+-'''.B nfsd
+-'''tries to obtain the anonymous uid and gid by looking up user
+-'''.I nobody
+-'''in the password file at startup time. If it isn't found, a uid and gid
++.\".B nfsd
++.\"tries to obtain the anonymous uid and gid by looking up user
++.\".I nobody
++.\"in the password file at startup time. If it isn't found, a uid and gid
+ .B exportfs
+ chooses a uid and gid
+ of 65534 for squashed access. These values can also be overridden by
+ the
+ .IR anonuid " and " anongid
+ options.
+-'''.PP
+-'''In addition to this,
+-'''.B nfsd
+-'''lets you specify arbitrary uids and gids that should be mapped to user
+-'''nobody as well.
++.\".PP
++.\"In addition to this,
++.\".B nfsd
++.\"lets you specify arbitrary uids and gids that should be mapped to user
++.\"nobody as well.
+ Finally, you can map all user requests to the
+ anonymous uid by specifying the
+ .IR all_squash " option.
+@@ -490,7 +490,7 @@ The format for extra export tables is the same as
+ /srv/www        \-sync,rw server @trusted @external(ro)
+ /foo            2001:db8:9:e54::/64(rw) 192.0.2.0/24(rw)
+ /build          buildhost[0-9].local.domain(rw)
+-'''/pub/private    (noaccess)
++.\"/pub/private    (noaccess)
+ .fi
+ .PP
+ The first line exports the entire filesystem to machines master and trusty.
+@@ -508,21 +508,21 @@ as well as the `@trusted' netgroup, and read-only to netgroup `@external',
+ all three mounts with the `sync' option enabled. The seventh line exports
+ a directory to both an IPv6 and an IPv4 subnet. The eighth line demonstrates
+ a character class wildcard match.
+-''' The last line denies all NFS clients
+-'''access to the private directory.
+-'''.SH CAVEATS
+-'''Unlike other NFS server implementations, this
+-'''.B nfsd
+-'''allows you to export both a directory and a subdirectory thereof to
+-'''the same host, for instance
+-'''.IR /usr " and " /usr/X11R6 .
+-'''In this case, the mount options of the most specific entry apply. For
+-'''instance, when a user on the client host accesses a file in
+-'''.IR /usr/X11R6 ,
+-'''the mount options given in the
+-'''.I /usr/X11R6
+-'''entry apply. This is also true when the latter is a wildcard or netgroup
+-'''entry.
++.\" The last line denies all NFS clients
++.\"access to the private directory.
++.\".SH CAVEATS
++.\"Unlike other NFS server implementations, this
++.\".B nfsd
++.\"allows you to export both a directory and a subdirectory thereof to
++.\"the same host, for instance
++.\".IR /usr " and " /usr/X11R6 .
++.\"In this case, the mount options of the most specific entry apply. For
++.\"instance, when a user on the client host accesses a file in
++.\".IR /usr/X11R6 ,
++.\"the mount options given in the
++.\".I /usr/X11R6
++.\"entry apply. This is also true when the latter is a wildcard or netgroup
++.\"entry.
+ .SH FILES
+ /etc/exports
+ /etc/exports.d
+@@ -532,17 +532,17 @@ a character class wildcard match.
+ .BR mountd (8),
+ .BR nfsd (8),
+ .BR showmount (8).
+-'''.SH DIAGNOSTICS
+-'''An error parsing the file is reported using syslogd(8) as level NOTICE from
+-'''a DAEMON whenever
+-'''.BR nfsd (8)
+-'''or
+-'''.BR mountd (8)
+-'''is started up.  Any unknown
+-'''host is reported at that time, but often not all hosts are not yet known
+-'''to
+-'''.BR named (8)
+-'''at boot time, thus as hosts are found they are reported
+-'''with the same
+-'''.BR syslogd (8)
+-'''parameters.
++.\".SH DIAGNOSTICS
++.\"An error parsing the file is reported using syslogd(8) as level NOTICE from
++.\"a DAEMON whenever
++.\".BR nfsd (8)
++.\"or
++.\".BR mountd (8)
++.\"is started up.  Any unknown
++.\"host is reported at that time, but often not all hosts are not yet known
++.\"to
++.\".BR named (8)
++.\"at boot time, thus as hosts are found they are reported
++.\"with the same
++.\".BR syslogd (8)
++.\"parameters.
+-- 
+1.7.5.4
 
-and we stick the result into the next op's status field:
-
-> @@ -3374,10 +3373,14 @@ static int nfsd4_check_drc_limit(struct nfsd4_compoundres *resp)
->  	dprintk("%s length %u, xb->page_len %u tlen %u pad %u\n", __func__,
->  		length, xb->page_len, tlen, pad);
->  
-> -	if (length <= session->se_fchannel.maxresp_cached)
-> -		return status;
-> -	else
-> -		return nfserr_rep_too_big_to_cache;
-> +	if (length > session->se_fchannel.maxresp_sz)
-> +		args->ops[resp->opcnt].status = nfserr_rep_too_big;
-> +
-> +	if (slot->sl_cachethis == 1 &&
-> +	    length > session->se_fchannel.maxresp_cached)
-> +		args->ops[resp->opcnt].status = nfserr_rep_too_big_to_cache;
-> +
-> +	return 0;
->  }
-
-and then we check that status and use it when we process the next
-compound:
-
-> @@ -1188,7 +1196,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
->  			goto encode_op;
->  		}
->  
-> -		if (opdesc->op_func)
-> +		if (op->status == 0 && opdesc->op_func)
->  			op->status = opdesc->op_func(rqstp, cstate, &op->u);
->  		else
->  			BUG_ON(op->status == nfs_ok);
-
-Do I have that right?
-
-Is there some reason we need to do it that way?  Why not instead do
-something like:
-
-		}
-
- +		op->status == nfsd4_check_resp_size(resp)
- +		if (op->status)
- +			goto encode_op;
-		if (opdesc->op_func)
-			op->status = opdesc->op_func(rqstp-, cstate, &op->u);
-
-in nfsd4_proc_compound.
-
-A minor nitpick (already in the existing code):
-
-> @@ -3336,32 +3336,31 @@ static nfsd4_enc nfsd4_enc_ops[] = {
->   * Calculate the total amount of memory that the compound response has taken
->   * after encoding the current operation.
->   *
-> - * pad: add on 8 bytes for the next operation's op_code and status so that
-> - * there is room to cache a failure on the next operation.
-> - *
-> - * Compare this length to the session se_fmaxresp_cached.
-> + * Compare this length to the session se_fmaxresp_sz and se_fmaxresp_cached.
->   *
->   * Our se_fmaxresp_cached will always be a multiple of PAGE_SIZE, and so
->   * will be at least a page and will therefore hold the xdr_buf head.
->   */
-> -static int nfsd4_check_drc_limit(struct nfsd4_compoundres *resp)
-> +static int nfsd4_check_resp_limit(struct nfsd4_compoundres *resp)
->  {
->  	int status = 0;
-
-Status is *always* 0 in this function.  Let's just get rid of it.
-
-Oh boy:
-
-> +static u32 nfsd4_enc_getattr_playload(struct svc_rqst *rqstp)
-> +{
-> +	struct nfsd4_compoundargs *args = rqstp->rq_argp;
-> +	struct nfsd4_compoundres *resp = rqstp->rq_resp;
-> +	struct nfsd4_op op = args->ops[resp->opcnt];
-> +	u32 *bmval = op.u.getattr.ga_bmval;
-> +	u32 bmval0 = bmval[0];
-> +	u32 bmval1 = bmval[1];
-> +	u32 bmval2 = bmval[2];
-> +	u32 mlen = 0, lc = 0;
-> +
-> +	if (bmval2)
-> +		mlen += 16;
-> +	else if (bmval1)
-> +		mlen += 12;
-> +	else
-> +		mlen += 8;
-> +
-> +	if (bmval0 & FATTR4_WORD0_SUPPORTED_ATTRS) {
-> +		if (!nfsd_suppattrs2(resp->cstate.minorversion))
-> +			mlen += 12;
-> +		else
-> +			mlen += 16;
-> +	}
-> +
-> +	if (bmval0 & FATTR4_WORD0_TYPE)
-> +		mlen += 4;
-> +	if (bmval0 & FATTR4_WORD0_FH_EXPIRE_TYPE)
-> +		mlen += 4;
-
-
-This is getting complicated....
-
-The thing is, some of the most complicated ops (read, readdir, getattr)
-don't *really* matter that much, because they don't change anything on
-the filesystem, and don't change the server state in any way.
-
-So maybe we could handle operations in two different ways:
-
-	- For operations that actually change something (write, rename,
-	  open, close, ...), do it the way we're doing it now: be
-	  very careful to estimate the size of the response before even
-	  processing the operation.
-	- For operations that don't change anything (read, getattr, ...)
-	  just go ahead and do the operation.  If you realize after the
-	  fact that the response is too large, then return the error at
-	  that point.
-
-So we'd add another flag to op_flags: say, OP_MODIFIES_SOMETHING.  And for
-operations with OP_MODIFIES_SOMETHING set, we'd do the first thing.  For
-operations without it set, we'd do the second.
-
-Would there be any problem with doing it that way?
-
---b.
