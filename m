@@ -1,57 +1,28 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:39077
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751784Ab1HALTi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Aug 2011 07:19:38 -0400
-Date: Mon, 1 Aug 2011 07:19:36 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: Sachin Prabhu <sprabhu@redhat.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: Do not allow multiple mounts on same mountpoint
- when using -o noac
-Message-ID: <20110801111936.GA16934@infradead.org>
-References: <1311947408.29400.40.camel@sprabhu.fab.redhat.com>
- <1312197013.3800.1.camel@sprabhu.fab.redhat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1312197013.3800.1.camel@sprabhu.fab.redhat.com>
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:41908 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751899Ab1HFPwk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2011 11:52:40 -0400
+Received: by pzk37 with SMTP id 37so5621454pzk.1
+        for <linux-nfs@vger.kernel.org>; Sat, 06 Aug 2011 08:52:40 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: rees@umich.edu, bhalevy@tonian.com, Trond.Myklebust@netapp.com
+Subject: [PATCH-RFC 0/2] pNFS: recoalesce pages when ld read/write fails
+Date: Sat,  6 Aug 2011 08:52:12 -0700
+Message-Id: <1312645934-4436-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, Aug 01, 2011 at 12:10:12PM +0100, Sachin Prabhu wrote:
-> Do not allow multiple mounts on same mountpoint when using -o noac
+Hi,
 
-The patch content really doesn't seem to match the subject line and
-most of the content.
+I start to look at the error handling for ld_read/write_done.
+The two patches try to address the error handling for read/write pagelist
+failures, via nfs readpage/writepage interface. Please see if this method
+is proper. Thanks!
 
-> However when using the option 'noac', the user is able to mount the same
-> share on the same mountpoint multiple times. This happens because a
-> share mounted with the noac option is automatically assigned the 'sync'
-> flag MS_SYNCHRONOUS in nfs_initialise_sb(). This flag is set after the
-> check for already existing superblocks is done in sget(). The check for
-> the mount flags in nfs_compare_mount_options() does not take into
-> account the 'sync' flag applied later on in the code path. This means
-> that when using 'noac', a new superblock structure is assigned for every
-> new mount of the same share and multiple shares on the same mountpoint
-> are allowed.
-> 
-> ie. 
-> # mount -onoac localhost:/nfsv3 /mnt
-> can be run multiple times.
-
-> The patch checks for noac and assigns the sync flag before sget() is
-> called to obtain an already existing superblock structure.
-
-That's a fine fix, but the the whole patch subject and description
-focusses on a side effect rather than the underlying real problem.
-
-The underlying issue is that youwant to share superblocks when
-having multiple mounts with -o noac, which requires assigning the
-sync flag ealier. 
-
-The check in do_add_mount simply prevents mounts with the same
-superblock and root dentry at the same mountpoint, so it will fail for
-any two nfs mounts that might be from the same server but do not share
-the superblock due to different options.  I'm actually not sure we want
-to prevent that in general, and I can't see how it could be done easily.
+Cheers,
+Tao
 
