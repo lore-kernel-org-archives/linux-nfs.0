@@ -1,34 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:51733 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752418Ab1HHQXb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Aug 2011 12:23:31 -0400
-Date: Mon, 8 Aug 2011 12:23:28 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: mtk.manpages@gmail.com
-Cc: linux-man@vger.kernel.org, NeilBrown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org
-Subject: Re: nfsservctl(2)
-Message-ID: <20110808162328.GD904@fieldses.org>
-References: <20110808162232.GC904@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110808162232.GC904@fieldses.org>
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:41908 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751899Ab1HFPxV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2011 11:53:21 -0400
+Received: by mail-pz0-f42.google.com with SMTP id 37so5621454pzk.1
+        for <linux-nfs@vger.kernel.org>; Sat, 06 Aug 2011 08:53:21 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: rees@umich.edu, bhalevy@tonian.com, Trond.Myklebust@netapp.com,
+        Peng Tao <peng_tao@emc.com>
+Subject: [PATCH 2/2] pNFS: deal with ld read failure
+Date: Sat,  6 Aug 2011 08:52:14 -0700
+Message-Id: <1312645934-4436-3-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1312645934-4436-1-git-send-email-bergwolf@gmail.com>
+References: <1312645934-4436-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-The nfsservctl system call has long been superceded by a better
-interface, and is finally getting removed in the 3.1 kernel.
+For pnfs pagelist read failure, we need to pg_recoalesce and resend
+IO to mds.
 
-I'm not sure what to do with the man page--remove it, or add a note
-saying it's gone from recent kernels?  Do you have something you
-generally do in such cases?
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/internal.h |    2 ++
+ fs/nfs/pnfs.c     |   18 ++++++++++++++----
+ fs/nfs/read.c     |    3 ++-
+ 3 files changed, 18 insertions(+), 5 deletions(-)
 
-It's been replaced by a set of files in the nfsd filesystem, which is
-documented in nfsd(7).  That man page looks sufficiently up-to-date to
-cover the functionality previous provided by nfsservctl.  (Though I only
-skimmed it quickly.  It might be worth a more careful review some day.)
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 62f183d..78b662e 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -307,6 +307,8 @@ extern int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
+ 		struct list_head *head);
+ extern int do_nfs_writepage(struct page *page, struct writeback_control *wbc,
+ 		struct nfs_pageio_descriptor *pgio);
++extern void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
++		struct inode *inode);
+ extern void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
+ 		struct inode *inode, int ioflags);
+ extern void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 08aba45..66fc854 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1300,7 +1300,7 @@ EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
+ int
+ pnfs_ld_read_done(struct nfs_read_data *data)
+ {
+-	int status;
++	struct nfs_pageio_descriptor pgio;
+ 
+ 	if (!data->pnfs_error) {
+ 		__nfs4_read_done_cb(data);
+@@ -1309,11 +1309,21 @@ pnfs_ld_read_done(struct nfs_read_data *data)
+ 		return 0;
+ 	}
+ 
++	put_lseg(data->lseg);
++	data->lseg = NULL;
+ 	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
+ 		data->pnfs_error);
+-	status = nfs_initiate_read(data, NFS_CLIENT(data->inode),
+-				   data->mds_ops);
+-	return status ? : -EAGAIN;
++	nfs_pageio_init_read_mds(&pgio, data->inode);
++	pgio.pg_recoalesce = 1;
++	while (!list_empty(&data->pages)) {
++		struct nfs_page *req = nfs_list_entry(data->pages.next);
++
++		nfs_pageio_add_request(&pgio, req);
++	}
++	nfs_pageio_complete(&pgio);
++	nfs_readdata_release(data);
++
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
+ 
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 2171c04..2484131 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -112,12 +112,13 @@ static void nfs_readpage_truncate_uninitialised_page(struct nfs_read_data *data)
+ 	}
+ }
+ 
+-static void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
++void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
+ 		struct inode *inode)
+ {
+ 	nfs_pageio_init(pgio, inode, &nfs_pageio_read_ops,
+ 			NFS_SERVER(inode)->rsize, 0);
+ }
++EXPORT_SYMBOL_GPL(nfs_pageio_init_read_mds);
+ 
+ void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio)
+ {
+-- 
+1.7.1.262.g5ef3d
 
---b.
-
-(Argh, sorry, resending with cut-n-pasted addresses de-obfuscated.)
