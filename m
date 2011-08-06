@@ -1,232 +1,32 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from juliette.telenet-ops.be ([195.130.137.74]:38172 "EHLO
-	juliette.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751024Ab1HFHlf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2011 03:41:35 -0400
-From: Luk Claes <luk@debian.org>
-To: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-Cc: Luk Claes <luk@debian.org>, Ben Hutchings <ben@decadent.org.uk>
-Subject: [PATCH 5/6] exports.man: Fix comment syntax
-Date: Sat,  6 Aug 2011 09:41:18 +0200
-Message-Id: <1312616479-312-6-git-send-email-luk@debian.org>
-In-Reply-To: <1312616479-312-1-git-send-email-luk@debian.org>
-References: <1312616479-312-1-git-send-email-luk@debian.org>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:33266 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754249Ab1HFMn6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2011 08:43:58 -0400
+Date: Sat, 6 Aug 2011 08:43:56 -0400
+From: Jim Rees <rees@umich.edu>
+To: Max Matveev <makc@redhat.com>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: Re: [PATCH v2] Update nfs(5) manpage - timeo for NFS/TCP
+Message-ID: <20110806124356.GB20169@merit.edu>
+References: <20110805021903.C84608198734@regina.usersys.redhat.com>
+ <20110805124015.GA16926@merit.edu>
+ <20028.39798.213403.685504@regina.usersys.redhat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20028.39798.213403.685504@regina.usersys.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Using three single-quotes for a comment sort of works because it
-results in invoking a nonexistent macro, but it results in a huge
-number of warnings when trying to validate the man page.
+Max Matveev wrote:
 
-Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
-Signed-off-by: Luk Claes <luk@debian.org>
----
- utils/exportfs/exports.man |  152 ++++++++++++++++++++++----------------------
- 1 files changed, 76 insertions(+), 76 deletions(-)
+  The interval is increased: with timeo=10 (1 sec) the retries will be
+  happening and t+1, t+3, t+6 etc - see my original mail on Jul 7:
+  
+  http://www.spinics.net/lists/linux-nfs/msg22425.html
+  
+  If that's not a backoff then what is?
 
-diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
-index f9e8304..54adfeb 100644
---- a/utils/exportfs/exports.man
-+++ b/utils/exportfs/exports.man
-@@ -80,25 +80,25 @@ This is specified by a single
- character (not to be confused with the
- .I wildcard
- entry above) and will match all clients.
--'''.TP
--'''.B =public
--'''This is a special ``hostname'' that identifies the given directory name
--'''as the public root directory (see the section on WebNFS in
--'''.BR nfsd (8)
--'''for a discussion of WebNFS and the public root handle). When using this
--'''convention,
--'''.B =public
--'''must be the only entry on this line, and must have no export options
--'''associated with it. Note that this does
--'''.I not
--'''actually export the named directory; you still have to set the exports
--'''options in a separate entry.
--'''.PP
--'''The public root path can also be specified by invoking
--'''.I nfsd
--'''with the
--'''.B \-\-public\-root
--'''option. Multiple specifications of a public root will be ignored.
-+.\".TP
-+.\".B =public
-+.\"This is a special ``hostname'' that identifies the given directory name
-+.\"as the public root directory (see the section on WebNFS in
-+.\".BR nfsd (8)
-+.\"for a discussion of WebNFS and the public root handle). When using this
-+.\"convention,
-+.\".B =public
-+.\"must be the only entry on this line, and must have no export options
-+.\"associated with it. Note that this does
-+.\".I not
-+.\"actually export the named directory; you still have to set the exports
-+.\"options in a separate entry.
-+.\".PP
-+.\"The public root path can also be specified by invoking
-+.\".I nfsd
-+.\"with the
-+.\".B \-\-public\-root
-+.\"option. Multiple specifications of a public root will be ignored.
- .PP
- If a client matches more than one of the specifications above, then
- the first match from the above list order takes precedence - regardless of
-@@ -311,24 +311,24 @@ with ACL support (i.e. by default,
- .I no_acl
- is off).
- 
--'''.TP
--'''.I noaccess
--'''This makes everything below the directory inaccessible for the named
--'''client.  This is useful when you want to export a directory hierarchy to
--'''a client, but exclude certain subdirectories. The client's view of a
--'''directory flagged with noaccess is very limited; it is allowed to read
--'''its attributes, and lookup `.' and `..'. These are also the only entries
--'''returned by a readdir.
--'''.TP
--'''.IR link_relative
--'''Convert absolute symbolic links (where the link contents start with a
--'''slash) into relative links by prepending the necessary number of ../'s
--'''to get from the directory containing the link to the root on the
--'''server.  This has subtle, perhaps questionable, semantics when the file
--'''hierarchy is not mounted at its root.
--'''.TP
--'''.IR link_absolute
--'''Leave all symbolic link as they are. This is the default operation.
-+.\".TP
-+.\".I noaccess
-+.\"This makes everything below the directory inaccessible for the named
-+.\"client.  This is useful when you want to export a directory hierarchy to
-+.\"a client, but exclude certain subdirectories. The client's view of a
-+.\"directory flagged with noaccess is very limited; it is allowed to read
-+.\"its attributes, and lookup `.' and `..'. These are also the only entries
-+.\"returned by a readdir.
-+.\".TP
-+.\".IR link_relative
-+.\"Convert absolute symbolic links (where the link contents start with a
-+.\"slash) into relative links by prepending the necessary number of ../'s
-+.\"to get from the directory containing the link to the root on the
-+.\"server.  This has subtle, perhaps questionable, semantics when the file
-+.\"hierarchy is not mounted at its root.
-+.\".TP
-+.\".IR link_absolute
-+.\"Leave all symbolic link as they are. This is the default operation.
- 
- .TP
- .IR mountpoint= path
-@@ -411,21 +411,21 @@ and can be turned off with
- .IR no_root_squash .
- .PP
- By default,
--'''.B nfsd
--'''tries to obtain the anonymous uid and gid by looking up user
--'''.I nobody
--'''in the password file at startup time. If it isn't found, a uid and gid
-+.\".B nfsd
-+.\"tries to obtain the anonymous uid and gid by looking up user
-+.\".I nobody
-+.\"in the password file at startup time. If it isn't found, a uid and gid
- .B exportfs
- chooses a uid and gid
- of 65534 for squashed access. These values can also be overridden by
- the
- .IR anonuid " and " anongid
- options.
--'''.PP
--'''In addition to this,
--'''.B nfsd
--'''lets you specify arbitrary uids and gids that should be mapped to user
--'''nobody as well.
-+.\".PP
-+.\"In addition to this,
-+.\".B nfsd
-+.\"lets you specify arbitrary uids and gids that should be mapped to user
-+.\"nobody as well.
- Finally, you can map all user requests to the
- anonymous uid by specifying the
- .IR all_squash " option.
-@@ -490,7 +490,7 @@ The format for extra export tables is the same as
- /srv/www        \-sync,rw server @trusted @external(ro)
- /foo            2001:db8:9:e54::/64(rw) 192.0.2.0/24(rw)
- /build          buildhost[0-9].local.domain(rw)
--'''/pub/private    (noaccess)
-+.\"/pub/private    (noaccess)
- .fi
- .PP
- The first line exports the entire filesystem to machines master and trusty.
-@@ -508,21 +508,21 @@ as well as the `@trusted' netgroup, and read-only to netgroup `@external',
- all three mounts with the `sync' option enabled. The seventh line exports
- a directory to both an IPv6 and an IPv4 subnet. The eighth line demonstrates
- a character class wildcard match.
--''' The last line denies all NFS clients
--'''access to the private directory.
--'''.SH CAVEATS
--'''Unlike other NFS server implementations, this
--'''.B nfsd
--'''allows you to export both a directory and a subdirectory thereof to
--'''the same host, for instance
--'''.IR /usr " and " /usr/X11R6 .
--'''In this case, the mount options of the most specific entry apply. For
--'''instance, when a user on the client host accesses a file in
--'''.IR /usr/X11R6 ,
--'''the mount options given in the
--'''.I /usr/X11R6
--'''entry apply. This is also true when the latter is a wildcard or netgroup
--'''entry.
-+.\" The last line denies all NFS clients
-+.\"access to the private directory.
-+.\".SH CAVEATS
-+.\"Unlike other NFS server implementations, this
-+.\".B nfsd
-+.\"allows you to export both a directory and a subdirectory thereof to
-+.\"the same host, for instance
-+.\".IR /usr " and " /usr/X11R6 .
-+.\"In this case, the mount options of the most specific entry apply. For
-+.\"instance, when a user on the client host accesses a file in
-+.\".IR /usr/X11R6 ,
-+.\"the mount options given in the
-+.\".I /usr/X11R6
-+.\"entry apply. This is also true when the latter is a wildcard or netgroup
-+.\"entry.
- .SH FILES
- /etc/exports
- /etc/exports.d
-@@ -532,17 +532,17 @@ a character class wildcard match.
- .BR mountd (8),
- .BR nfsd (8),
- .BR showmount (8).
--'''.SH DIAGNOSTICS
--'''An error parsing the file is reported using syslogd(8) as level NOTICE from
--'''a DAEMON whenever
--'''.BR nfsd (8)
--'''or
--'''.BR mountd (8)
--'''is started up.  Any unknown
--'''host is reported at that time, but often not all hosts are not yet known
--'''to
--'''.BR named (8)
--'''at boot time, thus as hosts are found they are reported
--'''with the same
--'''.BR syslogd (8)
--'''parameters.
-+.\".SH DIAGNOSTICS
-+.\"An error parsing the file is reported using syslogd(8) as level NOTICE from
-+.\"a DAEMON whenever
-+.\".BR nfsd (8)
-+.\"or
-+.\".BR mountd (8)
-+.\"is started up.  Any unknown
-+.\"host is reported at that time, but often not all hosts are not yet known
-+.\"to
-+.\".BR named (8)
-+.\"at boot time, thus as hosts are found they are reported
-+.\"with the same
-+.\".BR syslogd (8)
-+.\"parameters.
--- 
-1.7.5.4
-
+You're right.  Sorry I misunderstood.  Re-reading what you wrote I'm not
+sure it could be made any clearer.  Maybe change "timeout is increased" to
+"timeout interval is increased."  But I'd be happy with it as-is.
