@@ -1,83 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:52082 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753133Ab1HOWXk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Aug 2011 18:23:40 -0400
-Date: Mon, 15 Aug 2011 18:23:36 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com, nfsv4@ietf.org
-Subject: Re: open() of device special files
-Message-ID: <20110815222336.GB32181@fieldses.org>
-References: <20110815153637.GD28629@fieldses.org>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AA9B9FB@SACMVEXC2-PRD.hq.netapp.com>
- <20110815212539.GA32181@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110815212539.GA32181@fieldses.org>
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:56600 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753031Ab1HJPic (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Aug 2011 11:38:32 -0400
+Received: by mail-pz0-f42.google.com with SMTP id 37so2033196pzk.1
+        for <linux-nfs@vger.kernel.org>; Wed, 10 Aug 2011 08:38:32 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: Benny Halevy <benny@tonian.com>
+Cc: linux-nfs@vger.kernel.org, Peng Tao <peng_tao@emc.com>
+Subject: [PATCH 2/5] pNFS: recoalesce when ld read pagelist fails
+Date: Sat,  6 Aug 2011 19:53:52 -0700
+Message-Id: <1312685635-1593-2-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1312685635-1593-1-git-send-email-bergwolf@gmail.com>
+References: <1312685635-1593-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, Aug 15, 2011 at 05:25:39PM -0400, J. Bruce Fields wrote:
-> On Mon, Aug 15, 2011 at 09:03:30AM -0700, Myklebust, Trond wrote:
-> > > -----Original Message-----
-> > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > > How is the client supposed to handle opens of device special files?
-> > On
-> > > a 3.1-rc1-based client to a linux server over v4.0 I'm seeing it try
-> > an
-> > > OPEN call and failing when it gets an INVAL return.
-> > > 
-> > > This looks like bogus client behavior (OPEN should fail on such
-> > files),
-> > > unless the server has the error return wrong and the client's using an
-> > > OPEN error to recover.
-> > > 
-> > > If I first stat the device and then open it then it works as expected
-> > > (the client does an open of the local device).
-> > > 
-> > > I'm a bit annoyed at myself as I have a feeling we've discussed this
-> > > before but I can't find a reference now.
-> > 
-> > Hmm... NFS4ERR_INVAL means 'invalid argument', which is not the case
-> > here; all the arguments that the client is passing to the server are
-> > valid, however the file cannot be opened because the pathname resolves
-> > on the server to a file of the wrong type.
+For pnfs pagelist read failure, we need to pg_recoalesce and resend
+IO to mds.
 
-The long description of NFS4ERR_INVAL from rfc 3530:
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/internal.h |    2 ++
+ fs/nfs/pnfs.c     |   18 ++++++++++++++----
+ fs/nfs/read.c     |    3 ++-
+ 3 files changed, 18 insertions(+), 5 deletions(-)
 
-	"Invalid argument or unsupported argument for an operation. Two
-	examples are attempting a READLINK on an object other than a
-	symbolic link or specifying a value for an enum field that is
-	not defined in the protocol (e.g., nfs_ftype4)."
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 62f183d..78b662e 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -307,6 +307,8 @@ extern int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
+ 		struct list_head *head);
+ extern int do_nfs_writepage(struct page *page, struct writeback_control *wbc,
+ 		struct nfs_pageio_descriptor *pgio);
++extern void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
++		struct inode *inode);
+ extern void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
+ 		struct inode *inode, int ioflags);
+ extern void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 08aba45..66fc854 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1300,7 +1300,7 @@ EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
+ int
+ pnfs_ld_read_done(struct nfs_read_data *data)
+ {
+-	int status;
++	struct nfs_pageio_descriptor pgio;
+ 
+ 	if (!data->pnfs_error) {
+ 		__nfs4_read_done_cb(data);
+@@ -1309,11 +1309,21 @@ pnfs_ld_read_done(struct nfs_read_data *data)
+ 		return 0;
+ 	}
+ 
++	put_lseg(data->lseg);
++	data->lseg = NULL;
+ 	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
+ 		data->pnfs_error);
+-	status = nfs_initiate_read(data, NFS_CLIENT(data->inode),
+-				   data->mds_ops);
+-	return status ? : -EAGAIN;
++	nfs_pageio_init_read_mds(&pgio, data->inode);
++	pgio.pg_recoalesce = 1;
++	while (!list_empty(&data->pages)) {
++		struct nfs_page *req = nfs_list_entry(data->pages.next);
++
++		nfs_pageio_add_request(&pgio, req);
++	}
++	nfs_pageio_complete(&pgio);
++	nfs_readdata_release(data);
++
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
+ 
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 2171c04..2484131 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -112,12 +112,13 @@ static void nfs_readpage_truncate_uninitialised_page(struct nfs_read_data *data)
+ 	}
+ }
+ 
+-static void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
++void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
+ 		struct inode *inode)
+ {
+ 	nfs_pageio_init(pgio, inode, &nfs_pageio_read_ops,
+ 			NFS_SERVER(inode)->rsize, 0);
+ }
++EXPORT_SYMBOL_GPL(nfs_pageio_init_read_mds);
+ 
+ void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio)
+ {
+-- 
+1.7.1.262.g5ef3d
 
-So the text does recommend NFS4ERR_INVAL for the case where the
-operation doesn't make sense for the type of object given.  (In the
-readlink example there's no pathname resolution, though).
-
-EINVAL seems to be used in the kernel for some such cases as well (e.g.
-attempt to truncate a device special file).
-
-> > I can't see any other error definition that is "obviously correct", but
-> > it looks to me as if NFS4ERR_SYMLINK might be the closest thing. One
-> > reason is the dot-x file defines NFS4ERR_SYMLINK as meaning "should be
-> > file/directory".
-
-And this seems more a coincidence due to vagueness resulting from the
-need for a single-line comment; the longer description is:
-
-	"NFS4ERR_SYMLINK The current filehandle provided for a LOOKUP is
-			 not a directory but a symbolic link.  Also used
-			 if the final component of the OPEN path is a
-			 symbolic link."
-
-> > The other reason is that NFS4ERR_SYMLINK should
-> > _always_ trigger the correct behaviour on a client: a fresh lookup of
-> > the component.
-> 
-> Confirmed the fix; I'll apply.
-
-Applying anyway for compatibility with existing clients, but this all
-seems a little weird.
-
---b.
