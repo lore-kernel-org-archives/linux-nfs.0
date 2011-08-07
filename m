@@ -1,334 +1,238 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:9689 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754370Ab1H2RJs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Aug 2011 13:09:48 -0400
-Message-ID: <4E5BC7B0.1070308@RedHat.com>
-Date: Mon, 29 Aug 2011 13:09:04 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        NFS <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] sunrpc: Add scope id to svc_addr_u for IPv6 LINKLOCAL
- address
-References: <4E4F8B5D.6060404@cn.fujitsu.com> <20110822192620.GB16261@fieldses.org> <3CA77E10-4099-4DDB-BE7A-88395CC34C93@oracle.com> <20110822194459.GC16261@fieldses.org> <4E5492FD.8040903@cn.fujitsu.com> <16175F9F-67BA-4406-8A2A-936814D56E0F@oracle.com> <36B5EA7A-21EF-4E82-BF97-F657AEC5ED3B@oracle.com> <4E57440F.90808@cn.fujitsu.com>
-In-Reply-To: <4E57440F.90808@cn.fujitsu.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:56600 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753277Ab1HJPik (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Aug 2011 11:38:40 -0400
+Received: by mail-pz0-f42.google.com with SMTP id 37so2033196pzk.1
+        for <linux-nfs@vger.kernel.org>; Wed, 10 Aug 2011 08:38:40 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: Benny Halevy <benny@tonian.com>
+Cc: linux-nfs@vger.kernel.org, Peng Tao <peng_tao@emc.com>
+Subject: [PATCH 4/5] SUNRPC/NFS: make rpc pipe upcall generic
+Date: Sat,  6 Aug 2011 19:53:54 -0700
+Message-Id: <1312685635-1593-4-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1312685635-1593-1-git-send-email-bergwolf@gmail.com>
+References: <1312685635-1593-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hey Mi,
+The same function is used by idmap, gss and blocklayout code. Make it generic.
 
-If this is the final version of the patch, could you
-please post it new thread? Actually please post all new 
-versions of patch in new threads, since its just 
-really difficulty to pull bits and pieces out of 
-a huge emails like this one... 
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/blocklayout/blocklayout.c    |    2 +-
+ fs/nfs/blocklayout/blocklayout.h    |    2 --
+ fs/nfs/blocklayout/blocklayoutdev.c |   22 ----------------------
+ fs/nfs/idmap.c                      |   25 +------------------------
+ include/linux/sunrpc/rpc_pipe_fs.h  |    2 ++
+ net/sunrpc/auth_gss/auth_gss.c      |   24 ++----------------------
+ net/sunrpc/rpc_pipe.c               |   20 ++++++++++++++++++++
+ 7 files changed, 26 insertions(+), 71 deletions(-)
 
-Plus this patch do not apply... 
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 3aef9f0..5c14ee2 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -960,7 +960,7 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
+ };
+ 
+ static const struct rpc_pipe_ops bl_upcall_ops = {
+-	.upcall		= bl_pipe_upcall,
++	.upcall		= rpc_pipe_generic_upcall,
+ 	.downcall	= bl_pipe_downcall,
+ 	.destroy_msg	= bl_pipe_destroy_msg,
+ };
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index f27d827..8900396 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -169,8 +169,6 @@ extern wait_queue_head_t bl_wq;
+ #define BL_DEVICE_REQUEST_ERR          0x2 /* User level process fails */
+ 
+ /* blocklayoutdev.c */
+-ssize_t bl_pipe_upcall(struct file *, struct rpc_pipe_msg *,
+-		       char __user *, size_t);
+ ssize_t bl_pipe_downcall(struct file *, const char __user *, size_t);
+ void bl_pipe_destroy_msg(struct rpc_pipe_msg *);
+ struct block_device *nfs4_blkdev_get(dev_t dev);
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+index a83b393..46a2ce6 100644
+--- a/fs/nfs/blocklayout/blocklayoutdev.c
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -79,28 +79,6 @@ int nfs4_blkdev_put(struct block_device *bdev)
+ 	return blkdev_put(bdev, FMODE_READ);
+ }
+ 
+-/*
+- * Shouldn't there be a rpc_generic_upcall() to do this for us?
+- */
+-ssize_t bl_pipe_upcall(struct file *filp, struct rpc_pipe_msg *msg,
+-		       char __user *dst, size_t buflen)
+-{
+-	char *data = (char *)msg->data + msg->copied;
+-	size_t mlen = min(msg->len - msg->copied, buflen);
+-	unsigned long left;
+-
+-	left = copy_to_user(dst, data, mlen);
+-	if (left == mlen) {
+-		msg->errno = -EFAULT;
+-		return -EFAULT;
+-	}
+-
+-	mlen -= left;
+-	msg->copied += mlen;
+-	msg->errno = 0;
+-	return mlen;
+-}
+-
+ static struct bl_dev_msg bl_mount_reply;
+ 
+ ssize_t bl_pipe_downcall(struct file *filp, const char __user *src,
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index f20801a..47d1c6f 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -336,8 +336,6 @@ struct idmap {
+ 	struct idmap_hashtable	idmap_group_hash;
+ };
+ 
+-static ssize_t idmap_pipe_upcall(struct file *, struct rpc_pipe_msg *,
+-				 char __user *, size_t);
+ static ssize_t idmap_pipe_downcall(struct file *, const char __user *,
+ 				   size_t);
+ static void idmap_pipe_destroy_msg(struct rpc_pipe_msg *);
+@@ -345,7 +343,7 @@ static void idmap_pipe_destroy_msg(struct rpc_pipe_msg *);
+ static unsigned int fnvhash32(const void *, size_t);
+ 
+ static const struct rpc_pipe_ops idmap_upcall_ops = {
+-	.upcall		= idmap_pipe_upcall,
++	.upcall		= rpc_pipe_generic_upcall,
+ 	.downcall	= idmap_pipe_downcall,
+ 	.destroy_msg	= idmap_pipe_destroy_msg,
+ };
+@@ -595,27 +593,6 @@ nfs_idmap_name(struct idmap *idmap, struct idmap_hashtable *h,
+ 	return ret;
+ }
+ 
+-/* RPC pipefs upcall/downcall routines */
+-static ssize_t
+-idmap_pipe_upcall(struct file *filp, struct rpc_pipe_msg *msg,
+-		  char __user *dst, size_t buflen)
+-{
+-	char *data = (char *)msg->data + msg->copied;
+-	size_t mlen = min(msg->len, buflen);
+-	unsigned long left;
+-
+-	left = copy_to_user(dst, data, mlen);
+-	if (left == mlen) {
+-		msg->errno = -EFAULT;
+-		return -EFAULT;
+-	}
+-
+-	mlen -= left;
+-	msg->copied += mlen;
+-	msg->errno = 0;
+-	return mlen;
+-}
+-
+ static ssize_t
+ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ {
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index cf14db9..e4ea430 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -44,6 +44,8 @@ RPC_I(struct inode *inode)
+ 	return container_of(inode, struct rpc_inode, vfs_inode);
+ }
+ 
++extern ssize_t rpc_pipe_generic_upcall(struct file *, struct rpc_pipe_msg *,
++				       char __user *, size_t);
+ extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
+ 
+ struct rpc_clnt;
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 364eb45..e9b7693 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -603,26 +603,6 @@ out:
+ 	return err;
+ }
+ 
+-static ssize_t
+-gss_pipe_upcall(struct file *filp, struct rpc_pipe_msg *msg,
+-		char __user *dst, size_t buflen)
+-{
+-	char *data = (char *)msg->data + msg->copied;
+-	size_t mlen = min(msg->len, buflen);
+-	unsigned long left;
+-
+-	left = copy_to_user(dst, data, mlen);
+-	if (left == mlen) {
+-		msg->errno = -EFAULT;
+-		return -EFAULT;
+-	}
+-
+-	mlen -= left;
+-	msg->copied += mlen;
+-	msg->errno = 0;
+-	return mlen;
+-}
+-
+ #define MSG_BUF_MAXSIZE 1024
+ 
+ static ssize_t
+@@ -1590,7 +1570,7 @@ static const struct rpc_credops gss_nullops = {
+ };
+ 
+ static const struct rpc_pipe_ops gss_upcall_ops_v0 = {
+-	.upcall		= gss_pipe_upcall,
++	.upcall		= rpc_pipe_generic_upcall,
+ 	.downcall	= gss_pipe_downcall,
+ 	.destroy_msg	= gss_pipe_destroy_msg,
+ 	.open_pipe	= gss_pipe_open_v0,
+@@ -1598,7 +1578,7 @@ static const struct rpc_pipe_ops gss_upcall_ops_v0 = {
+ };
+ 
+ static const struct rpc_pipe_ops gss_upcall_ops_v1 = {
+-	.upcall		= gss_pipe_upcall,
++	.upcall		= rpc_pipe_generic_upcall,
+ 	.downcall	= gss_pipe_downcall,
+ 	.destroy_msg	= gss_pipe_destroy_msg,
+ 	.open_pipe	= gss_pipe_open_v1,
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index b181e34..67dbc18 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -77,6 +77,26 @@ rpc_timeout_upcall_queue(struct work_struct *work)
+ 	rpc_purge_list(rpci, &free_list, destroy_msg, -ETIMEDOUT);
+ }
+ 
++ssize_t rpc_pipe_generic_upcall(struct file *filp, struct rpc_pipe_msg *msg,
++				char __user *dst, size_t buflen)
++{
++	char *data = (char *)msg->data + msg->copied;
++	size_t mlen = min(msg->len - msg->copied, buflen);
++	unsigned long left;
++
++	left = copy_to_user(dst, data, mlen);
++	if (left == mlen) {
++		msg->errno = -EFAULT;
++		return -EFAULT;
++	}
++
++	mlen -= left;
++	msg->copied += mlen;
++	msg->errno = 0;
++	return mlen;
++}
++EXPORT_SYMBOL_GPL(rpc_pipe_generic_upcall);
++
+ /**
+  * rpc_queue_upcall - queue an upcall message to userspace
+  * @inode: inode of upcall pipe on which to queue given message
+-- 
+1.7.1.262.g5ef3d
 
-tia,
-
-steved. 
-
-On 08/26/2011 02:58 AM, Mi Jinlong wrote:
-> From 84420475509ccc39ac8899f6f63140879a5278b6 Mon Sep 17 00:00:00 2001
-> From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> Date: Mon, 26 Aug 2011 13:22:39 +0800
-> Subject: [PATCH v2] SUNRPC: Replace svc_addr_u by sockaddr_storage
-> 
-> For IPv6 local address, lockd can not callback to client for 
-> missing scope id when binding address at inet6_bind:
-> 
->  324       if (addr_type & IPV6_ADDR_LINKLOCAL) {
->  325               if (addr_len >= sizeof(struct sockaddr_in6) &&
->  326                   addr->sin6_scope_id) {
->  327                       /* Override any existing binding, if another one
->  328                        * is supplied by user.
->  329                        */
->  330                       sk->sk_bound_dev_if = addr->sin6_scope_id;
->  331               }
->  332 
->  333               /* Binding to link-local address requires an interface */
->  334               if (!sk->sk_bound_dev_if) {
->  335                       err = -EINVAL;
->  336                       goto out_unlock;
->  337               }
-> 
-> Replacing svc_addr_u by sockaddr_storage, let rqstp->rq_daddr contains more info
-> besides address.
-> 
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
->  fs/lockd/host.c             |   25 ++-----------------------
->  fs/nfsd/nfs4state.c         |   16 +---------------
->  include/linux/sunrpc/clnt.h |    3 ++-
->  include/linux/sunrpc/svc.h  |   30 +++++++++++++++++++++---------
->  net/sunrpc/svc_xprt.c       |   13 ++-----------
->  net/sunrpc/svcsock.c        |   23 +++++++++++++++++------
->  6 files changed, 45 insertions(+), 65 deletions(-)
-> 
-> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-> index b7c99bf..6f29836 100644
-> --- a/fs/lockd/host.c
-> +++ b/fs/lockd/host.c
-> @@ -316,14 +316,8 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
->  	struct hlist_node *pos;
->  	struct nlm_host	*host = NULL;
->  	struct nsm_handle *nsm = NULL;
-> -	struct sockaddr_in sin = {
-> -		.sin_family	= AF_INET,
-> -	};
-> -	struct sockaddr_in6 sin6 = {
-> -		.sin6_family	= AF_INET6,
-> -	};
-> -	struct sockaddr *src_sap;
-> -	size_t src_len = rqstp->rq_addrlen;
-> +	struct sockaddr *src_sap = svc_daddr(rqstp);
-> +	size_t src_len = rqstp->rq_daddrlen;
->  	struct nlm_lookup_host_info ni = {
->  		.server		= 1,
->  		.sap		= svc_addr(rqstp),
-> @@ -340,21 +334,6 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
->  
->  	mutex_lock(&nlm_host_mutex);
->  
-> -	switch (ni.sap->sa_family) {
-> -	case AF_INET:
-> -		sin.sin_addr.s_addr = rqstp->rq_daddr.addr.s_addr;
-> -		src_sap = (struct sockaddr *)&sin;
-> -		break;
-> -	case AF_INET6:
-> -		ipv6_addr_copy(&sin6.sin6_addr, &rqstp->rq_daddr.addr6);
-> -		src_sap = (struct sockaddr *)&sin6;
-> -		break;
-> -	default:
-> -		dprintk("lockd: %s failed; unrecognized address family\n",
-> -			__func__);
-> -		goto out;
-> -	}
-> -
->  	if (time_after_eq(jiffies, next_gc))
->  		nlm_gc_hosts();
->  
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 3787ec1..07a18a5 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1173,20 +1173,6 @@ find_unconfirmed_client_by_str(const char *dname, unsigned int hashval)
->  	return NULL;
->  }
->  
-> -static void rpc_svcaddr2sockaddr(struct sockaddr *sa, unsigned short family, union svc_addr_u *svcaddr)
-> -{
-> -	switch (family) {
-> -	case AF_INET:
-> -		((struct sockaddr_in *)sa)->sin_family = AF_INET;
-> -		((struct sockaddr_in *)sa)->sin_addr = svcaddr->addr;
-> -		return;
-> -	case AF_INET6:
-> -		((struct sockaddr_in6 *)sa)->sin6_family = AF_INET6;
-> -		((struct sockaddr_in6 *)sa)->sin6_addr = svcaddr->addr6;
-> -		return;
-> -	}
-> -}
-> -
->  static void
->  gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_rqst *rqstp)
->  {
-> @@ -1218,7 +1204,7 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_r
->  
->  	conn->cb_prog = se->se_callback_prog;
->  	conn->cb_ident = se->se_callback_ident;
-> -	rpc_svcaddr2sockaddr((struct sockaddr *)&conn->cb_saddr, expected_family, &rqstp->rq_daddr);
-> +	memcpy(&conn->cb_saddr, &rqstp->rq_daddr, rqstp->rq_daddrlen);
->  	return;
->  out_err:
->  	conn->cb_addr.ss_family = AF_UNSPEC;
-> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> index db7bcaf..1529a80 100644
-> --- a/include/linux/sunrpc/clnt.h
-> +++ b/include/linux/sunrpc/clnt.h
-> @@ -218,7 +218,8 @@ static inline bool __rpc_cmp_addr6(const struct sockaddr *sap1,
->  {
->  	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sap1;
->  	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sap2;
-> -	return ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr);
-> +	return ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr)
-> +		&& (sin1->sin6_scope_id == sin2->sin6_scope_id);
->  }
->  
->  static inline bool __rpc_copy_addr6(struct sockaddr *dst,
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index 223588a..3bc0dc9 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -212,11 +212,6 @@ static inline void svc_putu32(struct kvec *iov, __be32 val)
->  	iov->iov_len += sizeof(__be32);
->  }
->  
-> -union svc_addr_u {
-> -    struct in_addr	addr;
-> -    struct in6_addr	addr6;
-> -};
-> -
->  /*
->   * The context of a single thread, including the request currently being
->   * processed.
-> @@ -225,8 +220,12 @@ struct svc_rqst {
->  	struct list_head	rq_list;	/* idle list */
->  	struct list_head	rq_all;		/* all threads list */
->  	struct svc_xprt *	rq_xprt;	/* transport ptr */
-> +
->  	struct sockaddr_storage	rq_addr;	/* peer address */
->  	size_t			rq_addrlen;
-> +	struct sockaddr_storage	rq_daddr;	/* dest addr of request
-> +						 *  - reply from here */
-> +	size_t			rq_daddrlen;
->  
->  	struct svc_serv *	rq_server;	/* RPC service definition */
->  	struct svc_pool *	rq_pool;	/* thread pool */
-> @@ -255,9 +254,6 @@ struct svc_rqst {
->  	unsigned short
->  				rq_secure  : 1;	/* secure port */
->  
-> -	union svc_addr_u	rq_daddr;	/* dest addr of request
-> -						 *  - reply from here */
-> -
->  	void *			rq_argp;	/* decoded arguments */
->  	void *			rq_resp;	/* xdr'd results */
->  	void *			rq_auth_data;	/* flavor-specific data */
-> @@ -300,6 +296,21 @@ static inline struct sockaddr *svc_addr(const struct svc_rqst *rqst)
->  	return (struct sockaddr *) &rqst->rq_addr;
->  }
->  
-> +static inline struct sockaddr_in *svc_daddr_in(const struct svc_rqst *rqst)
-> +{
-> +	return (struct sockaddr_in *) &rqst->rq_daddr;
-> +}
-> +
-> +static inline struct sockaddr_in6 *svc_daddr_in6(const struct svc_rqst *rqst)
-> +{
-> +	return (struct sockaddr_in6 *) &rqst->rq_daddr;
-> +}
-> +
-> +static inline struct sockaddr *svc_daddr(const struct svc_rqst *rqst)
-> +{
-> +	return (struct sockaddr *) &rqst->rq_daddr;
-> +}
-> +
->  /*
->   * Check buffer bounds after decoding arguments
->   */
-> @@ -340,7 +351,8 @@ struct svc_deferred_req {
->  	struct svc_xprt		*xprt;
->  	struct sockaddr_storage	addr;	/* where reply must go */
->  	size_t			addrlen;
-> -	union svc_addr_u	daddr;	/* where reply must come from */
-> +	struct sockaddr_storage	daddr;	/* where reply must come from */
-> +	size_t			daddrlen;
->  	struct cache_deferred_req handle;
->  	size_t			xprt_hlen;
->  	int			argslen;
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index bd31208..d86bb67 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -254,8 +254,6 @@ EXPORT_SYMBOL_GPL(svc_create_xprt);
->   */
->  void svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt)
->  {
-> -	struct sockaddr *sin;
-> -
->  	memcpy(&rqstp->rq_addr, &xprt->xpt_remote, xprt->xpt_remotelen);
->  	rqstp->rq_addrlen = xprt->xpt_remotelen;
->  
-> @@ -263,15 +261,8 @@ void svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt)
->  	 * Destination address in request is needed for binding the
->  	 * source address in RPC replies/callbacks later.
->  	 */
-> -	sin = (struct sockaddr *)&xprt->xpt_local;
-> -	switch (sin->sa_family) {
-> -	case AF_INET:
-> -		rqstp->rq_daddr.addr = ((struct sockaddr_in *)sin)->sin_addr;
-> -		break;
-> -	case AF_INET6:
-> -		rqstp->rq_daddr.addr6 = ((struct sockaddr_in6 *)sin)->sin6_addr;
-> -		break;
-> -	}
-> +	memcpy(&rqstp->rq_daddr, &xprt->xpt_local, xprt->xpt_locallen);
-> +	rqstp->rq_daddrlen = xprt->xpt_locallen;
->  }
->  EXPORT_SYMBOL_GPL(svc_xprt_copy_addrs);
->  
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 767d494..dfd686e 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -143,19 +143,20 @@ static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
->  			cmh->cmsg_level = SOL_IP;
->  			cmh->cmsg_type = IP_PKTINFO;
->  			pki->ipi_ifindex = 0;
-> -			pki->ipi_spec_dst.s_addr = rqstp->rq_daddr.addr.s_addr;
-> +			pki->ipi_spec_dst.s_addr =
-> +				 svc_daddr_in(rqstp)->sin_addr.s_addr;
->  			cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
->  		}
->  		break;
->  
->  	case AF_INET6: {
->  			struct in6_pktinfo *pki = CMSG_DATA(cmh);
-> +			struct sockaddr_in6 *daddr = svc_daddr_in6(rqstp);
->  
->  			cmh->cmsg_level = SOL_IPV6;
->  			cmh->cmsg_type = IPV6_PKTINFO;
-> -			pki->ipi6_ifindex = 0;
-> -			ipv6_addr_copy(&pki->ipi6_addr,
-> -					&rqstp->rq_daddr.addr6);
-> +			pki->ipi6_ifindex = daddr->sin6_scope_id;
-> +			ipv6_addr_copy(&pki->ipi6_addr,	&daddr->sin6_addr);
->  			cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
->  		}
->  		break;
-> @@ -498,9 +499,13 @@ static int svc_udp_get_dest_address4(struct svc_rqst *rqstp,
->  				     struct cmsghdr *cmh)
->  {
->  	struct in_pktinfo *pki = CMSG_DATA(cmh);
-> +	struct sockaddr_in *daddr = svc_daddr_in(rqstp);
-> +
->  	if (cmh->cmsg_type != IP_PKTINFO)
->  		return 0;
-> -	rqstp->rq_daddr.addr.s_addr = pki->ipi_spec_dst.s_addr;
-> +
-> +	daddr->sin_family = AF_INET;
-> +	daddr->sin_addr.s_addr = pki->ipi_spec_dst.s_addr;
->  	return 1;
->  }
->  
-> @@ -511,9 +516,14 @@ static int svc_udp_get_dest_address6(struct svc_rqst *rqstp,
->  				     struct cmsghdr *cmh)
->  {
->  	struct in6_pktinfo *pki = CMSG_DATA(cmh);
-> +	struct sockaddr_in6 *daddr = svc_daddr_in6(rqstp);
-> +
->  	if (cmh->cmsg_type != IPV6_PKTINFO)
->  		return 0;
-> -	ipv6_addr_copy(&rqstp->rq_daddr.addr6, &pki->ipi6_addr);
-> +
-> +	daddr->sin6_family = AF_INET6;
-> +	ipv6_addr_copy(&daddr->sin6_addr, &pki->ipi6_addr);
-> +	daddr->sin6_scope_id = pki->ipi6_ifindex;
->  	return 1;
->  }
->  
-> @@ -614,6 +624,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
->  		skb_free_datagram_locked(svsk->sk_sk, skb);
->  		return 0;
->  	}
-> +	rqstp->rq_daddrlen = svc_addr_len(svc_daddr(rqstp));
->  
->  	if (skb_is_nonlinear(skb)) {
->  		/* we have to copy */
