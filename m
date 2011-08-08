@@ -1,47 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:57033 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751054Ab1HXXYX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Aug 2011 19:24:23 -0400
-Message-ID: <4E55869B.9010402@panasas.com>
-Date: Wed, 24 Aug 2011 16:17:47 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: NeilBrown <neilb@suse.de>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: Re: PATCH/RFC: remove state from struct nfs4_state
-References: <20110825084601.4d8fcdee@notabene.brown>
-In-Reply-To: <20110825084601.4d8fcdee@notabene.brown>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mx1.redhat.com ([209.132.183.28]:14610 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751248Ab1HHAuP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 7 Aug 2011 20:50:15 -0400
+Content-Type: text/plain; charset=us-ascii
+Message-ID: <20031.12991.915221.116757@regina.usersys.redhat.com>
+Date: Mon, 8 Aug 2011 10:50:07 +1000
+From: Max Matveev <makc@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: Re: [PATCH v2] Update nfs(5) manpage - timeo for NFS/TCP
+In-Reply-To: <703F70DB-E49F-47A0-B101-946147152F8B@oracle.com>
+References: <20110805021903.C84608198734@regina.usersys.redhat.com>
+	<20110805124015.GA16926@merit.edu>
+	<703F70DB-E49F-47A0-B101-946147152F8B@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 08/24/2011 03:46 PM, NeilBrown wrote:
-> 
-<snip>
-> diff --git a/include/linux/configfs.h b/include/linux/configfs.h
-> index 3081c58..9723858 100644
-> --- a/include/linux/configfs.h
-> +++ b/include/linux/configfs.h
-> @@ -15,8 +15,8 @@
->   *
->   * You should have received a copy of the GNU General Public
->   * License along with this program; if not, write to the
-> - * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-> - * Boston, MA 021110-1307, USA.
-> + * Free Software Foundation, Inc.,
-> + * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+On Fri, 5 Aug 2011 16:33:41 -0400, Chuck Lever wrote:
 
-You did not mean to add all these changes in this particular
-patch, did you?
+ > I thought that to_maxval was 60 seconds (600 deciseconds).  Once
+ > the effective timeo has increased to 60 seconds, it doesn't
+ > increase further.  Thus, if the default timeo setting is already 60
+ > seconds, you get effectively a fixed 60 second timeout, right?
 
-If you are at fixing this (snail mail) address. Can't you just
-remove the darn thing, that no one ever care about. I thing
-you don't need any address. But the most it should just be an
-email. Please don't let us slave every time FSF changes the rent
-(As your patch said about something else this address is set but
- is never used. Proof of - It was wrong for so many years and no
- one was hurt ;-) )
+In trond's tree - include/linux/nfs_fs.h
 
-Boaz
+#define NFS_MAX_TCP_TIMEOUT	(600*HZ)
+
+max
+
+
