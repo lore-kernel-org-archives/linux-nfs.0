@@ -1,59 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:33277 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752732Ab1HFRCP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2011 13:02:15 -0400
-Subject: Re: [PATCH] mount.nfs: Preserve any explicit port=2049 option
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1312625496-2496-1-git-send-email-luk@debian.org>
-Date: Sat, 6 Aug 2011 13:01:56 -0400
-Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-Message-Id: <309705ED-3215-493C-BA2B-5CF19CA0BF91@oracle.com>
-References: <1312625496-2496-1-git-send-email-luk@debian.org>
-To: Luk Claes <luk@debian.org>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:37946 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751080Ab1HHPh4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Aug 2011 11:37:56 -0400
+Subject: [PATCH 0/4] Series short description
+To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: hch@infradead.org, yong.fan@whamcloud.com, linux-fsdevel@vger.kernel.org,
+        tytso@mit.edu, adilger@whamcloud.com
+Date: Mon, 08 Aug 2011 17:37:52 +0200
+Message-ID: <20110808153432.1872437.85783.stgit@fsdevel3>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+With the ext3/ext4 directory index implementation hashes are used to specify
+offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
+on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
+hashes and therefore the probability of hash collisions for larger directories
+is rather high. As recently reported on the NFS mailing list that theoretical
+problem also happens on real systems:
+http://comments.gmane.org/gmane.linux.nfs/40863
 
-On Aug 6, 2011, at 6:11 AM, Luk Claes wrote:
+The following series adds two new f_mode flags to tell ext4
+to use 32-bit or 64-bit hash values for llseek() calls.
+These flags can then used by network file systems, such as NFS, to
+request 32-bit or 64-bit offsets (hashes).
 
-> If NFS port (2049) is supplied explicitly, don't ignore this setting by requesting it to portmapper again. Thanks to Ben Hutchings <ben@decadent.org.uk> for the patch.
-
-I'm not clear on what's broken.
-
-> Signed-off-by: Luk Claes <luk@debian.org>
-> ---
-> utils/mount/stropts.c |    4 ++--
-> 1 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index f1aa503..8b2799c 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -437,8 +437,8 @@ static int nfs_construct_new_options(struct mount_options *options,
-> 	if (po_append(options, new_option) == PO_FAILED)
-> 		return 0;
-> 
-> -	po_remove_all(options, "port");
-> -	if (nfs_pmap->pm_port != NFS_PORT) {
-> +	if(po_remove_all(options, "port") == PO_FOUND ||
-> +	   nfs_pmap->pm_port != NFS_PORT) {
-> 		snprintf(new_option, sizeof(new_option) - 1,
-> 			 "port=%lu", nfs_pmap->pm_port);
-> 		if (po_append(options, new_option) == PO_FAILED)
-> -- 
-> 1.7.5.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Version 2:
+- use f_mode instead of O_* flags and also in a separate patch
+- introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
+- fix SEEK_END in ext4_dir_llseek()
+- set f_mode flags in NFS code as early as possible and introduce a new
+  NFSD_MAY_64BIT_COOKIE flag for that
 
 --
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+Bernd Schubert
+Fraunhofer ITWM
