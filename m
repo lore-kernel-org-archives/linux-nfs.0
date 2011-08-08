@@ -1,33 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41449 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:59039 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754300Ab1HZUoM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Aug 2011 16:44:12 -0400
-Date: Fri, 26 Aug 2011 16:44:08 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSD: nfsd4_open Avoid race with grace period
- expiration
-Message-ID: <20110826204408.GD17196@fieldses.org>
-References: <4E45C164.1070604@panasas.com>
- <20110826203924.GC17196@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110826203924.GC17196@fieldses.org>
+	id S1751310Ab1HHWkI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Aug 2011 18:40:08 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Fred Isaman <iisaman@netapp.com>
+Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/2] read+write+readwrite open test
+Date: Mon,  8 Aug 2011 18:40:00 -0400
+Message-Id: <1312843201-6653-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1312843201-6653-1-git-send-email-bfields@redhat.com>
+References: <1312843201-6653-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-You also asked more generally what we could do to make the grace period
-less obnoxious.  I have some minimal notes here:
+---
+ nfs4.0/lib/nfs4/servertests/st_open.py |   26 ++++++++++++++++++++++++++
+ 1 files changed, 26 insertions(+), 0 deletions(-)
 
-	http://wiki.linux-nfs.org/wiki/index.php/Nfsd4_server_recovery#Nice_to_have
+diff --git a/nfs4.0/lib/nfs4/servertests/st_open.py b/nfs4.0/lib/nfs4/servertests/st_open.py
+index 1e5ec70..88134f1 100644
+--- a/nfs4.0/lib/nfs4/servertests/st_open.py
++++ b/nfs4.0/lib/nfs4/servertests/st_open.py
+@@ -566,4 +566,30 @@ def testDenyWrite4(t, env):
+         t.fail("READ returned %s, expected 'data'" % repr(res2.data))
+ 
+ 
++def testUpgrades(t, env):
++    """OPEN read, write, and read-write, then close
++
++    Inspired by a linux nfsd regression: the final close closes all the
++    opens, and nfsd did that right, but some misaccounting somewhere
++    leaked a file reference with the result that the filesystem would be
++    unmountable after running this test.
++
++    FLAGS: open all
++    DEPEND: MKFILE
++    CODE: OPEN29
++    """
++    c = env.c1
++    c.init_connection()
++    file = c.homedir + [t.code]
++    c.create_confirm('owner1', file, access=OPEN4_SHARE_ACCESS_READ,
++                                     deny=OPEN4_SHARE_DENY_NONE)
++    c.open_file('owner1', file, access=OPEN4_SHARE_ACCESS_WRITE,
++                                     deny=OPEN4_SHARE_DENY_NONE)
++    res = c.open_file('owner1', file, access=OPEN4_SHARE_ACCESS_BOTH,
++                                     deny=OPEN4_SHARE_DENY_NONE)
++    fh = res.resarray[-1].switch.switch.object
++    stateid = res.resarray[-2].switch.switch.stateid
++    c.close_file(t.code, fh, stateid)
++
++
+ #FRED - dot test
+-- 
+1.7.4.1
 
-Making sure there are no v4 clients on its own doesn't do the job since
-we also want consistency with NLM clients.  But the kernel doesn't
-currently know about NLM clients.
-
-I haven't come up with any bright ideas here yet.
-
---b.
