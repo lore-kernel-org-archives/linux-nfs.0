@@ -1,30 +1,77 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: nfsservctl(2)
-Date: Mon, 8 Aug 2011 12:22:32 -0400
-Message-ID: <20110808162232.GC904@fieldses.org>
+From: Olga Kornievskaia <aglo@citi.umich.edu>
+Subject: Re: Unable to Compile Latest Kernel from Git
+Date: Mon, 8 Aug 2011 15:01:43 -0400
+Message-ID: <CAN-5tyEmCx+1quj+545zDZ1ueQRVhHGgDzhdjZ1K1h6hCjOJvw@mail.gmail.com>
+References: <CALPVbefsY4Ddw6QOZu9BckCx+Q0YJg8tgbjK6xN5sQxbpdD16w@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-man-AT-vger.kernel.org@fieldses.org,
-	NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org
-To: mtk.manpages-AT-gmail.com@fieldses.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: Billy Hass <billdh16@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:51729 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752347Ab1HHQWd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Aug 2011 12:22:33 -0400
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:58275 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751278Ab1HHTBo convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Aug 2011 15:01:44 -0400
+Received: by gwaa12 with SMTP id a12so805343gwa.19
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Aug 2011 12:01:44 -0700 (PDT)
+In-Reply-To: <CALPVbefsY4Ddw6QOZu9BckCx+Q0YJg8tgbjK6xN5sQxbpdD16w-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The nfsservctl system call has long been superceded by a better
-interface, and is finally getting removed in the 3.1 kernel.
+I'd like to 2nd this.
 
-I'm not sure what to do with the man page--remove it, or add a note
-saying it's gone from recent kernels?  Do you have something you
-generally do in such cases?
+Current pnfs server doesn't build if chosen to be build into the
+kernel. It does build, if built as a module.
 
-It's been replaced by a set of files in the nfsd filesystem, which is
-documented in nfsd(7).  That man page looks sufficiently up-to-date to
-cover the functionality previous provided by nfsservctl.  (Though I only
-skimmed it quickly.  It might be worth a more careful review some day.)
+when client and server code is build into the kernel it seems that
+both sides try to define pnfs_roc() function and stepping on each
+others toes..
 
---b.
+On Fri, Aug 5, 2011 at 9:58 PM, Billy Hass <billdh16@gmail.com> wrote:
+> Hey all,
+>
+> I am unable to compile the latest kernel from the git tree.
+>
+> git clone git://git.linux-nfs.org/projects/bhalevy/linux-pnfs.git
+> cd linux-pnfs
+> make oldconfig
+> make -j5 -s
+> =A0=A0=A0=A0 [ ... ]
+> =A0=A0=A0=A0 [A lot of warnings, but no errors]
+> =A0=A0=A0=A0 [ ... ]
+> make install
+> =A0=A0=A0=A0 sh /usr/src/kernels/3.0.0/linux-
+> =A0 =A0 pnfs/arch/x86/boot/install.sh 3.0.0-pnfs arch/x86/boot/bzImag=
+e \
+> =A0=A0 =A0 =A0 =A0 System.map "/boot"
+> =A0 =A0 =A0 *** Missing file: arch/x86/boot/bzImage
+> =A0=A0=A0=A0=A0 *** You need to run "make" before "make install".
+> =A0=A0=A0=A0 make[1]: *** [install] Error 1
+> =A0=A0=A0=A0 make: *** [install] Error 2
+>
+> When I try to do the make again, here is the output
+> make -j5 -s
+> =A0=A0=A0=A0 fs/nfsd/built-in.o: In function `pnfs_roc':
+> =A0=A0=A0=A0 (.text+0x226d1): multiple definition of `pnfs_roc'
+> =A0=A0=A0=A0 fs/nfs/built-in.o:(.text+0x304ee): first defined here
+> =A0=A0=A0=A0 make[1]: *** [fs/built-in.o] Error 1
+> =A0=A0=A0=A0 make: *** [fs] Error 2
+> =A0=A0=A0=A0 make: *** Waiting for unfinished jobs....
+>
+> Thanks for any help!
+>
+> Bill
+>
+> --
+> Bill D. Hass
+> Major | Electrical Engineering BSE
+> Minor | Mathematics
+> University of Michigan '13
+> College of Engineering
+> (715) 923-8382
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
