@@ -1,157 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pz0-f42.google.com ([209.85.210.42]:41908 "EHLO
-	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751899Ab1HFPxD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2011 11:53:03 -0400
-Received: by mail-pz0-f42.google.com with SMTP id 37so5621454pzk.1
-        for <linux-nfs@vger.kernel.org>; Sat, 06 Aug 2011 08:53:03 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: rees@umich.edu, bhalevy@tonian.com, Trond.Myklebust@netapp.com,
-        Peng Tao <peng_tao@emc.com>
-Subject: [PATCH 1/2] pNFS: deal with ld write failure
-Date: Sat,  6 Aug 2011 08:52:13 -0700
-Message-Id: <1312645934-4436-2-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1312645934-4436-1-git-send-email-bergwolf@gmail.com>
-References: <1312645934-4436-1-git-send-email-bergwolf@gmail.com>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:38012 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751887Ab1HHPiK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Aug 2011 11:38:10 -0400
+Subject: [PATCH 3/4] RFC: Remove check for a 32-bit cookie in nfsd4_readdir()
+To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: hch@infradead.org, yong.fan@whamcloud.com, linux-fsdevel@vger.kernel.org,
+        tytso@mit.edu, adilger@whamcloud.com
+Date: Mon, 08 Aug 2011 17:38:08 +0200
+Message-ID: <20110808153808.1872437.85162.stgit@fsdevel3>
+In-Reply-To: <20110808153432.1872437.85783.stgit@fsdevel3>
+References: <20110808153432.1872437.85783.stgit@fsdevel3>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-For pnfs pagelist write failure, we need to pg_recoalesce and resend
-IO to mds.
+Fan Yong <yong.fan@whamcloud.com> noticed setting
+FMODE_32bithash wouldn't work with nfsd v4, as
+nfsd4_readdir() checks for 32 bit cookies. However, according to RFC 3530
+cookies have a 64 bit type and cookies are also defined as u64 in
+'struct nfsd4_readdir'. So remove the test for >32-bit values.
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 ---
- fs/nfs/internal.h |    4 ++++
- fs/nfs/pnfs.c     |   35 ++++++++++++++++++++++++++++++++---
- fs/nfs/write.c    |   21 ++++++++++++++-------
- 3 files changed, 50 insertions(+), 10 deletions(-)
+ fs/nfsd/nfs4proc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index ab12913..62f183d 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -305,6 +305,10 @@ extern void nfs_readdata_release(struct nfs_read_data *rdata);
- /* write.c */
- extern int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
- 		struct list_head *head);
-+extern int do_nfs_writepage(struct page *page, struct writeback_control *wbc,
-+		struct nfs_pageio_descriptor *pgio);
-+extern void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
-+		struct inode *inode, int ioflags);
- extern void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio);
- extern void nfs_writedata_release(struct nfs_write_data *wdata);
- extern void nfs_commit_free(struct nfs_write_data *p);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index e550e88..08aba45 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1172,6 +1172,13 @@ int
- pnfs_ld_write_done(struct nfs_write_data *data)
- {
- 	int status;
-+	struct nfs_pageio_descriptor pgio;
-+	struct writeback_control wbc = {
-+		.sync_mode = WB_SYNC_ALL,
-+		.range_start = data->mds_offset,
-+		.nr_to_write = data->npages,
-+		.range_end = LLONG_MAX,
-+	};
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index e807776..9bf0a66 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -691,7 +691,7 @@ nfsd4_readdir(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	readdir->rd_bmval[1] &= nfsd_suppattrs1(cstate->minorversion);
+ 	readdir->rd_bmval[2] &= nfsd_suppattrs2(cstate->minorversion);
  
- 	if (!data->pnfs_error) {
- 		pnfs_set_layoutcommit(data);
-@@ -1180,11 +1187,33 @@ pnfs_ld_write_done(struct nfs_write_data *data)
- 		return 0;
- 	}
+-	if ((cookie > ~(u32)0) || (cookie == 1) || (cookie == 2) ||
++	if ((cookie == 1) || (cookie == 2) ||
+ 	    (cookie == 0 && memcmp(readdir->rd_verf.data, zeroverf.data, NFS4_VERIFIER_SIZE)))
+ 		return nfserr_bad_cookie;
  
-+	put_lseg(data->lseg);
-+	data->lseg = NULL;
- 	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
- 		data->pnfs_error);
--	status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
--				    data->mds_ops, NFS_FILE_SYNC);
--	return status ? : -EAGAIN;
-+	nfs_pageio_init_write_mds(&pgio, data->inode, FLUSH_STABLE);
-+	pgio.pg_recoalesce = 1;
-+	while (!list_empty(&data->pages)) {
-+		struct nfs_page *req = nfs_list_entry(data->pages.next);
-+		struct page *page = req->wb_page;
-+
-+		nfs_list_remove_request(req);
-+		nfs_clear_page_tag_locked(req);
-+
-+		end_page_writeback(page);
-+
-+		lock_page(page);
-+		status = do_nfs_writepage(page, &wbc, &pgio);
-+		if (status) {
-+			/* FIXME: is this enough?? */
-+			set_page_dirty(page);
-+		}
-+		unlock_page(page);
-+	}
-+	nfs_pageio_complete(&pgio);
-+	nfs_writedata_release(data);
-+
-+	return 0;
- }
- EXPORT_SYMBOL_GPL(pnfs_ld_write_done);
- 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index b39b37f..0ccdf98 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -285,14 +285,9 @@ out:
- 	return ret;
- }
- 
--static int nfs_do_writepage(struct page *page, struct writeback_control *wbc, struct nfs_pageio_descriptor *pgio)
-+int do_nfs_writepage(struct page *page, struct writeback_control *wbc, struct nfs_pageio_descriptor *pgio)
- {
--	struct inode *inode = page->mapping->host;
- 	int ret;
--
--	nfs_inc_stats(inode, NFSIOS_VFSWRITEPAGE);
--	nfs_add_stats(inode, NFSIOS_WRITEPAGES, 1);
--
- 	nfs_pageio_cond_complete(pgio, page->index);
- 	ret = nfs_page_async_flush(pgio, page, wbc->sync_mode == WB_SYNC_NONE);
- 	if (ret == -EAGAIN) {
-@@ -301,6 +296,17 @@ static int nfs_do_writepage(struct page *page, struct writeback_control *wbc, st
- 	}
- 	return ret;
- }
-+EXPORT_SYMBOL_GPL(do_nfs_writepage);
-+
-+static int nfs_do_writepage(struct page *page, struct writeback_control *wbc, struct nfs_pageio_descriptor *pgio)
-+{
-+	struct inode *inode = page->mapping->host;
-+
-+	nfs_inc_stats(inode, NFSIOS_VFSWRITEPAGE);
-+	nfs_add_stats(inode, NFSIOS_WRITEPAGES, 1);
-+
-+	return do_nfs_writepage(page, wbc, pgio);
-+}
- 
- /*
-  * Write an mmapped page to the server.
-@@ -1051,12 +1057,13 @@ static const struct nfs_pageio_ops nfs_pageio_write_ops = {
- 	.pg_doio = nfs_generic_pg_writepages,
- };
- 
--static void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
-+void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
- 				  struct inode *inode, int ioflags)
- {
- 	nfs_pageio_init(pgio, inode, &nfs_pageio_write_ops,
- 				NFS_SERVER(inode)->wsize, ioflags);
- }
-+EXPORT_SYMBOL_GPL(nfs_pageio_init_write_mds);
- 
- void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio)
- {
--- 
-1.7.1.262.g5ef3d
 
