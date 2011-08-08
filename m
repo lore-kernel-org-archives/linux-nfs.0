@@ -1,36 +1,34 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
-Subject: Linux pNFS status meeting 07/07/11
-Date: Wed, 6 Jul 2011 09:34:05 -0700
-Message-ID: <OF976C472A.D912BB1F-ON882578C5.005AD3D5-882578C5.005B029B@us.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-To: linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:41628 "EHLO e9.ny.us.ibm.com"
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:51733 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753585Ab1GFQeJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Jul 2011 12:34:09 -0400
-Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
-	by e9.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p66G2U32025950
-	for <linux-nfs@vger.kernel.org>; Wed, 6 Jul 2011 12:02:30 -0400
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p66GY82Q162792
-	for <linux-nfs@vger.kernel.org>; Wed, 6 Jul 2011 12:34:08 -0400
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p66CXud8001593
-	for <linux-nfs@vger.kernel.org>; Wed, 6 Jul 2011 09:33:56 -0300
-Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p66CXu9m001587
-	for <linux-nfs@vger.kernel.org>; Wed, 6 Jul 2011 09:33:56 -0300
+	id S1752418Ab1HHQXb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Aug 2011 12:23:31 -0400
+Date: Mon, 8 Aug 2011 12:23:28 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: mtk.manpages@gmail.com
+Cc: linux-man@vger.kernel.org, NeilBrown <neilb@suse.de>,
+        linux-nfs@vger.kernel.org
+Subject: Re: nfsservctl(2)
+Message-ID: <20110808162328.GD904@fieldses.org>
+References: <20110808162232.GC904@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110808162232.GC904@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-Meeting on Thursday 07/07/11 at 9:30 AM PST (12:30 PM EST)
+The nfsservctl system call has long been superceded by a better
+interface, and is finally getting removed in the 3.1 kernel.
 
+I'm not sure what to do with the man page--remove it, or add a note
+saying it's gone from recent kernels?  Do you have something you
+generally do in such cases?
 
-USA Toll-Free: 888-426-6840
-USA Caller Paid: 215-861-6239
+It's been replaced by a set of files in the nfsd filesystem, which is
+documented in nfsd(7).  That man page looks sufficiently up-to-date to
+cover the functionality previous provided by nfsservctl.  (Though I only
+skimmed it quickly.  It might be worth a more careful review some day.)
 
-Israel Toll-Free: 1-809-417-783
+--b.
 
-Participant Code: 8792872
+(Argh, sorry, resending with cut-n-pasted addresses de-obfuscated.)
