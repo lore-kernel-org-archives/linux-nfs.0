@@ -1,208 +1,198 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:55919 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752148Ab1HCIxP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Aug 2011 04:53:15 -0400
-Received: by vxh35 with SMTP id 35so453649vxh.19
-        for <linux-nfs@vger.kernel.org>; Wed, 03 Aug 2011 01:53:14 -0700 (PDT)
-In-Reply-To: <1312311040-9400-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1312306214.2823.10.camel@lade.trondhjem.org> <1312311040-9400-1-git-send-email-Trond.Myklebust@netapp.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Wed, 3 Aug 2011 16:52:53 +0800
-Message-ID: <CA+a=Yy5g3xkO8cbyG+NL87Y+4phqxHLsf2Pjzp+=4egYeJYJXg@mail.gmail.com>
-Subject: Re: [PATCH v2 1/2] NFSv4.1: Fix the callback 'highest_used_slotid' behaviour
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Andy Adamson <andros@netapp.com>, Jim Rees <rees@umich.edu>,
-        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:48271 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753490Ab1HIUXC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Aug 2011 16:23:02 -0400
+Received: by fxh19 with SMTP id 19so368666fxh.19
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Aug 2011 13:23:00 -0700 (PDT)
+Message-ID: <4E419720.2080909@tonian.com>
+Date: Tue, 09 Aug 2011 23:22:56 +0300
+From: Benny Halevy <benny@tonian.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
+        open-osd <osd-dev@open-osd.org>
+Subject: Re: [PATCH RFC] pnfsd-exofs: convert to v3.1 ORE
+References: <4E416E20.2010205@panasas.com> <4E416ECC.7070904@panasas.com> <4E41881E.7020307@panasas.com>
+In-Reply-To: <4E41881E.7020307@panasas.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I applied the two patches and tested more than 10 runs and no hang so far.
+On 2011-08-09 22:18, Boaz Harrosh wrote:
+> Benny hi
+> 
+> Please push your new tree with below patch and I will
+> send you SQUASHMES ontop of your tree. This is because
+> I'm having problems making a coherent tree, because
+> current pnfs/pnfsd-exofs branch has conflicts when
+> merging with 3.1-rc1. So your rebase should save me the
+> resolving work.
 
-Thanks,
-Tao
+Done. Thanks!
 
-On Wed, Aug 3, 2011 at 2:50 AM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> Currently, there is no guarantee that we will call nfs4_cb_take_slot() even
-> though nfs4_callback_compound() will consistently call
-> nfs4_cb_free_slot() provided the cb_process_state has set the 'clp' field.
-> The result is that we can trigger the BUG_ON() upon the next call to
-> nfs4_cb_take_slot().
->
-> This patch fixes the above problem by using the slot id that was taken in
-> the CB_SEQUENCE operation as a flag for whether or not we need to call
-> nfs4_cb_free_slot().
-> It also fixes an atomicity problem: we need to set tbl->highest_used_slotid
-> atomically with the check for NFS4_SESSION_DRAINING, otherwise we end up
-> racing with the various tests in nfs4_begin_drain_session().
->
-> Cc: stable@kernel.org [2.6.38+]
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->  fs/nfs/callback.h      |    2 +-
->  fs/nfs/callback_proc.c |   20 ++++++++++++++------
->  fs/nfs/callback_xdr.c  |   24 +++++++-----------------
->  3 files changed, 22 insertions(+), 24 deletions(-)
->
-> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-> index b257383..07df5f1 100644
-> --- a/fs/nfs/callback.h
-> +++ b/fs/nfs/callback.h
-> @@ -38,6 +38,7 @@ enum nfs4_callback_opnum {
->  struct cb_process_state {
->        __be32                  drc_status;
->        struct nfs_client       *clp;
-> +       int                     slotid;
->  };
->
->  struct cb_compound_hdr_arg {
-> @@ -166,7 +167,6 @@ extern unsigned nfs4_callback_layoutrecall(
->        void *dummy, struct cb_process_state *cps);
->
->  extern void nfs4_check_drain_bc_complete(struct nfs4_session *ses);
-> -extern void nfs4_cb_take_slot(struct nfs_client *clp);
->
->  struct cb_devicenotifyitem {
->        uint32_t                cbd_notify_type;
-> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-> index 74780f9..0ab8202 100644
-> --- a/fs/nfs/callback_proc.c
-> +++ b/fs/nfs/callback_proc.c
-> @@ -348,7 +348,7 @@ validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
->        /* Normal */
->        if (likely(args->csa_sequenceid == slot->seq_nr + 1)) {
->                slot->seq_nr++;
-> -               return htonl(NFS4_OK);
-> +               goto out_ok;
->        }
->
->        /* Replay */
-> @@ -367,11 +367,14 @@ validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
->        /* Wraparound */
->        if (args->csa_sequenceid == 1 && (slot->seq_nr + 1) == 0) {
->                slot->seq_nr = 1;
-> -               return htonl(NFS4_OK);
-> +               goto out_ok;
->        }
->
->        /* Misordered request */
->        return htonl(NFS4ERR_SEQ_MISORDERED);
-> +out_ok:
-> +       tbl->highest_used_slotid = args->csa_slotid;
-> +       return htonl(NFS4_OK);
->  }
->
->  /*
-> @@ -433,26 +436,32 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
->                              struct cb_sequenceres *res,
->                              struct cb_process_state *cps)
->  {
-> +       struct nfs4_slot_table *tbl;
->        struct nfs_client *clp;
->        int i;
->        __be32 status = htonl(NFS4ERR_BADSESSION);
->
-> -       cps->clp = NULL;
-> -
->        clp = nfs4_find_client_sessionid(args->csa_addr, &args->csa_sessionid);
->        if (clp == NULL)
->                goto out;
->
-> +       tbl = &clp->cl_session->bc_slot_table;
-> +
-> +       spin_lock(&tbl->slot_tbl_lock);
->        /* state manager is resetting the session */
->        if (test_bit(NFS4_SESSION_DRAINING, &clp->cl_session->session_state)) {
-> -               status = NFS4ERR_DELAY;
-> +               spin_unlock(&tbl->slot_tbl_lock);
-> +               status = htonl(NFS4ERR_DELAY);
->                goto out;
->        }
->
->        status = validate_seqid(&clp->cl_session->bc_slot_table, args);
-> +       spin_unlock(&tbl->slot_tbl_lock);
->        if (status)
->                goto out;
->
-> +       cps->slotid = args->csa_slotid;
-> +
->        /*
->         * Check for pending referring calls.  If a match is found, a
->         * related callback was received before the response to the original
-> @@ -469,7 +478,6 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
->        res->csr_slotid = args->csa_slotid;
->        res->csr_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
->        res->csr_target_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
-> -       nfs4_cb_take_slot(clp);
->
->  out:
->        cps->clp = clp; /* put in nfs4_callback_compound */
-> diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-> index c6c86a7..918ad64 100644
-> --- a/fs/nfs/callback_xdr.c
-> +++ b/fs/nfs/callback_xdr.c
-> @@ -754,26 +754,15 @@ static void nfs4_callback_free_slot(struct nfs4_session *session)
->         * Let the state manager know callback processing done.
->         * A single slot, so highest used slotid is either 0 or -1
->         */
-> -       tbl->highest_used_slotid--;
-> +       tbl->highest_used_slotid = -1;
->        nfs4_check_drain_bc_complete(session);
->        spin_unlock(&tbl->slot_tbl_lock);
->  }
->
-> -static void nfs4_cb_free_slot(struct nfs_client *clp)
-> +static void nfs4_cb_free_slot(struct cb_process_state *cps)
->  {
-> -       if (clp && clp->cl_session)
-> -               nfs4_callback_free_slot(clp->cl_session);
-> -}
-> -
-> -/* A single slot, so highest used slotid is either 0 or -1 */
-> -void nfs4_cb_take_slot(struct nfs_client *clp)
-> -{
-> -       struct nfs4_slot_table *tbl = &clp->cl_session->bc_slot_table;
-> -
-> -       spin_lock(&tbl->slot_tbl_lock);
-> -       tbl->highest_used_slotid++;
-> -       BUG_ON(tbl->highest_used_slotid != 0);
-> -       spin_unlock(&tbl->slot_tbl_lock);
-> +       if (cps->slotid != -1)
-> +               nfs4_callback_free_slot(cps->clp->cl_session);
->  }
->
->  #else /* CONFIG_NFS_V4_1 */
-> @@ -784,7 +773,7 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
->        return htonl(NFS4ERR_MINOR_VERS_MISMATCH);
->  }
->
-> -static void nfs4_cb_free_slot(struct nfs_client *clp)
-> +static void nfs4_cb_free_slot(struct cb_process_state *cps)
->  {
->  }
->  #endif /* CONFIG_NFS_V4_1 */
-> @@ -866,6 +855,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
->        struct cb_process_state cps = {
->                .drc_status = 0,
->                .clp = NULL,
-> +               .slotid = -1,
->        };
->        unsigned int nops = 0;
->
-> @@ -906,7 +896,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
->
->        *hdr_res.status = status;
->        *hdr_res.nops = htonl(nops);
-> -       nfs4_cb_free_slot(cps.clp);
-> +       nfs4_cb_free_slot(&cps);
->        nfs_put_client(cps.clp);
->        dprintk("%s: done, status = %u\n", __func__, ntohl(status));
->        return rpc_success;
+> 
+> Thanks
+> Boaz
+> 
+> On 08/09/2011 10:30 AM, Boaz Harrosh wrote:
+>>
+>> Sorry Benny about the merge conflicts I caused you
+>> with the rushed push to Linus.
+>>
+>> I'll send you soon the proper fix, actually the
+>> change needs to be deeper and the resulting code
+>> is more simple.
+>>
+>> There are also a couple of more patches to export.c
+>> that need to be added as well.
+>>
+>> I'll send it all today, I hope it's soon enough.
+>> If not then below makes it compile I can prepare
+>> the SQUASHMEs ontop of your tree.
+>>
+>> Thanks
+>> Boaz
+>>
+>> On 08/09/2011 07:09 AM, Benny Halevy wrote:
+>>> forwarding to osd-dev list...
+>>>
+>>> -------- Original Message --------
+>>> Subject: [PATCH RFC] pnfsd-exofs: convert to v3.1 ORE
+>>> Date: Tue, 09 Aug 2011 09:25:32 -0400
+>>> From: Benny Halevy <bhalevy@tonian.com>
+>>> To: Boaz Harrosh <bharrosh@panasas.com>
+>>> CC: NFS list <linux-nfs@vger.kernel.org>
+>>>
+>>> Hi Boaz,
+>>>
+>>> Does the following patch makes sense in the new v3.1 ORE world?
+>>> Can you please help test it?
+>>> If it looks ok to you I'll just go ahead and release the rebased tree
+>>> to linux-nfs.org and you can pull it from there.
+>>>
+>>> Thanks,
+>>>
+>>> Benny
+>>>
+>>> >From d89d93c733c8bc2984f1a918e522494558306f1d Mon Sep 17 00:00:00 2001
+>>> From: Benny Halevy <bhalevy@tonian.com>
+>>> Date: Tue, 9 Aug 2011 07:33:11 -0400
+>>> Subject: [PATCH] pnfsd-exofs: convert to v3.1 ORE
+>>>
+>>> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+>>> ---
+>>>  fs/exofs/export.c |   34 +++++++++++++++++++++++-----------
+>>>  1 files changed, 23 insertions(+), 11 deletions(-)
+>>>
+>>> diff --git a/fs/exofs/export.c b/fs/exofs/export.c
+>>> index 8281c85..07bc5e2 100644
+>>> --- a/fs/exofs/export.c
+>>> +++ b/fs/exofs/export.c
+>>> @@ -73,6 +73,13 @@ err:
+>>>  	return status;
+>>>  }
+>>>
+>>> +static unsigned exofs_layout_od_id(struct ore_layout *layout,
+>>> +				   struct ore_components *comps,
+>>> +				   osd_id obj_no, unsigned layout_index)
+>>> +{
+>>> +	return (layout_index + obj_no * layout->mirrors_p1) % comps->numdevs;
+>>> +}
+>>> +
+>>>  static enum nfsstat4 exofs_layout_get(
+>>>  	struct inode *inode,
+>>>  	struct exp_xdr_stream *xdr,
+>>> @@ -81,7 +88,8 @@ static enum nfsstat4 exofs_layout_get(
+>>>  {
+>>>  	struct exofs_i_info *oi = exofs_i(inode);
+>>>  	struct exofs_sb_info *sbi = inode->i_sb->s_fs_info;
+>>> -	struct exofs_layout *el = &sbi->layout;
+>>> +	struct ore_layout *el = &sbi->layout;
+>>> +	struct ore_components *ec = &sbi->comps;
+>>>  	struct pnfs_osd_object_cred *creds = NULL;
+>>>  	struct pnfs_osd_layout layout;
+>>>  	__be32 *start;
+>>> @@ -104,7 +112,7 @@ static enum nfsstat4 exofs_layout_get(
+>>>  	/* Fill in a pnfs_osd_layout struct */
+>>>  	layout.olo_map = sbi->data_map;
+>>>  	layout.olo_comps_index = 0;
+>>> -	layout.olo_num_comps = el->s_numdevs;
+>>> +	layout.olo_num_comps = ec->numdevs;
+>>>  	layout.olo_comps = creds;
+>>>
+>>>  	nfserr = pnfs_osd_xdr_encode_layout_hdr(xdr, &layout);
+>>> @@ -112,16 +120,19 @@ static enum nfsstat4 exofs_layout_get(
+>>>  		goto out;
+>>>
+>>>  	/* Encode layout components */
+>>> -	for (i = 0; i < el->s_numdevs; i++) {
+>>> +	for (i = 0; i < ec->numdevs; i++) {
+>>>  		struct pnfs_osd_object_cred cred;
+>>> -		osd_id id = exofs_oi_objno(oi);
+>>> -		unsigned dev = exofs_layout_od_id(el, id, i);
+>>> +		struct osd_obj_id oid = {
+>>> +			.partition = sbi->one_comp.obj.partition,
+>>> +			.id = exofs_oi_objno(oi)
+>>> +		};
+>>> +		unsigned dev = exofs_layout_od_id(el, ec, oid.id, i);
+>>>
+>>>  		set_dev_id(&cred.oc_object_id.oid_device_id, args->lg_sbid,
+>>>  			   dev);
+>>> -		cred.oc_object_id.oid_partition_id = el->s_pid;
+>>> -		cred.oc_object_id.oid_object_id = id;
+>>> -		cred.oc_osd_version = osd_dev_is_ver1(el->s_ods[dev]) ?
+>>> +		cred.oc_object_id.oid_partition_id = oid.partition;
+>>> +		cred.oc_object_id.oid_object_id = oid.id;
+>>> +		cred.oc_osd_version = osd_dev_is_ver1(ec->ods[dev]) ?
+>>>  						PNFS_OSD_VERSION_1 :
+>>>  						PNFS_OSD_VERSION_2;
+>>>  		cred.oc_cap_key_sec = PNFS_OSD_CAP_KEY_SEC_NONE;
+>>> @@ -130,7 +141,7 @@ static enum nfsstat4 exofs_layout_get(
+>>>  		cred.oc_cap_key.cred		= NULL;
+>>>
+>>>  		cred.oc_cap.cred_len	= OSD_CAP_LEN;
+>>> -		cred.oc_cap.cred	= oi->i_cred;
+>>> +		exofs_make_credential(cred.oc_cap.cred, &oid);
+>>>  		nfserr = pnfs_osd_xdr_encode_layout_cred(xdr, &cred);
+>>>  		if (unlikely(nfserr))
+>>>  			goto out;
+>>> @@ -277,6 +288,7 @@ int exofs_get_device_info(struct super_block *sb, struct exp_xdr_stream *xdr,
+>>>  			  const struct nfsd4_pnfs_deviceid *devid)
+>>>  {
+>>>  	struct exofs_sb_info *sbi = sb->s_fs_info;
+>>> +	struct ore_components *ec = &sbi->comps;
+>>>  	struct pnfs_osd_deviceaddr devaddr;
+>>>  	const struct osd_dev_info *odi;
+>>>  	u64 devno = devid->devid;
+>>> @@ -285,13 +297,13 @@ int exofs_get_device_info(struct super_block *sb, struct exp_xdr_stream *xdr,
+>>>
+>>>  	memset(&devaddr, 0, sizeof(devaddr));
+>>>
+>>> -	if (unlikely(devno >= sbi->layout.s_numdevs)) {
+>>> +	if (unlikely(devno >= ec->numdevs)) {
+>>>  		EXOFS_DBGMSG("Error: Device((%llx,%llx) does not exist\n",
+>>>  			     devid->sbid, devno);
+>>>  		return -ENODEV;
+>>>  	}
+>>>
+>>> -	odi = osduld_device_info(sbi->layout.s_ods[devno]);
+>>> +	odi = osduld_device_info(ec->ods[devno]);
+>>>
+>>>  	devaddr.oda_systemid.len = odi->systemid_len;
+>>>  	devaddr.oda_systemid.data = (void *)odi->systemid; /* !const cast */
+>>
+>> _______________________________________________
+>> osd-dev mailing list
+>> osd-dev@open-osd.org
+>> http://mailman.open-osd.org/mailman/listinfo/osd-dev
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 > --
-> 1.7.6
->
->
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
