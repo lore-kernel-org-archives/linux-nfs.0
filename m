@@ -1,47 +1,230 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46588 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755531Ab1HSTTt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Aug 2011 15:19:49 -0400
-Date: Fri, 19 Aug 2011 15:19:45 -0400
-To: paul.szabo@sydney.edu.au
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org
-Subject: Re: Please support NSF squashing multiple groups
-Message-ID: <20110819191945.GA1641@fieldses.org>
-References: <20110819110536.1f0133c6@notabene.brown>
- <201108190210.p7J2AYCB028893@bari.maths.usyd.edu.au>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <201108190210.p7J2AYCB028893@bari.maths.usyd.edu.au>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from DMZ-MAILSEC-SCANNER-2.MIT.EDU ([18.9.25.13]:51356 "EHLO
+	dmz-mailsec-scanner-2.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750752Ab1HIXPG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Aug 2011 19:15:06 -0400
+Message-ID: <20110809191500.2rm2rkclk408k0o0@webmail.mit.edu>
+Date: Tue, 09 Aug 2011 19:15:00 -0400
+From: Gregory Magoon <gmagoon@MIT.EDU>
+To: "Loewe, Bill" <bloewe@panasas.com>, "Harrosh, Boaz" <bharrosh@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@citi.umich.edu>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: NFSv4 vs NFSv3 with MPICH2-1.4
+References: <20110728152306.219iz5wpkcokoo4c@webmail.mit.edu>
+	<1311886684.27285.8.camel@lade.trondhjem.org>
+	<20110728172449.8wxxte4jg0s8kcgs@webmail.mit.edu>
+	<1311889677.27285.14.camel@lade.trondhjem.org>
+	<20110728180120.bf6gq5zyos8wwg4s@webmail.mit.edu>
+	<4E31E336.9090702@panasas.com>
+	<20110728191519.ql5la3phk4000ko4@webmail.mit.edu>
+	<4E337844.2070800@panasas.com>
+	<717300C842BCD249A6A8CADE9995E130093FDE07@seabiscuit.int.panasas.com>
+	<20110802121913.y5qpfnkftw00o00s@webmail.mit.edu>
+In-Reply-To: <20110802121913.y5qpfnkftw00o00s@webmail.mit.edu>
+Content-Type: text/plain;
+	charset=ISO-8859-1;
+	format="flowed"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 19, 2011 at 12:10:34PM +1000, paul.szabo@sydney.edu.au wrote:
-> > If you are using kerberos authentication then you should be able
-> > to trust that any remote user really is who they say they are ...
-> 
-> Does that "work" also against the "evil remote root" e.g. when the
-> remote machine is compromised?
+Just a quick follow-up...I was wondering if anyone had the chance to 
+take a look
+at the tcpdump I sent to a few of you last week.
 
-It does what's possible.  If a user gives their credentials to the
-compromised client--well, what can you do, the attacker has their
-credentials at that point.  So if everyone in your department logs into
-the same client, then root on that client is going to be able to
-impersonate any of them.  Nothing you can do about that.
+If anyone else on the list wants to take a look, please let me know, 
+and I will
+send you the link privately.
 
-On the other hand, if several people each have their own client and only
-log in to their own clients, and if one of the clients is compromised,
-then that client isn't going to be able to impersonate users that have
-never given it any credentials.
+Thanks,
+Greg
 
-> > If you are using NFSv4 and kerberos than there already exist
-> > interfaces to do what you want. See "man idmap.conf". ...
-> 
-> Sorry I do not use NFSv4 or kerberos, yet. Could you please point me
-> to references about idmap.conf, the ones I found suggest it only takes
-> [Mapping] settings for Nobody-User and Nobody-Group.
+Quoting Gregory Magoon <gmagoon@MIT.EDU>:
 
-Look for "static" in a recent version of the idmapd.conf man page.
+> Thanks all for the feedback and sorry for the delay...one of our HDDs 
+> failed on
+> Saturday, so I had to take care of that.
+>
+> Because I don't want to interrupt a working system, it will not be convenient
+> for me to try the "no delegations" option that has been suggested.
+>
+> I was however, able to grab a hold of a temporarily free node (temporarily
+> returned to NFSv4 configuration) to capture the tcp traffic. I have sent a
+> short (< 1 sec) snapshot captured during (I believe) the allred3 
+> mpich2 test. I
+> have privately sent you a link to the file. Hopefully the issue will 
+> be obvious
+> from this (e.g. you will immediately see that I am doing something I 
+> shouldn't
+> be doing). If a longer snapshot started before the tests would be 
+> useful, I can
+> get that too.
+>
+> I had posted on the mpich mailing list before I came here (
+> http://lists.mcs.anl.gov/pipermail/mpich-discuss/2011-July/010432.html ) and
+> unfortunately they weren't able to provide any insights.
+>
+> Thanks again,
+> Greg
+>
+>
+> Quoting "Loewe, Bill" <bloewe@panasas.com>:
+>
+>> Hi Greg,
+>>
+>> IOR is independent of MPICH2, but does require MPI for process 
+>> coordination.  By default, IOR will use the "-a POSIX" option for 
+>> standard POSIX I/O -- open(), write(), close(), etc.
+>>
+>> In addition, IOR can use the MPI-IO library calls (MPI_File_open(), 
+>> etc.) to perform I/O.
+>>
+>> For the build process of MPICH2 "make tests" exercises this MPI-IO 
+>> (ROMIO) interface which uses an ADIO (Abstract-Device Interface for 
+>> I/O) layer.  ADIO can interface to different file systems (NFS, 
+>> PanFS, PVFS2, Lustre, e.g.).
+>>
+>> The errors you're encountering in "make tests" for MPICH2 do not 
+>> appear to be testing the I/O, however, but seem to be an issue with 
+>> the launcher for the tests in general.  I agree with Boaz that it 
+>> may make sense to follow up with the MPICH developers for this.  
+>> Under their main page 
+>> (http://www.mcs.anl.gov/research/projects/mpich2/) they have a 
+>> support pulldown with FAQ and a mailing list.  They may be able to 
+>> help resolve this for you.
+>>
+>> Thanks,
+>>
+>> --Bill.
+>>
+>> -----Original Message-----
+>> From: Harrosh, Boaz
+>> Sent: Friday, July 29, 2011 8:20 PM
+>> To: Gregory Magoon
+>> Cc: Trond Myklebust; linux-nfs@vger.kernel.org; J. Bruce Fields; Loewe, Bill
+>> Subject: Re: NFSv4 vs NFSv3 with MPICH2-1.4
+>>
+>> On 07/28/2011 04:15 PM, Gregory Magoon wrote:
+>>> Unfortunately, I'm not familiar enough with MPICH2 to have an idea about
+>>> significant changes between version 1.3 and 1.4, but other evidence 
+>>> suggests
+>>> that the version is not the issue and that I would have the same 
+>>> problem with
+>>> v1.3.
+>>>
+>>> I'm using the MPICH2 test suite invoked by "make testing" (see below
+>>> for initial
+>>> output).
+>>>
+>>> I'm using the nfs-kernel-server and nfs-common Ubuntu packages (natty
+>>> release).
+>>>
+>>
+>> You have not answered the most important question:
+>>>> Also are you using the builtin nfs-client driver or the POSIX interface?
+>>
+>> Which I'll assume means you don't know. So I'll try to elaborate. Just for
+>> background, I've never used "make tests" before all I used was IOR & mdtest.
+>>
+>> Now if you print the usage string for IOR you get this option:
+>>
+>> 	-a S  api --  API for I/O [POSIX|MPIIO|HDF5|NCMPI]
+>>
+>> I'm not familiar with the code but what I understand is only "-a 
+>> POSIX" will actually
+>> use the regular Kernel VFS interface for read/writing of files. The 
+>> other options
+>> have different drivers for different protocols. I do not know first 
+>> hand, but I once
+>> heard in a conference that -a MPIIO has a special NFS driver that 
+>> uses better NFS
+>> semantics and avoids the POSIX semantics which are bad for big 
+>> cluster performance.
+>> All this is speculations and rumors on my part, and you will need to 
+>> consult with the
+>> mpich guys.
+>>
+>> Now I can imagine that a "make tests" would try all possible 
+>> combinations of "-a S"
+>> So you'll need to dig out what is the falling test and is it really 
+>> using the Kernel
+>> NFS driver at that point. (I bet if you do a tcpdump like Bruce said 
+>> the guys here will
+>> be able to see if this is a Linux NFS or not)
+>>
+>> I CC: Bill Loewe that might know much more then me about this 
+>> subject. And please do
+>> speak with the MPICH people (But keep us in the loop it is 
+>> interesting to know)
+>>
+>> Thanks
+>> Boaz
+>>
+>>> Thanks,
+>>> Greg
+>>>
+>>> user@node01:~/Molpro/src/mpich2-1.4$ make testing
+>>> (cd test && make testing)
+>>> make[1]: Entering directory `/home/user/Molpro/src/mpich2-1.4/test'
+>>> (NOXMLCLOSE=YES && export NOXMLCLOSE && cd mpi && make testing)
+>>> make[2]: Entering directory `/home/user/Molpro/src/mpich2-1.4/test/mpi'
+>>> ./runtests -srcdir=. -tests=testlist \
+>>>                     
+>>> -mpiexec=/home/user/Molpro/src/mpich2-install/bin/mpiexec \
+>>>                     -xmlfile=summary.xml
+>>> Looking in ./testlist
+>>> Processing directory attr
+>>> Looking in ./attr/testlist
+>>> Processing directory coll
+>>> Looking in ./coll/testlist
+>>> Unexpected output in allred: [mpiexec@node01] APPLICATION TIMED OUT
+>>> Unexpected output in allred: [proxy:0:0@node01] 
+>>> HYD_pmcd_pmip_control_cmd_cb
+>>> (./pm/pmiserv/pmip_cb.c:906): assert (!closed) failed
+>>> Unexpected output in allred: [proxy:0:0@node01] 
+>>> HYDT_dmxu_poll_wait_for_event
+>>> (./tools/demux/demux_poll.c:77): callback returned error status
+>>> Unexpected output in allred: [proxy:0:0@node01] main
+>>> (./pm/pmiserv/pmip.c:226):
+>>> demux engine error waiting for event
+>>> Unexpected output in allred: [mpiexec@node01] HYDT_bscu_wait_for_completion
+>>> (./tools/bootstrap/utils/bscu_wait.c:70): one of the processes terminated
+>>> badly; aborting
+>>> Unexpected output in allred: [mpiexec@node01] HYDT_bsci_wait_for_completion
+>>> (./tools/bootstrap/src/bsci_wait.c:23): launcher returned error waiting for
+>>> completion
+>>> Unexpected output in allred: [mpiexec@node01] HYD_pmci_wait_for_completion
+>>> (./pm/pmiserv/pmiserv_pmci.c:189): launcher returned error waiting for
+>>> completion
+>>> Unexpected output in allred: [mpiexec@node01] main 
+>>> (./ui/mpich/mpiexec.c:397):
+>>> process manager error waiting for completion
+>>> Program allred exited without No Errors
+>>>
+>>>>
+>>>> Hi Gregory
+>>>>
+>>>> We are using MPICH2-1.3.1 and the IOR mpich test. as well as the mdtest
+>>>> test. And have had no issues so far with nfsv4 nfsv4.1 and pnfs. In fact
+>>>> this is our standard performance test.
+>>>>
+>>>> What tests are you using?
+>>>> Do you know of any major changes between MPICH2-1.3.1 and MPICH2-1.4?
+>>>> Also are you using the builtin nfs-client driver or the POSIX interface?
+>>>>
+>>>> Boaz
+>>>>
+>>>
+>>>
+>>
+>>
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 
---b.
+
