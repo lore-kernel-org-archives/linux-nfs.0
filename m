@@ -1,125 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4988 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753928Ab1HYUZu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Aug 2011 16:25:50 -0400
-Message-ID: <4E56AFCB.2020803@RedHat.com>
-Date: Thu, 25 Aug 2011 16:25:47 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Luk Claes <luk@debian.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] mount.nfs: Preserve any explicit port=2049 option
-References: <1312625496-2496-1-git-send-email-luk@debian.org>
-In-Reply-To: <1312625496-2496-1-git-send-email-luk@debian.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from natasha.panasas.com ([67.152.220.90]:50570 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752188Ab1HIUc5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Aug 2011 16:32:57 -0400
+Received: from zenyatta.panasas.com (zenyatta.int.panasas.com [172.17.28.63])
+	by natasha.panasas.com (8.13.1/8.13.1) with ESMTP id p79KWuA3026275
+	for <linux-nfs@vger.kernel.org>; Tue, 9 Aug 2011 16:32:56 -0400
+Message-ID: <4E419971.8040006@panasas.com>
+Date: Tue, 9 Aug 2011 13:32:49 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] SQUASHME: pnfsd: Fix compile breakage when !CONFIG_PNFSD
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-First of all let me apologize for taking so long
-to get to this... I did take some time off.... 
 
-On 08/06/2011 06:11 AM, Luk Claes wrote:
-> If NFS port (2049) is supplied explicitly, don't ignore this setting by requesting it to portmapper again. Thanks to Ben Hutchings <ben@decadent.org.uk> for the patch.
-> 
-> Signed-off-by: Luk Claes <luk@debian.org>
-> ---
->  utils/mount/stropts.c |    4 ++--
->  1 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index f1aa503..8b2799c 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -437,8 +437,8 @@ static int nfs_construct_new_options(struct mount_options *options,
->  	if (po_append(options, new_option) == PO_FAILED)
->  		return 0;
->  
-> -	po_remove_all(options, "port");
-> -	if (nfs_pmap->pm_port != NFS_PORT) {
-> +	if(po_remove_all(options, "port") == PO_FOUND ||
-> +	   nfs_pmap->pm_port != NFS_PORT) {
->  		snprintf(new_option, sizeof(new_option) - 1,
->  			 "port=%lu", nfs_pmap->pm_port);
->  		if (po_append(options, new_option) == PO_FAILED)
-Now I like the idea of not sending the pmap inquire for the 
-port when the port is specified on the command because its
-a TCP connection. During automount storms, wasting TCP connections
-is not a good thing... 
+The _roc patch broke the !CONFIG_PNFSD compilation. Fix that!
 
-But your patch does not seem to do that since all the port
-negotiation is done well before this part of the code.
+Benny sorry for the breakage.
 
-I'm thinking some code has to change in nfs_probe_port() 
-something like:
+BTW:
+	[PATCH] pnfsd: rename pnfs_roc to pnfsd_roc
+  should be:
+	[PATCH] SQUASHME: pnfsd: rename pnfs_roc to pnfsd_roc
 
-    mount.nfs: Do not send pmap inquire when port is specified
-    
-    When the port is specified on the command line do not
-    send a pmap inquire asking for the port. Instead use
-    the given port in the NFS ping. If the ping fails,
-    assume a bad port was given and now go ask the server
-    for the correct port.
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
+This patch is ontop of that one
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index d1f91dc..405c320 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -545,17 +545,18 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
- 	const unsigned int prot = (u_int)pmap->pm_prot, *p_prot;
- 	const u_short port = (u_short) pmap->pm_port;
- 	unsigned long vers = pmap->pm_vers;
--	unsigned short p_port;
-+	unsigned short p_port = port;
-+	int once = 1;
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfsd/pnfsd.h |    1 -
+ fs/nfsd/state.h |    2 ++
+ 2 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
+index 541376e..8e7dd71 100644
+--- a/fs/nfsd/pnfsd.h
++++ b/fs/nfsd/pnfsd.h
+@@ -125,7 +125,6 @@ int nfs4_pnfs_cb_change_state(struct pnfs_get_state *);
+ void nfs4_ds_get_verifier(stateid_t *, struct super_block *, u32 *);
+ int put_layoutrecall(struct nfs4_layoutrecall *);
+ void nomatching_layout(struct nfs4_layoutrecall *);
+-void pnfsd_roc(struct nfs4_client *clp, struct nfs4_file *fp);
+ void *layoutrecall_done(struct nfs4_layoutrecall *);
+ void nfsd4_cb_layout(struct nfs4_layoutrecall *);
+ int nfsd_layout_recall_cb(struct super_block *, struct inode *,
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 9b7552c..cba9140 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -519,12 +519,14 @@ extern void nfs4_pnfs_state_init(void);
+ extern void nfs4_pnfs_state_shutdown(void);
+ extern void nfs4_ds_get_verifier(stateid_t *, struct super_block *, u32 *);
+ extern int nfs4_preprocess_pnfs_ds_stateid(struct svc_fh *, stateid_t *);
++extern void pnfsd_roc(struct nfs4_client *clp, struct nfs4_file *fp);
+ #else /* CONFIG_PNFSD */
+ static inline void nfsd4_free_pnfs_slabs(void) {}
+ static inline int nfsd4_init_pnfs_slabs(void) { return 0; }
+ static inline void pnfs_expire_client(struct nfs4_client *clp) {}
+ static inline void release_pnfs_ds_dev_list(struct nfs4_stateid *stp) {}
+ static inline void nfs4_pnfs_state_shutdown(void) {}
++static inline void pnfsd_roc(struct nfs4_client *clp, struct nfs4_file *fp){}
+ #endif /* CONFIG_PNFSD */
  
- 	memcpy(saddr, sap, salen);
- 	p_prot = prot ? &prot : protos;
- 	p_vers = vers ? &vers : versions;
--
- 	for (;;) {
- 		if (verbose)
- 			printf(_("%s: prog %lu, trying vers=%lu, prot=%u\n"),
- 				progname, prog, *p_vers, *p_prot);
--		p_port = nfs_getport(saddr, salen, prog, *p_vers, *p_prot);
-+		if (!p_port)
-+			p_port = nfs_getport(saddr, salen, prog, *p_vers, *p_prot);
- 		if (p_port) {
- 			if (!port || port == p_port) {
- 				nfs_set_port(saddr, p_port);
-@@ -564,6 +565,15 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
- 				if (nfs_rpc_ping(saddr, salen, prog,
- 							*p_vers, *p_prot, NULL))
- 					goto out_ok;
-+				if (port == p_port && once) {
-+					/*
-+					 * Could be a bad port was specified. This
-+					 * time ask the server for the port but only
-+					 * do it once.
-+					 */
-+					p_port = once = 0;
-+					continue;
-+				}
- 			} else
- 				rpc_createerr.cf_stat = RPC_PROGNOTREGISTERED;
- 		}
-@@ -589,6 +599,7 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
- 	}
- 
- 	nfs_pp_debug2("failed");
- 	return 0;
- 
- out_ok:
+ static inline void
+-- 
+1.7.6
 
-
-I'm not sure this is best way either.... 
-
-steved.
-
-
-
-
-
- 
