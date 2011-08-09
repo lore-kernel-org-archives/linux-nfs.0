@@ -1,48 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from talus.maths.usyd.edu.au ([129.78.68.1]:33674 "EHLO
-	talus.maths.usyd.edu.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755515Ab1HSWGu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2011 18:06:50 -0400
-Date: Sat, 20 Aug 2011 08:06:38 +1000
-From: paul.szabo@sydney.edu.au
-Message-Id: <201108192206.p7JM6cwN005330@bari.maths.usyd.edu.au>
-To: bfields@fieldses.org
-Subject: Re: Please support NSF squashing multiple groups
-Cc: linux-nfs@vger.kernel.org, neilb@suse.de
-In-Reply-To: <20110819191945.GA1641@fieldses.org>
+Received: from natasha.panasas.com ([67.152.220.90]:50632 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750780Ab1HIUiE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Aug 2011 16:38:04 -0400
+Message-ID: <4E419AA3.9020507@panasas.com>
+Date: Tue, 9 Aug 2011 13:37:55 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <benny@tonian.com>
+CC: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
+        open-osd <osd-dev@open-osd.org>
+Subject: Re: [PATCH RFC] pnfsd-exofs: convert to v3.1 ORE
+References: <4E416E20.2010205@panasas.com> <4E416ECC.7070904@panasas.com> <4E41881E.7020307@panasas.com> <4E419720.2080909@tonian.com>
+In-Reply-To: <4E419720.2080909@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Dear Bruce,
+On 08/09/2011 01:22 PM, Benny Halevy wrote:
+> On 2011-08-09 22:18, Boaz Harrosh wrote:
+>> Benny hi
+>>
+>> Please push your new tree with below patch and I will
+>> send you SQUASHMES ontop of your tree. This is because
+>> I'm having problems making a coherent tree, because
+>> current pnfs/pnfsd-exofs branch has conflicts when
+>> merging with 3.1-rc1. So your rebase should save me the
+>> resolving work.
+> 
+> Done. Thanks!
+> 
 
->> Does that "work" also against the "evil remote root" e.g. when the
->> remote machine is compromised?
->
-> ... Nothing you can do about that.
+Great! I'll get things going ontop of that
 
-Thanks for the confirmation.
-
-> ... if several people each have their own client ...
-
-Not my situation.
-
->>> If you are using NFSv4 and kerberos than there already exist
->>> interfaces to do what you want. See "man idmap.conf". ...
->> 
->> Sorry I do not use NFSv4 or kerberos, yet. ...
->
-> Look for "static" in a recent version of the idmapd.conf man page.
-
-Thanks for the hint. Still, [Static] seems to translate UIDs only, seems
-to need umich_ldap and [UMICH_SCHEMA] for group memberships. Maybe
-idmapd ignores group membership lists as received from the client and
-sets the "local" list for each UID? - I guess I will need to investigate
-further how NFSv4 and idmapd work and try to implement them on my
-network.
-
-Thanks, Paul
-
-Paul Szabo   psz@maths.usyd.edu.au   http://www.maths.usyd.edu.au/u/psz/
-School of Mathematics and Statistics   University of Sydney    Australia
+>>
+>> Thanks
+>> Boaz
+>>
