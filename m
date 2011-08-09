@@ -1,59 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:35356 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754768Ab1H2Szb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2011 14:55:31 -0400
-Subject: Re: [PATCH 0/3] NFSD support for FedFS junctions
+Received: from fieldses.org ([174.143.236.118]:45253 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754148Ab1HIRdq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Aug 2011 13:33:46 -0400
+Date: Tue, 9 Aug 2011 13:33:42 -0400
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org, hch@infradead.org,
+        yong.fan@whamcloud.com, linux-fsdevel@vger.kernel.org, tytso@mit.edu,
+        adilger@whamcloud.com
+Subject: Re: [PATCH 4/4] nfsd: vfs_llseek() with 32 or 64 bit offsets
+ (hashes)
+Message-ID: <20110809173342.GB16206@fieldses.org>
+References: <20110808153432.1872437.85783.stgit@fsdevel3>
+ <20110808153813.1872437.44997.stgit@fsdevel3>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20110829184608.3305.93648.stgit@matisse.1015granger.net>
-Date: Mon, 29 Aug 2011 14:55:14 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <3C9663C8-A619-4490-83A8-2645EA78F444@oracle.com>
-References: <20110829184608.3305.93648.stgit@matisse.1015granger.net>
-To: bfields@redhat.com
+In-Reply-To: <20110808153813.1872437.44997.stgit@fsdevel3>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Sorry for the threading and patch numbering weirdness.  Our corporate mail server hiccup'd while I was sending these.
+On Mon, Aug 08, 2011 at 05:38:13PM +0200, Bernd Schubert wrote:
+> Use 32-bit or 64-bit llseek() hashes for directory offsets depending on
+> the NFS version. NFSv2 gets 32-bit hashes only.
+> 
+> NOTE: This patch got rather complex as Christoph asked to set the
+> filp->f_mode flag in the open call or immediatly after dentry_open()
+> in nfsd_open() to avoid races.
+> Personally I still do not see a reason for that and in my opinion
+> FMODE_32BITHASH/FMODE_64BITHASH flags could be set nfsd_readdir(), as it
+> follows directly after nfsd_open() without a chance of races.
 
-On Aug 29, 2011, at 2:48 PM, Chuck Lever wrote:
+The bulk of the patch seems to be just an access->may_flags rename.
+Could you please split that into a separate patch?
 
-> Hi Bruce-
+--b.
+
 > 
-> Sometime soon we are going to have working and easy-to-install FedFS
-> user space components.  These kernel patches are going to be needed
-> to make server-side FedFS support work.
 > 
-> Would you consider these for 3.2?
-> 
+> Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 > ---
+>  fs/nfsd/vfs.c |   33 +++++++++++++++++++++++----------
+>  fs/nfsd/vfs.h |    2 ++
+>  2 files changed, 25 insertions(+), 10 deletions(-)
 > 
-> Trond Myklebust (3):
->      NFSD: Add a cache for fs_locations information
->      NFSD: Remove the ex_pathname field from struct svc_export
->      NFSD: Cleanup for nfsd4_path()
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index fd0acca..4bb517f 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -708,12 +708,13 @@ static int nfsd_open_break_lease(struct inode *inode, int access)
+>  
+>  /*
+>   * Open an existing file or directory.
+> - * The access argument indicates the type of open (read/write/lock)
+> + * The may_flags argument indicates the type of open (read/write/lock)
+> + * and additional flags.
+>   * N.B. After this call fhp needs an fh_put
+>   */
+>  __be32
+>  nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+> -			int access, struct file **filp)
+> +			int may_flags, struct file **filp)
+>  {
+>  	struct dentry	*dentry;
+>  	struct inode	*inode;
+> @@ -728,7 +729,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+>  	 * and (hopefully) checked permission - so allow OWNER_OVERRIDE
+>  	 * in case a chmod has now revoked permission.
+>  	 */
+> -	err = fh_verify(rqstp, fhp, type, access | NFSD_MAY_OWNER_OVERRIDE);
+> +	err = fh_verify(rqstp, fhp, type, may_flags | NFSD_MAY_OWNER_OVERRIDE);
+>  	if (err)
+>  		goto out;
+>  
+> @@ -739,7 +740,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+>  	 * or any access when mandatory locking enabled
+>  	 */
+>  	err = nfserr_perm;
+> -	if (IS_APPEND(inode) && (access & NFSD_MAY_WRITE))
+> +	if (IS_APPEND(inode) && (may_flags & NFSD_MAY_WRITE))
+>  		goto out;
+>  	/*
+>  	 * We must ignore files (but only files) which might have mandatory
+> @@ -752,12 +753,12 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+>  	if (!inode->i_fop)
+>  		goto out;
+>  
+> -	host_err = nfsd_open_break_lease(inode, access);
+> +	host_err = nfsd_open_break_lease(inode, may_flags);
+>  	if (host_err) /* NOMEM or WOULDBLOCK */
+>  		goto out_nfserr;
+>  
+> -	if (access & NFSD_MAY_WRITE) {
+> -		if (access & NFSD_MAY_READ)
+> +	if (may_flags & NFSD_MAY_WRITE) {
+> +		if (may_flags & NFSD_MAY_READ)
+>  			flags = O_RDWR|O_LARGEFILE;
+>  		else
+>  			flags = O_WRONLY|O_LARGEFILE;
+> @@ -766,8 +767,15 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+>  			    flags, current_cred());
+>  	if (IS_ERR(*filp))
+>  		host_err = PTR_ERR(*filp);
+> -	else
+> -		host_err = ima_file_check(*filp, access);
+> +	else {
+> +		host_err = ima_file_check(*filp, may_flags);
+> +
+> +		if (may_flags & NFSD_MAY_64BIT_COOKIE)
+> +			(*filp)->f_mode |= FMODE_64BITHASH;
+> +		else
+> +			(*filp)->f_mode |= FMODE_32BITHASH;
+> +	}
+> +
+>  out_nfserr:
+>  	err = nfserrno(host_err);
+>  out:
+> @@ -1989,8 +1997,13 @@ nfsd_readdir(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t *offsetp,
+>  	__be32		err;
+>  	struct file	*file;
+>  	loff_t		offset = *offsetp;
+> +	int		flags = NFSD_MAY_READ;
+> +
+> +	/* NFSv2 only supports 32 bit cookies */
+> +	if (rqstp->rq_vers > 2)
+> +		flags |= NFSD_MAY_64BIT_COOKIE;
+>  
+> -	err = nfsd_open(rqstp, fhp, S_IFDIR, NFSD_MAY_READ, &file);
+> +	err = nfsd_open(rqstp, fhp, S_IFDIR, flags, &file);
+>  	if (err)
+>  		goto out;
+>  
+> diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+> index e0bbac0..ecd00e1 100644
+> --- a/fs/nfsd/vfs.h
+> +++ b/fs/nfsd/vfs.h
+> @@ -26,6 +26,8 @@
+>  #define NFSD_MAY_NOT_BREAK_LEASE 512
+>  #define NFSD_MAY_BYPASS_GSS	1024
+>  
+> +#define NFSD_MAY_64BIT_COOKIE	2048 /* 64 bit readdir cookies for >= NFSv3 */
+> +
+>  #define NFSD_MAY_CREATE		(NFSD_MAY_EXEC|NFSD_MAY_WRITE)
+>  #define NFSD_MAY_REMOVE		(NFSD_MAY_EXEC|NFSD_MAY_WRITE|NFSD_MAY_TRUNC)
+>  
 > 
-> 
-> fs/nfsd/export.c            |   15 +-----
-> fs/nfsd/nfs4xdr.c           |  106 ++++++++++++++++++++++++++++++++-----------
-> fs/nfsd/nfsd.h              |    7 +++
-> fs/nfsd/vfs.c               |   15 ++++++
-> include/linux/nfsd/export.h |    2 -
-> 5 files changed, 103 insertions(+), 42 deletions(-)
-> 
-> -- 
-> Chuck Lever
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
