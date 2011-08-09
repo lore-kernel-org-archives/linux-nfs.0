@@ -1,65 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:32678 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:45248 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756568Ab1H3UeO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2011 16:34:14 -0400
-Subject: Re: [PATCH] NFSD: Add a cache for fs_locations information
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date: Tue, 30 Aug 2011 16:34:11 -0400
-In-Reply-To: <4E5D46EB.7030102@panasas.com>
-References: <20110829185115.3413.92459.stgit@matisse.1015granger.net>
-	 <20110830151845.4dec5b40@tlielax.poochiereds.net>
-	 <852F14A9-7826-47A0-BCD6-D5D46E38A39C@oracle.com>
-	 <4E5D46EB.7030102@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1314736451.10572.45.camel@lade.trondhjem.org>
+	id S1754258Ab1HIRbu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Aug 2011 13:31:50 -0400
+Date: Tue, 9 Aug 2011 13:31:45 -0400
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org, hch@infradead.org,
+        yong.fan@whamcloud.com, linux-fsdevel@vger.kernel.org, tytso@mit.edu,
+        adilger@whamcloud.com
+Subject: Re: [PATCH 3/4] RFC: Remove check for a 32-bit cookie in
+ nfsd4_readdir()
+Message-ID: <20110809173145.GA16206@fieldses.org>
+References: <20110808153432.1872437.85783.stgit@fsdevel3>
+ <20110808153808.1872437.85162.stgit@fsdevel3>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110808153808.1872437.85162.stgit@fsdevel3>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-08-30 at 13:24 -0700, Boaz Harrosh wrote: 
-> On 08/30/2011 01:00 PM, Chuck Lever wrote:
-> <>
-> >> 
-> >> Won't the above check be rather expensive? You'll need to do a 
-> >> getxattr call on almost every path component of every lookup,
-> >> right?
-> >> 
-> >> I may be misremembering your talk from connectathon, but I thought
-> >> you were planning to use a well-known mode for junctions that would
-> >> cut down on the number of unnecessary getxattrs...
-> > 
-> > Yes, that's the plan.  To reduce overhead, the S_ISVTX bit must be
-> > set before NFSD does the expensive xattr test.  
+On Mon, Aug 08, 2011 at 05:38:08PM +0200, Bernd Schubert wrote:
+> Fan Yong <yong.fan@whamcloud.com> noticed setting
+> FMODE_32bithash wouldn't work with nfsd v4, as
+> nfsd4_readdir() checks for 32 bit cookies. However, according to RFC 3530
+> cookies have a 64 bit type and cookies are also defined as u64 in
+> 'struct nfsd4_readdir'. So remove the test for >32-bit values.
 
-...and mode bits otherwise set to 0 so nobody can access the mounted-on
-directory.
+Wow, thanks, I wonder where that check came from.  Looks like it was
+there since the very first nfsv4 commit.
 
-> from: stat(2) - Linux man page
+Applying.
+
+--b.
+
 > 
-> The 'sticky' bit (S_ISVTX) on a directory means that a file in that
-> directory can be renamed or deleted only by the owner of the file, 
-> by the owner of the directory, and by a privileged process.
+> Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+> ---
+>  fs/nfsd/nfs4proc.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
 > 
-> Please explain how does it work? Once the junction is followed and
-> mounted then the mode-bits get changed to the destination directory's
-> mode bits? So the Server's junction mode-bits are never exposed, except
-> in a local-fs file access on the server?
-
-Yes.
-
-
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index e807776..9bf0a66 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -691,7 +691,7 @@ nfsd4_readdir(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	readdir->rd_bmval[1] &= nfsd_suppattrs1(cstate->minorversion);
+>  	readdir->rd_bmval[2] &= nfsd_suppattrs2(cstate->minorversion);
+>  
+> -	if ((cookie > ~(u32)0) || (cookie == 1) || (cookie == 2) ||
+> +	if ((cookie == 1) || (cookie == 2) ||
+>  	    (cookie == 0 && memcmp(readdir->rd_verf.data, zeroverf.data, NFS4_VERIFIER_SIZE)))
+>  		return nfserr_bad_cookie;
+>  
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
