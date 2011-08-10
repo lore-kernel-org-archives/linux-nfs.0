@@ -1,226 +1,270 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:22475 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751593Ab1H0M4k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 27 Aug 2011 08:56:40 -0400
-Message-ID: <4E58E97F.7040006@RedHat.com>
-Date: Sat, 27 Aug 2011 08:56:31 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Luk Claes <luk@debian.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] mount.nfs: Preserve any explicit port=2049 option
-References: <1312625496-2496-1-git-send-email-luk@debian.org> <4E56AFCB.2020803@RedHat.com> <F4AA6B6E-D029-47BC-A710-23A7AE2582A8@oracle.com> <4E56ED9D.7020906@RedHat.com> <4D7CDC73-5EF0-438E-98B5-32B06730B5B6@oracle.com>
-In-Reply-To: <4D7CDC73-5EF0-438E-98B5-32B06730B5B6@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from natasha.panasas.com ([67.152.220.90]:40938 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750978Ab1HJSMt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Aug 2011 14:12:49 -0400
+Message-ID: <4E42CA15.3020103@panasas.com>
+Date: Wed, 10 Aug 2011 11:12:37 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Peng Tao <bergwolf@gmail.com>
+CC: Benny Halevy <benny@tonian.com>, <linux-nfs@vger.kernel.org>,
+        Peng Tao <peng_tao@emc.com>
+Subject: Re: [PATCH 3/5] pnfs: introduce pnfs private workqueue
+References: <1312685635-1593-1-git-send-email-bergwolf@gmail.com> <1312685635-1593-3-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1312685635-1593-3-git-send-email-bergwolf@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hey,
+On 08/06/2011 07:53 PM, Peng Tao wrote:
+> For layoutdriver io done functions, default workqueue is not a good place
+> as the code is executed in IO path. So add a pnfs private workqueue to handle
+> them.
+> 
+> Also change block and object layout code to make use of this private workqueue.
+> 
+> Signed-off-by: Peng Tao <peng_tao@emc.com>
+> ---
+>  fs/nfs/blocklayout/blocklayout.c |   17 ++++++++++----
+>  fs/nfs/objlayout/objio_osd.c     |    8 ++++++
+>  fs/nfs/objlayout/objlayout.c     |    4 +-
+>  fs/nfs/pnfs.c                    |   46 +++++++++++++++++++++++++++++++++++++-
+>  fs/nfs/pnfs.h                    |    4 +++
+>  5 files changed, 71 insertions(+), 8 deletions(-)
+> 
+> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+> index 9561c8f..3aef9f0 100644
+> --- a/fs/nfs/blocklayout/blocklayout.c
+> +++ b/fs/nfs/blocklayout/blocklayout.c
+> @@ -228,7 +228,7 @@ bl_end_par_io_read(void *data)
+>  	struct nfs_read_data *rdata = data;
+>  
+>  	INIT_WORK(&rdata->task.u.tk_work, bl_read_cleanup);
+> -	schedule_work(&rdata->task.u.tk_work);
+> +	queue_work(pnfsiod_workqueue, &rdata->task.u.tk_work);
 
-On 08/26/2011 09:58 AM, Chuck Lever wrote:
-> 
-> On Aug 25, 2011, at 8:49 PM, Steve Dickson wrote:
-> 
->> On 08/25/2011 04:46 PM, Chuck Lever wrote:
->>>
->>> On Aug 25, 2011, at 4:25 PM, Steve Dickson wrote:
->>>
->>>> First of all let me apologize for taking so long
->>>> to get to this... I did take some time off.... 
->>>>
->>>> On 08/06/2011 06:11 AM, Luk Claes wrote:
->>>>> If NFS port (2049) is supplied explicitly, don't ignore this setting by requesting it to portmapper again. Thanks to Ben Hutchings <ben@decadent.org.uk> for the patch.
->>>>>
->>>>> Signed-off-by: Luk Claes <luk@debian.org>
->>>>> ---
->>>>> utils/mount/stropts.c |    4 ++--
->>>>> 1 files changed, 2 insertions(+), 2 deletions(-)
->>>>>
->>>>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->>>>> index f1aa503..8b2799c 100644
->>>>> --- a/utils/mount/stropts.c
->>>>> +++ b/utils/mount/stropts.c
->>>>> @@ -437,8 +437,8 @@ static int nfs_construct_new_options(struct mount_options *options,
->>>>> 	if (po_append(options, new_option) == PO_FAILED)
->>>>> 		return 0;
->>>>>
->>>>> -	po_remove_all(options, "port");
->>>>> -	if (nfs_pmap->pm_port != NFS_PORT) {
->>>>> +	if(po_remove_all(options, "port") == PO_FOUND ||
->>>>> +	   nfs_pmap->pm_port != NFS_PORT) {
->>>>> 		snprintf(new_option, sizeof(new_option) - 1,
->>>>> 			 "port=%lu", nfs_pmap->pm_port);
->>>>> 		if (po_append(options, new_option) == PO_FAILED)
->>>> Now I like the idea of not sending the pmap inquire for the 
->>>> port when the port is specified on the command because its
->>>> a TCP connection. During automount storms, wasting TCP connections
->>>> is not a good thing... 
->>>>
->>>> But your patch does not seem to do that since all the port
->>>> negotiation is done well before this part of the code.
->>>
->>> I thought the idea was to eliminate the port query during REnegotiation
->>> if "port=" was specified.  That seems like exactly what the patch does.  
->> Ah, I did miss the renegotiation aspect... Its been a long day... ;-)
->>
->>> Does the initial port negotiation also have this problem?
->> Well I was thinking why even do the initial port negotiation when
->> the port= is set... 
-> 
-> An rpcbind query is still needed if port= is specified but transport or 
-> version options were not. Simply specifying port= does not shut off 
-> negotiation. 
-You are correct. Not only is the port specified but the version is also
-specified as well due to the fact we are in this part of the code. 
+If pnfsiod_workqueue is a global pnfs resource that users should
+only use with global pnfsiod_start/stop() then I would like
+a wrapper around queue_work, pnfsiod_queue_work(tk_work) that
+keeps the pnfsiod_workqueue private to that subsystem. (And
+the proper checks could be made, and races avoided)
 
-> All three NFS parameters have to be specified to shut off the rpcbind query.
-Why is this such a hard and fast rule? 
+>  }
+>  
+>  /* We don't want normal .rpc_call_done callback used, so we replace it
+> @@ -418,7 +418,7 @@ static void bl_end_par_io_write(void *data)
+>  	wdata->task.tk_status = 0;
+>  	wdata->verf.committed = NFS_FILE_SYNC;
+>  	INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
+> -	schedule_work(&wdata->task.u.tk_work);
+> +	queue_work(pnfsiod_workqueue, &wdata->task.u.tk_work);
+>  }
+>  
+>  /* FIXME STUB - mark intersection of layout and page as bad, so is not
+> @@ -977,29 +977,35 @@ static int __init nfs4blocklayout_init(void)
+>  	if (ret)
+>  		goto out;
+>  
+> +	ret = pnfsiod_start();
+> +	if (ret)
+> +		goto out_remove;
+> +
+>  	init_waitqueue_head(&bl_wq);
+>  
+>  	mnt = rpc_get_mount();
+>  	if (IS_ERR(mnt)) {
+>  		ret = PTR_ERR(mnt);
+> -		goto out_remove;
+> +		goto out_stop;
+>  	}
+>  
+>  	ret = vfs_path_lookup(mnt->mnt_root,
+>  			      mnt,
+>  			      NFS_PIPE_DIRNAME, 0, &path);
+>  	if (ret)
+> -		goto out_remove;
+> +		goto out_stop;
+>  
+>  	bl_device_pipe = rpc_mkpipe(path.dentry, "blocklayout", NULL,
+>  				    &bl_upcall_ops, 0);
+>  	if (IS_ERR(bl_device_pipe)) {
+>  		ret = PTR_ERR(bl_device_pipe);
+> -		goto out_remove;
+> +		goto out_stop;
+>  	}
+>  out:
+>  	return ret;
+>  
+> +out_stop:
+> +	pnfsiod_stop();
+>  out_remove:
+>  	pnfs_unregister_layoutdriver(&blocklayout_type);
+>  	return ret;
+> @@ -1011,6 +1017,7 @@ static void __exit nfs4blocklayout_exit(void)
+>  	       __func__);
+>  
+>  	pnfs_unregister_layoutdriver(&blocklayout_type);
+> +	pnfsiod_stop();
+>  	rpc_unlink(bl_device_pipe);
+>  }
+>  
+> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+> index d0cda12..f28013f 100644
+> --- a/fs/nfs/objlayout/objio_osd.c
+> +++ b/fs/nfs/objlayout/objio_osd.c
+> @@ -1042,7 +1042,14 @@ static int __init
+>  objlayout_init(void)
+>  {
+>  	int ret = pnfs_register_layoutdriver(&objlayout_type);
+> +	if (ret)
+> +		goto out;
+>  
+> +	ret = pnfsiod_start();
+> +	if (ret)
+> +		pnfs_unregister_layoutdriver(&objlayout_type);
+> +
+> +out:
+>  	if (ret)
+>  		printk(KERN_INFO
+>  			"%s: Registering OSD pNFS Layout Driver failed: error=%d\n",
+> @@ -1057,6 +1064,7 @@ static void __exit
+>  objlayout_exit(void)
+>  {
+>  	pnfs_unregister_layoutdriver(&objlayout_type);
+> +	pnfsiod_stop();
+>  	printk(KERN_INFO "%s: Unregistered OSD pNFS Layout Driver\n",
+>  	       __func__);
+>  }
+> diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+> index 1d06f8e..1e7fa05 100644
+> --- a/fs/nfs/objlayout/objlayout.c
+> +++ b/fs/nfs/objlayout/objlayout.c
+> @@ -305,7 +305,7 @@ objlayout_read_done(struct objlayout_io_state *state, ssize_t status, bool sync)
+>  		pnfs_ld_read_done(rdata);
+>  	else {
+>  		INIT_WORK(&rdata->task.u.tk_work, _rpc_read_complete);
+> -		schedule_work(&rdata->task.u.tk_work);
+> +		queue_task(pnfsiod_workqueue, &rdata->task.u.tk_work);
+>  	}
+>  }
+>  
+> @@ -396,7 +396,7 @@ objlayout_write_done(struct objlayout_io_state *state, ssize_t status,
+>  		pnfs_ld_write_done(wdata);
+>  	else {
+>  		INIT_WORK(&wdata->task.u.tk_work, _rpc_write_complete);
+> -		schedule_work(&wdata->task.u.tk_work);
+> +		queue_task(pnfsiod_workqueue, &wdata->task.u.tk_work);
+>  	}
+>  }
+>  
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 66fc854..e183a4f 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -38,7 +38,7 @@
+>  /* Locking:
+>   *
+>   * pnfs_spinlock:
+> - *      protects pnfs_modules_tbl.
+> + *      protects pnfs_modules_tbl, pnfsiod_workqueue and pnfsiod_users.
+>   */
+>  static DEFINE_SPINLOCK(pnfs_spinlock);
+>  
+> @@ -47,6 +47,9 @@ static DEFINE_SPINLOCK(pnfs_spinlock);
+>   */
+>  static LIST_HEAD(pnfs_modules_tbl);
+>  
+> +struct workqueue_struct *pnfsiod_workqueue;
+> +static int pnfsiod_users = 0;
+> +
+>  /* Return the registered pnfs layout driver module matching given id */
+>  static struct pnfs_layoutdriver_type *
+>  find_pnfs_driver_locked(u32 id)
+> @@ -1517,3 +1520,44 @@ out:
+>  	dprintk("<-- %s status %d\n", __func__, status);
+>  	return status;
+>  }
+> +
+> +/*
+> + * start up the pnfsiod workqueue
+> + */
+> +int pnfsiod_start(void)
+> +{
+> +	struct workqueue_struct *wq;
+> +	dprintk("RPC:       creating workqueue pnfsiod\n");
+> +	wq = alloc_workqueue("pnfsiod", WQ_MEM_RECLAIM, 0);
+> +	if (wq == NULL)
+> +		return -ENOMEM;
+> +	spin_lock(&pnfs_spinlock);
+> +	pnfsiod_users++;
+> +	if (pnfsiod_workqueue == NULL) {
+> +		pnfsiod_workqueue = wq;
+> +	} else {
+> +		destroy_workqueue(wq);
+> +	}
+> +	spin_unlock(&pnfs_spinlock);
+> +	return 0;
+> +}
 
-Maybe in the past, when we moved from v2 to v3 and from UDP to TCP, all 
-three were needed but not in day in aged. TCP is now a mandated protocol,
-which almost guarantees it will be support, in present day servers.
- 
-So at this point if have we two of the three, the port and version, why
-not just use the default protocol (TCP) and do the NFS ping? The
-chances of the ping working are very high plus what is going to break?
- 
-> Doing the MNT request also performs an rpcbind query, but by default both 
-> of those are done via UDP.
-No. The query for the port were going over TCP. That's what caught
-my eye.
+What? why not a simple:
++	int ret = 0;
 
-> 
-> The issue of keeping TCP port usage at a minimum is real and related to 
-> negotiation behavior, but is IMO separate.  My sense is that rpcbind 
-> queries are probably not really a big problem (and of course we would 
-> be wise to quantify this problem before making aggressive changes).
-I don't see this as an aggressive change. I see it as adapting the
-code to present day circumstances.   
-  
-> mount.nfs's rpcbind queries should always come from an ephemeral port, 
-> which is a larger resource pool than privileged ports and thus more 
-> difficult to exhaust.  Using NFSv4 more, just by itself, should improve 
-> matters since it skips the rpcbind step by default and doesn't use MNT at all.
-All the above is true. But look at it from the server point of view. 
-During an automount storm, thousands of clients doing v3 mounts. This
-type of short cut will eliminate thousands of TCP the server will have
-to deal with.
++	spin_lock(&pnfs_spinlock);
++	if (pnfsiod_workqueue == NULL) {
++		pnfsiod_workqueue = alloc_workqueue("pnfsiod", WQ_MEM_RECLAIM, 0);
++		if (unlikely!(pnfsiod_workqueue)) {
++			ret = -ENOMEM;
+			goto out;
+		}
++	}
++	pnfsiod_users++;
++ out:
++	spin_unlock(&pnfs_spinlock);
++	return ret;
 
-steved.
+> +EXPORT_SYMBOL_GPL(pnfsiod_start);
+> +
+> +/*
+> + * Destroy the pnfsiod workqueue
+> + */
+> +void pnfsiod_stop(void)
+> +{
+> +	struct workqueue_struct *wq == NULL;
+> +
+> +	spin_lock(&pnfs_spinlock);
+> +	pnfsiod_users--;
+> +	if (pnfsiod_users == 0) {
+> +		wq = pnfsiod_workqueue;
+> +		pnfsiod_workqueue = NULL;
+> +	}
+> +	spin_unlock(&pnfs_spinlock);
+> +	if (wq)
+> +		destroy_workqueue(wq);
 
-> 
->>> But we should be careful here: mount.nfs will do an rpcbind query if a port= 
->>> was specified if there is also some doubt about whether to use TCP or UDP, 
->>> or what NFS version is available.  The only time rpcbind queries should be 
->>> completely squashed is when the mount parameters are specified completely 
->>> (transport, version, and port).
->> I agree with being careful here... But if some admin is specifying 
->> a particular port I'm thinking one, they have a clue and two, 99% of 
->> time the port is correct. So lets just verify the port by using it
->> NFS ping. So I'm thinking %99 of the time there is no need to create 
->> that second TCP connection when a port is specified.
-> 
-> I think the kernel already does an NFS ping during mount processing (someone should verify that, of course).  But as I said above, all three NFS parameters [transport, NFS version, and port] have to be specified to avoid the rpcbind query.
-> 
->> But, here is were we have to be careful. That  1% of the
->> time the ping fails, for whatever reason... That is when I think
->> we to consult with the server's rpcbind and the second TCP
->> connection is justified. 
->>
->> I just thinking making that assuming the specified info
->> is as good way to save a TCP connection... 
-> 
-> Hrm, I don't see what that buys us.  If the ping fails and the port specified on the mount command line is actually registered on the server, what is the client's recourse?
-> 
->>
->>>
->>>> I'm thinking some code has to change in nfs_probe_port() 
->>>> something like:
->>>>
->>>>   mount.nfs: Do not send pmap inquire when port is specified
->>>>
->>>>   When the port is specified on the command line do not
->>>>   send a pmap inquire asking for the port. Instead use
->>>>   the given port in the NFS ping. If the ping fails,
->>>>   assume a bad port was given and now go ask the server
->>>>   for the correct port.
->>>
->>> If the server has more than one NFS port enabled, and the client is 
->>> requesting a port that isn't registered with the server's rpcbind, it 
->>> shouldn't fall back to the registered port IMO.
->> True. With this patch there is no fall back. When the NFS ping fails, 
->> the registered port is obtained; compared to the specified port.
->> If they are different the mount will fail as it does to today.
->>
->> steved.
->>
->>>
->>>>   Signed-off-by: Steve Dickson <steved@redhat.com>
->>>>
->>>> diff --git a/utils/mount/network.c b/utils/mount/network.c
->>>> index d1f91dc..405c320 100644
->>>> --- a/utils/mount/network.c
->>>> +++ b/utils/mount/network.c
->>>> @@ -545,17 +545,18 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
->>>> 	const unsigned int prot = (u_int)pmap->pm_prot, *p_prot;
->>>> 	const u_short port = (u_short) pmap->pm_port;
->>>> 	unsigned long vers = pmap->pm_vers;
->>>> -	unsigned short p_port;
->>>> +	unsigned short p_port = port;
->>>> +	int once = 1;
->>>>
->>>> 	memcpy(saddr, sap, salen);
->>>> 	p_prot = prot ? &prot : protos;
->>>> 	p_vers = vers ? &vers : versions;
->>>> -
->>>> 	for (;;) {
->>>> 		if (verbose)
->>>> 			printf(_("%s: prog %lu, trying vers=%lu, prot=%u\n"),
->>>> 				progname, prog, *p_vers, *p_prot);
->>>> -		p_port = nfs_getport(saddr, salen, prog, *p_vers, *p_prot);
->>>> +		if (!p_port)
->>>> +			p_port = nfs_getport(saddr, salen, prog, *p_vers, *p_prot);
->>>> 		if (p_port) {
->>>> 			if (!port || port == p_port) {
->>>> 				nfs_set_port(saddr, p_port);
->>>> @@ -564,6 +565,15 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
->>>> 				if (nfs_rpc_ping(saddr, salen, prog,
->>>> 							*p_vers, *p_prot, NULL))
->>>> 					goto out_ok;
->>>> +				if (port == p_port && once) {
->>>> +					/*
->>>> +					 * Could be a bad port was specified. This
->>>> +					 * time ask the server for the port but only
->>>> +					 * do it once.
->>>> +					 */
->>>> +					p_port = once = 0;
->>>> +					continue;
->>>> +				}
->>>> 			} else
->>>> 				rpc_createerr.cf_stat = RPC_PROGNOTREGISTERED;
->>>> 		}
->>>> @@ -589,6 +599,7 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
->>>> 	}
->>>>
->>>> 	nfs_pp_debug2("failed");
->>>> 	return 0;
->>>>
->>>> out_ok:
->>>>
->>>>
->>>> I'm not sure this is best way either.... 
->>>>
->>>> steved.
->>>>
->>>>
->>>>
->>>>
->>>>
->>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
-> 
+Does destroy_workqueue wait for all pending work?
+
+> +}
+> +EXPORT_SYMBOL_GPL(pnfsiod_stop);
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index 01cbfd5..af7530b 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -155,6 +155,10 @@ struct pnfs_devicelist {
+>  extern int pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *);
+>  extern void pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *);
+>  
+> +extern struct workqueue_struct *pnfsiod_workqueue;
+
+As I said:
++extern int pnfsiod_queue_work(...);
+
+> +extern int pnfsiod_start(void);
+> +extern void pnfsiod_stop(void);
+> +
+>  /* nfs4proc.c */
+>  extern int nfs4_proc_getdevicelist(struct nfs_server *server,
+>  				   const struct nfs_fh *fh,
+
+Thanks for doing this, looks good other wise
+Boaz
