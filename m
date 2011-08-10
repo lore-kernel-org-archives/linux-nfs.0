@@ -1,95 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:53141 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751668Ab1HPLyW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 07:54:22 -0400
-Subject: [PATCH 3 3/4] nfsd_open(): rename 'int access' to 'int may_flags' in
-	nfsd_open()
-To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: bfields@fieldses.org, tytso@mit.edu, bernd.schubert@fastmail.fm,
-        hch@infradead.org, adilger@whamcloud.com, yong.fan@whamcloud.com,
-        linux-fsdevel@vger.kernel.org
-Date: Tue, 16 Aug 2011 13:54:20 +0200
-Message-ID: <20110816115420.1810393.10281.stgit@localhost.localdomain>
-In-Reply-To: <20110816115404.1810393.47239.stgit@localhost.localdomain>
-References: <20110816115404.1810393.47239.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+Received: from 206.83.70.73.ptr.us.xo.net ([206.83.70.73]:29681 "EHLO
+	king.tilera.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752502Ab1HJSVs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Aug 2011 14:21:48 -0400
+Message-Id: <201108101803.p7AI36eV008484@farm-0023.internal.tilera.com>
+From: Chris Metcalf <cmetcalf@tilera.com>
+Date: Wed, 10 Aug 2011 13:56:28 -0400
+Subject: [PATCH] nfs: fix a couple of minor portability issues
+To: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Just rename this variable, as the next patch will add a flag and
-'access' as variable name would not be correct any more.
+Building on tilepro revealed two minor portability issues: the
+blocklayout.c file used prefetchw() without #include <linux/prefetch.h>,
+and the nfs4filelayout.c file used do_div() on an s64 not a u64.
+This change fixes those two issues so the NFS code builds on tilepro.
 
-
-Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Signed-off-by: Chris Metcalf <cmetcalf@tilera.com>
 ---
- fs/nfsd/vfs.c |   18 ++++++++++--------
- 1 files changed, 10 insertions(+), 8 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c |    1 +
+ fs/nfs/nfs4filelayout.c          |    6 +++---
+ 2 files changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index fd0acca..ca692b4 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -708,12 +708,13 @@ static int nfsd_open_break_lease(struct inode *inode, int access)
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index e56564d..9561c8f 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -36,6 +36,7 @@
+ #include <linux/namei.h>
+ #include <linux/bio.h>		/* struct bio */
+ #include <linux/buffer_head.h>	/* various write calls */
++#include <linux/prefetch.h>
  
- /*
-  * Open an existing file or directory.
-- * The access argument indicates the type of open (read/write/lock)
-+ * The may_flags argument indicates the type of open (read/write/lock)
-+ * and additional flags.
-  * N.B. After this call fhp needs an fh_put
-  */
- __be32
- nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
--			int access, struct file **filp)
-+			int may_flags, struct file **filp)
+ #include "blocklayout.h"
+ 
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index e8915d4..6976a72 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -48,13 +48,13 @@ filelayout_get_dense_offset(struct nfs4_filelayout_segment *flseg,
+ 			    loff_t offset)
  {
- 	struct dentry	*dentry;
- 	struct inode	*inode;
-@@ -728,7 +729,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	 * and (hopefully) checked permission - so allow OWNER_OVERRIDE
- 	 * in case a chmod has now revoked permission.
- 	 */
--	err = fh_verify(rqstp, fhp, type, access | NFSD_MAY_OWNER_OVERRIDE);
-+	err = fh_verify(rqstp, fhp, type, may_flags | NFSD_MAY_OWNER_OVERRIDE);
- 	if (err)
- 		goto out;
+ 	u32 stripe_width = flseg->stripe_unit * flseg->dsaddr->stripe_count;
+-	u64 tmp;
++	u64 tmp, uoff;
  
-@@ -739,7 +740,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	 * or any access when mandatory locking enabled
- 	 */
- 	err = nfserr_perm;
--	if (IS_APPEND(inode) && (access & NFSD_MAY_WRITE))
-+	if (IS_APPEND(inode) && (may_flags & NFSD_MAY_WRITE))
- 		goto out;
- 	/*
- 	 * We must ignore files (but only files) which might have mandatory
-@@ -752,12 +753,12 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	if (!inode->i_fop)
- 		goto out;
+ 	offset -= flseg->pattern_offset;
+-	tmp = offset;
++	tmp = uoff = offset;
+ 	do_div(tmp, stripe_width);
  
--	host_err = nfsd_open_break_lease(inode, access);
-+	host_err = nfsd_open_break_lease(inode, may_flags);
- 	if (host_err) /* NOMEM or WOULDBLOCK */
- 		goto out_nfserr;
+-	return tmp * flseg->stripe_unit + do_div(offset, flseg->stripe_unit);
++	return tmp * flseg->stripe_unit + do_div(uoff, flseg->stripe_unit);
+ }
  
--	if (access & NFSD_MAY_WRITE) {
--		if (access & NFSD_MAY_READ)
-+	if (may_flags & NFSD_MAY_WRITE) {
-+		if (may_flags & NFSD_MAY_READ)
- 			flags = O_RDWR|O_LARGEFILE;
- 		else
- 			flags = O_WRONLY|O_LARGEFILE;
-@@ -767,7 +768,8 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	if (IS_ERR(*filp))
- 		host_err = PTR_ERR(*filp);
- 	else
--		host_err = ima_file_check(*filp, access);
-+		host_err = ima_file_check(*filp, may_flags);
-+
- out_nfserr:
- 	err = nfserrno(host_err);
- out:
+ /* This function is used by the layout driver to calculate the
+-- 
+1.6.5.2
 
