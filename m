@@ -1,82 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:35224 "EHLO
+Received: from natasha.panasas.com ([67.152.220.90]:36236 "EHLO
 	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751162Ab1HDEyl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2011 00:54:41 -0400
-Message-ID: <4E3A2609.9050001@panasas.com>
-Date: Wed, 3 Aug 2011 21:54:33 -0700
+	with ESMTP id S1754034Ab1HKVaJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Aug 2011 17:30:09 -0400
+Message-ID: <4E4449B5.3050309@panasas.com>
+Date: Thu, 11 Aug 2011 14:29:25 -0700
 From: Boaz Harrosh <bharrosh@panasas.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/2] pnfs-obj: Bug when we are running out of bio
-References: <1312082377.10882.1.camel@lade.trondhjem.org> <4E39DF02.80306@panasas.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A8AA600@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A8AA600@SACMVEXC2-PRD.hq.netapp.com>
+To: Benny Halevy <bhalevy@tonian.com>, Sorin Faibish <sfaibish@emc.com>,
+        peter honeyman <honey@citi.umich.edu>
+CC: <tao.peng@emc.com>, <torvalds@linux-foundation.org>,
+        <rdunlap@xenotime.net>, <bergwolf@gmail.com>,
+        <Trond.Myklebust@netapp.com>, <linux-raid@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        "Welch, Brent" <welch@panasas.com>
+Subject: [PATCH v2] pnfs: Automatically select blocks & objects layouts
+References: <CA+55aFwkJdyEpyNY64aAQ5ChrPZ8Kvx9iRUwy1J6_SRaxoN=zA@mail.gmail.com> <20110810122304.96b8be67.rdunlap@xenotime.net> <CA+a=Yy5izxiyvW5eYiWuute9E1vXwNTj4frdzNeEwsLDrszesg@mail.gmail.com> <20110810175829.a834d80f.rdunlap@xenotime.net> <CA+55aFzcSLrhkexEn=J7BN8F3P3Vy+EAjwgGwMQPdeoYoQG+Bw@mail.gmail.com> <F19688880B763E40B28B2B462677FBF805BF0EAC8A@MX09A.corp.emc.com> <4E43AAD1.7090806@tonian.com> <4E4422FD.3060706@panasas.com> <4E444552.9030105@panasas.com>
+In-Reply-To: <4E444552.9030105@panasas.com>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
-When we have a situation that the number of pages we want
-to encode is bigger then the size of the bio. (Which can
-currently happen only when all IO is going to a single device
-.e.g group_width==1) then the IO is submitted short and we
-report back only the amount of bytes we actually wrote/read
-and all is fine. BUT ...
+Just like files-layout, blocks & objects layouts are part of the
+NFS 4.1 protocol and should be automatically selected if NFS_4_1
+is selected. The small problem is that these depend on other
+Kernel support being present, while files only depends on NFS
+itself.
 
-There was a bug that the current length counter was advanced
-before the fail to add the extra page, and we come to a situation
-that the CDB length was one-page longer then the actual bio size,
-which is of course rejected by the osd-target.
+This patch removes from the user choice the presence of objects
+and blocks layout. But makes sure these are selected only if
+the depended subsystems are present in the Kernel.
 
-While here also fix the bio size calculation, in the case
-that we received more then one group of devices.
-
-CC: Stable Tree <stable@kernel.org>
 Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- fs/nfs/objlayout/objio_osd.c |   12 +++++-------
- 1 files changed, 5 insertions(+), 7 deletions(-)
+ fs/nfs/Kconfig |   18 ++++--------------
+ 1 files changed, 4 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 9383ca7..aa8663a 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -589,22 +589,19 @@ static void _calc_stripe_info(struct objio_state *ios, u64 file_offset,
- }
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 0d30613..dbcd821 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -89,24 +89,14 @@ config PNFS_FILE_LAYOUT
+ 	tristate
  
- static int _add_stripe_unit(struct objio_state *ios,  unsigned *cur_pg,
--		unsigned pgbase, struct _objio_per_comp *per_dev, int cur_len,
-+		unsigned pgbase, struct _objio_per_comp *per_dev, int len,
- 		gfp_t gfp_flags)
- {
- 	unsigned pg = *cur_pg;
-+	int cur_len = len;
- 	struct request_queue *q =
- 			osd_request_queue(_io_od(ios, per_dev->dev));
- 
--	per_dev->length += cur_len;
+ config PNFS_BLOCK
+-	tristate "Provide support for the pNFS Block Layout Driver for NFSv4.1 pNFS (EXPERIMENTAL)"
++	tristate
+ 	depends on NFS_FS && NFS_V4_1 && BLK_DEV_DM
+-	help
+-	  Say M here if you want your pNFS client to support the Block Layout Driver
+-	  (RFC 5663). Requires Multiple devices driver support (DM) and Device mapper
+-	  support (BLK_DEV_DM).
 -
- 	if (per_dev->bio == NULL) {
--		unsigned stripes = ios->layout->num_comps /
--						     ios->layout->mirrors_p1;
--		unsigned pages_in_stripe = stripes *
-+		unsigned pages_in_stripe = ios->layout->group_width *
- 				      (ios->layout->stripe_unit / PAGE_SIZE);
- 		unsigned bio_size = (ios->ol_state.nr_pages + pages_in_stripe) /
--				    stripes;
-+				    ios->layout->group_width;
+-	  If unsure, say N.
++	default m
  
- 		if (BIO_MAX_PAGES_KMALLOC < bio_size)
- 			bio_size = BIO_MAX_PAGES_KMALLOC;
-@@ -632,6 +629,7 @@ static int _add_stripe_unit(struct objio_state *ios,  unsigned *cur_pg,
- 	}
- 	BUG_ON(cur_len);
+ config PNFS_OBJLAYOUT
+-	tristate "Provide support for the pNFS Objects Layout Driver for NFSv4.1 pNFS (EXPERIMENTAL)"
++	tristate
+ 	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
+-	help
+-	  Say M here if you want your pNFS client to support the Objects Layout Driver.
+-	  Requires the SCSI osd initiator library (SCSI_OSD_INITIATOR) and
+-	  upper level driver (SCSI_OSD_ULD).
+-
+-	  If unsure, say N.
++	default m
  
-+	per_dev->length += len;
- 	*cur_pg = pg;
- 	return 0;
- }
+ config ROOT_NFS
+ 	bool "Root file system on NFS"
 -- 
 1.7.6
 
