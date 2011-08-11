@@ -1,31 +1,22 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:38264 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751275Ab1HWAYx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Aug 2011 20:24:53 -0400
-Date: Tue, 23 Aug 2011 10:24:44 +1000
-From: NeilBrown <neilb@suse.de>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: wow
-Message-ID: <20110823102444.2bc6d1c7@notabene.brown>
-In-Reply-To: <CCE4A253-3046-45EA-92E2-1C384AC64917@oracle.com>
-References: <CCE4A253-3046-45EA-92E2-1C384AC64917@oracle.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from blu0-omc3-s6.blu0.hotmail.com ([65.55.116.81]:18899 "EHLO
+	blu0-omc3-s6.blu0.hotmail.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752671Ab1HKPQT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Aug 2011 11:16:19 -0400
+Message-ID: <BLU0-SMTP985B26F3B0D35D1992BC75AB220@phx.gbl>
+Date: Thu, 11 Aug 2011 23:13:39 +0800
+From: =?utf-8?B?5LqO5rWp?= <haohaoweixiao@hotmail.com>
+To: "=?utf-8?B?bGludXgtbmZz?=" <linux-nfs@vger.kernel.org>
+Subject: =?utf-8?B?V2hhdCdzIHRoZSBwbGFuIGZvciBpbXBsZW1lbnRhdGlvbiBvZiA8U2Vzc2lvbklEIFRydW5raW5nPiBhbmQgPENsaWVudElEIFRydW5raW5nID4gZnVuY3Rpb25hbGl0eSA/?=
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 22 Aug 2011 15:15:06 -0400 Chuck Lever <chuck.lever@oracle.com> wrote:
+Trunking can increase the speed of data transfer between a client and server. I think it is important for high performance.  From the following link, I know it has been implemented for the server, but not yet on the client side.
+http://wiki.linux-nfs.org/wiki/index.php/To_do
+So I'd like to know the community's plan for implementation of this functionality, and does it have the highest priority in the development plan?
 
-> http://www.linuxjournal.com/content/how-release-stuck-nfs-mounts-without-reboot
-> 
+Regards,
+Steven
 
-That brings back memories...  I've definitely had a case where I added a
-an extra IP address to some server so it could pretend to be a dead serve and
-allow the mount points to fail and processes to be killed.
-
-With lazy unmounts and TASK_KILLABLE that should all be a think of the past
-though ... I hope.
-
-NeilBrown
