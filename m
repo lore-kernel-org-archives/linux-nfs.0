@@ -1,41 +1,30 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:56820 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753353Ab1HVT0W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Aug 2011 15:26:22 -0400
-Date: Mon, 22 Aug 2011 15:26:20 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] sunrpc: Add scope id to svc_addr_u for IPv6 LINKLOCAL
- address
-Message-ID: <20110822192620.GB16261@fieldses.org>
-References: <4E4F8B5D.6060404@cn.fujitsu.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E4F8B5D.6060404@cn.fujitsu.com>
+Received: from natasha.panasas.com ([67.152.220.90]:59685 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751041Ab1HKSS4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Aug 2011 14:18:56 -0400
+Message-ID: <4E441CFE.9020401@panasas.com>
+Date: Thu, 11 Aug 2011 11:18:38 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@tonian.com>
+CC: NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Subject: Re: [PATCHSET 0/4] exofs & pnfsd-exofs assorted changes
+References: <4E42F3E3.8050006@panasas.com> <4E43C8BE.9040108@tonian.com>
+In-Reply-To: <4E43C8BE.9040108@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, Aug 20, 2011 at 06:24:29PM +0800, Mi Jinlong wrote:
-> +/* 
-> + * Add scope id for LINKLOCAL address
-> + */
-> +struct in6_addr_scopeid{
-> +	struct in6_addr	sin6_addr;
-> +	__u32		sin6_scope_id;
-> +};
-> +
->  union svc_addr_u {
-> -    struct in_addr	addr;
-> -    struct in6_addr	addr6;
-> +	struct in_addr		addr;
-> +	struct in6_addr_scopeid	addr6;
+On 08/11/2011 05:19 AM, Benny Halevy wrote:
+> Benny
+> 
+> P.S. I don't think my Panasas email address is still active
+> no need to send stuff there...
 
-By the way, is there any reason why nfsd really needs its own address
-structure?  Shouldn't we use sockaddr_storage or something?  I feel like
-we've got a little too much one-off address handling in nfsd.
+Yes! Sorry about that. my mailer keeps popping it out
+and I forget to notice. I'll do some cleaning
 
---b.
+Thanks
+Boaz
+
