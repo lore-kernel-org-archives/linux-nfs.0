@@ -1,92 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from frankvm.xs4all.nl ([83.163.148.79]:35342 "EHLO
-	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751644Ab1HEN2Z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Aug 2011 09:28:25 -0400
-Date: Fri, 5 Aug 2011 15:28:23 +0200
-From: Frank van Maarseveen <frankvm@frankvm.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [NLM] fcntl(F_SETLKW) yields -ENOLCK when grace period expires.
-Message-ID: <20110805132823.GA32305@janus>
-References: <20110804103018.GA11727@janus>
- <20110804163452.GE12445@fieldses.org>
- <20110804164313.GA17572@janus>
- <20110804164913.GG12445@fieldses.org>
- <1312477820.8919.5.camel@lade.trondhjem.org>
- <20110804172710.GB18087@janus>
- <1312481855.8919.20.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1312481855.8919.20.camel@lade.trondhjem.org>
+Received: from natasha.panasas.com ([67.152.220.90]:35813 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754062Ab1HKVL1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Aug 2011 17:11:27 -0400
+Message-ID: <4E444552.9030105@panasas.com>
+Date: Thu, 11 Aug 2011 14:10:42 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@tonian.com>, Sorin Faibish <sfaibish@emc.com>,
+        peter honeyman <honey@citi.umich.edu>
+CC: <tao.peng@emc.com>, <torvalds@linux-foundation.org>,
+        <rdunlap@xenotime.net>, <bergwolf@gmail.com>,
+        <Trond.Myklebust@netapp.com>, <linux-raid@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        "Welch, Brent" <welch@panasas.com>
+Subject: [PATCH] pnfs: Automatically select blocks & objects layouts
+References: <CA+55aFwkJdyEpyNY64aAQ5ChrPZ8Kvx9iRUwy1J6_SRaxoN=zA@mail.gmail.com> <20110810122304.96b8be67.rdunlap@xenotime.net> <CA+a=Yy5izxiyvW5eYiWuute9E1vXwNTj4frdzNeEwsLDrszesg@mail.gmail.com> <20110810175829.a834d80f.rdunlap@xenotime.net> <CA+55aFzcSLrhkexEn=J7BN8F3P3Vy+EAjwgGwMQPdeoYoQG+Bw@mail.gmail.com> <F19688880B763E40B28B2B462677FBF805BF0EAC8A@MX09A.corp.emc.com> <4E43AAD1.7090806@tonian.com> <4E4422FD.3060706@panasas.com>
+In-Reply-To: <4E4422FD.3060706@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Aug 04, 2011 at 02:17:35PM -0400, Trond Myklebust wrote:
-> On Thu, 2011-08-04 at 19:27 +0200, Frank van Maarseveen wrote: 
-> > On Thu, Aug 04, 2011 at 01:10:20PM -0400, Trond Myklebust wrote:
-> > > On Thu, 2011-08-04 at 12:49 -0400, J. Bruce Fields wrote: 
-> > > > On Thu, Aug 04, 2011 at 06:43:13PM +0200, Frank van Maarseveen wrote:
-> > > > > On Thu, Aug 04, 2011 at 12:34:52PM -0400, J. Bruce Fields wrote:
-> > > > > > On Thu, Aug 04, 2011 at 12:30:19PM +0200, Frank van Maarseveen wrote:
-> > > > > > > Both client- and server run 2.6.39.3, NFSv3 over UDP (without the
-> > > > > > > relock_filesystem patch proposed earlier).
-> > > > > > > 
-> > > > > > > A second client has an exclusive lock on a file on the server. The
-> > > > > > > client under test calls fcntl(F_SETLKW) to wait for the same exclusive
-> > > > > > > lock. Wireshark sees NLM V4 LOCK calls resulting in NLM_BLOCKED.
-> > > > > > > 
-> > > > > > > Next the server is rebooted. The second client recovers the lock
-> > > > > > > correctly. The client under test now receives NLM_DENIED_GRACE_PERIOD for
-> > > > > > > every NLM V4 LOCK request resulting from the waiting fcntl(F_SETLKW). When
-> > > > > > > this changes to NLM_BLOCKED after grace period expiration the fcntl
-> > > > > > > returns -ENOLCK ("No locks available.") instead of continuing to wait.
-> > > > > > 
-> > > > > > So that sounds like a client bug, and correct behavior from the server
-> > > > > > (assuming the second client was still holding the lock throughout).
-> > > > > 
-> > > > > yes.
-> > > 
-> > > Is the client actually asking for a blocking lock after the grace period
-> > > expires?
-> > 
-> > yes, according to my interpretation of that of wireshark, see reply to Bruce.
-> > 
-> 
-> OK... Does the following patch help?
-> 
-> Cheers
->   Trond
-> --- 
-> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-> index 8392cb8..40c0d88 100644
-> --- a/fs/lockd/clntproc.c
-> +++ b/fs/lockd/clntproc.c
-> @@ -270,6 +270,9 @@ nlmclnt_call(struct rpc_cred *cred, struct nlm_rqst *req, u32 proc)
->  			return -ENOLCK;
->  		msg.rpc_proc = &clnt->cl_procinfo[proc];
->  
-> +		/* Reset the reply status */
-> +		if (argp->block)
-> +			resp->status = nlm_lck_blocked;
->  		/* Perform the RPC call. If an error occurs, try again */
->  		if ((status = rpc_call_sync(clnt, &msg, 0)) < 0) {
->  			dprintk("lockd: rpc_call returned error %d\n", -status);
-> 
+What about the below? based on v3.1-rc1
 
-Negative. I've tried it on the client under test and I'm seeing three
-types of behavior, one good, two bad. In all cases the secondary
-client (unmodified) correctly regains the lock after the server has
-rebooted. Client under test behavior depends on whether it had queued
-the conflicting lock before of after the server reboot. Afterwards it
-seems to work with the above modification (don't know if that was the
-case before though).
+----
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: [PATCH] pnfs: Automatically select blocks & objects layouts
 
-When the client under test tries to lock before the server reboot then
-the fcntl(F_SETLKW) returns either right after the NSM NOTIFY with
--ENOLCK without any NLM trafic or it returns with -ENOLCK when the
-NLM_DENIED_GRACE_PERIOD changes into NLM_BLOCKED (the original report).
+Just like files-layout, blocks & objects layouts are part of the
+NFS 4.1 protocol and should be automatically selected if NFS_4_1
+is selected. The small problem is that these depend on other
+Kernel support being present, while files only depends on NFS
+itself.
 
+This patch removes from the user choice the presence of objects
+and blocks layout. But makes sure these are selected only if
+the depended subsystems are present in the Kernel.
+
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/Kconfig |   14 ++++----------
+ 1 files changed, 4 insertions(+), 10 deletions(-)
+
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index be02077..1b951cd 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -79,9 +79,6 @@ config NFS_V4_1
+ 	depends on NFS_FS && NFS_V4 && EXPERIMENTAL
+ 	select SUNRPC_BACKCHANNEL
+ 	select PNFS_FILE_LAYOUT
+-	select PNFS_BLOCK
+-	select MD
+-	select BLK_DEV_DM
+ 	help
+ 	  This option enables support for minor version 1 of the NFSv4 protocol
+ 	  (RFC 5661 and RFC 5663) in the kernel's NFS client.
+@@ -93,16 +90,13 @@ config PNFS_FILE_LAYOUT
+ 
+ config PNFS_BLOCK
+ 	tristate
++	depends on NFS_FS && NFS_V4_1 && MD && BLK_DEV_DM
++	default m
+ 
+ config PNFS_OBJLAYOUT
+-	tristate "Provide support for the pNFS Objects Layout Driver for NFSv4.1 pNFS (EXPERIMENTAL)"
++	tristate
+ 	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
+-	help
+-	  Say M here if you want your pNFS client to support the Objects Layout Driver.
+-	  Requires the SCSI osd initiator library (SCSI_OSD_INITIATOR) and
+-	  upper level driver (SCSI_OSD_ULD).
+-
+-	  If unsure, say N.
++	default m
+ 
+ config ROOT_NFS
+ 	bool "Root file system on NFS"
 -- 
-Frank
+1.7.6
+
+
