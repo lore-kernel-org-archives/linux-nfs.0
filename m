@@ -1,73 +1,61 @@
-From: Benny Halevy <bhalevy@tonian.com>
-Subject: Re: Unable to Compile Latest Kernel from Git
-Date: Thu, 11 Aug 2011 15:17:14 +0300
-Message-ID: <4E43C84A.1060402@tonian.com>
-References: <CALPVbefsY4Ddw6QOZu9BckCx+Q0YJg8tgbjK6xN5sQxbpdD16w@mail.gmail.com> <CAN-5tyEmCx+1quj+545zDZ1ueQRVhHGgDzhdjZ1K1h6hCjOJvw@mail.gmail.com> <4E40F53A.2080303@tonian.com> <CALPVbedY4WV=Bsqr8Z0JUeYgrgVGLFc-NYdxJfewUAO0bJpR8A@mail.gmail.com> <4E42C9D3.2070006@netapp.com> <4E42CDF3.6090708@panasas.com> <CALPVbecSxKKbzo_CQqb075cZhiD5kOG7Aao71=cwktK1dSU2Zg@mail.gmail.com>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Bad extra hunk at pan_layout driver pathes
+Date: Thu, 11 Aug 2011 15:26:46 -0700
+Message-ID: <4E445726.1000702@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Cc: Boaz Harrosh <bharrosh@panasas.com>,
-	Bryan Schumaker <bjschuma@netapp.com>,
-	Olga Kornievskaia <aglo@citi.umich.edu>,
-	linux-nfs@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Billy Hass <billdh16@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+To: Benny Halevy <benny@tonian.com>,
+	NFS list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:56282 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754127Ab1HKMRX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Aug 2011 08:17:23 -0400
-In-Reply-To: <CALPVbecSxKKbzo_CQqb075cZhiD5kOG7Aao71=cwktK1dSU2Zg-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from natasha.panasas.com ([67.152.220.90]:37522 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753606Ab1HKW0z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Aug 2011 18:26:55 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-08-10 22:05, Billy Hass wrote:
-> On Wed, Aug 10, 2011 at 2:29 PM, Boaz Harrosh <bharrosh@panasas.com> =
-wrote:
->> On 08/10/2011 11:11 AM, Bryan Schumaker wrote:
->>> On 08/10/2011 01:29 PM, Billy Hass wrote:
->>>> [root@pdsi8 linux-pnfs]# make modules && make modules_install && m=
-ake install
->>>>   CHK     include/linux/version.h
->>>>   CHK     include/generated/utsrelease.h
->>>>   CALL    scripts/checksyscalls.sh
->>>>   CC [M]  fs/xfs/linux-2.6/xfs_iops.o
->>>> fs/xfs/linux-2.6/xfs_iops.c: In function =91_xfs_vn_fallocate=92:
->>>> fs/xfs/linux-2.6/xfs_iops.c:1070:3: error: implicit declaration of
->>>> function =91xfs_setattr=92 [-Werror=3Dimplicit-function-declaratio=
-n]
->>>> cc1: some warnings being treated as errors
->>>> make[2]: *** [fs/xfs/linux-2.6/xfs_iops.o] Error 1
->>>> make[1]: *** [fs/xfs] Error 2
->>>> make: *** [fs] Error 2
->>>
->>> This looks like an XFS problem now... did you see if any of the NFS=
- code compiled this time?
->>>
->>> I've had these issues before, and it's usually caused by something =
-in my .config.  Generating a new one usually fixes it for me.
->>>
->>> - Bryan
->>>
->>
->> Please try v3.1-rc1 (git checkout v3.1-rc1) if it persists I'm sure =
-the xfs guys
->> would like to fix it.
->>
->> Send this report with an attached .config file to:
->>        linux-fsdevel <linux-fsdevel@vger.kernel.org>
->>
->> Thanks
->> Boaz
->>
->=20
-> I tried v3.1-rc1 and it compiled successfully.
->=20
-> Thanks for the help.
-> --
+Hi Benny
 
-The problem was a bad merge/rebase on my side.
-Should be fixed now.
+In your pNFS git tree at patch:
+	99432a3 pnfs-obj: panlayout: panfs_shim objects IO engine
 
-Thanks for reporting!
+There is an extra hunk at Kconfig re-adding the PNFS_BLOCKS See below
 
-Benny
+> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+> index be02077..4f42384 100644
+> --- a/fs/nfs/Kconfig
+> +++ b/fs/nfs/Kconfig
+> @@ -104,6 +104,24 @@ config PNFS_OBJLAYOUT
+>  
+>  	  If unsure, say N.
+>  
+> +config PNFS_PANLAYOUT
+> +	tristate "Provide support for the Panasas OSD Layout Driver for NFSv4.1 pNFS (EXPERIMENTAL)"
+> +	depends on PNFS_OBJLAYOUT
+> +	help
+> +	  Say M or y here if you want your pNFS client to support the Panasas OSD Layout Driver.
+> +
+> +	  If unsure, say N.
+> +
+
+vvvvv Below is not needed
+
+> +config PNFS_BLOCK
+> +	tristate "Provide a pNFS block client (EXPERIMENTAL)"
+> +	depends on NFS_FS && NFS_V4_1
+> +	select MD
+> +	select BLK_DEV_DM
+> +	help
+> +	  Say M or y here if you want your pNfs client to support the block protocol
+> +
+> +	  If unsure, say N.
+> +
+
+Please remove it below is a reverting diff
+
+Thanks
+>  config ROOT_NFS
+>  	bool "Root file system on NFS"
+>  	depends on NFS_FS=y && IP_PNP
+
+---
