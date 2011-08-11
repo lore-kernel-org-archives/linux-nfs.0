@@ -1,64 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:7098 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754676Ab1HSWPI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2011 18:15:08 -0400
-Subject: Re: Please support NSF squashing multiple groups
-Content-Type: text/plain; charset=us-ascii
-From: Andy Adamson <andros@netapp.com>
-In-Reply-To: <201108192206.p7JM6cwN005330@bari.maths.usyd.edu.au>
-Date: Fri, 19 Aug 2011 18:15:05 -0400
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, neilb@suse.de
-Message-Id: <24645503-5C52-4C77-A87E-07653D9FECFE@netapp.com>
-References: <201108192206.p7JM6cwN005330@bari.maths.usyd.edu.au>
-To: paul.szabo@sydney.edu.au
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:64319 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754481Ab1HKXxl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Aug 2011 19:53:41 -0400
+Received: by vws1 with SMTP id 1so2094947vws.19
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Aug 2011 16:53:41 -0700 (PDT)
+In-Reply-To: <4E442512.7080904@panasas.com>
+References: <1312685635-1593-1-git-send-email-bergwolf@gmail.com>
+ <4E42C564.7070504@panasas.com> <CA+a=Yy4WXD64A3anw7f-wSWcs4A4-6W18QQs=YyYC0285_W_qg@mail.gmail.com>
+ <4E442512.7080904@panasas.com>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Fri, 12 Aug 2011 07:53:21 +0800
+Message-ID: <CA+a=Yy4g09b_AEf2px1Cjfmr_ud3PFuAbEwdez1cbsiYJ0mmgA@mail.gmail.com>
+Subject: Re: [PATCH 1/5] pNFS: recoalesce when ld write pagelist fails
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Benny Halevy <benny@tonian.com>, linux-nfs@vger.kernel.org,
+        Peng Tao <peng_tao@emc.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Fri, Aug 12, 2011 at 2:53 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+> On 08/10/2011 05:03 PM, Peng Tao wrote:
+>> On Thu, Aug 11, 2011 at 1:52 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>>> On 08/06/2011 07:53 PM, Peng Tao wrote:
+>>>> For pnfs pagelist write failure, we need to pg_recoalesce and resend
+>>>> IO to mds.
+>>>>
+>>>
+>>> I have not given this subject any thought or investigation, so I don't
+>>> know what we should do, but the gut feeling is that I have seen all this
+>>> code else where and we could be having a bigger re-use of existing code.
+>>>
+>>> What if we dig into:
+>>>        data->mds_ops->rpc_call_done(&data->task, data);
+>>>        data->mds_ops->rpc_release(data);
+>>>
+>>> And do all the pages tear-down and unlocks but if there is an error
+>>> not set them as clean. That is keep them dirty. Then mark the layout
+>>> as error and let the normal code choose an MDS write_out. (Just a wild
+>>> thought)
+>> This may work only for write failures. But for read, we will have to
+>> recoalesce and send to MDS. So I prefer to let read and write have
+>> similar retry code path like this.
+>>
+>
+> I disagree. Look even now the read path is very different then the write
+> path. (See your two patches: write-patch is 3 times bigger the read-patch)
+I mean their logic is the same: if pnfs_error is set, recoalesce the
+pages and re-send to MDS :)
 
-On Aug 19, 2011, at 6:06 PM, paul.szabo@sydney.edu.au wrote:
+>
+> You should see if what I say is possible for write. And then maybe some
+> thing will come up also for read. They do not necessarily need to be the
+> same. (I think)
+I agree that it is possible for write. We can re-dirty the pages and
+rely on next flush to write it out to MDS. This is mentioned by Trond
+before. However, the method won't work for read failures. I don't see
+how we can queue failed read pages and let someone else re-send it
+later.
 
-> Dear Bruce,
-> 
->>> Does that "work" also against the "evil remote root" e.g. when the
->>> remote machine is compromised?
->> 
->> ... Nothing you can do about that.
-> 
-> Thanks for the confirmation.
-> 
->> ... if several people each have their own client ...
-> 
-> Not my situation.
-> 
->>>> If you are using NFSv4 and kerberos than there already exist
->>>> interfaces to do what you want. See "man idmap.conf". ...
->>> 
->>> Sorry I do not use NFSv4 or kerberos, yet. ...
->> 
->> Look for "static" in a recent version of the idmapd.conf man page.
-> 
-> Thanks for the hint. Still, [Static] seems to translate UIDs only, seems
-> to need umich_ldap and [UMICH_SCHEMA] for group memberships. Maybe
-> idmapd ignores group membership lists as received from the client and
-> sets the "local" list for each UID? - I guess I will need to investigate
-> further how NFSv4 and idmapd work and try to implement them on my
-> network.
-
-Note that only AUTH_SYS sends GID and GID lists in the rpc_cred. RPCSEC_GSS with Kerberos only sends the krb5 principal to the server. The server looks up group membership via nsswitch - either /etc/groups, or ldap. Note ldap requires a secure communication usually with an X.509 certificate. NIS is not recommended for use with kerberos.
-
-idmapd only deals with groups when a SETATTR arrives with ACE who's that are group names where it maps the groupname@domain to a gid, or a GETATTR ACL request where it maps gid->groupname@domain
-
--->Andy
-
-> 
-> Thanks, Paul
-> 
-> Paul Szabo   psz@maths.usyd.edu.au   http://www.maths.usyd.edu.au/u/psz/
-> School of Mathematics and Statistics   University of Sydney    Australia
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+-- 
+Thanks,
+Tao
