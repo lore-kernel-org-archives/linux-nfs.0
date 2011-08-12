@@ -1,66 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:35832 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754169Ab1H3O2d convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2011 10:28:33 -0400
-Subject: Re: [PATCH 2/2] SUNRPC: compare scopeid for link-local addresses
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:40176 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751724Ab1HLUsP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Aug 2011 16:48:15 -0400
+Date: Fri, 12 Aug 2011 16:48:09 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: two callback patches
+Message-ID: <20110812204809.GA4760@merit.edu>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4E5CABE9.5090401@cn.fujitsu.com>
-Date: Tue, 30 Aug 2011 10:28:06 -0400
-Cc: NFS <linux-nfs@vger.kernel.org>, "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@redhat.com>, Steve Dickson <SteveD@redhat.com>
-Message-Id: <31E944A2-6DC2-4D71-92D9-E6521B1A23D3@oracle.com>
-References: <4E5CABE9.5090401@cn.fujitsu.com>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+When you get a chance, could you pull these into pnfs-all-latest?  You'll
+find them on the head of my for-benny branch, and I assume upstream.
 
-On Aug 30, 2011, at 5:22 AM, Mi Jinlong wrote:
+commit 3070296f2b3ddc094bda51286c3e9687d59d2a22
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Aug 2 14:50:40 2011 -0400
 
-> For ipv6 link-local addresses, sunrpc do not compare those scope id.
-> This patch let sunrpc compares scope id only on link-local addresses.
-> 
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
-> include/linux/sunrpc/clnt.h |    8 +++++++-
-> 1 files changed, 7 insertions(+), 1 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> index db7bcaf..ee1bb67 100644
-> --- a/include/linux/sunrpc/clnt.h
-> +++ b/include/linux/sunrpc/clnt.h
-> @@ -218,7 +218,13 @@ static inline bool __rpc_cmp_addr6(const struct sockaddr *sap1,
-> {
-> 	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sap1;
-> 	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sap2;
-> -	return ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr);
-> +
-> +	if (!ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr))
-> +		return false;
-> +	else if (ipv6_addr_type(&sin1->sin6_addr) & IPV6_ADDR_LINKLOCAL)
-> +		return sin1->sin6_scope_id == sin2->sin6_scope_id;
+    NFSv4.1: Return NFS4ERR_BADSESSION to callbacks during session resets
+    
+    If the client is in the process of resetting the session when it receives
+    a callback, then returning NFS4ERR_DELAY may cause a deadlock with the
+    DESTROY_SESSION call.
+    
+    Basically, if the client returns NFS4ERR_DELAY in response to the
+    CB_SEQUENCE call, then the server is entitled to believe that the
+    client is busy because it is already processing that call. In that
+    case, the server is perfectly entitled to respond with a
+    NFS4ERR_BACK_CHAN_BUSY to any DESTROY_SESSION call.
+    
+    Fix this by having the client reply with a NFS4ERR_BADSESSION in
+    response to the callback if it is resetting the session.
+    
+    Cc: stable@kernel.org [2.6.38+]
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-Thanks for splitting the patches.
+commit a8446678ba8b850bcac2286c6ed803c339049096
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Aug 2 14:50:39 2011 -0400
 
-The address comparators I've seen check that both addresses are link-local before comparing the scope IDs.  I don't think we can assume the kind of source-destination address relationship we have in parts of the RPC server code.
-
-> +
-> +	return true;
-> }
-> 
-> static inline bool __rpc_copy_addr6(struct sockaddr *dst,
-> -- 
-> 1.7.6
-> 
-> 
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+    NFSv4.1: Fix the callback 'highest_used_slotid' behaviour
+    
+    Currently, there is no guarantee that we will call nfs4_cb_take_slot() even
+    though nfs4_callback_compound() will consistently call
+    nfs4_cb_free_slot() provided the cb_process_state has set the 'clp' field.
+    The result is that we can trigger the BUG_ON() upon the next call to
+    nfs4_cb_take_slot().
+    
+    This patch fixes the above problem by using the slot id that was taken in
+    the CB_SEQUENCE operation as a flag for whether or not we need to call
+    nfs4_cb_free_slot().
+    It also fixes an atomicity problem: we need to set tbl->highest_used_slotid
+    atomically with the check for NFS4_SESSION_DRAINING, otherwise we end up
+    racing with the various tests in nfs4_begin_drain_session().
+    
+    Cc: stable@kernel.org [2.6.38+]
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
