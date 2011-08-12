@@ -1,65 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59462 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753515Ab1HXBWu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Aug 2011 21:22:50 -0400
-Date: Tue, 23 Aug 2011 21:22:48 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd4: fix seqid_mutating_error
-Message-ID: <20110824012248.GA26561@fieldses.org>
-References: <20110819172416.GA1112@fieldses.org>
- <1313788373.26701.1.camel@lade.trondhjem.org>
- <20110823214141.GC25350@fieldses.org>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AC9E4FB@SACMVEXC2-PRD.hq.netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AC9E4FB@SACMVEXC2-PRD.hq.netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:54867 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751319Ab1HLUoc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Aug 2011 16:44:32 -0400
+Message-ID: <4E4590A4.1080803@panasas.com>
+Date: Fri, 12 Aug 2011 13:44:20 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: Casey Bodley <cbodley@citi.umich.edu>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Mi Jinlong <mijinlong@cn.fujitsu.com>,
+        Malcolm Locke <malc@wholemeal.co.nz>
+Subject: Re: Grace period NEVER ends
+References: <4E44790A.8000106@panasas.com> <4E447EEB.501@panasas.com> <4E4481F0.2050806@panasas.com> <20110812021556.GD9761@pad.fieldses.org> <CAMeBU_28VPCtExvU1gr3oTbLLyqp=qFwFjxehoea64Xqi=_ncQ@mail.gmail.com> <20110812143228.GD16960@pad.fieldses.org> <4E456BBB.1030605@panasas.com> <20110812183945.GJ16960@pad.fieldses.org> <4E45785D.40103@panasas.com> <20110812203606.GL16960@pad.fieldses.org>
+In-Reply-To: <20110812203606.GL16960@pad.fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Aug 23, 2011 at 03:58:05PM -0700, Myklebust, Trond wrote:
-> > -----Original Message-----
-> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> > index 76f99e8..b875b03 100644
-> > --- a/include/linux/nfs4.h
-> > +++ b/include/linux/nfs4.h
-> > @@ -373,6 +373,22 @@ enum nfsstat4 {
-> >  	NFS4ERR_DELEG_REVOKED	= 10087,	/* deleg./layout revoked
-> */
-> >  };
-> > 
-> > +static inline bool seqid_mutating_err(u32 err)
-> > +{
-> > +	/* rfc 3530 section 8.1.5: */
-> > +	switch (err) {
-> > +	case NFS4ERR_STALE_CLIENTID:
-> > +	case NFS4ERR_STALE_STATEID:
-> > +	case NFS4ERR_BAD_STATEID:
-> > +	case NFS4ERR_BAD_SEQID:
-> > +	case NFS4ERR_BADXDR:
-> > +	case NFS4ERR_RESOURCE:
-> > +	case NFS4ERR_NOFILEHANDLE:
-> > +		return false;
-> > +	};
-> > +	return true;
-> > +}
-> > +
-> >  /*
-> >   * Note: NF4BAD is not actually part of the protocol; it is just used
-> >   * internally by nfsd.
+On 08/12/2011 01:36 PM, J. Bruce Fields wrote:
+> On Fri, Aug 12, 2011 at 12:00:45PM -0700, Boaz Harrosh wrote:
 > 
-> Should we make it take a 's32' rather than a 'u32' argument? We do
-> usually expect those errors to be signed.
+> Is this actually the deleg reclaim case that Trond mentioned?  Could I
+> see a trace?
+> 
 
-On the server side it's unsigned--bigendian in fact.  The caller is:
+No it's the:
+	NFSD: nfsd4_create_clid_dir: DIRECTORY EXISTS
 
-> > +	if (seqid_mutating_err(ntohl(nfserr)) && stateowner) { 	\
+problem that you sent a fix for. See my other mail
 
-I put this in nfs4.h which is mostly protocol constants, and I figure
-u32 is the type closest to the relevant xdr, and we should convert as
-necessary in callers.  I dunno.
+> --b.
 
---b.
+Thanks
+Boaz
