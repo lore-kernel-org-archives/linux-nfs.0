@@ -1,52 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:58473 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751098Ab1HPLZk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 07:25:40 -0400
-Subject: [PATCH 0/2] 32/64 bit llseek hashes
-To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: hch@infradead.org, yong.fan@whamcloud.com, linux-fsdevel@vger.kernel.org,
-        tytso@mit.edu, adilger@whamcloud.com
-Date: Tue, 16 Aug 2011 13:25:36 +0200
-Message-ID: <20110816112536.1808464.7174.stgit@fsdevel3>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:57686 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751324Ab1HLUtF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Aug 2011 16:49:05 -0400
+Date: Fri, 12 Aug 2011 16:48:59 -0400
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        Casey Bodley <cbodley@citi.umich.edu>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Mi Jinlong <mijinlong@cn.fujitsu.com>,
+        Malcolm Locke <malc@wholemeal.co.nz>
+Subject: Re: Grace period NEVER ends
+Message-ID: <20110812204859.GA13990@fieldses.org>
+References: <4E447EEB.501@panasas.com>
+ <4E4481F0.2050806@panasas.com>
+ <20110812021556.GD9761@pad.fieldses.org>
+ <CAMeBU_28VPCtExvU1gr3oTbLLyqp=qFwFjxehoea64Xqi=_ncQ@mail.gmail.com>
+ <20110812143228.GD16960@pad.fieldses.org>
+ <4E456BBB.1030605@panasas.com>
+ <20110812183945.GJ16960@pad.fieldses.org>
+ <4E45785D.40103@panasas.com>
+ <20110812203606.GL16960@pad.fieldses.org>
+ <4E4590A4.1080803@panasas.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E4590A4.1080803@panasas.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-With the ext3/ext4 directory index implementation hashes are used to specify
-offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
-on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
-hashes and therefore the probability of hash collisions for larger directories
-is rather high. As recently reported on the NFS mailing list that theoretical
-problem also happens on real systems:
-http://comments.gmane.org/gmane.linux.nfs/40863
+On Fri, Aug 12, 2011 at 01:44:20PM -0700, Boaz Harrosh wrote:
+> On 08/12/2011 01:36 PM, J. Bruce Fields wrote:
+> > On Fri, Aug 12, 2011 at 12:00:45PM -0700, Boaz Harrosh wrote:
+> > 
+> > Is this actually the deleg reclaim case that Trond mentioned?  Could I
+> > see a trace?
+> > 
+> 
+> No it's the:
+> 	NFSD: nfsd4_create_clid_dir: DIRECTORY EXISTS
+> 
+> problem that you sent a fix for. See my other mail
 
-The following series adds two new f_mode flags to tell ext4
-to use 32-bit or 64-bit hash values for llseek() calls.
-These flags can then used by network file systems, such as NFS, to
-request 32-bit or 64-bit offsets (hashes).
+Got it, thanks for your persistence!
 
-Version 3:
-- remove patch "RFC: Remove check for a 32-bit cookie in nfsd4_readdir()",
-  I think Bruce wanted to take it seperately as bug fix. It should be applied
-  before applying the remaining NFS patches, as without it NFSv4 will always
-  fail with the new 64-bit ext4 seek hashes.
-- split "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)" into two
-  two separate patches as suggested by Bruce, one patch to rename 
-  'access' to 'may_flags'. And the remainder of the original patch to set 
-  FMODE_32BITHASH/FMODE_64BITHASH flags and to introduce the new 
-  NFSD_MAY_64BIT_COOKIE flag
-
-Version 2:
-- use f_mode instead of O_* flags and also in a separate patch
-- introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
-- fix SEEK_END in ext4_dir_llseek()
-- set f_mode flags in NFS code as early as possible and introduce a new
-  NFSD_MAY_64BIT_COOKIE flag for that
-
---
-Bernd Schubert
-Fraunhofer ITWM
-
+--b.
