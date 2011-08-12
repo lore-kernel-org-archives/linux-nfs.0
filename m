@@ -1,42 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45041 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:65241 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751167Ab1HLBOO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Aug 2011 21:14:14 -0400
-Date: Thu, 11 Aug 2011 21:14:10 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: NFS list <linux-nfs@vger.kernel.org>, Malcolm Locke <malc@wholemeal.co.nz>
+	id S1751269Ab1HLPwX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Aug 2011 11:52:23 -0400
 Subject: Re: Grace period NEVER ends
-Message-ID: <20110812011410.GC9761@pad.fieldses.org>
-References: <4E44790A.8000106@panasas.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E44790A.8000106@panasas.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Date: Fri, 12 Aug 2011 11:52:05 -0400
+In-Reply-To: <4E4481F0.2050806@panasas.com>
+References: <4E44790A.8000106@panasas.com> <4E447EEB.501@panasas.com>
+	 <4E4481F0.2050806@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1313164325.10761.5.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Aug 11, 2011 at 05:51:22PM -0700, Boaz Harrosh wrote:
-> I have this weird problem with latest code. It is Benny's latest based
-> on 3.1-rc1 + linus/master of today + trond/linux-next.
+On Thu, 2011-08-11 at 18:29 -0700, Boaz Harrosh wrote: 
+> With this patch I'm back to the previous behavior. That is
+> wait your grace period then continue.
 > 
-> For my testing I use a pNFS client mounted on localhost over a pNFS-nfsd on
-> the same machine. If I wait the 90 seconds or so and then mount all is well
-> but if I mount right away, or stop the server, then start and mount.
->   The Grace period NEVER ends. On prints I see the server returning 100013
->   continuously forever.
+> ---
+> NFSD: Remove a wrong check in nfs4_open
 > 
-> This is my usual test setup. In the passed it would wait the annoying grace
-> and continue. Now it never returns.
+> We are already doing the proper grace period checking
+> farther down in nfs4_open. This check was just checking
+> nothing and was totally unrelated to the comment about
+> "RECLAIM_COMPLETE". It was a bug because if an open was
+> coming before the grace period end, it would then never
+> pass the condition of not being cl_firststate.
 > 
-> Before I start to bisect back to a good point I though I might ask for pointers
-> on what might have changed in this respect.
+> Boaz
+> 
+> ---
+> @@ -295,15 +295,6 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	if (open->op_create && open->op_claim_type != NFS4_OPEN_CLAIM_NULL)
+>  		return nfserr_inval;
+>  
+> -	/*
+> -	 * RFC5661 18.51.3
+> -	 * Before RECLAIM_COMPLETE done, server should deny new lock
+> -	 */
+> -	if (nfsd4_has_session(cstate) &&
+> -	    !cstate->session->se_client->cl_firststate &&
+> -	    open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
+> -		return nfserr_grace;
+> -
 
-Hm, I don't know.  We turned on the reply cache for nfsv4, so it could
-be mistakenly treating the calls as replays, but that seems unlikely.
+BTW: restricting opens to CLAIM_PREVIOUS only during the grace period
+seems wrong.
 
-There was one other report of such behavior here:
+If I have already reclaimed my delegation, then why shouldn't I be able
+to do a CLAIM_DELEGATE_CUR and/or CLAIM_DELEG_CUR_FH open? It is not as
+if those can ever cause a lock that will conflict with some other
+client's lock reclaims.
 
-	http://marc.info/?l=linux-nfs&m=131280896721834&w=2
+Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
---b.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
