@@ -1,116 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:52200 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756526Ab1HaV30 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Aug 2011 17:29:26 -0400
-Received: by iabu26 with SMTP id u26so1143415iab.19
-        for <linux-nfs@vger.kernel.org>; Wed, 31 Aug 2011 14:29:25 -0700 (PDT)
-Message-ID: <4E5EA7B2.5010500@tonian.com>
-Date: Wed, 31 Aug 2011 14:29:22 -0700
-From: Benny Halevy <bhalevy@tonian.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org, Casey Bodley <cbodley@citi.umich.edu>
-Subject: Re: [PATCH] nfsd4: in-stateid seqid should start with 1
-References: <20110831195329.GD19223@fieldses.org> <4E5E994E.6040107@tonian.com> <20110831211959.GG19223@fieldses.org>
-In-Reply-To: <20110831211959.GG19223@fieldses.org>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:57288 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753500Ab1HLTaS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Aug 2011 15:30:18 -0400
+Received: by gya6 with SMTP id 6so2173051gya.19
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Aug 2011 12:30:17 -0700 (PDT)
+In-Reply-To: <20110812143228.GD16960@pad.fieldses.org>
+References: <4E44790A.8000106@panasas.com>
+	<4E447EEB.501@panasas.com>
+	<4E4481F0.2050806@panasas.com>
+	<20110812021556.GD9761@pad.fieldses.org>
+	<CAMeBU_28VPCtExvU1gr3oTbLLyqp=qFwFjxehoea64Xqi=_ncQ@mail.gmail.com>
+	<20110812143228.GD16960@pad.fieldses.org>
+Date: Fri, 12 Aug 2011 15:30:16 -0400
+Message-ID: <CAMeBU_1dmHB54n5PYoRnBuphmQgK4LVCX52_OveSmriEe6FiMw@mail.gmail.com>
+Subject: Re: Grace period NEVER ends
+From: Casey Bodley <cbodley@citi.umich.edu>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
+        Mi Jinlong <mijinlong@cn.fujitsu.com>,
+        Malcolm Locke <malc@wholemeal.co.nz>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-08-31 14:19, J. Bruce Fields wrote:
-> On Wed, Aug 31, 2011 at 01:27:58PM -0700, Benny Halevy wrote:
->> Don't we also need the following?
+On Fri, Aug 12, 2011 at 10:32 AM, J. Bruce Fields <bfields@redhat.com> wrote:
+> On Fri, Aug 12, 2011 at 10:08:03AM -0400, Casey Bodley wrote:
+>> On Thu, Aug 11, 2011 at 10:15 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+>> > On Thu, Aug 11, 2011 at 06:29:20PM -0700, Boaz Harrosh wrote:
+>> >> With this patch I'm back to the previous behavior. That is
+>> >> wait your grace period then continue.
+>> >
+>> > Is it true for some reason that the client never sends RECLAIM_COMPLETE?
 >>
->> As per RFC5661, skip zero seqid when wrapping around
->> while updating a stateid.
-> 
-> Yep, done:
-> 
-> 	http://marc.info/?l=linux-nfs&m=131439774426154&w=2
+>> I tested this yesterday with the windows client and saw the same
+>> never-ending grace period on OPEN.  We do send RECLAIM_COMPLETE, and
+>> it completes successfully.  Other operations like CREATE and REMOVE
+>> succeed as well.
+>
+> Argh.  Does this help?
 
-yup, thanks!
+Bruce, I've not been able to reproduce since applying this patch.
 
-> 
-> I need to send out my patches one at a time rather than fifteen at once
-> if I want people to read them....
-
-My bad :-)
-
-Benny
-
-> 
+>
+> Unfortunately, this doesn't explain Malcolm Locke's problem, as it's 4.1
+> specific.
+>
 > --b.
-> 
->>
->> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
->>
->> git diff --stat -p -M
->>  fs/nfsd/state.h |    5 ++++-
->>  1 files changed, 4 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
->> index 77f98b8..7d18d3e 100644
->> --- a/fs/nfsd/state.h
->> +++ b/fs/nfsd/state.h
->> @@ -289,7 +289,10 @@ struct nfs4_client_reclaim {
->>  static inline void
->>  update_stateid(stateid_t *stateid)
->>  {
->> -	stateid->si_generation++;
->> +	u32 new = stateid->si_generation + 1;
->> +	if (new == 0)
->> +		new = 1;
->> +	stateid->si_generation = new;
->>  }
->>
->>  /* A reasonable value for REPLAY_ISIZE was estimated as follows:
->>
->> On 2011-08-31 12:53, J. Bruce Fields wrote:
->>> From: J. Bruce Fields <bfields@redhat.com>
->>>
->>> Thanks to Casey for reminding me that 5661 gives a special meaning to a
->>> value of 0 in the stateid's seqid field, so we should instead be
->>> starting out stateid's with si_generation 1.
->>>
->>> Reported-by: Casey Bodley <cbodley@citi.umich.edu>
->>> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->>> ---
->>>  fs/nfsd/nfs4state.c |    6 +++---
->>>  1 files changed, 3 insertions(+), 3 deletions(-)
->>>
->>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->>> index 49c3dd1..7caa812 100644
->>> --- a/fs/nfsd/nfs4state.c
->>> +++ b/fs/nfsd/nfs4state.c
->>> @@ -251,7 +251,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_stateid *stp, struct svc_f
->>>  	dp->dl_stateid.si_boot = boot_time;
->>>  	dp->dl_stateid.si_stateownerid = current_delegid++;
->>>  	dp->dl_stateid.si_fileid = 0;
->>> -	dp->dl_stateid.si_generation = 0;
->>> +	dp->dl_stateid.si_generation = 1;
->>>  	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
->>>  	dp->dl_time = 0;
->>>  	atomic_set(&dp->dl_count, 1);
->>> @@ -2303,7 +2303,7 @@ init_stateid(struct nfs4_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *
->>>  	stp->st_stateid.si_boot = boot_time;
->>>  	stp->st_stateid.si_stateownerid = oo->oo_owner.so_id;
->>>  	stp->st_stateid.si_fileid = fp->fi_id;
->>> -	stp->st_stateid.si_generation = 0;
->>> +	stp->st_stateid.si_generation = 1;
->>>  	stp->st_access_bmap = 0;
->>>  	stp->st_deny_bmap = 0;
->>>  	__set_bit(open->op_share_access & ~NFS4_SHARE_WANT_MASK,
->>> @@ -3898,7 +3898,7 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
->>>  	stp->st_stateid.si_boot = boot_time;
->>>  	stp->st_stateid.si_stateownerid = lo->lo_owner.so_id;
->>>  	stp->st_stateid.si_fileid = fp->fi_id;
->>> -	stp->st_stateid.si_generation = 0;
->>> +	stp->st_stateid.si_generation = 1;
->>>  	stp->st_access_bmap = 0;
->>>  	stp->st_deny_bmap = open_stp->st_deny_bmap;
->>>  	stp->st_openstp = open_stp;
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+> commit d43b4d070a24edcbe5f5e9ffcf7a33bbeccdd47d
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Fri Aug 12 10:27:18 2011 -0400
+>
+>    nfsd4: fix failure to end nfsd4 grace period
+>
+>    Even if we fail to write a recovery record to stable storage, we should
+>    still mark the client as having acquired its first state.  Otherwise we
+>    leave 4.1 clients with indefinite ERR_GRACE returns.
+>
+>    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>
+> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+> index 29d77f6..4c7537d 100644
+> --- a/fs/nfsd/nfs4recover.c
+> +++ b/fs/nfsd/nfs4recover.c
+> @@ -156,10 +156,9 @@ out_put:
+>        dput(dentry);
+>  out_unlock:
+>        mutex_unlock(&dir->d_inode->i_mutex);
+> -       if (status == 0) {
+> -               clp->cl_firststate = 1;
+> +       if (status == 0)
+>                vfs_fsync(rec_file, 0);
+> -       }
+> +       clp->cl_firststate = 1;
+>        nfs4_reset_creds(original_cred);
+>        dprintk("NFSD: nfsd4_create_clid_dir returns %d\n", status);
+>        return status;
+>
