@@ -1,73 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:45861 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753945Ab1HIRji (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Aug 2011 13:39:38 -0400
-Message-ID: <4E4170B8.7090409@panasas.com>
-Date: Tue, 9 Aug 2011 10:39:04 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        <linux-nfs@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
-        <hch@infradead.org>, <yong.fan@whamcloud.com>,
-        <linux-fsdevel@vger.kernel.org>, <tytso@mit.edu>,
-        <adilger@whamcloud.com>
-Subject: Re: [PATCH 3/4] RFC: Remove check for a 32-bit cookie in nfsd4_readdir()
-References: <20110808153432.1872437.85783.stgit@fsdevel3> <20110808153808.1872437.85162.stgit@fsdevel3> <20110809173145.GA16206@fieldses.org>
-In-Reply-To: <20110809173145.GA16206@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:35848 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752155Ab1HPNsM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 09:48:12 -0400
+Received: by pzk37 with SMTP id 37so4663577pzk.1
+        for <linux-nfs@vger.kernel.org>; Tue, 16 Aug 2011 06:48:11 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: benny@tonian.com
+Cc: linux-nfs@vger.kernel.org, Peng Tao <peng_tao@emc.com>
+Subject: [PATCH] pnfsblock: init pg_bsize properly
+Date: Fri, 12 Aug 2011 18:04:10 -0700
+Message-Id: <1313197450-4595-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 08/09/2011 10:31 AM, J. Bruce Fields wrote:
-> On Mon, Aug 08, 2011 at 05:38:08PM +0200, Bernd Schubert wrote:
->> Fan Yong <yong.fan@whamcloud.com> noticed setting
->> FMODE_32bithash wouldn't work with nfsd v4, as
->> nfsd4_readdir() checks for 32 bit cookies. However, according to RFC 3530
->> cookies have a 64 bit type and cookies are also defined as u64 in
->> 'struct nfsd4_readdir'. So remove the test for >32-bit values.
-> 
-> Wow, thanks, I wonder where that check came from.  Looks like it was
-> there since the very first nfsv4 commit.
-> 
+pg_bsize is server->wsize/rsize by default. We would want to use the lseg length.
 
-Even for the "very first nfsv4 commit" it sounds like a stupid bug.
-Probably a copy/paste from V2 code. What about V3, does V3 code have
-this bug?
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |   20 ++++++++++++++++++--
+ 1 files changed, 18 insertions(+), 2 deletions(-)
 
-Boaz
-
-> Applying.
-> 
-> --b.
-> 
->>
->> Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
->> ---
->>  fs/nfsd/nfs4proc.c |    2 +-
->>  1 files changed, 1 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->> index e807776..9bf0a66 100644
->> --- a/fs/nfsd/nfs4proc.c
->> +++ b/fs/nfsd/nfs4proc.c
->> @@ -691,7 +691,7 @@ nfsd4_readdir(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>  	readdir->rd_bmval[1] &= nfsd_suppattrs1(cstate->minorversion);
->>  	readdir->rd_bmval[2] &= nfsd_suppattrs2(cstate->minorversion);
->>  
->> -	if ((cookie > ~(u32)0) || (cookie == 1) || (cookie == 2) ||
->> +	if ((cookie == 1) || (cookie == 2) ||
->>  	    (cookie == 0 && memcmp(readdir->rd_verf.data, zeroverf.data, NFS4_VERIFIER_SIZE)))
->>  		return nfserr_bad_cookie;
->>  
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 36648e1..9143e61 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -919,14 +919,30 @@ bl_clear_layoutdriver(struct nfs_server *server)
+ 	return 0;
+ }
+ 
++static void bl_pg_init_read(struct nfs_pageio_descriptor *pgio,
++			    struct nfs_page *req)
++{
++	pnfs_generic_pg_init_read(pgio, req);
++	if (pgio->pg_lseg)
++		pgio->pg_bsize = pgio->pg_lseg->pls_range.length;
++}
++
++static void bl_pg_init_write(struct nfs_pageio_descriptor *pgio,
++			     struct nfs_page *req)
++{
++	pnfs_generic_pg_init_write(pgio, req);
++	if (pgio->pg_lseg)
++		pgio->pg_bsize = pgio->pg_lseg->pls_range.length;
++}
++
+ static const struct nfs_pageio_ops bl_pg_read_ops = {
+-	.pg_init = pnfs_generic_pg_init_read,
++	.pg_init = bl_pg_init_read,
+ 	.pg_test = pnfs_generic_pg_test,
+ 	.pg_doio = pnfs_generic_pg_readpages,
+ };
+ 
+ static const struct nfs_pageio_ops bl_pg_write_ops = {
+-	.pg_init = pnfs_generic_pg_init_write,
++	.pg_init = bl_pg_init_write,
+ 	.pg_test = pnfs_generic_pg_test,
+ 	.pg_doio = pnfs_generic_pg_writepages,
+ };
+-- 
+1.7.1.262.g5ef3d
 
