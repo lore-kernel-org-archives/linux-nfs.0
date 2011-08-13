@@ -1,56 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:60389 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752541Ab1HKSxU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Aug 2011 14:53:20 -0400
-Message-ID: <4E442512.7080904@panasas.com>
-Date: Thu, 11 Aug 2011 11:53:06 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Benny Halevy <benny@tonian.com>, <linux-nfs@vger.kernel.org>,
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:39636 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752619Ab1HPNon (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 09:44:43 -0400
+Received: by mail-pz0-f42.google.com with SMTP id 37so4658643pzk.1
+        for <linux-nfs@vger.kernel.org>; Tue, 16 Aug 2011 06:44:43 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: benny@tonian.com
+Cc: bharrosh@panasas.com, linux-nfs@vger.kernel.org,
         Peng Tao <peng_tao@emc.com>
-Subject: Re: [PATCH 1/5] pNFS: recoalesce when ld write pagelist fails
-References: <1312685635-1593-1-git-send-email-bergwolf@gmail.com> <4E42C564.7070504@panasas.com> <CA+a=Yy4WXD64A3anw7f-wSWcs4A4-6W18QQs=YyYC0285_W_qg@mail.gmail.com>
-In-Reply-To: <CA+a=Yy4WXD64A3anw7f-wSWcs4A4-6W18QQs=YyYC0285_W_qg@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+Subject: [PATCH v2 2/3] pNFS: recoalesce when ld read pagelist fails
+Date: Fri, 12 Aug 2011 18:00:12 -0700
+Message-Id: <1313197213-1651-3-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1313197213-1651-1-git-send-email-bergwolf@gmail.com>
+References: <1313197213-1651-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 08/10/2011 05:03 PM, Peng Tao wrote:
-> On Thu, Aug 11, 2011 at 1:52 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->> On 08/06/2011 07:53 PM, Peng Tao wrote:
->>> For pnfs pagelist write failure, we need to pg_recoalesce and resend
->>> IO to mds.
->>>
->>
->> I have not given this subject any thought or investigation, so I don't
->> know what we should do, but the gut feeling is that I have seen all this
->> code else where and we could be having a bigger re-use of existing code.
->>
->> What if we dig into:
->>        data->mds_ops->rpc_call_done(&data->task, data);
->>        data->mds_ops->rpc_release(data);
->>
->> And do all the pages tear-down and unlocks but if there is an error
->> not set them as clean. That is keep them dirty. Then mark the layout
->> as error and let the normal code choose an MDS write_out. (Just a wild
->> thought)
-> This may work only for write failures. But for read, we will have to
-> recoalesce and send to MDS. So I prefer to let read and write have
-> similar retry code path like this.
-> 
+For pnfs pagelist read failure, we need to pg_recoalesce and resend
+IO to mds.
 
-I disagree. Look even now the read path is very different then the write
-path. (See your two patches: write-patch is 3 times bigger the read-patch)
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/pnfs.c |   20 +++++++-------------
+ fs/nfs/pnfs.h |    2 +-
+ fs/nfs/read.c |   13 ++++++++++++-
+ 3 files changed, 20 insertions(+), 15 deletions(-)
 
-You should see if what I say is possible for write. And then maybe some
-thing will come up also for read. They do not necessarily need to be the
-same. (I think)
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index ad0579a..84ecd41 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1262,23 +1262,17 @@ EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
+ /*
+  * Called by non rpc-based layout drivers
+  */
+-int
+-pnfs_ld_read_done(struct nfs_read_data *data)
++void pnfs_ld_read_done(struct nfs_read_data *data)
+ {
+-	int status;
+-
+-	if (!data->pnfs_error) {
++	if (likely(!data->pnfs_error)) {
+ 		__nfs4_read_done_cb(data);
+ 		data->mds_ops->rpc_call_done(&data->task, data);
+-		data->mds_ops->rpc_release(data);
+-		return 0;
++	} else {
++		put_lseg(data->lseg);
++		data->lseg = NULL;
++		dprintk("pnfs write error = %d\n", data->pnfs_error);
+ 	}
+-
+-	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
+-		data->pnfs_error);
+-	status = nfs_initiate_read(data, NFS_CLIENT(data->inode),
+-				   data->mds_ops);
+-	return status ? : -EAGAIN;
++	data->mds_ops->rpc_release(data);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
+ 
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 0fb0a41..506f67c 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -201,7 +201,7 @@ void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+ int _pnfs_return_layout(struct inode *);
+ void pnfs_ld_write_done(struct nfs_write_data *);
+-int pnfs_ld_read_done(struct nfs_read_data *);
++void pnfs_ld_read_done(struct nfs_read_data *);
+ struct pnfs_layout_segment *pnfs_update_layout(struct inode *ino,
+ 					       struct nfs_open_context *ctx,
+ 					       loff_t pos,
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 2171c04..2a46aaa 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -541,13 +541,24 @@ static void nfs_readpage_result_full(struct rpc_task *task, void *calldata)
+ static void nfs_readpage_release_full(void *calldata)
+ {
+ 	struct nfs_read_data *data = calldata;
++	struct nfs_pageio_descriptor pgio;
+ 
++	if (data->pnfs_error) {
++		nfs_pageio_init_read_mds(&pgio, data->inode);
++		pgio.pg_recoalesce = 1;
++	}
+ 	while (!list_empty(&data->pages)) {
+ 		struct nfs_page *req = nfs_list_entry(data->pages.next);
+ 
+ 		nfs_list_remove_request(req);
+-		nfs_readpage_release(req);
++		if (!data->pnfs_error) {
++			nfs_readpage_release(req);
++		} else {
++			nfs_pageio_add_request(&pgio, req);
++		}
+ 	}
++	if (data->pnfs_error)
++		nfs_pageio_complete(&pgio);
+ 	nfs_readdata_release(calldata);
+ }
+ 
+-- 
+1.7.1.262.g5ef3d
 
->>
->> Trond please look in here, can't it be made simpler?
-
-Thanks
-Boaz
