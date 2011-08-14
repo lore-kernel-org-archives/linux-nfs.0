@@ -1,99 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50729 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751934Ab1HWOrW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Aug 2011 10:47:22 -0400
-Date: Tue, 23 Aug 2011 10:43:23 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Mi Jinlong <mijinlong@cn.fujitsu.com>, NFS <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] sunrpc: Add scope id to svc_addr_u for IPv6 LINKLOCAL
- address
-Message-ID: <20110823104323.0da02307@corrin.poochiereds.net>
-In-Reply-To: <73D17319-3FDB-4278-872A-FF488E1C88DD@oracle.com>
-References: <4E4F8B5D.6060404@cn.fujitsu.com>
-	<20110822192348.GA16261@fieldses.org>
-	<20110822153939.14d0a6ac@tlielax.poochiereds.net>
-	<73D17319-3FDB-4278-872A-FF488E1C88DD@oracle.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:51242 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754234Ab1HNUIP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Aug 2011 16:08:15 -0400
+Received: by fxh19 with SMTP id 19so3242967fxh.19
+        for <linux-nfs@vger.kernel.org>; Sun, 14 Aug 2011 13:08:14 -0700 (PDT)
+Message-ID: <4E482B2A.9030107@tonian.com>
+Date: Sun, 14 Aug 2011 23:08:10 +0300
+From: Benny Halevy <benny@tonian.com>
+To: Boaz Harrosh <bharrosh@panasas.com>, Jim Rees <rees@umich.edu>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: two callback patches
+References: <20110812204809.GA4760@merit.edu> <4E4597E7.7090504@panasas.com>
+In-Reply-To: <4E4597E7.7090504@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 22 Aug 2011 15:44:39 -0400
-Chuck Lever <chuck.lever@oracle.com> wrote:
+On 2011-08-13 00:15, Boaz Harrosh wrote:
+> On 08/12/2011 01:48 PM, Jim Rees wrote:
+>> When you get a chance, could you pull these into pnfs-all-latest?  You'll
+>> find them on the head of my for-benny branch, and I assume upstream.
+>>
+> 
+> Right and some other bug fixes as well. I find that all of trond/linux-next
+> branch are needed for proper run with v3.1-rc1 stuff. Best is if you can
+> merge in trond/linux-next at the client branch side if the pnfs tree.
+
+Yup.  I fetched nfs-2.6/bugfixes (same as linux-next as of today)
+into my nfs-bugfixes branch and released under pnfs-all-3.1-rc1-2011-08-14
+
+Benny
 
 > 
-> On Aug 22, 2011, at 3:39 PM, Jeff Layton wrote:
+> Thanks
+> Boaz
 > 
-> > On Mon, 22 Aug 2011 15:23:48 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> >> On Sat, Aug 20, 2011 at 06:24:29PM +0800, Mi Jinlong wrote:
-> >>> For IPv6 local address, lockd can not callback to client for 
-> >>> missing scope id when binding address at inet6_bind:
-> >>> 
-> >>> 324       if (addr_type & IPV6_ADDR_LINKLOCAL) {
-> >>> 325               if (addr_len >= sizeof(struct sockaddr_in6) &&
-> >>> 326                   addr->sin6_scope_id) {
-> >>> 327                       /* Override any existing binding, if another one
-> >>> 328                        * is supplied by user.
-> >>> 329                        */
-> >>> 330                       sk->sk_bound_dev_if = addr->sin6_scope_id;
-> >>> 331               }
-> >>> 332 
-> >>> 333               /* Binding to link-local address requires an interface */
-> >>> 334               if (!sk->sk_bound_dev_if) {
-> >>> 335                       err = -EINVAL;
-> >>> 336                       goto out_unlock;
-> >>> 337               }
-> >>> 
-> >>> This patch adds scope id to svc_addr_u for IPv6 address, and copy scope from
-> >>> xprt->xpt_local to rqstp->rq_daddr for use.
-> >>> 
-> >>> With this patch, lockd can callback to client success.
-> >> 
-> >> I guess this makes sense to me, but someone who understands IPv6 better
-> >> should comment... Chuck?  Jeff?
-> >> 
-> > 
-> > Sounds like a reasonable explanation. Link-local addresses all have the
-> > same prefix, so we need a scopeid (aka interface ID# for linux) to know
-> > which interface we should send a call on.
-> > 
-> > When I did the patches to allow NFSv4 callbacks to go over IPv6, I
-> > did something similar, but used the rq_addr. From gen_callback:
-> > 
-> >        struct sockaddr *sa = svc_addr(rqstp);
-> >        u32 scopeid = rpc_get_scope_id(sa);
-> > 
-> > ...and the scopeid was used to populate the scopeid of the callback
-> > address. The rq_daddr should be equivalent though. The _addr and _daddr
-> > must have the same scopeid or something is very wrong...
+>> commit 3070296f2b3ddc094bda51286c3e9687d59d2a22
+>> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+>> Date:   Tue Aug 2 14:50:40 2011 -0400
+>>
+>>     NFSv4.1: Return NFS4ERR_BADSESSION to callbacks during session resets
+>>     
+>>     If the client is in the process of resetting the session when it receives
+>>     a callback, then returning NFS4ERR_DELAY may cause a deadlock with the
+>>     DESTROY_SESSION call.
+>>     
+>>     Basically, if the client returns NFS4ERR_DELAY in response to the
+>>     CB_SEQUENCE call, then the server is entitled to believe that the
+>>     client is busy because it is already processing that call. In that
+>>     case, the server is perfectly entitled to respond with a
+>>     NFS4ERR_BACK_CHAN_BUSY to any DESTROY_SESSION call.
+>>     
+>>     Fix this by having the client reply with a NFS4ERR_BADSESSION in
+>>     response to the callback if it is resetting the session.
+>>     
+>>     Cc: stable@kernel.org [2.6.38+]
+>>     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+>>
+>> commit a8446678ba8b850bcac2286c6ed803c339049096
+>> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+>> Date:   Tue Aug 2 14:50:39 2011 -0400
+>>
+>>     NFSv4.1: Fix the callback 'highest_used_slotid' behaviour
+>>     
+>>     Currently, there is no guarantee that we will call nfs4_cb_take_slot() even
+>>     though nfs4_callback_compound() will consistently call
+>>     nfs4_cb_free_slot() provided the cb_process_state has set the 'clp' field.
+>>     The result is that we can trigger the BUG_ON() upon the next call to
+>>     nfs4_cb_take_slot().
+>>     
+>>     This patch fixes the above problem by using the slot id that was taken in
+>>     the CB_SEQUENCE operation as a flag for whether or not we need to call
+>>     nfs4_cb_free_slot().
+>>     It also fixes an atomicity problem: we need to set tbl->highest_used_slotid
+>>     atomically with the check for NFS4_SESSION_DRAINING, otherwise we end up
+>>     racing with the various tests in nfs4_begin_drain_session().
+>>     
+>>     Cc: stable@kernel.org [2.6.38+]
+>>     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-> Sure, that would preclude the need to upgrade the field to a struct sockaddr_storage.
-> 
-> > That said, on a semi-related note...
-> > 
-> > I have to wonder about statd in conjunction with link-local addresses.
-> > I have a hard time understanding how you'd ever get reboot
-> > notifications in such a setup.
-> 
-> The only way that could work is if DNS was able to look at a local hostname, and provide the correct scope ID.  Doubtful.  I wonder if mDNS might provide such ability.
-> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-I haven't looked closely at the mDNS protocol, but regular DNS does not
-support scopeids on AAAA records.
-
-It does seem somewhat plausible that this could work "accidentally".
-The reboot notifications could end up going via routable addresses
-instead of the link-local ones if you set nsm_use_hostnames.
-
-NSM is a shaky protocol at best though, so I'd make sure to test this
-before relying on it. Mi, if you get this working (including reboot
-notifications), please let us know how you solved this...
-
--- 
-Jeff Layton <jlayton@redhat.com>
