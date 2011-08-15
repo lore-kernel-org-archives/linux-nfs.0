@@ -1,92 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from b.mail.sonic.net ([64.142.19.5]:55282 "EHLO b.mail.sonic.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756622Ab1HTAPn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Aug 2011 20:15:43 -0400
-Received: from meno.noc.sonic.net (meno.noc.sonic.net [64.142.18.2])
-	by b.mail.sonic.net (8.13.8.Beta0-Sonic/8.13.7) with ESMTP id p7JN1qLH003737
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Fri, 19 Aug 2011 16:01:52 -0700
-Received: from meno.noc.sonic.net (localhost [127.0.0.1])
-	by meno.noc.sonic.net (8.14.3/8.14.3) with ESMTP id p7JN1q4e047974
-	for <linux-nfs@vger.kernel.org>; Fri, 19 Aug 2011 16:01:52 -0700 (PDT)
-	(envelope-from kgc@corp.sonic.net)
-Received: (from kgc@localhost)
-	by meno.noc.sonic.net (8.14.3/8.14.3/Submit) id p7JN1qN6047973
-	for linux-nfs@vger.kernel.org; Fri, 19 Aug 2011 16:01:52 -0700 (PDT)
-	(envelope-from kgc@corp.sonic.net)
-Date: Fri, 19 Aug 2011 16:01:52 -0700
-From: Kelsey Cummings <kgc@corp.sonic.net>
-To: linux-nfs@vger.kernel.org
-Subject: Odd locking behavior
-Message-ID: <20110819230151.GD44681@corp.sonic.net>
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-ww0-f42.google.com ([74.125.82.42]:41066 "EHLO
+	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752622Ab1HOHcZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2011 03:32:25 -0400
+Received: by wwe5 with SMTP id 5so1119488wwe.1
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Aug 2011 00:32:23 -0700 (PDT)
+Message-ID: <4E48CB82.8040803@tonian.com>
+Date: Mon, 15 Aug 2011 10:32:18 +0300
+From: Benny Halevy <bhalevy@tonian.com>
+To: Jim Rees <rees@umich.edu>
+CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>,
+        steved@redhat.com
+Subject: Re: [PATCH 1/2] blkmapd: remove init file
+References: <1313086701-7103-1-git-send-email-rees@umich.edu>
+In-Reply-To: <1313086701-7103-1-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I'm looking for some suggestions as to where to look next with an odd
-nfs file locking problem with linux clients (RHEL6) and a netapp server.
-FSC is enabled on these.
+Thanks.  I pushed those to
+git://linux-nfs.org/~bhalevy/pnfs-nfs-utils.git
+at pnfs-nfs-utils-1-2-5-rc1-2011-08-15
+(and pnfs-nfs-utils-1-2-4-2011-08-12)
 
-The rather simple example code and output says it all.  It works as
-expected when a single process is run, when a second proccess is started
-it works for a while and then something breaks and we start seeing it
-take multiples of 30 seconds for the lock request to succeed.  The more
-proccess that are run, the more likely it is to occur as well as if a
-proccess is started on a second client.
+Benny
 
-When the issue is exhibiting itself, the netaps' lock status display the
-granted and waiting locks as expected(?).
-
-..
- 6681 0x00085ec8:0x71082409 0:0 1 GWAITING (0x64ea6728)
- 6645 0x00085ec8:0x71082409 0:0 1 GRANTED (0x523bb598)
-
-
-# perl t.pl 
-locking lock-test.1 0.000672
-locking lock-test.1 0.000229
-locking lock-test.1 0.000244
-locking lock-test.1 1.000247   #second process started, expected 1s
-locking lock-test.1 0.999786
-locking lock-test.1 1.000069
-locking lock-test.1 31.000492  #third process is started, at worst we expect 2s for the lock
-locking lock-test.1 60.000472
-locking lock-test.1 90.001829
-locking lock-test.1 89.999942
-locking lock-test.1 90.001407
-locking lock-test.1 90.00091
-locking lock-test.1 90.000044
-locking lock-test.1 60.000306
-
-#!/usr/bin/perl
-
-use Fcntl qw(:flock);
-use Time::HiRes qw(tv_interval gettimeofday);
-
-$| = 1;
-
-my $file = "lock-test";
-
-open (T,">$file") || die "Couldn't open file.\n";
-print T $file;
-close(T);
-
-#now run lock tests
-while ( 1 )
-{
-        open (F, $file);
-        my $start = [gettimeofday];
-        print "locking $file ";
-        flock(F,LOCK_EX);
-        print $elapsed = tv_interval ( $start, [gettimeofday]) . "\n";
-        usleep(10);
-        close(F);
-}
-
-
--- 
-Kelsey Cummings - kgc@corp.sonic.net      sonic.net, inc.
-System Architect                          2260 Apollo Way
-707.522.1000                              Santa Rosa, CA 95407
+On 2011-08-11 21:18, Jim Rees wrote:
+> Signed-off-by: Jim Rees <rees@umich.edu>
+> ---
+>  utils/blkmapd/etc/initd/initd.redhat |   76 ----------------------------------
+>  1 files changed, 0 insertions(+), 76 deletions(-)
+>  delete mode 100644 utils/blkmapd/etc/initd/initd.redhat
+> 
+> diff --git a/utils/blkmapd/etc/initd/initd.redhat b/utils/blkmapd/etc/initd/initd.redhat
+> deleted file mode 100644
+> index d6a77e8..0000000
+> --- a/utils/blkmapd/etc/initd/initd.redhat
+> +++ /dev/null
+> @@ -1,76 +0,0 @@
+> -#!/bin/sh
+> -#
+> -# description: Starts and stops the iSCSI initiator
+> -#
+> -# processname: blkmapd
+> -# pidfile: /var/run/blkmapd.pid
+> -# config:  /etc/blkmapd.conf
+> -
+> -# Source function library.
+> -if [ -f /etc/init.d/functions ] ; then
+> -	. /etc/init.d/functions
+> -elif [ -f /etc/rc.d/init.d/functions ] ; then
+> -	. /etc/rc.d/init.d/functions
+> -else
+> -	exit 0
+> -fi
+> -
+> -PATH=/sbin:/bin:/usr/sbin:/usr/bin
+> -
+> -RETVAL=0
+> -
+> -start()
+> -{
+> -	echo -n $"Starting pNFS block-layout device discovery service: "
+> -	modprobe -q blocklayoutdriver
+> -	daemon /usr/sbin/blkmapd
+> -	RETVAL=$?
+> -	if [ $RETVAL -eq 0 ]; then
+> -		touch /var/lock/subsys/blkmapd
+> -	fi
+> -	echo
+> -	return $RETVAL
+> -}
+> -
+> -stop()
+> -{
+> -	echo -n $"Stopping pNFS block-layout device discovery service: "
+> -	killproc blkmapd 2> /dev/null
+> -	rm -f /var/run/blkmapd.pid
+> -	RETVAL=$?
+> -	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/blkmapd
+> -	if [ $RETVAL -eq 0 ]; then
+> -                echo_success
+> -        else
+> -                echo_failure
+> -        fi
+> -	echo
+> -	return $RETVAL
+> -}
+> -
+> -restart()
+> -{
+> -	stop
+> -	start
+> -}
+> -
+> -case "$1" in
+> -	start)
+> -		start
+> -		;;
+> -	stop)
+> -		stop
+> -		;;
+> -	restart)
+> -		stop
+> -		start
+> -		;;
+> -	status)
+> -		status blkmapd
+> -		;;
+> -	*)
+> -	echo $"Usage: $0 {start|stop|restart|status}"
+> -	exit 1
+> -esac
+> -
+> -exit $RETVAL
