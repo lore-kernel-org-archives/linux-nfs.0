@@ -1,170 +1,142 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:46533 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751368Ab1H0Cu2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Aug 2011 22:50:28 -0400
-Message-ID: <4E5859C6.5000807@panasas.com>
-Date: Fri, 26 Aug 2011 19:43:18 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Peng Tao <bergwolf@gmail.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: <benny@tonian.com>, <linux-nfs@vger.kernel.org>,
-        Peng Tao <peng_tao@emc.com>
-Subject: Re: [PATCH v2 1/3] pNFS: recoalesce when ld write pagelist fails
-References: <1313197213-1651-1-git-send-email-bergwolf@gmail.com> <1313197213-1651-2-git-send-email-bergwolf@gmail.com> <CA+a=Yy5V-JpEy_aJ6=H5=y=GBsoDGL-TDbPZkaVmT0DxEYhLjA@mail.gmail.com>
-In-Reply-To: <CA+a=Yy5V-JpEy_aJ6=H5=y=GBsoDGL-TDbPZkaVmT0DxEYhLjA@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from fieldses.org ([174.143.236.118]:40509 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751091Ab1HOWso (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Aug 2011 18:48:44 -0400
+Date: Mon, 15 Aug 2011 18:48:43 -0400
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 5/5] nfsd: clean up nfsd_mode_check()
+Message-ID: <20110815224843.GA1624@fieldses.org>
+References: <20110815222859.GD32181@fieldses.org>
+ <1313447432-1537-5-git-send-email-bfields@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1313447432-1537-5-git-send-email-bfields@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 08/23/2011 07:45 AM, Peng Tao wrote:
-> Hi, Benny and Boaz,
-> 
-> On Sat, Aug 13, 2011 at 9:00 AM, Peng Tao <bergwolf@gmail.com> wrote:
->> For pnfs pagelist write failure, we need to pg_recoalesce and resend
->> IO to mds.
->>
->> Signed-off-by: Peng Tao <peng_tao@emc.com>
->> ---
->>  fs/nfs/pnfs.c  |   20 +++++++-------------
->>  fs/nfs/pnfs.h  |    2 +-
->>  fs/nfs/write.c |   25 ++++++++++++++++++++++++-
->>  3 files changed, 32 insertions(+), 15 deletions(-)
->>
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index e550e88..ad0579a 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -1168,23 +1168,17 @@ EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
->>  /*
->>  * Called by non rpc-based layout drivers
->>  */
->> -int
->> -pnfs_ld_write_done(struct nfs_write_data *data)
->> +void pnfs_ld_write_done(struct nfs_write_data *data)
->>  {
->> -       int status;
->> -
->> -       if (!data->pnfs_error) {
->> +       if (likely(!data->pnfs_error)) {
->>                pnfs_set_layoutcommit(data);
->>                data->mds_ops->rpc_call_done(&data->task, data);
->> -               data->mds_ops->rpc_release(data);
->> -               return 0;
->> +       } else {
->> +               put_lseg(data->lseg);
->> +               data->lseg = NULL;
->> +               dprintk("pnfs write error = %d\n", data->pnfs_error);
->>        }
->> -
->> -       dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
->> -               data->pnfs_error);
->> -       status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
->> -                                   data->mds_ops, NFS_FILE_SYNC);
->> -       return status ? : -EAGAIN;
->> +       data->mds_ops->rpc_release(data);
->>  }
->>  EXPORT_SYMBOL_GPL(pnfs_ld_write_done);
->>
->> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->> index 01cbfd5..0fb0a41 100644
->> --- a/fs/nfs/pnfs.h
->> +++ b/fs/nfs/pnfs.h
->> @@ -200,7 +200,7 @@ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
->>  void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data);
->>  int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
->>  int _pnfs_return_layout(struct inode *);
->> -int pnfs_ld_write_done(struct nfs_write_data *);
->> +void pnfs_ld_write_done(struct nfs_write_data *);
->>  int pnfs_ld_read_done(struct nfs_read_data *);
->>  struct pnfs_layout_segment *pnfs_update_layout(struct inode *ino,
->>                                               struct nfs_open_context *ctx,
->> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
->> index b39b37f..26b8d90 100644
->> --- a/fs/nfs/write.c
->> +++ b/fs/nfs/write.c
->> @@ -1165,7 +1165,13 @@ static void nfs_writeback_done_full(struct rpc_task *task, void *calldata)
->>  static void nfs_writeback_release_full(void *calldata)
->>  {
->>        struct nfs_write_data   *data = calldata;
->> -       int status = data->task.tk_status;
->> +       int ret, status = data->task.tk_status;
->> +       struct nfs_pageio_descriptor pgio;
->> +
->> +       if (data->pnfs_error) {
->> +               nfs_pageio_init_write_mds(&pgio, data->inode, FLUSH_STABLE);
->> +               pgio.pg_recoalesce = 1;
->> +       }
->>
->>        /* Update attributes as result of writeback. */
->>        while (!list_empty(&data->pages)) {
->> @@ -1181,6 +1187,11 @@ static void nfs_writeback_release_full(void *calldata)
->>                        req->wb_bytes,
->>                        (long long)req_offset(req));
->>
->> +               if (data->pnfs_error) {
->> +                       dprintk(", pnfs error = %d\n", data->pnfs_error);
->> +                       goto next;
->> +               }
->> +
->>                if (status < 0) {
->>                        nfs_set_pageerror(page);
->>                        nfs_context_set_write_error(req->wb_context, status);
->> @@ -1200,7 +1211,19 @@ remove_request:
->>        next:
->>                nfs_clear_page_tag_locked(req);
->>                nfs_end_page_writeback(page);
->> +               if (data->pnfs_error) {
->> +                       lock_page(page);
->> +                       nfs_pageio_cond_complete(&pgio, page->index);
->> +                       ret = nfs_page_async_flush(&pgio, page, 0);
->> +                       if (ret) {
->> +                               nfs_set_pageerror(page);
-> My only concern about the patch is here. If we fail at
-> nfs_page_async_flush(), is it enough to just call nfs_set_pageerror()
-> on the page? Do we need to redirty the page as well, and maybe some
-> other things?
-> 
+Also noticed while auditing these error returns.  There's all kinds of
+weird crap in here.
 
-Hum? That's a very good question. nfs_end_page_writeback above does
-an end_page_writeback(), which does test_clear_page_writeback().
-Now in nfs_page_async_flush() you are adding the page back to the nfs writeback
-queue. So the question is when does test_set_page_writeback() is called?
-If it is called as part of the re-issue of write by NFS then you are
-fine because you clear it here but it will be set later on. But if
-it was done on entry into the queue. At the original sight of the call to
-nfs_page_async_flush(). Then it will not be set again and it might confuse
-the VFS since we will be re-clearing a cleared bit.
+--b.
 
-So in short we should investigate if nfs_clear_page_tag_locked() &&
-nfs_end_page_writeback() sould only be called at the *else* clause
-of the "if (unlikely(data->pnfs_error))" above.
+commit fe0a6f4711dba408fb771a402876db33ffe219bf
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Mon Aug 15 18:39:32 2011 -0400
 
-I'll be testing this next week and we'll see.
+    nfsd4: it's OK to return nfserr_symlink
+    
+    The nfsd4 code has a bunch of special exceptions for error returns which
+    map nfserr_symlink to other errors.
+    
+    In fact, the spec makes it clear that nfserr_symlink is to be preferred
+    over less specific errors where possible.
+    
+    The patch that introduced it back in 2.6.4 is "kNFSd: correct symlink
+    related error returns.", which claims that these special exceptions are
+    represent an NFSv4 break from v2/v3 tradition--when in fact the symlink
+    error was introduced with v4.
+    
+    I suspect what happened was pynfs tests were written that were overly
+    faithful to the (known-incomplete) rfc3530 error return lists, and then
+    code was fixed up mindlessly to make the tests pass.
+    
+    Delete these unnecessary exceptions.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-Trond do you know?
-
-Boaz
-
-
-> Thanks,
-> Tao
->> +                               dprintk(", error = %d\n", ret);
->> +                       }
->> +                       unlock_page(page);
->> +               }
->>        }
->> +       if (data->pnfs_error)
->> +               nfs_pageio_complete(&pgio);
->>        nfs_writedata_release(calldata);
->>  }
->>
->> --
->> 1.7.1.262.g5ef3d
->>
->>
-> 
-> 
-> 
-
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 9bf0a66..3b159ab 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -473,11 +473,8 @@ nfsd4_commit(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	*p++ = nfssvc_boot.tv_sec;
+ 	*p++ = nfssvc_boot.tv_usec;
+ 
+-	status = nfsd_commit(rqstp, &cstate->current_fh, commit->co_offset,
++	return nfsd_commit(rqstp, &cstate->current_fh, commit->co_offset,
+ 			     commit->co_count);
+-	if (status == nfserr_symlink)
+-		status = nfserr_inval;
+-	return status;
+ }
+ 
+ static __be32
+@@ -492,8 +489,6 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	status = fh_verify(rqstp, &cstate->current_fh, S_IFDIR,
+ 			   NFSD_MAY_CREATE);
+-	if (status == nfserr_symlink)
+-		status = nfserr_notdir;
+ 	if (status)
+ 		return status;
+ 
+@@ -719,8 +714,6 @@ nfsd4_remove(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		return nfserr_grace;
+ 	status = nfsd_unlink(rqstp, &cstate->current_fh, 0,
+ 			     remove->rm_name, remove->rm_namelen);
+-	if (status == nfserr_symlink)
+-		return nfserr_notdir;
+ 	if (!status) {
+ 		fh_unlock(&cstate->current_fh);
+ 		set_change_info(&remove->rm_cinfo, &cstate->current_fh);
+@@ -751,8 +744,6 @@ nfsd4_rename(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+                   (S_ISDIR(cstate->save_fh.fh_dentry->d_inode->i_mode) &&
+                    S_ISDIR(cstate->current_fh.fh_dentry->d_inode->i_mode)))
+ 		status = nfserr_exist;
+-	else if (status == nfserr_symlink)
+-		status = nfserr_notdir;
+ 
+ 	if (!status) {
+ 		set_change_info(&rename->rn_sinfo, &cstate->current_fh);
+@@ -892,8 +883,6 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	write->wr_bytes_written = cnt;
+ 
+-	if (status == nfserr_symlink)
+-		status = nfserr_inval;
+ 	return status;
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 3787ec1..aa0a36e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4179,12 +4179,8 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (!nfsd4_has_session(cstate) && STALE_CLIENTID(&lockt->lt_clientid))
+ 		goto out;
+ 
+-	if ((status = fh_verify(rqstp, &cstate->current_fh, S_IFREG, 0))) {
+-		dprintk("NFSD: nfsd4_lockt: fh_verify() failed!\n");
+-		if (status == nfserr_symlink)
+-			status = nfserr_inval;
++	if ((status = fh_verify(rqstp, &cstate->current_fh, S_IFREG, 0)))
+ 		goto out;
+-	}
+ 
+ 	inode = cstate->current_fh.fh_dentry->d_inode;
+ 	locks_init_lock(&file_lock);
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 42ef8ff..2834ee2 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2766,8 +2766,6 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 			read->rd_offset, resp->rqstp->rq_vec, read->rd_vlen,
+ 			&maxcount);
+ 
+-	if (nfserr == nfserr_symlink)
+-		nfserr = nfserr_inval;
+ 	if (nfserr)
+ 		return nfserr;
+ 	eof = (read->rd_offset + maxcount >=
+@@ -2893,8 +2891,6 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+ 	    readdir->common.err == nfserr_toosmall &&
+ 	    readdir->buffer == page) 
+ 		nfserr = nfserr_toosmall;
+-	if (nfserr == nfserr_symlink)
+-		nfserr = nfserr_notdir;
+ 	if (nfserr)
+ 		goto err_no_verf;
+ 
