@@ -1,198 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:48271 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753490Ab1HIUXC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Aug 2011 16:23:02 -0400
-Received: by fxh19 with SMTP id 19so368666fxh.19
-        for <linux-nfs@vger.kernel.org>; Tue, 09 Aug 2011 13:23:00 -0700 (PDT)
-Message-ID: <4E419720.2080909@tonian.com>
-Date: Tue, 09 Aug 2011 23:22:56 +0300
-From: Benny Halevy <benny@tonian.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
-        open-osd <osd-dev@open-osd.org>
-Subject: Re: [PATCH RFC] pnfsd-exofs: convert to v3.1 ORE
-References: <4E416E20.2010205@panasas.com> <4E416ECC.7070904@panasas.com> <4E41881E.7020307@panasas.com>
-In-Reply-To: <4E41881E.7020307@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:43956 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750790Ab1HOWaf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Aug 2011 18:30:35 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/5] nfsd4: clean up S_IS -> NF4 file type mapping
+Date: Mon, 15 Aug 2011 18:30:28 -0400
+Message-Id: <1313447432-1537-1-git-send-email-bfields@redhat.com>
+In-Reply-To: <20110815222859.GD32181@fieldses.org>
+References: <20110815222859.GD32181@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-08-09 22:18, Boaz Harrosh wrote:
-> Benny hi
-> 
-> Please push your new tree with below patch and I will
-> send you SQUASHMES ontop of your tree. This is because
-> I'm having problems making a coherent tree, because
-> current pnfs/pnfsd-exofs branch has conflicts when
-> merging with 3.1-rc1. So your rebase should save me the
-> resolving work.
+A slightly unconventional approach to make the code more compact I could
+live with, but let's give the poor reader *some* chance.
 
-Done. Thanks!
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c |   21 ++++++++++++++-------
+ 1 files changed, 14 insertions(+), 7 deletions(-)
 
-> 
-> Thanks
-> Boaz
-> 
-> On 08/09/2011 10:30 AM, Boaz Harrosh wrote:
->>
->> Sorry Benny about the merge conflicts I caused you
->> with the rushed push to Linus.
->>
->> I'll send you soon the proper fix, actually the
->> change needs to be deeper and the resulting code
->> is more simple.
->>
->> There are also a couple of more patches to export.c
->> that need to be added as well.
->>
->> I'll send it all today, I hope it's soon enough.
->> If not then below makes it compile I can prepare
->> the SQUASHMEs ontop of your tree.
->>
->> Thanks
->> Boaz
->>
->> On 08/09/2011 07:09 AM, Benny Halevy wrote:
->>> forwarding to osd-dev list...
->>>
->>> -------- Original Message --------
->>> Subject: [PATCH RFC] pnfsd-exofs: convert to v3.1 ORE
->>> Date: Tue, 09 Aug 2011 09:25:32 -0400
->>> From: Benny Halevy <bhalevy@tonian.com>
->>> To: Boaz Harrosh <bharrosh@panasas.com>
->>> CC: NFS list <linux-nfs@vger.kernel.org>
->>>
->>> Hi Boaz,
->>>
->>> Does the following patch makes sense in the new v3.1 ORE world?
->>> Can you please help test it?
->>> If it looks ok to you I'll just go ahead and release the rebased tree
->>> to linux-nfs.org and you can pull it from there.
->>>
->>> Thanks,
->>>
->>> Benny
->>>
->>> >From d89d93c733c8bc2984f1a918e522494558306f1d Mon Sep 17 00:00:00 2001
->>> From: Benny Halevy <bhalevy@tonian.com>
->>> Date: Tue, 9 Aug 2011 07:33:11 -0400
->>> Subject: [PATCH] pnfsd-exofs: convert to v3.1 ORE
->>>
->>> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
->>> ---
->>>  fs/exofs/export.c |   34 +++++++++++++++++++++++-----------
->>>  1 files changed, 23 insertions(+), 11 deletions(-)
->>>
->>> diff --git a/fs/exofs/export.c b/fs/exofs/export.c
->>> index 8281c85..07bc5e2 100644
->>> --- a/fs/exofs/export.c
->>> +++ b/fs/exofs/export.c
->>> @@ -73,6 +73,13 @@ err:
->>>  	return status;
->>>  }
->>>
->>> +static unsigned exofs_layout_od_id(struct ore_layout *layout,
->>> +				   struct ore_components *comps,
->>> +				   osd_id obj_no, unsigned layout_index)
->>> +{
->>> +	return (layout_index + obj_no * layout->mirrors_p1) % comps->numdevs;
->>> +}
->>> +
->>>  static enum nfsstat4 exofs_layout_get(
->>>  	struct inode *inode,
->>>  	struct exp_xdr_stream *xdr,
->>> @@ -81,7 +88,8 @@ static enum nfsstat4 exofs_layout_get(
->>>  {
->>>  	struct exofs_i_info *oi = exofs_i(inode);
->>>  	struct exofs_sb_info *sbi = inode->i_sb->s_fs_info;
->>> -	struct exofs_layout *el = &sbi->layout;
->>> +	struct ore_layout *el = &sbi->layout;
->>> +	struct ore_components *ec = &sbi->comps;
->>>  	struct pnfs_osd_object_cred *creds = NULL;
->>>  	struct pnfs_osd_layout layout;
->>>  	__be32 *start;
->>> @@ -104,7 +112,7 @@ static enum nfsstat4 exofs_layout_get(
->>>  	/* Fill in a pnfs_osd_layout struct */
->>>  	layout.olo_map = sbi->data_map;
->>>  	layout.olo_comps_index = 0;
->>> -	layout.olo_num_comps = el->s_numdevs;
->>> +	layout.olo_num_comps = ec->numdevs;
->>>  	layout.olo_comps = creds;
->>>
->>>  	nfserr = pnfs_osd_xdr_encode_layout_hdr(xdr, &layout);
->>> @@ -112,16 +120,19 @@ static enum nfsstat4 exofs_layout_get(
->>>  		goto out;
->>>
->>>  	/* Encode layout components */
->>> -	for (i = 0; i < el->s_numdevs; i++) {
->>> +	for (i = 0; i < ec->numdevs; i++) {
->>>  		struct pnfs_osd_object_cred cred;
->>> -		osd_id id = exofs_oi_objno(oi);
->>> -		unsigned dev = exofs_layout_od_id(el, id, i);
->>> +		struct osd_obj_id oid = {
->>> +			.partition = sbi->one_comp.obj.partition,
->>> +			.id = exofs_oi_objno(oi)
->>> +		};
->>> +		unsigned dev = exofs_layout_od_id(el, ec, oid.id, i);
->>>
->>>  		set_dev_id(&cred.oc_object_id.oid_device_id, args->lg_sbid,
->>>  			   dev);
->>> -		cred.oc_object_id.oid_partition_id = el->s_pid;
->>> -		cred.oc_object_id.oid_object_id = id;
->>> -		cred.oc_osd_version = osd_dev_is_ver1(el->s_ods[dev]) ?
->>> +		cred.oc_object_id.oid_partition_id = oid.partition;
->>> +		cred.oc_object_id.oid_object_id = oid.id;
->>> +		cred.oc_osd_version = osd_dev_is_ver1(ec->ods[dev]) ?
->>>  						PNFS_OSD_VERSION_1 :
->>>  						PNFS_OSD_VERSION_2;
->>>  		cred.oc_cap_key_sec = PNFS_OSD_CAP_KEY_SEC_NONE;
->>> @@ -130,7 +141,7 @@ static enum nfsstat4 exofs_layout_get(
->>>  		cred.oc_cap_key.cred		= NULL;
->>>
->>>  		cred.oc_cap.cred_len	= OSD_CAP_LEN;
->>> -		cred.oc_cap.cred	= oi->i_cred;
->>> +		exofs_make_credential(cred.oc_cap.cred, &oid);
->>>  		nfserr = pnfs_osd_xdr_encode_layout_cred(xdr, &cred);
->>>  		if (unlikely(nfserr))
->>>  			goto out;
->>> @@ -277,6 +288,7 @@ int exofs_get_device_info(struct super_block *sb, struct exp_xdr_stream *xdr,
->>>  			  const struct nfsd4_pnfs_deviceid *devid)
->>>  {
->>>  	struct exofs_sb_info *sbi = sb->s_fs_info;
->>> +	struct ore_components *ec = &sbi->comps;
->>>  	struct pnfs_osd_deviceaddr devaddr;
->>>  	const struct osd_dev_info *odi;
->>>  	u64 devno = devid->devid;
->>> @@ -285,13 +297,13 @@ int exofs_get_device_info(struct super_block *sb, struct exp_xdr_stream *xdr,
->>>
->>>  	memset(&devaddr, 0, sizeof(devaddr));
->>>
->>> -	if (unlikely(devno >= sbi->layout.s_numdevs)) {
->>> +	if (unlikely(devno >= ec->numdevs)) {
->>>  		EXOFS_DBGMSG("Error: Device((%llx,%llx) does not exist\n",
->>>  			     devid->sbid, devno);
->>>  		return -ENODEV;
->>>  	}
->>>
->>> -	odi = osduld_device_info(sbi->layout.s_ods[devno]);
->>> +	odi = osduld_device_info(ec->ods[devno]);
->>>
->>>  	devaddr.oda_systemid.len = odi->systemid_len;
->>>  	devaddr.oda_systemid.data = (void *)odi->systemid; /* !const cast */
->>
->> _______________________________________________
->> osd-dev mailing list
->> osd-dev@open-osd.org
->> http://mailman.open-osd.org/mailman/listinfo/osd-dev
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index c8bf405..42ef8ff 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1760,12 +1760,19 @@ static __be32 nfsd4_encode_fs_locations(struct svc_rqst *rqstp,
+ 	return 0;
+ }
+ 
+-static u32 nfs4_ftypes[16] = {
+-        NF4BAD,  NF4FIFO, NF4CHR, NF4BAD,
+-        NF4DIR,  NF4BAD,  NF4BLK, NF4BAD,
+-        NF4REG,  NF4BAD,  NF4LNK, NF4BAD,
+-        NF4SOCK, NF4BAD,  NF4LNK, NF4BAD,
+-};
++static u32 nfs4_file_type(umode_t mode)
++{
++	switch (mode & S_IFMT) {
++	case S_IFIFO:	return NF4FIFO;
++	case S_IFCHR:	return NF4CHR;
++	case S_IFDIR:	return NF4DIR;
++	case S_IFBLK:	return NF4BLK;
++	case S_IFLNK:	return NF4LNK;
++	case S_IFREG:	return NF4REG;
++	case S_IFSOCK:	return NF4SOCK;
++	default:	return NF4BAD;
++	};
++}
+ 
+ static __be32
+ nfsd4_encode_name(struct svc_rqst *rqstp, int whotype, uid_t id, int group,
+@@ -1954,7 +1961,7 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ 	if (bmval0 & FATTR4_WORD0_TYPE) {
+ 		if ((buflen -= 4) < 0)
+ 			goto out_resource;
+-		dummy = nfs4_ftypes[(stat.mode & S_IFMT) >> 12];
++		dummy = nfs4_file_type(stat.mode);
+ 		if (dummy == NF4BAD)
+ 			goto out_serverfault;
+ 		WRITE32(dummy);
+-- 
+1.7.4.1
 
