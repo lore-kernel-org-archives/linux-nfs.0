@@ -1,67 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:60513 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1754424Ab1HRCPn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Aug 2011 22:15:43 -0400
-Message-ID: <4E4C76C6.8020901@cn.fujitsu.com>
-Date: Thu, 18 Aug 2011 10:19:50 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>, NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/4 v3] 4.1 CLNT: add a simple test about RECLAIM_COMPLETE
-References: <4E4C7679.7000108@cn.fujitsu.com>
-In-Reply-To: <4E4C7679.7000108@cn.fujitsu.com>
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from fieldses.org ([174.143.236.118]:58589 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752684Ab1HOW1Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Aug 2011 18:27:24 -0400
+Date: Mon, 15 Aug 2011 18:27:21 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com, nfsv4@ietf.org
+Subject: Re: open() of device special files
+Message-ID: <20110815222721.GC32181@fieldses.org>
+References: <20110815153637.GD28629@fieldses.org>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AA9B9FB@SACMVEXC2-PRD.hq.netapp.com>
+ <20110815212539.GA32181@fieldses.org>
+ <20110815222336.GB32181@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110815222336.GB32181@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
----
- nfs4.1/server41tests/__init__.py            |    1 +
- nfs4.1/server41tests/st_reclaim_complete.py |   21 +++++++++++++++++++++
- 2 files changed, 22 insertions(+), 0 deletions(-)
- create mode 100644 nfs4.1/server41tests/st_reclaim_complete.py
+On Mon, Aug 15, 2011 at 06:23:36PM -0400, J. Bruce Fields wrote:
+> On Mon, Aug 15, 2011 at 05:25:39PM -0400, J. Bruce Fields wrote:
+> > On Mon, Aug 15, 2011 at 09:03:30AM -0700, Myklebust, Trond wrote:
+> > > > -----Original Message-----
+> > > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > > > How is the client supposed to handle opens of device special files?
+> > > On
+> > > > a 3.1-rc1-based client to a linux server over v4.0 I'm seeing it try
+> > > an
+> > > > OPEN call and failing when it gets an INVAL return.
+> > > > 
+> > > > This looks like bogus client behavior (OPEN should fail on such
+> > > files),
+> > > > unless the server has the error return wrong and the client's using an
+> > > > OPEN error to recover.
+> > > > 
+> > > > If I first stat the device and then open it then it works as expected
+> > > > (the client does an open of the local device).
+> > > > 
+> > > > I'm a bit annoyed at myself as I have a feeling we've discussed this
+> > > > before but I can't find a reference now.
+> > > 
+> > > Hmm... NFS4ERR_INVAL means 'invalid argument', which is not the case
+> > > here; all the arguments that the client is passing to the server are
+> > > valid, however the file cannot be opened because the pathname resolves
+> > > on the server to a file of the wrong type.
+> 
+> The long description of NFS4ERR_INVAL from rfc 3530:
+> 
+> 	"Invalid argument or unsupported argument for an operation. Two
+> 	examples are attempting a READLINK on an object other than a
+> 	symbolic link or specifying a value for an enum field that is
+> 	not defined in the protocol (e.g., nfs_ftype4)."
+> 
+> So the text does recommend NFS4ERR_INVAL for the case where the
+> operation doesn't make sense for the type of object given.  (In the
+> readlink example there's no pathname resolution, though).
+> 
+> EINVAL seems to be used in the kernel for some such cases as well (e.g.
+> attempt to truncate a device special file).
+> 
+> > > I can't see any other error definition that is "obviously correct", but
+> > > it looks to me as if NFS4ERR_SYMLINK might be the closest thing. One
+> > > reason is the dot-x file defines NFS4ERR_SYMLINK as meaning "should be
+> > > file/directory".
+> 
+> And this seems more a coincidence due to vagueness resulting from the
+> need for a single-line comment; the longer description is:
+> 
+> 	"NFS4ERR_SYMLINK The current filehandle provided for a LOOKUP is
+> 			 not a directory but a symbolic link.  Also used
+> 			 if the final component of the OPEN path is a
+> 			 symbolic link."
+> 
+> > > The other reason is that NFS4ERR_SYMLINK should
+> > > _always_ trigger the correct behaviour on a client: a fresh lookup of
+> > > the component.
+> > 
+> > Confirmed the fix; I'll apply.
+> 
+> Applying anyway for compatibility with existing clients, but this all
+> seems a little weird.
 
-diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
-index 3b4411a..1cc2048 100644
---- a/nfs4.1/server41tests/__init__.py
-+++ b/nfs4.1/server41tests/__init__.py
-@@ -2,6 +2,7 @@ __all__ = ["st_exchange_id.py", # draft 21
-            "st_compound.py",
-            "st_create_session.py",
-            "st_destroy_session.py",
-+           "st_reclaim_complete.py",
-            "st_secinfo_no_name.py",
-            "st_secinfo.py",
-            "st_sequence.py",
-diff --git a/nfs4.1/server41tests/st_reclaim_complete.py b/nfs4.1/server41tests/st_reclaim_complete.py
-new file mode 100644
-index 0000000..a591ef5
---- /dev/null
-+++ b/nfs4.1/server41tests/st_reclaim_complete.py
-@@ -0,0 +1,21 @@
-+from st_create_session import create_session
-+from nfs4_const import *
-+from environment import check, fail
-+import nfs4_ops as op
-+import nfs4lib
-+
-+def testSupported(t, env):
-+    """Do a simple RECLAIM_COMPLETE
-+
-+    FLAGS: reclaim_complete all
-+    CODE: RECC1
-+    """
-+    c = env.c1.new_client(env.testname(t))
-+    sess = c.create_session()
-+
-+    # RECLAIM_COMPLETE
-+    res = sess.compound([op.putrootfh(), op.reclaim_complete(TRUE)])
-+    check(res)
-+
-+    res = sess.compound([op.reclaim_complete(FALSE)])
-+    check(res)
--- 
-1.7.6
+And the change also makes a bunch of pynfs tests fail, complaining that
+various operations against incompatible types should have returned INVAL
+and not SYMLINK.
 
+Not that I'm convinced pynfs is correct--at the very least it should
+have accepted a range of errors for those tests, I think--but anyone
+else that ran pynfs against their server may have assumed it pynfs was
+correct in these cases....
 
+--b.
