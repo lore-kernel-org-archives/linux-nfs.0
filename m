@@ -1,147 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:44393 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754954Ab1HJVRf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Aug 2011 17:17:35 -0400
-Received: from zenyatta.panasas.com (zenyatta.int.panasas.com [172.17.28.63])
-	by natasha.panasas.com (8.13.1/8.13.1) with ESMTP id p7ALHYPJ000927
-	for <linux-nfs@vger.kernel.org>; Wed, 10 Aug 2011 17:17:34 -0400
-Message-ID: <4E42F568.9000301@panasas.com>
-Date: Wed, 10 Aug 2011 14:17:28 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
-        open-osd <osd-dev@open-osd.org>
-Subject: [PATCH 3/4] ore: Make ore_calc_stripe_info EXPORT_SYMBOL
-References: <4E42F3E3.8050006@panasas.com>
-In-Reply-To: <4E42F3E3.8050006@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from fieldses.org ([174.143.236.118]:52082 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753133Ab1HOWXk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Aug 2011 18:23:40 -0400
+Date: Mon, 15 Aug 2011 18:23:36 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com, nfsv4@ietf.org
+Subject: Re: open() of device special files
+Message-ID: <20110815222336.GB32181@fieldses.org>
+References: <20110815153637.GD28629@fieldses.org>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AA9B9FB@SACMVEXC2-PRD.hq.netapp.com>
+ <20110815212539.GA32181@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110815212539.GA32181@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Mon, Aug 15, 2011 at 05:25:39PM -0400, J. Bruce Fields wrote:
+> On Mon, Aug 15, 2011 at 09:03:30AM -0700, Myklebust, Trond wrote:
+> > > -----Original Message-----
+> > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > > How is the client supposed to handle opens of device special files?
+> > On
+> > > a 3.1-rc1-based client to a linux server over v4.0 I'm seeing it try
+> > an
+> > > OPEN call and failing when it gets an INVAL return.
+> > > 
+> > > This looks like bogus client behavior (OPEN should fail on such
+> > files),
+> > > unless the server has the error return wrong and the client's using an
+> > > OPEN error to recover.
+> > > 
+> > > If I first stat the device and then open it then it works as expected
+> > > (the client does an open of the local device).
+> > > 
+> > > I'm a bit annoyed at myself as I have a feeling we've discussed this
+> > > before but I can't find a reference now.
+> > 
+> > Hmm... NFS4ERR_INVAL means 'invalid argument', which is not the case
+> > here; all the arguments that the client is passing to the server are
+> > valid, however the file cannot be opened because the pathname resolves
+> > on the server to a file of the wrong type.
 
-The raid math calculations are needed by the layout-export
-facility.
+The long description of NFS4ERR_INVAL from rfc 3530:
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/exofs/ore.c         |   25 +++++++++----------------
- include/scsi/osd_ore.h |   10 ++++++++++
- 2 files changed, 19 insertions(+), 16 deletions(-)
+	"Invalid argument or unsupported argument for an operation. Two
+	examples are attempting a READLINK on an object other than a
+	symbolic link or specifying a value for an enum field that is
+	not defined in the protocol (e.g., nfs_ftype4)."
 
-diff --git a/fs/exofs/ore.c b/fs/exofs/ore.c
-index 25305af..a2c09e7 100644
---- a/fs/exofs/ore.c
-+++ b/fs/exofs/ore.c
-@@ -287,16 +287,8 @@ EXPORT_SYMBOL(ore_check_io);
-  *
-  *	O = L % stripe_unit + N * stripe_unit + M * group_depth * stripe_unit
-  */
--struct _striping_info {
--	u64 obj_offset;
--	u64 group_length;
--	u64 M; /* for truncate */
--	unsigned dev;
--	unsigned unit_off;
--};
--
--static void _calc_stripe_info(struct ore_layout *layout, u64 file_offset,
--			      struct _striping_info *si)
-+void ore_calc_stripe_info(struct ore_layout *layout, u64 file_offset,
-+			  struct ore_striping_info *si)
- {
- 	u32	stripe_unit = layout->stripe_unit;
- 	u32	group_width = layout->group_width;
-@@ -329,6 +321,7 @@ static void _calc_stripe_info(struct ore_layout *layout, u64 file_offset,
- 	si->group_length = T - H;
- 	si->M = M;
- }
-+EXPORT_SYMBOL(ore_calc_stripe_info);
- 
- static int _add_stripe_unit(struct ore_io_state *ios,  unsigned *cur_pg,
- 		unsigned pgbase, struct ore_per_dev_state *per_dev,
-@@ -375,7 +368,7 @@ static int _add_stripe_unit(struct ore_io_state *ios,  unsigned *cur_pg,
- }
- 
- static int _prepare_one_group(struct ore_io_state *ios, u64 length,
--			      struct _striping_info *si)
-+			      struct ore_striping_info *si)
- {
- 	unsigned stripe_unit = ios->layout->stripe_unit;
- 	unsigned mirrors_p1 = ios->layout->mirrors_p1;
-@@ -434,14 +427,14 @@ static int _prepare_for_striping(struct ore_io_state *ios)
- {
- 	u64 length = ios->length;
- 	u64 offset = ios->offset;
--	struct _striping_info si;
-+	struct ore_striping_info si;
- 	int ret = 0;
- 
- 	if (!ios->pages) {
- 		if (ios->kern_buff) {
- 			struct ore_per_dev_state *per_dev = &ios->per_dev[0];
- 
--			_calc_stripe_info(ios->layout, ios->offset, &si);
-+			ore_calc_stripe_info(ios->layout, ios->offset, &si);
- 			per_dev->offset = si.obj_offset;
- 			per_dev->dev = si.dev;
- 
-@@ -455,7 +448,7 @@ static int _prepare_for_striping(struct ore_io_state *ios)
- 	}
- 
- 	while (length) {
--		_calc_stripe_info(ios->layout, offset, &si);
-+		ore_calc_stripe_info(ios->layout, offset, &si);
- 
- 		if (length < si.group_length)
- 			si.group_length = length;
-@@ -744,7 +737,7 @@ static int _truncate_mirrors(struct ore_io_state *ios, unsigned cur_comp,
- }
- 
- struct _trunc_info {
--	struct _striping_info si;
-+	struct ore_striping_info si;
- 	u64 prev_group_obj_off;
- 	u64 next_group_obj_off;
- 
-@@ -758,7 +751,7 @@ void _calc_trunk_info(struct ore_layout *layout, u64 file_offset,
- {
- 	unsigned stripe_unit = layout->stripe_unit;
- 
--	_calc_stripe_info(layout, file_offset, &ti->si);
-+	ore_calc_stripe_info(layout, file_offset, &ti->si);
- 
- 	ti->prev_group_obj_off = ti->si.M * stripe_unit;
- 	ti->next_group_obj_off = ti->si.M ? (ti->si.M - 1) * stripe_unit : 0;
-diff --git a/include/scsi/osd_ore.h b/include/scsi/osd_ore.h
-index 0ac4931..4779ccc 100644
---- a/include/scsi/osd_ore.h
-+++ b/include/scsi/osd_ore.h
-@@ -96,6 +96,13 @@ struct ore_io_state {
- 		unsigned dev;
- 	} per_dev[];
- };
-+struct ore_striping_info {
-+	u64 obj_offset;
-+	u64 group_length;
-+	u64 M; /* for truncate */
-+	unsigned dev;
-+	unsigned unit_off;
-+};
- 
- static inline unsigned ore_io_state_size(unsigned numdevs)
- {
-@@ -104,6 +111,9 @@ static inline unsigned ore_io_state_size(unsigned numdevs)
- }
- 
- /* ore.c */
-+void ore_calc_stripe_info(struct ore_layout *layout, u64 file_offset,
-+			  struct ore_striping_info *si);
-+
- int ore_get_rw_state(struct ore_layout *layout, struct ore_components *comps,
- 		     bool is_reading, u64 offset, u64 length,
- 		     struct ore_io_state **ios);
--- 
-1.7.6
+So the text does recommend NFS4ERR_INVAL for the case where the
+operation doesn't make sense for the type of object given.  (In the
+readlink example there's no pathname resolution, though).
 
+EINVAL seems to be used in the kernel for some such cases as well (e.g.
+attempt to truncate a device special file).
 
+> > I can't see any other error definition that is "obviously correct", but
+> > it looks to me as if NFS4ERR_SYMLINK might be the closest thing. One
+> > reason is the dot-x file defines NFS4ERR_SYMLINK as meaning "should be
+> > file/directory".
+
+And this seems more a coincidence due to vagueness resulting from the
+need for a single-line comment; the longer description is:
+
+	"NFS4ERR_SYMLINK The current filehandle provided for a LOOKUP is
+			 not a directory but a symbolic link.  Also used
+			 if the final component of the OPEN path is a
+			 symbolic link."
+
+> > The other reason is that NFS4ERR_SYMLINK should
+> > _always_ trigger the correct behaviour on a client: a fresh lookup of
+> > the component.
+> 
+> Confirmed the fix; I'll apply.
+
+Applying anyway for compatibility with existing clients, but this all
+seems a little weird.
+
+--b.
