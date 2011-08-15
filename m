@@ -1,154 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pz0-f42.google.com ([209.85.210.42]:56600 "EHLO
-	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751939Ab1HJPiZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Aug 2011 11:38:25 -0400
-Received: by pzk37 with SMTP id 37so2033196pzk.1
-        for <linux-nfs@vger.kernel.org>; Wed, 10 Aug 2011 08:38:25 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: Benny Halevy <benny@tonian.com>
-Cc: linux-nfs@vger.kernel.org, Peng Tao <peng_tao@emc.com>
-Subject: [PATCH 1/5] pNFS: recoalesce when ld write pagelist fails
-Date: Sat,  6 Aug 2011 19:53:51 -0700
-Message-Id: <1312685635-1593-1-git-send-email-bergwolf@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:34507 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751985Ab1HOVZm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Aug 2011 17:25:42 -0400
+Date: Mon, 15 Aug 2011 17:25:39 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com, nfsv4@ietf.org
+Subject: Re: open() of device special files
+Message-ID: <20110815212539.GA32181@fieldses.org>
+References: <20110815153637.GD28629@fieldses.org>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AA9B9FB@SACMVEXC2-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AA9B9FB@SACMVEXC2-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-For pnfs pagelist write failure, we need to pg_recoalesce and resend
-IO to mds.
+On Mon, Aug 15, 2011 at 09:03:30AM -0700, Myklebust, Trond wrote:
+> > -----Original Message-----
+> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > How is the client supposed to handle opens of device special files?
+> On
+> > a 3.1-rc1-based client to a linux server over v4.0 I'm seeing it try
+> an
+> > OPEN call and failing when it gets an INVAL return.
+> > 
+> > This looks like bogus client behavior (OPEN should fail on such
+> files),
+> > unless the server has the error return wrong and the client's using an
+> > OPEN error to recover.
+> > 
+> > If I first stat the device and then open it then it works as expected
+> > (the client does an open of the local device).
+> > 
+> > I'm a bit annoyed at myself as I have a feeling we've discussed this
+> > before but I can't find a reference now.
+> 
+> Hmm... NFS4ERR_INVAL means 'invalid argument', which is not the case
+> here; all the arguments that the client is passing to the server are
+> valid, however the file cannot be opened because the pathname resolves
+> on the server to a file of the wrong type.
+> 
+> I can't see any other error definition that is "obviously correct", but
+> it looks to me as if NFS4ERR_SYMLINK might be the closest thing. One
+> reason is the dot-x file defines NFS4ERR_SYMLINK as meaning "should be
+> file/directory". The other reason is that NFS4ERR_SYMLINK should
+> _always_ trigger the correct behaviour on a client: a fresh lookup of
+> the component.
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/internal.h |    4 ++++
- fs/nfs/pnfs.c     |   35 ++++++++++++++++++++++++++++++++---
- fs/nfs/write.c    |   21 ++++++++++++++-------
- 3 files changed, 50 insertions(+), 10 deletions(-)
+Confirmed the fix; I'll apply.
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index ab12913..62f183d 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -305,6 +305,10 @@ extern void nfs_readdata_release(struct nfs_read_data *rdata);
- /* write.c */
- extern int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
- 		struct list_head *head);
-+extern int do_nfs_writepage(struct page *page, struct writeback_control *wbc,
-+		struct nfs_pageio_descriptor *pgio);
-+extern void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
-+		struct inode *inode, int ioflags);
- extern void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio);
- extern void nfs_writedata_release(struct nfs_write_data *wdata);
- extern void nfs_commit_free(struct nfs_write_data *p);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index e550e88..08aba45 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1172,6 +1172,13 @@ int
- pnfs_ld_write_done(struct nfs_write_data *data)
- {
- 	int status;
-+	struct nfs_pageio_descriptor pgio;
-+	struct writeback_control wbc = {
-+		.sync_mode = WB_SYNC_ALL,
-+		.range_start = data->mds_offset,
-+		.nr_to_write = data->npages,
-+		.range_end = LLONG_MAX,
-+	};
- 
- 	if (!data->pnfs_error) {
- 		pnfs_set_layoutcommit(data);
-@@ -1180,11 +1187,33 @@ pnfs_ld_write_done(struct nfs_write_data *data)
- 		return 0;
+But that's tricky--we should be document it for other server
+implementers if it's the right thing to do (working group list cc'd).
+
+--b.
+
+commit 3d83c016da8652f30dcac372772b67d68f33bfbd
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Mon Aug 15 16:55:02 2011 -0400
+
+    nfsd4: return nfserr_symlink on v4 OPEN of non-regular file
+    
+    Without this, an attempt to open a device special file without first
+    stat'ing it will fail.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index 90c6aa6..cc8eb8d 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -69,6 +69,17 @@ nfsd_mode_check(struct svc_rqst *rqstp, umode_t mode, int type)
+ 			return nfserr_notdir;
+ 		else if ((mode & S_IFMT) == S_IFDIR)
+ 			return nfserr_isdir;
++		/*
++		 * err_symlink is our catch-all error in the v4 case; this
++		 * looks odd, but:
++		 *	- the comment next to ERR_SYMLINK in file is
++		 *	  "should be file/directory"
++		 *	- we happen to know this will cause the linux v4
++		 *	  client to do the right thing on attempts to open
++		 *	  something other than a regular file:
++		 */
++		else if (rqstp->rq_vers == 4)
++			return nfserr_symlink;
+ 		else
+ 			return nfserr_inval;
  	}
- 
-+	put_lseg(data->lseg);
-+	data->lseg = NULL;
- 	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
- 		data->pnfs_error);
--	status = nfs_initiate_write(data, NFS_CLIENT(data->inode),
--				    data->mds_ops, NFS_FILE_SYNC);
--	return status ? : -EAGAIN;
-+	nfs_pageio_init_write_mds(&pgio, data->inode, FLUSH_STABLE);
-+	pgio.pg_recoalesce = 1;
-+	while (!list_empty(&data->pages)) {
-+		struct nfs_page *req = nfs_list_entry(data->pages.next);
-+		struct page *page = req->wb_page;
-+
-+		nfs_list_remove_request(req);
-+		nfs_clear_page_tag_locked(req);
-+
-+		end_page_writeback(page);
-+
-+		lock_page(page);
-+		status = do_nfs_writepage(page, &wbc, &pgio);
-+		if (status) {
-+			/* FIXME: is this enough?? */
-+			set_page_dirty(page);
-+		}
-+		unlock_page(page);
-+	}
-+	nfs_pageio_complete(&pgio);
-+	nfs_writedata_release(data);
-+
-+	return 0;
- }
- EXPORT_SYMBOL_GPL(pnfs_ld_write_done);
- 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index b39b37f..0ccdf98 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -285,14 +285,9 @@ out:
- 	return ret;
- }
- 
--static int nfs_do_writepage(struct page *page, struct writeback_control *wbc, struct nfs_pageio_descriptor *pgio)
-+int do_nfs_writepage(struct page *page, struct writeback_control *wbc, struct nfs_pageio_descriptor *pgio)
- {
--	struct inode *inode = page->mapping->host;
- 	int ret;
--
--	nfs_inc_stats(inode, NFSIOS_VFSWRITEPAGE);
--	nfs_add_stats(inode, NFSIOS_WRITEPAGES, 1);
--
- 	nfs_pageio_cond_complete(pgio, page->index);
- 	ret = nfs_page_async_flush(pgio, page, wbc->sync_mode == WB_SYNC_NONE);
- 	if (ret == -EAGAIN) {
-@@ -301,6 +296,17 @@ static int nfs_do_writepage(struct page *page, struct writeback_control *wbc, st
- 	}
- 	return ret;
- }
-+EXPORT_SYMBOL_GPL(do_nfs_writepage);
-+
-+static int nfs_do_writepage(struct page *page, struct writeback_control *wbc, struct nfs_pageio_descriptor *pgio)
-+{
-+	struct inode *inode = page->mapping->host;
-+
-+	nfs_inc_stats(inode, NFSIOS_VFSWRITEPAGE);
-+	nfs_add_stats(inode, NFSIOS_WRITEPAGES, 1);
-+
-+	return do_nfs_writepage(page, wbc, pgio);
-+}
- 
- /*
-  * Write an mmapped page to the server.
-@@ -1051,12 +1057,13 @@ static const struct nfs_pageio_ops nfs_pageio_write_ops = {
- 	.pg_doio = nfs_generic_pg_writepages,
- };
- 
--static void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
-+void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
- 				  struct inode *inode, int ioflags)
- {
- 	nfs_pageio_init(pgio, inode, &nfs_pageio_write_ops,
- 				NFS_SERVER(inode)->wsize, ioflags);
- }
-+EXPORT_SYMBOL_GPL(nfs_pageio_init_write_mds);
- 
- void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio)
- {
--- 
-1.7.1.262.g5ef3d
-
