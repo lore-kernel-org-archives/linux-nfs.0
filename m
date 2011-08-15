@@ -1,103 +1,26 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:36736 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:58594 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755531Ab1HSRV3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Aug 2011 13:21:29 -0400
-Message-ID: <4E4E9B8C.8050000@parallels.com>
-Date: Fri, 19 Aug 2011 21:21:16 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Pavel Emelianov <xemul@parallels.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFS client virtualization plan
-References: <4E4A4DB1.2090105@parallels.com> <67028AE2-C41D-4D9E-9AB9-81433AD196A2@oracle.com> <4E4E30E8.2080704@parallels.com> <CDCCBEC6-18B3-4ED5-A562-1DC4611F1169@oracle.com>
-In-Reply-To: <CDCCBEC6-18B3-4ED5-A562-1DC4611F1169@oracle.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+	id S1753213Ab1HOW3B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Aug 2011 18:29:01 -0400
+Date: Mon, 15 Aug 2011 18:28:59 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: Re: open() of device special files
+Message-ID: <20110815222859.GD32181@fieldses.org>
+References: <20110815153637.GD28629@fieldses.org>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AA9B9FB@SACMVEXC2-PRD.hq.netapp.com>
+ <20110815212539.GA32181@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110815212539.GA32181@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-19.08.2011 20:12, Chuck Lever пишет:
->
-> On Aug 19, 2011, at 5:46 AM, Stanislav Kinsbursky wrote:
->
->> 18.08.2011 19:54, Chuck Lever пишет:
->>>
->>> On Aug 16, 2011, at 7:00 AM, Stanislav Kinsbursky wrote:
->>>
->>>> Hello.
->>>> I'm going to virtualize NFS in mainline and here is my plan for NFS client part.
->>>> Any suggestions or criticism are welcome.
->>>
->>> What are you going to do about statd?
->>>
->>
->> Do you mean user-space statd?
->> If so, what are the problems with it do you see?
->
-> You go to the trouble of setting up multiple transports for rpcbind upcalls.  This suggests you plan to have an rpcbind in each net namespace.
->
-> On behalf of NFS, the kernel also performs idmapd, gssd, and statd (NSM) upcalls.  Do you intend to have separate instances of these daemons for each net namespace?
->
+On Mon, Aug 15, 2011 at 05:25:39PM -0400, J. Bruce Fields wrote:
+> Confirmed the fix; I'll apply.
 
-Actually, yes, I do. Thanks for notice.
-Kernel NSM monitor routines will be virtualized.
-For idmapd and gssd rpc_pipefs virtualization is required.
-I wasn't going to virtualize rpc_pipefs for now - it was planned to be a part of NFS server virtualization, which is planned to be done after NFS client virtualization.
+Also found some opportunity for cleanups while I was there, as follows.
 
->>
->>>> ==============================================================================
->>>>
->>>> "NFS client" virtualization plan:
->>>>
->>>> _RPC layer_:
->>>>
->>>> 1) Make rpcbind clients (rpcb_local_clnt and rpcb_local4_clnt) to be
->>>> per net namespace.
->>>>
->>>> _NFS layer_:
->>>>
->>>> 1) Net namespace inheritance (current->nsproxy->net have to be used instead
->>>> of init_net).
->>>> Pointer to net namespace can be stored on nfs_client structure, which will
->>>> give easy access to proper net namespace during RPC transports creation.
->>>>
->>>> 2) Make Lockd kthread able to handle requests from different net namespaces.
->>>>
->>>> 3) Make NFS callbacks kthreads (nfs4_callback_svc and nfs4.1_callback_svc) able
->>>> to handle requests from different net namespaces.
->>>>
->>>> 4) Make NFS info lists (nfs_volume_list and nfs_client_list) to be per
->>>> net namespace in addition to global ones.
->>>>
->>>> 5) Make NFS proc variables and it's internal content variables to be per
->>>> net namespace in addition to global ones.
->>>>
->>>> 6) Make NFS sysctl variables and it's internal content variables to be per
->>>> net namespace in addition to global ones.
->>>>
->>>>
->>>>
->>>> --
->>>> Best regards,
->>>> Stanislav Kinsbursky
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->>
->>
->> --
->> Best regards,
->> Stanislav Kinsbursky
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-
-
--- 
-Best regards,
-Stanislav Kinsbursky
+--b.
