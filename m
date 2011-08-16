@@ -1,120 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:40655 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752522Ab1HZUj1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Aug 2011 16:39:27 -0400
-Date: Fri, 26 Aug 2011 16:39:24 -0400
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSD: nfsd4_open Avoid race with grace period
- expiration
-Message-ID: <20110826203924.GC17196@fieldses.org>
-References: <4E45C164.1070604@panasas.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E45C164.1070604@panasas.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:58473 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751098Ab1HPLZk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 07:25:40 -0400
+Subject: [PATCH 0/2] 32/64 bit llseek hashes
+To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: hch@infradead.org, yong.fan@whamcloud.com, linux-fsdevel@vger.kernel.org,
+        tytso@mit.edu, adilger@whamcloud.com
+Date: Tue, 16 Aug 2011 13:25:36 +0200
+Message-ID: <20110816112536.1808464.7174.stgit@fsdevel3>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 12, 2011 at 05:12:20PM -0700, Boaz Harrosh wrote:
-> 
-> locks_in_grace() was called twice one for the "yes" case second
-> for the "no" case. If the status changes between these two calls
-> the Server would do the wrong thing. Sample it only once.
+With the ext3/ext4 directory index implementation hashes are used to specify
+offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
+on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
+hashes and therefore the probability of hash collisions for larger directories
+is rather high. As recently reported on the NFS mailing list that theoretical
+problem also happens on real systems:
+http://comments.gmane.org/gmane.linux.nfs/40863
 
-I don't see how this fixes any bug.  The only thing that could happen in
-between those two checks is that the grace period could end.  In that
-case op_claim_type must be NFS4_OPEN_CLAIM_PREVIOUS (otherwise we would
-have jumped to out and not hit the second case).  The second condition
-will therefore be true and we'll fail with err_no_grace.  I don't see
-that is incorrect, as in fact the grace period is now over.
+The following series adds two new f_mode flags to tell ext4
+to use 32-bit or 64-bit hash values for llseek() calls.
+These flags can then used by network file systems, such as NFS, to
+request 32-bit or 64-bit offsets (hashes).
 
-There may be a different bug: if the grace period ends *any time* after
-locks_in_grace() is called but before we actually do the lock or open,
-then a reclaim could be incorrectly granted.  The state lock prevents
-this happening between two nfsv4 clients, but it could happen between
-a v4 client and a lockd client, I think.  In more detail:
+Version 3:
+- remove patch "RFC: Remove check for a 32-bit cookie in nfsd4_readdir()",
+  I think Bruce wanted to take it seperately as bug fix. It should be applied
+  before applying the remaining NFS patches, as without it NFSv4 will always
+  fail with the new 64-bit ext4 seek hashes.
+- split "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)" into two
+  two separate patches as suggested by Bruce, one patch to rename 
+  'access' to 'may_flags'. And the remainder of the original patch to set 
+  FMODE_32BITHASH/FMODE_64BITHASH flags and to introduce the new 
+  NFSD_MAY_64BIT_COOKIE flag
 
+Version 2:
+- use f_mode instead of O_* flags and also in a separate patch
+- introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
+- fix SEEK_END in ext4_dir_llseek()
+- set f_mode flags in NFS code as early as possible and introduce a new
+  NFSD_MAY_64BIT_COOKIE flag for that
 
-	lockd client		NFSv4 client
-	------------		------------
+--
+Bernd Schubert
+Fraunhofer ITWM
 
-				reclaim request passes grace check
-		-- grace period ends --
-	gets conflicting lock
-	drops conflicting lock
-				reclaim request granted
-
-One fix might be to take some sort of reference count as long as you're
-processing a reclaim request, and not end the grace period till that
-count goes to zero.
-
-Another might be push the grace checks down into the core lock code and
-make sure there's a lock that provides mutual exclusion between the
-locks_end_grace() call and lock reclaims.
-
---b.
-
-
-> 
-> Also Add a DMESG print in the case of a bad (old) client that does
-> *not* send a RECLAIM_COMPLETE before doing new opens. The admin might
-> want to know it has an unsupported client at hand. Because in this
-> case with our server the client will get stuck in an endless loop.
-> 
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> ---
->  fs/nfsd/nfs4proc.c |   23 ++++++++++++++++-------
->  1 files changed, 16 insertions(+), 7 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index a68384f..efc6369 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -301,8 +301,12 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	 */
->  	if (nfsd4_has_session(cstate) &&
->  	    !cstate->session->se_client->cl_firststate &&
-> -	    open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
-> +	    open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS) {
-> +		printk(KERN_INFO
-> +			"NFSD: nfsd4_open: Broken client, "
-> +			"open sent before RECLAIM_COMPLETE done\n");
->  		return nfserr_grace;
-> +	}
->  
->  	if (nfsd4_has_session(cstate))
->  		copy_clientid(&open->op_clientid, cstate->session);
-> @@ -333,12 +337,17 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  
->  	/* Openowner is now set, so sequence id will get bumped.  Now we need
->  	 * these checks before we do any creates: */
-> -	status = nfserr_grace;
-> -	if (locks_in_grace() && open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
-> -		goto out;
-> -	status = nfserr_no_grace;
-> -	if (!locks_in_grace() && open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS)
-> -		goto out;
-> +	if (locks_in_grace()) {
-> +		if (open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS) {
-> +			status = nfserr_grace;
-> +			goto out;
-> +		}
-> +	} else {
-> +		if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS) {
-> +			status = nfserr_no_grace;
-> +			goto out;
-> +		}
-> +	}
->  
->  	switch (open->op_claim_type) {
->  		case NFS4_OPEN_CLAIM_DELEGATE_CUR:
-> -- 
-> 1.7.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
