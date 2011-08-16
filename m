@@ -1,37 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:43182 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751847Ab1HQBk3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Aug 2011 21:40:29 -0400
-Date: Tue, 16 Aug 2011 21:40:26 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: Re: open() of device special files
-Message-ID: <20110817014026.GD9923@fieldses.org>
-References: <20110815153637.GD28629@fieldses.org>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AA9B9FB@SACMVEXC2-PRD.hq.netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AA9B9FB@SACMVEXC2-PRD.hq.netapp.com>
+Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:42489 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751489Ab1HPMCl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 08:02:41 -0400
+Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1QtIKv-0006Qu-Ca
+	for linux-nfs@vger.kernel.org; Tue, 16 Aug 2011 08:01:37 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH] mount.nfs: submarvellous messages from mount.nfs
+Date: Tue, 16 Aug 2011 08:02:39 -0400
+Message-Id: <1313496159-4281-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, Aug 15, 2011 at 09:03:30AM -0700, Myklebust, Trond wrote:
-> Hmm... NFS4ERR_INVAL means 'invalid argument', which is not the case
-> here; all the arguments that the client is passing to the server are
-> valid, however the file cannot be opened because the pathname resolves
-> on the server to a file of the wrong type.
-> 
-> I can't see any other error definition that is "obviously correct", but
-> it looks to me as if NFS4ERR_SYMLINK might be the closest thing. One
-> reason is the dot-x file defines NFS4ERR_SYMLINK as meaning "should be
-> file/directory". The other reason is that NFS4ERR_SYMLINK should
-> _always_ trigger the correct behaviour on a client: a fresh lookup of
-> the component.
+From: Max Matveev <makc@redhat.com>
 
-By the way, note rfc 5661 is unambiguous: the server should return
-WRONG_TYPE.  I haven't looked into fixing that yet on either client or
-server side yet.
+Consider a setup where mountd on the server is controlled via
+tcp_wrappers (usual RHEL setup) and will not process calls from a
+particular client because of something in /etc/hosts.deny.
 
---b.
+When such client attempts to do v3 mount, the error message printed
+by mount.nfs is misleading.
+
+This patch changes that error message from:
+    mount.nfs: Argument list too long
+to
+    mount.nfs: access denied by server while mounting server:/export
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/mount/stropts.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index f1aa503..4d023d6 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -538,6 +538,8 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
+ 		errno = ESPIPE;
+ 		if (rpc_createerr.cf_stat == RPC_PROGNOTREGISTERED)
+ 			errno = EOPNOTSUPP;
++		else if (rpc_createerr.cf_stat == RPC_AUTHERROR)
++			errno = EACCES;
+ 		else if (rpc_createerr.cf_error.re_errno != 0)
+ 			errno = rpc_createerr.cf_error.re_errno;
+ 		return 0;
+-- 
+1.7.6
+
