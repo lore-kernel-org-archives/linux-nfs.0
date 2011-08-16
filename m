@@ -1,67 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:64319 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754481Ab1HKXxl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Aug 2011 19:53:41 -0400
-Received: by vws1 with SMTP id 1so2094947vws.19
-        for <linux-nfs@vger.kernel.org>; Thu, 11 Aug 2011 16:53:41 -0700 (PDT)
-In-Reply-To: <4E442512.7080904@panasas.com>
-References: <1312685635-1593-1-git-send-email-bergwolf@gmail.com>
- <4E42C564.7070504@panasas.com> <CA+a=Yy4WXD64A3anw7f-wSWcs4A4-6W18QQs=YyYC0285_W_qg@mail.gmail.com>
- <4E442512.7080904@panasas.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Fri, 12 Aug 2011 07:53:21 +0800
-Message-ID: <CA+a=Yy4g09b_AEf2px1Cjfmr_ud3PFuAbEwdez1cbsiYJ0mmgA@mail.gmail.com>
-Subject: Re: [PATCH 1/5] pNFS: recoalesce when ld write pagelist fails
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Benny Halevy <benny@tonian.com>, linux-nfs@vger.kernel.org,
-        Peng Tao <peng_tao@emc.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:53053 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752356Ab1HPL0K (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 07:26:10 -0400
+Subject: [PATCH 6/6] Rename 'n' into a longer variable name.
+To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: hch@infradead.org, yong.fan@whamcloud.com, linux-fsdevel@vger.kernel.org,
+        tytso@mit.edu, adilger@whamcloud.com
+Date: Tue, 16 Aug 2011 13:26:08 +0200
+Message-ID: <20110816112607.1808464.44359.stgit@fsdevel3>
+In-Reply-To: <20110816112536.1808464.7174.stgit@fsdevel3>
+References: <20110816112536.1808464.7174.stgit@fsdevel3>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 12, 2011 at 2:53 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 08/10/2011 05:03 PM, Peng Tao wrote:
->> On Thu, Aug 11, 2011 at 1:52 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->>> On 08/06/2011 07:53 PM, Peng Tao wrote:
->>>> For pnfs pagelist write failure, we need to pg_recoalesce and resend
->>>> IO to mds.
->>>>
->>>
->>> I have not given this subject any thought or investigation, so I don't
->>> know what we should do, but the gut feeling is that I have seen all this
->>> code else where and we could be having a bigger re-use of existing code.
->>>
->>> What if we dig into:
->>>        data->mds_ops->rpc_call_done(&data->task, data);
->>>        data->mds_ops->rpc_release(data);
->>>
->>> And do all the pages tear-down and unlocks but if there is an error
->>> not set them as clean. That is keep them dirty. Then mark the layout
->>> as error and let the normal code choose an MDS write_out. (Just a wild
->>> thought)
->> This may work only for write failures. But for read, we will have to
->> recoalesce and send to MDS. So I prefer to let read and write have
->> similar retry code path like this.
->>
->
-> I disagree. Look even now the read path is very different then the write
-> path. (See your two patches: write-patch is 3 times bigger the read-patch)
-I mean their logic is the same: if pnfs_error is set, recoalesce the
-pages and re-send to MDS :)
+When it comes to me variable names consisting of a single letter
+should be forbidden by coding style guide lines, as it is rather
+difficult to search for single letter, such as 'n'.
 
->
-> You should see if what I say is possible for write. And then maybe some
-> thing will come up also for read. They do not necessarily need to be the
-> same. (I think)
-I agree that it is possible for write. We can re-dirty the pages and
-rely on next flush to write it out to MDS. This is mentioned by Trond
-before. However, the method won't work for read failures. I don't see
-how we can queue failed read pages and let someone else re-send it
-later.
+Rename struct neighbour *n to dst_neigh
 
--- 
-Thanks,
-Tao
+
+Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+---
+ drivers/infiniband/ulp/ipoib/ipoib_main.c |   15 ++++++++-------
+ 1 files changed, 8 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/infiniband/ulp/ipoib/ipoib_main.c b/drivers/infiniband/ulp/ipoib/ipoib_main.c
+index fe89c46..189d4cb 100644
+--- a/drivers/infiniband/ulp/ipoib/ipoib_main.c
++++ b/drivers/infiniband/ulp/ipoib/ipoib_main.c
+@@ -717,22 +717,22 @@ static int ipoib_start_xmit(struct sk_buff *skb, struct net_device *dev)
+ {
+ 	struct ipoib_dev_priv *priv = netdev_priv(dev);
+ 	struct ipoib_neigh *neigh;
+-	struct neighbour *n = NULL;
++	struct neighbour *dst_neigh = NULL;
+ 	unsigned long flags;
+ 
+ 	if (likely(skb_dst(skb)))
+-		n = dst_get_neighbour(skb_dst(skb));
++		dst_neigh = dst_get_neighbour(skb_dst(skb));
+ 
+-	if (likely(n)) {
+-		if (unlikely(!*to_ipoib_neigh(n))) {
++	if (likely(dst_neigh)) {
++		if (unlikely(!*to_ipoib_neigh(dst_neigh))) {
+ 			ipoib_path_lookup(skb, dev);
+ 			return NETDEV_TX_OK;
+ 		}
+ 
+-		neigh = *to_ipoib_neigh(n);
++		neigh = *to_ipoib_neigh(dst_neigh);
+ 
+ 		if (unlikely((memcmp(&neigh->dgid.raw,
+-				     n->ha + 4,
++				     dst_neigh->ha + 4,
+ 				     sizeof(union ib_gid))) ||
+ 			     (neigh->dev != dev))) {
+ 			spin_lock_irqsave(&priv->lock, flags);
+@@ -758,7 +758,8 @@ static int ipoib_start_xmit(struct sk_buff *skb, struct net_device *dev)
+ 				return NETDEV_TX_OK;
+ 			}
+ 		} else if (neigh->ah) {
+-			ipoib_send(dev, skb, neigh->ah, IPOIB_QPN(n->ha));
++			ipoib_send(dev, skb, neigh->ah,
++				   IPOIB_QPN(dst_neigh->ha));
+ 			return NETDEV_TX_OK;
+ 		}
+ 
+
