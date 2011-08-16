@@ -1,120 +1,110 @@
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Subject: RE: open() of device special files
-Date: Mon, 15 Aug 2011 22:04:29 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AA9BE53@SACMVEXC2-PRD.hq.netapp.com>
-References: <20110815153637.GD28629@fieldses.org> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AA9B9FB@SACMVEXC2-PRD.hq.netapp.com> <20110815212539.GA32181@fieldses.org> <20110815222336.GB32181@fieldses.org> <20110815222721.GC32181@fieldses.org>
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Subject: Re: NFS client virtualization plan
+Date: Tue, 16 Aug 2011 16:19:40 +0400
+Message-ID: <4E4A605C.6050008@parallels.com>
+References: <4E4A4DB1.2090105@parallels.com> <4E4A4FA9.7080600@parallels.com> <4E4A5B8A.5060802@candelatech.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <linux-nfs@vger.kernel.org>, <steved@redhat.com>, <nfsv4@ietf.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=UTF-8;
+	format=flowed
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"trond@netapp.com" <trond@netapp.com>,
+	Pavel Emelianov <xemul@parallels.com>
+To: Ben Greear <greearb@candelatech.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:43864 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:42148 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750721Ab1HPFEb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 01:04:31 -0400
-In-Reply-To: <20110815222721.GC32181@fieldses.org>
+	id S1751625Ab1HPMTX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Aug 2011 08:19:23 -0400
+In-Reply-To: <4E4A5B8A.5060802@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> Sent: Monday, August 15, 2011 6:27 PM
-> To: Myklebust, Trond
-> Cc: linux-nfs@vger.kernel.org; steved@redhat.com; nfsv4@ietf.org
-> Subject: Re: open() of device special files
-> 
-> On Mon, Aug 15, 2011 at 06:23:36PM -0400, J. Bruce Fields wrote:
-> > On Mon, Aug 15, 2011 at 05:25:39PM -0400, J. Bruce Fields wrote:
-> > > On Mon, Aug 15, 2011 at 09:03:30AM -0700, Myklebust, Trond wrote:
-> > > > > -----Original Message-----
-> > > > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > > > > How is the client supposed to handle opens of device special
-> files?
-> > > > On
-> > > > > a 3.1-rc1-based client to a linux server over v4.0 I'm seeing
-> it try
-> > > > an
-> > > > > OPEN call and failing when it gets an INVAL return.
-> > > > >
-> > > > > This looks like bogus client behavior (OPEN should fail on
-such
-> > > > files),
-> > > > > unless the server has the error return wrong and the client's
-> using an
-> > > > > OPEN error to recover.
-> > > > >
-> > > > > If I first stat the device and then open it then it works as
-> expected
-> > > > > (the client does an open of the local device).
-> > > > >
-> > > > > I'm a bit annoyed at myself as I have a feeling we've
-discussed
-> this
-> > > > > before but I can't find a reference now.
-> > > >
-> > > > Hmm... NFS4ERR_INVAL means 'invalid argument', which is not the
-> case
-> > > > here; all the arguments that the client is passing to the server
-> are
-> > > > valid, however the file cannot be opened because the pathname
-> resolves
-> > > > on the server to a file of the wrong type.
-> >
-> > The long description of NFS4ERR_INVAL from rfc 3530:
-> >
-> > 	"Invalid argument or unsupported argument for an operation. Two
-> > 	examples are attempting a READLINK on an object other than a
-> > 	symbolic link or specifying a value for an enum field that is
-> > 	not defined in the protocol (e.g., nfs_ftype4)."
-> >
-> > So the text does recommend NFS4ERR_INVAL for the case where the
-> > operation doesn't make sense for the type of object given.  (In the
-> > readlink example there's no pathname resolution, though).
-> >
-> > EINVAL seems to be used in the kernel for some such cases as well
-> (e.g.
-> > attempt to truncate a device special file).
-> >
-> > > > I can't see any other error definition that is "obviously
-> correct", but
-> > > > it looks to me as if NFS4ERR_SYMLINK might be the closest thing.
-> One
-> > > > reason is the dot-x file defines NFS4ERR_SYMLINK as meaning
-> "should be
-> > > > file/directory".
-> >
-> > And this seems more a coincidence due to vagueness resulting from
-the
-> > need for a single-line comment; the longer description is:
-> >
-> > 	"NFS4ERR_SYMLINK The current filehandle provided for a LOOKUP is
-> > 			 not a directory but a symbolic link.  Also used
-> > 			 if the final component of the OPEN path is a
-> > 			 symbolic link."
-> >
-> > > > The other reason is that NFS4ERR_SYMLINK should
-> > > > _always_ trigger the correct behaviour on a client: a fresh
-> lookup of
-> > > > the component.
-> > >
-> > > Confirmed the fix; I'll apply.
-> >
-> > Applying anyway for compatibility with existing clients, but this
-all
-> > seems a little weird.
-> 
-> And the change also makes a bunch of pynfs tests fail, complaining
-that
-> various operations against incompatible types should have returned
-> INVAL
-> and not SYMLINK.
-> 
-> Not that I'm convinced pynfs is correct--at the very least it should
-> have accepted a range of errors for those tests, I think--but anyone
-> else that ran pynfs against their server may have assumed it pynfs was
-> correct in these cases....
+Thanks. Will have a look.
 
-Pynfs is not an authoritative source for anything.
+16.08.2011 15:59, Ben Greear =D0=BF=D0=B8=D1=88=D0=B5=D1=82:
+> On 08/16/2011 04:08 AM, Stanislav Kinsbursky wrote:
+>> Added maintainer to mail recipients.
+>> Trond, please, have a look.
+>> Sorry for inconvenience.
+>
+> I have a set of patches that let NFS clients bind to a specific IP
+> address, but I haven't gotten any feedback in the month since
+> I posted them.
+>
+> But, likely you will want to touch similar paths to what I touched.
+>
+> Here's my patch series:
+>
+> https://lkml.org/lkml/2011/7/15/382
+>
+>
+> You need some patches to mount.nfs
+> for full functionality, in case you want to try it out:
+>
+> https://github.com/greearb/nfs-utils-ct
+>
+> Thanks,
+> Ben
+>
+>
+>>
+>> 16.08.2011 15:00, Stanislav Kinsbursky =D0=BF=D0=B8=D1=88=D0=B5=D1=82=
+:
+>>> Hello.
+>>> I'm going to virtualize NFS in mainline and here is my plan for NFS=
+ client part.
+>>> Any suggestions or criticism are welcome.
+>>>
+>>> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D
+>>>
+>>> "NFS client" virtualization plan:
+>>>
+>>> _RPC layer_:
+>>>
+>>> 1) Make rpcbind clients (rpcb_local_clnt and rpcb_local4_clnt) to b=
+e
+>>> per net namespace.
+>>>
+>>> _NFS layer_:
+>>>
+>>> 1) Net namespace inheritance (current->nsproxy->net have to be used=
+ instead
+>>> of init_net).
+>>> Pointer to net namespace can be stored on nfs_client structure, whi=
+ch will
+>>> give easy access to proper net namespace during RPC transports crea=
+tion.
+>>>
+>>> 2) Make Lockd kthread able to handle requests from different net na=
+mespaces.
+>>>
+>>> 3) Make NFS callbacks kthreads (nfs4_callback_svc and nfs4.1_callba=
+ck_svc) able
+>>> to handle requests from different net namespaces.
+>>>
+>>> 4) Make NFS info lists (nfs_volume_list and nfs_client_list) to be =
+per
+>>> net namespace in addition to global ones.
+>>>
+>>> 5) Make NFS proc variables and it's internal content variables to b=
+e per
+>>> net namespace in addition to global ones.
+>>>
+>>> 6) Make NFS sysctl variables and it's internal content variables to=
+ be per
+>>> net namespace in addition to global ones.
+>>>
+>>>
+>>>
+>>
+>>
+>
+>
 
-Trond
+
+--=20
+Best regards,
+Stanislav Kinsbursky
