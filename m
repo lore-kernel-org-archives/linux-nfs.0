@@ -1,128 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60937 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752719Ab1HUW3V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 21 Aug 2011 18:29:21 -0400
-Date: Mon, 22 Aug 2011 08:29:10 +1000
-From: NeilBrown <neilb@suse.de>
-To: Sylvain Rochet <gradator@gradator.net>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: PROBLEM: 2.6.35.7 to 3.0 Inotify events missing
-Message-ID: <20110822082910.25f5a0d8@notabene.brown>
-In-Reply-To: <20110819230344.GA24784@gradator.net>
-References: <20101018223540.GA20730@gradator.net>
-	<20110819230344.GA24784@gradator.net>
-Content-Type: text/plain; charset=US-ASCII
+Received: from natasha.panasas.com ([67.152.220.90]:55848 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752861Ab1HPVFu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 17:05:50 -0400
+Message-ID: <4E4ADBA1.1000005@panasas.com>
+Date: Tue, 16 Aug 2011 14:05:37 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Peng Tao <bergwolf@gmail.com>
+CC: <benny@tonian.com>, <linux-nfs@vger.kernel.org>,
+        Peng Tao <peng_tao@emc.com>
+Subject: Re: [PATCH] pnfsblock: init pg_bsize properly
+References: <1313197450-4595-1-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1313197450-4595-1-git-send-email-bergwolf@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, 20 Aug 2011 01:03:44 +0200 Sylvain Rochet <gradator@gradator.net>
-wrote:
-
-> Hi,
+On 08/12/2011 06:04 PM, Peng Tao wrote:
+> pg_bsize is server->wsize/rsize by default. We would want to use the lseg length.
 > 
-> On Tue, Oct 19, 2010 at 12:35:40AM +0200, Sylvain Rochet wrote:
-> > 
-> > ... upgraded to 2.6.33.5, then 2.6.33.7, finally to 2.6.35.7, and I 
-> > always end up with the same ending, it seems inotify can miss some VFS 
-> > events from time to time.
+
+Hi
+
+What is the problem you are trying to solve with this patch?
+
+>From what I understand the only place that actually cares about
+pg_bsize is nfs_generic_pg_test() which is only used in MDS
+read/write. In the pNFS RW, the LD and pnfs has it's own .pg_test()
+check that should not concern with pg_bsize (Unless for pnfs-files
+which does). So the idea is that pg_bsize is the maximum set by
+MDS server in regard to IO through MDS. And it should not be changed
+by client.
+
+If it is not what you see then we should fix it. But should never
+override MDS wsize/rsize.
+
+> Signed-off-by: Peng Tao <peng_tao@emc.com>
+> ---
+>  fs/nfs/blocklayout/blocklayout.c |   20 ++++++++++++++++++--
+>  1 files changed, 18 insertions(+), 2 deletions(-)
 > 
-> I finally find out why.
-> 
-> The NFS server does not always know the name of the modified file, if 
-> the modified inode was cleared from the VFS cache fsnotify does not know 
-> as well the filename then inotify child events on directories are 
-> silently tossed.
-
-This may not be helpful but if you export the filesystem with the
-"subtree_check" option then the NFS server will always know a name for any
-file that it modifies.
-
-This is not without cost though, which is why it is no longer the default.
-
-If the client opens a file, the server moves it to a new directory and then
-the server cache is flushed, then the client will get an ESTALE error.  This
-is rarely a problem in practice but when it is it can be quite annoying...
-
-NeilBrown
-
-
-
-> 
-> Easy way to reproduce:
-> 
-> Add a few printk debug (here it only works if /data is the NFS export):
-> 
-> --- begin//fs/nfsd/vfs.c        2011-07-22 04:17:23.000000000 +0200
-> +++ linux-3.0/fs/nfsd/vfs.c     2011-07-30 03:18:17.837560809 +0200
-> @@ -975,6 +975,8 @@
->         inode = dentry->d_inode;
->         exp   = fhp->fh_export;
->  
-> +       printk("nfsd write inode=%ld name=%s\n", inode->i_ino, dentry->d_name.name);
-> +
->         /*
->          * Request sync writes if
->          *  -   the sync export option has been set, or
-> 
-> diff -Nru begin//include/linux/fsnotify.h linux-3.0/include/linux/fsnotify.h
-> --- begin//include/linux/fsnotify.h     2011-07-22 04:17:23.000000000 +0200
-> +++ linux-3.0/include/linux/fsnotify.h  2011-07-30 03:07:00.330239062 +0200
-> @@ -216,8 +232,15 @@
->                 mask |= FS_ISDIR;
->  
->         if (!(file->f_mode & FMODE_NONOTIFY)) {
-> +               if( !strcmp(path->mnt->mnt_mountpoint->d_name.name, "data") )
-> +                       printk("fsnotify modify inode=%ld name=%s\n", inode->i_ino, file->f_dentry->d_name.name);
->                 fsnotify_parent(path, NULL, mask);
->                 fsnotify(inode, mask, path, FSNOTIFY_EVENT_PATH, NULL, 0);
-> +       } else {
-> +               if( !strcmp(path->mnt->mnt_mountpoint->d_name.name, "data") )
-> +                       printk("fsnotify modify-nonotify inode=%ld name=%s\n", inode->i_ino, file->f_dentry->d_name.name);
->         }
+> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+> index 36648e1..9143e61 100644
+> --- a/fs/nfs/blocklayout/blocklayout.c
+> +++ b/fs/nfs/blocklayout/blocklayout.c
+> @@ -919,14 +919,30 @@ bl_clear_layoutdriver(struct nfs_server *server)
+>  	return 0;
 >  }
-> 
-> 
-> On the NFS client, open a fd and send some data:
-> 
-> # exec 1> test
-> # ls -la
-> # 
-> 
-> On the NFS server, check the kern log:
-> 
-> Aug 20 00:57:44 inotifydebug kernel: nfsd write inode=13 name=test
-> Aug 20 00:57:44 inotifydebug kernel: fsnotify modify inode=13 name=test
-> 
-> Everything goes well.
-> 
-> Now, clear the VFS cache on the NFS server:
-> 
-> # echo 3 > /proc/sys/vm/drop_caches 
-> 
-> On the NFS client, send some data to the fd:
-> 
-> # ls -la
-> # 
-> 
-> On the NFS server, check the kern log:
-> 
-> Aug 20 00:58:56 inotifydebug kernel: nfsd write inode=13 name=
-> Aug 20 00:58:56 inotifydebug kernel: fsnotify modify inode=13 name=
-> 
-> The filename is lost, fsnotify does not know the filename anymore, 
-> therefore inotify cannot send event about a modified file in a watched 
-> directory.
-> 
-> End of the story.
-> 
-> I guess this is almost impossible to fix this fsnotify bug, this is due 
-> by the fact that NFS use inode as file identifiers, so in some case this 
-> is impossible to know the modified filepath, and therefore impossible to 
-> match the file event to the directory watch.
-> 
-> Kind regards,
-> Sylvain
+>  
+> +static void bl_pg_init_read(struct nfs_pageio_descriptor *pgio,
+> +			    struct nfs_page *req)
+> +{
+> +	pnfs_generic_pg_init_read(pgio, req);
+> +	if (pgio->pg_lseg)
+> +		pgio->pg_bsize = pgio->pg_lseg->pls_range.length;
+> +}
+> +
+> +static void bl_pg_init_write(struct nfs_pageio_descriptor *pgio,
+> +			     struct nfs_page *req)
+> +{
+> +	pnfs_generic_pg_init_write(pgio, req);
+> +	if (pgio->pg_lseg)
+> +		pgio->pg_bsize = pgio->pg_lseg->pls_range.length;
+> +}
+> +
+>  static const struct nfs_pageio_ops bl_pg_read_ops = {
+> -	.pg_init = pnfs_generic_pg_init_read,
+> +	.pg_init = bl_pg_init_read,
+>  	.pg_test = pnfs_generic_pg_test,
 
+I see here that you do not override .pg_test. This is your problem
+look at objio_osd::objio_pg_test() it checks for similar boundaries
+at the objects side. This is where you need to do these checks
+for blocks as well.
+
+>  	.pg_doio = pnfs_generic_pg_readpages,
+>  };
+>  
+>  static const struct nfs_pageio_ops bl_pg_write_ops = {
+> -	.pg_init = pnfs_generic_pg_init_write,
+> +	.pg_init = bl_pg_init_write,
+>  	.pg_test = pnfs_generic_pg_test,
+
+Same here
+
+>  	.pg_doio = pnfs_generic_pg_writepages,
+>  };
+
+Thanks
+Boaz
