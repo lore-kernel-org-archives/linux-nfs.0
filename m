@@ -1,97 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61890 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754817Ab1HCWzB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Aug 2011 18:55:01 -0400
-Message-ID: <4E39D1C1.5000904@RedHat.com>
-Date: Wed, 03 Aug 2011 18:54:57 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] rpc.statd: Bind downcall socket to loopback address
-References: <20110801201129.3503.99913.stgit@seurat.1015granger.net> <4E398915.6070603@RedHat.com> <15B872DE-F8F7-40DE-AB66-0B3EB141AB1C@oracle.com>
-In-Reply-To: <15B872DE-F8F7-40DE-AB66-0B3EB141AB1C@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:53141 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751668Ab1HPLyW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 07:54:22 -0400
+Subject: [PATCH 3 3/4] nfsd_open(): rename 'int access' to 'int may_flags' in
+	nfsd_open()
+To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: bfields@fieldses.org, tytso@mit.edu, bernd.schubert@fastmail.fm,
+        hch@infradead.org, adilger@whamcloud.com, yong.fan@whamcloud.com,
+        linux-fsdevel@vger.kernel.org
+Date: Tue, 16 Aug 2011 13:54:20 +0200
+Message-ID: <20110816115420.1810393.10281.stgit@localhost.localdomain>
+In-Reply-To: <20110816115404.1810393.47239.stgit@localhost.localdomain>
+References: <20110816115404.1810393.47239.stgit@localhost.localdomain>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Just rename this variable, as the next patch will add a flag and
+'access' as variable name would not be correct any more.
 
 
-On 08/03/2011 05:18 PM, Chuck Lever wrote:
-> 
-> On Aug 3, 2011, at 1:44 PM, Steve Dickson wrote:
-> 
->>
->>
->> On 08/01/2011 04:13 PM, Chuck Lever wrote:
->>> In the past, rpc.statd posted SM_NOTIFY requests using the same socket
->>> it used for sending downcalls to the kernel.  To receive replies from
->>> remote hosts, the socket was bound to INADDR_ANY.
->>>
->>> With commit f113db52 "Remove notify functionality from statd in
->>> favour of sm-notify" (Mar 20, 2007), the downcall socket is no longer
->>> used for sending requests to remote hosts.  However, the downcall
->>> socket is still bound to INADDR_ANY.
->>>
->>> Thus a remote host can inject data on this socket since it is an
->>> unconnected UDP socket listening for RPC replies.  Thanks to f113db52,
->>> the port number of this socket is no longer controlled by a command
->>> line option, making it difficult to firewall.
->>>
->>> We have demonstrated that data injection on this socket can result in
->>> a DoS by causing rpc.statd to consume CPU and log bandwidth, but so
->>> far we have not found a breach.
->>>
->>> To prevent unwanted data injection, bind this socket to the loopback
->>> address.
->>>
->>> BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=177
->>>
->>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> Committed..
-> 
-> Do you want to close out bz 177, or shall I? 
-> Or we can wait for the next nfs-utils release (1.2.5?) to mark it FIXED.
-Go ahead and close it out... It was all your hard work that got it 
-done! You might as well have the pleasure of closing it... ;-) 
+Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+---
+ fs/nfsd/vfs.c |   18 ++++++++++--------
+ 1 files changed, 10 insertions(+), 8 deletions(-)
 
-steved.
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index fd0acca..ca692b4 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -708,12 +708,13 @@ static int nfsd_open_break_lease(struct inode *inode, int access)
+ 
+ /*
+  * Open an existing file or directory.
+- * The access argument indicates the type of open (read/write/lock)
++ * The may_flags argument indicates the type of open (read/write/lock)
++ * and additional flags.
+  * N.B. After this call fhp needs an fh_put
+  */
+ __be32
+ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+-			int access, struct file **filp)
++			int may_flags, struct file **filp)
+ {
+ 	struct dentry	*dentry;
+ 	struct inode	*inode;
+@@ -728,7 +729,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 	 * and (hopefully) checked permission - so allow OWNER_OVERRIDE
+ 	 * in case a chmod has now revoked permission.
+ 	 */
+-	err = fh_verify(rqstp, fhp, type, access | NFSD_MAY_OWNER_OVERRIDE);
++	err = fh_verify(rqstp, fhp, type, may_flags | NFSD_MAY_OWNER_OVERRIDE);
+ 	if (err)
+ 		goto out;
+ 
+@@ -739,7 +740,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 	 * or any access when mandatory locking enabled
+ 	 */
+ 	err = nfserr_perm;
+-	if (IS_APPEND(inode) && (access & NFSD_MAY_WRITE))
++	if (IS_APPEND(inode) && (may_flags & NFSD_MAY_WRITE))
+ 		goto out;
+ 	/*
+ 	 * We must ignore files (but only files) which might have mandatory
+@@ -752,12 +753,12 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 	if (!inode->i_fop)
+ 		goto out;
+ 
+-	host_err = nfsd_open_break_lease(inode, access);
++	host_err = nfsd_open_break_lease(inode, may_flags);
+ 	if (host_err) /* NOMEM or WOULDBLOCK */
+ 		goto out_nfserr;
+ 
+-	if (access & NFSD_MAY_WRITE) {
+-		if (access & NFSD_MAY_READ)
++	if (may_flags & NFSD_MAY_WRITE) {
++		if (may_flags & NFSD_MAY_READ)
+ 			flags = O_RDWR|O_LARGEFILE;
+ 		else
+ 			flags = O_WRONLY|O_LARGEFILE;
+@@ -767,7 +768,8 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 	if (IS_ERR(*filp))
+ 		host_err = PTR_ERR(*filp);
+ 	else
+-		host_err = ima_file_check(*filp, access);
++		host_err = ima_file_check(*filp, may_flags);
++
+ out_nfserr:
+ 	err = nfserrno(host_err);
+ out:
 
-> 
->> steved.
->>
->>> ---
->>>
->>> Confirmed that reboot recovery still works, and that data injection
->>> is no longer possible.  This is an updated and final version of this
->>> patch.
->>>
->>> utils/statd/rmtcall.c |    2 +-
->>> 1 files changed, 1 insertions(+), 1 deletions(-)
->>>
->>> diff --git a/utils/statd/rmtcall.c b/utils/statd/rmtcall.c
->>> index 0e52fe2..4ecb03c 100644
->>> --- a/utils/statd/rmtcall.c
->>> +++ b/utils/statd/rmtcall.c
->>> @@ -85,7 +85,7 @@ statd_get_socket(void)
->>>
->>> 		memset(&sin, 0, sizeof(sin));
->>> 		sin.sin_family = AF_INET;
->>> -		sin.sin_addr.s_addr = INADDR_ANY;
->>> +		sin.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
->>>
->>> 		if (bindresvport(sockfd, &sin) < 0) {
->>> 			xlog(D_GENERAL, "%s: can't bind to reserved port",
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
