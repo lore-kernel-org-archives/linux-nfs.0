@@ -1,27 +1,361 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:57951 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752034Ab1HJP7v (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Aug 2011 11:59:51 -0400
-Date: Wed, 10 Aug 2011 11:59:50 -0400
-From: Jim Rees <rees@umich.edu>
-To: Peng Tao <bergwolf@gmail.com>
-Cc: Benny Halevy <benny@tonian.com>, linux-nfs@vger.kernel.org,
-        Peng Tao <peng_tao@emc.com>
-Subject: Re: [PATCH 4/5] SUNRPC/NFS: make rpc pipe upcall generic
-Message-ID: <20110810155950.GA4472@merit.edu>
-References: <1312685635-1593-1-git-send-email-bergwolf@gmail.com>
- <1312685635-1593-4-git-send-email-bergwolf@gmail.com>
+Received: from mail-iy0-f170.google.com ([209.85.210.170]:62030 "EHLO
+	mail-iy0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753040Ab1HPVWb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 17:22:31 -0400
+Subject: Re: [PATCH 2/6] Return 32/64-bit dir name hash according to usage type
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1312685635-1593-4-git-send-email-bergwolf@gmail.com>
+From: Andreas Dilger <adilger@whamcloud.com>
+In-Reply-To: <20110816112547.1808464.77625.stgit@fsdevel3>
+Date: Tue, 16 Aug 2011 15:22:27 -0600
+Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org, hch@infradead.org,
+        yong.fan@whamcloud.com, linux-fsdevel@vger.kernel.org, tytso@mit.edu
+Message-Id: <123AAA92-9EEF-4FB7-AA7B-B179BC0626BA@whamcloud.com>
+References: <20110816112536.1808464.7174.stgit@fsdevel3> <20110816112547.1808464.77625.stgit@fsdevel3>
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Peng Tao wrote:
+On 2011-08-16, at 5:25 AM, Bernd Schubert wrote:
 
-  The same function is used by idmap, gss and blocklayout code. Make it
-  generic.
+> From: Fan Yong <yong.fan@whamcloud.com>
+> 
+> Traditionally ext2/3/4 has returned a 32-bit hash value from llseek()
+> to appease NFSv2, which can only handle a 32-bit cookie for seekdir()
+> and telldir().  However, this causes problems if there are 32-bit hash
+> collisions, since the NFSv2 server can get stuck resending the same
+> entries from the directory repeatedly.
+> 
+> Allow ext4 to return a full 64-bit hash (both major and minor) for
+> telldir to decrease the chance of hash collisions.  This still needs
+> integration on the NFS side.
+> 
+> Patch-updated-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+> (blame me if something is not correct)
+> 
+> Signed-off-by: Fan Yong <yong.fan@whamcloud.com>
+> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+> Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+> ---
+> fs/ext4/dir.c  |  185 ++++++++++++++++++++++++++++++++++++++++++++------------
+> fs/ext4/ext4.h |    6 ++
+> fs/ext4/hash.c |    4 +
+> 3 files changed, 154 insertions(+), 41 deletions(-)
+> 
+> diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+> index 164c560..cc47087 100644
+> --- a/fs/ext4/dir.c
+> +++ b/fs/ext4/dir.c
+> @@ -32,24 +32,8 @@ static unsigned char ext4_filetype_table[] = {
+> 	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
+> };
+> 
+> -static int ext4_readdir(struct file *, void *, filldir_t);
+> static int ext4_dx_readdir(struct file *filp,
+> 			   void *dirent, filldir_t filldir);
+> -static int ext4_release_dir(struct inode *inode,
+> -				struct file *filp);
+> -
+> -const struct file_operations ext4_dir_operations = {
+> -	.llseek		= ext4_llseek,
+> -	.read		= generic_read_dir,
+> -	.readdir	= ext4_readdir,		/* we take BKL. needed?*/
+> -	.unlocked_ioctl = ext4_ioctl,
+> -#ifdef CONFIG_COMPAT
+> -	.compat_ioctl	= ext4_compat_ioctl,
+> -#endif
+> -	.fsync		= ext4_sync_file,
+> -	.release	= ext4_release_dir,
+> -};
+> -
+> 
+> static unsigned char get_dtype(struct super_block *sb, int filetype)
+> {
+> @@ -254,22 +238,134 @@ out:
+> 	return ret;
+> }
+> 
+> +static inline int is_32bit_api(void)
+> +{
+> +#ifdef HAVE_IS_COMPAT_TASK
+> +	return is_compat_task();
 
-Thank you.  That one bothered me (see comment) but I didn't have time to
-take care of it during the merge.
+Looking more closely, this should actually be "#ifdef CONFIG_COMPAT" in the mainline kernel.
+
+HAVE_IS_COMPAT_TASK is from the Lustre configure script for detecting which kernel is_compat_task() was added in, since it appeared in some kernels at 2.6.17 but wasn't in most arches until 2.6.29.
+
+Sorry I didn't notice this earlier.
+
+> +#else
+> +	return (BITS_PER_LONG == 32);
+> +#endif
+> +}
+> +
+> /*
+>  * These functions convert from the major/minor hash to an f_pos
+> - * value.
+> + * value for dx directories
+> + *
+> + * Upper layer (for example NFS) should specify FMODE_32BITHASH or
+> + * FMODE_64BITHASH explicitly. On the other hand, we allow ext4 to be mounted
+> + * directly on both 32-bit and 64-bit nodes, under such case, neither
+> + * FMODE_32BITHASH nor FMODE_64BITHASH is specified.
+> + */
+> +static inline loff_t hash2pos(struct file *filp, __u32 major, __u32 minor)
+> +{
+> +	if ((filp->f_flags & FMODE_32BITHASH) ||
+> +	    (!(filp->f_flags & FMODE_64BITHASH) && is_32bit_api()))
+> +		return major >> 1;
+> +	else
+> +		return ((__u64)(major >> 1) << 32) | (__u64)minor;
+> +}
+> +
+> +static inline __u32 pos2maj_hash(struct file *filp, loff_t pos)
+> +{
+> +	if ((filp->f_flags & FMODE_32BITHASH) ||
+> +	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
+> +		return (pos << 1) & 0xffffffff;
+> +	else
+> +		return ((pos >> 32) << 1) & 0xffffffff;
+> +}
+> +
+> +static inline __u32 pos2min_hash(struct file *filp, loff_t pos)
+> +{
+> +	if ((filp->f_flags & FMODE_32BITHASH) ||
+> +	    (!(filp->f_flags & FMODE_64BITHASH) && is_32bit_api()))
+> +		return 0;
+> +	else
+> +		return pos & 0xffffffff;
+> +}
+> +
+> +/*
+> + * Return 32- or 64-bit end-of-file for dx directories
+> + */
+> +static inline loff_t ext4_get_htree_eof(struct file *filp)
+> +{
+> +	if ((filp->f_mode & FMODE_32BITHASH) ||
+> +	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
+> +		return EXT4_HTREE_EOF_32BIT;
+> +	else
+> +		return EXT4_HTREE_EOF_64BIT;
+> +}
+> +
+> +
+> +/*
+> + * ext4_dir_llseek() based on generic_file_llseek() to handle both
+> + * non-htree and htree directories, where the "offset" is in terms
+> + * of the filename hash value instead of the byte offset.
+>  *
+> - * Currently we only use major hash numer.  This is unfortunate, but
+> - * on 32-bit machines, the same VFS interface is used for lseek and
+> - * llseek, so if we use the 64 bit offset, then the 32-bit versions of
+> - * lseek/telldir/seekdir will blow out spectacularly, and from within
+> - * the ext2 low-level routine, we don't know if we're being called by
+> - * a 64-bit version of the system call or the 32-bit version of the
+> - * system call.  Worse yet, NFSv2 only allows for a 32-bit readdir
+> - * cookie.  Sigh.
+> + * NOTE: offsets obtained *before* ext4_set_inode_flag(dir, EXT4_INODE_INDEX)
+> + *       will be invalid once the directory was converted into a dx directory
+>  */
+> -#define hash2pos(major, minor)	(major >> 1)
+> -#define pos2maj_hash(pos)	((pos << 1) & 0xffffffff)
+> -#define pos2min_hash(pos)	(0)
+> +loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
+> +{
+> +	struct inode *inode = file->f_mapping->host;
+> +	loff_t ret = -EINVAL;
+> +	int is_dx_dir = ext4_test_inode_flag(inode, EXT4_INODE_INDEX);
+> +
+> +	mutex_lock(&inode->i_mutex);
+> +
+> +	/* NOTE: relative offsets with dx directories might not work
+> +	 *       as expected, as it is difficult to figure out the
+> +	 *       correct offset between dx hashes */
+> +
+> +	switch (origin) {
+> +	case SEEK_END:
+> +		if (unlikely(offset > 0))
+> +			goto out_err; /* not supported for directories */
+> +
+> +		/* so only negative offsets are left, does that have a
+> +		 * meaning for directories at all? */
+> +		if (is_dx_dir)
+> +			offset += ext4_get_htree_eof(file);
+> +		else
+> +			offset += inode->i_size;
+> +		break;
+> +	case SEEK_CUR:
+> +		/*
+> +		 * Here we special-case the lseek(fd, 0, SEEK_CUR)
+> +		 * position-querying operation.  Avoid rewriting the "same"
+> +		 * f_pos value back to the file because a concurrent read(),
+> +		 * write() or lseek() might have altered it
+> +		 */
+> +		if (offset == 0) {
+> +			offset = file->f_pos;
+> +			goto out_ok;
+> +		}
+> +
+> +		offset += file->f_pos;
+> +		break;
+> +	}
+> +
+> +	if (unlikely(offset < 0))
+> +		goto out_err;
+> +
+> +	if (!is_dx_dir) {
+> +		if (offset > inode->i_sb->s_maxbytes)
+> +			goto out_err;
+> +	} else if (offset > ext4_get_htree_eof(file))
+> +		goto out_err;
+> +
+> +	/* Special lock needed here? */
+> +	if (offset != file->f_pos) {
+> +		file->f_pos = offset;
+> +		file->f_version = 0;
+> +	}
+> +
+> +out_ok:
+> +	ret = offset;
+> +out_err:
+> +	mutex_unlock(&inode->i_mutex);
+> +
+> +	return ret;
+> +}
+> 
+> /*
+>  * This structure holds the nodes of the red-black tree used to store
+> @@ -330,15 +426,16 @@ static void free_rb_tree_fname(struct rb_root *root)
+> }
+> 
+> 
+> -static struct dir_private_info *ext4_htree_create_dir_info(loff_t pos)
+> +static struct dir_private_info *ext4_htree_create_dir_info(struct file *filp,
+> +							   loff_t pos)
+> {
+> 	struct dir_private_info *p;
+> 
+> 	p = kzalloc(sizeof(struct dir_private_info), GFP_KERNEL);
+> 	if (!p)
+> 		return NULL;
+> -	p->curr_hash = pos2maj_hash(pos);
+> -	p->curr_minor_hash = pos2min_hash(pos);
+> +	p->curr_hash = pos2maj_hash(filp, pos);
+> +	p->curr_minor_hash = pos2min_hash(filp, pos);
+> 	return p;
+> }
+> 
+> @@ -429,7 +526,7 @@ static int call_filldir(struct file *filp, void *dirent,
+> 		       "null fname?!?\n");
+> 		return 0;
+> 	}
+> -	curr_pos = hash2pos(fname->hash, fname->minor_hash);
+> +	curr_pos = hash2pos(filp, fname->hash, fname->minor_hash);
+> 	while (fname) {
+> 		error = filldir(dirent, fname->name,
+> 				fname->name_len, curr_pos,
+> @@ -454,13 +551,13 @@ static int ext4_dx_readdir(struct file *filp,
+> 	int	ret;
+> 
+> 	if (!info) {
+> -		info = ext4_htree_create_dir_info(filp->f_pos);
+> +		info = ext4_htree_create_dir_info(filp, filp->f_pos);
+> 		if (!info)
+> 			return -ENOMEM;
+> 		filp->private_data = info;
+> 	}
+> 
+> -	if (filp->f_pos == EXT4_HTREE_EOF)
+> +	if (filp->f_pos == ext4_get_htree_eof(filp))
+> 		return 0;	/* EOF */
+> 
+> 	/* Some one has messed with f_pos; reset the world */
+> @@ -468,8 +565,8 @@ static int ext4_dx_readdir(struct file *filp,
+> 		free_rb_tree_fname(&info->root);
+> 		info->curr_node = NULL;
+> 		info->extra_fname = NULL;
+> -		info->curr_hash = pos2maj_hash(filp->f_pos);
+> -		info->curr_minor_hash = pos2min_hash(filp->f_pos);
+> +		info->curr_hash = pos2maj_hash(filp, filp->f_pos);
+> +		info->curr_minor_hash = pos2min_hash(filp, filp->f_pos);
+> 	}
+> 
+> 	/*
+> @@ -501,7 +598,7 @@ static int ext4_dx_readdir(struct file *filp,
+> 			if (ret < 0)
+> 				return ret;
+> 			if (ret == 0) {
+> -				filp->f_pos = EXT4_HTREE_EOF;
+> +				filp->f_pos = ext4_get_htree_eof(filp);
+> 				break;
+> 			}
+> 			info->curr_node = rb_first(&info->root);
+> @@ -521,7 +618,7 @@ static int ext4_dx_readdir(struct file *filp,
+> 			info->curr_minor_hash = fname->minor_hash;
+> 		} else {
+> 			if (info->next_hash == ~0) {
+> -				filp->f_pos = EXT4_HTREE_EOF;
+> +				filp->f_pos = ext4_get_htree_eof(filp);
+> 				break;
+> 			}
+> 			info->curr_hash = info->next_hash;
+> @@ -540,3 +637,15 @@ static int ext4_release_dir(struct inode *inode, struct file *filp)
+> 
+> 	return 0;
+> }
+> +
+> +const struct file_operations ext4_dir_operations = {
+> +	.llseek		= ext4_dir_llseek,
+> +	.read		= generic_read_dir,
+> +	.readdir	= ext4_readdir,
+> +	.unlocked_ioctl = ext4_ioctl,
+> +#ifdef CONFIG_COMPAT
+> +	.compat_ioctl	= ext4_compat_ioctl,
+> +#endif
+> +	.fsync		= ext4_sync_file,
+> +	.release	= ext4_release_dir,
+> +};
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index e717dfd..31d9ba0 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1560,7 +1560,11 @@ struct dx_hash_info
+> 	u32		*seed;
+> };
+> 
+> -#define EXT4_HTREE_EOF	0x7fffffff
+> +
+> +/* 32 and 64 bit signed EOF for dx directories */
+> +#define EXT4_HTREE_EOF_32BIT   ((1UL  << (32 - 1)) - 1)
+> +#define EXT4_HTREE_EOF_64BIT   ((1ULL << (64 - 1)) - 1)
+> +
+> 
+> /*
+>  * Control parameters used by ext4_htree_next_block
+> diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
+> index ac8f168..fa8e491 100644
+> --- a/fs/ext4/hash.c
+> +++ b/fs/ext4/hash.c
+> @@ -200,8 +200,8 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
+> 		return -1;
+> 	}
+> 	hash = hash & ~1;
+> -	if (hash == (EXT4_HTREE_EOF << 1))
+> -		hash = (EXT4_HTREE_EOF-1) << 1;
+> +	if (hash == (EXT4_HTREE_EOF_32BIT << 1))
+> +		hash = (EXT4_HTREE_EOF_32BIT - 1) << 1;
+> 	hinfo->hash = hash;
+> 	hinfo->minor_hash = minor_hash;
+> 	return 0;
+> 
+
+
+Cheers, Andreas
+--
+Andreas Dilger 
+Principal Engineer
+Whamcloud, Inc.
+
+
+
