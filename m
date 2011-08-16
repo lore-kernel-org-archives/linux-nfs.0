@@ -1,70 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:33682 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753930Ab1HXSfH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Aug 2011 14:35:07 -0400
-Subject: [PATCH 2/5] SUNRPC: use reference count helpers
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net
-Date: Wed, 24 Aug 2011 22:33:52 +0400
-Message-ID: <20110824183352.4924.51863.stgit@localhost6.localdomain6>
-In-Reply-To: <20110824183304.4924.94670.stgit@localhost6.localdomain6>
-References: <20110824183304.4924.94670.stgit@localhost6.localdomain6>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:53032 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751821Ab1HPL0E (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 07:26:04 -0400
+Subject: [PATCH 5/6] Fix possible Null pointer dereference in
+	ipoib_start_xmit()
+To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: hch@infradead.org, yong.fan@whamcloud.com, linux-fsdevel@vger.kernel.org,
+        tytso@mit.edu, adilger@whamcloud.com
+Date: Tue, 16 Aug 2011 13:26:02 +0200
+Message-ID: <20110816112602.1808464.35621.stgit@fsdevel3>
+In-Reply-To: <20110816112536.1808464.7174.stgit@fsdevel3>
+References: <20110816112536.1808464.7174.stgit@fsdevel3>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-All is simple: we just increase users conters if rpcbind clients are present
-already. Otherwise we create new rpcbind clients and set users counter to 1.
+This will fix https://bugzilla.kernel.org/show_bug.cgi?id=41212
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+fslab2 login: [  114.392408] EXT4-fs (sdc): barriers disabled
+[  114.449737] EXT4-fs (sdc): mounted filesystem with writeback data mode.
+Opts: journal_async_commit,barrier=0,data=writeback
+[  240.944030] BUG: unable to handle kernel NULL pointer dereference at
+0000000000000040
+[  240.948007] IP: [<ffffffffa0366ce9>] ipoib_start_xmit+0x39/0x280 [ib_ipoib]
+[...]
+[  240.948007] Call Trace:
+[  240.948007]  <IRQ>
+[  240.948007]  [<ffffffff812cd5e0>] dev_hard_start_xmit+0x2a0/0x590
+[  240.948007]  [<ffffffff8131f680>] ? arp_create+0x70/0x200
+[  240.948007]  [<ffffffff812e8e1f>] sch_direct_xmit+0xef/0x1c0
 
+Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 ---
- net/sunrpc/rpcb_clnt.c |   12 ++++--------
- 1 files changed, 4 insertions(+), 8 deletions(-)
+ drivers/infiniband/ulp/ipoib/ipoib_main.c |    8 +++++---
+ 1 files changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index c84e6a3..b4cc0f1 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -256,9 +256,7 @@ static int rpcb_create_local_unix(void)
- 		clnt4 = NULL;
- 	}
+diff --git a/drivers/infiniband/ulp/ipoib/ipoib_main.c b/drivers/infiniband/ulp/ipoib/ipoib_main.c
+index 43f89ba..fe89c46 100644
+--- a/drivers/infiniband/ulp/ipoib/ipoib_main.c
++++ b/drivers/infiniband/ulp/ipoib/ipoib_main.c
+@@ -717,11 +717,13 @@ static int ipoib_start_xmit(struct sk_buff *skb, struct net_device *dev)
+ {
+ 	struct ipoib_dev_priv *priv = netdev_priv(dev);
+ 	struct ipoib_neigh *neigh;
+-	struct neighbour *n;
++	struct neighbour *n = NULL;
+ 	unsigned long flags;
  
--	/* Protected by rpcb_create_local_mutex */
--	rpcb_local_clnt = clnt;
--	rpcb_local_clnt4 = clnt4;
-+	rpcb_set_local(clnt, clnt4);
- 
- out:
- 	return result;
-@@ -310,9 +308,7 @@ static int rpcb_create_local_net(void)
- 		clnt4 = NULL;
- 	}
- 
--	/* Protected by rpcb_create_local_mutex */
--	rpcb_local_clnt = clnt;
--	rpcb_local_clnt4 = clnt4;
-+	rpcb_set_local(clnt, clnt4);
- 
- out:
- 	return result;
-@@ -327,11 +323,11 @@ static int rpcb_create_local(void)
- 	static DEFINE_MUTEX(rpcb_create_local_mutex);
- 	int result = 0;
- 
--	if (rpcb_local_clnt)
-+	if (rpcb_get_local())
- 		return result;
- 
- 	mutex_lock(&rpcb_create_local_mutex);
--	if (rpcb_local_clnt)
-+	if (rpcb_get_local())
- 		goto out;
- 
- 	if (rpcb_create_local_unix() != 0)
+-	n = dst_get_neighbour(skb_dst(skb));
+-	if (likely(skb_dst(skb) && n)) {
++	if (likely(skb_dst(skb)))
++		n = dst_get_neighbour(skb_dst(skb));
++
++	if (likely(n)) {
+ 		if (unlikely(!*to_ipoib_neigh(n))) {
+ 			ipoib_path_lookup(skb, dev);
+ 			return NETDEV_TX_OK;
 
