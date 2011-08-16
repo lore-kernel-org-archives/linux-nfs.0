@@ -1,230 +1,343 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-2.MIT.EDU ([18.9.25.13]:51356 "EHLO
-	dmz-mailsec-scanner-2.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750752Ab1HIXPG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Aug 2011 19:15:06 -0400
-Message-ID: <20110809191500.2rm2rkclk408k0o0@webmail.mit.edu>
-Date: Tue, 09 Aug 2011 19:15:00 -0400
-From: Gregory Magoon <gmagoon@MIT.EDU>
-To: "Loewe, Bill" <bloewe@panasas.com>, "Harrosh, Boaz" <bharrosh@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@citi.umich.edu>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: NFSv4 vs NFSv3 with MPICH2-1.4
-References: <20110728152306.219iz5wpkcokoo4c@webmail.mit.edu>
-	<1311886684.27285.8.camel@lade.trondhjem.org>
-	<20110728172449.8wxxte4jg0s8kcgs@webmail.mit.edu>
-	<1311889677.27285.14.camel@lade.trondhjem.org>
-	<20110728180120.bf6gq5zyos8wwg4s@webmail.mit.edu>
-	<4E31E336.9090702@panasas.com>
-	<20110728191519.ql5la3phk4000ko4@webmail.mit.edu>
-	<4E337844.2070800@panasas.com>
-	<717300C842BCD249A6A8CADE9995E130093FDE07@seabiscuit.int.panasas.com>
-	<20110802121913.y5qpfnkftw00o00s@webmail.mit.edu>
-In-Reply-To: <20110802121913.y5qpfnkftw00o00s@webmail.mit.edu>
-Content-Type: text/plain;
-	charset=ISO-8859-1;
-	format="flowed"
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:53122 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752249Ab1HPLyR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 07:54:17 -0400
+Subject: [PATCH 3 2/4] Return 32/64-bit dir name hash according to usage type
+To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: bfields@fieldses.org, tytso@mit.edu, bernd.schubert@fastmail.fm,
+        hch@infradead.org, adilger@whamcloud.com, yong.fan@whamcloud.com,
+        linux-fsdevel@vger.kernel.org
+Date: Tue, 16 Aug 2011 13:54:14 +0200
+Message-ID: <20110816115414.1810393.92169.stgit@localhost.localdomain>
+In-Reply-To: <20110816115404.1810393.47239.stgit@localhost.localdomain>
+References: <20110816115404.1810393.47239.stgit@localhost.localdomain>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Just a quick follow-up...I was wondering if anyone had the chance to 
-take a look
-at the tcpdump I sent to a few of you last week.
+From: Fan Yong <yong.fan@whamcloud.com>
 
-If anyone else on the list wants to take a look, please let me know, 
-and I will
-send you the link privately.
+Traditionally ext2/3/4 has returned a 32-bit hash value from llseek()
+to appease NFSv2, which can only handle a 32-bit cookie for seekdir()
+and telldir().  However, this causes problems if there are 32-bit hash
+collisions, since the NFSv2 server can get stuck resending the same
+entries from the directory repeatedly.
 
-Thanks,
-Greg
+Allow ext4 to return a full 64-bit hash (both major and minor) for
+telldir to decrease the chance of hash collisions.  This still needs
+integration on the NFS side.
 
-Quoting Gregory Magoon <gmagoon@MIT.EDU>:
+Patch-updated-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+(blame me if something is not correct)
 
-> Thanks all for the feedback and sorry for the delay...one of our HDDs 
-> failed on
-> Saturday, so I had to take care of that.
->
-> Because I don't want to interrupt a working system, it will not be convenient
-> for me to try the "no delegations" option that has been suggested.
->
-> I was however, able to grab a hold of a temporarily free node (temporarily
-> returned to NFSv4 configuration) to capture the tcp traffic. I have sent a
-> short (< 1 sec) snapshot captured during (I believe) the allred3 
-> mpich2 test. I
-> have privately sent you a link to the file. Hopefully the issue will 
-> be obvious
-> from this (e.g. you will immediately see that I am doing something I 
-> shouldn't
-> be doing). If a longer snapshot started before the tests would be 
-> useful, I can
-> get that too.
->
-> I had posted on the mpich mailing list before I came here (
-> http://lists.mcs.anl.gov/pipermail/mpich-discuss/2011-July/010432.html ) and
-> unfortunately they weren't able to provide any insights.
->
-> Thanks again,
-> Greg
->
->
-> Quoting "Loewe, Bill" <bloewe@panasas.com>:
->
->> Hi Greg,
->>
->> IOR is independent of MPICH2, but does require MPI for process 
->> coordination.  By default, IOR will use the "-a POSIX" option for 
->> standard POSIX I/O -- open(), write(), close(), etc.
->>
->> In addition, IOR can use the MPI-IO library calls (MPI_File_open(), 
->> etc.) to perform I/O.
->>
->> For the build process of MPICH2 "make tests" exercises this MPI-IO 
->> (ROMIO) interface which uses an ADIO (Abstract-Device Interface for 
->> I/O) layer.  ADIO can interface to different file systems (NFS, 
->> PanFS, PVFS2, Lustre, e.g.).
->>
->> The errors you're encountering in "make tests" for MPICH2 do not 
->> appear to be testing the I/O, however, but seem to be an issue with 
->> the launcher for the tests in general.  I agree with Boaz that it 
->> may make sense to follow up with the MPICH developers for this.  
->> Under their main page 
->> (http://www.mcs.anl.gov/research/projects/mpich2/) they have a 
->> support pulldown with FAQ and a mailing list.  They may be able to 
->> help resolve this for you.
->>
->> Thanks,
->>
->> --Bill.
->>
->> -----Original Message-----
->> From: Harrosh, Boaz
->> Sent: Friday, July 29, 2011 8:20 PM
->> To: Gregory Magoon
->> Cc: Trond Myklebust; linux-nfs@vger.kernel.org; J. Bruce Fields; Loewe, Bill
->> Subject: Re: NFSv4 vs NFSv3 with MPICH2-1.4
->>
->> On 07/28/2011 04:15 PM, Gregory Magoon wrote:
->>> Unfortunately, I'm not familiar enough with MPICH2 to have an idea about
->>> significant changes between version 1.3 and 1.4, but other evidence 
->>> suggests
->>> that the version is not the issue and that I would have the same 
->>> problem with
->>> v1.3.
->>>
->>> I'm using the MPICH2 test suite invoked by "make testing" (see below
->>> for initial
->>> output).
->>>
->>> I'm using the nfs-kernel-server and nfs-common Ubuntu packages (natty
->>> release).
->>>
->>
->> You have not answered the most important question:
->>>> Also are you using the builtin nfs-client driver or the POSIX interface?
->>
->> Which I'll assume means you don't know. So I'll try to elaborate. Just for
->> background, I've never used "make tests" before all I used was IOR & mdtest.
->>
->> Now if you print the usage string for IOR you get this option:
->>
->> 	-a S  api --  API for I/O [POSIX|MPIIO|HDF5|NCMPI]
->>
->> I'm not familiar with the code but what I understand is only "-a 
->> POSIX" will actually
->> use the regular Kernel VFS interface for read/writing of files. The 
->> other options
->> have different drivers for different protocols. I do not know first 
->> hand, but I once
->> heard in a conference that -a MPIIO has a special NFS driver that 
->> uses better NFS
->> semantics and avoids the POSIX semantics which are bad for big 
->> cluster performance.
->> All this is speculations and rumors on my part, and you will need to 
->> consult with the
->> mpich guys.
->>
->> Now I can imagine that a "make tests" would try all possible 
->> combinations of "-a S"
->> So you'll need to dig out what is the falling test and is it really 
->> using the Kernel
->> NFS driver at that point. (I bet if you do a tcpdump like Bruce said 
->> the guys here will
->> be able to see if this is a Linux NFS or not)
->>
->> I CC: Bill Loewe that might know much more then me about this 
->> subject. And please do
->> speak with the MPICH people (But keep us in the loop it is 
->> interesting to know)
->>
->> Thanks
->> Boaz
->>
->>> Thanks,
->>> Greg
->>>
->>> user@node01:~/Molpro/src/mpich2-1.4$ make testing
->>> (cd test && make testing)
->>> make[1]: Entering directory `/home/user/Molpro/src/mpich2-1.4/test'
->>> (NOXMLCLOSE=YES && export NOXMLCLOSE && cd mpi && make testing)
->>> make[2]: Entering directory `/home/user/Molpro/src/mpich2-1.4/test/mpi'
->>> ./runtests -srcdir=. -tests=testlist \
->>>                     
->>> -mpiexec=/home/user/Molpro/src/mpich2-install/bin/mpiexec \
->>>                     -xmlfile=summary.xml
->>> Looking in ./testlist
->>> Processing directory attr
->>> Looking in ./attr/testlist
->>> Processing directory coll
->>> Looking in ./coll/testlist
->>> Unexpected output in allred: [mpiexec@node01] APPLICATION TIMED OUT
->>> Unexpected output in allred: [proxy:0:0@node01] 
->>> HYD_pmcd_pmip_control_cmd_cb
->>> (./pm/pmiserv/pmip_cb.c:906): assert (!closed) failed
->>> Unexpected output in allred: [proxy:0:0@node01] 
->>> HYDT_dmxu_poll_wait_for_event
->>> (./tools/demux/demux_poll.c:77): callback returned error status
->>> Unexpected output in allred: [proxy:0:0@node01] main
->>> (./pm/pmiserv/pmip.c:226):
->>> demux engine error waiting for event
->>> Unexpected output in allred: [mpiexec@node01] HYDT_bscu_wait_for_completion
->>> (./tools/bootstrap/utils/bscu_wait.c:70): one of the processes terminated
->>> badly; aborting
->>> Unexpected output in allred: [mpiexec@node01] HYDT_bsci_wait_for_completion
->>> (./tools/bootstrap/src/bsci_wait.c:23): launcher returned error waiting for
->>> completion
->>> Unexpected output in allred: [mpiexec@node01] HYD_pmci_wait_for_completion
->>> (./pm/pmiserv/pmiserv_pmci.c:189): launcher returned error waiting for
->>> completion
->>> Unexpected output in allred: [mpiexec@node01] main 
->>> (./ui/mpich/mpiexec.c:397):
->>> process manager error waiting for completion
->>> Program allred exited without No Errors
->>>
->>>>
->>>> Hi Gregory
->>>>
->>>> We are using MPICH2-1.3.1 and the IOR mpich test. as well as the mdtest
->>>> test. And have had no issues so far with nfsv4 nfsv4.1 and pnfs. In fact
->>>> this is our standard performance test.
->>>>
->>>> What tests are you using?
->>>> Do you know of any major changes between MPICH2-1.3.1 and MPICH2-1.4?
->>>> Also are you using the builtin nfs-client driver or the POSIX interface?
->>>>
->>>> Boaz
->>>>
->>>
->>>
->>
->>
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+Signed-off-by: Fan Yong <yong.fan@whamcloud.com>
+Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+---
+ fs/ext4/dir.c  |  185 ++++++++++++++++++++++++++++++++++++++++++++------------
+ fs/ext4/ext4.h |    6 ++
+ fs/ext4/hash.c |    4 +
+ 3 files changed, 154 insertions(+), 41 deletions(-)
 
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index 164c560..cc47087 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -32,24 +32,8 @@ static unsigned char ext4_filetype_table[] = {
+ 	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
+ };
+ 
+-static int ext4_readdir(struct file *, void *, filldir_t);
+ static int ext4_dx_readdir(struct file *filp,
+ 			   void *dirent, filldir_t filldir);
+-static int ext4_release_dir(struct inode *inode,
+-				struct file *filp);
+-
+-const struct file_operations ext4_dir_operations = {
+-	.llseek		= ext4_llseek,
+-	.read		= generic_read_dir,
+-	.readdir	= ext4_readdir,		/* we take BKL. needed?*/
+-	.unlocked_ioctl = ext4_ioctl,
+-#ifdef CONFIG_COMPAT
+-	.compat_ioctl	= ext4_compat_ioctl,
+-#endif
+-	.fsync		= ext4_sync_file,
+-	.release	= ext4_release_dir,
+-};
+-
+ 
+ static unsigned char get_dtype(struct super_block *sb, int filetype)
+ {
+@@ -254,22 +238,134 @@ out:
+ 	return ret;
+ }
+ 
++static inline int is_32bit_api(void)
++{
++#ifdef HAVE_IS_COMPAT_TASK
++	return is_compat_task();
++#else
++	return (BITS_PER_LONG == 32);
++#endif
++}
++
+ /*
+  * These functions convert from the major/minor hash to an f_pos
+- * value.
++ * value for dx directories
++ *
++ * Upper layer (for example NFS) should specify FMODE_32BITHASH or
++ * FMODE_64BITHASH explicitly. On the other hand, we allow ext4 to be mounted
++ * directly on both 32-bit and 64-bit nodes, under such case, neither
++ * FMODE_32BITHASH nor FMODE_64BITHASH is specified.
++ */
++static inline loff_t hash2pos(struct file *filp, __u32 major, __u32 minor)
++{
++	if ((filp->f_flags & FMODE_32BITHASH) ||
++	    (!(filp->f_flags & FMODE_64BITHASH) && is_32bit_api()))
++		return major >> 1;
++	else
++		return ((__u64)(major >> 1) << 32) | (__u64)minor;
++}
++
++static inline __u32 pos2maj_hash(struct file *filp, loff_t pos)
++{
++	if ((filp->f_flags & FMODE_32BITHASH) ||
++	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
++		return (pos << 1) & 0xffffffff;
++	else
++		return ((pos >> 32) << 1) & 0xffffffff;
++}
++
++static inline __u32 pos2min_hash(struct file *filp, loff_t pos)
++{
++	if ((filp->f_flags & FMODE_32BITHASH) ||
++	    (!(filp->f_flags & FMODE_64BITHASH) && is_32bit_api()))
++		return 0;
++	else
++		return pos & 0xffffffff;
++}
++
++/*
++ * Return 32- or 64-bit end-of-file for dx directories
++ */
++static inline loff_t ext4_get_htree_eof(struct file *filp)
++{
++	if ((filp->f_mode & FMODE_32BITHASH) ||
++	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
++		return EXT4_HTREE_EOF_32BIT;
++	else
++		return EXT4_HTREE_EOF_64BIT;
++}
++
++
++/*
++ * ext4_dir_llseek() based on generic_file_llseek() to handle both
++ * non-htree and htree directories, where the "offset" is in terms
++ * of the filename hash value instead of the byte offset.
+  *
+- * Currently we only use major hash numer.  This is unfortunate, but
+- * on 32-bit machines, the same VFS interface is used for lseek and
+- * llseek, so if we use the 64 bit offset, then the 32-bit versions of
+- * lseek/telldir/seekdir will blow out spectacularly, and from within
+- * the ext2 low-level routine, we don't know if we're being called by
+- * a 64-bit version of the system call or the 32-bit version of the
+- * system call.  Worse yet, NFSv2 only allows for a 32-bit readdir
+- * cookie.  Sigh.
++ * NOTE: offsets obtained *before* ext4_set_inode_flag(dir, EXT4_INODE_INDEX)
++ *       will be invalid once the directory was converted into a dx directory
+  */
+-#define hash2pos(major, minor)	(major >> 1)
+-#define pos2maj_hash(pos)	((pos << 1) & 0xffffffff)
+-#define pos2min_hash(pos)	(0)
++loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
++{
++	struct inode *inode = file->f_mapping->host;
++	loff_t ret = -EINVAL;
++	int is_dx_dir = ext4_test_inode_flag(inode, EXT4_INODE_INDEX);
++
++	mutex_lock(&inode->i_mutex);
++
++	/* NOTE: relative offsets with dx directories might not work
++	 *       as expected, as it is difficult to figure out the
++	 *       correct offset between dx hashes */
++
++	switch (origin) {
++	case SEEK_END:
++		if (unlikely(offset > 0))
++			goto out_err; /* not supported for directories */
++
++		/* so only negative offsets are left, does that have a
++		 * meaning for directories at all? */
++		if (is_dx_dir)
++			offset += ext4_get_htree_eof(file);
++		else
++			offset += inode->i_size;
++		break;
++	case SEEK_CUR:
++		/*
++		 * Here we special-case the lseek(fd, 0, SEEK_CUR)
++		 * position-querying operation.  Avoid rewriting the "same"
++		 * f_pos value back to the file because a concurrent read(),
++		 * write() or lseek() might have altered it
++		 */
++		if (offset == 0) {
++			offset = file->f_pos;
++			goto out_ok;
++		}
++
++		offset += file->f_pos;
++		break;
++	}
++
++	if (unlikely(offset < 0))
++		goto out_err;
++
++	if (!is_dx_dir) {
++		if (offset > inode->i_sb->s_maxbytes)
++			goto out_err;
++	} else if (offset > ext4_get_htree_eof(file))
++		goto out_err;
++
++	/* Special lock needed here? */
++	if (offset != file->f_pos) {
++		file->f_pos = offset;
++		file->f_version = 0;
++	}
++
++out_ok:
++	ret = offset;
++out_err:
++	mutex_unlock(&inode->i_mutex);
++
++	return ret;
++}
+ 
+ /*
+  * This structure holds the nodes of the red-black tree used to store
+@@ -330,15 +426,16 @@ static void free_rb_tree_fname(struct rb_root *root)
+ }
+ 
+ 
+-static struct dir_private_info *ext4_htree_create_dir_info(loff_t pos)
++static struct dir_private_info *ext4_htree_create_dir_info(struct file *filp,
++							   loff_t pos)
+ {
+ 	struct dir_private_info *p;
+ 
+ 	p = kzalloc(sizeof(struct dir_private_info), GFP_KERNEL);
+ 	if (!p)
+ 		return NULL;
+-	p->curr_hash = pos2maj_hash(pos);
+-	p->curr_minor_hash = pos2min_hash(pos);
++	p->curr_hash = pos2maj_hash(filp, pos);
++	p->curr_minor_hash = pos2min_hash(filp, pos);
+ 	return p;
+ }
+ 
+@@ -429,7 +526,7 @@ static int call_filldir(struct file *filp, void *dirent,
+ 		       "null fname?!?\n");
+ 		return 0;
+ 	}
+-	curr_pos = hash2pos(fname->hash, fname->minor_hash);
++	curr_pos = hash2pos(filp, fname->hash, fname->minor_hash);
+ 	while (fname) {
+ 		error = filldir(dirent, fname->name,
+ 				fname->name_len, curr_pos,
+@@ -454,13 +551,13 @@ static int ext4_dx_readdir(struct file *filp,
+ 	int	ret;
+ 
+ 	if (!info) {
+-		info = ext4_htree_create_dir_info(filp->f_pos);
++		info = ext4_htree_create_dir_info(filp, filp->f_pos);
+ 		if (!info)
+ 			return -ENOMEM;
+ 		filp->private_data = info;
+ 	}
+ 
+-	if (filp->f_pos == EXT4_HTREE_EOF)
++	if (filp->f_pos == ext4_get_htree_eof(filp))
+ 		return 0;	/* EOF */
+ 
+ 	/* Some one has messed with f_pos; reset the world */
+@@ -468,8 +565,8 @@ static int ext4_dx_readdir(struct file *filp,
+ 		free_rb_tree_fname(&info->root);
+ 		info->curr_node = NULL;
+ 		info->extra_fname = NULL;
+-		info->curr_hash = pos2maj_hash(filp->f_pos);
+-		info->curr_minor_hash = pos2min_hash(filp->f_pos);
++		info->curr_hash = pos2maj_hash(filp, filp->f_pos);
++		info->curr_minor_hash = pos2min_hash(filp, filp->f_pos);
+ 	}
+ 
+ 	/*
+@@ -501,7 +598,7 @@ static int ext4_dx_readdir(struct file *filp,
+ 			if (ret < 0)
+ 				return ret;
+ 			if (ret == 0) {
+-				filp->f_pos = EXT4_HTREE_EOF;
++				filp->f_pos = ext4_get_htree_eof(filp);
+ 				break;
+ 			}
+ 			info->curr_node = rb_first(&info->root);
+@@ -521,7 +618,7 @@ static int ext4_dx_readdir(struct file *filp,
+ 			info->curr_minor_hash = fname->minor_hash;
+ 		} else {
+ 			if (info->next_hash == ~0) {
+-				filp->f_pos = EXT4_HTREE_EOF;
++				filp->f_pos = ext4_get_htree_eof(filp);
+ 				break;
+ 			}
+ 			info->curr_hash = info->next_hash;
+@@ -540,3 +637,15 @@ static int ext4_release_dir(struct inode *inode, struct file *filp)
+ 
+ 	return 0;
+ }
++
++const struct file_operations ext4_dir_operations = {
++	.llseek		= ext4_dir_llseek,
++	.read		= generic_read_dir,
++	.readdir	= ext4_readdir,
++	.unlocked_ioctl = ext4_ioctl,
++#ifdef CONFIG_COMPAT
++	.compat_ioctl	= ext4_compat_ioctl,
++#endif
++	.fsync		= ext4_sync_file,
++	.release	= ext4_release_dir,
++};
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index e717dfd..31d9ba0 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1560,7 +1560,11 @@ struct dx_hash_info
+ 	u32		*seed;
+ };
+ 
+-#define EXT4_HTREE_EOF	0x7fffffff
++
++/* 32 and 64 bit signed EOF for dx directories */
++#define EXT4_HTREE_EOF_32BIT   ((1UL  << (32 - 1)) - 1)
++#define EXT4_HTREE_EOF_64BIT   ((1ULL << (64 - 1)) - 1)
++
+ 
+ /*
+  * Control parameters used by ext4_htree_next_block
+diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
+index ac8f168..fa8e491 100644
+--- a/fs/ext4/hash.c
++++ b/fs/ext4/hash.c
+@@ -200,8 +200,8 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
+ 		return -1;
+ 	}
+ 	hash = hash & ~1;
+-	if (hash == (EXT4_HTREE_EOF << 1))
+-		hash = (EXT4_HTREE_EOF-1) << 1;
++	if (hash == (EXT4_HTREE_EOF_32BIT << 1))
++		hash = (EXT4_HTREE_EOF_32BIT - 1) << 1;
+ 	hinfo->hash = hash;
+ 	hinfo->minor_hash = minor_hash;
+ 	return 0;
 
