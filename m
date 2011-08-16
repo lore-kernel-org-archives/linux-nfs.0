@@ -1,66 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:4366 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754422Ab1HWABV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Aug 2011 20:01:21 -0400
-Content-Type: text/plain;
-	charset="UTF-8"
-Subject: RE: [PATCH] pnfsblock: init pg_bsize properly
-Date: Mon, 22 Aug 2011 17:00:58 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AC9DF79@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <4E52EBAC.8070908@panasas.com>
-References: <1313197450-4595-1-git-send-email-bergwolf@gmail.com> <4E4ADBA1.1000005@panasas.com> <4E4B6A81.2010204@tonian.com> <CA+a=Yy6BSmEWurZuFN-8axTS0gfeXaguw5tcayeVjJmcFAztOQ@mail.gmail.com> <4E52EBAC.8070908@panasas.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Boaz Harrosh" <bharrosh@panasas.com>, "Peng Tao" <bergwolf@gmail.com>
-Cc: "Benny Halevy" <bhalevy@tonian.com>, <linux-nfs@vger.kernel.org>,
-        "Peng Tao" <peng_tao@emc.com>, "Isaman, Fred" <Fred.Isaman@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:55122 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751719Ab1HPUU0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 16:20:26 -0400
+Message-ID: <4E4AD0CE.3000506@panasas.com>
+Date: Tue, 16 Aug 2011 13:19:26 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: <tao.peng@emc.com>
+CC: <bergwolf@gmail.com>, <Trond.Myklebust@netapp.com>, <benny@tonian.com>,
+        <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/5] pNFS: recoalesce when ld write pagelist fails
+References: <1312685635-1593-1-git-send-email-bergwolf@gmail.com> <4E42C564.7070504@panasas.com> <CA+a=Yy4WXD64A3anw7f-wSWcs4A4-6W18QQs=YyYC0285_W_qg@mail.gmail.com> <4E442512.7080904@panasas.com> <CA+a=Yy4g09b_AEf2px1Cjfmr_ud3PFuAbEwdez1cbsiYJ0mmgA@mail.gmail.com> <4E446F63.5080707@panasas.com> <F19688880B763E40B28B2B462677FBF805BF0EB0A3@MX09A.corp.emc.com>
+In-Reply-To: <F19688880B763E40B28B2B462677FBF805BF0EB0A3@MX09A.corp.emc.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBCb2F6IEhhcnJvc2ggW21haWx0
-bzpiaGFycm9zaEBwYW5hc2FzLmNvbV0NCj4gU2VudDogTW9uZGF5LCBBdWd1c3QgMjIsIDIwMTEg
-Nzo1MiBQTQ0KPiBUbzogUGVuZyBUYW8NCj4gQ2M6IEJlbm55IEhhbGV2eTsgbGludXgtbmZzQHZn
-ZXIua2VybmVsLm9yZzsgUGVuZyBUYW87IE15a2xlYnVzdCwNCj4gVHJvbmQ7IElzYW1hbiwgRnJl
-ZA0KPiBTdWJqZWN0OiBSZTogW1BBVENIXSBwbmZzYmxvY2s6IGluaXQgcGdfYnNpemUgcHJvcGVy
-bHkNCj4gDQo+IE9uIDA4LzE3LzIwMTEgMDI6MzUgQU0sIFBlbmcgVGFvIHdyb3RlOg0KPiA+IEhp
-LCBCZW5ueSBhbmQgQm9heiwNCj4gPg0KPiA8c25pcD4NCj4gDQo+ID4gSW4gcG5mc19kb19tdWx0
-aXBsZV9yZWFkcy9wbmZzX2RvX211bHRpcGxlX3dyaXRlcywgZGF0YS0+bWRzX29wcyB3aWxsDQo+
-ID4gYmUgc2V0IGFzIGRlc2MtPnBnX3JwY19jYWxsb3BzLCB3aGljaCBpcyBkZXRlcm1pbmVkIGlu
-DQo+ID4gbmZzX2dlbmVyaWNfZmx1c2gvbmZzX2dlbmVyaWNfcGFnZWluIGFjY29yZGluZyB0byBk
-ZXNjLT5wZ19ic2l6ZS4gRm9yDQo+ID4gYmxvY2tsYXlvdXQsIHdlIHdvdWxkbid0IHdhbnQgdG8g
-c2V0IGRhdGEtPm1kc19vcHMgdG8NCj4gPiBwYXJ0aWFsX3JlYWQvd3JpdGUgb3BzLCBzbyBJIHdy
-aXRlIHRoZSBwYXRjaCB0byB1c2UgbHNlZyBsZW5ndGggYXMNCj4gPiBwZ19ic2l6ZS4NCj4gPg0K
-PiANCj4gRG8geW91IG1lYW4gaW4gdGhlIGNhc2Ugd2hlcmUgTURTIHNldHMgKHBnX2JzaXplIDwg
-UEFHRV9TSVpFKSA/DQo+IA0KPiBSaWdodCwgdGhhdCBpcyBhIHByb2JsZW0uIChUaGVvcmV0aWNh
-bGx5LCBiZWNhdXNlIHRoZSBwTkZTRC1MaW51eA0KPiBzZXJ2ZXINCj4gZG9lcyBub3QgZG8gdGhh
-dC4gRG8geW91IGhhdmUgYSBTZXJ2ZXIgdGhhdCBkb2VzPykNCj4gDQo+ID4gTEQgY2FuIG92ZXJy
-aWRlIHBnX2JzaXplIGluIHBnX2luaXQgYmVjYXVzZQ0KPiA+IG5mc19wYWdlaW9fcmVzZXRfcmVh
-ZF9tZHMvbmZzX3BhZ2Vpb19yZXNldF93cml0ZV9tZHMgd2lsbCByZXNldCBpdCB0bw0KPiA+IHNl
-cnZlciByc2l6ZS93c2l6ZSBpZiBwbmZzIGlzIG5vdCB0cmllZC4NCj4gPg0KPiANCj4gU28gaWYg
-aXQgaXMgdGhlICJwZ19ic2l6ZSA8IFBBR0VfU0laRSIgYnV0IHBORlMtSU8gY2FzZSB0aGVuIEkg
-ZG9uJ3QNCj4gbGlrZSB5b3VyIHBhdGNoLCBhdCBhbGwuIFdlIHNob3VsZCBmaXggdGhlIGdlbmVy
-aWMgY29kZSB0byBiZWhhdmUNCj4gcHJvcGVybHksIGFuZCBub3QgbGV0IExEcyBoYWNrIHRoZWly
-IHdheSBvdXQuIChGb3IgZXhhbXBsZSB3aGF0IGFib3V0DQo+IG9iamVjdHMgYW5kIGZpbGVzIExE
-cykNCj4gDQo+IFRoZXJlIGlzIGEgZmV3IHdheXMgeW91IGNhbiBmaXggdGhlIGdlbmVyaWMgY29k
-ZS4gT25lIGlzIG92ZXJyaWRlIHRoZQ0KPiBkZXNjLT5wZ19ycGNfY2FsbG9wcyBmb3IgdGhlIHBO
-RlMgY2FzZSB0byBhbHdheXMgYmUgdGhlIHNhbWUgb25lLiBPcg0KPiBvdmVycmlkZSB0aGUgdGVz
-dCBmb3IgKHBnX2JzaXplIDwgUEFHRV9TSVpFKSBpbiB0aGUgcE5GUyBjYXNlIGlmIHdlDQo+IGhh
-dmUNCj4gYSBsc2VnLiBPciBzb21lIG90aGVyIGNsZWFuIHdheS4NCj4gDQo+IEJ1dCBwbGVhc2Ug
-ZG9uJ3QgZml4IGl0IGxpa2UgdGhhdCwgaW5zaWRlIGVhY2ggTEQgZHJpdmVyLg0KPiANCj4gWyBU
-cm9uZCBGcmVkDQo+ICAgT25lIHRoaW5nIEkgZG8gbm90IHVuZGVyc3RhbmQgYWJvdXQgdGhlIGZp
-bGVzLWxheW91dCBvcGVyYXRpb25zLiBZb3UNCj4gICBoYXZlIGV4cGxhaW5lZCBpbiB0aGUgcGFz
-c2VkIHRoYXQgci93c2l6ZSBzZW50IGZyb20gdGhlIE1EUyBpcyBhbHNvDQo+IHRoZQ0KPiAgIHNh
-bWUgb25lIGZvciBlYWNoIERTLiBTbyBpZiB3ZSB0YWtlIGFuIGV4YW1wbGUgb2YgcnNpemUgYmVl
-aW5nIDJNQg0KPiAgIGFuZCB0aGVyZSBpcyBhIHN0cmlwcGluZyBvZiAyIERTIGZvciB0aGF0IGxh
-eW91dC4oU2F5DQo+IHN0cmlwX3VuaXQ9PXJzaXplKQ0KPiAgIFRoZW4gd2UgbmVlZCB0byByZWFk
-IDEvMiBvZiB0aGF0IHBhZ2UgZnJvbSBvbmUgRFMgYW5kIHRoZSAyLzIgaGFsZg0KPiBmcm9tIHRo
-ZQ0KPiAgIHNlY29uZC4gV2lsbCBjdXJyZW50IHBhcnRpYWxfcmVhZC93cml0ZSB3b3JrIGlmIGdv
-aW5nIHRocm91Z2ggZmlsZXMtDQo+IExEPw0KPiBdDQoNCk5vLiBUaGUgc3RyaXBlIHNpemUgbWF5
-IGJlIHNtYWxsZXIgdGhhbiB0aGUgci93c2l6ZSwgaW4gd2hpY2ggY2FzZSB3ZSdyZSBpbiB0aGUg
-c2FtZSBib2F0IGFzIHRoZSBibG9ja3MgYW5kIG9iamVjdHMuDQoNCkNoZWVycw0KICBUcm9uZA0K
-Tu+/ve+/ve+/ve+/ve+/vXLvv73vv71577+977+977+9Yu+/vVjvv73vv73Hp3bvv71e77+9Kd66
-ey5u77+9K++/ve+/ve+/ve+/vXvvv73vv73vv70i77+977+9Xm7vv71y77+977+977+9eu+/vRrv
-v73vv71o77+977+977+977+9Ju+/ve+/vR7vv71H77+977+977+9aO+/vQMo77+96ZqO77+93aJq
-Iu+/ve+/vRrvv70bbe+/ve+/ve+/ve+/ve+/vXrvv73elu+/ve+/ve+/vWbvv73vv73vv71o77+9
-77+977+9fu+/vW3vv70=
+On 08/16/2011 12:20 AM, tao.peng@emc.com wrote:
+> 
+> I tried to rewrite the write patch to handle failures inside
+> mds_ops->rpc_release. However, I get a problem w.r.t. "redirty and
+> rely on next flush". If the failed write is the *last flush*, we end
+> up with relying no one and the dirty pages are simply dropped. Do you
+> have any suggestions how to handle it?
+> 
+> Thanks, Tao
+> 
+
+Tao Hi.
+
+OK, I see what you mean. That would be a problem
+
+I had a totally different idea You know how today we just do:
+	nfs_initiate_write()
+
+Which is bad because it can actually dead lock because
+we are taking up the only thread that needs to service
+that call. Well I thought, with you thread-for-pnfs patch,
+can it not now work? I think it is worth a try?
+
+See if you can advance your thread-for-blocks-objects
+patch to current code and inject some errors. I think
+it will work this time. What do you think?
+
+Thanks
+Boaz
