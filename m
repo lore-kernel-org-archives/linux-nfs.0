@@ -1,133 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from atreides.gradator.net ([212.85.155.42]:45297 "EHLO
-	atreides.gradator.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756244Ab1HSXKZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2011 19:10:25 -0400
-Date: Sat, 20 Aug 2011 01:03:44 +0200
-From: Sylvain Rochet <gradator@gradator.net>
-To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Cc: Sylvain Rochet <gradator@gradator.net>
-Message-ID: <20110819230344.GA24784@gradator.net>
-References: <20101018223540.GA20730@gradator.net>
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="4Ckj6UjgE2iN1+kY"
-In-Reply-To: <20101018223540.GA20730@gradator.net>
-Subject: Re: PROBLEM: 2.6.35.7 to 3.0 Inotify events missing
+Received: from natasha.panasas.com ([67.152.220.90]:55481 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751887Ab1HPUnT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 16:43:19 -0400
+Message-ID: <4E4AD655.9090305@panasas.com>
+Date: Tue, 16 Aug 2011 13:43:01 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Peng Tao <bergwolf@gmail.com>
+CC: <benny@tonian.com>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 0/3] recoalesce when ld read/write fails
+References: <1313197213-1651-1-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1313197213-1651-1-git-send-email-bergwolf@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---4Ckj6UjgE2iN1+kY
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+On 08/12/2011 06:00 PM, Peng Tao wrote:
+> Hi,
+> 
+> I have moved the error handling inside mds_ops->rpc_release to reuse code
+> as suggested by Boaz.
+> 
+> I think we still need to issue the IO even for write because
+> we don't know if current writeback is the last one. So if we re-dirty the
+> pages and this is the last flush (flush at file close), then we don't have
+> a later flusher to writeback the re-dirtied pages. Boaz, please help see if
+> current approach is OK. Thanks.
+> 
+> The two cleanup patches (pipe upcall and set_lo_fail) are seperated out of
+> this patchset so they can be merged more easily.
+> 
+> Thanks,
+> Tao
+> 
 
-Hi,
+Thanks Tao
 
-On Tue, Oct 19, 2010 at 12:35:40AM +0200, Sylvain Rochet wrote:
->=20
-> ... upgraded to 2.6.33.5, then 2.6.33.7, finally to 2.6.35.7, and I=20
-> always end up with the same ending, it seems inotify can miss some VFS=20
-> events from time to time.
+They look *really* good these patches. But as you said, do they actually work?
 
-I finally find out why.
+Did you test any of this? I mean do you have a facility to inject random
+IO errors and test this out?
 
-The NFS server does not always know the name of the modified file, if=20
-the modified inode was cleared from the VFS cache fsnotify does not know=20
-as well the filename then inotify child events on directories are=20
-silently tossed.
+At the time I had the most dumb patch that would simply start failing IO after
+n writes/reads. Or another one that: if the offset was a magic offset like
+0x10017 then the IO would fail. Then with a simple dd I could make the IO
+fail and test this out. (Which BTW never worked with pnfs)
 
-Easy way to reproduce:
+The Kernel might be more resilient then we think with regarding to waiting
+for clean pages. Because I know that in a UML it is very easy to get to
+a low-memory condition where the iscsi stack starts to throw OOM messages
+and everything stalls for a while. But I'm always surprised how eventually
+the Kernel picks up and the IO ends successfully. One easy way to do this
+is with a "git clone linux" with a machine that has a fast (iscsi) disk but
+only 256M of memory.
 
-Add a few printk debug (here it only works if /data is the NFS export):
+I will only have time to test all this at end of next week at the earliest.
+So thanks again for looking into this
 
---- begin//fs/nfsd/vfs.c        2011-07-22 04:17:23.000000000 +0200
-+++ linux-3.0/fs/nfsd/vfs.c     2011-07-30 03:18:17.837560809 +0200
-@@ -975,6 +975,8 @@
-        inode =3D dentry->d_inode;
-        exp   =3D fhp->fh_export;
-=20
-+       printk("nfsd write inode=3D%ld name=3D%s\n", inode->i_ino, dentry->=
-d_name.name);
-+
-        /*
-         * Request sync writes if
-         *  -   the sync export option has been set, or
+Boaz
 
-diff -Nru begin//include/linux/fsnotify.h linux-3.0/include/linux/fsnotify.h
---- begin//include/linux/fsnotify.h     2011-07-22 04:17:23.000000000 +0200
-+++ linux-3.0/include/linux/fsnotify.h  2011-07-30 03:07:00.330239062 +0200
-@@ -216,8 +232,15 @@
-                mask |=3D FS_ISDIR;
-=20
-        if (!(file->f_mode & FMODE_NONOTIFY)) {
-+               if( !strcmp(path->mnt->mnt_mountpoint->d_name.name, "data")=
- )
-+                       printk("fsnotify modify inode=3D%ld name=3D%s\n", i=
-node->i_ino, file->f_dentry->d_name.name);
-                fsnotify_parent(path, NULL, mask);
-                fsnotify(inode, mask, path, FSNOTIFY_EVENT_PATH, NULL, 0);
-+       } else {
-+               if( !strcmp(path->mnt->mnt_mountpoint->d_name.name, "data")=
- )
-+                       printk("fsnotify modify-nonotify inode=3D%ld name=
-=3D%s\n", inode->i_ino, file->f_dentry->d_name.name);
-        }
- }
+> Peng Tao (3):
+>   pNFS: recoalesce when ld write pagelist fails
+>   pNFS: recoalesce when ld read pagelist fails
+>   pNFS: introduce pnfs private workqueue
+> 
+>  fs/nfs/blocklayout/blocklayout.c |   17 +++++--
+>  fs/nfs/objlayout/objio_osd.c     |    8 +++
+>  fs/nfs/objlayout/objlayout.c     |    4 +-
+>  fs/nfs/pnfs.c                    |   92 +++++++++++++++++++++++++++-----------
+>  fs/nfs/pnfs.h                    |    8 +++-
+>  fs/nfs/read.c                    |   13 +++++-
+>  fs/nfs/write.c                   |   25 ++++++++++-
+>  7 files changed, 129 insertions(+), 38 deletions(-)
+> 
 
-
-On the NFS client, open a fd and send some data:
-
-# exec 1> test
-# ls -la
-#=20
-
-On the NFS server, check the kern log:
-
-Aug 20 00:57:44 inotifydebug kernel: nfsd write inode=3D13 name=3Dtest
-Aug 20 00:57:44 inotifydebug kernel: fsnotify modify inode=3D13 name=3Dtest
-
-Everything goes well.
-
-Now, clear the VFS cache on the NFS server:
-
-# echo 3 > /proc/sys/vm/drop_caches=20
-
-On the NFS client, send some data to the fd:
-
-# ls -la
-#=20
-
-On the NFS server, check the kern log:
-
-Aug 20 00:58:56 inotifydebug kernel: nfsd write inode=3D13 name=3D
-Aug 20 00:58:56 inotifydebug kernel: fsnotify modify inode=3D13 name=3D
-
-The filename is lost, fsnotify does not know the filename anymore,=20
-therefore inotify cannot send event about a modified file in a watched=20
-directory.
-
-End of the story.
-
-I guess this is almost impossible to fix this fsnotify bug, this is due=20
-by the fact that NFS use inode as file identifiers, so in some case this=20
-is impossible to know the modified filepath, and therefore impossible to=20
-match the file event to the directory watch.
-
-Kind regards,
-Sylvain
-
---4Ckj6UjgE2iN1+kY
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.10 (GNU/Linux)
-
-iEYEARECAAYFAk5O69AACgkQDFub3qtEsS8zPgCfe5WwDzEh1Vxi3omGs8i6qx9J
-UB0AoIUPMsJ9f/vsK/kEwHLqcoVr978l
-=XDSa
------END PGP SIGNATURE-----
-
---4Ckj6UjgE2iN1+kY--
