@@ -1,72 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:44607 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751485Ab1HPWYa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Aug 2011 18:24:30 -0400
-Date: Wed, 17 Aug 2011 08:24:17 +1000
-From: NeilBrown <neilb@suse.de>
-To: Malahal Naineni <malahal@us.ibm.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: State of NFSv4 VolatileFilehandles
-Message-ID: <20110817082417.66e2758a@notabene.brown>
-In-Reply-To: <20110816155939.GA15566@us.ibm.com>
-References: <4E37E66D.90102@linux.vnet.ibm.com>
-	<45F4FC20-ED44-4430-A5A9-E06459A194F3@oracle.com>
-	<4E38F894.4070003@linux.vnet.ibm.com>
-	<2E1EB2CF9ED1CB4AA966F0EB76EAB4430A778B9B@SACMVEXC2-PRD.hq.netapp.com>
-	<20110804082311.21b7e73a@notabene.brown>
-	<20110815204900.GA12542@us.ibm.com>
-	<1313482004.7206.3.camel@lade.trondhjem.org>
-	<20110816155939.GA15566@us.ibm.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:53080 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751175Ab1HPLyH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 07:54:07 -0400
+Subject: [PATCH 0/2] 32/64 bit llseek hashes (v3)
+To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: bfields@fieldses.org, tytso@mit.edu, bernd.schubert@fastmail.fm,
+        hch@infradead.org, adilger@whamcloud.com, yong.fan@whamcloud.com,
+        linux-fsdevel@vger.kernel.org
+Date: Tue, 16 Aug 2011 13:54:04 +0200
+Message-ID: <20110816115404.1810393.47239.stgit@localhost.localdomain>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 16 Aug 2011 08:59:39 -0700 Malahal Naineni <malahal@us.ibm.com> wrote:
+With the ext3/ext4 directory index implementation hashes are used to specify
+offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
+on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
+hashes and therefore the probability of hash collisions for larger directories
+is rather high. As recently reported on the NFS mailing list that theoretical
+problem also happens on real systems:
+http://comments.gmane.org/gmane.linux.nfs/40863
 
-> Trond Myklebust [Trond.Myklebust@netapp.com] wrote:
-> > On Mon, 2011-08-15 at 13:49 -0700, Malahal Naineni wrote: 
-> > > NeilBrown [neilb@suse.de] wrote:
-> > > > > POSIX allows the namespace to change at any time (rename() or unlink())
-> > > > > and so you cannot rely on addressing files by pathname. That was the
-> > > > > whole reason for introducing filehandles into NFSv2 in the first place.
-> > > > > 
-> > > > > Volatile filehandles were introduced in NFSv4 without any attempt to fix
-> > > > > those shortcomings. There is no real prescription for how to recover in
-> > > > > a situation where a rename or unlink has occurred prior to the
-> > > > > filehandle expiring. Nor is there a reliable prescription for dealing
-> > > > > with the case where a new file of the same name has replaced the
-> > > > > original.
-> > > > > Basically, the implication is that volatile filehandles are only really
-> > > > > usable in a situation where the whole Filesystem is read-only on the
-> > > > > server.
-> > > > 
-> > > > I substantially agree, though I think the implication can be refined a little.
-> > > > 
-> > > > I would say that the implication is that a VFH is only really usable when the
-> > > > complete path leading to the file in question is read-only.   We don't need
-> > > > to assume that other files in other parts of the hierarchy which have stable
-> > > > file handles are read-only.
-> > > 
-> > > The spec recommends "change" attribute for validating data cache, name
-> > > cache, etc.  Some client implementations use "change" attribute for
-> > > validating VFH though! Can we use it for validating VFH?
-> > 
-> > The change attribute can only be used as a heuristic since it is not
-> > guaranteed to be a value that is unique to one file.
-> 
-> Agreed, it is a heuristic if we only use the file's "change id". If we
-> want to be very strict, we could potentially use change ids of all the
-> path components in the pathname... OR how about a mount option "use VFH
-> at your own risk"?
+The following series adds two new f_mode flags to tell ext4
+to use 32-bit or 64-bit hash values for llseek() calls.
+These flags can then used by network file systems, such as NFS, to
+request 32-bit or 64-bit offsets (hashes).
 
-I don't think change-id is really useful even as an heuristic.  Not only are
-they not unique, but they are not guaranteed to be stable either (after all,
-something might have changed when the file handle expired).
+Version 3:
+- remove patch "RFC: Remove check for a 32-bit cookie in nfsd4_readdir()",
+  I think Bruce wanted to take it seperately as bug fix. It should be applied
+  before applying the remaining NFS patches, as without it NFSv4 will always
+  fail with the new 64-bit ext4 seek hashes.
+- split "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)" into two
+  two separate patches as suggested by Bruce, one patch to rename 
+  'access' to 'may_flags'. And the remainder of the original patch to set 
+  FMODE_32BITHASH/FMODE_64BITHASH flags and to introduce the new 
+  NFSD_MAY_64BIT_COOKIE flag
 
-I think the *only* credible response to FHEXPIRED is to re-lookup the same
-name and as the spec doesn't make any promises about that it is *only* safe
-to do it with explicit permission through a mount option.
+Version 2:
+- use f_mode instead of O_* flags and also in a separate patch
+- introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
+- fix SEEK_END in ext4_dir_llseek()
+- set f_mode flags in NFS code as early as possible and introduce a new
+  NFSD_MAY_64BIT_COOKIE flag for that
 
-NeilBrown
+--
+Bernd Schubert
+Fraunhofer ITWM
+
