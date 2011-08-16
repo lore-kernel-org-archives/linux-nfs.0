@@ -1,70 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:49927 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1754539Ab1HRCQd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Aug 2011 22:16:33 -0400
-Message-ID: <4E4C76F8.7060203@cn.fujitsu.com>
-Date: Thu, 18 Aug 2011 10:20:40 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>, NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/4 v3] 4.1 CLNT: test reclaims after RECLAIM_COMPLETE
-References: <4E4C7679.7000108@cn.fujitsu.com>
-In-Reply-To: <4E4C7679.7000108@cn.fujitsu.com>
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from mx2.netapp.com ([216.240.18.37]:58573 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751522Ab1HPIGr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 04:06:47 -0400
+Subject: Re: State of NFSv4 VolatileFilehandles
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Malahal Naineni <malahal@us.ibm.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 16 Aug 2011 04:06:44 -0400
+In-Reply-To: <20110815204900.GA12542@us.ibm.com>
+References: <4E37E66D.90102@linux.vnet.ibm.com>
+	 <45F4FC20-ED44-4430-A5A9-E06459A194F3@oracle.com>
+	 <4E38F894.4070003@linux.vnet.ibm.com>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A778B9B@SACMVEXC2-PRD.hq.netapp.com>
+	 <20110804082311.21b7e73a@notabene.brown>
+	 <20110815204900.GA12542@us.ibm.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1313482004.7206.3.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
----
- nfs4.1/server41tests/st_reclaim_complete.py |   30 ++++++++++++++++++++++++++-
- 1 files changed, 29 insertions(+), 1 deletions(-)
+On Mon, 2011-08-15 at 13:49 -0700, Malahal Naineni wrote: 
+> NeilBrown [neilb@suse.de] wrote:
+> > > POSIX allows the namespace to change at any time (rename() or unlink())
+> > > and so you cannot rely on addressing files by pathname. That was the
+> > > whole reason for introducing filehandles into NFSv2 in the first place.
+> > > 
+> > > Volatile filehandles were introduced in NFSv4 without any attempt to fix
+> > > those shortcomings. There is no real prescription for how to recover in
+> > > a situation where a rename or unlink has occurred prior to the
+> > > filehandle expiring. Nor is there a reliable prescription for dealing
+> > > with the case where a new file of the same name has replaced the
+> > > original.
+> > > Basically, the implication is that volatile filehandles are only really
+> > > usable in a situation where the whole Filesystem is read-only on the
+> > > server.
+> > 
+> > I substantially agree, though I think the implication can be refined a little.
+> > 
+> > I would say that the implication is that a VFH is only really usable when the
+> > complete path leading to the file in question is read-only.   We don't need
+> > to assume that other files in other parts of the hierarchy which have stable
+> > file handles are read-only.
+> 
+> The spec recommends "change" attribute for validating data cache, name
+> cache, etc.  Some client implementations use "change" attribute for
+> validating VFH though! Can we use it for validating VFH?
 
-diff --git a/nfs4.1/server41tests/st_reclaim_complete.py b/nfs4.1/server41tests/st_reclaim_complete.py
-index a591ef5..3940b7b 100644
---- a/nfs4.1/server41tests/st_reclaim_complete.py
-+++ b/nfs4.1/server41tests/st_reclaim_complete.py
-@@ -1,6 +1,6 @@
- from st_create_session import create_session
- from nfs4_const import *
--from environment import check, fail
-+from environment import check, fail, open_file, create_confirm
- import nfs4_ops as op
- import nfs4lib
- 
-@@ -19,3 +19,31 @@ def testSupported(t, env):
- 
-     res = sess.compound([op.reclaim_complete(FALSE)])
-     check(res)
-+
-+def testReclaimAfterRECC(t, env):
-+    """If client does subsequent reclaims of locking state after
-+       RECLAIM_COMPLETE is done, server will return NFS4ERR_NO_GRACE.
-+       rfc5661 18.51.3
-+
-+    FLAGS: reclaim_complete all
-+    CODE: RECC2
-+    """
-+    name = env.testname(t)
-+    c = env.c1.new_client(name)
-+    sess = c.create_session()
-+
-+    # RECLAIM_COMPLETE
-+    res = sess.compound([op.reclaim_complete(FALSE)])
-+    check(res)
-+
-+    owner = "owner_%s" % name
-+    path = sess.c.homedir + [name]
-+    fh, stateid = create_confirm(sess, owner)
-+
-+    # Try to reclaims after RECLAIM_COMPLETE
-+    res = open_file(sess, owner, path=fh, claim_type=CLAIM_PREVIOUS,
-+                    access=OPEN4_SHARE_ACCESS_BOTH,
-+                    deny=OPEN4_SHARE_DENY_NONE,
-+                    deleg_type=OPEN_DELEGATE_NONE)
-+
-+    check(res,NFS4ERR_NO_GRACE)
+The change attribute can only be used as a heuristic since it is not
+guaranteed to be a value that is unique to one file.
+
+Trond
 -- 
-1.7.6
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
