@@ -1,44 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:37959 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751080Ab1HHPiA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Aug 2011 11:38:00 -0400
-Subject: [PATCH 1/4] Add new FMODE flags: FMODE_32bithash and FMODE_64bithash
-To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: hch@infradead.org, yong.fan@whamcloud.com, linux-fsdevel@vger.kernel.org,
-        tytso@mit.edu, adilger@whamcloud.com
-Date: Mon, 08 Aug 2011 17:37:58 +0200
-Message-ID: <20110808153758.1872437.35029.stgit@fsdevel3>
-In-Reply-To: <20110808153432.1872437.85783.stgit@fsdevel3>
-References: <20110808153432.1872437.85783.stgit@fsdevel3>
-Content-Type: text/plain; charset="utf-8"
+Received: from hub024-nj-6.exch024.serverdata.net ([206.225.165.112]:35822
+	"EHLO HUB024-nj-6.exch024.serverdata.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750721Ab1HQGfc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Aug 2011 02:35:32 -0400
+Message-ID: <4E4B6134.7000903@gluster.com>
+Date: Wed, 17 Aug 2011 12:05:32 +0530
+From: Shehjar Tikoo <shehjart@gluster.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: Expected response from server not supporting v4
+References: <4E4A23E2.3020103@gluster.com> <4E4A67AE.8040305@RedHat.com>
+In-Reply-To: <4E4A67AE.8040305@RedHat.com>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Those flags are supposed to be set by NFS readdir() to tell ext3/ext4
-to 32bit (NFSv2) or 64bit hash values (offsets) in seekdir().
+Steve Dickson wrote:
+> 
+> On 08/16/2011 04:01 AM, Shehjar Tikoo wrote:
+>> Hi All
+>>
+>> The following thread discusses the behaviour when the client does not support v4:
+>> http://thread.gmane.org/gmane.linux.nfs/36928/
+>>
+>> OTOH, when the server does not support v4, for eg. Gluster NFS server, where we support only v3, I believe v4 client will attempt to connect directly to port 2049 and receive connection failure errors on TCP. Does the current nfs client handle the situation where this results in a timeout for mount? We're hearing  a report of a timeout occurring on the RHEL6 client because the server does not have v4 support. Could someone please shed some light on how this behaviour is handled at present? Thanks
+> Here is the current logic as to what will cause a fall back:
+> 
+>     switch (errno) {
+>     case EPROTONOSUPPORT:
+>         /* A clear indication that the server or our
+>          * client does not support NFS version 4. */
+>         goto fall_back;
+>     case ENOENT:
+>         /* Legacy Linux servers don't export an NFS
+>          * version 4 pseudoroot. */
+>         goto fall_back;
+>     case EPERM:
+>         /* Linux servers prior to 2.6.25 may return
+>          * EPERM when NFS version 4 is not supported. */
+>         goto fall_back;
+>     default:
+>         return result;
+>     }
+> 
+> fall_back:
+>     return nfs_try_mount_v3v2(mi);
+> 
+> So in the case of the Gluster server, you are dropping into the
+> default case which is causing the time out.
+> 
+> In the above patch set, Mi patches the mount code 
+> to fall back on EINVAL which is the current return value from 
+> the kernel, when v4 is not configured. I'm not totally 
+> against doing something like this, but this is very touchy  
+> code since it could have negative effects on other legacy 
+> servers.
+> 
+> So I'm thinking Mi's kernel patch that cause the kernel
+> to return EPROTONOSUPPORT, which is the correct return
+> value, is probably the better way to go... 
+> 
 
-Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
----
- include/linux/fs.h |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+Thanks Steve. My understanding is that Mi's patch is to handle the case 
+where the client does not support v4. Do you think the same patch will also 
+handle a server that does not support v4 and hence prevents a client from 
+connecting to 2049?
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 178cdb4..18d40ae 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -91,6 +91,11 @@ struct inodes_stat_t {
- /* File is opened using open(.., 3, ..) and is writeable only for ioctls
-    (specialy hack for floppy.c) */
- #define FMODE_WRITE_IOCTL	((__force fmode_t)0x100)
-+/* 32bit hashes as llseek() offset (for directories) */
-+#define FMODE_32BITHASH         ((__force fmode_t)0x200)
-+/* 64bit hashes as llseek() offset (for directories) */
-+#define FMODE_64BITHASH         ((__force fmode_t)0x400)
-+
- 
- /*
-  * Don't update ctime and mtime.
+Thanks
+-Shehjar
+
+
+> With that said, to get this type of functionality into
+> already released distros, maybe the mount patch should be 
+> looked into since it much easier to back port and people 
+> are more will to take nfs-utils updates than kernel updates... 
+> 
+> So, if by chance, a well place bz is opened against an 
+> already released distro, someone would have to make that 
+> call... ;-) 
+> 
+> steved.
+>   
+> 
+> 
 
