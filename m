@@ -1,65 +1,131 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:52285 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754591Ab1HDQtO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Aug 2011 12:49:14 -0400
-Date: Thu, 4 Aug 2011 12:49:13 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Frank van Maarseveen <frankvm@frankvm.com>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [NLM] fcntl(F_SETLKW) yields -ENOLCK when grace period expires.
-Message-ID: <20110804164913.GG12445@fieldses.org>
-References: <20110804103018.GA11727@janus>
- <20110804163452.GE12445@fieldses.org>
- <20110804164313.GA17572@janus>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110804164313.GA17572@janus>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:51535 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752098Ab1HQJfl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Aug 2011 05:35:41 -0400
+Received: by vws1 with SMTP id 1so499484vws.19
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Aug 2011 02:35:40 -0700 (PDT)
+In-Reply-To: <4E4B6A81.2010204@tonian.com>
+References: <1313197450-4595-1-git-send-email-bergwolf@gmail.com>
+ <4E4ADBA1.1000005@panasas.com> <4E4B6A81.2010204@tonian.com>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Wed, 17 Aug 2011 17:35:20 +0800
+Message-ID: <CA+a=Yy6BSmEWurZuFN-8axTS0gfeXaguw5tcayeVjJmcFAztOQ@mail.gmail.com>
+Subject: Re: [PATCH] pnfsblock: init pg_bsize properly
+To: Benny Halevy <bhalevy@tonian.com>, Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-nfs@vger.kernel.org, Peng Tao <peng_tao@emc.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Aug 04, 2011 at 06:43:13PM +0200, Frank van Maarseveen wrote:
-> On Thu, Aug 04, 2011 at 12:34:52PM -0400, J. Bruce Fields wrote:
-> > On Thu, Aug 04, 2011 at 12:30:19PM +0200, Frank van Maarseveen wrote:
-> > > Both client- and server run 2.6.39.3, NFSv3 over UDP (without the
-> > > relock_filesystem patch proposed earlier).
-> > > 
-> > > A second client has an exclusive lock on a file on the server. The
-> > > client under test calls fcntl(F_SETLKW) to wait for the same exclusive
-> > > lock. Wireshark sees NLM V4 LOCK calls resulting in NLM_BLOCKED.
-> > > 
-> > > Next the server is rebooted. The second client recovers the lock
-> > > correctly. The client under test now receives NLM_DENIED_GRACE_PERIOD for
-> > > every NLM V4 LOCK request resulting from the waiting fcntl(F_SETLKW). When
-> > > this changes to NLM_BLOCKED after grace period expiration the fcntl
-> > > returns -ENOLCK ("No locks available.") instead of continuing to wait.
-> > 
-> > So that sounds like a client bug, and correct behavior from the server
-> > (assuming the second client was still holding the lock throughout).
-> 
-> yes.
-> 
-> > 
-> > > server:/proc/locks shows two entries for the file after the -ENOLCK. When
-> > > the second client gives up its lock because the program running there
-> > > is killed one entry in server:/proc/locks remains indefinately: as a
-> > > result no NFS client can lock the file anymore.
-> > 
-> > But that sounds like a server bug--what do the two entries look like?
-> 
-> I think the server assumes correct client behavior; the client under
-> test resulted in a '->' prefixed entry. The fcntl at the client just
-> shouldn't have returned yet.
+Hi, Benny and Boaz,
 
-Oh, right, so did you see a granted callback returned to the client?
+On Wed, Aug 17, 2011 at 3:15 PM, Benny Halevy <bhalevy@tonian.com> wrote:
+>
+> On 2011-08-17 00:05, Boaz Harrosh wrote:
+>> On 08/12/2011 06:04 PM, Peng Tao wrote:
+>>> pg_bsize is server->wsize/rsize by default. We would want to use the lseg length.
+>>>
+>>
+>> Hi
+>>
+>> What is the problem you are trying to solve with this patch?
+>>
+>> From what I understand the only place that actually cares about
+>> pg_bsize is nfs_generic_pg_test() which is only used in MDS
+>> read/write. In the pNFS RW, the LD and pnfs has it's own .pg_test()
+>> check that should not concern with pg_bsize (Unless for pnfs-files
+>> which does). So the idea is that pg_bsize is the maximum set by
+>> MDS server in regard to IO through MDS. And it should not be changed
+>> by client.
+>>
+>> If it is not what you see then we should fix it. But should never
+>> override MDS wsize/rsize.
+In pnfs_do_multiple_reads/pnfs_do_multiple_writes, data->mds_ops will
+be set as desc->pg_rpc_callops, which is determined in
+nfs_generic_flush/nfs_generic_pagein according to desc->pg_bsize. For
+blocklayout, we wouldn't want to set data->mds_ops to
+partial_read/write ops, so I write the patch to use lseg length as
+pg_bsize.
 
---b.
+LD can override pg_bsize in pg_init because
+nfs_pageio_reset_read_mds/nfs_pageio_reset_write_mds will reset it to
+server rsize/wsize if pnfs is not tried.
 
-> 
-> > 
-> > Also, what filesystem are you exporting?
-> 
-> ext4
-> 
-> -- 
-> Frank
+Sorry that I didn't explain it clearly in the commit log...
+
+
+>
+> I second that.
+>
+> Benny
+>
+>>
+>>> Signed-off-by: Peng Tao <peng_tao@emc.com>
+>>> ---
+>>>  fs/nfs/blocklayout/blocklayout.c |   20 ++++++++++++++++++--
+>>>  1 files changed, 18 insertions(+), 2 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+>>> index 36648e1..9143e61 100644
+>>> --- a/fs/nfs/blocklayout/blocklayout.c
+>>> +++ b/fs/nfs/blocklayout/blocklayout.c
+>>> @@ -919,14 +919,30 @@ bl_clear_layoutdriver(struct nfs_server *server)
+>>>      return 0;
+>>>  }
+>>>
+>>> +static void bl_pg_init_read(struct nfs_pageio_descriptor *pgio,
+>>> +                        struct nfs_page *req)
+>>> +{
+>>> +    pnfs_generic_pg_init_read(pgio, req);
+>>> +    if (pgio->pg_lseg)
+>>> +            pgio->pg_bsize = pgio->pg_lseg->pls_range.length;
+>>> +}
+>>> +
+>>> +static void bl_pg_init_write(struct nfs_pageio_descriptor *pgio,
+>>> +                         struct nfs_page *req)
+>>> +{
+>>> +    pnfs_generic_pg_init_write(pgio, req);
+>>> +    if (pgio->pg_lseg)
+>>> +            pgio->pg_bsize = pgio->pg_lseg->pls_range.length;
+>>> +}
+>>> +
+>>>  static const struct nfs_pageio_ops bl_pg_read_ops = {
+>>> -    .pg_init = pnfs_generic_pg_init_read,
+>>> +    .pg_init = bl_pg_init_read,
+>>>      .pg_test = pnfs_generic_pg_test,
+>>
+>> I see here that you do not override .pg_test. This is your problem
+>> look at objio_osd::objio_pg_test() it checks for similar boundaries
+>> at the objects side. This is where you need to do these checks
+>> for blocks as well.
+For blocklayout, we don't need to force each IO under a certain size.
+Currently (w/ and w/o this patch) the lseg coverage is the only
+constraint for pagelist length. So pnfs_generic_pg_test is enough for
+blocklayout.
+
+Thanks,
+Tao
+
+>>
+>>>      .pg_doio = pnfs_generic_pg_readpages,
+>>>  };
+>>>
+>>>  static const struct nfs_pageio_ops bl_pg_write_ops = {
+>>> -    .pg_init = pnfs_generic_pg_init_write,
+>>> +    .pg_init = bl_pg_init_write,
+>>>      .pg_test = pnfs_generic_pg_test,
+>>
+>> Same here
+>>
+>>>      .pg_doio = pnfs_generic_pg_writepages,
+>>>  };
+>>
+>> Thanks
+>> Boaz
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
