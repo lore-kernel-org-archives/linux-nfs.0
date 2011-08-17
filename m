@@ -1,33 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([198.137.202.13]:37634 "EHLO
-	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755358Ab1HSNeM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2011 09:34:12 -0400
-Date: Fri, 19 Aug 2011 06:34:10 -0700 (PDT)
-Message-Id: <20110819.063410.475175569086272526.davem@davemloft.net>
-To: Ian.Campbell@citrix.com
-Cc: netdev@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC v3 0/75] enable SKB paged fragment lifetime
- visibility
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <20110819.062958.1560313540665582388.davem@davemloft.net>
-References: <1313760393.5010.356.camel@zakaz.uk.xensource.com>
-	<20110819.062958.1560313540665582388.davem@davemloft.net>
-Content-Type: Text/Plain; charset=us-ascii
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:42132 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752626Ab1HQJ5Z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Aug 2011 05:57:25 -0400
+Subject: [PATCH 4 1/4] Add new FMODE flags: FMODE_32bithash and FMODE_64bithash
+To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+        adilger@whamcloud.com
+Date: Wed, 17 Aug 2011 11:57:23 +0200
+Message-ID: <20110817095723.1879649.53802.stgit@fsdevel3>
+In-Reply-To: <20110817095717.1879649.41075.stgit@fsdevel3>
+References: <20110817095717.1879649.41075.stgit@fsdevel3>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: David Miller <davem@davemloft.net>
-Date: Fri, 19 Aug 2011 06:29:58 -0700 (PDT)
+Those flags are supposed to be set by NFS readdir() to tell ext3/ext4
+to 32bit (NFSv2) or 64bit hash values (offsets) in seekdir().
 
-> From: Ian Campbell <Ian.Campbell@citrix.com>
-> Date: Fri, 19 Aug 2011 14:26:33 +0100
-> 
->> This is v3 of my series to enable visibility into SKB paged fragment's
-> 
-> Please tone down the patch count :-/  I'm not going to review anything more
-> than ~20 or so patches at a time from any one person.
+Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+---
+ 0 files changed, 0 insertions(+), 0 deletions(-)
 
-Also none of your patches will even apply to net-next GIT since nearly
-all the ethernet drivers have been moved under drivers/net/ethernet
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 178cdb4..18d40ae 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -91,6 +91,11 @@ struct inodes_stat_t {
+ /* File is opened using open(.., 3, ..) and is writeable only for ioctls
+    (specialy hack for floppy.c) */
+ #define FMODE_WRITE_IOCTL	((__force fmode_t)0x100)
++/* 32bit hashes as llseek() offset (for directories) */
++#define FMODE_32BITHASH         ((__force fmode_t)0x200)
++/* 64bit hashes as llseek() offset (for directories) */
++#define FMODE_64BITHASH         ((__force fmode_t)0x400)
++
+ 
+ /*
+  * Don't update ctime and mtime.
+
