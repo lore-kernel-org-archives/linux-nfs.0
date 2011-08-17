@@ -1,110 +1,105 @@
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Subject: Re: NFS client virtualization plan
-Date: Tue, 16 Aug 2011 16:19:40 +0400
-Message-ID: <4E4A605C.6050008@parallels.com>
-References: <4E4A4DB1.2090105@parallels.com> <4E4A4FA9.7080600@parallels.com> <4E4A5B8A.5060802@candelatech.com>
+From: Benny Halevy <bhalevy@tonian.com>
+Subject: Re: [PATCH] pnfsblock: init pg_bsize properly
+Date: Wed, 17 Aug 2011 10:15:13 +0300
+Message-ID: <4E4B6A81.2010204@tonian.com>
+References: <1313197450-4595-1-git-send-email-bergwolf@gmail.com> <4E4ADBA1.1000005@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
-	format=flowed
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"trond@netapp.com" <trond@netapp.com>,
-	Pavel Emelianov <xemul@parallels.com>
-To: Ben Greear <greearb@candelatech.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Peng Tao <bergwolf@gmail.com>, benny@tonian.com,
+	linux-nfs@vger.kernel.org, Peng Tao <peng_tao@emc.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:42148 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751625Ab1HPMTX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Aug 2011 08:19:23 -0400
-In-Reply-To: <4E4A5B8A.5060802@candelatech.com>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:59179 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751588Ab1HQHOy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Aug 2011 03:14:54 -0400
+Received: by wwf5 with SMTP id 5so709286wwf.1
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Aug 2011 00:14:53 -0700 (PDT)
+In-Reply-To: <4E4ADBA1.1000005@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks. Will have a look.
 
-16.08.2011 15:59, Ben Greear =D0=BF=D0=B8=D1=88=D0=B5=D1=82:
-> On 08/16/2011 04:08 AM, Stanislav Kinsbursky wrote:
->> Added maintainer to mail recipients.
->> Trond, please, have a look.
->> Sorry for inconvenience.
->
-> I have a set of patches that let NFS clients bind to a specific IP
-> address, but I haven't gotten any feedback in the month since
-> I posted them.
->
-> But, likely you will want to touch similar paths to what I touched.
->
-> Here's my patch series:
->
-> https://lkml.org/lkml/2011/7/15/382
->
->
-> You need some patches to mount.nfs
-> for full functionality, in case you want to try it out:
->
-> https://github.com/greearb/nfs-utils-ct
->
-> Thanks,
-> Ben
->
->
+On 2011-08-17 00:05, Boaz Harrosh wrote:
+> On 08/12/2011 06:04 PM, Peng Tao wrote:
+>> pg_bsize is server->wsize/rsize by default. We would want to use the lseg length.
 >>
->> 16.08.2011 15:00, Stanislav Kinsbursky =D0=BF=D0=B8=D1=88=D0=B5=D1=82=
-:
->>> Hello.
->>> I'm going to virtualize NFS in mainline and here is my plan for NFS=
- client part.
->>> Any suggestions or criticism are welcome.
->>>
->>> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D
->>>
->>> "NFS client" virtualization plan:
->>>
->>> _RPC layer_:
->>>
->>> 1) Make rpcbind clients (rpcb_local_clnt and rpcb_local4_clnt) to b=
-e
->>> per net namespace.
->>>
->>> _NFS layer_:
->>>
->>> 1) Net namespace inheritance (current->nsproxy->net have to be used=
- instead
->>> of init_net).
->>> Pointer to net namespace can be stored on nfs_client structure, whi=
-ch will
->>> give easy access to proper net namespace during RPC transports crea=
-tion.
->>>
->>> 2) Make Lockd kthread able to handle requests from different net na=
-mespaces.
->>>
->>> 3) Make NFS callbacks kthreads (nfs4_callback_svc and nfs4.1_callba=
-ck_svc) able
->>> to handle requests from different net namespaces.
->>>
->>> 4) Make NFS info lists (nfs_volume_list and nfs_client_list) to be =
-per
->>> net namespace in addition to global ones.
->>>
->>> 5) Make NFS proc variables and it's internal content variables to b=
-e per
->>> net namespace in addition to global ones.
->>>
->>> 6) Make NFS sysctl variables and it's internal content variables to=
- be per
->>> net namespace in addition to global ones.
->>>
->>>
->>>
->>
->>
->
->
+> 
+> Hi
+> 
+> What is the problem you are trying to solve with this patch?
+> 
+> From what I understand the only place that actually cares about
+> pg_bsize is nfs_generic_pg_test() which is only used in MDS
+> read/write. In the pNFS RW, the LD and pnfs has it's own .pg_test()
+> check that should not concern with pg_bsize (Unless for pnfs-files
+> which does). So the idea is that pg_bsize is the maximum set by
+> MDS server in regard to IO through MDS. And it should not be changed
+> by client.
+> 
+> If it is not what you see then we should fix it. But should never
+> override MDS wsize/rsize.
 
+I second that.
 
---=20
-Best regards,
-Stanislav Kinsbursky
+Benny
+
+> 
+>> Signed-off-by: Peng Tao <peng_tao@emc.com>
+>> ---
+>>  fs/nfs/blocklayout/blocklayout.c |   20 ++++++++++++++++++--
+>>  1 files changed, 18 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+>> index 36648e1..9143e61 100644
+>> --- a/fs/nfs/blocklayout/blocklayout.c
+>> +++ b/fs/nfs/blocklayout/blocklayout.c
+>> @@ -919,14 +919,30 @@ bl_clear_layoutdriver(struct nfs_server *server)
+>>  	return 0;
+>>  }
+>>  
+>> +static void bl_pg_init_read(struct nfs_pageio_descriptor *pgio,
+>> +			    struct nfs_page *req)
+>> +{
+>> +	pnfs_generic_pg_init_read(pgio, req);
+>> +	if (pgio->pg_lseg)
+>> +		pgio->pg_bsize = pgio->pg_lseg->pls_range.length;
+>> +}
+>> +
+>> +static void bl_pg_init_write(struct nfs_pageio_descriptor *pgio,
+>> +			     struct nfs_page *req)
+>> +{
+>> +	pnfs_generic_pg_init_write(pgio, req);
+>> +	if (pgio->pg_lseg)
+>> +		pgio->pg_bsize = pgio->pg_lseg->pls_range.length;
+>> +}
+>> +
+>>  static const struct nfs_pageio_ops bl_pg_read_ops = {
+>> -	.pg_init = pnfs_generic_pg_init_read,
+>> +	.pg_init = bl_pg_init_read,
+>>  	.pg_test = pnfs_generic_pg_test,
+> 
+> I see here that you do not override .pg_test. This is your problem
+> look at objio_osd::objio_pg_test() it checks for similar boundaries
+> at the objects side. This is where you need to do these checks
+> for blocks as well.
+> 
+>>  	.pg_doio = pnfs_generic_pg_readpages,
+>>  };
+>>  
+>>  static const struct nfs_pageio_ops bl_pg_write_ops = {
+>> -	.pg_init = pnfs_generic_pg_init_write,
+>> +	.pg_init = bl_pg_init_write,
+>>  	.pg_test = pnfs_generic_pg_test,
+> 
+> Same here
+> 
+>>  	.pg_doio = pnfs_generic_pg_writepages,
+>>  };
+> 
+> Thanks
+> Boaz
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
