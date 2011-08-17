@@ -1,102 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:60512 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750952Ab1HXH4a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Aug 2011 03:56:30 -0400
-Message-ID: <4E54AFA0.7050202@cn.fujitsu.com>
-Date: Wed, 24 Aug 2011 16:00:32 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        NFS <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] sunrpc: Add scope id to svc_addr_u for IPv6 LINKLOCAL
- address
-References: <4E4F8B5D.6060404@cn.fujitsu.com>	<20110822192348.GA16261@fieldses.org>	<20110822153939.14d0a6ac@tlielax.poochiereds.net>	<73D17319-3FDB-4278-872A-FF488E1C88DD@oracle.com> <20110823104323.0da02307@corrin.poochiereds.net>
-In-Reply-To: <20110823104323.0da02307@corrin.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet15.oracle.com ([148.87.113.117]:57125 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752923Ab1HQP2G convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Aug 2011 11:28:06 -0400
+Subject: Re: Expected response from server not supporting v4
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4E4B6134.7000903@gluster.com>
+Date: Wed, 17 Aug 2011 11:27:49 -0400
+Cc: Steve Dickson <SteveD@redhat.com>, <linux-nfs@vger.kernel.org>
+Message-Id: <4B79A89A-6511-4447-976A-924670409438@oracle.com>
+References: <4E4A23E2.3020103@gluster.com> <4E4A67AE.8040305@RedHat.com> <4E4B6134.7000903@gluster.com>
+To: Shehjar Tikoo <shehjart@gluster.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Jeff Layton :
-> On Mon, 22 Aug 2011 15:44:39 -0400
-> Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
->> On Aug 22, 2011, at 3:39 PM, Jeff Layton wrote:
->>
->>> On Mon, 22 Aug 2011 15:23:48 -0400
->>> "J. Bruce Fields" <bfields@fieldses.org> wrote:
->>>
->>>> On Sat, Aug 20, 2011 at 06:24:29PM +0800, Mi Jinlong wrote:
->>>>> For IPv6 local address, lockd can not callback to client for 
->>>>> missing scope id when binding address at inet6_bind:
->>>>>
->>>>> 324       if (addr_type & IPV6_ADDR_LINKLOCAL) {
->>>>> 325               if (addr_len >= sizeof(struct sockaddr_in6) &&
->>>>> 326                   addr->sin6_scope_id) {
->>>>> 327                       /* Override any existing binding, if another one
->>>>> 328                        * is supplied by user.
->>>>> 329                        */
->>>>> 330                       sk->sk_bound_dev_if = addr->sin6_scope_id;
->>>>> 331               }
->>>>> 332 
->>>>> 333               /* Binding to link-local address requires an interface */
->>>>> 334               if (!sk->sk_bound_dev_if) {
->>>>> 335                       err = -EINVAL;
->>>>> 336                       goto out_unlock;
->>>>> 337               }
->>>>>
->>>>> This patch adds scope id to svc_addr_u for IPv6 address, and copy scope from
->>>>> xprt->xpt_local to rqstp->rq_daddr for use.
->>>>>
->>>>> With this patch, lockd can callback to client success.
->>>> I guess this makes sense to me, but someone who understands IPv6 better
->>>> should comment... Chuck?  Jeff?
->>>>
->>> Sounds like a reasonable explanation. Link-local addresses all have the
->>> same prefix, so we need a scopeid (aka interface ID# for linux) to know
->>> which interface we should send a call on.
->>>
->>> When I did the patches to allow NFSv4 callbacks to go over IPv6, I
->>> did something similar, but used the rq_addr. From gen_callback:
->>>
->>>        struct sockaddr *sa = svc_addr(rqstp);
->>>        u32 scopeid = rpc_get_scope_id(sa);
->>>
->>> ...and the scopeid was used to populate the scopeid of the callback
->>> address. The rq_daddr should be equivalent though. The _addr and _daddr
->>> must have the same scopeid or something is very wrong...
->> Sure, that would preclude the need to upgrade the field to a struct sockaddr_storage.
->>
->>> That said, on a semi-related note...
->>>
->>> I have to wonder about statd in conjunction with link-local addresses.
->>> I have a hard time understanding how you'd ever get reboot
->>> notifications in such a setup.
->> The only way that could work is if DNS was able to look at a local hostname, and provide the correct scope ID.  Doubtful.  I wonder if mDNS might provide such ability.
->>
-> 
-> I haven't looked closely at the mDNS protocol, but regular DNS does not
-> support scopeids on AAAA records.
-> 
-> It does seem somewhat plausible that this could work "accidentally".
-> The reboot notifications could end up going via routable addresses
-> instead of the link-local ones if you set nsm_use_hostnames.
-> 
-> NSM is a shaky protocol at best though, so I'd make sure to test this
-> before relying on it. Mi, if you get this working (including reboot
-> notifications), please let us know how you solved this...
 
-Hi Jeff,
+On Aug 17, 2011, at 2:35 AM, Shehjar Tikoo wrote:
 
-  I'm not working on NSM. It seems there are some problem of the 
-  latest statd from Steve's git tee.
+> Steve Dickson wrote:
+>> On 08/16/2011 04:01 AM, Shehjar Tikoo wrote:
+>>> Hi All
+>>> 
+>>> The following thread discusses the behaviour when the client does not support v4:
+>>> http://thread.gmane.org/gmane.linux.nfs/36928/
+>>> 
+>>> OTOH, when the server does not support v4, for eg. Gluster NFS server, where we support only v3, I believe v4 client will attempt to connect directly to port 2049 and receive connection failure errors on TCP. Does the current nfs client handle the situation where this results in a timeout for mount? We're hearing  a report of a timeout occurring on the RHEL6 client because the server does not have v4 support. Could someone please shed some light on how this behaviour is handled at present? Thanks
+>> Here is the current logic as to what will cause a fall back:
+>>    switch (errno) {
+>>    case EPROTONOSUPPORT:
+>>        /* A clear indication that the server or our
+>>         * client does not support NFS version 4. */
+>>        goto fall_back;
+>>    case ENOENT:
+>>        /* Legacy Linux servers don't export an NFS
+>>         * version 4 pseudoroot. */
+>>        goto fall_back;
+>>    case EPERM:
+>>        /* Linux servers prior to 2.6.25 may return
+>>         * EPERM when NFS version 4 is not supported. */
+>>        goto fall_back;
+>>    default:
+>>        return result;
+>>    }
+>> fall_back:
+>>    return nfs_try_mount_v3v2(mi);
+>> So in the case of the Gluster server, you are dropping into the
+>> default case which is causing the time out.
+>> In the above patch set, Mi patches the mount code to fall back on EINVAL which is the current return value from the kernel, when v4 is not configured. I'm not totally against doing something like this, but this is very touchy  code since it could have negative effects on other legacy servers.
+>> So I'm thinking Mi's kernel patch that cause the kernel
+>> to return EPROTONOSUPPORT, which is the correct return
+>> value, is probably the better way to go... 
+> 
+> Thanks Steve. My understanding is that Mi's patch is to handle the case where the client does not support v4. Do you think the same patch will also handle a server that does not support v4 and hence prevents a client from connecting to 2049?
 
-  If having time, I will check the latest statd and sm-notify.
- 
+It's a best practice for clients to connect to 2049 immediately, rather than querying the server's portmapper, to discover and potentially connect to a server's NFSv4 service.
 
-thanks,
-Mi Jinlong
+A full-frame network trace of a mount attempt that times out would tell us if there is something pathological going on.
+
+>> With that said, to get this type of functionality into
+>> already released distros, maybe the mount patch should be looked into since it much easier to back port and people are more will to take nfs-utils updates than kernel updates... So, if by chance, a well place bz is opened against an already released distro, someone would have to make that call... ;-) steved.
+>>  
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
