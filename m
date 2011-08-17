@@ -1,59 +1,339 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:49900 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751685Ab1HURHS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 21 Aug 2011 13:07:18 -0400
-Date: Sun, 21 Aug 2011 13:07:14 -0400
-To: Jamie Lokier <jamie@shareable.org>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, Sylvain Rochet <gradator@gradator.net>,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: PROBLEM: 2.6.35.7 to 3.0 Inotify events missing
-Message-ID: <20110821170714.GB9296@fieldses.org>
-References: <20101018223540.GA20730@gradator.net>
- <20110819230344.GA24784@gradator.net>
- <20110819233756.GI11512@jl-vm1.vm.bytemark.co.uk>
- <20110820012943.GD2203@ZenIV.linux.org.uk>
- <20110820030335.GA14899@jl-vm1.vm.bytemark.co.uk>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110820030335.GA14899@jl-vm1.vm.bytemark.co.uk>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:42142 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752626Ab1HQJ5a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Aug 2011 05:57:30 -0400
+Subject: [PATCH 4 2/4] Return 32/64-bit dir name hash according to usage type
+To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+        adilger@whamcloud.com
+Date: Wed, 17 Aug 2011 11:57:28 +0200
+Message-ID: <20110817095728.1879649.15453.stgit@fsdevel3>
+In-Reply-To: <20110817095717.1879649.41075.stgit@fsdevel3>
+References: <20110817095717.1879649.41075.stgit@fsdevel3>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, Aug 20, 2011 at 04:03:35AM +0100, Jamie Lokier wrote:
-> Well you still have your sense of humour...
-> 
-> I've never understood why you think it's about the file manager /
-> desktop, or why you so strongly dislike the feature.  It originated
-> there historically, but that is not it's primary use.
-> 
-> The implementation, sure, but you seem to dislike the very *principle*
-> of subscribing to changes.
-> 
-> Every interesting use of inotify that I've seen is for some kind of
-> cache support, to eliminate the majority of stat() calls, to remove
-> disk I/O (no stat means no inode), to ensure correctness (st_mtime is
-> coarse and unreliable),
+From: Fan Yong <yong.fan@whamcloud.com>
 
-It seems rather fragile as an mtime replacement unless it's also got
-some sort of logging built in at a pretty low level so that you don't
-lose events while you're not listening.
+Traditionally ext2/3/4 has returned a 32-bit hash value from llseek()
+to appease NFSv2, which can only handle a 32-bit cookie for seekdir()
+and telldir().  However, this causes problems if there are 32-bit hash
+collisions, since the NFSv2 server can get stuck resending the same
+entries from the directory repeatedly.
 
-And of course events have to be defined very carefully to avoid problems
-such as this one.
+Allow ext4 to return a full 64-bit hash (both major and minor) for
+telldir to decrease the chance of hash collisions.  This still needs
+integration on the NFS side.
 
-> and to avoid having to modify every
-> application which might affect any file from which cached items are
-> derived to explicitly notify all the applications which might use any
-> of those files.
-> 
-> You like high performance, reliable and correct behaviour, and high
-> scalability.  So I have never understood why you dislike the
-> change-subscription principle so strongly, because it is a natural
-> ally to those properties.
+Patch-updated-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+(blame me if something is not correct)
 
-I don't think we've seen a design that does all of that yet.
+Signed-off-by: Fan Yong <yong.fan@whamcloud.com>
+Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+---
+ 0 files changed, 0 insertions(+), 0 deletions(-)
 
---b.
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index 164c560..cee09f2 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -32,24 +32,8 @@ static unsigned char ext4_filetype_table[] = {
+ 	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
+ };
+ 
+-static int ext4_readdir(struct file *, void *, filldir_t);
+ static int ext4_dx_readdir(struct file *filp,
+ 			   void *dirent, filldir_t filldir);
+-static int ext4_release_dir(struct inode *inode,
+-				struct file *filp);
+-
+-const struct file_operations ext4_dir_operations = {
+-	.llseek		= ext4_llseek,
+-	.read		= generic_read_dir,
+-	.readdir	= ext4_readdir,		/* we take BKL. needed?*/
+-	.unlocked_ioctl = ext4_ioctl,
+-#ifdef CONFIG_COMPAT
+-	.compat_ioctl	= ext4_compat_ioctl,
+-#endif
+-	.fsync		= ext4_sync_file,
+-	.release	= ext4_release_dir,
+-};
+-
+ 
+ static unsigned char get_dtype(struct super_block *sb, int filetype)
+ {
+@@ -254,22 +238,134 @@ out:
+ 	return ret;
+ }
+ 
++static inline int is_32bit_api(void)
++{
++#ifdef CONFIG_COMPAT
++	return is_compat_task();
++#else
++	return (BITS_PER_LONG == 32);
++#endif
++}
++
+ /*
+  * These functions convert from the major/minor hash to an f_pos
+- * value.
++ * value for dx directories
+  *
+- * Currently we only use major hash numer.  This is unfortunate, but
+- * on 32-bit machines, the same VFS interface is used for lseek and
+- * llseek, so if we use the 64 bit offset, then the 32-bit versions of
+- * lseek/telldir/seekdir will blow out spectacularly, and from within
+- * the ext2 low-level routine, we don't know if we're being called by
+- * a 64-bit version of the system call or the 32-bit version of the
+- * system call.  Worse yet, NFSv2 only allows for a 32-bit readdir
+- * cookie.  Sigh.
++ * Upper layer (for example NFS) should specify FMODE_32BITHASH or
++ * FMODE_64BITHASH explicitly. On the other hand, we allow ext4 to be mounted
++ * directly on both 32-bit and 64-bit nodes, under such case, neither
++ * FMODE_32BITHASH nor FMODE_64BITHASH is specified.
+  */
+-#define hash2pos(major, minor)	(major >> 1)
+-#define pos2maj_hash(pos)	((pos << 1) & 0xffffffff)
+-#define pos2min_hash(pos)	(0)
++static inline loff_t hash2pos(struct file *filp, __u32 major, __u32 minor)
++{
++	if ((filp->f_flags & FMODE_32BITHASH) ||
++	    (!(filp->f_flags & FMODE_64BITHASH) && is_32bit_api()))
++		return major >> 1;
++	else
++		return ((__u64)(major >> 1) << 32) | (__u64)minor;
++}
++
++static inline __u32 pos2maj_hash(struct file *filp, loff_t pos)
++{
++	if ((filp->f_flags & FMODE_32BITHASH) ||
++	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
++		return (pos << 1) & 0xffffffff;
++	else
++		return ((pos >> 32) << 1) & 0xffffffff;
++}
++
++static inline __u32 pos2min_hash(struct file *filp, loff_t pos)
++{
++	if ((filp->f_flags & FMODE_32BITHASH) ||
++	    (!(filp->f_flags & FMODE_64BITHASH) && is_32bit_api()))
++		return 0;
++	else
++		return pos & 0xffffffff;
++}
++
++/*
++ * Return 32- or 64-bit end-of-file for dx directories
++ */
++static inline loff_t ext4_get_htree_eof(struct file *filp)
++{
++	if ((filp->f_mode & FMODE_32BITHASH) ||
++	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
++		return EXT4_HTREE_EOF_32BIT;
++	else
++		return EXT4_HTREE_EOF_64BIT;
++}
++
++
++/*
++ * ext4_dir_llseek() based on generic_file_llseek() to handle both
++ * non-htree and htree directories, where the "offset" is in terms
++ * of the filename hash value instead of the byte offset.
++ *
++ * NOTE: offsets obtained *before* ext4_set_inode_flag(dir, EXT4_INODE_INDEX)
++ *       will be invalid once the directory was converted into a dx directory
++ */
++loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
++{
++	struct inode *inode = file->f_mapping->host;
++	loff_t ret = -EINVAL;
++	int is_dx_dir = ext4_test_inode_flag(inode, EXT4_INODE_INDEX);
++
++	mutex_lock(&inode->i_mutex);
++
++	/* NOTE: relative offsets with dx directories might not work
++	 *       as expected, as it is difficult to figure out the
++	 *       correct offset between dx hashes */
++
++	switch (origin) {
++	case SEEK_END:
++		if (unlikely(offset > 0))
++			goto out_err; /* not supported for directories */
++
++		/* so only negative offsets are left, does that have a
++		 * meaning for directories at all? */
++		if (is_dx_dir)
++			offset += ext4_get_htree_eof(file);
++		else
++			offset += inode->i_size;
++		break;
++	case SEEK_CUR:
++		/*
++		 * Here we special-case the lseek(fd, 0, SEEK_CUR)
++		 * position-querying operation.  Avoid rewriting the "same"
++		 * f_pos value back to the file because a concurrent read(),
++		 * write() or lseek() might have altered it
++		 */
++		if (offset == 0) {
++			offset = file->f_pos;
++			goto out_ok;
++		}
++
++		offset += file->f_pos;
++		break;
++	}
++
++	if (unlikely(offset < 0))
++		goto out_err;
++
++	if (!is_dx_dir) {
++		if (offset > inode->i_sb->s_maxbytes)
++			goto out_err;
++	} else if (offset > ext4_get_htree_eof(file))
++		goto out_err;
++
++	/* Special lock needed here? */
++	if (offset != file->f_pos) {
++		file->f_pos = offset;
++		file->f_version = 0;
++	}
++
++out_ok:
++	ret = offset;
++out_err:
++	mutex_unlock(&inode->i_mutex);
++
++	return ret;
++}
+ 
+ /*
+  * This structure holds the nodes of the red-black tree used to store
+@@ -330,15 +426,16 @@ static void free_rb_tree_fname(struct rb_root *root)
+ }
+ 
+ 
+-static struct dir_private_info *ext4_htree_create_dir_info(loff_t pos)
++static struct dir_private_info *ext4_htree_create_dir_info(struct file *filp,
++							   loff_t pos)
+ {
+ 	struct dir_private_info *p;
+ 
+ 	p = kzalloc(sizeof(struct dir_private_info), GFP_KERNEL);
+ 	if (!p)
+ 		return NULL;
+-	p->curr_hash = pos2maj_hash(pos);
+-	p->curr_minor_hash = pos2min_hash(pos);
++	p->curr_hash = pos2maj_hash(filp, pos);
++	p->curr_minor_hash = pos2min_hash(filp, pos);
+ 	return p;
+ }
+ 
+@@ -429,7 +526,7 @@ static int call_filldir(struct file *filp, void *dirent,
+ 		       "null fname?!?\n");
+ 		return 0;
+ 	}
+-	curr_pos = hash2pos(fname->hash, fname->minor_hash);
++	curr_pos = hash2pos(filp, fname->hash, fname->minor_hash);
+ 	while (fname) {
+ 		error = filldir(dirent, fname->name,
+ 				fname->name_len, curr_pos,
+@@ -454,13 +551,13 @@ static int ext4_dx_readdir(struct file *filp,
+ 	int	ret;
+ 
+ 	if (!info) {
+-		info = ext4_htree_create_dir_info(filp->f_pos);
++		info = ext4_htree_create_dir_info(filp, filp->f_pos);
+ 		if (!info)
+ 			return -ENOMEM;
+ 		filp->private_data = info;
+ 	}
+ 
+-	if (filp->f_pos == EXT4_HTREE_EOF)
++	if (filp->f_pos == ext4_get_htree_eof(filp))
+ 		return 0;	/* EOF */
+ 
+ 	/* Some one has messed with f_pos; reset the world */
+@@ -468,8 +565,8 @@ static int ext4_dx_readdir(struct file *filp,
+ 		free_rb_tree_fname(&info->root);
+ 		info->curr_node = NULL;
+ 		info->extra_fname = NULL;
+-		info->curr_hash = pos2maj_hash(filp->f_pos);
+-		info->curr_minor_hash = pos2min_hash(filp->f_pos);
++		info->curr_hash = pos2maj_hash(filp, filp->f_pos);
++		info->curr_minor_hash = pos2min_hash(filp, filp->f_pos);
+ 	}
+ 
+ 	/*
+@@ -501,7 +598,7 @@ static int ext4_dx_readdir(struct file *filp,
+ 			if (ret < 0)
+ 				return ret;
+ 			if (ret == 0) {
+-				filp->f_pos = EXT4_HTREE_EOF;
++				filp->f_pos = ext4_get_htree_eof(filp);
+ 				break;
+ 			}
+ 			info->curr_node = rb_first(&info->root);
+@@ -521,7 +618,7 @@ static int ext4_dx_readdir(struct file *filp,
+ 			info->curr_minor_hash = fname->minor_hash;
+ 		} else {
+ 			if (info->next_hash == ~0) {
+-				filp->f_pos = EXT4_HTREE_EOF;
++				filp->f_pos = ext4_get_htree_eof(filp);
+ 				break;
+ 			}
+ 			info->curr_hash = info->next_hash;
+@@ -540,3 +637,15 @@ static int ext4_release_dir(struct inode *inode, struct file *filp)
+ 
+ 	return 0;
+ }
++
++const struct file_operations ext4_dir_operations = {
++	.llseek		= ext4_dir_llseek,
++	.read		= generic_read_dir,
++	.readdir	= ext4_readdir,
++	.unlocked_ioctl = ext4_ioctl,
++#ifdef CONFIG_COMPAT
++	.compat_ioctl	= ext4_compat_ioctl,
++#endif
++	.fsync		= ext4_sync_file,
++	.release	= ext4_release_dir,
++};
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index e717dfd..31d9ba0 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1560,7 +1560,11 @@ struct dx_hash_info
+ 	u32		*seed;
+ };
+ 
+-#define EXT4_HTREE_EOF	0x7fffffff
++
++/* 32 and 64 bit signed EOF for dx directories */
++#define EXT4_HTREE_EOF_32BIT   ((1UL  << (32 - 1)) - 1)
++#define EXT4_HTREE_EOF_64BIT   ((1ULL << (64 - 1)) - 1)
++
+ 
+ /*
+  * Control parameters used by ext4_htree_next_block
+diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
+index ac8f168..fa8e491 100644
+--- a/fs/ext4/hash.c
++++ b/fs/ext4/hash.c
+@@ -200,8 +200,8 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
+ 		return -1;
+ 	}
+ 	hash = hash & ~1;
+-	if (hash == (EXT4_HTREE_EOF << 1))
+-		hash = (EXT4_HTREE_EOF-1) << 1;
++	if (hash == (EXT4_HTREE_EOF_32BIT << 1))
++		hash = (EXT4_HTREE_EOF_32BIT - 1) << 1;
+ 	hinfo->hash = hash;
+ 	hinfo->minor_hash = minor_hash;
+ 	return 0;
+
