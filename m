@@ -1,30 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([198.137.202.13]:56209 "EHLO
-	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752244Ab1H3CgE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2011 22:36:04 -0400
-Date: Mon, 29 Aug 2011 22:35:28 -0400 (EDT)
-Message-Id: <20110829.223528.1015352328965337938.davem@davemloft.net>
-To: Trond.Myklebust@netapp.com
-Cc: bharrosh@panasas.com, joe@perches.com, bfields@fieldses.org, neilb@suse.de,
-        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 19/24] sunrpc: Remove unnecessary OOM logging messages
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AEB4FAF@SACMVEXC2-PRD.hq.netapp.com>
-References: <4E5C0AB3.90401@panasas.com>
-	<20110829.180348.1774953636752413432.davem@davemloft.net>
-	<2E1EB2CF9ED1CB4AA966F0EB76EAB4430AEB4FAF@SACMVEXC2-PRD.hq.netapp.com>
-Content-Type: Text/Plain; charset=us-ascii
+Received: from cn.fujitsu.com ([222.73.24.84]:57947 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1754783Ab1HRCR5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Aug 2011 22:17:57 -0400
+Message-ID: <4E4C774D.1040302@cn.fujitsu.com>
+Date: Thu, 18 Aug 2011 10:22:05 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>, NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH 4/4 v3] 4.1 CLNT: test RECLAIM_COMPLETE twice
+References: <4E4C7679.7000108@cn.fujitsu.com>
+In-Reply-To: <4E4C7679.7000108@cn.fujitsu.com>
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Date: Mon, 29 Aug 2011 16:25:08 -0700
+Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+---
+ nfs4.1/server41tests/st_reclaim_complete.py |   19 +++++++++++++++++++
+ 1 files changed, 19 insertions(+), 0 deletions(-)
 
-> I can see that slub.c has the slab_out_of_memory() function that
-> (although ratelimited) warns you if the allocation failed. However I
-> can't find any equivalent for slab.c or slob.c.
+diff --git a/nfs4.1/server41tests/st_reclaim_complete.py b/nfs4.1/server41tests/st_reclaim_complete.py
+index 921d537..7c9f2b8 100644
+--- a/nfs4.1/server41tests/st_reclaim_complete.py
++++ b/nfs4.1/server41tests/st_reclaim_complete.py
+@@ -66,3 +66,22 @@ def testOpenBeforeRECC(t, env):
+     # Try to open file before RECLAIM_COMPLETE
+     res = create_file(sess, fname, path, access=OPEN4_SHARE_ACCESS_BOTH)
+     check(res,NFS4ERR_GRACE)
++
++def testDoubleRECC(t, env):
++    """If RECLAIM_COMPLETE is done a second time, error
++       NFS4ERR_COMPLETE_ALREADY will be returned. rfc5661 18.51.4
++
++    FLAGS: reclaim_complete all
++    CODE: RECC4
++    """
++    name = env.testname(t)
++    c = env.c1.new_client(name)
++    sess = c.create_session()
++
++    # RECLAIM_COMPLETE
++    res = sess.compound([op.reclaim_complete(FALSE)])
++    check(res)
++
++    # RECLAIM_COMPLETE again
++    res = sess.compound([op.reclaim_complete(FALSE)])
++    check(res, NFS4ERR_COMPLETE_ALREADY)
+-- 
+1.7.6
 
-See the page allocator.
+
