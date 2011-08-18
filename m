@@ -1,28 +1,75 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
-Subject: Linux pNFS status meeting canceled for this week
-Date: Wed, 17 Aug 2011 13:09:21 -0700
-Message-ID: <OF6482D14A.B05F6764-ON882578EF.0067FE62-882578EF.006EAAF6@us.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: NFS client virtualization plan
+Date: Thu, 18 Aug 2011 11:54:42 -0400
+Message-ID: <67028AE2-C41D-4D9E-9AB9-81433AD196A2@oracle.com>
+References: <4E4A4DB1.2090105@parallels.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Cc: Pavel Emelianov <xemul@parallels.com>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:44722 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752446Ab1HQUJq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Aug 2011 16:09:46 -0400
-Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
-	by e5.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p7HJdxoY016460
-	for <linux-nfs@vger.kernel.org>; Wed, 17 Aug 2011 15:39:59 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p7HK9jKG221300
-	for <linux-nfs@vger.kernel.org>; Wed, 17 Aug 2011 16:09:45 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p7HK9hnV019298
-	for <linux-nfs@vger.kernel.org>; Wed, 17 Aug 2011 16:09:43 -0400
-Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p7HK9hID019248
-	for <linux-nfs@vger.kernel.org>; Wed, 17 Aug 2011 16:09:43 -0400
+Received: from acsinet15.oracle.com ([141.146.126.227]:57589 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755542Ab1HRPy6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Aug 2011 11:54:58 -0400
+In-Reply-To: <4E4A4DB1.2090105@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
- 
+
+On Aug 16, 2011, at 7:00 AM, Stanislav Kinsbursky wrote:
+
+> Hello.
+> I'm going to virtualize NFS in mainline and here is my plan for NFS client part.
+> Any suggestions or criticism are welcome.
+
+What are you going to do about statd?
+
+> ==============================================================================
+> 
+> "NFS client" virtualization plan:
+> 
+> _RPC layer_:
+> 
+> 1) Make rpcbind clients (rpcb_local_clnt and rpcb_local4_clnt) to be
+> per net namespace.
+> 
+> _NFS layer_:
+> 
+> 1) Net namespace inheritance (current->nsproxy->net have to be used instead
+> of init_net).
+> Pointer to net namespace can be stored on nfs_client structure, which will
+> give easy access to proper net namespace during RPC transports creation.
+> 
+> 2) Make Lockd kthread able to handle requests from different net namespaces.
+> 
+> 3) Make NFS callbacks kthreads (nfs4_callback_svc and nfs4.1_callback_svc) able
+> to handle requests from different net namespaces.
+> 
+> 4) Make NFS info lists (nfs_volume_list and nfs_client_list) to be per
+> net namespace in addition to global ones.
+> 
+> 5) Make NFS proc variables and it's internal content variables to be per
+> net namespace in addition to global ones.
+> 
+> 6) Make NFS sysctl variables and it's internal content variables to be per
+> net namespace in addition to global ones.
+> 
+> 
+> 
+> -- 
+> Best regards,
+> Stanislav Kinsbursky
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
