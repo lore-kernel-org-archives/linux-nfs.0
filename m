@@ -1,103 +1,245 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:42633 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755132Ab1HWPCJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Aug 2011 11:02:09 -0400
-Received: by vws1 with SMTP id 1so161163vws.19
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Aug 2011 08:02:08 -0700 (PDT)
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AC9DF79@SACMVEXC2-PRD.hq.netapp.com>
-References: <1313197450-4595-1-git-send-email-bergwolf@gmail.com>
- <4E4ADBA1.1000005@panasas.com> <4E4B6A81.2010204@tonian.com>
- <CA+a=Yy6BSmEWurZuFN-8axTS0gfeXaguw5tcayeVjJmcFAztOQ@mail.gmail.com>
- <4E52EBAC.8070908@panasas.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AC9DF79@SACMVEXC2-PRD.hq.netapp.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Tue, 23 Aug 2011 23:01:46 +0800
-Message-ID: <CA+a=Yy4gm3789v0w-dGpZO1w9RrpC7ELgeM9=qNsf4tYigdw2A@mail.gmail.com>
-Subject: Re: [PATCH] pnfsblock: init pg_bsize properly
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>
-Cc: Benny Halevy <bhalevy@tonian.com>, linux-nfs@vger.kernel.org,
-        Peng Tao <peng_tao@emc.com>, "Isaman, Fred" <Fred.Isaman@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from outbound.icp-qv1-irony-out4.iinet.net.au ([203.59.1.104]:32398
+	"EHLO outbound.icp-qv1-irony-out4.iinet.net.au" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751665Ab1HRFSz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Aug 2011 01:18:55 -0400
+From: Ian Kent <raven@themaw.net>
+Subject: [PATCH] nfs-utils-1.2.4 - fix nfs4 check
+To: linux-nfs-list <linux-nfs@vger.kernel.org>
+Cc: Steve Dickson <SteveD@redhat.com>
+Date: Thu, 18 Aug 2011 13:08:27 +0800
+Message-ID: <20110818050827.15357.27820.stgit@perseus.themaw.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi, Trond and Boaz,
+From: Ian Kent <ikent@redhat.com>
 
-On Tue, Aug 23, 2011 at 8:00 AM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
->> -----Original Message-----
->> From: Boaz Harrosh [mailto:bharrosh@panasas.com]
->> Sent: Monday, August 22, 2011 7:52 PM
->> To: Peng Tao
->> Cc: Benny Halevy; linux-nfs@vger.kernel.org; Peng Tao; Myklebust,
->> Trond; Isaman, Fred
->> Subject: Re: [PATCH] pnfsblock: init pg_bsize properly
->>
->> On 08/17/2011 02:35 AM, Peng Tao wrote:
->> > Hi, Benny and Boaz,
->> >
->> <snip>
->>
->> > In pnfs_do_multiple_reads/pnfs_do_multiple_writes, data->mds_ops will
->> > be set as desc->pg_rpc_callops, which is determined in
->> > nfs_generic_flush/nfs_generic_pagein according to desc->pg_bsize. For
->> > blocklayout, we wouldn't want to set data->mds_ops to
->> > partial_read/write ops, so I write the patch to use lseg length as
->> > pg_bsize.
->> >
->>
->> Do you mean in the case where MDS sets (pg_bsize < PAGE_SIZE) ?
->>
->> Right, that is a problem. (Theoretically, because the pNFSD-Linux
->> server
->> does not do that. Do you have a Server that does?)
-No, I don't have a server does that. But it is a server config option
-and we can't force users not to change it. So better fix it at client
-side.
+nfs_umount_is_vers4() doesn't take acount of the escaping of characters
+seen in /proc/mounts and /etc/mtab as the functions in fstab.c do. This
+leads to an inability to umount a mount containing any of these escaped
+characters (like spaces).
 
->>
->> > LD can override pg_bsize in pg_init because
->> > nfs_pageio_reset_read_mds/nfs_pageio_reset_write_mds will reset it to
->> > server rsize/wsize if pnfs is not tried.
->> >
->>
->> So if it is the "pg_bsize < PAGE_SIZE" but pNFS-IO case then I don't
->> like your patch, at all. We should fix the generic code to behave
->> properly, and not let LDs hack their way out. (For example what about
->> objects and files LDs)
->>
->> There is a few ways you can fix the generic code. One is override the
->> desc->pg_rpc_callops for the pNFS case to always be the same one. Or
->> override the test for (pg_bsize < PAGE_SIZE) in the pNFS case if we
->> have
->> a lseg. Or some other clean way.
-I was under the impression that for object and file layouts, partial
-read/write rpc ops are still needed for DS IO when DS r/wsize is
-smaller than PAGE_SIZE...
+This patch changes nfs_umount_is_vers4() to use functions in fstab.c and
+adds a function to fstab.c to read /proc/mounts specifically, as it was
+used  for the check in nfs_umount_is_vers4() previously.
 
->>
->> But please don't fix it like that, inside each LD driver.
->>
->> [ Trond Fred
->>   One thing I do not understand about the files-layout operations. You
->>   have explained in the passed that r/wsize sent from the MDS is also
->> the
->>   same one for each DS. So if we take an example of rsize beeing 2MB
->>   and there is a stripping of 2 DS for that layout.(Say
->> strip_unit==rsize)
->>   Then we need to read 1/2 of that page from one DS and the 2/2 half
->> from the
->>   second. Will current partial_read/write work if going through files-
->> LD?
->> ]
->
-> No. The stripe size may be smaller than the r/wsize, in which case we're in the same boat as the blocks and objects.
-So this is a generic issue. For file and object layout, do you need to
-use partial read/write rpc ops in any case? For block layout, we would
-like to never use it in LD. But I'm not sure about file and object
-case. Could you confirm?
+Signed-off-by: Ian Kent <ikent@redhat.com>
+---
 
-Thanks,
-Tao
+ utils/mount/fstab.c     |   52 +++++++++++++++++++++++++++++++++
+ utils/mount/fstab.h     |    1 +
+ utils/mount/nfsumount.c |   75 +++++++++++++++++++----------------------------
+ 3 files changed, 84 insertions(+), 44 deletions(-)
+
+diff --git a/utils/mount/fstab.c b/utils/mount/fstab.c
+index 1fc9efe..eedbdda 100644
+--- a/utils/mount/fstab.c
++++ b/utils/mount/fstab.c
+@@ -86,10 +86,13 @@ mtab_is_writable() {
+ 
+ struct mntentchn mounttable;
+ static int got_mtab = 0;
++struct mntentchn procmounts;
++static int got_procmounts = 0;
+ struct mntentchn fstab;
+ static int got_fstab = 0;
+ 
+ static void read_mounttable(void);
++static void read_procmounts(void);
+ static void read_fstab(void);
+ 
+ static struct mntentchn *
+@@ -101,6 +104,14 @@ mtab_head(void)
+ }
+ 
+ static struct mntentchn *
++procmounts_head(void)
++{
++	if (!got_procmounts)
++		read_procmounts();
++	return &procmounts;
++}
++
++static struct mntentchn *
+ fstab_head(void)
+ {
+ 	if (!got_fstab)
+@@ -186,6 +197,30 @@ read_mounttable() {
+         read_mntentchn(mfp, fnam, mc);
+ }
+ 
++/*
++ * Read /proc/mounts.
++ * This produces a linked list. The list head procmounts is a dummy.
++ * Return 0 on success.
++ */
++static void
++read_procmounts() {
++        mntFILE *mfp;
++        const char *fnam;
++        struct mntentchn *mc = &procmounts;
++
++        got_procmounts = 1;
++        mc->nxt = mc->prev = NULL;
++
++        fnam = PROC_MOUNTS;
++        mfp = nfs_setmntent(fnam, "r");
++        if (mfp == NULL || mfp->mntent_fp == NULL) {
++                nfs_error(_("warning: can't open %s: %s"),
++                          PROC_MOUNTS, strerror (errno));
++                return;
++        }
++        read_mntentchn(mfp, fnam, mc);
++}
++
+ static void
+ read_fstab()
+ {
+@@ -225,6 +260,23 @@ getmntdirbackward (const char *name, struct mntentchn *mcprev) {
+ }
+ 
+ /*
++ * Given the directory name NAME, and the place MCPREV we found it last time,
++ * try to find more occurrences.
++ */
++struct mntentchn *
++getprocmntdirbackward (const char *name, struct mntentchn *mcprev) {
++	struct mntentchn *mc, *mc0;
++
++	mc0 = procmounts_head();
++	if (!mcprev)
++		mcprev = mc0;
++	for (mc = mcprev->prev; mc && mc != mc0; mc = mc->prev)
++		if (streq(mc->m.mnt_dir, name))
++			return mc;
++	return NULL;
++}
++
++/*
+  * Given the device name NAME, and the place MCPREV we found it last time,
+  * try to find more occurrences.
+  */ 
+diff --git a/utils/mount/fstab.h b/utils/mount/fstab.h
+index dc7c9fc..313bf9b 100644
+--- a/utils/mount/fstab.h
++++ b/utils/mount/fstab.h
+@@ -18,6 +18,7 @@ struct mntentchn {
+ 
+ struct mntentchn *getmntoptfile (const char *file);
+ struct mntentchn *getmntdirbackward (const char *dir, struct mntentchn *mc);
++struct mntentchn *getprocmntdirbackward (const char *name, struct mntentchn *mc);
+ struct mntentchn *getmntdevbackward (const char *dev, struct mntentchn *mc);
+ 
+ struct mntentchn *getfsfile (const char *file);
+diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
+index 8cd2852..b846564 100644
+--- a/utils/mount/nfsumount.c
++++ b/utils/mount/nfsumount.c
+@@ -151,65 +151,50 @@ static int del_mtab(const char *spec, const char *node)
+  */
+ static int nfs_umount_is_vers4(const struct mntentchn *mc)
+ {
+-	char buffer[LINELEN], *next;
++	struct mntentchn *pmc;
++	struct mount_options *options;
+ 	int retval;
+-	FILE *f;
+-
+-	if ((f = fopen(MOUNTSFILE, "r")) == NULL) {
+-		fprintf(stderr, "%s: %s\n",
+-			MOUNTSFILE, strerror(errno));
+-		return -1;
+-	}
+ 
+ 	retval = -1;
+-	while (fgets(buffer, sizeof(buffer), f) != NULL) {
+-		char *device, *mntdir, *type, *flags;
+-		struct mount_options *options;
+-		char *line = buffer;
+-
+-		next = strchr(line, '\n');
+-		if (next != NULL)
+-			*next = '\0';
+-
+-		device = strtok(line, " \t");
+-		if (device == NULL)
+-			continue;
+-		mntdir = strtok(NULL, " \t");
+-		if (mntdir == NULL)
+-			continue;
+-		if (strcmp(device, mc->m.mnt_fsname) != 0 &&
+-		    strcmp(mntdir, mc->m.mnt_dir) != 0)
++	pmc = getprocmntdirbackward(mc->m.mnt_dir, NULL);
++	if (!pmc)
++		goto not_found;
++
++	do {
++		int nlen = strlen(pmc->m.mnt_fsname);
++		/*
++		 * It's possible the mount location string in /proc/mounts
++		 * ends with a '/'. In this case, if the entry came from
++		 * /etc/mtab, it won't have the trailing '/' so deal with
++		 * it.
++		 */
++		while (pmc->m.mnt_fsname[nlen - 1] == '/')
++			nlen--;
++		if (strncmp(pmc->m.mnt_fsname, mc->m.mnt_fsname, nlen) != 0)
+ 			continue;
+ 
+-		type = strtok(NULL, " \t");
+-		if (type == NULL)
+-			continue;
+-		if (strcmp(type, "nfs4") == 0)
++		if (strcmp(pmc->m.mnt_type, "nfs4") == 0)
+ 			goto out_nfs4;
+ 
+-		flags = strtok(NULL, " \t");
+-		if (flags == NULL)
+-			continue;
+-		options = po_split(flags);
++		options = po_split(pmc->m.mnt_opts);
+ 		if (options != NULL) {
+ 			unsigned long version;
+-			int rc;
+-
+-			rc = nfs_nfs_version(options, &version);
++			int rc = nfs_nfs_version(options, &version);
+ 			po_destroy(options);
+ 			if (rc && version == 4)
+ 				goto out_nfs4;
+ 		}
+ 
+-		goto out_nfs;
+-	}
+-	if (retval == -1)
++		if (strcmp(pmc->m.mnt_type, "nfs") == 0)
++			goto out_nfs;
++	} while ((pmc = getprocmntdirbackward(mc->m.mnt_dir, pmc)) != NULL);
++
++	if (retval == -1) {
++not_found:
+ 		fprintf(stderr, "%s was not found in %s\n",
+ 			mc->m.mnt_dir, MOUNTSFILE);
+-
+-out:
+-	fclose(f);
+-	return retval;
++		goto out;
++	}
+ 
+ out_nfs4:
+ 	if (verbose)
+@@ -221,7 +206,9 @@ out_nfs:
+ 	if (verbose)
+ 		fprintf(stderr, "Legacy NFS mount point detected\n");
+ 	retval = 0;
+-	goto out;
++
++out:
++	return retval;
+ }
+ 
+ static struct option umount_longopts[] =
+
