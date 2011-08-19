@@ -1,47 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:34828 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754007Ab1HKMTS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Aug 2011 08:19:18 -0400
-Received: by wwf5 with SMTP id 5so1987951wwf.1
-        for <linux-nfs@vger.kernel.org>; Thu, 11 Aug 2011 05:19:17 -0700 (PDT)
-Message-ID: <4E43C8BE.9040108@tonian.com>
-Date: Thu, 11 Aug 2011 15:19:10 +0300
-From: Benny Halevy <bhalevy@tonian.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Subject: Re: [PATCHSET 0/4] exofs & pnfsd-exofs assorted changes
-References: <4E42F3E3.8050006@panasas.com>
-In-Reply-To: <4E42F3E3.8050006@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:60885 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756355Ab1HSRYR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Aug 2011 13:24:17 -0400
+Received: from bfields by fieldses.org with local (Exim 4.72)
+	(envelope-from <bfields@fieldses.org>)
+	id 1QuSno-0000JY-Ur
+	for linux-nfs@vger.kernel.org; Fri, 19 Aug 2011 13:24:16 -0400
+Date: Fri, 19 Aug 2011 13:24:16 -0400
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd4: fix seqid_mutating_error
+Message-ID: <20110819172416.GA1112@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-08-11 00:10, Boaz Harrosh wrote:
-> 
-> Submitted are, a changes to upstream exofs, and some proper fixes
-> to pnfsd-exofs.
-> 
-> the patches:
-> [PATCH 1/4] exofs: Remove unused data_map member from exofs_sb_info
-> 
-> 	This patch will be put in linux-next for the 3.2 merge window
-> 
-> [PATCH 2/4] SQUASHME: pnfsd-exofs: Convert to ORE (2)
-> [PATCH 3/4] ore: Make ore_calc_stripe_info EXPORT_SYMBOL
-> [PATCH 4/4] pnfsd-exofs: Serve out a single group layout at a time
-> 
-> 	These patches are for the pnfsd tree, including the ore
-> 	one which has users only in the pnfsd tree for now.
-> 
-> Thanks
-> Boaz
-> 
+Yipes--noticed while doing some unrelated v4 state work.  I'll probably
+send this along soonish.
 
-Merged into pnfsd-exofs. Thanks!
+--b.
 
-Benny
+commit 8eea0f78ed3f3238e238c8ca76e5c7a5c1e7b5f5
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Wed Aug 10 19:16:22 2011 -0400
 
-P.S. I don't think my Panasas email address is still active
-no need to send stuff there...
+    nfsd4: fix seqid_mutating_error
+    
+    The set of errors here does *not* agree with the set of errors specified
+    in the rfc!
+    
+    While we're there, turn this macros into a function, for the usual
+    reasons, and move it to the one place where it's actually used.
+    
+    Cc: stable@kernel.org
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index c8bf405..f810996 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1623,6 +1623,18 @@ static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
+ 								\
+ 	save = resp->p;
+ 
++static bool seqid_mutating_err(__be32 err)
++{
++	/* rfc 3530 section 8.1.5: */
++	return	err != nfserr_stale_clientid &&
++		err != nfserr_stale_stateid &&
++		err != nfserr_bad_stateid &&
++		err != nfserr_bad_seqid &&
++		err != nfserr_bad_xdr &&
++		err != nfserr_resource &&
++		err != nfserr_nofilehandle;
++}
++
+ /*
+  * Routine for encoding the result of a "seqid-mutating" NFSv4 operation.  This
+  * is where sequence id's are incremented, and the replay cache is filled.
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 4eefaf1..5cfebe5 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -447,12 +447,6 @@ struct nfs4_stateid {
+ #define WR_STATE	        0x00000020
+ #define CLOSE_STATE             0x00000040
+ 
+-#define seqid_mutating_err(err)                       \
+-	(((err) != nfserr_stale_clientid) &&    \
+-	((err) != nfserr_bad_seqid) &&          \
+-	((err) != nfserr_stale_stateid) &&      \
+-	((err) != nfserr_bad_stateid))
+-
+ struct nfsd4_compound_state;
+ 
+ extern __be32 nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
