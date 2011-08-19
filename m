@@ -1,69 +1,235 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28377 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752583Ab1HAN31 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Aug 2011 09:29:27 -0400
-Subject: Re: [PATCH] nfs: Do not allow multiple mounts on same mountpoint
- when using -o noac
-From: Sachin Prabhu <sprabhu@redhat.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Date: Mon, 01 Aug 2011 14:29:19 +0100
-In-Reply-To: <20110801111936.GA16934@infradead.org>
-References: <1311947408.29400.40.camel@sprabhu.fab.redhat.com>
-	 <1312197013.3800.1.camel@sprabhu.fab.redhat.com>
-	 <20110801111936.GA16934@infradead.org>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1312205360.3800.6.camel@sprabhu.fab.redhat.com>
+Received: from smtp02.citrix.com ([66.165.176.63]:56612 "EHLO
+	SMTP02.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755571Ab1HSNaO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2011 09:30:14 -0400
+From: Ian Campbell <ian.campbell@citrix.com>
+To: netdev@vger.kernel.org
+CC: linux-kernel@vger.kernel.org, Ian Campbell <ian.campbell@citrix.com>,
+        "David S. Miller" <davem@davemloft.net>, Neil Brown <neilb@suse.de>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH 71/75] sunrpc: use SKB fragment destructors to delay completion until page is released by network stack.
+Date: Fri, 19 Aug 2011 14:27:43 +0100
+Message-ID: <1313760467-8598-71-git-send-email-ian.campbell@citrix.com>
+In-Reply-To: <1313760393.5010.356.camel@zakaz.uk.xensource.com>
+References: <1313760393.5010.356.camel@zakaz.uk.xensource.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2011-08-01 at 07:19 -0400, Christoph Hellwig wrote:
-> On Mon, Aug 01, 2011 at 12:10:12PM +0100, Sachin Prabhu wrote:
-> > Do not allow multiple mounts on same mountpoint when using -o noac
-> 
-> The patch content really doesn't seem to match the subject line and
-> most of the content.
-> 
-> > However when using the option 'noac', the user is able to mount the same
-> > share on the same mountpoint multiple times. This happens because a
-> > share mounted with the noac option is automatically assigned the 'sync'
-> > flag MS_SYNCHRONOUS in nfs_initialise_sb(). This flag is set after the
-> > check for already existing superblocks is done in sget(). The check for
-> > the mount flags in nfs_compare_mount_options() does not take into
-> > account the 'sync' flag applied later on in the code path. This means
-> > that when using 'noac', a new superblock structure is assigned for every
-> > new mount of the same share and multiple shares on the same mountpoint
-> > are allowed.
-> > 
-> > ie. 
-> > # mount -onoac localhost:/nfsv3 /mnt
-> > can be run multiple times.
-> 
-> > The patch checks for noac and assigns the sync flag before sget() is
-> > called to obtain an already existing superblock structure.
-> 
-> That's a fine fix, but the the whole patch subject and description
-> focusses on a side effect rather than the underlying real problem.
-> 
-> The underlying issue is that youwant to share superblocks when
-> having multiple mounts with -o noac, which requires assigning the
-> sync flag ealier. 
-> 
-> The check in do_add_mount simply prevents mounts with the same
-> superblock and root dentry at the same mountpoint, so it will fail for
-> any two nfs mounts that might be from the same server but do not share
-> the superblock due to different options.  I'm actually not sure we want
-> to prevent that in general, and I can't see how it could be done easily.
-> 
+This prevents an issue where an ACK is delayed, a retransmit is queued (either
+at the RPC or TCP level) and the ACK arrives before the retransmission hits the
+wire. If this happens to an NFS WRITE RPC then the write() system call
+completes and the userspace process can continue, potentially modifying data
+referenced by the retransmission before the retransmission occurs.
 
-Yes. That is essentially what the problem is. 
+Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
+Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: Neil Brown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Cc: netdev@vger.kernel.org
+[since v1:
+  Push down from NFS layer into RPM layer
+]
+---
+ include/linux/sunrpc/xdr.h  |    2 ++
+ include/linux/sunrpc/xprt.h |    5 ++++-
+ net/sunrpc/clnt.c           |   27 ++++++++++++++++++++++-----
+ net/sunrpc/svcsock.c        |    3 ++-
+ net/sunrpc/xprt.c           |   13 +++++++++++++
+ net/sunrpc/xprtsock.c       |    3 ++-
+ 6 files changed, 45 insertions(+), 8 deletions(-)
 
-The problem was reported by a user who noticed that passing the 'noac'
-mount option allowed them to repeatedly mount the same share on the same
-mount point. I just used the same perspective when reporting the issue
-upstream.
-
-Sachin Prabhu
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index a20970e..172f81e 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -16,6 +16,7 @@
+ #include <asm/byteorder.h>
+ #include <asm/unaligned.h>
+ #include <linux/scatterlist.h>
++#include <linux/skbuff.h>
+ 
+ /*
+  * Buffer adjustment
+@@ -57,6 +58,7 @@ struct xdr_buf {
+ 			tail[1];	/* Appended after page data */
+ 
+ 	struct page **	pages;		/* Array of contiguous pages */
++	struct skb_frag_destructor *destructor;
+ 	unsigned int	page_base,	/* Start of page data */
+ 			page_len,	/* Length of page data */
+ 			flags;		/* Flags for data disposition */
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 15518a1..75131eb 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -92,7 +92,10 @@ struct rpc_rqst {
+ 						/* A cookie used to track the
+ 						   state of the transport
+ 						   connection */
+-	
++	struct skb_frag_destructor destructor;	/* SKB paged fragment
++						 * destructor for
++						 * transmitted pages*/
++
+ 	/*
+ 	 * Partial send handling
+ 	 */
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index c5347d2..919538d 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -61,6 +61,7 @@ static void	call_reserve(struct rpc_task *task);
+ static void	call_reserveresult(struct rpc_task *task);
+ static void	call_allocate(struct rpc_task *task);
+ static void	call_decode(struct rpc_task *task);
++static void	call_complete(struct rpc_task *task);
+ static void	call_bind(struct rpc_task *task);
+ static void	call_bind_status(struct rpc_task *task);
+ static void	call_transmit(struct rpc_task *task);
+@@ -1113,6 +1114,8 @@ rpc_xdr_encode(struct rpc_task *task)
+ 			 (char *)req->rq_buffer + req->rq_callsize,
+ 			 req->rq_rcvsize);
+ 
++	req->rq_snd_buf.destructor = &req->destructor;
++
+ 	p = rpc_encode_header(task);
+ 	if (p == NULL) {
+ 		printk(KERN_INFO "RPC: couldn't encode RPC header, exit EIO\n");
+@@ -1276,6 +1279,7 @@ call_connect_status(struct rpc_task *task)
+ static void
+ call_transmit(struct rpc_task *task)
+ {
++	struct rpc_rqst *req = task->tk_rqstp;
+ 	dprint_status(task);
+ 
+ 	task->tk_action = call_status;
+@@ -1309,8 +1313,8 @@ call_transmit(struct rpc_task *task)
+ 	call_transmit_status(task);
+ 	if (rpc_reply_expected(task))
+ 		return;
+-	task->tk_action = rpc_exit_task;
+-	rpc_wake_up_queued_task(&task->tk_xprt->pending, task);
++	task->tk_action = call_complete;
++	skb_frag_destructor_unref(&req->destructor);
+ }
+ 
+ /*
+@@ -1383,7 +1387,8 @@ call_bc_transmit(struct rpc_task *task)
+ 		return;
+ 	}
+ 
+-	task->tk_action = rpc_exit_task;
++	task->tk_action = call_complete;
++	skb_frag_destructor_unref(&req->destructor);
+ 	if (task->tk_status < 0) {
+ 		printk(KERN_NOTICE "RPC: Could not send backchannel reply "
+ 			"error: %d\n", task->tk_status);
+@@ -1423,7 +1428,6 @@ call_bc_transmit(struct rpc_task *task)
+ 			"error: %d\n", task->tk_status);
+ 		break;
+ 	}
+-	rpc_wake_up_queued_task(&req->rq_xprt->pending, task);
+ }
+ #endif /* CONFIG_SUNRPC_BACKCHANNEL */
+ 
+@@ -1589,12 +1593,14 @@ call_decode(struct rpc_task *task)
+ 		return;
+ 	}
+ 
+-	task->tk_action = rpc_exit_task;
++	task->tk_action = call_complete;
+ 
+ 	if (decode) {
+ 		task->tk_status = rpcauth_unwrap_resp(task, decode, req, p,
+ 						      task->tk_msg.rpc_resp);
+ 	}
++	rpc_sleep_on(&req->rq_xprt->pending, task, NULL);
++	skb_frag_destructor_unref(&req->destructor);
+ 	dprintk("RPC: %5u call_decode result %d\n", task->tk_pid,
+ 			task->tk_status);
+ 	return;
+@@ -1609,6 +1615,17 @@ out_retry:
+ 	}
+ }
+ 
++/*
++ * 8.	Wait for pages to be released by the network stack.
++ */
++static void
++call_complete(struct rpc_task *task)
++{
++	dprintk("RPC: %5u call_complete result %d\n",
++		task->tk_pid, task->tk_status);
++	task->tk_action = rpc_exit_task;
++}
++
+ static __be32 *
+ rpc_encode_header(struct rpc_task *task)
+ {
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 852a258..3685cad 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -196,7 +196,8 @@ int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
+ 	while (pglen > 0) {
+ 		if (slen == size)
+ 			flags = 0;
+-		result = kernel_sendpage(sock, *ppage, NULL, base, size, flags);
++		result = kernel_sendpage(sock, *ppage, xdr->destructor,
++					 base, size, flags);
+ 		if (result > 0)
+ 			len += result;
+ 		if (result != size)
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index f4385e4..925aa0c 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1103,6 +1103,16 @@ static inline void xprt_init_xid(struct rpc_xprt *xprt)
+ 	xprt->xid = net_random();
+ }
+ 
++static int xprt_complete_skb_pages(void *calldata)
++{
++	struct rpc_task *task = calldata;
++	struct rpc_rqst	*req = task->tk_rqstp;
++
++	dprintk("RPC: %5u completing skb pages\n", task->tk_pid);
++	rpc_wake_up_queued_task(&req->rq_xprt->pending, task);
++	return 0;
++}
++
+ static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
+ {
+ 	struct rpc_rqst	*req = task->tk_rqstp;
+@@ -1115,6 +1125,9 @@ static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
+ 	req->rq_xid     = xprt_alloc_xid(xprt);
+ 	req->rq_release_snd_buf = NULL;
+ 	xprt_reset_majortimeo(req);
++	atomic_set(&req->destructor.ref, 1);
++	req->destructor.destroy = &xprt_complete_skb_pages;
++	req->destructor.data = task;
+ 	dprintk("RPC: %5u reserved req %p xid %08x\n", task->tk_pid,
+ 			req, ntohl(req->rq_xid));
+ }
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index f79e40e..af3a106 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -408,7 +408,8 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
+ 		remainder -= len;
+ 		if (remainder != 0 || more)
+ 			flags |= MSG_MORE;
+-		err = sock->ops->sendpage(sock, *ppage, NULL, base, len, flags);
++		err = sock->ops->sendpage(sock, *ppage, xdr->destructor,
++					  base, len, flags);
+ 		if (remainder == 0 || err != len)
+ 			break;
+ 		sent += err;
+-- 
+1.7.2.5
 
