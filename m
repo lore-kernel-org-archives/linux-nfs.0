@@ -1,42 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:58255 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754992Ab1H2WCS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2011 18:02:18 -0400
-Message-ID: <4E5C0AB3.90401@panasas.com>
-Date: Mon, 29 Aug 2011 14:54:59 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: David Miller <davem@davemloft.net>
-CC: <Trond.Myklebust@netapp.com>, <joe@perches.com>, <bfields@fieldses.org>,
-        <neilb@suse.de>, <linux-nfs@vger.kernel.org>, <netdev@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 19/24] sunrpc: Remove unnecessary OOM logging messages
-References: <cover.1314650069.git.joe@perches.com> <8a6378b3fef105983db001fb720c84b669491439.1314650069.git.joe@perches.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AEB4EE9@SACMVEXC2-PRD.hq.netapp.com> <20110829.143751.1153162956919885670.davem@davemloft.net>
-In-Reply-To: <20110829.143751.1153162956919885670.davem@davemloft.net>
-Content-Type: text/plain; charset="UTF-8"
+Received: from talus.maths.usyd.edu.au ([129.78.68.1]:33674 "EHLO
+	talus.maths.usyd.edu.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755515Ab1HSWGu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2011 18:06:50 -0400
+Date: Sat, 20 Aug 2011 08:06:38 +1000
+From: paul.szabo@sydney.edu.au
+Message-Id: <201108192206.p7JM6cwN005330@bari.maths.usyd.edu.au>
+To: bfields@fieldses.org
+Subject: Re: Please support NSF squashing multiple groups
+Cc: linux-nfs@vger.kernel.org, neilb@suse.de
+In-Reply-To: <20110819191945.GA1641@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 08/29/2011 02:37 PM, David Miller wrote:
-> From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-> Date: Mon, 29 Aug 2011 14:36:17 -0700
-> 
->> Big NACK...
->>
->> By whose standard are those "not useful"?
-> 
-> By mine, that's for sure.  It's duplicating something that the allocation
-> layers are already going to print.
+Dear Bruce,
 
-I have a question about that. Are the dprints going to show the stack backtrace?
-Otherwise how can I see which exact allocation failed and was not properly handled?
+>> Does that "work" also against the "evil remote root" e.g. when the
+>> remote machine is compromised?
+>
+> ... Nothing you can do about that.
 
-If yes above? then I'm not sure I like it either, because am I'll be getting a full
-stack backtrace for every failed allocation?
+Thanks for the confirmation.
 
-But I might like it if I try. How do I turn on allocation failures prints?
-Can I filter out to print only GFP_KERNEL failures and or other GFP combinations?
+> ... if several people each have their own client ...
 
-Thanks 
-Boaz
+Not my situation.
+
+>>> If you are using NFSv4 and kerberos than there already exist
+>>> interfaces to do what you want. See "man idmap.conf". ...
+>> 
+>> Sorry I do not use NFSv4 or kerberos, yet. ...
+>
+> Look for "static" in a recent version of the idmapd.conf man page.
+
+Thanks for the hint. Still, [Static] seems to translate UIDs only, seems
+to need umich_ldap and [UMICH_SCHEMA] for group memberships. Maybe
+idmapd ignores group membership lists as received from the client and
+sets the "local" list for each UID? - I guess I will need to investigate
+further how NFSv4 and idmapd work and try to implement them on my
+network.
+
+Thanks, Paul
+
+Paul Szabo   psz@maths.usyd.edu.au   http://www.maths.usyd.edu.au/u/psz/
+School of Mathematics and Statistics   University of Sydney    Australia
