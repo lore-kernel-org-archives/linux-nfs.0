@@ -1,30 +1,46 @@
-From: David Miller <davem@davemloft.net>
-Subject: Re: [PATCH] All Arch: remove linkage for sys_nfsservctl system call
-Date: Sun, 28 Aug 2011 17:12:07 -0400 (EDT)
-Message-ID: <20110828.171207.2184384269364960247.davem@davemloft.net>
-References: <20110808155538.GB904@fieldses.org>
-	<20110808180658.GC29924@decadent.org.uk>
-	<20110826220311.GA18140@fieldses.org>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: torvalds@linux-foundation.org, ben@decadent.org.uk, neilb@suse.de,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-arch@vger.kernel.org
-To: bfields@fieldses.org
-Return-path: <linux-arch-owner@vger.kernel.org>
-In-Reply-To: <20110826220311.GA18140@fieldses.org>
-Sender: linux-arch-owner@vger.kernel.org
+From: Wanlong Gao <wanlong.gao@gmail.com>
+Subject: [PATCH] nfs:include <linux/prefetch.h> to fix compiling error
+Date: Sat, 20 Aug 2011 05:19:22 +0800
+Message-ID: <1313788762-2562-1-git-send-email-wanlong.gao@gmail.com>
+Cc: linux-nfs@vger.kernel.org, Wanlong Gao <gaowanlong@cn.fujitsu.com>
+To: Trond.Myklebust@netapp.com
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:39595 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753343Ab1HSVV5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2011 17:21:57 -0400
+Received: by pzk37 with SMTP id 37so5463352pzk.1
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Aug 2011 14:21:56 -0700 (PDT)
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Fri, 26 Aug 2011 18:03:11 -0400
+From: Wanlong Gao <gaowanlong@cn.fujitsu.com>
 
-> From: NeilBrown <neilb@suse.de>
-> 
-> The nfsservctl system call is now gone, so we should remove all
-> linkage for it.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+fs/nfs/blocklayout/blocklayout.c: In function 'bl_end_io_read':
+fs/nfs/blocklayout/blocklayout.c:201:4: error: implicit
+declaration of function 'prefetchw'
+make[4]: *** [fs/nfs/blocklayout/blocklayout.o] Error 1
+make[3]: *** [fs/nfs/blocklayout] Error 2
+make[2]: *** [fs/nfs] Error 2
+make[1]: *** [fs] Error 2
 
-Acked-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Wanlong Gao <gaowanlong@cn.fujitsu.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index e56564d..9561c8f 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -36,6 +36,7 @@
+ #include <linux/namei.h>
+ #include <linux/bio.h>		/* struct bio */
+ #include <linux/buffer_head.h>	/* various write calls */
++#include <linux/prefetch.h>
+ 
+ #include "blocklayout.h"
+ 
+-- 
+1.7.4.1
+
