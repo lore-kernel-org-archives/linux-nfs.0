@@ -1,40 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:37946 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751080Ab1HHPh4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Aug 2011 11:37:56 -0400
-Subject: [PATCH 0/4] Series short description
-To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: hch@infradead.org, yong.fan@whamcloud.com, linux-fsdevel@vger.kernel.org,
-        tytso@mit.edu, adilger@whamcloud.com
-Date: Mon, 08 Aug 2011 17:37:52 +0200
-Message-ID: <20110808153432.1872437.85783.stgit@fsdevel3>
-Content-Type: text/plain; charset="utf-8"
+Received: from rcsinet15.oracle.com ([148.87.113.117]:54194 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756171Ab1HSQML convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2011 12:12:11 -0400
+Subject: Re: NFS client virtualization plan
+Content-Type: text/plain; charset=utf-8
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4E4E30E8.2080704@parallels.com>
+Date: Fri, 19 Aug 2011 12:12:00 -0400
+Cc: Pavel Emelianov <xemul@parallels.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <CDCCBEC6-18B3-4ED5-A562-1DC4611F1169@oracle.com>
+References: <4E4A4DB1.2090105@parallels.com> <67028AE2-C41D-4D9E-9AB9-81433AD196A2@oracle.com> <4E4E30E8.2080704@parallels.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-With the ext3/ext4 directory index implementation hashes are used to specify
-offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
-on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
-hashes and therefore the probability of hash collisions for larger directories
-is rather high. As recently reported on the NFS mailing list that theoretical
-problem also happens on real systems:
-http://comments.gmane.org/gmane.linux.nfs/40863
 
-The following series adds two new f_mode flags to tell ext4
-to use 32-bit or 64-bit hash values for llseek() calls.
-These flags can then used by network file systems, such as NFS, to
-request 32-bit or 64-bit offsets (hashes).
+On Aug 19, 2011, at 5:46 AM, Stanislav Kinsbursky wrote:
 
-Version 2:
-- use f_mode instead of O_* flags and also in a separate patch
-- introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
-- fix SEEK_END in ext4_dir_llseek()
-- set f_mode flags in NFS code as early as possible and introduce a new
-  NFSD_MAY_64BIT_COOKIE flag for that
+> 18.08.2011 19:54, Chuck Lever пишет:
+>> 
+>> On Aug 16, 2011, at 7:00 AM, Stanislav Kinsbursky wrote:
+>> 
+>>> Hello.
+>>> I'm going to virtualize NFS in mainline and here is my plan for NFS client part.
+>>> Any suggestions or criticism are welcome.
+>> 
+>> What are you going to do about statd?
+>> 
+> 
+> Do you mean user-space statd?
+> If so, what are the problems with it do you see?
 
---
-Bernd Schubert
-Fraunhofer ITWM
+You go to the trouble of setting up multiple transports for rpcbind upcalls.  This suggests you plan to have an rpcbind in each net namespace.
+
+On behalf of NFS, the kernel also performs idmapd, gssd, and statd (NSM) upcalls.  Do you intend to have separate instances of these daemons for each net namespace?
+
+> 
+>>> ==============================================================================
+>>> 
+>>> "NFS client" virtualization plan:
+>>> 
+>>> _RPC layer_:
+>>> 
+>>> 1) Make rpcbind clients (rpcb_local_clnt and rpcb_local4_clnt) to be
+>>> per net namespace.
+>>> 
+>>> _NFS layer_:
+>>> 
+>>> 1) Net namespace inheritance (current->nsproxy->net have to be used instead
+>>> of init_net).
+>>> Pointer to net namespace can be stored on nfs_client structure, which will
+>>> give easy access to proper net namespace during RPC transports creation.
+>>> 
+>>> 2) Make Lockd kthread able to handle requests from different net namespaces.
+>>> 
+>>> 3) Make NFS callbacks kthreads (nfs4_callback_svc and nfs4.1_callback_svc) able
+>>> to handle requests from different net namespaces.
+>>> 
+>>> 4) Make NFS info lists (nfs_volume_list and nfs_client_list) to be per
+>>> net namespace in addition to global ones.
+>>> 
+>>> 5) Make NFS proc variables and it's internal content variables to be per
+>>> net namespace in addition to global ones.
+>>> 
+>>> 6) Make NFS sysctl variables and it's internal content variables to be per
+>>> net namespace in addition to global ones.
+>>> 
+>>> 
+>>> 
+>>> --
+>>> Best regards,
+>>> Stanislav Kinsbursky
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+> 
+> 
+> -- 
+> Best regards,
+> Stanislav Kinsbursky
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
