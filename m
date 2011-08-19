@@ -1,94 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:41943 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751566Ab1HZUUN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Aug 2011 16:20:13 -0400
-Subject: Re: Expected response from server not supporting v4
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <6ABB41ED-C420-4458-821A-77A4F6F71858@oracle.com>
-Date: Fri, 26 Aug 2011 16:19:55 -0400
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-Message-Id: <287FCA47-39E4-4A54-97F5-82EDFA272C8A@oracle.com>
-References: <4E4A23E2.3020103@gluster.com> <4E4A67AE.8040305@RedHat.com> <4E4B6134.7000903@gluster.com> <4B79A89A-6511-4447-976A-924670409438@oracle.com> <4E4E0171.6010104@gluster.com> <77A4C7C5-9578-433E-B37A-B61180834963@oracle.com> <4E537105.8020106@gluster.com> <6ABB41ED-C420-4458-821A-77A4F6F71858@oracle.com>
-To: Shehjar Tikoo <shehjart@gluster.com>
+Received: from atreides.gradator.net ([212.85.155.42]:45297 "EHLO
+	atreides.gradator.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756244Ab1HSXKZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2011 19:10:25 -0400
+Date: Sat, 20 Aug 2011 01:03:44 +0200
+From: Sylvain Rochet <gradator@gradator.net>
+To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Cc: Sylvain Rochet <gradator@gradator.net>
+Message-ID: <20110819230344.GA24784@gradator.net>
+References: <20101018223540.GA20730@gradator.net>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="4Ckj6UjgE2iN1+kY"
+In-Reply-To: <20101018223540.GA20730@gradator.net>
+Subject: Re: PROBLEM: 2.6.35.7 to 3.0 Inotify events missing
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+--4Ckj6UjgE2iN1+kY
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-On Aug 26, 2011, at 11:43 AM, Chuck Lever wrote:
+Hi,
 
-> 
-> On Aug 23, 2011, at 5:21 AM, Shehjar Tikoo wrote:
-> 
->> Chuck Lever wrote:
->>> On Aug 19, 2011, at 2:23 AM, Shehjar Tikoo wrote:
->>>> Chuck Lever wrote:
->>>>> On Aug 17, 2011, at 2:35 AM, Shehjar Tikoo wrote:
->>>>>> Steve Dickson wrote:
->>>>>>> On 08/16/2011 04:01 AM, Shehjar Tikoo wrote:
->>>>>>>> Hi All
->>>>>>>> 
->>>>>>>> The following thread discusses the behaviour when the client does not support v4:
->>>>>>>> http://thread.gmane.org/gmane.linux.nfs/36928/
->>>>>>>> 
->>>>>>>> OTOH, when the server does not support v4, for eg. Gluster NFS server, where we support only v3, I believe v4 client will attempt to connect directly to port 2049 and receive connection failure errors on TCP. Does the current nfs client handle the situation where this results in a timeout for mount? We're hearing  a report of a timeout occurring on the RHEL6 client because the server does not have v4 support. Could someone please shed some light on how this behaviour is handled at present? Thanks
->>>>>>> Here is the current logic as to what will cause a fall back:
->>>>>>> switch (errno) {
->>>>>>> case EPROTONOSUPPORT:
->>>>>>>     /* A clear indication that the server or our
->>>>>>>      * client does not support NFS version 4. */
->>>>>>>     goto fall_back;
->>>>>>> case ENOENT:
->>>>>>>     /* Legacy Linux servers don't export an NFS
->>>>>>>      * version 4 pseudoroot. */
->>>>>>>     goto fall_back;
->>>>>>> case EPERM:
->>>>>>>     /* Linux servers prior to 2.6.25 may return
->>>>>>>      * EPERM when NFS version 4 is not supported. */
->>>>>>>     goto fall_back;
->>>>>>> default:
->>>>>>>     return result;
->>>>>>> }
->>>>>>> fall_back:
->>>>>>> return nfs_try_mount_v3v2(mi);
->>>>>>> So in the case of the Gluster server, you are dropping into the
->>>>>>> default case which is causing the time out.
->>>>>>> In the above patch set, Mi patches the mount code to fall back on EINVAL which is the current return value from the kernel, when v4 is not configured. I'm not totally against doing something like this, but this is very touchy  code since it could have negative effects on other legacy servers.
->>>>>>> So I'm thinking Mi's kernel patch that cause the kernel
->>>>>>> to return EPROTONOSUPPORT, which is the correct return
->>>>>>> value, is probably the better way to go... 
->>>>>> Thanks Steve. My understanding is that Mi's patch is to handle the case where the client does not support v4. Do you think the same patch will also handle a server that does not support v4 and hence prevents a client from connecting to 2049?
->>>>> It's a best practice for clients to connect to 2049 immediately, rather than querying the server's portmapper, to discover and potentially connect to a server's NFSv4 service.
->>>>> A full-frame network trace of a mount attempt that times out would tell us if there is something pathological going on.
->>>> Thanks Chuck. Heres the wireshark screenshot of the network trace. As you can see, the SYN from client(10.1.12.45) to the server machine(192.168.1.117) receives a RST. At the client, it manifests as;
->>>> 
->>>> [root@centos6-1 ~]# mount 192.168.1.117:/posix /mnt
->>>> mount.nfs: Connection timed out
->>>> 
->>>> Thats it. The client is Linux centos6-1 2.6.32-71.el6.x86_64
->>>> 
->>>> Does this point to a bug or is it expected? I was under the impression that the version 3 becomes the failback in case v4 is not available on the server.
->>> I assume this connection attempt comes from the kernel's NFS client.  The RST should cause the mount(2) system call to return immediately with an error code, but it's very likely this edge case was never tested.
->> 
->> Thanks Chuck.
->> 
->> Thats correct. The Linux NFS kernel client and server is Gluster NFS server.
->>> I suppose you could try a newer kernel (2.6.39 or 3.0) to see if it behaves any better.
->> 
->> Same behavior with 2.6.38. Should a bug be filed?
-> 
-> I was able to reproduce this with 3.1-rc2.  My expectation was that the SOFTCONN support we added a few releases back would handle this case, but it isn't.  Looking into it now.
+On Tue, Oct 19, 2010 at 12:35:40AM +0200, Sylvain Rochet wrote:
+>=20
+> ... upgraded to 2.6.33.5, then 2.6.33.7, finally to 2.6.35.7, and I=20
+> always end up with the same ending, it seems inotify can miss some VFS=20
+> events from time to time.
 
-It's the mount command that is retrying.  See nfs(5).  The reason it retries is that it assumes that the NFS server is still down after a server reboot.  You can disable the retry loop with "retry=0".
+I finally find out why.
 
-However, I think this is a server bug.  A RST means an NFS server is not running at all.  That's why our client retries.  The correct server response in this case is an RPC error reply that says the client has asked for an unsupported version, followed by a normal connection shutdown (FIN).  If the server replies that way, the client should understand what to do immediately.
+The NFS server does not always know the name of the modified file, if=20
+the modified inode was cleared from the VFS cache fsnotify does not know=20
+as well the filename then inotify child events on directories are=20
+silently tossed.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Easy way to reproduce:
+
+Add a few printk debug (here it only works if /data is the NFS export):
+
+--- begin//fs/nfsd/vfs.c        2011-07-22 04:17:23.000000000 +0200
++++ linux-3.0/fs/nfsd/vfs.c     2011-07-30 03:18:17.837560809 +0200
+@@ -975,6 +975,8 @@
+        inode =3D dentry->d_inode;
+        exp   =3D fhp->fh_export;
+=20
++       printk("nfsd write inode=3D%ld name=3D%s\n", inode->i_ino, dentry->=
+d_name.name);
++
+        /*
+         * Request sync writes if
+         *  -   the sync export option has been set, or
+
+diff -Nru begin//include/linux/fsnotify.h linux-3.0/include/linux/fsnotify.h
+--- begin//include/linux/fsnotify.h     2011-07-22 04:17:23.000000000 +0200
++++ linux-3.0/include/linux/fsnotify.h  2011-07-30 03:07:00.330239062 +0200
+@@ -216,8 +232,15 @@
+                mask |=3D FS_ISDIR;
+=20
+        if (!(file->f_mode & FMODE_NONOTIFY)) {
++               if( !strcmp(path->mnt->mnt_mountpoint->d_name.name, "data")=
+ )
++                       printk("fsnotify modify inode=3D%ld name=3D%s\n", i=
+node->i_ino, file->f_dentry->d_name.name);
+                fsnotify_parent(path, NULL, mask);
+                fsnotify(inode, mask, path, FSNOTIFY_EVENT_PATH, NULL, 0);
++       } else {
++               if( !strcmp(path->mnt->mnt_mountpoint->d_name.name, "data")=
+ )
++                       printk("fsnotify modify-nonotify inode=3D%ld name=
+=3D%s\n", inode->i_ino, file->f_dentry->d_name.name);
+        }
+ }
 
 
+On the NFS client, open a fd and send some data:
 
+# exec 1> test
+# ls -la
+#=20
 
+On the NFS server, check the kern log:
+
+Aug 20 00:57:44 inotifydebug kernel: nfsd write inode=3D13 name=3Dtest
+Aug 20 00:57:44 inotifydebug kernel: fsnotify modify inode=3D13 name=3Dtest
+
+Everything goes well.
+
+Now, clear the VFS cache on the NFS server:
+
+# echo 3 > /proc/sys/vm/drop_caches=20
+
+On the NFS client, send some data to the fd:
+
+# ls -la
+#=20
+
+On the NFS server, check the kern log:
+
+Aug 20 00:58:56 inotifydebug kernel: nfsd write inode=3D13 name=3D
+Aug 20 00:58:56 inotifydebug kernel: fsnotify modify inode=3D13 name=3D
+
+The filename is lost, fsnotify does not know the filename anymore,=20
+therefore inotify cannot send event about a modified file in a watched=20
+directory.
+
+End of the story.
+
+I guess this is almost impossible to fix this fsnotify bug, this is due=20
+by the fact that NFS use inode as file identifiers, so in some case this=20
+is impossible to know the modified filepath, and therefore impossible to=20
+match the file event to the directory watch.
+
+Kind regards,
+Sylvain
+
+--4Ckj6UjgE2iN1+kY
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
+
+iEYEARECAAYFAk5O69AACgkQDFub3qtEsS8zPgCfe5WwDzEh1Vxi3omGs8i6qx9J
+UB0AoIUPMsJ9f/vsK/kEwHLqcoVr978l
+=XDSa
+-----END PGP SIGNATURE-----
+
+--4Ckj6UjgE2iN1+kY--
