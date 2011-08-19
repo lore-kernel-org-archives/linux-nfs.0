@@ -1,78 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:55427 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751704Ab1HLVPa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Aug 2011 17:15:30 -0400
-Message-ID: <4E4597E7.7090504@panasas.com>
-Date: Fri, 12 Aug 2011 14:15:19 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Jim Rees <rees@umich.edu>
-CC: Benny Halevy <bhalevy@tonian.com>, <linux-nfs@vger.kernel.org>
-Subject: Re: two callback patches
-References: <20110812204809.GA4760@merit.edu>
-In-Reply-To: <20110812204809.GA4760@merit.edu>
-Content-Type: text/plain; charset="UTF-8"
+Received: from fieldses.org ([174.143.236.118]:46588 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755531Ab1HSTTt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Aug 2011 15:19:49 -0400
+Date: Fri, 19 Aug 2011 15:19:45 -0400
+To: paul.szabo@sydney.edu.au
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org
+Subject: Re: Please support NSF squashing multiple groups
+Message-ID: <20110819191945.GA1641@fieldses.org>
+References: <20110819110536.1f0133c6@notabene.brown>
+ <201108190210.p7J2AYCB028893@bari.maths.usyd.edu.au>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <201108190210.p7J2AYCB028893@bari.maths.usyd.edu.au>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 08/12/2011 01:48 PM, Jim Rees wrote:
-> When you get a chance, could you pull these into pnfs-all-latest?  You'll
-> find them on the head of my for-benny branch, and I assume upstream.
+On Fri, Aug 19, 2011 at 12:10:34PM +1000, paul.szabo@sydney.edu.au wrote:
+> > If you are using kerberos authentication then you should be able
+> > to trust that any remote user really is who they say they are ...
 > 
+> Does that "work" also against the "evil remote root" e.g. when the
+> remote machine is compromised?
 
-Right and some other bug fixes as well. I find that all of trond/linux-next
-branch are needed for proper run with v3.1-rc1 stuff. Best is if you can
-merge in trond/linux-next at the client branch side if the pnfs tree.
+It does what's possible.  If a user gives their credentials to the
+compromised client--well, what can you do, the attacker has their
+credentials at that point.  So if everyone in your department logs into
+the same client, then root on that client is going to be able to
+impersonate any of them.  Nothing you can do about that.
 
-Thanks
-Boaz
+On the other hand, if several people each have their own client and only
+log in to their own clients, and if one of the clients is compromised,
+then that client isn't going to be able to impersonate users that have
+never given it any credentials.
 
-> commit 3070296f2b3ddc094bda51286c3e9687d59d2a22
-> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date:   Tue Aug 2 14:50:40 2011 -0400
+> > If you are using NFSv4 and kerberos than there already exist
+> > interfaces to do what you want. See "man idmap.conf". ...
 > 
->     NFSv4.1: Return NFS4ERR_BADSESSION to callbacks during session resets
->     
->     If the client is in the process of resetting the session when it receives
->     a callback, then returning NFS4ERR_DELAY may cause a deadlock with the
->     DESTROY_SESSION call.
->     
->     Basically, if the client returns NFS4ERR_DELAY in response to the
->     CB_SEQUENCE call, then the server is entitled to believe that the
->     client is busy because it is already processing that call. In that
->     case, the server is perfectly entitled to respond with a
->     NFS4ERR_BACK_CHAN_BUSY to any DESTROY_SESSION call.
->     
->     Fix this by having the client reply with a NFS4ERR_BADSESSION in
->     response to the callback if it is resetting the session.
->     
->     Cc: stable@kernel.org [2.6.38+]
->     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> commit a8446678ba8b850bcac2286c6ed803c339049096
-> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date:   Tue Aug 2 14:50:39 2011 -0400
-> 
->     NFSv4.1: Fix the callback 'highest_used_slotid' behaviour
->     
->     Currently, there is no guarantee that we will call nfs4_cb_take_slot() even
->     though nfs4_callback_compound() will consistently call
->     nfs4_cb_free_slot() provided the cb_process_state has set the 'clp' field.
->     The result is that we can trigger the BUG_ON() upon the next call to
->     nfs4_cb_take_slot().
->     
->     This patch fixes the above problem by using the slot id that was taken in
->     the CB_SEQUENCE operation as a flag for whether or not we need to call
->     nfs4_cb_free_slot().
->     It also fixes an atomicity problem: we need to set tbl->highest_used_slotid
->     atomically with the check for NFS4_SESSION_DRAINING, otherwise we end up
->     racing with the various tests in nfs4_begin_drain_session().
->     
->     Cc: stable@kernel.org [2.6.38+]
->     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Sorry I do not use NFSv4 or kerberos, yet. Could you please point me
+> to references about idmap.conf, the ones I found suggest it only takes
+> [Mapping] settings for Nobody-User and Nobody-Group.
 
+Look for "static" in a recent version of the idmapd.conf man page.
+
+--b.
