@@ -1,121 +1,158 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53255 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752886Ab1HZW2m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Aug 2011 18:28:42 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>, stable@kernel.org
-Subject: [PATCH 03/15] nfsd4: stop using nfserr_resource for transitory errors
-Date: Fri, 26 Aug 2011 18:28:24 -0400
-Message-Id: <1314397716-18602-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1314397716-18602-1-git-send-email-bfields@redhat.com>
-References: <1314397716-18602-1-git-send-email-bfields@redhat.com>
+Received: from mail2.shareable.org ([80.68.89.115]:57532 "EHLO
+	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754647Ab1HSXh6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2011 19:37:58 -0400
+Date: Sat, 20 Aug 2011 00:37:56 +0100
+From: Jamie Lokier <jamie@shareable.org>
+To: Sylvain Rochet <gradator@gradator.net>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: PROBLEM: 2.6.35.7 to 3.0 Inotify events missing
+Message-ID: <20110819233756.GI11512@jl-vm1.vm.bytemark.co.uk>
+References: <20101018223540.GA20730@gradator.net>
+ <20110819230344.GA24784@gradator.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110819230344.GA24784@gradator.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The server is returning nfserr_resource for both permanent errors and
-for errors (like allocation failures) that might be resolved by retrying
-later.  Save nfserr_resource for the former and use delay/jukebox for
-the latter.
+Sylvain Rochet wrote:
+> Hi,
+> 
+> On Tue, Oct 19, 2010 at 12:35:40AM +0200, Sylvain Rochet wrote:
+> > 
+> > ... upgraded to 2.6.33.5, then 2.6.33.7, finally to 2.6.35.7, and I 
+> > always end up with the same ending, it seems inotify can miss some VFS 
+> > events from time to time.
+> 
+> I finally find out why.
+> 
+> The NFS server does not always know the name of the modified file, if 
+> the modified inode was cleared from the VFS cache fsnotify does not know 
+> as well the filename then inotify child events on directories are 
+> silently tossed.
+> 
+> Easy way to reproduce:
+> 
+> Add a few printk debug (here it only works if /data is the NFS export):
+> 
+> --- begin//fs/nfsd/vfs.c        2011-07-22 04:17:23.000000000 +0200
+> +++ linux-3.0/fs/nfsd/vfs.c     2011-07-30 03:18:17.837560809 +0200
+> @@ -975,6 +975,8 @@
+>         inode = dentry->d_inode;
+>         exp   = fhp->fh_export;
+>  
+> +       printk("nfsd write inode=%ld name=%s\n", inode->i_ino, dentry->d_name.name);
+> +
+>         /*
+>          * Request sync writes if
+>          *  -   the sync export option has been set, or
+> 
+> diff -Nru begin//include/linux/fsnotify.h linux-3.0/include/linux/fsnotify.h
+> --- begin//include/linux/fsnotify.h     2011-07-22 04:17:23.000000000 +0200
+> +++ linux-3.0/include/linux/fsnotify.h  2011-07-30 03:07:00.330239062 +0200
+> @@ -216,8 +232,15 @@
+>                 mask |= FS_ISDIR;
+>  
+>         if (!(file->f_mode & FMODE_NONOTIFY)) {
+> +               if( !strcmp(path->mnt->mnt_mountpoint->d_name.name, "data") )
+> +                       printk("fsnotify modify inode=%ld name=%s\n", inode->i_ino, file->f_dentry->d_name.name);
+>                 fsnotify_parent(path, NULL, mask);
+>                 fsnotify(inode, mask, path, FSNOTIFY_EVENT_PATH, NULL, 0);
+> +       } else {
+> +               if( !strcmp(path->mnt->mnt_mountpoint->d_name.name, "data") )
+> +                       printk("fsnotify modify-nonotify inode=%ld name=%s\n", inode->i_ino, file->f_dentry->d_name.name);
+>         }
+>  }
+> 
+> 
+> On the NFS client, open a fd and send some data:
+> 
+> # exec 1> test
+> # ls -la
+> # 
+> 
+> On the NFS server, check the kern log:
+> 
+> Aug 20 00:57:44 inotifydebug kernel: nfsd write inode=13 name=test
+> Aug 20 00:57:44 inotifydebug kernel: fsnotify modify inode=13 name=test
+> 
+> Everything goes well.
+> 
+> Now, clear the VFS cache on the NFS server:
+> 
+> # echo 3 > /proc/sys/vm/drop_caches 
+> 
+> On the NFS client, send some data to the fd:
+> 
+> # ls -la
+> # 
+> 
+> On the NFS server, check the kern log:
+> 
+> Aug 20 00:58:56 inotifydebug kernel: nfsd write inode=13 name=
+> Aug 20 00:58:56 inotifydebug kernel: fsnotify modify inode=13 name=
+> 
+> The filename is lost, fsnotify does not know the filename anymore, 
+> therefore inotify cannot send event about a modified file in a watched 
+> directory.
+> 
+> End of the story.
+> 
+> I guess this is almost impossible to fix this fsnotify bug, this is due 
+> by the fact that NFS use inode as file identifiers, so in some case this 
+> is impossible to know the modified filepath, and therefore impossible to 
+> match the file event to the directory watch.
 
-Cc: stable@kernel.org
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4proc.c    |    2 +-
- fs/nfsd/nfs4recover.c |    2 +-
- fs/nfsd/nfs4state.c   |   14 +++++++-------
- 3 files changed, 9 insertions(+), 9 deletions(-)
+Oh dear, that's a security hole, if something is using inotify/dnotify
+to watch and assumes that file contents (on the same machine,
+i.e. server in this case) do not change if there's no event received.
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 479ffb1..ffb4a54 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -938,7 +938,7 @@ _nfsd4_verify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	count = 4 + (verify->ve_attrlen >> 2);
- 	buf = kmalloc(count << 2, GFP_KERNEL);
- 	if (!buf)
--		return nfserr_resource;
-+		return nfserr_jukebox;
- 
- 	status = nfsd4_encode_fattr(&cstate->current_fh,
- 				    cstate->current_fh.fh_export,
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 29d77f6..02eb38e 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -88,7 +88,7 @@ nfs4_make_rec_clidname(char *dname, struct xdr_netobj *clname)
- 	struct xdr_netobj cksum;
- 	struct hash_desc desc;
- 	struct scatterlist sg;
--	__be32 status = nfserr_resource;
-+	__be32 status = nfserr_jukebox;
- 
- 	dprintk("NFSD: nfs4_make_rec_clidname for %.*s\n",
- 			clname->len, clname->data);
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index aa0a36e..08b8413 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1946,7 +1946,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	 * of 5 bullet points, labeled as CASE0 - CASE4 below.
- 	 */
- 	unconf = find_unconfirmed_client_by_str(dname, strhashval);
--	status = nfserr_resource;
-+	status = nfserr_jukebox;
- 	if (!conf) {
- 		/*
- 		 * RFC 3530 14.2.33 CASE 4:
-@@ -2483,7 +2483,7 @@ renew:
- 	if (open->op_stateowner == NULL) {
- 		sop = alloc_init_open_stateowner(strhashval, clp, open);
- 		if (sop == NULL)
--			return nfserr_resource;
-+			return nfserr_jukebox;
- 		open->op_stateowner = sop;
- 	}
- 	list_del_init(&sop->so_close_lru);
-@@ -2619,7 +2619,7 @@ nfs4_new_open(struct svc_rqst *rqstp, struct nfs4_stateid **stpp,
- 
- 	stp = nfs4_alloc_stateid();
- 	if (stp == NULL)
--		return nfserr_resource;
-+		return nfserr_jukebox;
- 
- 	status = nfs4_get_vfs_file(rqstp, fp, cur_fh, open);
- 	if (status) {
-@@ -2850,7 +2850,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 		status = nfserr_bad_stateid;
- 		if (open->op_claim_type == NFS4_OPEN_CLAIM_DELEGATE_CUR)
- 			goto out;
--		status = nfserr_resource;
-+		status = nfserr_jukebox;
- 		fp = alloc_init_file(ino);
- 		if (fp == NULL)
- 			goto out;
-@@ -4035,7 +4035,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		/* XXX: Do we need to check for duplicate stateowners on
- 		 * the same file, or should they just be allowed (and
- 		 * create new stateids)? */
--		status = nfserr_resource;
-+		status = nfserr_jukebox;
- 		lock_sop = alloc_init_lock_stateowner(strhashval,
- 				open_sop->so_client, open_stp, lock);
- 		if (lock_sop == NULL)
-@@ -4119,9 +4119,9 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	case (EDEADLK):
- 		status = nfserr_deadlock;
- 		break;
--	default:        
-+	default:
- 		dprintk("NFSD: nfsd4_lock: vfs_lock_file() failed! status %d\n",err);
--		status = nfserr_resource;
-+		status = nfserrno(err);
- 		break;
- 	}
- out:
--- 
-1.7.4.1
+It also breaks cache applications which make the same assumption.  Is
+a solution to open inotify watches on every file individually?  If so
+that seems quite severe.
 
+I do quite like the idea of using it to break past fanotify security
+restrictions though ;-)
+
+Can it also be bypassed with sys_open_by_handle_at?
+
+
+Possible solution:
+
+One way to look at this as like NFS having a secret hard link to the
+file, which does not show up in st_nlink.
+
+Hard links are already a bit tricky with fsnotify and directory
+watches.  You can monitor a directory, but a file in it can change
+contents through another path.
+
+However, you can track changes of hard-linked files accurately by
+either putting a watch directly on all files whose st_nlink >= 2,
+and/or making sure you have watches on enough distinct directories
+that they contain st_nlink entries for the same file between them,
+because at least one of those directories will get an event.  This is
+quite practical: You watch the files directly, until such time as you
+have found all its links (if you ever do), then you can remove the
+direct file watches.
+
+That gives me an idea to help with the NFS no-name watching:
+
+It looks like when a file is referenced by inode without a path, the
+problem is there's no path, so no directory inode to receive the
+event?
+
+Then this can be solved, in principle (if there's no better way), by
+watching a "virtual directory" that gets all events for when the
+access doesn't have a parent directory.  There needs to be some way to
+watch it, and some way to get the appropriate file from the event (as
+there is no real directory.  Or maybe there could be a virtual
+filesystem (like /proc, /sys etc.) containing a magic directory that
+receives these inode-only events, such that lookups in that directory
+yield the affected file.  Exactly as if the directory contains a hard
+link to every file, perhaps a text encoding of the handles passed
+through sys_open_by_handle_at.
+
+-- Jamie
