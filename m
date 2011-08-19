@@ -1,42 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([198.137.202.13]:40452 "EHLO
-	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754281Ab1H0ACH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Aug 2011 20:02:07 -0400
-Date: Fri, 26 Aug 2011 20:01:09 -0400 (EDT)
-Message-Id: <20110826.200109.1784685596300352827.davem@davemloft.net>
-To: ben@decadent.org.uk
-Cc: bfields@fieldses.org, torvalds@linux-foundation.org, neilb@suse.de,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-arch@vger.kernel.org
-Subject: Re: [PATCH] All Arch: remove linkage for sys_nfsservctl system call
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <20110826233258.GE24107@decadent.org.uk>
-References: <20110808180658.GC29924@decadent.org.uk>
-	<20110826220311.GA18140@fieldses.org>
-	<20110826233258.GE24107@decadent.org.uk>
-Content-Type: Text/Plain; charset=us-ascii
+Received: from fieldses.org ([174.143.236.118]:40432 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753144Ab1HSQEU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Aug 2011 12:04:20 -0400
+Date: Fri, 19 Aug 2011 12:04:16 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeremy Allison <jra@samba.org>
+Cc: Volker Lendecke <Volker.Lendecke@SerNet.DE>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, samba-technical@lists.samba.org,
+        Casey Bodley <cbodley@citi.umich.edu>
+Subject: Re: [PATCH] locks: breaking read lease should not block read open
+Message-ID: <20110819160416.GC30856@fieldses.org>
+References: <20110609231606.GB22215@fieldses.org>
+ <E1QUwaT-00HRZw-74@intern.SerNet.DE>
+ <20110610134859.GA27837@fieldses.org>
+ <20110721000758.GD27871@fieldses.org>
+ <20110721001542.GA15644@samba2>
+ <20110721163520.GC1114@fieldses.org>
+ <20110729022758.GC20317@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110729022758.GC20317@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Ben Hutchings <ben@decadent.org.uk>
-Date: Sat, 27 Aug 2011 00:32:58 +0100
+On Thu, Jul 28, 2011 at 10:27:58PM -0400, J. Bruce Fields wrote:
+> On Thu, Jul 21, 2011 at 12:35:20PM -0400, J. Bruce Fields wrote:
+> > On Wed, Jul 20, 2011 at 05:15:42PM -0700, Jeremy Allison wrote:
+> > > On Wed, Jul 20, 2011 at 08:07:58PM -0400, J. Bruce Fields wrote:
+> > > > So it's a question about the protocols samba implements:
+> > > > 
+> > > > 	- Do they allow an atomic downgrade from an exclusive to a
+> > > > 	  shared oplock?  (Or to a level 2 oplock, or whatever the right
+> > > > 	  term is).
+> > > 
+> > > Yes. Exclusive can go to level 2 - in fact that's the default
+> > > downgrade we do (unless an smb.conf option explicity denies it).
+> > > 
+> > > > 	- If so, can that happen as a response to a conflicting open?
+> > > > 	  (So, if you're holding an exclusive oplock, and a conflicting
+> > > > 	  open comes in, can the server-to-client break message say "now
+> > > > 	  you're getting a shared oplock instead"?  Or is the client
+> > > > 	  left without any oplock until it requests a new one?)
+> > > 
+> > > Yes, this can happen.
+> > > 
+> > > In SMB, we only break to no lease when a write request comes
+> > > in on a exclusive or level2 oplock (read-lease) handle.
+> > 
+> > Ok, thanks, that means we need a more complicated fix here--I'll work on
+> > that....
+> 
+> My attempt follows.  Lightly tested.
+> 
+> I'll probably try writing a test or two for it, then queueing up
+> something like this for 3.2, absent objections.
 
-> On Fri, Aug 26, 2011 at 06:03:11PM -0400, J. Bruce Fields wrote:
-> [...]
->> diff --git a/arch/sparc/kernel/systbls_64.S b/arch/sparc/kernel/systbls_64.S
->> index f566518..c9296ab 100644
->> --- a/arch/sparc/kernel/systbls_64.S
->> +++ b/arch/sparc/kernel/systbls_64.S
->> @@ -145,7 +145,7 @@ sys_call_table:
->>  	.word sys_fstatfs64, sys_llseek, sys_mlock, sys_munlock, sys_mlockall
->>  /*240*/	.word sys_munlockall, sys_sched_setparam, sys_sched_getparam, sys_sched_setscheduler, sys_sched_getscheduler
->>  	.word sys_sched_yield, sys_sched_get_priority_max, sys_sched_get_priority_min, sys_sched_rr_get_interval, sys_nanosleep
->> -/*250*/	.word sys_64_mremap, sys_sysctl, sys_getsid, sys_fdatasync, sys_nfsservctl
->> +/*250*/	.word sys_64_mremap, sys_sysctl, sys_getsid, sys_fdatasync, sys_nis_syscall
-> [...]
->           	                                                                  ^
-> This seems to be a typo for 'sys_ni_syscall'.
+Second take follows, this time after a little more testing
+(lease_tests.c from git://linux-nfs.org/~bfields/lock-tests.git), some
+bug fixes, and minor simplification of the logic.  This is what I intend
+to queue up for 3.2.
 
-It's intentional, look at the sparc sources.
+--b.
