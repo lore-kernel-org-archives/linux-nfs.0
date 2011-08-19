@@ -1,246 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pz0-f42.google.com ([209.85.210.42]:39636 "EHLO
-	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752659Ab1HPNor (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 09:44:47 -0400
-Received: by mail-pz0-f42.google.com with SMTP id 37so4658643pzk.1
-        for <linux-nfs@vger.kernel.org>; Tue, 16 Aug 2011 06:44:47 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: benny@tonian.com
-Cc: bharrosh@panasas.com, linux-nfs@vger.kernel.org,
-        Peng Tao <peng_tao@emc.com>
-Subject: [PATCH v2 3/3] pNFS: introduce pnfs private workqueue
-Date: Fri, 12 Aug 2011 18:00:13 -0700
-Message-Id: <1313197213-1651-4-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1313197213-1651-1-git-send-email-bergwolf@gmail.com>
-References: <1313197213-1651-1-git-send-email-bergwolf@gmail.com>
+Received: from b.mail.sonic.net ([64.142.19.5]:55282 "EHLO b.mail.sonic.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756622Ab1HTAPn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Aug 2011 20:15:43 -0400
+Received: from meno.noc.sonic.net (meno.noc.sonic.net [64.142.18.2])
+	by b.mail.sonic.net (8.13.8.Beta0-Sonic/8.13.7) with ESMTP id p7JN1qLH003737
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Fri, 19 Aug 2011 16:01:52 -0700
+Received: from meno.noc.sonic.net (localhost [127.0.0.1])
+	by meno.noc.sonic.net (8.14.3/8.14.3) with ESMTP id p7JN1q4e047974
+	for <linux-nfs@vger.kernel.org>; Fri, 19 Aug 2011 16:01:52 -0700 (PDT)
+	(envelope-from kgc@corp.sonic.net)
+Received: (from kgc@localhost)
+	by meno.noc.sonic.net (8.14.3/8.14.3/Submit) id p7JN1qN6047973
+	for linux-nfs@vger.kernel.org; Fri, 19 Aug 2011 16:01:52 -0700 (PDT)
+	(envelope-from kgc@corp.sonic.net)
+Date: Fri, 19 Aug 2011 16:01:52 -0700
+From: Kelsey Cummings <kgc@corp.sonic.net>
+To: linux-nfs@vger.kernel.org
+Subject: Odd locking behavior
+Message-ID: <20110819230151.GD44681@corp.sonic.net>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-For layoutdriver io done functions, default workqueue is not a good place
-as the code is executed in IO path. So add a pnfs private workqueue to handle
-them.
+I'm looking for some suggestions as to where to look next with an odd
+nfs file locking problem with linux clients (RHEL6) and a netapp server.
+FSC is enabled on these.
 
-Also change block and object layout code to make use of this private workqueue.
+The rather simple example code and output says it all.  It works as
+expected when a single process is run, when a second proccess is started
+it works for a while and then something breaks and we start seeing it
+take multiples of 30 seconds for the lock request to succeed.  The more
+proccess that are run, the more likely it is to occur as well as if a
+proccess is started on a second client.
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/blocklayout/blocklayout.c |   17 ++++++++---
- fs/nfs/objlayout/objio_osd.c     |    8 ++++++
- fs/nfs/objlayout/objlayout.c     |    4 +-
- fs/nfs/pnfs.c                    |   52 +++++++++++++++++++++++++++++++++++++-
- fs/nfs/pnfs.h                    |    4 +++
- 5 files changed, 77 insertions(+), 8 deletions(-)
+When the issue is exhibiting itself, the netaps' lock status display the
+granted and waiting locks as expected(?).
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 9561c8f..18dcab4 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -228,7 +228,7 @@ bl_end_par_io_read(void *data)
- 	struct nfs_read_data *rdata = data;
- 
- 	INIT_WORK(&rdata->task.u.tk_work, bl_read_cleanup);
--	schedule_work(&rdata->task.u.tk_work);
-+	pnfsiod_queue_work(&rdata->task.u.tk_work);
- }
- 
- /* We don't want normal .rpc_call_done callback used, so we replace it
-@@ -418,7 +418,7 @@ static void bl_end_par_io_write(void *data)
- 	wdata->task.tk_status = 0;
- 	wdata->verf.committed = NFS_FILE_SYNC;
- 	INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
--	schedule_work(&wdata->task.u.tk_work);
-+	pnfsiod_queue_work(&wdata->task.u.tk_work);
- }
- 
- /* FIXME STUB - mark intersection of layout and page as bad, so is not
-@@ -977,29 +977,35 @@ static int __init nfs4blocklayout_init(void)
- 	if (ret)
- 		goto out;
- 
-+	ret = pnfsiod_start();
-+	if (ret)
-+		goto out_remove;
-+
- 	init_waitqueue_head(&bl_wq);
- 
- 	mnt = rpc_get_mount();
- 	if (IS_ERR(mnt)) {
- 		ret = PTR_ERR(mnt);
--		goto out_remove;
-+		goto out_stop;
- 	}
- 
- 	ret = vfs_path_lookup(mnt->mnt_root,
- 			      mnt,
- 			      NFS_PIPE_DIRNAME, 0, &path);
- 	if (ret)
--		goto out_remove;
-+		goto out_stop;
- 
- 	bl_device_pipe = rpc_mkpipe(path.dentry, "blocklayout", NULL,
- 				    &bl_upcall_ops, 0);
- 	if (IS_ERR(bl_device_pipe)) {
- 		ret = PTR_ERR(bl_device_pipe);
--		goto out_remove;
-+		goto out_stop;
- 	}
- out:
- 	return ret;
- 
-+out_stop:
-+	pnfsiod_stop();
- out_remove:
- 	pnfs_unregister_layoutdriver(&blocklayout_type);
- 	return ret;
-@@ -1011,6 +1017,7 @@ static void __exit nfs4blocklayout_exit(void)
- 	       __func__);
- 
- 	pnfs_unregister_layoutdriver(&blocklayout_type);
-+	pnfsiod_stop();
- 	rpc_unlink(bl_device_pipe);
- }
- 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index d0cda12..f28013f 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -1042,7 +1042,14 @@ static int __init
- objlayout_init(void)
- {
- 	int ret = pnfs_register_layoutdriver(&objlayout_type);
-+	if (ret)
-+		goto out;
- 
-+	ret = pnfsiod_start();
-+	if (ret)
-+		pnfs_unregister_layoutdriver(&objlayout_type);
-+
-+out:
- 	if (ret)
- 		printk(KERN_INFO
- 			"%s: Registering OSD pNFS Layout Driver failed: error=%d\n",
-@@ -1057,6 +1064,7 @@ static void __exit
- objlayout_exit(void)
- {
- 	pnfs_unregister_layoutdriver(&objlayout_type);
-+	pnfsiod_stop();
- 	printk(KERN_INFO "%s: Unregistered OSD pNFS Layout Driver\n",
- 	       __func__);
- }
-diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-index 1d06f8e..f7c6c21 100644
---- a/fs/nfs/objlayout/objlayout.c
-+++ b/fs/nfs/objlayout/objlayout.c
-@@ -305,7 +305,7 @@ objlayout_read_done(struct objlayout_io_state *state, ssize_t status, bool sync)
- 		pnfs_ld_read_done(rdata);
- 	else {
- 		INIT_WORK(&rdata->task.u.tk_work, _rpc_read_complete);
--		schedule_work(&rdata->task.u.tk_work);
-+		pnfsiod_queue_work(&rdata->task.u.tk_work);
- 	}
- }
- 
-@@ -396,7 +396,7 @@ objlayout_write_done(struct objlayout_io_state *state, ssize_t status,
- 		pnfs_ld_write_done(wdata);
- 	else {
- 		INIT_WORK(&wdata->task.u.tk_work, _rpc_write_complete);
--		schedule_work(&wdata->task.u.tk_work);
-+		pnfsiod_queue_work(&wdata->task.u.tk_work);
- 	}
- }
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 84ecd41..329befe 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -38,7 +38,7 @@
- /* Locking:
-  *
-  * pnfs_spinlock:
-- *      protects pnfs_modules_tbl.
-+ *      protects pnfs_modules_tbl, pnfsiod_workqueue and pnfsiod_users.
-  */
- static DEFINE_SPINLOCK(pnfs_spinlock);
- 
-@@ -47,6 +47,9 @@ static DEFINE_SPINLOCK(pnfs_spinlock);
-  */
- static LIST_HEAD(pnfs_modules_tbl);
- 
-+static struct workqueue_struct *pnfsiod_workqueue;
-+static int pnfsiod_users = 0;
-+
- /* Return the registered pnfs layout driver module matching given id */
- static struct pnfs_layoutdriver_type *
- find_pnfs_driver_locked(u32 id)
-@@ -1466,3 +1469,50 @@ out:
- 	dprintk("<-- %s status %d\n", __func__, status);
- 	return status;
- }
-+
-+/*
-+ * start up the pnfsiod workqueue
-+ */
-+int pnfsiod_start(void)
-+{
-+	struct workqueue_struct *wq;
-+	dprintk("RPC:       creating workqueue pnfsiod\n");
-+	wq = alloc_workqueue("pnfsiod", WQ_MEM_RECLAIM, 0);
-+	if (wq == NULL)
-+		return -ENOMEM;
-+	spin_lock(&pnfs_spinlock);
-+	pnfsiod_users++;
-+	if (pnfsiod_workqueue == NULL) {
-+		pnfsiod_workqueue = wq;
-+	} else {
-+		destroy_workqueue(wq);
-+	}
-+	spin_unlock(&pnfs_spinlock);
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(pnfsiod_start);
-+
-+/*
-+ * Destroy the pnfsiod workqueue
-+ */
-+void pnfsiod_stop(void)
-+{
-+	struct workqueue_struct *wq = NULL;
-+
-+	spin_lock(&pnfs_spinlock);
-+	pnfsiod_users--;
-+	if (pnfsiod_users == 0) {
-+		wq = pnfsiod_workqueue;
-+		pnfsiod_workqueue = NULL;
-+	}
-+	spin_unlock(&pnfs_spinlock);
-+	if (wq)
-+		destroy_workqueue(wq);
-+}
-+EXPORT_SYMBOL_GPL(pnfsiod_stop);
-+
-+void pnfsiod_queue_work(struct work_struct* work)
-+{
-+	queue_work(pnfsiod_workqueue, work);
-+}
-+EXPORT_SYMBOL_GPL(pnfsiod_queue_work);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 506f67c..3e159f2 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -165,6 +165,10 @@ extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
- extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
- 
- /* pnfs.c */
-+int pnfsiod_start(void);
-+void pnfsiod_stop(void);
-+void pnfsiod_queue_work(struct work_struct* work);
-+
- void get_layout_hdr(struct pnfs_layout_hdr *lo);
- void put_lseg(struct pnfs_layout_segment *lseg);
- 
+..
+ 6681 0x00085ec8:0x71082409 0:0 1 GWAITING (0x64ea6728)
+ 6645 0x00085ec8:0x71082409 0:0 1 GRANTED (0x523bb598)
+
+
+# perl t.pl 
+locking lock-test.1 0.000672
+locking lock-test.1 0.000229
+locking lock-test.1 0.000244
+locking lock-test.1 1.000247   #second process started, expected 1s
+locking lock-test.1 0.999786
+locking lock-test.1 1.000069
+locking lock-test.1 31.000492  #third process is started, at worst we expect 2s for the lock
+locking lock-test.1 60.000472
+locking lock-test.1 90.001829
+locking lock-test.1 89.999942
+locking lock-test.1 90.001407
+locking lock-test.1 90.00091
+locking lock-test.1 90.000044
+locking lock-test.1 60.000306
+
+#!/usr/bin/perl
+
+use Fcntl qw(:flock);
+use Time::HiRes qw(tv_interval gettimeofday);
+
+$| = 1;
+
+my $file = "lock-test";
+
+open (T,">$file") || die "Couldn't open file.\n";
+print T $file;
+close(T);
+
+#now run lock tests
+while ( 1 )
+{
+        open (F, $file);
+        my $start = [gettimeofday];
+        print "locking $file ";
+        flock(F,LOCK_EX);
+        print $elapsed = tv_interval ( $start, [gettimeofday]) . "\n";
+        usleep(10);
+        close(F);
+}
+
+
 -- 
-1.7.1.262.g5ef3d
-
+Kelsey Cummings - kgc@corp.sonic.net      sonic.net, inc.
+System Architect                          2260 Apollo Way
+707.522.1000                              Santa Rosa, CA 95407
