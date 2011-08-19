@@ -1,54 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:43366 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751812Ab1HCCHv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Aug 2011 22:07:51 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: [PATCH v4 00/27] add block layout driver to pnfs client
-Date: Tue, 2 Aug 2011 19:07:48 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A778AE2@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <20110803014808.GA4692@merit.edu>
-References: <20110729191341.GC23061@merit.edu> <1311988172.16078.15.camel@lade.trondhjem.org> <20110730032621.GB25188@merit.edu> <CA+a=Yy5rmvrUHaDewLb_EbeaDYMKL_xv_E_MmzTvR_55SmYkqA@mail.gmail.com> <1312233006.23392.17.camel@lade.trondhjem.org> <1312238117.23392.19.camel@lade.trondhjem.org> <20110802022144.GA18157@merit.edu> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A778575@SACMVEXC2-PRD.hq.netapp.com> <20110802032320.GA18296@merit.edu> <1312288134.4616.21.camel@lade.trondhjem.org> <20110803014808.GA4692@merit.edu>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Jim Rees" <rees@umich.edu>
-Cc: "Peng Tao" <bergwolf@gmail.com>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        "Christoph Hellwig" <hch@infradead.org>, <linux-nfs@vger.kernel.org>,
-        "peter honeyman" <honey@citi.umich.edu>
+Received: from acsinet15.oracle.com ([141.146.126.227]:57156 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756171Ab1HSQJg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2011 12:09:36 -0400
+Subject: Re: Expected response from server not supporting v4
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4E4E0171.6010104@gluster.com>
+Date: Fri, 19 Aug 2011 12:09:24 -0400
+Cc: Steve Dickson <SteveD@redhat.com>, <linux-nfs@vger.kernel.org>
+Message-Id: <77A4C7C5-9578-433E-B37A-B61180834963@oracle.com>
+References: <4E4A23E2.3020103@gluster.com> <4E4A67AE.8040305@RedHat.com> <4E4B6134.7000903@gluster.com> <4B79A89A-6511-4447-976A-924670409438@oracle.com> <4E4E0171.6010104@gluster.com>
+To: Shehjar Tikoo <shehjart@gluster.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> -----Original Message-----
-> From: Jim Rees [mailto:rees@umich.edu]
-> Sent: Tuesday, August 02, 2011 9:48 PM
-> To: Myklebust, Trond
-> Cc: Peng Tao; Adamson, Andy; Christoph Hellwig; linux-
-> nfs@vger.kernel.org; peter honeyman
-> Subject: Re: [PATCH v4 00/27] add block layout driver to pnfs client
+
+On Aug 19, 2011, at 2:23 AM, Shehjar Tikoo wrote:
+
+> Chuck Lever wrote:
+>> On Aug 17, 2011, at 2:35 AM, Shehjar Tikoo wrote:
+>>> Steve Dickson wrote:
+>>>> On 08/16/2011 04:01 AM, Shehjar Tikoo wrote:
+>>>>> Hi All
+>>>>> 
+>>>>> The following thread discusses the behaviour when the client does not support v4:
+>>>>> http://thread.gmane.org/gmane.linux.nfs/36928/
+>>>>> 
+>>>>> OTOH, when the server does not support v4, for eg. Gluster NFS server, where we support only v3, I believe v4 client will attempt to connect directly to port 2049 and receive connection failure errors on TCP. Does the current nfs client handle the situation where this results in a timeout for mount? We're hearing  a report of a timeout occurring on the RHEL6 client because the server does not have v4 support. Could someone please shed some light on how this behaviour is handled at present? Thanks
+>>>> Here is the current logic as to what will cause a fall back:
+>>>>   switch (errno) {
+>>>>   case EPROTONOSUPPORT:
+>>>>       /* A clear indication that the server or our
+>>>>        * client does not support NFS version 4. */
+>>>>       goto fall_back;
+>>>>   case ENOENT:
+>>>>       /* Legacy Linux servers don't export an NFS
+>>>>        * version 4 pseudoroot. */
+>>>>       goto fall_back;
+>>>>   case EPERM:
+>>>>       /* Linux servers prior to 2.6.25 may return
+>>>>        * EPERM when NFS version 4 is not supported. */
+>>>>       goto fall_back;
+>>>>   default:
+>>>>       return result;
+>>>>   }
+>>>> fall_back:
+>>>>   return nfs_try_mount_v3v2(mi);
+>>>> So in the case of the Gluster server, you are dropping into the
+>>>> default case which is causing the time out.
+>>>> In the above patch set, Mi patches the mount code to fall back on EINVAL which is the current return value from the kernel, when v4 is not configured. I'm not totally against doing something like this, but this is very touchy  code since it could have negative effects on other legacy servers.
+>>>> So I'm thinking Mi's kernel patch that cause the kernel
+>>>> to return EPROTONOSUPPORT, which is the correct return
+>>>> value, is probably the better way to go... 
+>>> Thanks Steve. My understanding is that Mi's patch is to handle the case where the client does not support v4. Do you think the same patch will also handle a server that does not support v4 and hence prevents a client from connecting to 2049?
+>> It's a best practice for clients to connect to 2049 immediately, rather than querying the server's portmapper, to discover and potentially connect to a server's NFSv4 service.
+>> A full-frame network trace of a mount attempt that times out would tell us if there is something pathological going on.
 > 
-> Here's what the test is doing.  It does multiple parallel instances of
-> this,
-> each one doing thousands of the following in a loop.  Console output
-> with
-> mutex and lock debug is in
->
-http://www.citi.umich.edu/projects/nfsv4/pnfs/block/download/console.tx
-> t
+> Thanks Chuck. Heres the wireshark screenshot of the network trace. As you can see, the SYN from client(10.1.12.45) to the server machine(192.168.1.117) receives a RST. At the client, it manifests as;
+> 
+> [root@centos6-1 ~]# mount 192.168.1.117:/posix /mnt
+> mount.nfs: Connection timed out
+> 
+> Thats it. The client is Linux centos6-1 2.6.32-71.el6.x86_64
+> 
+> Does this point to a bug or is it expected? I was under the impression that the version 3 becomes the failback in case v4 is not available on the server.
 
-Hmm... That trace appears to show that the contention is between
-processes trying to grab the same inode->i_mutex (in ima_file_check()
-and do_unlinkat()). The question is why is the unlink process hanging
-for such a long time?
+I assume this connection attempt comes from the kernel's NFS client.  The RST should cause the mount(2) system call to return immediately with an error code, but it's very likely this edge case was never tested.
 
-I suspect another callback issue is causing the unlink() to stall:
-either our client failing to handle a server callback correctly, or
-possibly the server failing to respond correctly to our reply.
+I suppose you could try a newer kernel (2.6.39 or 3.0) to see if it behaves any better.
 
-Can you try to turn on the callback debugging ('echo 256 >
-/proc/sys/sunrpc/nfs_debug')? A wireshark trace of what is going on
-during the hang itself might also help.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Cheers
-  Trond
+
+
+
