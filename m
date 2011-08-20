@@ -1,178 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53248 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752704Ab1HZW2m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Aug 2011 18:28:42 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 06/15] nfsd4: cleanup lock/stateowner initialization
-Date: Fri, 26 Aug 2011 18:28:27 -0400
-Message-Id: <1314397716-18602-7-git-send-email-bfields@redhat.com>
-In-Reply-To: <1314397716-18602-1-git-send-email-bfields@redhat.com>
-References: <1314397716-18602-1-git-send-email-bfields@redhat.com>
+Received: from mail2.shareable.org ([80.68.89.115]:57224 "EHLO
+	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753952Ab1HTDVI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2011 23:21:08 -0400
+Date: Sat, 20 Aug 2011 04:21:06 +0100
+From: Jamie Lokier <jamie@shareable.org>
+To: Sylvain Rochet <gradator@gradator.net>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: PROBLEM: 2.6.35.7 to 3.0 Inotify events missing
+Message-ID: <20110820032106.GB14899@jl-vm1.vm.bytemark.co.uk>
+References: <20101018223540.GA20730@gradator.net>
+ <20110819230344.GA24784@gradator.net>
+ <20110819233756.GI11512@jl-vm1.vm.bytemark.co.uk>
+ <20110820004734.GA26693@gradator.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110820004734.GA26693@gradator.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Share some common code, stop doing silly things like initializing a list
-head immediately before adding it to a list, etc.
+Sylvain Rochet wrote:
+> Hi Jamie,
+> 
+> 
+> On Sat, Aug 20, 2011 at 12:37:56AM +0100, Jamie Lokier wrote:
+> > 
+> > Oh dear, that's a security hole, if something is using inotify/dnotify
+> > to watch and assumes that file contents (on the same machine,
+> > i.e. server in this case) do not change if there's no event received.
+> > 
+> > It also breaks cache applications which make the same assumption.
+> > 
+> > I do quite like the idea of using it to break past fanotify security
+> > restrictions though ;-)
+> 
+> It also probably means that fanotify misses some events when a filesystem 
+> is modified over NFS. If fanotify is used the way it is designed, i.e. 
+> with an antiviruse software, this may be an interesting way to skip the 
+> antiviruse check.
+> 
+> Here we go:
+> 
+> NFS server, run the fanotify example tool:
+> 
+> ~/fanotify-example# ./fanotify -m /data/
+> 
+> NFS client, open a fd then do some I/O:
+> 
+> # exec 1> test
+> # ls -la
+> # 
+> 
+> NFS server log:
+> 
+> /data/test: pid=1235 modify close(writable)
+> 
+> NFS server, cache clearing:
+> 
+> # echo 3 > /proc/sys/vm/drop_caches 
+> 
+> NFS client, more I/O:
+> 
+> # ls -la
+> 
+> NFS server log:
+> 
+> /data: pid=1234 modify close(writable)
+> 
+> We receive an event... which is obviously wrong. This is even worse than 
+> no event at all, we receive an event about the wrong inode, the parent 
+> inode of the modified file actually.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |  100 ++++++++++++++++++++++++++------------------------
- 1 files changed, 52 insertions(+), 48 deletions(-)
+That sounds like a proper bug, maybe it can be fixed at least?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d32a1a6..7fb6ddc 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2217,51 +2217,61 @@ nfs4_free_stateowner(struct kref *kref)
- 	kmem_cache_free(stateowner_slab, sop);
- }
- 
--static inline struct nfs4_stateowner *
--alloc_stateowner(struct xdr_netobj *owner)
-+static void init_nfs4_replay(struct nfs4_replay *rp)
- {
--	struct nfs4_stateowner *sop;
--
--	if ((sop = kmem_cache_alloc(stateowner_slab, GFP_KERNEL))) {
--		if ((sop->so_owner.data = kmalloc(owner->len, GFP_KERNEL))) {
--			memcpy(sop->so_owner.data, owner->data, owner->len);
--			sop->so_owner.len = owner->len;
--			kref_init(&sop->so_ref);
--			return sop;
--		} 
--		kmem_cache_free(stateowner_slab, sop);
--	}
--	return NULL;
-+	rp->rp_status = nfserr_serverfault;
-+	rp->rp_buflen = 0;
-+	rp->rp_buf = rp->rp_ibuf;
- }
- 
--static struct nfs4_stateowner *
--alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp, struct nfsd4_open *open) {
-+static inline struct nfs4_stateowner *alloc_stateowner(struct xdr_netobj *owner, struct nfs4_client *clp)
-+{
- 	struct nfs4_stateowner *sop;
--	struct nfs4_replay *rp;
--	unsigned int idhashval;
- 
--	if (!(sop = alloc_stateowner(&open->op_owner)))
-+	sop = kmem_cache_alloc(stateowner_slab, GFP_KERNEL);
-+	if (!sop)
-+		return NULL;
-+
-+	sop->so_owner.data = kmemdup(owner->data, owner->len, GFP_KERNEL);
-+	if (!sop->so_owner.data) {
-+		kmem_cache_free(stateowner_slab, sop);
- 		return NULL;
--	idhashval = open_ownerid_hashval(current_ownerid);
--	INIT_LIST_HEAD(&sop->so_idhash);
--	INIT_LIST_HEAD(&sop->so_strhash);
-+	}
-+	sop->so_owner.len = owner->len;
-+
-+	kref_init(&sop->so_ref);
- 	INIT_LIST_HEAD(&sop->so_perclient);
- 	INIT_LIST_HEAD(&sop->so_stateids);
--	INIT_LIST_HEAD(&sop->so_perstateid);  /* not used */
-+	INIT_LIST_HEAD(&sop->so_perstateid);
- 	INIT_LIST_HEAD(&sop->so_close_lru);
-+	sop->so_id = current_ownerid++;
- 	sop->so_time = 0;
-+	sop->so_client = clp;
-+	init_nfs4_replay(&sop->so_replay);
-+	return sop;
-+}
-+
-+static void hash_openowner(struct nfs4_stateowner *sop, struct nfs4_client *clp, unsigned int strhashval)
-+{
-+	unsigned int idhashval;
-+
-+	idhashval = open_ownerid_hashval(sop->so_id);
- 	list_add(&sop->so_idhash, &open_ownerid_hashtbl[idhashval]);
- 	list_add(&sop->so_strhash, &open_ownerstr_hashtbl[strhashval]);
- 	list_add(&sop->so_perclient, &clp->cl_openowners);
-+}
-+
-+static struct nfs4_stateowner *
-+alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp, struct nfsd4_open *open) {
-+	struct nfs4_stateowner *sop;
-+
-+	sop = alloc_stateowner(&open->op_owner, clp);
-+	if (!sop)
-+		return NULL;
- 	sop->so_is_open_owner = 1;
--	sop->so_id = current_ownerid++;
--	sop->so_client = clp;
- 	sop->so_seqid = open->op_seqid;
- 	sop->so_confirmed = 0;
--	rp = &sop->so_replay;
--	rp->rp_status = nfserr_serverfault;
--	rp->rp_buflen = 0;
--	rp->rp_buf = rp->rp_ibuf;
-+	hash_openowner(sop, clp, strhashval);
- 	return sop;
- }
- 
-@@ -3904,6 +3914,16 @@ find_lockstateowner_str(struct inode *inode, clientid_t *clid,
- 	return NULL;
- }
- 
-+static void hash_lockowner(struct nfs4_stateowner *sop, unsigned int strhashval, struct nfs4_client *clp, struct nfs4_stateid *open_stp)
-+{
-+	unsigned int idhashval;
-+
-+	idhashval = lockownerid_hashval(sop->so_id);
-+	list_add(&sop->so_idhash, &lock_ownerid_hashtbl[idhashval]);
-+	list_add(&sop->so_strhash, &lock_ownerstr_hashtbl[strhashval]);
-+	list_add(&sop->so_perstateid, &open_stp->st_lockowners);
-+}
-+
- /*
-  * Alloc a lock owner structure.
-  * Called in nfsd4_lock - therefore, OPEN and OPEN_CONFIRM (if needed) has 
-@@ -3915,33 +3935,17 @@ find_lockstateowner_str(struct inode *inode, clientid_t *clid,
- static struct nfs4_stateowner *
- alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, struct nfs4_stateid *open_stp, struct nfsd4_lock *lock) {
- 	struct nfs4_stateowner *sop;
--	struct nfs4_replay *rp;
--	unsigned int idhashval;
- 
--	if (!(sop = alloc_stateowner(&lock->lk_new_owner)))
-+	sop = alloc_stateowner(&lock->lk_new_owner, clp);
-+	if (!sop)
- 		return NULL;
--	idhashval = lockownerid_hashval(current_ownerid);
--	INIT_LIST_HEAD(&sop->so_idhash);
--	INIT_LIST_HEAD(&sop->so_strhash);
--	INIT_LIST_HEAD(&sop->so_perclient);
- 	INIT_LIST_HEAD(&sop->so_stateids);
--	INIT_LIST_HEAD(&sop->so_perstateid);
--	INIT_LIST_HEAD(&sop->so_close_lru); /* not used */
--	sop->so_time = 0;
--	list_add(&sop->so_idhash, &lock_ownerid_hashtbl[idhashval]);
--	list_add(&sop->so_strhash, &lock_ownerstr_hashtbl[strhashval]);
--	list_add(&sop->so_perstateid, &open_stp->st_lockowners);
- 	sop->so_is_open_owner = 0;
--	sop->so_id = current_ownerid++;
--	sop->so_client = clp;
- 	/* It is the openowner seqid that will be incremented in encode in the
- 	 * case of new lockowners; so increment the lock seqid manually: */
- 	sop->so_seqid = lock->lk_new_lock_seqid + 1;
- 	sop->so_confirmed = 1;
--	rp = &sop->so_replay;
--	rp->rp_status = nfserr_serverfault;
--	rp->rp_buflen = 0;
--	rp->rp_buf = rp->rp_ibuf;
-+	hash_lockowner(sop, strhashval, clp, open_stp);
- 	return sop;
- }
- 
--- 
-1.7.4.1
+> > Is a solution to open inotify watches on every file individually?  If 
+> > so that seems quite severe.
+> 
+> This is what I am going to do, at least temporarily, I only need to 
+> watch about a million file (and slowly counting).
+> 
+> The startup time to watch an entire filesystem using inotify already 
+> require a full filesystem walk, watching all files and directories 
+> instead of directories only will not change much because most of the 
+> time is spent waiting I/O operations. This may however require a lot 
+> more memory both on kernel side and userland side.
 
+Watching an entire filesystem entails reading all the directories, but
+you don't have to fetch the inodes of files.  But still, it's very
+slow (takes about 15 minutes on my /home from cold cache, just to read
+the million or so directories).
+
+There was some work on propagating events upwards so that efficient
+recursive watches could be established, in the context of fanotify but
+it would make sense to be available to all fsnotify users.  I wonder
+how that went.
+
+> > Then this can be solved, in principle (if there's no better way), by
+> > watching a "virtual directory" that gets all events for when the
+> > access doesn't have a parent directory.  There needs to be some way to
+> > watch it, and some way to get the appropriate file from the event (as
+> > there is no real directory.  Or maybe there could be a virtual
+> > filesystem (like /proc, /sys etc.) containing a magic directory that
+> > receives these inode-only events, such that lookups in that directory
+> > yield the affected file.  Exactly as if the directory contains a hard
+> > link to every file, perhaps a text encoding of the handles passed
+> > through sys_open_by_handle_at.
+> 
+> By doing that, we'll only get the inode nb as we cannot fetch the filename.
+
+Yes... That's ok if it's one we are tracking inode->multiple-paths in
+userspace anyway (for hard links).  But it's quite demanding if we
+hoped to avoid fetching and storing that in userspace for
+st_nlink == 1 files.
+
+In that case it is still better to get a notification "something
+unknown on this FS has changed", rather than no notification.
+Userspace would react by flushing all of its cached knowledge of
+things under directory watches that don't have direct watches.  But at
+least that's reliable and correct behaviour, and if it happens often,
+userspace heuristics can react by watching priority inodes more directly.
+
+If that's the common case, then these nameless, pathless events could
+just trigger a simple event with catch-all IN_NO_PATH flag set,
+referring to the filesytem but no more detail than that.  inotify
+would accept that flag when adding a watch, ignore the inode given but
+remember the filesystem, and send all events with no path to the
+watch(es) created with that flag on that filesystem.  It's a flag
+because the event type is still useful.
+
+All the best,
+-- Jamie
