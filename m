@@ -1,78 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:20305 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752054Ab1HSJqa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Aug 2011 05:46:30 -0400
-Message-ID: <4E4E30E8.2080704@parallels.com>
-Date: Fri, 19 Aug 2011 13:46:16 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Pavel Emelianov <xemul@parallels.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFS client virtualization plan
-References: <4E4A4DB1.2090105@parallels.com> <67028AE2-C41D-4D9E-9AB9-81433AD196A2@oracle.com>
-In-Reply-To: <67028AE2-C41D-4D9E-9AB9-81433AD196A2@oracle.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from zeniv.linux.org.uk ([195.92.253.2]:35828 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752613Ab1HTB3p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2011 21:29:45 -0400
+Date: Sat, 20 Aug 2011 02:29:43 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Jamie Lokier <jamie@shareable.org>
+Cc: Sylvain Rochet <gradator@gradator.net>, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: PROBLEM: 2.6.35.7 to 3.0 Inotify events missing
+Message-ID: <20110820012943.GD2203@ZenIV.linux.org.uk>
+References: <20101018223540.GA20730@gradator.net>
+ <20110819230344.GA24784@gradator.net>
+ <20110819233756.GI11512@jl-vm1.vm.bytemark.co.uk>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110819233756.GI11512@jl-vm1.vm.bytemark.co.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-18.08.2011 19:54, Chuck Lever пишет:
->
-> On Aug 16, 2011, at 7:00 AM, Stanislav Kinsbursky wrote:
->
->> Hello.
->> I'm going to virtualize NFS in mainline and here is my plan for NFS client part.
->> Any suggestions or criticism are welcome.
->
-> What are you going to do about statd?
->
+On Sat, Aug 20, 2011 at 12:37:56AM +0100, Jamie Lokier wrote:
 
-Do you mean user-space statd?
-If so, what are the problems with it do you see?
+> Possible solution:
 
->> ==============================================================================
->>
->> "NFS client" virtualization plan:
->>
->> _RPC layer_:
->>
->> 1) Make rpcbind clients (rpcb_local_clnt and rpcb_local4_clnt) to be
->> per net namespace.
->>
->> _NFS layer_:
->>
->> 1) Net namespace inheritance (current->nsproxy->net have to be used instead
->> of init_net).
->> Pointer to net namespace can be stored on nfs_client structure, which will
->> give easy access to proper net namespace during RPC transports creation.
->>
->> 2) Make Lockd kthread able to handle requests from different net namespaces.
->>
->> 3) Make NFS callbacks kthreads (nfs4_callback_svc and nfs4.1_callback_svc) able
->> to handle requests from different net namespaces.
->>
->> 4) Make NFS info lists (nfs_volume_list and nfs_client_list) to be per
->> net namespace in addition to global ones.
->>
->> 5) Make NFS proc variables and it's internal content variables to be per
->> net namespace in addition to global ones.
->>
->> 6) Make NFS sysctl variables and it's internal content variables to be per
->> net namespace in addition to global ones.
->>
->>
->>
->> --
->> Best regards,
->> Stanislav Kinsbursky
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+> Then this can be solved, in principle (if there's no better way), by
+> watching a "virtual directory" that gets all events for when the
+> access doesn't have a parent directory.  There needs to be some way to
+> watch it, and some way to get the appropriate file from the event (as
+> there is no real directory.  Or maybe there could be a virtual
+> filesystem (like /proc, /sys etc.) containing a magic directory that
+> receives these inode-only events, such that lookups in that directory
+> yield the affected file.  Exactly as if the directory contains a hard
+> link to every file, perhaps a text encoding of the handles passed
+> through sys_open_by_handle_at.
 
-
--- 
-Best regards,
-Stanislav Kinsbursky
+There is a better way - stop using idiotify...  It has always been a
+mistake, driven down our throats by filemangler and desktop crowd.
+Broken in many, _many_ respects...  Deprecate that crap, remove it
+completely in a couple of revisions, let these clowns cope.  Yeah,
+yeah, I know...  Not going to happen ;-/  One can dream, though...
