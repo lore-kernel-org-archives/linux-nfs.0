@@ -1,36 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59862 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:59985 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755637Ab1HSTdB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Aug 2011 15:33:01 -0400
-Date: Fri, 19 Aug 2011 15:32:59 -0400
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Pavel Emelianov <xemul@parallels.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFS client virtualization plan
-Message-ID: <20110819193259.GC1641@fieldses.org>
-References: <4E4A4DB1.2090105@parallels.com>
- <67028AE2-C41D-4D9E-9AB9-81433AD196A2@oracle.com>
- <4E4E30E8.2080704@parallels.com>
- <CDCCBEC6-18B3-4ED5-A562-1DC4611F1169@oracle.com>
- <4E4E9B8C.8050000@parallels.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E4E9B8C.8050000@parallels.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1754369Ab1HTSYB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 20 Aug 2011 14:24:01 -0400
+Subject: Re: Odd locking behavior
+References: <20110819230151.GD44681@corp.sonic.net> <1313859542.7693.5.camel@lade.trondhjem.org>
+From: "Haynes, Tom" <Tom.Haynes@netapp.com>
+Content-Type: text/plain;
+	charset="us-ascii"
+In-Reply-To: <1313859542.7693.5.camel@lade.trondhjem.org>
+Message-ID: <470C3D1B-DBD6-4E7B-AF0D-D0663CCA0A58@netapp.com>
+Date: Sat, 20 Aug 2011 13:23:49 -0500
+To: "Trond Myklebust" <Trond.Myklebust@netapp.com>
+Cc: "Kelsey Cummings" <kgc@corp.sonic.net>, <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 19, 2011 at 09:21:16PM +0400, Stanislav Kinsbursky wrote:
-> Actually, yes, I do. Thanks for notice.
-> Kernel NSM monitor routines will be virtualized.
-> For idmapd and gssd rpc_pipefs virtualization is required.
-> I wasn't going to virtualize rpc_pipefs for now - it was planned to be a part of NFS server virtualization, which is planned to be done after NFS client virtualization.
 
-You'll need rpc_pipefs for gssd and the old idmapd.
 
-Also the new idmapper uses request_key.  I think there's a little
-discussion about this in the archives.
+On Aug 20, 2011, at 11:59 AM, "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
 
---b.
+> On Fri, 2011-08-19 at 16:01 -0700, Kelsey Cummings wrote: 
+>> I'm looking for some suggestions as to where to look next with an odd
+>> nfs file locking problem with linux clients (RHEL6) and a netapp server.
+>> FSC is enabled on these.
+>> 
+>> The rather simple example code and output says it all.  It works as
+>> expected when a single process is run, when a second proccess is started
+>> it works for a while and then something breaks and we start seeing it
+>> take multiples of 30 seconds for the lock request to succeed.  The more
+>> proccess that are run, the more likely it is to occur as well as if a
+>> proccess is started on a second client.
+>> 
+>> When the issue is exhibiting itself, the netaps' lock status display the
+>> granted and waiting locks as expected(?).
+> 
+
+Also, what version of ONTAP is the filer running?
+
+
+> Does the netapp filer have multiple NICs? There is a known bug with that
+> in which the filer sends GRANTED calls from the wrong IP address: see
+> the description at
+> http://now.netapp.com/NOW/cgi-bin/bol?Type=Detail&Display=237430
+> 
+> Cheers
+>  Trond
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
