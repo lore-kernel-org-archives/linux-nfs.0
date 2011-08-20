@@ -1,64 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:33176 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751890Ab1HPL4I (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 07:56:08 -0400
-Message-ID: <4E4A5AD5.3040507@itwm.fraunhofer.de>
-Date: Tue, 16 Aug 2011 13:56:05 +0200
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-CC: hch@infradead.org, yong.fan@whamcloud.com, linux-fsdevel@vger.kernel.org,
-        tytso@mit.edu, adilger@whamcloud.com
-Subject: Re: [PATCH 0/2] 32/64 bit llseek hashes
-References: <20110816112536.1808464.7174.stgit@fsdevel3>
-In-Reply-To: <20110816112536.1808464.7174.stgit@fsdevel3>
+Received: from a.mail.sonic.net ([64.142.16.245]:57992 "EHLO a.mail.sonic.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751478Ab1HUBOh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 20 Aug 2011 21:14:37 -0400
+Message-ID: <4E504505.6070807@corp.sonic.net>
+Date: Sat, 20 Aug 2011 16:36:37 -0700
+From: Kelsey Cummings <kgc@corp.sonic.net>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Odd locking behavior
+References: <20110819230151.GD44681@corp.sonic.net> <1313859542.7693.5.camel@lade.trondhjem.org>
+In-Reply-To: <1313859542.7693.5.camel@lade.trondhjem.org>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I'm really sorry for this patch spam :( I just accidentally hit the 
-enter key too early here and so patches go into this series, which
-weren't supposed to get in here :(
+On 8/20/2011 9:59 AM, Trond Myklebust wrote:
+> Does the netapp filer have multiple NICs? There is a known bug with that
+> in which the filer sends GRANTED calls from the wrong IP address: see
+> the description at
+> http://now.netapp.com/NOW/cgi-bin/bol?Type=Detail&Display=237430
 
-On 08/16/2011 01:25 PM, Bernd Schubert wrote:
-> With the ext3/ext4 directory index implementation hashes are used to specify
-> offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
-> on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit
-> hashes and therefore the probability of hash collisions for larger directories
-> is rather high. As recently reported on the NFS mailing list that theoretical
-> problem also happens on real systems:
-> http://comments.gmane.org/gmane.linux.nfs/40863
->
-> The following series adds two new f_mode flags to tell ext4
-> to use 32-bit or 64-bit hash values for llseek() calls.
-> These flags can then used by network file systems, such as NFS, to
-> request 32-bit or 64-bit offsets (hashes).
->
-> Version 3:
-> - remove patch "RFC: Remove check for a 32-bit cookie in nfsd4_readdir()",
->    I think Bruce wanted to take it seperately as bug fix. It should be applied
->    before applying the remaining NFS patches, as without it NFSv4 will always
->    fail with the new 64-bit ext4 seek hashes.
-> - split "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)" into two
->    two separate patches as suggested by Bruce, one patch to rename
->    'access' to 'may_flags'. And the remainder of the original patch to set
->    FMODE_32BITHASH/FMODE_64BITHASH flags and to introduce the new
->    NFSD_MAY_64BIT_COOKIE flag
->
-> Version 2:
-> - use f_mode instead of O_* flags and also in a separate patch
-> - introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
-> - fix SEEK_END in ext4_dir_llseek()
-> - set f_mode flags in NFS code as early as possible and introduce a new
->    NFSD_MAY_64BIT_COOKIE flag for that
->
-> --
-> Bernd Schubert
-> Fraunhofer ITWM
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Yes, it does.  I ran out of time but was starting to suspect that might 
+be a problem.  It looks like maybe some older 2.4 clients are okay with 
+this?  Don't ask.... :)
 
+The Ontap version is suitably ancient due to heroic uptimes and (until 
+now) no apparent bugs.  I doubt it has been upgraded (or crashed) since 
+it was deployed when the 3020 was the hot new thing.  Looks like it's 
+time to catch up.  ;)
+
+Thanks for the tip!
+
+-- 
+Kelsey Cummings - kgc@corp.sonic.net      sonic.net, inc.
+System Architect                          2260 Apollo Way
+707.522.1000                              Santa Rosa, CA 95407
