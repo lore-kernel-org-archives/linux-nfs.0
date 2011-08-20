@@ -1,93 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:42157 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752626Ab1HQJ5f (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Aug 2011 05:57:35 -0400
-Subject: [PATCH 4 3/4] nfsd_open(): rename 'int access' to 'int may_flags' in
-	nfsd_open()
-To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
-        adilger@whamcloud.com
-Date: Wed, 17 Aug 2011 11:57:33 +0200
-Message-ID: <20110817095733.1879649.94549.stgit@fsdevel3>
-In-Reply-To: <20110817095717.1879649.41075.stgit@fsdevel3>
-References: <20110817095717.1879649.41075.stgit@fsdevel3>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail2.shareable.org ([80.68.89.115]:32845 "EHLO
+	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754575Ab1HTDDh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2011 23:03:37 -0400
+Date: Sat, 20 Aug 2011 04:03:35 +0100
+From: Jamie Lokier <jamie@shareable.org>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: Sylvain Rochet <gradator@gradator.net>, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: PROBLEM: 2.6.35.7 to 3.0 Inotify events missing
+Message-ID: <20110820030335.GA14899@jl-vm1.vm.bytemark.co.uk>
+References: <20101018223540.GA20730@gradator.net>
+ <20110819230344.GA24784@gradator.net>
+ <20110819233756.GI11512@jl-vm1.vm.bytemark.co.uk>
+ <20110820012943.GD2203@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110820012943.GD2203@ZenIV.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Just rename this variable, as the next patch will add a flag and
-'access' as variable name would not be correct any more.
+Al Viro wrote:
+> On Sat, Aug 20, 2011 at 12:37:56AM +0100, Jamie Lokier wrote:
+> 
+> > Possible solution:
+> 
+> > Then this can be solved, in principle (if there's no better way), by
+> > watching a "virtual directory" that gets all events for when the
+> > access doesn't have a parent directory.  There needs to be some way to
+> > watch it, and some way to get the appropriate file from the event (as
+> > there is no real directory.  Or maybe there could be a virtual
+> > filesystem (like /proc, /sys etc.) containing a magic directory that
+> > receives these inode-only events, such that lookups in that directory
+> > yield the affected file.  Exactly as if the directory contains a hard
+> > link to every file, perhaps a text encoding of the handles passed
+> > through sys_open_by_handle_at.
+> 
+> There is a better way - stop using idiotify...  It has always been a
+> mistake, driven down our throats by filemangler and desktop crowd.
 
+Well you still have your sense of humour...
 
-Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
----
- 0 files changed, 0 insertions(+), 0 deletions(-)
+I've never understood why you think it's about the file manager /
+desktop, or why you so strongly dislike the feature.  It originated
+there historically, but that is not it's primary use.
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index fd0acca..ca692b4 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -708,12 +708,13 @@ static int nfsd_open_break_lease(struct inode *inode, int access)
- 
- /*
-  * Open an existing file or directory.
-- * The access argument indicates the type of open (read/write/lock)
-+ * The may_flags argument indicates the type of open (read/write/lock)
-+ * and additional flags.
-  * N.B. After this call fhp needs an fh_put
-  */
- __be32
- nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
--			int access, struct file **filp)
-+			int may_flags, struct file **filp)
- {
- 	struct dentry	*dentry;
- 	struct inode	*inode;
-@@ -728,7 +729,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	 * and (hopefully) checked permission - so allow OWNER_OVERRIDE
- 	 * in case a chmod has now revoked permission.
- 	 */
--	err = fh_verify(rqstp, fhp, type, access | NFSD_MAY_OWNER_OVERRIDE);
-+	err = fh_verify(rqstp, fhp, type, may_flags | NFSD_MAY_OWNER_OVERRIDE);
- 	if (err)
- 		goto out;
- 
-@@ -739,7 +740,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	 * or any access when mandatory locking enabled
- 	 */
- 	err = nfserr_perm;
--	if (IS_APPEND(inode) && (access & NFSD_MAY_WRITE))
-+	if (IS_APPEND(inode) && (may_flags & NFSD_MAY_WRITE))
- 		goto out;
- 	/*
- 	 * We must ignore files (but only files) which might have mandatory
-@@ -752,12 +753,12 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	if (!inode->i_fop)
- 		goto out;
- 
--	host_err = nfsd_open_break_lease(inode, access);
-+	host_err = nfsd_open_break_lease(inode, may_flags);
- 	if (host_err) /* NOMEM or WOULDBLOCK */
- 		goto out_nfserr;
- 
--	if (access & NFSD_MAY_WRITE) {
--		if (access & NFSD_MAY_READ)
-+	if (may_flags & NFSD_MAY_WRITE) {
-+		if (may_flags & NFSD_MAY_READ)
- 			flags = O_RDWR|O_LARGEFILE;
- 		else
- 			flags = O_WRONLY|O_LARGEFILE;
-@@ -767,7 +768,8 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	if (IS_ERR(*filp))
- 		host_err = PTR_ERR(*filp);
- 	else
--		host_err = ima_file_check(*filp, access);
-+		host_err = ima_file_check(*filp, may_flags);
-+
- out_nfserr:
- 	err = nfserrno(host_err);
- out:
+The implementation, sure, but you seem to dislike the very *principle*
+of subscribing to changes.
 
+Every interesting use of inotify that I've seen is for some kind of
+cache support, to eliminate the majority of stat() calls, to remove
+disk I/O (no stat means no inode), to ensure correctness (st_mtime is
+coarse and unreliable), and to avoid having to modify every
+application which might affect any file from which cached items are
+derived to explicitly notify all the applications which might use any
+of those files.
+
+You like high performance, reliable and correct behaviour, and high
+scalability.  So I have never understood why you dislike the
+change-subscription principle so strongly, because it is a natural
+ally to those properties.
+
+All the best,
+-- Jamie
