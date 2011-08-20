@@ -1,61 +1,47 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] nfs:include <linux/prefetch.h> to fix compiling error
-Date: Fri, 19 Aug 2011 17:38:05 -0400
-Message-ID: <1313789885.26701.2.camel@lade.trondhjem.org>
-References: <1313788762-2562-1-git-send-email-wanlong.gao@gmail.com>
+From: Randy Dunlap <rdunlap@xenotime.net>
+Subject: Re: PROBLEM: 2.6.35.7 to 3.0 Inotify events missing
+Date: Fri, 19 Aug 2011 18:43:11 -0700
+Message-ID: <20110819184311.b094d6b7.rdunlap@xenotime.net>
+References: <20101018223540.GA20730@gradator.net>
+	<20110819230344.GA24784@gradator.net>
+	<20110819233756.GI11512@jl-vm1.vm.bytemark.co.uk>
+	<20110820012943.GD2203@ZenIV.linux.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org, Wanlong Gao <gaowanlong@cn.fujitsu.com>
-To: Wanlong Gao <wanlong.gao@gmail.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:18545 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753083Ab1HSViF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2011 17:38:05 -0400
-In-Reply-To: <1313788762-2562-1-git-send-email-wanlong.gao@gmail.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Cc: Jamie Lokier <jamie@shareable.org>,
+	Sylvain Rochet <gradator@gradator.net>,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-nfs@vger.kernel.org
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20110820012943.GD2203@ZenIV.linux.org.uk>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2011-08-20 at 05:19 +0800, Wanlong Gao wrote: 
-> From: Wanlong Gao <gaowanlong@cn.fujitsu.com>
+On Sat, 20 Aug 2011 02:29:43 +0100 Al Viro wrote:
+
+> On Sat, Aug 20, 2011 at 12:37:56AM +0100, Jamie Lokier wrote:
 > 
-> fs/nfs/blocklayout/blocklayout.c: In function 'bl_end_io_read':
-> fs/nfs/blocklayout/blocklayout.c:201:4: error: implicit
-> declaration of function 'prefetchw'
-> make[4]: *** [fs/nfs/blocklayout/blocklayout.o] Error 1
-> make[3]: *** [fs/nfs/blocklayout] Error 2
-> make[2]: *** [fs/nfs] Error 2
-> make[1]: *** [fs] Error 2
+> > Possible solution:
 > 
-> Signed-off-by: Wanlong Gao <gaowanlong@cn.fujitsu.com>
-> ---
->  fs/nfs/blocklayout/blocklayout.c |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
+> > Then this can be solved, in principle (if there's no better way), by
+> > watching a "virtual directory" that gets all events for when the
+> > access doesn't have a parent directory.  There needs to be some way to
+> > watch it, and some way to get the appropriate file from the event (as
+> > there is no real directory.  Or maybe there could be a virtual
+> > filesystem (like /proc, /sys etc.) containing a magic directory that
+> > receives these inode-only events, such that lookups in that directory
+> > yield the affected file.  Exactly as if the directory contains a hard
+> > link to every file, perhaps a text encoding of the handles passed
+> > through sys_open_by_handle_at.
 > 
-> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-> index e56564d..9561c8f 100644
-> --- a/fs/nfs/blocklayout/blocklayout.c
-> +++ b/fs/nfs/blocklayout/blocklayout.c
-> @@ -36,6 +36,7 @@
->  #include <linux/namei.h>
->  #include <linux/bio.h>		/* struct bio */
->  #include <linux/buffer_head.h>	/* various write calls */
-> +#include <linux/prefetch.h>
->  
->  #include "blocklayout.h"
->  
+> There is a better way - stop using idiotify...  It has always been a
+> mistake, driven down our throats by filemangler and desktop crowd.
+> Broken in many, _many_ respects...  Deprecate that crap, remove it
+> completely in a couple of revisions, let these clowns cope.  Yeah,
+> yeah, I know...  Not going to happen ;-/  One can dream, though...
 
-A similar patch has already been merged upstream. See commit
-88c9e42196285a7c573e2abda11a4b5037c669bc (nfs: add missing prefetch.h
-include).
+What do you suggest as a functioning alternative to inotify?
 
-Trond
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+---
+~Randy
