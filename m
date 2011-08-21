@@ -1,80 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:58687 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:34110 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755288Ab1HRQnL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Aug 2011 12:43:11 -0400
-Date: Thu, 18 Aug 2011 12:43:07 -0400
-To: NeilBrown <neilb@suse.de>
-Cc: Kevin Coffman <kwc@umich.edu>, linux-nfs@vger.kernel.org
-Subject: Re: Problems with kerberos auth - possibly against ADS - since
- nfs-utils-1.2.3
-Message-ID: <20110818164307.GA24533@fieldses.org>
-References: <20110804092141.3461c9ce@notabene.brown>
- <CAKnQG+cs4SLD-YmLwpnXU_gDWrjfmx9+z-E=7J-SUcsP=KhfSg@mail.gmail.com>
- <20110804111357.0d0a6e85@notabene.brown>
- <CAKnQG+dViSmrjhZV1cFZHj98kM0ixyKRLek9OWkJjFUS6YO3cw@mail.gmail.com>
- <20110811154239.322dee1d@notabene.brown>
- <CAKnQG+eV_OCk60wN6E2ub-TxA+6NoALYn8C+1PD51fWUZTpcGQ@mail.gmail.com>
- <20110818191906.13a6261f@notabene.brown>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110818191906.13a6261f@notabene.brown>
+	id S1751526Ab1HUQud (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 21 Aug 2011 12:50:33 -0400
+Date: Sun, 21 Aug 2011 12:50:29 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jamie Lokier <jamie@shareable.org>
+Cc: Volker Lendecke <Volker.Lendecke@SerNet.DE>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, samba-technical@lists.samba.org,
+        Casey Bodley <cbodley@citi.umich.edu>
+Subject: Re: [PATCH] locks: breaking read lease should not block read open
+Message-ID: <20110821165029.GA9296@fieldses.org>
+References: <20110609231606.GB22215@fieldses.org>
+ <E1QUwaT-00HRZw-74@intern.SerNet.DE>
+ <20110610134859.GA27837@fieldses.org>
+ <20110721000758.GD27871@fieldses.org>
+ <20110819190829.GD11512@jl-vm1.vm.bytemark.co.uk>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110819190829.GD11512@jl-vm1.vm.bytemark.co.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Aug 18, 2011 at 07:19:06PM +1000, NeilBrown wrote:
-> I think that does exactly describes what we were seeing.
-> We ended up working around it by adding 
+On Fri, Aug 19, 2011 at 08:08:29PM +0100, Jamie Lokier wrote:
+> J. Bruce Fields wrote:
+> > I'm not sure how to approach the lease code.
+> > 
+> > On the one hand, I've never seen any evidence that anyone outside Samba
+> > and NFSv4 has ever used it, and both currently make extremely limited
+> > use of it.  So we could probably get away with "fixing" the lease code
+> > to do whatever both of us need.
 > 
->   default_tkt_enctypes = des-cbc-md5 des-cbc-crc des3-cbc-sha1
+> I've never used it, but I've _nearly_ used it (project took a
+> different direction), in a web application framework.
 > 
-> to the client config, and recommending a server upgrade.
+> Pretty much the way CIFS/NFS use it, to keep other things (remote
+> state, database state, derived files) transactionally coherent with
+> changes to file contents by programs that only know about the files
+> they access.
 > 
+> The SIGIO stuff is a horrible interface.
+> I could still see me trying to use it sometime in the future.
+> In which case I really don't mind if you make the semantics saner :-)
 > 
-> BTW I've been trying to track down why a successful kerberos negotiation
-> sends a corrupted RPCSEC_GSS_DESTROY request just before closing the
-> connection.
+> Now we have fanotify which does something very similar and could have
+> generalised leases, but unfortunately fanotify came from such a
+> different motivation that it's not well suited for ordinary user
+> applications.
 
-(No useful comment here, just: thanks!  That was driving me crazy, till
-it just stopped happening for no apparent reason, before I got a chance
-to look any closer...)
+I'm not sure what you mean by that--mainly just because I'm not as
+familiar with fanotify as I should be.
+
+For my case the important difference between leases and the various
+notification interfaces is that leases are synchronous--the lease-holder
+is notified and has a chance to clean up before releasing its lease and
+allowing the conflicting operation to continue--whereas the the various
+notification interfaces tell you "tough luck, something just happened".
 
 --b.
-
-> 
-> There are two issues here.
-> 1/ Why is it trying to send a DESTROY request
-> 2/ Why is it corrupted.
-> 
-> It is just as well that it is corrupted else the server would forget the
-> session that has just been negotiated.
-> 
-> It is sending a DESTROY request because that is what AUTH_DESTROY called in
-> gssd_proc does.  But it shouldn't.  After a call to
-> authgss_get_private_data() the context is owned by someone else so
-> AUTH_DESTROY should free the memory, but not DESTROY anything on the server.
-> 
-> I think authgss_get_private_data should clear gd->established or possibly 
-> gd->gc.gc_ctx.length so there is no attempt to use or destroy the auth internally
-> any more.
-> 
-> But why is it corrupted?  This is because the internal_ctx_id in the gssglue
-> layer has been zeroed by the call to authgss_get_private_data.  I couldn't
-> easily see in the code where this is happening, but tracing confirms that it
-> does.  A NULL internal_ctx_id doesn't stop authgss_destroy_context from
-> trying to destroy the context, but it does stop it from succeeding.
-> 
-> So I suspect all we need to do to address this is change
-> authgss_get_private_data to set gd->gc.gc_ctx.length to zero.
-> 
-> Does that seem reasonable to you?
-> 
-> 
-> Thanks,
-> NeilBrown
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
