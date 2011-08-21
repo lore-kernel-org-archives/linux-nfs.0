@@ -1,55 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8772 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:49900 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754411Ab1HECTI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Aug 2011 22:19:08 -0400
-From: Max Matveev <makc@redhat.com>
-Date: Thu, 4 Aug 2011 15:47:33 +1000
-Subject: [PATCH v2] Update nfs(5) manpage - timeo for NFS/TCP
-To: linux-nfs@vger.kernel.org
-Cc: steved@redhat.com, rees@umich.edu
-Message-Id: <20110805021903.C84608198734@regina.usersys.redhat.com>
+	id S1751685Ab1HURHS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 21 Aug 2011 13:07:18 -0400
+Date: Sun, 21 Aug 2011 13:07:14 -0400
+To: Jamie Lokier <jamie@shareable.org>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, Sylvain Rochet <gradator@gradator.net>,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: PROBLEM: 2.6.35.7 to 3.0 Inotify events missing
+Message-ID: <20110821170714.GB9296@fieldses.org>
+References: <20101018223540.GA20730@gradator.net>
+ <20110819230344.GA24784@gradator.net>
+ <20110819233756.GI11512@jl-vm1.vm.bytemark.co.uk>
+ <20110820012943.GD2203@ZenIV.linux.org.uk>
+ <20110820030335.GA14899@jl-vm1.vm.bytemark.co.uk>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110820030335.GA14899@jl-vm1.vm.bytemark.co.uk>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-NFS/TCP does linear backoff then retransmiting - the manpage
-was mistakenly asserting the "no backoff" theory.
+On Sat, Aug 20, 2011 at 04:03:35AM +0100, Jamie Lokier wrote:
+> Well you still have your sense of humour...
+> 
+> I've never understood why you think it's about the file manager /
+> desktop, or why you so strongly dislike the feature.  It originated
+> there historically, but that is not it's primary use.
+> 
+> The implementation, sure, but you seem to dislike the very *principle*
+> of subscribing to changes.
+> 
+> Every interesting use of inotify that I've seen is for some kind of
+> cache support, to eliminate the majority of stat() calls, to remove
+> disk I/O (no stat means no inode), to ensure correctness (st_mtime is
+> coarse and unreliable),
 
-Signed-off-by: Max Matveev <makc@redhat.com>
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- utils/mount/nfs.man |   16 ++++++++++------
- 1 files changed, 10 insertions(+), 6 deletions(-)
+It seems rather fragile as an mtime replacement unless it's also got
+some sort of logging built in at a pretty low level so that you don't
+lose events while you're not listening.
 
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index be91a25..ff0ed60 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -113,12 +113,16 @@ option may mitigate some of the risks of using the
- option.
- .TP 1.5i
- .BI timeo= n
--The time (in tenths of a second) the NFS client waits for a
--response before it retries an NFS request. If this
--option is not specified, requests are retried every
--60 seconds for NFS over TCP.
--The NFS client does not perform any kind of timeout backoff
--for NFS over TCP.
-+The time in deciseconds (tenths of a second) the NFS client waits for a
-+response before it retries an NFS request.
-+.IP
-+For NFS over TCP the default
-+.B timeo
-+value is 600 (60 seconds).
-+The NFS client performs linear backoff: After each retransmission the 
-+timeout is increased by
-+.BR timeo 
-+up to the maximum of 600 seconds.
- .IP
- However, for NFS over UDP, the client uses an adaptive
- algorithm to estimate an appropriate timeout value for frequently used
--- 
-1.7.4.4
+And of course events have to be defined very carefully to avoid problems
+such as this one.
 
+> and to avoid having to modify every
+> application which might affect any file from which cached items are
+> derived to explicitly notify all the applications which might use any
+> of those files.
+> 
+> You like high performance, reliable and correct behaviour, and high
+> scalability.  So I have never understood why you dislike the
+> change-subscription principle so strongly, because it is a natural
+> ally to those properties.
+
+I don't think we've seen a design that does all of that yet.
+
+--b.
