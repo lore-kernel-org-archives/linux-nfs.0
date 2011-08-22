@@ -1,92 +1,136 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:41407 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753945Ab1H2SuK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2011 14:50:10 -0400
-Received: by gwaa12 with SMTP id a12so5039185gwa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 29 Aug 2011 11:50:09 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/2] NFSD: Remove the ex_pathname field from struct svc_export
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 29 Aug 2011 14:50:06 -0400
-Message-ID: <20110829185006.3369.19413.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:12050 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751668Ab1HVVMs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Aug 2011 17:12:48 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 3/4] NFSv4: The NFSv4.0 client must send RENEW calls if it holds a delegation
+Date: Mon, 22 Aug 2011 17:12:39 -0400
+Message-Id: <1314047560-24534-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1314047560-24534-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1314047560-24534-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1314047560-24534-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+RFC3530 states that if the client holds a delegation, then it is obliged
+to continue to send RENEW calls once every lease period in order to allow
+the server to return NFS4ERR_CB_PATH_DOWN if the callback path is
+unreachable.
 
-There are no more users...
+This is not required for NFSv4.1, since the server can at any time set
+the SEQ4_STATUS_CB_PATH_DOWN_SESSION in any SEQUENCE operation.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
+ fs/nfs/nfs4_fs.h    |    5 ++++-
+ fs/nfs/nfs4proc.c   |    8 ++++++--
+ fs/nfs/nfs4renewd.c |   12 +++++++++---
+ 3 files changed, 19 insertions(+), 6 deletions(-)
 
- fs/nfsd/export.c            |   11 -----------
- include/linux/nfsd/export.h |    1 -
- 2 files changed, 0 insertions(+), 12 deletions(-)
-
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index d9a6611..bf985f7 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -318,7 +318,6 @@ static void svc_export_put(struct kref *ref)
- 	struct svc_export *exp = container_of(ref, struct svc_export, h.ref);
- 	path_put(&exp->ex_path);
- 	auth_domain_put(exp->ex_client);
--	kfree(exp->ex_pathname);
- 	nfsd4_fslocs_free(&exp->ex_fslocs);
- 	kfree(exp);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 58adfb6..e1b6607 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -56,6 +56,9 @@ enum nfs4_session_state {
+ 	NFS4_SESSION_DRAINING,
+ };
+ 
++#define NFS4_RENEW_TIMEOUT		0x01
++#define NFS4_RENEW_DELEGATION_CB	0x02
++
+ struct nfs4_minor_version_ops {
+ 	u32	minor_version;
+ 
+@@ -225,7 +228,7 @@ struct nfs4_state_recovery_ops {
+ };
+ 
+ struct nfs4_state_maintenance_ops {
+-	int (*sched_state_renewal)(struct nfs_client *, struct rpc_cred *);
++	int (*sched_state_renewal)(struct nfs_client *, struct rpc_cred *, unsigned);
+ 	struct rpc_cred * (*get_state_renewal_cred_locked)(struct nfs_client *);
+ 	int (*renew_lease)(struct nfs_client *, struct rpc_cred *);
+ };
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index b358ec1..e89940a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3386,7 +3386,7 @@ static const struct rpc_call_ops nfs4_renew_ops = {
+ 	.rpc_release = nfs4_renew_release,
+ };
+ 
+-static int nfs4_proc_async_renew(struct nfs_client *clp, struct rpc_cred *cred)
++static int nfs4_proc_async_renew(struct nfs_client *clp, struct rpc_cred *cred, unsigned renew_flags)
+ {
+ 	struct rpc_message msg = {
+ 		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_RENEW],
+@@ -3395,6 +3395,8 @@ static int nfs4_proc_async_renew(struct nfs_client *clp, struct rpc_cred *cred)
+ 	};
+ 	struct nfs4_renewdata *data;
+ 
++	if (renew_flags == 0)
++		return 0;
+ 	if (!atomic_inc_not_zero(&clp->cl_count))
+ 		return -EIO;
+ 	data = kmalloc(sizeof(*data), GFP_NOFS);
+@@ -5504,11 +5506,13 @@ static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp, struct rpc_
+ 	return rpc_run_task(&task_setup_data);
  }
-@@ -528,11 +527,6 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
  
- 	exp.ex_client = dom;
+-static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cred)
++static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cred, unsigned renew_flags)
+ {
+ 	struct rpc_task *task;
+ 	int ret = 0;
  
--	err = -ENOMEM;
--	exp.ex_pathname = kstrdup(buf, GFP_KERNEL);
--	if (!exp.ex_pathname)
--		goto out2;
--
- 	/* expiry */
- 	err = -EINVAL;
- 	exp.h.expiry_time = get_expiry(&mesg);
-@@ -613,8 +607,6 @@ out4:
- 	nfsd4_fslocs_free(&exp.ex_fslocs);
- 	kfree(exp.ex_uuid);
- out3:
--	kfree(exp.ex_pathname);
--out2:
- 	path_put(&exp.ex_path);
- out1:
- 	auth_domain_put(dom);
-@@ -678,7 +670,6 @@ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
- 	new->ex_client = item->ex_client;
- 	new->ex_path.dentry = dget(item->ex_path.dentry);
- 	new->ex_path.mnt = mntget(item->ex_path.mnt);
--	new->ex_pathname = NULL;
- 	new->ex_fslocs.locations = NULL;
- 	new->ex_fslocs.locations_count = 0;
- 	new->ex_fslocs.migrated = 0;
-@@ -696,8 +687,6 @@ static void export_update(struct cache_head *cnew, struct cache_head *citem)
- 	new->ex_fsid = item->ex_fsid;
- 	new->ex_uuid = item->ex_uuid;
- 	item->ex_uuid = NULL;
--	new->ex_pathname = item->ex_pathname;
--	item->ex_pathname = NULL;
- 	new->ex_fslocs.locations = item->ex_fslocs.locations;
- 	item->ex_fslocs.locations = NULL;
- 	new->ex_fslocs.locations_count = item->ex_fslocs.locations_count;
-diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
-index 7ba3fd4..f85308e 100644
---- a/include/linux/nfsd/export.h
-+++ b/include/linux/nfsd/export.h
-@@ -96,7 +96,6 @@ struct svc_export {
- 	struct auth_domain *	ex_client;
- 	int			ex_flags;
- 	struct path		ex_path;
--	char			*ex_pathname;
- 	uid_t			ex_anon_uid;
- 	gid_t			ex_anon_gid;
- 	int			ex_fsid;
++	if ((renew_flags & NFS4_RENEW_TIMEOUT) == 0)
++		return 0;
+ 	task = _nfs41_proc_sequence(clp, cred);
+ 	if (IS_ERR(task))
+ 		ret = PTR_ERR(task);
+diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
+index df8e7f3..dc484c0 100644
+--- a/fs/nfs/nfs4renewd.c
++++ b/fs/nfs/nfs4renewd.c
+@@ -60,6 +60,7 @@ nfs4_renew_state(struct work_struct *work)
+ 	struct rpc_cred *cred;
+ 	long lease;
+ 	unsigned long last, now;
++	unsigned renew_flags = 0;
+ 
+ 	ops = clp->cl_mvops->state_renewal_ops;
+ 	dprintk("%s: start\n", __func__);
+@@ -72,18 +73,23 @@ nfs4_renew_state(struct work_struct *work)
+ 	last = clp->cl_last_renewal;
+ 	now = jiffies;
+ 	/* Are we close to a lease timeout? */
+-	if (time_after(now, last + lease/3)) {
++	if (time_after(now, last + lease/3))
++		renew_flags |= NFS4_RENEW_TIMEOUT;
++	if (nfs_delegations_present(clp))
++		renew_flags |= NFS4_RENEW_DELEGATION_CB;
++
++	if (renew_flags != 0) {
+ 		cred = ops->get_state_renewal_cred_locked(clp);
+ 		spin_unlock(&clp->cl_lock);
+ 		if (cred == NULL) {
+-			if (!nfs_delegations_present(clp)) {
++			if (!(renew_flags & NFS4_RENEW_DELEGATION_CB)) {
+ 				set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
+ 				goto out;
+ 			}
+ 			nfs_expire_all_delegations(clp);
+ 		} else {
+ 			/* Queue an asynchronous RENEW. */
+-			ops->sched_state_renewal(clp, cred);
++			ops->sched_state_renewal(clp, cred, renew_flags);
+ 			put_rpccred(cred);
+ 			goto out_exp;
+ 		}
+-- 
+1.7.6
 
