@@ -1,73 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:22938 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752902Ab1HLOch (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Aug 2011 10:32:37 -0400
-Date: Fri, 12 Aug 2011 10:32:29 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Casey Bodley <cbodley@citi.umich.edu>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
-        Mi Jinlong <mijinlong@cn.fujitsu.com>,
-        Malcolm Locke <malc@wholemeal.co.nz>
-Subject: Re: Grace period NEVER ends
-Message-ID: <20110812143228.GD16960@pad.fieldses.org>
-References: <4E44790A.8000106@panasas.com>
- <4E447EEB.501@panasas.com>
- <4E4481F0.2050806@panasas.com>
- <20110812021556.GD9761@pad.fieldses.org>
- <CAMeBU_28VPCtExvU1gr3oTbLLyqp=qFwFjxehoea64Xqi=_ncQ@mail.gmail.com>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:49531 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751537Ab1HVQOP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Aug 2011 12:14:15 -0400
+Date: Mon, 22 Aug 2011 12:14:13 -0400
+From: Jim Rees <rees@umich.edu>
+To: paul.szabo@sydney.edu.au
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Please support NSF squashing multiple groups
+Message-ID: <20110822161413.GE2477@merit.edu>
+References: <201108190032.p7J0W3ZX030679@bari.maths.usyd.edu.au>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAMeBU_28VPCtExvU1gr3oTbLLyqp=qFwFjxehoea64Xqi=_ncQ@mail.gmail.com>
+In-Reply-To: <201108190032.p7J0W3ZX030679@bari.maths.usyd.edu.au>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 12, 2011 at 10:08:03AM -0400, Casey Bodley wrote:
-> On Thu, Aug 11, 2011 at 10:15 PM, J. Bruce Fields <bfields@redhat.com> wrote:
-> > On Thu, Aug 11, 2011 at 06:29:20PM -0700, Boaz Harrosh wrote:
-> >> With this patch I'm back to the previous behavior. That is
-> >> wait your grace period then continue.
-> >
-> > Is it true for some reason that the client never sends RECLAIM_COMPLETE?
-> 
-> I tested this yesterday with the windows client and saw the same
-> never-ending grace period on OPEN.  We do send RECLAIM_COMPLETE, and
-> it completes successfully.  Other operations like CREATE and REMOVE
-> succeed as well.
+Paul, it's good to hear from you.  Been about 12 years.
 
-Argh.  Does this help?
+AUTH_SYS provides what some people call "pretend security."  The server
+enforces a security policy based on user and group IDs.  But it only
+pretends to enforce the policy, because it allows clients to break the rules
+if they want.
 
-Unfortunately, this doesn't explain Malcolm Locke's problem, as it's 4.1
-specific.
+Some people claim this is useless, and AUTH_SYS should go away, to be
+replaced by "none" or "kerberos."  I disagree.  It's useful for preventing
+mistakes among a group of users who trust each other but sometimes get
+sloppy.  My home network would be a good example.  A compute cluster might
+be another.
 
---b.
-
-commit d43b4d070a24edcbe5f5e9ffcf7a33bbeccdd47d
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri Aug 12 10:27:18 2011 -0400
-
-    nfsd4: fix failure to end nfsd4 grace period
-    
-    Even if we fail to write a recovery record to stable storage, we should
-    still mark the client as having acquired its first state.  Otherwise we
-    leave 4.1 clients with indefinite ERR_GRACE returns.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 29d77f6..4c7537d 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -156,10 +156,9 @@ out_put:
- 	dput(dentry);
- out_unlock:
- 	mutex_unlock(&dir->d_inode->i_mutex);
--	if (status == 0) {
--		clp->cl_firststate = 1;
-+	if (status == 0)
- 		vfs_fsync(rec_file, 0);
--	}
-+	clp->cl_firststate = 1;
- 	nfs4_reset_creds(original_cred);
- 	dprintk("NFSD: nfsd4_create_clid_dir returns %d\n", status);
- 	return status;
+I do find root_squash useful but I'm not sure there's much point in adding
+more squash options.  For one thing it might lull people into thinking
+they're getting something more than just pretend security.  If you have
+users who might try to break in to a machine by setting setgid bits, then
+AUTH_SYS is not for you.
