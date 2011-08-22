@@ -1,93 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:40526 "EHLO
+Received: from natasha.panasas.com ([67.152.220.90]:45640 "EHLO
 	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751167Ab1HLBQg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Aug 2011 21:16:36 -0400
-Message-ID: <4E447EEB.501@panasas.com>
-Date: Thu, 11 Aug 2011 18:16:27 -0700
+	with ESMTP id S1753820Ab1HVXYv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Aug 2011 19:24:51 -0400
+Message-ID: <4E52E538.7040807@panasas.com>
+Date: Mon, 22 Aug 2011 16:24:40 -0700
 From: Boaz Harrosh <bharrosh@panasas.com>
-To: "J. Bruce Fields" <bfields@redhat.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: Grace period NEVER ends
-References: <4E44790A.8000106@panasas.com>
-In-Reply-To: <4E44790A.8000106@panasas.com>
+To: Peng Tao <bergwolf@gmail.com>
+CC: <benny@tonian.com>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 0/3] recoalesce when ld read/write fails
+References: <1313197213-1651-1-git-send-email-bergwolf@gmail.com> <4E4AD655.9090305@panasas.com> <CA+a=Yy6xNFu62nZavt1KnrZWTZGjgR3H=bgF-uERsf=xp7TARg@mail.gmail.com>
+In-Reply-To: <CA+a=Yy6xNFu62nZavt1KnrZWTZGjgR3H=bgF-uERsf=xp7TARg@mail.gmail.com>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 08/11/2011 05:51 PM, Boaz Harrosh wrote:
-> Hi
+On 08/17/2011 06:42 AM, Peng Tao wrote:
+<snip>
+>> They look *really* good these patches. But as you said, do they actually work?
+>>
+>> Did you test any of this? I mean do you have a facility to inject random
+>> IO errors and test this out?
+> I have tested the patchset by forcing all bio to fail so IO will be
+> re-send to MDS. Also I tested read/write by forcing all IO that
+> touches pages beyond 16K to fail. Both tests passed.
 > 
-> I have this weird problem with latest code. It is Benny's latest based
-> on 3.1-rc1 + linus/master of today + trond/linux-next.
-> 
-> For my testing I use a pNFS client mounted on localhost over a pNFS-nfsd on
-> the same machine. If I wait the 90 seconds or so and then mount all is well
-> but if I mount right away, or stop the server, then start and mount.
->   The Grace period NEVER ends. On prints I see the server returning 100013
->   continuously forever.
-> 
-> This is my usual test setup. In the passed it would wait the annoying grace
-> and continue. Now it never returns.
-> 
-> Before I start to bisect back to a good point I though I might ask for pointers
-> on what might have changed in this respect.
-> 
-> Thanks for any input
-> Boaz
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-I put some prints and I see that the nfserr_grace is returned from here:
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index a68384f..8eae742 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -301,8 +301,10 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	 */
- 	if (nfsd4_has_session(cstate) &&
- 	    !cstate->session->se_client->cl_firststate &&
--	    open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
-+	    open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS) {
-+		printk(KERN_ERR "!!! Before RECLAIM_COMPLETE done\n");
- 		return nfserr_grace;
-+	}
- 
- 	if (nfsd4_has_session(cstate))
- 		copy_clientid(&open->op_clientid, cstate->session);
+So that sounds good. Why don't you like these patches?
 
-Is that new code?
-and this print below is never shown:
-diff --git a/fs/lockd/grace.c b/fs/lockd/grace.c
-index 183cc1f..202c3e7 100644
---- a/fs/lockd/grace.c
-+++ b/fs/lockd/grace.c
-@@ -54,6 +54,10 @@ EXPORT_SYMBOL_GPL(locks_end_grace);
-  */
- int locks_in_grace(void)
- {
--	return !list_empty(&grace_list);
-+	int ret = !list_empty(&grace_list);
-+
-+	if (ret)
-+		printk(KERN_ERR "locks_in_grace => true\n");
-+	return ret;
- }
- EXPORT_SYMBOL_GPL(locks_in_grace);
+>>
+<snip>
+> I tried to test "git clone linux" on a 384M memory VM but it hangs as
+> server is rejecting layoutget with NFS4ERR_LAYOUTTRYLATER.
+> /proc/self/mountstats shows that client has sent more than 14K
+> layoutgets but never returns any layout. I checked related code and it
+> seems client should send layoutreturn for closed files. Will git keep
+> all files open? Or is there any case that client won't return the
+> layout even after file close?
+> 
 
+Yes! our client will never ever return any layouts. The forgetful
+model for you. It will only ever "layout_return" on evict_inode which
+is way after close, when the Kernel decides to cleanup the inode
+cache. Which only happens after a while.
 
-If you ask me that if() in nfsd4_open above is totally bogus.
-So what if this is not the cl_firststate? Don't we have to
-actually ask is this a grace period at all? which we do below.
-It looks to me like the complete if (and its comment) is not
-needed. We already check for the proper things below.
+If Your layout driver sets the RETURN_ON_CLOSE bit on the layout
+then the pNFSD server code will simulate a layout_return on a file
+close. This is what I use in EXOFS and it works very well. (I should
+know because I wrote this patch for the pnfsd server)
 
+It looks like your blocks-based pNFSD filesystem needs layouts
+returned. Set the res->lg_return_on_close = true; flag in your
+.layout_get member and you should see layout_return on close.
+
+Look in Benny's pNFS tree at fs/exofs/export.c file how I do
+it there.
+
+> This seems to be another issue though.
+> 
+
+Yes this is a different Issue.
+
+It looks from what you tested that the second approach works
+well. I'll also test this out later on. Lets not rule these
+out yet.
+
+> Thanks,
+> Tao
+
+Sorry for the late response I just came back from Vacation,
+It'll me some time to catch up
+
+Thanks
 Boaz
-
-
-
-
