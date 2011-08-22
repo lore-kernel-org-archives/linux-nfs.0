@@ -1,73 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57803 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:51310 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750849Ab1HDQ1X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Aug 2011 12:27:23 -0400
-Date: Thu, 4 Aug 2011 12:27:21 -0400
+	id S1753108Ab1HVTpD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Aug 2011 15:45:03 -0400
+Date: Mon, 22 Aug 2011 15:44:59 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Venkateswararao Jujjuri <jvrao@linux.vnet.ibm.com>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: State of NFSv4 VolatileFilehandles
-Message-ID: <20110804162721.GD12445@fieldses.org>
-References: <4E37E66D.90102@linux.vnet.ibm.com>
- <45F4FC20-ED44-4430-A5A9-E06459A194F3@oracle.com>
- <4E38F894.4070003@linux.vnet.ibm.com>
- <2DD1BC2B-6113-4D00-9DD4-C5D431EA1F8A@oracle.com>
- <4E3A8225.1020309@linux.vnet.ibm.com>
- <20110804160344.GC12445@fieldses.org>
- <1312474244.5806.4.camel@lade.trondhjem.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Mi Jinlong <mijinlong@cn.fujitsu.com>, NFS <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] sunrpc: Add scope id to svc_addr_u for IPv6 LINKLOCAL
+ address
+Message-ID: <20110822194459.GC16261@fieldses.org>
+References: <4E4F8B5D.6060404@cn.fujitsu.com>
+ <20110822192620.GB16261@fieldses.org>
+ <3CA77E10-4099-4DDB-BE7A-88395CC34C93@oracle.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1312474244.5806.4.camel@lade.trondhjem.org>
+In-Reply-To: <3CA77E10-4099-4DDB-BE7A-88395CC34C93@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Aug 04, 2011 at 12:10:44PM -0400, Trond Myklebust wrote:
-> On Thu, 2011-08-04 at 12:03 -0400, J. Bruce Fields wrote: 
-> > On Thu, Aug 04, 2011 at 04:27:33AM -0700, Venkateswararao Jujjuri wrote:
-> > > One of the usecase is rsync between two physical filesystems; but in
-> > > this particular use case the export
-> > > is readonly (rootfs).  As trond mentioned Volatile FHs are fine in
-> > > the case of readonly exports.
-> > > Is it something we can consider for upstream? VFH only for readonly
-> > > exports.?
-> > 
-> > The client has no way of knowing that an export is read only.  (Or that
-> > the server guarantees the safety of looking up names again in the more
-> > general cases Neil describes.)  Unless we decide that a server is making
-> > an implicit guarantee of that just by exposing volatile filehandles at
-> > all.  Doesn't sound like the existing spec really says that, though.
+On Mon, Aug 22, 2011 at 03:32:13PM -0400, Chuck Lever wrote:
 > 
-> NFSv4.1 introduces the 'fs_status' recommended attribute (see section
-> 11.11 in RFC5661), which does, in fact, allow the client to deduce that
-> an export is read-only/won't ever change.
+> On Aug 22, 2011, at 3:26 PM, J. Bruce Fields wrote:
+> 
+> > On Sat, Aug 20, 2011 at 06:24:29PM +0800, Mi Jinlong wrote:
+> >> +/* 
+> >> + * Add scope id for LINKLOCAL address
+> >> + */
+> >> +struct in6_addr_scopeid{
+> >> +	struct in6_addr	sin6_addr;
+> >> +	__u32		sin6_scope_id;
+> >> +};
+> >> +
+> >> union svc_addr_u {
+> >> -    struct in_addr	addr;
+> >> -    struct in6_addr	addr6;
+> >> +	struct in_addr		addr;
+> >> +	struct in6_addr_scopeid	addr6;
+> > 
+> > By the way, is there any reason why nfsd really needs its own address
+> > structure?  Shouldn't we use sockaddr_storage or something?  I feel like
+> > we've got a little too much one-off address handling in nfsd.
+> 
+> That would be my only complaint about the patch.
+> 
+> I think we chose a smaller struct here to save space, and we could do that because we didn't need a port number or scope ID.  If a scope ID is indeed required, then we should consider something larger like a struct sockaddr_storage, IMO.
 
-Oh, neat, I'd forgotten that; you're thinking of STATUS4_FIXED?  But I'm
-not sure it does the job:
+If we care about the size of struct svc_rqst: rq_vec and rq_pages fields
+are 4k and 2k, respectively, and the rest is lost in the noise.
 
-	STATUS4_FIXED, which indicates a read-only image in the sense
-	that it will never change.  The possibility is allowed that, as
-	a result of migration or switch to a different image, changed
-	data can be accessed, but within the confines of this instance,
-	no change is allowed.  The client can use this fact to cache
-	aggressively.
+Mi Jinlong, would you have the time to try this?
 
-OK, so permission to set your attribute cache timeout very high,
-perhaps, but I don't see why "changed data" couldn't mean changed
-paths....
+	- Replace svc_addr_u by sockaddr_storage
+	- See of that allows us to delete some lines of code in nfsd by
+	  using standard helper functions instead of copying things by
+	  hand.
+
+You'd do that in one patch, then apply your scope-id fix on top of it as
+a second patch.
 
 --b.
-
-> > If an examination of existing implementations and/or some sort of new
-> > spec language could reassure us that servers will only ever expose
-> > volatile filehandles when it's safe to do so, then maybe it would make
-> > sense for the client to implement volatile filehandle recovery?
-> > 
-> > But if there's a chance of "unsafe" servers out there, then it would
-> > seem like a trap for the unwary user....
-> > 
-> > Your rootfs's probably aren't terribly large--could you copy around
-> > compressed block-level images instead of doing rsync?
-> 
-> Agreed.
