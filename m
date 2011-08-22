@@ -1,60 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:55606 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751548Ab1HDRDR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Aug 2011 13:03:17 -0400
-Date: Thu, 4 Aug 2011 13:03:13 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Venkateswararao Jujjuri <jvrao@linux.vnet.ibm.com>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: State of NFSv4 VolatileFilehandles
-Message-ID: <20110804170313.GH12445@fieldses.org>
-References: <4E37E66D.90102@linux.vnet.ibm.com>
- <45F4FC20-ED44-4430-A5A9-E06459A194F3@oracle.com>
- <4E38F894.4070003@linux.vnet.ibm.com>
- <2DD1BC2B-6113-4D00-9DD4-C5D431EA1F8A@oracle.com>
- <4E3A8225.1020309@linux.vnet.ibm.com>
- <20110804160344.GC12445@fieldses.org>
- <1312474244.5806.4.camel@lade.trondhjem.org>
- <20110804162721.GD12445@fieldses.org>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A8AA818@SACMVEXC2-PRD.hq.netapp.com>
+Received: from acsinet15.oracle.com ([141.146.126.227]:64629 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753403Ab1HVTcd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Aug 2011 15:32:33 -0400
+Subject: Re: [PATCH] sunrpc: Add scope id to svc_addr_u for IPv6 LINKLOCAL address
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A8AA818@SACMVEXC2-PRD.hq.netapp.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20110822192620.GB16261@fieldses.org>
+Date: Mon, 22 Aug 2011 15:32:13 -0400
+Cc: Mi Jinlong <mijinlong@cn.fujitsu.com>, NFS <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Message-Id: <3CA77E10-4099-4DDB-BE7A-88395CC34C93@oracle.com>
+References: <4E4F8B5D.6060404@cn.fujitsu.com> <20110822192620.GB16261@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Aug 04, 2011 at 09:48:32AM -0700, Myklebust, Trond wrote:
-> > -----Original Message-----
-> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > Oh, neat, I'd forgotten that; you're thinking of STATUS4_FIXED?  But
-> > I'm
-> > not sure it does the job:
-> > 
-> > 	STATUS4_FIXED, which indicates a read-only image in the sense
-> > 	that it will never change.  The possibility is allowed that, as
-> > 	a result of migration or switch to a different image, changed
-> > 	data can be accessed, but within the confines of this instance,
-> > 	no change is allowed.  The client can use this fact to cache
-> > 	aggressively.
-> > 
-> > OK, so permission to set your attribute cache timeout very high,
-> > perhaps, but I don't see why "changed data" couldn't mean changed
-> > paths....
+
+On Aug 22, 2011, at 3:26 PM, J. Bruce Fields wrote:
+
+> On Sat, Aug 20, 2011 at 06:24:29PM +0800, Mi Jinlong wrote:
+>> +/* 
+>> + * Add scope id for LINKLOCAL address
+>> + */
+>> +struct in6_addr_scopeid{
+>> +	struct in6_addr	sin6_addr;
+>> +	__u32		sin6_scope_id;
+>> +};
+>> +
+>> union svc_addr_u {
+>> -    struct in_addr	addr;
+>> -    struct in6_addr	addr6;
+>> +	struct in_addr		addr;
+>> +	struct in6_addr_scopeid	addr6;
 > 
-> No, but you can presumably use the FSLI4BX_CLSIMUL flag from
-> fs_locations_info in order to find an equivalent replica.
+> By the way, is there any reason why nfsd really needs its own address
+> structure?  Shouldn't we use sockaddr_storage or something?  I feel like
+> we've got a little too much one-off address handling in nfsd.
 
-I lost you.
+That would be my only complaint about the patch.
 
-Actually my real problem is that I don't understand the description of
-STATUS4_FIXED.  What does "or switch to a different image" mean?  Not
-"migration", or the sentence would have ended before the "or".
+I think we chose a smaller struct here to save space, and we could do that because we didn't need a port number or scope ID.  If a scope ID is indeed required, then we should consider something larger like a struct sockaddr_storage, IMO.
 
-I read it as allowing a server admin to replace the filesystem image in
-place, in which case from the client's point of view this allows the
-filesystem to change at any time.  Which makes the whole thing not
-terribly useful, except (as the last sentence says) as a caching hint.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
---b.
+
+
+
