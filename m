@@ -1,55 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e7.ny.us.ibm.com ([32.97.182.137]:34061 "EHLO e7.ny.us.ibm.com"
+Received: from mx2.netapp.com ([216.240.18.37]:12050 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752243Ab1HATCn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Aug 2011 15:02:43 -0400
-Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
-	by e7.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p71IapVp011357
-	for <linux-nfs@vger.kernel.org>; Mon, 1 Aug 2011 14:36:51 -0400
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p71J2c5L168348
-	for <linux-nfs@vger.kernel.org>; Mon, 1 Aug 2011 15:02:38 -0400
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p71J2XBF000410
-	for <linux-nfs@vger.kernel.org>; Mon, 1 Aug 2011 15:02:34 -0400
-From: Matthew Treinish <treinish@linux.vnet.ibm.com>
+	id S1751530Ab1HVVMs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Aug 2011 17:12:48 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Cc: Matthew Treinish <treinish@linux.vnet.ibm.com>
-Subject: [PATCH 2/2] mountd: Removed duplicate check from insert_groups
-Date: Mon,  1 Aug 2011 15:02:27 -0400
-Message-Id: <1312225347-11282-2-git-send-email-treinish@linux.vnet.ibm.com>
-In-Reply-To: <1312225347-11282-1-git-send-email-treinish@linux.vnet.ibm.com>
-References: <1312225347-11282-1-git-send-email-treinish@linux.vnet.ibm.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 4/4] NFSv4: renewd needs to be able to handle the NFS4ERR_CB_PATH_DOWN error
+Date: Mon, 22 Aug 2011 17:12:40 -0400
+Message-Id: <1314047560-24534-4-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1314047560-24534-3-git-send-email-Trond.Myklebust@netapp.com>
+References: <1314047560-24534-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1314047560-24534-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1314047560-24534-3-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Upon further inspection of mountd the duplicate check in insert group is not
-needed. It seems that export_read() already filters out duplicates so the
-check for duplicates again in insert groups isn't needed.
+The NFSv4 spec does not specify that the server must repeat that error,
+so in order to avoid having the delegations revoked, we should handle
+it immediately.
 
-Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
+Also note that NFS4ERR_CB_PATH_DOWN does in fact renew the lease...
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- utils/mountd/mountd.c |    5 -----
- 1 files changed, 0 insertions(+), 5 deletions(-)
+ fs/nfs/nfs4_fs.h   |    1 +
+ fs/nfs/nfs4proc.c  |    8 ++++++--
+ fs/nfs/nfs4state.c |    6 ++++++
+ 3 files changed, 13 insertions(+), 2 deletions(-)
 
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index bcf5080..9c27d6c 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -631,11 +631,6 @@ static exportnode *lookup_or_create_elist_entry(exports *elist, nfs_export *exp)
- static void insert_group(struct exportnode *e, char *newname)
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index e1b6607..3e93e9a 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -350,6 +350,7 @@ extern void nfs4_close_sync(struct nfs4_state *, fmode_t);
+ extern void nfs4_state_set_mode_locked(struct nfs4_state *, fmode_t);
+ extern void nfs4_schedule_lease_recovery(struct nfs_client *);
+ extern void nfs4_schedule_state_manager(struct nfs_client *);
++extern void nfs4_schedule_path_down_recovery(struct nfs_client *clp);
+ extern void nfs4_schedule_stateid_recovery(const struct nfs_server *, struct nfs4_state *);
+ extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags);
+ extern void nfs41_handle_recall_slot(struct nfs_client *clp);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index e89940a..4700fae 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3374,9 +3374,13 @@ static void nfs4_renew_done(struct rpc_task *task, void *calldata)
+ 
+ 	if (task->tk_status < 0) {
+ 		/* Unless we're shutting down, schedule state recovery! */
+-		if (test_bit(NFS_CS_RENEWD, &clp->cl_res_state) != 0)
++		if (test_bit(NFS_CS_RENEWD, &clp->cl_res_state) == 0)
++			return;
++		if (task->tk_status != NFS4ERR_CB_PATH_DOWN) {
+ 			nfs4_schedule_lease_recovery(clp);
+-		return;
++			return;
++		}
++		nfs4_schedule_path_down_recovery(clp);
+ 	}
+ 	do_renew_lease(clp, timestamp);
+ }
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 72ab97e..39914be 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1038,6 +1038,12 @@ void nfs4_schedule_lease_recovery(struct nfs_client *clp)
+ 	nfs4_schedule_state_manager(clp);
+ }
+ 
++void nfs4_schedule_path_down_recovery(struct nfs_client *clp)
++{
++	nfs_handle_cb_pathdown(clp);
++	nfs4_schedule_state_manager(clp);
++}
++
+ static int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *state)
  {
- 	struct groupnode *g;
--
--	for (g = e->ex_groups; g; g = g->gr_next)
--		if (!strcmp(g->gr_name, newname))
--			return;
--
- 	g = xmalloc(sizeof(*g));
- 	g->gr_name = xstrdup(newname);
- 	g->gr_next = e->ex_groups;
+ 
 -- 
-1.7.4.4
+1.7.6
 
