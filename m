@@ -1,56 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:33730 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755913Ab1HDAvy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Aug 2011 20:51:54 -0400
-Received: by vxh35 with SMTP id 35so1070766vxh.19
-        for <linux-nfs@vger.kernel.org>; Wed, 03 Aug 2011 17:51:53 -0700 (PDT)
-In-Reply-To: <20110804092141.3461c9ce@notabene.brown>
-References: <20110804092141.3461c9ce@notabene.brown>
-Date: Wed, 3 Aug 2011 20:51:52 -0400
-Message-ID: <CAKnQG+cs4SLD-YmLwpnXU_gDWrjfmx9+z-E=7J-SUcsP=KhfSg@mail.gmail.com>
-Subject: Re: Problems with kerberos auth - possibly against ADS - since nfs-utils-1.2.3
-From: Kevin Coffman <kwc@umich.edu>
-To: NeilBrown <neilb@suse.de>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:30009 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753812Ab1HVVNB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Aug 2011 17:13:01 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 1/4] NFSv4: nfs4_proc_async_renew should use a GFP_NOFS allocation
+Date: Mon, 22 Aug 2011 17:12:37 -0400
+Message-Id: <1314047560-24534-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Aug 3, 2011 at 7:21 PM, NeilBrown <neilb@suse.de> wrote:
->
-> Hi,
->  I have some reports of problems with kerberos auth in openSUSE 11.4 (using
->  1.2.3) which can be fixed by using the openSUSE 11.3 version of rpc.gssd
->  (from 1.2.1).
->
-> https://bugzilla.novell.com/show_bug.cgi?id=614293
->
->  The important difference seems to be the list of enc_types used in
->  limit_krb5_enctypes.
->
->  In 1.2.1 this list is hard coded in the rpc.gssd to 1,3,2 (I think).
->  In 1.2.3 this list is taken from the kernel where is it hard coded
->  to  18,17,16,23,3,1,2.
->  When I patch the 11.4 code to use the old enctype list, it works perfectly.
->
->  So presumably it ends up negotiating one of those other enc_types and
->  gets confused by it.
->
->  I'll try to get a comparative tcp dump to see if that helps, but
->  if anyone has any idea what the problem might be I'd love to hear
->  suggestions.
->
->  The systems are running a 2.6.37 kernel in case that might make a difference.
->
-> Thanks,
-> NeilBrown
+We shouldn't allow the renew daemon to do direct reclaim on the NFS
+partition.
 
-Hi Niel,
-Seeing the traffic might help.  It wasn't clear to me after reading
-(most of) the bugzilla info what kernel version the NFS servers
-involved are running.  If the servers don't have kernels with the
-newer enctype support, this might be the "subkey assertion" issue.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-K.C.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8c77039..776b41a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3397,7 +3397,7 @@ int nfs4_proc_async_renew(struct nfs_client *clp, struct rpc_cred *cred)
+ 
+ 	if (!atomic_inc_not_zero(&clp->cl_count))
+ 		return -EIO;
+-	data = kmalloc(sizeof(*data), GFP_KERNEL);
++	data = kmalloc(sizeof(*data), GFP_NOFS);
+ 	if (data == NULL)
+ 		return -ENOMEM;
+ 	data->client = clp;
+-- 
+1.7.6
+
