@@ -1,86 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:51660 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754532Ab1H3PGE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2011 11:06:04 -0400
-Subject: Re: [PATCH 2/2] SUNRPC: compare scopeid for link-local addresses
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <31E944A2-6DC2-4D71-92D9-E6521B1A23D3@oracle.com>
-Date: Tue, 30 Aug 2011 11:05:36 -0400
-Cc: NFS <linux-nfs@vger.kernel.org>, "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@redhat.com>, Steve Dickson <SteveD@redhat.com>
-Message-Id: <6B17731F-7772-42B6-887D-916F317221E7@oracle.com>
-References: <4E5CABE9.5090401@cn.fujitsu.com> <31E944A2-6DC2-4D71-92D9-E6521B1A23D3@oracle.com>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:34165 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751275Ab1HVSyP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Aug 2011 14:54:15 -0400
+Date: Mon, 22 Aug 2011 14:54:14 -0400
+From: Jim Rees <rees@umich.edu>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Pavel Emelianov <xemul@parallels.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFS client virtualization plan
+Message-ID: <20110822185414.GB3676@merit.edu>
+References: <4E4A4DB1.2090105@parallels.com>
+ <67028AE2-C41D-4D9E-9AB9-81433AD196A2@oracle.com>
+ <4E4E30E8.2080704@parallels.com>
+ <CDCCBEC6-18B3-4ED5-A562-1DC4611F1169@oracle.com>
+ <4E4E9B8C.8050000@parallels.com>
+ <20110819193259.GC1641@fieldses.org>
+ <4E529221.6010102@parallels.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <4E529221.6010102@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Stanislav Kinsbursky пишет:
 
-On Aug 30, 2011, at 10:28 AM, Chuck Lever wrote:
+  19.08.2011 23:32, J. Bruce Fields пишет:
+  >On Fri, Aug 19, 2011 at 09:21:16PM +0400, Stanislav Kinsbursky wrote:
+  >>Actually, yes, I do. Thanks for notice.
+  >>Kernel NSM monitor routines will be virtualized.
+  >>For idmapd and gssd rpc_pipefs virtualization is required.
+  >>I wasn't going to virtualize rpc_pipefs for now - it was planned to be a part of NFS server virtualization, which is planned to be done after NFS client virtualization.
+  >
+  >You'll need rpc_pipefs for gssd and the old idmapd.
+  >
+  >Also the new idmapper uses request_key.  I think there's a little
+  >discussion about this in the archives.
+  >
+  
+  Thanks, Bruce.
+  Nice to know, that you noticed this discussion.
+  I'll rpc_pipefs to the todo list for NFS client.
 
-> 
-> On Aug 30, 2011, at 5:22 AM, Mi Jinlong wrote:
-> 
->> For ipv6 link-local addresses, sunrpc do not compare those scope id.
->> This patch let sunrpc compares scope id only on link-local addresses.
->> 
->> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
->> ---
->> include/linux/sunrpc/clnt.h |    8 +++++++-
->> 1 files changed, 7 insertions(+), 1 deletions(-)
->> 
->> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
->> index db7bcaf..ee1bb67 100644
->> --- a/include/linux/sunrpc/clnt.h
->> +++ b/include/linux/sunrpc/clnt.h
->> @@ -218,7 +218,13 @@ static inline bool __rpc_cmp_addr6(const struct sockaddr *sap1,
->> {
->> 	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sap1;
->> 	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sap2;
->> -	return ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr);
->> +
->> +	if (!ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr))
->> +		return false;
->> +	else if (ipv6_addr_type(&sin1->sin6_addr) & IPV6_ADDR_LINKLOCAL)
->> +		return sin1->sin6_scope_id == sin2->sin6_scope_id;
-> 
-> Thanks for splitting the patches.
-> 
-> The address comparators I've seen check that both addresses are link-local before comparing the scope IDs.  I don't think we can assume the kind of source-destination address relationship we have in parts of the RPC server code.
-
-Jeff points out that you've already tested that the addresses are equal.  So, never mind.
-
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-
-> 
->> +
->> +	return true;
->> }
->> 
->> static inline bool __rpc_copy_addr6(struct sockaddr *dst,
->> -- 
->> 1.7.6
->> 
->> 
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+As of 3.1, rpc_pipefs is also used by the block layout driver and blkmapd.
