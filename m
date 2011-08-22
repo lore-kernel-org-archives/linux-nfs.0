@@ -1,232 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:57040 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754334Ab1HYUqJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Aug 2011 16:46:09 -0400
-Date: Thu, 25 Aug 2011 16:46:06 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH] SUNRPC/NFS: make rpc pipe upcall generic
-Message-ID: <20110825204606.GA7002@merit.edu>
+Received: from fieldses.org ([174.143.236.118]:52279 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751530Ab1HVVIi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Aug 2011 17:08:38 -0400
+Date: Mon, 22 Aug 2011 17:08:33 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Jeff Layton <jlayton@redhat.com>, Mi Jinlong <mijinlong@cn.fujitsu.com>,
+        NFS <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] sunrpc: Add scope id to svc_addr_u for IPv6 LINKLOCAL
+ address
+Message-ID: <20110822210833.GD16261@fieldses.org>
+References: <4E4F8B5D.6060404@cn.fujitsu.com>
+ <20110822192348.GA16261@fieldses.org>
+ <20110822153939.14d0a6ac@tlielax.poochiereds.net>
+ <73D17319-3FDB-4278-872A-FF488E1C88DD@oracle.com>
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <73D17319-3FDB-4278-872A-FF488E1C88DD@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I've got several patches in my for-benny branch now, some of which we're
-still working on, but this one seems uncontroversial and should go into
-pnfs-all-latest.
+On Mon, Aug 22, 2011 at 03:44:39PM -0400, Chuck Lever wrote:
+> On Aug 22, 2011, at 3:39 PM, Jeff Layton wrote:
+> > That said, on a semi-related note...
+> > 
+> > I have to wonder about statd in conjunction with link-local addresses.
+> > I have a hard time understanding how you'd ever get reboot
+> > notifications in such a setup.
+> 
+> The only way that could work is if DNS was able to look at a local hostname, and provide the correct scope ID.  Doubtful.  I wonder if mDNS might provide such ability.
 
-commit b7e9fda18c161f0c63aa8af72b805db2d58bed84
-Author: Peng Tao <bergwolf@gmail.com>
-Date:   Sun Aug 7 19:59:22 2011 -0400
+OK.  Mi Jinlong, if you don't have a use case in mind for this, let's
+not bother.
 
-    SUNRPC/NFS: make rpc pipe upcall generic
-    
-    The same function is used by idmap, gss and blocklayout code. Make it generic.
-    
-    Signed-off-by: Peng Tao <peng_tao@emc.com>
-
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 18dcab4..6fdddde 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -960,7 +960,7 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
- };
- 
- static const struct rpc_pipe_ops bl_upcall_ops = {
--	.upcall		= bl_pipe_upcall,
-+	.upcall		= rpc_pipe_generic_upcall,
- 	.downcall	= bl_pipe_downcall,
- 	.destroy_msg	= bl_pipe_destroy_msg,
- };
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index f27d827..8900396 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -169,8 +169,6 @@ extern wait_queue_head_t bl_wq;
- #define BL_DEVICE_REQUEST_ERR          0x2 /* User level process fails */
- 
- /* blocklayoutdev.c */
--ssize_t bl_pipe_upcall(struct file *, struct rpc_pipe_msg *,
--		       char __user *, size_t);
- ssize_t bl_pipe_downcall(struct file *, const char __user *, size_t);
- void bl_pipe_destroy_msg(struct rpc_pipe_msg *);
- struct block_device *nfs4_blkdev_get(dev_t dev);
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index a83b393..46a2ce6 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -79,28 +79,6 @@ int nfs4_blkdev_put(struct block_device *bdev)
- 	return blkdev_put(bdev, FMODE_READ);
- }
- 
--/*
-- * Shouldn't there be a rpc_generic_upcall() to do this for us?
-- */
--ssize_t bl_pipe_upcall(struct file *filp, struct rpc_pipe_msg *msg,
--		       char __user *dst, size_t buflen)
--{
--	char *data = (char *)msg->data + msg->copied;
--	size_t mlen = min(msg->len - msg->copied, buflen);
--	unsigned long left;
--
--	left = copy_to_user(dst, data, mlen);
--	if (left == mlen) {
--		msg->errno = -EFAULT;
--		return -EFAULT;
--	}
--
--	mlen -= left;
--	msg->copied += mlen;
--	msg->errno = 0;
--	return mlen;
--}
--
- static struct bl_dev_msg bl_mount_reply;
- 
- ssize_t bl_pipe_downcall(struct file *filp, const char __user *src,
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index f20801a..47d1c6f 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -336,8 +336,6 @@ struct idmap {
- 	struct idmap_hashtable	idmap_group_hash;
- };
- 
--static ssize_t idmap_pipe_upcall(struct file *, struct rpc_pipe_msg *,
--				 char __user *, size_t);
- static ssize_t idmap_pipe_downcall(struct file *, const char __user *,
- 				   size_t);
- static void idmap_pipe_destroy_msg(struct rpc_pipe_msg *);
-@@ -345,7 +343,7 @@ static void idmap_pipe_destroy_msg(struct rpc_pipe_msg *);
- static unsigned int fnvhash32(const void *, size_t);
- 
- static const struct rpc_pipe_ops idmap_upcall_ops = {
--	.upcall		= idmap_pipe_upcall,
-+	.upcall		= rpc_pipe_generic_upcall,
- 	.downcall	= idmap_pipe_downcall,
- 	.destroy_msg	= idmap_pipe_destroy_msg,
- };
-@@ -595,27 +593,6 @@ nfs_idmap_name(struct idmap *idmap, struct idmap_hashtable *h,
- 	return ret;
- }
- 
--/* RPC pipefs upcall/downcall routines */
--static ssize_t
--idmap_pipe_upcall(struct file *filp, struct rpc_pipe_msg *msg,
--		  char __user *dst, size_t buflen)
--{
--	char *data = (char *)msg->data + msg->copied;
--	size_t mlen = min(msg->len, buflen);
--	unsigned long left;
--
--	left = copy_to_user(dst, data, mlen);
--	if (left == mlen) {
--		msg->errno = -EFAULT;
--		return -EFAULT;
--	}
--
--	mlen -= left;
--	msg->copied += mlen;
--	msg->errno = 0;
--	return mlen;
--}
--
- static ssize_t
- idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
- {
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 6f942c9..205305d 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -45,6 +45,8 @@ RPC_I(struct inode *inode)
- 	return container_of(inode, struct rpc_inode, vfs_inode);
- }
- 
-+extern ssize_t rpc_pipe_generic_upcall(struct file *, struct rpc_pipe_msg *,
-+				       char __user *, size_t);
- extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
- 
- struct rpc_clnt;
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 364eb45..e9b7693 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -603,26 +603,6 @@ out:
- 	return err;
- }
- 
--static ssize_t
--gss_pipe_upcall(struct file *filp, struct rpc_pipe_msg *msg,
--		char __user *dst, size_t buflen)
--{
--	char *data = (char *)msg->data + msg->copied;
--	size_t mlen = min(msg->len, buflen);
--	unsigned long left;
--
--	left = copy_to_user(dst, data, mlen);
--	if (left == mlen) {
--		msg->errno = -EFAULT;
--		return -EFAULT;
--	}
--
--	mlen -= left;
--	msg->copied += mlen;
--	msg->errno = 0;
--	return mlen;
--}
--
- #define MSG_BUF_MAXSIZE 1024
- 
- static ssize_t
-@@ -1590,7 +1570,7 @@ static const struct rpc_credops gss_nullops = {
- };
- 
- static const struct rpc_pipe_ops gss_upcall_ops_v0 = {
--	.upcall		= gss_pipe_upcall,
-+	.upcall		= rpc_pipe_generic_upcall,
- 	.downcall	= gss_pipe_downcall,
- 	.destroy_msg	= gss_pipe_destroy_msg,
- 	.open_pipe	= gss_pipe_open_v0,
-@@ -1598,7 +1578,7 @@ static const struct rpc_pipe_ops gss_upcall_ops_v0 = {
- };
- 
- static const struct rpc_pipe_ops gss_upcall_ops_v1 = {
--	.upcall		= gss_pipe_upcall,
-+	.upcall		= rpc_pipe_generic_upcall,
- 	.downcall	= gss_pipe_downcall,
- 	.destroy_msg	= gss_pipe_destroy_msg,
- 	.open_pipe	= gss_pipe_open_v1,
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index b181e34..67dbc18 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -77,6 +77,26 @@ rpc_timeout_upcall_queue(struct work_struct *work)
- 	rpc_purge_list(rpci, &free_list, destroy_msg, -ETIMEDOUT);
- }
- 
-+ssize_t rpc_pipe_generic_upcall(struct file *filp, struct rpc_pipe_msg *msg,
-+				char __user *dst, size_t buflen)
-+{
-+	char *data = (char *)msg->data + msg->copied;
-+	size_t mlen = min(msg->len - msg->copied, buflen);
-+	unsigned long left;
-+
-+	left = copy_to_user(dst, data, mlen);
-+	if (left == mlen) {
-+		msg->errno = -EFAULT;
-+		return -EFAULT;
-+	}
-+
-+	mlen -= left;
-+	msg->copied += mlen;
-+	msg->errno = 0;
-+	return mlen;
-+}
-+EXPORT_SYMBOL_GPL(rpc_pipe_generic_upcall);
-+
- /**
-  * rpc_queue_upcall - queue an upcall message to userspace
-  * @inode: inode of upcall pipe on which to queue given message
+--b.
