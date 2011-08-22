@@ -1,87 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:39215 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754477Ab1HZPnR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Aug 2011 11:43:17 -0400
-Subject: Re: Expected response from server not supporting v4
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4E537105.8020106@gluster.com>
-Date: Fri, 26 Aug 2011 11:43:02 -0400
-Cc: Steve Dickson <SteveD@redhat.com>, <linux-nfs@vger.kernel.org>
-Message-Id: <6ABB41ED-C420-4458-821A-77A4F6F71858@oracle.com>
-References: <4E4A23E2.3020103@gluster.com> <4E4A67AE.8040305@RedHat.com> <4E4B6134.7000903@gluster.com> <4B79A89A-6511-4447-976A-924670409438@oracle.com> <4E4E0171.6010104@gluster.com> <77A4C7C5-9578-433E-B37A-B61180834963@oracle.com> <4E537105.8020106@gluster.com>
-To: Shehjar Tikoo <shehjart@gluster.com>
+Received: from natasha.panasas.com ([67.152.220.90]:45734 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753987Ab1HVX3B (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Aug 2011 19:29:01 -0400
+Message-ID: <4E52E603.3040107@panasas.com>
+Date: Mon, 22 Aug 2011 16:28:03 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Peng Tao <bergwolf@gmail.com>
+CC: <tao.peng@emc.com>, <Trond.Myklebust@netapp.com>, <benny@tonian.com>,
+        <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/5] pNFS: recoalesce when ld write pagelist fails
+References: <1312685635-1593-1-git-send-email-bergwolf@gmail.com> <4E42C564.7070504@panasas.com> <CA+a=Yy4WXD64A3anw7f-wSWcs4A4-6W18QQs=YyYC0285_W_qg@mail.gmail.com> <4E442512.7080904@panasas.com> <CA+a=Yy4g09b_AEf2px1Cjfmr_ud3PFuAbEwdez1cbsiYJ0mmgA@mail.gmail.com> <4E446F63.5080707@panasas.com> <F19688880B763E40B28B2B462677FBF805BF0EB0A3@MX09A.corp.emc.com> <4E4AD0CE.3000506@panasas.com> <CA+a=Yy5jApbUqy+ESZxczZ3N+ixg8ixK9iAe0DWqSZavap18xQ@mail.gmail.com>
+In-Reply-To: <CA+a=Yy5jApbUqy+ESZxczZ3N+ixg8ixK9iAe0DWqSZavap18xQ@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On 08/17/2011 02:44 AM, Peng Tao wrote:
+<snip>
 
-On Aug 23, 2011, at 5:21 AM, Shehjar Tikoo wrote:
-
-> Chuck Lever wrote:
->> On Aug 19, 2011, at 2:23 AM, Shehjar Tikoo wrote:
->>> Chuck Lever wrote:
->>>> On Aug 17, 2011, at 2:35 AM, Shehjar Tikoo wrote:
->>>>> Steve Dickson wrote:
->>>>>> On 08/16/2011 04:01 AM, Shehjar Tikoo wrote:
->>>>>>> Hi All
->>>>>>> 
->>>>>>> The following thread discusses the behaviour when the client does not support v4:
->>>>>>> http://thread.gmane.org/gmane.linux.nfs/36928/
->>>>>>> 
->>>>>>> OTOH, when the server does not support v4, for eg. Gluster NFS server, where we support only v3, I believe v4 client will attempt to connect directly to port 2049 and receive connection failure errors on TCP. Does the current nfs client handle the situation where this results in a timeout for mount? We're hearing  a report of a timeout occurring on the RHEL6 client because the server does not have v4 support. Could someone please shed some light on how this behaviour is handled at present? Thanks
->>>>>> Here is the current logic as to what will cause a fall back:
->>>>>>  switch (errno) {
->>>>>>  case EPROTONOSUPPORT:
->>>>>>      /* A clear indication that the server or our
->>>>>>       * client does not support NFS version 4. */
->>>>>>      goto fall_back;
->>>>>>  case ENOENT:
->>>>>>      /* Legacy Linux servers don't export an NFS
->>>>>>       * version 4 pseudoroot. */
->>>>>>      goto fall_back;
->>>>>>  case EPERM:
->>>>>>      /* Linux servers prior to 2.6.25 may return
->>>>>>       * EPERM when NFS version 4 is not supported. */
->>>>>>      goto fall_back;
->>>>>>  default:
->>>>>>      return result;
->>>>>>  }
->>>>>> fall_back:
->>>>>>  return nfs_try_mount_v3v2(mi);
->>>>>> So in the case of the Gluster server, you are dropping into the
->>>>>> default case which is causing the time out.
->>>>>> In the above patch set, Mi patches the mount code to fall back on EINVAL which is the current return value from the kernel, when v4 is not configured. I'm not totally against doing something like this, but this is very touchy  code since it could have negative effects on other legacy servers.
->>>>>> So I'm thinking Mi's kernel patch that cause the kernel
->>>>>> to return EPROTONOSUPPORT, which is the correct return
->>>>>> value, is probably the better way to go... 
->>>>> Thanks Steve. My understanding is that Mi's patch is to handle the case where the client does not support v4. Do you think the same patch will also handle a server that does not support v4 and hence prevents a client from connecting to 2049?
->>>> It's a best practice for clients to connect to 2049 immediately, rather than querying the server's portmapper, to discover and potentially connect to a server's NFSv4 service.
->>>> A full-frame network trace of a mount attempt that times out would tell us if there is something pathological going on.
->>> Thanks Chuck. Heres the wireshark screenshot of the network trace. As you can see, the SYN from client(10.1.12.45) to the server machine(192.168.1.117) receives a RST. At the client, it manifests as;
->>> 
->>> [root@centos6-1 ~]# mount 192.168.1.117:/posix /mnt
->>> mount.nfs: Connection timed out
->>> 
->>> Thats it. The client is Linux centos6-1 2.6.32-71.el6.x86_64
->>> 
->>> Does this point to a bug or is it expected? I was under the impression that the version 3 becomes the failback in case v4 is not available on the server.
->> I assume this connection attempt comes from the kernel's NFS client.  The RST should cause the mount(2) system call to return immediately with an error code, but it's very likely this edge case was never tested.
+> The problem w/ directly calling nfs_initiate_write() is that we may
+> have pagelist length larger than server's rsize/wsize. So if client
+> sends all the pages in single READ/WRITE rpc, MDS will reject the
+> READ/WRITE operation. Therefore we need to recoalesce them before
+> re-sending to MDS.
 > 
-> Thanks Chuck.
-> 
-> Thats correct. The Linux NFS kernel client and server is Gluster NFS server.
->> I suppose you could try a newer kernel (2.6.39 or 3.0) to see if it behaves any better.
-> 
-> Same behavior with 2.6.38. Should a bug be filed?
 
-I was able to reproduce this with 3.1-rc2.  My expectation was that the SOFTCONN support we added a few releases back would handle this case, but it isn't.  Looking into it now.
+Rrrr, you are absolutely right. I needed a smack on the head, to
+get back on track.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+<snip>
 
-
-
-
+Thanks
+Boaz
