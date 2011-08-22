@@ -1,72 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60717 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52505 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755545Ab1HZVyz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Aug 2011 17:54:55 -0400
-Date: Fri, 26 Aug 2011 17:54:52 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSD: nfsd4_open Avoid race with grace period expiration
-Message-ID: <20110826215451.GF16090@pad.fieldses.org>
-References: <4E45C164.1070604@panasas.com>
- <20110826203924.GC17196@fieldses.org>
- <4E58119A.3090403@panasas.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E58119A.3090403@panasas.com>
+	id S1753194Ab1HVTkD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Aug 2011 15:40:03 -0400
+Date: Mon, 22 Aug 2011 15:39:39 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Mi Jinlong <mijinlong@cn.fujitsu.com>, NFS <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] sunrpc: Add scope id to svc_addr_u for IPv6 LINKLOCAL
+ address
+Message-ID: <20110822153939.14d0a6ac@tlielax.poochiereds.net>
+In-Reply-To: <20110822192348.GA16261@fieldses.org>
+References: <4E4F8B5D.6060404@cn.fujitsu.com>
+	<20110822192348.GA16261@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 26, 2011 at 02:35:22PM -0700, Boaz Harrosh wrote:
-> On 08/26/2011 01:39 PM, J. Bruce Fields wrote:
-> > On Fri, Aug 12, 2011 at 05:12:20PM -0700, Boaz Harrosh wrote:
-> >>
-> >> locks_in_grace() was called twice one for the "yes" case second
-> >> for the "no" case. If the status changes between these two calls
-> >> the Server would do the wrong thing. Sample it only once.
+On Mon, 22 Aug 2011 15:23:48 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Sat, Aug 20, 2011 at 06:24:29PM +0800, Mi Jinlong wrote:
+> > For IPv6 local address, lockd can not callback to client for 
+> > missing scope id when binding address at inet6_bind:
 > > 
-> > I don't see how this fixes any bug.  The only thing that could happen in
-> > between those two checks is that the grace period could end.  In that
-> > case op_claim_type must be NFS4_OPEN_CLAIM_PREVIOUS (otherwise we would
-> > have jumped to out and not hit the second case).  The second condition
-> > will therefore be true and we'll fail with err_no_grace.  I don't see
-> > that is incorrect, as in fact the grace period is now over.
+> >  324       if (addr_type & IPV6_ADDR_LINKLOCAL) {
+> >  325               if (addr_len >= sizeof(struct sockaddr_in6) &&
+> >  326                   addr->sin6_scope_id) {
+> >  327                       /* Override any existing binding, if another one
+> >  328                        * is supplied by user.
+> >  329                        */
+> >  330                       sk->sk_bound_dev_if = addr->sin6_scope_id;
+> >  331               }
+> >  332 
+> >  333               /* Binding to link-local address requires an interface */
+> >  334               if (!sk->sk_bound_dev_if) {
+> >  335                       err = -EINVAL;
+> >  336                       goto out_unlock;
+> >  337               }
+> > 
+> > This patch adds scope id to svc_addr_u for IPv6 address, and copy scope from
+> > xprt->xpt_local to rqstp->rq_daddr for use.
+> > 
+> > With this patch, lockd can callback to client success.
 > 
-> OK You are right it is not NFS incorrect. But I still think a single
-> sample is better coding practice. no? Though I agree that the commit log
-> wording should be changed.
-
-Sure, if you want to resend with just that, that'd be OK.
-
-> What about the other part of the patch? The print. Should I send a separate
-> patch for that?
-
-As a general rule, I try to avoid logging client problems:
-	- A malicious client could fill up our logs.
-	- A bunch of broken clients could do the same unintentionally.
-
-If it's really necessary then maybe do it with printk_once().
-
-Which clients are you worried about exactly?
-
-> > One fix might be to take some sort of reference count as long as you're
-> > processing a reclaim request, and not end the grace period till that
-> > count goes to zero.
-> > 
-> > Another might be push the grace checks down into the core lock code and
-> > make sure there's a lock that provides mutual exclusion between the
-> > locks_end_grace() call and lock reclaims.
-> > 
+> I guess this makes sense to me, but someone who understands IPv6 better
+> should comment... Chuck?  Jeff?
 > 
-> You might get by, by rechecking the grace period at the end of the
-> processing and if passed issue a "reclaim request failed" anyway.
-> So the first check is only for optimization but the final disposition
-> is the post-check. (Just as if you dropped that refcount above)
 
-I guess that could work, but you'd have to back out the operation you
-just did if the check showed you'd left the grace period.  I'd rather
-avoid that.
+Sounds like a reasonable explanation. Link-local addresses all have the
+same prefix, so we need a scopeid (aka interface ID# for linux) to know
+which interface we should send a call on.
 
---b.
+When I did the patches to allow NFSv4 callbacks to go over IPv6, I
+did something similar, but used the rq_addr. From gen_callback:
+
+        struct sockaddr *sa = svc_addr(rqstp);
+        u32 scopeid = rpc_get_scope_id(sa);
+
+...and the scopeid was used to populate the scopeid of the callback
+address. The rq_daddr should be equivalent though. The _addr and _daddr
+must have the same scopeid or something is very wrong...
+
+That said, on a semi-related note...
+
+I have to wonder about statd in conjunction with link-local addresses.
+I have a hard time understanding how you'd ever get reboot
+notifications in such a setup.
+
+You might be able to make it work if /etc/hosts allowed you to put in a
+scopeid for an address, but even then it sounds sketchy...
+
+-- 
+Jeff Layton <jlayton@redhat.com>
