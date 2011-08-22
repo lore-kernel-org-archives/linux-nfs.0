@@ -1,43 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from gerard.telenet-ops.be ([195.130.132.48]:55187 "EHLO
-	gerard.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751024Ab1HFHl2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2011 03:41:28 -0400
-From: Luk Claes <luk@debian.org>
-To: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-Cc: Luk Claes <luk@debian.org>
-Subject: [PATCH 2/6] nfs.man: man complains when line starts with quote
-Date: Sat,  6 Aug 2011 09:41:15 +0200
-Message-Id: <1312616479-312-3-git-send-email-luk@debian.org>
-In-Reply-To: <1312616479-312-1-git-send-email-luk@debian.org>
-References: <1312616479-312-1-git-send-email-luk@debian.org>
+Received: from cantor2.suse.de ([195.135.220.15]:36380 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754288Ab1HVXWC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Aug 2011 19:22:02 -0400
+Date: Tue, 23 Aug 2011 09:21:50 +1000
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jamie Lokier <jamie@shareable.org>, Al Viro <viro@ZenIV.linux.org.uk>,
+        Sylvain Rochet <gradator@gradator.net>, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: PROBLEM: 2.6.35.7 to 3.0 Inotify events missing
+Message-ID: <20110823092150.366d8899@notabene.brown>
+In-Reply-To: <20110822172239.GA15960@fieldses.org>
+References: <20101018223540.GA20730@gradator.net>
+	<20110819230344.GA24784@gradator.net>
+	<20110819233756.GI11512@jl-vm1.vm.bytemark.co.uk>
+	<20110820012943.GD2203@ZenIV.linux.org.uk>
+	<20110820030335.GA14899@jl-vm1.vm.bytemark.co.uk>
+	<20110821170714.GB9296@fieldses.org>
+	<20110821202058.GF14899@jl-vm1.vm.bytemark.co.uk>
+	<20110822090751.029de688@notabene.brown>
+	<20110822172239.GA15960@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Fix "macro `local_lock=flock'.' not defined" by avoiding to put a quote at the beginning of the line.
+On Mon, 22 Aug 2011 13:22:39 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
-Signed-off-by: Luk Claes <luk@debian.org>
----
- utils/mount/nfs.man |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+> On Mon, Aug 22, 2011 at 09:07:51AM +1000, NeilBrown wrote:
+> > One is to use bind mounts. i.e. I effectively do
+> >     mount --bind $HOME/.config $HOME/.config
+> > and ask for events from the newly created vfsmnt.
+> > This will not catch changes made through file descriptors that were opened
+> > before I did the mount, or through hard links from some other directory
+> > tree.  But for a particular use-case that might not be a problem.
+> 
+> I'm missing what the extra vfsmount gets you here.  The problems seem
+> just the same as if you don't have one.
+> 
+> Oh, wait, I see, it's that the file descriptors are associated with
+> vfsmounts, not just dentries.  Hm.
 
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index be91a25..6152235 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -752,8 +752,8 @@ If
- is specified, the client assumes that POSIX locks are local and uses NLM
- sideband protocol to lock files when flock locks are used.
- .IP
--To support legacy flock behavior similar to that of NFS clients < 2.6.12, use
--'local_lock=flock'. This option is required when exporting NFS mounts via
-+To support legacy flock behavior similar to that of NFS clients < 2.6.12, 
-+use 'local_lock=flock'. This option is required when exporting NFS mounts via
- Samba as Samba maps Windows share mode locks as flock. Since NFS clients >
- 2.6.12 implement flock by emulating POSIX locks, this will result in
- conflicting locks.
--- 
-1.7.5.4
+"Hm" might be right.  writes have a 'struct file', but mkdir and rename etc
+just get an inode.
+So to be able to notify based on vfsmnt, mkdirat - for examine - would need
+to pass the path to vfs_mkdir rather than path.dentry->d_inode, and vfs_mkdir
+would have to pass that path to fsnotify_mkdir.  So more intrusive that I
+imagined, but still quite do-able.... if it were thought to be useful.
+
+NeilBrown
 
