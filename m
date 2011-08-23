@@ -1,114 +1,182 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:52832 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:58646 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753634Ab1H0AC0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Aug 2011 20:02:26 -0400
-Date: Fri, 26 Aug 2011 20:02:19 -0400
+	id S1751886Ab1HWVjR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Aug 2011 17:39:17 -0400
+Date: Tue, 23 Aug 2011 17:39:16 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: NeilBrown <neilb@suse.de>, Greg Banks <gnb@fastmail.fm>,
-        Christoph Hellwig <hch@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: use better NUMA affinities
-Message-ID: <20110827000219.GF18699@fieldses.org>
-References: <F67B6E82-9FA8-464E-B3FB-DC0D4EC18BB0@fastmail.fm>
- <20110729164836.GL23194@fieldses.org>
- <20110729165345.GM23194@fieldses.org>
- <F562C6F4-3FC2-4952-A903-8E87E9EF2D9D@fastmail.fm>
- <20110730093025.716f3f50@notabene.brown>
- <20110729234857.GA30941@fieldses.org>
- <1311998914.2873.27.camel@edumazet-laptop>
- <20110730160610.0b751ffd@notabene.brown>
- <1312006990.2873.75.camel@edumazet-laptop>
- <1312095534.2873.108.camel@edumazet-laptop>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1312095534.2873.108.camel@edumazet-laptop>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC][PATCH v2] nfsd41: try to check reply size before
+ operation
+Message-ID: <20110823213916.GB25350@fieldses.org>
+References: <4E0C31B5.9090302@cn.fujitsu.com>
+ <20110706201920.GA32275@fieldses.org>
+ <4E4F8853.8080607@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E4F8853.8080607@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, Jul 31, 2011 at 08:58:54AM +0200, Eric Dumazet wrote:
-> Le samedi 30 juillet 2011 à 08:23 +0200, Eric Dumazet a écrit :
-> > Le samedi 30 juillet 2011 à 16:06 +1000, NeilBrown a écrit :
-> > > umount /proc/fs/nfsd
-> > > 
-> > > 
-> > 
-> > Thans  a lot, this was the thing I missed !
-> > 
-> > 
+On Sat, Aug 20, 2011 at 06:11:31PM +0800, Mi Jinlong wrote:
+> For checking the size of reply before calling a operation, 
+> we need try to get maxsize of the operation's reply.
 > 
-> Hmm, after this, I left things as the were (nfsd module loaded, but a 0
-> use count )
-> 
-> I got a BUG while updatedb was running,
-> (I tried this on a debian machine/kernel)
-> 
-> Same bug on :
-> 
-> cat /proc/self/mounts 
+> v1->v2:
+>     move op_enc_size from nfsd4_enc_ops to nfsd4_operation;
+>     add helper function to get payload len which is need as READ, READDIR ...
 
-Any luck figuring this out?
+I just want to make sure I understand the logic here.  So while
+encoding this operation, we estimate the size of the *next* operation:
 
-I tried reproducing, by stopping everything to get nfsd refcount to
-zero:
+> @@ -1466,6 +1791,22 @@ static const char *nfsd4_op_name(unsigned opnum)
+>  	return "unknown_operation";
+>  }
+>  
+> +u32 get_ops_max_respz(struct svc_rqst * rqstp)
+> +{
+> +	struct nfsd4_compoundargs *args = rqstp->rq_argp;
+> +	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+> +	__be32 opnum = args->ops[resp->opcnt].opnum;
+> +	__be32 length = 0;
+> +
+> +	length = nfsd4_ops[opnum].op_enc_size * 4;
+> +	if (nfsd4_ops[opnum].op_payload)
+> +		length += nfsd4_ops[opnum].op_payload(rqstp);
+> +
+> +	dprintk("%s opnum %u max reply %u\n", __func__, opnum, length);
+> +
+> +	return length;
+> +}
+> +
+>  #define nfsd4_voidres			nfsd4_voidargs
+>  struct nfsd4_voidargs { int dummy; };
 
-	# lsmod | grep '^nfsd'
-	nfsd                  300025  0 
+and we stick the result into the next op's status field:
 
-then running 'cat /proc/self/mounts'.
+> @@ -3374,10 +3373,14 @@ static int nfsd4_check_drc_limit(struct nfsd4_compoundres *resp)
+>  	dprintk("%s length %u, xb->page_len %u tlen %u pad %u\n", __func__,
+>  		length, xb->page_len, tlen, pad);
+>  
+> -	if (length <= session->se_fchannel.maxresp_cached)
+> -		return status;
+> -	else
+> -		return nfserr_rep_too_big_to_cache;
+> +	if (length > session->se_fchannel.maxresp_sz)
+> +		args->ops[resp->opcnt].status = nfserr_rep_too_big;
+> +
+> +	if (slot->sl_cachethis == 1 &&
+> +	    length > session->se_fchannel.maxresp_cached)
+> +		args->ops[resp->opcnt].status = nfserr_rep_too_big_to_cache;
+> +
+> +	return 0;
+>  }
 
-But I don't see any crash.
+and then we check that status and use it when we process the next
+compound:
 
-This is only 3.1.0-rc1 plus some nfsd patches.
+> @@ -1188,7 +1196,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+>  			goto encode_op;
+>  		}
+>  
+> -		if (opdesc->op_func)
+> +		if (op->status == 0 && opdesc->op_func)
+>  			op->status = opdesc->op_func(rqstp, cstate, &op->u);
+>  		else
+>  			BUG_ON(op->status == nfs_ok);
+
+Do I have that right?
+
+Is there some reason we need to do it that way?  Why not instead do
+something like:
+
+		}
+
+ +		op->status == nfsd4_check_resp_size(resp)
+ +		if (op->status)
+ +			goto encode_op;
+		if (opdesc->op_func)
+			op->status = opdesc->op_func(rqstp-, cstate, &op->u);
+
+in nfsd4_proc_compound.
+
+A minor nitpick (already in the existing code):
+
+> @@ -3336,32 +3336,31 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+>   * Calculate the total amount of memory that the compound response has taken
+>   * after encoding the current operation.
+>   *
+> - * pad: add on 8 bytes for the next operation's op_code and status so that
+> - * there is room to cache a failure on the next operation.
+> - *
+> - * Compare this length to the session se_fmaxresp_cached.
+> + * Compare this length to the session se_fmaxresp_sz and se_fmaxresp_cached.
+>   *
+>   * Our se_fmaxresp_cached will always be a multiple of PAGE_SIZE, and so
+>   * will be at least a page and will therefore hold the xdr_buf head.
+>   */
+> -static int nfsd4_check_drc_limit(struct nfsd4_compoundres *resp)
+> +static int nfsd4_check_resp_limit(struct nfsd4_compoundres *resp)
+>  {
+>  	int status = 0;
+
+Status is *always* 0 in this function.  Let's just get rid of it.
+
+Oh boy:
+
+> +static u32 nfsd4_enc_getattr_playload(struct svc_rqst *rqstp)
+> +{
+> +	struct nfsd4_compoundargs *args = rqstp->rq_argp;
+> +	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+> +	struct nfsd4_op op = args->ops[resp->opcnt];
+> +	u32 *bmval = op.u.getattr.ga_bmval;
+> +	u32 bmval0 = bmval[0];
+> +	u32 bmval1 = bmval[1];
+> +	u32 bmval2 = bmval[2];
+> +	u32 mlen = 0, lc = 0;
+> +
+> +	if (bmval2)
+> +		mlen += 16;
+> +	else if (bmval1)
+> +		mlen += 12;
+> +	else
+> +		mlen += 8;
+> +
+> +	if (bmval0 & FATTR4_WORD0_SUPPORTED_ATTRS) {
+> +		if (!nfsd_suppattrs2(resp->cstate.minorversion))
+> +			mlen += 12;
+> +		else
+> +			mlen += 16;
+> +	}
+> +
+> +	if (bmval0 & FATTR4_WORD0_TYPE)
+> +		mlen += 4;
+> +	if (bmval0 & FATTR4_WORD0_FH_EXPIRE_TYPE)
+> +		mlen += 4;
+
+
+This is getting complicated....
+
+The thing is, some of the most complicated ops (read, readdir, getattr)
+don't *really* matter that much, because they don't change anything on
+the filesystem, and don't change the server state in any way.
+
+So maybe we could handle operations in two different ways:
+
+	- For operations that actually change something (write, rename,
+	  open, close, ...), do it the way we're doing it now: be
+	  very careful to estimate the size of the response before even
+	  processing the operation.
+	- For operations that don't change anything (read, getattr, ...)
+	  just go ahead and do the operation.  If you realize after the
+	  fact that the response is too large, then return the error at
+	  that point.
+
+So we'd add another flag to op_flags: say, OP_MODIFIES_SOMETHING.  And for
+operations with OP_MODIFIES_SOMETHING set, we'd do the first thing.  For
+operations without it set, we'd do the second.
+
+Would there be any problem with doing it that way?
 
 --b.
-
-> 
-> I'll take a look at this issue later, after my vacations, unless someone
-> wants to take a look before me ;)
-> 
-> [1020029.301174] BUG: unable to handle kernel paging request at ffffffffa03da0d0
-> [1020029.301318] IP: [<ffffffff811105bd>] show_type+0x17/0x5a
-> [1020029.301436] PGD 1605067 PUD 1609063 PMD 127353067 PTE 0
-> [1020029.301574] Oops: 0000 [#1] SMP 
-> [1020029.301637] last sysfs file: /sys/module/nfsd/initstate
-> [1020029.301722] CPU 6 
-> [1020029.301765] Modules linked in: nfsd fuse btrfs zlib_deflate crc32c libcrc32c ufs qnx4 hfsplus hfs minix ntfs vfat msdos fat jfs xfs reiserfs ext4 jbd2 crc16 ext2 dm_mod nls_utf8 isofs lockd fscache auth_rpcgss nfs_acl sunrpc loop i5000_edac radeon edac_core ttm drm_kms_helper snd_pcm drm snd_timer snd i2c_algo_bit soundcore i2c_core snd_page_alloc i5k_amb power_supply ipmi_si evdev psmouse rng_core ipmi_msghandler hpilo hpwdt shpchp processor button pcspkr serio_raw pci_hotplug container ext3 jbd mbcache hpsa usbhid hid uhci_hcd cciss scsi_mod ehci_hcd usbcore bnx2 thermal thermal_sys [last unloaded: nfsd]
-> [1020029.303561] 
-> [1020029.303588] Pid: 23460, comm: updatedb.mlocat Tainted: G  R          2.6.39-2-amd64 #1 HP ProLiant BL460c G1
-> [1020029.303751] RIP: 0010:[<ffffffff811105bd>]  [<ffffffff811105bd>] show_type+0x17/0x5a
-> [1020029.303866] RSP: 0018:ffff880011da7e48  EFLAGS: 00010296
-> [1020029.303953] RAX: ffffffffa03da0d0 RBX: ffff8801288a4a80 RCX: 0000000000007774
-> [1020029.304061] RDX: ffffffff814c9935 RSI: ffff880129ea3800 RDI: ffff8801288a4a80
-> [1020029.304169] RBP: ffff880129ea3800 R08: ffff880011da7e68 R09: ffffffffffffffff
-> [1020029.304263] R10: ffff880011d883b2 R11: 0000000000000007 R12: ffff88012794a2c0
-> [1020029.304263] R13: ffff8801288a4a80 R14: ffff88012794a338 R15: 0000000000000000
-> [1020029.304263] FS:  00007f9cf0dec700(0000) GS:ffff88012fd80000(0000) knlGS:0000000000000000
-> [1020029.304263] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> [1020029.304263] CR2: ffffffffa03da0d0 CR3: 0000000058f90000 CR4: 00000000000006e0
-> [1020029.304263] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> [1020029.304263] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> [1020029.304263] Process updatedb.mlocat (pid: 23460, threadinfo ffff880011da6000, task ffff88002741a440)
-> [1020029.304263] Stack:
-> [1020029.304263]  ffff8801288a4a80 ffff8801288a4a80 ffff88012794a338 ffffffff81110abf
-> [1020029.304263]  ffff88012794a2c0 ffff88010d992440 0000000000000400 00007f9cf0df3000
-> [1020029.304263]  ffff880127960cc0 ffff8801288a4a80 ffff88012794a338 ffffffff8111427a
-> [1020029.304263] Call Trace:
-> [1020029.304263]  [<ffffffff81110abf>] ? show_vfsmnt+0x9b/0x134
-> [1020029.304263]  [<ffffffff8111427a>] ? seq_read+0x276/0x350
-> [1020029.304263]  [<ffffffff810fc207>] ? vfs_read+0xa1/0xfb
-> [1020029.304263]  [<ffffffff810d8052>] ? sys_mmap_pgoff+0x127/0x15a
-> [1020029.304263]  [<ffffffff810fc317>] ? sys_read+0x45/0x6e
-> [1020029.304263]  [<ffffffff81338e52>] ? system_call_fastpath+0x16/0x1b
-> [1020029.304263] Code: 01 00 65 48 03 14 25 20 dc 00 00 66 ff 02 c3 f0 ff 47 38 c3 55 48 89 f5 48 c7 c2 35 99 4c 81 53 48 89 fb 48 83 ec 08 48 8b 46 28 
-> [1020029.304263]  8b 30 e8 c7 36 00 00 48 8b 85 b8 02 00 00 48 85 c0 74 2b 80 
-> [1020029.304263] RIP  [<ffffffff811105bd>] show_type+0x17/0x5a
-> [1020029.304263]  RSP <ffff880011da7e48>
-> [1020029.304263] CR2: ffffffffa03da0d0
-> [1020029.311417] ---[ end trace ebf19aff1e083659 ]---
-> 
-> 
