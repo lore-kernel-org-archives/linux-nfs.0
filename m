@@ -1,146 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet15.oracle.com ([141.146.126.227]:23119 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754334Ab1HYUq6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Aug 2011 16:46:58 -0400
-Subject: Re: [PATCH] mount.nfs: Preserve any explicit port=2049 option
+Received: from frankvm.xs4all.nl ([83.163.148.79]:54759 "EHLO
+	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752063Ab1HWPt0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Aug 2011 11:49:26 -0400
+Date: Tue, 23 Aug 2011 17:49:24 +0200
+From: Frank van Maarseveen <frankvm@frankvm.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, Pavel Emelyanov <xemul@openvz.org>,
+        jlayton@redhat.com
+Subject: Re: [NLM] support for a per-mount grace period.
+Message-ID: <20110823154924.GB2861@janus>
+References: <1311878660-24482-1-git-send-email-frankvm@frankvm.com>
+ <20110729171126.GN23194@fieldses.org>
+ <20110823141909.GA2861@janus>
+ <20110823143257.GE16261@fieldses.org>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4E56AFCB.2020803@RedHat.com>
-Date: Thu, 25 Aug 2011 16:46:38 -0400
-Cc: Luk Claes <luk@debian.org>, linux-nfs@vger.kernel.org
-Message-Id: <F4AA6B6E-D029-47BC-A710-23A7AE2582A8@oracle.com>
-References: <1312625496-2496-1-git-send-email-luk@debian.org> <4E56AFCB.2020803@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <20110823143257.GE16261@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Tue, Aug 23, 2011 at 10:32:57AM -0400, J. Bruce Fields wrote:
+> On Tue, Aug 23, 2011 at 04:19:09PM +0200, Frank van Maarseveen wrote:
+> > On Fri, Jul 29, 2011 at 01:11:27PM -0400, J. Bruce Fields wrote:
+> > > On Thu, Jul 28, 2011 at 08:44:18PM +0200, Frank van Maarseveen wrote:
+> > > > The following two patches implement support for a per-mount NLM
+> > > > grace period. The first patch is a minor cleanup which pushes
+> > > > down locks_in_grace() calls into functions shared by NFS[234]. Two
+> > > > locks_in_grace() tests have been reordered to avoid duplicate calls at
+> > > > run-time (assuming gcc is smart enough). nlmsvc_grace_period is now a
+> > > > function instead of an unused variable.
+> > > > 
+> > > > The second patch is the actual implementation. It is currently in use for
+> > > > a number of NFSv3 virtual servers on one physical machine running 2.6.39.3
+> > > > where the virtualization is based on using different IPv4 addresses.
+> > > 
+> > > Thanks, that is something we'd like to have working well.
+> > 
+> > Are the patches queued anywhere for inclusion in mainline?
+> 
+> To merge it upstream, at a minimum we need NFSv4 working as well.  It
+> causes problems when version n+1 lacks features that version n has,
+> especially in the presence of clients automatically negotiate up.
 
-On Aug 25, 2011, at 4:25 PM, Steve Dickson wrote:
+This is not possible since there are no (standard) userland tools which
+start the new per-mount grace time. Anyway, The patch implements it for
+all NFS versions including NFSv4.
 
-> First of all let me apologize for taking so long
-> to get to this... I did take some time off.... 
 > 
-> On 08/06/2011 06:11 AM, Luk Claes wrote:
->> If NFS port (2049) is supplied explicitly, don't ignore this setting by requesting it to portmapper again. Thanks to Ben Hutchings <ben@decadent.org.uk> for the patch.
->> 
->> Signed-off-by: Luk Claes <luk@debian.org>
->> ---
->> utils/mount/stropts.c |    4 ++--
->> 1 files changed, 2 insertions(+), 2 deletions(-)
->> 
->> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->> index f1aa503..8b2799c 100644
->> --- a/utils/mount/stropts.c
->> +++ b/utils/mount/stropts.c
->> @@ -437,8 +437,8 @@ static int nfs_construct_new_options(struct mount_options *options,
->> 	if (po_append(options, new_option) == PO_FAILED)
->> 		return 0;
->> 
->> -	po_remove_all(options, "port");
->> -	if (nfs_pmap->pm_port != NFS_PORT) {
->> +	if(po_remove_all(options, "port") == PO_FOUND ||
->> +	   nfs_pmap->pm_port != NFS_PORT) {
->> 		snprintf(new_option, sizeof(new_option) - 1,
->> 			 "port=%lu", nfs_pmap->pm_port);
->> 		if (po_append(options, new_option) == PO_FAILED)
-> Now I like the idea of not sending the pmap inquire for the 
-> port when the port is specified on the command because its
-> a TCP connection. During automount storms, wasting TCP connections
-> is not a good thing... 
-> 
-> But your patch does not seem to do that since all the port
-> negotiation is done well before this part of the code.
+> I'm also inclined to think that making the various data structures and
+> interfaces network-namespace-dependent is going to result in the cleaner
+> and more useful solution.
 
-I thought the idea was to eliminate the port query during REnegotiation if "port=" was specified.  That seems like exactly what the patch does.  Does the initial port negotiation also have this problem?
+I don't understand this. NLM has been refactored in the past for NFSv4,
+adding a shared fs/lockd/grace.c for all NFS versions. I think this
+is good.
 
-But we should be careful here: mount.nfs will do an rpcbind query if a port= was specified if there is also some doubt about whether to use TCP or UDP, or what NFS version is available.  The only time rpcbind queries should be completely squashed is when the mount parameters are specified completely (transport, version, and port).
+> 
+> I probably should take that first cleanup patch at least, though.
 
-> I'm thinking some code has to change in nfs_probe_port() 
-> something like:
-> 
->    mount.nfs: Do not send pmap inquire when port is specified
-> 
->    When the port is specified on the command line do not
->    send a pmap inquire asking for the port. Instead use
->    the given port in the NFS ping. If the ping fails,
->    assume a bad port was given and now go ask the server
->    for the correct port.
+Which git repo do you use for this?
 
-If the server has more than one NFS port enabled, and the client is requesting a port that isn't registered with the server's rpcbind, it shouldn't fall back to the registered port IMO.
-
->    Signed-off-by: Steve Dickson <steved@redhat.com>
-> 
-> diff --git a/utils/mount/network.c b/utils/mount/network.c
-> index d1f91dc..405c320 100644
-> --- a/utils/mount/network.c
-> +++ b/utils/mount/network.c
-> @@ -545,17 +545,18 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
-> 	const unsigned int prot = (u_int)pmap->pm_prot, *p_prot;
-> 	const u_short port = (u_short) pmap->pm_port;
-> 	unsigned long vers = pmap->pm_vers;
-> -	unsigned short p_port;
-> +	unsigned short p_port = port;
-> +	int once = 1;
-> 
-> 	memcpy(saddr, sap, salen);
-> 	p_prot = prot ? &prot : protos;
-> 	p_vers = vers ? &vers : versions;
-> -
-> 	for (;;) {
-> 		if (verbose)
-> 			printf(_("%s: prog %lu, trying vers=%lu, prot=%u\n"),
-> 				progname, prog, *p_vers, *p_prot);
-> -		p_port = nfs_getport(saddr, salen, prog, *p_vers, *p_prot);
-> +		if (!p_port)
-> +			p_port = nfs_getport(saddr, salen, prog, *p_vers, *p_prot);
-> 		if (p_port) {
-> 			if (!port || port == p_port) {
-> 				nfs_set_port(saddr, p_port);
-> @@ -564,6 +565,15 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
-> 				if (nfs_rpc_ping(saddr, salen, prog,
-> 							*p_vers, *p_prot, NULL))
-> 					goto out_ok;
-> +				if (port == p_port && once) {
-> +					/*
-> +					 * Could be a bad port was specified. This
-> +					 * time ask the server for the port but only
-> +					 * do it once.
-> +					 */
-> +					p_port = once = 0;
-> +					continue;
-> +				}
-> 			} else
-> 				rpc_createerr.cf_stat = RPC_PROGNOTREGISTERED;
-> 		}
-> @@ -589,6 +599,7 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
-> 	}
-> 
-> 	nfs_pp_debug2("failed");
-> 	return 0;
-> 
-> out_ok:
-> 
-> 
-> I'm not sure this is best way either.... 
-> 
-> steved.
-> 
-> 
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Frank
