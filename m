@@ -1,49 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:43372 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753470Ab1HHPBs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Aug 2011 11:01:48 -0400
-Received: by vws1 with SMTP id 1so3455177vws.19
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Aug 2011 08:01:47 -0700 (PDT)
-Message-ID: <1593054604-1312815702-cardhu_decombobulator_blackberry.rim.net-1846586384-@b27.c3.bise3.blackberry>
-Reply-To: bhalevy@tonian.com
-Subject: Re: [PATCH-RFC 0/2] pNFS: recoalesce pages when ld read/write fails
-To: "Peng Tao" <bergwolf@gmail.com>, linux-nfs@vger.kernel.org
-Cc: rees@umich.edu, Trond.Myklebust@netapp.com
-From: "Benny Halevy" <bhalevy@tonian.com>
-Date: Mon, 8 Aug 2011 15:01:39 +0000
-Content-Type: text/plain
+Received: from fieldses.org ([174.143.236.118]:43156 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751886Ab1HWVnr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Aug 2011 17:43:47 -0400
+Date: Tue, 23 Aug 2011 17:43:46 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/4 v3] 4.1 CLNT: add a simple test about
+ RECLAIM_COMPLETE
+Message-ID: <20110823214346.GD25350@fieldses.org>
+References: <4E4C7679.7000108@cn.fujitsu.com>
+ <4E4C76C6.8020901@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E4C76C6.8020901@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I'm good with a private pnfs workqueue.
+On Thu, Aug 18, 2011 at 10:19:50AM +0800, Mi Jinlong wrote:
+> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
 
-Benny
-------Original Message------
-From: Peng Tao
-To: linux-nfs@vger.kernel.org
-Cc: rees@umich.edu
-Cc: Benny Halevy
-Cc: Trond.Myklebust@netapp.com
-Subject: Re: [PATCH-RFC 0/2] pNFS: recoalesce pages when ld read/write fails
-Sent: Aug 8, 2011 17:33
+Is it even possible to run this test without an earlier RECLAIM_COMPLETE
+failing?  I guess so, if you just run this one test without --maketree.
 
-On Sat, Aug 6, 2011 at 11:52 PM, Peng Tao <bergwolf@gmail.com> wrote:
-> Hi,
->
-> I start to look at the error handling for ld_read/write_done.
-> The two patches try to address the error handling for read/write pagelist
-> failures, via nfs readpage/writepage interface. Please see if this method
-> is proper. Thanks!
-FWIW, this is just what we need for recoalescing pages when IO fails.
-Currently ld_read/write_done is called in default workqueue, which is
-not really a good place for IO path code. Trond mentioned that nfsiod
-is not an ideal place for it either. So do we need to create a pnfs
-private workqueue for this? Any other suggestions?
+OK.
 
--- 
-Thanks,
--Bergwolf
+--b.
 
-
+> ---
+>  nfs4.1/server41tests/__init__.py            |    1 +
+>  nfs4.1/server41tests/st_reclaim_complete.py |   21 +++++++++++++++++++++
+>  2 files changed, 22 insertions(+), 0 deletions(-)
+>  create mode 100644 nfs4.1/server41tests/st_reclaim_complete.py
+> 
+> diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
+> index 3b4411a..1cc2048 100644
+> --- a/nfs4.1/server41tests/__init__.py
+> +++ b/nfs4.1/server41tests/__init__.py
+> @@ -2,6 +2,7 @@ __all__ = ["st_exchange_id.py", # draft 21
+>             "st_compound.py",
+>             "st_create_session.py",
+>             "st_destroy_session.py",
+> +           "st_reclaim_complete.py",
+>             "st_secinfo_no_name.py",
+>             "st_secinfo.py",
+>             "st_sequence.py",
+> diff --git a/nfs4.1/server41tests/st_reclaim_complete.py b/nfs4.1/server41tests/st_reclaim_complete.py
+> new file mode 100644
+> index 0000000..a591ef5
+> --- /dev/null
+> +++ b/nfs4.1/server41tests/st_reclaim_complete.py
+> @@ -0,0 +1,21 @@
+> +from st_create_session import create_session
+> +from nfs4_const import *
+> +from environment import check, fail
+> +import nfs4_ops as op
+> +import nfs4lib
+> +
+> +def testSupported(t, env):
+> +    """Do a simple RECLAIM_COMPLETE
+> +
+> +    FLAGS: reclaim_complete all
+> +    CODE: RECC1
+> +    """
+> +    c = env.c1.new_client(env.testname(t))
+> +    sess = c.create_session()
+> +
+> +    # RECLAIM_COMPLETE
+> +    res = sess.compound([op.putrootfh(), op.reclaim_complete(TRUE)])
+> +    check(res)
+> +
+> +    res = sess.compound([op.reclaim_complete(FALSE)])
+> +    check(res)
+> -- 
+> 1.7.6
+> 
+> 
