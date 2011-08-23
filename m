@@ -1,62 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:12050 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:40248 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751530Ab1HVVMr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Aug 2011 17:12:47 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 2/4] NFSv4: nfs4_proc_renew should be declared static
-Date: Mon, 22 Aug 2011 17:12:38 -0400
-Message-Id: <1314047560-24534-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1314047560-24534-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1314047560-24534-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1753784Ab1HWOc6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Aug 2011 10:32:58 -0400
+Date: Tue, 23 Aug 2011 10:32:57 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Frank van Maarseveen <frankvm@frankvm.com>
+Cc: linux-nfs@vger.kernel.org, Pavel Emelyanov <xemul@openvz.org>,
+        jlayton@redhat.com
+Subject: Re: [NLM] support for a per-mount grace period.
+Message-ID: <20110823143257.GE16261@fieldses.org>
+References: <1311878660-24482-1-git-send-email-frankvm@frankvm.com>
+ <20110729171126.GN23194@fieldses.org>
+ <20110823141909.GA2861@janus>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110823141909.GA2861@janus>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4_fs.h  |    2 --
- fs/nfs/nfs4proc.c |    4 ++--
- 2 files changed, 2 insertions(+), 4 deletions(-)
+On Tue, Aug 23, 2011 at 04:19:09PM +0200, Frank van Maarseveen wrote:
+> On Fri, Jul 29, 2011 at 01:11:27PM -0400, J. Bruce Fields wrote:
+> > On Thu, Jul 28, 2011 at 08:44:18PM +0200, Frank van Maarseveen wrote:
+> > > The following two patches implement support for a per-mount NLM
+> > > grace period. The first patch is a minor cleanup which pushes
+> > > down locks_in_grace() calls into functions shared by NFS[234]. Two
+> > > locks_in_grace() tests have been reordered to avoid duplicate calls at
+> > > run-time (assuming gcc is smart enough). nlmsvc_grace_period is now a
+> > > function instead of an unused variable.
+> > > 
+> > > The second patch is the actual implementation. It is currently in use for
+> > > a number of NFSv3 virtual servers on one physical machine running 2.6.39.3
+> > > where the virtualization is based on using different IPv4 addresses.
+> > 
+> > Thanks, that is something we'd like to have working well.
+> 
+> Are the patches queued anywhere for inclusion in mainline?
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 1ec1a85..58adfb6 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -237,8 +237,6 @@ extern const struct inode_operations nfs4_dir_inode_operations;
- extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
- extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct nfs4_setclientid_res *arg, struct rpc_cred *);
- extern int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred);
--extern int nfs4_proc_async_renew(struct nfs_client *, struct rpc_cred *);
--extern int nfs4_proc_renew(struct nfs_client *, struct rpc_cred *);
- extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
- extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
- extern int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 776b41a..b358ec1 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3386,7 +3386,7 @@ static const struct rpc_call_ops nfs4_renew_ops = {
- 	.rpc_release = nfs4_renew_release,
- };
- 
--int nfs4_proc_async_renew(struct nfs_client *clp, struct rpc_cred *cred)
-+static int nfs4_proc_async_renew(struct nfs_client *clp, struct rpc_cred *cred)
- {
- 	struct rpc_message msg = {
- 		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_RENEW],
-@@ -3406,7 +3406,7 @@ int nfs4_proc_async_renew(struct nfs_client *clp, struct rpc_cred *cred)
- 			&nfs4_renew_ops, data);
- }
- 
--int nfs4_proc_renew(struct nfs_client *clp, struct rpc_cred *cred)
-+static int nfs4_proc_renew(struct nfs_client *clp, struct rpc_cred *cred)
- {
- 	struct rpc_message msg = {
- 		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_RENEW],
--- 
-1.7.6
+To merge it upstream, at a minimum we need NFSv4 working as well.  It
+causes problems when version n+1 lacks features that version n has,
+especially in the presence of clients automatically negotiate up.
 
+I'm also inclined to think that making the various data structures and
+interfaces network-namespace-dependent is going to result in the cleaner
+and more useful solution.
+
+I probably should take that first cleanup patch at least, though.
+
+--b.
