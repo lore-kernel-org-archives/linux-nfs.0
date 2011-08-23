@@ -1,64 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:63599 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754568Ab1HCTOL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Aug 2011 15:14:11 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p73JEBLs000985
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 3 Aug 2011 15:14:11 -0400
-Message-ID: <4E399E02.4010702@RedHat.com>
-Date: Wed, 03 Aug 2011 15:14:10 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Karel Zak <kzak@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] mount: fix for libmount from util-linux >= 2.20
-References: <1312374969-15726-1-git-send-email-kzak@redhat.com>
-In-Reply-To: <1312374969-15726-1-git-send-email-kzak@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:33036 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752070Ab1HWOcI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Aug 2011 10:32:08 -0400
+Received: by vxi9 with SMTP id 9so134944vxi.19
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Aug 2011 07:32:08 -0700 (PDT)
+In-Reply-To: <4E52E538.7040807@panasas.com>
+References: <1313197213-1651-1-git-send-email-bergwolf@gmail.com>
+ <4E4AD655.9090305@panasas.com> <CA+a=Yy6xNFu62nZavt1KnrZWTZGjgR3H=bgF-uERsf=xp7TARg@mail.gmail.com>
+ <4E52E538.7040807@panasas.com>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Tue, 23 Aug 2011 22:31:48 +0800
+Message-ID: <CA+a=Yy6xqzxDkE9siSWWJOhdtYWecU7UQHSO9RR_HL6q3ub4YQ@mail.gmail.com>
+Subject: Re: [PATCH v2 0/3] recoalesce when ld read/write fails
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: benny@tonian.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Hi, Boaz,
 
+On Tue, Aug 23, 2011 at 7:24 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+> On 08/17/2011 06:42 AM, Peng Tao wrote:
+> <snip>
+>>> They look *really* good these patches. But as you said, do they actually work?
+>>>
+>>> Did you test any of this? I mean do you have a facility to inject random
+>>> IO errors and test this out?
+>> I have tested the patchset by forcing all bio to fail so IO will be
+>> re-send to MDS. Also I tested read/write by forcing all IO that
+>> touches pages beyond 16K to fail. Both tests passed.
+>>
+>
+> So that sounds good. Why don't you like these patches?
+Well, I do like them :)
 
-On 08/03/2011 08:36 AM, Karel Zak wrote:
-> The function mnt_fs_set_fs_options() has been removed from the final
-> version of the libmount API.
-> 
-> Signed-off-by: Karel Zak <kzak@redhat.com>
-Committed...
+>
+>>>
+> <snip>
+>> I tried to test "git clone linux" on a 384M memory VM but it hangs as
+>> server is rejecting layoutget with NFS4ERR_LAYOUTTRYLATER.
+>> /proc/self/mountstats shows that client has sent more than 14K
+>> layoutgets but never returns any layout. I checked related code and it
+>> seems client should send layoutreturn for closed files. Will git keep
+>> all files open? Or is there any case that client won't return the
+>> layout even after file close?
+>>
+>
+> Yes! our client will never ever return any layouts. The forgetful
+> model for you. It will only ever "layout_return" on evict_inode which
+> is way after close, when the Kernel decides to cleanup the inode
+> cache. Which only happens after a while.
+>
+> If Your layout driver sets the RETURN_ON_CLOSE bit on the layout
+> then the pNFSD server code will simulate a layout_return on a file
+> close. This is what I use in EXOFS and it works very well. (I should
+> know because I wrote this patch for the pnfsd server)
+>
+> It looks like your blocks-based pNFSD filesystem needs layouts
+> returned. Set the res->lg_return_on_close = true; flag in your
+> .layout_get member and you should see layout_return on close.
+>
+> Look in Benny's pNFS tree at fs/exofs/export.c file how I do
+> it there.
+Thanks for the explanation. Setting return_on_close may lose the
+chance to reuse layout segments for reopen cases. I will look into it
+more closely.
 
-steved.
+>
+>> This seems to be another issue though.
+>>
+>
+> Yes this is a different Issue.
+>
+> It looks from what you tested that the second approach works
+> well. I'll also test this out later on. Lets not rule these
+> out yet.
+Thanks again for helping to test them.
 
-> ---
->  utils/mount/mount_libmount.c |   15 ++++++++++++---
->  1 files changed, 12 insertions(+), 3 deletions(-)
-> 
-> diff --git a/utils/mount/mount_libmount.c b/utils/mount/mount_libmount.c
-> index 6dd6484..cf6e58c 100644
-> --- a/utils/mount/mount_libmount.c
-> +++ b/utils/mount/mount_libmount.c
-> @@ -61,10 +61,19 @@ int nomtab;
->   * managed by libmount at all. We have to use "mount attributes" that are
->   * private for mount.<type> helpers.
->   */
-> -static void store_mount_options(struct libmnt_fs *fs, const char *opts)
-> +static void store_mount_options(struct libmnt_fs *fs, const char *nfs_opts)
->  {
-> -	mnt_fs_set_fs_options(fs, opts);	/* for mtab */
-> -	mnt_fs_set_attributes(fs, opts);	/* for non-mtab systems */
-> +	char *o = NULL;
-> +
-> +	mnt_fs_set_attributes(fs, nfs_opts);	/* for non-mtab systems */
-> +
-> +	/* for mtab create a new options list */
-> +	mnt_optstr_append_option(&o, mnt_fs_get_vfs_options(fs), NULL);
-> +	mnt_optstr_append_option(&o, nfs_opts, NULL);
-> +	mnt_optstr_append_option(&o, mnt_fs_get_user_options(fs), NULL);
-> +
-> +	mnt_fs_set_options(fs, o);
-> +	free(o);
->  }
->  
->  /*
+Cheers,
+Tao
+>
+>> Thanks,
+>> Tao
+>
+> Sorry for the late response I just came back from Vacation,
+> It'll me some time to catch up
+>
+> Thanks
+> Boaz
+>
