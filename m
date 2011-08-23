@@ -1,112 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from gerard.telenet-ops.be ([195.130.132.48]:55187 "EHLO
-	gerard.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751657Ab1HFHlg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2011 03:41:36 -0400
-From: Luk Claes <luk@debian.org>
-To: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-Cc: Luk Claes <luk@debian.org>, Ben Hutchings <ben@decadent.org.uk>
-Subject: [PATCH 6/6] nfs.man: Fix macro use for fstab examples
-Date: Sat,  6 Aug 2011 09:41:19 +0200
-Message-Id: <1312616479-312-7-git-send-email-luk@debian.org>
-In-Reply-To: <1312616479-312-1-git-send-email-luk@debian.org>
-References: <1312616479-312-1-git-send-email-luk@debian.org>
+Received: from mx2.netapp.com ([216.240.18.37]:4366 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754422Ab1HWABV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Aug 2011 20:01:21 -0400
+Content-Type: text/plain;
+	charset="UTF-8"
+Subject: RE: [PATCH] pnfsblock: init pg_bsize properly
+Date: Mon, 22 Aug 2011 17:00:58 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AC9DF79@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <4E52EBAC.8070908@panasas.com>
+References: <1313197450-4595-1-git-send-email-bergwolf@gmail.com> <4E4ADBA1.1000005@panasas.com> <4E4B6A81.2010204@tonian.com> <CA+a=Yy6BSmEWurZuFN-8axTS0gfeXaguw5tcayeVjJmcFAztOQ@mail.gmail.com> <4E52EBAC.8070908@panasas.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Boaz Harrosh" <bharrosh@panasas.com>, "Peng Tao" <bergwolf@gmail.com>
+Cc: "Benny Halevy" <bhalevy@tonian.com>, <linux-nfs@vger.kernel.org>,
+        "Peng Tao" <peng_tao@emc.com>, "Isaman, Fred" <Fred.Isaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The groff macros for filling (word-wrapping) and tabulation control are
-lower-case, but are written in upper-case here and so have been ignored.
-
-Change the .NF and .FI lines to lower-case.
-
-Change the .TA lines to lower-case and fix the tab stops to work both
-on a terminal and in Postscript output.
-
-Delete the .SP line where .sp would be redundant.
-
-Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
-Signed-off-by: Luk Claes <luk@debian.org>
----
- utils/mount/nfs.man |   37 ++++++++++++++++++-------------------
- 1 files changed, 18 insertions(+), 19 deletions(-)
-
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index 6152235..dfb0bc9 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -46,11 +46,10 @@ files on this mount point.
- The fifth and sixth fields on each line are not used
- by NFS, thus conventionally each contain the digit zero. For example:
- .P
--.SP
--.NF
--.TA 2.5i +0.75i +0.75i +1.0i
-+.nf
-+.ta 8n +14n +14n +9n +20n
- 	server:path	/mountpoint	fstype	option,option,...	0 0
--.FI
-+.fi
- .P
- The server's hostname and export pathname
- are separated by a colon, while
-@@ -900,40 +899,40 @@ The following example from an
- file causes the mount command to negotiate
- reasonable defaults for NFS behavior.
- .P
--.NF
--.TA 2.5i +0.7i +0.7i +.7i
-+.nf
-+.ta 8n +16n +6n +6n +30n
- 	server:/export	/mnt	nfs	defaults	0 0
--.FI
-+.fi
- .P
- Here is an example from an /etc/fstab file for an NFS version 2 mount over UDP.
- .P
--.NF
--.TA 2.5i +0.7i +0.7i +.7i
-+.nf
-+.ta 8n +16n +6n +6n +30n
- 	server:/export	/mnt	nfs	nfsvers=2,proto=udp	0 0
--.FI
-+.fi
- .P
- Try this example to mount using NFS version 4 over TCP
- with Kerberos 5 mutual authentication.
- .P
--.NF
--.TA 2.5i +0.7i +0.7i +.7i
-+.nf
-+.ta 8n +16n +6n +6n +30n
- 	server:/export	/mnt	nfs4	sec=krb5	0 0
--.FI
-+.fi
- .P
- This example can be used to mount /usr over NFS.
- .P
--.NF
--.TA 2.5i +0.7i +0.7i +.7i
-+.nf
-+.ta 8n +16n +6n +6n +30n
- 	server:/export	/usr	nfs	ro,nolock,nocto,actimeo=3600	0 0
--.FI
-+.fi
- .P
- This example shows how to mount an NFS server
- using a raw IPv6 link-local address.
- .P
--.NF
--.TA 2.5i +0.7i +0.7i +.7i
-+.nf
-+.ta 8n +40n +5n +4n +9n
- 	[fe80::215:c5ff:fb3e:e2b1%eth0]:/export	/mnt	nfs	defaults	0 0
--.FI
-+.fi
- .SH "TRANSPORT METHODS"
- NFS clients send requests to NFS servers via
- Remote Procedure Calls, or
--- 
-1.7.5.4
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBCb2F6IEhhcnJvc2ggW21haWx0
+bzpiaGFycm9zaEBwYW5hc2FzLmNvbV0NCj4gU2VudDogTW9uZGF5LCBBdWd1c3QgMjIsIDIwMTEg
+Nzo1MiBQTQ0KPiBUbzogUGVuZyBUYW8NCj4gQ2M6IEJlbm55IEhhbGV2eTsgbGludXgtbmZzQHZn
+ZXIua2VybmVsLm9yZzsgUGVuZyBUYW87IE15a2xlYnVzdCwNCj4gVHJvbmQ7IElzYW1hbiwgRnJl
+ZA0KPiBTdWJqZWN0OiBSZTogW1BBVENIXSBwbmZzYmxvY2s6IGluaXQgcGdfYnNpemUgcHJvcGVy
+bHkNCj4gDQo+IE9uIDA4LzE3LzIwMTEgMDI6MzUgQU0sIFBlbmcgVGFvIHdyb3RlOg0KPiA+IEhp
+LCBCZW5ueSBhbmQgQm9heiwNCj4gPg0KPiA8c25pcD4NCj4gDQo+ID4gSW4gcG5mc19kb19tdWx0
+aXBsZV9yZWFkcy9wbmZzX2RvX211bHRpcGxlX3dyaXRlcywgZGF0YS0+bWRzX29wcyB3aWxsDQo+
+ID4gYmUgc2V0IGFzIGRlc2MtPnBnX3JwY19jYWxsb3BzLCB3aGljaCBpcyBkZXRlcm1pbmVkIGlu
+DQo+ID4gbmZzX2dlbmVyaWNfZmx1c2gvbmZzX2dlbmVyaWNfcGFnZWluIGFjY29yZGluZyB0byBk
+ZXNjLT5wZ19ic2l6ZS4gRm9yDQo+ID4gYmxvY2tsYXlvdXQsIHdlIHdvdWxkbid0IHdhbnQgdG8g
+c2V0IGRhdGEtPm1kc19vcHMgdG8NCj4gPiBwYXJ0aWFsX3JlYWQvd3JpdGUgb3BzLCBzbyBJIHdy
+aXRlIHRoZSBwYXRjaCB0byB1c2UgbHNlZyBsZW5ndGggYXMNCj4gPiBwZ19ic2l6ZS4NCj4gPg0K
+PiANCj4gRG8geW91IG1lYW4gaW4gdGhlIGNhc2Ugd2hlcmUgTURTIHNldHMgKHBnX2JzaXplIDwg
+UEFHRV9TSVpFKSA/DQo+IA0KPiBSaWdodCwgdGhhdCBpcyBhIHByb2JsZW0uIChUaGVvcmV0aWNh
+bGx5LCBiZWNhdXNlIHRoZSBwTkZTRC1MaW51eA0KPiBzZXJ2ZXINCj4gZG9lcyBub3QgZG8gdGhh
+dC4gRG8geW91IGhhdmUgYSBTZXJ2ZXIgdGhhdCBkb2VzPykNCj4gDQo+ID4gTEQgY2FuIG92ZXJy
+aWRlIHBnX2JzaXplIGluIHBnX2luaXQgYmVjYXVzZQ0KPiA+IG5mc19wYWdlaW9fcmVzZXRfcmVh
+ZF9tZHMvbmZzX3BhZ2Vpb19yZXNldF93cml0ZV9tZHMgd2lsbCByZXNldCBpdCB0bw0KPiA+IHNl
+cnZlciByc2l6ZS93c2l6ZSBpZiBwbmZzIGlzIG5vdCB0cmllZC4NCj4gPg0KPiANCj4gU28gaWYg
+aXQgaXMgdGhlICJwZ19ic2l6ZSA8IFBBR0VfU0laRSIgYnV0IHBORlMtSU8gY2FzZSB0aGVuIEkg
+ZG9uJ3QNCj4gbGlrZSB5b3VyIHBhdGNoLCBhdCBhbGwuIFdlIHNob3VsZCBmaXggdGhlIGdlbmVy
+aWMgY29kZSB0byBiZWhhdmUNCj4gcHJvcGVybHksIGFuZCBub3QgbGV0IExEcyBoYWNrIHRoZWly
+IHdheSBvdXQuIChGb3IgZXhhbXBsZSB3aGF0IGFib3V0DQo+IG9iamVjdHMgYW5kIGZpbGVzIExE
+cykNCj4gDQo+IFRoZXJlIGlzIGEgZmV3IHdheXMgeW91IGNhbiBmaXggdGhlIGdlbmVyaWMgY29k
+ZS4gT25lIGlzIG92ZXJyaWRlIHRoZQ0KPiBkZXNjLT5wZ19ycGNfY2FsbG9wcyBmb3IgdGhlIHBO
+RlMgY2FzZSB0byBhbHdheXMgYmUgdGhlIHNhbWUgb25lLiBPcg0KPiBvdmVycmlkZSB0aGUgdGVz
+dCBmb3IgKHBnX2JzaXplIDwgUEFHRV9TSVpFKSBpbiB0aGUgcE5GUyBjYXNlIGlmIHdlDQo+IGhh
+dmUNCj4gYSBsc2VnLiBPciBzb21lIG90aGVyIGNsZWFuIHdheS4NCj4gDQo+IEJ1dCBwbGVhc2Ug
+ZG9uJ3QgZml4IGl0IGxpa2UgdGhhdCwgaW5zaWRlIGVhY2ggTEQgZHJpdmVyLg0KPiANCj4gWyBU
+cm9uZCBGcmVkDQo+ICAgT25lIHRoaW5nIEkgZG8gbm90IHVuZGVyc3RhbmQgYWJvdXQgdGhlIGZp
+bGVzLWxheW91dCBvcGVyYXRpb25zLiBZb3UNCj4gICBoYXZlIGV4cGxhaW5lZCBpbiB0aGUgcGFz
+c2VkIHRoYXQgci93c2l6ZSBzZW50IGZyb20gdGhlIE1EUyBpcyBhbHNvDQo+IHRoZQ0KPiAgIHNh
+bWUgb25lIGZvciBlYWNoIERTLiBTbyBpZiB3ZSB0YWtlIGFuIGV4YW1wbGUgb2YgcnNpemUgYmVl
+aW5nIDJNQg0KPiAgIGFuZCB0aGVyZSBpcyBhIHN0cmlwcGluZyBvZiAyIERTIGZvciB0aGF0IGxh
+eW91dC4oU2F5DQo+IHN0cmlwX3VuaXQ9PXJzaXplKQ0KPiAgIFRoZW4gd2UgbmVlZCB0byByZWFk
+IDEvMiBvZiB0aGF0IHBhZ2UgZnJvbSBvbmUgRFMgYW5kIHRoZSAyLzIgaGFsZg0KPiBmcm9tIHRo
+ZQ0KPiAgIHNlY29uZC4gV2lsbCBjdXJyZW50IHBhcnRpYWxfcmVhZC93cml0ZSB3b3JrIGlmIGdv
+aW5nIHRocm91Z2ggZmlsZXMtDQo+IExEPw0KPiBdDQoNCk5vLiBUaGUgc3RyaXBlIHNpemUgbWF5
+IGJlIHNtYWxsZXIgdGhhbiB0aGUgci93c2l6ZSwgaW4gd2hpY2ggY2FzZSB3ZSdyZSBpbiB0aGUg
+c2FtZSBib2F0IGFzIHRoZSBibG9ja3MgYW5kIG9iamVjdHMuDQoNCkNoZWVycw0KICBUcm9uZA0K
+Tu+/ve+/ve+/ve+/ve+/vXLvv73vv71577+977+977+9Yu+/vVjvv73vv73Hp3bvv71e77+9Kd66
+ey5u77+9K++/ve+/ve+/ve+/vXvvv73vv73vv70i77+977+9Xm7vv71y77+977+977+9eu+/vRrv
+v73vv71o77+977+977+977+9Ju+/ve+/vR7vv71H77+977+977+9aO+/vQMo77+96ZqO77+93aJq
+Iu+/ve+/vRrvv70bbe+/ve+/ve+/ve+/ve+/vXrvv73elu+/ve+/ve+/vWbvv73vv73vv71o77+9
+77+977+9fu+/vW3vv70=
