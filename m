@@ -1,61 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:59985 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:33957 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754369Ab1HTSYB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 20 Aug 2011 14:24:01 -0400
-Subject: Re: Odd locking behavior
-References: <20110819230151.GD44681@corp.sonic.net> <1313859542.7693.5.camel@lade.trondhjem.org>
-From: "Haynes, Tom" <Tom.Haynes@netapp.com>
-Content-Type: text/plain;
-	charset="us-ascii"
-In-Reply-To: <1313859542.7693.5.camel@lade.trondhjem.org>
-Message-ID: <470C3D1B-DBD6-4E7B-AF0D-D0663CCA0A58@netapp.com>
-Date: Sat, 20 Aug 2011 13:23:49 -0500
-To: "Trond Myklebust" <Trond.Myklebust@netapp.com>
-Cc: "Kelsey Cummings" <kgc@corp.sonic.net>, <linux-nfs@vger.kernel.org>
+	id S1751886Ab1HWVvl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Aug 2011 17:51:41 -0400
+Date: Tue, 23 Aug 2011 17:51:40 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/4 v3] 4.1 CLNT: test open before RECLAIM_COMPLETE
+Message-ID: <20110823215140.GF25350@fieldses.org>
+References: <4E4C7679.7000108@cn.fujitsu.com>
+ <4E4C771B.2030405@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E4C771B.2030405@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Thu, Aug 18, 2011 at 10:21:15AM +0800, Mi Jinlong wrote:
+> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
 
+Same nits as previous ones (comments mostly repeat what the code says,
+space needed after comma between function arguments).
 
-On Aug 20, 2011, at 11:59 AM, "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
+Looks reasonable otherwise.
 
-> On Fri, 2011-08-19 at 16:01 -0700, Kelsey Cummings wrote: 
->> I'm looking for some suggestions as to where to look next with an odd
->> nfs file locking problem with linux clients (RHEL6) and a netapp server.
->> FSC is enabled on these.
->> 
->> The rather simple example code and output says it all.  It works as
->> expected when a single process is run, when a second proccess is started
->> it works for a while and then something breaks and we start seeing it
->> take multiples of 30 seconds for the lock request to succeed.  The more
->> proccess that are run, the more likely it is to occur as well as if a
->> proccess is started on a second client.
->> 
->> When the issue is exhibiting itself, the netaps' lock status display the
->> granted and waiting locks as expected(?).
+--b.
+
+> ---
+>  nfs4.1/server41tests/st_reclaim_complete.py |   21 ++++++++++++++++++++-
+>  1 files changed, 20 insertions(+), 1 deletions(-)
 > 
-
-Also, what version of ONTAP is the filer running?
-
-
-> Does the netapp filer have multiple NICs? There is a known bug with that
-> in which the filer sends GRANTED calls from the wrong IP address: see
-> the description at
-> http://now.netapp.com/NOW/cgi-bin/bol?Type=Detail&Display=237430
-> 
-> Cheers
->  Trond
+> diff --git a/nfs4.1/server41tests/st_reclaim_complete.py b/nfs4.1/server41tests/st_reclaim_complete.py
+> index 3940b7b..921d537 100644
+> --- a/nfs4.1/server41tests/st_reclaim_complete.py
+> +++ b/nfs4.1/server41tests/st_reclaim_complete.py
+> @@ -1,6 +1,6 @@
+>  from st_create_session import create_session
+>  from nfs4_const import *
+> -from environment import check, fail, open_file, create_confirm
+> +from environment import check, fail, open_file, create_file, create_confirm
+>  import nfs4_ops as op
+>  import nfs4lib
+>  
+> @@ -47,3 +47,22 @@ def testReclaimAfterRECC(t, env):
+>                      deleg_type=OPEN_DELEGATE_NONE)
+>  
+>      check(res,NFS4ERR_NO_GRACE)
+> +
+> +def testOpenBeforeRECC(t, env):
+> +    """After a client establishes a new client ID, if non-reclaim
+> +       locking operations are done before the RECLAIM_COMPLETE,
+> +       error NFS4ERR_GRACE will be returned. rfc5661 18.51.3
+> +
+> +    FLAGS: reclaim_complete all
+> +    CODE: RECC3
+> +    """
+> +    name = env.testname(t)
+> +    c = env.c1.new_client(name)
+> +    sess = c.create_session()
+> +
+> +    fname = "owner_%s" % name
+> +    path = sess.c.homedir + [name]
+> +
+> +    # Try to open file before RECLAIM_COMPLETE
+> +    res = create_file(sess, fname, path, access=OPEN4_SHARE_ACCESS_BOTH)
+> +    check(res,NFS4ERR_GRACE)
 > -- 
-> Trond Myklebust
-> Linux NFS client maintainer
+> 1.7.6
 > 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
