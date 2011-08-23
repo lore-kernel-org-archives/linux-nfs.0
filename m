@@ -1,41 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from georges.telenet-ops.be ([195.130.137.68]:58671 "EHLO
-	georges.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753787Ab1HFKLW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2011 06:11:22 -0400
-From: Luk Claes <luk@debian.org>
-To: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-Cc: Luk Claes <luk@debian.org>
-Subject: [PATCH] mount.nfs: Preserve any explicit port=2049 option
-Date: Sat,  6 Aug 2011 12:11:36 +0200
-Message-Id: <1312625496-2496-1-git-send-email-luk@debian.org>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:39719 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752183Ab1HWAlW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Aug 2011 20:41:22 -0400
+Received: by vxi9 with SMTP id 9so4620850vxi.19
+        for <linux-nfs@vger.kernel.org>; Mon, 22 Aug 2011 17:41:22 -0700 (PDT)
+In-Reply-To: <20110823101614.7b597933@notabene.brown>
+References: <20110804092141.3461c9ce@notabene.brown>
+	<CAKnQG+cs4SLD-YmLwpnXU_gDWrjfmx9+z-E=7J-SUcsP=KhfSg@mail.gmail.com>
+	<20110804111357.0d0a6e85@notabene.brown>
+	<CAKnQG+dViSmrjhZV1cFZHj98kM0ixyKRLek9OWkJjFUS6YO3cw@mail.gmail.com>
+	<20110811154239.322dee1d@notabene.brown>
+	<CAKnQG+eV_OCk60wN6E2ub-TxA+6NoALYn8C+1PD51fWUZTpcGQ@mail.gmail.com>
+	<20110818191906.13a6261f@notabene.brown>
+	<20110818164307.GA24533@fieldses.org>
+	<20110823101614.7b597933@notabene.brown>
+Date: Mon, 22 Aug 2011 20:41:22 -0400
+Message-ID: <CAKnQG+cXxgSYYX++h7nXdYF5hBzWxoUrP62QZEdGffeP99ptYg@mail.gmail.com>
+Subject: Re: Problems with kerberos auth - possibly against ADS - since nfs-utils-1.2.3
+From: Kevin Coffman <kwc@umich.edu>
+To: NeilBrown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-If NFS port (2049) is supplied explicitly, don't ignore this setting by requesting it to portmapper again. Thanks to Ben Hutchings <ben@decadent.org.uk> for the patch.
+On Mon, Aug 22, 2011 at 8:16 PM, NeilBrown <neilb@suse.de> wrote:
+> On Thu, 18 Aug 2011 12:43:07 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> wrote:
+>
+>> On Thu, Aug 18, 2011 at 07:19:06PM +1000, NeilBrown wrote:
+>> > I think that does exactly describes what we were seeing.
+>> > We ended up working around it by adding
+>> >
+>> >   default_tkt_enctypes = des-cbc-md5 des-cbc-crc des3-cbc-sha1
+>> >
+>> > to the client config, and recommending a server upgrade.
+>> >
+>> >
+>> > BTW I've been trying to track down why a successful kerberos negotiation
+>> > sends a corrupted RPCSEC_GSS_DESTROY request just before closing the
+>> > connection.
+>>
+>> (No useful comment here, just: thanks!  That was driving me crazy, till
+>> it just stopped happening for no apparent reason, before I got a chance
+>> to look any closer...)
+>
+> It stopped happening?  You mean it is already fix?  Have I been look at old
+> code AGAIN ??
+>
+> Though I was looking at most recent libtirpc and gssglue and I think I was
+> running both of these...  Maybe I had a slightly old krb5-mit library?
+>
+> confused...
+>
+> NeilBrown
 
-Signed-off-by: Luk Claes <luk@debian.org>
----
- utils/mount/stropts.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+Hi Neil,
+I haven't had a chance to look at this issue.  I don't recall ever
+seeing it myself, but I may have just missed it.  I'll try to
+replicate the problem on Wednesday -- unless you fix it and send a
+patch before that!  ;-)  I've definitely done most of my testing with
+fairly recent versions of Kerberos if that is indeed related.
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index f1aa503..8b2799c 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -437,8 +437,8 @@ static int nfs_construct_new_options(struct mount_options *options,
- 	if (po_append(options, new_option) == PO_FAILED)
- 		return 0;
- 
--	po_remove_all(options, "port");
--	if (nfs_pmap->pm_port != NFS_PORT) {
-+	if(po_remove_all(options, "port") == PO_FOUND ||
-+	   nfs_pmap->pm_port != NFS_PORT) {
- 		snprintf(new_option, sizeof(new_option) - 1,
- 			 "port=%lu", nfs_pmap->pm_port);
- 		if (po_append(options, new_option) == PO_FAILED)
--- 
-1.7.5.4
-
+K.C.
