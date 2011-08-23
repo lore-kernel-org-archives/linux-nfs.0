@@ -1,245 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from outbound.icp-qv1-irony-out4.iinet.net.au ([203.59.1.104]:32398
-	"EHLO outbound.icp-qv1-irony-out4.iinet.net.au" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751665Ab1HRFSz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Aug 2011 01:18:55 -0400
-From: Ian Kent <raven@themaw.net>
-Subject: [PATCH] nfs-utils-1.2.4 - fix nfs4 check
-To: linux-nfs-list <linux-nfs@vger.kernel.org>
-Cc: Steve Dickson <SteveD@redhat.com>
-Date: Thu, 18 Aug 2011 13:08:27 +0800
-Message-ID: <20110818050827.15357.27820.stgit@perseus.themaw.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:34654 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754873Ab1HWTse (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Aug 2011 15:48:34 -0400
+Date: Tue, 23 Aug 2011 15:48:31 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Kevin Coffman <kwc@umich.edu>, linux-nfs@vger.kernel.org
+Subject: Re: Problems with kerberos auth - possibly against ADS - since
+ nfs-utils-1.2.3
+Message-ID: <20110823194831.GA24935@fieldses.org>
+References: <20110804092141.3461c9ce@notabene.brown>
+ <CAKnQG+cs4SLD-YmLwpnXU_gDWrjfmx9+z-E=7J-SUcsP=KhfSg@mail.gmail.com>
+ <20110804111357.0d0a6e85@notabene.brown>
+ <CAKnQG+dViSmrjhZV1cFZHj98kM0ixyKRLek9OWkJjFUS6YO3cw@mail.gmail.com>
+ <20110811154239.322dee1d@notabene.brown>
+ <CAKnQG+eV_OCk60wN6E2ub-TxA+6NoALYn8C+1PD51fWUZTpcGQ@mail.gmail.com>
+ <20110818191906.13a6261f@notabene.brown>
+ <20110818164307.GA24533@fieldses.org>
+ <20110823101614.7b597933@notabene.brown>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110823101614.7b597933@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Ian Kent <ikent@redhat.com>
+On Tue, Aug 23, 2011 at 10:16:14AM +1000, NeilBrown wrote:
+> On Thu, 18 Aug 2011 12:43:07 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> wrote:
+> 
+> > On Thu, Aug 18, 2011 at 07:19:06PM +1000, NeilBrown wrote:
+> > > I think that does exactly describes what we were seeing.
+> > > We ended up working around it by adding 
+> > > 
+> > >   default_tkt_enctypes = des-cbc-md5 des-cbc-crc des3-cbc-sha1
+> > > 
+> > > to the client config, and recommending a server upgrade.
+> > > 
+> > > 
+> > > BTW I've been trying to track down why a successful kerberos negotiation
+> > > sends a corrupted RPCSEC_GSS_DESTROY request just before closing the
+> > > connection.
+> > 
+> > (No useful comment here, just: thanks!  That was driving me crazy, till
+> > it just stopped happening for no apparent reason, before I got a chance
+> > to look any closer...)
+> 
+> It stopped happening?  You mean it is already fix?  Have I been look at old
+> code AGAIN ??
 
-nfs_umount_is_vers4() doesn't take acount of the escaping of characters
-seen in /proc/mounts and /etc/mtab as the functions in fstab.c do. This
-leads to an inability to umount a mount containing any of these escaped
-characters (like spaces).
+I just assumed it was intermittent.
 
-This patch changes nfs_umount_is_vers4() to use functions in fstab.c and
-adds a function to fstab.c to read /proc/mounts specifically, as it was
-used  for the check in nfs_umount_is_vers4() previously.
+And, OK, all I noticed was that my tests started working again--I didn't
+look to see if the bogus DESTROY's were still being sent.  They may have
+been unrelated to whatever test failure I was seeing at the time!
 
-Signed-off-by: Ian Kent <ikent@redhat.com>
----
-
- utils/mount/fstab.c     |   52 +++++++++++++++++++++++++++++++++
- utils/mount/fstab.h     |    1 +
- utils/mount/nfsumount.c |   75 +++++++++++++++++++----------------------------
- 3 files changed, 84 insertions(+), 44 deletions(-)
-
-diff --git a/utils/mount/fstab.c b/utils/mount/fstab.c
-index 1fc9efe..eedbdda 100644
---- a/utils/mount/fstab.c
-+++ b/utils/mount/fstab.c
-@@ -86,10 +86,13 @@ mtab_is_writable() {
- 
- struct mntentchn mounttable;
- static int got_mtab = 0;
-+struct mntentchn procmounts;
-+static int got_procmounts = 0;
- struct mntentchn fstab;
- static int got_fstab = 0;
- 
- static void read_mounttable(void);
-+static void read_procmounts(void);
- static void read_fstab(void);
- 
- static struct mntentchn *
-@@ -101,6 +104,14 @@ mtab_head(void)
- }
- 
- static struct mntentchn *
-+procmounts_head(void)
-+{
-+	if (!got_procmounts)
-+		read_procmounts();
-+	return &procmounts;
-+}
-+
-+static struct mntentchn *
- fstab_head(void)
- {
- 	if (!got_fstab)
-@@ -186,6 +197,30 @@ read_mounttable() {
-         read_mntentchn(mfp, fnam, mc);
- }
- 
-+/*
-+ * Read /proc/mounts.
-+ * This produces a linked list. The list head procmounts is a dummy.
-+ * Return 0 on success.
-+ */
-+static void
-+read_procmounts() {
-+        mntFILE *mfp;
-+        const char *fnam;
-+        struct mntentchn *mc = &procmounts;
-+
-+        got_procmounts = 1;
-+        mc->nxt = mc->prev = NULL;
-+
-+        fnam = PROC_MOUNTS;
-+        mfp = nfs_setmntent(fnam, "r");
-+        if (mfp == NULL || mfp->mntent_fp == NULL) {
-+                nfs_error(_("warning: can't open %s: %s"),
-+                          PROC_MOUNTS, strerror (errno));
-+                return;
-+        }
-+        read_mntentchn(mfp, fnam, mc);
-+}
-+
- static void
- read_fstab()
- {
-@@ -225,6 +260,23 @@ getmntdirbackward (const char *name, struct mntentchn *mcprev) {
- }
- 
- /*
-+ * Given the directory name NAME, and the place MCPREV we found it last time,
-+ * try to find more occurrences.
-+ */
-+struct mntentchn *
-+getprocmntdirbackward (const char *name, struct mntentchn *mcprev) {
-+	struct mntentchn *mc, *mc0;
-+
-+	mc0 = procmounts_head();
-+	if (!mcprev)
-+		mcprev = mc0;
-+	for (mc = mcprev->prev; mc && mc != mc0; mc = mc->prev)
-+		if (streq(mc->m.mnt_dir, name))
-+			return mc;
-+	return NULL;
-+}
-+
-+/*
-  * Given the device name NAME, and the place MCPREV we found it last time,
-  * try to find more occurrences.
-  */ 
-diff --git a/utils/mount/fstab.h b/utils/mount/fstab.h
-index dc7c9fc..313bf9b 100644
---- a/utils/mount/fstab.h
-+++ b/utils/mount/fstab.h
-@@ -18,6 +18,7 @@ struct mntentchn {
- 
- struct mntentchn *getmntoptfile (const char *file);
- struct mntentchn *getmntdirbackward (const char *dir, struct mntentchn *mc);
-+struct mntentchn *getprocmntdirbackward (const char *name, struct mntentchn *mc);
- struct mntentchn *getmntdevbackward (const char *dev, struct mntentchn *mc);
- 
- struct mntentchn *getfsfile (const char *file);
-diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
-index 8cd2852..b846564 100644
---- a/utils/mount/nfsumount.c
-+++ b/utils/mount/nfsumount.c
-@@ -151,65 +151,50 @@ static int del_mtab(const char *spec, const char *node)
-  */
- static int nfs_umount_is_vers4(const struct mntentchn *mc)
- {
--	char buffer[LINELEN], *next;
-+	struct mntentchn *pmc;
-+	struct mount_options *options;
- 	int retval;
--	FILE *f;
--
--	if ((f = fopen(MOUNTSFILE, "r")) == NULL) {
--		fprintf(stderr, "%s: %s\n",
--			MOUNTSFILE, strerror(errno));
--		return -1;
--	}
- 
- 	retval = -1;
--	while (fgets(buffer, sizeof(buffer), f) != NULL) {
--		char *device, *mntdir, *type, *flags;
--		struct mount_options *options;
--		char *line = buffer;
--
--		next = strchr(line, '\n');
--		if (next != NULL)
--			*next = '\0';
--
--		device = strtok(line, " \t");
--		if (device == NULL)
--			continue;
--		mntdir = strtok(NULL, " \t");
--		if (mntdir == NULL)
--			continue;
--		if (strcmp(device, mc->m.mnt_fsname) != 0 &&
--		    strcmp(mntdir, mc->m.mnt_dir) != 0)
-+	pmc = getprocmntdirbackward(mc->m.mnt_dir, NULL);
-+	if (!pmc)
-+		goto not_found;
-+
-+	do {
-+		int nlen = strlen(pmc->m.mnt_fsname);
-+		/*
-+		 * It's possible the mount location string in /proc/mounts
-+		 * ends with a '/'. In this case, if the entry came from
-+		 * /etc/mtab, it won't have the trailing '/' so deal with
-+		 * it.
-+		 */
-+		while (pmc->m.mnt_fsname[nlen - 1] == '/')
-+			nlen--;
-+		if (strncmp(pmc->m.mnt_fsname, mc->m.mnt_fsname, nlen) != 0)
- 			continue;
- 
--		type = strtok(NULL, " \t");
--		if (type == NULL)
--			continue;
--		if (strcmp(type, "nfs4") == 0)
-+		if (strcmp(pmc->m.mnt_type, "nfs4") == 0)
- 			goto out_nfs4;
- 
--		flags = strtok(NULL, " \t");
--		if (flags == NULL)
--			continue;
--		options = po_split(flags);
-+		options = po_split(pmc->m.mnt_opts);
- 		if (options != NULL) {
- 			unsigned long version;
--			int rc;
--
--			rc = nfs_nfs_version(options, &version);
-+			int rc = nfs_nfs_version(options, &version);
- 			po_destroy(options);
- 			if (rc && version == 4)
- 				goto out_nfs4;
- 		}
- 
--		goto out_nfs;
--	}
--	if (retval == -1)
-+		if (strcmp(pmc->m.mnt_type, "nfs") == 0)
-+			goto out_nfs;
-+	} while ((pmc = getprocmntdirbackward(mc->m.mnt_dir, pmc)) != NULL);
-+
-+	if (retval == -1) {
-+not_found:
- 		fprintf(stderr, "%s was not found in %s\n",
- 			mc->m.mnt_dir, MOUNTSFILE);
--
--out:
--	fclose(f);
--	return retval;
-+		goto out;
-+	}
- 
- out_nfs4:
- 	if (verbose)
-@@ -221,7 +206,9 @@ out_nfs:
- 	if (verbose)
- 		fprintf(stderr, "Legacy NFS mount point detected\n");
- 	retval = 0;
--	goto out;
-+
-+out:
-+	return retval;
- }
- 
- static struct option umount_longopts[] =
-
+--b.
