@@ -1,34 +1,143 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:35973 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:43153 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752920Ab1H0AqV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Aug 2011 20:46:21 -0400
-Date: Fri, 26 Aug 2011 20:46:18 -0400
+	id S1752730Ab1HWVlm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Aug 2011 17:41:42 -0400
+Date: Tue, 23 Aug 2011 17:41:41 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC] nfsd4: This is: "fix failure to end nfsd4 grace period"
- ++
-Message-ID: <20110827004618.GG18699@fieldses.org>
-References: <4E45C594.1030609@panasas.com>
- <20110826201910.GB17196@fieldses.org>
- <4E5838E0.4090703@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd4: fix seqid_mutating_error
+Message-ID: <20110823214141.GC25350@fieldses.org>
+References: <20110819172416.GA1112@fieldses.org>
+ <1313788373.26701.1.camel@lade.trondhjem.org>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E5838E0.4090703@panasas.com>
+In-Reply-To: <1313788373.26701.1.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 26, 2011 at 05:22:56PM -0700, Boaz Harrosh wrote:
-> Which of the variables has the directory path?
-> Would we like to add that information in the print. From my experience
-> alot of times those type of problems is the mis-communication of
-> the path names, and it helps to see what name was actually attempted.
+On Fri, Aug 19, 2011 at 05:12:53PM -0400, Trond Myklebust wrote:
+> On Fri, 2011-08-19 at 13:24 -0400, J. Bruce Fields wrote: 
+> > +static bool seqid_mutating_err(__be32 err)
+> > +{
+> > +	/* rfc 3530 section 8.1.5: */
+> > +	return	err != nfserr_stale_clientid &&
+> > +		err != nfserr_stale_stateid &&
+> > +		err != nfserr_bad_stateid &&
+> > +		err != nfserr_bad_seqid &&
+> > +		err != nfserr_bad_xdr &&
+> > +		err != nfserr_resource &&
+> > +		err != nfserr_nofilehandle;
+> 
+> Any reason not to convert the above into a switch() statement while you
+> are at it?
 
-Yeah, I wanted to then realized I'd have to muck about with some other
-stuff to get access to the directory name.
+It would be more straightforward without the negatives.
 
-Curse these patch reviewers, catching me being lazy.
+Also, we've got two copies of this list.  How about something like this?
 
 --b.
+
+commit 9ee2cabf7a814d48798380bc2cb8516645d1d0dc
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue Aug 23 15:43:04 2011 -0400
+
+    nfsd4: cleanup and consolidate seqid_mutating_err
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 1ec1a85..1a652a0 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -13,30 +13,6 @@
+ 
+ struct idmap;
+ 
+-/*
+- * In a seqid-mutating op, this macro controls which error return
+- * values trigger incrementation of the seqid.
+- *
+- * from rfc 3010:
+- * The client MUST monotonically increment the sequence number for the
+- * CLOSE, LOCK, LOCKU, OPEN, OPEN_CONFIRM, and OPEN_DOWNGRADE
+- * operations.  This is true even in the event that the previous
+- * operation that used the sequence number received an error.  The only
+- * exception to this rule is if the previous operation received one of
+- * the following errors: NFSERR_STALE_CLIENTID, NFSERR_STALE_STATEID,
+- * NFSERR_BAD_STATEID, NFSERR_BAD_SEQID, NFSERR_BADXDR,
+- * NFSERR_RESOURCE, NFSERR_NOFILEHANDLE.
+- *
+- */
+-#define seqid_mutating_err(err)       \
+-(((err) != NFSERR_STALE_CLIENTID) &&  \
+- ((err) != NFSERR_STALE_STATEID)  &&  \
+- ((err) != NFSERR_BAD_STATEID)    &&  \
+- ((err) != NFSERR_BAD_SEQID)      &&  \
+- ((err) != NFSERR_BAD_XDR)        &&  \
+- ((err) != NFSERR_RESOURCE)       &&  \
+- ((err) != NFSERR_NOFILEHANDLE))
+-
+ enum nfs4_client_state {
+ 	NFS4CLNT_MANAGER_RUNNING  = 0,
+ 	NFS4CLNT_CHECK_LEASE,
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 78c792f..04ad9a2 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1623,18 +1623,6 @@ static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
+ 								\
+ 	save = resp->p;
+ 
+-static bool seqid_mutating_err(__be32 err)
+-{
+-	/* rfc 3530 section 8.1.5: */
+-	return	err != nfserr_stale_clientid &&
+-		err != nfserr_stale_stateid &&
+-		err != nfserr_bad_stateid &&
+-		err != nfserr_bad_seqid &&
+-		err != nfserr_bad_xdr &&
+-		err != nfserr_resource &&
+-		err != nfserr_nofilehandle;
+-}
+-
+ /*
+  * Routine for encoding the result of a "seqid-mutating" NFSv4 operation.  This
+  * is where sequence id's are incremented, and the replay cache is filled.
+@@ -1643,7 +1631,7 @@ static bool seqid_mutating_err(__be32 err)
+  */
+ 
+ #define ENCODE_SEQID_OP_TAIL(stateowner) do {			\
+-	if (seqid_mutating_err(nfserr) && stateowner) { 	\
++	if (seqid_mutating_err(ntohl(nfserr)) && stateowner) { 	\
+ 		stateowner->so_seqid++;				\
+ 		stateowner->so_replay.rp_status = nfserr;   	\
+ 		stateowner->so_replay.rp_buflen = 		\
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 76f99e8..b875b03 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -373,6 +373,22 @@ enum nfsstat4 {
+ 	NFS4ERR_DELEG_REVOKED	= 10087,	/* deleg./layout revoked */
+ };
+ 
++static inline bool seqid_mutating_err(u32 err)
++{
++	/* rfc 3530 section 8.1.5: */
++	switch (err) {
++	case NFS4ERR_STALE_CLIENTID:
++	case NFS4ERR_STALE_STATEID:
++	case NFS4ERR_BAD_STATEID:
++	case NFS4ERR_BAD_SEQID:
++	case NFS4ERR_BADXDR:
++	case NFS4ERR_RESOURCE:
++	case NFS4ERR_NOFILEHANDLE:
++		return false;
++	};
++	return true;
++}
++
+ /*
+  * Note: NF4BAD is not actually part of the protocol; it is just used
+  * internally by nfsd.
