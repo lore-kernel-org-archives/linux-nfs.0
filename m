@@ -1,41 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:60907 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752643Ab1H3SMJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2011 14:12:09 -0400
-Received: by gxk21 with SMTP id 21so5861358gxk.19
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Aug 2011 11:12:08 -0700 (PDT)
-From: "Matthew M. DeLoera" <mdeloera@exacq.com>
-Content-Type: text/plain; charset=windows-1252
-Subject: =?windows-1252?Q?GSS_and_gssglue_question=85=2E=2E?=
-Date: Tue, 30 Aug 2011 14:12:23 -0400
-Message-Id: <5DDA5D42-70BB-4BCB-8F89-04A6A8199451@exacq.com>
-To: linux-nfs@vger.kernel.org
+Received: from frankvm.xs4all.nl ([83.163.148.79]:44997 "EHLO
+	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751869Ab1HWOTL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Aug 2011 10:19:11 -0400
+Date: Tue, 23 Aug 2011 16:19:09 +0200
+From: Frank van Maarseveen <frankvm@frankvm.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, Pavel Emelyanov <xemul@openvz.org>,
+        jlayton@redhat.com
+Subject: Re: [NLM] support for a per-mount grace period.
+Message-ID: <20110823141909.GA2861@janus>
+References: <1311878660-24482-1-git-send-email-frankvm@frankvm.com>
+ <20110729171126.GN23194@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110729171126.GN23194@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Greetings,
+On Fri, Jul 29, 2011 at 01:11:27PM -0400, J. Bruce Fields wrote:
+> On Thu, Jul 28, 2011 at 08:44:18PM +0200, Frank van Maarseveen wrote:
+> > The following two patches implement support for a per-mount NLM
+> > grace period. The first patch is a minor cleanup which pushes
+> > down locks_in_grace() calls into functions shared by NFS[234]. Two
+> > locks_in_grace() tests have been reordered to avoid duplicate calls at
+> > run-time (assuming gcc is smart enough). nlmsvc_grace_period is now a
+> > function instead of an unused variable.
+> > 
+> > The second patch is the actual implementation. It is currently in use for
+> > a number of NFSv3 virtual servers on one physical machine running 2.6.39.3
+> > where the virtualization is based on using different IPv4 addresses.
+> 
+> Thanks, that is something we'd like to have working well.
 
-I have a hopefully very simple question, and any suggestions would be greatly appreciated…
+Are the patches queued anywhere for inclusion in mainline?
 
-In my app, basically doing the following, using gssglue/gssapi with gssapi_krb5. In my app:
-
-OM_uint32 major = gss_import_name();
-if (major == GSS_S_COMPLETE)
-{
-   major = gss_acquire_cred();
-   gss_release_name();
-}
-
-I'm testing error handling when gssapi_krb5.so is missing (being dynamically loaded by GSS). I find that gss_import_name succeeds (always returns GSS_S_COMPLETE). I happen to be getting GSS_S_BAD_MECH from gss_acquire_cred. Regardless whether gss_acquire_cred succeeds or fails, I always call gss_release_name to avoid memory leakage. In this scenario, gss_release_name segfaults.
-
-FYI, I'm working in Ubuntu 6.06 (libgssapi-dev 0.7-0ubuntu1). Having a little trouble determining the corresponding source version, so I apologize for that.
-
-Basically, what's the recommended usage here? Is there any reason to *not* call gss_release_name? I see a shared object debug message from somewhere within gss_import_name, so I would normally expect it to fail, and use that to know whether to later release or not. Do I only release if gss_acquire_cred succeeds, maybe?
-
-Otherwise, no problems. Just can't figure out the recommended usage here…. Any suggestions would be wonderful!
-
-Regards,
-- Matthew
-
+-- 
+Frank
