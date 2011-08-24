@@ -1,51 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:60223 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751133Ab1HKSpQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Aug 2011 14:45:16 -0400
-Message-ID: <4E4422FD.3060706@panasas.com>
-Date: Thu, 11 Aug 2011 11:44:13 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@tonian.com>, Sorin Faibish <sfaibish@emc.com>,
-        peter honeyman <honey@citi.umich.edu>
-CC: <tao.peng@emc.com>, <torvalds@linux-foundation.org>,
-        <rdunlap@xenotime.net>, <bergwolf@gmail.com>,
-        <Trond.Myklebust@netapp.com>, <linux-raid@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        "Welch, Brent" <welch@panasas.com>
-Subject: Re: Linux 3.1-rc1 (nfs/pnfs and drivers/md)
-References: <CA+55aFwkJdyEpyNY64aAQ5ChrPZ8Kvx9iRUwy1J6_SRaxoN=zA@mail.gmail.com> <20110810122304.96b8be67.rdunlap@xenotime.net> <CA+a=Yy5izxiyvW5eYiWuute9E1vXwNTj4frdzNeEwsLDrszesg@mail.gmail.com> <20110810175829.a834d80f.rdunlap@xenotime.net> <CA+55aFzcSLrhkexEn=J7BN8F3P3Vy+EAjwgGwMQPdeoYoQG+Bw@mail.gmail.com> <F19688880B763E40B28B2B462677FBF805BF0EAC8A@MX09A.corp.emc.com> <4E43AAD1.7090806@tonian.com>
-In-Reply-To: <4E43AAD1.7090806@tonian.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mailhub.sw.ru ([195.214.232.25]:33682 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753930Ab1HXSfH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Aug 2011 14:35:07 -0400
+Subject: [PATCH 2/5] SUNRPC: use reference count helpers
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net
+Date: Wed, 24 Aug 2011 22:33:52 +0400
+Message-ID: <20110824183352.4924.51863.stgit@localhost6.localdomain6>
+In-Reply-To: <20110824183304.4924.94670.stgit@localhost6.localdomain6>
+References: <20110824183304.4924.94670.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 08/11/2011 03:11 AM, Benny Halevy wrote:
-> On 2011-08-11 06:26, tao.peng@emc.com wrote:
-> 
-> My Ack, that's indeed closer to what I had queued in my tree originally and
-> follows the approach we used for the objects layout driver.
-> 
-> Benny
-> 
+All is simple: we just increase users conters if rpcbind clients are present
+already. Otherwise we create new rpcbind clients and set users counter to 1.
 
-Yes but this breaks "Sorin"'s conspiracy to sneak into readhat the block
-layout driver. Because it would be selected automatically if you set
-CONFIG_NFS41.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Because for some perverted reason readhat wants pNFS-Files in, with
-latest patches, but not the blocks or objects. I liked it that Blocks
-tried to state: "pNFS is with blocks as well". Even Trond agreed that
-it is logical this way.
+---
+ net/sunrpc/rpcb_clnt.c |   12 ++++--------
+ 1 files changed, 4 insertions(+), 8 deletions(-)
 
-You select CONFIG_NFS41 or not. objects and blocks are a part of that,
-mandated by the protocol.
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index c84e6a3..b4cc0f1 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -256,9 +256,7 @@ static int rpcb_create_local_unix(void)
+ 		clnt4 = NULL;
+ 	}
+ 
+-	/* Protected by rpcb_create_local_mutex */
+-	rpcb_local_clnt = clnt;
+-	rpcb_local_clnt4 = clnt4;
++	rpcb_set_local(clnt, clnt4);
+ 
+ out:
+ 	return result;
+@@ -310,9 +308,7 @@ static int rpcb_create_local_net(void)
+ 		clnt4 = NULL;
+ 	}
+ 
+-	/* Protected by rpcb_create_local_mutex */
+-	rpcb_local_clnt = clnt;
+-	rpcb_local_clnt4 = clnt4;
++	rpcb_set_local(clnt, clnt4);
+ 
+ out:
+ 	return result;
+@@ -327,11 +323,11 @@ static int rpcb_create_local(void)
+ 	static DEFINE_MUTEX(rpcb_create_local_mutex);
+ 	int result = 0;
+ 
+-	if (rpcb_local_clnt)
++	if (rpcb_get_local())
+ 		return result;
+ 
+ 	mutex_lock(&rpcb_create_local_mutex);
+-	if (rpcb_local_clnt)
++	if (rpcb_get_local())
+ 		goto out;
+ 
+ 	if (rpcb_create_local_unix() != 0)
 
-(I don't know that it was "Sorin"'s Idea, I meant the block guys)
-
-I wish we can go back to the auto selection but fix the dependency
-stuff. Surly it is possible.
-
-Thanks
-Boaz
