@@ -1,155 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53253 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752835Ab1HZW2m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Aug 2011 18:28:42 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 02/15] Remove include/linux/nfsd/const.h
-Date: Fri, 26 Aug 2011 18:28:23 -0400
-Message-Id: <1314397716-18602-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1314397716-18602-1-git-send-email-bfields@redhat.com>
-References: <1314397716-18602-1-git-send-email-bfields@redhat.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:17313 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750893Ab1HXPQ6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Aug 2011 11:16:58 -0400
+Subject: Re: [PATCH] sunrpc: Add scope id to svc_addr_u for IPv6 LINKLOCAL address
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4E54AFA0.7050202@cn.fujitsu.com>
+Date: Wed, 24 Aug 2011 11:15:33 -0400
+Cc: Jeff Layton <jlayton@redhat.com>, "J. Bruce Fields" <bfields@fieldses.org>,
+        NFS <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Message-Id: <3A6986D4-AD4A-44EB-AFAF-3FA9F71D72A9@oracle.com>
+References: <4E4F8B5D.6060404@cn.fujitsu.com>	<20110822192348.GA16261@fieldses.org>	<20110822153939.14d0a6ac@tlielax.poochiereds.net>	<73D17319-3FDB-4278-872A-FF488E1C88DD@oracle.com> <20110823104323.0da02307@corrin.poochiereds.net> <4E54AFA0.7050202@cn.fujitsu.com>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Userspace shouldn't have a use for these constants.  Nothing here is
-used outside fs/nfsd.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfsd.h             |   26 ++++++++++++++++++++++++++
- include/linux/nfsd/Kbuild  |    1 -
- include/linux/nfsd/const.h |   42 ------------------------------------------
- include/linux/nfsd/nfsfh.h |    7 +++++--
- 4 files changed, 31 insertions(+), 45 deletions(-)
- delete mode 100644 include/linux/nfsd/const.h
+On Aug 24, 2011, at 4:00 AM, Mi Jinlong wrote:
 
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 7ecfa24..8da03e1 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -11,13 +11,39 @@
- #include <linux/types.h>
- #include <linux/mount.h>
- 
-+#include <linux/nfs.h>
-+#include <linux/nfs2.h>
-+#include <linux/nfs3.h>
-+#include <linux/nfs4.h>
-+#include <linux/sunrpc/msg_prot.h>
-+
- #include <linux/nfsd/debug.h>
- #include <linux/nfsd/export.h>
- #include <linux/nfsd/stats.h>
-+
- /*
-  * nfsd version
-  */
- #define NFSD_SUPPORTED_MINOR_VERSION	1
-+/*
-+ * Maximum blocksizes supported by daemon under various circumstances.
-+ */
-+#define NFSSVC_MAXBLKSIZE       RPCSVC_MAXPAYLOAD
-+/* NFSv2 is limited by the protocol specification, see RFC 1094 */
-+#define NFSSVC_MAXBLKSIZE_V2    (8*1024)
-+
-+
-+/*
-+ * Largest number of bytes we need to allocate for an NFS
-+ * call or reply.  Used to control buffer sizes.  We use
-+ * the length of v3 WRITE, READDIR and READDIR replies
-+ * which are an RPC header, up to 26 XDR units of reply
-+ * data, and some page data.
-+ *
-+ * Note that accuracy here doesn't matter too much as the
-+ * size is rounded up to a page size when allocating space.
-+ */
-+#define NFSD_BUFSIZE            ((RPC_MAX_HEADER_WITH_AUTH+26)*XDR_UNIT + NFSSVC_MAXBLKSIZE)
- 
- struct readdir_cd {
- 	__be32			err;	/* 0, nfserr, or nfserr_eof */
-diff --git a/include/linux/nfsd/Kbuild b/include/linux/nfsd/Kbuild
-index 55d1467..0e52860 100644
---- a/include/linux/nfsd/Kbuild
-+++ b/include/linux/nfsd/Kbuild
-@@ -1,4 +1,3 @@
--header-y += const.h
- header-y += debug.h
- header-y += export.h
- header-y += nfsfh.h
-diff --git a/include/linux/nfsd/const.h b/include/linux/nfsd/const.h
-deleted file mode 100644
-index feb3764..0000000
---- a/include/linux/nfsd/const.h
-+++ /dev/null
-@@ -1,42 +0,0 @@
--/*
-- * include/linux/nfsd/const.h
-- *
-- * Various constants related to NFS.
-- *
-- * Copyright (C) 1995-1997 Olaf Kirch <okir@monad.swb.de>
-- */
--
--#ifndef _LINUX_NFSD_CONST_H
--#define _LINUX_NFSD_CONST_H
--
--#include <linux/nfs.h>
--#include <linux/nfs2.h>
--#include <linux/nfs3.h>
--#include <linux/nfs4.h>
--
--/*
-- * Maximum blocksizes supported by daemon under various circumstances.
-- */
--#define NFSSVC_MAXBLKSIZE	RPCSVC_MAXPAYLOAD
--/* NFSv2 is limited by the protocol specification, see RFC 1094 */
--#define NFSSVC_MAXBLKSIZE_V2	(8*1024)
--
--#ifdef __KERNEL__
--
--#include <linux/sunrpc/msg_prot.h>
--
--/*
-- * Largest number of bytes we need to allocate for an NFS
-- * call or reply.  Used to control buffer sizes.  We use
-- * the length of v3 WRITE, READDIR and READDIR replies
-- * which are an RPC header, up to 26 XDR units of reply
-- * data, and some page data.
-- *
-- * Note that accuracy here doesn't matter too much as the
-- * size is rounded up to a page size when allocating space.
-- */
--#define NFSD_BUFSIZE		((RPC_MAX_HEADER_WITH_AUTH+26)*XDR_UNIT + NFSSVC_MAXBLKSIZE)
--
--#endif /* __KERNEL__ */
--
--#endif /* _LINUX_NFSD_CONST_H */
-diff --git a/include/linux/nfsd/nfsfh.h b/include/linux/nfsd/nfsfh.h
-index f76d80c..ce4743a 100644
---- a/include/linux/nfsd/nfsfh.h
-+++ b/include/linux/nfsd/nfsfh.h
-@@ -14,11 +14,14 @@
- #ifndef _LINUX_NFSD_FH_H
- #define _LINUX_NFSD_FH_H
- 
--# include <linux/types.h>
-+#include <linux/types.h>
-+#include <linux/nfs.h>
-+#include <linux/nfs2.h>
-+#include <linux/nfs3.h>
-+#include <linux/nfs4.h>
- #ifdef __KERNEL__
- # include <linux/sunrpc/svc.h>
- #endif
--#include <linux/nfsd/const.h>
- 
- /*
-  * This is the old "dentry style" Linux NFSv2 file handle.
+> Jeff Layton :
+>> On Mon, 22 Aug 2011 15:44:39 -0400
+>> Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>>> On Aug 22, 2011, at 3:39 PM, Jeff Layton wrote:
+>>> 
+>>>> On Mon, 22 Aug 2011 15:23:48 -0400
+>>>> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>>>> 
+>>>>> On Sat, Aug 20, 2011 at 06:24:29PM +0800, Mi Jinlong wrote:
+>>>>>> For IPv6 local address, lockd can not callback to client for 
+>>>>>> missing scope id when binding address at inet6_bind:
+>>>>>> 
+>>>>>> 324       if (addr_type & IPV6_ADDR_LINKLOCAL) {
+>>>>>> 325               if (addr_len >= sizeof(struct sockaddr_in6) &&
+>>>>>> 326                   addr->sin6_scope_id) {
+>>>>>> 327                       /* Override any existing binding, if another one
+>>>>>> 328                        * is supplied by user.
+>>>>>> 329                        */
+>>>>>> 330                       sk->sk_bound_dev_if = addr->sin6_scope_id;
+>>>>>> 331               }
+>>>>>> 332 
+>>>>>> 333               /* Binding to link-local address requires an interface */
+>>>>>> 334               if (!sk->sk_bound_dev_if) {
+>>>>>> 335                       err = -EINVAL;
+>>>>>> 336                       goto out_unlock;
+>>>>>> 337               }
+>>>>>> 
+>>>>>> This patch adds scope id to svc_addr_u for IPv6 address, and copy scope from
+>>>>>> xprt->xpt_local to rqstp->rq_daddr for use.
+>>>>>> 
+>>>>>> With this patch, lockd can callback to client success.
+>>>>> I guess this makes sense to me, but someone who understands IPv6 better
+>>>>> should comment... Chuck?  Jeff?
+>>>>> 
+>>>> Sounds like a reasonable explanation. Link-local addresses all have the
+>>>> same prefix, so we need a scopeid (aka interface ID# for linux) to know
+>>>> which interface we should send a call on.
+>>>> 
+>>>> When I did the patches to allow NFSv4 callbacks to go over IPv6, I
+>>>> did something similar, but used the rq_addr. From gen_callback:
+>>>> 
+>>>>       struct sockaddr *sa = svc_addr(rqstp);
+>>>>       u32 scopeid = rpc_get_scope_id(sa);
+>>>> 
+>>>> ...and the scopeid was used to populate the scopeid of the callback
+>>>> address. The rq_daddr should be equivalent though. The _addr and _daddr
+>>>> must have the same scopeid or something is very wrong...
+>>> Sure, that would preclude the need to upgrade the field to a struct sockaddr_storage.
+>>> 
+>>>> That said, on a semi-related note...
+>>>> 
+>>>> I have to wonder about statd in conjunction with link-local addresses.
+>>>> I have a hard time understanding how you'd ever get reboot
+>>>> notifications in such a setup.
+>>> The only way that could work is if DNS was able to look at a local hostname, and provide the correct scope ID.  Doubtful.  I wonder if mDNS might provide such ability.
+>>> 
+>> 
+>> I haven't looked closely at the mDNS protocol, but regular DNS does not
+>> support scopeids on AAAA records.
+>> 
+>> It does seem somewhat plausible that this could work "accidentally".
+>> The reboot notifications could end up going via routable addresses
+>> instead of the link-local ones if you set nsm_use_hostnames.
+>> 
+>> NSM is a shaky protocol at best though, so I'd make sure to test this
+>> before relying on it. Mi, if you get this working (including reboot
+>> notifications), please let us know how you solved this...
+> 
+> Hi Jeff,
+> 
+>  I'm not working on NSM. It seems there are some problem of the 
+>  latest statd from Steve's git tee.
+
+I kind of agree that NSM can't work with link-local IPv6 because of its dependence on DNS, but NFSv4 probably should work.
+
+>  If having time, I will check the latest statd and sm-notify.
+
+It's a reasonable regression test for your patch :-)
+
 -- 
-1.7.4.1
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
