@@ -1,35 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from frankvm.xs4all.nl ([83.163.148.79]:44070 "EHLO
-	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754004Ab1HDKaV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2011 06:30:21 -0400
-Date: Thu, 4 Aug 2011 12:30:19 +0200
-From: Frank van Maarseveen <frankvm@frankvm.com>
-To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: [NLM] fcntl(F_SETLKW) yields -ENOLCK when grace period expires.
-Message-ID: <20110804103018.GA11727@janus>
-Content-Type: text/plain; charset=us-ascii
+Received: from cn.fujitsu.com ([222.73.24.84]:58671 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1756555Ab1HXIti (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Aug 2011 04:49:38 -0400
+Message-ID: <4E54BC12.6060502@cn.fujitsu.com>
+Date: Wed, 24 Aug 2011 16:53:38 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>, NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/4 v4] 4.1 CLNT: add a simple test about RECLAIM_COMPLETE
+References: <4E4C7679.7000108@cn.fujitsu.com>
+In-Reply-To: <4E4C7679.7000108@cn.fujitsu.com>
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Both client- and server run 2.6.39.3, NFSv3 over UDP (without the
-relock_filesystem patch proposed earlier).
+Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+---
+ nfs4.1/server41tests/__init__.py            |    1 +
+ nfs4.1/server41tests/st_reclaim_complete.py |   20 ++++++++++++++++++++
+ 2 files changed, 21 insertions(+), 0 deletions(-)
+ create mode 100644 nfs4.1/server41tests/st_reclaim_complete.py
 
-A second client has an exclusive lock on a file on the server. The
-client under test calls fcntl(F_SETLKW) to wait for the same exclusive
-lock. Wireshark sees NLM V4 LOCK calls resulting in NLM_BLOCKED.
-
-Next the server is rebooted. The second client recovers the lock
-correctly. The client under test now receives NLM_DENIED_GRACE_PERIOD for
-every NLM V4 LOCK request resulting from the waiting fcntl(F_SETLKW). When
-this changes to NLM_BLOCKED after grace period expiration the fcntl
-returns -ENOLCK ("No locks available.") instead of continuing to wait.
-
-server:/proc/locks shows two entries for the file after the -ENOLCK. When
-the second client gives up its lock because the program running there
-is killed one entry in server:/proc/locks remains indefinately: as a
-result no NFS client can lock the file anymore.
-
+diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
+index 3b4411a..1cc2048 100644
+--- a/nfs4.1/server41tests/__init__.py
++++ b/nfs4.1/server41tests/__init__.py
+@@ -2,6 +2,7 @@ __all__ = ["st_exchange_id.py", # draft 21
+            "st_compound.py",
+            "st_create_session.py",
+            "st_destroy_session.py",
++           "st_reclaim_complete.py",
+            "st_secinfo_no_name.py",
+            "st_secinfo.py",
+            "st_sequence.py",
+diff --git a/nfs4.1/server41tests/st_reclaim_complete.py b/nfs4.1/server41tests/st_reclaim_complete.py
+new file mode 100644
+index 0000000..bc63ed8
+--- /dev/null
++++ b/nfs4.1/server41tests/st_reclaim_complete.py
+@@ -0,0 +1,20 @@
++from st_create_session import create_session
++from nfs4_const import *
++from environment import check, fail
++import nfs4_ops as op
++import nfs4lib
++
++def testSupported(t, env):
++    """Do a simple RECLAIM_COMPLETE
++
++    FLAGS: reclaim_complete all
++    CODE: RECC1
++    """
++    c = env.c1.new_client(env.testname(t))
++    sess = c.create_session()
++
++    res = sess.compound([op.putrootfh(), op.reclaim_complete(TRUE)])
++    check(res)
++
++    res = sess.compound([op.reclaim_complete(FALSE)])
++    check(res)
 -- 
-Frank
+1.7.6
+
+
+
