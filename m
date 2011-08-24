@@ -1,57 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:53719 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:3029 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753937Ab1HOQDf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2011 12:03:35 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: open() of device special files
-Date: Mon, 15 Aug 2011 09:03:30 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AA9B9FB@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <20110815153637.GD28629@fieldses.org>
-References: <20110815153637.GD28629@fieldses.org>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
-Cc: <steved@redhat.com>
+	id S1753930Ab1HXSea (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Aug 2011 14:34:30 -0400
+Subject: [PATCH 5/5] SUNRPC: remove rpcbind clients destruction on module
+	cleanup
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net
+Date: Wed, 24 Aug 2011 22:34:15 +0400
+Message-ID: <20110824183415.4924.36067.stgit@localhost6.localdomain6>
+In-Reply-To: <20110824183304.4924.94670.stgit@localhost6.localdomain6>
+References: <20110824183304.4924.94670.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> Sent: Monday, August 15, 2011 11:37 AM
-> To: Myklebust, Trond; linux-nfs@vger.kernel.org
-> Cc: steved@redhat.com
-> Subject: open() of device special files
-> 
-> How is the client supposed to handle opens of device special files?
-On
-> a 3.1-rc1-based client to a linux server over v4.0 I'm seeing it try
-an
-> OPEN call and failing when it gets an INVAL return.
-> 
-> This looks like bogus client behavior (OPEN should fail on such
-files),
-> unless the server has the error return wrong and the client's using an
-> OPEN error to recover.
-> 
-> If I first stat the device and then open it then it works as expected
-> (the client does an open of the local device).
-> 
-> I'm a bit annoyed at myself as I have a feeling we've discussed this
-> before but I can't find a reference now.
+We don't need this anymore since now rpcbind clients are destroying during last
+RPC service shutdown.
 
-Hmm... NFS4ERR_INVAL means 'invalid argument', which is not the case
-here; all the arguments that the client is passing to the server are
-valid, however the file cannot be opened because the pathname resolves
-on the server to a file of the wrong type.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-I can't see any other error definition that is "obviously correct", but
-it looks to me as if NFS4ERR_SYMLINK might be the closest thing. One
-reason is the dot-x file defines NFS4ERR_SYMLINK as meaning "should be
-file/directory". The other reason is that NFS4ERR_SYMLINK should
-_always_ trigger the correct behaviour on a client: a fresh lookup of
-the component.
+---
+ net/sunrpc/rpcb_clnt.c   |   12 ------------
+ net/sunrpc/sunrpc_syms.c |    3 ---
+ 2 files changed, 0 insertions(+), 15 deletions(-)
 
-Cheers
-  Trond
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index f363efe..94a310d 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -1098,15 +1098,3 @@ static struct rpc_program rpcb_program = {
+ 	.version	= rpcb_version,
+ 	.stats		= &rpcb_stats,
+ };
+-
+-/**
+- * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
+- *
+- */
+-void cleanup_rpcb_clnt(void)
+-{
+-	if (rpcb_local_clnt4)
+-		rpc_shutdown_client(rpcb_local_clnt4);
+-	if (rpcb_local_clnt)
+-		rpc_shutdown_client(rpcb_local_clnt);
+-}
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 9d08091..8ec9778 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -61,8 +61,6 @@ static struct pernet_operations sunrpc_net_ops = {
+ 
+ extern struct cache_detail unix_gid_cache;
+ 
+-extern void cleanup_rpcb_clnt(void);
+-
+ static int __init
+ init_sunrpc(void)
+ {
+@@ -102,7 +100,6 @@ out:
+ static void __exit
+ cleanup_sunrpc(void)
+ {
+-	cleanup_rpcb_clnt();
+ 	rpcauth_remove_module();
+ 	cleanup_socket_xprt();
+ 	svc_cleanup_xprt_sock();
+
