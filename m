@@ -1,76 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:45640 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753820Ab1HVXYv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Aug 2011 19:24:51 -0400
-Message-ID: <4E52E538.7040807@panasas.com>
-Date: Mon, 22 Aug 2011 16:24:40 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: <benny@tonian.com>, <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 0/3] recoalesce when ld read/write fails
-References: <1313197213-1651-1-git-send-email-bergwolf@gmail.com> <4E4AD655.9090305@panasas.com> <CA+a=Yy6xNFu62nZavt1KnrZWTZGjgR3H=bgF-uERsf=xp7TARg@mail.gmail.com>
-In-Reply-To: <CA+a=Yy6xNFu62nZavt1KnrZWTZGjgR3H=bgF-uERsf=xp7TARg@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from cn.fujitsu.com ([222.73.24.84]:59787 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1755977Ab1HXIt4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Aug 2011 04:49:56 -0400
+Message-ID: <4E54BC22.6050700@cn.fujitsu.com>
+Date: Wed, 24 Aug 2011 16:53:54 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>, NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/4 v4] 4.1 CLNT: test reclaims after RECLAIM_COMPLETE
+References: <4E4C7679.7000108@cn.fujitsu.com>
+In-Reply-To: <4E4C7679.7000108@cn.fujitsu.com>
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 08/17/2011 06:42 AM, Peng Tao wrote:
-<snip>
->> They look *really* good these patches. But as you said, do they actually work?
->>
->> Did you test any of this? I mean do you have a facility to inject random
->> IO errors and test this out?
-> I have tested the patchset by forcing all bio to fail so IO will be
-> re-send to MDS. Also I tested read/write by forcing all IO that
-> touches pages beyond 16K to fail. Both tests passed.
-> 
+Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+---
+ nfs4.1/server41tests/st_reclaim_complete.py |   29 ++++++++++++++++++++++++++-
+ 1 files changed, 28 insertions(+), 1 deletions(-)
 
-So that sounds good. Why don't you like these patches?
+diff --git a/nfs4.1/server41tests/st_reclaim_complete.py b/nfs4.1/server41tests/st_reclaim_complete.py
+index bc63ed8..108e7b6 100644
+--- a/nfs4.1/server41tests/st_reclaim_complete.py
++++ b/nfs4.1/server41tests/st_reclaim_complete.py
+@@ -1,6 +1,6 @@
+ from st_create_session import create_session
+ from nfs4_const import *
+-from environment import check, fail
++from environment import check, fail, open_file, create_confirm
+ import nfs4_ops as op
+ import nfs4lib
+ 
+@@ -18,3 +18,30 @@ def testSupported(t, env):
+ 
+     res = sess.compound([op.reclaim_complete(FALSE)])
+     check(res)
++
++def testReclaimAfterRECC(t, env):
++    """If client does subsequent reclaims of locking state after
++       RECLAIM_COMPLETE is done, server will return NFS4ERR_NO_GRACE.
++       rfc5661 18.51.3
++
++    FLAGS: reclaim_complete all
++    CODE: RECC2
++    """
++    name = env.testname(t)
++    c = env.c1.new_client(name)
++    sess = c.create_session()
++
++    res = sess.compound([op.reclaim_complete(FALSE)])
++    check(res)
++
++    owner = "owner_%s" % name
++    path = sess.c.homedir + [name]
++    fh, stateid = create_confirm(sess, owner)
++
++    # Try to reclaims a file which is noexist after RECLAIM_COMPLETE
++    res = open_file(sess, owner, path=fh, claim_type=CLAIM_PREVIOUS,
++                    access=OPEN4_SHARE_ACCESS_BOTH,
++                    deny=OPEN4_SHARE_DENY_NONE,
++                    deleg_type=OPEN_DELEGATE_NONE)
++
++    check(res, NFS4ERR_NO_GRACE, warnlist = [NFS4ERR_EXIST | NFS4ERR_RECLAIM_BAD])
+-- 
+1.7.6
 
->>
-<snip>
-> I tried to test "git clone linux" on a 384M memory VM but it hangs as
-> server is rejecting layoutget with NFS4ERR_LAYOUTTRYLATER.
-> /proc/self/mountstats shows that client has sent more than 14K
-> layoutgets but never returns any layout. I checked related code and it
-> seems client should send layoutreturn for closed files. Will git keep
-> all files open? Or is there any case that client won't return the
-> layout even after file close?
-> 
 
-Yes! our client will never ever return any layouts. The forgetful
-model for you. It will only ever "layout_return" on evict_inode which
-is way after close, when the Kernel decides to cleanup the inode
-cache. Which only happens after a while.
-
-If Your layout driver sets the RETURN_ON_CLOSE bit on the layout
-then the pNFSD server code will simulate a layout_return on a file
-close. This is what I use in EXOFS and it works very well. (I should
-know because I wrote this patch for the pnfsd server)
-
-It looks like your blocks-based pNFSD filesystem needs layouts
-returned. Set the res->lg_return_on_close = true; flag in your
-.layout_get member and you should see layout_return on close.
-
-Look in Benny's pNFS tree at fs/exofs/export.c file how I do
-it there.
-
-> This seems to be another issue though.
-> 
-
-Yes this is a different Issue.
-
-It looks from what you tested that the second approach works
-well. I'll also test this out later on. Lets not rule these
-out yet.
-
-> Thanks,
-> Tao
-
-Sorry for the late response I just came back from Vacation,
-It'll me some time to catch up
-
-Thanks
-Boaz
