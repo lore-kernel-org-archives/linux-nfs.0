@@ -1,61 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:52876 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1754783Ab1HRCRH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Aug 2011 22:17:07 -0400
-Message-ID: <4E4C771B.2030405@cn.fujitsu.com>
-Date: Thu, 18 Aug 2011 10:21:15 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>, NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH 3/4 v3] 4.1 CLNT: test open before RECLAIM_COMPLETE
-References: <4E4C7679.7000108@cn.fujitsu.com>
-In-Reply-To: <4E4C7679.7000108@cn.fujitsu.com>
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from mailhub.sw.ru ([195.214.232.25]:23529 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753885Ab1HXSe3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Aug 2011 14:34:29 -0400
+Subject: [PATCH 3/5] SUNRPC: make RPC service dependable on rpcbind clients
+	creation
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net
+Date: Wed, 24 Aug 2011 22:33:59 +0400
+Message-ID: <20110824183359.4924.94364.stgit@localhost6.localdomain6>
+In-Reply-To: <20110824183304.4924.94670.stgit@localhost6.localdomain6>
+References: <20110824183304.4924.94670.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+We create or increase users counter of rcbind clients during RPC service
+creation and decrease this counter (and possibly destroy those clients) on RPC
+service destruction.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
 ---
- nfs4.1/server41tests/st_reclaim_complete.py |   21 ++++++++++++++++++++-
- 1 files changed, 20 insertions(+), 1 deletions(-)
+ include/linux/sunrpc/clnt.h |    2 ++
+ net/sunrpc/rpcb_clnt.c      |    2 +-
+ net/sunrpc/svc.c            |    5 +++++
+ 3 files changed, 8 insertions(+), 1 deletions(-)
 
-diff --git a/nfs4.1/server41tests/st_reclaim_complete.py b/nfs4.1/server41tests/st_reclaim_complete.py
-index 3940b7b..921d537 100644
---- a/nfs4.1/server41tests/st_reclaim_complete.py
-+++ b/nfs4.1/server41tests/st_reclaim_complete.py
-@@ -1,6 +1,6 @@
- from st_create_session import create_session
- from nfs4_const import *
--from environment import check, fail, open_file, create_confirm
-+from environment import check, fail, open_file, create_file, create_confirm
- import nfs4_ops as op
- import nfs4lib
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index db7bcaf..65a8115 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -135,10 +135,12 @@ void		rpc_shutdown_client(struct rpc_clnt *);
+ void		rpc_release_client(struct rpc_clnt *);
+ void		rpc_task_release_client(struct rpc_task *);
  
-@@ -47,3 +47,22 @@ def testReclaimAfterRECC(t, env):
-                     deleg_type=OPEN_DELEGATE_NONE)
++int		rpcb_create_local(void);
+ int		rpcb_register(u32, u32, int, unsigned short);
+ int		rpcb_v4_register(const u32 program, const u32 version,
+ 				 const struct sockaddr *address,
+ 				 const char *netid);
++void		rpcb_put_local(void);
+ void		rpcb_getport_async(struct rpc_task *);
  
-     check(res,NFS4ERR_NO_GRACE)
+ void		rpc_call_start(struct rpc_task *);
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index b4cc0f1..437ec60 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -318,7 +318,7 @@ out:
+  * Returns zero on success, otherwise a negative errno value
+  * is returned.
+  */
+-static int rpcb_create_local(void)
++int rpcb_create_local(void)
+ {
+ 	static DEFINE_MUTEX(rpcb_create_local_mutex);
+ 	int result = 0;
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 6a69a11..0df8532 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -367,6 +367,9 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 	unsigned int xdrsize;
+ 	unsigned int i;
+ 
++	if (rpcb_create_local() < 0)
++		return NULL;
 +
-+def testOpenBeforeRECC(t, env):
-+    """After a client establishes a new client ID, if non-reclaim
-+       locking operations are done before the RECLAIM_COMPLETE,
-+       error NFS4ERR_GRACE will be returned. rfc5661 18.51.3
+ 	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
+ 		return NULL;
+ 	serv->sv_name      = prog->pg_name;
+@@ -491,6 +494,8 @@ svc_destroy(struct svc_serv *serv)
+ 	svc_unregister(serv);
+ 	kfree(serv->sv_pools);
+ 	kfree(serv);
 +
-+    FLAGS: reclaim_complete all
-+    CODE: RECC3
-+    """
-+    name = env.testname(t)
-+    c = env.c1.new_client(name)
-+    sess = c.create_session()
-+
-+    fname = "owner_%s" % name
-+    path = sess.c.homedir + [name]
-+
-+    # Try to open file before RECLAIM_COMPLETE
-+    res = create_file(sess, fname, path, access=OPEN4_SHARE_ACCESS_BOTH)
-+    check(res,NFS4ERR_GRACE)
--- 
-1.7.6
-
++	rpcb_put_local();
+ }
+ EXPORT_SYMBOL_GPL(svc_destroy);
+ 
 
