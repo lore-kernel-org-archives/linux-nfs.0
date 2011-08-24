@@ -1,38 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pz0-f42.google.com ([209.85.210.42]:49314 "EHLO
-	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750703Ab1HANyf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Aug 2011 09:54:35 -0400
-Received: by pzk37 with SMTP id 37so11542821pzk.1
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Aug 2011 06:54:34 -0700 (PDT)
-Date: Mon, 1 Aug 2011 14:54:34 +0100
-Message-ID: <CAA4Z2ZR47Lfb_=172VUd-Qop7NiC3ewVAgUepn0WD=PDTr9k-A@mail.gmail.com>
-Subject: using non contiguous memory in nfs_idmap_new()
-From: Adrien Kunysz <adk@acunu.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mailhub.sw.ru ([195.214.232.25]:28266 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753627Ab1HXSe3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Aug 2011 14:34:29 -0400
+Subject: [PATCH 4/5] SUNRPC: remove rpcbind clients creation during service
+	registring
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net
+Date: Wed, 24 Aug 2011 22:34:07 +0400
+Message-ID: <20110824183407.4924.4281.stgit@localhost6.localdomain6>
+In-Reply-To: <20110824183304.4924.94670.stgit@localhost6.localdomain6>
+References: <20110824183304.4924.94670.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Dear linux-nfs,
+We don't need this code since rpcbind clients are creating during RPC service
+creation.
 
-I have a box that has recently been victim of an OOM caused by
-nfs_idmap_new() attempting to allocate a large amount of contiguous
-memory. This problem has been reported previously here [0] and I
-understand the real fix is to use CONFIG_NFS_USE_NEW_IDMAPPER. However
-I was wondering whether using non contiguous memory instead would be a
-valid workaround, especially considering the new ID mapper is not
-enabled by default. I have actually written a patch to that effect as
-I don't see any specific reason why that struct would need to be in
-contiguous memory.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-So before I do anything stupid with that patch,
-a) is there any good reason to use kzalloc() instead of vzalloc() in
-nfs_idmap_new()?
-b) would you consider a patch that would make the function use vzalloc()?
+---
+ net/sunrpc/rpcb_clnt.c |    9 ---------
+ 1 files changed, 0 insertions(+), 9 deletions(-)
 
-Thanks,
-Adrien Kunysz
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 437ec60..f363efe 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -429,11 +429,6 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
+ 	struct rpc_message msg = {
+ 		.rpc_argp	= &map,
+ 	};
+-	int error;
+-
+-	error = rpcb_create_local();
+-	if (error)
+-		return error;
+ 
+ 	dprintk("RPC:       %sregistering (%u, %u, %d, %u) with local "
+ 			"rpcbind\n", (port ? "" : "un"),
+@@ -569,11 +564,7 @@ int rpcb_v4_register(const u32 program, const u32 version,
+ 	struct rpc_message msg = {
+ 		.rpc_argp	= &map,
+ 	};
+-	int error;
+ 
+-	error = rpcb_create_local();
+-	if (error)
+-		return error;
+ 	if (rpcb_local_clnt4 == NULL)
+ 		return -EPROTONOSUPPORT;
+ 
 
-[0] http://www.spinics.net/lists/linux-nfs/msg22248.html
