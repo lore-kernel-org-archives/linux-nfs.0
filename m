@@ -1,58 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([198.137.202.13]:60634 "EHLO
-	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752123Ab1HSOEy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2011 10:04:54 -0400
-Date: Fri, 19 Aug 2011 07:04:51 -0700 (PDT)
-Message-Id: <20110819.070451.1651299907098952592.davem@davemloft.net>
-To: Ian.Campbell@citrix.com
-Cc: netdev@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC v3 0/75] enable SKB paged fragment lifetime
- visibility
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <20110819.063410.475175569086272526.davem@davemloft.net>
-References: <1313760393.5010.356.camel@zakaz.uk.xensource.com>
-	<20110819.062958.1560313540665582388.davem@davemloft.net>
-	<20110819.063410.475175569086272526.davem@davemloft.net>
-Content-Type: Text/Plain; charset=us-ascii
+Received: from mail-ew0-f46.google.com ([209.85.215.46]:42819 "EHLO
+	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751802Ab1HXPeZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Aug 2011 11:34:25 -0400
+Received: by mail-ew0-f46.google.com with SMTP id 4so527255ewy.19
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Aug 2011 08:34:25 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 4/5] exportfs: matchhostname() doesn't handle localhost
+	properly
+To: linux-nfs@vger.kernel.org
+Date: Wed, 24 Aug 2011 11:34:23 -0400
+Message-ID: <20110824153422.3138.49458.stgit@matisse.1015granger.net>
+In-Reply-To: <20110824153024.3138.63294.stgit@matisse.1015granger.net>
+References: <20110824153024.3138.63294.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: David Miller <davem@davemloft.net>
-Date: Fri, 19 Aug 2011 06:34:10 -0700 (PDT)
+Same change as statd_matchhostname() is necessary for the logic in
+exportfs.
 
-> From: David Miller <davem@davemloft.net>
-> Date: Fri, 19 Aug 2011 06:29:58 -0700 (PDT)
-> 
->> From: Ian Campbell <Ian.Campbell@citrix.com>
->> Date: Fri, 19 Aug 2011 14:26:33 +0100
->> 
->>> This is v3 of my series to enable visibility into SKB paged fragment's
->> 
->> Please tone down the patch count :-/  I'm not going to review anything more
->> than ~20 or so patches at a time from any one person.
-> 
-> Also none of your patches will even apply to net-next GIT since nearly
-> all the ethernet drivers have been moved under drivers/net/ethernet
+Recall that these are "separate but nearly equal" because the exportfs
+version requires extra expensive string checking that would be onerous
+for statd.
 
-Ian, please acknowledge my grievances here.  I see you replying to other
-people, but not to me and I'm the one who has to process all of this
-stuff eventually.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-If you want this series to be taken seriously:
+ utils/exportfs/exportfs.c |   34 ++++++++++++++++++++++++++++++++--
+ 1 files changed, 32 insertions(+), 2 deletions(-)
 
-1) Make your patches against net-next GIT, none of your driver patches will
-   apply because they have all been moved around to different locations
-   under drivers/net
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index b107c7c..12e8bf1 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -448,6 +448,36 @@ is_hostname(const char *sp)
+ 	return true;
+ }
+ 
++/*
++ * Take care to perform an explicit reverse lookup on presentation
++ * addresses.  Otherwise we don't get a real canonical name or a
++ * complete list of addresses.
++ */
++static struct addrinfo *
++address_list(const char *hostname)
++{
++	struct addrinfo *ai;
++	char *cname;
++
++	ai = host_pton(hostname);
++	if (ai != NULL) {
++		/* @hostname was a presentation address */
++		cname = host_canonname(ai->ai_addr);
++		freeaddrinfo(ai);
++		if (cname != NULL)
++			goto out;
++	}
++	/* @hostname was a hostname or had no reverse mapping */
++	cname = strdup(hostname);
++	if (cname == NULL)
++		return NULL;
++
++out:
++	ai = host_addrinfo(cname);
++	free(cname);
++	return ai;
++}
++
+ static int
+ matchhostname(const char *hostname1, const char *hostname2)
+ {
+@@ -464,10 +494,10 @@ matchhostname(const char *hostname1, const char *hostname2)
+ 	if (!is_hostname(hostname1) || !is_hostname(hostname2))
+ 		return 0;
+ 
+-	results1 = host_addrinfo(hostname1);
++	results1 = address_list(hostname1);
+ 	if (results1 == NULL)
+ 		goto out;
+-	results2 = host_addrinfo(hostname2);
++	results2 = address_list(hostname2);
+ 	if (results2 == NULL)
+ 		goto out;
+ 
 
-2) Submit this in a _SANE_ way.  This means, get the first patch that adds
-   the new interfaces approved and merged.  Then slowly and carefuly submit
-   small, reasonably sized, sets of patches that convert the drivers over.
-
-Otherwise there is no way I'm even looking at this stuff, let alone actually
-apply it.
-
-Realize that every time you patch bomb rediculiously like this I have
-to click and classify every single patch in your bomb at
-http://patchwork.ozlabs.org/project/netdev/list/
