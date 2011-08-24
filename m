@@ -1,45 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:44143 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752920Ab1HZXv7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Aug 2011 19:51:59 -0400
-Message-ID: <4E58318A.3080305@panasas.com>
-Date: Fri, 26 Aug 2011 16:51:38 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSD: nfsd4_open Avoid race with grace period expiration
-References: <4E45C164.1070604@panasas.com> <20110826203924.GC17196@fieldses.org> <4E58119A.3090403@panasas.com> <20110826215451.GF16090@pad.fieldses.org>
-In-Reply-To: <20110826215451.GF16090@pad.fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
+Received: from fieldses.org ([174.143.236.118]:59462 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753515Ab1HXBWu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Aug 2011 21:22:50 -0400
+Date: Tue, 23 Aug 2011 21:22:48 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd4: fix seqid_mutating_error
+Message-ID: <20110824012248.GA26561@fieldses.org>
+References: <20110819172416.GA1112@fieldses.org>
+ <1313788373.26701.1.camel@lade.trondhjem.org>
+ <20110823214141.GC25350@fieldses.org>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AC9E4FB@SACMVEXC2-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AC9E4FB@SACMVEXC2-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 08/26/2011 02:54 PM, J. Bruce Fields wrote:
->> You might get by, by rechecking the grace period at the end of the
->> processing and if passed issue a "reclaim request failed" anyway.
->> So the first check is only for optimization but the final disposition
->> is the post-check. (Just as if you dropped that refcount above)
+On Tue, Aug 23, 2011 at 03:58:05PM -0700, Myklebust, Trond wrote:
+> > -----Original Message-----
+> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> > index 76f99e8..b875b03 100644
+> > --- a/include/linux/nfs4.h
+> > +++ b/include/linux/nfs4.h
+> > @@ -373,6 +373,22 @@ enum nfsstat4 {
+> >  	NFS4ERR_DELEG_REVOKED	= 10087,	/* deleg./layout revoked
+> */
+> >  };
+> > 
+> > +static inline bool seqid_mutating_err(u32 err)
+> > +{
+> > +	/* rfc 3530 section 8.1.5: */
+> > +	switch (err) {
+> > +	case NFS4ERR_STALE_CLIENTID:
+> > +	case NFS4ERR_STALE_STATEID:
+> > +	case NFS4ERR_BAD_STATEID:
+> > +	case NFS4ERR_BAD_SEQID:
+> > +	case NFS4ERR_BADXDR:
+> > +	case NFS4ERR_RESOURCE:
+> > +	case NFS4ERR_NOFILEHANDLE:
+> > +		return false;
+> > +	};
+> > +	return true;
+> > +}
+> > +
+> >  /*
+> >   * Note: NF4BAD is not actually part of the protocol; it is just used
+> >   * internally by nfsd.
 > 
-> I guess that could work, but you'd have to back out the operation you
-> just did if the check showed you'd left the grace period.  I'd rather
-> avoid that.
-> 
+> Should we make it take a 's32' rather than a 'u32' argument? We do
+> usually expect those errors to be signed.
 
-Yes, you'll need to "back out" of the operation. It was just a suggestion.
-You'll have to see what is easier to implement.
+On the server side it's unsigned--bigendian in fact.  The caller is:
 
-The above is less invasive and does have merits. It is a bit like the RCU_FREE
-pattern when at the end of the operation you see that you lost the race and needs
-to "back out". But in the hot path it is very cheap, (No reference counts no locking).
-And only in the very very rare event, Those that today we fail on, do you do
-the extra "backing out". So overall runtime and coding wise it might be the
-cheapest solution.
+> > +	if (seqid_mutating_err(ntohl(nfserr)) && stateowner) { 	\
 
-Just my $0.017
+I put this in nfs4.h which is mostly protocol constants, and I figure
+u32 is the type closest to the relevant xdr, and we should convert as
+necessary in callers.  I dunno.
 
-> --b.
-
-Boaz
+--b.
