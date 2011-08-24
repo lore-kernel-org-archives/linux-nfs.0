@@ -1,69 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40945 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751939Ab1HLQ0G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Aug 2011 12:26:06 -0400
-Date: Fri, 12 Aug 2011 12:25:58 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: Grace period NEVER ends
-Message-ID: <20110812162558.GI16960@pad.fieldses.org>
-References: <4E44790A.8000106@panasas.com>
- <4E447EEB.501@panasas.com>
- <4E4481F0.2050806@panasas.com>
- <1313164325.10761.5.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1313164325.10761.5.camel@lade.trondhjem.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:65168 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1755977Ab1HXIuF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Aug 2011 04:50:05 -0400
+Message-ID: <4E54BC2D.70305@cn.fujitsu.com>
+Date: Wed, 24 Aug 2011 16:54:05 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>, NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH 3/4 v4] 4.1 CLNT: test open before RECLAIM_COMPLETE
+References: <4E4C7679.7000108@cn.fujitsu.com>
+In-Reply-To: <4E4C7679.7000108@cn.fujitsu.com>
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 12, 2011 at 11:52:05AM -0400, Trond Myklebust wrote:
-> On Thu, 2011-08-11 at 18:29 -0700, Boaz Harrosh wrote: 
-> > With this patch I'm back to the previous behavior. That is
-> > wait your grace period then continue.
-> > 
-> > ---
-> > NFSD: Remove a wrong check in nfs4_open
-> > 
-> > We are already doing the proper grace period checking
-> > farther down in nfs4_open. This check was just checking
-> > nothing and was totally unrelated to the comment about
-> > "RECLAIM_COMPLETE". It was a bug because if an open was
-> > coming before the grace period end, it would then never
-> > pass the condition of not being cl_firststate.
-> > 
-> > Boaz
-> > 
-> > ---
-> > @@ -295,15 +295,6 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> >  	if (open->op_create && open->op_claim_type != NFS4_OPEN_CLAIM_NULL)
-> >  		return nfserr_inval;
-> >  
-> > -	/*
-> > -	 * RFC5661 18.51.3
-> > -	 * Before RECLAIM_COMPLETE done, server should deny new lock
-> > -	 */
-> > -	if (nfsd4_has_session(cstate) &&
-> > -	    !cstate->session->se_client->cl_firststate &&
-> > -	    open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
-> > -		return nfserr_grace;
-> > -
-> 
-> BTW: restricting opens to CLAIM_PREVIOUS only during the grace period
-> seems wrong.
-> 
-> If I have already reclaimed my delegation, then why shouldn't I be able
-> to do a CLAIM_DELEGATE_CUR and/or CLAIM_DELEG_CUR_FH open? It is not as
-> if those can ever cause a lock that will conflict with some other
-> client's lock reclaims.
+Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+---
+ nfs4.1/server41tests/st_reclaim_complete.py |   20 +++++++++++++++++++-
+ 1 files changed, 19 insertions(+), 1 deletions(-)
 
-I was assuming the client had to send a reclaim_complete before it could
-do that, but... I think you're right, those must fall under the "reclaim
-operations" that a client is allowed to do before the reclaim_complete.
+diff --git a/nfs4.1/server41tests/st_reclaim_complete.py b/nfs4.1/server41tests/st_reclaim_complete.py
+index 108e7b6..adb368d 100644
+--- a/nfs4.1/server41tests/st_reclaim_complete.py
++++ b/nfs4.1/server41tests/st_reclaim_complete.py
+@@ -1,6 +1,6 @@
+ from st_create_session import create_session
+ from nfs4_const import *
+-from environment import check, fail, open_file, create_confirm
++from environment import check, fail, open_file, create_file, create_confirm
+ import nfs4_ops as op
+ import nfs4lib
+ 
+@@ -45,3 +45,21 @@ def testReclaimAfterRECC(t, env):
+                     deleg_type=OPEN_DELEGATE_NONE)
+ 
+     check(res, NFS4ERR_NO_GRACE, warnlist = [NFS4ERR_EXIST | NFS4ERR_RECLAIM_BAD])
++
++def testOpenBeforeRECC(t, env):
++    """After a client establishes a new client ID, if non-reclaim
++       locking operations are done before the RECLAIM_COMPLETE,
++       error NFS4ERR_GRACE will be returned. rfc5661 18.51.3
++
++    FLAGS: reclaim_complete all
++    CODE: RECC3
++    """
++    name = env.testname(t)
++    c = env.c1.new_client(name)
++    sess = c.create_session()
++
++    fname = "owner_%s" % name
++    path = sess.c.homedir + [name]
++
++    res = create_file(sess, fname, path, access=OPEN4_SHARE_ACCESS_BOTH)
++    check(res, NFS4ERR_GRACE)
+-- 
+1.7.6
 
-I need to look at rfc 5661 10.2.1--I don't think we have that stuff
-right at all.  Argh.
 
---b.
