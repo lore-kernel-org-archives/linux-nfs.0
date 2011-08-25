@@ -1,80 +1,232 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet15.oracle.com ([141.146.126.227]:57156 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756171Ab1HSQJg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2011 12:09:36 -0400
-Subject: Re: Expected response from server not supporting v4
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:57040 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754334Ab1HYUqJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Aug 2011 16:46:09 -0400
+Date: Thu, 25 Aug 2011 16:46:06 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH] SUNRPC/NFS: make rpc pipe upcall generic
+Message-ID: <20110825204606.GA7002@merit.edu>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4E4E0171.6010104@gluster.com>
-Date: Fri, 19 Aug 2011 12:09:24 -0400
-Cc: Steve Dickson <SteveD@redhat.com>, <linux-nfs@vger.kernel.org>
-Message-Id: <77A4C7C5-9578-433E-B37A-B61180834963@oracle.com>
-References: <4E4A23E2.3020103@gluster.com> <4E4A67AE.8040305@RedHat.com> <4E4B6134.7000903@gluster.com> <4B79A89A-6511-4447-976A-924670409438@oracle.com> <4E4E0171.6010104@gluster.com>
-To: Shehjar Tikoo <shehjart@gluster.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+I've got several patches in my for-benny branch now, some of which we're
+still working on, but this one seems uncontroversial and should go into
+pnfs-all-latest.
 
-On Aug 19, 2011, at 2:23 AM, Shehjar Tikoo wrote:
+commit b7e9fda18c161f0c63aa8af72b805db2d58bed84
+Author: Peng Tao <bergwolf@gmail.com>
+Date:   Sun Aug 7 19:59:22 2011 -0400
 
-> Chuck Lever wrote:
->> On Aug 17, 2011, at 2:35 AM, Shehjar Tikoo wrote:
->>> Steve Dickson wrote:
->>>> On 08/16/2011 04:01 AM, Shehjar Tikoo wrote:
->>>>> Hi All
->>>>> 
->>>>> The following thread discusses the behaviour when the client does not support v4:
->>>>> http://thread.gmane.org/gmane.linux.nfs/36928/
->>>>> 
->>>>> OTOH, when the server does not support v4, for eg. Gluster NFS server, where we support only v3, I believe v4 client will attempt to connect directly to port 2049 and receive connection failure errors on TCP. Does the current nfs client handle the situation where this results in a timeout for mount? We're hearing  a report of a timeout occurring on the RHEL6 client because the server does not have v4 support. Could someone please shed some light on how this behaviour is handled at present? Thanks
->>>> Here is the current logic as to what will cause a fall back:
->>>>   switch (errno) {
->>>>   case EPROTONOSUPPORT:
->>>>       /* A clear indication that the server or our
->>>>        * client does not support NFS version 4. */
->>>>       goto fall_back;
->>>>   case ENOENT:
->>>>       /* Legacy Linux servers don't export an NFS
->>>>        * version 4 pseudoroot. */
->>>>       goto fall_back;
->>>>   case EPERM:
->>>>       /* Linux servers prior to 2.6.25 may return
->>>>        * EPERM when NFS version 4 is not supported. */
->>>>       goto fall_back;
->>>>   default:
->>>>       return result;
->>>>   }
->>>> fall_back:
->>>>   return nfs_try_mount_v3v2(mi);
->>>> So in the case of the Gluster server, you are dropping into the
->>>> default case which is causing the time out.
->>>> In the above patch set, Mi patches the mount code to fall back on EINVAL which is the current return value from the kernel, when v4 is not configured. I'm not totally against doing something like this, but this is very touchy  code since it could have negative effects on other legacy servers.
->>>> So I'm thinking Mi's kernel patch that cause the kernel
->>>> to return EPROTONOSUPPORT, which is the correct return
->>>> value, is probably the better way to go... 
->>> Thanks Steve. My understanding is that Mi's patch is to handle the case where the client does not support v4. Do you think the same patch will also handle a server that does not support v4 and hence prevents a client from connecting to 2049?
->> It's a best practice for clients to connect to 2049 immediately, rather than querying the server's portmapper, to discover and potentially connect to a server's NFSv4 service.
->> A full-frame network trace of a mount attempt that times out would tell us if there is something pathological going on.
-> 
-> Thanks Chuck. Heres the wireshark screenshot of the network trace. As you can see, the SYN from client(10.1.12.45) to the server machine(192.168.1.117) receives a RST. At the client, it manifests as;
-> 
-> [root@centos6-1 ~]# mount 192.168.1.117:/posix /mnt
-> mount.nfs: Connection timed out
-> 
-> Thats it. The client is Linux centos6-1 2.6.32-71.el6.x86_64
-> 
-> Does this point to a bug or is it expected? I was under the impression that the version 3 becomes the failback in case v4 is not available on the server.
+    SUNRPC/NFS: make rpc pipe upcall generic
+    
+    The same function is used by idmap, gss and blocklayout code. Make it generic.
+    
+    Signed-off-by: Peng Tao <peng_tao@emc.com>
 
-I assume this connection attempt comes from the kernel's NFS client.  The RST should cause the mount(2) system call to return immediately with an error code, but it's very likely this edge case was never tested.
-
-I suppose you could try a newer kernel (2.6.39 or 3.0) to see if it behaves any better.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 18dcab4..6fdddde 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -960,7 +960,7 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
+ };
+ 
+ static const struct rpc_pipe_ops bl_upcall_ops = {
+-	.upcall		= bl_pipe_upcall,
++	.upcall		= rpc_pipe_generic_upcall,
+ 	.downcall	= bl_pipe_downcall,
+ 	.destroy_msg	= bl_pipe_destroy_msg,
+ };
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index f27d827..8900396 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -169,8 +169,6 @@ extern wait_queue_head_t bl_wq;
+ #define BL_DEVICE_REQUEST_ERR          0x2 /* User level process fails */
+ 
+ /* blocklayoutdev.c */
+-ssize_t bl_pipe_upcall(struct file *, struct rpc_pipe_msg *,
+-		       char __user *, size_t);
+ ssize_t bl_pipe_downcall(struct file *, const char __user *, size_t);
+ void bl_pipe_destroy_msg(struct rpc_pipe_msg *);
+ struct block_device *nfs4_blkdev_get(dev_t dev);
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+index a83b393..46a2ce6 100644
+--- a/fs/nfs/blocklayout/blocklayoutdev.c
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -79,28 +79,6 @@ int nfs4_blkdev_put(struct block_device *bdev)
+ 	return blkdev_put(bdev, FMODE_READ);
+ }
+ 
+-/*
+- * Shouldn't there be a rpc_generic_upcall() to do this for us?
+- */
+-ssize_t bl_pipe_upcall(struct file *filp, struct rpc_pipe_msg *msg,
+-		       char __user *dst, size_t buflen)
+-{
+-	char *data = (char *)msg->data + msg->copied;
+-	size_t mlen = min(msg->len - msg->copied, buflen);
+-	unsigned long left;
+-
+-	left = copy_to_user(dst, data, mlen);
+-	if (left == mlen) {
+-		msg->errno = -EFAULT;
+-		return -EFAULT;
+-	}
+-
+-	mlen -= left;
+-	msg->copied += mlen;
+-	msg->errno = 0;
+-	return mlen;
+-}
+-
+ static struct bl_dev_msg bl_mount_reply;
+ 
+ ssize_t bl_pipe_downcall(struct file *filp, const char __user *src,
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index f20801a..47d1c6f 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -336,8 +336,6 @@ struct idmap {
+ 	struct idmap_hashtable	idmap_group_hash;
+ };
+ 
+-static ssize_t idmap_pipe_upcall(struct file *, struct rpc_pipe_msg *,
+-				 char __user *, size_t);
+ static ssize_t idmap_pipe_downcall(struct file *, const char __user *,
+ 				   size_t);
+ static void idmap_pipe_destroy_msg(struct rpc_pipe_msg *);
+@@ -345,7 +343,7 @@ static void idmap_pipe_destroy_msg(struct rpc_pipe_msg *);
+ static unsigned int fnvhash32(const void *, size_t);
+ 
+ static const struct rpc_pipe_ops idmap_upcall_ops = {
+-	.upcall		= idmap_pipe_upcall,
++	.upcall		= rpc_pipe_generic_upcall,
+ 	.downcall	= idmap_pipe_downcall,
+ 	.destroy_msg	= idmap_pipe_destroy_msg,
+ };
+@@ -595,27 +593,6 @@ nfs_idmap_name(struct idmap *idmap, struct idmap_hashtable *h,
+ 	return ret;
+ }
+ 
+-/* RPC pipefs upcall/downcall routines */
+-static ssize_t
+-idmap_pipe_upcall(struct file *filp, struct rpc_pipe_msg *msg,
+-		  char __user *dst, size_t buflen)
+-{
+-	char *data = (char *)msg->data + msg->copied;
+-	size_t mlen = min(msg->len, buflen);
+-	unsigned long left;
+-
+-	left = copy_to_user(dst, data, mlen);
+-	if (left == mlen) {
+-		msg->errno = -EFAULT;
+-		return -EFAULT;
+-	}
+-
+-	mlen -= left;
+-	msg->copied += mlen;
+-	msg->errno = 0;
+-	return mlen;
+-}
+-
+ static ssize_t
+ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ {
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index 6f942c9..205305d 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -45,6 +45,8 @@ RPC_I(struct inode *inode)
+ 	return container_of(inode, struct rpc_inode, vfs_inode);
+ }
+ 
++extern ssize_t rpc_pipe_generic_upcall(struct file *, struct rpc_pipe_msg *,
++				       char __user *, size_t);
+ extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
+ 
+ struct rpc_clnt;
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 364eb45..e9b7693 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -603,26 +603,6 @@ out:
+ 	return err;
+ }
+ 
+-static ssize_t
+-gss_pipe_upcall(struct file *filp, struct rpc_pipe_msg *msg,
+-		char __user *dst, size_t buflen)
+-{
+-	char *data = (char *)msg->data + msg->copied;
+-	size_t mlen = min(msg->len, buflen);
+-	unsigned long left;
+-
+-	left = copy_to_user(dst, data, mlen);
+-	if (left == mlen) {
+-		msg->errno = -EFAULT;
+-		return -EFAULT;
+-	}
+-
+-	mlen -= left;
+-	msg->copied += mlen;
+-	msg->errno = 0;
+-	return mlen;
+-}
+-
+ #define MSG_BUF_MAXSIZE 1024
+ 
+ static ssize_t
+@@ -1590,7 +1570,7 @@ static const struct rpc_credops gss_nullops = {
+ };
+ 
+ static const struct rpc_pipe_ops gss_upcall_ops_v0 = {
+-	.upcall		= gss_pipe_upcall,
++	.upcall		= rpc_pipe_generic_upcall,
+ 	.downcall	= gss_pipe_downcall,
+ 	.destroy_msg	= gss_pipe_destroy_msg,
+ 	.open_pipe	= gss_pipe_open_v0,
+@@ -1598,7 +1578,7 @@ static const struct rpc_pipe_ops gss_upcall_ops_v0 = {
+ };
+ 
+ static const struct rpc_pipe_ops gss_upcall_ops_v1 = {
+-	.upcall		= gss_pipe_upcall,
++	.upcall		= rpc_pipe_generic_upcall,
+ 	.downcall	= gss_pipe_downcall,
+ 	.destroy_msg	= gss_pipe_destroy_msg,
+ 	.open_pipe	= gss_pipe_open_v1,
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index b181e34..67dbc18 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -77,6 +77,26 @@ rpc_timeout_upcall_queue(struct work_struct *work)
+ 	rpc_purge_list(rpci, &free_list, destroy_msg, -ETIMEDOUT);
+ }
+ 
++ssize_t rpc_pipe_generic_upcall(struct file *filp, struct rpc_pipe_msg *msg,
++				char __user *dst, size_t buflen)
++{
++	char *data = (char *)msg->data + msg->copied;
++	size_t mlen = min(msg->len - msg->copied, buflen);
++	unsigned long left;
++
++	left = copy_to_user(dst, data, mlen);
++	if (left == mlen) {
++		msg->errno = -EFAULT;
++		return -EFAULT;
++	}
++
++	mlen -= left;
++	msg->copied += mlen;
++	msg->errno = 0;
++	return mlen;
++}
++EXPORT_SYMBOL_GPL(rpc_pipe_generic_upcall);
++
+ /**
+  * rpc_queue_upcall - queue an upcall message to userspace
+  * @inode: inode of upcall pipe on which to queue given message
