@@ -1,29 +1,81 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Jeff Layton <jlayton@redhat.com>
 Subject: Re: [PATCH] sunrpc: Add scope id to svc_addr_u for IPv6 LINKLOCAL
  address
-Date: Wed, 24 Aug 2011 14:39:49 -0400
-Message-ID: <20110824183949.GF31959@fieldses.org>
+Date: Thu, 25 Aug 2011 05:58:56 -0400
+Message-ID: <20110825055856.73372a4a@tlielax.poochiereds.net>
 References: <4E4F8B5D.6060404@cn.fujitsu.com>
- <20110822192620.GB16261@fieldses.org>
- <3CA77E10-4099-4DDB-BE7A-88395CC34C93@oracle.com>
- <20110822194459.GC16261@fieldses.org>
- <4E5492FD.8040903@cn.fujitsu.com>
+	<20110822192620.GB16261@fieldses.org>
+	<3CA77E10-4099-4DDB-BE7A-88395CC34C93@oracle.com>
+	<20110822194459.GC16261@fieldses.org>
+	<4E5492FD.8040903@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Chuck Lever <chuck.lever@oracle.com>,
+Content-Type: text/plain; charset=US-ASCII
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Chuck Lever <chuck.lever@oracle.com>,
 	NFS <linux-nfs@vger.kernel.org>,
 	Trond Myklebust <Trond.Myklebust@netapp.com>
 To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:33353 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:15318 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752766Ab1HXSjy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Aug 2011 14:39:54 -0400
+	id S1750867Ab1HYKAO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Aug 2011 06:00:14 -0400
 In-Reply-To: <4E5492FD.8040903@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 24, 2011 at 01:58:21PM +0800, Mi Jinlong wrote:
+On Wed, 24 Aug 2011 13:58:21 +0800
+Mi Jinlong <mijinlong@cn.fujitsu.com> wrote:
+
+> 
+> J. Bruce Fields:
+> > On Mon, Aug 22, 2011 at 03:32:13PM -0400, Chuck Lever wrote:
+> >> On Aug 22, 2011, at 3:26 PM, J. Bruce Fields wrote:
+> >>
+> >>> On Sat, Aug 20, 2011 at 06:24:29PM +0800, Mi Jinlong wrote:
+> >>>> +/* 
+> >>>> + * Add scope id for LINKLOCAL address
+> >>>> + */
+> >>>> +struct in6_addr_scopeid{
+> >>>> +	struct in6_addr	sin6_addr;
+> >>>> +	__u32		sin6_scope_id;
+> >>>> +};
+> >>>> +
+> >>>> union svc_addr_u {
+> >>>> -    struct in_addr	addr;
+> >>>> -    struct in6_addr	addr6;
+> >>>> +	struct in_addr		addr;
+> >>>> +	struct in6_addr_scopeid	addr6;
+> >>> By the way, is there any reason why nfsd really needs its own address
+> >>> structure?  Shouldn't we use sockaddr_storage or something?  I feel like
+> >>> we've got a little too much one-off address handling in nfsd.
+> >> That would be my only complaint about the patch.
+> >>
+> >> I think we chose a smaller struct here to save space, and we could do that because we didn't need a port number or scope ID.  If a scope ID is indeed required, then we should consider something larger like a struct sockaddr_storage, IMO.
+> > 
+> > If we care about the size of struct svc_rqst: rq_vec and rq_pages fields
+> > are 4k and 2k, respectively, and the rest is lost in the noise.
+> > 
+> > Mi Jinlong, would you have the time to try this?
+> > 
+> > 	- Replace svc_addr_u by sockaddr_storage
+> > 	- See of that allows us to delete some lines of code in nfsd by
+> > 	  using standard helper functions instead of copying things by
+> > 	  hand.
+> > 
+> > You'd do that in one patch, then apply your scope-id fix on top of it as
+> > a second patch.
+> 
+>   After replace svc_addr_u by sockaddr_storage, the scope-id fix isn't needed.
+> 
+> thanks,
+> Mi Jinlong 
+> 
+> From 86bb57f2d7c29124ae73bd121bb6b97a72fe6f4d Mon Sep 17 00:00:00 2001
+> From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> Date: Mon, 24 Aug 2011 13:22:39 +0800
+> Subject: [PATCH] SUNRPC: Replace svc_addr_u by sockaddr_storage
+> 
 > For IPv6 local address, lockd can not callback to client for 
 > missing scope id when binding address at inet6_bind:
 > 
@@ -53,13 +105,6 @@ On Wed, Aug 24, 2011 at 01:58:21PM +0800, Mi Jinlong wrote:
 >  net/sunrpc/svc_xprt.c      |   13 ++-----------
 >  net/sunrpc/svcsock.c       |    9 +++++----
 >  5 files changed, 31 insertions(+), 51 deletions(-)
-
-Can't complain about that diffstat!
-
-How are you testing this?
-
---b.
-
 > 
 > diff --git a/fs/lockd/host.c b/fs/lockd/host.c
 > index b7c99bf..b23db05 100644
@@ -272,11 +317,7 @@ How are you testing this?
 >  	return 1;
 >  }
 >  
-> -- 
-> 1.7.6
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+Looks good to me.
+
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
