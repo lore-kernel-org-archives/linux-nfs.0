@@ -1,78 +1,295 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52505 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753194Ab1HVTkD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Aug 2011 15:40:03 -0400
-Date: Mon, 22 Aug 2011 15:39:39 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Mi Jinlong <mijinlong@cn.fujitsu.com>, NFS <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] sunrpc: Add scope id to svc_addr_u for IPv6 LINKLOCAL
- address
-Message-ID: <20110822153939.14d0a6ac@tlielax.poochiereds.net>
-In-Reply-To: <20110822192348.GA16261@fieldses.org>
-References: <4E4F8B5D.6060404@cn.fujitsu.com>
-	<20110822192348.GA16261@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from acsinet15.oracle.com ([141.146.126.227]:47901 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751506Ab1HYObu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Aug 2011 10:31:50 -0400
+Subject: Re: [PATCH] sunrpc: Add scope id to svc_addr_u for IPv6 LINKLOCAL address
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4E5492FD.8040903@cn.fujitsu.com>
+Date: Thu, 25 Aug 2011 10:30:56 -0400
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, NFS <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Message-Id: <16175F9F-67BA-4406-8A2A-936814D56E0F@oracle.com>
+References: <4E4F8B5D.6060404@cn.fujitsu.com> <20110822192620.GB16261@fieldses.org> <3CA77E10-4099-4DDB-BE7A-88395CC34C93@oracle.com> <20110822194459.GC16261@fieldses.org> <4E5492FD.8040903@cn.fujitsu.com>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 22 Aug 2011 15:23:48 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+This seems like a good direction to go in.  More comments below.
 
-> On Sat, Aug 20, 2011 at 06:24:29PM +0800, Mi Jinlong wrote:
-> > For IPv6 local address, lockd can not callback to client for 
-> > missing scope id when binding address at inet6_bind:
-> > 
-> >  324       if (addr_type & IPV6_ADDR_LINKLOCAL) {
-> >  325               if (addr_len >= sizeof(struct sockaddr_in6) &&
-> >  326                   addr->sin6_scope_id) {
-> >  327                       /* Override any existing binding, if another one
-> >  328                        * is supplied by user.
-> >  329                        */
-> >  330                       sk->sk_bound_dev_if = addr->sin6_scope_id;
-> >  331               }
-> >  332 
-> >  333               /* Binding to link-local address requires an interface */
-> >  334               if (!sk->sk_bound_dev_if) {
-> >  335                       err = -EINVAL;
-> >  336                       goto out_unlock;
-> >  337               }
-> > 
-> > This patch adds scope id to svc_addr_u for IPv6 address, and copy scope from
-> > xprt->xpt_local to rqstp->rq_daddr for use.
-> > 
-> > With this patch, lockd can callback to client success.
+On Aug 24, 2011, at 1:58 AM, Mi Jinlong wrote:
+
+> From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> Date: Mon, 24 Aug 2011 13:22:39 +0800
+> Subject: [PATCH] SUNRPC: Replace svc_addr_u by sockaddr_storage
 > 
-> I guess this makes sense to me, but someone who understands IPv6 better
-> should comment... Chuck?  Jeff?
+> For IPv6 local address, lockd can not callback to client for 
+> missing scope id when binding address at inet6_bind:
 > 
+> 324       if (addr_type & IPV6_ADDR_LINKLOCAL) {
+> 325               if (addr_len >= sizeof(struct sockaddr_in6) &&
+> 326                   addr->sin6_scope_id) {
+> 327                       /* Override any existing binding, if another one
+> 328                        * is supplied by user.
+> 329                        */
+> 330                       sk->sk_bound_dev_if = addr->sin6_scope_id;
+> 331               }
+> 332 
+> 333               /* Binding to link-local address requires an interface */
+> 334               if (!sk->sk_bound_dev_if) {
+> 335                       err = -EINVAL;
+> 336                       goto out_unlock;
+> 337               }
+> 
+> Replacing svc_addr_u by sockaddr_storage, let rqstp->rq_daddr contains more info
+> besides address.
+> 
+> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> ---
+> fs/lockd/host.c            |   14 ++------------
+> fs/nfsd/nfs4state.c        |   16 +---------------
+> include/linux/sunrpc/svc.h |   30 +++++++++++++++++++++---------
+> net/sunrpc/svc_xprt.c      |   13 ++-----------
+> net/sunrpc/svcsock.c       |    9 +++++----
+> 5 files changed, 31 insertions(+), 51 deletions(-)
+> 
+> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+> index b7c99bf..b23db05 100644
+> --- a/fs/lockd/host.c
+> +++ b/fs/lockd/host.c
+> @@ -316,14 +316,8 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+> 	struct hlist_node *pos;
+> 	struct nlm_host	*host = NULL;
+> 	struct nsm_handle *nsm = NULL;
+> -	struct sockaddr_in sin = {
+> -		.sin_family	= AF_INET,
+> -	};
+> -	struct sockaddr_in6 sin6 = {
+> -		.sin6_family	= AF_INET6,
+> -	};
+> 	struct sockaddr *src_sap;
+> -	size_t src_len = rqstp->rq_addrlen;
+> +	size_t src_len = rqstp->rq_daddrlen;
+> 	struct nlm_lookup_host_info ni = {
+> 		.server		= 1,
+> 		.sap		= svc_addr(rqstp),
+> @@ -342,12 +336,8 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+> 
+> 	switch (ni.sap->sa_family) {
+> 	case AF_INET:
+> -		sin.sin_addr.s_addr = rqstp->rq_daddr.addr.s_addr;
+> -		src_sap = (struct sockaddr *)&sin;
+> -		break;
+> 	case AF_INET6:
+> -		ipv6_addr_copy(&sin6.sin6_addr, &rqstp->rq_daddr.addr6);
+> -		src_sap = (struct sockaddr *)&sin6;
+> +		src_sap = svc_daddr(rqstp);
+> 		break;
+> 	default:
+> 		dprintk("lockd: %s failed; unrecognized address family\n",
 
-Sounds like a reasonable explanation. Link-local addresses all have the
-same prefix, so we need a scopeid (aka interface ID# for linux) to know
-which interface we should send a call on.
+With the destination address promoted to a full sockaddr, we probably do not need this switch any more.
 
-When I did the patches to allow NFSv4 callbacks to go over IPv6, I
-did something similar, but used the rq_addr. From gen_callback:
+I notice that the IPv6 fork of rpc_cmp_addr() does not consider the scope IDs of the passed-in addresses.  Perhaps it should?
 
-        struct sockaddr *sa = svc_addr(rqstp);
-        u32 scopeid = rpc_get_scope_id(sa);
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 3787ec1..07a18a5 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1173,20 +1173,6 @@ find_unconfirmed_client_by_str(const char *dname, unsigned int hashval)
+> 	return NULL;
+> }
+> 
+> -static void rpc_svcaddr2sockaddr(struct sockaddr *sa, unsigned short family, union svc_addr_u *svcaddr)
+> -{
+> -	switch (family) {
+> -	case AF_INET:
+> -		((struct sockaddr_in *)sa)->sin_family = AF_INET;
+> -		((struct sockaddr_in *)sa)->sin_addr = svcaddr->addr;
+> -		return;
+> -	case AF_INET6:
+> -		((struct sockaddr_in6 *)sa)->sin6_family = AF_INET6;
+> -		((struct sockaddr_in6 *)sa)->sin6_addr = svcaddr->addr6;
+> -		return;
+> -	}
+> -}
+> -
+> static void
+> gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_rqst *rqstp)
+> {
+> @@ -1218,7 +1204,7 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_r
+> 
+> 	conn->cb_prog = se->se_callback_prog;
+> 	conn->cb_ident = se->se_callback_ident;
+> -	rpc_svcaddr2sockaddr((struct sockaddr *)&conn->cb_saddr, expected_family, &rqstp->rq_daddr);
+> +	memcpy(&conn->cb_saddr, &rqstp->rq_daddr, rqstp->rq_daddrlen);
+> 	return;
+> out_err:
+> 	conn->cb_addr.ss_family = AF_UNSPEC;
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 223588a..3bc0dc9 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -212,11 +212,6 @@ static inline void svc_putu32(struct kvec *iov, __be32 val)
+> 	iov->iov_len += sizeof(__be32);
+> }
+> 
+> -union svc_addr_u {
+> -    struct in_addr	addr;
+> -    struct in6_addr	addr6;
+> -};
+> -
+> /*
+>  * The context of a single thread, including the request currently being
+>  * processed.
+> @@ -225,8 +220,12 @@ struct svc_rqst {
+> 	struct list_head	rq_list;	/* idle list */
+> 	struct list_head	rq_all;		/* all threads list */
+> 	struct svc_xprt *	rq_xprt;	/* transport ptr */
+> +
+> 	struct sockaddr_storage	rq_addr;	/* peer address */
+> 	size_t			rq_addrlen;
+> +	struct sockaddr_storage	rq_daddr;	/* dest addr of request
+> +						 *  - reply from here */
+> +	size_t			rq_daddrlen;
+> 
+> 	struct svc_serv *	rq_server;	/* RPC service definition */
+> 	struct svc_pool *	rq_pool;	/* thread pool */
+> @@ -255,9 +254,6 @@ struct svc_rqst {
+> 	unsigned short
+> 				rq_secure  : 1;	/* secure port */
+> 
+> -	union svc_addr_u	rq_daddr;	/* dest addr of request
+> -						 *  - reply from here */
+> -
+> 	void *			rq_argp;	/* decoded arguments */
+> 	void *			rq_resp;	/* xdr'd results */
+> 	void *			rq_auth_data;	/* flavor-specific data */
+> @@ -300,6 +296,21 @@ static inline struct sockaddr *svc_addr(const struct svc_rqst *rqst)
+> 	return (struct sockaddr *) &rqst->rq_addr;
+> }
+> 
+> +static inline struct sockaddr_in *svc_daddr_in(const struct svc_rqst *rqst)
+> +{
+> +	return (struct sockaddr_in *) &rqst->rq_daddr;
+> +}
+> +
+> +static inline struct sockaddr_in6 *svc_daddr_in6(const struct svc_rqst *rqst)
+> +{
+> +	return (struct sockaddr_in6 *) &rqst->rq_daddr;
+> +}
+> +
+> +static inline struct sockaddr *svc_daddr(const struct svc_rqst *rqst)
+> +{
+> +	return (struct sockaddr *) &rqst->rq_daddr;
+> +}
+> +
+> /*
+>  * Check buffer bounds after decoding arguments
+>  */
+> @@ -340,7 +351,8 @@ struct svc_deferred_req {
+> 	struct svc_xprt		*xprt;
+> 	struct sockaddr_storage	addr;	/* where reply must go */
+> 	size_t			addrlen;
+> -	union svc_addr_u	daddr;	/* where reply must come from */
+> +	struct sockaddr_storage	daddr;	/* where reply must come from */
+> +	size_t			daddrlen;
+> 	struct cache_deferred_req handle;
+> 	size_t			xprt_hlen;
+> 	int			argslen;
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index bd31208..d86bb67 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -254,8 +254,6 @@ EXPORT_SYMBOL_GPL(svc_create_xprt);
+>  */
+> void svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt)
+> {
+> -	struct sockaddr *sin;
+> -
+> 	memcpy(&rqstp->rq_addr, &xprt->xpt_remote, xprt->xpt_remotelen);
+> 	rqstp->rq_addrlen = xprt->xpt_remotelen;
+> 
+> @@ -263,15 +261,8 @@ void svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt)
+> 	 * Destination address in request is needed for binding the
+> 	 * source address in RPC replies/callbacks later.
+> 	 */
+> -	sin = (struct sockaddr *)&xprt->xpt_local;
+> -	switch (sin->sa_family) {
+> -	case AF_INET:
+> -		rqstp->rq_daddr.addr = ((struct sockaddr_in *)sin)->sin_addr;
+> -		break;
+> -	case AF_INET6:
+> -		rqstp->rq_daddr.addr6 = ((struct sockaddr_in6 *)sin)->sin6_addr;
+> -		break;
+> -	}
+> +	memcpy(&rqstp->rq_daddr, &xprt->xpt_local, xprt->xpt_locallen);
+> +	rqstp->rq_daddrlen = xprt->xpt_locallen;
+> }
+> EXPORT_SYMBOL_GPL(svc_xprt_copy_addrs);
+> 
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 767d494..b9f4ad4 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -143,7 +143,8 @@ static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
+> 			cmh->cmsg_level = SOL_IP;
+> 			cmh->cmsg_type = IP_PKTINFO;
+> 			pki->ipi_ifindex = 0;
+> -			pki->ipi_spec_dst.s_addr = rqstp->rq_daddr.addr.s_addr;
+> +			pki->ipi_spec_dst.s_addr =
+> +				 svc_daddr_in(rqstp)->sin_addr.s_addr;
+> 			cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
+> 		}
+> 		break;
+> @@ -155,7 +156,7 @@ static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
+> 			cmh->cmsg_type = IPV6_PKTINFO;
+> 			pki->ipi6_ifindex = 0;
+> 			ipv6_addr_copy(&pki->ipi6_addr,
+> -					&rqstp->rq_daddr.addr6);
+> +					&svc_daddr_in6(rqstp)->sin6_addr);
 
-...and the scopeid was used to populate the scopeid of the callback
-address. The rq_daddr should be equivalent though. The _addr and _daddr
-must have the same scopeid or something is very wrong...
+I kind of suspect more is needed here to deal with ipi6_ifindex.
 
-That said, on a semi-related note...
+> 			cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
+> 		}
+> 		break;
+> @@ -500,7 +501,7 @@ static int svc_udp_get_dest_address4(struct svc_rqst *rqstp,
+> 	struct in_pktinfo *pki = CMSG_DATA(cmh);
+> 	if (cmh->cmsg_type != IP_PKTINFO)
+> 		return 0;
+> -	rqstp->rq_daddr.addr.s_addr = pki->ipi_spec_dst.s_addr;
+> +	svc_daddr_in(rqstp)->sin_addr.s_addr = pki->ipi_spec_dst.s_addr;
+> 	return 1;
+> }
+> 
+> @@ -513,7 +514,7 @@ static int svc_udp_get_dest_address6(struct svc_rqst *rqstp,
+> 	struct in6_pktinfo *pki = CMSG_DATA(cmh);
+> 	if (cmh->cmsg_type != IPV6_PKTINFO)
+> 		return 0;
+> -	ipv6_addr_copy(&rqstp->rq_daddr.addr6, &pki->ipi6_addr);
+> +	ipv6_addr_copy(&svc_daddr_in6(rqstp)->sin6_addr, &pki->ipi6_addr);
 
-I have to wonder about statd in conjunction with link-local addresses.
-I have a hard time understanding how you'd ever get reboot
-notifications in such a setup.
+Likewise, is the incoming interface index ignored when constructing svc_daddr_in6(rqstp) ?
 
-You might be able to make it work if /etc/hosts allowed you to put in a
-scopeid for an address, but even then it sounds sketchy...
+> 	return 1;
+> }
+> 
+> -- 
+> 1.7.6
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
