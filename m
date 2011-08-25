@@ -1,293 +1,306 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from perches-mx.perches.com ([206.117.179.246]:41333 "EHLO
-	labridge.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754500Ab1H2VVm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Aug 2011 17:21:42 -0400
-From: Joe Perches <joe@perches.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Cc: "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH 19/24] sunrpc: Remove unnecessary OOM logging messages
-Date: Mon, 29 Aug 2011 14:17:38 -0700
-Message-Id: <8a6378b3fef105983db001fb720c84b669491439.1314650069.git.joe@perches.com>
-In-Reply-To: <cover.1314650069.git.joe@perches.com>
-References: <cover.1314650069.git.joe@perches.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:63496 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752340Ab1HXX7N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Aug 2011 19:59:13 -0400
+Message-ID: <4E559130.4040908@cn.fujitsu.com>
+Date: Thu, 25 Aug 2011 08:02:56 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>, NFS <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] sunrpc: Add scope id to svc_addr_u for IPv6 LINKLOCAL
+ address
+References: <4E4F8B5D.6060404@cn.fujitsu.com> <20110822192620.GB16261@fieldses.org> <3CA77E10-4099-4DDB-BE7A-88395CC34C93@oracle.com> <20110822194459.GC16261@fieldses.org> <4E5492FD.8040903@cn.fujitsu.com> <20110824183949.GF31959@fieldses.org>
+In-Reply-To: <20110824183949.GF31959@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Removing unnecessary messages saves code and text.
 
-Site specific OOM messages are duplications of a generic MM
-out of memory message and aren't really useful, so just
-delete them.
 
-Signed-off-by: Joe Perches <joe@perches.com>
----
- net/sunrpc/auth_gss/gss_krb5_crypto.c |   10 ++--------
- net/sunrpc/auth_gss/gss_krb5_mech.c   |    2 --
- net/sunrpc/backchannel_rqst.c         |    9 +++------
- net/sunrpc/clnt.c                     |    3 ---
- net/sunrpc/rpc_pipe.c                 |    3 +--
- net/sunrpc/rpcb_clnt.c                |    2 --
- net/sunrpc/xprtrdma/svc_rdma.c        |    8 ++------
- net/sunrpc/xprtrdma/transport.c       |    5 +----
- net/sunrpc/xprtrdma/verbs.c           |   14 --------------
- net/sunrpc/xprtsock.c                 |    5 +----
- 10 files changed, 10 insertions(+), 51 deletions(-)
+J. Bruce Fields:
+> On Wed, Aug 24, 2011 at 01:58:21PM +0800, Mi Jinlong wrote:
+>> For IPv6 local address, lockd can not callback to client for 
+>> missing scope id when binding address at inet6_bind:
+>>
+>>  324       if (addr_type & IPV6_ADDR_LINKLOCAL) {
+>>  325               if (addr_len >= sizeof(struct sockaddr_in6) &&
+>>  326                   addr->sin6_scope_id) {
+>>  327                       /* Override any existing binding, if another one
+>>  328                        * is supplied by user.
+>>  329                        */
+>>  330                       sk->sk_bound_dev_if = addr->sin6_scope_id;
+>>  331               }
+>>  332 
+>>  333               /* Binding to link-local address requires an interface */
+>>  334               if (!sk->sk_bound_dev_if) {
+>>  335                       err = -EINVAL;
+>>  336                       goto out_unlock;
+>>  337               }
+>>
+>> Replacing svc_addr_u by sockaddr_storage, let rqstp->rq_daddr contains more info
+>> besides address.
+>>
+>> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+>> ---
+>>  fs/lockd/host.c            |   14 ++------------
+>>  fs/nfsd/nfs4state.c        |   16 +---------------
+>>  include/linux/sunrpc/svc.h |   30 +++++++++++++++++++++---------
+>>  net/sunrpc/svc_xprt.c      |   13 ++-----------
+>>  net/sunrpc/svcsock.c       |    9 +++++----
+>>  5 files changed, 31 insertions(+), 51 deletions(-)
+> 
+> Can't complain about that diffstat!
+> 
+> How are you testing this?
 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-index 9576f35..911987e 100644
---- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-@@ -865,11 +865,8 @@ krb5_rc4_setup_seq_key(struct krb5_ctx *kctx, struct crypto_blkcipher *cipher,
- 	dprintk("%s: entered\n", __func__);
+  Just case of:
+
+  0. Start tcpdump at nfs server.
+
+  1. Two clients open nfsv3 file.
+  2. ClientA gets a write lock from server.
+  3. ClientB tries to get a block write lock from server
+     will blocked.
+  4. ClientA releases it's write lock which got at step2.
+  5. ClientB will back from step3's block.
+
+After all steps, I check packages at tcpdump file.
+
+thanks,
+Mi Jinlong 
  
- 	hmac = crypto_alloc_hash(kctx->gk5e->cksum_name, 0, CRYPTO_ALG_ASYNC);
--	if (IS_ERR(hmac)) {
--		dprintk("%s: error %ld, allocating hash '%s'\n",
--			__func__, PTR_ERR(hmac), kctx->gk5e->cksum_name);
-+	if (IS_ERR(hmac))
- 		return PTR_ERR(hmac);
--	}
- 
- 	desc.tfm = hmac;
- 	desc.flags = 0;
-@@ -932,11 +929,8 @@ krb5_rc4_setup_enc_key(struct krb5_ctx *kctx, struct crypto_blkcipher *cipher,
- 	dprintk("%s: entered, seqnum %u\n", __func__, seqnum);
- 
- 	hmac = crypto_alloc_hash(kctx->gk5e->cksum_name, 0, CRYPTO_ALG_ASYNC);
--	if (IS_ERR(hmac)) {
--		dprintk("%s: error %ld, allocating hash '%s'\n",
--			__func__, PTR_ERR(hmac), kctx->gk5e->cksum_name);
-+	if (IS_ERR(hmac))
- 		return PTR_ERR(hmac);
--	}
- 
- 	desc.tfm = hmac;
- 	desc.flags = 0;
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index 8c67890..61de04c 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -440,8 +440,6 @@ context_derive_keys_rc4(struct krb5_ctx *ctx)
- 	 */
- 	hmac = crypto_alloc_hash(ctx->gk5e->cksum_name, 0, CRYPTO_ALG_ASYNC);
- 	if (IS_ERR(hmac)) {
--		dprintk("%s: error %ld allocating hash '%s'\n",
--			__func__, PTR_ERR(hmac), ctx->gk5e->cksum_name);
- 		err = PTR_ERR(hmac);
- 		goto out_err;
- 	}
-diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
-index 91eaa26..1074d8e 100644
---- a/net/sunrpc/backchannel_rqst.c
-+++ b/net/sunrpc/backchannel_rqst.c
-@@ -106,10 +106,8 @@ int xprt_setup_backchannel(struct rpc_xprt *xprt, unsigned int min_reqs)
- 	for (i = 0; i < min_reqs; i++) {
- 		/* Pre-allocate one backchannel rpc_rqst */
- 		req = kzalloc(sizeof(struct rpc_rqst), GFP_KERNEL);
--		if (req == NULL) {
--			printk(KERN_ERR "Failed to create bc rpc_rqst\n");
-+		if (req == NULL)
- 			goto out_free;
--		}
- 
- 		/* Add the allocated buffer to the tmp list */
- 		dprintk("RPC:       adding req= %p\n", req);
-@@ -121,10 +119,9 @@ int xprt_setup_backchannel(struct rpc_xprt *xprt, unsigned int min_reqs)
- 
- 		/* Preallocate one XDR receive buffer */
- 		page_rcv = alloc_page(GFP_KERNEL);
--		if (page_rcv == NULL) {
--			printk(KERN_ERR "Failed to create bc receive xbuf\n");
-+		if (page_rcv == NULL)
- 			goto out_free;
--		}
-+
- 		xbufp = &req->rq_rcv_buf;
- 		xbufp->head[0].iov_base = page_address(page_rcv);
- 		xbufp->head[0].iov_len = PAGE_SIZE;
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index c5347d2..e10709a 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1058,8 +1058,6 @@ call_allocate(struct rpc_task *task)
- 	if (req->rq_buffer != NULL)
- 		return;
- 
--	dprintk("RPC: %5u rpc_buffer allocation failed\n", task->tk_pid);
--
- 	if (RPC_IS_ASYNC(task) || !fatal_signal_pending(current)) {
- 		task->tk_action = call_allocate;
- 		rpc_delay(task, HZ>>4);
-@@ -1163,7 +1161,6 @@ call_bind_status(struct rpc_task *task)
- 
- 	switch (task->tk_status) {
- 	case -ENOMEM:
--		dprintk("RPC: %5u rpcbind out of memory\n", task->tk_pid);
- 		rpc_delay(task, HZ >> 2);
- 		goto retry_timeout;
- 	case -EACCES:
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index b181e34..0395311 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -485,9 +485,8 @@ static int __rpc_create_common(struct inode *dir, struct dentry *dentry,
- 		rpc_inode_setowner(inode, private);
- 	d_add(dentry, inode);
- 	return 0;
-+
- out_err:
--	printk(KERN_WARNING "%s: %s failed to allocate inode for dentry %s\n",
--			__FILE__, __func__, dentry->d_name.name);
- 	dput(dentry);
- 	return -ENOMEM;
- }
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index e45d2fb..4d8be9a 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -671,8 +671,6 @@ void rpcb_getport_async(struct rpc_task *task)
- 	map = kzalloc(sizeof(struct rpcbind_args), GFP_ATOMIC);
- 	if (!map) {
- 		status = -ENOMEM;
--		dprintk("RPC: %5u %s: no memory available\n",
--			task->tk_pid, __func__);
- 		goto bailout_release_client;
- 	}
- 	map->r_prog = clnt->cl_prog;
-diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
-index 09af4fa..18fe984 100644
---- a/net/sunrpc/xprtrdma/svc_rdma.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma.c
-@@ -267,10 +267,8 @@ int svc_rdma_init(void)
- 						0,
- 						SLAB_HWCACHE_ALIGN,
- 						NULL);
--	if (!svc_rdma_map_cachep) {
--		printk(KERN_INFO "Could not allocate map cache.\n");
-+	if (!svc_rdma_map_cachep)
- 		goto err0;
--	}
- 
- 	/* Create the temporary context cache */
- 	svc_rdma_ctxt_cachep =
-@@ -279,10 +277,8 @@ int svc_rdma_init(void)
- 				  0,
- 				  SLAB_HWCACHE_ALIGN,
- 				  NULL);
--	if (!svc_rdma_ctxt_cachep) {
--		printk(KERN_INFO "Could not allocate WR ctxt cache.\n");
-+	if (!svc_rdma_ctxt_cachep)
- 		goto err1;
--	}
- 
- 	/* Register RDMA with the SVC transport switch */
- 	svc_reg_xprt_class(&svc_rdma_class);
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index b446e10..772a481 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -285,11 +285,8 @@ xprt_setup_rdma(struct xprt_create *args)
- 	xprt = xprt_alloc(args->net, sizeof(struct rpcrdma_xprt),
- 			xprt_rdma_slot_table_entries,
- 			xprt_rdma_slot_table_entries);
--	if (xprt == NULL) {
--		dprintk("RPC:       %s: couldn't allocate rpcrdma_xprt\n",
--			__func__);
-+	if (xprt == NULL)
- 		return ERR_PTR(-ENOMEM);
--	}
- 
- 	/* 60 second timeout, no retries */
- 	xprt->timeout = &xprt_rdma_default_timeout;
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 28236ba..937b51d 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -471,8 +471,6 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	ia->ri_pd = ib_alloc_pd(ia->ri_id->device);
- 	if (IS_ERR(ia->ri_pd)) {
- 		rc = PTR_ERR(ia->ri_pd);
--		dprintk("RPC:       %s: ib_alloc_pd() failed %i\n",
--			__func__, rc);
- 		goto out2;
- 	}
- 
-@@ -1009,8 +1007,6 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 	/* allocate 1, 4 and 5 in one shot */
- 	p = kzalloc(len, GFP_KERNEL);
- 	if (p == NULL) {
--		dprintk("RPC:       %s: req_t/rep_t/pad kzalloc(%zd) failed\n",
--			__func__, len);
- 		rc = -ENOMEM;
- 		goto out;
- 	}
-@@ -1046,8 +1042,6 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 							 RPCRDMA_MAX_SEGS);
- 			if (IS_ERR(r->r.frmr.fr_mr)) {
- 				rc = PTR_ERR(r->r.frmr.fr_mr);
--				dprintk("RPC:       %s: ib_alloc_fast_reg_mr"
--					" failed %i\n", __func__, rc);
- 				goto out;
- 			}
- 			r->r.frmr.fr_pgl =
-@@ -1074,8 +1068,6 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 				&fa);
- 			if (IS_ERR(r->r.fmr)) {
- 				rc = PTR_ERR(r->r.fmr);
--				dprintk("RPC:       %s: ib_alloc_fmr"
--					" failed %i\n", __func__, rc);
- 				goto out;
- 			}
- 			list_add(&r->mw_list, &buf->rb_mws);
-@@ -1089,8 +1081,6 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 			r->r.mw = ib_alloc_mw(ia->ri_pd);
- 			if (IS_ERR(r->r.mw)) {
- 				rc = PTR_ERR(r->r.mw);
--				dprintk("RPC:       %s: ib_alloc_mw"
--					" failed %i\n", __func__, rc);
- 				goto out;
- 			}
- 			list_add(&r->mw_list, &buf->rb_mws);
-@@ -1116,8 +1106,6 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 			len = 4096;
- 		req = kmalloc(len, GFP_KERNEL);
- 		if (req == NULL) {
--			dprintk("RPC:       %s: request buffer %d alloc"
--				" failed\n", __func__, i);
- 			rc = -ENOMEM;
- 			goto out;
- 		}
-@@ -1137,8 +1125,6 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 		len = cdata->inline_rsize + sizeof(struct rpcrdma_rep);
- 		rep = kmalloc(len, GFP_KERNEL);
- 		if (rep == NULL) {
--			dprintk("RPC:       %s: reply buffer %d alloc failed\n",
--				__func__, i);
- 			rc = -ENOMEM;
- 			goto out;
- 		}
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index d7f97ef..911494a 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2515,11 +2515,8 @@ static struct rpc_xprt *xs_setup_xprt(struct xprt_create *args,
- 
- 	xprt = xprt_alloc(args->net, sizeof(*new), slot_table_size,
- 			max_slot_table_size);
--	if (xprt == NULL) {
--		dprintk("RPC:       xs_setup_xprt: couldn't allocate "
--				"rpc_xprt\n");
-+	if (xprt == NULL)
- 		return ERR_PTR(-ENOMEM);
--	}
- 
- 	new = container_of(xprt, struct sock_xprt, xprt);
- 	memcpy(&xprt->addr, args->dstaddr, args->addrlen);
+
+> 
+>> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+>> index b7c99bf..b23db05 100644
+>> --- a/fs/lockd/host.c
+>> +++ b/fs/lockd/host.c
+>> @@ -316,14 +316,8 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+>>  	struct hlist_node *pos;
+>>  	struct nlm_host	*host = NULL;
+>>  	struct nsm_handle *nsm = NULL;
+>> -	struct sockaddr_in sin = {
+>> -		.sin_family	= AF_INET,
+>> -	};
+>> -	struct sockaddr_in6 sin6 = {
+>> -		.sin6_family	= AF_INET6,
+>> -	};
+>>  	struct sockaddr *src_sap;
+>> -	size_t src_len = rqstp->rq_addrlen;
+>> +	size_t src_len = rqstp->rq_daddrlen;
+>>  	struct nlm_lookup_host_info ni = {
+>>  		.server		= 1,
+>>  		.sap		= svc_addr(rqstp),
+>> @@ -342,12 +336,8 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+>>  
+>>  	switch (ni.sap->sa_family) {
+>>  	case AF_INET:
+>> -		sin.sin_addr.s_addr = rqstp->rq_daddr.addr.s_addr;
+>> -		src_sap = (struct sockaddr *)&sin;
+>> -		break;
+>>  	case AF_INET6:
+>> -		ipv6_addr_copy(&sin6.sin6_addr, &rqstp->rq_daddr.addr6);
+>> -		src_sap = (struct sockaddr *)&sin6;
+>> +		src_sap = svc_daddr(rqstp);
+>>  		break;
+>>  	default:
+>>  		dprintk("lockd: %s failed; unrecognized address family\n",
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 3787ec1..07a18a5 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -1173,20 +1173,6 @@ find_unconfirmed_client_by_str(const char *dname, unsigned int hashval)
+>>  	return NULL;
+>>  }
+>>  
+>> -static void rpc_svcaddr2sockaddr(struct sockaddr *sa, unsigned short family, union svc_addr_u *svcaddr)
+>> -{
+>> -	switch (family) {
+>> -	case AF_INET:
+>> -		((struct sockaddr_in *)sa)->sin_family = AF_INET;
+>> -		((struct sockaddr_in *)sa)->sin_addr = svcaddr->addr;
+>> -		return;
+>> -	case AF_INET6:
+>> -		((struct sockaddr_in6 *)sa)->sin6_family = AF_INET6;
+>> -		((struct sockaddr_in6 *)sa)->sin6_addr = svcaddr->addr6;
+>> -		return;
+>> -	}
+>> -}
+>> -
+>>  static void
+>>  gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_rqst *rqstp)
+>>  {
+>> @@ -1218,7 +1204,7 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_r
+>>  
+>>  	conn->cb_prog = se->se_callback_prog;
+>>  	conn->cb_ident = se->se_callback_ident;
+>> -	rpc_svcaddr2sockaddr((struct sockaddr *)&conn->cb_saddr, expected_family, &rqstp->rq_daddr);
+>> +	memcpy(&conn->cb_saddr, &rqstp->rq_daddr, rqstp->rq_daddrlen);
+>>  	return;
+>>  out_err:
+>>  	conn->cb_addr.ss_family = AF_UNSPEC;
+>> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+>> index 223588a..3bc0dc9 100644
+>> --- a/include/linux/sunrpc/svc.h
+>> +++ b/include/linux/sunrpc/svc.h
+>> @@ -212,11 +212,6 @@ static inline void svc_putu32(struct kvec *iov, __be32 val)
+>>  	iov->iov_len += sizeof(__be32);
+>>  }
+>>  
+>> -union svc_addr_u {
+>> -    struct in_addr	addr;
+>> -    struct in6_addr	addr6;
+>> -};
+>> -
+>>  /*
+>>   * The context of a single thread, including the request currently being
+>>   * processed.
+>> @@ -225,8 +220,12 @@ struct svc_rqst {
+>>  	struct list_head	rq_list;	/* idle list */
+>>  	struct list_head	rq_all;		/* all threads list */
+>>  	struct svc_xprt *	rq_xprt;	/* transport ptr */
+>> +
+>>  	struct sockaddr_storage	rq_addr;	/* peer address */
+>>  	size_t			rq_addrlen;
+>> +	struct sockaddr_storage	rq_daddr;	/* dest addr of request
+>> +						 *  - reply from here */
+>> +	size_t			rq_daddrlen;
+>>  
+>>  	struct svc_serv *	rq_server;	/* RPC service definition */
+>>  	struct svc_pool *	rq_pool;	/* thread pool */
+>> @@ -255,9 +254,6 @@ struct svc_rqst {
+>>  	unsigned short
+>>  				rq_secure  : 1;	/* secure port */
+>>  
+>> -	union svc_addr_u	rq_daddr;	/* dest addr of request
+>> -						 *  - reply from here */
+>> -
+>>  	void *			rq_argp;	/* decoded arguments */
+>>  	void *			rq_resp;	/* xdr'd results */
+>>  	void *			rq_auth_data;	/* flavor-specific data */
+>> @@ -300,6 +296,21 @@ static inline struct sockaddr *svc_addr(const struct svc_rqst *rqst)
+>>  	return (struct sockaddr *) &rqst->rq_addr;
+>>  }
+>>  
+>> +static inline struct sockaddr_in *svc_daddr_in(const struct svc_rqst *rqst)
+>> +{
+>> +	return (struct sockaddr_in *) &rqst->rq_daddr;
+>> +}
+>> +
+>> +static inline struct sockaddr_in6 *svc_daddr_in6(const struct svc_rqst *rqst)
+>> +{
+>> +	return (struct sockaddr_in6 *) &rqst->rq_daddr;
+>> +}
+>> +
+>> +static inline struct sockaddr *svc_daddr(const struct svc_rqst *rqst)
+>> +{
+>> +	return (struct sockaddr *) &rqst->rq_daddr;
+>> +}
+>> +
+>>  /*
+>>   * Check buffer bounds after decoding arguments
+>>   */
+>> @@ -340,7 +351,8 @@ struct svc_deferred_req {
+>>  	struct svc_xprt		*xprt;
+>>  	struct sockaddr_storage	addr;	/* where reply must go */
+>>  	size_t			addrlen;
+>> -	union svc_addr_u	daddr;	/* where reply must come from */
+>> +	struct sockaddr_storage	daddr;	/* where reply must come from */
+>> +	size_t			daddrlen;
+>>  	struct cache_deferred_req handle;
+>>  	size_t			xprt_hlen;
+>>  	int			argslen;
+>> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+>> index bd31208..d86bb67 100644
+>> --- a/net/sunrpc/svc_xprt.c
+>> +++ b/net/sunrpc/svc_xprt.c
+>> @@ -254,8 +254,6 @@ EXPORT_SYMBOL_GPL(svc_create_xprt);
+>>   */
+>>  void svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt)
+>>  {
+>> -	struct sockaddr *sin;
+>> -
+>>  	memcpy(&rqstp->rq_addr, &xprt->xpt_remote, xprt->xpt_remotelen);
+>>  	rqstp->rq_addrlen = xprt->xpt_remotelen;
+>>  
+>> @@ -263,15 +261,8 @@ void svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt)
+>>  	 * Destination address in request is needed for binding the
+>>  	 * source address in RPC replies/callbacks later.
+>>  	 */
+>> -	sin = (struct sockaddr *)&xprt->xpt_local;
+>> -	switch (sin->sa_family) {
+>> -	case AF_INET:
+>> -		rqstp->rq_daddr.addr = ((struct sockaddr_in *)sin)->sin_addr;
+>> -		break;
+>> -	case AF_INET6:
+>> -		rqstp->rq_daddr.addr6 = ((struct sockaddr_in6 *)sin)->sin6_addr;
+>> -		break;
+>> -	}
+>> +	memcpy(&rqstp->rq_daddr, &xprt->xpt_local, xprt->xpt_locallen);
+>> +	rqstp->rq_daddrlen = xprt->xpt_locallen;
+>>  }
+>>  EXPORT_SYMBOL_GPL(svc_xprt_copy_addrs);
+>>  
+>> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+>> index 767d494..b9f4ad4 100644
+>> --- a/net/sunrpc/svcsock.c
+>> +++ b/net/sunrpc/svcsock.c
+>> @@ -143,7 +143,8 @@ static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
+>>  			cmh->cmsg_level = SOL_IP;
+>>  			cmh->cmsg_type = IP_PKTINFO;
+>>  			pki->ipi_ifindex = 0;
+>> -			pki->ipi_spec_dst.s_addr = rqstp->rq_daddr.addr.s_addr;
+>> +			pki->ipi_spec_dst.s_addr =
+>> +				 svc_daddr_in(rqstp)->sin_addr.s_addr;
+>>  			cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
+>>  		}
+>>  		break;
+>> @@ -155,7 +156,7 @@ static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
+>>  			cmh->cmsg_type = IPV6_PKTINFO;
+>>  			pki->ipi6_ifindex = 0;
+>>  			ipv6_addr_copy(&pki->ipi6_addr,
+>> -					&rqstp->rq_daddr.addr6);
+>> +					&svc_daddr_in6(rqstp)->sin6_addr);
+>>  			cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
+>>  		}
+>>  		break;
+>> @@ -500,7 +501,7 @@ static int svc_udp_get_dest_address4(struct svc_rqst *rqstp,
+>>  	struct in_pktinfo *pki = CMSG_DATA(cmh);
+>>  	if (cmh->cmsg_type != IP_PKTINFO)
+>>  		return 0;
+>> -	rqstp->rq_daddr.addr.s_addr = pki->ipi_spec_dst.s_addr;
+>> +	svc_daddr_in(rqstp)->sin_addr.s_addr = pki->ipi_spec_dst.s_addr;
+>>  	return 1;
+>>  }
+>>  
+>> @@ -513,7 +514,7 @@ static int svc_udp_get_dest_address6(struct svc_rqst *rqstp,
+>>  	struct in6_pktinfo *pki = CMSG_DATA(cmh);
+>>  	if (cmh->cmsg_type != IPV6_PKTINFO)
+>>  		return 0;
+>> -	ipv6_addr_copy(&rqstp->rq_daddr.addr6, &pki->ipi6_addr);
+>> +	ipv6_addr_copy(&svc_daddr_in6(rqstp)->sin6_addr, &pki->ipi6_addr);
+>>  	return 1;
+>>  }
+>>  
+>> -- 
+>> 1.7.6
+>>
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
 -- 
-1.7.6.405.gc1be0
+----
+thanks
+Mi Jinlong
 
