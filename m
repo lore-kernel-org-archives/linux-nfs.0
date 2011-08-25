@@ -1,62 +1,125 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:51802 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:4988 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754134Ab1HaTxa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 31 Aug 2011 15:53:30 -0400
-Date: Wed, 31 Aug 2011 15:53:29 -0400
-To: linux-nfs@vger.kernel.org
-Cc: Casey Bodley <cbodley@citi.umich.edu>
-Subject: [PATCH] nfsd4: in-stateid seqid should start with 1
-Message-ID: <20110831195329.GD19223@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1753928Ab1HYUZu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Aug 2011 16:25:50 -0400
+Message-ID: <4E56AFCB.2020803@RedHat.com>
+Date: Thu, 25 Aug 2011 16:25:47 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Luk Claes <luk@debian.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] mount.nfs: Preserve any explicit port=2049 option
+References: <1312625496-2496-1-git-send-email-luk@debian.org>
+In-Reply-To: <1312625496-2496-1-git-send-email-luk@debian.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@redhat.com>
+First of all let me apologize for taking so long
+to get to this... I did take some time off.... 
 
-Thanks to Casey for reminding me that 5661 gives a special meaning to a
-value of 0 in the stateid's seqid field, so we should instead be
-starting out stateid's with si_generation 1.
+On 08/06/2011 06:11 AM, Luk Claes wrote:
+> If NFS port (2049) is supplied explicitly, don't ignore this setting by requesting it to portmapper again. Thanks to Ben Hutchings <ben@decadent.org.uk> for the patch.
+> 
+> Signed-off-by: Luk Claes <luk@debian.org>
+> ---
+>  utils/mount/stropts.c |    4 ++--
+>  1 files changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index f1aa503..8b2799c 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -437,8 +437,8 @@ static int nfs_construct_new_options(struct mount_options *options,
+>  	if (po_append(options, new_option) == PO_FAILED)
+>  		return 0;
+>  
+> -	po_remove_all(options, "port");
+> -	if (nfs_pmap->pm_port != NFS_PORT) {
+> +	if(po_remove_all(options, "port") == PO_FOUND ||
+> +	   nfs_pmap->pm_port != NFS_PORT) {
+>  		snprintf(new_option, sizeof(new_option) - 1,
+>  			 "port=%lu", nfs_pmap->pm_port);
+>  		if (po_append(options, new_option) == PO_FAILED)
+Now I like the idea of not sending the pmap inquire for the 
+port when the port is specified on the command because its
+a TCP connection. During automount storms, wasting TCP connections
+is not a good thing... 
 
-Reported-by: Casey Bodley <cbodley@citi.umich.edu>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+But your patch does not seem to do that since all the port
+negotiation is done well before this part of the code.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 49c3dd1..7caa812 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -251,7 +251,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_stateid *stp, struct svc_f
- 	dp->dl_stateid.si_boot = boot_time;
- 	dp->dl_stateid.si_stateownerid = current_delegid++;
- 	dp->dl_stateid.si_fileid = 0;
--	dp->dl_stateid.si_generation = 0;
-+	dp->dl_stateid.si_generation = 1;
- 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
- 	dp->dl_time = 0;
- 	atomic_set(&dp->dl_count, 1);
-@@ -2303,7 +2303,7 @@ init_stateid(struct nfs4_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *
- 	stp->st_stateid.si_boot = boot_time;
- 	stp->st_stateid.si_stateownerid = oo->oo_owner.so_id;
- 	stp->st_stateid.si_fileid = fp->fi_id;
--	stp->st_stateid.si_generation = 0;
-+	stp->st_stateid.si_generation = 1;
- 	stp->st_access_bmap = 0;
- 	stp->st_deny_bmap = 0;
- 	__set_bit(open->op_share_access & ~NFS4_SHARE_WANT_MASK,
-@@ -3898,7 +3898,7 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
- 	stp->st_stateid.si_boot = boot_time;
- 	stp->st_stateid.si_stateownerid = lo->lo_owner.so_id;
- 	stp->st_stateid.si_fileid = fp->fi_id;
--	stp->st_stateid.si_generation = 0;
-+	stp->st_stateid.si_generation = 1;
- 	stp->st_access_bmap = 0;
- 	stp->st_deny_bmap = open_stp->st_deny_bmap;
- 	stp->st_openstp = open_stp;
--- 
-1.7.4.1
+I'm thinking some code has to change in nfs_probe_port() 
+something like:
 
+    mount.nfs: Do not send pmap inquire when port is specified
+    
+    When the port is specified on the command line do not
+    send a pmap inquire asking for the port. Instead use
+    the given port in the NFS ping. If the ping fails,
+    assume a bad port was given and now go ask the server
+    for the correct port.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index d1f91dc..405c320 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -545,17 +545,18 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
+ 	const unsigned int prot = (u_int)pmap->pm_prot, *p_prot;
+ 	const u_short port = (u_short) pmap->pm_port;
+ 	unsigned long vers = pmap->pm_vers;
+-	unsigned short p_port;
++	unsigned short p_port = port;
++	int once = 1;
+ 
+ 	memcpy(saddr, sap, salen);
+ 	p_prot = prot ? &prot : protos;
+ 	p_vers = vers ? &vers : versions;
+-
+ 	for (;;) {
+ 		if (verbose)
+ 			printf(_("%s: prog %lu, trying vers=%lu, prot=%u\n"),
+ 				progname, prog, *p_vers, *p_prot);
+-		p_port = nfs_getport(saddr, salen, prog, *p_vers, *p_prot);
++		if (!p_port)
++			p_port = nfs_getport(saddr, salen, prog, *p_vers, *p_prot);
+ 		if (p_port) {
+ 			if (!port || port == p_port) {
+ 				nfs_set_port(saddr, p_port);
+@@ -564,6 +565,15 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
+ 				if (nfs_rpc_ping(saddr, salen, prog,
+ 							*p_vers, *p_prot, NULL))
+ 					goto out_ok;
++				if (port == p_port && once) {
++					/*
++					 * Could be a bad port was specified. This
++					 * time ask the server for the port but only
++					 * do it once.
++					 */
++					p_port = once = 0;
++					continue;
++				}
+ 			} else
+ 				rpc_createerr.cf_stat = RPC_PROGNOTREGISTERED;
+ 		}
+@@ -589,6 +599,7 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
+ 	}
+ 
+ 	nfs_pp_debug2("failed");
+ 	return 0;
+ 
+ out_ok:
+
+
+I'm not sure this is best way either.... 
+
+steved.
+
+
+
+
+
+ 
