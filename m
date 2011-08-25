@@ -1,55 +1,32 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:7175 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751504Ab1HPK7L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Aug 2011 06:59:11 -0400
-Message-ID: <4E4A4DB1.2090105@parallels.com>
-Date: Tue, 16 Aug 2011 15:00:01 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-To: Pavel Emelianov <xemul@parallels.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: NFS client virtualization plan
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:44044 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755691Ab1HYWc5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Aug 2011 18:32:57 -0400
+Date: Thu, 25 Aug 2011 18:32:53 -0400
+From: Jim Rees <rees@umich.edu>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Steve Dickson <SteveD@redhat.com>, Luk Claes <luk@debian.org>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] mount.nfs: Preserve any explicit port=2049 option
+Message-ID: <20110825223253.GA7607@merit.edu>
+References: <1312625496-2496-1-git-send-email-luk@debian.org>
+ <4E56AFCB.2020803@RedHat.com>
+ <F4AA6B6E-D029-47BC-A710-23A7AE2582A8@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <F4AA6B6E-D029-47BC-A710-23A7AE2582A8@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello.
-I'm going to virtualize NFS in mainline and here is my plan for NFS client part.
-Any suggestions or criticism are welcome.
+Chuck Lever wrote:
 
-==============================================================================
+  But we should be careful here: mount.nfs will do an rpcbind query if a
+  port= was specified if there is also some doubt about whether to use TCP
+  or UDP, or what NFS version is available.  The only time rpcbind queries
+  should be completely squashed is when the mount parameters are specified
+  completely (transport, version, and port).
 
-"NFS client" virtualization plan:
-
-_RPC layer_:
-
-1) Make rpcbind clients (rpcb_local_clnt and rpcb_local4_clnt) to be
-per net namespace.
-
-_NFS layer_:
-
-1) Net namespace inheritance (current->nsproxy->net have to be used instead
-of init_net).
-Pointer to net namespace can be stored on nfs_client structure, which will
-give easy access to proper net namespace during RPC transports creation.
-
-2) Make Lockd kthread able to handle requests from different net namespaces.
-
-3) Make NFS callbacks kthreads (nfs4_callback_svc and nfs4.1_callback_svc) able
-to handle requests from different net namespaces.
-
-4) Make NFS info lists (nfs_volume_list and nfs_client_list) to be per
-net namespace in addition to global ones.
-
-5) Make NFS proc variables and it's internal content variables to be per
-net namespace in addition to global ones.
-
-6) Make NFS sysctl variables and it's internal content variables to be per
-net namespace in addition to global ones.
-
-
-
--- 
-Best regards,
-Stanislav Kinsbursky
+Was support for SRV records ever added to either rpcbind or nfs-utils?
+Wouldn't that eliminate the need for portmap at least in some cases?  I
+remember Andy working on a draft for this ages ago.
