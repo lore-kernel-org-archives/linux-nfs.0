@@ -1,50 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:44313
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753216Ab1HENik (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Aug 2011 09:38:40 -0400
-Date: Fri, 5 Aug 2011 09:38:33 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Venkateswararao Jujjuri <jvrao@linux.vnet.ibm.com>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        Trond.Myklebust@netapp.com
-Subject: Re: State of NFSv4 VolatileFilehandles
-Message-ID: <20110805133833.GA2282@infradead.org>
-References: <4E37E66D.90102@linux.vnet.ibm.com>
- <45F4FC20-ED44-4430-A5A9-E06459A194F3@oracle.com>
- <4E38F894.4070003@linux.vnet.ibm.com>
- <2DD1BC2B-6113-4D00-9DD4-C5D431EA1F8A@oracle.com>
- <4E3A8225.1020309@linux.vnet.ibm.com>
- <20110804160344.GC12445@fieldses.org>
+Received: from fieldses.org ([174.143.236.118]:41243 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751194Ab1HZWlv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Aug 2011 18:41:51 -0400
+Date: Fri, 26 Aug 2011 18:41:49 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 4/4 v4] 4.1 CLNT: test RECLAIM_COMPLETE twice
+Message-ID: <20110826224149.GA18699@fieldses.org>
+References: <4E4C7679.7000108@cn.fujitsu.com>
+ <4E54BC35.3060001@cn.fujitsu.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110804160344.GC12445@fieldses.org>
+In-Reply-To: <4E54BC35.3060001@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Aug 04, 2011 at 12:03:44PM -0400, J. Bruce Fields wrote:
-> The client has no way of knowing that an export is read only.  (Or that
-> the server guarantees the safety of looking up names again in the more
-> general cases Neil describes.)  Unless we decide that a server is making
-> an implicit guarantee of that just by exposing volatile filehandles at
-> all.  Doesn't sound like the existing spec really says that, though.
-> 
-> If an examination of existing implementations and/or some sort of new
-> spec language could reassure us that servers will only ever expose
-> volatile filehandles when it's safe to do so, then maybe it would make
-> sense for the client to implement volatile filehandle recovery?
-> 
-> But if there's a chance of "unsafe" servers out there, then it would
-> seem like a trap for the unwary user....
-> 
-> Your rootfs's probably aren't terribly large--could you copy around
-> compressed block-level images instead of doing rsync?
+Thanks, these four look OK; I'll run a quick test and then push them out
+to my repository.
 
-Another scheme is to disconnect the file handles from the inode number.
-I implemented this a couple years ago for a customer.  Basically add
-an extended attribute into each inode that contains the nfs file handle,
-and that handle stays the same independent of the inode number.  The
-added complexity is that you need a new lookup data structure mapping
-from your nfs handle to something that can be used to find the inode
-(inode number typically).
+--b.
+
+On Wed, Aug 24, 2011 at 04:54:13PM +0800, Mi Jinlong wrote:
+> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> ---
+>  nfs4.1/server41tests/st_reclaim_complete.py |   18 ++++++++++++++++++
+>  1 files changed, 18 insertions(+), 0 deletions(-)
+> 
+> diff --git a/nfs4.1/server41tests/st_reclaim_complete.py b/nfs4.1/server41tests/st_reclaim_complete.py
+> index adb368d..f6baf09 100644
+> --- a/nfs4.1/server41tests/st_reclaim_complete.py
+> +++ b/nfs4.1/server41tests/st_reclaim_complete.py
+> @@ -63,3 +63,21 @@ def testOpenBeforeRECC(t, env):
+>  
+>      res = create_file(sess, fname, path, access=OPEN4_SHARE_ACCESS_BOTH)
+>      check(res, NFS4ERR_GRACE)
+> +
+> +def testDoubleRECC(t, env):
+> +    """If RECLAIM_COMPLETE is done a second time, error
+> +       NFS4ERR_COMPLETE_ALREADY will be returned. rfc5661 18.51.4
+> +
+> +    FLAGS: reclaim_complete all
+> +    CODE: RECC4
+> +    """
+> +    name = env.testname(t)
+> +    c = env.c1.new_client(name)
+> +    sess = c.create_session()
+> +
+> +    res = sess.compound([op.reclaim_complete(FALSE)])
+> +    check(res)
+> +
+> +    # RECLAIM_COMPLETE again
+> +    res = sess.compound([op.reclaim_complete(FALSE)])
+> +    check(res, NFS4ERR_COMPLETE_ALREADY)
+> -- 
+> 1.7.6
+> 
+> 
