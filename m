@@ -1,87 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:54353 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754522Ab1HYSwf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Aug 2011 14:52:35 -0400
-Date: Thu, 25 Aug 2011 14:52:34 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jim Rees <rees@umich.edu>
-Cc: linux-nfs@vger.kernel.org, Leonardo Borda <leonardoborda@gmail.com>
-Subject: Re: [PATCH] nfsd4: permit read opens of executable-only files
-Message-ID: <20110825185234.GE1114@fieldses.org>
-References: <20110825161957.GC1114@fieldses.org>
- <20110825173147.GA5286@merit.edu>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:41943 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751566Ab1HZUUN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Aug 2011 16:20:13 -0400
+Subject: Re: Expected response from server not supporting v4
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110825173147.GA5286@merit.edu>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <6ABB41ED-C420-4458-821A-77A4F6F71858@oracle.com>
+Date: Fri, 26 Aug 2011 16:19:55 -0400
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+Message-Id: <287FCA47-39E4-4A54-97F5-82EDFA272C8A@oracle.com>
+References: <4E4A23E2.3020103@gluster.com> <4E4A67AE.8040305@RedHat.com> <4E4B6134.7000903@gluster.com> <4B79A89A-6511-4447-976A-924670409438@oracle.com> <4E4E0171.6010104@gluster.com> <77A4C7C5-9578-433E-B37A-B61180834963@oracle.com> <4E537105.8020106@gluster.com> <6ABB41ED-C420-4458-821A-77A4F6F71858@oracle.com>
+To: Shehjar Tikoo <shehjart@gluster.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Aug 25, 2011 at 01:31:47PM -0400, Jim Rees wrote:
-> J. Bruce Fields wrote:
+
+On Aug 26, 2011, at 11:43 AM, Chuck Lever wrote:
+
 > 
->    #define NFSD_MAY_BYPASS_GSS_ON_ROOT 256
->    #define NFSD_MAY_NOT_BREAK_LEASE 512
->    #define NFSD_MAY_BYPASS_GSS	1024
->   +#define NFSD_MAY_READ_IF_EXEC	2048
+> On Aug 23, 2011, at 5:21 AM, Shehjar Tikoo wrote:
 > 
-> Not the fault of your patch, but it seems odd, unreadable, and error-prone
-> that these flag bits are defined in terms of base-10 numbers.
+>> Chuck Lever wrote:
+>>> On Aug 19, 2011, at 2:23 AM, Shehjar Tikoo wrote:
+>>>> Chuck Lever wrote:
+>>>>> On Aug 17, 2011, at 2:35 AM, Shehjar Tikoo wrote:
+>>>>>> Steve Dickson wrote:
+>>>>>>> On 08/16/2011 04:01 AM, Shehjar Tikoo wrote:
+>>>>>>>> Hi All
+>>>>>>>> 
+>>>>>>>> The following thread discusses the behaviour when the client does not support v4:
+>>>>>>>> http://thread.gmane.org/gmane.linux.nfs/36928/
+>>>>>>>> 
+>>>>>>>> OTOH, when the server does not support v4, for eg. Gluster NFS server, where we support only v3, I believe v4 client will attempt to connect directly to port 2049 and receive connection failure errors on TCP. Does the current nfs client handle the situation where this results in a timeout for mount? We're hearing  a report of a timeout occurring on the RHEL6 client because the server does not have v4 support. Could someone please shed some light on how this behaviour is handled at present? Thanks
+>>>>>>> Here is the current logic as to what will cause a fall back:
+>>>>>>> switch (errno) {
+>>>>>>> case EPROTONOSUPPORT:
+>>>>>>>     /* A clear indication that the server or our
+>>>>>>>      * client does not support NFS version 4. */
+>>>>>>>     goto fall_back;
+>>>>>>> case ENOENT:
+>>>>>>>     /* Legacy Linux servers don't export an NFS
+>>>>>>>      * version 4 pseudoroot. */
+>>>>>>>     goto fall_back;
+>>>>>>> case EPERM:
+>>>>>>>     /* Linux servers prior to 2.6.25 may return
+>>>>>>>      * EPERM when NFS version 4 is not supported. */
+>>>>>>>     goto fall_back;
+>>>>>>> default:
+>>>>>>>     return result;
+>>>>>>> }
+>>>>>>> fall_back:
+>>>>>>> return nfs_try_mount_v3v2(mi);
+>>>>>>> So in the case of the Gluster server, you are dropping into the
+>>>>>>> default case which is causing the time out.
+>>>>>>> In the above patch set, Mi patches the mount code to fall back on EINVAL which is the current return value from the kernel, when v4 is not configured. I'm not totally against doing something like this, but this is very touchy  code since it could have negative effects on other legacy servers.
+>>>>>>> So I'm thinking Mi's kernel patch that cause the kernel
+>>>>>>> to return EPROTONOSUPPORT, which is the correct return
+>>>>>>> value, is probably the better way to go... 
+>>>>>> Thanks Steve. My understanding is that Mi's patch is to handle the case where the client does not support v4. Do you think the same patch will also handle a server that does not support v4 and hence prevents a client from connecting to 2049?
+>>>>> It's a best practice for clients to connect to 2049 immediately, rather than querying the server's portmapper, to discover and potentially connect to a server's NFSv4 service.
+>>>>> A full-frame network trace of a mount attempt that times out would tell us if there is something pathological going on.
+>>>> Thanks Chuck. Heres the wireshark screenshot of the network trace. As you can see, the SYN from client(10.1.12.45) to the server machine(192.168.1.117) receives a RST. At the client, it manifests as;
+>>>> 
+>>>> [root@centos6-1 ~]# mount 192.168.1.117:/posix /mnt
+>>>> mount.nfs: Connection timed out
+>>>> 
+>>>> Thats it. The client is Linux centos6-1 2.6.32-71.el6.x86_64
+>>>> 
+>>>> Does this point to a bug or is it expected? I was under the impression that the version 3 becomes the failback in case v4 is not available on the server.
+>>> I assume this connection attempt comes from the kernel's NFS client.  The RST should cause the mount(2) system call to return immediately with an error code, but it's very likely this edge case was never tested.
+>> 
+>> Thanks Chuck.
+>> 
+>> Thats correct. The Linux NFS kernel client and server is Gluster NFS server.
+>>> I suppose you could try a newer kernel (2.6.39 or 3.0) to see if it behaves any better.
+>> 
+>> Same behavior with 2.6.38. Should a bug be filed?
+> 
+> I was able to reproduce this with 3.1-rc2.  My expectation was that the SOFTCONN support we added a few releases back would handle this case, but it isn't.  Looking into it now.
 
-Odd is the one thing it isn't.
+It's the mount command that is retrying.  See nfs(5).  The reason it retries is that it assumes that the NFS server is still down after a server reboot.  You can disable the retry loop with "retry=0".
 
-I guess 1 << n would be easier but hex makes the mask line up nicer.
-So there.  ?
+However, I think this is a server bug.  A RST means an NFS server is not running at all.  That's why our client retries.  The correct server response in this case is an RPC error reply that says the client has asked for an unsupported version, followed by a normal connection shutdown (FIN).  If the server replies that way, the client should understand what to do immediately.
 
---b.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-commit a9fd873383e3affa5ba7017713fa46949147d418
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Aug 25 14:23:39 2011 -0400
 
-    nfsd: prettify NFSD_MAY_* flag definitions
-    
-    Cc: Jim Rees <rees@umich.edu>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index a22e40e..503f3bf 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -10,22 +10,22 @@
- /*
-  * Flags for nfsd_permission
-  */
--#define NFSD_MAY_NOP		0
--#define NFSD_MAY_EXEC		1 /* == MAY_EXEC */
--#define NFSD_MAY_WRITE		2 /* == MAY_WRITE */
--#define NFSD_MAY_READ		4 /* == MAY_READ */
--#define NFSD_MAY_SATTR		8
--#define NFSD_MAY_TRUNC		16
--#define NFSD_MAY_LOCK		32
--#define NFSD_MAY_MASK		63
-+#define NFSD_MAY_NOP			0
-+#define NFSD_MAY_EXEC			0x001 /* == MAY_EXEC */
-+#define NFSD_MAY_WRITE			0x002 /* == MAY_WRITE */
-+#define NFSD_MAY_READ			0x004 /* == MAY_READ */
-+#define NFSD_MAY_SATTR			0x008
-+#define NFSD_MAY_TRUNC			0x010
-+#define NFSD_MAY_LOCK			0x020
-+#define NFSD_MAY_MASK			0x03f
- 
- /* extra hints to permission and open routines: */
--#define NFSD_MAY_OWNER_OVERRIDE	64
--#define NFSD_MAY_LOCAL_ACCESS	128 /* IRIX doing local access check on device special file*/
--#define NFSD_MAY_BYPASS_GSS_ON_ROOT 256
--#define NFSD_MAY_NOT_BREAK_LEASE 512
--#define NFSD_MAY_BYPASS_GSS	1024
--#define NFSD_MAY_READ_IF_EXEC	2048
-+#define NFSD_MAY_OWNER_OVERRIDE		0x040
-+#define NFSD_MAY_LOCAL_ACCESS		0x080 /* for device special files */
-+#define NFSD_MAY_BYPASS_GSS_ON_ROOT	0x100
-+#define NFSD_MAY_NOT_BREAK_LEASE	0x200
-+#define NFSD_MAY_BYPASS_GSS		0x400
-+#define NFSD_MAY_READ_IF_EXEC		0x800
- 
- #define NFSD_MAY_CREATE		(NFSD_MAY_EXEC|NFSD_MAY_WRITE)
- #define NFSD_MAY_REMOVE		(NFSD_MAY_EXEC|NFSD_MAY_WRITE|NFSD_MAY_TRUNC)
+
