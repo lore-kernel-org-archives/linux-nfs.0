@@ -1,255 +1,287 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet15.oracle.com ([141.146.126.227]:48625 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750948Ab1H0Xpu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Aug 2011 19:45:50 -0400
-Subject: Re: [PATCH] mount.nfs: Preserve any explicit port=2049 option
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4E58E97F.7040006@RedHat.com>
-Date: Sat, 27 Aug 2011 19:45:27 -0400
-Cc: Luk Claes <luk@debian.org>, linux-nfs@vger.kernel.org
-Message-Id: <2491A23F-8C69-4A5D-8D60-9E0A84DBF63E@oracle.com>
-References: <1312625496-2496-1-git-send-email-luk@debian.org> <4E56AFCB.2020803@RedHat.com> <F4AA6B6E-D029-47BC-A710-23A7AE2582A8@oracle.com> <4E56ED9D.7020906@RedHat.com> <4D7CDC73-5EF0-438E-98B5-32B06730B5B6@oracle.com> <4E58E97F.7040006@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:53262 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753159Ab1HZW2n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Aug 2011 18:28:43 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 15/15] nfsd4: cleanup seqid op stateowner usage
+Date: Fri, 26 Aug 2011 18:28:36 -0400
+Message-Id: <1314397716-18602-16-git-send-email-bfields@redhat.com>
+In-Reply-To: <1314397716-18602-1-git-send-email-bfields@redhat.com>
+References: <1314397716-18602-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Now that the replay owner is in the cstate we can remove it from a lot
+of other individual operations and further simplify
+nfs4_preprocess_seqid_op().
 
-On Aug 27, 2011, at 8:56 AM, Steve Dickson wrote:
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   57 +++++++++++++++++++++-----------------------------
+ fs/nfsd/nfs4xdr.c   |    5 ----
+ fs/nfsd/xdr4.h      |    7 ------
+ 3 files changed, 24 insertions(+), 45 deletions(-)
 
-> Hey,
-> 
-> On 08/26/2011 09:58 AM, Chuck Lever wrote:
->> 
->> On Aug 25, 2011, at 8:49 PM, Steve Dickson wrote:
->> 
->>> On 08/25/2011 04:46 PM, Chuck Lever wrote:
->>>> 
->>>> On Aug 25, 2011, at 4:25 PM, Steve Dickson wrote:
->>>> 
->>>>> First of all let me apologize for taking so long
->>>>> to get to this... I did take some time off.... 
->>>>> 
->>>>> On 08/06/2011 06:11 AM, Luk Claes wrote:
->>>>>> If NFS port (2049) is supplied explicitly, don't ignore this setting by requesting it to portmapper again. Thanks to Ben Hutchings <ben@decadent.org.uk> for the patch.
->>>>>> 
->>>>>> Signed-off-by: Luk Claes <luk@debian.org>
->>>>>> ---
->>>>>> utils/mount/stropts.c |    4 ++--
->>>>>> 1 files changed, 2 insertions(+), 2 deletions(-)
->>>>>> 
->>>>>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->>>>>> index f1aa503..8b2799c 100644
->>>>>> --- a/utils/mount/stropts.c
->>>>>> +++ b/utils/mount/stropts.c
->>>>>> @@ -437,8 +437,8 @@ static int nfs_construct_new_options(struct mount_options *options,
->>>>>> 	if (po_append(options, new_option) == PO_FAILED)
->>>>>> 		return 0;
->>>>>> 
->>>>>> -	po_remove_all(options, "port");
->>>>>> -	if (nfs_pmap->pm_port != NFS_PORT) {
->>>>>> +	if(po_remove_all(options, "port") == PO_FOUND ||
->>>>>> +	   nfs_pmap->pm_port != NFS_PORT) {
->>>>>> 		snprintf(new_option, sizeof(new_option) - 1,
->>>>>> 			 "port=%lu", nfs_pmap->pm_port);
->>>>>> 		if (po_append(options, new_option) == PO_FAILED)
->>>>> Now I like the idea of not sending the pmap inquire for the 
->>>>> port when the port is specified on the command because its
->>>>> a TCP connection. During automount storms, wasting TCP connections
->>>>> is not a good thing... 
->>>>> 
->>>>> But your patch does not seem to do that since all the port
->>>>> negotiation is done well before this part of the code.
->>>> 
->>>> I thought the idea was to eliminate the port query during REnegotiation
->>>> if "port=" was specified.  That seems like exactly what the patch does.  
->>> Ah, I did miss the renegotiation aspect... Its been a long day... ;-)
->>> 
->>>> Does the initial port negotiation also have this problem?
->>> Well I was thinking why even do the initial port negotiation when
->>> the port= is set... 
->> 
->> An rpcbind query is still needed if port= is specified but transport or 
->> version options were not. Simply specifying port= does not shut off 
->> negotiation. 
-> You are correct. Not only is the port specified but the version is also
-> specified as well due to the fact we are in this part of the code. 
-> 
->> All three NFS parameters have to be specified to shut off the rpcbind query.
-> Why is this such a hard and fast rule?
-
-If we change mount.nfs to go straight to TCP, then it will break mounting servers that support only UDP, when default mount options are used.  We've tried this before (I think quite by accident IIRC), and folks complained about the regression.
-
-> Maybe in the past, when we moved from v2 to v3 and from UDP to TCP, all 
-> three were needed but not in day in aged. TCP is now a mandated protocol,
-> which almost guarantees it will be support, in present day servers.
-> 
-> So at this point if have we two of the three, the port and version, why
-> not just use the default protocol (TCP) and do the NFS ping?
-
-If a user has already gone to the trouble of specifying vers=3 and port=2049, why can't she simply add proto=tcp,mountproto=udp as well?  It seems to me we have an existing solution to this problem.
-
-> The chances of the ping working are very high plus what is going to break?
-
-What's going to break is users who have servers that listen only on UDP.  Suppose a user requests an NFS mount but specifies no mount options.  Our client will try to connect to those servers via TCP, and such servers will reply with RST.  Our client will then keep trying to connect via TCP, because it will think "RST" means "I'm still booting."  The mount request will eventually fail.  See the recent thread from Shehjar.
-
->> Doing the MNT request also performs an rpcbind query, but by default both 
->> of those are done via UDP.
-> No. The query for the port were going over TCP. That's what caught
-> my eye.
-
-Sure, and I agree that bears some investigation.
-
-NFSv2 and NFSv3 perform a MNT request first.  The associated rpcbind query and the MNT request should be done over UDP by default.  If these are not going over UDP by default, then we should change that (and that would be allowed because I believe that's the documented default behavior (he said, without checking)).  What exactly are the mount options used when an extra TCP connection appears?
-
->From memory, with a text-based mount, by default the kernel should do an rpcbind over UDP, then a MNT request over UDP, then an rpcbind over TCP, and finally a TCP connection to the NFS server; the first operation on the kernel's NFS socket should be NULL (ie, an NFS ping).  We can get rid of that second rpcbind right now by telling afflicted users to specify the NFS version, the transport protocols, and the NFS server port on the mount command line.
-
-Does mount.nfs then also need to do an NFS ping?  That would simply add another TCP connection, which we are trying to avoid.  Plus... I think the change you proposed is for code that is nowadays only invoked during REnegotiation (ie the kernel mount request failed, and kicked it back to user space).  Does that help the automounter storm case?
-
->> The issue of keeping TCP port usage at a minimum is real and related to 
->> negotiation behavior, but is IMO separate.  My sense is that rpcbind 
->> queries are probably not really a big problem (and of course we would 
->> be wise to quantify this problem before making aggressive changes).
-> I don't see this as an aggressive change. I see it as adapting the
-> code to present day circumstances.
-> 
->> mount.nfs's rpcbind queries should always come from an ephemeral port, 
->> which is a larger resource pool than privileged ports and thus more 
->> difficult to exhaust.  Using NFSv4 more, just by itself, should improve 
->> matters since it skips the rpcbind step by default and doesn't use MNT at all.
-> All the above is true. But look at it from the server point of view. 
-> During an automount storm, thousands of clients doing v3 mounts. This
-> type of short cut will eliminate thousands of TCP the server will have
-> to deal with.
-
-The same effect is achieved if we have automounter users add "proto=tcp,mountproto=udp" to their mount command lines.  No code change is needed, and it's backwards compatible with our current negotiation strategy.
-
-Negotiation is the common case, as mount.nfs should "just work" in as many cases as possible.  Automounter in large enterprises is a less frequent case, and one where it is entirely reasonable to tell folks to use more specific mount options to get the behavior they desire.  Changing mount.nfs's negotiation strategy at this point will just make some users (and possibly your test team) angry.
-
-> steved.
-> 
->> 
->>>> But we should be careful here: mount.nfs will do an rpcbind query if a port= 
->>>> was specified if there is also some doubt about whether to use TCP or UDP, 
->>>> or what NFS version is available.  The only time rpcbind queries should be 
->>>> completely squashed is when the mount parameters are specified completely 
->>>> (transport, version, and port).
->>> I agree with being careful here... But if some admin is specifying 
->>> a particular port I'm thinking one, they have a clue and two, 99% of 
->>> time the port is correct. So lets just verify the port by using it
->>> NFS ping. So I'm thinking %99 of the time there is no need to create 
->>> that second TCP connection when a port is specified.
->> 
->> I think the kernel already does an NFS ping during mount processing (someone should verify that, of course).  But as I said above, all three NFS parameters [transport, NFS version, and port] have to be specified to avoid the rpcbind query.
->> 
->>> But, here is were we have to be careful. That  1% of the
->>> time the ping fails, for whatever reason... That is when I think
->>> we to consult with the server's rpcbind and the second TCP
->>> connection is justified. 
->>> 
->>> I just thinking making that assuming the specified info
->>> is as good way to save a TCP connection... 
->> 
->> Hrm, I don't see what that buys us.  If the ping fails and the port specified on the mount command line is actually registered on the server, what is the client's recourse?
->> 
->>> 
->>>> 
->>>>> I'm thinking some code has to change in nfs_probe_port() 
->>>>> something like:
->>>>> 
->>>>>  mount.nfs: Do not send pmap inquire when port is specified
->>>>> 
->>>>>  When the port is specified on the command line do not
->>>>>  send a pmap inquire asking for the port. Instead use
->>>>>  the given port in the NFS ping. If the ping fails,
->>>>>  assume a bad port was given and now go ask the server
->>>>>  for the correct port.
->>>> 
->>>> If the server has more than one NFS port enabled, and the client is 
->>>> requesting a port that isn't registered with the server's rpcbind, it 
->>>> shouldn't fall back to the registered port IMO.
->>> True. With this patch there is no fall back. When the NFS ping fails, 
->>> the registered port is obtained; compared to the specified port.
->>> If they are different the mount will fail as it does to today.
->>> 
->>> steved.
->>> 
->>>> 
->>>>>  Signed-off-by: Steve Dickson <steved@redhat.com>
->>>>> 
->>>>> diff --git a/utils/mount/network.c b/utils/mount/network.c
->>>>> index d1f91dc..405c320 100644
->>>>> --- a/utils/mount/network.c
->>>>> +++ b/utils/mount/network.c
->>>>> @@ -545,17 +545,18 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
->>>>> 	const unsigned int prot = (u_int)pmap->pm_prot, *p_prot;
->>>>> 	const u_short port = (u_short) pmap->pm_port;
->>>>> 	unsigned long vers = pmap->pm_vers;
->>>>> -	unsigned short p_port;
->>>>> +	unsigned short p_port = port;
->>>>> +	int once = 1;
->>>>> 
->>>>> 	memcpy(saddr, sap, salen);
->>>>> 	p_prot = prot ? &prot : protos;
->>>>> 	p_vers = vers ? &vers : versions;
->>>>> -
->>>>> 	for (;;) {
->>>>> 		if (verbose)
->>>>> 			printf(_("%s: prog %lu, trying vers=%lu, prot=%u\n"),
->>>>> 				progname, prog, *p_vers, *p_prot);
->>>>> -		p_port = nfs_getport(saddr, salen, prog, *p_vers, *p_prot);
->>>>> +		if (!p_port)
->>>>> +			p_port = nfs_getport(saddr, salen, prog, *p_vers, *p_prot);
->>>>> 		if (p_port) {
->>>>> 			if (!port || port == p_port) {
->>>>> 				nfs_set_port(saddr, p_port);
->>>>> @@ -564,6 +565,15 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
->>>>> 				if (nfs_rpc_ping(saddr, salen, prog,
->>>>> 							*p_vers, *p_prot, NULL))
->>>>> 					goto out_ok;
->>>>> +				if (port == p_port && once) {
->>>>> +					/*
->>>>> +					 * Could be a bad port was specified. This
->>>>> +					 * time ask the server for the port but only
->>>>> +					 * do it once.
->>>>> +					 */
->>>>> +					p_port = once = 0;
->>>>> +					continue;
->>>>> +				}
->>>>> 			} else
->>>>> 				rpc_createerr.cf_stat = RPC_PROGNOTREGISTERED;
->>>>> 		}
->>>>> @@ -589,6 +599,7 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
->>>>> 	}
->>>>> 
->>>>> 	nfs_pp_debug2("failed");
->>>>> 	return 0;
->>>>> 
->>>>> out_ok:
->>>>> 
->>>>> 
->>>>> I'm not sure this is best way either.... 
->>>>> 
->>>>> steved.
->>>>> 
->>>>> 
->>>>> 
->>>>> 
->>>>> 
->>>>> 
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>> 
->> 
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 65e9da9..6c78cf0 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3396,7 +3396,6 @@ setlkflg (int type)
+ static __be32
+ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ 			 stateid_t *stateid, int flags,
+-			 struct nfs4_stateowner **sopp,
+ 			 struct nfs4_stateid **stpp)
+ {
+ 	struct nfs4_stateid *stp;
+@@ -3408,7 +3407,6 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ 		seqid, STATEID_VAL(stateid));
+ 
+ 	*stpp = NULL;
+-	*sopp = NULL;
+ 
+ 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid)) {
+ 		dprintk("NFSD: preprocess_seqid_op: magic stateid!\n");
+@@ -3439,7 +3437,7 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ 	}
+ 
+ 	*stpp = stp;
+-	*sopp = sop = stp->st_stateowner;
++	sop = stp->st_stateowner;
+ 	nfs4_get_stateowner(sop);
+ 	cstate->replay_owner = sop;
+ 
+@@ -3475,7 +3473,6 @@ check_replay:
+ 	}
+ 	dprintk("NFSD: preprocess_seqid_op: bad seqid (expected %d, got %d)\n",
+ 			sop->so_seqid, seqid);
+-	*sopp = NULL;
+ 	return nfserr_bad_seqid;
+ }
+ 
+@@ -3497,13 +3494,13 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	nfs4_lock_state();
+ 
+-	if ((status = nfs4_preprocess_seqid_op(cstate,
++	status = nfs4_preprocess_seqid_op(cstate,
+ 					oc->oc_seqid, &oc->oc_req_stateid,
+-					CONFIRM | OPEN_STATE,
+-					&oc->oc_stateowner, &stp)))
++					CONFIRM | OPEN_STATE, &stp);
++	if (status)
+ 		goto out; 
+ 
+-	sop = oc->oc_stateowner;
++	sop = stp->st_stateowner;
+ 	sop->so_confirmed = 1;
+ 	update_stateid(&stp->st_stateid);
+ 	memcpy(&oc->oc_resp_stateid, &stp->st_stateid, sizeof(stateid_t));
+@@ -3555,11 +3552,9 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
+ 		return nfserr_inval;
+ 
+ 	nfs4_lock_state();
+-	if ((status = nfs4_preprocess_seqid_op(cstate,
+-					od->od_seqid,
+-					&od->od_stateid, 
+-					OPEN_STATE,
+-					&od->od_stateowner, &stp)))
++	status = nfs4_preprocess_seqid_op(cstate, od->od_seqid,
++					&od->od_stateid, OPEN_STATE, &stp);
++	if (status)
+ 		goto out; 
+ 
+ 	status = nfserr_inval;
+@@ -3594,6 +3589,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ {
+ 	__be32 status;
+ 	struct nfs4_stateid *stp;
++	struct nfs4_stateowner *so;
+ 
+ 	dprintk("NFSD: nfsd4_close on file %.*s\n", 
+ 			(int)cstate->current_fh.fh_dentry->d_name.len,
+@@ -3601,12 +3597,12 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	nfs4_lock_state();
+ 	/* check close_lru for replay */
+-	if ((status = nfs4_preprocess_seqid_op(cstate,
+-					close->cl_seqid,
++	status = nfs4_preprocess_seqid_op(cstate, close->cl_seqid,
+ 					&close->cl_stateid, 
+-					OPEN_STATE | CLOSE_STATE,
+-					&close->cl_stateowner, &stp)))
++					OPEN_STATE | CLOSE_STATE, &stp);
++	if (status)
+ 		goto out; 
++	so = stp->st_stateowner;
+ 	status = nfs_ok;
+ 	update_stateid(&stp->st_stateid);
+ 	memcpy(&close->cl_stateid, &stp->st_stateid, sizeof(stateid_t));
+@@ -3618,8 +3614,8 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	 * released by the laundromat service after the lease period
+ 	 * to enable us to handle CLOSE replay
+ 	 */
+-	if (list_empty(&close->cl_stateowner->so_stateids))
+-		move_to_close_lru(close->cl_stateowner);
++	if (list_empty(&so->so_stateids))
++		move_to_close_lru(so);
+ out:
+ 	nfs4_unlock_state();
+ 	return status;
+@@ -3969,12 +3965,11 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		status = nfs4_preprocess_seqid_op(cstate,
+ 				        lock->lk_new_open_seqid,
+ 		                        &lock->lk_new_open_stateid,
+-					OPEN_STATE,
+-		                        &lock->lk_replay_owner, &open_stp);
++					OPEN_STATE, &open_stp);
+ 		if (status)
+ 			goto out;
+ 		status = nfserr_bad_stateid;
+-		open_sop = lock->lk_replay_owner;
++		open_sop = open_stp->st_stateowner;
+ 		if (!nfsd4_has_session(cstate) &&
+ 				!same_clid(&open_sop->so_client->cl_clientid,
+ 						&lock->v.new.clientid))
+@@ -4000,14 +3995,13 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		status = nfs4_preprocess_seqid_op(cstate,
+ 				       lock->lk_old_lock_seqid, 
+ 				       &lock->lk_old_lock_stateid, 
+-				       LOCK_STATE,
+-				       &lock->lk_replay_owner, &lock_stp);
++				       LOCK_STATE, &lock_stp);
+ 		if (status)
+ 			goto out;
+-		lock_sop = lock->lk_replay_owner;
++		lock_sop = lock_stp->st_stateowner;
+ 		fp = lock_stp->st_file;
+ 	}
+-	/* lock->lk_replay_owner and lock_stp have been created or found */
++	/* lock_sop and lock_stp have been created or found */
+ 
+ 	lkflg = setlkflg(lock->lk_type);
+ 	status = nfs4_check_openmode(lock_stp, lkflg);
+@@ -4198,13 +4192,10 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	nfs4_lock_state();
+ 									        
+-	if ((status = nfs4_preprocess_seqid_op(cstate,
+-					locku->lu_seqid, 
+-					&locku->lu_stateid, 
+-					LOCK_STATE,
+-					&locku->lu_stateowner, &stp)))
++	status = nfs4_preprocess_seqid_op(cstate, locku->lu_seqid,
++					&locku->lu_stateid, LOCK_STATE, &stp);
++	if (status)
+ 		goto out;
+-
+ 	filp = find_any_file(stp->st_file);
+ 	if (!filp) {
+ 		status = nfserr_lock_range;
+@@ -4213,7 +4204,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	BUG_ON(!filp);
+ 	locks_init_lock(&file_lock);
+ 	file_lock.fl_type = F_UNLCK;
+-	file_lock.fl_owner = (fl_owner_t) locku->lu_stateowner;
++	file_lock.fl_owner = (fl_owner_t) stp->st_stateowner;
+ 	file_lock.fl_pid = current->tgid;
+ 	file_lock.fl_file = filp;
+ 	file_lock.fl_flags = FL_POSIX; 
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 4b0b0d5..f6c0618 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -456,7 +456,6 @@ nfsd4_decode_close(struct nfsd4_compoundargs *argp, struct nfsd4_close *close)
+ {
+ 	DECODE_HEAD;
+ 
+-	close->cl_stateowner = NULL;
+ 	READ_BUF(4);
+ 	READ32(close->cl_seqid);
+ 	return nfsd4_decode_stateid(argp, &close->cl_stateid);
+@@ -551,7 +550,6 @@ nfsd4_decode_lock(struct nfsd4_compoundargs *argp, struct nfsd4_lock *lock)
+ {
+ 	DECODE_HEAD;
+ 
+-	lock->lk_replay_owner = NULL;
+ 	/*
+ 	* type, reclaim(boolean), offset, length, new_lock_owner(boolean)
+ 	*/
+@@ -611,7 +609,6 @@ nfsd4_decode_locku(struct nfsd4_compoundargs *argp, struct nfsd4_locku *locku)
+ {
+ 	DECODE_HEAD;
+ 
+-	locku->lu_stateowner = NULL;
+ 	READ_BUF(8);
+ 	READ32(locku->lu_type);
+ 	if ((locku->lu_type < NFS4_READ_LT) || (locku->lu_type > NFS4_WRITEW_LT))
+@@ -739,7 +736,6 @@ nfsd4_decode_open_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_open_con
+ {
+ 	DECODE_HEAD;
+ 		    
+-	open_conf->oc_stateowner = NULL;
+ 	status = nfsd4_decode_stateid(argp, &open_conf->oc_req_stateid);
+ 	if (status)
+ 		return status;
+@@ -754,7 +750,6 @@ nfsd4_decode_open_downgrade(struct nfsd4_compoundargs *argp, struct nfsd4_open_d
+ {
+ 	DECODE_HEAD;
+ 		    
+-	open_down->od_stateowner = NULL;
+ 	status = nfsd4_decode_stateid(argp, &open_down->od_stateid);
+ 	if (status)
+ 		return status;
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 663193b..341f0a1 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -81,7 +81,6 @@ struct nfsd4_access {
+ struct nfsd4_close {
+ 	u32		cl_seqid;           /* request */
+ 	stateid_t	cl_stateid;         /* request+response */
+-	struct nfs4_stateowner * cl_stateowner;	/* response */
+ };
+ 
+ struct nfsd4_commit {
+@@ -165,9 +164,6 @@ struct nfsd4_lock {
+ 		} ok;
+ 		struct nfsd4_lock_denied        denied;
+ 	} u;
+-	/* The lk_replay_owner is the open owner in the open_to_lock_owner
+-	 * case and the lock owner otherwise: */
+-	struct nfs4_stateowner *lk_replay_owner;
+ };
+ #define lk_new_open_seqid       v.new.open_seqid
+ #define lk_new_open_stateid     v.new.open_stateid
+@@ -199,7 +195,6 @@ struct nfsd4_locku {
+ 	stateid_t       lu_stateid;
+ 	u64             lu_offset;
+ 	u64             lu_length;
+-	struct nfs4_stateowner  *lu_stateowner;
+ };
+ 
+ 
+@@ -243,7 +238,6 @@ struct nfsd4_open_confirm {
+ 	stateid_t	oc_req_stateid		/* request */;
+ 	u32		oc_seqid    		/* request */;
+ 	stateid_t	oc_resp_stateid		/* response */;
+-	struct nfs4_stateowner * oc_stateowner;	/* response */
+ };
+ 
+ struct nfsd4_open_downgrade {
+@@ -251,7 +245,6 @@ struct nfsd4_open_downgrade {
+ 	u32             od_seqid;
+ 	u32             od_share_access;
+ 	u32             od_share_deny;
+-	struct nfs4_stateowner *od_stateowner;
+ };
+ 
+ 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.4.1
 
