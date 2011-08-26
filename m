@@ -1,68 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:43686 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:53235 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751886Ab1HWV4O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Aug 2011 17:56:14 -0400
-Date: Tue, 23 Aug 2011 17:56:08 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org, tytso@mit.edu,
-        bernd.schubert@fastmail.fm, hch@infradead.org, adilger@whamcloud.com,
-        yong.fan@whamcloud.com, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 0/2] 32/64 bit llseek hashes (v3)
-Message-ID: <20110823215608.GH25350@fieldses.org>
-References: <20110816115404.1810393.47239.stgit@localhost.localdomain>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110816115404.1810393.47239.stgit@localhost.localdomain>
+	id S1752222Ab1HZW2m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Aug 2011 18:28:42 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 05/15] nfsd4: name openowner data structures more clearly
+Date: Fri, 26 Aug 2011 18:28:26 -0400
+Message-Id: <1314397716-18602-6-git-send-email-bfields@redhat.com>
+In-Reply-To: <1314397716-18602-1-git-send-email-bfields@redhat.com>
+References: <1314397716-18602-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Aug 16, 2011 at 01:54:04PM +0200, Bernd Schubert wrote:
-> With the ext3/ext4 directory index implementation hashes are used to specify
-> offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
-> on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
-> hashes and therefore the probability of hash collisions for larger directories
-> is rather high. As recently reported on the NFS mailing list that theoretical
-> problem also happens on real systems:
-> http://comments.gmane.org/gmane.linux.nfs/40863
-> 
-> The following series adds two new f_mode flags to tell ext4
-> to use 32-bit or 64-bit hash values for llseek() calls.
-> These flags can then used by network file systems, such as NFS, to
-> request 32-bit or 64-bit offsets (hashes).
-> 
-> Version 3:
-> - remove patch "RFC: Remove check for a 32-bit cookie in nfsd4_readdir()",
->   I think Bruce wanted to take it seperately as bug fix. It should be applied
->   before applying the remaining NFS patches, as without it NFSv4 will always
->   fail with the new 64-bit ext4 seek hashes.
+These appear to be generic (for both open and lock owners), but they're
+actually just for open owners.  This has confused me more than once.
 
-Yes, applied to my for-3.2 branch at
-git://linux-nfs.org/~bfields/linux.git.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   36 ++++++++++++++++++------------------
+ 1 files changed, 18 insertions(+), 18 deletions(-)
 
-For the NFS patches:
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a98dc75..d32a1a6 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -136,27 +136,27 @@ unsigned int max_delegations;
+  * Open owner state (share locks)
+  */
+ 
+-/* hash tables for nfs4_stateowner */
+-#define OWNER_HASH_BITS              8
+-#define OWNER_HASH_SIZE             (1 << OWNER_HASH_BITS)
+-#define OWNER_HASH_MASK             (OWNER_HASH_SIZE - 1)
++/* hash tables for open owners */
++#define OPEN_OWNER_HASH_BITS              8
++#define OPEN_OWNER_HASH_SIZE             (1 << OPEN_OWNER_HASH_BITS)
++#define OPEN_OWNER_HASH_MASK             (OPEN_OWNER_HASH_SIZE - 1)
+ 
+-static unsigned int ownerid_hashval(const u32 id)
++static unsigned int open_ownerid_hashval(const u32 id)
+ {
+-	return id & OWNER_HASH_MASK;
++	return id & OPEN_OWNER_HASH_MASK;
+ }
+ 
+-static unsigned int ownerstr_hashval(u32 clientid, struct xdr_netobj *ownername)
++static unsigned int open_ownerstr_hashval(u32 clientid, struct xdr_netobj *ownername)
+ {
+ 	unsigned int ret;
+ 
+ 	ret = opaque_hashval(ownername->data, ownername->len);
+ 	ret += clientid;
+-	return ret & OWNER_HASH_MASK;
++	return ret & OPEN_OWNER_HASH_MASK;
+ }
+ 
+-static struct list_head	ownerid_hashtbl[OWNER_HASH_SIZE];
+-static struct list_head	ownerstr_hashtbl[OWNER_HASH_SIZE];
++static struct list_head	open_ownerid_hashtbl[OPEN_OWNER_HASH_SIZE];
++static struct list_head	open_ownerstr_hashtbl[OPEN_OWNER_HASH_SIZE];
+ 
+ /* hash table for nfs4_file */
+ #define FILE_HASH_BITS                   8
+@@ -2242,7 +2242,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
+ 
+ 	if (!(sop = alloc_stateowner(&open->op_owner)))
+ 		return NULL;
+-	idhashval = ownerid_hashval(current_ownerid);
++	idhashval = open_ownerid_hashval(current_ownerid);
+ 	INIT_LIST_HEAD(&sop->so_idhash);
+ 	INIT_LIST_HEAD(&sop->so_strhash);
+ 	INIT_LIST_HEAD(&sop->so_perclient);
+@@ -2250,8 +2250,8 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
+ 	INIT_LIST_HEAD(&sop->so_perstateid);  /* not used */
+ 	INIT_LIST_HEAD(&sop->so_close_lru);
+ 	sop->so_time = 0;
+-	list_add(&sop->so_idhash, &ownerid_hashtbl[idhashval]);
+-	list_add(&sop->so_strhash, &ownerstr_hashtbl[strhashval]);
++	list_add(&sop->so_idhash, &open_ownerid_hashtbl[idhashval]);
++	list_add(&sop->so_strhash, &open_ownerstr_hashtbl[strhashval]);
+ 	list_add(&sop->so_perclient, &clp->cl_openowners);
+ 	sop->so_is_open_owner = 1;
+ 	sop->so_id = current_ownerid++;
+@@ -2315,7 +2315,7 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open)
+ {
+ 	struct nfs4_stateowner *so = NULL;
+ 
+-	list_for_each_entry(so, &ownerstr_hashtbl[hashval], so_strhash) {
++	list_for_each_entry(so, &open_ownerstr_hashtbl[hashval], so_strhash) {
+ 		if (same_owner_str(so, &open->op_owner, &open->op_clientid))
+ 			return so;
+ 	}
+@@ -2466,7 +2466,7 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
+ 	if (STALE_CLIENTID(&open->op_clientid))
+ 		return nfserr_stale_clientid;
+ 
+-	strhashval = ownerstr_hashval(clientid->cl_id, &open->op_owner);
++	strhashval = open_ownerstr_hashval(clientid->cl_id, &open->op_owner);
+ 	sop = find_openstateowner_str(strhashval, open);
+ 	open->op_stateowner = sop;
+ 	if (!sop) {
+@@ -4520,9 +4520,9 @@ nfs4_state_init(void)
+ 	for (i = 0; i < FILE_HASH_SIZE; i++) {
+ 		INIT_LIST_HEAD(&file_hashtbl[i]);
+ 	}
+-	for (i = 0; i < OWNER_HASH_SIZE; i++) {
+-		INIT_LIST_HEAD(&ownerstr_hashtbl[i]);
+-		INIT_LIST_HEAD(&ownerid_hashtbl[i]);
++	for (i = 0; i < OPEN_OWNER_HASH_SIZE; i++) {
++		INIT_LIST_HEAD(&open_ownerstr_hashtbl[i]);
++		INIT_LIST_HEAD(&open_ownerid_hashtbl[i]);
+ 	}
+ 	for (i = 0; i < STATEID_HASH_SIZE; i++) {
+ 		INIT_LIST_HEAD(&stateid_hashtbl[i]);
+-- 
+1.7.4.1
 
-	Acked-by: J. Bruce Fields <bfields@redhat.com>
-
-OK by me if they go in through ext4 tree, or however's most convenient.
-
---b.
-
-> - split "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)" into two
->   two separate patches as suggested by Bruce, one patch to rename 
->   'access' to 'may_flags'. And the remainder of the original patch to set 
->   FMODE_32BITHASH/FMODE_64BITHASH flags and to introduce the new 
->   NFSD_MAY_64BIT_COOKIE flag
-> 
-> Version 2:
-> - use f_mode instead of O_* flags and also in a separate patch
-> - introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
-> - fix SEEK_END in ext4_dir_llseek()
-> - set f_mode flags in NFS code as early as possible and introduce a new
->   NFSD_MAY_64BIT_COOKIE flag for that
-> 
-> --
-> Bernd Schubert
-> Fraunhofer ITWM
-> 
