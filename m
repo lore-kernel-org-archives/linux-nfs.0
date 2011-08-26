@@ -1,67 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57865 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751458Ab1HSBFs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Aug 2011 21:05:48 -0400
-Date: Fri, 19 Aug 2011 11:05:36 +1000
-From: NeilBrown <neilb@suse.de>
-To: paul.szabo@sydney.edu.au
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Please support NSF squashing multiple groups
-Message-ID: <20110819110536.1f0133c6@notabene.brown>
-In-Reply-To: <201108190032.p7J0W3ZX030679@bari.maths.usyd.edu.au>
-References: <201108190032.p7J0W3ZX030679@bari.maths.usyd.edu.au>
-Content-Type: text/plain; charset=US-ASCII
+Received: from shadbolt.e.decadent.org.uk ([88.96.1.126]:33522 "EHLO
+	shadbolt.e.decadent.org.uk" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753645Ab1HZXdE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Aug 2011 19:33:04 -0400
+Date: Sat, 27 Aug 2011 00:32:58 +0100
+From: Ben Hutchings <ben@decadent.org.uk>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>, Neil Brown <neilb@suse.de>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-arch@vger.kernel.org
+Message-ID: <20110826233258.GE24107@decadent.org.uk>
+References: <1312810169.2591.1153.camel@deadeye>
+ <20110808155538.GB904@fieldses.org>
+ <20110808180658.GC29924@decadent.org.uk>
+ <20110826220311.GA18140@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110826220311.GA18140@fieldses.org>
+Subject: Re: [PATCH] All Arch: remove linkage for sys_nfsservctl system call
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 19 Aug 2011 10:32:03 +1000 paul.szabo@sydney.edu.au wrote:
+On Fri, Aug 26, 2011 at 06:03:11PM -0400, J. Bruce Fields wrote:
+[...]
+> diff --git a/arch/sparc/kernel/systbls_64.S b/arch/sparc/kernel/systbls_64.S
+> index f566518..c9296ab 100644
+> --- a/arch/sparc/kernel/systbls_64.S
+> +++ b/arch/sparc/kernel/systbls_64.S
+> @@ -145,7 +145,7 @@ sys_call_table:
+>  	.word sys_fstatfs64, sys_llseek, sys_mlock, sys_munlock, sys_mlockall
+>  /*240*/	.word sys_munlockall, sys_sched_setparam, sys_sched_getparam, sys_sched_setscheduler, sys_sched_getscheduler
+>  	.word sys_sched_yield, sys_sched_get_priority_max, sys_sched_get_priority_min, sys_sched_rr_get_interval, sys_nanosleep
+> -/*250*/	.word sys_64_mremap, sys_sysctl, sys_getsid, sys_fdatasync, sys_nfsservctl
+> +/*250*/	.word sys_64_mremap, sys_sysctl, sys_getsid, sys_fdatasync, sys_nis_syscall
+[...]
+          	                                                                  ^
+This seems to be a typo for 'sys_ni_syscall'.
 
-> Dear Linux-NFS people,
-> 
-> NFS has always had the root_squash option, to protect against a remote
-> and possibly evil root. NFS should also protect all privileged, or at
-> least all root-equivalent, UIDs and GIDs. Many UNIX distributions have
-> root-equivalent GIDs, groups whose members could easily become root,
-> some listed in http://bugs.debian.org/299007#219 .
-> 
-> Currently, NFS has no ways to protect privileged UIDs and GIDs other
-> than root himself. Such options should be implemented, to make NFS
-> safer and more useful. As I understand it, the hold-up is not within
-> NFS code, but with kernel interfaces not supporting lists of squashed
-> entities. I am asking you to devise and implement such interfaces.
-> 
-> References:
-> http://bugs.debian.org/299007
-> http://bugs.debian.org/384922
-> http://bugs.debian.org/538392
-> https://bugzilla.kernel.org/show_bug.cgi?id=14295
-> 
-> Thanks, Paul
-> 
-> Paul Szabo   psz@maths.usyd.edu.au   http://www.maths.usyd.edu.au/u/psz/
-> School of Mathematics and Statistics   University of Sydney    Australia
+Ben.
 
-Hi Paul,
-
- I would be much more inclined to go the other way and remove the root_squash
- option so that nothing is squashed.  It is not really a clever idea and
- doesn't really do anything useful - partly because as you note there are
- other uids that can be dangerous.
-
- If you are using kerberos authentication then you should be able to trust
- that any remote user really is who they say they are, and if you aren't then
- maybe you should be .... we really are running out of excuses to use
- kerberos and it is really quite easy (even I could set it up in half an
- hour!).
-
- If you are using NFSv4 and kerberos than there already exist interfaces to
- do what you want. See "man idmap.conf".  You can write a plugin that maps a
- textual user or group name to a numeric id number.  So you can squash
- anything that you want to squash, and squash it in any way that you like.
-
- Does that help?
-
-NeilBrown
-
+-- 
+Ben Hutchings
+We get into the habit of living before acquiring the habit of thinking.
+                                                              - Albert Camus
