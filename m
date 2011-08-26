@@ -1,60 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41243 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751194Ab1HZWlv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Aug 2011 18:41:51 -0400
-Date: Fri, 26 Aug 2011 18:41:49 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/4 v4] 4.1 CLNT: test RECLAIM_COMPLETE twice
-Message-ID: <20110826224149.GA18699@fieldses.org>
-References: <4E4C7679.7000108@cn.fujitsu.com>
- <4E54BC35.3060001@cn.fujitsu.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E54BC35.3060001@cn.fujitsu.com>
+Received: from natasha.panasas.com ([67.152.220.90]:44143 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752920Ab1HZXv7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Aug 2011 19:51:59 -0400
+Message-ID: <4E58318A.3080305@panasas.com>
+Date: Fri, 26 Aug 2011 16:51:38 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSD: nfsd4_open Avoid race with grace period expiration
+References: <4E45C164.1070604@panasas.com> <20110826203924.GC17196@fieldses.org> <4E58119A.3090403@panasas.com> <20110826215451.GF16090@pad.fieldses.org>
+In-Reply-To: <20110826215451.GF16090@pad.fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Thanks, these four look OK; I'll run a quick test and then push them out
-to my repository.
+On 08/26/2011 02:54 PM, J. Bruce Fields wrote:
+>> You might get by, by rechecking the grace period at the end of the
+>> processing and if passed issue a "reclaim request failed" anyway.
+>> So the first check is only for optimization but the final disposition
+>> is the post-check. (Just as if you dropped that refcount above)
+> 
+> I guess that could work, but you'd have to back out the operation you
+> just did if the check showed you'd left the grace period.  I'd rather
+> avoid that.
+> 
 
---b.
+Yes, you'll need to "back out" of the operation. It was just a suggestion.
+You'll have to see what is easier to implement.
 
-On Wed, Aug 24, 2011 at 04:54:13PM +0800, Mi Jinlong wrote:
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
->  nfs4.1/server41tests/st_reclaim_complete.py |   18 ++++++++++++++++++
->  1 files changed, 18 insertions(+), 0 deletions(-)
-> 
-> diff --git a/nfs4.1/server41tests/st_reclaim_complete.py b/nfs4.1/server41tests/st_reclaim_complete.py
-> index adb368d..f6baf09 100644
-> --- a/nfs4.1/server41tests/st_reclaim_complete.py
-> +++ b/nfs4.1/server41tests/st_reclaim_complete.py
-> @@ -63,3 +63,21 @@ def testOpenBeforeRECC(t, env):
->  
->      res = create_file(sess, fname, path, access=OPEN4_SHARE_ACCESS_BOTH)
->      check(res, NFS4ERR_GRACE)
-> +
-> +def testDoubleRECC(t, env):
-> +    """If RECLAIM_COMPLETE is done a second time, error
-> +       NFS4ERR_COMPLETE_ALREADY will be returned. rfc5661 18.51.4
-> +
-> +    FLAGS: reclaim_complete all
-> +    CODE: RECC4
-> +    """
-> +    name = env.testname(t)
-> +    c = env.c1.new_client(name)
-> +    sess = c.create_session()
-> +
-> +    res = sess.compound([op.reclaim_complete(FALSE)])
-> +    check(res)
-> +
-> +    # RECLAIM_COMPLETE again
-> +    res = sess.compound([op.reclaim_complete(FALSE)])
-> +    check(res, NFS4ERR_COMPLETE_ALREADY)
-> -- 
-> 1.7.6
-> 
-> 
+The above is less invasive and does have merits. It is a bit like the RCU_FREE
+pattern when at the end of the operation you see that you lost the race and needs
+to "back out". But in the hot path it is very cheap, (No reference counts no locking).
+And only in the very very rare event, Those that today we fail on, do you do
+the extra "backing out". So overall runtime and coding wise it might be the
+cheapest solution.
+
+Just my $0.017
+
+> --b.
+
+Boaz
