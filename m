@@ -1,89 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail2.shareable.org ([80.68.89.115]:47861 "EHLO
-	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751233Ab1HUUVD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 21 Aug 2011 16:21:03 -0400
-Date: Sun, 21 Aug 2011 21:20:58 +0100
-From: Jamie Lokier <jamie@shareable.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, Sylvain Rochet <gradator@gradator.net>,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: PROBLEM: 2.6.35.7 to 3.0 Inotify events missing
-Message-ID: <20110821202058.GF14899@jl-vm1.vm.bytemark.co.uk>
-References: <20101018223540.GA20730@gradator.net>
- <20110819230344.GA24784@gradator.net>
- <20110819233756.GI11512@jl-vm1.vm.bytemark.co.uk>
- <20110820012943.GD2203@ZenIV.linux.org.uk>
- <20110820030335.GA14899@jl-vm1.vm.bytemark.co.uk>
- <20110821170714.GB9296@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110821170714.GB9296@fieldses.org>
+Received: from ironboy.h-da.de ([141.100.10.230]:2931 "EHLO ironboy.h-da.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754701Ab1HZVIQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Aug 2011 17:08:16 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by mail.fbihome.de (Postfix) with ESMTP id BB583932BC
+	for <linux-nfs@vger.kernel.org>; Fri, 26 Aug 2011 22:58:22 +0200 (CEST)
+Received: from mail.fbihome.de ([127.0.0.1])
+	by localhost (stud1 [127.0.0.1]) (amavisd-new, port 10024) with ESMTP
+	id 27320-06 for <linux-nfs@vger.kernel.org>;
+	Fri, 26 Aug 2011 22:58:22 +0200 (CEST)
+Received: from users.fbihome.de (unknown [141.100.40.82])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mail.fbihome.de (Postfix) with ESMTP id 8467B932AF
+	for <linux-nfs@vger.kernel.org>; Fri, 26 Aug 2011 22:58:22 +0200 (CEST)
+Date: Fri, 26 Aug 2011 22:58:15 +0200 (CEST)
+From: Jan-Marek Glogowski <glogow@fbihome.de>
+To: linux-nfs@vger.kernel.org
+Subject: Problem useing groups containing spaces in NFSv4
+Message-ID: <alpine.DEB.2.02.1108262018320.28308@users.fbihome.de>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1736788632-1314392298=:5231"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-J. Bruce Fields wrote:
-> On Sat, Aug 20, 2011 at 04:03:35AM +0100, Jamie Lokier wrote:
-> > Well you still have your sense of humour...
-> > 
-> > I've never understood why you think it's about the file manager /
-> > desktop, or why you so strongly dislike the feature.  It originated
-> > there historically, but that is not it's primary use.
-> > 
-> > The implementation, sure, but you seem to dislike the very *principle*
-> > of subscribing to changes.
-> > 
-> > Every interesting use of inotify that I've seen is for some kind of
-> > cache support, to eliminate the majority of stat() calls, to remove
-> > disk I/O (no stat means no inode), to ensure correctness (st_mtime is
-> > coarse and unreliable),
-> 
-> It seems rather fragile as an mtime replacement unless it's also got
-> some sort of logging built in at a pretty low level so that you don't
-> lose events while you're not listening.
+--8323328-1736788632-1314392298=:5231
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
 
-It mainly serves as an accelerator for existing stat/mtime checks,
-though it does improve change detection in the last second or so since
-a previous change, which with mtime you have to make pessimistic or
-sometimes-incorrect assumptions.
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-Quite a few programs use inotify now because it saves a little power,
-and is a bit more responsive than, say, polling config files with stat().
+Hi
 
-For reliable filesystem tracking across times when not listening,
-especially if you don't trust the clock to have no backward steps (and
-you should not), a lazy change count file attribute would do.  It's
-been discussed but never implemented.
+I'm on Debian Squeeze using NFSv4 (2.6.32 / 1.1.2). Groups ares stored in 
+LDAP and one contains a space. If I want to chgrp a file, the chown system 
+call gets stuck and I get an kernel "hung_task" backtrace:
 
-> And of course events have to be defined very carefully to avoid problems
-> such as this one.
+[76920.364077] INFO: task chown:31709 blocked for more than 120 seconds.
+[76920.364781] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+[76920.365894] chown         D 0000000000000000     0 31709  28415 0x00000004
+[76920.365900]  ffffffff814611f0 0000000000000086 0000000000000000 ffff88000886de88
+[76920.365906]  ffff88000886dde8 ffffffff810f6211 000000000000f9e0 ffff88000886dfd8
+[76920.365910]  0000000000015780 0000000000015780 ffff88003ed269f0 ffff88003ed26ce8
+[76920.365914] Call Trace:
+[76920.365927]  [<ffffffff810f6211>] ? path_to_nameidata+0x15/0x37
+[76920.365933]  [<ffffffff811035cd>] ? mntput_no_expire+0x23/0xee
+[76920.365940]  [<ffffffff812fb99b>] ? __mutex_lock_common+0x122/0x192
+[76920.365945]  [<ffffffff810f9c1c>] ? user_path_at+0x52/0x79
+[76920.365948]  [<ffffffff812fbac3>] ? mutex_lock+0x1a/0x31
+[76920.365954]  [<ffffffff810ed746>] ? chown_common+0x5b/0x7c
+[76920.365958]  [<ffffffff812fe9f6>] ? do_page_fault+0x2e0/0x2fc
+[76920.365962]  [<ffffffff810ed982>] ? sys_fchownat+0x53/0x70
+[76920.365967]  [<ffffffff81010b42>] ? system_call_fastpath+0x16/0x1b
+[77240.440046] nfs: server buildserv-next not responding, still trying
+[95664.836086] nfs: server buildserv-next not responding, still trying
+[96568.599435] nfs: server buildserv-next OK
 
-This thread has revealed quite a big hole, I agree.  Apps cannot even
-use their normal filesystem-type whitelisting to catch this.  This is bad!
+So I backported the Debian nfs-utils 1.1.4 and updated the kernel to the 
+squeeze-backports version (2.6.39).
 
-It is not the first hole that was found in inotify/dnotify, but it's
-the first one I'm aware of that wasn't pointed out long ago and
-then quietly ignored :-/
+The backtrace is now gone, but the chgrp process is still stuck.
 
-> > and to avoid having to modify every
-> > application which might affect any file from which cached items are
-> > derived to explicitly notify all the applications which might use any
-> > of those files.
-> > 
-> > You like high performance, reliable and correct behaviour, and high
-> > scalability.  So I have never understood why you dislike the
-> > change-subscription principle so strongly, because it is a natural
-> > ally to those properties.
-> 
-> I don't think we've seen a design that does all of that yet.
+The client rpc.idmapd seems to be fine:
 
-Designs get discussed from time to time, over the decades.
+Aug 26 20:41:41 kvm-auth rpc.idmapd[973]: nfs4_gid_to_name: calling nsswitch->gid_to_name
+Aug 26 20:41:41 kvm-auth rpc.idmapd[973]: nfs4_gid_to_name: nsswitch->gid_to_name returned 0
+Aug 26 20:41:41 kvm-auth rpc.idmapd[973]: nfs4_gid_to_name: final return value is 0
+Aug 26 20:41:41 kvm-auth rpc.idmapd[973]: Client 0: (group) id "1094" -> name "Domain Administrators@tvc.muenchen.de"
 
-I think one of the reasons it doesn't go further is Al's well-known
-objection -- why put the effort in if you know it will be rejected.
-And a widespread view that it's just unimportant GUI file manager fluff.
-The latter also means dependability issues have tended not to be taken
-seriously.
+On the server side I see idmapd errors in the daemon.log (every 2 minutes, 
+so I guess the backtrace is just suppressed - same as the previous 120 sec 
+timeout):
 
--- Jamie
+Aug 26 20:27:48 buildserv-next rpc.idmapd[16848]: nfsdcb: authbuf=* authtype=group
+Aug 26 20:27:48 buildserv-next rpc.idmapd[16848]: nfsdcb: bad name in upcall
+
+There is an invalid check in the idmapd code, which converts the octal 
+encoded values back to the original characters (see attached patch).
+
+What I don't know is how to implement the "real" error handling. I don't 
+think the client process should be stuck forever, just because the server 
+fails to find the encoded name.
+
+Regards,
+
+Jan-Marek Glogowski
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
+
+iEYEARECAAYFAk5YCOcACgkQj6MK58wZA3dMkwCghsoYANdq8FZNYCP/C8X5UH+w
+hTEAnRN59WxzjHZ1dcDXIxu9G4hdFEOn
+=cYDx
+-----END PGP SIGNATURE-----
+--8323328-1736788632-1314392298=:5231
+Content-Type: TEXT/x-diff; name=idmapd-correctly-convert-octal-encoded-field-values.diff
+Content-Transfer-Encoding: BASE64
+Content-ID: <alpine.DEB.2.02.1108262258150.5231@users.fbihome.de>
+Content-Description: 
+Content-Disposition: attachment; filename=idmapd-correctly-convert-octal-encoded-field-values.diff
+
+aWRtYXBkOiBjb3JyZWN0bHkgY29udmVydCBvY3RhbCBlbmNvZGVkIGZpZWxkIHZhbHVlcw0KDQpX
+ZSB3YW50IHRvIGNoZWNrIGZvciAodW5zaWduZWQgY2hhcikgLTEuDQoNCi0tLSBuZnMtdXRpbHMt
+MS4yLjQub3JpZy91dGlscy9pZG1hcGQvaWRtYXBkLmMNCisrKyBuZnMtdXRpbHMtMS4yLjQvdXRp
+bHMvaWRtYXBkL2lkbWFwZC5jDQpAQCAtOTI1LDkgKzkyNSw5IEBAIGdldGZpZWxkKGNoYXIgKipi
+cHAsIGNoYXIgKmZsZCwgc2l6ZV90IGYNCiAJCWlmICgqYnAgPT0gJ1xcJykgew0KIAkJCWlmICgo
+biA9IHNzY2FuZihicCwgIlxcJTAzbyIsICZ2YWwpKSAhPSAxKQ0KIAkJCQlyZXR1cm4gKC0xKTsN
+Ci0JCQlpZiAodmFsID4gKGNoYXIpLTEpDQorCQkJaWYgKHZhbCA+IFVDSEFSX01BWCkNCiAJCQkJ
+cmV0dXJuICgtMSk7DQotCQkJKmZsZCsrID0gKGNoYXIpdmFsOw0KKwkJCSpmbGQrKyA9IHZhbDsN
+CiAJCQlicCArPSA0Ow0KIAkJfSBlbHNlIHsNCiAJCQkqZmxkKysgPSAqYnA7DQo=
+
+--8323328-1736788632-1314392298=:5231--
