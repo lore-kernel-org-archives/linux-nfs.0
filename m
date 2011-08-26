@@ -1,67 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:46183 "EHLO
+Received: from natasha.panasas.com ([67.152.220.90]:41794 "EHLO
 	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753812Ab1HVXwZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Aug 2011 19:52:25 -0400
-Message-ID: <4E52EBAC.8070908@panasas.com>
-Date: Mon, 22 Aug 2011 16:52:12 -0700
+	with ESMTP id S1755492Ab1HZVfl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Aug 2011 17:35:41 -0400
+Message-ID: <4E58119A.3090403@panasas.com>
+Date: Fri, 26 Aug 2011 14:35:22 -0700
 From: Boaz Harrosh <bharrosh@panasas.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: Benny Halevy <bhalevy@tonian.com>, <linux-nfs@vger.kernel.org>,
-        Peng Tao <peng_tao@emc.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Fred Isaman <iisaman@netapp.com>
-Subject: Re: [PATCH] pnfsblock: init pg_bsize properly
-References: <1313197450-4595-1-git-send-email-bergwolf@gmail.com> <4E4ADBA1.1000005@panasas.com> <4E4B6A81.2010204@tonian.com> <CA+a=Yy6BSmEWurZuFN-8axTS0gfeXaguw5tcayeVjJmcFAztOQ@mail.gmail.com>
-In-Reply-To: <CA+a=Yy6BSmEWurZuFN-8axTS0gfeXaguw5tcayeVjJmcFAztOQ@mail.gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "J. Bruce Fields" <bfields@redhat.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSD: nfsd4_open Avoid race with grace period expiration
+References: <4E45C164.1070604@panasas.com> <20110826203924.GC17196@fieldses.org>
+In-Reply-To: <20110826203924.GC17196@fieldses.org>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 08/17/2011 02:35 AM, Peng Tao wrote:
-> Hi, Benny and Boaz,
+On 08/26/2011 01:39 PM, J. Bruce Fields wrote:
+> On Fri, Aug 12, 2011 at 05:12:20PM -0700, Boaz Harrosh wrote:
+>>
+>> locks_in_grace() was called twice one for the "yes" case second
+>> for the "no" case. If the status changes between these two calls
+>> the Server would do the wrong thing. Sample it only once.
 > 
-<snip>
+> I don't see how this fixes any bug.  The only thing that could happen in
+> between those two checks is that the grace period could end.  In that
+> case op_claim_type must be NFS4_OPEN_CLAIM_PREVIOUS (otherwise we would
+> have jumped to out and not hit the second case).  The second condition
+> will therefore be true and we'll fail with err_no_grace.  I don't see
+> that is incorrect, as in fact the grace period is now over.
 
-> In pnfs_do_multiple_reads/pnfs_do_multiple_writes, data->mds_ops will
-> be set as desc->pg_rpc_callops, which is determined in
-> nfs_generic_flush/nfs_generic_pagein according to desc->pg_bsize. For
-> blocklayout, we wouldn't want to set data->mds_ops to
-> partial_read/write ops, so I write the patch to use lseg length as
-> pg_bsize.
+OK You are right it is not NFS incorrect. But I still think a single
+sample is better coding practice. no? Though I agree that the commit log
+wording should be changed.
+
+What about the other part of the patch? The print. Should I send a separate
+patch for that?
+
+> 
+> There may be a different bug: if the grace period ends *any time* after
+> locks_in_grace() is called but before we actually do the lock or open,
+> then a reclaim could be incorrectly granted.  The state lock prevents
+> this happening between two nfsv4 clients, but it could happen between
+> a v4 client and a lockd client, I think.  In more detail:
+> 
+> 
+> 	lockd client		NFSv4 client
+> 	------------		------------
+> 
+> 				reclaim request passes grace check
+> 		-- grace period ends --
+> 	gets conflicting lock
+> 	drops conflicting lock
+> 				reclaim request granted
+> 
+> One fix might be to take some sort of reference count as long as you're
+> processing a reclaim request, and not end the grace period till that
+> count goes to zero.
+> 
+> Another might be push the grace checks down into the core lock code and
+> make sure there's a lock that provides mutual exclusion between the
+> locks_end_grace() call and lock reclaims.
 > 
 
-Do you mean in the case where MDS sets (pg_bsize < PAGE_SIZE) ?
+You might get by, by rechecking the grace period at the end of the
+processing and if passed issue a "reclaim request failed" anyway.
+So the first check is only for optimization but the final disposition
+is the post-check. (Just as if you dropped that refcount above)
 
-Right, that is a problem. (Theoretically, because the pNFSD-Linux server
-does not do that. Do you have a Server that does?)
-
-> LD can override pg_bsize in pg_init because
-> nfs_pageio_reset_read_mds/nfs_pageio_reset_write_mds will reset it to
-> server rsize/wsize if pnfs is not tried.
-> 
-
-So if it is the "pg_bsize < PAGE_SIZE" but pNFS-IO case then I don't
-like your patch, at all. We should fix the generic code to behave
-properly, and not let LDs hack their way out. (For example what about
-objects and files LDs)
-
-There is a few ways you can fix the generic code. One is override the
-desc->pg_rpc_callops for the pNFS case to always be the same one. Or
-override the test for (pg_bsize < PAGE_SIZE) in the pNFS case if we have
-a lseg. Or some other clean way.
-
-But please don't fix it like that, inside each LD driver.
-
-[ Trond Fred
-  One thing I do not understand about the files-layout operations. You
-  have explained in the passed that r/wsize sent from the MDS is also the
-  same one for each DS. So if we take an example of rsize beeing 2MB
-  and there is a stripping of 2 DS for that layout.(Say strip_unit==rsize)
-  Then we need to read 1/2 of that page from one DS and the 2/2 half from the
-  second. Will current partial_read/write work if going through files-LD?
-]
-
-Thanks
 Boaz
+
+> --b.
+> 
+> 
