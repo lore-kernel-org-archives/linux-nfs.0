@@ -1,168 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:52538 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752014Ab1HZARQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Aug 2011 20:17:16 -0400
-Message-ID: <4E56E5D5.2070701@panasas.com>
-Date: Thu, 25 Aug 2011 17:16:21 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Jim Rees <rees@umich.edu>
-CC: Peng Tao <bergwolf@gmail.com>, "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        Andy Adamson <andros@netapp.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Benny Halevy <bhalevy@tonian.com>, <linux-nfs@vger.kernel.org>,
-        Peng Tao <peng_tao@emc.com>
-Subject: Re: [PATCH] pnfsblock: init pg_bsize properly
-References: <1313197450-4595-1-git-send-email-bergwolf@gmail.com> <4E4ADBA1.1000005@panasas.com> <4E4B6A81.2010204@tonian.com> <CA+a=Yy6BSmEWurZuFN-8axTS0gfeXaguw5tcayeVjJmcFAztOQ@mail.gmail.com> <4E52EBAC.8070908@panasas.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AC9DF79@SACMVEXC2-PRD.hq.netapp.com> <CA+a=Yy4gm3789v0w-dGpZO1w9RrpC7ELgeM9=qNsf4tYigdw2A@mail.gmail.com> <4E541945.6@panasas.com> <20110825201523.GA6901@merit.edu>
-In-Reply-To: <20110825201523.GA6901@merit.edu>
-Content-Type: text/plain; charset="UTF-8"
+Received: from fieldses.org ([174.143.236.118]:40655 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752522Ab1HZUj1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Aug 2011 16:39:27 -0400
+Date: Fri, 26 Aug 2011 16:39:24 -0400
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSD: nfsd4_open Avoid race with grace period
+ expiration
+Message-ID: <20110826203924.GC17196@fieldses.org>
+References: <4E45C164.1070604@panasas.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E45C164.1070604@panasas.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 08/25/2011 01:15 PM, Jim Rees wrote:
+On Fri, Aug 12, 2011 at 05:12:20PM -0700, Boaz Harrosh wrote:
 > 
-> We discussed this on the call today.  Boaz is going to write a brief
-> description of how to fix this in the generic layer, then I'm going to
-> implement it.
+> locks_in_grace() was called twice one for the "yes" case second
+> for the "no" case. If the status changes between these two calls
+> the Server would do the wrong thing. Sample it only once.
 
-For blocks and objects we need something like the below [1].
-(Done only for reads)
+I don't see how this fixes any bug.  The only thing that could happen in
+between those two checks is that the grace period could end.  In that
+case op_claim_type must be NFS4_OPEN_CLAIM_PREVIOUS (otherwise we would
+have jumped to out and not hit the second case).  The second condition
+will therefore be true and we'll fail with err_no_grace.  I don't see
+that is incorrect, as in fact the grace period is now over.
 
-But I suspect I now broke files-LD. For files-LD what it actually
-needs, (As I understood from trond) Is the same code like today
-but with a similar patch as Peng's but for files-LD that sets
-pg_bsize to the minimum of w/rsize and stripe_unit.
+There may be a different bug: if the grace period ends *any time* after
+locks_in_grace() is called but before we actually do the lock or open,
+then a reclaim could be incorrectly granted.  The state lock prevents
+this happening between two nfsv4 clients, but it could happen between
+a v4 client and a lockd client, I think.  In more detail:
 
-This is mainly because it needs that nfs_readpage_result/release_partial
-which waits for all RPCs before it actually calls nfs_end_page_writeback
-(PageUpTodate for reads) on that page that was shared between multiple
-requests.
 
-So I guess we need to do [2] option below (Only done for writes). 
-+ With added code to set this bit_flag in objects and blocks.
-  (Just like PNFS_LAYOUTRET_ON_SETATTR)
-+ files-LD code to override pnfs_generic_pg_init_read/write and
-  set pg_bsize to min(pg_bsize, stripe_unit). (Can be its own patch)
-+ Define empty pnfs_ld_ignore_rwsize() for !CONFIG_NFS_V4_1
+	lockd client		NFSv4 client
+	------------		------------
 
----------------------------------------------------------------
-[1] (only reads)
+				reclaim request passes grace check
+		-- grace period ends --
+	gets conflicting lock
+	drops conflicting lock
+				reclaim request granted
 
-   Do not use nfs_pagein_multi() for the pNFS case ...
+One fix might be to take some sort of reference count as long as you're
+processing a reclaim request, and not end the grace period till that
+count goes to zero.
 
------
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index ab12913..a4d0191 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -296,7 +296,7 @@ extern int nfs_access_cache_shrinker(struct shrinker *shrink,
- extern int nfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
- 			     const struct rpc_call_ops *call_ops);
- extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
--extern int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
-+extern int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
- 		struct list_head *head);
- 
- extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index e550e88..b7e3e41 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1356,7 +1356,7 @@ struct pnfs_layout_segment *
- 	LIST_HEAD(head);
- 	int ret;
- 
--	ret = nfs_generic_pagein(desc, &head);
-+	ret = nfs_pagein_one(desc, &head);
- 	if (ret != 0) {
- 		put_lseg(desc->pg_lseg);
- 		desc->pg_lseg = NULL;
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 2171c04..ce5982a 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -336,7 +336,7 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc, struct list_head
- 	return -ENOMEM;
- }
- 
--static int nfs_pagein_one(struct nfs_pageio_descriptor *desc, struct list_head *res)
-+int nfs_pagein_one(struct nfs_pageio_descriptor *desc, struct list_head *res)
- {
- 	struct nfs_page		*req;
- 	struct page		**pages;
-@@ -369,19 +369,15 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc, struct list_head *
- 	return ret;
- }
- 
--int nfs_generic_pagein(struct nfs_pageio_descriptor *desc, struct list_head *head)
--{
--	if (desc->pg_bsize < PAGE_CACHE_SIZE)
--		return nfs_pagein_multi(desc, head);
--	return nfs_pagein_one(desc, head);
--}
--
- static int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
- {
- 	LIST_HEAD(head);
- 	int ret;
- 
--	ret = nfs_generic_pagein(desc, &head);
-+	if (desc->pg_bsize < PAGE_CACHE_SIZE)
-+		ret = nfs_pagein_multi(desc, &head);
-+	else
-+		ret = nfs_pagein_one(desc, &head);
- 	if (ret == 0)
- 		ret = nfs_do_multiple_reads(&head, desc->pg_rpc_callops);
- 	return ret;
+Another might be push the grace checks down into the core lock code and
+make sure there's a lock that provides mutual exclusion between the
+locks_end_grace() call and lock reclaims.
 
----------------------------------------------------------------
-[2] (only writes)
-  
-     Do not use nfs_pagein_multi() for layout drivers that
-     must not use it. (Objects and Blocks) ...
+--b.
 
--------
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 01cbfd5..d32538a 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -68,6 +68,8 @@ enum {
- enum layoutdriver_policy_flags {
- 	/* Should the pNFS client commit and return the layout upon a setattr */
- 	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
-+	/* Do not use nfs_xxx_partial_ops */
-+	PNFS_IGNOR_RWSIZE		= 2 << 0,
- };
- 
- struct nfs4_deviceid_node;
-@@ -315,6 +317,15 @@ static inline void pnfs_clear_request_commit(struct nfs_page *req)
- 		PNFS_LAYOUTRET_ON_SETATTR;
- }
- 
-+static inline bool
-+pnfs_ld_ignore_rwsize(struct inode *inode)
-+{
-+	if (!pnfs_enabled_sb(NFS_SERVER(inode)))
-+		return false;
-+	return NFS_SERVER(inode)->pnfs_curr_ld->flags &
-+		PNFS_IGNOR_RWSIZE;
-+}
-+
- static inline int pnfs_return_layout(struct inode *ino)
- {
- 	struct nfs_inode *nfsi = NFS_I(ino);
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index b39b37f..6b25073 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1029,7 +1029,8 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc, struct list_head *r
- 
- int nfs_generic_flush(struct nfs_pageio_descriptor *desc, struct list_head *head)
- {
--	if (desc->pg_bsize < PAGE_CACHE_SIZE)
-+	if (!pnfs_ld_ignore_rwsize(desc->pg_inode) &&
-+	    desc->pg_bsize < PAGE_CACHE_SIZE)
- 		return nfs_flush_multi(desc, head);
- 	return nfs_flush_one(desc, head);
- }
+
+> 
+> Also Add a DMESG print in the case of a bad (old) client that does
+> *not* send a RECLAIM_COMPLETE before doing new opens. The admin might
+> want to know it has an unsupported client at hand. Because in this
+> case with our server the client will get stuck in an endless loop.
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/nfsd/nfs4proc.c |   23 ++++++++++++++++-------
+>  1 files changed, 16 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index a68384f..efc6369 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -301,8 +301,12 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	 */
+>  	if (nfsd4_has_session(cstate) &&
+>  	    !cstate->session->se_client->cl_firststate &&
+> -	    open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
+> +	    open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS) {
+> +		printk(KERN_INFO
+> +			"NFSD: nfsd4_open: Broken client, "
+> +			"open sent before RECLAIM_COMPLETE done\n");
+>  		return nfserr_grace;
+> +	}
+>  
+>  	if (nfsd4_has_session(cstate))
+>  		copy_clientid(&open->op_clientid, cstate->session);
+> @@ -333,12 +337,17 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  
+>  	/* Openowner is now set, so sequence id will get bumped.  Now we need
+>  	 * these checks before we do any creates: */
+> -	status = nfserr_grace;
+> -	if (locks_in_grace() && open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
+> -		goto out;
+> -	status = nfserr_no_grace;
+> -	if (!locks_in_grace() && open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS)
+> -		goto out;
+> +	if (locks_in_grace()) {
+> +		if (open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS) {
+> +			status = nfserr_grace;
+> +			goto out;
+> +		}
+> +	} else {
+> +		if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS) {
+> +			status = nfserr_no_grace;
+> +			goto out;
+> +		}
+> +	}
+>  
+>  	switch (open->op_claim_type) {
+>  		case NFS4_OPEN_CLAIM_DELEGATE_CUR:
+> -- 
+> 1.7.6
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
