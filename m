@@ -1,107 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from frankvm.xs4all.nl ([83.163.148.79]:60215 "EHLO
-	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752359Ab1HDRYy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2011 13:24:54 -0400
-Date: Thu, 4 Aug 2011 19:24:52 +0200
-From: Frank van Maarseveen <frankvm@frankvm.com>
+Received: from natasha.panasas.com ([67.152.220.90]:46020 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750919Ab1H0CHz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Aug 2011 22:07:55 -0400
+Message-ID: <4E585163.7070108@panasas.com>
+Date: Fri, 26 Aug 2011 19:07:31 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [NLM] fcntl(F_SETLKW) yields -ENOLCK when grace period expires.
-Message-ID: <20110804172452.GA18087@janus>
-References: <20110804103018.GA11727@janus>
- <20110804163452.GE12445@fieldses.org>
- <20110804164313.GA17572@janus>
- <20110804164913.GG12445@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110804164913.GG12445@fieldses.org>
+CC: "J. Bruce Fields" <bfields@redhat.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] nfsd4: fix failure to end nfsd4 grace period
+References: <4E45C594.1030609@panasas.com> <20110826201910.GB17196@fieldses.org> <4E5838E0.4090703@panasas.com> <20110827004618.GG18699@fieldses.org> <20110827004708.GA19967@fieldses.org> <20110827004736.GB19967@fieldses.org>
+In-Reply-To: <20110827004736.GB19967@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Aug 04, 2011 at 12:49:13PM -0400, J. Bruce Fields wrote:
-> On Thu, Aug 04, 2011 at 06:43:13PM +0200, Frank van Maarseveen wrote:
-> > On Thu, Aug 04, 2011 at 12:34:52PM -0400, J. Bruce Fields wrote:
-> > > On Thu, Aug 04, 2011 at 12:30:19PM +0200, Frank van Maarseveen wrote:
-> > > > Both client- and server run 2.6.39.3, NFSv3 over UDP (without the
-> > > > relock_filesystem patch proposed earlier).
-> > > > 
-> > > > A second client has an exclusive lock on a file on the server. The
-> > > > client under test calls fcntl(F_SETLKW) to wait for the same exclusive
-> > > > lock. Wireshark sees NLM V4 LOCK calls resulting in NLM_BLOCKED.
-> > > > 
-> > > > Next the server is rebooted. The second client recovers the lock
-> > > > correctly. The client under test now receives NLM_DENIED_GRACE_PERIOD for
-> > > > every NLM V4 LOCK request resulting from the waiting fcntl(F_SETLKW). When
-> > > > this changes to NLM_BLOCKED after grace period expiration the fcntl
-> > > > returns -ENOLCK ("No locks available.") instead of continuing to wait.
-> > > 
-> > > So that sounds like a client bug, and correct behavior from the server
-> > > (assuming the second client was still holding the lock throughout).
-> > 
-> > yes.
-> > 
-> > > 
-> > > > server:/proc/locks shows two entries for the file after the -ENOLCK. When
-> > > > the second client gives up its lock because the program running there
-> > > > is killed one entry in server:/proc/locks remains indefinately: as a
-> > > > result no NFS client can lock the file anymore.
-> > > 
-> > > But that sounds like a server bug--what do the two entries look like?
-> > 
-> > I think the server assumes correct client behavior; the client under
-> > test resulted in a '->' prefixed entry. The fcntl at the client just
-> > shouldn't have returned yet.
+On 08/26/2011 05:47 PM, J. Bruce Fields wrote:
+> From: Boaz Harrosh <bharrosh@panasas.com>
 > 
-> Oh, right, so did you see a granted callback returned to the client?
+> Even if we fail to write a recovery record, we should still mark the
+> client as having acquired its first state.  Otherwise we leave 4.1
+> clients with indefinite ERR_GRACE returns.
+> 
+> However, an inability to write stable storage records may cause failures
+> of reboot recovery, and the problem should still be brought to the
+> server administrator's attention.
+> 
+> So, make sure the error is logged.
+> 
+> These errors shouldn't normally be triggered on a corectly functioning
+> server--this isn't a case where a misconfigured client could spam the
+> logs.
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/nfsd/nfs4recover.c |   15 ++++++++-------
+>  1 files changed, 8 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+> index 3e6ebcf..ed083b9 100644
+> --- a/fs/nfsd/nfs4recover.c
+> +++ b/fs/nfsd/nfs4recover.c
+> @@ -130,6 +130,7 @@ nfsd4_create_clid_dir(struct nfs4_client *clp)
+>  	if (!rec_file || clp->cl_firststate)
+>  		return 0;
+>  
+> +	clp->cl_firststate = 1;
+>  	status = nfs4_save_creds(&original_cred);
+>  	if (status < 0)
+>  		return status;
+> @@ -144,10 +145,8 @@ nfsd4_create_clid_dir(struct nfs4_client *clp)
+>  		goto out_unlock;
+>  	}
+>  	status = -EEXIST;
+> -	if (dentry->d_inode) {
+> -		dprintk("NFSD: nfsd4_create_clid_dir: DIRECTORY EXISTS\n");
+> +	if (dentry->d_inode)
+>  		goto out_put;
+> -	}
+>  	status = mnt_want_write(rec_file->f_path.mnt);
+>  	if (status)
+>  		goto out_put;
+> @@ -157,12 +156,14 @@ out_put:
+>  	dput(dentry);
+>  out_unlock:
+>  	mutex_unlock(&dir->d_inode->i_mutex);
+> -	if (status == 0) {
+> -		clp->cl_firststate = 1;
+> +	if (status == 0)
+>  		vfs_fsync(rec_file, 0);
+> -	}
+> +	else
+> +		printk(KERN_ERR "NFSD: failed to write recovery record"
+> +				" (err %d); please check that %s exists"
+> +				" and is writeable", status,
+> +				user_recovery_dirname);
 
-Hmm no, maybe it is a server bug. These are the final request and reply
-(which result in the incorrect -ENOLCK for F_SETLKW at the client under
-test), decoded by wireshark:
+Whooff, hey thank you bruce, alot. I'm so sorry I assumed the name was
+readily available only I have hard time finding it in 30 seconds of trying.
+(So it was me, that's lazy). I did not mean for this to be so much work.
 
-No.     Time        Source                Destination           Protocol Info
-    529 225.386189  172.17.1.124          172.17.1.49           NLM      V4 LOCK Call (Reply In 530) FH:0xb17f38ea svid:10 pos:0-0
+But the up side is that I'm sure some future admin's lives will be relieved
+and that's Karma points ;-)
 
-Frame 529: 246 bytes on wire (1968 bits), 246 bytes captured (1968 bits)
-Network Lock Manager Protocol
-    [Program Version: 4]
-    [V4 Procedure: LOCK (2)]
-    cookie: <DATA>
-        length: 4
-        contents: <DATA>
-    block: Yes
-    exclusive: Yes
-    lock
-        caller_name: lokka.tasking.nl
-            length: 16
-            contents: lokka.tasking.nl
-        fh
-            length: 28
-            [hash (CRC-32): 0xb17f38ea]
-            decode type as: unknown
-            filehandle: 01000601e66f5c256cb3414eba710fcd882a67201b000000...
-        owner: <DATA>
-            length: 19
-            contents: <DATA>
-            fill bytes: opaque data
-        svid: 10
-        l_offset: 0
-        l_len: 0
-    reclaim: No
-    state: 87
+Thanks very much and ACK on both patches. 
+Boaz
 
-No.     Time        Source                Destination           Protocol Info
-    530 225.386368  172.17.1.49           172.17.1.124          NLM      V4 LOCK Reply (Call In 529) NLM_BLOCKED
-
-Frame 530: 78 bytes on wire (624 bits), 78 bytes captured (624 bits)
-Network Lock Manager Protocol
-    [Program Version: 4]
-    [V4 Procedure: LOCK (2)]
-    cookie: <DATA>
-        length: 4
-        contents: <DATA>
-    stat: NLM_BLOCKED (3)
-
-
--- 
-Frank
+>  	nfs4_reset_creds(original_cred);
+> -	dprintk("NFSD: nfsd4_create_clid_dir returns %d\n", status);
+>  	return status;
+>  }
+>  
