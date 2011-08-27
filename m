@@ -1,30 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from hub024-nj-2.exch024.serverdata.net ([206.225.165.117]:61978
-	"EHLO HUB024-nj-2.exch024.serverdata.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751020Ab1HPILn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2011 04:11:43 -0400
-Message-ID: <4E4A23E2.3020103@gluster.com>
-Date: Tue, 16 Aug 2011 13:31:38 +0530
-From: Shehjar Tikoo <shehjart@gluster.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: Expected response from server not supporting v4
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Received: from fieldses.org ([174.143.236.118]:35973 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752920Ab1H0AqV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Aug 2011 20:46:21 -0400
+Date: Fri, 26 Aug 2011 20:46:18 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC] nfsd4: This is: "fix failure to end nfsd4 grace period"
+ ++
+Message-ID: <20110827004618.GG18699@fieldses.org>
+References: <4E45C594.1030609@panasas.com>
+ <20110826201910.GB17196@fieldses.org>
+ <4E5838E0.4090703@panasas.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E5838E0.4090703@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi All
+On Fri, Aug 26, 2011 at 05:22:56PM -0700, Boaz Harrosh wrote:
+> Which of the variables has the directory path?
+> Would we like to add that information in the print. From my experience
+> alot of times those type of problems is the mis-communication of
+> the path names, and it helps to see what name was actually attempted.
 
-The following thread discusses the behaviour when the client does not 
-support v4:
-http://thread.gmane.org/gmane.linux.nfs/36928/
+Yeah, I wanted to then realized I'd have to muck about with some other
+stuff to get access to the directory name.
 
-OTOH, when the server does not support v4, for eg. Gluster NFS server, 
-where we support only v3, I believe v4 client will attempt to connect 
-directly to port 2049 and receive connection failure errors on TCP. Does 
-the current nfs client handle the situation where this results in a timeout 
-for mount? We're hearing  a report of a timeout occurring on the RHEL6 
-client because the server does not have v4 support. Could someone please 
-shed some light on how this behaviour is handled at present? Thanks
+Curse these patch reviewers, catching me being lazy.
 
--Shehjar
+--b.
