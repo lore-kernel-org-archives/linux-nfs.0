@@ -1,339 +1,341 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:42142 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752626Ab1HQJ5a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Aug 2011 05:57:30 -0400
-Subject: [PATCH 4 2/4] Return 32/64-bit dir name hash according to usage type
-To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
-        adilger@whamcloud.com
-Date: Wed, 17 Aug 2011 11:57:28 +0200
-Message-ID: <20110817095728.1879649.15453.stgit@fsdevel3>
-In-Reply-To: <20110817095717.1879649.41075.stgit@fsdevel3>
-References: <20110817095717.1879649.41075.stgit@fsdevel3>
-Content-Type: text/plain; charset="utf-8"
+Received: from rcsinet15.oracle.com ([148.87.113.117]:19763 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751666Ab1H0WEh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Aug 2011 18:04:37 -0400
+Subject: Re: [PATCH] sunrpc: Add scope id to svc_addr_u for IPv6 LINKLOCAL address
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20110826224351.GB18699@fieldses.org>
+Date: Sat, 27 Aug 2011 18:03:42 -0400
+Cc: Mi Jinlong <mijinlong@cn.fujitsu.com>, NFS <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Jeff Layton <jlayton@redhat.com>
+Message-Id: <EAF1EF05-F63E-4416-9956-37AE2CA86B74@oracle.com>
+References: <4E4F8B5D.6060404@cn.fujitsu.com> <20110822192620.GB16261@fieldses.org> <3CA77E10-4099-4DDB-BE7A-88395CC34C93@oracle.com> <20110822194459.GC16261@fieldses.org> <4E5492FD.8040903@cn.fujitsu.com> <16175F9F-67BA-4406-8A2A-936814D56E0F@oracle.com> <36B5EA7A-21EF-4E82-BF97-F657AEC5ED3B@oracle.com> <4E57440F.90808@cn.fujitsu.com> <20110826224351.GB18699@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Fan Yong <yong.fan@whamcloud.com>
+I don't see any obvious problems with it.  It would be nice to see this patch in operation on an IPv6-capable network.
 
-Traditionally ext2/3/4 has returned a 32-bit hash value from llseek()
-to appease NFSv2, which can only handle a 32-bit cookie for seekdir()
-and telldir().  However, this causes problems if there are 32-bit hash
-collisions, since the NFSv2 server can get stuck resending the same
-entries from the directory repeatedly.
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 
-Allow ext4 to return a full 64-bit hash (both major and minor) for
-telldir to decrease the chance of hash collisions.  This still needs
-integration on the NFS side.
+On Aug 26, 2011, at 6:43 PM, J. Bruce Fields wrote:
 
-Patch-updated-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-(blame me if something is not correct)
+> Jeff and Chuck, you're OK with the revised version?
+> 
+> --b.
+> 
+> On Fri, Aug 26, 2011 at 02:58:23PM +0800, Mi Jinlong wrote:
+>>> From 84420475509ccc39ac8899f6f63140879a5278b6 Mon Sep 17 00:00:00 2001
+>> From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+>> Date: Mon, 26 Aug 2011 13:22:39 +0800
+>> Subject: [PATCH v2] SUNRPC: Replace svc_addr_u by sockaddr_storage
+>> 
+>> For IPv6 local address, lockd can not callback to client for 
+>> missing scope id when binding address at inet6_bind:
+>> 
+>> 324       if (addr_type & IPV6_ADDR_LINKLOCAL) {
+>> 325               if (addr_len >= sizeof(struct sockaddr_in6) &&
+>> 326                   addr->sin6_scope_id) {
+>> 327                       /* Override any existing binding, if another one
+>> 328                        * is supplied by user.
+>> 329                        */
+>> 330                       sk->sk_bound_dev_if = addr->sin6_scope_id;
+>> 331               }
+>> 332 
+>> 333               /* Binding to link-local address requires an interface */
+>> 334               if (!sk->sk_bound_dev_if) {
+>> 335                       err = -EINVAL;
+>> 336                       goto out_unlock;
+>> 337               }
+>> 
+>> Replacing svc_addr_u by sockaddr_storage, let rqstp->rq_daddr contains more info
+>> besides address.
+>> 
+>> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+>> ---
+>> fs/lockd/host.c             |   25 ++-----------------------
+>> fs/nfsd/nfs4state.c         |   16 +---------------
+>> include/linux/sunrpc/clnt.h |    3 ++-
+>> include/linux/sunrpc/svc.h  |   30 +++++++++++++++++++++---------
+>> net/sunrpc/svc_xprt.c       |   13 ++-----------
+>> net/sunrpc/svcsock.c        |   23 +++++++++++++++++------
+>> 6 files changed, 45 insertions(+), 65 deletions(-)
+>> 
+>> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+>> index b7c99bf..6f29836 100644
+>> --- a/fs/lockd/host.c
+>> +++ b/fs/lockd/host.c
+>> @@ -316,14 +316,8 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+>> 	struct hlist_node *pos;
+>> 	struct nlm_host	*host = NULL;
+>> 	struct nsm_handle *nsm = NULL;
+>> -	struct sockaddr_in sin = {
+>> -		.sin_family	= AF_INET,
+>> -	};
+>> -	struct sockaddr_in6 sin6 = {
+>> -		.sin6_family	= AF_INET6,
+>> -	};
+>> -	struct sockaddr *src_sap;
+>> -	size_t src_len = rqstp->rq_addrlen;
+>> +	struct sockaddr *src_sap = svc_daddr(rqstp);
+>> +	size_t src_len = rqstp->rq_daddrlen;
+>> 	struct nlm_lookup_host_info ni = {
+>> 		.server		= 1,
+>> 		.sap		= svc_addr(rqstp),
+>> @@ -340,21 +334,6 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+>> 
+>> 	mutex_lock(&nlm_host_mutex);
+>> 
+>> -	switch (ni.sap->sa_family) {
+>> -	case AF_INET:
+>> -		sin.sin_addr.s_addr = rqstp->rq_daddr.addr.s_addr;
+>> -		src_sap = (struct sockaddr *)&sin;
+>> -		break;
+>> -	case AF_INET6:
+>> -		ipv6_addr_copy(&sin6.sin6_addr, &rqstp->rq_daddr.addr6);
+>> -		src_sap = (struct sockaddr *)&sin6;
+>> -		break;
+>> -	default:
+>> -		dprintk("lockd: %s failed; unrecognized address family\n",
+>> -			__func__);
+>> -		goto out;
+>> -	}
+>> -
+>> 	if (time_after_eq(jiffies, next_gc))
+>> 		nlm_gc_hosts();
+>> 
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 3787ec1..07a18a5 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -1173,20 +1173,6 @@ find_unconfirmed_client_by_str(const char *dname, unsigned int hashval)
+>> 	return NULL;
+>> }
+>> 
+>> -static void rpc_svcaddr2sockaddr(struct sockaddr *sa, unsigned short family, union svc_addr_u *svcaddr)
+>> -{
+>> -	switch (family) {
+>> -	case AF_INET:
+>> -		((struct sockaddr_in *)sa)->sin_family = AF_INET;
+>> -		((struct sockaddr_in *)sa)->sin_addr = svcaddr->addr;
+>> -		return;
+>> -	case AF_INET6:
+>> -		((struct sockaddr_in6 *)sa)->sin6_family = AF_INET6;
+>> -		((struct sockaddr_in6 *)sa)->sin6_addr = svcaddr->addr6;
+>> -		return;
+>> -	}
+>> -}
+>> -
+>> static void
+>> gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_rqst *rqstp)
+>> {
+>> @@ -1218,7 +1204,7 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_r
+>> 
+>> 	conn->cb_prog = se->se_callback_prog;
+>> 	conn->cb_ident = se->se_callback_ident;
+>> -	rpc_svcaddr2sockaddr((struct sockaddr *)&conn->cb_saddr, expected_family, &rqstp->rq_daddr);
+>> +	memcpy(&conn->cb_saddr, &rqstp->rq_daddr, rqstp->rq_daddrlen);
+>> 	return;
+>> out_err:
+>> 	conn->cb_addr.ss_family = AF_UNSPEC;
+>> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+>> index db7bcaf..1529a80 100644
+>> --- a/include/linux/sunrpc/clnt.h
+>> +++ b/include/linux/sunrpc/clnt.h
+>> @@ -218,7 +218,8 @@ static inline bool __rpc_cmp_addr6(const struct sockaddr *sap1,
+>> {
+>> 	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sap1;
+>> 	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sap2;
+>> -	return ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr);
+>> +	return ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr)
+>> +		&& (sin1->sin6_scope_id == sin2->sin6_scope_id);
+>> }
+>> 
+>> static inline bool __rpc_copy_addr6(struct sockaddr *dst,
+>> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+>> index 223588a..3bc0dc9 100644
+>> --- a/include/linux/sunrpc/svc.h
+>> +++ b/include/linux/sunrpc/svc.h
+>> @@ -212,11 +212,6 @@ static inline void svc_putu32(struct kvec *iov, __be32 val)
+>> 	iov->iov_len += sizeof(__be32);
+>> }
+>> 
+>> -union svc_addr_u {
+>> -    struct in_addr	addr;
+>> -    struct in6_addr	addr6;
+>> -};
+>> -
+>> /*
+>>  * The context of a single thread, including the request currently being
+>>  * processed.
+>> @@ -225,8 +220,12 @@ struct svc_rqst {
+>> 	struct list_head	rq_list;	/* idle list */
+>> 	struct list_head	rq_all;		/* all threads list */
+>> 	struct svc_xprt *	rq_xprt;	/* transport ptr */
+>> +
+>> 	struct sockaddr_storage	rq_addr;	/* peer address */
+>> 	size_t			rq_addrlen;
+>> +	struct sockaddr_storage	rq_daddr;	/* dest addr of request
+>> +						 *  - reply from here */
+>> +	size_t			rq_daddrlen;
+>> 
+>> 	struct svc_serv *	rq_server;	/* RPC service definition */
+>> 	struct svc_pool *	rq_pool;	/* thread pool */
+>> @@ -255,9 +254,6 @@ struct svc_rqst {
+>> 	unsigned short
+>> 				rq_secure  : 1;	/* secure port */
+>> 
+>> -	union svc_addr_u	rq_daddr;	/* dest addr of request
+>> -						 *  - reply from here */
+>> -
+>> 	void *			rq_argp;	/* decoded arguments */
+>> 	void *			rq_resp;	/* xdr'd results */
+>> 	void *			rq_auth_data;	/* flavor-specific data */
+>> @@ -300,6 +296,21 @@ static inline struct sockaddr *svc_addr(const struct svc_rqst *rqst)
+>> 	return (struct sockaddr *) &rqst->rq_addr;
+>> }
+>> 
+>> +static inline struct sockaddr_in *svc_daddr_in(const struct svc_rqst *rqst)
+>> +{
+>> +	return (struct sockaddr_in *) &rqst->rq_daddr;
+>> +}
+>> +
+>> +static inline struct sockaddr_in6 *svc_daddr_in6(const struct svc_rqst *rqst)
+>> +{
+>> +	return (struct sockaddr_in6 *) &rqst->rq_daddr;
+>> +}
+>> +
+>> +static inline struct sockaddr *svc_daddr(const struct svc_rqst *rqst)
+>> +{
+>> +	return (struct sockaddr *) &rqst->rq_daddr;
+>> +}
+>> +
+>> /*
+>>  * Check buffer bounds after decoding arguments
+>>  */
+>> @@ -340,7 +351,8 @@ struct svc_deferred_req {
+>> 	struct svc_xprt		*xprt;
+>> 	struct sockaddr_storage	addr;	/* where reply must go */
+>> 	size_t			addrlen;
+>> -	union svc_addr_u	daddr;	/* where reply must come from */
+>> +	struct sockaddr_storage	daddr;	/* where reply must come from */
+>> +	size_t			daddrlen;
+>> 	struct cache_deferred_req handle;
+>> 	size_t			xprt_hlen;
+>> 	int			argslen;
+>> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+>> index bd31208..d86bb67 100644
+>> --- a/net/sunrpc/svc_xprt.c
+>> +++ b/net/sunrpc/svc_xprt.c
+>> @@ -254,8 +254,6 @@ EXPORT_SYMBOL_GPL(svc_create_xprt);
+>>  */
+>> void svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt)
+>> {
+>> -	struct sockaddr *sin;
+>> -
+>> 	memcpy(&rqstp->rq_addr, &xprt->xpt_remote, xprt->xpt_remotelen);
+>> 	rqstp->rq_addrlen = xprt->xpt_remotelen;
+>> 
+>> @@ -263,15 +261,8 @@ void svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt)
+>> 	 * Destination address in request is needed for binding the
+>> 	 * source address in RPC replies/callbacks later.
+>> 	 */
+>> -	sin = (struct sockaddr *)&xprt->xpt_local;
+>> -	switch (sin->sa_family) {
+>> -	case AF_INET:
+>> -		rqstp->rq_daddr.addr = ((struct sockaddr_in *)sin)->sin_addr;
+>> -		break;
+>> -	case AF_INET6:
+>> -		rqstp->rq_daddr.addr6 = ((struct sockaddr_in6 *)sin)->sin6_addr;
+>> -		break;
+>> -	}
+>> +	memcpy(&rqstp->rq_daddr, &xprt->xpt_local, xprt->xpt_locallen);
+>> +	rqstp->rq_daddrlen = xprt->xpt_locallen;
+>> }
+>> EXPORT_SYMBOL_GPL(svc_xprt_copy_addrs);
+>> 
+>> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+>> index 767d494..dfd686e 100644
+>> --- a/net/sunrpc/svcsock.c
+>> +++ b/net/sunrpc/svcsock.c
+>> @@ -143,19 +143,20 @@ static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
+>> 			cmh->cmsg_level = SOL_IP;
+>> 			cmh->cmsg_type = IP_PKTINFO;
+>> 			pki->ipi_ifindex = 0;
+>> -			pki->ipi_spec_dst.s_addr = rqstp->rq_daddr.addr.s_addr;
+>> +			pki->ipi_spec_dst.s_addr =
+>> +				 svc_daddr_in(rqstp)->sin_addr.s_addr;
+>> 			cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
+>> 		}
+>> 		break;
+>> 
+>> 	case AF_INET6: {
+>> 			struct in6_pktinfo *pki = CMSG_DATA(cmh);
+>> +			struct sockaddr_in6 *daddr = svc_daddr_in6(rqstp);
+>> 
+>> 			cmh->cmsg_level = SOL_IPV6;
+>> 			cmh->cmsg_type = IPV6_PKTINFO;
+>> -			pki->ipi6_ifindex = 0;
+>> -			ipv6_addr_copy(&pki->ipi6_addr,
+>> -					&rqstp->rq_daddr.addr6);
+>> +			pki->ipi6_ifindex = daddr->sin6_scope_id;
+>> +			ipv6_addr_copy(&pki->ipi6_addr,	&daddr->sin6_addr);
+>> 			cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
+>> 		}
+>> 		break;
+>> @@ -498,9 +499,13 @@ static int svc_udp_get_dest_address4(struct svc_rqst *rqstp,
+>> 				     struct cmsghdr *cmh)
+>> {
+>> 	struct in_pktinfo *pki = CMSG_DATA(cmh);
+>> +	struct sockaddr_in *daddr = svc_daddr_in(rqstp);
+>> +
+>> 	if (cmh->cmsg_type != IP_PKTINFO)
+>> 		return 0;
+>> -	rqstp->rq_daddr.addr.s_addr = pki->ipi_spec_dst.s_addr;
+>> +
+>> +	daddr->sin_family = AF_INET;
+>> +	daddr->sin_addr.s_addr = pki->ipi_spec_dst.s_addr;
+>> 	return 1;
+>> }
+>> 
+>> @@ -511,9 +516,14 @@ static int svc_udp_get_dest_address6(struct svc_rqst *rqstp,
+>> 				     struct cmsghdr *cmh)
+>> {
+>> 	struct in6_pktinfo *pki = CMSG_DATA(cmh);
+>> +	struct sockaddr_in6 *daddr = svc_daddr_in6(rqstp);
+>> +
+>> 	if (cmh->cmsg_type != IPV6_PKTINFO)
+>> 		return 0;
+>> -	ipv6_addr_copy(&rqstp->rq_daddr.addr6, &pki->ipi6_addr);
+>> +
+>> +	daddr->sin6_family = AF_INET6;
+>> +	ipv6_addr_copy(&daddr->sin6_addr, &pki->ipi6_addr);
+>> +	daddr->sin6_scope_id = pki->ipi6_ifindex;
+>> 	return 1;
+>> }
+>> 
+>> @@ -614,6 +624,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+>> 		skb_free_datagram_locked(svsk->sk_sk, skb);
+>> 		return 0;
+>> 	}
+>> +	rqstp->rq_daddrlen = svc_addr_len(svc_daddr(rqstp));
+>> 
+>> 	if (skb_is_nonlinear(skb)) {
+>> 		/* we have to copy */
+>> -- 
+>> 1.7.6
+>> 
+>> 
+>> 
 
-Signed-off-by: Fan Yong <yong.fan@whamcloud.com>
-Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
-Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
----
- 0 files changed, 0 insertions(+), 0 deletions(-)
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 164c560..cee09f2 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -32,24 +32,8 @@ static unsigned char ext4_filetype_table[] = {
- 	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
- };
- 
--static int ext4_readdir(struct file *, void *, filldir_t);
- static int ext4_dx_readdir(struct file *filp,
- 			   void *dirent, filldir_t filldir);
--static int ext4_release_dir(struct inode *inode,
--				struct file *filp);
--
--const struct file_operations ext4_dir_operations = {
--	.llseek		= ext4_llseek,
--	.read		= generic_read_dir,
--	.readdir	= ext4_readdir,		/* we take BKL. needed?*/
--	.unlocked_ioctl = ext4_ioctl,
--#ifdef CONFIG_COMPAT
--	.compat_ioctl	= ext4_compat_ioctl,
--#endif
--	.fsync		= ext4_sync_file,
--	.release	= ext4_release_dir,
--};
--
- 
- static unsigned char get_dtype(struct super_block *sb, int filetype)
- {
-@@ -254,22 +238,134 @@ out:
- 	return ret;
- }
- 
-+static inline int is_32bit_api(void)
-+{
-+#ifdef CONFIG_COMPAT
-+	return is_compat_task();
-+#else
-+	return (BITS_PER_LONG == 32);
-+#endif
-+}
-+
- /*
-  * These functions convert from the major/minor hash to an f_pos
-- * value.
-+ * value for dx directories
-  *
-- * Currently we only use major hash numer.  This is unfortunate, but
-- * on 32-bit machines, the same VFS interface is used for lseek and
-- * llseek, so if we use the 64 bit offset, then the 32-bit versions of
-- * lseek/telldir/seekdir will blow out spectacularly, and from within
-- * the ext2 low-level routine, we don't know if we're being called by
-- * a 64-bit version of the system call or the 32-bit version of the
-- * system call.  Worse yet, NFSv2 only allows for a 32-bit readdir
-- * cookie.  Sigh.
-+ * Upper layer (for example NFS) should specify FMODE_32BITHASH or
-+ * FMODE_64BITHASH explicitly. On the other hand, we allow ext4 to be mounted
-+ * directly on both 32-bit and 64-bit nodes, under such case, neither
-+ * FMODE_32BITHASH nor FMODE_64BITHASH is specified.
-  */
--#define hash2pos(major, minor)	(major >> 1)
--#define pos2maj_hash(pos)	((pos << 1) & 0xffffffff)
--#define pos2min_hash(pos)	(0)
-+static inline loff_t hash2pos(struct file *filp, __u32 major, __u32 minor)
-+{
-+	if ((filp->f_flags & FMODE_32BITHASH) ||
-+	    (!(filp->f_flags & FMODE_64BITHASH) && is_32bit_api()))
-+		return major >> 1;
-+	else
-+		return ((__u64)(major >> 1) << 32) | (__u64)minor;
-+}
-+
-+static inline __u32 pos2maj_hash(struct file *filp, loff_t pos)
-+{
-+	if ((filp->f_flags & FMODE_32BITHASH) ||
-+	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
-+		return (pos << 1) & 0xffffffff;
-+	else
-+		return ((pos >> 32) << 1) & 0xffffffff;
-+}
-+
-+static inline __u32 pos2min_hash(struct file *filp, loff_t pos)
-+{
-+	if ((filp->f_flags & FMODE_32BITHASH) ||
-+	    (!(filp->f_flags & FMODE_64BITHASH) && is_32bit_api()))
-+		return 0;
-+	else
-+		return pos & 0xffffffff;
-+}
-+
-+/*
-+ * Return 32- or 64-bit end-of-file for dx directories
-+ */
-+static inline loff_t ext4_get_htree_eof(struct file *filp)
-+{
-+	if ((filp->f_mode & FMODE_32BITHASH) ||
-+	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
-+		return EXT4_HTREE_EOF_32BIT;
-+	else
-+		return EXT4_HTREE_EOF_64BIT;
-+}
-+
-+
-+/*
-+ * ext4_dir_llseek() based on generic_file_llseek() to handle both
-+ * non-htree and htree directories, where the "offset" is in terms
-+ * of the filename hash value instead of the byte offset.
-+ *
-+ * NOTE: offsets obtained *before* ext4_set_inode_flag(dir, EXT4_INODE_INDEX)
-+ *       will be invalid once the directory was converted into a dx directory
-+ */
-+loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
-+{
-+	struct inode *inode = file->f_mapping->host;
-+	loff_t ret = -EINVAL;
-+	int is_dx_dir = ext4_test_inode_flag(inode, EXT4_INODE_INDEX);
-+
-+	mutex_lock(&inode->i_mutex);
-+
-+	/* NOTE: relative offsets with dx directories might not work
-+	 *       as expected, as it is difficult to figure out the
-+	 *       correct offset between dx hashes */
-+
-+	switch (origin) {
-+	case SEEK_END:
-+		if (unlikely(offset > 0))
-+			goto out_err; /* not supported for directories */
-+
-+		/* so only negative offsets are left, does that have a
-+		 * meaning for directories at all? */
-+		if (is_dx_dir)
-+			offset += ext4_get_htree_eof(file);
-+		else
-+			offset += inode->i_size;
-+		break;
-+	case SEEK_CUR:
-+		/*
-+		 * Here we special-case the lseek(fd, 0, SEEK_CUR)
-+		 * position-querying operation.  Avoid rewriting the "same"
-+		 * f_pos value back to the file because a concurrent read(),
-+		 * write() or lseek() might have altered it
-+		 */
-+		if (offset == 0) {
-+			offset = file->f_pos;
-+			goto out_ok;
-+		}
-+
-+		offset += file->f_pos;
-+		break;
-+	}
-+
-+	if (unlikely(offset < 0))
-+		goto out_err;
-+
-+	if (!is_dx_dir) {
-+		if (offset > inode->i_sb->s_maxbytes)
-+			goto out_err;
-+	} else if (offset > ext4_get_htree_eof(file))
-+		goto out_err;
-+
-+	/* Special lock needed here? */
-+	if (offset != file->f_pos) {
-+		file->f_pos = offset;
-+		file->f_version = 0;
-+	}
-+
-+out_ok:
-+	ret = offset;
-+out_err:
-+	mutex_unlock(&inode->i_mutex);
-+
-+	return ret;
-+}
- 
- /*
-  * This structure holds the nodes of the red-black tree used to store
-@@ -330,15 +426,16 @@ static void free_rb_tree_fname(struct rb_root *root)
- }
- 
- 
--static struct dir_private_info *ext4_htree_create_dir_info(loff_t pos)
-+static struct dir_private_info *ext4_htree_create_dir_info(struct file *filp,
-+							   loff_t pos)
- {
- 	struct dir_private_info *p;
- 
- 	p = kzalloc(sizeof(struct dir_private_info), GFP_KERNEL);
- 	if (!p)
- 		return NULL;
--	p->curr_hash = pos2maj_hash(pos);
--	p->curr_minor_hash = pos2min_hash(pos);
-+	p->curr_hash = pos2maj_hash(filp, pos);
-+	p->curr_minor_hash = pos2min_hash(filp, pos);
- 	return p;
- }
- 
-@@ -429,7 +526,7 @@ static int call_filldir(struct file *filp, void *dirent,
- 		       "null fname?!?\n");
- 		return 0;
- 	}
--	curr_pos = hash2pos(fname->hash, fname->minor_hash);
-+	curr_pos = hash2pos(filp, fname->hash, fname->minor_hash);
- 	while (fname) {
- 		error = filldir(dirent, fname->name,
- 				fname->name_len, curr_pos,
-@@ -454,13 +551,13 @@ static int ext4_dx_readdir(struct file *filp,
- 	int	ret;
- 
- 	if (!info) {
--		info = ext4_htree_create_dir_info(filp->f_pos);
-+		info = ext4_htree_create_dir_info(filp, filp->f_pos);
- 		if (!info)
- 			return -ENOMEM;
- 		filp->private_data = info;
- 	}
- 
--	if (filp->f_pos == EXT4_HTREE_EOF)
-+	if (filp->f_pos == ext4_get_htree_eof(filp))
- 		return 0;	/* EOF */
- 
- 	/* Some one has messed with f_pos; reset the world */
-@@ -468,8 +565,8 @@ static int ext4_dx_readdir(struct file *filp,
- 		free_rb_tree_fname(&info->root);
- 		info->curr_node = NULL;
- 		info->extra_fname = NULL;
--		info->curr_hash = pos2maj_hash(filp->f_pos);
--		info->curr_minor_hash = pos2min_hash(filp->f_pos);
-+		info->curr_hash = pos2maj_hash(filp, filp->f_pos);
-+		info->curr_minor_hash = pos2min_hash(filp, filp->f_pos);
- 	}
- 
- 	/*
-@@ -501,7 +598,7 @@ static int ext4_dx_readdir(struct file *filp,
- 			if (ret < 0)
- 				return ret;
- 			if (ret == 0) {
--				filp->f_pos = EXT4_HTREE_EOF;
-+				filp->f_pos = ext4_get_htree_eof(filp);
- 				break;
- 			}
- 			info->curr_node = rb_first(&info->root);
-@@ -521,7 +618,7 @@ static int ext4_dx_readdir(struct file *filp,
- 			info->curr_minor_hash = fname->minor_hash;
- 		} else {
- 			if (info->next_hash == ~0) {
--				filp->f_pos = EXT4_HTREE_EOF;
-+				filp->f_pos = ext4_get_htree_eof(filp);
- 				break;
- 			}
- 			info->curr_hash = info->next_hash;
-@@ -540,3 +637,15 @@ static int ext4_release_dir(struct inode *inode, struct file *filp)
- 
- 	return 0;
- }
-+
-+const struct file_operations ext4_dir_operations = {
-+	.llseek		= ext4_dir_llseek,
-+	.read		= generic_read_dir,
-+	.readdir	= ext4_readdir,
-+	.unlocked_ioctl = ext4_ioctl,
-+#ifdef CONFIG_COMPAT
-+	.compat_ioctl	= ext4_compat_ioctl,
-+#endif
-+	.fsync		= ext4_sync_file,
-+	.release	= ext4_release_dir,
-+};
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e717dfd..31d9ba0 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1560,7 +1560,11 @@ struct dx_hash_info
- 	u32		*seed;
- };
- 
--#define EXT4_HTREE_EOF	0x7fffffff
-+
-+/* 32 and 64 bit signed EOF for dx directories */
-+#define EXT4_HTREE_EOF_32BIT   ((1UL  << (32 - 1)) - 1)
-+#define EXT4_HTREE_EOF_64BIT   ((1ULL << (64 - 1)) - 1)
-+
- 
- /*
-  * Control parameters used by ext4_htree_next_block
-diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
-index ac8f168..fa8e491 100644
---- a/fs/ext4/hash.c
-+++ b/fs/ext4/hash.c
-@@ -200,8 +200,8 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
- 		return -1;
- 	}
- 	hash = hash & ~1;
--	if (hash == (EXT4_HTREE_EOF << 1))
--		hash = (EXT4_HTREE_EOF-1) << 1;
-+	if (hash == (EXT4_HTREE_EOF_32BIT << 1))
-+		hash = (EXT4_HTREE_EOF_32BIT - 1) << 1;
- 	hinfo->hash = hash;
- 	hinfo->minor_hash = minor_hash;
- 	return 0;
+
+
 
