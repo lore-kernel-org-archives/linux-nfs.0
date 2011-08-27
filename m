@@ -1,113 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ironboy.h-da.de ([141.100.10.230]:2931 "EHLO ironboy.h-da.de"
+Received: from fieldses.org ([174.143.236.118]:52832 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754701Ab1HZVIQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Aug 2011 17:08:16 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by mail.fbihome.de (Postfix) with ESMTP id BB583932BC
-	for <linux-nfs@vger.kernel.org>; Fri, 26 Aug 2011 22:58:22 +0200 (CEST)
-Received: from mail.fbihome.de ([127.0.0.1])
-	by localhost (stud1 [127.0.0.1]) (amavisd-new, port 10024) with ESMTP
-	id 27320-06 for <linux-nfs@vger.kernel.org>;
-	Fri, 26 Aug 2011 22:58:22 +0200 (CEST)
-Received: from users.fbihome.de (unknown [141.100.40.82])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mail.fbihome.de (Postfix) with ESMTP id 8467B932AF
-	for <linux-nfs@vger.kernel.org>; Fri, 26 Aug 2011 22:58:22 +0200 (CEST)
-Date: Fri, 26 Aug 2011 22:58:15 +0200 (CEST)
-From: Jan-Marek Glogowski <glogow@fbihome.de>
-To: linux-nfs@vger.kernel.org
-Subject: Problem useing groups containing spaces in NFSv4
-Message-ID: <alpine.DEB.2.02.1108262018320.28308@users.fbihome.de>
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1736788632-1314392298=:5231"
+	id S1753634Ab1H0AC0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Aug 2011 20:02:26 -0400
+Date: Fri, 26 Aug 2011 20:02:19 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Eric Dumazet <eric.dumazet@gmail.com>
+Cc: NeilBrown <neilb@suse.de>, Greg Banks <gnb@fastmail.fm>,
+        Christoph Hellwig <hch@infradead.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>
+Subject: Re: [PATCH] sunrpc: use better NUMA affinities
+Message-ID: <20110827000219.GF18699@fieldses.org>
+References: <F67B6E82-9FA8-464E-B3FB-DC0D4EC18BB0@fastmail.fm>
+ <20110729164836.GL23194@fieldses.org>
+ <20110729165345.GM23194@fieldses.org>
+ <F562C6F4-3FC2-4952-A903-8E87E9EF2D9D@fastmail.fm>
+ <20110730093025.716f3f50@notabene.brown>
+ <20110729234857.GA30941@fieldses.org>
+ <1311998914.2873.27.camel@edumazet-laptop>
+ <20110730160610.0b751ffd@notabene.brown>
+ <1312006990.2873.75.camel@edumazet-laptop>
+ <1312095534.2873.108.camel@edumazet-laptop>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1312095534.2873.108.camel@edumazet-laptop>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---8323328-1736788632-1314392298=:5231
-Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+On Sun, Jul 31, 2011 at 08:58:54AM +0200, Eric Dumazet wrote:
+> Le samedi 30 juillet 2011 à 08:23 +0200, Eric Dumazet a écrit :
+> > Le samedi 30 juillet 2011 à 16:06 +1000, NeilBrown a écrit :
+> > > umount /proc/fs/nfsd
+> > > 
+> > > 
+> > 
+> > Thans  a lot, this was the thing I missed !
+> > 
+> > 
+> 
+> Hmm, after this, I left things as the were (nfsd module loaded, but a 0
+> use count )
+> 
+> I got a BUG while updatedb was running,
+> (I tried this on a debian machine/kernel)
+> 
+> Same bug on :
+> 
+> cat /proc/self/mounts 
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
+Any luck figuring this out?
 
-Hi
+I tried reproducing, by stopping everything to get nfsd refcount to
+zero:
 
-I'm on Debian Squeeze using NFSv4 (2.6.32 / 1.1.2). Groups ares stored in 
-LDAP and one contains a space. If I want to chgrp a file, the chown system 
-call gets stuck and I get an kernel "hung_task" backtrace:
+	# lsmod | grep '^nfsd'
+	nfsd                  300025  0 
 
-[76920.364077] INFO: task chown:31709 blocked for more than 120 seconds.
-[76920.364781] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-[76920.365894] chown         D 0000000000000000     0 31709  28415 0x00000004
-[76920.365900]  ffffffff814611f0 0000000000000086 0000000000000000 ffff88000886de88
-[76920.365906]  ffff88000886dde8 ffffffff810f6211 000000000000f9e0 ffff88000886dfd8
-[76920.365910]  0000000000015780 0000000000015780 ffff88003ed269f0 ffff88003ed26ce8
-[76920.365914] Call Trace:
-[76920.365927]  [<ffffffff810f6211>] ? path_to_nameidata+0x15/0x37
-[76920.365933]  [<ffffffff811035cd>] ? mntput_no_expire+0x23/0xee
-[76920.365940]  [<ffffffff812fb99b>] ? __mutex_lock_common+0x122/0x192
-[76920.365945]  [<ffffffff810f9c1c>] ? user_path_at+0x52/0x79
-[76920.365948]  [<ffffffff812fbac3>] ? mutex_lock+0x1a/0x31
-[76920.365954]  [<ffffffff810ed746>] ? chown_common+0x5b/0x7c
-[76920.365958]  [<ffffffff812fe9f6>] ? do_page_fault+0x2e0/0x2fc
-[76920.365962]  [<ffffffff810ed982>] ? sys_fchownat+0x53/0x70
-[76920.365967]  [<ffffffff81010b42>] ? system_call_fastpath+0x16/0x1b
-[77240.440046] nfs: server buildserv-next not responding, still trying
-[95664.836086] nfs: server buildserv-next not responding, still trying
-[96568.599435] nfs: server buildserv-next OK
+then running 'cat /proc/self/mounts'.
 
-So I backported the Debian nfs-utils 1.1.4 and updated the kernel to the 
-squeeze-backports version (2.6.39).
+But I don't see any crash.
 
-The backtrace is now gone, but the chgrp process is still stuck.
+This is only 3.1.0-rc1 plus some nfsd patches.
 
-The client rpc.idmapd seems to be fine:
+--b.
 
-Aug 26 20:41:41 kvm-auth rpc.idmapd[973]: nfs4_gid_to_name: calling nsswitch->gid_to_name
-Aug 26 20:41:41 kvm-auth rpc.idmapd[973]: nfs4_gid_to_name: nsswitch->gid_to_name returned 0
-Aug 26 20:41:41 kvm-auth rpc.idmapd[973]: nfs4_gid_to_name: final return value is 0
-Aug 26 20:41:41 kvm-auth rpc.idmapd[973]: Client 0: (group) id "1094" -> name "Domain Administrators@tvc.muenchen.de"
-
-On the server side I see idmapd errors in the daemon.log (every 2 minutes, 
-so I guess the backtrace is just suppressed - same as the previous 120 sec 
-timeout):
-
-Aug 26 20:27:48 buildserv-next rpc.idmapd[16848]: nfsdcb: authbuf=* authtype=group
-Aug 26 20:27:48 buildserv-next rpc.idmapd[16848]: nfsdcb: bad name in upcall
-
-There is an invalid check in the idmapd code, which converts the octal 
-encoded values back to the original characters (see attached patch).
-
-What I don't know is how to implement the "real" error handling. I don't 
-think the client process should be stuck forever, just because the server 
-fails to find the encoded name.
-
-Regards,
-
-Jan-Marek Glogowski
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.10 (GNU/Linux)
-
-iEYEARECAAYFAk5YCOcACgkQj6MK58wZA3dMkwCghsoYANdq8FZNYCP/C8X5UH+w
-hTEAnRN59WxzjHZ1dcDXIxu9G4hdFEOn
-=cYDx
------END PGP SIGNATURE-----
---8323328-1736788632-1314392298=:5231
-Content-Type: TEXT/x-diff; name=idmapd-correctly-convert-octal-encoded-field-values.diff
-Content-Transfer-Encoding: BASE64
-Content-ID: <alpine.DEB.2.02.1108262258150.5231@users.fbihome.de>
-Content-Description: 
-Content-Disposition: attachment; filename=idmapd-correctly-convert-octal-encoded-field-values.diff
-
-aWRtYXBkOiBjb3JyZWN0bHkgY29udmVydCBvY3RhbCBlbmNvZGVkIGZpZWxkIHZhbHVlcw0KDQpX
-ZSB3YW50IHRvIGNoZWNrIGZvciAodW5zaWduZWQgY2hhcikgLTEuDQoNCi0tLSBuZnMtdXRpbHMt
-MS4yLjQub3JpZy91dGlscy9pZG1hcGQvaWRtYXBkLmMNCisrKyBuZnMtdXRpbHMtMS4yLjQvdXRp
-bHMvaWRtYXBkL2lkbWFwZC5jDQpAQCAtOTI1LDkgKzkyNSw5IEBAIGdldGZpZWxkKGNoYXIgKipi
-cHAsIGNoYXIgKmZsZCwgc2l6ZV90IGYNCiAJCWlmICgqYnAgPT0gJ1xcJykgew0KIAkJCWlmICgo
-biA9IHNzY2FuZihicCwgIlxcJTAzbyIsICZ2YWwpKSAhPSAxKQ0KIAkJCQlyZXR1cm4gKC0xKTsN
-Ci0JCQlpZiAodmFsID4gKGNoYXIpLTEpDQorCQkJaWYgKHZhbCA+IFVDSEFSX01BWCkNCiAJCQkJ
-cmV0dXJuICgtMSk7DQotCQkJKmZsZCsrID0gKGNoYXIpdmFsOw0KKwkJCSpmbGQrKyA9IHZhbDsN
-CiAJCQlicCArPSA0Ow0KIAkJfSBlbHNlIHsNCiAJCQkqZmxkKysgPSAqYnA7DQo=
-
---8323328-1736788632-1314392298=:5231--
+> 
+> I'll take a look at this issue later, after my vacations, unless someone
+> wants to take a look before me ;)
+> 
+> [1020029.301174] BUG: unable to handle kernel paging request at ffffffffa03da0d0
+> [1020029.301318] IP: [<ffffffff811105bd>] show_type+0x17/0x5a
+> [1020029.301436] PGD 1605067 PUD 1609063 PMD 127353067 PTE 0
+> [1020029.301574] Oops: 0000 [#1] SMP 
+> [1020029.301637] last sysfs file: /sys/module/nfsd/initstate
+> [1020029.301722] CPU 6 
+> [1020029.301765] Modules linked in: nfsd fuse btrfs zlib_deflate crc32c libcrc32c ufs qnx4 hfsplus hfs minix ntfs vfat msdos fat jfs xfs reiserfs ext4 jbd2 crc16 ext2 dm_mod nls_utf8 isofs lockd fscache auth_rpcgss nfs_acl sunrpc loop i5000_edac radeon edac_core ttm drm_kms_helper snd_pcm drm snd_timer snd i2c_algo_bit soundcore i2c_core snd_page_alloc i5k_amb power_supply ipmi_si evdev psmouse rng_core ipmi_msghandler hpilo hpwdt shpchp processor button pcspkr serio_raw pci_hotplug container ext3 jbd mbcache hpsa usbhid hid uhci_hcd cciss scsi_mod ehci_hcd usbcore bnx2 thermal thermal_sys [last unloaded: nfsd]
+> [1020029.303561] 
+> [1020029.303588] Pid: 23460, comm: updatedb.mlocat Tainted: G  R          2.6.39-2-amd64 #1 HP ProLiant BL460c G1
+> [1020029.303751] RIP: 0010:[<ffffffff811105bd>]  [<ffffffff811105bd>] show_type+0x17/0x5a
+> [1020029.303866] RSP: 0018:ffff880011da7e48  EFLAGS: 00010296
+> [1020029.303953] RAX: ffffffffa03da0d0 RBX: ffff8801288a4a80 RCX: 0000000000007774
+> [1020029.304061] RDX: ffffffff814c9935 RSI: ffff880129ea3800 RDI: ffff8801288a4a80
+> [1020029.304169] RBP: ffff880129ea3800 R08: ffff880011da7e68 R09: ffffffffffffffff
+> [1020029.304263] R10: ffff880011d883b2 R11: 0000000000000007 R12: ffff88012794a2c0
+> [1020029.304263] R13: ffff8801288a4a80 R14: ffff88012794a338 R15: 0000000000000000
+> [1020029.304263] FS:  00007f9cf0dec700(0000) GS:ffff88012fd80000(0000) knlGS:0000000000000000
+> [1020029.304263] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> [1020029.304263] CR2: ffffffffa03da0d0 CR3: 0000000058f90000 CR4: 00000000000006e0
+> [1020029.304263] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> [1020029.304263] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> [1020029.304263] Process updatedb.mlocat (pid: 23460, threadinfo ffff880011da6000, task ffff88002741a440)
+> [1020029.304263] Stack:
+> [1020029.304263]  ffff8801288a4a80 ffff8801288a4a80 ffff88012794a338 ffffffff81110abf
+> [1020029.304263]  ffff88012794a2c0 ffff88010d992440 0000000000000400 00007f9cf0df3000
+> [1020029.304263]  ffff880127960cc0 ffff8801288a4a80 ffff88012794a338 ffffffff8111427a
+> [1020029.304263] Call Trace:
+> [1020029.304263]  [<ffffffff81110abf>] ? show_vfsmnt+0x9b/0x134
+> [1020029.304263]  [<ffffffff8111427a>] ? seq_read+0x276/0x350
+> [1020029.304263]  [<ffffffff810fc207>] ? vfs_read+0xa1/0xfb
+> [1020029.304263]  [<ffffffff810d8052>] ? sys_mmap_pgoff+0x127/0x15a
+> [1020029.304263]  [<ffffffff810fc317>] ? sys_read+0x45/0x6e
+> [1020029.304263]  [<ffffffff81338e52>] ? system_call_fastpath+0x16/0x1b
+> [1020029.304263] Code: 01 00 65 48 03 14 25 20 dc 00 00 66 ff 02 c3 f0 ff 47 38 c3 55 48 89 f5 48 c7 c2 35 99 4c 81 53 48 89 fb 48 83 ec 08 48 8b 46 28 
+> [1020029.304263]  8b 30 e8 c7 36 00 00 48 8b 85 b8 02 00 00 48 85 c0 74 2b 80 
+> [1020029.304263] RIP  [<ffffffff811105bd>] show_type+0x17/0x5a
+> [1020029.304263]  RSP <ffff880011da7e48>
+> [1020029.304263] CR2: ffffffffa03da0d0
+> [1020029.311417] ---[ end trace ebf19aff1e083659 ]---
+> 
+> 
