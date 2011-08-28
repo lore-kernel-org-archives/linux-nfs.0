@@ -1,54 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:51339 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756705Ab1H3VD7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2011 17:03:59 -0400
-Message-ID: <4E5D5001.2030906@panasas.com>
-Date: Tue, 30 Aug 2011 14:02:57 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSD: Add a cache for fs_locations information
-References: <20110829185115.3413.92459.stgit@matisse.1015granger.net>  <20110830151845.4dec5b40@tlielax.poochiereds.net>  <852F14A9-7826-47A0-BCD6-D5D46E38A39C@oracle.com>  <4E5D46EB.7030102@panasas.com> <1314736451.10572.45.camel@lade.trondhjem.org>
-In-Reply-To: <1314736451.10572.45.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:51079 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750949Ab1H1GWr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Aug 2011 02:22:47 -0400
+Received: by bke11 with SMTP id 11so3440684bke.19
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Aug 2011 23:22:46 -0700 (PDT)
+From: Vitaliy Gusev <gusev.vitaliy@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: peng_tao@emc.com, linux-nfs@vger.kernel.org,
+        Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+Subject: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
+Date: Sun, 28 Aug 2011 10:22:38 +0400
+Message-Id: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 08/30/2011 01:34 PM, Trond Myklebust wrote:
-> On Tue, 2011-08-30 at 13:24 -0700, Boaz Harrosh wrote: 
->> On 08/30/2011 01:00 PM, Chuck Lever wrote:
->> <>
->>>>
->>>> Won't the above check be rather expensive? You'll need to do a 
->>>> getxattr call on almost every path component of every lookup,
->>>> right?
->>>>
->>>> I may be misremembering your talk from connectathon, but I thought
->>>> you were planning to use a well-known mode for junctions that would
->>>> cut down on the number of unnecessary getxattrs...
->>>
->>> Yes, that's the plan.  To reduce overhead, the S_ISVTX bit must be
->>> set before NFSD does the expensive xattr test.  
-> 
-> ...and mode bits otherwise set to 0 so nobody can access the mounted-on
-> directory.
-> 
->> from: stat(2) - Linux man page
->>
->> The 'sticky' bit (S_ISVTX) on a directory means that a file in that
->> directory can be renamed or deleted only by the owner of the file, 
->> by the owner of the directory, and by a privileged process.
->>
->> Please explain how does it work? Once the junction is followed and
->> mounted then the mode-bits get changed to the destination directory's
->> mode bits? So the Server's junction mode-bits are never exposed, except
->> in a local-fs file access on the server?
-> 
-> Yes.
-> 
-Nice trick. Thanks
+pnfs_layout_segment can be already under handling LAYOUTCOMMIT,
+so adding list twice causes hang:
+
+   BUG: soft lockup - CPU#0 stuck for 22s! [kworker/0:0:4]
+   Call Trace:
+
+     nfs4_layoutcommit_release+0x5a/0x9c [nfs]
+     rpc_release_calldata+0x17/0x19 [sunrpc]
+     rpc_free_task+0x5e/0x66 [sunrpc]
+     __rpc_execute+0x29e/0x2ad [sunrpc]
+     rpc_async_schedule+0x15/0x17 [sunrpc]
+     process_one_work+0x213/0x3ba
+     process_one_work+0x142/0x3ba
+     __rpc_execute+0x2ad/0x2ad [sunrpc]
+     worker_thread+0xfd/0x181
+
+Signed-off-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+---
+ fs/nfs/pnfs.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index e550e88..1465f44 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1376,7 +1376,8 @@ static void pnfs_list_write_lseg(struct inode *inode, struct list_head *listp)
+ 
+ 	list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list) {
+ 		if (lseg->pls_range.iomode == IOMODE_RW &&
+-		    test_bit(NFS_LSEG_LAYOUTCOMMIT, &lseg->pls_flags))
++		    test_bit(NFS_LSEG_LAYOUTCOMMIT, &lseg->pls_flags) &&
++		    list_empty(&lseg->pls_lc_list))
+ 			list_add(&lseg->pls_lc_list, listp);
+ 	}
+ }
+-- 
+1.7.4.1
+
