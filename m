@@ -1,24 +1,30 @@
-From: Mike Frysinger <vapier.adi@gmail.com>
+From: David Miller <davem@davemloft.net>
 Subject: Re: [PATCH] All Arch: remove linkage for sys_nfsservctl system call
-Date: Sat, 27 Aug 2011 10:39:55 -0400
-Message-ID: <CAMjpGUdJOh0=trV8vA9D3_uL27STo7MwbabwC9JHi1nVMwWLrA@mail.gmail.com>
-References: <1312810169.2591.1153.camel@deadeye> <20110808155538.GB904@fieldses.org>
- <20110808180658.GC29924@decadent.org.uk> <20110826220311.GA18140@fieldses.org>
+Date: Sun, 28 Aug 2011 17:12:07 -0400 (EDT)
+Message-ID: <20110828.171207.2184384269364960247.davem@davemloft.net>
+References: <20110808155538.GB904@fieldses.org>
+	<20110808180658.GC29924@decadent.org.uk>
+	<20110826220311.GA18140@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Ben Hutchings <ben@decadent.org.uk>,
-	Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-arch@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: Text/Plain; charset=us-ascii
+Cc: torvalds@linux-foundation.org, ben@decadent.org.uk, neilb@suse.de,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-arch@vger.kernel.org
+To: bfields@fieldses.org
 Return-path: <linux-arch-owner@vger.kernel.org>
 In-Reply-To: <20110826220311.GA18140@fieldses.org>
 Sender: linux-arch-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 26, 2011 at 18:03, J. Bruce Fields wrote:
-> =C2=A0arch/blackfin/mach-common/entry.S =C2=A0 =C2=A0 =C2=A0| =C2=A0 =
-=C2=A02 +-
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Fri, 26 Aug 2011 18:03:11 -0400
 
-Acked-by: Mike Frysinger <vapier@gentoo.org>
--mike
+> From: NeilBrown <neilb@suse.de>
+> 
+> The nfsservctl system call is now gone, so we should remove all
+> linkage for it.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+Acked-by: David S. Miller <davem@davemloft.net>
