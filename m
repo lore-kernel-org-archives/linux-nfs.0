@@ -1,314 +1,141 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:65096 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750795Ab1HXFyg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Aug 2011 01:54:36 -0400
-Message-ID: <4E5492FD.8040903@cn.fujitsu.com>
-Date: Wed, 24 Aug 2011 13:58:21 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>, NFS <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] sunrpc: Add scope id to svc_addr_u for IPv6 LINKLOCAL
- address
-References: <4E4F8B5D.6060404@cn.fujitsu.com> <20110822192620.GB16261@fieldses.org> <3CA77E10-4099-4DDB-BE7A-88395CC34C93@oracle.com> <20110822194459.GC16261@fieldses.org>
-In-Reply-To: <20110822194459.GC16261@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+From: Joe Perches <joe@perches.com>
+Subject: [PATCH 00/24] net: Remove unnecessary OOM logging messages
+Date: Mon, 29 Aug 2011 14:17:19 -0700
+Message-ID: <cover.1314650069.git.joe__23972.6847423755$1314653123$gmane$org@perches.com>
+Cc: linux-kernel@vger.kernel.org, bridge@lists.linux-foundation.org
+To: linux-hams@vger.kernel.org, b.a.t.m.a.n-ZwoEplunGu2X36UT3dwllkB+6BGkLq7r@public.gmane.org,
+	netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org,
+	coreteam@netfilter.org, netdev@vger.kernel.org,
+	ceph-devel@vge
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from perches-mx.perches.com ([206.117.179.246]:35307 "EHLO
+	labridge.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1754724Ab1H2VSX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Aug 2011 17:18:23 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-MIME-Version: 1.0
 
+Remove all the site-specific OOM messages because they duplicate
+the MM subsystem generic OOM message.
 
-J. Bruce Fields:
-> On Mon, Aug 22, 2011 at 03:32:13PM -0400, Chuck Lever wrote:
->> On Aug 22, 2011, at 3:26 PM, J. Bruce Fields wrote:
->>
->>> On Sat, Aug 20, 2011 at 06:24:29PM +0800, Mi Jinlong wrote:
->>>> +/* 
->>>> + * Add scope id for LINKLOCAL address
->>>> + */
->>>> +struct in6_addr_scopeid{
->>>> +	struct in6_addr	sin6_addr;
->>>> +	__u32		sin6_scope_id;
->>>> +};
->>>> +
->>>> union svc_addr_u {
->>>> -    struct in_addr	addr;
->>>> -    struct in6_addr	addr6;
->>>> +	struct in_addr		addr;
->>>> +	struct in6_addr_scopeid	addr6;
->>> By the way, is there any reason why nfsd really needs its own address
->>> structure?  Shouldn't we use sockaddr_storage or something?  I feel like
->>> we've got a little too much one-off address handling in nfsd.
->> That would be my only complaint about the patch.
->>
->> I think we chose a smaller struct here to save space, and we could do that because we didn't need a port number or scope ID.  If a scope ID is indeed required, then we should consider something larger like a struct sockaddr_storage, IMO.
-> 
-> If we care about the size of struct svc_rqst: rq_vec and rq_pages fields
-> are 4k and 2k, respectively, and the rest is lost in the noise.
-> 
-> Mi Jinlong, would you have the time to try this?
-> 
-> 	- Replace svc_addr_u by sockaddr_storage
-> 	- See of that allows us to delete some lines of code in nfsd by
-> 	  using standard helper functions instead of copying things by
-> 	  hand.
-> 
-> You'd do that in one patch, then apply your scope-id fix on top of it as
-> a second patch.
+Saves ~.2% (~2.5kb) of code/text in an x86 defconfig
 
-  After replace svc_addr_u by sockaddr_storage, the scope-id fix isn't needed.
+$ size net/built-in.o*defconfig
+   text	   data	    bss	    dec	    hex	filename
+1506772	  58652	  34928	1600352	 186b60	net/built-in.o.new.defconfig
+1509144	  58652	  34928	1602724	 1874a4	net/built-in.o.old.defconfig
 
-thanks,
-Mi Jinlong 
+$ size net/built-in.o*allyesconfig
+   text	   data	    bss	    dec	    hex	filename
+7655361	 275361	2062352	 9993074 987b72	net/built-in.o.new.allyesconfig
+7667400	 275649	2064024	10007073 98b221	net/built-in.o.old.allyesconfig
 
->From 86bb57f2d7c29124ae73bd121bb6b97a72fe6f4d Mon Sep 17 00:00:00 2001
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Date: Mon, 24 Aug 2011 13:22:39 +0800
-Subject: [PATCH] SUNRPC: Replace svc_addr_u by sockaddr_storage
+Joe Perches (24):
+  802: Remove unnecessary OOM logging messages
+  9p: Remove unnecessary OOM logging messages
+  atm: Remove unnecessary OOM logging messages
+  ax25: Remove unnecessary OOM logging messages
+  batman-adv: Remove unnecessary OOM logging messages
+  netfilter: Remove unnecessary OOM logging messages
+  net: Remove unnecessary OOM logging messages
+  ceph: Remove unnecessary OOM logging messages
+  decnet: Remove unnecessary OOM logging messages
+  econet: Remove unnecessary OOM logging messages
+  iucv: Remove unnecessary OOM logging messages
+  mac80211: Remove unnecessary OOM logging messages
+  netrom: Remove unnecessary OOM logging messages
+  rds: Remove unnecessary OOM logging messages
+  rfkill: Remove unnecessary OOM logging messages
+  rose: Remove unnecessary OOM logging messages
+  sched: Remove unnecessary OOM logging messages
+  sctp: Remove unnecessary OOM logging messages
+  sunrpc: Remove unnecessary OOM logging messages
+  tipc: Remove unnecessary OOM logging messages
+  wanrouter: Remove unnecessary OOM logging messages
+  wireless: Remove unnecessary OOM logging messages
+  x25: Remove unnecessary OOM logging messages
+  net: Remove unnecessary OOM logging messages
 
-For IPv6 local address, lockd can not callback to client for 
-missing scope id when binding address at inet6_bind:
+ net/802/tr.c                            |    1 -
+ net/9p/client.c                         |    7 +----
+ net/9p/trans_virtio.c                   |    6 +----
+ net/atm/lec.c                           |    4 +--
+ net/atm/mpc.c                           |   17 ++++----------
+ net/atm/mpoa_caches.c                   |    8 +-----
+ net/ax25/ax25_dev.c                     |    5 +--
+ net/ax25/ax25_out.c                     |    8 +++---
+ net/ax25/ax25_route.c                   |    5 +--
+ net/batman-adv/hard-interface.c         |    5 +---
+ net/batman-adv/main.c                   |    2 -
+ net/batman-adv/originator.c             |   16 +++----------
+ net/batman-adv/soft-interface.c         |    4 +--
+ net/batman-adv/vis.c                    |    4 +--
+ net/bridge/netfilter/ebt_ulog.c         |    7 ++---
+ net/can/af_can.c                        |    6 +---
+ net/ceph/messenger.c                    |    5 +---
+ net/ceph/msgpool.c                      |    6 +----
+ net/core/dev.c                          |   25 ++++++----------------
+ net/core/flow.c                         |    4 +--
+ net/core/pktgen.c                       |    5 +---
+ net/decnet/dn_neigh.c                   |    6 -----
+ net/econet/af_econet.c                  |    4 +--
+ net/ipv4/netfilter/ipt_CLUSTERIP.c      |    1 -
+ net/ipv4/netfilter/ipt_ULOG.c           |    4 +--
+ net/ipv4/netfilter/nf_nat_snmp_basic.c  |   22 +-----------------
+ net/ipv6/netfilter/nf_conntrack_reasm.c |    7 ++---
+ net/iucv/iucv.c                         |    5 +--
+ net/mac80211/agg-rx.c                   |   19 +---------------
+ net/mac80211/agg-tx.c                   |   35 +++++++-----------------------
+ net/mac80211/debugfs.c                  |    3 ++
+ net/mac80211/ht.c                       |    6 +----
+ net/mac80211/mesh.c                     |    5 +--
+ net/mac80211/mlme.c                     |   17 ++++----------
+ net/mac80211/spectmgmt.c                |    6 +----
+ net/mac80211/tx.c                       |   17 ++++----------
+ net/mac80211/util.c                     |   11 ++-------
+ net/mac80211/work.c                     |    6 +---
+ net/netfilter/ipset/ip_set_core.c       |    4 +--
+ net/netfilter/ipvs/ip_vs_core.c         |    5 +--
+ net/netfilter/ipvs/ip_vs_ctl.c          |   18 +++++----------
+ net/netfilter/ipvs/ip_vs_dh.c           |    5 +--
+ net/netfilter/ipvs/ip_vs_lblc.c         |    9 ++-----
+ net/netfilter/ipvs/ip_vs_lblcr.c        |   13 +++--------
+ net/netfilter/ipvs/ip_vs_proto.c        |    5 +--
+ net/netfilter/ipvs/ip_vs_sh.c           |    5 +--
+ net/netfilter/ipvs/ip_vs_wrr.c          |    5 +--
+ net/netfilter/nf_conntrack_core.c       |    5 +---
+ net/netfilter/nfnetlink_log.c           |    7 +----
+ net/netfilter/xt_IDLETIMER.c            |    2 -
+ net/netfilter/xt_hashlimit.c            |    5 +---
+ net/netrom/af_netrom.c                  |    8 +-----
+ net/rds/ib_rdma.c                       |    1 -
+ net/rds/iw_rdma.c                       |    8 +------
+ net/rds/iw_send.c                       |    8 +-----
+ net/rfkill/rfkill-regulator.c           |    1 -
+ net/rose/af_rose.c                      |    1 -
+ net/sched/act_api.c                     |    6 +---
+ net/sched/sch_atm.c                     |    1 -
+ net/sctp/protocol.c                     |    3 --
+ net/socket.c                            |    5 +---
+ net/sunrpc/auth_gss/gss_krb5_crypto.c   |   10 +-------
+ net/sunrpc/auth_gss/gss_krb5_mech.c     |    2 -
+ net/sunrpc/backchannel_rqst.c           |    9 ++-----
+ net/sunrpc/clnt.c                       |    3 --
+ net/sunrpc/rpc_pipe.c                   |    3 +-
+ net/sunrpc/rpcb_clnt.c                  |    2 -
+ net/sunrpc/xprtrdma/svc_rdma.c          |    8 +-----
+ net/sunrpc/xprtrdma/transport.c         |    5 +---
+ net/sunrpc/xprtrdma/verbs.c             |   14 ------------
+ net/sunrpc/xprtsock.c                   |    5 +---
+ net/tipc/link.c                         |    4 +--
+ net/wanrouter/wanmain.c                 |    8 +------
+ net/wireless/lib80211_crypt_ccmp.c      |    2 -
+ net/wireless/lib80211_crypt_tkip.c      |    4 ---
+ net/wireless/lib80211_crypt_wep.c       |    4 ---
+ net/wireless/util.c                     |    5 +--
+ net/x25/x25_dev.c                       |   10 +++-----
+ 78 files changed, 137 insertions(+), 415 deletions(-)
 
- 324       if (addr_type & IPV6_ADDR_LINKLOCAL) {
- 325               if (addr_len >= sizeof(struct sockaddr_in6) &&
- 326                   addr->sin6_scope_id) {
- 327                       /* Override any existing binding, if another one
- 328                        * is supplied by user.
- 329                        */
- 330                       sk->sk_bound_dev_if = addr->sin6_scope_id;
- 331               }
- 332 
- 333               /* Binding to link-local address requires an interface */
- 334               if (!sk->sk_bound_dev_if) {
- 335                       err = -EINVAL;
- 336                       goto out_unlock;
- 337               }
-
-Replacing svc_addr_u by sockaddr_storage, let rqstp->rq_daddr contains more info
-besides address.
-
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
----
- fs/lockd/host.c            |   14 ++------------
- fs/nfsd/nfs4state.c        |   16 +---------------
- include/linux/sunrpc/svc.h |   30 +++++++++++++++++++++---------
- net/sunrpc/svc_xprt.c      |   13 ++-----------
- net/sunrpc/svcsock.c       |    9 +++++----
- 5 files changed, 31 insertions(+), 51 deletions(-)
-
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index b7c99bf..b23db05 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -316,14 +316,8 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
- 	struct hlist_node *pos;
- 	struct nlm_host	*host = NULL;
- 	struct nsm_handle *nsm = NULL;
--	struct sockaddr_in sin = {
--		.sin_family	= AF_INET,
--	};
--	struct sockaddr_in6 sin6 = {
--		.sin6_family	= AF_INET6,
--	};
- 	struct sockaddr *src_sap;
--	size_t src_len = rqstp->rq_addrlen;
-+	size_t src_len = rqstp->rq_daddrlen;
- 	struct nlm_lookup_host_info ni = {
- 		.server		= 1,
- 		.sap		= svc_addr(rqstp),
-@@ -342,12 +336,8 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
- 
- 	switch (ni.sap->sa_family) {
- 	case AF_INET:
--		sin.sin_addr.s_addr = rqstp->rq_daddr.addr.s_addr;
--		src_sap = (struct sockaddr *)&sin;
--		break;
- 	case AF_INET6:
--		ipv6_addr_copy(&sin6.sin6_addr, &rqstp->rq_daddr.addr6);
--		src_sap = (struct sockaddr *)&sin6;
-+		src_sap = svc_daddr(rqstp);
- 		break;
- 	default:
- 		dprintk("lockd: %s failed; unrecognized address family\n",
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3787ec1..07a18a5 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1173,20 +1173,6 @@ find_unconfirmed_client_by_str(const char *dname, unsigned int hashval)
- 	return NULL;
- }
- 
--static void rpc_svcaddr2sockaddr(struct sockaddr *sa, unsigned short family, union svc_addr_u *svcaddr)
--{
--	switch (family) {
--	case AF_INET:
--		((struct sockaddr_in *)sa)->sin_family = AF_INET;
--		((struct sockaddr_in *)sa)->sin_addr = svcaddr->addr;
--		return;
--	case AF_INET6:
--		((struct sockaddr_in6 *)sa)->sin6_family = AF_INET6;
--		((struct sockaddr_in6 *)sa)->sin6_addr = svcaddr->addr6;
--		return;
--	}
--}
--
- static void
- gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_rqst *rqstp)
- {
-@@ -1218,7 +1204,7 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_r
- 
- 	conn->cb_prog = se->se_callback_prog;
- 	conn->cb_ident = se->se_callback_ident;
--	rpc_svcaddr2sockaddr((struct sockaddr *)&conn->cb_saddr, expected_family, &rqstp->rq_daddr);
-+	memcpy(&conn->cb_saddr, &rqstp->rq_daddr, rqstp->rq_daddrlen);
- 	return;
- out_err:
- 	conn->cb_addr.ss_family = AF_UNSPEC;
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 223588a..3bc0dc9 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -212,11 +212,6 @@ static inline void svc_putu32(struct kvec *iov, __be32 val)
- 	iov->iov_len += sizeof(__be32);
- }
- 
--union svc_addr_u {
--    struct in_addr	addr;
--    struct in6_addr	addr6;
--};
--
- /*
-  * The context of a single thread, including the request currently being
-  * processed.
-@@ -225,8 +220,12 @@ struct svc_rqst {
- 	struct list_head	rq_list;	/* idle list */
- 	struct list_head	rq_all;		/* all threads list */
- 	struct svc_xprt *	rq_xprt;	/* transport ptr */
-+
- 	struct sockaddr_storage	rq_addr;	/* peer address */
- 	size_t			rq_addrlen;
-+	struct sockaddr_storage	rq_daddr;	/* dest addr of request
-+						 *  - reply from here */
-+	size_t			rq_daddrlen;
- 
- 	struct svc_serv *	rq_server;	/* RPC service definition */
- 	struct svc_pool *	rq_pool;	/* thread pool */
-@@ -255,9 +254,6 @@ struct svc_rqst {
- 	unsigned short
- 				rq_secure  : 1;	/* secure port */
- 
--	union svc_addr_u	rq_daddr;	/* dest addr of request
--						 *  - reply from here */
--
- 	void *			rq_argp;	/* decoded arguments */
- 	void *			rq_resp;	/* xdr'd results */
- 	void *			rq_auth_data;	/* flavor-specific data */
-@@ -300,6 +296,21 @@ static inline struct sockaddr *svc_addr(const struct svc_rqst *rqst)
- 	return (struct sockaddr *) &rqst->rq_addr;
- }
- 
-+static inline struct sockaddr_in *svc_daddr_in(const struct svc_rqst *rqst)
-+{
-+	return (struct sockaddr_in *) &rqst->rq_daddr;
-+}
-+
-+static inline struct sockaddr_in6 *svc_daddr_in6(const struct svc_rqst *rqst)
-+{
-+	return (struct sockaddr_in6 *) &rqst->rq_daddr;
-+}
-+
-+static inline struct sockaddr *svc_daddr(const struct svc_rqst *rqst)
-+{
-+	return (struct sockaddr *) &rqst->rq_daddr;
-+}
-+
- /*
-  * Check buffer bounds after decoding arguments
-  */
-@@ -340,7 +351,8 @@ struct svc_deferred_req {
- 	struct svc_xprt		*xprt;
- 	struct sockaddr_storage	addr;	/* where reply must go */
- 	size_t			addrlen;
--	union svc_addr_u	daddr;	/* where reply must come from */
-+	struct sockaddr_storage	daddr;	/* where reply must come from */
-+	size_t			daddrlen;
- 	struct cache_deferred_req handle;
- 	size_t			xprt_hlen;
- 	int			argslen;
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index bd31208..d86bb67 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -254,8 +254,6 @@ EXPORT_SYMBOL_GPL(svc_create_xprt);
-  */
- void svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt)
- {
--	struct sockaddr *sin;
--
- 	memcpy(&rqstp->rq_addr, &xprt->xpt_remote, xprt->xpt_remotelen);
- 	rqstp->rq_addrlen = xprt->xpt_remotelen;
- 
-@@ -263,15 +261,8 @@ void svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt)
- 	 * Destination address in request is needed for binding the
- 	 * source address in RPC replies/callbacks later.
- 	 */
--	sin = (struct sockaddr *)&xprt->xpt_local;
--	switch (sin->sa_family) {
--	case AF_INET:
--		rqstp->rq_daddr.addr = ((struct sockaddr_in *)sin)->sin_addr;
--		break;
--	case AF_INET6:
--		rqstp->rq_daddr.addr6 = ((struct sockaddr_in6 *)sin)->sin6_addr;
--		break;
--	}
-+	memcpy(&rqstp->rq_daddr, &xprt->xpt_local, xprt->xpt_locallen);
-+	rqstp->rq_daddrlen = xprt->xpt_locallen;
- }
- EXPORT_SYMBOL_GPL(svc_xprt_copy_addrs);
- 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 767d494..b9f4ad4 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -143,7 +143,8 @@ static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
- 			cmh->cmsg_level = SOL_IP;
- 			cmh->cmsg_type = IP_PKTINFO;
- 			pki->ipi_ifindex = 0;
--			pki->ipi_spec_dst.s_addr = rqstp->rq_daddr.addr.s_addr;
-+			pki->ipi_spec_dst.s_addr =
-+				 svc_daddr_in(rqstp)->sin_addr.s_addr;
- 			cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
- 		}
- 		break;
-@@ -155,7 +156,7 @@ static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
- 			cmh->cmsg_type = IPV6_PKTINFO;
- 			pki->ipi6_ifindex = 0;
- 			ipv6_addr_copy(&pki->ipi6_addr,
--					&rqstp->rq_daddr.addr6);
-+					&svc_daddr_in6(rqstp)->sin6_addr);
- 			cmh->cmsg_len = CMSG_LEN(sizeof(*pki));
- 		}
- 		break;
-@@ -500,7 +501,7 @@ static int svc_udp_get_dest_address4(struct svc_rqst *rqstp,
- 	struct in_pktinfo *pki = CMSG_DATA(cmh);
- 	if (cmh->cmsg_type != IP_PKTINFO)
- 		return 0;
--	rqstp->rq_daddr.addr.s_addr = pki->ipi_spec_dst.s_addr;
-+	svc_daddr_in(rqstp)->sin_addr.s_addr = pki->ipi_spec_dst.s_addr;
- 	return 1;
- }
- 
-@@ -513,7 +514,7 @@ static int svc_udp_get_dest_address6(struct svc_rqst *rqstp,
- 	struct in6_pktinfo *pki = CMSG_DATA(cmh);
- 	if (cmh->cmsg_type != IPV6_PKTINFO)
- 		return 0;
--	ipv6_addr_copy(&rqstp->rq_daddr.addr6, &pki->ipi6_addr);
-+	ipv6_addr_copy(&svc_daddr_in6(rqstp)->sin6_addr, &pki->ipi6_addr);
- 	return 1;
- }
- 
 -- 
-1.7.6
-
+1.7.6.405.gc1be0
 
