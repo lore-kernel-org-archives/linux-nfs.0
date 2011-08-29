@@ -1,93 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53193 "EHLO fieldses.org"
+Received: from chilli.pcug.org.au ([203.10.76.44]:55837 "EHLO smtps.tip.net.au"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753144Ab1HSQH6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Aug 2011 12:07:58 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: Jeremy Allison <jra@samba.org>, samba-technical@lists.samba.org,
-        linux-nfs@vger.kernel.org, Volker Lendecke <Volker.Lendecke@SerNet.DE>,
-        Casey Bodley <cbodley@citi.umich.edu>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/4] locks: minor lease cleanup
-Date: Fri, 19 Aug 2011 12:07:48 -0400
-Message-Id: <1313770071-353-1-git-send-email-bfields@redhat.com>
-In-Reply-To: <20110819160416.GC30856@fieldses.org>
-References: <20110819160416.GC30856@fieldses.org>
+	id S1754103Ab1H2W6B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Aug 2011 18:58:01 -0400
+Date: Tue, 30 Aug 2011 08:57:52 +1000
+From: Stephen Rothwell <sfr@canb.auug.org.au>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Ben Hutchings <ben@decadent.org.uk>, Neil Brown <neilb@suse.de>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-arch@vger.kernel.org
+Subject: Re: [PATCH] All Arch: remove linkage for sys_nfsservctl system call
+Message-Id: <20110830085752.6db1ffa600f4c82135b3f3eb@canb.auug.org.au>
+In-Reply-To: <20110826220311.GA18140@fieldses.org>
+References: <1312810169.2591.1153.camel@deadeye>
+	<20110808155538.GB904@fieldses.org>
+	<20110808180658.GC29924@decadent.org.uk>
+	<20110826220311.GA18140@fieldses.org>
+Content-Type: multipart/signed; protocol="application/pgp-signature";
+ micalg="PGP-SHA1";
+ boundary="Signature=_Tue__30_Aug_2011_08_57_52_+1000_Uw9KG.Cbr6Myuj=k"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Use a helper function, to simplify upcoming changes.
+--Signature=_Tue__30_Aug_2011_08_57_52_+1000_Uw9KG.Cbr6Myuj=k
+Content-Type: text/plain; charset=US-ASCII
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/locks.c |   15 ++++++++++-----
- 1 files changed, 10 insertions(+), 5 deletions(-)
+Hi Bruce,
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 703f545..c528522 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -133,6 +133,11 @@
- #define IS_FLOCK(fl)	(fl->fl_flags & FL_FLOCK)
- #define IS_LEASE(fl)	(fl->fl_flags & FL_LEASE)
- 
-+static bool lease_breaking(struct file_lock *fl)
-+{
-+	return fl->fl_type & F_INPROGRESS;
-+}
-+
- int leases_enable = 1;
- int lease_break_time = 45;
- 
-@@ -1141,7 +1146,7 @@ static void time_out_leases(struct inode *inode)
- 	struct file_lock *fl;
- 
- 	before = &inode->i_flock;
--	while ((fl = *before) && IS_LEASE(fl) && (fl->fl_type & F_INPROGRESS)) {
-+	while ((fl = *before) && IS_LEASE(fl) && lease_breaking(fl)) {
- 		if ((fl->fl_break_time == 0)
- 				|| time_before(jiffies, fl->fl_break_time)) {
- 			before = &fl->fl_next;
-@@ -1189,7 +1194,7 @@ int __break_lease(struct inode *inode, unsigned int mode)
- 	if (want_write) {
- 		/* If we want write access, we have to revoke any lease. */
- 		future = F_UNLCK | F_INPROGRESS;
--	} else if (flock->fl_type & F_INPROGRESS) {
-+	} else if (lease_breaking(flock)) {
- 		/* If the lease is already being broken, we just leave it */
- 		future = flock->fl_type;
- 	} else if (flock->fl_type & F_WRLCK) {
-@@ -1246,7 +1251,7 @@ restart:
- 		/* Wait for the next lease that has not been broken yet */
- 		for (flock = inode->i_flock; flock && IS_LEASE(flock);
- 				flock = flock->fl_next) {
--			if (flock->fl_type & F_INPROGRESS)
-+			if (lease_breaking(flock))
- 				goto restart;
- 		}
- 		error = 0;
-@@ -2126,7 +2131,7 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
- 		}
- 	} else if (IS_LEASE(fl)) {
- 		seq_printf(f, "LEASE  ");
--		if (fl->fl_type & F_INPROGRESS)
-+		if (lease_breaking(fl))
- 			seq_printf(f, "BREAKING  ");
- 		else if (fl->fl_file)
- 			seq_printf(f, "ACTIVE    ");
-@@ -2142,7 +2147,7 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
- 			       : (fl->fl_type & LOCK_WRITE) ? "WRITE" : "NONE ");
- 	} else {
- 		seq_printf(f, "%s ",
--			       (fl->fl_type & F_INPROGRESS)
-+			       (lease_breaking(fl))
- 			       ? (fl->fl_type & F_UNLCK) ? "UNLCK" : "READ "
- 			       : (fl->fl_type & F_WRLCK) ? "WRITE" : "READ ");
- 	}
--- 
-1.7.4.1
+On Fri, 26 Aug 2011 18:03:11 -0400 "J. Bruce Fields" <bfields@fieldses.org>=
+ wrote:
+>
+> From: NeilBrown <neilb@suse.de>
+>=20
+> The nfsservctl system call is now gone, so we should remove all
+> linkage for it.
+>=20
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>=20
+> I don't normally have to deal with this kind of cross-architecture
+> patch; is this the right etiquette for it?
 
+It turns out (with hindsight) that my reaction to this patch should have
+been:
+
+If you haven't built this on all architectures (an noone expects you to
+actually do that), then it should spend a day or two in linux-next before
+being sent to Linus.
+
+--=20
+Cheers,
+Stephen Rothwell                    sfr@canb.auug.org.au
+http://www.canb.auug.org.au/~sfr/
+
+--Signature=_Tue__30_Aug_2011_08_57_52_+1000_Uw9KG.Cbr6Myuj=k
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+iQEcBAEBAgAGBQJOXBlwAAoJEDMEi1NhKgbssnMH/0Bb99IHgDTSfYa3/mtwN+Rg
+JFZiEYu/kaqLwT9lBx2xElHwjRBb+Moi+GHdFcQYV2YtOKldJqeVptEFHLQScuHK
+i2T3bYz2WjIRkfYjp58smmLk6pByLMDJBjO1E+x3MCiENvvze501nqooyrbd4eA0
+Oa7dwrIKosmZBNImuZfpBIdmOELQo6n5ewqyXqKFB+g/YRAiifhj2Pq1pMuawPxa
+JiEFywkrJuOSs8F6bk/p2WLydH70piIzdJsHxKisE0Pqvy1shHXS782gv/LTDWZp
+UjaQ2e+CdmmHmm/6lMCoemwOfYX13O0lmXdJa2kPKuBukadH/SsBsrpFv0UghVY=
+=zdQQ
+-----END PGP SIGNATURE-----
+
+--Signature=_Tue__30_Aug_2011_08_57_52_+1000_Uw9KG.Cbr6Myuj=k--
