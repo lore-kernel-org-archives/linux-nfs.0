@@ -1,42 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f46.google.com ([209.85.215.46]:42819 "EHLO
-	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750917Ab1HXPd4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Aug 2011 11:33:56 -0400
-Received: by mail-ew0-f46.google.com with SMTP id 4so527255ewy.19
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Aug 2011 08:33:56 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/5] statd: Report count of loaded hosts correctly
-To: linux-nfs@vger.kernel.org
-Date: Wed, 24 Aug 2011 11:33:53 -0400
-Message-ID: <20110824153353.3138.98630.stgit@matisse.1015granger.net>
-In-Reply-To: <20110824153024.3138.63294.stgit@matisse.1015granger.net>
-References: <20110824153024.3138.63294.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:58393 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751390Ab1H2NqF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Aug 2011 09:46:05 -0400
+Message-ID: <4E5B981A.1020605@netapp.com>
+Date: Mon, 29 Aug 2011 09:46:02 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] NFS: Add "device" tag to /proc/self/mountstats
+References: <4E5807A8.2020600@netapp.com> <6701215B-7718-4EE2-9EC4-BFE0936B0D2A@oracle.com>
+In-Reply-To: <6701215B-7718-4EE2-9EC4-BFE0936B0D2A@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Fix a debugging message to report correctly the count of hosts loaded
-when statd starts up.
+On 08/27/2011 07:52 PM, Chuck Lever wrote:
+> 
+> On Aug 26, 2011, at 4:52 PM, Bryan Schumaker wrote:
+> 
+>> nfsiostat was failing to find mounted filesystems on recent kernels due
+>> to changes in the VFS that resulted in a missing "device" tag in the
+>> /proc/self/mountstats file.
+> 
+> What was the commit ID that changed this formal kernel API?  I'd like to see the justification.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+It was changed by this commit:
 
- utils/statd/monitor.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+commit c7f404b40a3665d9f4e9a927cc5c1ee0479ed8f9
+Author: Al Viro <viro@zeniv.linux.org.uk>
+Date:   Wed Mar 16 06:59:40 2011 -0400
 
-diff --git a/utils/statd/monitor.c b/utils/statd/monitor.c
-index 325dfd3..286a5e2 100644
---- a/utils/statd/monitor.c
-+++ b/utils/statd/monitor.c
-@@ -249,7 +249,7 @@ void load_state(void)
- 
- 	count = nsm_load_monitor_list(load_one_host);
- 	if (count)
--		xlog(D_GENERAL, "Loaded %u previously monitored hosts");
-+		xlog(D_GENERAL, "Loaded %u previously monitored hosts", count);
- }
- 
- /*
+    vfs: new superblock methods to override /proc/*/mount{s,info}
+    
+    a) ->show_devname(m, mnt) - what to put into devname columns in mounts,
+    mountinfo and mountstats
+    b) ->show_path(m, mnt) - what to put into relative path column in mountinfo
+    
+    Leaving those NULL gives old behaviour.  NFS switched to using those.
+    
+    Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+
+
+> 
+>> This patch re-adds the "device" tag for NFS
+>> mount data in /proc/self/mountstats.
+> 
+> The purpose of mountstats is to be an interface that all file systems can use.  If we can't add "device" back to all mounts listed in /proc/self/mountstats, it might be better to adjust nfsiostats to cope.
+> 
+>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+>> ---
+>> fs/nfs/super.c |    4 +++-
+>> 1 files changed, 3 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>> index b961cea..e6a0317 100644
+>> --- a/fs/nfs/super.c
+>> +++ b/fs/nfs/super.c
+>> @@ -766,8 +766,10 @@ static int nfs_show_devname(struct seq_file *m, struct vfsmount *mnt)
+>> 	devname = nfs_path(&dummy, mnt->mnt_root, page, PAGE_SIZE);
+>> 	if (IS_ERR(devname))
+>> 		err = PTR_ERR(devname);
+>> -	else
+>> +	else {
+>> +		seq_puts(m, "device ");
+>> 		seq_escape(m, devname, " \t\n\\");
+>> +	}
+>> 	free_page((unsigned long)page);
+>> 	return err;
+>> }
+>> -- 
+>> 1.7.6
+> 
 
