@@ -1,92 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:51242 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754234Ab1HNUIP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Aug 2011 16:08:15 -0400
-Received: by fxh19 with SMTP id 19so3242967fxh.19
-        for <linux-nfs@vger.kernel.org>; Sun, 14 Aug 2011 13:08:14 -0700 (PDT)
-Message-ID: <4E482B2A.9030107@tonian.com>
-Date: Sun, 14 Aug 2011 23:08:10 +0300
-From: Benny Halevy <benny@tonian.com>
-To: Boaz Harrosh <bharrosh@panasas.com>, Jim Rees <rees@umich.edu>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: two callback patches
-References: <20110812204809.GA4760@merit.edu> <4E4597E7.7090504@panasas.com>
-In-Reply-To: <4E4597E7.7090504@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from shards.monkeyblade.net ([198.137.202.13]:60174 "EHLO
+	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754887Ab1H2VkD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2011 17:40:03 -0400
+Date: Mon, 29 Aug 2011 14:37:51 -0700 (PDT)
+Message-Id: <20110829.143751.1153162956919885670.davem@davemloft.net>
+To: Trond.Myklebust@netapp.com
+Cc: joe@perches.com, bfields@fieldses.org, neilb@suse.de,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 19/24] sunrpc: Remove unnecessary OOM logging messages
+From: David Miller <davem@davemloft.net>
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AEB4EE9@SACMVEXC2-PRD.hq.netapp.com>
+References: <cover.1314650069.git.joe@perches.com>
+	<8a6378b3fef105983db001fb720c84b669491439.1314650069.git.joe@perches.com>
+	<2E1EB2CF9ED1CB4AA966F0EB76EAB4430AEB4EE9@SACMVEXC2-PRD.hq.netapp.com>
+Content-Type: Text/Plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-08-13 00:15, Boaz Harrosh wrote:
-> On 08/12/2011 01:48 PM, Jim Rees wrote:
->> When you get a chance, could you pull these into pnfs-all-latest?  You'll
->> find them on the head of my for-benny branch, and I assume upstream.
->>
-> 
-> Right and some other bug fixes as well. I find that all of trond/linux-next
-> branch are needed for proper run with v3.1-rc1 stuff. Best is if you can
-> merge in trond/linux-next at the client branch side if the pnfs tree.
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Date: Mon, 29 Aug 2011 14:36:17 -0700
 
-Yup.  I fetched nfs-2.6/bugfixes (same as linux-next as of today)
-into my nfs-bugfixes branch and released under pnfs-all-3.1-rc1-2011-08-14
-
-Benny
-
+> Big NACK...
 > 
-> Thanks
-> Boaz
-> 
->> commit 3070296f2b3ddc094bda51286c3e9687d59d2a22
->> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
->> Date:   Tue Aug 2 14:50:40 2011 -0400
->>
->>     NFSv4.1: Return NFS4ERR_BADSESSION to callbacks during session resets
->>     
->>     If the client is in the process of resetting the session when it receives
->>     a callback, then returning NFS4ERR_DELAY may cause a deadlock with the
->>     DESTROY_SESSION call.
->>     
->>     Basically, if the client returns NFS4ERR_DELAY in response to the
->>     CB_SEQUENCE call, then the server is entitled to believe that the
->>     client is busy because it is already processing that call. In that
->>     case, the server is perfectly entitled to respond with a
->>     NFS4ERR_BACK_CHAN_BUSY to any DESTROY_SESSION call.
->>     
->>     Fix this by having the client reply with a NFS4ERR_BADSESSION in
->>     response to the callback if it is resetting the session.
->>     
->>     Cc: stable@kernel.org [2.6.38+]
->>     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->>
->> commit a8446678ba8b850bcac2286c6ed803c339049096
->> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
->> Date:   Tue Aug 2 14:50:39 2011 -0400
->>
->>     NFSv4.1: Fix the callback 'highest_used_slotid' behaviour
->>     
->>     Currently, there is no guarantee that we will call nfs4_cb_take_slot() even
->>     though nfs4_callback_compound() will consistently call
->>     nfs4_cb_free_slot() provided the cb_process_state has set the 'clp' field.
->>     The result is that we can trigger the BUG_ON() upon the next call to
->>     nfs4_cb_take_slot().
->>     
->>     This patch fixes the above problem by using the slot id that was taken in
->>     the CB_SEQUENCE operation as a flag for whether or not we need to call
->>     nfs4_cb_free_slot().
->>     It also fixes an atomicity problem: we need to set tbl->highest_used_slotid
->>     atomically with the check for NFS4_SESSION_DRAINING, otherwise we end up
->>     racing with the various tests in nfs4_begin_drain_session().
->>     
->>     Cc: stable@kernel.org [2.6.38+]
->>     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> By whose standard are those "not useful"?
 
+By mine, that's for sure.  It's duplicating something that the allocation
+layers are already going to print.
