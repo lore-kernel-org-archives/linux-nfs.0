@@ -1,54 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp2.ugent.be ([157.193.49.126]:54415 "EHLO smtp2.UGent.be"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756048Ab1HFNKr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 6 Aug 2011 09:10:47 -0400
-Message-ID: <4E3D3D6B.7050102@debian.org>
-Date: Sat, 06 Aug 2011 15:11:07 +0200
-From: Luk Claes <luk@debian.org>
-To: Jim Rees <rees@umich.edu>
-CC: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] start-statd: Use bash as -p is no POSIX
-References: <1312624768-2394-1-git-send-email-luk@debian.org> <20110806123858.GA20169@merit.edu>
-In-Reply-To: <20110806123858.GA20169@merit.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet15.oracle.com ([148.87.113.117]:61984 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751580Ab1H2Onx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2011 10:43:53 -0400
+Subject: Re: [PATCH] NFS: Add "device" tag to /proc/self/mountstats
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4E5B981A.1020605@netapp.com>
+Date: Mon, 29 Aug 2011 10:43:42 -0400
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Message-Id: <7F5CA899-5277-4F74-A10F-8F889347F445@oracle.com>
+References: <4E5807A8.2020600@netapp.com> <6701215B-7718-4EE2-9EC4-BFE0936B0D2A@oracle.com> <4E5B981A.1020605@netapp.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 08/06/2011 02:38 PM, Jim Rees wrote:
-> Luk Claes wrote:
+
+On Aug 29, 2011, at 9:46 AM, Bryan Schumaker wrote:
+
+> On 08/27/2011 07:52 PM, Chuck Lever wrote:
+>> 
+>> On Aug 26, 2011, at 4:52 PM, Bryan Schumaker wrote:
+>> 
+>>> nfsiostat was failing to find mounted filesystems on recent kernels due
+>>> to changes in the VFS that resulted in a missing "device" tag in the
+>>> /proc/self/mountstats file.
+>> 
+>> What was the commit ID that changed this formal kernel API?  I'd like to see the justification.
 > 
->   sh -p is not guaranteed to be provided by POSIX shells. dash for instance
->   does not provide this, so use bash explicitly.
+> It was changed by this commit:
 > 
-> That's pretty funny.  The script requires a posix shell, which bash isn't by
-> default, so it provides an undocumented (in my ubuntu man page) option to
-> force bash into compliance.  Since the option itself isn't posix, we now
-> require the use of this non-posix shell so we can guarantee posix
-> compliance.
+> commit c7f404b40a3665d9f4e9a927cc5c1ee0479ed8f9
+> Author: Al Viro <viro@zeniv.linux.org.uk>
+> Date:   Wed Mar 16 06:59:40 2011 -0400
+> 
+>    vfs: new superblock methods to override /proc/*/mount{s,info}
+> 
+>    a) ->show_devname(m, mnt) - what to put into devname columns in mounts,
+>    mountinfo and mountstats
+>    b) ->show_path(m, mnt) - what to put into relative path column in mountinfo
+> 
+>    Leaving those NULL gives old behaviour.  NFS switched to using those.
+> 
+>    Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 
-That would even be worse as the -p option in bash has *nothing* to do
-with posix:
+It looks like dropping the "device" tag from /proc/self/mountstats was not intentional, so this is a kernel API regression.  At a guess, 2.6.39 probably works right, but 3.0 is broken.  Whatever solution we come up with might need to be cc:d to stable@kernel.org.  Be sure to verify which released kernels are broken.
 
-set -p's documentation in bash's manual:
+Does changing nfs_show_devname() to add a "device" tag have any effect on the other two /proc files (mounts and mountinfo)?  I suspect you do want to fix show_vfsstat() instead of nfs_show_devname().  This should add "device" only where it is needed, and would work for all file systems.
 
-Turn  on  privileged  mode.   In this mode, the
-$ENV and $BASH_ENV  files  are  not  processed,
-shell  functions  are  not  inherited  from the
-environment,  and  the   SHELLOPTS,   BASHOPTS,
-CDPATH,   and  GLOBIGNORE  variables,  if  they
-appear in the environment, are ignored.  If the
-shell   is  started  with  the  effective  user
-(group) id not equal to the real  user  (group)
-id,  and  the  -p option is not supplied, these
-actions are taken and the effective user id  is
-set  to  the real user id.  If the -p option is
-supplied at startup, the effective user  id  is
-not  reset.  Turning this option off causes the
-effective user and group ids to be set  to  the
-real user and group ids.
+> 
+> 
+>> 
+>>> This patch re-adds the "device" tag for NFS
+>>> mount data in /proc/self/mountstats.
+>> 
+>> The purpose of mountstats is to be an interface that all file systems can use.  If we can't add "device" back to all mounts listed in /proc/self/mountstats, it might be better to adjust nfsiostats to cope.
+>> 
+>>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+>>> ---
+>>> fs/nfs/super.c |    4 +++-
+>>> 1 files changed, 3 insertions(+), 1 deletions(-)
+>>> 
+>>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>>> index b961cea..e6a0317 100644
+>>> --- a/fs/nfs/super.c
+>>> +++ b/fs/nfs/super.c
+>>> @@ -766,8 +766,10 @@ static int nfs_show_devname(struct seq_file *m, struct vfsmount *mnt)
+>>> 	devname = nfs_path(&dummy, mnt->mnt_root, page, PAGE_SIZE);
+>>> 	if (IS_ERR(devname))
+>>> 		err = PTR_ERR(devname);
+>>> -	else
+>>> +	else {
+>>> +		seq_puts(m, "device ");
+>>> 		seq_escape(m, devname, " \t\n\\");
+>>> +	}
+>>> 	free_page((unsigned long)page);
+>>> 	return err;
+>>> }
+>>> -- 
+>>> 1.7.6
+>> 
+> 
 
-Cheers
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Luk
+
+
+
