@@ -1,81 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:57288 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753500Ab1HLTaS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Aug 2011 15:30:18 -0400
-Received: by gya6 with SMTP id 6so2173051gya.19
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Aug 2011 12:30:17 -0700 (PDT)
-In-Reply-To: <20110812143228.GD16960@pad.fieldses.org>
-References: <4E44790A.8000106@panasas.com>
-	<4E447EEB.501@panasas.com>
-	<4E4481F0.2050806@panasas.com>
-	<20110812021556.GD9761@pad.fieldses.org>
-	<CAMeBU_28VPCtExvU1gr3oTbLLyqp=qFwFjxehoea64Xqi=_ncQ@mail.gmail.com>
-	<20110812143228.GD16960@pad.fieldses.org>
-Date: Fri, 12 Aug 2011 15:30:16 -0400
-Message-ID: <CAMeBU_1dmHB54n5PYoRnBuphmQgK4LVCX52_OveSmriEe6FiMw@mail.gmail.com>
-Subject: Re: Grace period NEVER ends
-From: Casey Bodley <cbodley@citi.umich.edu>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
-        Mi Jinlong <mijinlong@cn.fujitsu.com>,
-        Malcolm Locke <malc@wholemeal.co.nz>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:53661 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753945Ab1H2S4v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2011 14:56:51 -0400
+Received: by iabu26 with SMTP id u26so737334iab.19
+        for <linux-nfs@vger.kernel.org>; Mon, 29 Aug 2011 11:56:51 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/3] NFSD: Remove the ex_pathname field from struct svc_export
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 29 Aug 2011 14:49:00 -0400
+Message-ID: <20110829184900.3305.13531.stgit@matisse.1015granger.net>
+In-Reply-To: <20110829184608.3305.93648.stgit@matisse.1015granger.net>
+References: <20110829184608.3305.93648.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 12, 2011 at 10:32 AM, J. Bruce Fields <bfields@redhat.com> wrote:
-> On Fri, Aug 12, 2011 at 10:08:03AM -0400, Casey Bodley wrote:
->> On Thu, Aug 11, 2011 at 10:15 PM, J. Bruce Fields <bfields@redhat.com> wrote:
->> > On Thu, Aug 11, 2011 at 06:29:20PM -0700, Boaz Harrosh wrote:
->> >> With this patch I'm back to the previous behavior. That is
->> >> wait your grace period then continue.
->> >
->> > Is it true for some reason that the client never sends RECLAIM_COMPLETE?
->>
->> I tested this yesterday with the windows client and saw the same
->> never-ending grace period on OPEN.  We do send RECLAIM_COMPLETE, and
->> it completes successfully.  Other operations like CREATE and REMOVE
->> succeed as well.
->
-> Argh.  Does this help?
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-Bruce, I've not been able to reproduce since applying this patch.
+There are no more users...
 
->
-> Unfortunately, this doesn't explain Malcolm Locke's problem, as it's 4.1
-> specific.
->
-> --b.
->
-> commit d43b4d070a24edcbe5f5e9ffcf7a33bbeccdd47d
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Fri Aug 12 10:27:18 2011 -0400
->
->    nfsd4: fix failure to end nfsd4 grace period
->
->    Even if we fail to write a recovery record to stable storage, we should
->    still mark the client as having acquired its first state.  Otherwise we
->    leave 4.1 clients with indefinite ERR_GRACE returns.
->
->    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->
-> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-> index 29d77f6..4c7537d 100644
-> --- a/fs/nfsd/nfs4recover.c
-> +++ b/fs/nfsd/nfs4recover.c
-> @@ -156,10 +156,9 @@ out_put:
->        dput(dentry);
->  out_unlock:
->        mutex_unlock(&dir->d_inode->i_mutex);
-> -       if (status == 0) {
-> -               clp->cl_firststate = 1;
-> +       if (status == 0)
->                vfs_fsync(rec_file, 0);
-> -       }
-> +       clp->cl_firststate = 1;
->        nfs4_reset_creds(original_cred);
->        dprintk("NFSD: nfsd4_create_clid_dir returns %d\n", status);
->        return status;
->
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+
+ fs/nfsd/export.c            |   11 -----------
+ include/linux/nfsd/export.h |    1 -
+ 2 files changed, 0 insertions(+), 12 deletions(-)
+
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index d9a6611..bf985f7 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -318,7 +318,6 @@ static void svc_export_put(struct kref *ref)
+ 	struct svc_export *exp = container_of(ref, struct svc_export, h.ref);
+ 	path_put(&exp->ex_path);
+ 	auth_domain_put(exp->ex_client);
+-	kfree(exp->ex_pathname);
+ 	nfsd4_fslocs_free(&exp->ex_fslocs);
+ 	kfree(exp);
+ }
+@@ -528,11 +527,6 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
+ 
+ 	exp.ex_client = dom;
+ 
+-	err = -ENOMEM;
+-	exp.ex_pathname = kstrdup(buf, GFP_KERNEL);
+-	if (!exp.ex_pathname)
+-		goto out2;
+-
+ 	/* expiry */
+ 	err = -EINVAL;
+ 	exp.h.expiry_time = get_expiry(&mesg);
+@@ -613,8 +607,6 @@ out4:
+ 	nfsd4_fslocs_free(&exp.ex_fslocs);
+ 	kfree(exp.ex_uuid);
+ out3:
+-	kfree(exp.ex_pathname);
+-out2:
+ 	path_put(&exp.ex_path);
+ out1:
+ 	auth_domain_put(dom);
+@@ -678,7 +670,6 @@ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
+ 	new->ex_client = item->ex_client;
+ 	new->ex_path.dentry = dget(item->ex_path.dentry);
+ 	new->ex_path.mnt = mntget(item->ex_path.mnt);
+-	new->ex_pathname = NULL;
+ 	new->ex_fslocs.locations = NULL;
+ 	new->ex_fslocs.locations_count = 0;
+ 	new->ex_fslocs.migrated = 0;
+@@ -696,8 +687,6 @@ static void export_update(struct cache_head *cnew, struct cache_head *citem)
+ 	new->ex_fsid = item->ex_fsid;
+ 	new->ex_uuid = item->ex_uuid;
+ 	item->ex_uuid = NULL;
+-	new->ex_pathname = item->ex_pathname;
+-	item->ex_pathname = NULL;
+ 	new->ex_fslocs.locations = item->ex_fslocs.locations;
+ 	item->ex_fslocs.locations = NULL;
+ 	new->ex_fslocs.locations_count = item->ex_fslocs.locations_count;
+diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
+index 7ba3fd4..f85308e 100644
+--- a/include/linux/nfsd/export.h
++++ b/include/linux/nfsd/export.h
+@@ -96,7 +96,6 @@ struct svc_export {
+ 	struct auth_domain *	ex_client;
+ 	int			ex_flags;
+ 	struct path		ex_path;
+-	char			*ex_pathname;
+ 	uid_t			ex_anon_uid;
+ 	gid_t			ex_anon_gid;
+ 	int			ex_fsid;
+
