@@ -1,72 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:65353 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751612Ab1HDRKV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2011 13:10:21 -0400
-Subject: Re: [NLM] fcntl(F_SETLKW) yields -ENOLCK when grace period expires.
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Frank van Maarseveen <frankvm@frankvm.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Date: Thu, 04 Aug 2011 13:10:20 -0400
-In-Reply-To: <20110804164913.GG12445@fieldses.org>
-References: <20110804103018.GA11727@janus>
-	 <20110804163452.GE12445@fieldses.org> <20110804164313.GA17572@janus>
-	 <20110804164913.GG12445@fieldses.org>
+Received: from natasha.panasas.com ([67.152.220.90]:57255 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753977Ab1H2VXn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2011 17:23:43 -0400
+Message-ID: <4E5C01BF.1050402@panasas.com>
+Date: Mon, 29 Aug 2011 14:16:47 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Peng Tao <bergwolf@gmail.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, <benny@tonian.com>,
+        <linux-nfs@vger.kernel.org>, Peng Tao <peng_tao@emc.com>
+Subject: Re: [PATCH v2 1/3] pNFS: recoalesce when ld write pagelist fails
+References: <1313197213-1651-1-git-send-email-bergwolf@gmail.com> <1313197213-1651-2-git-send-email-bergwolf@gmail.com> <CA+a=Yy5V-JpEy_aJ6=H5=y=GBsoDGL-TDbPZkaVmT0DxEYhLjA@mail.gmail.com> <4E5859C6.5000807@panasas.com> <CA+a=Yy7Nh7eiyuWPcbnJNR+12ypH9pMSjUr8h4AgJW0mPDubXA@mail.gmail.com>
+In-Reply-To: <CA+a=Yy7Nh7eiyuWPcbnJNR+12ypH9pMSjUr8h4AgJW0mPDubXA@mail.gmail.com>
 Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1312477820.8919.5.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2011-08-04 at 12:49 -0400, J. Bruce Fields wrote: 
-> On Thu, Aug 04, 2011 at 06:43:13PM +0200, Frank van Maarseveen wrote:
-> > On Thu, Aug 04, 2011 at 12:34:52PM -0400, J. Bruce Fields wrote:
-> > > On Thu, Aug 04, 2011 at 12:30:19PM +0200, Frank van Maarseveen wrote:
-> > > > Both client- and server run 2.6.39.3, NFSv3 over UDP (without the
-> > > > relock_filesystem patch proposed earlier).
-> > > > 
-> > > > A second client has an exclusive lock on a file on the server. The
-> > > > client under test calls fcntl(F_SETLKW) to wait for the same exclusive
-> > > > lock. Wireshark sees NLM V4 LOCK calls resulting in NLM_BLOCKED.
-> > > > 
-> > > > Next the server is rebooted. The second client recovers the lock
-> > > > correctly. The client under test now receives NLM_DENIED_GRACE_PERIOD for
-> > > > every NLM V4 LOCK request resulting from the waiting fcntl(F_SETLKW). When
-> > > > this changes to NLM_BLOCKED after grace period expiration the fcntl
-> > > > returns -ENOLCK ("No locks available.") instead of continuing to wait.
-> > > 
-> > > So that sounds like a client bug, and correct behavior from the server
-> > > (assuming the second client was still holding the lock throughout).
-> > 
-> > yes.
-
-Is the client actually asking for a blocking lock after the grace period
-expires?
-
-> > > 
-> > > > server:/proc/locks shows two entries for the file after the -ENOLCK. When
-> > > > the second client gives up its lock because the program running there
-> > > > is killed one entry in server:/proc/locks remains indefinately: as a
-> > > > result no NFS client can lock the file anymore.
-> > > 
-> > > But that sounds like a server bug--what do the two entries look like?
-> > 
-> > I think the server assumes correct client behavior; the client under
-> > test resulted in a '->' prefixed entry. The fcntl at the client just
-> > shouldn't have returned yet.
+On 08/27/2011 03:47 AM, Peng Tao wrote:
+> Hi, Boaz,
 > 
-> Oh, right, so did you see a granted callback returned to the client?
+> On Sat, Aug 27, 2011 at 10:43 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>>> My only concern about the patch is here. If we fail at
+>>> nfs_page_async_flush(), is it enough to just call nfs_set_pageerror()
+>>> on the page? Do we need to redirty the page as well, and maybe some
+>>> other things?
+>>>
+>>
+>> Hum? That's a very good question. nfs_end_page_writeback above does
+>> an end_page_writeback(), which does test_clear_page_writeback().
+>> Now in nfs_page_async_flush() you are adding the page back to the nfs writeback
+>> queue. So the question is when does test_set_page_writeback() is called?
+>> If it is called as part of the re-issue of write by NFS then you are
+>> fine because you clear it here but it will be set later on. But if
+>> it was done on entry into the queue. At the original sight of the call to
+>> nfs_page_async_flush(). Then it will not be set again and it might confuse
+>> the VFS since we will be re-clearing a cleared bit.
+>
+> nfs_set_page_tag_locked() and nfs_set_page_writeback() are called
+> inside nfs_page_async_flush(), so we need to call
+> nfs_clear_page_tag_locked() and nfs_end_page_writeback() before
+> invoking nfs_page_async_flush(). 
 
-The client will reject any unsolicited GRANTED callbacks with an
-NLM_LCK_DENIED. As far as I can see, nlmsvc_grant_reply() then only
-removes the block, it doesn't cancel the lock...
+OK grate, so you answered my question, that's good then.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+> But I am not quite sure about how to
+> handle nfs_page_async_flush() failure properly here (e.g., OOM). If we
+> don't re-dirty the page, will it break NFS writeback assumptions?
+> 
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Hmm, that one is tough. (From the frying-pan into the fire).
 
+Lets add a big FIXME: for now. And later after lots of testing and error
+injection we might just check nfs_page_async_flush() return code and
+manually re-dirty the page on failure.
+
+> Thanks,
+> Tao
+>>
+
+Thanks
+Boaz
