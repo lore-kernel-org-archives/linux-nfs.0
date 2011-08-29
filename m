@@ -1,36 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:45734 "EHLO
+Received: from natasha.panasas.com ([67.152.220.90]:58255 "EHLO
 	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753987Ab1HVX3B (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Aug 2011 19:29:01 -0400
-Message-ID: <4E52E603.3040107@panasas.com>
-Date: Mon, 22 Aug 2011 16:28:03 -0700
+	with ESMTP id S1754992Ab1H2WCS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2011 18:02:18 -0400
+Message-ID: <4E5C0AB3.90401@panasas.com>
+Date: Mon, 29 Aug 2011 14:54:59 -0700
 From: Boaz Harrosh <bharrosh@panasas.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: <tao.peng@emc.com>, <Trond.Myklebust@netapp.com>, <benny@tonian.com>,
-        <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/5] pNFS: recoalesce when ld write pagelist fails
-References: <1312685635-1593-1-git-send-email-bergwolf@gmail.com> <4E42C564.7070504@panasas.com> <CA+a=Yy4WXD64A3anw7f-wSWcs4A4-6W18QQs=YyYC0285_W_qg@mail.gmail.com> <4E442512.7080904@panasas.com> <CA+a=Yy4g09b_AEf2px1Cjfmr_ud3PFuAbEwdez1cbsiYJ0mmgA@mail.gmail.com> <4E446F63.5080707@panasas.com> <F19688880B763E40B28B2B462677FBF805BF0EB0A3@MX09A.corp.emc.com> <4E4AD0CE.3000506@panasas.com> <CA+a=Yy5jApbUqy+ESZxczZ3N+ixg8ixK9iAe0DWqSZavap18xQ@mail.gmail.com>
-In-Reply-To: <CA+a=Yy5jApbUqy+ESZxczZ3N+ixg8ixK9iAe0DWqSZavap18xQ@mail.gmail.com>
+To: David Miller <davem@davemloft.net>
+CC: <Trond.Myklebust@netapp.com>, <joe@perches.com>, <bfields@fieldses.org>,
+        <neilb@suse.de>, <linux-nfs@vger.kernel.org>, <netdev@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 19/24] sunrpc: Remove unnecessary OOM logging messages
+References: <cover.1314650069.git.joe@perches.com> <8a6378b3fef105983db001fb720c84b669491439.1314650069.git.joe@perches.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AEB4EE9@SACMVEXC2-PRD.hq.netapp.com> <20110829.143751.1153162956919885670.davem@davemloft.net>
+In-Reply-To: <20110829.143751.1153162956919885670.davem@davemloft.net>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 08/17/2011 02:44 AM, Peng Tao wrote:
-<snip>
-
-> The problem w/ directly calling nfs_initiate_write() is that we may
-> have pagelist length larger than server's rsize/wsize. So if client
-> sends all the pages in single READ/WRITE rpc, MDS will reject the
-> READ/WRITE operation. Therefore we need to recoalesce them before
-> re-sending to MDS.
+On 08/29/2011 02:37 PM, David Miller wrote:
+> From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+> Date: Mon, 29 Aug 2011 14:36:17 -0700
 > 
+>> Big NACK...
+>>
+>> By whose standard are those "not useful"?
+> 
+> By mine, that's for sure.  It's duplicating something that the allocation
+> layers are already going to print.
 
-Rrrr, you are absolutely right. I needed a smack on the head, to
-get back on track.
+I have a question about that. Are the dprints going to show the stack backtrace?
+Otherwise how can I see which exact allocation failed and was not properly handled?
 
-<snip>
+If yes above? then I'm not sure I like it either, because am I'll be getting a full
+stack backtrace for every failed allocation?
 
-Thanks
+But I might like it if I try. How do I turn on allocation failures prints?
+Can I filter out to print only GFP_KERNEL failures and or other GFP combinations?
+
+Thanks 
 Boaz
