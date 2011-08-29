@@ -1,93 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:61984 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751580Ab1H2Onx convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2011 10:43:53 -0400
-Subject: Re: [PATCH] NFS: Add "device" tag to /proc/self/mountstats
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4E5B981A.1020605@netapp.com>
-Date: Mon, 29 Aug 2011 10:43:42 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Message-Id: <7F5CA899-5277-4F74-A10F-8F889347F445@oracle.com>
-References: <4E5807A8.2020600@netapp.com> <6701215B-7718-4EE2-9EC4-BFE0936B0D2A@oracle.com> <4E5B981A.1020605@netapp.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:46010 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754022Ab1H2P3f (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2011 11:29:35 -0400
+Received: from cyclope.frec.bull.fr (cyclope.frec.bull.fr [129.183.4.9])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id B96E36F5A4
+	for <linux-nfs@vger.kernel.org>; Mon, 29 Aug 2011 17:04:21 +0200 (CEST)
+Received: from [129.183.101.222] (pa-129.183.101.222.frec.bull.fr [129.183.101.222])
+	by cyclope.frec.bull.fr (Postfix) with ESMTP id ACF40272FD
+	for <linux-nfs@vger.kernel.org>; Mon, 29 Aug 2011 17:04:19 +0200 (CEST)
+Message-ID: <4E5BAB28.3070800@bull.net>
+Date: Mon, 29 Aug 2011 17:07:20 +0200
+From: Menyhart Zoltan <Zoltan.Menyhart@bull.net>
+To: linux-nfs@vger.kernel.org
+Subject: sunrpc ref count leaks in nfs
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On a freshly installed RedHat 6.1 (2.6.32-131), I have sunrpc loaded 
+with a reference counter = 1,
+it is for the mount of sunrpc on /var/lib/nfs/rpc_pipefs.
 
-On Aug 29, 2011, at 9:46 AM, Bryan Schumaker wrote:
+If I want, I can unmout it and unload sunrpc.
 
-> On 08/27/2011 07:52 PM, Chuck Lever wrote:
->> 
->> On Aug 26, 2011, at 4:52 PM, Bryan Schumaker wrote:
->> 
->>> nfsiostat was failing to find mounted filesystems on recent kernels due
->>> to changes in the VFS that resulted in a missing "device" tag in the
->>> /proc/self/mountstats file.
->> 
->> What was the commit ID that changed this formal kernel API?  I'd like to see the justification.
-> 
-> It was changed by this commit:
-> 
-> commit c7f404b40a3665d9f4e9a927cc5c1ee0479ed8f9
-> Author: Al Viro <viro@zeniv.linux.org.uk>
-> Date:   Wed Mar 16 06:59:40 2011 -0400
-> 
->    vfs: new superblock methods to override /proc/*/mount{s,info}
-> 
->    a) ->show_devname(m, mnt) - what to put into devname columns in mounts,
->    mountinfo and mountstats
->    b) ->show_path(m, mnt) - what to put into relative path column in mountinfo
-> 
->    Leaving those NULL gives old behaviour.  NFS switched to using those.
-> 
->    Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+If I execute a "service nfs start" and then a "service nfs stop"
+(and I unmount /proc/fs/nfsd, I execute "service rpcidmapd stop", I remove
+nfsd, lockd, nfs_acl, auth_rpcgss, exportfs, then "service rpcbind stop",
+"service nfslock stop") then I am left with the reference counter of 
+sunrpc = 4.
+I.e. once used NFS, I cannot unload sunrpc.
 
-It looks like dropping the "device" tag from /proc/self/mountstats was not intentional, so this is a kernel API regression.  At a guess, 2.6.39 probably works right, but 3.0 is broken.  Whatever solution we come up with might need to be cc:d to stable@kernel.org.  Be sure to verify which released kernels are broken.
+Have you got a correction for this, please?
 
-Does changing nfs_show_devname() to add a "device" tag have any effect on the other two /proc files (mounts and mountinfo)?  I suspect you do want to fix show_vfsstat() instead of nfs_show_devname().  This should add "device" only where it is needed, and would work for all file systems.
+Thanks,
 
-> 
-> 
->> 
->>> This patch re-adds the "device" tag for NFS
->>> mount data in /proc/self/mountstats.
->> 
->> The purpose of mountstats is to be an interface that all file systems can use.  If we can't add "device" back to all mounts listed in /proc/self/mountstats, it might be better to adjust nfsiostats to cope.
->> 
->>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->>> ---
->>> fs/nfs/super.c |    4 +++-
->>> 1 files changed, 3 insertions(+), 1 deletions(-)
->>> 
->>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->>> index b961cea..e6a0317 100644
->>> --- a/fs/nfs/super.c
->>> +++ b/fs/nfs/super.c
->>> @@ -766,8 +766,10 @@ static int nfs_show_devname(struct seq_file *m, struct vfsmount *mnt)
->>> 	devname = nfs_path(&dummy, mnt->mnt_root, page, PAGE_SIZE);
->>> 	if (IS_ERR(devname))
->>> 		err = PTR_ERR(devname);
->>> -	else
->>> +	else {
->>> +		seq_puts(m, "device ");
->>> 		seq_escape(m, devname, " \t\n\\");
->>> +	}
->>> 	free_page((unsigned long)page);
->>> 	return err;
->>> }
->>> -- 
->>> 1.7.6
->> 
-> 
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+Zoltan Menyhart
 
 
