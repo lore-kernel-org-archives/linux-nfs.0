@@ -1,342 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:37987 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751887Ab1HHPiF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Aug 2011 11:38:05 -0400
-Subject: [PATCH 2/4] Return 32/64-bit dir name hash according to usage type
-To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: hch@infradead.org, yong.fan@whamcloud.com, linux-fsdevel@vger.kernel.org,
-        tytso@mit.edu, adilger@whamcloud.com
-Date: Mon, 08 Aug 2011 17:38:03 +0200
-Message-ID: <20110808153803.1872437.32460.stgit@fsdevel3>
-In-Reply-To: <20110808153432.1872437.85783.stgit@fsdevel3>
-References: <20110808153432.1872437.85783.stgit@fsdevel3>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:41407 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753945Ab1H2SuK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2011 14:50:10 -0400
+Received: by gwaa12 with SMTP id a12so5039185gwa.19
+        for <linux-nfs@vger.kernel.org>; Mon, 29 Aug 2011 11:50:09 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/2] NFSD: Remove the ex_pathname field from struct svc_export
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 29 Aug 2011 14:50:06 -0400
+Message-ID: <20110829185006.3369.19413.stgit@matisse.1015granger.net>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Fan Yong <yong.fan@whamcloud.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-Traditionally ext2/3/4 has returned a 32-bit hash value from llseek()
-to appease NFSv2, which can only handle a 32-bit cookie for seekdir()
-and telldir().  However, this causes problems if there are 32-bit hash
-collisions, since the NFSv2 server can get stuck resending the same
-entries from the directory repeatedly.
+There are no more users...
 
-Allow ext4 to return a full 64-bit hash (both major and minor) for
-telldir to decrease the chance of hash collisions.  This still needs
-integration on the NFS side.
-
-Patch-updated-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-(blame me if something is not correct)
-
-Signed-off-by: Fan Yong <yong.fan@whamcloud.com>
-Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
-Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/ext4/dir.c  |  185 ++++++++++++++++++++++++++++++++++++++++++++------------
- fs/ext4/ext4.h |    6 ++
- fs/ext4/hash.c |    4 +
- 3 files changed, 154 insertions(+), 41 deletions(-)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 164c560..cc47087 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -32,24 +32,8 @@ static unsigned char ext4_filetype_table[] = {
- 	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
- };
+ fs/nfsd/export.c            |   11 -----------
+ include/linux/nfsd/export.h |    1 -
+ 2 files changed, 0 insertions(+), 12 deletions(-)
+
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index d9a6611..bf985f7 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -318,7 +318,6 @@ static void svc_export_put(struct kref *ref)
+ 	struct svc_export *exp = container_of(ref, struct svc_export, h.ref);
+ 	path_put(&exp->ex_path);
+ 	auth_domain_put(exp->ex_client);
+-	kfree(exp->ex_pathname);
+ 	nfsd4_fslocs_free(&exp->ex_fslocs);
+ 	kfree(exp);
+ }
+@@ -528,11 +527,6 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
  
--static int ext4_readdir(struct file *, void *, filldir_t);
- static int ext4_dx_readdir(struct file *filp,
- 			   void *dirent, filldir_t filldir);
--static int ext4_release_dir(struct inode *inode,
--				struct file *filp);
+ 	exp.ex_client = dom;
+ 
+-	err = -ENOMEM;
+-	exp.ex_pathname = kstrdup(buf, GFP_KERNEL);
+-	if (!exp.ex_pathname)
+-		goto out2;
 -
--const struct file_operations ext4_dir_operations = {
--	.llseek		= ext4_llseek,
--	.read		= generic_read_dir,
--	.readdir	= ext4_readdir,		/* we take BKL. needed?*/
--	.unlocked_ioctl = ext4_ioctl,
--#ifdef CONFIG_COMPAT
--	.compat_ioctl	= ext4_compat_ioctl,
--#endif
--	.fsync		= ext4_sync_file,
--	.release	= ext4_release_dir,
--};
--
- 
- static unsigned char get_dtype(struct super_block *sb, int filetype)
- {
-@@ -254,22 +238,134 @@ out:
- 	return ret;
- }
- 
-+static inline int is_32bit_api(void)
-+{
-+#ifdef HAVE_IS_COMPAT_TASK
-+	return is_compat_task();
-+#else
-+	return (BITS_PER_LONG == 32);
-+#endif
-+}
-+
- /*
-  * These functions convert from the major/minor hash to an f_pos
-- * value.
-+ * value for dx directories
-+ *
-+ * Upper layer (for example NFS) should specify FMODE_32BITHASH or
-+ * FMODE_64BITHASH explicitly. On the other hand, we allow ext4 to be mounted
-+ * directly on both 32-bit and 64-bit nodes, under such case, neither
-+ * FMODE_32BITHASH nor FMODE_64BITHASH is specified.
-+ */
-+static inline loff_t hash2pos(struct file *filp, __u32 major, __u32 minor)
-+{
-+	if ((filp->f_flags & FMODE_32BITHASH) ||
-+	    (!(filp->f_flags & FMODE_64BITHASH) && is_32bit_api()))
-+		return major >> 1;
-+	else
-+		return ((__u64)(major >> 1) << 32) | (__u64)minor;
-+}
-+
-+static inline __u32 pos2maj_hash(struct file *filp, loff_t pos)
-+{
-+	if ((filp->f_flags & FMODE_32BITHASH) ||
-+	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
-+		return (pos << 1) & 0xffffffff;
-+	else
-+		return ((pos >> 32) << 1) & 0xffffffff;
-+}
-+
-+static inline __u32 pos2min_hash(struct file *filp, loff_t pos)
-+{
-+	if ((filp->f_flags & FMODE_32BITHASH) ||
-+	    (!(filp->f_flags & FMODE_64BITHASH) && is_32bit_api()))
-+		return 0;
-+	else
-+		return pos & 0xffffffff;
-+}
-+
-+/*
-+ * Return 32- or 64-bit end-of-file for dx directories
-+ */
-+static inline loff_t ext4_get_htree_eof(struct file *filp)
-+{
-+	if ((filp->f_mode & FMODE_32BITHASH) ||
-+	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
-+		return EXT4_HTREE_EOF_32BIT;
-+	else
-+		return EXT4_HTREE_EOF_64BIT;
-+}
-+
-+
-+/*
-+ * ext4_dir_llseek() based on generic_file_llseek() to handle both
-+ * non-htree and htree directories, where the "offset" is in terms
-+ * of the filename hash value instead of the byte offset.
-  *
-- * Currently we only use major hash numer.  This is unfortunate, but
-- * on 32-bit machines, the same VFS interface is used for lseek and
-- * llseek, so if we use the 64 bit offset, then the 32-bit versions of
-- * lseek/telldir/seekdir will blow out spectacularly, and from within
-- * the ext2 low-level routine, we don't know if we're being called by
-- * a 64-bit version of the system call or the 32-bit version of the
-- * system call.  Worse yet, NFSv2 only allows for a 32-bit readdir
-- * cookie.  Sigh.
-+ * NOTE: offsets obtained *before* ext4_set_inode_flag(dir, EXT4_INODE_INDEX)
-+ *       will be invalid once the directory was converted into a dx directory
-  */
--#define hash2pos(major, minor)	(major >> 1)
--#define pos2maj_hash(pos)	((pos << 1) & 0xffffffff)
--#define pos2min_hash(pos)	(0)
-+loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
-+{
-+	struct inode *inode = file->f_mapping->host;
-+	loff_t ret = -EINVAL;
-+	int is_dx_dir = ext4_test_inode_flag(inode, EXT4_INODE_INDEX);
-+
-+	mutex_lock(&inode->i_mutex);
-+
-+	/* NOTE: relative offsets with dx directories might not work
-+	 *       as expected, as it is difficult to figure out the
-+	 *       correct offset between dx hashes */
-+
-+	switch (origin) {
-+	case SEEK_END:
-+		if (unlikely(offset > 0))
-+			goto out_err; /* not supported for directories */
-+
-+		/* so only negative offsets are left, does that have a
-+		 * meaning for directories at all? */
-+		if (is_dx_dir)
-+			offset += ext4_get_htree_eof(file);
-+		else
-+			offset += inode->i_size;
-+		break;
-+	case SEEK_CUR:
-+		/*
-+		 * Here we special-case the lseek(fd, 0, SEEK_CUR)
-+		 * position-querying operation.  Avoid rewriting the "same"
-+		 * f_pos value back to the file because a concurrent read(),
-+		 * write() or lseek() might have altered it
-+		 */
-+		if (offset == 0) {
-+			offset = file->f_pos;
-+			goto out_ok;
-+		}
-+
-+		offset += file->f_pos;
-+		break;
-+	}
-+
-+	if (unlikely(offset < 0))
-+		goto out_err;
-+
-+	if (!is_dx_dir) {
-+		if (offset > inode->i_sb->s_maxbytes)
-+			goto out_err;
-+	} else if (offset > ext4_get_htree_eof(file))
-+		goto out_err;
-+
-+	/* Special lock needed here? */
-+	if (offset != file->f_pos) {
-+		file->f_pos = offset;
-+		file->f_version = 0;
-+	}
-+
-+out_ok:
-+	ret = offset;
-+out_err:
-+	mutex_unlock(&inode->i_mutex);
-+
-+	return ret;
-+}
- 
- /*
-  * This structure holds the nodes of the red-black tree used to store
-@@ -330,15 +426,16 @@ static void free_rb_tree_fname(struct rb_root *root)
- }
- 
- 
--static struct dir_private_info *ext4_htree_create_dir_info(loff_t pos)
-+static struct dir_private_info *ext4_htree_create_dir_info(struct file *filp,
-+							   loff_t pos)
- {
- 	struct dir_private_info *p;
- 
- 	p = kzalloc(sizeof(struct dir_private_info), GFP_KERNEL);
- 	if (!p)
- 		return NULL;
--	p->curr_hash = pos2maj_hash(pos);
--	p->curr_minor_hash = pos2min_hash(pos);
-+	p->curr_hash = pos2maj_hash(filp, pos);
-+	p->curr_minor_hash = pos2min_hash(filp, pos);
- 	return p;
- }
- 
-@@ -429,7 +526,7 @@ static int call_filldir(struct file *filp, void *dirent,
- 		       "null fname?!?\n");
- 		return 0;
- 	}
--	curr_pos = hash2pos(fname->hash, fname->minor_hash);
-+	curr_pos = hash2pos(filp, fname->hash, fname->minor_hash);
- 	while (fname) {
- 		error = filldir(dirent, fname->name,
- 				fname->name_len, curr_pos,
-@@ -454,13 +551,13 @@ static int ext4_dx_readdir(struct file *filp,
- 	int	ret;
- 
- 	if (!info) {
--		info = ext4_htree_create_dir_info(filp->f_pos);
-+		info = ext4_htree_create_dir_info(filp, filp->f_pos);
- 		if (!info)
- 			return -ENOMEM;
- 		filp->private_data = info;
- 	}
- 
--	if (filp->f_pos == EXT4_HTREE_EOF)
-+	if (filp->f_pos == ext4_get_htree_eof(filp))
- 		return 0;	/* EOF */
- 
- 	/* Some one has messed with f_pos; reset the world */
-@@ -468,8 +565,8 @@ static int ext4_dx_readdir(struct file *filp,
- 		free_rb_tree_fname(&info->root);
- 		info->curr_node = NULL;
- 		info->extra_fname = NULL;
--		info->curr_hash = pos2maj_hash(filp->f_pos);
--		info->curr_minor_hash = pos2min_hash(filp->f_pos);
-+		info->curr_hash = pos2maj_hash(filp, filp->f_pos);
-+		info->curr_minor_hash = pos2min_hash(filp, filp->f_pos);
- 	}
- 
- 	/*
-@@ -501,7 +598,7 @@ static int ext4_dx_readdir(struct file *filp,
- 			if (ret < 0)
- 				return ret;
- 			if (ret == 0) {
--				filp->f_pos = EXT4_HTREE_EOF;
-+				filp->f_pos = ext4_get_htree_eof(filp);
- 				break;
- 			}
- 			info->curr_node = rb_first(&info->root);
-@@ -521,7 +618,7 @@ static int ext4_dx_readdir(struct file *filp,
- 			info->curr_minor_hash = fname->minor_hash;
- 		} else {
- 			if (info->next_hash == ~0) {
--				filp->f_pos = EXT4_HTREE_EOF;
-+				filp->f_pos = ext4_get_htree_eof(filp);
- 				break;
- 			}
- 			info->curr_hash = info->next_hash;
-@@ -540,3 +637,15 @@ static int ext4_release_dir(struct inode *inode, struct file *filp)
- 
- 	return 0;
- }
-+
-+const struct file_operations ext4_dir_operations = {
-+	.llseek		= ext4_dir_llseek,
-+	.read		= generic_read_dir,
-+	.readdir	= ext4_readdir,
-+	.unlocked_ioctl = ext4_ioctl,
-+#ifdef CONFIG_COMPAT
-+	.compat_ioctl	= ext4_compat_ioctl,
-+#endif
-+	.fsync		= ext4_sync_file,
-+	.release	= ext4_release_dir,
-+};
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e717dfd..31d9ba0 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1560,7 +1560,11 @@ struct dx_hash_info
- 	u32		*seed;
- };
- 
--#define EXT4_HTREE_EOF	0x7fffffff
-+
-+/* 32 and 64 bit signed EOF for dx directories */
-+#define EXT4_HTREE_EOF_32BIT   ((1UL  << (32 - 1)) - 1)
-+#define EXT4_HTREE_EOF_64BIT   ((1ULL << (64 - 1)) - 1)
-+
- 
- /*
-  * Control parameters used by ext4_htree_next_block
-diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
-index ac8f168..fa8e491 100644
---- a/fs/ext4/hash.c
-+++ b/fs/ext4/hash.c
-@@ -200,8 +200,8 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
- 		return -1;
- 	}
- 	hash = hash & ~1;
--	if (hash == (EXT4_HTREE_EOF << 1))
--		hash = (EXT4_HTREE_EOF-1) << 1;
-+	if (hash == (EXT4_HTREE_EOF_32BIT << 1))
-+		hash = (EXT4_HTREE_EOF_32BIT - 1) << 1;
- 	hinfo->hash = hash;
- 	hinfo->minor_hash = minor_hash;
- 	return 0;
+ 	/* expiry */
+ 	err = -EINVAL;
+ 	exp.h.expiry_time = get_expiry(&mesg);
+@@ -613,8 +607,6 @@ out4:
+ 	nfsd4_fslocs_free(&exp.ex_fslocs);
+ 	kfree(exp.ex_uuid);
+ out3:
+-	kfree(exp.ex_pathname);
+-out2:
+ 	path_put(&exp.ex_path);
+ out1:
+ 	auth_domain_put(dom);
+@@ -678,7 +670,6 @@ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
+ 	new->ex_client = item->ex_client;
+ 	new->ex_path.dentry = dget(item->ex_path.dentry);
+ 	new->ex_path.mnt = mntget(item->ex_path.mnt);
+-	new->ex_pathname = NULL;
+ 	new->ex_fslocs.locations = NULL;
+ 	new->ex_fslocs.locations_count = 0;
+ 	new->ex_fslocs.migrated = 0;
+@@ -696,8 +687,6 @@ static void export_update(struct cache_head *cnew, struct cache_head *citem)
+ 	new->ex_fsid = item->ex_fsid;
+ 	new->ex_uuid = item->ex_uuid;
+ 	item->ex_uuid = NULL;
+-	new->ex_pathname = item->ex_pathname;
+-	item->ex_pathname = NULL;
+ 	new->ex_fslocs.locations = item->ex_fslocs.locations;
+ 	item->ex_fslocs.locations = NULL;
+ 	new->ex_fslocs.locations_count = item->ex_fslocs.locations_count;
+diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
+index 7ba3fd4..f85308e 100644
+--- a/include/linux/nfsd/export.h
++++ b/include/linux/nfsd/export.h
+@@ -96,7 +96,6 @@ struct svc_export {
+ 	struct auth_domain *	ex_client;
+ 	int			ex_flags;
+ 	struct path		ex_path;
+-	char			*ex_pathname;
+ 	uid_t			ex_anon_uid;
+ 	gid_t			ex_anon_gid;
+ 	int			ex_fsid;
 
