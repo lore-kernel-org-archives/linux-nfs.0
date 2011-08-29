@@ -1,83 +1,204 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:35813 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754062Ab1HKVL1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Aug 2011 17:11:27 -0400
-Message-ID: <4E444552.9030105@panasas.com>
-Date: Thu, 11 Aug 2011 14:10:42 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@tonian.com>, Sorin Faibish <sfaibish@emc.com>,
-        peter honeyman <honey@citi.umich.edu>
-CC: <tao.peng@emc.com>, <torvalds@linux-foundation.org>,
-        <rdunlap@xenotime.net>, <bergwolf@gmail.com>,
-        <Trond.Myklebust@netapp.com>, <linux-raid@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        "Welch, Brent" <welch@panasas.com>
-Subject: [PATCH] pnfs: Automatically select blocks & objects layouts
-References: <CA+55aFwkJdyEpyNY64aAQ5ChrPZ8Kvx9iRUwy1J6_SRaxoN=zA@mail.gmail.com> <20110810122304.96b8be67.rdunlap@xenotime.net> <CA+a=Yy5izxiyvW5eYiWuute9E1vXwNTj4frdzNeEwsLDrszesg@mail.gmail.com> <20110810175829.a834d80f.rdunlap@xenotime.net> <CA+55aFzcSLrhkexEn=J7BN8F3P3Vy+EAjwgGwMQPdeoYoQG+Bw@mail.gmail.com> <F19688880B763E40B28B2B462677FBF805BF0EAC8A@MX09A.corp.emc.com> <4E43AAD1.7090806@tonian.com> <4E4422FD.3060706@panasas.com>
-In-Reply-To: <4E4422FD.3060706@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:46527 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752209Ab1H2Ssy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2011 14:48:54 -0400
+Received: by iabu26 with SMTP id u26so731071iab.19
+        for <linux-nfs@vger.kernel.org>; Mon, 29 Aug 2011 11:48:54 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/3] NFSD: Cleanup for nfsd4_path()
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 29 Aug 2011 14:48:51 -0400
+Message-ID: <20110829184851.3305.54600.stgit@matisse.1015granger.net>
+In-Reply-To: <20110829184608.3305.93648.stgit@matisse.1015granger.net>
+References: <20110829184608.3305.93648.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-What about the below? based on v3.1-rc1
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-----
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCH] pnfs: Automatically select blocks & objects layouts
+The current code is sort of hackish in that it assumes a referral is always
+matched to an export. When we add support for junctions that may not be the
+case.
+We can replace nfsd4_path() with a function that encodes the components
+directly from the dentries. Since nfsd4_path is currently the only user of
+the 'ex_pathname' field in struct svc_export, this has the added benefit
+of allowing us to get rid of that.
 
-Just like files-layout, blocks & objects layouts are part of the
-NFS 4.1 protocol and should be automatically selected if NFS_4_1
-is selected. The small problem is that these depend on other
-Kernel support being present, while files only depends on NFS
-itself.
-
-This patch removes from the user choice the presence of objects
-and blocks layout. But makes sure these are selected only if
-the depended subsystems are present in the Kernel.
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/Kconfig |   14 ++++----------
- 1 files changed, 4 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index be02077..1b951cd 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -79,9 +79,6 @@ config NFS_V4_1
- 	depends on NFS_FS && NFS_V4 && EXPERIMENTAL
- 	select SUNRPC_BACKCHANNEL
- 	select PNFS_FILE_LAYOUT
--	select PNFS_BLOCK
--	select MD
--	select BLK_DEV_DM
- 	help
- 	  This option enables support for minor version 1 of the NFSv4 protocol
- 	  (RFC 5661 and RFC 5663) in the kernel's NFS client.
-@@ -93,16 +90,13 @@ config PNFS_FILE_LAYOUT
- 
- config PNFS_BLOCK
- 	tristate
-+	depends on NFS_FS && NFS_V4_1 && MD && BLK_DEV_DM
-+	default m
- 
- config PNFS_OBJLAYOUT
--	tristate "Provide support for the pNFS Objects Layout Driver for NFSv4.1 pNFS (EXPERIMENTAL)"
-+	tristate
- 	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
--	help
--	  Say M here if you want your pNFS client to support the Objects Layout Driver.
--	  Requires the SCSI osd initiator library (SCSI_OSD_INITIATOR) and
--	  upper level driver (SCSI_OSD_ULD).
--
--	  If unsure, say N.
-+	default m
- 
- config ROOT_NFS
- 	bool "Root file system on NFS"
--- 
-1.7.6
+ fs/nfsd/export.c            |    4 +-
+ fs/nfsd/nfs4xdr.c           |  106 ++++++++++++++++++++++++++++++++-----------
+ include/linux/nfsd/export.h |    1 
+ 3 files changed, 81 insertions(+), 30 deletions(-)
 
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index f4cc1e2..d9a6611 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -1010,7 +1010,7 @@ rqst_exp_parent(struct svc_rqst *rqstp, struct path *path)
+ 	return exp;
+ }
+ 
+-static struct svc_export *find_fsidzero_export(struct svc_rqst *rqstp)
++struct svc_export *rqst_find_fsidzero_export(struct svc_rqst *rqstp)
+ {
+ 	u32 fsidv[2];
+ 
+@@ -1030,7 +1030,7 @@ exp_pseudoroot(struct svc_rqst *rqstp, struct svc_fh *fhp)
+ 	struct svc_export *exp;
+ 	__be32 rv;
+ 
+-	exp = find_fsidzero_export(rqstp);
++	exp = rqst_find_fsidzero_export(rqstp);
+ 	if (IS_ERR(exp))
+ 		return nfserrno(PTR_ERR(exp));
+ 	rv = fh_compose(fhp, exp, exp->ex_path.dentry, NULL);
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index c8bf405..f7b068e 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1697,36 +1697,89 @@ static __be32 nfsd4_encode_fs_location4(struct nfsd4_fs_location *location,
+ }
+ 
+ /*
+- * Return the path to an export point in the pseudo filesystem namespace
+- * Returned string is safe to use as long as the caller holds a reference
+- * to @exp.
++ * Encode a path in RFC3530 'pathname4' format
+  */
+-static char *nfsd4_path(struct svc_rqst *rqstp, struct svc_export *exp, __be32 *stat)
++static __be32 nfsd4_encode_path(const struct path *root,
++		const struct path *path, __be32 **pp, int *buflen)
+ {
+-	struct svc_fh tmp_fh;
+-	char *path = NULL, *rootpath;
+-	size_t rootlen;
++	struct path cur = {
++		.mnt = path->mnt,
++		.dentry = path->dentry,
++	};
++	__be32 *p = *pp;
++	struct dentry **components = NULL;
++	unsigned int ncomponents = 0;
++	__be32 err = nfserr_resource;
+ 
+-	fh_init(&tmp_fh, NFS4_FHSIZE);
+-	*stat = exp_pseudoroot(rqstp, &tmp_fh);
+-	if (*stat)
+-		return NULL;
+-	rootpath = tmp_fh.fh_export->ex_pathname;
++	dprintk("nfsd4_encode_components(");
+ 
+-	path = exp->ex_pathname;
++	path_get(&cur);
++	/* First walk the path up to the nfsd root, and store the
++	 * dentries/path components in an array.
++	 */
++	for (;;) {
++		if (cur.dentry == root->dentry && cur.mnt == root->mnt)
++			break;
++		if (cur.dentry == cur.mnt->mnt_root) {
++			if (follow_up(&cur))
++				continue;
++			goto out_free;
++		}
++		if ((ncomponents & 15) == 0) {
++			struct dentry **new;
++			new = krealloc(components,
++					sizeof(*new) * (ncomponents + 16),
++					GFP_KERNEL);
++			if (!new)
++				goto out_free;
++			components = new;
++		}
++		components[ncomponents++] = cur.dentry;
++		cur.dentry = dget_parent(cur.dentry);
++	}
+ 
+-	rootlen = strlen(rootpath);
+-	if (strncmp(path, rootpath, rootlen)) {
+-		dprintk("nfsd: fs_locations failed;"
+-			"%s is not contained in %s\n", path, rootpath);
+-		*stat = nfserr_notsupp;
+-		path = NULL;
+-		goto out;
++	*buflen -= 4;
++	if (*buflen < 0)
++		goto out_free;
++	WRITE32(ncomponents);
++
++	while (ncomponents) {
++		struct dentry *dentry = components[ncomponents - 1];
++		unsigned int len = dentry->d_name.len;
++
++		*buflen -= 4 + (XDR_QUADLEN(len) << 2);
++		if (*buflen < 0)
++			goto out_free;
++		WRITE32(len);
++		WRITEMEM(dentry->d_name.name, len);
++		dprintk("/%s", dentry->d_name.name);
++		dput(dentry);
++		ncomponents--;
+ 	}
+-	path += rootlen;
+-out:
+-	fh_put(&tmp_fh);
+-	return path;
++
++	*pp = p;
++	err = 0;
++out_free:
++	dprintk(")\n");
++	while (ncomponents)
++		dput(components[--ncomponents]);
++	kfree(components);
++	path_put(&cur);
++	return err;
++}
++
++static __be32 nfsd4_encode_fsloc_fsroot(struct svc_rqst *rqstp,
++		const struct path *path, __be32 **pp, int *buflen)
++{
++	struct svc_export *exp_ps;
++	__be32 res;
++
++	exp_ps = rqst_find_fsidzero_export(rqstp);
++	if (IS_ERR(exp_ps))
++		return nfserrno(PTR_ERR(exp_ps));
++	res = nfsd4_encode_path(&exp_ps->ex_path, path, pp, buflen);
++	exp_put(exp_ps);
++	return res;
+ }
+ 
+ /*
+@@ -1740,11 +1793,8 @@ static __be32 nfsd4_encode_fs_locations(struct svc_rqst *rqstp,
+ 	int i;
+ 	__be32 *p = *pp;
+ 	struct nfsd4_fs_locations *fslocs = &exp->ex_fslocs;
+-	char *root = nfsd4_path(rqstp, exp, &status);
+ 
+-	if (status)
+-		return status;
+-	status = nfsd4_encode_components('/', root, &p, buflen);
++	status = nfsd4_encode_fsloc_fsroot(rqstp, &exp->ex_path, &p, buflen);
+ 	if (status)
+ 		return status;
+ 	if ((*buflen -= 4) < 0)
+diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
+index 8a31a20..7ba3fd4 100644
+--- a/include/linux/nfsd/export.h
++++ b/include/linux/nfsd/export.h
+@@ -137,6 +137,7 @@ struct svc_export *	rqst_exp_get_by_name(struct svc_rqst *,
+ 					     struct path *);
+ struct svc_export *	rqst_exp_parent(struct svc_rqst *,
+ 					struct path *);
++struct svc_export *	rqst_find_fsidzero_export(struct svc_rqst *);
+ int			exp_rootfh(struct auth_domain *, 
+ 					char *path, struct knfsd_fh *, int maxsize);
+ __be32			exp_pseudoroot(struct svc_rqst *, struct svc_fh *);
 
