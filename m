@@ -1,45 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:43847 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:53898 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755244Ab1HaVpf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 31 Aug 2011 17:45:35 -0400
-Received: from bfields by fieldses.org with local (Exim 4.72)
-	(envelope-from <bfields@fieldses.org>)
-	id 1QysbH-0005P8-DP
-	for linux-nfs@vger.kernel.org; Wed, 31 Aug 2011 17:45:35 -0400
-Date: Wed, 31 Aug 2011 17:45:35 -0400
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd4: remove typoed replay field
-Message-ID: <20110831214535.GI19223@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1753579Ab1H2OzT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Aug 2011 10:55:19 -0400
+Message-ID: <4E5BA855.2030109@netapp.com>
+Date: Mon, 29 Aug 2011 10:55:17 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] NFS: Add "device" tag to /proc/self/mountstats
+References: <4E5807A8.2020600@netapp.com> <6701215B-7718-4EE2-9EC4-BFE0936B0D2A@oracle.com> <4E5B981A.1020605@netapp.com> <7F5CA899-5277-4F74-A10F-8F889347F445@oracle.com>
+In-Reply-To: <7F5CA899-5277-4F74-A10F-8F889347F445@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@redhat.com>
+On 08/29/2011 10:43 AM, Chuck Lever wrote:
+> 
+> On Aug 29, 2011, at 9:46 AM, Bryan Schumaker wrote:
+> 
+>> On 08/27/2011 07:52 PM, Chuck Lever wrote:
+>>>
+>>> On Aug 26, 2011, at 4:52 PM, Bryan Schumaker wrote:
+>>>
+>>>> nfsiostat was failing to find mounted filesystems on recent kernels due
+>>>> to changes in the VFS that resulted in a missing "device" tag in the
+>>>> /proc/self/mountstats file.
+>>>
+>>> What was the commit ID that changed this formal kernel API?  I'd like to see the justification.
+>>
+>> It was changed by this commit:
+>>
+>> commit c7f404b40a3665d9f4e9a927cc5c1ee0479ed8f9
+>> Author: Al Viro <viro@zeniv.linux.org.uk>
+>> Date:   Wed Mar 16 06:59:40 2011 -0400
+>>
+>>    vfs: new superblock methods to override /proc/*/mount{s,info}
+>>
+>>    a) ->show_devname(m, mnt) - what to put into devname columns in mounts,
+>>    mountinfo and mountstats
+>>    b) ->show_path(m, mnt) - what to put into relative path column in mountinfo
+>>
+>>    Leaving those NULL gives old behaviour.  NFS switched to using those.
+>>
+>>    Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+> 
+> It looks like dropping the "device" tag from /proc/self/mountstats was not intentional, so this is a kernel API regression.  At a guess, 2.6.39 probably works right, but 3.0 is broken.  Whatever solution we come up with might need to be cc:d to stable@kernel.org.  Be sure to verify which released kernels are broken.
 
-Wow, I wonder how long that typo's been there.
+I'll double check that 39 works.
+> 
+> Does changing nfs_show_devname() to add a "device" tag have any effect on the other two /proc files (mounts and mountinfo)?  I suspect you do want to fix show_vfsstat() instead of nfs_show_devname().  This should add "device" only where it is needed, and would work for all file systems.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/state.h |    1 -
- 1 files changed, 0 insertions(+), 1 deletions(-)
+Yeah, looks like it changes both.  I'm looking at show_vfsstat() now, but nfs_show_devname() will return an error if a call to nfs_path() fails.  This would probably result in an empty "device " line printed to /proc/self/mountstats.  Do you know if that would be a problem for anything?  I'm thinking about doing something like this:
 
-Queuing for 3.2.
+diff --git a/fs/namespace.c b/fs/namespace.c
+index 22bfe82..1429114 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -1109,6 +1109,7 @@ static int show_vfsstat(struct seq_file *m, void *v)
+ 
+        /* device */
+        if (mnt->mnt_sb->s_op->show_devname) {
++               seq_puts(m, "device ");
+                err = mnt->mnt_sb->s_op->show_devname(m, mnt);
+        } else {
+                if (mnt->mnt_devname) {
 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index f02badd..6b706a6 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -312,7 +312,6 @@ struct nfs4_replay {
- 	__be32			rp_status;
- 	unsigned int		rp_buflen;
- 	char			*rp_buf;
--	unsigned		intrp_allocated;
- 	struct knfsd_fh		rp_openfh;
- 	char			rp_ibuf[NFSD4_REPLAY_ISIZE];
- };
--- 
-1.7.4.1
+
+> 
+>>
+>>
+>>>
+>>>> This patch re-adds the "device" tag for NFS
+>>>> mount data in /proc/self/mountstats.
+>>>
+>>> The purpose of mountstats is to be an interface that all file systems can use.  If we can't add "device" back to all mounts listed in /proc/self/mountstats, it might be better to adjust nfsiostats to cope.
+>>>
+>>>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+>>>> ---
+>>>> fs/nfs/super.c |    4 +++-
+>>>> 1 files changed, 3 insertions(+), 1 deletions(-)
+>>>>
+>>>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>>>> index b961cea..e6a0317 100644
+>>>> --- a/fs/nfs/super.c
+>>>> +++ b/fs/nfs/super.c
+>>>> @@ -766,8 +766,10 @@ static int nfs_show_devname(struct seq_file *m, struct vfsmount *mnt)
+>>>> 	devname = nfs_path(&dummy, mnt->mnt_root, page, PAGE_SIZE);
+>>>> 	if (IS_ERR(devname))
+>>>> 		err = PTR_ERR(devname);
+>>>> -	else
+>>>> +	else {
+>>>> +		seq_puts(m, "device ");
+>>>> 		seq_escape(m, devname, " \t\n\\");
+>>>> +	}
+>>>> 	free_page((unsigned long)page);
+>>>> 	return err;
+>>>> }
+>>>> -- 
+>>>> 1.7.6
+>>>
+>>
+> 
 
