@@ -1,67 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:51102 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752267Ab1HQJpD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Aug 2011 05:45:03 -0400
-Received: by vws1 with SMTP id 1so503613vws.19
-        for <linux-nfs@vger.kernel.org>; Wed, 17 Aug 2011 02:45:02 -0700 (PDT)
-In-Reply-To: <4E4AD0CE.3000506@panasas.com>
-References: <1312685635-1593-1-git-send-email-bergwolf@gmail.com>
- <4E42C564.7070504@panasas.com> <CA+a=Yy4WXD64A3anw7f-wSWcs4A4-6W18QQs=YyYC0285_W_qg@mail.gmail.com>
- <4E442512.7080904@panasas.com> <CA+a=Yy4g09b_AEf2px1Cjfmr_ud3PFuAbEwdez1cbsiYJ0mmgA@mail.gmail.com>
- <4E446F63.5080707@panasas.com> <F19688880B763E40B28B2B462677FBF805BF0EB0A3@MX09A.corp.emc.com>
- <4E4AD0CE.3000506@panasas.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Wed, 17 Aug 2011 17:44:42 +0800
-Message-ID: <CA+a=Yy5jApbUqy+ESZxczZ3N+ixg8ixK9iAe0DWqSZavap18xQ@mail.gmail.com>
-Subject: Re: [PATCH 1/5] pNFS: recoalesce when ld write pagelist fails
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: tao.peng@emc.com, Trond.Myklebust@netapp.com, benny@tonian.com,
-        linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from rcsinet15.oracle.com ([148.87.113.117]:51660 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754532Ab1H3PGE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2011 11:06:04 -0400
+Subject: Re: [PATCH 2/2] SUNRPC: compare scopeid for link-local addresses
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <31E944A2-6DC2-4D71-92D9-E6521B1A23D3@oracle.com>
+Date: Tue, 30 Aug 2011 11:05:36 -0400
+Cc: NFS <linux-nfs@vger.kernel.org>, "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@redhat.com>, Steve Dickson <SteveD@redhat.com>
+Message-Id: <6B17731F-7772-42B6-887D-916F317221E7@oracle.com>
+References: <4E5CABE9.5090401@cn.fujitsu.com> <31E944A2-6DC2-4D71-92D9-E6521B1A23D3@oracle.com>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi, Boaz,
 
-On Wed, Aug 17, 2011 at 4:19 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 08/16/2011 12:20 AM, tao.peng@emc.com wrote:
->>
->> I tried to rewrite the write patch to handle failures inside
->> mds_ops->rpc_release. However, I get a problem w.r.t. "redirty and
->> rely on next flush". If the failed write is the *last flush*, we end
->> up with relying no one and the dirty pages are simply dropped. Do you
->> have any suggestions how to handle it?
->>
->> Thanks, Tao
->>
->
-> Tao Hi.
->
-> OK, I see what you mean. That would be a problem
->
-> I had a totally different idea You know how today we just do:
->        nfs_initiate_write()
->
-> Which is bad because it can actually dead lock because
-> we are taking up the only thread that needs to service
-> that call. Well I thought, with you thread-for-pnfs patch,
-> can it not now work? I think it is worth a try?
-The problem w/ directly calling nfs_initiate_write() is that we may
-have pagelist length larger than server's rsize/wsize. So if client
-sends all the pages in single READ/WRITE rpc, MDS will reject the
-READ/WRITE operation. Therefore we need to recoalesce them before
-re-sending to MDS.
+On Aug 30, 2011, at 10:28 AM, Chuck Lever wrote:
 
->
-> See if you can advance your thread-for-blocks-objects
-> patch to current code and inject some errors. I think
-> it will work this time. What do you think?
-The thread-for-block-objects patch is to solve the default workqueue
-deadlock problem. But it can't solve the too large IO size for MDS
-problem. So I think we need all of the three patches to handle LD IO
-failures.
+> 
+> On Aug 30, 2011, at 5:22 AM, Mi Jinlong wrote:
+> 
+>> For ipv6 link-local addresses, sunrpc do not compare those scope id.
+>> This patch let sunrpc compares scope id only on link-local addresses.
+>> 
+>> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+>> ---
+>> include/linux/sunrpc/clnt.h |    8 +++++++-
+>> 1 files changed, 7 insertions(+), 1 deletions(-)
+>> 
+>> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+>> index db7bcaf..ee1bb67 100644
+>> --- a/include/linux/sunrpc/clnt.h
+>> +++ b/include/linux/sunrpc/clnt.h
+>> @@ -218,7 +218,13 @@ static inline bool __rpc_cmp_addr6(const struct sockaddr *sap1,
+>> {
+>> 	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sap1;
+>> 	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sap2;
+>> -	return ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr);
+>> +
+>> +	if (!ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr))
+>> +		return false;
+>> +	else if (ipv6_addr_type(&sin1->sin6_addr) & IPV6_ADDR_LINKLOCAL)
+>> +		return sin1->sin6_scope_id == sin2->sin6_scope_id;
+> 
+> Thanks for splitting the patches.
+> 
+> The address comparators I've seen check that both addresses are link-local before comparing the scope IDs.  I don't think we can assume the kind of source-destination address relationship we have in parts of the RPC server code.
 
-Thanks,
-Tao
+Jeff points out that you've already tested that the addresses are equal.  So, never mind.
+
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+
+> 
+>> +
+>> +	return true;
+>> }
+>> 
+>> static inline bool __rpc_copy_addr6(struct sockaddr *dst,
+>> -- 
+>> 1.7.6
+>> 
+>> 
+> 
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
