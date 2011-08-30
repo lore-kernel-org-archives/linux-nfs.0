@@ -1,64 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from usmamail.tilera.com ([206.83.70.75]:57030 "EHLO
-	USMAMAIL.TILERA.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751069Ab1HKNbs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Aug 2011 09:31:48 -0400
-Message-ID: <4E43D88A.3060303@tilera.com>
-Date: Thu, 11 Aug 2011 09:26:34 -0400
-From: Chris Metcalf <cmetcalf@tilera.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>, Dean Hildebrand <dhildebz@umich.edu>
-Subject: Re: [PATCH] nfs: fix a couple of minor portability issues
-References: <201108101803.p7AI36eV008484@farm-0023.internal.tilera.com> <4E42FFDC.9090103@panasas.com>
-In-Reply-To: <4E42FFDC.9090103@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from cn.fujitsu.com ([222.73.24.84]:52496 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752937Ab1H3JS4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Aug 2011 05:18:56 -0400
+Message-ID: <4E5CABE9.5090401@cn.fujitsu.com>
+Date: Tue, 30 Aug 2011 17:22:49 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: NFS <linux-nfs@vger.kernel.org>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, Jeff Layton <jlayton@redhat.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH 2/2] SUNRPC: compare scopeid for link-local addresses
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 8/10/2011 6:02 PM, Boaz Harrosh wrote:
-> On 08/10/2011 10:56 AM, Chris Metcalf wrote:
->> Building on tilepro revealed two minor portability issues: the
->> blocklayout.c file used prefetchw() without #include <linux/prefetch.h>,
->> and the nfs4filelayout.c file used do_div() on an s64 not a u64.
->> This change fixes those two issues so the NFS code builds on tilepro.
->>
->> [...] 
->> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->> index e8915d4..6976a72 100644
->> --- a/fs/nfs/nfs4filelayout.c
->> +++ b/fs/nfs/nfs4filelayout.c
->> @@ -48,13 +48,13 @@ filelayout_get_dense_offset(struct nfs4_filelayout_segment *flseg,
->>  			    loff_t offset)
->>  {
->>  	u32 stripe_width = flseg->stripe_unit * flseg->dsaddr->stripe_count;
->> -	u64 tmp;
->> +	u64 tmp, uoff;
->>  
->>  	offset -= flseg->pattern_offset;
->> -	tmp = offset;
->> +	tmp = uoff = offset;
->>  	do_div(tmp, stripe_width);
->>  
->> -	return tmp * flseg->stripe_unit + do_div(offset, flseg->stripe_unit);
->> +	return tmp * flseg->stripe_unit + do_div(uoff, flseg->stripe_unit);
-> For proper u64 divisions it is best to use the div_u64 (and div64_u64) and not
-> use do_div. (And please don't add an unnecessary variable, just use a cast)
+For ipv6 link-local addresses, sunrpc do not compare those scope id.
+This patch let sunrpc compares scope id only on link-local addresses.
 
-You can't use a cast with do_div() or you get errors about non-lvalues.
+Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+---
+ include/linux/sunrpc/clnt.h |    8 +++++++-
+ 1 files changed, 7 insertions(+), 1 deletions(-)
 
-And the context here is that we want the remainder, not the divided result,
-so we'd need a temporary variable anyway if we were going to use a routine
-from math64.h, presumably div_u64_rem().  But that's just an inline wrapper
-around do_div() anyway, so it's no more efficient, and not obviously any
-less "cluttered" in the source code here.  The original code author (who
-I'm adding belatedly to this email) may have a stronger opinion.
-
-I'm not the author or maintainer of this code, I just want it to compile
-without warning on 32-bit architectures :-)
-
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index db7bcaf..ee1bb67 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -218,7 +218,13 @@ static inline bool __rpc_cmp_addr6(const struct sockaddr *sap1,
+ {
+ 	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sap1;
+ 	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sap2;
+-	return ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr);
++
++	if (!ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr))
++		return false;
++	else if (ipv6_addr_type(&sin1->sin6_addr) & IPV6_ADDR_LINKLOCAL)
++		return sin1->sin6_scope_id == sin2->sin6_scope_id;
++
++	return true;
+ }
+ 
+ static inline bool __rpc_copy_addr6(struct sockaddr *dst,
 -- 
-Chris Metcalf, Tilera Corp.
-http://www.tilera.com
+1.7.6
+
 
