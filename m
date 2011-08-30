@@ -1,52 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:7260 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753069Ab1HVOXX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Aug 2011 10:23:23 -0400
-Subject: Re: Please support NSF squashing multiple groups
-Content-Type: text/plain; charset=us-ascii
-From: Andy Adamson <andros@netapp.com>
-In-Reply-To: <201108192235.p7JMZhqt006283@bari.maths.usyd.edu.au>
-Date: Mon, 22 Aug 2011 10:23:19 -0400
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, neilb@suse.de
-Message-Id: <448D50C6-5CD6-4630-B9A2-D9A5A769CCCE@netapp.com>
-References: <201108192235.p7JMZhqt006283@bari.maths.usyd.edu.au>
-To: paul.szabo@sydney.edu.au
+Received: from natasha.panasas.com ([67.152.220.90]:50810 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756568Ab1H3UbF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2011 16:31:05 -0400
+Message-ID: <4E5D46EB.7030102@panasas.com>
+Date: Tue, 30 Aug 2011 13:24:11 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Jeff Layton <jlayton@poochiereds.net>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSD: Add a cache for fs_locations information
+References: <20110829185115.3413.92459.stgit@matisse.1015granger.net> <20110830151845.4dec5b40@tlielax.poochiereds.net> <852F14A9-7826-47A0-BCD6-D5D46E38A39C@oracle.com>
+In-Reply-To: <852F14A9-7826-47A0-BCD6-D5D46E38A39C@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Aug 19, 2011, at 6:35 PM, paul.szabo@sydney.edu.au wrote:
-
-> Dear Andy,
+On 08/30/2011 01:00 PM, Chuck Lever wrote:
+<>
+>> 
+>> Won't the above check be rather expensive? You'll need to do a 
+>> getxattr call on almost every path component of every lookup,
+>> right?
+>> 
+>> I may be misremembering your talk from connectathon, but I thought
+>> you were planning to use a well-known mode for junctions that would
+>> cut down on the number of unnecessary getxattrs...
 > 
->> Note that only AUTH_SYS sends GID and GID lists in the rpc_cred.
->> RPCSEC_GSS with Kerberos only sends the krb5 principal to the server.
->> The server looks up group membership via nsswitch - either /etc/groups
->> ...
+> Yes, that's the plan.  To reduce overhead, the S_ISVTX bit must be
+> set before NFSD does the expensive xattr test.  
+
+from: stat(2) - Linux man page
+
+The 'sticky' bit (S_ISVTX) on a directory means that a file in that
+directory can be renamed or deleted only by the owner of the file, 
+by the owner of the directory, and by a privileged process.
+
+Please explain how does it work? Once the junction is followed and
+mounted then the mode-bits get changed to the destination directory's
+mode bits? So the Server's junction mode-bits are never exposed, except
+in a local-fs file access on the server?
+
+Thanks
+Boaz
+
+> However, I don't
+> think this kind of filtering was ever implemented.  I got the patch
+> from here:
 > 
-> Can the server be set so as to ignore any AUTH_SYS sends, and accept
-> RPCSEC_GSS only?
-
-For now, yes. Use sec=krb5 and/or krb5i,krb5p export options without sec=sys.
+> http://git.linux-nfs.org/?p=trondmy/nfs-2.6.git;a=shortlog;h=refs/heads/fedfs-for-2.6.34
+>
+>  and that doesn't seem to have it either.  I can implement something
+> and repost these.
 > 
->> idmapd only deals with groups when a SETATTR arrives with ACE who's that
->> are group names where it maps the groupname@domain to a gid, or a
->> GETATTR ACL request where it maps gid->groupname@domain
-> 
-> Can the server be set so as to ignore any attempts from the client to
-> set group memberships, but always set its own from /etc/group?
-
-This is the only behavior the Linux server currently has with Kerberos - it always queries it's local view of group membership.
-
-Note that if the Windows Active Directory is used as a Kerberos KDC, it adds an authorization payload to the Kerberos ticket (a PAC) which contains a user's group memberships.  There is an effort to add a similar payload to MIT KDC. The Linux server will eventually be able to use this information to avoid a local call to obtain group memberships.
-
--->Andy
-
-> 
-> Thanks, Paul
-> 
-> Paul Szabo   psz@maths.usyd.edu.au   http://www.maths.usyd.edu.au/u/psz/
-> School of Mathematics and Statistics   University of Sydney    Australia
-
