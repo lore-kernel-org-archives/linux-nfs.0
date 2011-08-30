@@ -1,63 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:30680 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754245Ab1HDQLA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2011 12:11:00 -0400
-Subject: Re: State of NFSv4 VolatileFilehandles
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Venkateswararao Jujjuri <jvrao@linux.vnet.ibm.com>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Date: Thu, 04 Aug 2011 12:10:44 -0400
-In-Reply-To: <20110804160344.GC12445@fieldses.org>
-References: <4E37E66D.90102@linux.vnet.ibm.com>
-	 <45F4FC20-ED44-4430-A5A9-E06459A194F3@oracle.com>
-	 <4E38F894.4070003@linux.vnet.ibm.com>
-	 <2DD1BC2B-6113-4D00-9DD4-C5D431EA1F8A@oracle.com>
-	 <4E3A8225.1020309@linux.vnet.ibm.com> <20110804160344.GC12445@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1312474244.5806.4.camel@lade.trondhjem.org>
+Received: from out3.smtp.messagingengine.com ([66.111.4.27]:51023 "EHLO
+	out3.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752207Ab1H3WMn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2011 18:12:43 -0400
+Message-ID: <4E5D6058.8040805@fastmail.fm>
+Date: Wed, 31 Aug 2011 00:12:40 +0200
+From: Bernd Schubert <bernd.schubert@fastmail.fm>
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+CC: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+        adilger@whamcloud.com, "J. Bruce Fields" <bfields@redhat.com>,
+        "Ted Ts'o" <tytso@mit.edu>
+Subject: Re: [PATCH 0/4] 32/64 bit llseek hashes (v4)
+References: <20110817095717.1879649.41075.stgit@fsdevel3>
+In-Reply-To: <20110817095717.1879649.41075.stgit@fsdevel3>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2011-08-04 at 12:03 -0400, J. Bruce Fields wrote: 
-> On Thu, Aug 04, 2011 at 04:27:33AM -0700, Venkateswararao Jujjuri wrote:
-> > One of the usecase is rsync between two physical filesystems; but in
-> > this particular use case the export
-> > is readonly (rootfs).  As trond mentioned Volatile FHs are fine in
-> > the case of readonly exports.
-> > Is it something we can consider for upstream? VFH only for readonly
-> > exports.?
-> 
-> The client has no way of knowing that an export is read only.  (Or that
-> the server guarantees the safety of looking up names again in the more
-> general cases Neil describes.)  Unless we decide that a server is making
-> an implicit guarantee of that just by exposing volatile filehandles at
-> all.  Doesn't sound like the existing spec really says that, though.
+On 08/17/2011 11:57 AM, Bernd Schubert wrote:
+> With the ext3/ext4 directory index implementation hashes are used to specify
+> offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
+> on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit
+> hashes and therefore the probability of hash collisions for larger directories
+> is rather high. As recently reported on the NFS mailing list that theoretical
+> problem also happens on real systems:
+> http://comments.gmane.org/gmane.linux.nfs/40863
+>
+> The following series adds two new f_mode flags to tell ext4
+> to use 32-bit or 64-bit hash values for llseek() calls.
+> These flags can then used by network file systems, such as NFS, to
+> request 32-bit or 64-bit offsets (hashes).
+>
+> Version 4
+> - Andreas noticed there was HAVE_IS_COMPAT_TASK instead of
+>    CONFIG_COMPAT in the
+>    "Return 32/64-bit dir name hash according to usage type"
+>    patch
+>
+> Version 3:
+> - remove patch "RFC: Remove check for a 32-bit cookie in nfsd4_readdir()",
+>    I think Bruce wanted to take it seperately as bug fix. It should be applied
+>    before applying the remaining NFS patches, as without it NFSv4 will always
+>    fail with the new 64-bit ext4 seek hashes.
+> - split "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)" into two
+>    two separate patches as suggested by Bruce, one patch to rename
+>    'access' to 'may_flags'. And the remainder of the original patch to set
+>    FMODE_32BITHASH/FMODE_64BITHASH flags and to introduce the new
+>    NFSD_MAY_64BIT_COOKIE flag
+>
+> Version 2:
+> - use f_mode instead of O_* flags and also in a separate patch
+> - introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
+> - fix SEEK_END in ext4_dir_llseek()
+> - set f_mode flags in NFS code as early as possible and introduce a new
+>    NFSD_MAY_64BIT_COOKIE flag for that
+>
 
-NFSv4.1 introduces the 'fs_status' recommended attribute (see section
-11.11 in RFC5661), which does, in fact, allow the client to deduce that
-an export is read-only/won't ever change.
+Ted,
 
-> If an examination of existing implementations and/or some sort of new
-> spec language could reassure us that servers will only ever expose
-> volatile filehandles when it's safe to do so, then maybe it would make
-> sense for the client to implement volatile filehandle recovery?
-> 
-> But if there's a chance of "unsafe" servers out there, then it would
-> seem like a trap for the unwary user....
-> 
-> Your rootfs's probably aren't terribly large--could you copy around
-> compressed block-level images instead of doing rsync?
+any chance you could take this series or at least ack the ext4 part? 
+Bruce already acked the NFS patches.
 
-Agreed.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+	Acked-by: J. Bruce Fields <bfields@redhat.com>
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
 
+
+Thanks,
+Bernd
