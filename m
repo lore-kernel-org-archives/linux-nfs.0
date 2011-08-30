@@ -1,41 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from georges.telenet-ops.be ([195.130.137.68]:48281 "EHLO
-	georges.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751024Ab1HFHlY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2011 03:41:24 -0400
-From: Luk Claes <luk@debian.org>
-To: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-Cc: Luk Claes <luk@debian.org>
-Subject: [PATCH 1/6] exports.man: "\* d lets man complain
-Date: Sat,  6 Aug 2011 09:41:14 +0200
-Message-Id: <1312616479-312-2-git-send-email-luk@debian.org>
-In-Reply-To: <1312616479-312-1-git-send-email-luk@debian.org>
-References: <1312616479-312-1-git-send-email-luk@debian.org>
+Received: from out3.smtp.messagingengine.com ([66.111.4.27]:59990 "EHLO
+	out3.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752310Ab1H3WH0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2011 18:07:26 -0400
+Message-ID: <4E5D5F1C.3020502@fastmail.fm>
+Date: Wed, 31 Aug 2011 00:07:24 +0200
+From: Bernd Schubert <bernd.schubert@fastmail.fm>
+To: Andreas Dilger <adilger@whamcloud.com>
+CC: "Ted Ts'o" <tytso@mit.edu>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        bfields@fieldses.org, hch@infradead.org, yong.fan@whamcloud.com,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 3 2/4] Return 32/64-bit dir name hash according to usage
+ type
+References: <20110816115404.1810393.47239.stgit@localhost.localdomain> <20110816115414.1810393.92169.stgit@localhost.localdomain> <20110819222951.GC3578@thunk.org> <8B32DE36-9AD0-4418-86D8-4E453AA910DB@whamcloud.com>
+In-Reply-To: <8B32DE36-9AD0-4418-86D8-4E453AA910DB@whamcloud.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-man complains with "macro `d' not defined", so remove these seemingly unneeded characters
+On 08/20/2011 08:23 AM, Andreas Dilger wrote:
+> On 2011-08-19, at 4:29 PM, Ted Ts'o wrote:
+>> On Tue, Aug 16, 2011 at 01:54:14PM +0200, Bernd Schubert wrote:
+>>> +static inline int is_32bit_api(void)
+>>> +{
+>>> +#ifdef HAVE_IS_COMPAT_TASK
+>>> +	return is_compat_task();
+>>> +#else
+>>> +	return (BITS_PER_LONG == 32);
+>>> +#endif
+>>
+>> I assume is_compat_task() is coming from another patch?  What is the
+>> status of that change?
+>
+> No, is_compat_task() is upstream for most (all?) of the architectures
+> that support hybrid 32-/64-bit operation.  It is set at 32-bit syscall
+> entry when running on 64-bit architectures.
+>
+> The only minor error in this patch (fixed with a new version from Bernd)
+> is that this should be under CONFIG_COMPAT instead of HAVE_IS_COMPAT_TASK.
 
-Signed-off-by: Luk Claes <luk@debian.org>
----
- utils/exportfs/exports.man |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Yes sorry again about this. Could you please see patch series v4 please?
 
-diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
-index b202583..f9e8304 100644
---- a/utils/exportfs/exports.man
-+++ b/utils/exportfs/exports.man
-@@ -130,7 +130,7 @@ this way are ro, rw, no_root_squash, root_squash, and all_squash.
- .BR exportfs
- understands the following export options:
- .TP
--.IR secure "\*d
-+.IR secure
- This option requires that requests originate on an Internet port less
- than IPPORT_RESERVED (1024). This option is on by default. To turn it
- off, specify
--- 
-1.7.5.4
+>
+>> In the case where is_compat_task() is not defined, we can't just test
+>> based on BITS_PER_LONG == 32, since even on an x86_64 machine, it's
+>> possible we're running a 32-bit binary in compat mode....
+>
+> It is definitely available on x86_64.
 
+Yep, otherwise it even wouldn't compile, at least not with patch series v4.
+
+
+Thanks,
+Bernd
