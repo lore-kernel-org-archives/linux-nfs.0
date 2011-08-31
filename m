@@ -1,79 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:57696 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751836Ab1HDRVe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2011 13:21:34 -0400
-Subject: Re: State of NFSv4 VolatileFilehandles
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Venkateswararao Jujjuri <jvrao@linux.vnet.ibm.com>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Date: Thu, 04 Aug 2011 13:21:32 -0400
-In-Reply-To: <20110804170313.GH12445@fieldses.org>
-References: <4E37E66D.90102@linux.vnet.ibm.com>
-	 <45F4FC20-ED44-4430-A5A9-E06459A194F3@oracle.com>
-	 <4E38F894.4070003@linux.vnet.ibm.com>
-	 <2DD1BC2B-6113-4D00-9DD4-C5D431EA1F8A@oracle.com>
-	 <4E3A8225.1020309@linux.vnet.ibm.com> <20110804160344.GC12445@fieldses.org>
-	 <1312474244.5806.4.camel@lade.trondhjem.org>
-	 <20110804162721.GD12445@fieldses.org>
-	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430A8AA818@SACMVEXC2-PRD.hq.netapp.com>
-	 <20110804170313.GH12445@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1312478492.8919.14.camel@lade.trondhjem.org>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:55755 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752604Ab1HaV1V (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Aug 2011 17:27:21 -0400
+Received: by iabu26 with SMTP id u26so1141868iab.19
+        for <linux-nfs@vger.kernel.org>; Wed, 31 Aug 2011 14:27:21 -0700 (PDT)
+Message-ID: <4E5EA735.9020106@tonian.com>
+Date: Wed, 31 Aug 2011 14:27:17 -0700
+From: Benny Halevy <bhalevy@tonian.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: NFS list <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>,
+        Benny Halevy <benny@tonian.com>
+Subject: Re: [RFC] pnfs: Add per-LD-info to nfs_pageio_descriptor
+References: <4E5C5785.4090607@panasas.com>
+In-Reply-To: <4E5C5785.4090607@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2011-08-04 at 13:03 -0400, J. Bruce Fields wrote: 
-> On Thu, Aug 04, 2011 at 09:48:32AM -0700, Myklebust, Trond wrote:
-> > > -----Original Message-----
-> > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > > Oh, neat, I'd forgotten that; you're thinking of STATUS4_FIXED?  But
-> > > I'm
-> > > not sure it does the job:
-> > > 
-> > > 	STATUS4_FIXED, which indicates a read-only image in the sense
-> > > 	that it will never change.  The possibility is allowed that, as
-> > > 	a result of migration or switch to a different image, changed
-> > > 	data can be accessed, but within the confines of this instance,
-> > > 	no change is allowed.  The client can use this fact to cache
-> > > 	aggressively.
-> > > 
-> > > OK, so permission to set your attribute cache timeout very high,
-> > > perhaps, but I don't see why "changed data" couldn't mean changed
-> > > paths....
-> > 
-> > No, but you can presumably use the FSLI4BX_CLSIMUL flag from
-> > fs_locations_info in order to find an equivalent replica.
+On 2011-08-29 20:22, Boaz Harrosh wrote:
 > 
-> I lost you.
+> What do you guys think? would it be acceptable to add a per-layout
+> private-data to nfs_pageio_descriptor?
 > 
-> Actually my real problem is that I don't understand the description of
-> STATUS4_FIXED.  What does "or switch to a different image" mean?  Not
-> "migration", or the sentence would have ended before the "or".
+> In obj-LD we have bunch of constrains on the size of the IO that
+> involves some 64bit divisions, and math. These calculations are only
+> needed to be preformed once when the offset of the first page is
+> known. Then a simple wb_bytes can cache the results for subsequent
+> calls. (And cannot be calculated before we know the IO's offset)
 > 
-> I read it as allowing a server admin to replace the filesystem image in
-> place, in which case from the client's point of view this allows the
-> filesystem to change at any time.  Which makes the whole thing not
-> terribly useful, except (as the last sentence says) as a caching hint.
+> Also I might want to allocate the io_state earlier at the insert
+> of the first page instead of at the actual call to write/read_pagelist,
+> again, for the same reason above.
+> 
+> Today we get by because at the very end, if some constraints hit
+> and not the full IO was preformed then we only set r/wdata->res.count
+> to less then what was requested and these pages that are outside of
+> the IOed range get to be read/written as part of a future request. But
+> this is sub-optimal because that is done only at read/write_done time.
+> By then the contiguous pages were already submitted to requests and
+> the few left-over pages get submitted as their own request. This causes
+> a seeky, unaligned and additional small IOs which, if calculated for at
+> coalesce time, would be spared. With the up coming raid5/6 code this
+> can cost dearly. (A single simple large contiguous IO becomes bunch of
+> read-modify-write IOs)
+> 
+> I can see that also at filelayout_pg_test there are two 64bit divisions
+> preformed on every page insert which could be optimized to a simple
+> compare.
+> 
+> [BTW: Perhaps change the .write/read_pagelist() API to directly receive
+>  the nfs_pageio_descriptor and avoid all the duplication of types and
+>  members copy
+> ]
+> 
+> I'm making pg_ld_private as a "long" because a long is good for a pointer
+> as well as an integer.
 
-If the server admin replaces one filesystem, with a different
-filesystem, then nothing is going to work anyway. I don't see how that
-is relevant. That's a case of 'doctor it hurts...'
+I really prefer it to be a void * rather than long for the same reason
+just as used in practically every other place.
 
-The bit that _is_ relevant is the 'migration' part, but since the
-fs_locations_info FSLI4BX_CLSIMUL flag allows you to conclude that
-replica is an exact replica at all times (i.e. contents are guaranteed
-to be the same even if filehandles, directory cookies, etc are not) then
-the STATUS4_FIXED flag does allow you to assume that paths have not
-changed.
+Benny
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> 
+> ---
+> diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+> index e2791a2..c86bae5 100644
+> --- a/include/linux/nfs_page.h
+> +++ b/include/linux/nfs_page.h
+> @@ -77,6 +77,7 @@ struct nfs_pageio_descriptor {
+>  	int			pg_error;
+>  	const struct rpc_call_ops *pg_rpc_callops;
+>  	struct pnfs_layout_segment *pg_lseg;
+> +	long pg_ld_private;
+>  };
+>  
+>  #define NFS_WBACK_BUSY(req)	(test_bit(PG_BUSY,&(req)->wb_flags))
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
