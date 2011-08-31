@@ -1,44 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:59609 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755453Ab1H2XfA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2011 19:35:00 -0400
-Message-ID: <4E5C21E2.4070903@panasas.com>
-Date: Mon, 29 Aug 2011 16:33:54 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: David Miller <davem@davemloft.net>, <joe@perches.com>,
-        <bfields@fieldses.org>, <neilb@suse.de>, <linux-nfs@vger.kernel.org>,
-        <netdev@vger.kernel.org>, <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 19/24] sunrpc: Remove unnecessary OOM logging messages
-References: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AEB4EE9@SACMVEXC2-PRD.hq.netapp.com><20110829.143751.1153162956919885670.davem@davemloft.net><4E5C0AB3.90401@panasas.com> <20110829.180348.1774953636752413432.davem@davemloft.net> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AEB4FAF@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AEB4FAF@SACMVEXC2-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from fieldses.org ([174.143.236.118]:51802 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754134Ab1HaTxa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 31 Aug 2011 15:53:30 -0400
+Date: Wed, 31 Aug 2011 15:53:29 -0400
+To: linux-nfs@vger.kernel.org
+Cc: Casey Bodley <cbodley@citi.umich.edu>
+Subject: [PATCH] nfsd4: in-stateid seqid should start with 1
+Message-ID: <20110831195329.GD19223@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 08/29/2011 04:25 PM, Myklebust, Trond wrote:
->> -----Original Message-----
->> From: David Miller [mailto:davem@davemloft.net]
-<>
->> They've been doing this for years, so obviously they haven't bothered
->> you enough to care up to this point.
->>
->> All of this pushback is pure uneducated noise, please stop blocking
->> progress with poorly informed objections.
-> 
-> I can see that slub.c has the slab_out_of_memory() function that
-> (although ratelimited) warns you if the allocation failed. However I
-> can't find any equivalent for slab.c or slob.c.
-> 
+From: J. Bruce Fields <bfields@redhat.com>
 
-OK That would explain why I never saw it in my debugging. For some reason
-I'm always using slab. 
+Thanks to Casey for reminding me that 5661 gives a special meaning to a
+value of 0 in the stateid's seqid field, so we should instead be
+starting out stateid's with si_generation 1.
 
-Which one is the best for development and memory problems debugging?
+Reported-by: Casey Bodley <cbodley@citi.umich.edu>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-> Trond
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 49c3dd1..7caa812 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -251,7 +251,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_stateid *stp, struct svc_f
+ 	dp->dl_stateid.si_boot = boot_time;
+ 	dp->dl_stateid.si_stateownerid = current_delegid++;
+ 	dp->dl_stateid.si_fileid = 0;
+-	dp->dl_stateid.si_generation = 0;
++	dp->dl_stateid.si_generation = 1;
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+ 	dp->dl_time = 0;
+ 	atomic_set(&dp->dl_count, 1);
+@@ -2303,7 +2303,7 @@ init_stateid(struct nfs4_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *
+ 	stp->st_stateid.si_boot = boot_time;
+ 	stp->st_stateid.si_stateownerid = oo->oo_owner.so_id;
+ 	stp->st_stateid.si_fileid = fp->fi_id;
+-	stp->st_stateid.si_generation = 0;
++	stp->st_stateid.si_generation = 1;
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = 0;
+ 	__set_bit(open->op_share_access & ~NFS4_SHARE_WANT_MASK,
+@@ -3898,7 +3898,7 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
+ 	stp->st_stateid.si_boot = boot_time;
+ 	stp->st_stateid.si_stateownerid = lo->lo_owner.so_id;
+ 	stp->st_stateid.si_fileid = fp->fi_id;
+-	stp->st_stateid.si_generation = 0;
++	stp->st_stateid.si_generation = 1;
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = open_stp->st_deny_bmap;
+ 	stp->st_openstp = open_stp;
+-- 
+1.7.4.1
 
-Thanks
-Boaz
