@@ -1,67 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:58671 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1756555Ab1HXIti (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Aug 2011 04:49:38 -0400
-Message-ID: <4E54BC12.6060502@cn.fujitsu.com>
-Date: Wed, 24 Aug 2011 16:53:38 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>, NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/4 v4] 4.1 CLNT: add a simple test about RECLAIM_COMPLETE
-References: <4E4C7679.7000108@cn.fujitsu.com>
-In-Reply-To: <4E4C7679.7000108@cn.fujitsu.com>
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from fieldses.org ([174.143.236.118]:58988 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752937Ab1HaToA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 31 Aug 2011 15:44:00 -0400
+Date: Wed, 31 Aug 2011 15:44:00 -0400
+To: linux-nfs@vger.kernel.org
+Cc: Rick Macklem <rmacklem@uoguelph.ca>
+Subject: [PATCH] nfsd4: fix off-by-one-error in SEQUENCE reply
+Message-ID: <20110831194400.GC19223@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+From: J. Bruce Fields <bfields@redhat.com>
+
+The values here represent highest slotid numbers.  Since slotid's are
+numbered starting from zero, the highest should be one less than the
+number of slots.
+
+Reported-by: Rick Macklem <rmacklem@uoguelph.ca>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- nfs4.1/server41tests/__init__.py            |    1 +
- nfs4.1/server41tests/st_reclaim_complete.py |   20 ++++++++++++++++++++
- 2 files changed, 21 insertions(+), 0 deletions(-)
- create mode 100644 nfs4.1/server41tests/st_reclaim_complete.py
+ fs/nfsd/nfs4xdr.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
-index 3b4411a..1cc2048 100644
---- a/nfs4.1/server41tests/__init__.py
-+++ b/nfs4.1/server41tests/__init__.py
-@@ -2,6 +2,7 @@ __all__ = ["st_exchange_id.py", # draft 21
-            "st_compound.py",
-            "st_create_session.py",
-            "st_destroy_session.py",
-+           "st_reclaim_complete.py",
-            "st_secinfo_no_name.py",
-            "st_secinfo.py",
-            "st_sequence.py",
-diff --git a/nfs4.1/server41tests/st_reclaim_complete.py b/nfs4.1/server41tests/st_reclaim_complete.py
-new file mode 100644
-index 0000000..bc63ed8
---- /dev/null
-+++ b/nfs4.1/server41tests/st_reclaim_complete.py
-@@ -0,0 +1,20 @@
-+from st_create_session import create_session
-+from nfs4_const import *
-+from environment import check, fail
-+import nfs4_ops as op
-+import nfs4lib
-+
-+def testSupported(t, env):
-+    """Do a simple RECLAIM_COMPLETE
-+
-+    FLAGS: reclaim_complete all
-+    CODE: RECC1
-+    """
-+    c = env.c1.new_client(env.testname(t))
-+    sess = c.create_session()
-+
-+    res = sess.compound([op.putrootfh(), op.reclaim_complete(TRUE)])
-+    check(res)
-+
-+    res = sess.compound([op.reclaim_complete(FALSE)])
-+    check(res)
+Queuing up for 3.2.
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 1aa6270..fc506e0 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3224,9 +3224,9 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
+ 	WRITEMEM(seq->sessionid.data, NFS4_MAX_SESSIONID_LEN);
+ 	WRITE32(seq->seqid);
+ 	WRITE32(seq->slotid);
+-	WRITE32(seq->maxslots);
+-	/* For now: target_maxslots = maxslots */
+-	WRITE32(seq->maxslots);
++	/* Note slotid's are numbered from zero: */
++	WRITE32(seq->maxslots - 1); /* sr_highest_slotid */
++	WRITE32(seq->maxslots - 1); /* sr_target_highest_slotid */
+ 	WRITE32(seq->status_flags);
+ 
+ 	ADJUST_ARGS();
 -- 
-1.7.6
-
-
+1.7.4.1
 
