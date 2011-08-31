@@ -1,127 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56063 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:49257 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752582Ab1HALKQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Aug 2011 07:10:16 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p71BAD3J028337
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 1 Aug 2011 07:10:16 -0400
-Received: from [10.33.0.52] (sprabhu.fab.redhat.com [10.33.0.52])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p71BAC6c024415
-	for <linux-nfs@vger.kernel.org>; Mon, 1 Aug 2011 07:10:13 -0400
-Subject: [PATCH] nfs: Do not allow multiple mounts on same mountpoint when
- using -o noac
-From: Sachin Prabhu <sprabhu@redhat.com>
-To: NFS <linux-nfs@vger.kernel.org>
-Date: Mon, 01 Aug 2011 12:10:12 +0100
-In-Reply-To: <1311947408.29400.40.camel@sprabhu.fab.redhat.com>
-References: <1311947408.29400.40.camel@sprabhu.fab.redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1312197013.3800.1.camel@sprabhu.fab.redhat.com>
+	id S1755992Ab1HaVdR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 31 Aug 2011 17:33:17 -0400
+Date: Wed, 31 Aug 2011 17:33:14 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: linux-nfs@vger.kernel.org, Casey Bodley <cbodley@citi.umich.edu>
+Subject: Re: [PATCH] nfsd4: in-stateid seqid should start with 1
+Message-ID: <20110831213314.GH19223@fieldses.org>
+References: <20110831195329.GD19223@fieldses.org>
+ <4E5E994E.6040107@tonian.com>
+ <20110831211959.GG19223@fieldses.org>
+ <4E5EA7B2.5010500@tonian.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E5EA7B2.5010500@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Do not allow multiple mounts on same mountpoint when using -o noac
+On Wed, Aug 31, 2011 at 02:29:22PM -0700, Benny Halevy wrote:
+> On 2011-08-31 14:19, J. Bruce Fields wrote:
+> > On Wed, Aug 31, 2011 at 01:27:58PM -0700, Benny Halevy wrote:
+> >> Don't we also need the following?
+> >>
+> >> As per RFC5661, skip zero seqid when wrapping around
+> >> while updating a stateid.
+> > 
+> > Yep, done:
+> > 
+> > 	http://marc.info/?l=linux-nfs&m=131439774426154&w=2
+> 
+> yup, thanks!
+> 
+> > 
+> > I need to send out my patches one at a time rather than fifteen at once
+> > if I want people to read them....
+> 
+> My bad :-)
 
-When you normally attempt to mount a share twice on the same mountpoint,
-a check in do_add_mount causes it to return an error
+I'm gonna start inserting little "respond here if you read this far"
+comments.
 
-# mount localhost:/nfsv3 /mnt
-# mount localhost:/nfsv3 /mnt
-mount.nfs: /mnt is already mounted or busy
+And actually I didn't read Casey's report carefully: he was just
+complaining about delegation stateid's.  I don't think they matter much,
+as their seqid field never changes, but may as well use the same as the
+others.  And while we're there, make this uniform for v4.0 as well.
 
-However when using the option 'noac', the user is able to mount the same
-share on the same mountpoint multiple times. This happens because a
-share mounted with the noac option is automatically assigned the 'sync'
-flag MS_SYNCHRONOUS in nfs_initialise_sb(). This flag is set after the
-check for already existing superblocks is done in sget(). The check for
-the mount flags in nfs_compare_mount_options() does not take into
-account the 'sync' flag applied later on in the code path. This means
-that when using 'noac', a new superblock structure is assigned for every
-new mount of the same share and multiple shares on the same mountpoint
-are allowed.
+--b.
 
-ie. 
-# mount -onoac localhost:/nfsv3 /mnt
-can be run multiple times.
+commit 80809fa40f8cfb3cf0bf006e3218bbd00584b38d
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Wed Aug 31 15:47:21 2011 -0400
 
-The patch checks for noac and assigns the sync flag before sget() is
-called to obtain an already existing superblock structure.
+    nfsd4: make delegation stateid's seqid start at 1
+    
+    Thanks to Casey for reminding me that 5661 gives a special meaning to a
+    value of 0 in the stateid's seqid field, so all stateid's should start
+    out with si_generation 1.  We were doing that in the open and lock
+    cases for minorversion 1, but not for the delegation stateid, and not
+    for openstateid's with v4.0.
+    
+    It doesn't *really* matter much for v4.0 or for delegation stateid's
+    (which never get the seqid field incremented), but we may as well do the
+    same for all of them.
+    
+    Reported-by: Casey Bodley <cbodley@citi.umich.edu>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-
-Signed-off-by: Sachin Prabhu <sprabhu@redhat.com>
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index b961cea..9b7dd70 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2035,9 +2035,6 @@ static inline void nfs_initialise_sb(struct super_block *sb)
- 		sb->s_blocksize = nfs_block_bits(server->wsize,
- 						 &sb->s_blocksize_bits);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 49c3dd1..dc83ca1 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -251,7 +251,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_stateid *stp, struct svc_f
+ 	dp->dl_stateid.si_boot = boot_time;
+ 	dp->dl_stateid.si_stateownerid = current_delegid++;
+ 	dp->dl_stateid.si_fileid = 0;
+-	dp->dl_stateid.si_generation = 0;
++	dp->dl_stateid.si_generation = 1;
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+ 	dp->dl_time = 0;
+ 	atomic_set(&dp->dl_count, 1);
+@@ -2303,6 +2303,7 @@ init_stateid(struct nfs4_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *
+ 	stp->st_stateid.si_boot = boot_time;
+ 	stp->st_stateid.si_stateownerid = oo->oo_owner.so_id;
+ 	stp->st_stateid.si_fileid = fp->fi_id;
++	/* note will be incremented before first return to client: */
+ 	stp->st_stateid.si_generation = 0;
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = 0;
+@@ -2893,7 +2894,6 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 		status = nfs4_upgrade_open(rqstp, fp, current_fh, stp, open);
+ 		if (status)
+ 			goto out;
+-		update_stateid(&stp->st_stateid);
+ 	} else {
+ 		status = nfs4_new_open(rqstp, &stp, fp, current_fh, open);
+ 		if (status)
+@@ -2904,9 +2904,8 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 			release_open_stateid(stp);
+ 			goto out;
+ 		}
+-		if (nfsd4_has_session(&resp->cstate))
+-			update_stateid(&stp->st_stateid);
+ 	}
++	update_stateid(&stp->st_stateid);
+ 	memcpy(&open->op_stateid, &stp->st_stateid, sizeof(stateid_t));
  
--	if (server->flags & NFS_MOUNT_NOAC)
--		sb->s_flags |= MS_SYNCHRONOUS;
--
- 	sb->s_bdi = &server->backing_dev_info;
- 
- 	nfs_super_set_maxbytes(sb, server->maxfilesize);
-@@ -2249,6 +2246,10 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 	if (server->flags & NFS_MOUNT_UNSHARED)
- 		compare_super = NULL;
- 
-+	/* -o noac implies -o sync */
-+	if (server->flags & NFS_MOUNT_NOAC)
-+		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
-+
- 	/* Get a superblock - note that we may end up sharing one that already exists */
- 	s = sget(fs_type, compare_super, nfs_set_super, &sb_mntdata);
- 	if (IS_ERR(s)) {
-@@ -2361,6 +2362,10 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
- 	if (server->flags & NFS_MOUNT_UNSHARED)
- 		compare_super = NULL;
- 
-+	/* -o noac implies -o sync */
-+	if (server->flags & NFS_MOUNT_NOAC)
-+		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
-+
- 	/* Get a superblock - note that we may end up sharing one that already exists */
- 	s = sget(&nfs_fs_type, compare_super, nfs_set_super, &sb_mntdata);
- 	if (IS_ERR(s)) {
-@@ -2628,6 +2633,10 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
- 	if (server->flags & NFS4_MOUNT_UNSHARED)
- 		compare_super = NULL;
- 
-+	/* -o noac implies -o sync */
-+	if (server->flags & NFS_MOUNT_NOAC)
-+		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
-+
- 	/* Get a superblock - note that we may end up sharing one that already exists */
- 	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
- 	if (IS_ERR(s)) {
-@@ -2916,6 +2925,10 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
- 	if (server->flags & NFS4_MOUNT_UNSHARED)
- 		compare_super = NULL;
- 
-+	/* -o noac implies -o sync */
-+	if (server->flags & NFS_MOUNT_NOAC)
-+		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
-+
- 	/* Get a superblock - note that we may end up sharing one that already exists */
- 	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
- 	if (IS_ERR(s)) {
-@@ -3003,6 +3016,10 @@ nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
- 	if (server->flags & NFS4_MOUNT_UNSHARED)
- 		compare_super = NULL;
- 
-+	/* -o noac implies -o sync */
-+	if (server->flags & NFS_MOUNT_NOAC)
-+		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
-+
- 	/* Get a superblock - note that we may end up sharing one that already exists */
- 	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
- 	if (IS_ERR(s)) {
-
-
+ 	if (nfsd4_has_session(&resp->cstate))
+@@ -3898,6 +3897,7 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
+ 	stp->st_stateid.si_boot = boot_time;
+ 	stp->st_stateid.si_stateownerid = lo->lo_owner.so_id;
+ 	stp->st_stateid.si_fileid = fp->fi_id;
++	/* note will be incremented before first return to client: */
+ 	stp->st_stateid.si_generation = 0;
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = open_stp->st_deny_bmap;
