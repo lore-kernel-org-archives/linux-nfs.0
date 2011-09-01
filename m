@@ -1,79 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:45037 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752938Ab1IZX1L (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Sep 2011 19:27:11 -0400
-Received: by wyg34 with SMTP id 34so6448578wyg.19
-        for <linux-nfs@vger.kernel.org>; Mon, 26 Sep 2011 16:27:10 -0700 (PDT)
-In-Reply-To: <1317078563.21770.8.camel@lade.trondhjem.org>
-References: <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com>
- <1316747758.3346.89.camel@perseus.themaw.net> <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
- <1316707443.3346.44.camel@perseus.themaw.net> <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
- <1316709935.3346.48.camel@perseus.themaw.net> <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
- <20110922144453.6cf53a25@barsoom.rdu.redhat.com> <1316719228.3968.14.camel@lade.trondhjem.org>
- <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
- <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
- <21772.1316774025@redhat.com> <1316788444.14812.10.camel@lade.trondhjem.org>
- <29743.1316791138@redhat.com> <87hb43tf2g.fsf@tucsk.pomaz.szeredi.hu>
- <1316827854.3346.154.camel@perseus.themaw.net> <CA+55aFwPEq5B_P0RtX+pBtGfTadzzS+3U=k=3XTjDw3soNhOdA@mail.gmail.com>
- <20110924073610.4b045189@tlielax.poochiereds.net> <CA+55aFxjFXbCKBZNfBuCOaiBHRQ=ZECnhqKxjPw9maPgyRLiDA@mail.gmail.com>
- <1317013864.3187.81.camel@perseus.themaw.net> <CA+55aFzJnKCHtsiH-mZOwQgVt1ajPJQHWRYB_19eXEKaGRPD1w@mail.gmail.com>
- <1317071626.19951.8.camel@lade.trondhjem.org> <CA+55aFzWCZQjWMcxg16yMUoLr-mEPuXzAFgv49LU4hCn+=rbwQ@mail.gmail.com>
- <1317072718.19951.13.camel@lade.trondhjem.org> <CA+55aFzaScGiKmsSrgXivoUPw4xHjKobsB4VquuEu1fG=7R+wA@mail.gmail.com>
- <1317076424.19951.32.camel@lade.trondhjem.org> <CA+55aFzi+0Z6HXJCxW=Uc1EZsp4qA00i+ihNcSX_v6bVTbU2BA@mail.gmail.com>
- <1317078563.21770.8.camel@lade.trondhjem.org>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Mon, 26 Sep 2011 16:26:50 -0700
-Message-ID: <CA+55aFzX+DyU7xhAmTLq0g_z6jyKuqoiyPdCYO+w2Xk7pECrqg@mail.gmail.com>
-Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Ian Kent <raven@themaw.net>, Jeff Layton <jlayton@redhat.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        David Howells <dhowells@redhat.com>, viro@zeniv.linux.org.uk,
-        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from smtp.gentoo.org ([140.211.166.183]:53992 "EHLO smtp.gentoo.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932129Ab1IAPQd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Sep 2011 11:16:33 -0400
+Received: from localhost.localdomain (localhost [127.0.0.1])
+	by smtp.gentoo.org (Postfix) with ESMTP id 562F01B402C
+	for <linux-nfs@vger.kernel.org>; Thu,  1 Sep 2011 15:16:33 +0000 (UTC)
+From: Mike Frysinger <vapier@gentoo.org>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] exportfs: do not warn if /etc/exports.d/ does not exist
+Date: Thu,  1 Sep 2011 11:16:32 -0400
+Message-Id: <1314890192-11075-2-git-send-email-vapier@gentoo.org>
+In-Reply-To: <1314890192-11075-1-git-send-email-vapier@gentoo.org>
+References: <1314890192-11075-1-git-send-email-vapier@gentoo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, Sep 26, 2011 at 4:09 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
->
-> I assume that means that we can get rid of LOOKUP_NO_AUTOMOUNT, and just
-> replace the convoluted logic in follow_automount() with a test for
-> LOOKUP_AUTOMOUNT? If we have agreed on a default behaviour, then that
-> would seem cleaner than enumerating all these exceptions.
+It isn't uncommon for /etc/exports.d/ to not exist, and imo, it's not
+that big of a deal as often times, a simple /etc/exports is sufficient.
+So silently skip the case where the dir is missing.
 
-I do think that LOOKUP_NO_AUTOMOUNT is bogus.  It's not a
-kernel-internal flag, it's for that silly "vfs_fstatat()" interface,
-that was designed when LOOKUP_FOLLOW would cause an automount.
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ utils/exportfs/exportfs.c |    7 +++++--
+ 1 files changed, 5 insertions(+), 2 deletions(-)
 
-Now that LOOKUP_FOLLOW doesn't do that, the whole reason for
-LOOKUP_NO_AUTOMOUNT really goes away, but then we have that crazy user
-interface that was encoded for it (only for the very special vfs
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index 986a272..7432a65 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -529,9 +529,12 @@ export_d_read(const char *dname)
+ 
+ 
+ 	n = scandir(dname, &namelist, NULL, versionsort);
+-	if (n < 0)
++	if (n < 0) {
++		if (errno == ENOENT)
++			/* Silently return */
++			return;
+ 		xlog(L_NOTICE, "scandir %s: %s", dname, strerror(errno));
+-	else if (n == 0)
++	} else if (n == 0)
+ 		return;
+ 
+ 	for (i = 0; i < n; i++) {
+-- 
+1.7.6
 
-The question then becomes: should we just ignore (and deprecate) that
-crazy AT_NO_AUTOMOUNT flag? I say "yup".
-
-Or should we do something *really* crazy, and say "if you *don't* have
-AT_SYMLINK_NOFOLLOW *and* you don't have AT_NO_AUTOMOUNT, then we make
-fstatat64() follow automounts, even though no sane version of *stat()
-does so any more"?
-
-Quite frankly, that just sounds insane. But we could do it, and it
-would approximate the old semantics for that system call. Even if
-those old semantics were clearly not very good, and the whole point of
-AT_NO_AUTOMOUNT was to work around problems people must have had..
-
-So my gut feel is that we should just ignore it for now.
-AT_NO_AUTOMOUNT becomes a no-op, and the LOOKUP_NO_AUTOMOUNT flag is
-already effectively one (since nothing but vfs_fstatat sets it, and
-vfs_fstatat now doesn't follow automounts *anyway*)
-
-The "let's just see if anybody complains when we clean stuff up"
-approach, in other words.  Because I bet any user who doesn't have
-AT_NO_AUTOMOUNT isn't because they didn't really want an automount,
-it's because they weren't even aware of the issue.
-
-                        Linus
