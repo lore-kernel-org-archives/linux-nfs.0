@@ -1,72 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:38020 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:39258 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751237Ab1IGUTI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Sep 2011 16:19:08 -0400
-Date: Wed, 7 Sep 2011 16:18:13 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: Steven Whitehouse <swhiteho@redhat.com>, agruen@kernel.org,
-        akpm@linux-foundation.org, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V6 00/26]  New ACL format for better NFSv4 acl
- interoperability
-Message-ID: <20110907201813.GD8074@fieldses.org>
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1315302066.2741.12.camel@menhir>
- <87obyxdb6s.fsf@skywalker.in.ibm.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87obyxdb6s.fsf@skywalker.in.ibm.com>
+	id S1756517Ab1IBXJv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Sep 2011 19:09:51 -0400
+From: Jan Kara <jack@suse.cz>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        Josh Boyer <jwboyer@redhat.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH] nfs: Enclose hostname in brackets when needed in nfs_do_root_mount
+Date: Sat,  3 Sep 2011 01:09:43 +0200
+Message-Id: <1315004983-10271-1-git-send-email-jack@suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Sep 06, 2011 at 07:28:51PM +0530, Aneesh Kumar K.V wrote:
-> On Tue, 06 Sep 2011 10:41:06 +0100, Steven Whitehouse <swhiteho@redhat.com> wrote:
-> > Hi,
-> > 
-> > On Mon, 2011-09-05 at 22:55 +0530, Aneesh Kumar K.V wrote:
-> > > Hi,
-> > > 
-> > > The following set of patches implements VFS and ext4 changes needed to implement
-> > > a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
-> > > extended by file masks to fit into the standard POSIX file permission model.
-> > > They are designed to work seamlessly locally as well as across the NFSv4 and
-> > > CIFS/SMB2 network file system protocols.
-> > > 
-> > > A user-space utility for displaying and changing richacls is available at [4]
-> > > (a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
-> > > 
-> > > [4] git://git.kernel.org/pub/scm/fs/acl/kvaneesh/richacl.git master
-> > > 
-> > > To test richacl on ext4 use -o richacl mount option. This mount option may later be
-> > > dropped in favour of a feature flag.
-> > > 
-> > > More details regarding richacl can be found at
-> > > http://acl.bestbits.at/richacl/
-> > > 
-> > > Changes from v5:
-> > > a) rebase to v3.1-rc4-131-g9e79e3e
-> > > 
-> > > NOTE: The kernel changes will be pushed to
-> > > git://git.kernel.org/pub/scm/linux/kernel/git/kvaneesh/linux-richacl.git richacl
-> > > when kernel.org is back
-> > > 
-> > > -aneesh
-> > > 
-> > 
-> > This looks like a really nice patch set. One question though is whether
-> > there are any test suites which can be used to gain confidence in the
-> > implementation? Obviously there is a fair amount of change here which
-> > has security implications, so it would be good to have some test results
-> > to go along with the patches,
-> 
-> You can find the tests at 
-> 
-> http://git.kernel.org/?p=fs/acl/kvaneesh/richacl.git;a=tree;f=test;h=3bedf00ac69c79ae7a433996e729d4afb366b229;hb=HEAD
+When hostname contains colon (e.g. when it is an IPv6 address) it needs
+to be enclosed in brackets to make parsing of NFS device string possible.
+Fix nfs_do_root_mount() to enclose hostname properly when needed. NFS code
+actually does not need this as it does not parse the string passed by
+nfs_do_root_mount() but the device string is exposed to userspace in
+/proc/mounts.
 
-Do you have a copy of that anywhere else?  gitweb on kernel.org seems to
-be out at the moment.
+CC: Josh Boyer <jwboyer@redhat.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/nfs/super.c |    8 ++++++--
+ 1 files changed, 6 insertions(+), 2 deletions(-)
 
---b.
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index b961cea..42b74f8 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2694,11 +2694,15 @@ static struct vfsmount *nfs_do_root_mount(struct file_system_type *fs_type,
+ 	char *root_devname;
+ 	size_t len;
+ 
+-	len = strlen(hostname) + 3;
++	len = strlen(hostname) + 5;
+ 	root_devname = kmalloc(len, GFP_KERNEL);
+ 	if (root_devname == NULL)
+ 		return ERR_PTR(-ENOMEM);
+-	snprintf(root_devname, len, "%s:/", hostname);
++	/* Does hostname needs to be enclosed in brackets? */
++	if (strchr(hostname, ':'))
++		snprintf(root_devname, len, "[%s]:/", hostname);
++	else
++		snprintf(root_devname, len, "%s:/", hostname);
+ 	root_mnt = vfs_kern_mount(fs_type, flags, root_devname, data);
+ 	kfree(root_devname);
+ 	return root_mnt;
+-- 
+1.7.1
+
