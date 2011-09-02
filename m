@@ -1,60 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:35481 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750715Ab1IUCot convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2011 22:44:49 -0400
-From: <tao.peng@emc.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <bhalevy@tonian.com>, <linux-nfs@vger.kernel.org>, <honey@citi.umich.edu>,
-        <rees@umich.edu>
-Date: Tue, 20 Sep 2011 22:44:27 -0400
-Subject: RE: [PATCH 2/3] pnfs: introduce pnfs private workqueue
-Message-ID: <F19688880B763E40B28B2B462677FBF805C4952916@MX09A.corp.emc.com>
-References: <1316488728-24912-1-git-send-email-rees@umich.edu>
- <1316488728-24912-3-git-send-email-rees@umich.edu>
- <1316558461.15093.4.camel@lade.trondhjem.org>
- <20110921002917.GA30770@merit.edu>
-In-Reply-To: <20110921002917.GA30770@merit.edu>
-Content-Type: text/plain; charset="us-ascii"
+Received: from smtp.gentoo.org ([140.211.166.183]:48358 "EHLO smtp.gentoo.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754507Ab1IBTQz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Sep 2011 15:16:55 -0400
+Received: from localhost.localdomain (localhost [127.0.0.1])
+	by smtp.gentoo.org (Postfix) with ESMTP id EBF561B4024
+	for <linux-nfs@vger.kernel.org>; Fri,  2 Sep 2011 19:16:54 +0000 (UTC)
+From: Mike Frysinger <vapier@gentoo.org>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsidmap: auto disable when keyutils is not found
+Date: Fri,  2 Sep 2011 15:16:55 -0400
+Message-Id: <1314991015-21484-1-git-send-email-vapier@gentoo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Since we already auto-disable based on libnfsidmap capabilities, don't
+make keyutils a hard failure.
 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org]
-> On Behalf Of Jim Rees
-> Sent: Wednesday, September 21, 2011 8:29 AM
-> To: Trond Myklebust
-> Cc: Benny Halevy; linux-nfs@vger.kernel.org; peter honeyman
-> Subject: Re: [PATCH 2/3] pnfs: introduce pnfs private workqueue
-> 
-> Trond Myklebust wrote:
-> 
->   On Mon, 2011-09-19 at 23:18 -0400, Jim Rees wrote:
->   > From: Peng Tao <bergwolf@gmail.com>
->   >
->   > For layoutdriver io done functions, default workqueue is not a good place as
->   > the code is executed in IO path. So add a pnfs private workqueue to handle
->   > them.
->   >
->   > Also change block and object layout code to make use of this private
->   > workqueue.
->   >
-> 
->   Wait, what????
-> 
->   Why is the I/O path (i.e. the nfsiod queue) inappropriate for
->   layoutdriver io_done functions?
-The current code uses the system_wq to handle io_done functions. If any function allocates memory in system_wq and causes dirty writeback in nfs path, the io_done function can never be called because it is after the original function in the system_wq. And you said that the rpciod/nfsiod is not the ideal place because of memory allocation. So I suggested pnfs private workqueue and Benny agreed on it.
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ aclocal/keyutils.m4    |    4 ++--
+ aclocal/libnfsidmap.m4 |    3 +--
+ configure.ac           |    2 +-
+ 3 files changed, 4 insertions(+), 5 deletions(-)
 
-> 
-> I thought you were the one who asked for this, here:
-> http://www.spinics.net/lists/linux-nfs/msg22771.html
-> 
-> But looking back on it now, the IO path has changed and I can't tell if the
-> argument still holds.
-I believe it still holds. The recollapse path still involves memory allocation.
+diff --git a/aclocal/keyutils.m4 b/aclocal/keyutils.m4
+index 84bc112..a392c0e 100644
+--- a/aclocal/keyutils.m4
++++ b/aclocal/keyutils.m4
+@@ -6,6 +6,6 @@ AC_DEFUN([AC_KEYUTILS], [
+   AC_CHECK_LIB([keyutils], [keyctl_instantiate], [LIBKEYUTILS=-lkeyutils], ,)
+   AC_SUBST(LIBKEYUTILS)
+ 
+-  AC_CHECK_HEADERS([keyutils.h], ,
+-  		   [AC_MSG_ERROR([keyutils.h header not found.])])
++  AC_CHECK_HEADERS([keyutils.h])
++
+ ])dnl
+diff --git a/aclocal/libnfsidmap.m4 b/aclocal/libnfsidmap.m4
+index 4faa923..484b1ec 100644
+--- a/aclocal/libnfsidmap.m4
++++ b/aclocal/libnfsidmap.m4
+@@ -15,7 +15,6 @@ AC_DEFUN([AC_LIBNFSIDMAP], [
+                           [Define to 1 if you have the `nfs4_set_debug' function.])])
+ 
+   dnl only enable nfsidmap when libnfsidmap supports it
+-  AC_CHECK_LIB([nfsidmap], [nfs4_owner_to_uid], [enable_nfsidmap=yes],
+-               [enable_nfsidmap=no])
++  AC_CHECK_LIB([nfsidmap], [nfs4_owner_to_uid])
+ 
+ ])dnl
+diff --git a/configure.ac b/configure.ac
+index c9fb27b..1a28f8a 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -266,7 +266,7 @@ if test "$enable_nfsv4" = yes; then
+   fi
+ fi
+ dnl enable nfsidmap when its support by libnfsidmap
+-AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$enable_nfsidmap" = "yes"])
++AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$ac_cv_header_keyutils_h$ac_cv_lib_nfsidmap_nfs4_owner_to_uid" = "yesyes"])
+ 
+ 
+ if test "$knfsd_cv_glibc2" = no; then
+-- 
+1.7.6
 
-Cheers,
-Tao
