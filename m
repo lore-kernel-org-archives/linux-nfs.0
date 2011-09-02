@@ -1,54 +1,66 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 2/2] exportfs: do not warn if /etc/exports.d/ does not
- exist
-Date: Thu, 01 Sep 2011 11:35:56 -0400
-Message-ID: <4E5FA65C.6090201@RedHat.com>
-References: <1314890192-11075-1-git-send-email-vapier@gentoo.org> <1314890192-11075-2-git-send-email-vapier@gentoo.org>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: Upcoming BakeAThons - October - NetApp - Sunnyvale
+Date: Fri, 2 Sep 2011 13:52:44 -0700
+Message-ID: <4E61421C.2030009@panasas.com>
+References: <C5BBE7EB-6EE9-4C0E-9141-8F80DDCE3A8E@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Mike Frysinger <vapier@gentoo.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41539 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932397Ab1IAPf5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Sep 2011 11:35:57 -0400
-In-Reply-To: <1314890192-11075-2-git-send-email-vapier@gentoo.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: NFS list <linux-nfs@vger.kernel.org>, "nfsv4@ietf.org" <nfsv4@ietf.org>
+To: Thomas Haynes <thomas@netapp.com>
+Return-path: <nfsv4-bounces@ietf.org>
+In-Reply-To: <C5BBE7EB-6EE9-4C0E-9141-8F80DDCE3A8E@netapp.com>
+List-Unsubscribe: <https://www.ietf.org/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
+List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
+List-Post: <mailto:nfsv4@ietf.org>
+List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
+List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=subscribe>
+Sender: nfsv4-bounces@ietf.org
+Errors-To: nfsv4-bounces@ietf.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Tom Hi 
 
+I was searching the both the NFS list <linux-nfs@vger.kernel.org> and
+nfsv4-ietf <nfsv4@ietf.org> mailing lists and did not find any formal
+invitation to the " October - NetApp - Sunnyvale" Bakeathon.
 
-On 09/01/2011 11:16 AM, Mike Frysinger wrote:
-> It isn't uncommon for /etc/exports.d/ to not exist, and imo, it's not
-> that big of a deal as often times, a simple /etc/exports is sufficient.
-> So silently skip the case where the dir is missing.
+Did you send any? (Well it did not say "Bakeathon" in the subject)
+
+Anyway There is 85% chance that we will bring heavy machinery in,
+since it is so close by. And yes it will be a noisy one so please
+get the other room aswell.
+
+Electricity is no issue. Just that the self uses two regular power plugs
+and then a couple of rack-pcs each an additional one.
+
+What other info do you need?
+
+[Now book the flight.]
+
+Thanks
+Boaz
+
+On 02/23/2011 07:48 AM, Thomas Haynes wrote:
+> As we discussed in Boston, the upcoming BATs are scheduled to be:
 > 
-> Signed-off-by: Mike Frysinger <vapier@gentoo.org>
-Committed...
-
-steved.
-
-> ---
->  utils/exportfs/exportfs.c |    7 +++++--
->  1 files changed, 5 insertions(+), 2 deletions(-)
+> June - CITI - Ann Arbor
 > 
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index 986a272..7432a65 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -529,9 +529,12 @@ export_d_read(const char *dname)
->  
->  
->  	n = scandir(dname, &namelist, NULL, versionsort);
-> -	if (n < 0)
-> +	if (n < 0) {
-> +		if (errno == ENOENT)
-> +			/* Silently return */
-> +			return;
->  		xlog(L_NOTICE, "scandir %s: %s", dname, strerror(errno));
-> -	else if (n == 0)
-> +	} else if (n == 0)
->  		return;
->  
->  	for (i = 0; i < n; i++) {
+> October - NetApp - Sunnyvale
+> 
+> The exact dates still have to be set, but plan on them being close to
+> the dates that we used last year. CITI in particular has to accommodate
+> the campus being swarmed with 40k students.
+> 
+> When CITI puts together there web page, expect to see news of it
+> here.
+> _______________________________________________
+> nfsv4 mailing list
+> nfsv4@ietf.org
+> https://www.ietf.org/mailman/listinfo/nfsv4
+
+_______________________________________________
+nfsv4 mailing list
+nfsv4@ietf.org
+https://www.ietf.org/mailman/listinfo/nfsv4
