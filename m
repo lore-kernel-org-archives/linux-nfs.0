@@ -1,260 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:48504 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753195Ab1IVOdb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 10:33:31 -0400
-Received: by bkbzt4 with SMTP id zt4so2551095bkb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Sep 2011 07:33:30 -0700 (PDT)
-From: Miklos Szeredi <miklos@szeredi.hu>
-To: David Howells <dhowells@redhat.com>
-Cc: raven@themaw.net, viro@ZenIV.linux.org.uk, jlayton@redhat.com,
-        gregkh@suse.de, torvalds@linux-foundation.org,
-        linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-References: <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
-Date: Thu, 22 Sep 2011 16:33:00 +0200
-In-Reply-To: <20110922134510.24683.14576.stgit@warthog.procyon.org.uk> (David
-	Howells's message of "Thu, 22 Sep 2011 14:45:10 +0100")
-Message-ID: <87y5xgve8z.fsf@tucsk.pomaz.szeredi.hu>
-Content-Type: text/plain; charset=us-ascii
+Received: from mail209.messagelabs.com ([216.82.255.3]:32803 "EHLO
+	mail209.messagelabs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756076Ab1IBVjl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Sep 2011 17:39:41 -0400
+From: H Hartley Sweeten <hartleys@visionengravers.com>
+To: Linux Kernel <linux-kernel@vger.kernel.org>
+Subject: [PATCH] nfs/super.c: local functions should be static
+Date: Fri, 2 Sep 2011 14:39:12 -0700
+CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+Message-ID: <201109021439.13146.hartleys@visionengravers.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-David Howells <dhowells@redhat.com> writes:
+commit ae50c0b5 "pnfs: client stats" added additional information to
+the output of /proc/self/mountstats. The new functions introduced are
+only used in this file and should be marked static.
 
-> Directly suppress automount on the following:
->
-> 	[l]stat
-> 	[l]getxattr
-> 	[l]setxattr
-> 	[l]listxattr
-> 	[l]removexattr
-> 	name_to_handle_at
-> 	fstatat
-> 	statfs
-> 	utimes
->
-> But provide an AT_AUTOMOUNT_FOLLOW path where possible to override that
-> behaviour.
->
-> This changes the behaviour back to before the in-VFS automount patches were
-> applied, thus, for example, preventing stat() from causing automounting, but
-> allows it to be overridden where possible.
->
-> However, what about the following:
->
-> 	umount
-> 	faccessat
-> 	fchmodat, chmod
-> 	fchownat, lchown, chown
->
-> Should these or should these not cause automounting?
+If CONFIG_NFS_V4_1 is not defined, empty stub functions are used.  If
+CONFIG_NFS_V4 is not defined these stub functions are not used at all.
+Adding static for the functions results in compile warnings:
 
-It probably doesn't matter.  Old kernels used to not automount on these
-and it didn't cause problems, but I'm quite sure that if they do
-automount that will not cause problems either.
+fs/nfs/super.c:743: warning: 'show_sessions' defined but not used
+fs/nfs/super.c:756: warning: 'show_pnfs' defined but not used
 
->
-> It's possible that with these additions, the whole decision point in
-> follow_automount() can be reduced to just a check of LOOKUP_NO_AUTOMOUNT.
->
-> Signed-off-by: David Howells <dhowells@redhat.com>
-> ---
->
->  fs/fhandle.c          |    2 +-
->  fs/stat.c             |    8 ++++----
->  fs/statfs.c           |    3 ++-
->  fs/utimes.c           |   10 +++++++---
->  fs/xattr.c            |   20 ++++++++++++--------
->  include/linux/fcntl.h |    1 +
->  6 files changed, 27 insertions(+), 17 deletions(-)
->
-> diff --git a/fs/fhandle.c b/fs/fhandle.c
-> index 6b08864..bc0f327 100644
-> --- a/fs/fhandle.c
-> +++ b/fs/fhandle.c
-> @@ -92,7 +92,7 @@ SYSCALL_DEFINE5(name_to_handle_at, int, dfd, const char __user *, name,
->  		int, flag)
->  {
->  	struct path path;
-> -	int lookup_flags;
-> +	int lookup_flags = LOOKUP_NO_AUTOMOUNT;
+Fix this by adding a #ifdef CONFIG_NFS_V4 guard around the two
+show_ functions.
 
-lookup_flags is going to be reinitialized later, so this has no affect.
+Signed-off-by: H Hartley Sweeten <hsweeten@visionengravers.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-Otherwise looks good.
+---
 
-Thanks,
-Miklos
-
->  	int err;
->  
->  	if ((flag & ~(AT_SYMLINK_FOLLOW | AT_EMPTY_PATH)) != 0)
-> diff --git a/fs/stat.c b/fs/stat.c
-> index ba5316f..e39b489 100644
-> --- a/fs/stat.c
-> +++ b/fs/stat.c
-> @@ -73,16 +73,16 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
->  {
->  	struct path path;
->  	int error = -EINVAL;
-> -	int lookup_flags = 0;
-> +	int lookup_flags = LOOKUP_NO_AUTOMOUNT;
->  
->  	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
-> -		      AT_EMPTY_PATH)) != 0)
-> +		      AT_EMPTY_PATH | AT_AUTOMOUNT_FOLLOW)) != 0)
->  		goto out;
->  
->  	if (!(flag & AT_SYMLINK_NOFOLLOW))
->  		lookup_flags |= LOOKUP_FOLLOW;
-> -	if (flag & AT_NO_AUTOMOUNT)
-> -		lookup_flags |= LOOKUP_NO_AUTOMOUNT;
-> +	if (!(flag & AT_AUTOMOUNT_FOLLOW))
-> +		lookup_flags &= ~LOOKUP_NO_AUTOMOUNT;
->  	if (flag & AT_EMPTY_PATH)
->  		lookup_flags |= LOOKUP_EMPTY;
->  
-> diff --git a/fs/statfs.c b/fs/statfs.c
-> index 8244924..fe64701 100644
-> --- a/fs/statfs.c
-> +++ b/fs/statfs.c
-> @@ -76,7 +76,8 @@ EXPORT_SYMBOL(vfs_statfs);
->  int user_statfs(const char __user *pathname, struct kstatfs *st)
->  {
->  	struct path path;
-> -	int error = user_path(pathname, &path);
-> +	int error = user_path_at(AT_FDCWD, pathname, LOOKUP_NO_AUTOMOUNT,
-> +				 &path);
->  	if (!error) {
->  		error = vfs_statfs(&path, st);
->  		path_put(&path);
-> diff --git a/fs/utimes.c b/fs/utimes.c
-> index ba653f3..e9bf196 100644
-> --- a/fs/utimes.c
-> +++ b/fs/utimes.c
-> @@ -136,13 +136,15 @@ long do_utimes(int dfd, const char __user *filename, struct timespec *times,
->  		goto out;
->  	}
->  
-> -	if (flags & ~AT_SYMLINK_NOFOLLOW)
-> +	if (flags & ~(AT_SYMLINK_NOFOLLOW |
-> +		      AT_NO_AUTOMOUNT | AT_AUTOMOUNT_FOLLOW))
->  		goto out;
->  
->  	if (filename == NULL && dfd != AT_FDCWD) {
->  		struct file *file;
->  
-> -		if (flags & AT_SYMLINK_NOFOLLOW)
-> +		if (flags & (AT_SYMLINK_NOFOLLOW |
-> +			     AT_NO_AUTOMOUNT | AT_AUTOMOUNT_FOLLOW))
->  			goto out;
->  
->  		file = fget(dfd);
-> @@ -154,10 +156,12 @@ long do_utimes(int dfd, const char __user *filename, struct timespec *times,
->  		fput(file);
->  	} else {
->  		struct path path;
-> -		int lookup_flags = 0;
-> +		int lookup_flags = LOOKUP_NO_AUTOMOUNT;
->  
->  		if (!(flags & AT_SYMLINK_NOFOLLOW))
->  			lookup_flags |= LOOKUP_FOLLOW;
-> +		if (flags & AT_AUTOMOUNT_FOLLOW)
-> +			lookup_flags &= ~LOOKUP_NO_AUTOMOUNT;
->  
->  		error = user_path_at(dfd, filename, lookup_flags, &path);
->  		if (error)
-> diff --git a/fs/xattr.c b/fs/xattr.c
-> index f060663..7c462ae 100644
-> --- a/fs/xattr.c
-> +++ b/fs/xattr.c
-> @@ -290,7 +290,8 @@ SYSCALL_DEFINE5(setxattr, const char __user *, pathname,
->  	struct path path;
->  	int error;
->  
-> -	error = user_path(pathname, &path);
-> +	error = user_path_at(AT_FDCWD, pathname,
-> +			     LOOKUP_FOLLOW | LOOKUP_NO_AUTOMOUNT, &path);
->  	if (error)
->  		return error;
->  	error = mnt_want_write(path.mnt);
-> @@ -309,7 +310,7 @@ SYSCALL_DEFINE5(lsetxattr, const char __user *, pathname,
->  	struct path path;
->  	int error;
->  
-> -	error = user_lpath(pathname, &path);
-> +	error = user_path_at(AT_FDCWD, pathname, LOOKUP_NO_AUTOMOUNT, &path);
->  	if (error)
->  		return error;
->  	error = mnt_want_write(path.mnt);
-> @@ -386,7 +387,8 @@ SYSCALL_DEFINE4(getxattr, const char __user *, pathname,
->  	struct path path;
->  	ssize_t error;
->  
-> -	error = user_path(pathname, &path);
-> +	error = user_path_at(AT_FDCWD, pathname,
-> +			     LOOKUP_FOLLOW | LOOKUP_NO_AUTOMOUNT, &path);
->  	if (error)
->  		return error;
->  	error = getxattr(path.dentry, name, value, size);
-> @@ -400,7 +402,7 @@ SYSCALL_DEFINE4(lgetxattr, const char __user *, pathname,
->  	struct path path;
->  	ssize_t error;
->  
-> -	error = user_lpath(pathname, &path);
-> +	error = user_path_at(AT_FDCWD, pathname, LOOKUP_NO_AUTOMOUNT, &path);
->  	if (error)
->  		return error;
->  	error = getxattr(path.dentry, name, value, size);
-> @@ -459,7 +461,8 @@ SYSCALL_DEFINE3(listxattr, const char __user *, pathname, char __user *, list,
->  	struct path path;
->  	ssize_t error;
->  
-> -	error = user_path(pathname, &path);
-> +	error = user_path_at(AT_FDCWD, pathname,
-> +			     LOOKUP_FOLLOW | LOOKUP_NO_AUTOMOUNT, &path);
->  	if (error)
->  		return error;
->  	error = listxattr(path.dentry, list, size);
-> @@ -473,7 +476,7 @@ SYSCALL_DEFINE3(llistxattr, const char __user *, pathname, char __user *, list,
->  	struct path path;
->  	ssize_t error;
->  
-> -	error = user_lpath(pathname, &path);
-> +	error = user_path_at(AT_FDCWD, pathname, LOOKUP_NO_AUTOMOUNT, &path);
->  	if (error)
->  		return error;
->  	error = listxattr(path.dentry, list, size);
-> @@ -519,7 +522,8 @@ SYSCALL_DEFINE2(removexattr, const char __user *, pathname,
->  	struct path path;
->  	int error;
->  
-> -	error = user_path(pathname, &path);
-> +	error = user_path_at(AT_FDCWD, pathname,
-> +			     LOOKUP_FOLLOW | LOOKUP_NO_AUTOMOUNT, &path);
->  	if (error)
->  		return error;
->  	error = mnt_want_write(path.mnt);
-> @@ -537,7 +541,7 @@ SYSCALL_DEFINE2(lremovexattr, const char __user *, pathname,
->  	struct path path;
->  	int error;
->  
-> -	error = user_lpath(pathname, &path);
-> +	error = user_path_at(AT_FDCWD, pathname, LOOKUP_NO_AUTOMOUNT, &path);
->  	if (error)
->  		return error;
->  	error = mnt_want_write(path.mnt);
-> diff --git a/include/linux/fcntl.h b/include/linux/fcntl.h
-> index f550f89..768fb66 100644
-> --- a/include/linux/fcntl.h
-> +++ b/include/linux/fcntl.h
-> @@ -47,6 +47,7 @@
->  #define AT_SYMLINK_FOLLOW	0x400   /* Follow symbolic links.  */
->  #define AT_NO_AUTOMOUNT		0x800	/* Suppress terminal automount traversal */
->  #define AT_EMPTY_PATH		0x1000	/* Allow empty relative pathname */
-> +#define AT_AUTOMOUNT_FOLLOW	0x2000	/* Follow terminal automounts */
->  
->  #ifdef __KERNEL__
->  
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index b961cea..4b07e9b 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -733,18 +733,22 @@ static int nfs_show_options(struct seq_file *m, struct vfsmount *mnt)
+ 
+ 	return 0;
+ }
++
++#ifdef CONFIG_NFS_V4
+ #ifdef CONFIG_NFS_V4_1
+-void show_sessions(struct seq_file *m, struct nfs_server *server)
++static void show_sessions(struct seq_file *m, struct nfs_server *server)
+ {
+ 	if (nfs4_has_session(server->nfs_client))
+ 		seq_printf(m, ",sessions");
+ }
+ #else
+-void show_sessions(struct seq_file *m, struct nfs_server *server) {}
++static void show_sessions(struct seq_file *m, struct nfs_server *server) {}
++#endif
+ #endif
+ 
++#ifdef CONFIG_NFS_V4
+ #ifdef CONFIG_NFS_V4_1
+-void show_pnfs(struct seq_file *m, struct nfs_server *server)
++static void show_pnfs(struct seq_file *m, struct nfs_server *server)
+ {
+ 	seq_printf(m, ",pnfs=");
+ 	if (server->pnfs_curr_ld)
+@@ -752,9 +756,10 @@ void show_pnfs(struct seq_file *m, struct nfs_server *server)
+ 	else
+ 		seq_printf(m, "not configured");
+ }
+-#else  /* CONFIG_NFS_V4_1 */
+-void show_pnfs(struct seq_file *m, struct nfs_server *server) {}
+-#endif /* CONFIG_NFS_V4_1 */
++#else
++static void show_pnfs(struct seq_file *m, struct nfs_server *server) {}
++#endif
++#endif
+ 
+ static int nfs_show_devname(struct seq_file *m, struct vfsmount *mnt)
+ {
