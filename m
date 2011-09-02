@@ -1,43 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yi0-f46.google.com ([209.85.218.46]:61457 "EHLO
-	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757463Ab1INTu1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Sep 2011 15:50:27 -0400
-Received: by yie30 with SMTP id 30so1705048yie.19
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Sep 2011 12:50:26 -0700 (PDT)
+Received: from mail-qw0-f42.google.com ([209.85.216.42]:34360 "EHLO
+	mail-qw0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753195Ab1IBQou (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Sep 2011 12:44:50 -0400
+Received: by qwi4 with SMTP id 4so2944237qwi.1
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Sep 2011 09:44:49 -0700 (PDT)
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/2] Allow my_name to change when locking
-To: skinsbursky@parallels.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 14 Sep 2011 15:50:24 -0400
-Message-ID: <20110914194646.3008.77560.stgit@matisse.1015granger.net>
+Subject: [PATCH 2/3] NFSD: Remove the ex_pathname field from struct svc_export
+To: linux-nfs@vger.kernel.org
+Date: Fri, 02 Sep 2011 12:38:32 -0400
+Message-ID: <20110902163832.32190.6097.stgit@matisse.1015granger.net>
+In-Reply-To: <20110902162210.32190.5880.stgit@matisse.1015granger.net>
+References: <20110902162210.32190.5880.stgit@matisse.1015granger.net>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Instead of picking up utsname()->nodename in the NSM XDR layer, allow
-upper layers to determine the value of SM_MON(my_name) and
-NLM_LOCK(caller_name).
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-This should make it easier to support NFSv2 and v3 in containers.
+There are no more users...
 
-Lightly tested the client side.  Server side changes need review
-and testing.
-
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
-Chuck Lever (2):
-      lockd: Use my_name instead of utsname when constructing NLM_LOCK args
-      NLM: Allow upper layers to select my_name
+ fs/nfsd/export.c            |   11 -----------
+ include/linux/nfsd/export.h |    1 -
+ 2 files changed, 0 insertions(+), 12 deletions(-)
 
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index d9a6611..bf985f7 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -318,7 +318,6 @@ static void svc_export_put(struct kref *ref)
+ 	struct svc_export *exp = container_of(ref, struct svc_export, h.ref);
+ 	path_put(&exp->ex_path);
+ 	auth_domain_put(exp->ex_client);
+-	kfree(exp->ex_pathname);
+ 	nfsd4_fslocs_free(&exp->ex_fslocs);
+ 	kfree(exp);
+ }
+@@ -528,11 +527,6 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
+ 
+ 	exp.ex_client = dom;
+ 
+-	err = -ENOMEM;
+-	exp.ex_pathname = kstrdup(buf, GFP_KERNEL);
+-	if (!exp.ex_pathname)
+-		goto out2;
+-
+ 	/* expiry */
+ 	err = -EINVAL;
+ 	exp.h.expiry_time = get_expiry(&mesg);
+@@ -613,8 +607,6 @@ out4:
+ 	nfsd4_fslocs_free(&exp.ex_fslocs);
+ 	kfree(exp.ex_uuid);
+ out3:
+-	kfree(exp.ex_pathname);
+-out2:
+ 	path_put(&exp.ex_path);
+ out1:
+ 	auth_domain_put(dom);
+@@ -678,7 +670,6 @@ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
+ 	new->ex_client = item->ex_client;
+ 	new->ex_path.dentry = dget(item->ex_path.dentry);
+ 	new->ex_path.mnt = mntget(item->ex_path.mnt);
+-	new->ex_pathname = NULL;
+ 	new->ex_fslocs.locations = NULL;
+ 	new->ex_fslocs.locations_count = 0;
+ 	new->ex_fslocs.migrated = 0;
+@@ -696,8 +687,6 @@ static void export_update(struct cache_head *cnew, struct cache_head *citem)
+ 	new->ex_fsid = item->ex_fsid;
+ 	new->ex_uuid = item->ex_uuid;
+ 	item->ex_uuid = NULL;
+-	new->ex_pathname = item->ex_pathname;
+-	item->ex_pathname = NULL;
+ 	new->ex_fslocs.locations = item->ex_fslocs.locations;
+ 	item->ex_fslocs.locations = NULL;
+ 	new->ex_fslocs.locations_count = item->ex_fslocs.locations_count;
+diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
+index 7ba3fd4..f85308e 100644
+--- a/include/linux/nfsd/export.h
++++ b/include/linux/nfsd/export.h
+@@ -96,7 +96,6 @@ struct svc_export {
+ 	struct auth_domain *	ex_client;
+ 	int			ex_flags;
+ 	struct path		ex_path;
+-	char			*ex_pathname;
+ 	uid_t			ex_anon_uid;
+ 	gid_t			ex_anon_gid;
+ 	int			ex_fsid;
 
- fs/lockd/clntproc.c         |    6 +++---
- fs/lockd/host.c             |    7 ++++++-
- fs/lockd/mon.c              |   36 +++++++++++++++++++++++++-----------
- fs/lockd/svclock.c          |    2 +-
- include/linux/lockd/lockd.h |    4 +++-
- 5 files changed, 38 insertions(+), 17 deletions(-)
-
--- 
-Chuck Lever
