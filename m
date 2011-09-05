@@ -1,110 +1,189 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:16886 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932150Ab1IMSON (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Sep 2011 14:14:13 -0400
-Subject: [PATCH v3 04/11] SUNRPC: parametrize svc creation calls with
-	portmapper flag
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net
-Date: Tue, 13 Sep 2011 22:13:51 +0400
-Message-ID: <20110913181351.3961.70207.stgit@localhost6.localdomain6>
-In-Reply-To: <20110913180953.3961.69217.stgit@localhost6.localdomain6>
-References: <20110913180953.3961.69217.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
+Received: from e28smtp06.in.ibm.com ([122.248.162.6]:34220 "EHLO
+	e28smtp06.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752202Ab1IER1i (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2011 13:27:38 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V6 23/26] vfs: Add richacl permission check
+Date: Mon,  5 Sep 2011 22:55:45 +0530
+Message-Id: <1315243548-18664-24-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-This new flag ("setup_rpcbind) will be used to detect, that new service will
-send portmapper register calls. For such services we will create rpcbind
-clients and remove all stale portmap registrations.
-Also, svc_rpcb_cleanup() will be set as sv_shutdown callback for such services
-in case of this field wasn't initialized earlier. This will allow to destroy
-rpcbind clients when no other users of them left.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- include/linux/sunrpc/svc.h |    2 ++
- net/sunrpc/svc.c           |   21 ++++++++++++++-------
- 2 files changed, 16 insertions(+), 7 deletions(-)
+ fs/attr.c               |    6 +++-
+ fs/namei.c              |   13 ++++++++++-
+ fs/richacl_base.c       |   54 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/fs.h      |    2 +-
+ include/linux/richacl.h |    2 +
+ 5 files changed, 73 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 223588a..528952a 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -402,11 +402,13 @@ struct svc_procedure {
-  * Function prototypes.
-  */
- struct svc_serv *svc_create(struct svc_program *, unsigned int,
-+			    int setup_rpcbind,
- 			    void (*shutdown)(struct svc_serv *));
- struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
- 					struct svc_pool *pool);
- void		   svc_exit_thread(struct svc_rqst *);
- struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
-+			int setup_rpcbind,
- 			void (*shutdown)(struct svc_serv *),
- 			svc_thread_fn, struct module *);
- int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index f31e5cc..03231d5 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -378,7 +378,7 @@ static void svc_rpcb_cleanup(struct svc_serv *serv)
-  */
- static struct svc_serv *
- __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
--	     void (*shutdown)(struct svc_serv *serv))
-+	     int setup_rpcbind, void (*shutdown)(struct svc_serv *serv))
- {
- 	struct svc_serv	*serv;
- 	unsigned int vers;
-@@ -437,29 +437,36 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
- 		spin_lock_init(&pool->sp_lock);
- 	}
+diff --git a/fs/attr.c b/fs/attr.c
+index 00578b9..2b445ba 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -13,6 +13,7 @@
+ #include <linux/fsnotify.h>
+ #include <linux/fcntl.h>
+ #include <linux/security.h>
++#include <linux/richacl.h>
  
--	/* Remove any stale portmap registrations */
--	svc_unregister(serv);
-+	if (setup_rpcbind) {
-+	       	if (svc_rpcb_setup(serv) < 0) {
-+			kfree(serv->sv_pools);
-+			kfree(serv);
-+			return NULL;
-+		}
-+		if (!serv->sv_shutdown)
-+			serv->sv_shutdown = svc_rpcb_cleanup;
+ static int richacl_change_ok(struct inode *inode, int mask)
+ {
+@@ -21,8 +22,9 @@ static int richacl_change_ok(struct inode *inode, int mask)
+ 
+ 	if (inode->i_op->permission)
+ 		return inode->i_op->permission(inode, mask);
+-
+-	return check_acl(inode, mask);
++	if (inode->i_op->get_richacl)
++		return check_richacl(inode, mask);
++	return -EPERM;
+ }
+ 
+ static bool inode_uid_change_ok(struct inode *inode, uid_t ia_uid)
+diff --git a/fs/namei.c b/fs/namei.c
+index ce67eb1..1054bc3 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -33,6 +33,7 @@
+ #include <linux/device_cgroup.h>
+ #include <linux/fs_struct.h>
+ #include <linux/posix_acl.h>
++#include <linux/richacl.h>
+ #include <asm/uaccess.h>
+ 
+ #include "internal.h"
+@@ -174,7 +175,7 @@ void putname(const char *name)
+ EXPORT_SYMBOL(putname);
+ #endif
+ 
+-int check_acl(struct inode *inode, int mask)
++static int check_posix_acl(struct inode *inode, int mask)
+ {
+ #ifdef CONFIG_FS_POSIX_ACL
+ 	struct posix_acl *acl;
+@@ -220,6 +221,16 @@ int check_acl(struct inode *inode, int mask)
+ 	return -EAGAIN;
+ }
+ 
++static int check_acl(struct inode *inode, int mask)
++{
++	if (IS_POSIXACL(inode))
++		return check_posix_acl(inode, mask);
++	else if (IS_RICHACL(inode))
++		return check_richacl(inode, mask);
++	else
++		return -EAGAIN;
++}
++
+ /*
+  * This does the basic permission checking
+  */
+diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+index 2cdc244..b5b3227 100644
+--- a/fs/richacl_base.c
++++ b/fs/richacl_base.c
+@@ -623,3 +623,57 @@ richacl_equiv_mode(const struct richacl *acl, mode_t *mode_p)
+ 	return 0;
+ }
+ EXPORT_SYMBOL_GPL(richacl_equiv_mode);
++
++int check_richacl(struct inode *inode, int want)
++{
++#ifdef CONFIG_FS_RICHACL
++	struct richacl *acl;
++	int richacl_mask = richacl_want_to_mask(want);
++
++	if (want & MAY_NOT_BLOCK) {
++		acl = rcu_dereference(inode->i_richacl);
++		if (!acl)
++			return -EAGAIN;
++		/* no ->get_acl() calls in RCU mode... */
++		if (acl == ACL_NOT_CACHED)
++			return -ECHILD;
++		return richacl_permission(inode, acl, richacl_mask);
 +	}
++	return richacl_check_acl(inode, richacl_mask);
++#endif
++	return -EAGAIN;
++}
++
++int richacl_check_acl(struct inode *inode, int richacl_mask)
++{
++
++#ifdef CONFIG_FS_RICHACL
++	struct richacl *acl;
++	acl = get_cached_richacl(inode);
++	/*
++	 * A filesystem can force a ACL callback by just never filling the
++	 * ACL cache. But normally you'd fill the cache either at inode
++	 * instantiation time, or on the first ->get_acl call.
++	 *
++	 * If the filesystem doesn't have a get_acl() function at all, we'll
++	 * just create the negative cache entry.
++	 */
++	if (acl == ACL_NOT_CACHED) {
++		if (inode->i_op->get_acl) {
++			acl = inode->i_op->get_richacl(inode);
++			if (IS_ERR(acl))
++				return PTR_ERR(acl);
++		} else {
++			set_cached_richacl(inode, NULL);
++			return -EAGAIN;
++		}
++	}
++	if (acl) {
++		int error = richacl_permission(inode, acl, richacl_mask);
++		richacl_put(acl);
++		return error;
++	}
++#endif
++	return -EAGAIN;
++}
++EXPORT_SYMBOL_GPL(richacl_check_acl);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index cfbe763..38ad50a 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1626,6 +1626,7 @@ struct inode_operations {
+ 	void * (*follow_link) (struct dentry *, struct nameidata *);
+ 	int (*permission) (struct inode *, int);
+ 	struct posix_acl * (*get_acl)(struct inode *, int);
++	struct richacl * (*get_richacl)(struct inode *);
  
- 	return serv;
- }
+ 	int (*readlink) (struct dentry *, char __user *,int);
+ 	void (*put_link) (struct dentry *, struct nameidata *, void *);
+@@ -2245,7 +2246,6 @@ extern sector_t bmap(struct inode *, sector_t);
+ extern int notify_change(struct dentry *, struct iattr *);
+ extern int inode_permission(struct inode *, int);
+ extern int generic_permission(struct inode *, int);
+-extern int check_acl(struct inode *, int);
  
- struct svc_serv *
- svc_create(struct svc_program *prog, unsigned int bufsize,
--	   void (*shutdown)(struct svc_serv *serv))
-+	   int setup_rpcbind, void (*shutdown)(struct svc_serv *serv))
+ static inline bool execute_ok(struct inode *inode)
  {
--	return __svc_create(prog, bufsize, /*npools*/1, shutdown);
-+	return __svc_create(prog, bufsize, /*npools*/1, setup_rpcbind, shutdown);
- }
- EXPORT_SYMBOL_GPL(svc_create);
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index a00a9a6..00d52a4 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -367,6 +367,8 @@ extern int richacl_permission(struct inode *, const struct richacl *,
+ 			      unsigned int);
+ extern struct richacl *richacl_inherit(const struct richacl *, int);
+ extern int richacl_equiv_mode(const struct richacl *, mode_t *);
++extern int check_richacl(struct inode *, int);
++extern int richacl_check_acl(struct inode *, int);
  
- struct svc_serv *
- svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
--		  void (*shutdown)(struct svc_serv *serv),
-+		  int setup_rpcbind, void (*shutdown)(struct svc_serv *serv),
- 		  svc_thread_fn func, struct module *mod)
- {
- 	struct svc_serv *serv;
- 	unsigned int npools = svc_pool_map_get();
- 
--	serv = __svc_create(prog, bufsize, npools, shutdown);
-+	serv = __svc_create(prog, bufsize, npools, setup_rpcbind, shutdown);
- 
- 	if (serv != NULL) {
- 		serv->sv_function = func;
+ /* richacl_inode.c */
+ extern struct richacl *richacl_inherit_inode(const struct richacl *,
+-- 
+1.7.4.1
 
