@@ -1,198 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60147 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932133Ab1INLp1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Sep 2011 07:45:27 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 01/25] nfsd4: centralize handling of replay owners
-Date: Wed, 14 Sep 2011 07:44:57 -0400
-Message-Id: <1316000721-3289-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
+Received: from e28smtp03.in.ibm.com ([122.248.162.3]:32917 "EHLO
+	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751923Ab1IER21 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2011 13:28:27 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V6 00/26]  New ACL format for better NFSv4 acl interoperability
+Date: Mon,  5 Sep 2011 22:55:22 +0530
+Message-Id: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Set the stateowner associated with a replay in one spot in
-nfs4_preprocess_seqid_op() and keep it in cstate.  This allows removing
-a few lines of boilerplate from all the nfs4_preprocess_seqid_op()
-callers.
+Hi,
 
-Also turn ENCODE_SEQID_OP_TAIL into a function while we're here.
+The following set of patches implements VFS and ext4 changes needed to implement
+a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
+extended by file masks to fit into the standard POSIX file permission model.
+They are designed to work seamlessly locally as well as across the NFSv4 and
+CIFS/SMB2 network file system protocols.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |   25 ++++---------------------
- fs/nfsd/nfs4xdr.c   |   34 +++++++++++++++++++---------------
- 2 files changed, 23 insertions(+), 36 deletions(-)
+A user-space utility for displaying and changing richacls is available at [4]
+(a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 80af79e..e4535ff 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3425,12 +3425,15 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
- 		/* It's not stale; let's assume it's expired: */
- 		if (sop == NULL)
- 			return nfserr_expired;
--		*sopp = sop;
-+		nfs4_get_stateowner(sop);
-+		cstate->replay_owner = sop;
- 		goto check_replay;
- 	}
- 
- 	*stpp = stp;
- 	*sopp = sop = stp->st_stateowner;
-+	nfs4_get_stateowner(sop);
-+	cstate->replay_owner = sop;
- 
- 	if (nfs4_check_fh(current_fh, stp)) {
- 		dprintk("NFSD: preprocess_seqid_op: fh-stateid mismatch!\n");
-@@ -3501,10 +3504,6 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 
- 	nfsd4_create_clid_dir(sop->so_client);
- out:
--	if (oc->oc_stateowner) {
--		nfs4_get_stateowner(oc->oc_stateowner);
--		cstate->replay_owner = oc->oc_stateowner;
--	}
- 	nfs4_unlock_state();
- 	return status;
- }
-@@ -3574,10 +3573,6 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 	memcpy(&od->od_stateid, &stp->st_stateid, sizeof(stateid_t));
- 	status = nfs_ok;
- out:
--	if (od->od_stateowner) {
--		nfs4_get_stateowner(od->od_stateowner);
--		cstate->replay_owner = od->od_stateowner;
--	}
- 	nfs4_unlock_state();
- 	return status;
- }
-@@ -3618,10 +3613,6 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (list_empty(&close->cl_stateowner->so_stateids))
- 		move_to_close_lru(close->cl_stateowner);
- out:
--	if (close->cl_stateowner) {
--		nfs4_get_stateowner(close->cl_stateowner);
--		cstate->replay_owner = close->cl_stateowner;
--	}
- 	nfs4_unlock_state();
- 	return status;
- }
-@@ -4086,10 +4077,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- out:
- 	if (status && lock->lk_is_new && lock_sop)
- 		release_lockowner(lock_sop);
--	if (lock->lk_replay_owner) {
--		nfs4_get_stateowner(lock->lk_replay_owner);
--		cstate->replay_owner = lock->lk_replay_owner;
--	}
- 	nfs4_unlock_state();
- 	return status;
- }
-@@ -4244,10 +4231,6 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	memcpy(&locku->lu_stateid, &stp->st_stateid, sizeof(stateid_t));
- 
- out:
--	if (locku->lu_stateowner) {
--		nfs4_get_stateowner(locku->lu_stateowner);
--		cstate->replay_owner = locku->lu_stateowner;
--	}
- 	nfs4_unlock_state();
- 	return status;
- 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index f982d85..ee12678 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1630,15 +1630,19 @@ static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
-  * we know whether the error to be returned is a sequence id mutating error.
-  */
- 
--#define ENCODE_SEQID_OP_TAIL(stateowner) do {			\
--	if (seqid_mutating_err(ntohl(nfserr)) && stateowner) { 	\
--		stateowner->so_seqid++;				\
--		stateowner->so_replay.rp_status = nfserr;   	\
--		stateowner->so_replay.rp_buflen = 		\
--			  (((char *)(resp)->p - (char *)save)); \
--		memcpy(stateowner->so_replay.rp_buf, save,      \
-- 			stateowner->so_replay.rp_buflen); 	\
--	} } while (0);
-+static void encode_seqid_op_tail(struct nfsd4_compoundres *resp, __be32 *save, __be32 nfserr)
-+{
-+	struct nfs4_stateowner *stateowner = resp->cstate.replay_owner;
-+
-+	if (seqid_mutating_err(ntohl(nfserr)) && stateowner) {
-+		stateowner->so_seqid++;
-+		stateowner->so_replay.rp_status = nfserr;
-+		stateowner->so_replay.rp_buflen =
-+			  (char *)resp->p - (char *)save;
-+		memcpy(stateowner->so_replay.rp_buf, save,
-+			stateowner->so_replay.rp_buflen);
-+	}
-+}
- 
- /* Encode as an array of strings the string given with components
-  * separated @sep.
-@@ -2495,7 +2499,7 @@ nfsd4_encode_close(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_c
- 	if (!nfserr)
- 		nfsd4_encode_stateid(resp, &close->cl_stateid);
- 
--	ENCODE_SEQID_OP_TAIL(close->cl_stateowner);
-+	encode_seqid_op_tail(resp, save, nfserr);
- 	return nfserr;
- }
- 
-@@ -2599,7 +2603,7 @@ nfsd4_encode_lock(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_lo
- 	else if (nfserr == nfserr_denied)
- 		nfsd4_encode_lock_denied(resp, &lock->lk_denied);
- 
--	ENCODE_SEQID_OP_TAIL(lock->lk_replay_owner);
-+	encode_seqid_op_tail(resp, save, nfserr);
- 	return nfserr;
- }
- 
-@@ -2619,7 +2623,7 @@ nfsd4_encode_locku(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_l
- 	if (!nfserr)
- 		nfsd4_encode_stateid(resp, &locku->lu_stateid);
- 
--	ENCODE_SEQID_OP_TAIL(locku->lu_stateowner);
-+	encode_seqid_op_tail(resp, save, nfserr);
- 	return nfserr;
- }
- 
-@@ -2700,7 +2704,7 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
- 	}
- 	/* XXX save filehandle here */
- out:
--	ENCODE_SEQID_OP_TAIL(open->op_stateowner);
-+	encode_seqid_op_tail(resp, save, nfserr);
- 	return nfserr;
- }
- 
-@@ -2712,7 +2716,7 @@ nfsd4_encode_open_confirm(struct nfsd4_compoundres *resp, __be32 nfserr, struct
- 	if (!nfserr)
- 		nfsd4_encode_stateid(resp, &oc->oc_resp_stateid);
- 
--	ENCODE_SEQID_OP_TAIL(oc->oc_stateowner);
-+	encode_seqid_op_tail(resp, save, nfserr);
- 	return nfserr;
- }
- 
-@@ -2724,7 +2728,7 @@ nfsd4_encode_open_downgrade(struct nfsd4_compoundres *resp, __be32 nfserr, struc
- 	if (!nfserr)
- 		nfsd4_encode_stateid(resp, &od->od_stateid);
- 
--	ENCODE_SEQID_OP_TAIL(od->od_stateowner);
-+	encode_seqid_op_tail(resp, save, nfserr);
- 	return nfserr;
- }
- 
--- 
-1.7.4.1
+[4] git://git.kernel.org/pub/scm/fs/acl/kvaneesh/richacl.git master
+
+To test richacl on ext4 use -o richacl mount option. This mount option may later be
+dropped in favour of a feature flag.
+
+More details regarding richacl can be found at
+http://acl.bestbits.at/richacl/
+
+Changes from v5:
+a) rebase to v3.1-rc4-131-g9e79e3e
+
+NOTE: The kernel changes will be pushed to
+git://git.kernel.org/pub/scm/linux/kernel/git/kvaneesh/linux-richacl.git richacl
+when kernel.org is back
+
+-aneesh
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 
