@@ -1,44 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from talus.maths.usyd.edu.au ([129.78.68.1]:60339 "EHLO
-	talus.maths.usyd.edu.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751510Ab1ITWsk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2011 18:48:40 -0400
-Received: from smtpdoor@localhost by talus.maths.usyd.edu.au (8.14.3/8.5)
-	id p8KMmLPG010287 for linux-nfs@vger.kernel.org; Wed, 21 Sep 2011 08:48:21 +1000
-Received: from bari.maths.usyd.edu.au (psz@bari.maths.usyd.edu.au) [129.78.69.145]
-	by siv.maths.usyd.edu.au via smtpdoor V27.1
-	id 10285 for linux-nfs@vger.kernel.org; Wed, 21 Sep 2011 08:48:21 +1000
-Date: Wed, 21 Sep 2011 08:48:21 +1000
-From: paul.szabo@sydney.edu.au
-Message-Id: <201109202248.p8KMmLaI008501@bari.maths.usyd.edu.au>
-Received: from psz@localhost by bari.maths.usyd.edu.au (8.14.3/8.5/Submit)
-	id p8KMmLaI008501 for linux-nfs@vger.kernel.org; Wed, 21 Sep 2011 08:48:21 +1000
-To: linux-nfs@vger.kernel.org
-Subject: Re: Please support NSF squashing multiple groups
+Received: from e28smtp09.in.ibm.com ([122.248.162.9]:40959 "EHLO
+	e28smtp09.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751969Ab1IER1R (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2011 13:27:17 -0400
+Received: from /spool/local
+	by in.ibm.com with XMail ESMTP
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Mon, 5 Sep 2011 22:57:13 +0530
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V6 01/26] vfs: Indicate that the permission functions take all the MAY_* flags
+Date: Mon,  5 Sep 2011 22:55:23 +0530
+Message-Id: <1315243548-18664-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Dear all,
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-I wrote about some security issues with NFS, about protecting against
-privileged UIDs and GIDs, like root_squash protects against root.
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/namei.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-Your advice was to use NFSv4 with kerberos authentication. I now
-succeeded in setting that up on a test system; though not as simple as
-should be, it seems to work as expected. The changes required for use
-are non-trivial, so I will not immediately be able to use it.
+diff --git a/fs/namei.c b/fs/namei.c
+index 2826db3..9efc638 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -257,7 +257,7 @@ other_perms:
+ /**
+  * generic_permission -  check for access rights on a Posix-like filesystem
+  * @inode:	inode to check access rights for
+- * @mask:	right to check for (%MAY_READ, %MAY_WRITE, %MAY_EXEC)
++ * @mask:	right to check for (%MAY_READ, %MAY_WRITE, %MAY_EXEC, ...)
+  *
+  * Used to check for read/write/execute permissions on a file.
+  * We use "fsuid" for this, letting us set arbitrary permissions
+@@ -331,7 +331,7 @@ static inline int do_inode_permission(struct inode *inode, int mask)
+ /**
+  * inode_permission  -  check for access rights to a given inode
+  * @inode:	inode to check permission on
+- * @mask:	right to check for (%MAY_READ, %MAY_WRITE, %MAY_EXEC)
++ * @mask:	right to check for (%MAY_READ, %MAY_WRITE, %MAY_EXEC, ...)
+  *
+  * Used to check for read/write/execute permissions on an inode.
+  * We use "fsuid" for this, letting us set arbitrary permissions
+-- 
+1.7.4.1
 
-Seems that the mountd option --manage-gids handles the secondary groups
-only. I still do not quite understand why mountd (with that or another
-option) cannot handle the primary GID also, setting it to the GID
-corresponding to the UID on the server; and maybe even "squash" any UIDs
-in a table similar to idmap, or simply squash UIDs less than UID_MIN
-(squash directly, without any kernel interaction). Could you please tell
-me whether those are conceptually possible?
-
-Thanks, Paul
-
-Paul Szabo   psz@maths.usyd.edu.au   http://www.maths.usyd.edu.au/u/psz/
-School of Mathematics and Statistics   University of Sydney    Australia
