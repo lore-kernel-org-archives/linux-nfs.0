@@ -1,78 +1,217 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:35834 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759631Ab1IISwR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Sep 2011 14:52:17 -0400
-Subject: Re: Regression seen when HIGHMEM enabled with NFS on 3.1rc4 kernel
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "R, Sricharan" <r.sricharan@ti.com>
-Cc: linux-omap@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 09 Sep 2011 14:51:57 -0400
-In-Reply-To: <CAJ7qFSeB8bAGdYfZs-LFHuYqGWNA2RidY0EBEFw_1CndvG7q5A@mail.gmail.com>
-References: <CAJ7qFSeB8bAGdYfZs-LFHuYqGWNA2RidY0EBEFw_1CndvG7q5A@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1315594317.17611.25.camel@lade.trondhjem.org>
+Received: from e28smtp09.in.ibm.com ([122.248.162.9]:41013 "EHLO
+	e28smtp09.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752094Ab1IER1j (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2011 13:27:39 -0400
+Received: from /spool/local
+	by in.ibm.com with XMail ESMTP
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Mon, 5 Sep 2011 22:57:37 +0530
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V6 18/26] richacl: Create-time inheritance
+Date: Mon,  5 Sep 2011 22:55:40 +0530
+Message-Id: <1315243548-18664-19-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, 2011-09-09 at 18:40 +0530, R, Sricharan wrote: 
-> Sorry resending again. My mailer settings thrashed my earlier email.
-> 
-> Hi,
->   A kernel crash is observed on 3.1rc4 kernel when HIGHMEM is enabled and
->   kernel is booted with a NFS on omap4430sdp. The issue happens in the below
->   scenario.
-> 
->        In file net/sunrpc/xprtsock.c,
->          static int xs_send_pagedata( xxx, struct xdr_buf *xdr, ..)
->          {
->                 Struct page **ppage;
->                 ....
->                 .....
->                 ppage = xdr->pages + (base >> PAGE_SHIFT);
->                 ....
->             err = sock->ops->sendpage(sock, *ppage, base, len, flags);
-> 
->             ...
->          }
-> 
->          1) In the above piece of code, the *ppage value from ops->sendpage
->             function is finally passed on to Kmap by the lower level code to
->             get the virtual address of the page.
->          2) In some corner cases the value of *ppage pointer is NULL.
->          3) When highmem is enabled and a NULL pointer is passed to
->             Kmap, then kmap finally crashes. But in the case when highmem
->             is disabled, then kmap returns a junk value for NULL pointer.
-> 
->             Highmem Enabled , kmap( NULL )-----> kernel crashes.
-> 
->            Highmem disabled, kmap( NULL )-----> junk value is returned.
->                Subsequently this message is observed on
->                                                 the console.
-> 
->                                 "RPC call returned error 14"
-> 
->          4) Now the question is why is the value of *ppage = NULL is passed
->             from the above piece of code to lower layers.
->            Should that not have handled *ppage = NULL? and kmap should not
->             have received a NULL pointer?
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-I wouldn't expect *ppage to be NULL under any circumstances, so I'm
-really curious as to what is happening here.
+When a new file is created, it can inherit an acl from its parent
+directory; this is similar to how default acls work in POSIX (draft)
+ACLs.
 
-Could you perhaps add a printk() to that section of code to print out
-the values of 'xdr->page_base', 'xdr->page_len', 'len' and 'remainder'
-in the case where *ppage == NULL?
+As with POSIX ACLs, if a file inherits an acl from its parent directory,
+the intersection between the create mode and the permissions granted by
+the inherited acl determines the file masks and file permission bits,
+and the umask is ignored.
 
-Cheers
-  Trond
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/Makefile             |    2 +-
+ fs/richacl_base.c       |   69 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/richacl_inode.c      |   59 ++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |    4 +++
+ 4 files changed, 133 insertions(+), 1 deletions(-)
+ create mode 100644 fs/richacl_inode.c
 
+diff --git a/fs/Makefile b/fs/Makefile
+index 7612168..1ecf9f2 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -49,7 +49,7 @@ obj-$(CONFIG_GENERIC_ACL)	+= generic_acl.o
+ 
+ obj-$(CONFIG_FHANDLE)		+= fhandle.o
+ obj-$(CONFIG_FS_RICHACL)	+= richacl.o
+-richacl-y			:= richacl_base.o
++richacl-y			:= richacl_base.o richacl_inode.o
+ 
+ obj-y				+= quota/
+ 
+diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+index 1f885ad..b4af12c 100644
+--- a/fs/richacl_base.c
++++ b/fs/richacl_base.c
+@@ -492,3 +492,72 @@ is_everyone:
+ 	return denied ? -EACCES : 0;
+ }
+ EXPORT_SYMBOL_GPL(richacl_permission);
++
++/**
++ * richacl_inherit  -  compute the inherited acl of a new file
++ * @dir_acl:	acl of the containing direcory
++ * @isdir:	inherit by a directory or non-directory?
++ *
++ * A directory can have acl entries which files and/or directories created
++ * inside the directory will inherit.  This function computes the acl for such
++ * a new file.  If there is no inheritable acl, it will return %NULL.
++ */
++struct richacl *
++richacl_inherit(const struct richacl *dir_acl, int isdir)
++{
++	const struct richace *dir_ace;
++	struct richacl *acl = NULL;
++	struct richace *ace;
++	int count = 0;
++
++	if (isdir) {
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!richace_is_inheritable(dir_ace))
++				continue;
++			count++;
++		}
++		if (!count)
++			return NULL;
++		acl = richacl_alloc(count);
++		if (!acl)
++			return ERR_PTR(-ENOMEM);
++		ace = acl->a_entries;
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!richace_is_inheritable(dir_ace))
++				continue;
++			memcpy(ace, dir_ace, sizeof(struct richace));
++			if (dir_ace->e_flags & ACE4_NO_PROPAGATE_INHERIT_ACE)
++				richace_clear_inheritance_flags(ace);
++			if ((dir_ace->e_flags & ACE4_FILE_INHERIT_ACE) &&
++			    !(dir_ace->e_flags & ACE4_DIRECTORY_INHERIT_ACE))
++				ace->e_flags |= ACE4_INHERIT_ONLY_ACE;
++			ace++;
++		}
++	} else {
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!(dir_ace->e_flags & ACE4_FILE_INHERIT_ACE))
++				continue;
++			count++;
++		}
++		if (!count)
++			return NULL;
++		acl = richacl_alloc(count);
++		if (!acl)
++			return ERR_PTR(-ENOMEM);
++		ace = acl->a_entries;
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!(dir_ace->e_flags & ACE4_FILE_INHERIT_ACE))
++				continue;
++			memcpy(ace, dir_ace, sizeof(struct richace));
++			richace_clear_inheritance_flags(ace);
++			/*
++			 * ACE4_DELETE_CHILD is meaningless for
++			 * non-directories, so clear it.
++			 */
++			ace->e_mask &= ~ACE4_DELETE_CHILD;
++			ace++;
++		}
++	}
++
++	return acl;
++}
+diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
+new file mode 100644
+index 0000000..a8d2beb
+--- /dev/null
++++ b/fs/richacl_inode.c
+@@ -0,0 +1,59 @@
++/*
++ * Copyright (C) 2010  Novell, Inc.
++ * Written by Andreas Gruenbacher <agruen@kernel.org>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#include <linux/sched.h>
++#include <linux/module.h>
++#include <linux/fs.h>
++#include <linux/richacl.h>
++
++/**
++ * richacl_inherit_inode  -  compute inherited acl and file mode
++ * @dir_acl:	acl of the containing direcory
++ * @inode:	inode of the new file (create mode in i_mode)
++ *
++ * The file permission bits in inode->i_mode must be set to the create mode.
++ * If there is an inheritable acl, the maximum permissions that the acl grants
++ * will be computed and permissions not granted by the acl will be removed from
++ * inode->i_mode.  If there is no inheritable acl, the umask will be applied
++ * instead.
++ */
++struct richacl *
++richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
++{
++	struct richacl *acl;
++	mode_t mask;
++
++	acl = richacl_inherit(dir_acl, S_ISDIR(inode->i_mode));
++	if (acl) {
++
++		richacl_compute_max_masks(acl);
++
++		/*
++		 * Ensure that the acl will not grant any permissions beyond
++		 * the create mode.
++		 */
++		acl->a_flags |= ACL4_MASKED;
++		acl->a_owner_mask &= richacl_mode_to_mask(inode->i_mode >> 6) |
++				     ACE4_POSIX_OWNER_ALLOWED;
++		acl->a_group_mask &= richacl_mode_to_mask(inode->i_mode >> 3);
++		acl->a_other_mask &= richacl_mode_to_mask(inode->i_mode);
++		mask = ~S_IRWXUGO | richacl_masks_to_mode(acl);
++	} else
++		mask = ~current_umask();
++
++	inode->i_mode &= mask;
++	return acl;
++}
++EXPORT_SYMBOL_GPL(richacl_inherit_inode);
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index f46e797..78c35f6 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -291,5 +291,9 @@ extern void richacl_compute_max_masks(struct richacl *);
+ extern struct richacl *richacl_chmod(struct richacl *, mode_t);
+ extern int richacl_permission(struct inode *, const struct richacl *,
+ 			      unsigned int);
++extern struct richacl *richacl_inherit(const struct richacl *, int);
+ 
++/* richacl_inode.c */
++extern struct richacl *richacl_inherit_inode(const struct richacl *,
++					     struct inode *);
+ #endif /* __RICHACL_H */
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.4.1
 
