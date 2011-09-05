@@ -1,76 +1,163 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:14280 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753596Ab1IMIdA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 04:33:00 -0400
-From: <tao.peng@emc.com>
-To: <bhalevy@tonian.com>, <Trond.Myklebust@netapp.com>
-CC: <bergwolf@gmail.com>, <gusev.vitaliy@nexenta.com>,
-        <gusev.vitaliy@gmail.com>, <linux-nfs@vger.kernel.org>
-Date: Tue, 13 Sep 2011 04:32:18 -0400
-Subject: RE: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
-Message-ID: <F19688880B763E40B28B2B462677FBF805C3299FA6@MX09A.corp.emc.com>
-References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com>
-  <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com>
-  <1315348373.19556.22.camel@lade.trondhjem.org>
-  <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com>
-  <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com>
-  <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com>
-  <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com>
-  <F19688880B763E40B28B2B462677FBF805C3299D2F@MX09A.corp.emc.com>
-  <1315592430.17611.15.camel@lade.trondhjem.org>
-  <4E6B0E48.7050208@tonian.com>
-  <CA+a=Yy5fMHPcSU4EoSo1uiOUCfi8vjRVPAjEYGZ+M00CwZ8Z9g@mail.gmail.com>
-  <4E6E6C3B.2040605@tonian.com> <1315861851.8350.11.camel@lade.trondhjem.org>
- <4E6F0B61.4050907@tonian.com>
-In-Reply-To: <4E6F0B61.4050907@tonian.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from e28smtp04.in.ibm.com ([122.248.162.4]:58784 "EHLO
+	e28smtp04.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752046Ab1IER1V (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2011 13:27:21 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V6 09/26] vfs: Add delete child and delete self permission flags
+Date: Mon,  5 Sep 2011 22:55:31 +0530
+Message-Id: <1315243548-18664-10-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-> -----Original Message-----
-> From: Benny Halevy [mailto:bhalevy@tonian.com]
-> Sent: Tuesday, September 13, 2011 3:51 PM
-> To: Trond Myklebust
-> Cc: Peng Tao; Peng, Tao; gusev.vitaliy@nexenta.com; gusev.vitaliy@gmail.com;
-> linux-nfs@vger.kernel.org
-> Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
-> 
-> On 2011-09-12 14:10, Trond Myklebust wrote:
-> > On Mon, 2011-09-12 at 13:31 -0700, Benny Halevy wrote:
-> >> On 2011-09-12 07:56, Peng Tao wrote:
-> >>>> The layout segments are not really in use while in LAYOUTCOMMIT.
-> >>>> We only need to get the stateid right with respect to concurrent layout recalls.
-> >>> LAYOUTCOMMIT takes lseg reference to mark them as in use so that
-> >>> layoutrecall cannot free them.
-> >>>
-> >>
-> >> And if layoutrecall would have freed layout segments during layoutcommit,
-> >> what is your specific concern?
-> >
-> > That layoutcommit is supposed to return NFS4ERR_BAD_LAYOUT in that case
-> > according to section 18.42.3 of RFC5661. I can't find anything in the
-> > errata that changes that requirement.
-> >
-> 
-> Right. That tells me there no need to strictly serialize LAYOUTCOMMITs
-> with CB_LAYOUTRECALL, as long as the layout stateid sent with LAYOUTCOMMIT
-> atomically represents the state when the operation was prepared.
-> 
-> That said, since we do want the LAYOUTCOMMIT to succeed, it would be beneficial
-> for the client to reply to a CB_LAYOUTRECALL received while a conflicting
-> LAYOUTCOMMIT is in progress with NFS4ERR_DELAY.
-I agree. How about adding a new flag to nfsi->flags for this? We can use the same flag on to ensure serialization of multiple layoutcommit. nfs_commit_set_lock/nfs_commit_clear_lock may not fit for this.
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-> 
-> The server, on its side, should prevent a distributed deadlock by avoiding
-> blocking of a LAYOUTCOMMIT on an outstanding CB_LAYOUTRECALL for the same
-> client that sent the LAYOUTCOMMIT.  I'm not sure what error would be best to
-> return.  Maybe NFS4ERR_RECALL_CONFLICT if it would be allowed (it isn't listed
-> for LAYOUTCOMMIT at the moment).  Just returning NFS4ER_DELAY might lead to
-> a live lock situation where neither the LAYOUTCOMMIT not the CB_LAYOUTRECALL
-> complete.
-> 
-> Benny
+Normally, deleting a file requires write access to the parent directory.
+Some permission models use a different permission on the parent
+directory to indicate delete access.  In addition, a process can have
+per-file delete access even without delete access on the parent
+directory.
+
+Introduce two new inode_permission() mask flags and use them in
+may_delete()
+
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/namei.c         |   41 +++++++++++++++++++++++++++--------------
+ include/linux/fs.h |    2 ++
+ 2 files changed, 29 insertions(+), 14 deletions(-)
+
+diff --git a/fs/namei.c b/fs/namei.c
+index d52a4cd..eacb530 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -337,7 +337,7 @@ static inline int do_inode_permission(struct inode *inode, int mask)
+  * are used for other things.
+  *
+  * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
+- * MAY_WRITE must also be set in @mask.
++ * MAY_DELETE_CHILD, MAY_DELETE_SELF, MAY_WRITE must also be set in @mask.
+  */
+ int inode_permission(struct inode *inode, int mask)
+ {
+@@ -1862,7 +1862,7 @@ static inline int check_sticky(struct inode *dir, struct inode *inode)
+ 		return 0;
+ 
+ other_userns:
+-	return !ns_capable(inode_userns(inode), CAP_FOWNER);
++	return 1;
+ }
+ 
+ /*
+@@ -1884,30 +1884,43 @@ other_userns:
+  * 10. We don't allow removal of NFS sillyrenamed files; it's handled by
+  *     nfs_async_unlink().
+  */
+-static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
++static int may_delete(struct inode *dir, struct dentry *victim,
++		      int isdir, int replace)
+ {
+-	int error;
++	int mask, error, is_sticky;
++	struct inode *inode = victim->d_inode;
+ 
+-	if (!victim->d_inode)
++	if (!inode)
+ 		return -ENOENT;
+ 
+ 	BUG_ON(victim->d_parent->d_inode != dir);
+ 	audit_inode_child(victim, dir);
+ 
+-	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
++	mask = MAY_WRITE | MAY_EXEC | MAY_DELETE_CHILD;
++	if (replace)
++		mask |= S_ISDIR(inode->i_mode) ?
++			MAY_CREATE_DIR : MAY_CREATE_FILE;
++	is_sticky = check_sticky(dir, inode);
++	error = inode_permission(dir, mask);
++	if ((error || is_sticky) && IS_RICHACL(inode) &&
++	    !inode_permission(dir, mask & ~(MAY_WRITE | MAY_DELETE_CHILD)) &&
++	    !inode_permission(inode, MAY_DELETE_SELF))
++		error = 0;
++	else if (!error && is_sticky &&
++		 !ns_capable(inode_userns(inode), CAP_FOWNER))
++		error = -EPERM;
+ 	if (error)
+ 		return error;
+ 	if (IS_APPEND(dir))
+ 		return -EPERM;
+-	if (check_sticky(dir, victim->d_inode)||IS_APPEND(victim->d_inode)||
+-	    IS_IMMUTABLE(victim->d_inode) || IS_SWAPFILE(victim->d_inode))
++	if (IS_APPEND(inode) || IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
+ 		return -EPERM;
+ 	if (isdir) {
+-		if (!S_ISDIR(victim->d_inode->i_mode))
++		if (!S_ISDIR(inode->i_mode))
+ 			return -ENOTDIR;
+ 		if (IS_ROOT(victim))
+ 			return -EBUSY;
+-	} else if (S_ISDIR(victim->d_inode->i_mode))
++	} else if (S_ISDIR(inode->i_mode))
+ 		return -EISDIR;
+ 	if (IS_DEADDIR(dir))
+ 		return -ENOENT;
+@@ -2614,7 +2627,7 @@ void dentry_unhash(struct dentry *dentry)
+ 
+ int vfs_rmdir(struct inode *dir, struct dentry *dentry)
+ {
+-	int error = may_delete(dir, dentry, 1);
++	int error = may_delete(dir, dentry, 1, 0);
+ 
+ 	if (error)
+ 		return error;
+@@ -2707,7 +2720,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
+ 
+ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+ {
+-	int error = may_delete(dir, dentry, 0);
++	int error = may_delete(dir, dentry, 0, 0);
+ 
+ 	if (error)
+ 		return error;
+@@ -3101,14 +3114,14 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	if (old_dentry->d_inode == new_dentry->d_inode)
+  		return 0;
+  
+-	error = may_delete(old_dir, old_dentry, is_dir);
++	error = may_delete(old_dir, old_dentry, is_dir, 0);
+ 	if (error)
+ 		return error;
+ 
+ 	if (!new_dentry->d_inode)
+ 		error = may_create(new_dir, new_dentry, is_dir);
+ 	else
+-		error = may_delete(new_dir, new_dentry, is_dir);
++		error = may_delete(new_dir, new_dentry, is_dir, 1);
+ 	if (error)
+ 		return error;
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 8707f43..c5c98c5 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -69,6 +69,8 @@ struct inodes_stat_t {
+ #define MAY_NOT_BLOCK		0x00000080
+ #define MAY_CREATE_FILE		0x00000100
+ #define MAY_CREATE_DIR		0x00000200
++#define MAY_DELETE_CHILD	0x00000400
++#define MAY_DELETE_SELF		0x00000800
+ 
+ /*
+  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
+-- 
+1.7.4.1
 
