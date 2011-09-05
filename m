@@ -1,112 +1,173 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet15.oracle.com ([141.146.126.227]:19170 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752243Ab1ITQZH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2011 12:25:07 -0400
-Subject: Re: [PATCH 1/1] statd: Decouple statd's state directory from the NFS state directory
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@ORACLE.COM>
-In-Reply-To: <1316531020-25071-1-git-send-email-steved@redhat.com>
-Date: Tue, 20 Sep 2011 11:43:05 -0400
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-Id: <E962C83A-3848-4B5F-8E42-37099FFD146F@oracle.com>
-References: <1316531020-25071-1-git-send-email-steved@redhat.com>
-To: Steve Dickson <steved@redhat.com>
+Received: from e28smtp02.in.ibm.com ([122.248.162.2]:33149 "EHLO
+	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752070Ab1IER1Y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2011 13:27:24 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V6 11/26] vfs: Add permission flags for setting file attributes
+Date: Mon,  5 Sep 2011 22:55:33 +0530
+Message-Id: <1315243548-18664-12-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-On Sep 20, 2011, at 11:03 AM, Steve Dickson wrote:
+Some permission models can allow processes to take ownership of a file,
+change the file permissions, and set the file timestamps.  Introduce new
+permission mask flags and check for those permissions in
+inode_change_ok().
 
-> To allow greater flexibility to where statd's state is kept,
-> statd's state path can now be decoupled from the normal
-> NFS state directory.
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/attr.c          |   70 +++++++++++++++++++++++++++++++++++++++++++--------
+ fs/namei.c         |    2 +-
+ include/linux/fs.h |    4 +++
+ 3 files changed, 64 insertions(+), 12 deletions(-)
 
-statd has always allowed this via command line options.  What the patch does is allow distributions to specify a _default_ statd state directory that is not under /var/lib/nfs, via a convenient configure option instead of by patching.
-
-This actually corrects a limitation introduced in January 2010 by me.  Previously the macro definitions allowed the default to be any directory, not just under /var/lib/nfs.  Introduced by commit f16fb1cd.
-
-> In configure.ac, the NSM_STATD_PATH definition will now define
-> the path to where the state information is kept. The default
-> value, /var/lib/nfs, can be redefined with the --with-statdpath
-> flag.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
-> configure.ac       |    9 +++++++++
-> support/nsm/file.c |    7 ++-----
-> 2 files changed, 11 insertions(+), 5 deletions(-)
-> 
-> diff --git a/configure.ac b/configure.ac
-> index b5934c4..7819d98 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -23,6 +23,14 @@ AC_ARG_WITH(statedir,
-> 	statedir=$withval,
-> 	statedir=/var/lib/nfs)
-> 	AC_SUBST(statedir)
-> +AC_ARG_WITH(statdpath,
-> +	[AC_HELP_STRING([--with-statdpath=/foo @<:@default=/var/lib/nfs@:>@],
-> +		[define statd's state dir as /foo instead of the NFS statedir]
-> +	)],
-> +	statdpath=$withval,
-> +	statdpath=$statedir
-> +	)
-> +	AC_SUBST(statdpath)
-
-Very clean!
-
-> AC_ARG_WITH(statduser,
-> 	[AC_HELP_STRING([--with-statduser=rpcuser],
->                         [statd to run under @<:@rpcuser or nobody@:>@]
-> @@ -387,6 +395,7 @@ dnl *************************************************************
-> dnl Export some path names to config.h
-> dnl *************************************************************
-> AC_DEFINE_UNQUOTED(NFS_STATEDIR, "$statedir", [This defines the location of the NFS state files. Warning: this must match definitions in config.mk!])
-> +AC_DEFINE_UNQUOTED(NSM_STATD_PATH, "$statdpath", [Define this if you what statd file placed in somewhere other than NFS_STATEDIR])
-
-The help text isn't quite accurate, since $statdpath is always defined now.  Something more like this:
-
-  "Define this to the pathname where statd keeps its state files"
-
-> if test "x$cross_compiling" = "xno"; then
-> 	CFLAGS_FOR_BUILD=${CFLAGS_FOR_BUILD-"$CFLAGS"}
-> diff --git a/support/nsm/file.c b/support/nsm/file.c
-> index a12c753..d9da572 100644
-> --- a/support/nsm/file.c
-> +++ b/support/nsm/file.c
-> @@ -95,12 +95,9 @@
-> #define NSM_KERNEL_STATE_FILE	"/proc/sys/fs/nfs/nsm_local_state"
-> 
-> 
-> - * Some distributions place statd's files in a subdirectory
-> + * Defines where statd's state files live.
->  */
-> -#define NSM_PATH_EXTENSION
-> -/* #define NSM_PATH_EXTENSION	"/statd" */
-> -
-> -#define NSM_DEFAULT_STATEDIR		NFS_STATEDIR NSM_PATH_EXTENSION
-> +#define NSM_DEFAULT_STATEDIR		NSM_STATD_PATH
-
-IMO we don't need two macros that by definition always have the same value.  That will either get fixed or tripped on eventually, so I think it should be corrected now.
-
-The cleanest approach would be to set up NSM_DEFAULT_STATEDIR in configure.ac, and drop the use of NSM_STATD_PATH.  Or you can replace the use of NSM_DEFAULT_STATEDIR everywhere in support/nsm/file.c.  Up to you.
-
-> static char nsm_base_dirname[PATH_MAX] = NSM_DEFAULT_STATEDIR;
-> 
-> -- 
-> 1.7.6.2
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/attr.c b/fs/attr.c
+index f15e9e3..00578b9 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -14,6 +14,55 @@
+ #include <linux/fcntl.h>
+ #include <linux/security.h>
+ 
++static int richacl_change_ok(struct inode *inode, int mask)
++{
++	if (!IS_RICHACL(inode))
++		return -EPERM;
++
++	if (inode->i_op->permission)
++		return inode->i_op->permission(inode, mask);
++
++	return check_acl(inode, mask);
++}
++
++static bool inode_uid_change_ok(struct inode *inode, uid_t ia_uid)
++{
++	if (current_fsuid() == inode->i_uid && ia_uid == inode->i_uid)
++		return true;
++	if (current_fsuid() == ia_uid &&
++	    richacl_change_ok(inode, MAY_TAKE_OWNERSHIP) == 0)
++		return true;
++	if (capable(CAP_CHOWN))
++		return true;
++	return false;
++}
++
++static bool inode_gid_change_ok(struct inode *inode, gid_t ia_gid)
++{
++	int in_group = in_group_p(ia_gid);
++	if (current_fsuid() == inode->i_uid &&
++	    (in_group || ia_gid == inode->i_gid))
++		return true;
++	if (in_group && richacl_change_ok(inode, MAY_TAKE_OWNERSHIP) == 0)
++		return true;
++	if (capable(CAP_CHOWN))
++		return true;
++	return false;
++}
++
++static bool inode_owner_permitted_or_capable(struct inode *inode, int mask)
++{
++	struct user_namespace *ns = inode_userns(inode);
++
++	if (current_user_ns() == ns && current_fsuid() == inode->i_uid)
++		return true;
++	if (richacl_change_ok(inode, mask) == 0)
++		return true;
++	if (ns_capable(ns, CAP_FOWNER))
++		return true;
++	return false;
++}
++
+ /**
+  * inode_change_ok - check if attribute changes to an inode are allowed
+  * @inode:	inode to check
+@@ -45,21 +94,20 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
+ 		return 0;
+ 
+ 	/* Make sure a caller can chown. */
+-	if ((ia_valid & ATTR_UID) &&
+-	    (current_fsuid() != inode->i_uid ||
+-	     attr->ia_uid != inode->i_uid) && !capable(CAP_CHOWN))
+-		return -EPERM;
++	if (ia_valid & ATTR_UID) {
++		if (!inode_uid_change_ok(inode, attr->ia_uid))
++			return -EPERM;
++	}
+ 
+ 	/* Make sure caller can chgrp. */
+-	if ((ia_valid & ATTR_GID) &&
+-	    (current_fsuid() != inode->i_uid ||
+-	    (!in_group_p(attr->ia_gid) && attr->ia_gid != inode->i_gid)) &&
+-	    !capable(CAP_CHOWN))
+-		return -EPERM;
++	if (ia_valid & ATTR_GID) {
++		if (!inode_gid_change_ok(inode, attr->ia_gid))
++			return -EPERM;
++	}
+ 
+ 	/* Make sure a caller can chmod. */
+ 	if (ia_valid & ATTR_MODE) {
+-		if (!inode_owner_or_capable(inode))
++		if (!inode_owner_permitted_or_capable(inode, MAY_CHMOD))
+ 			return -EPERM;
+ 		/* Also check the setgid bit! */
+ 		if (!in_group_p((ia_valid & ATTR_GID) ? attr->ia_gid :
+@@ -69,7 +117,7 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
+ 
+ 	/* Check for setting the inode time. */
+ 	if (ia_valid & (ATTR_MTIME_SET | ATTR_ATIME_SET | ATTR_TIMES_SET)) {
+-		if (!inode_owner_or_capable(inode))
++		if (!inode_owner_permitted_or_capable(inode, MAY_SET_TIMES))
+ 			return -EPERM;
+ 	}
+ 
+diff --git a/fs/namei.c b/fs/namei.c
+index eacb530..a4d61d1 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -174,7 +174,7 @@ void putname(const char *name)
+ EXPORT_SYMBOL(putname);
+ #endif
+ 
+-static int check_acl(struct inode *inode, int mask)
++int check_acl(struct inode *inode, int mask)
+ {
+ #ifdef CONFIG_FS_POSIX_ACL
+ 	struct posix_acl *acl;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 8afb054..8d5d6e4 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -71,6 +71,9 @@ struct inodes_stat_t {
+ #define MAY_CREATE_DIR		0x00000200
+ #define MAY_DELETE_CHILD	0x00000400
+ #define MAY_DELETE_SELF		0x00000800
++#define MAY_TAKE_OWNERSHIP	0x00001000
++#define MAY_CHMOD		0x00002000
++#define MAY_SET_TIMES		0x00004000
+ 
+ /*
+  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
+@@ -2234,6 +2237,7 @@ extern sector_t bmap(struct inode *, sector_t);
+ extern int notify_change(struct dentry *, struct iattr *);
+ extern int inode_permission(struct inode *, int);
+ extern int generic_permission(struct inode *, int);
++extern int check_acl(struct inode *, int);
+ 
+ static inline bool execute_ok(struct inode *inode)
+ {
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.4.1
 
