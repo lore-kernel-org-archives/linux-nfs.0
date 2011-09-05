@@ -1,41 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.mail.umich.edu ([141.211.14.82]:42326 "EHLO
-	hellskitchen.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751501Ab1IYRuS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Sep 2011 13:50:18 -0400
-From: Jim Rees <rees@umich.edu>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH] add dependency on devmapper for blkmapd
-Date: Sun, 25 Sep 2011 13:50:11 -0400
-Message-Id: <1316973011-6393-1-git-send-email-rees@umich.edu>
+Received: from e28smtp01.in.ibm.com ([122.248.162.1]:60639 "EHLO
+	e28smtp01.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751870Ab1IER1O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2011 13:27:14 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V6 02/26] vfs: Add hex format for MAY_* flag values
+Date: Mon,  5 Sep 2011 22:55:24 +0530
+Message-Id: <1315243548-18664-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- configure.ac |    6 ++++++
- 1 files changed, 6 insertions(+), 0 deletions(-)
+We are going to add more flags and having them in hex format
+make it simpler
 
-diff --git a/configure.ac b/configure.ac
-index 80fb39d..f101b86 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -265,6 +265,12 @@ if test "$enable_nfsv4" = yes; then
-     AC_RPCSEC_VERSION
-   fi
- fi
-+
-+if test "$enable_nfsv41" = yes; then
-+  AC_CHECK_LIB([devmapper], [dm_task_create], [LIBDEVMAPPER="-ldevmapper"], AC_MSG_ERROR([libdevmapper needed]))
-+  AC_CHECK_HEADER(libdevmapper.h, , AC_MSG_ERROR([Cannot find devmapper header file libdevmapper.h]))
-+fi
-+
- dnl enable nfsidmap when its support by libnfsidmap
- AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$ac_cv_header_keyutils_h$ac_cv_lib_nfsidmap_nfs4_owner_to_uid" = "yesyes"])
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ include/linux/fs.h |   17 +++++++++--------
+ 1 files changed, 9 insertions(+), 8 deletions(-)
+
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index c2bd68f..45744ae 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -58,14 +58,15 @@ struct inodes_stat_t {
  
+ #define NR_FILE  8192	/* this can well be larger on a larger system */
+ 
+-#define MAY_EXEC 1
+-#define MAY_WRITE 2
+-#define MAY_READ 4
+-#define MAY_APPEND 8
+-#define MAY_ACCESS 16
+-#define MAY_OPEN 32
+-#define MAY_CHDIR 64
+-#define MAY_NOT_BLOCK 128	/* called from RCU mode, don't block */
++#define MAY_EXEC		0x00000001
++#define MAY_WRITE		0x00000002
++#define MAY_READ		0x00000004
++#define MAY_APPEND		0x00000008
++#define MAY_ACCESS		0x00000010
++#define MAY_OPEN		0x00000020
++#define MAY_CHDIR		0x00000040
++/* called from RCU mode, don't block */
++#define MAY_NOT_BLOCK		0x00000080
+ 
+ /*
+  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
 -- 
 1.7.4.1
 
