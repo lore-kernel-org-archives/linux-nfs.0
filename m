@@ -1,140 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:17775 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751272Ab1ITOoQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Sep 2011 10:44:16 -0400
-Message-ID: <4E78A6A1.1000800@parallels.com>
-Date: Tue, 20 Sep 2011 18:43:45 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>
-Subject: Re: [PATCH v5 1/8] SUNRPC: introduce helpers for reference counted
- rpcbind clients
-References: <20110920101031.9861.18444.stgit@localhost6.localdomain6>	<20110920101341.9861.51453.stgit@localhost6.localdomain6>	<4E7899E7.9090809@parallels.com> <20110920102431.58ca1d96@tlielax.poochiereds.net>
-In-Reply-To: <20110920102431.58ca1d96@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from e28smtp07.in.ibm.com ([122.248.162.7]:50232 "EHLO
+	e28smtp07.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752048Ab1IER1W (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2011 13:27:22 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V6 10/26] vfs: Make the inode passed to inode_change_ok non-const
+Date: Mon,  5 Sep 2011 22:55:32 +0530
+Message-Id: <1315243548-18664-11-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-20.09.2011 18:24, Jeff Layton пишет:
-> On Tue, 20 Sep 2011 17:49:27 +0400
-> Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
->
->> v5: fixed races with rpcb_users in rpcb_get_local()
->>
->> This helpers will be used for dynamical creation and destruction of rpcbind
->> clients.
->> Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
->> clients has been created already, then we just increase rpcb_users.
->>
->> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->>
->> ---
->>    net/sunrpc/rpcb_clnt.c |   53 ++++++++++++++++++++++++++++++++++++++++++++++++
->>    1 files changed, 53 insertions(+), 0 deletions(-)
->>
->> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
->> index e45d2fb..5f4a406 100644
->> --- a/net/sunrpc/rpcb_clnt.c
->> +++ b/net/sunrpc/rpcb_clnt.c
->> @@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
->>    static struct rpc_clnt *	rpcb_local_clnt;
->>    static struct rpc_clnt *	rpcb_local_clnt4;
->>    +DEFINE_SPINLOCK(rpcb_clnt_lock);
->> +unsigned int			rpcb_users;
->> +
->>    struct rpcbind_args {
->>    	struct rpc_xprt *	r_xprt;
->>    @@ -161,6 +164,56 @@ static void rpcb_map_release(void *data)
->>    	kfree(map);
->>    }
->>    +static int rpcb_get_local(void)
->> +{
->> +	int cnt;
->> +
->> +	spin_lock(&rpcb_clnt_lock);
->> +	if (rpcb_users)
->> +		rpcb_users++;
->> +	cnt = rpcb_users;
->> +	spin_unlock(&rpcb_clnt_lock);
->> +
->> +	return cnt;
->> +}
->> +
->> +void rpcb_put_local(void)
->> +{
->> +	struct rpc_clnt *clnt = rpcb_local_clnt;
->> +	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
->> +	int shutdown;
->> +
->> +	spin_lock(&rpcb_clnt_lock);
->> +	if (--rpcb_users == 0) {
->> +		rpcb_local_clnt = NULL;
->> +		rpcb_local_clnt4 = NULL;
->> +	}
->
-> In the function below, you mention that the above pointers are
-> protected by rpcb_create_local_mutex, but it looks like they get reset
-> here without that being held?
->
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-Assigning of them is protected by rpcb_create_local_mutex.
-Dereferencing of them is protected by rpcb_clnt_lock.
+We will need to call iop->permission and iop->get_acl from
+inode_change_ok() for additional permission checks, and both take a
+non-const inode.
 
-> Might it be simpler to just protect rpcb_users with the
-> rpcb_create_local_mutex and ensure that it's held whenever you call one
-> of these routines? None of these are codepaths are particularly hot.
->
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/attr.c          |    2 +-
+ include/linux/fs.h |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-I just inherited this lock-mutex logic.
-Actually, you right. This codepaths are used rarely.
-But are use sure, that we need to remove this "speed-up" logic if we take into 
-account that it was here already?
-
->> +	shutdown = !rpcb_users;
->> +	spin_unlock(&rpcb_clnt_lock);
->> +
->> +	if (shutdown) {
->> +		/*
->> +		 * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
->> +		 */
->> +		if (clnt4)
->> +			rpc_shutdown_client(clnt4);
->> +		if (clnt)
->> +			rpc_shutdown_client(clnt);
->> +	}
->> +	return;
->> +}
->> +
->> +static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
->> +{
->> +	/* Protected by rpcb_create_local_mutex */
->> +	rpcb_local_clnt = clnt;
->> +	rpcb_local_clnt4 = clnt4;
->> +	rpcb_users++;
->> +	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
->> +			"%p, rpcb_local_clnt4: %p)\n", rpcb_local_clnt,
->> +			rpcb_local_clnt4);
->> +}
->> +
->>    /*
->>     * Returns zero on success, otherwise a negative errno value
->>     * is returned.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
-
-
+diff --git a/fs/attr.c b/fs/attr.c
+index 538e279..f15e9e3 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -26,7 +26,7 @@
+  * Should be called as the first thing in ->setattr implementations,
+  * possibly after taking additional locks.
+  */
+-int inode_change_ok(const struct inode *inode, struct iattr *attr)
++int inode_change_ok(struct inode *inode, struct iattr *attr)
+ {
+ 	unsigned int ia_valid = attr->ia_valid;
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index c5c98c5..8afb054 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2568,7 +2568,7 @@ extern int buffer_migrate_page(struct address_space *,
+ #define buffer_migrate_page NULL
+ #endif
+ 
+-extern int inode_change_ok(const struct inode *, struct iattr *);
++extern int inode_change_ok(struct inode *, struct iattr *);
+ extern int inode_newsize_ok(const struct inode *, loff_t offset);
+ extern void setattr_copy(struct inode *inode, const struct iattr *attr);
+ 
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.4.1
+
