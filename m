@@ -1,99 +1,141 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out4.smtp.messagingengine.com ([66.111.4.28]:34749 "EHLO
-	out4.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752466Ab1I0Evj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Sep 2011 00:51:39 -0400
-Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-From: Ian Kent <raven@themaw.net>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Jeff Layton <jlayton@redhat.com>, Miklos Szeredi <miklos@szeredi.hu>,
-        David Howells <dhowells@redhat.com>, viro@zeniv.linux.org.uk,
-        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-In-Reply-To: <CA+55aFyzxvJJgOkojvV-83ejNtQnXeRnXerwzWRdwFgPF_yMhg@mail.gmail.com>
-References: <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com>
-	 <1316747758.3346.89.camel@perseus.themaw.net>
-	 <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
-	 <1316707443.3346.44.camel@perseus.themaw.net>
-	 <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
-	 <1316709935.3346.48.camel@perseus.themaw.net>
-	 <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
-	 <20110922144453.6cf53a25@barsoom.rdu.redhat.com>
-	 <1316719228.3968.14.camel@lade.trondhjem.org>
-	 <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
-	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
-	 <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
-	 <21772.1316774025@redhat.com>
-	 <1316788444.14812.10.camel@lade.trondhjem.org>
-	 <29743.1316791138@redhat.com> <87hb43tf2g.fsf@tucsk.pomaz.szeredi.hu>
-	 <1316827854.3346.154.camel@perseus.themaw.net>
-	 <CA+55aFwPEq5B_P0RtX+pBtGfTadzzS+3U=k=3XTjDw3soNhOdA@mail.gmail.com>
-	 <20110924073610.4b045189@tlielax.poochiereds.net>
-	 <CA+55aFxjFXbCKBZNfBuCOaiBHRQ=ZECnhqKxjPw9maPgyRLiDA@mail.gmail.com>
-	 <1317013864.3187.81.camel@perseus.themaw.net>
-	 <CA+55aFzJnKCHtsiH-mZOwQgVt1ajPJQHWRYB_19eXEKaGRPD1w@mail.gmail.com>
-	 <1317071626.19951.8.camel@lade.trondhjem.org>
-	 <CA+55aFzWCZQjWMcxg16yMUoLr-mEPuXzAFgv49LU4hCn+=rbwQ@mail.gmail.com>
-	 <1317072718.19951.13.camel@lade.trondhjem.org>
-	 <CA+55aFzaScGiKmsSrgXivoUPw4xHjKobsB4VquuEu1fG=7R+wA@mail.gmail.com>
-	 <1317076424.19951.32.camel@lade.trondhjem.org>
-	 <CA+55aFzi+0Z6HXJCxW=Uc1EZsp4qA00i+ihNcSX_v6bVTbU2BA@mail.gmail.com>
-	 <1317078563.21770.8.camel@lade.trondhjem.org>
-	 <CA+55aFzX+DyU7xhAmTLq0g_z6jyKuqoiyPdCYO+w2Xk7pECrqg@mail.gmail.com>
-	 <1317085155.21770.17.camel@lade.trondhjem.org>
-	 <CA+55aFxuaJ-a5u79D2pELU4HbWTrbWjG_4BNcvFqEOcM0H8G2Q@mail.gmail.com>
-	 <1317097001.3176.20.camel@perseus.themaw.net>
-	 <CA+55aFyzxvJJgOkojvV-83ejNtQnXeRnXerwzWRdwFgPF_yMhg@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 27 Sep 2011 12:51:31 +0800
-Message-ID: <1317099091.3176.31.camel@perseus.themaw.net>
+Received: from e28smtp04.in.ibm.com ([122.248.162.4]:59215 "EHLO
+	e28smtp04.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752376Ab1IER27 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2011 13:28:59 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V6 26/26] ext4: Add temporary richacl mount option for ext4
+Date: Mon,  5 Sep 2011 22:55:48 +0530
+Message-Id: <1315243548-18664-27-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, 2011-09-26 at 21:35 -0700, Linus Torvalds wrote:
-> On Mon, Sep 26, 2011 at 9:16 PM, Ian Kent <raven@themaw.net> wrote:
-> >
-> > This case is the one were there is no existing directory yet for the
-> > automount (it's the age old original automount case where mount point
-> > directories never existed within the automount managed directory before
-> > being automounted). In this case we always want to automount regardless
-> > of the lookup flags. So returning -EISDIR should be conditional on also
-> > having a positive dentry.
-> 
-> Ok. This all just makes me more conviced that the LOOKUP_NO_AUTOMOUNT
-> code is not even worth trying to salvage (ie not play any games with
-> the existing AT_NO_AUTOMOUNT flag and perhaps turning
-> !AT_SYMLINK_NOFOLLOW + !AT_NOAUTOMOUNT -> LOOKUP_AUTOMOUNT). That's
-> the case that never tested for d_inode being NULL, so it got the
-> autofs case wrong.
+This helps in easy testing of the patchset. The mount
+option will be later removed in favour of a feature flag.
 
-Agreed.
+***Should be folded before merging***
 
-> 
-> At some point we might want to expose an AT_AUTOMOUNT flag to user
-> space _if_ it turns out that glibc or somebody wants really wants it,
-> but the old flag clearly actually had a buggy implementation and
-> almost certainly isn't worth worrying about.
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/super.c |   51 +++++++++++++++++++++++++++++++++++++++++----------
+ 1 files changed, 41 insertions(+), 10 deletions(-)
 
-Yes, I also thought that AT_NO_AUTOMOUNT would need to be removed and
-AT_AUTOMOUNT added as part of the change. But that can be done as a
-follow up.
-
-> 
-> Of course, we'll have to see if there are any actual regression
-> reports in this area.. If something actually breaks, we may not have
-> all that many choices. But at least tentatively, I think we can plan
-> on applying the attached cleanup to just rip that out (it's already
-> effectively dead code apart from the buggy lack of d_inode testing,
-> since apart from d_inode, it never triggers unless the subsequent test
-> triggers)..
-
-Is there a source tree somewhere, I'm not sure now exactly what has been
-changed. I can run tests if I can get accurate source.
-
-Ian
-
-
-
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 99d72cf..71241b0 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1071,6 +1071,10 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 	if (!(sb->s_flags & MS_POSIXACL) && (def_mount_opts & EXT4_DEFM_ACL))
+ 		seq_puts(seq, ",noacl");
+ #endif
++#ifdef CONFIG_EXT4_FS_RICHACL
++	if (sb->s_flags & MS_RICHACL)
++		seq_puts(seq, ",richacl");
++#endif
+ 	if (sbi->s_commit_interval != JBD2_DEFAULT_MAX_COMMIT_AGE*HZ) {
+ 		seq_printf(seq, ",commit=%u",
+ 			   (unsigned) (sbi->s_commit_interval / HZ));
+@@ -1320,6 +1324,7 @@ enum {
+ 	Opt_dioread_nolock, Opt_dioread_lock,
+ 	Opt_discard, Opt_nodiscard,
+ 	Opt_init_inode_table, Opt_noinit_inode_table,
++	Opt_richacl,
+ };
+ 
+ static const match_table_t tokens = {
+@@ -1395,6 +1400,7 @@ static const match_table_t tokens = {
+ 	{Opt_init_inode_table, "init_itable=%u"},
+ 	{Opt_init_inode_table, "init_itable"},
+ 	{Opt_noinit_inode_table, "noinit_itable"},
++	{Opt_richacl, "richacl"},
+ 	{Opt_err, NULL},
+ };
+ 
+@@ -1421,6 +1427,36 @@ static ext4_fsblk_t get_sb_block(void **data)
+ 	return sb_block;
+ }
+ 
++static void enable_acl(struct super_block *sb)
++{
++#if !defined(CONFIG_EXT4_FS_POSIX_ACL)
++	ext4_msg(sb, KERN_ERR, "acl options not supported");
++	return;
++#endif
++	sb->s_flags |= MS_POSIXACL;
++}
++
++static void disable_acl(struct super_block *sb)
++{
++#if !defined(CONFIG_EXT4_FS_POSIX_ACL)
++	ext4_msg(sb, KERN_ERR, "acl options not supported");
++	return;
++#endif
++	sb->s_flags &= ~MS_POSIXACL;
++	return;
++}
++
++static void enable_richacl(struct super_block *sb)
++{
++#if !defined(CONFIG_EXT4_FS_RICHACL)
++	ext4_msg(sb, KERN_ERR, "richacl options not supported");
++	return;
++#endif
++	sb->s_flags |= MS_RICHACL;
++	sb->s_flags &= ~MS_POSIXACL;
++	return;
++}
++
+ #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
+ static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
+ 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
+@@ -1585,19 +1621,12 @@ static int parse_options(char *options, struct super_block *sb,
+ 			ext4_msg(sb, KERN_ERR, "(no)user_xattr options not supported");
+ 			break;
+ #endif
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+ 		case Opt_acl:
+-			sb->s_flags |= MS_POSIXACL;
++			enable_acl(sb);
+ 			break;
+ 		case Opt_noacl:
+-			sb->s_flags &= ~MS_POSIXACL;
++			disable_acl(sb);
+ 			break;
+-#else
+-		case Opt_acl:
+-		case Opt_noacl:
+-			ext4_msg(sb, KERN_ERR, "(no)acl options not supported");
+-			break;
+-#endif
+ 		case Opt_journal_update:
+ 			/* @@@ FIXME */
+ 			/* Eventually we will want to be able to create
+@@ -1884,6 +1913,8 @@ set_qf_format:
+ 			break;
+ 		case Opt_noinit_inode_table:
+ 			clear_opt(sb, INIT_INODE_TABLE);
++		case Opt_richacl:
++			enable_richacl(sb);
+ 			break;
+ 		default:
+ 			ext4_msg(sb, KERN_ERR,
+@@ -3170,7 +3201,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	set_opt(sb, XATTR_USER);
+ #endif
+ #ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	sb->s_flags |= MS_POSIXACL;
++	enable_acl(sb);
+ #endif
+ 	set_opt(sb, MBLK_IO_SUBMIT);
+ 	if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_DATA)
+-- 
+1.7.4.1
 
