@@ -1,199 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46120 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933533Ab1IILBG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Sep 2011 07:01:06 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Linux-MM <linux-mm@kvack.org>
-Cc: Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 07/10] nfs: disable data cache revalidation for swapfiles
-Date: Fri,  9 Sep 2011 12:00:51 +0100
-Message-Id: <1315566054-17209-8-git-send-email-mgorman@suse.de>
-In-Reply-To: <1315566054-17209-1-git-send-email-mgorman@suse.de>
-References: <1315566054-17209-1-git-send-email-mgorman@suse.de>
+Received: from e28smtp09.in.ibm.com ([122.248.162.9]:40979 "EHLO
+	e28smtp09.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752058Ab1IER1X (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2011 13:27:23 -0400
+Received: from /spool/local
+	by in.ibm.com with XMail ESMTP
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Mon, 5 Sep 2011 22:57:21 +0530
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V6 07/26] vfs: Optimize out IS_RICHACL() if CONFIG_FS_RICHACL is not defined
+Date: Mon,  5 Sep 2011 22:55:29 +0530
+Message-Id: <1315243548-18664-8-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-The VM does not like PG_private set on PG_swapcache pages. As suggested
-by Trond in http://lkml.org/lkml/2006/8/25/348, this patch disables
-NFS data cache revalidation on swap files.  as it does not make
-sense to have other clients change the file while it is being used as
-swap. This avoids setting PG_private on swap pages, since there ought
-to be no further races with invalidate_inode_pages2() to deal with.
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-Since we cannot set PG_private we cannot use page->private which
-is already used by PG_swapcache pages to store the nfs_page. Thus
-augment the new nfs_page_find_request logic.
+if CONFIG_FS_RICHACL is not defined optimize out
+the ACL check function.
 
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/nfs/inode.c |    6 ++++
- fs/nfs/write.c |   77 +++++++++++++++++++++++++++++++++++++++++++++-----------
- 2 files changed, 68 insertions(+), 15 deletions(-)
+ fs/Kconfig         |    3 +++
+ include/linux/fs.h |    5 +++++
+ 2 files changed, 8 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index fe12037..fa25e2c 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -877,6 +877,12 @@ int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping)
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 	int ret = 0;
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 9fe0b34..7939190 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -46,6 +46,9 @@ endif # BLOCK
+ config FS_POSIX_ACL
+ 	def_bool n
  
-+	/*
-+	 * swapfiles are not supposed to be shared.
-+	 */
-+	if (IS_SWAPFILE(inode))
-+		goto out;
++config FS_RICHACL
++	def_bool n
 +
- 	if ((nfsi->cache_validity & NFS_INO_REVAL_PAGECACHE)
- 			|| nfs_attribute_cache_expired(inode)
- 			|| NFS_STALE(inode)) {
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index ffd95d1..15e3b7a 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -111,25 +111,64 @@ static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
- 	set_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
- }
+ config EXPORTFS
+ 	tristate
  
--static struct nfs_page *nfs_page_find_request_locked(struct page *page)
-+static struct nfs_page *
-+__nfs_page_find_request_locked(struct nfs_inode *nfsi, struct page *page,
-+		int get)
- {
- 	struct nfs_page *req = NULL;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 6eac730..1ddec24 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -273,7 +273,12 @@ struct inodes_stat_t {
+ #define IS_APPEND(inode)	((inode)->i_flags & S_APPEND)
+ #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
+ #define IS_POSIXACL(inode)	__IS_FLG(inode, MS_POSIXACL)
++
++#ifdef CONFIG_FS_RICHACL
+ #define IS_RICHACL(inode)	__IS_FLG(inode, MS_RICHACL)
++#else
++#define IS_RICHACL(inode)	0
++#endif
  
--	if (PagePrivate(page)) {
-+	if (PagePrivate(page))
- 		req = (struct nfs_page *)page_private(page);
--		if (req != NULL)
--			kref_get(&req->wb_kref);
--	}
-+	else if (unlikely(PageSwapCache(page)))
-+		req = radix_tree_lookup(&nfsi->nfs_page_tree,
-+				page_file_index(page));
-+
-+	if (get && req)
-+		kref_get(&req->wb_kref);
-+
- 	return req;
- }
- 
-+static inline struct nfs_page *
-+nfs_page_find_request_locked(struct nfs_inode *nfsi, struct page *page)
-+{
-+	return __nfs_page_find_request_locked(nfsi, page, 1);
-+}
-+
-+static int __nfs_page_has_request(struct page *page)
-+{
-+	struct inode *inode = page_file_mapping(page)->host;
-+	struct nfs_page *req = NULL;
-+
-+	spin_lock(&inode->i_lock);
-+	req = __nfs_page_find_request_locked(NFS_I(inode), page, 0);
-+	spin_unlock(&inode->i_lock);
-+
-+	/*
-+	 * hole here plugged by the caller holding onto PG_locked
-+	 */
-+
-+	return req != NULL;
-+}
-+
-+static inline int nfs_page_has_request(struct page *page)
-+{
-+	if (PagePrivate(page))
-+		return 1;
-+
-+	if (unlikely(PageSwapCache(page)))
-+		return __nfs_page_has_request(page);
-+
-+	return 0;
-+}
-+
- static struct nfs_page *nfs_page_find_request(struct page *page)
- {
- 	struct inode *inode = page_file_mapping(page)->host;
- 	struct nfs_page *req = NULL;
- 
- 	spin_lock(&inode->i_lock);
--	req = nfs_page_find_request_locked(page);
-+	req = nfs_page_find_request_locked(NFS_I(inode), page);
- 	spin_unlock(&inode->i_lock);
- 	return req;
- }
-@@ -232,7 +271,7 @@ static struct nfs_page *nfs_find_and_lock_request(struct page *page, bool nonblo
- 
- 	spin_lock(&inode->i_lock);
- 	for (;;) {
--		req = nfs_page_find_request_locked(page);
-+		req = nfs_page_find_request_locked(NFS_I(inode), page);
- 		if (req == NULL)
- 			break;
- 		if (nfs_set_page_tag_locked(req))
-@@ -392,9 +431,15 @@ static int nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
- 	BUG_ON(error);
- 	if (!nfsi->npages && nfs_have_delegation(inode, FMODE_WRITE))
- 		nfsi->change_attr++;
--	set_bit(PG_MAPPED, &req->wb_flags);
--	SetPagePrivate(req->wb_page);
--	set_page_private(req->wb_page, (unsigned long)req);
-+	/*
-+	 * Swap-space should not get truncated. Hence no need to plug the race
-+	 * with invalidate/truncate.
-+	 */
-+	if (likely(!PageSwapCache(req->wb_page))) {
-+		set_bit(PG_MAPPED, &req->wb_flags);
-+		SetPagePrivate(req->wb_page);
-+		set_page_private(req->wb_page, (unsigned long)req);
-+	}
- 	nfsi->npages++;
- 	kref_get(&req->wb_kref);
- 	radix_tree_tag_set(&nfsi->nfs_page_tree, req->wb_index,
-@@ -416,9 +461,11 @@ static void nfs_inode_remove_request(struct nfs_page *req)
- 	BUG_ON (!NFS_WBACK_BUSY(req));
- 
- 	spin_lock(&inode->i_lock);
--	set_page_private(req->wb_page, 0);
--	ClearPagePrivate(req->wb_page);
--	clear_bit(PG_MAPPED, &req->wb_flags);
-+	if (likely(!PageSwapCache(req->wb_page))) {
-+		set_page_private(req->wb_page, 0);
-+		ClearPagePrivate(req->wb_page);
-+		clear_bit(PG_MAPPED, &req->wb_flags);
-+	}
- 	radix_tree_delete(&nfsi->nfs_page_tree, req->wb_index);
- 	nfsi->npages--;
- 	spin_unlock(&inode->i_lock);
-@@ -593,7 +640,7 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
- 	spin_lock(&inode->i_lock);
- 
- 	for (;;) {
--		req = nfs_page_find_request_locked(page);
-+		req = nfs_page_find_request_locked(NFS_I(inode), page);
- 		if (req == NULL)
- 			goto out_unlock;
- 
-@@ -1657,7 +1704,7 @@ int nfs_wb_page_cancel(struct inode *inode, struct page *page)
-  */
- int nfs_wb_page(struct inode *inode, struct page *page)
- {
--	loff_t range_start = page_offset(page);
-+	loff_t range_start = page_file_offset(page);
- 	loff_t range_end = range_start + (loff_t)(PAGE_CACHE_SIZE - 1);
- 	struct writeback_control wbc = {
- 		.sync_mode = WB_SYNC_ALL,
+ #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
+ #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
 -- 
-1.7.3.4
+1.7.4.1
 
