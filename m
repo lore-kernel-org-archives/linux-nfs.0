@@ -1,77 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from peace.netnation.com ([204.174.223.2]:34680 "EHLO
-	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932890Ab1IIUCK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Sep 2011 16:02:10 -0400
-Date: Fri, 9 Sep 2011 12:45:10 -0700
-From: Simon Kirby <sim@hostway.ca>
-To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [3.1-rc4] NFSv3 client hang
-Message-ID: <20110909194509.GB6195@hostway.ca>
-Content-Type: text/plain; charset=us-ascii
+Received: from mx1.redhat.com ([209.132.183.28]:54935 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753413Ab1IFJkd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Sep 2011 05:40:33 -0400
+Subject: Re: [PATCH -V6 00/26]  New ACL format for better NFSv4 acl
+ interoperability
+From: Steven Whitehouse <swhiteho@redhat.com>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 06 Sep 2011 10:41:06 +0100
+Message-ID: <1315302066.2741.12.camel@menhir>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The 3.1-rc4 NFSv3 client hung on another box (separate from the other one
-which Oopsed in vfs_rmdir() with similar workload). This build was also
-of 9e79e3e9dd9672b37ac9412e9a926714306551fe (slightly past 3.1-rc4), and
-"git log 9e79e3e9dd96.. fs/nfs net/sunrpc" is empty.
+Hi,
 
-All mounts to one server IP have hung, while all other mounts work fine.
-I ran "cd /proc/sys/sunrpc; echo 255 > rpc_debug; echo 255 > nfs_debug"
-for a while, then kill -9'd all D-state processes to simplify the
-debugging, and was left with one that was not interruptible:
+On Mon, 2011-09-05 at 22:55 +0530, Aneesh Kumar K.V wrote:
+> Hi,
+> 
+> The following set of patches implements VFS and ext4 changes needed to implement
+> a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
+> extended by file masks to fit into the standard POSIX file permission model.
+> They are designed to work seamlessly locally as well as across the NFSv4 and
+> CIFS/SMB2 network file system protocols.
+> 
+> A user-space utility for displaying and changing richacls is available at [4]
+> (a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
+> 
+> [4] git://git.kernel.org/pub/scm/fs/acl/kvaneesh/richacl.git master
+> 
+> To test richacl on ext4 use -o richacl mount option. This mount option may later be
+> dropped in favour of a feature flag.
+> 
+> More details regarding richacl can be found at
+> http://acl.bestbits.at/richacl/
+> 
+> Changes from v5:
+> a) rebase to v3.1-rc4-131-g9e79e3e
+> 
+> NOTE: The kernel changes will be pushed to
+> git://git.kernel.org/pub/scm/linux/kernel/git/kvaneesh/linux-richacl.git richacl
+> when kernel.org is back
+> 
+> -aneesh
+> 
 
-28612 D    /usr/local/apache2/bin/http sleep_on_page
-# cat /proc/28612/stack
-[<ffffffff810bdf49>] sleep_on_page+0x9/0x10
-[<ffffffff810bdf34>] __lock_page+0x64/0x70
-[<ffffffff8112a9e5>] __generic_file_splice_read+0x2d5/0x500
-[<ffffffff8112ac5a>] generic_file_splice_read+0x4a/0x90
-[<ffffffff812030e5>] nfs_file_splice_read+0x85/0xd0
-[<ffffffff81128fb2>] do_splice_to+0x72/0xa0
-[<ffffffff811297e4>] splice_direct_to_actor+0xc4/0x1d0
-[<ffffffff81129942>] do_splice_direct+0x52/0x70
-[<ffffffff81100096>] do_sendfile+0x166/0x1d0
-[<ffffffff81100185>] sys_sendfile64+0x85/0xb0
-[<ffffffff816af57b>] system_call_fastpath+0x16/0x1b
-[<ffffffffffffffff>] 0xffffffffffffffff
+This looks like a really nice patch set. One question though is whether
+there are any test suites which can be used to gain confidence in the
+implementation? Obviously there is a fair amount of change here which
+has security implications, so it would be good to have some test results
+to go along with the patches,
 
-echo 1 > /proc/sys/sunrpc/rpc_debug emits:
+Steve.
 
--pid- flgs status -client- --rqstp- -timeout ---ops--
-37163 0001    -11 ffff8802251bca00   (null)        0 ffffffff816e4110 nfsv3 READ a:call_reserveresult q:xprt_sending
 
-tcpdump to this server shows absolutely no packets to the server IP for
-several minutes. netstat shows the socket in CLOSE_WAIT:
-
-# netstat -tan|grep 2049
-tcp        0      0 10.10.52.50:806         10.10.52.230:2049       CLOSE_WAIT
-
-This is the only port-2049 socket that still exists.
-rpcinfo -p 10.10.52.230, -t 10.10.52.230 lockmgr, etc., all show the
-server seems fine. rpciod is sleeping in rescuer_thread, and nothing
-else is in D state.
-
-mount opts were "rw,hard,intr,tcp,timeo=300,retrans=2,vers=3"
-
-Running another "df" on the mountpoint with rpc_debug = 255 shows:
-
--pid- flgs status -client- --rqstp- -timeout ---ops--
-37163 0001    -11 ffff8802251bca00   (null)        0 ffffffff816e4110 nfsv3 READ a:call_reserveresult q:xprt_sending
-RPC:       looking up Generic cred
-NFS call  access
-RPC:       new task initialized, procpid 30679
-RPC:       allocated task ffff880030c17a00
-RPC: 37133 __rpc_execute flags=0x80
-RPC: 37133 call_start nfs3 proc ACCESS (sync)
-RPC: 37133 call_reserve (status 0)
-RPC: 37133 failed to lock transport ffff880223d0a000
-RPC: 37133 sleep_on(queue "xprt_sending" time 4489651610)
-RPC: 37133 added to queue ffff880223d0a178 "xprt_sending"
-RPC: 37133 sync task going to sleep
-
-So something is not closing the old transport socket here?
-
-Simon-
