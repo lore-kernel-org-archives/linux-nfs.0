@@ -1,102 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:41104 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750755Ab1IPQO1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2011 12:14:27 -0400
-From: Jim Rees <rees@umich.edu>
+Received: from relay03.bluemeaney.com ([205.234.16.187]:39026 "EHLO
+	relay03.bluemeaney.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753270Ab1IFWct (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Sep 2011 18:32:49 -0400
+Message-ID: <4E669B21.30006@nexenta.com>
+Date: Wed, 07 Sep 2011 02:13:53 +0400
+From: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 4/5] pnfsblock: fix writeback deadlock
-Date: Fri, 16 Sep 2011 12:14:18 -0400
-Message-Id: <1316189659-8799-5-git-send-email-rees@umich.edu>
-In-Reply-To: <1316189659-8799-1-git-send-email-rees@umich.edu>
-References: <1316189659-8799-1-git-send-email-rees@umich.edu>
+CC: Vitaliy Gusev <gusev.vitaliy@gmail.com>, peng_tao@emc.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
+References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com> <1315337382.16274.7.camel@lade.trondhjem.org>
+In-Reply-To: <1315337382.16274.7.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Peng Tao <bergwolf@gmail.com>
+>> @@ -1376,7 +1376,8 @@ static void pnfs_list_write_lseg(struct inode *inode, struct list_head *listp)
+>>
+>>   	list_for_each_entry(lseg,&NFS_I(inode)->layout->plh_segs, pls_list) {
+>>   		if (lseg->pls_range.iomode == IOMODE_RW&&
+>> -		    test_bit(NFS_LSEG_LAYOUTCOMMIT,&lseg->pls_flags))
+>> +		    test_bit(NFS_LSEG_LAYOUTCOMMIT,&lseg->pls_flags)&&
+>> +		    list_empty(&lseg->pls_lc_list))
+>>   			list_add(&lseg->pls_lc_list, listp);
+>>   	}
+>>   }
+>
+> If the lseg is already part of one layoutcommit, but we're sending a
+> second one for the same range (presumably because we wrote more data in
+> the same region), then the above causes the lseg to be excluded.
 
-We should check if the sector is already initialized before
-trying to grab the page from page cache. Otherwise when two
-pages of the same block are written back by two threads each
-calling from writepage_locked, it can cause deadlock like bellow.
 
- [ 1080.972099] INFO: task kswapd0:25 blocked for more than 120 seconds.
- [ 1080.972377] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
- [ 1080.972812] kswapd0         D ffff88000c4926c0     0    25      2 0x00000000
- [ 1080.972816]  ffff88000df276b0 0000000000000046 ffff88000df27640 ffffffff81013ba7
- [ 1080.972821]  ffff88000c492310 ffff88000df27fd8 ffff88000df27fd8 00000000001d3440
- [ 1080.972824]  ffff88000c378000 ffff88000c492310 ffff8800175d3d40 ffff880017fc75a8
- [ 1080.972828] Call Trace:
- [ 1080.972860]  [<ffffffff81013ba7>] ? read_tsc+0x9/0x19
- [ 1080.972877]  [<ffffffff810e0b23>] ? lock_page+0x2b/0x2b
- [ 1080.972899]  [<ffffffff81475a1d>] io_schedule+0x63/0x7e
- [ 1080.972902]  [<ffffffff810e0b31>] sleep_on_page+0xe/0x12
- [ 1080.972905]  [<ffffffff81475fe8>] __wait_on_bit_lock+0x46/0x8f
- [ 1080.972916]  [<ffffffff810822d7>] ? lock_release_holdtime.part.7+0x6b/0x72
- [ 1080.972919]  [<ffffffff810e0af6>] __lock_page+0x66/0x68
- [ 1080.972928]  [<ffffffff81072705>] ? autoremove_wake_function+0x3d/0x3d
- [ 1080.972932]  [<ffffffff810e0b1f>] lock_page+0x27/0x2b
- [ 1080.972934]  [<ffffffff810e0bcf>] find_lock_page+0x34/0x57
- [ 1080.972937]  [<ffffffff810e1738>] find_or_create_page+0x34/0x8a
- [ 1080.972947]  [<ffffffffa034245b>] bl_write_pagelist+0x205/0x6da [blocklayoutdriver]
- [ 1080.972951]  [<ffffffffa034145d>] ? bl_free_lseg+0x38/0x38 [blocklayoutdriver]
- [ 1080.972995]  [<ffffffffa02e27b9>] ? nfs_write_rpcsetup+0x118/0x123 [nfs]
- [ 1080.973033]  [<ffffffffa030246b>] pnfs_generic_pg_writepages+0x10b/0x1f4 [nfs]
- [ 1080.973089]  [<ffffffffa02deaae>] nfs_pageio_doio+0x1a/0x43 [nfs]
- [ 1080.973098]  [<ffffffffa02df035>] nfs_pageio_complete+0x16/0x2d [nfs]
- [ 1080.973108]  [<ffffffffa02e2d8f>] nfs_writepage_locked+0xa0/0xbf [nfs]
- [ 1080.973119]  [<ffffffffa02e36a1>] nfs_writepage+0x16/0x2b [nfs]
- [ 1080.973122]  [<ffffffff810e8762>] ? clear_page_dirty_for_io+0x87/0x9a
- [ 1080.973133]  [<ffffffff810efc5b>] shrink_page_list+0x39b/0x6c8
- [ 1080.973139]  [<ffffffff810f03bb>] shrink_inactive_list+0x22c/0x39e
- [ 1080.973144]  [<ffffffff810822d7>] ? lock_release_holdtime.part.7+0x6b/0x72
- [ 1080.973148]  [<ffffffff810f0c33>] shrink_zone+0x445/0x588
- [ 1080.973152]  [<ffffffff810f1a11>] balance_pgdat+0x2c2/0x56b
- [ 1080.973170]  [<ffffffff81254208>] ? __bitmap_weight+0x34/0x80
- [ 1080.973175]  [<ffffffff810f1f78>] kswapd+0x2be/0x2fa
- [ 1080.973179]  [<ffffffff810726c8>] ? __init_waitqueue_head+0x4b/0x4b
- [ 1080.973183]  [<ffffffff810f1cba>] ? balance_pgdat+0x56b/0x56b
- [ 1080.973187]  [<ffffffff81071f69>] kthread+0xa8/0xb0
- [ 1080.973200]  [<ffffffff814806b4>] kernel_thread_helper+0x4/0x10
- [ 1080.973205]  [<ffffffff81071ec1>] ? __init_kthread_worker+0x5a/0x5a
- [ 1080.973210]  [<ffffffff814806b0>] ? gs_change+0x13/0x13
- [ 1080.973213] no locks held by kswapd0/25.
+Yes, lseg is excluded, This patch does exactly only exclusion of lseg. 
+lseg is used here only to get/put reference on this lseg, so skipping is 
+correct.
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- fs/nfs/blocklayout/blocklayout.c |    8 ++++++--
- 1 files changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index d99400b..7aace44 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -544,6 +544,11 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- fill_invalid_ext:
- 		dprintk("%s need to zero %d pages\n", __func__, npg_zero);
- 		for (;npg_zero > 0; npg_zero--) {
-+			if (bl_is_sector_init(be->be_inval, isect)) {
-+				dprintk("isect %llu already init\n",
-+					(unsigned long long)isect);
-+				goto next_page;
-+			}
- 			/* page ref released in bl_end_io_write_zero */
- 			index = isect >> PAGE_CACHE_SECTOR_SHIFT;
- 			dprintk("%s zero %dth page: index %lu isect %llu\n",
-@@ -563,8 +568,7 @@ fill_invalid_ext:
- 			 * PageUptodate: It was read before
- 			 * sector_initialized: already written out
- 			 */
--			if (PageDirty(page) || PageWriteback(page) ||
--			    bl_is_sector_init(be->be_inval, isect)) {
-+			if (PageDirty(page) || PageWriteback(page)) {
- 				print_page(page);
- 				unlock_page(page);
- 				page_cache_release(page);
--- 
-1.7.6
+However, checking on list_empty can occur (on other CPU) in the middle:
+
+	list_del_init(&lseg->pls_lc_list);
+Here >>>>>>
+	if (test_and_clear_bit(NFS_LSEG_LAYOUTCOMMIT,
+			       &lseg->pls_flags))
+		put_lseg(lseg);
+
+
+So list_del_init must be executed under the same lock as 
+pnfs_list_write_lseg, i.e. inode->i_lock.
+
+
+>
+> I agree that the current code causes list corruption, but before
+> applying something like the above patch, I'd like to understand why it
+> is correct.
+>
+> Trond
+>
 
