@@ -1,63 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41248 "EHLO mx2.netapp.com"
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:60839 "EHLO e6.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750937Ab1IUEWt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 00:22:49 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: [PATCH 2/3] pnfs: introduce pnfs private workqueue
-Date: Tue, 20 Sep 2011 21:22:47 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480227@SACMVEXC2-PRD.hq.netapp.com>
-In-reply-to: <20110921002917.GA30770@merit.edu>
-References: <1316488728-24912-1-git-send-email-rees@umich.edu> <1316488728-24912-3-git-send-email-rees@umich.edu> <1316558461.15093.4.camel@lade.trondhjem.org> <20110921002917.GA30770@merit.edu>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Jim Rees" <rees@umich.edu>
-Cc: "Benny Halevy" <bhalevy@tonian.com>, <linux-nfs@vger.kernel.org>,
-        "peter honeyman" <honey@citi.umich.edu>
+	id S1753298Ab1IFN7n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Sep 2011 09:59:43 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Steven Whitehouse <swhiteho@redhat.com>
+Cc: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V6 00/26]  New ACL format for better NFSv4 acl interoperability
+In-Reply-To: <1315302066.2741.12.camel@menhir>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1315302066.2741.12.camel@menhir>
+Date: Tue, 06 Sep 2011 19:28:51 +0530
+Message-ID: <87obyxdb6s.fsf@skywalker.in.ibm.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> -----Original Message-----
-> From: Jim Rees [mailto:rees@umich.edu]
-> Sent: Tuesday, September 20, 2011 8:29 PM
-> To: Myklebust, Trond
-> Cc: Benny Halevy; linux-nfs@vger.kernel.org; peter honeyman
-> Subject: Re: [PATCH 2/3] pnfs: introduce pnfs private workqueue
+On Tue, 06 Sep 2011 10:41:06 +0100, Steven Whitehouse <swhiteho@redhat.com> wrote:
+> Hi,
 > 
-> Trond Myklebust wrote:
+> On Mon, 2011-09-05 at 22:55 +0530, Aneesh Kumar K.V wrote:
+> > Hi,
+> > 
+> > The following set of patches implements VFS and ext4 changes needed to implement
+> > a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
+> > extended by file masks to fit into the standard POSIX file permission model.
+> > They are designed to work seamlessly locally as well as across the NFSv4 and
+> > CIFS/SMB2 network file system protocols.
+> > 
+> > A user-space utility for displaying and changing richacls is available at [4]
+> > (a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
+> > 
+> > [4] git://git.kernel.org/pub/scm/fs/acl/kvaneesh/richacl.git master
+> > 
+> > To test richacl on ext4 use -o richacl mount option. This mount option may later be
+> > dropped in favour of a feature flag.
+> > 
+> > More details regarding richacl can be found at
+> > http://acl.bestbits.at/richacl/
+> > 
+> > Changes from v5:
+> > a) rebase to v3.1-rc4-131-g9e79e3e
+> > 
+> > NOTE: The kernel changes will be pushed to
+> > git://git.kernel.org/pub/scm/linux/kernel/git/kvaneesh/linux-richacl.git richacl
+> > when kernel.org is back
+> > 
+> > -aneesh
+> > 
 > 
->   On Mon, 2011-09-19 at 23:18 -0400, Jim Rees wrote:
->   > From: Peng Tao <bergwolf@gmail.com>
->   >
->   > For layoutdriver io done functions, default workqueue is not a
-good place
-> as
->   > the code is executed in IO path. So add a pnfs private workqueue
-to
-> handle
->   > them.
->   >
->   > Also change block and object layout code to make use of this
-private
->   > workqueue.
->   >
-> 
->   Wait, what????
-> 
->   Why is the I/O path (i.e. the nfsiod queue) inappropriate for
->   layoutdriver io_done functions?
-> 
-> I thought you were the one who asked for this, here:
-> http://www.spinics.net/lists/linux-nfs/msg22771.html
-> 
-> But looking back on it now, the IO path has changed and I can't tell
-if the
-> argument still holds.
+> This looks like a really nice patch set. One question though is whether
+> there are any test suites which can be used to gain confidence in the
+> implementation? Obviously there is a fair amount of change here which
+> has security implications, so it would be good to have some test results
+> to go along with the patches,
 
-You are reading too much into what I said. The fact that we shouldn't
-use the 'hot' nfs/rpciod workqueues doesn't imply that we need a
-completely separate pnfs workqueue. We already have plenty of generic
-workqueues and even context threads: why aren't they sufficient?
+You can find the tests at 
 
-Trond
+http://git.kernel.org/?p=fs/acl/kvaneesh/richacl.git;a=tree;f=test;h=3bedf00ac69c79ae7a433996e729d4afb366b229;hb=HEAD
+
+-aneesh
