@@ -1,53 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:18503 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:48661 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754525Ab1ILVKx convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 17:10:53 -0400
-Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: Peng Tao <bergwolf@gmail.com>, tao.peng@emc.com, gusev.vitaliy@nexenta.com,
-        gusev.vitaliy@gmail.com, linux-nfs@vger.kernel.org
-Date: Mon, 12 Sep 2011 17:10:51 -0400
-In-Reply-To: <4E6E6C3B.2040605@tonian.com>
-References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com>
-	 <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com>
-	 <1315348373.19556.22.camel@lade.trondhjem.org>
-	 <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com>
-	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com>
-	 <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com>
-	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com>
-	 <F19688880B763E40B28B2B462677FBF805C3299D2F@MX09A.corp.emc.com>
-	 <1315592430.17611.15.camel@lade.trondhjem.org>
-	 <4E6B0E48.7050208@tonian.com>
-	 <CA+a=Yy5fMHPcSU4EoSo1uiOUCfi8vjRVPAjEYGZ+M00CwZ8Z9g@mail.gmail.com>
-	 <4E6E6C3B.2040605@tonian.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1315861851.8350.11.camel@lade.trondhjem.org>
+	id S1754616Ab1IHXVW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Sep 2011 19:21:22 -0400
+Date: Thu, 8 Sep 2011 16:08:53 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: agruen@kernel.org, akpm@linux-foundation.org, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V6 11/26] vfs: Add permission flags for setting file
+ attributes
+Message-ID: <20110908200853.GC17215@fieldses.org>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1315243548-18664-12-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <20110907205503.GG8074@fieldses.org>
+ <87d3fb5qbg.fsf@skywalker.in.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87d3fb5qbg.fsf@skywalker.in.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2011-09-12 at 13:31 -0700, Benny Halevy wrote: 
-> On 2011-09-12 07:56, Peng Tao wrote:
-> >> The layout segments are not really in use while in LAYOUTCOMMIT.
-> >> We only need to get the stateid right with respect to concurrent layout recalls.
-> > LAYOUTCOMMIT takes lseg reference to mark them as in use so that
-> > layoutrecall cannot free them.
+On Thu, Sep 08, 2011 at 03:06:03PM +0530, Aneesh Kumar K.V wrote:
+> On Wed, 7 Sep 2011 16:55:03 -0400, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > On Mon, Sep 05, 2011 at 10:55:33PM +0530, Aneesh Kumar K.V wrote:
+> > > From: Andreas Gruenbacher <agruen@kernel.org>
+> > > 
+> > > Some permission models can allow processes to take ownership of a file,
+> > > change the file permissions, and set the file timestamps.  Introduce new
+> > > permission mask flags and check for those permissions in
+> > > inode_change_ok().
 > > 
+> > These little helper functions seem like they might be reasonable cleanup
+> > even without the richacl_change_ok() piece; wonder if it'd be worth
+> > splitting out the cleanup and applying it now?
+> > 
+> > Not that it's necessary--seems like a straightforward enough patch as
+> > is.
 > 
-> And if layoutrecall would have freed layout segments during layoutcommit,
-> what is your specific concern?
+> Those helpers also have richacl_chage_ok(..) done as a part of the call. So
+> they cannot directly be applied to upstream. But we can do similar
+> helpers for upstream and add richacl changes as a separate patch ? Is
+> that what you are suggesting. I can split this patch to two in that case
 
-That layoutcommit is supposed to return NFS4ERR_BAD_LAYOUT in that case
-according to section 18.42.3 of RFC5661. I can't find anything in the
-errata that changes that requirement.
+Yes, that's what I was suggesting, though I don't feel terribly strong
+about it; up to you whether you think it's worth it.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+--b.
