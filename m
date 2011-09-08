@@ -1,105 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet15.oracle.com ([141.146.126.227]:43955 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750832Ab1ITRFV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2011 13:05:21 -0400
-Subject: Re: [PATCH 1/1 v2] statd: Decouple statd's state directory from the NFS state directory
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1316537869-2257-1-git-send-email-steved@redhat.com>
-Date: Tue, 20 Sep 2011 13:05:04 -0400
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-Id: <E7472A90-76BB-47E3-B252-897291F88803@oracle.com>
-References: <1316537869-2257-1-git-send-email-steved@redhat.com>
-To: Steve Dickson <steved@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:3439 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752710Ab1IHW4U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Sep 2011 18:56:20 -0400
+Content-Type: text/plain;
+	charset="utf-8"
+Subject: RE: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
+Date: Thu, 8 Sep 2011 10:05:19 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com>
+References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com> <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com> <1315348373.19556.22.camel@lade.trondhjem.org> <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com> <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Peng Tao" <bergwolf@gmail.com>
+Cc: <tao.peng@emc.com>, <gusev.vitaliy@nexenta.com>, <gusev.vitaliy@gmail.com>,
+        <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Sep 20, 2011, at 12:57 PM, Steve Dickson wrote:
-
-> To allow greater flexibility to where statd's state is kept,
-> statd's state path can now be decoupled from the normal
-> NFS state directory.
-> 
-> In configure.ac, the NSM_STATD_PATH definition will now define
-
-In the description:
-  s/NSM_STATD_PATH/NSM_DEFAULT_STATEDIR/
-
-Otherwise,
-
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-
-> the path to where the state information is kept.  The default
-> value, /var/lib/nfs, can be redefined with the --with-statdpath
-> flag.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
-> configure.ac       |    9 +++++++++
-> support/nsm/file.c |    8 --------
-> 2 files changed, 9 insertions(+), 8 deletions(-)
-> 
-> diff --git a/configure.ac b/configure.ac
-> index b5934c4..500172b 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -23,6 +23,14 @@ AC_ARG_WITH(statedir,
-> 	statedir=$withval,
-> 	statedir=/var/lib/nfs)
-> 	AC_SUBST(statedir)
-> +AC_ARG_WITH(statdpath,
-> +	[AC_HELP_STRING([--with-statdpath=/foo @<:@default=/var/lib/nfs@:>@],
-> +		[define statd's state dir as /foo instead of the NFS statedir]
-> +	)],
-> +	statdpath=$withval,
-> +	statdpath=$statedir
-> +	)
-> +	AC_SUBST(statdpath)
-> AC_ARG_WITH(statduser,
-> 	[AC_HELP_STRING([--with-statduser=rpcuser],
->                         [statd to run under @<:@rpcuser or nobody@:>@]
-> @@ -387,6 +395,7 @@ dnl *************************************************************
-> dnl Export some path names to config.h
-> dnl *************************************************************
-> AC_DEFINE_UNQUOTED(NFS_STATEDIR, "$statedir", [This defines the location of the NFS state files. Warning: this must match definitions in config.mk!])
-> +AC_DEFINE_UNQUOTED(NSM_DEFAULT_STATEDIR, "$statdpath", [Define this to the pathname where statd keeps its state file])
-> 
-> if test "x$cross_compiling" = "xno"; then
-> 	CFLAGS_FOR_BUILD=${CFLAGS_FOR_BUILD-"$CFLAGS"}
-> diff --git a/support/nsm/file.c b/support/nsm/file.c
-> index a12c753..5dd52c1 100644
-> --- a/support/nsm/file.c
-> +++ b/support/nsm/file.c
-> @@ -94,14 +94,6 @@
-> 
-> #define NSM_KERNEL_STATE_FILE	"/proc/sys/fs/nfs/nsm_local_state"
-> 
-> -/*
-> - * Some distributions place statd's files in a subdirectory
-> - */
-> -#define NSM_PATH_EXTENSION
-> -/* #define NSM_PATH_EXTENSION	"/statd" */
-> -
-> -#define NSM_DEFAULT_STATEDIR		NFS_STATEDIR NSM_PATH_EXTENSION
-> -
-> static char nsm_base_dirname[PATH_MAX] = NSM_DEFAULT_STATEDIR;
-> 
-> #define NSM_MONITOR_DIR	"sm"
-> -- 
-> 1.7.6.2
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBQZW5nIFRhbyBbbWFpbHRvOmJl
+cmd3b2xmQGdtYWlsLmNvbV0NCj4gU2VudDogVGh1cnNkYXksIFNlcHRlbWJlciAwOCwgMjAxMSAx
+MTowMCBBTQ0KPiBUbzogTXlrbGVidXN0LCBUcm9uZA0KPiBDYzogdGFvLnBlbmdAZW1jLmNvbTsg
+Z3VzZXYudml0YWxpeUBuZXhlbnRhLmNvbTsNCj4gZ3VzZXYudml0YWxpeUBnbWFpbC5jb207IGxp
+bnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gU3ViamVjdDogUmU6IFtQQVRDSF0gbmZzOiBmaXgg
+aW5pZmluaXRlIGxvb3AgYXQNCj4gbmZzNF9sYXlvdXRjb21taXRfcmVsZWFzZQ0KPiANCj4gT24g
+VGh1LCBTZXAgOCwgMjAxMSBhdCA4OjAxIFBNLCBNeWtsZWJ1c3QsIFRyb25kDQo+IDxUcm9uZC5N
+eWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0t
+LS0tDQo+DQo+ID4NCj4gPiBZZXMsIGJ1dCBhcyBmYXIgYXMgSSBjYW4gc2VlLCBldmVuIGluIHRo
+ZSBibG9ja3MgY2FzZSB0aGVyZSBjYW4gYmUNCj4gbXVsdGlwbGUgZXh0ZW50cyBwZXIgbGF5b3V0
+IHNlZ21lbnQuIFdoYXQgaWYgSSB3cml0ZSB0byBvbmUNCj4gdW5pbml0aWFsaXNlZCBleHRlbnQs
+IGxheW91dGNvbW1pdCwgdGhlbiB3cml0ZSB0byBhbm90aGVyIHVuaW5pdGlhbGl6ZWQNCj4gZXh0
+ZW50IGluIHRoZSBzYW1lIGxheW91dCBzZWdtZW50IGFuZCBsYXlvdXRjb21taXQ/IEluIG15IHJl
+YWRpbmcgb2YNCj4gdGhlIGNvZGUsIHRoZXJlIGlzIGEgY2hhbmNlIHRoYXQgdGhlIHNlY29uZCBs
+YXlvdXRjb21taXQgd2lsbCBmYWlsIHRvDQo+IHBpY2sgdXAgdGhlIGxheW91dCBzZWdtZW50LCBh
+bmQgc28gd2lsbCBmYWlsIHRvIG5vdGlmeSB0aGUgTURTIHRoYXQgdGhlDQo+IHNlY29uZCBleHRl
+bnQgbm93IGNvbnRhaW5zIGRhdGEuDQo+IA0KPiBibG9ja2xheW91dCBkb2VzIG5vdCBkZWNpZGUg
+d2hhdCB0byBsYXlvdXRjb21taXQgYWNjb3JkaW5nIHRvIHRoZSBsc2VnDQo+IGxpc3QuIEluc3Rl
+YWQsIGl0IGtlZXBzIHRyYWNrIG9mIGVhY2ggZXh0ZW50J3Mgc3RhdGUgYXQgdGhlDQo+IGdyYW51
+bGFyaXR5IG9mIGJsb2Nrc2l6ZSwgYW5kIGVuY29kZSB3aGF0ZXZlciBuZWVkcyBsYXlvdXRjb21t
+aXR0ZWQgaW4NCj4gdGhlIGxheW91dGNvbW1pdCBjYWxsLiBTbyBpbiB5b3VyIGFib3ZlIGNhc2Us
+IGFzIGxvbmcgYXMgdGhlIHNlY29uZA0KPiBsYXlvdXRjb21taXQgaXMgaXNzdWVkLCBibG9ja2xh
+eW91dCB3aWxsIGVuY29kZSB0aGUgbmV3bHkgd3JpdHRlbg0KPiBleHRlbnQgaW4gdGhlIHNlY29u
+ZCBsYXlvdXRjb21taXQgY2FsbCwgZXZlbiBpZiB0aGUgbHNlZyBpcyBub3QNCj4gYXR0YWNoZWQg
+dG8gdGhlIHNlY29uZCBsYXlvdXRjb21taXQuDQo+IA0KPiBCdXQgdGhhdCBsZWFkcyB0byBhbm90
+aGVyIHR3byBxdWVzdGlvbjoNCj4gMS4gSG93IGRvIHdlIHByb3RlY3QgYWdhaW5zdCBsYXlvdXRy
+ZWNhbGwgaWYgbHNlZyBpcyBub3QgbGlua2VkIHRvDQo+IGxheW91dGNvbW1pdD8gRm9yIHRoaXMg
+b25lLCBjYW4gd2UganVzdCByZWplY3QgbGF5b3V0cmVjYWxsIGlmIHRoZXJlDQo+IGlzIGluZmxp
+Z2h0IGxheW91dGNvbW1pdD8gSXQgd2lsbCBiZSBsZXNzIHBhcmFsbGVsIGJ1dCBjYW4gZ3VhcmFu
+dGVlDQo+IGN1cnJlbnQgaW1wbGVtZW50YXRpb24gY29ycmVjdG5lc3MuDQo+IDIuIGJsb2NrbGF5
+b3V0IE9OTFk6IGJsX2NvbW1pdHRpbmcgbWF5IGJlIG92ZXJsb2FkZWQgYnkgc2V2ZXJhbA0KPiBs
+YXlvdXRjb21taXQgY2FsbHMgYW5kIHdlIGRvbid0IGhhdmUgaW5mb3JtYXRpb24gaW4NCj4gY2xl
+YW51cF9sYXlvdXRjb21taXQoKSBvbiBob3cgbWFueSBlbnRyeSBzaG91bGQgYmUgcmVtb3ZlZCBm
+cm9tDQo+IGJsX2NvbW1pdHRpbmcuIE1heWJlIHdlIGNhbiBhZGQgYSAodm9pZCopIHRvIHN0cnVj
+dA0KPiBuZnM0X2xheW91dGNvbW1pdF9kYXRhLCBzbyB0aGF0IExEIGNhbiBwYXNzIHNvbWUgcHJp
+dmF0ZSBpbmZvcm1hdGlvbg0KPiBiZXR3ZWVuIGVuY29kZV9sYXlvdXRjb21taXQoKSBhbmQgY2xl
+YW51cF9sYXlvdXRjb21taXQoKT8NCg0KMy4gV2hhdCBpcyB0aGUgcHVycG9zZSBvZiBwaW5uaW5n
+IHRoZSBsYXlvdXQgc2VnbWVudCBhdCBhbGwgaWYgbmVpdGhlciBibG9ja3MsIG5vciBvYmplY3Rz
+IG5vciBmaWxlcyBjYXJlcz8NCklPVzogaWYgYm90aCBvYmplY3RzIGFuZCBibG9ja3MgdHJhY2sg
+dGhlIGluZm9ybWF0aW9uIHRoYXQgdGhleSBuZWVkIGZvciBsYXlvdXRjb21taXQgb3V0c2lkZSB0
+aGUgbGF5b3V0IHNlZ21lbnRzLCB0aGVuIHdoeSBkbyB3ZSBuZWVkIHRoZSBORlNfTFNFR19MQVlP
+VVRDT01NSVQgYml0IGFuZCBwbHNfbGNfbGlzdCBhdCBhbGw/DQoNCkNoZWVycw0KICBUcm9uZA0K
+DQoT77+977+97Lm7HO+/vSbvv71+77+9Ju+/vRjvv73vv70rLe+/ve+/vd22F++/ve+/vXfvv73v
+v73Lm++/ve+/ve+/vW3vv71i77+977+9Z37Ip++/vRfvv73vv73cqH3vv73vv73vv73GoHrvv70m
+ajordu+/ve+/ve+/vQfvv73vv73vv73vv716Wivvv73vv70rembvv73vv73vv71o77+977+977+9
+fu+/ve+/ve+/ve+/vWnvv73vv73vv71677+9Hu+/vXfvv73vv73vv70/77+977+977+977+9Ju+/
+vSnfohtm
