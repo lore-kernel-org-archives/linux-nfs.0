@@ -1,76 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:24813 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:64691 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755869Ab1ITKOm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Sep 2011 06:14:42 -0400
-Subject: [PATCH v4 6/8] NFSd: call svc rpcbind cleanup explicitly
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net
-Date: Tue, 20 Sep 2011 14:14:19 +0400
-Message-ID: <20110920101419.9861.47122.stgit@localhost6.localdomain6>
-In-Reply-To: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
-References: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
+	id S1758358Ab1IHMBi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Sep 2011 08:01:38 -0400
+Content-Type: text/plain;
+	charset="utf-8"
+Subject: RE: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
+Date: Thu, 8 Sep 2011 05:01:17 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com>
+References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com> <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com> <1315348373.19556.22.camel@lade.trondhjem.org> <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: <tao.peng@emc.com>, <gusev.vitaliy@nexenta.com>
+Cc: <gusev.vitaliy@gmail.com>, <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We have to call svc_rpcb_cleanup() explicitly from nfsd_last_thread() since
-this function is registered as service shutdown callback and thus nobody else
-will done it for us.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
----
- fs/nfsd/nfssvc.c           |    2 ++
- include/linux/sunrpc/svc.h |    1 +
- net/sunrpc/svc.c           |    3 ++-
- 3 files changed, 5 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index dc5a1bf..52cd976 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -256,6 +256,8 @@ static void nfsd_last_thread(struct svc_serv *serv)
- 	nfsd_serv = NULL;
- 	nfsd_shutdown();
- 
-+	svc_rpcb_cleanup(serv);
-+
- 	printk(KERN_WARNING "nfsd: last server has exited, flushing export "
- 			    "cache\n");
- 	nfsd_export_flush();
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 223588a..5e71a30 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -401,6 +401,7 @@ struct svc_procedure {
- /*
-  * Function prototypes.
-  */
-+void svc_rpcb_cleanup(struct svc_serv *serv);
- struct svc_serv *svc_create(struct svc_program *, unsigned int,
- 			    void (*shutdown)(struct svc_serv *));
- struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 407462f..252552a 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -367,11 +367,12 @@ static int svc_rpcb_setup(struct svc_serv *serv)
- 	return 0;
- }
- 
--static void svc_rpcb_cleanup(struct svc_serv *serv)
-+void svc_rpcb_cleanup(struct svc_serv *serv)
- {
- 	svc_unregister(serv);
- 	rpcb_put_local();
- }
-+EXPORT_SYMBOL_GPL(svc_rpcb_cleanup);
- 
- static int svc_uses_rpcbind(struct svc_serv *serv)
- {
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiB0YW8ucGVuZ0BlbWMuY29tIFtt
+YWlsdG86dGFvLnBlbmdAZW1jLmNvbV0NCj4gU2VudDogVGh1cnNkYXksIFNlcHRlbWJlciAwOCwg
+MjAxMSA2OjIxIEFNDQo+IFRvOiBNeWtsZWJ1c3QsIFRyb25kOyBndXNldi52aXRhbGl5QG5leGVu
+dGEuY29tDQo+IENjOiBndXNldi52aXRhbGl5QGdtYWlsLmNvbTsgbGludXgtbmZzQHZnZXIua2Vy
+bmVsLm9yZw0KPiBTdWJqZWN0OiBSRTogW1BBVENIXSBuZnM6IGZpeCBpbmlmaW5pdGUgbG9vcCBh
+dA0KPiBuZnM0X2xheW91dGNvbW1pdF9yZWxlYXNlDQo+IA0KPiBIaSwgVHJvbmQsDQo+IA0KPiBT
+b3JyeSBmb3IgdGhlIGxhdGUgcmVzcG9uc2UuDQo+IA0KPiA+IC0tLS0tT3JpZ2luYWwgTWVzc2Fn
+ZS0tLS0tDQo+ID4gRnJvbTogVHJvbmQgTXlrbGVidXN0IFttYWlsdG86VHJvbmQuTXlrbGVidXN0
+QG5ldGFwcC5jb21dDQo+ID4gU2VudDogV2VkbmVzZGF5LCBTZXB0ZW1iZXIgMDcsIDIwMTEgNjoz
+MyBBTQ0KPiA+IFRvOiBWaXRhbGl5IEd1c2V2DQo+ID4gQ2M6IFZpdGFsaXkgR3VzZXY7IFBlbmcs
+IFRhbzsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiA+IFN1YmplY3Q6IFJlOiBbUEFUQ0hd
+IG5mczogZml4IGluaWZpbml0ZSBsb29wIGF0DQo+IG5mczRfbGF5b3V0Y29tbWl0X3JlbGVhc2UN
+Cj4gPg0KPiA+IE9uIFdlZCwgMjAxMS0wOS0wNyBhdCAwMjoxMyArMDQwMCwgVml0YWxpeSBHdXNl
+diB3cm90ZToNCj4gPiA+ID4+IEBAIC0xMzc2LDcgKzEzNzYsOCBAQCBzdGF0aWMgdm9pZCBwbmZz
+X2xpc3Rfd3JpdGVfbHNlZyhzdHJ1Y3QNCj4gaW5vZGUgKmlub2RlLA0KPiA+IHN0cnVjdCBsaXN0
+X2hlYWQgKmxpc3RwKQ0KPiA+ID4gPj4NCj4gPiA+ID4+ICAgCWxpc3RfZm9yX2VhY2hfZW50cnko
+bHNlZywmTkZTX0koaW5vZGUpLT5sYXlvdXQtPnBsaF9zZWdzLA0KPiBwbHNfbGlzdCkgew0KPiA+
+ID4gPj4gICAJCWlmIChsc2VnLT5wbHNfcmFuZ2UuaW9tb2RlID09IElPTU9ERV9SVyYmDQo+ID4g
+PiA+PiAtCQkgICAgdGVzdF9iaXQoTkZTX0xTRUdfTEFZT1VUQ09NTUlULCZsc2VnLT5wbHNfZmxh
+Z3MpKQ0KPiA+ID4gPj4gKwkJICAgIHRlc3RfYml0KE5GU19MU0VHX0xBWU9VVENPTU1JVCwmbHNl
+Zy0NCj4gPnBsc19mbGFncykmJg0KPiA+ID4gPj4gKwkJICAgIGxpc3RfZW1wdHkoJmxzZWctPnBs
+c19sY19saXN0KSkNCj4gPiA+ID4+ICAgCQkJbGlzdF9hZGQoJmxzZWctPnBsc19sY19saXN0LCBs
+aXN0cCk7DQo+ID4gPiA+PiAgIAl9DQo+ID4gPiA+PiAgIH0NCj4gPiA+ID4NCj4gPiA+ID4gSWYg
+dGhlIGxzZWcgaXMgYWxyZWFkeSBwYXJ0IG9mIG9uZSBsYXlvdXRjb21taXQsIGJ1dCB3ZSdyZQ0K
+PiBzZW5kaW5nIGENCj4gPiA+ID4gc2Vjb25kIG9uZSBmb3IgdGhlIHNhbWUgcmFuZ2UgKHByZXN1
+bWFibHkgYmVjYXVzZSB3ZSB3cm90ZSBtb3JlDQo+IGRhdGEgaW4NCj4gPiA+ID4gdGhlIHNhbWUg
+cmVnaW9uKSwgdGhlbiB0aGUgYWJvdmUgY2F1c2VzIHRoZSBsc2VnIHRvIGJlIGV4Y2x1ZGVkLg0K
+PiA+ID4NCj4gPiA+DQo+ID4gPiBZZXMsIGxzZWcgaXMgZXhjbHVkZWQsIFRoaXMgcGF0Y2ggZG9l
+cyBleGFjdGx5IG9ubHkgZXhjbHVzaW9uIG9mDQo+IGxzZWcuDQo+ID4gPiBsc2VnIGlzIHVzZWQg
+aGVyZSBvbmx5IHRvIGdldC9wdXQgcmVmZXJlbmNlIG9uIHRoaXMgbHNlZywgc28NCj4gc2tpcHBp
+bmcgaXMNCj4gPiA+IGNvcnJlY3QuDQo+ID4NCj4gPiBBcmUgeW91IHN1cmU/IEFzIGZhciBhcyBJ
+IGNhbiBzZWUsIHBuZnNfbGlzdF93cml0ZV9sc2VnKCkgYWN0dWFsbHkNCj4gPiBhc3NpZ25zIHRo
+ZSBsc2VnIHRvIGEgcGFydGljdWxhciBsYXlvdXRjb21taXQgY2FsbC4NCj4gPg0KPiA+IE15IHF1
+ZXN0aW9ucyBhcmU6IGlmIEkgd3JpdGUgdG8gYW4gYXJlYSBkZXNjcmliZWQgYnkgdGhhdCBsc2Vn
+DQo+IF9hZnRlcl8NCj4gPiBpdCBoYXMgYmVlbiBhc3NpZ25lZCB0byB0aGF0IGxheW91dGNvbW1p
+dCBSUEMgY2FsbCAoYW5kIHRoZSBsYXR0ZXINCj4gaGFzDQo+ID4gYWxyZWFkeSBiZWVuIGRpc3Bh
+dGNoZWQgdG8gdGhlIG1ldGFkYXRhIHNlcnZlciksIHRoZW4NCj4gPiAgICAgIEEuIHNob3VsZG4n
+dCBpdCBiZSBhc3NpZ25lZCB0byBhIHNlY29uZCBsYXlvdXRjb21taXQgY2FsbCB0b28/DQo+ID4g
+ICAgICBCLiBJZiBub3QsIHdoYXQgYXJlIHdlIGRvaW5nIHRvIGVuc3VyZSBtdXR1YWwgZXhjbHVz
+aW9uIGJldHdlZW4NCj4gPiAgICAgICAgIGxheW91dGNvbW1pdCBSUEMgY2FsbHMgYW5kIHBORlMg
+d3JpdGVzIHRvIHRoZSBkYXRhIHNlcnZlcj8NCj4gSSB0aGluayBpdCBkZXBlbmRzIG9uIHRoZSBw
+dXJwb3NlIG9mIGxheW91dGNvbW1pdC4NCj4gMS4gZm9yIHVwZGF0aW5nIGF0aW1lL210aW1lLiBJ
+biB0aGlzIGNhc2UsIHdlIGRvbid0IG5lZWQgbXV0dWFsDQo+IGV4Y2x1c2lvbg0KDQpBZ3JlZWQu
+DQoNCj4gYmV0d2VlbiBsYXlvdXRjb21taXQgUlBDIGFuZCBwTkZTIHdyaXRlcyB0byBkYXRhIHNl
+cnZlci4NCj4gMi4gZm9yIHVwZGF0aW5nIExEIHNwZWNpZmljIHN0YXRlLiBJbiB0aGlzIGNhc2Us
+IExEIHNob3VsZCBkZWNpZGUgd2hhdA0KPiB0byBjb21taXQNCj4gKGFuZCBhY3R1YWxseSBpZ25v
+cmVzIHRoZSByYW5nZSBvZiBsc2VnKS4gVGFrZSBibG9jayBsYXlvdXQgZm9yDQo+IGV4YW1wbGUu
+IEl0IG1haW50YWlucw0KPiBibG9ja3NpemVkIGV4dGVudCBzdGF0ZSBpbnNpZGUgTEQgYW5kIGRl
+dGVybWluZXMgd2hhdCB0byBlbmNvZGUgaW5zaWRlDQo+IGxheW91dGNvbW1pdA0KPiBSUEMgd2hl
+bmV2ZXIgdGhlcmUgaXMgYSBnZW5lcmljIGxheWVyIGxheW91dGNvbW1pdCBjYWxsLiBTbyB3aGVu
+IGFuDQo+IGV4dGVudCBpcyBiZWluZw0KPiBsYXlvdXRjb21taXR0ZWQsIGNsaWVudCBjYW4gc3Rp
+bGwgd3JpdGUgdG8gdGhlIHNhbWUgcmFuZ2UsIGFzIGxvbmcgYXMNCj4gdGhlIGxzZWcgaXMgaGVs
+ZCBieSBjbGllbnQuDQoNClllcywgYnV0IGFzIGZhciBhcyBJIGNhbiBzZWUsIGV2ZW4gaW4gdGhl
+IGJsb2NrcyBjYXNlIHRoZXJlIGNhbiBiZSBtdWx0aXBsZSBleHRlbnRzIHBlciBsYXlvdXQgc2Vn
+bWVudC4gV2hhdCBpZiBJIHdyaXRlIHRvIG9uZSB1bmluaXRpYWxpc2VkIGV4dGVudCwgbGF5b3V0
+Y29tbWl0LCB0aGVuIHdyaXRlIHRvIGFub3RoZXIgdW5pbml0aWFsaXplZCBleHRlbnQgaW4gdGhl
+IHNhbWUgbGF5b3V0IHNlZ21lbnQgYW5kIGxheW91dGNvbW1pdD8gSW4gbXkgcmVhZGluZyBvZiB0
+aGUgY29kZSwgdGhlcmUgaXMgYSBjaGFuY2UgdGhhdCB0aGUgc2Vjb25kIGxheW91dGNvbW1pdCB3
+aWxsIGZhaWwgdG8gcGljayB1cCB0aGUgbGF5b3V0IHNlZ21lbnQsIGFuZCBzbyB3aWxsIGZhaWwg
+dG8gbm90aWZ5IHRoZSBNRFMgdGhhdCB0aGUgc2Vjb25kIGV4dGVudCBub3cgY29udGFpbnMgZGF0
+YS4NCg0KVHJvbmQNCgTvv717Lm7vv70r77+977+977+977+977+977+977+9KyXvv73vv71sendt
+77+977+9Yu+/veunsu+/ve+/vXLvv73vv716WO+/ve+/vRnfsinvv73vv73vv713Kh9qZ++/ve+/
+ve+/vR7vv73vv73vv73vv73vv73domov77+977+977+9eu+/vd6W77+977+9Mu+/vd6Z77+977+9
+77+9Ju+/vSnfoe+/vWHvv73vv71/77+977+9Hu+/vUfvv73vv73vv71o77+9D++/vWo6K3bvv73v
+v73vv71377+92aU=
