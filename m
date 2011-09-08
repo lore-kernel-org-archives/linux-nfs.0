@@ -1,83 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:38376 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:48656 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752411Ab1ITStc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Sep 2011 14:49:32 -0400
-Received: from bfields by fieldses.org with local (Exim 4.72)
-	(envelope-from <bfields@fieldses.org>)
-	id 1R65Nr-00042P-PZ
-	for linux-nfs@vger.kernel.org; Tue, 20 Sep 2011 14:49:31 -0400
-Date: Tue, 20 Sep 2011 14:49:31 -0400
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd4: fix open downgrade, again
-Message-ID: <20110920184931.GA15273@fieldses.org>
+	id S1753772Ab1IHXVP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Sep 2011 19:21:15 -0400
+Date: Thu, 8 Sep 2011 13:59:46 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/3] NFSD patches to support junctions
+Message-ID: <20110908175946.GA16740@fieldses.org>
+References: <20110902162210.32190.5880.stgit@matisse.1015granger.net>
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110902162210.32190.5880.stgit@matisse.1015granger.net>
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I intend to queue this up for 3.2.--b.
+On Fri, Sep 02, 2011 at 12:38:13PM -0400, Chuck Lever wrote:
+> Sometime soon we are going to have easy-to-install user space FedFS
+> components.  Here are kernel patches needed to make server-side FedFS
+> support work.  Please consider these for the 3.2 kernel.
+> 
+> The third patch introduces a potentially expensive check to see if
+> a junction has been encountered during a mountpoint lookup.  An object
+> is a junction iff it has the requisite set of extended attributes.
+> However, reading an extended attribute is expensive on some file
+> systems.
+> 
+> To mitigate the cost of this check, junctions always have their sticky
+> bit set.  The expensive extended attribute part of the junction test
+> is done only if the sticky bit is present.
+> 
+> Note that today junctions are directories, but someday symlinks might
+> also act as junctions (for SMB2 support).  And very few files have the
+> sticky bit set.  So we avoid doing a directory test here.
+> 
+> Also, junctions ostensibly have all zero mode bits to hide their local
+> contents.  I don't think the kernel needs to be concerned about the
+> permissions as long as the sticky bit is set.  This allows some
+> flexibility in how junctions are represented.  However, Jeff thinks
+> that having nfsd4_is_junction() also consider mode bits would make the
+> expensive part of this test still less frequent.
+> 
+> Any thoughts about this?
 
-commit 3d02fa29dec920c597dd7b7db608a4bc71f088ce
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Mon Sep 19 15:07:41 2011 -0400
+Hm, right, a sticky bit set on a directory is a normal thing.  I thought
+Trond's original idea was to check for the sticky bit and not
+executable?  Which is a pointless combination so should be very rare.
 
-    nfsd4: fix open downgrade, again
-    
-    Yet another open-management regression:
-    
-    	- nfs4_file_downgrade() doesn't remove the BOTH access bit on
-    	  downgrade, so the server's idea of the stateid's access gets
-    	  out of sync with the client's.  If we want to keep an O_RDWR
-    	  open in this case, we should do that in the file_put_access
-    	  logic rather than here.
-    	- We forgot to convert v4 access to an open mode here.
-    
-    This logic has proven too hard to get right.  In the future we may
-    consider:
-    	- reexamining the lock/openowner relationship (locks probably
-    	  don't really need to take their own references here).
-    	- adding open upgrade/downgrade support to the vfs.
-    	- removing the atomic operations.  They're redundant as long as
-    	  this is all under some other lock.
-    
-    Also, maybe some kind of additional static checking would help catch
-    O_/NFS4_SHARE_ACCESS confusion.
-    
-    Cc: stable@kernel.org
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+On a typical system maybe directories with the sticky bit are normally
+somewhat rare, but that's a question of policy and there could be cases
+where it's common.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e5cba83..edcced1 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -194,8 +194,15 @@ static void nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
- static void __nfs4_file_put_access(struct nfs4_file *fp, int oflag)
- {
- 	if (atomic_dec_and_test(&fp->fi_access[oflag])) {
--		nfs4_file_put_fd(fp, O_RDWR);
- 		nfs4_file_put_fd(fp, oflag);
-+		/*
-+		 * It's also safe to get rid of the RDWR open *if*
-+		 * we no longer have need of the other kind of access
-+		 * or if we already have the other kind of open:
-+		 */
-+		if (fp->fi_fds[1-oflag]
-+			|| atomic_read(&fp->fi_access[1 - oflag]) == 0)
-+			nfs4_file_put_fd(fp, O_RDWR);
- 	}
- }
- 
-@@ -3500,8 +3507,9 @@ static inline void nfs4_file_downgrade(struct nfs4_ol_stateid *stp, unsigned int
- 	int i;
- 
- 	for (i = 1; i < 4; i++) {
--		if (test_bit(i, &stp->st_access_bmap) && !(i & to_access)) {
--			nfs4_file_put_access(stp->st_file, i);
-+		if (test_bit(i, &stp->st_access_bmap)
-+					&& ((i & to_access) != i)) {
-+			nfs4_file_put_access(stp->st_file, nfs4_access_to_omode(i));
- 			__clear_bit(i, &stp->st_access_bmap);
- 		}
- 	}
+--b.
+
+> 
+> ---
+> 
+> Trond Myklebust (3):
+>       NFSD: Add a cache for fs_locations information
+>       NFSD: Remove the ex_pathname field from struct svc_export
+>       NFSD: Cleanup for nfsd4_path()
+> 
+> 
+>  fs/nfsd/export.c            |   15 +-----
+>  fs/nfsd/nfs4xdr.c           |  106 ++++++++++++++++++++++++++++++++-----------
+>  fs/nfsd/nfsd.h              |    7 +++
+>  fs/nfsd/vfs.c               |   16 ++++++
+>  include/linux/nfsd/export.h |    2 -
+>  5 files changed, 104 insertions(+), 42 deletions(-)
+> 
+> -- 
+> Chuck Lever
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
