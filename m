@@ -1,69 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:32833 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754744Ab1IWBu2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 21:50:28 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 06/10] pnfsblock: init pg_bsize properly
-Date: Thu, 22 Sep 2011 21:50:13 -0400
-Message-Id: <1316742617-14766-7-git-send-email-rees@umich.edu>
-In-Reply-To: <1316742617-14766-1-git-send-email-rees@umich.edu>
-References: <1316742617-14766-1-git-send-email-rees@umich.edu>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:40884 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754769Ab1IHKVt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Sep 2011 06:21:49 -0400
+From: <tao.peng@emc.com>
+To: <Trond.Myklebust@netapp.com>, <gusev.vitaliy@nexenta.com>
+CC: <gusev.vitaliy@gmail.com>, <linux-nfs@vger.kernel.org>
+Date: Thu, 8 Sep 2011 06:21:11 -0400
+Subject: RE: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
+Message-ID: <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com>
+References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com>
+	 <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com>
+ <1315348373.19556.22.camel@lade.trondhjem.org>
+In-Reply-To: <1315348373.19556.22.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Peng Tao <bergwolf@gmail.com>
-
-pg_bsize is server->wsize/rsize by default. We would want to use the lseg
-length.
-
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- fs/nfs/blocklayout/blocklayout.c |   20 ++++++++++++++++++--
- 1 files changed, 18 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 2167ba2..f5a7fa6 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -923,14 +923,30 @@ bl_clear_layoutdriver(struct nfs_server *server)
- 	return 0;
- }
- 
-+static void bl_pg_init_read(struct nfs_pageio_descriptor *pgio,
-+			    struct nfs_page *req)
-+{
-+	pnfs_generic_pg_init_read(pgio, req);
-+	if (pgio->pg_lseg)
-+		pgio->pg_bsize = pgio->pg_lseg->pls_range.length;
-+}
-+
-+static void bl_pg_init_write(struct nfs_pageio_descriptor *pgio,
-+			     struct nfs_page *req)
-+{
-+	pnfs_generic_pg_init_write(pgio, req);
-+	if (pgio->pg_lseg)
-+		pgio->pg_bsize = pgio->pg_lseg->pls_range.length;
-+}
-+
- static const struct nfs_pageio_ops bl_pg_read_ops = {
--	.pg_init = pnfs_generic_pg_init_read,
-+	.pg_init = bl_pg_init_read,
- 	.pg_test = pnfs_generic_pg_test,
- 	.pg_doio = pnfs_generic_pg_readpages,
- };
- 
- static const struct nfs_pageio_ops bl_pg_write_ops = {
--	.pg_init = pnfs_generic_pg_init_write,
-+	.pg_init = bl_pg_init_write,
- 	.pg_test = pnfs_generic_pg_test,
- 	.pg_doio = pnfs_generic_pg_writepages,
- };
--- 
-1.7.4.1
-
+SGksIFRyb25kLA0KDQpTb3JyeSBmb3IgdGhlIGxhdGUgcmVzcG9uc2UuDQoNCj4gLS0tLS1Pcmln
+aW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogVHJvbmQgTXlrbGVidXN0IFttYWlsdG86VHJvbmQu
+TXlrbGVidXN0QG5ldGFwcC5jb21dDQo+IFNlbnQ6IFdlZG5lc2RheSwgU2VwdGVtYmVyIDA3LCAy
+MDExIDY6MzMgQU0NCj4gVG86IFZpdGFsaXkgR3VzZXYNCj4gQ2M6IFZpdGFsaXkgR3VzZXY7IFBl
+bmcsIFRhbzsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiBTdWJqZWN0OiBSZTogW1BBVENI
+XSBuZnM6IGZpeCBpbmlmaW5pdGUgbG9vcCBhdCBuZnM0X2xheW91dGNvbW1pdF9yZWxlYXNlDQo+
+IA0KPiBPbiBXZWQsIDIwMTEtMDktMDcgYXQgMDI6MTMgKzA0MDAsIFZpdGFsaXkgR3VzZXYgd3Jv
+dGU6DQo+ID4gPj4gQEAgLTEzNzYsNyArMTM3Niw4IEBAIHN0YXRpYyB2b2lkIHBuZnNfbGlzdF93
+cml0ZV9sc2VnKHN0cnVjdCBpbm9kZSAqaW5vZGUsDQo+IHN0cnVjdCBsaXN0X2hlYWQgKmxpc3Rw
+KQ0KPiA+ID4+DQo+ID4gPj4gICAJbGlzdF9mb3JfZWFjaF9lbnRyeShsc2VnLCZORlNfSShpbm9k
+ZSktPmxheW91dC0+cGxoX3NlZ3MsIHBsc19saXN0KSB7DQo+ID4gPj4gICAJCWlmIChsc2VnLT5w
+bHNfcmFuZ2UuaW9tb2RlID09IElPTU9ERV9SVyYmDQo+ID4gPj4gLQkJICAgIHRlc3RfYml0KE5G
+U19MU0VHX0xBWU9VVENPTU1JVCwmbHNlZy0+cGxzX2ZsYWdzKSkNCj4gPiA+PiArCQkgICAgdGVz
+dF9iaXQoTkZTX0xTRUdfTEFZT1VUQ09NTUlULCZsc2VnLT5wbHNfZmxhZ3MpJiYNCj4gPiA+PiAr
+CQkgICAgbGlzdF9lbXB0eSgmbHNlZy0+cGxzX2xjX2xpc3QpKQ0KPiA+ID4+ICAgCQkJbGlzdF9h
+ZGQoJmxzZWctPnBsc19sY19saXN0LCBsaXN0cCk7DQo+ID4gPj4gICAJfQ0KPiA+ID4+ICAgfQ0K
+PiA+ID4NCj4gPiA+IElmIHRoZSBsc2VnIGlzIGFscmVhZHkgcGFydCBvZiBvbmUgbGF5b3V0Y29t
+bWl0LCBidXQgd2UncmUgc2VuZGluZyBhDQo+ID4gPiBzZWNvbmQgb25lIGZvciB0aGUgc2FtZSBy
+YW5nZSAocHJlc3VtYWJseSBiZWNhdXNlIHdlIHdyb3RlIG1vcmUgZGF0YSBpbg0KPiA+ID4gdGhl
+IHNhbWUgcmVnaW9uKSwgdGhlbiB0aGUgYWJvdmUgY2F1c2VzIHRoZSBsc2VnIHRvIGJlIGV4Y2x1
+ZGVkLg0KPiA+DQo+ID4NCj4gPiBZZXMsIGxzZWcgaXMgZXhjbHVkZWQsIFRoaXMgcGF0Y2ggZG9l
+cyBleGFjdGx5IG9ubHkgZXhjbHVzaW9uIG9mIGxzZWcuDQo+ID4gbHNlZyBpcyB1c2VkIGhlcmUg
+b25seSB0byBnZXQvcHV0IHJlZmVyZW5jZSBvbiB0aGlzIGxzZWcsIHNvIHNraXBwaW5nIGlzDQo+
+ID4gY29ycmVjdC4NCj4gDQo+IEFyZSB5b3Ugc3VyZT8gQXMgZmFyIGFzIEkgY2FuIHNlZSwgcG5m
+c19saXN0X3dyaXRlX2xzZWcoKSBhY3R1YWxseQ0KPiBhc3NpZ25zIHRoZSBsc2VnIHRvIGEgcGFy
+dGljdWxhciBsYXlvdXRjb21taXQgY2FsbC4NCj4gDQo+IE15IHF1ZXN0aW9ucyBhcmU6IGlmIEkg
+d3JpdGUgdG8gYW4gYXJlYSBkZXNjcmliZWQgYnkgdGhhdCBsc2VnIF9hZnRlcl8NCj4gaXQgaGFz
+IGJlZW4gYXNzaWduZWQgdG8gdGhhdCBsYXlvdXRjb21taXQgUlBDIGNhbGwgKGFuZCB0aGUgbGF0
+dGVyIGhhcw0KPiBhbHJlYWR5IGJlZW4gZGlzcGF0Y2hlZCB0byB0aGUgbWV0YWRhdGEgc2VydmVy
+KSwgdGhlbg0KPiAgICAgIEEuIHNob3VsZG4ndCBpdCBiZSBhc3NpZ25lZCB0byBhIHNlY29uZCBs
+YXlvdXRjb21taXQgY2FsbCB0b28/DQo+ICAgICAgQi4gSWYgbm90LCB3aGF0IGFyZSB3ZSBkb2lu
+ZyB0byBlbnN1cmUgbXV0dWFsIGV4Y2x1c2lvbiBiZXR3ZWVuDQo+ICAgICAgICAgbGF5b3V0Y29t
+bWl0IFJQQyBjYWxscyBhbmQgcE5GUyB3cml0ZXMgdG8gdGhlIGRhdGEgc2VydmVyPw0KSSB0aGlu
+ayBpdCBkZXBlbmRzIG9uIHRoZSBwdXJwb3NlIG9mIGxheW91dGNvbW1pdC4NCjEuIGZvciB1cGRh
+dGluZyBhdGltZS9tdGltZS4gSW4gdGhpcyBjYXNlLCB3ZSBkb24ndCBuZWVkIG11dHVhbCBleGNs
+dXNpb24NCmJldHdlZW4gbGF5b3V0Y29tbWl0IFJQQyBhbmQgcE5GUyB3cml0ZXMgdG8gZGF0YSBz
+ZXJ2ZXIuDQoyLiBmb3IgdXBkYXRpbmcgTEQgc3BlY2lmaWMgc3RhdGUuIEluIHRoaXMgY2FzZSwg
+TEQgc2hvdWxkIGRlY2lkZSB3aGF0IHRvIGNvbW1pdA0KKGFuZCBhY3R1YWxseSBpZ25vcmVzIHRo
+ZSByYW5nZSBvZiBsc2VnKS4gVGFrZSBibG9jayBsYXlvdXQgZm9yIGV4YW1wbGUuIEl0IG1haW50
+YWlucw0KYmxvY2tzaXplZCBleHRlbnQgc3RhdGUgaW5zaWRlIExEIGFuZCBkZXRlcm1pbmVzIHdo
+YXQgdG8gZW5jb2RlIGluc2lkZSBsYXlvdXRjb21taXQNClJQQyB3aGVuZXZlciB0aGVyZSBpcyBh
+IGdlbmVyaWMgbGF5ZXIgbGF5b3V0Y29tbWl0IGNhbGwuIFNvIHdoZW4gYW4gZXh0ZW50IGlzIGJl
+aW5nDQpsYXlvdXRjb21taXR0ZWQsIGNsaWVudCBjYW4gc3RpbGwgd3JpdGUgdG8gdGhlIHNhbWUg
+cmFuZ2UsIGFzIGxvbmcgYXMgdGhlIGxzZWcgaXMgaGVsZCBieSBjbGllbnQuDQoNCkkgYW0gbm90
+IGZhbWlsaWFyIGVub3VnaCB3aXRoIGZpbGUvb2JqZWN0IGxheW91dCBjYXNlIHRob3VnaC4gRG9l
+cyBjdXJyZW50IGltcGxlbWVudGF0aW9uDQpicmVhayBhbnkgcmVxdWlyZW1lbnRzIGZvciBmaWxl
+L29iamVjdCBsYXlvdXQ/DQoNClRoYW5rcywNClRhbw0KPiANCj4gPiBIb3dldmVyLCBjaGVja2lu
+ZyBvbiBsaXN0X2VtcHR5IGNhbiBvY2N1ciAob24gb3RoZXIgQ1BVKSBpbiB0aGUgbWlkZGxlOg0K
+PiA+DQo+ID4gCWxpc3RfZGVsX2luaXQoJmxzZWctPnBsc19sY19saXN0KTsNCj4gPiBIZXJlID4+
+Pj4+Pg0KPiA+IAlpZiAodGVzdF9hbmRfY2xlYXJfYml0KE5GU19MU0VHX0xBWU9VVENPTU1JVCwN
+Cj4gPiAJCQkgICAgICAgJmxzZWctPnBsc19mbGFncykpDQo+ID4gCQlwdXRfbHNlZyhsc2VnKTsN
+Cj4gPg0KPiA+DQo+ID4gU28gbGlzdF9kZWxfaW5pdCBtdXN0IGJlIGV4ZWN1dGVkIHVuZGVyIHRo
+ZSBzYW1lIGxvY2sgYXMNCj4gPiBwbmZzX2xpc3Rfd3JpdGVfbHNlZywgaS5lLiBpbm9kZS0+aV9s
+b2NrLg0KPiANCj4gQWdyZWVkIGlmIG15IHF1ZXN0aW9ucyBhYm92ZSBtYWtlIG5vIHNlbnNlLg0K
+PiANCj4gQ2hlZXJzDQo+ICAgVHJvbmQNCj4gDQo+IC0tDQo+IFRyb25kIE15a2xlYnVzdA0KPiBM
+aW51eCBORlMgY2xpZW50IG1haW50YWluZXINCj4gDQo+IE5ldEFwcA0KPiBUcm9uZC5NeWtsZWJ1
+c3RAbmV0YXBwLmNvbQ0KPiB3d3cubmV0YXBwLmNvbQ0KPiANCg0KTu+/ve+/ve+/ve+/ve+/vXLv
+v73vv71577+977+977+9Yu+/vVjvv73vv73Hp3bvv71e77+9Kd66ey5u77+9K++/ve+/ve+/ve+/
+vXvvv73vv73vv70i77+977+9Xm7vv71y77+977+977+9eu+/vRrvv73vv71o77+977+977+977+9
+Ju+/ve+/vR7vv71H77+977+977+9aO+/vQMo77+96ZqO77+93aJqIu+/ve+/vRrvv70bbe+/ve+/
+ve+/ve+/ve+/vXrvv73elu+/ve+/ve+/vWbvv73vv73vv71o77+977+977+9fu+/vW3vv70=
