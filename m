@@ -1,79 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32291 "EHLO mx1.redhat.com"
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:44840 "EHLO e1.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751374Ab1IVNmN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Sep 2011 09:42:13 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <878vpgwx76.fsf@tucsk.pomaz.szeredi.hu>
-References: <878vpgwx76.fsf@tucsk.pomaz.szeredi.hu> <20110922124608.7739.27750.stgit@warthog.procyon.org.uk>
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: dhowells@redhat.com, raven@themaw.net, viro@ZenIV.linux.org.uk,
-        jlayton@redhat.com, gregkh@suse.de, torvalds@linux-foundation.org,
-        linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-Subject: Re: [PATCH] NFS4: Revert commit to make the automount code ignore LOOKUP_FOLLOW
-Date: Thu, 22 Sep 2011 14:41:30 +0100
-Message-ID: <24566.1316698890@redhat.com>
+	id S1758127Ab1IHJgO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Sep 2011 05:36:14 -0400
+Received: from /spool/local
+	by us.ibm.com with XMail ESMTP
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Thu, 8 Sep 2011 05:36:13 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: agruen@kernel.org, akpm@linux-foundation.org, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V6 11/26] vfs: Add permission flags for setting file attributes
+In-Reply-To: <20110907205503.GG8074@fieldses.org>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1315243548-18664-12-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20110907205503.GG8074@fieldses.org>
+Date: Thu, 08 Sep 2011 15:06:03 +0530
+Message-ID: <87d3fb5qbg.fsf@skywalker.in.ibm.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Miklos Szeredi <miklos@szeredi.hu> wrote:
-
-> > When it goes wrong, what happens is that nfs_follow_remote_path() walks from
-> > the rootfh to the remote directory (/scratch) using vfs_path_lookup().  It
-> > passes LOOKUP_FOLLOW to vfs_path_lookup() to tell it to transit terminal
-> > symlinks and terminal automounts.  Unfortunately, with the aforementioned
-> > commit, LOOKUP_FOLLOW now expressly does not follow terminal
-> > automounts.
+On Wed, 7 Sep 2011 16:55:03 -0400, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Mon, Sep 05, 2011 at 10:55:33PM +0530, Aneesh Kumar K.V wrote:
+> > From: Andreas Gruenbacher <agruen@kernel.org>
+> > 
+> > Some permission models can allow processes to take ownership of a file,
+> > change the file permissions, and set the file timestamps.  Introduce new
+> > permission mask flags and check for those permissions in
+> > inode_change_ok().
 > 
-> What is exactly happening here?  By not following automounts how do we
-> end up with two mounts instead of one?  I would have guessed the other
-> way round.
+> These little helper functions seem like they might be reasonable cleanup
+> even without the richacl_change_ok() piece; wonder if it'd be worth
+> splitting out the cleanup and applying it now?
+> 
+> Not that it's necessary--seems like a straightforward enough patch as
+> is.
 
-Linux's NFS4 client performs a VFS path walk to resolve the path in the mount
-devname to the root fh of the new mount.  This differs from NFS2/3 where the
-client asks the server's mountd to do it.
+Those helpers also have richacl_chage_ok(..) done as a part of the call. So
+they cannot directly be applied to upstream. But we can do similar
+helpers for upstream and add richacl changes as a separate patch ? Is
+that what you are suggesting. I can split this patch to two in that case
 
-With the situation I described, where you're attempting to directly mount a
-directory that's the root of a mount on the server (but not the root of the
-whole filesystem tree), you have a situation where the FSID changes as you
-walk through the tree.
+-aneesh
 
-So, for example, assume "/" is on fsid 0 and "/scratch" is on fsid 1.
-
-Now, when NFS sees a change of fsid, it interpolates an automount point on the
-directory in which it saw the fsid change:
-
-			/ (FSID0)
-			|
-			|
-			|
-		     scratch (S_AUTOMOUNT set)
-		     (FSID0)
-
- and, when triggered, d_automount
-will then create a new superblock for the new fsid and that will get mounted
-on the automount point:
-
-			/ (FSID0)
-			|
-			|
-			|
-		     scratch ::::::::::::/(FSID1)
-		     (FSID0)		 |
-					 |-----|-----|-----|
-					 |     |     |     |
-					 a     b     c     d
-
-However, during the NFS4 root lookup pathwalk, because the root of fsid 1 is
-terminal in the path, with your patch it will not trigger automounting because
-none of LOOKUP_PARENT, _DIRECTORY, _OPEN or _CREATE are set.  LOOKUP_FOLLOW
-was set and *that* used to be sufficient to force the automount.
-
-So what happens is that scratch from fsid 0 gets mounted rather than / from
-fsid 1 and this is an automount point.  It will cause / from fsid 1 to be
-mounted eventually when someone goes into it, but then you have to do two
-unmounts to get rid of it instead of one.
-
-David
