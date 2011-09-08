@@ -1,186 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:43908 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:48655 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756856Ab1IGUzL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Sep 2011 16:55:11 -0400
-Date: Wed, 7 Sep 2011 16:55:03 -0400
+	id S1752355Ab1IHXVO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Sep 2011 19:21:14 -0400
+Date: Thu, 8 Sep 2011 16:07:54 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Cc: agruen@kernel.org, akpm@linux-foundation.org, dhowells@redhat.com,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V6 11/26] vfs: Add permission flags for setting file
- attributes
-Message-ID: <20110907205503.GG8074@fieldses.org>
+Subject: Re: [PATCH -V6 09/26] vfs: Add delete child and delete self
+ permission flags
+Message-ID: <20110908200754.GB17215@fieldses.org>
 References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1315243548-18664-12-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1315243548-18664-10-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <20110907203916.GE8074@fieldses.org>
+ <87ipp35qjx.fsf@skywalker.in.ibm.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1315243548-18664-12-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <87ipp35qjx.fsf@skywalker.in.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Sep 05, 2011 at 10:55:33PM +0530, Aneesh Kumar K.V wrote:
-> From: Andreas Gruenbacher <agruen@kernel.org>
+On Thu, Sep 08, 2011 at 03:00:58PM +0530, Aneesh Kumar K.V wrote:
+> On Wed, 7 Sep 2011 16:39:16 -0400, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > On Mon, Sep 05, 2011 at 10:55:31PM +0530, Aneesh Kumar K.V wrote:
+> > > From: Andreas Gruenbacher <agruen@kernel.org>
+> > > 
+> > > Normally, deleting a file requires write access to the parent directory.
+> > > Some permission models use a different permission on the parent
+> > > directory to indicate delete access.  In addition, a process can have
+> > > per-file delete access even without delete access on the parent
+> > > directory.
+> > > 
+> > > Introduce two new inode_permission() mask flags and use them in
+> > > may_delete()
+> > > 
+> > > Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+> > > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> > > ---
+> > >  fs/namei.c         |   41 +++++++++++++++++++++++++++--------------
+> > >  include/linux/fs.h |    2 ++
+> > >  2 files changed, 29 insertions(+), 14 deletions(-)
+> > > 
+> > > diff --git a/fs/namei.c b/fs/namei.c
+> > > index d52a4cd..eacb530 100644
+> > > --- a/fs/namei.c
+> > > +++ b/fs/namei.c
+> > > @@ -337,7 +337,7 @@ static inline int do_inode_permission(struct inode *inode, int mask)
+> > >   * are used for other things.
+> > >   *
+> > >   * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
+> > > - * MAY_WRITE must also be set in @mask.
+> > > + * MAY_DELETE_CHILD, MAY_DELETE_SELF, MAY_WRITE must also be set in @mask.
+> > >   */
+> > >  int inode_permission(struct inode *inode, int mask)
+> > >  {
+> > > @@ -1862,7 +1862,7 @@ static inline int check_sticky(struct inode *dir, struct inode *inode)
+> > >  		return 0;
+> > >  
+> > >  other_userns:
+> > > -	return !ns_capable(inode_userns(inode), CAP_FOWNER);
+> > > +	return 1;
+> > >  }
+> > >  
+> > >  /*
+> > > @@ -1884,30 +1884,43 @@ other_userns:
+> > >   * 10. We don't allow removal of NFS sillyrenamed files; it's handled by
+> > >   *     nfs_async_unlink().
+> > >   */
+> > > -static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
+> > > +static int may_delete(struct inode *dir, struct dentry *victim,
+> > > +		      int isdir, int replace)
+> > >  {
+> > > -	int error;
+> > > +	int mask, error, is_sticky;
+> > > +	struct inode *inode = victim->d_inode;
+> > >  
+> > > -	if (!victim->d_inode)
+> > > +	if (!inode)
+> > >  		return -ENOENT;
+> > >  
+> > >  	BUG_ON(victim->d_parent->d_inode != dir);
+> > >  	audit_inode_child(victim, dir);
+> > >  
+> > > -	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
+> > > +	mask = MAY_WRITE | MAY_EXEC | MAY_DELETE_CHILD;
+> > > +	if (replace)
+> > > +		mask |= S_ISDIR(inode->i_mode) ?
+> > > +			MAY_CREATE_DIR : MAY_CREATE_FILE;
+> > 
+> > I'm having trouble understanding this next bit:
+> > 
+> > > +	is_sticky = check_sticky(dir, inode);
+> > > +	error = inode_permission(dir, mask);
+> > > +	if ((error || is_sticky) && IS_RICHACL(inode) &&
+> > > +	    !inode_permission(dir, mask & ~(MAY_WRITE | MAY_DELETE_CHILD)) &&
+> > > +	    !inode_permission(inode, MAY_DELETE_SELF))
+> > > +		error = 0;
+> > 
+> > OK, so we can ignore the lack of write or delete permissions on the
+> > parent if we have delete_self permissions on the child.  I guess that's
+> > right.
+> > 
+> > Why the "|| is_sticky" above?
+> > 
+> > Is there some less complicated why to write this?
 > 
-> Some permission models can allow processes to take ownership of a file,
-> change the file permissions, and set the file timestamps.  Introduce new
-> permission mask flags and check for those permissions in
-> inode_change_ok().
+> we removed the ns_capable check out of check_sticky, because we don't
+> want to do capability check when richacl allows access. We also want to
+> make sure that even if mode bits allow access (inode_permission(dir, mask))
+> if sticky bit is set we do additional check.
 
-These little helper functions seem like they might be reasonable cleanup
-even without the richacl_change_ok() piece; wonder if it'd be worth
-splitting out the cleanup and applying it now?
-
-Not that it's necessary--seems like a straightforward enough patch as
-is.
+Why are the two inode_permissions ANDed?  The windows semantics are that
+you can delete if you have MAY_DELETE_CHILD *or* MAY_DELETE_SELF.
 
 --b.
-
-> 
-> Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/attr.c          |   70 +++++++++++++++++++++++++++++++++++++++++++--------
->  fs/namei.c         |    2 +-
->  include/linux/fs.h |    4 +++
->  3 files changed, 64 insertions(+), 12 deletions(-)
-> 
-> diff --git a/fs/attr.c b/fs/attr.c
-> index f15e9e3..00578b9 100644
-> --- a/fs/attr.c
-> +++ b/fs/attr.c
-> @@ -14,6 +14,55 @@
->  #include <linux/fcntl.h>
->  #include <linux/security.h>
->  
-> +static int richacl_change_ok(struct inode *inode, int mask)
-> +{
-> +	if (!IS_RICHACL(inode))
-> +		return -EPERM;
-> +
-> +	if (inode->i_op->permission)
-> +		return inode->i_op->permission(inode, mask);
-> +
-> +	return check_acl(inode, mask);
-> +}
-> +
-> +static bool inode_uid_change_ok(struct inode *inode, uid_t ia_uid)
-> +{
-> +	if (current_fsuid() == inode->i_uid && ia_uid == inode->i_uid)
-> +		return true;
-> +	if (current_fsuid() == ia_uid &&
-> +	    richacl_change_ok(inode, MAY_TAKE_OWNERSHIP) == 0)
-> +		return true;
-> +	if (capable(CAP_CHOWN))
-> +		return true;
-> +	return false;
-> +}
-> +
-> +static bool inode_gid_change_ok(struct inode *inode, gid_t ia_gid)
-> +{
-> +	int in_group = in_group_p(ia_gid);
-> +	if (current_fsuid() == inode->i_uid &&
-> +	    (in_group || ia_gid == inode->i_gid))
-> +		return true;
-> +	if (in_group && richacl_change_ok(inode, MAY_TAKE_OWNERSHIP) == 0)
-> +		return true;
-> +	if (capable(CAP_CHOWN))
-> +		return true;
-> +	return false;
-> +}
-> +
-> +static bool inode_owner_permitted_or_capable(struct inode *inode, int mask)
-> +{
-> +	struct user_namespace *ns = inode_userns(inode);
-> +
-> +	if (current_user_ns() == ns && current_fsuid() == inode->i_uid)
-> +		return true;
-> +	if (richacl_change_ok(inode, mask) == 0)
-> +		return true;
-> +	if (ns_capable(ns, CAP_FOWNER))
-> +		return true;
-> +	return false;
-> +}
-> +
->  /**
->   * inode_change_ok - check if attribute changes to an inode are allowed
->   * @inode:	inode to check
-> @@ -45,21 +94,20 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
->  		return 0;
->  
->  	/* Make sure a caller can chown. */
-> -	if ((ia_valid & ATTR_UID) &&
-> -	    (current_fsuid() != inode->i_uid ||
-> -	     attr->ia_uid != inode->i_uid) && !capable(CAP_CHOWN))
-> -		return -EPERM;
-> +	if (ia_valid & ATTR_UID) {
-> +		if (!inode_uid_change_ok(inode, attr->ia_uid))
-> +			return -EPERM;
-> +	}
->  
->  	/* Make sure caller can chgrp. */
-> -	if ((ia_valid & ATTR_GID) &&
-> -	    (current_fsuid() != inode->i_uid ||
-> -	    (!in_group_p(attr->ia_gid) && attr->ia_gid != inode->i_gid)) &&
-> -	    !capable(CAP_CHOWN))
-> -		return -EPERM;
-> +	if (ia_valid & ATTR_GID) {
-> +		if (!inode_gid_change_ok(inode, attr->ia_gid))
-> +			return -EPERM;
-> +	}
->  
->  	/* Make sure a caller can chmod. */
->  	if (ia_valid & ATTR_MODE) {
-> -		if (!inode_owner_or_capable(inode))
-> +		if (!inode_owner_permitted_or_capable(inode, MAY_CHMOD))
->  			return -EPERM;
->  		/* Also check the setgid bit! */
->  		if (!in_group_p((ia_valid & ATTR_GID) ? attr->ia_gid :
-> @@ -69,7 +117,7 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
->  
->  	/* Check for setting the inode time. */
->  	if (ia_valid & (ATTR_MTIME_SET | ATTR_ATIME_SET | ATTR_TIMES_SET)) {
-> -		if (!inode_owner_or_capable(inode))
-> +		if (!inode_owner_permitted_or_capable(inode, MAY_SET_TIMES))
->  			return -EPERM;
->  	}
->  
-> diff --git a/fs/namei.c b/fs/namei.c
-> index eacb530..a4d61d1 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -174,7 +174,7 @@ void putname(const char *name)
->  EXPORT_SYMBOL(putname);
->  #endif
->  
-> -static int check_acl(struct inode *inode, int mask)
-> +int check_acl(struct inode *inode, int mask)
->  {
->  #ifdef CONFIG_FS_POSIX_ACL
->  	struct posix_acl *acl;
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 8afb054..8d5d6e4 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -71,6 +71,9 @@ struct inodes_stat_t {
->  #define MAY_CREATE_DIR		0x00000200
->  #define MAY_DELETE_CHILD	0x00000400
->  #define MAY_DELETE_SELF		0x00000800
-> +#define MAY_TAKE_OWNERSHIP	0x00001000
-> +#define MAY_CHMOD		0x00002000
-> +#define MAY_SET_TIMES		0x00004000
->  
->  /*
->   * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
-> @@ -2234,6 +2237,7 @@ extern sector_t bmap(struct inode *, sector_t);
->  extern int notify_change(struct dentry *, struct iattr *);
->  extern int inode_permission(struct inode *, int);
->  extern int generic_permission(struct inode *, int);
-> +extern int check_acl(struct inode *, int);
->  
->  static inline bool execute_ok(struct inode *inode)
->  {
-> -- 
-> 1.7.4.1
-> 
