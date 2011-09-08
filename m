@@ -1,97 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:36589 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755276Ab1ILPD6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 11:03:58 -0400
-Received: by vxi9 with SMTP id 9so2812782vxi.19
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Sep 2011 08:03:57 -0700 (PDT)
-In-Reply-To: <4E6B0E48.7050208@tonian.com>
-References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com>
- <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com>
- <1315348373.19556.22.camel@lade.trondhjem.org> <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com>
- <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com>
- <F19688880B763E40B28B2B462677FBF805C3299D2F@MX09A.corp.emc.com>
- <1315592430.17611.15.camel@lade.trondhjem.org> <4E6B0E48.7050208@tonian.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Mon, 12 Sep 2011 22:56:50 +0800
-Message-ID: <CA+a=Yy5fMHPcSU4EoSo1uiOUCfi8vjRVPAjEYGZ+M00CwZ8Z9g@mail.gmail.com>
-Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, tao.peng@emc.com,
-        gusev.vitaliy@nexenta.com, gusev.vitaliy@gmail.com,
-        linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from e36.co.us.ibm.com ([32.97.110.154]:54921 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758153Ab1IHKlU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Sep 2011 06:41:20 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: agruen@kernel.org, akpm@linux-foundation.org, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Jeremy Allison <jra@samba.org>
+Subject: Re: [PATCH -V6 00/26]  New ACL format for better NFSv4 acl interoperability
+In-Reply-To: <20110907234408.GA10982@fieldses.org>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20110907234408.GA10982@fieldses.org>
+Date: Thu, 08 Sep 2011 16:10:59 +0530
+Message-ID: <874o0n5nb8.fsf@skywalker.in.ibm.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, Sep 10, 2011 at 3:14 PM, Benny Halevy <bhalevy@tonian.com> wrote:
-> On 2011-09-09 11:20, Trond Myklebust wrote:
->> On Thu, 2011-09-08 at 23:11 -0400, tao.peng@emc.com wrote:
->>> HI, Trond,
->>>
->>>> -----Original Message-----
->>>> From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
->>>> Sent: Friday, September 09, 2011 1:05 AM
->>>> To: Peng Tao
->>>> Cc: Peng, Tao; gusev.vitaliy@nexenta.com; gusev.vitaliy@gmail.com;
->>>> linux-nfs@vger.kernel.org
->>>> Subject: RE: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
->>>>
->>>>> -----Original Message-----
->>>>> From: Peng Tao [mailto:bergwolf@gmail.com]
->>>>> Sent: Thursday, September 08, 2011 11:00 AM
->>>>> To: Myklebust, Trond
->>>>> Cc: tao.peng@emc.com; gusev.vitaliy@nexenta.com;
->>>>> gusev.vitaliy@gmail.com; linux-nfs@vger.kernel.org
->>>>> Subject: Re: [PATCH] nfs: fix inifinite loop at
->>>>> nfs4_layoutcommit_release
->>>>>
->>>>> On Thu, Sep 8, 2011 at 8:01 PM, Myklebust, Trond
->>>>> <Trond.Myklebust@netapp.com> wrote:
->>>>>>> -----Original Message-----
->>>>>
->>>>>>
->>>>>> Yes, but as far as I can see, even in the blocks case there can be
->>>>> multiple extents per layout segment. What if I write to one
->>>>> uninitialised extent, layoutcommit, then write to another uninitialized
->>>>> extent in the same layout segment and layoutcommit? In my reading of
->>>>> the code, there is a chance that the second layoutcommit will fail to
->>>>> pick up the layout segment, and so will fail to notify the MDS that the
->>>>> second extent now contains data.
->>>>>
->>>>> blocklayout does not decide what to layoutcommit according to the lseg
->>>>> list. Instead, it keeps track of each extent's state at the
->>>>> granularity of blocksize, and encode whatever needs layoutcommitted in
->>>>> the layoutcommit call. So in your above case, as long as the second
->>>>> layoutcommit is issued, blocklayout will encode the newly written
->>>>> extent in the second layoutcommit call, even if the lseg is not
->>>>> attached to the second layoutcommit.
->>>>>
->>>>> But that leads to another two question:
->>>>> 1. How do we protect against layoutrecall if lseg is not linked to
->>>>> layoutcommit? For this one, can we just reject layoutrecall if there
->>>>> is inflight layoutcommit? It will be less parallel but can guarantee
->>>>> current implementation correctness.
->>>>> 2. blocklayout ONLY: bl_committing may be overloaded by several
->>>>> layoutcommit calls and we don't have information in
->>>>> cleanup_layoutcommit() on how many entry should be removed from
->>>>> bl_committing. Maybe we can add a (void*) to struct
->>>>> nfs4_layoutcommit_data, so that LD can pass some private information
->>>>> between encode_layoutcommit() and cleanup_layoutcommit()?
->>>>
->>>> 3. What is the purpose of pinning the layout segment at all if neither blocks, nor
->>>> objects nor files cares?
->>> I believe it is for protecting against layoutrecall. But since we are seperating lseg and LD specific layout information management, it is actually not working as expected.
->>>
->
-> The layout segments are not really in use while in LAYOUTCOMMIT.
-> We only need to get the stateid right with respect to concurrent layout recalls.
-LAYOUTCOMMIT takes lseg reference to mark them as in use so that
-layoutrecall cannot free them.
+On Wed, 7 Sep 2011 19:44:08 -0400, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Mon, Sep 05, 2011 at 10:55:22PM +0530, Aneesh Kumar K.V wrote:
+> > Hi,
+> > 
+> > The following set of patches implements VFS and ext4 changes needed to implement
+> > a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
+> > extended by file masks to fit into the standard POSIX file permission model.
+> > They are designed to work seamlessly locally as well as across the NFSv4 and
+> > CIFS/SMB2 network file system protocols.
+> 
+> The posix acl mapping that samba and nfsd currently have to do is
+> painful for everyone and I'm delighted to get away from it.
+> 
+> My main remaining worry (besides the fact that cifs/v4 acls are too
+> complicated--but what can we do about that?)--is about how exactly the
+> (acl, mask)->acl mapping is going to work for nfsd and samba.
 
--- 
-Thanks,
-Tao
+I already have changes to nfsd that maps NFSv4 ACL to the richacl. You
+will find that in richaclv23 branch
+
+git://git.kernel.org/pub/scm/linux/kernel/git/kvaneesh/linux-richacl.git richaclv23
+
+> 
+> If we assume that filesystems are going to mostly use acls or mostly
+> mode bits, then maybe that part doesn't matter a whole lot.  I don't
+> know.
+> 
+
+-aneesh
