@@ -1,50 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ironboy.h-da.de ([141.100.10.230]:28469 "EHLO ironboy.h-da.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751010Ab1ITSOO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Sep 2011 14:14:14 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by mail.fbihome.de (Postfix) with ESMTP id F3EE6932BE
-	for <linux-nfs@vger.kernel.org>; Tue, 20 Sep 2011 20:14:15 +0200 (CEST)
-Received: from mail.fbihome.de ([127.0.0.1])
-	by localhost (stud1 [127.0.0.1]) (amavisd-new, port 10024) with ESMTP
-	id 17257-19 for <linux-nfs@vger.kernel.org>;
-	Tue, 20 Sep 2011 20:14:15 +0200 (CEST)
-Received: from users.fbihome.de (unknown [141.100.40.82])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mail.fbihome.de (Postfix) with ESMTP id D62F2932BD
-	for <linux-nfs@vger.kernel.org>; Tue, 20 Sep 2011 20:14:15 +0200 (CEST)
-Date: Tue, 20 Sep 2011 20:14:12 +0200 (CEST)
-From: Jan-Marek Glogowski <glogow@fbihome.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] idmapd: Fix decoding of octal encoded fields.
-Message-ID: <alpine.DEB.2.02.1109201952540.26882@users.fbihome.de>
-Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:45314
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752392Ab1IINDA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Sep 2011 09:03:00 -0400
+Date: Fri, 9 Sep 2011 09:02:57 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: Mel Gorman <mgorman@suse.de>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Peter Zijlstra <a.p.zijlstra@chello.nl>
+Subject: Re: [PATCH 10/10] Avoid dereferencing bd_disk during swap_entry_free
+ for network storage
+Message-ID: <20110909130257.GA15212@infradead.org>
+References: <1315566054-17209-1-git-send-email-mgorman@suse.de>
+ <1315566054-17209-11-git-send-email-mgorman@suse.de>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1315566054-17209-11-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The decoded octal will always be positive and (char) -1 is negative. Any 
-field containing an encoded octal will be rejected.
+On Fri, Sep 09, 2011 at 12:00:54PM +0100, Mel Gorman wrote:
+> Commit [b3a27d: swap: Add swap slot free callback to
+> block_device_operations] dereferences p->bdev->bd_disk but this is a
+> NULL dereference if using swap-over-NFS. This patch checks SWP_BLKDEV
+> on the swap_info_struct before dereferencing.
 
-As the encoded value should be an unsigned char, fix the check to reject 
-all values > (unsigned char) -1 = UCHAR_MAX, as this indicate an error in 
-the encoding.
+Please just remove the callback entirely.  It has no user outside the
+staging tree and was added clearly against the rules for that staging
+tree.
 
-Signed-off-by: Jan-Marek Glogowski <glogow@fbihome.de>
+(and it's butt ugly)
 
---- nfs-utils-1.2.4.orig/utils/idmapd/idmapd.c
-+++ nfs-utils-1.2.4/utils/idmapd/idmapd.c
-@@ -925,9 +925,9 @@ getfield(char **bpp, char *fld, size_t f
-  		if (*bp == '\\') {
-  			if ((n = sscanf(bp, "\\%03o", &val)) != 1)
-  				return (-1);
--			if (val > (char)-1)
-+			if (val > UCHAR_MAX)
-  				return (-1);
--			*fld++ = (char)val;
-+			*fld++ = val;
-  			bp += 4;
-  		} else {
-  			*fld++ = *bp;
