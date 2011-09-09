@@ -1,112 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f42.google.com ([209.85.212.42]:42552 "EHLO
-	mail-vw0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752645Ab1IPP24 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2011 11:28:56 -0400
-Received: by vwl1 with SMTP id 1so7220596vwl.1
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Sep 2011 08:28:54 -0700 (PDT)
-In-Reply-To: <1316185444.5570.3.camel@lade.trondhjem.org>
-References: <1315802900-1548-1-git-send-email-bergwolf@gmail.com>
- <1316108327.5271.4.camel@lade.trondhjem.org.localdomain> <1316108897.5271.6.camel@lade.trondhjem.org.localdomain>
- <F19688880B763E40B28B2B462677FBF805C495258C@MX09A.corp.emc.com> <1316185444.5570.3.camel@lade.trondhjem.org>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Fri, 16 Sep 2011 23:28:34 +0800
-Message-ID: <CA+a=Yy5+XCcjXQWao6=yXC4h_yyDCQkX_bhonbPx1D3XbVPGWw@mail.gmail.com>
-Subject: Re: [PATCH] nfs4: serialize layoutcommit
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: tao.peng@emc.com, bhalevy@tonian.com, gusev.vitaliy@nexenta.com,
-        linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:41978 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933764Ab1IIMCZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Sep 2011 08:02:25 -0400
+Date: Fri, 9 Sep 2011 08:02:14 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: agruen@kernel.org, akpm@linux-foundation.org, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V6 09/26] vfs: Add delete child and delete self
+ permission flags
+Message-ID: <20110909120214.GI17215@fieldses.org>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1315243548-18664-10-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <20110907203916.GE8074@fieldses.org>
+ <87ipp35qjx.fsf@skywalker.in.ibm.com>
+ <20110908200754.GB17215@fieldses.org>
+ <20110908220246.GD17215@fieldses.org>
+ <87r53q47jc.fsf@skywalker.in.ibm.com>
+ <87obyu4792.fsf@skywalker.in.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87obyu4792.fsf@skywalker.in.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Sep 16, 2011 at 11:04 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> On Fri, 2011-09-16 at 07:58 -0400, tao.peng@emc.com wrote:
->> Hi, Trond,
->>
->> > -----Original Message-----
->> > From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com]
->> > Sent: Friday, September 16, 2011 1:48 AM
->> > To: Peng Tao
->> > Cc: bhalevy@tonian.com; Vitaliy Gusev; linux-nfs@vger.kernel.org; Peng, Tao
->> > Subject: Re: [PATCH] nfs4: serialize layoutcommit
->> >
->> > On Thu, 2011-09-15 at 13:38 -0400, Trond Myklebust wrote:
->> > > On Sun, 2011-09-11 at 21:48 -0700, Peng Tao wrote:
->> > > > Current pnfs_layoutcommit_inode can not handle parallel layoutcommit.
->> > > > As Trond suggested, there is no need for client to optimize for
->> > > > parallel layoutcommit. The patch add NFS_INO_LAYOUTCOMMITTING flag to
->> > > > mark inflight layoutcommit and serialize lalyoutcommit with it.
->> > > > It also fixes the pls_lc_list corruption that Vitaliy found.
->> > > >
->> > > > Reported-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
->> > > > Signed-off-by: Peng Tao <peng_tao@emc.com>
->> > > > ---
->> > > >  fs/nfs/nfs4proc.c      |    6 ++++++
->> > > >  fs/nfs/pnfs.c          |    9 +++++++++
->> > > >  include/linux/nfs_fs.h |    1 +
->> > > >  3 files changed, 16 insertions(+), 0 deletions(-)
->> > > >
->> > > > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> > > > index 4700fae..a7ce210 100644
->> > > > --- a/fs/nfs/nfs4proc.c
->> > > > +++ b/fs/nfs/nfs4proc.c
->> > > > @@ -5970,6 +5970,7 @@ static void nfs4_layoutcommit_release(void *calldata)
->> > > >  {
->> > > >         struct nfs4_layoutcommit_data *data = calldata;
->> > > >         struct pnfs_layout_segment *lseg, *tmp;
->> > > > +       unsigned long *bitlock = &NFS_I(data->args.inode)->flags;
->> > > >
->> > > >         pnfs_cleanup_layoutcommit(data);
->> > > >         /* Matched by references in pnfs_set_layoutcommit */
->> > > > @@ -5979,6 +5980,11 @@ static void nfs4_layoutcommit_release(void
->> > *calldata)
->> > > >                                        &lseg->pls_flags))
->> > > >                         put_lseg(lseg);
->> > > >         }
->> > > > +
->> > > > +       clear_bit_unlock(NFS_INO_LAYOUTCOMMITTING, bitlock);
->> > > > +       smp_mb__after_clear_bit();
->> > > > +       wake_up_bit(bitlock, NFS_INO_LAYOUTCOMMITTING);
->> > > > +
->> > > >         put_rpccred(data->cred);
->> > > >         kfree(data);
->> > > >  }
->> > > > diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> > > > index b483bbc..fb71def 100644
->> > > > --- a/fs/nfs/pnfs.c
->> > > > +++ b/fs/nfs/pnfs.c
->> > > > @@ -1451,10 +1451,19 @@ pnfs_layoutcommit_inode(struct inode *inode,
->> > bool sync)
->> > > >                 goto out;
->> > > >         }
->> > > >
->> > > > +       if (!test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags) ||
->> > > > +           (status = wait_on_bit_lock(&nfsi->flags,
->> > NFS_INO_LAYOUTCOMMITTING,
->> > > > +                               nfs_wait_bit_killable, TASK_KILLABLE))) {
->> > >
->> > > You want the sleeping behaviour above to be subject to the 'sync' flag
->> > > (in the same way we do for regular commit). If !sync, then try to grab
->> > > the bit lock anyway, and exit on failure.
->> I'm a little confused about the "!sync" here. If we return failure, what do we expect callers to do?
->> Looking at the calling stack, I don't see any users retrying on -EAGAIN. Does the "!sync" necessarily mean non-blocking?
->>
->> >
->> > By the way. Shouldn't pnfs_layoutcommit_inode() also be marking the
->> > inode as dirty on failure?
->> Yeah, right, we should mark inode as dirty on failure.
->
-> The !sync means that we're being called from a context such as kswapd
-> where we really don't want to sleep or block the thread.
->
-> In the case where this happens, and the NFS_INO_LAYOUTCOMMITTING bit
-> can't be set, we should exit and mark the inode as dirty so that we can
-> retry at a later time. Please see the 'commit' code, which has the same
-> properties...
-I see. Thanks for the explanation. I will update the patch.
+On Fri, Sep 09, 2011 at 10:55:29AM +0530, Aneesh Kumar K.V wrote:
+> On Fri, 09 Sep 2011 10:49:19 +0530, "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> > On Thu, 8 Sep 2011 18:02:46 -0400, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > On Thu, Sep 08, 2011 at 04:07:54PM -0400, J. Bruce Fields wrote:
+> > > > On Thu, Sep 08, 2011 at 03:00:58PM +0530, Aneesh Kumar K.V wrote:
+> > > > > On Wed, 7 Sep 2011 16:39:16 -0400, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > > > On Mon, Sep 05, 2011 at 10:55:31PM +0530, Aneesh Kumar K.V wrote:
+> > > > > > > +static int may_delete(struct inode *dir, struct dentry *victim,
+> > > > > > > +		      int isdir, int replace)
+> > > > > > >  {
+> > > > > > > -	int error;
+> > > > > > > +	int mask, error, is_sticky;
+> > > > > > > +	struct inode *inode = victim->d_inode;
+> > > > > > >  
+> > > > > > > -	if (!victim->d_inode)
+> > > > > > > +	if (!inode)
+> > > > > > >  		return -ENOENT;
+> > > > > > >  
+> > > > > > >  	BUG_ON(victim->d_parent->d_inode != dir);
+> > > > > > >  	audit_inode_child(victim, dir);
+> > > > > > >  
+> > > > > > > -	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
+> > > > > > > +	mask = MAY_WRITE | MAY_EXEC | MAY_DELETE_CHILD;
+> > > > > > > +	if (replace)
+> > > > > > > +		mask |= S_ISDIR(inode->i_mode) ?
+> > > > > > > +			MAY_CREATE_DIR : MAY_CREATE_FILE;
+> > > > > > 
+> > > > > > I'm having trouble understanding this next bit:
+> > > > > > 
+> > > > > > > +	is_sticky = check_sticky(dir, inode);
+> > > > > > > +	error = inode_permission(dir, mask);
+> > > > > > > +	if ((error || is_sticky) && IS_RICHACL(inode) &&
+> > > > > > > +	    !inode_permission(dir, mask & ~(MAY_WRITE | MAY_DELETE_CHILD)) &&
+> > > > > > > +	    !inode_permission(inode, MAY_DELETE_SELF))
+> > > > > > > +		error = 0;
+> > > > > > 
+> > > > > > OK, so we can ignore the lack of write or delete permissions on the
+> > > > > > parent if we have delete_self permissions on the child.  I guess that's
+> > > > > > right.
+> > > > > > 
+> > > > > > Why the "|| is_sticky" above?
+> > > > > > 
+> > > > > > Is there some less complicated why to write this?
+> > > > > 
+> > > > > we removed the ns_capable check out of check_sticky, because we don't
+> > > > > want to do capability check when richacl allows access. We also want to
+> > > > > make sure that even if mode bits allow access (inode_permission(dir, mask))
+> > > > > if sticky bit is set we do additional check.
+> > > > 
+> > > > Why are the two inode_permissions ANDed?  The windows semantics are that
+> > > > you can delete if you have MAY_DELETE_CHILD *or* MAY_DELETE_SELF.
+> > > 
+> > > Either way, those conditions are just really hard to follow.  Could you
+> > > simplify the logic, add comments, maybe move the richacl stuff into a
+> > > little helper function?
+> > > 
+> > > Also, a nit:
+> > > 
+> > > > > > > +	    !inode_permission(dir, mask & ~(MAY_WRITE | MAY_DELETE_CHILD)) &&
+> > > 
+> > > The way you calculated mask above it always includes MAY_WRITE and
+> > > MAY_DELETE_CHILD, so the above is equivalent to just
+> > > 
+> > > 		    !inode_permission(dir, MAY_WRITE | MAY_DELETE_CHILD) &&
+> > > 
+> > > isn't it?
+> > > 
+> > 
+> > I guess i can simplify it as 
+> >   !inode_permission(dir, MAY_EXEC | replace_mask)
 
-Best,
-Tao
+Oh, crap, I see, I was misreading the & ~(MAY_WRITE...) as
+&(MAY_WRITE...).  OK, that makes more sense now.  And using replace_mask
+as below does make it clearer, thanks.
+
+--b.
+
+> >   
+> 
+> diff --git a/fs/namei.c b/fs/namei.c
+> index 1054bc3..e545c81 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -1912,8 +1912,9 @@ other_userns:
+>  static int may_delete(struct inode *dir, struct dentry *victim,
+>  		      int isdir, int replace)
+>  {
+> -	int mask, error, is_sticky;
+>  	struct inode *inode = victim->d_inode;
+> +	int mask, replace_mask = 0, error, is_sticky;
+> +
+>  
+>  	if (!inode)
+>  		return -ENOENT;
+> @@ -1923,12 +1924,12 @@ static int may_delete(struct inode *dir, struct dentry *victim,
+>  
+>  	mask = MAY_WRITE | MAY_EXEC | MAY_DELETE_CHILD;
+>  	if (replace)
+> -		mask |= S_ISDIR(inode->i_mode) ?
+> -			MAY_CREATE_DIR : MAY_CREATE_FILE;
+> +		replace_mask = S_ISDIR(inode->i_mode) ?
+> +				MAY_CREATE_DIR : MAY_CREATE_FILE;
+>  	is_sticky = check_sticky(dir, inode);
+> -	error = inode_permission(dir, mask);
+> +	error = inode_permission(dir, mask | replace_mask);
+>  	if ((error || is_sticky) && IS_RICHACL(inode) &&
+> -	    !inode_permission(dir, mask & ~(MAY_WRITE | MAY_DELETE_CHILD)) &&
+> +	    !inode_permission(dir, MAY_EXEC | replace_mask) &&
+>  	    !inode_permission(inode, MAY_DELETE_SELF))
+>  		error = 0;
+>  	else if (!error && is_sticky &&
