@@ -1,77 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61903 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54143 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752834Ab1IHPLo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Sep 2011 11:11:44 -0400
-Message-ID: <4E68DB29.5090005@RedHat.com>
-Date: Thu, 08 Sep 2011 11:11:37 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Richard Smits <R.Smits@tudelft.nl>
-CC: NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org
-Subject: Re: rpc.mountd switch not working
-References: <4E64C8A0.6020806@tudelft.nl> <20110907160933.2a26ef3a@notabene.brown> <4E687AA8.6000706@tudelft.nl>
-In-Reply-To: <4E687AA8.6000706@tudelft.nl>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1752176Ab1IIMsz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Sep 2011 08:48:55 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: dhowells@redhat.com, agruen@kernel.org, bfields@fieldses.org,
+        akpm@linux-foundation.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V6 00/26] New ACL format for better NFSv4 acl interoperability
+Date: Fri, 09 Sep 2011 13:48:18 +0100
+Message-ID: <25175.1315572498@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com> wrote:
 
-
-On 09/08/2011 04:19 AM, Richard Smits wrote:
-> On 09/07/2011 08:09 AM, NeilBrown wrote:
->> On Mon, 05 Sep 2011 15:03:28 +0200 Richard Smits<R.Smits@tudelft.nl>  wrote:
->>
->>> Hello,
->>>
->>> I have a question about the use of the following switch with rpc.mountd.
->>>
->>> -g  or  --manage-gids
->>>
->>> It has come to my attention that the use of this switch is not working
->>> well in Redhat v6. When I have a user who has a large group membership,
->>> the following errors appear, and the "cd" command hangs.
->>>
->>> Sep  5 14:50:04 srv043 rpc.mountd[2563]: qword_eol: fflush failed: errno
->>> 22 (Invalid argument)
->>>
->>> Process :
->>>
->>> root      2563     1  0 14:44 ?        00:00:00 rpc.mountd -g
->>>
->>> The use of 60 groups is working well, but we have some users with more
->>> than 100 groups, and those fails. For uid mapping we use Winbind.
->>>
->>> /etc/exports :
->>>
->>> /export  server.company.com(rw,no_subtree_check,no_root_squash)
->>>
->>> Client fstab :
->>>
->>> server.company.com:/export   /data           nfs
->>> nolock,defaults,user        1 2
->>>
->>> Can anyone tell me what this error means ?
->>
->> Probably means that the redhat package is missing upstream commit
->> 9274e94db85bac04e170414cb8e0f4be271cde90
->> (which is from April this year, so not unlikely).
->>
->> http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=commitdiff;h=5604b35a61e22930873ffc4e9971002f578e7978
->>
->> NeilBrown
+> The following set of patches implements VFS and ext4 changes needed to implement
+> a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
+> extended by file masks to fit into the standard POSIX file permission model.
+> They are designed to work seamlessly locally as well as across the NFSv4 and
+> CIFS/SMB2 network file system protocols.
 > 
-> Yes, the nfsd is from april this year, so i think you're right.
+> A user-space utility for displaying and changing richacls is available at [4]
+> (a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
 > 
-> -rwxr-xr-x. 1 root root 19960 Apr 20 19:21 /usr/sbin/rpc.nfsd
+> [4] git://git.kernel.org/pub/scm/fs/acl/kvaneesh/richacl.git master
 > 
-> nfs-utils-1.2.3-7.el6.x86_64
+> To test richacl on ext4 use -o richacl mount option. This mount option may later be
+> dropped in favour of a feature flag.
 > 
-> I wil try to find a solution. Thank you for the information.
-I just opened up the following bz:
+> More details regarding richacl can be found at
+> http://acl.bestbits.at/richacl/
+> 
+> Changes from v5:
+> a) rebase to v3.1-rc4-131-g9e79e3e
+> 
+> NOTE: The kernel changes will be pushed to
+> git://git.kernel.org/pub/scm/linux/kernel/git/kvaneesh/linux-richacl.git richacl
+> when kernel.org is back
 
-https://bugzilla.redhat.com/show_bug.cgi?id=736741
-
-I'll try to get the fix in the next update release... 
-
-steved.
+Acked-by: David Howells <dhowells@redhat.com> for all patches generally where
+I haven't found anything bad.
