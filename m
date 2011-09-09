@@ -1,88 +1,29 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59156 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:26818 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932890Ab1IIUDF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Sep 2011 16:03:05 -0400
-Date: Fri, 9 Sep 2011 16:03:04 -0400
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: shouldn't rpc_pipe_upcall message structs be
- __attribute__((packed)) ?
-Message-ID: <20110909200304.GA32125@fieldses.org>
-References: <20110909143605.57d54899@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110909143605.57d54899@tlielax.poochiereds.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1753398Ab1IIOEj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Sep 2011 10:04:39 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <25175.1315572498@redhat.com>
+References: <25175.1315572498@redhat.com> <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: dhowells@redhat.com, agruen@kernel.org, bfields@fieldses.org,
+        akpm@linux-foundation.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V6 00/26] New ACL format for better NFSv4 acl interoperability
+Date: Fri, 09 Sep 2011 15:03:36 +0100
+Message-ID: <26458.1315577016@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, Sep 09, 2011 at 02:36:05PM -0400, Jeff Layton wrote:
-> I've been looking at replacing the current scheme that knfsd uses to
-> track client_id4's (aka the v4recoverydir stuff), with an
-> upcall/downcall scheme. Primarily this is to allow for more robust
-> handling of clustered NFSv4 services.
-> 
-> In the process, I've been looking at the various upcall schemes we use
-> to see which ones might be suitable to use in this effort. I've noticed
-> that we have several upcalls that use rpc_pipefs, and that all of them
-> seem to make assumptions that the userspace programs will align their
-> message structs identically to how the kernel does.
-> 
-> For instance, here's the idmap one:
-> 
-> struct idmap_msg {
->         __u8  im_type;
->         __u8  im_conv;
->         char  im_name[IDMAP_NAMESZ];
->         __u32 im_id;
->         __u8  im_status;
-> };
+David Howells <dhowells@redhat.com> wrote:
 
-That's the "legacy" idmap code, right?
+> Acked-by: David Howells <dhowells@redhat.com> for all patches generally where
+> I haven't found anything bad.
 
-In which case we want to leave it alone if at all possible and move
-people to the new idmapper.
+Having said that, there's a distinct lack of changes in the Documentation
+directory...
 
---b.
-
-> 
-> Note that this struct does not have __attribute__((packed)), so the
-> compiler is allowed to add padding between the fields as it sees fit.
-> 
-> If, for instance, someone were to build the userspace programs
-> differently than the kernel (for instance x86_64 kernel with i686
-> userspace), it's possible that the padding between them would be
-> different. It's also possible that different compilers might align
-> things differently here.
-> 
-> The blocklayout upcall is even more scary as the width of the status
-> field is not explicit:
-> 
-> struct bl_dev_msg {
->         int status;
->         uint32_t major, minor;
-> };
-> 
-> ...it's unlikely that the kernel and userspace would differ on the size
-> of an int here, but it might be a good idea to go ahead and make that
-> explicitly 32 bits in case we end up dealing with more exotic arches at
-> some point in the future.
-> 
-> I'm not sure what we can really do about this at this point. Adding
-> this attribute now would definitely be an kernel/userspace
-> compatibility issue.
-> 
-> One possibility is to add padding between the fields that aligns with
-> the current padding that the compiler adds and then make them "packed".
-> That might make these structs arch-specific though since different
-> arches probably pad these differently... :-/
-> 
-> Am I making mountains out of molehills here? Thoughts?
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+David
