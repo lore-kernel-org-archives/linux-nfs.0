@@ -1,61 +1,147 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:29655 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:25479 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751127Ab1I0PLT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Sep 2011 11:11:19 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-Date: Tue, 27 Sep 2011 08:11:14 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B54E566@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <CA+55aFw408L6kHwx6tFGCbvmfqfL6r0zkqtUqSe0ngCjammUhA@mail.gmail.com>
-References: <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com> <1316747758.3346.89.camel@perseus.themaw.net> <20110922134510.24683.14576.stgit@warthog.procyon.org.uk> <1316707443.3346.44.camel@perseus.themaw.net> <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com> <1316709935.3346.48.camel@perseus.themaw.net> <20110922133529.6d3ea8de@barsoom.rdu.redhat.com> <20110922144453.6cf53a25@barsoom.rdu.redhat.com> <1316719228.3968.14.camel@lade.trondhjem.org> <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com> <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com> <21772.1316774025@redhat.com> <1316788444.14812.10.camel@lade.trondhjem.org> <29743.1316791138@redhat.com> <87hb43tf2g.fsf@tucsk.pomaz.szeredi.hu> <1316827854.3346.154.camel@perseus.themaw.net> <CA+55aFwPEq5B_P0RtX+pBtGfTadzzS+3U=k=3XTjDw3soNhOdA@mail.gmail.com> <20110924073610.4b045189@tl!
- ielax.poo
-	chiereds.net
-	> <CA+55aFxjFXbCKBZNfBuCOaiBHRQ=ZECnhqKxjPw9maPgyRLiDA@mail.gmail.com> <1317013864.3187.81.camel@perseus.themaw.net> <CA+55aFzJnKCHtsiH-mZOwQgVt1ajPJQHWRYB_19eXEKaGRPD1w@mail.gmail.com> <1317071626.19951.8.camel@lade.trondhjem.org> <CA+55aFzWCZQjWMcxg16yMUoLr-mEPuXzAFgv49LU4hCn+=rbwQ@mail.gmail.com> <1317072718.19951.13.camel@lade.trondhjem.org> <CA+55aFzaScGiKmsSrgXivoUPw4xHjKobsB4VquuEu1fG=7R+wA@mail.gmail.com> <1317076424.19951.32.camel@lade.trondhjem.org> <CA+55aFzi+0Z6HXJCxW=Uc1EZsp4qA00i+ihNcSX_v6bVTbU2BA@mail.gmail.com> <1317078563.21770.8.camel@lade.trondhjem.org> <CA+55aFzX+DyU7xhAmTLq0g_z6jyKuqoiyPdCYO+w2Xk7pECrqg@mail.gmail.com> <1317085155.21770.17.camel@lade.trondhjem.org> <CA+55aFxuaJ-a5u79D2pELU4HbWTrbWjG_4BNcvFqEOcM0H8G2Q@mail.gmail.com> <1317097001.3176.20.camel@perseus.themaw.net> <CA+55aFyzxvJJgOkojvV-83ejNtQnXeRnXerwzWRdwFgPF_yMhg@mail.gmail.com> <1317099091.3176.31.camel@perseus.themaw.net> <CA+55aFw408L6kHwx6tFGCbvmfqfL6r0zkqtUqSe0ngCjammUhA@mail.
-	gmail.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Linus Torvalds" <torvalds@linux-foundation.org>,
-        "Ian Kent" <raven@themaw.net>
-Cc: "Jeff Layton" <jlayton@redhat.com>, "Miklos Szeredi" <miklos@szeredi.hu>,
-        "David Howells" <dhowells@redhat.com>, <viro@zeniv.linux.org.uk>,
-        <gregkh@suse.de>, <linux-nfs@vger.kernel.org>,
-        <leonardo.lists@gmail.com>
+	id S1759318Ab1IIQmR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Sep 2011 12:42:17 -0400
+Message-ID: <4E6A41D4.6090001@parallels.com>
+Date: Fri, 09 Sep 2011 20:41:56 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>
+Subject: Re: [PATCH v2 3/5] SUNRPC: make RPC service dependable on rpcbind
+ clients creation
+References: <20110909115146.13697.71682.stgit@localhost6.localdomain6>	<20110909120844.13697.48102.stgit@localhost6.localdomain6> <20110909100745.7e2e8bf9@corrin.poochiereds.net>
+In-Reply-To: <20110909100745.7e2e8bf9@corrin.poochiereds.net>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> -----Original Message-----
-> From: Linus Torvalds [mailto:torvalds@linux-foundation.org]
-> Sent: Tuesday, September 27, 2011 10:32 AM
-> To: Ian Kent
-> Cc: Myklebust, Trond; Jeff Layton; Miklos Szeredi; David Howells;
-> viro@zeniv.linux.org.uk; gregkh@suse.de; linux-nfs@vger.kernel.org;
-> leonardo.lists@gmail.com
-> Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr,
-etc.
-> 
-> On Mon, Sep 26, 2011 at 9:51 PM, Ian Kent <raven@themaw.net> wrote:
-> >
-> > Is there a source tree somewhere, I'm not sure now exactly what has
-> > been changed. I can run tests if I can get accurate source.
-> 
-> It's all at git://github.com/torvalds/linux.
-> 
-> I've only applied two patches so far, though: the "Add
-> LOOKUP_AUTOMOUNT flag" (that didn't actually set it anywhere), and
-then
-> the minimal version of Trond's patch.
-> 
-> And I see that I have a few patches from Trond in my mailbox, but I
-haven't
-> looked at them yet.
+09.09.2011 18:07, Jeff Layton пишет:
+> On Fri, 09 Sep 2011 16:08:44 +0400
+> Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
+>
+>> Create rcbind clients or increase rpcbind users counter during RPC service
+>> creation and decrease this counter (and possibly destroy those clients) on RPC
+>> service destruction.
+>>
+>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>>
+>> ---
+>>   include/linux/sunrpc/clnt.h |    2 ++
+>>   net/sunrpc/rpcb_clnt.c      |    2 +-
+>>   net/sunrpc/svc.c            |   13 +++++++++++--
+>>   3 files changed, 14 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+>> index db7bcaf..65a8115 100644
+>> --- a/include/linux/sunrpc/clnt.h
+>> +++ b/include/linux/sunrpc/clnt.h
+>> @@ -135,10 +135,12 @@ void		rpc_shutdown_client(struct rpc_clnt *);
+>>   void		rpc_release_client(struct rpc_clnt *);
+>>   void		rpc_task_release_client(struct rpc_task *);
+>>
+>> +int		rpcb_create_local(void);
+>>   int		rpcb_register(u32, u32, int, unsigned short);
+>>   int		rpcb_v4_register(const u32 program, const u32 version,
+>>   				 const struct sockaddr *address,
+>>   				 const char *netid);
+>> +void		rpcb_put_local(void);
+>>   void		rpcb_getport_async(struct rpc_task *);
+>>
+>>   void		rpc_call_start(struct rpc_task *);
+>> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+>> index b4cc0f1..437ec60 100644
+>> --- a/net/sunrpc/rpcb_clnt.c
+>> +++ b/net/sunrpc/rpcb_clnt.c
+>> @@ -318,7 +318,7 @@ out:
+>>    * Returns zero on success, otherwise a negative errno value
+>>    * is returned.
+>>    */
+>> -static int rpcb_create_local(void)
+>> +int rpcb_create_local(void)
+>>   {
+>>   	static DEFINE_MUTEX(rpcb_create_local_mutex);
+>>   	int result = 0;
+>> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+>> index 6a69a11..9095c0e 100644
+>> --- a/net/sunrpc/svc.c
+>> +++ b/net/sunrpc/svc.c
+>> @@ -367,8 +367,11 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+>>   	unsigned int xdrsize;
+>>   	unsigned int i;
+>>
+>> -	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
+>> +	if (rpcb_create_local()<  0)
+>>   		return NULL;
+>> +
+>> +	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
+>> +		goto out_err;
+>>   	serv->sv_name      = prog->pg_name;
+>>   	serv->sv_program   = prog;
+>>   	serv->sv_nrthreads = 1;
+>> @@ -403,7 +406,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+>>   			GFP_KERNEL);
+>>   	if (!serv->sv_pools) {
+>>   		kfree(serv);
+>> -		return NULL;
+>> +		goto out_err;
+>>   	}
+>>
+>>   	for (i = 0; i<  serv->sv_nrpools; i++) {
+>> @@ -423,6 +426,10 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+>>   	svc_unregister(serv);
+>>
+>>   	return serv;
+>> +
+>> +out_err:
+>> +	rpcb_put_local();
+>> +	return NULL;
+>>   }
+>>
+>>   struct svc_serv *
+>> @@ -491,6 +498,8 @@ svc_destroy(struct svc_serv *serv)
+>>   	svc_unregister(serv);
+>>   	kfree(serv->sv_pools);
+>>   	kfree(serv);
+>> +
+>> +	rpcb_put_local();
+>>   }
+>>   EXPORT_SYMBOL_GPL(svc_destroy);
+>>
+>>
+>
+> I don't get it -- what's the advantage of creating rpcbind clients in
+> __svc_create vs. the old way of creating them just before we plan to
+> use them?
+>
 
-I should have checked the github repository before posting.
-The stuff you've already committed appears to obsolete the 1/2 patch,
-but it might still be worth your while looking at 2/2: that documents
-which lookups we expect might result in an automount of the last
-component (but contains no actual functional changes).
+The main problem here is not in creation, but in destroying those clients.
+Now rpcbind clients are created during rpcb_register(). I.e. once per every family, program version and so on.
+But can be unregistered for all protocol families by one call. So it's impossible to put reference counting for those clients in the place, where they are created now.
 
-Cheers
-  Trond
+> With this scheme, won't we end up creating rpcbind sockets even when we
+> don't need them? For instance, if I create a callback socket for NFSv4
+> then I don't really need to talk to rpcbind. With this patch I'll still
+> get the rpcbind clients created though.
+>
+
+Yep, you right. This is not a real problem from my pow.
+But I'll think about how to avoid this creation for nfs callbacks.
+
+> It would seem to me to make more sense to create the rpcbind clients
+> somewhere closer to svc_setup_socket, and only if SVC_SOCK_ANONYMOUS is
+> not set.
+>
+
+Probably. Will try to find better place.
+
+-- 
+Best regards,
+Stanislav Kinsbursky
