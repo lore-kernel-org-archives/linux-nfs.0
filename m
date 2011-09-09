@@ -1,57 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:64879 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751473Ab1IWK3a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2011 06:29:30 -0400
-Received: by fxe4 with SMTP id 4so3671588fxe.19
-        for <linux-nfs@vger.kernel.org>; Fri, 23 Sep 2011 03:29:29 -0700 (PDT)
-Message-ID: <4E7C5F84.50902@tonian.com>
-Date: Fri, 23 Sep 2011 13:29:24 +0300
-From: Benny Halevy <benny@tonian.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH] nfs-utils/blkmapd: Add complex block layout discovery
- and mapping daemon
-References: <1313086848-7435-1-git-send-email-rees@umich.edu> <4E749FBC.5090609@RedHat.com> <4E7B901A.8060907@RedHat.com>
-In-Reply-To: <4E7B901A.8060907@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mexforward.lss.emc.com ([128.222.32.20]:48879 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752056Ab1IIDMF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Sep 2011 23:12:05 -0400
+From: <tao.peng@emc.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <gusev.vitaliy@nexenta.com>, <gusev.vitaliy@gmail.com>,
+        <linux-nfs@vger.kernel.org>, <bergwolf@gmail.com>
+Date: Thu, 8 Sep 2011 23:11:49 -0400
+Subject: RE: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
+Message-ID: <F19688880B763E40B28B2B462677FBF805C3299D2F@MX09A.corp.emc.com>
+References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com>
+ <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com>
+ <1315348373.19556.22.camel@lade.trondhjem.org>
+ <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com>
+ <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Steve,
-
-I'd like to rebase my pnfs-nfs-utils tree on top of your tree
-but I'd rather do it on top of an "official" release rather than
-over an arbitrary tip...
-
-When do you plan on releasing a new -rc?
-
-Benny
-
-On 2011-09-22 22:44, Steve Dickson wrote:
-> 
-> 
-> On 09/17/2011 09:25 AM, Steve Dickson wrote:
->> Hey Jim,
->>
->> My apologies for taking so long to get to this... For some
->> reason I never added to my TODO list... That problem has
->> been resolved... 
->>  
->>
->> On 08/11/2011 02:20 PM, Jim Rees wrote:
->>> This daemon is required to handle upcalls from the kernel pnfs block layout
->>> driver.
->>>
->>> Signed-off-by: Jim Rees <rees@umich.edu>
-> Committed with a few minor tweaks to both configure.ac 
-> and utils/blkmapd/Makefile.ac that we discussed.
-> 
-> steved.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+SEksIFRyb25kLA0KDQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IE15a2xl
+YnVzdCwgVHJvbmQgW21haWx0bzpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbV0NCj4gU2VudDog
+RnJpZGF5LCBTZXB0ZW1iZXIgMDksIDIwMTEgMTowNSBBTQ0KPiBUbzogUGVuZyBUYW8NCj4gQ2M6
+IFBlbmcsIFRhbzsgZ3VzZXYudml0YWxpeUBuZXhlbnRhLmNvbTsgZ3VzZXYudml0YWxpeUBnbWFp
+bC5jb207DQo+IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gU3ViamVjdDogUkU6IFtQQVRD
+SF0gbmZzOiBmaXggaW5pZmluaXRlIGxvb3AgYXQgbmZzNF9sYXlvdXRjb21taXRfcmVsZWFzZQ0K
+PiANCj4gPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+IEZyb206IFBlbmcgVGFvIFtt
+YWlsdG86YmVyZ3dvbGZAZ21haWwuY29tXQ0KPiA+IFNlbnQ6IFRodXJzZGF5LCBTZXB0ZW1iZXIg
+MDgsIDIwMTEgMTE6MDAgQU0NCj4gPiBUbzogTXlrbGVidXN0LCBUcm9uZA0KPiA+IENjOiB0YW8u
+cGVuZ0BlbWMuY29tOyBndXNldi52aXRhbGl5QG5leGVudGEuY29tOw0KPiA+IGd1c2V2LnZpdGFs
+aXlAZ21haWwuY29tOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnDQo+ID4gU3ViamVjdDogUmU6
+IFtQQVRDSF0gbmZzOiBmaXggaW5pZmluaXRlIGxvb3AgYXQNCj4gPiBuZnM0X2xheW91dGNvbW1p
+dF9yZWxlYXNlDQo+ID4NCj4gPiBPbiBUaHUsIFNlcCA4LCAyMDExIGF0IDg6MDEgUE0sIE15a2xl
+YnVzdCwgVHJvbmQNCj4gPiA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+
+ID4+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+ID4NCj4gPiA+DQo+ID4gPiBZZXMsIGJ1
+dCBhcyBmYXIgYXMgSSBjYW4gc2VlLCBldmVuIGluIHRoZSBibG9ja3MgY2FzZSB0aGVyZSBjYW4g
+YmUNCj4gPiBtdWx0aXBsZSBleHRlbnRzIHBlciBsYXlvdXQgc2VnbWVudC4gV2hhdCBpZiBJIHdy
+aXRlIHRvIG9uZQ0KPiA+IHVuaW5pdGlhbGlzZWQgZXh0ZW50LCBsYXlvdXRjb21taXQsIHRoZW4g
+d3JpdGUgdG8gYW5vdGhlciB1bmluaXRpYWxpemVkDQo+ID4gZXh0ZW50IGluIHRoZSBzYW1lIGxh
+eW91dCBzZWdtZW50IGFuZCBsYXlvdXRjb21taXQ/IEluIG15IHJlYWRpbmcgb2YNCj4gPiB0aGUg
+Y29kZSwgdGhlcmUgaXMgYSBjaGFuY2UgdGhhdCB0aGUgc2Vjb25kIGxheW91dGNvbW1pdCB3aWxs
+IGZhaWwgdG8NCj4gPiBwaWNrIHVwIHRoZSBsYXlvdXQgc2VnbWVudCwgYW5kIHNvIHdpbGwgZmFp
+bCB0byBub3RpZnkgdGhlIE1EUyB0aGF0IHRoZQ0KPiA+IHNlY29uZCBleHRlbnQgbm93IGNvbnRh
+aW5zIGRhdGEuDQo+ID4NCj4gPiBibG9ja2xheW91dCBkb2VzIG5vdCBkZWNpZGUgd2hhdCB0byBs
+YXlvdXRjb21taXQgYWNjb3JkaW5nIHRvIHRoZSBsc2VnDQo+ID4gbGlzdC4gSW5zdGVhZCwgaXQg
+a2VlcHMgdHJhY2sgb2YgZWFjaCBleHRlbnQncyBzdGF0ZSBhdCB0aGUNCj4gPiBncmFudWxhcml0
+eSBvZiBibG9ja3NpemUsIGFuZCBlbmNvZGUgd2hhdGV2ZXIgbmVlZHMgbGF5b3V0Y29tbWl0dGVk
+IGluDQo+ID4gdGhlIGxheW91dGNvbW1pdCBjYWxsLiBTbyBpbiB5b3VyIGFib3ZlIGNhc2UsIGFz
+IGxvbmcgYXMgdGhlIHNlY29uZA0KPiA+IGxheW91dGNvbW1pdCBpcyBpc3N1ZWQsIGJsb2NrbGF5
+b3V0IHdpbGwgZW5jb2RlIHRoZSBuZXdseSB3cml0dGVuDQo+ID4gZXh0ZW50IGluIHRoZSBzZWNv
+bmQgbGF5b3V0Y29tbWl0IGNhbGwsIGV2ZW4gaWYgdGhlIGxzZWcgaXMgbm90DQo+ID4gYXR0YWNo
+ZWQgdG8gdGhlIHNlY29uZCBsYXlvdXRjb21taXQuDQo+ID4NCj4gPiBCdXQgdGhhdCBsZWFkcyB0
+byBhbm90aGVyIHR3byBxdWVzdGlvbjoNCj4gPiAxLiBIb3cgZG8gd2UgcHJvdGVjdCBhZ2FpbnN0
+IGxheW91dHJlY2FsbCBpZiBsc2VnIGlzIG5vdCBsaW5rZWQgdG8NCj4gPiBsYXlvdXRjb21taXQ/
+IEZvciB0aGlzIG9uZSwgY2FuIHdlIGp1c3QgcmVqZWN0IGxheW91dHJlY2FsbCBpZiB0aGVyZQ0K
+PiA+IGlzIGluZmxpZ2h0IGxheW91dGNvbW1pdD8gSXQgd2lsbCBiZSBsZXNzIHBhcmFsbGVsIGJ1
+dCBjYW4gZ3VhcmFudGVlDQo+ID4gY3VycmVudCBpbXBsZW1lbnRhdGlvbiBjb3JyZWN0bmVzcy4N
+Cj4gPiAyLiBibG9ja2xheW91dCBPTkxZOiBibF9jb21taXR0aW5nIG1heSBiZSBvdmVybG9hZGVk
+IGJ5IHNldmVyYWwNCj4gPiBsYXlvdXRjb21taXQgY2FsbHMgYW5kIHdlIGRvbid0IGhhdmUgaW5m
+b3JtYXRpb24gaW4NCj4gPiBjbGVhbnVwX2xheW91dGNvbW1pdCgpIG9uIGhvdyBtYW55IGVudHJ5
+IHNob3VsZCBiZSByZW1vdmVkIGZyb20NCj4gPiBibF9jb21taXR0aW5nLiBNYXliZSB3ZSBjYW4g
+YWRkIGEgKHZvaWQqKSB0byBzdHJ1Y3QNCj4gPiBuZnM0X2xheW91dGNvbW1pdF9kYXRhLCBzbyB0
+aGF0IExEIGNhbiBwYXNzIHNvbWUgcHJpdmF0ZSBpbmZvcm1hdGlvbg0KPiA+IGJldHdlZW4gZW5j
+b2RlX2xheW91dGNvbW1pdCgpIGFuZCBjbGVhbnVwX2xheW91dGNvbW1pdCgpPw0KPiANCj4gMy4g
+V2hhdCBpcyB0aGUgcHVycG9zZSBvZiBwaW5uaW5nIHRoZSBsYXlvdXQgc2VnbWVudCBhdCBhbGwg
+aWYgbmVpdGhlciBibG9ja3MsIG5vcg0KPiBvYmplY3RzIG5vciBmaWxlcyBjYXJlcz8NCkkgYmVs
+aWV2ZSBpdCBpcyBmb3IgcHJvdGVjdGluZyBhZ2FpbnN0IGxheW91dHJlY2FsbC4gQnV0IHNpbmNl
+IHdlIGFyZSBzZXBlcmF0aW5nIGxzZWcgYW5kIExEIHNwZWNpZmljIGxheW91dCBpbmZvcm1hdGlv
+biBtYW5hZ2VtZW50LCBpdCBpcyBhY3R1YWxseSBub3Qgd29ya2luZyBhcyBleHBlY3RlZC4NCg0K
+PiBJT1c6IGlmIGJvdGggb2JqZWN0cyBhbmQgYmxvY2tzIHRyYWNrIHRoZSBpbmZvcm1hdGlvbiB0
+aGF0IHRoZXkgbmVlZCBmb3INCj4gbGF5b3V0Y29tbWl0IG91dHNpZGUgdGhlIGxheW91dCBzZWdt
+ZW50cywgdGhlbiB3aHkgZG8gd2UgbmVlZCB0aGUNCj4gTkZTX0xTRUdfTEFZT1VUQ09NTUlUIGJp
+dCBhbmQgcGxzX2xjX2xpc3QgYXQgYWxsPw0KSWYgd2UgcmVtb3ZlIE5GU19MU0VHX0xBWU9VVENP
+TU1JVCBiaXQgYW5kIHBsc19sY19saXN0LCB3ZSBtdXN0IGZpbmQgb3RoZXIgbWV0aG9kIHRvIHBy
+b3RlY3QgYWdhaW5zIGZyZWVpbmcgbHNlZyB3aGlsZSBsYXlvdXRjb21taXQgaXMgbmVlZGVkIG9y
+IGlzIGdvaW5nIG9uLiBlLmcuLCBjaGVjayBmb3IgTkZTX0lOT19MQVlPVVRDT01NSVQgYml0IGFu
+ZCBpbmZsaWdodCBsYXlvdXRjb21taXQgaW4gaW5pdGlhdGVfZmlsZV9kcmFpbmluZygpLg0KDQpU
+aGFua3MsDQpUYW8NCg0KDQoT77+977+97Lm7HO+/vSbvv71+77+9Ju+/vRjvv73vv70rLe+/ve+/
+vd22F++/ve+/vXfvv73vv73Lm++/ve+/ve+/vW3vv71i77+977+9Z37Ip++/vRfvv73vv73cqH3v
+v73vv73vv73GoHrvv70majordu+/ve+/ve+/vQfvv73vv73vv73vv716Wivvv73vv70rembvv73v
+v73vv71o77+977+977+9fu+/ve+/ve+/ve+/vWnvv73vv73vv71677+9Hu+/vXfvv73vv73vv70/
+77+977+977+977+9Ju+/vSnfohtm
