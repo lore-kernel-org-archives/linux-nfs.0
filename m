@@ -1,79 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1854 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750732Ab1IUEQo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 00:16:44 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: Please support NSF squashing multiple groups
-Date: Tue, 20 Sep 2011 21:16:26 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480225@SACMVEXC2-PRD.hq.netapp.com>
-In-reply-to: <201109210009.p8L09pgs026367@bari.maths.usyd.edu.au>
-References: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B48011F@SACMVEXC2-PRD.hq.netapp.com> <201109210009.p8L09pgs026367@bari.maths.usyd.edu.au>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: <paul.szabo@sydney.edu.au>
-Cc: <linux-nfs@vger.kernel.org>
+Received: from e34.co.us.ibm.com ([32.97.110.152]:37785 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753148Ab1IIFUS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Sep 2011 01:20:18 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: agruen@kernel.org, akpm@linux-foundation.org, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V6 09/26] vfs: Add delete child and delete self permission flags
+In-Reply-To: <20110908220246.GD17215@fieldses.org>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1315243548-18664-10-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20110907203916.GE8074@fieldses.org> <87ipp35qjx.fsf@skywalker.in.ibm.com> <20110908200754.GB17215@fieldses.org> <20110908220246.GD17215@fieldses.org>
+Date: Fri, 09 Sep 2011 10:49:19 +0530
+Message-ID: <87r53q47jc.fsf@skywalker.in.ibm.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> -----Original Message-----
-> From: paul.szabo@sydney.edu.au [mailto:paul.szabo@sydney.edu.au]
-> Sent: Tuesday, September 20, 2011 8:10 PM
-> To: Myklebust, Trond
-> Cc: linux-nfs@vger.kernel.org
-> Subject: RE: Please support NSF squashing multiple groups
+On Thu, 8 Sep 2011 18:02:46 -0400, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Thu, Sep 08, 2011 at 04:07:54PM -0400, J. Bruce Fields wrote:
+> > On Thu, Sep 08, 2011 at 03:00:58PM +0530, Aneesh Kumar K.V wrote:
+> > > On Wed, 7 Sep 2011 16:39:16 -0400, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > On Mon, Sep 05, 2011 at 10:55:31PM +0530, Aneesh Kumar K.V wrote:
+> > > > > +static int may_delete(struct inode *dir, struct dentry *victim,
+> > > > > +		      int isdir, int replace)
+> > > > >  {
+> > > > > -	int error;
+> > > > > +	int mask, error, is_sticky;
+> > > > > +	struct inode *inode = victim->d_inode;
+> > > > >  
+> > > > > -	if (!victim->d_inode)
+> > > > > +	if (!inode)
+> > > > >  		return -ENOENT;
+> > > > >  
+> > > > >  	BUG_ON(victim->d_parent->d_inode != dir);
+> > > > >  	audit_inode_child(victim, dir);
+> > > > >  
+> > > > > -	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
+> > > > > +	mask = MAY_WRITE | MAY_EXEC | MAY_DELETE_CHILD;
+> > > > > +	if (replace)
+> > > > > +		mask |= S_ISDIR(inode->i_mode) ?
+> > > > > +			MAY_CREATE_DIR : MAY_CREATE_FILE;
+> > > > 
+> > > > I'm having trouble understanding this next bit:
+> > > > 
+> > > > > +	is_sticky = check_sticky(dir, inode);
+> > > > > +	error = inode_permission(dir, mask);
+> > > > > +	if ((error || is_sticky) && IS_RICHACL(inode) &&
+> > > > > +	    !inode_permission(dir, mask & ~(MAY_WRITE | MAY_DELETE_CHILD)) &&
+> > > > > +	    !inode_permission(inode, MAY_DELETE_SELF))
+> > > > > +		error = 0;
+> > > > 
+> > > > OK, so we can ignore the lack of write or delete permissions on the
+> > > > parent if we have delete_self permissions on the child.  I guess that's
+> > > > right.
+> > > > 
+> > > > Why the "|| is_sticky" above?
+> > > > 
+> > > > Is there some less complicated why to write this?
+> > > 
+> > > we removed the ns_capable check out of check_sticky, because we don't
+> > > want to do capability check when richacl allows access. We also want to
+> > > make sure that even if mode bits allow access (inode_permission(dir, mask))
+> > > if sticky bit is set we do additional check.
+> > 
+> > Why are the two inode_permissions ANDed?  The windows semantics are that
+> > you can delete if you have MAY_DELETE_CHILD *or* MAY_DELETE_SELF.
 > 
-> > ... It is too easy to fake a uid or a gid when you use a protocol
-that
-> > exposes them in clear on the network ...
+> Either way, those conditions are just really hard to follow.  Could you
+> simplify the logic, add comments, maybe move the richacl stuff into a
+> little helper function?
 > 
-> Trivial to find out what they are, may not be so easy to inject them.
-
-If you are inside the network? All you need is a client and sufficient
-privileges to open a privileged port. You get bonus points if you can
-also compromise a router/switch...
- 
-> > ... I don't at all understand your threat model. You appear to be
-> > worried about a threat where a user can somehow usurp gids but not
-> > uids on the client.
+> Also, a nit:
 > 
-> I am worried about an attacker being able to "do anything" on the
-client
-> (having "cracked root" on it).
->
-> In terms of usurping UIDs, he is pretty much defeated: the only
-privileged
-> UID is root, rendered harmless by root_squash. (Beware that other UIDs
-e.g.
-> bin or sys may be dangerous on some systems:
-> root_squash as currently implemented is incomplete, insecure.)
+> > > > > +	    !inode_permission(dir, mask & ~(MAY_WRITE | MAY_DELETE_CHILD)) &&
+> 
+> The way you calculated mask above it always includes MAY_WRITE and
+> MAY_DELETE_CHILD, so the above is equivalent to just
+> 
+> 		    !inode_permission(dir, MAY_WRITE | MAY_DELETE_CHILD) &&
+> 
+> isn't it?
+> 
 
-Ermm... If you can spoof any user (except root), then surely there are
-several alternatives open to you. If home directories are on NFS, then I
-can imagine installing ssh keys to enable me to log on to any client in
-the system, or setting up spoofed .profile files.
-
-Alternatively, poisoning their namespace with a well placed symlink, or 
-
-> There is currently no such protection for usurping GIDs, and some
-(e.g. staff
-> for Debian, or disk shadow etc) are privileged and root-equivalent. We
-need
-> protection, similar to root_squash.
-
-Root squashing will automatically also squash gid==0 (whether or not the
-uid == 0).
-
-The problem you are describing is different: you have a _list_ of
-privileged gids that you want to squash for some reason.  I could
-probably find an equivalent list of privileged uids on most systems that
-you don't ever want the client to spoof (e.g. 'bin', 'daemon',
-'dbus',...).
-There are 2 solutions to that problem: either go the route of the
-rpc.ugidd daemon, which does general mapping from one set of uid/gids to
-another. Alternatively, don't expose anything which is protected by a
-privileged uid or gid...
-
-Cheers
-    Trond
+I guess i can simplify it as 
+  !inode_permission(dir, MAY_EXEC | replace_mask)
+  
+-aneesh
