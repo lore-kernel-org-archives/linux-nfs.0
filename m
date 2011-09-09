@@ -1,115 +1,128 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:7305 "EHLO mx2.netapp.com"
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:42808 "EHLO e2.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750749Ab1ITOlz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2011 10:41:55 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: [PATCH v5 1/8] SUNRPC: introduce helpers for reference counted rpcbind clients
-Date: Tue, 20 Sep 2011 07:41:55 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD2C@SACMVEXC2-PRD.hq.netapp.com>
-In-reply-to: <20110920102431.58ca1d96@tlielax.poochiereds.net>
-References: <20110920101031.9861.18444.stgit@localhost6.localdomain6><20110920101341.9861.51453.stgit@localhost6.localdomain6><4E7899E7.9090809@parallels.com> <20110920102431.58ca1d96@tlielax.poochiereds.net>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Jeff Layton" <jlayton@redhat.com>,
-        "Stanislav Kinsbursky" <skinsbursky@parallels.com>
-Cc: <linux-nfs@vger.kernel.org>, "Pavel Emelianov" <xemul@parallels.com>,
-        <neilb@suse.de>, <netdev@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>, <bfields@fieldses.org>,
-        <davem@davemloft.net>
+	id S1754578Ab1IIF0Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Sep 2011 01:26:24 -0400
+Received: from /spool/local
+	by us.ibm.com with XMail ESMTP
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Fri, 9 Sep 2011 01:26:23 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: agruen@kernel.org, akpm@linux-foundation.org, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V6 09/26] vfs: Add delete child and delete self permission flags
+In-Reply-To: <87r53q47jc.fsf@skywalker.in.ibm.com>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1315243548-18664-10-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20110907203916.GE8074@fieldses.org> <87ipp35qjx.fsf@skywalker.in.ibm.com> <20110908200754.GB17215@fieldses.org> <20110908220246.GD17215@fieldses.org> <87r53q47jc.fsf@skywalker.in.ibm.com>
+Date: Fri, 09 Sep 2011 10:55:29 +0530
+Message-ID: <87obyu4792.fsf@skywalker.in.ibm.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> -----Original Message-----
-> From: Jeff Layton [mailto:jlayton@redhat.com]
-> Sent: Tuesday, September 20, 2011 10:25 AM
-> To: Stanislav Kinsbursky
-> Cc: Myklebust, Trond; linux-nfs@vger.kernel.org; Pavel Emelianov;
-> neilb@suse.de; netdev@vger.kernel.org; linux-kernel@vger.kernel.org;
-> bfields@fieldses.org; davem@davemloft.net
-> Subject: Re: [PATCH v5 1/8] SUNRPC: introduce helpers for reference
-> counted rpcbind clients
+On Fri, 09 Sep 2011 10:49:19 +0530, "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> On Thu, 8 Sep 2011 18:02:46 -0400, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > On Thu, Sep 08, 2011 at 04:07:54PM -0400, J. Bruce Fields wrote:
+> > > On Thu, Sep 08, 2011 at 03:00:58PM +0530, Aneesh Kumar K.V wrote:
+> > > > On Wed, 7 Sep 2011 16:39:16 -0400, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > > On Mon, Sep 05, 2011 at 10:55:31PM +0530, Aneesh Kumar K.V wrote:
+> > > > > > +static int may_delete(struct inode *dir, struct dentry *victim,
+> > > > > > +		      int isdir, int replace)
+> > > > > >  {
+> > > > > > -	int error;
+> > > > > > +	int mask, error, is_sticky;
+> > > > > > +	struct inode *inode = victim->d_inode;
+> > > > > >  
+> > > > > > -	if (!victim->d_inode)
+> > > > > > +	if (!inode)
+> > > > > >  		return -ENOENT;
+> > > > > >  
+> > > > > >  	BUG_ON(victim->d_parent->d_inode != dir);
+> > > > > >  	audit_inode_child(victim, dir);
+> > > > > >  
+> > > > > > -	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
+> > > > > > +	mask = MAY_WRITE | MAY_EXEC | MAY_DELETE_CHILD;
+> > > > > > +	if (replace)
+> > > > > > +		mask |= S_ISDIR(inode->i_mode) ?
+> > > > > > +			MAY_CREATE_DIR : MAY_CREATE_FILE;
+> > > > > 
+> > > > > I'm having trouble understanding this next bit:
+> > > > > 
+> > > > > > +	is_sticky = check_sticky(dir, inode);
+> > > > > > +	error = inode_permission(dir, mask);
+> > > > > > +	if ((error || is_sticky) && IS_RICHACL(inode) &&
+> > > > > > +	    !inode_permission(dir, mask & ~(MAY_WRITE | MAY_DELETE_CHILD)) &&
+> > > > > > +	    !inode_permission(inode, MAY_DELETE_SELF))
+> > > > > > +		error = 0;
+> > > > > 
+> > > > > OK, so we can ignore the lack of write or delete permissions on the
+> > > > > parent if we have delete_self permissions on the child.  I guess that's
+> > > > > right.
+> > > > > 
+> > > > > Why the "|| is_sticky" above?
+> > > > > 
+> > > > > Is there some less complicated why to write this?
+> > > > 
+> > > > we removed the ns_capable check out of check_sticky, because we don't
+> > > > want to do capability check when richacl allows access. We also want to
+> > > > make sure that even if mode bits allow access (inode_permission(dir, mask))
+> > > > if sticky bit is set we do additional check.
+> > > 
+> > > Why are the two inode_permissions ANDed?  The windows semantics are that
+> > > you can delete if you have MAY_DELETE_CHILD *or* MAY_DELETE_SELF.
+> > 
+> > Either way, those conditions are just really hard to follow.  Could you
+> > simplify the logic, add comments, maybe move the richacl stuff into a
+> > little helper function?
+> > 
+> > Also, a nit:
+> > 
+> > > > > > +	    !inode_permission(dir, mask & ~(MAY_WRITE | MAY_DELETE_CHILD)) &&
+> > 
+> > The way you calculated mask above it always includes MAY_WRITE and
+> > MAY_DELETE_CHILD, so the above is equivalent to just
+> > 
+> > 		    !inode_permission(dir, MAY_WRITE | MAY_DELETE_CHILD) &&
+> > 
+> > isn't it?
+> > 
 > 
-> On Tue, 20 Sep 2011 17:49:27 +0400
-> Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
-> 
-> > v5: fixed races with rpcb_users in rpcb_get_local()
-> >
-> > This helpers will be used for dynamical creation and destruction of
-> > rpcbind clients.
-> > Variable rpcb_users is actually a counter of lauched RPC services.
-If
-> > rpcbind clients has been created already, then we just increase
-rpcb_users.
-> >
-> > Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> >
-> > ---
-> >   net/sunrpc/rpcb_clnt.c |   53
-> ++++++++++++++++++++++++++++++++++++++++++++++++
-> >   1 files changed, 53 insertions(+), 0 deletions(-)
-> >
-> > diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c index
-> > e45d2fb..5f4a406 100644
-> > --- a/net/sunrpc/rpcb_clnt.c
-> > +++ b/net/sunrpc/rpcb_clnt.c
-> > @@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
-> >   static struct rpc_clnt *	rpcb_local_clnt;
-> >   static struct rpc_clnt *	rpcb_local_clnt4;
-> >   +DEFINE_SPINLOCK(rpcb_clnt_lock);
-> > +unsigned int			rpcb_users;
-> > +
-> >   struct rpcbind_args {
-> >   	struct rpc_xprt *	r_xprt;
-> >   @@ -161,6 +164,56 @@ static void rpcb_map_release(void *data)
-> >   	kfree(map);
-> >   }
-> >   +static int rpcb_get_local(void)
-> > +{
-> > +	int cnt;
-> > +
-> > +	spin_lock(&rpcb_clnt_lock);
-> > +	if (rpcb_users)
-> > +		rpcb_users++;
-> > +	cnt = rpcb_users;
-> > +	spin_unlock(&rpcb_clnt_lock);
-> > +
-> > +	return cnt;
-> > +}
-> > +
-> > +void rpcb_put_local(void)
-> > +{
-> > +	struct rpc_clnt *clnt = rpcb_local_clnt;
-> > +	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
-> > +	int shutdown;
-> > +
-> > +	spin_lock(&rpcb_clnt_lock);
-> > +	if (--rpcb_users == 0) {
-> > +		rpcb_local_clnt = NULL;
-> > +		rpcb_local_clnt4 = NULL;
-> > +	}
-> 
-> In the function below, you mention that the above pointers are
-protected by
-> rpcb_create_local_mutex, but it looks like they get reset here without
-that
-> being held?
-> 
-> Might it be simpler to just protect rpcb_users with the
-> rpcb_create_local_mutex and ensure that it's held whenever you call
-one of
-> these routines? None of these are codepaths are particularly hot.
+> I guess i can simplify it as 
+>   !inode_permission(dir, MAY_EXEC | replace_mask)
+>   
 
-Alternatively, if you do
+diff --git a/fs/namei.c b/fs/namei.c
+index 1054bc3..e545c81 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -1912,8 +1912,9 @@ other_userns:
+ static int may_delete(struct inode *dir, struct dentry *victim,
+ 		      int isdir, int replace)
+ {
+-	int mask, error, is_sticky;
+ 	struct inode *inode = victim->d_inode;
++	int mask, replace_mask = 0, error, is_sticky;
++
+ 
+ 	if (!inode)
+ 		return -ENOENT;
+@@ -1923,12 +1924,12 @@ static int may_delete(struct inode *dir, struct dentry *victim,
+ 
+ 	mask = MAY_WRITE | MAY_EXEC | MAY_DELETE_CHILD;
+ 	if (replace)
+-		mask |= S_ISDIR(inode->i_mode) ?
+-			MAY_CREATE_DIR : MAY_CREATE_FILE;
++		replace_mask = S_ISDIR(inode->i_mode) ?
++				MAY_CREATE_DIR : MAY_CREATE_FILE;
+ 	is_sticky = check_sticky(dir, inode);
+-	error = inode_permission(dir, mask);
++	error = inode_permission(dir, mask | replace_mask);
+ 	if ((error || is_sticky) && IS_RICHACL(inode) &&
+-	    !inode_permission(dir, mask & ~(MAY_WRITE | MAY_DELETE_CHILD)) &&
++	    !inode_permission(dir, MAY_EXEC | replace_mask) &&
+ 	    !inode_permission(inode, MAY_DELETE_SELF))
+ 		error = 0;
+ 	else if (!error && is_sticky &&
 
-	if (rpcb_users == 1) {
-		rpcb_local_clnt = NULL;
-		rpcb_local_clnt4 = NULL;
-		smp_wmb();
-		rpcb_users = 0;
-	} else
-		rpcb_users--;
-
-then the spinlock protection in rpbc_get_local() is still good enough to
-guarantee correctness.
