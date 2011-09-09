@@ -1,101 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:56005 "EHLO e3.ny.us.ibm.com"
+Received: from fieldses.org ([174.143.236.118]:59156 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752550Ab1IVRWb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Sep 2011 13:22:31 -0400
-Received: from /spool/local
-	by us.ibm.com with XMail ESMTP
-	for <linux-nfs@vger.kernel.org> from <zohar@linux.vnet.ibm.com>;
-	Thu, 22 Sep 2011 13:17:34 -0400
-Subject: Re: [PATCH 2/6] leases: fix write-open/read-lease race
-From: Mimi Zohar <zohar@linux.vnet.ibm.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        Christoph Hellwig <hch@infradead.org>,
-        Al Viro <viro@zeniv.linux.org.uk>
-In-Reply-To: <20110921150157.GA21510@fieldses.org>
-References: <1316617097-21384-1-git-send-email-bfields@redhat.com>
-	 <1316617097-21384-3-git-send-email-bfields@redhat.com>
-	 <20110921150157.GA21510@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 22 Sep 2011 13:17:12 -0400
-Message-ID: <1316711832.3159.53.camel@localhost.localdomain>
+	id S932890Ab1IIUDF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Sep 2011 16:03:05 -0400
+Date: Fri, 9 Sep 2011 16:03:04 -0400
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: shouldn't rpc_pipe_upcall message structs be
+ __attribute__((packed)) ?
+Message-ID: <20110909200304.GA32125@fieldses.org>
+References: <20110909143605.57d54899@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110909143605.57d54899@tlielax.poochiereds.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-09-21 at 11:01 -0400, J. Bruce Fields wrote: 
-> On Wed, Sep 21, 2011 at 10:58:13AM -0400, J. Bruce Fields wrote:
-> > In setlease, we use i_writecount to decide whether we can give out a
-> > read lease.
-> > 
-> > In open, we break leases before incrementing i_writecount.
-> > 
-> > There is therefore a window between the break lease and the i_writecount
-> > increment when setlease could add a new read lease.
-> > 
-> > This would leave us with a simultaneous write open and read lease, which
-> > shouldn't happen.
+On Fri, Sep 09, 2011 at 02:36:05PM -0400, Jeff Layton wrote:
+> I've been looking at replacing the current scheme that knfsd uses to
+> track client_id4's (aka the v4recoverydir stuff), with an
+> upcall/downcall scheme. Primarily this is to allow for more robust
+> handling of clustered NFSv4 services.
 > 
-> And maybe someone that knows the open code better than me could confirm
-> whether it's reasonable to move the break_lease() call to __dentry_open
-> like this....
+> In the process, I've been looking at the various upcall schemes we use
+> to see which ones might be suitable to use in this effort. I've noticed
+> that we have several upcalls that use rpc_pipefs, and that all of them
+> seem to make assumptions that the userspace programs will align their
+> message structs identically to how the kernel does.
 > 
-> --b.
+> For instance, here's the idmap one:
+> 
+> struct idmap_msg {
+>         __u8  im_type;
+>         __u8  im_conv;
+>         char  im_name[IDMAP_NAMESZ];
+>         __u32 im_id;
+>         __u8  im_status;
+> };
 
-Moving break_lease() from may_open() to __dentry_open(), places the call
-immediately after the call to __get_file_write_access(), which
-increments i_writecount.
+That's the "legacy" idmap code, right?
 
-Currently, break_lease() is being called before the transition from
-put_filp() to fput(). The move doesn't change this, so I would assume it
-should be ok.
+In which case we want to leave it alone if at all possible and move
+people to the new idmapper.
 
-Mimi
+--b.
 
-> > 
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > ---
-> >  fs/namei.c |    5 +----
-> >  fs/open.c  |    4 ++++
-> >  2 files changed, 5 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/fs/namei.c b/fs/namei.c
-> > index 2826db3..6ff59e5 100644
-> > --- a/fs/namei.c
-> > +++ b/fs/namei.c
-> > @@ -2044,10 +2044,7 @@ static int may_open(struct path *path, int acc_mode, int flag)
-> >  	if (flag & O_NOATIME && !inode_owner_or_capable(inode))
-> >  		return -EPERM;
-> >  
-> > -	/*
-> > -	 * Ensure there are no outstanding leases on the file.
-> > -	 */
-> > -	return break_lease(inode, flag);
-> > +	return 0;
-> >  }
-> >  
-> >  static int handle_truncate(struct file *filp)
-> > diff --git a/fs/open.c b/fs/open.c
-> > index f711921..22c41b5 100644
-> > --- a/fs/open.c
-> > +++ b/fs/open.c
-> > @@ -685,6 +685,10 @@ static struct file *__dentry_open(struct dentry *dentry, struct vfsmount *mnt,
-> >  	if (error)
-> >  		goto cleanup_all;
-> >  
-> > +	error = break_lease(inode, f->f_flags);
-> > +	if (error)
-> > +		goto cleanup_all;
-> > +
-> >  	if (!open && f->f_op)
-> >  		open = f->f_op->open;
-> >  	if (open) {
-> > -- 
-> > 1.7.4.1
-> > 
-
-
-
-
+> 
+> Note that this struct does not have __attribute__((packed)), so the
+> compiler is allowed to add padding between the fields as it sees fit.
+> 
+> If, for instance, someone were to build the userspace programs
+> differently than the kernel (for instance x86_64 kernel with i686
+> userspace), it's possible that the padding between them would be
+> different. It's also possible that different compilers might align
+> things differently here.
+> 
+> The blocklayout upcall is even more scary as the width of the status
+> field is not explicit:
+> 
+> struct bl_dev_msg {
+>         int status;
+>         uint32_t major, minor;
+> };
+> 
+> ...it's unlikely that the kernel and userspace would differ on the size
+> of an int here, but it might be a good idea to go ahead and make that
+> explicitly 32 bits in case we end up dealing with more exotic arches at
+> some point in the future.
+> 
+> I'm not sure what we can really do about this at this point. Adding
+> this attribute now would definitely be an kernel/userspace
+> compatibility issue.
+> 
+> One possibility is to add padding between the fields that aligns with
+> the current padding that the compiler adds and then make them "packed".
+> That might make these structs arch-specific though since different
+> arches probably pad these differently... :-/
+> 
+> Am I making mountains out of molehills here? Thoughts?
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
