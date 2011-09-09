@@ -1,105 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:42826 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755419Ab1ITKOT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Sep 2011 06:14:19 -0400
-Subject: [PATCH v4 3/8] SUNRPC: introduce svc helpers for prepairing rpcbind
-	infrastructure
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net
-Date: Tue, 20 Sep 2011 14:13:56 +0400
-Message-ID: <20110920101356.9861.33906.stgit@localhost6.localdomain6>
-In-Reply-To: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
-References: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:56480
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753319Ab1IINgT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Sep 2011 09:36:19 -0400
+Date: Fri, 9 Sep 2011 09:36:12 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: Mel Gorman <mgorman@suse.de>
+Cc: Christoph Hellwig <hch@infradead.org>, Linux-MM <linux-mm@kvack.org>,
+        Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Peter Zijlstra <a.p.zijlstra@chello.nl>
+Subject: Re: [PATCH 03/10] mm: Add support for a filesystem to control swap
+ files
+Message-ID: <20110909133611.GB8155@infradead.org>
+References: <1315566054-17209-1-git-send-email-mgorman@suse.de>
+ <1315566054-17209-4-git-send-email-mgorman@suse.de>
+ <20110909130007.GA11810@infradead.org>
+ <20110909131550.GV14369@suse.de>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110909131550.GV14369@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This helpers will be used only for those services, that will send portmapper
-registration calls.
+On Fri, Sep 09, 2011 at 02:15:50PM +0100, Mel Gorman wrote:
+> 
+> I confess I haven't investigated this direction at
+> all yet.  Is it correct that your previous objection was
+> http://linux.derkeiler.com/Mailing-Lists/Kernel/2009-10/msg00455.html
+> and the direct-IO patchset you were thinking of was
+> http://copilotco.com/mail-archives/linux-kernel.2009/msg87176.html ?
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Yes.
 
----
- include/linux/sunrpc/clnt.h |    2 ++
- net/sunrpc/rpcb_clnt.c      |    2 +-
- net/sunrpc/svc.c            |   35 +++++++++++++++++++++++++++++++++++
- 3 files changed, 38 insertions(+), 1 deletions(-)
+> If so, are you suggesting that instead of swap_readpage and
+> swap_writepage I look into what is required for swap to use ->readpage
+> method and ->direct_IO aops?
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index db7bcaf..1eb437d 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -135,6 +135,8 @@ void		rpc_shutdown_client(struct rpc_clnt *);
- void		rpc_release_client(struct rpc_clnt *);
- void		rpc_task_release_client(struct rpc_task *);
- 
-+int		rpcb_create_local(void);
-+void		rpcb_put_local(void);
- int		rpcb_register(u32, u32, int, unsigned short);
- int		rpcb_v4_register(const u32 program, const u32 version,
- 				 const struct sockaddr *address,
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 83634e0..64e15d1 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -317,7 +317,7 @@ out:
-  * Returns zero on success, otherwise a negative errno value
-  * is returned.
-  */
--static int rpcb_create_local(void)
-+int rpcb_create_local(void)
- {
- 	static DEFINE_MUTEX(rpcb_create_local_mutex);
- 	int result = 0;
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 6a69a11..d2d61bf 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -354,6 +354,41 @@ svc_pool_for_cpu(struct svc_serv *serv, int cpu)
- 	return &serv->sv_pools[pidx % serv->sv_nrpools];
- }
- 
-+static int svc_rpcb_setup(struct svc_serv *serv)
-+{
-+	int err;
-+
-+	err = rpcb_create_local();
-+	if (err)
-+		return err;
-+
-+	/* Remove any stale portmap registrations */
-+	svc_unregister(serv);
-+	return 0;
-+}
-+
-+static void svc_rpcb_cleanup(struct svc_serv *serv)
-+{
-+	svc_unregister(serv);
-+	rpcb_put_local();
-+}
-+
-+static int svc_uses_rpcbind(struct svc_serv *serv)
-+{
-+	struct svc_program	*progp;
-+	unsigned int		i;
-+
-+	for (progp = serv->sv_program; progp; progp = progp->pg_next) {
-+		for (i = 0; i < progp->pg_nvers; i++) {
-+			if (progp->pg_vers[i] == NULL)
-+				continue;
-+			if (progp->pg_vers[i]->vs_hidden == 0)
-+				return 1;
-+		}
-+	}
-+
-+	return 0;
-+}
- 
- /*
-  * Create an RPC service
+The equivalent of ->direct_IO should be used for both reads and writes.
 
