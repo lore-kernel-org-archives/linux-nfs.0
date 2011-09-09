@@ -1,112 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:56180 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755230Ab1IMQR2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 12:17:28 -0400
-Received: by qyk30 with SMTP id 30so2786615qyk.19
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Sep 2011 09:17:28 -0700 (PDT)
-In-Reply-To: <1315622957-1549-2-git-send-email-bergwolf@gmail.com>
-References: <1315622957-1549-1-git-send-email-bergwolf@gmail.com> <1315622957-1549-2-git-send-email-bergwolf@gmail.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Wed, 14 Sep 2011 00:09:32 +0800
-Message-ID: <CA+a=Yy7GS6DS1k8suv9284bV_GDpoyfWCdU_LR=2caBPaVVkJA@mail.gmail.com>
-Subject: Re: [PATCH 2/2] pnfsblock: fix writeback deadlock
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Benny Halevy <bhalevy@tonian.com>, Jim Rees <rees@umich.edu>,
-        Peng Tao <peng_tao@emc.com>, linuxnfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from cantor2.suse.de ([195.135.220.15]:46063 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933275Ab1IILA6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Sep 2011 07:00:58 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Linux-MM <linux-mm@kvack.org>
+Cc: Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mel Gorman <mgorman@suse.de>
+Subject: [RFC PATCH 00/10] Swap-over-NFS without deadlocking v1
+Date: Fri,  9 Sep 2011 12:00:44 +0100
+Message-Id: <1315566054-17209-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-And this one too... Add cc nfs list. Sorry for the noise...
+This patch series is based on top of "Swap-over-NBD without deadlocking
+v6" as it depends on the same reservation of PF_MEMALLOC reserves
+logic.
 
-On Sat, Sep 10, 2011 at 10:49 AM, Peng Tao <bergwolf@gmail.com> wrote:
-> We should check if the sector is already initialized before
-> trying to grab the page from page cache. Otherwise when two
-> pages of the same block are written back by two threads each
-> calling from writepage_locked, it can cause deadlock like bellow.
->
->  [ 1080.972099] INFO: task kswapd0:25 blocked for more than 120 seconds.
->  [ 1080.972377] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
->  [ 1080.972812] kswapd0         D ffff88000c4926c0     0    25      2 0x00000000
->  [ 1080.972816]  ffff88000df276b0 0000000000000046 ffff88000df27640 ffffffff81013ba7
->  [ 1080.972821]  ffff88000c492310 ffff88000df27fd8 ffff88000df27fd8 00000000001d3440
->  [ 1080.972824]  ffff88000c378000 ffff88000c492310 ffff8800175d3d40 ffff880017fc75a8
->  [ 1080.972828] Call Trace:
->  [ 1080.972860]  [<ffffffff81013ba7>] ? read_tsc+0x9/0x19
->  [ 1080.972877]  [<ffffffff810e0b23>] ? lock_page+0x2b/0x2b
->  [ 1080.972899]  [<ffffffff81475a1d>] io_schedule+0x63/0x7e
->  [ 1080.972902]  [<ffffffff810e0b31>] sleep_on_page+0xe/0x12
->  [ 1080.972905]  [<ffffffff81475fe8>] __wait_on_bit_lock+0x46/0x8f
->  [ 1080.972916]  [<ffffffff810822d7>] ? lock_release_holdtime.part.7+0x6b/0x72
->  [ 1080.972919]  [<ffffffff810e0af6>] __lock_page+0x66/0x68
->  [ 1080.972928]  [<ffffffff81072705>] ? autoremove_wake_function+0x3d/0x3d
->  [ 1080.972932]  [<ffffffff810e0b1f>] lock_page+0x27/0x2b
->  [ 1080.972934]  [<ffffffff810e0bcf>] find_lock_page+0x34/0x57
->  [ 1080.972937]  [<ffffffff810e1738>] find_or_create_page+0x34/0x8a
->  [ 1080.972947]  [<ffffffffa034245b>] bl_write_pagelist+0x205/0x6da [blocklayoutdriver]
->  [ 1080.972951]  [<ffffffffa034145d>] ? bl_free_lseg+0x38/0x38 [blocklayoutdriver]
->  [ 1080.972995]  [<ffffffffa02e27b9>] ? nfs_write_rpcsetup+0x118/0x123 [nfs]
->  [ 1080.973033]  [<ffffffffa030246b>] pnfs_generic_pg_writepages+0x10b/0x1f4 [nfs]
->  [ 1080.973089]  [<ffffffffa02deaae>] nfs_pageio_doio+0x1a/0x43 [nfs]
->  [ 1080.973098]  [<ffffffffa02df035>] nfs_pageio_complete+0x16/0x2d [nfs]
->  [ 1080.973108]  [<ffffffffa02e2d8f>] nfs_writepage_locked+0xa0/0xbf [nfs]
->  [ 1080.973119]  [<ffffffffa02e36a1>] nfs_writepage+0x16/0x2b [nfs]
->  [ 1080.973122]  [<ffffffff810e8762>] ? clear_page_dirty_for_io+0x87/0x9a
->  [ 1080.973133]  [<ffffffff810efc5b>] shrink_page_list+0x39b/0x6c8
->  [ 1080.973139]  [<ffffffff810f03bb>] shrink_inactive_list+0x22c/0x39e
->  [ 1080.973144]  [<ffffffff810822d7>] ? lock_release_holdtime.part.7+0x6b/0x72
->  [ 1080.973148]  [<ffffffff810f0c33>] shrink_zone+0x445/0x588
->  [ 1080.973152]  [<ffffffff810f1a11>] balance_pgdat+0x2c2/0x56b
->  [ 1080.973170]  [<ffffffff81254208>] ? __bitmap_weight+0x34/0x80
->  [ 1080.973175]  [<ffffffff810f1f78>] kswapd+0x2be/0x2fa
->  [ 1080.973179]  [<ffffffff810726c8>] ? __init_waitqueue_head+0x4b/0x4b
->  [ 1080.973183]  [<ffffffff810f1cba>] ? balance_pgdat+0x56b/0x56b
->  [ 1080.973187]  [<ffffffff81071f69>] kthread+0xa8/0xb0
->  [ 1080.973200]  [<ffffffff814806b4>] kernel_thread_helper+0x4/0x10
->  [ 1080.973205]  [<ffffffff81071ec1>] ? __init_kthread_worker+0x5a/0x5a
->  [ 1080.973210]  [<ffffffff814806b0>] ? gs_change+0x13/0x13
->  [ 1080.973213] no locks held by kswapd0/25.
->
-> Signed-off-by: Peng Tao <peng_tao@emc.com>
-> ---
->  fs/nfs/blocklayout/blocklayout.c |    8 ++++++--
->  1 files changed, 6 insertions(+), 2 deletions(-)
->
-> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-> index 0920c35..cc78e62 100644
-> --- a/fs/nfs/blocklayout/blocklayout.c
-> +++ b/fs/nfs/blocklayout/blocklayout.c
-> @@ -533,6 +533,11 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
->  fill_invalid_ext:
->                dprintk("%s need to zero %d pages\n", __func__, npg_zero);
->                for (;npg_zero > 0; npg_zero--) {
-> +                       if (bl_is_sector_init(be->be_inval, isect)) {
-> +                               dprintk("isect %llu already init\n",
-> +                                       (unsigned long long)isect);
-> +                               goto next_page;
-> +                       }
->                        /* page ref released in bl_end_io_write_zero */
->                        index = isect >> PAGE_CACHE_SECTOR_SHIFT;
->                        dprintk("%s zero %dth page: index %lu isect %llu\n",
-> @@ -552,8 +557,7 @@ fill_invalid_ext:
->                         * PageUptodate: It was read before
->                         * sector_initialized: already written out
->                         */
-> -                       if (PageDirty(page) || PageWriteback(page) ||
-> -                           bl_is_sector_init(be->be_inval, isect)) {
-> +                       if (PageDirty(page) || PageWriteback(page)) {
->                                print_page(page);
->                                unlock_page(page);
->                                page_cache_release(page);
-> --
-> 1.7.1.262.g5ef3d
->
->
+When a user or administrator requires swap for their application,
+they create a swap partition and file, format it with mkswap and
+activate it with swapon. In diskless systems this is not an option
+so if swap if required then swapping over the network is considered.
+The two likely scenarios are when blade servers are used as part of
+a cluster where the form factor or maintenance costs do not allow
+the use of disks and thin clients.
 
+The Linux Terminal Server Project recommends the use of the Network
+Block Device (NBD) for swap but this is not always an option.  There is
+no guarantee that the network attached storage (NAS) device is running
+Linux or supports NBD. However, it is likely that it supports NFS so
+there are users that want support for swapping over NFS despite any
+performance concern. Some distributions currently carry patches that
+support swapping over NFS but it would be preferable to support it
+in the mainline kernel.
 
+Patch 1 avoids a stream-specific deadlock that potentially affects TCP.
+
+Patch 2 is a small modification to SELinux to avoid using PFMEMALLOC
+	reserves.
+
+Patch 3 adds four address_space_operations to allow a filesystem
+	to optionally control a swapfile. The news handlers are
+	expected to map requests to the swapspace operations to
+	the underlying file mapping.
+
+Patch 4 notes that patch 3 is bolting
+	filesystem-specific-swapfile-support onto the side and that
+	the default handlers have different information to what
+	is available to the filesystem. This patch refactors the
+	code so that there are generic handlers for each of the new
+	address_space operations.
+
+Patch 5 adds some helpers for filesystems to handle swap cache pages.
+
+Patch 6 updates NFS to use the helpers from patch 5 where necessary.
+
+Patch 7 avoids setting PF_private on PG_swapcache pages within NFS.
+
+Patch 8 implements the new swapfile-related address_space operations
+	for NFS.
+
+Patch 9 prevents page allocator recursions in NFS by using GFP_NOIO
+	where appropriate.
+
+Patch 10 fixes a NULL pointer dereference that occurs when using
+	swap-over-NFS.
+
+ Documentation/filesystems/Locking |   23 +++++
+ Documentation/filesystems/vfs.txt |   21 +++++
+ fs/nfs/Kconfig                    |    8 ++
+ fs/nfs/file.c                     |   26 +++++-
+ fs/nfs/inode.c                    |    6 ++
+ fs/nfs/internal.h                 |    7 +-
+ fs/nfs/pagelist.c                 |    8 +-
+ fs/nfs/read.c                     |    6 +-
+ fs/nfs/write.c                    |  163 +++++++++++++++++++++++++--------
+ include/linux/fs.h                |   10 ++
+ include/linux/mm.h                |   25 +++++
+ include/linux/nfs_fs.h            |    2 +
+ include/linux/pagemap.h           |    5 +
+ include/linux/sunrpc/xprt.h       |    3 +
+ include/linux/swap.h              |    7 ++
+ include/net/sock.h                |    7 +-
+ mm/page_io.c                      |  181 ++++++++++++++++++++++++++++++++-----
+ mm/swap_state.c                   |    2 +-
+ mm/swapfile.c                     |  138 ++++++++++------------------
+ net/caif/caif_socket.c            |    2 +-
+ net/core/sock.c                   |    2 +-
+ net/ipv4/tcp_input.c              |   12 ++--
+ net/sctp/ulpevent.c               |    2 +-
+ net/sunrpc/Kconfig                |    5 +
+ net/sunrpc/clnt.c                 |    2 +
+ net/sunrpc/sched.c                |    7 +-
+ net/sunrpc/xprtsock.c             |   57 ++++++++++++
+ security/selinux/avc.c            |    2 +-
+ 28 files changed, 561 insertions(+), 178 deletions(-)
 
 -- 
-Thanks,
--Bergwolf
+1.7.3.4
+
