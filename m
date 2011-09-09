@@ -1,66 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:60912 "EHLO plane.gmane.org"
+Received: from mx1.redhat.com ([209.132.183.28]:23737 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753937Ab1I2AKW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Sep 2011 20:10:22 -0400
-Received: from public by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <public@plane.gmane.org>)
-	id 1R94Ci-0004OQ-Aj
-	for linux-nfs@vger.kernel.org; Thu, 29 Sep 2011 02:10:20 +0200
-Subject: Re: NFS mounts and its propagation
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Venkateswararao Jujjuri <jvrao@linux.vnet.ibm.com>
-Cc: Sreeram B S
-	<public-sreeramb-HgOvQuBEEgTQT0dZR+AlfA@plane.gmane.org>,
-        public-linux-nfs-u79uwXL29TY76Z2rM5mHXA@plane.gmane.org
-Date: Wed, 28 Sep 2011 20:08:38 -0400
-In-Reply-To: <4E83A799.1090303@linux.vnet.ibm.com>
-References: <4E805C16.4030509@netapp.com>
-	 <4E83A799.1090303@linux.vnet.ibm.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1317254918.2764.2.camel@lade.trondhjem.org>
+	id S933296Ab1IIMqk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Sep 2011 08:46:40 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <1315243548-18664-26-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1315243548-18664-26-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: dhowells@redhat.com, agruen@kernel.org, bfields@fieldses.org,
+        akpm@linux-foundation.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V6 25/26] ext4: Implement rich acl for ext4
+Date: Fri, 09 Sep 2011 13:45:58 +0100
+Message-ID: <25112.1315572358@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com> wrote:
 
+> +	retval = ext4_set_richacl(handle, inode, acl);
+> +	ext4_journal_stop(handle);
+> +	if (retval == ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+> +		goto retry;
 
+Should that be -ENOSPC?
 
-On Wed, 2011-09-28 at 16:02 -0700, Venkateswararao Jujjuri wrote: 
-> 
-> On 09/26/2011 04:03 AM, Sreeram B S wrote:
-> > Hi,
-> > I am Sreeram. This question is related to NFS.
-> > I have a typical scenario. Please assume that there are 3 machines M1,
-> > M2, M3. Each of them are having directories /tmp/abc in them. All the
-> > NFS permissions are set appropriately.
-> > Now, a user mounts M2's /tmp/abc on M1's /tmp/abc by issuing mount
-> > command on M1. Mount is successful.
-> > Then the user mounts M3's /tmp/abc on M2's /tmp/abc by issuing mount
-> > command on M2. Mount successful.
-> > Now I would expect the contents of M3's /tmp/abc to be shown as output
-> > of 'ls' issue on M1. But this is not happening. I am unable to
-> > comprehend the reason. Could you please guide me?
-> 
-> What are you seeing instead? Are you seeing M2's contents on M1?
-> Did you try to change the order of the experiment? i.e First mount M3 on 
-> M2 and then mount M2 on M1? Just curious to see if there is any change 
-> in the behavior.
+I do wonder, why does ext4 need to know about richacls at all?  Surely, as far
+as ext4 is concerned, they should be seen as xattrs?
 
-As Bruce said, re-exporting of NFS-mounted filesystems is not supported
-by the Linux server.
+If ext4 needs a mark on disk to say it supports richacls, then why can't that
+simply be the presence or lack thereof of a richacl on the root dir?
 
-Just mount M3's contents directly onto M1, or use a NFSv4 referral (man
-5 exports0.
-
-Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
-
-
+David
