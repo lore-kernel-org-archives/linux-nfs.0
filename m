@@ -1,34 +1,29 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8957 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52241 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751102Ab1IWS5o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Sep 2011 14:57:44 -0400
-Date: Fri, 23 Sep 2011 14:57:28 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Mimi Zohar <zohar@linux.vnet.ibm.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        samba-technical@lists.samba.org, Christoph Hellwig <hch@infradead.org>,
-        Al Viro <viro@zeniv.linux.org.uk>
-Subject: Re: [PATCH 1/6] leases: split up generic_setlease into lock/unlock
- cases
-Message-ID: <20110923185728.GC807@pad.fieldses.org>
-References: <1316617097-21384-1-git-send-email-bfields@redhat.com>
- <1316617097-21384-2-git-send-email-bfields@redhat.com>
- <1316711774.3159.52.camel@localhost.localdomain>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1316711774.3159.52.camel@localhost.localdomain>
+	id S933643Ab1IIMig (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Sep 2011 08:38:36 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <1315243548-18664-23-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1315243548-18664-23-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: dhowells@redhat.com, agruen@kernel.org, bfields@fieldses.org,
+        akpm@linux-foundation.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V6 22/26] vfs: Cache richacl in struct inode
+Date: Fri, 09 Sep 2011 13:37:45 +0100
+Message-ID: <24985.1315571865@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, Sep 22, 2011 at 01:16:14PM -0400, Mimi Zohar wrote:
-> On Wed, 2011-09-21 at 10:58 -0400, J. Bruce Fields wrote: 
-> > Eventually we should probably do the same thing to the file operations
-> > as well.
-...
-> Nice, the code refactoring makes it a lot more readable.
+Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com> wrote:
 
-Thanks.  I'm assuming this one is uncontroversial, so I'll go ahead and
-add it to my for-3.2 tree soon.
+> Cache richacls in struct inode so that this doesn't have to be done
+> individually in each filesystem.
 
---b.
+Since many ACLs in a filesystem are going to be identical, can you have a
+global hash table and share them?
+
+David
