@@ -1,113 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:2715 "EHLO relay.sw.ru"
+Received: from cantor2.suse.de ([195.135.220.15]:46072 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755025Ab1ILOUQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Sep 2011 10:20:16 -0400
-Subject: [PATCH 1/2] SUNRPC: make rpc pipefs mount per network namespace
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net
-Date: Mon, 12 Sep 2011 18:19:42 +0400
-Message-ID: <20110912141942.6261.87058.stgit@localhost6.localdomain6>
-In-Reply-To: <20110912141633.6261.72180.stgit@localhost6.localdomain6>
-References: <20110912141633.6261.72180.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
+	id S933395Ab1IILA7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Sep 2011 07:00:59 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Linux-MM <linux-mm@kvack.org>
+Cc: Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 01/10] netvm: Prevent a stream-specific deadlock
+Date: Fri,  9 Sep 2011 12:00:45 +0100
+Message-Id: <1315566054-17209-2-git-send-email-mgorman@suse.de>
+In-Reply-To: <1315566054-17209-1-git-send-email-mgorman@suse.de>
+References: <1315566054-17209-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-This is another part of RPC layer virtualization.
-RPC pipefs inner data was attached to per-net sunrpc_net instance.
-Network namespace counter is increased and decreased with every RPC mount
-reference. This is not hardly requred from my pow, but it looks safer since we
-relay on network namespace presence.
+It could happen that all !SOCK_MEMALLOC sockets have buffered so
+much data that we're over the global rmem limit. This will prevent
+SOCK_MEMALLOC buffers from receiving data, which will prevent userspace
+from running, which is needed to reduce the buffered data.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Fix this by exempting the SOCK_MEMALLOC sockets from the rmem limit.
 
+Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
 ---
- include/linux/sunrpc/rpc_pipe_fs.h |    4 ++--
- net/sunrpc/netns.h                 |    3 +++
- net/sunrpc/rpc_pipe.c              |   23 +++++++++++++++--------
- 3 files changed, 20 insertions(+), 10 deletions(-)
+ include/net/sock.h     |    7 ++++---
+ net/caif/caif_socket.c |    2 +-
+ net/core/sock.c        |    2 +-
+ net/ipv4/tcp_input.c   |   12 ++++++------
+ net/sctp/ulpevent.c    |    2 +-
+ 5 files changed, 13 insertions(+), 12 deletions(-)
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index cf14db9..0bdf178 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -60,8 +60,8 @@ extern void rpc_remove_cache_dir(struct dentry *);
- extern struct dentry *rpc_mkpipe(struct dentry *, const char *, void *,
- 				 const struct rpc_pipe_ops *, int flags);
- extern int rpc_unlink(struct dentry *);
--extern struct vfsmount *rpc_get_mount(void);
--extern void rpc_put_mount(void);
-+extern struct vfsmount *rpc_get_mount(struct net *net);
-+extern void rpc_put_mount(struct net *net);
- extern int register_rpc_pipefs(void);
- extern void unregister_rpc_pipefs(void);
- 
-diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
-index d013bf2..e45fdf0 100644
---- a/net/sunrpc/netns.h
-+++ b/net/sunrpc/netns.h
-@@ -9,6 +9,9 @@ struct cache_detail;
- struct sunrpc_net {
- 	struct proc_dir_entry *proc_net_rpc;
- 	struct cache_detail *ip_map_cache;
-+
-+	struct vfsmount *rpc_mnt;
-+	int rpc_mount_count;
- };
- 
- extern int sunrpc_net_id;
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index b181e34..ebc5e1c 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -28,8 +28,7 @@
- #include <linux/sunrpc/rpc_pipe_fs.h>
- #include <linux/sunrpc/cache.h>
- 
--static struct vfsmount *rpc_mnt __read_mostly;
--static int rpc_mount_count;
-+#include "netns.h"
- 
- static struct file_system_type rpc_pipe_fs_type;
- 
-@@ -421,20 +420,28 @@ struct rpc_filelist {
- 	umode_t mode;
- };
- 
--struct vfsmount *rpc_get_mount(void)
-+struct vfsmount *rpc_get_mount(struct net *net)
- {
- 	int err;
-+	struct sunrpc_net *sn;
- 
--	err = simple_pin_fs(&rpc_pipe_fs_type, &rpc_mnt, &rpc_mount_count);
--	if (err != 0)
-+	sn = net_generic(get_net(net), sunrpc_net_id);
-+	err = simple_pin_fs(&rpc_pipe_fs_type, &sn->rpc_mnt, &sn->rpc_mount_count);
-+	if (err != 0) {
-+		put_net(net);
- 		return ERR_PTR(err);
--	return rpc_mnt;
-+	}
-+	return sn->rpc_mnt;
+diff --git a/include/net/sock.h b/include/net/sock.h
+index 09813fc..dcf2a55 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -980,12 +980,13 @@ static inline int sk_wmem_schedule(struct sock *sk, int size)
+ 		__sk_mem_schedule(sk, size, SK_MEM_SEND);
  }
- EXPORT_SYMBOL_GPL(rpc_get_mount);
  
--void rpc_put_mount(void)
-+void rpc_put_mount(struct net *net)
+-static inline int sk_rmem_schedule(struct sock *sk, int size)
++static inline int sk_rmem_schedule(struct sock *sk, struct sk_buff *skb)
  {
--	simple_release_fs(&rpc_mnt, &rpc_mount_count);
-+	struct sunrpc_net *sn;
-+
-+	sn = net_generic(net, sunrpc_net_id);
-+	simple_release_fs(&sn->rpc_mnt, &sn->rpc_mount_count);
-+	put_net(net);
+ 	if (!sk_has_account(sk))
+ 		return 1;
+-	return size <= sk->sk_forward_alloc ||
+-		__sk_mem_schedule(sk, size, SK_MEM_RECV);
++	return skb->truesize <= sk->sk_forward_alloc ||
++		__sk_mem_schedule(sk, skb->truesize, SK_MEM_RECV) ||
++		skb_pfmemalloc(skb);
  }
- EXPORT_SYMBOL_GPL(rpc_put_mount);
  
+ static inline void sk_mem_reclaim(struct sock *sk)
+diff --git a/net/caif/caif_socket.c b/net/caif/caif_socket.c
+index a986280..78ef332 100644
+--- a/net/caif/caif_socket.c
++++ b/net/caif/caif_socket.c
+@@ -168,7 +168,7 @@ static int caif_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
+ 	err = sk_filter(sk, skb);
+ 	if (err)
+ 		return err;
+-	if (!sk_rmem_schedule(sk, skb->truesize) && rx_flow_is_on(cf_sk)) {
++	if (!sk_rmem_schedule(sk, skb) && rx_flow_is_on(cf_sk)) {
+ 		set_rx_flow_off(cf_sk);
+ 		if (net_ratelimit())
+ 			pr_debug("sending flow OFF due to rmem_schedule\n");
+diff --git a/net/core/sock.c b/net/core/sock.c
+index 0f28a9b..c27d9e5 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -344,7 +344,7 @@ int sock_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
+ 	if (err)
+ 		return err;
+ 
+-	if (!sk_rmem_schedule(sk, skb->truesize)) {
++	if (!sk_rmem_schedule(sk, skb)) {
+ 		atomic_inc(&sk->sk_drops);
+ 		return -ENOBUFS;
+ 	}
+diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
+index ea0d218..4c2ec53 100644
+--- a/net/ipv4/tcp_input.c
++++ b/net/ipv4/tcp_input.c
+@@ -4356,19 +4356,19 @@ static void tcp_ofo_queue(struct sock *sk)
+ static int tcp_prune_ofo_queue(struct sock *sk);
+ static int tcp_prune_queue(struct sock *sk);
+ 
+-static inline int tcp_try_rmem_schedule(struct sock *sk, unsigned int size)
++static inline int tcp_try_rmem_schedule(struct sock *sk, struct sk_buff *skb)
+ {
+ 	if (atomic_read(&sk->sk_rmem_alloc) > sk->sk_rcvbuf ||
+-	    !sk_rmem_schedule(sk, size)) {
++	    !sk_rmem_schedule(sk, skb)) {
+ 
+ 		if (tcp_prune_queue(sk) < 0)
+ 			return -1;
+ 
+-		if (!sk_rmem_schedule(sk, size)) {
++		if (!sk_rmem_schedule(sk, skb)) {
+ 			if (!tcp_prune_ofo_queue(sk))
+ 				return -1;
+ 
+-			if (!sk_rmem_schedule(sk, size))
++			if (!sk_rmem_schedule(sk, skb))
+ 				return -1;
+ 		}
+ 	}
+@@ -4421,7 +4421,7 @@ static void tcp_data_queue(struct sock *sk, struct sk_buff *skb)
+ 		if (eaten <= 0) {
+ queue_and_out:
+ 			if (eaten < 0 &&
+-			    tcp_try_rmem_schedule(sk, skb->truesize))
++			    tcp_try_rmem_schedule(sk, skb))
+ 				goto drop;
+ 
+ 			skb_set_owner_r(skb, sk);
+@@ -4492,7 +4492,7 @@ drop:
+ 
+ 	TCP_ECN_check_ce(tp, skb);
+ 
+-	if (tcp_try_rmem_schedule(sk, skb->truesize))
++	if (tcp_try_rmem_schedule(sk, skb))
+ 		goto drop;
+ 
+ 	/* Disable header prediction. */
+diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
+index 8a84017..6c6ed2d 100644
+--- a/net/sctp/ulpevent.c
++++ b/net/sctp/ulpevent.c
+@@ -702,7 +702,7 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct sctp_association *asoc,
+ 	if (rx_count >= asoc->base.sk->sk_rcvbuf) {
+ 
+ 		if ((asoc->base.sk->sk_userlocks & SOCK_RCVBUF_LOCK) ||
+-		    (!sk_rmem_schedule(asoc->base.sk, chunk->skb->truesize)))
++		    (!sk_rmem_schedule(asoc->base.sk, chunk->skb)))
+ 			goto fail;
+ 	}
+ 
+-- 
+1.7.3.4
 
