@@ -1,78 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28082 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:46141 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751131Ab1IVP3v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Sep 2011 11:29:51 -0400
-Date: Thu, 22 Sep 2011 11:33:06 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: David Howells <dhowells@redhat.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, miklos@szeredi.hu,
-        raven@themaw.net, viro@zeniv.linux.org.uk, gregkh@suse.de,
-        linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-Subject: Re: [PATCH] NFS4: Revert commit to make the automount code ignore
- LOOKUP_FOLLOW
-Message-ID: <20110922113306.1a831043@barsoom.rdu.redhat.com>
-In-Reply-To: <6490.1316704925@redhat.com>
-References: <CA+55aFzoH2VxTvf3Q1Lp_GAqDNAbsSOa=ATFXYSmmM=K8Fhuew@mail.gmail.com>
-	<20110922124608.7739.27750.stgit@warthog.procyon.org.uk>
-	<6490.1316704925@redhat.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S933543Ab1IILBI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Sep 2011 07:01:08 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Linux-MM <linux-mm@kvack.org>
+Cc: Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 09/10] nfs: Prevent page allocator recursions with swap over NFS.
+Date: Fri,  9 Sep 2011 12:00:53 +0100
+Message-Id: <1315566054-17209-10-git-send-email-mgorman@suse.de>
+In-Reply-To: <1315566054-17209-1-git-send-email-mgorman@suse.de>
+References: <1315566054-17209-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 22 Sep 2011 16:22:05 +0100
-David Howells <dhowells@redhat.com> wrote:
+GFP_NOFS is _more_ permissive than GFP_NOIO in that it will initiate
+IO, just not of any filesystem data.
 
-> 
-> One thing that does concern me a little about bringing back the old behaviour
-> for stat and *xattr is that there is no reliable way to get at the directory
-> mounted directly on the mountpoint (ie. mnt_root).
-> 
-> The problem is that:
-> 
->  (a) you have to know to trigger the automount with some other operation first
->      and
-> 
->  (b) the other operation is not atomic wrt to the following stat/xattr, and so
->      the thing mounted on the automount point may be subject to expiration and
->      auto-unmounting before the second operation can proceed.
-> 
-> I'm not sure how much of a problem these are in practice.  Certainly, I'd rate
-> (b) as being less serious than (a) as the expiration timeouts are generally
-> quite large.  (b) can be suppressed with chdir() or open() also - then you are
-> forcing retension of the vfsmount.
-> 
-> The problem can be ameliorated for such as fstatat() by passing an AT_ flag to
-> either suppress automounting or to force automounting, but there aren't any
-> xattr calls, for example, that take this.
-> 
-> 
-> I guess it comes down to defining two things:
-> 
->  (1) What behaviour do we actually want?
-> 
->  (2) What departure from previous behaviour are we willing to put up with?
-> 
-> 
-> On the first, I would say definitely we want mass-stat'ers (such as ls) to not
-> cause mass automounting.  But for ls, that has been achieved in userspace;
-> there are, however, other programs to consider.
-> 
-> I would also say that we do not want lstat(), l*xattr() and co. to cause
-> automounting - but maybe they should.  Perhaps if you don't want to cause
-> automounting, you should explicitly pass AT_NO_AUTOMOUNT, and all path-taking
-> VFS calls should have variants that accept this flag.
-> 
-> Do we want to have guaranteed access to the root of an automounted fs?  Are we
-> willing to add getxattrat and similar to get it?
-> 
+The problem is that previously NOFS was correct because that avoids
+recursion into the NFS code. With swap-over-NFS, it is no longer
+correct as swap IO can lead to this recursion.
 
-I guess we recognize that we ought to allow userspace to have some
-control over whether these syscalls will trigger an automount. So the
-real question is -- what should the default be? Probably, we ought to
-err on the side of caution and keep the default behavior the way it was
-before 2.6.38.
+Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ fs/nfs/pagelist.c |    2 +-
+ fs/nfs/write.c    |    7 ++++---
+ 2 files changed, 5 insertions(+), 4 deletions(-)
 
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 1fcc294..5eb527d 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -27,7 +27,7 @@ static struct kmem_cache *nfs_page_cachep;
+ static inline struct nfs_page *
+ nfs_page_alloc(void)
+ {
+-	struct nfs_page	*p = kmem_cache_zalloc(nfs_page_cachep, GFP_KERNEL);
++	struct nfs_page	*p = kmem_cache_zalloc(nfs_page_cachep, GFP_NOIO);
+ 	if (p)
+ 		INIT_LIST_HEAD(&p->wb_list);
+ 	return p;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 475e1f2..78e4ce6 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -51,7 +51,7 @@ static mempool_t *nfs_commit_mempool;
+ 
+ struct nfs_write_data *nfs_commitdata_alloc(void)
+ {
+-	struct nfs_write_data *p = mempool_alloc(nfs_commit_mempool, GFP_NOFS);
++	struct nfs_write_data *p = mempool_alloc(nfs_commit_mempool, GFP_NOIO);
+ 
+ 	if (p) {
+ 		memset(p, 0, sizeof(*p));
+@@ -71,7 +71,7 @@ EXPORT_SYMBOL_GPL(nfs_commit_free);
+ 
+ struct nfs_write_data *nfs_writedata_alloc(unsigned int pagecount)
+ {
+-	struct nfs_write_data *p = mempool_alloc(nfs_wdata_mempool, GFP_NOFS);
++	struct nfs_write_data *p = mempool_alloc(nfs_wdata_mempool, GFP_NOIO);
+ 
+ 	if (p) {
+ 		memset(p, 0, sizeof(*p));
+@@ -80,7 +80,8 @@ struct nfs_write_data *nfs_writedata_alloc(unsigned int pagecount)
+ 		if (pagecount <= ARRAY_SIZE(p->page_array))
+ 			p->pagevec = p->page_array;
+ 		else {
+-			p->pagevec = kcalloc(pagecount, sizeof(struct page *), GFP_NOFS);
++			p->pagevec = kcalloc(pagecount, sizeof(struct page *),
++					GFP_NOIO);
+ 			if (!p->pagevec) {
+ 				mempool_free(p, nfs_wdata_mempool);
+ 				p = NULL;
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.3.4
+
