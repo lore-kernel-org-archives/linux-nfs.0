@@ -1,63 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from talus.maths.usyd.edu.au ([129.78.68.1]:34763 "EHLO
-	talus.maths.usyd.edu.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751390Ab1IUFip (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 01:38:45 -0400
-Date: Wed, 21 Sep 2011 15:38:33 +1000
-From: paul.szabo@sydney.edu.au
-Message-Id: <201109210538.p8L5cX2K030762@bari.maths.usyd.edu.au>
-To: Trond.Myklebust@netapp.com
-Subject: RE: Please support NSF squashing multiple groups
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480225@SACMVEXC2-PRD.hq.netapp.com>
+Received: from cantor2.suse.de ([195.135.220.15]:60362 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758899Ab1IINP4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Sep 2011 09:15:56 -0400
+Date: Fri, 9 Sep 2011 14:15:50 +0100
+From: Mel Gorman <mgorman@suse.de>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Peter Zijlstra <a.p.zijlstra@chello.nl>
+Subject: Re: [PATCH 03/10] mm: Add support for a filesystem to control swap
+ files
+Message-ID: <20110909131550.GV14369@suse.de>
+References: <1315566054-17209-1-git-send-email-mgorman@suse.de>
+ <1315566054-17209-4-git-send-email-mgorman@suse.de>
+ <20110909130007.GA11810@infradead.org>
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <20110909130007.GA11810@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Dear Trond,
+On Fri, Sep 09, 2011 at 09:00:08AM -0400, Christoph Hellwig wrote:
+> On Fri, Sep 09, 2011 at 12:00:47PM +0100, Mel Gorman wrote:
+> > Currently swapfiles are managed entirely by the core VM by using
+> > ->bmap to allocate space and write to the blocks directly. This
+> > patch adds address_space_operations methods that allow a filesystem
+> > to optionally control the swapfile.
+> > 
+> >   int swap_activate(struct file *);
+> >   int swap_deactivate(struct file *);
+> >   int swap_writepage(struct file *, struct page *, struct writeback_control *);
+> >   int swap_readpage(struct file *, struct page *);
+> 
+> Just as the last two dozen times this came up:
+> 
+> NAK
+> 
+> The right fix is to add a filesystem method to support direct-I/O on
+> arbitrary kernel pages, instead of letting the wap abstraction leak into
+> the filesystem.
 
->>> ... It is too easy to fake a uid or a gid when you use a protocol that
->>> exposes them in clear on the network ...
->> Trivial to find out what they are, may not be so easy to inject them.
->
-> If you are inside the network? All you need is a client and sufficient
-> privileges to open a privileged port. ...
+Ok.
 
-Inside "the network", but on the wrong subnet.
+I confess I haven't investigated this direction at
+all yet.  Is it correct that your previous objection was
+http://linux.derkeiler.com/Mailing-Lists/Kernel/2009-10/msg00455.html
+and the direct-IO patchset you were thinking of was
+http://copilotco.com/mail-archives/linux-kernel.2009/msg87176.html ?
 
->> In terms of usurping UIDs, he is pretty much defeated ... rendered
->> harmless by root_squash. ...
->
-> Ermm... If you can spoof any user (except root), then surely there are
-> several alternatives open to you. ...
+If so, are you suggesting that instead of swap_readpage and
+swap_writepage I look into what is required for swap to use ->readpage
+method and ->direct_IO aops?
 
-I am not worried about attackers getting access to the data of another
-user, but about "getting root" on the server or another client:
-  ... the attacker creating a setgid (group staff or disk or similar)
-  /users/my/file is sufficient for a compromise ...
-as mentioned in
-http://www.spinics.net/lists/linux-nfs/msg23481.html
-
-I am aware that the attacker could trojan the files of a user who is
-known to log in as root, and so trap and reveal the root password;
-or steal the Xauthority from such a user and inject keystrokes to a
-rootly window.
-
-> There are 2 solutions to that problem: either go the route of the
-> rpc.ugidd daemon ...
-
-Which is not present, does not seem supported on Debian. Also, reading
-http://linuxmafia.com/pub/linux/suse-linux-internals/chapter20.html
-it sounds like ugidd runs on the client not the server, so is unable to
-provide the protection I want. Maybe using map_static would be the way
-to go, but is also not supported on Debian.
-
-And anyway this all seems to contradict Neil Brown's message
-http://www.spinics.net/lists/linux-nfs/msg23488.html
-earlier in this thread saying NFSv3 cannot possibly do things "right".
-
-Cheers, Paul
-
-Paul Szabo   psz@maths.usyd.edu.au   http://www.maths.usyd.edu.au/u/psz/
-School of Mathematics and Statistics   University of Sydney    Australia
+-- 
+Mel Gorman
+SUSE Labs
