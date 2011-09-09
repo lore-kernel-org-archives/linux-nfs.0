@@ -1,52 +1,142 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:1458 "EHLO relay.sw.ru"
+Received: from cantor2.suse.de ([195.135.220.15]:46099 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933413Ab1IIU6n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Sep 2011 16:58:43 -0400
-Message-ID: <4E6A7DE2.7000808@parallels.com>
-Date: Sat, 10 Sep 2011 00:58:10 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>
-Subject: Re: [PATCH v2 3/5] SUNRPC: make RPC service dependable on rpcbind
- clients creation
-References: <20110909115146.13697.71682.stgit@localhost6.localdomain6>	 <20110909120844.13697.48102.stgit@localhost6.localdomain6>	 <20110909100745.7e2e8bf9@corrin.poochiereds.net>	 <4E6A41D4.6090001@parallels.com>	 <1315593874.17611.19.camel@lade.trondhjem.org>	 <20110909150104.5a83c60d@tlielax.poochiereds.net> <1315596308.17611.46.camel@lade.trondhjem.org>
-In-Reply-To: <1315596308.17611.46.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+	id S933523Ab1IILBE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Sep 2011 07:01:04 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Linux-MM <linux-mm@kvack.org>
+Cc: Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 05/10] mm: Methods for teaching filesystems about PG_swapcache pages
+Date: Fri,  9 Sep 2011 12:00:49 +0100
+Message-Id: <1315566054-17209-6-git-send-email-mgorman@suse.de>
+In-Reply-To: <1315566054-17209-1-git-send-email-mgorman@suse.de>
+References: <1315566054-17209-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-> Isn't the problem that Stanislav is trying to solve that we need to be
-> able to register and unregister RPC services to the correct rpcbind
-> server, depending on which net namespace we are in?
-> 
-> My understanding is that the current code will register everything to
-> whatever rpcbind server is running in the init net namespace because
-> that's what rpcb_create_local() uses.
-> 
-> My suggestion is to use a struct pernet_operations to detect when a net
-> namespace is being created or destroyed, so that the rpcbind client code
-> knows when to create or destroy a connection to the server that is
-> running in that namespace.
+In order to teach filesystems to handle swap cache pages, three new
+page functions are introduced:
 
-The problem is that the client has a reference on transport, the transport gets
-a socket and the socket holds the net namesace and thus we will not receive the
-net->exit event with this approach.
+  pgoff_t page_file_index(struct page *);
+  loff_t page_file_offset(struct page *);
+  struct address_space *page_file_mapping(struct page *);
 
-Another option is to break the client's socket reference and kill the rpcb client
-on netns stop (i.e. as you propose), but in that case we have another problem - 
-how to destroy _other_ clients (not rpc bind ones) when the net namespace stops.
+page_file_index() - gives the offset of this page in the file in
+PAGE_CACHE_SIZE blocks. Like page->index is for mapped pages, this
+function also gives the correct index for PG_swapcache pages.
 
-If you prefer either way just let us know, we'll fix the patches.
+page_file_offset() - uses page_file_index(), so that it will give
+the expected result, even for PG_swapcache pages.
 
-> Cheers
->   Trond
+page_file_mapping() - gives the mapping backing the actual page;
+that is for swap cache pages it will give swap_file->f_mapping.
+
+Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ include/linux/mm.h      |   25 +++++++++++++++++++++++++
+ include/linux/pagemap.h |    5 +++++
+ mm/swapfile.c           |   19 +++++++++++++++++++
+ 3 files changed, 49 insertions(+), 0 deletions(-)
+
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index 7438071..45442a8 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -787,6 +787,17 @@ static inline void *page_rmapping(struct page *page)
+ 	return (void *)((unsigned long)page->mapping & ~PAGE_MAPPING_FLAGS);
+ }
+ 
++extern struct address_space *__page_file_mapping(struct page *);
++
++static inline
++struct address_space *page_file_mapping(struct page *page)
++{
++	if (unlikely(PageSwapCache(page)))
++		return __page_file_mapping(page);
++
++	return page->mapping;
++}
++
+ static inline int PageAnon(struct page *page)
+ {
+ 	return ((unsigned long)page->mapping & PAGE_MAPPING_ANON) != 0;
+@@ -803,6 +814,20 @@ static inline pgoff_t page_index(struct page *page)
+ 	return page->index;
+ }
+ 
++extern pgoff_t __page_file_index(struct page *page);
++
++/*
++ * Return the file index of the page. Regular pagecache pages use ->index
++ * whereas swapcache pages use swp_offset(->private)
++ */
++static inline pgoff_t page_file_index(struct page *page)
++{
++	if (unlikely(PageSwapCache(page)))
++		return __page_file_index(page);
++
++	return page->index;
++}
++
+ /*
+  * The atomic page->_mapcount, like _count, starts from -1:
+  * so that transitions both from it and to it can be tracked,
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index cfaaa69..d4d4bda 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -286,6 +286,11 @@ static inline loff_t page_offset(struct page *page)
+ 	return ((loff_t)page->index) << PAGE_CACHE_SHIFT;
+ }
+ 
++static inline loff_t page_file_offset(struct page *page)
++{
++	return ((loff_t)page_file_index(page)) << PAGE_CACHE_SHIFT;
++}
++
+ extern pgoff_t linear_hugepage_index(struct vm_area_struct *vma,
+ 				     unsigned long address);
+ 
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index c49cb33..806b994 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -2232,6 +2232,25 @@ struct swap_info_struct *page_swap_info(struct page *page)
+ }
+ 
+ /*
++ * out-of-line __page_file_ methods to avoid include hell.
++ */
++
++struct address_space *__page_file_mapping(struct page *page)
++{
++	VM_BUG_ON(!PageSwapCache(page));
++	return page_swap_info(page)->swap_file->f_mapping;
++}
++EXPORT_SYMBOL_GPL(__page_file_mapping);
++
++pgoff_t __page_file_index(struct page *page)
++{
++	swp_entry_t swap = { .val = page_private(page) };
++	VM_BUG_ON(!PageSwapCache(page));
++	return swp_offset(swap);
++}
++EXPORT_SYMBOL_GPL(__page_file_index);
++
++/*
+  * swap_lock prevents swap_map being freed. Don't grab an extra
+  * reference on the swaphandle, it doesn't matter if it becomes unused.
+  */
+-- 
+1.7.3.4
 
