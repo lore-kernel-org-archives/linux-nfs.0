@@ -1,124 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:39482 "EHLO relay.sw.ru"
+Received: from cantor2.suse.de ([195.135.220.15]:46076 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755025Ab1ILOUM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Sep 2011 10:20:12 -0400
-Subject: [PATCH 2/2] SUNRPC: RPC pipefs virtualization
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net
-Date: Mon, 12 Sep 2011 18:19:50 +0400
-Message-ID: <20110912141950.6261.9291.stgit@localhost6.localdomain6>
-In-Reply-To: <20110912141633.6261.72180.stgit@localhost6.localdomain6>
-References: <20110912141633.6261.72180.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
+	id S933450Ab1IILBA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Sep 2011 07:01:00 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Linux-MM <linux-mm@kvack.org>
+Cc: Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 02/10] selinux: tag avc cache alloc as non-critical
+Date: Fri,  9 Sep 2011 12:00:46 +0100
+Message-Id: <1315566054-17209-3-git-send-email-mgorman@suse.de>
+In-Reply-To: <1315566054-17209-1-git-send-email-mgorman@suse.de>
+References: <1315566054-17209-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Parametrize rpc_mount_get() and rpc_mount_put() with network namespace pointer.
-Currently init_net is used, but later proper network context will be used
-instead.
-It actually means, that in future NFS cache have to be virtualied as well.
+Failing to allocate a cache entry will only harm performance not
+correctness.  Do not consume valuable reserve pages for something
+like that.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
+Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
 ---
- fs/nfs/blocklayout/blocklayout.c |    2 +-
- fs/nfs/cache_lib.c               |    7 ++++---
- net/sunrpc/clnt.c                |    8 ++++----
- 3 files changed, 9 insertions(+), 8 deletions(-)
+ security/selinux/avc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 9561c8f..9904e70 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -979,7 +979,7 @@ static int __init nfs4blocklayout_init(void)
- 
- 	init_waitqueue_head(&bl_wq);
- 
--	mnt = rpc_get_mount();
-+	mnt = rpc_get_mount(&init_net);
- 	if (IS_ERR(mnt)) {
- 		ret = PTR_ERR(mnt);
- 		goto out_remove;
-diff --git a/fs/nfs/cache_lib.c b/fs/nfs/cache_lib.c
-index c98b439..777514b 100644
---- a/fs/nfs/cache_lib.c
-+++ b/fs/nfs/cache_lib.c
-@@ -11,6 +11,7 @@
- #include <linux/mount.h>
- #include <linux/namei.h>
- #include <linux/slab.h>
-+#include <net/net_namespace.h>
- #include <linux/sunrpc/cache.h>
- #include <linux/sunrpc/rpc_pipe_fs.h>
- 
-@@ -117,7 +118,7 @@ int nfs_cache_register(struct cache_detail *cd)
- 	struct path path;
- 	int ret;
- 
--	mnt = rpc_get_mount();
-+	mnt = rpc_get_mount(&init_net);
- 	if (IS_ERR(mnt))
- 		return PTR_ERR(mnt);
- 	ret = vfs_path_lookup(mnt->mnt_root, mnt, "/cache", 0, &path);
-@@ -128,13 +129,13 @@ int nfs_cache_register(struct cache_detail *cd)
- 	if (!ret)
- 		return ret;
- err:
--	rpc_put_mount();
-+	rpc_put_mount(&init_net);
- 	return ret;
- }
- 
- void nfs_cache_unregister(struct cache_detail *cd)
+diff --git a/security/selinux/avc.c b/security/selinux/avc.c
+index dca1c22..a68d200 100644
+--- a/security/selinux/avc.c
++++ b/security/selinux/avc.c
+@@ -280,7 +280,7 @@ static struct avc_node *avc_alloc_node(void)
  {
- 	sunrpc_cache_unregister_pipefs(cd);
--	rpc_put_mount();
-+	rpc_put_mount(&init_net);
- }
+ 	struct avc_node *node;
  
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index c5347d2..4bebcc0 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -109,7 +109,7 @@ rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
- 	if (dir_name == NULL)
- 		return 0;
+-	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC);
++	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC|__GFP_NOMEMALLOC);
+ 	if (!node)
+ 		goto out;
  
--	path.mnt = rpc_get_mount();
-+	path.mnt = rpc_get_mount(clnt->cl_xprt->xprt_net);
- 	if (IS_ERR(path.mnt))
- 		return PTR_ERR(path.mnt);
- 	error = vfs_path_lookup(path.mnt->mnt_root, path.mnt, dir_name, 0, &dir);
-@@ -137,7 +137,7 @@ rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
- err_path_put:
- 	path_put(&dir);
- err:
--	rpc_put_mount();
-+	rpc_put_mount(clnt->cl_xprt->xprt_net);
- 	return error;
- }
- 
-@@ -248,7 +248,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
- out_no_auth:
- 	if (!IS_ERR(clnt->cl_path.dentry)) {
- 		rpc_remove_client_dir(clnt->cl_path.dentry);
--		rpc_put_mount();
-+		rpc_put_mount(clnt->cl_xprt->xprt_net);
- 	}
- out_no_path:
- 	kfree(clnt->cl_principal);
-@@ -476,7 +476,7 @@ rpc_free_client(struct rpc_clnt *clnt)
- 			clnt->cl_protname, clnt->cl_server);
- 	if (!IS_ERR(clnt->cl_path.dentry)) {
- 		rpc_remove_client_dir(clnt->cl_path.dentry);
--		rpc_put_mount();
-+		rpc_put_mount(clnt->cl_xprt->xprt_net);
- 	}
- 	if (clnt->cl_parent != clnt) {
- 		rpc_release_client(clnt->cl_parent);
+-- 
+1.7.3.4
 
