@@ -1,89 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:50125 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751979Ab1I0D6U convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Sep 2011 23:58:20 -0400
-Received: by wyg34 with SMTP id 34so6679517wyg.19
-        for <linux-nfs@vger.kernel.org>; Mon, 26 Sep 2011 20:58:19 -0700 (PDT)
-In-Reply-To: <1317085155.21770.17.camel@lade.trondhjem.org>
-References: <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com>
- <1316747758.3346.89.camel@perseus.themaw.net> <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
- <1316707443.3346.44.camel@perseus.themaw.net> <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
- <1316709935.3346.48.camel@perseus.themaw.net> <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
- <20110922144453.6cf53a25@barsoom.rdu.redhat.com> <1316719228.3968.14.camel@lade.trondhjem.org>
- <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
- <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
- <21772.1316774025@redhat.com> <1316788444.14812.10.camel@lade.trondhjem.org>
- <29743.1316791138@redhat.com> <87hb43tf2g.fsf@tucsk.pomaz.szeredi.hu>
- <1316827854.3346.154.camel@perseus.themaw.net> <CA+55aFwPEq5B_P0RtX+pBtGfTadzzS+3U=k=3XTjDw3soNhOdA@mail.gmail.com>
- <20110924073610.4b045189@tlielax.poochiereds.net> <CA+55aFxjFXbCKBZNfBuCOaiBHRQ=ZECnhqKxjPw9maPgyRLiDA@mail.gmail.com>
- <1317013864.3187.81.camel@perseus.themaw.net> <CA+55aFzJnKCHtsiH-mZOwQgVt1ajPJQHWRYB_19eXEKaGRPD1w@mail.gmail.com>
- <1317071626.19951.8.camel@lade.trondhjem.org> <CA+55aFzWCZQjWMcxg16yMUoLr-mEPuXzAFgv49LU4hCn+=rbwQ@mail.gmail.com>
- <1317072718.19951.13.camel@lade.trondhjem.org> <CA+55aFzaScGiKmsSrgXivoUPw4xHjKobsB4VquuEu1fG=7R+wA@mail.gmail.com>
- <1317076424.19951.32.camel@lade.trondhjem.org> <CA+55aFzi+0Z6HXJCxW=Uc1EZsp4qA00i+ihNcSX_v6bVTbU2BA@mail.gmail.com>
- <1317078563.21770.8.camel@lade.trondhjem.org> <CA+55aFzX+DyU7xhAmTLq0g_z6jyKuqoiyPdCYO+w2Xk7pECrqg@mail.gmail.com>
- <1317085155.21770.17.camel@lade.trondhjem.org>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Mon, 26 Sep 2011 20:57:59 -0700
-Message-ID: <CA+55aFxuaJ-a5u79D2pELU4HbWTrbWjG_4BNcvFqEOcM0H8G2Q@mail.gmail.com>
-Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Ian Kent <raven@themaw.net>, Jeff Layton <jlayton@redhat.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        David Howells <dhowells@redhat.com>, viro@zeniv.linux.org.uk,
-        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mailhub.sw.ru ([195.214.232.25]:37301 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933830Ab1IIMJF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Sep 2011 08:09:05 -0400
+Subject: [PATCH v2 3/5] SUNRPC: make RPC service dependable on rpcbind clients
+	creation
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net
+Date: Fri, 09 Sep 2011 16:08:44 +0400
+Message-ID: <20110909120844.13697.48102.stgit@localhost6.localdomain6>
+In-Reply-To: <20110909115146.13697.71682.stgit@localhost6.localdomain6>
+References: <20110909115146.13697.71682.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Sep 26, 2011 at 5:59 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> diff --git a/fs/namei.c b/fs/namei.c
-> index f478836..5b1608f 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -724,25 +724,9 @@ static int follow_automount(struct path *path, unsigned flags,
->        /* We don't want to mount if someone supplied AT_NO_AUTOMOUNT
->         * and this is the terminal part of the path.
->         */
-> -       if ((flags & LOOKUP_NO_AUTOMOUNT) && !(flags & LOOKUP_PARENT))
-> +       if (!(flags & LOOKUP_AUTOMOUNT) && !(flags & LOOKUP_PARENT))
->                return -EISDIR; /* we actually want to stop here */
->
-> -       /* We don't want to mount if someone's just doing a stat -
-> -        * unless they're stat'ing a directory and appended a '/' to
-> -        * the name.
-> -        *
-> -        * We do, however, want to mount if someone wants to open or
-> -        * create a file of any type under the mountpoint, wants to
-> -        * traverse through the mountpoint or wants to open the
-> -        * mounted directory.  Also, autofs may mark negative dentries
-> -        * as being automount points.  These will need the attentions
-> -        * of the daemon to instantiate them before they can be used.
-> -        */
-> -       if (!(flags & (LOOKUP_PARENT | LOOKUP_DIRECTORY |
-> -                    LOOKUP_OPEN | LOOKUP_CREATE)) &&
-> -           path->dentry->d_inode)
-> -               return -EISDIR;
-> -
->        current->total_link_count++;
->        if (current->total_link_count >= 40)
->                return -ELOOP;
+Create rcbind clients or increase rpcbind users counter during RPC service
+creation and decrease this counter (and possibly destroy those clients) on RPC
+service destruction.
 
-So I think that dropping the d_inode test is wrong, even if we were to
-at some point decide that we want explicit LOOKUP_AUTOMOUNT
-everywhere.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Of course, it may be that the comment is wrong. But assuming the
-comment is correct, then it's really the test above that is
-fundamentally wrong.
+---
+ include/linux/sunrpc/clnt.h |    2 ++
+ net/sunrpc/rpcb_clnt.c      |    2 +-
+ net/sunrpc/svc.c            |   13 +++++++++++--
+ 3 files changed, 14 insertions(+), 3 deletions(-)
 
-Ian may know the answer. Ian?
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index db7bcaf..65a8115 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -135,10 +135,12 @@ void		rpc_shutdown_client(struct rpc_clnt *);
+ void		rpc_release_client(struct rpc_clnt *);
+ void		rpc_task_release_client(struct rpc_task *);
+ 
++int		rpcb_create_local(void);
+ int		rpcb_register(u32, u32, int, unsigned short);
+ int		rpcb_v4_register(const u32 program, const u32 version,
+ 				 const struct sockaddr *address,
+ 				 const char *netid);
++void		rpcb_put_local(void);
+ void		rpcb_getport_async(struct rpc_task *);
+ 
+ void		rpc_call_start(struct rpc_task *);
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index b4cc0f1..437ec60 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -318,7 +318,7 @@ out:
+  * Returns zero on success, otherwise a negative errno value
+  * is returned.
+  */
+-static int rpcb_create_local(void)
++int rpcb_create_local(void)
+ {
+ 	static DEFINE_MUTEX(rpcb_create_local_mutex);
+ 	int result = 0;
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 6a69a11..9095c0e 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -367,8 +367,11 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 	unsigned int xdrsize;
+ 	unsigned int i;
+ 
+-	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
++	if (rpcb_create_local() < 0)
+ 		return NULL;
++
++	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
++		goto out_err;
+ 	serv->sv_name      = prog->pg_name;
+ 	serv->sv_program   = prog;
+ 	serv->sv_nrthreads = 1;
+@@ -403,7 +406,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 			GFP_KERNEL);
+ 	if (!serv->sv_pools) {
+ 		kfree(serv);
+-		return NULL;
++		goto out_err;
+ 	}
+ 
+ 	for (i = 0; i < serv->sv_nrpools; i++) {
+@@ -423,6 +426,10 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 	svc_unregister(serv);
+ 
+ 	return serv;
++
++out_err:
++	rpcb_put_local(); 
++	return NULL;
+ }
+ 
+ struct svc_serv *
+@@ -491,6 +498,8 @@ svc_destroy(struct svc_serv *serv)
+ 	svc_unregister(serv);
+ 	kfree(serv->sv_pools);
+ 	kfree(serv);
++
++	rpcb_put_local();
+ }
+ EXPORT_SYMBOL_GPL(svc_destroy);
+ 
 
-Regardless, I applied the minimal and obviously safe part of the
-patch, so hopefully we have no actual regressions left in this area,
-and it's just a discussion about possible future cleanups.
-
-                    Linus
