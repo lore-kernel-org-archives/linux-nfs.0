@@ -1,100 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:46399 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:57286 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751584Ab1IUTe5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Sep 2011 15:34:57 -0400
-Message-ID: <4E7A3C5E.2020103@netapp.com>
-Date: Wed, 21 Sep 2011 15:34:54 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/2] Changes in 3.1 kernel break NFS monitoring tools
-References: <1316629016-27740-1-git-send-email-steved@redhat.com> <4E7A2C27.8020209@netapp.com> <4E7A2D70.6000400@RedHat.com> <20110921185139.GC22961@fieldses.org> <4E7A3B84.7030600@RedHat.com>
-In-Reply-To: <4E7A3B84.7030600@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S933741Ab1IIXSn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Sep 2011 19:18:43 -0400
+Subject: Re: [3.1-rc4] NFSv3 client hang
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Simon Kirby <sim@hostway.ca>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Fri, 09 Sep 2011 19:18:42 -0400
+In-Reply-To: <20110909194509.GB6195@hostway.ca>
+References: <20110909194509.GB6195@hostway.ca>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1315610322.17611.112.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/21/2011 03:31 PM, Steve Dickson wrote:
+On Fri, 2011-09-09 at 12:45 -0700, Simon Kirby wrote: 
+> The 3.1-rc4 NFSv3 client hung on another box (separate from the other one
+> which Oopsed in vfs_rmdir() with similar workload). This build was also
+> of 9e79e3e9dd9672b37ac9412e9a926714306551fe (slightly past 3.1-rc4), and
+> "git log 9e79e3e9dd96.. fs/nfs net/sunrpc" is empty.
 > 
+> All mounts to one server IP have hung, while all other mounts work fine.
+> I ran "cd /proc/sys/sunrpc; echo 255 > rpc_debug; echo 255 > nfs_debug"
+> for a while, then kill -9'd all D-state processes to simplify the
+> debugging, and was left with one that was not interruptible:
 > 
-> On 09/21/2011 02:51 PM, J. Bruce Fields wrote:
->> On Wed, Sep 21, 2011 at 02:31:12PM -0400, Steve Dickson wrote:
->>>
->>>
->>> On 09/21/2011 02:25 PM, Bryan Schumaker wrote:
->>>> On 09/21/2011 02:16 PM, Steve Dickson wrote:
->>>>> Both parser of nfsiostat and mountstats depend on the 
->>>>> the first word in /proc/self/mountstats to be 'device'
->>>>> for them to parse through all the devices. 
->>>>>
->>>>> NFS mounts entries,  in 3.1,  no longer have start with
->>>>> the word 'device'. They start with the actual device, 
->>>>> which confused both set of parsing routines.
->>>>
->>>> I sent in a patch to fix this on the kernel end almost a month ago, but it must have gotten lost with the kernel.org confusion.  I included what I came up with below
->>> Interesting... Maybe we should still apply these patches until
->>> your patch shows up? They are definitely broken... 
->>
->> May as well fix the problem on both sides if possible.
-> I agree this..  I can always pull these back out if/when
-> Bryan's patch shows up...
+> 28612 D    /usr/local/apache2/bin/http sleep_on_page
+> # cat /proc/28612/stack
+> [<ffffffff810bdf49>] sleep_on_page+0x9/0x10
+> [<ffffffff810bdf34>] __lock_page+0x64/0x70
+> [<ffffffff8112a9e5>] __generic_file_splice_read+0x2d5/0x500
+> [<ffffffff8112ac5a>] generic_file_splice_read+0x4a/0x90
+> [<ffffffff812030e5>] nfs_file_splice_read+0x85/0xd0
+> [<ffffffff81128fb2>] do_splice_to+0x72/0xa0
+> [<ffffffff811297e4>] splice_direct_to_actor+0xc4/0x1d0
+> [<ffffffff81129942>] do_splice_direct+0x52/0x70
+> [<ffffffff81100096>] do_sendfile+0x166/0x1d0
+> [<ffffffff81100185>] sys_sendfile64+0x85/0xb0
+> [<ffffffff816af57b>] system_call_fastpath+0x16/0x1b
+> [<ffffffffffffffff>] 0xffffffffffffffff
+> 
+> echo 1 > /proc/sys/sunrpc/rpc_debug emits:
+> 
+> -pid- flgs status -client- --rqstp- -timeout ---ops--
+> 37163 0001    -11 ffff8802251bca00   (null)        0 ffffffff816e4110 nfsv3 READ a:call_reserveresult q:xprt_sending
+> 
+> tcpdump to this server shows absolutely no packets to the server IP for
+> several minutes. netstat shows the socket in CLOSE_WAIT:
+> 
+> # netstat -tan|grep 2049
+> tcp        0      0 10.10.52.50:806         10.10.52.230:2049       CLOSE_WAIT
+> 
+> This is the only port-2049 socket that still exists.
+> rpcinfo -p 10.10.52.230, -t 10.10.52.230 lockmgr, etc., all show the
+> server seems fine. rpciod is sleeping in rescuer_thread, and nothing
+> else is in D state.
+> 
+> mount opts were "rw,hard,intr,tcp,timeo=300,retrans=2,vers=3"
+> 
+> Running another "df" on the mountpoint with rpc_debug = 255 shows:
+> 
+> -pid- flgs status -client- --rqstp- -timeout ---ops--
+> 37163 0001    -11 ffff8802251bca00   (null)        0 ffffffff816e4110 nfsv3 READ a:call_reserveresult q:xprt_sending
+> RPC:       looking up Generic cred
+> NFS call  access
+> RPC:       new task initialized, procpid 30679
+> RPC:       allocated task ffff880030c17a00
+> RPC: 37133 __rpc_execute flags=0x80
+> RPC: 37133 call_start nfs3 proc ACCESS (sync)
+> RPC: 37133 call_reserve (status 0)
+> RPC: 37133 failed to lock transport ffff880223d0a000
+> RPC: 37133 sleep_on(queue "xprt_sending" time 4489651610)
+> RPC: 37133 added to queue ffff880223d0a178 "xprt_sending"
+> RPC: 37133 sync task going to sleep
+> 
+> So something is not closing the old transport socket here?
 
-Sounds good to me.  It makes sense to have tools that work with current kernels.
+Hi Simon,
 
-> 
-> steved.
-> 
->>
->> --b.
->>
->>>
->>> steved.
->>> .
->>>>
->>>> - Bryan
->>>>
->>>> [PATCH] VFS: Add "device" tag to /proc/self/mountstats
->>>>
->>>> nfsiostat was failing to find mounted filesystems on kernels after
->>>> 2.6.38 because of changes to show_vfsstat() by commit
->>>> c7f404b40a3665d9f4e9a927cc5c1ee0479ed8f9.  This patch adds back the
->>>> "device" tag before the nfs server entry so scripts can parse the
->>>> mountstats file correctly.
->>>>
->>>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->>>> ---
->>>>  fs/namespace.c |    1 +
->>>>  1 files changed, 1 insertions(+), 0 deletions(-)
->>>>
->>>> diff --git a/fs/namespace.c b/fs/namespace.c
->>>> index 22bfe82..1429114 100644
->>>> --- a/fs/namespace.c
->>>> +++ b/fs/namespace.c
->>>> @@ -1109,6 +1109,7 @@ static int show_vfsstat(struct seq_file *m, void *v)
->>>>  
->>>>  	/* device */
->>>>  	if (mnt->mnt_sb->s_op->show_devname) {
->>>> +		seq_puts(m, "device ");
->>>>  		err = mnt->mnt_sb->s_op->show_devname(m, mnt);
->>>>  	} else {
->>>>  		if (mnt->mnt_devname) {
->>>>
->>>>
->>>>>
->>>>> Steve Dickson (2):
->>>>>   nfsiostat: Breaks on 3.1 kernels
->>>>>   mountstats: Breaks on 3.1 kernels
->>>>>
->>>>>  tools/mountstats/mountstats.py |    9 +++++++++
->>>>>  tools/nfs-iostat/nfs-iostat.py |   11 +++++++++--
->>>>>  2 files changed, 18 insertions(+), 2 deletions(-)
->>>>>
->>>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I've stared at this for some time now, and I'm having trouble seeing
+what could be going wrong. Can you therefore please apply the following
+patch, and see if you can reproduce the problem?
 
+Cheers
+  Trond
+8<------------------------------------------------------------------------- 
