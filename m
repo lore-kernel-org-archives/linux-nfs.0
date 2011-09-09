@@ -1,41 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45681 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:5360 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751164Ab1IUSQ6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Sep 2011 14:16:58 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p8LIGwDO015577
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 14:16:58 -0400
-Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p8LIGvR1025602
-	for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 14:16:57 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/2] Changes in 3.1 kernel break NFS monitoring tools
-Date: Wed, 21 Sep 2011 14:16:54 -0400
-Message-Id: <1316629016-27740-1-git-send-email-steved@redhat.com>
+	id S933905Ab1IIMJO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Sep 2011 08:09:14 -0400
+Subject: [PATCH v2 4/5] SUNRPC: remove rpcbind clients creation during service
+	registering
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net
+Date: Fri, 09 Sep 2011 16:08:51 +0400
+Message-ID: <20110909120851.13697.56059.stgit@localhost6.localdomain6>
+In-Reply-To: <20110909115146.13697.71682.stgit@localhost6.localdomain6>
+References: <20110909115146.13697.71682.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Both parser of nfsiostat and mountstats depend on the 
-the first word in /proc/self/mountstats to be 'device'
-for them to parse through all the devices. 
+We don't need this code since rpcbind clients are creating during RPC service
+creation.
 
-NFS mounts entries,  in 3.1,  no longer have start with
-the word 'device'. They start with the actual device, 
-which confused both set of parsing routines.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Steve Dickson (2):
-  nfsiostat: Breaks on 3.1 kernels
-  mountstats: Breaks on 3.1 kernels
+---
+ net/sunrpc/rpcb_clnt.c |    9 ---------
+ 1 files changed, 0 insertions(+), 9 deletions(-)
 
- tools/mountstats/mountstats.py |    9 +++++++++
- tools/nfs-iostat/nfs-iostat.py |   11 +++++++++--
- 2 files changed, 18 insertions(+), 2 deletions(-)
-
--- 
-1.7.6.2
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 437ec60..f363efe 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -429,11 +429,6 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
+ 	struct rpc_message msg = {
+ 		.rpc_argp	= &map,
+ 	};
+-	int error;
+-
+-	error = rpcb_create_local();
+-	if (error)
+-		return error;
+ 
+ 	dprintk("RPC:       %sregistering (%u, %u, %d, %u) with local "
+ 			"rpcbind\n", (port ? "" : "un"),
+@@ -569,11 +564,7 @@ int rpcb_v4_register(const u32 program, const u32 version,
+ 	struct rpc_message msg = {
+ 		.rpc_argp	= &map,
+ 	};
+-	int error;
+ 
+-	error = rpcb_create_local();
+-	if (error)
+-		return error;
+ 	if (rpcb_local_clnt4 == NULL)
+ 		return -EPROTONOSUPPORT;
+ 
 
