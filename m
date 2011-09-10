@@ -1,85 +1,153 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lennier.cc.vt.edu ([198.82.162.213]:53031 "EHLO
-	lennier.cc.vt.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932111Ab1IMSOI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 14:14:08 -0400
-To: Casey Schaufler <casey@schaufler-ca.com>
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>, agruen@kernel.org,
-        bfields@fieldses.org, akpm@linux-foundation.org, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        LSM <linux-security-module@vger.kernel.org>
-Subject: Re: [PATCH -V6 00/26] New ACL format for better NFSv4 acl interoperability
-In-Reply-To: Your message of "Mon, 12 Sep 2011 14:34:04 PDT."
-             <4E6E7ACC.8040003@schaufler-ca.com>
-From: Valdis.Kletnieks@vt.edu
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <4E655049.6060507@schaufler-ca.com> <108028.1315442771@turing-police.cc.vt.edu>
-            <4E6E7ACC.8040003@schaufler-ca.com>
-Content-Type: multipart/signed; boundary="==_Exmh_1315937565_79123P";
-	 micalg=pgp-sha1; protocol="application/pgp-signature"
-Date: Tue, 13 Sep 2011 14:12:45 -0400
-Message-ID: <106565.1315937565@turing-police.cc.vt.edu>
+Received: from mail-qw0-f42.google.com ([209.85.216.42]:62818 "EHLO
+	mail-qw0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755036Ab1IJH3J (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 10 Sep 2011 03:29:09 -0400
+Received: by qwi4 with SMTP id 4so2410136qwi.1
+        for <linux-nfs@vger.kernel.org>; Sat, 10 Sep 2011 00:29:08 -0700 (PDT)
+Message-ID: <4E6B11BE.8080606@tonian.com>
+Date: Sat, 10 Sep 2011 00:29:02 -0700
+From: Benny Halevy <bhalevy@tonian.com>
+To: Jim Rees <rees@umich.edu>
+CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH] pnfsblock: fix return code confusion
+References: <1315585988-20732-1-git-send-email-rees@umich.edu>
+In-Reply-To: <1315585988-20732-1-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---==_Exmh_1315937565_79123P
-Content-Type: text/plain; charset=us-ascii
+On 2011-09-09 09:33, Jim Rees wrote:
+> Always return PTR_ERR, not NULL, from nfs4_blk_get_deviceinfo and
+> nfs4_blk_decode_device.
+> 
+> Check for IS_ERR, not NULL, in bl_set_layoutdriver when calling
+> nfs4_blk_get_deviceinfo.
+> 
+> Signed-off-by: Jim Rees <rees@umich.edu>
 
-(merging two replies)
+merged. thanks!
 
-On Mon, 12 Sep 2011 14:34:04 PDT, Casey Schaufler said:
-> > Well, if it was done as an LSM, it would mean that if I wanted to build a
-> > system where I have a few hundred terabytes of disk exported via Samba, and I
-> > wanted Samba to save the CIFS permission ACL, I couldn't also run Selinux or
-> > SMACK or anything like that - unless somebody actually snuck in the "LSMs are
-> > stackable" patch while I wasn't looking?
+Benny
 
-> True, but not an acceptable argument for not doing it as an LSM.
-> It is an argument in favor of LSM stacking, and after the Linux
-> Security Summit this past week it seems only a matter of time before
-> we have that. This could be the compelling use case that we've been
-> missing for LSM stacking.
-
-OK, I can certainly agree with that logic..
-
-> So at this point, unless there is another reason why it can't be an
-> LSM it should be an LSM.
-
-Well, this issue still:
-
-On Mon, 12 Sep 2011 18:43:51 EDT, "J. Bruce Fields" said:
-> On Mon, Sep 12, 2011 at 03:38:24PM -0700, Casey Schaufler wrote:
-> > POSIX ACLs require that the file permission bits change when
-> > the ACL changes. This interaction violates the strict "additional
-> > restriction" model of the LSM.
->
-> Oh, OK.  Yes, rich ACLs are the same as POSIX ACLs in this respect.
-> When you set an ACL the mode bits are reset to represent an "upper
-> bound" on the permissions granted by the ACL.
-
-Can we finess this detail by making the "set an ACL and make needed changes to
-the mode bits" part of the VFS's responsibility as part of whatever syscall/
-ioctl handling?  After all, the LSM doesn't get involved in the handling of
-chmod() other than to say "yes/no this chmod can be issued" -  for instance,
-the clearing of setUID/setGID bits when a file is written is done by each
-individual filesystem. So there's certianly precident for doing the permission
-tweaking in the VFS code. Then we can limit the LSM part to *applying* an
-already existing ACL to permission checking.
-
-Or should I go get some more caffeine? ;)
-
-
---==_Exmh_1315937565_79123P
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-Comment: Exmh version 2.5 07/13/2001
-
-iD8DBQFOb50dcC3lWbTT17ARAgp2AJ47MqqG/Siu3rRJhkwivTpThkKKFQCgmYa+
-UHRNSbg7AYkNRLBIh2BlVnA=
-=mLgp
------END PGP SIGNATURE-----
-
---==_Exmh_1315937565_79123P--
+> ---
+>  fs/nfs/blocklayout/blocklayout.c    |   20 ++++++++++++--------
+>  fs/nfs/blocklayout/blocklayoutdev.c |   13 ++++++++-----
+>  2 files changed, 20 insertions(+), 13 deletions(-)
+> 
+> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+> index 9143e61..7debb55 100644
+> --- a/fs/nfs/blocklayout/blocklayout.c
+> +++ b/fs/nfs/blocklayout/blocklayout.c
+> @@ -794,7 +794,7 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
+>  			struct nfs4_deviceid *d_id)
+>  {
+>  	struct pnfs_device *dev;
+> -	struct pnfs_block_dev *rv = NULL;
+> +	struct pnfs_block_dev *rv;
+>  	u32 max_resp_sz;
+>  	int max_pages;
+>  	struct page **pages = NULL;
+> @@ -812,18 +812,20 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
+>  	dev = kmalloc(sizeof(*dev), GFP_NOFS);
+>  	if (!dev) {
+>  		dprintk("%s kmalloc failed\n", __func__);
+> -		return NULL;
+> +		return ERR_PTR(-ENOMEM);
+>  	}
+>  
+>  	pages = kzalloc(max_pages * sizeof(struct page *), GFP_NOFS);
+>  	if (pages == NULL) {
+>  		kfree(dev);
+> -		return NULL;
+> +		return ERR_PTR(-ENOMEM);
+>  	}
+>  	for (i = 0; i < max_pages; i++) {
+>  		pages[i] = alloc_page(GFP_NOFS);
+> -		if (!pages[i])
+> +		if (!pages[i]) {
+> +			rv = ERR_PTR(-ENOMEM);
+>  			goto out_free;
+> +		}
+>  	}
+>  
+>  	memcpy(&dev->dev_id, d_id, sizeof(*d_id));
+> @@ -836,8 +838,10 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
+>  	dprintk("%s: dev_id: %s\n", __func__, dev->dev_id.data);
+>  	rc = nfs4_proc_getdeviceinfo(server, dev);
+>  	dprintk("%s getdevice info returns %d\n", __func__, rc);
+> -	if (rc)
+> +	if (rc) {
+> +		rv = ERR_PTR(rc);
+>  		goto out_free;
+> +	}
+>  
+>  	rv = nfs4_blk_decode_device(server, dev);
+>   out_free:
+> @@ -855,7 +859,7 @@ bl_set_layoutdriver(struct nfs_server *server, const struct nfs_fh *fh)
+>  	struct pnfs_devicelist *dlist = NULL;
+>  	struct pnfs_block_dev *bdev;
+>  	LIST_HEAD(block_disklist);
+> -	int status = 0, i;
+> +	int status, i;
+>  
+>  	dprintk("%s enter\n", __func__);
+>  
+> @@ -887,8 +891,8 @@ bl_set_layoutdriver(struct nfs_server *server, const struct nfs_fh *fh)
+>  		for (i = 0; i < dlist->num_devs; i++) {
+>  			bdev = nfs4_blk_get_deviceinfo(server, fh,
+>  						       &dlist->dev_id[i]);
+> -			if (!bdev) {
+> -				status = -ENODEV;
+> +			if (IS_ERR(bdev)) {
+> +				status = PTR_ERR(bdev);
+>  				goto out_error;
+>  			}
+>  			spin_lock(&b_mt_id->bm_lock);
+> diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+> index 46a2ce6..d08ba91 100644
+> --- a/fs/nfs/blocklayout/blocklayoutdev.c
+> +++ b/fs/nfs/blocklayout/blocklayoutdev.c
+> @@ -109,7 +109,7 @@ struct pnfs_block_dev *
+>  nfs4_blk_decode_device(struct nfs_server *server,
+>  		       struct pnfs_device *dev)
+>  {
+> -	struct pnfs_block_dev *rv = NULL;
+> +	struct pnfs_block_dev *rv;
+>  	struct block_device *bd = NULL;
+>  	struct rpc_pipe_msg msg;
+>  	struct bl_msg_hdr bl_msg = {
+> @@ -119,7 +119,7 @@ nfs4_blk_decode_device(struct nfs_server *server,
+>  	uint8_t *dataptr;
+>  	DECLARE_WAITQUEUE(wq, current);
+>  	struct bl_dev_msg *reply = &bl_mount_reply;
+> -	int offset, len, i;
+> +	int offset, len, i, rc;
+>  
+>  	dprintk("%s CREATING PIPEFS MESSAGE\n", __func__);
+>  	dprintk("%s: deviceid: %s, mincount: %d\n", __func__, dev->dev_id.data,
+> @@ -146,8 +146,10 @@ nfs4_blk_decode_device(struct nfs_server *server,
+>  
+>  	dprintk("%s CALLING USERSPACE DAEMON\n", __func__);
+>  	add_wait_queue(&bl_wq, &wq);
+> -	if (rpc_queue_upcall(bl_device_pipe->d_inode, &msg) < 0) {
+> +	rc = rpc_queue_upcall(bl_device_pipe->d_inode, &msg);
+> +	if (rc < 0) {
+>  		remove_wait_queue(&bl_wq, &wq);
+> +		rv = ERR_PTR(rc);
+>  		goto out;
+>  	}
+>  
+> @@ -165,8 +167,9 @@ nfs4_blk_decode_device(struct nfs_server *server,
+>  
+>  	bd = nfs4_blkdev_get(MKDEV(reply->major, reply->minor));
+>  	if (IS_ERR(bd)) {
+> -		dprintk("%s failed to open device : %ld\n",
+> -			__func__, PTR_ERR(bd));
+> +		rc = PTR_ERR(bd);
+> +		dprintk("%s failed to open device : %d\n", __func__, rc);
+> +		rv = ERR_PTR(rc);
+>  		goto out;
+>  	}
+>  
