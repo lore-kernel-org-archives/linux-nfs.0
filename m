@@ -1,71 +1,170 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:49762 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752603Ab1IXARZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2011 20:17:25 -0400
-Received: by wyg34 with SMTP id 34so4430452wyg.19
-        for <linux-nfs@vger.kernel.org>; Fri, 23 Sep 2011 17:17:24 -0700 (PDT)
-Date: Fri, 23 Sep 2011 17:17:24 -0700
-Message-ID: <CAOB=RsJUwPsU4gjnW208wYJ-VCsbRovyg3xEfHn2boWwGicZ=w@mail.gmail.com>
-Subject: NFSv4 read delegation
-From: Sukwoo Kang <sukwoo.kang@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:51979 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933708Ab1IJRlm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 10 Sep 2011 13:41:42 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 3/3] pNFS: make _set_lo_fail generic
+Date: Sat, 10 Sep 2011 13:41:35 -0400
+Message-Id: <1315676495-3689-4-git-send-email-rees@umich.edu>
+In-Reply-To: <1315676495-3689-1-git-send-email-rees@umich.edu>
+References: <1315676495-3689-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hello, I'm trying to find out how NFSv4 client can get read
-delegation. I'm using separate RHEL6 machines (2.6.32-71.el6.x86_64)
-as server and client respectively.
+From: Peng Tao <bergwolf@gmail.com>
 
-If I use pynfs, I can see server gives out read delegation. Basically
-pynfs sends these RPCs to server - open (create), open_confirm, open,
-open_confirm.
+file layout and block layout both use it to set mark layout io failure
+bit. So make it generic.
 
-On real NFS client,
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
+---
+ fs/nfs/blocklayout/blocklayout.c |   17 +++--------------
+ fs/nfs/nfs4filelayout.c          |   19 +++----------------
+ fs/nfs/pnfs.c                    |   12 ++++++++++++
+ fs/nfs/pnfs.h                    |    1 +
+ 4 files changed, 19 insertions(+), 30 deletions(-)
 
-If I do 'cat <file>' twice, client does not get read delegation.
-	- (nfs4state.c)
-	- if (!cb_up || !sop->so_confirmed)
-		goto out;
-	- Here sop->so_confirmed is 0.
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 51f70f0..2c2dca9 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -176,17 +176,6 @@ retry:
+ 	return bio;
+ }
+ 
+-static void bl_set_lo_fail(struct pnfs_layout_segment *lseg)
+-{
+-	if (lseg->pls_range.iomode == IOMODE_RW) {
+-		dprintk("%s Setting layout IOMODE_RW fail bit\n", __func__);
+-		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
+-	} else {
+-		dprintk("%s Setting layout IOMODE_READ fail bit\n", __func__);
+-		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
+-	}
+-}
+-
+ /* This is basically copied from mpage_end_io_read */
+ static void bl_end_io_read(struct bio *bio, int err)
+ {
+@@ -206,7 +195,7 @@ static void bl_end_io_read(struct bio *bio, int err)
+ 	if (!uptodate) {
+ 		if (!rdata->pnfs_error)
+ 			rdata->pnfs_error = -EIO;
+-		bl_set_lo_fail(rdata->lseg);
++		pnfs_set_lo_fail(rdata->lseg);
+ 	}
+ 	bio_put(bio);
+ 	put_parallel(par);
+@@ -370,7 +359,7 @@ static void bl_end_io_write_zero(struct bio *bio, int err)
+ 	if (!uptodate) {
+ 		if (!wdata->pnfs_error)
+ 			wdata->pnfs_error = -EIO;
+-		bl_set_lo_fail(wdata->lseg);
++		pnfs_set_lo_fail(wdata->lseg);
+ 	}
+ 	bio_put(bio);
+ 	put_parallel(par);
+@@ -386,7 +375,7 @@ static void bl_end_io_write(struct bio *bio, int err)
+ 	if (!uptodate) {
+ 		if (!wdata->pnfs_error)
+ 			wdata->pnfs_error = -EIO;
+-		bl_set_lo_fail(wdata->lseg);
++		pnfs_set_lo_fail(wdata->lseg);
+ 	}
+ 	bio_put(bio);
+ 	put_parallel(par);
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index e8915d4..4c78c62 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -77,19 +77,6 @@ filelayout_get_dserver_offset(struct pnfs_layout_segment *lseg, loff_t offset)
+ 	BUG();
+ }
+ 
+-/* For data server errors we don't recover from */
+-static void
+-filelayout_set_lo_fail(struct pnfs_layout_segment *lseg)
+-{
+-	if (lseg->pls_range.iomode == IOMODE_RW) {
+-		dprintk("%s Setting layout IOMODE_RW fail bit\n", __func__);
+-		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
+-	} else {
+-		dprintk("%s Setting layout IOMODE_READ fail bit\n", __func__);
+-		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
+-	}
+-}
+-
+ static int filelayout_async_handle_error(struct rpc_task *task,
+ 					 struct nfs4_state *state,
+ 					 struct nfs_client *clp,
+@@ -145,7 +132,7 @@ static int filelayout_read_done_cb(struct rpc_task *task,
+ 		dprintk("%s calling restart ds_clp %p ds_clp->cl_session %p\n",
+ 			__func__, data->ds_clp, data->ds_clp->cl_session);
+ 		if (reset) {
+-			filelayout_set_lo_fail(data->lseg);
++			pnfs_set_lo_fail(data->lseg);
+ 			nfs4_reset_read(task, data);
+ 			clp = NFS_SERVER(data->inode)->nfs_client;
+ 		}
+@@ -221,7 +208,7 @@ static int filelayout_write_done_cb(struct rpc_task *task,
+ 		dprintk("%s calling restart ds_clp %p ds_clp->cl_session %p\n",
+ 			__func__, data->ds_clp, data->ds_clp->cl_session);
+ 		if (reset) {
+-			filelayout_set_lo_fail(data->lseg);
++			pnfs_set_lo_fail(data->lseg);
+ 			nfs4_reset_write(task, data);
+ 			clp = NFS_SERVER(data->inode)->nfs_client;
+ 		} else
+@@ -256,7 +243,7 @@ static int filelayout_commit_done_cb(struct rpc_task *task,
+ 			__func__, data->ds_clp, data->ds_clp->cl_session);
+ 		if (reset) {
+ 			prepare_to_resend_writes(data);
+-			filelayout_set_lo_fail(data->lseg);
++			pnfs_set_lo_fail(data->lseg);
+ 		} else
+ 			nfs_restart_rpc(task, data->ds_clp);
+ 		return -EAGAIN;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 5ac7a78..c02be6c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1384,6 +1384,18 @@ static void pnfs_list_write_lseg(struct inode *inode, struct list_head *listp)
+ 	}
+ }
+ 
++void pnfs_set_lo_fail(struct pnfs_layout_segment *lseg)
++{
++	if (lseg->pls_range.iomode == IOMODE_RW) {
++		dprintk("%s Setting layout IOMODE_RW fail bit\n", __func__);
++		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
++	} else {
++		dprintk("%s Setting layout IOMODE_READ fail bit\n", __func__);
++		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
++	}
++}
++EXPORT_SYMBOL_GPL(pnfs_set_lo_fail);
++
+ void
+ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ {
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index bc1eed5..5c83ce3 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -182,6 +182,7 @@ int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
+ void pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *, struct nfs_page *);
+ int pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc);
+ bool pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev, struct nfs_page *req);
++void pnfs_set_lo_fail(struct pnfs_layout_segment *lseg);
+ int pnfs_layout_process(struct nfs4_layoutget *lgp);
+ void pnfs_free_lseg_list(struct list_head *tmp_list);
+ void pnfs_destroy_layout(struct nfs_inode *);
+-- 
+1.7.4.1
 
-If I open the existing file with O_RDONLY twice (i.e., open, not close
-it and open again), client sends open only once to server.
-	- So here also sop->so_confirmed is 0. Delegation is not sent out.
-(I've added more debug messages shown in below.)
-
-2011-09-23T22:41:44.642938+02:00 int002st001 kernel: NFSD:
-nfs4_open_delegation enter
-2011-09-23T22:41:44.642942+02:00 int002st001 kernel: NFSD: nfs4_open_claim_null
-2011-09-23T22:41:44.643853+02:00 int002st001 kernel: NFSD: cb_up=1,
-sop->so_confirmed=0
-2011-09-23T22:41:44.643857+02:00 int002st001 kernel: NFSD: either
-callback is not up or not open confirmed
-2011-09-23T22:41:44.643858+02:00 int002st001 kernel: NFSD:
-nfs4_open_delegation exit
-
-If I open the existing file with O_RDWR and then open it with
-O_RDONLY, I can see "sop->so_confirmed = 1", but setlease failed.
-	- I think it is because there is writer on this file.
-
-2011-09-23T11:23:28.116280+02:00 int002st001 kernel: NFSD:
-nfs4_open_delegation enter
-2011-09-23T11:23:28.116717+02:00 int002st001 kernel: NFSD: nfs4_open_claim_null
-2011-09-23T11:23:28.117879+02:00 int002st001 kernel: NFSD: cb_up=1,
-sop->so_confirmed=1
-2011-09-23T11:23:28.117887+02:00 int002st001 kernel: NFSD alloc_init_deleg
-2011-09-23T11:23:28.117889+02:00 int002st001 kernel: NFSD: setlease
-failed [-11], no delegation
-2011-09-23T11:23:28.119101+02:00 int002st001 kernel: NFSD:
-close_delegation dp ffff88006ba05e60
-2011-09-23T11:23:28.119109+02:00 int002st001 kernel: NFSD: freeing dp
-ffff88006ba05e60
-2011-09-23T11:23:28.120050+02:00 int002st001 kernel: NFSD:
-nfs4_open_delegation exit
-
-What is missing here? I will appreciate any advice. Thank you.
-	
-Regards,
-Sukwoo Kang
