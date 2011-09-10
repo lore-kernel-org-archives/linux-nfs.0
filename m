@@ -1,147 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:25479 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759318Ab1IIQmR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Sep 2011 12:42:17 -0400
-Message-ID: <4E6A41D4.6090001@parallels.com>
-Date: Fri, 09 Sep 2011 20:41:56 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>
-Subject: Re: [PATCH v2 3/5] SUNRPC: make RPC service dependable on rpcbind
- clients creation
-References: <20110909115146.13697.71682.stgit@localhost6.localdomain6>	<20110909120844.13697.48102.stgit@localhost6.localdomain6> <20110909100745.7e2e8bf9@corrin.poochiereds.net>
-In-Reply-To: <20110909100745.7e2e8bf9@corrin.poochiereds.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:61263 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758537Ab1IJHdy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 10 Sep 2011 03:33:54 -0400
+Received: by ywf7 with SMTP id 7so2239665ywf.19
+        for <linux-nfs@vger.kernel.org>; Sat, 10 Sep 2011 00:33:54 -0700 (PDT)
+Message-ID: <4E6B12DF.6050202@tonian.com>
+Date: Sat, 10 Sep 2011 00:33:51 -0700
+From: Benny Halevy <bhalevy@tonian.com>
+To: NFS list <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>, "Rees, James" <rees@umich.edu>
+Subject: pnfs-all-3.1-rc4-2011-09-10
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-09.09.2011 18:07, Jeff Layton пишет:
-> On Fri, 09 Sep 2011 16:08:44 +0400
-> Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
->
->> Create rcbind clients or increase rpcbind users counter during RPC service
->> creation and decrease this counter (and possibly destroy those clients) on RPC
->> service destruction.
->>
->> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->>
->> ---
->>   include/linux/sunrpc/clnt.h |    2 ++
->>   net/sunrpc/rpcb_clnt.c      |    2 +-
->>   net/sunrpc/svc.c            |   13 +++++++++++--
->>   3 files changed, 14 insertions(+), 3 deletions(-)
->>
->> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
->> index db7bcaf..65a8115 100644
->> --- a/include/linux/sunrpc/clnt.h
->> +++ b/include/linux/sunrpc/clnt.h
->> @@ -135,10 +135,12 @@ void		rpc_shutdown_client(struct rpc_clnt *);
->>   void		rpc_release_client(struct rpc_clnt *);
->>   void		rpc_task_release_client(struct rpc_task *);
->>
->> +int		rpcb_create_local(void);
->>   int		rpcb_register(u32, u32, int, unsigned short);
->>   int		rpcb_v4_register(const u32 program, const u32 version,
->>   				 const struct sockaddr *address,
->>   				 const char *netid);
->> +void		rpcb_put_local(void);
->>   void		rpcb_getport_async(struct rpc_task *);
->>
->>   void		rpc_call_start(struct rpc_task *);
->> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
->> index b4cc0f1..437ec60 100644
->> --- a/net/sunrpc/rpcb_clnt.c
->> +++ b/net/sunrpc/rpcb_clnt.c
->> @@ -318,7 +318,7 @@ out:
->>    * Returns zero on success, otherwise a negative errno value
->>    * is returned.
->>    */
->> -static int rpcb_create_local(void)
->> +int rpcb_create_local(void)
->>   {
->>   	static DEFINE_MUTEX(rpcb_create_local_mutex);
->>   	int result = 0;
->> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
->> index 6a69a11..9095c0e 100644
->> --- a/net/sunrpc/svc.c
->> +++ b/net/sunrpc/svc.c
->> @@ -367,8 +367,11 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
->>   	unsigned int xdrsize;
->>   	unsigned int i;
->>
->> -	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
->> +	if (rpcb_create_local()<  0)
->>   		return NULL;
->> +
->> +	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
->> +		goto out_err;
->>   	serv->sv_name      = prog->pg_name;
->>   	serv->sv_program   = prog;
->>   	serv->sv_nrthreads = 1;
->> @@ -403,7 +406,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
->>   			GFP_KERNEL);
->>   	if (!serv->sv_pools) {
->>   		kfree(serv);
->> -		return NULL;
->> +		goto out_err;
->>   	}
->>
->>   	for (i = 0; i<  serv->sv_nrpools; i++) {
->> @@ -423,6 +426,10 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
->>   	svc_unregister(serv);
->>
->>   	return serv;
->> +
->> +out_err:
->> +	rpcb_put_local();
->> +	return NULL;
->>   }
->>
->>   struct svc_serv *
->> @@ -491,6 +498,8 @@ svc_destroy(struct svc_serv *serv)
->>   	svc_unregister(serv);
->>   	kfree(serv->sv_pools);
->>   	kfree(serv);
->> +
->> +	rpcb_put_local();
->>   }
->>   EXPORT_SYMBOL_GPL(svc_destroy);
->>
->>
->
-> I don't get it -- what's the advantage of creating rpcbind clients in
-> __svc_create vs. the old way of creating them just before we plan to
-> use them?
->
+I rebased the linux-pnfs tree onto 3.1-rc4 plus Bruce's nfsd-2.6/for-3.2 patches
+listed below.
+I also merged Jim Rees's patches for the blocks layout driver
+listed further below.
 
-The main problem here is not in creation, but in destroying those clients.
-Now rpcbind clients are created during rpcb_register(). I.e. once per every family, program version and so on.
-But can be unregistered for all protocol families by one call. So it's impossible to put reference counting for those clients in the place, where they are created now.
+Benny
 
-> With this scheme, won't we end up creating rpcbind sockets even when we
-> don't need them? For instance, if I create a callback socket for NFSv4
-> then I don't really need to talk to rpcbind. With this patch I'll still
-> get the rpcbind clients created though.
->
+nfsd-devel:
+da53586 nfsd4: Remove check for a 32-bit cookie in nfsd4_readdir()
+6fa6aa0 nfsd4: fix seqid_mutating_error
+0078363 nfsd4: return nfserr_symlink on v4 OPEN of non-regular file
+73b3e9e locks: minor lease cleanup
+699dbe0 locks: move F_INPROGRESS from fl_type to fl_flags field
+7c2c9ac locks: fix tracking of inprogress lease breaks
+6d151b1 locks: setlease cleanup
+78ba69f sunrpc: use better NUMA affinities
+79c3c2d nfsd4: clean up S_IS -> NF4 file type mapping
+1e0019e nfsd: open-code special directory-hardlink check
+c51d415 nfsd: clean up nfsd_mode_check()
+e7cce0d nfsd4: fix incorrect comment in nfsd4_set_nfs4_acl
+2d2a867 nfsd4: it's OK to return nfserr_symlink
+96fa997 nfsd: remove unused defines
+0eb4c2a Remove include/linux/nfsd/const.h
+a27b69c nfsd4: permit read opens of executable-only files
+38a5e64 nfsd: prettify NFSD_MAY_* flag definitions
+c64404c nfsd4: simplify recovery dir setting
+8587e1d nfsd4: fix failure to end nfsd4 grace period
+c89cae6 nfsd4: stop using nfserr_resource for transitory errors
+600244f nfsd4: replace some macros by functions
+274bd38 nfsd4: name openowner data structures more clearly
+69bcd00 nfsd4: cleanup lock/stateowner initialization
+e96e1cc nfsd4: remove HAS_SESSION
+59e4c26 nfsd4: cleanup and consolidate seqid_mutating_err
+76f7342 nfsd4: simplify lock openmode check
+054fa46 nfsd4: get lock checks out of preprocess_seqid_op
+3a08abb nfsd4: remove redundant is_open_owner check
+5ee87fc nfsd: remove include/linux/nfsd/syscall.h
+777b7c1 nfsd4: fix off-by-one-error in SEQUENCE reply
+23dd5f4 nfsd4: remove typoed replay field
+4e761915 nfsd4: simplify distinguishing lock & open stateid's
+b941293 nfsd4: consolidate lock & open stateid tables
+d164bac nfsd4: simplify stateid generation code, fix wraparound
+3e61992 nfsd4: make delegation stateid's seqid start at 1
 
-Yep, you right. This is not a real problem from my pow.
-But I'll think about how to avoid this creation for nfs callbacks.
+pnfs-block:
+6b99e7e pnfsblock: fix return code confusion
+5232651 pnfsblock: fix size of upcall message
 
-> It would seem to me to make more sense to create the rpcbind clients
-> somewhere closer to svc_setup_socket, and only if SVC_SOCK_ANONYMOUS is
-> not set.
->
-
-Probably. Will try to find better place.
-
--- 
-Best regards,
-Stanislav Kinsbursky
