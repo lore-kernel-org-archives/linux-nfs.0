@@ -1,58 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:58945 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751415Ab1IUSxN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 14:53:13 -0400
-Subject: Re: regression when opening directories on NFSv4
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 21 Sep 2011 14:53:12 -0400
-In-Reply-To: <20110921115854.02605a7f@tlielax.poochiereds.net>
-References: <20110921115854.02605a7f@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1316631192.21183.40.camel@lade.trondhjem.org>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:37615 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752094Ab1IKRVh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Sep 2011 13:21:37 -0400
+Date: Sun, 11 Sep 2011 13:21:34 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH 0/3] pnfs private workqueue, and two cleanups
+Message-ID: <20110911172134.GB5195@merit.edu>
+References: <1315676495-3689-1-git-send-email-rees@umich.edu>
+ <4E6CDB3D.2050702@tonian.com>
+ <4E6CDC1C.7030507@tonian.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E6CDC1C.7030507@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-09-21 at 11:58 -0400, Jeff Layton wrote: 
-> We had a regression reported against RHEL concerning the opening of
-> directories and it looks like that same problem is in current mainline
-> code too. If you do the following on a directory that is not yet in the
-> dcache you get an EISDIR error:
-> 
->      open("/mnt/nfs/dir1", O_RDONLY)         = -1 EISDIR (Is a directory)
-> 
-> If however, you stat the directory first, the open works. The
-> difference seems to be that in the first case we're going through the
-> lookup codepath, and in the second we go through d_revalidate.
-> 
-> In the first case, we send an OPEN call to the server and it responds
-> with NFS4ERR_ISDIR. That gets translated to -EISDIR, and returned to
-> userspace. It wasn't always this way though, and I think the regression
-> was introduced in commit d953126a2.
-> 
-> That patch was added to fix an oops due to a buggy server, and I'm
-> unclear on how best to fix this. It seems like we need to allow the
-> server to fall back to doing a normal lookup when we get -EISDIR on the
-> OPEN call, but how do we ensure that we don't end up with the same oops
-> from that server bug?
+Benny Halevy wrote:
 
-How about returning an error if we get to the file->f_ops->open on a
-regular file in NFSv4?
+  On 2011-09-11 09:01, Benny Halevy wrote:
+  > I merged the patches as well as my two SQUASHMEs
+  > under pnfs-all-3.1-rc4-2011-09-11
+  
+  hit "Send" too soon...
+  In fact I merged all the patches in linux-pnfs-blk/for-benny
+  Including my SQUASHMEs, I merged the following patches:
+  
+  fd06920 SUNRPC/NFS: make rpc pipe upcall generic
+  0359f0e pNFS: introduce pnfs private workqueue
+  fee4dab SQUASHME: pnfs: simplify and clean up pnfsiod workqueue
+  ab93fb1 SQUASHME: pnfs: do pnfsiod_start before registering layout drivers
+  9d904b1 pNFS: make _set_lo_fail generic
+  be077c0 pnfsblock: init pg_bsize properly
+  3c03366 pNFS: recoalesce when ld write pagelist fails
+  a4e8a6e pNFS: recoalesce when ld read pagelist fails
 
-In NFSv4.1 we could theoretically issue an OPEN will CLAIM_FH (assuming
-there are servers out there that support it), but for NFSv4 as far as I
-can see, there will always be a potential for races.
+These last two are still being worked on, but I don't think it will hurt
+anyone not using blocklayout to have them in your repo.  Thanks.
 
-Cheers
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Also see the small whitespace cleanup I just sent.
