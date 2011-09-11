@@ -1,109 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46063 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933275Ab1IILA6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Sep 2011 07:00:58 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Linux-MM <linux-mm@kvack.org>
-Cc: Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mel Gorman <mgorman@suse.de>
-Subject: [RFC PATCH 00/10] Swap-over-NFS without deadlocking v1
-Date: Fri,  9 Sep 2011 12:00:44 +0100
-Message-Id: <1315566054-17209-1-git-send-email-mgorman@suse.de>
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:39504 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752172Ab1IKRRw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Sep 2011 13:17:52 -0400
+Date: Sun, 11 Sep 2011 13:17:49 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <benny@tonian.com>
+Cc: Peng Tao <bergwolf@gmail.com>, linux-nfs@vger.kernel.org,
+        Benny Halevy <bhalevy@tonian.com>
+Subject: Re: [PATCH 1/2] SQUASHME: pnfs: simplify and clean up pnfsiod
+ workqueue
+Message-ID: <20110911171749.GA5195@merit.edu>
+References: <4E6CD076.6050607@tonian.com>
+ <1315755100-31204-1-git-send-email-benny@tonian.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1315755100-31204-1-git-send-email-benny@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This patch series is based on top of "Swap-over-NBD without deadlocking
-v6" as it depends on the same reservation of PF_MEMALLOC reserves
-logic.
+From: Jim Rees <rees@umich.edu>
+Date: Sun, 11 Sep 2011 13:11:15 -0400
+Subject: [PATCH] SQUASHME: pnfs: whitespace
 
-When a user or administrator requires swap for their application,
-they create a swap partition and file, format it with mkswap and
-activate it with swapon. In diskless systems this is not an option
-so if swap if required then swapping over the network is considered.
-The two likely scenarios are when blade servers are used as part of
-a cluster where the form factor or maintenance costs do not allow
-the use of disks and thin clients.
+Signed-off-by: Jim Rees <rees@umich.edu>
+---
+ fs/nfs/pnfs.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-The Linux Terminal Server Project recommends the use of the Network
-Block Device (NBD) for swap but this is not always an option.  There is
-no guarantee that the network attached storage (NAS) device is running
-Linux or supports NBD. However, it is likely that it supports NFS so
-there are users that want support for swapping over NFS despite any
-performance concern. Some distributions currently carry patches that
-support swapping over NFS but it would be preferable to support it
-in the mainline kernel.
-
-Patch 1 avoids a stream-specific deadlock that potentially affects TCP.
-
-Patch 2 is a small modification to SELinux to avoid using PFMEMALLOC
-	reserves.
-
-Patch 3 adds four address_space_operations to allow a filesystem
-	to optionally control a swapfile. The news handlers are
-	expected to map requests to the swapspace operations to
-	the underlying file mapping.
-
-Patch 4 notes that patch 3 is bolting
-	filesystem-specific-swapfile-support onto the side and that
-	the default handlers have different information to what
-	is available to the filesystem. This patch refactors the
-	code so that there are generic handlers for each of the new
-	address_space operations.
-
-Patch 5 adds some helpers for filesystems to handle swap cache pages.
-
-Patch 6 updates NFS to use the helpers from patch 5 where necessary.
-
-Patch 7 avoids setting PF_private on PG_swapcache pages within NFS.
-
-Patch 8 implements the new swapfile-related address_space operations
-	for NFS.
-
-Patch 9 prevents page allocator recursions in NFS by using GFP_NOIO
-	where appropriate.
-
-Patch 10 fixes a NULL pointer dereference that occurs when using
-	swap-over-NFS.
-
- Documentation/filesystems/Locking |   23 +++++
- Documentation/filesystems/vfs.txt |   21 +++++
- fs/nfs/Kconfig                    |    8 ++
- fs/nfs/file.c                     |   26 +++++-
- fs/nfs/inode.c                    |    6 ++
- fs/nfs/internal.h                 |    7 +-
- fs/nfs/pagelist.c                 |    8 +-
- fs/nfs/read.c                     |    6 +-
- fs/nfs/write.c                    |  163 +++++++++++++++++++++++++--------
- include/linux/fs.h                |   10 ++
- include/linux/mm.h                |   25 +++++
- include/linux/nfs_fs.h            |    2 +
- include/linux/pagemap.h           |    5 +
- include/linux/sunrpc/xprt.h       |    3 +
- include/linux/swap.h              |    7 ++
- include/net/sock.h                |    7 +-
- mm/page_io.c                      |  181 ++++++++++++++++++++++++++++++++-----
- mm/swap_state.c                   |    2 +-
- mm/swapfile.c                     |  138 ++++++++++------------------
- net/caif/caif_socket.c            |    2 +-
- net/core/sock.c                   |    2 +-
- net/ipv4/tcp_input.c              |   12 ++--
- net/sctp/ulpevent.c               |    2 +-
- net/sunrpc/Kconfig                |    5 +
- net/sunrpc/clnt.c                 |    2 +
- net/sunrpc/sched.c                |    7 +-
- net/sunrpc/xprtsock.c             |   57 ++++++++++++
- security/selinux/avc.c            |    2 +-
- 28 files changed, 561 insertions(+), 178 deletions(-)
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 0ef4361..e5e11b4 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1488,13 +1488,13 @@ out:
+ int pnfsiod_start(void)
+ {
+ 	struct workqueue_struct *wq;
+-	
++
+ 	dprintk("NFS:       creating workqueue pnfsiod\n");
+ 	atomic_inc(&pnfsiod_users);
+ 	if (pnfsiod_workqueue == NULL) {
+ 		wq = alloc_workqueue("pnfsiod", WQ_MEM_RECLAIM, 0);
+ 		if (wq == NULL) {
+-			pnfsiod_stop();	
++			pnfsiod_stop();
+ 			return -ENOMEM;
+ 		}
+ 		spin_lock(&pnfs_spinlock);
 -- 
-1.7.3.4
-
+1.7.4.1
