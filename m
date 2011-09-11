@@ -1,88 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:36129 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750789Ab1IUQAV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Sep 2011 12:00:21 -0400
-Date: Wed, 21 Sep 2011 12:00:20 -0400
-To: Stanislav Posonsky <psk@cpositive.ru>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Error: state manager failed on NFSv4 server base with error
- 10018
-Message-ID: <20110921160020.GD21510@fieldses.org>
-References: <201109211334.34497.psk@cpositive.ru>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <201109211334.34497.psk@cpositive.ru>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:45454 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755161Ab1IKQEr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Sep 2011 12:04:47 -0400
+Received: by pzk37 with SMTP id 37so5478616pzk.1
+        for <linux-nfs@vger.kernel.org>; Sun, 11 Sep 2011 09:04:46 -0700 (PDT)
+Message-ID: <4E6CDC1C.7030507@tonian.com>
+Date: Sun, 11 Sep 2011 09:04:44 -0700
+From: Benny Halevy <bhalevy@tonian.com>
+To: Jim Rees <rees@umich.edu>
+CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH 0/3] pnfs private workqueue, and two cleanups
+References: <1315676495-3689-1-git-send-email-rees@umich.edu> <4E6CDB3D.2050702@tonian.com>
+In-Reply-To: <4E6CDB3D.2050702@tonian.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Sep 21, 2011 at 01:34:34PM +0900, Stanislav Posonsky wrote:
-> 	After upgrade kernel at server from 2.6.38 to 2.6.39 series and higher, 
-> I was forced to drop to NFSv3. With NFSv4 I get (when I trying to read any 
-> file) hundreds message at client:
-> 
-> 	Error: state manager failed on NFSv4 server base with error 10018
-> 
-> 	Now I have at server and cient:
-> 
-> 	linux kernel 	3.0.4
-> 	nfs-utils		1.2.3
-> 	nfs4-acl-tools	0.3.3
-> 
-> 	File /etc/exports:
-> 
-> /opt                        192.168.8.0/24(fsid=0,rw,subtree_check)
-> 
-> ==================================================
-> 	With version 3
-> ==================================================
-> 
-> root|st01# mount -t nfs -o nfsvers=3 base:/opt /net
-> root|st01# mount | grep nfs
-> rpc_pipefs on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw)
-> base:/opt on /net type nfs (rw,nfsvers=3,addr=192.168.8.254)
-> 
-> 	In other console:
-> 
-> stas@st01$ ls -l /net/a*
-> -rw-r--r-- 1 root root 35 Сен 21 11:23 /net/a_file.txt
-> stas@st01$ cat /net/a_file.txt 
-> This is a test file on NFS share.
-> 
-> stas@st01$	
-> 
-> 	Works fine.
-> 
-> ==================================================
-> 	With version 4
-> ==================================================
-> 
-> root|st01# umount /net
-> root|st01# mount -t nfs base:/ /net
-> root|st01# mount | grep nfs
-> rpc_pipefs on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw)
-> base:/ on /net type nfs (rw,vers=4,addr=192.168.8.254,clientaddr=192.168.8.1)
-> 
-> 	In other console:
-> 
-> stas@st01$ ls -l /net/a*
-> -rw-r--r-- 1 root root 35 Сен 21 11:23 /net/a_file.txt
-> stas@st01$ cat /net/a_file.txt
-> 
-> 	And the process hangs... Then (Ctl+C):
-> 
-> ^C
-> stas@st01$ dmesg
-> Error: state manager failed on NFSv4 server base with error 10018
-> Error: state manager failed on NFSv4 server base with error 10018
-> ...
-> 
-> Could you help me solve this problem, please?
+On 2011-09-11 09:01, Benny Halevy wrote:
+> I merged the patches as well as my two SQUASHMEs
+> under pnfs-all-3.1-rc4-2011-09-11
 
-Could you get a network trace showing the "With version 4" case?
+hit "Send" too soon...
+In fact I merged all the patches in linux-pnfs-blk/for-benny
+Including my SQUASHMEs, I merged the following patches:
 
-(tcpdump -s0 -wtmp.pcap, then run your test, then kill tcpdump and mail
-me tmp.pcap)
+fd06920 SUNRPC/NFS: make rpc pipe upcall generic
+0359f0e pNFS: introduce pnfs private workqueue
+fee4dab SQUASHME: pnfs: simplify and clean up pnfsiod workqueue
+ab93fb1 SQUASHME: pnfs: do pnfsiod_start before registering layout drivers
+9d904b1 pNFS: make _set_lo_fail generic
+be077c0 pnfsblock: init pg_bsize properly
+3c03366 pNFS: recoalesce when ld write pagelist fails
+a4e8a6e pNFS: recoalesce when ld read pagelist fails
 
---b.
+In addition, I fixed up some compile warnings in pnfsd/spnfs/spnfs-block
+
+Benny
+
+> 
+> Thanks!
+> 
+> Benny
+> 
+> On 2011-09-10 10:41, Jim Rees wrote:
+>> These have been sent to the list previously, and I believe are
+>> uncontroversial, but have not shown up on your pnfs-all-latest branch.
+>>
+>> Peng Tao (3):
+>>   SUNRPC/NFS: make rpc pipe upcall generic
+>>   pNFS: introduce pnfs private workqueue
+>>   pNFS: make _set_lo_fail generic
+>>
+>>  fs/nfs/blocklayout/blocklayout.c    |   36 +++++++++-----------
+>>  fs/nfs/blocklayout/blocklayout.h    |    2 -
+>>  fs/nfs/blocklayout/blocklayoutdev.c |   22 ------------
+>>  fs/nfs/idmap.c                      |   25 +-------------
+>>  fs/nfs/nfs4filelayout.c             |   19 ++---------
+>>  fs/nfs/objlayout/objio_osd.c        |    8 ++++
+>>  fs/nfs/objlayout/objlayout.c        |    4 +-
+>>  fs/nfs/pnfs.c                       |   64 ++++++++++++++++++++++++++++++++++-
+>>  fs/nfs/pnfs.h                       |    5 +++
+>>  include/linux/sunrpc/rpc_pipe_fs.h  |    2 +
+>>  net/sunrpc/auth_gss/auth_gss.c      |   24 +------------
+>>  net/sunrpc/rpc_pipe.c               |   20 +++++++++++
+>>  12 files changed, 122 insertions(+), 109 deletions(-)
+>>
