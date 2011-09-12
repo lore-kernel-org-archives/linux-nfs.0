@@ -1,151 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46072 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933395Ab1IILA7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Sep 2011 07:00:59 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Linux-MM <linux-mm@kvack.org>
-Cc: Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 01/10] netvm: Prevent a stream-specific deadlock
-Date: Fri,  9 Sep 2011 12:00:45 +0100
-Message-Id: <1315566054-17209-2-git-send-email-mgorman@suse.de>
-In-Reply-To: <1315566054-17209-1-git-send-email-mgorman@suse.de>
-References: <1315566054-17209-1-git-send-email-mgorman@suse.de>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:45988 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754945Ab1ILWGQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 18:06:16 -0400
+Received: by mail-yw0-f46.google.com with SMTP id 5so1194351ywb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Sep 2011 15:06:16 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/8] configure.ac: Clean up help string for --enable-mount
+To: linux-nfs@vger.kernel.org
+Date: Mon, 12 Sep 2011 18:06:14 -0400
+Message-ID: <20110912220614.10854.14354.stgit@matisse.1015granger.net>
+In-Reply-To: <20110912220304.10854.20972.stgit@matisse.1015granger.net>
+References: <20110912220304.10854.20972.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-It could happen that all !SOCK_MEMALLOC sockets have buffered so
-much data that we're over the global rmem limit. This will prevent
-SOCK_MEMALLOC buffers from receiving data, which will prevent userspace
-from running, which is needed to reduce the buffered data.
+Clean up a nit: The vim colorizer stumbles on the single quote in
+"don't", so replace it with "do not".
 
-Fix this by exempting the SOCK_MEMALLOC sockets from the rmem limit.
-
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/net/sock.h     |    7 ++++---
- net/caif/caif_socket.c |    2 +-
- net/core/sock.c        |    2 +-
- net/ipv4/tcp_input.c   |   12 ++++++------
- net/sctp/ulpevent.c    |    2 +-
- 5 files changed, 13 insertions(+), 12 deletions(-)
 
-diff --git a/include/net/sock.h b/include/net/sock.h
-index 09813fc..dcf2a55 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -980,12 +980,13 @@ static inline int sk_wmem_schedule(struct sock *sk, int size)
- 		__sk_mem_schedule(sk, size, SK_MEM_SEND);
- }
- 
--static inline int sk_rmem_schedule(struct sock *sk, int size)
-+static inline int sk_rmem_schedule(struct sock *sk, struct sk_buff *skb)
- {
- 	if (!sk_has_account(sk))
- 		return 1;
--	return size <= sk->sk_forward_alloc ||
--		__sk_mem_schedule(sk, size, SK_MEM_RECV);
-+	return skb->truesize <= sk->sk_forward_alloc ||
-+		__sk_mem_schedule(sk, skb->truesize, SK_MEM_RECV) ||
-+		skb_pfmemalloc(skb);
- }
- 
- static inline void sk_mem_reclaim(struct sock *sk)
-diff --git a/net/caif/caif_socket.c b/net/caif/caif_socket.c
-index a986280..78ef332 100644
---- a/net/caif/caif_socket.c
-+++ b/net/caif/caif_socket.c
-@@ -168,7 +168,7 @@ static int caif_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- 	err = sk_filter(sk, skb);
- 	if (err)
- 		return err;
--	if (!sk_rmem_schedule(sk, skb->truesize) && rx_flow_is_on(cf_sk)) {
-+	if (!sk_rmem_schedule(sk, skb) && rx_flow_is_on(cf_sk)) {
- 		set_rx_flow_off(cf_sk);
- 		if (net_ratelimit())
- 			pr_debug("sending flow OFF due to rmem_schedule\n");
-diff --git a/net/core/sock.c b/net/core/sock.c
-index 0f28a9b..c27d9e5 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -344,7 +344,7 @@ int sock_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- 	if (err)
- 		return err;
- 
--	if (!sk_rmem_schedule(sk, skb->truesize)) {
-+	if (!sk_rmem_schedule(sk, skb)) {
- 		atomic_inc(&sk->sk_drops);
- 		return -ENOBUFS;
- 	}
-diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
-index ea0d218..4c2ec53 100644
---- a/net/ipv4/tcp_input.c
-+++ b/net/ipv4/tcp_input.c
-@@ -4356,19 +4356,19 @@ static void tcp_ofo_queue(struct sock *sk)
- static int tcp_prune_ofo_queue(struct sock *sk);
- static int tcp_prune_queue(struct sock *sk);
- 
--static inline int tcp_try_rmem_schedule(struct sock *sk, unsigned int size)
-+static inline int tcp_try_rmem_schedule(struct sock *sk, struct sk_buff *skb)
- {
- 	if (atomic_read(&sk->sk_rmem_alloc) > sk->sk_rcvbuf ||
--	    !sk_rmem_schedule(sk, size)) {
-+	    !sk_rmem_schedule(sk, skb)) {
- 
- 		if (tcp_prune_queue(sk) < 0)
- 			return -1;
- 
--		if (!sk_rmem_schedule(sk, size)) {
-+		if (!sk_rmem_schedule(sk, skb)) {
- 			if (!tcp_prune_ofo_queue(sk))
- 				return -1;
- 
--			if (!sk_rmem_schedule(sk, size))
-+			if (!sk_rmem_schedule(sk, skb))
- 				return -1;
- 		}
- 	}
-@@ -4421,7 +4421,7 @@ static void tcp_data_queue(struct sock *sk, struct sk_buff *skb)
- 		if (eaten <= 0) {
- queue_and_out:
- 			if (eaten < 0 &&
--			    tcp_try_rmem_schedule(sk, skb->truesize))
-+			    tcp_try_rmem_schedule(sk, skb))
- 				goto drop;
- 
- 			skb_set_owner_r(skb, sk);
-@@ -4492,7 +4492,7 @@ drop:
- 
- 	TCP_ECN_check_ce(tp, skb);
- 
--	if (tcp_try_rmem_schedule(sk, skb->truesize))
-+	if (tcp_try_rmem_schedule(sk, skb))
- 		goto drop;
- 
- 	/* Disable header prediction. */
-diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
-index 8a84017..6c6ed2d 100644
---- a/net/sctp/ulpevent.c
-+++ b/net/sctp/ulpevent.c
-@@ -702,7 +702,7 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct sctp_association *asoc,
- 	if (rx_count >= asoc->base.sk->sk_rcvbuf) {
- 
- 		if ((asoc->base.sk->sk_userlocks & SOCK_RCVBUF_LOCK) ||
--		    (!sk_rmem_schedule(asoc->base.sk, chunk->skb->truesize)))
-+		    (!sk_rmem_schedule(asoc->base.sk, chunk->skb)))
- 			goto fail;
- 	}
- 
--- 
-1.7.3.4
+ configure.ac |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 9e55a89..461a96a 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -129,7 +129,7 @@ AC_ARG_ENABLE(uuid,
+ 	choose_blkid=default)
+ AC_ARG_ENABLE(mount,
+ 	[AC_HELP_STRING([--enable-mount],
+-			[Create mount.nfs and don't use the util-linux mount(8) functionality. @<:@default=yes@:>@])],
++			[Create mount.nfs and do not use the util-linux mount(8) functionality. @<:@default=yes@:>@])],
+ 	enable_mount=$enableval,
+ 	enable_mount=yes)
+ 	AM_CONDITIONAL(CONFIG_MOUNT, [test "$enable_mount" = "yes"])
 
