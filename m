@@ -1,125 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:9963 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:18503 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750763Ab1ITPLn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2011 11:11:43 -0400
-Date: Tue, 20 Sep 2011 11:11:12 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>
-Subject: Re: [PATCH v5 1/8] SUNRPC: introduce helpers for reference counted
- rpcbind clients
-Message-ID: <20110920111112.3f07cd6e@tlielax.poochiereds.net>
-In-Reply-To: <4E78A6A1.1000800@parallels.com>
-References: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
-	<20110920101341.9861.51453.stgit@localhost6.localdomain6>
-	<4E7899E7.9090809@parallels.com>
-	<20110920102431.58ca1d96@tlielax.poochiereds.net>
-	<4E78A6A1.1000800@parallels.com>
-Content-Type: text/plain; charset=UTF-8
+	id S1754525Ab1ILVKx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 17:10:53 -0400
+Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: Peng Tao <bergwolf@gmail.com>, tao.peng@emc.com, gusev.vitaliy@nexenta.com,
+        gusev.vitaliy@gmail.com, linux-nfs@vger.kernel.org
+Date: Mon, 12 Sep 2011 17:10:51 -0400
+In-Reply-To: <4E6E6C3B.2040605@tonian.com>
+References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com>
+	 <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com>
+	 <1315348373.19556.22.camel@lade.trondhjem.org>
+	 <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com>
+	 <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com>
+	 <F19688880B763E40B28B2B462677FBF805C3299D2F@MX09A.corp.emc.com>
+	 <1315592430.17611.15.camel@lade.trondhjem.org>
+	 <4E6B0E48.7050208@tonian.com>
+	 <CA+a=Yy5fMHPcSU4EoSo1uiOUCfi8vjRVPAjEYGZ+M00CwZ8Z9g@mail.gmail.com>
+	 <4E6E6C3B.2040605@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1315861851.8350.11.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 20 Sep 2011 18:43:45 +0400
-Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
-
-> 20.09.2011 18:24, Jeff Layton пишет:
-> > On Tue, 20 Sep 2011 17:49:27 +0400
-> > Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
-> >
-> >> v5: fixed races with rpcb_users in rpcb_get_local()
-> >>
-> >> This helpers will be used for dynamical creation and destruction of rpcbind
-> >> clients.
-> >> Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
-> >> clients has been created already, then we just increase rpcb_users.
-> >>
-> >> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
-> >>
-> >> ---
-> >>    net/sunrpc/rpcb_clnt.c |   53 ++++++++++++++++++++++++++++++++++++++++++++++++
-> >>    1 files changed, 53 insertions(+), 0 deletions(-)
-> >>
-> >> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-> >> index e45d2fb..5f4a406 100644
-> >> --- a/net/sunrpc/rpcb_clnt.c
-> >> +++ b/net/sunrpc/rpcb_clnt.c
-> >> @@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
-> >>    static struct rpc_clnt *	rpcb_local_clnt;
-> >>    static struct rpc_clnt *	rpcb_local_clnt4;
-> >>    +DEFINE_SPINLOCK(rpcb_clnt_lock);
-> >> +unsigned int			rpcb_users;
-> >> +
-> >>    struct rpcbind_args {
-> >>    	struct rpc_xprt *	r_xprt;
-> >>    @@ -161,6 +164,56 @@ static void rpcb_map_release(void *data)
-> >>    	kfree(map);
-> >>    }
-> >>    +static int rpcb_get_local(void)
-> >> +{
-> >> +	int cnt;
-> >> +
-> >> +	spin_lock(&rpcb_clnt_lock);
-> >> +	if (rpcb_users)
-> >> +		rpcb_users++;
-> >> +	cnt = rpcb_users;
-> >> +	spin_unlock(&rpcb_clnt_lock);
-> >> +
-> >> +	return cnt;
-> >> +}
-> >> +
-> >> +void rpcb_put_local(void)
-> >> +{
-> >> +	struct rpc_clnt *clnt = rpcb_local_clnt;
-> >> +	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
-> >> +	int shutdown;
-> >> +
-> >> +	spin_lock(&rpcb_clnt_lock);
-> >> +	if (--rpcb_users == 0) {
-> >> +		rpcb_local_clnt = NULL;
-> >> +		rpcb_local_clnt4 = NULL;
-> >> +	}
-> >
-> > In the function below, you mention that the above pointers are
-> > protected by rpcb_create_local_mutex, but it looks like they get reset
-> > here without that being held?
-> >
+On Mon, 2011-09-12 at 13:31 -0700, Benny Halevy wrote: 
+> On 2011-09-12 07:56, Peng Tao wrote:
+> >> The layout segments are not really in use while in LAYOUTCOMMIT.
+> >> We only need to get the stateid right with respect to concurrent layout recalls.
+> > LAYOUTCOMMIT takes lseg reference to mark them as in use so that
+> > layoutrecall cannot free them.
+> > 
 > 
-> Assigning of them is protected by rpcb_create_local_mutex.
-> Dereferencing of them is protected by rpcb_clnt_lock.
-> 
+> And if layoutrecall would have freed layout segments during layoutcommit,
+> what is your specific concern?
 
-That's probably a bug, but I haven't sat down to work through the logic.
-
-> > Might it be simpler to just protect rpcb_users with the
-> > rpcb_create_local_mutex and ensure that it's held whenever you call one
-> > of these routines? None of these are codepaths are particularly hot.
-> >
-> 
-> I just inherited this lock-mutex logic.
-> Actually, you right. This codepaths are used rarely.
-> But are use sure, that we need to remove this "speed-up" logic if we take into 
-> account that it was here already?
-> 
-
-There are many ways to do this...
-
-In general, it's difficult to get locking right, especially when you
-start mixing multiple locks on related resources. Personally, I'd go
-with a simpler scheme here. There's not much value in protecting this
-counter with a spinlock when the other parts need to be protected by a
-mutex. If you do decide to do it with multiple locks, then please do
-document in comments how the locking is expected to work. 
-
-An alternate scheme might be to consider doing this with krefs, but I
-haven't really considered whether that idiom makes sense here.
+That layoutcommit is supposed to return NFS4ERR_BAD_LAYOUT in that case
+according to section 18.42.3 of RFC5661. I can't find anything in the
+errata that changes that requirement.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
