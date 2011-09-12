@@ -1,143 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:31727 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752960Ab1I3O6I convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Sep 2011 10:58:08 -0400
-Subject: Re: [PATCH v3 1/3] NFSD: Added fault injection
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4E85D44C.10309@netapp.com>
-Date: Fri, 30 Sep 2011 10:57:45 -0400
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Message-Id: <1FA193FD-A334-4027-8102-A575012467AC@oracle.com>
-References: <1317322765-19094-1-git-send-email-bjschuma@netapp.com> <A7558C0C-378A-42E3-AC37-8152C50972DB@oracle.com> <4E84D1B8.20903@netapp.com> <F9CDB8C6-E680-4373-81CD-CA8E8A635F84@oracle.com> <4E85D44C.10309@netapp.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
+Received: from nm26.bullet.mail.sp2.yahoo.com ([98.139.91.96]:25048 "HELO
+	nm26.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751868Ab1ILX34 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 19:29:56 -0400
+Message-ID: <4E6E946C.5050706@schaufler-ca.com>
+Date: Mon, 12 Sep 2011 16:23:24 -0700
+From: Casey Schaufler <casey@schaufler-ca.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Valdis.Kletnieks@vt.edu,
+        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+        agruen@kernel.org, akpm@linux-foundation.org, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        LSM <linux-security-module@vger.kernel.org>,
+        Casey Schaufler <casey@schaufler-ca.com>
+Subject: Re: [PATCH -V6 00/26] New ACL format for better NFSv4 acl interoperability
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <4E655049.6060507@schaufler-ca.com> <108028.1315442771@turing-police.cc.vt.edu> <4E6E7ACC.8040003@schaufler-ca.com> <20110912222014.GA17483@fieldses.org> <4E6E89E0.4010406@schaufler-ca.com> <20110912224351.GC17483@fieldses.org>
+In-Reply-To: <20110912224351.GC17483@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On 9/12/2011 3:43 PM, J. Bruce Fields wrote:
+> On Mon, Sep 12, 2011 at 03:38:24PM -0700, Casey Schaufler wrote:
+>> On 9/12/2011 3:20 PM, J. Bruce Fields wrote:
+>>> On Mon, Sep 12, 2011 at 02:34:04PM -0700, Casey Schaufler wrote:
+>>>> On 9/7/2011 5:46 PM, Valdis.Kletnieks@vt.edu wrote:
+>>>>> On Mon, 05 Sep 2011 15:42:17 PDT, Casey Schaufler said:
+>>>>>> On 9/5/2011 10:25 AM, Aneesh Kumar K.V wrote:
+>>>>>>> The following set of patches implements VFS and ext4 changes needed to implement
+>>>>>>> a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
+>>>>>>> extended by file( masks to fit into the standard POSIX file permission model.
+>>>>>>> They are designed to work seamlessly locally as well as across the NFSv4 and
+>>>>>>> CIFS/SMB2 network file system protocols.
+>>>>>> POSIX ACLs predate the LSM and can't be done as an LSM due to
+>>>>>> the interactions between mode bits and ACLs as defined by the
+>>>>>> POSIX DRAFT specification.
+>>> I don't know LSM so don't understand what you mean when you say that
+>>> interactions between mode bits and ACLs would make an ACL model hard to
+>>> implement as an LSM.
+>> POSIX ACLs require that the file permission bits change when
+>> the ACL changes. This interaction violates the strict "additional
+>> restriction" model of the LSM.
+> Oh, OK.  Yes, rich ACLs are the same as POSIX ACLs in this respect.
+> When you set an ACL the mode bits are reset to represent an "upper
+> bound" on the permissions granted by the ACL.
 
-On Sep 30, 2011, at 10:38 AM, Bryan Schumaker wrote:
+One of the areas in which the POSIX group was careful almost beyond
+reason was the program that uses chmod() judiciously in the absence
+of ACLs and how the presence of ACLs might result in a less secure
+situation. Thus, a program that does
+    stat(..., &buf);
+    chmod(..., 0);
+    chmod(..., buf.st_mode)
 
-> On 09/30/2011 10:28 AM, Chuck Lever wrote:
->> 
->> On Sep 29, 2011, at 4:14 PM, Bryan Schumaker wrote:
->> 
->>> On 09/29/2011 03:06 PM, Chuck Lever wrote:
->>>> 
->>>> On Sep 29, 2011, at 2:59 PM, bjschuma@netapp.com wrote:
->>>> 
->>>>> From: Bryan Schumaker <bjschuma@netapp.com>
->>>>> 
->>> ...
->>>>> diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
->>>>> index 9b118ee..69eae75 100644
->>>>> --- a/fs/nfsd/Makefile
->>>>> +++ b/fs/nfsd/Makefile
->>>>> @@ -5,7 +5,8 @@
->>>>> obj-$(CONFIG_NFSD)	+= nfsd.o
->>>>> 
->>>>> nfsd-y 			:= nfssvc.o nfsctl.o nfsproc.o nfsfh.o vfs.o \
->>>>> -			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o
->>>>> +			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o \
->>>>> +			   fault_inject.o
->>>>> nfsd-$(CONFIG_NFSD_V2_ACL) += nfs2acl.o
->>>>> nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
->>>>> nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
->>>>> diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
->>>>> new file mode 100644
->>>>> index 0000000..2139883
->>>>> --- /dev/null
->>>>> +++ b/fs/nfsd/fault_inject.c
->>>>> @@ -0,0 +1,102 @@
->>>>> +#ifdef CONFIG_NFSD_FAULT_INJECTION
->>>> 
->>>> The usual practice is to conditionally compile this source file via a Makefile variable, not by wrapping the whole source file in an ifdef.  You can see examples of this in the Makefile hunk above.
->>>> 
->>> 
->>> How's this?  I moved the selectively compile bit to the makefile and created a fault_inject.h for the empty init() and cleanup() functions.  I moved the rest of the fault injection function declarations there, too, to keep them all together.
->> 
->> OK.  How about adding documenting block comments for the new files?  Does NetApp require you to add a copyright notice at the top of new files?
-> 
-> I have no idea if I'm required, but I can if it's needed.
+should get the exact same access at the end as it had at the beginning
+and the file must be completely inaccessible after the chmod(..., 0)
+regardless of the content of the ACL. Without this requirement the ACL
+scheme would have worked fine as an LSM. If rich ACLs can't make these
+claims, they aren't safe.
 
-Ask Trond or Beepy.
-
->> Also, I wonder if it would be better if you added "default N" for the new CONFIG option.
-> 
-> What would trigger the default option?  Right now I control this by writing a number into the debugfs file.  I suppose reading from the file could trigger the default case.
-
-See below.
-
-> 
->> 
->>> - Bryan
->>> 
->>> Fault injection on the NFS server makes it easier to test the client's
->>> state manager and recovery threads.  Simulating errors on the server is
->>> easier than finding the right conditions that cause them naturally.
->>> 
->>> This patch uses debugfs to add a simple framework for fault injection to
->>> the server.  This framework is a config option, and can be enabled
->>> through CONFIG_NFSD_FAULT_INJECTION.  Assuming you have debugfs mounted
->>> to /sys/debug, a set of files will be created in /sys/debug/nfsd/.
->>> Writing to any of these files will cause the corresponding action and
->>> write a log entry to dmesg.
->>> 
->>> Changes in v4:
->>> - Move fault injection function declarations to a new .h file
->>> - Use the Makefile to selectively compile fault_injection.c
->>> 
->>> Changes in v3:
->>> - Code cleanup and better use of generic functions
->>> - Allow the user to input the number of state objects to delete
->>> - Remove "forget_everything()" since forgetting a client is basically
->>> the same thing
->>> 
->>> Changes in v2:
->>> - Replaced "forget all state owners" with "forget all open owners"
->>> - Include fs/nfsd/fault_inject.c in the patch
->>> 
->>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->>> ---
->>> fs/nfsd/Kconfig        |   10 ++++
->>> fs/nfsd/Makefile       |    1 +
->>> fs/nfsd/fault_inject.c |   88 ++++++++++++++++++++++++++++++++++++
->>> fs/nfsd/fault_inject.h |   22 +++++++++
->>> fs/nfsd/nfs4state.c    |  115 ++++++++++++++++++++++++++++++++++++++++++++++++
->>> fs/nfsd/nfsctl.c       |    7 +++
->>> 6 files changed, 243 insertions(+), 0 deletions(-)
->>> create mode 100644 fs/nfsd/fault_inject.c
->>> create mode 100644 fs/nfsd/fault_inject.h
->>> 
->>> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
->>> index 10e6366..52fdd1c 100644
->>> --- a/fs/nfsd/Kconfig
->>> +++ b/fs/nfsd/Kconfig
->>> @@ -80,3 +80,13 @@ config NFSD_V4
->>> 	  available from http://linux-nfs.org/.
->>> 
->>> 	  If unsure, say N.
->>> +
->>> +config NFSD_FAULT_INJECTION
->>> +	bool "NFS server manual fault injection"
->>> +	depends on NFSD_V4 && DEBUG_KERNEL
-
-        default N
-
->>> +	help
->>> +	  This option enables support for manually injectiong faults
->>> +	  into the NFS server.  This is intended to be used for
->>> +	  testing error recovery on the NFS client.
->>> +
->>> +	  If unsure, say N.
-
-I'm not sure that would even work.  But the idea is to prevent "make oldconfig" from even asking.  It should just be N unless it's explicitly set via the menu or an architecture config file.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+>
+> --b.
+>
+>>> But in any case the rich acl/mode bit interactions are similar to the
+>>> posix acl/mode bit interactions, so the same issue probably applies.
+>> It would help if you knew for sure and could explain the interaction
+>> in sufficient detail to justify the position.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
+>
 
