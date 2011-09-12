@@ -1,57 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:2835 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:38999 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751730Ab1ITXFE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2011 19:05:04 -0400
-Subject: Re: Please support NSF squashing multiple groups
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: paul.szabo@sydney.edu.au
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 20 Sep 2011 19:05:03 -0400
-In-Reply-To: <201109202248.p8KMmLaI008501@bari.maths.usyd.edu.au>
-References: <201109202248.p8KMmLaI008501@bari.maths.usyd.edu.au>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1316559903.15093.15.camel@lade.trondhjem.org>
+	id S1751387Ab1ILJeh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Sep 2011 05:34:37 -0400
+Date: Mon, 12 Sep 2011 10:34:34 +0100
+From: Mel Gorman <mgorman@suse.de>
+To: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Cc: Christoph Hellwig <hch@infradead.org>, Linux-MM <linux-mm@kvack.org>,
+        Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 03/10] mm: Add support for a filesystem to control swap
+ files
+Message-ID: <20110912093058.GA3207@suse.de>
+References: <1315566054-17209-1-git-send-email-mgorman@suse.de>
+ <1315566054-17209-4-git-send-email-mgorman@suse.de>
+ <20110909130007.GA11810@infradead.org>
+ <20110909131550.GV14369@suse.de>
+ <20110909133611.GB8155@infradead.org>
+ <1315818285.26517.18.camel@twins>
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <1315818285.26517.18.camel@twins>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-09-21 at 08:48 +1000, paul.szabo@sydney.edu.au wrote: 
-> Dear all,
+On Mon, Sep 12, 2011 at 11:04:45AM +0200, Peter Zijlstra wrote:
+> On Fri, 2011-09-09 at 09:36 -0400, Christoph Hellwig wrote:
+> > The equivalent of ->direct_IO should be used for both reads and writes.
 > 
-> I wrote about some security issues with NFS, about protecting against
-> privileged UIDs and GIDs, like root_squash protects against root.
+> So the difference between DIO and swapIO is that swapIO needs the block
+> map pinned in memory.. So at the very least you'll need those
+> swap_{activate,deactivate} aops. The read/write-page thingies could
+> indeed be shared with DIO.
 > 
-> Your advice was to use NFSv4 with kerberos authentication. I now
-> succeeded in setting that up on a test system; though not as simple as
-> should be, it seems to work as expected. The changes required for use
-> are non-trivial, so I will not immediately be able to use it.
-> 
-> Seems that the mountd option --manage-gids handles the secondary groups
-> only. I still do not quite understand why mountd (with that or another
-> option) cannot handle the primary GID also, setting it to the GID
-> corresponding to the UID on the server; and maybe even "squash" any UIDs
-> in a table similar to idmap, or simply squash UIDs less than UID_MIN
-> (squash directly, without any kernel interaction). Could you please tell
-> me whether those are conceptually possible?
 
-Secondary groups are all about granting permission to perform certain
-operations that are restricted to users of that group.
+I'm travelling at the moment so it'll be later in the week when I investigate
+properly but I agree swap_[de|a]ctivate are still necessary. NFS does not
+need to pin a block map but it's still necessary for calling xs_set_memalloc.
 
-The _primary_ group is about the above _plus_ it has a role when you are
-creating new objects, where it defines the 'group' owner of that object.
-Your proposal would screw up utilities which call the 'setgid()' or
-'setfsgid()' functions before creating files or directories that need to
-have very specific group ownerships.
-
-IOW: what you are proposing is a potential security problem.
-
-Trond
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Mel Gorman
+SUSE Labs
