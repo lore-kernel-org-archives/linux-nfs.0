@@ -1,35 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:44283 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751500Ab1IWQ3x (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2011 12:29:53 -0400
-Received: by wwf22 with SMTP id 22so3886398wwf.1
-        for <linux-nfs@vger.kernel.org>; Fri, 23 Sep 2011 09:29:52 -0700 (PDT)
-In-Reply-To: <20110923162438.13574.52985.stgit@warthog.procyon.org.uk>
-References: <20110923162438.13574.52985.stgit@warthog.procyon.org.uk>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Fri, 23 Sep 2011 09:29:32 -0700
-Message-ID: <CA+55aFwY-De6OBtggZ-PYZpKMRv9iQ7Yg+mXUR9Ry0OyhMYaJQ@mail.gmail.com>
-Subject: Re: [RFC][PATCH 0/7] Automount behaviour correction
-To: David Howells <dhowells@redhat.com>
-Cc: miklos@szeredi.hu, raven@themaw.net, viro@zeniv.linux.org.uk,
-        jlayton@redhat.com, gregkh@suse.de, linux-nfs@vger.kernel.org,
-        leonardo.lists@gmail.com
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from lo.gmane.org ([80.91.229.12]:45787 "EHLO lo.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753689Ab1ILWfI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Sep 2011 18:35:08 -0400
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1R3F5m-0006a3-PE
+	for linux-nfs@vger.kernel.org; Tue, 13 Sep 2011 00:35:06 +0200
+Received: from 89-201-186-203.dsl.optinet.hr ([89.201.186.203])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Sep 2011 00:35:06 +0200
+Received: from vedran.furac by 89-201-186-203.dsl.optinet.hr with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Sep 2011 00:35:06 +0200
+To: linux-nfs@vger.kernel.org
+From: =?UTF-8?B?VmVkcmFuIEZ1cmHEjQ==?= <vedran.furac@gmail.com>
+Subject: Error: state manager failed on NFSv4 server foo with error 13
+Date: Tue, 13 Sep 2011 00:31:19 +0200
+Message-ID: <j4m17n$l37$1@dough.gmane.org>
+Reply-To: vedran.furac@gmail.com
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Sep 23, 2011 at 9:24 AM, David Howells <dhowells@redhat.com> wrote:
->
-> They are:
+Hi all,
 
-Christ, this is like the worst of all worlds. We make more code to
-make more random decisions that now depend not just on random system
-calls but on what filesystem those system calls act on too.
+I've recently upgraded nfs mounts from nfs3 to nfs4 and now I often have:
 
-Ugh. Seriously nasty.
+Error: state manager failed on NFSv4 server foo with error 13
 
-I did like the lchown/fchownat unification, but that was independent.
+in logs. Error 13 is NFS4ERR_ACCESS Permission denied: The caller does
+not have the correct permission to perform the requested operation.
 
-                     Linus
+Client machines run Debian Lenny. I don't use Kerberos. Could you give
+me suggestions on how to debug this issue or resolve it.
+
+Thanks,
+Vedran
+
