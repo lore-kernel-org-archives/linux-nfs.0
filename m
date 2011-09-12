@@ -1,137 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:35557 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756982Ab1I2Qjy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Sep 2011 12:39:54 -0400
-In-Reply-To: <20110929064119.160cb455@corrin.poochiereds.net>
-References: <1317210761-11518-1-git-send-email-jlayton@redhat.com>
-	<1317210761-11518-3-git-send-email-jlayton@redhat.com>
-	<CAH2r5mtBwUkTXLQeXzvTC6oAcz1i9jzPGfiE7XTzDTw12A6C_Q@mail.gmail.com>
-	<20110929064119.160cb455@corrin.poochiereds.net>
-Date: Thu, 29 Sep 2011 11:39:53 -0500
-Message-ID: <CAH2r5ms8pg7VW7JMa_eCUomEC1cfiM+rG_JZ6F7cHB=MtZwF0A@mail.gmail.com>
-Subject: Re: [PATCH 2/4] cifs, freezer: add wait_event_freezekillable and have
- cifs use it
-From: Steve French <smfrench@gmail.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: trond.myklebust@netapp.com, pavel@ucw.cz, rjw@sisk.pl,
-        linux-pm@lists.linux-foundation.org, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, john@calva.com,
-        linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:35014 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751073Ab1ILXxn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Sep 2011 19:53:43 -0400
+Date: Mon, 12 Sep 2011 19:53:39 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Casey Schaufler <casey@schaufler-ca.com>
+Cc: Valdis.Kletnieks@vt.edu,
+        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+        agruen@kernel.org, akpm@linux-foundation.org, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        LSM <linux-security-module@vger.kernel.org>
+Subject: Re: [PATCH -V6 00/26] New ACL format for better NFSv4 acl
+ interoperability
+Message-ID: <20110912235338.GC14628@fieldses.org>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <4E655049.6060507@schaufler-ca.com>
+ <108028.1315442771@turing-police.cc.vt.edu>
+ <4E6E7ACC.8040003@schaufler-ca.com>
+ <20110912222014.GA17483@fieldses.org>
+ <4E6E89E0.4010406@schaufler-ca.com>
+ <20110912224351.GC17483@fieldses.org>
+ <4E6E946C.5050706@schaufler-ca.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E6E946C.5050706@schaufler-ca.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Sep 29, 2011 at 5:41 AM, Jeff Layton <jlayton@redhat.com> wrote:
-> On Wed, 28 Sep 2011 23:28:02 -0500
-> Steve French <smfrench@gmail.com> wrote:
->
->> The general idea of the patch seems like a good idea to
->> me.  Assuming testing feedback was good from the problem
->> reporters, what tree would you want it merged from?
->>
->
-> There's the rub -- this requires a number of changes in different
-> areas. What I really need at this point is a verdict on patch #1. If
-> that looks OK, then that should probably go in via the one of the
-> linux-pm trees. Then patch #2 can probably go in via your tree and 3
-> and 4 can go in via Trond's.
+On Mon, Sep 12, 2011 at 04:23:24PM -0700, Casey Schaufler wrote:
+> On 9/12/2011 3:43 PM, J. Bruce Fields wrote:
+> > On Mon, Sep 12, 2011 at 03:38:24PM -0700, Casey Schaufler wrote:
+> >> On 9/12/2011 3:20 PM, J. Bruce Fields wrote:
+> >>> On Mon, Sep 12, 2011 at 02:34:04PM -0700, Casey Schaufler wrote:
+> >>>> On 9/7/2011 5:46 PM, Valdis.Kletnieks@vt.edu wrote:
+> >>>>> On Mon, 05 Sep 2011 15:42:17 PDT, Casey Schaufler said:
+> >>>>>> On 9/5/2011 10:25 AM, Aneesh Kumar K.V wrote:
+> >>>>>>> The following set of patches implements VFS and ext4 changes needed to implement
+> >>>>>>> a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
+> >>>>>>> extended by file( masks to fit into the standard POSIX file permission model.
+> >>>>>>> They are designed to work seamlessly locally as well as across the NFSv4 and
+> >>>>>>> CIFS/SMB2 network file system protocols.
+> >>>>>> POSIX ACLs predate the LSM and can't be done as an LSM due to
+> >>>>>> the interactions between mode bits and ACLs as defined by the
+> >>>>>> POSIX DRAFT specification.
+> >>> I don't know LSM so don't understand what you mean when you say that
+> >>> interactions between mode bits and ACLs would make an ACL model hard to
+> >>> implement as an LSM.
+> >> POSIX ACLs require that the file permission bits change when
+> >> the ACL changes. This interaction violates the strict "additional
+> >> restriction" model of the LSM.
+> > Oh, OK.  Yes, rich ACLs are the same as POSIX ACLs in this respect.
+> > When you set an ACL the mode bits are reset to represent an "upper
+> > bound" on the permissions granted by the ACL.
+> 
+> One of the areas in which the POSIX group was careful almost beyond
+> reason was the program that uses chmod() judiciously in the absence
+> of ACLs and how the presence of ACLs might result in a less secure
+> situation. Thus, a program that does
+>     stat(..., &buf);
+>     chmod(..., 0);
+>     chmod(..., buf.st_mode)
+> 
+> should get the exact same access at the end as it had at the beginning
+> and the file must be completely inaccessible after the chmod(..., 0)
+> regardless of the content of the ACL. Without this requirement the ACL
+> scheme would have worked fine as an LSM. If rich ACLs can't make these
+> claims, they aren't safe.
 
-Yes - makes sense, but wonder about ways to test the various
-suspend/hibernate cases to make sure they work.
+Yes, see the patches--rich ACLs have the same property, using a similar
+mechanism.  (They're essentially windows/NFSv4 ACLs + mask bits.)
 
->
-> However, none of this should go in unless #1 is ok. Make sense?
->
->> On Wed, Sep 28, 2011 at 6:52 AM, Jeff Layton <jlayton@redhat.com> wrote:
->> > CIFS currently uses wait_event_killable to put tasks to sleep while
->> > they await replies from the server. That function though does not
->> > allow the freezer to run. In many cases, the network interface may
->> > be going down anyway, in which case the reply will never come. The
->> > client then ends up blocking the computer from suspending.
->> >
->> > Fix this by adding a new wait_event_freezable variant --
->> > wait_event_freezekillable. The idea is to combine the behavior of
->> > wait_event_killable and wait_event_freezable -- put the task to
->> > sleep and only allow it to be awoken by fatal signals, but also
->> > allow the freezer to do its job.
->> >
->> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
->> > ---
->> >  fs/cifs/transport.c     |    3 ++-
->> >  include/linux/freezer.h |   19 +++++++++++++++++--
->> >  2 files changed, 19 insertions(+), 3 deletions(-)
->> >
->> > diff --git a/fs/cifs/transport.c b/fs/cifs/transport.c
->> > index 10ca6b2..791bc4f 100644
->> > --- a/fs/cifs/transport.c
->> > +++ b/fs/cifs/transport.c
->> > @@ -26,6 +26,7 @@
->> >  #include <linux/wait.h>
->> >  #include <linux/net.h>
->> >  #include <linux/delay.h>
->> > +#include <linux/freezer.h>
->> >  #include <asm/uaccess.h>
->> >  #include <asm/processor.h>
->> >  #include <linux/mempool.h>
->> > @@ -324,7 +325,7 @@ wait_for_response(struct TCP_Server_Info *server, struct mid_q_entry *midQ)
->> >  {
->> >        int error;
->> >
->> > -       error = wait_event_killable(server->response_q,
->> > +       error = wait_event_freezekillable(server->response_q,
->> >                                    midQ->midState != MID_REQUEST_SUBMITTED);
->> >        if (error < 0)
->> >                return -ERESTARTSYS;
->> > diff --git a/include/linux/freezer.h b/include/linux/freezer.h
->> > index 1effc8b..3672f73 100644
->> > --- a/include/linux/freezer.h
->> > +++ b/include/linux/freezer.h
->> > @@ -134,10 +134,25 @@ static inline void set_freezable_with_signal(void)
->> >  }
->> >
->> >  /*
->> > - * Freezer-friendly wrappers around wait_event_interruptible() and
->> > - * wait_event_interruptible_timeout(), originally defined in <linux/wait.h>
->> > + * Freezer-friendly wrappers around wait_event_interruptible(),
->> > + * wait_event_killable() and wait_event_interruptible_timeout(), originally
->> > + * defined in <linux/wait.h>
->> >  */
->> >
->> > +#define wait_event_freezekillable(wq, condition)                       \
->> > +({                                                                     \
->> > +       int __retval;                                                   \
->> > +       do {                                                            \
->> > +               __retval = wait_event_killable(wq,                      \
->> > +                               (condition) || freezing(current));      \
->> > +               if (__retval && !freezing(current))                     \
->> > +                       break;                                          \
->> > +               else if (!(condition))                                  \
->> > +                       __retval = -ERESTARTSYS;                        \
->> > +       } while (try_to_freeze());                                      \
->> > +       __retval;                                                       \
->> > +})
->> > +
->> >  #define wait_event_freezable(wq, condition)                            \
->> >  ({                                                                     \
->> >        int __retval;                                                   \
->> > --
->> > 1.7.6.2
->> >
->> >
->>
->>
->>
->
->
-> --
-> Jeff Layton <jlayton@redhat.com>
->
-
-
-
--- 
-Thanks,
-
-Steve
+--b.
