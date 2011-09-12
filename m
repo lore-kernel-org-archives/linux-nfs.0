@@ -1,49 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:21004 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:5624 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754520Ab1I1SGe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Sep 2011 14:06:34 -0400
-Message-ID: <4E836218.6000805@netapp.com>
-Date: Wed, 28 Sep 2011 14:06:16 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "J. Bruce Fields" <bfields@redhat.com>,
+	id S1755276Ab1ILPEL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Sep 2011 11:04:11 -0400
+Message-ID: <4E6E1F5E.1010508@parallels.com>
+Date: Mon, 12 Sep 2011 19:03:58 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Pavel Emelianov <xemul@parallels.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: nfsd grace period open owners
-Content-Type: text/plain; charset=ISO-8859-1
+Subject: Re: NFS client virtualization plan v2
+References: <4E6E104F.8080903@parallels.com> <1055810C-4BE8-4950-8F39-A844834CF666@oracle.com>
+In-Reply-To: <1055810C-4BE8-4950-8F39-A844834CF666@oracle.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Bruce,
+12.09.2011 18:50, Chuck Lever пишет:
+>
+> On Sep 12, 2011, at 9:59 AM, Stanislav Kinsbursky wrote:
+>
+>> Hello.
+>> This is an update for this plan. Added rpc_pipefs and NFS cache virtualization.
+>
+> You may need a per-net namespace NSM monitor list as well.  That means running a per-namespace statd, each with its own local sm and sm.bak directories, and keeping the in-kernel monitor information sorted by namespace.
+>
+> The caller_name argument of NLM_LOCK needs to be the namespace's local utsname, and this string should be used as the my_name argument when sending an SM_MON upcall.  I've got a patch or two that make this simpler.
+>
 
-I'm updating my fault injection patches to work with your recent stateid changes, and I had a question about something I'm seeing on the server.  When I reboot the server it will enter a grace period and reply to any OPEN requests from the client with NFSERR_GRACE.  I used Wireshark to see that NFSERR_GRACE is returned 12 times before the open succeeds, so 13 OPEN requests total.  When I send the command to forget all open owners I find that 13 open owners have been forgotten, but I only expecting to find 1.  Is this what you would expect the server to do?
+Great. Thanks for advise, Chuck.
+Right now this part of the code is not clear enough for me and I'm mainly 
+concentrated on rpcbind and pipefs.
+Hope for your assistance later when I'll get to the point (if any problems occur).
 
-I've pasted the code I use to count and delete open owners below.  The variable "num" has the value 0, so all open owners should be deleted.
+>> ==============================================================================
+>>
+>> "NFS client" virtualization plan:
+>>
+>> _RPC layer_:
+>>
+>> 1) Make rpcbind clients (rpcb_local_clnt and rpcb_local4_clnt) to be
+>> per net namespace.
+>>
+>> 2) Make RPC pipefs to be per net namespace.
+>>
+>> _NFS layer_:
+>>
+>> 1) Net namespace inheritance (current->nsproxy->net have to be used instead
+>> of init_net).
+>> Pointer to net namespace can be stored on nfs_client structure, which will
+>> give easy access to proper net namespace during RPC transports creation.
+>>
+>> 2) Make Lockd kthread able to handle requests from different net namespaces.
+>>
+>> 3) Make NFS callbacks kthreads (nfs4_callback_svc and nfs4.1_callback_svc) able
+>> to handle requests from different net namespaces.
+>>
+>> 4) Make NFS info lists (nfs_volume_list and nfs_client_list) to be per
+>> net namespace in addition to global ones.
+>>
+>> 5) Make NFS proc variables and it's internal content variables to be per
+>> net namespace in addition to global ones.
+>>
+>> 6) Make NFS sysctl variables and it's internal content variables to be per
+>> net namespace in addition to global ones.
+>>
+>> 7) Make NFS cache per net namespace.
+>>
+>>
+>>
+>> --
+>> Best regards,
+>> Stanislav Kinsbursky
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
 
-- Bryan
 
-static int nfsd_forget_n_openowners(u64 num)
-{
-	int i, count = 0;
-	struct nfs4_stateowner *sop, *next;
-
-	for (i = 0; i < OPEN_OWNER_HASH_SIZE; i++) {
-		list_for_each_entry_safe(sop, next, &open_ownerstr_hashtbl[i], so_strhash) {
-			release_openowner(openowner(sop));
-			if (++count == num)
-				return count;
-		}
-	}
-	return count;
-}
-
-void nfsd_forget_openowners(u64 num)
-{
-	int count;
-
-	nfs4_lock_state();
-	count = nfsd_forget_n_openowners(num);
-	nfs4_unlock_state();
-
-	printk(KERN_INFO "%s %s Forgot %d open owners", __FILE__, __func__, count);
-}
+-- 
+Best regards,
+Stanislav Kinsbursky
