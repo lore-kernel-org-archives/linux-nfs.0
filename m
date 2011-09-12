@@ -1,101 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:38592 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752141Ab1ITKOI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Sep 2011 06:14:08 -0400
-Subject: [PATCH v4 1/8] SUNRPC: introduce helpers for reference counted
-	rpcbind clients
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net
-Date: Tue, 20 Sep 2011 14:13:41 +0400
-Message-ID: <20110920101341.9861.51453.stgit@localhost6.localdomain6>
-In-Reply-To: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
-References: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:56182 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752699Ab1ILUb7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 16:31:59 -0400
+Received: by ywb5 with SMTP id 5so1120692ywb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Sep 2011 13:31:58 -0700 (PDT)
+Message-ID: <4E6E6C3B.2040605@tonian.com>
+Date: Mon, 12 Sep 2011 13:31:55 -0700
+From: Benny Halevy <bhalevy@tonian.com>
+To: Peng Tao <bergwolf@gmail.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, tao.peng@emc.com,
+        gusev.vitaliy@nexenta.com, gusev.vitaliy@gmail.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
+References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com> <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com> <1315348373.19556.22.camel@lade.trondhjem.org> <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com> <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com> <F19688880B763E40B28B2B462677FBF805C3299D2F@MX09A.corp.emc.com> <1315592430.17611.15.camel@lade.trondhjem.org> <4E6B0E48.7050208@tonian.com> <CA+a=Yy5fMHPcSU4EoSo1uiOUCfi8vjRVPAjEYGZ+M00CwZ8Z9g@mail.gmail.com>
+In-Reply-To: <CA+a=Yy5fMHPcSU4EoSo1uiOUCfi8vjRVPAjEYGZ+M00CwZ8Z9g@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This helpers will be used for dynamical creation and destruction of rpcbind
-clients.
-Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
-clients has been created already, then we just increase rpcb_users.
+On 2011-09-12 07:56, Peng Tao wrote:
+> On Sat, Sep 10, 2011 at 3:14 PM, Benny Halevy <bhalevy@tonian.com> wrote:
+>> On 2011-09-09 11:20, Trond Myklebust wrote:
+>>> On Thu, 2011-09-08 at 23:11 -0400, tao.peng@emc.com wrote:
+>>>> HI, Trond,
+>>>>
+>>>>> -----Original Message-----
+>>>>> From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
+>>>>> Sent: Friday, September 09, 2011 1:05 AM
+>>>>> To: Peng Tao
+>>>>> Cc: Peng, Tao; gusev.vitaliy@nexenta.com; gusev.vitaliy@gmail.com;
+>>>>> linux-nfs@vger.kernel.org
+>>>>> Subject: RE: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
+>>>>>
+>>>>>> -----Original Message-----
+>>>>>> From: Peng Tao [mailto:bergwolf@gmail.com]
+>>>>>> Sent: Thursday, September 08, 2011 11:00 AM
+>>>>>> To: Myklebust, Trond
+>>>>>> Cc: tao.peng@emc.com; gusev.vitaliy@nexenta.com;
+>>>>>> gusev.vitaliy@gmail.com; linux-nfs@vger.kernel.org
+>>>>>> Subject: Re: [PATCH] nfs: fix inifinite loop at
+>>>>>> nfs4_layoutcommit_release
+>>>>>>
+>>>>>> On Thu, Sep 8, 2011 at 8:01 PM, Myklebust, Trond
+>>>>>> <Trond.Myklebust@netapp.com> wrote:
+>>>>>>>> -----Original Message-----
+>>>>>>
+>>>>>>>
+>>>>>>> Yes, but as far as I can see, even in the blocks case there can be
+>>>>>> multiple extents per layout segment. What if I write to one
+>>>>>> uninitialised extent, layoutcommit, then write to another uninitialized
+>>>>>> extent in the same layout segment and layoutcommit? In my reading of
+>>>>>> the code, there is a chance that the second layoutcommit will fail to
+>>>>>> pick up the layout segment, and so will fail to notify the MDS that the
+>>>>>> second extent now contains data.
+>>>>>>
+>>>>>> blocklayout does not decide what to layoutcommit according to the lseg
+>>>>>> list. Instead, it keeps track of each extent's state at the
+>>>>>> granularity of blocksize, and encode whatever needs layoutcommitted in
+>>>>>> the layoutcommit call. So in your above case, as long as the second
+>>>>>> layoutcommit is issued, blocklayout will encode the newly written
+>>>>>> extent in the second layoutcommit call, even if the lseg is not
+>>>>>> attached to the second layoutcommit.
+>>>>>>
+>>>>>> But that leads to another two question:
+>>>>>> 1. How do we protect against layoutrecall if lseg is not linked to
+>>>>>> layoutcommit? For this one, can we just reject layoutrecall if there
+>>>>>> is inflight layoutcommit? It will be less parallel but can guarantee
+>>>>>> current implementation correctness.
+>>>>>> 2. blocklayout ONLY: bl_committing may be overloaded by several
+>>>>>> layoutcommit calls and we don't have information in
+>>>>>> cleanup_layoutcommit() on how many entry should be removed from
+>>>>>> bl_committing. Maybe we can add a (void*) to struct
+>>>>>> nfs4_layoutcommit_data, so that LD can pass some private information
+>>>>>> between encode_layoutcommit() and cleanup_layoutcommit()?
+>>>>>
+>>>>> 3. What is the purpose of pinning the layout segment at all if neither blocks, nor
+>>>>> objects nor files cares?
+>>>> I believe it is for protecting against layoutrecall. But since we are seperating lseg and LD specific layout information management, it is actually not working as expected.
+>>>>
+>>
+>> The layout segments are not really in use while in LAYOUTCOMMIT.
+>> We only need to get the stateid right with respect to concurrent layout recalls.
+> LAYOUTCOMMIT takes lseg reference to mark them as in use so that
+> layoutrecall cannot free them.
+> 
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+And if layoutrecall would have freed layout segments during layoutcommit,
+what is your specific concern?
 
----
- net/sunrpc/rpcb_clnt.c |   50 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 50 insertions(+), 0 deletions(-)
-
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index e45d2fb..8724780 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
- static struct rpc_clnt *	rpcb_local_clnt;
- static struct rpc_clnt *	rpcb_local_clnt4;
- 
-+DEFINE_SPINLOCK(rpcb_clnt_lock);
-+unsigned int			rpcb_users;
-+
- struct rpcbind_args {
- 	struct rpc_xprt *	r_xprt;
- 
-@@ -161,6 +164,53 @@ static void rpcb_map_release(void *data)
- 	kfree(map);
- }
- 
-+static int rpcb_get_local(void)
-+{
-+	spin_lock(&rpcb_clnt_lock);
-+	if (rpcb_users)
-+		rpcb_users++;
-+	spin_unlock(&rpcb_clnt_lock);
-+
-+	return rpcb_users;
-+}
-+
-+void rpcb_put_local(void)
-+{
-+	struct rpc_clnt *clnt = rpcb_local_clnt;
-+	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
-+	int shutdown;
-+
-+	spin_lock(&rpcb_clnt_lock);
-+	if (--rpcb_users == 0) {
-+		rpcb_local_clnt = NULL;
-+		rpcb_local_clnt4 = NULL;
-+	}
-+	shutdown = !rpcb_users;
-+	spin_unlock(&rpcb_clnt_lock);
-+
-+	if (shutdown) {
-+		/*
-+		 * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
-+		 */
-+		if (clnt4)
-+			rpc_shutdown_client(clnt4);
-+		if (clnt)
-+			rpc_shutdown_client(clnt);
-+	}
-+	return;
-+}
-+
-+static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
-+{
-+	/* Protected by rpcb_create_local_mutex */
-+	rpcb_local_clnt = clnt;
-+	rpcb_local_clnt4 = clnt4;
-+	rpcb_users++;
-+	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
-+			"%p, rpcb_local_clnt4: %p)\n", rpcb_local_clnt,
-+			rpcb_local_clnt4);
-+}
-+
- /*
-  * Returns zero on success, otherwise a negative errno value
-  * is returned.
-
+Benny
