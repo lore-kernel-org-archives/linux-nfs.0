@@ -1,78 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:35717 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751241Ab1IUN4e (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 09:56:34 -0400
-Message-ID: <4E79ED02.5010104@panasas.com>
-Date: Wed, 21 Sep 2011 16:56:18 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@tonian.com>
-CC: <tao.peng@emc.com>, <Trond.Myklebust@netapp.com>,
-        <linux-nfs@vger.kernel.org>, <honey@citi.umich.edu>, <rees@umich.edu>
-Subject: Re: [PATCH 2/3] pnfs: introduce pnfs private workqueue
-References: <1316488728-24912-1-git-send-email-rees@umich.edu> <1316488728-24912-3-git-send-email-rees@umich.edu> <1316558461.15093.4.camel@lade.trondhjem.org> <20110921002917.GA30770@merit.edu> <F19688880B763E40B28B2B462677FBF805C4952916@MX09A.corp.emc.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480226@SACMVEXC2-PRD.hq.netapp.com> <F19688880B763E40B28B2B462677FBF805C495295A@MX09A.corp.emc.com> <4E798C93.40409@tonian.com> <F19688880B763E40B28B2B462677FBF805C4952A24@MX09A.corp.emc.com> <4E79C2F0.30303@tonian.com> <F19688880B763E40B28B2B462677FBF805C4952A34@MX09A.corp.emc.com> <4E79CA34.3060602@tonian.com> <4E79CD8F.6050901@panasas.com> <4E79CFA3.4090403@tonian.com>
-In-Reply-To: <4E79CFA3.4090403@tonian.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mailhub.sw.ru ([195.214.232.25]:39482 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755025Ab1ILOUM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Sep 2011 10:20:12 -0400
+Subject: [PATCH 2/2] SUNRPC: RPC pipefs virtualization
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net
+Date: Mon, 12 Sep 2011 18:19:50 +0400
+Message-ID: <20110912141950.6261.9291.stgit@localhost6.localdomain6>
+In-Reply-To: <20110912141633.6261.72180.stgit@localhost6.localdomain6>
+References: <20110912141633.6261.72180.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/21/2011 02:50 PM, Benny Halevy wrote:
-> On 2011-09-21 14:42, Boaz Harrosh wrote:
->> On 09/21/2011 02:27 PM, Benny Halevy wrote:
->>>> Unless we do following:
->>>> 1. preallocate memory for extent state convertion
->>>> 2. use nfsiod/rpciod to handle bl_write_cleanup
->>>> 3. for pnfs error case, create a kthread to recollapse and resend to MDS
->>>> I don't quite understand. How do you use nfs state manager to do other tasks?
->>>
->>> You need to keep a list of things to do hanging off of the nfs client structure
->>> and set a bit in cl_state telling the state manager it has work to do
->>> and wake it up.  It then needs to go over the list of, say nfs_inodes
->>> and call into the layout driver to handle the errors.
->>>
->>> Benny
->>
->> Good god, Is it not already too complicated?
->>
->> The LD is out of the picture. You all seemed to agree that
->> the LD has reported an io_done on the nfsiod/rpciod, and in the error case
->> Generic layer needs to do it's coalescing on some other thread. So
->> your description above is not correct, the LD is out of the picture.
->>
-> 
-> True, if the ld cleanup on io_done is sufficient.
-> 
->> It all looks too complicated for me. A pnfs workqueue for both 2 and 3
->> above is very good. Specially since the workqueue also shares global
->> pool threads, No? I like it that there is a preallocated thread for
->> the error-case, think about it.
-> 
-> I'm fine too with using a workqueue for the error case.
-> But I'd rather have the common case done path do only lightweight,
-> wait free processing.
-> 
-> Benny
-> 
+Parametrize rpc_mount_get() and rpc_mount_put() with network namespace pointer.
+Currently init_net is used, but later proper network context will be used
+instead.
+It actually means, that in future NFS cache have to be virtualied as well.
 
-If by "common case done path do only lightweight" you mean
-"preallocate memory for extent state conversion". Then I absolutely
-agree. But as far as workqueue/kthread then nfsiod/rpciod-wq or
-pnfs-wq is exactly the same for the "common case". Unless I'm
-totally missing the point. What are you saying?
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-These are the options so far:
+---
+ fs/nfs/blocklayout/blocklayout.c |    2 +-
+ fs/nfs/cache_lib.c               |    7 ++++---
+ net/sunrpc/clnt.c                |    8 ++++----
+ 3 files changed, 9 insertions(+), 8 deletions(-)
 
-[Toe's option which he rather not]
-1. preallocate memory for extent state conversion
-2. use nfsiod/rpciod to handle bl_write_cleanup
-3. for pnfs error case, create a kthread to recollapse and resend to MDS
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 9561c8f..9904e70 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -979,7 +979,7 @@ static int __init nfs4blocklayout_init(void)
+ 
+ 	init_waitqueue_head(&bl_wq);
+ 
+-	mnt = rpc_get_mount();
++	mnt = rpc_get_mount(&init_net);
+ 	if (IS_ERR(mnt)) {
+ 		ret = PTR_ERR(mnt);
+ 		goto out_remove;
+diff --git a/fs/nfs/cache_lib.c b/fs/nfs/cache_lib.c
+index c98b439..777514b 100644
+--- a/fs/nfs/cache_lib.c
++++ b/fs/nfs/cache_lib.c
+@@ -11,6 +11,7 @@
+ #include <linux/mount.h>
+ #include <linux/namei.h>
+ #include <linux/slab.h>
++#include <net/net_namespace.h>
+ #include <linux/sunrpc/cache.h>
+ #include <linux/sunrpc/rpc_pipe_fs.h>
+ 
+@@ -117,7 +118,7 @@ int nfs_cache_register(struct cache_detail *cd)
+ 	struct path path;
+ 	int ret;
+ 
+-	mnt = rpc_get_mount();
++	mnt = rpc_get_mount(&init_net);
+ 	if (IS_ERR(mnt))
+ 		return PTR_ERR(mnt);
+ 	ret = vfs_path_lookup(mnt->mnt_root, mnt, "/cache", 0, &path);
+@@ -128,13 +129,13 @@ int nfs_cache_register(struct cache_detail *cd)
+ 	if (!ret)
+ 		return ret;
+ err:
+-	rpc_put_mount();
++	rpc_put_mount(&init_net);
+ 	return ret;
+ }
+ 
+ void nfs_cache_unregister(struct cache_detail *cd)
+ {
+ 	sunrpc_cache_unregister_pipefs(cd);
+-	rpc_put_mount();
++	rpc_put_mount(&init_net);
+ }
+ 
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index c5347d2..4bebcc0 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -109,7 +109,7 @@ rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
+ 	if (dir_name == NULL)
+ 		return 0;
+ 
+-	path.mnt = rpc_get_mount();
++	path.mnt = rpc_get_mount(clnt->cl_xprt->xprt_net);
+ 	if (IS_ERR(path.mnt))
+ 		return PTR_ERR(path.mnt);
+ 	error = vfs_path_lookup(path.mnt->mnt_root, path.mnt, dir_name, 0, &dir);
+@@ -137,7 +137,7 @@ rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
+ err_path_put:
+ 	path_put(&dir);
+ err:
+-	rpc_put_mount();
++	rpc_put_mount(clnt->cl_xprt->xprt_net);
+ 	return error;
+ }
+ 
+@@ -248,7 +248,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ out_no_auth:
+ 	if (!IS_ERR(clnt->cl_path.dentry)) {
+ 		rpc_remove_client_dir(clnt->cl_path.dentry);
+-		rpc_put_mount();
++		rpc_put_mount(clnt->cl_xprt->xprt_net);
+ 	}
+ out_no_path:
+ 	kfree(clnt->cl_principal);
+@@ -476,7 +476,7 @@ rpc_free_client(struct rpc_clnt *clnt)
+ 			clnt->cl_protname, clnt->cl_server);
+ 	if (!IS_ERR(clnt->cl_path.dentry)) {
+ 		rpc_remove_client_dir(clnt->cl_path.dentry);
+-		rpc_put_mount();
++		rpc_put_mount(clnt->cl_xprt->xprt_net);
+ 	}
+ 	if (clnt->cl_parent != clnt) {
+ 		rpc_release_client(clnt->cl_parent);
 
-[My option which I think Toe agrees with]
-1. preallocate memory for extent state conversion
-2. use pnfs-wq to handle bl_write_cleanup
-3. pnfs error case, just like Toe's patches as part of io_done
-   on pnfs-wq
-
-Any other options?
-Boaz
