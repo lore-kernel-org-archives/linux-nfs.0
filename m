@@ -1,54 +1,137 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:64426 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752042Ab1IWQ0a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2011 12:26:30 -0400
-Received: by wwf22 with SMTP id 22so3882474wwf.1
-        for <linux-nfs@vger.kernel.org>; Fri, 23 Sep 2011 09:26:29 -0700 (PDT)
-In-Reply-To: <CA+55aFx03u51bbAPe_o=4PeyE0dFnuL1KyqRdTJCFUD-vM6V-w@mail.gmail.com>
-References: <1316747758.3346.89.camel@perseus.themaw.net> <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
- <1316707443.3346.44.camel@perseus.themaw.net> <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
- <1316709935.3346.48.camel@perseus.themaw.net> <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
- <20110922144453.6cf53a25@barsoom.rdu.redhat.com> <1316719228.3968.14.camel@lade.trondhjem.org>
- <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
- <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
- <21772.1316774025@redhat.com> <1316788444.14812.10.camel@lade.trondhjem.org>
- <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com>
- <1316792468.3346.144.camel@perseus.themaw.net> <CA+55aFx03u51bbAPe_o=4PeyE0dFnuL1KyqRdTJCFUD-vM6V-w@mail.gmail.com>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Fri, 23 Sep 2011 09:26:09 -0700
-Message-ID: <CA+55aFwRQW_UVAE2-QukXBPT0UJiQhTio2ktPtn_EW5JjrFZ5w@mail.gmail.com>
-Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-To: Ian Kent <raven@themaw.net>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        David Howells <dhowells@redhat.com>, miklos@szeredi.hu,
-        Jeff Layton <jlayton@redhat.com>, viro@zeniv.linux.org.uk,
-        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:35403 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755040Ab1ILWHJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 18:07:09 -0400
+Received: by mail-gw0-f46.google.com with SMTP id 15so442001gwb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Sep 2011 15:07:09 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 8/8] sm-notify: sm-notify leaves monitor records in sm.bak
+To: linux-nfs@vger.kernel.org
+Date: Mon, 12 Sep 2011 18:07:07 -0400
+Message-ID: <20110912220707.10854.51509.stgit@matisse.1015granger.net>
+In-Reply-To: <20110912220304.10854.20972.stgit@matisse.1015granger.net>
+References: <20110912220304.10854.20972.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Sep 23, 2011 at 9:21 AM, Linus Torvalds
-<torvalds@linux-foundation.org> wrote:
->
-> For example, I think the whole "let's consider lstat different from
-> stat" model is broken.
+sm-notify fails to remove monitor records from sm.bak when it has
+finally notified a host.  This is because of a recent change to send
+two SM_NOTIFY requests for each monitored peer: one with the local
+host's FQDN, and one with an unqualified version of same.  This was
+commit baa41b2c: "sm-notify: Send fully-qualified and unqualified
+mon_names" (March 19, 2010).
 
-Just to expand on that: I think it's also extra broken to then say "..
-but we can randomly fix up user space" for it.
+Because of the March 2010 commit, sm-notify modifies the "my_name"
+string during notification, but then uses this modified string to try
+to find the monitor record to remove.  Of course the search for the
+record fails.  So a persistent monitor record is left in sm.bak.
 
-It's like saying "we have introduced a totally broken model, and now
-we're going to make old applications change because we changed.
+Aside from leaving trash around, this causes the same hosts to be
+notified after every reboot, even if they successfully responded to
+the previous SM_NOTIFY and they had no contact with us during the last
+boot.
 
-That's very much against the kernel philosophy. I realize other
-projects work that way, but we really *really* don't work that way in
-the kernel. We don't break old workflow unless there is some seriously
-overriding reason, and I don't think "we have a new crazy model" is a
-good reason.
+I also noticed that the trick of truncating the argument of SM_NOTIFY
+doesn't work at all if a substitute "my_name" was specified via the "-v"
+command line option.  This patch attempts to address that as well.
 
-If the lstat/stat difference made any sense, we could at least argue
-for it. But it just doesn't.
+sm-notify should preserve the original my_name string so that
+nsm_delete_host() can find the correct monitor record to delete.  Also
+add some degree of protection to the mon_name and my_name strings in
+each nsm_host record to prevent a future change from breaking this
+dependency.
 
-                        Linus
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ utils/statd/sm-notify.c |   35 ++++++++++++++++++++++-------------
+ 1 files changed, 22 insertions(+), 13 deletions(-)
+
+diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
+index 690ec2a..a3290aa 100644
+--- a/utils/statd/sm-notify.c
++++ b/utils/statd/sm-notify.c
+@@ -45,8 +45,9 @@
+ struct nsm_host {
+ 	struct nsm_host *	next;
+ 	char *			name;
+-	char *			mon_name;
+-	char *			my_name;
++	const char *		mon_name;
++	const char *		my_name;
++	char *			notify_arg;
+ 	struct addrinfo		*ai;
+ 	time_t			last_used;
+ 	time_t			send_next;
+@@ -199,14 +200,23 @@ smn_alloc_host(const char *hostname, const char *mon_name,
+ 	if (host == NULL)
+ 		goto out_nomem;
+ 
++	/*
++	 * mon_name and my_name are preserved so sm-notify can
++	 * find the right monitor record to remove when it is
++	 * done processing this host.
++	 */
+ 	host->name = strdup(hostname);
+-	host->mon_name = strdup(mon_name);
+-	host->my_name = strdup(my_name);
++	host->mon_name = (const char *)strdup(mon_name);
++	host->my_name = (const char *)strdup(my_name);
++	host->notify_arg = strdup(opt_srcaddr != NULL ?
++					nsm_hostname : my_name);
+ 	if (host->name == NULL ||
+ 	    host->mon_name == NULL ||
+-	    host->my_name == NULL) {
+-		free(host->my_name);
+-		free(host->mon_name);
++	    host->my_name == NULL ||
++	    host->notify_arg == NULL) {
++		free(host->notify_arg);
++		free((void *)host->my_name);
++		free((void *)host->mon_name);
+ 		free(host->name);
+ 		free(host);
+ 		goto out_nomem;
+@@ -230,8 +240,9 @@ static void smn_forget_host(struct nsm_host *host)
+ 
+ 	nsm_delete_notified_host(host->name, host->mon_name, host->my_name);
+ 
+-	free(host->my_name);
+-	free(host->mon_name);
++	free(host->notify_arg);
++	free((void *)host->my_name);
++	free((void *)host->mon_name);
+ 	free(host->name);
+ 	if (host->ai)
+ 		freeaddrinfo(host->ai);
+@@ -635,8 +646,6 @@ notify(const int sock)
+ static int
+ notify_host(int sock, struct nsm_host *host)
+ {
+-	const char *my_name = (opt_srcaddr != NULL ?
+-					nsm_hostname : host->my_name);
+ 	struct sockaddr *sap;
+ 	socklen_t salen;
+ 
+@@ -682,7 +691,7 @@ notify_host(int sock, struct nsm_host *host)
+ 		host->xid = nsm_xmit_rpcbind(sock, sap, SM_PROG, SM_VERS);
+ 	else
+ 		host->xid = nsm_xmit_notify(sock, sap, salen,
+-					SM_PROG, my_name, nsm_state);
++					SM_PROG, host->notify_arg, nsm_state);
+ 
+ 	return 0;
+ }
+@@ -736,7 +745,7 @@ recv_rpcbind_reply(struct sockaddr *sap, struct nsm_host *host, XDR *xdr)
+ static void
+ recv_notify_reply(struct nsm_host *host)
+ {
+-	char *dot = strchr(host->my_name, '.');
++	char *dot = strchr(host->notify_arg, '.');
+ 
+ 	if (dot != NULL) {
+ 		*dot = '\0';
+
