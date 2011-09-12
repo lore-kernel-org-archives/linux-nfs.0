@@ -1,88 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:25371 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:58328 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932114Ab1IMSOE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Sep 2011 14:14:04 -0400
-Subject: [PATCH v3 03/11] SUNRPC: introduce svc helpers for prepairing rpcbind
-	infrastructure
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net
-Date: Tue, 13 Sep 2011 22:13:43 +0400
-Message-ID: <20110913181343.3961.53143.stgit@localhost6.localdomain6>
-In-Reply-To: <20110913180953.3961.69217.stgit@localhost6.localdomain6>
-References: <20110913180953.3961.69217.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
+	id S1756158Ab1ILOmN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 10:42:13 -0400
+Subject: RE: Regression seen when HIGHMEM enabled with NFS on 3.1rc4 kernel
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Sricharan R <r.sricharan@ti.com>
+Cc: linux-omap@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 12 Sep 2011 10:41:49 -0400
+In-Reply-To: <dbdc7c3761a82e0b84f2f49c533c07a5@mail.gmail.com>
+References: <CAJ7qFSeB8bAGdYfZs-LFHuYqGWNA2RidY0EBEFw_1CndvG7q5A@mail.gmail.com>
+	 <1315594317.17611.25.camel@lade.trondhjem.org>
+	 <dbdc7c3761a82e0b84f2f49c533c07a5@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1315838509.12736.4.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This helpers will be used only for those services, that will send portmapper
-registration calls.
+On Mon, 2011-09-12 at 11:46 +0530, Sricharan R wrote: 
+> Hi Trond,
+> [....]
+> 
+> >>          1) In the above piece of code, the *ppage value from ops-
+> >>sendpage
+> >>             function is finally passed on to Kmap by the lower level
+> code
+> >to
+> >>             get the virtual address of the page.
+> >>          2) In some corner cases the value of *ppage pointer is NULL.
+> >>          3) When highmem is enabled and a NULL pointer is passed to
+> >>             Kmap, then kmap finally crashes. But in the case when
+> highmem
+> >>             is disabled, then kmap returns a junk value for NULL
+> pointer.
+> >>
+> >>             Highmem Enabled , kmap( NULL )-----> kernel crashes.
+> >>
+> >>            Highmem disabled, kmap( NULL )-----> junk value is returned.
+> >>                Subsequently this message is observed on
+> >>                                                 the console.
+> >>
+> >>                                 "RPC call returned error 14"
+> >>
+> >>          4) Now the question is why is the value of *ppage = NULL is
+> >passed
+> >>             from the above piece of code to lower layers.
+> >>            Should that not have handled *ppage = NULL? and kmap should
+> >not
+> >>             have received a NULL pointer?
+> >
+> >I wouldn't expect *ppage to be NULL under any circumstances, so I'm
+> >really curious as to what is happening here.
+> >
+> >Could you perhaps add a printk() to that section of code to print out
+> >the values of 'xdr->page_base', 'xdr->page_len', 'len' and 'remainder'
+> >in the case where *ppage == NULL?
+> >
+> 
+> 
+> Thanks for the response.
+> I added a printk just before err = sock->ops->sendpage(sock, *ppage, base,
+> len, flags);
+> So here are values when *ppage is NULL.
+> 
+> xdr->page_base= 0xCE9  xdr->page_len=0x400 len=0xE9 remainder=0x0.
+> 
+> Thanks,
+>  Sricharan
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Can you please tell me what the mount options are for this setup?
 
----
- include/linux/sunrpc/clnt.h |    2 ++
- net/sunrpc/rpcb_clnt.c      |    2 +-
- net/sunrpc/svc.c            |   18 ++++++++++++++++++
- 3 files changed, 21 insertions(+), 1 deletions(-)
+Are you running any applications that might be using O_DIRECT writes?
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index db7bcaf..1eb437d 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -135,6 +135,8 @@ void		rpc_shutdown_client(struct rpc_clnt *);
- void		rpc_release_client(struct rpc_clnt *);
- void		rpc_task_release_client(struct rpc_task *);
- 
-+int		rpcb_create_local(void);
-+void		rpcb_put_local(void);
- int		rpcb_register(u32, u32, int, unsigned short);
- int		rpcb_v4_register(const u32 program, const u32 version,
- 				 const struct sockaddr *address,
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index b3ac194..d42b642 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -317,7 +317,7 @@ out:
-  * Returns zero on success, otherwise a negative errno value
-  * is returned.
-  */
--static int rpcb_create_local(void)
-+int rpcb_create_local(void)
- {
- 	static DEFINE_MUTEX(rpcb_create_local_mutex);
- 	int result = 0;
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 6a69a11..f31e5cc 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -354,6 +354,24 @@ svc_pool_for_cpu(struct svc_serv *serv, int cpu)
- 	return &serv->sv_pools[pidx % serv->sv_nrpools];
- }
- 
-+static int svc_rpcb_setup(struct svc_serv *serv)
-+{
-+	int err;
-+
-+	err = rpcb_create_local();
-+	if (err)
-+		return err;
-+
-+	/* Remove any stale portmap registrations */
-+	svc_unregister(serv);
-+	return 0;
-+}
-+
-+static void svc_rpcb_cleanup(struct svc_serv *serv)
-+{
-+	svc_unregister(serv);
-+	rpcb_put_local();
-+}
- 
- /*
-  * Create an RPC service
+Cheers
+  Trond
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
