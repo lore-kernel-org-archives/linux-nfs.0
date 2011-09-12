@@ -1,75 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:50954 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750753Ab1IRE1N (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 18 Sep 2011 00:27:13 -0400
-Received: by bkbzt4 with SMTP id zt4so4484371bkb.19
-        for <linux-nfs@vger.kernel.org>; Sat, 17 Sep 2011 21:27:11 -0700 (PDT)
-Message-ID: <4E707FC1.2020607@tonian.com>
-Date: Wed, 14 Sep 2011 12:19:45 +0200
-From: Benny Halevy <bhalevy@tonian.com>
-To: Jim Rees <rees@umich.edu>, Peng Tao <bergwolf@gmail.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH] pnfsblock: add missing rpc_put_mount and path_put
-References: <1315945452-1575-1-git-send-email-rees@umich.edu>
-In-Reply-To: <1315945452-1575-1-git-send-email-rees@umich.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:40756 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755182Ab1ILWUU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Sep 2011 18:20:20 -0400
+Date: Mon, 12 Sep 2011 18:20:14 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Casey Schaufler <casey@schaufler-ca.com>
+Cc: Valdis.Kletnieks@vt.edu,
+        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+        agruen@kernel.org, akpm@linux-foundation.org, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        LSM <linux-security-module@vger.kernel.org>
+Subject: Re: [PATCH -V6 00/26] New ACL format for better NFSv4 acl
+ interoperability
+Message-ID: <20110912222014.GA17483@fieldses.org>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <4E655049.6060507@schaufler-ca.com>
+ <108028.1315442771@turing-police.cc.vt.edu>
+ <4E6E7ACC.8040003@schaufler-ca.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E6E7ACC.8040003@schaufler-ca.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We need to decide on a process here :)
-If we would like to maintain a staging tree in front of Trond's
-then to simplify merging and rebasing, fixes to code that's already
-upstream, i.e. in linux-2.6 or already queued in nfs-2.6, that we decide
-to send to Trond ahead of queue need to be queued in front of stuff in
-the staging tree and the latter should be rebased on top of them.
+On Mon, Sep 12, 2011 at 02:34:04PM -0700, Casey Schaufler wrote:
+> On 9/7/2011 5:46 PM, Valdis.Kletnieks@vt.edu wrote:
+> > On Mon, 05 Sep 2011 15:42:17 PDT, Casey Schaufler said:
+> >> On 9/5/2011 10:25 AM, Aneesh Kumar K.V wrote:
+> >>> The following set of patches implements VFS and ext4 changes needed to implement
+> >>> a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
+> >>> extended by file( masks to fit into the standard POSIX file permission model.
+> >>> They are designed to work seamlessly locally as well as across the NFSv4 and
+> >>> CIFS/SMB2 network file system protocols.
+> >>
+> >> POSIX ACLs predate the LSM and can't be done as an LSM due to
+> >> the interactions between mode bits and ACLs as defined by the
+> >> POSIX DRAFT specification.
 
-Benny
+I don't know LSM so don't understand what you mean when you say that
+interactions between mode bits and ACLs would make an ACL model hard to
+implement as an LSM.
 
-On 2011-09-13 22:24, Jim Rees wrote:
-> From: Peng Tao <bergwolf@gmail.com>
-> 
-> Reported-by: Jeff Layton <jlayton@redhat.com>
-> Signed-off-by: Peng Tao <peng_tao@emc.com>
-> Signed-off-by: Jim Rees <rees@umich.edu>
-> ---
->  fs/nfs/blocklayout/blocklayout.c |    8 ++++++--
->  1 files changed, 6 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-> index 9675ef9..8f97578 100644
-> --- a/fs/nfs/blocklayout/blocklayout.c
-> +++ b/fs/nfs/blocklayout/blocklayout.c
-> @@ -1009,17 +1009,20 @@ static int __init nfs4blocklayout_init(void)
->  			      mnt,
->  			      NFS_PIPE_DIRNAME, 0, &path);
->  	if (ret)
-> -		goto out_remove;
-> +		goto out_putrpc;
->  
->  	bl_device_pipe = rpc_mkpipe(path.dentry, "blocklayout", NULL,
->  				    &bl_upcall_ops, 0);
-> +	path_put(&path);
->  	if (IS_ERR(bl_device_pipe)) {
->  		ret = PTR_ERR(bl_device_pipe);
-> -		goto out_remove;
-> +		goto out_putrpc;
->  	}
->  out:
->  	return ret;
->  
-> +out_putrpc:
-> +	rpc_put_mount();
->  out_remove:
->  	pnfs_unregister_layoutdriver(&blocklayout_type);
->  out_stop:
-> @@ -1035,6 +1038,7 @@ static void __exit nfs4blocklayout_exit(void)
->  	pnfs_unregister_layoutdriver(&blocklayout_type);
->  	pnfsiod_stop();
->  	rpc_unlink(bl_device_pipe);
-> +	rpc_put_mount();
->  }
->  
->  MODULE_ALIAS("nfs-layouttype4-3");
+But in any case the rich acl/mode bit interactions are similar to the
+posix acl/mode bit interactions, so the same issue probably applies.
+
+--b.
