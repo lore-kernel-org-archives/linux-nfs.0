@@ -1,54 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:47744 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750833Ab1IYFKo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Sep 2011 01:10:44 -0400
-Received: by wyg34 with SMTP id 34so5021017wyg.19
-        for <linux-nfs@vger.kernel.org>; Sat, 24 Sep 2011 22:10:43 -0700 (PDT)
-Message-ID: <4E7EB7CE.5040502@tonian.com>
-Date: Sun, 25 Sep 2011 08:10:38 +0300
+Received: from mail-gw0-f47.google.com ([74.125.83.47]:57691 "EHLO
+	mail-gw0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756015Ab1ILNiJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 09:38:09 -0400
+Received: by mail-gw0-f47.google.com with SMTP id 11so3364725gwb.6
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Sep 2011 06:38:09 -0700 (PDT)
+Message-ID: <4E6E09CA.8090502@tonian.com>
+Date: Mon, 12 Sep 2011 06:31:54 -0700
 From: Benny Halevy <bhalevy@tonian.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: ANNOUNCE: nfs-utils-1.2.5 released.
-References: <4E7DD35D.9080800@RedHat.com>
-In-Reply-To: <4E7DD35D.9080800@RedHat.com>
+To: Jim Rees <rees@umich.edu>
+CC: Peng Tao <bergwolf@gmail.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] SQUASHME: pnfs: simplify and clean up pnfsiod workqueue
+References: <4E6CD076.6050607@tonian.com> <1315755100-31204-1-git-send-email-benny@tonian.com> <20110911171749.GA5195@merit.edu>
+In-Reply-To: <20110911171749.GA5195@merit.edu>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Steve, I updated git://linux-nfs.org/~bhalevy/pnfs-nfs-utils
-rebased onto 1.2.5.
+On 2011-09-11 10:17, Jim Rees wrote:
+> From: Jim Rees <rees@umich.edu>
+> Date: Sun, 11 Sep 2011 13:11:15 -0400
+> Subject: [PATCH] SQUASHME: pnfs: whitespace
 
-It looks like you forgot to add/publish the tag nfs-utils-1-2-5.
+evil editor... :-/
+thanks!
 
 Benny
 
-On 2011-09-24 15:55, Steve Dickson wrote:
-> New Features in this release:
 > 
->    * With the addition of the blkmapd daemon, the client 
->      now supports every pNFS layout type. 
+> Signed-off-by: Jim Rees <rees@umich.edu>
+> ---
+>  fs/nfs/pnfs.c |    4 ++--
+>  1 files changed, 2 insertions(+), 2 deletions(-)
 > 
->    * The usual assorted bug fixes. 
-> 
-> The tarball can only be found at Sourceforge.net since 
-> master.kernel.org is still down:
-> 
->   http://sourceforge.net/projects/nfs
-> 
-> [ Maybe we should start thinking about putting the rpms on linux-nfs.org?? ]
-> 
-> The git tree is at:
->    git://linux-nfs.org/nfs-utils
-> 
-> The change log is also only on Sourceforge.net:
-> 
-> http://sourceforge.net/projects/nfs/files/nfs-utils/1.2.5/Changelog-1.2.5/download
-> 
-> steved.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 0ef4361..e5e11b4 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -1488,13 +1488,13 @@ out:
+>  int pnfsiod_start(void)
+>  {
+>  	struct workqueue_struct *wq;
+> -	
+> +
+>  	dprintk("NFS:       creating workqueue pnfsiod\n");
+>  	atomic_inc(&pnfsiod_users);
+>  	if (pnfsiod_workqueue == NULL) {
+>  		wq = alloc_workqueue("pnfsiod", WQ_MEM_RECLAIM, 0);
+>  		if (wq == NULL) {
+> -			pnfsiod_stop();	
+> +			pnfsiod_stop();
+>  			return -ENOMEM;
+>  		}
+>  		spin_lock(&pnfs_spinlock);
