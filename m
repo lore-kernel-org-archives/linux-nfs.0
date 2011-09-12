@@ -1,63 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:49895 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750824Ab1I0PWp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Sep 2011 11:22:45 -0400
-Received: by wwf22 with SMTP id 22so7392515wwf.1
-        for <linux-nfs@vger.kernel.org>; Tue, 27 Sep 2011 08:22:44 -0700 (PDT)
-In-Reply-To: <1317099091.3176.31.camel@perseus.themaw.net>
-References: <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com>
- <1316747758.3346.89.camel@perseus.themaw.net> <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
- <1316707443.3346.44.camel@perseus.themaw.net> <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
- <1316709935.3346.48.camel@perseus.themaw.net> <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
- <20110922144453.6cf53a25@barsoom.rdu.redhat.com> <1316719228.3968.14.camel@lade.trondhjem.org>
- <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
- <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
- <21772.1316774025@redhat.com> <1316788444.14812.10.camel@lade.trondhjem.org>
- <29743.1316791138@redhat.com> <87hb43tf2g.fsf@tucsk.pomaz.szeredi.hu>
- <1316827854.3346.154.camel@perseus.themaw.net> <CA+55aFwPEq5B_P0RtX+pBtGfTadzzS+3U=k=3XTjDw3soNhOdA@mail.gmail.com>
- <20110924073610.4b045189@tlielax.poochiereds.net> <CA+55aFxjFXbCKBZNfBuCOaiBHRQ=ZECnhqKxjPw9maPgyRLiDA@mail.gmail.com>
- <1317013864.3187.81.camel@perseus.themaw.net> <CA+55aFzJnKCHtsiH-mZOwQgVt1ajPJQHWRYB_19eXEKaGRPD1w@mail.gmail.com>
- <1317071626.19951.8.camel@lade.trondhjem.org> <CA+55aFzWCZQjWMcxg16yMUoLr-mEPuXzAFgv49LU4hCn+=rbwQ@mail.gmail.com>
- <1317072718.19951.13.camel@lade.trondhjem.org> <CA+55aFzaScGiKmsSrgXivoUPw4xHjKobsB4VquuEu1fG=7R+wA@mail.gmail.com>
- <1317076424.19951.32.camel@lade.trondhjem.org> <CA+55aFzi+0Z6HXJCxW=Uc1EZsp4qA00i+ihNcSX_v6bVTbU2BA@mail.gmail.com>
- <1317078563.21770.8.camel@lade.trondhjem.org> <CA+55aFzX+DyU7xhAmTLq0g_z6jyKuqoiyPdCYO+w2Xk7pECrqg@mail.gmail.com>
- <1317085155.21770.17.camel@lade.trondhjem.org> <CA+55aFxuaJ-a5u79D2pELU4HbWTrbWjG_4BNcvFqEOcM0H8G2Q@mail.gmail.com>
- <1317097001.3176.20.camel@perseus.themaw.net> <CA+55aFyzxvJJgOkojvV-83ejNtQnXeRnXerwzWRdwFgPF_yMhg@mail.gmail.com>
- <1317099091.3176.31.camel@perseus.themaw.net>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Tue, 27 Sep 2011 08:22:24 -0700
-Message-ID: <CA+55aFwf8z+pi3okC2GmuYYKTN3hz+j5Y4XX4B=VrOP+YG0Qpw@mail.gmail.com>
-Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-To: Ian Kent <raven@themaw.net>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Jeff Layton <jlayton@redhat.com>, Miklos Szeredi <miklos@szeredi.hu>,
-        David Howells <dhowells@redhat.com>, viro@zeniv.linux.org.uk,
-        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:58575 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753689Ab1ILWnz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Sep 2011 18:43:55 -0400
+Date: Mon, 12 Sep 2011 18:43:51 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Casey Schaufler <casey@schaufler-ca.com>
+Cc: Valdis.Kletnieks@vt.edu,
+        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+        agruen@kernel.org, akpm@linux-foundation.org, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        LSM <linux-security-module@vger.kernel.org>
+Subject: Re: [PATCH -V6 00/26] New ACL format for better NFSv4 acl
+ interoperability
+Message-ID: <20110912224351.GC17483@fieldses.org>
+References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <4E655049.6060507@schaufler-ca.com>
+ <108028.1315442771@turing-police.cc.vt.edu>
+ <4E6E7ACC.8040003@schaufler-ca.com>
+ <20110912222014.GA17483@fieldses.org>
+ <4E6E89E0.4010406@schaufler-ca.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E6E89E0.4010406@schaufler-ca.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Sep 26, 2011 at 9:51 PM, Ian Kent <raven@themaw.net> wrote:
->
-> Yes, I also thought that AT_NO_AUTOMOUNT would need to be removed and
-> AT_AUTOMOUNT added as part of the change. But that can be done as a
-> follow up.
+On Mon, Sep 12, 2011 at 03:38:24PM -0700, Casey Schaufler wrote:
+> On 9/12/2011 3:20 PM, J. Bruce Fields wrote:
+> > On Mon, Sep 12, 2011 at 02:34:04PM -0700, Casey Schaufler wrote:
+> >> On 9/7/2011 5:46 PM, Valdis.Kletnieks@vt.edu wrote:
+> >>> On Mon, 05 Sep 2011 15:42:17 PDT, Casey Schaufler said:
+> >>>> On 9/5/2011 10:25 AM, Aneesh Kumar K.V wrote:
+> >>>>> The following set of patches implements VFS and ext4 changes needed to implement
+> >>>>> a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
+> >>>>> extended by file( masks to fit into the standard POSIX file permission model.
+> >>>>> They are designed to work seamlessly locally as well as across the NFSv4 and
+> >>>>> CIFS/SMB2 network file system protocols.
+> >>>> POSIX ACLs predate the LSM and can't be done as an LSM due to
+> >>>> the interactions between mode bits and ACLs as defined by the
+> >>>> POSIX DRAFT specification.
+> > I don't know LSM so don't understand what you mean when you say that
+> > interactions between mode bits and ACLs would make an ACL model hard to
+> > implement as an LSM.
+> 
+> POSIX ACLs require that the file permission bits change when
+> the ACL changes. This interaction violates the strict "additional
+> restriction" model of the LSM.
 
-In fact, since reasonably automounting will always be an issue only
-for directories (yeah, in theory you could extend it to regular files,
-but why would you?) it's probably not even worth adding AT_AUTOMOUNT
-at all - you can do the same thing by just adding a '/' at the end of
-the filename instead, and suddenly it works for *all* the stat()
-family system calls, not just the odd statat() ones that almost nobody
-uses.
+Oh, OK.  Yes, rich ACLs are the same as POSIX ACLs in this respect.
+When you set an ACL the mode bits are reset to represent an "upper
+bound" on the permissions granted by the ACL.
 
-So it would be easy to add the AT_AUTOMOUNT flag, but whoever argues
-for it would have to be pretty convincing as to why it would be worth
-it.
+--b.
 
-I committed the patch I sent out with your and Trond's acks.
-
-              Linus
+> > But in any case the rich acl/mode bit interactions are similar to the
+> > posix acl/mode bit interactions, so the same issue probably applies.
+> 
+> It would help if you knew for sure and could explain the interaction
+> in sufficient detail to justify the position.
