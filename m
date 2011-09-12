@@ -1,182 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp04.in.ibm.com ([122.248.162.4]:59201 "EHLO
-	e28smtp04.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752281Ab1IER2y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2011 13:28:54 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V6 22/26] vfs: Cache richacl in struct inode
-Date: Mon,  5 Sep 2011 22:55:44 +0530
-Message-Id: <1315243548-18664-23-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:64842 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757547Ab1ILOtL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 10:49:11 -0400
+Received: by vws1 with SMTP id 1so53614vws.19
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Sep 2011 07:49:10 -0700 (PDT)
+In-Reply-To: <1315592430.17611.15.camel@lade.trondhjem.org>
+References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com>
+ <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com>
+ <1315348373.19556.22.camel@lade.trondhjem.org> <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com>
+ <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com>
+ <F19688880B763E40B28B2B462677FBF805C3299D2F@MX09A.corp.emc.com> <1315592430.17611.15.camel@lade.trondhjem.org>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Mon, 12 Sep 2011 22:48:50 +0800
+Message-ID: <CA+a=Yy5a1+UjERZod35Yr7FR2mWgz2aXH4ZCOC38h0+fM8U5pQ@mail.gmail.com>
+Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: tao.peng@emc.com, gusev.vitaliy@nexenta.com, gusev.vitaliy@gmail.com,
+        linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+Hi, Trond,
 
-Cache richacls in struct inode so that this doesn't have to be done
-individually in each filesystem.
+On Sat, Sep 10, 2011 at 2:20 AM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> On Thu, 2011-09-08 at 23:11 -0400, tao.peng@emc.com wrote:
+>> HI, Trond,
+>>
+>> > -----Original Message-----
+>> > From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
+>> > Sent: Friday, September 09, 2011 1:05 AM
+>> > To: Peng Tao
+>> > Cc: Peng, Tao; gusev.vitaliy@nexenta.com; gusev.vitaliy@gmail.com;
+>> > linux-nfs@vger.kernel.org
+>> > Subject: RE: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
+>> >
+>> > > -----Original Message-----
+>> > > From: Peng Tao [mailto:bergwolf@gmail.com]
+>> > > Sent: Thursday, September 08, 2011 11:00 AM
+>> > > To: Myklebust, Trond
+>> > > Cc: tao.peng@emc.com; gusev.vitaliy@nexenta.com;
+>> > > gusev.vitaliy@gmail.com; linux-nfs@vger.kernel.org
+>> > > Subject: Re: [PATCH] nfs: fix inifinite loop at
+>> > > nfs4_layoutcommit_release
+>> > >
+>> > > On Thu, Sep 8, 2011 at 8:01 PM, Myklebust, Trond
+>> > > <Trond.Myklebust@netapp.com> wrote:
+>> > > >> -----Original Message-----
+>> > >
+>> > > >
+>> > > > Yes, but as far as I can see, even in the blocks case there can be
+>> > > multiple extents per layout segment. What if I write to one
+>> > > uninitialised extent, layoutcommit, then write to another uninitialized
+>> > > extent in the same layout segment and layoutcommit? In my reading of
+>> > > the code, there is a chance that the second layoutcommit will fail to
+>> > > pick up the layout segment, and so will fail to notify the MDS that the
+>> > > second extent now contains data.
+>> > >
+>> > > blocklayout does not decide what to layoutcommit according to the lseg
+>> > > list. Instead, it keeps track of each extent's state at the
+>> > > granularity of blocksize, and encode whatever needs layoutcommitted in
+>> > > the layoutcommit call. So in your above case, as long as the second
+>> > > layoutcommit is issued, blocklayout will encode the newly written
+>> > > extent in the second layoutcommit call, even if the lseg is not
+>> > > attached to the second layoutcommit.
+>> > >
+>> > > But that leads to another two question:
+>> > > 1. How do we protect against layoutrecall if lseg is not linked to
+>> > > layoutcommit? For this one, can we just reject layoutrecall if there
+>> > > is inflight layoutcommit? It will be less parallel but can guarantee
+>> > > current implementation correctness.
+>> > > 2. blocklayout ONLY: bl_committing may be overloaded by several
+>> > > layoutcommit calls and we don't have information in
+>> > > cleanup_layoutcommit() on how many entry should be removed from
+>> > > bl_committing. Maybe we can add a (void*) to struct
+>> > > nfs4_layoutcommit_data, so that LD can pass some private information
+>> > > between encode_layoutcommit() and cleanup_layoutcommit()?
+>> >
+>> > 3. What is the purpose of pinning the layout segment at all if neither blocks, nor
+>> > objects nor files cares?
+>> I believe it is for protecting against layoutrecall. But since we are seperating lseg and LD specific layout information management, it is actually not working as expected.
+>>
+>> > IOW: if both objects and blocks track the information that they need for
+>> > layoutcommit outside the layout segments, then why do we need the
+>> > NFS_LSEG_LAYOUTCOMMIT bit and pls_lc_list at all?
+>> If we remove NFS_LSEG_LAYOUTCOMMIT bit and pls_lc_list, we must find other method to protect agains freeing lseg while layoutcommit is needed or is going on. e.g., check for NFS_INO_LAYOUTCOMMIT bit and inflight layoutcommit in initiate_file_draining().
+>
+> The easiest solution is to ensure we have only _one_ LAYOUTCOMMIT on the
+> wire at a time. Otherwise, you are looking at a many-to-many mapping
+> between layoutcommits and lsegs.
+>
+> We should not expect to need multiple layoutcommits on the wire if pNFS
+> is working smoothly (i.e. no layout recalls), so optimising for that
+> case is wrong.
+> I'd also think that we want to order layoutcommit and ordinary commits
+> (for those NFS files servers that require both) so that we don't end up
+> writing a file size change to disk before the actual data is committed.
+>
+> So why not just protect the layoutcommit call using the existing
+> nfs_commit_set_lock/nfs_commit_clear_lock?
+Completely agree. We should serialize layoutcommit instead of trying
+to handle multiple of them concurrently.
 
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/inode.c              |   25 +++++++++++++++++----
- include/linux/fs.h      |   12 ++++++++-
- include/linux/richacl.h |   53 +++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 83 insertions(+), 7 deletions(-)
-
-diff --git a/fs/inode.c b/fs/inode.c
-index ec79246..1b442cf 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -26,6 +26,7 @@
- #include <linux/ima.h>
- #include <linux/cred.h>
- #include <linux/buffer_head.h> /* for inode_has_buffers */
-+#include <linux/richacl.h>
- #include "internal.h"
- 
- /*
-@@ -192,7 +193,12 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
- 	inode->i_private = NULL;
- 	inode->i_mapping = mapping;
- #ifdef CONFIG_FS_POSIX_ACL
--	inode->i_acl = inode->i_default_acl = ACL_NOT_CACHED;
-+	if (IS_POSIXACL(inode))
-+		inode->i_acl = inode->i_default_acl = ACL_NOT_CACHED;
-+#endif
-+#ifdef CONFIG_FS_RICHACL
-+	if (IS_RICHACL(inode))
-+		inode->i_richacl = ACL_NOT_CACHED;
- #endif
- 
- #ifdef CONFIG_FSNOTIFY
-@@ -242,10 +248,19 @@ void __destroy_inode(struct inode *inode)
- 	security_inode_free(inode);
- 	fsnotify_inode_delete(inode);
- #ifdef CONFIG_FS_POSIX_ACL
--	if (inode->i_acl && inode->i_acl != ACL_NOT_CACHED)
--		posix_acl_release(inode->i_acl);
--	if (inode->i_default_acl && inode->i_default_acl != ACL_NOT_CACHED)
--		posix_acl_release(inode->i_default_acl);
-+	if (IS_POSIXACL(inode)) {
-+		if (inode->i_acl && inode->i_acl != ACL_NOT_CACHED)
-+			posix_acl_release(inode->i_acl);
-+		if (inode->i_default_acl &&
-+		    inode->i_default_acl != ACL_NOT_CACHED)
-+			posix_acl_release(inode->i_default_acl);
-+	}
-+#endif
-+#ifdef CONFIG_FS_RICHACL
-+	if (IS_RICHACL(inode)) {
-+		if (inode->i_richacl && inode->i_richacl != ACL_NOT_CACHED)
-+			richacl_put(inode->i_richacl);
-+	}
- #endif
- 	this_cpu_dec(nr_inodes);
- }
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 8d5d6e4..cfbe763 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -757,6 +757,7 @@ static inline int mapping_writably_mapped(struct address_space *mapping)
- #endif
- 
- struct posix_acl;
-+struct richacl;
- #define ACL_NOT_CACHED ((void *)(-1))
- 
- #define IOP_FASTPERM	0x0001
-@@ -775,10 +776,17 @@ struct inode {
- 	gid_t			i_gid;
- 	unsigned int		i_flags;
- 
-+	union {
- #ifdef CONFIG_FS_POSIX_ACL
--	struct posix_acl	*i_acl;
--	struct posix_acl	*i_default_acl;
-+		struct {
-+			struct posix_acl *i_acl;
-+			struct posix_acl *i_default_acl;
-+		};
- #endif
-+#ifdef CONFIG_FS_RICHACL
-+		struct richacl	*i_richacl;
-+#endif
-+	};
- 
- 	const struct inode_operations	*i_op;
- 	struct super_block	*i_sb;
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index ca07209..a00a9a6 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -189,6 +189,59 @@ richacl_put(struct richacl *acl)
- 		kfree(acl);
- }
- 
-+#ifdef CONFIG_FS_RICHACL
-+static inline struct richacl *get_cached_richacl(struct inode *inode)
-+{
-+	struct richacl **p, *acl;
-+
-+	p = &inode->i_richacl;
-+	acl = ACCESS_ONCE(*p);
-+	if (acl) {
-+		spin_lock(&inode->i_lock);
-+		acl = *p;
-+		if (acl != ACL_NOT_CACHED)
-+			acl = richacl_get(acl);
-+		spin_unlock(&inode->i_lock);
-+	}
-+	return acl;
-+}
-+
-+static inline void set_cached_richacl(struct inode *inode,
-+				      struct richacl *acl)
-+{
-+	struct richacl *old = NULL;
-+	spin_lock(&inode->i_lock);
-+	old = inode->i_richacl;
-+	inode->i_richacl = richacl_get(acl);
-+	spin_unlock(&inode->i_lock);
-+	if (old != ACL_NOT_CACHED)
-+		richacl_put(old);
-+}
-+
-+static inline void forget_cached_richacl(struct inode *inode)
-+{
-+	struct richacl *old = NULL;
-+	spin_lock(&inode->i_lock);
-+	old = inode->i_richacl;
-+	inode->i_richacl = ACL_NOT_CACHED;
-+	spin_unlock(&inode->i_lock);
-+	if (old != ACL_NOT_CACHED)
-+		richacl_put(old);
-+}
-+
-+static inline int negative_cached_richacl(struct inode *inode)
-+{
-+	struct richacl **p, *acl;
-+
-+	p = &inode->i_richacl;
-+	acl = ACCESS_ONCE(*p);
-+	if (acl)
-+		return 0;
-+	return 1;
-+}
-+
-+#endif
-+
- static inline int
- richacl_is_auto_inherit(const struct richacl *acl)
- {
 -- 
-1.7.4.1
-
+Thanks,
+-Bergwolf
