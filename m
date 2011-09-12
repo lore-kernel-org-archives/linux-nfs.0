@@ -1,67 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:35670 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:22732 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751077Ab1IUTpr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Sep 2011 15:45:47 -0400
-Date: Wed, 21 Sep 2011 15:45:31 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: agruen@kernel.org, akpm@linux-foundation.org, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V6 00/26]  New ACL format for better NFSv4 acl
- interoperability
-Message-ID: <20110921194531.GB23634@fieldses.org>
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <878vpi73oc.fsf@skywalker.in.ibm.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <878vpi73oc.fsf@skywalker.in.ibm.com>
+	id S1758069Ab1ILPye convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 11:54:34 -0400
+Subject: RE: Regression seen when HIGHMEM enabled with NFS on 3.1rc4 kernel
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Sricharan R <r.sricharan@ti.com>
+Cc: linux-omap@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 12 Sep 2011 11:54:18 -0400
+In-Reply-To: <1315838509.12736.4.camel@lade.trondhjem.org>
+References: <CAJ7qFSeB8bAGdYfZs-LFHuYqGWNA2RidY0EBEFw_1CndvG7q5A@mail.gmail.com>
+	 <1315594317.17611.25.camel@lade.trondhjem.org>
+	 <dbdc7c3761a82e0b84f2f49c533c07a5@mail.gmail.com>
+	 <1315838509.12736.4.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1315842858.15975.2.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Sep 21, 2011 at 01:00:43PM +0530, Aneesh Kumar K.V wrote:
-> On Mon,  5 Sep 2011 22:55:22 +0530, "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
-> > Hi,
+On Mon, 2011-09-12 at 10:41 -0400, Trond Myklebust wrote: 
+> On Mon, 2011-09-12 at 11:46 +0530, Sricharan R wrote: 
+> > Thanks for the response.
+> > I added a printk just before err = sock->ops->sendpage(sock, *ppage, base,
+> > len, flags);
+> > So here are values when *ppage is NULL.
 > > 
-> > The following set of patches implements VFS and ext4 changes needed to implement
-> > a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
-> > extended by file masks to fit into the standard POSIX file permission model.
-> > They are designed to work seamlessly locally as well as across the NFSv4 and
-> > CIFS/SMB2 network file system protocols.
+> > xdr->page_base= 0xCE9  xdr->page_len=0x400 len=0xE9 remainder=0x0.
 > > 
-> > A user-space utility for displaying and changing richacls is available at [4]
-> > (a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
-> > 
-> > [4] git://git.kernel.org/pub/scm/fs/acl/kvaneesh/richacl.git master
-> > 
-> > To test richacl on ext4 use -o richacl mount option. This mount option may later be
-> > dropped in favour of a feature flag.
-> > 
-> > More details regarding richacl can be found at
-> > http://acl.bestbits.at/richacl/
-> > 
-> > Changes from v5:
-> > a) rebase to v3.1-rc4-131-g9e79e3e
-> > 
-> > NOTE: The kernel changes will be pushed to
-> > git://git.kernel.org/pub/scm/linux/kernel/git/kvaneesh/linux-richacl.git richacl
-> > when kernel.org is back
-> > 
+> > Thanks,
+> >  Sricharan
 > 
-> I pushed the kernel changes to
-> 
-> git://github.com/kvaneesh/linux.git richacl
+> Can you please tell me what the mount options are for this setup?
 
-Thanks!  This doesn't seem to have the branch with the followup patches
-for nfsd?
+I'm guessing you've got wsize=1024, in which case, can you please try
+the following patch?
 
---b.
-
-> 
-> Userspace code can be found at 
-> 
-> git://github.com/kvaneesh/richacl-tools.git
-> 
-> -aneesh
-> 
+Cheers
+  Trond
+8<-------------------------------------------------------------------------- 
