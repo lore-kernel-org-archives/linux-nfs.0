@@ -1,99 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:62089 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753401Ab1IUSvf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 14:51:35 -0400
-Subject: Re: [PATCH 0/2] Changes in 3.1 kernel break NFS monitoring tools
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4E7A2D70.6000400@RedHat.com>
-Date: Wed, 21 Sep 2011 14:51:22 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <8E30751B-9AE9-44B4-B42E-939D8617B13C@oracle.com>
-References: <1316629016-27740-1-git-send-email-steved@redhat.com> <4E7A2C27.8020209@netapp.com> <4E7A2D70.6000400@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>, Bryan Schumaker <bjschuma@netapp.com>
+Received: from cantor2.suse.de ([195.135.220.15]:44760 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754833Ab1ILL4I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Sep 2011 07:56:08 -0400
+Date: Mon, 12 Sep 2011 12:56:05 +0100
+From: Mel Gorman <mgorman@suse.de>
+To: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Cc: Christoph Hellwig <hch@infradead.org>, Linux-MM <linux-mm@kvack.org>,
+        Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 03/10] mm: Add support for a filesystem to control swap
+ files
+Message-ID: <20110912115605.GB3207@suse.de>
+References: <1315566054-17209-1-git-send-email-mgorman@suse.de>
+ <1315566054-17209-4-git-send-email-mgorman@suse.de>
+ <20110909130007.GA11810@infradead.org>
+ <20110909131550.GV14369@suse.de>
+ <20110909133611.GB8155@infradead.org>
+ <1315818285.26517.18.camel@twins>
+ <20110912093058.GA3207@suse.de>
+ <1315821369.26517.21.camel@twins>
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <1315821369.26517.21.camel@twins>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Sep 21, 2011, at 2:31 PM, Steve Dickson wrote:
-
+On Mon, Sep 12, 2011 at 11:56:09AM +0200, Peter Zijlstra wrote:
+> On Mon, 2011-09-12 at 10:34 +0100, Mel Gorman wrote:
+> > On Mon, Sep 12, 2011 at 11:04:45AM +0200, Peter Zijlstra wrote:
+> > > On Fri, 2011-09-09 at 09:36 -0400, Christoph Hellwig wrote:
+> > > > The equivalent of ->direct_IO should be used for both reads and writes.
+> > > 
+> > > So the difference between DIO and swapIO is that swapIO needs the block
+> > > map pinned in memory.. So at the very least you'll need those
+> > > swap_{activate,deactivate} aops. The read/write-page thingies could
+> > > indeed be shared with DIO.
+> > > 
+> > 
+> > I'm travelling at the moment so it'll be later in the week when I investigate
+> > properly but I agree swap_[de|a]ctivate are still necessary. NFS does not
+> > need to pin a block map but it's still necessary for calling xs_set_memalloc.
 > 
-> 
-> On 09/21/2011 02:25 PM, Bryan Schumaker wrote:
->> On 09/21/2011 02:16 PM, Steve Dickson wrote:
->>> Both parser of nfsiostat and mountstats depend on the 
->>> the first word in /proc/self/mountstats to be 'device'
->>> for them to parse through all the devices. 
->>> 
->>> NFS mounts entries,  in 3.1,  no longer have start with
->>> the word 'device'. They start with the actual device, 
->>> which confused both set of parsing routines.
->> 
->> I sent in a patch to fix this on the kernel end almost a month ago, but it must have gotten lost with the kernel.org confusion.  I included what I came up with below
-> Interesting... Maybe we should still apply these patches until
-> your patch shows up? They are definitely broken... 
+> Right.. but I think the hope was that we could replace the current swap
+> bmap hackery with this and simplify the normal swap bits. But yeah,
+> networked filesystems don't really bother with block maps on the client
+> side ;-)
 
-I think we should wait until we get some judgement from the VFS guys.  Either:
-
-  o  This is deemed a regression in a formal kernel API, in which case it's a kernel bug and should be fixed there, or
-
-  o  This is deemed to be a permanent change to the kernel API, in which case we should address the problem in the python tools, as Steve has done
-
-I think all the broken kernels still have stable releases, so it's possible that a kernel fix could address the whole problem.  Bryan, if you are asked to repost, can you add a Cc: stable@kernel.org below your SOB?
-
-> steved.
-> .
->> 
->> - Bryan
->> 
->> [PATCH] VFS: Add "device" tag to /proc/self/mountstats
->> 
->> nfsiostat was failing to find mounted filesystems on kernels after
->> 2.6.38 because of changes to show_vfsstat() by commit
->> c7f404b40a3665d9f4e9a927cc5c1ee0479ed8f9.  This patch adds back the
->> "device" tag before the nfs server entry so scripts can parse the
->> mountstats file correctly.
->> 
->> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->> ---
->> fs/namespace.c |    1 +
->> 1 files changed, 1 insertions(+), 0 deletions(-)
->> 
->> diff --git a/fs/namespace.c b/fs/namespace.c
->> index 22bfe82..1429114 100644
->> --- a/fs/namespace.c
->> +++ b/fs/namespace.c
->> @@ -1109,6 +1109,7 @@ static int show_vfsstat(struct seq_file *m, void *v)
->> 
->> 	/* device */
->> 	if (mnt->mnt_sb->s_op->show_devname) {
->> +		seq_puts(m, "device ");
->> 		err = mnt->mnt_sb->s_op->show_devname(m, mnt);
->> 	} else {
->> 		if (mnt->mnt_devname) {
->> 
->> 
->>> 
->>> Steve Dickson (2):
->>>  nfsiostat: Breaks on 3.1 kernels
->>>  mountstats: Breaks on 3.1 kernels
->>> 
->>> tools/mountstats/mountstats.py |    9 +++++++++
->>> tools/nfs-iostat/nfs-iostat.py |   11 +++++++++--
->>> 2 files changed, 18 insertions(+), 2 deletions(-)
->>> 
->> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+I took a look at what was involved with doing the block lookups in
+ext4. It's what led to patch 4 of this series because it was necessary that
+the filesystem get the same information as the generic handler. It got a
+bit messy but looked like it would have worked if I kept at it. I stopped
+because I did nt see a major advantage with swap_writepage() looking up
+the block map instead of having looked it up in advance with bmap() but
+I could have missed something.
