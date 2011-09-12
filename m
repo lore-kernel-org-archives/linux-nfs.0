@@ -1,57 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:61750 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751462Ab1I0USh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Sep 2011 16:18:37 -0400
-Received: by bkbzt4 with SMTP id zt4so7327502bkb.19
-        for <linux-nfs@vger.kernel.org>; Tue, 27 Sep 2011 13:18:36 -0700 (PDT)
-From: Miklos Szeredi <miklos@szeredi.hu>
-To: Greg KH <gregkh@suse.de>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Ian Kent <raven@themaw.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Jeff Layton <jlayton@redhat.com>, David Howells <dhowells@redhat.com>,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
-        leonardo.lists@gmail.com
-Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-References: <1317078563.21770.8.camel@lade.trondhjem.org>
-	<CA+55aFzX+DyU7xhAmTLq0g_z6jyKuqoiyPdCYO+w2Xk7pECrqg@mail.gmail.com>
-	<1317085155.21770.17.camel@lade.trondhjem.org>
-	<CA+55aFxuaJ-a5u79D2pELU4HbWTrbWjG_4BNcvFqEOcM0H8G2Q@mail.gmail.com>
-	<1317097001.3176.20.camel@perseus.themaw.net>
-	<CA+55aFyzxvJJgOkojvV-83ejNtQnXeRnXerwzWRdwFgPF_yMhg@mail.gmail.com>
-	<1317099091.3176.31.camel@perseus.themaw.net>
-	<CA+55aFwf8z+pi3okC2GmuYYKTN3hz+j5Y4XX4B=VrOP+YG0Qpw@mail.gmail.com>
-	<20110927173822.GC24197@suse.de>
-	<CA+55aFzJBxMJEgPBv-bWGJSBvKA04orsnrMo8YJiMvoTYKZYfA@mail.gmail.com>
-	<20110927180026.GA25156@suse.de>
-Date: Tue, 27 Sep 2011 22:18:11 +0200
-In-Reply-To: <20110927180026.GA25156@suse.de> (Greg KH's message of "Tue, 27
-	Sep 2011 11:00:26 -0700")
-Message-ID: <87aa9p4u4c.fsf@tucsk.pomaz.szeredi.hu>
-Content-Type: text/plain; charset=us-ascii
+Received: from na3sys009aog112.obsmtp.com ([74.125.149.207]:33700 "EHLO
+	na3sys009aog112.obsmtp.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751532Ab1ILGRH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 02:17:07 -0400
+From: Sricharan R <r.sricharan@ti.com>
+References: <CAJ7qFSeB8bAGdYfZs-LFHuYqGWNA2RidY0EBEFw_1CndvG7q5A@mail.gmail.com>
+ <1315594317.17611.25.camel@lade.trondhjem.org>
+In-Reply-To: <1315594317.17611.25.camel@lade.trondhjem.org>
+Date: Mon, 12 Sep 2011 11:46:58 +0530
+Message-ID: <dbdc7c3761a82e0b84f2f49c533c07a5@mail.gmail.com>
+Subject: RE: Regression seen when HIGHMEM enabled with NFS on 3.1rc4 kernel
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-omap@vger.kernel.org, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Greg KH <gregkh@suse.de> writes:
+Hi Trond,
+[....]
 
-> On Tue, Sep 27, 2011 at 10:51:34AM -0700, Linus Torvalds wrote:
->> On Tue, Sep 27, 2011 at 10:38 AM, Greg KH <gregkh@suse.de> wrote:
->> >
->> > Does any of this make any sense for the 3.0-stable tree as well?
->> 
->> My gut feel is that it's not important enough to worry about too much,
->> and we should wait to see that nobody complains about the 3.1
->> behavior.
+>>          1) In the above piece of code, the *ppage value from ops-
+>>sendpage
+>>             function is finally passed on to Kmap by the lower level
+code
+>to
+>>             get the virtual address of the page.
+>>          2) In some corner cases the value of *ppage pointer is NULL.
+>>          3) When highmem is enabled and a NULL pointer is passed to
+>>             Kmap, then kmap finally crashes. But in the case when
+highmem
+>>             is disabled, then kmap returns a junk value for NULL
+pointer.
+>>
+>>             Highmem Enabled , kmap( NULL )-----> kernel crashes.
+>>
+>>            Highmem disabled, kmap( NULL )-----> junk value is returned.
+>>                Subsequently this message is observed on
+>>                                                 the console.
+>>
+>>                                 "RPC call returned error 14"
+>>
+>>          4) Now the question is why is the value of *ppage = NULL is
+>passed
+>>             from the above piece of code to lower layers.
+>>            Should that not have handled *ppage = NULL? and kmap should
+>not
+>>             have received a NULL pointer?
 >
-> Ok, thanks, will do.
+>I wouldn't expect *ppage to be NULL under any circumstances, so I'm
+>really curious as to what is happening here.
+>
+>Could you perhaps add a printk() to that section of code to print out
+>the values of 'xdr->page_base', 'xdr->page_len', 'len' and 'remainder'
+>in the case where *ppage == NULL?
+>
 
-In that case you should back out
 
- vfs-automount-should-ignore-lookup_follow.patch
+Thanks for the response.
+I added a printk just before err = sock->ops->sendpage(sock, *ppage, base,
+len, flags);
+So here are values when *ppage is NULL.
 
-too, otherwise there is strange behavior with NFSv4.
+xdr->page_base= 0xCE9  xdr->page_len=0x400 len=0xE9 remainder=0x0.
 
 Thanks,
-Miklos
+ Sricharan
