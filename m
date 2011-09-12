@@ -1,99 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from peace.netnation.com ([204.174.223.2]:59809 "EHLO
-	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933184Ab1INUeq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Sep 2011 16:34:46 -0400
-Date: Wed, 14 Sep 2011 13:34:41 -0700
-From: Simon Kirby <sim@hostway.ca>
-To: Lin Ming <mlin@ss.pku.edu.cn>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Fabio Coatti <fabio.coatti@gmail.com>
-Subject: Re: [3.1-rc4] vfs_rmdir() -> mutex_unlock() Oops
-Message-ID: <20110914203441.GA10169@hostway.ca>
-References: <20110908222420.GE8043@hostway.ca> <20110912221700.GA11962@hostway.ca> <20110913164342.GA1039@hostway.ca> <CAF1ivSa3i=4=sdD_ajdQ-fS-ifErFVDrOA1suLZTDG0BZ3TpZg@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAF1ivSa3i=4=sdD_ajdQ-fS-ifErFVDrOA1suLZTDG0BZ3TpZg@mail.gmail.com>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:50952 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756167Ab1ILXhU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 19:37:20 -0400
+Received: by gyg10 with SMTP id 10so622334gyg.19
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Sep 2011 16:37:19 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/3] NFSD: Remove the ex_pathname field from struct svc_export
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 12 Sep 2011 19:37:16 -0400
+Message-ID: <20110912233716.5080.64021.stgit@matisse.1015granger.net>
+In-Reply-To: <20110912232149.5080.95084.stgit@matisse.1015granger.net>
+References: <20110912232149.5080.95084.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Sep 14, 2011 at 09:48:09PM +0800, Lin Ming wrote:
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-> > ---[ end trace f515ec8376bdb799 ]---
-> >
-> > How can I further debug this? At this point, it seems to be happening several times daily.
-> 
-> Fabio reported a similar bug,
-> 3.0.3 [BUG] unable to handle kernel NULL pointer dereference
-> http://marc.info/?t=131416920900001&r=1&w=2
-> 
-> Do you have a test case to trigger this bug reliably?
+There are no more users...
 
-Hello!
-
-Sorry, I didn't realize I took this off list after replying to Linus'
-resent mail, but the problem has been tracked down and fixed, and should
-show up in Linus' next push.
-
-The problem was introduced by 64252c75a2196a0cf1e0d3777143ecfe0e3ae650,
-and Al Viro's patch is reproduced below.
-
-I was able to reproduce the issue reliably with:
-
-ssh <nfs_client> 'cd /mnt/test; mkdir foo; sleep 1; mkdir foo' ; \
-ssh <nfs_server> rmdir /export/test/foo ; \
-ssh <nfs_client> rmdir /mnt/test/foo
-
-Simon-
-
->From Al:
-
-[PATCH] restore pinning the victim dentry in vfs_rmdir()/vfs_rename_dir()
-
-We used to get the victim pinned by dentry_unhash() prior to commit
-0cf1e0d3777143ecfe0e3ae650 and ->rmdir()/->rename() instances relied on
-that; most of them don't care, but ones that used d_delete() themselves
-do.  As the result, we are getting rmdir() oopses on NFS now.
-
-Just grab the reference before locking the victim and drop it explicitly
-after unlocking, same as vfs_rename_other() does.
-
-Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
-diff --git a/fs/namei.c b/fs/namei.c
-index 5422080..22c2d5d 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2619,6 +2619,7 @@ int vfs_rmdir(struct inode *dir, struct dentry *dentry)
- 	if (!dir->i_op->rmdir)
- 		return -EPERM;
+
+ fs/nfsd/export.c            |   11 -----------
+ include/linux/nfsd/export.h |    1 -
+ 2 files changed, 0 insertions(+), 12 deletions(-)
+
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index d9a6611..bf985f7 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -318,7 +318,6 @@ static void svc_export_put(struct kref *ref)
+ 	struct svc_export *exp = container_of(ref, struct svc_export, h.ref);
+ 	path_put(&exp->ex_path);
+ 	auth_domain_put(exp->ex_client);
+-	kfree(exp->ex_pathname);
+ 	nfsd4_fslocs_free(&exp->ex_fslocs);
+ 	kfree(exp);
+ }
+@@ -528,11 +527,6 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
  
-+	dget(dentry);
- 	mutex_lock(&dentry->d_inode->i_mutex);
+ 	exp.ex_client = dom;
  
- 	error = -EBUSY;
-@@ -2639,6 +2640,7 @@ int vfs_rmdir(struct inode *dir, struct dentry *dentry)
- 
- out:
- 	mutex_unlock(&dentry->d_inode->i_mutex);
-+	dput(dentry);
- 	if (!error)
- 		d_delete(dentry);
- 	return error;
-@@ -3028,6 +3030,7 @@ static int vfs_rename_dir(struct inode *old_dir, struct dentry *old_dentry,
- 	if (error)
- 		return error;
- 
-+	dget(new_dentry);
- 	if (target)
- 		mutex_lock(&target->i_mutex);
- 
-@@ -3048,6 +3051,7 @@ static int vfs_rename_dir(struct inode *old_dir, struct dentry *old_dentry,
- out:
- 	if (target)
- 		mutex_unlock(&target->i_mutex);
-+	dput(new_dentry);
- 	if (!error)
- 		if (!(old_dir->i_sb->s_type->fs_flags & FS_RENAME_DOES_D_MOVE))
- 			d_move(old_dentry,new_dentry);
+-	err = -ENOMEM;
+-	exp.ex_pathname = kstrdup(buf, GFP_KERNEL);
+-	if (!exp.ex_pathname)
+-		goto out2;
+-
+ 	/* expiry */
+ 	err = -EINVAL;
+ 	exp.h.expiry_time = get_expiry(&mesg);
+@@ -613,8 +607,6 @@ out4:
+ 	nfsd4_fslocs_free(&exp.ex_fslocs);
+ 	kfree(exp.ex_uuid);
+ out3:
+-	kfree(exp.ex_pathname);
+-out2:
+ 	path_put(&exp.ex_path);
+ out1:
+ 	auth_domain_put(dom);
+@@ -678,7 +670,6 @@ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
+ 	new->ex_client = item->ex_client;
+ 	new->ex_path.dentry = dget(item->ex_path.dentry);
+ 	new->ex_path.mnt = mntget(item->ex_path.mnt);
+-	new->ex_pathname = NULL;
+ 	new->ex_fslocs.locations = NULL;
+ 	new->ex_fslocs.locations_count = 0;
+ 	new->ex_fslocs.migrated = 0;
+@@ -696,8 +687,6 @@ static void export_update(struct cache_head *cnew, struct cache_head *citem)
+ 	new->ex_fsid = item->ex_fsid;
+ 	new->ex_uuid = item->ex_uuid;
+ 	item->ex_uuid = NULL;
+-	new->ex_pathname = item->ex_pathname;
+-	item->ex_pathname = NULL;
+ 	new->ex_fslocs.locations = item->ex_fslocs.locations;
+ 	item->ex_fslocs.locations = NULL;
+ 	new->ex_fslocs.locations_count = item->ex_fslocs.locations_count;
+diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
+index 7ba3fd4..f85308e 100644
+--- a/include/linux/nfsd/export.h
++++ b/include/linux/nfsd/export.h
+@@ -96,7 +96,6 @@ struct svc_export {
+ 	struct auth_domain *	ex_client;
+ 	int			ex_flags;
+ 	struct path		ex_path;
+-	char			*ex_pathname;
+ 	uid_t			ex_anon_uid;
+ 	gid_t			ex_anon_gid;
+ 	int			ex_fsid;
+
