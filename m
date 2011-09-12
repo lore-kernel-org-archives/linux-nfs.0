@@ -1,78 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48656 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753772Ab1IHXVP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Sep 2011 19:21:15 -0400
-Date: Thu, 8 Sep 2011 13:59:46 -0400
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/3] NFSD patches to support junctions
-Message-ID: <20110908175946.GA16740@fieldses.org>
-References: <20110902162210.32190.5880.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110902162210.32190.5880.stgit@matisse.1015granger.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:35403 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754945Ab1ILWGn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 18:06:43 -0400
+Received: by gwb15 with SMTP id 15so442001gwb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Sep 2011 15:06:43 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 5/8] sm-notify: Refactor insert_host() and recv_rpcbind_reply()
+To: linux-nfs@vger.kernel.org
+Date: Mon, 12 Sep 2011 18:06:41 -0400
+Message-ID: <20110912220641.10854.80600.stgit@matisse.1015granger.net>
+In-Reply-To: <20110912220304.10854.20972.stgit@matisse.1015granger.net>
+References: <20110912220304.10854.20972.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Sep 02, 2011 at 12:38:13PM -0400, Chuck Lever wrote:
-> Sometime soon we are going to have easy-to-install user space FedFS
-> components.  Here are kernel patches needed to make server-side FedFS
-> support work.  Please consider these for the 3.2 kernel.
-> 
-> The third patch introduces a potentially expensive check to see if
-> a junction has been encountered during a mountpoint lookup.  An object
-> is a junction iff it has the requisite set of extended attributes.
-> However, reading an extended attribute is expensive on some file
-> systems.
-> 
-> To mitigate the cost of this check, junctions always have their sticky
-> bit set.  The expensive extended attribute part of the junction test
-> is done only if the sticky bit is present.
-> 
-> Note that today junctions are directories, but someday symlinks might
-> also act as junctions (for SMB2 support).  And very few files have the
-> sticky bit set.  So we avoid doing a directory test here.
-> 
-> Also, junctions ostensibly have all zero mode bits to hide their local
-> contents.  I don't think the kernel needs to be concerned about the
-> permissions as long as the sticky bit is set.  This allows some
-> flexibility in how junctions are represented.  However, Jeff thinks
-> that having nfsd4_is_junction() also consider mode bits would make the
-> expensive part of this test still less frequent.
-> 
-> Any thoughts about this?
+Clean up: refactor the logic in recv_rpcbind_reply() that re-schedules
+an nsm_host into a separate helper function
 
-Hm, right, a sticky bit set on a directory is a normal thing.  I thought
-Trond's original idea was to check for the sticky bit and not
-executable?  Which is a pointless combination so should be very rare.
+Adjust debugging messages so it's always apparent when an nsm_host is
+rescheduled.
 
-On a typical system maybe directories with the sticky bit are normally
-somewhat rare, but that's a question of policy and there could be cases
-where it's common.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
---b.
+ utils/statd/sm-notify.c |   42 ++++++++++++++++++++++++++----------------
+ 1 files changed, 26 insertions(+), 16 deletions(-)
 
-> 
-> ---
-> 
-> Trond Myklebust (3):
->       NFSD: Add a cache for fs_locations information
->       NFSD: Remove the ex_pathname field from struct svc_export
->       NFSD: Cleanup for nfsd4_path()
-> 
-> 
->  fs/nfsd/export.c            |   15 +-----
->  fs/nfsd/nfs4xdr.c           |  106 ++++++++++++++++++++++++++++++++-----------
->  fs/nfsd/nfsd.h              |    7 +++
->  fs/nfsd/vfs.c               |   16 ++++++
->  include/linux/nfsd/export.h |    2 -
->  5 files changed, 104 insertions(+), 42 deletions(-)
-> 
-> -- 
-> Chuck Lever
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
+index 2421f8b..46447e8 100644
+--- a/utils/statd/sm-notify.c
++++ b/utils/statd/sm-notify.c
+@@ -252,7 +252,6 @@ smn_get_host(const char *hostname,
+ 		return 0;
+ 
+ 	insert_host(host);
+-	xlog(D_GENERAL, "Added host %s to notify list", hostname);
+ 	return 1;
+ }
+ 
+@@ -688,6 +687,25 @@ notify_host(int sock, struct nsm_host *host)
+ 	return 0;
+ }
+ 
++static void
++smn_defer(struct nsm_host *host)
++{
++	host->xid = 0;
++	host->send_next = time(NULL) + NSM_MAX_TIMEOUT;
++	host->timeout = NSM_MAX_TIMEOUT;
++	insert_host(host);
++}
++
++static void
++smn_schedule(struct nsm_host *host)
++{
++	host->xid = 0;
++	host->send_next = time(NULL);
++	if (host->timeout >= NSM_MAX_TIMEOUT / 4)
++		host->timeout = NSM_MAX_TIMEOUT / 4;
++	insert_host(host);
++}
++
+ /*
+  * Extract the returned port number and set up the SM_NOTIFY call.
+  */
+@@ -696,21 +714,16 @@ recv_rpcbind_reply(struct sockaddr *sap, struct nsm_host *host, XDR *xdr)
+ {
+ 	uint16_t port = nsm_recv_rpcbind(sap->sa_family, xdr);
+ 
+-	host->send_next = time(NULL);
+-	host->xid = 0;
+-
+ 	if (port == 0) {
+ 		/* No binding for statd... */
+ 		xlog(D_GENERAL, "No statd on host %s", host->name);
+-		host->timeout = NSM_MAX_TIMEOUT;
+-		host->send_next += NSM_MAX_TIMEOUT;
++		smn_defer(host);
+ 	} else {
++		xlog(D_GENERAL, "Processing rpcbind reply for %s (port %u)",
++			host->name, port);
+ 		nfs_set_port(sap, port);
+-		if (host->timeout >= NSM_MAX_TIMEOUT / 4)
+-			host->timeout = NSM_MAX_TIMEOUT / 4;
++		smn_schedule(host);
+ 	}
+-
+-	insert_host(host);
+ }
+ 
+ /*
+@@ -727,11 +740,7 @@ recv_notify_reply(struct nsm_host *host)
+ 
+ 	if (dot != NULL) {
+ 		*dot = '\0';
+-		host->send_next = time(NULL);
+-		host->xid = 0;
+-		if (host->timeout >= NSM_MAX_TIMEOUT / 4)
+-			host->timeout = NSM_MAX_TIMEOUT / 4;
+-		insert_host(host);
++		smn_schedule(host);
+ 	} else {
+ 		xlog(D_GENERAL, "Host %s notified successfully", host->name);
+ 		smn_forget_host(host);
+@@ -780,7 +789,7 @@ out:
+ }
+ 
+ /*
+- * Insert host into sorted list
++ * Insert host into notification list, sorted by next send time
+  */
+ static void
+ insert_host(struct nsm_host *host)
+@@ -805,6 +814,7 @@ insert_host(struct nsm_host *host)
+ 
+ 	host->next = *where;
+ 	*where = host;
++	xlog(D_GENERAL, "Added host %s to notify list", host->name);
+ }
+ 
+ /*
+
