@@ -1,93 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet15.oracle.com ([141.146.126.227]:49687 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752576Ab1ITQTf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2011 12:19:35 -0400
-Subject: Re: [PATCH 3/8] configure.ac: Add --with-statd-extension configure option
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4E74927D.2070600@RedHat.com>
-Date: Tue, 20 Sep 2011 12:14:16 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <4CEB3ADB-7D44-4E07-9115-69E8E8CF4E5D@oracle.com>
-References: <20110912220304.10854.20972.stgit@matisse.1015granger.net> <20110912220623.10854.69881.stgit@matisse.1015granger.net> <4E74927D.2070600@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:10691 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755279Ab1ILW1f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Sep 2011 18:27:35 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <20110912222306.GB17483@fieldses.org>
+References: <20110912222306.GB17483@fieldses.org> <25175.1315572498@redhat.com> <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <26458.1315577016@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: dhowells@redhat.com, "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+        agruen@kernel.org, akpm@linux-foundation.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V6 00/26] New ACL format for better NFSv4 acl interoperability
+Date: Mon, 12 Sep 2011 23:27:02 +0100
+Message-ID: <8331.1315866422@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+J. Bruce Fields <bfields@fieldses.org> wrote:
 
-On Sep 17, 2011, at 8:28 AM, Steve Dickson wrote:
+> Probably the documentation belongs in man pages.  Which I think they've
+> done, but alas the git repos (on kernel.org) aren't accesible right
+> now....
 
-> 
-> 
-> On 09/12/2011 06:06 PM, Chuck Lever wrote:
->> Currently some distributions patch nfs-utils to put NSM state in a
->> subdirectory of /var/lib/nfs.  Make this a configure option instead.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> 
->> configure.ac       |    8 ++++++++
->> support/nsm/file.c |    9 +--------
->> 2 files changed, 9 insertions(+), 8 deletions(-)
->> 
->> diff --git a/configure.ac b/configure.ac
->> index 461a96a..ba704e2 100644
->> --- a/configure.ac
->> +++ b/configure.ac
->> @@ -23,6 +23,14 @@ AC_ARG_WITH(statedir,
->> 	statedir=$withval,
->> 	statedir=/var/lib/nfs)
->> 	AC_SUBST(statedir)
->> +AC_ARG_WITH(statd-extension,
->> +	[AC_HELP_STRING([--with-statd-extension=foo],
->> +                        [Put NSM state in subdir foo of statedir])],
->> +	statdext=$withval,
->> +	statdext="")
->> +	AC_SUBST(statdext)
->> +	AC_DEFINE_UNQUOTED(NSM_PATH_EXTENSION, "$statdext",
->> +			   [This defines the statedir subdirectory containing NSM state files.])
->> AC_ARG_WITH(statduser,
->> 	[AC_HELP_STRING([--with-statduser=rpcuser],
->>                         [statd to run under @<:@rpcuser or nobody@:>@]
->> diff --git a/support/nsm/file.c b/support/nsm/file.c
->> index a12c753..b4a5af1 100644
->> --- a/support/nsm/file.c
->> +++ b/support/nsm/file.c
->> @@ -93,14 +93,7 @@
->> #define LINELEN		(RPCARGSLEN + SM_PRIV_SIZE * 2 + 1)
->> 
->> #define NSM_KERNEL_STATE_FILE	"/proc/sys/fs/nfs/nsm_local_state"
->> -
->> -/*
->> - * Some distributions place statd's files in a subdirectory
->> - */
->> -#define NSM_PATH_EXTENSION
->> -/* #define NSM_PATH_EXTENSION	"/statd" */
->> -
->> -#define NSM_DEFAULT_STATEDIR		NFS_STATEDIR NSM_PATH_EXTENSION
->> +#define NSM_DEFAULT_STATEDIR	NFS_STATEDIR "/" NSM_PATH_EXTENSION
-> Do we really need the NSM_PATH_EXTENSION define? Would it be more
-> straightforward to just have NFS_STATEDIR. Simplifying the code to:
-> 
-> #ifndef NFS_STATEDIR 
-> #define NFS_STATEDIR "/var/lib/nfs"
-> #endif
-> 
-> #define NSM_DEFAULT_STATEDIR		NFS_STATEDIR
-> 
-> If there is no need for the extra NSM_PATH_EXTENSION define then 
-> we really don't want to create a configuration option for it.. IMHO..
+There is also an in-kernel API that filesystems have to deal with if they want
+to support richacls.  See the ext4 patches...  There should probably be one
+document describing how to 'use' ACLs of all kinds from a filesystem internals
+point of view somewhere under Documentation/filesystems/
 
-RH likes to put statd files in /var/lib/nfs/statd, but everyone else puts them in /var/lib/nfs. So NSM_DEFAULT_STATEDIR is not the same as NFS_STATEDIR on RH distributions.
-
-I'm caught by this every time I want to test upstream nfs-utils on my Fedora systems.  I have to maintain a separate patch, remember to apply it before testing, and then remember to remove it before pushing my patches to git.linux-nfs.org.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+David
