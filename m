@@ -1,107 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:7566 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756200Ab1I2OsO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Sep 2011 10:48:14 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 08/13] FS-Cache: Make cookie relinquishment wait for
- outstanding reads
-To: moseleymark@gmail.com, mark@pogo.org.uk, jlayton@redhat.com,
-        steved@redhat.com
-Cc: linux-cachefs@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Date: Thu, 29 Sep 2011 15:47:13 +0100
-Message-ID: <20110929144713.5812.74883.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20110929144536.5812.84405.stgit@warthog.procyon.org.uk>
-References: <20110929144536.5812.84405.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-gw0-f52.google.com ([74.125.83.52]:38399 "EHLO
+	mail-gw0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753154Ab1IMHvB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 03:51:01 -0400
+Received: by gwj15 with SMTP id 15so316915gwj.11
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Sep 2011 00:51:01 -0700 (PDT)
+Message-ID: <4E6F0B61.4050907@tonian.com>
+Date: Tue, 13 Sep 2011 00:50:57 -0700
+From: Benny Halevy <bhalevy@tonian.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Peng Tao <bergwolf@gmail.com>, tao.peng@emc.com, gusev.vitaliy@nexenta.com,
+        gusev.vitaliy@gmail.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
+References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com>  <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com>  <1315348373.19556.22.camel@lade.trondhjem.org>  <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com>  <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com>  <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com>  <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com>  <F19688880B763E40B28B2B462677FBF805C3299D2F@MX09A.corp.emc.com>  <1315592430.17611.15.camel@lade.trondhjem.org>  <4E6B0E48.7050208@tonian.com>  <CA+a=Yy5fMHPcSU4EoSo1uiOUCfi8vjRVPAjEYGZ+M00CwZ8Z9g@mail.gmail.com>  <4E6E6C3B.2040605@tonian.com> <1315861851.8350.11.camel@lade.trondhjem.org>
+In-Reply-To: <1315861851.8350.11.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Make fscache_relinquish_cookie() log a warning and wait if there are any
-outstanding reads left on the cookie it was given.
+On 2011-09-12 14:10, Trond Myklebust wrote:
+> On Mon, 2011-09-12 at 13:31 -0700, Benny Halevy wrote: 
+>> On 2011-09-12 07:56, Peng Tao wrote:
+>>>> The layout segments are not really in use while in LAYOUTCOMMIT.
+>>>> We only need to get the stateid right with respect to concurrent layout recalls.
+>>> LAYOUTCOMMIT takes lseg reference to mark them as in use so that
+>>> layoutrecall cannot free them.
+>>>
+>>
+>> And if layoutrecall would have freed layout segments during layoutcommit,
+>> what is your specific concern?
+> 
+> That layoutcommit is supposed to return NFS4ERR_BAD_LAYOUT in that case
+> according to section 18.42.3 of RFC5661. I can't find anything in the
+> errata that changes that requirement.
+> 
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+Right. That tells me there no need to strictly serialize LAYOUTCOMMITs
+with CB_LAYOUTRECALL, as long as the layout stateid sent with LAYOUTCOMMIT
+atomically represents the state when the operation was prepared.
 
- fs/fscache/cookie.c           |   18 ++++++++++++++----
- fs/fscache/operation.c        |   10 ++++++++--
- include/linux/fscache-cache.h |    1 +
- 3 files changed, 23 insertions(+), 6 deletions(-)
+That said, since we do want the LAYOUTCOMMIT to succeed, it would be beneficial
+for the client to reply to a CB_LAYOUTRECALL received while a conflicting
+LAYOUTCOMMIT is in progress with NFS4ERR_DELAY.
 
-diff --git a/fs/fscache/cookie.c b/fs/fscache/cookie.c
-index 0666996..66be9ec 100644
---- a/fs/fscache/cookie.c
-+++ b/fs/fscache/cookie.c
-@@ -442,22 +442,32 @@ void __fscache_relinquish_cookie(struct fscache_cookie *cookie, int retire)
- 
- 	event = retire ? FSCACHE_OBJECT_EV_RETIRE : FSCACHE_OBJECT_EV_RELEASE;
- 
-+try_again:
- 	spin_lock(&cookie->lock);
- 
- 	/* break links with all the active objects */
- 	while (!hlist_empty(&cookie->backing_objects)) {
-+		int n_reads;
- 		object = hlist_entry(cookie->backing_objects.first,
- 				     struct fscache_object,
- 				     cookie_link);
- 
- 		_debug("RELEASE OBJ%x", object->debug_id);
- 
--		if (atomic_read(&object->n_reads)) {
-+		set_bit(FSCACHE_COOKIE_WAITING_ON_READS, &cookie->flags);
-+		n_reads = atomic_read(&object->n_reads);
-+		if (n_reads) {
-+			int n_ops = object->n_ops;
-+			int n_in_progress = object->n_in_progress;
- 			spin_unlock(&cookie->lock);
- 			printk(KERN_ERR "FS-Cache:"
--			       " Cookie '%s' still has %d outstanding reads\n",
--			       cookie->def->name, atomic_read(&object->n_reads));
--			BUG();
-+			       " Cookie '%s' still has %d outstanding reads (%d,%d)\n",
-+			       cookie->def->name,
-+			       n_reads, n_ops, n_in_progress);
-+			wait_on_bit(&cookie->flags, FSCACHE_COOKIE_WAITING_ON_READS,
-+				    fscache_wait_bit, TASK_UNINTERRUPTIBLE);
-+			printk("Wait finished\n");
-+			goto try_again;
- 		}
- 
- 		/* detach each cache object from the object cookie */
-diff --git a/fs/fscache/operation.c b/fs/fscache/operation.c
-index 30afdfa..c857ab8 100644
---- a/fs/fscache/operation.c
-+++ b/fs/fscache/operation.c
-@@ -340,8 +340,14 @@ void fscache_put_operation(struct fscache_operation *op)
- 
- 	object = op->object;
- 
--	if (test_bit(FSCACHE_OP_DEC_READ_CNT, &op->flags))
--		atomic_dec(&object->n_reads);
-+	if (test_bit(FSCACHE_OP_DEC_READ_CNT, &op->flags)) {
-+		if (atomic_dec_and_test(&object->n_reads)) {
-+			clear_bit(FSCACHE_COOKIE_WAITING_ON_READS,
-+				  &object->cookie->flags);
-+			wake_up_bit(&object->cookie->flags,
-+				    FSCACHE_COOKIE_WAITING_ON_READS);
-+		}
-+	}
- 
- 	/* now... we may get called with the object spinlock held, so we
- 	 * complete the cleanup here only if we can immediately acquire the
-diff --git a/include/linux/fscache-cache.h b/include/linux/fscache-cache.h
-index ae155f1..c593d57 100644
---- a/include/linux/fscache-cache.h
-+++ b/include/linux/fscache-cache.h
-@@ -301,6 +301,7 @@ struct fscache_cookie {
- #define FSCACHE_COOKIE_PENDING_FILL	3	/* T if pending initial fill on object */
- #define FSCACHE_COOKIE_FILLING		4	/* T if filling object incrementally */
- #define FSCACHE_COOKIE_UNAVAILABLE	5	/* T if cookie is unavailable (error, etc) */
-+#define FSCACHE_COOKIE_WAITING_ON_READS	6	/* T if cookie is waiting on reads */
- };
- 
- extern struct fscache_cookie fscache_fsdef_index;
+The server, on its side, should prevent a distributed deadlock by avoiding
+blocking of a LAYOUTCOMMIT on an outstanding CB_LAYOUTRECALL for the same
+client that sent the LAYOUTCOMMIT.  I'm not sure what error would be best to
+return.  Maybe NFS4ERR_RECALL_CONFLICT if it would be allowed (it isn't listed
+for LAYOUTCOMMIT at the moment).  Just returning NFS4ER_DELAY might lead to
+a live lock situation where neither the LAYOUTCOMMIT not the CB_LAYOUTRECALL
+complete.
 
+Benny
