@@ -1,37 +1,68 @@
-From: <tao.peng@emc.com>
-Subject: RE: NULL pointer dereference during mount
-Date: Tue, 13 Sep 2011 12:43:21 -0400
-Message-ID: <F19688880B763E40B28B2B462677FBF805C3F37B8D@MX09A.corp.emc.com>
-References: <F19688880B763E40B28B2B462677FBF805C3299FFE@MX09A.corp.emc.com>,<20110913124202.GA9498@merit.edu>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH] pnfsblock: add missing rpc_put_mount and path_put
+Date: Tue, 13 Sep 2011 12:44:01 -0400
+Message-ID: <20110913124401.17aefea5@tlielax.poochiereds.net>
+References: <1315930586-2793-1-git-send-email-bergwolf@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: <bhalevy@tonian.com>, <linux-nfs@vger.kernel.org>
-To: <rees@umich.edu>
+Content-Type: text/plain; charset=US-ASCII
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Jim Rees <rees@umich.edu>, Benny Halevy <bhalevy@tonian.com>,
+	linux-nfs@vger.kernel.org, Peng Tao <peng_tao@emc.com>
+To: Peng Tao <bergwolf@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:25422 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755500Ab1IMQnl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 12:43:41 -0400
-In-Reply-To: <20110913124202.GA9498-8f4Pc2RrbJmHXe+LvDLADg@public.gmane.org>
+Received: from mx1.redhat.com ([209.132.183.28]:38446 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755619Ab1IMQoJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Sep 2011 12:44:09 -0400
+In-Reply-To: <1315930586-2793-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, 13 Sep 2011 09:16:26 -0700
+Peng Tao <bergwolf@gmail.com> wrote:
 
-________________________________________
-From: Jim Rees [rees@umich.edu]
-Sent: Tuesday, September 13, 2011 8:42 PM
-To: Peng, Tao
-Cc: bhalevy@tonian.com; linux-nfs@vger.kernel.org
-Subject: Re: NULL pointer dereference during mount
+> Reported-by: Jeff Layton <jlayton@redhat.com>
+> Signed-off-by: Peng Tao <peng_tao@emc.com>
+> ---
+>  fs/nfs/blocklayout/blocklayout.c |    8 ++++++--
+>  1 files changed, 6 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+> index cc78e62..66f2f73 100644
+> --- a/fs/nfs/blocklayout/blocklayout.c
+> +++ b/fs/nfs/blocklayout/blocklayout.c
+> @@ -1009,17 +1009,20 @@ static int __init nfs4blocklayout_init(void)
+>  			      mnt,
+>  			      NFS_PIPE_DIRNAME, 0, &path);
+>  	if (ret)
+> -		goto out_stop;
+> +		goto out_putrpc;
+>  
+>  	bl_device_pipe = rpc_mkpipe(path.dentry, "blocklayout", NULL,
+>  				    &bl_upcall_ops, 0);
+> +	path_put(&path);
+>  	if (IS_ERR(bl_device_pipe)) {
+>  		ret = PTR_ERR(bl_device_pipe);
+> -		goto out_stop;
+> +		goto out_putrpc;
+>  	}
+>  out:
+>  	return ret;
+>  
+> +out_putrpc:
+> +	rpc_put_mount();
+>  out_stop:
+>  	pnfsiod_stop();
+>  out_remove:
+> @@ -1035,6 +1038,7 @@ static void __exit nfs4blocklayout_exit(void)
+>  	pnfs_unregister_layoutdriver(&blocklayout_type);
+>  	pnfsiod_stop();
+>  	rpc_unlink(bl_device_pipe);
+> +	rpc_put_mount();
+>  }
+>  
+>  MODULE_ALIAS("nfs-layouttype4-3");
 
-tao.peng@emc.com wrote:
+Looks correct. Thanks.
 
-  After rebasing to your pnfs-all-latest branch, I always got bellow NULL
-  pointer dereference for both nfsv4 and pnfs. Do you know of any recent
-  change that can cause this?
-
-"git diff" shows no change in the nfs client between my for-benny branch and
-benny's pnfs-all-latest branch.  And the mount works for me.  But the first
-thing I always do on a fresh Fedora install is disable selinux.  Maybe
-something changed in selinux?
-[PT] Just tested 3.1-rc6 and it is working properly. So I think it should be caused by nfs changes.
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
