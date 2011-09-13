@@ -1,104 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:23197 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750741Ab1IUFRO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 01:17:14 -0400
-From: <tao.peng@emc.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <bhalevy@tonian.com>, <linux-nfs@vger.kernel.org>, <honey@citi.umich.edu>,
-        <rees@umich.edu>
-Date: Wed, 21 Sep 2011 01:16:49 -0400
-Subject: RE: [PATCH 2/3] pnfs: introduce pnfs private workqueue
-Message-ID: <F19688880B763E40B28B2B462677FBF805C495295A@MX09A.corp.emc.com>
-References: <1316488728-24912-1-git-send-email-rees@umich.edu>
- <1316488728-24912-3-git-send-email-rees@umich.edu>
- <1316558461.15093.4.camel@lade.trondhjem.org>
- <20110921002917.GA30770@merit.edu>
- <F19688880B763E40B28B2B462677FBF805C4952916@MX09A.corp.emc.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480226@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480226@SACMVEXC2-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mailhub.sw.ru ([195.214.232.25]:16886 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932150Ab1IMSON (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Sep 2011 14:14:13 -0400
+Subject: [PATCH v3 04/11] SUNRPC: parametrize svc creation calls with
+	portmapper flag
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net
+Date: Tue, 13 Sep 2011 22:13:51 +0400
+Message-ID: <20110913181351.3961.70207.stgit@localhost6.localdomain6>
+In-Reply-To: <20110913180953.3961.69217.stgit@localhost6.localdomain6>
+References: <20110913180953.3961.69217.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> -----Original Message-----
-> From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
-> Sent: Wednesday, September 21, 2011 12:20 PM
-> To: Peng, Tao
-> Cc: bhalevy@tonian.com; linux-nfs@vger.kernel.org; honey@citi.umich.edu;
-> rees@umich.edu
-> Subject: RE: [PATCH 2/3] pnfs: introduce pnfs private workqueue
-> 
-> > -----Original Message-----
-> > From: tao.peng@emc.com [mailto:tao.peng@emc.com]
-> > Sent: Tuesday, September 20, 2011 10:44 PM
-> > To: Myklebust, Trond
-> > Cc: bhalevy@tonian.com; linux-nfs@vger.kernel.org;
-> honey@citi.umich.edu;
-> > rees@umich.edu
-> > Subject: RE: [PATCH 2/3] pnfs: introduce pnfs private workqueue
-> >
-> >
-> > > -----Original Message-----
-> > > From: linux-nfs-owner@vger.kernel.org
-> > > [mailto:linux-nfs-owner@vger.kernel.org]
-> > > On Behalf Of Jim Rees
-> > > Sent: Wednesday, September 21, 2011 8:29 AM
-> > > To: Trond Myklebust
-> > > Cc: Benny Halevy; linux-nfs@vger.kernel.org; peter honeyman
-> > > Subject: Re: [PATCH 2/3] pnfs: introduce pnfs private workqueue
-> > >
-> > > Trond Myklebust wrote:
-> > >
-> > >   On Mon, 2011-09-19 at 23:18 -0400, Jim Rees wrote:
-> > >   > From: Peng Tao <bergwolf@gmail.com>
-> > >   >
-> > >   > For layoutdriver io done functions, default workqueue is not a
-> good
-> > place as
-> > >   > the code is executed in IO path. So add a pnfs private workqueue
-> to
-> > handle
-> > >   > them.
-> > >   >
-> > >   > Also change block and object layout code to make use of this
-> private
-> > >   > workqueue.
-> > >   >
-> > >
-> > >   Wait, what????
-> > >
-> > >   Why is the I/O path (i.e. the nfsiod queue) inappropriate for
-> > >   layoutdriver io_done functions?
-> > The current code uses the system_wq to handle io_done functions. If
-> any
-> > function allocates memory in system_wq and causes dirty writeback in
-> nfs
-> > path, the io_done function can never be called because it is after the
-> original
-> > function in the system_wq. And you said that the rpciod/nfsiod is not
-> the
-> > ideal place because of memory allocation. So I suggested pnfs private
-> > workqueue and Benny agreed on it.
-> 
-> You appear to be optimizing for a corner case. Why?
-Current code uses system_wq for io_done and it can cause deadlock. So this is more than just an optimization.
+This new flag ("setup_rpcbind) will be used to detect, that new service will
+send portmapper register calls. For such services we will create rpcbind
+clients and remove all stale portmap registrations.
+Also, svc_rpcb_cleanup() will be set as sv_shutdown callback for such services
+in case of this field wasn't initialized earlier. This will allow to destroy
+rpcbind clients when no other users of them left.
 
-> 
-> IOW: why do we need a whole new workqueue for something which is
-> supposed to be extremely rare? Why can't we just use standard keventd or
-> allocate a perfectly normal thread (e.g. the state recovery thread)?
-Unlike nfsiod and rpciod, keventd (aka, system_wq) is not created with WQ_MEM_RECLAIM, indicating that it should not be used for IO path which can be invoked during memory reclaim. And I agree that a normal kthread can solve it.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-However, the blocklayout write end_io function still needs a context where it can allocate memory to convert extent state (for every IO that touches new extents). If you look into the patch, we are not just using the pnfs private workqueue to handle pnfs_ld_read/write_done, but also calling mark_extents_written() inside the workqueue.
-If we don't create a pnfs private workqueue for pnfs_ld_read/write_done (i.e., by just creating a normal kthread in error case), we would still have to create a workqueue inside blocklayout driver to handle write end_io. And if blocklayout has a private workqueue, it no longer needs the normal kthread for read/write_done error handling, which leaves the kthread only specific to object layout (if it doesn't need a workqueue like blocklayout does).
+---
+ include/linux/sunrpc/svc.h |    2 ++
+ net/sunrpc/svc.c           |   21 ++++++++++++++-------
+ 2 files changed, 16 insertions(+), 7 deletions(-)
 
-So I think a generic pnfs workqueue is better because it simplifies things and solve both problems.
-
-Best,
-Tao
-
-> 
-> Trond
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 223588a..528952a 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -402,11 +402,13 @@ struct svc_procedure {
+  * Function prototypes.
+  */
+ struct svc_serv *svc_create(struct svc_program *, unsigned int,
++			    int setup_rpcbind,
+ 			    void (*shutdown)(struct svc_serv *));
+ struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
+ 					struct svc_pool *pool);
+ void		   svc_exit_thread(struct svc_rqst *);
+ struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
++			int setup_rpcbind,
+ 			void (*shutdown)(struct svc_serv *),
+ 			svc_thread_fn, struct module *);
+ int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index f31e5cc..03231d5 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -378,7 +378,7 @@ static void svc_rpcb_cleanup(struct svc_serv *serv)
+  */
+ static struct svc_serv *
+ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+-	     void (*shutdown)(struct svc_serv *serv))
++	     int setup_rpcbind, void (*shutdown)(struct svc_serv *serv))
+ {
+ 	struct svc_serv	*serv;
+ 	unsigned int vers;
+@@ -437,29 +437,36 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 		spin_lock_init(&pool->sp_lock);
+ 	}
+ 
+-	/* Remove any stale portmap registrations */
+-	svc_unregister(serv);
++	if (setup_rpcbind) {
++	       	if (svc_rpcb_setup(serv) < 0) {
++			kfree(serv->sv_pools);
++			kfree(serv);
++			return NULL;
++		}
++		if (!serv->sv_shutdown)
++			serv->sv_shutdown = svc_rpcb_cleanup;
++	}
+ 
+ 	return serv;
+ }
+ 
+ struct svc_serv *
+ svc_create(struct svc_program *prog, unsigned int bufsize,
+-	   void (*shutdown)(struct svc_serv *serv))
++	   int setup_rpcbind, void (*shutdown)(struct svc_serv *serv))
+ {
+-	return __svc_create(prog, bufsize, /*npools*/1, shutdown);
++	return __svc_create(prog, bufsize, /*npools*/1, setup_rpcbind, shutdown);
+ }
+ EXPORT_SYMBOL_GPL(svc_create);
+ 
+ struct svc_serv *
+ svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
+-		  void (*shutdown)(struct svc_serv *serv),
++		  int setup_rpcbind, void (*shutdown)(struct svc_serv *serv),
+ 		  svc_thread_fn func, struct module *mod)
+ {
+ 	struct svc_serv *serv;
+ 	unsigned int npools = svc_pool_map_get();
+ 
+-	serv = __svc_create(prog, bufsize, npools, shutdown);
++	serv = __svc_create(prog, bufsize, npools, setup_rpcbind, shutdown);
+ 
+ 	if (serv != NULL) {
+ 		serv->sv_function = func;
 
