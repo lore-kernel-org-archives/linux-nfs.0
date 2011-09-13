@@ -1,307 +1,188 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qw0-f42.google.com ([209.85.216.42]:62318 "EHLO
-	mail-qw0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754760Ab1IKPPH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Sep 2011 11:15:07 -0400
-Received: by qwi4 with SMTP id 4so2950551qwi.1
-        for <linux-nfs@vger.kernel.org>; Sun, 11 Sep 2011 08:15:05 -0700 (PDT)
-Message-ID: <4E6CD076.6050607@tonian.com>
-Date: Sun, 11 Sep 2011 08:15:02 -0700
-From: Benny Halevy <bhalevy@tonian.com>
-To: Jim Rees <rees@umich.edu>, Peng Tao <bergwolf@gmail.com>
-CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH 2/3] pNFS: introduce pnfs private workqueue
-References: <1315676495-3689-1-git-send-email-rees@umich.edu> <1315676495-3689-3-git-send-email-rees@umich.edu> <4E6CCAFB.6070506@tonian.com>
-In-Reply-To: <4E6CCAFB.6070506@tonian.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:22606 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753321Ab1IMMsg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 08:48:36 -0400
+Date: Tue, 13 Sep 2011 08:51:39 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>
+Subject: Re: [PATCH v2 3/5] SUNRPC: make RPC service dependable on rpcbind
+ clients creation
+Message-ID: <20110913085139.00f112e2@corrin.poochiereds.net>
+In-Reply-To: <1315596308.17611.46.camel@lade.trondhjem.org>
+References: <20110909115146.13697.71682.stgit@localhost6.localdomain6>
+	<20110909120844.13697.48102.stgit@localhost6.localdomain6>
+	<20110909100745.7e2e8bf9@corrin.poochiereds.net>
+	<4E6A41D4.6090001@parallels.com>
+	<1315593874.17611.19.camel@lade.trondhjem.org>
+	<20110909150104.5a83c60d@tlielax.poochiereds.net>
+	<1315596308.17611.46.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-09-11 07:51, Benny Halevy wrote:
-> On 2011-09-10 10:41, Jim Rees wrote:
->> From: Peng Tao <bergwolf@gmail.com>
-> 
-> Hi, I have a few comments inline below.
-> Otherwise, the direction and the patch looks good.
-> 
->>
->> For layoutdriver io done functions, default workqueue is not a good place as
->> the code is executed in IO path. So add a pnfs private workqueue to handle
->> them.
->>
->> Also change block and object layout code to make use of this private
->> workqueue.
->>
->> Signed-off-by: Peng Tao <peng_tao@emc.com>
->> Signed-off-by: Jim Rees <rees@umich.edu>
->> ---
->>  fs/nfs/blocklayout/blocklayout.c |   17 ++++++++---
->>  fs/nfs/objlayout/objio_osd.c     |    8 ++++++
->>  fs/nfs/objlayout/objlayout.c     |    4 +-
->>  fs/nfs/pnfs.c                    |   52 +++++++++++++++++++++++++++++++++++++-
->>  fs/nfs/pnfs.h                    |    4 +++
->>  5 files changed, 77 insertions(+), 8 deletions(-)
->>
->> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
->> index dc23833..51f70f0 100644
->> --- a/fs/nfs/blocklayout/blocklayout.c
->> +++ b/fs/nfs/blocklayout/blocklayout.c
->> @@ -228,7 +228,7 @@ bl_end_par_io_read(void *data)
->>  	struct nfs_read_data *rdata = data;
->>  
->>  	INIT_WORK(&rdata->task.u.tk_work, bl_read_cleanup);
->> -	schedule_work(&rdata->task.u.tk_work);
->> +	pnfsiod_queue_work(&rdata->task.u.tk_work);
->>  }
->>  
->>  /* We don't want normal .rpc_call_done callback used, so we replace it
->> @@ -418,7 +418,7 @@ static void bl_end_par_io_write(void *data)
->>  	wdata->task.tk_status = 0;
->>  	wdata->verf.committed = NFS_FILE_SYNC;
->>  	INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
->> -	schedule_work(&wdata->task.u.tk_work);
->> +	pnfsiod_queue_work(&wdata->task.u.tk_work);
->>  }
->>  
->>  /* FIXME STUB - mark intersection of layout and page as bad, so is not
->> @@ -981,29 +981,35 @@ static int __init nfs4blocklayout_init(void)
->>  	if (ret)
->>  		goto out;
->>  
->> +	ret = pnfsiod_start();
->> +	if (ret)
->> +		goto out_remove;
->> +
->>  	init_waitqueue_head(&bl_wq);
->>  
->>  	mnt = rpc_get_mount();
->>  	if (IS_ERR(mnt)) {
->>  		ret = PTR_ERR(mnt);
->> -		goto out_remove;
->> +		goto out_stop;
->>  	}
->>  
->>  	ret = vfs_path_lookup(mnt->mnt_root,
->>  			      mnt,
->>  			      NFS_PIPE_DIRNAME, 0, &path);
->>  	if (ret)
->> -		goto out_remove;
->> +		goto out_stop;
->>  
->>  	bl_device_pipe = rpc_mkpipe(path.dentry, "blocklayout", NULL,
->>  				    &bl_upcall_ops, 0);
->>  	if (IS_ERR(bl_device_pipe)) {
->>  		ret = PTR_ERR(bl_device_pipe);
->> -		goto out_remove;
->> +		goto out_stop;
->>  	}
->>  out:
->>  	return ret;
->>  
->> +out_stop:
->> +	pnfsiod_stop();
->>  out_remove:
->>  	pnfs_unregister_layoutdriver(&blocklayout_type);
->>  	return ret;
->> @@ -1015,6 +1021,7 @@ static void __exit nfs4blocklayout_exit(void)
->>  	       __func__);
->>  
->>  	pnfs_unregister_layoutdriver(&blocklayout_type);
->> +	pnfsiod_stop();
->>  	rpc_unlink(bl_device_pipe);
->>  }
->>  
->> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
->> index d0cda12..f28013f 100644
->> --- a/fs/nfs/objlayout/objio_osd.c
->> +++ b/fs/nfs/objlayout/objio_osd.c
->> @@ -1042,7 +1042,14 @@ static int __init
->>  objlayout_init(void)
->>  {
->>  	int ret = pnfs_register_layoutdriver(&objlayout_type);
->> +	if (ret)
->> +		goto out;
->>  
->> +	ret = pnfsiod_start();
->> +	if (ret)
->> +		pnfs_unregister_layoutdriver(&objlayout_type);
->> +
->> +out:
+On Fri, 09 Sep 2011 15:25:08 -0400
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-Also, it makes more sense to init the workqueue before registering the
-layout driver since it's a prerequisite.
+> On Fri, 2011-09-09 at 15:01 -0400, Jeff Layton wrote: 
+> > On Fri, 09 Sep 2011 14:44:34 -0400
+> > Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> > 
+> > > On Fri, 2011-09-09 at 20:41 +0400, Stanislav Kinsbursky wrote: 
+> > > > 09.09.2011 18:07, Jeff Layton пишет:
+> > > > > On Fri, 09 Sep 2011 16:08:44 +0400
+> > > > > Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
+> > > > >
+> > > > >> Create rcbind clients or increase rpcbind users counter during RPC service
+> > > > >> creation and decrease this counter (and possibly destroy those clients) on RPC
+> > > > >> service destruction.
+> > > > >>
+> > > > >> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+> > > > >>
+> > > > >> ---
+> > > > >>   include/linux/sunrpc/clnt.h |    2 ++
+> > > > >>   net/sunrpc/rpcb_clnt.c      |    2 +-
+> > > > >>   net/sunrpc/svc.c            |   13 +++++++++++--
+> > > > >>   3 files changed, 14 insertions(+), 3 deletions(-)
+> > > > >>
+> > > > >> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+> > > > >> index db7bcaf..65a8115 100644
+> > > > >> --- a/include/linux/sunrpc/clnt.h
+> > > > >> +++ b/include/linux/sunrpc/clnt.h
+> > > > >> @@ -135,10 +135,12 @@ void		rpc_shutdown_client(struct rpc_clnt *);
+> > > > >>   void		rpc_release_client(struct rpc_clnt *);
+> > > > >>   void		rpc_task_release_client(struct rpc_task *);
+> > > > >>
+> > > > >> +int		rpcb_create_local(void);
+> > > > >>   int		rpcb_register(u32, u32, int, unsigned short);
+> > > > >>   int		rpcb_v4_register(const u32 program, const u32 version,
+> > > > >>   				 const struct sockaddr *address,
+> > > > >>   				 const char *netid);
+> > > > >> +void		rpcb_put_local(void);
+> > > > >>   void		rpcb_getport_async(struct rpc_task *);
+> > > > >>
+> > > > >>   void		rpc_call_start(struct rpc_task *);
+> > > > >> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+> > > > >> index b4cc0f1..437ec60 100644
+> > > > >> --- a/net/sunrpc/rpcb_clnt.c
+> > > > >> +++ b/net/sunrpc/rpcb_clnt.c
+> > > > >> @@ -318,7 +318,7 @@ out:
+> > > > >>    * Returns zero on success, otherwise a negative errno value
+> > > > >>    * is returned.
+> > > > >>    */
+> > > > >> -static int rpcb_create_local(void)
+> > > > >> +int rpcb_create_local(void)
+> > > > >>   {
+> > > > >>   	static DEFINE_MUTEX(rpcb_create_local_mutex);
+> > > > >>   	int result = 0;
+> > > > >> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> > > > >> index 6a69a11..9095c0e 100644
+> > > > >> --- a/net/sunrpc/svc.c
+> > > > >> +++ b/net/sunrpc/svc.c
+> > > > >> @@ -367,8 +367,11 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+> > > > >>   	unsigned int xdrsize;
+> > > > >>   	unsigned int i;
+> > > > >>
+> > > > >> -	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
+> > > > >> +	if (rpcb_create_local()<  0)
+> > > > >>   		return NULL;
+> > > > >> +
+> > > > >> +	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
+> > > > >> +		goto out_err;
+> > > > >>   	serv->sv_name      = prog->pg_name;
+> > > > >>   	serv->sv_program   = prog;
+> > > > >>   	serv->sv_nrthreads = 1;
+> > > > >> @@ -403,7 +406,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+> > > > >>   			GFP_KERNEL);
+> > > > >>   	if (!serv->sv_pools) {
+> > > > >>   		kfree(serv);
+> > > > >> -		return NULL;
+> > > > >> +		goto out_err;
+> > > > >>   	}
+> > > > >>
+> > > > >>   	for (i = 0; i<  serv->sv_nrpools; i++) {
+> > > > >> @@ -423,6 +426,10 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+> > > > >>   	svc_unregister(serv);
+> > > > >>
+> > > > >>   	return serv;
+> > > > >> +
+> > > > >> +out_err:
+> > > > >> +	rpcb_put_local();
+> > > > >> +	return NULL;
+> > > > >>   }
+> > > > >>
+> > > > >>   struct svc_serv *
+> > > > >> @@ -491,6 +498,8 @@ svc_destroy(struct svc_serv *serv)
+> > > > >>   	svc_unregister(serv);
+> > > > >>   	kfree(serv->sv_pools);
+> > > > >>   	kfree(serv);
+> > > > >> +
+> > > > >> +	rpcb_put_local();
+> > > > >>   }
+> > > > >>   EXPORT_SYMBOL_GPL(svc_destroy);
+> > > > >>
+> > > > >>
+> > > > >
+> > > > > I don't get it -- what's the advantage of creating rpcbind clients in
+> > > > > __svc_create vs. the old way of creating them just before we plan to
+> > > > > use them?
+> > > > >
+> > > > 
+> > > > The main problem here is not in creation, but in destroying those clients.
+> > > > Now rpcbind clients are created during rpcb_register(). I.e. once per every family, program version and so on.
+> > > > But can be unregistered for all protocol families by one call. So it's impossible to put reference counting for those clients in the place, where they are created now.
+> > > 
+> > > Could we perhaps set up a 'struct pernet_operations' to create a
+> > > destructor for them?
+> > > 
+> > 
+> > An even easier idea might be to just not take a reference to the
+> > rpcbind client for svc_programs that have vs_hidden set on every
+> > version.
+> 
+> Isn't the problem that Stanislav is trying to solve that we need to be
+> able to register and unregister RPC services to the correct rpcbind
+> server, depending on which net namespace we are in?
+> 
+> My understanding is that the current code will register everything to
+> whatever rpcbind server is running in the init net namespace because
+> that's what rpcb_create_local() uses.
+> 
 
->>  	if (ret)
->>  		printk(KERN_INFO
->>  			"%s: Registering OSD pNFS Layout Driver failed: error=%d\n",
->> @@ -1057,6 +1064,7 @@ static void __exit
->>  objlayout_exit(void)
->>  {
->>  	pnfs_unregister_layoutdriver(&objlayout_type);
->> +	pnfsiod_stop();
->>  	printk(KERN_INFO "%s: Unregistered OSD pNFS Layout Driver\n",
->>  	       __func__);
->>  }
->> diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
->> index 1d06f8e..f7c6c21 100644
->> --- a/fs/nfs/objlayout/objlayout.c
->> +++ b/fs/nfs/objlayout/objlayout.c
->> @@ -305,7 +305,7 @@ objlayout_read_done(struct objlayout_io_state *state, ssize_t status, bool sync)
->>  		pnfs_ld_read_done(rdata);
->>  	else {
->>  		INIT_WORK(&rdata->task.u.tk_work, _rpc_read_complete);
->> -		schedule_work(&rdata->task.u.tk_work);
->> +		pnfsiod_queue_work(&rdata->task.u.tk_work);
->>  	}
->>  }
->>  
->> @@ -396,7 +396,7 @@ objlayout_write_done(struct objlayout_io_state *state, ssize_t status,
->>  		pnfs_ld_write_done(wdata);
->>  	else {
->>  		INIT_WORK(&wdata->task.u.tk_work, _rpc_write_complete);
->> -		schedule_work(&wdata->task.u.tk_work);
->> +		pnfsiod_queue_work(&wdata->task.u.tk_work);
->>  	}
->>  }
->>  
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index e550e88..5ac7a78 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -38,7 +38,7 @@
->>  /* Locking:
->>   *
->>   * pnfs_spinlock:
->> - *      protects pnfs_modules_tbl.
->> + *      protects pnfs_modules_tbl, pnfsiod_workqueue and pnfsiod_users.
->>   */
->>  static DEFINE_SPINLOCK(pnfs_spinlock);
->>  
->> @@ -47,6 +47,9 @@ static DEFINE_SPINLOCK(pnfs_spinlock);
->>   */
->>  static LIST_HEAD(pnfs_modules_tbl);
->>  
->> +static struct workqueue_struct *pnfsiod_workqueue;
->> +static int pnfsiod_users = 0;
-> 
-> There's no need to initialize static variables to zero.
-> 
->> +
->>  /* Return the registered pnfs layout driver module matching given id */
->>  static struct pnfs_layoutdriver_type *
->>  find_pnfs_driver_locked(u32 id)
->> @@ -1478,3 +1481,50 @@ out:
->>  	dprintk("<-- %s status %d\n", __func__, status);
->>  	return status;
->>  }
->> +
->> +/*
->> + * start up the pnfsiod workqueue
->> + */
->> +int pnfsiod_start(void)
->> +{
->> +	struct workqueue_struct *wq;
->> +	dprintk("RPC:       creating workqueue pnfsiod\n");
-> 
-> hmm, s/RPC/NFS/ this is not the RPC module any more :)
-> looks like a cut'n'paste from rpciod_start...
-> 
->> +	wq = alloc_workqueue("pnfsiod", WQ_MEM_RECLAIM, 0);
->> +	if (wq == NULL)
->> +		return -ENOMEM;
->> +	spin_lock(&pnfs_spinlock);
->> +	pnfsiod_users++;
->> +	if (pnfsiod_workqueue == NULL) {
->> +		pnfsiod_workqueue = wq;
->> +	} else {
->> +		destroy_workqueue(wq);
->> +	}
-> 
-> The curly braces in this statement are an overkill
-> (and deviation from CodingStyle)
-> 
->> +	spin_unlock(&pnfs_spinlock);
->> +	return 0;
-> 
-> although this way of accounting is ultimately simple
-> it's wasteful and since we're not really expecting any concurrent
-> calls to this function. I'd consider coding this it as follows:
-> 
-> 	atomic_inc(&pnfsiod_users);
-> 	if (pnfsiod_workqueue == NULL) {
-> 		wq = alloc_workqueue("pnfsiod", WQ_MEM_RECLAIM, 0);
-> 		if (wq == NULL)
+My assumption in reading this set (maybe wrong) was that this was a
+preliminary set for now that just plops in function calls in the places
+that do this sort of thing now. I figured that eventually he'd convert
+rpcb_create_local, et. al. to do the same thing but within the correct
+namespace for the calling task.
 
-sorry, we need to call nfsiod_stop here.
-I'll send a SQUASHME patch with my proposed changes
-to this one to make it clearer...
+> My suggestion is to use a struct pernet_operations to detect when a net
+> namespace is being created or destroyed, so that the rpcbind client code
+> knows when to create or destroy a connection to the server that is
+> running in that namespace.
+> 
 
-Benny
+I'm not sure that solves anything. I'd also ass|u|me that something
+here (the xprt?) will hold a reference to its netns. If we try to do
+this with pernet ops, then I think we'd end up with a chicken-and-egg
+problem...
 
-> 			return -ENOMEM;
-> 		spin_lock(&pnfs_spinlock);
-> 		if (pnfsiod_workqueue == NULL)
-> 			pnfsiod_workqueue = wq;
-> 		else
-> 			destroy_workqueue(wq);
-> 		spin_unlock(&pnfs_spinlock);
-> 	}
-> 
-> 	return 0;
-> 
->> +}
->> +EXPORT_SYMBOL_GPL(pnfsiod_start);
->> +
->> +/*
->> + * Destroy the pnfsiod workqueue
->> + */
->> +void pnfsiod_stop(void)
->> +{
->> +	struct workqueue_struct *wq = NULL;
->> +
->> +	spin_lock(&pnfs_spinlock);
->> +	pnfsiod_users--;
->> +	if (pnfsiod_users == 0) {
->> +		wq = pnfsiod_workqueue;
->> +		pnfsiod_workqueue = NULL;
->> +	}
->> +	spin_unlock(&pnfs_spinlock);
->> +	if (wq)
->> +		destroy_workqueue(wq);
-> 
-> and continuing my proposal from above:
-> 
-> 	if (atomic_dec_and_lock(&pnfsiod_users)) {
-> 		wq = pnfsiod_workqueue;
-> 		pnfsiod_workqueue = NULL;
-> 		spin_unlock(&pnfs_spinlock);
-> 	}
-> 	if (wq)
-> 		destroy_workqueue(wq);
-> 
-> Benny
-> 
->> +}
->> +EXPORT_SYMBOL_GPL(pnfsiod_stop);
->> +
->> +void pnfsiod_queue_work(struct work_struct* work)
->> +{
->> +	queue_work(pnfsiod_workqueue, work);
->> +}
->> +EXPORT_SYMBOL_GPL(pnfsiod_queue_work);
->> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->> index 01cbfd5..bc1eed5 100644
->> --- a/fs/nfs/pnfs.h
->> +++ b/fs/nfs/pnfs.h
->> @@ -165,6 +165,10 @@ extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
->>  extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
->>  
->>  /* pnfs.c */
->> +int pnfsiod_start(void);
->> +void pnfsiod_stop(void);
->> +void pnfsiod_queue_work(struct work_struct* work);
->> +
->>  void get_layout_hdr(struct pnfs_layout_hdr *lo);
->>  void put_lseg(struct pnfs_layout_segment *lseg);
->>  
+I think the simplest solution would be to basically call these
+functions closer to where the rpcbind calls happen today, and just
+don't do them when the svc_program has vs_hidden set or if the xprt is
+being created with SVC_SOCK_ANONYMOUS set.
+
+In fact, a rethink of the vs_hidden/SVC_SOCK_ANONYMOUS scheme would
+probably be a good preliminary patch here. There's a lot of overlap
+between those two flags, and somehow consolidating them would probably
+be a good thing.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
