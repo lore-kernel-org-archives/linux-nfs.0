@@ -1,90 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out2.smtp.messagingengine.com ([66.111.4.26]:60308 "EHLO
-	out2.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753225Ab1IXCb1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2011 22:31:27 -0400
-Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-From: Ian Kent <raven@themaw.net>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Miklos Szeredi <miklos@szeredi.hu>, David Howells <dhowells@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Jeff Layton <jlayton@redhat.com>, viro@zeniv.linux.org.uk,
-        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-In-Reply-To: <CA+55aFwPEq5B_P0RtX+pBtGfTadzzS+3U=k=3XTjDw3soNhOdA@mail.gmail.com>
-References: <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com>
-	 <1316747758.3346.89.camel@perseus.themaw.net>
-	 <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
-	 <1316707443.3346.44.camel@perseus.themaw.net>
-	 <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
-	 <1316709935.3346.48.camel@perseus.themaw.net>
-	 <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
-	 <20110922144453.6cf53a25@barsoom.rdu.redhat.com>
-	 <1316719228.3968.14.camel@lade.trondhjem.org>
-	 <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
-	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
-	 <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
-	 <21772.1316774025@redhat.com>
-	 <1316788444.14812.10.camel@lade.trondhjem.org>
-	 <29743.1316791138@redhat.com> <87hb43tf2g.fsf@tucsk.pomaz.szeredi.hu>
-	 <1316827854.3346.154.camel@perseus.themaw.net>
-	 <CA+55aFwPEq5B_P0RtX+pBtGfTadzzS+3U=k=3XTjDw3soNhOdA@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Sat, 24 Sep 2011 10:31:20 +0800
-Message-ID: <1316831480.3346.178.camel@perseus.themaw.net>
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:56180 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755230Ab1IMQR2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 12:17:28 -0400
+Received: by qyk30 with SMTP id 30so2786615qyk.19
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Sep 2011 09:17:28 -0700 (PDT)
+In-Reply-To: <1315622957-1549-2-git-send-email-bergwolf@gmail.com>
+References: <1315622957-1549-1-git-send-email-bergwolf@gmail.com> <1315622957-1549-2-git-send-email-bergwolf@gmail.com>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Wed, 14 Sep 2011 00:09:32 +0800
+Message-ID: <CA+a=Yy7GS6DS1k8suv9284bV_GDpoyfWCdU_LR=2caBPaVVkJA@mail.gmail.com>
+Subject: Re: [PATCH 2/2] pnfsblock: fix writeback deadlock
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Benny Halevy <bhalevy@tonian.com>, Jim Rees <rees@umich.edu>,
+        Peng Tao <peng_tao@emc.com>, linuxnfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2011-09-23 at 18:44 -0700, Linus Torvalds wrote:
-> On Fri, Sep 23, 2011 at 6:30 PM, Ian Kent <raven@themaw.net> wrote:
-> >
-> > Perhaps, but that allows modules to circumvent VFS policy which is what
-> > allowed this situation to come up in the first place.
-> 
-> So, realistically, what's the downside of just adding LOOKUP_DIRECTORY
-> (or LOOKUP_OPEN) to the nfs_follow_remote_path() case?
+And this one too... Add cc nfs list. Sorry for the noise...
 
-I'm continuing to look at code and think about that but can't give a
-decent answer yet.
+On Sat, Sep 10, 2011 at 10:49 AM, Peng Tao <bergwolf@gmail.com> wrote:
+> We should check if the sector is already initialized before
+> trying to grab the page from page cache. Otherwise when two
+> pages of the same block are written back by two threads each
+> calling from writepage_locked, it can cause deadlock like bellow.
+>
+>  [ 1080.972099] INFO: task kswapd0:25 blocked for more than 120 seconds.
+>  [ 1080.972377] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+>  [ 1080.972812] kswapd0         D ffff88000c4926c0     0    25      2 0x00000000
+>  [ 1080.972816]  ffff88000df276b0 0000000000000046 ffff88000df27640 ffffffff81013ba7
+>  [ 1080.972821]  ffff88000c492310 ffff88000df27fd8 ffff88000df27fd8 00000000001d3440
+>  [ 1080.972824]  ffff88000c378000 ffff88000c492310 ffff8800175d3d40 ffff880017fc75a8
+>  [ 1080.972828] Call Trace:
+>  [ 1080.972860]  [<ffffffff81013ba7>] ? read_tsc+0x9/0x19
+>  [ 1080.972877]  [<ffffffff810e0b23>] ? lock_page+0x2b/0x2b
+>  [ 1080.972899]  [<ffffffff81475a1d>] io_schedule+0x63/0x7e
+>  [ 1080.972902]  [<ffffffff810e0b31>] sleep_on_page+0xe/0x12
+>  [ 1080.972905]  [<ffffffff81475fe8>] __wait_on_bit_lock+0x46/0x8f
+>  [ 1080.972916]  [<ffffffff810822d7>] ? lock_release_holdtime.part.7+0x6b/0x72
+>  [ 1080.972919]  [<ffffffff810e0af6>] __lock_page+0x66/0x68
+>  [ 1080.972928]  [<ffffffff81072705>] ? autoremove_wake_function+0x3d/0x3d
+>  [ 1080.972932]  [<ffffffff810e0b1f>] lock_page+0x27/0x2b
+>  [ 1080.972934]  [<ffffffff810e0bcf>] find_lock_page+0x34/0x57
+>  [ 1080.972937]  [<ffffffff810e1738>] find_or_create_page+0x34/0x8a
+>  [ 1080.972947]  [<ffffffffa034245b>] bl_write_pagelist+0x205/0x6da [blocklayoutdriver]
+>  [ 1080.972951]  [<ffffffffa034145d>] ? bl_free_lseg+0x38/0x38 [blocklayoutdriver]
+>  [ 1080.972995]  [<ffffffffa02e27b9>] ? nfs_write_rpcsetup+0x118/0x123 [nfs]
+>  [ 1080.973033]  [<ffffffffa030246b>] pnfs_generic_pg_writepages+0x10b/0x1f4 [nfs]
+>  [ 1080.973089]  [<ffffffffa02deaae>] nfs_pageio_doio+0x1a/0x43 [nfs]
+>  [ 1080.973098]  [<ffffffffa02df035>] nfs_pageio_complete+0x16/0x2d [nfs]
+>  [ 1080.973108]  [<ffffffffa02e2d8f>] nfs_writepage_locked+0xa0/0xbf [nfs]
+>  [ 1080.973119]  [<ffffffffa02e36a1>] nfs_writepage+0x16/0x2b [nfs]
+>  [ 1080.973122]  [<ffffffff810e8762>] ? clear_page_dirty_for_io+0x87/0x9a
+>  [ 1080.973133]  [<ffffffff810efc5b>] shrink_page_list+0x39b/0x6c8
+>  [ 1080.973139]  [<ffffffff810f03bb>] shrink_inactive_list+0x22c/0x39e
+>  [ 1080.973144]  [<ffffffff810822d7>] ? lock_release_holdtime.part.7+0x6b/0x72
+>  [ 1080.973148]  [<ffffffff810f0c33>] shrink_zone+0x445/0x588
+>  [ 1080.973152]  [<ffffffff810f1a11>] balance_pgdat+0x2c2/0x56b
+>  [ 1080.973170]  [<ffffffff81254208>] ? __bitmap_weight+0x34/0x80
+>  [ 1080.973175]  [<ffffffff810f1f78>] kswapd+0x2be/0x2fa
+>  [ 1080.973179]  [<ffffffff810726c8>] ? __init_waitqueue_head+0x4b/0x4b
+>  [ 1080.973183]  [<ffffffff810f1cba>] ? balance_pgdat+0x56b/0x56b
+>  [ 1080.973187]  [<ffffffff81071f69>] kthread+0xa8/0xb0
+>  [ 1080.973200]  [<ffffffff814806b4>] kernel_thread_helper+0x4/0x10
+>  [ 1080.973205]  [<ffffffff81071ec1>] ? __init_kthread_worker+0x5a/0x5a
+>  [ 1080.973210]  [<ffffffff814806b0>] ? gs_change+0x13/0x13
+>  [ 1080.973213] no locks held by kswapd0/25.
+>
+> Signed-off-by: Peng Tao <peng_tao@emc.com>
+> ---
+>  fs/nfs/blocklayout/blocklayout.c |    8 ++++++--
+>  1 files changed, 6 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+> index 0920c35..cc78e62 100644
+> --- a/fs/nfs/blocklayout/blocklayout.c
+> +++ b/fs/nfs/blocklayout/blocklayout.c
+> @@ -533,6 +533,11 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+>  fill_invalid_ext:
+>                dprintk("%s need to zero %d pages\n", __func__, npg_zero);
+>                for (;npg_zero > 0; npg_zero--) {
+> +                       if (bl_is_sector_init(be->be_inval, isect)) {
+> +                               dprintk("isect %llu already init\n",
+> +                                       (unsigned long long)isect);
+> +                               goto next_page;
+> +                       }
+>                        /* page ref released in bl_end_io_write_zero */
+>                        index = isect >> PAGE_CACHE_SECTOR_SHIFT;
+>                        dprintk("%s zero %dth page: index %lu isect %llu\n",
+> @@ -552,8 +557,7 @@ fill_invalid_ext:
+>                         * PageUptodate: It was read before
+>                         * sector_initialized: already written out
+>                         */
+> -                       if (PageDirty(page) || PageWriteback(page) ||
+> -                           bl_is_sector_init(be->be_inval, isect)) {
+> +                       if (PageDirty(page) || PageWriteback(page)) {
+>                                print_page(page);
+>                                unlock_page(page);
+>                                page_cache_release(page);
+> --
+> 1.7.1.262.g5ef3d
+>
+>
 
-> 
-> And if we decide that we really *really* must never bind-mount a
-> automount point, we could certainly add LOOKUP_OPEN to that case too,
-> but my gut feel is that's a "doctor, doctor, it hurts when I put a
-> nail in my eye" kind of case - do we really care?  Is it a sane
-> operation to do to begin with?
-
-I'll get to all the bits I need to look at eventually.
-
-Preventing the bind mounting an automount point is something that I
-wanted to be able to do for autofs. That's because there is a dependency
-on specific path oriented external information which means a bind
-mounting elsewhere is undefined. But I'm not sure yet that holds true
-across all automount users.
-
-I'm a bit surprised this has come up actually because I thought it was
-possible to do that before and after the vfs-automount changes. So it's
-a separate problem and I'd rather not get caught up in trying to resolve
-an ongoing pre-existing problem at the same time as trying to work out
-how to handle the current situation. 
-
-> 
-> My gut feel is that either of (or both) of
-> LOOKUP_OPEN/LOOKUP_DIRECTORY is a saner flag to check for than
-> LOOKUP_FOLLOW ever was. Let's keep LOOKUP_FOLLOW as being the "acts on
-> symlink or the thing it points to", and nothing else.
-
-It is hard to listen to what is being said and change direction when you
-have committed heavily to a way of doing things but I'm trying, ;)
-
-That's what I'm looking at doing by using the LOOKUP_DIRECTORY flag, all
-be it slowly, because I'm trying to listen to what is being said, think
-about it in relation to this, and understand the implications.
-
-Let me continue looking at code and thinking about it further for now.
-At the moment I fear that it won't quite cover all the cases, time will
-tell.
-
-Ian
 
 
+-- 
+Thanks,
+-Bergwolf
