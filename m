@@ -1,50 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:35105 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:49137 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751267Ab1IUPpW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Sep 2011 11:45:22 -0400
-Date: Wed, 21 Sep 2011 11:45:21 -0400
-From: "'J. Bruce Fields'" <bfields@fieldses.org>
-To: Tim <supertimothy@web.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Writing / Locking problem with NFSv4
-Message-ID: <20110921154521.GC21510@fieldses.org>
-References: <001101cc745e$356aeed0$a040cc70$@web.de>
- <20110920135050.GA12422@fieldses.org>
- <001e01cc784b$bba7fa10$32f7ee30$@web.de>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <001e01cc784b$bba7fa10$32f7ee30$@web.de>
+	id S932149Ab1IMSPG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Sep 2011 14:15:06 -0400
+Subject: [PATCH v3 11/11] SUNRPC: remove rpcbind clients destruction on module
+	cleanup
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net
+Date: Tue, 13 Sep 2011 22:14:45 +0400
+Message-ID: <20110913181444.3961.84427.stgit@localhost6.localdomain6>
+In-Reply-To: <20110913180953.3961.69217.stgit@localhost6.localdomain6>
+References: <20110913180953.3961.69217.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Sep 21, 2011 at 12:46:34PM +0200, Tim wrote:
-> On Fri, Sep 16, 2011 at 12:48:45PM +0200, Tim wrote:
-> >> I’m  facing a rather strange problem. 
-> >> 
-> >> From one client I can mount and access my NFSServer without any problems.
-> >> Writing and locking works with a non root user accout. 
-> >> From another client (in another subnet), with root everything works 
-> >> fine. If I use another user, locking doesnt work and also when I 
-> >> create a file with vim, the *.swp file is not deleted afterwards. But 
-> >> reading works without problems.
-> >> Strange thing is user mapping seems to work correct – at least what ls 
-> >> -la and the logfiles for idmapd shows.
-> 
-> >Which client and server?  (Linux on both?  Which versions?)  Are you using kerberos?  If not, are your uid's the same between client and server?  What does your export file look like?
-> 
-> Client and Server are both RHEL 6.1. I am not using kerberos. And yes, the uid's are the same, also the gid is the same: 3000 for both.
-> This is my export file:
-> 
-> /srv/nfs/			10.1.4.32/255.255.255.224(rw,fsid=0,sync,no_subtree_check,no_root_squash) 10.1.0.9(rw,fsid=0,sync,no_subtree_check,no_root_squash)
-> /srv/nfs/mail/users		10.1.4.32/255.255.255.224(rw,fsid=1,sync,no_subtree_check,no_root_squash)
-> /srv/nfs/mail/tmp		10.1.4.32/255.255.255.224(rw,fsid=2,sync,no_subtree_check,no_root_squash)
-> /srv/nfs/testdata		10.1.0.9(rw,fsid=10,sync,no_subtree_check,no_root_squash)
-> 
-> I tried to take tcpdumps as root and non root user: They look the same to me. However, I'm not so sure what I'm looking for...
+Rpcbind clients destruction during SUNRPC module removing is obsolete since now
+those clients are destroying during last RPC service shutdown.
 
-Hm.  Sounds possibly like
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-	http://marc.info/?t=129183437900003&r=1&w=2
+---
+ net/sunrpc/rpcb_clnt.c   |   12 ------------
+ net/sunrpc/sunrpc_syms.c |    3 ---
+ 2 files changed, 0 insertions(+), 15 deletions(-)
 
---b.
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index e5c936d..fc6c59b 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -1097,15 +1097,3 @@ static struct rpc_program rpcb_program = {
+ 	.version	= rpcb_version,
+ 	.stats		= &rpcb_stats,
+ };
+-
+-/**
+- * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
+- *
+- */
+-void cleanup_rpcb_clnt(void)
+-{
+-	if (rpcb_local_clnt4)
+-		rpc_shutdown_client(rpcb_local_clnt4);
+-	if (rpcb_local_clnt)
+-		rpc_shutdown_client(rpcb_local_clnt);
+-}
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 9d08091..8ec9778 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -61,8 +61,6 @@ static struct pernet_operations sunrpc_net_ops = {
+ 
+ extern struct cache_detail unix_gid_cache;
+ 
+-extern void cleanup_rpcb_clnt(void);
+-
+ static int __init
+ init_sunrpc(void)
+ {
+@@ -102,7 +100,6 @@ out:
+ static void __exit
+ cleanup_sunrpc(void)
+ {
+-	cleanup_rpcb_clnt();
+ 	rpcauth_remove_module();
+ 	cleanup_socket_xprt();
+ 	svc_cleanup_xprt_sock();
+
