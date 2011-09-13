@@ -1,58 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:32659 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753598Ab1IMNlK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Sep 2011 09:41:10 -0400
-Message-ID: <4E6F5D2F.4050100@parallels.com>
-Date: Tue, 13 Sep 2011 17:39:59 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>
-Subject: Re: [PATCH v2 3/5] SUNRPC: make RPC service dependable on rpcbind
- clients creation
-References: <20110909115146.13697.71682.stgit@localhost6.localdomain6>	<20110909120844.13697.48102.stgit@localhost6.localdomain6>	<20110909100745.7e2e8bf9@corrin.poochiereds.net>	<4E6A41D4.6090001@parallels.com>	<1315593874.17611.19.camel@lade.trondhjem.org>	<20110909150104.5a83c60d@tlielax.poochiereds.net>	<1315596308.17611.46.camel@lade.trondhjem.org> <20110913085139.00f112e2@corrin.poochiereds.net>
-In-Reply-To: <20110913085139.00f112e2@corrin.poochiereds.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:38594 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752343Ab1IPQbq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2011 12:31:46 -0400
+Received: by iaqq3 with SMTP id q3so2406526iaq.19
+        for <linux-nfs@vger.kernel.org>; Fri, 16 Sep 2011 09:31:45 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Vitaliy Gusev <gusev.vitaliy@nexenta.com>, bhalevy@tonian.com,
+        Trond.Myklebust@netapp.com, Peng Tao <peng_tao@emc.com>
+Subject: [PATCH v2] nfs4: serialize layoutcommit
+Date: Mon, 12 Sep 2011 20:47:21 -0700
+Message-Id: <1315885641-1514-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-13.09.2011 16:51, Jeff Layton пишет:
-> My assumption in reading this set (maybe wrong) was that this was a
-> preliminary set for now that just plops in function calls in the places
-> that do this sort of thing now. I figured that eventually he'd convert
-> rpcb_create_local, et. al. to do the same thing but within the correct
-> namespace for the calling task.
->
+Current pnfs_layoutcommit_inode can not handle parallel layoutcommit.
+And as Trond suggested , there is no need for client to optimize for
+parallel layoutcommit. So add NFS_INO_LAYOUTCOMMITTING flag to mark
+inflight layoutcommit and serialize lalyoutcommit with it. Also call
+mark_inode_dirty_sync if pnfs_layoutcommit_inode fails to issue
+layoutcommit, so that layoutcommit can be retried later.
+It also fixes the pls_lc_list corruption that Vitaliy found.
 
-You have a right assumption. This is exactly what I'm going to do next.
+Reported-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/nfs4proc.c      |    6 ++++++
+ fs/nfs/pnfs.c          |   24 +++++++++++++++++++++---
+ include/linux/nfs_fs.h |    1 +
+ 3 files changed, 28 insertions(+), 3 deletions(-)
 
->
-> I think the simplest solution would be to basically call these
-> functions closer to where the rpcbind calls happen today, and just
-> don't do them when the svc_program has vs_hidden set or if the xprt is
-> being created with SVC_SOCK_ANONYMOUS set.
->
-
-This solution is not the simplest one since we call svc_register() for every svc 
-socket if it's not anonymous. But svc_unregister() is called only once for all 
-inet families and protocols.
-
-Also I've noticed, that we call svc_unregister in __svc_create(). I.e. we call 
-it for nfs callbacks as well (in spite of that we don't need this). Thus, for 
-now, nfs callbacks service creation depends on rpcbind clients presence.
-
-So, for my pow, we need something like startup() callback, passed to 
-svc_create(_pooled)() to clean up this mess.
-This callback will be defined only for lockd and nfsd and will create rpcbind 
-clients and remove any stale portmap registrations.
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 4700fae..a7ce210 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5970,6 +5970,7 @@ static void nfs4_layoutcommit_release(void *calldata)
+ {
+ 	struct nfs4_layoutcommit_data *data = calldata;
+ 	struct pnfs_layout_segment *lseg, *tmp;
++	unsigned long *bitlock = &NFS_I(data->args.inode)->flags;
+ 
+ 	pnfs_cleanup_layoutcommit(data);
+ 	/* Matched by references in pnfs_set_layoutcommit */
+@@ -5979,6 +5980,11 @@ static void nfs4_layoutcommit_release(void *calldata)
+ 				       &lseg->pls_flags))
+ 			put_lseg(lseg);
+ 	}
++
++	clear_bit_unlock(NFS_INO_LAYOUTCOMMITTING, bitlock);
++	smp_mb__after_clear_bit();
++	wake_up_bit(bitlock, NFS_INO_LAYOUTCOMMITTING);
++
+ 	put_rpccred(data->cred);
+ 	kfree(data);
+ }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index b483bbc..395e917 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1446,17 +1446,30 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 	/* Note kzalloc ensures data->res.seq_res.sr_slot == NULL */
+ 	data = kzalloc(sizeof(*data), GFP_NOFS);
+ 	if (!data) {
+-		mark_inode_dirty_sync(inode);
+ 		status = -ENOMEM;
+ 		goto out;
+ 	}
+ 
++	if (!test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags))
++		goto out_free;
++	else if (test_and_set_bit(NFS_INO_LAYOUTCOMMITTING, &nfsi->flags)) {
++		if (!sync) {
++			status = -EAGAIN;
++			goto out_free;
++		}
++		status = wait_on_bit_lock(&nfsi->flags, NFS_INO_LAYOUTCOMMITTING,
++					nfs_wait_bit_killable, TASK_KILLABLE);
++		if (status)
++			goto out_free;
++	}
++
+ 	INIT_LIST_HEAD(&data->lseg_list);
+ 	spin_lock(&inode->i_lock);
+ 	if (!test_and_clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
++		clear_bit(NFS_INO_LAYOUTCOMMITTING, &nfsi->flags);
+ 		spin_unlock(&inode->i_lock);
+-		kfree(data);
+-		goto out;
++		wake_up_bit(&nfsi->flags, NFS_INO_LAYOUTCOMMITTING);
++		goto out_free;
+ 	}
+ 
+ 	pnfs_list_write_lseg(inode, &data->lseg_list);
+@@ -1478,8 +1491,13 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 
+ 	status = nfs4_proc_layoutcommit(data, sync);
+ out:
++	if (status)
++		mark_inode_dirty_sync(inode);
+ 	dprintk("<-- %s status %d\n", __func__, status);
+ 	return status;
++out_free:
++	kfree(data);
++	goto out;
+ }
+ 
+ /*
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index eaac770..c5b2b30 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -230,6 +230,7 @@ struct nfs_inode {
+ #define NFS_INO_COMMIT		(7)		/* inode is committing unstable writes */
+ #define NFS_INO_PNFS_COMMIT	(8)		/* use pnfs code for commit */
+ #define NFS_INO_LAYOUTCOMMIT	(9)		/* layoutcommit required */
++#define NFS_INO_LAYOUTCOMMITTING (10)		/* layoutcommit inflight */
+ 
+ static inline struct nfs_inode *NFS_I(const struct inode *inode)
+ {
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.1.262.g5ef3d
+
