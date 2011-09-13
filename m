@@ -1,216 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60153 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932144Ab1INLp1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Sep 2011 07:45:27 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 05/25] nfsd4: drop most stateowner refcounting
-Date: Wed, 14 Sep 2011 07:45:01 -0400
-Message-Id: <1316000721-3289-6-git-send-email-bfields@redhat.com>
-In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
+Received: from mexforward.lss.emc.com ([128.222.32.20]:56694 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752968Ab1IMIJp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 04:09:45 -0400
+From: <tao.peng@emc.com>
+To: <Trond.Myklebust@netapp.com>, <bhalevy@tonian.com>
+CC: <bergwolf@gmail.com>, <gusev.vitaliy@nexenta.com>,
+        <gusev.vitaliy@gmail.com>, <linux-nfs@vger.kernel.org>
+Date: Tue, 13 Sep 2011 04:09:24 -0400
+Subject: RE: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
+Message-ID: <F19688880B763E40B28B2B462677FBF805C3299F96@MX09A.corp.emc.com>
+References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com>
+	 <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com>
+	 <1315348373.19556.22.camel@lade.trondhjem.org>
+	 <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com>
+	 <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com>
+	 <F19688880B763E40B28B2B462677FBF805C3299D2F@MX09A.corp.emc.com>
+	 <1315592430.17611.15.camel@lade.trondhjem.org>
+	 <4E6B0E48.7050208@tonian.com>
+	 <CA+a=Yy5fMHPcSU4EoSo1uiOUCfi8vjRVPAjEYGZ+M00CwZ8Z9g@mail.gmail.com>
+	 <4E6E6C3B.2040605@tonian.com> <1315861851.8350.11.camel@lade.trondhjem.org>
+In-Reply-To: <1315861851.8350.11.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Maybe we'll bring it back some day, but we don't have much real use for
-it now.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4proc.c  |    6 ++----
- fs/nfsd/nfs4state.c |   23 ++++++++++++-----------
- fs/nfsd/nfs4xdr.c   |   11 ++++++-----
- fs/nfsd/state.h     |   15 +--------------
- fs/nfsd/xdr4.h      |    2 +-
- 5 files changed, 22 insertions(+), 35 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 50063a8..ce151f0 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -405,10 +405,9 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	 */
- 	status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
- out:
--	if (open->op_stateowner) {
--		nfs4_get_stateowner(open->op_stateowner);
-+	if (open->op_stateowner)
- 		cstate->replay_owner = open->op_stateowner;
--	} else
-+	else
- 		nfs4_unlock_state();
- 	return status;
- }
-@@ -1228,7 +1227,6 @@ encode_op:
- 
- 		if (cstate->replay_owner) {
- 			nfs4_unlock_state();
--			nfs4_put_stateowner(cstate->replay_owner);
- 			cstate->replay_owner = NULL;
- 		}
- 		/* XXX Ugh, we need to get rid of this kind of special case: */
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 26b0c75..834a5f8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -453,7 +453,7 @@ static void unhash_lockowner(struct nfs4_stateowner *sop)
- static void release_lockowner(struct nfs4_stateowner *sop)
- {
- 	unhash_lockowner(sop);
--	nfs4_put_stateowner(sop);
-+	nfs4_free_stateowner(sop);
- }
- 
- static void
-@@ -496,7 +496,7 @@ static void release_openowner(struct nfs4_stateowner *sop)
- {
- 	unhash_openowner(sop);
- 	list_del(&sop->so_close_lru);
--	nfs4_put_stateowner(sop);
-+	nfs4_free_stateowner(sop);
- }
- 
- #define SESSION_HASH_SIZE	512
-@@ -2206,10 +2206,8 @@ out_nomem:
- }
- 
- void
--nfs4_free_stateowner(struct kref *kref)
-+nfs4_free_stateowner(struct nfs4_stateowner *sop)
- {
--	struct nfs4_stateowner *sop =
--		container_of(kref, struct nfs4_stateowner, so_ref);
- 	kfree(sop->so_owner.data);
- 	kmem_cache_free(stateowner_slab, sop);
- }
-@@ -2236,7 +2234,6 @@ static inline struct nfs4_stateowner *alloc_stateowner(struct xdr_netobj *owner,
- 	}
- 	sop->so_owner.len = owner->len;
- 
--	kref_init(&sop->so_ref);
- 	INIT_LIST_HEAD(&sop->so_perclient);
- 	INIT_LIST_HEAD(&sop->so_stateids);
- 	INIT_LIST_HEAD(&sop->so_perstateid);
-@@ -3413,14 +3410,12 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
- 		/* It's not stale; let's assume it's expired: */
- 		if (sop == NULL)
- 			return nfserr_expired;
--		nfs4_get_stateowner(sop);
- 		cstate->replay_owner = sop;
- 		goto check_replay;
- 	}
- 
- 	*stpp = stp;
- 	sop = stp->st_stateowner;
--	nfs4_get_stateowner(sop);
- 	cstate->replay_owner = sop;
- 
- 	if (nfs4_check_fh(current_fh, stp)) {
-@@ -3783,11 +3778,17 @@ nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny)
- 
- 	if (fl->fl_lmops == &nfsd_posix_mng_ops) {
- 		sop = (struct nfs4_stateowner *) fl->fl_owner;
--		kref_get(&sop->so_ref);
--		deny->ld_sop = sop;
-+		deny->ld_owner.data = kmemdup(sop->so_owner.data,
-+					sop->so_owner.len, GFP_KERNEL);
-+		if (!deny->ld_owner.data)
-+			/* We just don't care that much */
-+			goto nevermind;
-+		deny->ld_owner.len = sop->so_owner.len;
- 		deny->ld_clientid = sop->so_client->cl_clientid;
- 	} else {
--		deny->ld_sop = NULL;
-+nevermind:
-+		deny->ld_owner.len = 0;
-+		deny->ld_owner.data = NULL;
- 		deny->ld_clientid.cl_boot = 0;
- 		deny->ld_clientid.cl_id = 0;
- 	}
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 462c6ef..c4dcba3 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2570,17 +2570,18 @@ nfsd4_encode_getfh(struct nfsd4_compoundres *resp, __be32 nfserr, struct svc_fh
- static void
- nfsd4_encode_lock_denied(struct nfsd4_compoundres *resp, struct nfsd4_lock_denied *ld)
- {
-+	struct xdr_netobj *conf = &ld->ld_owner;
- 	__be32 *p;
- 
--	RESERVE_SPACE(32 + XDR_LEN(ld->ld_sop ? ld->ld_sop->so_owner.len : 0));
-+	RESERVE_SPACE(32 + XDR_LEN(conf->len));
- 	WRITE64(ld->ld_start);
- 	WRITE64(ld->ld_length);
- 	WRITE32(ld->ld_type);
--	if (ld->ld_sop) {
-+	if (conf->len) {
- 		WRITEMEM(&ld->ld_clientid, 8);
--		WRITE32(ld->ld_sop->so_owner.len);
--		WRITEMEM(ld->ld_sop->so_owner.data, ld->ld_sop->so_owner.len);
--		kref_put(&ld->ld_sop->so_ref, nfs4_free_stateowner);
-+		WRITE32(conf->len);
-+		WRITEMEM(conf->data, conf->len);
-+		kfree(conf->data);
- 	}  else {  /* non - nfsv4 lock in conflict, no clientid nor owner */
- 		WRITE64((u64)0); /* clientid */
- 		WRITE32(0); /* length of owner name */
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index c425717..f7114fc2 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -338,7 +338,6 @@ struct nfs4_replay {
- *         reaped by laundramat thread after lease period.
- */
- struct nfs4_stateowner {
--	struct kref		so_ref;
- 	struct list_head        so_idhash;   /* hash by so_id */
- 	struct list_head        so_strhash;   /* hash by op_name */
- 	struct list_head        so_perclient;
-@@ -459,7 +458,7 @@ extern void nfs4_lock_state(void);
- extern void nfs4_unlock_state(void);
- extern int nfs4_in_grace(void);
- extern __be32 nfs4_check_open_reclaim(clientid_t *clid);
--extern void nfs4_free_stateowner(struct kref *kref);
-+extern void nfs4_free_stateowner(struct nfs4_stateowner *sop);
- extern int set_callback_cred(void);
- extern void nfsd4_probe_callback(struct nfs4_client *clp);
- extern void nfsd4_probe_callback_sync(struct nfs4_client *clp);
-@@ -482,16 +481,4 @@ extern void nfsd4_remove_clid_dir(struct nfs4_client *clp);
- extern void release_session_client(struct nfsd4_session *);
- extern __be32 nfs4_validate_stateid(stateid_t *, bool);
- 
--static inline void
--nfs4_put_stateowner(struct nfs4_stateowner *so)
--{
--	kref_put(&so->so_ref, nfs4_free_stateowner);
--}
--
--static inline void
--nfs4_get_stateowner(struct nfs4_stateowner *so)
--{
--	kref_get(&so->so_ref);
--}
--
- #endif   /* NFSD4_STATE_H */
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 341f0a1..de236fb 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -130,7 +130,7 @@ struct nfsd4_link {
- 
- struct nfsd4_lock_denied {
- 	clientid_t	ld_clientid;
--	struct nfs4_stateowner   *ld_sop;
-+	struct xdr_netobj	ld_owner;
- 	u64             ld_start;
- 	u64             ld_length;
- 	u32             ld_type;
--- 
-1.7.4.1
-
+SGksIFRyb25kLA0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1u
+ZnMtb3duZXJAdmdlci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2Vy
+bmVsLm9yZ10NCj4gT24gQmVoYWxmIE9mIFRyb25kIE15a2xlYnVzdA0KPiBTZW50OiBUdWVzZGF5
+LCBTZXB0ZW1iZXIgMTMsIDIwMTEgNToxMSBBTQ0KPiBUbzogQmVubnkgSGFsZXZ5DQo+IENjOiBQ
+ZW5nIFRhbzsgUGVuZywgVGFvOyBndXNldi52aXRhbGl5QG5leGVudGEuY29tOyBndXNldi52aXRh
+bGl5QGdtYWlsLmNvbTsNCj4gbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiBTdWJqZWN0OiBS
+ZTogW1BBVENIXSBuZnM6IGZpeCBpbmlmaW5pdGUgbG9vcCBhdCBuZnM0X2xheW91dGNvbW1pdF9y
+ZWxlYXNlDQo+IA0KPiBPbiBNb24sIDIwMTEtMDktMTIgYXQgMTM6MzEgLTA3MDAsIEJlbm55IEhh
+bGV2eSB3cm90ZToNCj4gPiBPbiAyMDExLTA5LTEyIDA3OjU2LCBQZW5nIFRhbyB3cm90ZToNCj4g
+PiA+PiBUaGUgbGF5b3V0IHNlZ21lbnRzIGFyZSBub3QgcmVhbGx5IGluIHVzZSB3aGlsZSBpbiBM
+QVlPVVRDT01NSVQuDQo+ID4gPj4gV2Ugb25seSBuZWVkIHRvIGdldCB0aGUgc3RhdGVpZCByaWdo
+dCB3aXRoIHJlc3BlY3QgdG8gY29uY3VycmVudCBsYXlvdXQgcmVjYWxscy4NCj4gPiA+IExBWU9V
+VENPTU1JVCB0YWtlcyBsc2VnIHJlZmVyZW5jZSB0byBtYXJrIHRoZW0gYXMgaW4gdXNlIHNvIHRo
+YXQNCj4gPiA+IGxheW91dHJlY2FsbCBjYW5ub3QgZnJlZSB0aGVtLg0KPiA+ID4NCj4gPg0KPiA+
+IEFuZCBpZiBsYXlvdXRyZWNhbGwgd291bGQgaGF2ZSBmcmVlZCBsYXlvdXQgc2VnbWVudHMgZHVy
+aW5nIGxheW91dGNvbW1pdCwNCj4gPiB3aGF0IGlzIHlvdXIgc3BlY2lmaWMgY29uY2Vybj8NCj4g
+DQo+IFRoYXQgbGF5b3V0Y29tbWl0IGlzIHN1cHBvc2VkIHRvIHJldHVybiBORlM0RVJSX0JBRF9M
+QVlPVVQgaW4gdGhhdCBjYXNlDQo+IGFjY29yZGluZyB0byBzZWN0aW9uIDE4LjQyLjMgb2YgUkZD
+NTY2MS4gSSBjYW4ndCBmaW5kIGFueXRoaW5nIGluIHRoZQ0KPiBlcnJhdGEgdGhhdCBjaGFuZ2Vz
+IHRoYXQgcmVxdWlyZW1lbnQuDQpEbyB5b3UgbWVhbiB0aGF0IGlmIGNsaWVudCBzZW5kcyBsYXlv
+dXRjb21taXQgYXQgdGhlIHNhbWUgdGltZSBhcyBzZXJ2ZXIgc2VuZHMgbGF5b3V0cmVjYWxsIGZv
+ciBvdmVybGFwcGVkIHJhbmdlLCB0aGVuDQpzZXJ2ZXIgbXVzdCByZWplY3QgbGF5b3V0Y29tbWl0
+IHdpdGggTkZTNEVSUl9CQURMQVlPVVQgd2hlbiByZWNlaXZpbmcgbGF5b3V0Y29tbWl0Pw0KDQpS
+RkM1NjYxIHNlY3Rpb24gMTguNDIuMyBzYXlzOg0KICAgSWYgdGhlIGxheW91dCBpZGVudGlmaWVk
+IGluIHRoZSBhcmd1bWVudHMgZG9lcyBub3QgZXhpc3QsIHRoZSBlcnJvcg0KICAgTkZTNEVSUl9C
+QURMQVlPVVQgaXMgcmV0dXJuZWQuICBUaGUgbGF5b3V0IGJlaW5nIGNvbW1pdHRlZCBtYXkgYWxz
+bw0KICAgYmUgcmVqZWN0ZWQgaWYgaXQgZG9lcyBub3QgY29ycmVzcG9uZCB0byBhbiBleGlzdGlu
+ZyBsYXlvdXQgd2l0aCBhbg0KICAgaW9tb2RlIG9mIExBWU9VVElPTU9ERTRfUlcuDQoNCklNSE8s
+IGluIHRoZSBhYm92ZSBjYXNlLCBzZXJ2ZXIgY2Fubm90IGRlY2lkZSBpZiB0aGUgbGF5b3V0IGV4
+aXN0cyB1bnRpbCBjbGllbnQgcmV0dXJucyByZXNwb25zZSB0byBsYXlvdXRyZWNhbGwuIEJ1dCBJ
+IGNhbid0IGZpbmQNCmFueSByZXF1aXJlbWVudCBpbiBSRkM1NjYxIHRoYXQgc2VydmVyIG11c3Qg
+d2FpdCBmb3IgbGF5b3V0cmVjYWxsJ3MgcmVzcG9uc2UgYmVmb3JlIHByb2Nlc3NpbmcgbGF5b3V0
+Y29tbWl0Lg0KDQpUaGFua3MsDQpUYW8NCg0KTu+/ve+/ve+/ve+/ve+/vXLvv73vv71577+977+9
+77+9Yu+/vVjvv73vv73Hp3bvv71e77+9Kd66ey5u77+9K++/ve+/ve+/ve+/vXvvv73vv73vv70i
+77+977+9Xm7vv71y77+977+977+9eu+/vRrvv73vv71o77+977+977+977+9Ju+/ve+/vR7vv71H
+77+977+977+9aO+/vQMo77+96ZqO77+93aJqIu+/ve+/vRrvv70bbe+/ve+/ve+/ve+/ve+/vXrv
+v73elu+/ve+/ve+/vWbvv73vv73vv71o77+977+977+9fu+/vW3vv70=
