@@ -1,169 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:33475 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759693Ab1IITZj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Sep 2011 15:25:39 -0400
-Subject: Re: [PATCH v2 3/5] SUNRPC: make RPC service dependable on rpcbind
- clients creation
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>
-Date: Fri, 09 Sep 2011 15:25:08 -0400
-In-Reply-To: <20110909150104.5a83c60d@tlielax.poochiereds.net>
-References: <20110909115146.13697.71682.stgit@localhost6.localdomain6>
-	 <20110909120844.13697.48102.stgit@localhost6.localdomain6>
-	 <20110909100745.7e2e8bf9@corrin.poochiereds.net>
-	 <4E6A41D4.6090001@parallels.com>
-	 <1315593874.17611.19.camel@lade.trondhjem.org>
-	 <20110909150104.5a83c60d@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1315596308.17611.46.camel@lade.trondhjem.org>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:14280 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753596Ab1IMIdA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 04:33:00 -0400
+From: <tao.peng@emc.com>
+To: <bhalevy@tonian.com>, <Trond.Myklebust@netapp.com>
+CC: <bergwolf@gmail.com>, <gusev.vitaliy@nexenta.com>,
+        <gusev.vitaliy@gmail.com>, <linux-nfs@vger.kernel.org>
+Date: Tue, 13 Sep 2011 04:32:18 -0400
+Subject: RE: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
+Message-ID: <F19688880B763E40B28B2B462677FBF805C3299FA6@MX09A.corp.emc.com>
+References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com>
+  <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com>
+  <1315348373.19556.22.camel@lade.trondhjem.org>
+  <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com>
+  <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com>
+  <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com>
+  <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com>
+  <F19688880B763E40B28B2B462677FBF805C3299D2F@MX09A.corp.emc.com>
+  <1315592430.17611.15.camel@lade.trondhjem.org>
+  <4E6B0E48.7050208@tonian.com>
+  <CA+a=Yy5fMHPcSU4EoSo1uiOUCfi8vjRVPAjEYGZ+M00CwZ8Z9g@mail.gmail.com>
+  <4E6E6C3B.2040605@tonian.com> <1315861851.8350.11.camel@lade.trondhjem.org>
+ <4E6F0B61.4050907@tonian.com>
+In-Reply-To: <4E6F0B61.4050907@tonian.com>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2011-09-09 at 15:01 -0400, Jeff Layton wrote: 
-> On Fri, 09 Sep 2011 14:44:34 -0400
-> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> -----Original Message-----
+> From: Benny Halevy [mailto:bhalevy@tonian.com]
+> Sent: Tuesday, September 13, 2011 3:51 PM
+> To: Trond Myklebust
+> Cc: Peng Tao; Peng, Tao; gusev.vitaliy@nexenta.com; gusev.vitaliy@gmail.com;
+> linux-nfs@vger.kernel.org
+> Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
 > 
-> > On Fri, 2011-09-09 at 20:41 +0400, Stanislav Kinsbursky wrote: 
-> > > 09.09.2011 18:07, Jeff Layton пишет:
-> > > > On Fri, 09 Sep 2011 16:08:44 +0400
-> > > > Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
-> > > >
-> > > >> Create rcbind clients or increase rpcbind users counter during RPC service
-> > > >> creation and decrease this counter (and possibly destroy those clients) on RPC
-> > > >> service destruction.
-> > > >>
-> > > >> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
-> > > >>
-> > > >> ---
-> > > >>   include/linux/sunrpc/clnt.h |    2 ++
-> > > >>   net/sunrpc/rpcb_clnt.c      |    2 +-
-> > > >>   net/sunrpc/svc.c            |   13 +++++++++++--
-> > > >>   3 files changed, 14 insertions(+), 3 deletions(-)
-> > > >>
-> > > >> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> > > >> index db7bcaf..65a8115 100644
-> > > >> --- a/include/linux/sunrpc/clnt.h
-> > > >> +++ b/include/linux/sunrpc/clnt.h
-> > > >> @@ -135,10 +135,12 @@ void		rpc_shutdown_client(struct rpc_clnt *);
-> > > >>   void		rpc_release_client(struct rpc_clnt *);
-> > > >>   void		rpc_task_release_client(struct rpc_task *);
-> > > >>
-> > > >> +int		rpcb_create_local(void);
-> > > >>   int		rpcb_register(u32, u32, int, unsigned short);
-> > > >>   int		rpcb_v4_register(const u32 program, const u32 version,
-> > > >>   				 const struct sockaddr *address,
-> > > >>   				 const char *netid);
-> > > >> +void		rpcb_put_local(void);
-> > > >>   void		rpcb_getport_async(struct rpc_task *);
-> > > >>
-> > > >>   void		rpc_call_start(struct rpc_task *);
-> > > >> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-> > > >> index b4cc0f1..437ec60 100644
-> > > >> --- a/net/sunrpc/rpcb_clnt.c
-> > > >> +++ b/net/sunrpc/rpcb_clnt.c
-> > > >> @@ -318,7 +318,7 @@ out:
-> > > >>    * Returns zero on success, otherwise a negative errno value
-> > > >>    * is returned.
-> > > >>    */
-> > > >> -static int rpcb_create_local(void)
-> > > >> +int rpcb_create_local(void)
-> > > >>   {
-> > > >>   	static DEFINE_MUTEX(rpcb_create_local_mutex);
-> > > >>   	int result = 0;
-> > > >> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> > > >> index 6a69a11..9095c0e 100644
-> > > >> --- a/net/sunrpc/svc.c
-> > > >> +++ b/net/sunrpc/svc.c
-> > > >> @@ -367,8 +367,11 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
-> > > >>   	unsigned int xdrsize;
-> > > >>   	unsigned int i;
-> > > >>
-> > > >> -	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
-> > > >> +	if (rpcb_create_local()<  0)
-> > > >>   		return NULL;
-> > > >> +
-> > > >> +	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
-> > > >> +		goto out_err;
-> > > >>   	serv->sv_name      = prog->pg_name;
-> > > >>   	serv->sv_program   = prog;
-> > > >>   	serv->sv_nrthreads = 1;
-> > > >> @@ -403,7 +406,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
-> > > >>   			GFP_KERNEL);
-> > > >>   	if (!serv->sv_pools) {
-> > > >>   		kfree(serv);
-> > > >> -		return NULL;
-> > > >> +		goto out_err;
-> > > >>   	}
-> > > >>
-> > > >>   	for (i = 0; i<  serv->sv_nrpools; i++) {
-> > > >> @@ -423,6 +426,10 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
-> > > >>   	svc_unregister(serv);
-> > > >>
-> > > >>   	return serv;
-> > > >> +
-> > > >> +out_err:
-> > > >> +	rpcb_put_local();
-> > > >> +	return NULL;
-> > > >>   }
-> > > >>
-> > > >>   struct svc_serv *
-> > > >> @@ -491,6 +498,8 @@ svc_destroy(struct svc_serv *serv)
-> > > >>   	svc_unregister(serv);
-> > > >>   	kfree(serv->sv_pools);
-> > > >>   	kfree(serv);
-> > > >> +
-> > > >> +	rpcb_put_local();
-> > > >>   }
-> > > >>   EXPORT_SYMBOL_GPL(svc_destroy);
-> > > >>
-> > > >>
-> > > >
-> > > > I don't get it -- what's the advantage of creating rpcbind clients in
-> > > > __svc_create vs. the old way of creating them just before we plan to
-> > > > use them?
-> > > >
-> > > 
-> > > The main problem here is not in creation, but in destroying those clients.
-> > > Now rpcbind clients are created during rpcb_register(). I.e. once per every family, program version and so on.
-> > > But can be unregistered for all protocol families by one call. So it's impossible to put reference counting for those clients in the place, where they are created now.
-> > 
-> > Could we perhaps set up a 'struct pernet_operations' to create a
-> > destructor for them?
-> > 
+> On 2011-09-12 14:10, Trond Myklebust wrote:
+> > On Mon, 2011-09-12 at 13:31 -0700, Benny Halevy wrote:
+> >> On 2011-09-12 07:56, Peng Tao wrote:
+> >>>> The layout segments are not really in use while in LAYOUTCOMMIT.
+> >>>> We only need to get the stateid right with respect to concurrent layout recalls.
+> >>> LAYOUTCOMMIT takes lseg reference to mark them as in use so that
+> >>> layoutrecall cannot free them.
+> >>>
+> >>
+> >> And if layoutrecall would have freed layout segments during layoutcommit,
+> >> what is your specific concern?
+> >
+> > That layoutcommit is supposed to return NFS4ERR_BAD_LAYOUT in that case
+> > according to section 18.42.3 of RFC5661. I can't find anything in the
+> > errata that changes that requirement.
+> >
 > 
-> An even easier idea might be to just not take a reference to the
-> rpcbind client for svc_programs that have vs_hidden set on every
-> version.
+> Right. That tells me there no need to strictly serialize LAYOUTCOMMITs
+> with CB_LAYOUTRECALL, as long as the layout stateid sent with LAYOUTCOMMIT
+> atomically represents the state when the operation was prepared.
+> 
+> That said, since we do want the LAYOUTCOMMIT to succeed, it would be beneficial
+> for the client to reply to a CB_LAYOUTRECALL received while a conflicting
+> LAYOUTCOMMIT is in progress with NFS4ERR_DELAY.
+I agree. How about adding a new flag to nfsi->flags for this? We can use the same flag on to ensure serialization of multiple layoutcommit. nfs_commit_set_lock/nfs_commit_clear_lock may not fit for this.
 
-Isn't the problem that Stanislav is trying to solve that we need to be
-able to register and unregister RPC services to the correct rpcbind
-server, depending on which net namespace we are in?
-
-My understanding is that the current code will register everything to
-whatever rpcbind server is running in the init net namespace because
-that's what rpcb_create_local() uses.
-
-My suggestion is to use a struct pernet_operations to detect when a net
-namespace is being created or destroyed, so that the rpcbind client code
-knows when to create or destroy a connection to the server that is
-running in that namespace.
-
-Cheers
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> 
+> The server, on its side, should prevent a distributed deadlock by avoiding
+> blocking of a LAYOUTCOMMIT on an outstanding CB_LAYOUTRECALL for the same
+> client that sent the LAYOUTCOMMIT.  I'm not sure what error would be best to
+> return.  Maybe NFS4ERR_RECALL_CONFLICT if it would be allowed (it isn't listed
+> for LAYOUTCOMMIT at the moment).  Just returning NFS4ER_DELAY might lead to
+> a live lock situation where neither the LAYOUTCOMMIT not the CB_LAYOUTRECALL
+> complete.
+> 
+> Benny
 
