@@ -1,150 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:57060 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751733Ab1I0Qz6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Sep 2011 12:55:58 -0400
-Message-ID: <4E82001C.5030005@netapp.com>
-Date: Tue, 27 Sep 2011 12:55:56 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 03/25] nfsd4: extend state lock over seqid replay logic
-References: <1316000721-3289-1-git-send-email-bfields@redhat.com> <1316000721-3289-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1316000721-3289-4-git-send-email-bfields@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fmmailgate03.web.de ([217.72.192.234]:53954 "EHLO
+	fmmailgate03.web.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751277Ab1IMJni convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 05:43:38 -0400
+Received: from smtp01.web.de  ( [172.20.0.243])
+	by fmmailgate03.web.de (Postfix) with ESMTP id C9C5319942895
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Sep 2011 11:43:37 +0200 (CEST)
+Received: from [80.66.224.98] (helo=PC5280)
+	by smtp01.web.de with esmtp (WEB.DE 4.110 #2)
+	id 1R3PWj-0005ZL-00
+	for linux-nfs@vger.kernel.org; Tue, 13 Sep 2011 11:43:37 +0200
+From: "Tim" <supertimothy@web.de>
+To: <linux-nfs@vger.kernel.org>
+Subject: nfsv4 and gracetime / leasetime grace_period
+Date: Tue, 13 Sep 2011 11:43:37 +0200
+Message-ID: <000801cc71f9$9cc45650$d64d02f0$@web.de>
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Bruce,
+Hi all!
 
-I'm getting the following warning that I was able to bisect to this patch:
+First, just a question to make clear, with nfsv4 rpc.statd and nfslock are
+not needed ? The Clients are not notified with sm-notify in case of a reboot
+- is this correct?
+But how does the notification of clients work with nfsv4?
 
-[  142.149710] ------------[ cut here ]------------
-[  142.150014] WARNING: at kernel/mutex-debug.c:78 debug_mutex_unlock+0xda/0xe0()
-[  142.150258] Hardware name: Bochs
-[  142.150407] Modules linked in: md5 nfsd exportfs nfs lockd fscache auth_rpcgss nfs_acl sunrpc ipv6 ext2 snd_hda_intel snd_hda_codec snd_hwdep psmouse i2c_piix4 evdev serio_raw pcspkr virtio_balloon snd_pcm snd_timer snd soundcore snd_page_alloc floppy i2c_core button processor ext4 mbcache jbd2 crc16 pata_acpi uhci_hcd ata_piix libata usbcore scsi_mod virtio_net virtio_pci virtio_blk virtio virtio_ring
-[  142.152927] Pid: 742, comm: nfsd Not tainted 3.1.0-rc1-SLIM+ #9
-[  142.152927] Call Trace:
-[  142.152927]  [<ffffffff8105fa4f>] warn_slowpath_common+0x7f/0xc0
-[  142.152927]  [<ffffffff8105faaa>] warn_slowpath_null+0x1a/0x20
-[  142.152927]  [<ffffffff810960ca>] debug_mutex_unlock+0xda/0xe0
-[  142.152927]  [<ffffffff813e4200>] __mutex_unlock_slowpath+0x80/0x140
-[  142.152927]  [<ffffffff813e42ce>] mutex_unlock+0xe/0x10
-[  142.152927]  [<ffffffffa03bd3f5>] nfs4_lock_state+0x35/0x40 [nfsd]
-[  142.152927]  [<ffffffffa03b0b71>] nfsd4_proc_compound+0x2a1/0x690 [nfsd]
-[  142.152927]  [<ffffffffa039f9fb>] nfsd_dispatch+0xeb/0x230 [nfsd]
-[  142.152927]  [<ffffffffa02b1055>] svc_process_common+0x345/0x690 [sunrpc]
-[  142.152927]  [<ffffffff81058d10>] ? try_to_wake_up+0x280/0x280
-[  142.152927]  [<ffffffffa02b16e2>] svc_process+0x102/0x150 [sunrpc]
-[  142.152927]  [<ffffffffa039f0bd>] nfsd+0xbd/0x160 [nfsd]
-[  142.152927]  [<ffffffffa039f000>] ? 0xffffffffa039efff
-[  142.152927]  [<ffffffff8108230c>] kthread+0x8c/0xa0
-[  142.152927]  [<ffffffff813e8694>] kernel_thread_helper+0x4/0x10
-[  142.152927]  [<ffffffff81082280>] ? kthread_worker_fn+0x190/0x190
-[  142.152927]  [<ffffffff813e8690>] ? gs_change+0x13/0x13
-[  142.152927] ---[ end trace 1b4070dc432138aa ]---
 
-I can duplicate it with this python script, the warning shows up on the server after (during?) the f.close() line:
+The problem I can see is the same as described here:
+http://www.digipedia.pl/usenet/thread/18978/22974/
 
-#!/usr/bin/python
-import sys
-import fcntl
-import struct
-import datetime
+So we have different values:
 
-f = open(sys.argv[1], 'rw+')
-print "Attempting to lock file:", sys.argv[1]
-lockreq = struct.pack('hhllhh', fcntl.F_WRLCK, 0, 0, 0, 0, 0)
-rv = fcntl.fcntl(f, fcntl.F_SETLKW, lockreq)
-raw_input("Press enter when you are ready to continue... ")
-f.close()
+/proc/fs/nfsd/nfsv4gracetime
+/proc/fs/nfsd/nfsv4leasetime
+/proc/sys/fs/nfs/nlm_grace_period
 
-- Bryan
+If I set graceteime and grace_period to a low value, I get a faster
+failover. But what do they stand for and do I need nfsv4leasetime to ?
+If I set them all to 10 seconds, could that be "dangerous" (assume the
+server can handle the additional load)?
 
-On 09/14/2011 07:44 AM, J. Bruce Fields wrote:
-> There are currently a couple races in the seqid replay code: a
-> retransmission could come while we're still encoding the original reply,
-> or a new seqid-mutating call could come as we're encoding a replay.
-> 
-> So, extend the state lock over the encoding (both encoding of a replayed
-> reply and caching of the original encoded reply).
-> 
-> I really hate doing this, and previously added the stateowner
-> reference-counting code to avoid it (which was insufficient)--but I
-> don't see a less complicated alternative at the moment.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/nfsd/nfs4proc.c  |    5 +++--
->  fs/nfsd/nfs4state.c |   12 ++++++++----
->  2 files changed, 11 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 50bae74..50063a8 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -408,8 +408,8 @@ out:
->  	if (open->op_stateowner) {
->  		nfs4_get_stateowner(open->op_stateowner);
->  		cstate->replay_owner = open->op_stateowner;
-> -	}
-> -	nfs4_unlock_state();
-> +	} else
-> +		nfs4_unlock_state();
->  	return status;
->  }
->  
-> @@ -1227,6 +1227,7 @@ encode_op:
->  			be32_to_cpu(status));
->  
->  		if (cstate->replay_owner) {
-> +			nfs4_unlock_state();
->  			nfs4_put_stateowner(cstate->replay_owner);
->  			cstate->replay_owner = NULL;
->  		}
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index bc1a9db..6cf729a 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -3501,7 +3501,8 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  
->  	nfsd4_create_clid_dir(sop->so_client);
->  out:
-> -	nfs4_unlock_state();
-> +	if (!cstate->replay_owner)
-> +		nfs4_unlock_state();
->  	return status;
->  }
->  
-> @@ -3568,7 +3569,8 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
->  	memcpy(&od->od_stateid, &stp->st_stateid, sizeof(stateid_t));
->  	status = nfs_ok;
->  out:
-> -	nfs4_unlock_state();
-> +	if (!cstate->replay_owner)
-> +		nfs4_unlock_state();
->  	return status;
->  }
->  
-> @@ -3609,7 +3611,8 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	if (list_empty(&so->so_stateids))
->  		move_to_close_lru(so);
->  out:
-> -	nfs4_unlock_state();
-> +	if (!cstate->replay_owner)
-> +		nfs4_unlock_state();
->  	return status;
->  }
->  
-> @@ -4071,7 +4074,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  out:
->  	if (status && lock->lk_is_new && lock_sop)
->  		release_lockowner(lock_sop);
-> -	nfs4_unlock_state();
-> +	if (!cstate->replay_owner)
-> +		nfs4_unlock_state();
->  	return status;
->  }
->  
+I guess there isn't an easy way to delete all the locks on serverside and
+explicitely tell the clients: Hey, the server has rebooted, please get a new
+lock for all your files. :-)
+I just would like to make failover a bit faster. 
+
+Thanks a lot!
+Tim
 
