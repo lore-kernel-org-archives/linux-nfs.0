@@ -1,134 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:33630 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:3316 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750890Ab1ITP7D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Sep 2011 11:59:03 -0400
-Message-ID: <4E78B825.4020803@parallels.com>
-Date: Tue, 20 Sep 2011 19:58:29 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>
-Subject: Re: [PATCH v5 1/8] SUNRPC: introduce helpers for reference counted
- rpcbind clients
-References: <20110920101031.9861.18444.stgit@localhost6.localdomain6><20110920101341.9861.51453.stgit@localhost6.localdomain6><4E7899E7.9090809@parallels.com> <20110920102431.58ca1d96@tlielax.poochiereds.net> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD2C@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD2C@SACMVEXC2-PRD.hq.netapp.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+	id S1753406Ab1IMPse (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Sep 2011 11:48:34 -0400
+Date: Tue, 13 Sep 2011 11:48:30 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] NFSD: Add a cache for fs_locations information
+Message-ID: <20110913114830.7d163bab@tlielax.poochiereds.net>
+In-Reply-To: <20110913091654.698e04b4@corrin.poochiereds.net>
+References: <20110912232149.5080.95084.stgit@matisse.1015granger.net>
+	<20110912233726.5080.20512.stgit@matisse.1015granger.net>
+	<20110913091654.698e04b4@corrin.poochiereds.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-20.09.2011 18:41, Myklebust, Trond пишет:
->> -----Original Message-----
->> From: Jeff Layton [mailto:jlayton@redhat.com]
->> Sent: Tuesday, September 20, 2011 10:25 AM
->> To: Stanislav Kinsbursky
->> Cc: Myklebust, Trond; linux-nfs@vger.kernel.org; Pavel Emelianov;
->> neilb@suse.de; netdev@vger.kernel.org; linux-kernel@vger.kernel.org;
->> bfields@fieldses.org; davem@davemloft.net
->> Subject: Re: [PATCH v5 1/8] SUNRPC: introduce helpers for reference
->> counted rpcbind clients
->>
->> On Tue, 20 Sep 2011 17:49:27 +0400
->> Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
->>
->>> v5: fixed races with rpcb_users in rpcb_get_local()
->>>
->>> This helpers will be used for dynamical creation and destruction of
->>> rpcbind clients.
->>> Variable rpcb_users is actually a counter of lauched RPC services.
-> If
->>> rpcbind clients has been created already, then we just increase
-> rpcb_users.
->>>
->>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->>>
->>> ---
->>>    net/sunrpc/rpcb_clnt.c |   53
->> ++++++++++++++++++++++++++++++++++++++++++++++++
->>>    1 files changed, 53 insertions(+), 0 deletions(-)
->>>
->>> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c index
->>> e45d2fb..5f4a406 100644
->>> --- a/net/sunrpc/rpcb_clnt.c
->>> +++ b/net/sunrpc/rpcb_clnt.c
->>> @@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
->>>    static struct rpc_clnt *	rpcb_local_clnt;
->>>    static struct rpc_clnt *	rpcb_local_clnt4;
->>>    +DEFINE_SPINLOCK(rpcb_clnt_lock);
->>> +unsigned int			rpcb_users;
->>> +
->>>    struct rpcbind_args {
->>>    	struct rpc_xprt *	r_xprt;
->>>    @@ -161,6 +164,56 @@ static void rpcb_map_release(void *data)
->>>    	kfree(map);
->>>    }
->>>    +static int rpcb_get_local(void)
->>> +{
->>> +	int cnt;
->>> +
->>> +	spin_lock(&rpcb_clnt_lock);
->>> +	if (rpcb_users)
->>> +		rpcb_users++;
->>> +	cnt = rpcb_users;
->>> +	spin_unlock(&rpcb_clnt_lock);
->>> +
->>> +	return cnt;
->>> +}
->>> +
->>> +void rpcb_put_local(void)
->>> +{
->>> +	struct rpc_clnt *clnt = rpcb_local_clnt;
->>> +	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
->>> +	int shutdown;
->>> +
->>> +	spin_lock(&rpcb_clnt_lock);
->>> +	if (--rpcb_users == 0) {
->>> +		rpcb_local_clnt = NULL;
->>> +		rpcb_local_clnt4 = NULL;
->>> +	}
->>
->> In the function below, you mention that the above pointers are
-> protected by
->> rpcb_create_local_mutex, but it looks like they get reset here without
-> that
->> being held?
->>
->> Might it be simpler to just protect rpcb_users with the
->> rpcb_create_local_mutex and ensure that it's held whenever you call
-> one of
->> these routines? None of these are codepaths are particularly hot.
->
-> Alternatively, if you do
->
-> 	if (rpcb_users == 1) {
-> 		rpcb_local_clnt = NULL;
-> 		rpcb_local_clnt4 = NULL;
-> 		smp_wmb();
-> 		rpcb_users = 0;
-> 	} else
-> 		rpcb_users--;
->
-> then the spinlock protection in rpbc_get_local() is still good enough to
-> guarantee correctness.
+On Tue, 13 Sep 2011 09:16:54 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
 
-I don't understand the idea of this code. It guarantees, that if rpcb_users == 
-0, then rpcb_local_clnt == NULL and rpcb_local_clnt4 == NULL.
-But we don't need such guarantee from my pow.
-I.e. if rpcb_users == 0, then it means, that no services running right now.
+> On Mon, 12 Sep 2011 19:37:26 -0400
+> Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+> > From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > 
+> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > [ cel: since this is server-side, use nfsd4_ prefix instead of nfs4_ prefix. ]
+> > [ cel: implement S_ISVTX filter in bfields-normal form ]
+> > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> > ---
+> > 
+> >  fs/nfsd/nfsd.h |    7 +++++++
+> >  fs/nfsd/vfs.c  |   18 ++++++++++++++++++
+> >  2 files changed, 25 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> > index 7ecfa24..d314812 100644
+> > --- a/fs/nfsd/nfsd.h
+> > +++ b/fs/nfsd/nfsd.h
+> > @@ -335,6 +335,13 @@ static inline u32 nfsd_suppattrs2(u32 minorversion)
+> >  #define NFSD_SUPPATTR_EXCLCREAT_WORD2 \
+> >  	NFSD_WRITEABLE_ATTRS_WORD2
+> >  
+> > +extern int nfsd4_is_junction(struct dentry *dentry);
+> > +#else
+> > +static inline int nfsd4_is_junction(struct dentry *dentry)
+> > +{
+> > +	return 0;
+> > +}
+> > +
+> >  #endif /* CONFIG_NFSD_V4 */
+> >  
+> >  #endif /* LINUX_NFSD_NFSD_H */
+> > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> > index fd0acca..d1d4d5e 100644
+> > --- a/fs/nfsd/vfs.c
+> > +++ b/fs/nfsd/vfs.c
+> > @@ -168,6 +168,8 @@ int nfsd_mountpoint(struct dentry *dentry, struct svc_export *exp)
+> >  {
+> >  	if (d_mountpoint(dentry))
+> >  		return 1;
+> > +	if (nfsd4_is_junction(dentry))
+> > +		return 1;
+> >  	if (!(exp->ex_flags & NFSEXP_V4ROOT))
+> >  		return 0;
+> >  	return dentry->d_inode != NULL;
+> > @@ -592,6 +594,22 @@ nfsd4_get_nfs4_acl(struct svc_rqst *rqstp, struct dentry *dentry, struct nfs4_ac
+> >  	return error;
+> >  }
+> >  
+> > +#define NFSD_XATTR_JUNCTION_PREFIX XATTR_TRUSTED_PREFIX "junction."
+> > +#define NFSD_XATTR_JUNCTION_TYPE NFSD_XATTR_JUNCTION_PREFIX "type"
+> > +int nfsd4_is_junction(struct dentry *dentry)
+> > +{
+> > +	struct inode *inode = dentry->d_inode;
+> > +
+> > +	if (inode == NULL)
+> > +		return 0;
+> > +	if (inode->i_mode & S_IXUGO)
+> > +		return 0;
+> > +	if (!(inode->i_mode & S_ISVTX))
+> > +		return 0;
+> 
+> 	^^^^^^^^^^^^^^^^^^
+> Minor nit: it's more likely that a directory will have the execute bit
+> set everywhere than the sticky bit. Checking for the sticky bit first
+> seems like it might cut out some unnecessary checks for S_IXUGO.
+> 
 
-For example, processes, destroying those clients, is running on CPU#0.
-On CPU#1, for example, we have another process trying to get those clients and 
-waiting on spinlock. When this process will gain the spinlock, it will see 0 
-users, gain mutex and then try to create new clients. We still have no users on 
-this clients yet. And this process will just reassign whose rpcbind clients 
-pointers (and here we need memmory barrier for sure).
+Chuck pointed out on IRC that he's checking for an absence of execute
+bits in the first check, which is probably more rare than having the
+sticky bit set. So my nit above isn't correct...
 
--- 
-Best regards,
-Stanislav Kinsbursky
+> > +	if (vfs_getxattr(dentry, NFSD_XATTR_JUNCTION_TYPE, NULL, 0) <= 0)
+> > +		return 0;
+> > +	return 1;
+> > +}
+> >  #endif /* defined(CONFIG_NFSD_V4) */
+> >  
+> >  #ifdef CONFIG_NFSD_V3
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> Other than that, this (and the previous patches) look fine...
+
+You can add my reviewed by on this patch and the others...
+
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
