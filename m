@@ -1,42 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:35811 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752087Ab1IZLmC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Sep 2011 07:42:02 -0400
-Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
-	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
-	(envelope-from <steved@redhat.com>)
-	id 1R89Xg-0003y6-8s
-	for linux-nfs@vger.kernel.org; Mon, 26 Sep 2011 07:40:14 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] Add a check for libdevmapper.h
-Date: Mon, 26 Sep 2011 07:41:57 -0400
-Message-Id: <1317037317-4329-1-git-send-email-steved@redhat.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:29452 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750815Ab1IMMDH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 08:03:07 -0400
+From: <tao.peng@emc.com>
+To: <bhalevy@tonian.com>
+CC: <linux-nfs@vger.kernel.org>
+Date: Tue, 13 Sep 2011 08:02:48 -0400
+Subject: RE: NULL pointer dereference during mount
+Message-ID: <F19688880B763E40B28B2B462677FBF805C329A001@MX09A.corp.emc.com>
+References: <F19688880B763E40B28B2B462677FBF805C3299FFE@MX09A.corp.emc.com>
+In-Reply-To: <F19688880B763E40B28B2B462677FBF805C3299FFE@MX09A.corp.emc.com>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-When NFS v4.1 is enable, the libdevemapp.h header file has to exist.
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org]
+> On Behalf Of tao.peng@emc.com
+> Sent: Tuesday, September 13, 2011 7:55 PM
+> To: bhalevy@tonian.com
+> Cc: linux-nfs@vger.kernel.org
+> Subject: NULL pointer dereference during mount
+> 
+> Hi, Benny,
+> 
+> After rebasing to your pnfs-all-latest branch, I always got bellow NULL pointer
+> dereference for both nfsv4 and pnfs. Do you know of any recent change that can
+> cause this?
+Just verified that Trond's nfs-for-next branch is working. So should be something only in your tree.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- configure.ac |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
-
-diff --git a/configure.ac b/configure.ac
-index 80fb39d..572b33d 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -80,6 +80,7 @@ AC_ARG_ENABLE(nfsv41,
- 			AC_MSG_ERROR([NFS v4.1 is enabled but NFS v4 is not. Use --disable-nfsv41])
- 		fi
- 		BLKMAPD=blkmapd
-+   		AC_CHECK_HEADER(libdevmapper.h, , AC_MSG_ERROR([Cannot find libdevmapper.h header file. Try installing device-mapper-devel]))
- 	else
- 		enable_nfsv41=
- 		BLKMAPD=
--- 
-1.7.6
+> 
+> [   81.468606] BUG: unable to handle kernel NULL pointer dereference at
+> 0000000000000030
+> [   81.468919] IP: [<ffffffff8120ca85>] selinux_set_mnt_opts+0x4f/0x3fb
+> [   81.469174] PGD 2ffc067 PUD 2e84067 PMD 0
+> [   81.469455] Oops: 0000 [#1] SMP
+> [   81.469455] CPU 0
+> [   81.469455] Modules linked in: blocklayoutdriver nfs lockd fscache auth_rpcgss
+> nfs_acl ebtable_nat ebtables ipt_MASQUERADE ipt
+> able_nat nf_nat xt_CHECKSUM iptable_mangle bridge stp llc sunrpc ip6t_REJECT
+> be2iscsi nf_conntrack_ipv6 nf_defrag_ipv6 iscsi_boot
+> _sysfs bnx2i ip6table_filter cnic uio ip6_tables cxgb3i libcxgbi cxgb3 mdio iscsi_tcp
+> libiscsi_tcp libiscsi scsi_transport_iscsi
+> pcspkr e1000 i2c_piix4 ppdev shpchp i2c_core parport_pc parport vmw_balloon
+> microcode ipv6 mptspi mptscsih mptbase scsi_transport
+> _spi [last unloaded: nfs]
+> [   81.469455]
+> [   81.469455] Pid: 1919, comm: mount.nfs Not tainted 3.1.0-rc3+ #3 VMware, Inc.
+> VMware Virtual Platform/440BX Desktop Reference
+> Platform
+> [   81.469455] RIP: 0010:[<ffffffff8120ca85>]  [<ffffffff8120ca85>]
+> selinux_set_mnt_opts+0x4f/0x3fb
+> [   81.469455] RSP: 0018:ffff88000d22fb28  EFLAGS: 00010296
+> [   81.469455] RAX: 0000000000000000 RBX: ffff880008460200 RCX:
+> 0000000000000000
+> [   81.469455] RDX: 0000000000000000 RSI: ffff880008460390 RDI:
+> ffff8800003dc800
+> [   81.469455] RBP: ffff88000d22fbb8 R08: 0000000000000001 R09:
+> 0000000000000000
+> [   81.469455] R10: 0000ffff00066c0a R11: 0000000000000000 R12:
+> ffff880000019a00
+> [   81.469455] R13: ffff8800003dc800 R14: ffff880008460390 R15:
+> ffff8800003dc800
+> [   81.469455] FS:  00007ffebe637720(0000) GS:ffff880017400000(0000)
+> knlGS:0000000000000000
+> [   81.469455] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> [   81.469455] CR2: 0000000000000030 CR3: 000000000ce79000 CR4:
+> 00000000000006f0
+> [   81.469455] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
+> 0000000000000000
+> [   81.469455] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7:
+> 0000000000000400
+> [   81.469455] Process mount.nfs (pid: 1919, threadinfo ffff88000d22e000, task
+> ffff88000cb08000)
+> [   81.469455] Stack:
+> [   81.469455]  ffffea0000031880 ffff880000000008 0000000000000000
+> ffff88000d22fb48
+> [   81.469455]  ffff88000d22fb78 ffffffffa02fe5ee 0000000180150011
+> ffff88000a308cc0
+> [   81.469455]  0000000000000001 0000000000000001 ffff88000d22fbc8
+> ffffffffa02caac5
+> [   81.469455] Call Trace:
+> [   81.469455]  [<ffffffffa02caac5>] ? nfs4_get_root+0x20f/0x242 [nfs]
+> [   81.469455]  [<ffffffff8120504e>] security_sb_set_mnt_opts+0x16/0x18
+> [   81.469455]  [<ffffffffa02ce6bd>] nfs4_remote_mount+0x17c/0x1ff [nfs]
+> [   81.469455]  [<ffffffff8112fde6>] mount_fs+0x69/0x157
+> [   81.469455]  [<ffffffff810fb000>] ? __alloc_percpu+0x10/0x12
+> [   81.469455]  [<ffffffff811444ca>] vfs_kern_mount+0x63/0xa0
+> [   81.469455]  [<ffffffffa02ce9b8>] nfs_do_root_mount+0x7b/0x9a [nfs]
+> [   81.469455]  [<ffffffffa02cec8f>] nfs4_try_mount+0x58/0xba [nfs]
+> [   81.469455]  [<ffffffffa02cfff1>] nfs_fs_mount+0x48b/0x6e9 [nfs]
+> [   81.469455]  [<ffffffff8112fde6>] mount_fs+0x69/0x157
+> [   81.469455]  [<ffffffff810fb000>] ? __alloc_percpu+0x10/0x12
+> [   81.469455]  [<ffffffff811444ca>] vfs_kern_mount+0x63/0xa0
+> [   81.469455]  [<ffffffff811451be>] do_kern_mount+0x4d/0xdf
+> [   81.469455]  [<ffffffff8114685d>] do_mount+0x63c/0x69f
+> [   81.469455]  [<ffffffff81146185>] ? copy_mount_options+0xcb/0x12e
+> [   81.469455]  [<ffffffff81146b6e>] sys_mount+0x88/0xc2
+> [   81.469455]  [<ffffffff8147e502>] system_call_fastpath+0x16/0x1b
+> [   81.469455] Code: 00 00 4c 8b a7 a8 01 00 00 49 89 fd 48 8b 56 08 48 89 45 a8
+> 48 8b 47 28 48 89 55 80 48 8b 00 48 89 45 98 49 8b 04 24 48 8b 40 60
+> [   81.469455]  8b 40 30 48 8b 40 38 48 89 45 a0 48 8b 06 8b 76 10 48 89 45
+> [   81.469455] RIP  [<ffffffff8120ca85>] selinux_set_mnt_opts+0x4f/0x3fb
+> [   81.469455]  RSP <ffff88000d22fb28>
+> [   81.469455] CR2: 0000000000000030
+> [   81.513181] ---[ end trace dccee53f6c438566 ]---
+> 
+> 
+> 
+> Cheers,
+> -Bergwolf
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
