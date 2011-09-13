@@ -1,47 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:18798 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752687Ab1IUP65 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Sep 2011 11:58:57 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p8LFwvxD003727
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 11:58:57 -0400
-Received: from tlielax.poochiereds.net (vpn-11-239.rdu.redhat.com [10.11.11.239])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id p8LFwuUS005081
-	for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 11:58:56 -0400
-Date: Wed, 21 Sep 2011 11:58:54 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: regression when opening directories on NFSv4
-Message-ID: <20110921115854.02605a7f@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:55375 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754546Ab1IMPuO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 11:50:14 -0400
+Received: by eyx24 with SMTP id 24so428696eyx.19
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Sep 2011 08:50:13 -0700 (PDT)
+In-Reply-To: <20110913111441.4b2502b8@corrin.poochiereds.net>
+References: <1312073576-11024-1-git-send-email-rees@umich.edu>
+ <1312073576-11024-13-git-send-email-rees@umich.edu> <20110913111441.4b2502b8@corrin.poochiereds.net>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Tue, 13 Sep 2011 23:49:52 +0800
+Message-ID: <CA+a=Yy4oeBK4Tihq=nTQ89Z8PZObb6MO3c9PoWJCYeo5ja+XfQ@mail.gmail.com>
+Subject: Re: [PATCH v7 12/26] pnfsblock: add device operations
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Jim Rees <rees@umich.edu>, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We had a regression reported against RHEL concerning the opening of
-directories and it looks like that same problem is in current mainline
-code too. If you do the following on a directory that is not yet in the
-dcache you get an EISDIR error:
+On Tue, Sep 13, 2011 at 11:14 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> On Sat, 30 Jul 2011 20:52:42 -0400
+> Jim Rees <rees@umich.edu> wrote:
+>
+>> Signed-off-by: Jim Rees <rees@umich.edu>
+>> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+>> [upcall bugfixes]
+>> Signed-off-by: Peng Tao <peng_tao@emc.com>
+>> ---
+>>  fs/nfs/blocklayout/Makefile         |    2 +-
+>>  fs/nfs/blocklayout/blocklayout.c    |   42 ++++++++
+>>  fs/nfs/blocklayout/blocklayout.h    |   40 +++++++
+>>  fs/nfs/blocklayout/blocklayoutdev.c |  191 +++++++++++++++++++++++++++++++++++
+>>  fs/nfs/client.c                     |    2 +-
+>>  include/linux/nfs.h                 |    2 +
+>>  6 files changed, 277 insertions(+), 2 deletions(-)
+>>  create mode 100644 fs/nfs/blocklayout/blocklayoutdev.c
+>>
+>
+> [...]
+>> +static const struct rpc_pipe_ops bl_upcall_ops = {
+>> +     .upcall         = bl_pipe_upcall,
+>> +     .downcall       = bl_pipe_downcall,
+>> +     .destroy_msg    = bl_pipe_destroy_msg,
+>> +};
+>> +
+>>  static int __init nfs4blocklayout_init(void)
+>>  {
+>> +     struct vfsmount *mnt;
+>> +     struct path path;
+>>       int ret;
+>>
+>>       dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
+>>
+>>       ret = pnfs_register_layoutdriver(&blocklayout_type);
+>> +     if (ret)
+>> +             goto out;
+>> +
+>> +     init_waitqueue_head(&bl_wq);
+>> +
+>> +     mnt = rpc_get_mount();
+>> +     if (IS_ERR(mnt)) {
+>> +             ret = PTR_ERR(mnt);
+>> +             goto out_remove;
+>> +     }
+>> +
+>
+>
+> Hmm...sorry for the late review on this, but I was just looking over
+> this code as an example for some other stuff I'm working on...
+>
+> I notice that the above code does a rpc_get_mount to get a reference to
+> the rpc_pipefs mount, but I don't see where that reference is ever put.
+Thanks a lot for catching this.
+Looking closer, we also missed a path_put() after vfs_path_lookup(). I
+will send a patch fixing this.
 
-     open("/mnt/nfs/dir1", O_RDONLY)         = -1 EISDIR (Is a directory)
-
-If however, you stat the directory first, the open works. The
-difference seems to be that in the first case we're going through the
-lookup codepath, and in the second we go through d_revalidate.
-
-In the first case, we send an OPEN call to the server and it responds
-with NFS4ERR_ISDIR. That gets translated to -EISDIR, and returned to
-userspace. It wasn't always this way though, and I think the regression
-was introduced in commit d953126a2.
-
-That patch was added to fix an oops due to a buggy server, and I'm
-unclear on how best to fix this. It seems like we need to allow the
-server to fall back to doing a normal lookup when we get -EISDIR on the
-OPEN call, but how do we ensure that we don't end up with the same oops
-from that server bug?
-
-Thoughts?
--- 
-Jeff Layton <jlayton@redhat.com>
+Cheers,
+Tao
+>
+>> +     ret = vfs_path_lookup(mnt->mnt_root,
+>> +                           mnt,
+>> +                           NFS_PIPE_DIRNAME, 0, &path);
+>> +     if (ret)
+>> +             goto out_remove;
+>> +
+>> +     bl_device_pipe = rpc_mkpipe(path.dentry, "blocklayout", NULL,
+>> +                                 &bl_upcall_ops, 0);
+>
+>> +     if (IS_ERR(bl_device_pipe)) {
+>> +             ret = PTR_ERR(bl_device_pipe);
+>> +             goto out_remove;
+>> +     }
+>> +out:
+>> +     return ret;
+>> +
+>> +out_remove:
+>> +     pnfs_unregister_layoutdriver(&blocklayout_type);
+>>       return ret;
+>>  }
+>>
+>
+>
+>
+> --
+> Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
