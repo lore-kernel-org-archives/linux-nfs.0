@@ -1,36 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:45398
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751825Ab1IUPCo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 11:02:44 -0400
-Date: Wed, 21 Sep 2011 11:02:41 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        samba-technical@lists.samba.org, Christoph Hellwig <hch@infradead.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Mimi Zohar <zohar@linux.vnet.ibm.com>
-Subject: Re: [PATCH 3/6] leases: break read leases on unlink
-Message-ID: <20110921150241.GA11452@infradead.org>
-References: <1316617097-21384-1-git-send-email-bfields@redhat.com>
- <1316617097-21384-4-git-send-email-bfields@redhat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1316617097-21384-4-git-send-email-bfields@redhat.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:45231 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755870Ab1IMSNv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Sep 2011 14:13:51 -0400
+Subject: [PATCH v3 01/11] SUNRPC: introduce helpers for reference counted
+	rpcbind clients
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net
+Date: Tue, 13 Sep 2011 22:13:28 +0400
+Message-ID: <20110913181328.3961.50093.stgit@localhost6.localdomain6>
+In-Reply-To: <20110913180953.3961.69217.stgit@localhost6.localdomain6>
+References: <20110913180953.3961.69217.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Sep 21, 2011 at 10:58:14AM -0400, J. Bruce Fields wrote:
-> A read lease is used by NFSv4 as a guarantee that a client can perform
-> local read opens without informing the server.
-> 
-> The open operation takes the last component of the pathname as an
-> argument, thus is also a lookup operation, and giving the client the
-> above guarantee means informing the client before we allow anything that
-> would change the set of names pointing to the inode.
+This helpers will be used for dynamical creation and destruction of rpcbind
+clients.
+Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
+clients has been created already, then we just increase rpcb_users.
 
-That seems like totally strange semantics.  A useful defintion of a
-lase operation would mean it guarantees I/O can happen, and wouldn't
-care about metadata operation.  That's the whole point in adding a
-stateful open to nfs4, isn't it?
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
+---
+ net/sunrpc/rpcb_clnt.c |   50 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 50 insertions(+), 0 deletions(-)
+
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index e45d2fb..3f2bb8a 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
+ static struct rpc_clnt *	rpcb_local_clnt;
+ static struct rpc_clnt *	rpcb_local_clnt4;
+ 
++DEFINE_SPINLOCK(rpcb_clnt_lock);
++unsigned int			rpcb_users;
++
+ struct rpcbind_args {
+ 	struct rpc_xprt *	r_xprt;
+ 
+@@ -161,6 +164,53 @@ static void rpcb_map_release(void *data)
+ 	kfree(map);
+ }
+ 
++static int rpcb_get_local(void)
++{
++	spin_lock(&rpcb_clnt_lock);
++	if (rpcb_users)
++		rpcb_users++;
++	spin_unlock(&rpcb_clnt_lock);
++
++	return rpcb_users;
++}
++
++void rpcb_put_local(void)
++{
++	struct rpc_clnt *clnt = rpcb_local_clnt;
++	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
++	int shutdown;
++
++	spin_lock(&rpcb_clnt_lock);
++	if (--rpcb_users == 0) {
++		rpcb_local_clnt = NULL;
++		rpcb_local_clnt4 = NULL;
++	}
++	shutdown = !rpcb_users;
++	spin_unlock(&rpcb_clnt_lock);
++
++	if (shutdown) {
++		/*
++		 * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
++		 */
++		if (clnt4)
++			rpc_shutdown_client(clnt4);
++		if (clnt)
++			rpc_shutdown_client(clnt);
++	}
++	return;
++}
++
++static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
++{
++	/* Protected by rpcb_create_local_mutex */
++	rpcb_local_clnt = clnt;
++	rpcb_local_clnt4 = clnt4;
++	rpcb_users++;
++	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
++			"0x%p, rpcb_local_clnt4: 0x%p)\n", rpcb_local_clnt,
++			rpcb_local_clnt4);
++}
++
+ /*
+  * Returns zero on success, otherwise a negative errno value
+  * is returned.
 
