@@ -1,85 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet15.oracle.com ([141.146.126.227]:63437 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753118Ab1IHXNB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Sep 2011 19:13:01 -0400
-Received: from rtcsinet21.oracle.com (rtcsinet21.oracle.com [66.248.204.29])
-	by acsinet15.oracle.com (Switch-3.4.4/Switch-3.4.4) with ESMTP id p88NCvRe031328
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 8 Sep 2011 23:12:59 GMT
-Received: from acsmt356.oracle.com (acsmt356.oracle.com [141.146.40.156])
-	by rtcsinet21.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id p88NCutx012674
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Thu, 8 Sep 2011 23:12:57 GMT
-Subject: Re: [PATCH 0/3] NFSD patches to support junctions
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20110908182415.GD16740@fieldses.org>
-Date: Thu, 8 Sep 2011 12:03:49 -0700
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <333285BF-5D19-41C2-AAFB-60BE49F64C1F@oracle.com>
-References: <20110902162210.32190.5880.stgit@matisse.1015granger.net> <20110908175946.GA16740@fieldses.org> <20110908182415.GD16740@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-yi0-f46.google.com ([209.85.218.46]:56484 "EHLO
+	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752220Ab1IMH7a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 03:59:30 -0400
+Received: by yie30 with SMTP id 30so224733yie.19
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Sep 2011 00:59:29 -0700 (PDT)
+Message-ID: <4E6F0C2B.3040505@tonian.com>
+Date: Tue, 13 Sep 2011 00:54:19 -0700
+From: Benny Halevy <bhalevy@tonian.com>
+To: tao.peng@emc.com
+CC: bergwolf@gmail.com, Trond.Myklebust@netapp.com, gusev.vitaliy@nexenta.com,
+        gusev.vitaliy@gmail.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
+References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com> <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com> <1315348373.19556.22.camel@lade.trondhjem.org> <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com> <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com> <F19688880B763E40B28B2B462677FBF805C3299D2F@MX09A.corp.emc.com> <1315592430.17611.15.camel@lade.trondhjem.org> <4E6B0E48.7050208@tonian.com> <CA+a=Yy5fMHPcSU4EoSo1uiOUCfi8vjRVPAjEYGZ+M00CwZ8Z9g@mail.gmail.com> <4E6E6C3B.2040605@tonian.com> <F19688880B763E40B28B2B462677FBF805C3299F6D@MX09A.corp.emc.com>
+In-Reply-To: <F19688880B763E40B28B2B462677FBF805C3299F6D@MX09A.corp.emc.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Sep 8, 2011, at 11:24 AM, J. Bruce Fields wrote:
-
-> On Thu, Sep 08, 2011 at 01:59:46PM -0400, bfields wrote:
->> On Fri, Sep 02, 2011 at 12:38:13PM -0400, Chuck Lever wrote:
->>> Sometime soon we are going to have easy-to-install user space FedFS
->>> components.  Here are kernel patches needed to make server-side FedFS
->>> support work.  Please consider these for the 3.2 kernel.
->>> 
->>> The third patch introduces a potentially expensive check to see if
->>> a junction has been encountered during a mountpoint lookup.  An object
->>> is a junction iff it has the requisite set of extended attributes.
->>> However, reading an extended attribute is expensive on some file
->>> systems.
->>> 
->>> To mitigate the cost of this check, junctions always have their sticky
->>> bit set.  The expensive extended attribute part of the junction test
->>> is done only if the sticky bit is present.
->>> 
->>> Note that today junctions are directories, but someday symlinks might
->>> also act as junctions (for SMB2 support).  And very few files have the
->>> sticky bit set.  So we avoid doing a directory test here.
->>> 
->>> Also, junctions ostensibly have all zero mode bits to hide their local
->>> contents.  I don't think the kernel needs to be concerned about the
->>> permissions as long as the sticky bit is set.  This allows some
->>> flexibility in how junctions are represented.  However, Jeff thinks
->>> that having nfsd4_is_junction() also consider mode bits would make the
->>> expensive part of this test still less frequent.
->>> 
->>> Any thoughts about this?
->> 
->> Hm, right, a sticky bit set on a directory is a normal thing.  I thought
->> Trond's original idea was to check for the sticky bit and not
->> executable?  Which is a pointless combination so should be very rare.
->> 
->> On a typical system maybe directories with the sticky bit are normally
->> somewhat rare, but that's a question of policy and there could be cases
->> where it's common.
+On 2011-09-13 00:02, tao.peng@emc.com wrote:
 > 
-> Except for that and the one gripe about an error return, it looks fine
-> to me.
+>> -----Original Message-----
+>> From: Benny Halevy [mailto:bhalevy@tonian.com]
+>> Sent: Tuesday, September 13, 2011 4:32 AM
+>> To: Peng Tao
+>> Cc: Trond Myklebust; Peng, Tao; gusev.vitaliy@nexenta.com;
+>> gusev.vitaliy@gmail.com; linux-nfs@vger.kernel.org
+>> Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
+>>
+>> On 2011-09-12 07:56, Peng Tao wrote:
+>>> On Sat, Sep 10, 2011 at 3:14 PM, Benny Halevy <bhalevy@tonian.com> wrote:
+>>>> On 2011-09-09 11:20, Trond Myklebust wrote:
+>>>>> On Thu, 2011-09-08 at 23:11 -0400, tao.peng@emc.com wrote:
+>>>>>> HI, Trond,
+>>>>>>
+>>>>>>> -----Original Message-----
+>>>>>>> From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
+>>>>>>> Sent: Friday, September 09, 2011 1:05 AM
+>>>>>>> To: Peng Tao
+>>>>>>> Cc: Peng, Tao; gusev.vitaliy@nexenta.com; gusev.vitaliy@gmail.com;
+>>>>>>> linux-nfs@vger.kernel.org
+>>>>>>> Subject: RE: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
+>>>>>>>
+>>>>>>>> -----Original Message-----
+>>>>>>>> From: Peng Tao [mailto:bergwolf@gmail.com]
+>>>>>>>> Sent: Thursday, September 08, 2011 11:00 AM
+>>>>>>>> To: Myklebust, Trond
+>>>>>>>> Cc: tao.peng@emc.com; gusev.vitaliy@nexenta.com;
+>>>>>>>> gusev.vitaliy@gmail.com; linux-nfs@vger.kernel.org
+>>>>>>>> Subject: Re: [PATCH] nfs: fix inifinite loop at
+>>>>>>>> nfs4_layoutcommit_release
+>>>>>>>>
+>>>>>>>> On Thu, Sep 8, 2011 at 8:01 PM, Myklebust, Trond
+>>>>>>>> <Trond.Myklebust@netapp.com> wrote:
+>>>>>>>>>> -----Original Message-----
+>>>>>>>>
+>>>>>>>>>
+>>>>>>>>> Yes, but as far as I can see, even in the blocks case there can be
+>>>>>>>> multiple extents per layout segment. What if I write to one
+>>>>>>>> uninitialised extent, layoutcommit, then write to another uninitialized
+>>>>>>>> extent in the same layout segment and layoutcommit? In my reading of
+>>>>>>>> the code, there is a chance that the second layoutcommit will fail to
+>>>>>>>> pick up the layout segment, and so will fail to notify the MDS that the
+>>>>>>>> second extent now contains data.
+>>>>>>>>
+>>>>>>>> blocklayout does not decide what to layoutcommit according to the lseg
+>>>>>>>> list. Instead, it keeps track of each extent's state at the
+>>>>>>>> granularity of blocksize, and encode whatever needs layoutcommitted in
+>>>>>>>> the layoutcommit call. So in your above case, as long as the second
+>>>>>>>> layoutcommit is issued, blocklayout will encode the newly written
+>>>>>>>> extent in the second layoutcommit call, even if the lseg is not
+>>>>>>>> attached to the second layoutcommit.
+>>>>>>>>
+>>>>>>>> But that leads to another two question:
+>>>>>>>> 1. How do we protect against layoutrecall if lseg is not linked to
+>>>>>>>> layoutcommit? For this one, can we just reject layoutrecall if there
+>>>>>>>> is inflight layoutcommit? It will be less parallel but can guarantee
+>>>>>>>> current implementation correctness.
+>>>>>>>> 2. blocklayout ONLY: bl_committing may be overloaded by several
+>>>>>>>> layoutcommit calls and we don't have information in
+>>>>>>>> cleanup_layoutcommit() on how many entry should be removed from
+>>>>>>>> bl_committing. Maybe we can add a (void*) to struct
+>>>>>>>> nfs4_layoutcommit_data, so that LD can pass some private information
+>>>>>>>> between encode_layoutcommit() and cleanup_layoutcommit()?
+>>>>>>>
+>>>>>>> 3. What is the purpose of pinning the layout segment at all if neither blocks,
+>> nor
+>>>>>>> objects nor files cares?
+>>>>>> I believe it is for protecting against layoutrecall. But since we are seperating
+>> lseg and LD specific layout information management, it is actually not working as
+>> expected.
+>>>>>>
+>>>>
+>>>> The layout segments are not really in use while in LAYOUTCOMMIT.
+>>>> We only need to get the stateid right with respect to concurrent layout recalls.
+>>> LAYOUTCOMMIT takes lseg reference to mark them as in use so that
+>>> layoutrecall cannot free them.
+>>>
+>>
+>> And if layoutrecall would have freed layout segments during layoutcommit,
+>> what is your specific concern?
+> In layoutcommit_release, blocklayout need to access the corresponding extents to convert their states. If the layout segments are freed by layoutrecall, it can cause problems.
+> 
 
-Noted.  I can repost these with requested fixes in a day or two.
+See my response to Trond on his previous message.  I think the best thing to do is
+to return NFS4ERR_DELAY if the gets a conflicting CB_LAYOUTRECALL while the
+LAYOUTCOMMIT is in progress.  The server may need to reject the LAYOUTCOMMIT
+in this case to prevent a distributed deadlock so the client should be prepared
+to retry.
 
-> Remind me where the corresponding userland code is?
+Benny
 
-http://oss.oracle.com/projects/fedfs-utils
-
-> Would it make sense to add some documentation with a link to that?
-
-I don't see strong utility for documenting it here, but others may disagree.  One problem is that the user space components can move, and then the URL is out of date and long forgotten.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+>>
+>> Benny
