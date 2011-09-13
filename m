@@ -1,219 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38603 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:62003 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755052Ab1I2OrO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Sep 2011 10:47:14 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 03/13] FS-Cache: Validate page mapping pointer value
-To: moseleymark@gmail.com, mark@pogo.org.uk, jlayton@redhat.com,
-        steved@redhat.com
-Cc: linux-cachefs@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Date: Thu, 29 Sep 2011 15:46:13 +0100
-Message-ID: <20110929144613.5812.97149.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20110929144536.5812.84405.stgit@warthog.procyon.org.uk>
-References: <20110929144536.5812.84405.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+	id S1752004Ab1IMNsv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 09:48:51 -0400
+Date: Tue, 13 Sep 2011 09:52:04 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>
+Subject: Re: [PATCH v2 3/5] SUNRPC: make RPC service dependable on rpcbind
+ clients creation
+Message-ID: <20110913095204.7904c051@corrin.poochiereds.net>
+In-Reply-To: <4E6F5D2F.4050100@parallels.com>
+References: <20110909115146.13697.71682.stgit@localhost6.localdomain6>
+	<20110909120844.13697.48102.stgit@localhost6.localdomain6>
+	<20110909100745.7e2e8bf9@corrin.poochiereds.net>
+	<4E6A41D4.6090001@parallels.com>
+	<1315593874.17611.19.camel@lade.trondhjem.org>
+	<20110909150104.5a83c60d@tlielax.poochiereds.net>
+	<1315596308.17611.46.camel@lade.trondhjem.org>
+	<20110913085139.00f112e2@corrin.poochiereds.net>
+	<4E6F5D2F.4050100@parallels.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Add information to indicate whether page->mapping should have a value or not,
-and to log a warning if it is wrong.
+On Tue, 13 Sep 2011 17:39:59 +0400
+Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+> 13.09.2011 16:51, Jeff Layton пишет:
+> > My assumption in reading this set (maybe wrong) was that this was a
+> > preliminary set for now that just plops in function calls in the places
+> > that do this sort of thing now. I figured that eventually he'd convert
+> > rpcb_create_local, et. al. to do the same thing but within the correct
+> > namespace for the calling task.
+> >
+> 
+> You have a right assumption. This is exactly what I'm going to do next.
+> 
+> >
+> > I think the simplest solution would be to basically call these
+> > functions closer to where the rpcbind calls happen today, and just
+> > don't do them when the svc_program has vs_hidden set or if the xprt is
+> > being created with SVC_SOCK_ANONYMOUS set.
+> >
+> 
+> This solution is not the simplest one since we call svc_register() for every svc 
+> socket if it's not anonymous. But svc_unregister() is called only once for all 
+> inet families and protocols.
+> 
 
- fs/cachefiles/rdwr.c          |   26 +++++++++++++++++---------
- fs/fscache/page.c             |   36 +++++++++++++++++++++++++++++++++---
- include/linux/fscache-cache.h |    6 ++++--
- 3 files changed, 54 insertions(+), 14 deletions(-)
+Ahh ok, good point.
 
-diff --git a/fs/cachefiles/rdwr.c b/fs/cachefiles/rdwr.c
-index 0186fc1..e8c3766 100644
---- a/fs/cachefiles/rdwr.c
-+++ b/fs/cachefiles/rdwr.c
-@@ -177,7 +177,7 @@ static void cachefiles_read_copier(struct fscache_operation *_op)
- 		if (PageUptodate(monitor->back_page)) {
- 			copy_highpage(monitor->netfs_page, monitor->back_page);
- 			fscache_mark_page_cached(monitor->op,
--						 monitor->netfs_page);
-+						 monitor->netfs_page, true);
- 			error = 0;
- 		} else if (!PageError(monitor->back_page)) {
- 			/* the page has probably been truncated */
-@@ -334,7 +334,7 @@ backing_page_already_present:
- backing_page_already_uptodate:
- 	_debug("- uptodate");
- 
--	fscache_mark_page_cached(op, netpage);
-+	fscache_mark_page_cached(op, netpage, true);
- 
- 	copy_highpage(netpage, backpage);
- 	fscache_end_io(op, netpage, 0);
-@@ -446,7 +446,7 @@ int cachefiles_read_or_alloc_page(struct fscache_retrieval *op,
- 						       &pagevec);
- 	} else if (cachefiles_has_space(cache, 0, 1) == 0) {
- 		/* there's space in the cache we can use */
--		fscache_mark_page_cached(op, page);
-+		fscache_mark_page_cached(op, page, true);
- 		ret = -ENODATA;
- 	} else {
- 		ret = -ENOBUFS;
-@@ -622,7 +622,7 @@ static int cachefiles_read_backing_file(struct cachefiles_object *object,
- 		page_cache_release(backpage);
- 		backpage = NULL;
- 
--		fscache_mark_page_cached(op, netpage);
-+		fscache_mark_page_cached(op, netpage, true);
- 
- 		page_cache_get(netpage);
- 		if (!pagevec_add(&lru_pvec, netpage))
-@@ -704,6 +704,14 @@ int cachefiles_read_or_alloc_pages(struct fscache_retrieval *op,
- 	       object->fscache.debug_id, atomic_read(&op->op.usage),
- 	       *nr_pages);
- 
-+	{
-+		struct page *q, *_q;
-+		list_for_each_entry_safe(q, _q, pages, lru) {
-+			ASSERT(!q->mapping);
-+			ASSERT(!PageFsCache(q));
-+		}
-+	}
-+
- 	if (!object->backer)
- 		return -ENOBUFS;
- 
-@@ -757,13 +765,13 @@ int cachefiles_read_or_alloc_pages(struct fscache_retrieval *op,
- 			(*nr_pages)--;
- 			nrbackpages++;
- 		} else if (space && pagevec_add(&pagevec, page) == 0) {
--			fscache_mark_pages_cached(op, &pagevec);
-+			fscache_mark_pages_cached(op, &pagevec, false);
- 			ret = -ENODATA;
- 		}
- 	}
- 
- 	if (pagevec_count(&pagevec) > 0)
--		fscache_mark_pages_cached(op, &pagevec);
-+		fscache_mark_pages_cached(op, &pagevec, false);
- 
- 	if (list_empty(pages))
- 		ret = 0;
-@@ -809,7 +817,7 @@ int cachefiles_allocate_page(struct fscache_retrieval *op,
- 
- 	ret = cachefiles_has_space(cache, 0, 1);
- 	if (ret == 0)
--		fscache_mark_page_cached(op, page);
-+		fscache_mark_page_cached(op, page, true);
- 	else
- 		ret = -ENOBUFS;
- 
-@@ -852,11 +860,11 @@ int cachefiles_allocate_pages(struct fscache_retrieval *op,
- 
- 		list_for_each_entry(page, pages, lru) {
- 			if (pagevec_add(&pagevec, page) == 0)
--				fscache_mark_pages_cached(op, &pagevec);
-+				fscache_mark_pages_cached(op, &pagevec, false);
- 		}
- 
- 		if (pagevec_count(&pagevec) > 0)
--			fscache_mark_pages_cached(op, &pagevec);
-+			fscache_mark_pages_cached(op, &pagevec, false);
- 		ret = -ENODATA;
- 	} else {
- 		ret = -ENOBUFS;
-diff --git a/fs/fscache/page.c b/fs/fscache/page.c
-index d7c663c..5e793b5 100644
---- a/fs/fscache/page.c
-+++ b/fs/fscache/page.c
-@@ -918,11 +918,13 @@ EXPORT_SYMBOL(__fscache_uncache_page);
-  * fscache_mark_page_cached - Mark a page as being cached
-  * @op: The retrieval op pages are being marked for
-  * @page: The page to be marked
-+ * @should_have_mapping: True if the pages should have a mapping set
-  *
-  * Mark a netfs page as being cached.  After this is called, the netfs
-  * must call fscache_uncache_page() to remove the mark.
-  */
--void fscache_mark_page_cached(struct fscache_retrieval *op, struct page *page)
-+void fscache_mark_page_cached(struct fscache_retrieval *op, struct page *page,
-+			      bool should_have_mapping)
- {
- 	struct fscache_cookie *cookie = op->op.object->cookie;
- 
-@@ -941,6 +943,31 @@ void fscache_mark_page_cached(struct fscache_retrieval *op, struct page *page)
- 			       cookie->def->name, page->index);
- 		}
- 	}
-+	if (should_have_mapping && !page->mapping) {
-+		static bool once_only;
-+		if (!once_only) {
-+			once_only = 1;
-+			printk(KERN_ALERT
-+			       "FSC: page:%p count:%d mapcount:%d NO_MAPPING"
-+			       " index:%#lx\n",
-+			       page, page_count(page), page_mapcount(page),
-+			       page->index);
-+			WARN_ON(1);
-+		}
-+	}
-+
-+	if (!should_have_mapping && page->mapping) {
-+		static bool once_only;
-+		if (!once_only) {
-+			once_only = 1;
-+			printk(KERN_ALERT
-+			       "FSC: page:%p count:%d mapcount:%d MAPPING:%p"
-+			       " index:%#lx\n",
-+			       page, page_count(page), page_mapcount(page),
-+			       page->mapping, page->index);
-+			WARN_ON(1);
-+		}
-+	}
- 
- 	if (cookie->def->mark_page_cached)
- 		cookie->def->mark_page_cached(cookie->netfs_data,
-@@ -952,17 +979,20 @@ EXPORT_SYMBOL(fscache_mark_page_cached);
-  * fscache_mark_pages_cached - Mark pages as being cached
-  * @op: The retrieval op pages are being marked for
-  * @pagevec: The pages to be marked
-+ * @should_have_mapping: True if the pages should have a mapping set
-  *
-  * Mark a bunch of netfs pages as being cached.  After this is called,
-  * the netfs must call fscache_uncache_page() to remove the mark.
-  */
- void fscache_mark_pages_cached(struct fscache_retrieval *op,
--			       struct pagevec *pagevec)
-+			       struct pagevec *pagevec,
-+			       bool should_have_mapping)
- {
- 	unsigned long loop;
- 
- 	for (loop = 0; loop < pagevec->nr; loop++)
--		fscache_mark_page_cached(op, pagevec->pages[loop]);
-+		fscache_mark_page_cached(op, pagevec->pages[loop],
-+					 should_have_mapping);
- 
- 	pagevec_reinit(pagevec);
- }
-diff --git a/include/linux/fscache-cache.h b/include/linux/fscache-cache.h
-index 485c011..ae155f1 100644
---- a/include/linux/fscache-cache.h
-+++ b/include/linux/fscache-cache.h
-@@ -505,10 +505,12 @@ extern void fscache_withdraw_cache(struct fscache_cache *cache);
- extern void fscache_io_error(struct fscache_cache *cache);
- 
- extern void fscache_mark_page_cached(struct fscache_retrieval *op,
--				     struct page *page);
-+				     struct page *page,
-+				     bool should_have_mapping);
- 
- extern void fscache_mark_pages_cached(struct fscache_retrieval *op,
--				      struct pagevec *pagevec);
-+				      struct pagevec *pagevec,
-+				      bool should_have_mapping);
- 
- extern bool fscache_object_sleep_till_congested(signed long *timeoutp);
- 
+> Also I've noticed, that we call svc_unregister in __svc_create(). I.e. we call 
+> it for nfs callbacks as well (in spite of that we don't need this). Thus, for 
+> now, nfs callbacks service creation depends on rpcbind clients presence.
+> 
 
+Yeah, that's just to remove the any existing registration before we set
+up the new one. In the case of a "hidden" service that can probably be
+skipped if it makes things easier.
+
+> So, for my pow, we need something like startup() callback, passed to 
+> svc_create(_pooled)() to clean up this mess.
+> This callback will be defined only for lockd and nfsd and will create rpcbind 
+> clients and remove any stale portmap registrations.
+> 
+
+That sounds like a reasonable scheme. I'll wait to see the patches.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
