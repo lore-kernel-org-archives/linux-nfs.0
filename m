@@ -1,125 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21858 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:11869 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751995Ab1IWQZi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Sep 2011 12:25:38 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 1/7] NFS4: Revert commit to make the automount code ignore
- LOOKUP_FOLLOW
-To: miklos@szeredi.hu, raven@themaw.net, viro@ZenIV.linux.org.uk,
-        torvalds@linux-foundation.org
-Cc: dhowells@redhat.com, jlayton@redhat.com, gregkh@suse.de,
-        linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-Date: Fri, 23 Sep 2011 17:24:51 +0100
-Message-ID: <20110923162451.13574.33960.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20110923162438.13574.52985.stgit@warthog.procyon.org.uk>
-References: <20110923162438.13574.52985.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+	id S1754346Ab1IMPL0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Sep 2011 11:11:26 -0400
+Date: Tue, 13 Sep 2011 11:14:41 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Jim Rees <rees@umich.edu>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH v7 12/26] pnfsblock: add device operations
+Message-ID: <20110913111441.4b2502b8@corrin.poochiereds.net>
+In-Reply-To: <1312073576-11024-13-git-send-email-rees@umich.edu>
+References: <1312073576-11024-1-git-send-email-rees@umich.edu>
+	<1312073576-11024-13-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Revert the following change:
+On Sat, 30 Jul 2011 20:52:42 -0400
+Jim Rees <rees@umich.edu> wrote:
 
-	commit 0ec26fd0698285b31248e34bf1abb022c00f23d6
-	Author: Miklos Szeredi <mszeredi@suse.cz>
-	Date:   Mon Sep 5 18:06:26 2011 +0200
-	Subject: vfs: automount should ignore LOOKUP_FOLLOW
+> Signed-off-by: Jim Rees <rees@umich.edu>
+> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+> [upcall bugfixes]
+> Signed-off-by: Peng Tao <peng_tao@emc.com>
+> ---
+>  fs/nfs/blocklayout/Makefile         |    2 +-
+>  fs/nfs/blocklayout/blocklayout.c    |   42 ++++++++
+>  fs/nfs/blocklayout/blocklayout.h    |   40 +++++++
+>  fs/nfs/blocklayout/blocklayoutdev.c |  191 +++++++++++++++++++++++++++++++++++
+>  fs/nfs/client.c                     |    2 +-
+>  include/linux/nfs.h                 |    2 +
+>  6 files changed, 277 insertions(+), 2 deletions(-)
+>  create mode 100644 fs/nfs/blocklayout/blocklayoutdev.c
+> 
 
-which makes stat(), getxattr(), etc. behave as lstat(), lgetxattr(), etc. with
-respect to automounting: it prevents them from triggering terminal automounts.
+[...]
+> +static const struct rpc_pipe_ops bl_upcall_ops = {
+> +	.upcall		= bl_pipe_upcall,
+> +	.downcall	= bl_pipe_downcall,
+> +	.destroy_msg	= bl_pipe_destroy_msg,
+> +};
+> +
+>  static int __init nfs4blocklayout_init(void)
+>  {
+> +	struct vfsmount *mnt;
+> +	struct path path;
+>  	int ret;
+>  
+>  	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
+>  
+>  	ret = pnfs_register_layoutdriver(&blocklayout_type);
+> +	if (ret)
+> +		goto out;
+> +
+> +	init_waitqueue_head(&bl_wq);
+> +
+> +	mnt = rpc_get_mount();
+> +	if (IS_ERR(mnt)) {
+> +		ret = PTR_ERR(mnt);
+> +		goto out_remove;
+> +	}
+> +
 
-The problem with this is that this breaks nfs_follow_remote_path() used by NFS4
-to find the root object to mount for the mount() syscall.
 
-This can be tested by the following procedure:
+Hmm...sorry for the late review on this, but I was just looking over
+this code as an example for some other stuff I'm working on...
 
- (1) Export a directory from an NFS4 server that has something mounted upon it
-     and that isn't "/" - say, for example, "/scratch".  It must have a
-     different FSID from "/".
+I notice that the above code does a rpc_get_mount to get a reference to
+the rpc_pipefs mount, but I don't see where that reference is ever put.
 
- (2) Mount this on the client.
+> +	ret = vfs_path_lookup(mnt->mnt_root,
+> +			      mnt,
+> +			      NFS_PIPE_DIRNAME, 0, &path);
+> +	if (ret)
+> +		goto out_remove;
+> +
+> +	bl_device_pipe = rpc_mkpipe(path.dentry, "blocklayout", NULL,
+> +				    &bl_upcall_ops, 0);
 
-	mount sirius:/scratch /mnt
+> +	if (IS_ERR(bl_device_pipe)) {
+> +		ret = PTR_ERR(bl_device_pipe);
+> +		goto out_remove;
+> +	}
+> +out:
+> +	return ret;
+> +
+> +out_remove:
+> +	pnfs_unregister_layoutdriver(&blocklayout_type);
+>  	return ret;
+>  }
+>  
 
- (3) List the contents of the client's mountpoint:
 
-	ls /mnt
 
- (4) Examine /proc/fs/nfsfs/volumes.  You should see one entry (assuming
-     nothing else is NFS mounted) :
-
-	NV SERVER   PORT DEV     FSID              FSC
-	v4 200108b001940000021125fffe84efad  801 0:34    1:0               no
-
-     which corresponds to the filesystem mounted on /scratch on the server.
-
-     If, however, you see two entries:
-
-	NV SERVER   PORT DEV     FSID              FSC
-	v4 200108b001940000021125fffe84efad  801 0:33    0:0               no
-	v4 200108b001940000021125fffe84efad  801 0:34    1:0               no
-
-     then it went wrong.
-
-When it goes wrong, what happens is that nfs_follow_remote_path() walks from
-the rootfh to the remote directory (/scratch) using vfs_path_lookup().  It
-passes LOOKUP_FOLLOW to vfs_path_lookup() to tell it to transit terminal
-symlinks and terminal automounts.  Unfortunately, with the problematic commit,
-LOOKUP_FOLLOW now expressly does not follow terminal automounts, and so the
-dummy automount directory fabricated in fsid 0:0 gets mounted instead of the
-root of fsid 1:0.
-
-Reported-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: David Howells <dhowells@redhat.com>
----
-
- fs/namei.c |   33 ++++++++++++++++++---------------
- 1 files changed, 18 insertions(+), 15 deletions(-)
-
-diff --git a/fs/namei.c b/fs/namei.c
-index f478836..c64b81d 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -727,22 +727,25 @@ static int follow_automount(struct path *path, unsigned flags,
- 	if ((flags & LOOKUP_NO_AUTOMOUNT) && !(flags & LOOKUP_PARENT))
- 		return -EISDIR; /* we actually want to stop here */
- 
--	/* We don't want to mount if someone's just doing a stat -
--	 * unless they're stat'ing a directory and appended a '/' to
--	 * the name.
--	 *
--	 * We do, however, want to mount if someone wants to open or
--	 * create a file of any type under the mountpoint, wants to
--	 * traverse through the mountpoint or wants to open the
--	 * mounted directory.  Also, autofs may mark negative dentries
--	 * as being automount points.  These will need the attentions
--	 * of the daemon to instantiate them before they can be used.
-+	/*
-+	 * We don't want to mount if someone's just doing a stat and they've
-+	 * set AT_SYMLINK_NOFOLLOW - unless they're stat'ing a directory and
-+	 * appended a '/' to the name.
- 	 */
--	if (!(flags & (LOOKUP_PARENT | LOOKUP_DIRECTORY |
--		     LOOKUP_OPEN | LOOKUP_CREATE)) &&
--	    path->dentry->d_inode)
--		return -EISDIR;
--
-+	if (!(flags & LOOKUP_FOLLOW)) {
-+		/* We do, however, want to mount if someone wants to open or
-+		 * create a file of any type under the mountpoint, wants to
-+		 * traverse through the mountpoint or wants to open the mounted
-+		 * directory.
-+		 * Also, autofs may mark negative dentries as being automount
-+		 * points.  These will need the attentions of the daemon to
-+		 * instantiate them before they can be used.
-+		 */
-+		if (!(flags & (LOOKUP_PARENT | LOOKUP_DIRECTORY |
-+			     LOOKUP_OPEN | LOOKUP_CREATE)) &&
-+		    path->dentry->d_inode)
-+			return -EISDIR;
-+	}
- 	current->total_link_count++;
- 	if (current->total_link_count >= 40)
- 		return -ELOOP;
-
+-- 
+Jeff Layton <jlayton@redhat.com>
