@@ -1,57 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:42461 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:35178 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752441Ab1IUPfb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Sep 2011 11:35:31 -0400
-Date: Wed, 21 Sep 2011 11:35:30 -0400
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        samba-technical@lists.samba.org, Christoph Hellwig <hch@infradead.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Mimi Zohar <zohar@linux.vnet.ibm.com>
-Subject: Re: [PATCH 5/6] leases: break leases on any attribute modification
-Message-ID: <20110921153530.GB21510@fieldses.org>
-References: <1316617097-21384-1-git-send-email-bfields@redhat.com>
- <1316617097-21384-6-git-send-email-bfields@redhat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1316617097-21384-6-git-send-email-bfields@redhat.com>
+	id S1753321Ab1IMMol (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Sep 2011 08:44:41 -0400
+Date: Tue, 13 Sep 2011 08:44:41 -0400
+To: Tim <supertimothy@web.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: nfsv4 and gracetime / leasetime grace_period
+Message-ID: <20110913124440.GA22118@fieldses.org>
+References: <000801cc71f9$9cc45650$d64d02f0$@web.de>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <000801cc71f9$9cc45650$d64d02f0$@web.de>
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Sep 21, 2011 at 10:58:16AM -0400, J. Bruce Fields wrote:
-> NFSv4 uses leases to guarantee that clients can cash metadata as well as
-						  ^^^^
+On Tue, Sep 13, 2011 at 11:43:37AM +0200, Tim wrote:
+> Hi all!
+> 
+> First, just a question to make clear, with nfsv4 rpc.statd and nfslock are
+> not needed ? The Clients are not notified with sm-notify in case of a reboot
+> - is this correct?
+> But how does the notification of clients work with nfsv4?
 
-Um, you know what I meant.  Corrected in my local repo.--b.
+There is no notification.  Clients poll the server regularly, and that's
+how they find out there's been a reboot.
 
+> The problem I can see is the same as described here:
+> http://www.digipedia.pl/usenet/thread/18978/22974/
+> 
+> So we have different values:
+> 
+> /proc/fs/nfsd/nfsv4gracetime
+> /proc/fs/nfsd/nfsv4leasetime
+> /proc/sys/fs/nfs/nlm_grace_period
+> 
+> If I set graceteime and grace_period to a low value, I get a faster
+> failover. But what do they stand for and do I need nfsv4leasetime to ?
+> If I set them all to 10 seconds, could that be "dangerous" (assume the
+> server can handle the additional load)?
 
-> data.
-> 
-> (I suspect the same is true for Samba.)
-> 
-> This covers chmod, chown, etc.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/attr.c |    3 +++
->  1 files changed, 3 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/attr.c b/fs/attr.c
-> index 538e279..4ce31cb 100644
-> --- a/fs/attr.c
-> +++ b/fs/attr.c
-> @@ -231,6 +231,9 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
->  	error = security_inode_setattr(dentry, attr);
->  	if (error)
->  		return error;
-> +	error = break_lease(inode, O_WRONLY);
-> +	if (error)
-> +		return error;
->  
->  	if (inode->i_op->setattr)
->  		error = inode->i_op->setattr(dentry, attr);
-> -- 
-> 1.7.4.1
-> 
+It's probably OK.  The clients will have to send an rpc to the server at
+least every 10 seconds, or they lose their state.  So if there's a
+chance they wouldn't be able to get through for 10 seconds, you could
+have a problem.
+
+> I guess there isnt an easy way to delete all the locks on serverside and
+> explicitely tell the clients: Hey, the server has rebooted, please get a new
+> lock for all your files :-)
+> I just would like to make failover a bit faster. 
+
+We do need to think about how to make that faster, but that wouldn't be
+the solution.  The problem is that the new server needs to wait before
+granting any new locks or opens until it knows all the clients have had
+the chance to reclaim their old ones.  The only way the server currently
+hsa to do that is to wait out the grace period (== the previous server's
+lease time).
+
+--b.
