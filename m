@@ -1,56 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yi0-f46.google.com ([209.85.218.46]:63026 "EHLO
-	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751046Ab1IZPaP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Sep 2011 11:30:15 -0400
-Received: by mail-yi0-f46.google.com with SMTP id 18so4308853yib.19
-        for <linux-nfs@vger.kernel.org>; Mon, 26 Sep 2011 08:30:15 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/3] NFS: Remove no-op less-than-zero checks on unsigned
- variables.
+Received: from fieldses.org ([174.143.236.118]:60175 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932140Ab1INLp2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Sep 2011 07:45:28 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
-Cc: bjschuma@netapp.com, andros@netapp.com
-Date: Mon, 26 Sep 2011 11:30:13 -0400
-Message-ID: <20110926153013.8595.41253.stgit@degas.1015granger.net>
-In-Reply-To: <20110926152657.8595.6375.stgit@degas.1015granger.net>
-References: <20110926152657.8595.6375.stgit@degas.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 14/25] nfsd4: split up find_stateid
+Date: Wed, 14 Sep 2011 07:45:10 -0400
+Message-Id: <1316000721-3289-15-git-send-email-bfields@redhat.com>
+In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Introduced by commit 16b374ca "NFSv4.1: pnfs: filelayout: add driver's
-LAYOUTGET and GETDEVICEINFO infrastructure" (October 20, 2010).
+Minor cleanup.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
+ fs/nfsd/nfs4state.c |   34 +++++++++++++++++++++-------------
+ 1 files changed, 21 insertions(+), 13 deletions(-)
 
- fs/nfs/nfs4filelayout.c |    7 +++----
- 1 files changed, 3 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index e8915d4..bbc5a21 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -468,9 +468,8 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f0eccc2..aa088bc 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1068,21 +1068,29 @@ same_stateid(stateid_t *id_one, stateid_t *id_two)
+ 	return id_one->si_fileid == id_two->si_fileid;
+ }
  
- 	fl->dsaddr = dsaddr;
+-static struct nfs4_stateid *find_stateid(stateid_t *t, int flags)
++static struct nfs4_stateid *find_stateid(stateid_t *t)
+ {
+ 	struct nfs4_stateid *s;
+ 	unsigned int hashval;
  
--	if (fl->first_stripe_index < 0 ||
--	    fl->first_stripe_index >= dsaddr->stripe_count) {
--		dprintk("%s Bad first_stripe_index %d\n",
-+	if (fl->first_stripe_index >= dsaddr->stripe_count) {
-+		dprintk("%s Bad first_stripe_index %u\n",
- 				__func__, fl->first_stripe_index);
- 		goto out_put;
+ 	hashval = stateid_hashval(t->si_stateownerid, t->si_fileid);
+-	list_for_each_entry(s, &stateid_hashtbl[hashval], st_hash) {
+-		if (!same_stateid(&s->st_stateid, t))
+-			continue;
+-		if (flags & LOCK_STATE && s->st_type != NFS4_LOCK_STID)
+-			return NULL;
+-		if (flags & OPEN_STATE && s->st_type != NFS4_OPEN_STID)
+-			return NULL;
++	list_for_each_entry(s, &stateid_hashtbl[hashval], st_hash)
++		if (same_stateid(&s->st_stateid, t))
++			return s;
++	return NULL;
++}
++
++static struct nfs4_stateid *find_stateid_by_type(stateid_t *t, int flags)
++{
++	struct nfs4_stateid *s;
++
++	s = find_stateid(t);
++	if (!s)
++		return NULL;
++	if (flags & LOCK_STATE && s->st_type == NFS4_LOCK_STID)
++		return s;
++	if (flags & OPEN_STATE && s->st_type == NFS4_OPEN_STID)
+ 		return s;
+-		}
+ 	return NULL;
+ }
+ 
+@@ -3241,7 +3249,7 @@ __be32 nfs4_validate_stateid(stateid_t *stateid, bool has_session)
+ 		goto out;
+ 
+ 	status = nfserr_expired;
+-	stp = find_stateid(stateid, 0);
++	stp = find_stateid(stateid);
+ 	if (!stp)
+ 		goto out;
+ 	status = nfserr_bad_stateid;
+@@ -3306,7 +3314,7 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+ 			BUG_ON(!*filpp);
+ 		}
+ 	} else { /* open or lock stateid */
+-		stp = find_stateid(stateid, flags);
++		stp = find_stateid(stateid);
+ 		if (!stp)
+ 			goto out;
+ 		status = nfserr_bad_stateid;
+@@ -3381,7 +3389,7 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		goto out;
  	}
-@@ -571,7 +570,7 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
  
- 	/* Note that a zero value for num_fh is legal for STRIPE_SPARSE.
- 	 * Futher checking is done in filelayout_check_layout */
--	if (fl->num_fh < 0 || fl->num_fh >
-+	if (fl->num_fh >
- 	    max(NFS4_PNFS_MAX_STRIPE_CNT, NFS4_PNFS_MAX_MULTI_CNT))
- 		goto out_err;
+-	stp = find_stateid(stateid, 0);
++	stp = find_stateid(stateid);
+ 	if (!stp) {
+ 		ret = nfserr_bad_stateid;
+ 		goto out;
+@@ -3440,7 +3448,7 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ 	* the confirmed flag is incorrecly set, or the generation 
+ 	* number is incorrect.  
+ 	*/
+-	*stpp = find_stateid(stateid, flags);
++	*stpp = find_stateid_by_type(stateid, flags);
+ 	if (*stpp == NULL)
+ 		return nfserr_expired;
  
+-- 
+1.7.4.1
 
