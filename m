@@ -1,54 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from nm12-vm0.access.bullet.mail.mud.yahoo.com ([66.94.236.11]:32492
-	"HELO nm12-vm0.access.bullet.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1754856Ab1ILVeL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 17:34:11 -0400
-Message-ID: <4E6E7ACC.8040003@schaufler-ca.com>
-Date: Mon, 12 Sep 2011 14:34:04 -0700
-From: Casey Schaufler <casey@schaufler-ca.com>
-To: Valdis.Kletnieks@vt.edu
-CC: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>, agruen@kernel.org,
-        bfields@fieldses.org, akpm@linux-foundation.org, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        LSM <linux-security-module@vger.kernel.org>,
-        Casey Schaufler <casey@schaufler-ca.com>
-Subject: Re: [PATCH -V6 00/26] New ACL format for better NFSv4 acl interoperability
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>            <4E655049.6060507@schaufler-ca.com> <108028.1315442771@turing-police.cc.vt.edu>
-In-Reply-To: <108028.1315442771@turing-police.cc.vt.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mexforward.lss.emc.com ([128.222.32.20]:45291 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751496Ab1INP7Q convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Sep 2011 11:59:16 -0400
+From: <tao.peng@emc.com>
+To: <bhalevy@tonian.com>
+CC: <rees@umich.edu>, <linux-nfs@vger.kernel.org>
+Date: Wed, 14 Sep 2011 11:56:27 -0400
+Subject: RE: NULL pointer dereference during mount
+Message-ID: <F19688880B763E40B28B2B462677FBF805C3F37B8F@MX09A.corp.emc.com>
+References: <F19688880B763E40B28B2B462677FBF805C3299FFE@MX09A.corp.emc.com>,<20110913124202.GA9498@merit.edu>
+ <F19688880B763E40B28B2B462677FBF805C3F37B8D@MX09A.corp.emc.com>
+ <4E704999.1060205@tonian.com>,<F19688880B763E40B28B2B462677FBF805C3F7A912@MX09A.corp.emc.com>
+In-Reply-To: <F19688880B763E40B28B2B462677FBF805C3F7A912@MX09A.corp.emc.com>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 9/7/2011 5:46 PM, Valdis.Kletnieks@vt.edu wrote:
-> On Mon, 05 Sep 2011 15:42:17 PDT, Casey Schaufler said:
->> On 9/5/2011 10:25 AM, Aneesh Kumar K.V wrote:
->>> The following set of patches implements VFS and ext4 changes needed to implement
->>> a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
->>> extended by file( masks to fit into the standard POSIX file permission model.
->>> They are designed to work seamlessly locally as well as across the NFSv4 and
->>> CIFS/SMB2 network file system protocols.
->>
->> POSIX ACLs predate the LSM and can't be done as an LSM due to
->> the interactions between mode bits and ACLs as defined by the
->> POSIX DRAFT specification. Is there a reason that "rich" ACLs
->> can not be done as an LSM?
+Hi, Benny,
+
+OK, I found the problem. It is because I was building nfs module, instead of rebuilding the whole kernel. commit bea6cd74 in pnfs-all-latest branch changes struct super_block by adding s_pnfs_op pointer. Then sb->s_security of the new module is translated into accessing sb->s_xattr, which is NULL, and causes the oops.
+
+After rebuilding the kernel, I don't get it any more. Sorry for the noise...
+
+Cheers,
+Tao
+________________________________________
+From: linux-nfs-owner@vger.kernel.org [linux-nfs-owner@vger.kernel.org] On Behalf Of tao.peng@emc.com [tao.peng@emc.com]
+Sent: Wednesday, September 14, 2011 3:53 PM
+To: bhalevy@tonian.com
+Cc: rees@umich.edu; linux-nfs@vger.kernel.org
+Subject: RE: NULL pointer dereference during mount
+
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org]
+> On Behalf Of Benny Halevy
+> Sent: Wednesday, September 14, 2011 2:29 PM
+> To: Peng, Tao
+> Cc: rees@umich.edu; linux-nfs@vger.kernel.org
+> Subject: Re: NULL pointer dereference during mount
 >
-> Well, if it was done as an LSM, it would mean that if I wanted to build a
-> system where I have a few hundred terabytes of disk exported via Samba, and I
-> wanted Samba to save the CIFS permission ACL, I couldn't also run Selinux or
-> SMACK or anything like that - unless somebody actually snuck in the "LSMs are
-> stackable" patch while I wasn't looking?
+> I couldn't reproduce this with selinux neither disabled nor enforcing.
+> What's your selinux configuration?
+I didn't changed selinux config so it is the default on Fedora15
+/etc/selinux/config:
+SELINUX=enforcing
+SELINUXTYPE=targeted
+
+/etc/selinux/semanage.conf:
+module-store = direct
+expand-check=0
+usepasswd=False
+
+Cheers,
+Tao
 >
- 
-True, but not an acceptable argument for not doing it as an LSM.
-It is an argument in favor of LSM stacking, and after the Linux
-Security Summit this past week it seems only a matter of time before
-we have that. This could be the compelling use case that we've been
-missing for LSM stacking.
- 
-So at this point, unless there is another reason why it can't be an
-LSM it should be an LSM.
- 
+> Benny
+>
+> On 2011-09-13 18:43, tao.peng@emc.com wrote:
+> >
+> > ________________________________________
+> > From: Jim Rees [rees@umich.edu]
+> > Sent: Tuesday, September 13, 2011 8:42 PM
+> > To: Peng, Tao
+> > Cc: bhalevy@tonian.com; linux-nfs@vger.kernel.org
+> > Subject: Re: NULL pointer dereference during mount
+> >
+> > tao.peng@emc.com wrote:
+> >
+> >   After rebasing to your pnfs-all-latest branch, I always got bellow NULL
+> >   pointer dereference for both nfsv4 and pnfs. Do you know of any recent
+> >   change that can cause this?
+> >
+> > "git diff" shows no change in the nfs client between my for-benny branch and
+> > benny's pnfs-all-latest branch.  And the mount works for me.  But the first
+> > thing I always do on a fresh Fedora install is disable selinux.  Maybe
+> > something changed in selinux?
+> > [PT] Just tested 3.1-rc6 and it is working properly. So I think it should be caused by
+> nfs changes.--
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
