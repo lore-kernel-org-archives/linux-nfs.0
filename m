@@ -1,65 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:41545 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753759Ab1ITDSv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Sep 2011 23:18:51 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 1/3] pnfsblock: add missing rpc_put_mount and path_put
-Date: Mon, 19 Sep 2011 23:18:46 -0400
-Message-Id: <1316488728-24912-2-git-send-email-rees@umich.edu>
-In-Reply-To: <1316488728-24912-1-git-send-email-rees@umich.edu>
-References: <1316488728-24912-1-git-send-email-rees@umich.edu>
+Received: from fieldses.org ([174.143.236.118]:60173 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932232Ab1INLp1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Sep 2011 07:45:27 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 13/25] nfsd4: rearrange to avoid a forward reference
+Date: Wed, 14 Sep 2011 07:45:09 -0400
+Message-Id: <1316000721-3289-14-git-send-email-bfields@redhat.com>
+In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Peng Tao <bergwolf@gmail.com>
-
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Jim Rees <rees@umich.edu>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/blocklayout/blocklayout.c |    8 ++++++--
- 1 files changed, 6 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4state.c |   53 +++++++++++++++++++++++++--------------------------
+ 1 files changed, 26 insertions(+), 27 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index dc23833..dee6cae 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -993,17 +993,20 @@ static int __init nfs4blocklayout_init(void)
- 			      mnt,
- 			      NFS_PIPE_DIRNAME, 0, &path);
- 	if (ret)
--		goto out_remove;
-+		goto out_putrpc;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index c28432a..f0eccc2 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -60,7 +60,6 @@ static u64 current_sessionid = 1;
+ #define ONE_STATEID(stateid)  (!memcmp((stateid), &onestateid, sizeof(stateid_t)))
  
- 	bl_device_pipe = rpc_mkpipe(path.dentry, "blocklayout", NULL,
- 				    &bl_upcall_ops, 0);
-+	path_put(&path);
- 	if (IS_ERR(bl_device_pipe)) {
- 		ret = PTR_ERR(bl_device_pipe);
--		goto out_remove;
-+		goto out_putrpc;
- 	}
- out:
- 	return ret;
- 
-+out_putrpc:
-+	rpc_put_mount();
- out_remove:
- 	pnfs_unregister_layoutdriver(&blocklayout_type);
- 	return ret;
-@@ -1016,6 +1019,7 @@ static void __exit nfs4blocklayout_exit(void)
- 
- 	pnfs_unregister_layoutdriver(&blocklayout_type);
- 	rpc_unlink(bl_device_pipe);
-+	rpc_put_mount();
+ /* forward declarations */
+-static struct nfs4_stateid * find_stateid(stateid_t *stid, int flags);
+ static struct nfs4_delegation * search_for_delegation(stateid_t *stid);
+ static struct nfs4_delegation * find_delegation_stateid(struct inode *ino, stateid_t *stid);
+ static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
+@@ -1061,6 +1060,32 @@ static void gen_confirm(struct nfs4_client *clp)
+ 	*p++ = i++;
  }
  
- MODULE_ALIAS("nfs-layouttype4-3");
++static int
++same_stateid(stateid_t *id_one, stateid_t *id_two)
++{
++	if (id_one->si_stateownerid != id_two->si_stateownerid)
++		return 0;
++	return id_one->si_fileid == id_two->si_fileid;
++}
++
++static struct nfs4_stateid *find_stateid(stateid_t *t, int flags)
++{
++	struct nfs4_stateid *s;
++	unsigned int hashval;
++
++	hashval = stateid_hashval(t->si_stateownerid, t->si_fileid);
++	list_for_each_entry(s, &stateid_hashtbl[hashval], st_hash) {
++		if (!same_stateid(&s->st_stateid, t))
++			continue;
++		if (flags & LOCK_STATE && s->st_type != NFS4_LOCK_STID)
++			return NULL;
++		if (flags & OPEN_STATE && s->st_type != NFS4_OPEN_STID)
++			return NULL;
++		return s;
++		}
++	return NULL;
++}
++
+ static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir,
+ 		struct svc_rqst *rqstp, nfs4_verifier *verf)
+ {
+@@ -3694,32 +3719,6 @@ lock_ownerstr_hashval(struct inode *inode, u32 cl_id,
+ static struct list_head lock_ownerid_hashtbl[LOCK_HASH_SIZE];
+ static struct list_head	lock_ownerstr_hashtbl[LOCK_HASH_SIZE];
+ 
+-static int
+-same_stateid(stateid_t *id_one, stateid_t *id_two)
+-{
+-	if (id_one->si_stateownerid != id_two->si_stateownerid)
+-		return 0;
+-	return id_one->si_fileid == id_two->si_fileid;
+-}
+-
+-static struct nfs4_stateid *find_stateid(stateid_t *t, int flags)
+-{
+-	struct nfs4_stateid *s;
+-	unsigned int hashval;
+-
+-	hashval = stateid_hashval(t->si_stateownerid, t->si_fileid);
+-	list_for_each_entry(s, &stateid_hashtbl[hashval], st_hash) {
+-		if (!same_stateid(&s->st_stateid, t))
+-			continue;
+-		if (flags & LOCK_STATE && s->st_type != NFS4_LOCK_STID)
+-			return NULL;
+-		if (flags & OPEN_STATE && s->st_type != NFS4_OPEN_STID)
+-			return NULL;
+-		return s;
+-		}
+-	return NULL;
+-}
+-
+ static struct nfs4_delegation *
+ search_for_delegation(stateid_t *stid)
+ {
 -- 
 1.7.4.1
 
