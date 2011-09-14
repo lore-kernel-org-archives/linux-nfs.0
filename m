@@ -1,69 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:20451 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:58977 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932659Ab1IBAkN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Sep 2011 20:40:13 -0400
-Date: Fri, 02 Sep 2011 09:40:07 +0900 (JST)
-Message-Id: <20110902.094007.1073363300085597776.yamato@redhat.com>
-To: SteveD@redhat.com
-Cc: vapier@gentoo.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] exportfs: do not warn if /etc/exports.d/ does not
- exist
-From: Masatake YAMATO <yamato@redhat.com>
-In-Reply-To: <4E5FA65C.6090201@RedHat.com>
-References: <1314890192-11075-1-git-send-email-vapier@gentoo.org>
-	<1314890192-11075-2-git-send-email-vapier@gentoo.org>
-	<4E5FA65C.6090201@RedHat.com>
-Content-Type: Text/Plain; charset=us-ascii
+	id S1756500Ab1INMMd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Sep 2011 08:12:33 -0400
+Date: Wed, 14 Sep 2011 08:12:25 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mitsuo Hayasaka <mitsuo.hayasaka.hu@hitachi.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, Neil Brown <neilb@suse.de>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        yrl.pp-manager.tt@hitachi.com
+Subject: Re: [PATCH net-next-2.6 ] Fix overflow of socket buffer in sunrpc
+Message-ID: <20110914121225.GA3435@fieldses.org>
+References: <20110902034138.22595.9759.stgit@ltc219.sdl.hitachi.co.jp>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110902034138.22595.9759.stgit@ltc219.sdl.hitachi.co.jp>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I've tried this issue in different way:)
-Steve, could you see this bug?
+On Fri, Sep 02, 2011 at 12:41:38PM +0900, Mitsuo Hayasaka wrote:
+> The sk_sndbuf and sk_rcvbuf fields of struct sock are sizes of send and
+> receive socket buffers respectively, and are defined as integer.
+> The sunrpc which is used in NFSD and any other applications
 
-      https://bugzilla.redhat.com/show_bug.cgi?id=697006
+I'd call those "kernel subsystems" or "in-kernel applications"--it needs
+to be clear that you're not talking about userspace applications.
 
-Masatake YAMATO
+> can change them
+> via svc_sock_setbufsize(). It, however, sets them as unsigned integer and
+> may cause overflow of integer. This leads to a degradation of networking
+> capability.
 
+Tracing through the callers, actually I believe they all set this to a
+constant, with the single exception of nfsd, which allows the size to be
+configured; but write_maxlksize already limits it to NFSSVC_MAXBLKSIZE.
 
-On Thu, 01 Sep 2011 11:35:56 -0400, Steve Dickson <SteveD@redhat.com> wrote
+So this patch looks unnecessary to me, unless I'm missing something.
+
+If you can argue that it would be safer to check here as well, I might
+consider that, but please:
+
+	- do make that argument in detail;
+	- especially, convince me that *this* is the right place for the
+	  check; and
+	- also double-check my audit of the callers.
+
+And include all that in the changelog.
+
+Dropping for now.
+
+--b.
+
 > 
+> This patch adds integer-overflow check into svc_sock_setbufsize() before
+> both fields are set, and limits their maximum sizes to INT_MAX.
 > 
-> On 09/01/2011 11:16 AM, Mike Frysinger wrote:
->> It isn't uncommon for /etc/exports.d/ to not exist, and imo, it's not
->> that big of a deal as often times, a simple /etc/exports is sufficient.
->> So silently skip the case where the dir is missing.
->> 
->> Signed-off-by: Mike Frysinger <vapier@gentoo.org>
-> Committed...
+> Signed-off-by: Mitsuo Hayasaka <mitsuo.hayasaka.hu@hitachi.com>
+> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: "J. Bruce Fields" <bfields@fieldses.org>
+> Cc: Neil Brown <neilb@suse.de>
+> Cc: "David S. Miller" <davem@davemloft.net>
+> ---
 > 
-> steved.
+>  net/sunrpc/svcsock.c |    6 ++++++
+>  1 files changed, 6 insertions(+), 0 deletions(-)
 > 
->> ---
->>  utils/exportfs/exportfs.c |    7 +++++--
->>  1 files changed, 5 insertions(+), 2 deletions(-)
->> 
->> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
->> index 986a272..7432a65 100644
->> --- a/utils/exportfs/exportfs.c
->> +++ b/utils/exportfs/exportfs.c
->> @@ -529,9 +529,12 @@ export_d_read(const char *dname)
->>  
->>  
->>  	n = scandir(dname, &namelist, NULL, versionsort);
->> -	if (n < 0)
->> +	if (n < 0) {
->> +		if (errno == ENOENT)
->> +			/* Silently return */
->> +			return;
->>  		xlog(L_NOTICE, "scandir %s: %s", dname, strerror(errno));
->> -	else if (n == 0)
->> +	} else if (n == 0)
->>  		return;
->>  
->>  	for (i = 0; i < n; i++) {
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 767d494..bd66775 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -54,6 +54,7 @@
+>  #include "sunrpc.h"
+>  
+>  #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
+> +#define MAX_SKBUFSIZ	INT_MAX
+>  
+>  
+>  static struct svc_sock *svc_setup_socket(struct svc_serv *, struct socket *,
+> @@ -435,6 +436,11 @@ static void svc_sock_setbufsize(struct socket *sock, unsigned int snd,
+>  	 * on not having CAP_SYS_RESOURCE or similar, we go direct...
+>  	 * DaveM said I could!
+>  	 */
+> +	if (snd > MAX_SKBUFSIZ/2)
+> +		snd = MAX_SKBUFSIZ/2;
+> +	if (rcv > MAX_SKBUFSIZ/2)
+> +		rcv = MAX_SKBUFSIZ/2;
+> +
+>  	lock_sock(sock->sk);
+>  	sock->sk->sk_sndbuf = snd * 2;
+>  	sock->sk->sk_rcvbuf = rcv * 2;
+> 
