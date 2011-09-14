@@ -1,110 +1,292 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:37301 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:60191 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933830Ab1IIMJF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Sep 2011 08:09:05 -0400
-Subject: [PATCH v2 3/5] SUNRPC: make RPC service dependable on rpcbind clients
-	creation
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net
-Date: Fri, 09 Sep 2011 16:08:44 +0400
-Message-ID: <20110909120844.13697.48102.stgit@localhost6.localdomain6>
-In-Reply-To: <20110909115146.13697.71682.stgit@localhost6.localdomain6>
-References: <20110909115146.13697.71682.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
+	id S932251Ab1INLp3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Sep 2011 07:45:29 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 22/25] nfsd4: hash deleg stateid's like any other
+Date: Wed, 14 Sep 2011 07:45:18 -0400
+Message-Id: <1316000721-3289-23-git-send-email-bfields@redhat.com>
+In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Create rcbind clients or increase rpcbind users counter during RPC service
-creation and decrease this counter (and possibly destroy those clients) on RPC
-service destruction.
+It's simpler to look up delegation stateid's in the same hash table as
+any other stateid.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- include/linux/sunrpc/clnt.h |    2 ++
- net/sunrpc/rpcb_clnt.c      |    2 +-
- net/sunrpc/svc.c            |   13 +++++++++++--
- 3 files changed, 14 insertions(+), 3 deletions(-)
+ fs/nfsd/nfs4state.c |  112 +++++++++++++++++++++------------------------------
+ fs/nfsd/state.h     |    5 ++
+ 2 files changed, 51 insertions(+), 66 deletions(-)
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index db7bcaf..65a8115 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -135,10 +135,12 @@ void		rpc_shutdown_client(struct rpc_clnt *);
- void		rpc_release_client(struct rpc_clnt *);
- void		rpc_task_release_client(struct rpc_task *);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 581a5d0..24685a0 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -60,8 +60,6 @@ static u64 current_sessionid = 1;
+ #define ONE_STATEID(stateid)  (!memcmp((stateid), &onestateid, sizeof(stateid_t)))
  
-+int		rpcb_create_local(void);
- int		rpcb_register(u32, u32, int, unsigned short);
- int		rpcb_v4_register(const u32 program, const u32 version,
- 				 const struct sockaddr *address,
- 				 const char *netid);
-+void		rpcb_put_local(void);
- void		rpcb_getport_async(struct rpc_task *);
+ /* forward declarations */
+-static struct nfs4_delegation * search_for_delegation(stateid_t *stid);
+-static struct nfs4_delegation * find_delegation_stateid(struct inode *ino, stateid_t *stid);
+ static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
  
- void		rpc_call_start(struct rpc_task *);
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index b4cc0f1..437ec60 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -318,7 +318,7 @@ out:
-  * Returns zero on success, otherwise a negative errno value
-  * is returned.
-  */
--static int rpcb_create_local(void)
-+int rpcb_create_local(void)
+ /* Locking: */
+@@ -256,10 +254,12 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	get_nfs4_file(fp);
+ 	dp->dl_file = fp;
+ 	dp->dl_type = type;
++	dp->dl_stid.sc_type = NFS4_DELEG_STID;
+ 	dp->dl_stid.sc_stateid.si_boot = boot_time;
+ 	dp->dl_stid.sc_stateid.si_stateownerid = current_delegid++;
+ 	dp->dl_stid.sc_stateid.si_fileid = 0;
+ 	dp->dl_stid.sc_stateid.si_generation = 1;
++	hash_stid(&dp->dl_stid);
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+ 	dp->dl_time = 0;
+ 	atomic_set(&dp->dl_count, 1);
+@@ -292,6 +292,7 @@ static void nfs4_put_deleg_lease(struct nfs4_file *fp)
+ static void
+ unhash_delegation(struct nfs4_delegation *dp)
  {
- 	static DEFINE_MUTEX(rpcb_create_local_mutex);
- 	int result = 0;
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 6a69a11..9095c0e 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -367,8 +367,11 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
- 	unsigned int xdrsize;
- 	unsigned int i;
++	list_del_init(&dp->dl_stid.sc_hash);
+ 	list_del_init(&dp->dl_perclnt);
+ 	spin_lock(&recall_lock);
+ 	list_del_init(&dp->dl_perfile);
+@@ -1077,7 +1078,7 @@ same_stateid(stateid_t *id_one, stateid_t *id_two)
+ 	return id_one->si_fileid == id_two->si_fileid;
+ }
  
--	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
-+	if (rpcb_create_local() < 0)
- 		return NULL;
+-static struct nfs4_ol_stateid *find_stateid(stateid_t *t)
++static struct nfs4_stid *find_stateid(stateid_t *t)
+ {
+ 	struct nfs4_stid *s;
+ 	unsigned int hashval;
+@@ -1085,22 +1086,42 @@ static struct nfs4_ol_stateid *find_stateid(stateid_t *t)
+ 	hashval = stateid_hashval(t->si_stateownerid, t->si_fileid);
+ 	list_for_each_entry(s, &stateid_hashtbl[hashval], sc_hash)
+ 		if (same_stateid(&s->sc_stateid, t))
+-			return openlockstateid(s);
++			return s;
+ 	return NULL;
+ }
+ 
+-static struct nfs4_ol_stateid *find_stateid_by_type(stateid_t *t, char typemask)
++static struct nfs4_ol_stateid *find_ol_stateid(stateid_t *t)
+ {
+-	struct nfs4_ol_stateid *s;
++	struct nfs4_stid *s;
 +
-+	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
-+		goto out_err;
- 	serv->sv_name      = prog->pg_name;
- 	serv->sv_program   = prog;
- 	serv->sv_nrthreads = 1;
-@@ -403,7 +406,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
- 			GFP_KERNEL);
- 	if (!serv->sv_pools) {
- 		kfree(serv);
--		return NULL;
-+		goto out_err;
++	s = find_stateid(t);
++	if (!s)
++		return NULL;
++	return openlockstateid(s);
++}
++
++static struct nfs4_stid *find_stateid_by_type(stateid_t *t, char typemask)
++{
++	struct nfs4_stid *s;
+ 
+ 	s = find_stateid(t);
+ 	if (!s)
+ 		return NULL;
+-	if (typemask & s->st_stid.sc_type)
++	if (typemask & s->sc_type)
+ 		return s;
+ 	return NULL;
+ }
+ 
++static struct nfs4_ol_stateid *find_ol_stateid_by_type(stateid_t *t, char typemask)
++{
++	struct nfs4_stid *s;
++
++	s = find_stateid_by_type(t, typemask);
++	if (!s)
++		return NULL;
++	return openlockstateid(s);
++}
++
+ static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir,
+ 		struct svc_rqst *rqstp, nfs4_verifier *verf)
+ {
+@@ -2573,26 +2594,21 @@ nfs4_check_delegmode(struct nfs4_delegation *dp, int flags)
+ 		return nfs_ok;
+ }
+ 
+-static struct nfs4_delegation *
+-find_delegation_file(struct nfs4_file *fp, stateid_t *stid)
++static int share_access_to_flags(u32 share_access)
+ {
+-	struct nfs4_delegation *dp;
++	share_access &= ~NFS4_SHARE_WANT_MASK;
+ 
+-	spin_lock(&recall_lock);
+-	list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
+-		if (dp->dl_stid.sc_stateid.si_stateownerid == stid->si_stateownerid) {
+-			spin_unlock(&recall_lock);
+-			return dp;
+-		}
+-	spin_unlock(&recall_lock);
+-	return NULL;
++	return share_access == NFS4_SHARE_ACCESS_READ ? RD_STATE : WR_STATE;
+ }
+ 
+-static int share_access_to_flags(u32 share_access)
++static struct nfs4_delegation *find_deleg_stateid(stateid_t *s)
+ {
+-	share_access &= ~NFS4_SHARE_WANT_MASK;
++	struct nfs4_stid *ret;
+ 
+-	return share_access == NFS4_SHARE_ACCESS_READ ? RD_STATE : WR_STATE;
++	ret = find_stateid_by_type(s, NFS4_DELEG_STID);
++	if (!ret)
++		return NULL;
++	return delegstateid(ret);
+ }
+ 
+ static __be32
+@@ -2602,7 +2618,7 @@ nfs4_check_deleg(struct nfs4_file *fp, struct nfsd4_open *open,
+ 	int flags;
+ 	__be32 status = nfserr_bad_stateid;
+ 
+-	*dp = find_delegation_file(fp, &open->op_delegate_stateid);
++	*dp = find_deleg_stateid(&open->op_delegate_stateid);
+ 	if (*dp == NULL)
+ 		goto out;
+ 	flags = share_access_to_flags(open->op_share_access);
+@@ -3252,7 +3268,7 @@ __be32 nfs4_validate_stateid(stateid_t *stateid, bool has_session)
+ 		goto out;
+ 
+ 	status = nfserr_expired;
+-	stp = find_stateid(stateid);
++	stp = find_ol_stateid(stateid);
+ 	if (!stp)
+ 		goto out;
+ 	status = nfserr_bad_stateid;
+@@ -3301,7 +3317,7 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+ 	 */
+ 	status = nfserr_expired;
+ 	if (is_delegation_stateid(stateid)) {
+-		dp = find_delegation_stateid(ino, stateid);
++		dp = find_deleg_stateid(stateid);
+ 		if (!dp)
+ 			goto out;
+ 		status = check_stateid_generation(stateid, &dp->dl_stid.sc_stateid, nfsd4_has_session(cstate));
+@@ -3316,7 +3332,7 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+ 			BUG_ON(!*filpp);
+ 		}
+ 	} else { /* open or lock stateid */
+-		stp = find_stateid(stateid);
++		stp = find_ol_stateid(stateid);
+ 		if (!stp)
+ 			goto out;
+ 		status = nfserr_bad_stateid;
+@@ -3348,9 +3364,10 @@ out:
+ static __be32
+ nfsd4_free_delegation_stateid(stateid_t *stateid)
+ {
+-	struct nfs4_delegation *dp = search_for_delegation(stateid);
++	struct nfs4_delegation *dp = find_deleg_stateid(stateid);
+ 	if (dp)
+ 		return nfserr_locks_held;
++
+ 	return nfserr_bad_stateid;
+ }
+ 
+@@ -3391,7 +3408,7 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		goto out;
  	}
  
- 	for (i = 0; i < serv->sv_nrpools; i++) {
-@@ -423,6 +426,10 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
- 	svc_unregister(serv);
+-	stp = find_stateid(stateid);
++	stp = find_ol_stateid(stateid);
+ 	if (!stp) {
+ 		ret = nfserr_bad_stateid;
+ 		goto out;
+@@ -3460,7 +3477,7 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ 	status = nfs4_nospecial_stateid_checks(stateid);
+ 	if (status)
+ 		return status;
+-	*stpp = find_stateid_by_type(stateid, typemask);
++	*stpp = find_ol_stateid_by_type(stateid, typemask);
+ 	if (*stpp == NULL)
+ 		return nfserr_expired;
+ 	cstate->replay_owner = (*stpp)->st_stateowner;
+@@ -3672,7 +3689,7 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (!is_delegation_stateid(stateid))
+ 		goto out;
+ 	status = nfserr_expired;
+-	dp = find_delegation_stateid(inode, stateid);
++	dp = find_deleg_stateid(stateid);
+ 	if (!dp)
+ 		goto out;
+ 	status = check_stateid_generation(stateid, &dp->dl_stid.sc_stateid, nfsd4_has_session(cstate));
+@@ -3733,43 +3750,6 @@ lock_ownerstr_hashval(struct inode *inode, u32 cl_id,
+ static struct list_head lock_ownerid_hashtbl[LOCK_HASH_SIZE];
+ static struct list_head	lock_ownerstr_hashtbl[LOCK_HASH_SIZE];
  
- 	return serv;
+-static struct nfs4_delegation *
+-search_for_delegation(stateid_t *stid)
+-{
+-	struct nfs4_file *fp;
+-	struct nfs4_delegation *dp;
+-	struct list_head *pos;
+-	int i;
+-
+-	for (i = 0; i < FILE_HASH_SIZE; i++) {
+-		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
+-			list_for_each(pos, &fp->fi_delegations) {
+-				dp = list_entry(pos, struct nfs4_delegation, dl_perfile);
+-				if (same_stateid(&dp->dl_stid.sc_stateid, stid))
+-					return dp;
+-			}
+-		}
+-	}
+-	return NULL;
+-}
+-
+-static struct nfs4_delegation *
+-find_delegation_stateid(struct inode *ino, stateid_t *stid)
+-{
+-	struct nfs4_file *fp;
+-	struct nfs4_delegation *dl;
+-
+-	dprintk("NFSD: %s: stateid=" STATEID_FMT "\n", __func__,
+-		STATEID_VAL(stid));
+-
+-	fp = find_file(ino);
+-	if (!fp)
+-		return NULL;
+-	dl = find_delegation_file(fp, stid);
+-	put_nfs4_file(fp);
+-	return dl;
+-}
+-
+ /*
+  * TODO: Linux file offsets are _signed_ 64-bit quantities, which means that
+  * we can't properly handle lock requests that go beyond the (2^63 - 1)-th
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index e3ff7c9..12c1424 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -113,6 +113,11 @@ struct nfs4_cb_conn {
+ 	struct svc_xprt		*cb_xprt;	/* minorversion 1 only */
+ };
+ 
++static inline struct nfs4_delegation *delegstateid(struct nfs4_stid *s)
++{
++	return container_of(s, struct nfs4_delegation, dl_stid);
++}
 +
-+out_err:
-+	rpcb_put_local(); 
-+	return NULL;
- }
- 
- struct svc_serv *
-@@ -491,6 +498,8 @@ svc_destroy(struct svc_serv *serv)
- 	svc_unregister(serv);
- 	kfree(serv->sv_pools);
- 	kfree(serv);
-+
-+	rpcb_put_local();
- }
- EXPORT_SYMBOL_GPL(svc_destroy);
- 
+ /* Maximum number of slots per session. 160 is useful for long haul TCP */
+ #define NFSD_MAX_SLOTS_PER_SESSION     160
+ /* Maximum number of operations per session compound */
+-- 
+1.7.4.1
 
