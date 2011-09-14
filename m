@@ -1,110 +1,198 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f181.google.com ([209.85.216.181]:42396 "EHLO
-	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751864Ab1I2E2E convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Sep 2011 00:28:04 -0400
-In-Reply-To: <1317210761-11518-3-git-send-email-jlayton@redhat.com>
-References: <1317210761-11518-1-git-send-email-jlayton@redhat.com>
-	<1317210761-11518-3-git-send-email-jlayton@redhat.com>
-Date: Wed, 28 Sep 2011 23:28:02 -0500
-Message-ID: <CAH2r5mtBwUkTXLQeXzvTC6oAcz1i9jzPGfiE7XTzDTw12A6C_Q@mail.gmail.com>
-Subject: Re: [PATCH 2/4] cifs, freezer: add wait_event_freezekillable and have
- cifs use it
-From: Steve French <smfrench@gmail.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: trond.myklebust@netapp.com, pavel@ucw.cz, rjw@sisk.pl,
-        linux-pm@lists.linux-foundation.org, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, john@calva.com,
-        linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:60147 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932133Ab1INLp1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Sep 2011 07:45:27 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 01/25] nfsd4: centralize handling of replay owners
+Date: Wed, 14 Sep 2011 07:44:57 -0400
+Message-Id: <1316000721-3289-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-The general idea of the patch seems like a good idea to
-me.  Assuming testing feedback was good from the problem
-reporters, what tree would you want it merged from?
+Set the stateowner associated with a replay in one spot in
+nfs4_preprocess_seqid_op() and keep it in cstate.  This allows removing
+a few lines of boilerplate from all the nfs4_preprocess_seqid_op()
+callers.
 
-On Wed, Sep 28, 2011 at 6:52 AM, Jeff Layton <jlayton@redhat.com> wrote:
-> CIFS currently uses wait_event_killable to put tasks to sleep while
-> they await replies from the server. That function though does not
-> allow the freezer to run. In many cases, the network interface may
-> be going down anyway, in which case the reply will never come. The
-> client then ends up blocking the computer from suspending.
->
-> Fix this by adding a new wait_event_freezable variant --
-> wait_event_freezekillable. The idea is to combine the behavior of
-> wait_event_killable and wait_event_freezable -- put the task to
-> sleep and only allow it to be awoken by fatal signals, but also
-> allow the freezer to do its job.
->
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/cifs/transport.c     |    3 ++-
->  include/linux/freezer.h |   19 +++++++++++++++++--
->  2 files changed, 19 insertions(+), 3 deletions(-)
->
-> diff --git a/fs/cifs/transport.c b/fs/cifs/transport.c
-> index 10ca6b2..791bc4f 100644
-> --- a/fs/cifs/transport.c
-> +++ b/fs/cifs/transport.c
-> @@ -26,6 +26,7 @@
->  #include <linux/wait.h>
->  #include <linux/net.h>
->  #include <linux/delay.h>
-> +#include <linux/freezer.h>
->  #include <asm/uaccess.h>
->  #include <asm/processor.h>
->  #include <linux/mempool.h>
-> @@ -324,7 +325,7 @@ wait_for_response(struct TCP_Server_Info *server, struct mid_q_entry *midQ)
->  {
->        int error;
->
-> -       error = wait_event_killable(server->response_q,
-> +       error = wait_event_freezekillable(server->response_q,
->                                    midQ->midState != MID_REQUEST_SUBMITTED);
->        if (error < 0)
->                return -ERESTARTSYS;
-> diff --git a/include/linux/freezer.h b/include/linux/freezer.h
-> index 1effc8b..3672f73 100644
-> --- a/include/linux/freezer.h
-> +++ b/include/linux/freezer.h
-> @@ -134,10 +134,25 @@ static inline void set_freezable_with_signal(void)
->  }
->
->  /*
-> - * Freezer-friendly wrappers around wait_event_interruptible() and
-> - * wait_event_interruptible_timeout(), originally defined in <linux/wait.h>
-> + * Freezer-friendly wrappers around wait_event_interruptible(),
-> + * wait_event_killable() and wait_event_interruptible_timeout(), originally
-> + * defined in <linux/wait.h>
->  */
->
-> +#define wait_event_freezekillable(wq, condition)                       \
-> +({                                                                     \
-> +       int __retval;                                                   \
-> +       do {                                                            \
-> +               __retval = wait_event_killable(wq,                      \
-> +                               (condition) || freezing(current));      \
-> +               if (__retval && !freezing(current))                     \
-> +                       break;                                          \
-> +               else if (!(condition))                                  \
-> +                       __retval = -ERESTARTSYS;                        \
-> +       } while (try_to_freeze());                                      \
-> +       __retval;                                                       \
-> +})
-> +
->  #define wait_event_freezable(wq, condition)                            \
->  ({                                                                     \
->        int __retval;                                                   \
-> --
-> 1.7.6.2
->
->
+Also turn ENCODE_SEQID_OP_TAIL into a function while we're here.
 
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   25 ++++---------------------
+ fs/nfsd/nfs4xdr.c   |   34 +++++++++++++++++++---------------
+ 2 files changed, 23 insertions(+), 36 deletions(-)
 
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 80af79e..e4535ff 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3425,12 +3425,15 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ 		/* It's not stale; let's assume it's expired: */
+ 		if (sop == NULL)
+ 			return nfserr_expired;
+-		*sopp = sop;
++		nfs4_get_stateowner(sop);
++		cstate->replay_owner = sop;
+ 		goto check_replay;
+ 	}
+ 
+ 	*stpp = stp;
+ 	*sopp = sop = stp->st_stateowner;
++	nfs4_get_stateowner(sop);
++	cstate->replay_owner = sop;
+ 
+ 	if (nfs4_check_fh(current_fh, stp)) {
+ 		dprintk("NFSD: preprocess_seqid_op: fh-stateid mismatch!\n");
+@@ -3501,10 +3504,6 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	nfsd4_create_clid_dir(sop->so_client);
+ out:
+-	if (oc->oc_stateowner) {
+-		nfs4_get_stateowner(oc->oc_stateowner);
+-		cstate->replay_owner = oc->oc_stateowner;
+-	}
+ 	nfs4_unlock_state();
+ 	return status;
+ }
+@@ -3574,10 +3573,6 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
+ 	memcpy(&od->od_stateid, &stp->st_stateid, sizeof(stateid_t));
+ 	status = nfs_ok;
+ out:
+-	if (od->od_stateowner) {
+-		nfs4_get_stateowner(od->od_stateowner);
+-		cstate->replay_owner = od->od_stateowner;
+-	}
+ 	nfs4_unlock_state();
+ 	return status;
+ }
+@@ -3618,10 +3613,6 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (list_empty(&close->cl_stateowner->so_stateids))
+ 		move_to_close_lru(close->cl_stateowner);
+ out:
+-	if (close->cl_stateowner) {
+-		nfs4_get_stateowner(close->cl_stateowner);
+-		cstate->replay_owner = close->cl_stateowner;
+-	}
+ 	nfs4_unlock_state();
+ 	return status;
+ }
+@@ -4086,10 +4077,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ out:
+ 	if (status && lock->lk_is_new && lock_sop)
+ 		release_lockowner(lock_sop);
+-	if (lock->lk_replay_owner) {
+-		nfs4_get_stateowner(lock->lk_replay_owner);
+-		cstate->replay_owner = lock->lk_replay_owner;
+-	}
+ 	nfs4_unlock_state();
+ 	return status;
+ }
+@@ -4244,10 +4231,6 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	memcpy(&locku->lu_stateid, &stp->st_stateid, sizeof(stateid_t));
+ 
+ out:
+-	if (locku->lu_stateowner) {
+-		nfs4_get_stateowner(locku->lu_stateowner);
+-		cstate->replay_owner = locku->lu_stateowner;
+-	}
+ 	nfs4_unlock_state();
+ 	return status;
+ 
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index f982d85..ee12678 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1630,15 +1630,19 @@ static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
+  * we know whether the error to be returned is a sequence id mutating error.
+  */
+ 
+-#define ENCODE_SEQID_OP_TAIL(stateowner) do {			\
+-	if (seqid_mutating_err(ntohl(nfserr)) && stateowner) { 	\
+-		stateowner->so_seqid++;				\
+-		stateowner->so_replay.rp_status = nfserr;   	\
+-		stateowner->so_replay.rp_buflen = 		\
+-			  (((char *)(resp)->p - (char *)save)); \
+-		memcpy(stateowner->so_replay.rp_buf, save,      \
+- 			stateowner->so_replay.rp_buflen); 	\
+-	} } while (0);
++static void encode_seqid_op_tail(struct nfsd4_compoundres *resp, __be32 *save, __be32 nfserr)
++{
++	struct nfs4_stateowner *stateowner = resp->cstate.replay_owner;
++
++	if (seqid_mutating_err(ntohl(nfserr)) && stateowner) {
++		stateowner->so_seqid++;
++		stateowner->so_replay.rp_status = nfserr;
++		stateowner->so_replay.rp_buflen =
++			  (char *)resp->p - (char *)save;
++		memcpy(stateowner->so_replay.rp_buf, save,
++			stateowner->so_replay.rp_buflen);
++	}
++}
+ 
+ /* Encode as an array of strings the string given with components
+  * separated @sep.
+@@ -2495,7 +2499,7 @@ nfsd4_encode_close(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_c
+ 	if (!nfserr)
+ 		nfsd4_encode_stateid(resp, &close->cl_stateid);
+ 
+-	ENCODE_SEQID_OP_TAIL(close->cl_stateowner);
++	encode_seqid_op_tail(resp, save, nfserr);
+ 	return nfserr;
+ }
+ 
+@@ -2599,7 +2603,7 @@ nfsd4_encode_lock(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_lo
+ 	else if (nfserr == nfserr_denied)
+ 		nfsd4_encode_lock_denied(resp, &lock->lk_denied);
+ 
+-	ENCODE_SEQID_OP_TAIL(lock->lk_replay_owner);
++	encode_seqid_op_tail(resp, save, nfserr);
+ 	return nfserr;
+ }
+ 
+@@ -2619,7 +2623,7 @@ nfsd4_encode_locku(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_l
+ 	if (!nfserr)
+ 		nfsd4_encode_stateid(resp, &locku->lu_stateid);
+ 
+-	ENCODE_SEQID_OP_TAIL(locku->lu_stateowner);
++	encode_seqid_op_tail(resp, save, nfserr);
+ 	return nfserr;
+ }
+ 
+@@ -2700,7 +2704,7 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
+ 	}
+ 	/* XXX save filehandle here */
+ out:
+-	ENCODE_SEQID_OP_TAIL(open->op_stateowner);
++	encode_seqid_op_tail(resp, save, nfserr);
+ 	return nfserr;
+ }
+ 
+@@ -2712,7 +2716,7 @@ nfsd4_encode_open_confirm(struct nfsd4_compoundres *resp, __be32 nfserr, struct
+ 	if (!nfserr)
+ 		nfsd4_encode_stateid(resp, &oc->oc_resp_stateid);
+ 
+-	ENCODE_SEQID_OP_TAIL(oc->oc_stateowner);
++	encode_seqid_op_tail(resp, save, nfserr);
+ 	return nfserr;
+ }
+ 
+@@ -2724,7 +2728,7 @@ nfsd4_encode_open_downgrade(struct nfsd4_compoundres *resp, __be32 nfserr, struc
+ 	if (!nfserr)
+ 		nfsd4_encode_stateid(resp, &od->od_stateid);
+ 
+-	ENCODE_SEQID_OP_TAIL(od->od_stateowner);
++	encode_seqid_op_tail(resp, save, nfserr);
+ 	return nfserr;
+ }
+ 
 -- 
-Thanks,
+1.7.4.1
 
-Steve
