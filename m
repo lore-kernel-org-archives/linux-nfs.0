@@ -1,60 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:40749 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753759Ab1ITDXs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Sep 2011 23:23:48 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 1/3] pnfsblock: fix NULL pointer dereference
-Date: Mon, 19 Sep 2011 23:23:43 -0400
-Message-Id: <1316489025-24991-2-git-send-email-rees@umich.edu>
-In-Reply-To: <1316489025-24991-1-git-send-email-rees@umich.edu>
-References: <1316489025-24991-1-git-send-email-rees@umich.edu>
+Received: from fieldses.org ([174.143.236.118]:60149 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932140Ab1INLp1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Sep 2011 07:45:27 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 00/25] nfsd4 state cleanup
+Date: Wed, 14 Sep 2011 07:44:56 -0400
+Message-Id: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Peng Tao <bergwolf@gmail.com>
+This is just another batch of little cleanups and bugfixes to the nfsd4
+state code.
 
-bl_add_page_to_bio returns error pointer. bio should be reset to
-NULL in failure cases as the out path always calls bl_submit_bio.
+What I'm actually thinking I'd like to do next is change the way
+stateid's are composed to make it possible to look up the client first.
+Once the client's looked up, lookup of the individual stateid, and most
+of the following work, looks to me like it could be done under a
+per-client lock.  The set of clients doesn't change very much so we
+could use locking that favors readers (maybe rcu) for that part.  So
+that could be a first step towards saner locking.
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- fs/nfs/blocklayout/blocklayout.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
+And then also still to do:
+	- close replays: we keep around a stateid to handle close
+	  replays only in the case where it's the last stateid for an
+	  openowner, but that's not sufficient.
+	- the data structures aren't really right for the things we need
+	  to do: e.g. release_lockowner currently does a linear search
+	  through all the lockowners!
+	- multiple client-to-lockowner locks for a given (owner, file)
+	  aren't handled right.
+	- I need to look again at doing a better job of distinguishing
+	  the bad, expired, and stale cases for stateid's.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 1038b8c..8d06d5c 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -292,6 +292,7 @@ bl_read_pagelist(struct nfs_read_data *rdata)
- 						 bl_end_io_read, par);
- 			if (IS_ERR(bio)) {
- 				rdata->pnfs_error = PTR_ERR(bio);
-+				bio = NULL;
- 				goto out;
- 			}
- 		}
-@@ -581,6 +582,7 @@ fill_invalid_ext:
- 						 bl_end_io_write_zero, par);
- 			if (IS_ERR(bio)) {
- 				wdata->pnfs_error = PTR_ERR(bio);
-+				bio = NULL;
- 				goto out;
- 			}
- 			/* FIXME: This should be done in bi_end_io */
-@@ -629,6 +631,7 @@ next_page:
- 					 bl_end_io_write, par);
- 		if (IS_ERR(bio)) {
- 			wdata->pnfs_error = PTR_ERR(bio);
-+			bio = NULL;
- 			goto out;
- 		}
- 		isect += PAGE_CACHE_SECTORS;
+I was hoping to have that ready for 3.2 but unfortunately keep running
+across small bugs or cleanup opportunities like these along the way;
+perhaps next week....
+
+--b.
+
+J. Bruce Fields (25):
+  nfsd4: centralize handling of replay owners
+  nfsd4: cleanup seqid op stateowner usage
+  nfsd4: extend state lock over seqid replay logic
+  nfsd4: eliminate impossible open replay case
+  nfsd4: drop most stateowner refcounting
+  nfsd4: eliminate unused lt_stateowner
+  nfsd4: share common seqid checks
+  nfsd4: simplify check_open logic
+  nfsd4: move double-confirm test to open_confirm
+  nfsd4: move CLOSE_STATE special case to caller
+  nfsd4: split stateowners into open and lockowners
+  nfsd4: split out some free_generic_stateid code
+  nfsd4: rearrange to avoid a forward reference
+  nfsd4: split up find_stateid
+  nfsd4: split preprocess_seqid, cleanup
+  nfsd4: pass around typemask instead of flags
+  nfsd4: rename init_stateid
+  nfsd4: remove redundant stateid initialization
+  nfsd4: move some of nfs4_stateid into a separate structure
+  nfsd4: add common dl_stid field to delegation
+  nfsd4: share common stid-hashing helper function
+  nfsd4: hash deleg stateid's like any other
+  nfsd4: fix test_stateid for delegation stateid's
+  nfsd4: use deleg changes to cleanup preprocess_stateid_op
+  nfsd4: better stateid hashing
+
+ fs/nfsd/nfs4callback.c |    2 +-
+ fs/nfsd/nfs4proc.c     |   25 +-
+ fs/nfsd/nfs4state.c    |  989 +++++++++++++++++++++++-------------------------
+ fs/nfsd/nfs4xdr.c      |   52 ++--
+ fs/nfsd/state.h        |   92 +++--
+ fs/nfsd/xdr4.h         |   12 +-
+ 6 files changed, 570 insertions(+), 602 deletions(-)
+
 -- 
 1.7.4.1
 
