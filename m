@@ -1,45 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from casper.infradead.org ([85.118.1.10]:49267 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755082Ab1ILMHO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 08:07:14 -0400
-Subject: Re: [PATCH 03/10] mm: Add support for a filesystem to control swap
- files
-From: Peter Zijlstra <a.p.zijlstra@chello.nl>
-To: Mel Gorman <mgorman@suse.de>
-Cc: Christoph Hellwig <hch@infradead.org>, Linux-MM <linux-mm@kvack.org>,
-        Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>
-Date: Mon, 12 Sep 2011 14:06:43 +0200
-In-Reply-To: <20110912115605.GB3207@suse.de>
-References: <1315566054-17209-1-git-send-email-mgorman@suse.de>
-	 <1315566054-17209-4-git-send-email-mgorman@suse.de>
-	 <20110909130007.GA11810@infradead.org> <20110909131550.GV14369@suse.de>
-	 <20110909133611.GB8155@infradead.org> <1315818285.26517.18.camel@twins>
-	 <20110912093058.GA3207@suse.de> <1315821369.26517.21.camel@twins>
-	 <20110912115605.GB3207@suse.de>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1315829203.26517.30.camel@twins>
+Received: from fieldses.org ([174.143.236.118]:60159 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932198Ab1INLp1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Sep 2011 07:45:27 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 06/25] nfsd4: eliminate unused lt_stateowner
+Date: Wed, 14 Sep 2011 07:45:02 -0400
+Message-Id: <1316000721-3289-7-git-send-email-bfields@redhat.com>
+In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, 2011-09-12 at 12:56 +0100, Mel Gorman wrote:
+This is used only as a local variable.
 
-> I took a look at what was involved with doing the block lookups in
-> ext4. It's what led to patch 4 of this series because it was necessary that
-> the filesystem get the same information as the generic handler. It got a
-> bit messy but looked like it would have worked if I kept at it. I stopped
-> because I did nt see a major advantage with swap_writepage() looking up
-> the block map instead of having looked it up in advance with bmap() but
-> I could have missed something.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |    8 ++++----
+ fs/nfsd/xdr4.h      |    1 -
+ 2 files changed, 4 insertions(+), 5 deletions(-)
 
-IIRC the filesystem folks don't like the bmap thing and would like it to
-go away.. could be they changed their minds again though, who knows ;-)
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 834a5f8..a47bf88 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4098,6 +4098,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ {
+ 	struct inode *inode;
+ 	struct file_lock file_lock;
++	struct nfs4_stateowner *so;
+ 	int error;
+ 	__be32 status;
+ 
+@@ -4107,7 +4108,6 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (check_lock_length(lockt->lt_offset, lockt->lt_length))
+ 		 return nfserr_inval;
+ 
+-	lockt->lt_stateowner = NULL;
+ 	nfs4_lock_state();
+ 
+ 	status = nfserr_stale_clientid;
+@@ -4134,10 +4134,10 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		goto out;
+ 	}
+ 
+-	lockt->lt_stateowner = find_lockstateowner_str(inode,
++	so = find_lockstateowner_str(inode,
+ 			&lockt->lt_clientid, &lockt->lt_owner);
+-	if (lockt->lt_stateowner)
+-		file_lock.fl_owner = (fl_owner_t)lockt->lt_stateowner;
++	if (so)
++		file_lock.fl_owner = (fl_owner_t)so;
+ 	file_lock.fl_pid = current->tgid;
+ 	file_lock.fl_flags = FL_POSIX;
+ 
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index de236fb..27a3dfa 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -184,7 +184,6 @@ struct nfsd4_lockt {
+ 	struct xdr_netobj		lt_owner;
+ 	u64				lt_offset;
+ 	u64				lt_length;
+-	struct nfs4_stateowner * 	lt_stateowner;
+ 	struct nfsd4_lock_denied  	lt_denied;
+ };
+ 
+-- 
+1.7.4.1
 
