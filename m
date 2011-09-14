@@ -1,68 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailx.hitachi.co.jp ([133.145.228.49]:37813 "EHLO
-	mailx.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753653Ab1IBDow (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Sep 2011 23:44:52 -0400
-From: Mitsuo Hayasaka <mitsuo.hayasaka.hu@hitachi.com>
-Subject: [PATCH net-next-2.6 ] Fix overflow of socket buffer in sunrpc
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        "David S. Miller" <davem@davemloft.net>
-Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, yrl.pp-manager.tt@hitachi.com,
-        Mitsuo Hayasaka <mitsuo.hayasaka.hu@hitachi.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        "David S. Miller" <davem@davemloft.net>
-Date: Fri, 02 Sep 2011 12:41:38 +0900
-Message-ID: <20110902034138.22595.9759.stgit@ltc219.sdl.hitachi.co.jp>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:60165 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932201Ab1INLp1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Sep 2011 07:45:27 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 09/25] nfsd4: move double-confirm test to open_confirm
+Date: Wed, 14 Sep 2011 07:45:05 -0400
+Message-Id: <1316000721-3289-10-git-send-email-bfields@redhat.com>
+In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-The sk_sndbuf and sk_rcvbuf fields of struct sock are sizes of send and
-receive socket buffers respectively, and are defined as integer.
-The sunrpc which is used in NFSD and any other applications can change them
-via svc_sock_setbufsize(). It, however, sets them as unsigned integer and
-may cause overflow of integer. This leads to a degradation of networking
-capability.
+I don't see the point of having this check in nfs4_preprocess_seqid_op()
+when it's only needed by the one caller.
 
-This patch adds integer-overflow check into svc_sock_setbufsize() before
-both fields are set, and limits their maximum sizes to INT_MAX.
-
-Signed-off-by: Mitsuo Hayasaka <mitsuo.hayasaka.hu@hitachi.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Neil Brown <neilb@suse.de>
-Cc: "David S. Miller" <davem@davemloft.net>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
+ fs/nfsd/nfs4state.c |   12 +++++-------
+ 1 files changed, 5 insertions(+), 7 deletions(-)
 
- net/sunrpc/svcsock.c |    6 ++++++
- 1 files changed, 6 insertions(+), 0 deletions(-)
-
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 767d494..bd66775 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -54,6 +54,7 @@
- #include "sunrpc.h"
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 8694e60..9c44630 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3434,11 +3434,6 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ 	if (status)
+ 		return status;
  
- #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
-+#define MAX_SKBUFSIZ	INT_MAX
+-	if (sop->so_confirmed && flags & CONFIRM) {
+-		dprintk("NFSD: preprocess_seqid_op: expected"
+-				" unconfirmed stateowner!\n");
+-		return nfserr_bad_stateid;
+-	}
+ 	if (!sop->so_confirmed && !(flags & CONFIRM)) {
+ 		dprintk("NFSD: preprocess_seqid_op: stateowner not"
+ 				" confirmed yet!\n");
+@@ -3473,9 +3468,11 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 					oc->oc_seqid, &oc->oc_req_stateid,
+ 					CONFIRM | OPEN_STATE, &stp);
+ 	if (status)
+-		goto out; 
+-
++		goto out;
+ 	sop = stp->st_stateowner;
++	status = nfserr_bad_stateid;
++	if (sop->so_confirmed)
++		goto out;
+ 	sop->so_confirmed = 1;
+ 	update_stateid(&stp->st_stateid);
+ 	memcpy(&oc->oc_resp_stateid, &stp->st_stateid, sizeof(stateid_t));
+@@ -3483,6 +3480,7 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		__func__, oc->oc_seqid, STATEID_VAL(&stp->st_stateid));
  
- 
- static struct svc_sock *svc_setup_socket(struct svc_serv *, struct socket *,
-@@ -435,6 +436,11 @@ static void svc_sock_setbufsize(struct socket *sock, unsigned int snd,
- 	 * on not having CAP_SYS_RESOURCE or similar, we go direct...
- 	 * DaveM said I could!
- 	 */
-+	if (snd > MAX_SKBUFSIZ/2)
-+		snd = MAX_SKBUFSIZ/2;
-+	if (rcv > MAX_SKBUFSIZ/2)
-+		rcv = MAX_SKBUFSIZ/2;
-+
- 	lock_sock(sock->sk);
- 	sock->sk->sk_sndbuf = snd * 2;
- 	sock->sk->sk_rcvbuf = rcv * 2;
+ 	nfsd4_create_clid_dir(sop->so_client);
++	status = nfs_ok;
+ out:
+ 	if (!cstate->replay_owner)
+ 		nfs4_unlock_state();
+-- 
+1.7.4.1
 
