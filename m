@@ -1,53 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:14760 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:60197 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933914Ab1IIMJR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Sep 2011 08:09:17 -0400
-Subject: [PATCH v2 0/5] SUNRPC: make rpcbind clients allocated and destroyed
-	dynamically
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net
-Date: Fri, 09 Sep 2011 16:08:20 +0400
-Message-ID: <20110909115146.13697.71682.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
+	id S932269Ab1INLpa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Sep 2011 07:45:30 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 25/25] nfsd4: better stateid hashing
+Date: Wed, 14 Sep 2011 07:45:21 -0400
+Message-Id: <1316000721-3289-26-git-send-email-bfields@redhat.com>
+In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-v2:
-1) rebased to v3.1-rc4 (against branch
-git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git)
-2) Patch 3/5 (SUNRPC: make RPC service dependable on rpcbind clients creation)
-fixed: added rpcb_put_local() call in case of svc_serv creation failure.
+First, we shouldn't care here about the structure of the opaque part of
+the stateid.  Second, this hash is really dumb.  (I'm not sure the
+replacement is much better, though--to look at it another patch.)
 
-This patch is required for further RPC layer virtualization, because rpcbind
-clients have to be per network namespace.
-To achive this, we have to untie network namespace from rpcbind clients sockets.
-The idea of this patch set is to make rpcbind clients non-static. I.e. rpcbind
-clients will be created during first RPC service creation, and destroyed when
-last RPC service is stopped.
-With this patch set rpcbind clients can be virtualized easely.
-
-The following series consists of:
-
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
+ fs/nfsd/nfs4state.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
-Stanislav Kinsbursky (5):
-      SUNRPC: introduce helpers for reference counted rpcbind clients
-      SUNRPC: use rpcbind reference counting helpers
-      SUNRPC: make RPC service dependable on rpcbind clients creation
-      SUNRPC: remove rpcbind clients creation during service registering
-      SUNRPC: remove rpcbind clients destruction on module cleanup
-
-
- include/linux/sunrpc/clnt.h |    2 +
- net/sunrpc/rpcb_clnt.c      |   86 ++++++++++++++++++++++++++++---------------
- net/sunrpc/sunrpc_syms.c    |    3 --
- net/sunrpc/svc.c            |   13 ++++++-
- 4 files changed, 69 insertions(+), 35 deletions(-)
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ea338d0..0cd3464 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -168,9 +168,9 @@ static unsigned int file_hashval(struct inode *ino)
+ 	return hash_ptr(ino, FILE_HASH_BITS);
+ }
+ 
+-static unsigned int stateid_hashval(u32 owner_id, u32 file_id)
++static unsigned int stateid_hashval(stateid_t *s)
+ {
+-	return (owner_id + file_id) & STATEID_HASH_MASK;
++	return opaque_hashval(&s->si_opaque, sizeof(stateid_opaque_t)) & STATEID_HASH_MASK;
+ }
+ 
+ static struct list_head file_hashtbl[FILE_HASH_SIZE];
+@@ -221,7 +221,7 @@ static inline void hash_stid(struct nfs4_stid *stid)
+ 	stateid_t *s = &stid->sc_stateid;
+ 	unsigned int hashval;
+ 
+-	hashval = stateid_hashval(s->si_stateownerid, s->si_fileid);
++	hashval = stateid_hashval(s);
+ 	list_add(&stid->sc_hash, &stateid_hashtbl[hashval]);
+ }
+ 
+@@ -1083,7 +1083,7 @@ static struct nfs4_stid *find_stateid(stateid_t *t)
+ 	struct nfs4_stid *s;
+ 	unsigned int hashval;
+ 
+-	hashval = stateid_hashval(t->si_stateownerid, t->si_fileid);
++	hashval = stateid_hashval(t);
+ 	list_for_each_entry(s, &stateid_hashtbl[hashval], sc_hash)
+ 		if (same_stateid(&s->sc_stateid, t))
+ 			return s;
 -- 
-Signature
+1.7.4.1
+
