@@ -1,70 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from nm7-vm0.bullet.mail.sp2.yahoo.com ([98.139.91.192]:39850 "HELO
-	nm7-vm0.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751867Ab1IEWmU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2011 18:42:20 -0400
-Message-ID: <4E655049.6060507@schaufler-ca.com>
-Date: Mon, 05 Sep 2011 15:42:17 -0700
-From: Casey Schaufler <casey@schaufler-ca.com>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-CC: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        LSM <linux-security-module@vger.kernel.org>,
-        Casey Schaufler <casey@schaufler-ca.com>
-Subject: Re: [PATCH -V6 00/26]  New ACL format for better NFSv4 acl interoperability
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:60182 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932133Ab1INLp2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Sep 2011 07:45:28 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 17/25] nfsd4: rename init_stateid
+Date: Wed, 14 Sep 2011 07:45:13 -0400
+Message-Id: <1316000721-3289-18-git-send-email-bfields@redhat.com>
+In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 9/5/2011 10:25 AM, Aneesh Kumar K.V wrote:
-> Hi,
->
-> The following set of patches implements VFS and ext4 changes needed to implement
-> a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
-> extended by file masks to fit into the standard POSIX file permission model.
-> They are designed to work seamlessly locally as well as across the NFSv4 and
-> CIFS/SMB2 network file system protocols.
+Note this is actually open-stateid specific.
 
-POSIX ACLs predate the LSM and can't be done as an LSM due to
-the interactions between mode bits and ACLs as defined by the
-POSIX DRAFT specification. Is there a reason that "rich" ACLs
-can not be done as an LSM?
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
->
-> A user-space utility for displaying and changing richacls is available at [4]
-> (a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
->
-> [4] git://git.kernel.org/pub/scm/fs/acl/kvaneesh/richacl.git master
->
-> To test richacl on ext4 use -o richacl mount option. This mount option may later be
-> dropped in favour of a feature flag.
->
-> More details regarding richacl can be found at
-> http://acl.bestbits.at/richacl/
->
-> Changes from v5:
-> a) rebase to v3.1-rc4-131-g9e79e3e
->
-> NOTE: The kernel changes will be pushed to
-> git://git.kernel.org/pub/scm/linux/kernel/git/kvaneesh/linux-richacl.git richacl
-> when kernel.org is back
->
-> -aneesh
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
->
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 4813463..73b5e1e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2314,7 +2314,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
+ }
+ 
+ static inline void
+-init_stateid(struct nfs4_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *open) {
++init_open_stateid(struct nfs4_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *open) {
+ 	struct nfs4_openowner *oo = open->op_openowner;
+ 	unsigned int hashval = stateid_hashval(oo->oo_owner.so_id, fp->fi_id);
+ 
+@@ -2934,7 +2934,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 		status = nfs4_new_open(rqstp, &stp, fp, current_fh, open);
+ 		if (status)
+ 			goto out;
+-		init_stateid(stp, fp, open);
++		init_open_stateid(stp, fp, open);
+ 		status = nfsd4_truncate(rqstp, current_fh, open);
+ 		if (status) {
+ 			release_open_stateid(stp);
+-- 
+1.7.4.1
 
