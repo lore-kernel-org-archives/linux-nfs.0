@@ -1,112 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:34413 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756461Ab1IHKAu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Sep 2011 06:00:50 -0400
-From: <tao.peng@emc.com>
-To: <gusev.vitaliy@nexenta.com>, <Trond.Myklebust@netapp.com>
-CC: <gusev.vitaliy@gmail.com>, <linux-nfs@vger.kernel.org>
-Date: Thu, 8 Sep 2011 06:00:25 -0400
-Subject: RE: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
-Message-ID: <F19688880B763E40B28B2B462677FBF805C3299C9C@MX09A.corp.emc.com>
-References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com>
- <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com>
-In-Reply-To: <4E669B21.30006@nexenta.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from fieldses.org ([174.143.236.118]:33080 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754044Ab1INChJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Sep 2011 22:37:09 -0400
+Date: Tue, 13 Sep 2011 22:37:09 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: supertimothy <supertimothy@web.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: nfsv4 and gracetime / leasetime grace_period
+Message-ID: <20110914023709.GA28357@fieldses.org>
+References: <000801cc71f9$9cc45650$d64d02f0$@web.de>
+ <20110913124440.GA22118@fieldses.org>
+ <4E6FE4D1.20209@web.de>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <4E6FE4D1.20209@web.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi, Gusev,
-
-> -----Original Message-----
-> From: Vitaliy Gusev [mailto:gusev.vitaliy@nexenta.com]
-> Sent: Wednesday, September 07, 2011 6:14 AM
-> To: Trond Myklebust
-> Cc: Vitaliy Gusev; Peng, Tao; linux-nfs@vger.kernel.org
-> Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
-> 
-> >> @@ -1376,7 +1376,8 @@ static void pnfs_list_write_lseg(struct inode *inode,
-> struct list_head *listp)
+On Wed, Sep 14, 2011 at 01:18:41AM +0200, supertimothy wrote:
+> Am 13.09.2011 14:44, schrieb J. Bruce Fields:
+> >On Tue, Sep 13, 2011 at 11:43:37AM +0200, Tim wrote:
+> >>But how does the notification of clients work with nfsv4?
+> >There is no notification.  Clients poll the server regularly, and that's
+> >how they find out there's been a reboot.
+> >
+> Ah polling, that explains a lot.
+> >>The problem I can see is the same as described here:
+> >>http://www.digipedia.pl/usenet/thread/18978/22974/
 > >>
-> >>   	list_for_each_entry(lseg,&NFS_I(inode)->layout->plh_segs, pls_list) {
-> >>   		if (lseg->pls_range.iomode == IOMODE_RW&&
-> >> -		    test_bit(NFS_LSEG_LAYOUTCOMMIT,&lseg->pls_flags))
-> >> +		    test_bit(NFS_LSEG_LAYOUTCOMMIT,&lseg->pls_flags)&&
-> >> +		    list_empty(&lseg->pls_lc_list))
-> >>   			list_add(&lseg->pls_lc_list, listp);
-> >>   	}
-> >>   }
-> >
-> > If the lseg is already part of one layoutcommit, but we're sending a
-> > second one for the same range (presumably because we wrote more data in
-> > the same region), then the above causes the lseg to be excluded.
+> >>So we have different values:
+> >>
+> >>/proc/fs/nfsd/nfsv4gracetime
+> >>/proc/fs/nfsd/nfsv4leasetime
+> >>/proc/sys/fs/nfs/nlm_grace_period
+> >>
+> >>If I set graceteime and grace_period to a low value, I get a faster
+> >>failover. But what do they stand for and do I need nfsv4leasetime to ?
+> >>If I set them all to 10 seconds, could that be "dangerous" (assume the
+> >>server can handle the additional load)?
+> >It's probably OK.  The clients will have to send an rpc to the server at
+> >least every 10 seconds, or they lose their state.  So if there's a
+> >chance they wouldn't be able to get through for 10 seconds, you could
+> >have a problem.
+> Thanks for clarifying this! I brought the time down to about 15 secs
+> in failover situation, that is really OK for me.
+> >>I guess there isnt an easy way to delete all the locks on serverside and
+> >>explicitely tell the clients: Hey, the server has rebooted, please get a new
+> >>lock for all your files :-)
+> >>I just would like to make failover a bit faster.
+> >We do need to think about how to make that faster, but that wouldn't be
+> >the solution.  The problem is that the new server needs to wait before
+> >granting any new locks or opens until it knows all the clients have had
+> >the chance to reclaim their old ones.  The only way the server currently
+> >hsa to do that is to wait out the grace period (== the previous server's
+> >lease time).
 > 
+> Thanks a lot for your answer Bruce!
 > 
-> Yes, lseg is excluded, This patch does exactly only exclusion of lseg.
-> lseg is used here only to get/put reference on this lseg, so skipping is
-> correct.
+> Some more questions here - I try to unterstand this and I am a bit
+> struggling with RFC3530. I'd be glad if you/someone could tell me if
+> I'm wrong..
 > 
+> /proc/fs/nfsd/nfsv4leasetime
+> The server gives out leases that are valid for this time. The client
+> has to renew its lease until nfsv4leasetime times out or the server
+> will release the concerning lock.
 > 
-> However, checking on list_empty can occur (on other CPU) in the middle:
-> 
-> 	list_del_init(&lseg->pls_lc_list);
-> Here >>>>>>
-> 	if (test_and_clear_bit(NFS_LSEG_LAYOUTCOMMIT,
-> 			       &lseg->pls_flags))
-> 		put_lseg(lseg);
-> 
-> 
-> So list_del_init must be executed under the same lock as
-> pnfs_list_write_lseg, i.e. inode->i_lock.
-Yes, you are right. How about following patch?
+> /proc/fs/nfsd/nfsv4gracetime
+> After a failover (or reboot), the other server starts. As soon as it
+> is up and running, the grace period starts during which no client is
+> allowed to write or get a new lock. The time should be chosen so
+> that all open locks can be renewed which should be possible whithin
+> nfsv4leasetime, because the client has to send a RENEW until
+> nfsv4leasetime is over. Thats why leasetime should be smaller than
+> gracetime.
+> Lets say the server needs longer than leasetime to boot. Is the
+> leasetime pronlonged until the client gets a signal and then sends a
+> RENEW or is it just invalid and the server has to drop the locks
+> after gracetime?
 
->From 14c6da67565fb31c2d2775ccefd93251f348910d Mon Sep 17 00:00:00 2001
-From: Peng Tao <bergwolf@gmail.com>
-Date: Thu, 8 Sep 2011 00:57:02 -0400
-Subject: [PATCH] nfsv4: fix race in layoutcommit lseg list create/free
+The server starts its grace period timer when it starts up, it doesn't
+start counting from when it last went down.  As long as it's down,
+client should just be retrying rpc calls waiting for the server to
+respond again.
 
-Since there can be more than one layoutcommit proc happen the same time,
-lseg list create/free should be protected. Otherwise lseg list
-may get corrupted.
+> /proc/sys/fs/nfs/nlm_grace_period
+> This is the part I don't understand what it is for. I read it has to
+> be shrunk too (I set it to 10 - which works). Standard value is 0.
 
-Reported-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/nfs4proc.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+NLM (used with NFSv2/v3) works a little differently: instead of the
+clients polling at regular intervals, the server calls back to the
+clients to notify them that it has rebooted.  But there's still this
+grace period, which is the length of time the NLM server waits for the
+clients to act on the notifications by sending lock reclaims.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8c77039..da7c20c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5964,6 +5964,7 @@ static void nfs4_layoutcommit_release(void *calldata)
- 	struct pnfs_layout_segment *lseg, *tmp;
- 
- 	pnfs_cleanup_layoutcommit(data);
-+	spin_lock(&data->args.inode->i_lock);
- 	/* Matched by references in pnfs_set_layoutcommit */
- 	list_for_each_entry_safe(lseg, tmp, &data->lseg_list, pls_lc_list) {
- 		list_del_init(&lseg->pls_lc_list);
-@@ -5971,6 +5972,7 @@ static void nfs4_layoutcommit_release(void *calldata)
- 				       &lseg->pls_flags))
- 			put_lseg(lseg);
- 	}
-+	spin_unlock(&data->args.inode->i_lock);
- 	put_rpccred(data->cred);
- 	kfree(data);
- }
--- 
-1.7.4.2
+It affects v4 as well, because the v4 server can't end its grace period
+before the NLM server does: if it did, v4 clients could rush in and
+start doing new locks before v2/v3 clients had the chance to reclaim all
+of theirs.
 
-> 
-> 
-> >
-> > I agree that the current code causes list corruption, but before
-> > applying something like the above patch, I'd like to understand why it
-> > is correct.
-> >
-> > Trond
-> >
-> 
-
+--b.
