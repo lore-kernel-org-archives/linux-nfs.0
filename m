@@ -1,62 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:58288 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751464Ab1I0QKJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Sep 2011 12:10:09 -0400
-Message-ID: <4E81F55F.60306@netapp.com>
-Date: Tue, 27 Sep 2011 12:10:07 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/5] nfsd4: construct stateid from clientid and counter
-References: <20110919131415.GB32498@fieldses.org> <1316438143-1057-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1316438143-1057-4-git-send-email-bfields@redhat.com>
+Received: from mail-qy0-f181.google.com ([209.85.216.181]:40033 "EHLO
+	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754005Ab1INPja convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Sep 2011 11:39:30 -0400
+In-Reply-To: <CAF1ivSa3i=4=sdD_ajdQ-fS-ifErFVDrOA1suLZTDG0BZ3TpZg@mail.gmail.com>
+References: <20110908222420.GE8043@hostway.ca>
+	<20110912221700.GA11962@hostway.ca>
+	<20110913164342.GA1039@hostway.ca>
+	<CAF1ivSa3i=4=sdD_ajdQ-fS-ifErFVDrOA1suLZTDG0BZ3TpZg@mail.gmail.com>
+Date: Wed, 14 Sep 2011 17:39:29 +0200
+Message-ID: <CADpTngUMit0sqSvYTCwML_Azk=vsYLGCnW9RBRyDs8Ruxs=SRA@mail.gmail.com>
+Subject: Re: [3.1-rc4] vfs_rmdir() -> mutex_unlock() Oops
+From: Fabio Coatti <fabio.coatti@gmail.com>
+To: Lin Ming <mlin@ss.pku.edu.cn>
+Cc: Simon Kirby <sim@hostway.ca>, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/19/2011 09:15 AM, J. Bruce Fields wrote:
-> Including the full clientid in the on-the-wire stateid allows more
-> reliable detection of bad vs. expired stateid's, simplifies code, and
-> ensures we won't reuse the opaque part of the stateid (as we currently
-> do when the same openowner closes and reopens the same file).
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/nfsd/nfs4state.c |   58 +++++++++++---------------------------------------
->  fs/nfsd/state.h     |   18 ++++-----------
->  2 files changed, 18 insertions(+), 58 deletions(-)
-> 
-[ ... ]
-> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> index e807abb..d6aec4f 100644
-> --- a/fs/nfsd/state.h
-> +++ b/fs/nfsd/state.h
-> @@ -353,11 +349,9 @@ struct nfs4_replay {
->  */
->  
->  struct nfs4_stateowner {
+2011/9/14 Lin Ming <mlin@ss.pku.edu.cn>:
+> On Wed, Sep 14, 2011 at 12:43 AM, Simon Kirby <sim@hostway.ca> wrote:
+>> On Mon, Sep 12, 2011 at 03:17:00PM -0700, Simon Kirby wrote:
+>>
+>>> On Thu, Sep 08, 2011 at 03:24:20PM -0700, Simon Kirby wrote:
+>>>
+>>> > This box primarily does most of its VFS stuff over lots of NFS mounts,
+>>> > but has some local EXT3 filesystems. This has happened a couple of times:
+>>> >
+>>> > BUG: unable to handle kernel NULL pointer dereference at 00000000000000b8
+>>>...
+>>> Got a few more identical Oopses on another box running slightly past
+>>> 3.1-rc5 (79016f648872549392d232cd648bd02298c2d2bb). It seems to be
+>>> do_rmdir()'s mutex_unlock() call.
+>>>
+>>> I'm building -rc6 with CONFIG_DEBUG_MUTEXES now.
+>>
+>> ...and not much more help with CONFIG_DEBUG_MUTEXES, from 3.1-rc6:
+>>
+>> BUG: unable to handle kernel NULL pointer dereference at 00000000000000a4
+>> IP: [<ffffffff816adc93>] __mutex_unlock_slowpath+0x53/0x140
+>> PGD 13c6c4067 PUD 2256fc067 PMD 0
+>> Oops: 0002 [#1] SMP
+>> CPU 2
+>> Modules linked in: ipmi_devintf ipmi_si ipmi_msghandler xt_recent nf_conntrack_ftp xt_state xt_owner nf_conntrack_ipv4 nf_conntrack nf_defrag_ipv4 bnx2
+>>
+>> Pid: 27658, comm: php Not tainted 3.1.0-rc6-hw-mudbg+ #32 Dell Inc. PowerEdge 1950/0TT740
+>> RIP: 0010:[<ffffffff816adc93>]  [<ffffffff816adc93>] __mutex_unlock_slowpath+0x53/0x140
+>> RSP: 0018:ffff8800b65e1e28  EFLAGS: 00010046
+>> RAX: 0000000000000100 RBX: ffff88001bcece48 RCX: ffff88001bd05348
+>> RDX: 0000000040000200 RSI: ffff8800916cf6c0 RDI: 00000000000000a0
+>> RBP: ffff8800b65e1e48 R08: 00000000043205bc R09: ffffea00011340c0
+>> R10: 0000000000000000 R11: 0000000000000002 R12: 00000000000000a0
+>> R13: 00000000000000a4 R14: 0000000000000246 R15: 00007f7fe2d15680
+>> FS:  00007f7fe2e1f720(0000) GS:ffff88022fc80000(0000) knlGS:0000000000000000
+>> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>> CR2: 00000000000000a4 CR3: 0000000215c16000 CR4: 00000000000006e0
+>> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+>> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+>> Process php (pid: 27658, threadinfo ffff8800b65e0000, task ffff8800175d4320)
+>> Stack:
+>>  ffff88001bcece48 00000000fffffffe ffff8800916cf6c0 00007f7fe2d146a8
+>>  ffff8800b65e1e58 ffffffff816add89 ffff8800b65e1e88 ffffffff8110ec70
+>>  ffff8800b65e1e98 ffff8800916cf6c0 ffff8800b65e1e98 0000000000000000
+>> Call Trace:
+>>  [<ffffffff816add89>] mutex_unlock+0x9/0x10
+>>  [<ffffffff8110ec70>] vfs_rmdir+0xb0/0x100
+>>  [<ffffffff8110ed96>] do_rmdir+0xd6/0x130
+>>  [<ffffffff81102063>] ? fput+0x1c3/0x260
+>>  [<ffffffff810fe648>] ? filp_close+0x68/0xa0
+>>  [<ffffffff8110ee41>] sys_rmdir+0x11/0x20
+>>  [<ffffffff816b6f3b>] system_call_fastpath+0x16/0x1b
+>> Code: 75 1b 65 48 8b 04 25 c8 b5 00 00 48 63 80 44 e0 ff ff a9 00 ff ff 07 0f 85 bb 00 00 00 9c 41 5e fa b8 00 01 00 00 4d 8d 6c 24 04 <f0> 66 41 0f c1 45 00 38 e0 74 08 f3 90 41 8a 45 00 eb f4 44 8b
+>> RIP  [<ffffffff816adc93>] __mutex_unlock_slowpath+0x53/0x140
+>>  RSP <ffff8800b65e1e28>
+>> CR2: 00000000000000a4
+>> ---[ end trace f515ec8376bdb799 ]---
+>>
+>> How can I further debug this? At this point, it seems to be happening several times daily.
+>
+> Fabio reported a similar bug,
+> 3.0.3 [BUG] unable to handle kernel NULL pointer dereference
+> http://marc.info/?t=131416920900001&r=1&w=2
+>
+> Do you have a test case to trigger this bug reliably?
 
-The comment describing this struct should probably be updated since so_idhash and a few other variables no longer exist.
+Unfortunatey not, so far. This problem happens on a quite loaded
+server with apache on it and it is difficult to find root cause or at
+least a situation able to trigger it. Still digging, but I wouldn't
+expect to find something useful in short time.
 
-- Bryan
 
-> -	struct list_head        so_idhash;   /* hash by so_id */
->  	struct list_head        so_strhash;   /* hash by op_name */
->  	struct list_head        so_stateids;
->  	int			so_is_open_owner; /* 1=openowner,0=lockowner */
-> -	u32                     so_id;
->  	struct nfs4_client *    so_client;
->  	/* after increment in ENCODE_SEQID_OP_TAIL, represents the next
->  	 * sequence id expected from the client: */
-> @@ -415,8 +409,6 @@ struct nfs4_file {
->  	struct file_lock	*fi_lease;
->  	atomic_t		fi_delegees;
->  	struct inode		*fi_inode;
-> -	u32                     fi_id;      /* used with stateowner->so_id 
-> -					     * for stateid_hashtbl hash */
->  	bool			fi_had_conflict;
->  };
->  
 
+-- 
+Fabio
