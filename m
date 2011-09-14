@@ -1,63 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4436 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:60155 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750939Ab1IUTLZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Sep 2011 15:11:25 -0400
-Date: Wed, 21 Sep 2011 15:10:39 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: regression when opening directories on NFSv4
-Message-ID: <20110921151039.4dc77b8c@tlielax.poochiereds.net>
-In-Reply-To: <1316631192.21183.40.camel@lade.trondhjem.org>
-References: <20110921115854.02605a7f@tlielax.poochiereds.net>
-	<1316631192.21183.40.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S932194Ab1INLp1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Sep 2011 07:45:27 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 03/25] nfsd4: extend state lock over seqid replay logic
+Date: Wed, 14 Sep 2011 07:44:59 -0400
+Message-Id: <1316000721-3289-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 21 Sep 2011 14:53:12 -0400
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+There are currently a couple races in the seqid replay code: a
+retransmission could come while we're still encoding the original reply,
+or a new seqid-mutating call could come as we're encoding a replay.
 
-> On Wed, 2011-09-21 at 11:58 -0400, Jeff Layton wrote: 
-> > We had a regression reported against RHEL concerning the opening of
-> > directories and it looks like that same problem is in current mainline
-> > code too. If you do the following on a directory that is not yet in the
-> > dcache you get an EISDIR error:
-> > 
-> >      open("/mnt/nfs/dir1", O_RDONLY)         = -1 EISDIR (Is a directory)
-> > 
-> > If however, you stat the directory first, the open works. The
-> > difference seems to be that in the first case we're going through the
-> > lookup codepath, and in the second we go through d_revalidate.
-> > 
-> > In the first case, we send an OPEN call to the server and it responds
-> > with NFS4ERR_ISDIR. That gets translated to -EISDIR, and returned to
-> > userspace. It wasn't always this way though, and I think the regression
-> > was introduced in commit d953126a2.
-> > 
-> > That patch was added to fix an oops due to a buggy server, and I'm
-> > unclear on how best to fix this. It seems like we need to allow the
-> > server to fall back to doing a normal lookup when we get -EISDIR on the
-> > OPEN call, but how do we ensure that we don't end up with the same oops
-> > from that server bug?
-> 
-> How about returning an error if we get to the file->f_ops->open on a
-> regular file in NFSv4?
-> 
+So, extend the state lock over the encoding (both encoding of a replayed
+reply and caching of the original encoded reply).
 
-That would probably be reasonable. I'll see if I can come up with a
-patch. The tricky part of course is ensuring that nothing regresses...
+I really hate doing this, and previously added the stateowner
+reference-counting code to avoid it (which was insufficient)--but I
+don't see a less complicated alternative at the moment.
 
-I think this is probably safe for the most part. The d_revalidate
-codepath has always allowed you to end up with an open context with
-NULL state. 
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c  |    5 +++--
+ fs/nfsd/nfs4state.c |   12 ++++++++----
+ 2 files changed, 11 insertions(+), 6 deletions(-)
 
-Granted the buggy server case here is exceedingly rare, but it seems
-like the code already assumes that a ctx reached via filp may have a
-NULL state pointer.
-
-Thanks,
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 50bae74..50063a8 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -408,8 +408,8 @@ out:
+ 	if (open->op_stateowner) {
+ 		nfs4_get_stateowner(open->op_stateowner);
+ 		cstate->replay_owner = open->op_stateowner;
+-	}
+-	nfs4_unlock_state();
++	} else
++		nfs4_unlock_state();
+ 	return status;
+ }
+ 
+@@ -1227,6 +1227,7 @@ encode_op:
+ 			be32_to_cpu(status));
+ 
+ 		if (cstate->replay_owner) {
++			nfs4_unlock_state();
+ 			nfs4_put_stateowner(cstate->replay_owner);
+ 			cstate->replay_owner = NULL;
+ 		}
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index bc1a9db..6cf729a 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3501,7 +3501,8 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	nfsd4_create_clid_dir(sop->so_client);
+ out:
+-	nfs4_unlock_state();
++	if (!cstate->replay_owner)
++		nfs4_unlock_state();
+ 	return status;
+ }
+ 
+@@ -3568,7 +3569,8 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
+ 	memcpy(&od->od_stateid, &stp->st_stateid, sizeof(stateid_t));
+ 	status = nfs_ok;
+ out:
+-	nfs4_unlock_state();
++	if (!cstate->replay_owner)
++		nfs4_unlock_state();
+ 	return status;
+ }
+ 
+@@ -3609,7 +3611,8 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (list_empty(&so->so_stateids))
+ 		move_to_close_lru(so);
+ out:
+-	nfs4_unlock_state();
++	if (!cstate->replay_owner)
++		nfs4_unlock_state();
+ 	return status;
+ }
+ 
+@@ -4071,7 +4074,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ out:
+ 	if (status && lock->lk_is_new && lock_sop)
+ 		release_lockowner(lock_sop);
+-	nfs4_unlock_state();
++	if (!cstate->replay_owner)
++		nfs4_unlock_state();
+ 	return status;
+ }
+ 
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.4.1
+
