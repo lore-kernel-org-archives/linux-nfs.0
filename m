@@ -1,48 +1,99 @@
-From: Benny Halevy <bhalevy@tonian.com>
-Subject: Re: NULL pointer dereference during mount
-Date: Wed, 14 Sep 2011 08:31:23 +0200
-Message-ID: <4E704A3B.7080504@tonian.com>
-References: <F19688880B763E40B28B2B462677FBF805C3299FFE@MX09A.corp.emc.com>,<20110913124202.GA9498@merit.edu> <F19688880B763E40B28B2B462677FBF805C3F37B8D@MX09A.corp.emc.com>
+From: "Benny Halevy" <bhalevy@tonian.com>
+Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
+Date: Wed, 14 Sep 2011 13:20:39 +0000
+Message-ID: <1848467772-1316006442-cardhu_decombobulator_blackberry.rim.net-669813663-@b4.c3.bise3.blackberry>
+References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com>
+  <1315337382.16274.7.camel@lade.trondhjem.org>
+  <4E669B21.30006@nexenta.com>
+  <1315348373.19556.22.camel@lade.trondhjem.org>
+  <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com>
+  <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com>
+  <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com>
+  <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com>
+  <F19688880B763E40B28B2B462677FBF805C3299D2F@MX09A.corp.emc.com>
+  <1315592430.17611.15.camel@lade.trondhjem.org>
+  <4E6B0E48.7050208@tonian.com>
+  <CA+a=Yy5fMHPcSU4EoSo1uiOUCfi8vjRVPAjEYGZ+M00CwZ8Z9g@mail.gmail.com>
+  <4E6E6C3B.2040605@tonian.com>
+  <1315861851.8350.11.camel@lade.trondhjem.org>
+  <4E6F0B61.4050907@tonian.com>
+  <F19688880B763E40B28B2B462677FBF805C3299FA6@MX09A.corp.emc.com>
+  <4E704D05.6020406@tonian.com>
+  <F19688880B763E40B28B2B462677FBF805C3F7A911@MX09A.corp.emc.com>
+Reply-To: bhalevy@tonian.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: rees@umich.edu, linux-nfs@vger.kernel.org
+Content-Type: text/plain
+Cc: Trond.Myklebust@netapp.com, bergwolf@gmail.com,
+	gusev.vitaliy@nexenta.com, gusev.vitaliy@gmail.com,
+	linux-nfs@vger.kernel.org
 To: tao.peng@emc.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:39860 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751812Ab1INGb3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Sep 2011 02:31:29 -0400
-Received: by wwf22 with SMTP id 22so1768994wwf.1
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Sep 2011 23:31:28 -0700 (PDT)
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805C3F37B8D-AYrsSIZi/B2B3McK65YKY9BPR1lH4CV8@public.gmane.org>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:51581 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932406Ab1INNUs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Sep 2011 09:20:48 -0400
+Received: by ywb5 with SMTP id 5so1377463ywb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Sep 2011 06:20:47 -0700 (PDT)
+In-Reply-To: <F19688880B763E40B28B2B462677FBF805C3F7A911-AYrsSIZi/B2B3McK65YKY9BPR1lH4CV8@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I couldn't reproduce this with selinux neither disabled nor enforcing.
-What's your selinux configuration?
+VGhhbmtzIQ0KLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCkZyb206IDx0YW8ucGVuZ0BlbWMu
+Y29tPg0KRGF0ZTogV2VkLCAxNCBTZXAgMjAxMSAwMzo1MzozMCANClRvOiA8YmhhbGV2eUB0b25p
+YW4uY29tPg0KQ2M6IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT47IDxiZXJnd29sZkBnbWFp
+bC5jb20+OyA8Z3VzZXYudml0YWxpeUBuZXhlbnRhLmNvbT47IDxndXNldi52aXRhbGl5QGdtYWls
+LmNvbT47IDxsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnPg0KU3ViamVjdDogUkU6IFtQQVRDSF0g
+bmZzOiBmaXggaW5pZmluaXRlIGxvb3AgYXQgbmZzNF9sYXlvdXRjb21taXRfcmVsZWFzZQ0KDQo+
+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IEJlbm55IEhhbGV2eSBbbWFpbHRv
+OmJoYWxldnlAdG9uaWFuLmNvbV0NCj4gU2VudDogV2VkbmVzZGF5LCBTZXB0ZW1iZXIgMTQsIDIw
+MTEgMjo0MyBQTQ0KPiBUbzogUGVuZywgVGFvDQo+IENjOiBUcm9uZC5NeWtsZWJ1c3RAbmV0YXBw
+LmNvbTsgYmVyZ3dvbGZAZ21haWwuY29tOw0KPiBndXNldi52aXRhbGl5QG5leGVudGEuY29tOyBn
+dXNldi52aXRhbGl5QGdtYWlsLmNvbTsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiBTdWJq
+ZWN0OiBSZTogW1BBVENIXSBuZnM6IGZpeCBpbmlmaW5pdGUgbG9vcCBhdCBuZnM0X2xheW91dGNv
+bW1pdF9yZWxlYXNlDQo+IA0KPiBPbiAyMDExLTA5LTEzIDEwOjMyLCB0YW8ucGVuZ0BlbWMuY29t
+IHdyb3RlOg0KPiA+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+PiBGcm9tOiBCZW5u
+eSBIYWxldnkgW21haWx0bzpiaGFsZXZ5QHRvbmlhbi5jb21dDQo+ID4+IFNlbnQ6IFR1ZXNkYXks
+IFNlcHRlbWJlciAxMywgMjAxMSAzOjUxIFBNDQo+ID4+IFRvOiBUcm9uZCBNeWtsZWJ1c3QNCj4g
+Pj4gQ2M6IFBlbmcgVGFvOyBQZW5nLCBUYW87IGd1c2V2LnZpdGFsaXlAbmV4ZW50YS5jb207IGd1
+c2V2LnZpdGFsaXlAZ21haWwuY29tOw0KPiA+PiBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnDQo+
+ID4+IFN1YmplY3Q6IFJlOiBbUEFUQ0hdIG5mczogZml4IGluaWZpbml0ZSBsb29wIGF0IG5mczRf
+bGF5b3V0Y29tbWl0X3JlbGVhc2UNCj4gPj4NCj4gPj4gT24gMjAxMS0wOS0xMiAxNDoxMCwgVHJv
+bmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+Pj4gT24gTW9uLCAyMDExLTA5LTEyIGF0IDEzOjMxIC0w
+NzAwLCBCZW5ueSBIYWxldnkgd3JvdGU6DQo+ID4+Pj4gT24gMjAxMS0wOS0xMiAwNzo1NiwgUGVu
+ZyBUYW8gd3JvdGU6DQo+ID4+Pj4+PiBUaGUgbGF5b3V0IHNlZ21lbnRzIGFyZSBub3QgcmVhbGx5
+IGluIHVzZSB3aGlsZSBpbiBMQVlPVVRDT01NSVQuDQo+ID4+Pj4+PiBXZSBvbmx5IG5lZWQgdG8g
+Z2V0IHRoZSBzdGF0ZWlkIHJpZ2h0IHdpdGggcmVzcGVjdCB0byBjb25jdXJyZW50IGxheW91dA0K
+PiByZWNhbGxzLg0KPiA+Pj4+PiBMQVlPVVRDT01NSVQgdGFrZXMgbHNlZyByZWZlcmVuY2UgdG8g
+bWFyayB0aGVtIGFzIGluIHVzZSBzbyB0aGF0DQo+ID4+Pj4+IGxheW91dHJlY2FsbCBjYW5ub3Qg
+ZnJlZSB0aGVtLg0KPiA+Pj4+Pg0KPiA+Pj4+DQo+ID4+Pj4gQW5kIGlmIGxheW91dHJlY2FsbCB3
+b3VsZCBoYXZlIGZyZWVkIGxheW91dCBzZWdtZW50cyBkdXJpbmcgbGF5b3V0Y29tbWl0LA0KPiA+
+Pj4+IHdoYXQgaXMgeW91ciBzcGVjaWZpYyBjb25jZXJuPw0KPiA+Pj4NCj4gPj4+IFRoYXQgbGF5
+b3V0Y29tbWl0IGlzIHN1cHBvc2VkIHRvIHJldHVybiBORlM0RVJSX0JBRF9MQVlPVVQgaW4gdGhh
+dCBjYXNlDQo+ID4+PiBhY2NvcmRpbmcgdG8gc2VjdGlvbiAxOC40Mi4zIG9mIFJGQzU2NjEuIEkg
+Y2FuJ3QgZmluZCBhbnl0aGluZyBpbiB0aGUNCj4gPj4+IGVycmF0YSB0aGF0IGNoYW5nZXMgdGhh
+dCByZXF1aXJlbWVudC4NCj4gPj4+DQo+ID4+DQo+ID4+IFJpZ2h0LiBUaGF0IHRlbGxzIG1lIHRo
+ZXJlIG5vIG5lZWQgdG8gc3RyaWN0bHkgc2VyaWFsaXplIExBWU9VVENPTU1JVHMNCj4gPj4gd2l0
+aCBDQl9MQVlPVVRSRUNBTEwsIGFzIGxvbmcgYXMgdGhlIGxheW91dCBzdGF0ZWlkIHNlbnQgd2l0
+aCBMQVlPVVRDT01NSVQNCj4gPj4gYXRvbWljYWxseSByZXByZXNlbnRzIHRoZSBzdGF0ZSB3aGVu
+IHRoZSBvcGVyYXRpb24gd2FzIHByZXBhcmVkLg0KPiA+Pg0KPiA+PiBUaGF0IHNhaWQsIHNpbmNl
+IHdlIGRvIHdhbnQgdGhlIExBWU9VVENPTU1JVCB0byBzdWNjZWVkLCBpdCB3b3VsZCBiZQ0KPiBi
+ZW5lZmljaWFsDQo+ID4+IGZvciB0aGUgY2xpZW50IHRvIHJlcGx5IHRvIGEgQ0JfTEFZT1VUUkVD
+QUxMIHJlY2VpdmVkIHdoaWxlIGEgY29uZmxpY3RpbmcNCj4gPj4gTEFZT1VUQ09NTUlUIGlzIGlu
+IHByb2dyZXNzIHdpdGggTkZTNEVSUl9ERUxBWS4NCj4gPiBJIGFncmVlLiBIb3cgYWJvdXQgYWRk
+aW5nIGEgbmV3IGZsYWcgdG8gbmZzaS0+ZmxhZ3MgZm9yIHRoaXM/IFdlIGNhbiB1c2UgdGhlIHNh
+bWUNCj4gZmxhZyBvbiB0byBlbnN1cmUgc2VyaWFsaXphdGlvbiBvZiBtdWx0aXBsZSBsYXlvdXRj
+b21taXQuDQo+IG5mc19jb21taXRfc2V0X2xvY2svbmZzX2NvbW1pdF9jbGVhcl9sb2NrIG1heSBu
+b3QgZml0IGZvciB0aGlzLg0KPiA+DQo+IA0KPiBTb3VuZHMgZ29vZCBpbiBwcmluY2lwbGUuDQo+
+IENhbiB5b3UgdGFrZSBhIHN0YWIgYXQgYSBwYXRjaCB0aGF0IGRvZXMgdGhpcz8NCk9LLCBJIHdp
+bGwgc3BlbmQgc29tZSB0aW1lIG9uIGl0IHRoaXMgd2Vlay4NCg0KVGhhbmtzLA0KVGFvDQo+IA0K
+PiBCZW5ueQ0KPiANCj4gPj4NCj4gPj4gVGhlIHNlcnZlciwgb24gaXRzIHNpZGUsIHNob3VsZCBw
+cmV2ZW50IGEgZGlzdHJpYnV0ZWQgZGVhZGxvY2sgYnkgYXZvaWRpbmcNCj4gPj4gYmxvY2tpbmcg
+b2YgYSBMQVlPVVRDT01NSVQgb24gYW4gb3V0c3RhbmRpbmcgQ0JfTEFZT1VUUkVDQUxMIGZvciB0
+aGUNCj4gc2FtZQ0KPiA+PiBjbGllbnQgdGhhdCBzZW50IHRoZSBMQVlPVVRDT01NSVQuICBJJ20g
+bm90IHN1cmUgd2hhdCBlcnJvciB3b3VsZCBiZSBiZXN0IHRvDQo+ID4+IHJldHVybi4gIE1heWJl
+IE5GUzRFUlJfUkVDQUxMX0NPTkZMSUNUIGlmIGl0IHdvdWxkIGJlIGFsbG93ZWQgKGl0IGlzbid0
+IGxpc3RlZA0KPiA+PiBmb3IgTEFZT1VUQ09NTUlUIGF0IHRoZSBtb21lbnQpLiAgSnVzdCByZXR1
+cm5pbmcgTkZTNEVSX0RFTEFZIG1pZ2h0IGxlYWQNCj4gdG8NCj4gPj4gYSBsaXZlIGxvY2sgc2l0
+dWF0aW9uIHdoZXJlIG5laXRoZXIgdGhlIExBWU9VVENPTU1JVCBub3QgdGhlDQo+IENCX0xBWU9V
+VFJFQ0FMTA0KPiA+PiBjb21wbGV0ZS4NCj4gPj4NCj4gPj4gQmVubnkNCj4gPg0KDQo=
 
-Benny
-
-On 2011-09-13 18:43, tao.peng@emc.com wrote:
-> 
-> ________________________________________
-> From: Jim Rees [rees@umich.edu]
-> Sent: Tuesday, September 13, 2011 8:42 PM
-> To: Peng, Tao
-> Cc: bhalevy@tonian.com; linux-nfs@vger.kernel.org
-> Subject: Re: NULL pointer dereference during mount
-> 
-> tao.peng@emc.com wrote:
-> 
->   After rebasing to your pnfs-all-latest branch, I always got bellow NULL
->   pointer dereference for both nfsv4 and pnfs. Do you know of any recent
->   change that can cause this?
-> 
-> "git diff" shows no change in the nfs client between my for-benny branch and
-> benny's pnfs-all-latest branch.  And the mount works for me.  But the first
-> thing I always do on a fresh Fedora install is disable selinux.  Maybe
-> something changed in selinux?
-> [PT] Just tested 3.1-rc6 and it is working properly. So I think it should be caused by nfs changes.--
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
