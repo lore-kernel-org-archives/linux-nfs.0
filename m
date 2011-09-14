@@ -1,84 +1,47 @@
-From: "Benny Halevy" <bhalevy@tonian.com>
-Subject: Re: NULL pointer dereference during mount
-Date: Wed, 14 Sep 2011 16:47:27 +0000
-Message-ID: <393747220-1316018847-cardhu_decombobulator_blackberry.rim.net-1729285031-@b4.c3.bise3.blackberry>
-References: <F19688880B763E40B28B2B462677FBF805C3299FFE@MX09A.corp.emc.com>
- ,<20110913124202.GA9498@merit.edu>
-  <F19688880B763E40B28B2B462677FBF805C3F37B8D@MX09A.corp.emc.com>
-  <4E704999.1060205@tonian.com>
- ,<F19688880B763E40B28B2B462677FBF805C3F7A912@MX09A.corp.emc.com>
-  <F19688880B763E40B28B2B462677FBF805C3F37B8F@MX09A.corp.emc.com>
-Reply-To: bhalevy@tonian.com
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] mount.nfs: Preserve any explicit port=2049 option
+Date: Wed, 14 Sep 2011 14:26:49 -0400
+Message-ID: <4E70F1E9.2030906@RedHat.com>
+References: <1312625496-2496-1-git-send-email-luk@debian.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: rees@umich.edu, linux-nfs@vger.kernel.org
-To: tao.peng@emc.com
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: Luk Claes <luk@debian.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:35172 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754825Ab1INQra (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Sep 2011 12:47:30 -0400
-Received: by ywb5 with SMTP id 5so1554851ywb.19
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Sep 2011 09:47:30 -0700 (PDT)
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805C3F37B8F-AYrsSIZi/B2B3McK65YKY9BPR1lH4CV8@public.gmane.org>
+Received: from mx1.redhat.com ([209.132.183.28]:64511 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757261Ab1INS0x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Sep 2011 14:26:53 -0400
+In-Reply-To: <1312625496-2496-1-git-send-email-luk@debian.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-UGhldy4gVGhhdCBtYWtlcyBzZW5zZS4gOikNCg0KLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0N
-CkZyb206IDx0YW8ucGVuZ0BlbWMuY29tPg0KRGF0ZTogV2VkLCAxNCBTZXAgMjAxMSAxMTo1Njoy
-NyANClRvOiA8YmhhbGV2eUB0b25pYW4uY29tPg0KQ2M6IDxyZWVzQHVtaWNoLmVkdT47IDxsaW51
-eC1uZnNAdmdlci5rZXJuZWwub3JnPg0KU3ViamVjdDogUkU6IE5VTEwgcG9pbnRlciBkZXJlZmVy
-ZW5jZSBkdXJpbmcgbW91bnQNCg0KSGksIEJlbm55LA0KDQpPSywgSSBmb3VuZCB0aGUgcHJvYmxl
-bS4gSXQgaXMgYmVjYXVzZSBJIHdhcyBidWlsZGluZyBuZnMgbW9kdWxlLCBpbnN0ZWFkIG9mIHJl
-YnVpbGRpbmcgdGhlIHdob2xlIGtlcm5lbC4gY29tbWl0IGJlYTZjZDc0IGluIHBuZnMtYWxsLWxh
-dGVzdCBicmFuY2ggY2hhbmdlcyBzdHJ1Y3Qgc3VwZXJfYmxvY2sgYnkgYWRkaW5nIHNfcG5mc19v
-cCBwb2ludGVyLiBUaGVuIHNiLT5zX3NlY3VyaXR5IG9mIHRoZSBuZXcgbW9kdWxlIGlzIHRyYW5z
-bGF0ZWQgaW50byBhY2Nlc3Npbmcgc2ItPnNfeGF0dHIsIHdoaWNoIGlzIE5VTEwsIGFuZCBjYXVz
-ZXMgdGhlIG9vcHMuDQoNCkFmdGVyIHJlYnVpbGRpbmcgdGhlIGtlcm5lbCwgSSBkb24ndCBnZXQg
-aXQgYW55IG1vcmUuIFNvcnJ5IGZvciB0aGUgbm9pc2UuLi4NCg0KQ2hlZXJzLA0KVGFvDQpfX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fDQpGcm9tOiBsaW51eC1uZnMtb3du
-ZXJAdmdlci5rZXJuZWwub3JnIFtsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnXSBPbiBC
-ZWhhbGYgT2YgdGFvLnBlbmdAZW1jLmNvbSBbdGFvLnBlbmdAZW1jLmNvbV0NClNlbnQ6IFdlZG5l
-c2RheSwgU2VwdGVtYmVyIDE0LCAyMDExIDM6NTMgUE0NClRvOiBiaGFsZXZ5QHRvbmlhbi5jb20N
-CkNjOiByZWVzQHVtaWNoLmVkdTsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KU3ViamVjdDog
-UkU6IE5VTEwgcG9pbnRlciBkZXJlZmVyZW5jZSBkdXJpbmcgbW91bnQNCg0KPiAtLS0tLU9yaWdp
-bmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3Jn
-IFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10NCj4gT24gQmVoYWxmIE9m
-IEJlbm55IEhhbGV2eQ0KPiBTZW50OiBXZWRuZXNkYXksIFNlcHRlbWJlciAxNCwgMjAxMSAyOjI5
-IFBNDQo+IFRvOiBQZW5nLCBUYW8NCj4gQ2M6IHJlZXNAdW1pY2guZWR1OyBsaW51eC1uZnNAdmdl
-ci5rZXJuZWwub3JnDQo+IFN1YmplY3Q6IFJlOiBOVUxMIHBvaW50ZXIgZGVyZWZlcmVuY2UgZHVy
-aW5nIG1vdW50DQo+DQo+IEkgY291bGRuJ3QgcmVwcm9kdWNlIHRoaXMgd2l0aCBzZWxpbnV4IG5l
-aXRoZXIgZGlzYWJsZWQgbm9yIGVuZm9yY2luZy4NCj4gV2hhdCdzIHlvdXIgc2VsaW51eCBjb25m
-aWd1cmF0aW9uPw0KSSBkaWRuJ3QgY2hhbmdlZCBzZWxpbnV4IGNvbmZpZyBzbyBpdCBpcyB0aGUg
-ZGVmYXVsdCBvbiBGZWRvcmExNQ0KL2V0Yy9zZWxpbnV4L2NvbmZpZzoNClNFTElOVVg9ZW5mb3Jj
-aW5nDQpTRUxJTlVYVFlQRT10YXJnZXRlZA0KDQovZXRjL3NlbGludXgvc2VtYW5hZ2UuY29uZjoN
-Cm1vZHVsZS1zdG9yZSA9IGRpcmVjdA0KZXhwYW5kLWNoZWNrPTANCnVzZXBhc3N3ZD1GYWxzZQ0K
-DQpDaGVlcnMsDQpUYW8NCj4NCj4gQmVubnkNCj4NCj4gT24gMjAxMS0wOS0xMyAxODo0MywgdGFv
-LnBlbmdAZW1jLmNvbSB3cm90ZToNCj4gPg0KPiA+IF9fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX18NCj4gPiBGcm9tOiBKaW0gUmVlcyBbcmVlc0B1bWljaC5lZHVdDQo+ID4g
-U2VudDogVHVlc2RheSwgU2VwdGVtYmVyIDEzLCAyMDExIDg6NDIgUE0NCj4gPiBUbzogUGVuZywg
-VGFvDQo+ID4gQ2M6IGJoYWxldnlAdG9uaWFuLmNvbTsgbGludXgtbmZzQHZnZXIua2VybmVsLm9y
-Zw0KPiA+IFN1YmplY3Q6IFJlOiBOVUxMIHBvaW50ZXIgZGVyZWZlcmVuY2UgZHVyaW5nIG1vdW50
-DQo+ID4NCj4gPiB0YW8ucGVuZ0BlbWMuY29tIHdyb3RlOg0KPiA+DQo+ID4gICBBZnRlciByZWJh
-c2luZyB0byB5b3VyIHBuZnMtYWxsLWxhdGVzdCBicmFuY2gsIEkgYWx3YXlzIGdvdCBiZWxsb3cg
-TlVMTA0KPiA+ICAgcG9pbnRlciBkZXJlZmVyZW5jZSBmb3IgYm90aCBuZnN2NCBhbmQgcG5mcy4g
-RG8geW91IGtub3cgb2YgYW55IHJlY2VudA0KPiA+ICAgY2hhbmdlIHRoYXQgY2FuIGNhdXNlIHRo
-aXM/DQo+ID4NCj4gPiAiZ2l0IGRpZmYiIHNob3dzIG5vIGNoYW5nZSBpbiB0aGUgbmZzIGNsaWVu
-dCBiZXR3ZWVuIG15IGZvci1iZW5ueSBicmFuY2ggYW5kDQo+ID4gYmVubnkncyBwbmZzLWFsbC1s
-YXRlc3QgYnJhbmNoLiAgQW5kIHRoZSBtb3VudCB3b3JrcyBmb3IgbWUuICBCdXQgdGhlIGZpcnN0
-DQo+ID4gdGhpbmcgSSBhbHdheXMgZG8gb24gYSBmcmVzaCBGZWRvcmEgaW5zdGFsbCBpcyBkaXNh
-YmxlIHNlbGludXguICBNYXliZQ0KPiA+IHNvbWV0aGluZyBjaGFuZ2VkIGluIHNlbGludXg/DQo+
-ID4gW1BUXSBKdXN0IHRlc3RlZCAzLjEtcmM2IGFuZCBpdCBpcyB3b3JraW5nIHByb3Blcmx5LiBT
-byBJIHRoaW5rIGl0IHNob3VsZCBiZSBjYXVzZWQgYnkNCj4gbmZzIGNoYW5nZXMuLS0NCj4gPiBU
-byB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUg
-bGludXgtbmZzIiBpbg0KPiA+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdl
-ci5rZXJuZWwub3JnDQo+ID4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2Vy
-bmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20g
-dGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+IHRo
-ZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+IE1vcmUg
-bWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8u
-aHRtbA0KDQotLQ0KVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUg
-InVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCnRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpv
-cmRvbW9Admdlci5rZXJuZWwub3JnDQpNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdl
-ci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCg0K
 
+
+On 08/06/2011 06:11 AM, Luk Claes wrote:
+> If NFS port (2049) is supplied explicitly, don't ignore this setting by requesting it to portmapper again. Thanks to Ben Hutchings <ben@decadent.org.uk> for the patch.
+> 
+> Signed-off-by: Luk Claes <luk@debian.org>
+Committed....
+
+steved.
+
+> ---
+>  utils/mount/stropts.c |    4 ++--
+>  1 files changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index f1aa503..8b2799c 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -437,8 +437,8 @@ static int nfs_construct_new_options(struct mount_options *options,
+>  	if (po_append(options, new_option) == PO_FAILED)
+>  		return 0;
+>  
+> -	po_remove_all(options, "port");
+> -	if (nfs_pmap->pm_port != NFS_PORT) {
+> +	if(po_remove_all(options, "port") == PO_FOUND ||
+> +	   nfs_pmap->pm_port != NFS_PORT) {
+>  		snprintf(new_option, sizeof(new_option) - 1,
+>  			 "port=%lu", nfs_pmap->pm_port);
+>  		if (po_append(options, new_option) == PO_FAILED)
