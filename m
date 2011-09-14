@@ -1,80 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:26092 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:60196 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751517Ab1IUSQ6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Sep 2011 14:16:58 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p8LIGwdX015585
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 14:16:58 -0400
-Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p8LIGvR2025602
-	for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 14:16:58 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/2] nfsiostat: Breaks on 3.1 kernels
-Date: Wed, 21 Sep 2011 14:16:55 -0400
-Message-Id: <1316629016-27740-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1316629016-27740-1-git-send-email-steved@redhat.com>
-References: <1316629016-27740-1-git-send-email-steved@redhat.com>
+	id S932197Ab1INLp3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Sep 2011 07:45:29 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 24/25] nfsd4: use deleg changes to cleanup preprocess_stateid_op
+Date: Wed, 14 Sep 2011 07:45:20 -0400
+Message-Id: <1316000721-3289-25-git-send-email-bfields@redhat.com>
+In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-nfsiostat depend on all devices entries in /proc/self/mountstats
-to start with the word 'device'. With 3.1 kernels, NFS entries
-start with the actual device (i.e. server:/export) not
-the word 'device'. This change confused nfsiostat parsing.
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- tools/nfs-iostat/nfs-iostat.py |   11 +++++++++--
- 1 files changed, 9 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4state.c |   24 ++++++++++--------------
+ 1 files changed, 10 insertions(+), 14 deletions(-)
 
-diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
-index 4e55dad..d909632 100644
---- a/tools/nfs-iostat/nfs-iostat.py
-+++ b/tools/nfs-iostat/nfs-iostat.py
-@@ -86,6 +86,12 @@ class DeviceData:
-             self.__nfs_data['fstype'] = words[7]
-             if words[7] == 'nfs':
-                 self.__nfs_data['statvers'] = words[8]
-+        elif 'nfs' in words or 'nfs4' in words:
-+            self.__nfs_data['export'] = words[0]
-+            self.__nfs_data['mountpoint'] = words[3]
-+            self.__nfs_data['fstype'] = words[6]
-+            if words[6] == 'nfs':
-+                self.__nfs_data['statvers'] = words[7]
-         elif words[0] == 'age:':
-             self.__nfs_data['age'] = long(words[1])
-         elif words[0] == 'opts:':
-@@ -426,6 +432,9 @@ def parse_stats_file(filename):
-         if words[0] == 'device':
-             key = words[4]
-             new = [ line.strip() ]
-+        elif 'nfs' in words or 'nfs4' in words:
-+            key = words[3]
-+            new = [ line.strip() ]
-         else:
-             new += [ line.strip() ]
-         ms_dict[key] = new
-@@ -436,7 +445,6 @@ def parse_stats_file(filename):
- def print_iostat_summary(old, new, devices, time, options):
-     stats = {}
-     diff_stats = {}
--
-     if old:
-         # Trim device list to only include intersection of old and new data,
-         # this addresses umounts due to autofs mountpoints
-@@ -553,7 +561,6 @@ client are listed.
-     parser.add_option_group(displaygroup)
- 
-     (options, args) = parser.parse_args(sys.argv)
--
-     for arg in args:
- 
-         if arg == sys.argv[0]:
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 30387f3..ea338d0 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3290,6 +3290,7 @@ __be32
+ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+ 			   stateid_t *stateid, int flags, struct file **filpp)
+ {
++	struct nfs4_stid *s;
+ 	struct nfs4_ol_stateid *stp = NULL;
+ 	struct nfs4_delegation *dp = NULL;
+ 	struct svc_fh *current_fh = &cstate->current_fh;
+@@ -3314,13 +3315,14 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+ 	 * but that we can't find, is expired:
+ 	 */
+ 	status = nfserr_expired;
+-	if (is_delegation_stateid(stateid)) {
+-		dp = find_deleg_stateid(stateid);
+-		if (!dp)
+-			goto out;
+-		status = check_stateid_generation(stateid, &dp->dl_stid.sc_stateid, nfsd4_has_session(cstate));
+-		if (status)
+-			goto out;
++	s = find_stateid(stateid);
++	if (!s)
++		goto out;
++	status = check_stateid_generation(stateid, &s->sc_stateid, nfsd4_has_session(cstate));
++	if (status)
++		goto out;
++	if (s->sc_type == NFS4_DELEG_STID) {
++		dp = delegstateid(s);
+ 		status = nfs4_check_delegmode(dp, flags);
+ 		if (status)
+ 			goto out;
+@@ -3330,19 +3332,13 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+ 			BUG_ON(!*filpp);
+ 		}
+ 	} else { /* open or lock stateid */
+-		stp = find_ol_stateid(stateid);
+-		if (!stp)
+-			goto out;
++		stp = openlockstateid(s);
+ 		status = nfserr_bad_stateid;
+ 		if (nfs4_check_fh(current_fh, stp))
+ 			goto out;
+ 		if (stp->st_stateowner->so_is_open_owner
+ 		    && !openowner(stp->st_stateowner)->oo_confirmed)
+ 			goto out;
+-		status = check_stateid_generation(stateid, &stp->st_stid.sc_stateid,
+-						  nfsd4_has_session(cstate));
+-		if (status)
+-			goto out;
+ 		status = nfs4_check_openmode(stp, flags);
+ 		if (status)
+ 			goto out;
 -- 
-1.7.6.2
+1.7.4.1
 
