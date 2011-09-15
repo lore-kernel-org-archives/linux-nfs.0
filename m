@@ -1,153 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:17467 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753168Ab1IUKYV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 06:24:21 -0400
-From: <tao.peng@emc.com>
-To: <bhalevy@tonian.com>
-CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
-        <honey@citi.umich.edu>, <rees@umich.edu>
-Date: Wed, 21 Sep 2011 06:23:54 -0400
-Subject: RE: [PATCH 2/3] pnfs: introduce pnfs private workqueue
-Message-ID: <F19688880B763E40B28B2B462677FBF805C4952A24@MX09A.corp.emc.com>
-References: <1316488728-24912-1-git-send-email-rees@umich.edu>
- <1316488728-24912-3-git-send-email-rees@umich.edu>
- <1316558461.15093.4.camel@lade.trondhjem.org>
- <20110921002917.GA30770@merit.edu>
- <F19688880B763E40B28B2B462677FBF805C4952916@MX09A.corp.emc.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480226@SACMVEXC2-PRD.hq.netapp.com>
- <F19688880B763E40B28B2B462677FBF805C495295A@MX09A.corp.emc.com>
- <4E798C93.40409@tonian.com>
-In-Reply-To: <4E798C93.40409@tonian.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mx2.netapp.com ([216.240.18.37]:32548 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934182Ab1IORsc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Sep 2011 13:48:32 -0400
+Subject: Re: [PATCH] nfs4: serialize layoutcommit
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Peng Tao <bergwolf@gmail.com>
+Cc: bhalevy@tonian.com, Vitaliy Gusev <gusev.vitaliy@nexenta.com>,
+        linux-nfs@vger.kernel.org, Peng Tao <peng_tao@emc.com>
+Date: Thu, 15 Sep 2011 13:48:17 -0400
+In-Reply-To: <1316108327.5271.4.camel@lade.trondhjem.org.localdomain>
+References: <1315802900-1548-1-git-send-email-bergwolf@gmail.com>
+	 <1316108327.5271.4.camel@lade.trondhjem.org.localdomain>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1316108897.5271.6.camel@lade.trondhjem.org.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi, Benny,
-
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org]
-> On Behalf Of Benny Halevy
-> Sent: Wednesday, September 21, 2011 3:05 PM
-> To: Peng, Tao
-> Cc: Trond.Myklebust@netapp.com; linux-nfs@vger.kernel.org;
-> honey@citi.umich.edu; rees@umich.edu
-> Subject: Re: [PATCH 2/3] pnfs: introduce pnfs private workqueue
+On Thu, 2011-09-15 at 13:38 -0400, Trond Myklebust wrote: 
+> On Sun, 2011-09-11 at 21:48 -0700, Peng Tao wrote: 
+> > Current pnfs_layoutcommit_inode can not handle parallel layoutcommit.
+> > As Trond suggested, there is no need for client to optimize for
+> > parallel layoutcommit. The patch add NFS_INO_LAYOUTCOMMITTING flag to
+> > mark inflight layoutcommit and serialize lalyoutcommit with it.
+> > It also fixes the pls_lc_list corruption that Vitaliy found.
+> > 
+> > Reported-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+> > Signed-off-by: Peng Tao <peng_tao@emc.com>
+> > ---
+> >  fs/nfs/nfs4proc.c      |    6 ++++++
+> >  fs/nfs/pnfs.c          |    9 +++++++++
+> >  include/linux/nfs_fs.h |    1 +
+> >  3 files changed, 16 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> > index 4700fae..a7ce210 100644
+> > --- a/fs/nfs/nfs4proc.c
+> > +++ b/fs/nfs/nfs4proc.c
+> > @@ -5970,6 +5970,7 @@ static void nfs4_layoutcommit_release(void *calldata)
+> >  {
+> >  	struct nfs4_layoutcommit_data *data = calldata;
+> >  	struct pnfs_layout_segment *lseg, *tmp;
+> > +	unsigned long *bitlock = &NFS_I(data->args.inode)->flags;
+> >  
+> >  	pnfs_cleanup_layoutcommit(data);
+> >  	/* Matched by references in pnfs_set_layoutcommit */
+> > @@ -5979,6 +5980,11 @@ static void nfs4_layoutcommit_release(void *calldata)
+> >  				       &lseg->pls_flags))
+> >  			put_lseg(lseg);
+> >  	}
+> > +
+> > +	clear_bit_unlock(NFS_INO_LAYOUTCOMMITTING, bitlock);
+> > +	smp_mb__after_clear_bit();
+> > +	wake_up_bit(bitlock, NFS_INO_LAYOUTCOMMITTING);
+> > +
+> >  	put_rpccred(data->cred);
+> >  	kfree(data);
+> >  }
+> > diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> > index b483bbc..fb71def 100644
+> > --- a/fs/nfs/pnfs.c
+> > +++ b/fs/nfs/pnfs.c
+> > @@ -1451,10 +1451,19 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+> >  		goto out;
+> >  	}
+> >  
+> > +	if (!test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags) ||
+> > +	    (status = wait_on_bit_lock(&nfsi->flags, NFS_INO_LAYOUTCOMMITTING,
+> > +				nfs_wait_bit_killable, TASK_KILLABLE))) {
 > 
-> On 2011-09-21 08:16, tao.peng@emc.com wrote:
-> >> -----Original Message-----
-> >> From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
-> >> Sent: Wednesday, September 21, 2011 12:20 PM
-> >> To: Peng, Tao
-> >> Cc: bhalevy@tonian.com; linux-nfs@vger.kernel.org; honey@citi.umich.edu;
-> >> rees@umich.edu
-> >> Subject: RE: [PATCH 2/3] pnfs: introduce pnfs private workqueue
-> >>
-> >>> -----Original Message-----
-> >>> From: tao.peng@emc.com [mailto:tao.peng@emc.com]
-> >>> Sent: Tuesday, September 20, 2011 10:44 PM
-> >>> To: Myklebust, Trond
-> >>> Cc: bhalevy@tonian.com; linux-nfs@vger.kernel.org;
-> >> honey@citi.umich.edu;
-> >>> rees@umich.edu
-> >>> Subject: RE: [PATCH 2/3] pnfs: introduce pnfs private workqueue
-> >>>
-> >>>
-> >>>> -----Original Message-----
-> >>>> From: linux-nfs-owner@vger.kernel.org
-> >>>> [mailto:linux-nfs-owner@vger.kernel.org]
-> >>>> On Behalf Of Jim Rees
-> >>>> Sent: Wednesday, September 21, 2011 8:29 AM
-> >>>> To: Trond Myklebust
-> >>>> Cc: Benny Halevy; linux-nfs@vger.kernel.org; peter honeyman
-> >>>> Subject: Re: [PATCH 2/3] pnfs: introduce pnfs private workqueue
-> >>>>
-> >>>> Trond Myklebust wrote:
-> >>>>
-> >>>>   On Mon, 2011-09-19 at 23:18 -0400, Jim Rees wrote:
-> >>>>   > From: Peng Tao <bergwolf@gmail.com>
-> >>>>   >
-> >>>>   > For layoutdriver io done functions, default workqueue is not a
-> >> good
-> >>> place as
-> >>>>   > the code is executed in IO path. So add a pnfs private workqueue
-> >> to
-> >>> handle
-> >>>>   > them.
-> >>>>   >
-> >>>>   > Also change block and object layout code to make use of this
-> >> private
-> >>>>   > workqueue.
-> >>>>   >
-> >>>>
-> >>>>   Wait, what????
-> >>>>
-> >>>>   Why is the I/O path (i.e. the nfsiod queue) inappropriate for
-> >>>>   layoutdriver io_done functions?
-> >>> The current code uses the system_wq to handle io_done functions. If
-> >> any
-> >>> function allocates memory in system_wq and causes dirty writeback in
-> >> nfs
-> >>> path, the io_done function can never be called because it is after the
-> >> original
-> >>> function in the system_wq. And you said that the rpciod/nfsiod is not
-> >> the
-> >>> ideal place because of memory allocation. So I suggested pnfs private
-> >>> workqueue and Benny agreed on it.
-> >>
-> >> You appear to be optimizing for a corner case. Why?
-> > Current code uses system_wq for io_done and it can cause deadlock. So this is
-> more than just an optimization.
-> >
-> >>
-> >> IOW: why do we need a whole new workqueue for something which is
-> >> supposed to be extremely rare? Why can't we just use standard keventd or
-> >> allocate a perfectly normal thread (e.g. the state recovery thread)?
-> > Unlike nfsiod and rpciod, keventd (aka, system_wq) is not created with
-> WQ_MEM_RECLAIM, indicating that it should not be used for IO path which can be
-> invoked during memory reclaim. And I agree that a normal kthread can solve it.
-> >
-> > However, the blocklayout write end_io function still needs a context where it can
-> allocate memory to convert extent state (for every IO that touches new extents). If
-> you look into the patch, we are not just using the pnfs private workqueue to handle
-> pnfs_ld_read/write_done, but also calling mark_extents_written() inside the
-> workqueue.
-> 
-> Can this memory be preallocated before the I/O for the common case?
-It is possible to preallocate memory for the common case. But it doesn't remove the need for workqueue. Without workqueue, we will need to put a bunch of extent manipulation code into bio->end_io, which is executed in bottom half and we always need minimize its execution.
+> You want the sleeping behaviour above to be subject to the 'sync' flag
+> (in the same way we do for regular commit). If !sync, then try to grab
+> the bit lock anyway, and exit on failure.
 
-Unless we do following:
-1. preallocate memory for extent state convertion
-2. use nfsiod/rpciod to handle bl_write_cleanup
-3. for pnfs error case, create a kthread to recollapse and resend to MDS
+By the way. Shouldn't pnfs_layoutcommit_inode() also be marking the
+inode as dirty on failure?
 
-not sure if it worth the complexity though...
 
-Cheers,
-Tao
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-> 
-> Benny
-> 
-> > If we don't create a pnfs private workqueue for pnfs_ld_read/write_done (i.e., by
-> just creating a normal kthread in error case), we would still have to create a
-> workqueue inside blocklayout driver to handle write end_io. And if blocklayout has a
-> private workqueue, it no longer needs the normal kthread for read/write_done error
-> handling, which leaves the kthread only specific to object layout (if it doesn't need a
-> workqueue like blocklayout does).
-> >
-> > So I think a generic pnfs workqueue is better because it simplifies things and solve
-> both problems.
-> >
-> > Best,
-> > Tao
-> >
-> >>
-> >> Trond
-> >
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
