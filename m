@@ -1,65 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:37166 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752866Ab1IWBuZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 21:50:25 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 04/10] pnfsblock: add missing rpc_put_mount and path_put
-Date: Thu, 22 Sep 2011 21:50:11 -0400
-Message-Id: <1316742617-14766-5-git-send-email-rees@umich.edu>
-In-Reply-To: <1316742617-14766-1-git-send-email-rees@umich.edu>
-References: <1316742617-14766-1-git-send-email-rees@umich.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:20535 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753248Ab1IOOgo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Sep 2011 10:36:44 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p8FEaiWJ030588
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Sep 2011 10:36:44 -0400
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p8FEahi6030179
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Sep 2011 10:36:43 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] mount.nfs: mounts fail when invalid versions are specified
+Date: Thu, 15 Sep 2011 10:36:42 -0400
+Message-Id: <1316097402-10528-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Peng Tao <bergwolf@gmail.com>
+When mount options like -o nfsvers=5 or -o v5 call the mount
+to silently fail. This patch adds verbosity to those types
+of failures.
 
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Jim Rees <rees@umich.edu>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfs/blocklayout/blocklayout.c |    8 ++++++--
- 1 files changed, 6 insertions(+), 2 deletions(-)
+ utils/mount/network.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index dc23833..dee6cae 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -993,17 +993,20 @@ static int __init nfs4blocklayout_init(void)
- 			      mnt,
- 			      NFS_PIPE_DIRNAME, 0, &path);
- 	if (ret)
--		goto out_remove;
-+		goto out_putrpc;
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index e7bd522..e125c11 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -1235,6 +1235,10 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+ 	long tmp;
  
- 	bl_device_pipe = rpc_mkpipe(path.dentry, "blocklayout", NULL,
- 				    &bl_upcall_ops, 0);
-+	path_put(&path);
- 	if (IS_ERR(bl_device_pipe)) {
- 		ret = PTR_ERR(bl_device_pipe);
--		goto out_remove;
-+		goto out_putrpc;
- 	}
- out:
- 	return ret;
- 
-+out_putrpc:
-+	rpc_put_mount();
- out_remove:
- 	pnfs_unregister_layoutdriver(&blocklayout_type);
- 	return ret;
-@@ -1016,6 +1019,7 @@ static void __exit nfs4blocklayout_exit(void)
- 
- 	pnfs_unregister_layoutdriver(&blocklayout_type);
- 	rpc_unlink(bl_device_pipe);
-+	rpc_put_mount();
- }
- 
- MODULE_ALIAS("nfs-layouttype4-3");
+ 	switch (po_rightmost(options, nfs_version_opttbl)) {
++	case -1: /* invalid value */
++		nfs_error(_("%s: invalid mount option was specified"),
++					progname);
++		return 0;
+ 	case 0:	/* v2 */
+ 		*version = 2;
+ 		return 1;
+@@ -1251,6 +1255,8 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+ 				*version = tmp;
+ 				return 1;
+ 			}
++			nfs_error(_("%s: invalid value for 'vers=' option"),
++					progname);
+ 			return 0;
+ 		case PO_NOT_FOUND:
+ 			nfs_error(_("%s: parsing error on 'vers=' option\n"),
+@@ -1268,6 +1274,8 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+ 				*version = tmp;
+ 				return 1;
+ 			}
++			nfs_error(_("%s: invalid value for 'nfsvers=' option"),
++					progname);
+ 			return 0;
+ 		case PO_NOT_FOUND:
+ 			nfs_error(_("%s: parsing error on 'nfsvers=' option\n"),
 -- 
-1.7.4.1
+1.7.6
 
