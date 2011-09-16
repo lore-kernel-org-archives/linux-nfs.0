@@ -1,116 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yi0-f46.google.com ([209.85.218.46]:56484 "EHLO
-	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752220Ab1IMH7a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 03:59:30 -0400
-Received: by yie30 with SMTP id 30so224733yie.19
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Sep 2011 00:59:29 -0700 (PDT)
-Message-ID: <4E6F0C2B.3040505@tonian.com>
-Date: Tue, 13 Sep 2011 00:54:19 -0700
-From: Benny Halevy <bhalevy@tonian.com>
-To: tao.peng@emc.com
-CC: bergwolf@gmail.com, Trond.Myklebust@netapp.com, gusev.vitaliy@nexenta.com,
-        gusev.vitaliy@gmail.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
-References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com> <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com> <1315348373.19556.22.camel@lade.trondhjem.org> <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com> <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com> <F19688880B763E40B28B2B462677FBF805C3299D2F@MX09A.corp.emc.com> <1315592430.17611.15.camel@lade.trondhjem.org> <4E6B0E48.7050208@tonian.com> <CA+a=Yy5fMHPcSU4EoSo1uiOUCfi8vjRVPAjEYGZ+M00CwZ8Z9g@mail.gmail.com> <4E6E6C3B.2040605@tonian.com> <F19688880B763E40B28B2B462677FBF805C3299F6D@MX09A.corp.emc.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805C3299F6D@MX09A.corp.emc.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:35376 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750755Ab1IPQOV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2011 12:14:21 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 1/5] pnfsblock: fix size of upcall message
+Date: Fri, 16 Sep 2011 12:14:15 -0400
+Message-Id: <1316189659-8799-2-git-send-email-rees@umich.edu>
+In-Reply-To: <1316189659-8799-1-git-send-email-rees@umich.edu>
+References: <1316189659-8799-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-09-13 00:02, tao.peng@emc.com wrote:
-> 
->> -----Original Message-----
->> From: Benny Halevy [mailto:bhalevy@tonian.com]
->> Sent: Tuesday, September 13, 2011 4:32 AM
->> To: Peng Tao
->> Cc: Trond Myklebust; Peng, Tao; gusev.vitaliy@nexenta.com;
->> gusev.vitaliy@gmail.com; linux-nfs@vger.kernel.org
->> Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
->>
->> On 2011-09-12 07:56, Peng Tao wrote:
->>> On Sat, Sep 10, 2011 at 3:14 PM, Benny Halevy <bhalevy@tonian.com> wrote:
->>>> On 2011-09-09 11:20, Trond Myklebust wrote:
->>>>> On Thu, 2011-09-08 at 23:11 -0400, tao.peng@emc.com wrote:
->>>>>> HI, Trond,
->>>>>>
->>>>>>> -----Original Message-----
->>>>>>> From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
->>>>>>> Sent: Friday, September 09, 2011 1:05 AM
->>>>>>> To: Peng Tao
->>>>>>> Cc: Peng, Tao; gusev.vitaliy@nexenta.com; gusev.vitaliy@gmail.com;
->>>>>>> linux-nfs@vger.kernel.org
->>>>>>> Subject: RE: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
->>>>>>>
->>>>>>>> -----Original Message-----
->>>>>>>> From: Peng Tao [mailto:bergwolf@gmail.com]
->>>>>>>> Sent: Thursday, September 08, 2011 11:00 AM
->>>>>>>> To: Myklebust, Trond
->>>>>>>> Cc: tao.peng@emc.com; gusev.vitaliy@nexenta.com;
->>>>>>>> gusev.vitaliy@gmail.com; linux-nfs@vger.kernel.org
->>>>>>>> Subject: Re: [PATCH] nfs: fix inifinite loop at
->>>>>>>> nfs4_layoutcommit_release
->>>>>>>>
->>>>>>>> On Thu, Sep 8, 2011 at 8:01 PM, Myklebust, Trond
->>>>>>>> <Trond.Myklebust@netapp.com> wrote:
->>>>>>>>>> -----Original Message-----
->>>>>>>>
->>>>>>>>>
->>>>>>>>> Yes, but as far as I can see, even in the blocks case there can be
->>>>>>>> multiple extents per layout segment. What if I write to one
->>>>>>>> uninitialised extent, layoutcommit, then write to another uninitialized
->>>>>>>> extent in the same layout segment and layoutcommit? In my reading of
->>>>>>>> the code, there is a chance that the second layoutcommit will fail to
->>>>>>>> pick up the layout segment, and so will fail to notify the MDS that the
->>>>>>>> second extent now contains data.
->>>>>>>>
->>>>>>>> blocklayout does not decide what to layoutcommit according to the lseg
->>>>>>>> list. Instead, it keeps track of each extent's state at the
->>>>>>>> granularity of blocksize, and encode whatever needs layoutcommitted in
->>>>>>>> the layoutcommit call. So in your above case, as long as the second
->>>>>>>> layoutcommit is issued, blocklayout will encode the newly written
->>>>>>>> extent in the second layoutcommit call, even if the lseg is not
->>>>>>>> attached to the second layoutcommit.
->>>>>>>>
->>>>>>>> But that leads to another two question:
->>>>>>>> 1. How do we protect against layoutrecall if lseg is not linked to
->>>>>>>> layoutcommit? For this one, can we just reject layoutrecall if there
->>>>>>>> is inflight layoutcommit? It will be less parallel but can guarantee
->>>>>>>> current implementation correctness.
->>>>>>>> 2. blocklayout ONLY: bl_committing may be overloaded by several
->>>>>>>> layoutcommit calls and we don't have information in
->>>>>>>> cleanup_layoutcommit() on how many entry should be removed from
->>>>>>>> bl_committing. Maybe we can add a (void*) to struct
->>>>>>>> nfs4_layoutcommit_data, so that LD can pass some private information
->>>>>>>> between encode_layoutcommit() and cleanup_layoutcommit()?
->>>>>>>
->>>>>>> 3. What is the purpose of pinning the layout segment at all if neither blocks,
->> nor
->>>>>>> objects nor files cares?
->>>>>> I believe it is for protecting against layoutrecall. But since we are seperating
->> lseg and LD specific layout information management, it is actually not working as
->> expected.
->>>>>>
->>>>
->>>> The layout segments are not really in use while in LAYOUTCOMMIT.
->>>> We only need to get the stateid right with respect to concurrent layout recalls.
->>> LAYOUTCOMMIT takes lseg reference to mark them as in use so that
->>> layoutrecall cannot free them.
->>>
->>
->> And if layoutrecall would have freed layout segments during layoutcommit,
->> what is your specific concern?
-> In layoutcommit_release, blocklayout need to access the corresponding extents to convert their states. If the layout segments are freed by layoutrecall, it can cause problems.
-> 
+Make the status field explicitly 32 bits.  "...it's unlikely that the kernel
+and userspace would differ on the size of an int here, but it might be a
+good idea to go ahead and make that explicitly 32 bits in case we end up
+dealing with more exotic arches at some point in the future."
 
-See my response to Trond on his previous message.  I think the best thing to do is
-to return NFS4ERR_DELAY if the gets a conflicting CB_LAYOUTRECALL while the
-LAYOUTCOMMIT is in progress.  The server may need to reject the LAYOUTCOMMIT
-in this case to prevent a distributed deadlock so the client should be prepared
-to retry.
+Suggested-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/blocklayout/blocklayout.h |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Benny
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index f27d827..58dc256 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -150,7 +150,7 @@ BLK_LSEG2EXT(struct pnfs_layout_segment *lseg)
+ }
+ 
+ struct bl_dev_msg {
+-	int status;
++	int32_t status;
+ 	uint32_t major, minor;
+ };
+ 
+-- 
+1.7.6
 
->>
->> Benny
