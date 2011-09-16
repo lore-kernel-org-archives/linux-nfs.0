@@ -1,51 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:53992 "EHLO smtp.gentoo.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932129Ab1IAPQd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Sep 2011 11:16:33 -0400
-Received: from localhost.localdomain (localhost [127.0.0.1])
-	by smtp.gentoo.org (Postfix) with ESMTP id 562F01B402C
-	for <linux-nfs@vger.kernel.org>; Thu,  1 Sep 2011 15:16:33 +0000 (UTC)
-From: Mike Frysinger <vapier@gentoo.org>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] exportfs: do not warn if /etc/exports.d/ does not exist
-Date: Thu,  1 Sep 2011 11:16:32 -0400
-Message-Id: <1314890192-11075-2-git-send-email-vapier@gentoo.org>
-In-Reply-To: <1314890192-11075-1-git-send-email-vapier@gentoo.org>
-References: <1314890192-11075-1-git-send-email-vapier@gentoo.org>
+Received: from fmmailgate01.web.de ([217.72.192.221]:52450 "EHLO
+	fmmailgate01.web.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751048Ab1IPKs6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2011 06:48:58 -0400
+Received: from smtp06.web.de  ( [172.20.5.172])
+	by fmmailgate01.web.de (Postfix) with ESMTP id F11701974CFE3
+	for <linux-nfs@vger.kernel.org>; Fri, 16 Sep 2011 12:48:45 +0200 (CEST)
+Received: from [80.66.224.98] (helo=PC5280)
+	by smtp06.web.de with esmtp (WEB.DE 4.110 #2)
+	id 1R4VyP-0000kT-00
+	for linux-nfs@vger.kernel.org; Fri, 16 Sep 2011 12:48:45 +0200
+From: "Tim" <supertimothy@web.de>
+To: <linux-nfs@vger.kernel.org>
+Subject: Writing / Locking problem with NFSv4
+Date: Fri, 16 Sep 2011 12:48:45 +0200
+Message-ID: <001101cc745e$356aeed0$a040cc70$@web.de>
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-It isn't uncommon for /etc/exports.d/ to not exist, and imo, it's not
-that big of a deal as often times, a simple /etc/exports is sufficient.
-So silently skip the case where the dir is missing.
+Hi there
 
-Signed-off-by: Mike Frysinger <vapier@gentoo.org>
----
- utils/exportfs/exportfs.c |    7 +++++--
- 1 files changed, 5 insertions(+), 2 deletions(-)
+I'm  facing a rather strange problem. 
 
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index 986a272..7432a65 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -529,9 +529,12 @@ export_d_read(const char *dname)
- 
- 
- 	n = scandir(dname, &namelist, NULL, versionsort);
--	if (n < 0)
-+	if (n < 0) {
-+		if (errno == ENOENT)
-+			/* Silently return */
-+			return;
- 		xlog(L_NOTICE, "scandir %s: %s", dname, strerror(errno));
--	else if (n == 0)
-+	} else if (n == 0)
- 		return;
- 
- 	for (i = 0; i < n; i++) {
--- 
-1.7.6
+>From one client I can mount and access my NFSServer without any problems.
+Writing and locking works with a non root user accout. 
+>From another client (in another subnet), with root everything works fine. If
+I use another user, locking doesnt work and also when I create a file with
+vim, the *.swp file is not deleted afterwards. But reading works without
+problems. 
+Strange thing is user mapping seems to work correct - at least what ls -la
+and the logfiles for idmapd shows. 
+
+I appreciate your input! Thanks!
+
+Tim
 
