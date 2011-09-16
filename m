@@ -1,110 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:38552 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751958Ab1ITPjf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Sep 2011 11:39:35 -0400
-Message-ID: <4E78B389.3000307@parallels.com>
-Date: Tue, 20 Sep 2011 19:38:49 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>
-Subject: Re: [PATCH v5 1/8] SUNRPC: introduce helpers for reference counted
- rpcbind clients
-References: <20110920101031.9861.18444.stgit@localhost6.localdomain6>	<20110920101341.9861.51453.stgit@localhost6.localdomain6>	<4E7899E7.9090809@parallels.com> <20110920102431.58ca1d96@tlielax.poochiereds.net> <4E78A6A1.1000800@parallels.com> <4E78AA09.1000209@netapp.com>
-In-Reply-To: <4E78AA09.1000209@netapp.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:35480 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751458Ab1IPQO1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2011 12:14:27 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 5/5] pnfsblock: add missing rpc_put_mount and path_put
+Date: Fri, 16 Sep 2011 12:14:19 -0400
+Message-Id: <1316189659-8799-6-git-send-email-rees@umich.edu>
+In-Reply-To: <1316189659-8799-1-git-send-email-rees@umich.edu>
+References: <1316189659-8799-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-20.09.2011 18:58, Bryan Schumaker пишет:
-> On 09/20/2011 10:43 AM, Stanislav Kinsbursky wrote:
->> 20.09.2011 18:24, Jeff Layton пишет:
->>> On Tue, 20 Sep 2011 17:49:27 +0400
->>> Stanislav Kinsbursky<skinsbursky@parallels.com>   wrote:
->>>
->>>> v5: fixed races with rpcb_users in rpcb_get_local()
->>>>
->>>> This helpers will be used for dynamical creation and destruction of rpcbind
->>>> clients.
->>>> Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
->>>> clients has been created already, then we just increase rpcb_users.
->>>>
->>>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->>>>
->>>> ---
->>>>     net/sunrpc/rpcb_clnt.c |   53 ++++++++++++++++++++++++++++++++++++++++++++++++
->>>>     1 files changed, 53 insertions(+), 0 deletions(-)
->>>>
->>>> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
->>>> index e45d2fb..5f4a406 100644
->>>> --- a/net/sunrpc/rpcb_clnt.c
->>>> +++ b/net/sunrpc/rpcb_clnt.c
->>>> @@ -114,6 +114,9 @@ static struct rpc_program    rpcb_program;
->>>>     static struct rpc_clnt *    rpcb_local_clnt;
->>>>     static struct rpc_clnt *    rpcb_local_clnt4;
->>>>     +DEFINE_SPINLOCK(rpcb_clnt_lock);
->>>> +unsigned int            rpcb_users;
->>>> +
->>>>     struct rpcbind_args {
->>>>         struct rpc_xprt *    r_xprt;
->>>>     @@ -161,6 +164,56 @@ static void rpcb_map_release(void *data)
->>>>         kfree(map);
->>>>     }
->>>>     +static int rpcb_get_local(void)
->>>> +{
->>>> +    int cnt;
->>>> +
->>>> +    spin_lock(&rpcb_clnt_lock);
->>>> +    if (rpcb_users)
->>>> +        rpcb_users++;
->>>> +    cnt = rpcb_users;
->>>> +    spin_unlock(&rpcb_clnt_lock);
->>>> +
->>>> +    return cnt;
->>>> +}
->>>> +
->>>> +void rpcb_put_local(void)
->>>> +{
->>>> +    struct rpc_clnt *clnt = rpcb_local_clnt;
->>>> +    struct rpc_clnt *clnt4 = rpcb_local_clnt4;
->>>> +    int shutdown;
->>>> +
->>>> +    spin_lock(&rpcb_clnt_lock);
->>>> +    if (--rpcb_users == 0) {
->>>> +        rpcb_local_clnt = NULL;
->>>> +        rpcb_local_clnt4 = NULL;
->>>> +    }
->>>
->>> In the function below, you mention that the above pointers are
->>> protected by rpcb_create_local_mutex, but it looks like they get reset
->>> here without that being held?
->>>
->>
->> Assigning of them is protected by rpcb_create_local_mutex.
->> Dereferencing of them is protected by rpcb_clnt_lock.
->
-> Shouldn't you be using the same lock for assigning and dereferencing?  Otherwise one thread could change these variables while another is using them.
+From: Peng Tao <bergwolf@gmail.com>
 
-Probably I wasn't clear with my previous explanation.
-Actually, we use only spinlock to make sure, that the pointers are valid when we 
-dereferencing them. Synchronization point here is rpcb_users counter.
-IOW, we use these pointers only from svc code and only after service already 
-started. And with this patch-set we can be sure, that this pointers has been 
-created already to the point, when this service starts.
+Reported-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
+---
+ fs/nfs/blocklayout/blocklayout.c |    8 ++++++--
+ 1 files changed, 6 insertions(+), 2 deletions(-)
 
-But when this counter is zero, we can experience races with assigning those 
-pointers. It takes a lot of time, so we use local mutex here instead of spinlock.
-
-Have I answered your question?
-
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 7aace44..fef125d2 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -1000,17 +1000,20 @@ static int __init nfs4blocklayout_init(void)
+ 			      mnt,
+ 			      NFS_PIPE_DIRNAME, 0, &path);
+ 	if (ret)
+-		goto out_remove;
++		goto out_putrpc;
+ 
+ 	bl_device_pipe = rpc_mkpipe(path.dentry, "blocklayout", NULL,
+ 				    &bl_upcall_ops, 0);
++	path_put(&path);
+ 	if (IS_ERR(bl_device_pipe)) {
+ 		ret = PTR_ERR(bl_device_pipe);
+-		goto out_remove;
++		goto out_putrpc;
+ 	}
+ out:
+ 	return ret;
+ 
++out_putrpc:
++	rpc_put_mount();
+ out_remove:
+ 	pnfs_unregister_layoutdriver(&blocklayout_type);
+ 	return ret;
+@@ -1023,6 +1026,7 @@ static void __exit nfs4blocklayout_exit(void)
+ 
+ 	pnfs_unregister_layoutdriver(&blocklayout_type);
+ 	rpc_unlink(bl_device_pipe);
++	rpc_put_mount();
+ }
+ 
+ MODULE_ALIAS("nfs-layouttype4-3");
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.6
+
