@@ -1,49 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:54921 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758153Ab1IHKlU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Sep 2011 06:41:20 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: agruen@kernel.org, akpm@linux-foundation.org, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Jeremy Allison <jra@samba.org>
-Subject: Re: [PATCH -V6 00/26]  New ACL format for better NFSv4 acl interoperability
-In-Reply-To: <20110907234408.GA10982@fieldses.org>
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20110907234408.GA10982@fieldses.org>
-Date: Thu, 08 Sep 2011 16:10:59 +0530
-Message-ID: <874o0n5nb8.fsf@skywalker.in.ibm.com>
-Content-Type: text/plain; charset=us-ascii
+Received: from mx2.netapp.com ([216.240.18.37]:7266 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752759Ab1IPPEV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2011 11:04:21 -0400
+Subject: RE: [PATCH] nfs4: serialize layoutcommit
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: tao.peng@emc.com
+Cc: bergwolf@gmail.com, bhalevy@tonian.com, gusev.vitaliy@nexenta.com,
+        linux-nfs@vger.kernel.org
+Date: Fri, 16 Sep 2011 11:04:04 -0400
+In-Reply-To: <F19688880B763E40B28B2B462677FBF805C495258C@MX09A.corp.emc.com>
+References: <1315802900-1548-1-git-send-email-bergwolf@gmail.com>
+	 <1316108327.5271.4.camel@lade.trondhjem.org.localdomain>
+	 <1316108897.5271.6.camel@lade.trondhjem.org.localdomain>
+	 <F19688880B763E40B28B2B462677FBF805C495258C@MX09A.corp.emc.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1316185444.5570.3.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 7 Sep 2011 19:44:08 -0400, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Mon, Sep 05, 2011 at 10:55:22PM +0530, Aneesh Kumar K.V wrote:
-> > Hi,
+On Fri, 2011-09-16 at 07:58 -0400, tao.peng@emc.com wrote: 
+> Hi, Trond,
+> 
+> > -----Original Message-----
+> > From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com]
+> > Sent: Friday, September 16, 2011 1:48 AM
+> > To: Peng Tao
+> > Cc: bhalevy@tonian.com; Vitaliy Gusev; linux-nfs@vger.kernel.org; Peng, Tao
+> > Subject: Re: [PATCH] nfs4: serialize layoutcommit
 > > 
-> > The following set of patches implements VFS and ext4 changes needed to implement
-> > a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
-> > extended by file masks to fit into the standard POSIX file permission model.
-> > They are designed to work seamlessly locally as well as across the NFSv4 and
-> > CIFS/SMB2 network file system protocols.
+> > On Thu, 2011-09-15 at 13:38 -0400, Trond Myklebust wrote:
+> > > On Sun, 2011-09-11 at 21:48 -0700, Peng Tao wrote:
+> > > > Current pnfs_layoutcommit_inode can not handle parallel layoutcommit.
+> > > > As Trond suggested, there is no need for client to optimize for
+> > > > parallel layoutcommit. The patch add NFS_INO_LAYOUTCOMMITTING flag to
+> > > > mark inflight layoutcommit and serialize lalyoutcommit with it.
+> > > > It also fixes the pls_lc_list corruption that Vitaliy found.
+> > > >
+> > > > Reported-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+> > > > Signed-off-by: Peng Tao <peng_tao@emc.com>
+> > > > ---
+> > > >  fs/nfs/nfs4proc.c      |    6 ++++++
+> > > >  fs/nfs/pnfs.c          |    9 +++++++++
+> > > >  include/linux/nfs_fs.h |    1 +
+> > > >  3 files changed, 16 insertions(+), 0 deletions(-)
+> > > >
+> > > > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> > > > index 4700fae..a7ce210 100644
+> > > > --- a/fs/nfs/nfs4proc.c
+> > > > +++ b/fs/nfs/nfs4proc.c
+> > > > @@ -5970,6 +5970,7 @@ static void nfs4_layoutcommit_release(void *calldata)
+> > > >  {
+> > > >  	struct nfs4_layoutcommit_data *data = calldata;
+> > > >  	struct pnfs_layout_segment *lseg, *tmp;
+> > > > +	unsigned long *bitlock = &NFS_I(data->args.inode)->flags;
+> > > >
+> > > >  	pnfs_cleanup_layoutcommit(data);
+> > > >  	/* Matched by references in pnfs_set_layoutcommit */
+> > > > @@ -5979,6 +5980,11 @@ static void nfs4_layoutcommit_release(void
+> > *calldata)
+> > > >  				       &lseg->pls_flags))
+> > > >  			put_lseg(lseg);
+> > > >  	}
+> > > > +
+> > > > +	clear_bit_unlock(NFS_INO_LAYOUTCOMMITTING, bitlock);
+> > > > +	smp_mb__after_clear_bit();
+> > > > +	wake_up_bit(bitlock, NFS_INO_LAYOUTCOMMITTING);
+> > > > +
+> > > >  	put_rpccred(data->cred);
+> > > >  	kfree(data);
+> > > >  }
+> > > > diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> > > > index b483bbc..fb71def 100644
+> > > > --- a/fs/nfs/pnfs.c
+> > > > +++ b/fs/nfs/pnfs.c
+> > > > @@ -1451,10 +1451,19 @@ pnfs_layoutcommit_inode(struct inode *inode,
+> > bool sync)
+> > > >  		goto out;
+> > > >  	}
+> > > >
+> > > > +	if (!test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags) ||
+> > > > +	    (status = wait_on_bit_lock(&nfsi->flags,
+> > NFS_INO_LAYOUTCOMMITTING,
+> > > > +				nfs_wait_bit_killable, TASK_KILLABLE))) {
+> > >
+> > > You want the sleeping behaviour above to be subject to the 'sync' flag
+> > > (in the same way we do for regular commit). If !sync, then try to grab
+> > > the bit lock anyway, and exit on failure.
+> I'm a little confused about the "!sync" here. If we return failure, what do we expect callers to do?
+> Looking at the calling stack, I don't see any users retrying on -EAGAIN. Does the "!sync" necessarily mean non-blocking?
 > 
-> The posix acl mapping that samba and nfsd currently have to do is
-> painful for everyone and I'm delighted to get away from it.
-> 
-> My main remaining worry (besides the fact that cifs/v4 acls are too
-> complicated--but what can we do about that?)--is about how exactly the
-> (acl, mask)->acl mapping is going to work for nfsd and samba.
+> > 
+> > By the way. Shouldn't pnfs_layoutcommit_inode() also be marking the
+> > inode as dirty on failure?
+> Yeah, right, we should mark inode as dirty on failure.
 
-I already have changes to nfsd that maps NFSv4 ACL to the richacl. You
-will find that in richaclv23 branch
+The !sync means that we're being called from a context such as kswapd
+where we really don't want to sleep or block the thread.
 
-git://git.kernel.org/pub/scm/linux/kernel/git/kvaneesh/linux-richacl.git richaclv23
+In the case where this happens, and the NFS_INO_LAYOUTCOMMITTING bit
+can't be set, we should exit and mark the inode as dirty so that we can
+retry at a later time. Please see the 'commit' code, which has the same
+properties...
 
-> 
-> If we assume that filesystems are going to mostly use acls or mostly
-> mode bits, then maybe that part doesn't matter a whole lot.  I don't
-> know.
-> 
 
--aneesh
+Cheers
+  Trond
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
