@@ -1,37 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:63755 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752159Ab1I0Rv7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Sep 2011 13:51:59 -0400
-Received: by wwf22 with SMTP id 22so7606129wwf.1
-        for <linux-nfs@vger.kernel.org>; Tue, 27 Sep 2011 10:51:58 -0700 (PDT)
-In-Reply-To: <20110927173822.GC24197@suse.de>
-References: <1317076424.19951.32.camel@lade.trondhjem.org> <CA+55aFzi+0Z6HXJCxW=Uc1EZsp4qA00i+ihNcSX_v6bVTbU2BA@mail.gmail.com>
- <1317078563.21770.8.camel@lade.trondhjem.org> <CA+55aFzX+DyU7xhAmTLq0g_z6jyKuqoiyPdCYO+w2Xk7pECrqg@mail.gmail.com>
- <1317085155.21770.17.camel@lade.trondhjem.org> <CA+55aFxuaJ-a5u79D2pELU4HbWTrbWjG_4BNcvFqEOcM0H8G2Q@mail.gmail.com>
- <1317097001.3176.20.camel@perseus.themaw.net> <CA+55aFyzxvJJgOkojvV-83ejNtQnXeRnXerwzWRdwFgPF_yMhg@mail.gmail.com>
- <1317099091.3176.31.camel@perseus.themaw.net> <CA+55aFwf8z+pi3okC2GmuYYKTN3hz+j5Y4XX4B=VrOP+YG0Qpw@mail.gmail.com>
- <20110927173822.GC24197@suse.de>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Tue, 27 Sep 2011 10:51:34 -0700
-Message-ID: <CA+55aFzJBxMJEgPBv-bWGJSBvKA04orsnrMo8YJiMvoTYKZYfA@mail.gmail.com>
-Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-To: Greg KH <gregkh@suse.de>
-Cc: Ian Kent <raven@themaw.net>, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Jeff Layton <jlayton@redhat.com>, Miklos Szeredi <miklos@szeredi.hu>,
-        David Howells <dhowells@redhat.com>, viro@zeniv.linux.org.uk,
-        linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mexforward.lss.emc.com ([128.222.32.20]:25603 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751968Ab1IPL7G (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2011 07:59:06 -0400
+From: <tao.peng@emc.com>
+To: <Trond.Myklebust@netapp.com>, <bergwolf@gmail.com>
+CC: <bhalevy@tonian.com>, <gusev.vitaliy@nexenta.com>,
+        <linux-nfs@vger.kernel.org>
+Date: Fri, 16 Sep 2011 07:58:42 -0400
+Subject: RE: [PATCH] nfs4: serialize layoutcommit
+Message-ID: <F19688880B763E40B28B2B462677FBF805C495258C@MX09A.corp.emc.com>
+References: <1315802900-1548-1-git-send-email-bergwolf@gmail.com>
+	 <1316108327.5271.4.camel@lade.trondhjem.org.localdomain>
+ <1316108897.5271.6.camel@lade.trondhjem.org.localdomain>
+In-Reply-To: <1316108897.5271.6.camel@lade.trondhjem.org.localdomain>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Sep 27, 2011 at 10:38 AM, Greg KH <gregkh@suse.de> wrote:
->
-> Does any of this make any sense for the 3.0-stable tree as well?
-
-My gut feel is that it's not important enough to worry about too much,
-and we should wait to see that nobody complains about the 3.1
-behavior.
-
-                  Linus
+SGksIFRyb25kLA0KDQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IFRyb25k
+IE15a2xlYnVzdCBbbWFpbHRvOlRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tXQ0KPiBTZW50OiBG
+cmlkYXksIFNlcHRlbWJlciAxNiwgMjAxMSAxOjQ4IEFNDQo+IFRvOiBQZW5nIFRhbw0KPiBDYzog
+YmhhbGV2eUB0b25pYW4uY29tOyBWaXRhbGl5IEd1c2V2OyBsaW51eC1uZnNAdmdlci5rZXJuZWwu
+b3JnOyBQZW5nLCBUYW8NCj4gU3ViamVjdDogUmU6IFtQQVRDSF0gbmZzNDogc2VyaWFsaXplIGxh
+eW91dGNvbW1pdA0KPiANCj4gT24gVGh1LCAyMDExLTA5LTE1IGF0IDEzOjM4IC0wNDAwLCBUcm9u
+ZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+ID4gT24gU3VuLCAyMDExLTA5LTExIGF0IDIxOjQ4IC0wNzAw
+LCBQZW5nIFRhbyB3cm90ZToNCj4gPiA+IEN1cnJlbnQgcG5mc19sYXlvdXRjb21taXRfaW5vZGUg
+Y2FuIG5vdCBoYW5kbGUgcGFyYWxsZWwgbGF5b3V0Y29tbWl0Lg0KPiA+ID4gQXMgVHJvbmQgc3Vn
+Z2VzdGVkLCB0aGVyZSBpcyBubyBuZWVkIGZvciBjbGllbnQgdG8gb3B0aW1pemUgZm9yDQo+ID4g
+PiBwYXJhbGxlbCBsYXlvdXRjb21taXQuIFRoZSBwYXRjaCBhZGQgTkZTX0lOT19MQVlPVVRDT01N
+SVRUSU5HIGZsYWcgdG8NCj4gPiA+IG1hcmsgaW5mbGlnaHQgbGF5b3V0Y29tbWl0IGFuZCBzZXJp
+YWxpemUgbGFseW91dGNvbW1pdCB3aXRoIGl0Lg0KPiA+ID4gSXQgYWxzbyBmaXhlcyB0aGUgcGxz
+X2xjX2xpc3QgY29ycnVwdGlvbiB0aGF0IFZpdGFsaXkgZm91bmQuDQo+ID4gPg0KPiA+ID4gUmVw
+b3J0ZWQtYnk6IFZpdGFsaXkgR3VzZXYgPGd1c2V2LnZpdGFsaXlAbmV4ZW50YS5jb20+DQo+ID4g
+PiBTaWduZWQtb2ZmLWJ5OiBQZW5nIFRhbyA8cGVuZ190YW9AZW1jLmNvbT4NCj4gPiA+IC0tLQ0K
+PiA+ID4gIGZzL25mcy9uZnM0cHJvYy5jICAgICAgfCAgICA2ICsrKysrKw0KPiA+ID4gIGZzL25m
+cy9wbmZzLmMgICAgICAgICAgfCAgICA5ICsrKysrKysrKw0KPiA+ID4gIGluY2x1ZGUvbGludXgv
+bmZzX2ZzLmggfCAgICAxICsNCj4gPiA+ICAzIGZpbGVzIGNoYW5nZWQsIDE2IGluc2VydGlvbnMo
+KyksIDAgZGVsZXRpb25zKC0pDQo+ID4gPg0KPiA+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0
+cHJvYy5jIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gPiA+IGluZGV4IDQ3MDBmYWUuLmE3Y2UyMTAg
+MTAwNjQ0DQo+ID4gPiAtLS0gYS9mcy9uZnMvbmZzNHByb2MuYw0KPiA+ID4gKysrIGIvZnMvbmZz
+L25mczRwcm9jLmMNCj4gPiA+IEBAIC01OTcwLDYgKzU5NzAsNyBAQCBzdGF0aWMgdm9pZCBuZnM0
+X2xheW91dGNvbW1pdF9yZWxlYXNlKHZvaWQgKmNhbGxkYXRhKQ0KPiA+ID4gIHsNCj4gPiA+ICAJ
+c3RydWN0IG5mczRfbGF5b3V0Y29tbWl0X2RhdGEgKmRhdGEgPSBjYWxsZGF0YTsNCj4gPiA+ICAJ
+c3RydWN0IHBuZnNfbGF5b3V0X3NlZ21lbnQgKmxzZWcsICp0bXA7DQo+ID4gPiArCXVuc2lnbmVk
+IGxvbmcgKmJpdGxvY2sgPSAmTkZTX0koZGF0YS0+YXJncy5pbm9kZSktPmZsYWdzOw0KPiA+ID4N
+Cj4gPiA+ICAJcG5mc19jbGVhbnVwX2xheW91dGNvbW1pdChkYXRhKTsNCj4gPiA+ICAJLyogTWF0
+Y2hlZCBieSByZWZlcmVuY2VzIGluIHBuZnNfc2V0X2xheW91dGNvbW1pdCAqLw0KPiA+ID4gQEAg
+LTU5NzksNiArNTk4MCwxMSBAQCBzdGF0aWMgdm9pZCBuZnM0X2xheW91dGNvbW1pdF9yZWxlYXNl
+KHZvaWQNCj4gKmNhbGxkYXRhKQ0KPiA+ID4gIAkJCQkgICAgICAgJmxzZWctPnBsc19mbGFncykp
+DQo+ID4gPiAgCQkJcHV0X2xzZWcobHNlZyk7DQo+ID4gPiAgCX0NCj4gPiA+ICsNCj4gPiA+ICsJ
+Y2xlYXJfYml0X3VubG9jayhORlNfSU5PX0xBWU9VVENPTU1JVFRJTkcsIGJpdGxvY2spOw0KPiA+
+ID4gKwlzbXBfbWJfX2FmdGVyX2NsZWFyX2JpdCgpOw0KPiA+ID4gKwl3YWtlX3VwX2JpdChiaXRs
+b2NrLCBORlNfSU5PX0xBWU9VVENPTU1JVFRJTkcpOw0KPiA+ID4gKw0KPiA+ID4gIAlwdXRfcnBj
+Y3JlZChkYXRhLT5jcmVkKTsNCj4gPiA+ICAJa2ZyZWUoZGF0YSk7DQo+ID4gPiAgfQ0KPiA+ID4g
+ZGlmZiAtLWdpdCBhL2ZzL25mcy9wbmZzLmMgYi9mcy9uZnMvcG5mcy5jDQo+ID4gPiBpbmRleCBi
+NDgzYmJjLi5mYjcxZGVmIDEwMDY0NA0KPiA+ID4gLS0tIGEvZnMvbmZzL3BuZnMuYw0KPiA+ID4g
+KysrIGIvZnMvbmZzL3BuZnMuYw0KPiA+ID4gQEAgLTE0NTEsMTAgKzE0NTEsMTkgQEAgcG5mc19s
+YXlvdXRjb21taXRfaW5vZGUoc3RydWN0IGlub2RlICppbm9kZSwNCj4gYm9vbCBzeW5jKQ0KPiA+
+ID4gIAkJZ290byBvdXQ7DQo+ID4gPiAgCX0NCj4gPiA+DQo+ID4gPiArCWlmICghdGVzdF9iaXQo
+TkZTX0lOT19MQVlPVVRDT01NSVQsICZuZnNpLT5mbGFncykgfHwNCj4gPiA+ICsJICAgIChzdGF0
+dXMgPSB3YWl0X29uX2JpdF9sb2NrKCZuZnNpLT5mbGFncywNCj4gTkZTX0lOT19MQVlPVVRDT01N
+SVRUSU5HLA0KPiA+ID4gKwkJCQluZnNfd2FpdF9iaXRfa2lsbGFibGUsIFRBU0tfS0lMTEFCTEUp
+KSkgew0KPiA+DQo+ID4gWW91IHdhbnQgdGhlIHNsZWVwaW5nIGJlaGF2aW91ciBhYm92ZSB0byBi
+ZSBzdWJqZWN0IHRvIHRoZSAnc3luYycgZmxhZw0KPiA+IChpbiB0aGUgc2FtZSB3YXkgd2UgZG8g
+Zm9yIHJlZ3VsYXIgY29tbWl0KS4gSWYgIXN5bmMsIHRoZW4gdHJ5IHRvIGdyYWINCj4gPiB0aGUg
+Yml0IGxvY2sgYW55d2F5LCBhbmQgZXhpdCBvbiBmYWlsdXJlLg0KSSdtIGEgbGl0dGxlIGNvbmZ1
+c2VkIGFib3V0IHRoZSAiIXN5bmMiIGhlcmUuIElmIHdlIHJldHVybiBmYWlsdXJlLCB3aGF0IGRv
+IHdlIGV4cGVjdCBjYWxsZXJzIHRvIGRvPw0KTG9va2luZyBhdCB0aGUgY2FsbGluZyBzdGFjaywg
+SSBkb24ndCBzZWUgYW55IHVzZXJzIHJldHJ5aW5nIG9uIC1FQUdBSU4uIERvZXMgdGhlICIhc3lu
+YyIgbmVjZXNzYXJpbHkgbWVhbiBub24tYmxvY2tpbmc/DQoNCj4gDQo+IEJ5IHRoZSB3YXkuIFNo
+b3VsZG4ndCBwbmZzX2xheW91dGNvbW1pdF9pbm9kZSgpIGFsc28gYmUgbWFya2luZyB0aGUNCj4g
+aW5vZGUgYXMgZGlydHkgb24gZmFpbHVyZT8NClllYWgsIHJpZ2h0LCB3ZSBzaG91bGQgbWFyayBp
+bm9kZSBhcyBkaXJ0eSBvbiBmYWlsdXJlLg0KDQpUaGFua3MsDQpUYW8NCgTvv717Lm7vv70r77+9
+77+977+977+977+977+977+9KyXvv73vv71sendt77+977+9Yu+/veunsu+/ve+/vXLvv73vv716
+WO+/ve+/vRnfsinvv73vv73vv713Kh9qZ++/ve+/ve+/vR7vv73vv73vv73vv73vv73domov77+9
+77+977+9eu+/vd6W77+977+9Mu+/vd6Z77+977+977+9Ju+/vSnfoe+/vWHvv73vv71/77+977+9
+Hu+/vUfvv73vv73vv71o77+9D++/vWo6K3bvv73vv73vv71377+92aU=
