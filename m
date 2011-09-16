@@ -1,136 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from p3plsmtps2ded02.prod.phx3.secureserver.net ([208.109.80.59]:37724
-	"HELO p3plsmtps2ded02-02.prod.phx3.secureserver.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1751727Ab1I0NlW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Sep 2011 09:41:22 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Ian Kent <raven@themaw.net>, Jeff Layton <jlayton@redhat.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        David Howells <dhowells@redhat.com>, viro@zeniv.linux.org.uk,
-        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-Subject: [PATCH 1/2] VFS: Fix the remaining automounter semantics regressions
-Date: Tue, 27 Sep 2011 09:34:31 -0400
-Message-Id: <1317130472-7790-1-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <CA+55aFzX+DyU7xhAmTLq0g_z6jyKuqoiyPdCYO+w2Xk7pECrqg@mail.gmail.com>
-References: <CA+55aFzX+DyU7xhAmTLq0g_z6jyKuqoiyPdCYO+w2Xk7pECrqg@mail.gmail.com>
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:41104 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750755Ab1IPQO1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2011 12:14:27 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 4/5] pnfsblock: fix writeback deadlock
+Date: Fri, 16 Sep 2011 12:14:18 -0400
+Message-Id: <1316189659-8799-5-git-send-email-rees@umich.edu>
+In-Reply-To: <1316189659-8799-1-git-send-email-rees@umich.edu>
+References: <1316189659-8799-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-The concensus seems to be that system calls such as stat() etc should not
-trigger an automount. Neither should the l* versions.
+From: Peng Tao <bergwolf@gmail.com>
 
-This patch therefore adds a LOOKUP_AUTOMOUNT flag to tag those lookups that
-don't currently trigger an automount on the last path element but that
-should.
+We should check if the sector is already initialized before
+trying to grab the page from page cache. Otherwise when two
+pages of the same block are written back by two threads each
+calling from writepage_locked, it can cause deadlock like bellow.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+ [ 1080.972099] INFO: task kswapd0:25 blocked for more than 120 seconds.
+ [ 1080.972377] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+ [ 1080.972812] kswapd0         D ffff88000c4926c0     0    25      2 0x00000000
+ [ 1080.972816]  ffff88000df276b0 0000000000000046 ffff88000df27640 ffffffff81013ba7
+ [ 1080.972821]  ffff88000c492310 ffff88000df27fd8 ffff88000df27fd8 00000000001d3440
+ [ 1080.972824]  ffff88000c378000 ffff88000c492310 ffff8800175d3d40 ffff880017fc75a8
+ [ 1080.972828] Call Trace:
+ [ 1080.972860]  [<ffffffff81013ba7>] ? read_tsc+0x9/0x19
+ [ 1080.972877]  [<ffffffff810e0b23>] ? lock_page+0x2b/0x2b
+ [ 1080.972899]  [<ffffffff81475a1d>] io_schedule+0x63/0x7e
+ [ 1080.972902]  [<ffffffff810e0b31>] sleep_on_page+0xe/0x12
+ [ 1080.972905]  [<ffffffff81475fe8>] __wait_on_bit_lock+0x46/0x8f
+ [ 1080.972916]  [<ffffffff810822d7>] ? lock_release_holdtime.part.7+0x6b/0x72
+ [ 1080.972919]  [<ffffffff810e0af6>] __lock_page+0x66/0x68
+ [ 1080.972928]  [<ffffffff81072705>] ? autoremove_wake_function+0x3d/0x3d
+ [ 1080.972932]  [<ffffffff810e0b1f>] lock_page+0x27/0x2b
+ [ 1080.972934]  [<ffffffff810e0bcf>] find_lock_page+0x34/0x57
+ [ 1080.972937]  [<ffffffff810e1738>] find_or_create_page+0x34/0x8a
+ [ 1080.972947]  [<ffffffffa034245b>] bl_write_pagelist+0x205/0x6da [blocklayoutdriver]
+ [ 1080.972951]  [<ffffffffa034145d>] ? bl_free_lseg+0x38/0x38 [blocklayoutdriver]
+ [ 1080.972995]  [<ffffffffa02e27b9>] ? nfs_write_rpcsetup+0x118/0x123 [nfs]
+ [ 1080.973033]  [<ffffffffa030246b>] pnfs_generic_pg_writepages+0x10b/0x1f4 [nfs]
+ [ 1080.973089]  [<ffffffffa02deaae>] nfs_pageio_doio+0x1a/0x43 [nfs]
+ [ 1080.973098]  [<ffffffffa02df035>] nfs_pageio_complete+0x16/0x2d [nfs]
+ [ 1080.973108]  [<ffffffffa02e2d8f>] nfs_writepage_locked+0xa0/0xbf [nfs]
+ [ 1080.973119]  [<ffffffffa02e36a1>] nfs_writepage+0x16/0x2b [nfs]
+ [ 1080.973122]  [<ffffffff810e8762>] ? clear_page_dirty_for_io+0x87/0x9a
+ [ 1080.973133]  [<ffffffff810efc5b>] shrink_page_list+0x39b/0x6c8
+ [ 1080.973139]  [<ffffffff810f03bb>] shrink_inactive_list+0x22c/0x39e
+ [ 1080.973144]  [<ffffffff810822d7>] ? lock_release_holdtime.part.7+0x6b/0x72
+ [ 1080.973148]  [<ffffffff810f0c33>] shrink_zone+0x445/0x588
+ [ 1080.973152]  [<ffffffff810f1a11>] balance_pgdat+0x2c2/0x56b
+ [ 1080.973170]  [<ffffffff81254208>] ? __bitmap_weight+0x34/0x80
+ [ 1080.973175]  [<ffffffff810f1f78>] kswapd+0x2be/0x2fa
+ [ 1080.973179]  [<ffffffff810726c8>] ? __init_waitqueue_head+0x4b/0x4b
+ [ 1080.973183]  [<ffffffff810f1cba>] ? balance_pgdat+0x56b/0x56b
+ [ 1080.973187]  [<ffffffff81071f69>] kthread+0xa8/0xb0
+ [ 1080.973200]  [<ffffffff814806b4>] kernel_thread_helper+0x4/0x10
+ [ 1080.973205]  [<ffffffff81071ec1>] ? __init_kthread_worker+0x5a/0x5a
+ [ 1080.973210]  [<ffffffff814806b0>] ? gs_change+0x13/0x13
+ [ 1080.973213] no locks held by kswapd0/25.
+
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
 ---
- fs/namei.c            |    8 +-------
- fs/namespace.c        |    2 +-
- fs/nfs/super.c        |    4 ++--
- fs/quota/quota.c      |    3 ++-
- fs/stat.c             |    2 --
- include/linux/namei.h |    2 +-
- 6 files changed, 7 insertions(+), 14 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c |    8 ++++++--
+ 1 files changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index f478836..c076492 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -721,12 +721,6 @@ static int follow_automount(struct path *path, unsigned flags,
- 	if (!path->dentry->d_op || !path->dentry->d_op->d_automount)
- 		return -EREMOTE;
- 
--	/* We don't want to mount if someone supplied AT_NO_AUTOMOUNT
--	 * and this is the terminal part of the path.
--	 */
--	if ((flags & LOOKUP_NO_AUTOMOUNT) && !(flags & LOOKUP_PARENT))
--		return -EISDIR; /* we actually want to stop here */
--
- 	/* We don't want to mount if someone's just doing a stat -
- 	 * unless they're stat'ing a directory and appended a '/' to
- 	 * the name.
-@@ -738,7 +732,7 @@ static int follow_automount(struct path *path, unsigned flags,
- 	 * as being automount points.  These will need the attentions
- 	 * of the daemon to instantiate them before they can be used.
- 	 */
--	if (!(flags & (LOOKUP_PARENT | LOOKUP_DIRECTORY |
-+	if (!(flags & (LOOKUP_AUTOMOUNT | LOOKUP_PARENT | LOOKUP_DIRECTORY |
- 		     LOOKUP_OPEN | LOOKUP_CREATE)) &&
- 	    path->dentry->d_inode)
- 		return -EISDIR;
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 22bfe82..b4febb2 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -1757,7 +1757,7 @@ static int do_loopback(struct path *path, char *old_name,
- 		return err;
- 	if (!old_name || !*old_name)
- 		return -EINVAL;
--	err = kern_path(old_name, LOOKUP_FOLLOW, &old_path);
-+	err = kern_path(old_name, LOOKUP_FOLLOW|LOOKUP_AUTOMOUNT, &old_path);
- 	if (err)
- 		return err;
- 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 9b7dd70..8aa6968 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2797,8 +2797,8 @@ static struct dentry *nfs_follow_remote_path(struct vfsmount *root_mnt,
- 	if (ret != 0)
- 		goto out_put_mnt_ns;
- 
--	ret = vfs_path_lookup(root_mnt->mnt_root, root_mnt,
--			export_path, LOOKUP_FOLLOW, &path);
-+	ret = vfs_path_lookup(root_mnt->mnt_root, root_mnt, export_path,
-+			LOOKUP_FOLLOW | LOOKUP_DIRECTORY, &path);
- 
- 	nfs_referral_loop_unprotect();
- 	put_mnt_ns(ns_private);
-diff --git a/fs/quota/quota.c b/fs/quota/quota.c
-index b34bdb2..9ea9fce 100644
---- a/fs/quota/quota.c
-+++ b/fs/quota/quota.c
-@@ -355,7 +355,8 @@ SYSCALL_DEFINE4(quotactl, unsigned int, cmd, const char __user *, special,
- 	 * resolution (think about autofs) and thus deadlocks could arise.
- 	 */
- 	if (cmds == Q_QUOTAON) {
--		ret = user_path_at(AT_FDCWD, addr, LOOKUP_FOLLOW, &path);
-+		ret = user_path_at(AT_FDCWD, addr, LOOKUP_FOLLOW |
-+				LOOKUP_AUTOMOUNT, &path);
- 		if (ret)
- 			pathp = ERR_PTR(ret);
- 		else
-diff --git a/fs/stat.c b/fs/stat.c
-index ba5316f..78a3aa8 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -81,8 +81,6 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
- 
- 	if (!(flag & AT_SYMLINK_NOFOLLOW))
- 		lookup_flags |= LOOKUP_FOLLOW;
--	if (flag & AT_NO_AUTOMOUNT)
--		lookup_flags |= LOOKUP_NO_AUTOMOUNT;
- 	if (flag & AT_EMPTY_PATH)
- 		lookup_flags |= LOOKUP_EMPTY;
- 
-diff --git a/include/linux/namei.h b/include/linux/namei.h
-index 76fe2c6..bfcd2e0 100644
---- a/include/linux/namei.h
-+++ b/include/linux/namei.h
-@@ -52,7 +52,7 @@ enum {LAST_NORM, LAST_ROOT, LAST_DOT, LAST_DOTDOT, LAST_BIND};
- #define LOOKUP_PARENT		0x0010
- #define LOOKUP_REVAL		0x0020
- #define LOOKUP_RCU		0x0040
--#define LOOKUP_NO_AUTOMOUNT	0x0080
-+#define LOOKUP_AUTOMOUNT	0x0080
- /*
-  * Intent data
-  */
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index d99400b..7aace44 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -544,6 +544,11 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ fill_invalid_ext:
+ 		dprintk("%s need to zero %d pages\n", __func__, npg_zero);
+ 		for (;npg_zero > 0; npg_zero--) {
++			if (bl_is_sector_init(be->be_inval, isect)) {
++				dprintk("isect %llu already init\n",
++					(unsigned long long)isect);
++				goto next_page;
++			}
+ 			/* page ref released in bl_end_io_write_zero */
+ 			index = isect >> PAGE_CACHE_SECTOR_SHIFT;
+ 			dprintk("%s zero %dth page: index %lu isect %llu\n",
+@@ -563,8 +568,7 @@ fill_invalid_ext:
+ 			 * PageUptodate: It was read before
+ 			 * sector_initialized: already written out
+ 			 */
+-			if (PageDirty(page) || PageWriteback(page) ||
+-			    bl_is_sector_init(be->be_inval, isect)) {
++			if (PageDirty(page) || PageWriteback(page)) {
+ 				print_page(page);
+ 				unlock_page(page);
+ 				page_cache_release(page);
 -- 
-1.7.6.2
+1.7.6
 
