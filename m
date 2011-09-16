@@ -1,88 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:22516 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750764Ab1IZMxG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Sep 2011 08:53:06 -0400
-Message-ID: <4E807588.8040904@netapp.com>
-Date: Mon, 26 Sep 2011 08:52:24 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: Sukwoo Kang <sukwoo.kang@gmail.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 read delegation
-References: <CAOB=RsJUwPsU4gjnW208wYJ-VCsbRovyg3xEfHn2boWwGicZ=w@mail.gmail.com>
-In-Reply-To: <CAOB=RsJUwPsU4gjnW208wYJ-VCsbRovyg3xEfHn2boWwGicZ=w@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-vw0-f42.google.com ([209.85.212.42]:42552 "EHLO
+	mail-vw0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752645Ab1IPP24 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2011 11:28:56 -0400
+Received: by vwl1 with SMTP id 1so7220596vwl.1
+        for <linux-nfs@vger.kernel.org>; Fri, 16 Sep 2011 08:28:54 -0700 (PDT)
+In-Reply-To: <1316185444.5570.3.camel@lade.trondhjem.org>
+References: <1315802900-1548-1-git-send-email-bergwolf@gmail.com>
+ <1316108327.5271.4.camel@lade.trondhjem.org.localdomain> <1316108897.5271.6.camel@lade.trondhjem.org.localdomain>
+ <F19688880B763E40B28B2B462677FBF805C495258C@MX09A.corp.emc.com> <1316185444.5570.3.camel@lade.trondhjem.org>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Fri, 16 Sep 2011 23:28:34 +0800
+Message-ID: <CA+a=Yy5+XCcjXQWao6=yXC4h_yyDCQkX_bhonbPx1D3XbVPGWw@mail.gmail.com>
+Subject: Re: [PATCH] nfs4: serialize layoutcommit
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: tao.peng@emc.com, bhalevy@tonian.com, gusev.vitaliy@nexenta.com,
+        linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/23/2011 08:17 PM, Sukwoo Kang wrote:
-> Hello, I'm trying to find out how NFSv4 client can get read
-> delegation. I'm using separate RHEL6 machines (2.6.32-71.el6.x86_64)
-> as server and client respectively.
+On Fri, Sep 16, 2011 at 11:04 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> On Fri, 2011-09-16 at 07:58 -0400, tao.peng@emc.com wrote:
+>> Hi, Trond,
+>>
+>> > -----Original Message-----
+>> > From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com]
+>> > Sent: Friday, September 16, 2011 1:48 AM
+>> > To: Peng Tao
+>> > Cc: bhalevy@tonian.com; Vitaliy Gusev; linux-nfs@vger.kernel.org; Peng, Tao
+>> > Subject: Re: [PATCH] nfs4: serialize layoutcommit
+>> >
+>> > On Thu, 2011-09-15 at 13:38 -0400, Trond Myklebust wrote:
+>> > > On Sun, 2011-09-11 at 21:48 -0700, Peng Tao wrote:
+>> > > > Current pnfs_layoutcommit_inode can not handle parallel layoutcommit.
+>> > > > As Trond suggested, there is no need for client to optimize for
+>> > > > parallel layoutcommit. The patch add NFS_INO_LAYOUTCOMMITTING flag to
+>> > > > mark inflight layoutcommit and serialize lalyoutcommit with it.
+>> > > > It also fixes the pls_lc_list corruption that Vitaliy found.
+>> > > >
+>> > > > Reported-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+>> > > > Signed-off-by: Peng Tao <peng_tao@emc.com>
+>> > > > ---
+>> > > >  fs/nfs/nfs4proc.c      |    6 ++++++
+>> > > >  fs/nfs/pnfs.c          |    9 +++++++++
+>> > > >  include/linux/nfs_fs.h |    1 +
+>> > > >  3 files changed, 16 insertions(+), 0 deletions(-)
+>> > > >
+>> > > > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> > > > index 4700fae..a7ce210 100644
+>> > > > --- a/fs/nfs/nfs4proc.c
+>> > > > +++ b/fs/nfs/nfs4proc.c
+>> > > > @@ -5970,6 +5970,7 @@ static void nfs4_layoutcommit_release(void *calldata)
+>> > > >  {
+>> > > >         struct nfs4_layoutcommit_data *data = calldata;
+>> > > >         struct pnfs_layout_segment *lseg, *tmp;
+>> > > > +       unsigned long *bitlock = &NFS_I(data->args.inode)->flags;
+>> > > >
+>> > > >         pnfs_cleanup_layoutcommit(data);
+>> > > >         /* Matched by references in pnfs_set_layoutcommit */
+>> > > > @@ -5979,6 +5980,11 @@ static void nfs4_layoutcommit_release(void
+>> > *calldata)
+>> > > >                                        &lseg->pls_flags))
+>> > > >                         put_lseg(lseg);
+>> > > >         }
+>> > > > +
+>> > > > +       clear_bit_unlock(NFS_INO_LAYOUTCOMMITTING, bitlock);
+>> > > > +       smp_mb__after_clear_bit();
+>> > > > +       wake_up_bit(bitlock, NFS_INO_LAYOUTCOMMITTING);
+>> > > > +
+>> > > >         put_rpccred(data->cred);
+>> > > >         kfree(data);
+>> > > >  }
+>> > > > diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>> > > > index b483bbc..fb71def 100644
+>> > > > --- a/fs/nfs/pnfs.c
+>> > > > +++ b/fs/nfs/pnfs.c
+>> > > > @@ -1451,10 +1451,19 @@ pnfs_layoutcommit_inode(struct inode *inode,
+>> > bool sync)
+>> > > >                 goto out;
+>> > > >         }
+>> > > >
+>> > > > +       if (!test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags) ||
+>> > > > +           (status = wait_on_bit_lock(&nfsi->flags,
+>> > NFS_INO_LAYOUTCOMMITTING,
+>> > > > +                               nfs_wait_bit_killable, TASK_KILLABLE))) {
+>> > >
+>> > > You want the sleeping behaviour above to be subject to the 'sync' flag
+>> > > (in the same way we do for regular commit). If !sync, then try to grab
+>> > > the bit lock anyway, and exit on failure.
+>> I'm a little confused about the "!sync" here. If we return failure, what do we expect callers to do?
+>> Looking at the calling stack, I don't see any users retrying on -EAGAIN. Does the "!sync" necessarily mean non-blocking?
+>>
+>> >
+>> > By the way. Shouldn't pnfs_layoutcommit_inode() also be marking the
+>> > inode as dirty on failure?
+>> Yeah, right, we should mark inode as dirty on failure.
+>
+> The !sync means that we're being called from a context such as kswapd
+> where we really don't want to sleep or block the thread.
+>
+> In the case where this happens, and the NFS_INO_LAYOUTCOMMITTING bit
+> can't be set, we should exit and mark the inode as dirty so that we can
+> retry at a later time. Please see the 'commit' code, which has the same
+> properties...
+I see. Thanks for the explanation. I will update the patch.
 
-I'm able to get a read delegation by holding two files open at the same time.
-
-$ tail -f /nfs/file1.txt
-$ tail -f /nfs/file2.txt
-
-Will give me a read delegation in the second OPEN reply.
-
-- Bryan
-
-> 
-> If I use pynfs, I can see server gives out read delegation. Basically
-> pynfs sends these RPCs to server - open (create), open_confirm, open,
-> open_confirm.
-> 
-> On real NFS client,
-> 
-> If I do 'cat <file>' twice, client does not get read delegation.
-> 	- (nfs4state.c)
-> 	- if (!cb_up || !sop->so_confirmed)
-> 		goto out;
-> 	- Here sop->so_confirmed is 0.
-> 
-> If I open the existing file with O_RDONLY twice (i.e., open, not close
-> it and open again), client sends open only once to server.
-> 	- So here also sop->so_confirmed is 0. Delegation is not sent out.
-> (I've added more debug messages shown in below.)
-> 
-> 2011-09-23T22:41:44.642938+02:00 int002st001 kernel: NFSD:
-> nfs4_open_delegation enter
-> 2011-09-23T22:41:44.642942+02:00 int002st001 kernel: NFSD: nfs4_open_claim_null
-> 2011-09-23T22:41:44.643853+02:00 int002st001 kernel: NFSD: cb_up=1,
-> sop->so_confirmed=0
-> 2011-09-23T22:41:44.643857+02:00 int002st001 kernel: NFSD: either
-> callback is not up or not open confirmed
-> 2011-09-23T22:41:44.643858+02:00 int002st001 kernel: NFSD:
-> nfs4_open_delegation exit
-> 
-> If I open the existing file with O_RDWR and then open it with
-> O_RDONLY, I can see "sop->so_confirmed = 1", but setlease failed.
-> 	- I think it is because there is writer on this file.
-> 
-> 2011-09-23T11:23:28.116280+02:00 int002st001 kernel: NFSD:
-> nfs4_open_delegation enter
-> 2011-09-23T11:23:28.116717+02:00 int002st001 kernel: NFSD: nfs4_open_claim_null
-> 2011-09-23T11:23:28.117879+02:00 int002st001 kernel: NFSD: cb_up=1,
-> sop->so_confirmed=1
-> 2011-09-23T11:23:28.117887+02:00 int002st001 kernel: NFSD alloc_init_deleg
-> 2011-09-23T11:23:28.117889+02:00 int002st001 kernel: NFSD: setlease
-> failed [-11], no delegation
-> 2011-09-23T11:23:28.119101+02:00 int002st001 kernel: NFSD:
-> close_delegation dp ffff88006ba05e60
-> 2011-09-23T11:23:28.119109+02:00 int002st001 kernel: NFSD: freeing dp
-> ffff88006ba05e60
-> 2011-09-23T11:23:28.120050+02:00 int002st001 kernel: NFSD:
-> nfs4_open_delegation exit
-> 
-> What is missing here? I will appreciate any advice. Thank you.
-> 	
-> Regards,
-> Sukwoo Kang
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+Best,
+Tao
