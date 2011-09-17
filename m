@@ -1,108 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46807 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751573Ab1IRLt3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 18 Sep 2011 07:49:29 -0400
-Date: Sun, 18 Sep 2011 07:49:25 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/8] configure.ac: Add --with-statd-extension configure
- option
-Message-ID: <20110918074925.5b620286@tlielax.poochiereds.net>
-In-Reply-To: <4E74927D.2070600@RedHat.com>
-References: <20110912220304.10854.20972.stgit@matisse.1015granger.net>
-	<20110912220623.10854.69881.stgit@matisse.1015granger.net>
-	<4E74927D.2070600@RedHat.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:37941 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1755531Ab1IQPRI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Sep 2011 11:17:08 -0400
+Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1R4wc4-0005ZA-7n
+	for linux-nfs@vger.kernel.org; Sat, 17 Sep 2011 11:15:28 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/2] configure.ac: Remove unused NFS3_SUPPORTED define
+Date: Sat, 17 Sep 2011 11:17:02 -0400
+Message-Id: <1316272622-4894-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1316272622-4894-1-git-send-email-steved@redhat.com>
+References: <1316272622-4894-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Sat, 17 Sep 2011 08:28:45 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
+This configuration option is not used. So remove
+it for now then possibly added it back when
+V3 supported is disabled.
 
-> 
-> 
-> On 09/12/2011 06:06 PM, Chuck Lever wrote:
-> > Currently some distributions patch nfs-utils to put NSM state in a
-> > subdirectory of /var/lib/nfs.  Make this a configure option instead.
-> > 
-> > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> > ---
-> > 
-> >  configure.ac       |    8 ++++++++
-> >  support/nsm/file.c |    9 +--------
-> >  2 files changed, 9 insertions(+), 8 deletions(-)
-> > 
-> > diff --git a/configure.ac b/configure.ac
-> > index 461a96a..ba704e2 100644
-> > --- a/configure.ac
-> > +++ b/configure.ac
-> > @@ -23,6 +23,14 @@ AC_ARG_WITH(statedir,
-> >  	statedir=$withval,
-> >  	statedir=/var/lib/nfs)
-> >  	AC_SUBST(statedir)
-> > +AC_ARG_WITH(statd-extension,
-> > +	[AC_HELP_STRING([--with-statd-extension=foo],
-> > +                        [Put NSM state in subdir foo of statedir])],
-> > +	statdext=$withval,
-> > +	statdext="")
-> > +	AC_SUBST(statdext)
-> > +	AC_DEFINE_UNQUOTED(NSM_PATH_EXTENSION, "$statdext",
-> > +			   [This defines the statedir subdirectory containing NSM state files.])
-> >  AC_ARG_WITH(statduser,
-> >  	[AC_HELP_STRING([--with-statduser=rpcuser],
-> >                          [statd to run under @<:@rpcuser or nobody@:>@]
-> > diff --git a/support/nsm/file.c b/support/nsm/file.c
-> > index a12c753..b4a5af1 100644
-> > --- a/support/nsm/file.c
-> > +++ b/support/nsm/file.c
-> > @@ -93,14 +93,7 @@
-> >  #define LINELEN		(RPCARGSLEN + SM_PRIV_SIZE * 2 + 1)
-> >  
-> >  #define NSM_KERNEL_STATE_FILE	"/proc/sys/fs/nfs/nsm_local_state"
-> > -
-> > -/*
-> > - * Some distributions place statd's files in a subdirectory
-> > - */
-> > -#define NSM_PATH_EXTENSION
-> > -/* #define NSM_PATH_EXTENSION	"/statd" */
-> > -
-> > -#define NSM_DEFAULT_STATEDIR		NFS_STATEDIR NSM_PATH_EXTENSION
-> > +#define NSM_DEFAULT_STATEDIR	NFS_STATEDIR "/" NSM_PATH_EXTENSION
-> Do we really need the NSM_PATH_EXTENSION define? Would it be more
-> straightforward to just have NFS_STATEDIR. Simplifying the code to:
-> 
-> #ifndef NFS_STATEDIR 
-> #define NFS_STATEDIR "/var/lib/nfs"
-> #endif
-> 
-> #define NSM_DEFAULT_STATEDIR		NFS_STATEDIR
-> 
-> If there is no need for the extra NSM_PATH_EXTENSION define then 
-> we really don't want to create a configuration option for it.. IMHO..
-> 
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ configure.ac |   12 +-----------
+ 1 files changed, 1 insertions(+), 11 deletions(-)
 
-
-IIRC, the statd directory is not standard between distributions. Some
-(like Fedora) put this dir in /var/lib/nfs/statd, and some just keep all
-of that in /var/lib/nfs.
-
-The main reason for not making the NSM statedir be /var/lib/nfs is
-that statd defaults to running as the user that owns the statedir. We
-don't really want /var/lib/nfs owned by rpcuser since it contains other
-things that it shouldn't have access to if statd were compromised.
-
-I think the idea here is to push this patch to mainline so we can stop
-carrying nfs-utils-1.2.2-statdpath.patch in the Fedora repo and turn it
-into an option that distros can use to put this in the location they
-prefer.
-
-If we do what you're suggesting above, we'll need a transition scheme
-for Fedora and RHEL, and a way to deal with making statd run as the
-proper user. I don't think we really want to go to that much effort for
-statd...
-
+diff --git a/configure.ac b/configure.ac
+index 18a735d..07a25ad 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -46,17 +46,7 @@ AC_ARG_WITH(start-statd,
+ 	)
+ 	AC_SUBST(startstatd)
+ 	AC_DEFINE_UNQUOTED(START_STATD, "$startstatd", [Define this to a script which can start statd on mount])
+-AC_ARG_ENABLE(nfsv3,
+-	[AC_HELP_STRING([--enable-nfsv3],
+-                        [enable support for NFSv3 @<:@default=yes@:>@])],
+-	enable_nfsv3=$enableval,
+-	enable_nfsv3=yes)
+-	if test "$enable_nfsv3" = yes; then
+-		AC_DEFINE(NFS3_SUPPORTED, 1, [Define this if you want NFSv3 support compiled in])
+-	else
+-		enable_nfsv3=
+-	fi
+-	AC_SUBST(enable_nfsv3)
++
+ AC_ARG_ENABLE(nfsv4,
+ 	[AC_HELP_STRING([--enable-nfsv4],
+                         [enable support for NFSv4 @<:@default=yes@:>@])],
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.6
+
