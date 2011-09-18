@@ -1,38 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:17006 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:46807 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750981Ab1IWR1H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Sep 2011 13:27:07 -0400
-Content-Type: text/plain;
-	charset="utf-8"
-Subject: RE: [PATCH v6 1/8] SUNRPC: introduce helpers for reference counted rpcbind clients
-Date: Fri, 23 Sep 2011 10:26:49 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B54DB89@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <4E7C9A91.1060301@parallels.com>
-References: <20110920101031.9861.18444.stgit@localhost6.localdomain6> <20110920101341.9861.51453.stgit@localhost6.localdomain6> <4E7899E7.9090809@parallels.com> <4E79A95F.8050304@parallels.com> <4E7C9A91.1060301@parallels.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Stanislav Kinsbursky" <skinsbursky@parallels.com>
-Cc: <linux-nfs@vger.kernel.org>, "Pavel Emelianov" <xemul@parallels.com>,
-        <neilb@suse.de>, <netdev@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>, <bfields@fieldses.org>,
-        <davem@davemloft.net>
+	id S1751573Ab1IRLt3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 18 Sep 2011 07:49:29 -0400
+Date: Sun, 18 Sep 2011 07:49:25 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/8] configure.ac: Add --with-statd-extension configure
+ option
+Message-ID: <20110918074925.5b620286@tlielax.poochiereds.net>
+In-Reply-To: <4E74927D.2070600@RedHat.com>
+References: <20110912220304.10854.20972.stgit@matisse.1015granger.net>
+	<20110912220623.10854.69881.stgit@matisse.1015granger.net>
+	<4E74927D.2070600@RedHat.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBTdGFuaXNsYXYgS2luc2J1cnNr
-eSBbbWFpbHRvOnNraW5zYnVyc2t5QHBhcmFsbGVscy5jb21dDQo+IFNlbnQ6IEZyaWRheSwgU2Vw
-dGVtYmVyIDIzLCAyMDExIDEwOjQxIEFNDQo+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+IENjOiBs
-aW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyBQYXZlbCBFbWVsaWFub3Y7IG5laWxiQHN1c2UuZGU7
-DQo+IG5ldGRldkB2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LWtlcm5lbEB2Z2VyLmtlcm5lbC5vcmc7
-DQo+IGJmaWVsZHNAZmllbGRzZXMub3JnOyBkYXZlbUBkYXZlbWxvZnQubmV0DQo+IFN1YmplY3Q6
-IFJlOiBbUEFUQ0ggdjYgMS84XSBTVU5SUEM6IGludHJvZHVjZSBoZWxwZXJzIGZvciByZWZlcmVu
-Y2UNCj4gY291bnRlZCBycGNiaW5kIGNsaWVudHMNCj4gDQo+IFRyb25kLCBpcyB0aGlzIHBhdGNo
-IHZlcnNpb24gc3VpdHMgeW91IG5vdz8gT3Igbm90Pw0KPiBQbGVhc2UsIGNvbW1lbnQgc29tZWhv
-dyB0byBsZXQgbWUga25vdywgbWF5IEkgcHJvY2VlZCB3aXRoIGZ1cnRoZXINCj4gZGV2ZWxvcG1l
-bnQgb3Igbm90Lg0KDQpIaSBTdGFuaXNsYXYsDQoNClllcywgdGhpcyB2ZXJzaW9uIG9mIHRoZSBw
-YXRjaCBsb29rcyBzYWZlIHRvIG1lLg0KDQpDaGVlcnMNCiAgVHJvbmQNCgTvv717Lm7vv70r77+9
-77+977+977+977+977+977+9KyXvv73vv71sendt77+977+9Yu+/veunsu+/ve+/vXLvv73vv716
-WO+/ve+/vRnfsinvv73vv73vv713Kh9qZ++/ve+/ve+/vR7vv73vv73vv73vv73vv73domov77+9
-77+977+9eu+/vd6W77+977+9Mu+/vd6Z77+977+977+9Ju+/vSnfoe+/vWHvv73vv71/77+977+9
-Hu+/vUfvv73vv73vv71o77+9D++/vWo6K3bvv73vv73vv71377+92aU=
+On Sat, 17 Sep 2011 08:28:45 -0400
+Steve Dickson <SteveD@redhat.com> wrote:
+
+> 
+> 
+> On 09/12/2011 06:06 PM, Chuck Lever wrote:
+> > Currently some distributions patch nfs-utils to put NSM state in a
+> > subdirectory of /var/lib/nfs.  Make this a configure option instead.
+> > 
+> > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> > ---
+> > 
+> >  configure.ac       |    8 ++++++++
+> >  support/nsm/file.c |    9 +--------
+> >  2 files changed, 9 insertions(+), 8 deletions(-)
+> > 
+> > diff --git a/configure.ac b/configure.ac
+> > index 461a96a..ba704e2 100644
+> > --- a/configure.ac
+> > +++ b/configure.ac
+> > @@ -23,6 +23,14 @@ AC_ARG_WITH(statedir,
+> >  	statedir=$withval,
+> >  	statedir=/var/lib/nfs)
+> >  	AC_SUBST(statedir)
+> > +AC_ARG_WITH(statd-extension,
+> > +	[AC_HELP_STRING([--with-statd-extension=foo],
+> > +                        [Put NSM state in subdir foo of statedir])],
+> > +	statdext=$withval,
+> > +	statdext="")
+> > +	AC_SUBST(statdext)
+> > +	AC_DEFINE_UNQUOTED(NSM_PATH_EXTENSION, "$statdext",
+> > +			   [This defines the statedir subdirectory containing NSM state files.])
+> >  AC_ARG_WITH(statduser,
+> >  	[AC_HELP_STRING([--with-statduser=rpcuser],
+> >                          [statd to run under @<:@rpcuser or nobody@:>@]
+> > diff --git a/support/nsm/file.c b/support/nsm/file.c
+> > index a12c753..b4a5af1 100644
+> > --- a/support/nsm/file.c
+> > +++ b/support/nsm/file.c
+> > @@ -93,14 +93,7 @@
+> >  #define LINELEN		(RPCARGSLEN + SM_PRIV_SIZE * 2 + 1)
+> >  
+> >  #define NSM_KERNEL_STATE_FILE	"/proc/sys/fs/nfs/nsm_local_state"
+> > -
+> > -/*
+> > - * Some distributions place statd's files in a subdirectory
+> > - */
+> > -#define NSM_PATH_EXTENSION
+> > -/* #define NSM_PATH_EXTENSION	"/statd" */
+> > -
+> > -#define NSM_DEFAULT_STATEDIR		NFS_STATEDIR NSM_PATH_EXTENSION
+> > +#define NSM_DEFAULT_STATEDIR	NFS_STATEDIR "/" NSM_PATH_EXTENSION
+> Do we really need the NSM_PATH_EXTENSION define? Would it be more
+> straightforward to just have NFS_STATEDIR. Simplifying the code to:
+> 
+> #ifndef NFS_STATEDIR 
+> #define NFS_STATEDIR "/var/lib/nfs"
+> #endif
+> 
+> #define NSM_DEFAULT_STATEDIR		NFS_STATEDIR
+> 
+> If there is no need for the extra NSM_PATH_EXTENSION define then 
+> we really don't want to create a configuration option for it.. IMHO..
+> 
+
+
+IIRC, the statd directory is not standard between distributions. Some
+(like Fedora) put this dir in /var/lib/nfs/statd, and some just keep all
+of that in /var/lib/nfs.
+
+The main reason for not making the NSM statedir be /var/lib/nfs is
+that statd defaults to running as the user that owns the statedir. We
+don't really want /var/lib/nfs owned by rpcuser since it contains other
+things that it shouldn't have access to if statd were compromised.
+
+I think the idea here is to push this patch to mainline so we can stop
+carrying nfs-utils-1.2.2-statdpath.patch in the Fedora repo and turn it
+into an option that distros can use to put this in the location they
+prefer.
+
+If we do what you're suggesting above, we'll need a transition scheme
+for Fedora and RHEL, and a way to deal with making statd run as the
+proper user. I don't think we really want to go to that much effort for
+statd...
+
+-- 
+Jeff Layton <jlayton@redhat.com>
