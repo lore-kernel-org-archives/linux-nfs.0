@@ -1,70 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:48358 "EHLO smtp.gentoo.org"
+Received: from mx2.netapp.com ([216.240.18.37]:55286 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754507Ab1IBTQz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 Sep 2011 15:16:55 -0400
-Received: from localhost.localdomain (localhost [127.0.0.1])
-	by smtp.gentoo.org (Postfix) with ESMTP id EBF561B4024
-	for <linux-nfs@vger.kernel.org>; Fri,  2 Sep 2011 19:16:54 +0000 (UTC)
-From: Mike Frysinger <vapier@gentoo.org>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsidmap: auto disable when keyutils is not found
-Date: Fri,  2 Sep 2011 15:16:55 -0400
-Message-Id: <1314991015-21484-1-git-send-email-vapier@gentoo.org>
+	id S1752554Ab1ISCGl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 18 Sep 2011 22:06:41 -0400
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: [PATCH] pnfsblock: add missing rpc_put_mount and path_put
+Date: Sun, 18 Sep 2011 19:06:40 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B35602C@SACMVEXC2-PRD.hq.netapp.com>
+In-reply-to: <20110919020431.GA18269@merit.edu>
+References: <1315945452-1575-1-git-send-email-rees@umich.edu> <4E707FC1.2020607@tonian.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B356025@SACMVEXC2-PRD.hq.netapp.com> <20110919020431.GA18269@merit.edu>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Jim Rees" <rees@umich.edu>
+Cc: "Benny Halevy" <bhalevy@tonian.com>, "Peng Tao" <bergwolf@gmail.com>,
+        <linux-nfs@vger.kernel.org>, "peter honeyman" <honey@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Since we already auto-disable based on libnfsidmap capabilities, don't
-make keyutils a hard failure.
+> -----Original Message-----
+> From: Jim Rees [mailto:rees@umich.edu]
+> Sent: Sunday, September 18, 2011 10:05 PM
+> To: Myklebust, Trond
+> Cc: Benny Halevy; Peng Tao; linux-nfs@vger.kernel.org; peter honeyman
+> Subject: Re: [PATCH] pnfsblock: add missing rpc_put_mount and path_put
+> 
+> Myklebust, Trond wrote:
+> 
+>   > -----Original Message-----
+>   > From: Benny Halevy [mailto:bhalevy@tonian.com]
+>   > Sent: Wednesday, September 14, 2011 6:20 AM
+>   > To: Jim Rees; Peng Tao; Myklebust, Trond
+>   > Cc: linux-nfs@vger.kernel.org; peter honeyman
+>   > Subject: Re: [PATCH] pnfsblock: add missing rpc_put_mount and
+path_put
+>   >
+>   > We need to decide on a process here :)
+>   > If we would like to maintain a staging tree in front of Trond's
+then
+>   to simplify
+>   > merging and rebasing, fixes to code that's already upstream, i.e.
+in
+>   linux-2.6
+>   > or already queued in nfs-2.6, that we decide to send to Trond
+ahead of
+>   > queue need to be queued in front of stuff in the staging tree and
+the
+>   latter
+>   > should be rebased on top of them.
+> 
+>   Unless we're talking about a large merge, I tend to prefer patches.
+They
+>   are much easier to review...
+> 
+> I guess the problem is that we now have a patch in Trond's tree that
+conflicts
+> with the workqueue patch that's staged for later in Benny's tree.
+> I think what I need to do is send Benny a set of patches that starts
+with the
+> same patch I sent Trond, and follows with one that adds the workqueue.
 
-Signed-off-by: Mike Frysinger <vapier@gentoo.org>
----
- aclocal/keyutils.m4    |    4 ++--
- aclocal/libnfsidmap.m4 |    3 +--
- configure.ac           |    2 +-
- 3 files changed, 4 insertions(+), 5 deletions(-)
+Yes. That's the other good feature of patches: the onus of fixing up
+conflicts is on you and not on me... :-)
 
-diff --git a/aclocal/keyutils.m4 b/aclocal/keyutils.m4
-index 84bc112..a392c0e 100644
---- a/aclocal/keyutils.m4
-+++ b/aclocal/keyutils.m4
-@@ -6,6 +6,6 @@ AC_DEFUN([AC_KEYUTILS], [
-   AC_CHECK_LIB([keyutils], [keyctl_instantiate], [LIBKEYUTILS=-lkeyutils], ,)
-   AC_SUBST(LIBKEYUTILS)
- 
--  AC_CHECK_HEADERS([keyutils.h], ,
--  		   [AC_MSG_ERROR([keyutils.h header not found.])])
-+  AC_CHECK_HEADERS([keyutils.h])
-+
- ])dnl
-diff --git a/aclocal/libnfsidmap.m4 b/aclocal/libnfsidmap.m4
-index 4faa923..484b1ec 100644
---- a/aclocal/libnfsidmap.m4
-+++ b/aclocal/libnfsidmap.m4
-@@ -15,7 +15,6 @@ AC_DEFUN([AC_LIBNFSIDMAP], [
-                           [Define to 1 if you have the `nfs4_set_debug' function.])])
- 
-   dnl only enable nfsidmap when libnfsidmap supports it
--  AC_CHECK_LIB([nfsidmap], [nfs4_owner_to_uid], [enable_nfsidmap=yes],
--               [enable_nfsidmap=no])
-+  AC_CHECK_LIB([nfsidmap], [nfs4_owner_to_uid])
- 
- ])dnl
-diff --git a/configure.ac b/configure.ac
-index c9fb27b..1a28f8a 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -266,7 +266,7 @@ if test "$enable_nfsv4" = yes; then
-   fi
- fi
- dnl enable nfsidmap when its support by libnfsidmap
--AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$enable_nfsidmap" = "yes"])
-+AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$ac_cv_header_keyutils_h$ac_cv_lib_nfsidmap_nfs4_owner_to_uid" = "yesyes"])
- 
- 
- if test "$knfsd_cv_glibc2" = no; then
--- 
-1.7.6
-
+Trond
