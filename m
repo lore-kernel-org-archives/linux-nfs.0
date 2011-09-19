@@ -1,82 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60196 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:13161 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932197Ab1INLp3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Sep 2011 07:45:29 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 24/25] nfsd4: use deleg changes to cleanup preprocess_stateid_op
-Date: Wed, 14 Sep 2011 07:45:20 -0400
-Message-Id: <1316000721-3289-25-git-send-email-bfields@redhat.com>
-In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
+	id S1750809Ab1ISPTg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Sep 2011 11:19:36 -0400
+Message-ID: <4E775D80.9010902@RedHat.com>
+Date: Mon, 19 Sep 2011 11:19:28 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Jim Rees <rees@umich.edu>
+CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH] nfs-utils/blkmapd: Add complex block layout discovery
+ and mapping daemon
+References: <1313086848-7435-1-git-send-email-rees@umich.edu> <4E749FBC.5090609@RedHat.com> <20110917145217.GA15540@merit.edu>
+In-Reply-To: <20110917145217.GA15540@merit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |   24 ++++++++++--------------
- 1 files changed, 10 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 30387f3..ea338d0 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3290,6 +3290,7 @@ __be32
- nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
- 			   stateid_t *stateid, int flags, struct file **filpp)
- {
-+	struct nfs4_stid *s;
- 	struct nfs4_ol_stateid *stp = NULL;
- 	struct nfs4_delegation *dp = NULL;
- 	struct svc_fh *current_fh = &cstate->current_fh;
-@@ -3314,13 +3315,14 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
- 	 * but that we can't find, is expired:
- 	 */
- 	status = nfserr_expired;
--	if (is_delegation_stateid(stateid)) {
--		dp = find_deleg_stateid(stateid);
--		if (!dp)
--			goto out;
--		status = check_stateid_generation(stateid, &dp->dl_stid.sc_stateid, nfsd4_has_session(cstate));
--		if (status)
--			goto out;
-+	s = find_stateid(stateid);
-+	if (!s)
-+		goto out;
-+	status = check_stateid_generation(stateid, &s->sc_stateid, nfsd4_has_session(cstate));
-+	if (status)
-+		goto out;
-+	if (s->sc_type == NFS4_DELEG_STID) {
-+		dp = delegstateid(s);
- 		status = nfs4_check_delegmode(dp, flags);
- 		if (status)
- 			goto out;
-@@ -3330,19 +3332,13 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
- 			BUG_ON(!*filpp);
- 		}
- 	} else { /* open or lock stateid */
--		stp = find_ol_stateid(stateid);
--		if (!stp)
--			goto out;
-+		stp = openlockstateid(s);
- 		status = nfserr_bad_stateid;
- 		if (nfs4_check_fh(current_fh, stp))
- 			goto out;
- 		if (stp->st_stateowner->so_is_open_owner
- 		    && !openowner(stp->st_stateowner)->oo_confirmed)
- 			goto out;
--		status = check_stateid_generation(stateid, &stp->st_stid.sc_stateid,
--						  nfsd4_has_session(cstate));
--		if (status)
--			goto out;
- 		status = nfs4_check_openmode(stp, flags);
- 		if (status)
- 			goto out;
--- 
-1.7.4.1
 
+On 09/17/2011 10:52 AM, Jim Rees wrote:
+> Steve Dickson wrote:
+> 
+>   So I will make the enable_nfsv41 ==> enable_nfsdv41 change in 
+>   the next rc release, alone with some other outstanding changes.
+>   After that rc release, I'll commit this code and then make a minor 
+>   release, 1.2.5, that will have this code on by default.
+>   
+>   Sound reasonable?
+> 
+> Sounds good to me.  About when could I expect to see 1.2.5 with blkmapd?
+I'm hoping by the end of this week... I would like to get it into the 
+Fedora 16 beta..
+
+steved.
