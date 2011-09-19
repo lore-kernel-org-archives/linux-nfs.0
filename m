@@ -1,68 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:54067 "EHLO e2.ny.us.ibm.com"
+Received: from fieldses.org ([174.143.236.118]:46058 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751923Ab1IUA1f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Sep 2011 20:27:35 -0400
-Received: from /spool/local
-	by us.ibm.com with XMail ESMTP
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Tue, 20 Sep 2011 20:27:34 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p8L0RFTK933952
-	for <linux-nfs@vger.kernel.org>; Tue, 20 Sep 2011 20:27:15 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p8L0RF5R007295
-	for <linux-nfs@vger.kernel.org>; Tue, 20 Sep 2011 21:27:15 -0300
-Date: Tue, 20 Sep 2011 17:27:14 -0700
-From: Malahal Naineni <malahal@us.ibm.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+	id S1752919Ab1ISNOU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Sep 2011 09:14:20 -0400
+Date: Mon, 19 Sep 2011 09:14:16 -0400
+To: "J. Bruce Fields" <bfields@redhat.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Check validity of cl_rpcclient in nfs_server_list_show
-Message-ID: <20110921002714.GA31689@us.ibm.com>
-References: <1315965305-23757-1-git-send-email-malahal@us.ibm.com>
- <20110919153429.GA16725@us.ibm.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B35626A@SACMVEXC2-PRD.hq.netapp.com>
+Subject: Re: [PATCH 00/25] nfsd4 state cleanup
+Message-ID: <20110919131415.GB32498@fieldses.org>
+References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B35626A@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Myklebust, Trond [Trond.Myklebust@netapp.com] wrote:
-> Shouldn't we just skip all nfs_client structures that don't have
-> cl_cons_state set to NFS_CS_READY? I see no reason to display their
-> properties even if they have got far enough as to create an rpc client.
+On Wed, Sep 14, 2011 at 07:44:56AM -0400, J. Bruce Fields wrote:
+> This is just another batch of little cleanups and bugfixes to the nfsd4
+> state code.
 > 
-> Cheers
->   Trond
+> What I'm actually thinking I'd like to do next is change the way
+> stateid's are composed to make it possible to look up the client first.
+> Once the client's looked up, lookup of the individual stateid, and most
+> of the following work, looks to me like it could be done under a
+> per-client lock.  The set of clients doesn't change very much so we
+> could use locking that favors readers (maybe rcu) for that part.  So
+> that could be a first step towards saner locking.
+> 
+> And then also still to do:
+> 	- close replays: we keep around a stateid to handle close
+> 	  replays only in the case where it's the last stateid for an
+> 	  openowner, but that's not sufficient.
 
-Sounds good to me. Here is a tested patch.
+A fix for this follows.
 
-
-As soon as the nfs_client gets created, its cl_rpcclient is set to
-ERR_PTR(-EINVAL). The rpc client structure is allocated later. Check
-if the client is ready before using the cl_rpcclient pointer.
-
-Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
----
- fs/nfs/client.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 5833fbb..a54c45e 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1867,6 +1867,10 @@ static int nfs_server_list_show(struct seq_file *m, void *v)
- 	/* display one transport per line on subsequent lines */
- 	clp = list_entry(v, struct nfs_client, cl_share_link);
- 
-+	/* Check if the client is initialized */
-+	if (clp->cl_cons_state != NFS_CS_READY)
-+		return 0;
-+
- 	seq_printf(m, "v%u %s %s %3d %s\n",
- 		   clp->rpc_ops->version,
- 		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_ADDR),
--- 
-1.7.0.4
-
+--b.
