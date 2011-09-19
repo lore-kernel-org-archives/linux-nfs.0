@@ -1,410 +1,180 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:46684 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:4045 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751423Ab1I2UOv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Sep 2011 16:14:51 -0400
-Message-ID: <4E84D1B8.20903@netapp.com>
-Date: Thu, 29 Sep 2011 16:14:48 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 1/3] NFSD: Added fault injection
-References: <1317322765-19094-1-git-send-email-bjschuma@netapp.com> <A7558C0C-378A-42E3-AC37-8152C50972DB@oracle.com>
-In-Reply-To: <A7558C0C-378A-42E3-AC37-8152C50972DB@oracle.com>
+	id S1753477Ab1ISPQ0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Sep 2011 11:16:26 -0400
+Message-ID: <4E775CC5.8090001@RedHat.com>
+Date: Mon, 19 Sep 2011 11:16:21 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] configure.ac: Added server 4.1 support configuration
+ option
+References: <1316272622-4894-1-git-send-email-steved@redhat.com> <20110917183645.GA24278@fieldses.org> <4E7710B7.7070804@RedHat.com> <20110919133845.GA1106@fieldses.org> <4E774FB6.6040707@RedHat.com> <20110919143503.GA1474@fieldses.org>
+In-Reply-To: <20110919143503.GA1474@fieldses.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/29/2011 03:06 PM, Chuck Lever wrote:
-> 
-> On Sep 29, 2011, at 2:59 PM, bjschuma@netapp.com wrote:
-> 
->> From: Bryan Schumaker <bjschuma@netapp.com>
+
+
+On 09/19/2011 10:35 AM, J. Bruce Fields wrote:
+> On Mon, Sep 19, 2011 at 10:20:38AM -0400, Steve Dickson wrote:
 >>
-...
->> diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
->> index 9b118ee..69eae75 100644
->> --- a/fs/nfsd/Makefile
->> +++ b/fs/nfsd/Makefile
->> @@ -5,7 +5,8 @@
->> obj-$(CONFIG_NFSD)	+= nfsd.o
 >>
->> nfsd-y 			:= nfssvc.o nfsctl.o nfsproc.o nfsfh.o vfs.o \
->> -			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o
->> +			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o \
->> +			   fault_inject.o
->> nfsd-$(CONFIG_NFSD_V2_ACL) += nfs2acl.o
->> nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
->> nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
->> diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
->> new file mode 100644
->> index 0000000..2139883
->> --- /dev/null
->> +++ b/fs/nfsd/fault_inject.c
->> @@ -0,0 +1,102 @@
->> +#ifdef CONFIG_NFSD_FAULT_INJECTION
+>> On 09/19/2011 09:38 AM, J. Bruce Fields wrote:
+>>> diff --git a/configure.ac b/configure.ac
+>>> index 1a28f8a..7000324 100644
+>>> --- a/configure.ac
+>>> +++ b/configure.ac
+>>> @@ -73,19 +73,6 @@ AC_ARG_ENABLE(nfsv4,
+>>>  	AC_SUBST(enable_nfsv4)
+>>>  	AM_CONDITIONAL(CONFIG_NFSV4, [test "$enable_nfsv4" = "yes"])
+>>>  
+>>> -AC_ARG_ENABLE(nfsv41,
+>>> -	[AC_HELP_STRING([--enable-nfsv41],
+>>> -                        [enable support for NFSv41 @<:@default=no@:>@])],
+>>> -	enable_nfsv41=$enableval,
+>>> -	enable_nfsv41=no)
+>>> -	if test "$enable_nfsv41" = yes; then
+>>> -		AC_DEFINE(NFS41_SUPPORTED, 1, [Define this if you want NFSv41 support compiled in])
+>>> -	else
+>>> -		enable_nfsv41=
+>>> -	fi
+>>> -	AC_SUBST(enable_nfsv41)
+>>> -	AM_CONDITIONAL(CONFIG_NFSV41, [test "$enable_nfsv41" = "yes"])
+>>> -
+>> I think we still need this for the 4.1 client code.
 > 
-> The usual practice is to conditionally compile this source file via a Makefile variable, not by wrapping the whole source file in an ifdef.  You can see examples of this in the Makefile hunk above.
+> OK.  Or I can wait and resend a patch after you've committed the changes
+> for the client's block daemon, if you'd prefer.
+I'll deal with the configure code....
+
 > 
+>>> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+>>> index e7e1470..fa9c429 100644
+>>> --- a/utils/nfsd/nfsd.c
+>>> +++ b/utils/nfsd/nfsd.c
+>>> @@ -40,6 +40,7 @@ static struct option longopts[] =
+>>>  	{ "port", 1, 0, 'p' },
+>>>  	{ "debug", 0, 0, 'd' },
+>>>  	{ "syslog", 0, 0, 's' },
+>>> +	{ "enable-41", 0, 0, 'X' },
+>>>  	{ NULL, 0, 0, 0 }
+>>>  };
+>> Introducing temporary, undocumented command line arguments
+>> is generally not a good thing... IMHO... I was think more
+>> of an echo to /proc/fs/nfsd/versions to enable the support.
+> 
+> I think it's a reasonable thing to do for experimental code.
+> 
+> But we could do the following instead.  (Warning: still untested.)
+> 
+> --b.
+> 
+> commit 8d69da4c556f8ad2d42caa3875a665761c27463e
+> Author: J. Bruce Fields <bfields@citi.umich.edu>
+> Date:   Thu Dec 17 17:11:54 2009 -0500
+> 
+>     nfsd: allow choosing server 41 support at runtime
+>     
+>     In the case where -N 4.1 is left off the commandline, the current code
+>     explicitly turns it on or off anyway, depending on configure options.
+>     
+>     Instead, just leave 4.1 support alone.  This allows a user to add an
+>     "echo +4.1 >/proc/fs/nfsd/versions" to their init scripts, if they want.
+>     Otherwise they will get the kernel's default (currently to leave 4.1
+>     off, as long as 4.1 support is experimental).
+I think this is a good compromise... Could you spend a few 
+cycles on making sure that echo does indeed turn on 4.1 support?
 
-How's this?  I moved the selectively compile bit to the makefile and created a fault_inject.h for the empty init() and cleanup() functions.  I moved the rest of the fault injection function declarations there, too, to keep them all together.
+tia,
 
-- Bryan
-
-Fault injection on the NFS server makes it easier to test the client's
-state manager and recovery threads.  Simulating errors on the server is
-easier than finding the right conditions that cause them naturally.
-
-This patch uses debugfs to add a simple framework for fault injection to
-the server.  This framework is a config option, and can be enabled
-through CONFIG_NFSD_FAULT_INJECTION.  Assuming you have debugfs mounted
-to /sys/debug, a set of files will be created in /sys/debug/nfsd/.
-Writing to any of these files will cause the corresponding action and
-write a log entry to dmesg.
-
-Changes in v4:
-- Move fault injection function declarations to a new .h file
-- Use the Makefile to selectively compile fault_injection.c
-
-Changes in v3:
-- Code cleanup and better use of generic functions
-- Allow the user to input the number of state objects to delete
-- Remove "forget_everything()" since forgetting a client is basically
-  the same thing
-
-Changes in v2:
-- Replaced "forget all state owners" with "forget all open owners"
-- Include fs/nfsd/fault_inject.c in the patch
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/Kconfig        |   10 ++++
- fs/nfsd/Makefile       |    1 +
- fs/nfsd/fault_inject.c |   88 ++++++++++++++++++++++++++++++++++++
- fs/nfsd/fault_inject.h |   22 +++++++++
- fs/nfsd/nfs4state.c    |  115 ++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfsctl.c       |    7 +++
- 6 files changed, 243 insertions(+), 0 deletions(-)
- create mode 100644 fs/nfsd/fault_inject.c
- create mode 100644 fs/nfsd/fault_inject.h
-
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index 10e6366..52fdd1c 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -80,3 +80,13 @@ config NFSD_V4
- 	  available from http://linux-nfs.org/.
+steved.
  
- 	  If unsure, say N.
-+
-+config NFSD_FAULT_INJECTION
-+	bool "NFS server manual fault injection"
-+	depends on NFSD_V4 && DEBUG_KERNEL
-+	help
-+	  This option enables support for manually injectiong faults
-+	  into the NFS server.  This is intended to be used for
-+	  testing error recovery on the NFS client.
-+
-+	  If unsure, say N.
-diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
-index 9b118ee..af32ef0 100644
---- a/fs/nfsd/Makefile
-+++ b/fs/nfsd/Makefile
-@@ -6,6 +6,7 @@ obj-$(CONFIG_NFSD)	+= nfsd.o
- 
- nfsd-y 			:= nfssvc.o nfsctl.o nfsproc.o nfsfh.o vfs.o \
- 			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o
-+nfsd-$(CONFIG_NFSD_FAULT_INJECTION) += fault_inject.o
- nfsd-$(CONFIG_NFSD_V2_ACL) += nfs2acl.o
- nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
- nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-new file mode 100644
-index 0000000..8b6ec8d
---- /dev/null
-+++ b/fs/nfsd/fault_inject.c
-@@ -0,0 +1,88 @@
-+#include <linux/types.h>
-+#include <linux/fs.h>
-+#include <linux/debugfs.h>
-+#include <linux/module.h>
-+
-+#include "state.h"
-+#include "fault_inject.h"
-+
-+struct nfsd_fault_inject_op {
-+	char *action;
-+	char *item;
-+	char *file;
-+	int file_data;
-+	void (*func)(u64);
-+};
-+
-+#define INJECTION_OP(op_action, op_item, op_func)	\
-+{							\
-+	.action = op_action,				\
-+	.item   = op_item,				\
-+	.file   = op_action"_"op_item,			\
-+	.func   = op_func,				\
-+}
-+
-+static struct nfsd_fault_inject_op inject_ops[] = {
-+	INJECTION_OP("forget", "clients",     nfsd_forget_clients),
-+	INJECTION_OP("forget", "locks",       nfsd_forget_locks),
-+	INJECTION_OP("forget", "openowners",  nfsd_forget_openowners),
-+	INJECTION_OP("forget", "delegations", nfsd_forget_delegations),
-+	INJECTION_OP("recall", "delegations", nfsd_recall_delegations),
-+};
-+
-+static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
-+static struct dentry *debug_dir;
-+
-+static int nfsd_inject_set(void *data, u64 val)
-+{
-+	int i;
-+	struct nfsd_fault_inject_op *op;
-+
-+	for (i = 0; i < NUM_INJECT_OPS; i++) {
-+		op = &inject_ops[i];
-+		if (&op->file_data == data) {
-+			if (val == 0) {
-+				printk(KERN_INFO "NFSD: Server %sing all %s",
-+				op->action, op->item);
-+			} else {
-+				printk(KERN_INFO "NFSD: Server %sing at most %llu %s",
-+				op->action, val, op->item);
-+			}
-+			op->func(val);
-+		}
-+	}
-+	return 0;
-+}
-+
-+static int nfsd_inject_get(void *data, u64 *val)
-+{
-+	return 0;
-+}
-+
-+DEFINE_SIMPLE_ATTRIBUTE(fops_nfsd, nfsd_inject_get, nfsd_inject_set, "%llu\n");
-+
-+void nfsd_fault_inject_cleanup(void)
-+{
-+	debugfs_remove_recursive(debug_dir);
-+}
-+
-+int nfsd_fault_inject_init(void)
-+{
-+	unsigned int i;
-+	struct nfsd_fault_inject_op *op;
-+	mode_t mode = S_IFREG | S_IRUSR | S_IWUSR;
-+
-+	debug_dir = debugfs_create_dir("nfsd", NULL);
-+	if (!debug_dir)
-+		goto fail;
-+
-+	for (i = 0; i < NUM_INJECT_OPS; i++) {
-+		op = &inject_ops[i];
-+		debugfs_create_file(op->file, mode, debug_dir, &op->file_data, &fops_nfsd);
-+	}
-+	return 0;
-+
-+fail:
-+	nfsd_fault_inject_cleanup();
-+	return -ENOMEM;
-+}
-diff --git a/fs/nfsd/fault_inject.h b/fs/nfsd/fault_inject.h
-new file mode 100644
-index 0000000..5b003a9
---- /dev/null
-+++ b/fs/nfsd/fault_inject.h
-@@ -0,0 +1,22 @@
-+#ifndef LINUX_NFSD_FAULT_INJECT_H
-+#define LINUX_NFSD_FAULT_INJECT_H
-+
-+#ifdef CONFIG_NFSD_FAULT_INJECTION
-+int nfsd_fault_inject_init(void);
-+void nfsd_fault_inject_cleanup(void);
-+void nfsd_forget_clients(u64);
-+void nfsd_forget_locks(u64);
-+void nfsd_forget_openowners(u64);
-+void nfsd_forget_delegations(u64);
-+void nfsd_recall_delegations(u64);
-+#else /* CONFIG_NFSD_FAULT_INJECTION */
-+static inline int nfsd_fault_inject_init(void) { return 0; }
-+static inline void nfsd_fault_inject_cleanup(void) {}
-+static inline void nfsd_forget_clients(u64 num) {}
-+static inline void nfsd_forget_locks(u64 num) {}
-+static inline void nfsd_forget_openowners(u64 num) {}
-+static inline void nfsd_forget_delegations(u64 num) {}
-+static inline void nfsd_recall_delegations(u64 num) {}
-+#endif /* CONFIG_NFSD_FAULT_INJECTION */
-+
-+#endif /* LINUX_NFSD_FAULT_INJECT_H */
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 05f4c69..64fa6b0 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4358,6 +4358,121 @@ nfs4_check_open_reclaim(clientid_t *clid)
- 	return nfs4_find_reclaim_client(clid) ? nfs_ok : nfserr_reclaim_bad;
- }
- 
-+#ifdef CONFIG_NFSD_FAULT_INJECTION
-+
-+void nfsd_forget_clients(u64 num)
-+{
-+	struct nfs4_client *clp, *next;
-+	int count = 0;
-+
-+	nfs4_lock_state();
-+	list_for_each_entry_safe(clp, next, &client_lru, cl_lru) {
-+		nfsd4_remove_clid_dir(clp);
-+		expire_client(clp);
-+		if (++count == num)
-+			break;
-+	}
-+	nfs4_unlock_state();
-+
-+	printk(KERN_INFO "NFSD: Forgot %d clients", count);
-+}
-+
-+static void release_lockowner_sop(struct nfs4_stateowner *sop)
-+{
-+	release_lockowner(lockowner(sop));
-+}
-+
-+static void release_openowner_sop(struct nfs4_stateowner *sop)
-+{
-+	release_openowner(openowner(sop));
-+}
-+
-+static int nfsd_release_n_owners(u64 num,
-+				struct list_head hashtbl[],
-+				unsigned int hashtbl_size,
-+				void (*release_sop)(struct nfs4_stateowner *))
-+{
-+	int i, count = 0;
-+	struct nfs4_stateowner *sop, *next;
-+
-+	for (i = 0; i < hashtbl_size; i++) {
-+		list_for_each_entry_safe(sop, next, &hashtbl[i], so_strhash) {
-+			release_sop(sop);
-+			if (++count == num)
-+				return count;
-+		}
-+	}
-+	return count;
-+}
-+
-+void nfsd_forget_locks(u64 num)
-+{
-+	int count;
-+
-+	nfs4_lock_state();
-+	count = nfsd_release_n_owners(num, lock_ownerstr_hashtbl,
-+				     LOCK_HASH_SIZE, release_lockowner_sop);
-+	nfs4_unlock_state();
-+
-+	printk(KERN_INFO "NFSD: Forgot %d locks", count);
-+}
-+
-+void nfsd_forget_openowners(u64 num)
-+{
-+	int count;
-+
-+	nfs4_lock_state();
-+	count = nfsd_release_n_owners(num, open_ownerstr_hashtbl,
-+				     OPEN_OWNER_HASH_SIZE, release_openowner_sop);
-+	nfs4_unlock_state();
-+
-+	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
-+}
-+
-+int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegation *))
-+{
-+	int i, count = 0;
-+	struct nfs4_file *fp;
-+	struct nfs4_delegation *dp, *next;
-+
-+	for (i = 0; i < FILE_HASH_SIZE; i++) {
-+		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
-+			list_for_each_entry_safe(dp, next, &fp->fi_delegations, dl_perfile) {
-+				deleg_func(dp);
-+				if (++count == num)
-+					return count;
-+			}
-+		}
-+	}
-+	return count;
-+}
-+
-+void nfsd_forget_delegations(u64 num)
-+{
-+	unsigned int count;
-+
-+	nfs4_lock_state();
-+	count = nfsd_process_n_delegations(num, unhash_delegation);
-+	nfs4_unlock_state();
-+
-+	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
-+}
-+
-+void nfsd_recall_delegations(u64 num)
-+{
-+	unsigned int count;
-+
-+	nfs4_lock_state();
-+	spin_lock(&recall_lock);
-+	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg);
-+	spin_unlock(&recall_lock);
-+	nfs4_unlock_state();
-+
-+	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
-+}
-+
-+#endif /* CONFIG_NFSD_FAULT_INJECTION */
-+
- /* initialization to perform at module load time: */
- 
- int
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index db34a58..e67f30c 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -17,6 +17,7 @@
- #include "idmap.h"
- #include "nfsd.h"
- #include "cache.h"
-+#include "fault_inject.h"
- 
- /*
-  *	We have a single directory with several nodes in it.
-@@ -1130,6 +1131,9 @@ static int __init init_nfsd(void)
- 	retval = nfs4_state_init(); /* nfs4 locking state */
- 	if (retval)
- 		return retval;
-+	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
-+	if (retval)
-+		goto out_cleanup_fault_injection;
- 	nfsd_stat_init();	/* Statistics */
- 	retval = nfsd_reply_cache_init();
- 	if (retval)
-@@ -1161,6 +1165,8 @@ out_free_cache:
- out_free_stat:
- 	nfsd_stat_shutdown();
- 	nfsd4_free_slabs();
-+out_cleanup_fault_injection:
-+	nfsd_fault_inject_cleanup();
- 	return retval;
- }
- 
-@@ -1174,6 +1180,7 @@ static void __exit exit_nfsd(void)
- 	nfsd_lockd_shutdown();
- 	nfsd_idmap_shutdown();
- 	nfsd4_free_slabs();
-+	nfsd_fault_inject_cleanup();
- 	unregister_filesystem(&nfsd_fs_type);
- }
- 
--- 
-1.7.6.4
+>     
+>     Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> 
+> diff --git a/support/include/nfs/nfs.h b/support/include/nfs/nfs.h
+> index c939d78..320880e 100644
+> --- a/support/include/nfs/nfs.h
+> +++ b/support/include/nfs/nfs.h
+> @@ -15,13 +15,6 @@
+>  #define NFSD_MINVERS 2
+>  #define NFSD_MAXVERS 4
+>  
+> -#define NFSD_MINMINORVERS4 1
+> -#ifdef  NFS41_SUPPORTED
+> -#define NFSD_MAXMINORVERS4 1
+> -#else
+> -#define NFSD_MAXMINORVERS4 0
+> -#endif
+> -
+>  struct nfs_fh_len {
+>  	int		fh_size;
+>  	u_int8_t	fh_handle[NFS3_FHSIZE];
+> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+> index e7e1470..8bc5d3a 100644
+> --- a/utils/nfsd/nfsd.c
+> +++ b/utils/nfsd/nfsd.c
+> @@ -94,7 +94,7 @@ main(int argc, char **argv)
+>  	char *p, *progname, *port;
+>  	char *haddr = NULL;
+>  	int	socket_up = 0;
+> -	int minorvers4 = NFSD_MAXMINORVERS4;	/* nfsv4 minor version */
+> +	int minorvers41 = 0;	/* nfsv4 minor version */
+>  	unsigned int versbits = NFSCTL_ALLBITS;
+>  	unsigned int protobits = NFSCTL_ALLBITS;
+>  	unsigned int proto4 = 0;
+> @@ -154,7 +154,12 @@ main(int argc, char **argv)
+>  			switch((c = strtol(optarg, &p, 0))) {
+>  			case 4:
+>  				if (*p == '.') {
+> -					minorvers4 = -atoi(p + 1);
+> +					int i = atoi(p+1);
+> +					if (i != 1) {
+> +						fprintf(stderr, "%s: unsupported minor version\n", optarg);
+> +						exit(1);
+> +					}
+> +					minorvers41 = -1;
+>  					break;
+>  				}
+>  			case 3:
+> @@ -251,7 +256,7 @@ main(int argc, char **argv)
+>  	 * registered with rpcbind. Note that on older kernels w/o the right
+>  	 * interfaces, these are a no-op.
+>  	 */
+> -	nfssvc_setvers(versbits, minorvers4);
+> +	nfssvc_setvers(versbits, minorvers41);
+>   
+>  	error = nfssvc_set_sockets(AF_INET, proto4, haddr, port);
+>  	if (!error)
+> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+> index f607214..683008e 100644
+> --- a/utils/nfsd/nfssvc.c
+> +++ b/utils/nfsd/nfssvc.c
+> @@ -269,7 +269,7 @@ nfssvc_set_sockets(const int family, const unsigned int protobits,
+>  }
+>  
+>  void
+> -nfssvc_setvers(unsigned int ctlbits, int minorvers4)
+> +nfssvc_setvers(unsigned int ctlbits, int minorvers41)
+>  {
+>  	int fd, n, off;
+>  	char *ptr;
+> @@ -280,11 +280,9 @@ nfssvc_setvers(unsigned int ctlbits, int minorvers4)
+>  	if (fd < 0)
+>  		return;
+>  
+> -	n = minorvers4 >= 0 ? minorvers4 : -minorvers4;
+> -	if (n >= NFSD_MINMINORVERS4 && n <= NFSD_MAXMINORVERS4)
+> -		    off += snprintf(ptr+off, sizeof(buf) - off, "%c4.%d ",
+> -				    minorvers4 > 0 ? '+' : '-',
+> -				    n);
+> +	if (minorvers41)
+> +		off += snprintf(ptr+off, sizeof(buf) - off, "%c4.1",
+> +				minorvers41 > 0 ? '+' : '-');
+>  	for (n = NFSD_MINVERS; n <= NFSD_MAXVERS; n++) {
+>  		if (NFSCTL_VERISSET(ctlbits, n))
+>  		    off += snprintf(ptr+off, sizeof(buf) - off, "+%d ", n);
