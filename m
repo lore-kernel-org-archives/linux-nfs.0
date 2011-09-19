@@ -1,295 +1,188 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:40516 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754499Ab1IKOvs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Sep 2011 10:51:48 -0400
-Received: by qyk30 with SMTP id 30so1188411qyk.19
-        for <linux-nfs@vger.kernel.org>; Sun, 11 Sep 2011 07:51:47 -0700 (PDT)
-Message-ID: <4E6CCAFB.6070506@tonian.com>
-Date: Sun, 11 Sep 2011 07:51:39 -0700
-From: Benny Halevy <bhalevy@tonian.com>
-To: Jim Rees <rees@umich.edu>, Peng Tao <bergwolf@gmail.com>
-CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH 2/3] pNFS: introduce pnfs private workqueue
-References: <1315676495-3689-1-git-send-email-rees@umich.edu> <1315676495-3689-3-git-send-email-rees@umich.edu>
-In-Reply-To: <1315676495-3689-3-git-send-email-rees@umich.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:34285 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753064Ab1ISNPw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Sep 2011 09:15:52 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/5] nfsd4: match close replays on stateid, not open owner id
+Date: Mon, 19 Sep 2011 09:15:40 -0400
+Message-Id: <1316438143-1057-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <20110919131415.GB32498@fieldses.org>
+References: <20110919131415.GB32498@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-09-10 10:41, Jim Rees wrote:
-> From: Peng Tao <bergwolf@gmail.com>
+Keep around an unhashed copy of the final stateid after the last close
+using an openowner, and when identifying a replay, match against that
+stateid instead of just against the open owner id.  Free it the next
+time the seqid is bumped or the stateowner is destroyed.
 
-Hi, I have a few comments inline below.
-Otherwise, the direction and the patch looks good.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   47 ++++++++++++++++++++++++++++++++++++++++-------
+ fs/nfsd/nfs4xdr.c   |    1 +
+ fs/nfsd/state.h     |    3 +++
+ 3 files changed, 44 insertions(+), 7 deletions(-)
 
-> 
-> For layoutdriver io done functions, default workqueue is not a good place as
-> the code is executed in IO path. So add a pnfs private workqueue to handle
-> them.
-> 
-> Also change block and object layout code to make use of this private
-> workqueue.
-> 
-> Signed-off-by: Peng Tao <peng_tao@emc.com>
-> Signed-off-by: Jim Rees <rees@umich.edu>
-> ---
->  fs/nfs/blocklayout/blocklayout.c |   17 ++++++++---
->  fs/nfs/objlayout/objio_osd.c     |    8 ++++++
->  fs/nfs/objlayout/objlayout.c     |    4 +-
->  fs/nfs/pnfs.c                    |   52 +++++++++++++++++++++++++++++++++++++-
->  fs/nfs/pnfs.h                    |    4 +++
->  5 files changed, 77 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-> index dc23833..51f70f0 100644
-> --- a/fs/nfs/blocklayout/blocklayout.c
-> +++ b/fs/nfs/blocklayout/blocklayout.c
-> @@ -228,7 +228,7 @@ bl_end_par_io_read(void *data)
->  	struct nfs_read_data *rdata = data;
->  
->  	INIT_WORK(&rdata->task.u.tk_work, bl_read_cleanup);
-> -	schedule_work(&rdata->task.u.tk_work);
-> +	pnfsiod_queue_work(&rdata->task.u.tk_work);
->  }
->  
->  /* We don't want normal .rpc_call_done callback used, so we replace it
-> @@ -418,7 +418,7 @@ static void bl_end_par_io_write(void *data)
->  	wdata->task.tk_status = 0;
->  	wdata->verf.committed = NFS_FILE_SYNC;
->  	INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
-> -	schedule_work(&wdata->task.u.tk_work);
-> +	pnfsiod_queue_work(&wdata->task.u.tk_work);
->  }
->  
->  /* FIXME STUB - mark intersection of layout and page as bad, so is not
-> @@ -981,29 +981,35 @@ static int __init nfs4blocklayout_init(void)
->  	if (ret)
->  		goto out;
->  
-> +	ret = pnfsiod_start();
-> +	if (ret)
-> +		goto out_remove;
-> +
->  	init_waitqueue_head(&bl_wq);
->  
->  	mnt = rpc_get_mount();
->  	if (IS_ERR(mnt)) {
->  		ret = PTR_ERR(mnt);
-> -		goto out_remove;
-> +		goto out_stop;
->  	}
->  
->  	ret = vfs_path_lookup(mnt->mnt_root,
->  			      mnt,
->  			      NFS_PIPE_DIRNAME, 0, &path);
->  	if (ret)
-> -		goto out_remove;
-> +		goto out_stop;
->  
->  	bl_device_pipe = rpc_mkpipe(path.dentry, "blocklayout", NULL,
->  				    &bl_upcall_ops, 0);
->  	if (IS_ERR(bl_device_pipe)) {
->  		ret = PTR_ERR(bl_device_pipe);
-> -		goto out_remove;
-> +		goto out_stop;
->  	}
->  out:
->  	return ret;
->  
-> +out_stop:
-> +	pnfsiod_stop();
->  out_remove:
->  	pnfs_unregister_layoutdriver(&blocklayout_type);
->  	return ret;
-> @@ -1015,6 +1021,7 @@ static void __exit nfs4blocklayout_exit(void)
->  	       __func__);
->  
->  	pnfs_unregister_layoutdriver(&blocklayout_type);
-> +	pnfsiod_stop();
->  	rpc_unlink(bl_device_pipe);
->  }
->  
-> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-> index d0cda12..f28013f 100644
-> --- a/fs/nfs/objlayout/objio_osd.c
-> +++ b/fs/nfs/objlayout/objio_osd.c
-> @@ -1042,7 +1042,14 @@ static int __init
->  objlayout_init(void)
->  {
->  	int ret = pnfs_register_layoutdriver(&objlayout_type);
-> +	if (ret)
-> +		goto out;
->  
-> +	ret = pnfsiod_start();
-> +	if (ret)
-> +		pnfs_unregister_layoutdriver(&objlayout_type);
-> +
-> +out:
->  	if (ret)
->  		printk(KERN_INFO
->  			"%s: Registering OSD pNFS Layout Driver failed: error=%d\n",
-> @@ -1057,6 +1064,7 @@ static void __exit
->  objlayout_exit(void)
->  {
->  	pnfs_unregister_layoutdriver(&objlayout_type);
-> +	pnfsiod_stop();
->  	printk(KERN_INFO "%s: Unregistered OSD pNFS Layout Driver\n",
->  	       __func__);
->  }
-> diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-> index 1d06f8e..f7c6c21 100644
-> --- a/fs/nfs/objlayout/objlayout.c
-> +++ b/fs/nfs/objlayout/objlayout.c
-> @@ -305,7 +305,7 @@ objlayout_read_done(struct objlayout_io_state *state, ssize_t status, bool sync)
->  		pnfs_ld_read_done(rdata);
->  	else {
->  		INIT_WORK(&rdata->task.u.tk_work, _rpc_read_complete);
-> -		schedule_work(&rdata->task.u.tk_work);
-> +		pnfsiod_queue_work(&rdata->task.u.tk_work);
->  	}
->  }
->  
-> @@ -396,7 +396,7 @@ objlayout_write_done(struct objlayout_io_state *state, ssize_t status,
->  		pnfs_ld_write_done(wdata);
->  	else {
->  		INIT_WORK(&wdata->task.u.tk_work, _rpc_write_complete);
-> -		schedule_work(&wdata->task.u.tk_work);
-> +		pnfsiod_queue_work(&wdata->task.u.tk_work);
->  	}
->  }
->  
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index e550e88..5ac7a78 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -38,7 +38,7 @@
->  /* Locking:
->   *
->   * pnfs_spinlock:
-> - *      protects pnfs_modules_tbl.
-> + *      protects pnfs_modules_tbl, pnfsiod_workqueue and pnfsiod_users.
->   */
->  static DEFINE_SPINLOCK(pnfs_spinlock);
->  
-> @@ -47,6 +47,9 @@ static DEFINE_SPINLOCK(pnfs_spinlock);
->   */
->  static LIST_HEAD(pnfs_modules_tbl);
->  
-> +static struct workqueue_struct *pnfsiod_workqueue;
-> +static int pnfsiod_users = 0;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 59b70af..a174841 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -438,7 +438,6 @@ static void close_generic_stateid(struct nfs4_ol_stateid *stp)
+ 
+ static void free_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
+-	close_generic_stateid(stp);
+ 	kmem_cache_free(stateid_slab, stp);
+ }
+ 
+@@ -450,6 +449,7 @@ static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+ 	file = find_any_file(stp->st_file);
+ 	if (file)
+ 		locks_remove_posix(file, (fl_owner_t)lockowner(stp->st_stateowner));
++	close_generic_stateid(stp);
+ 	free_generic_stateid(stp);
+ }
+ 
+@@ -485,10 +485,16 @@ release_stateid_lockowners(struct nfs4_ol_stateid *open_stp)
+ 	}
+ }
+ 
+-static void release_open_stateid(struct nfs4_ol_stateid *stp)
++static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	unhash_generic_stateid(stp);
+ 	release_stateid_lockowners(stp);
++	close_generic_stateid(stp);
++}
++
++static void release_open_stateid(struct nfs4_ol_stateid *stp)
++{
++	unhash_open_stateid(stp);
+ 	free_generic_stateid(stp);
+ }
+ 
+@@ -510,6 +516,8 @@ static void release_openowner(struct nfs4_openowner *oo)
+ {
+ 	unhash_openowner(oo);
+ 	list_del(&oo->oo_close_lru);
++	if (oo->oo_last_closed_stid)
++		free_generic_stateid(oo->oo_last_closed_stid);
+ 	nfs4_free_openowner(oo);
+ }
+ 
+@@ -2324,6 +2332,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
+ 	oo->oo_owner.so_seqid = open->op_seqid;
+ 	oo->oo_flags = 0;
+ 	oo->oo_time = 0;
++	oo->oo_last_closed_stid = NULL;
+ 	INIT_LIST_HEAD(&oo->oo_close_lru);
+ 	hash_openowner(oo, clp, strhashval);
+ 	return oo;
+@@ -3120,12 +3129,14 @@ laundromat_main(struct work_struct *not_used)
+ 	queue_delayed_work(laundry_wq, &laundromat_work, t*HZ);
+ }
+ 
+-static struct nfs4_openowner * search_close_lru(u32 st_id)
++static struct nfs4_openowner * search_close_lru(stateid_t *s)
+ {
+ 	struct nfs4_openowner *local;
++	struct nfs4_ol_stateid *os;
+ 
+ 	list_for_each_entry(local, &close_lru, oo_close_lru) {
+-		if (local->oo_owner.so_id == st_id)
++		os = local->oo_last_closed_stid;
++		if (same_stateid(&os->st_stid.sc_stateid, s))
+ 			return local;
+ 	}
+ 	return NULL;
+@@ -3589,6 +3600,27 @@ out:
+ 	return status;
+ }
+ 
++void nfsd4_purge_closed_stateid(struct nfs4_stateowner *so)
++{
++	struct nfs4_openowner *oo;
++	struct nfs4_ol_stateid *s;
++
++	if (!so->so_is_open_owner)
++		return;
++	oo = openowner(so);
++	s = oo->oo_last_closed_stid;
++	if (!s)
++		return;
++	if (!(oo->oo_flags & NFS4_OO_PURGE_CLOSE)) {
++		/* Release the last_closed_stid on the next seqid bump: */
++		oo->oo_flags |= NFS4_OO_PURGE_CLOSE;
++		return;
++	}
++	oo->oo_flags &= ~NFS4_OO_PURGE_CLOSE;
++	free_generic_stateid(oo->oo_last_closed_stid);
++	oo->oo_last_closed_stid = NULL;
++}
++
+ /*
+  * nfs4_unlock_state() called after encode
+  */
+@@ -3613,7 +3645,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		 * Also, we should make sure this isn't just the result of
+ 		 * a replayed close:
+ 		 */
+-		oo = search_close_lru(close->cl_stateid.si_stateownerid);
++		oo = search_close_lru(&close->cl_stateid);
+ 		/* It's not stale; let's assume it's expired: */
+ 		if (oo == NULL)
+ 			goto out;
+@@ -3630,8 +3662,9 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	update_stateid(&stp->st_stid.sc_stateid);
+ 	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+ 
+-	/* release_stateid() calls nfsd_close() if needed */
+-	release_open_stateid(stp);
++	/* unhash_open_stateid() calls nfsd_close() if needed */
++	oo->oo_last_closed_stid = stp;
++	unhash_open_stateid(stp);
+ 
+ 	/* place unused nfs4_stateowners on so_close_lru list to be
+ 	 * released by the laundromat service after the lease period
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index f4116cf..7bd57c2 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1636,6 +1636,7 @@ static void encode_seqid_op_tail(struct nfsd4_compoundres *resp, __be32 *save, _
+ 			  (char *)resp->p - (char *)save;
+ 		memcpy(stateowner->so_replay.rp_buf, save,
+ 			stateowner->so_replay.rp_buflen);
++		nfsd4_purge_closed_stateid(stateowner);
+ 	}
+ }
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index a8324b8..e807abb 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -370,8 +370,10 @@ struct nfs4_openowner {
+ 	struct nfs4_stateowner	oo_owner; /* must be first field */
+ 	struct list_head        oo_perclient;
+ 	struct list_head	oo_close_lru; /* tail queue */
++	struct nfs4_ol_stateid *oo_last_closed_stid;
+ 	time_t			oo_time; /* time of placement on so_close_lru */
+ #define NFS4_OO_CONFIRMED   1
++#define NFS4_OO_PURGE_CLOSE 2
+ 	unsigned char		oo_flags;
+ };
+ 
+@@ -514,5 +516,6 @@ extern int nfsd4_create_clid_dir(struct nfs4_client *clp);
+ extern void nfsd4_remove_clid_dir(struct nfs4_client *clp);
+ extern void release_session_client(struct nfsd4_session *);
+ extern __be32 nfs4_validate_stateid(stateid_t *, bool);
++extern void nfsd4_purge_closed_stateid(struct nfs4_stateowner *);
+ 
+ #endif   /* NFSD4_STATE_H */
+-- 
+1.7.4.1
 
-There's no need to initialize static variables to zero.
-
-> +
->  /* Return the registered pnfs layout driver module matching given id */
->  static struct pnfs_layoutdriver_type *
->  find_pnfs_driver_locked(u32 id)
-> @@ -1478,3 +1481,50 @@ out:
->  	dprintk("<-- %s status %d\n", __func__, status);
->  	return status;
->  }
-> +
-> +/*
-> + * start up the pnfsiod workqueue
-> + */
-> +int pnfsiod_start(void)
-> +{
-> +	struct workqueue_struct *wq;
-> +	dprintk("RPC:       creating workqueue pnfsiod\n");
-
-hmm, s/RPC/NFS/ this is not the RPC module any more :)
-looks like a cut'n'paste from rpciod_start...
-
-> +	wq = alloc_workqueue("pnfsiod", WQ_MEM_RECLAIM, 0);
-> +	if (wq == NULL)
-> +		return -ENOMEM;
-> +	spin_lock(&pnfs_spinlock);
-> +	pnfsiod_users++;
-> +	if (pnfsiod_workqueue == NULL) {
-> +		pnfsiod_workqueue = wq;
-> +	} else {
-> +		destroy_workqueue(wq);
-> +	}
-
-The curly braces in this statement are an overkill
-(and deviation from CodingStyle)
-
-> +	spin_unlock(&pnfs_spinlock);
-> +	return 0;
-
-although this way of accounting is ultimately simple
-it's wasteful and since we're not really expecting any concurrent
-calls to this function. I'd consider coding this it as follows:
-
-	atomic_inc(&pnfsiod_users);
-	if (pnfsiod_workqueue == NULL) {
-		wq = alloc_workqueue("pnfsiod", WQ_MEM_RECLAIM, 0);
-		if (wq == NULL)
-			return -ENOMEM;
-		spin_lock(&pnfs_spinlock);
-		if (pnfsiod_workqueue == NULL)
-			pnfsiod_workqueue = wq;
-		else
-			destroy_workqueue(wq);
-		spin_unlock(&pnfs_spinlock);
-	}
-
-	return 0;
-
-> +}
-> +EXPORT_SYMBOL_GPL(pnfsiod_start);
-> +
-> +/*
-> + * Destroy the pnfsiod workqueue
-> + */
-> +void pnfsiod_stop(void)
-> +{
-> +	struct workqueue_struct *wq = NULL;
-> +
-> +	spin_lock(&pnfs_spinlock);
-> +	pnfsiod_users--;
-> +	if (pnfsiod_users == 0) {
-> +		wq = pnfsiod_workqueue;
-> +		pnfsiod_workqueue = NULL;
-> +	}
-> +	spin_unlock(&pnfs_spinlock);
-> +	if (wq)
-> +		destroy_workqueue(wq);
-
-and continuing my proposal from above:
-
-	if (atomic_dec_and_lock(&pnfsiod_users)) {
-		wq = pnfsiod_workqueue;
-		pnfsiod_workqueue = NULL;
-		spin_unlock(&pnfs_spinlock);
-	}
-	if (wq)
-		destroy_workqueue(wq);
-
-Benny
-
-> +}
-> +EXPORT_SYMBOL_GPL(pnfsiod_stop);
-> +
-> +void pnfsiod_queue_work(struct work_struct* work)
-> +{
-> +	queue_work(pnfsiod_workqueue, work);
-> +}
-> +EXPORT_SYMBOL_GPL(pnfsiod_queue_work);
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index 01cbfd5..bc1eed5 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -165,6 +165,10 @@ extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
->  extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
->  
->  /* pnfs.c */
-> +int pnfsiod_start(void);
-> +void pnfsiod_stop(void);
-> +void pnfsiod_queue_work(struct work_struct* work);
-> +
->  void get_layout_hdr(struct pnfs_layout_hdr *lo);
->  void put_lseg(struct pnfs_layout_segment *lseg);
->  
