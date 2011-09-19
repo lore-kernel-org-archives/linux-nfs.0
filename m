@@ -1,65 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60197 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:40221 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932269Ab1INLpa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Sep 2011 07:45:30 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 25/25] nfsd4: better stateid hashing
-Date: Wed, 14 Sep 2011 07:45:21 -0400
-Message-Id: <1316000721-3289-26-git-send-email-bfields@redhat.com>
-In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
+	id S1755971Ab1ISSPm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Sep 2011 14:15:42 -0400
+Date: Mon, 19 Sep 2011 14:15:41 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] configure.ac: Added server 4.1 support
+ configuration option
+Message-ID: <20110919181541.GB1800@fieldses.org>
+References: <1316272622-4894-1-git-send-email-steved@redhat.com>
+ <20110917183645.GA24278@fieldses.org>
+ <4E7710B7.7070804@RedHat.com>
+ <20110919133845.GA1106@fieldses.org>
+ <4E774FB6.6040707@RedHat.com>
+ <20110919143503.GA1474@fieldses.org>
+ <4E775CC5.8090001@RedHat.com>
+ <20110919152725.GA1800@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110919152725.GA1800@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-First, we shouldn't care here about the structure of the opaque part of
-the stateid.  Second, this hash is really dumb.  (I'm not sure the
-replacement is much better, though--to look at it another patch.)
+On Mon, Sep 19, 2011 at 11:27:25AM -0400, J. Bruce Fields wrote:
+> On Mon, Sep 19, 2011 at 11:16:21AM -0400, Steve Dickson wrote:
+> > 
+> > 
+> > On 09/19/2011 10:35 AM, J. Bruce Fields wrote:
+> > > On Mon, Sep 19, 2011 at 10:20:38AM -0400, Steve Dickson wrote:
+> > >>
+> > >>
+> > >> On 09/19/2011 09:38 AM, J. Bruce Fields wrote:
+> > >>> diff --git a/configure.ac b/configure.ac
+> > >>> index 1a28f8a..7000324 100644
+> > >>> --- a/configure.ac
+> > >>> +++ b/configure.ac
+> > >>> @@ -73,19 +73,6 @@ AC_ARG_ENABLE(nfsv4,
+> > >>>  	AC_SUBST(enable_nfsv4)
+> > >>>  	AM_CONDITIONAL(CONFIG_NFSV4, [test "$enable_nfsv4" = "yes"])
+> > >>>  
+> > >>> -AC_ARG_ENABLE(nfsv41,
+> > >>> -	[AC_HELP_STRING([--enable-nfsv41],
+> > >>> -                        [enable support for NFSv41 @<:@default=no@:>@])],
+> > >>> -	enable_nfsv41=$enableval,
+> > >>> -	enable_nfsv41=no)
+> > >>> -	if test "$enable_nfsv41" = yes; then
+> > >>> -		AC_DEFINE(NFS41_SUPPORTED, 1, [Define this if you want NFSv41 support compiled in])
+> > >>> -	else
+> > >>> -		enable_nfsv41=
+> > >>> -	fi
+> > >>> -	AC_SUBST(enable_nfsv41)
+> > >>> -	AM_CONDITIONAL(CONFIG_NFSV41, [test "$enable_nfsv41" = "yes"])
+> > >>> -
+> > >> I think we still need this for the 4.1 client code.
+> > > 
+> > > OK.  Or I can wait and resend a patch after you've committed the changes
+> > > for the client's block daemon, if you'd prefer.
+> > I'll deal with the configure code....
+> > 
+> > > 
+> > >>> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+> > >>> index e7e1470..fa9c429 100644
+> > >>> --- a/utils/nfsd/nfsd.c
+> > >>> +++ b/utils/nfsd/nfsd.c
+> > >>> @@ -40,6 +40,7 @@ static struct option longopts[] =
+> > >>>  	{ "port", 1, 0, 'p' },
+> > >>>  	{ "debug", 0, 0, 'd' },
+> > >>>  	{ "syslog", 0, 0, 's' },
+> > >>> +	{ "enable-41", 0, 0, 'X' },
+> > >>>  	{ NULL, 0, 0, 0 }
+> > >>>  };
+> > >> Introducing temporary, undocumented command line arguments
+> > >> is generally not a good thing... IMHO... I was think more
+> > >> of an echo to /proc/fs/nfsd/versions to enable the support.
+> > > 
+> > > I think it's a reasonable thing to do for experimental code.
+> > > 
+> > > But we could do the following instead.  (Warning: still untested.)
+> > > 
+> > > --b.
+> > > 
+> > > commit 8d69da4c556f8ad2d42caa3875a665761c27463e
+> > > Author: J. Bruce Fields <bfields@citi.umich.edu>
+> > > Date:   Thu Dec 17 17:11:54 2009 -0500
+> > > 
+> > >     nfsd: allow choosing server 41 support at runtime
+> > >     
+> > >     In the case where -N 4.1 is left off the commandline, the current code
+> > >     explicitly turns it on or off anyway, depending on configure options.
+> > >     
+> > >     Instead, just leave 4.1 support alone.  This allows a user to add an
+> > >     "echo +4.1 >/proc/fs/nfsd/versions" to their init scripts, if they want.
+> > >     Otherwise they will get the kernel's default (currently to leave 4.1
+> > >     off, as long as 4.1 support is experimental).
+> > I think this is a good compromise... Could you spend a few 
+> > cycles on making sure that echo does indeed turn on 4.1 support?
+> 
+> Yep, will do.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+Done; that patch worked for me.  Let me know if you need it resent.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ea338d0..0cd3464 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -168,9 +168,9 @@ static unsigned int file_hashval(struct inode *ino)
- 	return hash_ptr(ino, FILE_HASH_BITS);
- }
- 
--static unsigned int stateid_hashval(u32 owner_id, u32 file_id)
-+static unsigned int stateid_hashval(stateid_t *s)
- {
--	return (owner_id + file_id) & STATEID_HASH_MASK;
-+	return opaque_hashval(&s->si_opaque, sizeof(stateid_opaque_t)) & STATEID_HASH_MASK;
- }
- 
- static struct list_head file_hashtbl[FILE_HASH_SIZE];
-@@ -221,7 +221,7 @@ static inline void hash_stid(struct nfs4_stid *stid)
- 	stateid_t *s = &stid->sc_stateid;
- 	unsigned int hashval;
- 
--	hashval = stateid_hashval(s->si_stateownerid, s->si_fileid);
-+	hashval = stateid_hashval(s);
- 	list_add(&stid->sc_hash, &stateid_hashtbl[hashval]);
- }
- 
-@@ -1083,7 +1083,7 @@ static struct nfs4_stid *find_stateid(stateid_t *t)
- 	struct nfs4_stid *s;
- 	unsigned int hashval;
- 
--	hashval = stateid_hashval(t->si_stateownerid, t->si_fileid);
-+	hashval = stateid_hashval(t);
- 	list_for_each_entry(s, &stateid_hashtbl[hashval], sc_hash)
- 		if (same_stateid(&s->sc_stateid, t))
- 			return s;
--- 
-1.7.4.1
-
+--b.
