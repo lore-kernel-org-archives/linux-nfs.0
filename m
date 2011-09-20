@@ -1,46 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yi0-f46.google.com ([209.85.218.46]:47586 "EHLO
-	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754939Ab1ILWGe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 18:06:34 -0400
-Received: by yie30 with SMTP id 30so3089705yie.19
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Sep 2011 15:06:34 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/8] nfsumount: Squelch compiler warning
-To: linux-nfs@vger.kernel.org
-Date: Mon, 12 Sep 2011 18:06:32 -0400
-Message-ID: <20110912220632.10854.1269.stgit@matisse.1015granger.net>
-In-Reply-To: <20110912220304.10854.20972.stgit@matisse.1015granger.net>
-References: <20110912220304.10854.20972.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:38823
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752576Ab1ITQTd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2011 12:19:33 -0400
+Date: Tue, 20 Sep 2011 12:19:33 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] statd: Decouple statd's state directory from the NFS
+ state directory
+Message-ID: <20110920161932.GA10040@infradead.org>
+References: <1316531020-25071-1-git-send-email-steved@redhat.com>
+ <20110920154011.GA6959@infradead.org>
+ <4E78BC72.40303@RedHat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E78BC72.40303@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-nfsumount.c: In function ‘nfs_umount_is_vers4’:
-nfsumount.c:164: warning: conversion to ‘int’ from ‘size_t’ may alter its value
-nfsumount.c:173: warning: conversion to ‘size_t’ from ‘int’ may change the sign of the result
+On Tue, Sep 20, 2011 at 12:16:50PM -0400, Steve Dickson wrote:
+> > What is thje rationale for this?  And who would want to move it at
+> > compile time, not at run time?
+> It all has to do with statd not running as root... 
+> 
+> During the rpm installation, a state directory is created and 
+> the uid/gid are set to rpcuser id. When statd fires up, those
+> uid/gids are obtained and used to set the process's uid/gid so
+> the daemon does not run as root..
+> 
+> The default NFS state directory is /var/lib/nfs. Since other
+> processes, like mountd and exportfs, read and write to that,
+> we don't want to muck around with its ownership. So a statd 
+> directory is created and the ownership of that directory 
+> is mucked with.
 
-Introduced by commit 3564ebbf.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- utils/mount/nfsumount.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
-
-diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
-index b846564..3538d88 100644
---- a/utils/mount/nfsumount.c
-+++ b/utils/mount/nfsumount.c
-@@ -161,7 +161,8 @@ static int nfs_umount_is_vers4(const struct mntentchn *mc)
- 		goto not_found;
- 
- 	do {
--		int nlen = strlen(pmc->m.mnt_fsname);
-+		size_t nlen = strlen(pmc->m.mnt_fsname);
-+
- 		/*
- 		 * It's possible the mount location string in /proc/mounts
- 		 * ends with a '/'. In this case, if the entry came from
+Shouldn't the configure option then be about running statd non-root
+and all things required for it?  E.g. do the set*uid, creating the
+new dir with the right owner and permissions, and using it?
 
