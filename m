@@ -1,46 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:35376 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750755Ab1IPQOV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2011 12:14:21 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 1/5] pnfsblock: fix size of upcall message
-Date: Fri, 16 Sep 2011 12:14:15 -0400
-Message-Id: <1316189659-8799-2-git-send-email-rees@umich.edu>
-In-Reply-To: <1316189659-8799-1-git-send-email-rees@umich.edu>
-References: <1316189659-8799-1-git-send-email-rees@umich.edu>
+Received: from mailhub.sw.ru ([195.214.232.25]:46815 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755644Ab1ITKOe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Sep 2011 06:14:34 -0400
+Subject: [PATCH v4 5/8] SUNRPC: cleanup service destruction
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net
+Date: Tue, 20 Sep 2011 14:14:11 +0400
+Message-ID: <20110920101411.9861.22514.stgit@localhost6.localdomain6>
+In-Reply-To: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
+References: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Make the status field explicitly 32 bits.  "...it's unlikely that the kernel
-and userspace would differ on the size of an int here, but it might be a
-good idea to go ahead and make that explicitly 32 bits in case we end up
-dealing with more exotic arches at some point in the future."
+svc_unregister() call have to be removed from svc_destroy() since it will be
+called in sv_shutdown callback.
 
-Suggested-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: Jim Rees <rees@umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
 ---
- fs/nfs/blocklayout/blocklayout.h |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ net/sunrpc/svc.c |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index f27d827..58dc256 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -150,7 +150,7 @@ BLK_LSEG2EXT(struct pnfs_layout_segment *lseg)
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 918edc3..407462f 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -530,7 +530,6 @@ svc_destroy(struct svc_serv *serv)
+ 	if (svc_serv_is_pooled(serv))
+ 		svc_pool_map_put();
+ 
+-	svc_unregister(serv);
+ 	kfree(serv->sv_pools);
+ 	kfree(serv);
  }
- 
- struct bl_dev_msg {
--	int status;
-+	int32_t status;
- 	uint32_t major, minor;
- };
- 
--- 
-1.7.6
 
