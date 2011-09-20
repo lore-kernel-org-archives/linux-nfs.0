@@ -1,87 +1,224 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60190 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:16584 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932250Ab1INLp3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Sep 2011 07:45:29 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 21/25] nfsd4: share common stid-hashing helper function
-Date: Wed, 14 Sep 2011 07:45:17 -0400
-Message-Id: <1316000721-3289-22-git-send-email-bfields@redhat.com>
-In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
+	id S1753351Ab1ITLxk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Sep 2011 07:53:40 -0400
+Message-ID: <4E787EC0.60501@RedHat.com>
+Date: Tue, 20 Sep 2011 07:53:36 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/8] configure.ac: Add --with-statd-extension configure
+ option
+References: <20110912220304.10854.20972.stgit@matisse.1015granger.net>	<20110912220623.10854.69881.stgit@matisse.1015granger.net>	<4E74927D.2070600@RedHat.com> <20110918074925.5b620286@tlielax.poochiereds.net> <4E778241.3080605@RedHat.com> <F66FF061-5192-4131-873B-82CF8C17A02B@oracle.com>
+In-Reply-To: <F66FF061-5192-4131-873B-82CF8C17A02B@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |   15 +++++++++++----
- 1 files changed, 11 insertions(+), 4 deletions(-)
+Hey Chuck,
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3e3d605..581a5d0 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -218,6 +218,15 @@ static void nfs4_file_put_access(struct nfs4_file *fp, int oflag)
- 		__nfs4_file_put_access(fp, oflag);
- }
- 
-+static inline void hash_stid(struct nfs4_stid *stid)
-+{
-+	stateid_t *s = &stid->sc_stateid;
-+	unsigned int hashval;
-+
-+	hashval = stateid_hashval(s->si_stateownerid, s->si_fileid);
-+	list_add(&stid->sc_hash, &stateid_hashtbl[hashval]);
-+}
-+
- static struct nfs4_delegation *
- alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct svc_fh *current_fh, u32 type)
- {
-@@ -2316,10 +2325,8 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
- static inline void
- init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *open) {
- 	struct nfs4_openowner *oo = open->op_openowner;
--	unsigned int hashval = stateid_hashval(oo->oo_owner.so_id, fp->fi_id);
- 
- 	INIT_LIST_HEAD(&stp->st_lockowners);
--	list_add(&stp->st_stid.sc_hash, &stateid_hashtbl[hashval]);
- 	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
- 	list_add(&stp->st_perfile, &fp->fi_stateids);
- 	stp->st_stid.sc_type = NFS4_OPEN_STID;
-@@ -2331,6 +2338,7 @@ init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp, struct nfsd
- 	stp->st_stid.sc_stateid.si_fileid = fp->fi_id;
- 	/* note will be incremented before first return to client: */
- 	stp->st_stid.sc_stateid.si_generation = 0;
-+	hash_stid(&stp->st_stid);
- 	stp->st_access_bmap = 0;
- 	stp->st_deny_bmap = 0;
- 	__set_bit(open->op_share_access & ~NFS4_SHARE_WANT_MASK,
-@@ -3866,12 +3874,10 @@ static struct nfs4_ol_stateid *
- alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct nfs4_ol_stateid *open_stp)
- {
- 	struct nfs4_ol_stateid *stp;
--	unsigned int hashval = stateid_hashval(lo->lo_owner.so_id, fp->fi_id);
- 
- 	stp = nfs4_alloc_stateid();
- 	if (stp == NULL)
- 		goto out;
--	list_add(&stp->st_stid.sc_hash, &stateid_hashtbl[hashval]);
- 	list_add(&stp->st_perfile, &fp->fi_stateids);
- 	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
- 	stp->st_stateowner = &lo->lo_owner;
-@@ -3883,6 +3889,7 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
- 	stp->st_stid.sc_stateid.si_fileid = fp->fi_id;
- 	/* note will be incremented before first return to client: */
- 	stp->st_stid.sc_stateid.si_generation = 0;
-+	hash_stid(&stp->st_stid);
- 	stp->st_access_bmap = 0;
- 	stp->st_deny_bmap = open_stp->st_deny_bmap;
- 	stp->st_openstp = open_stp;
--- 
-1.7.4.1
+On 09/19/2011 03:36 PM, Chuck Lever wrote:
+> 
+> On Sep 19, 2011, at 1:56 PM, Steve Dickson wrote:
+> 
+>>
+>>
+>> On 09/18/2011 07:49 AM, Jeff Layton wrote:
+>>> On Sat, 17 Sep 2011 08:28:45 -0400
+>>> Steve Dickson <SteveD@redhat.com> wrote:
+>>>
+>>>>
+>>>>
+>>>> On 09/12/2011 06:06 PM, Chuck Lever wrote:
+>>>>> Currently some distributions patch nfs-utils to put NSM state in a
+>>>>> subdirectory of /var/lib/nfs.  Make this a configure option instead.
+>>>>>
+>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>>> ---
+>>>>>
+>>>>> configure.ac       |    8 ++++++++
+>>>>> support/nsm/file.c |    9 +--------
+>>>>> 2 files changed, 9 insertions(+), 8 deletions(-)
+>>>>>
+>>>>> diff --git a/configure.ac b/configure.ac
+>>>>> index 461a96a..ba704e2 100644
+>>>>> --- a/configure.ac
+>>>>> +++ b/configure.ac
+>>>>> @@ -23,6 +23,14 @@ AC_ARG_WITH(statedir,
+>>>>> 	statedir=$withval,
+>>>>> 	statedir=/var/lib/nfs)
+>>>>> 	AC_SUBST(statedir)
+>>>>> +AC_ARG_WITH(statd-extension,
+>>>>> +	[AC_HELP_STRING([--with-statd-extension=foo],
+>>>>> +                        [Put NSM state in subdir foo of statedir])],
+>>>>> +	statdext=$withval,
+>>>>> +	statdext="")
+>>>>> +	AC_SUBST(statdext)
+>>>>> +	AC_DEFINE_UNQUOTED(NSM_PATH_EXTENSION, "$statdext",
+>>>>> +			   [This defines the statedir subdirectory containing NSM state files.])
+>>>>> AC_ARG_WITH(statduser,
+>>>>> 	[AC_HELP_STRING([--with-statduser=rpcuser],
+>>>>>                         [statd to run under @<:@rpcuser or nobody@:>@]
+>>>>> diff --git a/support/nsm/file.c b/support/nsm/file.c
+>>>>> index a12c753..b4a5af1 100644
+>>>>> --- a/support/nsm/file.c
+>>>>> +++ b/support/nsm/file.c
+>>>>> @@ -93,14 +93,7 @@
+>>>>> #define LINELEN		(RPCARGSLEN + SM_PRIV_SIZE * 2 + 1)
+>>>>>
+>>>>> #define NSM_KERNEL_STATE_FILE	"/proc/sys/fs/nfs/nsm_local_state"
+>>>>> -
+>>>>> -/*
+>>>>> - * Some distributions place statd's files in a subdirectory
+>>>>> - */
+>>>>> -#define NSM_PATH_EXTENSION
+>>>>> -/* #define NSM_PATH_EXTENSION	"/statd" */
+>>>>> -
+>>>>> -#define NSM_DEFAULT_STATEDIR		NFS_STATEDIR NSM_PATH_EXTENSION
+>>>>> +#define NSM_DEFAULT_STATEDIR	NFS_STATEDIR "/" NSM_PATH_EXTENSION
+>>>> Do we really need the NSM_PATH_EXTENSION define? Would it be more
+>>>> straightforward to just have NFS_STATEDIR. Simplifying the code to:
+>>>>
+>>>> #ifndef NFS_STATEDIR 
+>>>> #define NFS_STATEDIR "/var/lib/nfs"
+>>>> #endif
+>>>>
+>>>> #define NSM_DEFAULT_STATEDIR		NFS_STATEDIR
+>>>>
+>>>> If there is no need for the extra NSM_PATH_EXTENSION define then 
+>>>> we really don't want to create a configuration option for it.. IMHO..
+>>>>
+>>>
+>>>
+>>> IIRC, the statd directory is not standard between distributions. Some
+>>> (like Fedora) put this dir in /var/lib/nfs/statd, and some just keep all
+>>> of that in /var/lib/nfs.
+>>>
+>>> The main reason for not making the NSM statedir be /var/lib/nfs is
+>>> that statd defaults to running as the user that owns the statedir. We
+>>> don't really want /var/lib/nfs owned by rpcuser since it contains other
+>>> things that it shouldn't have access to if statd were compromised.
+>>>
+>>> I think the idea here is to push this patch to mainline so we can stop
+>>> carrying nfs-utils-1.2.2-statdpath.patch in the Fedora repo and turn it
+>>> into an option that distros can use to put this in the location they
+>>> prefer.
+>> After further review... I kinda like the idea of decoupling statd's
+>> state directory from /var/lib/nfs which basically what the 
+>> statdpath.patch 
+>>
+>>>
+>>> If we do what you're suggesting above, we'll need a transition scheme
+>>> for Fedora and RHEL, and a way to deal with making statd run as the
+>>> proper user. I don't think we really want to go to that much effort for
+>>> statd...
+>>>
+>> Not if we take the following patch... ;-)
+>>
+>>
+>> What do you guys think of something like:
+>>
+>> commit da6eebe9b01ac132185364efe30b4ba54fc4134c
+>> Author: Steve Dickson <steved@redhat.com>
+>> Date:   Mon Sep 19 11:37:36 2011 -0400
+>>
+>>    statd: Decouple statd's state directory from the NFS state directory
+>>
+>>    To allow greater flexibly to where the state for
+> 
+>   --> "flexibility"
+> 
+>>    statd is written, this patch introduces the NSM_STATD_PATH
+>>    definition that can be defined at compile time with
+>>    the --with-statdpath flag.
+> 
+> I'm not objecting, but why do you think this flexibility is better?  Enumerating a few use cases in the patch description would be helpful.  Is there, for example, a particular distribution that puts this directory outside of /var/lib/nfs?
+No example.. I just though it makes sense to decouple the state
+directory from the /var/lib/nfs prefix... 
 
+> 
+> Basically looks OK, see below for more specific comments.
+> 
+>>    Signed-off-by: Steve Dickson <steved@redhat.com>
+>>
+>> diff --git a/configure.ac b/configure.ac
+>> index 1a28f8a..6558672 100644
+>> --- a/configure.ac
+>> +++ b/configure.ac
+>> @@ -22,6 +22,14 @@ AC_ARG_WITH(statedir,
+>> 	statedir=$withval,
+>> 	statedir=/var/lib/nfs)
+>> 	AC_SUBST(statedir)
+>> +AC_ARG_WITH(statdpath,
+>> +	[AC_HELP_STRING([--with-statdpath=/foo],
+>> +		[Causes statd put it's state file in /foo instead of statedir]
+> 
+> Corrected: add the word "to," make the word "file" plural, and remove incorrect apostrophe.
+> 
+>   "Causes statd to put its state files in /foo instead of in statedir."
+> 
+>> +	)],
+>> +	statdpath=$withval,
+>> +	statdpath=""
+>> +	)
+>> +	AC_SUBST(statdpath)
+>> AC_ARG_WITH(statduser,
+>> 	[AC_HELP_STRING([--with-statduser=rpcuser],
+>>                         [statd to run under @<:@rpcuser or nobody@:>@]
+>> @@ -386,6 +394,9 @@ dnl *************************************************************
+>> dnl Export some path names to config.h
+>> dnl *************************************************************
+>> AC_DEFINE_UNQUOTED(NFS_STATEDIR, "$statedir", [This defines the location of the NFS state files. Warning: this must match definitions in config.mk!])
+>> +if test "$statdpath" != ""; then
+>> +		AC_DEFINE_UNQUOTED(NSM_STATD_PATH, "$statdpath", [Define this if you what statd file placed in somewhere other than NFS_STATEDIR])
+> 
+> "what" --> "want"
+> 
+> though something else may be warranted if you agree with my suggestion below.
+Thanks... I guys the patch was not ready for prime time... 
+
+> 
+>> +fi
+>>
+>> if test "x$cross_compiling" = "xno"; then
+>> 	CFLAGS_FOR_BUILD=${CFLAGS_FOR_BUILD-"$CFLAGS"}
+>> diff --git a/support/nsm/file.c b/support/nsm/file.c
+>> index a12c753..2427a6c 100644
+>> --- a/support/nsm/file.c
+>> +++ b/support/nsm/file.c
+>> @@ -95,12 +95,13 @@
+>> #define NSM_KERNEL_STATE_FILE	"/proc/sys/fs/nfs/nsm_local_state"
+>>
+>> /*
+>> - * Some distributions place statd's files in a subdirectory
+>> + * Allow different places for statd's files
+>>  */
+>> -#define NSM_PATH_EXTENSION
+>> -/* #define NSM_PATH_EXTENSION	"/statd" */
+>> -
+>> -#define NSM_DEFAULT_STATEDIR		NFS_STATEDIR NSM_PATH_EXTENSION
+>> +#ifdef NSM_STATD_PATH
+>> +#define NSM_DEFAULT_STATEDIR		NSM_STATD_PATH
+>> +#else
+>> +#define NSM_DEFAULT_STATEDIR		NFS_STATEDIR 
+>> +#endif
+> 
+> If we are now building the whole path in configure.ac, then it would be simpler and cleaner if this #if logic was in configure.ac, not here.  Just strip all this out, and define NSM_DEFAULT_STATEDIR (or whatever) in configure.ac.  In other words, NSM_DEFAULT_STATEDIR (or whatever) will always be defined, its value will always be listed in config.h, and, by default, it will just be a copy of NFS_STATEDIR.
+> 
+> Then there would be one single place (config.h) for other programs in nfs-utils, and for human beings, to look to see where statd is sticking its state files.  I for one would not be happy if, in order to fix a bug, I had to hunt through configure.ac, config.h, and support/nsm/file.c just to figure out exactly what pathname was generated.
+Good idea... 
+
+> 
+>> static char nsm_base_dirname[PATH_MAX] = NSM_DEFAULT_STATEDIR;
+> 
+>   ...
+> 
+> If we now have a global definition of the statd state directory pathname, utils/statd/Makefile should use an install hook to fix up the explicit "/var/lib/nfs" references in statd.man and sm-notify.man.  Jeff says he's got some sample code in cifs-utils.  That would finally allow completely removing all the hunks in statdpath.patch.
+I'll take a look... 
+
+Thanks for your time! 
+
+steved.
+ 
