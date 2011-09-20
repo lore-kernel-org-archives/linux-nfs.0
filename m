@@ -1,48 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59097 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:40732 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751764Ab1IUO62 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Sep 2011 10:58:28 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        Christoph Hellwig <hch@infradead.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Mimi Zohar <zohar@linux.vnet.ibm.com>
-Subject: breaking leases on metadata changes
-Date: Wed, 21 Sep 2011 10:58:11 -0400
-Message-Id: <1316617097-21384-1-git-send-email-bfields@redhat.com>
+	id S1750957Ab1ITNww (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Sep 2011 09:52:52 -0400
+Date: Tue, 20 Sep 2011 09:52:52 -0400
+To: =?utf-8?Q?R=C3=BCdiger?= Meier <sweet_f_a@gmx.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: processes hanging in state D when reading from nfs
+Message-ID: <20110920135252.GB12422@fieldses.org>
+References: <201108272122.53243.sweet_f_a@gmx.de>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <201108272122.53243.sweet_f_a@gmx.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-So there's this longstanding problem that read leases should really be
-broken on anything that changes an inode's metadata or any change to the
-set of links pointing to the inode.
+On Sat, Aug 27, 2011 at 09:22:53PM +0200, Rüdiger Meier wrote:
+> I've got an annoying problem with my nfs4 clients.
+> Lately I see many processes hanging in state D when reading from nfs
+> mount. Sometimes they can be killed sometimes not.
 
-(Cc'ing samba-technical for confirmation of that statement from Samba's
-point of view....)
+Is this still happening?
 
-So we need mutual exclusion between read leases and link, unlink,
-rename, etc.
+> This occurs mostly whith shell scripts started by cron.
+> 
+> For example on one machine there is a file where suddenly all reads on
+> it are hanging, ls -ls still works:
+> 
+> rwxr-xr-x 1 tk users 128 2010-09-08 15:54 /home/tk/usr/local/scripts/plain_ALLMAJOR.sh
+> 
+> As you see it's an old script, not modified since long time. It was
+> running a few times per day since months.
+> 
+> Now this is the processlist:
+> 
+> tk        8829  0.0  0.0  11372   800 ?        Ds   Aug25   0:00 /bin/sh -c ~/usr/local/scripts/plain_ALLMAJOR.sh
+> tk        8830  0.0  0.0  11372   824 ?        Ds   Aug25   0:00 /bin/sh -c ~/usr/local/scripts/plain_ALLMAJOR.sh
+> tk       18864  0.0  0.0  11372   844 ?        Ds   Aug26   0:00 /bin/sh -c ~/usr/local/scripts/plain_ALLMAJOR.sh
+> tk       18865  0.0  0.0  11372   860 ?        Ds   Aug26   0:00 /bin/sh -c ~/usr/local/scripts/plain_ALLMAJOR.sh
+> rudi     23745  0.0  0.0  10300   748 pts/20   D    20:39   0:00 file /home/tk/usr/local/scripts/plain_ALLMAJOR.sh
+> rudi     24361  0.0  0.0  10300   748 pts/20   D    20:40   0:00 file /home/tk/usr/local/scripts/plain_ALLMAJOR.sh
+> root     30417  0.0  0.0  10056   472 ?        D    Aug24   0:00 less /home/tk/usr/local/scripts/plain_ALLMAJOR.sh
+> rudi     30569  0.0  0.0  10064  1128 pts/1    D+   20:41   0:00 less /home/tk/usr/local/scripts/plain_ALLMAJOR.sh
+> 
+> The /bin/sh processes are hanging forever in state "Ds" but can be killed.
+> The less and file commands can't be killed.
+> On other clients I can read that file without probs.
+> 
+> The logs on server and clients don't tell me anything.
+> What can I do to find out what's the problem?
 
-After contemplating increasingly complicated solutions for much too
-long, I realized that the i_mutex is taken by all of those operations
-except for rename--and it looks to me like rename could take i_mutex on
-a renamed file as well.
+Running wireshark and watching the network traffic may sometimes give an
+idea whether the client or server is to blame.
 
-So, here's my attempt.  It passes some simple tests.  Is it sane?
+> BTW each hanging process increases the load by 1 but the affected machines
+> are still quite usable even with a load of 800 on a single core CPU!
+> 
+> 
+> here my specs:
+> 2.6.37.6-0.7-desktop
+> openSUSE 11.4 (x86_64)
 
-I tried updating Documentation/filesystems/directory-locking to reflect
-the rename change, but without thinking it through as carefully as I'd
-like to.
-
-Also, the one thing I *know* is wrong: lockdep doesn't like the rename
-change, and I haven't tried to figure out how to fix it.  (Help?)
-
-These patches assume some previous lease fixes already committed to
-
-	git://linux-nfs.org/~bfields/linux.git for-3.2
+On both client and server?
 
 --b.
