@@ -1,59 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:27159 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:2835 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932187Ab1IMSO6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Sep 2011 14:14:58 -0400
-Subject: [PATCH v3 10/11] SUNRPC: remove rpcbind clients creation during
-	service registering
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net
-Date: Tue, 13 Sep 2011 22:14:37 +0400
-Message-ID: <20110913181437.3961.40606.stgit@localhost6.localdomain6>
-In-Reply-To: <20110913180953.3961.69217.stgit@localhost6.localdomain6>
-References: <20110913180953.3961.69217.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
+	id S1751730Ab1ITXFE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2011 19:05:04 -0400
+Subject: Re: Please support NSF squashing multiple groups
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: paul.szabo@sydney.edu.au
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 20 Sep 2011 19:05:03 -0400
+In-Reply-To: <201109202248.p8KMmLaI008501@bari.maths.usyd.edu.au>
+References: <201109202248.p8KMmLaI008501@bari.maths.usyd.edu.au>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1316559903.15093.15.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We don't need this code since rpcbind clients are creating during RPC service
-creation.
+On Wed, 2011-09-21 at 08:48 +1000, paul.szabo@sydney.edu.au wrote: 
+> Dear all,
+> 
+> I wrote about some security issues with NFS, about protecting against
+> privileged UIDs and GIDs, like root_squash protects against root.
+> 
+> Your advice was to use NFSv4 with kerberos authentication. I now
+> succeeded in setting that up on a test system; though not as simple as
+> should be, it seems to work as expected. The changes required for use
+> are non-trivial, so I will not immediately be able to use it.
+> 
+> Seems that the mountd option --manage-gids handles the secondary groups
+> only. I still do not quite understand why mountd (with that or another
+> option) cannot handle the primary GID also, setting it to the GID
+> corresponding to the UID on the server; and maybe even "squash" any UIDs
+> in a table similar to idmap, or simply squash UIDs less than UID_MIN
+> (squash directly, without any kernel interaction). Could you please tell
+> me whether those are conceptually possible?
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Secondary groups are all about granting permission to perform certain
+operations that are restricted to users of that group.
 
----
- net/sunrpc/rpcb_clnt.c |    9 ---------
- 1 files changed, 0 insertions(+), 9 deletions(-)
+The _primary_ group is about the above _plus_ it has a role when you are
+creating new objects, where it defines the 'group' owner of that object.
+Your proposal would screw up utilities which call the 'setgid()' or
+'setfsgid()' functions before creating files or directories that need to
+have very specific group ownerships.
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index d42b642..e5c936d 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -428,11 +428,6 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
- 	struct rpc_message msg = {
- 		.rpc_argp	= &map,
- 	};
--	int error;
--
--	error = rpcb_create_local();
--	if (error)
--		return error;
- 
- 	dprintk("RPC:       %sregistering (%u, %u, %d, %u) with local "
- 			"rpcbind\n", (port ? "" : "un"),
-@@ -568,11 +563,7 @@ int rpcb_v4_register(const u32 program, const u32 version,
- 	struct rpc_message msg = {
- 		.rpc_argp	= &map,
- 	};
--	int error;
- 
--	error = rpcb_create_local();
--	if (error)
--		return error;
- 	if (rpcb_local_clnt4 == NULL)
- 		return -EPROTONOSUPPORT;
- 
+IOW: what you are proposing is a potential security problem.
+
+Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
