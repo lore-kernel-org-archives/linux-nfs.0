@@ -1,217 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp09.in.ibm.com ([122.248.162.9]:41013 "EHLO
-	e28smtp09.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752094Ab1IER1j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2011 13:27:39 -0400
-Received: from /spool/local
-	by in.ibm.com with XMail ESMTP
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Mon, 5 Sep 2011 22:57:37 +0530
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V6 18/26] richacl: Create-time inheritance
-Date: Mon,  5 Sep 2011 22:55:40 +0530
-Message-Id: <1315243548-18664-19-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:15778 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752696Ab1ITQVH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Sep 2011 12:21:07 -0400
+Message-ID: <4E78BD5B.8090507@parallels.com>
+Date: Tue, 20 Sep 2011 20:20:43 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>
+Subject: Re: [PATCH v4 1/8] SUNRPC: introduce helpers for reference counted
+ rpcbind clients
+References: <20110920101031.9861.18444.stgit@localhost6.localdomain6> <20110920101341.9861.51453.stgit@localhost6.localdomain6> <4E788F8C.20103@netapp.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD10@SACMVEXC2-PRD.hq.netapp.com> <4E789679.1060601@parallels.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD22@SACMVEXC2-PRD.hq.netapp.com> <4E78A4AF.1020303@parallels.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD2B@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD2B@SACMVEXC2-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+20.09.2011 18:38, Myklebust, Trond пишет:
+>> -----Original Message-----
+>> From: Stanislav Kinsbursky [mailto:skinsbursky@parallels.com]
+>> Sent: Tuesday, September 20, 2011 10:35 AM
+>> To: Myklebust, Trond
+>> Cc: Schumaker, Bryan; linux-nfs@vger.kernel.org; Pavel Emelianov;
+>> neilb@suse.de; netdev@vger.kernel.org; linux-kernel@vger.kernel.org;
+>> bfields@fieldses.org; davem@davemloft.net
+>> Subject: Re: [PATCH v4 1/8] SUNRPC: introduce helpers for reference
+>> counted rpcbind clients
+>>
+>> 20.09.2011 18:14, Myklebust, Trond пишет:
+>>
+>>>>>
+>>>>> Doesn't it  need to be protected by rpcb_clnt_lock too?
+>>>>>
+>>>>
+>>>> Nope from my pow. It's protected by rpcb_create_local_mutex. I.e. no
+>>>> one will change rpcb_users since it's zero. If it's non zero - we
+>>>> willn't get to rpcb_set_local().
+>>>
+>>> OK, so you are saying that the rpcb_users++ below could be replaced by
+>> rpcb_users=1?
+>>>
+>>
+>> Yes, you right.
+>>
+>>> In that case, don't you need a smp_wmb() between the setting of
+>> rpcb_local_clnt/4 and the setting of rpcb_users? Otherwise, how do you
+>> guarantee that rpcb_users != 0 implies rpbc_local_clnt/4 != NULL?
+>>>
+>>
+>> We check rpcb_users under spinlock. Gain spinlock forces memory barrier,
+>> doesn't it?
+>
+> Yes, and so you don't need an smp_rmb() on the reader side. However, you still need to ensure that the processor which _sets_ the rpcb_users and rpcb_local_clnt/4 actually writes them in the correct order.
+>
 
-When a new file is created, it can inherit an acl from its parent
-directory; this is similar to how default acls work in POSIX (draft)
-ACLs.
+Trond, I've thought again and realized, that even if these writes (rpcb_users 
+and rpbc_local_clnt/4) will be done in reversed order, then no barrier required 
+here.
+Because if we have another process trying to create those clients (it can't use 
+them since it's not started yet) on other CPU, than it's waiting on creation 
+mutex. When it will gain the mutex, we will have required memory barrier for us.
 
-As with POSIX ACLs, if a file inherits an acl from its parent directory,
-the intersection between the create mode and the permissions granted by
-the inherited acl determines the file masks and file permission bits,
-and the umask is ignored.
+Or I missed something in your explanation?
 
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/Makefile             |    2 +-
- fs/richacl_base.c       |   69 +++++++++++++++++++++++++++++++++++++++++++++++
- fs/richacl_inode.c      |   59 ++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |    4 +++
- 4 files changed, 133 insertions(+), 1 deletions(-)
- create mode 100644 fs/richacl_inode.c
-
-diff --git a/fs/Makefile b/fs/Makefile
-index 7612168..1ecf9f2 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -49,7 +49,7 @@ obj-$(CONFIG_GENERIC_ACL)	+= generic_acl.o
- 
- obj-$(CONFIG_FHANDLE)		+= fhandle.o
- obj-$(CONFIG_FS_RICHACL)	+= richacl.o
--richacl-y			:= richacl_base.o
-+richacl-y			:= richacl_base.o richacl_inode.o
- 
- obj-y				+= quota/
- 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 1f885ad..b4af12c 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -492,3 +492,72 @@ is_everyone:
- 	return denied ? -EACCES : 0;
- }
- EXPORT_SYMBOL_GPL(richacl_permission);
-+
-+/**
-+ * richacl_inherit  -  compute the inherited acl of a new file
-+ * @dir_acl:	acl of the containing direcory
-+ * @isdir:	inherit by a directory or non-directory?
-+ *
-+ * A directory can have acl entries which files and/or directories created
-+ * inside the directory will inherit.  This function computes the acl for such
-+ * a new file.  If there is no inheritable acl, it will return %NULL.
-+ */
-+struct richacl *
-+richacl_inherit(const struct richacl *dir_acl, int isdir)
-+{
-+	const struct richace *dir_ace;
-+	struct richacl *acl = NULL;
-+	struct richace *ace;
-+	int count = 0;
-+
-+	if (isdir) {
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!richace_is_inheritable(dir_ace))
-+				continue;
-+			count++;
-+		}
-+		if (!count)
-+			return NULL;
-+		acl = richacl_alloc(count);
-+		if (!acl)
-+			return ERR_PTR(-ENOMEM);
-+		ace = acl->a_entries;
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!richace_is_inheritable(dir_ace))
-+				continue;
-+			memcpy(ace, dir_ace, sizeof(struct richace));
-+			if (dir_ace->e_flags & ACE4_NO_PROPAGATE_INHERIT_ACE)
-+				richace_clear_inheritance_flags(ace);
-+			if ((dir_ace->e_flags & ACE4_FILE_INHERIT_ACE) &&
-+			    !(dir_ace->e_flags & ACE4_DIRECTORY_INHERIT_ACE))
-+				ace->e_flags |= ACE4_INHERIT_ONLY_ACE;
-+			ace++;
-+		}
-+	} else {
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!(dir_ace->e_flags & ACE4_FILE_INHERIT_ACE))
-+				continue;
-+			count++;
-+		}
-+		if (!count)
-+			return NULL;
-+		acl = richacl_alloc(count);
-+		if (!acl)
-+			return ERR_PTR(-ENOMEM);
-+		ace = acl->a_entries;
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!(dir_ace->e_flags & ACE4_FILE_INHERIT_ACE))
-+				continue;
-+			memcpy(ace, dir_ace, sizeof(struct richace));
-+			richace_clear_inheritance_flags(ace);
-+			/*
-+			 * ACE4_DELETE_CHILD is meaningless for
-+			 * non-directories, so clear it.
-+			 */
-+			ace->e_mask &= ~ACE4_DELETE_CHILD;
-+			ace++;
-+		}
-+	}
-+
-+	return acl;
-+}
-diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-new file mode 100644
-index 0000000..a8d2beb
---- /dev/null
-+++ b/fs/richacl_inode.c
-@@ -0,0 +1,59 @@
-+/*
-+ * Copyright (C) 2010  Novell, Inc.
-+ * Written by Andreas Gruenbacher <agruen@kernel.org>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of the GNU General Public License as published by the
-+ * Free Software Foundation; either version 2, or (at your option) any
-+ * later version.
-+ *
-+ * This program is distributed in the hope that it will be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ */
-+
-+#include <linux/sched.h>
-+#include <linux/module.h>
-+#include <linux/fs.h>
-+#include <linux/richacl.h>
-+
-+/**
-+ * richacl_inherit_inode  -  compute inherited acl and file mode
-+ * @dir_acl:	acl of the containing direcory
-+ * @inode:	inode of the new file (create mode in i_mode)
-+ *
-+ * The file permission bits in inode->i_mode must be set to the create mode.
-+ * If there is an inheritable acl, the maximum permissions that the acl grants
-+ * will be computed and permissions not granted by the acl will be removed from
-+ * inode->i_mode.  If there is no inheritable acl, the umask will be applied
-+ * instead.
-+ */
-+struct richacl *
-+richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
-+{
-+	struct richacl *acl;
-+	mode_t mask;
-+
-+	acl = richacl_inherit(dir_acl, S_ISDIR(inode->i_mode));
-+	if (acl) {
-+
-+		richacl_compute_max_masks(acl);
-+
-+		/*
-+		 * Ensure that the acl will not grant any permissions beyond
-+		 * the create mode.
-+		 */
-+		acl->a_flags |= ACL4_MASKED;
-+		acl->a_owner_mask &= richacl_mode_to_mask(inode->i_mode >> 6) |
-+				     ACE4_POSIX_OWNER_ALLOWED;
-+		acl->a_group_mask &= richacl_mode_to_mask(inode->i_mode >> 3);
-+		acl->a_other_mask &= richacl_mode_to_mask(inode->i_mode);
-+		mask = ~S_IRWXUGO | richacl_masks_to_mode(acl);
-+	} else
-+		mask = ~current_umask();
-+
-+	inode->i_mode &= mask;
-+	return acl;
-+}
-+EXPORT_SYMBOL_GPL(richacl_inherit_inode);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index f46e797..78c35f6 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -291,5 +291,9 @@ extern void richacl_compute_max_masks(struct richacl *);
- extern struct richacl *richacl_chmod(struct richacl *, mode_t);
- extern int richacl_permission(struct inode *, const struct richacl *,
- 			      unsigned int);
-+extern struct richacl *richacl_inherit(const struct richacl *, int);
- 
-+/* richacl_inode.c */
-+extern struct richacl *richacl_inherit_inode(const struct richacl *,
-+					     struct inode *);
- #endif /* __RICHACL_H */
 -- 
-1.7.4.1
-
+Best regards,
+Stanislav Kinsbursky
