@@ -1,142 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59081 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752240Ab1IWMBN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Sep 2011 08:01:13 -0400
-Date: Fri, 23 Sep 2011 08:01:12 -0400
-To: Nattapon Viroonsri <linuxbkk@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfs4 AD2008R2 kinit success but mount failed
-Message-ID: <20110923120112.GD2904@fieldses.org>
-References: <CA+1OVfZpQyLtYauJ4TL7gwXXqL3EF4XKxA_X0Q-=L45ZSGi7fA@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CA+1OVfZpQyLtYauJ4TL7gwXXqL3EF4XKxA_X0Q-=L45ZSGi7fA@mail.gmail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:34791 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753759Ab1ITDXu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Sep 2011 23:23:50 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 2/3] pnfsblock: fix writeback deadlock
+Date: Mon, 19 Sep 2011 23:23:44 -0400
+Message-Id: <1316489025-24991-3-git-send-email-rees@umich.edu>
+In-Reply-To: <1316489025-24991-1-git-send-email-rees@umich.edu>
+References: <1316489025-24991-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, Sep 22, 2011 at 11:34:23PM +0700, Nattapon Viroonsri wrote:
-> Hi,
-> 
-> I try to use nfs4 authentication with Active directory 2008
-> 
-> kinit success to authenticated, but mount still faile with permission denied
-> Any suggestion , would be appreciate
-> 
-> nfs server: suse1.reuint.com ( SLES11 SP1)
-> nfs client:  krbclient.reuint.com ( SLES11 SP1)
+From: Peng Tao <bergwolf@gmail.com>
 
-Have you reported this to SUSE?
+We should check if the sector is already initialized before
+trying to grab the page from page cache. Otherwise when two
+pages of the same block are written back by two threads each
+calling from writepage_locked, it can cause deadlock like bellow.
 
---b.
+ [ 1080.972099] INFO: task kswapd0:25 blocked for more than 120 seconds.
+ [ 1080.972377] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+ [ 1080.972812] kswapd0         D ffff88000c4926c0     0    25      2 0x00000000
+ [ 1080.972816]  ffff88000df276b0 0000000000000046 ffff88000df27640 ffffffff81013ba7
+ [ 1080.972821]  ffff88000c492310 ffff88000df27fd8 ffff88000df27fd8 00000000001d3440
+ [ 1080.972824]  ffff88000c378000 ffff88000c492310 ffff8800175d3d40 ffff880017fc75a8
+ [ 1080.972828] Call Trace:
+ [ 1080.972860]  [<ffffffff81013ba7>] ? read_tsc+0x9/0x19
+ [ 1080.972877]  [<ffffffff810e0b23>] ? lock_page+0x2b/0x2b
+ [ 1080.972899]  [<ffffffff81475a1d>] io_schedule+0x63/0x7e
+ [ 1080.972902]  [<ffffffff810e0b31>] sleep_on_page+0xe/0x12
+ [ 1080.972905]  [<ffffffff81475fe8>] __wait_on_bit_lock+0x46/0x8f
+ [ 1080.972916]  [<ffffffff810822d7>] ? lock_release_holdtime.part.7+0x6b/0x72
+ [ 1080.972919]  [<ffffffff810e0af6>] __lock_page+0x66/0x68
+ [ 1080.972928]  [<ffffffff81072705>] ? autoremove_wake_function+0x3d/0x3d
+ [ 1080.972932]  [<ffffffff810e0b1f>] lock_page+0x27/0x2b
+ [ 1080.972934]  [<ffffffff810e0bcf>] find_lock_page+0x34/0x57
+ [ 1080.972937]  [<ffffffff810e1738>] find_or_create_page+0x34/0x8a
+ [ 1080.972947]  [<ffffffffa034245b>] bl_write_pagelist+0x205/0x6da [blocklayoutdriver]
+ [ 1080.972951]  [<ffffffffa034145d>] ? bl_free_lseg+0x38/0x38 [blocklayoutdriver]
+ [ 1080.972995]  [<ffffffffa02e27b9>] ? nfs_write_rpcsetup+0x118/0x123 [nfs]
+ [ 1080.973033]  [<ffffffffa030246b>] pnfs_generic_pg_writepages+0x10b/0x1f4 [nfs]
+ [ 1080.973089]  [<ffffffffa02deaae>] nfs_pageio_doio+0x1a/0x43 [nfs]
+ [ 1080.973098]  [<ffffffffa02df035>] nfs_pageio_complete+0x16/0x2d [nfs]
+ [ 1080.973108]  [<ffffffffa02e2d8f>] nfs_writepage_locked+0xa0/0xbf [nfs]
+ [ 1080.973119]  [<ffffffffa02e36a1>] nfs_writepage+0x16/0x2b [nfs]
+ [ 1080.973122]  [<ffffffff810e8762>] ? clear_page_dirty_for_io+0x87/0x9a
+ [ 1080.973133]  [<ffffffff810efc5b>] shrink_page_list+0x39b/0x6c8
+ [ 1080.973139]  [<ffffffff810f03bb>] shrink_inactive_list+0x22c/0x39e
+ [ 1080.973144]  [<ffffffff810822d7>] ? lock_release_holdtime.part.7+0x6b/0x72
+ [ 1080.973148]  [<ffffffff810f0c33>] shrink_zone+0x445/0x588
+ [ 1080.973152]  [<ffffffff810f1a11>] balance_pgdat+0x2c2/0x56b
+ [ 1080.973170]  [<ffffffff81254208>] ? __bitmap_weight+0x34/0x80
+ [ 1080.973175]  [<ffffffff810f1f78>] kswapd+0x2be/0x2fa
+ [ 1080.973179]  [<ffffffff810726c8>] ? __init_waitqueue_head+0x4b/0x4b
+ [ 1080.973183]  [<ffffffff810f1cba>] ? balance_pgdat+0x56b/0x56b
+ [ 1080.973187]  [<ffffffff81071f69>] kthread+0xa8/0xb0
+ [ 1080.973200]  [<ffffffff814806b4>] kernel_thread_helper+0x4/0x10
+ [ 1080.973205]  [<ffffffff81071ec1>] ? __init_kthread_worker+0x5a/0x5a
+ [ 1080.973210]  [<ffffffff814806b0>] ? gs_change+0x13/0x13
+ [ 1080.973213] no locks held by kswapd0/25.
 
-> Windows2008 SP2 standard edition:  ad2008.reuint.com ( windows2008R2
-> standard edition)
-> 
->  package: samba-winbind-3.4.3-1.17.2,
-> nfs-kernel-server-1.2.1-2.18.1,nfs-client-1.2.1-2.18.1
->                krb5-1.6.3-133.46.1
-> 
-> 
-> # ------ Both NFS Server and NFS Client can join domain ---------------
-> rcwinbind stop
-> rcnfsserver stop
-> net -Ureutadmin%'mypasswd' ads leave
-> net -Ureutadmin%'mypasswd' ads keytab flush
-> kdestroy
-> \rm /etc/krb5.keytab
-> \rm /tmp/kr*
-> 
-> net -Ureutadmin%'mypasswd' ads join  createupn='nfs/suse1.reuint.com@REUINT.COM'
-> net -Ureutadmin%'mypasswd' ads keytab add nfs
-> 
-> rcwinbind start
-> 
-> 
-> suse1:~/keytab # wbinfo -u
-> REUINT\administrator
-> REUINT\guest
-> REUINT\krbtgt
-> REUINT\reutadmin
-> 
-> 
-> 
-> suse1:~/keytab # ssh REUINT\\reutadmin@localhost
-> Password:
-> Last login: Tue Sep 20 10:13:54 2011 from localhost
-> Could not chdir to home directory /home/REUINT/reutadmin: No such file
-> or directory
-> REUINT\reutadmin@suse1:/>exit
-> 
-> 
-> 
-> #-------  ON NFS Server -----------------------------------------
-> 
-> suse1:~/keytab # klist -ke
-> Keytab name: FILE:/etc/krb5.keytab
-> KVNO Principal
-> 
->    2 nfs/suse1.reuint.com@REUINT.COM (DES cbc mode with CRC-32)
->    2 nfs/suse1.reuint.com@REUINT.COM (DES cbc mode with RSA-MD5)
->    2 nfs/suse1.reuint.com@REUINT.COM (ArcFour with HMAC/md5)
->    2 nfs/suse1@REUINT.COM (DES cbc mode with CRC-32)
->    2 nfs/suse1@REUINT.COM (DES cbc mode with RSA-MD5)
->    2 nfs/suse1@REUINT.COM (ArcFour with HMAC/md5)
-> 
-> suse1:~/keytab # kinit -V  -k  nfs/suse1.reuint.com@REUINT.COM
-> Authenticated to Kerberos v5
-> 
-> 
-> #-------  ON NFS Client  -----------------------------------------------
-> 
-> krbclient:~ # klist -ke
-> 
-> Keytab name: FILE:/etc/krb5.keytab
-> KVNO Principal
->    2 nfs/krbclient.reuint.com@REUINT.COM (DES cbc mode with CRC-32)
->    2 nfs/krbclient.reuint.com@REUINT.COM (DES cbc mode with RSA-MD5)
->    2 nfs/krbclient.reuint.com@REUINT.COM (ArcFour with HMAC/md5)
->    2 nfs/krbclient@REUINT.COM (DES cbc mode with CRC-32)
->    2 nfs/krbclient@REUINT.COM (DES cbc mode with RSA-MD5)
->    2 nfs/krbclient@REUINT.COM (ArcFour with HMAC/md5)
-> 
-> krbclient:~ # kinit -V -k nfs/krbclient.reuint.com
-> Authenticated to Kerberos v5
-> 
-> 
-> krbclient:~ # showmount -e suse1.reuint.com
-> Export list for suse1.reuint.com:
-> /media/nfs4server gss/krb5i,gss/krb5
-> 
-> krbclient:~ # mount -vvv -tnfs4 -o sec=krb5  suse1.reuint.com:/  /media/nfs/
-> mount: fstab path: "/etc/fstab"
-> mount: mtab path:  "/etc/mtab"
-> mount: lock path:  "/etc/mtab~"
-> mount: temp path:  "/etc/mtab.tmp"
-> mount: UID:        0
-> mount: eUID:       0
-> mount: spec:  "suse1.reuint.com:/"
-> mount: node:  "/media/nfs/"
-> mount: types: "nfs4"
-> mount: opts:  "sec=krb5"
-> mount: external mount: argv[0] = "/sbin/mount.nfs4"
-> mount: external mount: argv[1] = "suse1.reuint.com:/"
-> mount: external mount: argv[2] = "/media/nfs/"
-> mount: external mount: argv[3] = "-v"
-> mount: external mount: argv[4] = "-o"
-> mount: external mount: argv[5] = "rw,sec=krb5"
-> mount.nfs4: timeout set for Tue Sep 20 11:05:15 2011
-> mount.nfs4: trying text-based options
-> 'sec=krb5,addr=192.168.125.130,clientaddr=192.168.125.132'
-> mount.nfs4: mount(2): Permission denied
-> mount.nfs4: access denied by server while mounting suse1.reuint.com:/
-> 
-> ----------------------------------------------
-> 
-> Rgds,
-> Nattapon
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
+---
+ fs/nfs/blocklayout/blocklayout.c |    8 ++++++--
+ 1 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 8d06d5c..8f97578 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -533,6 +533,11 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ fill_invalid_ext:
+ 		dprintk("%s need to zero %d pages\n", __func__, npg_zero);
+ 		for (;npg_zero > 0; npg_zero--) {
++			if (bl_is_sector_init(be->be_inval, isect)) {
++				dprintk("isect %llu already init\n",
++					(unsigned long long)isect);
++				goto next_page;
++			}
+ 			/* page ref released in bl_end_io_write_zero */
+ 			index = isect >> PAGE_CACHE_SECTOR_SHIFT;
+ 			dprintk("%s zero %dth page: index %lu isect %llu\n",
+@@ -552,8 +557,7 @@ fill_invalid_ext:
+ 			 * PageUptodate: It was read before
+ 			 * sector_initialized: already written out
+ 			 */
+-			if (PageDirty(page) || PageWriteback(page) ||
+-			    bl_is_sector_init(be->be_inval, isect)) {
++			if (PageDirty(page) || PageWriteback(page)) {
+ 				print_page(page);
+ 				unlock_page(page);
+ 				page_cache_release(page);
+-- 
+1.7.4.1
+
