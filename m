@@ -1,41 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out2.smtp.messagingengine.com ([66.111.4.26]:59901 "EHLO
-	out2.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751140Ab1IVPy0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 11:54:26 -0400
-Subject: Re: [PATCH] NFS4: Revert commit to make the automount code ignore
- LOOKUP_FOLLOW
-From: Ian Kent <raven@themaw.net>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: David Howells <dhowells@redhat.com>, miklos@szeredi.hu,
-        viro@zeniv.linux.org.uk, jlayton@redhat.com, gregkh@suse.de,
-        linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-In-Reply-To: <6490.1316704925@redhat.com>
-References: <CA+55aFzoH2VxTvf3Q1Lp_GAqDNAbsSOa=ATFXYSmmM=K8Fhuew@mail.gmail.com>
-	 <20110922124608.7739.27750.stgit@warthog.procyon.org.uk>
-	 <6490.1316704925@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 22 Sep 2011 23:54:19 +0800
-Message-ID: <1316706859.3346.37.camel@perseus.themaw.net>
+Received: from mx1.redhat.com ([209.132.183.28]:53793 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750814Ab1ITLTP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Sep 2011 07:19:15 -0400
+Date: Tue, 20 Sep 2011 07:22:06 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
+        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net
+Subject: Re: [PATCH v4 4/8] SUNRPC: setup rpcbind clients if service
+ requires it
+Message-ID: <20110920072206.117db4ce@corrin.poochiereds.net>
+In-Reply-To: <20110920101404.9861.83097.stgit@localhost6.localdomain6>
+References: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
+	<20110920101404.9861.83097.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2011-09-22 at 16:22 +0100, David Howells wrote:
+On Tue, 20 Sep 2011 14:14:04 +0400
+Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+
+> New function ("svc_uses_rpcbind") will be used to detect, that new service will
+> send portmapper register calls. For such services we will create rpcbind
+> clients and remove all stale portmap registrations.
+> Also, svc_rpcb_cleanup() will be set as sv_shutdown callback for such services
+> in case of this field wasn't initialized earlier. This will allow to destroy
+> rpcbind clients when no other users of them left.
 > 
-> I would also say that we do not want lstat(), l*xattr() and co. to cause
-> automounting - but maybe they should.  Perhaps if you don't want to cause
-> automounting, you should explicitly pass AT_NO_AUTOMOUNT, and all path-taking
-> VFS calls should have variants that accept this flag.
+> Note: Currently, any creating service will be detected as portmap user.
+> Probably, this is wrong. But now it depends on program versions "vs_hidden"
+> flag.
+> 
 
-I still think we had it right the first time.
+Yes, I think that nfs4_callback_version4 should also have vs_hidden
+set. Currently, it's trying to unregister the service from the
+portmapper on shutdown even though it's not registering it. Basically,
+any service that sets up its sockets with SVC_SOCK_ANONYMOUS should
+also have vs_hidden set on all versions.
 
-After all we have always said automounts are directories that have
-symlink semantics, which to my way of thinking is what we now have (or
-had). Not only that, it provides a natural way of ensuring a mount
-occurs or does not occur by using the well known no follow calls.
-
-The "natural" part of this is automounts can be followed conceptually in
-the same way that symlinks can be followed.
-I
-
+-- 
+Jeff Layton <jlayton@redhat.com>
