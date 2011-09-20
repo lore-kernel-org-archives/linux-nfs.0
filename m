@@ -1,193 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:36956 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751995Ab1IUL1x (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 07:27:53 -0400
-Received: by wyg34 with SMTP id 34so1779958wyg.19
-        for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 04:27:52 -0700 (PDT)
-Message-ID: <4E79CA34.3060602@tonian.com>
-Date: Wed, 21 Sep 2011 14:27:48 +0300
-From: Benny Halevy <bhalevy@tonian.com>
-To: tao.peng@emc.com
-CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        honey@citi.umich.edu, rees@umich.edu
-Subject: Re: [PATCH 2/3] pnfs: introduce pnfs private workqueue
-References: <1316488728-24912-1-git-send-email-rees@umich.edu> <1316488728-24912-3-git-send-email-rees@umich.edu> <1316558461.15093.4.camel@lade.trondhjem.org> <20110921002917.GA30770@merit.edu> <F19688880B763E40B28B2B462677FBF805C4952916@MX09A.corp.emc.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480226@SACMVEXC2-PRD.hq.netapp.com> <F19688880B763E40B28B2B462677FBF805C495295A@MX09A.corp.emc.com> <4E798C93.40409@tonian.com> <F19688880B763E40B28B2B462677FBF805C4952A24@MX09A.corp.emc.com> <4E79C2F0.30303@tonian.com> <F19688880B763E40B28B2B462677FBF805C4952A34@MX09A.corp.emc.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805C4952A34@MX09A.corp.emc.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mailhub.sw.ru ([195.214.232.25]:42826 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755419Ab1ITKOT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Sep 2011 06:14:19 -0400
+Subject: [PATCH v4 3/8] SUNRPC: introduce svc helpers for prepairing rpcbind
+	infrastructure
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net
+Date: Tue, 20 Sep 2011 14:13:56 +0400
+Message-ID: <20110920101356.9861.33906.stgit@localhost6.localdomain6>
+In-Reply-To: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
+References: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-09-21 14:10, tao.peng@emc.com wrote:
->> -----Original Message-----
->> From: Benny Halevy [mailto:bhalevy@tonian.com]
->> Sent: Wednesday, September 21, 2011 6:57 PM
->> To: Peng, Tao
->> Cc: Trond.Myklebust@netapp.com; linux-nfs@vger.kernel.org;
->> honey@citi.umich.edu; rees@umich.edu
->> Subject: Re: [PATCH 2/3] pnfs: introduce pnfs private workqueue
->>
->> On 2011-09-21 13:23, tao.peng@emc.com wrote:
->>> Hi, Benny,
->>>
->>>> -----Original Message-----
->>>> From: linux-nfs-owner@vger.kernel.org
->> [mailto:linux-nfs-owner@vger.kernel.org]
->>>> On Behalf Of Benny Halevy
->>>> Sent: Wednesday, September 21, 2011 3:05 PM
->>>> To: Peng, Tao
->>>> Cc: Trond.Myklebust@netapp.com; linux-nfs@vger.kernel.org;
->>>> honey@citi.umich.edu; rees@umich.edu
->>>> Subject: Re: [PATCH 2/3] pnfs: introduce pnfs private workqueue
->>>>
->>>> On 2011-09-21 08:16, tao.peng@emc.com wrote:
->>>>>> -----Original Message-----
->>>>>> From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
->>>>>> Sent: Wednesday, September 21, 2011 12:20 PM
->>>>>> To: Peng, Tao
->>>>>> Cc: bhalevy@tonian.com; linux-nfs@vger.kernel.org; honey@citi.umich.edu;
->>>>>> rees@umich.edu
->>>>>> Subject: RE: [PATCH 2/3] pnfs: introduce pnfs private workqueue
->>>>>>
->>>>>>> -----Original Message-----
->>>>>>> From: tao.peng@emc.com [mailto:tao.peng@emc.com]
->>>>>>> Sent: Tuesday, September 20, 2011 10:44 PM
->>>>>>> To: Myklebust, Trond
->>>>>>> Cc: bhalevy@tonian.com; linux-nfs@vger.kernel.org;
->>>>>> honey@citi.umich.edu;
->>>>>>> rees@umich.edu
->>>>>>> Subject: RE: [PATCH 2/3] pnfs: introduce pnfs private workqueue
->>>>>>>
->>>>>>>
->>>>>>>> -----Original Message-----
->>>>>>>> From: linux-nfs-owner@vger.kernel.org
->>>>>>>> [mailto:linux-nfs-owner@vger.kernel.org]
->>>>>>>> On Behalf Of Jim Rees
->>>>>>>> Sent: Wednesday, September 21, 2011 8:29 AM
->>>>>>>> To: Trond Myklebust
->>>>>>>> Cc: Benny Halevy; linux-nfs@vger.kernel.org; peter honeyman
->>>>>>>> Subject: Re: [PATCH 2/3] pnfs: introduce pnfs private workqueue
->>>>>>>>
->>>>>>>> Trond Myklebust wrote:
->>>>>>>>
->>>>>>>>   On Mon, 2011-09-19 at 23:18 -0400, Jim Rees wrote:
->>>>>>>>   > From: Peng Tao <bergwolf@gmail.com>
->>>>>>>>   >
->>>>>>>>   > For layoutdriver io done functions, default workqueue is not a
->>>>>> good
->>>>>>> place as
->>>>>>>>   > the code is executed in IO path. So add a pnfs private workqueue
->>>>>> to
->>>>>>> handle
->>>>>>>>   > them.
->>>>>>>>   >
->>>>>>>>   > Also change block and object layout code to make use of this
->>>>>> private
->>>>>>>>   > workqueue.
->>>>>>>>   >
->>>>>>>>
->>>>>>>>   Wait, what????
->>>>>>>>
->>>>>>>>   Why is the I/O path (i.e. the nfsiod queue) inappropriate for
->>>>>>>>   layoutdriver io_done functions?
->>>>>>> The current code uses the system_wq to handle io_done functions. If
->>>>>> any
->>>>>>> function allocates memory in system_wq and causes dirty writeback in
->>>>>> nfs
->>>>>>> path, the io_done function can never be called because it is after the
->>>>>> original
->>>>>>> function in the system_wq. And you said that the rpciod/nfsiod is not
->>>>>> the
->>>>>>> ideal place because of memory allocation. So I suggested pnfs private
->>>>>>> workqueue and Benny agreed on it.
->>>>>>
->>>>>> You appear to be optimizing for a corner case. Why?
->>>>> Current code uses system_wq for io_done and it can cause deadlock. So this is
->>>> more than just an optimization.
->>>>>
->>>>>>
->>>>>> IOW: why do we need a whole new workqueue for something which is
->>>>>> supposed to be extremely rare? Why can't we just use standard keventd or
->>>>>> allocate a perfectly normal thread (e.g. the state recovery thread)?
->>>>> Unlike nfsiod and rpciod, keventd (aka, system_wq) is not created with
->>>> WQ_MEM_RECLAIM, indicating that it should not be used for IO path which can
->> be
->>>> invoked during memory reclaim. And I agree that a normal kthread can solve it.
->>>>>
->>>>> However, the blocklayout write end_io function still needs a context where it
->> can
->>>> allocate memory to convert extent state (for every IO that touches new extents).
->> If
->>>> you look into the patch, we are not just using the pnfs private workqueue to
->> handle
->>>> pnfs_ld_read/write_done, but also calling mark_extents_written() inside the
->>>> workqueue.
->>>>
->>>> Can this memory be preallocated before the I/O for the common case?
->>> It is possible to preallocate memory for the common case. But it doesn't remove
->> the need for workqueue. Without workqueue, we will need to put a bunch of extent
->> manipulation code into bio->end_io, which is executed in bottom half and we
->> always need minimize its execution.
->>>
->>> Unless we do following:
->>> 1. preallocate memory for extent state convertion
->>> 2. use nfsiod/rpciod to handle bl_write_cleanup
->>> 3. for pnfs error case, create a kthread to recollapse and resend to MDS
->>>
->>> not sure if it worth the complexity though...
->>
->> We do want to avoid memory allocation on the completion path to ensure
->> completion under memory pressure and graceful handling of low memory
->> conditions
->> so I think this approach is worth while.
->>
->> Having a lightweight handler on the bottom half done path is ok too.
->>
->> Doing the heavy lifting for the (assumingly rare) error case in a workqueue/
->> kthread makes a sense, just it mustn't block.  Could you use the nfs state manager
->> for that?
-> I don't quite understand. How do you use nfs state manager to do other tasks?
+This helpers will be used only for those services, that will send portmapper
+registration calls.
 
-You need to keep a list of things to do hanging off of the nfs client structure
-and set a bit in cl_state telling the state manager it has work to do
-and wake it up.  It then needs to go over the list of, say nfs_inodes
-and call into the layout driver to handle the errors.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Benny
+---
+ include/linux/sunrpc/clnt.h |    2 ++
+ net/sunrpc/rpcb_clnt.c      |    2 +-
+ net/sunrpc/svc.c            |   35 +++++++++++++++++++++++++++++++++++
+ 3 files changed, 38 insertions(+), 1 deletions(-)
 
-> 
-> Thanks,
-> Tao
-> 
->>
->> Benny
->>
->>>
->>> Cheers,
->>> Tao
->>>
->>>>
->>>> Benny
->>>>
->>>>> If we don't create a pnfs private workqueue for pnfs_ld_read/write_done (i.e.,
->> by
->>>> just creating a normal kthread in error case), we would still have to create a
->>>> workqueue inside blocklayout driver to handle write end_io. And if blocklayout
->> has a
->>>> private workqueue, it no longer needs the normal kthread for read/write_done
->> error
->>>> handling, which leaves the kthread only specific to object layout (if it doesn't
->> need a
->>>> workqueue like blocklayout does).
->>>>>
->>>>> So I think a generic pnfs workqueue is better because it simplifies things and
->> solve
->>>> both problems.
->>>>>
->>>>> Best,
->>>>> Tao
->>>>>
->>>>>>
->>>>>> Trond
->>>>>
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index db7bcaf..1eb437d 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -135,6 +135,8 @@ void		rpc_shutdown_client(struct rpc_clnt *);
+ void		rpc_release_client(struct rpc_clnt *);
+ void		rpc_task_release_client(struct rpc_task *);
+ 
++int		rpcb_create_local(void);
++void		rpcb_put_local(void);
+ int		rpcb_register(u32, u32, int, unsigned short);
+ int		rpcb_v4_register(const u32 program, const u32 version,
+ 				 const struct sockaddr *address,
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 83634e0..64e15d1 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -317,7 +317,7 @@ out:
+  * Returns zero on success, otherwise a negative errno value
+  * is returned.
+  */
+-static int rpcb_create_local(void)
++int rpcb_create_local(void)
+ {
+ 	static DEFINE_MUTEX(rpcb_create_local_mutex);
+ 	int result = 0;
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 6a69a11..d2d61bf 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -354,6 +354,41 @@ svc_pool_for_cpu(struct svc_serv *serv, int cpu)
+ 	return &serv->sv_pools[pidx % serv->sv_nrpools];
+ }
+ 
++static int svc_rpcb_setup(struct svc_serv *serv)
++{
++	int err;
++
++	err = rpcb_create_local();
++	if (err)
++		return err;
++
++	/* Remove any stale portmap registrations */
++	svc_unregister(serv);
++	return 0;
++}
++
++static void svc_rpcb_cleanup(struct svc_serv *serv)
++{
++	svc_unregister(serv);
++	rpcb_put_local();
++}
++
++static int svc_uses_rpcbind(struct svc_serv *serv)
++{
++	struct svc_program	*progp;
++	unsigned int		i;
++
++	for (progp = serv->sv_program; progp; progp = progp->pg_next) {
++		for (i = 0; i < progp->pg_nvers; i++) {
++			if (progp->pg_vers[i] == NULL)
++				continue;
++			if (progp->pg_vers[i]->vs_hidden == 0)
++				return 1;
++		}
++	}
++
++	return 0;
++}
+ 
+ /*
+  * Create an RPC service
+
