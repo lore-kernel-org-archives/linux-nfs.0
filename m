@@ -1,64 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp06.in.ibm.com ([122.248.162.6]:34170 "EHLO
-	e28smtp06.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751971Ab1IER1R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2011 13:27:17 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V6 06/26] vfs: Add IS_RICHACL() test for richacl support
-Date: Mon,  5 Sep 2011 22:55:28 +0530
-Message-Id: <1315243548-18664-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:43248 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750747Ab1ITNFg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Sep 2011 09:05:36 -0400
+Message-ID: <4E788F8C.20103@netapp.com>
+Date: Tue, 20 Sep 2011 09:05:16 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
+        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net
+Subject: Re: [PATCH v4 1/8] SUNRPC: introduce helpers for reference counted
+ rpcbind clients
+References: <20110920101031.9861.18444.stgit@localhost6.localdomain6> <20110920101341.9861.51453.stgit@localhost6.localdomain6>
+In-Reply-To: <20110920101341.9861.51453.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+On 09/20/2011 06:13 AM, Stanislav Kinsbursky wrote:
+> This helpers will be used for dynamical creation and destruction of rpcbind
+> clients.
+> Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
+> clients has been created already, then we just increase rpcb_users.
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> 
+> ---
+>  net/sunrpc/rpcb_clnt.c |   50 ++++++++++++++++++++++++++++++++++++++++++++++++
+>  1 files changed, 50 insertions(+), 0 deletions(-)
+> 
+> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+> index e45d2fb..8724780 100644
+> --- a/net/sunrpc/rpcb_clnt.c
+> +++ b/net/sunrpc/rpcb_clnt.c
+> @@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
+>  static struct rpc_clnt *	rpcb_local_clnt;
+>  static struct rpc_clnt *	rpcb_local_clnt4;
+>  
+> +DEFINE_SPINLOCK(rpcb_clnt_lock);
+> +unsigned int			rpcb_users;
+> +
+>  struct rpcbind_args {
+>  	struct rpc_xprt *	r_xprt;
+>  
+> @@ -161,6 +164,53 @@ static void rpcb_map_release(void *data)
+>  	kfree(map);
+>  }
+>  
+> +static int rpcb_get_local(void)
+> +{
+> +	spin_lock(&rpcb_clnt_lock);
+> +	if (rpcb_users)
+> +		rpcb_users++;
+> +	spin_unlock(&rpcb_clnt_lock);
+> +
+> +	return rpcb_users;
+        ^^^^^^^^^^^^^^^^^^
+Is it safe to use this variable outside of the rpcb_clnt_lock?
 
-Introduce a new MS_RICHACL super-block flag and a new IS_RICHACL() test
-which file systems like nfs can use.  IS_ACL() is true if IS_POSIXACL()
-or IS_RICHACL() is true.
-
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- include/linux/fs.h |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
-
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 3e1726e..6eac730 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -212,6 +212,7 @@ struct inodes_stat_t {
- #define MS_KERNMOUNT	(1<<22) /* this is a kern_mount call */
- #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
- #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
-+#define MS_RICHACL	(1<<25) /* Supports richacls */
- #define MS_NOSEC	(1<<28)
- #define MS_BORN		(1<<29)
- #define MS_ACTIVE	(1<<30)
-@@ -272,6 +273,7 @@ struct inodes_stat_t {
- #define IS_APPEND(inode)	((inode)->i_flags & S_APPEND)
- #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
- #define IS_POSIXACL(inode)	__IS_FLG(inode, MS_POSIXACL)
-+#define IS_RICHACL(inode)	__IS_FLG(inode, MS_RICHACL)
- 
- #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
- #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
-@@ -285,7 +287,7 @@ struct inodes_stat_t {
-  * IS_ACL() tells the VFS to not apply the umask
-  * and use check_acl for acl permission checks when defined.
-  */
--#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL)
-+#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL | MS_RICHACL)
- 
- /* the read-only stuff doesn't really belong here, but any other place is
-    probably as bad and I don't want to create yet another include file. */
--- 
-1.7.4.1
+> +}
+> +
+> +void rpcb_put_local(void)
+> +{
+> +	struct rpc_clnt *clnt = rpcb_local_clnt;
+> +	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
+> +	int shutdown;
+> +
+> +	spin_lock(&rpcb_clnt_lock);
+> +	if (--rpcb_users == 0) {
+> +		rpcb_local_clnt = NULL;
+> +		rpcb_local_clnt4 = NULL;
+> +	}
+> +	shutdown = !rpcb_users;
+> +	spin_unlock(&rpcb_clnt_lock);
+> +
+> +	if (shutdown) {
+> +		/*
+> +		 * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
+> +		 */
+> +		if (clnt4)
+> +			rpc_shutdown_client(clnt4);
+> +		if (clnt)
+> +			rpc_shutdown_client(clnt);
+> +	}
+> +	return;
+> +}
+> +
+> +static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
+> +{
+> +	/* Protected by rpcb_create_local_mutex */
+> +	rpcb_local_clnt = clnt;
+> +	rpcb_local_clnt4 = clnt4;
+> +	rpcb_users++;
+> +	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
+> +			"%p, rpcb_local_clnt4: %p)\n", rpcb_local_clnt,
+> +			rpcb_local_clnt4);
+> +}
+> +
+>  /*
+>   * Returns zero on success, otherwise a negative errno value
+>   * is returned.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
