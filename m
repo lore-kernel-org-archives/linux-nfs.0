@@ -1,75 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:6464 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:16220 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752329Ab1IZVcd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Sep 2011 17:32:33 -0400
-Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Ian Kent <raven@themaw.net>, Jeff Layton <jlayton@redhat.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        David Howells <dhowells@redhat.com>, viro@zeniv.linux.org.uk,
-        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-Date: Mon, 26 Sep 2011 17:31:58 -0400
-In-Reply-To: <CA+55aFzWCZQjWMcxg16yMUoLr-mEPuXzAFgv49LU4hCn+=rbwQ@mail.gmail.com>
-References: <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com>
-	 <1316747758.3346.89.camel@perseus.themaw.net>
-	 <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
-	 <1316707443.3346.44.camel@perseus.themaw.net>
-	 <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
-	 <1316709935.3346.48.camel@perseus.themaw.net>
-	 <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
-	 <20110922144453.6cf53a25@barsoom.rdu.redhat.com>
-	 <1316719228.3968.14.camel@lade.trondhjem.org>
-	 <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
-	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
-	 <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
-	 <21772.1316774025@redhat.com>
-	 <1316788444.14812.10.camel@lade.trondhjem.org>
-	 <29743.1316791138@redhat.com> <87hb43tf2g.fsf@tucsk.pomaz.szeredi.hu>
-	 <1316827854.3346.154.camel@perseus.themaw.net>
-	 <CA+55aFwPEq5B_P0RtX+pBtGfTadzzS+3U=k=3XTjDw3soNhOdA@mail.gmail.com>
-	 <20110924073610.4b045189@tlielax.poochiereds.net>
-	 <CA+55aFxjFXbCKBZNfBuCOaiBHRQ=ZECnhqKxjPw9maPgyRLiDA@mail.gmail.com>
-	 <1317013864.3187.81.camel@perseus.themaw.net>
-	 <CA+55aFzJnKCHtsiH-mZOwQgVt1ajPJQHWRYB_19eXEKaGRPD1w@mail.gmail.com>
-	 <1317071626.19951.8.camel@lade.trondhjem.org>
-	 <CA+55aFzWCZQjWMcxg16yMUoLr-mEPuXzAFgv49LU4hCn+=rbwQ@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1317072718.19951.13.camel@lade.trondhjem.org>
+	id S1751614Ab1ITOgH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Sep 2011 10:36:07 -0400
+Message-ID: <4E78A4AF.1020303@parallels.com>
+Date: Tue, 20 Sep 2011 18:35:27 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>
+Subject: Re: [PATCH v4 1/8] SUNRPC: introduce helpers for reference counted
+ rpcbind clients
+References: <20110920101031.9861.18444.stgit@localhost6.localdomain6> <20110920101341.9861.51453.stgit@localhost6.localdomain6> <4E788F8C.20103@netapp.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD10@SACMVEXC2-PRD.hq.netapp.com> <4E789679.1060601@parallels.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD22@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD22@SACMVEXC2-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2011-09-26 at 14:24 -0700, Linus Torvalds wrote: 
-> On Mon, Sep 26, 2011 at 2:13 PM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> >
-> > LOOKUP_OPEN flags an open intent and will therefore have side-effects on
-> > NFSv4.
-> 
-> Yes, and the actual downside for that is exactly what?
-> 
-> If you are talking about the bind mount issue, then what is the
-> downside with saying "we want the same stronger consistency guarantees
-> as for a 'file open' operation"?
+20.09.2011 18:14, Myklebust, Trond пишет:
 
-A bind mount doesn't actually want us to set up OPEN state on the NFSv4
-server and return a fully initialised 'struct file' in the struct
-nameidata. If it did, we would already have set the LOOKUP_OPEN flag
-together with the accompanying open intent structure in the struct
-nameidata.
+>>>
+>>> Doesn't it  need to be protected by rpcb_clnt_lock too?
+>>>
+>>
+>> Nope from my pow. It's protected by rpcb_create_local_mutex. I.e. no one
+>> will change rpcb_users since it's zero. If it's non zero - we willn't get to
+>> rpcb_set_local().
+>
+> OK, so you are saying that the rpcb_users++ below could be replaced by rpcb_users=1?
+>
 
-Ditto for the quotactl().
+Yes, you right.
 
-Cheers
-  Trond
+> In that case, don't you need a smp_wmb() between the setting of rpcb_local_clnt/4 and the setting of rpcb_users? Otherwise, how do you guarantee that rpcb_users != 0 implies rpbc_local_clnt/4 != NULL?
+>
+
+We check rpcb_users under spinlock. Gain spinlock forces memory barrier, doesn't it?
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Best regards,
+Stanislav Kinsbursky
