@@ -1,55 +1,168 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:46522 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751188Ab1IVW5e (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 18:57:34 -0400
-Received: by wwf22 with SMTP id 22so2800390wwf.1
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Sep 2011 15:57:33 -0700 (PDT)
-In-Reply-To: <1316719228.3968.14.camel@lade.trondhjem.org>
-References: <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
- <1316707443.3346.44.camel@perseus.themaw.net> <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
- <1316709935.3346.48.camel@perseus.themaw.net> <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
- <20110922144453.6cf53a25@barsoom.rdu.redhat.com> <1316719228.3968.14.camel@lade.trondhjem.org>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Thu, 22 Sep 2011 15:57:13 -0700
-Message-ID: <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
-Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Jeff Layton <jlayton@redhat.com>, Ian Kent <raven@themaw.net>,
-        David Howells <dhowells@redhat.com>, miklos@szeredi.hu,
-        viro@zeniv.linux.org.uk, gregkh@suse.de, linux-nfs@vger.kernel.org,
-        leonardo.lists@gmail.com
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:54410 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751086Ab1ITSxV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Sep 2011 14:53:21 -0400
+Received: from bfields by fieldses.org with local (Exim 4.72)
+	(envelope-from <bfields@fieldses.org>)
+	id 1R65RZ-00043m-19
+	for linux-nfs@vger.kernel.org; Tue, 20 Sep 2011 14:53:21 -0400
+Date: Tue, 20 Sep 2011 14:53:20 -0400
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd4: make op_cacheresult another flag
+Message-ID: <20110920185320.GB15273@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Sep 22, 2011 at 12:20 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
->
-> We need to audit not only NFS, but a bunch of stuff in the VFS.
+Also for 3.2.
 
-Why? What has *anything*else* got to do with fixing a NFSv4 bug?
+--b.
 
-IOW, why the hell would we hold up one bugfix just because you might
-want to look at something else too?
+commit c856694e3d46976c76bf5b92091cb1efa211208d
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue Sep 20 08:49:51 2011 -0400
 
-> For instance, what is the correct behaviour if I do a bind mount with
-> the source being an automount directory? Currently, that doesn't set
-> LOOKUP_DIRECTORY (they cant, since file may also be a mountpoint) and so
-> the current behaviour means that they will fail to automount.
+    nfsd4: make op_cacheresult another flag
+    
+    I'm not sure why I used a new field for this originally.
+    
+    Also, the differences between some of these flags are a little subtle;
+    add some comments to explain.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-Umm. If there is any question at all what the correct behavior might
-be, then pretty clearly the correct behavior is to let the user
-decide.
-
-And as pointed out, that's one of the *advantages* of
-LOOKUP_DIRECTORY. Because it lets users decide.
-
-Exatly because it gets automatically set for the 'slash at end of
-name' case. So suddenly you can literally let the user say one or the
-other by just letting the user add or remove the slash: "/mountpoint"
-is not automount-followed, while "/mountpoint/" is. Nice, obvious, and
-consistent interface. Which is exactly what we'd be looking for.
-
-                 Linus
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index aa769df..4e41f65 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1013,14 +1013,15 @@ enum nfsd4_op_flags {
+ 	/* For rfc 5661 section 2.6.3.1.1: */
+ 	OP_HANDLES_WRONGSEC = 1 << 3,
+ 	OP_IS_PUTFH_LIKE = 1 << 4,
+-	OP_MODIFIES_SOMETHING = 1 << 5, /* op is non-idempotent */
+-};
+-
+-struct nfsd4_operation {
+-	nfsd4op_func op_func;
+-	u32 op_flags;
+-	char *op_name;
+ 	/*
++	 * These are the ops whose result size we estimate before
++	 * encoding, to avoid performing an op then not being able to
++	 * respond or cache a response.  This includes writes and setattrs
++	 * as well as the operations usually called "nonidempotent":
++	 */
++	OP_MODIFIES_SOMETHING = 1 << 5,
++	/*
++	 * Cache compounds containing these ops in the xid-based drc:
+ 	 * We use the DRC for compounds containing non-idempotent
+ 	 * operations, *except* those that are 4.1-specific (since
+ 	 * sessions provide their own EOS), and except for stateful
+@@ -1028,7 +1029,13 @@ struct nfsd4_operation {
+ 	 * (since sequence numbers provide EOS for open, lock, etc in
+ 	 * the v4.0 case).
+ 	 */
+-	bool op_cacheresult;
++	OP_CACHEME = 1 << 6,
++};
++
++struct nfsd4_operation {
++	nfsd4op_func op_func;
++	u32 op_flags;
++	char *op_name;
+ 	/* Try to get response size before operation */
+ 	nfsd4op_rsize op_rsize_bop;
+ };
+@@ -1077,7 +1084,7 @@ static inline struct nfsd4_operation *OPDESC(struct nfsd4_op *op)
+ 
+ bool nfsd4_cache_this_op(struct nfsd4_op *op)
+ {
+-	return OPDESC(op)->op_cacheresult;
++	return OPDESC(op)->op_flags & OP_CACHEME;
+ }
+ 
+ static bool need_wrongsec_check(struct svc_rqst *rqstp)
+@@ -1420,9 +1427,8 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 	},
+ 	[OP_CREATE] = {
+ 		.op_func = (nfsd4op_func)nfsd4_create,
+-		.op_flags = OP_MODIFIES_SOMETHING,
++		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
+ 		.op_name = "OP_CREATE",
+-		.op_cacheresult = true,
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_create_rsize,
+ 	},
+ 	[OP_DELEGRETURN] = {
+@@ -1442,9 +1448,9 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 	},
+ 	[OP_LINK] = {
+ 		.op_func = (nfsd4op_func)nfsd4_link,
+-		.op_flags = ALLOWED_ON_ABSENT_FS | OP_MODIFIES_SOMETHING,
++		.op_flags = ALLOWED_ON_ABSENT_FS | OP_MODIFIES_SOMETHING
++				| OP_CACHEME,
+ 		.op_name = "OP_LINK",
+-		.op_cacheresult = true,
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_link_rsize,
+ 	},
+ 	[OP_LOCK] = {
+@@ -1534,16 +1540,14 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 	},
+ 	[OP_REMOVE] = {
+ 		.op_func = (nfsd4op_func)nfsd4_remove,
+-		.op_flags = OP_MODIFIES_SOMETHING,
++		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
+ 		.op_name = "OP_REMOVE",
+-		.op_cacheresult = true,
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_remove_rsize,
+ 	},
+ 	[OP_RENAME] = {
+ 		.op_func = (nfsd4op_func)nfsd4_rename,
+-		.op_flags = OP_MODIFIES_SOMETHING,
++		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
+ 		.op_name = "OP_RENAME",
+-		.op_cacheresult = true,
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_rename_rsize,
+ 	},
+ 	[OP_RENEW] = {
+@@ -1575,24 +1579,21 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 	[OP_SETATTR] = {
+ 		.op_func = (nfsd4op_func)nfsd4_setattr,
+ 		.op_name = "OP_SETATTR",
+-		.op_flags = OP_MODIFIES_SOMETHING,
+-		.op_cacheresult = true,
++		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_setattr_rsize,
+ 	},
+ 	[OP_SETCLIENTID] = {
+ 		.op_func = (nfsd4op_func)nfsd4_setclientid,
+ 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
+-				| OP_MODIFIES_SOMETHING,
++				| OP_MODIFIES_SOMETHING | OP_CACHEME,
+ 		.op_name = "OP_SETCLIENTID",
+-		.op_cacheresult = true,
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_setclientid_rsize,
+ 	},
+ 	[OP_SETCLIENTID_CONFIRM] = {
+ 		.op_func = (nfsd4op_func)nfsd4_setclientid_confirm,
+ 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
+-				| OP_MODIFIES_SOMETHING,
++				| OP_MODIFIES_SOMETHING | OP_CACHEME,
+ 		.op_name = "OP_SETCLIENTID_CONFIRM",
+-		.op_cacheresult = true,
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
+ 	},
+ 	[OP_VERIFY] = {
+@@ -1601,9 +1602,8 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 	},
+ 	[OP_WRITE] = {
+ 		.op_func = (nfsd4op_func)nfsd4_write,
+-		.op_flags = OP_MODIFIES_SOMETHING,
++		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
+ 		.op_name = "OP_WRITE",
+-		.op_cacheresult = true,
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
+ 	},
+ 	[OP_RELEASE_LOCKOWNER] = {
