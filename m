@@ -1,108 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:50727 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934244Ab1IORjE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Sep 2011 13:39:04 -0400
-Subject: Re: [PATCH] nfs4: serialize layoutcommit
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Peng Tao <bergwolf@gmail.com>
-Cc: bhalevy@tonian.com, Vitaliy Gusev <gusev.vitaliy@nexenta.com>,
-        linux-nfs@vger.kernel.org, Peng Tao <peng_tao@emc.com>
-Date: Thu, 15 Sep 2011 13:38:47 -0400
-In-Reply-To: <1315802900-1548-1-git-send-email-bergwolf@gmail.com>
-References: <1315802900-1548-1-git-send-email-bergwolf@gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1316108327.5271.4.camel@lade.trondhjem.org.localdomain>
+Received: from acsinet15.oracle.com ([141.146.126.227]:49687 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752576Ab1ITQTf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2011 12:19:35 -0400
+Subject: Re: [PATCH 3/8] configure.ac: Add --with-statd-extension configure option
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4E74927D.2070600@RedHat.com>
+Date: Tue, 20 Sep 2011 12:14:16 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <4CEB3ADB-7D44-4E07-9115-69E8E8CF4E5D@oracle.com>
+References: <20110912220304.10854.20972.stgit@matisse.1015granger.net> <20110912220623.10854.69881.stgit@matisse.1015granger.net> <4E74927D.2070600@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, 2011-09-11 at 21:48 -0700, Peng Tao wrote: 
-> Current pnfs_layoutcommit_inode can not handle parallel layoutcommit.
-> As Trond suggested, there is no need for client to optimize for
-> parallel layoutcommit. The patch add NFS_INO_LAYOUTCOMMITTING flag to
-> mark inflight layoutcommit and serialize lalyoutcommit with it.
-> It also fixes the pls_lc_list corruption that Vitaliy found.
-> 
-> Reported-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
-> Signed-off-by: Peng Tao <peng_tao@emc.com>
-> ---
->  fs/nfs/nfs4proc.c      |    6 ++++++
->  fs/nfs/pnfs.c          |    9 +++++++++
->  include/linux/nfs_fs.h |    1 +
->  3 files changed, 16 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 4700fae..a7ce210 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -5970,6 +5970,7 @@ static void nfs4_layoutcommit_release(void *calldata)
->  {
->  	struct nfs4_layoutcommit_data *data = calldata;
->  	struct pnfs_layout_segment *lseg, *tmp;
-> +	unsigned long *bitlock = &NFS_I(data->args.inode)->flags;
->  
->  	pnfs_cleanup_layoutcommit(data);
->  	/* Matched by references in pnfs_set_layoutcommit */
-> @@ -5979,6 +5980,11 @@ static void nfs4_layoutcommit_release(void *calldata)
->  				       &lseg->pls_flags))
->  			put_lseg(lseg);
->  	}
-> +
-> +	clear_bit_unlock(NFS_INO_LAYOUTCOMMITTING, bitlock);
-> +	smp_mb__after_clear_bit();
-> +	wake_up_bit(bitlock, NFS_INO_LAYOUTCOMMITTING);
-> +
->  	put_rpccred(data->cred);
->  	kfree(data);
->  }
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index b483bbc..fb71def 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -1451,10 +1451,19 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
->  		goto out;
->  	}
->  
-> +	if (!test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags) ||
-> +	    (status = wait_on_bit_lock(&nfsi->flags, NFS_INO_LAYOUTCOMMITTING,
-> +				nfs_wait_bit_killable, TASK_KILLABLE))) {
 
-You want the sleeping behaviour above to be subject to the 'sync' flag
-(in the same way we do for regular commit). If !sync, then try to grab
-the bit lock anyway, and exit on failure.
+On Sep 17, 2011, at 8:28 AM, Steve Dickson wrote:
 
-> +		kfree(data);
-> +		goto out;
-> +	}
-> +
->  	INIT_LIST_HEAD(&data->lseg_list);
->  	spin_lock(&inode->i_lock);
->  	if (!test_and_clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
-> +		clear_bit(NFS_INO_LAYOUTCOMMITTING, &nfsi->flags);
->  		spin_unlock(&inode->i_lock);
-> +		wake_up_bit(&nfsi->flags, NFS_INO_LAYOUTCOMMITTING);
->  		kfree(data);
->  		goto out;
->  	}
-> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-> index eaac770..c5b2b30 100644
-> --- a/include/linux/nfs_fs.h
-> +++ b/include/linux/nfs_fs.h
-> @@ -230,6 +230,7 @@ struct nfs_inode {
->  #define NFS_INO_COMMIT		(7)		/* inode is committing unstable writes */
->  #define NFS_INO_PNFS_COMMIT	(8)		/* use pnfs code for commit */
->  #define NFS_INO_LAYOUTCOMMIT	(9)		/* layoutcommit required */
-> +#define NFS_INO_LAYOUTCOMMITTING (10)		/* layoutcommit inflight */
->  
->  static inline struct nfs_inode *NFS_I(const struct inode *inode)
->  {
+> 
+> 
+> On 09/12/2011 06:06 PM, Chuck Lever wrote:
+>> Currently some distributions patch nfs-utils to put NSM state in a
+>> subdirectory of /var/lib/nfs.  Make this a configure option instead.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> 
+>> configure.ac       |    8 ++++++++
+>> support/nsm/file.c |    9 +--------
+>> 2 files changed, 9 insertions(+), 8 deletions(-)
+>> 
+>> diff --git a/configure.ac b/configure.ac
+>> index 461a96a..ba704e2 100644
+>> --- a/configure.ac
+>> +++ b/configure.ac
+>> @@ -23,6 +23,14 @@ AC_ARG_WITH(statedir,
+>> 	statedir=$withval,
+>> 	statedir=/var/lib/nfs)
+>> 	AC_SUBST(statedir)
+>> +AC_ARG_WITH(statd-extension,
+>> +	[AC_HELP_STRING([--with-statd-extension=foo],
+>> +                        [Put NSM state in subdir foo of statedir])],
+>> +	statdext=$withval,
+>> +	statdext="")
+>> +	AC_SUBST(statdext)
+>> +	AC_DEFINE_UNQUOTED(NSM_PATH_EXTENSION, "$statdext",
+>> +			   [This defines the statedir subdirectory containing NSM state files.])
+>> AC_ARG_WITH(statduser,
+>> 	[AC_HELP_STRING([--with-statduser=rpcuser],
+>>                         [statd to run under @<:@rpcuser or nobody@:>@]
+>> diff --git a/support/nsm/file.c b/support/nsm/file.c
+>> index a12c753..b4a5af1 100644
+>> --- a/support/nsm/file.c
+>> +++ b/support/nsm/file.c
+>> @@ -93,14 +93,7 @@
+>> #define LINELEN		(RPCARGSLEN + SM_PRIV_SIZE * 2 + 1)
+>> 
+>> #define NSM_KERNEL_STATE_FILE	"/proc/sys/fs/nfs/nsm_local_state"
+>> -
+>> -/*
+>> - * Some distributions place statd's files in a subdirectory
+>> - */
+>> -#define NSM_PATH_EXTENSION
+>> -/* #define NSM_PATH_EXTENSION	"/statd" */
+>> -
+>> -#define NSM_DEFAULT_STATEDIR		NFS_STATEDIR NSM_PATH_EXTENSION
+>> +#define NSM_DEFAULT_STATEDIR	NFS_STATEDIR "/" NSM_PATH_EXTENSION
+> Do we really need the NSM_PATH_EXTENSION define? Would it be more
+> straightforward to just have NFS_STATEDIR. Simplifying the code to:
+> 
+> #ifndef NFS_STATEDIR 
+> #define NFS_STATEDIR "/var/lib/nfs"
+> #endif
+> 
+> #define NSM_DEFAULT_STATEDIR		NFS_STATEDIR
+> 
+> If there is no need for the extra NSM_PATH_EXTENSION define then 
+> we really don't want to create a configuration option for it.. IMHO..
+
+RH likes to put statd files in /var/lib/nfs/statd, but everyone else puts them in /var/lib/nfs. So NSM_DEFAULT_STATEDIR is not the same as NFS_STATEDIR on RH distributions.
+
+I'm caught by this every time I want to test upstream nfs-utils on my Fedora systems.  I have to maintain a separate patch, remember to apply it before testing, and then remember to remove it before pushing my patches to git.linux-nfs.org.
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+
+
 
