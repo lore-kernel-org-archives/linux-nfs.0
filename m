@@ -1,65 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53180 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:32487 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932370Ab1INMXT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Sep 2011 08:23:19 -0400
-Date: Wed, 14 Sep 2011 08:23:18 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>, Jeff Layton <jlayton@redhat.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 2/2] SUNRPC: compare scopeid for link-local addresses
-Message-ID: <20110914122318.GB3435@fieldses.org>
-References: <4E5CABE9.5090401@cn.fujitsu.com>
- <4E6F0A14.1050103@cn.fujitsu.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E6F0A14.1050103@cn.fujitsu.com>
+	id S1752190Ab1ITWlD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2011 18:41:03 -0400
+Subject: Re: [PATCH 2/3] pnfs: introduce pnfs private workqueue
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jim Rees <rees@umich.edu>
+Cc: Benny Halevy <bhalevy@tonian.com>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Date: Tue, 20 Sep 2011 18:41:01 -0400
+In-Reply-To: <1316488728-24912-3-git-send-email-rees@umich.edu>
+References: <1316488728-24912-1-git-send-email-rees@umich.edu>
+	 <1316488728-24912-3-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1316558461.15093.4.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Sep 13, 2011 at 03:45:24PM +0800, Mi Jinlong wrote:
-> Hi guys:
+On Mon, 2011-09-19 at 23:18 -0400, Jim Rees wrote: 
+> From: Peng Tao <bergwolf@gmail.com>
 > 
->   What's the situation about those two paths?
+> For layoutdriver io done functions, default workqueue is not a good place as
+> the code is executed in IO path. So add a pnfs private workqueue to handle
+> them.
+> 
+> Also change block and object layout code to make use of this private
+> workqueue.
+> 
 
-Apologies for the delay; both look reasonable to me, thanks.  Applying
-for 3.2.  (May be a few days before I push it out to my public tree.)
+Wait, what????
 
---b.
+Why is the I/O path (i.e. the nfsiod queue) inappropriate for
+layoutdriver io_done functions?
 
-> 
-> 
-> thanks,
-> Mi Jinlong
-> 
-> Mi Jinlong:
-> > For ipv6 link-local addresses, sunrpc do not compare those scope id.
-> > This patch let sunrpc compares scope id only on link-local addresses.
-> > 
-> > Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> > ---
-> >  include/linux/sunrpc/clnt.h |    8 +++++++-
-> >  1 files changed, 7 insertions(+), 1 deletions(-)
-> > 
-> > diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> > index db7bcaf..ee1bb67 100644
-> > --- a/include/linux/sunrpc/clnt.h
-> > +++ b/include/linux/sunrpc/clnt.h
-> > @@ -218,7 +218,13 @@ static inline bool __rpc_cmp_addr6(const struct sockaddr *sap1,
-> >  {
-> >  	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sap1;
-> >  	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sap2;
-> > -	return ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr);
-> > +
-> > +	if (!ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr))
-> > +		return false;
-> > +	else if (ipv6_addr_type(&sin1->sin6_addr) & IPV6_ADDR_LINKLOCAL)
-> > +		return sin1->sin6_scope_id == sin2->sin6_scope_id;
-> > +
-> > +	return true;
-> >  }
-> >  
-> >  static inline bool __rpc_copy_addr6(struct sockaddr *dst,
-> 
+Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
