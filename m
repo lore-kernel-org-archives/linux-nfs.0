@@ -1,222 +1,149 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32338 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:27741 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753471Ab1I2OtO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Sep 2011 10:49:14 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 13/13] NFS: Use FS-Cache invalidation
-To: moseleymark@gmail.com, mark@pogo.org.uk, jlayton@redhat.com,
-        steved@redhat.com
-Cc: linux-cachefs@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Date: Thu, 29 Sep 2011 15:48:14 +0100
-Message-ID: <20110929144813.5812.6884.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20110929144536.5812.84405.stgit@warthog.procyon.org.uk>
-References: <20110929144536.5812.84405.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+	id S1754506Ab1ITKOj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Sep 2011 06:14:39 -0400
+Message-ID: <4E786770.3030909@parallels.com>
+Date: Tue, 20 Sep 2011 14:14:08 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>
+Subject: Re: [PATCH v3 04/11] SUNRPC: parametrize svc creation calls with
+ portmapper flag
+References: <20110913180953.3961.69217.stgit@localhost6.localdomain6>	<20110913181351.3961.70207.stgit@localhost6.localdomain6>	<20110919100811.0eaa39fe@tlielax.poochiereds.net>	<4E7756F3.4080601@parallels.com>	<20110919110729.33a876ca@tlielax.poochiereds.net>	<4E7762D4.7090404@parallels.com> <20110919141101.46303e53@tlielax.poochiereds.net>
+In-Reply-To: <20110919141101.46303e53@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Use the new FS-Cache invalidation facility from NFS to deal with foreign
-changes being detected on the server rather than attempting to retire the old
-cookie and get a new one.
+19.09.2011 22:11, Jeff Layton пишет:
+> On Mon, 19 Sep 2011 19:42:12 +0400
+> Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
+>
+>> 19.09.2011 19:07, Jeff Layton пишет:
+>>> On Mon, 19 Sep 2011 18:51:31 +0400
+>>> Stanislav Kinsbursky<skinsbursky@parallels.com>   wrote:
+>>>
+>>>> 19.09.2011 18:08, Jeff Layton пишет:
+>>>>> On Tue, 13 Sep 2011 22:13:51 +0400
+>>>>> Stanislav Kinsbursky<skinsbursky@parallels.com>    wrote:
+>>>>>
+>>>>>> This new flag ("setup_rpcbind) will be used to detect, that new service will
+>>>>>> send portmapper register calls. For such services we will create rpcbind
+>>>>>> clients and remove all stale portmap registrations.
+>>>>>> Also, svc_rpcb_cleanup() will be set as sv_shutdown callback for such services
+>>>>>> in case of this field wasn't initialized earlier. This will allow to destroy
+>>>>>> rpcbind clients when no other users of them left.
+>>>>>>
+>>>>>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>>>>>>
+>>>>>> ---
+>>>>>>     include/linux/sunrpc/svc.h |    2 ++
+>>>>>>     net/sunrpc/svc.c           |   21 ++++++++++++++-------
+>>>>>>     2 files changed, 16 insertions(+), 7 deletions(-)
+>>>>>>
+>>>>>> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+>>>>>> index 223588a..528952a 100644
+>>>>>> --- a/include/linux/sunrpc/svc.h
+>>>>>> +++ b/include/linux/sunrpc/svc.h
+>>>>>> @@ -402,11 +402,13 @@ struct svc_procedure {
+>>>>>>      * Function prototypes.
+>>>>>>      */
+>>>>>>     struct svc_serv *svc_create(struct svc_program *, unsigned int,
+>>>>>> +			    int setup_rpcbind,
+>>>>> 				^^^
+>>>>> 			Instead of adding this parameter, why not
+>>>>> 			base this on the vs_hidden flag in the
+>>>>> 			svc_version? IOW, have a function that looks at
+>>>>> 			all the svc_versions for a particular
+>>>>> 			svc_program, and returns "true" if any of them
+>>>>> 			have vs_hidden unset? The mechanism you're
+>>>>> 			proposing here has the potential to be out of
+>>>>> 			sync with the vs_hidden flag.
+>>>>>
+>>>>
+>>>> Could you, please, clarify me this vs_hidden flag?
+>>>> I understand, that it's used to avoid portmap registration.
+>>>> But as I see, it's set only for nfs_callback_version1. But this svc_version is a
+>>>> part of nfs4_callback_program with nfs_callback_version4, which is not hidden.
+>>>> Does this flag is missed here? If not, how we can return "true" from your
+>>>> proposed function if any of them have vs_hidden unset?
+>>>>
+>>>> Also sockets for this program are created with SVC_SOCK_ANONYMOUS flag and we
+>>>> will not register any of this program versions with portmapper.
+>>>> Thus, from my pow, this vs_hidden flag affects only svc_unregister. And only
+>>>> nfs_callback_version1. This looks really strange.
+>>>>
+>>>> I.e. if we use this flag only for passing through this versions during
+>>>> svc_(un)register, and we actually also want to pass through
+>>>> nfs_callback_version4 as well (but just missed this vs_hidden flag for it), then
+>>>> with current patch-set we can move this flag from (vs_hidden) svc_version to
+>>>> svc_program and check it during svc_create instead of my home-brew
+>>>> "setup_rpcbind" variable.
+>>>>
+>>>
+>>> Agreed. The current situation is a mess, which is why I suggested a
+>>> cleanup and overhaul before you do this...
+>>>
+>>> The vs_hidden flag is intended to show that a particular program
+>>> version should not be registered with (or unregistered from) the
+>>> portmapper. Unfortunately, nothing looks at vs_hidden during
+>>> registration time, only when unregistering (as you mention).
+>>>
+>>> It's quite possible that several svc_versions declared in the kernel do
+>>> not have this set correctly. One thing that would be good is to audit
+>>> each of those.
+>>>
+>>> We currently rely on SVC_SOCK_ANONYMOUS for registration, but that
+>>> wasn't its original intent. It's was just convenient to use it there
+>>> too.
+>>>
+>>> SVC_SOCK_ANONYMOUS was (as best I can tell) originally intended for use
+>>> on temporary sockets that we establish on receive. So for
+>>> instance...when a client connects to nfsd, we need to create a new
+>>> socket for nfsd, but obviously we don't want to register that socket
+>>> with the portmapper (since nfsd should already be registered there).
+>>> SVC_SOCK_ANONYMOUS ensures that that socket is not registered.
+>>>
+>>> The whole scheme could probably use a fundamental re-think. I'm not
+>>> sure I have a great idea to propose in lieu of it, but I think adding
+>>> yet another flag here is probably not the best way to go.
+>>>
+>>
+>> Ok, thank you, Jeff.
+>> It looks like no mentions about portmapper are present in RFC's for NFS versions
+>> 4.* after a brief look.
+>> This SVC_SOCK_ANONYMOUS is understandable and can't be removed with this
+>> patch-set from my pow.
+>> But now I strongly believe, that we can move this vs_hidden flag from
+>> svc_version to svc_program structure and set it for both NFSv4.* programs.
+>> Hope, someone else will confirm of refute this statement.
+>>
+>
+> The problem is nfsd. In principle, there's no real reason we have to
+> register NFSv4 with the portmapper at all. One could envision a
+> setup where a v4-only server doesn't need to run rpcbind at all. Making
+> it per-program may hamstring you from doing that later.
+>
+> It think it would be a good thing to keep it per-version, and it's
+> trivial to write a routine to do what I've described. svc_creates only
+> happen rarely.
+>
+> Just walk the pg_vers array for the program and look at each vs_hidden
+> value. Return true when you hit one that has vs_hidden unset. Return
+> false if none do. Then use that return value to replace your new flag
+> in this patch.
+>
 
-The problem with the old method was that NFS did not wait for all outstanding
-storage and retrieval ops on the cache to complete.  There was no automatic
-wait between the calls to ->readpages() and calls to invalidate_inode_pages2()
-as the latter can only wait on locked pages that have been added to the
-pagecache (which they haven't yet on entry to ->readpages()).
+Done. I've sent v4 patch-set.
 
-This was leading to oopses like the one below when an outstanding read got cut
-off from its cookie by a premature release.
-
-BUG: unable to handle kernel NULL pointer dereference at 00000000000000a8
-IP: [<ffffffffa0075118>] __fscache_read_or_alloc_pages+0x1dd/0x315 [fscache]
-PGD 15889067 PUD 15890067 PMD 0
-Oops: 0000 [#1] SMP
-CPU 0
-Modules linked in: cachefiles nfs fscache auth_rpcgss nfs_acl lockd sunrpc
-
-Pid: 4544, comm: tar Not tainted 3.1.0-rc4-fsdevel+ #1064                  /DG965RY
-RIP: 0010:[<ffffffffa0075118>]  [<ffffffffa0075118>] __fscache_read_or_alloc_pages+0x1dd/0x315 [fscache]
-RSP: 0018:ffff8800158799e8  EFLAGS: 00010246
-RAX: 0000000000000000 RBX: ffff8800070d41e0 RCX: ffff8800083dc1b0
-RDX: 0000000000000000 RSI: ffff880015879960 RDI: ffff88003e627b90
-RBP: ffff880015879a28 R08: 0000000000000002 R09: 0000000000000002
-R10: 0000000000000001 R11: ffff880015879950 R12: ffff880015879aa4
-R13: 0000000000000000 R14: ffff8800083dc158 R15: ffff880015879be8
-FS:  00007f671e9d87c0(0000) GS:ffff88003bc00000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 00000000000000a8 CR3: 000000001587f000 CR4: 00000000000006f0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Process tar (pid: 4544, threadinfo ffff880015878000, task ffff880015875040)
-Stack:
- ffffffffa00b1759 ffff8800070dc158 ffff8800000213da ffff88002a286508
- ffff880015879aa4 ffff880015879be8 0000000000000001 ffff88002a2866e8
- ffff880015879a88 ffffffffa00b20be 00000000000200da ffff880015875040
-Call Trace:
- [<ffffffffa00b1759>] ? nfs_fscache_wait_bit+0xd/0xd [nfs]
- [<ffffffffa00b20be>] __nfs_readpages_from_fscache+0x7e/0x13f [nfs]
- [<ffffffff81095fe7>] ? __alloc_pages_nodemask+0x156/0x662
- [<ffffffffa0098763>] nfs_readpages+0xee/0x187 [nfs]
- [<ffffffff81098a5e>] __do_page_cache_readahead+0x1be/0x267
- [<ffffffff81098942>] ? __do_page_cache_readahead+0xa2/0x267
- [<ffffffff81098d7b>] ra_submit+0x1c/0x20
- [<ffffffff8109900a>] ondemand_readahead+0x28b/0x29a
- [<ffffffff810990ce>] page_cache_sync_readahead+0x38/0x3a
- [<ffffffff81091d8a>] generic_file_aio_read+0x2ab/0x67e
- [<ffffffffa008cfbe>] nfs_file_read+0xa4/0xc9 [nfs]
- [<ffffffff810c22c4>] do_sync_read+0xba/0xfa
- [<ffffffff810a62c9>] ? might_fault+0x4e/0x9e
- [<ffffffff81177a47>] ? security_file_permission+0x7b/0x84
- [<ffffffff810c25dd>] ? rw_verify_area+0xab/0xc8
- [<ffffffff810c29a4>] vfs_read+0xaa/0x13a
- [<ffffffff810c2a79>] sys_read+0x45/0x6c
- [<ffffffff813ac37b>] system_call_fastpath+0x16/0x1b
-
-Reported-by: Mark Moseley <moseleymark@gmail.com>
-Signed-off-by: David Howells <dhowells@redhat.com>
----
-
- fs/nfs/fscache.h  |   20 +++++++++++++++++++-
- fs/nfs/inode.c    |   20 ++++++++++++++++----
- fs/nfs/nfs4proc.c |    2 ++
- 3 files changed, 37 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfs/fscache.h b/fs/nfs/fscache.h
-index b9c572d..851fee1 100644
---- a/fs/nfs/fscache.h
-+++ b/fs/nfs/fscache.h
-@@ -155,6 +155,22 @@ static inline void nfs_readpage_to_fscache(struct inode *inode,
- }
- 
- /*
-+ * Invalidate the contents of fscache for this inode.  This will not sleep.
-+ */
-+static inline void nfs_fscache_invalidate(struct inode *inode)
-+{
-+	fscache_invalidate(NFS_I(inode)->fscache);
-+}
-+
-+/*
-+ * Wait for an object to finish being invalidated.
-+ */
-+static inline void nfs_fscache_wait_on_invalidate(struct inode *inode)
-+{
-+	fscache_wait_on_invalidate(NFS_I(inode)->fscache);
-+}
-+
-+/*
-  * indicate the client caching state as readable text
-  */
- static inline const char *nfs_server_fscache_state(struct nfs_server *server)
-@@ -164,7 +180,6 @@ static inline const char *nfs_server_fscache_state(struct nfs_server *server)
- 	return "no ";
- }
- 
--
- #else /* CONFIG_NFS_FSCACHE */
- static inline int nfs_fscache_register(void) { return 0; }
- static inline void nfs_fscache_unregister(void) {}
-@@ -213,6 +228,9 @@ static inline int nfs_readpages_from_fscache(struct nfs_open_context *ctx,
- static inline void nfs_readpage_to_fscache(struct inode *inode,
- 					   struct page *page, int sync) {}
- 
-+
-+static inline void nfs_fscache_invalidate(struct inode *inode) {}
-+
- static inline const char *nfs_server_fscache_state(struct nfs_server *server)
- {
- 	return "no ";
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index fe12037..24ea1f8 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -151,10 +151,12 @@ static void nfs_zap_caches_locked(struct inode *inode)
- 	nfsi->attrtimeo_timestamp = jiffies;
- 
- 	memset(NFS_COOKIEVERF(inode), 0, sizeof(NFS_COOKIEVERF(inode)));
--	if (S_ISREG(mode) || S_ISDIR(mode) || S_ISLNK(mode))
-+	if (S_ISREG(mode) || S_ISDIR(mode) || S_ISLNK(mode)) {
- 		nfsi->cache_validity |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA|NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL|NFS_INO_REVAL_PAGECACHE;
--	else
-+		nfs_fscache_invalidate(inode);
-+	} else {
- 		nfsi->cache_validity |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL|NFS_INO_REVAL_PAGECACHE;
-+	}
- }
- 
- void nfs_zap_caches(struct inode *inode)
-@@ -169,6 +171,7 @@ void nfs_zap_mapping(struct inode *inode, struct address_space *mapping)
- 	if (mapping->nrpages != 0) {
- 		spin_lock(&inode->i_lock);
- 		NFS_I(inode)->cache_validity |= NFS_INO_INVALID_DATA;
-+		nfs_fscache_invalidate(inode);
- 		spin_unlock(&inode->i_lock);
- 	}
- }
-@@ -861,7 +864,7 @@ static int nfs_invalidate_mapping(struct inode *inode, struct address_space *map
- 		memset(nfsi->cookieverf, 0, sizeof(nfsi->cookieverf));
- 	spin_unlock(&inode->i_lock);
- 	nfs_inc_stats(inode, NFSIOS_DATAINVALIDATE);
--	nfs_fscache_reset_inode_cookie(inode);
-+	nfs_fscache_wait_on_invalidate(inode);
- 	dfprintk(PAGECACHE, "NFS: (%s/%Ld) data cache invalidated\n",
- 			inode->i_sb->s_id, (long long)NFS_FILEID(inode));
- 	return 0;
-@@ -926,6 +929,10 @@ static unsigned long nfs_wcc_update_inode(struct inode *inode, struct nfs_fattr
- 		i_size_write(inode, nfs_size_to_loff_t(fattr->size));
- 		ret |= NFS_INO_INVALID_ATTR;
- 	}
-+
-+	if (nfsi->cache_validity & NFS_INO_INVALID_DATA)
-+		nfs_fscache_invalidate(inode);
-+
- 	return ret;
- }
- 
-@@ -1105,8 +1112,10 @@ static int nfs_post_op_update_inode_locked(struct inode *inode, struct nfs_fattr
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 
- 	nfsi->cache_validity |= NFS_INO_INVALID_ATTR|NFS_INO_REVAL_PAGECACHE;
--	if (S_ISDIR(inode->i_mode))
-+	if (S_ISDIR(inode->i_mode)) {
- 		nfsi->cache_validity |= NFS_INO_INVALID_DATA;
-+		nfs_fscache_invalidate(inode);
-+	}
- 	if ((fattr->valid & NFS_ATTR_FATTR) == 0)
- 		return 0;
- 	return nfs_refresh_inode_locked(inode, fattr);
-@@ -1398,6 +1407,9 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 			(save_cache_validity & NFS_INO_REVAL_FORCED))
- 		nfsi->cache_validity |= invalid;
- 
-+	if (invalid & NFS_INO_INVALID_DATA)
-+		nfs_fscache_invalidate(inode);
-+
- 	return 0;
-  out_changed:
- 	/*
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 4700fae..d6b9734 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -60,6 +60,7 @@
- #include "iostat.h"
- #include "callback.h"
- #include "pnfs.h"
-+#include "fscache.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_PROC
- 
-@@ -756,6 +757,7 @@ static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo)
- 	if (!cinfo->atomic || cinfo->before != nfsi->change_attr)
- 		nfs_force_lookup_revalidate(dir);
- 	nfsi->change_attr = cinfo->after;
-+	nfs_fscache_invalidate(dir);
- 	spin_unlock(&dir->i_lock);
- }
- 
-
+-- 
+Best regards,
+Stanislav Kinsbursky
