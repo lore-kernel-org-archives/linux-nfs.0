@@ -1,130 +1,125 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4177 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:9963 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756334Ab1I2Osv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Sep 2011 10:48:51 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 11/13] VFS: Make more complete truncate operation available to
- CacheFiles
-To: moseleymark@gmail.com, mark@pogo.org.uk, jlayton@redhat.com,
-        steved@redhat.com
-Cc: linux-cachefs@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Date: Thu, 29 Sep 2011 15:47:50 +0100
-Message-ID: <20110929144750.5812.84552.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20110929144536.5812.84405.stgit@warthog.procyon.org.uk>
-References: <20110929144536.5812.84405.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+	id S1750763Ab1ITPLn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2011 11:11:43 -0400
+Date: Tue, 20 Sep 2011 11:11:12 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>
+Subject: Re: [PATCH v5 1/8] SUNRPC: introduce helpers for reference counted
+ rpcbind clients
+Message-ID: <20110920111112.3f07cd6e@tlielax.poochiereds.net>
+In-Reply-To: <4E78A6A1.1000800@parallels.com>
+References: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
+	<20110920101341.9861.51453.stgit@localhost6.localdomain6>
+	<4E7899E7.9090809@parallels.com>
+	<20110920102431.58ca1d96@tlielax.poochiereds.net>
+	<4E78A6A1.1000800@parallels.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Make a more complete truncate operation available to CacheFiles (including
-security checks and suchlike) so that it can use this to clear invalidated
-cache files.
+On Tue, 20 Sep 2011 18:43:45 +0400
+Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+> 20.09.2011 18:24, Jeff Layton пишет:
+> > On Tue, 20 Sep 2011 17:49:27 +0400
+> > Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
+> >
+> >> v5: fixed races with rpcb_users in rpcb_get_local()
+> >>
+> >> This helpers will be used for dynamical creation and destruction of rpcbind
+> >> clients.
+> >> Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
+> >> clients has been created already, then we just increase rpcb_users.
+> >>
+> >> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+> >>
+> >> ---
+> >>    net/sunrpc/rpcb_clnt.c |   53 ++++++++++++++++++++++++++++++++++++++++++++++++
+> >>    1 files changed, 53 insertions(+), 0 deletions(-)
+> >>
+> >> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+> >> index e45d2fb..5f4a406 100644
+> >> --- a/net/sunrpc/rpcb_clnt.c
+> >> +++ b/net/sunrpc/rpcb_clnt.c
+> >> @@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
+> >>    static struct rpc_clnt *	rpcb_local_clnt;
+> >>    static struct rpc_clnt *	rpcb_local_clnt4;
+> >>    +DEFINE_SPINLOCK(rpcb_clnt_lock);
+> >> +unsigned int			rpcb_users;
+> >> +
+> >>    struct rpcbind_args {
+> >>    	struct rpc_xprt *	r_xprt;
+> >>    @@ -161,6 +164,56 @@ static void rpcb_map_release(void *data)
+> >>    	kfree(map);
+> >>    }
+> >>    +static int rpcb_get_local(void)
+> >> +{
+> >> +	int cnt;
+> >> +
+> >> +	spin_lock(&rpcb_clnt_lock);
+> >> +	if (rpcb_users)
+> >> +		rpcb_users++;
+> >> +	cnt = rpcb_users;
+> >> +	spin_unlock(&rpcb_clnt_lock);
+> >> +
+> >> +	return cnt;
+> >> +}
+> >> +
+> >> +void rpcb_put_local(void)
+> >> +{
+> >> +	struct rpc_clnt *clnt = rpcb_local_clnt;
+> >> +	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
+> >> +	int shutdown;
+> >> +
+> >> +	spin_lock(&rpcb_clnt_lock);
+> >> +	if (--rpcb_users == 0) {
+> >> +		rpcb_local_clnt = NULL;
+> >> +		rpcb_local_clnt4 = NULL;
+> >> +	}
+> >
+> > In the function below, you mention that the above pointers are
+> > protected by rpcb_create_local_mutex, but it looks like they get reset
+> > here without that being held?
+> >
+> 
+> Assigning of them is protected by rpcb_create_local_mutex.
+> Dereferencing of them is protected by rpcb_clnt_lock.
+> 
 
- fs/open.c          |   50 +++++++++++++++++++++++++++-----------------------
- include/linux/fs.h |    1 +
- 2 files changed, 28 insertions(+), 23 deletions(-)
+That's probably a bug, but I haven't sat down to work through the logic.
 
-diff --git a/fs/open.c b/fs/open.c
-index f711921..8178e58 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -61,33 +61,22 @@ int do_truncate(struct dentry *dentry, loff_t length, unsigned int time_attrs,
- 	return ret;
- }
- 
--static long do_sys_truncate(const char __user *pathname, loff_t length)
-+long vfs_truncate(struct path *path, loff_t length)
- {
--	struct path path;
- 	struct inode *inode;
--	int error;
--
--	error = -EINVAL;
--	if (length < 0)	/* sorry, but loff_t says... */
--		goto out;
-+	long error;
- 
--	error = user_path(pathname, &path);
--	if (error)
--		goto out;
--	inode = path.dentry->d_inode;
-+	inode = path->dentry->d_inode;
- 
- 	/* For directories it's -EISDIR, for other non-regulars - -EINVAL */
--	error = -EISDIR;
- 	if (S_ISDIR(inode->i_mode))
--		goto dput_and_out;
--
--	error = -EINVAL;
-+		return -EISDIR;
- 	if (!S_ISREG(inode->i_mode))
--		goto dput_and_out;
-+		return -EINVAL;
- 
--	error = mnt_want_write(path.mnt);
-+	error = mnt_want_write(path->mnt);
- 	if (error)
--		goto dput_and_out;
-+		goto out;
- 
- 	error = inode_permission(inode, MAY_WRITE);
- 	if (error)
-@@ -111,19 +100,34 @@ static long do_sys_truncate(const char __user *pathname, loff_t length)
- 
- 	error = locks_verify_truncate(inode, NULL, length);
- 	if (!error)
--		error = security_path_truncate(&path);
-+		error = security_path_truncate(path);
- 	if (!error)
--		error = do_truncate(path.dentry, length, 0, NULL);
-+		error = do_truncate(path->dentry, length, 0, NULL);
- 
- put_write_and_out:
- 	put_write_access(inode);
- mnt_drop_write_and_out:
--	mnt_drop_write(path.mnt);
--dput_and_out:
--	path_put(&path);
-+	mnt_drop_write(path->mnt);
- out:
- 	return error;
- }
-+EXPORT_SYMBOL_GPL(vfs_truncate);
-+
-+static long do_sys_truncate(const char __user *pathname, loff_t length)
-+{
-+	struct path path;
-+	int error;
-+
-+	if (length < 0)	/* sorry, but loff_t says... */
-+		return -EINVAL;
-+
-+	error = user_path(pathname, &path);
-+	if (!error) {
-+		error = vfs_truncate(&path, length);
-+		path_put(&path);
-+	}
-+	return error;
-+}
- 
- SYSCALL_DEFINE2(truncate, const char __user *, path, long, length)
- {
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 277f497..8b2274f 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2013,6 +2013,7 @@ static inline int break_lease(struct inode *inode, unsigned int mode)
- 
- /* fs/open.c */
- 
-+extern long vfs_truncate(struct path *, loff_t);
- extern int do_truncate(struct dentry *, loff_t start, unsigned int time_attrs,
- 		       struct file *filp);
- extern int do_fallocate(struct file *file, int mode, loff_t offset,
+> > Might it be simpler to just protect rpcb_users with the
+> > rpcb_create_local_mutex and ensure that it's held whenever you call one
+> > of these routines? None of these are codepaths are particularly hot.
+> >
+> 
+> I just inherited this lock-mutex logic.
+> Actually, you right. This codepaths are used rarely.
+> But are use sure, that we need to remove this "speed-up" logic if we take into 
+> account that it was here already?
+> 
 
+There are many ways to do this...
+
+In general, it's difficult to get locking right, especially when you
+start mixing multiple locks on related resources. Personally, I'd go
+with a simpler scheme here. There's not much value in protecting this
+counter with a spinlock when the other parts need to be protected by a
+mutex. If you do decide to do it with multiple locks, then please do
+document in comments how the locking is expected to work. 
+
+An alternate scheme might be to consider doing this with krefs, but I
+haven't really considered whether that idiom makes sense here.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
