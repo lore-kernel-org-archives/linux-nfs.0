@@ -1,61 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:59001 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:7305 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754608Ab1IWA4h convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 20:56:37 -0400
+	id S1750749Ab1ITOlz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2011 10:41:55 -0400
 Content-Type: text/plain;
 	charset="us-ascii"
-Subject: RE: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-Date: Thu, 22 Sep 2011 17:56:20 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
-References: <20110922134510.24683.14576.stgit@warthog.procyon.org.uk> <1316707443.3346.44.camel@perseus.themaw.net> <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com> <1316709935.3346.48.camel@perseus.themaw.net> <20110922133529.6d3ea8de@barsoom.rdu.redhat.com> <20110922144453.6cf53a25@barsoom.rdu.redhat.com> <1316719228.3968.14.camel@lade.trondhjem.org> <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
+Subject: RE: [PATCH v5 1/8] SUNRPC: introduce helpers for reference counted rpcbind clients
+Date: Tue, 20 Sep 2011 07:41:55 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD2C@SACMVEXC2-PRD.hq.netapp.com>
+In-reply-to: <20110920102431.58ca1d96@tlielax.poochiereds.net>
+References: <20110920101031.9861.18444.stgit@localhost6.localdomain6><20110920101341.9861.51453.stgit@localhost6.localdomain6><4E7899E7.9090809@parallels.com> <20110920102431.58ca1d96@tlielax.poochiereds.net>
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Linus Torvalds" <torvalds@linux-foundation.org>
-Cc: "Jeff Layton" <jlayton@redhat.com>, "Ian Kent" <raven@themaw.net>,
-        "David Howells" <dhowells@redhat.com>, <miklos@szeredi.hu>,
-        <viro@zeniv.linux.org.uk>, <gregkh@suse.de>,
-        <linux-nfs@vger.kernel.org>, <leonardo.lists@gmail.com>
+To: "Jeff Layton" <jlayton@redhat.com>,
+        "Stanislav Kinsbursky" <skinsbursky@parallels.com>
+Cc: <linux-nfs@vger.kernel.org>, "Pavel Emelianov" <xemul@parallels.com>,
+        <neilb@suse.de>, <netdev@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <bfields@fieldses.org>,
+        <davem@davemloft.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 > -----Original Message-----
-> From: Linus Torvalds [mailto:torvalds@linux-foundation.org]
-> Sent: Thursday, September 22, 2011 6:57 PM
-> To: Myklebust, Trond
-> Cc: Jeff Layton; Ian Kent; David Howells; miklos@szeredi.hu;
-> viro@zeniv.linux.org.uk; gregkh@suse.de; linux-nfs@vger.kernel.org;
-> leonardo.lists@gmail.com
-> Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr,
-etc.
+> From: Jeff Layton [mailto:jlayton@redhat.com]
+> Sent: Tuesday, September 20, 2011 10:25 AM
+> To: Stanislav Kinsbursky
+> Cc: Myklebust, Trond; linux-nfs@vger.kernel.org; Pavel Emelianov;
+> neilb@suse.de; netdev@vger.kernel.org; linux-kernel@vger.kernel.org;
+> bfields@fieldses.org; davem@davemloft.net
+> Subject: Re: [PATCH v5 1/8] SUNRPC: introduce helpers for reference
+> counted rpcbind clients
 > 
-> On Thu, Sep 22, 2011 at 12:20 PM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
+> On Tue, 20 Sep 2011 17:49:27 +0400
+> Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+> 
+> > v5: fixed races with rpcb_users in rpcb_get_local()
 > >
-> > We need to audit not only NFS, but a bunch of stuff in the VFS.
+> > This helpers will be used for dynamical creation and destruction of
+> > rpcbind clients.
+> > Variable rpcb_users is actually a counter of lauched RPC services.
+If
+> > rpcbind clients has been created already, then we just increase
+rpcb_users.
+> >
+> > Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> >
+> > ---
+> >   net/sunrpc/rpcb_clnt.c |   53
+> ++++++++++++++++++++++++++++++++++++++++++++++++
+> >   1 files changed, 53 insertions(+), 0 deletions(-)
+> >
+> > diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c index
+> > e45d2fb..5f4a406 100644
+> > --- a/net/sunrpc/rpcb_clnt.c
+> > +++ b/net/sunrpc/rpcb_clnt.c
+> > @@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
+> >   static struct rpc_clnt *	rpcb_local_clnt;
+> >   static struct rpc_clnt *	rpcb_local_clnt4;
+> >   +DEFINE_SPINLOCK(rpcb_clnt_lock);
+> > +unsigned int			rpcb_users;
+> > +
+> >   struct rpcbind_args {
+> >   	struct rpc_xprt *	r_xprt;
+> >   @@ -161,6 +164,56 @@ static void rpcb_map_release(void *data)
+> >   	kfree(map);
+> >   }
+> >   +static int rpcb_get_local(void)
+> > +{
+> > +	int cnt;
+> > +
+> > +	spin_lock(&rpcb_clnt_lock);
+> > +	if (rpcb_users)
+> > +		rpcb_users++;
+> > +	cnt = rpcb_users;
+> > +	spin_unlock(&rpcb_clnt_lock);
+> > +
+> > +	return cnt;
+> > +}
+> > +
+> > +void rpcb_put_local(void)
+> > +{
+> > +	struct rpc_clnt *clnt = rpcb_local_clnt;
+> > +	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
+> > +	int shutdown;
+> > +
+> > +	spin_lock(&rpcb_clnt_lock);
+> > +	if (--rpcb_users == 0) {
+> > +		rpcb_local_clnt = NULL;
+> > +		rpcb_local_clnt4 = NULL;
+> > +	}
 > 
-> Why? What has *anything*else* got to do with fixing a NFSv4 bug?
+> In the function below, you mention that the above pointers are
+protected by
+> rpcb_create_local_mutex, but it looks like they get reset here without
+that
+> being held?
 > 
-> IOW, why the hell would we hold up one bugfix just because you might
-want
-> to look at something else too?
+> Might it be simpler to just protect rpcb_users with the
+> rpcb_create_local_mutex and ensure that it's held whenever you call
+one of
+> these routines? None of these are codepaths are particularly hot.
 
-Your LOOKUP_DIRECTORY solution assumes that any and all syscalls that
-_might_ want to automount a directory that is the last path element can
-always predict in advance that the last path element will be a
-directory. I'm challenging that assumption.
-So if I ask for quotactl(/foo), why am I suddenly required to know in
-advance that /foo might be a directory, and so make that a /foo/ so that
-the automounted case suddenly works?
+Alternatively, if you do
 
-Your assumption is that in the majority of cases, we do _not_ want to
-automount the final directory unless we know that we are expecting a
-directory. As far as I'm concerned, if doesn't matter if you are
-expecting a directory or not: with only a few exceptions, your
-application is not supposed to be able to access the directory that will
-be automounted over at all. The only reason for allowing the 'stat()'
-exception is to optimize away the automount in the common case of an 'ls
--l' where the application doesn't care about accuracy.
+	if (rpcb_users == 1) {
+		rpcb_local_clnt = NULL;
+		rpcb_local_clnt4 = NULL;
+		smp_wmb();
+		rpcb_users = 0;
+	} else
+		rpcb_users--;
 
-  Trond
+then the spinlock protection in rpbc_get_local() is still good enough to
+guarantee correctness.
