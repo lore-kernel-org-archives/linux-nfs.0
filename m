@@ -1,51 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60182 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:24813 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932133Ab1INLp2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Sep 2011 07:45:28 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 17/25] nfsd4: rename init_stateid
-Date: Wed, 14 Sep 2011 07:45:13 -0400
-Message-Id: <1316000721-3289-18-git-send-email-bfields@redhat.com>
-In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
+	id S1755869Ab1ITKOm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Sep 2011 06:14:42 -0400
+Subject: [PATCH v4 6/8] NFSd: call svc rpcbind cleanup explicitly
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net
+Date: Tue, 20 Sep 2011 14:14:19 +0400
+Message-ID: <20110920101419.9861.47122.stgit@localhost6.localdomain6>
+In-Reply-To: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
+References: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Note this is actually open-stateid specific.
+We have to call svc_rpcb_cleanup() explicitly from nfsd_last_thread() since
+this function is registered as service shutdown callback and thus nobody else
+will done it for us.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
 ---
- fs/nfsd/nfs4state.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ fs/nfsd/nfssvc.c           |    2 ++
+ include/linux/sunrpc/svc.h |    1 +
+ net/sunrpc/svc.c           |    3 ++-
+ 3 files changed, 5 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4813463..73b5e1e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2314,7 +2314,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index dc5a1bf..52cd976 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -256,6 +256,8 @@ static void nfsd_last_thread(struct svc_serv *serv)
+ 	nfsd_serv = NULL;
+ 	nfsd_shutdown();
+ 
++	svc_rpcb_cleanup(serv);
++
+ 	printk(KERN_WARNING "nfsd: last server has exited, flushing export "
+ 			    "cache\n");
+ 	nfsd_export_flush();
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 223588a..5e71a30 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -401,6 +401,7 @@ struct svc_procedure {
+ /*
+  * Function prototypes.
+  */
++void svc_rpcb_cleanup(struct svc_serv *serv);
+ struct svc_serv *svc_create(struct svc_program *, unsigned int,
+ 			    void (*shutdown)(struct svc_serv *));
+ struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 407462f..252552a 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -367,11 +367,12 @@ static int svc_rpcb_setup(struct svc_serv *serv)
+ 	return 0;
  }
  
- static inline void
--init_stateid(struct nfs4_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *open) {
-+init_open_stateid(struct nfs4_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *open) {
- 	struct nfs4_openowner *oo = open->op_openowner;
- 	unsigned int hashval = stateid_hashval(oo->oo_owner.so_id, fp->fi_id);
+-static void svc_rpcb_cleanup(struct svc_serv *serv)
++void svc_rpcb_cleanup(struct svc_serv *serv)
+ {
+ 	svc_unregister(serv);
+ 	rpcb_put_local();
+ }
++EXPORT_SYMBOL_GPL(svc_rpcb_cleanup);
  
-@@ -2934,7 +2934,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 		status = nfs4_new_open(rqstp, &stp, fp, current_fh, open);
- 		if (status)
- 			goto out;
--		init_stateid(stp, fp, open);
-+		init_open_stateid(stp, fp, open);
- 		status = nfsd4_truncate(rqstp, current_fh, open);
- 		if (status) {
- 			release_open_stateid(stp);
--- 
-1.7.4.1
+ static int svc_uses_rpcbind(struct svc_serv *serv)
+ {
 
