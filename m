@@ -1,89 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:41306 "EHLO mx2.suse.de"
+Received: from mailhub.sw.ru ([195.214.232.25]:16040 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752119Ab1ICAWd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 Sep 2011 20:22:33 -0400
-Date: Sat, 3 Sep 2011 02:22:31 +0200
-From: Jan Kara <jack@suse.cz>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Jan Kara <jack@suse.cz>, linux-nfs@vger.kernel.org,
-        Josh Boyer <jwboyer@redhat.com>
-Subject: Re: [PATCH] nfs: Enclose hostname in brackets when needed in
- nfs_do_root_mount
-Message-ID: <20110903002231.GI12182@quack.suse.cz>
-References: <1315004983-10271-1-git-send-email-jack@suse.cz>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AFD3952@SACMVEXC2-PRD.hq.netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AFD3952@SACMVEXC2-PRD.hq.netapp.com>
+	id S1755561Ab1ITKOZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Sep 2011 06:14:25 -0400
+Subject: [PATCH v4 0/8] SUNRPC: make rpcbind clients allocated and destroyed
+	dynamically
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net
+Date: Tue, 20 Sep 2011 14:13:32 +0400
+Message-ID: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri 02-09-11 16:23:43, Myklebust, Trond wrote:
-> > -----Original Message-----
-> > From: Jan Kara [mailto:jack@suse.cz]
-> > Sent: Friday, September 02, 2011 7:10 PM
-> > To: Myklebust, Trond
-> > Cc: linux-nfs@vger.kernel.org; Jan Kara; Josh Boyer; Myklebust, Trond
-> > Subject: [PATCH] nfs: Enclose hostname in brackets when needed in
-> > nfs_do_root_mount
-> > 
-> > When hostname contains colon (e.g. when it is an IPv6 address) it
-> needs
-> > to be enclosed in brackets to make parsing of NFS device string
-> > possible.
-> > Fix nfs_do_root_mount() to enclose hostname properly when needed. NFS
-> > code
-> > actually does not need this as it does not parse the string passed by
-> > nfs_do_root_mount() but the device string is exposed to userspace in
-> > /proc/mounts.
-> > 
-> > CC: Josh Boyer <jwboyer@redhat.com>
-> > CC: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> > ---
-> >  fs/nfs/super.c |    8 ++++++--
-> >  1 files changed, 6 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> > index b961cea..42b74f8 100644
-> > --- a/fs/nfs/super.c
-> > +++ b/fs/nfs/super.c
-> > @@ -2694,11 +2694,15 @@ static struct vfsmount
-> > *nfs_do_root_mount(struct file_system_type *fs_type,
-> >  	char *root_devname;
-> >  	size_t len;
-> > 
-> > -	len = strlen(hostname) + 3;
-> > +	len = strlen(hostname) + 5;
-> >  	root_devname = kmalloc(len, GFP_KERNEL);
-> >  	if (root_devname == NULL)
-> >  		return ERR_PTR(-ENOMEM);
-> > -	snprintf(root_devname, len, "%s:/", hostname);
-> > +	/* Does hostname needs to be enclosed in brackets? */
-> > +	if (strchr(hostname, ':'))
-> > +		snprintf(root_devname, len, "[%s]:/", hostname);
-> > +	else
-> > +		snprintf(root_devname, len, "%s:/", hostname);
-> 
-> What if the hostname is already enclosed in brackets, as is usually the
-> case if I enter an IPv6 address instead of a DNS name? Won't this cause
-> it to be bracketed twice?
-> 
-> IOW: If I try to
-> 
-> 	mount -t nfs [fe80::20c:29ff:fee9:83e6]:/export /mnt
-> 
-> won't the above end up returning a hostname of [[::20c:29ff:fee9:83e6]]?
-  No it won't - I've actually verified my patch with experiment ;). The
-hostname nfs_do_root_mount() gets is already without possible brackets
-(these have been removed when we first parsed the string passed from
-userspace by nfs_parse_devname() - yes, it took me some time to drill
-through the NFS call stack during mount to actually find out who removes
-the brackets from the passed hostname and who composes the device name back
-without them).
+v4:
+1) creation and destruction on rpcbind clients now depends on service program
+versions "vs_hidden" flag.
 
-								Honza
+This patch is required for further RPC layer virtualization, because rpcbind
+clients have to be per network namespace.
+To achive this, we have to untie network namespace from rpcbind clients sockets.
+The idea of this patch set is to make rpcbind clients non-static. I.e. rpcbind
+clients will be created during first RPC service creation, and destroyed when
+last RPC service is stopped.
+With this patch set rpcbind clients can be virtualized easely.
+
+
+The following series consists of:
+
+---
+
+Stanislav Kinsbursky (8):
+      SUNRPC: introduce helpers for reference counted rpcbind clients
+      SUNRPC: use rpcbind reference counting helpers
+      SUNRPC: introduce svc helpers for prepairing rpcbind infrastructure
+      SUNRPC: setup rpcbind clients if service requires it
+      SUNRPC: cleanup service destruction
+      NFSd: call svc rpcbind cleanup explicitly
+      SUNRPC: remove rpcbind clients creation during service registering
+      SUNRPC: remove rpcbind clients destruction on module cleanup
+
+
+ fs/nfsd/nfssvc.c            |    2 +
+ include/linux/sunrpc/clnt.h |    2 +
+ include/linux/sunrpc/svc.h  |    1 +
+ net/sunrpc/rpcb_clnt.c      |   85 ++++++++++++++++++++++++++++---------------
+ net/sunrpc/sunrpc_syms.c    |    3 --
+ net/sunrpc/svc.c            |   48 +++++++++++++++++++++++-
+ 6 files changed, 105 insertions(+), 36 deletions(-)
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Signature
