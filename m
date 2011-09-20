@@ -1,63 +1,236 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.mail.umich.edu ([141.211.14.81]:49512 "EHLO
-	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752740Ab1I0AcR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Sep 2011 20:32:17 -0400
-Date: Mon, 26 Sep 2011 20:32:11 -0400
-From: Jim Rees <jim.rees@rees.org>
-To: linux-nfs@vger.kernel.org
-Cc: peter honeyman <honey@citi.umich.edu>
-Subject: pnfs crash
-Message-ID: <20110927003211.GA13245@umich.edu>
-Content-Type: text/plain; charset=us-ascii
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:36245 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753759Ab1ITDSz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Sep 2011 23:18:55 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 2/3] pnfs: introduce pnfs private workqueue
+Date: Mon, 19 Sep 2011 23:18:47 -0400
+Message-Id: <1316488728-24912-3-git-send-email-rees@umich.edu>
+In-Reply-To: <1316488728-24912-1-git-send-email-rees@umich.edu>
+References: <1316488728-24912-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-The pnfs block layout client doesn't work on the latest kernel from benny's
-git.  The problem is this commit, which is still being hotly debated:
+From: Peng Tao <bergwolf@gmail.com>
 
-commit 0ec26fd0698285b31248e34bf1abb022c00f23d6
-Author: Miklos Szeredi <mszeredi@suse.cz>
-Date:   Mon Sep 5 18:06:26 2011 +0200
+For layoutdriver io done functions, default workqueue is not a good place as
+the code is executed in IO path. So add a pnfs private workqueue to handle
+them.
 
-    vfs: automount should ignore LOOKUP_FOLLOW
+Also change block and object layout code to make use of this private
+workqueue.
 
-Here's the traceback:
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
+[pnfs: do pnfsiod_start before registering layout drivers]
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |   13 +++++++--
+ fs/nfs/objlayout/objio_osd.c     |   10 ++++++-
+ fs/nfs/objlayout/objlayout.c     |    4 +-
+ fs/nfs/pnfs.c                    |   52 +++++++++++++++++++++++++++++++++++++-
+ fs/nfs/pnfs.h                    |    4 +++
+ 5 files changed, 76 insertions(+), 7 deletions(-)
 
-WARNING: at /home/rees/linux-pnfs/lib/list_debug.c:30 __list_add+0x66/0x7f()
-Hardware name: ProLiant DL145 G2
-list_add corruption. prev->next should be next (ffff88007a5baba8), but was ffff8800377fde80. (prev=ffff88007996d870).
-Modules linked in: blocklayoutdriver nfs lockd fscache auth_rpcgss nfs_acl sunrpc cpufreq_ondemand powernow_k8 freq_table mperf be2iscsi iscsi_boot_sysfs bnx2i cnic uio cxgb3i libcxgbi cxgb3 mdio ip6t_REJECT ib_iser rdma_cm nf_conntrack_ipv6 nf_defrag_ipv6 ip6table_filter ib_cm iw_cm ip6_tables ib_sa ib_mad ib_core ib_addr iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi amd64_edac_mod edac_core tg3 pcspkr serio_raw shpchp i2c_nforce2 edac_mce_amd i2c_core k8temp ipv6 autofs4 ata_generic pata_acpi mptspi mptscsih mptbase scsi_transport_spi pata_amd sata_nv [last unloaded: scsi_wait_scan]
-Pid: 1453, comm: iozone Not tainted 3.1.0-rc6-pnfs #10
-Call Trace:
- [<ffffffff8103bd8a>] warn_slowpath_common+0x7e/0x96
- [<ffffffff8103be36>] warn_slowpath_fmt+0x41/0x43
- [<ffffffff8120b9b7>] __list_add+0x66/0x7f
- [<ffffffffa020abdf>] rpc_queue_upcall+0x8f/0xc6 [sunrpc]
- [<ffffffffa02f1a9b>] dev_remove+0x103/0x156 [blocklayoutdriver]
- [<ffffffff8103449c>] ? try_to_wake_up+0x1d0/0x1d0
- [<ffffffffa02f1b81>] bl_free_block_dev+0x93/0xa5 [blocklayoutdriver]
- [<ffffffffa02ee7a9>] free_blk_mountid+0x2e/0x50 [blocklayoutdriver]
- [<ffffffffa02eeeaf>] bl_clear_layoutdriver+0x33/0x57 [blocklayoutdriver]
- [<ffffffffa02af016>] unset_pnfs_layoutdriver+0x21/0x41 [nfs]
- [<ffffffffa02806e2>] nfs_free_server+0x8d/0x10a [nfs]
- [<ffffffffa02899d8>] nfs4_xdev_mount+0xcd/0x221 [nfs]
- [<ffffffff810f93d0>] mount_fs+0x64/0x150
- [<ffffffff810cb551>] ? __alloc_percpu+0xb/0xd
- [<ffffffff8110cf96>] vfs_kern_mount+0x5e/0x9b
- [<ffffffffa0293481>] nfs_d_automount+0x352/0x436 [nfs]
- [<ffffffff810ff19e>] follow_managed+0x144/0x215
- [<ffffffff810ffd2e>] walk_component+0x2c5/0x3e3
- [<ffffffff81100487>] link_path_walk+0x184/0x423
- [<ffffffff810ff504>] ? rcu_read_lock+0x2e/0x30
- [<ffffffff811023ed>] path_openat+0xad/0x30b
- [<ffffffff8110bf2d>] ? alloc_fd+0x36/0x116
- [<ffffffff81102699>] do_filp_open+0x33/0x81
- [<ffffffff8143e748>] ? _raw_spin_unlock+0x23/0x27
- [<ffffffff8110bffb>] ? alloc_fd+0x104/0x116
- [<ffffffff810f5bb5>] do_sys_open+0x69/0xfb
- [<ffffffff810873ac>] ? audit_syscall_entry+0x117/0x143
- [<ffffffff810f5c62>] sys_open+0x1b/0x1d
- [<ffffffff8144483b>] system_call_fastpath+0x16/0x1b
----[ end trace 7e065bc4dff611d4 ]---
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index dee6cae..0356016 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -228,7 +228,7 @@ bl_end_par_io_read(void *data)
+ 	struct nfs_read_data *rdata = data;
+ 
+ 	INIT_WORK(&rdata->task.u.tk_work, bl_read_cleanup);
+-	schedule_work(&rdata->task.u.tk_work);
++	pnfsiod_queue_work(&rdata->task.u.tk_work);
+ }
+ 
+ /* We don't want normal .rpc_call_done callback used, so we replace it
+@@ -418,7 +418,7 @@ static void bl_end_par_io_write(void *data)
+ 	wdata->task.tk_status = 0;
+ 	wdata->verf.committed = NFS_FILE_SYNC;
+ 	INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
+-	schedule_work(&wdata->task.u.tk_work);
++	pnfsiod_queue_work(&wdata->task.u.tk_work);
+ }
+ 
+ /* FIXME STUB - mark intersection of layout and page as bad, so is not
+@@ -977,10 +977,14 @@ static int __init nfs4blocklayout_init(void)
+ 
+ 	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
+ 
+-	ret = pnfs_register_layoutdriver(&blocklayout_type);
++	ret = pnfsiod_start();
+ 	if (ret)
+ 		goto out;
+ 
++	ret = pnfs_register_layoutdriver(&blocklayout_type);
++	if (ret)
++		goto out_stop;
++
+ 	init_waitqueue_head(&bl_wq);
+ 
+ 	mnt = rpc_get_mount();
+@@ -1009,6 +1013,8 @@ out_putrpc:
+ 	rpc_put_mount();
+ out_remove:
+ 	pnfs_unregister_layoutdriver(&blocklayout_type);
++out_stop:
++	pnfsiod_stop();
+ 	return ret;
+ }
+ 
+@@ -1018,6 +1024,7 @@ static void __exit nfs4blocklayout_exit(void)
+ 	       __func__);
+ 
+ 	pnfs_unregister_layoutdriver(&blocklayout_type);
++	pnfsiod_stop();
+ 	rpc_unlink(bl_device_pipe);
+ 	rpc_put_mount();
+ }
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index d0cda12..7e8f0cc 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -1041,7 +1041,14 @@ MODULE_LICENSE("GPL");
+ static int __init
+ objlayout_init(void)
+ {
+-	int ret = pnfs_register_layoutdriver(&objlayout_type);
++	int ret;
++
++	ret = pnfsiod_start();
++	if (!ret) {
++		ret = pnfs_register_layoutdriver(&objlayout_type);
++		if (ret)
++			pnfsiod_stop();
++	}
+ 
+ 	if (ret)
+ 		printk(KERN_INFO
+@@ -1057,6 +1064,7 @@ static void __exit
+ objlayout_exit(void)
+ {
+ 	pnfs_unregister_layoutdriver(&objlayout_type);
++	pnfsiod_stop();
+ 	printk(KERN_INFO "%s: Unregistered OSD pNFS Layout Driver\n",
+ 	       __func__);
+ }
+diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+index 1d06f8e..f7c6c21 100644
+--- a/fs/nfs/objlayout/objlayout.c
++++ b/fs/nfs/objlayout/objlayout.c
+@@ -305,7 +305,7 @@ objlayout_read_done(struct objlayout_io_state *state, ssize_t status, bool sync)
+ 		pnfs_ld_read_done(rdata);
+ 	else {
+ 		INIT_WORK(&rdata->task.u.tk_work, _rpc_read_complete);
+-		schedule_work(&rdata->task.u.tk_work);
++		pnfsiod_queue_work(&rdata->task.u.tk_work);
+ 	}
+ }
+ 
+@@ -396,7 +396,7 @@ objlayout_write_done(struct objlayout_io_state *state, ssize_t status,
+ 		pnfs_ld_write_done(wdata);
+ 	else {
+ 		INIT_WORK(&wdata->task.u.tk_work, _rpc_write_complete);
+-		schedule_work(&wdata->task.u.tk_work);
++		pnfsiod_queue_work(&wdata->task.u.tk_work);
+ 	}
+ }
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index e550e88..5ac7a78 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -38,7 +38,7 @@
+ /* Locking:
+  *
+  * pnfs_spinlock:
+- *      protects pnfs_modules_tbl.
++ *      protects pnfs_modules_tbl, pnfsiod_workqueue and pnfsiod_users.
+  */
+ static DEFINE_SPINLOCK(pnfs_spinlock);
+ 
+@@ -47,6 +47,9 @@ static DEFINE_SPINLOCK(pnfs_spinlock);
+  */
+ static LIST_HEAD(pnfs_modules_tbl);
+ 
++static struct workqueue_struct *pnfsiod_workqueue;
++static int pnfsiod_users = 0;
++
+ /* Return the registered pnfs layout driver module matching given id */
+ static struct pnfs_layoutdriver_type *
+ find_pnfs_driver_locked(u32 id)
+@@ -1478,3 +1481,50 @@ out:
+ 	dprintk("<-- %s status %d\n", __func__, status);
+ 	return status;
+ }
++
++/*
++ * start up the pnfsiod workqueue
++ */
++int pnfsiod_start(void)
++{
++	struct workqueue_struct *wq;
++	dprintk("RPC:       creating workqueue pnfsiod\n");
++	wq = alloc_workqueue("pnfsiod", WQ_MEM_RECLAIM, 0);
++	if (wq == NULL)
++		return -ENOMEM;
++	spin_lock(&pnfs_spinlock);
++	pnfsiod_users++;
++	if (pnfsiod_workqueue == NULL) {
++		pnfsiod_workqueue = wq;
++	} else {
++		destroy_workqueue(wq);
++	}
++	spin_unlock(&pnfs_spinlock);
++	return 0;
++}
++EXPORT_SYMBOL_GPL(pnfsiod_start);
++
++/*
++ * Destroy the pnfsiod workqueue
++ */
++void pnfsiod_stop(void)
++{
++	struct workqueue_struct *wq = NULL;
++
++	spin_lock(&pnfs_spinlock);
++	pnfsiod_users--;
++	if (pnfsiod_users == 0) {
++		wq = pnfsiod_workqueue;
++		pnfsiod_workqueue = NULL;
++	}
++	spin_unlock(&pnfs_spinlock);
++	if (wq)
++		destroy_workqueue(wq);
++}
++EXPORT_SYMBOL_GPL(pnfsiod_stop);
++
++void pnfsiod_queue_work(struct work_struct* work)
++{
++	queue_work(pnfsiod_workqueue, work);
++}
++EXPORT_SYMBOL_GPL(pnfsiod_queue_work);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 01cbfd5..bc1eed5 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -165,6 +165,10 @@ extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
+ extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
+ 
+ /* pnfs.c */
++int pnfsiod_start(void);
++void pnfsiod_stop(void);
++void pnfsiod_queue_work(struct work_struct* work);
++
+ void get_layout_hdr(struct pnfs_layout_hdr *lo);
+ void put_lseg(struct pnfs_layout_segment *lseg);
+ 
+-- 
+1.7.4.1
+
