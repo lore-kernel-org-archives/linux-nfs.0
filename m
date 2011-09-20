@@ -1,35 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy02.merit.edu ([207.75.116.194]:41083 "EHLO
-	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750826Ab1IPQOW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2011 12:14:22 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 0/5] pnfsblock: Bug fixes for 3.1
-Date: Fri, 16 Sep 2011 12:14:14 -0400
-Message-Id: <1316189659-8799-1-git-send-email-rees@umich.edu>
+Received: from mailhub.sw.ru ([195.214.232.25]:29889 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755638Ab1ITKO1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Sep 2011 06:14:27 -0400
+Subject: [PATCH v4 4/8] SUNRPC: setup rpcbind clients if service requires it
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net
+Date: Tue, 20 Sep 2011 14:14:04 +0400
+Message-ID: <20110920101404.9861.83097.stgit@localhost6.localdomain6>
+In-Reply-To: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
+References: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-These bug fixes for the pnfs block layout driver should apply to linux 3.1.
+New function ("svc_uses_rpcbind") will be used to detect, that new service will
+send portmapper register calls. For such services we will create rpcbind
+clients and remove all stale portmap registrations.
+Also, svc_rpcb_cleanup() will be set as sv_shutdown callback for such services
+in case of this field wasn't initialized earlier. This will allow to destroy
+rpcbind clients when no other users of them left.
 
-Jim Rees (2):
-  pnfsblock: fix size of upcall message
-  pnfsblock: fix return code confusion
+Note: Currently, any creating service will be detected as portmap user.
+Probably, this is wrong. But now it depends on program versions "vs_hidden"
+flag.
 
-Peng Tao (3):
-  pnfsblock: fix NULL pointer dereference
-  pnfsblock: fix writeback deadlock
-  pnfsblock: add missing rpc_put_mount and path_put
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
- fs/nfs/blocklayout/blocklayout.c    |   39 ++++++++++++++++++++++++----------
- fs/nfs/blocklayout/blocklayout.h    |    2 +-
- fs/nfs/blocklayout/blocklayoutdev.c |   13 +++++++----
- 3 files changed, 36 insertions(+), 18 deletions(-)
+---
+ net/sunrpc/svc.c |   11 +++++++++--
+ 1 files changed, 9 insertions(+), 2 deletions(-)
 
--- 
-1.7.6
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index d2d61bf..918edc3 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -454,8 +454,15 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 		spin_lock_init(&pool->sp_lock);
+ 	}
+ 
+-	/* Remove any stale portmap registrations */
+-	svc_unregister(serv);
++	if (svc_uses_rpcbind(serv)) {
++	       	if (svc_rpcb_setup(serv) < 0) {
++			kfree(serv->sv_pools);
++			kfree(serv);
++			return NULL;
++		}
++		if (!serv->sv_shutdown)
++			serv->sv_shutdown = svc_rpcb_cleanup;
++	}
+ 
+ 	return serv;
+ }
 
