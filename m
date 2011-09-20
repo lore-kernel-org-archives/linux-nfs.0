@@ -1,155 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60187 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:29053 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932248Ab1INLp3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Sep 2011 07:45:29 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 20/25] nfsd4: add common dl_stid field to delegation
-Date: Wed, 14 Sep 2011 07:45:16 -0400
-Message-Id: <1316000721-3289-21-git-send-email-bfields@redhat.com>
-In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
+	id S1751643Ab1ITOiw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Sep 2011 10:38:52 -0400
+Content-Type: text/plain;
+	charset="utf-8"
+Subject: RE: [PATCH v4 1/8] SUNRPC: introduce helpers for reference counted rpcbind clients
+Date: Tue, 20 Sep 2011 07:38:53 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD2B@SACMVEXC2-PRD.hq.netapp.com>
+In-reply-to: <4E78A4AF.1020303@parallels.com>
+References: <20110920101031.9861.18444.stgit@localhost6.localdomain6> <20110920101341.9861.51453.stgit@localhost6.localdomain6> <4E788F8C.20103@netapp.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD10@SACMVEXC2-PRD.hq.netapp.com> <4E789679.1060601@parallels.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD22@SACMVEXC2-PRD.hq.netapp.com> <4E78A4AF.1020303@parallels.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Stanislav Kinsbursky" <skinsbursky@parallels.com>
+Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        <linux-nfs@vger.kernel.org>, "Pavel Emelianov" <xemul@parallels.com>,
+        <neilb@suse.de>, <netdev@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <bfields@fieldses.org>,
+        <davem@davemloft.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4callback.c |    2 +-
- fs/nfsd/nfs4state.c    |   20 ++++++++++----------
- fs/nfsd/state.h        |   20 +++++++++++---------
- 3 files changed, 22 insertions(+), 20 deletions(-)
-
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 02eb4ed..93b5e40 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -351,7 +351,7 @@ static void encode_cb_recall4args(struct xdr_stream *xdr,
- 	__be32 *p;
- 
- 	encode_nfs_cb_opnum4(xdr, OP_CB_RECALL);
--	encode_stateid4(xdr, &dp->dl_stateid);
-+	encode_stateid4(xdr, &dp->dl_stid.sc_stateid);
- 
- 	p = xdr_reserve_space(xdr, 4);
- 	*p++ = xdr_zero;			/* truncate */
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d0bb5a5..3e3d605 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -247,10 +247,10 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
- 	get_nfs4_file(fp);
- 	dp->dl_file = fp;
- 	dp->dl_type = type;
--	dp->dl_stateid.si_boot = boot_time;
--	dp->dl_stateid.si_stateownerid = current_delegid++;
--	dp->dl_stateid.si_fileid = 0;
--	dp->dl_stateid.si_generation = 1;
-+	dp->dl_stid.sc_stateid.si_boot = boot_time;
-+	dp->dl_stid.sc_stateid.si_stateownerid = current_delegid++;
-+	dp->dl_stid.sc_stateid.si_fileid = 0;
-+	dp->dl_stid.sc_stateid.si_generation = 1;
- 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
- 	dp->dl_time = 0;
- 	atomic_set(&dp->dl_count, 1);
-@@ -2572,7 +2572,7 @@ find_delegation_file(struct nfs4_file *fp, stateid_t *stid)
- 
- 	spin_lock(&recall_lock);
- 	list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
--		if (dp->dl_stateid.si_stateownerid == stid->si_stateownerid) {
-+		if (dp->dl_stid.sc_stateid.si_stateownerid == stid->si_stateownerid) {
- 			spin_unlock(&recall_lock);
- 			return dp;
- 		}
-@@ -2861,10 +2861,10 @@ nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open, struct nfs4_ol_
- 	if (status)
- 		goto out_free;
- 
--	memcpy(&open->op_delegate_stateid, &dp->dl_stateid, sizeof(dp->dl_stateid));
-+	memcpy(&open->op_delegate_stateid, &dp->dl_stid.sc_stateid, sizeof(dp->dl_stid.sc_stateid));
- 
- 	dprintk("NFSD: delegation stateid=" STATEID_FMT "\n",
--		STATEID_VAL(&dp->dl_stateid));
-+		STATEID_VAL(&dp->dl_stid.sc_stateid));
- out:
- 	if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS
- 			&& flag == NFS4_OPEN_DELEGATE_NONE
-@@ -3296,7 +3296,7 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
- 		dp = find_delegation_stateid(ino, stateid);
- 		if (!dp)
- 			goto out;
--		status = check_stateid_generation(stateid, &dp->dl_stateid, nfsd4_has_session(cstate));
-+		status = check_stateid_generation(stateid, &dp->dl_stid.sc_stateid, nfsd4_has_session(cstate));
- 		if (status)
- 			goto out;
- 		status = nfs4_check_delegmode(dp, flags);
-@@ -3667,7 +3667,7 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	dp = find_delegation_stateid(inode, stateid);
- 	if (!dp)
- 		goto out;
--	status = check_stateid_generation(stateid, &dp->dl_stateid, nfsd4_has_session(cstate));
-+	status = check_stateid_generation(stateid, &dp->dl_stid.sc_stateid, nfsd4_has_session(cstate));
- 	if (status)
- 		goto out;
- 	renew_client(dp->dl_client);
-@@ -3737,7 +3737,7 @@ search_for_delegation(stateid_t *stid)
- 		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
- 			list_for_each(pos, &fp->fi_delegations) {
- 				dp = list_entry(pos, struct nfs4_delegation, dl_perfile);
--				if (same_stateid(&dp->dl_stateid, stid))
-+				if (same_stateid(&dp->dl_stid.sc_stateid, stid))
- 					return dp;
- 			}
- 		}
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index d7fffab..e3ff7c9 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -76,6 +76,15 @@ struct nfsd4_callback {
- 	bool cb_done;
- };
- 
-+struct nfs4_stid {
-+#define NFS4_OPEN_STID 1
-+#define NFS4_LOCK_STID 2
-+#define NFS4_DELEG_STID 4
-+	char sc_type;
-+	struct list_head sc_hash;
-+	stateid_t sc_stateid;
-+};
-+
- struct nfs4_delegation {
- 	struct list_head	dl_perfile;
- 	struct list_head	dl_perclnt;
-@@ -86,7 +95,7 @@ struct nfs4_delegation {
- 	u32			dl_type;
- 	time_t			dl_time;
- /* For recall: */
--	stateid_t		dl_stateid;
-+	struct nfs4_stid	dl_stid;
- 	struct knfsd_fh		dl_fh;
- 	int			dl_retries;
- 	struct nfsd4_callback	dl_recall;
-@@ -446,14 +455,7 @@ static inline struct file *find_any_file(struct nfs4_file *f)
- * we should consider defining separate structs for the two cases.
- */
- 
--struct nfs4_stid {
--#define NFS4_OPEN_STID 1
--#define NFS4_LOCK_STID 2
--	char sc_type;
--	struct list_head sc_hash;
--	stateid_t sc_stateid;
--};
--
-+/* "ol" stands for "Open or Lock".  Better suggestions welcome. */
- struct nfs4_ol_stateid {
- 	struct nfs4_stid    st_stid;
- 	struct list_head              st_perfile;
--- 
-1.7.4.1
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBTdGFuaXNsYXYgS2luc2J1cnNr
+eSBbbWFpbHRvOnNraW5zYnVyc2t5QHBhcmFsbGVscy5jb21dDQo+IFNlbnQ6IFR1ZXNkYXksIFNl
+cHRlbWJlciAyMCwgMjAxMSAxMDozNSBBTQ0KPiBUbzogTXlrbGVidXN0LCBUcm9uZA0KPiBDYzog
+U2NodW1ha2VyLCBCcnlhbjsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgUGF2ZWwgRW1lbGlh
+bm92Ow0KPiBuZWlsYkBzdXNlLmRlOyBuZXRkZXZAdmdlci5rZXJuZWwub3JnOyBsaW51eC1rZXJu
+ZWxAdmdlci5rZXJuZWwub3JnOw0KPiBiZmllbGRzQGZpZWxkc2VzLm9yZzsgZGF2ZW1AZGF2ZW1s
+b2Z0Lm5ldA0KPiBTdWJqZWN0OiBSZTogW1BBVENIIHY0IDEvOF0gU1VOUlBDOiBpbnRyb2R1Y2Ug
+aGVscGVycyBmb3IgcmVmZXJlbmNlDQo+IGNvdW50ZWQgcnBjYmluZCBjbGllbnRzDQo+IA0KPiAy
+MC4wOS4yMDExIDE4OjE0LCBNeWtsZWJ1c3QsIFRyb25kINC/0LjRiNC10YI6DQo+IA0KPiA+Pj4N
+Cj4gPj4+IERvZXNuJ3QgaXQgIG5lZWQgdG8gYmUgcHJvdGVjdGVkIGJ5IHJwY2JfY2xudF9sb2Nr
+IHRvbz8NCj4gPj4+DQo+ID4+DQo+ID4+IE5vcGUgZnJvbSBteSBwb3cuIEl0J3MgcHJvdGVjdGVk
+IGJ5IHJwY2JfY3JlYXRlX2xvY2FsX211dGV4LiBJLmUuIG5vDQo+ID4+IG9uZSB3aWxsIGNoYW5n
+ZSBycGNiX3VzZXJzIHNpbmNlIGl0J3MgemVyby4gSWYgaXQncyBub24gemVybyAtIHdlDQo+ID4+
+IHdpbGxuJ3QgZ2V0IHRvIHJwY2Jfc2V0X2xvY2FsKCkuDQo+ID4NCj4gPiBPSywgc28geW91IGFy
+ZSBzYXlpbmcgdGhhdCB0aGUgcnBjYl91c2VycysrIGJlbG93IGNvdWxkIGJlIHJlcGxhY2VkIGJ5
+DQo+IHJwY2JfdXNlcnM9MT8NCj4gPg0KPiANCj4gWWVzLCB5b3UgcmlnaHQuDQo+IA0KPiA+IElu
+IHRoYXQgY2FzZSwgZG9uJ3QgeW91IG5lZWQgYSBzbXBfd21iKCkgYmV0d2VlbiB0aGUgc2V0dGlu
+ZyBvZg0KPiBycGNiX2xvY2FsX2NsbnQvNCBhbmQgdGhlIHNldHRpbmcgb2YgcnBjYl91c2Vycz8g
+T3RoZXJ3aXNlLCBob3cgZG8geW91DQo+IGd1YXJhbnRlZSB0aGF0IHJwY2JfdXNlcnMgIT0gMCBp
+bXBsaWVzIHJwYmNfbG9jYWxfY2xudC80ICE9IE5VTEw/DQo+ID4NCj4gDQo+IFdlIGNoZWNrIHJw
+Y2JfdXNlcnMgdW5kZXIgc3BpbmxvY2suIEdhaW4gc3BpbmxvY2sgZm9yY2VzIG1lbW9yeSBiYXJy
+aWVyLA0KPiBkb2Vzbid0IGl0Pw0KDQpZZXMsIGFuZCBzbyB5b3UgZG9uJ3QgbmVlZCBhbiBzbXBf
+cm1iKCkgb24gdGhlIHJlYWRlciBzaWRlLiBIb3dldmVyLCB5b3Ugc3RpbGwgbmVlZCB0byBlbnN1
+cmUgdGhhdCB0aGUgcHJvY2Vzc29yIHdoaWNoIF9zZXRzXyB0aGUgcnBjYl91c2VycyBhbmQgcnBj
+Yl9sb2NhbF9jbG50LzQgYWN0dWFsbHkgd3JpdGVzIHRoZW0gaW4gdGhlIGNvcnJlY3Qgb3JkZXIu
+DQoNCkNoZWVycw0KICBUcm9uZA0KDQoT77+977+97Lm7HO+/vSbvv71+77+9Ju+/vRjvv73vv70r
+Le+/ve+/vd22F++/ve+/vXfvv73vv73Lm++/ve+/ve+/vW3vv71i77+977+9Z37Ip++/vRfvv73v
+v73cqH3vv73vv73vv73GoHrvv70majordu+/ve+/ve+/vQfvv73vv73vv73vv716Wivvv73vv70r
+embvv73vv73vv71o77+977+977+9fu+/ve+/ve+/ve+/vWnvv73vv73vv71677+9Hu+/vXfvv73v
+v73vv70/77+977+977+977+9Ju+/vSnfohtm
