@@ -1,71 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from peace.netnation.com ([204.174.223.2]:37888 "EHLO
-	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753597Ab1I3A6J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Sep 2011 20:58:09 -0400
-Date: Thu, 29 Sep 2011 17:58:07 -0700
-From: Simon Kirby <sim@hostway.ca>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: NFS client growing system CPU
-Message-ID: <20110930005807.GE7959@hostway.ca>
-References: <20101208212505.GA18192@hostway.ca> <1291845189.3067.31.camel@heimdal.trondhjem.org> <20110927003931.GB12106@hostway.ca> <1317123773.24383.1.camel@lade.trondhjem.org> <20110927164937.GA2690@hostway.ca> <1317143055.10143.2.camel@lade.trondhjem.org> <20110928195835.GA15368@hostway.ca>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110928195835.GA15368@hostway.ca>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:40749 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753759Ab1ITDXs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Sep 2011 23:23:48 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 1/3] pnfsblock: fix NULL pointer dereference
+Date: Mon, 19 Sep 2011 23:23:43 -0400
+Message-Id: <1316489025-24991-2-git-send-email-rees@umich.edu>
+In-Reply-To: <1316489025-24991-1-git-send-email-rees@umich.edu>
+References: <1316489025-24991-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Sep 28, 2011 at 12:58:35PM -0700, Simon Kirby wrote:
+From: Peng Tao <bergwolf@gmail.com>
 
-> On Tue, Sep 27, 2011 at 01:04:15PM -0400, Trond Myklebust wrote:
-> 
-> > On Tue, 2011-09-27 at 09:49 -0700, Simon Kirby wrote: 
-> > > On Tue, Sep 27, 2011 at 07:42:53AM -0400, Trond Myklebust wrote:
-> > > 
-> > > > On Mon, 2011-09-26 at 17:39 -0700, Simon Kirby wrote: 
-> > > > > Hello!
-> > > > > 
-> > > > > Following up on "System CPU increasing on idle 2.6.36", this issue is
-> > > > > still happening even on 3.1-rc7. So, since it has been 9 months since I
-> > > > > reported this, I figured I'd bisect this issue. The first bisection ended
-> > > > > in an IPMI regression that looked like the problem, so I had to start
-> > > > > again. Eventually, I got commit b80c3cb628f0ebc241b02e38dd028969fb8026a2
-> > > > > which made it into 2.6.34-rc4.
-> > > > > 
-> > > > > With this commit, system CPU keeps rising as the log crunch box runs
-> > > > > (reads log files via NFS and spews out HTML files into NFS-mounted report
-> > > > > directories). When it finishes the daily run, the system time stays
-> > > > > non-zero and continues to be higher and higher after each run, until the
-> > > > > box never completes a run within a day due to all of the wasted cycles.
-> > > > 
-> > > > So reverting that commit fixes the problem on 3.1-rc7?
-> > > > 
-> > > > As far as I can see, doing so should be safe thanks to commit
-> > > > 5547e8aac6f71505d621a612de2fca0dd988b439 (writeback: Update dirty flags
-> > > > in two steps) which fixes the original problem at the VFS level.
-> > > 
-> > > Hmm, I went to git revert b80c3cb628f0ebc241b02e38dd028969fb8026a2, but
-> > > for some reason git left the nfs_mark_request_dirty(req); line in
-> > > nfs_writepage_setup(), even though the original commit had that. Is that
-> > > OK or should I remove that as well?
-> > > 
-> > > Once that is sorted, I'll build it and let it run for a day and let you
-> > > know. Thanks!
-> > 
-> > It shouldn't make any difference whether you leave it or remove it. The
-> > resulting second call to __set_page_dirty_nobuffers() will always be a
-> > no-op since the page will already be marked as dirty.
-> 
-> Ok, confirmed, git revert b80c3cb628f0ebc241b02e38dd028969fb8026a2 on
-> 3.1-rc7 fixes the problem for me. Does this make sense, then, or do we
-> need further investigation and/or testing?
+bl_add_page_to_bio returns error pointer. bio should be reset to
+NULL in failure cases as the out path always calls bl_submit_bio.
 
-Just to clear up what I said before, it seems that on plain 3.1-rc8, I am
-actually able to clear the endless CPU use in nfs_writepages by just
-running "sync". I am not sure when this changed, but I'm pretty sure that
-some versions between 2.6.34 and 3.1-rc used to not be affected by just
-"sync" unless it was paired with drop_caches. Maybe this makes the
-problem more obvious...
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
+---
+ fs/nfs/blocklayout/blocklayout.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
-Simon-
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 1038b8c..8d06d5c 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -292,6 +292,7 @@ bl_read_pagelist(struct nfs_read_data *rdata)
+ 						 bl_end_io_read, par);
+ 			if (IS_ERR(bio)) {
+ 				rdata->pnfs_error = PTR_ERR(bio);
++				bio = NULL;
+ 				goto out;
+ 			}
+ 		}
+@@ -581,6 +582,7 @@ fill_invalid_ext:
+ 						 bl_end_io_write_zero, par);
+ 			if (IS_ERR(bio)) {
+ 				wdata->pnfs_error = PTR_ERR(bio);
++				bio = NULL;
+ 				goto out;
+ 			}
+ 			/* FIXME: This should be done in bi_end_io */
+@@ -629,6 +631,7 @@ next_page:
+ 					 bl_end_io_write, par);
+ 		if (IS_ERR(bio)) {
+ 			wdata->pnfs_error = PTR_ERR(bio);
++			bio = NULL;
+ 			goto out;
+ 		}
+ 		isect += PAGE_CACHE_SECTORS;
+-- 
+1.7.4.1
+
