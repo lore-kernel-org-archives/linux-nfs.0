@@ -1,112 +1,116 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 1/2] configure.ac: Added server 4.1 support
- configuration option
-Date: Tue, 20 Sep 2011 07:47:48 -0400
-Message-ID: <20110920114748.GD1800@fieldses.org>
-References: <1316272622-4894-1-git-send-email-steved@redhat.com>
- <20110917183645.GA24278@fieldses.org>
- <4E7710B7.7070804@RedHat.com>
- <20110919133845.GA1106@fieldses.org>
- <4E774FB6.6040707@RedHat.com>
- <20110919143503.GA1474@fieldses.org>
- <4E775CC5.8090001@RedHat.com>
- <20110919152725.GA1800@fieldses.org>
- <20110919181541.GB1800@fieldses.org>
- <4E787C6E.8080104@RedHat.com>
+From: Bryan Schumaker <bjschuma@netapp.com>
+Subject: Re: [PATCH v5 1/8] SUNRPC: introduce helpers for reference counted
+ rpcbind clients
+Date: Tue, 20 Sep 2011 12:06:21 -0400
+Message-ID: <4E78B9FD.70509@netapp.com>
+References: <20110920101031.9861.18444.stgit@localhost6.localdomain6>	<20110920101341.9861.51453.stgit@localhost6.localdomain6>	<4E7899E7.9090809@parallels.com> <20110920102431.58ca1d96@tlielax.poochiereds.net> <4E78A6A1.1000800@parallels.com> <4E78AA09.1000209@netapp.com> <4E78B389.3000307@parallels.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57636 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753351Ab1ITLrs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Sep 2011 07:47:48 -0400
-In-Reply-To: <4E787C6E.8080104-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: Jeff Layton <jlayton@redhat.com>,
+	"Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	Pavel Emelianov <xemul@parallels.com>,
+	"neilb@suse.de" <neilb@suse.de>,
+	"netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"bfields@fieldses.org" <bfields@fieldses.org>,
+	"davem@davemloft.net" <davem@davemloft.net>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <4E78B389.3000307@parallels.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 20, 2011 at 07:43:42AM -0400, Steve Dickson wrote:
-> 
-> 
-> On 09/19/2011 02:15 PM, J. Bruce Fields wrote:
-> > On Mon, Sep 19, 2011 at 11:27:25AM -0400, J. Bruce Fields wrote:
-> >> On Mon, Sep 19, 2011 at 11:16:21AM -0400, Steve Dickson wrote:
-> >>>
-> >>>
-> >>> On 09/19/2011 10:35 AM, J. Bruce Fields wrote:
-> >>>> On Mon, Sep 19, 2011 at 10:20:38AM -0400, Steve Dickson wrote:
-> >>>>>
-> >>>>>
-> >>>>> On 09/19/2011 09:38 AM, J. Bruce Fields wrote:
-> >>>>>> diff --git a/configure.ac b/configure.ac
-> >>>>>> index 1a28f8a..7000324 100644
-> >>>>>> --- a/configure.ac
-> >>>>>> +++ b/configure.ac
-> >>>>>> @@ -73,19 +73,6 @@ AC_ARG_ENABLE(nfsv4,
-> >>>>>>  	AC_SUBST(enable_nfsv4)
-> >>>>>>  	AM_CONDITIONAL(CONFIG_NFSV4, [test "$enable_nfsv4" = "yes"])
-> >>>>>>  
-> >>>>>> -AC_ARG_ENABLE(nfsv41,
-> >>>>>> -	[AC_HELP_STRING([--enable-nfsv41],
-> >>>>>> -                        [enable support for NFSv41 @<:@default=no@:>@])],
-> >>>>>> -	enable_nfsv41=$enableval,
-> >>>>>> -	enable_nfsv41=no)
-> >>>>>> -	if test "$enable_nfsv41" = yes; then
-> >>>>>> -		AC_DEFINE(NFS41_SUPPORTED, 1, [Define this if you want NFSv41 support compiled in])
-> >>>>>> -	else
-> >>>>>> -		enable_nfsv41=
-> >>>>>> -	fi
-> >>>>>> -	AC_SUBST(enable_nfsv41)
-> >>>>>> -	AM_CONDITIONAL(CONFIG_NFSV41, [test "$enable_nfsv41" = "yes"])
-> >>>>>> -
-> >>>>> I think we still need this for the 4.1 client code.
-> >>>>
-> >>>> OK.  Or I can wait and resend a patch after you've committed the changes
-> >>>> for the client's block daemon, if you'd prefer.
-> >>> I'll deal with the configure code....
-> >>>
-> >>>>
-> >>>>>> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-> >>>>>> index e7e1470..fa9c429 100644
-> >>>>>> --- a/utils/nfsd/nfsd.c
-> >>>>>> +++ b/utils/nfsd/nfsd.c
-> >>>>>> @@ -40,6 +40,7 @@ static struct option longopts[] =
-> >>>>>>  	{ "port", 1, 0, 'p' },
-> >>>>>>  	{ "debug", 0, 0, 'd' },
-> >>>>>>  	{ "syslog", 0, 0, 's' },
-> >>>>>> +	{ "enable-41", 0, 0, 'X' },
-> >>>>>>  	{ NULL, 0, 0, 0 }
-> >>>>>>  };
-> >>>>> Introducing temporary, undocumented command line arguments
-> >>>>> is generally not a good thing... IMHO... I was think more
-> >>>>> of an echo to /proc/fs/nfsd/versions to enable the support.
-> >>>>
-> >>>> I think it's a reasonable thing to do for experimental code.
-> >>>>
-> >>>> But we could do the following instead.  (Warning: still untested.)
-> >>>>
-> >>>> --b.
-> >>>>
-> >>>> commit 8d69da4c556f8ad2d42caa3875a665761c27463e
-> >>>> Author: J. Bruce Fields <bfields@citi.umich.edu>
-> >>>> Date:   Thu Dec 17 17:11:54 2009 -0500
-> >>>>
-> >>>>     nfsd: allow choosing server 41 support at runtime
-> >>>>     
-> >>>>     In the case where -N 4.1 is left off the commandline, the current code
-> >>>>     explicitly turns it on or off anyway, depending on configure options.
-> >>>>     
-> >>>>     Instead, just leave 4.1 support alone.  This allows a user to add an
-> >>>>     "echo +4.1 >/proc/fs/nfsd/versions" to their init scripts, if they want.
-> >>>>     Otherwise they will get the kernel's default (currently to leave 4.1
-> >>>>     off, as long as 4.1 support is experimental).
-> >>> I think this is a good compromise... Could you spend a few 
-> >>> cycles on making sure that echo does indeed turn on 4.1 support?
-> >>
-> >> Yep, will do.
-> > 
-> > Done; that patch worked for me.  Let me know if you need it resent.
-> No need... Its committed... 
+On 09/20/2011 11:38 AM, Stanislav Kinsbursky wrote:
+> 20.09.2011 18:58, Bryan Schumaker =D0=BF=D0=B8=D1=88=D0=B5=D1=82:
+>> On 09/20/2011 10:43 AM, Stanislav Kinsbursky wrote:
+>>> 20.09.2011 18:24, Jeff Layton =D0=BF=D0=B8=D1=88=D0=B5=D1=82:
+>>>> On Tue, 20 Sep 2011 17:49:27 +0400
+>>>> Stanislav Kinsbursky<skinsbursky@parallels.com>   wrote:
+>>>>
+>>>>> v5: fixed races with rpcb_users in rpcb_get_local()
+>>>>>
+>>>>> This helpers will be used for dynamical creation and destruction =
+of rpcbind
+>>>>> clients.
+>>>>> Variable rpcb_users is actually a counter of lauched RPC services=
+=2E If rpcbind
+>>>>> clients has been created already, then we just increase rpcb_user=
+s.
+>>>>>
+>>>>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>>>>>
+>>>>> ---
+>>>>>     net/sunrpc/rpcb_clnt.c |   53 +++++++++++++++++++++++++++++++=
++++++++++++++++++
+>>>>>     1 files changed, 53 insertions(+), 0 deletions(-)
+>>>>>
+>>>>> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+>>>>> index e45d2fb..5f4a406 100644
+>>>>> --- a/net/sunrpc/rpcb_clnt.c
+>>>>> +++ b/net/sunrpc/rpcb_clnt.c
+>>>>> @@ -114,6 +114,9 @@ static struct rpc_program    rpcb_program;
+>>>>>     static struct rpc_clnt *    rpcb_local_clnt;
+>>>>>     static struct rpc_clnt *    rpcb_local_clnt4;
+>>>>>     +DEFINE_SPINLOCK(rpcb_clnt_lock);
+>>>>> +unsigned int            rpcb_users;
+>>>>> +
+>>>>>     struct rpcbind_args {
+>>>>>         struct rpc_xprt *    r_xprt;
+>>>>>     @@ -161,6 +164,56 @@ static void rpcb_map_release(void *data)
+>>>>>         kfree(map);
+>>>>>     }
+>>>>>     +static int rpcb_get_local(void)
+>>>>> +{
+>>>>> +    int cnt;
+>>>>> +
+>>>>> +    spin_lock(&rpcb_clnt_lock);
+>>>>> +    if (rpcb_users)
+>>>>> +        rpcb_users++;
+>>>>> +    cnt =3D rpcb_users;
+>>>>> +    spin_unlock(&rpcb_clnt_lock);
+>>>>> +
+>>>>> +    return cnt;
+>>>>> +}
+>>>>> +
+>>>>> +void rpcb_put_local(void)
+>>>>> +{
+>>>>> +    struct rpc_clnt *clnt =3D rpcb_local_clnt;
+>>>>> +    struct rpc_clnt *clnt4 =3D rpcb_local_clnt4;
+>>>>> +    int shutdown;
+>>>>> +
+>>>>> +    spin_lock(&rpcb_clnt_lock);
+>>>>> +    if (--rpcb_users =3D=3D 0) {
+>>>>> +        rpcb_local_clnt =3D NULL;
+>>>>> +        rpcb_local_clnt4 =3D NULL;
+>>>>> +    }
+>>>>
+>>>> In the function below, you mention that the above pointers are
+>>>> protected by rpcb_create_local_mutex, but it looks like they get r=
+eset
+>>>> here without that being held?
+>>>>
+>>>
+>>> Assigning of them is protected by rpcb_create_local_mutex.
+>>> Dereferencing of them is protected by rpcb_clnt_lock.
+>>
+>> Shouldn't you be using the same lock for assigning and dereferencing=
+?  Otherwise one thread could change these variables while another is u=
+sing them.
+>=20
+> Probably I wasn't clear with my previous explanation.
+> Actually, we use only spinlock to make sure, that the pointers are va=
+lid when we dereferencing them. Synchronization point here is rpcb_user=
+s counter.
+> IOW, we use these pointers only from svc code and only after service =
+already started. And with this patch-set we can be sure, that this poin=
+ters has been created already to the point, when this service starts.
+>=20
+> But when this counter is zero, we can experience races with assigning=
+ those pointers. It takes a lot of time, so we use local mutex here ins=
+tead of spinlock.
+>=20
+> Have I answered your question?
 
-Thanks!--b.
+I think I understand now.  Thanks!
+>=20
