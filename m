@@ -1,54 +1,112 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: Reminder on October 2011 BAT
-Date: Tue, 20 Sep 2011 11:35:20 +0300
-Message-ID: <4E785048.7080607@panasas.com>
-References: <721C2207-5FBE-4886-8B2C-955961564755@netapp.com>
-	<869E9B5A-E664-43C6-B8BC-BBC0A2158CB8@netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 1/2] configure.ac: Added server 4.1 support
+ configuration option
+Date: Tue, 20 Sep 2011 07:47:48 -0400
+Message-ID: <20110920114748.GD1800@fieldses.org>
+References: <1316272622-4894-1-git-send-email-steved@redhat.com>
+ <20110917183645.GA24278@fieldses.org>
+ <4E7710B7.7070804@RedHat.com>
+ <20110919133845.GA1106@fieldses.org>
+ <4E774FB6.6040707@RedHat.com>
+ <20110919143503.GA1474@fieldses.org>
+ <4E775CC5.8090001@RedHat.com>
+ <20110919152725.GA1800@fieldses.org>
+ <20110919181541.GB1800@fieldses.org>
+ <4E787C6E.8080104@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: NFS list <linux-nfs@vger.kernel.org>,
-	DENIEL Philippe <philippe.deniel@cea.fr>,
-	Marc Eshel <eshel@almaden.ibm.com>, nfsv4@ietf.org,
-	Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>
-To: Thomas Haynes <thomas@netapp.com>
-Return-path: <nfsv4-bounces@ietf.org>
-In-Reply-To: <869E9B5A-E664-43C6-B8BC-BBC0A2158CB8@netapp.com>
-List-Unsubscribe: <https://www.ietf.org/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
-List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
-List-Post: <mailto:nfsv4@ietf.org>
-List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
-List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=subscribe>
-Sender: nfsv4-bounces@ietf.org
-Errors-To: nfsv4-bounces@ietf.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:57636 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753351Ab1ITLrs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Sep 2011 07:47:48 -0400
+In-Reply-To: <4E787C6E.8080104-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/02/2011 09:53 PM, Thomas Haynes wrote:
-> The BAT web page is at:
-> http://www.nfsv4bat.org/Events/2011/October/BAT/index.html
+On Tue, Sep 20, 2011 at 07:43:42AM -0400, Steve Dickson wrote:
 > 
-> Registration is to send me email.
 > 
-> What I need is the number of attendees from your company, their names (and email)
-> for badging purposes, and the type of equipment you will be bringing.
-> 
-> I'm primarily interested in if the equipment has special power requirements and if
-> it is loud.
+> On 09/19/2011 02:15 PM, J. Bruce Fields wrote:
+> > On Mon, Sep 19, 2011 at 11:27:25AM -0400, J. Bruce Fields wrote:
+> >> On Mon, Sep 19, 2011 at 11:16:21AM -0400, Steve Dickson wrote:
+> >>>
+> >>>
+> >>> On 09/19/2011 10:35 AM, J. Bruce Fields wrote:
+> >>>> On Mon, Sep 19, 2011 at 10:20:38AM -0400, Steve Dickson wrote:
+> >>>>>
+> >>>>>
+> >>>>> On 09/19/2011 09:38 AM, J. Bruce Fields wrote:
+> >>>>>> diff --git a/configure.ac b/configure.ac
+> >>>>>> index 1a28f8a..7000324 100644
+> >>>>>> --- a/configure.ac
+> >>>>>> +++ b/configure.ac
+> >>>>>> @@ -73,19 +73,6 @@ AC_ARG_ENABLE(nfsv4,
+> >>>>>>  	AC_SUBST(enable_nfsv4)
+> >>>>>>  	AM_CONDITIONAL(CONFIG_NFSV4, [test "$enable_nfsv4" = "yes"])
+> >>>>>>  
+> >>>>>> -AC_ARG_ENABLE(nfsv41,
+> >>>>>> -	[AC_HELP_STRING([--enable-nfsv41],
+> >>>>>> -                        [enable support for NFSv41 @<:@default=no@:>@])],
+> >>>>>> -	enable_nfsv41=$enableval,
+> >>>>>> -	enable_nfsv41=no)
+> >>>>>> -	if test "$enable_nfsv41" = yes; then
+> >>>>>> -		AC_DEFINE(NFS41_SUPPORTED, 1, [Define this if you want NFSv41 support compiled in])
+> >>>>>> -	else
+> >>>>>> -		enable_nfsv41=
+> >>>>>> -	fi
+> >>>>>> -	AC_SUBST(enable_nfsv41)
+> >>>>>> -	AM_CONDITIONAL(CONFIG_NFSV41, [test "$enable_nfsv41" = "yes"])
+> >>>>>> -
+> >>>>> I think we still need this for the 4.1 client code.
+> >>>>
+> >>>> OK.  Or I can wait and resend a patch after you've committed the changes
+> >>>> for the client's block daemon, if you'd prefer.
+> >>> I'll deal with the configure code....
+> >>>
+> >>>>
+> >>>>>> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+> >>>>>> index e7e1470..fa9c429 100644
+> >>>>>> --- a/utils/nfsd/nfsd.c
+> >>>>>> +++ b/utils/nfsd/nfsd.c
+> >>>>>> @@ -40,6 +40,7 @@ static struct option longopts[] =
+> >>>>>>  	{ "port", 1, 0, 'p' },
+> >>>>>>  	{ "debug", 0, 0, 'd' },
+> >>>>>>  	{ "syslog", 0, 0, 's' },
+> >>>>>> +	{ "enable-41", 0, 0, 'X' },
+> >>>>>>  	{ NULL, 0, 0, 0 }
+> >>>>>>  };
+> >>>>> Introducing temporary, undocumented command line arguments
+> >>>>> is generally not a good thing... IMHO... I was think more
+> >>>>> of an echo to /proc/fs/nfsd/versions to enable the support.
+> >>>>
+> >>>> I think it's a reasonable thing to do for experimental code.
+> >>>>
+> >>>> But we could do the following instead.  (Warning: still untested.)
+> >>>>
+> >>>> --b.
+> >>>>
+> >>>> commit 8d69da4c556f8ad2d42caa3875a665761c27463e
+> >>>> Author: J. Bruce Fields <bfields@citi.umich.edu>
+> >>>> Date:   Thu Dec 17 17:11:54 2009 -0500
+> >>>>
+> >>>>     nfsd: allow choosing server 41 support at runtime
+> >>>>     
+> >>>>     In the case where -N 4.1 is left off the commandline, the current code
+> >>>>     explicitly turns it on or off anyway, depending on configure options.
+> >>>>     
+> >>>>     Instead, just leave 4.1 support alone.  This allows a user to add an
+> >>>>     "echo +4.1 >/proc/fs/nfsd/versions" to their init scripts, if they want.
+> >>>>     Otherwise they will get the kernel's default (currently to leave 4.1
+> >>>>     off, as long as 4.1 support is experimental).
+> >>> I think this is a good compromise... Could you spend a few 
+> >>> cycles on making sure that echo does indeed turn on 4.1 support?
+> >>
+> >> Yep, will do.
+> > 
+> > Done; that patch worked for me.  Let me know if you need it resent.
+> No need... Its committed... 
 
-Tom hi, all is well?
-
-Are you setting up some meetings during BAT?
-
-If so we will want one set aside for:
-	"Design of NFS-Ganesha pNFS Server infrastructure"
-
-We will be a bunch of Ganesha guys on campus but I think it will be very interesting
-for anybody who's interested in pNFS Server design and implementation.
-
-Thanks
-Boaz
-_______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www.ietf.org/mailman/listinfo/nfsv4
+Thanks!--b.
