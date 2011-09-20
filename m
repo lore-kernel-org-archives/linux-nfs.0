@@ -1,188 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:22606 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:58834 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753321Ab1IMMsg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 08:48:36 -0400
-Date: Tue, 13 Sep 2011 08:51:39 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>
-Subject: Re: [PATCH v2 3/5] SUNRPC: make RPC service dependable on rpcbind
- clients creation
-Message-ID: <20110913085139.00f112e2@corrin.poochiereds.net>
-In-Reply-To: <1315596308.17611.46.camel@lade.trondhjem.org>
-References: <20110909115146.13697.71682.stgit@localhost6.localdomain6>
-	<20110909120844.13697.48102.stgit@localhost6.localdomain6>
-	<20110909100745.7e2e8bf9@corrin.poochiereds.net>
-	<4E6A41D4.6090001@parallels.com>
-	<1315593874.17611.19.camel@lade.trondhjem.org>
-	<20110909150104.5a83c60d@tlielax.poochiereds.net>
-	<1315596308.17611.46.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+	id S1751117Ab1ITWyp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2011 18:54:45 -0400
+Subject: Re: VFS: Busy inodes after unmount + nfs_zap_acl_cache() crash via
+ sys_inotify_rm_watch()
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Frank van Maarseveen <frankvm@frankvm.com>
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Date: Tue, 20 Sep 2011 18:54:43 -0400
+In-Reply-To: <20110920153640.GA16909@janus>
+References: <20110920153640.GA16909@janus>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1316559283.15093.6.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 09 Sep 2011 15:25:08 -0400
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-
-> On Fri, 2011-09-09 at 15:01 -0400, Jeff Layton wrote: 
-> > On Fri, 09 Sep 2011 14:44:34 -0400
-> > Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> > 
-> > > On Fri, 2011-09-09 at 20:41 +0400, Stanislav Kinsbursky wrote: 
-> > > > 09.09.2011 18:07, Jeff Layton пишет:
-> > > > > On Fri, 09 Sep 2011 16:08:44 +0400
-> > > > > Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
-> > > > >
-> > > > >> Create rcbind clients or increase rpcbind users counter during RPC service
-> > > > >> creation and decrease this counter (and possibly destroy those clients) on RPC
-> > > > >> service destruction.
-> > > > >>
-> > > > >> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
-> > > > >>
-> > > > >> ---
-> > > > >>   include/linux/sunrpc/clnt.h |    2 ++
-> > > > >>   net/sunrpc/rpcb_clnt.c      |    2 +-
-> > > > >>   net/sunrpc/svc.c            |   13 +++++++++++--
-> > > > >>   3 files changed, 14 insertions(+), 3 deletions(-)
-> > > > >>
-> > > > >> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> > > > >> index db7bcaf..65a8115 100644
-> > > > >> --- a/include/linux/sunrpc/clnt.h
-> > > > >> +++ b/include/linux/sunrpc/clnt.h
-> > > > >> @@ -135,10 +135,12 @@ void		rpc_shutdown_client(struct rpc_clnt *);
-> > > > >>   void		rpc_release_client(struct rpc_clnt *);
-> > > > >>   void		rpc_task_release_client(struct rpc_task *);
-> > > > >>
-> > > > >> +int		rpcb_create_local(void);
-> > > > >>   int		rpcb_register(u32, u32, int, unsigned short);
-> > > > >>   int		rpcb_v4_register(const u32 program, const u32 version,
-> > > > >>   				 const struct sockaddr *address,
-> > > > >>   				 const char *netid);
-> > > > >> +void		rpcb_put_local(void);
-> > > > >>   void		rpcb_getport_async(struct rpc_task *);
-> > > > >>
-> > > > >>   void		rpc_call_start(struct rpc_task *);
-> > > > >> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-> > > > >> index b4cc0f1..437ec60 100644
-> > > > >> --- a/net/sunrpc/rpcb_clnt.c
-> > > > >> +++ b/net/sunrpc/rpcb_clnt.c
-> > > > >> @@ -318,7 +318,7 @@ out:
-> > > > >>    * Returns zero on success, otherwise a negative errno value
-> > > > >>    * is returned.
-> > > > >>    */
-> > > > >> -static int rpcb_create_local(void)
-> > > > >> +int rpcb_create_local(void)
-> > > > >>   {
-> > > > >>   	static DEFINE_MUTEX(rpcb_create_local_mutex);
-> > > > >>   	int result = 0;
-> > > > >> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> > > > >> index 6a69a11..9095c0e 100644
-> > > > >> --- a/net/sunrpc/svc.c
-> > > > >> +++ b/net/sunrpc/svc.c
-> > > > >> @@ -367,8 +367,11 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
-> > > > >>   	unsigned int xdrsize;
-> > > > >>   	unsigned int i;
-> > > > >>
-> > > > >> -	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
-> > > > >> +	if (rpcb_create_local()<  0)
-> > > > >>   		return NULL;
-> > > > >> +
-> > > > >> +	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
-> > > > >> +		goto out_err;
-> > > > >>   	serv->sv_name      = prog->pg_name;
-> > > > >>   	serv->sv_program   = prog;
-> > > > >>   	serv->sv_nrthreads = 1;
-> > > > >> @@ -403,7 +406,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
-> > > > >>   			GFP_KERNEL);
-> > > > >>   	if (!serv->sv_pools) {
-> > > > >>   		kfree(serv);
-> > > > >> -		return NULL;
-> > > > >> +		goto out_err;
-> > > > >>   	}
-> > > > >>
-> > > > >>   	for (i = 0; i<  serv->sv_nrpools; i++) {
-> > > > >> @@ -423,6 +426,10 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
-> > > > >>   	svc_unregister(serv);
-> > > > >>
-> > > > >>   	return serv;
-> > > > >> +
-> > > > >> +out_err:
-> > > > >> +	rpcb_put_local();
-> > > > >> +	return NULL;
-> > > > >>   }
-> > > > >>
-> > > > >>   struct svc_serv *
-> > > > >> @@ -491,6 +498,8 @@ svc_destroy(struct svc_serv *serv)
-> > > > >>   	svc_unregister(serv);
-> > > > >>   	kfree(serv->sv_pools);
-> > > > >>   	kfree(serv);
-> > > > >> +
-> > > > >> +	rpcb_put_local();
-> > > > >>   }
-> > > > >>   EXPORT_SYMBOL_GPL(svc_destroy);
-> > > > >>
-> > > > >>
-> > > > >
-> > > > > I don't get it -- what's the advantage of creating rpcbind clients in
-> > > > > __svc_create vs. the old way of creating them just before we plan to
-> > > > > use them?
-> > > > >
-> > > > 
-> > > > The main problem here is not in creation, but in destroying those clients.
-> > > > Now rpcbind clients are created during rpcb_register(). I.e. once per every family, program version and so on.
-> > > > But can be unregistered for all protocol families by one call. So it's impossible to put reference counting for those clients in the place, where they are created now.
-> > > 
-> > > Could we perhaps set up a 'struct pernet_operations' to create a
-> > > destructor for them?
-> > > 
-> > 
-> > An even easier idea might be to just not take a reference to the
-> > rpcbind client for svc_programs that have vs_hidden set on every
-> > version.
+On Tue, 2011-09-20 at 17:36 +0200, Frank van Maarseveen wrote: 
+> caught this one on 3.0.4:
 > 
-> Isn't the problem that Stanislav is trying to solve that we need to be
-> able to register and unregister RPC services to the correct rpcbind
-> server, depending on which net namespace we are in?
+>  VFS: Busy inodes after unmount of 0:b1. Self-destruct in 5 seconds.  Have a nice day...
+>  BUG: unable to handle kernel paging request at 6b6b6c13
+>  IP: [<c11c75ca>] nfs_zap_acl_cache+0x1a/0x60
+>  *pdpt = 00000000323d0001 *pde = 0000000000000000 
+>  Oops: 0000 [#1] PREEMPT SMP 
+>  Modules linked in: vmthrottle [last unloaded: scsi_wait_scan]
 > 
-> My understanding is that the current code will register everything to
-> whatever rpcbind server is running in the init net namespace because
-> that's what rpcb_create_local() uses.
+>  Pid: 4626, comm: gvfsd-trash Not tainted 3.0.4-x264 #1 Dell Inc.                 OptiPlex GX620               /0F8098
+>  EIP: 0060:[<c11c75ca>] EFLAGS: 00010286 CPU: 1
+>  EIP is at nfs_zap_acl_cache+0x1a/0x60
+>  EAX: 6b6b6b6b EBX: ed56cdf0 ECX: 00000000 EDX: ed56cca0
+>  ESI: ed56cdf0 EDI: cc6eece0 EBP: f23e7f2c ESP: f23e7f24
+>  DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
+>  Process gvfsd-trash (pid: 4626, ti=f23e6000 task=f2332bc0 task.ti=f23e6000)
+>  Stack:
+>  ed56cdf0 c17bf7c0 f23e7f38 c11c7638 ed56cdf0 f23e7f44 c11c76e3 ed56cdf0
+>  f23e7f54 c110d7f1 ed56cdf0 ed56ce04 f23e7f68 c110db62 ed56cdf0 f4b5b674
+>  f04011e0 f23e7f74 c110dc65 f4b5b660 f23e7f94 c112887a 00000000 ed56cdf0
+>  Call Trace:
+>  [<c11c7638>] nfs_clear_inode+0x28/0x50
+>  [<c11c76e3>] nfs_evict_inode+0x23/0x30
+>  [<c110d7f1>] evict+0x61/0x130
+>  [<c110db62>] iput_final+0x92/0x160
+>  [<c110dc65>] iput+0x35/0x40
+>  [<c112887a>] fsnotify_destroy_mark+0x11a/0x140
+>  [<c112990c>] sys_inotify_rm_watch+0x5c/0x90
+>  [<c17a0a1c>] sysenter_do_call+0x12/0x2c
+>  [<c17a0000>] ? _raw_spin_trylock+0x10/0x50
+>  Code: ec 5d c3 8d b4 26 00 00 00 00 8d bc 27 00 00 00 00 55 89 e5 83 ec 08 89 74 24 04 89 c6 89 1c 24 8b 40 10 8b 80 e8 01 00 00 
+>  EIP: [<c11c75ca>] nfs_zap_acl_cache+0x1a/0x60 SS:ESP 0068:f23e7f24
+>  CR2: 000000006b6b6c13
+>  ---[ end trace 7ecd000fd19003a9 ]---
 > 
+That looks like a pretty nasty fsnotify bug. Why on earth is it holding
+a reference to an NFS inode after the actual filesystem has been
+umounted?
 
-My assumption in reading this set (maybe wrong) was that this was a
-preliminary set for now that just plops in function calls in the places
-that do this sort of thing now. I figured that eventually he'd convert
-rpcb_create_local, et. al. to do the same thing but within the correct
-namespace for the calling task.
-
-> My suggestion is to use a struct pernet_operations to detect when a net
-> namespace is being created or destroyed, so that the rpcbind client code
-> knows when to create or destroy a connection to the server that is
-> running in that namespace.
-> 
-
-I'm not sure that solves anything. I'd also ass|u|me that something
-here (the xprt?) will hold a reference to its netns. If we try to do
-this with pernet ops, then I think we'd end up with a chicken-and-egg
-problem...
-
-I think the simplest solution would be to basically call these
-functions closer to where the rpcbind calls happen today, and just
-don't do them when the svc_program has vs_hidden set or if the xprt is
-being created with SVC_SOCK_ANONYMOUS set.
-
-In fact, a rethink of the vs_hidden/SVC_SOCK_ANONYMOUS scheme would
-probably be a good preliminary patch here. There's a lot of overlap
-between those two flags, and somehow consolidating them would probably
-be a good thing.
-
+Trond
 -- 
-Jeff Layton <jlayton@redhat.com>
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
