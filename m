@@ -1,49 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:35074 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753205Ab1IZMW3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Sep 2011 08:22:29 -0400
-Message-ID: <2138793167-1317039745-cardhu_decombobulator_blackberry.rim.net-855636477-@b4.c3.bise3.blackberry>
-Reply-To: bhalevy@tonian.com
-Subject: Re: NFS mounts and its propagation
-To: "Sreeram B S" <sreeramb@netapp.com>, linux-nfs-owner@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-From: "Benny Halevy" <bhalevy@tonian.com>
-Date: Mon, 26 Sep 2011 12:22:22 +0000
-Content-Type: text/plain
+Received: from fieldses.org ([174.143.236.118]:34595 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750806Ab1ITNaS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Sep 2011 09:30:18 -0400
+Date: Tue, 20 Sep 2011 09:30:16 -0400
+To: Jan-Marek Glogowski <glogow@fbihome.de>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: Re: Problem useing groups containing spaces in NFSv4
+Message-ID: <20110920133016.GF1800@fieldses.org>
+References: <alpine.DEB.2.02.1108262018320.28308@users.fbihome.de>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <alpine.DEB.2.02.1108262018320.28308@users.fbihome.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-MS4gTkZTdjMgTE9PS1VQIGRvZXMgbm90IGNyb3NzIG1vdW50IHBvaW50cy4NCg0KMi4gTkZTIGlz
-IG5vdCByZWV4cG9ydGFibGUgb24gbGludXguDQoNCkJlbm55DQotLS0tLS1PcmlnaW5hbCBNZXNz
-YWdlLS0tLS0tDQpGcm9tOiBTcmVlcmFtIEIgUw0KU2VuZGVyOiBsaW51eC1uZnMtb3duZXJAdmdl
-ci5rZXJuZWwub3JnDQpUbzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KU3ViamVjdDogTkZT
-IG1vdW50cyBhbmQgaXRzIHByb3BhZ2F0aW9uDQpTZW50OiBTZXAgMjYsIDIwMTEgMTQ6MDMNCg0K
-SGksDQogICAgIEkgYW0gU3JlZXJhbS4gVGhpcyBxdWVzdGlvbiBpcyByZWxhdGVkIHRvIE5GUy4N
-CiAgICAgSSBoYXZlIGEgdHlwaWNhbCBzY2VuYXJpby4gUGxlYXNlIGFzc3VtZSB0aGF0IHRoZXJl
-IGFyZSAzIG1hY2hpbmVzIA0KTTEsIE0yLCBNMy4gRWFjaCBvZiB0aGVtIGFyZSBoYXZpbmcgZGly
-ZWN0b3JpZXMgL3RtcC9hYmMgaW4gdGhlbS4gQWxsIA0KdGhlIE5GUyBwZXJtaXNzaW9ucyBhcmUg
-c2V0IGFwcHJvcHJpYXRlbHkuDQogICAgIE5vdywgYSB1c2VyIG1vdW50cyBNMidzIC90bXAvYWJj
-IG9uIE0xJ3MgL3RtcC9hYmMgYnkgaXNzdWluZyBtb3VudCANCmNvbW1hbmQgb24gTTEuIE1vdW50
-IGlzIHN1Y2Nlc3NmdWwuDQogICAgIFRoZW4gdGhlIHVzZXIgbW91bnRzIE0zJ3MgL3RtcC9hYmMg
-b24gTTIncyAvdG1wL2FiYyBieSBpc3N1aW5nIA0KbW91bnQgY29tbWFuZCBvbiBNMi4gTW91bnQg
-c3VjY2Vzc2Z1bC4NCiAgICAgTm93IEkgd291bGQgZXhwZWN0IHRoZSBjb250ZW50cyBvZiBNMydz
-IC90bXAvYWJjIHRvIGJlIHNob3duIGFzIA0Kb3V0cHV0IG9mICdscycgaXNzdWUgb24gTTEuIEJ1
-dCB0aGlzIGlzIG5vdCBoYXBwZW5pbmcuIEkgYW0gdW5hYmxlIHRvIA0KY29tcHJlaGVuZCB0aGUg
-cmVhc29uLiBDb3VsZCB5b3UgcGxlYXNlIGd1aWRlIG1lPw0KDQogICAgIEFjY29yZGluZyB0byBt
-ZSwgdGhlIGNvbnRlbnRzIG9mIE0zIHNob3VsZCBoYXZlIHNob3duIHVwIGluIE0xJ3MgDQonbHMn
-IGNvbW1hbmQsICBiZWNhdXNlIHRoZSAvdG1wL2FiYyBvZiBNMSBpcyBub3RoaW5nICBidXQgYSAq
-bGl2ZSogDQpyZWZsZWN0aW9uIG9mIC90bXAvYWJjIG9mIE0yLiBTbyB3aGF0ZXZlciBjaGFuZ2Vz
-IGFyZSBkb25lIHRvIE0yJ3MgDQovdG1wL2FiYyBzaG91bGQgYmUgcmVmbGVjdGVkIG9uIE0xLiBI
-ZXJlLCBNMidzIC90bXAvYWJjIGlzIG1vdW50aW5nIE0zJ3MgDQovdG1wL2FiYyBhbmQgc28gdGhp
-cyBjaGFuZ2Ugc2hvdWxkIGJlIHJlZmxlY3RlZCBvbiBNMSdzIC90bXAvYWJjIGFzIA0Kd2VsbC4g
-QnV0IHRoaXMgaXNuJ3QgaGFwcGVuaW5nLg0KDQpLaW5kbHkgc3VnZ2VzdCBpZiBJIGFtIGluY29y
-cmVjdCBpbiBteSB1bmRlcnN0YW5kaW5nIG9yIHVzYWdlLg0KICAgVGhlIGNvbW1hbmQgSSBhbSB1
-c2luZyBpczoNCg0KICAgIE9uIE0xOiAgbW91bnQgLXQgbmZzIE0yOi90bXAvYWJjIC90bXAvYWJj
-DQogICAgT24gTTI6ICBtb3VudCAtdCBuZnMgTTM6L3RtcC9hYmMgL3RtcC9hYmMNCg0KUmVnYXJk
-cywNClNyZWVyYW0NCi0tDQpUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUg
-bGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRv
-IG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCk1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6
-Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQo=
+On Fri, Aug 26, 2011 at 10:58:15PM +0200, Jan-Marek Glogowski wrote:
+> -----BEGIN PGP SIGNED MESSAGE-----
+> Hash: SHA1
+> 
+> Hi
+> 
+> I'm on Debian Squeeze using NFSv4 (2.6.32 / 1.1.2). Groups ares
+> stored in LDAP and one contains a space. If I want to chgrp a file,
+> the chown system call gets stuck and I get an kernel "hung_task"
+> backtrace:
+> 
+> [76920.364077] INFO: task chown:31709 blocked for more than 120 seconds.
+> [76920.364781] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+> [76920.365894] chown         D 0000000000000000     0 31709  28415 0x00000004
+> [76920.365900]  ffffffff814611f0 0000000000000086 0000000000000000 ffff88000886de88
+> [76920.365906]  ffff88000886dde8 ffffffff810f6211 000000000000f9e0 ffff88000886dfd8
+> [76920.365910]  0000000000015780 0000000000015780 ffff88003ed269f0 ffff88003ed26ce8
+> [76920.365914] Call Trace:
+> [76920.365927]  [<ffffffff810f6211>] ? path_to_nameidata+0x15/0x37
+> [76920.365933]  [<ffffffff811035cd>] ? mntput_no_expire+0x23/0xee
+> [76920.365940]  [<ffffffff812fb99b>] ? __mutex_lock_common+0x122/0x192
+> [76920.365945]  [<ffffffff810f9c1c>] ? user_path_at+0x52/0x79
+> [76920.365948]  [<ffffffff812fbac3>] ? mutex_lock+0x1a/0x31
+> [76920.365954]  [<ffffffff810ed746>] ? chown_common+0x5b/0x7c
+> [76920.365958]  [<ffffffff812fe9f6>] ? do_page_fault+0x2e0/0x2fc
+> [76920.365962]  [<ffffffff810ed982>] ? sys_fchownat+0x53/0x70
+> [76920.365967]  [<ffffffff81010b42>] ? system_call_fastpath+0x16/0x1b
+> [77240.440046] nfs: server buildserv-next not responding, still trying
+> [95664.836086] nfs: server buildserv-next not responding, still trying
+> [96568.599435] nfs: server buildserv-next OK
+> 
+> So I backported the Debian nfs-utils 1.1.4 and updated the kernel to
+> the squeeze-backports version (2.6.39).
+> 
+> The backtrace is now gone, but the chgrp process is still stuck.
+> 
+> The client rpc.idmapd seems to be fine:
+> 
+> Aug 26 20:41:41 kvm-auth rpc.idmapd[973]: nfs4_gid_to_name: calling nsswitch->gid_to_name
+> Aug 26 20:41:41 kvm-auth rpc.idmapd[973]: nfs4_gid_to_name: nsswitch->gid_to_name returned 0
+> Aug 26 20:41:41 kvm-auth rpc.idmapd[973]: nfs4_gid_to_name: final return value is 0
+> Aug 26 20:41:41 kvm-auth rpc.idmapd[973]: Client 0: (group) id "1094" -> name "Domain Administrators@tvc.muenchen.de"
+> 
+> On the server side I see idmapd errors in the daemon.log (every 2
+> minutes, so I guess the backtrace is just suppressed - same as the
+> previous 120 sec timeout):
+> 
+> Aug 26 20:27:48 buildserv-next rpc.idmapd[16848]: nfsdcb: authbuf=* authtype=group
+> Aug 26 20:27:48 buildserv-next rpc.idmapd[16848]: nfsdcb: bad name in upcall
+> 
+> There is an invalid check in the idmapd code, which converts the
+> octal encoded values back to the original characters (see attached
+> patch).
+
+The patch makes sense to me, thanks; steved, could you apply?
+
+> What I don't know is how to implement the "real" error handling. I
+> don't think the client process should be stuck forever, just because
+> the server fails to find the encoded name.
+
+Agreed that if a name couldn't be mapped, we do still want to respond to
+the kernel to tell it that, so that it can handle the problem and
+continue.  I think we do that correctly.
+
+I think this case is a little different--if we have a failure here in
+the decoding, it means that there's a bug somewhere, either in the
+kernel's encoding or our parsing.  In that case there's no real recourse
+other than logging an error and hoping a helpful user tells us about it!
+
+--b.
+
+> 
+> Regards,
+> 
+> Jan-Marek Glogowski
+> -----BEGIN PGP SIGNATURE-----
+> Version: GnuPG v1.4.10 (GNU/Linux)
+> 
+> iEYEARECAAYFAk5YCOcACgkQj6MK58wZA3dMkwCghsoYANdq8FZNYCP/C8X5UH+w
+> hTEAnRN59WxzjHZ1dcDXIxu9G4hdFEOn
+> =cYDx
+> -----END PGP SIGNATURE-----
+
+> idmapd: correctly convert octal encoded field values
+> 
+> We want to check for (unsigned char) -1.
+> 
+> --- nfs-utils-1.2.4.orig/utils/idmapd/idmapd.c
+> +++ nfs-utils-1.2.4/utils/idmapd/idmapd.c
+> @@ -925,9 +925,9 @@ getfield(char **bpp, char *fld, size_t f
+>  		if (*bp == '\\') {
+>  			if ((n = sscanf(bp, "\\%03o", &val)) != 1)
+>  				return (-1);
+> -			if (val > (char)-1)
+> +			if (val > UCHAR_MAX)
+>  				return (-1);
+> -			*fld++ = (char)val;
+> +			*fld++ = val;
+>  			bp += 4;
+>  		} else {
+>  			*fld++ = *bp;
 
