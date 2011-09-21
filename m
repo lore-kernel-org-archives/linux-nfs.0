@@ -1,49 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merlin.infradead.org ([205.233.59.134]:37797 "EHLO
-	merlin.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751204Ab1ILJ4f convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 05:56:35 -0400
-Subject: Re: [PATCH 03/10] mm: Add support for a filesystem to control swap
- files
-From: Peter Zijlstra <a.p.zijlstra@chello.nl>
-To: Mel Gorman <mgorman@suse.de>
-Cc: Christoph Hellwig <hch@infradead.org>, Linux-MM <linux-mm@kvack.org>,
-        Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>
-Date: Mon, 12 Sep 2011 11:56:09 +0200
-In-Reply-To: <20110912093058.GA3207@suse.de>
-References: <1315566054-17209-1-git-send-email-mgorman@suse.de>
-	 <1315566054-17209-4-git-send-email-mgorman@suse.de>
-	 <20110909130007.GA11810@infradead.org> <20110909131550.GV14369@suse.de>
-	 <20110909133611.GB8155@infradead.org> <1315818285.26517.18.camel@twins>
-	 <20110912093058.GA3207@suse.de>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1315821369.26517.21.camel@twins>
+Received: from mx1.redhat.com ([209.132.183.28]:21317 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751077Ab1IUTb0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Sep 2011 15:31:26 -0400
+Message-ID: <4E7A3B84.7030600@RedHat.com>
+Date: Wed, 21 Sep 2011 15:31:16 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Bryan Schumaker <bjschuma@netapp.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/2] Changes in 3.1 kernel break NFS monitoring tools
+References: <1316629016-27740-1-git-send-email-steved@redhat.com> <4E7A2C27.8020209@netapp.com> <4E7A2D70.6000400@RedHat.com> <20110921185139.GC22961@fieldses.org>
+In-Reply-To: <20110921185139.GC22961@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2011-09-12 at 10:34 +0100, Mel Gorman wrote:
-> On Mon, Sep 12, 2011 at 11:04:45AM +0200, Peter Zijlstra wrote:
-> > On Fri, 2011-09-09 at 09:36 -0400, Christoph Hellwig wrote:
-> > > The equivalent of ->direct_IO should be used for both reads and writes.
-> > 
-> > So the difference between DIO and swapIO is that swapIO needs the block
-> > map pinned in memory.. So at the very least you'll need those
-> > swap_{activate,deactivate} aops. The read/write-page thingies could
-> > indeed be shared with DIO.
-> > 
-> 
-> I'm travelling at the moment so it'll be later in the week when I investigate
-> properly but I agree swap_[de|a]ctivate are still necessary. NFS does not
-> need to pin a block map but it's still necessary for calling xs_set_memalloc.
 
-Right.. but I think the hope was that we could replace the current swap
-bmap hackery with this and simplify the normal swap bits. But yeah,
-networked filesystems don't really bother with block maps on the client
-side ;-)
+
+On 09/21/2011 02:51 PM, J. Bruce Fields wrote:
+> On Wed, Sep 21, 2011 at 02:31:12PM -0400, Steve Dickson wrote:
+>>
+>>
+>> On 09/21/2011 02:25 PM, Bryan Schumaker wrote:
+>>> On 09/21/2011 02:16 PM, Steve Dickson wrote:
+>>>> Both parser of nfsiostat and mountstats depend on the 
+>>>> the first word in /proc/self/mountstats to be 'device'
+>>>> for them to parse through all the devices. 
+>>>>
+>>>> NFS mounts entries,  in 3.1,  no longer have start with
+>>>> the word 'device'. They start with the actual device, 
+>>>> which confused both set of parsing routines.
+>>>
+>>> I sent in a patch to fix this on the kernel end almost a month ago, but it must have gotten lost with the kernel.org confusion.  I included what I came up with below
+>> Interesting... Maybe we should still apply these patches until
+>> your patch shows up? They are definitely broken... 
+> 
+> May as well fix the problem on both sides if possible.
+I agree this..  I can always pull these back out if/when
+Bryan's patch shows up...
+
+steved.
+
+> 
+> --b.
+> 
+>>
+>> steved.
+>> .
+>>>
+>>> - Bryan
+>>>
+>>> [PATCH] VFS: Add "device" tag to /proc/self/mountstats
+>>>
+>>> nfsiostat was failing to find mounted filesystems on kernels after
+>>> 2.6.38 because of changes to show_vfsstat() by commit
+>>> c7f404b40a3665d9f4e9a927cc5c1ee0479ed8f9.  This patch adds back the
+>>> "device" tag before the nfs server entry so scripts can parse the
+>>> mountstats file correctly.
+>>>
+>>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+>>> ---
+>>>  fs/namespace.c |    1 +
+>>>  1 files changed, 1 insertions(+), 0 deletions(-)
+>>>
+>>> diff --git a/fs/namespace.c b/fs/namespace.c
+>>> index 22bfe82..1429114 100644
+>>> --- a/fs/namespace.c
+>>> +++ b/fs/namespace.c
+>>> @@ -1109,6 +1109,7 @@ static int show_vfsstat(struct seq_file *m, void *v)
+>>>  
+>>>  	/* device */
+>>>  	if (mnt->mnt_sb->s_op->show_devname) {
+>>> +		seq_puts(m, "device ");
+>>>  		err = mnt->mnt_sb->s_op->show_devname(m, mnt);
+>>>  	} else {
+>>>  		if (mnt->mnt_devname) {
+>>>
+>>>
+>>>>
+>>>> Steve Dickson (2):
+>>>>   nfsiostat: Breaks on 3.1 kernels
+>>>>   mountstats: Breaks on 3.1 kernels
+>>>>
+>>>>  tools/mountstats/mountstats.py |    9 +++++++++
+>>>>  tools/nfs-iostat/nfs-iostat.py |   11 +++++++++--
+>>>>  2 files changed, 18 insertions(+), 2 deletions(-)
+>>>>
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
