@@ -1,57 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60157 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932197Ab1INLp1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Sep 2011 07:45:27 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 04/25] nfsd4: eliminate impossible open replay case
-Date: Wed, 14 Sep 2011 07:45:00 -0400
-Message-Id: <1316000721-3289-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:38431 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752977Ab1IULwr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 07:52:47 -0400
+Received: by wyg34 with SMTP id 34so1801120wyg.19
+        for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 04:52:45 -0700 (PDT)
+Message-ID: <4E79D00A.2090108@tonian.com>
+Date: Wed, 21 Sep 2011 14:52:42 +0300
+From: Benny Halevy <bhalevy@tonian.com>
+To: Jim Rees <rees@umich.edu>
+CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH 0/3] replacement for "introduce pnfs private workqueue"
+References: <1316488728-24912-1-git-send-email-rees@umich.edu>
+In-Reply-To: <1316488728-24912-1-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-If open fails with any error other than nfserr_replay_me, then the main
-nfsd4_proc_compound() loop continues unconditionally to
-nfsd4_encode_operation(), which will always call encode_seqid_op_tail.
-Thus the condition we check for here does not occur.
+I've submitted this version to the public git tree
+(pnfs-all-3.1-rc4-2011-09-20)
+and rebased it onto v3.1-rc6 plus Tronds bugfixes for -rc7.
+(pnfs-all-3.1-rc6-2011-09-20)
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |   14 ++------------
- 1 files changed, 2 insertions(+), 12 deletions(-)
+Benny
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6cf729a..26b0c75 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2495,18 +2495,8 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
- 		open->op_stateowner = NULL;
- 		goto renew;
- 	}
--	if (open->op_seqid == sop->so_seqid - 1) {
--		if (sop->so_replay.rp_buflen)
--			return nfserr_replay_me;
--		/* The original OPEN failed so spectacularly
--		 * that we don't even have replay data saved!
--		 * Therefore, we have no choice but to continue
--		 * processing this OPEN; presumably, we'll
--		 * fail again for the same reason.
--		 */
--		dprintk("nfsd4_process_open1: replay with no replay cache\n");
--		goto renew;
--	}
-+	if (open->op_seqid == sop->so_seqid - 1)
-+		return nfserr_replay_me;
- 	if (open->op_seqid != sop->so_seqid)
- 		return nfserr_bad_seqid;
- renew:
--- 
-1.7.4.1
-
+On 2011-09-20 06:18, Jim Rees wrote:
+> The first patch is a bug fix that has already been sent upstream.  The next
+> two patches should replace the following in your tree:
+> 
+> 0359f0e pNFS: introduce pnfs private workqueue
+> d9b5876 SQUASHME: pnfs: simplify and clean up pnfsiod workqueue
+> ef9e1a70 SQUASHME: pnfs: do pnfsiod_start before registering layout drivers
+> 
+> This will re-order the patches so that the bug fix is first, followed by the
+> workqueue patches.
+> 
+> These are also available on the for-benny branch of my git repo.
+> 
+> Benny Halevy (1):
+>   SQUASHME: pnfs: simplify and clean up pnfsiod workqueue
+> 
+> Peng Tao (2):
+>   pnfsblock: add missing rpc_put_mount and path_put
+>   pnfs: introduce pnfs private workqueue
+> 
+>  fs/nfs/blocklayout/blocklayout.c |   21 +++++++++++---
+>  fs/nfs/objlayout/objio_osd.c     |   10 ++++++-
+>  fs/nfs/objlayout/objlayout.c     |    4 +-
+>  fs/nfs/pnfs.c                    |   54 +++++++++++++++++++++++++++++++++++++-
+>  fs/nfs/pnfs.h                    |    4 +++
+>  5 files changed, 84 insertions(+), 9 deletions(-)
+> 
