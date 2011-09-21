@@ -1,67 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:40307 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753993Ab1INGrD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Sep 2011 02:47:03 -0400
-Received: by wyh22 with SMTP id 22so1341008wyh.19
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Sep 2011 23:47:02 -0700 (PDT)
-Message-ID: <4E704DE2.1030308@tonian.com>
-Date: Wed, 14 Sep 2011 08:46:58 +0200
-From: Benny Halevy <bhalevy@tonian.com>
-To: tao.peng@emc.com
-CC: Trond.Myklebust@netapp.com, bergwolf@gmail.com, gusev.vitaliy@nexenta.com,
-        gusev.vitaliy@gmail.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
-References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com>  <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com>  <1315348373.19556.22.camel@lade.trondhjem.org>  <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com>  <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com>  <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com>  <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com>  <F19688880B763E40B28B2B462677FBF805C3299D2F@MX09A.corp.emc.com>  <1315592430.17611.15.camel@lade.trondhjem.org>  <4E6B0E48.7050208@tonian.com>  <CA+a=Yy5fMHPcSU4EoSo1uiOUCfi8vjRVPAjEYGZ+M00CwZ8Z9g@mail.gmail.com>  <4E6E6C3B.2040605@tonian.com> <1315861851.8350.11.camel@lade.trondhjem.org> <F19688880B763E40B28B2B462677FBF805C3299F96@MX09A.corp.emc.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805C3299F96@MX09A.corp.emc.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:52445 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750811Ab1IUTad convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 15:30:33 -0400
+Subject: Re: regression when opening directories on NFSv4
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 21 Sep 2011 15:30:12 -0400
+In-Reply-To: <20110921151039.4dc77b8c@tlielax.poochiereds.net>
+References: <20110921115854.02605a7f@tlielax.poochiereds.net>
+	 <1316631192.21183.40.camel@lade.trondhjem.org>
+	 <20110921151039.4dc77b8c@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1316633412.21183.59.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-09-13 10:09, tao.peng@emc.com wrote:
-> Hi, Trond,
->> -----Original Message-----
->> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org]
->> On Behalf Of Trond Myklebust
->> Sent: Tuesday, September 13, 2011 5:11 AM
->> To: Benny Halevy
->> Cc: Peng Tao; Peng, Tao; gusev.vitaliy@nexenta.com; gusev.vitaliy@gmail.com;
->> linux-nfs@vger.kernel.org
->> Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
->>
->> On Mon, 2011-09-12 at 13:31 -0700, Benny Halevy wrote:
->>> On 2011-09-12 07:56, Peng Tao wrote:
->>>>> The layout segments are not really in use while in LAYOUTCOMMIT.
->>>>> We only need to get the stateid right with respect to concurrent layout recalls.
->>>> LAYOUTCOMMIT takes lseg reference to mark them as in use so that
->>>> layoutrecall cannot free them.
->>>>
->>>
->>> And if layoutrecall would have freed layout segments during layoutcommit,
->>> what is your specific concern?
->>
->> That layoutcommit is supposed to return NFS4ERR_BAD_LAYOUT in that case
->> according to section 18.42.3 of RFC5661. I can't find anything in the
->> errata that changes that requirement.
-> Do you mean that if client sends layoutcommit at the same time as server sends layoutrecall for overlapped range, then
-> server must reject layoutcommit with NFS4ERR_BADLAYOUT when receiving layoutcommit?
+On Wed, 2011-09-21 at 15:10 -0400, Jeff Layton wrote: 
+> On Wed, 21 Sep 2011 14:53:12 -0400
+> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 > 
-> RFC5661 section 18.42.3 says:
->    If the layout identified in the arguments does not exist, the error
->    NFS4ERR_BADLAYOUT is returned.  The layout being committed may also
->    be rejected if it does not correspond to an existing layout with an
->    iomode of LAYOUTIOMODE4_RW.
+> > On Wed, 2011-09-21 at 11:58 -0400, Jeff Layton wrote: 
+> > > We had a regression reported against RHEL concerning the opening of
+> > > directories and it looks like that same problem is in current mainline
+> > > code too. If you do the following on a directory that is not yet in the
+> > > dcache you get an EISDIR error:
+> > > 
+> > >      open("/mnt/nfs/dir1", O_RDONLY)         = -1 EISDIR (Is a directory)
+> > > 
+> > > If however, you stat the directory first, the open works. The
+> > > difference seems to be that in the first case we're going through the
+> > > lookup codepath, and in the second we go through d_revalidate.
+> > > 
+> > > In the first case, we send an OPEN call to the server and it responds
+> > > with NFS4ERR_ISDIR. That gets translated to -EISDIR, and returned to
+> > > userspace. It wasn't always this way though, and I think the regression
+> > > was introduced in commit d953126a2.
+> > > 
+> > > That patch was added to fix an oops due to a buggy server, and I'm
+> > > unclear on how best to fix this. It seems like we need to allow the
+> > > server to fall back to doing a normal lookup when we get -EISDIR on the
+> > > OPEN call, but how do we ensure that we don't end up with the same oops
+> > > from that server bug?
+> > 
+> > How about returning an error if we get to the file->f_ops->open on a
+> > regular file in NFSv4?
+> > 
 > 
-> IMHO, in the above case, server cannot decide if the layout exists until client returns response to layoutrecall.
-
-Right, unless the server revokes the layout, but then there are also other consequences
-like SEQ4_STATUS_RECALLABLE_STATE_REVOKED.
-
-Benny
-
-> But I can't find
-> any requirement in RFC5661 that server must wait for layoutrecall's response before processing layoutcommit.
+> That would probably be reasonable. I'll see if I can come up with a
+> patch. The tricky part of course is ensuring that nothing regresses...
 > 
-> Thanks,
-> Tao
+> I think this is probably safe for the most part. The d_revalidate
+> codepath has always allowed you to end up with an open context with
+> NULL state. 
+> 
+> Granted the buggy server case here is exceedingly rare, but it seems
+> like the code already assumes that a ctx reached via filp may have a
+> NULL state pointer.
+
+I agree that the buggy server is rare, but you can potentially reproduce
+the problem using something like the following script
+
+mkdir b; touch a; while true do mv a c; mv b a; mv c b; done
+
+It will probably mostly either succeed or fail with ENOENT, but every
+now and then it should be possible to tickle the above issue.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
