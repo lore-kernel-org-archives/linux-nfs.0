@@ -1,54 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:36694 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:36129 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750965Ab1I0Ron (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Sep 2011 13:44:43 -0400
-Date: Tue, 27 Sep 2011 10:38:22 -0700
-From: Greg KH <gregkh@suse.de>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Ian Kent <raven@themaw.net>, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Jeff Layton <jlayton@redhat.com>, Miklos Szeredi <miklos@szeredi.hu>,
-        David Howells <dhowells@redhat.com>, viro@zeniv.linux.org.uk,
-        linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-Message-ID: <20110927173822.GC24197@suse.de>
-References: <1317076424.19951.32.camel@lade.trondhjem.org>
- <CA+55aFzi+0Z6HXJCxW=Uc1EZsp4qA00i+ihNcSX_v6bVTbU2BA@mail.gmail.com>
- <1317078563.21770.8.camel@lade.trondhjem.org>
- <CA+55aFzX+DyU7xhAmTLq0g_z6jyKuqoiyPdCYO+w2Xk7pECrqg@mail.gmail.com>
- <1317085155.21770.17.camel@lade.trondhjem.org>
- <CA+55aFxuaJ-a5u79D2pELU4HbWTrbWjG_4BNcvFqEOcM0H8G2Q@mail.gmail.com>
- <1317097001.3176.20.camel@perseus.themaw.net>
- <CA+55aFyzxvJJgOkojvV-83ejNtQnXeRnXerwzWRdwFgPF_yMhg@mail.gmail.com>
- <1317099091.3176.31.camel@perseus.themaw.net>
- <CA+55aFwf8z+pi3okC2GmuYYKTN3hz+j5Y4XX4B=VrOP+YG0Qpw@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CA+55aFwf8z+pi3okC2GmuYYKTN3hz+j5Y4XX4B=VrOP+YG0Qpw@mail.gmail.com>
+	id S1750789Ab1IUQAV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Sep 2011 12:00:21 -0400
+Date: Wed, 21 Sep 2011 12:00:20 -0400
+To: Stanislav Posonsky <psk@cpositive.ru>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Error: state manager failed on NFSv4 server base with error
+ 10018
+Message-ID: <20110921160020.GD21510@fieldses.org>
+References: <201109211334.34497.psk@cpositive.ru>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <201109211334.34497.psk@cpositive.ru>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Sep 27, 2011 at 08:22:24AM -0700, Linus Torvalds wrote:
-> On Mon, Sep 26, 2011 at 9:51 PM, Ian Kent <raven@themaw.net> wrote:
-> >
-> > Yes, I also thought that AT_NO_AUTOMOUNT would need to be removed and
-> > AT_AUTOMOUNT added as part of the change. But that can be done as a
-> > follow up.
+On Wed, Sep 21, 2011 at 01:34:34PM +0900, Stanislav Posonsky wrote:
+> 	After upgrade kernel at server from 2.6.38 to 2.6.39 series and higher, 
+> I was forced to drop to NFSv3. With NFSv4 I get (when I trying to read any 
+> file) hundreds message at client:
 > 
-> In fact, since reasonably automounting will always be an issue only
-> for directories (yeah, in theory you could extend it to regular files,
-> but why would you?) it's probably not even worth adding AT_AUTOMOUNT
-> at all - you can do the same thing by just adding a '/' at the end of
-> the filename instead, and suddenly it works for *all* the stat()
-> family system calls, not just the odd statat() ones that almost nobody
-> uses.
+> 	Error: state manager failed on NFSv4 server base with error 10018
 > 
-> So it would be easy to add the AT_AUTOMOUNT flag, but whoever argues
-> for it would have to be pretty convincing as to why it would be worth
-> it.
+> 	Now I have at server and cient:
 > 
-> I committed the patch I sent out with your and Trond's acks.
+> 	linux kernel 	3.0.4
+> 	nfs-utils		1.2.3
+> 	nfs4-acl-tools	0.3.3
+> 
+> 	File /etc/exports:
+> 
+> /opt                        192.168.8.0/24(fsid=0,rw,subtree_check)
+> 
+> ==================================================
+> 	With version 3
+> ==================================================
+> 
+> root|st01# mount -t nfs -o nfsvers=3 base:/opt /net
+> root|st01# mount | grep nfs
+> rpc_pipefs on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw)
+> base:/opt on /net type nfs (rw,nfsvers=3,addr=192.168.8.254)
+> 
+> 	In other console:
+> 
+> stas@st01$ ls -l /net/a*
+> -rw-r--r-- 1 root root 35 Сен 21 11:23 /net/a_file.txt
+> stas@st01$ cat /net/a_file.txt 
+> This is a test file on NFS share.
+> 
+> stas@st01$	
+> 
+> 	Works fine.
+> 
+> ==================================================
+> 	With version 4
+> ==================================================
+> 
+> root|st01# umount /net
+> root|st01# mount -t nfs base:/ /net
+> root|st01# mount | grep nfs
+> rpc_pipefs on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw)
+> base:/ on /net type nfs (rw,vers=4,addr=192.168.8.254,clientaddr=192.168.8.1)
+> 
+> 	In other console:
+> 
+> stas@st01$ ls -l /net/a*
+> -rw-r--r-- 1 root root 35 Сен 21 11:23 /net/a_file.txt
+> stas@st01$ cat /net/a_file.txt
+> 
+> 	And the process hangs... Then (Ctl+C):
+> 
+> ^C
+> stas@st01$ dmesg
+> Error: state manager failed on NFSv4 server base with error 10018
+> Error: state manager failed on NFSv4 server base with error 10018
+> ...
+> 
+> Could you help me solve this problem, please?
 
-Does any of this make any sense for the 3.0-stable tree as well?
+Could you get a network trace showing the "With version 4" case?
 
-greg k-h
+(tcpdump -s0 -wtmp.pcap, then run your test, then kill tcpdump and mail
+me tmp.pcap)
+
+--b.
