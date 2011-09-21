@@ -1,105 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41216 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752042Ab1IWQ0k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Sep 2011 12:26:40 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 6/7] VFS: Make stat and xattr calls not automount
-To: miklos@szeredi.hu, raven@themaw.net, viro@ZenIV.linux.org.uk,
-        torvalds@linux-foundation.org
-Cc: dhowells@redhat.com, jlayton@redhat.com, gregkh@suse.de,
-        linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-Date: Fri, 23 Sep 2011 17:25:53 +0100
-Message-ID: <20110923162553.13574.77501.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20110923162438.13574.52985.stgit@warthog.procyon.org.uk>
-References: <20110923162438.13574.52985.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+Received: from natasha.panasas.com ([67.152.220.90]:33508 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751609Ab1IULnB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 07:43:01 -0400
+Message-ID: <4E79CD8F.6050901@panasas.com>
+Date: Wed, 21 Sep 2011 14:42:07 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@tonian.com>
+CC: <tao.peng@emc.com>, <Trond.Myklebust@netapp.com>,
+        <linux-nfs@vger.kernel.org>, <honey@citi.umich.edu>, <rees@umich.edu>
+Subject: Re: [PATCH 2/3] pnfs: introduce pnfs private workqueue
+References: <1316488728-24912-1-git-send-email-rees@umich.edu> <1316488728-24912-3-git-send-email-rees@umich.edu> <1316558461.15093.4.camel@lade.trondhjem.org> <20110921002917.GA30770@merit.edu> <F19688880B763E40B28B2B462677FBF805C4952916@MX09A.corp.emc.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480226@SACMVEXC2-PRD.hq.netapp.com> <F19688880B763E40B28B2B462677FBF805C495295A@MX09A.corp.emc.com> <4E798C93.40409@tonian.com> <F19688880B763E40B28B2B462677FBF805C4952A24@MX09A.corp.emc.com> <4E79C2F0.30303@tonian.com> <F19688880B763E40B28B2B462677FBF805C4952A34@MX09A.corp.emc.com> <4E79CA34.3060602@tonian.com>
+In-Reply-To: <4E79CA34.3060602@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Make stat() and get/set/list/removexattr calls not automount so that the
-autofs behaviour remains the same.  This causes NFS, AFS and CIFS automounting
-behaviour to change, however.
+On 09/21/2011 02:27 PM, Benny Halevy wrote:
+>> Unless we do following:
+>> 1. preallocate memory for extent state convertion
+>> 2. use nfsiod/rpciod to handle bl_write_cleanup
+>> 3. for pnfs error case, create a kthread to recollapse and resend to MDS
+>> I don't quite understand. How do you use nfs state manager to do other tasks?
+> 
+> You need to keep a list of things to do hanging off of the nfs client structure
+> and set a bit in cl_state telling the state manager it has work to do
+> and wake it up.  It then needs to go over the list of, say nfs_inodes
+> and call into the layout driver to handle the errors.
+> 
+> Benny
 
-To vary the behaviour follow_automount() needs to know when it is mounting for
-autofs and when the aforementioned calls are the ones being processed.
+Good god, Is it not already too complicated?
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+The LD is out of the picture. You all seemed to agree that
+the LD has reported an io_done on the nfsiod/rpciod, and in the error case
+Generic layer needs to do it's coalescing on some other thread. So
+your description above is not correct, the LD is out of the picture.
 
- fs/stat.c  |    7 ++++---
- fs/xattr.c |    8 ++++----
- 2 files changed, 8 insertions(+), 7 deletions(-)
+It all looks too complicated for me. A pnfs workqueue for both 2 and 3
+above is very good. Specially since the workqueue also shares global
+pool threads, No? I like it that there is a preallocated thread for
+the error-case, think about it.
 
-diff --git a/fs/stat.c b/fs/stat.c
-index 305aa10..7fa96a1 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -80,7 +80,7 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
- 		      AT_NO_AUTOMOUNT | AT_AUTOMOUNT_FOLLOW |
- 		      AT_EMPTY_PATH)) != 0)
- 		goto out;
--	lookup_flags = at_to_lookup_flags(flag, LOOKUP_FOLLOW_ALL);
-+	lookup_flags = at_to_lookup_flags(flag, LOOKUP_FOLLOW);
- 
- 	error = user_path_at(dfd, filename, lookup_flags, &path);
- 	if (error)
-@@ -95,13 +95,14 @@ EXPORT_SYMBOL(vfs_fstatat);
- 
- int vfs_stat(const char __user *name, struct kstat *stat)
- {
--	return vfs_fstatat(AT_FDCWD, name, stat, 0);
-+	return vfs_fstatat(AT_FDCWD, name, stat, AT_NO_AUTOMOUNT);
- }
- EXPORT_SYMBOL(vfs_stat);
- 
- int vfs_lstat(const char __user *name, struct kstat *stat)
- {
--	return vfs_fstatat(AT_FDCWD, name, stat, AT_SYMLINK_NOFOLLOW);
-+	return vfs_fstatat(AT_FDCWD, name, stat,
-+			   AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT);
- }
- EXPORT_SYMBOL(vfs_lstat);
- 
-diff --git a/fs/xattr.c b/fs/xattr.c
-index 4921010..bb9d5be 100644
---- a/fs/xattr.c
-+++ b/fs/xattr.c
-@@ -290,7 +290,7 @@ SYSCALL_DEFINE5(setxattr, const char __user *, pathname,
- 	struct path path;
- 	int error;
- 
--	error = user_path_at(AT_FDCWD, pathname, LOOKUP_FOLLOW_ALL, &path);
-+	error = user_path_at(AT_FDCWD, pathname, LOOKUP_FOLLOW, &path);
- 	if (error)
- 		return error;
- 	error = mnt_want_write(path.mnt);
-@@ -386,7 +386,7 @@ SYSCALL_DEFINE4(getxattr, const char __user *, pathname,
- 	struct path path;
- 	ssize_t error;
- 
--	error = user_path_at(AT_FDCWD, pathname, LOOKUP_FOLLOW_ALL, &path);
-+	error = user_path_at(AT_FDCWD, pathname, LOOKUP_FOLLOW, &path);
- 	if (error)
- 		return error;
- 	error = getxattr(path.dentry, name, value, size);
-@@ -459,7 +459,7 @@ SYSCALL_DEFINE3(listxattr, const char __user *, pathname, char __user *, list,
- 	struct path path;
- 	ssize_t error;
- 
--	error = user_path_at(AT_FDCWD, pathname, LOOKUP_FOLLOW_ALL, &path);
-+	error = user_path_at(AT_FDCWD, pathname, LOOKUP_FOLLOW, &path);
- 	if (error)
- 		return error;
- 	error = listxattr(path.dentry, list, size);
-@@ -519,7 +519,7 @@ SYSCALL_DEFINE2(removexattr, const char __user *, pathname,
- 	struct path path;
- 	int error;
- 
--	error = user_path_at(AT_FDCWD, pathname, LOOKUP_FOLLOW_ALL, &path);
-+	error = user_path_at(AT_FDCWD, pathname, LOOKUP_FOLLOW, &path);
- 	if (error)
- 		return error;
- 	error = mnt_want_write(path.mnt);
-
+Thanks
+Boaz
