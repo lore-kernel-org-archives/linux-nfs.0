@@ -1,62 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54935 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753413Ab1IFJkd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Sep 2011 05:40:33 -0400
-Subject: Re: [PATCH -V6 00/26]  New ACL format for better NFSv4 acl
- interoperability
-From: Steven Whitehouse <swhiteho@redhat.com>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 06 Sep 2011 10:41:06 +0100
-Message-ID: <1315302066.2741.12.camel@menhir>
+Received: from flagman.cpositive.ru ([188.40.232.74]:48954 "EHLO
+	flagman.cpositive.ru" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751007Ab1IUEoI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 00:44:08 -0400
+Received: from base.home.my (unknown [95.189.24.151])
+	by flagman.cpositive.ru (Postfix) with ESMTPA id 7CAF427D0BB7
+	for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 04:35:49 +0000 (UTC)
+Received: from st01.localnet (st01.home.my [192.168.8.1])
+	by base.home.my (Postfix) with ESMTP id 65FDE66
+	for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 13:35:48 +0900 (IRKT)
+From: Stanislav Posonsky <psk@cpositive.ru>
+To: linux-nfs@vger.kernel.org
+Subject: Error: state manager failed on NFSv4 server base with error 10018
+Date: Wed, 21 Sep 2011 13:34:34 +0900
+Content-Type: Text/Plain;
+  charset="utf-8"
+Message-Id: <201109211334.34497.psk@cpositive.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+	After upgrade kernel at server from 2.6.38 to 2.6.39 series and higher, 
+I was forced to drop to NFSv3. With NFSv4 I get (when I trying to read any 
+file) hundreds message at client:
 
-On Mon, 2011-09-05 at 22:55 +0530, Aneesh Kumar K.V wrote:
-> Hi,
-> 
-> The following set of patches implements VFS and ext4 changes needed to implement
-> a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
-> extended by file masks to fit into the standard POSIX file permission model.
-> They are designed to work seamlessly locally as well as across the NFSv4 and
-> CIFS/SMB2 network file system protocols.
-> 
-> A user-space utility for displaying and changing richacls is available at [4]
-> (a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
-> 
-> [4] git://git.kernel.org/pub/scm/fs/acl/kvaneesh/richacl.git master
-> 
-> To test richacl on ext4 use -o richacl mount option. This mount option may later be
-> dropped in favour of a feature flag.
-> 
-> More details regarding richacl can be found at
-> http://acl.bestbits.at/richacl/
-> 
-> Changes from v5:
-> a) rebase to v3.1-rc4-131-g9e79e3e
-> 
-> NOTE: The kernel changes will be pushed to
-> git://git.kernel.org/pub/scm/linux/kernel/git/kvaneesh/linux-richacl.git richacl
-> when kernel.org is back
-> 
-> -aneesh
-> 
+	Error: state manager failed on NFSv4 server base with error 10018
 
-This looks like a really nice patch set. One question though is whether
-there are any test suites which can be used to gain confidence in the
-implementation? Obviously there is a fair amount of change here which
-has security implications, so it would be good to have some test results
-to go along with the patches,
+	Now I have at server and cient:
 
-Steve.
+	linux kernel 	3.0.4
+	nfs-utils		1.2.3
+	nfs4-acl-tools	0.3.3
 
+	File /etc/exports:
 
+/opt                        192.168.8.0/24(fsid=0,rw,subtree_check)
+
+==================================================
+	With version 3
+==================================================
+
+root|st01# mount -t nfs -o nfsvers=3 base:/opt /net
+root|st01# mount | grep nfs
+rpc_pipefs on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw)
+base:/opt on /net type nfs (rw,nfsvers=3,addr=192.168.8.254)
+
+	In other console:
+
+stas@st01$ ls -l /net/a*
+-rw-r--r-- 1 root root 35 Сен 21 11:23 /net/a_file.txt
+stas@st01$ cat /net/a_file.txt 
+This is a test file on NFS share.
+
+stas@st01$	
+
+	Works fine.
+
+==================================================
+	With version 4
+==================================================
+
+root|st01# umount /net
+root|st01# mount -t nfs base:/ /net
+root|st01# mount | grep nfs
+rpc_pipefs on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw)
+base:/ on /net type nfs (rw,vers=4,addr=192.168.8.254,clientaddr=192.168.8.1)
+
+	In other console:
+
+stas@st01$ ls -l /net/a*
+-rw-r--r-- 1 root root 35 Сен 21 11:23 /net/a_file.txt
+stas@st01$ cat /net/a_file.txt
+
+	And the process hangs... Then (Ctl+C):
+
+^C
+stas@st01$ dmesg
+Error: state manager failed on NFSv4 server base with error 10018
+Error: state manager failed on NFSv4 server base with error 10018
+...
+
+Could you help me solve this problem, please?
+-- 
+  With best regards, Stanislav 
