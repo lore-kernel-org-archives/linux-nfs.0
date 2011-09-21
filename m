@@ -1,57 +1,192 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:16040 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755561Ab1ITKOZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Sep 2011 06:14:25 -0400
-Subject: [PATCH v4 0/8] SUNRPC: make rpcbind clients allocated and destroyed
-	dynamically
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net
-Date: Tue, 20 Sep 2011 14:13:32 +0400
-Message-ID: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
+Received: from mexforward.lss.emc.com ([128.222.32.20]:32739 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752990Ab1IULK2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 07:10:28 -0400
+From: <tao.peng@emc.com>
+To: <bhalevy@tonian.com>
+CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
+        <honey@citi.umich.edu>, <rees@umich.edu>
+Date: Wed, 21 Sep 2011 07:10:03 -0400
+Subject: RE: [PATCH 2/3] pnfs: introduce pnfs private workqueue
+Message-ID: <F19688880B763E40B28B2B462677FBF805C4952A34@MX09A.corp.emc.com>
+References: <1316488728-24912-1-git-send-email-rees@umich.edu>
+ <1316488728-24912-3-git-send-email-rees@umich.edu>
+ <1316558461.15093.4.camel@lade.trondhjem.org>
+ <20110921002917.GA30770@merit.edu>
+ <F19688880B763E40B28B2B462677FBF805C4952916@MX09A.corp.emc.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480226@SACMVEXC2-PRD.hq.netapp.com>
+ <F19688880B763E40B28B2B462677FBF805C495295A@MX09A.corp.emc.com>
+ <4E798C93.40409@tonian.com>
+ <F19688880B763E40B28B2B462677FBF805C4952A24@MX09A.corp.emc.com>
+ <4E79C2F0.30303@tonian.com>
+In-Reply-To: <4E79C2F0.30303@tonian.com>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-v4:
-1) creation and destruction on rpcbind clients now depends on service program
-versions "vs_hidden" flag.
+> -----Original Message-----
+> From: Benny Halevy [mailto:bhalevy@tonian.com]
+> Sent: Wednesday, September 21, 2011 6:57 PM
+> To: Peng, Tao
+> Cc: Trond.Myklebust@netapp.com; linux-nfs@vger.kernel.org;
+> honey@citi.umich.edu; rees@umich.edu
+> Subject: Re: [PATCH 2/3] pnfs: introduce pnfs private workqueue
+> 
+> On 2011-09-21 13:23, tao.peng@emc.com wrote:
+> > Hi, Benny,
+> >
+> >> -----Original Message-----
+> >> From: linux-nfs-owner@vger.kernel.org
+> [mailto:linux-nfs-owner@vger.kernel.org]
+> >> On Behalf Of Benny Halevy
+> >> Sent: Wednesday, September 21, 2011 3:05 PM
+> >> To: Peng, Tao
+> >> Cc: Trond.Myklebust@netapp.com; linux-nfs@vger.kernel.org;
+> >> honey@citi.umich.edu; rees@umich.edu
+> >> Subject: Re: [PATCH 2/3] pnfs: introduce pnfs private workqueue
+> >>
+> >> On 2011-09-21 08:16, tao.peng@emc.com wrote:
+> >>>> -----Original Message-----
+> >>>> From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
+> >>>> Sent: Wednesday, September 21, 2011 12:20 PM
+> >>>> To: Peng, Tao
+> >>>> Cc: bhalevy@tonian.com; linux-nfs@vger.kernel.org; honey@citi.umich.edu;
+> >>>> rees@umich.edu
+> >>>> Subject: RE: [PATCH 2/3] pnfs: introduce pnfs private workqueue
+> >>>>
+> >>>>> -----Original Message-----
+> >>>>> From: tao.peng@emc.com [mailto:tao.peng@emc.com]
+> >>>>> Sent: Tuesday, September 20, 2011 10:44 PM
+> >>>>> To: Myklebust, Trond
+> >>>>> Cc: bhalevy@tonian.com; linux-nfs@vger.kernel.org;
+> >>>> honey@citi.umich.edu;
+> >>>>> rees@umich.edu
+> >>>>> Subject: RE: [PATCH 2/3] pnfs: introduce pnfs private workqueue
+> >>>>>
+> >>>>>
+> >>>>>> -----Original Message-----
+> >>>>>> From: linux-nfs-owner@vger.kernel.org
+> >>>>>> [mailto:linux-nfs-owner@vger.kernel.org]
+> >>>>>> On Behalf Of Jim Rees
+> >>>>>> Sent: Wednesday, September 21, 2011 8:29 AM
+> >>>>>> To: Trond Myklebust
+> >>>>>> Cc: Benny Halevy; linux-nfs@vger.kernel.org; peter honeyman
+> >>>>>> Subject: Re: [PATCH 2/3] pnfs: introduce pnfs private workqueue
+> >>>>>>
+> >>>>>> Trond Myklebust wrote:
+> >>>>>>
+> >>>>>>   On Mon, 2011-09-19 at 23:18 -0400, Jim Rees wrote:
+> >>>>>>   > From: Peng Tao <bergwolf@gmail.com>
+> >>>>>>   >
+> >>>>>>   > For layoutdriver io done functions, default workqueue is not a
+> >>>> good
+> >>>>> place as
+> >>>>>>   > the code is executed in IO path. So add a pnfs private workqueue
+> >>>> to
+> >>>>> handle
+> >>>>>>   > them.
+> >>>>>>   >
+> >>>>>>   > Also change block and object layout code to make use of this
+> >>>> private
+> >>>>>>   > workqueue.
+> >>>>>>   >
+> >>>>>>
+> >>>>>>   Wait, what????
+> >>>>>>
+> >>>>>>   Why is the I/O path (i.e. the nfsiod queue) inappropriate for
+> >>>>>>   layoutdriver io_done functions?
+> >>>>> The current code uses the system_wq to handle io_done functions. If
+> >>>> any
+> >>>>> function allocates memory in system_wq and causes dirty writeback in
+> >>>> nfs
+> >>>>> path, the io_done function can never be called because it is after the
+> >>>> original
+> >>>>> function in the system_wq. And you said that the rpciod/nfsiod is not
+> >>>> the
+> >>>>> ideal place because of memory allocation. So I suggested pnfs private
+> >>>>> workqueue and Benny agreed on it.
+> >>>>
+> >>>> You appear to be optimizing for a corner case. Why?
+> >>> Current code uses system_wq for io_done and it can cause deadlock. So this is
+> >> more than just an optimization.
+> >>>
+> >>>>
+> >>>> IOW: why do we need a whole new workqueue for something which is
+> >>>> supposed to be extremely rare? Why can't we just use standard keventd or
+> >>>> allocate a perfectly normal thread (e.g. the state recovery thread)?
+> >>> Unlike nfsiod and rpciod, keventd (aka, system_wq) is not created with
+> >> WQ_MEM_RECLAIM, indicating that it should not be used for IO path which can
+> be
+> >> invoked during memory reclaim. And I agree that a normal kthread can solve it.
+> >>>
+> >>> However, the blocklayout write end_io function still needs a context where it
+> can
+> >> allocate memory to convert extent state (for every IO that touches new extents).
+> If
+> >> you look into the patch, we are not just using the pnfs private workqueue to
+> handle
+> >> pnfs_ld_read/write_done, but also calling mark_extents_written() inside the
+> >> workqueue.
+> >>
+> >> Can this memory be preallocated before the I/O for the common case?
+> > It is possible to preallocate memory for the common case. But it doesn't remove
+> the need for workqueue. Without workqueue, we will need to put a bunch of extent
+> manipulation code into bio->end_io, which is executed in bottom half and we
+> always need minimize its execution.
+> >
+> > Unless we do following:
+> > 1. preallocate memory for extent state convertion
+> > 2. use nfsiod/rpciod to handle bl_write_cleanup
+> > 3. for pnfs error case, create a kthread to recollapse and resend to MDS
+> >
+> > not sure if it worth the complexity though...
+> 
+> We do want to avoid memory allocation on the completion path to ensure
+> completion under memory pressure and graceful handling of low memory
+> conditions
+> so I think this approach is worth while.
+> 
+> Having a lightweight handler on the bottom half done path is ok too.
+> 
+> Doing the heavy lifting for the (assumingly rare) error case in a workqueue/
+> kthread makes a sense, just it mustn't block.  Could you use the nfs state manager
+> for that?
+I don't quite understand. How do you use nfs state manager to do other tasks?
 
-This patch is required for further RPC layer virtualization, because rpcbind
-clients have to be per network namespace.
-To achive this, we have to untie network namespace from rpcbind clients sockets.
-The idea of this patch set is to make rpcbind clients non-static. I.e. rpcbind
-clients will be created during first RPC service creation, and destroyed when
-last RPC service is stopped.
-With this patch set rpcbind clients can be virtualized easely.
+Thanks,
+Tao
 
+> 
+> Benny
+> 
+> >
+> > Cheers,
+> > Tao
+> >
+> >>
+> >> Benny
+> >>
+> >>> If we don't create a pnfs private workqueue for pnfs_ld_read/write_done (i.e.,
+> by
+> >> just creating a normal kthread in error case), we would still have to create a
+> >> workqueue inside blocklayout driver to handle write end_io. And if blocklayout
+> has a
+> >> private workqueue, it no longer needs the normal kthread for read/write_done
+> error
+> >> handling, which leaves the kthread only specific to object layout (if it doesn't
+> need a
+> >> workqueue like blocklayout does).
+> >>>
+> >>> So I think a generic pnfs workqueue is better because it simplifies things and
+> solve
+> >> both problems.
+> >>>
+> >>> Best,
+> >>> Tao
+> >>>
+> >>>>
+> >>>> Trond
+> >>>
 
-The following series consists of:
-
----
-
-Stanislav Kinsbursky (8):
-      SUNRPC: introduce helpers for reference counted rpcbind clients
-      SUNRPC: use rpcbind reference counting helpers
-      SUNRPC: introduce svc helpers for prepairing rpcbind infrastructure
-      SUNRPC: setup rpcbind clients if service requires it
-      SUNRPC: cleanup service destruction
-      NFSd: call svc rpcbind cleanup explicitly
-      SUNRPC: remove rpcbind clients creation during service registering
-      SUNRPC: remove rpcbind clients destruction on module cleanup
-
-
- fs/nfsd/nfssvc.c            |    2 +
- include/linux/sunrpc/clnt.h |    2 +
- include/linux/sunrpc/svc.h  |    1 +
- net/sunrpc/rpcb_clnt.c      |   85 ++++++++++++++++++++++++++++---------------
- net/sunrpc/sunrpc_syms.c    |    3 --
- net/sunrpc/svc.c            |   48 +++++++++++++++++++++++-
- 6 files changed, 105 insertions(+), 36 deletions(-)
-
--- 
-Signature
