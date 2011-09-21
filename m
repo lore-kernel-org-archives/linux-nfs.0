@@ -1,49 +1,30 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] idmapd: Fix decoding of octal encoded fields.
-Date: Wed, 21 Sep 2011 15:40:08 -0400
-Message-ID: <4E7A3D98.1010405@RedHat.com>
-References: <alpine.DEB.2.02.1109201952540.26882@users.fbihome.de>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Subject: Linux pNFS status meeting 09/21 - CANCELED
+Date: Wed, 21 Sep 2011 13:37:29 -0700
+Message-ID: <OF278299F1.C950A456-ON88257912.007115AF-88257912.0071474D@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Jan-Marek Glogowski <glogow-iG8UcmBuX++ELgA04lAiVw@public.gmane.org>
+Content-Type: text/plain; charset="US-ASCII"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35281 "EHLO mx1.redhat.com"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:47357 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751077Ab1IUTkO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Sep 2011 15:40:14 -0400
-In-Reply-To: <alpine.DEB.2.02.1109201952540.26882-icXI/ei3vljFQw+nKBmkQg@public.gmane.org>
+	id S1750751Ab1IUUh6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Sep 2011 16:37:58 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e4.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p8LKE5Co018937
+	for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 16:14:05 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p8LKbabl452140
+	for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 16:37:41 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p8LKbadd032507
+	for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 16:37:36 -0400
+Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p8LKbaDo032502
+	for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 16:37:36 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 09/20/2011 02:14 PM, Jan-Marek Glogowski wrote:
-> The decoded octal will always be positive and (char) -1 is negative. Any field containing an encoded octal will be rejected.
-> 
-> As the encoded value should be an unsigned char, fix the check to reject all values > (unsigned char) -1 = UCHAR_MAX, as this indicate an error in the encoding.
-> 
-> Signed-off-by: Jan-Marek Glogowski <glogow-iG8UcmBuX++ELgA04lAiVw@public.gmane.org>
-Committed..
-
-steved.
-
-> 
-> --- nfs-utils-1.2.4.orig/utils/idmapd/idmapd.c
-> +++ nfs-utils-1.2.4/utils/idmapd/idmapd.c
-> @@ -925,9 +925,9 @@ getfield(char **bpp, char *fld, size_t f
->          if (*bp == '\\') {
->              if ((n = sscanf(bp, "\\%03o", &val)) != 1)
->                  return (-1);
-> -            if (val > (char)-1)
-> +            if (val > UCHAR_MAX)
->                  return (-1);
-> -            *fld++ = (char)val;
-> +            *fld++ = val;
->              bp += 4;
->          } else {
->              *fld++ = *bp;
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Neither me or Dean can make it this week, so if it is needed someone else 
+can call the meeting.
+Sorry, Marc.
