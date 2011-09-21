@@ -1,52 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:51937 "EHLO e1.ny.us.ibm.com"
+Received: from fieldses.org ([174.143.236.118]:59102 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754769Ab1IHKgR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Sep 2011 06:36:17 -0400
-Received: from /spool/local
-	by us.ibm.com with XMail ESMTP
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Thu, 8 Sep 2011 06:36:13 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: agruen@kernel.org, akpm@linux-foundation.org, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V6 17/26] richacl: Permission check algorithm
-In-Reply-To: <20110907215022.GI8074@fieldses.org>
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1315243548-18664-18-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20110907215022.GI8074@fieldses.org>
-Date: Thu, 08 Sep 2011 16:04:44 +0530
-Message-ID: <877h5j5nln.fsf@skywalker.in.ibm.com>
-Content-Type: text/plain; charset=us-ascii
+	id S1751818Ab1IUO62 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Sep 2011 10:58:28 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+        Christoph Hellwig <hch@infradead.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Mimi Zohar <zohar@linux.vnet.ibm.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 6/6] leases: break read leases on link
+Date: Wed, 21 Sep 2011 10:58:17 -0400
+Message-Id: <1316617097-21384-7-git-send-email-bfields@redhat.com>
+In-Reply-To: <1316617097-21384-1-git-send-email-bfields@redhat.com>
+References: <1316617097-21384-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 7 Sep 2011 17:50:22 -0400, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Mon, Sep 05, 2011 at 10:55:39PM +0530, Aneesh Kumar K.V wrote:
-> > From: Andreas Gruenbacher <agruen@kernel.org>
-> > 
-> > As in the standard POSIX file permission model, each process is the
-> > owner, group, or other file class.  A process is
-> > 
-> >   - in the owner file class if it owns the file,
-> >   - in the group file class if it is in the file's owning group or it
-> >     matches any of the user or group entries, and
-> >   - in the other file class otherwise.
-> > 
-> > Each file class is associated with a file mask.
-> > 
-> > A richacl grants a requested access if the NFSv4 acl in the richacl
-> > grants the requested permissions (according to the NFSv4 permission
-> > check algorithm) and the file mask that applies to the process includes
-> > the requested permissions.
-> 
-> I assume that by default any ui normally recalculates an upper-bound
-> mask automatically when you add an ace, as the posix setfacl does, so
-> the user doesn't have to think about masks too much?
-> 
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/namei.c |    7 +++++--
+ 1 files changed, 5 insertions(+), 2 deletions(-)
 
-yes. richacl userspace command does this.
-
--aneesh
+diff --git a/fs/namei.c b/fs/namei.c
+index c0220f7..f6de42d 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2904,8 +2904,11 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
+ 	/* Make sure we don't allow creating hardlink to an unlinked file */
+ 	if (inode->i_nlink == 0)
+ 		error =  -ENOENT;
+-	else
+-		error = dir->i_op->link(old_dentry, dir, new_dentry);
++	else {
++		error = break_lease(inode, O_WRONLY);
++		if (!error)
++			error = dir->i_op->link(old_dentry, dir, new_dentry);
++	}
+ 	mutex_unlock(&inode->i_mutex);
+ 	if (!error)
+ 		fsnotify_link(dir, inode, new_dentry);
+-- 
+1.7.4.1
 
