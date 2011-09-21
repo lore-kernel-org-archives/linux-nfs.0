@@ -1,62 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f52.google.com ([209.85.215.52]:35440 "EHLO
-	mail-ew0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755159Ab1IMQIi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 12:08:38 -0400
-Received: by ewy28 with SMTP id 28so446557ewy.11
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Sep 2011 09:08:37 -0700 (PDT)
-In-Reply-To: <1315622957-1549-1-git-send-email-bergwolf@gmail.com>
-References: <1315622957-1549-1-git-send-email-bergwolf@gmail.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Wed, 14 Sep 2011 00:08:16 +0800
-Message-ID: <CA+a=Yy4rfqVi-R4SoC9ABnB3G-RApoGUf+Kv4s_oR5F+Wzp5dA@mail.gmail.com>
-Subject: Re: [PATCH 1/2] pnfsblock: fix NULL pointer dereference
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Benny Halevy <bhalevy@tonian.com>, Jim Rees <rees@umich.edu>,
-        Peng Tao <peng_tao@emc.com>, linuxnfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from natasha.panasas.com ([67.152.220.90]:60230 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752416Ab1IUJvi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 05:51:38 -0400
+Message-ID: <4E79B39B.1080102@panasas.com>
+Date: Wed, 21 Sep 2011 12:51:23 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "Matt W. Benjamin" <matt@linuxbox.com>,
+        "Adam C. Emerson" <aemerson@linuxbox.com>
+Subject: Re: [PATCH 1/1] Prevent 3.0 from crashing if it receives a partial
+ layout
+References: <1316544755-31845-1-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1316544755-31845-1-git-send-email-iisaman@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-U29ycnksIGZvcmdvdCB0byBjYyBuZnMgbGlzdC4KCk9uIFNhdCwgU2VwIDEwLCAyMDExIGF0IDEw
-OjQ5IEFNLCBQZW5nIFRhbyA8YmVyZ3dvbGZAZ21haWwuY29tPiB3cm90ZToKPiBibF9hZGRfcGFn
-ZV90b19iaW8gcmV0dXJucyBlcnJvciBwb2ludGVyLiBiaW8gc2hvdWxkIGJlIHJlc2V0IHRvCj4g
-TlVMTCBpbiBmYWlsdXJlIGNhc2VzIGFzIHRoZSBvdXQgcGF0aCBhbHdheXMgY2FsbHMgYmxfc3Vi
-bWl0X2Jpby4KPgo+IFNpZ25lZC1vZmYtYnk6IFBlbmcgVGFvIDxwZW5nX3Rhb0BlbWMuY29tPgo+
-IC0tLQo+IMKgZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMgfCDCoCDCoDMgKysrCj4g
-wqAxIGZpbGVzIGNoYW5nZWQsIDMgaW5zZXJ0aW9ucygrKSwgMCBkZWxldGlvbnMoLSkKPgo+IGRp
-ZmYgLS1naXQgYS9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYyBiL2ZzL25mcy9ibG9j
-a2xheW91dC9ibG9ja2xheW91dC5jCj4gaW5kZXggN2RlYmI1NS4uMDkyMGMzNSAxMDA2NDQKPiAt
-LS0gYS9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYwo+ICsrKyBiL2ZzL25mcy9ibG9j
-a2xheW91dC9ibG9ja2xheW91dC5jCj4gQEAgLTI5Miw2ICsyOTIsNyBAQCBibF9yZWFkX3BhZ2Vs
-aXN0KHN0cnVjdCBuZnNfcmVhZF9kYXRhICpyZGF0YSkKPiDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBibF9lbmRf
-aW9fcmVhZCwgcGFyKTsKPiDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoGlmIChJ
-U19FUlIoYmlvKSkgewo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
-IMKgIMKgcmRhdGEtPnBuZnNfZXJyb3IgPSBQVFJfRVJSKGJpbyk7Cj4gKyDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBiaW8gPSBOVUxMOwo+IMKgIMKgIMKgIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgZ290byBvdXQ7Cj4gwqAgwqAgwqAg
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqB9Cj4gwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqB9Cj4g
-QEAgLTU4MSw2ICs1ODIsNyBAQCBmaWxsX2ludmFsaWRfZXh0Ogo+IMKgIMKgIMKgIMKgIMKgIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGJs
-X2VuZF9pb193cml0ZV96ZXJvLCBwYXIpOwo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
-IMKgIMKgaWYgKElTX0VSUihiaW8pKSB7Cj4gwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAg
-wqAgwqAgwqAgwqAgwqAgwqB3ZGF0YS0+cG5mc19lcnJvciA9IFBUUl9FUlIoYmlvKTsKPiArIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGJpbyA9IE5VTEw7Cj4g
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqBnb3RvIG91dDsK
-PiDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoH0KPiDCoCDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoC8qIEZJWE1FOiBUaGlzIHNob3VsZCBiZSBkb25lIGluIGJpX2Vu
-ZF9pbyAqLwo+IEBAIC02MjksNiArNjMxLDcgQEAgbmV4dF9wYWdlOgo+IMKgIMKgIMKgIMKgIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGJsX2VuZF9pb193
-cml0ZSwgcGFyKTsKPiDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoGlmIChJU19FUlIoYmlvKSkgewo+
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgd2RhdGEtPnBuZnNfZXJyb3IgPSBQ
-VFJfRVJSKGJpbyk7Cj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBiaW8gPSBO
-VUxMOwo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgZ290byBvdXQ7Cj4gwqAg
-wqAgwqAgwqAgwqAgwqAgwqAgwqB9Cj4gwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqBpc2VjdCArPSBQ
-QUdFX0NBQ0hFX1NFQ1RPUlM7Cj4gLS0KPiAxLjcuMS4yNjIuZzVlZjNkCj4KPgoKCgotLSAKVGhh
-bmtzLAotQmVyZ3dvbGYKTu+/ve+/ve+/ve+/ve+/vXLvv73vv71577+977+977+9Yu+/vVjvv73v
-v73Hp3bvv71e77+9Kd66ey5u77+9K++/ve+/ve+/ve+/vXvvv73vv73vv70i77+977+9Xm7vv71y
-77+977+977+9eu+/vRrvv73vv71o77+977+977+977+9Ju+/ve+/vR7vv71H77+977+977+9aO+/
-vQMo77+96ZqO77+93aJqIu+/ve+/vRrvv70bbe+/ve+/ve+/ve+/ve+/vXrvv73elu+/ve+/ve+/
-vWbvv73vv73vv71o77+977+977+9fu+/vW3vv70=
+On 09/20/2011 09:52 PM, Fred Isaman wrote:
+> This is a backport of critical parts of
+> commit 7c24d9489f "NFSv4.1: File layout only supports whole file layouts"
+> 
+> It prevents the file layout driver from (incorrectly) using
+> partial layouts, but ignores the part of the referenced commmit that
+> relies on additional machinery to change the LAYOUTGET request
+> based on layout driver.
+> 
+> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+
+Hi Fred
+
+Do you know of any plans/timetables to support segments in the files-layout-driver?
+Both objects and blocks do support it.
+Is there some missing generic infrastructure needed or its only LD stuff?
+
+Just that I know of a few files-based servers that can only serve segments
+and are unusable with current Linux-pNFS-client which is a great pity.
+
+I wish it could be ready for next BAT
+
+Thanks
+Boaz
+
+> ---
+>  fs/nfs/nfs4filelayout.c |    8 ++++++++
+>  fs/nfs/pnfs.c           |    3 ++-
+>  2 files changed, 10 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+> index 614c4d2..75af812 100644
+> --- a/fs/nfs/nfs4filelayout.c
+> +++ b/fs/nfs/nfs4filelayout.c
+> @@ -428,6 +428,14 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+>  
+>  	dprintk("--> %s\n", __func__);
+>  
+> +	/* FIXME: remove this check when layout segment support is added */
+> +	if (lgr->range.offset != 0 ||
+> +	    lgr->range.length != NFS4_MAX_UINT64) {
+> +		dprintk("%s Only whole file layouts supported. Use MDS i/o\n",
+> +			__func__);
+> +		goto out;
+> +	}
+> +
+>  	if (fl->pattern_offset > lgr->range.offset) {
+>  		dprintk("%s pattern_offset %lld too large\n",
+>  				__func__, fl->pattern_offset);
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index a726c0a..36d2a29 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -980,7 +980,8 @@ pnfs_update_layout(struct inode *ino,
+>  		arg.offset -= pg_offset;
+>  		arg.length += pg_offset;
+>  	}
+> -	arg.length = PAGE_CACHE_ALIGN(arg.length);
+> +	if (arg.length != NFS4_MAX_UINT64)
+> +		arg.length = PAGE_CACHE_ALIGN(arg.length);
+>  
+>  	lseg = send_layoutget(lo, ctx, &arg, gfp_flags);
+>  	if (!lseg && first) {
+
