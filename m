@@ -1,118 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:7266 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:5456 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752759Ab1IPPEV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2011 11:04:21 -0400
-Subject: RE: [PATCH] nfs4: serialize layoutcommit
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: tao.peng@emc.com
-Cc: bergwolf@gmail.com, bhalevy@tonian.com, gusev.vitaliy@nexenta.com,
-        linux-nfs@vger.kernel.org
-Date: Fri, 16 Sep 2011 11:04:04 -0400
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805C495258C@MX09A.corp.emc.com>
-References: <1315802900-1548-1-git-send-email-bergwolf@gmail.com>
-	 <1316108327.5271.4.camel@lade.trondhjem.org.localdomain>
-	 <1316108897.5271.6.camel@lade.trondhjem.org.localdomain>
-	 <F19688880B763E40B28B2B462677FBF805C495258C@MX09A.corp.emc.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1316185444.5570.3.camel@lade.trondhjem.org>
+	id S1750869Ab1IUEUO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 00:20:14 -0400
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: [PATCH 2/3] pnfs: introduce pnfs private workqueue
+Date: Tue, 20 Sep 2011 21:20:12 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480226@SACMVEXC2-PRD.hq.netapp.com>
+In-reply-to: <F19688880B763E40B28B2B462677FBF805C4952916@MX09A.corp.emc.com>
+References: <1316488728-24912-1-git-send-email-rees@umich.edu> <1316488728-24912-3-git-send-email-rees@umich.edu> <1316558461.15093.4.camel@lade.trondhjem.org> <20110921002917.GA30770@merit.edu> <F19688880B763E40B28B2B462677FBF805C4952916@MX09A.corp.emc.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: <tao.peng@emc.com>
+Cc: <bhalevy@tonian.com>, <linux-nfs@vger.kernel.org>, <honey@citi.umich.edu>,
+        <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2011-09-16 at 07:58 -0400, tao.peng@emc.com wrote: 
-> Hi, Trond,
+> -----Original Message-----
+> From: tao.peng@emc.com [mailto:tao.peng@emc.com]
+> Sent: Tuesday, September 20, 2011 10:44 PM
+> To: Myklebust, Trond
+> Cc: bhalevy@tonian.com; linux-nfs@vger.kernel.org;
+honey@citi.umich.edu;
+> rees@umich.edu
+> Subject: RE: [PATCH 2/3] pnfs: introduce pnfs private workqueue
+> 
 > 
 > > -----Original Message-----
-> > From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com]
-> > Sent: Friday, September 16, 2011 1:48 AM
-> > To: Peng Tao
-> > Cc: bhalevy@tonian.com; Vitaliy Gusev; linux-nfs@vger.kernel.org; Peng, Tao
-> > Subject: Re: [PATCH] nfs4: serialize layoutcommit
-> > 
-> > On Thu, 2011-09-15 at 13:38 -0400, Trond Myklebust wrote:
-> > > On Sun, 2011-09-11 at 21:48 -0700, Peng Tao wrote:
-> > > > Current pnfs_layoutcommit_inode can not handle parallel layoutcommit.
-> > > > As Trond suggested, there is no need for client to optimize for
-> > > > parallel layoutcommit. The patch add NFS_INO_LAYOUTCOMMITTING flag to
-> > > > mark inflight layoutcommit and serialize lalyoutcommit with it.
-> > > > It also fixes the pls_lc_list corruption that Vitaliy found.
-> > > >
-> > > > Reported-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
-> > > > Signed-off-by: Peng Tao <peng_tao@emc.com>
-> > > > ---
-> > > >  fs/nfs/nfs4proc.c      |    6 ++++++
-> > > >  fs/nfs/pnfs.c          |    9 +++++++++
-> > > >  include/linux/nfs_fs.h |    1 +
-> > > >  3 files changed, 16 insertions(+), 0 deletions(-)
-> > > >
-> > > > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> > > > index 4700fae..a7ce210 100644
-> > > > --- a/fs/nfs/nfs4proc.c
-> > > > +++ b/fs/nfs/nfs4proc.c
-> > > > @@ -5970,6 +5970,7 @@ static void nfs4_layoutcommit_release(void *calldata)
-> > > >  {
-> > > >  	struct nfs4_layoutcommit_data *data = calldata;
-> > > >  	struct pnfs_layout_segment *lseg, *tmp;
-> > > > +	unsigned long *bitlock = &NFS_I(data->args.inode)->flags;
-> > > >
-> > > >  	pnfs_cleanup_layoutcommit(data);
-> > > >  	/* Matched by references in pnfs_set_layoutcommit */
-> > > > @@ -5979,6 +5980,11 @@ static void nfs4_layoutcommit_release(void
-> > *calldata)
-> > > >  				       &lseg->pls_flags))
-> > > >  			put_lseg(lseg);
-> > > >  	}
-> > > > +
-> > > > +	clear_bit_unlock(NFS_INO_LAYOUTCOMMITTING, bitlock);
-> > > > +	smp_mb__after_clear_bit();
-> > > > +	wake_up_bit(bitlock, NFS_INO_LAYOUTCOMMITTING);
-> > > > +
-> > > >  	put_rpccred(data->cred);
-> > > >  	kfree(data);
-> > > >  }
-> > > > diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> > > > index b483bbc..fb71def 100644
-> > > > --- a/fs/nfs/pnfs.c
-> > > > +++ b/fs/nfs/pnfs.c
-> > > > @@ -1451,10 +1451,19 @@ pnfs_layoutcommit_inode(struct inode *inode,
-> > bool sync)
-> > > >  		goto out;
-> > > >  	}
-> > > >
-> > > > +	if (!test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags) ||
-> > > > +	    (status = wait_on_bit_lock(&nfsi->flags,
-> > NFS_INO_LAYOUTCOMMITTING,
-> > > > +				nfs_wait_bit_killable, TASK_KILLABLE))) {
-> > >
-> > > You want the sleeping behaviour above to be subject to the 'sync' flag
-> > > (in the same way we do for regular commit). If !sync, then try to grab
-> > > the bit lock anyway, and exit on failure.
-> I'm a little confused about the "!sync" here. If we return failure, what do we expect callers to do?
-> Looking at the calling stack, I don't see any users retrying on -EAGAIN. Does the "!sync" necessarily mean non-blocking?
-> 
-> > 
-> > By the way. Shouldn't pnfs_layoutcommit_inode() also be marking the
-> > inode as dirty on failure?
-> Yeah, right, we should mark inode as dirty on failure.
+> > From: linux-nfs-owner@vger.kernel.org
+> > [mailto:linux-nfs-owner@vger.kernel.org]
+> > On Behalf Of Jim Rees
+> > Sent: Wednesday, September 21, 2011 8:29 AM
+> > To: Trond Myklebust
+> > Cc: Benny Halevy; linux-nfs@vger.kernel.org; peter honeyman
+> > Subject: Re: [PATCH 2/3] pnfs: introduce pnfs private workqueue
+> >
+> > Trond Myklebust wrote:
+> >
+> >   On Mon, 2011-09-19 at 23:18 -0400, Jim Rees wrote:
+> >   > From: Peng Tao <bergwolf@gmail.com>
+> >   >
+> >   > For layoutdriver io done functions, default workqueue is not a
+good
+> place as
+> >   > the code is executed in IO path. So add a pnfs private workqueue
+to
+> handle
+> >   > them.
+> >   >
+> >   > Also change block and object layout code to make use of this
+private
+> >   > workqueue.
+> >   >
+> >
+> >   Wait, what????
+> >
+> >   Why is the I/O path (i.e. the nfsiod queue) inappropriate for
+> >   layoutdriver io_done functions?
+> The current code uses the system_wq to handle io_done functions. If
+any
+> function allocates memory in system_wq and causes dirty writeback in
+nfs
+> path, the io_done function can never be called because it is after the
+original
+> function in the system_wq. And you said that the rpciod/nfsiod is not
+the
+> ideal place because of memory allocation. So I suggested pnfs private
+> workqueue and Benny agreed on it.
 
-The !sync means that we're being called from a context such as kswapd
-where we really don't want to sleep or block the thread.
+You appear to be optimizing for a corner case. Why?
 
-In the case where this happens, and the NFS_INO_LAYOUTCOMMITTING bit
-can't be set, we should exit and mark the inode as dirty so that we can
-retry at a later time. Please see the 'commit' code, which has the same
-properties...
+IOW: why do we need a whole new workqueue for something which is
+supposed to be extremely rare? Why can't we just use standard keventd or
+allocate a perfectly normal thread (e.g. the state recovery thread)?
 
-
-Cheers
-  Trond
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Trond
