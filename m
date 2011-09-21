@@ -1,56 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from nm24-vm0.access.bullet.mail.mud.yahoo.com ([66.94.236.143]:22699
-	"HELO nm24-vm0.access.bullet.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1755375Ab1ILWib (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 18:38:31 -0400
-Message-ID: <4E6E89E0.4010406@schaufler-ca.com>
-Date: Mon, 12 Sep 2011 15:38:24 -0700
-From: Casey Schaufler <casey@schaufler-ca.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Valdis.Kletnieks@vt.edu,
-        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-        agruen@kernel.org, akpm@linux-foundation.org, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        LSM <linux-security-module@vger.kernel.org>,
-        Casey Schaufler <casey@schaufler-ca.com>
-Subject: Re: [PATCH -V6 00/26] New ACL format for better NFSv4 acl interoperability
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <4E655049.6060507@schaufler-ca.com> <108028.1315442771@turing-police.cc.vt.edu> <4E6E7ACC.8040003@schaufler-ca.com> <20110912222014.GA17483@fieldses.org>
-In-Reply-To: <20110912222014.GA17483@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from natasha.panasas.com ([67.152.220.90]:60820 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752506Ab1IUKi2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 06:38:28 -0400
+Message-ID: <4E79BE96.1070905@panasas.com>
+Date: Wed, 21 Sep 2011 13:38:14 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: <tao.peng@emc.com>
+CC: <bhalevy@tonian.com>, <Trond.Myklebust@netapp.com>,
+        <linux-nfs@vger.kernel.org>, <honey@citi.umich.edu>, <rees@umich.edu>
+Subject: Re: [PATCH 2/3] pnfs: introduce pnfs private workqueue
+References: <1316488728-24912-1-git-send-email-rees@umich.edu> <1316488728-24912-3-git-send-email-rees@umich.edu> <1316558461.15093.4.camel@lade.trondhjem.org> <20110921002917.GA30770@merit.edu> <F19688880B763E40B28B2B462677FBF805C4952916@MX09A.corp.emc.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480226@SACMVEXC2-PRD.hq.netapp.com> <F19688880B763E40B28B2B462677FBF805C495295A@MX09A.corp.emc.com> <4E798C93.40409@tonian.com> <F19688880B763E40B28B2B462677FBF805C4952A24@MX09A.corp.emc.com>
+In-Reply-To: <F19688880B763E40B28B2B462677FBF805C4952A24@MX09A.corp.emc.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 9/12/2011 3:20 PM, J. Bruce Fields wrote:
-> On Mon, Sep 12, 2011 at 02:34:04PM -0700, Casey Schaufler wrote:
->> On 9/7/2011 5:46 PM, Valdis.Kletnieks@vt.edu wrote:
->>> On Mon, 05 Sep 2011 15:42:17 PDT, Casey Schaufler said:
->>>> On 9/5/2011 10:25 AM, Aneesh Kumar K.V wrote:
->>>>> The following set of patches implements VFS and ext4 changes needed to implement
->>>>> a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
->>>>> extended by file( masks to fit into the standard POSIX file permission model.
->>>>> They are designed to work seamlessly locally as well as across the NFSv4 and
->>>>> CIFS/SMB2 network file system protocols.
->>>> POSIX ACLs predate the LSM and can't be done as an LSM due to
->>>> the interactions between mode bits and ACLs as defined by the
->>>> POSIX DRAFT specification.
-> I don't know LSM so don't understand what you mean when you say that
-> interactions between mode bits and ACLs would make an ACL model hard to
-> implement as an LSM.
+On 09/21/2011 01:23 PM, tao.peng@emc.com wrote:
+> 
+> Unless we do following:
+> 1. preallocate memory for extent state convertion
+> 2. use nfsiod/rpciod to handle bl_write_cleanup
+> 3. for pnfs error case, create a kthread to recollapse and resend to MDS
+> 
+> not sure if it worth the complexity though...
+> 
+> Cheers,
+> Tao
+> 
 
-POSIX ACLs require that the file permission bits change when
-the ACL changes. This interaction violates the strict "additional
-restriction" model of the LSM.
+Please forgive my ignorance but what is the big difference between
+a kthread and a workqueue? I thought a workqueue is just a kthread
+and some memory structures (list).
 
+I agree with "keep things simple"
 
-> But in any case the rich acl/mode bit interactions are similar to the
-> posix acl/mode bit interactions, so the same issue probably applies.
+But what do I know ;-)
 
-It would help if you knew for sure and could explain the interaction
-in sufficient detail to justify the position.
-
->
-> --b.
->
-
+Thanks
+Boaz
