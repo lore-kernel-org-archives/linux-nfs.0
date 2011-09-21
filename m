@@ -1,203 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f181.google.com ([209.85.216.181]:59231 "EHLO
-	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753195Ab1IBQi0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Sep 2011 12:38:26 -0400
-Received: by qyk34 with SMTP id 34so1894261qyk.19
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Sep 2011 09:38:25 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/3] NFSD: Cleanup for nfsd4_path()
-To: linux-nfs@vger.kernel.org
-Date: Fri, 02 Sep 2011 12:38:23 -0400
-Message-ID: <20110902163823.32190.76856.stgit@matisse.1015granger.net>
-In-Reply-To: <20110902162210.32190.5880.stgit@matisse.1015granger.net>
-References: <20110902162210.32190.5880.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from sainfoin-out.extra.cea.fr ([132.167.192.144]:57297 "EHLO
+	sainfoin-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751049Ab1IUOVB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 10:21:01 -0400
+Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
+	by sainfoin.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.2) with ESMTP id p8LD6UvC010624
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 15:06:30 +0200
+Received: from muguet1.intra.cea.fr (muguet1.intra.cea.fr [132.166.192.6])
+	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id p8LD6Ub6021050
+	for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 15:06:30 +0200
+	(envelope-from philippe.deniel@cea.fr)
+Received: from zia.esteban.ctsi (esteban.dam.intra.cea.fr [132.165.76.10])
+	by muguet1.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.1) with SMTP id p8LD6TTw022842
+	for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 15:06:30 +0200
+Message-ID: <4E79E155.4000907@cea.fr>
+Date: Wed, 21 Sep 2011 15:06:29 +0200
+From: DENIEL Philippe <philippe.deniel@cea.fr>
+To: Thomas Haynes <thomas@netapp.com>
+CC: Boaz Harrosh <bharrosh@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
+        Marc Eshel <eshel@almaden.ibm.com>, nfsv4@ietf.org,
+        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>
+Subject: Re: [nfsv4] Reminder on October 2011 BAT
+References: <721C2207-5FBE-4886-8B2C-955961564755@netapp.com><869E9B5A-E664-43C6-B8BC-BBC0A2158CB8@netapp.com> <4E785048.7080607@panasas.com> <E041A9BE-28EC-4360-BD6E-3D08825F45F4@netapp.com>
+In-Reply-To: <E041A9BE-28EC-4360-BD6E-3D08825F45F4@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Thomas Haynes a écrit :
+>
+>>
+>> If so we will want one set aside for:
+>>         "Design of NFS-Ganesha pNFS Server infrastructure"
+>>
+> About how many people would you think would be present?
+Probably between 6 (Boaz, Benny, Matt, Adam, Marc and I) to 10 people 
+(if other guys from IBM or Panasas are coming).
 
-The current code is sort of hackish in that it assumes a referral is always
-matched to an export. When we add support for junctions that may not be the
-case.
-We can replace nfsd4_path() with a function that encodes the components
-directly from the dentries. Since nfsd4_path is currently the only user of
-the 'ex_pathname' field in struct svc_export, this has the added benefit
-of allowing us to get rid of that.
+    Regards
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-
- fs/nfsd/export.c            |    4 +-
- fs/nfsd/nfs4xdr.c           |  106 ++++++++++++++++++++++++++++++++-----------
- include/linux/nfsd/export.h |    1 
- 3 files changed, 81 insertions(+), 30 deletions(-)
-
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index f4cc1e2..d9a6611 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -1010,7 +1010,7 @@ rqst_exp_parent(struct svc_rqst *rqstp, struct path *path)
- 	return exp;
- }
- 
--static struct svc_export *find_fsidzero_export(struct svc_rqst *rqstp)
-+struct svc_export *rqst_find_fsidzero_export(struct svc_rqst *rqstp)
- {
- 	u32 fsidv[2];
- 
-@@ -1030,7 +1030,7 @@ exp_pseudoroot(struct svc_rqst *rqstp, struct svc_fh *fhp)
- 	struct svc_export *exp;
- 	__be32 rv;
- 
--	exp = find_fsidzero_export(rqstp);
-+	exp = rqst_find_fsidzero_export(rqstp);
- 	if (IS_ERR(exp))
- 		return nfserrno(PTR_ERR(exp));
- 	rv = fh_compose(fhp, exp, exp->ex_path.dentry, NULL);
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index c8bf405..f7b068e 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1697,36 +1697,89 @@ static __be32 nfsd4_encode_fs_location4(struct nfsd4_fs_location *location,
- }
- 
- /*
-- * Return the path to an export point in the pseudo filesystem namespace
-- * Returned string is safe to use as long as the caller holds a reference
-- * to @exp.
-+ * Encode a path in RFC3530 'pathname4' format
-  */
--static char *nfsd4_path(struct svc_rqst *rqstp, struct svc_export *exp, __be32 *stat)
-+static __be32 nfsd4_encode_path(const struct path *root,
-+		const struct path *path, __be32 **pp, int *buflen)
- {
--	struct svc_fh tmp_fh;
--	char *path = NULL, *rootpath;
--	size_t rootlen;
-+	struct path cur = {
-+		.mnt = path->mnt,
-+		.dentry = path->dentry,
-+	};
-+	__be32 *p = *pp;
-+	struct dentry **components = NULL;
-+	unsigned int ncomponents = 0;
-+	__be32 err = nfserr_resource;
- 
--	fh_init(&tmp_fh, NFS4_FHSIZE);
--	*stat = exp_pseudoroot(rqstp, &tmp_fh);
--	if (*stat)
--		return NULL;
--	rootpath = tmp_fh.fh_export->ex_pathname;
-+	dprintk("nfsd4_encode_components(");
- 
--	path = exp->ex_pathname;
-+	path_get(&cur);
-+	/* First walk the path up to the nfsd root, and store the
-+	 * dentries/path components in an array.
-+	 */
-+	for (;;) {
-+		if (cur.dentry == root->dentry && cur.mnt == root->mnt)
-+			break;
-+		if (cur.dentry == cur.mnt->mnt_root) {
-+			if (follow_up(&cur))
-+				continue;
-+			goto out_free;
-+		}
-+		if ((ncomponents & 15) == 0) {
-+			struct dentry **new;
-+			new = krealloc(components,
-+					sizeof(*new) * (ncomponents + 16),
-+					GFP_KERNEL);
-+			if (!new)
-+				goto out_free;
-+			components = new;
-+		}
-+		components[ncomponents++] = cur.dentry;
-+		cur.dentry = dget_parent(cur.dentry);
-+	}
- 
--	rootlen = strlen(rootpath);
--	if (strncmp(path, rootpath, rootlen)) {
--		dprintk("nfsd: fs_locations failed;"
--			"%s is not contained in %s\n", path, rootpath);
--		*stat = nfserr_notsupp;
--		path = NULL;
--		goto out;
-+	*buflen -= 4;
-+	if (*buflen < 0)
-+		goto out_free;
-+	WRITE32(ncomponents);
-+
-+	while (ncomponents) {
-+		struct dentry *dentry = components[ncomponents - 1];
-+		unsigned int len = dentry->d_name.len;
-+
-+		*buflen -= 4 + (XDR_QUADLEN(len) << 2);
-+		if (*buflen < 0)
-+			goto out_free;
-+		WRITE32(len);
-+		WRITEMEM(dentry->d_name.name, len);
-+		dprintk("/%s", dentry->d_name.name);
-+		dput(dentry);
-+		ncomponents--;
- 	}
--	path += rootlen;
--out:
--	fh_put(&tmp_fh);
--	return path;
-+
-+	*pp = p;
-+	err = 0;
-+out_free:
-+	dprintk(")\n");
-+	while (ncomponents)
-+		dput(components[--ncomponents]);
-+	kfree(components);
-+	path_put(&cur);
-+	return err;
-+}
-+
-+static __be32 nfsd4_encode_fsloc_fsroot(struct svc_rqst *rqstp,
-+		const struct path *path, __be32 **pp, int *buflen)
-+{
-+	struct svc_export *exp_ps;
-+	__be32 res;
-+
-+	exp_ps = rqst_find_fsidzero_export(rqstp);
-+	if (IS_ERR(exp_ps))
-+		return nfserrno(PTR_ERR(exp_ps));
-+	res = nfsd4_encode_path(&exp_ps->ex_path, path, pp, buflen);
-+	exp_put(exp_ps);
-+	return res;
- }
- 
- /*
-@@ -1740,11 +1793,8 @@ static __be32 nfsd4_encode_fs_locations(struct svc_rqst *rqstp,
- 	int i;
- 	__be32 *p = *pp;
- 	struct nfsd4_fs_locations *fslocs = &exp->ex_fslocs;
--	char *root = nfsd4_path(rqstp, exp, &status);
- 
--	if (status)
--		return status;
--	status = nfsd4_encode_components('/', root, &p, buflen);
-+	status = nfsd4_encode_fsloc_fsroot(rqstp, &exp->ex_path, &p, buflen);
- 	if (status)
- 		return status;
- 	if ((*buflen -= 4) < 0)
-diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
-index 8a31a20..7ba3fd4 100644
---- a/include/linux/nfsd/export.h
-+++ b/include/linux/nfsd/export.h
-@@ -137,6 +137,7 @@ struct svc_export *	rqst_exp_get_by_name(struct svc_rqst *,
- 					     struct path *);
- struct svc_export *	rqst_exp_parent(struct svc_rqst *,
- 					struct path *);
-+struct svc_export *	rqst_find_fsidzero_export(struct svc_rqst *);
- int			exp_rootfh(struct auth_domain *, 
- 					char *path, struct knfsd_fh *, int maxsize);
- __be32			exp_pseudoroot(struct svc_rqst *, struct svc_fh *);
-
+       Philippe
