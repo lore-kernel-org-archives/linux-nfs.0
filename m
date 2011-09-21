@@ -1,54 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:47465 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752330Ab1I3PF7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Sep 2011 11:05:59 -0400
-Date: Fri, 30 Sep 2011 11:05:58 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 1/3] NFSD: Added fault injection
-Message-ID: <20110930150558.GE19125@fieldses.org>
-References: <1317322765-19094-1-git-send-email-bjschuma@netapp.com>
- <20110930143508.GC19125@fieldses.org>
- <4E85D81F.3080108@netapp.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:41204 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751754Ab1IUUGA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 16:06:00 -0400
+Subject: Re: [PATCH] nfs: set vs_hidden on nfs4_callback_version4
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E85D81F.3080108@netapp.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1316634942-5209-1-git-send-email-jlayton@redhat.com>
+Date: Wed, 21 Sep 2011 16:05:45 -0400
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        skinsbursky@parallels.com
+Message-Id: <EBF75C5F-DEA6-4703-A787-FCE68C6B72E3@oracle.com>
+References: <1316634942-5209-1-git-send-email-jlayton@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Sep 30, 2011 at 10:54:23AM -0400, Bryan Schumaker wrote:
-> On 09/30/2011 10:35 AM, J. Bruce Fields wrote:
-> > On Thu, Sep 29, 2011 at 02:59:23PM -0400, bjschuma@netapp.com wrote:
-> >> From: Bryan Schumaker <bjschuma@netapp.com>
-> >>
-> >> Fault injection on the NFS server makes it easier to test the client's
-> >> state manager and recovery threads.  Simulating errors on the server is
-> >> easier than finding the right conditions that cause them naturally.
-> > 
-> > You also might look at the unlock_ip interface that Wendy Cheng added a
-> > few years ago. The fact that it doesn't remove nfsv4 state is really a
-> > bug, it should be blowing away any relevant v4 clients as the same time.
-> > 
-> > (Though note the IP in question is a server IP, not a client IP.)
+
+On Sep 21, 2011, at 3:55 PM, Jeff Layton wrote:
+
+> This service should not be registered with or unregistered from rpcbind.
+
+I've been watching the larger conversation.  One thing that registering does, even if you don't want to advertise your service, is tell you if there is already another service on that port.  Do we want to worry about possible port collisions for listeners like the callback service?
+
+Do we want to ensure that any other service on that port is unregistered?  We would already discover a listener on our port when trying to create the socket, but an old registration may persist even after that old service has gone away.
+
+This is something to think about when revisiting the semantics of .vs_hidden.
+
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+> fs/nfs/callback_xdr.c |    1 +
+> 1 files changed, 1 insertions(+), 0 deletions(-)
 > 
-> I'll take a look.  Thanks for the warning that it looks for a server IP, but would passing the client IP be more useful?
-
-It was designed for people using floating IP's to make their server look
-like multiple servers, who want to shut down just the client's using one
-of the floating IP's.
-
-> > Is this the forget_n_clients scenario really a useful one to test?
-> > I'd've thought that the client would need to deal with the entire client
-> > diseappearing (due to network partition, for example), but not normally
-> > individual open owners.
+> diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+> index c6c86a7..7c8b800 100644
+> --- a/fs/nfs/callback_xdr.c
+> +++ b/fs/nfs/callback_xdr.c
+> @@ -996,4 +996,5 @@ struct svc_version nfs4_callback_version4 = {
+> 	.vs_proc = nfs4_callback_procedures1,
+> 	.vs_xdrsize = NFS4_CALLBACK_XDRSIZE,
+> 	.vs_dispatch = NULL,
+> +	.vs_hidden = 1,
+> };
+> -- 
+> 1.7.6.2
 > 
-> It might not be a normal case, but it still could be interesting to see how the client recovers.
-> 
-> I was mostly looking at what state the server tracks and deleting what I could find.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-I think it would be more interesting to find out what typical failure
-scenarios are and then figure out how to simulate them.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
---b.
+
+
+
