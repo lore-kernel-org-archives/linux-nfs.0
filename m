@@ -1,29 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40730 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:46399 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933167Ab1IIKDb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Sep 2011 06:03:31 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <1315243548-18664-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1315243548-18664-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: dhowells@redhat.com, agruen@kernel.org, bfields@fieldses.org,
-        akpm@linux-foundation.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V6 08/26] vfs: Add new file and directory create permission flags
-Date: Fri, 09 Sep 2011 11:02:58 +0100
-Message-ID: <22786.1315562578@redhat.com>
+	id S1751584Ab1IUTe5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Sep 2011 15:34:57 -0400
+Message-ID: <4E7A3C5E.2020103@netapp.com>
+Date: Wed, 21 Sep 2011 15:34:54 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/2] Changes in 3.1 kernel break NFS monitoring tools
+References: <1316629016-27740-1-git-send-email-steved@redhat.com> <4E7A2C27.8020209@netapp.com> <4E7A2D70.6000400@RedHat.com> <20110921185139.GC22961@fieldses.org> <4E7A3B84.7030600@RedHat.com>
+In-Reply-To: <4E7A3B84.7030600@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com> wrote:
+On 09/21/2011 03:31 PM, Steve Dickson wrote:
+> 
+> 
+> On 09/21/2011 02:51 PM, J. Bruce Fields wrote:
+>> On Wed, Sep 21, 2011 at 02:31:12PM -0400, Steve Dickson wrote:
+>>>
+>>>
+>>> On 09/21/2011 02:25 PM, Bryan Schumaker wrote:
+>>>> On 09/21/2011 02:16 PM, Steve Dickson wrote:
+>>>>> Both parser of nfsiostat and mountstats depend on the 
+>>>>> the first word in /proc/self/mountstats to be 'device'
+>>>>> for them to parse through all the devices. 
+>>>>>
+>>>>> NFS mounts entries,  in 3.1,  no longer have start with
+>>>>> the word 'device'. They start with the actual device, 
+>>>>> which confused both set of parsing routines.
+>>>>
+>>>> I sent in a patch to fix this on the kernel end almost a month ago, but it must have gotten lost with the kernel.org confusion.  I included what I came up with below
+>>> Interesting... Maybe we should still apply these patches until
+>>> your patch shows up? They are definitely broken... 
+>>
+>> May as well fix the problem on both sides if possible.
+> I agree this..  I can always pull these back out if/when
+> Bryan's patch shows up...
 
-> -static inline int may_create(struct inode *dir, struct dentry *child)
-> +static inline int may_create(struct inode *dir, struct dentry *child, int isdir)
+Sounds good to me.  It makes sense to have tools that work with current kernels.
 
-Would it make sense to pass the proposed mode_t instead?  That way you can
-check for symlinks and other file types too if necessary later.
+> 
+> steved.
+> 
+>>
+>> --b.
+>>
+>>>
+>>> steved.
+>>> .
+>>>>
+>>>> - Bryan
+>>>>
+>>>> [PATCH] VFS: Add "device" tag to /proc/self/mountstats
+>>>>
+>>>> nfsiostat was failing to find mounted filesystems on kernels after
+>>>> 2.6.38 because of changes to show_vfsstat() by commit
+>>>> c7f404b40a3665d9f4e9a927cc5c1ee0479ed8f9.  This patch adds back the
+>>>> "device" tag before the nfs server entry so scripts can parse the
+>>>> mountstats file correctly.
+>>>>
+>>>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+>>>> ---
+>>>>  fs/namespace.c |    1 +
+>>>>  1 files changed, 1 insertions(+), 0 deletions(-)
+>>>>
+>>>> diff --git a/fs/namespace.c b/fs/namespace.c
+>>>> index 22bfe82..1429114 100644
+>>>> --- a/fs/namespace.c
+>>>> +++ b/fs/namespace.c
+>>>> @@ -1109,6 +1109,7 @@ static int show_vfsstat(struct seq_file *m, void *v)
+>>>>  
+>>>>  	/* device */
+>>>>  	if (mnt->mnt_sb->s_op->show_devname) {
+>>>> +		seq_puts(m, "device ");
+>>>>  		err = mnt->mnt_sb->s_op->show_devname(m, mnt);
+>>>>  	} else {
+>>>>  		if (mnt->mnt_devname) {
+>>>>
+>>>>
+>>>>>
+>>>>> Steve Dickson (2):
+>>>>>   nfsiostat: Breaks on 3.1 kernels
+>>>>>   mountstats: Breaks on 3.1 kernels
+>>>>>
+>>>>>  tools/mountstats/mountstats.py |    9 +++++++++
+>>>>>  tools/nfs-iostat/nfs-iostat.py |   11 +++++++++--
+>>>>>  2 files changed, 18 insertions(+), 2 deletions(-)
+>>>>>
+>>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-David
