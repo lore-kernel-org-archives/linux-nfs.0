@@ -1,79 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail209.messagelabs.com ([216.82.255.3]:32803 "EHLO
-	mail209.messagelabs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756076Ab1IBVjl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Sep 2011 17:39:41 -0400
-From: H Hartley Sweeten <hartleys@visionengravers.com>
-To: Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: [PATCH] nfs/super.c: local functions should be static
-Date: Fri, 2 Sep 2011 14:39:12 -0700
-CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-Message-ID: <201109021439.13146.hartleys@visionengravers.com>
+Received: from fieldses.org ([174.143.236.118]:59110 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751616Ab1IUO63 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Sep 2011 10:58:29 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+        Christoph Hellwig <hch@infradead.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Mimi Zohar <zohar@linux.vnet.ibm.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 5/6] leases: break leases on any attribute modification
+Date: Wed, 21 Sep 2011 10:58:16 -0400
+Message-Id: <1316617097-21384-6-git-send-email-bfields@redhat.com>
+In-Reply-To: <1316617097-21384-1-git-send-email-bfields@redhat.com>
+References: <1316617097-21384-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-commit ae50c0b5 "pnfs: client stats" added additional information to
-the output of /proc/self/mountstats. The new functions introduced are
-only used in this file and should be marked static.
+NFSv4 uses leases to guarantee that clients can cash metadata as well as
+data.
 
-If CONFIG_NFS_V4_1 is not defined, empty stub functions are used.  If
-CONFIG_NFS_V4 is not defined these stub functions are not used at all.
-Adding static for the functions results in compile warnings:
+(I suspect the same is true for Samba.)
 
-fs/nfs/super.c:743: warning: 'show_sessions' defined but not used
-fs/nfs/super.c:756: warning: 'show_pnfs' defined but not used
+This covers chmod, chown, etc.
 
-Fix this by adding a #ifdef CONFIG_NFS_V4 guard around the two
-show_ functions.
-
-Signed-off-by: H Hartley Sweeten <hsweeten@visionengravers.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
+ fs/attr.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index b961cea..4b07e9b 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -733,18 +733,22 @@ static int nfs_show_options(struct seq_file *m, struct vfsmount *mnt)
+diff --git a/fs/attr.c b/fs/attr.c
+index 538e279..4ce31cb 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -231,6 +231,9 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
+ 	error = security_inode_setattr(dentry, attr);
+ 	if (error)
+ 		return error;
++	error = break_lease(inode, O_WRONLY);
++	if (error)
++		return error;
  
- 	return 0;
- }
-+
-+#ifdef CONFIG_NFS_V4
- #ifdef CONFIG_NFS_V4_1
--void show_sessions(struct seq_file *m, struct nfs_server *server)
-+static void show_sessions(struct seq_file *m, struct nfs_server *server)
- {
- 	if (nfs4_has_session(server->nfs_client))
- 		seq_printf(m, ",sessions");
- }
- #else
--void show_sessions(struct seq_file *m, struct nfs_server *server) {}
-+static void show_sessions(struct seq_file *m, struct nfs_server *server) {}
-+#endif
- #endif
- 
-+#ifdef CONFIG_NFS_V4
- #ifdef CONFIG_NFS_V4_1
--void show_pnfs(struct seq_file *m, struct nfs_server *server)
-+static void show_pnfs(struct seq_file *m, struct nfs_server *server)
- {
- 	seq_printf(m, ",pnfs=");
- 	if (server->pnfs_curr_ld)
-@@ -752,9 +756,10 @@ void show_pnfs(struct seq_file *m, struct nfs_server *server)
- 	else
- 		seq_printf(m, "not configured");
- }
--#else  /* CONFIG_NFS_V4_1 */
--void show_pnfs(struct seq_file *m, struct nfs_server *server) {}
--#endif /* CONFIG_NFS_V4_1 */
-+#else
-+static void show_pnfs(struct seq_file *m, struct nfs_server *server) {}
-+#endif
-+#endif
- 
- static int nfs_show_devname(struct seq_file *m, struct vfsmount *mnt)
- {
+ 	if (inode->i_op->setattr)
+ 		error = inode->i_op->setattr(dentry, attr);
+-- 
+1.7.4.1
+
