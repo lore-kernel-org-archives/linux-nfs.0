@@ -1,44 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.mail.umich.edu ([141.211.14.82]:57785 "EHLO
-	hellskitchen.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753205Ab1IZMYD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Sep 2011 08:24:03 -0400
-Date: Mon, 26 Sep 2011 08:23:55 -0400
-From: Jim Rees <rees@umich.edu>
+Received: from mx2.netapp.com ([216.240.18.37]:7451 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753158Ab1IUSZp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Sep 2011 14:25:45 -0400
+Message-ID: <4E7A2C27.8020209@netapp.com>
+Date: Wed, 21 Sep 2011 14:25:43 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
 To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] Add a check for libdevmapper.h
-Message-ID: <20110926122355.GB12412@umich.edu>
-References: <1317037317-4329-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1317037317-4329-1-git-send-email-steved@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/2] Changes in 3.1 kernel break NFS monitoring tools
+References: <1316629016-27740-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1316629016-27740-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Steve Dickson wrote:
+On 09/21/2011 02:16 PM, Steve Dickson wrote:
+> Both parser of nfsiostat and mountstats depend on the 
+> the first word in /proc/self/mountstats to be 'device'
+> for them to parse through all the devices. 
+> 
+> NFS mounts entries,  in 3.1,  no longer have start with
+> the word 'device'. They start with the actual device, 
+> which confused both set of parsing routines.
 
-  When NFS v4.1 is enable, the libdevemapp.h header file has to exist.
-  
-  Signed-off-by: Steve Dickson <steved@redhat.com>
-  ---
-   configure.ac |    1 +
-   1 files changed, 1 insertions(+), 0 deletions(-)
-  
-  diff --git a/configure.ac b/configure.ac
-  index 80fb39d..572b33d 100644
-  --- a/configure.ac
-  +++ b/configure.ac
-  @@ -80,6 +80,7 @@ AC_ARG_ENABLE(nfsv41,
-   			AC_MSG_ERROR([NFS v4.1 is enabled but NFS v4 is not. Use --disable-nfsv41])
-   		fi
-   		BLKMAPD=blkmapd
-  +   		AC_CHECK_HEADER(libdevmapper.h, , AC_MSG_ERROR([Cannot find libdevmapper.h header file. Try installing device-mapper-devel]))
-   	else
-   		enable_nfsv41=
-   		BLKMAPD=
+I sent in a patch to fix this on the kernel end almost a month ago, but it must have gotten lost with the kernel.org confusion.  I included what I came up with below.
 
-On Debian based systems it's libdevmapper-dev.
+- Bryan
 
-Did you get the patch I sent?  I added the check farther down, with the
-other checks, and also checked for the library.
+[PATCH] VFS: Add "device" tag to /proc/self/mountstats
+
+nfsiostat was failing to find mounted filesystems on kernels after
+2.6.38 because of changes to show_vfsstat() by commit
+c7f404b40a3665d9f4e9a927cc5c1ee0479ed8f9.  This patch adds back the
+"device" tag before the nfs server entry so scripts can parse the
+mountstats file correctly.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/namespace.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/fs/namespace.c b/fs/namespace.c
+index 22bfe82..1429114 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -1109,6 +1109,7 @@ static int show_vfsstat(struct seq_file *m, void *v)
+ 
+ 	/* device */
+ 	if (mnt->mnt_sb->s_op->show_devname) {
++		seq_puts(m, "device ");
+ 		err = mnt->mnt_sb->s_op->show_devname(m, mnt);
+ 	} else {
+ 		if (mnt->mnt_devname) {
+
+
+> 
+> Steve Dickson (2):
+>   nfsiostat: Breaks on 3.1 kernels
+>   mountstats: Breaks on 3.1 kernels
+> 
+>  tools/mountstats/mountstats.py |    9 +++++++++
+>  tools/nfs-iostat/nfs-iostat.py |   11 +++++++++--
+>  2 files changed, 18 insertions(+), 2 deletions(-)
+> 
+
