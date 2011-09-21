@@ -1,21 +1,25 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
+From: "Benny Halevy" <bhalevy@tonian.com>
 Subject: Re: Reminder on October 2011 BAT
-Date: Wed, 21 Sep 2011 09:11:08 -0700
-Message-ID: <OF1E634581.91D8F5E8-ON88257912.00588CE3-88257912.0058E4E5@us.ibm.com>
-References: <721C2207-5FBE-4886-8B2C-955961564755@netapp.com>	<869E9B5A-E664-43C6-B8BC-BBC0A2158CB8@netapp.com>
-	<4E785048.7080607@panasas.com>	<E041A9BE-28EC-4360-BD6E-3D08825F45F4@netapp.com>
-	<4E79E155.4000907@cea.fr>
-	<4E79E93A.6050500@panasas.com>	<OF914D6D95.5AAB670B-ON88257912.005185F7-88257912.0051C20D@us.ibm.com>
+Date: Wed, 21 Sep 2011 16:24:47 +0000
+Message-ID: <461103007-1316622286-cardhu_decombobulator_blackberry.rim.net-1705336764-@b4.c3.bise3.blackberry>
+References: <721C2207-5FBE-4886-8B2C-955961564755@netapp.com>
+	<869E9B5A-E664-43C6-B8BC-BBC0A2158CB8@netapp.com>
+	<4E785048.7080607@panasas.com>
+	<E041A9BE-28EC-4360-BD6E-3D08825F45F4@netapp.com>
+	<4E79E155.4000907@cea.fr> <4E79E93A.6050500@panasas.com>
+	<OF914D6D95.5AAB670B-ON88257912.005185F7-88257912.0051C20D@us.ibm.com>
 	<CAEMWVhttJGJdssVSBodPXZChVQyNr5LcXDudkUVeVcbi24AzGw@mail.gmail.com>
+	<OF1E634581.91D8F5E8-ON88257912.00588CE3-88257912.0058E4E5@us.ibm.com>
+Reply-To: bhalevy@tonian.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============2434397323596651057=="
+Content-Type: multipart/mixed; boundary="===============1165107061318597967=="
 Cc: NFS list <linux-nfs@vger.kernel.org>,
 	Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
 	DENIEL Philippe <philippe.deniel@cea.fr>, nfsv4@ietf.org,
 	nfsv4-bounces@ietf.org
-To: Benny Halevy <bhalevy@tonian.com>
+To: "Marc Eshel" <eshel@almaden.ibm.com>
 Return-path: <nfsv4-bounces@ietf.org>
-In-Reply-To: <CAEMWVhttJGJdssVSBodPXZChVQyNr5LcXDudkUVeVcbi24AzGw@mail.gmail.com>
+In-Reply-To: <OF1E634581.91D8F5E8-ON88257912.00588CE3-88257912.0058E4E5@us.ibm.com>
 List-Unsubscribe: <https://www.ietf.org/mailman/options/nfsv4>,
 	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
 List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
@@ -27,234 +31,155 @@ Sender: nfsv4-bounces@ietf.org
 Errors-To: nfsv4-bounces@ietf.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multipart message in MIME format.
---===============2434397323596651057==
-Content-Type: multipart/alternative; boundary="=_alternative 0058E4E388257912_="
 
-This is a multipart message in MIME format.
---=_alternative 0058E4E388257912_=
-Content-Type: text/plain; charset="ISO-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-I am not going to be around here Monday though Wednesday, how late on=20
-Thursday morning do you leave? lets hear from the rest of the group? maybe =
-
-we can have two meetings?
-Marc.
+--===============1165107061318597967==
+Content-Type: multipart/alternative; boundary="part2877-boundary-1498485381-163442687"
 
 
+--part2877-boundary-1498485381-163442687
+Content-Transfer-Encoding: base64
+Content-Type: text/plain; charset="Windows-1252"
 
-From:
-Benny Halevy <bhalevy@tonian.com>
-To:
-Marc Eshel <eshel@almaden.ibm.com>
-Cc:
-NFS list <linux-nfs@vger.kernel.org>, nfsv4@ietf.org, DENIEL Philippe=20
-<philippe.deniel@cea.fr>, Ganesha NFS List=20
-<nfs-ganesha-devel@lists.sourceforge.net>
-Date:
-09/21/2011 09:01 AM
-Subject:
-Re: [nfsv4] Reminder on October 2011 BAT
-Sent by:
-nfsv4-bounces@ietf.org
+SSdtIGxlYXZpbmcgYXQgNiBhbSBzbyBUaHVyc2RheSBpcyBpbXBvc3NpYmxlIGZvciBtZS4NCg0K
+QmVubnkNCi0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQpGcm9tOiBNYXJjIEVzaGVsIDxlc2hl
+bEBhbG1hZGVuLmlibS5jb20+DQpEYXRlOiBXZWQsIDIxIFNlcCAyMDExIDA5OjExOjA4IA0KVG86
+IEJlbm55IEhhbGV2eTxiaGFsZXZ5QHRvbmlhbi5jb20+DQpDYzogTkZTIGxpc3Q8bGludXgtbmZz
+QHZnZXIua2VybmVsLm9yZz47IEdhbmVzaGEgTkZTIExpc3Q8bmZzLWdhbmVzaGEtZGV2ZWxAbGlz
+dHMuc291cmNlZm9yZ2UubmV0PjsgPG5mc3Y0QGlldGYub3JnPjsgPG5mc3Y0LWJvdW5jZXNAaWV0
+Zi5vcmc+OyBERU5JRUwgUGhpbGlwcGU8cGhpbGlwcGUuZGVuaWVsQGNlYS5mcj4NClN1YmplY3Q6
+IFJlOiBbbmZzdjRdIFJlbWluZGVyIG9uIE9jdG9iZXIgMjAxMSBCQVQNCg0KSSBhbSBub3QgZ29p
+bmcgdG8gYmUgYXJvdW5kIGhlcmUgTW9uZGF5IHRob3VnaCBXZWRuZXNkYXksIGhvdyBsYXRlIG9u
+IA0KVGh1cnNkYXkgbW9ybmluZyBkbyB5b3UgbGVhdmU/IGxldHMgaGVhciBmcm9tIHRoZSByZXN0
+IG9mIHRoZSBncm91cD8gbWF5YmUgDQp3ZSBjYW4gaGF2ZSB0d28gbWVldGluZ3M/DQpNYXJjLg0K
+DQoNCg0KRnJvbToNCkJlbm55IEhhbGV2eSA8YmhhbGV2eUB0b25pYW4uY29tPg0KVG86DQpNYXJj
+IEVzaGVsIDxlc2hlbEBhbG1hZGVuLmlibS5jb20+DQpDYzoNCk5GUyBsaXN0IDxsaW51eC1uZnNA
+dmdlci5rZXJuZWwub3JnPiwgbmZzdjRAaWV0Zi5vcmcsIERFTklFTCBQaGlsaXBwZSANCjxwaGls
+aXBwZS5kZW5pZWxAY2VhLmZyPiwgR2FuZXNoYSBORlMgTGlzdCANCjxuZnMtZ2FuZXNoYS1kZXZl
+bEBsaXN0cy5zb3VyY2Vmb3JnZS5uZXQ+DQpEYXRlOg0KMDkvMjEvMjAxMSAwOTowMSBBTQ0KU3Vi
+amVjdDoNClJlOiBbbmZzdjRdIFJlbWluZGVyIG9uIE9jdG9iZXIgMjAxMSBCQVQNClNlbnQgYnk6
+DQpuZnN2NC1ib3VuY2VzQGlldGYub3JnDQoNCg0KDQpJJ20gbGVhdmluZyBvbiBUaHVyc2RheSBt
+b3JuaW5nIHNvIE1vbmRheSB0aHJvdWdoIFdlZG5lc2RheSB3b3VsZA0Kd29yayBiZXR0ZXIgZm9y
+IG1lLg0KDQpCZW5ueQ0KDQpPbiBXZWQsIFNlcCAyMSwgMjAxMSBhdCA1OjUzIFBNLCBNYXJjIEVz
+aGVsIDxlc2hlbEBhbG1hZGVuLmlibS5jb20+IHdyb3RlOg0KPiBDYW4gd2UgcGxlYXNlIGRvIHRo
+aXMgR2FuZXNoYSBtZWV0aW5nIG9uIHRoZSBUaHVyc2RheSBvciBGcmlkYXkgb2YgdGhlDQo+IEJh
+a2VBVGhvbiB3ZWVrLg0KPiBUaGFua3MsIE1hcmMuDQo+DQo+DQo+DQo+IEZyb206DQo+IEJvYXog
+SGFycm9zaCA8YmhhcnJvc2hAcGFuYXNhcy5jb20+DQo+IFRvOg0KPiBERU5JRUwgUGhpbGlwcGUg
+PHBoaWxpcHBlLmRlbmllbEBjZWEuZnI+DQo+IENjOg0KPiBUaG9tYXMgSGF5bmVzIDx0aG9tYXNA
+bmV0YXBwLmNvbT4sIE5GUyBsaXN0IDxsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnPiwNCj4gTWFy
+YyBFc2hlbCA8ZXNoZWxAYWxtYWRlbi5pYm0uY29tPiwgPG5mc3Y0QGlldGYub3JnPiwgR2FuZXNo
+YSBORlMgTGlzdA0KPiA8bmZzLWdhbmVzaGEtZGV2ZWxAbGlzdHMuc291cmNlZm9yZ2UubmV0Pg0K
+PiBEYXRlOg0KPiAwOS8yMS8yMDExIDA2OjUwIEFNDQo+IFN1YmplY3Q6DQo+IFJlOiBbbmZzdjRd
+IFJlbWluZGVyIG9uIE9jdG9iZXIgMjAxMSBCQVQNCj4NCj4NCj4NCj4gT24gMDkvMjEvMjAxMSAw
+NDowNiBQTSwgREVOSUVMIFBoaWxpcHBlIHdyb3RlOg0KPj4gVGhvbWFzIEhheW5lcyBhIOljcml0
+IDoNCj4+Pg0KPj4+Pg0KPj4+PiBJZiBzbyB3ZSB3aWxsIHdhbnQgb25lIHNldCBhc2lkZSBmb3I6
+DQo+Pj4+ICAgICAgICAgIkRlc2lnbiBvZiBORlMtR2FuZXNoYSBwTkZTIFNlcnZlciBpbmZyYXN0
+cnVjdHVyZSINCj4+Pj4NCj4+PiBBYm91dCBob3cgbWFueSBwZW9wbGUgd291bGQgeW91IHRoaW5r
+IHdvdWxkIGJlIHByZXNlbnQ/DQo+PiBQcm9iYWJseSBiZXR3ZWVuIDYgKEJvYXosIEJlbm55LCBN
+YXR0LCBBZGFtLCBNYXJjIGFuZCBJKSB0byAxMCBwZW9wbGUNCj4+IChpZiBvdGhlciBndXlzIGZy
+b20gSUJNIG9yIFBhbmFzYXMgYXJlIGNvbWluZykuDQo+Pg0KPg0KPiBUaGVyZSBzaG91bGQgYmUg
+bW9yZSwgYnV0IEkgZ3Vlc3MgdGhlIHNtYWxsIHJvb20gaXMgZ29vZCBlbm91Z2guDQo+DQo+IFRv
+bQ0KPiAgd2Ugc2hvdWxkIGJlIGFibGUgdG8gZml0IHVwIHRvIDE1IFBlb3BsZSBpbiB0aGF0IG90
+aGVyIHJvb20sIHJpZ2h0Pw0KPg0KPj4gICAgIFJlZ2FyZHMNCj4+DQo+PiAgICAgICAgUGhpbGlw
+cGUNCj4NCj4gVGhhbmtzDQo+IEJvYXoNCj4NCj4NCj4NCj4NCj4gLS0NCj4gVG8gdW5zdWJzY3Jp
+YmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIg
+aW4NCj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcN
+Cj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRv
+bW8taW5mby5odG1sDQo+DQpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fXw0KbmZzdjQgbWFpbGluZyBsaXN0DQpuZnN2NEBpZXRmLm9yZw0KaHR0cHM6Ly93d3cu
+aWV0Zi5vcmcvbWFpbG1hbi9saXN0aW5mby9uZnN2NA0KDQoNCg0K
+
+--part2877-boundary-1498485381-163442687
+Content-Transfer-Encoding: base64
+Content-Type: text/html; charset="Windows-1252"
+
+PCFET0NUWVBFIGh0bWwgUFVCTElDICItLy9XM0MvL0RURCBIVE1MIDQuMCBUcmFuc2l0aW9uYWwv
+L0VOIj4gPGh0bWw+PGhlYWQ+IDxtZXRhIGNvbnRlbnQ9InRleHQvaHRtbDsgY2hhcnNldD11dGYt
+OCIgaHR0cC1lcXVpdj0iQ29udGVudC1UeXBlIj4gPC9oZWFkPkknbSBsZWF2aW5nIGF0IDYgYW0g
+c28gVGh1cnNkYXkgaXMgaW1wb3NzaWJsZSBmb3IgbWUuPGJyLz48YnIvPkJlbm55PGhyLz48ZGl2
+PjxiPkZyb206IDwvYj4gTWFyYyBFc2hlbCAmbHQ7ZXNoZWxAYWxtYWRlbi5pYm0uY29tJmd0Ow0K
+PC9kaXY+PGRpdj48Yj5EYXRlOiA8L2I+V2VkLCAyMSBTZXAgMjAxMSAwOToxMTowOCAtMDcwMDwv
+ZGl2PjxkaXY+PGI+VG86IDwvYj5CZW5ueSBIYWxldnkmbHQ7YmhhbGV2eUB0b25pYW4uY29tJmd0
+OzwvZGl2PjxkaXY+PGI+Q2M6IDwvYj5ORlMgbGlzdCZsdDtsaW51eC1uZnNAdmdlci5rZXJuZWwu
+b3JnJmd0OzsgR2FuZXNoYSBORlMgTGlzdCZsdDtuZnMtZ2FuZXNoYS1kZXZlbEBsaXN0cy5zb3Vy
+Y2Vmb3JnZS5uZXQmZ3Q7OyAmbHQ7bmZzdjRAaWV0Zi5vcmcmZ3Q7OyAmbHQ7bmZzdjQtYm91bmNl
+c0BpZXRmLm9yZyZndDs7IERFTklFTCBQaGlsaXBwZSZsdDtwaGlsaXBwZS5kZW5pZWxAY2VhLmZy
+Jmd0OzwvZGl2PjxkaXY+PGI+U3ViamVjdDogPC9iPlJlOiBbbmZzdjRdIFJlbWluZGVyIG9uIE9j
+dG9iZXIgMjAxMSBCQVQ8L2Rpdj48ZGl2Pjxici8+PC9kaXY+DQo8YnI+PGZvbnQgc2l6ZT0yIGZh
+Y2U9InNhbnMtc2VyaWYiPkkgYW0gbm90IGdvaW5nIHRvIGJlIGFyb3VuZCBoZXJlIE1vbmRheQ0K
+dGhvdWdoIFdlZG5lc2RheSwgaG93IGxhdGUgb24gVGh1cnNkYXkgbW9ybmluZyBkbyB5b3UgbGVh
+dmU/IGxldHMgaGVhcg0KZnJvbSB0aGUgcmVzdCBvZiB0aGUgZ3JvdXA/IG1heWJlIHdlIGNhbiBo
+YXZlIHR3byBtZWV0aW5ncz88L2ZvbnQ+DQo8YnI+PGZvbnQgc2l6ZT0yIGZhY2U9InNhbnMtc2Vy
+aWYiPk1hcmMuPC9mb250Pg0KPGJyPg0KPGJyPg0KPGJyPg0KPHRhYmxlIHdpZHRoPTEwMCU+DQo8
+dHIgdmFsaWduPXRvcD4NCjx0ZD48Zm9udCBzaXplPTEgY29sb3I9IzVmNWY1ZiBmYWNlPSJzYW5z
+LXNlcmlmIj5Gcm9tOjwvZm9udD4NCjx0ZD48Zm9udCBzaXplPTEgZmFjZT0ic2Fucy1zZXJpZiI+
+QmVubnkgSGFsZXZ5ICZsdDtiaGFsZXZ5QHRvbmlhbi5jb20mZ3Q7PC9mb250Pg0KPHRyIHZhbGln
+bj10b3A+DQo8dGQ+PGZvbnQgc2l6ZT0xIGNvbG9yPSM1ZjVmNWYgZmFjZT0ic2Fucy1zZXJpZiI+
+VG86PC9mb250Pg0KPHRkPjxmb250IHNpemU9MSBmYWNlPSJzYW5zLXNlcmlmIj5NYXJjIEVzaGVs
+ICZsdDtlc2hlbEBhbG1hZGVuLmlibS5jb20mZ3Q7PC9mb250Pg0KPHRyPg0KPHRkIHZhbGlnbj10
+b3A+PGZvbnQgc2l6ZT0xIGNvbG9yPSM1ZjVmNWYgZmFjZT0ic2Fucy1zZXJpZiI+Q2M6PC9mb250
+Pg0KPHRkPjxmb250IHNpemU9MSBmYWNlPSJzYW5zLXNlcmlmIj5ORlMgbGlzdCAmbHQ7bGludXgt
+bmZzQHZnZXIua2VybmVsLm9yZyZndDssDQpuZnN2NEBpZXRmLm9yZywgREVOSUVMIFBoaWxpcHBl
+ICZsdDtwaGlsaXBwZS5kZW5pZWxAY2VhLmZyJmd0OywgR2FuZXNoYQ0KTkZTIExpc3QgJmx0O25m
+cy1nYW5lc2hhLWRldmVsQGxpc3RzLnNvdXJjZWZvcmdlLm5ldCZndDs8L2ZvbnQ+DQo8dHIgdmFs
+aWduPXRvcD4NCjx0ZD48Zm9udCBzaXplPTEgY29sb3I9IzVmNWY1ZiBmYWNlPSJzYW5zLXNlcmlm
+Ij5EYXRlOjwvZm9udD4NCjx0ZD48Zm9udCBzaXplPTEgZmFjZT0ic2Fucy1zZXJpZiI+MDkvMjEv
+MjAxMSAwOTowMSBBTTwvZm9udD4NCjx0ciB2YWxpZ249dG9wPg0KPHRkPjxmb250IHNpemU9MSBj
+b2xvcj0jNWY1ZjVmIGZhY2U9InNhbnMtc2VyaWYiPlN1YmplY3Q6PC9mb250Pg0KPHRkPjxmb250
+IHNpemU9MSBmYWNlPSJzYW5zLXNlcmlmIj5SZTogW25mc3Y0XSBSZW1pbmRlciBvbiBPY3RvYmVy
+IDIwMTENCkJBVDwvZm9udD4NCjx0ciB2YWxpZ249dG9wPg0KPHRkPjxmb250IHNpemU9MSBjb2xv
+cj0jNWY1ZjVmIGZhY2U9InNhbnMtc2VyaWYiPlNlbnQgYnk6PC9mb250Pg0KPHRkPjxmb250IHNp
+emU9MSBmYWNlPSJzYW5zLXNlcmlmIj5uZnN2NC1ib3VuY2VzQGlldGYub3JnPC9mb250PjwvdGFi
+bGU+DQo8YnI+DQo8aHIgbm9zaGFkZT4NCjxicj4NCjxicj4NCjxicj48dHQ+PGZvbnQgc2l6ZT0y
+PkknbSBsZWF2aW5nIG9uIFRodXJzZGF5IG1vcm5pbmcgc28gTW9uZGF5IHRocm91Z2gNCldlZG5l
+c2RheSB3b3VsZDxicj4NCndvcmsgYmV0dGVyIGZvciBtZS48YnI+DQo8YnI+DQpCZW5ueTxicj4N
+Cjxicj4NCk9uIFdlZCwgU2VwIDIxLCAyMDExIGF0IDU6NTMgUE0sIE1hcmMgRXNoZWwgJmx0O2Vz
+aGVsQGFsbWFkZW4uaWJtLmNvbSZndDsNCndyb3RlOjxicj4NCiZndDsgQ2FuIHdlIHBsZWFzZSBk
+byB0aGlzIEdhbmVzaGEgbWVldGluZyBvbiB0aGUgVGh1cnNkYXkgb3IgRnJpZGF5IG9mDQp0aGU8
+YnI+DQomZ3Q7IEJha2VBVGhvbiB3ZWVrLjxicj4NCiZndDsgVGhhbmtzLCBNYXJjLjxicj4NCiZn
+dDs8YnI+DQomZ3Q7PGJyPg0KJmd0Ozxicj4NCiZndDsgRnJvbTo8YnI+DQomZ3Q7IEJvYXogSGFy
+cm9zaCAmbHQ7YmhhcnJvc2hAcGFuYXNhcy5jb20mZ3Q7PGJyPg0KJmd0OyBUbzo8YnI+DQomZ3Q7
+IERFTklFTCBQaGlsaXBwZSAmbHQ7cGhpbGlwcGUuZGVuaWVsQGNlYS5mciZndDs8YnI+DQomZ3Q7
+IENjOjxicj4NCiZndDsgVGhvbWFzIEhheW5lcyAmbHQ7dGhvbWFzQG5ldGFwcC5jb20mZ3Q7LCBO
+RlMgbGlzdCAmbHQ7bGludXgtbmZzQHZnZXIua2VybmVsLm9yZyZndDssPGJyPg0KJmd0OyBNYXJj
+IEVzaGVsICZsdDtlc2hlbEBhbG1hZGVuLmlibS5jb20mZ3Q7LCAmbHQ7bmZzdjRAaWV0Zi5vcmcm
+Z3Q7LA0KR2FuZXNoYSBORlMgTGlzdDxicj4NCiZndDsgJmx0O25mcy1nYW5lc2hhLWRldmVsQGxp
+c3RzLnNvdXJjZWZvcmdlLm5ldCZndDs8YnI+DQomZ3Q7IERhdGU6PGJyPg0KJmd0OyAwOS8yMS8y
+MDExIDA2OjUwIEFNPGJyPg0KJmd0OyBTdWJqZWN0Ojxicj4NCiZndDsgUmU6IFtuZnN2NF0gUmVt
+aW5kZXIgb24gT2N0b2JlciAyMDExIEJBVDxicj4NCiZndDs8YnI+DQomZ3Q7PGJyPg0KJmd0Ozxi
+cj4NCiZndDsgT24gMDkvMjEvMjAxMSAwNDowNiBQTSwgREVOSUVMIFBoaWxpcHBlIHdyb3RlOjxi
+cj4NCiZndDsmZ3Q7IFRob21hcyBIYXluZXMgYSDpY3JpdCA6PGJyPg0KJmd0OyZndDsmZ3Q7PGJy
+Pg0KJmd0OyZndDsmZ3Q7Jmd0Ozxicj4NCiZndDsmZ3Q7Jmd0OyZndDsgSWYgc28gd2Ugd2lsbCB3
+YW50IG9uZSBzZXQgYXNpZGUgZm9yOjxicj4NCiZndDsmZ3Q7Jmd0OyZndDsgJm5ic3A7ICZuYnNw
+OyAmbmJzcDsgJm5ic3A7ICZxdW90O0Rlc2lnbiBvZiBORlMtR2FuZXNoYQ0KcE5GUyBTZXJ2ZXIg
+aW5mcmFzdHJ1Y3R1cmUmcXVvdDs8YnI+DQomZ3Q7Jmd0OyZndDsmZ3Q7PGJyPg0KJmd0OyZndDsm
+Z3Q7IEFib3V0IGhvdyBtYW55IHBlb3BsZSB3b3VsZCB5b3UgdGhpbmsgd291bGQgYmUgcHJlc2Vu
+dD88YnI+DQomZ3Q7Jmd0OyBQcm9iYWJseSBiZXR3ZWVuIDYgKEJvYXosIEJlbm55LCBNYXR0LCBB
+ZGFtLCBNYXJjIGFuZCBJKSB0byAxMA0KcGVvcGxlPGJyPg0KJmd0OyZndDsgKGlmIG90aGVyIGd1
+eXMgZnJvbSBJQk0gb3IgUGFuYXNhcyBhcmUgY29taW5nKS48YnI+DQomZ3Q7Jmd0Ozxicj4NCiZn
+dDs8YnI+DQomZ3Q7IFRoZXJlIHNob3VsZCBiZSBtb3JlLCBidXQgSSBndWVzcyB0aGUgc21hbGwg
+cm9vbSBpcyBnb29kIGVub3VnaC48YnI+DQomZ3Q7PGJyPg0KJmd0OyBUb208YnI+DQomZ3Q7ICZu
+YnNwO3dlIHNob3VsZCBiZSBhYmxlIHRvIGZpdCB1cCB0byAxNSBQZW9wbGUgaW4gdGhhdCBvdGhl
+ciByb29tLA0KcmlnaHQ/PGJyPg0KJmd0Ozxicj4NCiZndDsmZ3Q7ICZuYnNwOyAmbmJzcDsgUmVn
+YXJkczxicj4NCiZndDsmZ3Q7PGJyPg0KJmd0OyZndDsgJm5ic3A7ICZuYnNwOyAmbmJzcDsgJm5i
+c3A7UGhpbGlwcGU8YnI+DQomZ3Q7PGJyPg0KJmd0OyBUaGFua3M8YnI+DQomZ3Q7IEJvYXo8YnI+
+DQomZ3Q7PGJyPg0KJmd0Ozxicj4NCiZndDs8YnI+DQomZ3Q7PGJyPg0KJmd0OyAtLTxicj4NCiZn
+dDsgVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgJnF1b3Q7dW5z
+dWJzY3JpYmUgbGludXgtbmZzJnF1b3Q7DQppbjxicj4NCiZndDsgdGhlIGJvZHkgb2YgYSBtZXNz
+YWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmc8YnI+DQomZ3Q7IE1vcmUgbWFqb3Jkb21v
+IGluZm8gYXQgJm5ic3A7PC9mb250PjwvdHQ+PGEgaHJlZj0iaHR0cDovL3ZnZXIua2VybmVsLm9y
+Zy9tYWpvcmRvbW8taW5mby5odG1sIj48dHQ+PGZvbnQgc2l6ZT0yPmh0dHA6Ly92Z2VyLmtlcm5l
+bC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbDwvZm9udD48L3R0PjwvYT48dHQ+PGZvbnQgc2l6ZT0y
+Pjxicj4NCiZndDs8YnI+DQpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fXzxicj4NCm5mc3Y0IG1haWxpbmcgbGlzdDxicj4NCm5mc3Y0QGlldGYub3JnPGJyPg0K
+PC9mb250PjwvdHQ+PGEgaHJlZj1odHRwczovL3d3dy5pZXRmLm9yZy9tYWlsbWFuL2xpc3RpbmZv
+L25mc3Y0Pjx0dD48Zm9udCBzaXplPTI+aHR0cHM6Ly93d3cuaWV0Zi5vcmcvbWFpbG1hbi9saXN0
+aW5mby9uZnN2NDwvZm9udD48L3R0PjwvYT48dHQ+PGZvbnQgc2l6ZT0yPjxicj4NCjwvZm9udD48
+L3R0Pg0KPGJyPg0KPGJyPg0KPC9odG1sPg==
+
+--part2877-boundary-1498485381-163442687--
 
 
-
-I'm leaving on Thursday morning so Monday through Wednesday would
-work better for me.
-
-Benny
-
-On Wed, Sep 21, 2011 at 5:53 PM, Marc Eshel <eshel@almaden.ibm.com> wrote:
-> Can we please do this Ganesha meeting on the Thursday or Friday of the
-> BakeAThon week.
-> Thanks, Marc.
->
->
->
-> From:
-> Boaz Harrosh <bharrosh@panasas.com>
-> To:
-> DENIEL Philippe <philippe.deniel@cea.fr>
-> Cc:
-> Thomas Haynes <thomas@netapp.com>, NFS list <linux-nfs@vger.kernel.org>,
-> Marc Eshel <eshel@almaden.ibm.com>, <nfsv4@ietf.org>, Ganesha NFS List
-> <nfs-ganesha-devel@lists.sourceforge.net>
-> Date:
-> 09/21/2011 06:50 AM
-> Subject:
-> Re: [nfsv4] Reminder on October 2011 BAT
->
->
->
-> On 09/21/2011 04:06 PM, DENIEL Philippe wrote:
->> Thomas Haynes a =E9crit :
->>>
->>>>
->>>> If so we will want one set aside for:
->>>>         "Design of NFS-Ganesha pNFS Server infrastructure"
->>>>
->>> About how many people would you think would be present?
->> Probably between 6 (Boaz, Benny, Matt, Adam, Marc and I) to 10 people
->> (if other guys from IBM or Panasas are coming).
->>
->
-> There should be more, but I guess the small room is good enough.
->
-> Tom
->  we should be able to fit up to 15 People in that other room, right?
->
->>     Regards
->>
->>        Philippe
->
-> Thanks
-> Boaz
->
->
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=
-=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www.ietf.org/mailman/listinfo/nfsv4
-
-
-
---=_alternative 0058E4E388257912_=
-Content-Type: text/html; charset="ISO-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-
-<br><font size=3D2 face=3D"sans-serif">I am not going to be around here Mon=
-day
-though Wednesday, how late on Thursday morning do you leave? lets hear
-from the rest of the group? maybe we can have two meetings?</font>
-<br><font size=3D2 face=3D"sans-serif">Marc.</font>
-<br>
-<br>
-<br>
-<table width=3D100%>
-<tr valign=3Dtop>
-<td><font size=3D1 color=3D#5f5f5f face=3D"sans-serif">From:</font>
-<td><font size=3D1 face=3D"sans-serif">Benny Halevy &lt;bhalevy@tonian.com&=
-gt;</font>
-<tr valign=3Dtop>
-<td><font size=3D1 color=3D#5f5f5f face=3D"sans-serif">To:</font>
-<td><font size=3D1 face=3D"sans-serif">Marc Eshel &lt;eshel@almaden.ibm.com=
-&gt;</font>
-<tr>
-<td valign=3Dtop><font size=3D1 color=3D#5f5f5f face=3D"sans-serif">Cc:</fo=
-nt>
-<td><font size=3D1 face=3D"sans-serif">NFS list &lt;linux-nfs@vger.kernel.o=
-rg&gt;,
-nfsv4@ietf.org, DENIEL Philippe &lt;philippe.deniel@cea.fr&gt;, Ganesha
-NFS List &lt;nfs-ganesha-devel@lists.sourceforge.net&gt;</font>
-<tr valign=3Dtop>
-<td><font size=3D1 color=3D#5f5f5f face=3D"sans-serif">Date:</font>
-<td><font size=3D1 face=3D"sans-serif">09/21/2011 09:01 AM</font>
-<tr valign=3Dtop>
-<td><font size=3D1 color=3D#5f5f5f face=3D"sans-serif">Subject:</font>
-<td><font size=3D1 face=3D"sans-serif">Re: [nfsv4] Reminder on October 2011
-BAT</font>
-<tr valign=3Dtop>
-<td><font size=3D1 color=3D#5f5f5f face=3D"sans-serif">Sent by:</font>
-<td><font size=3D1 face=3D"sans-serif">nfsv4-bounces@ietf.org</font></table>
-<br>
-<hr noshade>
-<br>
-<br>
-<br><tt><font size=3D2>I'm leaving on Thursday morning so Monday through
-Wednesday would<br>
-work better for me.<br>
-<br>
-Benny<br>
-<br>
-On Wed, Sep 21, 2011 at 5:53 PM, Marc Eshel &lt;eshel@almaden.ibm.com&gt;
-wrote:<br>
-&gt; Can we please do this Ganesha meeting on the Thursday or Friday of
-the<br>
-&gt; BakeAThon week.<br>
-&gt; Thanks, Marc.<br>
-&gt;<br>
-&gt;<br>
-&gt;<br>
-&gt; From:<br>
-&gt; Boaz Harrosh &lt;bharrosh@panasas.com&gt;<br>
-&gt; To:<br>
-&gt; DENIEL Philippe &lt;philippe.deniel@cea.fr&gt;<br>
-&gt; Cc:<br>
-&gt; Thomas Haynes &lt;thomas@netapp.com&gt;, NFS list &lt;linux-nfs@vger.k=
-ernel.org&gt;,<br>
-&gt; Marc Eshel &lt;eshel@almaden.ibm.com&gt;, &lt;nfsv4@ietf.org&gt;,
-Ganesha NFS List<br>
-&gt; &lt;nfs-ganesha-devel@lists.sourceforge.net&gt;<br>
-&gt; Date:<br>
-&gt; 09/21/2011 06:50 AM<br>
-&gt; Subject:<br>
-&gt; Re: [nfsv4] Reminder on October 2011 BAT<br>
-&gt;<br>
-&gt;<br>
-&gt;<br>
-&gt; On 09/21/2011 04:06 PM, DENIEL Philippe wrote:<br>
-&gt;&gt; Thomas Haynes a =E9crit :<br>
-&gt;&gt;&gt;<br>
-&gt;&gt;&gt;&gt;<br>
-&gt;&gt;&gt;&gt; If so we will want one set aside for:<br>
-&gt;&gt;&gt;&gt; &nbsp; &nbsp; &nbsp; &nbsp; &quot;Design of NFS-Ganesha
-pNFS Server infrastructure&quot;<br>
-&gt;&gt;&gt;&gt;<br>
-&gt;&gt;&gt; About how many people would you think would be present?<br>
-&gt;&gt; Probably between 6 (Boaz, Benny, Matt, Adam, Marc and I) to 10
-people<br>
-&gt;&gt; (if other guys from IBM or Panasas are coming).<br>
-&gt;&gt;<br>
-&gt;<br>
-&gt; There should be more, but I guess the small room is good enough.<br>
-&gt;<br>
-&gt; Tom<br>
-&gt; &nbsp;we should be able to fit up to 15 People in that other room,
-right?<br>
-&gt;<br>
-&gt;&gt; &nbsp; &nbsp; Regards<br>
-&gt;&gt;<br>
-&gt;&gt; &nbsp; &nbsp; &nbsp; &nbsp;Philippe<br>
-&gt;<br>
-&gt; Thanks<br>
-&gt; Boaz<br>
-&gt;<br>
-&gt;<br>
-&gt;<br>
-&gt;<br>
-&gt; --<br>
-&gt; To unsubscribe from this list: send the line &quot;unsubscribe linux-n=
-fs&quot;
-in<br>
-&gt; the body of a message to majordomo@vger.kernel.org<br>
-&gt; More majordomo info at &nbsp;</font></tt><a href=3D"http://vger.kernel=
-.org/majordomo-info.html"><tt><font size=3D2>http://vger.kernel.org/majordo=
-mo-info.html</font></tt></a><tt><font size=3D2><br>
-&gt;<br>
-=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=
-=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F<br>
-nfsv4 mailing list<br>
-nfsv4@ietf.org<br>
-</font></tt><a href=3Dhttps://www.ietf.org/mailman/listinfo/nfsv4><tt><font=
- size=3D2>https://www.ietf.org/mailman/listinfo/nfsv4</font></tt></a><tt><f=
-ont size=3D2><br>
-</font></tt>
-<br>
-<br>
---=_alternative 0058E4E388257912_=--
-
---===============2434397323596651057==
+--===============1165107061318597967==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -265,4 +190,4 @@ nfsv4 mailing list
 nfsv4@ietf.org
 https://www.ietf.org/mailman/listinfo/nfsv4
 
---===============2434397323596651057==--
+--===============1165107061318597967==--
