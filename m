@@ -1,39 +1,73 @@
-From: Benny Halevy <bhalevy@tonian.com>
-Subject: Re: [nfsv4] Reminder on October 2011 BAT
-Date: Wed, 21 Sep 2011 18:59:51 +0300
-Message-ID: <CAEMWVhttJGJdssVSBodPXZChVQyNr5LcXDudkUVeVcbi24AzGw@mail.gmail.com>
-References: <721C2207-5FBE-4886-8B2C-955961564755@netapp.com>
- <869E9B5A-E664-43C6-B8BC-BBC0A2158CB8@netapp.com> <4E785048.7080607@panasas.com>
- <E041A9BE-28EC-4360-BD6E-3D08825F45F4@netapp.com> <4E79E155.4000907@cea.fr>
- <4E79E93A.6050500@panasas.com> <OF914D6D95.5AAB670B-ON88257912.005185F7-88257912.0051C20D@us.ibm.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Subject: Re: Reminder on October 2011 BAT
+Date: Wed, 21 Sep 2011 09:11:08 -0700
+Message-ID: <OF1E634581.91D8F5E8-ON88257912.00588CE3-88257912.0058E4E5@us.ibm.com>
+References: <721C2207-5FBE-4886-8B2C-955961564755@netapp.com>	<869E9B5A-E664-43C6-B8BC-BBC0A2158CB8@netapp.com>
+	<4E785048.7080607@panasas.com>	<E041A9BE-28EC-4360-BD6E-3D08825F45F4@netapp.com>
+	<4E79E155.4000907@cea.fr>
+	<4E79E93A.6050500@panasas.com>	<OF914D6D95.5AAB670B-ON88257912.005185F7-88257912.0051C20D@us.ibm.com>
+	<CAEMWVhttJGJdssVSBodPXZChVQyNr5LcXDudkUVeVcbi24AzGw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Boaz Harrosh <bharrosh@panasas.com>,
-	NFS list <linux-nfs@vger.kernel.org>,
+Content-Type: multipart/mixed; boundary="===============2434397323596651057=="
+Cc: NFS list <linux-nfs@vger.kernel.org>,
 	Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
-	nfsv4@ietf.org, DENIEL Philippe <philippe.deniel@cea.fr>,
-	Thomas Haynes <thomas@netapp.com>
-To: Marc Eshel <eshel@almaden.ibm.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yi0-f46.google.com ([209.85.218.46]:42031 "EHLO
-	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750789Ab1IUQAM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 12:00:12 -0400
-Received: by yib18 with SMTP id 18so1189317yib.19
-        for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 09:00:11 -0700 (PDT)
-In-Reply-To: <OF914D6D95.5AAB670B-ON88257912.005185F7-88257912.0051C20D@us.ibm.com>
-Sender: linux-nfs-owner@vger.kernel.org
+	DENIEL Philippe <philippe.deniel@cea.fr>, nfsv4@ietf.org,
+	nfsv4-bounces@ietf.org
+To: Benny Halevy <bhalevy@tonian.com>
+Return-path: <nfsv4-bounces@ietf.org>
+In-Reply-To: <CAEMWVhttJGJdssVSBodPXZChVQyNr5LcXDudkUVeVcbi24AzGw@mail.gmail.com>
+List-Unsubscribe: <https://www.ietf.org/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
+List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
+List-Post: <mailto:nfsv4@ietf.org>
+List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
+List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=subscribe>
+Sender: nfsv4-bounces@ietf.org
+Errors-To: nfsv4-bounces@ietf.org
 List-ID: <linux-nfs.vger.kernel.org>
+
+This is a multipart message in MIME format.
+--===============2434397323596651057==
+Content-Type: multipart/alternative; boundary="=_alternative 0058E4E388257912_="
+
+This is a multipart message in MIME format.
+--=_alternative 0058E4E388257912_=
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+I am not going to be around here Monday though Wednesday, how late on=20
+Thursday morning do you leave? lets hear from the rest of the group? maybe =
+
+we can have two meetings?
+Marc.
+
+
+
+From:
+Benny Halevy <bhalevy@tonian.com>
+To:
+Marc Eshel <eshel@almaden.ibm.com>
+Cc:
+NFS list <linux-nfs@vger.kernel.org>, nfsv4@ietf.org, DENIEL Philippe=20
+<philippe.deniel@cea.fr>, Ganesha NFS List=20
+<nfs-ganesha-devel@lists.sourceforge.net>
+Date:
+09/21/2011 09:01 AM
+Subject:
+Re: [nfsv4] Reminder on October 2011 BAT
+Sent by:
+nfsv4-bounces@ietf.org
+
+
 
 I'm leaving on Thursday morning so Monday through Wednesday would
 work better for me.
 
 Benny
 
-On Wed, Sep 21, 2011 at 5:53 PM, Marc Eshel <eshel@almaden.ibm.com> wro=
-te:
-> Can we please do this Ganesha meeting on the Thursday or Friday of th=
-e
+On Wed, Sep 21, 2011 at 5:53 PM, Marc Eshel <eshel@almaden.ibm.com> wrote:
+> Can we please do this Ganesha meeting on the Thursday or Friday of the
 > BakeAThon week.
 > Thanks, Marc.
 >
@@ -44,10 +78,8 @@ e
 > To:
 > DENIEL Philippe <philippe.deniel@cea.fr>
 > Cc:
-> Thomas Haynes <thomas@netapp.com>, NFS list <linux-nfs@vger.kernel.or=
-g>,
-> Marc Eshel <eshel@almaden.ibm.com>, <nfsv4@ietf.org>, Ganesha NFS Lis=
-t
+> Thomas Haynes <thomas@netapp.com>, NFS list <linux-nfs@vger.kernel.org>,
+> Marc Eshel <eshel@almaden.ibm.com>, <nfsv4@ietf.org>, Ganesha NFS List
 > <nfs-ganesha-devel@lists.sourceforge.net>
 > Date:
 > 09/21/2011 06:50 AM
@@ -61,23 +93,21 @@ t
 >>>
 >>>>
 >>>> If so we will want one set aside for:
->>>> =A0 =A0 =A0 =A0 "Design of NFS-Ganesha pNFS Server infrastructure"
+>>>>         "Design of NFS-Ganesha pNFS Server infrastructure"
 >>>>
 >>> About how many people would you think would be present?
->> Probably between 6 (Boaz, Benny, Matt, Adam, Marc and I) to 10 peopl=
-e
+>> Probably between 6 (Boaz, Benny, Matt, Adam, Marc and I) to 10 people
 >> (if other guys from IBM or Panasas are coming).
 >>
 >
 > There should be more, but I guess the small room is good enough.
 >
 > Tom
-> =A0we should be able to fit up to 15 People in that other room, right=
-?
+>  we should be able to fit up to 15 People in that other room, right?
 >
->> =A0 =A0 Regards
+>>     Regards
 >>
->> =A0 =A0 =A0 =A0Philippe
+>>        Philippe
 >
 > Thanks
 > Boaz
@@ -86,8 +116,153 @@ e
 >
 >
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 >
+=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=
+=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F
+nfsv4 mailing list
+nfsv4@ietf.org
+https://www.ietf.org/mailman/listinfo/nfsv4
+
+
+
+--=_alternative 0058E4E388257912_=
+Content-Type: text/html; charset="ISO-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+
+<br><font size=3D2 face=3D"sans-serif">I am not going to be around here Mon=
+day
+though Wednesday, how late on Thursday morning do you leave? lets hear
+from the rest of the group? maybe we can have two meetings?</font>
+<br><font size=3D2 face=3D"sans-serif">Marc.</font>
+<br>
+<br>
+<br>
+<table width=3D100%>
+<tr valign=3Dtop>
+<td><font size=3D1 color=3D#5f5f5f face=3D"sans-serif">From:</font>
+<td><font size=3D1 face=3D"sans-serif">Benny Halevy &lt;bhalevy@tonian.com&=
+gt;</font>
+<tr valign=3Dtop>
+<td><font size=3D1 color=3D#5f5f5f face=3D"sans-serif">To:</font>
+<td><font size=3D1 face=3D"sans-serif">Marc Eshel &lt;eshel@almaden.ibm.com=
+&gt;</font>
+<tr>
+<td valign=3Dtop><font size=3D1 color=3D#5f5f5f face=3D"sans-serif">Cc:</fo=
+nt>
+<td><font size=3D1 face=3D"sans-serif">NFS list &lt;linux-nfs@vger.kernel.o=
+rg&gt;,
+nfsv4@ietf.org, DENIEL Philippe &lt;philippe.deniel@cea.fr&gt;, Ganesha
+NFS List &lt;nfs-ganesha-devel@lists.sourceforge.net&gt;</font>
+<tr valign=3Dtop>
+<td><font size=3D1 color=3D#5f5f5f face=3D"sans-serif">Date:</font>
+<td><font size=3D1 face=3D"sans-serif">09/21/2011 09:01 AM</font>
+<tr valign=3Dtop>
+<td><font size=3D1 color=3D#5f5f5f face=3D"sans-serif">Subject:</font>
+<td><font size=3D1 face=3D"sans-serif">Re: [nfsv4] Reminder on October 2011
+BAT</font>
+<tr valign=3Dtop>
+<td><font size=3D1 color=3D#5f5f5f face=3D"sans-serif">Sent by:</font>
+<td><font size=3D1 face=3D"sans-serif">nfsv4-bounces@ietf.org</font></table>
+<br>
+<hr noshade>
+<br>
+<br>
+<br><tt><font size=3D2>I'm leaving on Thursday morning so Monday through
+Wednesday would<br>
+work better for me.<br>
+<br>
+Benny<br>
+<br>
+On Wed, Sep 21, 2011 at 5:53 PM, Marc Eshel &lt;eshel@almaden.ibm.com&gt;
+wrote:<br>
+&gt; Can we please do this Ganesha meeting on the Thursday or Friday of
+the<br>
+&gt; BakeAThon week.<br>
+&gt; Thanks, Marc.<br>
+&gt;<br>
+&gt;<br>
+&gt;<br>
+&gt; From:<br>
+&gt; Boaz Harrosh &lt;bharrosh@panasas.com&gt;<br>
+&gt; To:<br>
+&gt; DENIEL Philippe &lt;philippe.deniel@cea.fr&gt;<br>
+&gt; Cc:<br>
+&gt; Thomas Haynes &lt;thomas@netapp.com&gt;, NFS list &lt;linux-nfs@vger.k=
+ernel.org&gt;,<br>
+&gt; Marc Eshel &lt;eshel@almaden.ibm.com&gt;, &lt;nfsv4@ietf.org&gt;,
+Ganesha NFS List<br>
+&gt; &lt;nfs-ganesha-devel@lists.sourceforge.net&gt;<br>
+&gt; Date:<br>
+&gt; 09/21/2011 06:50 AM<br>
+&gt; Subject:<br>
+&gt; Re: [nfsv4] Reminder on October 2011 BAT<br>
+&gt;<br>
+&gt;<br>
+&gt;<br>
+&gt; On 09/21/2011 04:06 PM, DENIEL Philippe wrote:<br>
+&gt;&gt; Thomas Haynes a =E9crit :<br>
+&gt;&gt;&gt;<br>
+&gt;&gt;&gt;&gt;<br>
+&gt;&gt;&gt;&gt; If so we will want one set aside for:<br>
+&gt;&gt;&gt;&gt; &nbsp; &nbsp; &nbsp; &nbsp; &quot;Design of NFS-Ganesha
+pNFS Server infrastructure&quot;<br>
+&gt;&gt;&gt;&gt;<br>
+&gt;&gt;&gt; About how many people would you think would be present?<br>
+&gt;&gt; Probably between 6 (Boaz, Benny, Matt, Adam, Marc and I) to 10
+people<br>
+&gt;&gt; (if other guys from IBM or Panasas are coming).<br>
+&gt;&gt;<br>
+&gt;<br>
+&gt; There should be more, but I guess the small room is good enough.<br>
+&gt;<br>
+&gt; Tom<br>
+&gt; &nbsp;we should be able to fit up to 15 People in that other room,
+right?<br>
+&gt;<br>
+&gt;&gt; &nbsp; &nbsp; Regards<br>
+&gt;&gt;<br>
+&gt;&gt; &nbsp; &nbsp; &nbsp; &nbsp;Philippe<br>
+&gt;<br>
+&gt; Thanks<br>
+&gt; Boaz<br>
+&gt;<br>
+&gt;<br>
+&gt;<br>
+&gt;<br>
+&gt; --<br>
+&gt; To unsubscribe from this list: send the line &quot;unsubscribe linux-n=
+fs&quot;
+in<br>
+&gt; the body of a message to majordomo@vger.kernel.org<br>
+&gt; More majordomo info at &nbsp;</font></tt><a href=3D"http://vger.kernel=
+.org/majordomo-info.html"><tt><font size=3D2>http://vger.kernel.org/majordo=
+mo-info.html</font></tt></a><tt><font size=3D2><br>
+&gt;<br>
+=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=
+=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F=5F<br>
+nfsv4 mailing list<br>
+nfsv4@ietf.org<br>
+</font></tt><a href=3Dhttps://www.ietf.org/mailman/listinfo/nfsv4><tt><font=
+ size=3D2>https://www.ietf.org/mailman/listinfo/nfsv4</font></tt></a><tt><f=
+ont size=3D2><br>
+</font></tt>
+<br>
+<br>
+--=_alternative 0058E4E388257912_=--
+
+--===============2434397323596651057==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+nfsv4 mailing list
+nfsv4@ietf.org
+https://www.ietf.org/mailman/listinfo/nfsv4
+
+--===============2434397323596651057==--
