@@ -1,73 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:58324 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750991Ab1INGnW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Sep 2011 02:43:22 -0400
-Received: by wyh22 with SMTP id 22so1338800wyh.19
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Sep 2011 23:43:21 -0700 (PDT)
-Message-ID: <4E704D05.6020406@tonian.com>
-Date: Wed, 14 Sep 2011 08:43:17 +0200
-From: Benny Halevy <bhalevy@tonian.com>
-To: tao.peng@emc.com
-CC: Trond.Myklebust@netapp.com, bergwolf@gmail.com, gusev.vitaliy@nexenta.com,
-        gusev.vitaliy@gmail.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
-References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com>  <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com>  <1315348373.19556.22.camel@lade.trondhjem.org>  <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com>  <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com>  <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com>  <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com>  <F19688880B763E40B28B2B462677FBF805C3299D2F@MX09A.corp.emc.com>  <1315592430.17611.15.camel@lade.trondhjem.org>  <4E6B0E48.7050208@tonian.com>  <CA+a=Yy5fMHPcSU4EoSo1uiOUCfi8vjRVPAjEYGZ+M00CwZ8Z9g@mail.gmail.com>  <4E6E6C3B.2040605@tonian.com> <1315861851.8350.11.camel@lade.trondhjem.org> <4E6F0B61.4050907@tonian.com> <F19688880B763E40B28B2B462677FBF805C3299FA6@MX09A.corp.emc.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805C3299FA6@MX09A.corp.emc.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mexforward.lss.emc.com ([128.222.32.20]:30327 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751924Ab1IVDam (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2011 23:30:42 -0400
+From: <tao.peng@emc.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <bharrosh@panasas.com>, <bhalevy@tonian.com>, <linux-nfs@vger.kernel.org>,
+        <honey@citi.umich.edu>, <rees@umich.edu>
+Date: Wed, 21 Sep 2011 23:30:14 -0400
+Subject: RE: [PATCH 2/3] pnfs: introduce pnfs private workqueue
+Message-ID: <F19688880B763E40B28B2B462677FBF805C4952ACA@MX09A.corp.emc.com>
+References: <1316488728-24912-1-git-send-email-rees@umich.edu>
+	 <1316488728-24912-3-git-send-email-rees@umich.edu>
+	 <1316558461.15093.4.camel@lade.trondhjem.org>
+	 <20110921002917.GA30770@merit.edu>
+	 <F19688880B763E40B28B2B462677FBF805C4952916@MX09A.corp.emc.com>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480226@SACMVEXC2-PRD.hq.netapp.com>
+	 <F19688880B763E40B28B2B462677FBF805C495295A@MX09A.corp.emc.com>
+	 <4E798C93.40409@tonian.com>
+	 <F19688880B763E40B28B2B462677FBF805C4952A24@MX09A.corp.emc.com>
+	 <4E79C2F0.30303@tonian.com>
+	 <F19688880B763E40B28B2B462677FBF805C4952A34@MX09A.corp.emc.com>
+	 <4E79CA34.3060602@tonian.com> <4E79CD8F.6050901@panasas.com>
+	 <4E79CFA3.4090403@tonian.com> <4E79ED02.5010104@panasas.com>
+	 <CA+a=Yy7PNsrQQdc9nwn1+2bZu86s8xUa9NBXVeo7NecGkc9-VQ@mail.gmail.com>
+ <1316621016.21183.11.camel@lade.trondhjem.org>
+In-Reply-To: <1316621016.21183.11.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-09-13 10:32, tao.peng@emc.com wrote:
->> -----Original Message-----
->> From: Benny Halevy [mailto:bhalevy@tonian.com]
->> Sent: Tuesday, September 13, 2011 3:51 PM
->> To: Trond Myklebust
->> Cc: Peng Tao; Peng, Tao; gusev.vitaliy@nexenta.com; gusev.vitaliy@gmail.com;
->> linux-nfs@vger.kernel.org
->> Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
->>
->> On 2011-09-12 14:10, Trond Myklebust wrote:
->>> On Mon, 2011-09-12 at 13:31 -0700, Benny Halevy wrote:
->>>> On 2011-09-12 07:56, Peng Tao wrote:
->>>>>> The layout segments are not really in use while in LAYOUTCOMMIT.
->>>>>> We only need to get the stateid right with respect to concurrent layout recalls.
->>>>> LAYOUTCOMMIT takes lseg reference to mark them as in use so that
->>>>> layoutrecall cannot free them.
->>>>>
->>>>
->>>> And if layoutrecall would have freed layout segments during layoutcommit,
->>>> what is your specific concern?
->>>
->>> That layoutcommit is supposed to return NFS4ERR_BAD_LAYOUT in that case
->>> according to section 18.42.3 of RFC5661. I can't find anything in the
->>> errata that changes that requirement.
->>>
->>
->> Right. That tells me there no need to strictly serialize LAYOUTCOMMITs
->> with CB_LAYOUTRECALL, as long as the layout stateid sent with LAYOUTCOMMIT
->> atomically represents the state when the operation was prepared.
->>
->> That said, since we do want the LAYOUTCOMMIT to succeed, it would be beneficial
->> for the client to reply to a CB_LAYOUTRECALL received while a conflicting
->> LAYOUTCOMMIT is in progress with NFS4ERR_DELAY.
-> I agree. How about adding a new flag to nfsi->flags for this? We can use the same flag on to ensure serialization of multiple layoutcommit. nfs_commit_set_lock/nfs_commit_clear_lock may not fit for this.
-> 
-
-Sounds good in principle.
-Can you take a stab at a patch that does this?
-
-Benny
-
->>
->> The server, on its side, should prevent a distributed deadlock by avoiding
->> blocking of a LAYOUTCOMMIT on an outstanding CB_LAYOUTRECALL for the same
->> client that sent the LAYOUTCOMMIT.  I'm not sure what error would be best to
->> return.  Maybe NFS4ERR_RECALL_CONFLICT if it would be allowed (it isn't listed
->> for LAYOUTCOMMIT at the moment).  Just returning NFS4ER_DELAY might lead to
->> a live lock situation where neither the LAYOUTCOMMIT not the CB_LAYOUTRECALL
->> complete.
->>
->> Benny
-> 
+SGksIFRyb25kLA0KDQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IGxpbnV4
+LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmcgW21haWx0bzpsaW51eC1uZnMtb3duZXJAdmdlci5r
+ZXJuZWwub3JnXQ0KPiBPbiBCZWhhbGYgT2YgVHJvbmQgTXlrbGVidXN0DQo+IFNlbnQ6IFRodXJz
+ZGF5LCBTZXB0ZW1iZXIgMjIsIDIwMTEgMTI6MDQgQU0NCj4gVG86IFBlbmcgVGFvDQo+IENjOiBC
+b2F6IEhhcnJvc2g7IEJlbm55IEhhbGV2eTsgUGVuZywgVGFvOyBsaW51eC1uZnNAdmdlci5rZXJu
+ZWwub3JnOw0KPiBob25leUBjaXRpLnVtaWNoLmVkdTsgcmVlc0B1bWljaC5lZHUNCj4gU3ViamVj
+dDogUmU6IFtQQVRDSCAyLzNdIHBuZnM6IGludHJvZHVjZSBwbmZzIHByaXZhdGUgd29ya3F1ZXVl
+DQo+IA0KPiBPbiBXZWQsIDIwMTEtMDktMjEgYXQgMjM6NDUgKzA4MDAsIFBlbmcgVGFvIHdyb3Rl
+Og0KPiA+IE9uIFdlZCwgU2VwIDIxLCAyMDExIGF0IDk6NTYgUE0sIEJvYXogSGFycm9zaCA8Ymhh
+cnJvc2hAcGFuYXNhcy5jb20+IHdyb3RlOg0KPiA+ID4gT24gMDkvMjEvMjAxMSAwMjo1MCBQTSwg
+QmVubnkgSGFsZXZ5IHdyb3RlOg0KPiA+ID4+IE9uIDIwMTEtMDktMjEgMTQ6NDIsIEJvYXogSGFy
+cm9zaCB3cm90ZToNCj4gPiA+Pj4gT24gMDkvMjEvMjAxMSAwMjoyNyBQTSwgQmVubnkgSGFsZXZ5
+IHdyb3RlOg0KPiA+ID4+Pj4+IFVubGVzcyB3ZSBkbyBmb2xsb3dpbmc6DQo+ID4gPj4+Pj4gMS4g
+cHJlYWxsb2NhdGUgbWVtb3J5IGZvciBleHRlbnQgc3RhdGUgY29udmVydGlvbg0KPiA+ID4+Pj4+
+IDIuIHVzZSBuZnNpb2QvcnBjaW9kIHRvIGhhbmRsZSBibF93cml0ZV9jbGVhbnVwDQo+ID4gPj4+
+Pj4gMy4gZm9yIHBuZnMgZXJyb3IgY2FzZSwgY3JlYXRlIGEga3RocmVhZCB0byByZWNvbGxhcHNl
+IGFuZCByZXNlbmQgdG8gTURTDQo+ID4gPj4+Pj4gSSBkb24ndCBxdWl0ZSB1bmRlcnN0YW5kLiBI
+b3cgZG8geW91IHVzZSBuZnMgc3RhdGUgbWFuYWdlciB0byBkbyBvdGhlcg0KPiB0YXNrcz8NCj4g
+PiA+Pj4+DQo+ID4gPj4+PiBZb3UgbmVlZCB0byBrZWVwIGEgbGlzdCBvZiB0aGluZ3MgdG8gZG8g
+aGFuZ2luZyBvZmYgb2YgdGhlIG5mcyBjbGllbnQgc3RydWN0dXJlDQo+ID4gPj4+PiBhbmQgc2V0
+IGEgYml0IGluIGNsX3N0YXRlIHRlbGxpbmcgdGhlIHN0YXRlIG1hbmFnZXIgaXQgaGFzIHdvcmsg
+dG8gZG8NCj4gPiA+Pj4+IGFuZCB3YWtlIGl0IHVwLiAgSXQgdGhlbiBuZWVkcyB0byBnbyBvdmVy
+IHRoZSBsaXN0IG9mLCBzYXkgbmZzX2lub2Rlcw0KPiA+ID4+Pj4gYW5kIGNhbGwgaW50byB0aGUg
+bGF5b3V0IGRyaXZlciB0byBoYW5kbGUgdGhlIGVycm9ycy4NCj4gPiA+Pj4+DQo+ID4gPj4+PiBC
+ZW5ueQ0KPiA+ID4+Pg0KPiA+ID4+PiBHb29kIGdvZCwgSXMgaXQgbm90IGFscmVhZHkgdG9vIGNv
+bXBsaWNhdGVkPw0KPiA+ID4+Pg0KPiA+ID4+PiBUaGUgTEQgaXMgb3V0IG9mIHRoZSBwaWN0dXJl
+LiBZb3UgYWxsIHNlZW1lZCB0byBhZ3JlZSB0aGF0DQo+ID4gPj4+IHRoZSBMRCBoYXMgcmVwb3J0
+ZWQgYW4gaW9fZG9uZSBvbiB0aGUgbmZzaW9kL3JwY2lvZCwgYW5kIGluIHRoZSBlcnJvciBjYXNl
+DQo+ID4gPj4+IEdlbmVyaWMgbGF5ZXIgbmVlZHMgdG8gZG8gaXQncyBjb2FsZXNjaW5nIG9uIHNv
+bWUgb3RoZXIgdGhyZWFkLiBTbw0KPiA+ID4+PiB5b3VyIGRlc2NyaXB0aW9uIGFib3ZlIGlzIG5v
+dCBjb3JyZWN0LCB0aGUgTEQgaXMgb3V0IG9mIHRoZSBwaWN0dXJlLg0KPiA+ID4+Pg0KPiA+ID4+
+DQo+ID4gPj4gVHJ1ZSwgaWYgdGhlIGxkIGNsZWFudXAgb24gaW9fZG9uZSBpcyBzdWZmaWNpZW50
+Lg0KPiA+ID4+DQo+ID4gPj4+IEl0IGFsbCBsb29rcyB0b28gY29tcGxpY2F0ZWQgZm9yIG1lLiBB
+IHBuZnMgd29ya3F1ZXVlIGZvciBib3RoIDIgYW5kIDMNCj4gPiA+Pj4gYWJvdmUgaXMgdmVyeSBn
+b29kLiBTcGVjaWFsbHkgc2luY2UgdGhlIHdvcmtxdWV1ZSBhbHNvIHNoYXJlcyBnbG9iYWwNCj4g
+PiA+Pj4gcG9vbCB0aHJlYWRzLCBObz8gSSBsaWtlIGl0IHRoYXQgdGhlcmUgaXMgYSBwcmVhbGxv
+Y2F0ZWQgdGhyZWFkIGZvcg0KPiA+ID4+PiB0aGUgZXJyb3ItY2FzZSwgdGhpbmsgYWJvdXQgaXQu
+DQo+ID4gPj4NCj4gPiA+PiBJJ20gZmluZSB0b28gd2l0aCB1c2luZyBhIHdvcmtxdWV1ZSBmb3Ig
+dGhlIGVycm9yIGNhc2UuDQo+ID4gPj4gQnV0IEknZCByYXRoZXIgaGF2ZSB0aGUgY29tbW9uIGNh
+c2UgZG9uZSBwYXRoIGRvIG9ubHkgbGlnaHR3ZWlnaHQsDQo+ID4gPj4gd2FpdCBmcmVlIHByb2Nl
+c3NpbmcuDQo+ID4gPj4NCj4gPiA+PiBCZW5ueQ0KPiA+ID4+DQo+ID4gPg0KPiA+ID4gSWYgYnkg
+ImNvbW1vbiBjYXNlIGRvbmUgcGF0aCBkbyBvbmx5IGxpZ2h0d2VpZ2h0IiB5b3UgbWVhbg0KPiA+
+ID4gInByZWFsbG9jYXRlIG1lbW9yeSBmb3IgZXh0ZW50IHN0YXRlIGNvbnZlcnNpb24iLiBUaGVu
+IEkgYWJzb2x1dGVseQ0KPiA+ID4gYWdyZWUuIEJ1dCBhcyBmYXIgYXMgd29ya3F1ZXVlL2t0aHJl
+YWQgdGhlbiBuZnNpb2QvcnBjaW9kLXdxIG9yDQo+ID4gPiBwbmZzLXdxIGlzIGV4YWN0bHkgdGhl
+IHNhbWUgZm9yIHRoZSAiY29tbW9uIGNhc2UiLiBVbmxlc3MgSSdtDQo+ID4gPiB0b3RhbGx5IG1p
+c3NpbmcgdGhlIHBvaW50LiBXaGF0IGFyZSB5b3Ugc2F5aW5nPw0KPiA+ID4NCj4gPiA+IFRoZXNl
+IGFyZSB0aGUgb3B0aW9ucyBzbyBmYXI6DQo+ID4gPg0KPiA+ID4gW1RvZSdzIG9wdGlvbiB3aGlj
+aCBoZSByYXRoZXIgbm90XQ0KPiA+ID4gMS4gcHJlYWxsb2NhdGUgbWVtb3J5IGZvciBleHRlbnQg
+c3RhdGUgY29udmVyc2lvbg0KPiA+ID4gMi4gdXNlIG5mc2lvZC9ycGNpb2QgdG8gaGFuZGxlIGJs
+X3dyaXRlX2NsZWFudXANCj4gPiA+IDMuIGZvciBwbmZzIGVycm9yIGNhc2UsIGNyZWF0ZSBhIGt0
+aHJlYWQgdG8gcmVjb2xsYXBzZSBhbmQgcmVzZW5kIHRvIE1EUw0KPiA+ID4NCj4gPiA+IFtNeSBv
+cHRpb24gd2hpY2ggSSB0aGluayBUb2UgYWdyZWVzIHdpdGhdDQo+ID4gPiAxLiBwcmVhbGxvY2F0
+ZSBtZW1vcnkgZm9yIGV4dGVudCBzdGF0ZSBjb252ZXJzaW9uDQo+ID4gPiAyLiB1c2UgcG5mcy13
+cSB0byBoYW5kbGUgYmxfd3JpdGVfY2xlYW51cA0KPiA+ID4gMy4gcG5mcyBlcnJvciBjYXNlLCBq
+dXN0IGxpa2UgVG9lJ3MgcGF0Y2hlcyBhcyBwYXJ0IG9mIGlvX2RvbmUNCj4gPiA+ICAgb24gcG5m
+cy13cQ0KPiA+IFllYWgsIEkgd291bGQgdm90ZSBmb3IgdGhpcyBvbmUgYmVjYXVzZSBvZiBpdHMg
+c2ltcGxpY2l0eS4gOy0pDQo+IA0KPiBTaWdoLi4uIFRoZSBwcm9ibGVtIGlzIHRoYXQgaXQgY29t
+cGxldGVseSBmYWlscyB0byBhZGRyZXNzIHRoZSBwcm9ibGVtLg0KPiANCj4gV2hhdCdzIHRoZSBk
+aWZmZXJlbmNlIGJldHdlZW4gaGF2aW5nIHBORlMgY29tcGxldGlvbnMgcnVuIG9uIG5mc2lvZCBv
+cg0KPiB0aGVpciBvd24gd29yayBxdWV1ZT8gWW91J2QgYmUgcnVubmluZyBpL28gYW5kIGFsbG9j
+YXRpb25zIG9uIHRoZSBzYW1lDQo+IHF1ZXVlIGluIGJvdGggY2FzZXMuDQpPSywgSSBnb3QgeW91
+ciBwb2ludC4gSSB3YXMgdW5kZXIgdGhlIGltcHJlc3Npb24gdGhhdCB5b3UgZG9u4oCZdCB3YW50
+IHBuZnMgaW8gZW5kIHRvIHVzZSBuZnNpb2QgYmVjYXVzZSBuZnNpb2QgaXMgYWxyZWFkeSBhIGhp
+Z2hseSBjb250ZW5kZWQgd29ya3F1ZXVlLi4uIEFuZCBub3cgSSBzZWUgdGhhdCBpdCBpcyBiZWNh
+dXNlIHlvdSBkb24ndCB3YW50IHRvIGJsb2NrIChiZWNhdXNlIG9mIG1lbW9yeSBhbGxvY2F0aW9u
+KSBvbiB0aGUgd29ya3F1ZXVlLg0KQnV0IHNvcnJ5IGZvciBteSBpZ25vcmFuY2UuIEkgdGhvdWdo
+dCB3b3JrcXVldWUgd2FzIGludmVudGVkIGp1c3QgZm9yIGhhbmRsaW5nIHRoZSBjYXNlIHRoYXQg
+ZnVuY3Rpb25zIGNhbm5vdCBibG9jayBpbiBpbnRlcnJ1cHQgY29udGV4dCBiZWNhdXNlIHdvcmtx
+dWV1ZSBydW5zIGluIHByb2Nlc3MgY29udGV4dC4gQ291bGQgeW91IHBsZWFzZSBzaGVkIHNvbWUg
+bGlnaHQgb24gd2h5IG5mcydzIHdvcmtxdWV1ZSAobmZzaW9kL3BuZnNpb2QpIGNhbm5vdCBibG9j
+az8NCg0KTG9va2luZyBpbnRvIHNvbWUgdXNlcnMgb2YgbmZzaW9kLCBpdCBzZWVtcyBpdCBhbHJl
+YWR5IG1heSBibG9jayBkdWUgdG8gbWVtb3J5IGFsbG9jYXRpb24gaW4gc29tZSBjYXNlcyBsaWtl
+IGluIGNvZGUgcGF0aDogbmZzNF9vcGVuX2NvbmZpcm1fcmVsZWFzZS0+IG5mczRfb3BlbmRhdGFf
+dG9fbmZzNF9zdGF0ZS0+IG5mc19maGdldC0+IGlnZXQ1X2xvY2tlZC0+IGFsbG9jX2lub2RlLT4g
+a21lbV9jYWNoZV9hbGxvYw0KDQpBbHNvIGxvb2tpbmcgYXQgb3RoZXIgZmlsZXN5c3RlbXMgKGUu
+Zy4sIGV4dDQncyBleHQ0X2VuZF9pb193b3JrIGFuZCByZWlzZXJmcydzIGZsdXNoX2FzeW5jX2Nv
+bW1pdHMpLCB0aGV5IGFyZSBhbHNvIHdhcnBwaW5nIHVwIGkvbyBpbiB3b3JrcXVldWUgYW5kIG1h
+eSBzbGVlcCB3aXRoIG1lbW9yeSBhbGxvY2F0aW9uIG9yIHdhaXRfb25fYnVmZmVyKCkgdGhlcmUu
+Li4NCg0KQmVzdCBSZWdhcmRzLA0KVGFvDQoNCg0KTu+/ve+/ve+/ve+/ve+/vXLvv73vv71577+9
+77+977+9Yu+/vVjvv73vv73Hp3bvv71e77+9Kd66ey5u77+9K++/ve+/ve+/ve+/vXvvv73vv73v
+v70i77+977+9Xm7vv71y77+977+977+9eu+/vRrvv73vv71o77+977+977+977+9Ju+/ve+/vR7v
+v71H77+977+977+9aO+/vQMo77+96ZqO77+93aJqIu+/ve+/vRrvv70bbe+/ve+/ve+/ve+/ve+/
+vXrvv73elu+/ve+/ve+/vWbvv73vv73vv71o77+977+977+9fu+/vW3vv70=
