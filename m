@@ -1,90 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:24805 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:28082 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751915Ab1ITXrh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2011 19:47:37 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: Please support NSF squashing multiple groups
-Date: Tue, 20 Sep 2011 16:47:35 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B48012C@SACMVEXC2-PRD.hq.netapp.com>
-References: <1316559903.15093.15.camel@lade.trondhjem.org> <201109202329.p8KNTGUW016967@bari.maths.usyd.edu.au> 
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: <paul.szabo@sydney.edu.au>
-Cc: <linux-nfs@vger.kernel.org>
+	id S1751131Ab1IVP3v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Sep 2011 11:29:51 -0400
+Date: Thu, 22 Sep 2011 11:33:06 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: David Howells <dhowells@redhat.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>, miklos@szeredi.hu,
+        raven@themaw.net, viro@zeniv.linux.org.uk, gregkh@suse.de,
+        linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
+Subject: Re: [PATCH] NFS4: Revert commit to make the automount code ignore
+ LOOKUP_FOLLOW
+Message-ID: <20110922113306.1a831043@barsoom.rdu.redhat.com>
+In-Reply-To: <6490.1316704925@redhat.com>
+References: <CA+55aFzoH2VxTvf3Q1Lp_GAqDNAbsSOa=ATFXYSmmM=K8Fhuew@mail.gmail.com>
+	<20110922124608.7739.27750.stgit@warthog.procyon.org.uk>
+	<6490.1316704925@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> -----Original Message-----
-> From: Myklebust, Trond
-> Sent: Tuesday, September 20, 2011 7:39 PM
-> To: 'paul.szabo@sydney.edu.au'
-> Cc: linux-nfs@vger.kernel.org
-> Subject: RE: Please support NSF squashing multiple groups
-> 
-> > -----Original Message-----
-> > From: paul.szabo@sydney.edu.au [mailto:paul.szabo@sydney.edu.au]
-> > Sent: Tuesday, September 20, 2011 7:29 PM
-> > To: Myklebust, Trond
-> > Cc: linux-nfs@vger.kernel.org
-> > Subject: Re: Please support NSF squashing multiple groups
-> >
-> > Dear Trond,
-> >
-> > > ... what you are proposing is a potential security problem.
-> >
-> > Yes, definitely: if ever such options were implemented, then
-potential
-> > users should evaluate whether using them (or not using them)
-> > introduced a security vulnerability. That said...
-> >
-> > NFS security traditionally depended on UIDs and GIDs being "in sync"
-> > between the server and the clients. My proposal simply would enforce
-> > all GIDs to be "in sync" with the UID, as per server view; most
-often
-> > that would be a no-op (except for accesses by setuid or setgid
-apps).
-> >
-> > Seems that kerberos has no concept of groups but only of
-"principals"
-> > which are somewhat like UIDs. My proposal would bring NFSv3 in line
-> > with the NFSv4+krb model of "only the UID matters".
-> 
-> That's a model which is incompatible with the way many people use the
-> AUTH_SYS authentication model.
-> 
-> NFSroot setups etc _rely_ on being able to setgid() at will. They may
-also
-> require the group hack in order to work in environments where some
-people
-> have > 32 groups.
-> 
-> Basically, the point is this: AUTH_SYS is inherently for use only in
-trusted
-> environments. It is too easy to fake a uid or a gid when you use a
-protocol
-> that exposes them in clear on the network and without providing any
-form of
-> secure integrity checking.
-> 
-> 
-> Kerberos is able to go beyond that trusted model (although it too has
-> limitations - particularly w.r.t. working in an environment where the
-client or
-> the server may have been compromised). However Kerberos will currently
-> limit your ability to setgid. The next generation of RPCSEC_GSS is
-expected to
-> lift that particular limitation, and will allow us to bring kerberos
-in line with
-> AUTH_SYS (albeit with greater security) rather than the other way
-round.
+On Thu, 22 Sep 2011 16:22:05 +0100
+David Howells <dhowells@redhat.com> wrote:
 
-Basically, what I'm trying to say is that I don't at all understand your
-threat model. You appear to be worried about a threat where a user can
-somehow usurp gids but not uids on the client.
+> 
+> One thing that does concern me a little about bringing back the old behaviour
+> for stat and *xattr is that there is no reliable way to get at the directory
+> mounted directly on the mountpoint (ie. mnt_root).
+> 
+> The problem is that:
+> 
+>  (a) you have to know to trigger the automount with some other operation first
+>      and
+> 
+>  (b) the other operation is not atomic wrt to the following stat/xattr, and so
+>      the thing mounted on the automount point may be subject to expiration and
+>      auto-unmounting before the second operation can proceed.
+> 
+> I'm not sure how much of a problem these are in practice.  Certainly, I'd rate
+> (b) as being less serious than (a) as the expiration timeouts are generally
+> quite large.  (b) can be suppressed with chdir() or open() also - then you are
+> forcing retension of the vfsmount.
+> 
+> The problem can be ameliorated for such as fstatat() by passing an AT_ flag to
+> either suppress automounting or to force automounting, but there aren't any
+> xattr calls, for example, that take this.
+> 
+> 
+> I guess it comes down to defining two things:
+> 
+>  (1) What behaviour do we actually want?
+> 
+>  (2) What departure from previous behaviour are we willing to put up with?
+> 
+> 
+> On the first, I would say definitely we want mass-stat'ers (such as ls) to not
+> cause mass automounting.  But for ls, that has been achieved in userspace;
+> there are, however, other programs to consider.
+> 
+> I would also say that we do not want lstat(), l*xattr() and co. to cause
+> automounting - but maybe they should.  Perhaps if you don't want to cause
+> automounting, you should explicitly pass AT_NO_AUTOMOUNT, and all path-taking
+> VFS calls should have variants that accept this flag.
+> 
+> Do we want to have guaranteed access to the root of an automounted fs?  Are we
+> willing to add getxattrat and similar to get it?
+> 
 
-Why is that particular case of interest?
+I guess we recognize that we ought to allow userspace to have some
+control over whether these syscalls will trigger an automount. So the
+real question is -- what should the default be? Probably, we ought to
+err on the side of caution and keep the default behavior the way it was
+before 2.6.38.
 
-Cheers
-  Trond
+-- 
+Jeff Layton <jlayton@redhat.com>
