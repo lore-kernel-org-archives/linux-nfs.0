@@ -1,111 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pz0-f42.google.com ([209.85.210.42]:62036 "EHLO
-	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754114Ab1IKPb4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Sep 2011 11:31:56 -0400
-Received: by mail-pz0-f42.google.com with SMTP id 37so5445781pzk.1
-        for <linux-nfs@vger.kernel.org>; Sun, 11 Sep 2011 08:31:56 -0700 (PDT)
-From: Benny Halevy <benny@tonian.com>
-To: Jim Rees <rees@umich.edu>, Peng Tao <bergwolf@gmail.com>
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH 2/2] SQUASHME: pnfs: do pnfsiod_start before registering layout drivers
-Date: Sun, 11 Sep 2011 08:31:52 -0700
-Message-Id: <1315755112-31248-1-git-send-email-benny@tonian.com>
-In-Reply-To: <4E6CD076.6050607@tonian.com>
-References: <4E6CD076.6050607@tonian.com>
+Received: from out2.smtp.messagingengine.com ([66.111.4.26]:59901 "EHLO
+	out2.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751140Ab1IVPy0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 11:54:26 -0400
+Subject: Re: [PATCH] NFS4: Revert commit to make the automount code ignore
+ LOOKUP_FOLLOW
+From: Ian Kent <raven@themaw.net>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: David Howells <dhowells@redhat.com>, miklos@szeredi.hu,
+        viro@zeniv.linux.org.uk, jlayton@redhat.com, gregkh@suse.de,
+        linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
+In-Reply-To: <6490.1316704925@redhat.com>
+References: <CA+55aFzoH2VxTvf3Q1Lp_GAqDNAbsSOa=ATFXYSmmM=K8Fhuew@mail.gmail.com>
+	 <20110922124608.7739.27750.stgit@warthog.procyon.org.uk>
+	 <6490.1316704925@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 22 Sep 2011 23:54:19 +0800
+Message-ID: <1316706859.3346.37.camel@perseus.themaw.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@tonian.com>
+On Thu, 2011-09-22 at 16:22 +0100, David Howells wrote:
+> 
+> I would also say that we do not want lstat(), l*xattr() and co. to cause
+> automounting - but maybe they should.  Perhaps if you don't want to cause
+> automounting, you should explicitly pass AT_NO_AUTOMOUNT, and all path-taking
+> VFS calls should have variants that accept this flag.
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfs/blocklayout/blocklayout.c |   16 ++++++++--------
- fs/nfs/objlayout/objio_osd.c     |   12 ++++++------
- 2 files changed, 14 insertions(+), 14 deletions(-)
+I still think we had it right the first time.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 51f70f0..77bb3e7 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -977,41 +977,41 @@ static int __init nfs4blocklayout_init(void)
- 
- 	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
- 
--	ret = pnfs_register_layoutdriver(&blocklayout_type);
-+	ret = pnfsiod_start();
- 	if (ret)
- 		goto out;
- 
--	ret = pnfsiod_start();
-+	ret = pnfs_register_layoutdriver(&blocklayout_type);
- 	if (ret)
--		goto out_remove;
-+		goto out_stop;
- 
- 	init_waitqueue_head(&bl_wq);
- 
- 	mnt = rpc_get_mount();
- 	if (IS_ERR(mnt)) {
- 		ret = PTR_ERR(mnt);
--		goto out_stop;
-+		goto out_remove;
- 	}
- 
- 	ret = vfs_path_lookup(mnt->mnt_root,
- 			      mnt,
- 			      NFS_PIPE_DIRNAME, 0, &path);
- 	if (ret)
--		goto out_stop;
-+		goto out_remove;
- 
- 	bl_device_pipe = rpc_mkpipe(path.dentry, "blocklayout", NULL,
- 				    &bl_upcall_ops, 0);
- 	if (IS_ERR(bl_device_pipe)) {
- 		ret = PTR_ERR(bl_device_pipe);
--		goto out_stop;
-+		goto out_remove;
- 	}
- out:
- 	return ret;
- 
--out_stop:
--	pnfsiod_stop();
- out_remove:
- 	pnfs_unregister_layoutdriver(&blocklayout_type);
-+out_stop:
-+	pnfsiod_stop();
- 	return ret;
- }
- 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index f28013f..7e8f0cc 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -1041,15 +1041,15 @@ MODULE_LICENSE("GPL");
- static int __init
- objlayout_init(void)
- {
--	int ret = pnfs_register_layoutdriver(&objlayout_type);
--	if (ret)
--		goto out;
-+	int ret;
- 
- 	ret = pnfsiod_start();
--	if (ret)
--		pnfs_unregister_layoutdriver(&objlayout_type);
-+	if (!ret) {
-+		ret = pnfs_register_layoutdriver(&objlayout_type);
-+		if (ret)
-+			pnfsiod_stop();
-+	}
- 
--out:
- 	if (ret)
- 		printk(KERN_INFO
- 			"%s: Registering OSD pNFS Layout Driver failed: error=%d\n",
--- 
-1.7.6
+After all we have always said automounts are directories that have
+symlink semantics, which to my way of thinking is what we now have (or
+had). Not only that, it provides a natural way of ensuring a mount
+occurs or does not occur by using the well known no follow calls.
+
+The "natural" part of this is automounts can be followed conceptually in
+the same way that symlinks can be followed.
+I
 
