@@ -1,163 +1,138 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp04.in.ibm.com ([122.248.162.4]:58784 "EHLO
-	e28smtp04.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752046Ab1IER1V (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2011 13:27:21 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V6 09/26] vfs: Add delete child and delete self permission flags
-Date: Mon,  5 Sep 2011 22:55:31 +0530
-Message-Id: <1315243548-18664-10-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mx1.redhat.com ([209.132.183.28]:15150 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751741Ab1IVMqw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Sep 2011 08:46:52 -0400
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH] NFS4: Revert commit to make the automount code ignore
+ LOOKUP_FOLLOW
+To: miklos@szeredi.hu, raven@themaw.net, viro@ZenIV.linux.org.uk
+Cc: dhowells@redhat.com, jlayton@redhat.com, gregkh@suse.de,
+        torvalds@linux-foundation.org, linux-nfs@vger.kernel.org,
+        leonardo.lists@gmail.com
+Date: Thu, 22 Sep 2011 13:46:08 +0100
+Message-ID: <20110922124608.7739.27750.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+Revert the following change:
 
-Normally, deleting a file requires write access to the parent directory.
-Some permission models use a different permission on the parent
-directory to indicate delete access.  In addition, a process can have
-per-file delete access even without delete access on the parent
-directory.
+	commit 0ec26fd0698285b31248e34bf1abb022c00f23d6
+	Author: Miklos Szeredi <mszeredi@suse.cz>
+	Date:   Mon Sep 5 18:06:26 2011 +0200
+	Subject: vfs: automount should ignore LOOKUP_FOLLOW
 
-Introduce two new inode_permission() mask flags and use them in
-may_delete()
+which makes stat(), getxattr(), etc. behave as lstat(), lgetxattr(), etc. with
+respect to automounting: it prevents them from triggering terminal automounts.
 
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+The problem with this is that this breaks nfs_follow_remote_path() used by NFS4
+to find the root object to mount for the mount() syscall.
+
+This can be tested by the following procedure:
+
+ (1) Export a directory from an NFS4 server that has something mounted upon it
+     and that isn't "/" - say, for example, "/scratch".  It must have a
+     different FSID from "/".
+
+ (2) Mount this on the client.
+
+	mount sirius:/scratch /mnt
+
+ (3) List the contents of the client's mountpoint:
+
+	ls /mnt
+
+ (4) Examine /proc/fs/nfsfs/volumes.  You should see one entry (assuming
+     nothing else is NFS mounted) :
+
+	NV SERVER   PORT DEV     FSID              FSC
+	v4 200108b001940000021125fffe84efad  801 0:34    1:0               no
+
+     which corresponds to the filesystem mounted on /scratch on the server.
+
+     If, however, you see two entries:
+
+	NV SERVER   PORT DEV     FSID              FSC
+	v4 200108b001940000021125fffe84efad  801 0:33    0:0               no
+	v4 200108b001940000021125fffe84efad  801 0:34    1:0               no
+
+     then it went wrong.
+
+When it goes wrong, what happens is that nfs_follow_remote_path() walks from
+the rootfh to the remote directory (/scratch) using vfs_path_lookup().  It
+passes LOOKUP_FOLLOW to vfs_path_lookup() to tell it to transit terminal
+symlinks and terminal automounts.  Unfortunately, with the aforementioned
+commit, LOOKUP_FOLLOW now expressly does not follow terminal automounts.
+
+There are some alternatives:
+
+ (1) Fix up userspace to expect stat(), getxattr(), etc. to expect these to
+     cause path-terminal automounting.  libacl and coreutils (ls) have been
+     fixed up upstream already but there are other things such as GUI
+     filemanagers.
+
+ (2) Passing LOOKUP_DIRECTORY from nfs_follow_remote_path() to
+     vfs_path_lookup() might work as presumably the mount root will be a
+     directory.
+
+ (3) Add a new flag, say LOOKUP_AUTOMOUNT, to force automounting.  This could
+     be extended to userspace.
+
+ (4) Add a new flag, say LOOKUP_GETTING_ATTRS, to indicate that we're doing a
+     stat() or a getxattr() and suppress automounting on that basis.
+
+Reported-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
 ---
- fs/namei.c         |   41 +++++++++++++++++++++++++++--------------
- include/linux/fs.h |    2 ++
- 2 files changed, 29 insertions(+), 14 deletions(-)
+
+ fs/namei.c |   33 ++++++++++++++++++---------------
+ 1 files changed, 18 insertions(+), 15 deletions(-)
 
 diff --git a/fs/namei.c b/fs/namei.c
-index d52a4cd..eacb530 100644
+index f478836..c64b81d 100644
 --- a/fs/namei.c
 +++ b/fs/namei.c
-@@ -337,7 +337,7 @@ static inline int do_inode_permission(struct inode *inode, int mask)
-  * are used for other things.
-  *
-  * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
-- * MAY_WRITE must also be set in @mask.
-+ * MAY_DELETE_CHILD, MAY_DELETE_SELF, MAY_WRITE must also be set in @mask.
-  */
- int inode_permission(struct inode *inode, int mask)
- {
-@@ -1862,7 +1862,7 @@ static inline int check_sticky(struct inode *dir, struct inode *inode)
- 		return 0;
+@@ -727,22 +727,25 @@ static int follow_automount(struct path *path, unsigned flags,
+ 	if ((flags & LOOKUP_NO_AUTOMOUNT) && !(flags & LOOKUP_PARENT))
+ 		return -EISDIR; /* we actually want to stop here */
  
- other_userns:
--	return !ns_capable(inode_userns(inode), CAP_FOWNER);
-+	return 1;
- }
- 
- /*
-@@ -1884,30 +1884,43 @@ other_userns:
-  * 10. We don't allow removal of NFS sillyrenamed files; it's handled by
-  *     nfs_async_unlink().
-  */
--static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
-+static int may_delete(struct inode *dir, struct dentry *victim,
-+		      int isdir, int replace)
- {
--	int error;
-+	int mask, error, is_sticky;
-+	struct inode *inode = victim->d_inode;
- 
--	if (!victim->d_inode)
-+	if (!inode)
- 		return -ENOENT;
- 
- 	BUG_ON(victim->d_parent->d_inode != dir);
- 	audit_inode_child(victim, dir);
- 
--	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
-+	mask = MAY_WRITE | MAY_EXEC | MAY_DELETE_CHILD;
-+	if (replace)
-+		mask |= S_ISDIR(inode->i_mode) ?
-+			MAY_CREATE_DIR : MAY_CREATE_FILE;
-+	is_sticky = check_sticky(dir, inode);
-+	error = inode_permission(dir, mask);
-+	if ((error || is_sticky) && IS_RICHACL(inode) &&
-+	    !inode_permission(dir, mask & ~(MAY_WRITE | MAY_DELETE_CHILD)) &&
-+	    !inode_permission(inode, MAY_DELETE_SELF))
-+		error = 0;
-+	else if (!error && is_sticky &&
-+		 !ns_capable(inode_userns(inode), CAP_FOWNER))
-+		error = -EPERM;
- 	if (error)
- 		return error;
- 	if (IS_APPEND(dir))
- 		return -EPERM;
--	if (check_sticky(dir, victim->d_inode)||IS_APPEND(victim->d_inode)||
--	    IS_IMMUTABLE(victim->d_inode) || IS_SWAPFILE(victim->d_inode))
-+	if (IS_APPEND(inode) || IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
- 		return -EPERM;
- 	if (isdir) {
--		if (!S_ISDIR(victim->d_inode->i_mode))
-+		if (!S_ISDIR(inode->i_mode))
- 			return -ENOTDIR;
- 		if (IS_ROOT(victim))
- 			return -EBUSY;
--	} else if (S_ISDIR(victim->d_inode->i_mode))
-+	} else if (S_ISDIR(inode->i_mode))
- 		return -EISDIR;
- 	if (IS_DEADDIR(dir))
- 		return -ENOENT;
-@@ -2614,7 +2627,7 @@ void dentry_unhash(struct dentry *dentry)
- 
- int vfs_rmdir(struct inode *dir, struct dentry *dentry)
- {
--	int error = may_delete(dir, dentry, 1);
-+	int error = may_delete(dir, dentry, 1, 0);
- 
- 	if (error)
- 		return error;
-@@ -2707,7 +2720,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
- 
- int vfs_unlink(struct inode *dir, struct dentry *dentry)
- {
--	int error = may_delete(dir, dentry, 0);
-+	int error = may_delete(dir, dentry, 0, 0);
- 
- 	if (error)
- 		return error;
-@@ -3101,14 +3114,14 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	if (old_dentry->d_inode == new_dentry->d_inode)
-  		return 0;
-  
--	error = may_delete(old_dir, old_dentry, is_dir);
-+	error = may_delete(old_dir, old_dentry, is_dir, 0);
- 	if (error)
- 		return error;
- 
- 	if (!new_dentry->d_inode)
- 		error = may_create(new_dir, new_dentry, is_dir);
- 	else
--		error = may_delete(new_dir, new_dentry, is_dir);
-+		error = may_delete(new_dir, new_dentry, is_dir, 1);
- 	if (error)
- 		return error;
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 8707f43..c5c98c5 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -69,6 +69,8 @@ struct inodes_stat_t {
- #define MAY_NOT_BLOCK		0x00000080
- #define MAY_CREATE_FILE		0x00000100
- #define MAY_CREATE_DIR		0x00000200
-+#define MAY_DELETE_CHILD	0x00000400
-+#define MAY_DELETE_SELF		0x00000800
- 
- /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
--- 
-1.7.4.1
+-	/* We don't want to mount if someone's just doing a stat -
+-	 * unless they're stat'ing a directory and appended a '/' to
+-	 * the name.
+-	 *
+-	 * We do, however, want to mount if someone wants to open or
+-	 * create a file of any type under the mountpoint, wants to
+-	 * traverse through the mountpoint or wants to open the
+-	 * mounted directory.  Also, autofs may mark negative dentries
+-	 * as being automount points.  These will need the attentions
+-	 * of the daemon to instantiate them before they can be used.
++	/*
++	 * We don't want to mount if someone's just doing a stat and they've
++	 * set AT_SYMLINK_NOFOLLOW - unless they're stat'ing a directory and
++	 * appended a '/' to the name.
+ 	 */
+-	if (!(flags & (LOOKUP_PARENT | LOOKUP_DIRECTORY |
+-		     LOOKUP_OPEN | LOOKUP_CREATE)) &&
+-	    path->dentry->d_inode)
+-		return -EISDIR;
+-
++	if (!(flags & LOOKUP_FOLLOW)) {
++		/* We do, however, want to mount if someone wants to open or
++		 * create a file of any type under the mountpoint, wants to
++		 * traverse through the mountpoint or wants to open the mounted
++		 * directory.
++		 * Also, autofs may mark negative dentries as being automount
++		 * points.  These will need the attentions of the daemon to
++		 * instantiate them before they can be used.
++		 */
++		if (!(flags & (LOOKUP_PARENT | LOOKUP_DIRECTORY |
++			     LOOKUP_OPEN | LOOKUP_CREATE)) &&
++		    path->dentry->d_inode)
++			return -EISDIR;
++	}
+ 	current->total_link_count++;
+ 	if (current->total_link_count >= 40)
+ 		return -ELOOP;
 
