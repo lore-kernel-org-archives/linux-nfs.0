@@ -1,142 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46099 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933523Ab1IILBE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Sep 2011 07:01:04 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Linux-MM <linux-mm@kvack.org>
-Cc: Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 05/10] mm: Methods for teaching filesystems about PG_swapcache pages
-Date: Fri,  9 Sep 2011 12:00:49 +0100
-Message-Id: <1315566054-17209-6-git-send-email-mgorman@suse.de>
-In-Reply-To: <1315566054-17209-1-git-send-email-mgorman@suse.de>
-References: <1315566054-17209-1-git-send-email-mgorman@suse.de>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:50750 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750736Ab1IVPd1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 11:33:27 -0400
+Received: by fxe4 with SMTP id 4so2850691fxe.19
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Sep 2011 08:33:26 -0700 (PDT)
+From: Miklos Szeredi <miklos@szeredi.hu>
+To: David Howells <dhowells@redhat.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>, raven@themaw.net,
+        viro@zeniv.linux.org.uk, jlayton@redhat.com, gregkh@suse.de,
+        linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
+Subject: Re: [PATCH] NFS4: Revert commit to make the automount code ignore LOOKUP_FOLLOW
+References: <CA+55aFzoH2VxTvf3Q1Lp_GAqDNAbsSOa=ATFXYSmmM=K8Fhuew@mail.gmail.com>
+	<20110922124608.7739.27750.stgit@warthog.procyon.org.uk>
+	<6490.1316704925@redhat.com>
+Date: Thu, 22 Sep 2011 17:32:55 +0200
+In-Reply-To: <6490.1316704925@redhat.com> (David Howells's message of "Thu, 22
+	Sep 2011 16:22:05 +0100")
+Message-ID: <87litgvbh4.fsf@tucsk.pomaz.szeredi.hu>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-In order to teach filesystems to handle swap cache pages, three new
-page functions are introduced:
+David Howells <dhowells@redhat.com> writes:
 
-  pgoff_t page_file_index(struct page *);
-  loff_t page_file_offset(struct page *);
-  struct address_space *page_file_mapping(struct page *);
+> One thing that does concern me a little about bringing back the old behaviour
+> for stat and *xattr is that there is no reliable way to get at the directory
+> mounted directly on the mountpoint (ie. mnt_root).
+>
+> The problem is that:
+>
+>  (a) you have to know to trigger the automount with some other operation first
+>      and
+>
+>  (b) the other operation is not atomic wrt to the following stat/xattr, and so
+>      the thing mounted on the automount point may be subject to expiration and
+>      auto-unmounting before the second operation can proceed.
+>
+> I'm not sure how much of a problem these are in practice.  Certainly, I'd rate
+> (b) as being less serious than (a) as the expiration timeouts are generally
+> quite large.  (b) can be suppressed with chdir() or open() also - then you are
+> forcing retension of the vfsmount.
+>
+> The problem can be ameliorated for such as fstatat() by passing an AT_ flag to
+> either suppress automounting or to force automounting, but there aren't any
+> xattr calls, for example, that take this.
+>
+>
+> I guess it comes down to defining two things:
+>
+>  (1) What behaviour do we actually want?
+>
+>  (2) What departure from previous behaviour are we willing to put up with?
+>
+>
+> On the first, I would say definitely we want mass-stat'ers (such as ls) to not
+> cause mass automounting.  But for ls, that has been achieved in userspace;
+> there are, however, other programs to consider.
+>
+> I would also say that we do not want lstat(), l*xattr() and co. to cause
+> automounting - but maybe they should.  Perhaps if you don't want to cause
+> automounting, you should explicitly pass AT_NO_AUTOMOUNT, and all path-taking
+> VFS calls should have variants that accept this flag.
+>
+> Do we want to have guaranteed access to the root of an automounted fs?  Are we
+> willing to add getxattrat and similar to get it?
 
-page_file_index() - gives the offset of this page in the file in
-PAGE_CACHE_SIZE blocks. Like page->index is for mapped pages, this
-function also gives the correct index for PG_swapcache pages.
+Perhaps we should allow getxattr and friends to work on O_PATH opens to
+get the same guarantees?  E.g:
 
-page_file_offset() - uses page_file_index(), so that it will give
-the expected result, even for PG_swapcache pages.
+	fd = open(path, O_PATH);
+        fgetxattr(fd, ...);
 
-page_file_mapping() - gives the mapping backing the actual page;
-that is for swap cache pages it will give swap_file->f_mapping.
+This needs a patch like the following.
 
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
----
- include/linux/mm.h      |   25 +++++++++++++++++++++++++
- include/linux/pagemap.h |    5 +++++
- mm/swapfile.c           |   19 +++++++++++++++++++
- 3 files changed, 49 insertions(+), 0 deletions(-)
+Miklos
+----
 
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 7438071..45442a8 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -787,6 +787,17 @@ static inline void *page_rmapping(struct page *page)
- 	return (void *)((unsigned long)page->mapping & ~PAGE_MAPPING_FLAGS);
- }
+
+diff --git a/fs/xattr.c b/fs/xattr.c
+index f060663..6540324 100644
+--- a/fs/xattr.c
++++ b/fs/xattr.c
+@@ -328,7 +328,7 @@ SYSCALL_DEFINE5(fsetxattr, int, fd, const char __user *, name,
+ 	struct dentry *dentry;
+ 	int error = -EBADF;
  
-+extern struct address_space *__page_file_mapping(struct page *);
-+
-+static inline
-+struct address_space *page_file_mapping(struct page *page)
-+{
-+	if (unlikely(PageSwapCache(page)))
-+		return __page_file_mapping(page);
-+
-+	return page->mapping;
-+}
-+
- static inline int PageAnon(struct page *page)
- {
- 	return ((unsigned long)page->mapping & PAGE_MAPPING_ANON) != 0;
-@@ -803,6 +814,20 @@ static inline pgoff_t page_index(struct page *page)
- 	return page->index;
- }
+-	f = fget(fd);
++	f = fget_raw(fd);
+ 	if (!f)
+ 		return error;
+ 	dentry = f->f_path.dentry;
+@@ -414,7 +414,7 @@ SYSCALL_DEFINE4(fgetxattr, int, fd, const char __user *, name,
+ 	struct file *f;
+ 	ssize_t error = -EBADF;
  
-+extern pgoff_t __page_file_index(struct page *page);
-+
-+/*
-+ * Return the file index of the page. Regular pagecache pages use ->index
-+ * whereas swapcache pages use swp_offset(->private)
-+ */
-+static inline pgoff_t page_file_index(struct page *page)
-+{
-+	if (unlikely(PageSwapCache(page)))
-+		return __page_file_index(page);
-+
-+	return page->index;
-+}
-+
- /*
-  * The atomic page->_mapcount, like _count, starts from -1:
-  * so that transitions both from it and to it can be tracked,
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index cfaaa69..d4d4bda 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -286,6 +286,11 @@ static inline loff_t page_offset(struct page *page)
- 	return ((loff_t)page->index) << PAGE_CACHE_SHIFT;
- }
+-	f = fget(fd);
++	f = fget_raw(fd);
+ 	if (!f)
+ 		return error;
+ 	audit_inode(NULL, f->f_path.dentry);
+@@ -486,7 +486,7 @@ SYSCALL_DEFINE3(flistxattr, int, fd, char __user *, list, size_t, size)
+ 	struct file *f;
+ 	ssize_t error = -EBADF;
  
-+static inline loff_t page_file_offset(struct page *page)
-+{
-+	return ((loff_t)page_file_index(page)) << PAGE_CACHE_SHIFT;
-+}
-+
- extern pgoff_t linear_hugepage_index(struct vm_area_struct *vma,
- 				     unsigned long address);
+-	f = fget(fd);
++	f = fget_raw(fd);
+ 	if (!f)
+ 		return error;
+ 	audit_inode(NULL, f->f_path.dentry);
+@@ -555,7 +555,7 @@ SYSCALL_DEFINE2(fremovexattr, int, fd, const char __user *, name)
+ 	struct dentry *dentry;
+ 	int error = -EBADF;
  
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index c49cb33..806b994 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -2232,6 +2232,25 @@ struct swap_info_struct *page_swap_info(struct page *page)
- }
- 
- /*
-+ * out-of-line __page_file_ methods to avoid include hell.
-+ */
-+
-+struct address_space *__page_file_mapping(struct page *page)
-+{
-+	VM_BUG_ON(!PageSwapCache(page));
-+	return page_swap_info(page)->swap_file->f_mapping;
-+}
-+EXPORT_SYMBOL_GPL(__page_file_mapping);
-+
-+pgoff_t __page_file_index(struct page *page)
-+{
-+	swp_entry_t swap = { .val = page_private(page) };
-+	VM_BUG_ON(!PageSwapCache(page));
-+	return swp_offset(swap);
-+}
-+EXPORT_SYMBOL_GPL(__page_file_index);
-+
-+/*
-  * swap_lock prevents swap_map being freed. Don't grab an extra
-  * reference on the swaphandle, it doesn't matter if it becomes unused.
-  */
--- 
-1.7.3.4
-
+-	f = fget(fd);
++	f = fget_raw(fd);
+ 	if (!f)
+ 		return error;
+ 	dentry = f->f_path.dentry;
