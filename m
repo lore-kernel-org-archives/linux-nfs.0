@@ -1,84 +1,131 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:56422 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752197Ab1IWQVg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2011 12:21:36 -0400
-Received: by wyg34 with SMTP id 34so4122111wyg.19
-        for <linux-nfs@vger.kernel.org>; Fri, 23 Sep 2011 09:21:35 -0700 (PDT)
-In-Reply-To: <1316792468.3346.144.camel@perseus.themaw.net>
-References: <1316747758.3346.89.camel@perseus.themaw.net> <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
- <1316707443.3346.44.camel@perseus.themaw.net> <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
- <1316709935.3346.48.camel@perseus.themaw.net> <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
- <20110922144453.6cf53a25@barsoom.rdu.redhat.com> <1316719228.3968.14.camel@lade.trondhjem.org>
- <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
- <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
- <21772.1316774025@redhat.com> <1316788444.14812.10.camel@lade.trondhjem.org>
- <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com> <1316792468.3346.144.camel@perseus.themaw.net>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Fri, 23 Sep 2011 09:21:15 -0700
-Message-ID: <CA+55aFx03u51bbAPe_o=4PeyE0dFnuL1KyqRdTJCFUD-vM6V-w@mail.gmail.com>
-Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-To: Ian Kent <raven@themaw.net>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        David Howells <dhowells@redhat.com>, miklos@szeredi.hu,
-        Jeff Layton <jlayton@redhat.com>, viro@zeniv.linux.org.uk,
-        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-yi0-f46.google.com ([209.85.218.46]:43872 "EHLO
+	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751699Ab1IVQeZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 12:34:25 -0400
+Received: by yib18 with SMTP id 18so2025068yib.19
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Sep 2011 09:34:24 -0700 (PDT)
+Date: Thu, 22 Sep 2011 23:34:23 +0700
+Message-ID: <CA+1OVfZpQyLtYauJ4TL7gwXXqL3EF4XKxA_X0Q-=L45ZSGi7fA@mail.gmail.com>
+Subject: nfs4 AD2008R2 kinit success but mount failed
+From: Nattapon Viroonsri <linuxbkk@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Sep 23, 2011 at 8:41 AM, Ian Kent <raven@themaw.net> wrote:
->
-> My point is that, since we haven't had any non-trivial problems reported
-> due to the semantic change, in what six months or more, why change it
-> now?
+Hi,
 
-We may indeed have to revert for sanity at this point, but I have to
-say that I think the arguments have been very weak, and the logic for
-when to auto-mount and when not to seems to not really be based on any
-real logic.
+I try to use nfs4 authentication with Active directory 2008
 
-For example, I think the whole "let's consider lstat different from
-stat" model is broken. It works for symlinks, but that's because
+kinit success to authenticated, but mount still faile with permission denied
+Any suggestion , would be appreciate
 
- - applications *know* about the symlink difference
+nfs server: suse1.reuint.com ( SLES11 SP1)
+nfs client:  krbclient.reuint.com ( SLES11 SP1)
+Windows2008 SP2 standard edition:  ad2008.reuint.com ( windows2008R2
+standard edition)
 
- - lstat actually *informs* about the symlink
+ package: samba-winbind-3.4.3-1.17.2,
+nfs-kernel-server-1.2.1-2.18.1,nfs-client-1.2.1-2.18.1
+               krb5-1.6.3-133.46.1
 
-neither of which is true for automounts. So quite frankly, I think
-trying to conflate automount behavior with symlink behavior is a
-completely bogus model to begin with, and has no actual redeeming
-values except for an implementation issue (->follow_link) that no
-longer even exists!
 
-So I seriously think that the old autofs model is technically
-superior. Which doesn't make it the only right one, of course. But I
-really do think it's totally broken to think that lstat works
-differently from stat.
+# ------ Both NFS Server and NFS Client can join domain ---------------
+rcwinbind stop
+rcnfsserver stop
+net -Ureutadmin%'mypasswd' ads leave
+net -Ureutadmin%'mypasswd' ads keytab flush
+kdestroy
+\rm /etc/krb5.keytab
+\rm /tmp/kr*
 
-So I would argue that using lstat as a differentiator for this is bad, because
+net -Ureutadmin%'mypasswd' ads join  createupn='nfs/suse1.reuint.com@REUINT.COM'
+net -Ureutadmin%'mypasswd' ads keytab add nfs
 
- - it's not what we've done historically
- - it's a crazy hack introduced by implementation reasons, not logic
- - it's against all lstat documentation
- - it's inflexible and makes it hard to script
+rcwinbind start
 
-Now, introducing a new internal kernel flag is in many ways even
-*worse*, because it's going to make it even more ad-hoc and
-implementation issue, and even less visible and logical to actual
-users who don't care.
 
-So *that* is why I thought the LOOKUP_DIRECTORY flag was so nice. And
-I still suspect that if paired with LOOKUP_OPEN, it would actually be
-a complete solution that avoids the crazy issues with "random
-implementation detail" and could give us something that is both
-accessible from user space *and* something we can explain to a user
-from a logical basis.
+suse1:~/keytab # wbinfo -u
+REUINT\administrator
+REUINT\guest
+REUINT\krbtgt
+REUINT\reutadmin
 
-In other words, if we are going to accept changing semantics (and
-apparently we have to), let's just make sure the ones we pick are the
-*sensible* ones.
 
-                Linus
+
+suse1:~/keytab # ssh REUINT\\reutadmin@localhost
+Password:
+Last login: Tue Sep 20 10:13:54 2011 from localhost
+Could not chdir to home directory /home/REUINT/reutadmin: No such file
+or directory
+REUINT\reutadmin@suse1:/>exit
+
+
+
+#-------  ON NFS Server -----------------------------------------
+
+suse1:~/keytab # klist -ke
+Keytab name: FILE:/etc/krb5.keytab
+KVNO Principal
+
+   2 nfs/suse1.reuint.com@REUINT.COM (DES cbc mode with CRC-32)
+   2 nfs/suse1.reuint.com@REUINT.COM (DES cbc mode with RSA-MD5)
+   2 nfs/suse1.reuint.com@REUINT.COM (ArcFour with HMAC/md5)
+   2 nfs/suse1@REUINT.COM (DES cbc mode with CRC-32)
+   2 nfs/suse1@REUINT.COM (DES cbc mode with RSA-MD5)
+   2 nfs/suse1@REUINT.COM (ArcFour with HMAC/md5)
+
+suse1:~/keytab # kinit -V  -k  nfs/suse1.reuint.com@REUINT.COM
+Authenticated to Kerberos v5
+
+
+#-------  ON NFS Client  -----------------------------------------------
+
+krbclient:~ # klist -ke
+
+Keytab name: FILE:/etc/krb5.keytab
+KVNO Principal
+   2 nfs/krbclient.reuint.com@REUINT.COM (DES cbc mode with CRC-32)
+   2 nfs/krbclient.reuint.com@REUINT.COM (DES cbc mode with RSA-MD5)
+   2 nfs/krbclient.reuint.com@REUINT.COM (ArcFour with HMAC/md5)
+   2 nfs/krbclient@REUINT.COM (DES cbc mode with CRC-32)
+   2 nfs/krbclient@REUINT.COM (DES cbc mode with RSA-MD5)
+   2 nfs/krbclient@REUINT.COM (ArcFour with HMAC/md5)
+
+krbclient:~ # kinit -V -k nfs/krbclient.reuint.com
+Authenticated to Kerberos v5
+
+
+krbclient:~ # showmount -e suse1.reuint.com
+Export list for suse1.reuint.com:
+/media/nfs4server gss/krb5i,gss/krb5
+
+krbclient:~ # mount -vvv -tnfs4 -o sec=krb5  suse1.reuint.com:/  /media/nfs/
+mount: fstab path: "/etc/fstab"
+mount: mtab path:  "/etc/mtab"
+mount: lock path:  "/etc/mtab~"
+mount: temp path:  "/etc/mtab.tmp"
+mount: UID:        0
+mount: eUID:       0
+mount: spec:  "suse1.reuint.com:/"
+mount: node:  "/media/nfs/"
+mount: types: "nfs4"
+mount: opts:  "sec=krb5"
+mount: external mount: argv[0] = "/sbin/mount.nfs4"
+mount: external mount: argv[1] = "suse1.reuint.com:/"
+mount: external mount: argv[2] = "/media/nfs/"
+mount: external mount: argv[3] = "-v"
+mount: external mount: argv[4] = "-o"
+mount: external mount: argv[5] = "rw,sec=krb5"
+mount.nfs4: timeout set for Tue Sep 20 11:05:15 2011
+mount.nfs4: trying text-based options
+'sec=krb5,addr=192.168.125.130,clientaddr=192.168.125.132'
+mount.nfs4: mount(2): Permission denied
+mount.nfs4: access denied by server while mounting suse1.reuint.com:/
+
+----------------------------------------------
+
+Rgds,
+Nattapon
