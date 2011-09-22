@@ -1,59 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:5360 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933905Ab1IIMJO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Sep 2011 08:09:14 -0400
-Subject: [PATCH v2 4/5] SUNRPC: remove rpcbind clients creation during service
-	registering
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net
-Date: Fri, 09 Sep 2011 16:08:51 +0400
-Message-ID: <20110909120851.13697.56059.stgit@localhost6.localdomain6>
-In-Reply-To: <20110909115146.13697.71682.stgit@localhost6.localdomain6>
-References: <20110909115146.13697.71682.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:46522 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751188Ab1IVW5e (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 18:57:34 -0400
+Received: by wwf22 with SMTP id 22so2800390wwf.1
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Sep 2011 15:57:33 -0700 (PDT)
+In-Reply-To: <1316719228.3968.14.camel@lade.trondhjem.org>
+References: <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
+ <1316707443.3346.44.camel@perseus.themaw.net> <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
+ <1316709935.3346.48.camel@perseus.themaw.net> <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
+ <20110922144453.6cf53a25@barsoom.rdu.redhat.com> <1316719228.3968.14.camel@lade.trondhjem.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Thu, 22 Sep 2011 15:57:13 -0700
+Message-ID: <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
+Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Jeff Layton <jlayton@redhat.com>, Ian Kent <raven@themaw.net>,
+        David Howells <dhowells@redhat.com>, miklos@szeredi.hu,
+        viro@zeniv.linux.org.uk, gregkh@suse.de, linux-nfs@vger.kernel.org,
+        leonardo.lists@gmail.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We don't need this code since rpcbind clients are creating during RPC service
-creation.
+On Thu, Sep 22, 2011 at 12:20 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+>
+> We need to audit not only NFS, but a bunch of stuff in the VFS.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Why? What has *anything*else* got to do with fixing a NFSv4 bug?
 
----
- net/sunrpc/rpcb_clnt.c |    9 ---------
- 1 files changed, 0 insertions(+), 9 deletions(-)
+IOW, why the hell would we hold up one bugfix just because you might
+want to look at something else too?
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 437ec60..f363efe 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -429,11 +429,6 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
- 	struct rpc_message msg = {
- 		.rpc_argp	= &map,
- 	};
--	int error;
--
--	error = rpcb_create_local();
--	if (error)
--		return error;
- 
- 	dprintk("RPC:       %sregistering (%u, %u, %d, %u) with local "
- 			"rpcbind\n", (port ? "" : "un"),
-@@ -569,11 +564,7 @@ int rpcb_v4_register(const u32 program, const u32 version,
- 	struct rpc_message msg = {
- 		.rpc_argp	= &map,
- 	};
--	int error;
- 
--	error = rpcb_create_local();
--	if (error)
--		return error;
- 	if (rpcb_local_clnt4 == NULL)
- 		return -EPROTONOSUPPORT;
- 
+> For instance, what is the correct behaviour if I do a bind mount with
+> the source being an automount directory? Currently, that doesn't set
+> LOOKUP_DIRECTORY (they cant, since file may also be a mountpoint) and so
+> the current behaviour means that they will fail to automount.
 
+Umm. If there is any question at all what the correct behavior might
+be, then pretty clearly the correct behavior is to let the user
+decide.
+
+And as pointed out, that's one of the *advantages* of
+LOOKUP_DIRECTORY. Because it lets users decide.
+
+Exatly because it gets automatically set for the 'slash at end of
+name' case. So suddenly you can literally let the user say one or the
+other by just letting the user add or remove the slash: "/mountpoint"
+is not automount-followed, while "/mountpoint/" is. Nice, obvious, and
+consistent interface. Which is exactly what we'd be looking for.
+
+                 Linus
