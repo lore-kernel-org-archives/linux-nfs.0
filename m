@@ -1,44 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:60616 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751046Ab1IZP35 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Sep 2011 11:29:57 -0400
-Received: by ywb5 with SMTP id 5so4377130ywb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 26 Sep 2011 08:29:57 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/3] NFS: Fix documenting comment for nfs_create_request()
-To: linux-nfs@vger.kernel.org
-Cc: bjschuma@netapp.com, andros@netapp.com
-Date: Mon, 26 Sep 2011 11:29:55 -0400
-Message-ID: <20110926152955.8595.18319.stgit@degas.1015granger.net>
-In-Reply-To: <20110926152657.8595.6375.stgit@degas.1015granger.net>
-References: <20110926152657.8595.6375.stgit@degas.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:43695 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752027Ab1IVQay (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 12:30:54 -0400
+Received: by wyg34 with SMTP id 34so3153331wyg.19
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Sep 2011 09:30:53 -0700 (PDT)
+In-Reply-To: <1316707443.3346.44.camel@perseus.themaw.net>
+References: <20110922134510.24683.14576.stgit@warthog.procyon.org.uk> <1316707443.3346.44.camel@perseus.themaw.net>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Thu, 22 Sep 2011 09:30:33 -0700
+Message-ID: <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
+Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
+To: Ian Kent <raven@themaw.net>
+Cc: David Howells <dhowells@redhat.com>, miklos@szeredi.hu,
+        viro@zeniv.linux.org.uk, jlayton@redhat.com, gregkh@suse.de,
+        linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up: the first parameter of nfs_create_request() has been
-incorrectly documented since time immemorial (OK, since before
-2.6.12).
+On Thu, Sep 22, 2011 at 9:04 AM, Ian Kent <raven@themaw.net> wrote:
+>
+> I haven't checked what the side effects would be but using the
+> LOOKUP_DIRECTORY flag in walks that get caught by the removal of the
+> LOOKUP_FOLLOW test in follow_automount() and retaining Miklos's original
+> patch is probably a more natural solution IMO.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Ok, I do have to agree with that.
 
- fs/nfs/pagelist.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+So instead of adding a new flag, let's just document a few *logical*
+rules for what causes auto-mounting:
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index b60970c..0a5ff5c 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -41,7 +41,7 @@ nfs_page_free(struct nfs_page *p)
- 
- /**
-  * nfs_create_request - Create an NFS read/write request.
-- * @file: file descriptor to use
-+ * @ctx: open context to use
-  * @inode: inode to which the request is attached
-  * @page: page to write
-  * @offset: starting offset within the page for the write
+ - opening the mount-point itself with LOOKUP_DIRECTORY does so
 
+   Logic: when you use LOOKUP_DIRECTORY, you expect to see the
+*contents* of the mount-point.
+
+ - looking something up *under* the mount-point does so.
+
+   This may be obvious, but it actually has a non-obvious special
+case: what about the pathname "mountpoint" vs "mountpoint/"
+
+And I think the "LOOKUP_DIRECTORY" rule ends up automatically also
+resolving that special case: when we have a slash at the end of the
+last component, it not only implies that we care about the contents,
+it will also automatically set LOOKUP_DIRECTORY.
+
+So I'm getting more and more convinced that LOOKUP_DIRECTORY is
+actually the right thing to trigger on. It automatically means that
+"opendir()" on the mountpoint will do the right thing (because
+O_DIRECTORY results in LOOKUP_DIRECTORY), and it automatically - and
+very naturally - gives user processes the ability to choose whether
+they want to see auto-monting or not ("path" doesn't get auto-mounted,
+but "path/" does).
+
+Yet at the same time it keeps the "stupid default behavior for
+processes that only look at each directory entry and don't even think
+about automounting" be the "don't auto-mount when not necessary"
+behavior.
+
+So: no new flag. Just make nfs4 use LOOKUP_DIRECTORY, and let's add
+big documentation notes about this.
+
+Ok?
+
+                     Linus
