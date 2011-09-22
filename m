@@ -1,43 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:37615 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752094Ab1IKRVh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Sep 2011 13:21:37 -0400
-Date: Sun, 11 Sep 2011 13:21:34 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH 0/3] pnfs private workqueue, and two cleanups
-Message-ID: <20110911172134.GB5195@merit.edu>
-References: <1315676495-3689-1-git-send-email-rees@umich.edu>
- <4E6CDB3D.2050702@tonian.com>
- <4E6CDC1C.7030507@tonian.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E6CDC1C.7030507@tonian.com>
+Received: from mx1.redhat.com ([209.132.183.28]:33512 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750712Ab1IVPWx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Sep 2011 11:22:53 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <CA+55aFzoH2VxTvf3Q1Lp_GAqDNAbsSOa=ATFXYSmmM=K8Fhuew@mail.gmail.com>
+References: <CA+55aFzoH2VxTvf3Q1Lp_GAqDNAbsSOa=ATFXYSmmM=K8Fhuew@mail.gmail.com> <20110922124608.7739.27750.stgit@warthog.procyon.org.uk>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: dhowells@redhat.com, miklos@szeredi.hu, raven@themaw.net,
+        viro@zeniv.linux.org.uk, jlayton@redhat.com, gregkh@suse.de,
+        linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
+Subject: Re: [PATCH] NFS4: Revert commit to make the automount code ignore LOOKUP_FOLLOW
+Date: Thu, 22 Sep 2011 16:22:05 +0100
+Message-ID: <6490.1316704925@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Benny Halevy wrote:
 
-  On 2011-09-11 09:01, Benny Halevy wrote:
-  > I merged the patches as well as my two SQUASHMEs
-  > under pnfs-all-3.1-rc4-2011-09-11
-  
-  hit "Send" too soon...
-  In fact I merged all the patches in linux-pnfs-blk/for-benny
-  Including my SQUASHMEs, I merged the following patches:
-  
-  fd06920 SUNRPC/NFS: make rpc pipe upcall generic
-  0359f0e pNFS: introduce pnfs private workqueue
-  fee4dab SQUASHME: pnfs: simplify and clean up pnfsiod workqueue
-  ab93fb1 SQUASHME: pnfs: do pnfsiod_start before registering layout drivers
-  9d904b1 pNFS: make _set_lo_fail generic
-  be077c0 pnfsblock: init pg_bsize properly
-  3c03366 pNFS: recoalesce when ld write pagelist fails
-  a4e8a6e pNFS: recoalesce when ld read pagelist fails
+One thing that does concern me a little about bringing back the old behaviour
+for stat and *xattr is that there is no reliable way to get at the directory
+mounted directly on the mountpoint (ie. mnt_root).
 
-These last two are still being worked on, but I don't think it will hurt
-anyone not using blocklayout to have them in your repo.  Thanks.
+The problem is that:
 
-Also see the small whitespace cleanup I just sent.
+ (a) you have to know to trigger the automount with some other operation first
+     and
+
+ (b) the other operation is not atomic wrt to the following stat/xattr, and so
+     the thing mounted on the automount point may be subject to expiration and
+     auto-unmounting before the second operation can proceed.
+
+I'm not sure how much of a problem these are in practice.  Certainly, I'd rate
+(b) as being less serious than (a) as the expiration timeouts are generally
+quite large.  (b) can be suppressed with chdir() or open() also - then you are
+forcing retension of the vfsmount.
+
+The problem can be ameliorated for such as fstatat() by passing an AT_ flag to
+either suppress automounting or to force automounting, but there aren't any
+xattr calls, for example, that take this.
+
+
+I guess it comes down to defining two things:
+
+ (1) What behaviour do we actually want?
+
+ (2) What departure from previous behaviour are we willing to put up with?
+
+
+On the first, I would say definitely we want mass-stat'ers (such as ls) to not
+cause mass automounting.  But for ls, that has been achieved in userspace;
+there are, however, other programs to consider.
+
+I would also say that we do not want lstat(), l*xattr() and co. to cause
+automounting - but maybe they should.  Perhaps if you don't want to cause
+automounting, you should explicitly pass AT_NO_AUTOMOUNT, and all path-taking
+VFS calls should have variants that accept this flag.
+
+Do we want to have guaranteed access to the root of an automounted fs?  Are we
+willing to add getxattrat and similar to get it?
+
+David
