@@ -1,117 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:24869 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:5033 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752638Ab1IUJIe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Sep 2011 05:08:34 -0400
-Message-ID: <4E79A95F.8050304@parallels.com>
-Date: Wed, 21 Sep 2011 13:07:43 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-To: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>
-Subject: Re: [PATCH v6 1/8] SUNRPC: introduce helpers for reference counted
- rpcbind clients
-References: <20110920101031.9861.18444.stgit@localhost6.localdomain6> <20110920101341.9861.51453.stgit@localhost6.localdomain6> <4E7899E7.9090809@parallels.com>
-In-Reply-To: <4E7899E7.9090809@parallels.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+	id S1753702Ab1IVTpD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Sep 2011 15:45:03 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p8MJj2Dt027258
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 22 Sep 2011 15:45:03 -0400
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p8MJj087012846
+	for <linux-nfs@vger.kernel.org>; Thu, 22 Sep 2011 15:45:02 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/3] configure.ac: Removed unused defines in config.h
+Date: Thu, 22 Sep 2011 15:44:58 -0400
+Message-Id: <1316720699-2611-3-git-send-email-steved@redhat.com>
+In-Reply-To: <1316720699-2611-1-git-send-email-steved@redhat.com>
+References: <1316720699-2611-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-v6:
-1) added write memory barrier to rpcb_set_local to make sure, that rpcbind 
-clients become valid before rpcb_users assignment
-2) explicitly set rpcb_users to 1 instead of incrementing it (looks clearer from 
-my pow).
+Cleaned out 3 unused defines from config.h
 
-Notice: write memory barrier after zeroing rpcbind clients in rpcb_put_local() 
-is not required, since to users of them left. New user (service) will create new 
-clients before dereferencing them.
-
-This helpers will be used for dynamical creation and destruction of rpcbind
-clients.
-Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
-clients has been created already, then we just increase rpcb_users.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
-  net/sunrpc/rpcb_clnt.c |   54 ++++++++++++++++++++++++++++++++++++++++++++++++
-  1 files changed, 54 insertions(+), 0 deletions(-)
+ configure.ac |    3 ---
+ 1 files changed, 0 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index e45d2fb..9fcdb42 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
-  static struct rpc_clnt *	rpcb_local_clnt;
-  static struct rpc_clnt *	rpcb_local_clnt4;
+diff --git a/configure.ac b/configure.ac
+index 7f4b88c..61b9c00 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -61,7 +61,6 @@ AC_ARG_ENABLE(nfsv4,
+ 	enable_nfsv4=$enableval,
+ 	enable_nfsv4=yes)
+ 	if test "$enable_nfsv4" = yes; then
+-		AC_DEFINE(NFS4_SUPPORTED, 1, [Define this if you want NFSv4 support compiled in])
+ 		IDMAPD=idmapd
+ 	else
+ 		enable_nfsv4=
+@@ -78,7 +77,6 @@ AC_ARG_ENABLE(nfsv41,
+ 	enable_nfsv41=yes)
+ 	if test "$enable_nfsv41" = yes; then
+ 		BLKMAPD=blkmapd
+-		AC_DEFINE(NFS41_SUPPORTED, 1, [Define this if you want NFSv41 support compiled in])
+ 	else
+ 		enable_nfsv41=
+ 		BLKMAPD=
+@@ -92,7 +90,6 @@ AC_ARG_ENABLE(gss,
+ 	enable_gss=$enableval,
+ 	enable_gss=yes)
+ 	if test "$enable_gss" = yes; then
+-		AC_DEFINE(GSS_SUPPORTED, 1, [Define this if you want rpcsec_gss support compiled in])
+ 		GSSD=gssd
+ 		SVCGSSD=svcgssd
+ 	else
+-- 
+1.7.6.2
 
-+DEFINE_SPINLOCK(rpcb_clnt_lock);
-+unsigned int			rpcb_users;
-+
-  struct rpcbind_args {
-  	struct rpc_xprt *	r_xprt;
-
-@@ -161,6 +164,57 @@ static void rpcb_map_release(void *data)
-  	kfree(map);
-  }
-
-+static int rpcb_get_local(void)
-+{
-+	int cnt;
-+
-+	spin_lock(&rpcb_clnt_lock);
-+	if (rpcb_users)
-+		rpcb_users++;
-+	cnt = rpcb_users;
-+	spin_unlock(&rpcb_clnt_lock);
-+
-+	return cnt;
-+}
-+
-+void rpcb_put_local(void)
-+{
-+	struct rpc_clnt *clnt = rpcb_local_clnt;
-+	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
-+	int shutdown;
-+
-+	spin_lock(&rpcb_clnt_lock);
-+	if (--rpcb_users == 0) {
-+		rpcb_local_clnt = NULL;
-+		rpcb_local_clnt4 = NULL;
-+	}
-+	shutdown = !rpcb_users;
-+	spin_unlock(&rpcb_clnt_lock);
-+
-+	if (shutdown) {
-+		/*
-+		 * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
-+		 */
-+		if (clnt4)
-+			rpc_shutdown_client(clnt4);
-+		if (clnt)
-+			rpc_shutdown_client(clnt);
-+	}
-+	return;
-+}
-+
-+static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
-+{
-+	/* Protected by rpcb_create_local_mutex */
-+	rpcb_local_clnt = clnt;
-+	rpcb_local_clnt4 = clnt4;
-+	smp_wmb();
-+	rpcb_users = 1;
-+	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
-+			"%p, rpcb_local_clnt4: %p)\n", rpcb_local_clnt,
-+			rpcb_local_clnt4);
-+}
-+
-  /*
-   * Returns zero on success, otherwise a negative errno value
-   * is returned.
