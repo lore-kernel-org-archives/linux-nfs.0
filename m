@@ -1,121 +1,261 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59099 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751779Ab1IUO62 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Sep 2011 10:58:28 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        Christoph Hellwig <hch@infradead.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Mimi Zohar <zohar@linux.vnet.ibm.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/6] leases: break read leases on rename
-Date: Wed, 21 Sep 2011 10:58:15 -0400
-Message-Id: <1316617097-21384-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1316617097-21384-1-git-send-email-bfields@redhat.com>
-References: <1316617097-21384-1-git-send-email-bfields@redhat.com>
+Received: from out2.smtp.messagingengine.com ([66.111.4.26]:54534 "EHLO
+	out2.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751219Ab1IVQEK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 12:04:10 -0400
+Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
+From: Ian Kent <raven@themaw.net>
+To: David Howells <dhowells@redhat.com>
+Cc: miklos@szeredi.hu, viro@ZenIV.linux.org.uk, jlayton@redhat.com,
+        gregkh@suse.de, torvalds@linux-foundation.org,
+        linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
+In-Reply-To: <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
+References: <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 23 Sep 2011 00:04:03 +0800
+Message-ID: <1316707443.3346.44.camel@perseus.themaw.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-To rely on the i_mutex for exclusion between setlease and rename, we
-need rename to take the i_mutex on the source as well as on any possible
-target.
+On Thu, 2011-09-22 at 14:45 +0100, David Howells wrote:
+> Directly suppress automount on the following:
+> 
+> 	[l]stat
+> 	[l]getxattr
+> 	[l]setxattr
+> 	[l]listxattr
+> 	[l]removexattr
+> 	name_to_handle_at
+> 	fstatat
+> 	statfs
+> 	utimes
+> 
+> But provide an AT_AUTOMOUNT_FOLLOW path where possible to override that
+> behaviour.
+> 
+> This changes the behaviour back to before the in-VFS automount patches were
+> applied, thus, for example, preventing stat() from causing automounting, but
+> allows it to be overridden where possible.
+> 
+> However, what about the following:
+> 
+> 	umount
+> 	faccessat
+> 	fchmodat, chmod
+> 	fchownat, lchown, chown
+> 
+> Should these or should these not cause automounting?
+> 
+> It's possible that with these additions, the whole decision point in
+> follow_automount() can be reduced to just a check of LOOKUP_NO_AUTOMOUNT.
 
-I suspect this is deadlock-free, but I need to think this proof through
-again.  And I'm not sure what to do about lockdep.
+As I have said I don't agree with any of this, including the original
+change from Miklos.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- Documentation/filesystems/directory-locking |   11 ++++++-----
- fs/namei.c                                  |   17 +++++++++++++++--
- 2 files changed, 21 insertions(+), 7 deletions(-)
+But, I also ended up supporting it.
 
-diff --git a/Documentation/filesystems/directory-locking b/Documentation/filesystems/directory-locking
-index ff7b611..c51cbed 100644
---- a/Documentation/filesystems/directory-locking
-+++ b/Documentation/filesystems/directory-locking
-@@ -12,8 +12,8 @@ kinds of locks - per-inode (->i_mutex) and per-filesystem
- locks victim and calls the method.
- 
- 4) rename() that is _not_ cross-directory.  Locking rules: caller locks
--the parent, finds source and target, if target already exists - locks it
--and then calls the method.
-+the parent, finds source and target, locks source, also locks target if
-+it already exists, and then calls the method.
- 
- 5) link creation.  Locking rules:
- 	* lock parent
-@@ -30,6 +30,7 @@ rules:
- 		fail with -ENOTEMPTY
- 	* if new parent is equal to or is a descendent of source
- 		fail with -ELOOP
-+	* lock source if it is not a directory.
- 	* if target exists - lock it.
- 	* call the method.
- 
-@@ -56,9 +57,9 @@ objects - A < B iff A is an ancestor of B.
-     renames will be blocked on filesystem lock and we don't start changing
-     the order until we had acquired all locks).
- 
--(3) any operation holds at most one lock on non-directory object and
--    that lock is acquired after all other locks.  (Proof: see descriptions
--    of operations).
-+(3) locks on non-directory objects are acquired only after taking locks
-+    on their parents (which remain their parents by (1) and (2)).
-+    (Proof: see descriptions of operations).
- 
- 	Now consider the minimal deadlock.  Each process is blocked on
- attempt to acquire some lock and already holds at least one lock.  Let's
-diff --git a/fs/namei.c b/fs/namei.c
-index 5c78f72..c0220f7 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3058,6 +3058,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 			    struct inode *new_dir, struct dentry *new_dentry)
- {
- 	struct inode *target = new_dentry->d_inode;
-+	struct inode *source = old_dentry->d_inode;
- 	int error;
- 
- 	error = security_inode_rename(old_dir, old_dentry, new_dir, new_dentry);
-@@ -3065,13 +3066,23 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 		return error;
- 
- 	dget(new_dentry);
--	if (target)
-+	mutex_lock(&source->i_mutex);
-+	error = break_lease(source, O_WRONLY);
-+	if (error)
-+		goto out_unlock_source;
-+	if (target) {
- 		mutex_lock(&target->i_mutex);
--
-+		error = break_lease(target, O_WRONLY);
-+		if (error)
-+			goto out;
-+	}
- 	error = -EBUSY;
- 	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
- 		goto out;
- 
-+	error = break_lease(old_dentry->d_inode, O_WRONLY);
-+	if (error)
-+		goto out;
- 	error = old_dir->i_op->rename(old_dir, old_dentry, new_dir, new_dentry);
- 	if (error)
- 		goto out;
-@@ -3083,6 +3094,8 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- out:
- 	if (target)
- 		mutex_unlock(&target->i_mutex);
-+out_unlock_source:
-+	mutex_unlock(&source->i_mutex);
- 	dput(new_dentry);
- 	return error;
- }
--- 
-1.7.4.1
+I haven't checked what the side effects would be but using the
+LOOKUP_DIRECTORY flag in walks that get caught by the removal of the
+LOOKUP_FOLLOW test in follow_automount() and retaining Miklos's original
+patch is probably a more natural solution IMO.
+
+After all, automount points are always directories and if we think they
+might also need to be automounted then that would cause them to be
+mounted, and always has done so.
+
+> 
+> Signed-off-by: David Howells <dhowells@redhat.com>
+> ---
+> 
+>  fs/fhandle.c          |    2 +-
+>  fs/stat.c             |    8 ++++----
+>  fs/statfs.c           |    3 ++-
+>  fs/utimes.c           |   10 +++++++---
+>  fs/xattr.c            |   20 ++++++++++++--------
+>  include/linux/fcntl.h |    1 +
+>  6 files changed, 27 insertions(+), 17 deletions(-)
+> 
+> diff --git a/fs/fhandle.c b/fs/fhandle.c
+> index 6b08864..bc0f327 100644
+> --- a/fs/fhandle.c
+> +++ b/fs/fhandle.c
+> @@ -92,7 +92,7 @@ SYSCALL_DEFINE5(name_to_handle_at, int, dfd, const char __user *, name,
+>  		int, flag)
+>  {
+>  	struct path path;
+> -	int lookup_flags;
+> +	int lookup_flags = LOOKUP_NO_AUTOMOUNT;
+>  	int err;
+>  
+>  	if ((flag & ~(AT_SYMLINK_FOLLOW | AT_EMPTY_PATH)) != 0)
+> diff --git a/fs/stat.c b/fs/stat.c
+> index ba5316f..e39b489 100644
+> --- a/fs/stat.c
+> +++ b/fs/stat.c
+> @@ -73,16 +73,16 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+>  {
+>  	struct path path;
+>  	int error = -EINVAL;
+> -	int lookup_flags = 0;
+> +	int lookup_flags = LOOKUP_NO_AUTOMOUNT;
+>  
+>  	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
+> -		      AT_EMPTY_PATH)) != 0)
+> +		      AT_EMPTY_PATH | AT_AUTOMOUNT_FOLLOW)) != 0)
+>  		goto out;
+>  
+>  	if (!(flag & AT_SYMLINK_NOFOLLOW))
+>  		lookup_flags |= LOOKUP_FOLLOW;
+> -	if (flag & AT_NO_AUTOMOUNT)
+> -		lookup_flags |= LOOKUP_NO_AUTOMOUNT;
+> +	if (!(flag & AT_AUTOMOUNT_FOLLOW))
+> +		lookup_flags &= ~LOOKUP_NO_AUTOMOUNT;
+>  	if (flag & AT_EMPTY_PATH)
+>  		lookup_flags |= LOOKUP_EMPTY;
+>  
+> diff --git a/fs/statfs.c b/fs/statfs.c
+> index 8244924..fe64701 100644
+> --- a/fs/statfs.c
+> +++ b/fs/statfs.c
+> @@ -76,7 +76,8 @@ EXPORT_SYMBOL(vfs_statfs);
+>  int user_statfs(const char __user *pathname, struct kstatfs *st)
+>  {
+>  	struct path path;
+> -	int error = user_path(pathname, &path);
+> +	int error = user_path_at(AT_FDCWD, pathname, LOOKUP_NO_AUTOMOUNT,
+> +				 &path);
+>  	if (!error) {
+>  		error = vfs_statfs(&path, st);
+>  		path_put(&path);
+> diff --git a/fs/utimes.c b/fs/utimes.c
+> index ba653f3..e9bf196 100644
+> --- a/fs/utimes.c
+> +++ b/fs/utimes.c
+> @@ -136,13 +136,15 @@ long do_utimes(int dfd, const char __user *filename, struct timespec *times,
+>  		goto out;
+>  	}
+>  
+> -	if (flags & ~AT_SYMLINK_NOFOLLOW)
+> +	if (flags & ~(AT_SYMLINK_NOFOLLOW |
+> +		      AT_NO_AUTOMOUNT | AT_AUTOMOUNT_FOLLOW))
+>  		goto out;
+>  
+>  	if (filename == NULL && dfd != AT_FDCWD) {
+>  		struct file *file;
+>  
+> -		if (flags & AT_SYMLINK_NOFOLLOW)
+> +		if (flags & (AT_SYMLINK_NOFOLLOW |
+> +			     AT_NO_AUTOMOUNT | AT_AUTOMOUNT_FOLLOW))
+>  			goto out;
+>  
+>  		file = fget(dfd);
+> @@ -154,10 +156,12 @@ long do_utimes(int dfd, const char __user *filename, struct timespec *times,
+>  		fput(file);
+>  	} else {
+>  		struct path path;
+> -		int lookup_flags = 0;
+> +		int lookup_flags = LOOKUP_NO_AUTOMOUNT;
+>  
+>  		if (!(flags & AT_SYMLINK_NOFOLLOW))
+>  			lookup_flags |= LOOKUP_FOLLOW;
+> +		if (flags & AT_AUTOMOUNT_FOLLOW)
+> +			lookup_flags &= ~LOOKUP_NO_AUTOMOUNT;
+>  
+>  		error = user_path_at(dfd, filename, lookup_flags, &path);
+>  		if (error)
+> diff --git a/fs/xattr.c b/fs/xattr.c
+> index f060663..7c462ae 100644
+> --- a/fs/xattr.c
+> +++ b/fs/xattr.c
+> @@ -290,7 +290,8 @@ SYSCALL_DEFINE5(setxattr, const char __user *, pathname,
+>  	struct path path;
+>  	int error;
+>  
+> -	error = user_path(pathname, &path);
+> +	error = user_path_at(AT_FDCWD, pathname,
+> +			     LOOKUP_FOLLOW | LOOKUP_NO_AUTOMOUNT, &path);
+>  	if (error)
+>  		return error;
+>  	error = mnt_want_write(path.mnt);
+> @@ -309,7 +310,7 @@ SYSCALL_DEFINE5(lsetxattr, const char __user *, pathname,
+>  	struct path path;
+>  	int error;
+>  
+> -	error = user_lpath(pathname, &path);
+> +	error = user_path_at(AT_FDCWD, pathname, LOOKUP_NO_AUTOMOUNT, &path);
+>  	if (error)
+>  		return error;
+>  	error = mnt_want_write(path.mnt);
+> @@ -386,7 +387,8 @@ SYSCALL_DEFINE4(getxattr, const char __user *, pathname,
+>  	struct path path;
+>  	ssize_t error;
+>  
+> -	error = user_path(pathname, &path);
+> +	error = user_path_at(AT_FDCWD, pathname,
+> +			     LOOKUP_FOLLOW | LOOKUP_NO_AUTOMOUNT, &path);
+>  	if (error)
+>  		return error;
+>  	error = getxattr(path.dentry, name, value, size);
+> @@ -400,7 +402,7 @@ SYSCALL_DEFINE4(lgetxattr, const char __user *, pathname,
+>  	struct path path;
+>  	ssize_t error;
+>  
+> -	error = user_lpath(pathname, &path);
+> +	error = user_path_at(AT_FDCWD, pathname, LOOKUP_NO_AUTOMOUNT, &path);
+>  	if (error)
+>  		return error;
+>  	error = getxattr(path.dentry, name, value, size);
+> @@ -459,7 +461,8 @@ SYSCALL_DEFINE3(listxattr, const char __user *, pathname, char __user *, list,
+>  	struct path path;
+>  	ssize_t error;
+>  
+> -	error = user_path(pathname, &path);
+> +	error = user_path_at(AT_FDCWD, pathname,
+> +			     LOOKUP_FOLLOW | LOOKUP_NO_AUTOMOUNT, &path);
+>  	if (error)
+>  		return error;
+>  	error = listxattr(path.dentry, list, size);
+> @@ -473,7 +476,7 @@ SYSCALL_DEFINE3(llistxattr, const char __user *, pathname, char __user *, list,
+>  	struct path path;
+>  	ssize_t error;
+>  
+> -	error = user_lpath(pathname, &path);
+> +	error = user_path_at(AT_FDCWD, pathname, LOOKUP_NO_AUTOMOUNT, &path);
+>  	if (error)
+>  		return error;
+>  	error = listxattr(path.dentry, list, size);
+> @@ -519,7 +522,8 @@ SYSCALL_DEFINE2(removexattr, const char __user *, pathname,
+>  	struct path path;
+>  	int error;
+>  
+> -	error = user_path(pathname, &path);
+> +	error = user_path_at(AT_FDCWD, pathname,
+> +			     LOOKUP_FOLLOW | LOOKUP_NO_AUTOMOUNT, &path);
+>  	if (error)
+>  		return error;
+>  	error = mnt_want_write(path.mnt);
+> @@ -537,7 +541,7 @@ SYSCALL_DEFINE2(lremovexattr, const char __user *, pathname,
+>  	struct path path;
+>  	int error;
+>  
+> -	error = user_lpath(pathname, &path);
+> +	error = user_path_at(AT_FDCWD, pathname, LOOKUP_NO_AUTOMOUNT, &path);
+>  	if (error)
+>  		return error;
+>  	error = mnt_want_write(path.mnt);
+> diff --git a/include/linux/fcntl.h b/include/linux/fcntl.h
+> index f550f89..768fb66 100644
+> --- a/include/linux/fcntl.h
+> +++ b/include/linux/fcntl.h
+> @@ -47,6 +47,7 @@
+>  #define AT_SYMLINK_FOLLOW	0x400   /* Follow symbolic links.  */
+>  #define AT_NO_AUTOMOUNT		0x800	/* Suppress terminal automount traversal */
+>  #define AT_EMPTY_PATH		0x1000	/* Allow empty relative pathname */
+> +#define AT_AUTOMOUNT_FOLLOW	0x2000	/* Follow terminal automounts */
+>  
+>  #ifdef __KERNEL__
+>  
+> 
+
 
