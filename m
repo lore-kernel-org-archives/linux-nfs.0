@@ -1,56 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60162 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:27444 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932222Ab1INLp1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Sep 2011 07:45:27 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 08/25] nfsd4: simplify check_open logic
-Date: Wed, 14 Sep 2011 07:45:04 -0400
-Message-Id: <1316000721-3289-9-git-send-email-bfields@redhat.com>
-In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
+	id S1751059Ab1IVM3M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Sep 2011 08:29:12 -0400
+Date: Thu, 22 Sep 2011 08:29:05 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Leonardo Chiquitto <leonardo.lists@gmail.com>,
+        David Howells <dhowells@redhat.com>, Ian Kent <raven@themaw.net>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        autofs@linux.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] vfs: automount should ignore LOOKUP_FOLLOW
+Message-ID: <20110922082905.0d43a8f4@tlielax.poochiereds.net>
+In-Reply-To: <87liu37z3x.fsf@tucsk.pomaz.szeredi.hu>
+References: <87liu37z3x.fsf@tucsk.pomaz.szeredi.hu>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Sometimes the single-exit style is good, sometimes it's unnecessarily
-convoluted....
+On Mon, 05 Sep 2011 18:06:26 +0200
+Miklos Szeredi <miklos@szeredi.hu> wrote:
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |    7 ++-----
- 1 files changed, 2 insertions(+), 5 deletions(-)
+> From: Miklos Szeredi <mszeredi@suse.cz>
+> 
+> Prior to 2.6.38 automount would not trigger on either stat(2) or
+> lstat(2) on the automount point.
+> 
+> After 2.6.38, with the introduction of the ->d_automount()
+> infrastructure, stat(2) and others would start triggering automount
+> while lstat(2), etc. still would not.  This is a regression and a
+> userspace ABI change.
+> 
+> Problem originally reported here:
+> 
+>   http://thread.gmane.org/gmane.linux.kernel.autofs/6098
+> 
+> It appears that there was an attempt at fixing various userspace tools
+> to not trigger the automount.  But since the stat system call is
+> rather common it is impossible to "fix" all userspace.
+> 
+> This patch reverts the original behavior, which is to not trigger on
+> stat(2) and other symlink following syscalls.
+> 
+> Reported-by: Leonardo Chiquitto <leonardo.lists@gmail.com>
+> Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
+> CC: David Howells <dhowells@redhat.com>
+> CC: Ian Kent <raven@themaw.net>
+> CC: stable@kernel.org
+> ---
+>  fs/namei.c |   33 +++++++++++++++------------------
+>  1 file changed, 15 insertions(+), 18 deletions(-)
+> 
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8edc9ad..8694e60 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2573,7 +2573,6 @@ static __be32
- nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_stateid **stpp)
- {
- 	struct nfs4_stateid *local;
--	__be32 status = nfserr_share_denied;
- 	struct nfs4_stateowner *sop = open->op_stateowner;
- 
- 	list_for_each_entry(local, &fp->fi_stateids, st_perfile) {
-@@ -2585,11 +2584,9 @@ nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_state
- 			*stpp = local;
- 		/* check for conflicting share reservations */
- 		if (!test_share(local, open))
--			goto out;
-+			return nfserr_share_denied;
- 	}
--	status = 0;
--out:
--	return status;
-+	return nfs_ok;
- }
- 
- static inline struct nfs4_stateid *
+This patch is causing a regression with NFSv4.
+
+When I mount up a filesystem, and do any activity on it, a new
+automount gets triggered on top of the original mountpoint.
+
+The first mount ends up getting the fsid of the pseudo root (fsid=0),
+rather than the correct one for the fs. Once it traverses into the
+actual filesystem the fsid's look different and d_automount gets
+triggered.
+
+I think the problem is that nfs_follow_remote_path() uses
+LOOKUP_FOLLOW, and with the above patch this is now ignored.
+
+Let me know if you need details on how to reproduce this.
+
 -- 
-1.7.4.1
-
+Jeff Layton <jlayton@redhat.com>
