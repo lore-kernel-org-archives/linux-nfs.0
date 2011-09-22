@@ -1,173 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp02.in.ibm.com ([122.248.162.2]:33149 "EHLO
-	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752070Ab1IER1Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2011 13:27:24 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V6 11/26] vfs: Add permission flags for setting file attributes
-Date: Mon,  5 Sep 2011 22:55:33 +0530
-Message-Id: <1315243548-18664-12-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from natasha.panasas.com ([67.152.220.90]:55201 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751001Ab1IVHRd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 03:17:33 -0400
+Message-ID: <4E7AE0FD.2070702@panasas.com>
+Date: Thu, 22 Sep 2011 10:17:17 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Peng Tao <bergwolf@gmail.com>, Benny Halevy <bhalevy@tonian.com>,
+        <tao.peng@emc.com>, <linux-nfs@vger.kernel.org>,
+        <honey@citi.umich.edu>, <rees@umich.edu>
+Subject: Re: [PATCH 2/3] pnfs: introduce pnfs private workqueue
+References: <1316488728-24912-1-git-send-email-rees@umich.edu>  <1316488728-24912-3-git-send-email-rees@umich.edu>  <1316558461.15093.4.camel@lade.trondhjem.org>  <20110921002917.GA30770@merit.edu>  <F19688880B763E40B28B2B462677FBF805C4952916@MX09A.corp.emc.com>  <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480226@SACMVEXC2-PRD.hq.netapp.com>  <F19688880B763E40B28B2B462677FBF805C495295A@MX09A.corp.emc.com>  <4E798C93.40409@tonian.com>  <F19688880B763E40B28B2B462677FBF805C4952A24@MX09A.corp.emc.com>  <4E79C2F0.30303@tonian.com>  <F19688880B763E40B28B2B462677FBF805C4952A34@MX09A.corp.emc.com>  <4E79CA34.3060602@tonian.com> <4E79CD8F.6050901@panasas.com>  <4E79CFA3.4090403@tonian.com> <4E79ED02.5010104@panasas.com>  <CA+a=Yy7PNsrQQdc9nwn1+2bZu86s8xUa9NBXVeo7NecGkc9-VQ@mail.gmail.com> <1316621016.21183.11.camel@lade.trondhjem.org>
+In-Reply-To: <1316621016.21183.11.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+On 09/21/2011 07:03 PM, Trond Myklebust wrote:
+>>>
+>>> These are the options so far:
+>>>
+>>> [Toe's option which he rather not]
+>>> 1. preallocate memory for extent state conversion
+>>> 2. use nfsiod/rpciod to handle bl_write_cleanup
+>>> 3. for pnfs error case, create a kthread to recollapse and resend to MDS
+>>>
+>>> [My option which I think Toe agrees with]
+>>> 1. preallocate memory for extent state conversion
+>>> 2. use pnfs-wq to handle bl_write_cleanup
+>>> 3. pnfs error case, just like Toe's patches as part of io_done
+>>>   on pnfs-wq
+>> Yeah, I would vote for this one because of its simplicity. ;-)
+> 
+> Sigh... The problem is that it completely fails to address the problem.
+> 
+> What's the difference between having pNFS completions run on nfsiod or
+> their own work queue? You'd be running i/o and allocations on the same
+> queue in both cases.
+> 
 
-Some permission models can allow processes to take ownership of a file,
-change the file permissions, and set the file timestamps.  Introduce new
-permission mask flags and check for those permissions in
-inode_change_ok().
+I don't understand, did you mean "io_done" and "coalescing" (which
+does allocations), so IO cannot complete to clean up memory so
+allocations can proceed?
 
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/attr.c          |   70 +++++++++++++++++++++++++++++++++++++++++++--------
- fs/namei.c         |    2 +-
- include/linux/fs.h |    4 +++
- 3 files changed, 64 insertions(+), 12 deletions(-)
+But I thought we don't do that with Toe's latest patches. because
+we no longer do coalescing on the io_done path. We only re-dirty the
+memory and let the normal nfsiod/rpciod do the coalescing.
 
-diff --git a/fs/attr.c b/fs/attr.c
-index f15e9e3..00578b9 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -14,6 +14,55 @@
- #include <linux/fcntl.h>
- #include <linux/security.h>
- 
-+static int richacl_change_ok(struct inode *inode, int mask)
-+{
-+	if (!IS_RICHACL(inode))
-+		return -EPERM;
-+
-+	if (inode->i_op->permission)
-+		return inode->i_op->permission(inode, mask);
-+
-+	return check_acl(inode, mask);
-+}
-+
-+static bool inode_uid_change_ok(struct inode *inode, uid_t ia_uid)
-+{
-+	if (current_fsuid() == inode->i_uid && ia_uid == inode->i_uid)
-+		return true;
-+	if (current_fsuid() == ia_uid &&
-+	    richacl_change_ok(inode, MAY_TAKE_OWNERSHIP) == 0)
-+		return true;
-+	if (capable(CAP_CHOWN))
-+		return true;
-+	return false;
-+}
-+
-+static bool inode_gid_change_ok(struct inode *inode, gid_t ia_gid)
-+{
-+	int in_group = in_group_p(ia_gid);
-+	if (current_fsuid() == inode->i_uid &&
-+	    (in_group || ia_gid == inode->i_gid))
-+		return true;
-+	if (in_group && richacl_change_ok(inode, MAY_TAKE_OWNERSHIP) == 0)
-+		return true;
-+	if (capable(CAP_CHOWN))
-+		return true;
-+	return false;
-+}
-+
-+static bool inode_owner_permitted_or_capable(struct inode *inode, int mask)
-+{
-+	struct user_namespace *ns = inode_userns(inode);
-+
-+	if (current_user_ns() == ns && current_fsuid() == inode->i_uid)
-+		return true;
-+	if (richacl_change_ok(inode, mask) == 0)
-+		return true;
-+	if (ns_capable(ns, CAP_FOWNER))
-+		return true;
-+	return false;
-+}
-+
- /**
-  * inode_change_ok - check if attribute changes to an inode are allowed
-  * @inode:	inode to check
-@@ -45,21 +94,20 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
- 		return 0;
- 
- 	/* Make sure a caller can chown. */
--	if ((ia_valid & ATTR_UID) &&
--	    (current_fsuid() != inode->i_uid ||
--	     attr->ia_uid != inode->i_uid) && !capable(CAP_CHOWN))
--		return -EPERM;
-+	if (ia_valid & ATTR_UID) {
-+		if (!inode_uid_change_ok(inode, attr->ia_uid))
-+			return -EPERM;
-+	}
- 
- 	/* Make sure caller can chgrp. */
--	if ((ia_valid & ATTR_GID) &&
--	    (current_fsuid() != inode->i_uid ||
--	    (!in_group_p(attr->ia_gid) && attr->ia_gid != inode->i_gid)) &&
--	    !capable(CAP_CHOWN))
--		return -EPERM;
-+	if (ia_valid & ATTR_GID) {
-+		if (!inode_gid_change_ok(inode, attr->ia_gid))
-+			return -EPERM;
-+	}
- 
- 	/* Make sure a caller can chmod. */
- 	if (ia_valid & ATTR_MODE) {
--		if (!inode_owner_or_capable(inode))
-+		if (!inode_owner_permitted_or_capable(inode, MAY_CHMOD))
- 			return -EPERM;
- 		/* Also check the setgid bit! */
- 		if (!in_group_p((ia_valid & ATTR_GID) ? attr->ia_gid :
-@@ -69,7 +117,7 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
- 
- 	/* Check for setting the inode time. */
- 	if (ia_valid & (ATTR_MTIME_SET | ATTR_ATIME_SET | ATTR_TIMES_SET)) {
--		if (!inode_owner_or_capable(inode))
-+		if (!inode_owner_permitted_or_capable(inode, MAY_SET_TIMES))
- 			return -EPERM;
- 	}
- 
-diff --git a/fs/namei.c b/fs/namei.c
-index eacb530..a4d61d1 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -174,7 +174,7 @@ void putname(const char *name)
- EXPORT_SYMBOL(putname);
- #endif
- 
--static int check_acl(struct inode *inode, int mask)
-+int check_acl(struct inode *inode, int mask)
- {
- #ifdef CONFIG_FS_POSIX_ACL
- 	struct posix_acl *acl;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 8afb054..8d5d6e4 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -71,6 +71,9 @@ struct inodes_stat_t {
- #define MAY_CREATE_DIR		0x00000200
- #define MAY_DELETE_CHILD	0x00000400
- #define MAY_DELETE_SELF		0x00000800
-+#define MAY_TAKE_OWNERSHIP	0x00001000
-+#define MAY_CHMOD		0x00002000
-+#define MAY_SET_TIMES		0x00004000
- 
- /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
-@@ -2234,6 +2237,7 @@ extern sector_t bmap(struct inode *, sector_t);
- extern int notify_change(struct dentry *, struct iattr *);
- extern int inode_permission(struct inode *, int);
- extern int generic_permission(struct inode *, int);
-+extern int check_acl(struct inode *, int);
- 
- static inline bool execute_ok(struct inode *inode)
- {
--- 
-1.7.4.1
+So it is what you want pnfs-wq is only for io_done the regular
+coalescing/allocation is done in fsiod/rpciod. I though that
+was the all Idea no? (It was your idea actually)
 
+Or I might completely missed the point. Please explain
+
+> Cheers
+> Trond
+> 
+
+Thanks
+Boaz
