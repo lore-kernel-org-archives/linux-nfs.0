@@ -1,101 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:11869 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:1597 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754346Ab1IMPL0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Sep 2011 11:11:26 -0400
-Date: Tue, 13 Sep 2011 11:14:41 -0400
+	id S1752722Ab1IVRcQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Sep 2011 13:32:16 -0400
+Date: Thu, 22 Sep 2011 13:35:29 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: Jim Rees <rees@umich.edu>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH v7 12/26] pnfsblock: add device operations
-Message-ID: <20110913111441.4b2502b8@corrin.poochiereds.net>
-In-Reply-To: <1312073576-11024-13-git-send-email-rees@umich.edu>
-References: <1312073576-11024-1-git-send-email-rees@umich.edu>
-	<1312073576-11024-13-git-send-email-rees@umich.edu>
+To: Ian Kent <raven@themaw.net>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        David Howells <dhowells@redhat.com>, miklos@szeredi.hu,
+        viro@zeniv.linux.org.uk, gregkh@suse.de, linux-nfs@vger.kernel.org,
+        leonardo.lists@gmail.com
+Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
+Message-ID: <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
+In-Reply-To: <1316709935.3346.48.camel@perseus.themaw.net>
+References: <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
+	<1316707443.3346.44.camel@perseus.themaw.net>
+	<CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
+	<1316709935.3346.48.camel@perseus.themaw.net>
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, 30 Jul 2011 20:52:42 -0400
-Jim Rees <rees@umich.edu> wrote:
+On Fri, 23 Sep 2011 00:45:35 +0800
+Ian Kent <raven@themaw.net> wrote:
 
-> Signed-off-by: Jim Rees <rees@umich.edu>
-> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
-> [upcall bugfixes]
-> Signed-off-by: Peng Tao <peng_tao@emc.com>
-> ---
->  fs/nfs/blocklayout/Makefile         |    2 +-
->  fs/nfs/blocklayout/blocklayout.c    |   42 ++++++++
->  fs/nfs/blocklayout/blocklayout.h    |   40 +++++++
->  fs/nfs/blocklayout/blocklayoutdev.c |  191 +++++++++++++++++++++++++++++++++++
->  fs/nfs/client.c                     |    2 +-
->  include/linux/nfs.h                 |    2 +
->  6 files changed, 277 insertions(+), 2 deletions(-)
->  create mode 100644 fs/nfs/blocklayout/blocklayoutdev.c
+> On Thu, 2011-09-22 at 09:30 -0700, Linus Torvalds wrote:
+> > On Thu, Sep 22, 2011 at 9:04 AM, Ian Kent <raven@themaw.net> wrote:
+> > >
+> > > I haven't checked what the side effects would be but using the
+> > > LOOKUP_DIRECTORY flag in walks that get caught by the removal of the
+> > > LOOKUP_FOLLOW test in follow_automount() and retaining Miklos's original
+> > > patch is probably a more natural solution IMO.
+> > 
+> > Ok, I do have to agree with that.
+> > 
+> > So instead of adding a new flag, let's just document a few *logical*
+> > rules for what causes auto-mounting:
+> > 
+> >  - opening the mount-point itself with LOOKUP_DIRECTORY does so
+> > 
+> >    Logic: when you use LOOKUP_DIRECTORY, you expect to see the
+> > *contents* of the mount-point.
+> > 
+> >  - looking something up *under* the mount-point does so.
+> > 
+> >    This may be obvious, but it actually has a non-obvious special
+> > case: what about the pathname "mountpoint" vs "mountpoint/"
+> > 
+> > And I think the "LOOKUP_DIRECTORY" rule ends up automatically also
+> > resolving that special case: when we have a slash at the end of the
+> > last component, it not only implies that we care about the contents,
+> > it will also automatically set LOOKUP_DIRECTORY.
+> > 
+> > So I'm getting more and more convinced that LOOKUP_DIRECTORY is
+> > actually the right thing to trigger on. It automatically means that
+> > "opendir()" on the mountpoint will do the right thing (because
+> > O_DIRECTORY results in LOOKUP_DIRECTORY), and it automatically - and
+> > very naturally - gives user processes the ability to choose whether
+> > they want to see auto-monting or not ("path" doesn't get auto-mounted,
+> > but "path/" does).
+> > 
+> > Yet at the same time it keeps the "stupid default behavior for
+> > processes that only look at each directory entry and don't even think
+> > about automounting" be the "don't auto-mount when not necessary"
+> > behavior.
+> > 
+> > So: no new flag. Just make nfs4 use LOOKUP_DIRECTORY, and let's add
+> > big documentation notes about this.
+> 
+> Yes, that's what I think is best.
+> 
+> It's late here so I'll survey the code and see if I can find any other
+> instances of this and post a patch, tomorrow.
+> 
+> Jeff, could you test adding LOOKUP_DIRECTORY to the walk in
+> nfs_follow_remote_path() please, just in case I've got this all wrong.
 > 
 
-[...]
-> +static const struct rpc_pipe_ops bl_upcall_ops = {
-> +	.upcall		= bl_pipe_upcall,
-> +	.downcall	= bl_pipe_downcall,
-> +	.destroy_msg	= bl_pipe_destroy_msg,
-> +};
-> +
->  static int __init nfs4blocklayout_init(void)
->  {
-> +	struct vfsmount *mnt;
-> +	struct path path;
->  	int ret;
->  
->  	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
->  
->  	ret = pnfs_register_layoutdriver(&blocklayout_type);
-> +	if (ret)
-> +		goto out;
-> +
-> +	init_waitqueue_head(&bl_wq);
-> +
-> +	mnt = rpc_get_mount();
-> +	if (IS_ERR(mnt)) {
-> +		ret = PTR_ERR(mnt);
-> +		goto out_remove;
-> +	}
-> +
+Yep, adding LOOKUP_DIRECTORY also fixes the problem. I'll go ahead and
+send a patch to Trond...
 
-
-Hmm...sorry for the late review on this, but I was just looking over
-this code as an example for some other stuff I'm working on...
-
-I notice that the above code does a rpc_get_mount to get a reference to
-the rpc_pipefs mount, but I don't see where that reference is ever put.
-
-> +	ret = vfs_path_lookup(mnt->mnt_root,
-> +			      mnt,
-> +			      NFS_PIPE_DIRNAME, 0, &path);
-> +	if (ret)
-> +		goto out_remove;
-> +
-> +	bl_device_pipe = rpc_mkpipe(path.dentry, "blocklayout", NULL,
-> +				    &bl_upcall_ops, 0);
-
-> +	if (IS_ERR(bl_device_pipe)) {
-> +		ret = PTR_ERR(bl_device_pipe);
-> +		goto out_remove;
-> +	}
-> +out:
-> +	return ret;
-> +
-> +out_remove:
-> +	pnfs_unregister_layoutdriver(&blocklayout_type);
->  	return ret;
->  }
->  
-
-
-
+Thanks,
 -- 
 Jeff Layton <jlayton@redhat.com>
