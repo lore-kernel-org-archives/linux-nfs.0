@@ -1,149 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:37173 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754744Ab1IWBu0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 21:50:26 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 01/10] pnfsblock: fix return code confusion
-Date: Thu, 22 Sep 2011 21:50:08 -0400
-Message-Id: <1316742617-14766-2-git-send-email-rees@umich.edu>
-In-Reply-To: <1316742617-14766-1-git-send-email-rees@umich.edu>
-References: <1316742617-14766-1-git-send-email-rees@umich.edu>
+Received: from mx2.netapp.com ([216.240.18.37]:17006 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750981Ab1IWR1H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Sep 2011 13:27:07 -0400
+Content-Type: text/plain;
+	charset="utf-8"
+Subject: RE: [PATCH v6 1/8] SUNRPC: introduce helpers for reference counted rpcbind clients
+Date: Fri, 23 Sep 2011 10:26:49 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B54DB89@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <4E7C9A91.1060301@parallels.com>
+References: <20110920101031.9861.18444.stgit@localhost6.localdomain6> <20110920101341.9861.51453.stgit@localhost6.localdomain6> <4E7899E7.9090809@parallels.com> <4E79A95F.8050304@parallels.com> <4E7C9A91.1060301@parallels.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Stanislav Kinsbursky" <skinsbursky@parallels.com>
+Cc: <linux-nfs@vger.kernel.org>, "Pavel Emelianov" <xemul@parallels.com>,
+        <neilb@suse.de>, <netdev@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <bfields@fieldses.org>,
+        <davem@davemloft.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Always return PTR_ERR, not NULL, from nfs4_blk_get_deviceinfo and
-nfs4_blk_decode_device.
-
-Check for IS_ERR, not NULL, in bl_set_layoutdriver when calling
-nfs4_blk_get_deviceinfo.
-
-Signed-off-by: Jim Rees <rees@umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfs/blocklayout/blocklayout.c    |   20 ++++++++++++--------
- fs/nfs/blocklayout/blocklayoutdev.c |   13 ++++++++-----
- 2 files changed, 20 insertions(+), 13 deletions(-)
-
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 9561c8f..d2432f0 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -805,7 +805,7 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
- 			struct nfs4_deviceid *d_id)
- {
- 	struct pnfs_device *dev;
--	struct pnfs_block_dev *rv = NULL;
-+	struct pnfs_block_dev *rv;
- 	u32 max_resp_sz;
- 	int max_pages;
- 	struct page **pages = NULL;
-@@ -823,18 +823,20 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
- 	dev = kmalloc(sizeof(*dev), GFP_NOFS);
- 	if (!dev) {
- 		dprintk("%s kmalloc failed\n", __func__);
--		return NULL;
-+		return ERR_PTR(-ENOMEM);
- 	}
- 
- 	pages = kzalloc(max_pages * sizeof(struct page *), GFP_NOFS);
- 	if (pages == NULL) {
- 		kfree(dev);
--		return NULL;
-+		return ERR_PTR(-ENOMEM);
- 	}
- 	for (i = 0; i < max_pages; i++) {
- 		pages[i] = alloc_page(GFP_NOFS);
--		if (!pages[i])
-+		if (!pages[i]) {
-+			rv = ERR_PTR(-ENOMEM);
- 			goto out_free;
-+		}
- 	}
- 
- 	memcpy(&dev->dev_id, d_id, sizeof(*d_id));
-@@ -847,8 +849,10 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
- 	dprintk("%s: dev_id: %s\n", __func__, dev->dev_id.data);
- 	rc = nfs4_proc_getdeviceinfo(server, dev);
- 	dprintk("%s getdevice info returns %d\n", __func__, rc);
--	if (rc)
-+	if (rc) {
-+		rv = ERR_PTR(rc);
- 		goto out_free;
-+	}
- 
- 	rv = nfs4_blk_decode_device(server, dev);
-  out_free:
-@@ -866,7 +870,7 @@ bl_set_layoutdriver(struct nfs_server *server, const struct nfs_fh *fh)
- 	struct pnfs_devicelist *dlist = NULL;
- 	struct pnfs_block_dev *bdev;
- 	LIST_HEAD(block_disklist);
--	int status = 0, i;
-+	int status, i;
- 
- 	dprintk("%s enter\n", __func__);
- 
-@@ -898,8 +902,8 @@ bl_set_layoutdriver(struct nfs_server *server, const struct nfs_fh *fh)
- 		for (i = 0; i < dlist->num_devs; i++) {
- 			bdev = nfs4_blk_get_deviceinfo(server, fh,
- 						       &dlist->dev_id[i]);
--			if (!bdev) {
--				status = -ENODEV;
-+			if (IS_ERR(bdev)) {
-+				status = PTR_ERR(bdev);
- 				goto out_error;
- 			}
- 			spin_lock(&b_mt_id->bm_lock);
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index a83b393..0b1fb0e 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -131,7 +131,7 @@ struct pnfs_block_dev *
- nfs4_blk_decode_device(struct nfs_server *server,
- 		       struct pnfs_device *dev)
- {
--	struct pnfs_block_dev *rv = NULL;
-+	struct pnfs_block_dev *rv;
- 	struct block_device *bd = NULL;
- 	struct rpc_pipe_msg msg;
- 	struct bl_msg_hdr bl_msg = {
-@@ -141,7 +141,7 @@ nfs4_blk_decode_device(struct nfs_server *server,
- 	uint8_t *dataptr;
- 	DECLARE_WAITQUEUE(wq, current);
- 	struct bl_dev_msg *reply = &bl_mount_reply;
--	int offset, len, i;
-+	int offset, len, i, rc;
- 
- 	dprintk("%s CREATING PIPEFS MESSAGE\n", __func__);
- 	dprintk("%s: deviceid: %s, mincount: %d\n", __func__, dev->dev_id.data,
-@@ -168,8 +168,10 @@ nfs4_blk_decode_device(struct nfs_server *server,
- 
- 	dprintk("%s CALLING USERSPACE DAEMON\n", __func__);
- 	add_wait_queue(&bl_wq, &wq);
--	if (rpc_queue_upcall(bl_device_pipe->d_inode, &msg) < 0) {
-+	rc = rpc_queue_upcall(bl_device_pipe->d_inode, &msg);
-+	if (rc < 0) {
- 		remove_wait_queue(&bl_wq, &wq);
-+		rv = ERR_PTR(rc);
- 		goto out;
- 	}
- 
-@@ -187,8 +189,9 @@ nfs4_blk_decode_device(struct nfs_server *server,
- 
- 	bd = nfs4_blkdev_get(MKDEV(reply->major, reply->minor));
- 	if (IS_ERR(bd)) {
--		dprintk("%s failed to open device : %ld\n",
--			__func__, PTR_ERR(bd));
-+		rc = PTR_ERR(bd);
-+		dprintk("%s failed to open device : %d\n", __func__, rc);
-+		rv = ERR_PTR(rc);
- 		goto out;
- 	}
- 
--- 
-1.7.4.1
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBTdGFuaXNsYXYgS2luc2J1cnNr
+eSBbbWFpbHRvOnNraW5zYnVyc2t5QHBhcmFsbGVscy5jb21dDQo+IFNlbnQ6IEZyaWRheSwgU2Vw
+dGVtYmVyIDIzLCAyMDExIDEwOjQxIEFNDQo+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+IENjOiBs
+aW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyBQYXZlbCBFbWVsaWFub3Y7IG5laWxiQHN1c2UuZGU7
+DQo+IG5ldGRldkB2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LWtlcm5lbEB2Z2VyLmtlcm5lbC5vcmc7
+DQo+IGJmaWVsZHNAZmllbGRzZXMub3JnOyBkYXZlbUBkYXZlbWxvZnQubmV0DQo+IFN1YmplY3Q6
+IFJlOiBbUEFUQ0ggdjYgMS84XSBTVU5SUEM6IGludHJvZHVjZSBoZWxwZXJzIGZvciByZWZlcmVu
+Y2UNCj4gY291bnRlZCBycGNiaW5kIGNsaWVudHMNCj4gDQo+IFRyb25kLCBpcyB0aGlzIHBhdGNo
+IHZlcnNpb24gc3VpdHMgeW91IG5vdz8gT3Igbm90Pw0KPiBQbGVhc2UsIGNvbW1lbnQgc29tZWhv
+dyB0byBsZXQgbWUga25vdywgbWF5IEkgcHJvY2VlZCB3aXRoIGZ1cnRoZXINCj4gZGV2ZWxvcG1l
+bnQgb3Igbm90Lg0KDQpIaSBTdGFuaXNsYXYsDQoNClllcywgdGhpcyB2ZXJzaW9uIG9mIHRoZSBw
+YXRjaCBsb29rcyBzYWZlIHRvIG1lLg0KDQpDaGVlcnMNCiAgVHJvbmQNCgTvv717Lm7vv70r77+9
+77+977+977+977+977+977+9KyXvv73vv71sendt77+977+9Yu+/veunsu+/ve+/vXLvv73vv716
+WO+/ve+/vRnfsinvv73vv73vv713Kh9qZ++/ve+/ve+/vR7vv73vv73vv73vv73vv73domov77+9
+77+977+9eu+/vd6W77+977+9Mu+/vd6Z77+977+977+9Ju+/vSnfoe+/vWHvv73vv71/77+977+9
+Hu+/vUfvv73vv73vv71o77+9D++/vWo6K3bvv73vv73vv71377+92aU=
