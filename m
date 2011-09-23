@@ -1,80 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:12292 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750994Ab1ITRNe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Sep 2011 13:13:34 -0400
-Content-Type: text/plain;
-	charset="utf-8"
-Subject: RE: [PATCH v4 1/8] SUNRPC: introduce helpers for reference counted rpcbind clients
-Date: Tue, 20 Sep 2011 10:13:31 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FE1E@SACMVEXC2-PRD.hq.netapp.com>
-In-reply-to: <4E78BD5B.8090507@parallels.com>
-References: <20110920101031.9861.18444.stgit@localhost6.localdomain6> <20110920101341.9861.51453.stgit@localhost6.localdomain6> <4E788F8C.20103@netapp.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD10@SACMVEXC2-PRD.hq.netapp.com> <4E789679.1060601@parallels.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD22@SACMVEXC2-PRD.hq.netapp.com> <4E78A4AF.1020303@parallels.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD2B@SACMVEXC2-PRD.hq.netapp.com> <4E78BD5B.8090507@parallels.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Stanislav Kinsbursky" <skinsbursky@parallels.com>
-Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        <linux-nfs@vger.kernel.org>, "Pavel Emelianov" <xemul@parallels.com>,
-        <neilb@suse.de>, <netdev@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>, <bfields@fieldses.org>,
-        <davem@davemloft.net>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:59326 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751122Ab1IWQfz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2011 12:35:55 -0400
+Received: by wwf22 with SMTP id 22so3893402wwf.1
+        for <linux-nfs@vger.kernel.org>; Fri, 23 Sep 2011 09:35:54 -0700 (PDT)
+In-Reply-To: <20110923162451.13574.33960.stgit@warthog.procyon.org.uk>
+References: <20110923162438.13574.52985.stgit@warthog.procyon.org.uk> <20110923162451.13574.33960.stgit@warthog.procyon.org.uk>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Fri, 23 Sep 2011 09:35:34 -0700
+Message-ID: <CA+55aFwt96i3k_UJREQU18xq=tRqRZGP8NhRJfbOaipqiVKnGQ@mail.gmail.com>
+Subject: Re: [PATCH 1/7] NFS4: Revert commit to make the automount code ignore LOOKUP_FOLLOW
+To: David Howells <dhowells@redhat.com>
+Cc: miklos@szeredi.hu, raven@themaw.net, viro@zeniv.linux.org.uk,
+        jlayton@redhat.com, gregkh@suse.de, linux-nfs@vger.kernel.org,
+        leonardo.lists@gmail.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBTdGFuaXNsYXYgS2luc2J1cnNr
-eSBbbWFpbHRvOnNraW5zYnVyc2t5QHBhcmFsbGVscy5jb21dDQo+IFNlbnQ6IFR1ZXNkYXksIFNl
-cHRlbWJlciAyMCwgMjAxMSAxMjoyMSBQTQ0KPiBUbzogTXlrbGVidXN0LCBUcm9uZA0KPiBDYzog
-U2NodW1ha2VyLCBCcnlhbjsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgUGF2ZWwgRW1lbGlh
-bm92Ow0KPiBuZWlsYkBzdXNlLmRlOyBuZXRkZXZAdmdlci5rZXJuZWwub3JnOyBsaW51eC1rZXJu
-ZWxAdmdlci5rZXJuZWwub3JnOw0KPiBiZmllbGRzQGZpZWxkc2VzLm9yZzsgZGF2ZW1AZGF2ZW1s
-b2Z0Lm5ldA0KPiBTdWJqZWN0OiBSZTogW1BBVENIIHY0IDEvOF0gU1VOUlBDOiBpbnRyb2R1Y2Ug
-aGVscGVycyBmb3IgcmVmZXJlbmNlDQo+IGNvdW50ZWQgcnBjYmluZCBjbGllbnRzDQo+IA0KPiAy
-MC4wOS4yMDExIDE4OjM4LCBNeWtsZWJ1c3QsIFRyb25kINC/0LjRiNC10YI6DQo+ID4+IC0tLS0t
-T3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+ID4+IEZyb206IFN0YW5pc2xhdiBLaW5zYnVyc2t5IFtt
-YWlsdG86c2tpbnNidXJza3lAcGFyYWxsZWxzLmNvbV0NCj4gPj4gU2VudDogVHVlc2RheSwgU2Vw
-dGVtYmVyIDIwLCAyMDExIDEwOjM1IEFNDQo+ID4+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+ID4+
-IENjOiBTY2h1bWFrZXIsIEJyeWFuOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyBQYXZlbCBF
-bWVsaWFub3Y7DQo+ID4+IG5laWxiQHN1c2UuZGU7IG5ldGRldkB2Z2VyLmtlcm5lbC5vcmc7IGxp
-bnV4LWtlcm5lbEB2Z2VyLmtlcm5lbC5vcmc7DQo+ID4+IGJmaWVsZHNAZmllbGRzZXMub3JnOyBk
-YXZlbUBkYXZlbWxvZnQubmV0DQo+ID4+IFN1YmplY3Q6IFJlOiBbUEFUQ0ggdjQgMS84XSBTVU5S
-UEM6IGludHJvZHVjZSBoZWxwZXJzIGZvciByZWZlcmVuY2UNCj4gPj4gY291bnRlZCBycGNiaW5k
-IGNsaWVudHMNCj4gPj4NCj4gPj4gMjAuMDkuMjAxMSAxODoxNCwgTXlrbGVidXN0LCBUcm9uZCDQ
-v9C40YjQtdGCOg0KPiA+Pg0KPiA+Pj4+Pg0KPiA+Pj4+PiBEb2Vzbid0IGl0ICBuZWVkIHRvIGJl
-IHByb3RlY3RlZCBieSBycGNiX2NsbnRfbG9jayB0b28/DQo+ID4+Pj4+DQo+ID4+Pj4NCj4gPj4+
-PiBOb3BlIGZyb20gbXkgcG93LiBJdCdzIHByb3RlY3RlZCBieSBycGNiX2NyZWF0ZV9sb2NhbF9t
-dXRleC4gSS5lLg0KPiA+Pj4+IG5vIG9uZSB3aWxsIGNoYW5nZSBycGNiX3VzZXJzIHNpbmNlIGl0
-J3MgemVyby4gSWYgaXQncyBub24gemVybyAtDQo+ID4+Pj4gd2Ugd2lsbG4ndCBnZXQgdG8gcnBj
-Yl9zZXRfbG9jYWwoKS4NCj4gPj4+DQo+ID4+PiBPSywgc28geW91IGFyZSBzYXlpbmcgdGhhdCB0
-aGUgcnBjYl91c2VycysrIGJlbG93IGNvdWxkIGJlIHJlcGxhY2VkDQo+ID4+PiBieQ0KPiA+PiBy
-cGNiX3VzZXJzPTE/DQo+ID4+Pg0KPiA+Pg0KPiA+PiBZZXMsIHlvdSByaWdodC4NCj4gPj4NCj4g
-Pj4+IEluIHRoYXQgY2FzZSwgZG9uJ3QgeW91IG5lZWQgYSBzbXBfd21iKCkgYmV0d2VlbiB0aGUg
-c2V0dGluZyBvZg0KPiA+PiBycGNiX2xvY2FsX2NsbnQvNCBhbmQgdGhlIHNldHRpbmcgb2YgcnBj
-Yl91c2Vycz8gT3RoZXJ3aXNlLCBob3cgZG8NCj4gPj4geW91IGd1YXJhbnRlZSB0aGF0IHJwY2Jf
-dXNlcnMgIT0gMCBpbXBsaWVzIHJwYmNfbG9jYWxfY2xudC80ICE9IE5VTEw/DQo+ID4+Pg0KPiA+
-Pg0KPiA+PiBXZSBjaGVjayBycGNiX3VzZXJzIHVuZGVyIHNwaW5sb2NrLiBHYWluIHNwaW5sb2Nr
-IGZvcmNlcyBtZW1vcnkNCj4gPj4gYmFycmllciwgZG9lc24ndCBpdD8NCj4gPg0KPiA+IFllcywg
-YW5kIHNvIHlvdSBkb24ndCBuZWVkIGFuIHNtcF9ybWIoKSBvbiB0aGUgcmVhZGVyIHNpZGUuIEhv
-d2V2ZXIsDQo+IHlvdSBzdGlsbCBuZWVkIHRvIGVuc3VyZSB0aGF0IHRoZSBwcm9jZXNzb3Igd2hp
-Y2ggX3NldHNfIHRoZSBycGNiX3VzZXJzIGFuZA0KPiBycGNiX2xvY2FsX2NsbnQvNCBhY3R1YWxs
-eSB3cml0ZXMgdGhlbSBpbiB0aGUgY29ycmVjdCBvcmRlci4NCj4gPg0KPiANCj4gVHJvbmQsIEkn
-dmUgdGhvdWdodCBhZ2FpbiBhbmQgcmVhbGl6ZWQsIHRoYXQgZXZlbiBpZiB0aGVzZSB3cml0ZXMg
-KHJwY2JfdXNlcnMNCj4gYW5kIHJwYmNfbG9jYWxfY2xudC80KSB3aWxsIGJlIGRvbmUgaW4gcmV2
-ZXJzZWQgb3JkZXIsIHRoZW4gbm8gYmFycmllcg0KPiByZXF1aXJlZCBoZXJlLg0KPiBCZWNhdXNl
-IGlmIHdlIGhhdmUgYW5vdGhlciBwcm9jZXNzIHRyeWluZyB0byBjcmVhdGUgdGhvc2UgY2xpZW50
-cyAoaXQgY2FuJ3QgdXNlDQo+IHRoZW0gc2luY2UgaXQncyBub3Qgc3RhcnRlZCB5ZXQpIG9uIG90
-aGVyIENQVSwgdGhhbiBpdCdzIHdhaXRpbmcgb24gY3JlYXRpb24NCj4gbXV0ZXguIFdoZW4gaXQg
-d2lsbCBnYWluIHRoZSBtdXRleCwgd2Ugd2lsbCBoYXZlIHJlcXVpcmVkIG1lbW9yeSBiYXJyaWVy
-DQo+IGZvciB1cy4NCj4gDQo+IE9yIEkgbWlzc2VkIHNvbWV0aGluZyBpbiB5b3VyIGV4cGxhbmF0
-aW9uPw0KDQpZb3UgbmVlZCB0byBlbnN1cmUgdGhhdCBpZiBzb21lb25lIGNhbGxzIHJwY2JfZ2V0
-X2xvY2FsKCkgYW5kIGdldHMgYSBwb3NpdGl2ZSByZXN1bHQsIHRoZW4gdGhleSBjYW4gcmVseSBv
-biBycGNiX2xvY2FsX2NsbnQvNCBiZWluZyBub24temVyby4gV2l0aG91dCB0aGUgd3JpdGUgYmFy
-cmllciwgdGhhdCBpcyBub3QgdGhlIGNhc2UuDQoNCldpdGhvdXQgdGhhdCBndWFyYW50ZWUsIHlv
-dSBjYW4ndCByZWFsbHkgZW5zdXJlIHRoYXQgcnBjYl9wdXRfbG9jYWwoKSB3aWxsIHdvcmsgYXMg
-ZXhwZWN0ZWQgZWl0aGVyLCBzaW5jZSBpdCB3aWxsIGJlIHBvc3NpYmxlIHRvIHRyaWdnZXIgdGhl
-IC0tcnBjYl91c2VycyA9PSAwIGNhc2Ugd2l0aG91dCBzaHV0dGluZyBkb3duIHJwY2JfbG9jYWxf
-Y2xudC80IChiZWNhdXNlIGNsbnQvY2xudDQgPT0gMCkuDQoNCkNoZWVycw0KICBUcm9uZA0KDQoT
-77+977+97Lm7HO+/vSbvv71+77+9Ju+/vRjvv73vv70rLe+/ve+/vd22F++/ve+/vXfvv73vv73L
-m++/ve+/ve+/vW3vv71i77+977+9Z37Ip++/vRfvv73vv73cqH3vv73vv73vv73GoHrvv70major
-du+/ve+/ve+/vQfvv73vv73vv73vv716Wivvv73vv70rembvv73vv73vv71o77+977+977+9fu+/
-ve+/ve+/ve+/vWnvv73vv73vv71677+9Hu+/vXfvv73vv73vv70/77+977+977+977+9Ju+/vSnf
-ohtm
+On Fri, Sep 23, 2011 at 9:24 AM, David Howells <dhowells@redhat.com> wrote:
+>
+> The problem with this is that this breaks nfs_follow_remote_path() used by NFS4
+> to find the root object to mount for the mount() syscall.
+
+The above message is basically dishonest.
+
+That's not AT ALL the problem.
+
+That problem could have been fixed with a one-liner patch that already exists.
+
+This whole patch-series looks like just excuses for doing stupid things.
+
+Afaik, LOOKUP_OPEN and LOOKUP_DIRECTORY already force the auto-mount.
+You can use either or both to force it.
+
+Why are people so deep in denial about this?
+
+                        Linus
