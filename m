@@ -1,81 +1,168 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:65318 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:32763 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751372Ab1I1Btc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Sep 2011 21:49:32 -0400
-Date: Tue, 27 Sep 2011 21:49:31 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 03/25] nfsd4: extend state lock over seqid replay logic
-Message-ID: <20110928014930.GA18571@pad.fieldses.org>
-References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
- <1316000721-3289-4-git-send-email-bfields@redhat.com>
- <4E82001C.5030005@netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E82001C.5030005@netapp.com>
+	id S1753430Ab1IWQ0w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Sep 2011 12:26:52 -0400
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 7/7] VFS: Vary the automounting rules for autofs
+To: miklos@szeredi.hu, raven@themaw.net, viro@ZenIV.linux.org.uk,
+        torvalds@linux-foundation.org
+Cc: dhowells@redhat.com, jlayton@redhat.com, gregkh@suse.de,
+        linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
+Date: Fri, 23 Sep 2011 17:26:06 +0100
+Message-ID: <20110923162605.13574.86939.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20110923162438.13574.52985.stgit@warthog.procyon.org.uk>
+References: <20110923162438.13574.52985.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Sep 27, 2011 at 12:55:56PM -0400, Bryan Schumaker wrote:
-> I'm getting the following warning that I was able to bisect to this patch:
+Allow the behaviour of in-kernel automounting to vary according to whether
+we're mounting on autofs or not.
 
-I suspect this may fix it.  (Untested.)
+The differences of behaviour concern the fstatat, stat, getxattr, setxattr,
+listxattr and removexattr system calls.  Prior to the d_automount changes
+being applied, these caused automounting for NFS, AFS and CIFS automount
+points, but not for autofs mountpounts.
 
---b.
+After the d_automount changes they caused automounting unconditionally because
+LOOKUP_FOLLOW was set.
 
-commit 8da87285a245c82d23183414cec7069f18721afd
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Tue Sep 27 21:42:29 2011 -0400
+With the application of a later patch from Miklos Szeredi to revert the
+behaviour of autofs to the original, these no longer cause a mountpoint to
+automount.
 
-    nfsd4: fix state lock usage in LOCKU
-    
-    In commit 5ec094c1096ab3bb795651855d53f18daa26afde "nfsd4: extend state
-    lock over seqid replay logic" I modified the exit logic of all the
-    seqid-based procedures except nfsd4_locku().  Fix the oversight.
-    
-    The result of the bug was a double-unlock while handling the LOCKU
-    procedure, and a warning like:
-    
-    [  142.150014] WARNING: at kernel/mutex-debug.c:78 debug_mutex_unlock+0xda/0xe0()
-    ...
-    [  142.152927] Pid: 742, comm: nfsd Not tainted 3.1.0-rc1-SLIM+ #9
-    [  142.152927] Call Trace:
-    [  142.152927]  [<ffffffff8105fa4f>] warn_slowpath_common+0x7f/0xc0
-    [  142.152927]  [<ffffffff8105faaa>] warn_slowpath_null+0x1a/0x20
-    [  142.152927]  [<ffffffff810960ca>] debug_mutex_unlock+0xda/0xe0
-    [  142.152927]  [<ffffffff813e4200>] __mutex_unlock_slowpath+0x80/0x140
-    [  142.152927]  [<ffffffff813e42ce>] mutex_unlock+0xe/0x10
-    [  142.152927]  [<ffffffffa03bd3f5>] nfs4_lock_state+0x35/0x40 [nfsd]
-    [  142.152927]  [<ffffffffa03b0b71>] nfsd4_proc_compound+0x2a1/0x690
-    [nfsd]
-    [  142.152927]  [<ffffffffa039f9fb>] nfsd_dispatch+0xeb/0x230 [nfsd]
-    [  142.152927]  [<ffffffffa02b1055>] svc_process_common+0x345/0x690
-    [sunrpc]
-    [  142.152927]  [<ffffffff81058d10>] ? try_to_wake_up+0x280/0x280
-    [  142.152927]  [<ffffffffa02b16e2>] svc_process+0x102/0x150 [sunrpc]
-    [  142.152927]  [<ffffffffa039f0bd>] nfsd+0xbd/0x160 [nfsd]
-    [  142.152927]  [<ffffffffa039f000>] ? 0xffffffffa039efff
-    [  142.152927]  [<ffffffff8108230c>] kthread+0x8c/0xa0
-    [  142.152927]  [<ffffffff813e8694>] kernel_thread_helper+0x4/0x10
-    [  142.152927]  [<ffffffff81082280>] ? kthread_worker_fn+0x190/0x190
-    [  142.152927]  [<ffffffff813e8690>] ? gs_change+0x13/0x13
-    
-    Reported-by: Bryan Schumaker <bjschuma@netapp.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Reinstate the pre-d_automount behaviour.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 752c0f8..9daf254 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4199,7 +4199,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	memcpy(&locku->lu_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
+
+ fs/internal.h         |   17 ++++++++++++-----
+ fs/namei.c            |    7 +++++--
+ fs/stat.c             |    3 ++-
+ fs/xattr.c            |   16 ++++++++++++----
+ include/linux/namei.h |    1 +
+ 5 files changed, 32 insertions(+), 12 deletions(-)
+
+diff --git a/fs/internal.h b/fs/internal.h
+index 11664f5..b54c5e6 100644
+--- a/fs/internal.h
++++ b/fs/internal.h
+@@ -24,11 +24,18 @@ struct path;
+  */
+ static inline int at_to_lookup_flags(int flag, int lookup_flags)
+ {
+-	if (flag & AT_SYMLINK_NOFOLLOW)	lookup_flags &= ~LOOKUP_FOLLOW_ALL;
+-	if (flag & AT_SYMLINK_FOLLOW)	lookup_flags |= LOOKUP_FOLLOW_ALL;
+-	if (flag & AT_NO_AUTOMOUNT)	lookup_flags &= ~LOOKUP_AUTOMOUNT;
+-	if (flag & AT_AUTOMOUNT_FOLLOW)	lookup_flags |= LOOKUP_AUTOMOUNT;
+-	if (flag & AT_EMPTY_PATH)	lookup_flags |= LOOKUP_EMPTY;
++	if (flag & AT_SYMLINK_NOFOLLOW)
++		lookup_flags &= ~(LOOKUP_FOLLOW_ALL | LOOKUP_AUTOMOUNT_UNLESS_AUTOFS);
++	if (flag & AT_SYMLINK_FOLLOW)
++		lookup_flags |= LOOKUP_FOLLOW_ALL;
++	if (flag & AT_NO_AUTOMOUNT)
++		lookup_flags &= ~(LOOKUP_AUTOMOUNT | LOOKUP_AUTOMOUNT_UNLESS_AUTOFS);
++	if (flag & AT_AUTOMOUNT_FOLLOW)	{
++		lookup_flags |= LOOKUP_AUTOMOUNT;
++		lookup_flags &= ~LOOKUP_AUTOMOUNT_UNLESS_AUTOFS;
++	}
++	if (flag & AT_EMPTY_PATH)
++		lookup_flags |= LOOKUP_EMPTY;
  
- out:
--	nfs4_unlock_state();
-+	if (!cstate->replay_owner)
-+		nfs4_unlock_state();
- 	return status;
+ 	return lookup_flags;
+ }
+diff --git a/fs/namei.c b/fs/namei.c
+index 89e3dc3..3b1da48 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -724,8 +724,11 @@ static int follow_automount(struct path *path, unsigned flags,
+ 	/* We don't want to mount if someone supplied AT_NO_AUTOMOUNT
+ 	 * and this is the terminal part of the path.
+ 	 */
+-	if (!(flags & LOOKUP_AUTOMOUNT) && !(flags & LOOKUP_PARENT))
+-		return -EISDIR; /* we actually want to stop here */
++	if (!(flags & LOOKUP_AUTOMOUNT) && !(flags & LOOKUP_PARENT)) {
++		if (!(flags & LOOKUP_AUTOMOUNT_UNLESS_AUTOFS) ||
++		    strcmp(path->dentry->d_sb->s_type->name, "autofs") == 0)
++			return -EISDIR; /* we actually want to stop here */
++	}
  
- out_nfserr:
+ 	current->total_link_count++;
+ 	if (current->total_link_count >= 40)
+diff --git a/fs/stat.c b/fs/stat.c
+index 7fa96a1..f7e9abb 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -80,7 +80,8 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+ 		      AT_NO_AUTOMOUNT | AT_AUTOMOUNT_FOLLOW |
+ 		      AT_EMPTY_PATH)) != 0)
+ 		goto out;
+-	lookup_flags = at_to_lookup_flags(flag, LOOKUP_FOLLOW);
++	lookup_flags = at_to_lookup_flags(
++		flag, LOOKUP_FOLLOW | LOOKUP_AUTOMOUNT_UNLESS_AUTOFS);
+ 
+ 	error = user_path_at(dfd, filename, lookup_flags, &path);
+ 	if (error)
+diff --git a/fs/xattr.c b/fs/xattr.c
+index bb9d5be..7a85b9a 100644
+--- a/fs/xattr.c
++++ b/fs/xattr.c
+@@ -290,7 +290,9 @@ SYSCALL_DEFINE5(setxattr, const char __user *, pathname,
+ 	struct path path;
+ 	int error;
+ 
+-	error = user_path_at(AT_FDCWD, pathname, LOOKUP_FOLLOW, &path);
++	error = user_path_at(AT_FDCWD, pathname,
++			     LOOKUP_FOLLOW | LOOKUP_AUTOMOUNT_UNLESS_AUTOFS,
++			     &path);
+ 	if (error)
+ 		return error;
+ 	error = mnt_want_write(path.mnt);
+@@ -386,7 +388,9 @@ SYSCALL_DEFINE4(getxattr, const char __user *, pathname,
+ 	struct path path;
+ 	ssize_t error;
+ 
+-	error = user_path_at(AT_FDCWD, pathname, LOOKUP_FOLLOW, &path);
++	error = user_path_at(AT_FDCWD, pathname,
++			     LOOKUP_FOLLOW | LOOKUP_AUTOMOUNT_UNLESS_AUTOFS,
++			     &path);
+ 	if (error)
+ 		return error;
+ 	error = getxattr(path.dentry, name, value, size);
+@@ -459,7 +463,9 @@ SYSCALL_DEFINE3(listxattr, const char __user *, pathname, char __user *, list,
+ 	struct path path;
+ 	ssize_t error;
+ 
+-	error = user_path_at(AT_FDCWD, pathname, LOOKUP_FOLLOW, &path);
++	error = user_path_at(AT_FDCWD, pathname,
++			     LOOKUP_FOLLOW | LOOKUP_AUTOMOUNT_UNLESS_AUTOFS,
++			     &path);
+ 	if (error)
+ 		return error;
+ 	error = listxattr(path.dentry, list, size);
+@@ -519,7 +525,9 @@ SYSCALL_DEFINE2(removexattr, const char __user *, pathname,
+ 	struct path path;
+ 	int error;
+ 
+-	error = user_path_at(AT_FDCWD, pathname, LOOKUP_FOLLOW, &path);
++	error = user_path_at(AT_FDCWD, pathname,
++			     LOOKUP_FOLLOW | LOOKUP_AUTOMOUNT_UNLESS_AUTOFS,
++			     &path);
+ 	if (error)
+ 		return error;
+ 	error = mnt_want_write(path.mnt);
+diff --git a/include/linux/namei.h b/include/linux/namei.h
+index 86d6993..e1b03a0 100644
+--- a/include/linux/namei.h
++++ b/include/linux/namei.h
+@@ -65,6 +65,7 @@ enum {LAST_NORM, LAST_ROOT, LAST_DOT, LAST_DOTDOT, LAST_BIND};
+ #define LOOKUP_JUMPED		0x1000
+ #define LOOKUP_ROOT		0x2000
+ #define LOOKUP_EMPTY		0x4000
++#define LOOKUP_AUTOMOUNT_UNLESS_AUTOFS	0x8000
+ 
+ extern int user_path_at(int, const char __user *, unsigned, struct path *);
+ 
+
