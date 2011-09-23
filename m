@@ -1,54 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fmmailgate03.web.de ([217.72.192.234]:60241 "EHLO
-	fmmailgate03.web.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751450Ab1I2OOa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Sep 2011 10:14:30 -0400
-From: "Tim" <supertimothy@web.de>
-To: "'J. Bruce Fields'" <bfields@fieldses.org>
-Cc: <linux-nfs@vger.kernel.org>
-References: <001101cc745e$356aeed0$a040cc70$@web.de> <20110920135050.GA12422@fieldses.org> <001e01cc784b$bba7fa10$32f7ee30$@web.de> <20110921154521.GC21510@fieldses.org>
-In-Reply-To: <20110921154521.GC21510@fieldses.org>
-Subject: AW: Writing / Locking problem with NFSv4
-Date: Thu, 29 Sep 2011 16:13:17 +0200
-Message-ID: <003801cc7eb1$ef48f970$cddaec50$@web.de>
-Content-Type: text/plain;
-	charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:42177 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753761Ab1IWQzg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Sep 2011 12:55:36 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <CA+55aFzgqrtwgH1j0i-XH0kDwicLWPCA=1W57gjy9EP23k4Ffw@mail.gmail.com>
+References: <CA+55aFzgqrtwgH1j0i-XH0kDwicLWPCA=1W57gjy9EP23k4Ffw@mail.gmail.com> <1316747758.3346.89.camel@perseus.themaw.net> <20110922134510.24683.14576.stgit@warthog.procyon.org.uk> <1316707443.3346.44.camel@perseus.themaw.net> <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com> <1316709935.3346.48.camel@perseus.themaw.net> <20110922133529.6d3ea8de@barsoom.rdu.redhat.com> <20110922144453.6cf53a25@barsoom.rdu.redhat.com> <1316719228.3968.14.camel@lade.trondhjem.org> <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com> <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com> <21772.1316774025@redhat.com> <1316788444.14812.10.camel@lade.trondhjem.org> <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com> <1316792468.3346.144.camel@perseus.themaw.net> <CA+55aFx03u51bbAPe_o=4PeyE0dFnuL1KyqRdTJCFUD-vM6V-w@mail.gmail.com> <13920.1316796007@redhat.com!
+ >
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: dhowells@redhat.com, Ian Kent <raven@themaw.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>, miklos@szeredi.hu,
+        Jeff Layton <jlayton@redhat.com>, viro@zeniv.linux.org.uk,
+        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
+Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
+Date: Fri, 23 Sep 2011 17:54:49 +0100
+Message-ID: <14156.1316796889@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
->On Wed, Sep 21, 2011 at 12:46:34PM +0200, Tim wrote:
->> On Fri, Sep 16, 2011 at 12:48:45PM +0200, Tim wrote:
->> >> I’m  facing a rather strange problem. 
->> >> 
->> >> From one client I can mount and access my NFSServer without any problems.
->> >> Writing and locking works with a non root user accout. 
->> >> From another client (in another subnet), with root everything works 
->> >> fine. If I use another user, locking doesnt work and also when I 
->> >> create a file with vim, the *.swp file is not deleted afterwards. 
->> >> But reading works without problems.
->> >> Strange thing is user mapping seems to work correct – at least what 
->> >> ls -la and the logfiles for idmapd shows.
->> 
->> >Which client and server?  (Linux on both?  Which versions?)  Are you using kerberos?  If not, are your uid's the same between client and server?  What does your export file look like?
+Linus Torvalds <torvalds@linux-foundation.org> wrote:
+
+> > getxattr and co. are trickier because they don't have an AT_ flags form, and
+> > it can be argued that these, lgetxattr and co. included should automount.
+> > However, that would seriously upset ls, so I think we have to leave lgetxattr
+> > not automounting, and so getxattr should follow.
 > 
->> Client and Server are both RHEL 6.1. I am not using kerberos. And yes, the uid's are the same, also the gid is the same: 3000 for both.
->> This is my export file:
+> Why?
 > 
->> /srv/nfs/			10.1.4.32/255.255.255.224(rw,fsid=0,sync,no_subtree_check,no_root_squash) 10.1.0.9(rw,fsid=0,sync,no_subtree_check,no_root_squash)
->> /srv/nfs/mail/users		10.1.4.32/255.255.255.224(rw,fsid=1,sync,no_subtree_check,no_root_squash)
->> /srv/nfs/mail/tmp		10.1.4.32/255.255.255.224(rw,fsid=2,sync,no_subtree_check,no_root_squash)
->> /srv/nfs/testdata		10.1.0.9(rw,fsid=10,sync,no_subtree_check,no_root_squash)
->> 
->> I tried to take tcpdumps as root and non root user: They look the same to me. However, I'm not so sure what I'm looking for...
+> If you really want to follow, use the '/' at the end.
 
->Hm.  Sounds possibly like
+Sorry, 'follow' as in follow what lgetxattr does, not 'follow' as in
+automount.  Bad choise of verb.
 
->	http://marc.info/?t=129183437900003&r=1&w=2
-
-I just found out the reason for this whole strange behaviour: The folder, where the device is mounted, must have the right owner and / or rights. That means, if I mount it to /srv/data on client side, the folder data must belong to the user 3000.
-I just checked: vim *.swp - files are deleted afterwards and even locking is working!
-
-But thank you anyway, Bruce!
-Tim
-
+David
