@@ -1,111 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:37188 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754770Ab1IWBua (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 21:50:30 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 08/10] pnfs: recoalesce when ld read pagelist fails
-Date: Thu, 22 Sep 2011 21:50:15 -0400
-Message-Id: <1316742617-14766-9-git-send-email-rees@umich.edu>
-In-Reply-To: <1316742617-14766-1-git-send-email-rees@umich.edu>
-References: <1316742617-14766-1-git-send-email-rees@umich.edu>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:64879 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751473Ab1IWK3a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2011 06:29:30 -0400
+Received: by fxe4 with SMTP id 4so3671588fxe.19
+        for <linux-nfs@vger.kernel.org>; Fri, 23 Sep 2011 03:29:29 -0700 (PDT)
+Message-ID: <4E7C5F84.50902@tonian.com>
+Date: Fri, 23 Sep 2011 13:29:24 +0300
+From: Benny Halevy <benny@tonian.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH] nfs-utils/blkmapd: Add complex block layout discovery
+ and mapping daemon
+References: <1313086848-7435-1-git-send-email-rees@umich.edu> <4E749FBC.5090609@RedHat.com> <4E7B901A.8060907@RedHat.com>
+In-Reply-To: <4E7B901A.8060907@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Peng Tao <bergwolf@gmail.com>
+Steve,
 
-For pnfs pagelist read failure, we need to pg_recoalesce and resend IO to
-mds.
+I'd like to rebase my pnfs-nfs-utils tree on top of your tree
+but I'd rather do it on top of an "official" release rather than
+over an arbitrary tip...
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- fs/nfs/pnfs.c |   20 +++++++-------------
- fs/nfs/pnfs.h |    2 +-
- fs/nfs/read.c |   12 +++++++++++-
- 3 files changed, 19 insertions(+), 15 deletions(-)
+When do you plan on releasing a new -rc?
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index a205c8e..ee73d9a 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1262,23 +1262,17 @@ EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
- /*
-  * Called by non rpc-based layout drivers
-  */
--int
--pnfs_ld_read_done(struct nfs_read_data *data)
-+void pnfs_ld_read_done(struct nfs_read_data *data)
- {
--	int status;
--
--	if (!data->pnfs_error) {
-+	if (likely(!data->pnfs_error)) {
- 		__nfs4_read_done_cb(data);
- 		data->mds_ops->rpc_call_done(&data->task, data);
--		data->mds_ops->rpc_release(data);
--		return 0;
-+	} else {
-+		put_lseg(data->lseg);
-+		data->lseg = NULL;
-+		dprintk("pnfs write error = %d\n", data->pnfs_error);
- 	}
--
--	dprintk("%s: pnfs_error=%d, retry via MDS\n", __func__,
--		data->pnfs_error);
--	status = nfs_initiate_read(data, NFS_CLIENT(data->inode),
--				   data->mds_ops);
--	return status ? : -EAGAIN;
-+	data->mds_ops->rpc_release(data);
- }
- EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 71c23d4..1509530 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -202,7 +202,7 @@ void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data);
- int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
- int _pnfs_return_layout(struct inode *);
- void pnfs_ld_write_done(struct nfs_write_data *);
--int pnfs_ld_read_done(struct nfs_read_data *);
-+void pnfs_ld_read_done(struct nfs_read_data *);
- struct pnfs_layout_segment *pnfs_update_layout(struct inode *ino,
- 					       struct nfs_open_context *ctx,
- 					       loff_t pos,
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 2171c04..bfc20b1 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -541,13 +541,23 @@ static void nfs_readpage_result_full(struct rpc_task *task, void *calldata)
- static void nfs_readpage_release_full(void *calldata)
- {
- 	struct nfs_read_data *data = calldata;
-+	struct nfs_pageio_descriptor pgio;
- 
-+	if (data->pnfs_error) {
-+		nfs_pageio_init_read_mds(&pgio, data->inode);
-+		pgio.pg_recoalesce = 1;
-+	}
- 	while (!list_empty(&data->pages)) {
- 		struct nfs_page *req = nfs_list_entry(data->pages.next);
- 
- 		nfs_list_remove_request(req);
--		nfs_readpage_release(req);
-+		if (!data->pnfs_error)
-+			nfs_readpage_release(req);
-+		else
-+			nfs_pageio_add_request(&pgio, req);
- 	}
-+	if (data->pnfs_error)
-+		nfs_pageio_complete(&pgio);
- 	nfs_readdata_release(calldata);
- }
- 
--- 
-1.7.4.1
+Benny
+
+On 2011-09-22 22:44, Steve Dickson wrote:
+> 
+> 
+> On 09/17/2011 09:25 AM, Steve Dickson wrote:
+>> Hey Jim,
+>>
+>> My apologies for taking so long to get to this... For some
+>> reason I never added to my TODO list... That problem has
+>> been resolved... 
+>>  
+>>
+>> On 08/11/2011 02:20 PM, Jim Rees wrote:
+>>> This daemon is required to handle upcalls from the kernel pnfs block layout
+>>> driver.
+>>>
+>>> Signed-off-by: Jim Rees <rees@umich.edu>
+> Committed with a few minor tweaks to both configure.ac 
+> and utils/blkmapd/Makefile.ac that we discussed.
+> 
+> steved.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
