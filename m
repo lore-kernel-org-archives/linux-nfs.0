@@ -1,52 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from talus.maths.usyd.edu.au ([129.78.68.1]:52394 "EHLO
-	talus.maths.usyd.edu.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752033Ab1IUAKD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2011 20:10:03 -0400
-Date: Wed, 21 Sep 2011 10:09:51 +1000
-From: paul.szabo@sydney.edu.au
-Message-Id: <201109210009.p8L09pgs026367@bari.maths.usyd.edu.au>
-To: Trond.Myklebust@netapp.com
-Subject: RE: Please support NSF squashing multiple groups
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B48011F@SACMVEXC2-PRD.hq.netapp.com>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:37166 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752866Ab1IWBuZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 21:50:25 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 04/10] pnfsblock: add missing rpc_put_mount and path_put
+Date: Thu, 22 Sep 2011 21:50:11 -0400
+Message-Id: <1316742617-14766-5-git-send-email-rees@umich.edu>
+In-Reply-To: <1316742617-14766-1-git-send-email-rees@umich.edu>
+References: <1316742617-14766-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Dear Trond,
+From: Peng Tao <bergwolf@gmail.com>
 
-> That's a model which is incompatible with the way many people use
-> the AUTH_SYS authentication model.
-
-That is why I only propose (hope for) mountd options which might be
-used by some people, and others might leave turned off.
-
-> ... It is too easy to fake a uid or a gid when you use a protocol
-> that exposes them in clear on the network ...
-
-Trivial to find out what they are, may not be so easy to inject them.
-
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
 ---
+ fs/nfs/blocklayout/blocklayout.c |    8 ++++++--
+ 1 files changed, 6 insertions(+), 2 deletions(-)
 
-> ... I don't at all understand your threat model. You appear to be
-> worried about a threat where a user can somehow usurp gids but not
-> uids on the client.
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index dc23833..dee6cae 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -993,17 +993,20 @@ static int __init nfs4blocklayout_init(void)
+ 			      mnt,
+ 			      NFS_PIPE_DIRNAME, 0, &path);
+ 	if (ret)
+-		goto out_remove;
++		goto out_putrpc;
+ 
+ 	bl_device_pipe = rpc_mkpipe(path.dentry, "blocklayout", NULL,
+ 				    &bl_upcall_ops, 0);
++	path_put(&path);
+ 	if (IS_ERR(bl_device_pipe)) {
+ 		ret = PTR_ERR(bl_device_pipe);
+-		goto out_remove;
++		goto out_putrpc;
+ 	}
+ out:
+ 	return ret;
+ 
++out_putrpc:
++	rpc_put_mount();
+ out_remove:
+ 	pnfs_unregister_layoutdriver(&blocklayout_type);
+ 	return ret;
+@@ -1016,6 +1019,7 @@ static void __exit nfs4blocklayout_exit(void)
+ 
+ 	pnfs_unregister_layoutdriver(&blocklayout_type);
+ 	rpc_unlink(bl_device_pipe);
++	rpc_put_mount();
+ }
+ 
+ MODULE_ALIAS("nfs-layouttype4-3");
+-- 
+1.7.4.1
 
-I am worried about an attacker being able to "do anything" on the
-client (having "cracked root" on it).
-
-In terms of usurping UIDs, he is pretty much defeated: the only
-privileged UID is root, rendered harmless by root_squash. (Beware
-that other UIDs e.g. bin or sys may be dangerous on some systems:
-root_squash as currently implemented is incomplete, insecure.)
-
-There is currently no such protection for usurping GIDs, and some
-(e.g. staff for Debian, or disk shadow etc) are privileged and
-root-equivalent. We need protection, similar to root_squash.
-
-Cheers, Paul
-
-Paul Szabo   psz@maths.usyd.edu.au   http://www.maths.usyd.edu.au/u/psz/
-School of Mathematics and Statistics   University of Sydney    Australia
