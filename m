@@ -1,77 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1310 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750724Ab1IBXYB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Sep 2011 19:24:01 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: [PATCH] nfs: Enclose hostname in brackets when needed in nfs_do_root_mount
-Date: Fri, 2 Sep 2011 16:23:43 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AFD3952@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <1315004983-10271-1-git-send-email-jack@suse.cz>
-References: <1315004983-10271-1-git-send-email-jack@suse.cz>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Jan Kara" <jack@suse.cz>
-Cc: <linux-nfs@vger.kernel.org>, "Josh Boyer" <jwboyer@redhat.com>
+Received: from out2.smtp.messagingengine.com ([66.111.4.26]:45578 "EHLO
+	out2.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752709Ab1IWPlQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2011 11:41:16 -0400
+Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
+From: Ian Kent <raven@themaw.net>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        David Howells <dhowells@redhat.com>, miklos@szeredi.hu,
+        Jeff Layton <jlayton@redhat.com>, viro@zeniv.linux.org.uk,
+        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
+In-Reply-To: <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com>
+References: <1316747758.3346.89.camel@perseus.themaw.net>
+	 <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
+	 <1316707443.3346.44.camel@perseus.themaw.net>
+	 <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
+	 <1316709935.3346.48.camel@perseus.themaw.net>
+	 <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
+	 <20110922144453.6cf53a25@barsoom.rdu.redhat.com>
+	 <1316719228.3968.14.camel@lade.trondhjem.org>
+	 <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
+	 <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
+	 <21772.1316774025@redhat.com>
+	 <1316788444.14812.10.camel@lade.trondhjem.org>
+	 <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 23 Sep 2011 23:41:08 +0800
+Message-ID: <1316792468.3346.144.camel@perseus.themaw.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> -----Original Message-----
-> From: Jan Kara [mailto:jack@suse.cz]
-> Sent: Friday, September 02, 2011 7:10 PM
-> To: Myklebust, Trond
-> Cc: linux-nfs@vger.kernel.org; Jan Kara; Josh Boyer; Myklebust, Trond
-> Subject: [PATCH] nfs: Enclose hostname in brackets when needed in
-> nfs_do_root_mount
+On Fri, 2011-09-23 at 07:46 -0700, Linus Torvalds wrote:
+> On Fri, Sep 23, 2011 at 7:34 AM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+> >
+> > My objections are due to the other cases that I pointed out, where
+> > Miklos's patch introduced changes in behaviour that IMO are unnecessary
+> > and incorrect.
 > 
-> When hostname contains colon (e.g. when it is an IPv6 address) it
-needs
-> to be enclosed in brackets to make parsing of NFS device string
-> possible.
-> Fix nfs_do_root_mount() to enclose hostname properly when needed. NFS
-> code
-> actually does not need this as it does not parse the string passed by
-> nfs_do_root_mount() but the device string is exposed to userspace in
-> /proc/mounts.
+> Guys, it wasn't Mikos' patch that introduced the changes!
 > 
-> CC: Josh Boyer <jwboyer@redhat.com>
-> CC: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/nfs/super.c |    8 ++++++--
->  1 files changed, 6 insertions(+), 2 deletions(-)
+> What's so hard to understand here?
 > 
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index b961cea..42b74f8 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -2694,11 +2694,15 @@ static struct vfsmount
-> *nfs_do_root_mount(struct file_system_type *fs_type,
->  	char *root_devname;
->  	size_t len;
-> 
-> -	len = strlen(hostname) + 3;
-> +	len = strlen(hostname) + 5;
->  	root_devname = kmalloc(len, GFP_KERNEL);
->  	if (root_devname == NULL)
->  		return ERR_PTR(-ENOMEM);
-> -	snprintf(root_devname, len, "%s:/", hostname);
-> +	/* Does hostname needs to be enclosed in brackets? */
-> +	if (strchr(hostname, ':'))
-> +		snprintf(root_devname, len, "[%s]:/", hostname);
-> +	else
-> +		snprintf(root_devname, len, "%s:/", hostname);
+> That's why I'm so upset. People talk stupid sh*t about "correct
+> behavior" when clearly no such thing *exists*. And people talk about
+> Miklos changes as if they were some radical change that changed
+> behavior, when they were only a revert to old behavior to begin with
+> (at least as far as autofs is concerned)!
 
-What if the hostname is already enclosed in brackets, as is usually the
-case if I enter an IPv6 address instead of a DNS name? Won't this cause
-it to be bracketed twice?
+Sorry to hear you are upset about all this.
 
-IOW: If I try to
+And, yes, it is me that is to blame, since I pushed David to do it. I
+did so because I feel strongly that the semantic change to autofs is
+needed based on several years of experience with reports of undesirable
+behavior of autofs.
 
-	mount -t nfs [fe80::20c:29ff:fee9:83e6]:/export /mnt
+I thought I had put forward quite a bit of the reasoning for that, and
+on topic with what you've asked for in this post, at least most of the
+time. In its simplest form I claim, for autofs it is appropriate to
+automount in almost all cases where the LOOKUP_FOLLOW flag is used
+(these should be considered as not regression with the semantic change).
+For the cases where it is preferred not to automount user space should
+(and nowadays almost always does) use ~LOOKUP_FOLLOW type syscalls.
 
-won't the above end up returning a hostname of [[::20c:29ff:fee9:83e6]]?
+I expected some problems from the semantic change, sure, but I expected
+they would come from user space. Those problems just haven't
+materialized so far and I'm glad of that.
 
-Cheers
-   Trond
+We haven't had any non-trivial problems reported that I know about. As
+I've said before the problem Miklos referred to was an inconsistency in
+user space which the new automount code exposed, and a change has been
+accepted to fix it and this was done prior to Miklos posting his patch. 
+
+My point is that, since we haven't had any non-trivial problems reported
+due to the semantic change, in what six months or more, why change it
+now?
+
+Ian
+
+
