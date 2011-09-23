@@ -1,111 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:34694 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932112Ab1I3BLf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Sep 2011 21:11:35 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: NFS client growing system CPU
-Date: Thu, 29 Sep 2011 18:11:17 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B6C979E@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <20110930005807.GE7959@hostway.ca>
-References: <20101208212505.GA18192@hostway.ca> <1291845189.3067.31.camel@heimdal.trondhjem.org> <20110927003931.GB12106@hostway.ca> <1317123773.24383.1.camel@lade.trondhjem.org> <20110927164937.GA2690@hostway.ca> <1317143055.10143.2.camel@lade.trondhjem.org> <20110928195835.GA15368@hostway.ca> <20110930005807.GE7959@hostway.ca>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Simon Kirby" <sim@hostway.ca>
-Cc: <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:32852 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754771Ab1IWBud (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 21:50:33 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 10/10] pnfsblock: fix writeback deadlock
+Date: Thu, 22 Sep 2011 21:50:17 -0400
+Message-Id: <1316742617-14766-11-git-send-email-rees@umich.edu>
+In-Reply-To: <1316742617-14766-1-git-send-email-rees@umich.edu>
+References: <1316742617-14766-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-> -----Original Message-----
-> From: Simon Kirby [mailto:sim@hostway.ca]
-> Sent: Thursday, September 29, 2011 8:58 PM
-> To: Myklebust, Trond
-> Cc: linux-nfs@vger.kernel.org; linux-kernel@vger.kernel.org
-> Subject: Re: NFS client growing system CPU
-> 
-> On Wed, Sep 28, 2011 at 12:58:35PM -0700, Simon Kirby wrote:
-> 
-> > On Tue, Sep 27, 2011 at 01:04:15PM -0400, Trond Myklebust wrote:
-> >
-> > > On Tue, 2011-09-27 at 09:49 -0700, Simon Kirby wrote:
-> > > > On Tue, Sep 27, 2011 at 07:42:53AM -0400, Trond Myklebust wrote:
-> > > >
-> > > > > On Mon, 2011-09-26 at 17:39 -0700, Simon Kirby wrote:
-> > > > > > Hello!
-> > > > > >
-> > > > > > Following up on "System CPU increasing on idle 2.6.36", this
-> > > > > > issue is still happening even on 3.1-rc7. So, since it has
-> > > > > > been 9 months since I reported this, I figured I'd bisect
-this
-> > > > > > issue. The first bisection ended in an IPMI regression that
-> > > > > > looked like the problem, so I had to start again.
-Eventually,
-> > > > > > I got commit b80c3cb628f0ebc241b02e38dd028969fb8026a2
-> > > > > > which made it into 2.6.34-rc4.
-> > > > > >
-> > > > > > With this commit, system CPU keeps rising as the log crunch
-> > > > > > box runs (reads log files via NFS and spews out HTML files
-> > > > > > into NFS-mounted report directories). When it finishes the
-> > > > > > daily run, the system time stays non-zero and continues to
-be
-> > > > > > higher and higher after each run, until the box never
-completes a
-> run within a day due to all of the wasted cycles.
-> > > > >
-> > > > > So reverting that commit fixes the problem on 3.1-rc7?
-> > > > >
-> > > > > As far as I can see, doing so should be safe thanks to commit
-> > > > > 5547e8aac6f71505d621a612de2fca0dd988b439 (writeback: Update
-> > > > > dirty flags in two steps) which fixes the original problem at
-the VFS
-> level.
-> > > >
-> > > > Hmm, I went to git revert
-> > > > b80c3cb628f0ebc241b02e38dd028969fb8026a2, but for some reason
-git
-> > > > left the nfs_mark_request_dirty(req); line in
-> > > > nfs_writepage_setup(), even though the original commit had that.
-Is
-> that OK or should I remove that as well?
-> > > >
-> > > > Once that is sorted, I'll build it and let it run for a day and
-> > > > let you know. Thanks!
-> > >
-> > > It shouldn't make any difference whether you leave it or remove
-it.
-> > > The resulting second call to __set_page_dirty_nobuffers() will
-> > > always be a no-op since the page will already be marked as dirty.
-> >
-> > Ok, confirmed, git revert b80c3cb628f0ebc241b02e38dd028969fb8026a2
-on
-> > 3.1-rc7 fixes the problem for me. Does this make sense, then, or do
-we
-> > need further investigation and/or testing?
-> 
-> Just to clear up what I said before, it seems that on plain 3.1-rc8, I
-am actually
-> able to clear the endless CPU use in nfs_writepages by just running
-"sync". I
-> am not sure when this changed, but I'm pretty sure that some versions
-> between 2.6.34 and 3.1-rc used to not be affected by just "sync"
-unless it
-> was paired with drop_caches. Maybe this makes the problem more
-> obvious...
+From: Peng Tao <bergwolf@gmail.com>
 
-Hi Simon,
+We should check if the sector is already initialized before
+trying to grab the page from page cache. Otherwise when two
+pages of the same block are written back by two threads each
+calling from writepage_locked, it can cause deadlock like bellow.
 
-I think you are just finding yourself cycling through the VFS writeback
-routines all the time because we dirty the inode for COMMIT at the same
-time as we dirty a new page. Usually, we want to wait until after the
-WRITE rpc call has completed, and so it was only the vfs race that
-forced us to write this workaround so that we can guarantee reliable
-fsync() behaviour.
+ [ 1080.972099] INFO: task kswapd0:25 blocked for more than 120 seconds.
+ [ 1080.972377] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+ [ 1080.972812] kswapd0         D ffff88000c4926c0     0    25      2 0x00000000
+ [ 1080.972816]  ffff88000df276b0 0000000000000046 ffff88000df27640 ffffffff81013ba7
+ [ 1080.972821]  ffff88000c492310 ffff88000df27fd8 ffff88000df27fd8 00000000001d3440
+ [ 1080.972824]  ffff88000c378000 ffff88000c492310 ffff8800175d3d40 ffff880017fc75a8
+ [ 1080.972828] Call Trace:
+ [ 1080.972860]  [<ffffffff81013ba7>] ? read_tsc+0x9/0x19
+ [ 1080.972877]  [<ffffffff810e0b23>] ? lock_page+0x2b/0x2b
+ [ 1080.972899]  [<ffffffff81475a1d>] io_schedule+0x63/0x7e
+ [ 1080.972902]  [<ffffffff810e0b31>] sleep_on_page+0xe/0x12
+ [ 1080.972905]  [<ffffffff81475fe8>] __wait_on_bit_lock+0x46/0x8f
+ [ 1080.972916]  [<ffffffff810822d7>] ? lock_release_holdtime.part.7+0x6b/0x72
+ [ 1080.972919]  [<ffffffff810e0af6>] __lock_page+0x66/0x68
+ [ 1080.972928]  [<ffffffff81072705>] ? autoremove_wake_function+0x3d/0x3d
+ [ 1080.972932]  [<ffffffff810e0b1f>] lock_page+0x27/0x2b
+ [ 1080.972934]  [<ffffffff810e0bcf>] find_lock_page+0x34/0x57
+ [ 1080.972937]  [<ffffffff810e1738>] find_or_create_page+0x34/0x8a
+ [ 1080.972947]  [<ffffffffa034245b>] bl_write_pagelist+0x205/0x6da [blocklayoutdriver]
+ [ 1080.972951]  [<ffffffffa034145d>] ? bl_free_lseg+0x38/0x38 [blocklayoutdriver]
+ [ 1080.972995]  [<ffffffffa02e27b9>] ? nfs_write_rpcsetup+0x118/0x123 [nfs]
+ [ 1080.973033]  [<ffffffffa030246b>] pnfs_generic_pg_writepages+0x10b/0x1f4 [nfs]
+ [ 1080.973089]  [<ffffffffa02deaae>] nfs_pageio_doio+0x1a/0x43 [nfs]
+ [ 1080.973098]  [<ffffffffa02df035>] nfs_pageio_complete+0x16/0x2d [nfs]
+ [ 1080.973108]  [<ffffffffa02e2d8f>] nfs_writepage_locked+0xa0/0xbf [nfs]
+ [ 1080.973119]  [<ffffffffa02e36a1>] nfs_writepage+0x16/0x2b [nfs]
+ [ 1080.973122]  [<ffffffff810e8762>] ? clear_page_dirty_for_io+0x87/0x9a
+ [ 1080.973133]  [<ffffffff810efc5b>] shrink_page_list+0x39b/0x6c8
+ [ 1080.973139]  [<ffffffff810f03bb>] shrink_inactive_list+0x22c/0x39e
+ [ 1080.973144]  [<ffffffff810822d7>] ? lock_release_holdtime.part.7+0x6b/0x72
+ [ 1080.973148]  [<ffffffff810f0c33>] shrink_zone+0x445/0x588
+ [ 1080.973152]  [<ffffffff810f1a11>] balance_pgdat+0x2c2/0x56b
+ [ 1080.973170]  [<ffffffff81254208>] ? __bitmap_weight+0x34/0x80
+ [ 1080.973175]  [<ffffffff810f1f78>] kswapd+0x2be/0x2fa
+ [ 1080.973179]  [<ffffffff810726c8>] ? __init_waitqueue_head+0x4b/0x4b
+ [ 1080.973183]  [<ffffffff810f1cba>] ? balance_pgdat+0x56b/0x56b
+ [ 1080.973187]  [<ffffffff81071f69>] kthread+0xa8/0xb0
+ [ 1080.973200]  [<ffffffff814806b4>] kernel_thread_helper+0x4/0x10
+ [ 1080.973205]  [<ffffffff81071ec1>] ? __init_kthread_worker+0x5a/0x5a
+ [ 1080.973210]  [<ffffffff814806b0>] ? gs_change+0x13/0x13
+ [ 1080.973213] no locks held by kswapd0/25.
 
-My only concern at this point is to make sure that in reverting that
-patch, we haven't overlooked some other fsync() bug that this patch
-fixed. So far, it looks as if Dmitry's patch is sufficient to deal with
-any issues that I can see.
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
+---
+ fs/nfs/blocklayout/blocklayout.c |    8 ++++++--
+ 1 files changed, 6 insertions(+), 2 deletions(-)
 
-Cheers
-  Trond
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index cc63717..c7582e4 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -533,6 +533,11 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ fill_invalid_ext:
+ 		dprintk("%s need to zero %d pages\n", __func__, npg_zero);
+ 		for (;npg_zero > 0; npg_zero--) {
++			if (bl_is_sector_init(be->be_inval, isect)) {
++				dprintk("isect %llu already init\n",
++					(unsigned long long)isect);
++				goto next_page;
++			}
+ 			/* page ref released in bl_end_io_write_zero */
+ 			index = isect >> PAGE_CACHE_SECTOR_SHIFT;
+ 			dprintk("%s zero %dth page: index %lu isect %llu\n",
+@@ -552,8 +557,7 @@ fill_invalid_ext:
+ 			 * PageUptodate: It was read before
+ 			 * sector_initialized: already written out
+ 			 */
+-			if (PageDirty(page) || PageWriteback(page) ||
+-			    bl_is_sector_init(be->be_inval, isect)) {
++			if (PageDirty(page) || PageWriteback(page)) {
+ 				print_page(page);
+ 				unlock_page(page);
+ 				page_cache_release(page);
+-- 
+1.7.4.1
+
