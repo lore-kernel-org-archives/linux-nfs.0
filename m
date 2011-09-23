@@ -1,87 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46141 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:1231 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933543Ab1IILBI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Sep 2011 07:01:08 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Linux-MM <linux-mm@kvack.org>
-Cc: Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 09/10] nfs: Prevent page allocator recursions with swap over NFS.
-Date: Fri,  9 Sep 2011 12:00:53 +0100
-Message-Id: <1315566054-17209-10-git-send-email-mgorman@suse.de>
-In-Reply-To: <1315566054-17209-1-git-send-email-mgorman@suse.de>
-References: <1315566054-17209-1-git-send-email-mgorman@suse.de>
+	id S1751995Ab1IWQlU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Sep 2011 12:41:20 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <CA+55aFx03u51bbAPe_o=4PeyE0dFnuL1KyqRdTJCFUD-vM6V-w@mail.gmail.com>
+References: <CA+55aFx03u51bbAPe_o=4PeyE0dFnuL1KyqRdTJCFUD-vM6V-w@mail.gmail.com> <1316747758.3346.89.camel@perseus.themaw.net> <20110922134510.24683.14576.stgit@warthog.procyon.org.uk> <1316707443.3346.44.camel@perseus.themaw.net> <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com> <1316709935.3346.48.camel@perseus.themaw.net> <20110922133529.6d3ea8de@barsoom.rdu.redhat.com> <20110922144453.6cf53a25@barsoom.rdu.redhat.com> <1316719228.3968.14.camel@lade.trondhjem.org> <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com> <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com> <21772.1316774025@redhat.com> <1316788444.14812.10.camel@lade.trondhjem.org> <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com> <1316792468.3346.144.camel@perseus.themaw.net> 
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: dhowells@redhat.com, Ian Kent <raven@themaw.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>, miklos@szeredi.hu,
+        Jeff Layton <jlayton@redhat.com>, viro@zeniv.linux.org.uk,
+        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
+Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
+Date: Fri, 23 Sep 2011 17:40:07 +0100
+Message-ID: <13920.1316796007@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-GFP_NOFS is _more_ permissive than GFP_NOIO in that it will initiate
-IO, just not of any filesystem data.
+Linus Torvalds <torvalds@linux-foundation.org> wrote:
 
-The problem is that previously NOFS was correct because that avoids
-recursion into the NFS code. With swap-over-NFS, it is no longer
-correct as swap IO can lead to this recursion.
+> We may indeed have to revert for sanity at this point, but I have to
+> say that I think the arguments have been very weak, and the logic for
+> when to auto-mount and when not to seems to not really be based on any
+> real logic.
 
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
----
- fs/nfs/pagelist.c |    2 +-
- fs/nfs/write.c    |    7 ++++---
- 2 files changed, 5 insertions(+), 4 deletions(-)
+Can you look over the patchset I've just posted.
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 1fcc294..5eb527d 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -27,7 +27,7 @@ static struct kmem_cache *nfs_page_cachep;
- static inline struct nfs_page *
- nfs_page_alloc(void)
- {
--	struct nfs_page	*p = kmem_cache_zalloc(nfs_page_cachep, GFP_KERNEL);
-+	struct nfs_page	*p = kmem_cache_zalloc(nfs_page_cachep, GFP_NOIO);
- 	if (p)
- 		INIT_LIST_HEAD(&p->wb_list);
- 	return p;
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 475e1f2..78e4ce6 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -51,7 +51,7 @@ static mempool_t *nfs_commit_mempool;
- 
- struct nfs_write_data *nfs_commitdata_alloc(void)
- {
--	struct nfs_write_data *p = mempool_alloc(nfs_commit_mempool, GFP_NOFS);
-+	struct nfs_write_data *p = mempool_alloc(nfs_commit_mempool, GFP_NOIO);
- 
- 	if (p) {
- 		memset(p, 0, sizeof(*p));
-@@ -71,7 +71,7 @@ EXPORT_SYMBOL_GPL(nfs_commit_free);
- 
- struct nfs_write_data *nfs_writedata_alloc(unsigned int pagecount)
- {
--	struct nfs_write_data *p = mempool_alloc(nfs_wdata_mempool, GFP_NOFS);
-+	struct nfs_write_data *p = mempool_alloc(nfs_wdata_mempool, GFP_NOIO);
- 
- 	if (p) {
- 		memset(p, 0, sizeof(*p));
-@@ -80,7 +80,8 @@ struct nfs_write_data *nfs_writedata_alloc(unsigned int pagecount)
- 		if (pagecount <= ARRAY_SIZE(p->page_array))
- 			p->pagevec = p->page_array;
- 		else {
--			p->pagevec = kcalloc(pagecount, sizeof(struct page *), GFP_NOFS);
-+			p->pagevec = kcalloc(pagecount, sizeof(struct page *),
-+					GFP_NOIO);
- 			if (!p->pagevec) {
- 				mempool_free(p, nfs_wdata_mempool);
- 				p = NULL;
--- 
-1.7.3.4
+It moves the policy on whether or not to suppress automount out of
+follow_automount() - which is probably the wrong place for it anyway.
 
+Depending on which patch you want to stop at it can reinstate the pre-Miklos
+behaviour; reinstate the Miklos behaviour, but without the regression; or
+reinstate the pre-d_automount behaviour.
+
+> For example, I think the whole "let's consider lstat different from
+> stat" model is broken. It works for symlinks, but that's because
+
+That's a reasonable way to look at it; the difference between stat and lstat
+is about handling symlinks only.  Furthermore, we have fstatat, so this isn't
+really an issue - that can be given flags to let userspace decide what it
+should do.
+
+getxattr and co. are trickier because they don't have an AT_ flags form, and
+it can be argued that these, lgetxattr and co. included should automount.
+However, that would seriously upset ls, so I think we have to leave lgetxattr
+not automounting, and so getxattr should follow.
+
+We should consider adding an AT_ flags form of the xattr calls, but that's
+another matter we can argue over later.
+
+> So *that* is why I thought the LOOKUP_DIRECTORY flag was so nice. And
+> I still suspect that if paired with LOOKUP_OPEN, it would actually be
+> a complete solution that avoids the crazy issues with "random
+> implementation detail" and could give us something that is both
+> accessible from user space *and* something we can explain to a user
+> from a logical basis.
+
+I don't like this because it's fragile.  We're giving an implied second
+meaning to LOOKUP_DIRECTORY/LOOKUP_OPEN, albeit a reasonable one.
+
+Can we please move the policy to the pathwalk callers instead?
+
+David
