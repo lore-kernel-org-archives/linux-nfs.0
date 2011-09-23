@@ -1,56 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:44399 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753933Ab1I3Qoi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Sep 2011 12:44:38 -0400
-Date: Fri, 30 Sep 2011 12:42:59 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Michal Schmidt <mschmidt@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trond@netapp.com>
-Subject: Re: [PATCH] sunrpc: add MODULE_ALIAS to match the filesystem name
-Message-ID: <20110930164259.GG19125@fieldses.org>
-References: <20110701224712.12393.10369.stgit@localhost6.localdomain6>
- <20110706153324.GA30349@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110706153324.GA30349@fieldses.org>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:37196 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754742Ab1IWBub (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 21:50:31 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 09/10] pnfsblock: fix NULL pointer dereference
+Date: Thu, 22 Sep 2011 21:50:16 -0400
+Message-Id: <1316742617-14766-10-git-send-email-rees@umich.edu>
+In-Reply-To: <1316742617-14766-1-git-send-email-rees@umich.edu>
+References: <1316742617-14766-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Jul 06, 2011 at 11:33:24AM -0400, bfields wrote:
-> On Sat, Jul 02, 2011 at 12:47:12AM +0200, Michal Schmidt wrote:
-> > sunrpc implements the rpc_pipefs filesystem type.
-> > Add the alias to have the module requested automatically by the kernel
-> > when the filesystem is mounted.
-> 
-> Makes sense to me.--b.
+From: Peng Tao <bergwolf@gmail.com>
 
-Hm, don't see this in Trond's stuff so I'll queue it up with nfsd stuff
-for 3.2.
+bl_add_page_to_bio returns error pointer. bio should be reset to
+NULL in failure cases as the out path always calls bl_submit_bio.
 
---b.
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
+---
+ fs/nfs/blocklayout/blocklayout.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
-> 
-> > 
-> > Signed-off-by: Michal Schmidt <mschmidt@redhat.com>
-> > ---
-> > 
-> >  net/sunrpc/rpc_pipe.c |    3 +++
-> >  1 files changed, 3 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-> > index 72bc536..c1d1996 100644
-> > --- a/net/sunrpc/rpc_pipe.c
-> > +++ b/net/sunrpc/rpc_pipe.c
-> > @@ -1084,3 +1084,6 @@ void unregister_rpc_pipefs(void)
-> >  	kmem_cache_destroy(rpc_inode_cachep);
-> >  	unregister_filesystem(&rpc_pipe_fs_type);
-> >  }
-> > +
-> > +/* Make 'mount -t rpc_pipefs ...' autoload this module. */
-> > +MODULE_ALIAS("rpc_pipefs");
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index f5a7fa6..cc63717 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -292,6 +292,7 @@ bl_read_pagelist(struct nfs_read_data *rdata)
+ 						 bl_end_io_read, par);
+ 			if (IS_ERR(bio)) {
+ 				rdata->pnfs_error = PTR_ERR(bio);
++				bio = NULL;
+ 				goto out;
+ 			}
+ 		}
+@@ -581,6 +582,7 @@ fill_invalid_ext:
+ 						 bl_end_io_write_zero, par);
+ 			if (IS_ERR(bio)) {
+ 				wdata->pnfs_error = PTR_ERR(bio);
++				bio = NULL;
+ 				goto out;
+ 			}
+ 			/* FIXME: This should be done in bi_end_io */
+@@ -629,6 +631,7 @@ next_page:
+ 					 bl_end_io_write, par);
+ 		if (IS_ERR(bio)) {
+ 			wdata->pnfs_error = PTR_ERR(bio);
++			bio = NULL;
+ 			goto out;
+ 		}
+ 		isect += PAGE_CACHE_SECTORS;
+-- 
+1.7.4.1
+
