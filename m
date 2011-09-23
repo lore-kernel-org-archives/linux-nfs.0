@@ -1,48 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:38999 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751387Ab1ILJeh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Sep 2011 05:34:37 -0400
-Date: Mon, 12 Sep 2011 10:34:34 +0100
-From: Mel Gorman <mgorman@suse.de>
-To: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Cc: Christoph Hellwig <hch@infradead.org>, Linux-MM <linux-mm@kvack.org>,
-        Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 03/10] mm: Add support for a filesystem to control swap
- files
-Message-ID: <20110912093058.GA3207@suse.de>
-References: <1315566054-17209-1-git-send-email-mgorman@suse.de>
- <1315566054-17209-4-git-send-email-mgorman@suse.de>
- <20110909130007.GA11810@infradead.org>
- <20110909131550.GV14369@suse.de>
- <20110909133611.GB8155@infradead.org>
- <1315818285.26517.18.camel@twins>
-Content-Type: text/plain; charset=iso-8859-15
-In-Reply-To: <1315818285.26517.18.camel@twins>
+Received: from out2.smtp.messagingengine.com ([66.111.4.26]:58683 "EHLO
+	out2.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752726Ab1IWK5Q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2011 06:57:16 -0400
+Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
+From: Ian Kent <raven@themaw.net>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Jeff Layton <jlayton@redhat.com>, David Howells <dhowells@redhat.com>,
+        viro@zeniv.linux.org.uk, gregkh@suse.de, linux-nfs@vger.kernel.org,
+        leonardo.lists@gmail.com
+In-Reply-To: <878vpfvhxt.fsf@tucsk.pomaz.szeredi.hu>
+References: <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
+	 <1316707443.3346.44.camel@perseus.themaw.net>
+	 <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
+	 <1316709935.3346.48.camel@perseus.themaw.net>
+	 <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
+	 <20110922144453.6cf53a25@barsoom.rdu.redhat.com>
+	 <1316719228.3968.14.camel@lade.trondhjem.org>
+	 <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
+	 <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
+	 <1316740873.9186.19.camel@lade.trondhjem.org>
+	 <878vpfvhxt.fsf@tucsk.pomaz.szeredi.hu>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 23 Sep 2011 18:57:09 +0800
+Message-ID: <1316775429.3346.118.camel@perseus.themaw.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Sep 12, 2011 at 11:04:45AM +0200, Peter Zijlstra wrote:
-> On Fri, 2011-09-09 at 09:36 -0400, Christoph Hellwig wrote:
-> > The equivalent of ->direct_IO should be used for both reads and writes.
+On Fri, 2011-09-23 at 09:25 +0200, Miklos Szeredi wrote:
+> Trond Myklebust <Trond.Myklebust@netapp.com> writes:
 > 
-> So the difference between DIO and swapIO is that swapIO needs the block
-> map pinned in memory.. So at the very least you'll need those
-> swap_{activate,deactivate} aops. The read/write-page thingies could
-> indeed be shared with DIO.
+> > On Thu, 2011-09-22 at 18:04 -0700, Linus Torvalds wrote: 
+> >> On Thu, Sep 22, 2011 at 5:56 PM, Myklebust, Trond
+> >> <Trond.Myklebust@netapp.com> wrote:
+> >> >
+> >> > Your assumption is that in the majority of cases, we do _not_ want to
+> >> > automount the final directory unless we know that we are expecting a
+> >> > directory.
+> >> 
+> >> Umm. That is the assumption yes, BUT THAT IS ALSO THE CURRENT STATE.
+> >> 
+> >> So it's more than an assumption. It's a fact.
+> >> 
+> >> So when you call it "assumption", you are basically ignoring and
+> >> trying to belittle current reality. Why?
+> >
+> > AFAICR, the whole point of doing the ->automount() stuff was to fix what
+> > was perceived to be a broken situation in which the application was more
+> > often than not seeing the properties of a directory which it would
+> > _never_ directly access.
 > 
+> We are pitting one set of applications against another.  There's no
+> Right(TM) behavior here.  In any case there will be applications which
+> will behave strangely, be extremely slow, etc...
+> 
+> Changing the behavior of stat will cause regressions.  Period.  If we
+> just fixed up those apps which behave badly with the old kernels, there
+> wouldn't be any regressions.
 
-I'm travelling at the moment so it'll be later in the week when I investigate
-properly but I agree swap_[de|a]ctivate are still necessary. NFS does not
-need to pin a block map but it's still necessary for calling xs_set_memalloc.
+That's the point isn't it.
 
--- 
-Mel Gorman
-SUSE Labs
+Your patch changes the pre-exiting behavior of NFS and probably CIFS and
+AFS, but restores the pre-existing behavior of autofs, which is
+something I've wanted to change for years.
+
+My suggestion of using LOOKUP_DIRECTORY at path walk sites that need it
+is still a possibility. I'm still looking through path walk call sites.
+But that resolution will still leave NFS et.al. with LOOKUP_FOLLOW only
+calls having changed semantic behavior.
+
+There is no resolution to this that will satisfy everyone. Passing on
+the lookup flags is, I think, the only way to segregate the sub system
+behaviors and I'm not in favor of that either.
+
+Ian
+
+
