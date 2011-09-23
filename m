@@ -1,79 +1,142 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62003 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:59081 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752004Ab1IMNsv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 09:48:51 -0400
-Date: Tue, 13 Sep 2011 09:52:04 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>
-Subject: Re: [PATCH v2 3/5] SUNRPC: make RPC service dependable on rpcbind
- clients creation
-Message-ID: <20110913095204.7904c051@corrin.poochiereds.net>
-In-Reply-To: <4E6F5D2F.4050100@parallels.com>
-References: <20110909115146.13697.71682.stgit@localhost6.localdomain6>
-	<20110909120844.13697.48102.stgit@localhost6.localdomain6>
-	<20110909100745.7e2e8bf9@corrin.poochiereds.net>
-	<4E6A41D4.6090001@parallels.com>
-	<1315593874.17611.19.camel@lade.trondhjem.org>
-	<20110909150104.5a83c60d@tlielax.poochiereds.net>
-	<1315596308.17611.46.camel@lade.trondhjem.org>
-	<20110913085139.00f112e2@corrin.poochiereds.net>
-	<4E6F5D2F.4050100@parallels.com>
-Content-Type: text/plain; charset=UTF-8
+	id S1752240Ab1IWMBN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Sep 2011 08:01:13 -0400
+Date: Fri, 23 Sep 2011 08:01:12 -0400
+To: Nattapon Viroonsri <linuxbkk@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: nfs4 AD2008R2 kinit success but mount failed
+Message-ID: <20110923120112.GD2904@fieldses.org>
+References: <CA+1OVfZpQyLtYauJ4TL7gwXXqL3EF4XKxA_X0Q-=L45ZSGi7fA@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CA+1OVfZpQyLtYauJ4TL7gwXXqL3EF4XKxA_X0Q-=L45ZSGi7fA@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 13 Sep 2011 17:39:59 +0400
-Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
-
-> 13.09.2011 16:51, Jeff Layton пишет:
-> > My assumption in reading this set (maybe wrong) was that this was a
-> > preliminary set for now that just plops in function calls in the places
-> > that do this sort of thing now. I figured that eventually he'd convert
-> > rpcb_create_local, et. al. to do the same thing but within the correct
-> > namespace for the calling task.
-> >
+On Thu, Sep 22, 2011 at 11:34:23PM +0700, Nattapon Viroonsri wrote:
+> Hi,
 > 
-> You have a right assumption. This is exactly what I'm going to do next.
+> I try to use nfs4 authentication with Active directory 2008
 > 
-> >
-> > I think the simplest solution would be to basically call these
-> > functions closer to where the rpcbind calls happen today, and just
-> > don't do them when the svc_program has vs_hidden set or if the xprt is
-> > being created with SVC_SOCK_ANONYMOUS set.
-> >
+> kinit success to authenticated, but mount still faile with permission denied
+> Any suggestion , would be appreciate
 > 
-> This solution is not the simplest one since we call svc_register() for every svc 
-> socket if it's not anonymous. But svc_unregister() is called only once for all 
-> inet families and protocols.
+> nfs server: suse1.reuint.com ( SLES11 SP1)
+> nfs client:  krbclient.reuint.com ( SLES11 SP1)
+
+Have you reported this to SUSE?
+
+--b.
+
+> Windows2008 SP2 standard edition:  ad2008.reuint.com ( windows2008R2
+> standard edition)
 > 
-
-Ahh ok, good point.
-
-> Also I've noticed, that we call svc_unregister in __svc_create(). I.e. we call 
-> it for nfs callbacks as well (in spite of that we don't need this). Thus, for 
-> now, nfs callbacks service creation depends on rpcbind clients presence.
+>  package: samba-winbind-3.4.3-1.17.2,
+> nfs-kernel-server-1.2.1-2.18.1,nfs-client-1.2.1-2.18.1
+>                krb5-1.6.3-133.46.1
 > 
-
-Yeah, that's just to remove the any existing registration before we set
-up the new one. In the case of a "hidden" service that can probably be
-skipped if it makes things easier.
-
-> So, for my pow, we need something like startup() callback, passed to 
-> svc_create(_pooled)() to clean up this mess.
-> This callback will be defined only for lockd and nfsd and will create rpcbind 
-> clients and remove any stale portmap registrations.
 > 
-
-That sounds like a reasonable scheme. I'll wait to see the patches.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> # ------ Both NFS Server and NFS Client can join domain ---------------
+> rcwinbind stop
+> rcnfsserver stop
+> net -Ureutadmin%'mypasswd' ads leave
+> net -Ureutadmin%'mypasswd' ads keytab flush
+> kdestroy
+> \rm /etc/krb5.keytab
+> \rm /tmp/kr*
+> 
+> net -Ureutadmin%'mypasswd' ads join  createupn='nfs/suse1.reuint.com@REUINT.COM'
+> net -Ureutadmin%'mypasswd' ads keytab add nfs
+> 
+> rcwinbind start
+> 
+> 
+> suse1:~/keytab # wbinfo -u
+> REUINT\administrator
+> REUINT\guest
+> REUINT\krbtgt
+> REUINT\reutadmin
+> 
+> 
+> 
+> suse1:~/keytab # ssh REUINT\\reutadmin@localhost
+> Password:
+> Last login: Tue Sep 20 10:13:54 2011 from localhost
+> Could not chdir to home directory /home/REUINT/reutadmin: No such file
+> or directory
+> REUINT\reutadmin@suse1:/>exit
+> 
+> 
+> 
+> #-------  ON NFS Server -----------------------------------------
+> 
+> suse1:~/keytab # klist -ke
+> Keytab name: FILE:/etc/krb5.keytab
+> KVNO Principal
+> 
+>    2 nfs/suse1.reuint.com@REUINT.COM (DES cbc mode with CRC-32)
+>    2 nfs/suse1.reuint.com@REUINT.COM (DES cbc mode with RSA-MD5)
+>    2 nfs/suse1.reuint.com@REUINT.COM (ArcFour with HMAC/md5)
+>    2 nfs/suse1@REUINT.COM (DES cbc mode with CRC-32)
+>    2 nfs/suse1@REUINT.COM (DES cbc mode with RSA-MD5)
+>    2 nfs/suse1@REUINT.COM (ArcFour with HMAC/md5)
+> 
+> suse1:~/keytab # kinit -V  -k  nfs/suse1.reuint.com@REUINT.COM
+> Authenticated to Kerberos v5
+> 
+> 
+> #-------  ON NFS Client  -----------------------------------------------
+> 
+> krbclient:~ # klist -ke
+> 
+> Keytab name: FILE:/etc/krb5.keytab
+> KVNO Principal
+>    2 nfs/krbclient.reuint.com@REUINT.COM (DES cbc mode with CRC-32)
+>    2 nfs/krbclient.reuint.com@REUINT.COM (DES cbc mode with RSA-MD5)
+>    2 nfs/krbclient.reuint.com@REUINT.COM (ArcFour with HMAC/md5)
+>    2 nfs/krbclient@REUINT.COM (DES cbc mode with CRC-32)
+>    2 nfs/krbclient@REUINT.COM (DES cbc mode with RSA-MD5)
+>    2 nfs/krbclient@REUINT.COM (ArcFour with HMAC/md5)
+> 
+> krbclient:~ # kinit -V -k nfs/krbclient.reuint.com
+> Authenticated to Kerberos v5
+> 
+> 
+> krbclient:~ # showmount -e suse1.reuint.com
+> Export list for suse1.reuint.com:
+> /media/nfs4server gss/krb5i,gss/krb5
+> 
+> krbclient:~ # mount -vvv -tnfs4 -o sec=krb5  suse1.reuint.com:/  /media/nfs/
+> mount: fstab path: "/etc/fstab"
+> mount: mtab path:  "/etc/mtab"
+> mount: lock path:  "/etc/mtab~"
+> mount: temp path:  "/etc/mtab.tmp"
+> mount: UID:        0
+> mount: eUID:       0
+> mount: spec:  "suse1.reuint.com:/"
+> mount: node:  "/media/nfs/"
+> mount: types: "nfs4"
+> mount: opts:  "sec=krb5"
+> mount: external mount: argv[0] = "/sbin/mount.nfs4"
+> mount: external mount: argv[1] = "suse1.reuint.com:/"
+> mount: external mount: argv[2] = "/media/nfs/"
+> mount: external mount: argv[3] = "-v"
+> mount: external mount: argv[4] = "-o"
+> mount: external mount: argv[5] = "rw,sec=krb5"
+> mount.nfs4: timeout set for Tue Sep 20 11:05:15 2011
+> mount.nfs4: trying text-based options
+> 'sec=krb5,addr=192.168.125.130,clientaddr=192.168.125.132'
+> mount.nfs4: mount(2): Permission denied
+> mount.nfs4: access denied by server while mounting suse1.reuint.com:/
+> 
+> ----------------------------------------------
+> 
+> Rgds,
+> Nattapon
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
