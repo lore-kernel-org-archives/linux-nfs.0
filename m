@@ -1,109 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp02.in.ibm.com ([122.248.162.2]:33170 "EHLO
-	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752159Ab1IER1e (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2011 13:27:34 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V6 19/26] richacl: Check if an acl is equivalent to a file mode
-Date: Mon,  5 Sep 2011 22:55:41 +0530
-Message-Id: <1315243548-18664-20-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:7046 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752673Ab1IWBVQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 21:21:16 -0400
+Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Jeff Layton <jlayton@redhat.com>, Ian Kent <raven@themaw.net>,
+        David Howells <dhowells@redhat.com>, miklos@szeredi.hu,
+        viro@zeniv.linux.org.uk, gregkh@suse.de, linux-nfs@vger.kernel.org,
+        leonardo.lists@gmail.com
+Date: Thu, 22 Sep 2011 21:21:13 -0400
+In-Reply-To: <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
+References: <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
+	 <1316707443.3346.44.camel@perseus.themaw.net>
+	 <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
+	 <1316709935.3346.48.camel@perseus.themaw.net>
+	 <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
+	 <20110922144453.6cf53a25@barsoom.rdu.redhat.com>
+	 <1316719228.3968.14.camel@lade.trondhjem.org>
+	 <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
+	 <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1316740873.9186.19.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+On Thu, 2011-09-22 at 18:04 -0700, Linus Torvalds wrote: 
+> On Thu, Sep 22, 2011 at 5:56 PM, Myklebust, Trond
+> <Trond.Myklebust@netapp.com> wrote:
+> >
+> > Your assumption is that in the majority of cases, we do _not_ want to
+> > automount the final directory unless we know that we are expecting a
+> > directory.
+> 
+> Umm. That is the assumption yes, BUT THAT IS ALSO THE CURRENT STATE.
+> 
+> So it's more than an assumption. It's a fact.
+> 
+> So when you call it "assumption", you are basically ignoring and
+> trying to belittle current reality. Why?
 
-This function is used to avoid storing richacls on disk if the acl can
-be computed from the file permission bits.
+AFAICR, the whole point of doing the ->automount() stuff was to fix what
+was perceived to be a broken situation in which the application was more
+often than not seeing the properties of a directory which it would
+_never_ directly access.
 
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/richacl_base.c       |   54 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |    1 +
- 2 files changed, 55 insertions(+), 0 deletions(-)
+David, Ian, Al and I carefully listed the cases where we might want to
+optimise away the automount, and designed a system that fit those cases.
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index b4af12c..9d61c34 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -561,3 +561,57 @@ richacl_inherit(const struct richacl *dir_acl, int isdir)
- 
- 	return acl;
- }
-+
-+/**
-+ * richacl_equiv_mode  -  check if @acl is equivalent to file permission bits
-+ * @mode_p:	the file mode (including the file type)
-+ *
-+ * If @acl can be fully represented by file permission bits, this function
-+ * returns 0, and the file permission bits in @mode_p are set to the equivalent
-+ * of @acl.
-+ *
-+ * This function is used to avoid storing richacls on disk if the acl can be
-+ * computed from the file permission bits.  It allows user-space to make sure
-+ * that a file has no explicit richacl set.
-+ */
-+int
-+richacl_equiv_mode(const struct richacl *acl, mode_t *mode_p)
-+{
-+	const struct richace *ace = acl->a_entries;
-+	unsigned int x;
-+	mode_t mode;
-+
-+	if (acl->a_count != 1 ||
-+	    acl->a_flags != ACL4_MASKED ||
-+	    !richace_is_everyone(ace) ||
-+	    !richace_is_allow(ace) ||
-+	    ace->e_flags & ~ACE4_SPECIAL_WHO)
-+		return -1;
-+
-+	/*
-+	 * Figure out the permissions we care about: ACE4_DELETE_CHILD is
-+	 * meaningless for non-directories, so we ignore it.
-+	 */
-+	x = ~ACE4_POSIX_ALWAYS_ALLOWED;
-+	if (!S_ISDIR(*mode_p))
-+		x &= ~ACE4_DELETE_CHILD;
-+
-+	mode = richacl_masks_to_mode(acl);
-+	if ((acl->a_group_mask & x) != (richacl_mode_to_mask(mode >> 3) & x) ||
-+	    (acl->a_other_mask & x) != (richacl_mode_to_mask(mode) & x))
-+		return -1;
-+
-+	/*
-+	 * Ignore permissions which the owner is always allowed.
-+	 */
-+	x &= ~ACE4_POSIX_OWNER_ALLOWED;
-+	if ((acl->a_owner_mask & x) != (richacl_mode_to_mask(mode >> 6) & x))
-+		return -1;
-+
-+	if ((ace->e_mask & x) != (ACE4_POSIX_MODE_ALL & x))
-+		return -1;
-+
-+	*mode_p = (*mode_p & ~S_IRWXUGO) | mode;
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(richacl_equiv_mode);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 78c35f6..d18c4a6 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -292,6 +292,7 @@ extern struct richacl *richacl_chmod(struct richacl *, mode_t);
- extern int richacl_permission(struct inode *, const struct richacl *,
- 			      unsigned int);
- extern struct richacl *richacl_inherit(const struct richacl *, int);
-+extern int richacl_equiv_mode(const struct richacl *, mode_t *);
- 
- /* richacl_inode.c */
- extern struct richacl *richacl_inherit_inode(const struct richacl *,
+I fully accept that we need to address any regressions that may have
+introduced, but your fix goes beyond the regressions that were reported:
+it basically puts us back where we were before the automount changes. In
+that situation, what have we gained by the changes, and why keep them at
+all?
+
 -- 
-1.7.4.1
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
