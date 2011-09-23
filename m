@@ -1,61 +1,149 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lennier.cc.vt.edu ([198.82.162.213]:47681 "EHLO
-	lennier.cc.vt.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751347Ab1IHAxj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Sep 2011 20:53:39 -0400
-To: Casey Schaufler <casey@schaufler-ca.com>
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>, agruen@kernel.org,
-        bfields@fieldses.org, akpm@linux-foundation.org, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        LSM <linux-security-module@vger.kernel.org>
-Subject: Re: [PATCH -V6 00/26] New ACL format for better NFSv4 acl interoperability
-In-Reply-To: Your message of "Mon, 05 Sep 2011 15:42:17 PDT."
-             <4E655049.6060507@schaufler-ca.com>
-From: Valdis.Kletnieks@vt.edu
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-            <4E655049.6060507@schaufler-ca.com>
-Content-Type: multipart/signed; boundary="==_Exmh_1315442770_5805P";
-	 micalg=pgp-sha1; protocol="application/pgp-signature"
-Date: Wed, 07 Sep 2011 20:46:11 -0400
-Message-ID: <108028.1315442771@turing-police.cc.vt.edu>
+Received: from merit-proxy01.merit.edu ([207.75.116.193]:37173 "EHLO
+	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754744Ab1IWBu0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2011 21:50:26 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 01/10] pnfsblock: fix return code confusion
+Date: Thu, 22 Sep 2011 21:50:08 -0400
+Message-Id: <1316742617-14766-2-git-send-email-rees@umich.edu>
+In-Reply-To: <1316742617-14766-1-git-send-email-rees@umich.edu>
+References: <1316742617-14766-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
---==_Exmh_1315442770_5805P
-Content-Type: text/plain; charset=us-ascii
+Always return PTR_ERR, not NULL, from nfs4_blk_get_deviceinfo and
+nfs4_blk_decode_device.
 
-On Mon, 05 Sep 2011 15:42:17 PDT, Casey Schaufler said:
-> On 9/5/2011 10:25 AM, Aneesh Kumar K.V wrote:
-> > The following set of patches implements VFS and ext4 changes needed to implement
-> > a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
-> > extended by file masks to fit into the standard POSIX file permission model.
-> > They are designed to work seamlessly locally as well as across the NFSv4 and
-> > CIFS/SMB2 network file system protocols.
->
-> POSIX ACLs predate the LSM and can't be done as an LSM due to
-> the interactions between mode bits and ACLs as defined by the
-> POSIX DRAFT specification. Is there a reason that "rich" ACLs
-> can not be done as an LSM?
+Check for IS_ERR, not NULL, in bl_set_layoutdriver when calling
+nfs4_blk_get_deviceinfo.
 
-Well, if it was done as an LSM, it would mean that if I wanted to build a
-system where I have a few hundred terabytes of disk exported via Samba, and I
-wanted Samba to save the CIFS permission ACL, I couldn't also run Selinux or
-SMACK or anything like that - unless somebody actually snuck in the "LSMs are
-stackable" patch while I wasn't looking?
+Signed-off-by: Jim Rees <rees@umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/blocklayout/blocklayout.c    |   20 ++++++++++++--------
+ fs/nfs/blocklayout/blocklayoutdev.c |   13 ++++++++-----
+ 2 files changed, 20 insertions(+), 13 deletions(-)
 
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 9561c8f..d2432f0 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -805,7 +805,7 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
+ 			struct nfs4_deviceid *d_id)
+ {
+ 	struct pnfs_device *dev;
+-	struct pnfs_block_dev *rv = NULL;
++	struct pnfs_block_dev *rv;
+ 	u32 max_resp_sz;
+ 	int max_pages;
+ 	struct page **pages = NULL;
+@@ -823,18 +823,20 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
+ 	dev = kmalloc(sizeof(*dev), GFP_NOFS);
+ 	if (!dev) {
+ 		dprintk("%s kmalloc failed\n", __func__);
+-		return NULL;
++		return ERR_PTR(-ENOMEM);
+ 	}
+ 
+ 	pages = kzalloc(max_pages * sizeof(struct page *), GFP_NOFS);
+ 	if (pages == NULL) {
+ 		kfree(dev);
+-		return NULL;
++		return ERR_PTR(-ENOMEM);
+ 	}
+ 	for (i = 0; i < max_pages; i++) {
+ 		pages[i] = alloc_page(GFP_NOFS);
+-		if (!pages[i])
++		if (!pages[i]) {
++			rv = ERR_PTR(-ENOMEM);
+ 			goto out_free;
++		}
+ 	}
+ 
+ 	memcpy(&dev->dev_id, d_id, sizeof(*d_id));
+@@ -847,8 +849,10 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
+ 	dprintk("%s: dev_id: %s\n", __func__, dev->dev_id.data);
+ 	rc = nfs4_proc_getdeviceinfo(server, dev);
+ 	dprintk("%s getdevice info returns %d\n", __func__, rc);
+-	if (rc)
++	if (rc) {
++		rv = ERR_PTR(rc);
+ 		goto out_free;
++	}
+ 
+ 	rv = nfs4_blk_decode_device(server, dev);
+  out_free:
+@@ -866,7 +870,7 @@ bl_set_layoutdriver(struct nfs_server *server, const struct nfs_fh *fh)
+ 	struct pnfs_devicelist *dlist = NULL;
+ 	struct pnfs_block_dev *bdev;
+ 	LIST_HEAD(block_disklist);
+-	int status = 0, i;
++	int status, i;
+ 
+ 	dprintk("%s enter\n", __func__);
+ 
+@@ -898,8 +902,8 @@ bl_set_layoutdriver(struct nfs_server *server, const struct nfs_fh *fh)
+ 		for (i = 0; i < dlist->num_devs; i++) {
+ 			bdev = nfs4_blk_get_deviceinfo(server, fh,
+ 						       &dlist->dev_id[i]);
+-			if (!bdev) {
+-				status = -ENODEV;
++			if (IS_ERR(bdev)) {
++				status = PTR_ERR(bdev);
+ 				goto out_error;
+ 			}
+ 			spin_lock(&b_mt_id->bm_lock);
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+index a83b393..0b1fb0e 100644
+--- a/fs/nfs/blocklayout/blocklayoutdev.c
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -131,7 +131,7 @@ struct pnfs_block_dev *
+ nfs4_blk_decode_device(struct nfs_server *server,
+ 		       struct pnfs_device *dev)
+ {
+-	struct pnfs_block_dev *rv = NULL;
++	struct pnfs_block_dev *rv;
+ 	struct block_device *bd = NULL;
+ 	struct rpc_pipe_msg msg;
+ 	struct bl_msg_hdr bl_msg = {
+@@ -141,7 +141,7 @@ nfs4_blk_decode_device(struct nfs_server *server,
+ 	uint8_t *dataptr;
+ 	DECLARE_WAITQUEUE(wq, current);
+ 	struct bl_dev_msg *reply = &bl_mount_reply;
+-	int offset, len, i;
++	int offset, len, i, rc;
+ 
+ 	dprintk("%s CREATING PIPEFS MESSAGE\n", __func__);
+ 	dprintk("%s: deviceid: %s, mincount: %d\n", __func__, dev->dev_id.data,
+@@ -168,8 +168,10 @@ nfs4_blk_decode_device(struct nfs_server *server,
+ 
+ 	dprintk("%s CALLING USERSPACE DAEMON\n", __func__);
+ 	add_wait_queue(&bl_wq, &wq);
+-	if (rpc_queue_upcall(bl_device_pipe->d_inode, &msg) < 0) {
++	rc = rpc_queue_upcall(bl_device_pipe->d_inode, &msg);
++	if (rc < 0) {
+ 		remove_wait_queue(&bl_wq, &wq);
++		rv = ERR_PTR(rc);
+ 		goto out;
+ 	}
+ 
+@@ -187,8 +189,9 @@ nfs4_blk_decode_device(struct nfs_server *server,
+ 
+ 	bd = nfs4_blkdev_get(MKDEV(reply->major, reply->minor));
+ 	if (IS_ERR(bd)) {
+-		dprintk("%s failed to open device : %ld\n",
+-			__func__, PTR_ERR(bd));
++		rc = PTR_ERR(bd);
++		dprintk("%s failed to open device : %d\n", __func__, rc);
++		rv = ERR_PTR(rc);
+ 		goto out;
+ 	}
+ 
+-- 
+1.7.4.1
 
---==_Exmh_1315442770_5805P
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-Comment: Exmh version 2.5 07/13/2001
-
-iD8DBQFOaBBScC3lWbTT17ARAiknAJ9BidK9ESj7Gg5fL0HGU9EmbWYaEwCgtr+i
-Fo7Zv7VVnLAYeXHB39NivRM=
-=g+Ps
------END PGP SIGNATURE-----
-
---==_Exmh_1315442770_5805P--
