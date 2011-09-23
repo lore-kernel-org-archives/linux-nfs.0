@@ -1,48 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54143 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752176Ab1IIMsz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Sep 2011 08:48:55 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: dhowells@redhat.com, agruen@kernel.org, bfields@fieldses.org,
-        akpm@linux-foundation.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V6 00/26] New ACL format for better NFSv4 acl interoperability
-Date: Fri, 09 Sep 2011 13:48:18 +0100
-Message-ID: <25175.1315572498@redhat.com>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:34420 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754372Ab1IWPPs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2011 11:15:48 -0400
+Received: by eya28 with SMTP id 28so2291610eya.19
+        for <linux-nfs@vger.kernel.org>; Fri, 23 Sep 2011 08:15:47 -0700 (PDT)
+In-Reply-To: <1316790109.14812.14.camel@lade.trondhjem.org>
+References: <1316747758.3346.89.camel@perseus.themaw.net> <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
+ <1316707443.3346.44.camel@perseus.themaw.net> <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
+ <1316709935.3346.48.camel@perseus.themaw.net> <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
+ <20110922144453.6cf53a25@barsoom.rdu.redhat.com> <1316719228.3968.14.camel@lade.trondhjem.org>
+ <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
+ <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
+ <21772.1316774025@redhat.com> <1316788444.14812.10.camel@lade.trondhjem.org>
+ <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com> <1316790109.14812.14.camel@lade.trondhjem.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Fri, 23 Sep 2011 08:15:27 -0700
+Message-ID: <CA+55aFxDPd+O9tVDC7d47msFKv7jE0r6+Ui-Yvs1jYFw44ynZw@mail.gmail.com>
+Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: David Howells <dhowells@redhat.com>, miklos@szeredi.hu,
+        Jeff Layton <jlayton@redhat.com>, viro@zeniv.linux.org.uk,
+        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com> wrote:
+On Fri, Sep 23, 2011 at 8:01 AM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+>
+> Wrong. Miklos's patch introduces new behaviour that was never present
+> previously:
 
-> The following set of patches implements VFS and ext4 changes needed to implement
-> a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
-> extended by file masks to fit into the standard POSIX file permission model.
-> They are designed to work seamlessly locally as well as across the NFSv4 and
-> CIFS/SMB2 network file system protocols.
-> 
-> A user-space utility for displaying and changing richacls is available at [4]
-> (a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
-> 
-> [4] git://git.kernel.org/pub/scm/fs/acl/kvaneesh/richacl.git master
-> 
-> To test richacl on ext4 use -o richacl mount option. This mount option may later be
-> dropped in favour of a feature flag.
-> 
-> More details regarding richacl can be found at
-> http://acl.bestbits.at/richacl/
-> 
-> Changes from v5:
-> a) rebase to v3.1-rc4-131-g9e79e3e
-> 
-> NOTE: The kernel changes will be pushed to
-> git://git.kernel.org/pub/scm/linux/kernel/git/kvaneesh/linux-richacl.git richacl
-> when kernel.org is back
+Look at the big picture. The real damage wasn't done my Miklos, and
+that's something you don't seem to understand.
 
-Acked-by: David Howells <dhowells@redhat.com> for all patches generally where
-I haven't found anything bad.
+So stop with the crazy "just revert" crap. That's not how it works. If
+you want to talk about reverts, then you need to go all the way back
+to the follow_link behavior.
+
+Afaik, the closest we can get to old behavior is just checking
+LOOKUP_DIRECTORY. We might want to check LOOKUP_OPEN too and that
+solves your "whaa, whaah, it might be a file" thing. But neither stat
+nor lstat used to auto-mount with autofs (and quite frankly, some
+NFS-side automounting should strive to look the same, imgo).
+
+So please *understand* the problem I have already. My problem is that
+you seem to think "revert miklos" just fixes all the issues and is
+some "safe" approach. It just re-introduces the *original* regression.
+
+                              Linus
