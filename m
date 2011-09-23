@@ -1,423 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:45584 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752244Ab1I2TW4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Sep 2011 15:22:56 -0400
-Subject: Re: [PATCH v3 1/3] NFSD: Added fault injection
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4E84C3D7.9040206@netapp.com>
-Date: Thu, 29 Sep 2011 15:22:39 -0400
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Message-Id: <B069285B-09F2-4D66-AD3A-75E76C1D7DE9@oracle.com>
-References: <1317322765-19094-1-git-send-email-bjschuma@netapp.com> <A7558C0C-378A-42E3-AC37-8152C50972DB@oracle.com> <4E84C3D7.9040206@netapp.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:26539 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754140Ab1IWOl6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Sep 2011 10:41:58 -0400
+Message-ID: <4E7C9A91.1060301@parallels.com>
+Date: Fri, 23 Sep 2011 18:41:21 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+To: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>
+Subject: Re: [PATCH v6 1/8] SUNRPC: introduce helpers for reference counted
+ rpcbind clients
+References: <20110920101031.9861.18444.stgit@localhost6.localdomain6> <20110920101341.9861.51453.stgit@localhost6.localdomain6> <4E7899E7.9090809@parallels.com> <4E79A95F.8050304@parallels.com>
+In-Reply-To: <4E79A95F.8050304@parallels.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Trond, is this patch version suits you now? Or not?
+Please, comment somehow to let me know, may I proceed with further development 
+or not.
 
-On Sep 29, 2011, at 3:15 PM, Bryan Schumaker wrote:
+Sorry for disturbing (if so).
 
-> On 09/29/2011 03:06 PM, Chuck Lever wrote:
->> 
->> On Sep 29, 2011, at 2:59 PM, bjschuma@netapp.com wrote:
->> 
->>> From: Bryan Schumaker <bjschuma@netapp.com>
->>> 
->>> Fault injection on the NFS server makes it easier to test the client's
->>> state manager and recovery threads.  Simulating errors on the server is
->>> easier than finding the right conditions that cause them naturally.
->>> 
->>> This patch uses debugfs to add a simple framework for fault injection to
->>> the server.  This framework is a config option, and can be enabled
->>> through CONFIG_NFSD_FAULT_INJECTION.  Assuming you have debugfs mounted
->>> to /sys/debug, a set of files will be created in /sys/debug/nfsd/.
->>> Writing to any of these files will cause the corresponding action and
->>> write a log entry to dmesg.
->>> 
->>> Changes in v3:
->>> - Code cleanup and better use of generic functions
->>> - Allow the user to input the number of state objects to delete
->>> - Remove "forget_everything()" since forgetting a client is basically
->>> the same thing
->>> 
->>> Changes in v2:
->>> - Replaced "forget all state owners" with "forget all open owners"
->>> - Include fs/nfsd/fault_inject.c in the patch
->>> 
->>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->>> ---
->>> fs/nfsd/Kconfig        |   10 ++++
->>> fs/nfsd/Makefile       |    3 +-
->>> fs/nfsd/fault_inject.c |  102 ++++++++++++++++++++++++++++++++++++++++++
->>> fs/nfsd/nfs4state.c    |  115 ++++++++++++++++++++++++++++++++++++++++++++++++
->>> fs/nfsd/nfsctl.c       |    6 +++
->>> fs/nfsd/nfsd.h         |   12 +++++
->>> 6 files changed, 247 insertions(+), 1 deletions(-)
->>> create mode 100644 fs/nfsd/fault_inject.c
->>> 
->>> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
->>> index 10e6366..52fdd1c 100644
->>> --- a/fs/nfsd/Kconfig
->>> +++ b/fs/nfsd/Kconfig
->>> @@ -80,3 +80,13 @@ config NFSD_V4
->>> 	  available from http://linux-nfs.org/.
->>> 
->>> 	  If unsure, say N.
->>> +
->>> +config NFSD_FAULT_INJECTION
->>> +	bool "NFS server manual fault injection"
->>> +	depends on NFSD_V4 && DEBUG_KERNEL
->>> +	help
->>> +	  This option enables support for manually injectiong faults
->>> +	  into the NFS server.  This is intended to be used for
->>> +	  testing error recovery on the NFS client.
->>> +
->>> +	  If unsure, say N.
->>> diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
->>> index 9b118ee..69eae75 100644
->>> --- a/fs/nfsd/Makefile
->>> +++ b/fs/nfsd/Makefile
->>> @@ -5,7 +5,8 @@
->>> obj-$(CONFIG_NFSD)	+= nfsd.o
->>> 
->>> nfsd-y 			:= nfssvc.o nfsctl.o nfsproc.o nfsfh.o vfs.o \
->>> -			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o
->>> +			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o \
->>> +			   fault_inject.o
->>> nfsd-$(CONFIG_NFSD_V2_ACL) += nfs2acl.o
->>> nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
->>> nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
->>> diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
->>> new file mode 100644
->>> index 0000000..2139883
->>> --- /dev/null
->>> +++ b/fs/nfsd/fault_inject.c
->>> @@ -0,0 +1,102 @@
->>> +#ifdef CONFIG_NFSD_FAULT_INJECTION
->> 
->> The usual practice is to conditionally compile this source file via a Makefile variable, not by wrapping the whole source file in an ifdef.  You can see examples of this in the Makefile hunk above.
-> Yeah, I see that now (although I don't know how I missed it earlier).  Thanks!
-> 
->> 
->> General comment, though: would it make sense to add fault injection points to lockd as well?
-> That would probably be the easiest way to force lock recovery over v2 and v3, which sounds useful to me.
+21.09.2011 13:07, Stanislav Kinsbursky пишет:
+> v6:
+> 1) added write memory barrier to rpcb_set_local to make sure, that rpcbind
+> clients become valid before rpcb_users assignment
+> 2) explicitly set rpcb_users to 1 instead of incrementing it (looks clearer from
+> my pow).
+>
+> Notice: write memory barrier after zeroing rpcbind clients in rpcb_put_local()
+> is not required, since to users of them left. New user (service) will create new
+> clients before dereferencing them.
+>
+> This helpers will be used for dynamical creation and destruction of rpcbind
+> clients.
+> Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
+> clients has been created already, then we just increase rpcb_users.
+>
+> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>
+> ---
+>    net/sunrpc/rpcb_clnt.c |   54 ++++++++++++++++++++++++++++++++++++++++++++++++
+>    1 files changed, 54 insertions(+), 0 deletions(-)
+>
+> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+> index e45d2fb..9fcdb42 100644
+> --- a/net/sunrpc/rpcb_clnt.c
+> +++ b/net/sunrpc/rpcb_clnt.c
+> @@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
+>    static struct rpc_clnt *	rpcb_local_clnt;
+>    static struct rpc_clnt *	rpcb_local_clnt4;
+>
+> +DEFINE_SPINLOCK(rpcb_clnt_lock);
+> +unsigned int			rpcb_users;
+> +
+>    struct rpcbind_args {
+>    	struct rpc_xprt *	r_xprt;
+>
+> @@ -161,6 +164,57 @@ static void rpcb_map_release(void *data)
+>    	kfree(map);
+>    }
+>
+> +static int rpcb_get_local(void)
+> +{
+> +	int cnt;
+> +
+> +	spin_lock(&rpcb_clnt_lock);
+> +	if (rpcb_users)
+> +		rpcb_users++;
+> +	cnt = rpcb_users;
+> +	spin_unlock(&rpcb_clnt_lock);
+> +
+> +	return cnt;
+> +}
+> +
+> +void rpcb_put_local(void)
+> +{
+> +	struct rpc_clnt *clnt = rpcb_local_clnt;
+> +	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
+> +	int shutdown;
+> +
+> +	spin_lock(&rpcb_clnt_lock);
+> +	if (--rpcb_users == 0) {
+> +		rpcb_local_clnt = NULL;
+> +		rpcb_local_clnt4 = NULL;
+> +	}
+> +	shutdown = !rpcb_users;
+> +	spin_unlock(&rpcb_clnt_lock);
+> +
+> +	if (shutdown) {
+> +		/*
+> +		 * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
+> +		 */
+> +		if (clnt4)
+> +			rpc_shutdown_client(clnt4);
+> +		if (clnt)
+> +			rpc_shutdown_client(clnt);
+> +	}
+> +	return;
+> +}
+> +
+> +static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
+> +{
+> +	/* Protected by rpcb_create_local_mutex */
+> +	rpcb_local_clnt = clnt;
+> +	rpcb_local_clnt4 = clnt4;
+> +	smp_wmb();
+> +	rpcb_users = 1;
+> +	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
+> +			"%p, rpcb_local_clnt4: %p)\n", rpcb_local_clnt,
+> +			rpcb_local_clnt4);
+> +}
+> +
+>    /*
+>     * Returns zero on success, otherwise a negative errno value
+>     * is returned.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Useful, yes; but unfortunately that's not as simple as it sounds.  If you just want to hook into the reboot recovery code in fs/lockd/host.c, you need an additional parameter (which is managed by statd) to narrow the lock clearing to a single client.  Now, if you're thinking of clearing all locks and triggering a grace period, that might be easier to do.
-
->  I think I already have it on a todo list somewhere...
-> 
-> - Bryan
-> 
->> 
->>> +
->>> +#include <linux/types.h>
->>> +#include <linux/fs.h>
->>> +#include <linux/debugfs.h>
->>> +#include <linux/module.h>
->>> +
->>> +#include "state.h"
->>> +#include "nfsd.h"
->>> +
->>> +struct nfsd_fault_inject_op {
->>> +	char *action;
->>> +	char *item;
->>> +	char *file;
->>> +	int file_data;
->>> +	void (*func)(u64);
->>> +};
->>> +
->>> +#define INJECTION_OP(op_action, op_item, op_func)	\
->>> +{							\
->>> +	.action = op_action,				\
->>> +	.item   = op_item,				\
->>> +	.file   = op_action"_"op_item,			\
->>> +	.func   = op_func,				\
->>> +}
->>> +
->>> +static struct nfsd_fault_inject_op inject_ops[] = {
->>> +	INJECTION_OP("forget", "clients",     nfsd_forget_clients),
->>> +	INJECTION_OP("forget", "locks",       nfsd_forget_locks),
->>> +	INJECTION_OP("forget", "openowners",  nfsd_forget_openowners),
->>> +	INJECTION_OP("forget", "delegations", nfsd_forget_delegations),
->>> +	INJECTION_OP("recall", "delegations", nfsd_recall_delegations),
->>> +};
->>> +
->>> +static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
->>> +static struct dentry *debug_dir;
->>> +
->>> +static int nfsd_inject_set(void *data, u64 val)
->>> +{
->>> +	int i;
->>> +	struct nfsd_fault_inject_op *op;
->>> +
->>> +	for (i = 0; i < NUM_INJECT_OPS; i++) {
->>> +		op = &inject_ops[i];
->>> +		if (&op->file_data == data) {
->>> +			if (val == 0) {
->>> +				printk(KERN_INFO "NFSD: Server %sing all %s",
->>> +				op->action, op->item);
->>> +			} else {
->>> +				printk(KERN_INFO "NFSD: Server %sing at most %llu %s",
->>> +				op->action, val, op->item);
->>> +			}
->>> +			op->func(val);
->>> +		}
->>> +	}
->>> +	return 0;
->>> +}
->>> +
->>> +static int nfsd_inject_get(void *data, u64 *val)
->>> +{
->>> +	return 0;
->>> +}
->>> +
->>> +DEFINE_SIMPLE_ATTRIBUTE(fops_nfsd, nfsd_inject_get, nfsd_inject_set, "%llu\n");
->>> +
->>> +void nfsd_fault_inject_cleanup(void)
->>> +{
->>> +	debugfs_remove_recursive(debug_dir);
->>> +}
->>> +
->>> +int nfsd_fault_inject_init(void)
->>> +{
->>> +	unsigned int i;
->>> +	struct nfsd_fault_inject_op *op;
->>> +	mode_t mode = S_IFREG | S_IRUSR | S_IWUSR;
->>> +
->>> +	debug_dir = debugfs_create_dir("nfsd", NULL);
->>> +	if (!debug_dir)
->>> +		goto fail;
->>> +
->>> +	for (i = 0; i < NUM_INJECT_OPS; i++) {
->>> +		op = &inject_ops[i];
->>> +		debugfs_create_file(op->file, mode, debug_dir, &op->file_data, &fops_nfsd);
->>> +	}
->>> +	return 0;
->>> +
->>> +fail:
->>> +	nfsd_fault_inject_cleanup();
->>> +	return -ENOMEM;
->>> +}
->>> +
->>> +#else /* CONFIG_NFSD_FAULT_INJECTION */
->>> +
->>> +inline void nfsd_fault_inject_cleanup(void)
->>> +{}
->>> +
->>> +inline int nfsd_fault_inject_init(void)
->>> +{
->>> +	return 0;
->>> +}
->>> +
->>> +#endif /* CONFIG_NFSD_FAULT_INJECTION */
->>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->>> index 05f4c69..64fa6b0 100644
->>> --- a/fs/nfsd/nfs4state.c
->>> +++ b/fs/nfsd/nfs4state.c
->>> @@ -4358,6 +4358,121 @@ nfs4_check_open_reclaim(clientid_t *clid)
->>> 	return nfs4_find_reclaim_client(clid) ? nfs_ok : nfserr_reclaim_bad;
->>> }
->>> 
->>> +#ifdef CONFIG_NFSD_FAULT_INJECTION
->>> +
->>> +void nfsd_forget_clients(u64 num)
->>> +{
->>> +	struct nfs4_client *clp, *next;
->>> +	int count = 0;
->>> +
->>> +	nfs4_lock_state();
->>> +	list_for_each_entry_safe(clp, next, &client_lru, cl_lru) {
->>> +		nfsd4_remove_clid_dir(clp);
->>> +		expire_client(clp);
->>> +		if (++count == num)
->>> +			break;
->>> +	}
->>> +	nfs4_unlock_state();
->>> +
->>> +	printk(KERN_INFO "NFSD: Forgot %d clients", count);
->>> +}
->>> +
->>> +static void release_lockowner_sop(struct nfs4_stateowner *sop)
->>> +{
->>> +	release_lockowner(lockowner(sop));
->>> +}
->>> +
->>> +static void release_openowner_sop(struct nfs4_stateowner *sop)
->>> +{
->>> +	release_openowner(openowner(sop));
->>> +}
->>> +
->>> +static int nfsd_release_n_owners(u64 num,
->>> +				struct list_head hashtbl[],
->>> +				unsigned int hashtbl_size,
->>> +				void (*release_sop)(struct nfs4_stateowner *))
->>> +{
->>> +	int i, count = 0;
->>> +	struct nfs4_stateowner *sop, *next;
->>> +
->>> +	for (i = 0; i < hashtbl_size; i++) {
->>> +		list_for_each_entry_safe(sop, next, &hashtbl[i], so_strhash) {
->>> +			release_sop(sop);
->>> +			if (++count == num)
->>> +				return count;
->>> +		}
->>> +	}
->>> +	return count;
->>> +}
->>> +
->>> +void nfsd_forget_locks(u64 num)
->>> +{
->>> +	int count;
->>> +
->>> +	nfs4_lock_state();
->>> +	count = nfsd_release_n_owners(num, lock_ownerstr_hashtbl,
->>> +				     LOCK_HASH_SIZE, release_lockowner_sop);
->>> +	nfs4_unlock_state();
->>> +
->>> +	printk(KERN_INFO "NFSD: Forgot %d locks", count);
->>> +}
->>> +
->>> +void nfsd_forget_openowners(u64 num)
->>> +{
->>> +	int count;
->>> +
->>> +	nfs4_lock_state();
->>> +	count = nfsd_release_n_owners(num, open_ownerstr_hashtbl,
->>> +				     OPEN_OWNER_HASH_SIZE, release_openowner_sop);
->>> +	nfs4_unlock_state();
->>> +
->>> +	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
->>> +}
->>> +
->>> +int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegation *))
->>> +{
->>> +	int i, count = 0;
->>> +	struct nfs4_file *fp;
->>> +	struct nfs4_delegation *dp, *next;
->>> +
->>> +	for (i = 0; i < FILE_HASH_SIZE; i++) {
->>> +		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
->>> +			list_for_each_entry_safe(dp, next, &fp->fi_delegations, dl_perfile) {
->>> +				deleg_func(dp);
->>> +				if (++count == num)
->>> +					return count;
->>> +			}
->>> +		}
->>> +	}
->>> +	return count;
->>> +}
->>> +
->>> +void nfsd_forget_delegations(u64 num)
->>> +{
->>> +	unsigned int count;
->>> +
->>> +	nfs4_lock_state();
->>> +	count = nfsd_process_n_delegations(num, unhash_delegation);
->>> +	nfs4_unlock_state();
->>> +
->>> +	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
->>> +}
->>> +
->>> +void nfsd_recall_delegations(u64 num)
->>> +{
->>> +	unsigned int count;
->>> +
->>> +	nfs4_lock_state();
->>> +	spin_lock(&recall_lock);
->>> +	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg);
->>> +	spin_unlock(&recall_lock);
->>> +	nfs4_unlock_state();
->>> +
->>> +	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
->>> +}
->>> +
->>> +#endif /* CONFIG_NFSD_FAULT_INJECTION */
->>> +
->>> /* initialization to perform at module load time: */
->>> 
->>> int
->>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
->>> index db34a58..e2f1b5a 100644
->>> --- a/fs/nfsd/nfsctl.c
->>> +++ b/fs/nfsd/nfsctl.c
->>> @@ -1130,6 +1130,9 @@ static int __init init_nfsd(void)
->>> 	retval = nfs4_state_init(); /* nfs4 locking state */
->>> 	if (retval)
->>> 		return retval;
->>> +	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
->>> +	if (retval)
->>> +		goto out_cleanup_fault_injection;
->>> 	nfsd_stat_init();	/* Statistics */
->>> 	retval = nfsd_reply_cache_init();
->>> 	if (retval)
->>> @@ -1161,6 +1164,8 @@ out_free_cache:
->>> out_free_stat:
->>> 	nfsd_stat_shutdown();
->>> 	nfsd4_free_slabs();
->>> +out_cleanup_fault_injection:
->>> +	nfsd_fault_inject_cleanup();
->>> 	return retval;
->>> }
->>> 
->>> @@ -1174,6 +1179,7 @@ static void __exit exit_nfsd(void)
->>> 	nfsd_lockd_shutdown();
->>> 	nfsd_idmap_shutdown();
->>> 	nfsd4_free_slabs();
->>> +	nfsd_fault_inject_cleanup();
->>> 	unregister_filesystem(&nfsd_fs_type);
->>> }
->>> 
->>> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
->>> index 58134a2..3ea303d 100644
->>> --- a/fs/nfsd/nfsd.h
->>> +++ b/fs/nfsd/nfsd.h
->>> @@ -105,11 +105,18 @@ static inline int nfsd_v4client(struct svc_rqst *rq)
->>> #ifdef CONFIG_NFSD_V4
->>> extern unsigned int max_delegations;
->>> int nfs4_state_init(void);
->>> +int nfsd_fault_inject_init(void);
->>> +void nfsd_fault_inject_cleanup(void);
->>> void nfsd4_free_slabs(void);
->>> int nfs4_state_start(void);
->>> void nfs4_state_shutdown(void);
->>> void nfs4_reset_lease(time_t leasetime);
->>> int nfs4_reset_recoverydir(char *recdir);
->>> +void nfsd_forget_clients(u64);
->>> +void nfsd_forget_locks(u64);
->>> +void nfsd_forget_openowners(u64);
->>> +void nfsd_forget_delegations(u64);
->>> +void nfsd_recall_delegations(u64);
->>> #else
->>> static inline int nfs4_state_init(void) { return 0; }
->>> static inline void nfsd4_free_slabs(void) { }
->>> @@ -117,6 +124,11 @@ static inline int nfs4_state_start(void) { return 0; }
->>> static inline void nfs4_state_shutdown(void) { }
->>> static inline void nfs4_reset_lease(time_t leasetime) { }
->>> static inline int nfs4_reset_recoverydir(char *recdir) { return 0; }
->>> +static inline void nfsd_forget_clients(u64) {}
->>> +static inline void nfsd_forget_locks(u64) {}
->>> +static inline void nfsd_forget_openowners(u64) {}
->>> +static inline void nfsd_forget_delegations(u64) {}
->>> +static inline void nfsd_recall_delegations(u64) {}
->>> #endif
->>> 
->>> /*
->>> -- 
->>> 1.7.6.4
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
-> 
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Best regards,
+Stanislav Kinsbursky
