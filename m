@@ -1,171 +1,125 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:51098 "EHLO e4.ny.us.ibm.com"
+Received: from mx1.redhat.com ([209.132.183.28]:21858 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751684Ab1IVRQ1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Sep 2011 13:16:27 -0400
-Subject: Re: [PATCH 1/6] leases: split up generic_setlease into lock/unlock
- cases
-From: Mimi Zohar <zohar@linux.vnet.ibm.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        samba-technical@lists.samba.org, Christoph Hellwig <hch@infradead.org>,
-        Al Viro <viro@zeniv.linux.org.uk>
-In-Reply-To: <1316617097-21384-2-git-send-email-bfields@redhat.com>
-References: <1316617097-21384-1-git-send-email-bfields@redhat.com>
-	 <1316617097-21384-2-git-send-email-bfields@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 22 Sep 2011 13:16:14 -0400
-Message-ID: <1316711774.3159.52.camel@localhost.localdomain>
+	id S1751995Ab1IWQZi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Sep 2011 12:25:38 -0400
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 1/7] NFS4: Revert commit to make the automount code ignore
+ LOOKUP_FOLLOW
+To: miklos@szeredi.hu, raven@themaw.net, viro@ZenIV.linux.org.uk,
+        torvalds@linux-foundation.org
+Cc: dhowells@redhat.com, jlayton@redhat.com, gregkh@suse.de,
+        linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
+Date: Fri, 23 Sep 2011 17:24:51 +0100
+Message-ID: <20110923162451.13574.33960.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20110923162438.13574.52985.stgit@warthog.procyon.org.uk>
+References: <20110923162438.13574.52985.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-09-21 at 10:58 -0400, J. Bruce Fields wrote: 
-> Eventually we should probably do the same thing to the file operations
-> as well.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/locks.c |   98 ++++++++++++++++++++++++++++++++++++++----------------------
->  1 files changed, 62 insertions(+), 36 deletions(-)
-> 
-> diff --git a/fs/locks.c b/fs/locks.c
-> index 9b8408e..b342902 100644
-> --- a/fs/locks.c
-> +++ b/fs/locks.c
-> @@ -1352,18 +1352,7 @@ int fcntl_getlease(struct file *filp)
->  	return type;
->  }
-> 
-> -/**
-> - *	generic_setlease	-	sets a lease on an open file
-> - *	@filp: file pointer
-> - *	@arg: type of lease to obtain
-> - *	@flp: input - file_lock to use, output - file_lock inserted
-> - *
-> - *	The (input) flp->fl_lmops->lm_break function is required
-> - *	by break_lease().
-> - *
-> - *	Called with file_lock_lock held.
-> - */
-> -int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
-> +int generic_add_lease(struct file *filp, long arg, struct file_lock **flp)
->  {
->  	struct file_lock *fl, **before, **my_before = NULL, *lease;
->  	struct dentry *dentry = filp->f_path.dentry;
-> @@ -1372,30 +1361,14 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
-> 
->  	lease = *flp;
-> 
-> -	error = -EACCES;
-> -	if ((current_fsuid() != inode->i_uid) && !capable(CAP_LEASE))
-> -		goto out;
-> -	error = -EINVAL;
-> -	if (!S_ISREG(inode->i_mode))
-> +	error = -EAGAIN;
-> +	if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
->  		goto out;
-> -	error = security_file_lock(filp, arg);
-> -	if (error)
-> +	if ((arg == F_WRLCK)
-> +	    && ((dentry->d_count > 1)
-> +		|| (atomic_read(&inode->i_count) > 1)))
->  		goto out;
-> 
-> -	time_out_leases(inode);
-> -
-> -	BUG_ON(!(*flp)->fl_lmops->lm_break);
-> -
-> -	if (arg != F_UNLCK) {
-> -		error = -EAGAIN;
-> -		if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
-> -			goto out;
-> -		if ((arg == F_WRLCK)
-> -		    && ((dentry->d_count > 1)
-> -			|| (atomic_read(&inode->i_count) > 1)))
-> -			goto out;
-> -	}
-> -
->  	/*
->  	 * At this point, we know that if there is an exclusive
->  	 * lease on this file, then we hold it on this filp
-> @@ -1433,9 +1406,6 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
->  		goto out;
->  	}
-> 
-> -	if (arg == F_UNLCK)
-> -		goto out;
-> -
->  	error = -EINVAL;
->  	if (!leases_enable)
->  		goto out;
-> @@ -1446,6 +1416,62 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
->  out:
->  	return error;
->  }
-> +
-> +int generic_delete_lease(struct file *filp, struct file_lock **flp)
-> +{
-> +	struct file_lock *fl, **before;
-> +	struct dentry *dentry = filp->f_path.dentry;
-> +	struct inode *inode = dentry->d_inode;
-> +
-> +	for (before = &inode->i_flock;
-> +			((fl = *before) != NULL) && IS_LEASE(fl);
-> +			before = &fl->fl_next) {
-> +		if (fl->fl_file != filp)
-> +			continue;
-> +		return (*flp)->fl_lmops->lm_change(before, F_UNLCK);
-> +	}
-> +	return -EAGAIN;
-> +}
-> +
-> +/**
-> + *	generic_setlease	-	sets a lease on an open file
-> + *	@filp: file pointer
-> + *	@arg: type of lease to obtain
-> + *	@flp: input - file_lock to use, output - file_lock inserted
-> + *
-> + *	The (input) flp->fl_lmops->lm_break function is required
-> + *	by break_lease().
-> + *
-> + *	Called with file_lock_lock held.
-> + */
-> +int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
-> +{
-> +	struct dentry *dentry = filp->f_path.dentry;
-> +	struct inode *inode = dentry->d_inode;
-> +	int error;
-> +
-> +	if ((current_fsuid() != inode->i_uid) && !capable(CAP_LEASE))
-> +		return -EACCES;
-> +	if (!S_ISREG(inode->i_mode))
-> +		return -EINVAL;
-> +	error = security_file_lock(filp, arg);
-> +	if (error)
-> +		return error;
-> +
-> +	time_out_leases(inode);
-> +
-> +	BUG_ON(!(*flp)->fl_lmops->lm_break);
-> +
-> +	switch (arg) {
-> +	case F_UNLCK:
-> +		return generic_delete_lease(filp, flp);
-> +	case F_RDLCK:
-> +	case F_WRLCK:
-> +		return generic_add_lease(filp, arg, flp);
-> +	default:
-> +		BUG();
-> +	}
-> +}
->  EXPORT_SYMBOL(generic_setlease);
-> 
->  static int __vfs_setlease(struct file *filp, long arg, struct file_lock **lease)
+Revert the following change:
 
-Nice, the code refactoring makes it a lot more readable.
+	commit 0ec26fd0698285b31248e34bf1abb022c00f23d6
+	Author: Miklos Szeredi <mszeredi@suse.cz>
+	Date:   Mon Sep 5 18:06:26 2011 +0200
+	Subject: vfs: automount should ignore LOOKUP_FOLLOW
 
-thanks,
+which makes stat(), getxattr(), etc. behave as lstat(), lgetxattr(), etc. with
+respect to automounting: it prevents them from triggering terminal automounts.
 
-Mimi 
+The problem with this is that this breaks nfs_follow_remote_path() used by NFS4
+to find the root object to mount for the mount() syscall.
+
+This can be tested by the following procedure:
+
+ (1) Export a directory from an NFS4 server that has something mounted upon it
+     and that isn't "/" - say, for example, "/scratch".  It must have a
+     different FSID from "/".
+
+ (2) Mount this on the client.
+
+	mount sirius:/scratch /mnt
+
+ (3) List the contents of the client's mountpoint:
+
+	ls /mnt
+
+ (4) Examine /proc/fs/nfsfs/volumes.  You should see one entry (assuming
+     nothing else is NFS mounted) :
+
+	NV SERVER   PORT DEV     FSID              FSC
+	v4 200108b001940000021125fffe84efad  801 0:34    1:0               no
+
+     which corresponds to the filesystem mounted on /scratch on the server.
+
+     If, however, you see two entries:
+
+	NV SERVER   PORT DEV     FSID              FSC
+	v4 200108b001940000021125fffe84efad  801 0:33    0:0               no
+	v4 200108b001940000021125fffe84efad  801 0:34    1:0               no
+
+     then it went wrong.
+
+When it goes wrong, what happens is that nfs_follow_remote_path() walks from
+the rootfh to the remote directory (/scratch) using vfs_path_lookup().  It
+passes LOOKUP_FOLLOW to vfs_path_lookup() to tell it to transit terminal
+symlinks and terminal automounts.  Unfortunately, with the problematic commit,
+LOOKUP_FOLLOW now expressly does not follow terminal automounts, and so the
+dummy automount directory fabricated in fsid 0:0 gets mounted instead of the
+root of fsid 1:0.
+
+Reported-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
+
+ fs/namei.c |   33 ++++++++++++++++++---------------
+ 1 files changed, 18 insertions(+), 15 deletions(-)
+
+diff --git a/fs/namei.c b/fs/namei.c
+index f478836..c64b81d 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -727,22 +727,25 @@ static int follow_automount(struct path *path, unsigned flags,
+ 	if ((flags & LOOKUP_NO_AUTOMOUNT) && !(flags & LOOKUP_PARENT))
+ 		return -EISDIR; /* we actually want to stop here */
+ 
+-	/* We don't want to mount if someone's just doing a stat -
+-	 * unless they're stat'ing a directory and appended a '/' to
+-	 * the name.
+-	 *
+-	 * We do, however, want to mount if someone wants to open or
+-	 * create a file of any type under the mountpoint, wants to
+-	 * traverse through the mountpoint or wants to open the
+-	 * mounted directory.  Also, autofs may mark negative dentries
+-	 * as being automount points.  These will need the attentions
+-	 * of the daemon to instantiate them before they can be used.
++	/*
++	 * We don't want to mount if someone's just doing a stat and they've
++	 * set AT_SYMLINK_NOFOLLOW - unless they're stat'ing a directory and
++	 * appended a '/' to the name.
+ 	 */
+-	if (!(flags & (LOOKUP_PARENT | LOOKUP_DIRECTORY |
+-		     LOOKUP_OPEN | LOOKUP_CREATE)) &&
+-	    path->dentry->d_inode)
+-		return -EISDIR;
+-
++	if (!(flags & LOOKUP_FOLLOW)) {
++		/* We do, however, want to mount if someone wants to open or
++		 * create a file of any type under the mountpoint, wants to
++		 * traverse through the mountpoint or wants to open the mounted
++		 * directory.
++		 * Also, autofs may mark negative dentries as being automount
++		 * points.  These will need the attentions of the daemon to
++		 * instantiate them before they can be used.
++		 */
++		if (!(flags & (LOOKUP_PARENT | LOOKUP_DIRECTORY |
++			     LOOKUP_OPEN | LOOKUP_CREATE)) &&
++		    path->dentry->d_inode)
++			return -EISDIR;
++	}
+ 	current->total_link_count++;
+ 	if (current->total_link_count >= 40)
+ 		return -ELOOP;
 
