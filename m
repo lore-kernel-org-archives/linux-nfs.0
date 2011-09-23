@@ -1,90 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:37785 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753148Ab1IIFUS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Sep 2011 01:20:18 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: agruen@kernel.org, akpm@linux-foundation.org, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V6 09/26] vfs: Add delete child and delete self permission flags
-In-Reply-To: <20110908220246.GD17215@fieldses.org>
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1315243548-18664-10-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20110907203916.GE8074@fieldses.org> <87ipp35qjx.fsf@skywalker.in.ibm.com> <20110908200754.GB17215@fieldses.org> <20110908220246.GD17215@fieldses.org>
-Date: Fri, 09 Sep 2011 10:49:19 +0530
-Message-ID: <87r53q47jc.fsf@skywalker.in.ibm.com>
+Received: from merit-proxy02.merit.edu ([207.75.116.194]:33429 "EHLO
+	merit-proxy02.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753440Ab1IWMWs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2011 08:22:48 -0400
+Date: Fri, 23 Sep 2011 08:22:45 -0400
+From: Jim Rees <rees@umich.edu>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH 06/10] pnfsblock: init pg_bsize properly
+Message-ID: <20110923122245.GA15997@merit.edu>
+References: <1316742617-14766-1-git-send-email-rees@umich.edu>
+ <1316742617-14766-7-git-send-email-rees@umich.edu>
+ <4E7C1766.1080501@panasas.com>
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E7C1766.1080501@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 8 Sep 2011 18:02:46 -0400, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Thu, Sep 08, 2011 at 04:07:54PM -0400, J. Bruce Fields wrote:
-> > On Thu, Sep 08, 2011 at 03:00:58PM +0530, Aneesh Kumar K.V wrote:
-> > > On Wed, 7 Sep 2011 16:39:16 -0400, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > > On Mon, Sep 05, 2011 at 10:55:31PM +0530, Aneesh Kumar K.V wrote:
-> > > > > +static int may_delete(struct inode *dir, struct dentry *victim,
-> > > > > +		      int isdir, int replace)
-> > > > >  {
-> > > > > -	int error;
-> > > > > +	int mask, error, is_sticky;
-> > > > > +	struct inode *inode = victim->d_inode;
-> > > > >  
-> > > > > -	if (!victim->d_inode)
-> > > > > +	if (!inode)
-> > > > >  		return -ENOENT;
-> > > > >  
-> > > > >  	BUG_ON(victim->d_parent->d_inode != dir);
-> > > > >  	audit_inode_child(victim, dir);
-> > > > >  
-> > > > > -	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
-> > > > > +	mask = MAY_WRITE | MAY_EXEC | MAY_DELETE_CHILD;
-> > > > > +	if (replace)
-> > > > > +		mask |= S_ISDIR(inode->i_mode) ?
-> > > > > +			MAY_CREATE_DIR : MAY_CREATE_FILE;
-> > > > 
-> > > > I'm having trouble understanding this next bit:
-> > > > 
-> > > > > +	is_sticky = check_sticky(dir, inode);
-> > > > > +	error = inode_permission(dir, mask);
-> > > > > +	if ((error || is_sticky) && IS_RICHACL(inode) &&
-> > > > > +	    !inode_permission(dir, mask & ~(MAY_WRITE | MAY_DELETE_CHILD)) &&
-> > > > > +	    !inode_permission(inode, MAY_DELETE_SELF))
-> > > > > +		error = 0;
-> > > > 
-> > > > OK, so we can ignore the lack of write or delete permissions on the
-> > > > parent if we have delete_self permissions on the child.  I guess that's
-> > > > right.
-> > > > 
-> > > > Why the "|| is_sticky" above?
-> > > > 
-> > > > Is there some less complicated why to write this?
-> > > 
-> > > we removed the ns_capable check out of check_sticky, because we don't
-> > > want to do capability check when richacl allows access. We also want to
-> > > make sure that even if mode bits allow access (inode_permission(dir, mask))
-> > > if sticky bit is set we do additional check.
-> > 
-> > Why are the two inode_permissions ANDed?  The windows semantics are that
-> > you can delete if you have MAY_DELETE_CHILD *or* MAY_DELETE_SELF.
-> 
-> Either way, those conditions are just really hard to follow.  Could you
-> simplify the logic, add comments, maybe move the richacl stuff into a
-> little helper function?
-> 
-> Also, a nit:
-> 
-> > > > > +	    !inode_permission(dir, mask & ~(MAY_WRITE | MAY_DELETE_CHILD)) &&
-> 
-> The way you calculated mask above it always includes MAY_WRITE and
-> MAY_DELETE_CHILD, so the above is equivalent to just
-> 
-> 		    !inode_permission(dir, MAY_WRITE | MAY_DELETE_CHILD) &&
-> 
-> isn't it?
-> 
+Boaz Harrosh wrote:
 
-I guess i can simplify it as 
-  !inode_permission(dir, MAY_EXEC | replace_mask)
+  On 09/23/2011 04:50 AM, Jim Rees wrote:
+  > From: Peng Tao <bergwolf@gmail.com>
+  > 
+  > pg_bsize is server->wsize/rsize by default. We would want to use the lseg
+  > length.
+  > 
+  > Signed-off-by: Peng Tao <peng_tao@emc.com>
+  > Signed-off-by: Jim Rees <rees@umich.edu>
   
--aneesh
+  If you want to get lazy about this patch and take the easy way out.
+  The least you can do is supply the same fix to that other place
+  that has the same bug.
+  
+  This is not nice. You have identified a deficiency in the generic
+  layer, You know that objects would have the same bug, (because I told you)
+  and you just don't care. I have spent plenty of times slaving over
+  blocks code when changing or fixing generic layer. (And Benny even more
+  then me)
+  
+  And when you will actually send a patch that does exactly the same in
+  two places, which access only generic members, you might see that it
+  might be better to fix it in a single place at the generic layer.
+  
+  NACK. I'm ok with getting lazy like below, but only if you also
+  add the same code to objio_osd.c
+
+Sorry, I sent the wrong patch.  Trond, please drop this one.
