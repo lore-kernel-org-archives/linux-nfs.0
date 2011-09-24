@@ -1,106 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:42087 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754138Ab1IJHOV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 10 Sep 2011 03:14:21 -0400
-Received: by qyk30 with SMTP id 30so694974qyk.19
-        for <linux-nfs@vger.kernel.org>; Sat, 10 Sep 2011 00:14:20 -0700 (PDT)
-Message-ID: <4E6B0E48.7050208@tonian.com>
-Date: Sat, 10 Sep 2011 00:14:16 -0700
-From: Benny Halevy <bhalevy@tonian.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: tao.peng@emc.com, gusev.vitaliy@nexenta.com, gusev.vitaliy@gmail.com,
-        linux-nfs@vger.kernel.org, bergwolf@gmail.com
-Subject: Re: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
-References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com>  <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com>  <1315348373.19556.22.camel@lade.trondhjem.org>  <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com>  <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com>  <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com>  <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com>  <F19688880B763E40B28B2B462677FBF805C3299D2F@MX09A.corp.emc.com> <1315592430.17611.15.camel@lade.trondhjem.org>
-In-Reply-To: <1315592430.17611.15.camel@lade.trondhjem.org>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:49762 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752603Ab1IXARZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2011 20:17:25 -0400
+Received: by wyg34 with SMTP id 34so4430452wyg.19
+        for <linux-nfs@vger.kernel.org>; Fri, 23 Sep 2011 17:17:24 -0700 (PDT)
+Date: Fri, 23 Sep 2011 17:17:24 -0700
+Message-ID: <CAOB=RsJUwPsU4gjnW208wYJ-VCsbRovyg3xEfHn2boWwGicZ=w@mail.gmail.com>
+Subject: NFSv4 read delegation
+From: Sukwoo Kang <sukwoo.kang@gmail.com>
+To: linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-09-09 11:20, Trond Myklebust wrote:
-> On Thu, 2011-09-08 at 23:11 -0400, tao.peng@emc.com wrote: 
->> HI, Trond,
->>
->>> -----Original Message-----
->>> From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
->>> Sent: Friday, September 09, 2011 1:05 AM
->>> To: Peng Tao
->>> Cc: Peng, Tao; gusev.vitaliy@nexenta.com; gusev.vitaliy@gmail.com;
->>> linux-nfs@vger.kernel.org
->>> Subject: RE: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
->>>
->>>> -----Original Message-----
->>>> From: Peng Tao [mailto:bergwolf@gmail.com]
->>>> Sent: Thursday, September 08, 2011 11:00 AM
->>>> To: Myklebust, Trond
->>>> Cc: tao.peng@emc.com; gusev.vitaliy@nexenta.com;
->>>> gusev.vitaliy@gmail.com; linux-nfs@vger.kernel.org
->>>> Subject: Re: [PATCH] nfs: fix inifinite loop at
->>>> nfs4_layoutcommit_release
->>>>
->>>> On Thu, Sep 8, 2011 at 8:01 PM, Myklebust, Trond
->>>> <Trond.Myklebust@netapp.com> wrote:
->>>>>> -----Original Message-----
->>>>
->>>>>
->>>>> Yes, but as far as I can see, even in the blocks case there can be
->>>> multiple extents per layout segment. What if I write to one
->>>> uninitialised extent, layoutcommit, then write to another uninitialized
->>>> extent in the same layout segment and layoutcommit? In my reading of
->>>> the code, there is a chance that the second layoutcommit will fail to
->>>> pick up the layout segment, and so will fail to notify the MDS that the
->>>> second extent now contains data.
->>>>
->>>> blocklayout does not decide what to layoutcommit according to the lseg
->>>> list. Instead, it keeps track of each extent's state at the
->>>> granularity of blocksize, and encode whatever needs layoutcommitted in
->>>> the layoutcommit call. So in your above case, as long as the second
->>>> layoutcommit is issued, blocklayout will encode the newly written
->>>> extent in the second layoutcommit call, even if the lseg is not
->>>> attached to the second layoutcommit.
->>>>
->>>> But that leads to another two question:
->>>> 1. How do we protect against layoutrecall if lseg is not linked to
->>>> layoutcommit? For this one, can we just reject layoutrecall if there
->>>> is inflight layoutcommit? It will be less parallel but can guarantee
->>>> current implementation correctness.
->>>> 2. blocklayout ONLY: bl_committing may be overloaded by several
->>>> layoutcommit calls and we don't have information in
->>>> cleanup_layoutcommit() on how many entry should be removed from
->>>> bl_committing. Maybe we can add a (void*) to struct
->>>> nfs4_layoutcommit_data, so that LD can pass some private information
->>>> between encode_layoutcommit() and cleanup_layoutcommit()?
->>>
->>> 3. What is the purpose of pinning the layout segment at all if neither blocks, nor
->>> objects nor files cares?
->> I believe it is for protecting against layoutrecall. But since we are seperating lseg and LD specific layout information management, it is actually not working as expected.
->>
+Hello, I'm trying to find out how NFSv4 client can get read
+delegation. I'm using separate RHEL6 machines (2.6.32-71.el6.x86_64)
+as server and client respectively.
 
-The layout segments are not really in use while in LAYOUTCOMMIT.
-We only need to get the stateid right with respect to concurrent layout recalls.
+If I use pynfs, I can see server gives out read delegation. Basically
+pynfs sends these RPCs to server - open (create), open_confirm, open,
+open_confirm.
 
->>> IOW: if both objects and blocks track the information that they need for
->>> layoutcommit outside the layout segments, then why do we need the
->>> NFS_LSEG_LAYOUTCOMMIT bit and pls_lc_list at all?
->> If we remove NFS_LSEG_LAYOUTCOMMIT bit and pls_lc_list, we must find other method to protect agains freeing lseg while layoutcommit is needed or is going on. e.g., check for NFS_INO_LAYOUTCOMMIT bit and inflight layoutcommit in initiate_file_draining().
-> 
-> The easiest solution is to ensure we have only _one_ LAYOUTCOMMIT on the
-> wire at a time. Otherwise, you are looking at a many-to-many mapping
-> between layoutcommits and lsegs.
-> 
-> We should not expect to need multiple layoutcommits on the wire if pNFS
-> is working smoothly (i.e. no layout recalls), so optimising for that
-> case is wrong.
-> I'd also think that we want to order layoutcommit and ordinary commits
-> (for those NFS files servers that require both) so that we don't end up
-> writing a file size change to disk before the actual data is committed.
-> 
-> So why not just protect the layoutcommit call using the existing
-> nfs_commit_set_lock/nfs_commit_clear_lock?
-> 
+On real NFS client,
 
-Sounds good to me,
+If I do 'cat <file>' twice, client does not get read delegation.
+	- (nfs4state.c)
+	- if (!cb_up || !sop->so_confirmed)
+		goto out;
+	- Here sop->so_confirmed is 0.
 
-Benny
+If I open the existing file with O_RDONLY twice (i.e., open, not close
+it and open again), client sends open only once to server.
+	- So here also sop->so_confirmed is 0. Delegation is not sent out.
+(I've added more debug messages shown in below.)
+
+2011-09-23T22:41:44.642938+02:00 int002st001 kernel: NFSD:
+nfs4_open_delegation enter
+2011-09-23T22:41:44.642942+02:00 int002st001 kernel: NFSD: nfs4_open_claim_null
+2011-09-23T22:41:44.643853+02:00 int002st001 kernel: NFSD: cb_up=1,
+sop->so_confirmed=0
+2011-09-23T22:41:44.643857+02:00 int002st001 kernel: NFSD: either
+callback is not up or not open confirmed
+2011-09-23T22:41:44.643858+02:00 int002st001 kernel: NFSD:
+nfs4_open_delegation exit
+
+If I open the existing file with O_RDWR and then open it with
+O_RDONLY, I can see "sop->so_confirmed = 1", but setlease failed.
+	- I think it is because there is writer on this file.
+
+2011-09-23T11:23:28.116280+02:00 int002st001 kernel: NFSD:
+nfs4_open_delegation enter
+2011-09-23T11:23:28.116717+02:00 int002st001 kernel: NFSD: nfs4_open_claim_null
+2011-09-23T11:23:28.117879+02:00 int002st001 kernel: NFSD: cb_up=1,
+sop->so_confirmed=1
+2011-09-23T11:23:28.117887+02:00 int002st001 kernel: NFSD alloc_init_deleg
+2011-09-23T11:23:28.117889+02:00 int002st001 kernel: NFSD: setlease
+failed [-11], no delegation
+2011-09-23T11:23:28.119101+02:00 int002st001 kernel: NFSD:
+close_delegation dp ffff88006ba05e60
+2011-09-23T11:23:28.119109+02:00 int002st001 kernel: NFSD: freeing dp
+ffff88006ba05e60
+2011-09-23T11:23:28.120050+02:00 int002st001 kernel: NFSD:
+nfs4_open_delegation exit
+
+What is missing here? I will appreciate any advice. Thank you.
+	
+Regards,
+Sukwoo Kang
