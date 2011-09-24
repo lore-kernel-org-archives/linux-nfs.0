@@ -1,67 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:40732 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750957Ab1ITNww (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Sep 2011 09:52:52 -0400
-Date: Tue, 20 Sep 2011 09:52:52 -0400
-To: =?utf-8?Q?R=C3=BCdiger?= Meier <sweet_f_a@gmx.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: processes hanging in state D when reading from nfs
-Message-ID: <20110920135252.GB12422@fieldses.org>
-References: <201108272122.53243.sweet_f_a@gmx.de>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <201108272122.53243.sweet_f_a@gmx.de>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from out2.smtp.messagingengine.com ([66.111.4.26]:50652 "EHLO
+	out2.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751257Ab1IXBbC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2011 21:31:02 -0400
+Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
+From: Ian Kent <raven@themaw.net>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: David Howells <dhowells@redhat.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Jeff Layton <jlayton@redhat.com>, viro@zeniv.linux.org.uk,
+        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
+In-Reply-To: <87hb43tf2g.fsf@tucsk.pomaz.szeredi.hu>
+References: <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com>
+	 <1316747758.3346.89.camel@perseus.themaw.net>
+	 <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
+	 <1316707443.3346.44.camel@perseus.themaw.net>
+	 <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
+	 <1316709935.3346.48.camel@perseus.themaw.net>
+	 <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
+	 <20110922144453.6cf53a25@barsoom.rdu.redhat.com>
+	 <1316719228.3968.14.camel@lade.trondhjem.org>
+	 <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
+	 <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
+	 <21772.1316774025@redhat.com>
+	 <1316788444.14812.10.camel@lade.trondhjem.org>
+	 <29743.1316791138@redhat.com>  <87hb43tf2g.fsf@tucsk.pomaz.szeredi.hu>
+Content-Type: text/plain; charset="UTF-8"
+Date: Sat, 24 Sep 2011 09:30:54 +0800
+Message-ID: <1316827854.3346.154.camel@perseus.themaw.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, Aug 27, 2011 at 09:22:53PM +0200, Rüdiger Meier wrote:
-> I've got an annoying problem with my nfs4 clients.
-> Lately I see many processes hanging in state D when reading from nfs
-> mount. Sometimes they can be killed sometimes not.
+On Fri, 2011-09-23 at 18:10 +0200, Miklos Szeredi wrote:
+> David Howells <dhowells@redhat.com> writes:
+> 
+> >> Get a grip, people. Stop over-analyzing things. Stop bothering to
+> >> mention what Solaris does, when the *MUCH* bigger issue is what
+> >> *Linux* has done for years and years.
+> >
+> > So the word is Linux may not change it's behaviour in this regard from what
+> > existed prior to the d_automount patch, period?
+> 
+> You can change behavior if it won't cause regressions.  So fix userspace
+> first, introduce change afterwards.
 
-Is this still happening?
+Easy to say, not so easy to do.
 
-> This occurs mostly whith shell scripts started by cron.
 > 
-> For example on one machine there is a file where suddenly all reads on
-> it are hanging, ls -ls still works:
+> >> Stop saying "we'll revert Miklos patch" in the same sentence where you
+> >> then seem to not even understand that the *original* behavior was the
+> >> one that Miklos patch re-introduced.
+> >
+> > Miklos's patch did *NOT* re-introduce the original behaviour.  It introduced a
+> > third state.  It merely moved the regression and brought about a more serious
+> > one.
 > 
-> rwxr-xr-x 1 tk users 128 2010-09-08 15:54 /home/tk/usr/local/scripts/plain_ALLMAJOR.sh
-> 
-> As you see it's an old script, not modified since long time. It was
-> running a few times per day since months.
-> 
-> Now this is the processlist:
-> 
-> tk        8829  0.0  0.0  11372   800 ?        Ds   Aug25   0:00 /bin/sh -c ~/usr/local/scripts/plain_ALLMAJOR.sh
-> tk        8830  0.0  0.0  11372   824 ?        Ds   Aug25   0:00 /bin/sh -c ~/usr/local/scripts/plain_ALLMAJOR.sh
-> tk       18864  0.0  0.0  11372   844 ?        Ds   Aug26   0:00 /bin/sh -c ~/usr/local/scripts/plain_ALLMAJOR.sh
-> tk       18865  0.0  0.0  11372   860 ?        Ds   Aug26   0:00 /bin/sh -c ~/usr/local/scripts/plain_ALLMAJOR.sh
-> rudi     23745  0.0  0.0  10300   748 pts/20   D    20:39   0:00 file /home/tk/usr/local/scripts/plain_ALLMAJOR.sh
-> rudi     24361  0.0  0.0  10300   748 pts/20   D    20:40   0:00 file /home/tk/usr/local/scripts/plain_ALLMAJOR.sh
-> root     30417  0.0  0.0  10056   472 ?        D    Aug24   0:00 less /home/tk/usr/local/scripts/plain_ALLMAJOR.sh
-> rudi     30569  0.0  0.0  10064  1128 pts/1    D+   20:41   0:00 less /home/tk/usr/local/scripts/plain_ALLMAJOR.sh
-> 
-> The /bin/sh processes are hanging forever in state "Ds" but can be killed.
-> The less and file commands can't be killed.
-> On other clients I can read that file without probs.
-> 
-> The logs on server and clients don't tell me anything.
-> What can I do to find out what's the problem?
+> Yes, and there have been lots of proposals on how to fix it.  There just
+> doesn't seem to be a consensus.
 
-Running wireshark and watching the network traffic may sometimes give an
-idea whether the client or server is to blame.
+Indeed, that's probably because of (as Linus says) the empirically
+derived division of system calls that do and do not trigger an
+automount, for cases where there is a question of whether to automount
+or not. The old ill defined moving target.
 
-> BTW each hanging process increases the load by 1 but the affected machines
-> are still quite usable even with a load of 800 on a single core CPU!
 > 
-> 
-> here my specs:
-> 2.6.37.6-0.7-desktop
-> openSUSE 11.4 (x86_64)
+> I suggest that we first restore the original behavior for all
+> filesystems.  And it doesn't mean all the d_automount infrastructure has
+> to be thrown out.  A really simple fix is to pass the lookup flags (or
+> some derived automount flags) to d_automount and fix up the very few
+> instances to reflect the old semantics.  Untested patch attached.
 
-On both client and server?
+Perhaps, but that allows modules to circumvent VFS policy which is what
+allowed this situation to come up in the first place.
 
---b.
+Ian
+
+
