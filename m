@@ -1,76 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60159 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:9518 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932198Ab1INLp1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Sep 2011 07:45:27 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 06/25] nfsd4: eliminate unused lt_stateowner
-Date: Wed, 14 Sep 2011 07:45:02 -0400
-Message-Id: <1316000721-3289-7-git-send-email-bfields@redhat.com>
-In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
+	id S1751002Ab1IXLgp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 24 Sep 2011 07:36:45 -0400
+Date: Sat, 24 Sep 2011 07:36:10 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Ian Kent <raven@themaw.net>, Miklos Szeredi <miklos@szeredi.hu>,
+        David Howells <dhowells@redhat.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>, viro@zeniv.linux.org.uk,
+        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
+Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
+Message-ID: <20110924073610.4b045189@tlielax.poochiereds.net>
+In-Reply-To: <CA+55aFwPEq5B_P0RtX+pBtGfTadzzS+3U=k=3XTjDw3soNhOdA@mail.gmail.com>
+References: <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com>
+ <1316747758.3346.89.camel@perseus.themaw.net>
+ <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
+ <1316707443.3346.44.camel@perseus.themaw.net>
+ <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
+ <1316709935.3346.48.camel@perseus.themaw.net>
+ <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
+ <20110922144453.6cf53a25@barsoom.rdu.redhat.com>
+ <1316719228.3968.14.camel@lade.trondhjem.org>
+ <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
+ <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
+ <21772.1316774025@redhat.com>
+ <1316788444.14812.10.camel@lade.trondhjem.org>
+ <29743.1316791138@redhat.com>
+ <87hb43tf2g.fsf@tucsk.pomaz.szeredi.hu>
+ <1316827854.3346.154.camel@perseus.themaw.net>
+ <CA+55aFwPEq5B_P0RtX+pBtGfTadzzS+3U=k=3XTjDw3soNhOdA@mail.gmail.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This is used only as a local variable.
+On Fri, 23 Sep 2011 18:44:59 -0700
+Linus Torvalds <torvalds@linux-foundation.org> wrote:
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |    8 ++++----
- fs/nfsd/xdr4.h      |    1 -
- 2 files changed, 4 insertions(+), 5 deletions(-)
+> On Fri, Sep 23, 2011 at 6:30 PM, Ian Kent <raven@themaw.net> wrote:
+> >
+> > Perhaps, but that allows modules to circumvent VFS policy which is what
+> > allowed this situation to come up in the first place.
+> 
+> So, realistically, what's the downside of just adding LOOKUP_DIRECTORY
+> (or LOOKUP_OPEN) to the nfs_follow_remote_path() case?
+> 
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 834a5f8..a47bf88 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4098,6 +4098,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- {
- 	struct inode *inode;
- 	struct file_lock file_lock;
-+	struct nfs4_stateowner *so;
- 	int error;
- 	__be32 status;
- 
-@@ -4107,7 +4108,6 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (check_lock_length(lockt->lt_offset, lockt->lt_length))
- 		 return nfserr_inval;
- 
--	lockt->lt_stateowner = NULL;
- 	nfs4_lock_state();
- 
- 	status = nfserr_stale_clientid;
-@@ -4134,10 +4134,10 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		goto out;
- 	}
- 
--	lockt->lt_stateowner = find_lockstateowner_str(inode,
-+	so = find_lockstateowner_str(inode,
- 			&lockt->lt_clientid, &lockt->lt_owner);
--	if (lockt->lt_stateowner)
--		file_lock.fl_owner = (fl_owner_t)lockt->lt_stateowner;
-+	if (so)
-+		file_lock.fl_owner = (fl_owner_t)so;
- 	file_lock.fl_pid = current->tgid;
- 	file_lock.fl_flags = FL_POSIX;
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index de236fb..27a3dfa 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -184,7 +184,6 @@ struct nfsd4_lockt {
- 	struct xdr_netobj		lt_owner;
- 	u64				lt_offset;
- 	u64				lt_length;
--	struct nfs4_stateowner * 	lt_stateowner;
- 	struct nfsd4_lock_denied  	lt_denied;
- };
- 
+There's certainly no danger in adding LOOKUP_DIRECTORY to that call. We
+are, after all, looking for a directory there.
+
+The problem is that that does not fully fix the NFS regression. NFS
+(and CIFS) has always allowed the automounting of submounts to trigger
+on stat() -- this is both before and after the d_automount patches went
+in. Miklos' patch changes this.
+
+The problem really boils down to this:
+
+The d_automount patches changed autofs' automount trigger behavior to
+be like that of NFS and CIFS. Miklos' patch reverts the behavior of
+autofs to pre-2.6.38 behavior, but it also changes NFS and CIFS in the
+same way, which is also a regression.
+
+If you want to go back to pre-2.6.38 behavior, then you really have no
+choice but to do re-introduce filesystem-specific behavior for
+automounting. The behavior of autofs was different from that of
+NFS and CIFS in earlier kernels.
+
 -- 
-1.7.4.1
-
+Jeff Layton <jlayton@redhat.com>
