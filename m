@@ -1,86 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:58328 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756158Ab1ILOmN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 10:42:13 -0400
-Subject: RE: Regression seen when HIGHMEM enabled with NFS on 3.1rc4 kernel
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Sricharan R <r.sricharan@ti.com>
-Cc: linux-omap@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 12 Sep 2011 10:41:49 -0400
-In-Reply-To: <dbdc7c3761a82e0b84f2f49c533c07a5@mail.gmail.com>
-References: <CAJ7qFSeB8bAGdYfZs-LFHuYqGWNA2RidY0EBEFw_1CndvG7q5A@mail.gmail.com>
-	 <1315594317.17611.25.camel@lade.trondhjem.org>
-	 <dbdc7c3761a82e0b84f2f49c533c07a5@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1315838509.12736.4.camel@lade.trondhjem.org>
+Received: from smtp.mail.umich.edu ([141.211.12.86]:56652 "EHLO
+	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753058Ab1IYQ4s (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Sep 2011 12:56:48 -0400
+Date: Sun, 25 Sep 2011 12:56:41 -0400
+From: Jim Rees <rees@umich.edu>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        peter honeyman <honey@citi.umich.edu>
+Subject: Re: ANNOUNCE: nfs-utils-1.2.5 released.
+Message-ID: <20110925165641.GA6088@umich.edu>
+References: <4E7DD35D.9080800@RedHat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E7DD35D.9080800@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2011-09-12 at 11:46 +0530, Sricharan R wrote: 
-> Hi Trond,
-> [....]
-> 
-> >>          1) In the above piece of code, the *ppage value from ops-
-> >>sendpage
-> >>             function is finally passed on to Kmap by the lower level
-> code
-> >to
-> >>             get the virtual address of the page.
-> >>          2) In some corner cases the value of *ppage pointer is NULL.
-> >>          3) When highmem is enabled and a NULL pointer is passed to
-> >>             Kmap, then kmap finally crashes. But in the case when
-> highmem
-> >>             is disabled, then kmap returns a junk value for NULL
-> pointer.
-> >>
-> >>             Highmem Enabled , kmap( NULL )-----> kernel crashes.
-> >>
-> >>            Highmem disabled, kmap( NULL )-----> junk value is returned.
-> >>                Subsequently this message is observed on
-> >>                                                 the console.
-> >>
-> >>                                 "RPC call returned error 14"
-> >>
-> >>          4) Now the question is why is the value of *ppage = NULL is
-> >passed
-> >>             from the above piece of code to lower layers.
-> >>            Should that not have handled *ppage = NULL? and kmap should
-> >not
-> >>             have received a NULL pointer?
-> >
-> >I wouldn't expect *ppage to be NULL under any circumstances, so I'm
-> >really curious as to what is happening here.
-> >
-> >Could you perhaps add a printk() to that section of code to print out
-> >the values of 'xdr->page_base', 'xdr->page_len', 'len' and 'remainder'
-> >in the case where *ppage == NULL?
-> >
-> 
-> 
-> Thanks for the response.
-> I added a printk just before err = sock->ops->sendpage(sock, *ppage, base,
-> len, flags);
-> So here are values when *ppage is NULL.
-> 
-> xdr->page_base= 0xCE9  xdr->page_len=0x400 len=0xE9 remainder=0x0.
-> 
-> Thanks,
->  Sricharan
+Steve Dickson wrote:
 
-Can you please tell me what the mount options are for this setup?
+  New Features in this release:
+  
+     * With the addition of the blkmapd daemon, the client 
+       now supports every pNFS layout type. 
+  
+     * The usual assorted bug fixes. 
+  
+  The tarball can only be found at Sourceforge.net since 
+  master.kernel.org is still down:
+  
+    http://sourceforge.net/projects/nfs
+  
+  [ Maybe we should start thinking about putting the rpms on linux-nfs.org?? ]
+  
+  The git tree is at:
+     git://linux-nfs.org/nfs-utils
+  
+  The change log is also only on Sourceforge.net:
+  
+  http://sourceforge.net/projects/nfs/files/nfs-utils/1.2.5/Changelog-1.2.5/download
 
-Are you running any applications that might be using O_DIRECT writes?
+I can't get it to configure.  I re-ran autogen then:
 
-Cheers
-  Trond
+configure --prefix=/usr --sysconfdir=/etc --enable-nfsv41 --enable-ipv6 --disable-gss --disable-uuid --enable-tirpc --without-tcp-wrappers --disable-libmount-mount
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+The test for _doprnt seems to be failing and I end up with this in conftest.c:
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+...
+#define HAVE_VPRINTF 1
+#define  1
 
+where I think I should have something like "#define HAVE_DOPRNT 1".  All
+subsequent tests fail.
+
+I put the config log here:
+http://www.citi.umich.edu/projects/nfsv4/pnfs/block/download/config.log
