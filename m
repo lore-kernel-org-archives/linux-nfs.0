@@ -1,50 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:15421 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753178Ab1I2SPU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Sep 2011 14:15:20 -0400
-Subject: Re: [RFC V2 0/1] SUNRPC: dynamic rpc_slot allocator
-Content-Type: text/plain; charset=us-ascii
-From: Andy Adamson <andros@netapp.com>
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B54E9B2@SACMVEXC2-PRD.hq.netapp.com>
-Date: Thu, 29 Sep 2011 14:15:18 -0400
-Cc: "Harshula" <harshula@redhat.com>,
-        "Adamson, Andy" <William.Adamson@netapp.com>, <jlayton@redhat.com>,
-        <linux-nfs@vger.kernel.org>
-Message-Id: <BCDBCAF0-372A-4ABD-8139-C1A4C4D0E8AE@netapp.com>
-References: <1305059200-412-1-git-send-email-andros@netapp.com> <1317179295.2609.2.camel@serendib> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B54E9B2@SACMVEXC2-PRD.hq.netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:60616 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751046Ab1IZPaG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Sep 2011 11:30:06 -0400
+Received: by mail-yw0-f46.google.com with SMTP id 5so4377130ywb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Sep 2011 08:30:06 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/3] NFS: Clean up nfs4_xdr_dec_secinfo()
+To: linux-nfs@vger.kernel.org
+Cc: bjschuma@netapp.com, andros@netapp.com
+Date: Mon, 26 Sep 2011 11:30:04 -0400
+Message-ID: <20110926153004.8595.80144.stgit@degas.1015granger.net>
+In-Reply-To: <20110926152657.8595.6375.stgit@degas.1015granger.net>
+References: <20110926152657.8595.6375.stgit@degas.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Clean up: Remove superfluous logic at the tail of
+nfs4_xdr_dec_secinfo() .
 
-On Sep 27, 2011, at 11:24 PM, Myklebust, Trond wrote:
+Introduced by commit 5a5ea0d4 "NFS: Add secinfo procedure" (March 24,
+2011).
 
->> -----Original Message-----
->> From: Harshula [mailto:harshula@redhat.com]
->> Sent: Tuesday, September 27, 2011 11:08 PM
->> To: Adamson, Andy
->> Cc: Myklebust, Trond; jlayton@redhat.com; linux-nfs@vger.kernel.org
->> Subject: Re: [RFC V2 0/1] SUNRPC: dynamic rpc_slot allocator
->> 
->> Hi Andy,
->> 
->> What's the status of your dynamic slot allocator patch?
-> 
-> Andy is still doing performance measurements to verify the effectiveness on high bandwidth+high latency networks, but the latest version of those patches has already been merged upstream. Please see
-> 
-> git log -p f85ef69..34006ce
-> 
-> on a recent pull from Linus.
-> 
-> Note that we still need further patches in order to grow the NFSv4.1 session as the TCP window expands, but the above set of patches should at least ensure that the number of sunrpc slots can continue to keep up.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-I'm looking into the v4.1 session slot management ....
+ fs/nfs/nfs4xdr.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
--->Andy
-
-> 
-> Cheers
->   Trond
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 1dce12f..e6161b2 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -6602,8 +6602,6 @@ static int nfs4_xdr_dec_secinfo(struct rpc_rqst *rqstp,
+ 	if (status)
+ 		goto out;
+ 	status = decode_secinfo(xdr, res);
+-	if (status)
+-		goto out;
+ out:
+ 	return status;
+ }
 
