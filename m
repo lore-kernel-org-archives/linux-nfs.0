@@ -1,64 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27950 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751164Ab1IUSQ7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Sep 2011 14:16:59 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p8LIGxgd015590
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 14:16:59 -0400
-Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p8LIGvR3025602
-	for <linux-nfs@vger.kernel.org>; Wed, 21 Sep 2011 14:16:58 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2] mountstats: Breaks on 3.1 kernels
-Date: Wed, 21 Sep 2011 14:16:56 -0400
-Message-Id: <1316629016-27740-3-git-send-email-steved@redhat.com>
-In-Reply-To: <1316629016-27740-1-git-send-email-steved@redhat.com>
-References: <1316629016-27740-1-git-send-email-steved@redhat.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:35074 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753205Ab1IZMW3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Sep 2011 08:22:29 -0400
+Message-ID: <2138793167-1317039745-cardhu_decombobulator_blackberry.rim.net-855636477-@b4.c3.bise3.blackberry>
+Reply-To: bhalevy@tonian.com
+Subject: Re: NFS mounts and its propagation
+To: "Sreeram B S" <sreeramb@netapp.com>, linux-nfs-owner@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+From: "Benny Halevy" <bhalevy@tonian.com>
+Date: Mon, 26 Sep 2011 12:22:22 +0000
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-mountstats depend on all devices entries in /proc/self/mountstats
-to start with the word 'device'. With 3.1 kernels, NFS entries
-start with the actual device (i.e. server:/export) not
-the word 'device'. This change confused mountstats parsing.
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- tools/mountstats/mountstats.py |    9 +++++++++
- 1 files changed, 9 insertions(+), 0 deletions(-)
-
-diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
-index 280e15c..b95b71d 100644
---- a/tools/mountstats/mountstats.py
-+++ b/tools/mountstats/mountstats.py
-@@ -46,6 +46,12 @@ class DeviceData:
-             self.__nfs_data['fstype'] = words[7]
-             if words[7].find('nfs') != -1:
-                 self.__nfs_data['statvers'] = words[8]
-+        elif 'nfs' in words or 'nfs4' in words:
-+            self.__nfs_data['export'] = words[0]
-+            self.__nfs_data['mountpoint'] = words[3]
-+            self.__nfs_data['fstype'] = words[6]
-+            if words[6].find('nfs') != -1:
-+                self.__nfs_data['statvers'] = words[7]
-         elif words[0] == 'age:':
-             self.__nfs_data['age'] = long(words[1])
-         elif words[0] == 'opts:':
-@@ -371,6 +377,9 @@ def parse_stats_file(filename):
-         if words[0] == 'device':
-             key = words[4]
-             new = [ line.strip() ]
-+        elif 'nfs' in words or 'nfs4' in words:
-+            key = words[3]
-+            new = [ line.strip() ]
-         else:
-             new += [ line.strip() ]
-         ms_dict[key] = new
--- 
-1.7.6.2
+MS4gTkZTdjMgTE9PS1VQIGRvZXMgbm90IGNyb3NzIG1vdW50IHBvaW50cy4NCg0KMi4gTkZTIGlz
+IG5vdCByZWV4cG9ydGFibGUgb24gbGludXguDQoNCkJlbm55DQotLS0tLS1PcmlnaW5hbCBNZXNz
+YWdlLS0tLS0tDQpGcm9tOiBTcmVlcmFtIEIgUw0KU2VuZGVyOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnDQpUbzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KU3ViamVjdDogTkZT
+IG1vdW50cyBhbmQgaXRzIHByb3BhZ2F0aW9uDQpTZW50OiBTZXAgMjYsIDIwMTEgMTQ6MDMNCg0K
+SGksDQogICAgIEkgYW0gU3JlZXJhbS4gVGhpcyBxdWVzdGlvbiBpcyByZWxhdGVkIHRvIE5GUy4N
+CiAgICAgSSBoYXZlIGEgdHlwaWNhbCBzY2VuYXJpby4gUGxlYXNlIGFzc3VtZSB0aGF0IHRoZXJl
+IGFyZSAzIG1hY2hpbmVzIA0KTTEsIE0yLCBNMy4gRWFjaCBvZiB0aGVtIGFyZSBoYXZpbmcgZGly
+ZWN0b3JpZXMgL3RtcC9hYmMgaW4gdGhlbS4gQWxsIA0KdGhlIE5GUyBwZXJtaXNzaW9ucyBhcmUg
+c2V0IGFwcHJvcHJpYXRlbHkuDQogICAgIE5vdywgYSB1c2VyIG1vdW50cyBNMidzIC90bXAvYWJj
+IG9uIE0xJ3MgL3RtcC9hYmMgYnkgaXNzdWluZyBtb3VudCANCmNvbW1hbmQgb24gTTEuIE1vdW50
+IGlzIHN1Y2Nlc3NmdWwuDQogICAgIFRoZW4gdGhlIHVzZXIgbW91bnRzIE0zJ3MgL3RtcC9hYmMg
+b24gTTIncyAvdG1wL2FiYyBieSBpc3N1aW5nIA0KbW91bnQgY29tbWFuZCBvbiBNMi4gTW91bnQg
+c3VjY2Vzc2Z1bC4NCiAgICAgTm93IEkgd291bGQgZXhwZWN0IHRoZSBjb250ZW50cyBvZiBNMydz
+IC90bXAvYWJjIHRvIGJlIHNob3duIGFzIA0Kb3V0cHV0IG9mICdscycgaXNzdWUgb24gTTEuIEJ1
+dCB0aGlzIGlzIG5vdCBoYXBwZW5pbmcuIEkgYW0gdW5hYmxlIHRvIA0KY29tcHJlaGVuZCB0aGUg
+cmVhc29uLiBDb3VsZCB5b3UgcGxlYXNlIGd1aWRlIG1lPw0KDQogICAgIEFjY29yZGluZyB0byBt
+ZSwgdGhlIGNvbnRlbnRzIG9mIE0zIHNob3VsZCBoYXZlIHNob3duIHVwIGluIE0xJ3MgDQonbHMn
+IGNvbW1hbmQsICBiZWNhdXNlIHRoZSAvdG1wL2FiYyBvZiBNMSBpcyBub3RoaW5nICBidXQgYSAq
+bGl2ZSogDQpyZWZsZWN0aW9uIG9mIC90bXAvYWJjIG9mIE0yLiBTbyB3aGF0ZXZlciBjaGFuZ2Vz
+IGFyZSBkb25lIHRvIE0yJ3MgDQovdG1wL2FiYyBzaG91bGQgYmUgcmVmbGVjdGVkIG9uIE0xLiBI
+ZXJlLCBNMidzIC90bXAvYWJjIGlzIG1vdW50aW5nIE0zJ3MgDQovdG1wL2FiYyBhbmQgc28gdGhp
+cyBjaGFuZ2Ugc2hvdWxkIGJlIHJlZmxlY3RlZCBvbiBNMSdzIC90bXAvYWJjIGFzIA0Kd2VsbC4g
+QnV0IHRoaXMgaXNuJ3QgaGFwcGVuaW5nLg0KDQpLaW5kbHkgc3VnZ2VzdCBpZiBJIGFtIGluY29y
+cmVjdCBpbiBteSB1bmRlcnN0YW5kaW5nIG9yIHVzYWdlLg0KICAgVGhlIGNvbW1hbmQgSSBhbSB1
+c2luZyBpczoNCg0KICAgIE9uIE0xOiAgbW91bnQgLXQgbmZzIE0yOi90bXAvYWJjIC90bXAvYWJj
+DQogICAgT24gTTI6ICBtb3VudCAtdCBuZnMgTTM6L3RtcC9hYmMgL3RtcC9hYmMNCg0KUmVnYXJk
+cywNClNyZWVyYW0NCi0tDQpUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUg
+bGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRv
+IG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCk1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6
+Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQo=
 
