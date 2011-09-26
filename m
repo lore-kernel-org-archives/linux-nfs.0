@@ -1,70 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp09.in.ibm.com ([122.248.162.9]:40979 "EHLO
-	e28smtp09.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752058Ab1IER1X (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2011 13:27:23 -0400
-Received: from /spool/local
-	by in.ibm.com with XMail ESMTP
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Mon, 5 Sep 2011 22:57:21 +0530
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V6 07/26] vfs: Optimize out IS_RICHACL() if CONFIG_FS_RICHACL is not defined
-Date: Mon,  5 Sep 2011 22:55:29 +0530
-Message-Id: <1315243548-18664-8-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:62867 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751800Ab1IZLDS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Sep 2011 07:03:18 -0400
+Received: from sreeramb1-lxp.hq.netapp.com (sreeramb1-lxp.hq.netapp.com [10.73.9.34])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id p8QB31Sp004518
+	for <linux-nfs@vger.kernel.org>; Mon, 26 Sep 2011 04:03:02 -0700 (PDT)
+Message-ID: <4E805C16.4030509@netapp.com>
+Date: Mon, 26 Sep 2011 16:33:50 +0530
+From: Sreeram B S <sreeramb@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: NFS mounts and its propagation
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+Hi,
+     I am Sreeram. This question is related to NFS.
+     I have a typical scenario. Please assume that there are 3 machines 
+M1, M2, M3. Each of them are having directories /tmp/abc in them. All 
+the NFS permissions are set appropriately.
+     Now, a user mounts M2's /tmp/abc on M1's /tmp/abc by issuing mount 
+command on M1. Mount is successful.
+     Then the user mounts M3's /tmp/abc on M2's /tmp/abc by issuing 
+mount command on M2. Mount successful.
+     Now I would expect the contents of M3's /tmp/abc to be shown as 
+output of 'ls' issue on M1. But this is not happening. I am unable to 
+comprehend the reason. Could you please guide me?
 
-if CONFIG_FS_RICHACL is not defined optimize out
-the ACL check function.
+     According to me, the contents of M3 should have shown up in M1's 
+'ls' command,  because the /tmp/abc of M1 is nothing  but a *live* 
+reflection of /tmp/abc of M2. So whatever changes are done to M2's 
+/tmp/abc should be reflected on M1. Here, M2's /tmp/abc is mounting M3's 
+/tmp/abc and so this change should be reflected on M1's /tmp/abc as 
+well. But this isn't happening.
 
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/Kconfig         |    3 +++
- include/linux/fs.h |    5 +++++
- 2 files changed, 8 insertions(+), 0 deletions(-)
+Kindly suggest if I am incorrect in my understanding or usage.
+   The command I am using is:
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index 9fe0b34..7939190 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -46,6 +46,9 @@ endif # BLOCK
- config FS_POSIX_ACL
- 	def_bool n
- 
-+config FS_RICHACL
-+	def_bool n
-+
- config EXPORTFS
- 	tristate
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 6eac730..1ddec24 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -273,7 +273,12 @@ struct inodes_stat_t {
- #define IS_APPEND(inode)	((inode)->i_flags & S_APPEND)
- #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
- #define IS_POSIXACL(inode)	__IS_FLG(inode, MS_POSIXACL)
-+
-+#ifdef CONFIG_FS_RICHACL
- #define IS_RICHACL(inode)	__IS_FLG(inode, MS_RICHACL)
-+#else
-+#define IS_RICHACL(inode)	0
-+#endif
- 
- #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
- #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
--- 
-1.7.4.1
+    On M1:  mount -t nfs M2:/tmp/abc /tmp/abc
+    On M2:  mount -t nfs M3:/tmp/abc /tmp/abc
 
+Regards,
+Sreeram
