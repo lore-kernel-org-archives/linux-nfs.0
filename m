@@ -1,149 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merit-proxy01.merit.edu ([207.75.116.193]:35392 "EHLO
-	merit-proxy01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750948Ab1IPQOW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2011 12:14:22 -0400
-From: Jim Rees <rees@umich.edu>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:45037 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752938Ab1IZX1L (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Sep 2011 19:27:11 -0400
+Received: by wyg34 with SMTP id 34so6448578wyg.19
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Sep 2011 16:27:10 -0700 (PDT)
+In-Reply-To: <1317078563.21770.8.camel@lade.trondhjem.org>
+References: <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com>
+ <1316747758.3346.89.camel@perseus.themaw.net> <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
+ <1316707443.3346.44.camel@perseus.themaw.net> <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
+ <1316709935.3346.48.camel@perseus.themaw.net> <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
+ <20110922144453.6cf53a25@barsoom.rdu.redhat.com> <1316719228.3968.14.camel@lade.trondhjem.org>
+ <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
+ <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
+ <21772.1316774025@redhat.com> <1316788444.14812.10.camel@lade.trondhjem.org>
+ <29743.1316791138@redhat.com> <87hb43tf2g.fsf@tucsk.pomaz.szeredi.hu>
+ <1316827854.3346.154.camel@perseus.themaw.net> <CA+55aFwPEq5B_P0RtX+pBtGfTadzzS+3U=k=3XTjDw3soNhOdA@mail.gmail.com>
+ <20110924073610.4b045189@tlielax.poochiereds.net> <CA+55aFxjFXbCKBZNfBuCOaiBHRQ=ZECnhqKxjPw9maPgyRLiDA@mail.gmail.com>
+ <1317013864.3187.81.camel@perseus.themaw.net> <CA+55aFzJnKCHtsiH-mZOwQgVt1ajPJQHWRYB_19eXEKaGRPD1w@mail.gmail.com>
+ <1317071626.19951.8.camel@lade.trondhjem.org> <CA+55aFzWCZQjWMcxg16yMUoLr-mEPuXzAFgv49LU4hCn+=rbwQ@mail.gmail.com>
+ <1317072718.19951.13.camel@lade.trondhjem.org> <CA+55aFzaScGiKmsSrgXivoUPw4xHjKobsB4VquuEu1fG=7R+wA@mail.gmail.com>
+ <1317076424.19951.32.camel@lade.trondhjem.org> <CA+55aFzi+0Z6HXJCxW=Uc1EZsp4qA00i+ihNcSX_v6bVTbU2BA@mail.gmail.com>
+ <1317078563.21770.8.camel@lade.trondhjem.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Mon, 26 Sep 2011 16:26:50 -0700
+Message-ID: <CA+55aFzX+DyU7xhAmTLq0g_z6jyKuqoiyPdCYO+w2Xk7pECrqg@mail.gmail.com>
+Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 2/5] pnfsblock: fix return code confusion
-Date: Fri, 16 Sep 2011 12:14:16 -0400
-Message-Id: <1316189659-8799-3-git-send-email-rees@umich.edu>
-In-Reply-To: <1316189659-8799-1-git-send-email-rees@umich.edu>
-References: <1316189659-8799-1-git-send-email-rees@umich.edu>
+Cc: Ian Kent <raven@themaw.net>, Jeff Layton <jlayton@redhat.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        David Howells <dhowells@redhat.com>, viro@zeniv.linux.org.uk,
+        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Always return PTR_ERR, not NULL, from nfs4_blk_get_deviceinfo and
-nfs4_blk_decode_device.
+On Mon, Sep 26, 2011 at 4:09 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+>
+> I assume that means that we can get rid of LOOKUP_NO_AUTOMOUNT, and just
+> replace the convoluted logic in follow_automount() with a test for
+> LOOKUP_AUTOMOUNT? If we have agreed on a default behaviour, then that
+> would seem cleaner than enumerating all these exceptions.
 
-Check for IS_ERR, not NULL, in bl_set_layoutdriver when calling
-nfs4_blk_get_deviceinfo.
+I do think that LOOKUP_NO_AUTOMOUNT is bogus.  It's not a
+kernel-internal flag, it's for that silly "vfs_fstatat()" interface,
+that was designed when LOOKUP_FOLLOW would cause an automount.
 
-Signed-off-by: Jim Rees <rees@umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfs/blocklayout/blocklayout.c    |   20 ++++++++++++--------
- fs/nfs/blocklayout/blocklayoutdev.c |   13 ++++++++-----
- 2 files changed, 20 insertions(+), 13 deletions(-)
+Now that LOOKUP_FOLLOW doesn't do that, the whole reason for
+LOOKUP_NO_AUTOMOUNT really goes away, but then we have that crazy user
+interface that was encoded for it (only for the very special vfs
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 9561c8f..d2432f0 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -805,7 +805,7 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
- 			struct nfs4_deviceid *d_id)
- {
- 	struct pnfs_device *dev;
--	struct pnfs_block_dev *rv = NULL;
-+	struct pnfs_block_dev *rv;
- 	u32 max_resp_sz;
- 	int max_pages;
- 	struct page **pages = NULL;
-@@ -823,18 +823,20 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
- 	dev = kmalloc(sizeof(*dev), GFP_NOFS);
- 	if (!dev) {
- 		dprintk("%s kmalloc failed\n", __func__);
--		return NULL;
-+		return ERR_PTR(-ENOMEM);
- 	}
- 
- 	pages = kzalloc(max_pages * sizeof(struct page *), GFP_NOFS);
- 	if (pages == NULL) {
- 		kfree(dev);
--		return NULL;
-+		return ERR_PTR(-ENOMEM);
- 	}
- 	for (i = 0; i < max_pages; i++) {
- 		pages[i] = alloc_page(GFP_NOFS);
--		if (!pages[i])
-+		if (!pages[i]) {
-+			rv = ERR_PTR(-ENOMEM);
- 			goto out_free;
-+		}
- 	}
- 
- 	memcpy(&dev->dev_id, d_id, sizeof(*d_id));
-@@ -847,8 +849,10 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
- 	dprintk("%s: dev_id: %s\n", __func__, dev->dev_id.data);
- 	rc = nfs4_proc_getdeviceinfo(server, dev);
- 	dprintk("%s getdevice info returns %d\n", __func__, rc);
--	if (rc)
-+	if (rc) {
-+		rv = ERR_PTR(rc);
- 		goto out_free;
-+	}
- 
- 	rv = nfs4_blk_decode_device(server, dev);
-  out_free:
-@@ -866,7 +870,7 @@ bl_set_layoutdriver(struct nfs_server *server, const struct nfs_fh *fh)
- 	struct pnfs_devicelist *dlist = NULL;
- 	struct pnfs_block_dev *bdev;
- 	LIST_HEAD(block_disklist);
--	int status = 0, i;
-+	int status, i;
- 
- 	dprintk("%s enter\n", __func__);
- 
-@@ -898,8 +902,8 @@ bl_set_layoutdriver(struct nfs_server *server, const struct nfs_fh *fh)
- 		for (i = 0; i < dlist->num_devs; i++) {
- 			bdev = nfs4_blk_get_deviceinfo(server, fh,
- 						       &dlist->dev_id[i]);
--			if (!bdev) {
--				status = -ENODEV;
-+			if (IS_ERR(bdev)) {
-+				status = PTR_ERR(bdev);
- 				goto out_error;
- 			}
- 			spin_lock(&b_mt_id->bm_lock);
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index a83b393..0b1fb0e 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -131,7 +131,7 @@ struct pnfs_block_dev *
- nfs4_blk_decode_device(struct nfs_server *server,
- 		       struct pnfs_device *dev)
- {
--	struct pnfs_block_dev *rv = NULL;
-+	struct pnfs_block_dev *rv;
- 	struct block_device *bd = NULL;
- 	struct rpc_pipe_msg msg;
- 	struct bl_msg_hdr bl_msg = {
-@@ -141,7 +141,7 @@ nfs4_blk_decode_device(struct nfs_server *server,
- 	uint8_t *dataptr;
- 	DECLARE_WAITQUEUE(wq, current);
- 	struct bl_dev_msg *reply = &bl_mount_reply;
--	int offset, len, i;
-+	int offset, len, i, rc;
- 
- 	dprintk("%s CREATING PIPEFS MESSAGE\n", __func__);
- 	dprintk("%s: deviceid: %s, mincount: %d\n", __func__, dev->dev_id.data,
-@@ -168,8 +168,10 @@ nfs4_blk_decode_device(struct nfs_server *server,
- 
- 	dprintk("%s CALLING USERSPACE DAEMON\n", __func__);
- 	add_wait_queue(&bl_wq, &wq);
--	if (rpc_queue_upcall(bl_device_pipe->d_inode, &msg) < 0) {
-+	rc = rpc_queue_upcall(bl_device_pipe->d_inode, &msg);
-+	if (rc < 0) {
- 		remove_wait_queue(&bl_wq, &wq);
-+		rv = ERR_PTR(rc);
- 		goto out;
- 	}
- 
-@@ -187,8 +189,9 @@ nfs4_blk_decode_device(struct nfs_server *server,
- 
- 	bd = nfs4_blkdev_get(MKDEV(reply->major, reply->minor));
- 	if (IS_ERR(bd)) {
--		dprintk("%s failed to open device : %ld\n",
--			__func__, PTR_ERR(bd));
-+		rc = PTR_ERR(bd);
-+		dprintk("%s failed to open device : %d\n", __func__, rc);
-+		rv = ERR_PTR(rc);
- 		goto out;
- 	}
- 
--- 
-1.7.6
+The question then becomes: should we just ignore (and deprecate) that
+crazy AT_NO_AUTOMOUNT flag? I say "yup".
 
+Or should we do something *really* crazy, and say "if you *don't* have
+AT_SYMLINK_NOFOLLOW *and* you don't have AT_NO_AUTOMOUNT, then we make
+fstatat64() follow automounts, even though no sane version of *stat()
+does so any more"?
+
+Quite frankly, that just sounds insane. But we could do it, and it
+would approximate the old semantics for that system call. Even if
+those old semantics were clearly not very good, and the whole point of
+AT_NO_AUTOMOUNT was to work around problems people must have had..
+
+So my gut feel is that we should just ignore it for now.
+AT_NO_AUTOMOUNT becomes a no-op, and the LOOKUP_NO_AUTOMOUNT flag is
+already effectively one (since nothing but vfs_fstatat sets it, and
+vfs_fstatat now doesn't follow automounts *anyway*)
+
+The "let's just see if anybody complains when we clean stuff up"
+approach, in other words.  Because I bet any user who doesn't have
+AT_NO_AUTOMOUNT isn't because they didn't really want an automount,
+it's because they weren't even aware of the issue.
+
+                        Linus
