@@ -1,74 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:43945 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:46605 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751003Ab1IZOKu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Sep 2011 10:10:50 -0400
-Date: Mon, 26 Sep 2011 10:10:27 -0400
-To: "Stefan (metze) Metzmacher" <metze@samba.org>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-fsdevel@vger.kernel.org,
-        Mimi Zohar <zohar@linux.vnet.ibm.com>, linux-nfs@vger.kernel.org,
-        samba-technical@lists.samba.org, Al Viro <viro@zeniv.linux.org.uk>
-Subject: Re: breaking leases on metadata changes
-Message-ID: <20110926141027.GB16044@fieldses.org>
-References: <1316617097-21384-1-git-send-email-bfields@redhat.com>
- <4E7E2314.6000101@samba.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E7E2314.6000101@samba.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1751135Ab1IZKkW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Sep 2011 06:40:22 -0400
+Message-ID: <4E805692.1010409@RedHat.com>
+Date: Mon, 26 Sep 2011 06:40:18 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: NeilBrown <neilb@suse.de>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: ANNOUNCE: nfs-utils-1.2.5 released.
+References: <4E7DD35D.9080800@RedHat.com> <20110925183930.69b33573@notabene.brown>
+In-Reply-To: <20110925183930.69b33573@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, Sep 24, 2011 at 08:36:04PM +0200, Stefan (metze) Metzmacher wrote:
-> Hi Bruce,
+
+
+On 09/25/2011 04:39 AM, NeilBrown wrote:
+> On Sat, 24 Sep 2011 08:55:57 -0400 Steve Dickson <SteveD@redhat.com> wrote:
 > 
-> > So there's this longstanding problem that read leases should really be
-> > broken on anything that changes an inode's metadata or any change to the
-> > set of links pointing to the inode.
-> > 
-> > (Cc'ing samba-technical for confirmation of that statement from Samba's
-> > point of view....)
-> > 
-> > So we need mutual exclusion between read leases and link, unlink,
-> > rename, etc.
+>> New Features in this release:
+>>
+>>    * With the addition of the blkmapd daemon, the client 
+>>      now supports every pNFS layout type. 
+>>
+>>    * The usual assorted bug fixes. 
+>>
+>> The tarball can only be found at Sourceforge.net since 
+>> master.kernel.org is still down:
+>>
+>>   http://sourceforge.net/projects/nfs
+>>
+>> [ Maybe we should start thinking about putting the rpms on linux-nfs.org?? ]
+>>
+>> The git tree is at:
+>>    git://linux-nfs.org/nfs-utils
+>>
+>> The change log is also only on Sourceforge.net:
+>>
+>> http://sourceforge.net/projects/nfs/files/nfs-utils/1.2.5/Changelog-1.2.5/download
+>>
 > 
-> As far as I know oplocks in SMB only care about content
-> and attribute only opens (without the READ/WRITE access bits) doesn't
-> break oplocks.
-
-Thanks for looking into this!
-
-Just wandering around msdn (but not having to background to know what
-really applies)....  The discussion of "Level 2 Opportunistic Locks"
-(which is what I assume you'd be using read leases to implement) at
-http://msdn.microsoft.com/en-us/library/aa365713(v=VS.85).aspx says such
-an oplock "allows the client to perform read operations and obtain
-fileattributes using cached or read-ahead local information".  Which
-suggests the oplock also covers attributes?
-
-But I'm probably not reading the right thing.
-
-Is it possible to get any sort of documentation or test results or
-confirm the behavior here?
-
-> So changing the modification time of a file should not break the oplock.
+> I've packaged this up for openSUSE so it should appear in openSUSE:Factory
+> and probably openSUSE:Tumbleweed in a day or two.
 > 
-> I think link and rename doesn't break oplocks, while unlink would.
+> Only oddity I noticed is that the configure script doesn't check for
+> libdevmapper.h so I get a complaint when compiling instead of when
+> configuring.  I don't know if that is a good thing or a bad thing, but I
+> thought I would mention it.
+I notice this myself... I guess a AC_CHECK_HEADER is needed when
+nfsv41 is enabled... 
+
 > 
-> But Samba requirements may change for SMB 2.2 support with directory leases.
-> We're currently exploring what the details are.
+> If my archaeology is right, this is now 4 years and 11 releases
+> that you have presided over nfs-utils.  Thanks for the ongoing efforts!
+You are welcome!  8-) 
 
-Well, presumably you'll need to keep supporting the old semantics as
-well, regardless of what the new protocol may do.
+steved.
 
-Anyway, if this is all correct then it sounds like v4 read delegations
-and level 2 oplocks may be more different than I'd thought.
-
-In which case I'm probably better off leaving leases alone for now and
-defining a new lock type for v4 delegations.  Which could be exposed to
-userspace later as well if it turned out to be useful to someone.
-
-That's not to rule out fixes to lease behavior to work better for Samba
-if there are any that would make sense.
-
---b.
