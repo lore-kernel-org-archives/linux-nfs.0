@@ -1,52 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:18221 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:43945 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754012Ab1I2S7o convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Sep 2011 14:59:44 -0400
-Subject: Re: 3.1rc7+ FSX failure over NFS
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Dave Jones <davej@redhat.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Thu, 29 Sep 2011 14:59:32 -0400
-In-Reply-To: <20110929184127.GA12236@redhat.com>
-References: <20110929184127.GA12236@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1317322772.8708.30.camel@lade.trondhjem.org>
+	id S1751003Ab1IZOKu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Sep 2011 10:10:50 -0400
+Date: Mon, 26 Sep 2011 10:10:27 -0400
+To: "Stefan (metze) Metzmacher" <metze@samba.org>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-fsdevel@vger.kernel.org,
+        Mimi Zohar <zohar@linux.vnet.ibm.com>, linux-nfs@vger.kernel.org,
+        samba-technical@lists.samba.org, Al Viro <viro@zeniv.linux.org.uk>
+Subject: Re: breaking leases on metadata changes
+Message-ID: <20110926141027.GB16044@fieldses.org>
+References: <1316617097-21384-1-git-send-email-bfields@redhat.com>
+ <4E7E2314.6000101@samba.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E7E2314.6000101@samba.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2011-09-29 at 14:41 -0400, Dave Jones wrote: 
-> Client is running 3.1rc7+ from a day before rc8 landed.
-> Server is 3.0.4. FSX dies after a half hour or so.
-> Mount options are..
-> (rw,relatime,vers=3,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.42.10,mountvers=3,mountport=45114,mountproto=tcp,local_lock=none,addr=192.168.42.10)
+On Sat, Sep 24, 2011 at 08:36:04PM +0200, Stefan (metze) Metzmacher wrote:
+> Hi Bruce,
 > 
-> I noticed a few NFS commits that I might be missing from
-> the last few days, would they explain this ?
+> > So there's this longstanding problem that read leases should really be
+> > broken on anything that changes an inode's metadata or any change to the
+> > set of links pointing to the inode.
+> > 
+> > (Cc'ing samba-technical for confirmation of that statement from Samba's
+> > point of view....)
+> > 
+> > So we need mutual exclusion between read leases and link, unlink,
+> > rename, etc.
+> 
+> As far as I know oplocks in SMB only care about content
+> and attribute only opens (without the READ/WRITE access bits) doesn't
+> break oplocks.
 
-Hi Dave,
+Thanks for looking into this!
 
-No, there shouldn't be anything in recent patches that can explain or
-fix this.
+Just wandering around msdn (but not having to background to know what
+really applies)....  The discussion of "Level 2 Opportunistic Locks"
+(which is what I assume you'd be using read leases to implement) at
+http://msdn.microsoft.com/en-us/library/aa365713(v=VS.85).aspx says such
+an oplock "allows the client to perform read operations and obtain
+fileattributes using cached or read-ahead local information".  Which
+suggests the oplock also covers attributes?
 
-I have a few questions:
+But I'm probably not reading the right thing.
 
-1) What filesystem are you using on the server, and does that filesystem
-support high resolution timestamps?
-2) Does the file length on the server match the reported erroneous file
-length on the client?
-3) Do the mtime and ctime on the erroneous file match on the client and
-server?
+Is it possible to get any sort of documentation or test results or
+confirm the behavior here?
 
-Cheers
-  Trond
+> So changing the modification time of a file should not break the oplock.
+> 
+> I think link and rename doesn't break oplocks, while unlink would.
+> 
+> But Samba requirements may change for SMB 2.2 support with directory leases.
+> We're currently exploring what the details are.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Well, presumably you'll need to keep supporting the old semantics as
+well, regardless of what the new protocol may do.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Anyway, if this is all correct then it sounds like v4 read delegations
+and level 2 oplocks may be more different than I'd thought.
 
+In which case I'm probably better off leaving leases alone for now and
+defining a new lock type for v4 delegations.  Which could be exposed to
+userspace later as well if it turned out to be useful to someone.
+
+That's not to rule out fixes to lease behavior to work better for Samba
+if there are any that would make sense.
+
+--b.
