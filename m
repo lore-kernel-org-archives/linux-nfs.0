@@ -1,81 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5089 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752503Ab1IQM2s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 17 Sep 2011 08:28:48 -0400
-Message-ID: <4E74927D.2070600@RedHat.com>
-Date: Sat, 17 Sep 2011 08:28:45 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/8] configure.ac: Add --with-statd-extension configure
- option
-References: <20110912220304.10854.20972.stgit@matisse.1015granger.net> <20110912220623.10854.69881.stgit@matisse.1015granger.net>
-In-Reply-To: <20110912220623.10854.69881.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset=UTF-8
+Received: from out4.smtp.messagingengine.com ([66.111.4.28]:46793 "EHLO
+	out4.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751835Ab1I0ARV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Sep 2011 20:17:21 -0400
+Received: from compute4.internal (compute4.nyi.mail.srv.osa [10.202.2.44])
+	by gateway1.nyi.mail.srv.osa (Postfix) with ESMTP id 05F202971B
+	for <linux-nfs@vger.kernel.org>; Mon, 26 Sep 2011 20:17:20 -0400 (EDT)
+Message-Id: <1317082639.4908.140258148055849@webmail.messagingengine.com>
+From: dchilton+linux-nfs@bestmail.us
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Subject: DomU boot NFSD "90-second grace period" is ~ 4-5 minutes, then finishes
+ without problem.  How to debug/fix the extended wait?
+Date: Mon, 26 Sep 2011 17:17:19 -0700
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Hi,
 
+I'm booting a Xen DomU that connects to NFS4 mounts served up by the
+Dom0. Fyi,
 
-On 09/12/2011 06:06 PM, Chuck Lever wrote:
-> Currently some distributions patch nfs-utils to put NSM state in a
-> subdirectory of /var/lib/nfs.  Make this a configure option instead.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  configure.ac       |    8 ++++++++
->  support/nsm/file.c |    9 +--------
->  2 files changed, 9 insertions(+), 8 deletions(-)
-> 
-> diff --git a/configure.ac b/configure.ac
-> index 461a96a..ba704e2 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -23,6 +23,14 @@ AC_ARG_WITH(statedir,
->  	statedir=$withval,
->  	statedir=/var/lib/nfs)
->  	AC_SUBST(statedir)
-> +AC_ARG_WITH(statd-extension,
-> +	[AC_HELP_STRING([--with-statd-extension=foo],
-> +                        [Put NSM state in subdir foo of statedir])],
-> +	statdext=$withval,
-> +	statdext="")
-> +	AC_SUBST(statdext)
-> +	AC_DEFINE_UNQUOTED(NSM_PATH_EXTENSION, "$statdext",
-> +			   [This defines the statedir subdirectory containing NSM state files.])
->  AC_ARG_WITH(statduser,
->  	[AC_HELP_STRING([--with-statduser=rpcuser],
->                          [statd to run under @<:@rpcuser or nobody@:>@]
-> diff --git a/support/nsm/file.c b/support/nsm/file.c
-> index a12c753..b4a5af1 100644
-> --- a/support/nsm/file.c
-> +++ b/support/nsm/file.c
-> @@ -93,14 +93,7 @@
->  #define LINELEN		(RPCARGSLEN + SM_PRIV_SIZE * 2 + 1)
->  
->  #define NSM_KERNEL_STATE_FILE	"/proc/sys/fs/nfs/nsm_local_state"
-> -
-> -/*
-> - * Some distributions place statd's files in a subdirectory
-> - */
-> -#define NSM_PATH_EXTENSION
-> -/* #define NSM_PATH_EXTENSION	"/statd" */
-> -
-> -#define NSM_DEFAULT_STATEDIR		NFS_STATEDIR NSM_PATH_EXTENSION
-> +#define NSM_DEFAULT_STATEDIR	NFS_STATEDIR "/" NSM_PATH_EXTENSION
-Do we really need the NSM_PATH_EXTENSION define? Would it be more
-straightforward to just have NFS_STATEDIR. Simplifying the code to:
+rpm -qa | egrep -i "^nfs|^kernel"
+ nfs-kernel-server-1.2.3-11.16.1.x86_64
+ nfsidmap-0.23-13.1.x86_64
+ nfs-client-1.2.3-11.16.1.x86_64
+ kernel-xen-2.6.37.6-0.7.1.x86_64
 
-#ifndef NFS_STATEDIR 
-#define NFS_STATEDIR "/var/lib/nfs"
-#endif
+@ DomU launch, it gets to the NFSv4 'stuff',
 
-#define NSM_DEFAULT_STATEDIR		NFS_STATEDIR
+	...
+	[   11.533498] EXT4-fs (xvda1): mounted filesystem with ordered
+	data mode. Opts: acl,user_xattr,barrier=1
+	[   11.579889] EXT4-fs (xvdd): mounted filesystem with ordered
+	data mode. Opts: acl,user_xattr,journal_checksum,barrier=1
+	[   15.237650] microcode: Microcode Update Driver: v2.00-xen
+	<tigran@aivazian.fsnet.co.uk>, Peter Oruba
+	[   24.271451] RPC: Registered udp transport module.
+	[   24.271469] RPC: Registered tcp transport module.
+	[   24.271479] RPC: Registered tcp NFSv4.1 backchannel transport
+	module.
+	[   24.340308] FS-Cache: Loaded
+	[   24.554720] Installing knfsd (copyright (C) 1996
+	okir@monad.swb.de).
+	[   24.555025] FS-Cache: Netfs 'nfs' registered for caching
+	[   25.239401] NFSD: Using /var/lib/nfs/v4recovery as the NFSv4
+	state recovery directory
+	[   25.245234] NFSD: starting 90-second grace period
 
-If there is no need for the extra NSM_PATH_EXTENSION define then 
-we really don't want to create a configuration option for it.. IMHO..
+and simply, quietly sits there ~4-5 minutes.  Then, without any further
+fanfare, the boot completes.
 
-steved.
+	Welcome to openSUSE 11.4 "Celadon" - Kernel 2.6.37.6-0.7-xen
+	(xvc0).
+	
+	test login:
+
+At this point the DomU is up.  All the NFS mounts are mounted.  Nothing
+seems amiss.
+
+Clearly, the 4-5 minute wait isn't normal.
+
+I suspect that there's some sort of settling/locking issue, but I don't
+know how to verify or debug the source of the problem.
+
+Any pointers as to what to start looking at?
+
+Thanks
+
+DCh
