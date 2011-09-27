@@ -1,84 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:64691 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758358Ab1IHMBi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Sep 2011 08:01:38 -0400
-Content-Type: text/plain;
-	charset="utf-8"
-Subject: RE: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
-Date: Thu, 8 Sep 2011 05:01:17 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com>
-References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com> <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com> <1315348373.19556.22.camel@lade.trondhjem.org> <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: <tao.peng@emc.com>, <gusev.vitaliy@nexenta.com>
-Cc: <gusev.vitaliy@gmail.com>, <linux-nfs@vger.kernel.org>
+Received: from peace.netnation.com ([204.174.223.2]:43054 "EHLO
+	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751357Ab1I0Qtk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Sep 2011 12:49:40 -0400
+Date: Tue, 27 Sep 2011 09:49:37 -0700
+From: Simon Kirby <sim@hostway.ca>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: NFS client growing system CPU
+Message-ID: <20110927164937.GA2690@hostway.ca>
+References: <20101208212505.GA18192@hostway.ca> <1291845189.3067.31.camel@heimdal.trondhjem.org> <20110927003931.GB12106@hostway.ca> <1317123773.24383.1.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1317123773.24383.1.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiB0YW8ucGVuZ0BlbWMuY29tIFtt
-YWlsdG86dGFvLnBlbmdAZW1jLmNvbV0NCj4gU2VudDogVGh1cnNkYXksIFNlcHRlbWJlciAwOCwg
-MjAxMSA2OjIxIEFNDQo+IFRvOiBNeWtsZWJ1c3QsIFRyb25kOyBndXNldi52aXRhbGl5QG5leGVu
-dGEuY29tDQo+IENjOiBndXNldi52aXRhbGl5QGdtYWlsLmNvbTsgbGludXgtbmZzQHZnZXIua2Vy
-bmVsLm9yZw0KPiBTdWJqZWN0OiBSRTogW1BBVENIXSBuZnM6IGZpeCBpbmlmaW5pdGUgbG9vcCBh
-dA0KPiBuZnM0X2xheW91dGNvbW1pdF9yZWxlYXNlDQo+IA0KPiBIaSwgVHJvbmQsDQo+IA0KPiBT
-b3JyeSBmb3IgdGhlIGxhdGUgcmVzcG9uc2UuDQo+IA0KPiA+IC0tLS0tT3JpZ2luYWwgTWVzc2Fn
-ZS0tLS0tDQo+ID4gRnJvbTogVHJvbmQgTXlrbGVidXN0IFttYWlsdG86VHJvbmQuTXlrbGVidXN0
-QG5ldGFwcC5jb21dDQo+ID4gU2VudDogV2VkbmVzZGF5LCBTZXB0ZW1iZXIgMDcsIDIwMTEgNjoz
-MyBBTQ0KPiA+IFRvOiBWaXRhbGl5IEd1c2V2DQo+ID4gQ2M6IFZpdGFsaXkgR3VzZXY7IFBlbmcs
-IFRhbzsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiA+IFN1YmplY3Q6IFJlOiBbUEFUQ0hd
-IG5mczogZml4IGluaWZpbml0ZSBsb29wIGF0DQo+IG5mczRfbGF5b3V0Y29tbWl0X3JlbGVhc2UN
-Cj4gPg0KPiA+IE9uIFdlZCwgMjAxMS0wOS0wNyBhdCAwMjoxMyArMDQwMCwgVml0YWxpeSBHdXNl
-diB3cm90ZToNCj4gPiA+ID4+IEBAIC0xMzc2LDcgKzEzNzYsOCBAQCBzdGF0aWMgdm9pZCBwbmZz
-X2xpc3Rfd3JpdGVfbHNlZyhzdHJ1Y3QNCj4gaW5vZGUgKmlub2RlLA0KPiA+IHN0cnVjdCBsaXN0
-X2hlYWQgKmxpc3RwKQ0KPiA+ID4gPj4NCj4gPiA+ID4+ICAgCWxpc3RfZm9yX2VhY2hfZW50cnko
-bHNlZywmTkZTX0koaW5vZGUpLT5sYXlvdXQtPnBsaF9zZWdzLA0KPiBwbHNfbGlzdCkgew0KPiA+
-ID4gPj4gICAJCWlmIChsc2VnLT5wbHNfcmFuZ2UuaW9tb2RlID09IElPTU9ERV9SVyYmDQo+ID4g
-PiA+PiAtCQkgICAgdGVzdF9iaXQoTkZTX0xTRUdfTEFZT1VUQ09NTUlULCZsc2VnLT5wbHNfZmxh
-Z3MpKQ0KPiA+ID4gPj4gKwkJICAgIHRlc3RfYml0KE5GU19MU0VHX0xBWU9VVENPTU1JVCwmbHNl
-Zy0NCj4gPnBsc19mbGFncykmJg0KPiA+ID4gPj4gKwkJICAgIGxpc3RfZW1wdHkoJmxzZWctPnBs
-c19sY19saXN0KSkNCj4gPiA+ID4+ICAgCQkJbGlzdF9hZGQoJmxzZWctPnBsc19sY19saXN0LCBs
-aXN0cCk7DQo+ID4gPiA+PiAgIAl9DQo+ID4gPiA+PiAgIH0NCj4gPiA+ID4NCj4gPiA+ID4gSWYg
-dGhlIGxzZWcgaXMgYWxyZWFkeSBwYXJ0IG9mIG9uZSBsYXlvdXRjb21taXQsIGJ1dCB3ZSdyZQ0K
-PiBzZW5kaW5nIGENCj4gPiA+ID4gc2Vjb25kIG9uZSBmb3IgdGhlIHNhbWUgcmFuZ2UgKHByZXN1
-bWFibHkgYmVjYXVzZSB3ZSB3cm90ZSBtb3JlDQo+IGRhdGEgaW4NCj4gPiA+ID4gdGhlIHNhbWUg
-cmVnaW9uKSwgdGhlbiB0aGUgYWJvdmUgY2F1c2VzIHRoZSBsc2VnIHRvIGJlIGV4Y2x1ZGVkLg0K
-PiA+ID4NCj4gPiA+DQo+ID4gPiBZZXMsIGxzZWcgaXMgZXhjbHVkZWQsIFRoaXMgcGF0Y2ggZG9l
-cyBleGFjdGx5IG9ubHkgZXhjbHVzaW9uIG9mDQo+IGxzZWcuDQo+ID4gPiBsc2VnIGlzIHVzZWQg
-aGVyZSBvbmx5IHRvIGdldC9wdXQgcmVmZXJlbmNlIG9uIHRoaXMgbHNlZywgc28NCj4gc2tpcHBp
-bmcgaXMNCj4gPiA+IGNvcnJlY3QuDQo+ID4NCj4gPiBBcmUgeW91IHN1cmU/IEFzIGZhciBhcyBJ
-IGNhbiBzZWUsIHBuZnNfbGlzdF93cml0ZV9sc2VnKCkgYWN0dWFsbHkNCj4gPiBhc3NpZ25zIHRo
-ZSBsc2VnIHRvIGEgcGFydGljdWxhciBsYXlvdXRjb21taXQgY2FsbC4NCj4gPg0KPiA+IE15IHF1
-ZXN0aW9ucyBhcmU6IGlmIEkgd3JpdGUgdG8gYW4gYXJlYSBkZXNjcmliZWQgYnkgdGhhdCBsc2Vn
-DQo+IF9hZnRlcl8NCj4gPiBpdCBoYXMgYmVlbiBhc3NpZ25lZCB0byB0aGF0IGxheW91dGNvbW1p
-dCBSUEMgY2FsbCAoYW5kIHRoZSBsYXR0ZXINCj4gaGFzDQo+ID4gYWxyZWFkeSBiZWVuIGRpc3Bh
-dGNoZWQgdG8gdGhlIG1ldGFkYXRhIHNlcnZlciksIHRoZW4NCj4gPiAgICAgIEEuIHNob3VsZG4n
-dCBpdCBiZSBhc3NpZ25lZCB0byBhIHNlY29uZCBsYXlvdXRjb21taXQgY2FsbCB0b28/DQo+ID4g
-ICAgICBCLiBJZiBub3QsIHdoYXQgYXJlIHdlIGRvaW5nIHRvIGVuc3VyZSBtdXR1YWwgZXhjbHVz
-aW9uIGJldHdlZW4NCj4gPiAgICAgICAgIGxheW91dGNvbW1pdCBSUEMgY2FsbHMgYW5kIHBORlMg
-d3JpdGVzIHRvIHRoZSBkYXRhIHNlcnZlcj8NCj4gSSB0aGluayBpdCBkZXBlbmRzIG9uIHRoZSBw
-dXJwb3NlIG9mIGxheW91dGNvbW1pdC4NCj4gMS4gZm9yIHVwZGF0aW5nIGF0aW1lL210aW1lLiBJ
-biB0aGlzIGNhc2UsIHdlIGRvbid0IG5lZWQgbXV0dWFsDQo+IGV4Y2x1c2lvbg0KDQpBZ3JlZWQu
-DQoNCj4gYmV0d2VlbiBsYXlvdXRjb21taXQgUlBDIGFuZCBwTkZTIHdyaXRlcyB0byBkYXRhIHNl
-cnZlci4NCj4gMi4gZm9yIHVwZGF0aW5nIExEIHNwZWNpZmljIHN0YXRlLiBJbiB0aGlzIGNhc2Us
-IExEIHNob3VsZCBkZWNpZGUgd2hhdA0KPiB0byBjb21taXQNCj4gKGFuZCBhY3R1YWxseSBpZ25v
-cmVzIHRoZSByYW5nZSBvZiBsc2VnKS4gVGFrZSBibG9jayBsYXlvdXQgZm9yDQo+IGV4YW1wbGUu
-IEl0IG1haW50YWlucw0KPiBibG9ja3NpemVkIGV4dGVudCBzdGF0ZSBpbnNpZGUgTEQgYW5kIGRl
-dGVybWluZXMgd2hhdCB0byBlbmNvZGUgaW5zaWRlDQo+IGxheW91dGNvbW1pdA0KPiBSUEMgd2hl
-bmV2ZXIgdGhlcmUgaXMgYSBnZW5lcmljIGxheWVyIGxheW91dGNvbW1pdCBjYWxsLiBTbyB3aGVu
-IGFuDQo+IGV4dGVudCBpcyBiZWluZw0KPiBsYXlvdXRjb21taXR0ZWQsIGNsaWVudCBjYW4gc3Rp
-bGwgd3JpdGUgdG8gdGhlIHNhbWUgcmFuZ2UsIGFzIGxvbmcgYXMNCj4gdGhlIGxzZWcgaXMgaGVs
-ZCBieSBjbGllbnQuDQoNClllcywgYnV0IGFzIGZhciBhcyBJIGNhbiBzZWUsIGV2ZW4gaW4gdGhl
-IGJsb2NrcyBjYXNlIHRoZXJlIGNhbiBiZSBtdWx0aXBsZSBleHRlbnRzIHBlciBsYXlvdXQgc2Vn
-bWVudC4gV2hhdCBpZiBJIHdyaXRlIHRvIG9uZSB1bmluaXRpYWxpc2VkIGV4dGVudCwgbGF5b3V0
-Y29tbWl0LCB0aGVuIHdyaXRlIHRvIGFub3RoZXIgdW5pbml0aWFsaXplZCBleHRlbnQgaW4gdGhl
-IHNhbWUgbGF5b3V0IHNlZ21lbnQgYW5kIGxheW91dGNvbW1pdD8gSW4gbXkgcmVhZGluZyBvZiB0
-aGUgY29kZSwgdGhlcmUgaXMgYSBjaGFuY2UgdGhhdCB0aGUgc2Vjb25kIGxheW91dGNvbW1pdCB3
-aWxsIGZhaWwgdG8gcGljayB1cCB0aGUgbGF5b3V0IHNlZ21lbnQsIGFuZCBzbyB3aWxsIGZhaWwg
-dG8gbm90aWZ5IHRoZSBNRFMgdGhhdCB0aGUgc2Vjb25kIGV4dGVudCBub3cgY29udGFpbnMgZGF0
-YS4NCg0KVHJvbmQNCgTvv717Lm7vv70r77+977+977+977+977+977+977+9KyXvv73vv71sendt
-77+977+9Yu+/veunsu+/ve+/vXLvv73vv716WO+/ve+/vRnfsinvv73vv73vv713Kh9qZ++/ve+/
-ve+/vR7vv73vv73vv73vv73vv73domov77+977+977+9eu+/vd6W77+977+9Mu+/vd6Z77+977+9
-77+9Ju+/vSnfoe+/vWHvv73vv71/77+977+9Hu+/vUfvv73vv73vv71o77+9D++/vWo6K3bvv73v
-v73vv71377+92aU=
+On Tue, Sep 27, 2011 at 07:42:53AM -0400, Trond Myklebust wrote:
+
+> On Mon, 2011-09-26 at 17:39 -0700, Simon Kirby wrote: 
+> > Hello!
+> > 
+> > Following up on "System CPU increasing on idle 2.6.36", this issue is
+> > still happening even on 3.1-rc7. So, since it has been 9 months since I
+> > reported this, I figured I'd bisect this issue. The first bisection ended
+> > in an IPMI regression that looked like the problem, so I had to start
+> > again. Eventually, I got commit b80c3cb628f0ebc241b02e38dd028969fb8026a2
+> > which made it into 2.6.34-rc4.
+> > 
+> > With this commit, system CPU keeps rising as the log crunch box runs
+> > (reads log files via NFS and spews out HTML files into NFS-mounted report
+> > directories). When it finishes the daily run, the system time stays
+> > non-zero and continues to be higher and higher after each run, until the
+> > box never completes a run within a day due to all of the wasted cycles.
+> 
+> So reverting that commit fixes the problem on 3.1-rc7?
+> 
+> As far as I can see, doing so should be safe thanks to commit
+> 5547e8aac6f71505d621a612de2fca0dd988b439 (writeback: Update dirty flags
+> in two steps) which fixes the original problem at the VFS level.
+
+Hmm, I went to git revert b80c3cb628f0ebc241b02e38dd028969fb8026a2, but
+for some reason git left the nfs_mark_request_dirty(req); line in
+nfs_writepage_setup(), even though the original commit had that. Is that
+OK or should I remove that as well?
+
+Once that is sorted, I'll build it and let it run for a day and let you
+know. Thanks!
+
+Simon-
