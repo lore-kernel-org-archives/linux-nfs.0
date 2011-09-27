@@ -1,149 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:22976 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755588Ab1ISSLK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Sep 2011 14:11:10 -0400
-Date: Mon, 19 Sep 2011 14:11:01 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>
-Subject: Re: [PATCH v3 04/11] SUNRPC: parametrize svc creation calls with
- portmapper flag
-Message-ID: <20110919141101.46303e53@tlielax.poochiereds.net>
-In-Reply-To: <4E7762D4.7090404@parallels.com>
-References: <20110913180953.3961.69217.stgit@localhost6.localdomain6>
-	<20110913181351.3961.70207.stgit@localhost6.localdomain6>
-	<20110919100811.0eaa39fe@tlielax.poochiereds.net>
-	<4E7756F3.4080601@parallels.com>
-	<20110919110729.33a876ca@tlielax.poochiereds.net>
-	<4E7762D4.7090404@parallels.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:55875 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751257Ab1I0Efb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Sep 2011 00:35:31 -0400
+Received: by wyg34 with SMTP id 34so6709251wyg.19
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Sep 2011 21:35:30 -0700 (PDT)
+In-Reply-To: <1317097001.3176.20.camel@perseus.themaw.net>
+References: <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com>
+ <1316747758.3346.89.camel@perseus.themaw.net> <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
+ <1316707443.3346.44.camel@perseus.themaw.net> <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
+ <1316709935.3346.48.camel@perseus.themaw.net> <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
+ <20110922144453.6cf53a25@barsoom.rdu.redhat.com> <1316719228.3968.14.camel@lade.trondhjem.org>
+ <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
+ <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
+ <21772.1316774025@redhat.com> <1316788444.14812.10.camel@lade.trondhjem.org>
+ <29743.1316791138@redhat.com> <87hb43tf2g.fsf@tucsk.pomaz.szeredi.hu>
+ <1316827854.3346.154.camel@perseus.themaw.net> <CA+55aFwPEq5B_P0RtX+pBtGfTadzzS+3U=k=3XTjDw3soNhOdA@mail.gmail.com>
+ <20110924073610.4b045189@tlielax.poochiereds.net> <CA+55aFxjFXbCKBZNfBuCOaiBHRQ=ZECnhqKxjPw9maPgyRLiDA@mail.gmail.com>
+ <1317013864.3187.81.camel@perseus.themaw.net> <CA+55aFzJnKCHtsiH-mZOwQgVt1ajPJQHWRYB_19eXEKaGRPD1w@mail.gmail.com>
+ <1317071626.19951.8.camel@lade.trondhjem.org> <CA+55aFzWCZQjWMcxg16yMUoLr-mEPuXzAFgv49LU4hCn+=rbwQ@mail.gmail.com>
+ <1317072718.19951.13.camel@lade.trondhjem.org> <CA+55aFzaScGiKmsSrgXivoUPw4xHjKobsB4VquuEu1fG=7R+wA@mail.gmail.com>
+ <1317076424.19951.32.camel@lade.trondhjem.org> <CA+55aFzi+0Z6HXJCxW=Uc1EZsp4qA00i+ihNcSX_v6bVTbU2BA@mail.gmail.com>
+ <1317078563.21770.8.camel@lade.trondhjem.org> <CA+55aFzX+DyU7xhAmTLq0g_z6jyKuqoiyPdCYO+w2Xk7pECrqg@mail.gmail.com>
+ <1317085155.21770.17.camel@lade.trondhjem.org> <CA+55aFxuaJ-a5u79D2pELU4HbWTrbWjG_4BNcvFqEOcM0H8G2Q@mail.gmail.com>
+ <1317097001.3176.20.camel@perseus.themaw.net>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Mon, 26 Sep 2011 21:35:09 -0700
+Message-ID: <CA+55aFyzxvJJgOkojvV-83ejNtQnXeRnXerwzWRdwFgPF_yMhg@mail.gmail.com>
+Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
+To: Ian Kent <raven@themaw.net>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Jeff Layton <jlayton@redhat.com>, Miklos Szeredi <miklos@szeredi.hu>,
+        David Howells <dhowells@redhat.com>, viro@zeniv.linux.org.uk,
+        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
+Content-Type: multipart/mixed; boundary=0016e6d58a732e46fa04ade4ce67
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 19 Sep 2011 19:42:12 +0400
-Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+--0016e6d58a732e46fa04ade4ce67
+Content-Type: text/plain; charset=ISO-8859-1
 
-> 19.09.2011 19:07, Jeff Layton пишет:
-> > On Mon, 19 Sep 2011 18:51:31 +0400
-> > Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
-> >
-> >> 19.09.2011 18:08, Jeff Layton пишет:
-> >>> On Tue, 13 Sep 2011 22:13:51 +0400
-> >>> Stanislav Kinsbursky<skinsbursky@parallels.com>   wrote:
-> >>>
-> >>>> This new flag ("setup_rpcbind) will be used to detect, that new service will
-> >>>> send portmapper register calls. For such services we will create rpcbind
-> >>>> clients and remove all stale portmap registrations.
-> >>>> Also, svc_rpcb_cleanup() will be set as sv_shutdown callback for such services
-> >>>> in case of this field wasn't initialized earlier. This will allow to destroy
-> >>>> rpcbind clients when no other users of them left.
-> >>>>
-> >>>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
-> >>>>
-> >>>> ---
-> >>>>    include/linux/sunrpc/svc.h |    2 ++
-> >>>>    net/sunrpc/svc.c           |   21 ++++++++++++++-------
-> >>>>    2 files changed, 16 insertions(+), 7 deletions(-)
-> >>>>
-> >>>> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> >>>> index 223588a..528952a 100644
-> >>>> --- a/include/linux/sunrpc/svc.h
-> >>>> +++ b/include/linux/sunrpc/svc.h
-> >>>> @@ -402,11 +402,13 @@ struct svc_procedure {
-> >>>>     * Function prototypes.
-> >>>>     */
-> >>>>    struct svc_serv *svc_create(struct svc_program *, unsigned int,
-> >>>> +			    int setup_rpcbind,
-> >>> 				^^^
-> >>> 			Instead of adding this parameter, why not
-> >>> 			base this on the vs_hidden flag in the
-> >>> 			svc_version? IOW, have a function that looks at
-> >>> 			all the svc_versions for a particular
-> >>> 			svc_program, and returns "true" if any of them
-> >>> 			have vs_hidden unset? The mechanism you're
-> >>> 			proposing here has the potential to be out of
-> >>> 			sync with the vs_hidden flag.
-> >>>
-> >>
-> >> Could you, please, clarify me this vs_hidden flag?
-> >> I understand, that it's used to avoid portmap registration.
-> >> But as I see, it's set only for nfs_callback_version1. But this svc_version is a
-> >> part of nfs4_callback_program with nfs_callback_version4, which is not hidden.
-> >> Does this flag is missed here? If not, how we can return "true" from your
-> >> proposed function if any of them have vs_hidden unset?
-> >>
-> >> Also sockets for this program are created with SVC_SOCK_ANONYMOUS flag and we
-> >> will not register any of this program versions with portmapper.
-> >> Thus, from my pow, this vs_hidden flag affects only svc_unregister. And only
-> >> nfs_callback_version1. This looks really strange.
-> >>
-> >> I.e. if we use this flag only for passing through this versions during
-> >> svc_(un)register, and we actually also want to pass through
-> >> nfs_callback_version4 as well (but just missed this vs_hidden flag for it), then
-> >> with current patch-set we can move this flag from (vs_hidden) svc_version to
-> >> svc_program and check it during svc_create instead of my home-brew
-> >> "setup_rpcbind" variable.
-> >>
-> >
-> > Agreed. The current situation is a mess, which is why I suggested a
-> > cleanup and overhaul before you do this...
-> >
-> > The vs_hidden flag is intended to show that a particular program
-> > version should not be registered with (or unregistered from) the
-> > portmapper. Unfortunately, nothing looks at vs_hidden during
-> > registration time, only when unregistering (as you mention).
-> >
-> > It's quite possible that several svc_versions declared in the kernel do
-> > not have this set correctly. One thing that would be good is to audit
-> > each of those.
-> >
-> > We currently rely on SVC_SOCK_ANONYMOUS for registration, but that
-> > wasn't its original intent. It's was just convenient to use it there
-> > too.
-> >
-> > SVC_SOCK_ANONYMOUS was (as best I can tell) originally intended for use
-> > on temporary sockets that we establish on receive. So for
-> > instance...when a client connects to nfsd, we need to create a new
-> > socket for nfsd, but obviously we don't want to register that socket
-> > with the portmapper (since nfsd should already be registered there).
-> > SVC_SOCK_ANONYMOUS ensures that that socket is not registered.
-> >
-> > The whole scheme could probably use a fundamental re-think. I'm not
-> > sure I have a great idea to propose in lieu of it, but I think adding
-> > yet another flag here is probably not the best way to go.
-> >
-> 
-> Ok, thank you, Jeff.
-> It looks like no mentions about portmapper are present in RFC's for NFS versions 
-> 4.* after a brief look.
-> This SVC_SOCK_ANONYMOUS is understandable and can't be removed with this 
-> patch-set from my pow.
-> But now I strongly believe, that we can move this vs_hidden flag from 
-> svc_version to svc_program structure and set it for both NFSv4.* programs.
-> Hope, someone else will confirm of refute this statement.
-> 
+On Mon, Sep 26, 2011 at 9:16 PM, Ian Kent <raven@themaw.net> wrote:
+>
+> This case is the one were there is no existing directory yet for the
+> automount (it's the age old original automount case where mount point
+> directories never existed within the automount managed directory before
+> being automounted). In this case we always want to automount regardless
+> of the lookup flags. So returning -EISDIR should be conditional on also
+> having a positive dentry.
 
-The problem is nfsd. In principle, there's no real reason we have to
-register NFSv4 with the portmapper at all. One could envision a
-setup where a v4-only server doesn't need to run rpcbind at all. Making
-it per-program may hamstring you from doing that later.
+Ok. This all just makes me more conviced that the LOOKUP_NO_AUTOMOUNT
+code is not even worth trying to salvage (ie not play any games with
+the existing AT_NO_AUTOMOUNT flag and perhaps turning
+!AT_SYMLINK_NOFOLLOW + !AT_NOAUTOMOUNT -> LOOKUP_AUTOMOUNT). That's
+the case that never tested for d_inode being NULL, so it got the
+autofs case wrong.
 
-It think it would be a good thing to keep it per-version, and it's
-trivial to write a routine to do what I've described. svc_creates only
-happen rarely.
+At some point we might want to expose an AT_AUTOMOUNT flag to user
+space _if_ it turns out that glibc or somebody wants really wants it,
+but the old flag clearly actually had a buggy implementation and
+almost certainly isn't worth worrying about.
 
-Just walk the pg_vers array for the program and look at each vs_hidden
-value. Return true when you hit one that has vs_hidden unset. Return
-false if none do. Then use that return value to replace your new flag
-in this patch.
+Of course, we'll have to see if there are any actual regression
+reports in this area.. If something actually breaks, we may not have
+all that many choices. But at least tentatively, I think we can plan
+on applying the attached cleanup to just rip that out (it's already
+effectively dead code apart from the buggy lack of d_inode testing,
+since apart from d_inode, it never triggers unless the subsequent test
+triggers)..
 
--- 
-Jeff Layton <jlayton@redhat.com>
+                           Linus
+
+--0016e6d58a732e46fa04ade4ce67
+Content-Type: text/x-patch; charset=US-ASCII; name="patch.diff"
+Content-Disposition: attachment; filename="patch.diff"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_gt2e3kwt0
+
+IGZzL25hbWVpLmMgICAgICAgICAgICB8ICAgIDYgLS0tLS0tCiBmcy9zdGF0LmMgICAgICAgICAg
+ICAgfCAgICAyIC0tCiBpbmNsdWRlL2xpbnV4L25hbWVpLmggfCAgICAyICstCiAzIGZpbGVzIGNo
+YW5nZWQsIDEgaW5zZXJ0aW9ucygrKSwgOSBkZWxldGlvbnMoLSkKCmRpZmYgLS1naXQgYS9mcy9u
+YW1laS5jIGIvZnMvbmFtZWkuYwppbmRleCAwOTYwNmZkODNkNTcuLjBiMzEzOGRlMmEzYiAxMDA2
+NDQKLS0tIGEvZnMvbmFtZWkuYworKysgYi9mcy9uYW1laS5jCkBAIC03MjEsMTIgKzcyMSw2IEBA
+IHN0YXRpYyBpbnQgZm9sbG93X2F1dG9tb3VudChzdHJ1Y3QgcGF0aCAqcGF0aCwgdW5zaWduZWQg
+ZmxhZ3MsCiAJaWYgKCFwYXRoLT5kZW50cnktPmRfb3AgfHwgIXBhdGgtPmRlbnRyeS0+ZF9vcC0+
+ZF9hdXRvbW91bnQpCiAJCXJldHVybiAtRVJFTU9URTsKIAotCS8qIFdlIGRvbid0IHdhbnQgdG8g
+bW91bnQgaWYgc29tZW9uZSBzdXBwbGllZCBBVF9OT19BVVRPTU9VTlQKLQkgKiBhbmQgdGhpcyBp
+cyB0aGUgdGVybWluYWwgcGFydCBvZiB0aGUgcGF0aC4KLQkgKi8KLQlpZiAoKGZsYWdzICYgTE9P
+S1VQX05PX0FVVE9NT1VOVCkgJiYgIShmbGFncyAmIExPT0tVUF9QQVJFTlQpKQotCQlyZXR1cm4g
+LUVJU0RJUjsgLyogd2UgYWN0dWFsbHkgd2FudCB0byBzdG9wIGhlcmUgKi8KLQogCS8qIFdlIGRv
+bid0IHdhbnQgdG8gbW91bnQgaWYgc29tZW9uZSdzIGp1c3QgZG9pbmcgYSBzdGF0IC0KIAkgKiB1
+bmxlc3MgdGhleSdyZSBzdGF0J2luZyBhIGRpcmVjdG9yeSBhbmQgYXBwZW5kZWQgYSAnLycgdG8K
+IAkgKiB0aGUgbmFtZS4KZGlmZiAtLWdpdCBhL2ZzL3N0YXQuYyBiL2ZzL3N0YXQuYwppbmRleCBi
+YTUzMTZmZmFjNjEuLjc4YTNhYTgzYzdlYSAxMDA2NDQKLS0tIGEvZnMvc3RhdC5jCisrKyBiL2Zz
+L3N0YXQuYwpAQCAtODEsOCArODEsNiBAQCBpbnQgdmZzX2ZzdGF0YXQoaW50IGRmZCwgY29uc3Qg
+Y2hhciBfX3VzZXIgKmZpbGVuYW1lLCBzdHJ1Y3Qga3N0YXQgKnN0YXQsCiAKIAlpZiAoIShmbGFn
+ICYgQVRfU1lNTElOS19OT0ZPTExPVykpCiAJCWxvb2t1cF9mbGFncyB8PSBMT09LVVBfRk9MTE9X
+OwotCWlmIChmbGFnICYgQVRfTk9fQVVUT01PVU5UKQotCQlsb29rdXBfZmxhZ3MgfD0gTE9PS1VQ
+X05PX0FVVE9NT1VOVDsKIAlpZiAoZmxhZyAmIEFUX0VNUFRZX1BBVEgpCiAJCWxvb2t1cF9mbGFn
+cyB8PSBMT09LVVBfRU1QVFk7CiAKZGlmZiAtLWdpdCBhL2luY2x1ZGUvbGludXgvbmFtZWkuaCBi
+L2luY2x1ZGUvbGludXgvbmFtZWkuaAppbmRleCBlMTNkYWM3Y2FhYjIuLjQwOTMyOGQxY2JiYiAx
+MDA2NDQKLS0tIGEvaW5jbHVkZS9saW51eC9uYW1laS5oCisrKyBiL2luY2x1ZGUvbGludXgvbmFt
+ZWkuaApAQCAtNTMsNyArNTMsNyBAQCBlbnVtIHtMQVNUX05PUk0sIExBU1RfUk9PVCwgTEFTVF9E
+T1QsIExBU1RfRE9URE9ULCBMQVNUX0JJTkR9OwogI2RlZmluZSBMT09LVVBfUEFSRU5UCQkweDAw
+MTAKICNkZWZpbmUgTE9PS1VQX1JFVkFMCQkweDAwMjAKICNkZWZpbmUgTE9PS1VQX1JDVQkJMHgw
+MDQwCi0jZGVmaW5lIExPT0tVUF9OT19BVVRPTU9VTlQJMHgwMDgwCisKIC8qCiAgKiBJbnRlbnQg
+ZGF0YQogICovCg==
+
+--0016e6d58a732e46fa04ade4ce67--
