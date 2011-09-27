@@ -1,52 +1,136 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:58548 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751181Ab1IXBpW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2011 21:45:22 -0400
-Received: by wyg34 with SMTP id 34so4460039wyg.19
-        for <linux-nfs@vger.kernel.org>; Fri, 23 Sep 2011 18:45:20 -0700 (PDT)
-In-Reply-To: <1316827854.3346.154.camel@perseus.themaw.net>
-References: <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com>
- <1316747758.3346.89.camel@perseus.themaw.net> <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
- <1316707443.3346.44.camel@perseus.themaw.net> <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
- <1316709935.3346.48.camel@perseus.themaw.net> <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
- <20110922144453.6cf53a25@barsoom.rdu.redhat.com> <1316719228.3968.14.camel@lade.trondhjem.org>
- <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
- <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
- <21772.1316774025@redhat.com> <1316788444.14812.10.camel@lade.trondhjem.org>
- <29743.1316791138@redhat.com> <87hb43tf2g.fsf@tucsk.pomaz.szeredi.hu> <1316827854.3346.154.camel@perseus.themaw.net>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Fri, 23 Sep 2011 18:44:59 -0700
-Message-ID: <CA+55aFwPEq5B_P0RtX+pBtGfTadzzS+3U=k=3XTjDw3soNhOdA@mail.gmail.com>
-Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-To: Ian Kent <raven@themaw.net>
-Cc: Miklos Szeredi <miklos@szeredi.hu>, David Howells <dhowells@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Jeff Layton <jlayton@redhat.com>, viro@zeniv.linux.org.uk,
+Received: from p3plsmtps2ded02.prod.phx3.secureserver.net ([208.109.80.59]:37724
+	"HELO p3plsmtps2ded02-02.prod.phx3.secureserver.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1751727Ab1I0NlW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Sep 2011 09:41:22 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Ian Kent <raven@themaw.net>, Jeff Layton <jlayton@redhat.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        David Howells <dhowells@redhat.com>, viro@zeniv.linux.org.uk,
         gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-Content-Type: text/plain; charset=ISO-8859-1
+Subject: [PATCH 1/2] VFS: Fix the remaining automounter semantics regressions
+Date: Tue, 27 Sep 2011 09:34:31 -0400
+Message-Id: <1317130472-7790-1-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <CA+55aFzX+DyU7xhAmTLq0g_z6jyKuqoiyPdCYO+w2Xk7pECrqg@mail.gmail.com>
+References: <CA+55aFzX+DyU7xhAmTLq0g_z6jyKuqoiyPdCYO+w2Xk7pECrqg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, Sep 23, 2011 at 6:30 PM, Ian Kent <raven@themaw.net> wrote:
->
-> Perhaps, but that allows modules to circumvent VFS policy which is what
-> allowed this situation to come up in the first place.
+The concensus seems to be that system calls such as stat() etc should not
+trigger an automount. Neither should the l* versions.
 
-So, realistically, what's the downside of just adding LOOKUP_DIRECTORY
-(or LOOKUP_OPEN) to the nfs_follow_remote_path() case?
+This patch therefore adds a LOOKUP_AUTOMOUNT flag to tag those lookups that
+don't currently trigger an automount on the last path element but that
+should.
 
-And if we decide that we really *really* must never bind-mount a
-automount point, we could certainly add LOOKUP_OPEN to that case too,
-but my gut feel is that's a "doctor, doctor, it hurts when I put a
-nail in my eye" kind of case - do we really care?  Is it a sane
-operation to do to begin with?
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/namei.c            |    8 +-------
+ fs/namespace.c        |    2 +-
+ fs/nfs/super.c        |    4 ++--
+ fs/quota/quota.c      |    3 ++-
+ fs/stat.c             |    2 --
+ include/linux/namei.h |    2 +-
+ 6 files changed, 7 insertions(+), 14 deletions(-)
 
-My gut feel is that either of (or both) of
-LOOKUP_OPEN/LOOKUP_DIRECTORY is a saner flag to check for than
-LOOKUP_FOLLOW ever was. Let's keep LOOKUP_FOLLOW as being the "acts on
-symlink or the thing it points to", and nothing else.
+diff --git a/fs/namei.c b/fs/namei.c
+index f478836..c076492 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -721,12 +721,6 @@ static int follow_automount(struct path *path, unsigned flags,
+ 	if (!path->dentry->d_op || !path->dentry->d_op->d_automount)
+ 		return -EREMOTE;
+ 
+-	/* We don't want to mount if someone supplied AT_NO_AUTOMOUNT
+-	 * and this is the terminal part of the path.
+-	 */
+-	if ((flags & LOOKUP_NO_AUTOMOUNT) && !(flags & LOOKUP_PARENT))
+-		return -EISDIR; /* we actually want to stop here */
+-
+ 	/* We don't want to mount if someone's just doing a stat -
+ 	 * unless they're stat'ing a directory and appended a '/' to
+ 	 * the name.
+@@ -738,7 +732,7 @@ static int follow_automount(struct path *path, unsigned flags,
+ 	 * as being automount points.  These will need the attentions
+ 	 * of the daemon to instantiate them before they can be used.
+ 	 */
+-	if (!(flags & (LOOKUP_PARENT | LOOKUP_DIRECTORY |
++	if (!(flags & (LOOKUP_AUTOMOUNT | LOOKUP_PARENT | LOOKUP_DIRECTORY |
+ 		     LOOKUP_OPEN | LOOKUP_CREATE)) &&
+ 	    path->dentry->d_inode)
+ 		return -EISDIR;
+diff --git a/fs/namespace.c b/fs/namespace.c
+index 22bfe82..b4febb2 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -1757,7 +1757,7 @@ static int do_loopback(struct path *path, char *old_name,
+ 		return err;
+ 	if (!old_name || !*old_name)
+ 		return -EINVAL;
+-	err = kern_path(old_name, LOOKUP_FOLLOW, &old_path);
++	err = kern_path(old_name, LOOKUP_FOLLOW|LOOKUP_AUTOMOUNT, &old_path);
+ 	if (err)
+ 		return err;
+ 
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 9b7dd70..8aa6968 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2797,8 +2797,8 @@ static struct dentry *nfs_follow_remote_path(struct vfsmount *root_mnt,
+ 	if (ret != 0)
+ 		goto out_put_mnt_ns;
+ 
+-	ret = vfs_path_lookup(root_mnt->mnt_root, root_mnt,
+-			export_path, LOOKUP_FOLLOW, &path);
++	ret = vfs_path_lookup(root_mnt->mnt_root, root_mnt, export_path,
++			LOOKUP_FOLLOW | LOOKUP_DIRECTORY, &path);
+ 
+ 	nfs_referral_loop_unprotect();
+ 	put_mnt_ns(ns_private);
+diff --git a/fs/quota/quota.c b/fs/quota/quota.c
+index b34bdb2..9ea9fce 100644
+--- a/fs/quota/quota.c
++++ b/fs/quota/quota.c
+@@ -355,7 +355,8 @@ SYSCALL_DEFINE4(quotactl, unsigned int, cmd, const char __user *, special,
+ 	 * resolution (think about autofs) and thus deadlocks could arise.
+ 	 */
+ 	if (cmds == Q_QUOTAON) {
+-		ret = user_path_at(AT_FDCWD, addr, LOOKUP_FOLLOW, &path);
++		ret = user_path_at(AT_FDCWD, addr, LOOKUP_FOLLOW |
++				LOOKUP_AUTOMOUNT, &path);
+ 		if (ret)
+ 			pathp = ERR_PTR(ret);
+ 		else
+diff --git a/fs/stat.c b/fs/stat.c
+index ba5316f..78a3aa8 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -81,8 +81,6 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+ 
+ 	if (!(flag & AT_SYMLINK_NOFOLLOW))
+ 		lookup_flags |= LOOKUP_FOLLOW;
+-	if (flag & AT_NO_AUTOMOUNT)
+-		lookup_flags |= LOOKUP_NO_AUTOMOUNT;
+ 	if (flag & AT_EMPTY_PATH)
+ 		lookup_flags |= LOOKUP_EMPTY;
+ 
+diff --git a/include/linux/namei.h b/include/linux/namei.h
+index 76fe2c6..bfcd2e0 100644
+--- a/include/linux/namei.h
++++ b/include/linux/namei.h
+@@ -52,7 +52,7 @@ enum {LAST_NORM, LAST_ROOT, LAST_DOT, LAST_DOTDOT, LAST_BIND};
+ #define LOOKUP_PARENT		0x0010
+ #define LOOKUP_REVAL		0x0020
+ #define LOOKUP_RCU		0x0040
+-#define LOOKUP_NO_AUTOMOUNT	0x0080
++#define LOOKUP_AUTOMOUNT	0x0080
+ /*
+  * Intent data
+  */
+-- 
+1.7.6.2
 
-                  Linus
