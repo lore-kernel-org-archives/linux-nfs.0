@@ -1,146 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41890 "EHLO mx1.redhat.com"
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:53494 "EHLO e6.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759609Ab1IITBP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Sep 2011 15:01:15 -0400
-Date: Fri, 9 Sep 2011 15:01:04 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>
-Subject: Re: [PATCH v2 3/5] SUNRPC: make RPC service dependable on rpcbind
- clients creation
-Message-ID: <20110909150104.5a83c60d@tlielax.poochiereds.net>
-In-Reply-To: <1315593874.17611.19.camel@lade.trondhjem.org>
-References: <20110909115146.13697.71682.stgit@localhost6.localdomain6>
-	<20110909120844.13697.48102.stgit@localhost6.localdomain6>
-	<20110909100745.7e2e8bf9@corrin.poochiereds.net>
-	<4E6A41D4.6090001@parallels.com>
-	<1315593874.17611.19.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+	id S1751871Ab1I0Qnj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Sep 2011 12:43:39 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e6.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p8RGJSkg010736
+	for <linux-nfs@vger.kernel.org>; Tue, 27 Sep 2011 12:19:28 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p8RGhb6K258452
+	for <linux-nfs@vger.kernel.org>; Tue, 27 Sep 2011 12:43:37 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p8RGhbJu006546
+	for <linux-nfs@vger.kernel.org>; Tue, 27 Sep 2011 13:43:37 -0300
+Date: Tue, 27 Sep 2011 09:43:35 -0700
+From: Malahal Naineni <malahal@us.ibm.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Check validity of cl_rpcclient in nfs_server_list_show
+Message-ID: <20110927164335.GA19331@us.ibm.com>
+References: <1315965305-23757-1-git-send-email-malahal@us.ibm.com>
+ <20110919153429.GA16725@us.ibm.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B35626A@SACMVEXC2-PRD.hq.netapp.com>
+ <20110921002714.GA31689@us.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110921002714.GA31689@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 09 Sep 2011 14:44:34 -0400
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-
-> On Fri, 2011-09-09 at 20:41 +0400, Stanislav Kinsbursky wrote: 
-> > 09.09.2011 18:07, Jeff Layton пишет:
-> > > On Fri, 09 Sep 2011 16:08:44 +0400
-> > > Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
-> > >
-> > >> Create rcbind clients or increase rpcbind users counter during RPC service
-> > >> creation and decrease this counter (and possibly destroy those clients) on RPC
-> > >> service destruction.
-> > >>
-> > >> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
-> > >>
-> > >> ---
-> > >>   include/linux/sunrpc/clnt.h |    2 ++
-> > >>   net/sunrpc/rpcb_clnt.c      |    2 +-
-> > >>   net/sunrpc/svc.c            |   13 +++++++++++--
-> > >>   3 files changed, 14 insertions(+), 3 deletions(-)
-> > >>
-> > >> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> > >> index db7bcaf..65a8115 100644
-> > >> --- a/include/linux/sunrpc/clnt.h
-> > >> +++ b/include/linux/sunrpc/clnt.h
-> > >> @@ -135,10 +135,12 @@ void		rpc_shutdown_client(struct rpc_clnt *);
-> > >>   void		rpc_release_client(struct rpc_clnt *);
-> > >>   void		rpc_task_release_client(struct rpc_task *);
-> > >>
-> > >> +int		rpcb_create_local(void);
-> > >>   int		rpcb_register(u32, u32, int, unsigned short);
-> > >>   int		rpcb_v4_register(const u32 program, const u32 version,
-> > >>   				 const struct sockaddr *address,
-> > >>   				 const char *netid);
-> > >> +void		rpcb_put_local(void);
-> > >>   void		rpcb_getport_async(struct rpc_task *);
-> > >>
-> > >>   void		rpc_call_start(struct rpc_task *);
-> > >> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-> > >> index b4cc0f1..437ec60 100644
-> > >> --- a/net/sunrpc/rpcb_clnt.c
-> > >> +++ b/net/sunrpc/rpcb_clnt.c
-> > >> @@ -318,7 +318,7 @@ out:
-> > >>    * Returns zero on success, otherwise a negative errno value
-> > >>    * is returned.
-> > >>    */
-> > >> -static int rpcb_create_local(void)
-> > >> +int rpcb_create_local(void)
-> > >>   {
-> > >>   	static DEFINE_MUTEX(rpcb_create_local_mutex);
-> > >>   	int result = 0;
-> > >> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> > >> index 6a69a11..9095c0e 100644
-> > >> --- a/net/sunrpc/svc.c
-> > >> +++ b/net/sunrpc/svc.c
-> > >> @@ -367,8 +367,11 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
-> > >>   	unsigned int xdrsize;
-> > >>   	unsigned int i;
-> > >>
-> > >> -	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
-> > >> +	if (rpcb_create_local()<  0)
-> > >>   		return NULL;
-> > >> +
-> > >> +	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
-> > >> +		goto out_err;
-> > >>   	serv->sv_name      = prog->pg_name;
-> > >>   	serv->sv_program   = prog;
-> > >>   	serv->sv_nrthreads = 1;
-> > >> @@ -403,7 +406,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
-> > >>   			GFP_KERNEL);
-> > >>   	if (!serv->sv_pools) {
-> > >>   		kfree(serv);
-> > >> -		return NULL;
-> > >> +		goto out_err;
-> > >>   	}
-> > >>
-> > >>   	for (i = 0; i<  serv->sv_nrpools; i++) {
-> > >> @@ -423,6 +426,10 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
-> > >>   	svc_unregister(serv);
-> > >>
-> > >>   	return serv;
-> > >> +
-> > >> +out_err:
-> > >> +	rpcb_put_local();
-> > >> +	return NULL;
-> > >>   }
-> > >>
-> > >>   struct svc_serv *
-> > >> @@ -491,6 +498,8 @@ svc_destroy(struct svc_serv *serv)
-> > >>   	svc_unregister(serv);
-> > >>   	kfree(serv->sv_pools);
-> > >>   	kfree(serv);
-> > >> +
-> > >> +	rpcb_put_local();
-> > >>   }
-> > >>   EXPORT_SYMBOL_GPL(svc_destroy);
-> > >>
-> > >>
-> > >
-> > > I don't get it -- what's the advantage of creating rpcbind clients in
-> > > __svc_create vs. the old way of creating them just before we plan to
-> > > use them?
-> > >
+Malahal Naineni [malahal@us.ibm.com] wrote:
+> Myklebust, Trond [Trond.Myklebust@netapp.com] wrote:
+> > Shouldn't we just skip all nfs_client structures that don't have
+> > cl_cons_state set to NFS_CS_READY? I see no reason to display their
+> > properties even if they have got far enough as to create an rpc client.
 > > 
-> > The main problem here is not in creation, but in destroying those clients.
-> > Now rpcbind clients are created during rpcb_register(). I.e. once per every family, program version and so on.
-> > But can be unregistered for all protocol families by one call. So it's impossible to put reference counting for those clients in the place, where they are created now.
+> > Cheers
+> >   Trond
 > 
-> Could we perhaps set up a 'struct pernet_operations' to create a
-> destructor for them?
+> Sounds good to me. Here is a tested patch.
+
+Any comments on this one?
+
+Thanks, Malahal.
+
 > 
-
-An even easier idea might be to just not take a reference to the
-rpcbind client for svc_programs that have vs_hidden set on every
-version.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> 
+> As soon as the nfs_client gets created, its cl_rpcclient is set to
+> ERR_PTR(-EINVAL). The rpc client structure is allocated later. Check
+> if the client is ready before using the cl_rpcclient pointer.
+> 
+> Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
+> ---
+>  fs/nfs/client.c |    4 ++++
+>  1 files changed, 4 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 5833fbb..a54c45e 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -1867,6 +1867,10 @@ static int nfs_server_list_show(struct seq_file *m, void *v)
+>  	/* display one transport per line on subsequent lines */
+>  	clp = list_entry(v, struct nfs_client, cl_share_link);
+> 
+> +	/* Check if the client is initialized */
+> +	if (clp->cl_cons_state != NFS_CS_READY)
+> +		return 0;
+> +
+>  	seq_printf(m, "v%u %s %s %3d %s\n",
+>  		   clp->rpc_ops->version,
+>  		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_ADDR),
+> -- 
+> 1.7.0.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
