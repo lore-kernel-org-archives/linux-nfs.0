@@ -1,94 +1,150 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:50952 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756167Ab1ILXhU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 19:37:20 -0400
-Received: by gyg10 with SMTP id 10so622334gyg.19
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Sep 2011 16:37:19 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/3] NFSD: Remove the ex_pathname field from struct svc_export
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 12 Sep 2011 19:37:16 -0400
-Message-ID: <20110912233716.5080.64021.stgit@matisse.1015granger.net>
-In-Reply-To: <20110912232149.5080.95084.stgit@matisse.1015granger.net>
-References: <20110912232149.5080.95084.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:57060 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751733Ab1I0Qz6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Sep 2011 12:55:58 -0400
+Message-ID: <4E82001C.5030005@netapp.com>
+Date: Tue, 27 Sep 2011 12:55:56 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 03/25] nfsd4: extend state lock over seqid replay logic
+References: <1316000721-3289-1-git-send-email-bfields@redhat.com> <1316000721-3289-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1316000721-3289-4-git-send-email-bfields@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Hi Bruce,
 
-There are no more users...
+I'm getting the following warning that I was able to bisect to this patch:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
+[  142.149710] ------------[ cut here ]------------
+[  142.150014] WARNING: at kernel/mutex-debug.c:78 debug_mutex_unlock+0xda/0xe0()
+[  142.150258] Hardware name: Bochs
+[  142.150407] Modules linked in: md5 nfsd exportfs nfs lockd fscache auth_rpcgss nfs_acl sunrpc ipv6 ext2 snd_hda_intel snd_hda_codec snd_hwdep psmouse i2c_piix4 evdev serio_raw pcspkr virtio_balloon snd_pcm snd_timer snd soundcore snd_page_alloc floppy i2c_core button processor ext4 mbcache jbd2 crc16 pata_acpi uhci_hcd ata_piix libata usbcore scsi_mod virtio_net virtio_pci virtio_blk virtio virtio_ring
+[  142.152927] Pid: 742, comm: nfsd Not tainted 3.1.0-rc1-SLIM+ #9
+[  142.152927] Call Trace:
+[  142.152927]  [<ffffffff8105fa4f>] warn_slowpath_common+0x7f/0xc0
+[  142.152927]  [<ffffffff8105faaa>] warn_slowpath_null+0x1a/0x20
+[  142.152927]  [<ffffffff810960ca>] debug_mutex_unlock+0xda/0xe0
+[  142.152927]  [<ffffffff813e4200>] __mutex_unlock_slowpath+0x80/0x140
+[  142.152927]  [<ffffffff813e42ce>] mutex_unlock+0xe/0x10
+[  142.152927]  [<ffffffffa03bd3f5>] nfs4_lock_state+0x35/0x40 [nfsd]
+[  142.152927]  [<ffffffffa03b0b71>] nfsd4_proc_compound+0x2a1/0x690 [nfsd]
+[  142.152927]  [<ffffffffa039f9fb>] nfsd_dispatch+0xeb/0x230 [nfsd]
+[  142.152927]  [<ffffffffa02b1055>] svc_process_common+0x345/0x690 [sunrpc]
+[  142.152927]  [<ffffffff81058d10>] ? try_to_wake_up+0x280/0x280
+[  142.152927]  [<ffffffffa02b16e2>] svc_process+0x102/0x150 [sunrpc]
+[  142.152927]  [<ffffffffa039f0bd>] nfsd+0xbd/0x160 [nfsd]
+[  142.152927]  [<ffffffffa039f000>] ? 0xffffffffa039efff
+[  142.152927]  [<ffffffff8108230c>] kthread+0x8c/0xa0
+[  142.152927]  [<ffffffff813e8694>] kernel_thread_helper+0x4/0x10
+[  142.152927]  [<ffffffff81082280>] ? kthread_worker_fn+0x190/0x190
+[  142.152927]  [<ffffffff813e8690>] ? gs_change+0x13/0x13
+[  142.152927] ---[ end trace 1b4070dc432138aa ]---
 
- fs/nfsd/export.c            |   11 -----------
- include/linux/nfsd/export.h |    1 -
- 2 files changed, 0 insertions(+), 12 deletions(-)
+I can duplicate it with this python script, the warning shows up on the server after (during?) the f.close() line:
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index d9a6611..bf985f7 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -318,7 +318,6 @@ static void svc_export_put(struct kref *ref)
- 	struct svc_export *exp = container_of(ref, struct svc_export, h.ref);
- 	path_put(&exp->ex_path);
- 	auth_domain_put(exp->ex_client);
--	kfree(exp->ex_pathname);
- 	nfsd4_fslocs_free(&exp->ex_fslocs);
- 	kfree(exp);
- }
-@@ -528,11 +527,6 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
- 
- 	exp.ex_client = dom;
- 
--	err = -ENOMEM;
--	exp.ex_pathname = kstrdup(buf, GFP_KERNEL);
--	if (!exp.ex_pathname)
--		goto out2;
--
- 	/* expiry */
- 	err = -EINVAL;
- 	exp.h.expiry_time = get_expiry(&mesg);
-@@ -613,8 +607,6 @@ out4:
- 	nfsd4_fslocs_free(&exp.ex_fslocs);
- 	kfree(exp.ex_uuid);
- out3:
--	kfree(exp.ex_pathname);
--out2:
- 	path_put(&exp.ex_path);
- out1:
- 	auth_domain_put(dom);
-@@ -678,7 +670,6 @@ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
- 	new->ex_client = item->ex_client;
- 	new->ex_path.dentry = dget(item->ex_path.dentry);
- 	new->ex_path.mnt = mntget(item->ex_path.mnt);
--	new->ex_pathname = NULL;
- 	new->ex_fslocs.locations = NULL;
- 	new->ex_fslocs.locations_count = 0;
- 	new->ex_fslocs.migrated = 0;
-@@ -696,8 +687,6 @@ static void export_update(struct cache_head *cnew, struct cache_head *citem)
- 	new->ex_fsid = item->ex_fsid;
- 	new->ex_uuid = item->ex_uuid;
- 	item->ex_uuid = NULL;
--	new->ex_pathname = item->ex_pathname;
--	item->ex_pathname = NULL;
- 	new->ex_fslocs.locations = item->ex_fslocs.locations;
- 	item->ex_fslocs.locations = NULL;
- 	new->ex_fslocs.locations_count = item->ex_fslocs.locations_count;
-diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
-index 7ba3fd4..f85308e 100644
---- a/include/linux/nfsd/export.h
-+++ b/include/linux/nfsd/export.h
-@@ -96,7 +96,6 @@ struct svc_export {
- 	struct auth_domain *	ex_client;
- 	int			ex_flags;
- 	struct path		ex_path;
--	char			*ex_pathname;
- 	uid_t			ex_anon_uid;
- 	gid_t			ex_anon_gid;
- 	int			ex_fsid;
+#!/usr/bin/python
+import sys
+import fcntl
+import struct
+import datetime
+
+f = open(sys.argv[1], 'rw+')
+print "Attempting to lock file:", sys.argv[1]
+lockreq = struct.pack('hhllhh', fcntl.F_WRLCK, 0, 0, 0, 0, 0)
+rv = fcntl.fcntl(f, fcntl.F_SETLKW, lockreq)
+raw_input("Press enter when you are ready to continue... ")
+f.close()
+
+- Bryan
+
+On 09/14/2011 07:44 AM, J. Bruce Fields wrote:
+> There are currently a couple races in the seqid replay code: a
+> retransmission could come while we're still encoding the original reply,
+> or a new seqid-mutating call could come as we're encoding a replay.
+> 
+> So, extend the state lock over the encoding (both encoding of a replayed
+> reply and caching of the original encoded reply).
+> 
+> I really hate doing this, and previously added the stateowner
+> reference-counting code to avoid it (which was insufficient)--but I
+> don't see a less complicated alternative at the moment.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/nfsd/nfs4proc.c  |    5 +++--
+>  fs/nfsd/nfs4state.c |   12 ++++++++----
+>  2 files changed, 11 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 50bae74..50063a8 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -408,8 +408,8 @@ out:
+>  	if (open->op_stateowner) {
+>  		nfs4_get_stateowner(open->op_stateowner);
+>  		cstate->replay_owner = open->op_stateowner;
+> -	}
+> -	nfs4_unlock_state();
+> +	} else
+> +		nfs4_unlock_state();
+>  	return status;
+>  }
+>  
+> @@ -1227,6 +1227,7 @@ encode_op:
+>  			be32_to_cpu(status));
+>  
+>  		if (cstate->replay_owner) {
+> +			nfs4_unlock_state();
+>  			nfs4_put_stateowner(cstate->replay_owner);
+>  			cstate->replay_owner = NULL;
+>  		}
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index bc1a9db..6cf729a 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -3501,7 +3501,8 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  
+>  	nfsd4_create_clid_dir(sop->so_client);
+>  out:
+> -	nfs4_unlock_state();
+> +	if (!cstate->replay_owner)
+> +		nfs4_unlock_state();
+>  	return status;
+>  }
+>  
+> @@ -3568,7 +3569,8 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
+>  	memcpy(&od->od_stateid, &stp->st_stateid, sizeof(stateid_t));
+>  	status = nfs_ok;
+>  out:
+> -	nfs4_unlock_state();
+> +	if (!cstate->replay_owner)
+> +		nfs4_unlock_state();
+>  	return status;
+>  }
+>  
+> @@ -3609,7 +3611,8 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	if (list_empty(&so->so_stateids))
+>  		move_to_close_lru(so);
+>  out:
+> -	nfs4_unlock_state();
+> +	if (!cstate->replay_owner)
+> +		nfs4_unlock_state();
+>  	return status;
+>  }
+>  
+> @@ -4071,7 +4074,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  out:
+>  	if (status && lock->lk_is_new && lock_sop)
+>  		release_lockowner(lock_sop);
+> -	nfs4_unlock_state();
+> +	if (!cstate->replay_owner)
+> +		nfs4_unlock_state();
+>  	return status;
+>  }
+>  
 
