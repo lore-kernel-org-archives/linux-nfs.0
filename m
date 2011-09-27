@@ -1,90 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:49583 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751380Ab1IWFVz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2011 01:21:55 -0400
-Message-ID: <4E7C1766.1080501@panasas.com>
-Date: Fri, 23 Sep 2011 08:21:42 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Jim Rees <rees@umich.edu>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
-        peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH 06/10] pnfsblock: init pg_bsize properly
-References: <1316742617-14766-1-git-send-email-rees@umich.edu> <1316742617-14766-7-git-send-email-rees@umich.edu>
-In-Reply-To: <1316742617-14766-7-git-send-email-rees@umich.edu>
+Received: from mx2.netapp.com ([216.240.18.37]:16927 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753446Ab1I0Lmz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Sep 2011 07:42:55 -0400
+Subject: Re: NFS client growing system CPU
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Simon Kirby <sim@hostway.ca>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Tue, 27 Sep 2011 07:42:53 -0400
+In-Reply-To: <20110927003931.GB12106@hostway.ca>
+References: <20101208212505.GA18192@hostway.ca>
+	 <1291845189.3067.31.camel@heimdal.trondhjem.org>
+	 <20110927003931.GB12106@hostway.ca>
 Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1317123773.24383.1.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/23/2011 04:50 AM, Jim Rees wrote:
-> From: Peng Tao <bergwolf@gmail.com>
+On Mon, 2011-09-26 at 17:39 -0700, Simon Kirby wrote: 
+> Hello!
 > 
-> pg_bsize is server->wsize/rsize by default. We would want to use the lseg
-> length.
+> Following up on "System CPU increasing on idle 2.6.36", this issue is
+> still happening even on 3.1-rc7. So, since it has been 9 months since I
+> reported this, I figured I'd bisect this issue. The first bisection ended
+> in an IPMI regression that looked like the problem, so I had to start
+> again. Eventually, I got commit b80c3cb628f0ebc241b02e38dd028969fb8026a2
+> which made it into 2.6.34-rc4.
 > 
-> Signed-off-by: Peng Tao <peng_tao@emc.com>
-> Signed-off-by: Jim Rees <rees@umich.edu>
+> With this commit, system CPU keeps rising as the log crunch box runs
+> (reads log files via NFS and spews out HTML files into NFS-mounted report
+> directories). When it finishes the daily run, the system time stays
+> non-zero and continues to be higher and higher after each run, until the
+> box never completes a run within a day due to all of the wasted cycles.
 
-If you want to get lazy about this patch and take the easy way out.
-The least you can do is supply the same fix to that other place
-that has the same bug.
+So reverting that commit fixes the problem on 3.1-rc7?
 
-This is not nice. You have identified a deficiency in the generic
-layer, You know that objects would have the same bug, (because I told you)
-and you just don't care. I have spent plenty of times slaving over
-blocks code when changing or fixing generic layer. (And Benny even more
-then me)
+As far as I can see, doing so should be safe thanks to commit
+5547e8aac6f71505d621a612de2fca0dd988b439 (writeback: Update dirty flags
+in two steps) which fixes the original problem at the VFS level.
 
-And when you will actually send a patch that does exactly the same in
-two places, which access only generic members, you might see that it
-might be better to fix it in a single place at the generic layer.
+Cheers
+  Trond
 
-NACK. I'm ok with getting lazy like below, but only if you also
-add the same code to objio_osd.c
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Sigh
-Boaz
-
-> ---
->  fs/nfs/blocklayout/blocklayout.c |   20 ++++++++++++++++++--
->  1 files changed, 18 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-> index 2167ba2..f5a7fa6 100644
-> --- a/fs/nfs/blocklayout/blocklayout.c
-> +++ b/fs/nfs/blocklayout/blocklayout.c
-> @@ -923,14 +923,30 @@ bl_clear_layoutdriver(struct nfs_server *server)
->  	return 0;
->  }
->  
-> +static void bl_pg_init_read(struct nfs_pageio_descriptor *pgio,
-> +			    struct nfs_page *req)
-> +{
-> +	pnfs_generic_pg_init_read(pgio, req);
-> +	if (pgio->pg_lseg)
-> +		pgio->pg_bsize = pgio->pg_lseg->pls_range.length;
-> +}
-> +
-> +static void bl_pg_init_write(struct nfs_pageio_descriptor *pgio,
-> +			     struct nfs_page *req)
-> +{
-> +	pnfs_generic_pg_init_write(pgio, req);
-> +	if (pgio->pg_lseg)
-> +		pgio->pg_bsize = pgio->pg_lseg->pls_range.length;
-> +}
-> +
->  static const struct nfs_pageio_ops bl_pg_read_ops = {
-> -	.pg_init = pnfs_generic_pg_init_read,
-> +	.pg_init = bl_pg_init_read,
->  	.pg_test = pnfs_generic_pg_test,
->  	.pg_doio = pnfs_generic_pg_readpages,
->  };
->  
->  static const struct nfs_pageio_ops bl_pg_write_ops = {
-> -	.pg_init = pnfs_generic_pg_init_write,
-> +	.pg_init = bl_pg_init_write,
->  	.pg_test = pnfs_generic_pg_test,
->  	.pg_doio = pnfs_generic_pg_writepages,
->  };
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
