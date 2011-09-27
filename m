@@ -1,100 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:6807 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751735Ab1IQNZV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 17 Sep 2011 09:25:21 -0400
-Message-ID: <4E749FBC.5090609@RedHat.com>
-Date: Sat, 17 Sep 2011 09:25:16 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Jim Rees <rees@umich.edu>
-CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH] nfs-utils/blkmapd: Add complex block layout discovery
- and mapping daemon
-References: <1313086848-7435-1-git-send-email-rees@umich.edu>
-In-Reply-To: <1313086848-7435-1-git-send-email-rees@umich.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from out4.smtp.messagingengine.com ([66.111.4.28]:50473 "EHLO
+	out4.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751132Ab1I0EYK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Sep 2011 00:24:10 -0400
+Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
+From: Ian Kent <raven@themaw.net>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Jeff Layton <jlayton@redhat.com>, Miklos Szeredi <miklos@szeredi.hu>,
+        David Howells <dhowells@redhat.com>, viro@zeniv.linux.org.uk,
+        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
+In-Reply-To: <CA+55aFyGxUu8-kzSrY5SZrF3VpqtemLDK4ES6q+kTcEzFVYd5A@mail.gmail.com>
+References: <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com>
+	 <1316747758.3346.89.camel@perseus.themaw.net>
+	 <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
+	 <1316707443.3346.44.camel@perseus.themaw.net>
+	 <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
+	 <1316709935.3346.48.camel@perseus.themaw.net>
+	 <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
+	 <20110922144453.6cf53a25@barsoom.rdu.redhat.com>
+	 <1316719228.3968.14.camel@lade.trondhjem.org>
+	 <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
+	 <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
+	 <21772.1316774025@redhat.com>
+	 <1316788444.14812.10.camel@lade.trondhjem.org>
+	 <29743.1316791138@redhat.com> <87hb43tf2g.fsf@tucsk.pomaz.szeredi.hu>
+	 <1316827854.3346.154.camel@perseus.themaw.net>
+	 <CA+55aFwPEq5B_P0RtX+pBtGfTadzzS+3U=k=3XTjDw3soNhOdA@mail.gmail.com>
+	 <20110924073610.4b045189@tlielax.poochiereds.net>
+	 <CA+55aFxjFXbCKBZNfBuCOaiBHRQ=ZECnhqKxjPw9maPgyRLiDA@mail.gmail.com>
+	 <1317013864.3187.81.camel@perseus.themaw.net>
+	 <CA+55aFzJnKCHtsiH-mZOwQgVt1ajPJQHWRYB_19eXEKaGRPD1w@mail.gmail.com>
+	 <1317071626.19951.8.camel@lade.trondhjem.org>
+	 <CA+55aFzWCZQjWMcxg16yMUoLr-mEPuXzAFgv49LU4hCn+=rbwQ@mail.gmail.com>
+	 <1317072718.19951.13.camel@lade.trondhjem.org>
+	 <CA+55aFzaScGiKmsSrgXivoUPw4xHjKobsB4VquuEu1fG=7R+wA@mail.gmail.com>
+	 <1317076424.19951.32.camel@lade.trondhjem.org>
+	 <CA+55aFzi+0Z6HXJCxW=Uc1EZsp4qA00i+ihNcSX_v6bVTbU2BA@mail.gmail.com>
+	 <1317078563.21770.8.camel@lade.trondhjem.org>
+	 <CA+55aFzX+DyU7xhAmTLq0g_z6jyKuqoiyPdCYO+w2Xk7pECrqg@mail.gmail.com>
+	 <1317085155.21770.17.camel@lade.trondhjem.org>
+	 <CA+55aFyGxUu8-kzSrY5SZrF3VpqtemLDK4ES6q+kTcEzFVYd5A@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 27 Sep 2011 12:24:03 +0800
+Message-ID: <1317097443.3176.23.camel@perseus.themaw.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hey Jim,
-
-My apologies for taking so long to get to this... For some
-reason I never added to my TODO list... That problem has
-been resolved... 
- 
-
-On 08/11/2011 02:20 PM, Jim Rees wrote:
-> This daemon is required to handle upcalls from the kernel pnfs block layout
-> driver.
+On Mon, 2011-09-26 at 18:18 -0700, Linus Torvalds wrote:
+> On Mon, Sep 26, 2011 at 5:59 PM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+> >
+> > OK. Then how about something along the lines of the following patch
+> > (compile tested only)?
 > 
-> Signed-off-by: Jim Rees <rees@umich.edu>
-> ---
->  .gitignore                       |    1 +
->  configure.ac                     |    4 +
->  utils/Makefile.am                |    4 +
->  utils/blkmapd/Makefile.am        |   19 ++
->  utils/blkmapd/blkmapd.man        |   54 ++++
->  utils/blkmapd/device-discovery.c |  453 +++++++++++++++++++++++++++++++++
->  utils/blkmapd/device-discovery.h |  162 ++++++++++++
->  utils/blkmapd/device-inq.c       |  233 +++++++++++++++++
->  utils/blkmapd/device-process.c   |  407 ++++++++++++++++++++++++++++++
->  utils/blkmapd/dm-device.c        |  518 ++++++++++++++++++++++++++++++++++++++
->  10 files changed, 1855 insertions(+), 0 deletions(-)
->  create mode 100644 utils/blkmapd/Makefile.am
->  create mode 100644 utils/blkmapd/blkmapd.man
->  create mode 100644 utils/blkmapd/device-discovery.c
->  create mode 100644 utils/blkmapd/device-discovery.h
->  create mode 100644 utils/blkmapd/device-inq.c
->  create mode 100644 utils/blkmapd/device-process.c
->  create mode 100644 utils/blkmapd/dm-device.c
+> I would seriously suggest aiming for *minimal*.
 > 
-> diff --git a/.gitignore b/.gitignore
-> index f5b5cf0..7bd9921 100644
-> --- a/.gitignore
-> +++ b/.gitignore
-> @@ -36,6 +36,7 @@ support/include/stamp-h1
->  lib*.a
->  tools/rpcgen/rpcgen
->  tools/rpcdebug/rpcdebug
-> +utils/blkmapd/blkmapd
->  utils/exportfs/exportfs
->  utils/idmapd/idmapd
->  utils/lockd/lockd
-> diff --git a/configure.ac b/configure.ac
-> index c9fb27b..08ef029 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -64,11 +64,14 @@ AC_ARG_ENABLE(nfsv4,
->  	enable_nfsv4=yes)
->  	if test "$enable_nfsv4" = yes; then
->  		AC_DEFINE(NFS4_SUPPORTED, 1, [Define this if you want NFSv4 support compiled in])
-> +		BLKMAPD=blkmapd
->  		IDMAPD=idmapd
->  	else
->  		enable_nfsv4=
-> +		BLKMAPD=
->  		IDMAPD=
->  	fi
-> +	AC_SUBST(BLKMAPD)
-You are adding the BLKMAPD to the "if nfsv4 is enabled" clause but it really
-should be added to the "if nfsv41 is enabled" clause. Currently that option 
-controls v4.1 support in the server, which is off by default since the 
-v4.1 server code is not quite ready for prime time... 
+> So if it already has any of LOOKUP_DIRECTORY, LOOKUP_OPEN,
+> LOOKUP_CREATE or LOOKUP_PARENT, don't add LOOKUP_AUTOMOUNT - because
+> it's not adding anything.
+> 
+> We *have* to automount on those flags anyway. They are not like
+> LOOKUP_FOLLOW was, where the automount decision was just a random
+> (bad) choice.
+> 
+> From a quick look, pretty much all of the cases you added
+> LOOKUP_AUTOMOUNT to were already implicit automount events. So I think
+> the two remaining ones are quotactl Q_QUOTAON case, bind mount in
+> do_looopback(), and the nfs_follow_remote_path() case.
+> 
+> Sure, we could add it to the others as some kind of "documentation"
+> thing, but I think that should be separate and is debatable to begin
+> with.
 
-So what I would like to do is create a "if nfsdv41 is enabled" clause
-that will enable/disable the v4.1 server, which will be off by default. 
-Then have the blkmapd code enable/disable by the current "if nfsv41 
-is enabled" clause, which will be on my default.
+That was the only question I had when I suggested using LOOKUP_AUTOMOUNT
+to restore the previous automounting behavior. The trade off being to
+add the flag and simplify the check in follow_automount() or to not add
+it to implicit automount cases and retain the check but minimize the
+changes to path walk call sites.
 
-So I will make the enable_nfsv41 ==> enable_nfsdv41 change in 
-the next rc release, alone with some other outstanding changes.
-After that rc release, I'll commit this code and then make a minor 
-release, 1.2.5, that will have this code on by default.
+Talk about an automount file type was purely a suggestion of something
+that would be good to do later along with what would be a lengthy user
+space co-ordination and education process, not something I thought was
+good to do now.
 
-Sound reasonable?
+Making allowances for the change back to the old behavior for those
+kernel users that had different semantics at the outset was a second and
+separate question and still is.
 
-Again, my apologizes for the delay... 
+Ian
 
-steved.
 
