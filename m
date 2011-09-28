@@ -1,241 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:2343 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752504Ab1IVNpx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Sep 2011 09:45:53 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-To: miklos@szeredi.hu, raven@themaw.net, viro@ZenIV.linux.org.uk
-Cc: dhowells@redhat.com, jlayton@redhat.com, gregkh@suse.de,
-        torvalds@linux-foundation.org, linux-nfs@vger.kernel.org,
-        leonardo.lists@gmail.com
-Date: Thu, 22 Sep 2011 14:45:10 +0100
-Message-ID: <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+Received: from peace.netnation.com ([204.174.223.2]:35917 "EHLO
+	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753916Ab1I1T6h (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Sep 2011 15:58:37 -0400
+Date: Wed, 28 Sep 2011 12:58:35 -0700
+From: Simon Kirby <sim@hostway.ca>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: NFS client growing system CPU
+Message-ID: <20110928195835.GA15368@hostway.ca>
+References: <20101208212505.GA18192@hostway.ca> <1291845189.3067.31.camel@heimdal.trondhjem.org> <20110927003931.GB12106@hostway.ca> <1317123773.24383.1.camel@lade.trondhjem.org> <20110927164937.GA2690@hostway.ca> <1317143055.10143.2.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1317143055.10143.2.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Directly suppress automount on the following:
+On Tue, Sep 27, 2011 at 01:04:15PM -0400, Trond Myklebust wrote:
 
-	[l]stat
-	[l]getxattr
-	[l]setxattr
-	[l]listxattr
-	[l]removexattr
-	name_to_handle_at
-	fstatat
-	statfs
-	utimes
+> On Tue, 2011-09-27 at 09:49 -0700, Simon Kirby wrote: 
+> > On Tue, Sep 27, 2011 at 07:42:53AM -0400, Trond Myklebust wrote:
+> > 
+> > > On Mon, 2011-09-26 at 17:39 -0700, Simon Kirby wrote: 
+> > > > Hello!
+> > > > 
+> > > > Following up on "System CPU increasing on idle 2.6.36", this issue is
+> > > > still happening even on 3.1-rc7. So, since it has been 9 months since I
+> > > > reported this, I figured I'd bisect this issue. The first bisection ended
+> > > > in an IPMI regression that looked like the problem, so I had to start
+> > > > again. Eventually, I got commit b80c3cb628f0ebc241b02e38dd028969fb8026a2
+> > > > which made it into 2.6.34-rc4.
+> > > > 
+> > > > With this commit, system CPU keeps rising as the log crunch box runs
+> > > > (reads log files via NFS and spews out HTML files into NFS-mounted report
+> > > > directories). When it finishes the daily run, the system time stays
+> > > > non-zero and continues to be higher and higher after each run, until the
+> > > > box never completes a run within a day due to all of the wasted cycles.
+> > > 
+> > > So reverting that commit fixes the problem on 3.1-rc7?
+> > > 
+> > > As far as I can see, doing so should be safe thanks to commit
+> > > 5547e8aac6f71505d621a612de2fca0dd988b439 (writeback: Update dirty flags
+> > > in two steps) which fixes the original problem at the VFS level.
+> > 
+> > Hmm, I went to git revert b80c3cb628f0ebc241b02e38dd028969fb8026a2, but
+> > for some reason git left the nfs_mark_request_dirty(req); line in
+> > nfs_writepage_setup(), even though the original commit had that. Is that
+> > OK or should I remove that as well?
+> > 
+> > Once that is sorted, I'll build it and let it run for a day and let you
+> > know. Thanks!
+> 
+> It shouldn't make any difference whether you leave it or remove it. The
+> resulting second call to __set_page_dirty_nobuffers() will always be a
+> no-op since the page will already be marked as dirty.
 
-But provide an AT_AUTOMOUNT_FOLLOW path where possible to override that
-behaviour.
+Ok, confirmed, git revert b80c3cb628f0ebc241b02e38dd028969fb8026a2 on
+3.1-rc7 fixes the problem for me. Does this make sense, then, or do we
+need further investigation and/or testing?
 
-This changes the behaviour back to before the in-VFS automount patches were
-applied, thus, for example, preventing stat() from causing automounting, but
-allows it to be overridden where possible.
-
-However, what about the following:
-
-	umount
-	faccessat
-	fchmodat, chmod
-	fchownat, lchown, chown
-
-Should these or should these not cause automounting?
-
-It's possible that with these additions, the whole decision point in
-follow_automount() can be reduced to just a check of LOOKUP_NO_AUTOMOUNT.
-
-Signed-off-by: David Howells <dhowells@redhat.com>
----
-
- fs/fhandle.c          |    2 +-
- fs/stat.c             |    8 ++++----
- fs/statfs.c           |    3 ++-
- fs/utimes.c           |   10 +++++++---
- fs/xattr.c            |   20 ++++++++++++--------
- include/linux/fcntl.h |    1 +
- 6 files changed, 27 insertions(+), 17 deletions(-)
-
-diff --git a/fs/fhandle.c b/fs/fhandle.c
-index 6b08864..bc0f327 100644
---- a/fs/fhandle.c
-+++ b/fs/fhandle.c
-@@ -92,7 +92,7 @@ SYSCALL_DEFINE5(name_to_handle_at, int, dfd, const char __user *, name,
- 		int, flag)
- {
- 	struct path path;
--	int lookup_flags;
-+	int lookup_flags = LOOKUP_NO_AUTOMOUNT;
- 	int err;
- 
- 	if ((flag & ~(AT_SYMLINK_FOLLOW | AT_EMPTY_PATH)) != 0)
-diff --git a/fs/stat.c b/fs/stat.c
-index ba5316f..e39b489 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -73,16 +73,16 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
- {
- 	struct path path;
- 	int error = -EINVAL;
--	int lookup_flags = 0;
-+	int lookup_flags = LOOKUP_NO_AUTOMOUNT;
- 
- 	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
--		      AT_EMPTY_PATH)) != 0)
-+		      AT_EMPTY_PATH | AT_AUTOMOUNT_FOLLOW)) != 0)
- 		goto out;
- 
- 	if (!(flag & AT_SYMLINK_NOFOLLOW))
- 		lookup_flags |= LOOKUP_FOLLOW;
--	if (flag & AT_NO_AUTOMOUNT)
--		lookup_flags |= LOOKUP_NO_AUTOMOUNT;
-+	if (!(flag & AT_AUTOMOUNT_FOLLOW))
-+		lookup_flags &= ~LOOKUP_NO_AUTOMOUNT;
- 	if (flag & AT_EMPTY_PATH)
- 		lookup_flags |= LOOKUP_EMPTY;
- 
-diff --git a/fs/statfs.c b/fs/statfs.c
-index 8244924..fe64701 100644
---- a/fs/statfs.c
-+++ b/fs/statfs.c
-@@ -76,7 +76,8 @@ EXPORT_SYMBOL(vfs_statfs);
- int user_statfs(const char __user *pathname, struct kstatfs *st)
- {
- 	struct path path;
--	int error = user_path(pathname, &path);
-+	int error = user_path_at(AT_FDCWD, pathname, LOOKUP_NO_AUTOMOUNT,
-+				 &path);
- 	if (!error) {
- 		error = vfs_statfs(&path, st);
- 		path_put(&path);
-diff --git a/fs/utimes.c b/fs/utimes.c
-index ba653f3..e9bf196 100644
---- a/fs/utimes.c
-+++ b/fs/utimes.c
-@@ -136,13 +136,15 @@ long do_utimes(int dfd, const char __user *filename, struct timespec *times,
- 		goto out;
- 	}
- 
--	if (flags & ~AT_SYMLINK_NOFOLLOW)
-+	if (flags & ~(AT_SYMLINK_NOFOLLOW |
-+		      AT_NO_AUTOMOUNT | AT_AUTOMOUNT_FOLLOW))
- 		goto out;
- 
- 	if (filename == NULL && dfd != AT_FDCWD) {
- 		struct file *file;
- 
--		if (flags & AT_SYMLINK_NOFOLLOW)
-+		if (flags & (AT_SYMLINK_NOFOLLOW |
-+			     AT_NO_AUTOMOUNT | AT_AUTOMOUNT_FOLLOW))
- 			goto out;
- 
- 		file = fget(dfd);
-@@ -154,10 +156,12 @@ long do_utimes(int dfd, const char __user *filename, struct timespec *times,
- 		fput(file);
- 	} else {
- 		struct path path;
--		int lookup_flags = 0;
-+		int lookup_flags = LOOKUP_NO_AUTOMOUNT;
- 
- 		if (!(flags & AT_SYMLINK_NOFOLLOW))
- 			lookup_flags |= LOOKUP_FOLLOW;
-+		if (flags & AT_AUTOMOUNT_FOLLOW)
-+			lookup_flags &= ~LOOKUP_NO_AUTOMOUNT;
- 
- 		error = user_path_at(dfd, filename, lookup_flags, &path);
- 		if (error)
-diff --git a/fs/xattr.c b/fs/xattr.c
-index f060663..7c462ae 100644
---- a/fs/xattr.c
-+++ b/fs/xattr.c
-@@ -290,7 +290,8 @@ SYSCALL_DEFINE5(setxattr, const char __user *, pathname,
- 	struct path path;
- 	int error;
- 
--	error = user_path(pathname, &path);
-+	error = user_path_at(AT_FDCWD, pathname,
-+			     LOOKUP_FOLLOW | LOOKUP_NO_AUTOMOUNT, &path);
- 	if (error)
- 		return error;
- 	error = mnt_want_write(path.mnt);
-@@ -309,7 +310,7 @@ SYSCALL_DEFINE5(lsetxattr, const char __user *, pathname,
- 	struct path path;
- 	int error;
- 
--	error = user_lpath(pathname, &path);
-+	error = user_path_at(AT_FDCWD, pathname, LOOKUP_NO_AUTOMOUNT, &path);
- 	if (error)
- 		return error;
- 	error = mnt_want_write(path.mnt);
-@@ -386,7 +387,8 @@ SYSCALL_DEFINE4(getxattr, const char __user *, pathname,
- 	struct path path;
- 	ssize_t error;
- 
--	error = user_path(pathname, &path);
-+	error = user_path_at(AT_FDCWD, pathname,
-+			     LOOKUP_FOLLOW | LOOKUP_NO_AUTOMOUNT, &path);
- 	if (error)
- 		return error;
- 	error = getxattr(path.dentry, name, value, size);
-@@ -400,7 +402,7 @@ SYSCALL_DEFINE4(lgetxattr, const char __user *, pathname,
- 	struct path path;
- 	ssize_t error;
- 
--	error = user_lpath(pathname, &path);
-+	error = user_path_at(AT_FDCWD, pathname, LOOKUP_NO_AUTOMOUNT, &path);
- 	if (error)
- 		return error;
- 	error = getxattr(path.dentry, name, value, size);
-@@ -459,7 +461,8 @@ SYSCALL_DEFINE3(listxattr, const char __user *, pathname, char __user *, list,
- 	struct path path;
- 	ssize_t error;
- 
--	error = user_path(pathname, &path);
-+	error = user_path_at(AT_FDCWD, pathname,
-+			     LOOKUP_FOLLOW | LOOKUP_NO_AUTOMOUNT, &path);
- 	if (error)
- 		return error;
- 	error = listxattr(path.dentry, list, size);
-@@ -473,7 +476,7 @@ SYSCALL_DEFINE3(llistxattr, const char __user *, pathname, char __user *, list,
- 	struct path path;
- 	ssize_t error;
- 
--	error = user_lpath(pathname, &path);
-+	error = user_path_at(AT_FDCWD, pathname, LOOKUP_NO_AUTOMOUNT, &path);
- 	if (error)
- 		return error;
- 	error = listxattr(path.dentry, list, size);
-@@ -519,7 +522,8 @@ SYSCALL_DEFINE2(removexattr, const char __user *, pathname,
- 	struct path path;
- 	int error;
- 
--	error = user_path(pathname, &path);
-+	error = user_path_at(AT_FDCWD, pathname,
-+			     LOOKUP_FOLLOW | LOOKUP_NO_AUTOMOUNT, &path);
- 	if (error)
- 		return error;
- 	error = mnt_want_write(path.mnt);
-@@ -537,7 +541,7 @@ SYSCALL_DEFINE2(lremovexattr, const char __user *, pathname,
- 	struct path path;
- 	int error;
- 
--	error = user_lpath(pathname, &path);
-+	error = user_path_at(AT_FDCWD, pathname, LOOKUP_NO_AUTOMOUNT, &path);
- 	if (error)
- 		return error;
- 	error = mnt_want_write(path.mnt);
-diff --git a/include/linux/fcntl.h b/include/linux/fcntl.h
-index f550f89..768fb66 100644
---- a/include/linux/fcntl.h
-+++ b/include/linux/fcntl.h
-@@ -47,6 +47,7 @@
- #define AT_SYMLINK_FOLLOW	0x400   /* Follow symbolic links.  */
- #define AT_NO_AUTOMOUNT		0x800	/* Suppress terminal automount traversal */
- #define AT_EMPTY_PATH		0x1000	/* Allow empty relative pathname */
-+#define AT_AUTOMOUNT_FOLLOW	0x2000	/* Follow terminal automounts */
- 
- #ifdef __KERNEL__
- 
-
+Simon-
