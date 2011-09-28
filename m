@@ -1,133 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:26539 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:15811 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754140Ab1IWOl6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Sep 2011 10:41:58 -0400
-Message-ID: <4E7C9A91.1060301@parallels.com>
-Date: Fri, 23 Sep 2011 18:41:21 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-To: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>
-Subject: Re: [PATCH v6 1/8] SUNRPC: introduce helpers for reference counted
- rpcbind clients
-References: <20110920101031.9861.18444.stgit@localhost6.localdomain6> <20110920101341.9861.51453.stgit@localhost6.localdomain6> <4E7899E7.9090809@parallels.com> <4E79A95F.8050304@parallels.com>
-In-Reply-To: <4E79A95F.8050304@parallels.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+	id S1754853Ab1I1SXG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Sep 2011 14:23:06 -0400
+Date: Wed, 28 Sep 2011 14:23:04 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfsd grace period open owners
+Message-ID: <20110928182304.GJ19435@pad.fieldses.org>
+References: <4E836218.6000805@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E836218.6000805@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Trond, is this patch version suits you now? Or not?
-Please, comment somehow to let me know, may I proceed with further development 
-or not.
+On Wed, Sep 28, 2011 at 02:06:16PM -0400, Bryan Schumaker wrote:
+> Hi Bruce,
+> 
+> I'm updating my fault injection patches to work with your recent stateid changes, and I had a question about something I'm seeing on the server.  When I reboot the server it will enter a grace period and reply to any OPEN requests from the client with NFSERR_GRACE.  I used Wireshark to see that NFSERR_GRACE is returned 12 times before the open succeeds, so 13 OPEN requests total.  When I send the command to forget all open owners I find that 13 open owners have been forgotten, but I only expecting to find 1.  Is this what you would expect the server to do?
 
-Sorry for disturbing (if so).
+Huh.  No, that doesn't sound right.  A failed open doesn't confirm the
+openowner, and I don't think there's any reason to keep around an
+unconfirmed openowner.
 
-21.09.2011 13:07, Stanislav Kinsbursky пишет:
-> v6:
-> 1) added write memory barrier to rpcb_set_local to make sure, that rpcbind
-> clients become valid before rpcb_users assignment
-> 2) explicitly set rpcb_users to 1 instead of incrementing it (looks clearer from
-> my pow).
->
-> Notice: write memory barrier after zeroing rpcbind clients in rpcb_put_local()
-> is not required, since to users of them left. New user (service) will create new
-> clients before dereferencing them.
->
-> This helpers will be used for dynamical creation and destruction of rpcbind
-> clients.
-> Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
-> clients has been created already, then we just increase rpcb_users.
->
-> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->
-> ---
->    net/sunrpc/rpcb_clnt.c |   54 ++++++++++++++++++++++++++++++++++++++++++++++++
->    1 files changed, 54 insertions(+), 0 deletions(-)
->
-> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-> index e45d2fb..9fcdb42 100644
-> --- a/net/sunrpc/rpcb_clnt.c
-> +++ b/net/sunrpc/rpcb_clnt.c
-> @@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
->    static struct rpc_clnt *	rpcb_local_clnt;
->    static struct rpc_clnt *	rpcb_local_clnt4;
->
-> +DEFINE_SPINLOCK(rpcb_clnt_lock);
-> +unsigned int			rpcb_users;
-> +
->    struct rpcbind_args {
->    	struct rpc_xprt *	r_xprt;
->
-> @@ -161,6 +164,57 @@ static void rpcb_map_release(void *data)
->    	kfree(map);
->    }
->
-> +static int rpcb_get_local(void)
-> +{
-> +	int cnt;
-> +
-> +	spin_lock(&rpcb_clnt_lock);
-> +	if (rpcb_users)
-> +		rpcb_users++;
-> +	cnt = rpcb_users;
-> +	spin_unlock(&rpcb_clnt_lock);
-> +
-> +	return cnt;
-> +}
-> +
-> +void rpcb_put_local(void)
-> +{
-> +	struct rpc_clnt *clnt = rpcb_local_clnt;
-> +	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
-> +	int shutdown;
-> +
-> +	spin_lock(&rpcb_clnt_lock);
-> +	if (--rpcb_users == 0) {
-> +		rpcb_local_clnt = NULL;
-> +		rpcb_local_clnt4 = NULL;
-> +	}
-> +	shutdown = !rpcb_users;
-> +	spin_unlock(&rpcb_clnt_lock);
-> +
-> +	if (shutdown) {
-> +		/*
-> +		 * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
-> +		 */
-> +		if (clnt4)
-> +			rpc_shutdown_client(clnt4);
-> +		if (clnt)
-> +			rpc_shutdown_client(clnt);
-> +	}
-> +	return;
-> +}
-> +
-> +static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
-> +{
-> +	/* Protected by rpcb_create_local_mutex */
-> +	rpcb_local_clnt = clnt;
-> +	rpcb_local_clnt4 = clnt4;
-> +	smp_wmb();
-> +	rpcb_users = 1;
-> +	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
-> +			"%p, rpcb_local_clnt4: %p)\n", rpcb_local_clnt,
-> +			rpcb_local_clnt4);
-> +}
-> +
->    /*
->     * Returns zero on success, otherwise a negative errno value
->     * is returned.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Out of curiosity, is the client using a different openowner for each
+open?
 
+--b.
 
--- 
-Best regards,
-Stanislav Kinsbursky
+> 
+> I've pasted the code I use to count and delete open owners below.  The variable "num" has the value 0, so all open owners should be deleted.
+> 
+> - Bryan
+> 
+> static int nfsd_forget_n_openowners(u64 num)
+> {
+> 	int i, count = 0;
+> 	struct nfs4_stateowner *sop, *next;
+> 
+> 	for (i = 0; i < OPEN_OWNER_HASH_SIZE; i++) {
+> 		list_for_each_entry_safe(sop, next, &open_ownerstr_hashtbl[i], so_strhash) {
+> 			release_openowner(openowner(sop));
+> 			if (++count == num)
+> 				return count;
+> 		}
+> 	}
+> 	return count;
+> }
+> 
+> void nfsd_forget_openowners(u64 num)
+> {
+> 	int count;
+> 
+> 	nfs4_lock_state();
+> 	count = nfsd_forget_n_openowners(num);
+> 	nfs4_unlock_state();
+> 
+> 	printk(KERN_INFO "%s %s Forgot %d open owners", __FILE__, __func__, count);
+> }
