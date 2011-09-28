@@ -1,50 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:55049 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755559Ab1ILXg7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2011 19:36:59 -0400
-Received: by ywb5 with SMTP id 5so1248905ywb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Sep 2011 16:36:59 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/3] NFSD support for FedFS junctions [v3]
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 12 Sep 2011 19:36:56 -0400
-Message-ID: <20110912232149.5080.95084.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:56702 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751503Ab1I1Lwr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Sep 2011 07:52:47 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com, smfrench@gmail.com, pavel@ucw.cz, rjw@sisk.pl
+Cc: linux-pm@lists.linux-foundation.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, john@Calva.COM,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH 0/4] allow freezing of tasks with netfs calls in flight
+Date: Wed, 28 Sep 2011 07:52:37 -0400
+Message-Id: <1317210761-11518-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Sometime soon we are going to have easy-to-install user space FedFS
-components.  Here are kernel patches needed to make server-side FedFS
-support work.  Please consider these for the 3.2 kernel.
+We've had a number of reports recently of people with NFS and CIFS
+mounts that were unable to suspend or hibernate their machines. Here
+are a couple of Fedora bugs that illustrate the problem:
 
-This respin addresses recent review comments.
+    https://bugzilla.redhat.com/show_bug.cgi?id=712088
+    https://bugzilla.redhat.com/show_bug.cgi?id=717735
 
-Note that because NFSD previously didn't care about the execute bits
-of junctions, neither does fedfs-utils-0.7.0 (released September 3,
-2011).  Junctions created by this release and previous releases have
-the sticky bit set, but the other mode bits are left untouched during
-junction creation.
+When it occurs the problem is pretty clear. We have a task that's
+sleeping in the kernel in TASK_KILLABLE sleep, generally waiting
+for a reply to come in. Often though, userspace has already taken
+down the interface so that reply will never come. The process then
+fails to freeze and the suspend fails.
 
-I will publish fedfs-utils-0.7.1 soon with a commit that makes new
-junctions non-executable.
+This patch fixes this by allowing the TASK_KILLABLE sleeps in NFS and
+CIFS to be awoken by the freezer and then to try to freeze. If a freeze
+event does occur, then the code will treat it as if a schedule() has
+already occured.
 
----
+I've had a number of people test versions of this set and the results
+have been positive. Part of the problem though is that there are
+sometimes still unrelated problems with suspend/resume that seem to
+cloud the results. As best we can tell though, this patchset does work
+as advertised.
 
-Trond Myklebust (3):
-      NFSD: Add a cache for fs_locations information
-      NFSD: Remove the ex_pathname field from struct svc_export
-      NFSD: Cleanup for nfsd4_path()
+Jeff Layton (4):
+  freezer: make fake_signal_wake_up wake TASK_KILLABLE tasks too
+  cifs, freezer: add wait_event_freezekillable and have cifs use it
+  sunrpc: make rpc_wait_bit_killable handle freeze events
+  nfs: make TASK_KILLABLE sleeps attempt to freeze
 
-
- fs/nfsd/export.c            |   15 +-----
- fs/nfsd/nfs4xdr.c           |  106 ++++++++++++++++++++++++++++++++-----------
- fs/nfsd/nfsd.h              |    7 +++
- fs/nfsd/vfs.c               |   18 +++++++
- include/linux/nfsd/export.h |    2 -
- 5 files changed, 106 insertions(+), 42 deletions(-)
+ fs/cifs/transport.c     |    3 ++-
+ fs/nfs/inode.c          |    4 +++-
+ fs/nfs/nfs3proc.c       |    3 ++-
+ fs/nfs/nfs4proc.c       |   12 ++++++++----
+ fs/nfs/proc.c           |    3 ++-
+ include/linux/freezer.h |   19 +++++++++++++++++--
+ kernel/freezer.c        |    2 +-
+ net/sunrpc/sched.c      |    4 +++-
+ 8 files changed, 38 insertions(+), 12 deletions(-)
 
 -- 
-Chuck Lever
+1.7.6.2
+
