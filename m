@@ -1,72 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out4.smtp.messagingengine.com ([66.111.4.28]:46793 "EHLO
-	out4.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751835Ab1I0ARV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Sep 2011 20:17:21 -0400
-Received: from compute4.internal (compute4.nyi.mail.srv.osa [10.202.2.44])
-	by gateway1.nyi.mail.srv.osa (Postfix) with ESMTP id 05F202971B
-	for <linux-nfs@vger.kernel.org>; Mon, 26 Sep 2011 20:17:20 -0400 (EDT)
-Message-Id: <1317082639.4908.140258148055849@webmail.messagingengine.com>
-From: dchilton+linux-nfs@bestmail.us
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="us-ascii"
-Subject: DomU boot NFSD "90-second grace period" is ~ 4-5 minutes, then finishes
- without problem.  How to debug/fix the extended wait?
-Date: Mon, 26 Sep 2011 17:17:19 -0700
+Received: from mail-qy0-f181.google.com ([209.85.216.181]:53008 "EHLO
+	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752688Ab1I1Lwu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Sep 2011 07:52:50 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com, smfrench@gmail.com, pavel@ucw.cz, rjw@sisk.pl
+Cc: linux-pm@lists.linux-foundation.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, john@Calva.COM,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH 2/4] cifs, freezer: add wait_event_freezekillable and have cifs use it
+Date: Wed, 28 Sep 2011 07:52:39 -0400
+Message-Id: <1317210761-11518-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1317210761-11518-1-git-send-email-jlayton@redhat.com>
+References: <1317210761-11518-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi,
+CIFS currently uses wait_event_killable to put tasks to sleep while
+they await replies from the server. That function though does not
+allow the freezer to run. In many cases, the network interface may
+be going down anyway, in which case the reply will never come. The
+client then ends up blocking the computer from suspending.
 
-I'm booting a Xen DomU that connects to NFS4 mounts served up by the
-Dom0. Fyi,
+Fix this by adding a new wait_event_freezable variant --
+wait_event_freezekillable. The idea is to combine the behavior of
+wait_event_killable and wait_event_freezable -- put the task to
+sleep and only allow it to be awoken by fatal signals, but also
+allow the freezer to do its job.
 
-rpm -qa | egrep -i "^nfs|^kernel"
- nfs-kernel-server-1.2.3-11.16.1.x86_64
- nfsidmap-0.23-13.1.x86_64
- nfs-client-1.2.3-11.16.1.x86_64
- kernel-xen-2.6.37.6-0.7.1.x86_64
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/cifs/transport.c     |    3 ++-
+ include/linux/freezer.h |   19 +++++++++++++++++--
+ 2 files changed, 19 insertions(+), 3 deletions(-)
 
-@ DomU launch, it gets to the NFSv4 'stuff',
+diff --git a/fs/cifs/transport.c b/fs/cifs/transport.c
+index 10ca6b2..791bc4f 100644
+--- a/fs/cifs/transport.c
++++ b/fs/cifs/transport.c
+@@ -26,6 +26,7 @@
+ #include <linux/wait.h>
+ #include <linux/net.h>
+ #include <linux/delay.h>
++#include <linux/freezer.h>
+ #include <asm/uaccess.h>
+ #include <asm/processor.h>
+ #include <linux/mempool.h>
+@@ -324,7 +325,7 @@ wait_for_response(struct TCP_Server_Info *server, struct mid_q_entry *midQ)
+ {
+ 	int error;
+ 
+-	error = wait_event_killable(server->response_q,
++	error = wait_event_freezekillable(server->response_q,
+ 				    midQ->midState != MID_REQUEST_SUBMITTED);
+ 	if (error < 0)
+ 		return -ERESTARTSYS;
+diff --git a/include/linux/freezer.h b/include/linux/freezer.h
+index 1effc8b..3672f73 100644
+--- a/include/linux/freezer.h
++++ b/include/linux/freezer.h
+@@ -134,10 +134,25 @@ static inline void set_freezable_with_signal(void)
+ }
+ 
+ /*
+- * Freezer-friendly wrappers around wait_event_interruptible() and
+- * wait_event_interruptible_timeout(), originally defined in <linux/wait.h>
++ * Freezer-friendly wrappers around wait_event_interruptible(),
++ * wait_event_killable() and wait_event_interruptible_timeout(), originally
++ * defined in <linux/wait.h>
+  */
+ 
++#define wait_event_freezekillable(wq, condition)			\
++({									\
++	int __retval;							\
++	do {								\
++		__retval = wait_event_killable(wq, 			\
++				(condition) || freezing(current));	\
++		if (__retval && !freezing(current))			\
++			break;						\
++		else if (!(condition))					\
++			__retval = -ERESTARTSYS;			\
++	} while (try_to_freeze());					\
++	__retval;							\
++})
++
+ #define wait_event_freezable(wq, condition)				\
+ ({									\
+ 	int __retval;							\
+-- 
+1.7.6.2
 
-	...
-	[   11.533498] EXT4-fs (xvda1): mounted filesystem with ordered
-	data mode. Opts: acl,user_xattr,barrier=1
-	[   11.579889] EXT4-fs (xvdd): mounted filesystem with ordered
-	data mode. Opts: acl,user_xattr,journal_checksum,barrier=1
-	[   15.237650] microcode: Microcode Update Driver: v2.00-xen
-	<tigran@aivazian.fsnet.co.uk>, Peter Oruba
-	[   24.271451] RPC: Registered udp transport module.
-	[   24.271469] RPC: Registered tcp transport module.
-	[   24.271479] RPC: Registered tcp NFSv4.1 backchannel transport
-	module.
-	[   24.340308] FS-Cache: Loaded
-	[   24.554720] Installing knfsd (copyright (C) 1996
-	okir@monad.swb.de).
-	[   24.555025] FS-Cache: Netfs 'nfs' registered for caching
-	[   25.239401] NFSD: Using /var/lib/nfs/v4recovery as the NFSv4
-	state recovery directory
-	[   25.245234] NFSD: starting 90-second grace period
-
-and simply, quietly sits there ~4-5 minutes.  Then, without any further
-fanfare, the boot completes.
-
-	Welcome to openSUSE 11.4 "Celadon" - Kernel 2.6.37.6-0.7-xen
-	(xvc0).
-	
-	test login:
-
-At this point the DomU is up.  All the NFS mounts are mounted.  Nothing
-seems amiss.
-
-Clearly, the 4-5 minute wait isn't normal.
-
-I suspect that there's some sort of settling/locking issue, but I don't
-know how to verify or debug the source of the problem.
-
-Any pointers as to what to start looking at?
-
-Thanks
-
-DCh
