@@ -1,67 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:3439 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44647 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752710Ab1IHW4U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Sep 2011 18:56:20 -0400
-Content-Type: text/plain;
-	charset="utf-8"
-Subject: RE: [PATCH] nfs: fix inifinite loop at nfs4_layoutcommit_release
-Date: Thu, 8 Sep 2011 10:05:19 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED4C8@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com>
-References: <1314512558-16912-1-git-send-email-gusev.vitaliy@nexenta.com> <1315337382.16274.7.camel@lade.trondhjem.org> <4E669B21.30006@nexenta.com> <1315348373.19556.22.camel@lade.trondhjem.org> <F19688880B763E40B28B2B462677FBF805C3299CA3@MX09A.corp.emc.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B0ED3DF@SACMVEXC2-PRD.hq.netapp.com> <CA+a=Yy71JNEgG4q0e69BWEjxqh71CTcfise6KKTyYkXGUM68Tw@mail.gmail.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Peng Tao" <bergwolf@gmail.com>
-Cc: <tao.peng@emc.com>, <gusev.vitaliy@nexenta.com>, <gusev.vitaliy@gmail.com>,
-        <linux-nfs@vger.kernel.org>
+	id S1754259Ab1I1NpL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Sep 2011 09:45:11 -0400
+Date: Wed, 28 Sep 2011 09:44:49 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 03/25] nfsd4: extend state lock over seqid replay logic
+Message-ID: <20110928134442.GD19435@pad.fieldses.org>
+References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
+ <1316000721-3289-4-git-send-email-bfields@redhat.com>
+ <4E82001C.5030005@netapp.com>
+ <20110928014930.GA18571@pad.fieldses.org>
+ <4E831EB8.90800@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E831EB8.90800@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBQZW5nIFRhbyBbbWFpbHRvOmJl
-cmd3b2xmQGdtYWlsLmNvbV0NCj4gU2VudDogVGh1cnNkYXksIFNlcHRlbWJlciAwOCwgMjAxMSAx
-MTowMCBBTQ0KPiBUbzogTXlrbGVidXN0LCBUcm9uZA0KPiBDYzogdGFvLnBlbmdAZW1jLmNvbTsg
-Z3VzZXYudml0YWxpeUBuZXhlbnRhLmNvbTsNCj4gZ3VzZXYudml0YWxpeUBnbWFpbC5jb207IGxp
-bnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gU3ViamVjdDogUmU6IFtQQVRDSF0gbmZzOiBmaXgg
-aW5pZmluaXRlIGxvb3AgYXQNCj4gbmZzNF9sYXlvdXRjb21taXRfcmVsZWFzZQ0KPiANCj4gT24g
-VGh1LCBTZXAgOCwgMjAxMSBhdCA4OjAxIFBNLCBNeWtsZWJ1c3QsIFRyb25kDQo+IDxUcm9uZC5N
-eWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0t
-LS0tDQo+DQo+ID4NCj4gPiBZZXMsIGJ1dCBhcyBmYXIgYXMgSSBjYW4gc2VlLCBldmVuIGluIHRo
-ZSBibG9ja3MgY2FzZSB0aGVyZSBjYW4gYmUNCj4gbXVsdGlwbGUgZXh0ZW50cyBwZXIgbGF5b3V0
-IHNlZ21lbnQuIFdoYXQgaWYgSSB3cml0ZSB0byBvbmUNCj4gdW5pbml0aWFsaXNlZCBleHRlbnQs
-IGxheW91dGNvbW1pdCwgdGhlbiB3cml0ZSB0byBhbm90aGVyIHVuaW5pdGlhbGl6ZWQNCj4gZXh0
-ZW50IGluIHRoZSBzYW1lIGxheW91dCBzZWdtZW50IGFuZCBsYXlvdXRjb21taXQ/IEluIG15IHJl
-YWRpbmcgb2YNCj4gdGhlIGNvZGUsIHRoZXJlIGlzIGEgY2hhbmNlIHRoYXQgdGhlIHNlY29uZCBs
-YXlvdXRjb21taXQgd2lsbCBmYWlsIHRvDQo+IHBpY2sgdXAgdGhlIGxheW91dCBzZWdtZW50LCBh
-bmQgc28gd2lsbCBmYWlsIHRvIG5vdGlmeSB0aGUgTURTIHRoYXQgdGhlDQo+IHNlY29uZCBleHRl
-bnQgbm93IGNvbnRhaW5zIGRhdGEuDQo+IA0KPiBibG9ja2xheW91dCBkb2VzIG5vdCBkZWNpZGUg
-d2hhdCB0byBsYXlvdXRjb21taXQgYWNjb3JkaW5nIHRvIHRoZSBsc2VnDQo+IGxpc3QuIEluc3Rl
-YWQsIGl0IGtlZXBzIHRyYWNrIG9mIGVhY2ggZXh0ZW50J3Mgc3RhdGUgYXQgdGhlDQo+IGdyYW51
-bGFyaXR5IG9mIGJsb2Nrc2l6ZSwgYW5kIGVuY29kZSB3aGF0ZXZlciBuZWVkcyBsYXlvdXRjb21t
-aXR0ZWQgaW4NCj4gdGhlIGxheW91dGNvbW1pdCBjYWxsLiBTbyBpbiB5b3VyIGFib3ZlIGNhc2Us
-IGFzIGxvbmcgYXMgdGhlIHNlY29uZA0KPiBsYXlvdXRjb21taXQgaXMgaXNzdWVkLCBibG9ja2xh
-eW91dCB3aWxsIGVuY29kZSB0aGUgbmV3bHkgd3JpdHRlbg0KPiBleHRlbnQgaW4gdGhlIHNlY29u
-ZCBsYXlvdXRjb21taXQgY2FsbCwgZXZlbiBpZiB0aGUgbHNlZyBpcyBub3QNCj4gYXR0YWNoZWQg
-dG8gdGhlIHNlY29uZCBsYXlvdXRjb21taXQuDQo+IA0KPiBCdXQgdGhhdCBsZWFkcyB0byBhbm90
-aGVyIHR3byBxdWVzdGlvbjoNCj4gMS4gSG93IGRvIHdlIHByb3RlY3QgYWdhaW5zdCBsYXlvdXRy
-ZWNhbGwgaWYgbHNlZyBpcyBub3QgbGlua2VkIHRvDQo+IGxheW91dGNvbW1pdD8gRm9yIHRoaXMg
-b25lLCBjYW4gd2UganVzdCByZWplY3QgbGF5b3V0cmVjYWxsIGlmIHRoZXJlDQo+IGlzIGluZmxp
-Z2h0IGxheW91dGNvbW1pdD8gSXQgd2lsbCBiZSBsZXNzIHBhcmFsbGVsIGJ1dCBjYW4gZ3VhcmFu
-dGVlDQo+IGN1cnJlbnQgaW1wbGVtZW50YXRpb24gY29ycmVjdG5lc3MuDQo+IDIuIGJsb2NrbGF5
-b3V0IE9OTFk6IGJsX2NvbW1pdHRpbmcgbWF5IGJlIG92ZXJsb2FkZWQgYnkgc2V2ZXJhbA0KPiBs
-YXlvdXRjb21taXQgY2FsbHMgYW5kIHdlIGRvbid0IGhhdmUgaW5mb3JtYXRpb24gaW4NCj4gY2xl
-YW51cF9sYXlvdXRjb21taXQoKSBvbiBob3cgbWFueSBlbnRyeSBzaG91bGQgYmUgcmVtb3ZlZCBm
-cm9tDQo+IGJsX2NvbW1pdHRpbmcuIE1heWJlIHdlIGNhbiBhZGQgYSAodm9pZCopIHRvIHN0cnVj
-dA0KPiBuZnM0X2xheW91dGNvbW1pdF9kYXRhLCBzbyB0aGF0IExEIGNhbiBwYXNzIHNvbWUgcHJp
-dmF0ZSBpbmZvcm1hdGlvbg0KPiBiZXR3ZWVuIGVuY29kZV9sYXlvdXRjb21taXQoKSBhbmQgY2xl
-YW51cF9sYXlvdXRjb21taXQoKT8NCg0KMy4gV2hhdCBpcyB0aGUgcHVycG9zZSBvZiBwaW5uaW5n
-IHRoZSBsYXlvdXQgc2VnbWVudCBhdCBhbGwgaWYgbmVpdGhlciBibG9ja3MsIG5vciBvYmplY3Rz
-IG5vciBmaWxlcyBjYXJlcz8NCklPVzogaWYgYm90aCBvYmplY3RzIGFuZCBibG9ja3MgdHJhY2sg
-dGhlIGluZm9ybWF0aW9uIHRoYXQgdGhleSBuZWVkIGZvciBsYXlvdXRjb21taXQgb3V0c2lkZSB0
-aGUgbGF5b3V0IHNlZ21lbnRzLCB0aGVuIHdoeSBkbyB3ZSBuZWVkIHRoZSBORlNfTFNFR19MQVlP
-VVRDT01NSVQgYml0IGFuZCBwbHNfbGNfbGlzdCBhdCBhbGw/DQoNCkNoZWVycw0KICBUcm9uZA0K
-DQoT77+977+97Lm7HO+/vSbvv71+77+9Ju+/vRjvv73vv70rLe+/ve+/vd22F++/ve+/vXfvv73v
-v73Lm++/ve+/ve+/vW3vv71i77+977+9Z37Ip++/vRfvv73vv73cqH3vv73vv73vv73GoHrvv70m
-ajordu+/ve+/ve+/vQfvv73vv73vv73vv716Wivvv73vv70rembvv73vv73vv71o77+977+977+9
-fu+/ve+/ve+/ve+/vWnvv73vv73vv71677+9Hu+/vXfvv73vv73vv70/77+977+977+977+9Ju+/
-vSnfohtm
+On Wed, Sep 28, 2011 at 09:18:48AM -0400, Bryan Schumaker wrote:
+> On 09/27/2011 09:49 PM, J. Bruce Fields wrote:
+> > On Tue, Sep 27, 2011 at 12:55:56PM -0400, Bryan Schumaker wrote:
+> >> I'm getting the following warning that I was able to bisect to this patch:
+> > 
+> > I suspect this may fix it.  (Untested.)
+> 
+> Yeah, that seems to fix it.  Thanks!
+
+Thanks for the testing; applying for 3.2.--b.
+
+> > 
+> > --b.
+> > 
+> > commit 8da87285a245c82d23183414cec7069f18721afd
+> > Author: J. Bruce Fields <bfields@redhat.com>
+> > Date:   Tue Sep 27 21:42:29 2011 -0400
+> > 
+> >     nfsd4: fix state lock usage in LOCKU
+> >     
+> >     In commit 5ec094c1096ab3bb795651855d53f18daa26afde "nfsd4: extend state
+> >     lock over seqid replay logic" I modified the exit logic of all the
+> >     seqid-based procedures except nfsd4_locku().  Fix the oversight.
+> >     
+> >     The result of the bug was a double-unlock while handling the LOCKU
+> >     procedure, and a warning like:
+> >     
+> >     [  142.150014] WARNING: at kernel/mutex-debug.c:78 debug_mutex_unlock+0xda/0xe0()
+> >     ...
+> >     [  142.152927] Pid: 742, comm: nfsd Not tainted 3.1.0-rc1-SLIM+ #9
+> >     [  142.152927] Call Trace:
+> >     [  142.152927]  [<ffffffff8105fa4f>] warn_slowpath_common+0x7f/0xc0
+> >     [  142.152927]  [<ffffffff8105faaa>] warn_slowpath_null+0x1a/0x20
+> >     [  142.152927]  [<ffffffff810960ca>] debug_mutex_unlock+0xda/0xe0
+> >     [  142.152927]  [<ffffffff813e4200>] __mutex_unlock_slowpath+0x80/0x140
+> >     [  142.152927]  [<ffffffff813e42ce>] mutex_unlock+0xe/0x10
+> >     [  142.152927]  [<ffffffffa03bd3f5>] nfs4_lock_state+0x35/0x40 [nfsd]
+> >     [  142.152927]  [<ffffffffa03b0b71>] nfsd4_proc_compound+0x2a1/0x690
+> >     [nfsd]
+> >     [  142.152927]  [<ffffffffa039f9fb>] nfsd_dispatch+0xeb/0x230 [nfsd]
+> >     [  142.152927]  [<ffffffffa02b1055>] svc_process_common+0x345/0x690
+> >     [sunrpc]
+> >     [  142.152927]  [<ffffffff81058d10>] ? try_to_wake_up+0x280/0x280
+> >     [  142.152927]  [<ffffffffa02b16e2>] svc_process+0x102/0x150 [sunrpc]
+> >     [  142.152927]  [<ffffffffa039f0bd>] nfsd+0xbd/0x160 [nfsd]
+> >     [  142.152927]  [<ffffffffa039f000>] ? 0xffffffffa039efff
+> >     [  142.152927]  [<ffffffff8108230c>] kthread+0x8c/0xa0
+> >     [  142.152927]  [<ffffffff813e8694>] kernel_thread_helper+0x4/0x10
+> >     [  142.152927]  [<ffffffff81082280>] ? kthread_worker_fn+0x190/0x190
+> >     [  142.152927]  [<ffffffff813e8690>] ? gs_change+0x13/0x13
+> >     
+> >     Reported-by: Bryan Schumaker <bjschuma@netapp.com>
+> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > 
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index 752c0f8..9daf254 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -4199,7 +4199,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  	memcpy(&locku->lu_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+> >  
+> >  out:
+> > -	nfs4_unlock_state();
+> > +	if (!cstate->replay_owner)
+> > +		nfs4_unlock_state();
+> >  	return status;
+> >  
+> >  out_nfserr:
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
