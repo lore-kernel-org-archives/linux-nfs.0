@@ -1,95 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21317 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751077Ab1IUTb0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Sep 2011 15:31:26 -0400
-Message-ID: <4E7A3B84.7030600@RedHat.com>
-Date: Wed, 21 Sep 2011 15:31:16 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Bryan Schumaker <bjschuma@netapp.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/2] Changes in 3.1 kernel break NFS monitoring tools
-References: <1316629016-27740-1-git-send-email-steved@redhat.com> <4E7A2C27.8020209@netapp.com> <4E7A2D70.6000400@RedHat.com> <20110921185139.GC22961@fieldses.org>
-In-Reply-To: <20110921185139.GC22961@fieldses.org>
+Received: from mail-qy0-f181.google.com ([209.85.216.181]:42396 "EHLO
+	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751864Ab1I2E2E convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Sep 2011 00:28:04 -0400
+In-Reply-To: <1317210761-11518-3-git-send-email-jlayton@redhat.com>
+References: <1317210761-11518-1-git-send-email-jlayton@redhat.com>
+	<1317210761-11518-3-git-send-email-jlayton@redhat.com>
+Date: Wed, 28 Sep 2011 23:28:02 -0500
+Message-ID: <CAH2r5mtBwUkTXLQeXzvTC6oAcz1i9jzPGfiE7XTzDTw12A6C_Q@mail.gmail.com>
+Subject: Re: [PATCH 2/4] cifs, freezer: add wait_event_freezekillable and have
+ cifs use it
+From: Steve French <smfrench@gmail.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: trond.myklebust@netapp.com, pavel@ucw.cz, rjw@sisk.pl,
+        linux-pm@lists.linux-foundation.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, john@calva.com,
+        linux-kernel@vger.kernel.org
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+The general idea of the patch seems like a good idea to
+me.  Assuming testing feedback was good from the problem
+reporters, what tree would you want it merged from?
+
+On Wed, Sep 28, 2011 at 6:52 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> CIFS currently uses wait_event_killable to put tasks to sleep while
+> they await replies from the server. That function though does not
+> allow the freezer to run. In many cases, the network interface may
+> be going down anyway, in which case the reply will never come. The
+> client then ends up blocking the computer from suspending.
+>
+> Fix this by adding a new wait_event_freezable variant --
+> wait_event_freezekillable. The idea is to combine the behavior of
+> wait_event_killable and wait_event_freezable -- put the task to
+> sleep and only allow it to be awoken by fatal signals, but also
+> allow the freezer to do its job.
+>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/cifs/transport.c     |    3 ++-
+>  include/linux/freezer.h |   19 +++++++++++++++++--
+>  2 files changed, 19 insertions(+), 3 deletions(-)
+>
+> diff --git a/fs/cifs/transport.c b/fs/cifs/transport.c
+> index 10ca6b2..791bc4f 100644
+> --- a/fs/cifs/transport.c
+> +++ b/fs/cifs/transport.c
+> @@ -26,6 +26,7 @@
+>  #include <linux/wait.h>
+>  #include <linux/net.h>
+>  #include <linux/delay.h>
+> +#include <linux/freezer.h>
+>  #include <asm/uaccess.h>
+>  #include <asm/processor.h>
+>  #include <linux/mempool.h>
+> @@ -324,7 +325,7 @@ wait_for_response(struct TCP_Server_Info *server, struct mid_q_entry *midQ)
+>  {
+>        int error;
+>
+> -       error = wait_event_killable(server->response_q,
+> +       error = wait_event_freezekillable(server->response_q,
+>                                    midQ->midState != MID_REQUEST_SUBMITTED);
+>        if (error < 0)
+>                return -ERESTARTSYS;
+> diff --git a/include/linux/freezer.h b/include/linux/freezer.h
+> index 1effc8b..3672f73 100644
+> --- a/include/linux/freezer.h
+> +++ b/include/linux/freezer.h
+> @@ -134,10 +134,25 @@ static inline void set_freezable_with_signal(void)
+>  }
+>
+>  /*
+> - * Freezer-friendly wrappers around wait_event_interruptible() and
+> - * wait_event_interruptible_timeout(), originally defined in <linux/wait.h>
+> + * Freezer-friendly wrappers around wait_event_interruptible(),
+> + * wait_event_killable() and wait_event_interruptible_timeout(), originally
+> + * defined in <linux/wait.h>
+>  */
+>
+> +#define wait_event_freezekillable(wq, condition)                       \
+> +({                                                                     \
+> +       int __retval;                                                   \
+> +       do {                                                            \
+> +               __retval = wait_event_killable(wq,                      \
+> +                               (condition) || freezing(current));      \
+> +               if (__retval && !freezing(current))                     \
+> +                       break;                                          \
+> +               else if (!(condition))                                  \
+> +                       __retval = -ERESTARTSYS;                        \
+> +       } while (try_to_freeze());                                      \
+> +       __retval;                                                       \
+> +})
+> +
+>  #define wait_event_freezable(wq, condition)                            \
+>  ({                                                                     \
+>        int __retval;                                                   \
+> --
+> 1.7.6.2
+>
+>
 
 
-On 09/21/2011 02:51 PM, J. Bruce Fields wrote:
-> On Wed, Sep 21, 2011 at 02:31:12PM -0400, Steve Dickson wrote:
->>
->>
->> On 09/21/2011 02:25 PM, Bryan Schumaker wrote:
->>> On 09/21/2011 02:16 PM, Steve Dickson wrote:
->>>> Both parser of nfsiostat and mountstats depend on the 
->>>> the first word in /proc/self/mountstats to be 'device'
->>>> for them to parse through all the devices. 
->>>>
->>>> NFS mounts entries,  in 3.1,  no longer have start with
->>>> the word 'device'. They start with the actual device, 
->>>> which confused both set of parsing routines.
->>>
->>> I sent in a patch to fix this on the kernel end almost a month ago, but it must have gotten lost with the kernel.org confusion.  I included what I came up with below
->> Interesting... Maybe we should still apply these patches until
->> your patch shows up? They are definitely broken... 
-> 
-> May as well fix the problem on both sides if possible.
-I agree this..  I can always pull these back out if/when
-Bryan's patch shows up...
 
-steved.
+-- 
+Thanks,
 
-> 
-> --b.
-> 
->>
->> steved.
->> .
->>>
->>> - Bryan
->>>
->>> [PATCH] VFS: Add "device" tag to /proc/self/mountstats
->>>
->>> nfsiostat was failing to find mounted filesystems on kernels after
->>> 2.6.38 because of changes to show_vfsstat() by commit
->>> c7f404b40a3665d9f4e9a927cc5c1ee0479ed8f9.  This patch adds back the
->>> "device" tag before the nfs server entry so scripts can parse the
->>> mountstats file correctly.
->>>
->>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->>> ---
->>>  fs/namespace.c |    1 +
->>>  1 files changed, 1 insertions(+), 0 deletions(-)
->>>
->>> diff --git a/fs/namespace.c b/fs/namespace.c
->>> index 22bfe82..1429114 100644
->>> --- a/fs/namespace.c
->>> +++ b/fs/namespace.c
->>> @@ -1109,6 +1109,7 @@ static int show_vfsstat(struct seq_file *m, void *v)
->>>  
->>>  	/* device */
->>>  	if (mnt->mnt_sb->s_op->show_devname) {
->>> +		seq_puts(m, "device ");
->>>  		err = mnt->mnt_sb->s_op->show_devname(m, mnt);
->>>  	} else {
->>>  		if (mnt->mnt_devname) {
->>>
->>>
->>>>
->>>> Steve Dickson (2):
->>>>   nfsiostat: Breaks on 3.1 kernels
->>>>   mountstats: Breaks on 3.1 kernels
->>>>
->>>>  tools/mountstats/mountstats.py |    9 +++++++++
->>>>  tools/nfs-iostat/nfs-iostat.py |   11 +++++++++--
->>>>  2 files changed, 18 insertions(+), 2 deletions(-)
->>>>
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Steve
