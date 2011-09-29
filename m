@@ -1,66 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1231 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:4177 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751995Ab1IWQlU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Sep 2011 12:41:20 -0400
+	id S1756334Ab1I2Osv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Sep 2011 10:48:51 -0400
 From: David Howells <dhowells@redhat.com>
-In-Reply-To: <CA+55aFx03u51bbAPe_o=4PeyE0dFnuL1KyqRdTJCFUD-vM6V-w@mail.gmail.com>
-References: <CA+55aFx03u51bbAPe_o=4PeyE0dFnuL1KyqRdTJCFUD-vM6V-w@mail.gmail.com> <1316747758.3346.89.camel@perseus.themaw.net> <20110922134510.24683.14576.stgit@warthog.procyon.org.uk> <1316707443.3346.44.camel@perseus.themaw.net> <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com> <1316709935.3346.48.camel@perseus.themaw.net> <20110922133529.6d3ea8de@barsoom.rdu.redhat.com> <20110922144453.6cf53a25@barsoom.rdu.redhat.com> <1316719228.3968.14.camel@lade.trondhjem.org> <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com> <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com> <21772.1316774025@redhat.com> <1316788444.14812.10.camel@lade.trondhjem.org> <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com> <1316792468.3346.144.camel@perseus.themaw.net> 
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: dhowells@redhat.com, Ian Kent <raven@themaw.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>, miklos@szeredi.hu,
-        Jeff Layton <jlayton@redhat.com>, viro@zeniv.linux.org.uk,
-        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-Date: Fri, 23 Sep 2011 17:40:07 +0100
-Message-ID: <13920.1316796007@redhat.com>
+Subject: [PATCH 11/13] VFS: Make more complete truncate operation available to
+ CacheFiles
+To: moseleymark@gmail.com, mark@pogo.org.uk, jlayton@redhat.com,
+        steved@redhat.com
+Cc: linux-cachefs@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Date: Thu, 29 Sep 2011 15:47:50 +0100
+Message-ID: <20110929144750.5812.84552.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20110929144536.5812.84405.stgit@warthog.procyon.org.uk>
+References: <20110929144536.5812.84405.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Linus Torvalds <torvalds@linux-foundation.org> wrote:
+Make a more complete truncate operation available to CacheFiles (including
+security checks and suchlike) so that it can use this to clear invalidated
+cache files.
 
-> We may indeed have to revert for sanity at this point, but I have to
-> say that I think the arguments have been very weak, and the logic for
-> when to auto-mount and when not to seems to not really be based on any
-> real logic.
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
-Can you look over the patchset I've just posted.
+ fs/open.c          |   50 +++++++++++++++++++++++++++-----------------------
+ include/linux/fs.h |    1 +
+ 2 files changed, 28 insertions(+), 23 deletions(-)
 
-It moves the policy on whether or not to suppress automount out of
-follow_automount() - which is probably the wrong place for it anyway.
+diff --git a/fs/open.c b/fs/open.c
+index f711921..8178e58 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -61,33 +61,22 @@ int do_truncate(struct dentry *dentry, loff_t length, unsigned int time_attrs,
+ 	return ret;
+ }
+ 
+-static long do_sys_truncate(const char __user *pathname, loff_t length)
++long vfs_truncate(struct path *path, loff_t length)
+ {
+-	struct path path;
+ 	struct inode *inode;
+-	int error;
+-
+-	error = -EINVAL;
+-	if (length < 0)	/* sorry, but loff_t says... */
+-		goto out;
++	long error;
+ 
+-	error = user_path(pathname, &path);
+-	if (error)
+-		goto out;
+-	inode = path.dentry->d_inode;
++	inode = path->dentry->d_inode;
+ 
+ 	/* For directories it's -EISDIR, for other non-regulars - -EINVAL */
+-	error = -EISDIR;
+ 	if (S_ISDIR(inode->i_mode))
+-		goto dput_and_out;
+-
+-	error = -EINVAL;
++		return -EISDIR;
+ 	if (!S_ISREG(inode->i_mode))
+-		goto dput_and_out;
++		return -EINVAL;
+ 
+-	error = mnt_want_write(path.mnt);
++	error = mnt_want_write(path->mnt);
+ 	if (error)
+-		goto dput_and_out;
++		goto out;
+ 
+ 	error = inode_permission(inode, MAY_WRITE);
+ 	if (error)
+@@ -111,19 +100,34 @@ static long do_sys_truncate(const char __user *pathname, loff_t length)
+ 
+ 	error = locks_verify_truncate(inode, NULL, length);
+ 	if (!error)
+-		error = security_path_truncate(&path);
++		error = security_path_truncate(path);
+ 	if (!error)
+-		error = do_truncate(path.dentry, length, 0, NULL);
++		error = do_truncate(path->dentry, length, 0, NULL);
+ 
+ put_write_and_out:
+ 	put_write_access(inode);
+ mnt_drop_write_and_out:
+-	mnt_drop_write(path.mnt);
+-dput_and_out:
+-	path_put(&path);
++	mnt_drop_write(path->mnt);
+ out:
+ 	return error;
+ }
++EXPORT_SYMBOL_GPL(vfs_truncate);
++
++static long do_sys_truncate(const char __user *pathname, loff_t length)
++{
++	struct path path;
++	int error;
++
++	if (length < 0)	/* sorry, but loff_t says... */
++		return -EINVAL;
++
++	error = user_path(pathname, &path);
++	if (!error) {
++		error = vfs_truncate(&path, length);
++		path_put(&path);
++	}
++	return error;
++}
+ 
+ SYSCALL_DEFINE2(truncate, const char __user *, path, long, length)
+ {
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 277f497..8b2274f 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2013,6 +2013,7 @@ static inline int break_lease(struct inode *inode, unsigned int mode)
+ 
+ /* fs/open.c */
+ 
++extern long vfs_truncate(struct path *, loff_t);
+ extern int do_truncate(struct dentry *, loff_t start, unsigned int time_attrs,
+ 		       struct file *filp);
+ extern int do_fallocate(struct file *file, int mode, loff_t offset,
 
-Depending on which patch you want to stop at it can reinstate the pre-Miklos
-behaviour; reinstate the Miklos behaviour, but without the regression; or
-reinstate the pre-d_automount behaviour.
-
-> For example, I think the whole "let's consider lstat different from
-> stat" model is broken. It works for symlinks, but that's because
-
-That's a reasonable way to look at it; the difference between stat and lstat
-is about handling symlinks only.  Furthermore, we have fstatat, so this isn't
-really an issue - that can be given flags to let userspace decide what it
-should do.
-
-getxattr and co. are trickier because they don't have an AT_ flags form, and
-it can be argued that these, lgetxattr and co. included should automount.
-However, that would seriously upset ls, so I think we have to leave lgetxattr
-not automounting, and so getxattr should follow.
-
-We should consider adding an AT_ flags form of the xattr calls, but that's
-another matter we can argue over later.
-
-> So *that* is why I thought the LOOKUP_DIRECTORY flag was so nice. And
-> I still suspect that if paired with LOOKUP_OPEN, it would actually be
-> a complete solution that avoids the crazy issues with "random
-> implementation detail" and could give us something that is both
-> accessible from user space *and* something we can explain to a user
-> from a logical basis.
-
-I don't like this because it's fragile.  We're giving an implied second
-meaning to LOOKUP_DIRECTORY/LOOKUP_OPEN, albeit a reasonable one.
-
-Can we please move the policy to the pathwalk callers instead?
-
-David
