@@ -1,106 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:5820 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:64461 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750747Ab1ITOOc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Sep 2011 10:14:32 -0400
-Content-Type: text/plain;
-	charset="utf-8"
-Subject: RE: [PATCH v4 1/8] SUNRPC: introduce helpers for reference counted rpcbind clients
-Date: Tue, 20 Sep 2011 07:14:15 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD22@SACMVEXC2-PRD.hq.netapp.com>
-In-reply-to: <4E789679.1060601@parallels.com>
-References: <20110920101031.9861.18444.stgit@localhost6.localdomain6> <20110920101341.9861.51453.stgit@localhost6.localdomain6> <4E788F8C.20103@netapp.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B47FD10@SACMVEXC2-PRD.hq.netapp.com> <4E789679.1060601@parallels.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Stanislav Kinsbursky" <skinsbursky@parallels.com>
-Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        <linux-nfs@vger.kernel.org>, "Pavel Emelianov" <xemul@parallels.com>,
-        <neilb@suse.de>, <netdev@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>, <bfields@fieldses.org>,
-        <davem@davemloft.net>
+	id S1754875Ab1I2OtD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Sep 2011 10:49:03 -0400
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 12/13] CacheFiles: Implement invalidation
+To: moseleymark@gmail.com, mark@pogo.org.uk, jlayton@redhat.com,
+        steved@redhat.com
+Cc: linux-cachefs@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Date: Thu, 29 Sep 2011 15:48:02 +0100
+Message-ID: <20110929144802.5812.90480.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20110929144536.5812.84405.stgit@warthog.procyon.org.uk>
+References: <20110929144536.5812.84405.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBTdGFuaXNsYXYgS2luc2J1cnNr
-eSBbbWFpbHRvOnNraW5zYnVyc2t5QHBhcmFsbGVscy5jb21dDQo+IFNlbnQ6IFR1ZXNkYXksIFNl
-cHRlbWJlciAyMCwgMjAxMSA5OjM1IEFNDQo+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+IENjOiBT
-Y2h1bWFrZXIsIEJyeWFuOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyBQYXZlbCBFbWVsaWFu
-b3Y7DQo+IG5laWxiQHN1c2UuZGU7IG5ldGRldkB2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LWtlcm5l
-bEB2Z2VyLmtlcm5lbC5vcmc7DQo+IGJmaWVsZHNAZmllbGRzZXMub3JnOyBkYXZlbUBkYXZlbWxv
-ZnQubmV0DQo+IFN1YmplY3Q6IFJlOiBbUEFUQ0ggdjQgMS84XSBTVU5SUEM6IGludHJvZHVjZSBo
-ZWxwZXJzIGZvciByZWZlcmVuY2UNCj4gY291bnRlZCBycGNiaW5kIGNsaWVudHMNCj4gDQo+IDIw
-LjA5LjIwMTEgMTc6MTUsIE15a2xlYnVzdCwgVHJvbmQg0L/QuNGI0LXRgjoNCj4gPj4gLS0tLS1P
-cmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gPj4gRnJvbTogU2NodW1ha2VyLCBCcnlhbg0KPiA+PiBT
-ZW50OiBUdWVzZGF5LCBTZXB0ZW1iZXIgMjAsIDIwMTEgOTowNSBBTQ0KPiA+PiBUbzogU3Rhbmlz
-bGF2IEtpbnNidXJza3kNCj4gPj4gQ2M6IE15a2xlYnVzdCwgVHJvbmQ7IGxpbnV4LW5mc0B2Z2Vy
-Lmtlcm5lbC5vcmc7IHhlbXVsQHBhcmFsbGVscy5jb207DQo+ID4+IG5laWxiQHN1c2UuZGU7IG5l
-dGRldkB2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LWtlcm5lbEB2Z2VyLmtlcm5lbC5vcmc7DQo+ID4+
-IGJmaWVsZHNAZmllbGRzZXMub3JnOyBkYXZlbUBkYXZlbWxvZnQubmV0DQo+ID4+IFN1YmplY3Q6
-IFJlOiBbUEFUQ0ggdjQgMS84XSBTVU5SUEM6IGludHJvZHVjZSBoZWxwZXJzIGZvciByZWZlcmVu
-Y2UNCj4gPj4gY291bnRlZCBycGNiaW5kIGNsaWVudHMNCj4gPj4NCj4gPj4gT24gMDkvMjAvMjAx
-MSAwNjoxMyBBTSwgU3RhbmlzbGF2IEtpbnNidXJza3kgd3JvdGU6DQo+ID4+PiBUaGlzIGhlbHBl
-cnMgd2lsbCBiZSB1c2VkIGZvciBkeW5hbWljYWwgY3JlYXRpb24gYW5kIGRlc3RydWN0aW9uIG9m
-DQo+ID4+PiBycGNiaW5kIGNsaWVudHMuDQo+ID4+PiBWYXJpYWJsZSBycGNiX3VzZXJzIGlzIGFj
-dHVhbGx5IGEgY291bnRlciBvZiBsYXVjaGVkIFJQQyBzZXJ2aWNlcy4NCj4gPj4+IElmIHJwY2Jp
-bmQgY2xpZW50cyBoYXMgYmVlbiBjcmVhdGVkIGFscmVhZHksIHRoZW4gd2UganVzdCBpbmNyZWFz
-ZQ0KPiBycGNiX3VzZXJzLg0KPiA+Pj4NCj4gPj4+IFNpZ25lZC1vZmYtYnk6IFN0YW5pc2xhdiBL
-aW5zYnVyc2t5PHNraW5zYnVyc2t5QHBhcmFsbGVscy5jb20+DQo+ID4+Pg0KPiA+Pj4gLS0tDQo+
-ID4+PiAgIG5ldC9zdW5ycGMvcnBjYl9jbG50LmMgfCAgIDUwDQo+ID4+ICsrKysrKysrKysrKysr
-KysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKw0KPiA+Pj4gICAxIGZpbGVzIGNoYW5n
-ZWQsIDUwIGluc2VydGlvbnMoKyksIDAgZGVsZXRpb25zKC0pDQo+ID4+Pg0KPiA+Pj4gZGlmZiAt
-LWdpdCBhL25ldC9zdW5ycGMvcnBjYl9jbG50LmMgYi9uZXQvc3VucnBjL3JwY2JfY2xudC5jIGlu
-ZGV4DQo+ID4+PiBlNDVkMmZiLi44NzI0NzgwIDEwMDY0NA0KPiA+Pj4gLS0tIGEvbmV0L3N1bnJw
-Yy9ycGNiX2NsbnQuYw0KPiA+Pj4gKysrIGIvbmV0L3N1bnJwYy9ycGNiX2NsbnQuYw0KPiA+Pj4g
-QEAgLTExNCw2ICsxMTQsOSBAQCBzdGF0aWMgc3RydWN0IHJwY19wcm9ncmFtCXJwY2JfcHJvZ3Jh
-bTsNCj4gPj4+ICAgc3RhdGljIHN0cnVjdCBycGNfY2xudCAqCXJwY2JfbG9jYWxfY2xudDsNCj4g
-Pj4+ICAgc3RhdGljIHN0cnVjdCBycGNfY2xudCAqCXJwY2JfbG9jYWxfY2xudDQ7DQo+ID4+Pg0K
-PiA+Pj4gK0RFRklORV9TUElOTE9DSyhycGNiX2NsbnRfbG9jayk7DQo+ID4+PiArdW5zaWduZWQg
-aW50CQkJcnBjYl91c2VyczsNCj4gPj4+ICsNCj4gPj4+ICAgc3RydWN0IHJwY2JpbmRfYXJncyB7
-DQo+ID4+PiAgIAlzdHJ1Y3QgcnBjX3hwcnQgKglyX3hwcnQ7DQo+ID4+Pg0KPiA+Pj4gQEAgLTE2
-MSw2ICsxNjQsNTMgQEAgc3RhdGljIHZvaWQgcnBjYl9tYXBfcmVsZWFzZSh2b2lkICpkYXRhKQ0K
-PiA+Pj4gICAJa2ZyZWUobWFwKTsNCj4gPj4+ICAgfQ0KPiA+Pj4NCj4gPj4+ICtzdGF0aWMgaW50
-IHJwY2JfZ2V0X2xvY2FsKHZvaWQpDQo+ID4+PiArew0KPiA+Pj4gKwlzcGluX2xvY2soJnJwY2Jf
-Y2xudF9sb2NrKTsNCj4gPj4+ICsJaWYgKHJwY2JfdXNlcnMpDQo+ID4+PiArCQlycGNiX3VzZXJz
-Kys7DQo+ID4+PiArCXNwaW5fdW5sb2NrKCZycGNiX2NsbnRfbG9jayk7DQo+ID4+PiArDQo+ID4+
-PiArCXJldHVybiBycGNiX3VzZXJzOw0KPiA+PiAgICAgICAgICBeXl5eXl5eXl5eXl5eXl5eXl4N
-Cj4gPj4gSXMgaXQgc2FmZSB0byB1c2UgdGhpcyB2YXJpYWJsZSBvdXRzaWRlIG9mIHRoZSBycGNi
-X2NsbnRfbG9jaz8NCj4gPj4NCj4gPiBOb3BlLiBJZiBycGNiX3VzZXJzIHdhcyB6ZXJvIGluIHRo
-ZSBwcm90ZWN0ZWQgc2VjdGlvbiBhYm92ZSwgbm90aGluZw0KPiBndWFyYW50ZWVzIHRoYXQgaXQg
-d2lsbCBzdGlsbCBiZSB6ZXJvIGhlcmUsIGFuZCBzbyB0aGUgY2FsbGVyIG1heSBnZXQgdGhlICh3
-cm9uZykNCj4gaW1wcmVzc2lvbiB0aGF0IHRoZSBjb3VudGVyIHdhcyBpbmNyZW1lbnRlZC4NCj4g
-Pg0KPiANCj4gWWVwLCB5b3UgcmlnaHQuIFdpbGwgZml4IHRoaXMgcmFjZXMuDQo+IA0KPiA+Pj4g
-K30NCj4gPj4+ICsNCj4gPj4+ICt2b2lkIHJwY2JfcHV0X2xvY2FsKHZvaWQpDQo+ID4+PiArew0K
-PiA+Pj4gKwlzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQgPSBycGNiX2xvY2FsX2NsbnQ7DQo+ID4+PiAr
-CXN0cnVjdCBycGNfY2xudCAqY2xudDQgPSBycGNiX2xvY2FsX2NsbnQ0Ow0KPiA+Pj4gKwlpbnQg
-c2h1dGRvd247DQo+ID4+PiArDQo+ID4+PiArCXNwaW5fbG9jaygmcnBjYl9jbG50X2xvY2spOw0K
-PiA+Pj4gKwlpZiAoLS1ycGNiX3VzZXJzID09IDApIHsNCj4gPj4+ICsJCXJwY2JfbG9jYWxfY2xu
-dCA9IE5VTEw7DQo+ID4+PiArCQlycGNiX2xvY2FsX2NsbnQ0ID0gTlVMTDsNCj4gPj4+ICsJfQ0K
-PiA+Pj4gKwlzaHV0ZG93biA9ICFycGNiX3VzZXJzOw0KPiA+Pj4gKwlzcGluX3VubG9jaygmcnBj
-Yl9jbG50X2xvY2spOw0KPiA+Pj4gKw0KPiA+Pj4gKwlpZiAoc2h1dGRvd24pIHsNCj4gPj4+ICsJ
-CS8qDQo+ID4+PiArCQkgKiBjbGVhbnVwX3JwY2JfY2xudCAtIHJlbW92ZSB4cHJ0c29jaydzIHN5
-c2N0bHMsIHVucmVnaXN0ZXINCj4gPj4+ICsJCSAqLw0KPiA+Pj4gKwkJaWYgKGNsbnQ0KQ0KPiA+
-Pj4gKwkJCXJwY19zaHV0ZG93bl9jbGllbnQoY2xudDQpOw0KPiA+Pj4gKwkJaWYgKGNsbnQpDQo+
-ID4+PiArCQkJcnBjX3NodXRkb3duX2NsaWVudChjbG50KTsNCj4gPj4+ICsJfQ0KPiA+Pj4gKwly
-ZXR1cm47DQo+ID4+PiArfQ0KPiA+Pj4gKw0KPiA+Pj4gK3N0YXRpYyB2b2lkIHJwY2Jfc2V0X2xv
-Y2FsKHN0cnVjdCBycGNfY2xudCAqY2xudCwgc3RydWN0IHJwY19jbG50DQo+ID4+PiArKmNsbnQ0
-KSB7DQo+ID4+PiArCS8qIFByb3RlY3RlZCBieSBycGNiX2NyZWF0ZV9sb2NhbF9tdXRleCAqLw0K
-PiA+DQo+ID4gRG9lc24ndCBpdCAgbmVlZCB0byBiZSBwcm90ZWN0ZWQgYnkgcnBjYl9jbG50X2xv
-Y2sgdG9vPw0KPiA+DQo+IA0KPiBOb3BlIGZyb20gbXkgcG93LiBJdCdzIHByb3RlY3RlZCBieSBy
-cGNiX2NyZWF0ZV9sb2NhbF9tdXRleC4gSS5lLiBubyBvbmUNCj4gd2lsbCBjaGFuZ2UgcnBjYl91
-c2VycyBzaW5jZSBpdCdzIHplcm8uIElmIGl0J3Mgbm9uIHplcm8gLSB3ZSB3aWxsbid0IGdldCB0
-bw0KPiBycGNiX3NldF9sb2NhbCgpLg0KDQpPSywgc28geW91IGFyZSBzYXlpbmcgdGhhdCB0aGUg
-cnBjYl91c2VycysrIGJlbG93IGNvdWxkIGJlIHJlcGxhY2VkIGJ5IHJwY2JfdXNlcnM9MT8NCg0K
-SW4gdGhhdCBjYXNlLCBkb24ndCB5b3UgbmVlZCBhIHNtcF93bWIoKSBiZXR3ZWVuIHRoZSBzZXR0
-aW5nIG9mIHJwY2JfbG9jYWxfY2xudC80IGFuZCB0aGUgc2V0dGluZyBvZiBycGNiX3VzZXJzPyBP
-dGhlcndpc2UsIGhvdyBkbyB5b3UgZ3VhcmFudGVlIHRoYXQgcnBjYl91c2VycyAhPSAwIGltcGxp
-ZXMgcnBiY19sb2NhbF9jbG50LzQgIT0gTlVMTD8NCg0KPiA+Pj4gKwlycGNiX2xvY2FsX2NsbnQg
-PSBjbG50Ow0KPiA+Pj4gKwlycGNiX2xvY2FsX2NsbnQ0ID0gY2xudDQ7DQo+ID4+PiArCXJwY2Jf
-dXNlcnMrKzsNCj4gPiBeXl5eXl5eXl5eXl5eXl5eXl5eDQo+ID4NCj4gPj4+ICsJZHByaW50aygi
-UlBDOiAgICAgICBjcmVhdGVkIG5ldyBycGNiIGxvY2FsIGNsaWVudHMgKHJwY2JfbG9jYWxfY2xu
-dDogIg0KPiA+Pj4gKwkJCSIlcCwgcnBjYl9sb2NhbF9jbG50NDogJXApXG4iLCBycGNiX2xvY2Fs
-X2NsbnQsDQo+ID4+PiArCQkJcnBjYl9sb2NhbF9jbG50NCk7DQo+ID4+PiArfQ0KPiA+Pj4gKw0K
-DQoT77+977+97Lm7HO+/vSbvv71+77+9Ju+/vRjvv73vv70rLe+/ve+/vd22F++/ve+/vXfvv73v
-v73Lm++/ve+/ve+/vW3vv71i77+977+9Z37Ip++/vRfvv73vv73cqH3vv73vv73vv73GoHrvv70m
-ajordu+/ve+/ve+/vQfvv73vv73vv73vv716Wivvv73vv70rembvv73vv73vv71o77+977+977+9
-fu+/ve+/ve+/ve+/vWnvv73vv73vv71677+9Hu+/vXfvv73vv73vv70/77+977+977+977+9Ju+/
-vSnfohtm
+Implement invalidation for CacheFiles.  This is in two parts:
+
+ (1) Provide an invalidation method (which just truncates the backing file).
+
+ (2) Abort attempts to copy anything read from the backing file whilst
+     invalidation is in progress.
+
+Question: CacheFiles uses truncation in a couple of places.  It has been using
+notify_change() rather than sys_truncate() or something similar.  This means
+it bypasses a bunch of checks and suchlike that it possibly should be making
+(security, file locking, lease breaking, vfsmount write).  Should it be using
+vfs_truncate() as added by a preceding patch or should it use notify_write()
+and assume that anyone poking around in the cache files on disk gets
+everything they deserve?
+
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
+
+ fs/cachefiles/interface.c |   49 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/cachefiles/rdwr.c      |    5 ++++-
+ 2 files changed, 53 insertions(+), 1 deletions(-)
+
+diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
+index 075b7a6..ef5c02d 100644
+--- a/fs/cachefiles/interface.c
++++ b/fs/cachefiles/interface.c
+@@ -442,6 +442,54 @@ truncate_failed:
+ }
+ 
+ /*
++ * Invalidate an object
++ */
++static void cachefiles_invalidate_object(struct fscache_operation *op)
++{
++	struct cachefiles_object *object;
++	struct cachefiles_cache *cache;
++	const struct cred *saved_cred;
++	struct path path;
++	uint64_t ni_size;
++	int ret;
++
++	object = container_of(op->object, struct cachefiles_object, fscache);
++	cache = container_of(object->fscache.cache,
++			     struct cachefiles_cache, cache);
++
++	op->object->cookie->def->get_attr(op->object->cookie->netfs_data,
++					  &ni_size);
++
++	_enter("{OBJ%x},[%llu]",
++	       op->object->debug_id, (unsigned long long)ni_size);
++
++	if (object->backer) {
++		ASSERT(S_ISREG(object->backer->d_inode->i_mode));
++
++		fscache_set_store_limit(&object->fscache, ni_size);
++
++		path.dentry = object->backer;
++		path.mnt = cache->mnt;
++
++		cachefiles_begin_secure(cache, &saved_cred);
++		ret = vfs_truncate(&path, 0);
++		if (ret == 0)
++			ret = vfs_truncate(&path, ni_size);
++		cachefiles_end_secure(cache, saved_cred);
++
++		if (ret != 0) {
++			fscache_set_store_limit(&object->fscache, 0);
++			if (ret == -EIO)
++				cachefiles_io_error_obj(object,
++							"Invalidate failed");
++		}
++	}
++
++	fscache_op_complete(op);
++	_leave("");
++}
++
++/*
+  * dissociate a cache from all the pages it was backing
+  */
+ static void cachefiles_dissociate_pages(struct fscache_cache *cache)
+@@ -456,6 +504,7 @@ const struct fscache_cache_ops cachefiles_cache_ops = {
+ 	.lookup_complete	= cachefiles_lookup_complete,
+ 	.grab_object		= cachefiles_grab_object,
+ 	.update_object		= cachefiles_update_object,
++	.invalidate_object	= cachefiles_invalidate_object,
+ 	.drop_object		= cachefiles_drop_object,
+ 	.put_object		= cachefiles_put_object,
+ 	.sync_cache		= cachefiles_sync_cache,
+diff --git a/fs/cachefiles/rdwr.c b/fs/cachefiles/rdwr.c
+index 4b2b821..637a27d 100644
+--- a/fs/cachefiles/rdwr.c
++++ b/fs/cachefiles/rdwr.c
+@@ -174,7 +174,10 @@ static void cachefiles_read_copier(struct fscache_operation *_op)
+ 		_debug("- copy {%lu}", monitor->back_page->index);
+ 
+ 	recheck:
+-		if (PageUptodate(monitor->back_page)) {
++		if (test_bit(FSCACHE_COOKIE_INVALIDATING,
++			     &object->fscache.cookie->flags)) {
++			error = -ESTALE;
++		} else if (PageUptodate(monitor->back_page)) {
+ 			copy_highpage(monitor->netfs_page, monitor->back_page);
+ 			fscache_mark_page_cached(monitor->op,
+ 						 monitor->netfs_page, true);
+
