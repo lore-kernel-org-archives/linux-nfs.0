@@ -1,64 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:48767 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755230Ab1IMQRY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2011 12:17:24 -0400
-Received: by gwb15 with SMTP id 15so667006gwb.19
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Sep 2011 09:17:24 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Jim Rees <rees@umich.edu>, Benny Halevy <bhalevy@tonian.com>,
-        Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        Peng Tao <peng_tao@emc.com>
-Subject: [PATCH] pnfsblock: add missing rpc_put_mount and path_put
-Date: Tue, 13 Sep 2011 09:16:26 -0700
-Message-Id: <1315930586-2793-1-git-send-email-bergwolf@gmail.com>
+Received: from smtp.mail.umich.edu ([141.211.14.82]:35037 "EHLO
+	hellskitchen.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754899Ab1I2Qwz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Sep 2011 12:52:55 -0400
+Date: Thu, 29 Sep 2011 12:52:53 -0400
+From: Jim Rees <rees@umich.edu>
+To: linux-nfs@vger.kernel.org
+Cc: peter honeyman <honey@citi.umich.edu>
+Subject: Block layout status
+Message-ID: <20110929165253.GC3724@umich.edu>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Reported-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/blocklayout/blocklayout.c |    8 ++++++--
- 1 files changed, 6 insertions(+), 2 deletions(-)
+Since the call doesn't seem to be happening, here's my status.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index cc78e62..66f2f73 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -1009,17 +1009,20 @@ static int __init nfs4blocklayout_init(void)
- 			      mnt,
- 			      NFS_PIPE_DIRNAME, 0, &path);
- 	if (ret)
--		goto out_stop;
-+		goto out_putrpc;
- 
- 	bl_device_pipe = rpc_mkpipe(path.dentry, "blocklayout", NULL,
- 				    &bl_upcall_ops, 0);
-+	path_put(&path);
- 	if (IS_ERR(bl_device_pipe)) {
- 		ret = PTR_ERR(bl_device_pipe);
--		goto out_stop;
-+		goto out_putrpc;
- 	}
- out:
- 	return ret;
- 
-+out_putrpc:
-+	rpc_put_mount();
- out_stop:
- 	pnfsiod_stop();
- out_remove:
-@@ -1035,6 +1038,7 @@ static void __exit nfs4blocklayout_exit(void)
- 	pnfs_unregister_layoutdriver(&blocklayout_type);
- 	pnfsiod_stop();
- 	rpc_unlink(bl_device_pipe);
-+	rpc_put_mount();
- }
- 
- MODULE_ALIAS("nfs-layouttype4-3");
--- 
-1.7.1.262.g5ef3d
+On 16 Sep I sent these bug fixes to Trond for 3.1:
 
+Jim Rees (2):
+  pnfsblock: fix size of upcall message     
+  pnfsblock: fix return code confusion          
+Peng Tao (3):
+  pnfsblock: fix NULL pointer dereference                
+  pnfsblock: fix writeback deadlock   
+  pnfsblock: add missing rpc_put_mount and path_put
+
+These are the ones I think are important enough, and low enough risk to
+anyone else, that they should be considered for 3.1 even though it's late in
+the release cycle.  They have not shown up upstream.  Trond?
+
+On 22 Sep I sent these to Trond for 3.2.  I believe these are all in Benny's
+tree now (sorry about that, Benny):
+
+Jim Rees (2):
+  pnfsblock: fix return code confusion
+  pnfsblock: fix size of upcall message
+Peng Tao (8):
+  SUNRPC/NFS: make rpc pipe upcall generic
+  pnfsblock: add missing rpc_put_mount and path_put
+  pnfs: make _set_lo_fail generic
+- pnfsblock: init pg_bsize properly
+  pnfs: recoalesce when ld write pagelist fails
+  pnfs: recoalesce when ld read pagelist fails
+  pnfsblock: fix NULL pointer dereference
+  pnfsblock: fix writeback deadlock
+
+This includes all the bug fixes for 3.1 plus some others that are less
+important or higher risk.  Notice that "init pg_bsize properly" is wrong and
+should not be used.  Benny, you may want to remove this from your tree, or I
+can send a revert patch.
+
+Missing from these is one more, "nfs4: serialize layoutcommit" that's
+important but I somehow missed it.
+
+The recent automount changes really screwed us up but I just built a kernel
+from Linus's latest, which includes the patches from Trond, and it passes
+all tests so I think we're still ok for 3.1.
