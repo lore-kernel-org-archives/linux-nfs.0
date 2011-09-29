@@ -1,60 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:56578 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751794Ab1IZVZW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Sep 2011 17:25:22 -0400
-Received: by bkbzt4 with SMTP id zt4so6242607bkb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 26 Sep 2011 14:25:21 -0700 (PDT)
-In-Reply-To: <1317071626.19951.8.camel@lade.trondhjem.org>
-References: <CA+55aFyd3QB-vfp9Vm6S6_YRCXO9pNE2YavYZhmO+5g6YfdERA@mail.gmail.com>
- <1316747758.3346.89.camel@perseus.themaw.net> <20110922134510.24683.14576.stgit@warthog.procyon.org.uk>
- <1316707443.3346.44.camel@perseus.themaw.net> <CA+55aFxGxv5DGAQcgn1avwUcW1xZVvz1VEajF6zT5HHiVEsJ2w@mail.gmail.com>
- <1316709935.3346.48.camel@perseus.themaw.net> <20110922133529.6d3ea8de@barsoom.rdu.redhat.com>
- <20110922144453.6cf53a25@barsoom.rdu.redhat.com> <1316719228.3968.14.camel@lade.trondhjem.org>
- <CA+55aFxEAZG2dz3X44OUDqmqv8P-6AJ-eiKVBGfC5+=3C_c+1A@mail.gmail.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B480BD4@SACMVEXC2-PRD.hq.netapp.com>
- <CA+55aFx9XbKV7xNR-Vs7NhyDE=vmX7Zr=U2YB=omvcae_ye9XQ@mail.gmail.com>
- <21772.1316774025@redhat.com> <1316788444.14812.10.camel@lade.trondhjem.org>
- <29743.1316791138@redhat.com> <87hb43tf2g.fsf@tucsk.pomaz.szeredi.hu>
- <1316827854.3346.154.camel@perseus.themaw.net> <CA+55aFwPEq5B_P0RtX+pBtGfTadzzS+3U=k=3XTjDw3soNhOdA@mail.gmail.com>
- <20110924073610.4b045189@tlielax.poochiereds.net> <CA+55aFxjFXbCKBZNfBuCOaiBHRQ=ZECnhqKxjPw9maPgyRLiDA@mail.gmail.com>
- <1317013864.3187.81.camel@perseus.themaw.net> <CA+55aFzJnKCHtsiH-mZOwQgVt1ajPJQHWRYB_19eXEKaGRPD1w@mail.gmail.com>
- <1317071626.19951.8.camel@lade.trondhjem.org>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Mon, 26 Sep 2011 14:24:58 -0700
-Message-ID: <CA+55aFzWCZQjWMcxg16yMUoLr-mEPuXzAFgv49LU4hCn+=rbwQ@mail.gmail.com>
-Subject: Re: [PATCH] VFS: Suppress automount on [l]stat, [l]getxattr, etc.
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Ian Kent <raven@themaw.net>, Jeff Layton <jlayton@redhat.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        David Howells <dhowells@redhat.com>, viro@zeniv.linux.org.uk,
-        gregkh@suse.de, linux-nfs@vger.kernel.org, leonardo.lists@gmail.com
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:18221 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751643Ab1I2S7n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Sep 2011 14:59:43 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v3 3/3] NFSD: Added fault injection documentation
+Date: Thu, 29 Sep 2011 14:59:25 -0400
+Message-Id: <1317322765-19094-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1317322765-19094-1-git-send-email-bjschuma@netapp.com>
+References: <1317322765-19094-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, Sep 26, 2011 at 2:13 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
->
-> LOOKUP_OPEN flags an open intent and will therefore have side-effects on
-> NFSv4.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Yes, and the actual downside for that is exactly what?
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ Documentation/filesystems/nfs/00-INDEX            |    2 +
+ Documentation/filesystems/nfs/fault_injection.txt |   70 +++++++++++++++++++++
+ 2 files changed, 72 insertions(+), 0 deletions(-)
+ create mode 100644 Documentation/filesystems/nfs/fault_injection.txt
 
-If you are talking about the bind mount issue, then what is the
-downside with saying "we want the same stronger consistency guarantees
-as for a 'file open' operation"?
+diff --git a/Documentation/filesystems/nfs/00-INDEX b/Documentation/filesystems/nfs/00-INDEX
+index a57e124..1716874 100644
+--- a/Documentation/filesystems/nfs/00-INDEX
++++ b/Documentation/filesystems/nfs/00-INDEX
+@@ -2,6 +2,8 @@
+ 	- this file (nfs-related documentation).
+ Exporting
+ 	- explanation of how to make filesystems exportable.
++fault_injection.txt
++	- information for using fault injection on the server
+ knfsd-stats.txt
+ 	- statistics which the NFS server makes available to user space.
+ nfs.txt
+diff --git a/Documentation/filesystems/nfs/fault_injection.txt b/Documentation/filesystems/nfs/fault_injection.txt
+new file mode 100644
+index 0000000..b7a4bca
+--- /dev/null
++++ b/Documentation/filesystems/nfs/fault_injection.txt
+@@ -0,0 +1,70 @@
++
++===============
++Fault Injection
++===============
++Fault injection is a method for forcing errors that may not normally occur, or
++may be difficult to reproduce.  Forcing these errors in a controlled environment
++can help the developer find and fix bugs before their code is shipped in a
++production system.  Injecting an error on the Linux NFS server will allow us to
++observe how the client reacts and if it manages to recover its state correctly.
++
++NFSD_FAULT_INJECTION must be selected when configuring the kernel to use this
++feature.
++
++=====================
++Using Fault Injection
++=====================
++On the client, mount the fault injection server through NFS v4.0+ and do some
++work over NFS (open files, take locks, ...).
++
++On the server, mount the debugfs filesystem to <debug_dir> and ls
++<debug_dir>/nfsd.  This will show a list of files that will be used for
++injecting faults on the NFS server.  As root, write a number n to the file
++corresponding to the action you want the server to take.  The server will then
++process the first n items it finds.  So if you want to forget 5 locks, echo '5'
++to <debug_dir>/nfsd/forget_locks.  A value of 0 will tell the server to forget
++all corresponding items.  A log message will be created containing the number
++of items forgotten (check dmesg).
++
++Go back to work on the client and check if the client recovered from the error
++correctly.
++
++================
++Available Faults
++================
++forget_clients:
++     The NFS server keeps a list of clients that have placed a mount call.  If
++     this list is cleared, the server will have no knowledge of who the client
++     is, forcing the client to reauthenticate with the server.
++
++forget_openowners:
++     The NFS server keeps a list of what files are currently opened and who
++     they were opened by.  Clearing this list will force the client to reopen
++     its files.
++
++forget_locks:
++     The NFS server keeps a list of what files are currently locked in the VFS.
++     Clearing this list will force the client to reclaim its locks (files are
++     unlocked through the VFS as they are cleared from this list).
++
++forget_delegations:
++     A delegation is used to assure the client that a file, or part of a file,
++     has not changed since the delegation was awarded.  Clearing this list will
++     force the client to reaquire its delegation before accessing the file
++     again.
++
++recall_delegations:
++     Delegations can be recalled by the server when another client attempts to
++     access a file.  This test will notify the client that its delegation has
++     been revoked, forcing the client to reaquire the delegation before using
++     the file again.
++
++==============================
++tools/nfs/inject_faults script
++==============================
++This script has been created to ease the fault injection process.  This script
++will detect the mounted debugfs directory and write to the files located there
++based on the arguments passed by the user.  For example, running
++`inject_faults forget_locks 1` as root will instruct the server to forget one
++lock.  Running `inject_faults forget_locks` will instruct the server to forget
++all locks.
+-- 
+1.7.6.4
 
-Especially since we know that the side effects of the LOOKUP_FOLLOW
-approach are MUCH BIGGER, and have already caused real complaints from
-actual real users.
-
-In comparison with those real downsides, why the heck are people
-complaining about LOOKUP_DIRECTORY or LOOKUP_OPEN?
-
-Seriously.
-
-Let me repeat: what are the ACTUAL REAL DOWNSIDES?
-
-               Linus
