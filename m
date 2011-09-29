@@ -1,249 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53717 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757069Ab1IGVYe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Sep 2011 17:24:34 -0400
-Date: Wed, 7 Sep 2011 17:24:00 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: agruen@kernel.org, akpm@linux-foundation.org, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V6 14/26] richacl: Permission mapping functions
-Message-ID: <20110907212400.GH8074@fieldses.org>
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1315243548-18664-15-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1315243548-18664-15-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from fmmailgate03.web.de ([217.72.192.234]:60241 "EHLO
+	fmmailgate03.web.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751450Ab1I2OOa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Sep 2011 10:14:30 -0400
+From: "Tim" <supertimothy@web.de>
+To: "'J. Bruce Fields'" <bfields@fieldses.org>
+Cc: <linux-nfs@vger.kernel.org>
+References: <001101cc745e$356aeed0$a040cc70$@web.de> <20110920135050.GA12422@fieldses.org> <001e01cc784b$bba7fa10$32f7ee30$@web.de> <20110921154521.GC21510@fieldses.org>
+In-Reply-To: <20110921154521.GC21510@fieldses.org>
+Subject: AW: Writing / Locking problem with NFSv4
+Date: Thu, 29 Sep 2011 16:13:17 +0200
+Message-ID: <003801cc7eb1$ef48f970$cddaec50$@web.de>
+Content-Type: text/plain;
+	charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Sep 05, 2011 at 10:55:36PM +0530, Aneesh Kumar K.V wrote:
-> From: Andreas Gruenbacher <agruen@kernel.org>
+>On Wed, Sep 21, 2011 at 12:46:34PM +0200, Tim wrote:
+>> On Fri, Sep 16, 2011 at 12:48:45PM +0200, Tim wrote:
+>> >> I’m  facing a rather strange problem. 
+>> >> 
+>> >> From one client I can mount and access my NFSServer without any problems.
+>> >> Writing and locking works with a non root user accout. 
+>> >> From another client (in another subnet), with root everything works 
+>> >> fine. If I use another user, locking doesnt work and also when I 
+>> >> create a file with vim, the *.swp file is not deleted afterwards. 
+>> >> But reading works without problems.
+>> >> Strange thing is user mapping seems to work correct – at least what 
+>> >> ls -la and the logfiles for idmapd shows.
+>> 
+>> >Which client and server?  (Linux on both?  Which versions?)  Are you using kerberos?  If not, are your uid's the same between client and server?  What does your export file look like?
 > 
-> We need to map from POSIX permissions to NFSv4 permissions when a
-> chmod() is done, from NFSv4 permissions to POSIX permissions when an acl
-> is set (which implicitly sets the file permission bits), and from the
-> MAY_READ/MAY_WRITE/MAY_EXEC/MAY_APPEND flags to NFSv4 permissions when
-> doing an access check in a richacl.
+>> Client and Server are both RHEL 6.1. I am not using kerberos. And yes, the uid's are the same, also the gid is the same: 3000 for both.
+>> This is my export file:
 > 
-> Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/richacl_base.c       |  118 +++++++++++++++++++++++++++++++++++++++++++++++
->  include/linux/richacl.h |   46 ++++++++++++++++++
->  2 files changed, 164 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-> index 3536626..d55b436 100644
-> --- a/fs/richacl_base.c
-> +++ b/fs/richacl_base.c
-> @@ -69,6 +69,124 @@ richacl_clone(const struct richacl *acl)
->  }
->  
->  /**
-> + * richacl_mask_to_mode  -  compute the file permission bits which correspond to @mask
-> + * @mask:	%ACE4_* permission mask
-> + *
-> + * See richacl_masks_to_mode().
-> + */
-> +static int
-> +richacl_mask_to_mode(unsigned int mask)
-> +{
-> +	int mode = 0;
-> +
-> +	if (mask & ACE4_POSIX_MODE_READ)
-> +		mode |= MAY_READ;
-> +	if (mask & ACE4_POSIX_MODE_WRITE)
-> +		mode |= MAY_WRITE;
-> +	if (mask & ACE4_POSIX_MODE_EXEC)
-> +		mode |= MAY_EXEC;
-> +
-> +	return mode;
-> +}
-> +
-> +/**
-> + * richacl_masks_to_mode  -  compute the file permission bits from the file masks
-> + *
-> + * When setting a richacl, we set the file permission bits to indicate maximum
-> + * permissions: for example, we set the Write permission when a mask contains
-> + * ACE4_APPEND_DATA even if it does not also contain ACE4_WRITE_DATA.
-> + *
-> + * Permissions which are not in ACE4_POSIX_MODE_READ, ACE4_POSIX_MODE_WRITE, or
-> + * ACE4_POSIX_MODE_EXEC cannot be represented in the file permission bits.
-> + * Such permissions can still be effective, but not for new files or after a
-> + * chmod(), and only if they were set explicitly, for example, by setting a
-> + * richacl.
-> + */
-> +int
-> +richacl_masks_to_mode(const struct richacl *acl)
-> +{
-> +	return richacl_mask_to_mode(acl->a_owner_mask) << 6 |
-> +	       richacl_mask_to_mode(acl->a_group_mask) << 3 |
-> +	       richacl_mask_to_mode(acl->a_other_mask);
-> +}
-> +EXPORT_SYMBOL_GPL(richacl_masks_to_mode);
-> +
-> +/**
-> + * richacl_mode_to_mask  - compute a file mask from the lowest three mode bits
-> + *
-> + * When the file permission bits of a file are set with chmod(), this specifies
-> + * the maximum permissions that processes will get.  All permissions beyond
-> + * that will be removed from the file masks, and become ineffective.
-> + *
-> + * We also add in the permissions which are always allowed no matter what the
-> + * acl says.
-> + */
-> +unsigned int
-> +richacl_mode_to_mask(mode_t mode)
-> +{
-> +	unsigned int mask = ACE4_POSIX_ALWAYS_ALLOWED;
-> +
-> +	if (mode & MAY_READ)
-> +		mask |= ACE4_POSIX_MODE_READ;
-> +	if (mode & MAY_WRITE)
-> +		mask |= ACE4_POSIX_MODE_WRITE;
-> +	if (mode & MAY_EXEC)
-> +		mask |= ACE4_POSIX_MODE_EXEC;
-> +
-> +	return mask;
-> +}
-> +
-> +/**
-> + * richacl_want_to_mask  - convert the iop->permission want argument to a mask
-> + * @want:	@want argument of the permission inode operation
-> + *
-> + * When checking for append, @want is (MAY_WRITE | MAY_APPEND).
-> + *
-> + * Richacls use the iop->may_create and iop->may_delete hooks which are
-> + * used for checking if creating and deleting files is allowed.  These hooks do
-> + * not use richacl_want_to_mask(), so we do not have to deal with mapping
-> + * MAY_WRITE to ACE4_ADD_FILE, ACE4_ADD_SUBDIRECTORY, and ACE4_DELETE_CHILD
-> + * here.
-> + */
-> +unsigned int
-> +richacl_want_to_mask(int want)
-> +{
-> +	unsigned int mask = 0;
-> +
-> +	if (want & MAY_READ)
-> +		mask |= ACE4_READ_DATA;
-> +	if (want & (MAY_APPEND |
-> +		    MAY_CREATE_FILE | MAY_CREATE_DIR |
-> +		    MAY_DELETE_CHILD | MAY_DELETE_SELF |
-> +		    MAY_TAKE_OWNERSHIP | MAY_CHMOD | MAY_SET_TIMES)) {
-> +		if (want & MAY_APPEND)
-> +			mask |= ACE4_APPEND_DATA;
-> +		else if (want & MAY_DELETE_SELF)
-> +			mask |= ACE4_DELETE;
-> +		else if (want & MAY_TAKE_OWNERSHIP)
-> +			mask |= ACE4_WRITE_OWNER;
-> +		else if (want & MAY_CHMOD)
-> +			mask |= ACE4_WRITE_ACL;
-> +		else if (want & MAY_SET_TIMES)
-> +			mask |= ACE4_WRITE_ATTRIBUTES;
-> +		else {
-> +			if (want & MAY_CREATE_FILE)
-> +				mask |= ACE4_ADD_FILE;
-> +			if (want & MAY_CREATE_DIR)
-> +				mask |= ACE4_ADD_SUBDIRECTORY;
-> +			if (want & MAY_DELETE_CHILD)
-> +				mask |= ACE4_DELETE_CHILD;
-> +		}
+>> /srv/nfs/			10.1.4.32/255.255.255.224(rw,fsid=0,sync,no_subtree_check,no_root_squash) 10.1.0.9(rw,fsid=0,sync,no_subtree_check,no_root_squash)
+>> /srv/nfs/mail/users		10.1.4.32/255.255.255.224(rw,fsid=1,sync,no_subtree_check,no_root_squash)
+>> /srv/nfs/mail/tmp		10.1.4.32/255.255.255.224(rw,fsid=2,sync,no_subtree_check,no_root_squash)
+>> /srv/nfs/testdata		10.1.0.9(rw,fsid=10,sync,no_subtree_check,no_root_squash)
+>> 
+>> I tried to take tcpdumps as root and non root user: They look the same to me. However, I'm not so sure what I'm looking for...
 
-Possibly dumb question: why isn't this whole function a simple series of
-if's, one for each MAY_ bit?
+>Hm.  Sounds possibly like
 
-I guess you're using knowledge about the callers to know that, for
-example, no one will ask for MAY_APPEND and MAY_TAKE_OWNERSHIP at the
-same time?
+>	http://marc.info/?t=129183437900003&r=1&w=2
 
-And adding that big "if (want & (MAY_APPEND | .. | MAY_SET_TIMES))" to
-let you skip over a bunch of checks in the common case?
+I just found out the reason for this whole strange behaviour: The folder, where the device is mounted, must have the right owner and / or rights. That means, if I mount it to /srv/data on client side, the folder data must belong to the user 3000.
+I just checked: vim *.swp - files are deleted afterwards and even locking is working!
 
-Does this help measurably?  It seems complicated and, to the extent it
-makes assumptions about the callers, possibly fragile with respect to
-future changes.
+But thank you anyway, Bruce!
+Tim
 
---b.
-
-> +	} else if (want & MAY_WRITE)
-> +		mask |= ACE4_WRITE_DATA;
-> +	if (want & MAY_EXEC)
-> +		mask |= ACE4_EXECUTE;
-> +
-> +	return mask;
-> +}
-> +EXPORT_SYMBOL_GPL(richacl_want_to_mask);
-> +
-> +/**
->   * richace_is_same_identifier  -  are both identifiers the same?
->   */
->  int
-> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-> index 745cfc1..7433ba3 100644
-> --- a/include/linux/richacl.h
-> +++ b/include/linux/richacl.h
-> @@ -117,6 +117,49 @@ struct richacl {
->  	ACE4_WRITE_OWNER |				\
->  	ACE4_SYNCHRONIZE)
->  
-> +/*
-> + * The POSIX permissions are supersets of the following NFSv4 permissions:
-> + *
-> + *  - MAY_READ maps to READ_DATA or LIST_DIRECTORY, depending on the type
-> + *    of the file system object.
-> + *
-> + *  - MAY_WRITE maps to WRITE_DATA or ACE4_APPEND_DATA for files, and to
-> + *    ADD_FILE, ACE4_ADD_SUBDIRECTORY, or ACE4_DELETE_CHILD for directories.
-> + *
-> + *  - MAY_EXECUTE maps to ACE4_EXECUTE.
-> + *
-> + *  (Some of these NFSv4 permissions have the same bit values.)
-> + */
-> +#define ACE4_POSIX_MODE_READ (			\
-> +		ACE4_READ_DATA |		\
-> +		ACE4_LIST_DIRECTORY)
-> +#define ACE4_POSIX_MODE_WRITE (			\
-> +		ACE4_WRITE_DATA |		\
-> +		ACE4_ADD_FILE |			\
-> +		ACE4_APPEND_DATA |		\
-> +		ACE4_ADD_SUBDIRECTORY |		\
-> +		ACE4_DELETE_CHILD)
-> +#define ACE4_POSIX_MODE_EXEC ACE4_EXECUTE
-> +#define ACE4_POSIX_MODE_ALL (			\
-> +		ACE4_POSIX_MODE_READ |		\
-> +		ACE4_POSIX_MODE_WRITE |		\
-> +		ACE4_POSIX_MODE_EXEC)
-> +/*
-> + * These permissions are always allowed
-> + * no matter what the acl says.
-> + */
-> +#define ACE4_POSIX_ALWAYS_ALLOWED (	\
-> +		ACE4_SYNCHRONIZE |	\
-> +		ACE4_READ_ATTRIBUTES |	\
-> +		ACE4_READ_ACL)
-> +/*
-> + * The owner is implicitly granted
-> + * these permissions under POSIX.
-> + */
-> +#define ACE4_POSIX_OWNER_ALLOWED (		\
-> +		ACE4_WRITE_ATTRIBUTES |		\
-> +		ACE4_WRITE_OWNER |		\
-> +		ACE4_WRITE_ACL)
->  /**
->   * richacl_get  -  grab another reference to a richacl handle
->   */
-> @@ -241,5 +284,8 @@ extern struct richacl *richacl_alloc(int);
->  extern int richace_is_same_identifier(const struct richace *,
->  				      const struct richace *);
->  extern int richace_set_who(struct richace *, const char *);
-> +extern int richacl_masks_to_mode(const struct richacl *);
-> +extern unsigned int richacl_mode_to_mask(mode_t);
-> +extern unsigned int richacl_want_to_mask(int);
->  
->  #endif /* __RICHACL_H */
-> -- 
-> 1.7.4.1
-> 
