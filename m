@@ -1,57 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:15782 "EHLO mx1.redhat.com"
+Received: from plane.gmane.org ([80.91.229.3]:60912 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933507Ab1IIVF2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Sep 2011 17:05:28 -0400
-Date: Fri, 9 Sep 2011 17:05:20 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: shouldn't rpc_pipe_upcall message structs be
- __attribute__((packed)) ?
-Message-ID: <20110909170520.6531c008@tlielax.poochiereds.net>
-In-Reply-To: <20110909200304.GA32125@fieldses.org>
-References: <20110909143605.57d54899@tlielax.poochiereds.net>
-	<20110909200304.GA32125@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1753937Ab1I2AKW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Sep 2011 20:10:22 -0400
+Received: from public by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <public@plane.gmane.org>)
+	id 1R94Ci-0004OQ-Aj
+	for linux-nfs@vger.kernel.org; Thu, 29 Sep 2011 02:10:20 +0200
+Subject: Re: NFS mounts and its propagation
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Venkateswararao Jujjuri <jvrao@linux.vnet.ibm.com>
+Cc: Sreeram B S
+	<public-sreeramb-HgOvQuBEEgTQT0dZR+AlfA@plane.gmane.org>,
+        public-linux-nfs-u79uwXL29TY76Z2rM5mHXA@plane.gmane.org
+Date: Wed, 28 Sep 2011 20:08:38 -0400
+In-Reply-To: <4E83A799.1090303@linux.vnet.ibm.com>
+References: <4E805C16.4030509@netapp.com>
+	 <4E83A799.1090303@linux.vnet.ibm.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1317254918.2764.2.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 9 Sep 2011 16:03:04 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Fri, Sep 09, 2011 at 02:36:05PM -0400, Jeff Layton wrote:
-> > I've been looking at replacing the current scheme that knfsd uses to
-> > track client_id4's (aka the v4recoverydir stuff), with an
-> > upcall/downcall scheme. Primarily this is to allow for more robust
-> > handling of clustered NFSv4 services.
-> > 
-> > In the process, I've been looking at the various upcall schemes we use
-> > to see which ones might be suitable to use in this effort. I've noticed
-> > that we have several upcalls that use rpc_pipefs, and that all of them
-> > seem to make assumptions that the userspace programs will align their
-> > message structs identically to how the kernel does.
-> > 
-> > For instance, here's the idmap one:
-> > 
-> > struct idmap_msg {
-> >         __u8  im_type;
-> >         __u8  im_conv;
-> >         char  im_name[IDMAP_NAMESZ];
-> >         __u32 im_id;
-> >         __u8  im_status;
-> > };
-> 
-> That's the "legacy" idmap code, right?
-> 
-> In which case we want to leave it alone if at all possible and move
-> people to the new idmapper.
-> 
-> --b.
-> 
 
-Ahh good point. No need to sweat this one then.
 
+On Wed, 2011-09-28 at 16:02 -0700, Venkateswararao Jujjuri wrote: 
+> 
+> On 09/26/2011 04:03 AM, Sreeram B S wrote:
+> > Hi,
+> > I am Sreeram. This question is related to NFS.
+> > I have a typical scenario. Please assume that there are 3 machines M1,
+> > M2, M3. Each of them are having directories /tmp/abc in them. All the
+> > NFS permissions are set appropriately.
+> > Now, a user mounts M2's /tmp/abc on M1's /tmp/abc by issuing mount
+> > command on M1. Mount is successful.
+> > Then the user mounts M3's /tmp/abc on M2's /tmp/abc by issuing mount
+> > command on M2. Mount successful.
+> > Now I would expect the contents of M3's /tmp/abc to be shown as output
+> > of 'ls' issue on M1. But this is not happening. I am unable to
+> > comprehend the reason. Could you please guide me?
+> 
+> What are you seeing instead? Are you seeing M2's contents on M1?
+> Did you try to change the order of the experiment? i.e First mount M3 on 
+> M2 and then mount M2 on M1? Just curious to see if there is any change 
+> in the behavior.
+
+As Bruce said, re-exporting of NFS-mounted filesystems is not supported
+by the Linux server.
+
+Just mount M3's contents directly onto M1, or use a NFSv4 referral (man
+5 exports0.
+
+Trond
 -- 
-Jeff Layton <jlayton@redhat.com>
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
+
+
