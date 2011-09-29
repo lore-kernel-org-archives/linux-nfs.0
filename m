@@ -1,84 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60149 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:64708 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932140Ab1INLp1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Sep 2011 07:45:27 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 00/25] nfsd4 state cleanup
-Date: Wed, 14 Sep 2011 07:44:56 -0400
-Message-Id: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
+	id S1755113Ab1I2OsC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Sep 2011 10:48:02 -0400
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 07/13] CacheFiles: Make some debugging statements conditional
+To: moseleymark@gmail.com, mark@pogo.org.uk, jlayton@redhat.com,
+        steved@redhat.com
+Cc: linux-cachefs@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Date: Thu, 29 Sep 2011 15:47:01 +0100
+Message-ID: <20110929144700.5812.95311.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20110929144536.5812.84405.stgit@warthog.procyon.org.uk>
+References: <20110929144536.5812.84405.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This is just another batch of little cleanups and bugfixes to the nfsd4
-state code.
+Downgrade some debugging statements to not unconditionally print stuff, but
+rather be conditional on the appropriate module parameter setting.
 
-What I'm actually thinking I'd like to do next is change the way
-stateid's are composed to make it possible to look up the client first.
-Once the client's looked up, lookup of the individual stateid, and most
-of the following work, looks to me like it could be done under a
-per-client lock.  The set of clients doesn't change very much so we
-could use locking that favors readers (maybe rcu) for that part.  So
-that could be a first step towards saner locking.
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
-And then also still to do:
-	- close replays: we keep around a stateid to handle close
-	  replays only in the case where it's the last stateid for an
-	  openowner, but that's not sufficient.
-	- the data structures aren't really right for the things we need
-	  to do: e.g. release_lockowner currently does a linear search
-	  through all the lockowners!
-	- multiple client-to-lockowner locks for a given (owner, file)
-	  aren't handled right.
-	- I need to look again at doing a better job of distinguishing
-	  the bad, expired, and stale cases for stateid's.
+ fs/cachefiles/rdwr.c |   14 +++++++-------
+ 1 files changed, 7 insertions(+), 7 deletions(-)
 
-I was hoping to have that ready for 3.2 but unfortunately keep running
-across small bugs or cleanup opportunities like these along the way;
-perhaps next week....
-
---b.
-
-J. Bruce Fields (25):
-  nfsd4: centralize handling of replay owners
-  nfsd4: cleanup seqid op stateowner usage
-  nfsd4: extend state lock over seqid replay logic
-  nfsd4: eliminate impossible open replay case
-  nfsd4: drop most stateowner refcounting
-  nfsd4: eliminate unused lt_stateowner
-  nfsd4: share common seqid checks
-  nfsd4: simplify check_open logic
-  nfsd4: move double-confirm test to open_confirm
-  nfsd4: move CLOSE_STATE special case to caller
-  nfsd4: split stateowners into open and lockowners
-  nfsd4: split out some free_generic_stateid code
-  nfsd4: rearrange to avoid a forward reference
-  nfsd4: split up find_stateid
-  nfsd4: split preprocess_seqid, cleanup
-  nfsd4: pass around typemask instead of flags
-  nfsd4: rename init_stateid
-  nfsd4: remove redundant stateid initialization
-  nfsd4: move some of nfs4_stateid into a separate structure
-  nfsd4: add common dl_stid field to delegation
-  nfsd4: share common stid-hashing helper function
-  nfsd4: hash deleg stateid's like any other
-  nfsd4: fix test_stateid for delegation stateid's
-  nfsd4: use deleg changes to cleanup preprocess_stateid_op
-  nfsd4: better stateid hashing
-
- fs/nfsd/nfs4callback.c |    2 +-
- fs/nfsd/nfs4proc.c     |   25 +-
- fs/nfsd/nfs4state.c    |  989 +++++++++++++++++++++++-------------------------
- fs/nfsd/nfs4xdr.c      |   52 ++--
- fs/nfsd/state.h        |   92 +++--
- fs/nfsd/xdr4.h         |   12 +-
- 6 files changed, 570 insertions(+), 602 deletions(-)
-
--- 
-1.7.4.1
+diff --git a/fs/cachefiles/rdwr.c b/fs/cachefiles/rdwr.c
+index 96e6940..f507937 100644
+--- a/fs/cachefiles/rdwr.c
++++ b/fs/cachefiles/rdwr.c
+@@ -77,25 +77,25 @@ static int cachefiles_read_reissue(struct cachefiles_object *object,
+ 	struct page *backpage = monitor->back_page, *backpage2;
+ 	int ret;
+ 
+-	kenter("{ino=%lx},{%lx,%lx}",
++	_enter("{ino=%lx},{%lx,%lx}",
+ 	       object->backer->d_inode->i_ino,
+ 	       backpage->index, backpage->flags);
+ 
+ 	/* skip if the page was truncated away completely */
+ 	if (backpage->mapping != bmapping) {
+-		kleave(" = -ENODATA [mapping]");
++		_leave(" = -ENODATA [mapping]");
+ 		return -ENODATA;
+ 	}
+ 
+ 	backpage2 = find_get_page(bmapping, backpage->index);
+ 	if (!backpage2) {
+-		kleave(" = -ENODATA [gone]");
++		_leave(" = -ENODATA [gone]");
+ 		return -ENODATA;
+ 	}
+ 
+ 	if (backpage != backpage2) {
+ 		put_page(backpage2);
+-		kleave(" = -ENODATA [different]");
++		_leave(" = -ENODATA [different]");
+ 		return -ENODATA;
+ 	}
+ 
+@@ -114,7 +114,7 @@ static int cachefiles_read_reissue(struct cachefiles_object *object,
+ 		if (PageUptodate(backpage))
+ 			goto unlock_discard;
+ 
+-		kdebug("reissue read");
++		_debug("reissue read");
+ 		ret = bmapping->a_ops->readpage(NULL, backpage);
+ 		if (ret < 0)
+ 			goto unlock_discard;
+@@ -129,7 +129,7 @@ static int cachefiles_read_reissue(struct cachefiles_object *object,
+ 	}
+ 
+ 	/* it'll reappear on the todo list */
+-	kleave(" = -EINPROGRESS");
++	_leave(" = -EINPROGRESS");
+ 	return -EINPROGRESS;
+ 
+ unlock_discard:
+@@ -137,7 +137,7 @@ unlock_discard:
+ 	spin_lock_irq(&object->work_lock);
+ 	list_del(&monitor->op_link);
+ 	spin_unlock_irq(&object->work_lock);
+-	kleave(" = %d", ret);
++	_leave(" = %d", ret);
+ 	return ret;
+ }
+ 
 
