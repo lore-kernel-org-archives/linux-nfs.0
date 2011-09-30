@@ -1,70 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:37713 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:47465 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754529Ab1ITKOM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Sep 2011 06:14:12 -0400
-Subject: [PATCH v4 2/8] SUNRPC: use rpcbind reference counting helpers
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net
-Date: Tue, 20 Sep 2011 14:13:49 +0400
-Message-ID: <20110920101349.9861.42381.stgit@localhost6.localdomain6>
-In-Reply-To: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
-References: <20110920101031.9861.18444.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
+	id S1752330Ab1I3PF7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Sep 2011 11:05:59 -0400
+Date: Fri, 30 Sep 2011 11:05:58 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 1/3] NFSD: Added fault injection
+Message-ID: <20110930150558.GE19125@fieldses.org>
+References: <1317322765-19094-1-git-send-email-bjschuma@netapp.com>
+ <20110930143508.GC19125@fieldses.org>
+ <4E85D81F.3080108@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E85D81F.3080108@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-All is simple: we just increase users counter if rpcbind clients has been
-created already. Otherwise we create them and set users counter to 1.
+On Fri, Sep 30, 2011 at 10:54:23AM -0400, Bryan Schumaker wrote:
+> On 09/30/2011 10:35 AM, J. Bruce Fields wrote:
+> > On Thu, Sep 29, 2011 at 02:59:23PM -0400, bjschuma@netapp.com wrote:
+> >> From: Bryan Schumaker <bjschuma@netapp.com>
+> >>
+> >> Fault injection on the NFS server makes it easier to test the client's
+> >> state manager and recovery threads.  Simulating errors on the server is
+> >> easier than finding the right conditions that cause them naturally.
+> > 
+> > You also might look at the unlock_ip interface that Wendy Cheng added a
+> > few years ago. The fact that it doesn't remove nfsv4 state is really a
+> > bug, it should be blowing away any relevant v4 clients as the same time.
+> > 
+> > (Though note the IP in question is a server IP, not a client IP.)
+> 
+> I'll take a look.  Thanks for the warning that it looks for a server IP, but would passing the client IP be more useful?
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+It was designed for people using floating IP's to make their server look
+like multiple servers, who want to shut down just the client's using one
+of the floating IP's.
 
----
- net/sunrpc/rpcb_clnt.c |   12 ++++--------
- 1 files changed, 4 insertions(+), 8 deletions(-)
+> > Is this the forget_n_clients scenario really a useful one to test?
+> > I'd've thought that the client would need to deal with the entire client
+> > diseappearing (due to network partition, for example), but not normally
+> > individual open owners.
+> 
+> It might not be a normal case, but it still could be interesting to see how the client recovers.
+> 
+> I was mostly looking at what state the server tracks and deleting what I could find.
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 8724780..83634e0 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -255,9 +255,7 @@ static int rpcb_create_local_unix(void)
- 		clnt4 = NULL;
- 	}
- 
--	/* Protected by rpcb_create_local_mutex */
--	rpcb_local_clnt = clnt;
--	rpcb_local_clnt4 = clnt4;
-+	rpcb_set_local(clnt, clnt4);
- 
- out:
- 	return result;
-@@ -309,9 +307,7 @@ static int rpcb_create_local_net(void)
- 		clnt4 = NULL;
- 	}
- 
--	/* Protected by rpcb_create_local_mutex */
--	rpcb_local_clnt = clnt;
--	rpcb_local_clnt4 = clnt4;
-+	rpcb_set_local(clnt, clnt4);
- 
- out:
- 	return result;
-@@ -326,11 +322,11 @@ static int rpcb_create_local(void)
- 	static DEFINE_MUTEX(rpcb_create_local_mutex);
- 	int result = 0;
- 
--	if (rpcb_local_clnt)
-+	if (rpcb_get_local())
- 		return result;
- 
- 	mutex_lock(&rpcb_create_local_mutex);
--	if (rpcb_local_clnt)
-+	if (rpcb_get_local())
- 		goto out;
- 
- 	if (rpcb_create_local_unix() != 0)
+I think it would be more interesting to find out what typical failure
+scenarios are and then figure out how to simulate them.
 
+--b.
