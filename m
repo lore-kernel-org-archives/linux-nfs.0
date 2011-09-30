@@ -1,126 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64461 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:32944 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754875Ab1I2OtD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Sep 2011 10:49:03 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 12/13] CacheFiles: Implement invalidation
-To: moseleymark@gmail.com, mark@pogo.org.uk, jlayton@redhat.com,
-        steved@redhat.com
-Cc: linux-cachefs@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Date: Thu, 29 Sep 2011 15:48:02 +0100
-Message-ID: <20110929144802.5812.90480.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20110929144536.5812.84405.stgit@warthog.procyon.org.uk>
-References: <20110929144536.5812.84405.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+	id S1752739Ab1I3Oa5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Sep 2011 10:30:57 -0400
+Date: Fri, 30 Sep 2011 10:30:53 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 1/3] NFSD: Added fault injection
+Message-ID: <20110930143053.GB19125@fieldses.org>
+References: <1317322765-19094-1-git-send-email-bjschuma@netapp.com>
+ <A7558C0C-378A-42E3-AC37-8152C50972DB@oracle.com>
+ <4E84D1B8.20903@netapp.com>
+ <F9CDB8C6-E680-4373-81CD-CA8E8A635F84@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <F9CDB8C6-E680-4373-81CD-CA8E8A635F84@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Implement invalidation for CacheFiles.  This is in two parts:
+On Fri, Sep 30, 2011 at 10:28:02AM -0400, Chuck Lever wrote:
+> 
+> On Sep 29, 2011, at 4:14 PM, Bryan Schumaker wrote:
+> 
+> > On 09/29/2011 03:06 PM, Chuck Lever wrote:
+> >> 
+> >> On Sep 29, 2011, at 2:59 PM, bjschuma@netapp.com wrote:
+> >> 
+> >>> From: Bryan Schumaker <bjschuma@netapp.com>
+> >>> 
+> > ...
+> >>> diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
+> >>> index 9b118ee..69eae75 100644
+> >>> --- a/fs/nfsd/Makefile
+> >>> +++ b/fs/nfsd/Makefile
+> >>> @@ -5,7 +5,8 @@
+> >>> obj-$(CONFIG_NFSD)	+= nfsd.o
+> >>> 
+> >>> nfsd-y 			:= nfssvc.o nfsctl.o nfsproc.o nfsfh.o vfs.o \
+> >>> -			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o
+> >>> +			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o \
+> >>> +			   fault_inject.o
+> >>> nfsd-$(CONFIG_NFSD_V2_ACL) += nfs2acl.o
+> >>> nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
+> >>> nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
+> >>> diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+> >>> new file mode 100644
+> >>> index 0000000..2139883
+> >>> --- /dev/null
+> >>> +++ b/fs/nfsd/fault_inject.c
+> >>> @@ -0,0 +1,102 @@
+> >>> +#ifdef CONFIG_NFSD_FAULT_INJECTION
+> >> 
+> >> The usual practice is to conditionally compile this source file via a Makefile variable, not by wrapping the whole source file in an ifdef.  You can see examples of this in the Makefile hunk above.
+> >> 
+> > 
+> > How's this?  I moved the selectively compile bit to the makefile and created a fault_inject.h for the empty init() and cleanup() functions.  I moved the rest of the fault injection function declarations there, too, to keep them all together.
+> 
+> OK.  How about adding documenting block comments for the new files?  Does NetApp require you to add a copyright notice at the top of new files?
 
- (1) Provide an invalidation method (which just truncates the backing file).
+You probably do want that, but just keep it to a minimum and don't
+include the filename in the block comment.
 
- (2) Abort attempts to copy anything read from the backing file whilst
-     invalidation is in progress.
+--b.
 
-Question: CacheFiles uses truncation in a couple of places.  It has been using
-notify_change() rather than sys_truncate() or something similar.  This means
-it bypasses a bunch of checks and suchlike that it possibly should be making
-(security, file locking, lease breaking, vfsmount write).  Should it be using
-vfs_truncate() as added by a preceding patch or should it use notify_write()
-and assume that anyone poking around in the cache files on disk gets
-everything they deserve?
-
-Signed-off-by: David Howells <dhowells@redhat.com>
----
-
- fs/cachefiles/interface.c |   49 +++++++++++++++++++++++++++++++++++++++++++++
- fs/cachefiles/rdwr.c      |    5 ++++-
- 2 files changed, 53 insertions(+), 1 deletions(-)
-
-diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
-index 075b7a6..ef5c02d 100644
---- a/fs/cachefiles/interface.c
-+++ b/fs/cachefiles/interface.c
-@@ -442,6 +442,54 @@ truncate_failed:
- }
- 
- /*
-+ * Invalidate an object
-+ */
-+static void cachefiles_invalidate_object(struct fscache_operation *op)
-+{
-+	struct cachefiles_object *object;
-+	struct cachefiles_cache *cache;
-+	const struct cred *saved_cred;
-+	struct path path;
-+	uint64_t ni_size;
-+	int ret;
-+
-+	object = container_of(op->object, struct cachefiles_object, fscache);
-+	cache = container_of(object->fscache.cache,
-+			     struct cachefiles_cache, cache);
-+
-+	op->object->cookie->def->get_attr(op->object->cookie->netfs_data,
-+					  &ni_size);
-+
-+	_enter("{OBJ%x},[%llu]",
-+	       op->object->debug_id, (unsigned long long)ni_size);
-+
-+	if (object->backer) {
-+		ASSERT(S_ISREG(object->backer->d_inode->i_mode));
-+
-+		fscache_set_store_limit(&object->fscache, ni_size);
-+
-+		path.dentry = object->backer;
-+		path.mnt = cache->mnt;
-+
-+		cachefiles_begin_secure(cache, &saved_cred);
-+		ret = vfs_truncate(&path, 0);
-+		if (ret == 0)
-+			ret = vfs_truncate(&path, ni_size);
-+		cachefiles_end_secure(cache, saved_cred);
-+
-+		if (ret != 0) {
-+			fscache_set_store_limit(&object->fscache, 0);
-+			if (ret == -EIO)
-+				cachefiles_io_error_obj(object,
-+							"Invalidate failed");
-+		}
-+	}
-+
-+	fscache_op_complete(op);
-+	_leave("");
-+}
-+
-+/*
-  * dissociate a cache from all the pages it was backing
-  */
- static void cachefiles_dissociate_pages(struct fscache_cache *cache)
-@@ -456,6 +504,7 @@ const struct fscache_cache_ops cachefiles_cache_ops = {
- 	.lookup_complete	= cachefiles_lookup_complete,
- 	.grab_object		= cachefiles_grab_object,
- 	.update_object		= cachefiles_update_object,
-+	.invalidate_object	= cachefiles_invalidate_object,
- 	.drop_object		= cachefiles_drop_object,
- 	.put_object		= cachefiles_put_object,
- 	.sync_cache		= cachefiles_sync_cache,
-diff --git a/fs/cachefiles/rdwr.c b/fs/cachefiles/rdwr.c
-index 4b2b821..637a27d 100644
---- a/fs/cachefiles/rdwr.c
-+++ b/fs/cachefiles/rdwr.c
-@@ -174,7 +174,10 @@ static void cachefiles_read_copier(struct fscache_operation *_op)
- 		_debug("- copy {%lu}", monitor->back_page->index);
- 
- 	recheck:
--		if (PageUptodate(monitor->back_page)) {
-+		if (test_bit(FSCACHE_COOKIE_INVALIDATING,
-+			     &object->fscache.cookie->flags)) {
-+			error = -ESTALE;
-+		} else if (PageUptodate(monitor->back_page)) {
- 			copy_highpage(monitor->netfs_page, monitor->back_page);
- 			fscache_mark_page_cached(monitor->op,
- 						 monitor->netfs_page, true);
+> Also, I wonder if it would be better if you added "default N" for the
+> new CONFIG option.
 
