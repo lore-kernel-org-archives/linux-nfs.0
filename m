@@ -1,84 +1,62 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] rpc.statd: Bind downcall socket to loopback address
-Date: Wed, 03 Aug 2011 13:18:22 -0400
-Message-ID: <4E3982DE.1080009@RedHat.com>
-References: <20110730224034.30227.2179.stgit@seurat.1015granger.net> <4E397E2C.1040001@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:2043 "EHLO mx1.redhat.com"
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:38652 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751749Ab1HCRSZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Aug 2011 13:18:25 -0400
-In-Reply-To: <4E397E2C.1040001-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+	id S932365Ab1I3TmJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Sep 2011 15:42:09 -0400
+Date: Fri, 30 Sep 2011 15:42:09 -0400
+From: "'J. Bruce Fields'" <bfields@fieldses.org>
+To: Tim <supertimothy@web.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Writing / Locking problem with NFSv4
+Message-ID: <20110930194209.GB22952@fieldses.org>
+References: <001101cc745e$356aeed0$a040cc70$@web.de>
+ <20110920135050.GA12422@fieldses.org>
+ <001e01cc784b$bba7fa10$32f7ee30$@web.de>
+ <20110921154521.GC21510@fieldses.org>
+ <003801cc7eb1$ef48f970$cddaec50$@web.de>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <003801cc7eb1$ef48f970$cddaec50$@web.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-
-
-On 08/03/2011 12:58 PM, Steve Dickson wrote:
-> Hey Chuck,
+On Thu, Sep 29, 2011 at 04:13:17PM +0200, Tim wrote:
+> >On Wed, Sep 21, 2011 at 12:46:34PM +0200, Tim wrote:
+> >> On Fri, Sep 16, 2011 at 12:48:45PM +0200, Tim wrote:
+> >> >> I’m  facing a rather strange problem. 
+> >> >> 
+> >> >> From one client I can mount and access my NFSServer without any problems.
+> >> >> Writing and locking works with a non root user accout. 
+> >> >> From another client (in another subnet), with root everything works 
+> >> >> fine. If I use another user, locking doesnt work and also when I 
+> >> >> create a file with vim, the *.swp file is not deleted afterwards. 
+> >> >> But reading works without problems.
+> >> >> Strange thing is user mapping seems to work correct – at least what 
+> >> >> ls -la and the logfiles for idmapd shows.
+> >> 
+> >> >Which client and server?  (Linux on both?  Which versions?)  Are you using kerberos?  If not, are your uid's the same between client and server?  What does your export file look like?
+> > 
+> >> Client and Server are both RHEL 6.1. I am not using kerberos. And yes, the uid's are the same, also the gid is the same: 3000 for both.
+> >> This is my export file:
+> > 
+> >> /srv/nfs/			10.1.4.32/255.255.255.224(rw,fsid=0,sync,no_subtree_check,no_root_squash) 10.1.0.9(rw,fsid=0,sync,no_subtree_check,no_root_squash)
+> >> /srv/nfs/mail/users		10.1.4.32/255.255.255.224(rw,fsid=1,sync,no_subtree_check,no_root_squash)
+> >> /srv/nfs/mail/tmp		10.1.4.32/255.255.255.224(rw,fsid=2,sync,no_subtree_check,no_root_squash)
+> >> /srv/nfs/testdata		10.1.0.9(rw,fsid=10,sync,no_subtree_check,no_root_squash)
+> >> 
+> >> I tried to take tcpdumps as root and non root user: They look the same to me. However, I'm not so sure what I'm looking for...
 > 
-> Are you still proposing this patch? Where you able to
-> get some testing done on it?
-Never mind... I see your 08/01 posting of this patch.
+> >Hm.  Sounds possibly like
+> 
+> >	http://marc.info/?t=129183437900003&r=1&w=2
+> 
+> I just found out the reason for this whole strange behaviour: The folder, where the device is mounted, must have the right owner and / or rights. That means, if I mount it to /srv/data on client side, the folder data must belong to the user 3000.
+> I just checked: vim *.swp - files are deleted afterwards and even locking is working!
 
-Sorry for the noise....
-
-steved.
+OK, so you just didn't have write permissions to that directory?  Makes
+sense.--b.
 
 > 
-> tia,
+> But thank you anyway, Bruce!
+> Tim
 > 
-> steved.
-> 
-> On 07/30/2011 06:43 PM, Chuck Lever wrote:
->> In the past, rpc.statd posted SM_NOTIFY requests using the same socket
->> it used for sending downcalls to the kernel.  To receive replies from
->> remote hosts, the socket was bound to INADDR_ANY.
->>
->> With commit f113db52 "Remove notify functionality from statd in
->> favour of sm-notify" (Mar 20, 2007), the downcall socket is no longer
->> used for sending requests to remote hosts.  However, the downcall
->> socket is still bound to INADDR_ANY.  This means that any remote host
->> can inject data on this socket, since it is an unconnected UDP socket
->> listening for RPC replies.
->>
->> To prevent unwanted data injection, bind this socket to loopback
->> instead.
->>
->> BugLink:
->>   https://bugzilla.linux-nfs.org/show_bug.cgi?id=177
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->>
->> This proposed fix hasn't yet been thoroughly tested.  Comments?
->>
->>  utils/statd/rmtcall.c |    2 +-
->>  1 files changed, 1 insertions(+), 1 deletions(-)
->>
->> diff --git a/utils/statd/rmtcall.c b/utils/statd/rmtcall.c
->> index 0e52fe2..4ecb03c 100644
->> --- a/utils/statd/rmtcall.c
->> +++ b/utils/statd/rmtcall.c
->> @@ -85,7 +85,7 @@ statd_get_socket(void)
->>  
->>  		memset(&sin, 0, sizeof(sin));
->>  		sin.sin_family = AF_INET;
->> -		sin.sin_addr.s_addr = INADDR_ANY;
->> +		sin.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
->>  
->>  		if (bindresvport(sockfd, &sin) < 0) {
->>  			xlog(D_GENERAL, "%s: can't bind to reserved port",
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
