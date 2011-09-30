@@ -1,177 +1,425 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:44902 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757170Ab1IGVvH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Sep 2011 17:51:07 -0400
-Date: Wed, 7 Sep 2011 17:50:22 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: agruen@kernel.org, akpm@linux-foundation.org, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V6 17/26] richacl: Permission check algorithm
-Message-ID: <20110907215022.GI8074@fieldses.org>
-References: <1315243548-18664-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1315243548-18664-18-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from acsinet15.oracle.com ([141.146.126.227]:42216 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752739Ab1I3O2V convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Sep 2011 10:28:21 -0400
+Subject: Re: [PATCH v3 1/3] NFSD: Added fault injection
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1315243548-18664-18-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4E84D1B8.20903@netapp.com>
+Date: Fri, 30 Sep 2011 10:28:02 -0400
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Message-Id: <F9CDB8C6-E680-4373-81CD-CA8E8A635F84@oracle.com>
+References: <1317322765-19094-1-git-send-email-bjschuma@netapp.com> <A7558C0C-378A-42E3-AC37-8152C50972DB@oracle.com> <4E84D1B8.20903@netapp.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Sep 05, 2011 at 10:55:39PM +0530, Aneesh Kumar K.V wrote:
-> From: Andreas Gruenbacher <agruen@kernel.org>
-> 
-> As in the standard POSIX file permission model, each process is the
-> owner, group, or other file class.  A process is
-> 
->   - in the owner file class if it owns the file,
->   - in the group file class if it is in the file's owning group or it
->     matches any of the user or group entries, and
->   - in the other file class otherwise.
-> 
-> Each file class is associated with a file mask.
-> 
-> A richacl grants a requested access if the NFSv4 acl in the richacl
-> grants the requested permissions (according to the NFSv4 permission
-> check algorithm) and the file mask that applies to the process includes
-> the requested permissions.
 
-I assume that by default any ui normally recalculates an upper-bound
-mask automatically when you add an ace, as the posix setfacl does, so
-the user doesn't have to think about masks too much?
+On Sep 29, 2011, at 4:14 PM, Bryan Schumaker wrote:
 
-Patch looks right.
-
---b.
-
+> On 09/29/2011 03:06 PM, Chuck Lever wrote:
+>> 
+>> On Sep 29, 2011, at 2:59 PM, bjschuma@netapp.com wrote:
+>> 
+>>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>> 
+> ...
+>>> diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
+>>> index 9b118ee..69eae75 100644
+>>> --- a/fs/nfsd/Makefile
+>>> +++ b/fs/nfsd/Makefile
+>>> @@ -5,7 +5,8 @@
+>>> obj-$(CONFIG_NFSD)	+= nfsd.o
+>>> 
+>>> nfsd-y 			:= nfssvc.o nfsctl.o nfsproc.o nfsfh.o vfs.o \
+>>> -			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o
+>>> +			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o \
+>>> +			   fault_inject.o
+>>> nfsd-$(CONFIG_NFSD_V2_ACL) += nfs2acl.o
+>>> nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
+>>> nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
+>>> diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+>>> new file mode 100644
+>>> index 0000000..2139883
+>>> --- /dev/null
+>>> +++ b/fs/nfsd/fault_inject.c
+>>> @@ -0,0 +1,102 @@
+>>> +#ifdef CONFIG_NFSD_FAULT_INJECTION
+>> 
+>> The usual practice is to conditionally compile this source file via a Makefile variable, not by wrapping the whole source file in an ifdef.  You can see examples of this in the Makefile hunk above.
+>> 
 > 
-> Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> How's this?  I moved the selectively compile bit to the makefile and created a fault_inject.h for the empty init() and cleanup() functions.  I moved the rest of the fault injection function declarations there, too, to keep them all together.
+
+OK.  How about adding documenting block comments for the new files?  Does NetApp require you to add a copyright notice at the top of new files?
+
+Also, I wonder if it would be better if you added "default N" for the new CONFIG option.
+
+> - Bryan
+> 
+> Fault injection on the NFS server makes it easier to test the client's
+> state manager and recovery threads.  Simulating errors on the server is
+> easier than finding the right conditions that cause them naturally.
+> 
+> This patch uses debugfs to add a simple framework for fault injection to
+> the server.  This framework is a config option, and can be enabled
+> through CONFIG_NFSD_FAULT_INJECTION.  Assuming you have debugfs mounted
+> to /sys/debug, a set of files will be created in /sys/debug/nfsd/.
+> Writing to any of these files will cause the corresponding action and
+> write a log entry to dmesg.
+> 
+> Changes in v4:
+> - Move fault injection function declarations to a new .h file
+> - Use the Makefile to selectively compile fault_injection.c
+> 
+> Changes in v3:
+> - Code cleanup and better use of generic functions
+> - Allow the user to input the number of state objects to delete
+> - Remove "forget_everything()" since forgetting a client is basically
+>  the same thing
+> 
+> Changes in v2:
+> - Replaced "forget all state owners" with "forget all open owners"
+> - Include fs/nfsd/fault_inject.c in the patch
+> 
+> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 > ---
->  fs/richacl_base.c       |   99 +++++++++++++++++++++++++++++++++++++++++++++++
->  include/linux/richacl.h |    2 +
->  2 files changed, 101 insertions(+), 0 deletions(-)
+> fs/nfsd/Kconfig        |   10 ++++
+> fs/nfsd/Makefile       |    1 +
+> fs/nfsd/fault_inject.c |   88 ++++++++++++++++++++++++++++++++++++
+> fs/nfsd/fault_inject.h |   22 +++++++++
+> fs/nfsd/nfs4state.c    |  115 ++++++++++++++++++++++++++++++++++++++++++++++++
+> fs/nfsd/nfsctl.c       |    7 +++
+> 6 files changed, 243 insertions(+), 0 deletions(-)
+> create mode 100644 fs/nfsd/fault_inject.c
+> create mode 100644 fs/nfsd/fault_inject.h
 > 
-> diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-> index 60a65d7..1f885ad 100644
-> --- a/fs/richacl_base.c
-> +++ b/fs/richacl_base.c
-> @@ -393,3 +393,102 @@ richacl_chmod(struct richacl *acl, mode_t mode)
->  	return clone;
->  }
->  EXPORT_SYMBOL_GPL(richacl_chmod);
+> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+> index 10e6366..52fdd1c 100644
+> --- a/fs/nfsd/Kconfig
+> +++ b/fs/nfsd/Kconfig
+> @@ -80,3 +80,13 @@ config NFSD_V4
+> 	  available from http://linux-nfs.org/.
+> 
+> 	  If unsure, say N.
 > +
-> +/**
-> + * richacl_permission  -  richacl permission check algorithm
-> + * @inode:	inode to check
-> + * @acl:	rich acl of the inode
-> + * @mask:	requested access (ACE4_* bitmask)
-> + *
-> + * Checks if the current process is granted @mask flags in @acl.
-> + */
-> +int
-> +richacl_permission(struct inode *inode, const struct richacl *acl,
-> +		   unsigned int mask)
+> +config NFSD_FAULT_INJECTION
+> +	bool "NFS server manual fault injection"
+> +	depends on NFSD_V4 && DEBUG_KERNEL
+> +	help
+> +	  This option enables support for manually injectiong faults
+> +	  into the NFS server.  This is intended to be used for
+> +	  testing error recovery on the NFS client.
+> +
+> +	  If unsure, say N.
+> diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
+> index 9b118ee..af32ef0 100644
+> --- a/fs/nfsd/Makefile
+> +++ b/fs/nfsd/Makefile
+> @@ -6,6 +6,7 @@ obj-$(CONFIG_NFSD)	+= nfsd.o
+> 
+> nfsd-y 			:= nfssvc.o nfsctl.o nfsproc.o nfsfh.o vfs.o \
+> 			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o
+> +nfsd-$(CONFIG_NFSD_FAULT_INJECTION) += fault_inject.o
+> nfsd-$(CONFIG_NFSD_V2_ACL) += nfs2acl.o
+> nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
+> nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
+> diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+> new file mode 100644
+> index 0000000..8b6ec8d
+> --- /dev/null
+> +++ b/fs/nfsd/fault_inject.c
+> @@ -0,0 +1,88 @@
+> +#include <linux/types.h>
+> +#include <linux/fs.h>
+> +#include <linux/debugfs.h>
+> +#include <linux/module.h>
+> +
+> +#include "state.h"
+> +#include "fault_inject.h"
+> +
+> +struct nfsd_fault_inject_op {
+> +	char *action;
+> +	char *item;
+> +	char *file;
+> +	int file_data;
+> +	void (*func)(u64);
+> +};
+> +
+> +#define INJECTION_OP(op_action, op_item, op_func)	\
+> +{							\
+> +	.action = op_action,				\
+> +	.item   = op_item,				\
+> +	.file   = op_action"_"op_item,			\
+> +	.func   = op_func,				\
+> +}
+> +
+> +static struct nfsd_fault_inject_op inject_ops[] = {
+> +	INJECTION_OP("forget", "clients",     nfsd_forget_clients),
+> +	INJECTION_OP("forget", "locks",       nfsd_forget_locks),
+> +	INJECTION_OP("forget", "openowners",  nfsd_forget_openowners),
+> +	INJECTION_OP("forget", "delegations", nfsd_forget_delegations),
+> +	INJECTION_OP("recall", "delegations", nfsd_recall_delegations),
+> +};
+> +
+> +static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
+> +static struct dentry *debug_dir;
+> +
+> +static int nfsd_inject_set(void *data, u64 val)
 > +{
-> +	const struct richace *ace;
-> +	unsigned int requested = mask, denied = 0;
-> +	int in_owning_group = in_group_p(inode->i_gid);
-> +	int in_owner_or_group_class = in_owning_group;
+> +	int i;
+> +	struct nfsd_fault_inject_op *op;
 > +
-> +	/*
-> +	 * We don't need to know which class the process is in when the acl is
-> +	 * not masked.
-> +	 */
-> +	if (!(acl->a_flags & ACL4_MASKED))
-> +		in_owner_or_group_class = 1;
-> +
-> +	/*
-> +	 * A process is
-> +	 *   - in the owner file class if it owns the file,
-> +	 *   - in the group file class if it is in the file's owning group or
-> +	 *     it matches any of the user or group entries, and
-> +	 *   - in the other file class otherwise.
-> +	 */
-> +
-> +	/*
-> +	 * Check if the acl grants the requested access and determine which
-> +	 * file class the process is in.
-> +	 */
-> +	richacl_for_each_entry(ace, acl) {
-> +		unsigned int ace_mask = ace->e_mask;
-> +
-> +		if (richace_is_inherit_only(ace))
-> +			continue;
-> +		if (richace_is_owner(ace)) {
-> +			if (current_fsuid() != inode->i_uid)
-> +				continue;
-> +			goto is_owner;
-> +		} else if (richace_is_group(ace)) {
-> +			if (!in_owning_group)
-> +				continue;
-> +		} else if (richace_is_unix_id(ace)) {
-> +			if (ace->e_flags & ACE4_IDENTIFIER_GROUP) {
-> +				if (!in_group_p(ace->u.e_id))
-> +					continue;
+> +	for (i = 0; i < NUM_INJECT_OPS; i++) {
+> +		op = &inject_ops[i];
+> +		if (&op->file_data == data) {
+> +			if (val == 0) {
+> +				printk(KERN_INFO "NFSD: Server %sing all %s",
+> +				op->action, op->item);
 > +			} else {
-> +				if (current_fsuid() != ace->u.e_id)
-> +					continue;
+> +				printk(KERN_INFO "NFSD: Server %sing at most %llu %s",
+> +				op->action, val, op->item);
 > +			}
-> +		} else
-> +			goto is_everyone;
+> +			op->func(val);
+> +		}
+> +	}
+> +	return 0;
+> +}
 > +
-> +is_owner:
-> +		/* The process is in the owner or group file class. */
-> +		in_owner_or_group_class = 1;
+> +static int nfsd_inject_get(void *data, u64 *val)
+> +{
+> +	return 0;
+> +}
 > +
-> +is_everyone:
-> +		/* Check which mask flags the ACE allows or denies. */
-> +		if (richace_is_deny(ace))
-> +			denied |= ace_mask & mask;
-> +		mask &= ~ace_mask;
+> +DEFINE_SIMPLE_ATTRIBUTE(fops_nfsd, nfsd_inject_get, nfsd_inject_set, "%llu\n");
 > +
-> +		/*
-> +		 * Keep going until we know which file class
-> +		 * the process is in.
-> +		 */
-> +		if (!mask && in_owner_or_group_class)
+> +void nfsd_fault_inject_cleanup(void)
+> +{
+> +	debugfs_remove_recursive(debug_dir);
+> +}
+> +
+> +int nfsd_fault_inject_init(void)
+> +{
+> +	unsigned int i;
+> +	struct nfsd_fault_inject_op *op;
+> +	mode_t mode = S_IFREG | S_IRUSR | S_IWUSR;
+> +
+> +	debug_dir = debugfs_create_dir("nfsd", NULL);
+> +	if (!debug_dir)
+> +		goto fail;
+> +
+> +	for (i = 0; i < NUM_INJECT_OPS; i++) {
+> +		op = &inject_ops[i];
+> +		debugfs_create_file(op->file, mode, debug_dir, &op->file_data, &fops_nfsd);
+> +	}
+> +	return 0;
+> +
+> +fail:
+> +	nfsd_fault_inject_cleanup();
+> +	return -ENOMEM;
+> +}
+> diff --git a/fs/nfsd/fault_inject.h b/fs/nfsd/fault_inject.h
+> new file mode 100644
+> index 0000000..5b003a9
+> --- /dev/null
+> +++ b/fs/nfsd/fault_inject.h
+> @@ -0,0 +1,22 @@
+> +#ifndef LINUX_NFSD_FAULT_INJECT_H
+> +#define LINUX_NFSD_FAULT_INJECT_H
+> +
+> +#ifdef CONFIG_NFSD_FAULT_INJECTION
+> +int nfsd_fault_inject_init(void);
+> +void nfsd_fault_inject_cleanup(void);
+> +void nfsd_forget_clients(u64);
+> +void nfsd_forget_locks(u64);
+> +void nfsd_forget_openowners(u64);
+> +void nfsd_forget_delegations(u64);
+> +void nfsd_recall_delegations(u64);
+> +#else /* CONFIG_NFSD_FAULT_INJECTION */
+> +static inline int nfsd_fault_inject_init(void) { return 0; }
+> +static inline void nfsd_fault_inject_cleanup(void) {}
+> +static inline void nfsd_forget_clients(u64 num) {}
+> +static inline void nfsd_forget_locks(u64 num) {}
+> +static inline void nfsd_forget_openowners(u64 num) {}
+> +static inline void nfsd_forget_delegations(u64 num) {}
+> +static inline void nfsd_recall_delegations(u64 num) {}
+> +#endif /* CONFIG_NFSD_FAULT_INJECTION */
+> +
+> +#endif /* LINUX_NFSD_FAULT_INJECT_H */
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 05f4c69..64fa6b0 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -4358,6 +4358,121 @@ nfs4_check_open_reclaim(clientid_t *clid)
+> 	return nfs4_find_reclaim_client(clid) ? nfs_ok : nfserr_reclaim_bad;
+> }
+> 
+> +#ifdef CONFIG_NFSD_FAULT_INJECTION
+> +
+> +void nfsd_forget_clients(u64 num)
+> +{
+> +	struct nfs4_client *clp, *next;
+> +	int count = 0;
+> +
+> +	nfs4_lock_state();
+> +	list_for_each_entry_safe(clp, next, &client_lru, cl_lru) {
+> +		nfsd4_remove_clid_dir(clp);
+> +		expire_client(clp);
+> +		if (++count == num)
 > +			break;
 > +	}
-> +	denied |= mask;
+> +	nfs4_unlock_state();
 > +
-> +	if (acl->a_flags & ACL4_MASKED) {
-> +		unsigned int file_mask;
-> +
-> +		/*
-> +		 * The file class a process is in determines which file mask
-> +		 * applies.  Check if that file mask also grants the requested
-> +		 * access.
-> +		 */
-> +		if (current_fsuid() == inode->i_uid)
-> +			file_mask = acl->a_owner_mask;
-> +		else if (in_owner_or_group_class)
-> +			file_mask = acl->a_group_mask;
-> +		else
-> +			file_mask = acl->a_other_mask;
-> +		denied |= requested & ~file_mask;
-> +	}
-> +
-> +	return denied ? -EACCES : 0;
+> +	printk(KERN_INFO "NFSD: Forgot %d clients", count);
 > +}
-> +EXPORT_SYMBOL_GPL(richacl_permission);
-> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-> index 6dd8eb2..f46e797 100644
-> --- a/include/linux/richacl.h
-> +++ b/include/linux/richacl.h
-> @@ -289,5 +289,7 @@ extern unsigned int richacl_mode_to_mask(mode_t);
->  extern unsigned int richacl_want_to_mask(int);
->  extern void richacl_compute_max_masks(struct richacl *);
->  extern struct richacl *richacl_chmod(struct richacl *, mode_t);
-> +extern int richacl_permission(struct inode *, const struct richacl *,
-> +			      unsigned int);
->  
->  #endif /* __RICHACL_H */
-> -- 
-> 1.7.4.1
+> +
+> +static void release_lockowner_sop(struct nfs4_stateowner *sop)
+> +{
+> +	release_lockowner(lockowner(sop));
+> +}
+> +
+> +static void release_openowner_sop(struct nfs4_stateowner *sop)
+> +{
+> +	release_openowner(openowner(sop));
+> +}
+> +
+> +static int nfsd_release_n_owners(u64 num,
+> +				struct list_head hashtbl[],
+> +				unsigned int hashtbl_size,
+> +				void (*release_sop)(struct nfs4_stateowner *))
+> +{
+> +	int i, count = 0;
+> +	struct nfs4_stateowner *sop, *next;
+> +
+> +	for (i = 0; i < hashtbl_size; i++) {
+> +		list_for_each_entry_safe(sop, next, &hashtbl[i], so_strhash) {
+> +			release_sop(sop);
+> +			if (++count == num)
+> +				return count;
+> +		}
+> +	}
+> +	return count;
+> +}
+> +
+> +void nfsd_forget_locks(u64 num)
+> +{
+> +	int count;
+> +
+> +	nfs4_lock_state();
+> +	count = nfsd_release_n_owners(num, lock_ownerstr_hashtbl,
+> +				     LOCK_HASH_SIZE, release_lockowner_sop);
+> +	nfs4_unlock_state();
+> +
+> +	printk(KERN_INFO "NFSD: Forgot %d locks", count);
+> +}
+> +
+> +void nfsd_forget_openowners(u64 num)
+> +{
+> +	int count;
+> +
+> +	nfs4_lock_state();
+> +	count = nfsd_release_n_owners(num, open_ownerstr_hashtbl,
+> +				     OPEN_OWNER_HASH_SIZE, release_openowner_sop);
+> +	nfs4_unlock_state();
+> +
+> +	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
+> +}
+> +
+> +int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegation *))
+> +{
+> +	int i, count = 0;
+> +	struct nfs4_file *fp;
+> +	struct nfs4_delegation *dp, *next;
+> +
+> +	for (i = 0; i < FILE_HASH_SIZE; i++) {
+> +		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
+> +			list_for_each_entry_safe(dp, next, &fp->fi_delegations, dl_perfile) {
+> +				deleg_func(dp);
+> +				if (++count == num)
+> +					return count;
+> +			}
+> +		}
+> +	}
+> +	return count;
+> +}
+> +
+> +void nfsd_forget_delegations(u64 num)
+> +{
+> +	unsigned int count;
+> +
+> +	nfs4_lock_state();
+> +	count = nfsd_process_n_delegations(num, unhash_delegation);
+> +	nfs4_unlock_state();
+> +
+> +	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
+> +}
+> +
+> +void nfsd_recall_delegations(u64 num)
+> +{
+> +	unsigned int count;
+> +
+> +	nfs4_lock_state();
+> +	spin_lock(&recall_lock);
+> +	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg);
+> +	spin_unlock(&recall_lock);
+> +	nfs4_unlock_state();
+> +
+> +	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
+> +}
+> +
+> +#endif /* CONFIG_NFSD_FAULT_INJECTION */
+> +
+> /* initialization to perform at module load time: */
 > 
+> int
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index db34a58..e67f30c 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -17,6 +17,7 @@
+> #include "idmap.h"
+> #include "nfsd.h"
+> #include "cache.h"
+> +#include "fault_inject.h"
+> 
+> /*
+>  *	We have a single directory with several nodes in it.
+> @@ -1130,6 +1131,9 @@ static int __init init_nfsd(void)
+> 	retval = nfs4_state_init(); /* nfs4 locking state */
+> 	if (retval)
+> 		return retval;
+> +	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
+> +	if (retval)
+> +		goto out_cleanup_fault_injection;
+> 	nfsd_stat_init();	/* Statistics */
+> 	retval = nfsd_reply_cache_init();
+> 	if (retval)
+> @@ -1161,6 +1165,8 @@ out_free_cache:
+> out_free_stat:
+> 	nfsd_stat_shutdown();
+> 	nfsd4_free_slabs();
+> +out_cleanup_fault_injection:
+> +	nfsd_fault_inject_cleanup();
+> 	return retval;
+> }
+> 
+> @@ -1174,6 +1180,7 @@ static void __exit exit_nfsd(void)
+> 	nfsd_lockd_shutdown();
+> 	nfsd_idmap_shutdown();
+> 	nfsd4_free_slabs();
+> +	nfsd_fault_inject_cleanup();
+> 	unregister_filesystem(&nfsd_fs_type);
+> }
+> 
+> -- 
+> 1.7.6.4
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
