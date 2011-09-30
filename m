@@ -1,68 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:58834 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751117Ab1ITWyp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2011 18:54:45 -0400
-Subject: Re: VFS: Busy inodes after unmount + nfs_zap_acl_cache() crash via
- sys_inotify_rm_watch()
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Frank van Maarseveen <frankvm@frankvm.com>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Date: Tue, 20 Sep 2011 18:54:43 -0400
-In-Reply-To: <20110920153640.GA16909@janus>
-References: <20110920153640.GA16909@janus>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1316559283.15093.6.camel@lade.trondhjem.org>
+Received: from peace.netnation.com ([204.174.223.2]:37888 "EHLO
+	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753597Ab1I3A6J (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Sep 2011 20:58:09 -0400
+Date: Thu, 29 Sep 2011 17:58:07 -0700
+From: Simon Kirby <sim@hostway.ca>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: NFS client growing system CPU
+Message-ID: <20110930005807.GE7959@hostway.ca>
+References: <20101208212505.GA18192@hostway.ca> <1291845189.3067.31.camel@heimdal.trondhjem.org> <20110927003931.GB12106@hostway.ca> <1317123773.24383.1.camel@lade.trondhjem.org> <20110927164937.GA2690@hostway.ca> <1317143055.10143.2.camel@lade.trondhjem.org> <20110928195835.GA15368@hostway.ca>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110928195835.GA15368@hostway.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-09-20 at 17:36 +0200, Frank van Maarseveen wrote: 
-> caught this one on 3.0.4:
-> 
->  VFS: Busy inodes after unmount of 0:b1. Self-destruct in 5 seconds.  Have a nice day...
->  BUG: unable to handle kernel paging request at 6b6b6c13
->  IP: [<c11c75ca>] nfs_zap_acl_cache+0x1a/0x60
->  *pdpt = 00000000323d0001 *pde = 0000000000000000 
->  Oops: 0000 [#1] PREEMPT SMP 
->  Modules linked in: vmthrottle [last unloaded: scsi_wait_scan]
-> 
->  Pid: 4626, comm: gvfsd-trash Not tainted 3.0.4-x264 #1 Dell Inc.                 OptiPlex GX620               /0F8098
->  EIP: 0060:[<c11c75ca>] EFLAGS: 00010286 CPU: 1
->  EIP is at nfs_zap_acl_cache+0x1a/0x60
->  EAX: 6b6b6b6b EBX: ed56cdf0 ECX: 00000000 EDX: ed56cca0
->  ESI: ed56cdf0 EDI: cc6eece0 EBP: f23e7f2c ESP: f23e7f24
->  DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
->  Process gvfsd-trash (pid: 4626, ti=f23e6000 task=f2332bc0 task.ti=f23e6000)
->  Stack:
->  ed56cdf0 c17bf7c0 f23e7f38 c11c7638 ed56cdf0 f23e7f44 c11c76e3 ed56cdf0
->  f23e7f54 c110d7f1 ed56cdf0 ed56ce04 f23e7f68 c110db62 ed56cdf0 f4b5b674
->  f04011e0 f23e7f74 c110dc65 f4b5b660 f23e7f94 c112887a 00000000 ed56cdf0
->  Call Trace:
->  [<c11c7638>] nfs_clear_inode+0x28/0x50
->  [<c11c76e3>] nfs_evict_inode+0x23/0x30
->  [<c110d7f1>] evict+0x61/0x130
->  [<c110db62>] iput_final+0x92/0x160
->  [<c110dc65>] iput+0x35/0x40
->  [<c112887a>] fsnotify_destroy_mark+0x11a/0x140
->  [<c112990c>] sys_inotify_rm_watch+0x5c/0x90
->  [<c17a0a1c>] sysenter_do_call+0x12/0x2c
->  [<c17a0000>] ? _raw_spin_trylock+0x10/0x50
->  Code: ec 5d c3 8d b4 26 00 00 00 00 8d bc 27 00 00 00 00 55 89 e5 83 ec 08 89 74 24 04 89 c6 89 1c 24 8b 40 10 8b 80 e8 01 00 00 
->  EIP: [<c11c75ca>] nfs_zap_acl_cache+0x1a/0x60 SS:ESP 0068:f23e7f24
->  CR2: 000000006b6b6c13
->  ---[ end trace 7ecd000fd19003a9 ]---
-> 
-That looks like a pretty nasty fsnotify bug. Why on earth is it holding
-a reference to an NFS inode after the actual filesystem has been
-umounted?
+On Wed, Sep 28, 2011 at 12:58:35PM -0700, Simon Kirby wrote:
 
-Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
+> On Tue, Sep 27, 2011 at 01:04:15PM -0400, Trond Myklebust wrote:
+> 
+> > On Tue, 2011-09-27 at 09:49 -0700, Simon Kirby wrote: 
+> > > On Tue, Sep 27, 2011 at 07:42:53AM -0400, Trond Myklebust wrote:
+> > > 
+> > > > On Mon, 2011-09-26 at 17:39 -0700, Simon Kirby wrote: 
+> > > > > Hello!
+> > > > > 
+> > > > > Following up on "System CPU increasing on idle 2.6.36", this issue is
+> > > > > still happening even on 3.1-rc7. So, since it has been 9 months since I
+> > > > > reported this, I figured I'd bisect this issue. The first bisection ended
+> > > > > in an IPMI regression that looked like the problem, so I had to start
+> > > > > again. Eventually, I got commit b80c3cb628f0ebc241b02e38dd028969fb8026a2
+> > > > > which made it into 2.6.34-rc4.
+> > > > > 
+> > > > > With this commit, system CPU keeps rising as the log crunch box runs
+> > > > > (reads log files via NFS and spews out HTML files into NFS-mounted report
+> > > > > directories). When it finishes the daily run, the system time stays
+> > > > > non-zero and continues to be higher and higher after each run, until the
+> > > > > box never completes a run within a day due to all of the wasted cycles.
+> > > > 
+> > > > So reverting that commit fixes the problem on 3.1-rc7?
+> > > > 
+> > > > As far as I can see, doing so should be safe thanks to commit
+> > > > 5547e8aac6f71505d621a612de2fca0dd988b439 (writeback: Update dirty flags
+> > > > in two steps) which fixes the original problem at the VFS level.
+> > > 
+> > > Hmm, I went to git revert b80c3cb628f0ebc241b02e38dd028969fb8026a2, but
+> > > for some reason git left the nfs_mark_request_dirty(req); line in
+> > > nfs_writepage_setup(), even though the original commit had that. Is that
+> > > OK or should I remove that as well?
+> > > 
+> > > Once that is sorted, I'll build it and let it run for a day and let you
+> > > know. Thanks!
+> > 
+> > It shouldn't make any difference whether you leave it or remove it. The
+> > resulting second call to __set_page_dirty_nobuffers() will always be a
+> > no-op since the page will already be marked as dirty.
+> 
+> Ok, confirmed, git revert b80c3cb628f0ebc241b02e38dd028969fb8026a2 on
+> 3.1-rc7 fixes the problem for me. Does this make sense, then, or do we
+> need further investigation and/or testing?
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Just to clear up what I said before, it seems that on plain 3.1-rc8, I am
+actually able to clear the endless CPU use in nfs_writepages by just
+running "sync". I am not sure when this changed, but I'm pretty sure that
+some versions between 2.6.34 and 3.1-rc used to not be affected by just
+"sync" unless it was paired with drop_caches. Maybe this makes the
+problem more obvious...
 
+Simon-
