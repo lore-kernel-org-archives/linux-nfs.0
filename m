@@ -1,116 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:52114 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755594Ab1JDKbu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Oct 2011 06:31:50 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Benny Halevy <bhalevy@panasas.com>, Brent Welch <welch@panasas.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Subject: [PATCH 07/19] ore: Remove check for ios->kern_buff in _prepare_for_striping to later
-Date: Tue, 4 Oct 2011 12:31:40 +0200
-Message-ID: <1317724300-27513-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4E8ADEDA.4050709@panasas.com>
-References: <4E8ADEDA.4050709@panasas.com>
-Content-Type: text/plain
+Received: from juliette.telenet-ops.be ([195.130.137.74]:52059 "EHLO
+	juliette.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753660Ab1JBR0u (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 2 Oct 2011 13:26:50 -0400
+From: Luk Claes <luk@debian.org>
+To: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
+Cc: Luk Claes <luk@debian.org>
+Subject: [PATCH] blkmapd: Use getconf(_SC_PAGE_SIZE)
+Date: Sun,  2 Oct 2011 19:27:30 +0200
+Message-Id: <1317576450-26056-1-git-send-email-luk@debian.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Move the check and preparation of the ios->kern_buff case to
-later inside _write_mirror().
+PAGE_SIZE is not exported by all architectures as it is not fixed: it can depend on the model of the machine. So it's better to query the system configuration for the actual page size on the machine.
 
-Since read was never used with ios->kern_buff its support is removed
-instead of fixed.
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Luk Claes <luk@debian.org>
 ---
- fs/exofs/ore.c |   36 +++++++++++++-----------------------
- 1 files changed, 13 insertions(+), 23 deletions(-)
+ utils/blkmapd/device-process.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/exofs/ore.c b/fs/exofs/ore.c
-index 43a53ba..2f39f23 100644
---- a/fs/exofs/ore.c
-+++ b/fs/exofs/ore.c
-@@ -428,17 +428,6 @@ static int _prepare_for_striping(struct ore_io_state *ios)
- 	int ret = 0;
- 
- 	if (!ios->pages) {
--		if (ios->kern_buff) {
--			struct ore_per_dev_state *per_dev = &ios->per_dev[0];
--
--			per_dev->offset = si->obj_offset;
--			per_dev->dev = si->dev;
--
--			/* no cross device without page array */
--			BUG_ON((ios->layout->group_width > 1) &&
--			       (si->unit_off + ios->length >
--				ios->layout->stripe_unit));
--		}
- 		ios->numdevs = ios->layout->mirrors_p1;
- 		return 0;
- 	}
-@@ -561,7 +550,6 @@ static int _write_mirror(struct ore_io_state *ios, int cur_comp)
- 			goto out;
- 		}
- 		per_dev->or = or;
--		per_dev->offset = master_dev->offset;
- 
- 		if (ios->pages) {
- 			struct bio *bio;
-@@ -580,6 +568,7 @@ static int _write_mirror(struct ore_io_state *ios, int cur_comp)
- 				__bio_clone(bio, master_dev->bio);
- 				bio->bi_bdev = NULL;
- 				bio->bi_next = NULL;
-+				per_dev->offset = master_dev->offset;
- 				per_dev->length = master_dev->length;
- 				per_dev->bio =  bio;
- 				per_dev->dev = dev;
-@@ -597,7 +586,15 @@ static int _write_mirror(struct ore_io_state *ios, int cur_comp)
- 				     _LLU(per_dev->offset),
- 				     _LLU(per_dev->length), dev);
- 		} else if (ios->kern_buff) {
--			ret = osd_req_write_kern(or, _ios_obj(ios, dev),
-+			per_dev->offset = ios->si.obj_offset;
-+			per_dev->dev = ios->si.dev + dev;
-+
-+			/* no cross device without page array */
-+			BUG_ON((ios->layout->group_width > 1) &&
-+			       (ios->si.unit_off + ios->length >
-+				ios->layout->stripe_unit));
-+
-+			ret = osd_req_write_kern(or, _ios_obj(ios, per_dev->dev),
- 						 per_dev->offset,
- 						 ios->kern_buff, ios->length);
- 			if (unlikely(ret))
-@@ -606,7 +603,7 @@ static int _write_mirror(struct ore_io_state *ios, int cur_comp)
- 				      "length=0x%llx dev=%d\n",
- 				     _LLU(_ios_obj(ios, dev)->id),
- 				     _LLU(per_dev->offset),
--				     _LLU(ios->length), dev);
-+				     _LLU(ios->length), per_dev->dev);
- 		} else {
- 			osd_req_set_attributes(or, _ios_obj(ios, dev));
- 			ORE_DBGMSG2("obj(0x%llx) set_attributes=%d dev=%d\n",
-@@ -672,16 +669,9 @@ static int _read_mirror(struct ore_io_state *ios, unsigned cur_comp)
- 			     " dev=%d\n", _LLU(obj->id),
- 			     _LLU(per_dev->offset), _LLU(per_dev->length),
- 			     first_dev);
--	} else if (ios->kern_buff) {
--		int ret = osd_req_read_kern(or, obj, per_dev->offset,
--					    ios->kern_buff, ios->length);
--		ORE_DBGMSG2("read_kern(0x%llx) offset=0x%llx "
--			      "length=0x%llx dev=%d ret=>%d\n",
--			      _LLU(obj->id), _LLU(per_dev->offset),
--			      _LLU(ios->length), first_dev, ret);
--		if (unlikely(ret))
--			return ret;
- 	} else {
-+		BUG_ON(ios->kern_buff);
-+
- 		osd_req_get_attributes(or, obj);
- 		ORE_DBGMSG2("obj(0x%llx) get_attributes=%d dev=%d\n",
- 			      _LLU(obj->id),
+diff --git a/utils/blkmapd/device-process.c b/utils/blkmapd/device-process.c
+index 27ff374..652a7a8 100644
+--- a/utils/blkmapd/device-process.c
++++ b/utils/blkmapd/device-process.c
+@@ -296,7 +296,7 @@ decode_blk_volume(uint32_t **pp, uint32_t *end, struct bl_volume *vols, int voln
+ 		off_t stripe_unit = vol->param.bv_stripe_unit;
+ 		/* Check limitations imposed by device-mapper */
+ 		if ((stripe_unit & (stripe_unit - 1)) != 0
+-		    || stripe_unit < (off_t) (PAGE_SIZE >> 9))
++		    || stripe_unit < (off_t) (sysconf(_SC_PAGE_SIZE) >> 9))
+ 			return -EIO;
+ 		BLK_READBUF(p, end, 4);
+ 		READ32(vol->bv_vol_n);
 -- 
-1.7.2.3
+1.7.6.3
 
