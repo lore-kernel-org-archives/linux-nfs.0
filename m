@@ -1,39 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from juliette.telenet-ops.be ([195.130.137.74]:52059 "EHLO
-	juliette.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753660Ab1JBR0u (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 2 Oct 2011 13:26:50 -0400
-From: Luk Claes <luk@debian.org>
-To: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-Cc: Luk Claes <luk@debian.org>
-Subject: [PATCH] blkmapd: Use getconf(_SC_PAGE_SIZE)
-Date: Sun,  2 Oct 2011 19:27:30 +0200
-Message-Id: <1317576450-26056-1-git-send-email-luk@debian.org>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:43894 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751758Ab1JBHPk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 2 Oct 2011 03:15:40 -0400
+Received: by wwf22 with SMTP id 22so4481093wwf.1
+        for <linux-nfs@vger.kernel.org>; Sun, 02 Oct 2011 00:15:38 -0700 (PDT)
+Message-ID: <4E880F97.40405@tonian.com>
+Date: Sun, 02 Oct 2011 09:15:35 +0200
+From: Benny Halevy <bhalevy@tonian.com>
+To: Jim Rees <rees@umich.edu>
+CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: Re: Block layout status
+References: <20110929165253.GC3724@umich.edu>
+In-Reply-To: <20110929165253.GC3724@umich.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-PAGE_SIZE is not exported by all architectures as it is not fixed: it can depend on the model of the machine. So it's better to query the system configuration for the actual page size on the machine.
+On 2011-09-29 19:52, Jim Rees wrote:
+> Since the call doesn't seem to be happening, here's my status.
+> 
+> On 16 Sep I sent these bug fixes to Trond for 3.1:
+> 
+> Jim Rees (2):
+>   pnfsblock: fix size of upcall message     
+>   pnfsblock: fix return code confusion          
+> Peng Tao (3):
+>   pnfsblock: fix NULL pointer dereference                
+>   pnfsblock: fix writeback deadlock   
+>   pnfsblock: add missing rpc_put_mount and path_put
+> 
+> These are the ones I think are important enough, and low enough risk to
+> anyone else, that they should be considered for 3.1 even though it's late in
+> the release cycle.  They have not shown up upstream.  Trond?
+> 
+> On 22 Sep I sent these to Trond for 3.2.  I believe these are all in Benny's
+> tree now (sorry about that, Benny):
+> 
+> Jim Rees (2):
+>   pnfsblock: fix return code confusion
+>   pnfsblock: fix size of upcall message
+> Peng Tao (8):
+>   SUNRPC/NFS: make rpc pipe upcall generic
+>   pnfsblock: add missing rpc_put_mount and path_put
+>   pnfs: make _set_lo_fail generic
+> - pnfsblock: init pg_bsize properly
+>   pnfs: recoalesce when ld write pagelist fails
+>   pnfs: recoalesce when ld read pagelist fails
+>   pnfsblock: fix NULL pointer dereference
+>   pnfsblock: fix writeback deadlock
+> 
+> This includes all the bug fixes for 3.1 plus some others that are less
+> important or higher risk.  Notice that "init pg_bsize properly" is wrong and
+> should not be used.  Benny, you may want to remove this from your tree, or I
+> can send a revert patch.
 
-Signed-off-by: Luk Claes <luk@debian.org>
----
- utils/blkmapd/device-process.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+No need.  I'll just remove it from my tree.
 
-diff --git a/utils/blkmapd/device-process.c b/utils/blkmapd/device-process.c
-index 27ff374..652a7a8 100644
---- a/utils/blkmapd/device-process.c
-+++ b/utils/blkmapd/device-process.c
-@@ -296,7 +296,7 @@ decode_blk_volume(uint32_t **pp, uint32_t *end, struct bl_volume *vols, int voln
- 		off_t stripe_unit = vol->param.bv_stripe_unit;
- 		/* Check limitations imposed by device-mapper */
- 		if ((stripe_unit & (stripe_unit - 1)) != 0
--		    || stripe_unit < (off_t) (PAGE_SIZE >> 9))
-+		    || stripe_unit < (off_t) (sysconf(_SC_PAGE_SIZE) >> 9))
- 			return -EIO;
- 		BLK_READBUF(p, end, 4);
- 		READ32(vol->bv_vol_n);
--- 
-1.7.6.3
+> 
+> Missing from these is one more, "nfs4: serialize layoutcommit" that's
+> important but I somehow missed it.
+> 
+> The recent automount changes really screwed us up but I just built a kernel
+> from Linus's latest, which includes the patches from Trond, and it passes
+> all tests so I think we're still ok for 3.1.
 
+Great.  I'll rebase and release accordingly.
+
+Benny
+
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
