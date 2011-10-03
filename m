@@ -1,75 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8464 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932302Ab1JDPIe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Oct 2011 11:08:34 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p94F8XHt027217
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 4 Oct 2011 11:08:33 -0400
-Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p94F8Xmk021546
-	for <linux-nfs@vger.kernel.org>; Tue, 4 Oct 2011 11:08:33 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] man pages: fixed a few typos in a couple man pages
-Date: Tue,  4 Oct 2011 11:08:32 -0400
-Message-Id: <1317740912-4589-1-git-send-email-steved@redhat.com>
+Received: from smtp.mail.umich.edu ([141.211.14.81]:58628 "EHLO
+	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755047Ab1JCMnJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Oct 2011 08:43:09 -0400
+Date: Mon, 3 Oct 2011 08:43:05 -0400
+From: Jim Rees <rees@umich.edu>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: Re: Block layout status
+Message-ID: <20111003124305.GA657@umich.edu>
+References: <20110929165253.GC3724@umich.edu>
+ <4E897E57.2000309@panasas.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E897E57.2000309@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/exportfs/nfsd.man |    6 +++---
- utils/nfsd/nfsd.man     |    2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
+Boaz Harrosh wrote:
 
-diff --git a/utils/exportfs/nfsd.man b/utils/exportfs/nfsd.man
-index 7365a1b..47b73be 100644
---- a/utils/exportfs/nfsd.man
-+++ b/utils/exportfs/nfsd.man
-@@ -12,7 +12,7 @@ nfsd \- special filesystem for controlling Linux NFS server
- .SH DESCRIPTION
- The
- .B nfsd
--filesytem is a special filesystem which provides access to the Linux
-+filesystem is a special filesystem which provides access to the Linux
- NFS server.  The filesystem consists of a single directory which
- contains a number of files.  These files are actually gateways into
- the NFS server.  Writing to them can affect the server.  Reading from
-@@ -86,7 +86,7 @@ should be followed by a newline, with white-space separating the
- fields, and octal quoting of special characters.
- 
- On writing this, the program will be able to read back a filehandle
--for that path as exported to the given client.  The filehandles length
-+for that path as exported to the given client.  The filehandle's length
- will be at most the number of bytes given.
- 
- The filehandle will be represented in hex with a leading '\ex'.
-@@ -165,7 +165,7 @@ file.  The user-space program might then write
- .ti +5
- nfsd 127.0.0.1 1057206953 localhost
- .br
--to indicate that 127.0.0.1 should map to localhost, atleast for now.
-+to indicate that 127.0.0.1 should map to localhost, at least for now.
- 
- If the program uses select(2) or poll(2) to discover if it can read
- from the
-diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
-index d8988d2..1cf9296 100644
---- a/utils/nfsd/nfsd.man
-+++ b/utils/nfsd/nfsd.man
-@@ -38,7 +38,7 @@ request on all known network addresses.  This may change in future
- releases of the Linux Kernel.
- .TP
- .B \-p " or " \-\-port  port
--specify a diferent port to listen on for NFS requests. By default,
-+specify a different port to listen on for NFS requests. By default,
- .B rpc.nfsd
- will listen on port 2049.
- .TP
--- 
-1.7.6.2
+  On 09/29/2011 07:52 PM, Jim Rees wrote:
+  > Since the call doesn't seem to be happening, here's my status.
+  > 
+  > On 16 Sep I sent these bug fixes to Trond for 3.1:
+  > 
+  > Jim Rees (2):
+  >   pnfsblock: fix size of upcall message     
+  >   pnfsblock: fix return code confusion          
+  > Peng Tao (3):
+  >   pnfsblock: fix NULL pointer dereference                
+  >   pnfsblock: fix writeback deadlock   
+  >   pnfsblock: add missing rpc_put_mount and path_put
+  > 
+  > These are the ones I think are important enough, and low enough risk to
+  > anyone else, that they should be considered for 3.1 even though it's late in
+  > the release cycle.  They have not shown up upstream.  Trond?
+  > 
+  > On 22 Sep I sent these to Trond for 3.2.  I believe these are all in Benny's
+  > tree now (sorry about that, Benny):
+  > 
+  > Jim Rees (2):
+  >   pnfsblock: fix return code confusion
+  >   pnfsblock: fix size of upcall message
+  > Peng Tao (8):
+  >   SUNRPC/NFS: make rpc pipe upcall generic
+  >   pnfsblock: add missing rpc_put_mount and path_put
+  >   pnfs: make _set_lo_fail generic
+  > - pnfsblock: init pg_bsize properly
+  >   pnfs: recoalesce when ld write pagelist fails
+  >   pnfs: recoalesce when ld read pagelist fails
+  >   pnfsblock: fix NULL pointer dereference
+  >   pnfsblock: fix writeback deadlock
+  
+  Hi Jim I think this "writeback deadlock" should be sent for
+  current 3.1 since surly it renders pnfsblock unusable. If you
+  feel it has not been tested enough consider submitting it with
+  CC: stable@. Because it should hit 3.1.x eventually. No?
+  (While at it maybe some of the other clear FIXs above as well
+   these that make it unusable)
 
+I did send it to Trond (see the first list above).  If the patches from the
+first list don't show up in 3.1 I will send them again with cc: stable.
