@@ -1,52 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:65424 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756396Ab1JCPNf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Oct 2011 11:13:35 -0400
-Received: by yxl31 with SMTP id 31so3573984yxl.19
-        for <linux-nfs@vger.kernel.org>; Mon, 03 Oct 2011 08:13:35 -0700 (PDT)
-Message-ID: <4E89D114.1020109@tonian.com>
-Date: Mon, 03 Oct 2011 17:13:24 +0200
-From: Benny Halevy <bhalevy@tonian.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/5] nfsd4: construct stateid from clientid and counter
-References: <20110919131415.GB32498@fieldses.org> <1316438143-1057-4-git-send-email-bfields@redhat.com> <4E89CA1C.4050107@tonian.com> <20111003145749.GB5524@pad.fieldses.org>
-In-Reply-To: <20111003145749.GB5524@pad.fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:15841 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932703Ab1JDQwn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Oct 2011 12:52:43 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p94Gqg1G027928
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 4 Oct 2011 12:52:43 -0400
+Message-ID: <4E8B39DA.1060604@RedHat.com>
+Date: Tue, 04 Oct 2011 12:52:42 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Steve Dickson <steved@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] man pages: fixed a few typos in a couple man pages
+References: <1317740912-4589-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1317740912-4589-1-git-send-email-steved@redhat.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-10-03 16:57, J. Bruce Fields wrote:
-> On Mon, Oct 03, 2011 at 04:43:40PM +0200, Benny Halevy wrote:
->> Bruce, it seems with this patch, doing si_opaque.so_id = current_stateid
->> makes all stateid's unique, regardless of their type.
->> Is find_stateid_by_type still needed?
->>
->> And if the opaque part of the stateid isn't unique,
->> shouldn't find_stateid_by_type go over the hash bucket by itself
->> to look for other stateid's sharing the same opaque but having
->> the type it is looking for?
-> 
-> Stateid's have actually always been unique--they'd have to be, since
-> e.g. READ doesn't come with any indication of which type of stateid
-> you're being given.  All find_stateid_by_type() does is fail when it
-> doesn't find something of the right type.
-> 
 
-So I'm still confused.  That's what I thought.
-So in what cases find_stateid that find_stateid_by_type calls
-will find a stateid structure with a non-matching sc_type?
 
-Benny
+On 10/04/2011 11:08 AM, Steve Dickson wrote:
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  utils/exportfs/nfsd.man |    6 +++---
+>  utils/nfsd/nfsd.man     |    2 +-
+>  2 files changed, 4 insertions(+), 4 deletions(-)
+Committed....
 
-> I did think at the time that find_stateid_by_type() was a confusing name
-> for that reason, but couldn't come up with a better idea.  Maybe it
-> should be find_stateid_of_type() or find_stateid_if_type()....
+steved.
+
 > 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> diff --git a/utils/exportfs/nfsd.man b/utils/exportfs/nfsd.man
+> index 7365a1b..47b73be 100644
+> --- a/utils/exportfs/nfsd.man
+> +++ b/utils/exportfs/nfsd.man
+> @@ -12,7 +12,7 @@ nfsd \- special filesystem for controlling Linux NFS server
+>  .SH DESCRIPTION
+>  The
+>  .B nfsd
+> -filesytem is a special filesystem which provides access to the Linux
+> +filesystem is a special filesystem which provides access to the Linux
+>  NFS server.  The filesystem consists of a single directory which
+>  contains a number of files.  These files are actually gateways into
+>  the NFS server.  Writing to them can affect the server.  Reading from
+> @@ -86,7 +86,7 @@ should be followed by a newline, with white-space separating the
+>  fields, and octal quoting of special characters.
+>  
+>  On writing this, the program will be able to read back a filehandle
+> -for that path as exported to the given client.  The filehandles length
+> +for that path as exported to the given client.  The filehandle's length
+>  will be at most the number of bytes given.
+>  
+>  The filehandle will be represented in hex with a leading '\ex'.
+> @@ -165,7 +165,7 @@ file.  The user-space program might then write
+>  .ti +5
+>  nfsd 127.0.0.1 1057206953 localhost
+>  .br
+> -to indicate that 127.0.0.1 should map to localhost, atleast for now.
+> +to indicate that 127.0.0.1 should map to localhost, at least for now.
+>  
+>  If the program uses select(2) or poll(2) to discover if it can read
+>  from the
+> diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
+> index d8988d2..1cf9296 100644
+> --- a/utils/nfsd/nfsd.man
+> +++ b/utils/nfsd/nfsd.man
+> @@ -38,7 +38,7 @@ request on all known network addresses.  This may change in future
+>  releases of the Linux Kernel.
+>  .TP
+>  .B \-p " or " \-\-port  port
+> -specify a diferent port to listen on for NFS requests. By default,
+> +specify a different port to listen on for NFS requests. By default,
+>  .B rpc.nfsd
+>  will listen on port 2049.
+>  .TP
