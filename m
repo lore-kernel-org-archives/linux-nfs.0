@@ -1,116 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:52122 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755646Ab1JDKcK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Oct 2011 06:32:10 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Benny Halevy <bhalevy@panasas.com>, Brent Welch <welch@panasas.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Subject: [PATCH 08/19] exofs: Support for short read/writes
-Date: Tue, 4 Oct 2011 12:32:00 +0200
-Message-ID: <1317724320-27544-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4E8ADEDA.4050709@panasas.com>
-References: <4E8ADEDA.4050709@panasas.com>
-Content-Type: text/plain
+Received: from mx1.redhat.com ([209.132.183.28]:8464 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932302Ab1JDPIe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Oct 2011 11:08:34 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p94F8XHt027217
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 4 Oct 2011 11:08:33 -0400
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p94F8Xmk021546
+	for <linux-nfs@vger.kernel.org>; Tue, 4 Oct 2011 11:08:33 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] man pages: fixed a few typos in a couple man pages
+Date: Tue,  4 Oct 2011 11:08:32 -0400
+Message-Id: <1317740912-4589-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-If at read/write_done the actual IO was shorter then requested,
-reported in returned ios->length. It is not an error. The reminder
-of the pages should just be unlocked but not marked uptodate or
-end_page_writeback. They will be re issued later by the VFS.
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/exofs/inode.c |   35 ++++++++++++++++++++++++++---------
- 1 files changed, 26 insertions(+), 9 deletions(-)
+ utils/exportfs/nfsd.man |    6 +++---
+ utils/nfsd/nfsd.man     |    2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/exofs/inode.c b/fs/exofs/inode.c
-index 14e408b..0afe761 100644
---- a/fs/exofs/inode.c
-+++ b/fs/exofs/inode.c
-@@ -149,14 +149,17 @@ static int pcol_add_page(struct page_collect *pcol, struct page *page,
- 	return 0;
- }
+diff --git a/utils/exportfs/nfsd.man b/utils/exportfs/nfsd.man
+index 7365a1b..47b73be 100644
+--- a/utils/exportfs/nfsd.man
++++ b/utils/exportfs/nfsd.man
+@@ -12,7 +12,7 @@ nfsd \- special filesystem for controlling Linux NFS server
+ .SH DESCRIPTION
+ The
+ .B nfsd
+-filesytem is a special filesystem which provides access to the Linux
++filesystem is a special filesystem which provides access to the Linux
+ NFS server.  The filesystem consists of a single directory which
+ contains a number of files.  These files are actually gateways into
+ the NFS server.  Writing to them can affect the server.  Reading from
+@@ -86,7 +86,7 @@ should be followed by a newline, with white-space separating the
+ fields, and octal quoting of special characters.
  
-+enum {PAGE_WAS_NOT_IN_IO = 17};
- static int update_read_page(struct page *page, int ret)
- {
--	if (ret == 0) {
-+	switch (ret) {
-+	case 0:
- 		/* Everything is OK */
- 		SetPageUptodate(page);
- 		if (PageError(page))
- 			ClearPageError(page);
--	} else if (ret == -EFAULT) {
-+		break;
-+	case -EFAULT:
- 		/* In this case we were trying to read something that wasn't on
- 		 * disk yet - return a page full of zeroes.  This should be OK,
- 		 * because the object should be empty (if there was a write
-@@ -167,16 +170,22 @@ static int update_read_page(struct page *page, int ret)
- 		SetPageUptodate(page);
- 		if (PageError(page))
- 			ClearPageError(page);
--		ret = 0; /* recovered error */
- 		EXOFS_DBGMSG("recovered read error\n");
--	} else /* Error */
-+		/* fall through */
-+	case PAGE_WAS_NOT_IN_IO:
-+		ret = 0; /* recovered error */
-+		break;
-+	default:
- 		SetPageError(page);
--
-+	}
- 	return ret;
- }
+ On writing this, the program will be able to read back a filehandle
+-for that path as exported to the given client.  The filehandles length
++for that path as exported to the given client.  The filehandle's length
+ will be at most the number of bytes given.
  
- static void update_write_page(struct page *page, int ret)
- {
-+	if (unlikely(ret == PAGE_WAS_NOT_IN_IO))
-+		return; /* don't pass start don't collect $200 */
-+
- 	if (ret) {
- 		mapping_set_error(page->mapping, ret);
- 		SetPageError(page);
-@@ -195,10 +204,14 @@ static int __readpages_done(struct page_collect *pcol)
- 	u64 length = 0;
- 	int ret = ore_check_io(pcol->ios, &resid);
+ The filehandle will be represented in hex with a leading '\ex'.
+@@ -165,7 +165,7 @@ file.  The user-space program might then write
+ .ti +5
+ nfsd 127.0.0.1 1057206953 localhost
+ .br
+-to indicate that 127.0.0.1 should map to localhost, atleast for now.
++to indicate that 127.0.0.1 should map to localhost, at least for now.
  
--	if (likely(!ret))
-+	if (likely(!ret)) {
- 		good_bytes = pcol->length;
--	else
-+		ret = PAGE_WAS_NOT_IN_IO;
-+	} else {
- 		good_bytes = pcol->length - resid;
-+	}
-+	if (good_bytes > pcol->ios->length)
-+		good_bytes = pcol->ios->length;
- 
- 	EXOFS_DBGMSG2("readpages_done(0x%lx) good_bytes=0x%llx"
- 		     " length=0x%lx nr_pages=%u\n",
-@@ -518,10 +531,14 @@ static void writepages_done(struct ore_io_state *ios, void *p)
- 
- 	atomic_dec(&pcol->sbi->s_curr_pending);
- 
--	if (likely(!ret))
-+	if (likely(!ret)) {
- 		good_bytes = pcol->length;
--	else
-+		ret = PAGE_WAS_NOT_IN_IO;
-+	} else {
- 		good_bytes = pcol->length - resid;
-+	}
-+	if (good_bytes > pcol->ios->length)
-+		good_bytes = pcol->ios->length;
- 
- 	EXOFS_DBGMSG2("writepages_done(0x%lx) good_bytes=0x%llx"
- 		     " length=0x%lx nr_pages=%u\n",
+ If the program uses select(2) or poll(2) to discover if it can read
+ from the
+diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
+index d8988d2..1cf9296 100644
+--- a/utils/nfsd/nfsd.man
++++ b/utils/nfsd/nfsd.man
+@@ -38,7 +38,7 @@ request on all known network addresses.  This may change in future
+ releases of the Linux Kernel.
+ .TP
+ .B \-p " or " \-\-port  port
+-specify a diferent port to listen on for NFS requests. By default,
++specify a different port to listen on for NFS requests. By default,
+ .B rpc.nfsd
+ will listen on port 2049.
+ .TP
 -- 
-1.7.2.3
+1.7.6.2
 
