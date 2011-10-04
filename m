@@ -1,79 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:15841 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:32007 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932703Ab1JDQwn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Oct 2011 12:52:43 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p94Gqg1G027928
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 4 Oct 2011 12:52:43 -0400
-Message-ID: <4E8B39DA.1060604@RedHat.com>
-Date: Tue, 04 Oct 2011 12:52:42 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Steve Dickson <steved@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] man pages: fixed a few typos in a couple man pages
-References: <1317740912-4589-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1317740912-4589-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1756701Ab1JDQCK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Oct 2011 12:02:10 -0400
+Date: Tue, 4 Oct 2011 12:02:07 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/5] nfsd4: construct stateid from clientid and counter
+Message-ID: <20111004160207.GA13557@pad.fieldses.org>
+References: <20110919131415.GB32498@fieldses.org>
+ <1316438143-1057-4-git-send-email-bfields@redhat.com>
+ <4E89CA1C.4050107@tonian.com>
+ <20111003145749.GB5524@pad.fieldses.org>
+ <4E89D114.1020109@tonian.com>
+ <20111003153821.GC5524@pad.fieldses.org>
+ <4E8B2BC6.6020209@tonian.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E8B2BC6.6020209@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-
-On 10/04/2011 11:08 AM, Steve Dickson wrote:
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  utils/exportfs/nfsd.man |    6 +++---
->  utils/nfsd/nfsd.man     |    2 +-
->  2 files changed, 4 insertions(+), 4 deletions(-)
-Committed....
-
-steved.
-
+On Tue, Oct 04, 2011 at 05:52:38PM +0200, Benny Halevy wrote:
+> OK, I'm going to use the common hash table also for the layout state
+> which will have to use the same encoding linage.
 > 
-> diff --git a/utils/exportfs/nfsd.man b/utils/exportfs/nfsd.man
-> index 7365a1b..47b73be 100644
-> --- a/utils/exportfs/nfsd.man
-> +++ b/utils/exportfs/nfsd.man
-> @@ -12,7 +12,7 @@ nfsd \- special filesystem for controlling Linux NFS server
->  .SH DESCRIPTION
->  The
->  .B nfsd
-> -filesytem is a special filesystem which provides access to the Linux
-> +filesystem is a special filesystem which provides access to the Linux
->  NFS server.  The filesystem consists of a single directory which
->  contains a number of files.  These files are actually gateways into
->  the NFS server.  Writing to them can affect the server.  Reading from
-> @@ -86,7 +86,7 @@ should be followed by a newline, with white-space separating the
->  fields, and octal quoting of special characters.
->  
->  On writing this, the program will be able to read back a filehandle
-> -for that path as exported to the given client.  The filehandles length
-> +for that path as exported to the given client.  The filehandle's length
->  will be at most the number of bytes given.
->  
->  The filehandle will be represented in hex with a leading '\ex'.
-> @@ -165,7 +165,7 @@ file.  The user-space program might then write
->  .ti +5
->  nfsd 127.0.0.1 1057206953 localhost
->  .br
-> -to indicate that 127.0.0.1 should map to localhost, atleast for now.
-> +to indicate that 127.0.0.1 should map to localhost, at least for now.
->  
->  If the program uses select(2) or poll(2) to discover if it can read
->  from the
-> diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
-> index d8988d2..1cf9296 100644
-> --- a/utils/nfsd/nfsd.man
-> +++ b/utils/nfsd/nfsd.man
-> @@ -38,7 +38,7 @@ request on all known network addresses.  This may change in future
->  releases of the Linux Kernel.
->  .TP
->  .B \-p " or " \-\-port  port
-> -specify a diferent port to listen on for NFS requests. By default,
-> +specify a different port to listen on for NFS requests. By default,
->  .B rpc.nfsd
->  will listen on port 2049.
->  .TP
+> It's a non-trivial rewrite of the layout state mechanisms but I
+> it seems to simplify the code overall and will be more efficient
+> in terms of lookup complexity (hash table vs. linear list)
+
+Note later patches change the stateid lookup a little further, to
+per-client lookup based on the "idr" code.  (I'm not actually sure what
+idr uses underneath--looks like some kind of radix tree from a quick
+check.)
+
+I think the changes should all work for layout stateid's too, but let me
+know if you run into any problems.
+
+> I'm pretty hosed right now but I'd like to finish this
+> before the Bakeathon so we can test the result there.
+
+Great, thanks for keeping that code alive.  I won't be able to make the
+bakeathon but please bug me and I'll make a special effort to be
+responsive to bugs reported from the bakeathon as I know you'll have
+limited testing time....
+
+--b.
