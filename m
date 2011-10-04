@@ -1,119 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-dy0-f46.google.com ([209.85.220.46]:51218 "EHLO
-	mail-dy0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755800Ab1JDMEJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Oct 2011 08:04:09 -0400
-Received: by dyf4 with SMTP id 4so15400dyf.19
-        for <linux-nfs@vger.kernel.org>; Tue, 04 Oct 2011 05:04:08 -0700 (PDT)
-Message-ID: <4E8AF633.3030802@tonian.com>
-Date: Tue, 04 Oct 2011 14:04:03 +0200
-From: Benny Halevy <bhalevy@tonian.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
-        "Welch, Brent" <welch@panasas.com>
-Subject: Re: [PATCHSET 00/19] objlayout: Move to ORE
-References: <4E8ADEDA.4050709@panasas.com>
-In-Reply-To: <4E8ADEDA.4050709@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mailhub.sw.ru ([195.214.232.25]:23605 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933054Ab1JDQ7h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Oct 2011 12:59:37 -0400
+Subject: [PATCH 4/4] SUNRPC: optimize net_ns dereferencing in rpcbind
+	registering calls
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
+Date: Tue, 04 Oct 2011 20:59:21 +0300
+Message-ID: <20111004165921.6638.34545.stgit@localhost6.localdomain6>
+In-Reply-To: <20111004165637.6638.57399.stgit@localhost6.localdomain6>
+References: <20111004165637.6638.57399.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Boaz, please change my email address in your contacts lists
-to bhalevy@tonian.com, thanks...
+Static rpcbind registering functions can be parametrized by network namespace
+pointer, calculated only once, instead of using init_net pointer (or taking it
+from current when virtualization will be comleted) in many places.
 
-On 2011-10-04 12:24, Boaz Harrosh wrote:
-> 
-> Submitted is the move of the objects-layout-driver to the ORE
-> (Objects Raid Engine). Which after this patchset will be
-> used by both the exofs file system and the objlayoutdriver.
-> (ore.ko is its own library since last Kernel)
-> 
-> This code is intended for the 3.2 Kernel and is already
-> collecting dust in linux-next. (Though the latest bits from today)
-> 
-> End of this week I will post the RAID5 support to ORE and both
-> exofs and objlayoutdriver. Also meant for 3.2
-> 
-> Trond Hi
->   The First 12 patches are to the ore and exofs to make them
->   compatible with objlayoutdriver. The pnfs-obj patches are
->   dependent on the first part been present.
->   We can either submit them all through your tree. Or alternatively
->   You can send your ACK-by: on the last 7 and I can submit them
->   to Linus through my tree. Which ever you prefer.
-> 
-> Benny Hi
->   I please need your Review-by: to [PATCH 13/19] and [PATCH 14/19]
->   which change code behaviour. The rest of the patches are just conversions
->   which in theory do not add or change any functionality. (Unless there
->   are bugs, but that's not intended)
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Sure
+---
+ net/sunrpc/rpcb_clnt.c |   18 +++++++++---------
+ 1 files changed, 9 insertions(+), 9 deletions(-)
 
-> 
->   Also, With these patches panfs-layout-driver is totally broken.
->   Please just remove it once you rebase on these patches. With the RAID5
->   support it is no longer needed. I've started testing with PanFS export
->   through the STD objlayoutdriver, hope to finish this week. (We always
->   have the old versions)
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index ef37c55..92ed74f 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -452,14 +452,14 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
+ /*
+  * Fill in AF_INET family-specific arguments to register
+  */
+-static int rpcb_register_inet4(const struct sockaddr *sap,
++static int rpcb_register_inet4(struct sunrpc_net *sn,
++			       const struct sockaddr *sap,
+ 			       struct rpc_message *msg)
+ {
+ 	const struct sockaddr_in *sin = (const struct sockaddr_in *)sap;
+ 	struct rpcbind_args *map = msg->rpc_argp;
+ 	unsigned short port = ntohs(sin->sin_port);
+ 	int result;
+-	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
+ 
+ 	map->r_addr = rpc_sockaddr2uaddr(sap);
+ 
+@@ -480,14 +480,14 @@ static int rpcb_register_inet4(const struct sockaddr *sap,
+ /*
+  * Fill in AF_INET6 family-specific arguments to register
+  */
+-static int rpcb_register_inet6(const struct sockaddr *sap,
++static int rpcb_register_inet6(struct sunrpc_net *sn,
++			       const struct sockaddr *sap,
+ 			       struct rpc_message *msg)
+ {
+ 	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sap;
+ 	struct rpcbind_args *map = msg->rpc_argp;
+ 	unsigned short port = ntohs(sin6->sin6_port);
+ 	int result;
+-	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
+ 
+ 	map->r_addr = rpc_sockaddr2uaddr(sap);
+ 
+@@ -505,10 +505,10 @@ static int rpcb_register_inet6(const struct sockaddr *sap,
+ 	return result;
+ }
+ 
+-static int rpcb_unregister_all_protofamilies(struct rpc_message *msg)
++static int rpcb_unregister_all_protofamilies(struct sunrpc_net *sn,
++					     struct rpc_message *msg)
+ {
+ 	struct rpcbind_args *map = msg->rpc_argp;
+-	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
+ 
+ 	dprintk("RPC:       unregistering [%u, %u, '%s'] with "
+ 		"local rpcbind\n",
+@@ -581,13 +581,13 @@ int rpcb_v4_register(const u32 program, const u32 version,
+ 		return -EPROTONOSUPPORT;
+ 
+ 	if (address == NULL)
+-		return rpcb_unregister_all_protofamilies(&msg);
++		return rpcb_unregister_all_protofamilies(sn, &msg);
+ 
+ 	switch (address->sa_family) {
+ 	case AF_INET:
+-		return rpcb_register_inet4(address, &msg);
++		return rpcb_register_inet4(sn, address, &msg);
+ 	case AF_INET6:
+-		return rpcb_register_inet6(address, &msg);
++		return rpcb_register_inet6(sn, address, &msg);
+ 	}
+ 
+ 	return -EAFNOSUPPORT;
 
-No problem, less is more :)
-
-Benny
-
-> 
->   Also tomorrow I will send the needed patch for pnfsd-exofs branch
->   that works with these changes.
-> 
-> These are the list off patches:
-> 
-> [PATCH 01/19] exofs: Rename struct ore_components comps => oc
-> [PATCH 02/19] exofs: Remove unused data_map member from exofs_sb_info
-> [PATCH 03/19] ore: Make ore_striping_info and ore_calc_stripe_info public
-> [PATCH 04/19] ore/exofs: Change the type of the devices array (API change)
-> [PATCH 05/19] ore: Only IO one group at a time (API change)
-> [PATCH 06/19] ore: cleanup: Embed an ore_striping_info inside ore_io_state
-> [PATCH 07/19] ore: Remove check for ios->kern_buff in _prepare_for_striping to later
-> [PATCH 08/19] exofs: Support for short read/writes
-> [PATCH 09/19] ore: Support for short read/writes
-> [PATCH 10/19] ore: Support for partial component table
-> [PATCH 11/19] ore/exofs: Define new ore_verify_layout
-> [PATCH 12/19] ore/exofs: Change ore_check_io API
-> 
-> 	Up to here are the changes need to ore and exofs so the ore
-> 	can be used by the objlayoutdriver. Any review is welcome.
-> 	Same API will be used for RAID4/5/6 support.
-> 
-> [PATCH 13/19] pnfs-obj: Remove redundant EOF from objlayout_io_state
-> [PATCH 14/19] pnfs-obj: Return PNFS_NOT_ATTEMPTED in case of read/write_pagelist
-> 
-> 	Benny please review these two. They are independent of the ORE
-> 	conversion. I think the [PATCH 14/19] might not be enough and
-> 	Error handling needs "more", but the needed changes are their
-> 	own patch, to come later.
-> 
-> [PATCH 15/19] pnfs-obj: Get rid of objlayout_{alloc,free}_io_state
-> [PATCH 16/19] pnfs-obj: Rename objlayout_io_state => objlayout_io_res
-> [PATCH 17/19] pnfs-obj: move to ore 01: ore_layout & ore_components
-> [PATCH 18/19] pnfs-obj: move to ore 02: move to ORE
-> [PATCH 19/19] pnfs-obj: move to ore 03: Remove old raid engine
-> 
-> 	These 5 stage the move to the ore. With these patches I'm
-> 	able to pass all the tests I passed with the old code.
-> 	Only now with more then 500 lines of code less.
-> 
-> Cheers
-> Boaz
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Benny Halevy
-CTO, Tonian Inc.
-
-Tel: +972-54-802-8340
-bhalevy@tonian.com
