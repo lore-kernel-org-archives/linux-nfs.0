@@ -1,342 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:44404 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933401Ab1JaWPv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 18:15:51 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Brent Welch <welch@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
-        open-osd <osd-dev@open-osd.org>
-Subject: [PATCH 6/8] pnfs-obj: move to ore 02: move to ORE
-Date: Mon, 31 Oct 2011 15:15:38 -0700
-Message-ID: <1320099338-1140-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4EAF146D.5060507@panasas.com>
-References: <4EAF146D.5060507@panasas.com>
+Received: from peace.netnation.com ([204.174.223.2]:44090 "EHLO
+	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S935438Ab1JEXHq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Oct 2011 19:07:46 -0400
+Date: Wed, 5 Oct 2011 16:07:43 -0700
+From: Simon Kirby <sim@hostway.ca>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Mark Moseley <moseleymark@gmail.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: NFS client growing system CPU
+Message-ID: <20111005230743.GB31168@hostway.ca>
+References: <20101208212505.GA18192@hostway.ca> <1291845189.3067.31.camel@heimdal.trondhjem.org> <20110927003931.GB12106@hostway.ca> <1317123773.24383.1.camel@lade.trondhjem.org> <20110927164937.GA2690@hostway.ca> <1317143055.10143.2.camel@lade.trondhjem.org> <20110928195835.GA15368@hostway.ca> <20110930005807.GE7959@hostway.ca> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B6C979E@SACMVEXC2-PRD.hq.netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B6C979E@SACMVEXC2-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In this patch we are actually moving to the ORE.
-(Object Raid Engine).
+On Thu, Sep 29, 2011 at 06:11:17PM -0700, Myklebust, Trond wrote:
 
-objio_state holds a pointer to an ore_io_state. Once
-we have an ore_io_state at hand we can call the ore
-for reading/writing. We register on the done path
-to kick off the nfs io_done mechanism.
+> > -----Original Message-----
+> > From: Simon Kirby [mailto:sim@hostway.ca]
+> > Sent: Thursday, September 29, 2011 8:58 PM
+> > To: Myklebust, Trond
+> > Cc: linux-nfs@vger.kernel.org; linux-kernel@vger.kernel.org
+> > Subject: Re: NFS client growing system CPU
+> > 
+> > On Wed, Sep 28, 2011 at 12:58:35PM -0700, Simon Kirby wrote:
+> > 
+> > > On Tue, Sep 27, 2011 at 01:04:15PM -0400, Trond Myklebust wrote:
+> > >
+> > > > On Tue, 2011-09-27 at 09:49 -0700, Simon Kirby wrote:
+> > > > > On Tue, Sep 27, 2011 at 07:42:53AM -0400, Trond Myklebust wrote:
+> > > > >
+> > > > > > On Mon, 2011-09-26 at 17:39 -0700, Simon Kirby wrote:
+> > > > > > > Hello!
+> > > > > > >
+> > > > > > > Following up on "System CPU increasing on idle 2.6.36", this
+> > > > > > > issue is still happening even on 3.1-rc7. So, since it has
+> > > > > > > been 9 months since I reported this, I figured I'd bisect
+> this
+> > > > > > > issue. The first bisection ended in an IPMI regression that
+> > > > > > > looked like the problem, so I had to start again.
+> Eventually,
+> > > > > > > I got commit b80c3cb628f0ebc241b02e38dd028969fb8026a2
+> > > > > > > which made it into 2.6.34-rc4.
+> > > > > > >
+> > > > > > > With this commit, system CPU keeps rising as the log crunch
+> > > > > > > box runs (reads log files via NFS and spews out HTML files
+> > > > > > > into NFS-mounted report directories). When it finishes the
+> > > > > > > daily run, the system time stays non-zero and continues to
+> be
+> > > > > > > higher and higher after each run, until the box never
+> completes a
+> > run within a day due to all of the wasted cycles.
+> > > > > >
+> > > > > > So reverting that commit fixes the problem on 3.1-rc7?
+> > > > > >
+> > > > > > As far as I can see, doing so should be safe thanks to commit
+> > > > > > 5547e8aac6f71505d621a612de2fca0dd988b439 (writeback: Update
+> > > > > > dirty flags in two steps) which fixes the original problem at
+> the VFS
+> > level.
+> > > > >
+> > > > > Hmm, I went to git revert
+> > > > > b80c3cb628f0ebc241b02e38dd028969fb8026a2, but for some reason
+> git
+> > > > > left the nfs_mark_request_dirty(req); line in
+> > > > > nfs_writepage_setup(), even though the original commit had that.
+> Is
+> > that OK or should I remove that as well?
+> > > > >
+> > > > > Once that is sorted, I'll build it and let it run for a day and
+> > > > > let you know. Thanks!
+> > > >
+> > > > It shouldn't make any difference whether you leave it or remove
+> it.
+> > > > The resulting second call to __set_page_dirty_nobuffers() will
+> > > > always be a no-op since the page will already be marked as dirty.
+> > >
+> > > Ok, confirmed, git revert b80c3cb628f0ebc241b02e38dd028969fb8026a2
+> on
+> > > 3.1-rc7 fixes the problem for me. Does this make sense, then, or do
+> we
+> > > need further investigation and/or testing?
+> > 
+> > Just to clear up what I said before, it seems that on plain 3.1-rc8, I
+> am actually
+> > able to clear the endless CPU use in nfs_writepages by just running
+> "sync". I
+> > am not sure when this changed, but I'm pretty sure that some versions
+> > between 2.6.34 and 3.1-rc used to not be affected by just "sync"
+> unless it
+> > was paired with drop_caches. Maybe this makes the problem more
+> > obvious...
+> 
+> Hi Simon,
+> 
+> I think you are just finding yourself cycling through the VFS writeback
+> routines all the time because we dirty the inode for COMMIT at the same
+> time as we dirty a new page. Usually, we want to wait until after the
+> WRITE rpc call has completed, and so it was only the vfs race that
+> forced us to write this workaround so that we can guarantee reliable
+> fsync() behaviour.
+> 
+> My only concern at this point is to make sure that in reverting that
+> patch, we haven't overlooked some other fsync() bug that this patch
+> fixed. So far, it looks as if Dmitry's patch is sufficient to deal with
+> any issues that I can see.
 
-Again for Ease of reviewing the old code is "#if 0"
-but is not removed so the diff command works better.
-The old code will be removed in the next patch.
+Hello!
 
-fs/exofs/Kconfig::ORE is modified to also be auto-included
-if PNFS_OBJLAYOUT is set. Since we now depend on ORE.
-(See comments in fs/exofs/Kconfig)
+So, this is a regression that has caused uptime issues for us since
+2.6.34-rc4. Dmitry's patch went into 2.6.35, so I think this revert
+should be committed and be a stable candidate for 2.6.35 - 3.1.
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/exofs/Kconfig             |    2 +-
- fs/nfs/objlayout/objio_osd.c |  133 +++++++++++++++++++-----------------------
- 2 files changed, 60 insertions(+), 75 deletions(-)
+We have not seen any problems resulting from the revert, but our loads
+are not particularly fsync()-heavy. How did things work before this
+patch, anyway?
 
-diff --git a/fs/exofs/Kconfig b/fs/exofs/Kconfig
-index fa9a286..da42f32 100644
---- a/fs/exofs/Kconfig
-+++ b/fs/exofs/Kconfig
-@@ -5,7 +5,7 @@
- # selected by any of the users.
- config ORE
- 	tristate
--	depends on EXOFS_FS
-+	depends on EXOFS_FS || PNFS_OBJLAYOUT
- 	select ASYNC_XOR
- 	default SCSI_OSD_ULD
- 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index bd7ec26..00b3849 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -44,12 +44,6 @@
- 
- #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
- 
--#define _LLU(x) ((unsigned long long)x)
--
--enum { BIO_MAX_PAGES_KMALLOC =
--		(PAGE_SIZE - sizeof(struct bio)) / sizeof(struct bio_vec),
--};
--
- struct objio_dev_ent {
- 	struct nfs4_deviceid_node id_node;
- 	struct ore_dev od;
-@@ -124,37 +118,13 @@ struct objio_segment {
- 	return container_of(lseg, struct objio_segment, lseg);
- }
- 
--struct objio_state;
--typedef int (*objio_done_fn)(struct objio_state *ios);
--
- struct objio_state {
- 	/* Generic layer */
- 	struct objlayout_io_res oir;
- 
--	struct page **pages;
--	unsigned pgbase;
--	unsigned nr_pages;
--	unsigned long count;
--	loff_t offset;
- 	bool sync;
--
--	struct ore_layout *layout;
--	struct ore_components *oc;
--
--	struct kref kref;
--	objio_done_fn done;
--	void *private;
--
--	unsigned long length;
--	unsigned numdevs; /* Actually used devs in this IO */
--	/* A per-device variable array of size numdevs */
--	struct _objio_per_comp {
--		struct bio *bio;
--		struct osd_request *or;
--		unsigned long length;
--		u64 offset;
--		unsigned dev;
--	} per_dev[];
-+	/*FIXME: Support for extra_bytes at ore_get_rw_state() */
-+	struct ore_io_state *ios;
- };
- 
- /* Send and wait for a get_device_info of devices in the layout,
-@@ -374,16 +344,16 @@ void objio_free_lseg(struct pnfs_layout_segment *lseg)
- }
- 
- static int
--objio_alloc_io_state(struct pnfs_layout_hdr *pnfs_layout_type,
-+objio_alloc_io_state(struct pnfs_layout_hdr *pnfs_layout_type, bool is_reading,
- 	struct pnfs_layout_segment *lseg, struct page **pages, unsigned pgbase,
- 	loff_t offset, size_t count, void *rpcdata, gfp_t gfp_flags,
- 	struct objio_state **outp)
- {
- 	struct objio_segment *objio_seg = OBJIO_LSEG(lseg);
--	struct objio_state *ios;
-+	struct ore_io_state *ios;
-+	int ret;
- 	struct __alloc_objio_state {
- 		struct objio_state objios;
--		struct _objio_per_comp per_dev[objio_seg->oc.numdevs];
- 		struct pnfs_osd_ioerr ioerrs[objio_seg->oc.numdevs];
- 	} *aos;
- 
-@@ -391,30 +361,33 @@ void objio_free_lseg(struct pnfs_layout_segment *lseg)
- 	if (unlikely(!aos))
- 		return -ENOMEM;
- 
--	ios = &aos->objios;
--
--	ios->layout = &objio_seg->layout;
--	ios->oc = &objio_seg->oc;
- 	objlayout_init_ioerrs(&aos->objios.oir, objio_seg->oc.numdevs,
- 			aos->ioerrs, rpcdata, pnfs_layout_type);
- 
-+	ret = ore_get_rw_state(&objio_seg->layout, &objio_seg->oc, is_reading,
-+			       offset, count, &ios);
-+	if (unlikely(ret)) {
-+		kfree(aos);
-+		return ret;
-+	}
-+
- 	ios->pages = pages;
- 	ios->pgbase = pgbase;
--	ios->nr_pages = (pgbase + count + PAGE_SIZE - 1) >> PAGE_SHIFT;
--	ios->offset = offset;
--	ios->count = count;
--	ios->sync = 0;
-+	ios->private = aos;
- 	BUG_ON(ios->nr_pages > (pgbase + count + PAGE_SIZE - 1) >> PAGE_SHIFT);
- 
--	*outp = ios;
-+	aos->objios.sync = 0;
-+	aos->objios.ios = ios;
-+	*outp = &aos->objios;
- 	return 0;
- }
- 
- void objio_free_result(struct objlayout_io_res *oir)
- {
--	struct objio_state *ios = container_of(oir, struct objio_state, oir);
-+	struct objio_state *objios = container_of(oir, struct objio_state, oir);
- 
--	kfree(ios);
-+	ore_put_io_state(objios->ios);
-+	kfree(objios);
- }
- 
- enum pnfs_osd_errno osd_pri_2_pnfs_err(enum osd_err_priority oep)
-@@ -447,7 +420,7 @@ enum pnfs_osd_errno osd_pri_2_pnfs_err(enum osd_err_priority oep)
- 	}
- }
- 
--static void __on_dev_error(struct objio_state *ios, bool is_write,
-+static void __on_dev_error(struct ore_io_state *ios,
- 	struct ore_dev *od, unsigned dev_index, enum osd_err_priority oep,
- 	u64 dev_offset, u64  dev_len)
- {
-@@ -465,9 +438,10 @@ static void __on_dev_error(struct objio_state *ios, bool is_write,
- 
- 	objlayout_io_set_result(&objios->oir, comp,
- 				&pooid, osd_pri_2_pnfs_err(oep),
--				dev_offset, dev_len, is_write);
-+				dev_offset, dev_len, !ios->reading);
- }
- 
-+#if 0
- static void _clear_bio(struct bio *bio)
- {
- 	struct bio_vec *bv;
-@@ -786,26 +760,28 @@ static int _io_exec(struct objio_state *ios)
- 
- 	return ret;
- }
-+#endif
- 
- /*
-  * read
-  */
--static int _read_done(struct objio_state *ios)
-+static void _read_done(struct ore_io_state *ios, void *private)
- {
-+	struct objio_state *objios = private;
- 	ssize_t status;
--	int ret = _io_check(ios, false);
-+	int ret = ore_check_io(ios, &__on_dev_error);
- 
--	_io_free(ios);
-+	/* FIXME: _io_free(ios) can we dealocate the libosd resources; */
- 
- 	if (likely(!ret))
- 		status = ios->length;
- 	else
- 		status = ret;
- 
--	objlayout_read_done(&ios->oir, status, ios->sync);
--	return ret;
-+	objlayout_read_done(&objios->oir, status, objios->sync);
- }
- 
-+#if 0
- static int _read_mirrors(struct objio_state *ios, unsigned cur_comp)
- {
- 	struct osd_request *or = NULL;
-@@ -860,49 +836,50 @@ static int _read_exec(struct objio_state *ios)
- 	_io_free(ios);
- 	return ret;
- }
-+#endif
- 
- int objio_read_pagelist(struct nfs_read_data *rdata)
- {
--	struct objio_state *ios;
-+	struct objio_state *objios;
- 	int ret;
- 
--	ret = objio_alloc_io_state(NFS_I(rdata->inode)->layout,
-+	ret = objio_alloc_io_state(NFS_I(rdata->inode)->layout, true,
- 			rdata->lseg, rdata->args.pages, rdata->args.pgbase,
- 			rdata->args.offset, rdata->args.count, rdata,
--			GFP_KERNEL, &ios);
--	if (unlikely(ret))
--		return ret;
--
--	ret = _io_rw_pagelist(ios, GFP_KERNEL);
-+			GFP_KERNEL, &objios);
- 	if (unlikely(ret))
- 		return ret;
- 
--	return _read_exec(ios);
-+	objios->ios->done = _read_done;
-+	dprintk("%s: offset=0x%llx length=0x%x\n", __func__,
-+		rdata->args.offset, rdata->args.count);
-+	return ore_read(objios->ios);
- }
- 
- /*
-  * write
-  */
--static int _write_done(struct objio_state *ios)
-+static void _write_done(struct ore_io_state *ios, void *private)
- {
-+	struct objio_state *objios = private;
- 	ssize_t status;
--	int ret = _io_check(ios, true);
-+	int ret = ore_check_io(ios, &__on_dev_error);
- 
--	_io_free(ios);
-+	/* FIXME: _io_free(ios) can we dealocate the libosd resources; */
- 
- 	if (likely(!ret)) {
- 		/* FIXME: should be based on the OSD's persistence model
- 		 * See OSD2r05 Section 4.13 Data persistence model */
--		ios->oir.committed = NFS_FILE_SYNC;
-+		objios->oir.committed = NFS_FILE_SYNC;
- 		status = ios->length;
- 	} else {
- 		status = ret;
- 	}
- 
--	objlayout_write_done(&ios->oir, status, ios->sync);
--	return ret;
-+	objlayout_write_done(&objios->oir, status, objios->sync);
- }
- 
-+#if 0
- static int _write_mirrors(struct objio_state *ios, unsigned cur_comp)
- {
- 	struct _objio_per_comp *master_dev = &ios->per_dev[cur_comp];
-@@ -984,27 +961,35 @@ static int _write_exec(struct objio_state *ios)
- 	_io_free(ios);
- 	return ret;
- }
-+#endif
- 
- int objio_write_pagelist(struct nfs_write_data *wdata, int how)
- {
--	struct objio_state *ios;
-+	struct objio_state *objios;
- 	int ret;
- 
--	ret = objio_alloc_io_state(NFS_I(wdata->inode)->layout,
-+	ret = objio_alloc_io_state(NFS_I(wdata->inode)->layout, false,
- 			wdata->lseg, wdata->args.pages, wdata->args.pgbase,
- 			wdata->args.offset, wdata->args.count, wdata, GFP_NOFS,
--			&ios);
-+			&objios);
- 	if (unlikely(ret))
- 		return ret;
- 
--	ios->sync = 0 != (how & FLUSH_SYNC);
-+	objios->sync = 0 != (how & FLUSH_SYNC);
- 
--	/* TODO: ios->stable = stable; */
--	ret = _io_rw_pagelist(ios, GFP_NOFS);
-+	if (!objios->sync)
-+		objios->ios->done = _write_done;
-+
-+	dprintk("%s: offset=0x%llx length=0x%x\n", __func__,
-+		wdata->args.offset, wdata->args.count);
-+	ret = ore_write(objios->ios);
- 	if (unlikely(ret))
- 		return ret;
- 
--	return _write_exec(ios);
-+	if (objios->sync)
-+		_write_done(objios->ios, objios);
-+
-+	return 0;
- }
- 
- static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
--- 
-1.7.6.4
+Here is another graph showing the revert fixing the problem on this box
+with relatively simple workload (revert applied Tuesday evening):
 
+http://0x.ca/sim/ref/3.1-rc8/cpu-analog02-revert-b80c3cb6.png
+
+It is helping on many other boxes, too, but they get various spurts of
+memory pressure and other CPU spikes that cause the difference to be
+harder to see. We're still running your sunrpc/clnt.c debugging patch as
+well, but haven't hit the hang again yet.
+
+Simon-
