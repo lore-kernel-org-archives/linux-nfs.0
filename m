@@ -1,42 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39554 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:31505 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750751Ab1JTL7A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Oct 2011 07:59:00 -0400
-Date: Thu, 20 Oct 2011 07:58:59 -0400
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/7] Bakeathon server fixes
-Message-ID: <20111020115859.GK5444@fieldses.org>
-References: <4E9F82FC.2000904@tonian.com>
+	id S1758265Ab1JFNSL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Oct 2011 09:18:11 -0400
+Message-ID: <4E8DAA8E.5070701@parallels.com>
+Date: Thu, 06 Oct 2011 17:18:06 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E9F82FC.2000904@tonian.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Pavel Emelyanov <xemul@parallels.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Kirill A. Shutemov" <kas@openvz.org>,
+        "jlayton@redhat.com" <jlayton@redhat.com>
+Subject: Re: network-namespace-aware nfsd
+References: <20111005150214.GA18449@fieldses.org> <4E8C9363.9030303@parallels.com> <20111005181959.GB18449@fieldses.org> <4E8D7BED.6020705@parallels.com> <4E8D9F3F.4090004@parallels.com> <20111006131109.GB21627@fieldses.org> <4E8DA9A9.5010205@parallels.com>
+In-Reply-To: <4E8DA9A9.5010205@parallels.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 19, 2011 at 07:10:04PM -0700, Benny Halevy wrote:
-> Here's the list of patches I tested here in the Bakeathon.
+06.10.2011 17:14, Pavel Emelyanov пишет:
+> On 10/06/2011 05:11 PM, J. Bruce Fields wrote:
+>> On Thu, Oct 06, 2011 at 04:29:51PM +0400, Pavel Emelyanov wrote:
+>>>>> Also, do you think per-namespace version support is important?
+>>>>>
+>>>>
+>>>> Actually, yes, I do.
+>>>> As I see it, nfsd filesystem have to virtualized to provide flexible control for
+>>>> server features. If so, then we need to virtualize program as well.
+>>>
+>>> ACK - per namespace version control is required as well.
+>>>
+>>> AFAIK it's performed via sysctl-s and this part (sysctls engine I mean) is already
+>>> namespaces aware, thus it will not be the hard part of the implementation :)
+>>
+>> It's a special file in the nfsd filesystem.  But I assume that won't be
+>> a big deal either.
+>
+> Well, yes, you're right :)
+>
+>> By the way, I'm curious: as we do this virtualization step-by-step, is
+>> there any way for userspace to tell how far we've gotten?
+>>
+>> So for example if you have a system that's configured to use some new
+>> namespace-based feature, and you boot it to an old kernel, is there some
+>> way for it to check at the start and say "sorry, this isn't going to
+>> work"?
+>
+> M-m... I'd say - there's no automatic way for doing this. What we can (and probably
+> should) do is - audit the nfs/nfsd subsystems and mark places with
+>     if (ns !=&init_net_ns)
+>            return -EOPNOTSUPP
+> and remove these parts eventually.
+>
 
-Thanks, Benny!  I need to run some tests of my own, and then I intend to
-apply the first four (see individual replies for comments on the last
-three).
+Or just use init_net instead of current network namespace (is possible, of 
+course). At least I'm trying to do so.
 
---b.
+>> --b.
+>> .
+>>
+>
 
-> They pass the Connectathon tests over nfsv4.1 (no pnfs)
-> against the linux client, but VMware reports a bug with
-> OPEN with share_access==0x401 (1025)
-> NFS4_SHARE_WANT_NO_DELEG | NFS4_SHARE_ACCESS_READ
-> return NFS4ERR_GRACE for some reason.
-> I haven't been able to track that down yet.
-> 
-> [PATCH 1/7] nfsd4: implement new 4.1 open reclaim types
-> [PATCH 2/7] nfsd41: use SEQ4_STATUS_BACKCHANNEL_FAULT when
-> [PATCH 3/7] nfsd4: seq->status_flags may be used unitialized
-> [PATCH 4/7] nfsd4: allow NFS4_SHARE_SIGNAL_DELEG_WHEN_RESRC_AVAIL |
-> [PATCH 5/7] nfsd4: implement NFS4_SHARE_WANT_NO_DELEG,
-> [PATCH 6/7] nfsd4: typo logical vs bitwise negate for want_mask
-> [PATCH 7/7] nfsd4: share_access_to_flags should consider only nfs4.x
+
+-- 
+Best regards,
+Stanislav Kinsbursky
