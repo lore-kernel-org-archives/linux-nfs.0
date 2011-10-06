@@ -1,70 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from lo.gmane.org ([80.91.229.12]:48151 "EHLO lo.gmane.org"
+Received: from mx2.netapp.com ([216.240.18.37]:40748 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752837Ab1JTVIX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Oct 2011 17:08:23 -0400
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1RGzqg-0006at-OF
-	for linux-nfs@vger.kernel.org; Thu, 20 Oct 2011 23:08:22 +0200
-Received: from ebox.rath.org ([173.255.235.238])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Oct 2011 23:08:22 +0200
-Received: from Nikolaus by ebox.rath.org with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Oct 2011 23:08:22 +0200
-To: linux-nfs@vger.kernel.org
-From: Nikolaus Rath <Nikolaus@rath.org>
-Subject: Re: Does NFS4 need st_gen?
-Date: Thu, 20 Oct 2011 16:37:17 -0400
-Message-ID: <871uu79z7m.fsf@inspiron.ap.columbia.edu>
-References: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu>
-	<20111019171551.GA32028@fieldses.org>
-	<87d3dsdcf4.fsf@inspiron.ap.columbia.edu>
-	<20111020120207.GL5444@fieldses.org>
-	<877h3za89w.fsf@inspiron.ap.columbia.edu>
-	<20111020195731.GC9987@fieldses.org>
+	id S1753223Ab1JFDo5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Oct 2011 23:44:57 -0400
+Subject: Re: [nfsv4] back channel flags, CREATE_SESSION, BIND_CONN_TO_SESSION
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "Matt W. Benjamin" <matt@linuxbox.com>
+Cc: nfsv4 <nfsv4@ietf.org>, linux-nfs <linux-nfs@vger.kernel.org>,
+        nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>
+Date: Wed, 05 Oct 2011 23:44:56 -0400
+In-Reply-To: <1317871693.14305.5.camel@lade.trondhjem.org>
+References: <800236997.158.1317856908314.JavaMail.root@thunderbeast.private.linuxbox.com>
+	 <1317871693.14305.5.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1317872696.14918.1.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-"J. Bruce Fields" <bfields@fieldses.org> writes:
-> On Thu, Oct 20, 2011 at 01:21:31PM -0400, Nikolaus Rath wrote:
->> I'm working on a FUSE file system that stores file system metadata in an
->> SQL database (http://code.google.com/p/s3ql/). Not having to keep track
->> of inode generation numbers would keep the code much simpler, because I
->> want to delete inode-rows from the SQL table when the last reference to
->> the inode is deleted (so I can't keep track of the generation no).
->
-> You can use current time, or a counter, or something, as the generation
-> number.
+On Wed, 2011-10-05 at 23:28 -0400, Trond Myklebust wrote: 
+> On Wed, 2011-10-05 at 19:21 -0400, Matt W. Benjamin wrote: 
+> > Currently, the Linux and I believe also the CITI Windows client always propose channels in both directions.  The Linux mainline Linux client doesn't know how to BIND_CONN_TO_SESSION, so trivially it won't negotiate any back channel if a server didn't agree to both directions today, either.  I've experimentally implemented a "fallback" model in a Linux client and (partly in a) Ganesha server.  I'd appreciate any feedback on the idea.
+> 
+> Yep. As I said, why should we bother adding support for servers that
+> don't? I can function perfectly well without pNFS support or delegation
+> support in such a case. Performance will suck, but why do I care?
 
-With current time I'm screwed if the system clock doesn't have
-sufficiently fine granularity. With a counter, I either have to remember
-counter values per-inode even after the inode is deleted, or the global
-counter will overflow at some point (in which case I may just as well
-require unique inodes in the first place).
-
->> Now I'll either have to make inodes unique (and run into trouble after
->> 2^32 inodes have been used), or keep with the current scheme of
->> randomizing new inodes (which keeps the probability of problems low
->> enough but is ugly).
->
-> With 2^32 inode numbers plus 2^32 generation numbers it should be
-> possible to work something out that doesn't require remembering every
-> old inode.
-
-Certainly. All I'm saying is that the code would be simpler if there was
-no need for generation numbers.
-
-Best,
-
-   -Nikolaus
+To put it in more basic terms: what you are proposing will add
+development costs to the client and and an extra code burden to maintain
+long term. So what is in it for me?
 
 -- 
- »Time flies like an arrow, fruit flies like a Banana.«
+Trond Myklebust
+Linux NFS client maintainer
 
-  PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6  02CF A9AD B7F8 AE4E 425C
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
