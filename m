@@ -1,85 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:13418 "EHLO mx2.netapp.com"
+Received: from aa.linuxbox.com ([134.215.213.37]:2361 "EHLO aa.linuxbox.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933499Ab1JaRn4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 13:43:56 -0400
-Subject: Re: [PATCH] nfs: Fix unused variable warning.
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Rakib Mullick <rakib.mullick@gmail.com>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        akpm@linux-foundation.org
-Date: Mon, 31 Oct 2011 13:43:54 -0400
-In-Reply-To: <CADZ9YHhq91+Td03OjWbX0rwHwb6Y7QhicsuDqqAUSy2O8=05BA@mail.gmail.com>
-References: <1319798192.26450.1.camel@localhost.localdomain>
-	 <1320074323.4714.2.camel@lade.trondhjem.org>
-	 <CADZ9YHhq91+Td03OjWbX0rwHwb6Y7QhicsuDqqAUSy2O8=05BA@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1320083034.4714.24.camel@lade.trondhjem.org>
-Mime-Version: 1.0
+	id S1755456Ab1JFUNH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Oct 2011 16:13:07 -0400
+Date: Thu, 6 Oct 2011 16:12:46 -0400 (EDT)
+From: "Matt W. Benjamin" <matt@linuxbox.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: nfsv4 <nfsv4@ietf.org>, linux-nfs <linux-nfs@vger.kernel.org>,
+        nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>
+Message-ID: <1412123218.108.1317931966754.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B830127@SACMVEXC2-PRD.hq.netapp.com>
+Subject: Re: [nfsv4] back channel flags, CREATE_SESSION,
+ BIND_CONN_TO_SESSION
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2011-10-31 at 23:12 +0600, Rakib Mullick wrote: 
-> On Mon, Oct 31, 2011 at 9:18 PM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> > On Fri, 2011-10-28 at 16:36 +0600, Rakib Mullick wrote:
-> >
-> > This will still cause a warning if you compile without RPC_DEBUG (e.g.
-> > if CONFIG_SYSCTL isn't defined).
-> >
-> I didn't get any warning with CONFIG_SYSCTL=n.
-> 
-> > Since there is only one user, it seems better to just open-code the
-> > NFS_SERVER(data->inode) in the dprintk()...
-> 
-> Okay, it seems reasonable. We can simply remove 'server'. Please
-> consider the following patch (also attached, might have some white
-> space issue).
-> 
-> ---
-> 
->  When CONFIG_NFS=y and CONFIG_NFS_V3_{,V4}=n we get the following warning.
-> 	
-> 	fs/nfs/write.c: In function ‘nfs_writeback_done’:
-> 	fs/nfs/write.c:1246:21: warning: unused variable ‘server’
-> 
->  Remove the variable 'server' to fix the above warning.
-> 
-> Signed-off-by: Rakib Mullick <rakib.mullick@gmail.com>
-> ---
-> 
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 2219c88..a2e4b27 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -1243,7 +1243,6 @@ void nfs_writeback_done(struct rpc_task *task,
-> struct nfs_write_data *data)
->  {
->  	struct nfs_writeargs	*argp = &data->args;
->  	struct nfs_writeres	*resp = &data->res;
-> -	struct nfs_server	*server = NFS_SERVER(data->inode);
->  	int status;
-> 
->  	dprintk("NFS: %5u nfs_writeback_done (status %d)\n",
-> @@ -1277,7 +1276,7 @@ void nfs_writeback_done(struct rpc_task *task,
-> struct nfs_write_data *data)
->  		if (time_before(complain, jiffies)) {
->  			dprintk("NFS:       faulty NFS server %s:"
->  				" (committed = %d) != (stable = %d)\n",
-> -				server->nfs_client->cl_hostname,
-> +				data->inode->nfs_client->cl_hostname,
-				 ^^^^^^^^^^^^
-NFS_SERVER(data->inode)->nfs_client....
+Hi Trond,
 
-> 				resp->verf->committed, argp->stable);
->  			complain = jiffies + 300 * HZ;
->  		}
+> For whom? We have already implemented a callback model that is working
+> fine for us. I have yet to see any evidence of the callback
+> scalability breakdown scenario that you claim as a motivation. What I
+> have (frequently) seen is scalability issues due to clients and
+> servers running out of free TCP ports.
+
+For whom?  Well, I work primarily on servers.  I have worked experimentally on the Linux v41 client.  I am pretty sure I wasn't speaking of a "callback scalability breakdown."  I was discussing a tradeoff of ports for reduced overhead of flow control, lock contention, etc.  I wasn't trying to start an inflated theory discussion about these, I don't feel fully at ease doing so.  Still, I don't intuit that potential for port exhaustion trumps other considerations, it is one consideration among several.  I also mentioned some potential benefit for server implementations, such as the one we have been collaborating on.  I'd like to maximize its potential for success.
+
+----- "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
+>
+> My objection is to the lack of a consensus on a single system for
+> implementing features. I'm tired of being told that the spec allows
+> you to do the same thing in 10 different ways, with an expectation
+> that we should implement all 10 ways.
+> If we can't find a single good way of implementing a feature, then my
+> preference is to drop support for that feature altogether (or to
+> choose one implementation and to stick with it). My expectation for a
+> standard is that it should aim to _reduce_ the number of different
+> implementations so that we can concentrate our development and testing
+> efforts. (BTW: pNFS is definitely not beyond criticism in this
+> respect.)
+
+You think the standard should influence, so as to reduce, the number of competing implementations?  Maybe you meant 'implementation choices for <x> feature.'
+
+My expectation from NFSv4 is that there is some room for innovation and experimentation.  I don't think we can avoid this if we wish to compete effectively with ad hoc storage protocols.
+
+>
+> IOW: I can see valid reasons for why we should test the case where the
+> server refuses a mixed fore+back channel, but I don't see that as a
+> reason to implement a second back channel model. That requires us to
+> add code + tests (and perform regular regression tests) for that back
+> channel mode, as well as dealing with the case where that model of
+> operation too is rejected by the server.
+
+I find I need to keep reminding my self what "assume" does.  But I assumed that the 5661 language for negotiating a back channel was in the draft (standard) because it added value to someone, and perhaps was implemented in some environment.  If so, perhaps such a person will chime in with an opinion.
+
+>
+> Trond
+
+Thanks,
+
+Matt
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Matt Benjamin
 
+The Linux Box
+206 South Fifth Ave. Suite 150
+Ann Arbor, MI  48104
+
+http://linuxbox.com
+
+tel. 734-761-4689
+fax. 734-769-8938
+cel. 734-216-5309
