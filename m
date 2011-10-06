@@ -1,146 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp01.au.ibm.com ([202.81.31.143]:37405 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932759Ab1JRPee (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:34:34 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V7 08/26] vfs: Add new file and directory create permission flags
-Date: Tue, 18 Oct 2011 21:02:43 +0530
-Message-Id: <1318951981-5508-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from natasha.panasas.com ([67.152.220.90]:54426 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756359Ab1JFM3D (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Oct 2011 08:29:03 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@tonian.com>, NFS list <linux-nfs@vger.kernel.org>,
+        open-osd <osd-dev@open-osd.org>
+Subject: [PATCH 4/5] SQUASHME: pnfsd-exofs: Type & Name of the devices array changed
+Date: Thu, 6 Oct 2011 14:28:53 +0200
+Message-ID: <1317904133-17386-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4E8D9D56.6020803@panasas.com>
+References: <4E8D9D56.6020803@panasas.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+Do to patch:
+    	exofs: Rename struct ore_components comps => oc
+   Fix it here as well.
 
-Some permission models distinguish between the permission to create a
-non-directory and a directory.  Pass this information down to
-inode_permission() as mask flags
+Do to patch:
+	ore/exofs: Change the type of the devices array (API change)
 
-Acked-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+  * Comply with the API change of the ore_components device table
+    type.
+  * Use the container_of macro to access the extra exofs device info.
+    .e.g the device_id
+
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- fs/namei.c         |   26 +++++++++++++++-----------
- include/linux/fs.h |    2 ++
- 2 files changed, 17 insertions(+), 11 deletions(-)
+ fs/exofs/export.c |   12 ++++++------
+ 1 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index cf8b2f0..f6184b8 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -336,7 +336,8 @@ static inline int do_inode_permission(struct inode *inode, int mask)
-  * for filesystem access without changing the "normal" uids which
-  * are used for other things.
-  *
-- * When checking for MAY_APPEND, MAY_WRITE must also be set in @mask.
-+ * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
-+ * MAY_WRITE must also be set in @mask.
-  */
- int inode_permission(struct inode *inode, int mask)
- {
-@@ -1914,13 +1915,15 @@ static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
-  *  3. We should have write and exec permissions on dir
-  *  4. We can't do it if dir is immutable (done in permission())
-  */
--static inline int may_create(struct inode *dir, struct dentry *child)
-+static inline int may_create(struct inode *dir, struct dentry *child, int isdir)
- {
-+	int mask = isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
-+
- 	if (child->d_inode)
- 		return -EEXIST;
- 	if (IS_DEADDIR(dir))
- 		return -ENOENT;
--	return inode_permission(dir, MAY_WRITE | MAY_EXEC);
-+	return inode_permission(dir, MAY_WRITE | MAY_EXEC | mask);
- }
+diff --git a/fs/exofs/export.c b/fs/exofs/export.c
+index 42d21c0..f85197e 100644
+--- a/fs/exofs/export.c
++++ b/fs/exofs/export.c
+@@ -133,14 +133,14 @@ static enum nfsstat4 exofs_layout_get(
+ 	/* Encode layout components */
+ 	for (i = 0; i <  layout.olo_num_comps; i++) {
+ 		struct pnfs_osd_object_cred cred;
+-		unsigned sbi_dev = (oi->comps.ods - sbi->comps.ods + i) %
+-							sbi->comps.numdevs;
++		struct exofs_dev *ed = container_of(oi->oc.ods[i],
++							typeof(*ed), ored);
  
- /*
-@@ -1968,7 +1971,7 @@ void unlock_rename(struct dentry *p1, struct dentry *p2)
- int vfs_create(struct inode *dir, struct dentry *dentry, int mode,
- 		struct nameidata *nd)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, 0);
+ 		set_dev_id(&cred.oc_object_id.oid_device_id, args->lg_sbid,
+-			   sbi_dev);
++			   ed->did);
+ 		cred.oc_object_id.oid_partition_id = oi->one_comp.obj.partition;
+ 		cred.oc_object_id.oid_object_id = oi->one_comp.obj.id;
+-		cred.oc_osd_version = osd_dev_is_ver1(oi->comps.ods[i]) ?
++		cred.oc_osd_version = osd_dev_is_ver1(ed->ored.od) ?
+ 						PNFS_OSD_VERSION_1 :
+ 						PNFS_OSD_VERSION_2;
+ 		cred.oc_cap_key_sec = PNFS_OSD_CAP_KEY_SEC_NONE;
+@@ -309,13 +309,13 @@ int exofs_get_device_info(struct super_block *sb, struct exp_xdr_stream *xdr,
  
- 	if (error)
- 		return error;
-@@ -2427,7 +2430,7 @@ EXPORT_SYMBOL(user_path_create);
+ 	memset(&devaddr, 0, sizeof(devaddr));
  
- int vfs_mknod(struct inode *dir, struct dentry *dentry, int mode, dev_t dev)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, 0);
+-	if (unlikely(devno >= sbi->comps.numdevs)) {
++	if (unlikely(devno >= sbi->oc.numdevs)) {
+ 		EXOFS_DBGMSG("Error: Device((%llx,%llx) does not exist\n",
+ 			     devid->sbid, devno);
+ 		return -ENODEV;
+ 	}
  
- 	if (error)
- 		return error;
-@@ -2524,7 +2527,7 @@ SYSCALL_DEFINE3(mknod, const char __user *, filename, int, mode, unsigned, dev)
+-	odi = osduld_device_info(sbi->comps.ods[devno]);
++	odi = osduld_device_info(sbi->oc.ods[devno]->od);
  
- int vfs_mkdir(struct inode *dir, struct dentry *dentry, int mode)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, 1);
- 
- 	if (error)
- 		return error;
-@@ -2806,7 +2809,7 @@ SYSCALL_DEFINE1(unlink, const char __user *, pathname)
- 
- int vfs_symlink(struct inode *dir, struct dentry *dentry, const char *oldname)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, 0);
- 
- 	if (error)
- 		return error;
-@@ -2872,7 +2875,10 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
- 	if (!inode)
- 		return -ENOENT;
- 
--	error = may_create(dir, new_dentry);
-+	if (S_ISDIR(inode->i_mode))
-+		return -EPERM;
-+
-+	error = may_create(dir, new_dentry, 0);
- 	if (error)
- 		return error;
- 
-@@ -2886,8 +2892,6 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
- 		return -EPERM;
- 	if (!dir->i_op->link)
- 		return -EPERM;
--	if (S_ISDIR(inode->i_mode))
--		return -EPERM;
- 
- 	error = security_inode_link(old_dentry, dir, new_dentry);
- 	if (error)
-@@ -3097,7 +3101,7 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		return error;
- 
- 	if (!new_dentry->d_inode)
--		error = may_create(new_dir, new_dentry);
-+		error = may_create(new_dir, new_dentry, is_dir);
- 	else
- 		error = may_delete(new_dir, new_dentry, is_dir);
- 	if (error)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index f3ebf86..60361c6 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -67,6 +67,8 @@ struct inodes_stat_t {
- #define MAY_CHDIR		0x00000040
- /* called from RCU mode, don't block */
- #define MAY_NOT_BLOCK		0x00000080
-+#define MAY_CREATE_FILE		0x00000100
-+#define MAY_CREATE_DIR		0x00000200
- 
- /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
+ 	devaddr.oda_systemid.len = odi->systemid_len;
+ 	devaddr.oda_systemid.data = (void *)odi->systemid; /* !const cast */
 -- 
-1.7.5.4
+1.7.2.3
 
