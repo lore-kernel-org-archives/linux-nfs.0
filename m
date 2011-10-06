@@ -1,72 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39504 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:60181 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752222Ab1J0V1g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Oct 2011 17:27:36 -0400
-Date: Thu, 27 Oct 2011 17:27:32 -0400
+	id S1758284Ab1JFNLK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Oct 2011 09:11:10 -0400
+Date: Thu, 6 Oct 2011 09:11:09 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
-        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        davem@davemloft.net, devel@openvz.org
-Subject: Re: [PATCH v6 4/8] SUNRPC: setup rpcbind clients if service
- requires it
-Message-ID: <20111027212732.GC31669@fieldses.org>
-References: <20111025100826.12689.46944.stgit@localhost6.localdomain6>
- <20111025101705.12689.68022.stgit@localhost6.localdomain6>
+To: Pavel Emelyanov <xemul@parallels.com>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Kirill A. Shutemov" <kas@openvz.org>,
+        "jlayton@redhat.com" <jlayton@redhat.com>
+Subject: Re: network-namespace-aware nfsd
+Message-ID: <20111006131109.GB21627@fieldses.org>
+References: <20111005150214.GA18449@fieldses.org>
+ <4E8C9363.9030303@parallels.com>
+ <20111005181959.GB18449@fieldses.org>
+ <4E8D7BED.6020705@parallels.com>
+ <4E8D9F3F.4090004@parallels.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111025101705.12689.68022.stgit@localhost6.localdomain6>
+In-Reply-To: <4E8D9F3F.4090004@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 25, 2011 at 02:17:08PM +0300, Stanislav Kinsbursky wrote:
-> New function ("svc_uses_rpcbind") will be used to detect, that new service will
-> send portmapper register calls. For such services we will create rpcbind
-> clients and remove all stale portmap registrations.
-> Also, svc_rpcb_cleanup() will be set as sv_shutdown callback for such services
-> in case of this field wasn't initialized earlier. This will allow to destroy
-> rpcbind clients when no other users of them left.
+On Thu, Oct 06, 2011 at 04:29:51PM +0400, Pavel Emelyanov wrote:
+> >> Also, do you think per-namespace version support is important?
+> >>
+> > 
+> > Actually, yes, I do.
+> > As I see it, nfsd filesystem have to virtualized to provide flexible control for 
+> > server features. If so, then we need to virtualize program as well.
 > 
-> Note: Currently, any creating service will be detected as portmap user.
-> Probably, this is wrong. But now it depends on program versions "vs_hidden"
-> flag.
+> ACK - per namespace version control is required as well.
 > 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> 
-> ---
->  net/sunrpc/svc.c |   11 +++++++++--
->  1 files changed, 9 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index d2d61bf..918edc3 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -454,8 +454,15 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
->  		spin_lock_init(&pool->sp_lock);
->  	}
->  
-> -	/* Remove any stale portmap registrations */
-> -	svc_unregister(serv);
-> +	if (svc_uses_rpcbind(serv)) {
-> +	       	if (svc_rpcb_setup(serv) < 0) {
-> +			kfree(serv->sv_pools);
-> +			kfree(serv);
-> +			return NULL;
+> AFAIK it's performed via sysctl-s and this part (sysctls engine I mean) is already
+> namespaces aware, thus it will not be the hard part of the implementation :)
 
-Nit: could we convert this (and the previous failure to allocate
-sv_pools) to the usual pattern of collecting the cleanup at the end and
-jumping to it with a goto?
+It's a special file in the nfsd filesystem.  But I assume that won't be
+a big deal either.
 
-Looks fine otherwise.
+By the way, I'm curious: as we do this virtualization step-by-step, is
+there any way for userspace to tell how far we've gotten?
+
+So for example if you have a system that's configured to use some new
+namespace-based feature, and you boot it to an old kernel, is there some
+way for it to check at the start and say "sorry, this isn't going to
+work"?
 
 --b.
-
-> +		}
-> +		if (!serv->sv_shutdown)
-> +			serv->sv_shutdown = svc_rpcb_cleanup;
-> +	}
->  
->  	return serv;
->  }
-> 
