@@ -1,38 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e33.co.us.ibm.com ([32.97.110.151]:37302 "EHLO
-	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754133Ab1JNRVe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Oct 2011 13:21:34 -0400
-Received: from /spool/local
-	by us.ibm.com with XMail ESMTP
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Fri, 14 Oct 2011 11:21:33 -0600
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p9EHKIaK151452
-	for <linux-nfs@vger.kernel.org>; Fri, 14 Oct 2011 11:20:26 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p9EHKIwR014868
-	for <linux-nfs@vger.kernel.org>; Fri, 14 Oct 2011 11:20:18 -0600
-Received: from malahal ([9.47.25.235])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p9EHKHfF014846
-	for <linux-nfs@vger.kernel.org>; Fri, 14 Oct 2011 11:20:17 -0600
-Date: Fri, 14 Oct 2011 10:20:17 -0700
-From: Malahal Naineni <malahal@us.ibm.com>
-To: linux-nfs@vger.kernel.org
-Subject: NFS client replication support for failover
-Message-ID: <20111014172017.GA4624@us.ibm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:50185 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751000Ab1JGDj1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Oct 2011 23:39:27 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain;
+	charset="utf-8"
+Subject: RE: [nfsv4] back channel flags, CREATE_SESSION, BIND_CONN_TO_SESSION
+Date: Thu, 6 Oct 2011 20:39:24 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B91DDFD@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <953639179.163.1317956101014.JavaMail.root@thunderbeast.private.linuxbox.com>
+References: <1988930626.161.1317955756425.JavaMail.root@thunderbeast.private.linuxbox.com> <953639179.163.1317956101014.JavaMail.root@thunderbeast.private.linuxbox.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Matt W. Benjamin" <matt@linuxbox.com>
+Cc: "linux-nfs" <linux-nfs@vger.kernel.org>,
+        "nfs-ganesha-devel" <nfs-ganesha-devel@lists.sourceforge.net>,
+        "nfsv4" <nfsv4@ietf.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi All,
-
-We are interested in replication support in NFS client for fail over
-purposes.  Were there any plans or efforts to implement it? We are
-thinking it to implement in NFSv4 and make use of 'fs_locations'
-attribute to store the alternate server(s) upfront. Would appreciate if
-you know any patches/efforts/issues implementing it.
-
-Thanks, Malahal.
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBNYXR0IFcuIEJlbmphbWluIFtt
+YWlsdG86bWF0dEBsaW51eGJveC5jb21dDQo+IFNlbnQ6IFRodXJzZGF5LCBPY3RvYmVyIDA2LCAy
+MDExIDEwOjU1IFBNDQo+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+IENjOiBsaW51eC1uZnM7IG5m
+cy1nYW5lc2hhLWRldmVsOyBuZnN2NA0KPiBTdWJqZWN0OiBSZTogW25mc3Y0XSBiYWNrIGNoYW5u
+ZWwgZmxhZ3MsIENSRUFURV9TRVNTSU9OLA0KPiBCSU5EX0NPTk5fVE9fU0VTU0lPTg0KPiANCj4g
+SGkgVHJvbmQsDQo+IA0KPiBJIGFwcHJlY2lhdGUgeW91ciBwb2ludCBvZiB2aWV3LiAgSSBhcHBy
+ZWNpYXRlIFJpY2sncyBjb21tZW50cy4gIEkgaG9wZSBzb21lDQo+IG90aGVyIGNvbW1lbnRzIHdp
+bGwgdHJpY2tsZSBpbi4gIERvIEkgdGhpbmsgeW91IGFuZCBSaWNrIGFyZSBzYXlpbmcgdGhlIHNh
+bWUNCj4gdGhpbmc/ICBOb3QgcmVhbGx5LiAgRG8gSSB0aGluayB5b3UncmUgbWFraW5nIHNlbnNl
+IHdoZW4geW91IGltcGx5IEkgd2FudCB0bw0KPiBjaGFuZ2UgdGhlIHN0YW5kYXJkPyAgTm8sIEkg
+ZG9uJ3QgZm9sbG93IHRoYXQuICBCSU5EX0NPTk5fVE9fU0VTU0lPTiBpcyBpbg0KPiB0aGUgcHVi
+bGlzaGVkIHN0YW5kYXJkLiAgQ2FuIEkgc2hvdyBhIGRlZGljYXRlZCBiYWNrIGNoYW5uZWwgaW1w
+cm92ZXMNCg0KSSBuZXZlciBhY2N1c2VkIHlvdSBvZiB0cnlpbmcgdG8gY2hhbmdlIHRoZSBzdGFu
+ZGFyZC4gV2hhdCBJIHNhaWQgd2FzIHRoYXQgeW91IG5lZWQgdG8gY29udmluY2UgbWUgdGhhdCB0
+aGVyZSBpcyBhIGdvb2QgcmVhc29uIHRvIGFjY2VwdCB0d28gaW1wbGVtZW50YXRpb25zIG9mIHRo
+ZSBzYW1lIGZlYXR1cmUgaW4gdGhlIGNsaWVudC4NCg0KPiBwZXJmb3JtYW5jZT8gIE5vdCBhdCBw
+cmVzZW50LiAgVGhhdCdzIGEgc2Vuc2libGUgcXVlc3Rpb24uICBJIHRoaW5rIGlmIHRoZQ0KPiBw
+cm90b2NvbCBpbiBnZW5lcmFsIGlzIGRvaW5nIHdoYXQgaXQgaXMgaW50ZW5kZWQgdG8gZG8sIGl0
+IHNob3VsZCBiZSBwb3NzaWJsZSBmb3INCj4gc29tZSB3b3JrbG9hZHMsIGF0IHNvbWUgcG9pbnQu
+ICAoSWYgY2FsbGJhY2tzIGFyZSwgc29tZWhvdyBnZW5lcmFsbHkNCj4gZGV0cmltZW50YWwgdG8g
+cGVyZm9ybWFuY2UsIGFzIHlvdSBzdGF0ZSwgSSB0aGluayBtYXliZSB3ZSBoYXZlIHNvbWUgbW9y
+ZQ0KPiB3b3JrIHRvIGRvLikgIChJIG5vdGUgb25seSBvbmUgbW9yZSB0aGluZy0tSSBkaWQgcmFp
+c2UgdGhpcyB0b3BpYyBvbiBsaXN0IDEyDQo+IG1vbnRocyBhZ28uICBPbmx5IEJydWNlIGNvbW1l
+bnRlZCwgYXQgdGhlIHRpbWUuKQ0KDQpGYWlyIGVub3VnaCwgYnV0IDEyIG1vbnRocyBhZ28sIHJm
+YzU2NjEgd2FzIGluIGxhc3QgY2FsbCBzdGF0dXMsIGFuZCB3ZSB3ZXJlIGFsbCB0cnlpbmcgdG8g
+bW92ZSBvbiB0byBmaW5hbCBpbXBsZW1lbnRhdGlvbnMuDQoNCkkgaGF2ZSBfYWx3YXlzXyBhcmd1
+ZWQgdGhhdCBjYWxsYmFja3Mgc2hvdWxkIGJlIHRoZSBleGNlcHRpb24gYW5kIG5vdCB0aGUgcnVs
+ZSwgZHVlIHRvIHRoZSBmYWN0IHRoYXQgaW4gcHJldHR5IG11Y2ggYWxsIGNhc2VzIHRoZSBzZXJ2
+ZXIgd2lsbCBoYXZlIHRvIHNlbmQgb3V0IGEgTkZTNEVSUl9ERUxBWSByZXN1bHQgdG8gd2hhdGV2
+ZXIgUlBDIGNhbGwgaXQgaXMgdGhhdCB0cmlnZ2VyZWQgYSBjYWxsYmFjay4gTm90aGluZyBuZXcg
+dGhlcmUgaW4gTkZTdjQuMS4gSSdsbCBhZGQgdGhhdCBub3IgaGFzIGFueWJvZHkgc3VjY2Vzc2Z1
+bGx5IGFyZ3VlZCB0aGF0IHRoZXJlIGlzIGFueSBjaGFuZ2UgaW4gTkZTdjQuMSBjb21wYXJlZCB0
+byBvdXIgZXhpc3RpbmcgTkZTdjQgaW1wbGVtZW50YXRpb25zLiBORlN2NCBkZWxlZ2F0aW9uIGNh
+bGxiYWNrcyBhcmUgKG1lYXN1cmFibHkpIGV4dHJlbWVseSBzbG93LCBhbmQgc28gSSdkIGV4cGVj
+dCB0aGUgZXhhY3Qgc2FtZSBiZWhhdmlvciBmb3IgTkZTdjQuMSBsYXlvdXQgcmVjYWxscyBldGMu
+IE5vdGhpbmcgaGFzIGNoYW5nZWQgaW4gTkZTdjQgY2FsbGJhY2sgdGVjaG5vbG9neSB0byB3YXJy
+YW50IGFuIGV4cGVjdGF0aW9uIG9mIHBlcmZvcm1hbmNlIGltcHJvdmVtZW50cy4NCg0KSU9XOiBO
+b2JvZHkgKGluY2x1ZGluZyB5b3UpIGhhcyBldmVyIGNvbnZpbmNlZCBtZSB0aGF0IHdlIG5lZWQg
+dG8gY29uc2lkZXIgY2FsbGJhY2tzIGFzIGEgc2NhbGFiaWxpdHkgaXNzdWUuIEknZCByZXF1aXJl
+IHNvbWUgcHJldHR5IGZpcm0gZXZpZGVuY2UgYmVmb3JlIEkgY291bGQgYWNjZXB0IHRoYXQgYXMg
+YSBmYWN0LiBTbyBmYXIsIGFsbCBJIGhhdmUgc2VlbiBpcyBtb3JlIG9yIGxlc3MgZWxvcXVlbnQg
+cHJvc2UuIE5vIGhhcmQgbnVtYmVycy4NCg0KVHJvbmQNCg==
