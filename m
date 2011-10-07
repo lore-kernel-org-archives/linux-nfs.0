@@ -1,150 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailout1.thls.bbc.co.uk ([132.185.240.36]:57522 "EHLO
-	mailout1.thls.bbc.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754609Ab1JXKkr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Oct 2011 06:40:47 -0400
-Received: from gateh.kw.bbc.co.uk (gateh.kw.bbc.co.uk [132.185.132.17])
-	by mailout1.thls.bbc.co.uk (8.14.4/8.14.3) with ESMTP id p9OAeiZu009005
-	for <linux-nfs@vger.kernel.org>; Mon, 24 Oct 2011 11:40:44 +0100 (BST)
-Received: from mailhub.rd.bbc.co.uk ([172.29.120.130])
-	by gateh.kw.bbc.co.uk (8.13.6/8.13.6) with ESMTP id p9OAehk2021252
-	for <linux-nfs@vger.kernel.org>; Mon, 24 Oct 2011 11:40:43 +0100 (BST)
-Received: from lxg1.rd.bbc.co.uk ([172.29.123.71]:37008)
-	by mailhub.rd.bbc.co.uk with esmtp (Exim 4.72)
-	(envelope-from <davidf@rd.bbc.co.uk>)
-	id 1RIHxT-0007ca-1m
-	for linux-nfs@vger.kernel.org; Mon, 24 Oct 2011 11:40:43 +0100
-Received: from davidf by lxg1.rd.bbc.co.uk with local (Exim 4.72)
-	(envelope-from <davidf@rd.bbc.co.uk>)
-	id 1RIHxS-0004vO-Tx
-	for linux-nfs@vger.kernel.org; Mon, 24 Oct 2011 11:40:42 +0100
-Date: Mon, 24 Oct 2011 10:40:42 +0000
-From: David Flynn <davidf@rd.bbc.co.uk>
-To: linux-nfs@vger.kernel.org
-Subject: NFS4 BAD_STATEID loop (kernel 3.0)
-Message-ID: <20111024104042.GD32587@rd.bbc.co.uk>
+Received: from mailhub.sw.ru ([195.214.232.25]:21740 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759692Ab1JGKTJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Oct 2011 06:19:09 -0400
+Message-ID: <4E8ED210.1030506@parallels.com>
+Date: Fri, 07 Oct 2011 14:18:56 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>,
+        "Kirill A. Shutemov" <kas@openvz.org>,
+        "jlayton@redhat.com" <jlayton@redhat.com>
+Subject: Re: network-namespace-aware nfsd
+References: <20111005150214.GA18449@fieldses.org> <4E8C9363.9030303@parallels.com> <20111005181959.GB18449@fieldses.org> <4E8D7BED.6020705@parallels.com> <20111006164632.GC21627@fieldses.org>
+In-Reply-To: <20111006164632.GC21627@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Dear All,
+06.10.2011 20:46, J. Bruce Fields пишет:
+> On Thu, Oct 06, 2011 at 01:59:09PM +0400, Stanislav Kinsbursky wrote:
+>> 05.10.2011 22:19, J. Bruce Fields пишет:
+>>> To start with I suspect it would be OK to share the one lockd thread.
+>>>
+>>
+>> Yep, I think so too. It just will be harder to implement.
+>
+> Why do you think it will be harder to implement?
+>
 
-On a system running kernel 3.0, mounting a Solaris NFS4 export, we
-observe a continuous 20Mbit/sec exchange between client and server that had
-been occurring for 10 days.
+Because making lockd kthread per net ns is very easy. :)
 
->From /proc/mounts:
-home:/home/ /home nfs4 rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.29.190.21,minorversion=0,local_lock=none,addr=172.29.120.140 0 0
+> There may be something about how tasks and namespaces interact that I'm
+> missing here....
+>
 
-Reconciling logs, we find that around the time the exchange started,
-the kernel reports a process having blocked:
+The main problem, as I see it now, is creating and especially destroying lockd 
+rpcbind clients (and per ns data) on CT stop.
+Right now they are destroyed on lockd kthread exit. And we can't make this 
+destruction in per-net operations since those clients holds net ns.
+Thus, nlmclnt_init(done) logic have to be significantly reworked.
 
-[787321.680029] INFO: task bash:17799 blocked for more than 120 seconds.
-[787321.680067] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-[787321.680104] bash            D 0000000000000002     0 17799      1 0x00000000
-[787321.680131]  ffff880173ad9ca8 0000000000000086 ffff88017216b008 0000000000012a40
-[787321.680171]  ffff880173ad9fd8 0000000000012a40 ffff880173ad8000 0000000000012a40
-[787321.680211]  0000000000012a40 0000000000012a40 ffff880173ad9fd8 0000000000012a40
-[787321.680251] Call Trace:
-[787321.680275]  [<ffffffff8110e900>] ? __lock_page+0x70/0x70
-[787321.680299]  [<ffffffff815fea2c>] io_schedule+0x8c/0xd0
-[787321.680321]  [<ffffffff8110e90e>] sleep_on_page+0xe/0x20
-[787321.680344]  [<ffffffff815ff2af>] __wait_on_bit+0x5f/0x90
-[787321.680366]  [<ffffffff8110ead3>] wait_on_page_bit+0x73/0x80
-[787321.680390]  [<ffffffff81085980>] ? autoremove_wake_function+0x40/0x40
-[787321.680416]  [<ffffffff8111aeb5>] ? pagevec_lookup_tag+0x25/0x40
-[787321.680439]  [<ffffffff8110ed06>] filemap_fdatawait_range+0xf6/0x1a0
-[787321.680483]  [<ffffffffa022e740>] ? nfs_destroy_directcache+0x20/0x20 [nfs]
-[787321.680507]  [<ffffffff8111a3b1>] ? do_writepages+0x21/0x40
-[787321.680530]  [<ffffffff8110ff8b>] ? __filemap_fdatawrite_range+0x5b/0x60
-[787321.680555]  [<ffffffff81110000>] filemap_write_and_wait_range+0x70/0x80
-[787321.680580]  [<ffffffff8119b45a>] vfs_fsync_range+0x5a/0x90
-[787321.680602]  [<ffffffff8119b4fc>] vfs_fsync+0x1c/0x20
-[787321.680628]  [<ffffffffa0222be4>] nfs_file_flush+0x54/0x80 [nfs]
-[787321.680653]  [<ffffffff8116d66f>] filp_close+0x3f/0x90
-[787321.680675]  [<ffffffff8116e097>] sys_close+0xb7/0x120
-[787321.680698]  [<ffffffff816090c2>] system_call_fastpath+0x16/0x1b
+> To me it seems like either way we're going to have to add the network
+> namespace as an argument to any data structure lookups that we're doing,
+> and it doesn't really matter whether we get the namespace out of the
+> svc_rqst or someplace else.
+>
 
-A network trace showed the following exchange below being continually
-repeated.  Unfortunately this system too has since been rebooted.
+Yep, seems the same to me.
 
-Any thoughts on the matter would be most welcome,
-
-Kind regards,
-
-..david
+> --b.
 
 
-No.     Time            Source                Destination           Protocol Size  Info
-   9880 11:40:12.833617 172.29.190.21         172.29.120.140        NFS      1122  V4 COMPOUND Call (Reply In 9881) <EMPTY> PUTFH;WRITE;GETATTR
-
-Frame 9880: 1122 bytes on wire (8976 bits), 1122 bytes captured (8976 bits)
-    Arrival Time: Oct 17, 2011 11:40:12.833617000 BST
-    Frame Length: 1122 bytes (8976 bits)
-    Capture Length: 1122 bytes (8976 bits)
-Ethernet II, Src: ChelsioC_06:68:f9 (00:07:43:06:68:f9), Dst: All-HSRP-routers_be (00:00:0c:07:ac:be)
-Internet Protocol, Src: 172.29.190.21 (172.29.190.21), Dst: 172.29.120.140 (172.29.120.140)
-Transmission Control Protocol, Src Port: 816 (816), Dst Port: nfs (2049), Seq: 5199745, Ack: 275801, Len: 1056
-Remote Procedure Call, Type:Call XID:0x5daa6e93
-Network File System
-    [Program Version: 4]
-    [V4 Procedure: COMPOUND (1)]
-    Tag: <EMPTY>
-        length: 0
-        contents: <EMPTY>
-    minorversion: 0
-    Operations (count: 3)
-        Opcode: PUTFH (22)
-            filehandle
-                length: 36
-                [hash (CRC-32): 0x6e4b15f3]
-                decode type as: unknown
-                filehandle: 7df3a75d5e1cd908000ab44c5b000000efc80200000a0300...
-        Opcode: WRITE (38)
-            stateid
-                seqid: 0x00000000
-                Data: 4e06f15b800f82e300000000
-            offset: 11392
-            stable: FILE_SYNC4 (2)
-            Write length: 814
-            Data: <DATA>
-                length: 814
-                contents: <DATA>
-                fill bytes: opaque data
-        Opcode: GETATTR (9)
-            GETATTR4args
-                attr_request
-                    bitmap[0] = 0x00000018
-                        [2 attributes requested]
-                        mand_attr: FATTR4_CHANGE (3)
-                        mand_attr: FATTR4_SIZE (4)
-                    bitmap[1] = 0x00300000
-                        [2 attributes requested]
-                        recc_attr: FATTR4_TIME_METADATA (52)
-                        recc_attr: FATTR4_TIME_MODIFY (53)
-
-No.     Time            Source                Destination           Protocol Size  Info
-   9881 11:40:12.833956 172.29.120.140        172.29.190.21         NFS      122   V4 COMPOUND Reply (Call In 9880) <EMPTY> PUTFH;WRITE
-
-Frame 9881: 122 bytes on wire (976 bits), 122 bytes captured (976 bits)
-    Arrival Time: Oct 17, 2011 11:40:12.833956000 BST
-    [Time delta from previous captured frame: 0.000339000 seconds]
-    Frame Length: 122 bytes (976 bits)
-    Capture Length: 122 bytes (976 bits)
-Ethernet II, Src: Cisco_1e:f7:80 (00:13:5f:1e:f7:80), Dst: ChelsioC_06:68:f9 (00:07:43:06:68:f9)
-Internet Protocol, Src: 172.29.120.140 (172.29.120.140), Dst: 172.29.190.21 (172.29.190.21)
-Transmission Control Protocol, Src Port: nfs (2049), Dst Port: 816 (816), Seq: 275801, Ack: 5200801, Len: 56
-Remote Procedure Call, Type:Reply XID:0x5daa6e93
-Network File System
-    [Program Version: 4]
-    [V4 Procedure: COMPOUND (1)]
-    Status: NFS4ERR_BAD_STATEID (10025)
-    Tag: <EMPTY>
-        length: 0
-        contents: <EMPTY>
-    Operations (count: 2)
-        Opcode: PUTFH (22)
-            Status: NFS4_OK (0)
-        Opcode: WRITE (38)
-            Status: NFS4ERR_BAD_STATEID (10025)
+-- 
+Best regards,
+Stanislav Kinsbursky
