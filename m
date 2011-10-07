@@ -1,211 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:31550 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:25920 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933566Ab1JYN5e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Oct 2011 09:57:34 -0400
-Subject: [PATCH v2 2/4] SUNRPC: use virtualized rpcbind internals instead of
-	static ones
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
-Date: Tue, 25 Oct 2011 17:58:02 +0300
-Message-ID: <20111025135800.5286.76759.stgit@localhost6.localdomain6>
-In-Reply-To: <20111025135637.5286.89632.stgit@localhost6.localdomain6>
-References: <20111025135637.5286.89632.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1759471Ab1JGC1N convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Oct 2011 22:27:13 -0400
+Subject: Re: [nfsv4] back channel flags, CREATE_SESSION, BIND_CONN_TO_SESSION
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "Matt W. Benjamin" <matt@linuxbox.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>,
+        nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>,
+        nfsv4 <nfsv4@ietf.org>
+Date: Thu, 06 Oct 2011 22:27:11 -0400
+In-Reply-To: <1412123218.108.1317931966754.JavaMail.root@thunderbeast.private.linuxbox.com>
+References: <1412123218.108.1317931966754.JavaMail.root@thunderbeast.private.linuxbox.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1317954431.9466.27.camel@lade.trondhjem.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch makes rpcbind logic works in network namespace context. IOW each
-network namespace will have it's own unique rpcbind internals (clients and
-friends) which is required for registering svc services per network namespace.
+On Thu, 2011-10-06 at 16:12 -0400, Matt W. Benjamin wrote: 
+> Hi Trond,
+> 
+> > For whom? We have already implemented a callback model that is working
+> > fine for us. I have yet to see any evidence of the callback
+> > scalability breakdown scenario that you claim as a motivation. What I
+> > have (frequently) seen is scalability issues due to clients and
+> > servers running out of free TCP ports.
+> 
+> For whom?  Well, I work primarily on servers.  I have worked experimentally on the Linux v41 client.  I am pretty sure I wasn't speaking of a "callback scalability breakdown."  I was discussing a tradeoff of ports for reduced overhead of flow control, lock contention, etc.  I wasn't trying to start an inflated theory discussion about these, I don't feel fully at ease doing so.  Still, I don't intuit that potential for port exhaustion trumps other considerations, it is one consideration among several.  I also mentioned some potential benefit for server implementations, such as the one we have been collaborating on.  I'd like to maximize its potential for success.
+> 
+> ----- "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
+> >
+> > My objection is to the lack of a consensus on a single system for
+> > implementing features. I'm tired of being told that the spec allows
+> > you to do the same thing in 10 different ways, with an expectation
+> > that we should implement all 10 ways.
+> > If we can't find a single good way of implementing a feature, then my
+> > preference is to drop support for that feature altogether (or to
+> > choose one implementation and to stick with it). My expectation for a
+> > standard is that it should aim to _reduce_ the number of different
+> > implementations so that we can concentrate our development and testing
+> > efforts. (BTW: pNFS is definitely not beyond criticism in this
+> > respect.)
+> 
+> You think the standard should influence, so as to reduce, the number of competing implementations?  Maybe you meant 'implementation choices for <x> feature.'
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+I meant to say exactly what I said above: that a standard should reduce
+the number of _different_ ways to implement the exact same feature. Find
+something that works, and then add it to the standard. Do not waste my
+time by adding experimental features and then coming back 9 months after
+the standard has been published and stating that 'I just discovered that
+feature A is better implemented using method X rather than method Y'.
+That's not a standard: it's an experiment in progress.
 
----
- net/sunrpc/rpcb_clnt.c |   64 ++++++++++++++++++++++++++----------------------
- 1 files changed, 35 insertions(+), 29 deletions(-)
+> My expectation from NFSv4 is that there is some room for innovation and experimentation.  I don't think we can avoid this if we wish to compete effectively with ad hoc storage protocols.
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index c2054ae..18eba8e 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -23,12 +23,15 @@
- #include <linux/errno.h>
- #include <linux/mutex.h>
- #include <linux/slab.h>
-+#include <linux/nsproxy.h>
- #include <net/ipv6.h>
- 
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/sched.h>
- #include <linux/sunrpc/xprtsock.h>
- 
-+#include "netns.h"
-+
- #ifdef RPC_DEBUG
- # define RPCDBG_FACILITY	RPCDBG_BIND
- #endif
-@@ -111,12 +114,6 @@ static void			rpcb_getport_done(struct rpc_task *, void *);
- static void			rpcb_map_release(void *data);
- static struct rpc_program	rpcb_program;
- 
--static struct rpc_clnt *	rpcb_local_clnt;
--static struct rpc_clnt *	rpcb_local_clnt4;
--
--DEFINE_SPINLOCK(rpcb_clnt_lock);
--unsigned int			rpcb_users;
--
- struct rpcbind_args {
- 	struct rpc_xprt *	r_xprt;
- 
-@@ -167,29 +164,31 @@ static void rpcb_map_release(void *data)
- static int rpcb_get_local(void)
- {
- 	int cnt;
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
--	spin_lock(&rpcb_clnt_lock);
--	if (rpcb_users)
--		rpcb_users++;
--	cnt = rpcb_users;
--	spin_unlock(&rpcb_clnt_lock);
-+	spin_lock(&sn->rpcb_clnt_lock);
-+	if (sn->rpcb_users)
-+		sn->rpcb_users++;
-+	cnt = sn->rpcb_users;
-+	spin_unlock(&sn->rpcb_clnt_lock);
- 
- 	return cnt;
- }
- 
- void rpcb_put_local(void)
- {
--	struct rpc_clnt *clnt = rpcb_local_clnt;
--	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
-+	struct rpc_clnt *clnt = sn->rpcb_local_clnt;
-+	struct rpc_clnt *clnt4 = sn->rpcb_local_clnt4;
- 	int shutdown;
- 
--	spin_lock(&rpcb_clnt_lock);
--	if (--rpcb_users == 0) {
--		rpcb_local_clnt = NULL;
--		rpcb_local_clnt4 = NULL;
-+	spin_lock(&sn->rpcb_clnt_lock);
-+	if (--sn->rpcb_users == 0) {
-+		sn->rpcb_local_clnt = NULL;
-+		sn->rpcb_local_clnt4 = NULL;
- 	}
--	shutdown = !rpcb_users;
--	spin_unlock(&rpcb_clnt_lock);
-+	shutdown = !sn->rpcb_users;
-+	spin_unlock(&sn->rpcb_clnt_lock);
- 
- 	if (shutdown) {
- 		/*
-@@ -205,14 +204,16 @@ void rpcb_put_local(void)
- 
- static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
- {
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
-+
- 	/* Protected by rpcb_create_local_mutex */
--	rpcb_local_clnt = clnt;
--	rpcb_local_clnt4 = clnt4;
-+	sn->rpcb_local_clnt = clnt;
-+	sn->rpcb_local_clnt4 = clnt4;
- 	smp_wmb(); 
--	rpcb_users = 1;
-+	sn->rpcb_users = 1;
- 	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
--			"%p, rpcb_local_clnt4: %p)\n", rpcb_local_clnt,
--			rpcb_local_clnt4);
-+			"%p, rpcb_local_clnt4: %p)\n", sn->rpcb_local_clnt,
-+			sn->rpcb_local_clnt4);
- }
- 
- /*
-@@ -432,6 +433,7 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
- 	struct rpc_message msg = {
- 		.rpc_argp	= &map,
- 	};
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
- 	dprintk("RPC:       %sregistering (%u, %u, %d, %u) with local "
- 			"rpcbind\n", (port ? "" : "un"),
-@@ -441,7 +443,7 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
- 	if (port)
- 		msg.rpc_proc = &rpcb_procedures2[RPCBPROC_SET];
- 
--	return rpcb_register_call(rpcb_local_clnt, &msg);
-+	return rpcb_register_call(sn->rpcb_local_clnt, &msg);
- }
- 
- /*
-@@ -454,6 +456,7 @@ static int rpcb_register_inet4(const struct sockaddr *sap,
- 	struct rpcbind_args *map = msg->rpc_argp;
- 	unsigned short port = ntohs(sin->sin_port);
- 	int result;
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
- 	map->r_addr = rpc_sockaddr2uaddr(sap);
- 
-@@ -466,7 +469,7 @@ static int rpcb_register_inet4(const struct sockaddr *sap,
- 	if (port)
- 		msg->rpc_proc = &rpcb_procedures4[RPCBPROC_SET];
- 
--	result = rpcb_register_call(rpcb_local_clnt4, msg);
-+	result = rpcb_register_call(sn->rpcb_local_clnt4, msg);
- 	kfree(map->r_addr);
- 	return result;
- }
-@@ -481,6 +484,7 @@ static int rpcb_register_inet6(const struct sockaddr *sap,
- 	struct rpcbind_args *map = msg->rpc_argp;
- 	unsigned short port = ntohs(sin6->sin6_port);
- 	int result;
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
- 	map->r_addr = rpc_sockaddr2uaddr(sap);
- 
-@@ -493,7 +497,7 @@ static int rpcb_register_inet6(const struct sockaddr *sap,
- 	if (port)
- 		msg->rpc_proc = &rpcb_procedures4[RPCBPROC_SET];
- 
--	result = rpcb_register_call(rpcb_local_clnt4, msg);
-+	result = rpcb_register_call(sn->rpcb_local_clnt4, msg);
- 	kfree(map->r_addr);
- 	return result;
- }
-@@ -501,6 +505,7 @@ static int rpcb_register_inet6(const struct sockaddr *sap,
- static int rpcb_unregister_all_protofamilies(struct rpc_message *msg)
- {
- 	struct rpcbind_args *map = msg->rpc_argp;
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
- 	dprintk("RPC:       unregistering [%u, %u, '%s'] with "
- 		"local rpcbind\n",
-@@ -509,7 +514,7 @@ static int rpcb_unregister_all_protofamilies(struct rpc_message *msg)
- 	map->r_addr = "";
- 	msg->rpc_proc = &rpcb_procedures4[RPCBPROC_UNSET];
- 
--	return rpcb_register_call(rpcb_local_clnt4, msg);
-+	return rpcb_register_call(sn->rpcb_local_clnt4, msg);
- }
- 
- /**
-@@ -567,8 +572,9 @@ int rpcb_v4_register(const u32 program, const u32 version,
- 	struct rpc_message msg = {
- 		.rpc_argp	= &map,
- 	};
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
--	if (rpcb_local_clnt4 == NULL)
-+	if (sn->rpcb_local_clnt4 == NULL)
- 		return -EPROTONOSUPPORT;
- 
- 	if (address == NULL)
+I'm not trying to compete with ad-hoc storage protocols: they can always
+find a niche market to peddle their ideas. Once somebody starts talking
+about a standard, then the main concept is that there is room for
+cooperation in order to achieve mutual benefit. I see no benefit here.
+
+> > IOW: I can see valid reasons for why we should test the case where the
+> > server refuses a mixed fore+back channel, but I don't see that as a
+> > reason to implement a second back channel model. That requires us to
+> > add code + tests (and perform regular regression tests) for that back
+> > channel mode, as well as dealing with the case where that model of
+> > operation too is rejected by the server.
+> 
+> I find I need to keep reminding my self what "assume" does.  But I assumed that the 5661 language for negotiating a back channel was in the draft (standard) because it added value to someone, and perhaps was implemented in some environment.  If so, perhaps such a person will chime in with an opinion.
+
+Then you need to communicate that value to me. I never signed an
+agreement to implement all of RFC5661.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
