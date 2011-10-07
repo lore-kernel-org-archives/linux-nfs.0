@@ -1,84 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:40836 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932789Ab1JaRML (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 13:12:11 -0400
-Received: by eye27 with SMTP id 27so5488337eye.19
-        for <linux-nfs@vger.kernel.org>; Mon, 31 Oct 2011 10:12:10 -0700 (PDT)
-Message-ID: <4EAED6E5.8090101@tonian.com>
-Date: Mon, 31 Oct 2011 19:12:05 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from esa-annu.mail.uoguelph.ca ([131.104.91.36]:31719 "EHLO
+	esa-annu.mail.uoguelph.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758321Ab1JGBv5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Oct 2011 21:51:57 -0400
+Date: Thu, 6 Oct 2011 21:42:23 -0400 (EDT)
+From: Rick Macklem <rmacklem@uoguelph.ca>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>,
+        nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>,
+        nfsv4 <nfsv4@ietf.org>, "Matt W. Benjamin" <matt@linuxbox.com>
+Message-ID: <1579920738.2729006.1317951743769.JavaMail.root@erie.cs.uoguelph.ca>
+In-Reply-To: <1317871693.14305.5.camel@lade.trondhjem.org>
+Subject: Re: [nfsv4] back channel flags, CREATE_SESSION,
+ BIND_CONN_TO_SESSION
 MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: Final disposition of the pNFSD tree
-References: <4EA77E00.6090002@panasas.com> <4EA799BC.5050805@tonian.com>
-In-Reply-To: <4EA799BC.5050805@tonian.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I just released pnfs-all-3.1-2011-10-31 which is much stabler than
-the 3.1-rc9+ versions.
+Trond Myklebust wrote:
+> On Wed, 2011-10-05 at 19:21 -0400, Matt W. Benjamin wrote:
+> > Hi,
+> >
+> > There seem to be legitimate reasons for an (NFSv4.1) client and/or
+> > server to prefer a dedicated callback channel.
+> 
+> That would be an assertion that is missing a lot of context and
+> explanation. Why should my client bother to support such a server?
+> 
+> > If a server wants this result, it seems from the language of 18.36.3
+> > that it should indicate it by not setting
+> > CREATE_SESSION4_FLAG_CONN_BACK_CHAN in csr_flags in the
+> > CREATE_SESSION response, presuming the flag is set in the
+> > corresponding csa_flags argument (it's not allowed to set it
+> > otherwise). The client may respond with BIND_CONN_TO_SESSION on a
+> > new channel, setting bctsa_dir to CDFC4_BACK.
+> 
+> Nope. The exact wording is:
+> 
+> If CREATE_SESSION4_FLAG_CONN_BACK_CHAN is set in csa_flags, the
+> client is requesting that the connection over which the
+> CREATE_SESSION operation arrived be associated with the
+> session's backchannel in addition to its fore channel. If the
+> server agrees, it sets CREATE_SESSION4_FLAG_CONN_BACK_CHAN in
+> the result field csr_flags. If
+> CREATE_SESSION4_FLAG_CONN_BACK_CHAN is not set in csa_flags,
+> then CREATE_SESSION4_FLAG_CONN_BACK_CHAN MUST NOT be set in
+> csr_flags.
+> 
+> I see nothing there to indicate that the server is able to request a
+> dedicated backchannel. All it says is that the server may refuse a
+> backchannel on this particular connection.
+> 
+> > Currently, the Linux and I believe also the CITI Windows client
+> > always propose channels in both directions. The Linux mainline Linux
+> > client doesn't know how to BIND_CONN_TO_SESSION, so trivially it
+> > won't negotiate any back channel if a server didn't agree to both
+> > directions today, either. I've experimentally implemented a
+> > "fallback" model in a Linux client and (partly in a) Ganesha server.
+> > I'd appreciate any feedback on the idea.
+> 
+> Yep. As I said, why should we bother adding support for servers that
+> don't? I can function perfectly well without pNFS support or
+> delegation
+> support in such a case. Performance will suck, but why do I care?
+> 
+Just fyi, what I have implemented (and I don't intend to change it) is
+what Trond currently has done. For the FreeBSD 4.1 client, it will set
+CREATE_SESSION4_FLAG_CONN_BACK_CHAN in csa_flags, but if the server
+doesn`t set it in csr_flags, I simply assume `no backchannel`. I
+don`t plan on implementing a dedicated back channel. (I suppose that
+could change if there were strong evidence that a dedicated back channel
+did improve performance significantly.)
 
-If not too late, I think this would be the best version for you to test,
-also with respect to the callback path which now works with the
-revised layout stateid tracking mechanism.
+I thought I`d post this mainly to show that there are actually times when I
+agree with Trond;-) rick
 
-Benny
-
-On 2011-10-26 07:25, Benny Halevy wrote:
-> On 2011-10-26 05:26, Boaz Harrosh wrote:
->> Benny what is the state of the PNFSD tree? Can you sign on it's stability for
->> a large scale testing or should I be using the nfsd-3.1 based tree?
->>
-> 
-> Right now there is use after free of the layout stateid that I'm working on
-> for which I'd like to have a fix ASAP, before the end of the week
-> that is due to the latest work done on top of bfields' for-3.2 patch set
-> that I merged-in.
-> 
->> As far as I could see. The last tree that did not have nfsd-3.2 
->> new state patches was pnfs-all-3.1-rc8-2011-10-06.
->>
->> pnfs-all-3.1-rc9-2011-10-17 Had some of them, but I guess not the major
->> ones. (Should I test with this one?)
-> 
-> Correct.  This version should be fine as it doesn't contain the stuff
-> I mentioned above. (looking at alloc_init_layout_state() tells)
-> 
->>
->> And pnfs-all-3.1-rc10-2011-10-18 (pnfs/pnfs-all-latest) has all of them.
->> Is it stable?
-> 
-> Nope, I sent it out during the Bakeathon hoping I'd be able to stabilize it
-> on the spot but failed to do so.
-> 
->>
->> My last heavy testing was actually on pnfs-all-3.1-rc6-2011-09-20. If I diff
->> that with pnfs-all-3.1-rc8-2011-10-06 on fs/nfsd/ I can still see huge amount
->> of for-nfsd-v3.2 changes. I know you have found some bugs, So I guess I'll stick
->> with the v3.1-rc6-pnfs based tree for the Server and v3.1 release Kernel + ore-v3.2
->> patches.
-> 
-> Sounds like a valid plan, though I always appreciate testing of the latest code
-> where possible.  So if your testing with the older version goes fine and you still
-> have some spare cycles to test the latest stable one it would be awesome.
-> 
->>
->> Do you think you will release a 3.1 based pnfs tree that is completely based on
->> the v3.1-nfsd version and the old pnfs tree, without any for-v3.2-pnfsd patches?
-> 
-> No, I'll stabilize it as it is.  It seems scary because of the use-after-free bug trashes
-> memory and causes havoc but it ain't so bad...
-> 
-> Benny
-> 
->>
->> Thanks
->> Boaz
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
