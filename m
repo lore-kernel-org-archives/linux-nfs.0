@@ -1,388 +1,278 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e34.co.us.ibm.com ([32.97.110.152]:36561 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753596Ab1JUJlM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Oct 2011 05:41:12 -0400
-Received: from /spool/local
-	by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Fri, 21 Oct 2011 03:41:11 -0600
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Andreas Gruenbacher <agruen@kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@infradead.org>, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V7 21/26] richacl: xattr mapping functions
-In-Reply-To: <1319154390.2270.52.camel@schurl.linbit>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1318951981-5508-22-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20111019222021.GB1874@fieldses.org> <87k4805alx.fsf@linux.vnet.ibm.com> <20111020091434.GC5444@fieldses.org> <20111020091946.GA23773@infradead.org> <20111020102538.GG5444@fieldses.org> <1319154390.2270.52.camel@schurl.linbit>
-Date: Fri, 21 Oct 2011 15:10:17 +0530
-Message-ID: <874nz265tq.fsf@linux.vnet.ibm.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:62383 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754021Ab1JKCcK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Oct 2011 22:32:10 -0400
+Received: by ywb5 with SMTP id 5so6037713ywb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 10 Oct 2011 19:32:10 -0700 (PDT)
+Message-ID: <4E8F31A4.6050504@tonian.com>
+Date: Fri, 07 Oct 2011 13:06:44 -0400
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Benny Halevy <bhalevy@panasas.com>, Brent Welch <welch@panasas.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Subject: Re: [PATCH 14/19] pnfs-obj: Return PNFS_NOT_ATTEMPTED in case of
+ read/write_pagelist
+References: <4E8ADEDA.4050709@panasas.com> <1317724520-27734-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <1317724520-27734-1-git-send-email-bharrosh@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 21 Oct 2011 01:46:29 +0200, Andreas Gruenbacher <agruen@kernel.org> wrote:
-> On Thu, 2011-10-20 at 06:25 -0400, J. Bruce Fields wrote:
-> > On Thu, Oct 20, 2011 at 05:19:46AM -0400, Christoph Hellwig wrote:
-> > > On Thu, Oct 20, 2011 at 05:14:34AM -0400, J. Bruce Fields wrote:
-> > > > > > Does it really make sense to use a string here just to pick between the
-> > > > > > three choices OWNER@, GROUP@, and EVERYONE@?  Why not just another small
-> > > > > > integer?  Is the goal to expand this somehow eventually?
-> > > > > 
-> > > 
-> > > > > I guess Andreas wanted the disk layout to be able to store user@domain
-> > > > > format if needed.
+On 2011-10-04 06:35, Boaz Harrosh wrote:
+> objlayout driver was always returning PNFS_ATTEMPTED from it's
+> read/write_pagelist operations. Even on error. Fix that.
 > 
-> Yep.  On the other hand, none of the code won't actually allow to use
-> user@domain identifiers, it won't help with other identifier types like
-> Windows SIDs, and it doesn't make the code any prettier, so this should
-> probably go away.
+> Start by establishing an error return API from io-engine, by
+> not returning ssize_t (length-or-error) but returning "int"
+> 0=OK, 0>Error. And clean up all return types in io-engine.
 > 
-> > > > Is that likely?  For that to be useful, tasks would need to be able to
-> > > > run as user@domain strings.  And we'd probably want owners and groups to
-> > > > also be user@domain strings.
+> Then if io-engine returned error return PNFS_NOT_ATTEMPTED
+> to generic layer. (With a dprint)
 > 
-> I really don't see this happen anytime soon, and likely not at all.
-> 
-> > > > The container people seem to eventually want to add some kind of
-> > > > namespace identifier everywhere:
-> > > > 
-> > > > 	http://marc.info/?l=linux-kernel&m=131836778427871&w=2
-> > > > 
-> > > > in which case I guess we'd likely end up with (uid, user namespace id)
-> > > > instead of user@domain?
-> 
-> The filesystem still wouldn't have namespace ids for the owner and
-> owning group, which is a much bigger issue.  I think we're safe not to
-> worry about namespace ids at this point; they also might never happen.
-> 
-> > > Storing strings is an extremly stupid idea.  The only thing that would
-> > > make sense would be storing a windows-style 128-bit GUID.
-> > > 
-> > 
-> > So if we want to do this without strings:
-> > 
-> > > > > +struct richace_xattr {
-> > > > > + __le16          e_type;
-> > > > > + __le16          e_flags;
-> > > > > + __le32          e_mask;
-> > > > > + __le32          e_id;
-> > > > > + char            e_who[0];
-> > 
-> > We could drop that last field and use some predefined values for e_id to
-> > represent owner/group/everyone in the e_type == ACE4_SPECIAL_WHO case.
-> 
-> That makes sense to me.
-> 
-> There seems to be a WELL_KNOWN_SID_TYPE enumeration which maps those
-> kinds of special identifiers to small integers in Windows; maybe it
-> makes sense to use the same numbers for OWNER@, GROUP@, and EVERYONE@.
-> 
-> > Then I'm not sure how you'd extend it if you later decided to add
-> > Windows GUID's or whatever.
-> > 
-> > But maybe it's not realistic to expect to be able to do that without a
-> > new interface and on-disk format: how could old software be expected to
-> > deal with acls that didn't use uid's?
-> 
-> The acl itself has a version field, so new formats could be introduced
-> in the future with a new version.
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 
-How about the below change. This will require richacl tools change
-also. I made the e_flags 32 bit to make sure we don't take the space
-needed NFSv4 ACL related flags.
+Looks good to me!
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 9a57039..9179fcd 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -20,19 +20,6 @@
- 
- MODULE_LICENSE("GPL");
- 
--/*
-- * Special e_who identifiers:  ACEs which have ACE4_SPECIAL_WHO set in
-- * ace->e_flags use these constants in ace->u.e_who.
-- *
-- * For efficiency, we compare pointers instead of comparing strings.
-- */
--const char richace_owner_who[]	  = "OWNER@";
--EXPORT_SYMBOL_GPL(richace_owner_who);
--const char richace_group_who[]	  = "GROUP@";
--EXPORT_SYMBOL_GPL(richace_group_who);
--const char richace_everyone_who[] = "EVERYONE@";
--EXPORT_SYMBOL_GPL(richace_everyone_who);
--
- /**
-  * richacl_alloc  -  allocate a richacl
-  * @count:	number of entries
-@@ -191,41 +178,14 @@ EXPORT_SYMBOL_GPL(richacl_want_to_mask);
- int
- richace_is_same_identifier(const struct richace *a, const struct richace *b)
- {
--#define WHO_FLAGS (ACE4_SPECIAL_WHO | ACE4_IDENTIFIER_GROUP)
-+#define WHO_FLAGS (ACE4_SPECIAL_WHO | ACE4_UNIXID_WHO | ACE4_IDENTIFIER_GROUP)
- 	if ((a->e_flags & WHO_FLAGS) != (b->e_flags & WHO_FLAGS))
- 		return 0;
--	if (a->e_flags & ACE4_SPECIAL_WHO)
--		return a->u.e_who == b->u.e_who;
--	else
--		return a->u.e_id == b->u.e_id;
-+	return a->e_id == b->e_id;
- #undef WHO_FLAGS
- }
- 
- /**
-- * richacl_set_who  -  set a special who value
-- * @ace:	acl entry
-- * @who:	who value to use
-- */
--int
--richace_set_who(struct richace *ace, const char *who)
--{
--	if (!strcmp(who, richace_owner_who))
--		who = richace_owner_who;
--	else if (!strcmp(who, richace_group_who))
--		who = richace_group_who;
--	else if (!strcmp(who, richace_everyone_who))
--		who = richace_everyone_who;
--	else
--		return -EINVAL;
--
--	ace->u.e_who = who;
--	ace->e_flags |= ACE4_SPECIAL_WHO;
--	ace->e_flags &= ~ACE4_IDENTIFIER_GROUP;
--	return 0;
--}
--EXPORT_SYMBOL_GPL(richace_set_who);
--
--/**
-  * richacl_allowed_to_who  -  mask flags allowed to a specific who value
-  *
-  * Computes the mask values allowed to a specific who value, taking
-@@ -446,10 +406,10 @@ richacl_permission(struct inode *inode, const struct richacl *acl,
- 				continue;
- 		} else if (richace_is_unix_id(ace)) {
- 			if (ace->e_flags & ACE4_IDENTIFIER_GROUP) {
--				if (!in_group_p(ace->u.e_id))
-+				if (!in_group_p(ace->e_id))
- 					continue;
- 			} else {
--				if (current_fsuid() != ace->u.e_id)
-+				if (current_fsuid() != ace->e_id)
- 					continue;
- 			}
- 		} else
-diff --git a/fs/richacl_xattr.c b/fs/richacl_xattr.c
-index 02a7986..3f1f557 100644
---- a/fs/richacl_xattr.c
-+++ b/fs/richacl_xattr.c
-@@ -58,19 +58,14 @@ richacl_from_xattr(const void *value, size_t size)
- 		goto fail_einval;
- 
- 	richacl_for_each_entry(ace, acl) {
--		const char *who = (void *)(xattr_ace + 1), *end;
--		ssize_t used = (void *)who - value;
- 
--		if (used > size)
--			goto fail_einval;
--		end = memchr(who, 0, size - used);
--		if (!end)
-+		if (((void *)xattr_ace + sizeof(*xattr_ace)) > value + size)
- 			goto fail_einval;
- 
--		ace->e_type = le16_to_cpu(xattr_ace->e_type);
--		ace->e_flags = le16_to_cpu(xattr_ace->e_flags);
--		ace->e_mask = le32_to_cpu(xattr_ace->e_mask);
--		ace->u.e_id = le32_to_cpu(xattr_ace->e_id);
-+		ace->e_type  = le16_to_cpu(xattr_ace->e_type);
-+		ace->e_flags = le32_to_cpu(xattr_ace->e_flags);
-+		ace->e_mask  = le32_to_cpu(xattr_ace->e_mask);
-+		ace->e_id    = le32_to_cpu(xattr_ace->e_id);
- 
- 		if (ace->e_flags & ~ACE4_VALID_FLAGS)
- 			goto fail_einval;
-@@ -78,13 +73,7 @@ richacl_from_xattr(const void *value, size_t size)
- 		    (ace->e_mask & ~ACE4_VALID_MASK))
- 			goto fail_einval;
- 
--		if (who == end) {
--			if (ace->u.e_id == -1)
--				goto fail_einval;  /* uid/gid needed */
--		} else if (richace_set_who(ace, who))
--			goto fail_einval;
--
--		xattr_ace = (void *)who + ALIGN(end - who + 1, 4);
-+		xattr_ace = xattr_ace + 1;
- 	}
- 
- 	return acl;
-@@ -102,13 +91,8 @@ size_t
- richacl_xattr_size(const struct richacl *acl)
- {
- 	size_t size = sizeof(struct richacl_xattr);
--	const struct richace *ace;
- 
--	richacl_for_each_entry(ace, acl) {
--		size += sizeof(struct richace_xattr) +
--			(richace_is_unix_id(ace) ? 4 :
--			 ALIGN(strlen(ace->u.e_who) + 1, 4));
--	}
-+	size += sizeof(struct richace_xattr) * acl->a_count;
- 	return size;
- }
- EXPORT_SYMBOL_GPL(richacl_xattr_size);
-@@ -136,21 +120,11 @@ richacl_to_xattr(const struct richacl *acl, void *buffer)
- 	xattr_ace = (void *)(xattr_acl + 1);
- 	richacl_for_each_entry(ace, acl) {
- 		xattr_ace->e_type = cpu_to_le16(ace->e_type);
--		xattr_ace->e_flags = cpu_to_le16(ace->e_flags &
-+		xattr_ace->e_flags = cpu_to_le32(ace->e_flags &
- 						 ACE4_VALID_FLAGS);
- 		xattr_ace->e_mask = cpu_to_le32(ace->e_mask);
--		if (richace_is_unix_id(ace)) {
--			xattr_ace->e_id = cpu_to_le32(ace->u.e_id);
--			memset(xattr_ace->e_who, 0, 4);
--			xattr_ace = (void *)xattr_ace->e_who + 4;
--		} else {
--			int sz = ALIGN(strlen(ace->u.e_who) + 1, 4);
--
--			xattr_ace->e_id = cpu_to_le32(-1);
--			memset(xattr_ace->e_who + sz - 4, 0, 4);
--			strcpy(xattr_ace->e_who, ace->u.e_who);
--			xattr_ace = (void *)xattr_ace->e_who + sz;
--		}
-+		xattr_ace->e_id = cpu_to_le32(ace->e_id);
-+		xattr_ace = xattr_ace + 1;
- 	}
- }
- EXPORT_SYMBOL_GPL(richacl_to_xattr);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 4af6d22..e4c5156 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -17,14 +17,15 @@
- #define __RICHACL_H
- #include <linux/slab.h>
- 
-+#define ACE_OWNER_ID		130
-+#define ACE_GROUP_ID		131
-+#define ACE_EVERYONE_ID		110
-+
- struct richace {
- 	unsigned short	e_type;
--	unsigned short	e_flags;
-+	unsigned int	e_flags;
- 	unsigned int	e_mask;
--	union {
--		unsigned int	e_id;
--		const char	*e_who;
--	} u;
-+	unsigned int	e_id;
- };
- 
- struct richacl {
-@@ -74,8 +75,10 @@ struct richacl {
- /*#define ACE4_FAILED_ACCESS_ACE_FLAG	0x0020*/
- #define ACE4_IDENTIFIER_GROUP		0x0040
- #define ACE4_INHERITED_ACE		0x0080
--/* in-memory representation only */
--#define ACE4_SPECIAL_WHO		0x4000
-+/* richacl specific flag values */
-+#define ACE4_SPECIAL_WHO		0x80000000
-+#define ACE4_UNIXID_WHO			0x40000000
-+
- 
- #define ACE4_VALID_FLAGS (			\
- 	ACE4_FILE_INHERIT_ACE |			\
-@@ -83,7 +86,9 @@ struct richacl {
- 	ACE4_NO_PROPAGATE_INHERIT_ACE |		\
- 	ACE4_INHERIT_ONLY_ACE |			\
- 	ACE4_IDENTIFIER_GROUP |			\
--	ACE4_INHERITED_ACE)
-+	ACE4_INHERITED_ACE |			\
-+	ACE4_SPECIAL_WHO |			\
-+	ACE4_UNIXID_WHO)
- 
- /* e_mask bitflags */
- #define ACE4_READ_DATA			0x00000001
-@@ -254,14 +259,6 @@ richacl_is_protected(const struct richacl *acl)
- 	return acl->a_flags & ACL4_PROTECTED;
- }
- 
--/*
-- * Special e_who identifiers: we use these pointer values in comparisons
-- * instead of doing a strcmp.
-- */
--extern const char richace_owner_who[];
--extern const char richace_group_who[];
--extern const char richace_everyone_who[];
--
- /**
-  * richace_is_owner  -  check if @ace is an OWNER@ entry
-  */
-@@ -269,7 +266,7 @@ static inline int
- richace_is_owner(const struct richace *ace)
- {
- 	return (ace->e_flags & ACE4_SPECIAL_WHO) &&
--	       ace->u.e_who == richace_owner_who;
-+	       ace->e_id == ACE_OWNER_ID;
- }
- 
- /**
-@@ -279,7 +276,7 @@ static inline int
- richace_is_group(const struct richace *ace)
- {
- 	return (ace->e_flags & ACE4_SPECIAL_WHO) &&
--	       ace->u.e_who == richace_group_who;
-+	       ace->e_id == ACE_GROUP_ID;
- }
- 
- /**
-@@ -289,7 +286,7 @@ static inline int
- richace_is_everyone(const struct richace *ace)
- {
- 	return (ace->e_flags & ACE4_SPECIAL_WHO) &&
--	       ace->u.e_who == richace_everyone_who;
-+	       ace->e_id == ACE_EVERYONE_ID;
- }
- 
- /**
-@@ -298,7 +295,7 @@ richace_is_everyone(const struct richace *ace)
- static inline int
- richace_is_unix_id(const struct richace *ace)
- {
--	return !(ace->e_flags & ACE4_SPECIAL_WHO);
-+	return (ace->e_flags & ACE4_UNIXID_WHO);
- }
- 
- /**
-@@ -357,7 +354,7 @@ richace_is_deny(const struct richace *ace)
- extern struct richacl *richacl_alloc(int);
- extern int richace_is_same_identifier(const struct richace *,
- 				      const struct richace *);
--extern int richace_set_who(struct richace *, const char *);
-+extern int richace_set_who(struct richace *, const u8*, u_int32_t);
- extern int richacl_masks_to_mode(const struct richacl *);
- extern unsigned int richacl_mode_to_mask(mode_t);
- extern unsigned int richacl_want_to_mask(unsigned int);
-diff --git a/include/linux/richacl_xattr.h b/include/linux/richacl_xattr.h
-index f79ec12..19cb61e 100644
---- a/include/linux/richacl_xattr.h
-+++ b/include/linux/richacl_xattr.h
-@@ -22,10 +22,9 @@
- 
- struct richace_xattr {
- 	__le16		e_type;
--	__le16		e_flags;
-+	__le32		e_flags;
- 	__le32		e_mask;
- 	__le32		e_id;
--	char		e_who[0];
- };
- 
- struct richacl_xattr {
+Reviewed-by: Benny Halevy <bhalevy@tonian.com>
 
+> ---
+>  fs/nfs/objlayout/objio_osd.c |   32 ++++++++++++++++----------------
+>  fs/nfs/objlayout/objlayout.c |   36 +++++++++++++++++++-----------------
+>  fs/nfs/objlayout/objlayout.h |    4 ++--
+>  3 files changed, 37 insertions(+), 35 deletions(-)
+> 
+> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+> index d0cda12..0c7c9ec 100644
+> --- a/fs/nfs/objlayout/objio_osd.c
+> +++ b/fs/nfs/objlayout/objio_osd.c
+> @@ -142,7 +142,7 @@ OBJIO_LSEG(struct pnfs_layout_segment *lseg)
+>  }
+>  
+>  struct objio_state;
+> -typedef ssize_t (*objio_done_fn)(struct objio_state *ios);
+> +typedef int (*objio_done_fn)(struct objio_state *ios);
+>  
+>  struct objio_state {
+>  	/* Generic layer */
+> @@ -720,7 +720,7 @@ out:
+>  	return 0;
+>  }
+>  
+> -static ssize_t _sync_done(struct objio_state *ios)
+> +static int _sync_done(struct objio_state *ios)
+>  {
+>  	struct completion *waiting = ios->private;
+>  
+> @@ -742,10 +742,10 @@ static void _done_io(struct osd_request *or, void *p)
+>  	kref_put(&ios->kref, _last_io);
+>  }
+>  
+> -static ssize_t _io_exec(struct objio_state *ios)
+> +static int _io_exec(struct objio_state *ios)
+>  {
+>  	DECLARE_COMPLETION_ONSTACK(wait);
+> -	ssize_t status = 0; /* sync status */
+> +	int ret = 0;
+>  	unsigned i;
+>  	objio_done_fn saved_done_fn = ios->done;
+>  	bool sync = ios->ol_state.sync;
+> @@ -771,16 +771,16 @@ static ssize_t _io_exec(struct objio_state *ios)
+>  
+>  	if (sync) {
+>  		wait_for_completion(&wait);
+> -		status = saved_done_fn(ios);
+> +		ret = saved_done_fn(ios);
+>  	}
+>  
+> -	return status;
+> +	return ret;
+>  }
+>  
+>  /*
+>   * read
+>   */
+> -static ssize_t _read_done(struct objio_state *ios)
+> +static int _read_done(struct objio_state *ios)
+>  {
+>  	ssize_t status;
+>  	int ret = _io_check(ios, false);
+> @@ -793,7 +793,7 @@ static ssize_t _read_done(struct objio_state *ios)
+>  		status = ret;
+>  
+>  	objlayout_read_done(&ios->ol_state, status, ios->ol_state.sync);
+> -	return status;
+> +	return ret;
+>  }
+>  
+>  static int _read_mirrors(struct objio_state *ios, unsigned cur_comp)
+> @@ -833,7 +833,7 @@ err:
+>  	return ret;
+>  }
+>  
+> -static ssize_t _read_exec(struct objio_state *ios)
+> +static int _read_exec(struct objio_state *ios)
+>  {
+>  	unsigned i;
+>  	int ret;
+> @@ -847,14 +847,14 @@ static ssize_t _read_exec(struct objio_state *ios)
+>  	}
+>  
+>  	ios->done = _read_done;
+> -	return _io_exec(ios); /* In sync mode exec returns the io status */
+> +	return _io_exec(ios);
+>  
+>  err:
+>  	_io_free(ios);
+>  	return ret;
+>  }
+>  
+> -ssize_t objio_read_pagelist(struct objlayout_io_state *ol_state)
+> +int objio_read_pagelist(struct objlayout_io_state *ol_state)
+>  {
+>  	struct objio_state *ios = container_of(ol_state, struct objio_state,
+>  					       ol_state);
+> @@ -870,7 +870,7 @@ ssize_t objio_read_pagelist(struct objlayout_io_state *ol_state)
+>  /*
+>   * write
+>   */
+> -static ssize_t _write_done(struct objio_state *ios)
+> +static int _write_done(struct objio_state *ios)
+>  {
+>  	ssize_t status;
+>  	int ret = _io_check(ios, true);
+> @@ -887,7 +887,7 @@ static ssize_t _write_done(struct objio_state *ios)
+>  	}
+>  
+>  	objlayout_write_done(&ios->ol_state, status, ios->ol_state.sync);
+> -	return status;
+> +	return ret;
+>  }
+>  
+>  static int _write_mirrors(struct objio_state *ios, unsigned cur_comp)
+> @@ -955,7 +955,7 @@ err:
+>  	return ret;
+>  }
+>  
+> -static ssize_t _write_exec(struct objio_state *ios)
+> +static int _write_exec(struct objio_state *ios)
+>  {
+>  	unsigned i;
+>  	int ret;
+> @@ -969,14 +969,14 @@ static ssize_t _write_exec(struct objio_state *ios)
+>  	}
+>  
+>  	ios->done = _write_done;
+> -	return _io_exec(ios); /* In sync mode exec returns the io->status */
+> +	return _io_exec(ios);
+>  
+>  err:
+>  	_io_free(ios);
+>  	return ret;
+>  }
+>  
+> -ssize_t objio_write_pagelist(struct objlayout_io_state *ol_state, bool stable)
+> +int objio_write_pagelist(struct objlayout_io_state *ol_state, bool stable)
+>  {
+>  	struct objio_state *ios = container_of(ol_state, struct objio_state,
+>  					       ol_state);
+> diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+> index 1300736..99c807d 100644
+> --- a/fs/nfs/objlayout/objlayout.c
+> +++ b/fs/nfs/objlayout/objlayout.c
+> @@ -315,16 +315,13 @@ objlayout_read_pagelist(struct nfs_read_data *rdata)
+>  	loff_t offset = rdata->args.offset;
+>  	size_t count = rdata->args.count;
+>  	struct objlayout_io_state *state;
+> -	ssize_t status = 0;
+> +	int err;
+>  	loff_t eof;
+>  
+> -	dprintk("%s: Begin inode %p offset %llu count %d\n",
+> -		__func__, rdata->inode, offset, (int)count);
+> -
+>  	eof = i_size_read(rdata->inode);
+>  	if (unlikely(offset + count > eof)) {
+>  		if (offset >= eof) {
+> -			status = 0;
+> +			err = 0;
+>  			rdata->res.count = 0;
+>  			rdata->res.eof = 1;
+>  			/*FIXME: do we need to call pnfs_ld_read_done() */
+> @@ -341,14 +338,19 @@ objlayout_read_pagelist(struct nfs_read_data *rdata)
+>  					 rdata->lseg, rdata,
+>  					 GFP_KERNEL);
+>  	if (unlikely(!state)) {
+> -		status = -ENOMEM;
+> +		err = -ENOMEM;
+>  		goto out;
+>  	}
+> +	dprintk("%s: inode(%lx) offset 0x%llx count 0x%Zx eof=%d\n",
+> +		__func__, rdata->inode->i_ino, offset, count, rdata->res.eof);
+>  
+> -	status = objio_read_pagelist(state);
+> +	err = objio_read_pagelist(state);
+>   out:
+> -	dprintk("%s: Return status %Zd\n", __func__, status);
+> -	rdata->pnfs_error = status;
+> +	if (unlikely(err)) {
+> +		rdata->pnfs_error = err;
+> +		dprintk("%s: Returned Error %d\n", __func__, err);
+> +		return PNFS_NOT_ATTEMPTED;
+> +	}
+>  	return PNFS_ATTEMPTED;
+>  }
+>  
+> @@ -406,10 +408,7 @@ objlayout_write_pagelist(struct nfs_write_data *wdata,
+>  			 int how)
+>  {
+>  	struct objlayout_io_state *state;
+> -	ssize_t status;
+> -
+> -	dprintk("%s: Begin inode %p offset %llu count %u\n",
+> -		__func__, wdata->inode, wdata->args.offset, wdata->args.count);
+> +	int err;
+>  
+>  	state = objlayout_alloc_io_state(NFS_I(wdata->inode)->layout,
+>  					 wdata->args.pages,
+> @@ -419,16 +418,19 @@ objlayout_write_pagelist(struct nfs_write_data *wdata,
+>  					 wdata->lseg, wdata,
+>  					 GFP_NOFS);
+>  	if (unlikely(!state)) {
+> -		status = -ENOMEM;
+> +		err = -ENOMEM;
+>  		goto out;
+>  	}
+>  
+>  	state->sync = how & FLUSH_SYNC;
+>  
+> -	status = objio_write_pagelist(state, how & FLUSH_STABLE);
+> +	err = objio_write_pagelist(state, how & FLUSH_STABLE);
+>   out:
+> -	dprintk("%s: Return status %Zd\n", __func__, status);
+> -	wdata->pnfs_error = status;
+> +	if (unlikely(err)) {
+> +		wdata->pnfs_error = err;
+> +		dprintk("%s: Returned Error %d\n", __func__, err);
+> +		return PNFS_NOT_ATTEMPTED;
+> +	}
+>  	return PNFS_ATTEMPTED;
+>  }
+>  
+> diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
+> index ffb884c..4edac9b 100644
+> --- a/fs/nfs/objlayout/objlayout.h
+> +++ b/fs/nfs/objlayout/objlayout.h
+> @@ -115,8 +115,8 @@ extern int objio_alloc_io_state(
+>  	gfp_t gfp_flags);
+>  extern void objio_free_io_state(struct objlayout_io_state *state);
+>  
+> -extern ssize_t objio_read_pagelist(struct objlayout_io_state *ol_state);
+> -extern ssize_t objio_write_pagelist(struct objlayout_io_state *ol_state,
+> +extern int objio_read_pagelist(struct objlayout_io_state *ol_state);
+> +extern int objio_write_pagelist(struct objlayout_io_state *ol_state,
+>  				    bool stable);
+>  
+>  /*
