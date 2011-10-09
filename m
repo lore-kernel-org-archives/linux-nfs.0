@@ -1,271 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:43789 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932356Ab1JaVp5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 17:45:57 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Brent Welch <welch@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
-        open-osd <osd-dev@open-osd.org>
-Subject: [PATCH 2/8] pnfs-obj: Return PNFS_NOT_ATTEMPTED in case of read/write_pagelist
-Date: Mon, 31 Oct 2011 14:45:46 -0700
-Message-ID: <1320097546-775-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4EAF146D.5060507@panasas.com>
-References: <4EAF146D.5060507@panasas.com>
+Received: from mga03.intel.com ([143.182.124.21]:61938 "EHLO mga03.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750773Ab1JILvL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 9 Oct 2011 07:51:11 -0400
+Date: Sun, 9 Oct 2011 15:25:41 +0800
+From: Wu Fengguang <fengguang.wu@intel.com>
+To: Yuri Csapo <ycsapo@mines.edu>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFS performance
+Message-ID: <20111009072541.GA14690@localhost>
+References: <4E8F2C8D.7070201@mines.edu>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E8F2C8D.7070201@mines.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-objlayout driver was always returning PNFS_ATTEMPTED from it's
-read/write_pagelist operations. Even on error. Fix that.
+Hi Yuri,
 
-Start by establishing an error return API from io-engine, by
-not returning ssize_t (length-or-error) but returning "int"
-0=OK, 0>Error. And clean up all return types in io-engine.
+On Fri, Oct 07, 2011 at 10:45:01AM -0600, Yuri Csapo wrote:
+> Hi all,
+> 
+> We've been battling a strange performance problem with one of our NFS
+> servers. At mostly irregular intervals, our users report extremely slow
+> responses. Those who are command line-challenged say that their windows
+> "gray out" for a few seconds and won't let them do anything. Those who
+> use the command line more report things like simple commands like cat
+> taking a few seconds to "start."
+> 
+> On the server, the only indication we can see that anything is wrong is
+> %iowait climbing above 80% while the event is happening. Running iotop
+> we can see that it's the several nfsd processes that are driving IO.
+> Another thing we have noticed is that when the backup process (Symantec
+> NetBackup) runs, %iowait pegs at 100% for the duration.
 
-Then if io-engine returned error return PNFS_NOT_ATTEMPTED
-to generic layer. (With a dprint)
+Are there heavy writes during the time?  If so, it's likely all nfsd
+processes get stuck directly on IO or indirectly on some inode mutex.
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfs/objlayout/objio_osd.c |   32 ++++++++++++++++----------------
- fs/nfs/objlayout/objlayout.c |   36 +++++++++++++++++++-----------------
- fs/nfs/objlayout/objlayout.h |    4 ++--
- 3 files changed, 37 insertions(+), 35 deletions(-)
+This could be improved by the "async" export option on the server side,
+however at the cost of losing data in server crash events.
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index d0cda12..0c7c9ec 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -142,7 +142,7 @@ struct objio_segment {
- }
- 
- struct objio_state;
--typedef ssize_t (*objio_done_fn)(struct objio_state *ios);
-+typedef int (*objio_done_fn)(struct objio_state *ios);
- 
- struct objio_state {
- 	/* Generic layer */
-@@ -720,7 +720,7 @@ static int _io_rw_pagelist(struct objio_state *ios, gfp_t gfp_flags)
- 	return 0;
- }
- 
--static ssize_t _sync_done(struct objio_state *ios)
-+static int _sync_done(struct objio_state *ios)
- {
- 	struct completion *waiting = ios->private;
- 
-@@ -742,10 +742,10 @@ static void _done_io(struct osd_request *or, void *p)
- 	kref_put(&ios->kref, _last_io);
- }
- 
--static ssize_t _io_exec(struct objio_state *ios)
-+static int _io_exec(struct objio_state *ios)
- {
- 	DECLARE_COMPLETION_ONSTACK(wait);
--	ssize_t status = 0; /* sync status */
-+	int ret = 0;
- 	unsigned i;
- 	objio_done_fn saved_done_fn = ios->done;
- 	bool sync = ios->ol_state.sync;
-@@ -771,16 +771,16 @@ static ssize_t _io_exec(struct objio_state *ios)
- 
- 	if (sync) {
- 		wait_for_completion(&wait);
--		status = saved_done_fn(ios);
-+		ret = saved_done_fn(ios);
- 	}
- 
--	return status;
-+	return ret;
- }
- 
- /*
-  * read
-  */
--static ssize_t _read_done(struct objio_state *ios)
-+static int _read_done(struct objio_state *ios)
- {
- 	ssize_t status;
- 	int ret = _io_check(ios, false);
-@@ -793,7 +793,7 @@ static ssize_t _read_done(struct objio_state *ios)
- 		status = ret;
- 
- 	objlayout_read_done(&ios->ol_state, status, ios->ol_state.sync);
--	return status;
-+	return ret;
- }
- 
- static int _read_mirrors(struct objio_state *ios, unsigned cur_comp)
-@@ -833,7 +833,7 @@ static int _read_mirrors(struct objio_state *ios, unsigned cur_comp)
- 	return ret;
- }
- 
--static ssize_t _read_exec(struct objio_state *ios)
-+static int _read_exec(struct objio_state *ios)
- {
- 	unsigned i;
- 	int ret;
-@@ -847,14 +847,14 @@ static ssize_t _read_exec(struct objio_state *ios)
- 	}
- 
- 	ios->done = _read_done;
--	return _io_exec(ios); /* In sync mode exec returns the io status */
-+	return _io_exec(ios);
- 
- err:
- 	_io_free(ios);
- 	return ret;
- }
- 
--ssize_t objio_read_pagelist(struct objlayout_io_state *ol_state)
-+int objio_read_pagelist(struct objlayout_io_state *ol_state)
- {
- 	struct objio_state *ios = container_of(ol_state, struct objio_state,
- 					       ol_state);
-@@ -870,7 +870,7 @@ ssize_t objio_read_pagelist(struct objlayout_io_state *ol_state)
- /*
-  * write
-  */
--static ssize_t _write_done(struct objio_state *ios)
-+static int _write_done(struct objio_state *ios)
- {
- 	ssize_t status;
- 	int ret = _io_check(ios, true);
-@@ -887,7 +887,7 @@ static ssize_t _write_done(struct objio_state *ios)
- 	}
- 
- 	objlayout_write_done(&ios->ol_state, status, ios->ol_state.sync);
--	return status;
-+	return ret;
- }
- 
- static int _write_mirrors(struct objio_state *ios, unsigned cur_comp)
-@@ -955,7 +955,7 @@ static int _write_mirrors(struct objio_state *ios, unsigned cur_comp)
- 	return ret;
- }
- 
--static ssize_t _write_exec(struct objio_state *ios)
-+static int _write_exec(struct objio_state *ios)
- {
- 	unsigned i;
- 	int ret;
-@@ -969,14 +969,14 @@ static ssize_t _write_exec(struct objio_state *ios)
- 	}
- 
- 	ios->done = _write_done;
--	return _io_exec(ios); /* In sync mode exec returns the io->status */
-+	return _io_exec(ios);
- 
- err:
- 	_io_free(ios);
- 	return ret;
- }
- 
--ssize_t objio_write_pagelist(struct objlayout_io_state *ol_state, bool stable)
-+int objio_write_pagelist(struct objlayout_io_state *ol_state, bool stable)
- {
- 	struct objio_state *ios = container_of(ol_state, struct objio_state,
- 					       ol_state);
-diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-index 1300736..99c807d 100644
---- a/fs/nfs/objlayout/objlayout.c
-+++ b/fs/nfs/objlayout/objlayout.c
-@@ -315,16 +315,13 @@ enum pnfs_try_status
- 	loff_t offset = rdata->args.offset;
- 	size_t count = rdata->args.count;
- 	struct objlayout_io_state *state;
--	ssize_t status = 0;
-+	int err;
- 	loff_t eof;
- 
--	dprintk("%s: Begin inode %p offset %llu count %d\n",
--		__func__, rdata->inode, offset, (int)count);
--
- 	eof = i_size_read(rdata->inode);
- 	if (unlikely(offset + count > eof)) {
- 		if (offset >= eof) {
--			status = 0;
-+			err = 0;
- 			rdata->res.count = 0;
- 			rdata->res.eof = 1;
- 			/*FIXME: do we need to call pnfs_ld_read_done() */
-@@ -341,14 +338,19 @@ enum pnfs_try_status
- 					 rdata->lseg, rdata,
- 					 GFP_KERNEL);
- 	if (unlikely(!state)) {
--		status = -ENOMEM;
-+		err = -ENOMEM;
- 		goto out;
- 	}
-+	dprintk("%s: inode(%lx) offset 0x%llx count 0x%Zx eof=%d\n",
-+		__func__, rdata->inode->i_ino, offset, count, rdata->res.eof);
- 
--	status = objio_read_pagelist(state);
-+	err = objio_read_pagelist(state);
-  out:
--	dprintk("%s: Return status %Zd\n", __func__, status);
--	rdata->pnfs_error = status;
-+	if (unlikely(err)) {
-+		rdata->pnfs_error = err;
-+		dprintk("%s: Returned Error %d\n", __func__, err);
-+		return PNFS_NOT_ATTEMPTED;
-+	}
- 	return PNFS_ATTEMPTED;
- }
- 
-@@ -406,10 +408,7 @@ enum pnfs_try_status
- 			 int how)
- {
- 	struct objlayout_io_state *state;
--	ssize_t status;
--
--	dprintk("%s: Begin inode %p offset %llu count %u\n",
--		__func__, wdata->inode, wdata->args.offset, wdata->args.count);
-+	int err;
- 
- 	state = objlayout_alloc_io_state(NFS_I(wdata->inode)->layout,
- 					 wdata->args.pages,
-@@ -419,16 +418,19 @@ enum pnfs_try_status
- 					 wdata->lseg, wdata,
- 					 GFP_NOFS);
- 	if (unlikely(!state)) {
--		status = -ENOMEM;
-+		err = -ENOMEM;
- 		goto out;
- 	}
- 
- 	state->sync = how & FLUSH_SYNC;
- 
--	status = objio_write_pagelist(state, how & FLUSH_STABLE);
-+	err = objio_write_pagelist(state, how & FLUSH_STABLE);
-  out:
--	dprintk("%s: Return status %Zd\n", __func__, status);
--	wdata->pnfs_error = status;
-+	if (unlikely(err)) {
-+		wdata->pnfs_error = err;
-+		dprintk("%s: Returned Error %d\n", __func__, err);
-+		return PNFS_NOT_ATTEMPTED;
-+	}
- 	return PNFS_ATTEMPTED;
- }
- 
-diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
-index ffb884c..4edac9b 100644
---- a/fs/nfs/objlayout/objlayout.h
-+++ b/fs/nfs/objlayout/objlayout.h
-@@ -115,8 +115,8 @@ extern int objio_alloc_io_state(
- 	gfp_t gfp_flags);
- extern void objio_free_io_state(struct objlayout_io_state *state);
- 
--extern ssize_t objio_read_pagelist(struct objlayout_io_state *ol_state);
--extern ssize_t objio_write_pagelist(struct objlayout_io_state *ol_state,
-+extern int objio_read_pagelist(struct objlayout_io_state *ol_state);
-+extern int objio_write_pagelist(struct objlayout_io_state *ol_state,
- 				    bool stable);
- 
- /*
--- 
-1.7.6.4
+Thanks,
+Fengguang
+
+> I know that normally this would mean disk bottlenecks, but look at the
+> specs below and you will see why I find that hard to believe. We have
+> tried a ton of different monitoring tools and we are trying to fiddle
+> with parameters at the NFS, tcp, and iSCSI levels to see if we can
+> figure this out, so far with not a lot of luck.
+> 
+> The server
+> ----------
+> 
+> . VMware virtual machine
+> . 2 GB RAM, which sounds small but we rarely ever see any swapping
+> . 2 cores
+> . Stock CentOS 6.0 (Final)
+> 
+> The host
+> --------
+> 
+> . Dell PowerEdge M610 blade
+> . 2 x quad-core 2.4 GHz Xeon (L5530)
+> . 48 GB RAM
+> . ESXi 4
+> 
+> The storage
+> -----------
+> 
+> The VM itself, as well as its system volume, reside on a group of 4
+> EquaLogic ps6000 with 16 x 15K SAS disks each, on RAID50. The system
+> volume (sda) is a VMware vmdk.
+> 
+> The data volume (sdb) is an iSCSI volume that the VM connects directly
+> to, on an EquaLogic ps6510 with 48 x 3Gb/s SATA disks on RAID50.
+> 
+> The clients
+> -----------
+> 
+> . About 50 clients
+> . Brand new Dell Optiplexes (not sure about model)
+> . 8 GB RAM
+> . 2 x quad-core Intel Core i7-2600 @ 3.4 GHz
+> . Ubuntu 10.04 lucid lynx LTS
+> 
+> The network
+> -----------
+> 
+> . The blade has 6 NICs in 3 bonded pairs, all Gb Ethernet. One pair is
+> for regular networking, one for vMotion, and one for SAN iSCSI access.
+> The particular VM has two virtual (VMXNET3) NICs, one for regular
+> service and one for iSCSI access. The blade links to a Cisco 3750 2
+> switch stack.
+> 
+> . The ps6000 SAN links to the same 3750 stack through 4 bonded pairs (8
+> NICs) each.
+> 
+> . The 3750 uplinks to a Cisco 6509.
+> 
+> . The 6509 downlinks to a different 3750 stack in a different building,
+> through fiber, where all workstations link.
+> 
+> . The 6509 also links to a 3750x with 2 links of Gb Ethernet. The 3750x
+> links over a 10 GB Ethernet to the ps6510 SAN.
+> 
+> I will appreciate any idea or insight into finding this problem.
+> 
+> Thanks!
+> 
+> Yuri
+> 
+
 
