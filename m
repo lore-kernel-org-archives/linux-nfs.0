@@ -1,83 +1,151 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:63907 "EHLO mx2.netapp.com"
+Received: from mga14.intel.com ([143.182.124.37]:55240 "EHLO mga14.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751072Ab1J2TTa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 15:19:30 -0400
+	id S1753031Ab1JJNHa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Oct 2011 09:07:30 -0400
+Date: Mon, 10 Oct 2011 21:07:22 +0800
+From: Wu Fengguang <fengguang.wu@intel.com>
+To: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
+        Christoph Hellwig <hch@lst.de>, Dave Chinner <david@fromorbit.com>,
+        Greg Thelen <gthelen@google.com>, Minchan Kim <minchan.kim@gmail.com>,
+        Vivek Goyal <vgoyal@redhat.com>, Andrea Righi <arighi@develer.com>,
+        linux-mm <linux-mm@kvack.org>, LKML <linux-kernel@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 00/11] IO-less dirty throttling v12
+Message-ID: <20111010130722.GA11387@localhost>
+References: <20111003134228.090592370@intel.com>
+ <1318248846.14400.21.camel@laptop>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: NFS4ERR_STALE_CLIENTID loop
-Date: Sat, 29 Oct 2011 12:19:13 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7479@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <4B27362C-FBC1-4F64-B611-85D5FF6C5359@oracle.com>
-References: <1319455367.8505.3.camel@lade.trondhjem.org> <20111024131734.GE32587@rd.bbc.co.uk> <1319463165.2734.1.camel@lade.trondhjem.org> <20111024145027.GF32587@rd.bbc.co.uk> <1319470302.2734.4.camel@lade.trondhjem.org> <20111027221742.GI32587@rd.bbc.co.uk> <20111029002500.GA2011@rd.bbc.co.uk> <1319909376.2760.11.camel@lade.trondhjem.org> <20111029181509.GE12122@fieldses.org> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7474@SACMVEXC2-PRD.hq.netapp.com> <20111029184759.GG12122@fieldses.org> <4B27362C-FBC1-4F64-B611-85D5FF6C5359@oracle.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Chuck Lever" <chuck.lever@oracle.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "David Flynn" <davidf@rd.bbc.co.uk>, <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1318248846.14400.21.camel@laptop>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Chuck Lever [mailto:chuck.lever@oracle.com]
-> Sent: Saturday, October 29, 2011 8:51 PM
-> To: J. Bruce Fields
-> Cc: Myklebust, Trond; David Flynn; linux-nfs@vger.kernel.org
-> Subject: Re: NFS4ERR_STALE_CLIENTID loop
+On Mon, Oct 10, 2011 at 08:14:06PM +0800, Peter Zijlstra wrote:
+> On Mon, 2011-10-03 at 21:42 +0800, Wu Fengguang wrote:
+> > This is the minimal IO-less balance_dirty_pages() changes that are expected to
+> > be regression free (well, except for NFS).
 > 
+> I can't seem to get around reviewing these patches in detail, but fwiw
+> I'm fine with pushing fwd with this set (plus a possible NFS fix).
 > 
-> On Oct 29, 2011, at 2:47 PM, J. Bruce Fields wrote:
+> I don't see a reason to strip it down even further.
 > 
-> > On Sat, Oct 29, 2011 at 11:21:13AM -0700, Myklebust, Trond wrote:
-> >>> From: J. Bruce Fields [mailto:bfields@fieldses.org] On Sat, Oct
-29,
-> >>> 2011 at 07:29:36PM +0200, Trond Myklebust wrote:
-> >>>> OK. This is the first time I've seen this tcpdump.
-> >>>>
-> >>>> The problem seems like a split-brain issue on the server... On
-the
-> >> one
-> >>>> hand, it is happily telling us that our lease is OK when we
-RENEW.
-> >>>> Then when we try to use said lease in an OPEN, it is replying
-with
-> >>>> STALE_CLIENTID.
-> >>>>
-> >>>> IOW: This isn't a problem I can fix on the client whether or not
-I
-> >> add
-> >>>> exponential backoff. The problem needs to be addressed on the
-> >>>> server by the Solaris folks....
-> >>>
-> >>> Is there any simple thing we could do on the client to reduce the
-> >> impact of
-> >>> these sorts of loops?
-> >>
-> >> WHY? Those loops aren't supposed to happen if the server works
-> >> according to spec.
-> >
-> > Yes, and it's not something I care that strongly about, really, my
-> > only observation is that this sort of failure (an implementation bug
-> > on one side or another resulting in a loop) seems to have been
-common
-> > (based on no hard data, just my vague memories of list threads), and
-> > the results fairly obnoxious (possibly even for unrelated hosts on
-the
-> network).
-> > So if there's some simple way to fail more gracefully it might be
-> > helpful.
+> So I guess that's:
 > 
-> For what it's worth, I agree that client implementations should
-attempt to
-> behave more gracefully in the face of server problems, be they the
-result of
-> bugs or the result of other issues specific to that server.  Problems
-like this
-> make NFSv4 as a protocol look bad.
+> Acked-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
 
-I can't see what a client can do in this situation except possibly just
-give up after a while and throw a SERVER_BROKEN error (which means data
-loss). That still won't make NFSv4 look good...
+Thanks :-) In fact you've already reviewed the major parts of the
+patchset in great details and helped simplify parts of the algorithm,
+which I appreciate a lot.
 
-  Trond
+As for the NFS performance, the dd tests show that adding a writeback
+wait queue to limit the number of NFS PG_writeback pages (patches
+will follow) is able to gain 48% throughput in itself:
 
+      3.1.0-rc8-ioless6+         3.1.0-rc8-nfs-wq+  
+------------------------  ------------------------  
+                   22.43       +81.8%        40.77  NFS-thresh=100M/nfs-10dd-1M-32p-32768M-100M:10-X
+                   28.21       +52.6%        43.07  NFS-thresh=100M/nfs-1dd-1M-32p-32768M-100M:10-X
+                   29.21       +55.4%        45.39  NFS-thresh=100M/nfs-2dd-1M-32p-32768M-100M:10-X
+                   14.12       +40.4%        19.83  NFS-thresh=10M/nfs-10dd-1M-32p-32768M-10M:10-X
+                   29.44       +11.4%        32.81  NFS-thresh=10M/nfs-1dd-1M-32p-32768M-10M:10-X
+                    9.09      +240.9%        30.97  NFS-thresh=10M/nfs-2dd-1M-32p-32768M-10M:10-X
+                   25.68       +84.6%        47.42  NFS-thresh=1G/nfs-10dd-1M-32p-32768M-1024M:10-X
+                   41.06        +7.6%        44.20  NFS-thresh=1G/nfs-1dd-1M-32p-32768M-1024M:10-X
+                   39.13       +25.9%        49.26  NFS-thresh=1G/nfs-2dd-1M-32p-32768M-1024M:10-X
+                  238.38       +48.4%       353.72  TOTAL
+
+Which will result in 28% overall improvements over the vanilla kernel:
+
+      3.1.0-rc4-vanilla+         3.1.0-rc8-nfs-wq+  
+------------------------  ------------------------  
+                   20.89       +95.2%        40.77  NFS-thresh=100M/nfs-10dd-1M-32p-32768M-100M:10-X
+                   39.43        +9.2%        43.07  NFS-thresh=100M/nfs-1dd-1M-32p-32768M-100M:10-X
+                   26.60       +70.6%        45.39  NFS-thresh=100M/nfs-2dd-1M-32p-32768M-100M:10-X
+                   12.70       +56.1%        19.83  NFS-thresh=10M/nfs-10dd-1M-32p-32768M-10M:10-X
+                   27.41       +19.7%        32.81  NFS-thresh=10M/nfs-1dd-1M-32p-32768M-10M:10-X
+                   26.52       +16.8%        30.97  NFS-thresh=10M/nfs-2dd-1M-32p-32768M-10M:10-X
+                   40.70       +16.5%        47.42  NFS-thresh=1G/nfs-10dd-1M-32p-32768M-1024M:10-X
+                   45.28        -2.4%        44.20  NFS-thresh=1G/nfs-1dd-1M-32p-32768M-1024M:10-X
+                   35.74       +37.8%        49.26  NFS-thresh=1G/nfs-2dd-1M-32p-32768M-1024M:10-X
+                  275.28       +28.5%       353.72  TOTAL
+
+As for the most concerned NFS commits, the wait queue patch increases
+the (nr_commits / bytes_written) ratio by +74% for the thresh=1G,10dd
+case, +55% for the thresh=100M,10dd case, and mostly ignorable in the
+other 1dd, 2dd cases, which looks acceptable.
+
+The other noticeable change of the wait queue is, the RTT time per
+write is reduced by 1-2 order(s) in many of the below cases (from
+dozens of seconds to hundreds of milliseconds).
+
+Thanks,
+Fengguang
+---
+
+PS. mountstats numbers
+
+thresh=1GB
+==========
+
+1dd
+
+vanilla        WRITE: 33108 33108 0 13794766688 4502688 89550800 1826162 91643336
+ioless6        WRITE: 104355 104355 0 12824990824 14192280 1677501539 13497260 1691407074
+nfs-wq         WRITE: 58632 58632 0 13635750848 7973952 148662395 4735943 153535047
+
+vanilla       COMMIT: 29 29 0 3248 3712 45210 191022 236235
+ioless6       COMMIT: 26 26 0 2912 3328 32875 196848 229725
+nfs-wq        COMMIT: 35 35 0 3920 4480 1156 223393 224550
+
+2dd
+
+vanilla        WRITE: 28681 28681 0 11507024952 3900616 178242698 5849890 184288501
+ioless6        WRITE: 151075 151075 0 12192866408 20546200 3195004617 5748708 3200969292
+nfs-wq         WRITE: 89925 89925 0 15450966104 12229800 212096905 3443883 215849660
+
+vanilla       COMMIT: 43 43 0 4816 5504 45252 349816 396792
+ioless6       COMMIT: 52 52 0 5824 6656 40798 376099 417068
+nfs-wq        COMMIT: 66 66 0 7392 8448 10854 490021 502373
+
+10dd
+
+vanilla        WRITE: 47281 47281 0 14044390136 6430216 1378503679 11994453 1390582846
+ioless6        WRITE: 35972 35972 0 7959317984 4892192 1205239506 7412186 1212670083
+nfs-wq         WRITE: 49625 49625 0 14819167672 6749000 10704223 4135391 14876589
+
+vanilla       COMMIT: 235 235 0 26320 30080 328532 1097793 1426737
+ioless6       COMMIT: 128 128 0 14336 16384 73611 388716 462470
+nfs-wq        COMMIT: 431 432 0 48384 55168 217056 1775499 1993006
+
+
+thresh=100MB
+============
+
+1dd
+
+vanilla        WRITE: 28858 28858 0 12427843376 3924688 6384263 2308574 8722669
+nfs-wq         WRITE: 206620 206620 0 13104059680 28100320 90597897 10245879 101016004
+
+vanilla       COMMIT: 250 250 0 28000 32000 27030 229750 256786
+nfs-wq        COMMIT: 267 267 0 29904 34176 4672 247504 252184
+
+2dd
+
+vanilla        WRITE: 32593 32593 0 8382655992 4432648 193667999 3611697 197302564
+nfs-wq         WRITE: 98662 98662 0 14025467856 13418032 183280630 5381343 188715890
+
+vanilla       COMMIT: 272 272 0 30464 34816 24445 295949 320576
+nfs-wq        COMMIT: 584 584 0 65408 74752 1318 483049 484442
+
+10dd
+
+vanilla        WRITE: 32294 32294 0 6651515344 4391984 104926130 8666874 113596871
+nfs-wq         WRITE: 27571 27571 0 12711521256 3749656 6129491 2248486 8385102
+
+vanilla       COMMIT: 825 825 0 92400 105600 82135 739763 822179
+nfs-wq        COMMIT: 2449 2449 0 274288 313472 6091 2057767 2064555
