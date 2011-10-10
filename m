@@ -1,175 +1,200 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:58931 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751659Ab1JTTQK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Oct 2011 15:16:10 -0400
-Received: by vws1 with SMTP id 1so2375387vws.19
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Oct 2011 12:16:09 -0700 (PDT)
-Message-ID: <4EA07375.30303@tonian.com>
-Date: Thu, 20 Oct 2011 15:16:05 -0400
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from mga14.intel.com ([143.182.124.37]:21230 "EHLO mga14.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753031Ab1JJNLK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Oct 2011 09:11:10 -0400
+Date: Mon, 10 Oct 2011 21:10:51 +0800
+From: Wu Fengguang <fengguang.wu@intel.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
+        Christoph Hellwig <hch@lst.de>, Dave Chinner <david@fromorbit.com>,
+        Greg Thelen <gthelen@google.com>, Minchan Kim <minchan.kim@gmail.com>,
+        Vivek Goyal <vgoyal@redhat.com>, Andrea Righi <arighi@develer.com>,
+        linux-mm <linux-mm@kvack.org>, LKML <linux-kernel@vger.kernel.org>
+Subject: [RFC][PATCH 1/2] nfs: writeback pages wait queue
+Message-ID: <20111010131051.GA16847@localhost>
+References: <20111003134228.090592370@intel.com>
+ <1318248846.14400.21.camel@laptop>
+ <20111010130722.GA11387@localhost>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 5/7] nfsd4: implement NFS4_SHARE_WANT_NO_DELEG, NFS4_OPEN_DELEGATE_NONE_EXT
-References: <4E9F82FC.2000904@tonian.com> <1319076801-13474-1-git-send-email-benny@tonian.com> <20111020115224.GH5444@fieldses.org> <1456421465-1319114189-cardhu_decombobulator_blackberry.rim.net-173541571-@b18.c3.bise3.blackberry> <20111020124713.GP5444@fieldses.org>
-In-Reply-To: <20111020124713.GP5444@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111010130722.GA11387@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-10-20 08:47, J. Bruce Fields wrote:
-> On Thu, Oct 20, 2011 at 12:36:25PM +0000, Benny Halevy wrote:
->> OK, I read you.  Just please take note that WANT_NO_DELEG flag is important to simplified clients that do not support delegations, like the one I was testing against in the BAT, and it is the only one in use that I could tell.
-> 
-> If you can suggest an implementation that meets the minimum required by
-> the spec, I'd happily take it....
-> 
-> It might not be much harder: it's probably just a matter of returrning
-> the right OPEN_DELEGATE_NONE_EXT?
-> 
-> Though unfortunately there's not a "why" for "I just didn't feel like
-> giving you one", so we probably would have to make an effort to detect
-> the different case.
+[known bug: this patch will block sync(1) in schecule() if dirty
+threshold is set to as low as 1MB.]
 
-Agreed.  It could have been a good to have such a reason.
+The generic writeback routines are departing from congestion_wait()
+in preference of get_request_wait(), aka. waiting on the block queues.
 
-> 
-> Also, I wonder if it's wise for a client to depend on this--it really is
-> an optional feature as far as I can tell.  It would be safer to teach
-> the client just to handle delegations in the simplest way possible
-> (possibly just return them immediately?).
-> 
+Introduce the missing writeback wait queue for NFS, otherwise its
+writeback pages will grow out of control, exhausting all PG_dirty pages.
 
-That's true.
-
-How about the following? (untested squashme over this patch)
-
->From ab9e79564fee05a0f3f369fc134bbace1543ac4d Mon Sep 17 00:00:00 2001
-From: Benny Halevy <bhalevy@tonian.com>
-Date: Thu, 20 Oct 2011 08:00:03 -0700
-Subject: [PATCH] SQUASHME: nfsd4: implement why_no_deleg
-
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+CC: Jens Axboe <axboe@kernel.dk>
+CC: Chris Mason <chris.mason@oracle.com>
+CC: Peter Zijlstra <a.p.zijlstra@chello.nl>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Wu Fengguang <fengguang.wu@intel.com>
 ---
- fs/nfsd/nfs4state.c |   50 +++++++++++++++++++++++++++++++++++++++++++++-----
- fs/nfsd/nfs4xdr.c   |    7 ++++++-
- fs/nfsd/xdr4.h      |    1 +
- 3 files changed, 52 insertions(+), 6 deletions(-)
+ fs/nfs/client.c           |    2 
+ fs/nfs/write.c            |   89 +++++++++++++++++++++++++++++++-----
+ include/linux/nfs_fs_sb.h |    1 
+ 3 files changed, 81 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d00c246..2cdd2b3 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2914,7 +2914,7 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, int flag)
- 	struct nfs4_delegation *dp;
- 	struct nfs4_openowner *oo = container_of(stp->st_stateowner, struct nfs4_openowner, oo_owner);
- 	int cb_up;
--	int status, flag = 0;
-+	int status = 0, flag = 0;
-
- 	cb_up = nfsd4_cb_channel_good(oo->oo_owner.so_client);
- 	flag = NFS4_OPEN_DELEGATE_NONE;
-@@ -2955,11 +2955,32 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, int flag)
- 	dprintk("NFSD: delegation stateid=" STATEID_FMT "\n",
- 		STATEID_VAL(&dp->dl_stid.sc_stateid));
- out:
--	if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS
--			&& flag == NFS4_OPEN_DELEGATE_NONE
--			&& open->op_delegate_type != NFS4_OPEN_DELEGATE_NONE)
--		dprintk("NFSD: WARNING: refusing delegation reclaim\n");
- 	open->op_delegate_type = flag;
-+	if (flag == NFS4_OPEN_DELEGATE_NONE) {
-+		if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS &&
-+		    open->op_delegate_type != NFS4_OPEN_DELEGATE_NONE)
-+			dprintk("NFSD: WARNING: refusing delegation reclaim\n");
+--- linux-next.orig/fs/nfs/write.c	2011-09-29 20:23:44.000000000 +0800
++++ linux-next/fs/nfs/write.c	2011-10-05 10:43:28.000000000 +0800
+@@ -189,11 +189,64 @@ static int wb_priority(struct writeback_
+  * NFS congestion control
+  */
+ 
++#define NFS_WAIT_PAGES	(1024L >> (PAGE_SHIFT - 10))
+ int nfs_congestion_kb;
+ 
+-#define NFS_CONGESTION_ON_THRESH 	(nfs_congestion_kb >> (PAGE_SHIFT-10))
+-#define NFS_CONGESTION_OFF_THRESH	\
+-	(NFS_CONGESTION_ON_THRESH - (NFS_CONGESTION_ON_THRESH >> 2))
++/*
++ * SYNC requests will block on (2*limit) and wakeup on (2*limit-NFS_WAIT_PAGES)
++ * ASYNC requests will block on (limit) and wakeup on (limit - NFS_WAIT_PAGES)
++ * In this way SYNC writes will never be blocked by ASYNC ones.
++ */
 +
-+		if (open->op_deleg_want) {
-+			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
-+			if (status == -EAGAIN)
-+				open->op_why_no_deleg = WND4_CONTENTION;
-+			else {
-+				open->op_why_no_deleg = WND4_RESOURCE;
-+				switch (open->op_deleg_want) {
-+				case NFS4_SHARE_WANT_READ_DELEG:
-+				case NFS4_SHARE_WANT_WRITE_DELEG:
-+				case NFS4_SHARE_WANT_ANY_DELEG:
-+					break;
-+				case NFS4_SHARE_WANT_CANCEL:
-+					open->op_why_no_deleg = WND4_CANCELLED;
-+					break;
-+				case NFS4_SHARE_WANT_NO_DELEG:
-+					BUG();	/* not supposed to get here */
-+				}
-+			}
-+		}
++static void nfs_set_congested(long nr, struct backing_dev_info *bdi)
++{
++	long limit = nfs_congestion_kb >> (PAGE_SHIFT - 10);
++
++	if (nr > limit && !test_bit(BDI_async_congested, &bdi->state))
++		set_bdi_congested(bdi, BLK_RW_ASYNC);
++	else if (nr > 2 * limit && !test_bit(BDI_sync_congested, &bdi->state))
++		set_bdi_congested(bdi, BLK_RW_SYNC);
++}
++
++static void nfs_wait_congested(int is_sync,
++			       struct backing_dev_info *bdi,
++			       wait_queue_head_t *wqh)
++{
++	int waitbit = is_sync ? BDI_sync_congested : BDI_async_congested;
++	DEFINE_WAIT(wait);
++
++	if (!test_bit(waitbit, &bdi->state))
++		return;
++
++	for (;;) {
++		prepare_to_wait(&wqh[is_sync], &wait, TASK_UNINTERRUPTIBLE);
++		if (!test_bit(waitbit, &bdi->state))
++			break;
++
++		io_schedule();
 +	}
- 	return;
- out_free:
- 	nfs4_put_delegation(dp);
-@@ -3036,6 +3057,7 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, int flag)
-
- 		if (open->op_deleg_want & NFS4_SHARE_WANT_NO_DELEG) {
- 			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
-+			open->op_why_no_deleg = WND4_NOT_WANTED;
- 			goto nodeleg;
- 		}
++	finish_wait(&wqh[is_sync], &wait);
++}
++
++static void nfs_wakeup_congested(long nr,
++				 struct backing_dev_info *bdi,
++				 wait_queue_head_t *wqh)
++{
++	long limit = nfs_congestion_kb >> (PAGE_SHIFT - 10);
++
++	if (nr < 2 * limit - min(limit / 8, NFS_WAIT_PAGES)) {
++		if (test_bit(BDI_sync_congested, &bdi->state))
++			clear_bdi_congested(bdi, BLK_RW_SYNC);
++		if (waitqueue_active(&wqh[BLK_RW_SYNC]))
++			wake_up(&wqh[BLK_RW_SYNC]);
++	}
++	if (nr < limit - min(limit / 8, NFS_WAIT_PAGES)) {
++		if (test_bit(BDI_async_congested, &bdi->state))
++			clear_bdi_congested(bdi, BLK_RW_ASYNC);
++		if (waitqueue_active(&wqh[BLK_RW_ASYNC]))
++			wake_up(&wqh[BLK_RW_ASYNC]);
++	}
++}
+ 
+ static int nfs_set_page_writeback(struct page *page)
+ {
+@@ -204,11 +257,8 @@ static int nfs_set_page_writeback(struct
+ 		struct nfs_server *nfss = NFS_SERVER(inode);
+ 
+ 		page_cache_get(page);
+-		if (atomic_long_inc_return(&nfss->writeback) >
+-				NFS_CONGESTION_ON_THRESH) {
+-			set_bdi_congested(&nfss->backing_dev_info,
+-						BLK_RW_ASYNC);
+-		}
++		nfs_set_congested(atomic_long_inc_return(&nfss->writeback),
++				  &nfss->backing_dev_info);
  	}
-@@ -3051,6 +3073,24 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, int flag)
- 	dprintk("%s: stateid=" STATEID_FMT "\n", __func__,
- 		STATEID_VAL(&stp->st_stid.sc_stateid));
- out:
-+	/* 4.1 client trying to upgrade/downgrade delegation? */
-+	if (open->op_delegate_type == NFS4_OPEN_DELEGATE_NONE && dp &&
-+	    open->op_deleg_want) {
-+		if (open->op_deleg_want == NFS4_SHARE_WANT_READ_DELEG &&
-+		    dp->dl_type == NFS4_OPEN_DELEGATE_WRITE) {
-+			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
-+			open->op_why_no_deleg = WND4_NOT_SUPP_DOWNGRADE;
-+		} else if (open->op_deleg_want == NFS4_SHARE_WANT_WRITE_DELEG &&
-+			   dp->dl_type == NFS4_OPEN_DELEGATE_WRITE) {
-+			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
-+			open->op_why_no_deleg = WND4_NOT_SUPP_DOWNGRADE;
-+		}
-+		/* Otherwise the client must be confused wanting a delegation
-+		 * it already has, therefore we don't return
-+		 * NFS4_OPEN_DELEGATE_NONE_EXT and reason.
-+		 */
-+	}
+ 	return ret;
+ }
+@@ -220,8 +270,10 @@ static void nfs_end_page_writeback(struc
+ 
+ 	end_page_writeback(page);
+ 	page_cache_release(page);
+-	if (atomic_long_dec_return(&nfss->writeback) < NFS_CONGESTION_OFF_THRESH)
+-		clear_bdi_congested(&nfss->backing_dev_info, BLK_RW_ASYNC);
 +
- 	if (fp)
- 		put_nfs4_file(fp);
- 	if (status == 0 && open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS)
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 9b838e9..f2c1338 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3035,7 +3035,12 @@ static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp,
- 		ADJUST_ARGS();
- 		break;
- 	case NFS4_OPEN_DELEGATE_NONE_EXT: /* 4.1 */
--		WRITE32(WND4_NOT_WANTED);	/* only reason for now */
-+		WRITE32(open->op_why_no_deleg);
-+		switch (open->op_why_no_deleg) {
-+		case WND4_CONTENTION:
-+		case WND4_RESOURCE:
-+			WRITE32(0);	/* deleg signaling not supported yet */
-+		}
- 		break;
- 	default:
- 		BUG();
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 1e5ca95..d20d87e 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -214,6 +214,7 @@ struct nfsd4_open {
- 	struct xdr_netobj op_fname;	    /* request - everything but CLAIM_PREV */
- 	u32		op_delegate_type;   /* request - CLAIM_PREV only */
- 	stateid_t       op_delegate_stateid; /* request - response */
-+	u32		op_why_no_deleg;    /* response - DELEG_NONE_EXT only */
- 	u32		op_create;     	    /* request */
- 	u32		op_createmode;      /* request */
- 	u32		op_bmval[3];        /* request */
--- 
-1.7.6
-
++	nfs_wakeup_congested(atomic_long_dec_return(&nfss->writeback),
++			     &nfss->backing_dev_info,
++			     nfss->writeback_wait);
+ }
+ 
+ static struct nfs_page *nfs_find_and_lock_request(struct page *page, bool nonblock)
+@@ -322,19 +374,34 @@ static int nfs_writepage_locked(struct p
+ 
+ int nfs_writepage(struct page *page, struct writeback_control *wbc)
+ {
++	struct inode *inode = page->mapping->host;
++	struct nfs_server *nfss = NFS_SERVER(inode);
+ 	int ret;
+ 
+ 	ret = nfs_writepage_locked(page, wbc);
+ 	unlock_page(page);
++
++	nfs_wait_congested(wbc->sync_mode == WB_SYNC_ALL,
++			   &nfss->backing_dev_info,
++			   nfss->writeback_wait);
++
+ 	return ret;
+ }
+ 
+-static int nfs_writepages_callback(struct page *page, struct writeback_control *wbc, void *data)
++static int nfs_writepages_callback(struct page *page,
++				   struct writeback_control *wbc, void *data)
+ {
++	struct inode *inode = page->mapping->host;
++	struct nfs_server *nfss = NFS_SERVER(inode);
+ 	int ret;
+ 
+ 	ret = nfs_do_writepage(page, wbc, data);
+ 	unlock_page(page);
++
++	nfs_wait_congested(wbc->sync_mode == WB_SYNC_ALL,
++			   &nfss->backing_dev_info,
++			   nfss->writeback_wait);
++
+ 	return ret;
+ }
+ 
+--- linux-next.orig/include/linux/nfs_fs_sb.h	2011-09-02 09:02:07.000000000 +0800
++++ linux-next/include/linux/nfs_fs_sb.h	2011-10-04 20:26:03.000000000 +0800
+@@ -102,6 +102,7 @@ struct nfs_server {
+ 	struct nfs_iostats __percpu *io_stats;	/* I/O statistics */
+ 	struct backing_dev_info	backing_dev_info;
+ 	atomic_long_t		writeback;	/* number of writeback pages */
++	wait_queue_head_t	writeback_wait[2];
+ 	int			flags;		/* various flags */
+ 	unsigned int		caps;		/* server capabilities */
+ 	unsigned int		rsize;		/* read size */
+--- linux-next.orig/fs/nfs/client.c	2011-08-22 13:59:52.000000000 +0800
++++ linux-next/fs/nfs/client.c	2011-10-04 20:26:03.000000000 +0800
+@@ -1066,6 +1066,8 @@ static struct nfs_server *nfs_alloc_serv
+ 	INIT_LIST_HEAD(&server->layouts);
+ 
+ 	atomic_set(&server->active, 0);
++	init_waitqueue_head(&server->writeback_wait[BLK_RW_SYNC]);
++	init_waitqueue_head(&server->writeback_wait[BLK_RW_ASYNC]);
+ 
+ 	server->io_stats = nfs_alloc_iostats();
+ 	if (!server->io_stats) {
