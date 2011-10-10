@@ -1,37 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35536 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:44582 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752875Ab1JSWU0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Oct 2011 18:20:26 -0400
-Date: Wed, 19 Oct 2011 18:20:21 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: agruen@kernel.org, akpm@linux-foundation.org, viro@zeniv.linux.org.uk,
-        dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V7 21/26] richacl: xattr mapping functions
-Message-ID: <20111019222021.GB1874@fieldses.org>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1318951981-5508-22-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	id S1753203Ab1JJV7O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Oct 2011 17:59:14 -0400
+Date: Mon, 10 Oct 2011 17:59:11 -0400
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        samba-technical@lists.samba.org, Christoph Hellwig <hch@infradead.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Mimi Zohar <zohar@linux.vnet.ibm.com>
+Subject: Re: [PATCH 2/6] leases: fix write-open/read-lease race
+Message-ID: <20111010215911.GC17936@fieldses.org>
+References: <1316617097-21384-1-git-send-email-bfields@redhat.com>
+ <1316617097-21384-3-git-send-email-bfields@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1318951981-5508-22-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1316617097-21384-3-git-send-email-bfields@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 18, 2011 at 09:02:56PM +0530, Aneesh Kumar K.V wrote:
-> +#define RICHACL_XATTR "system.richacl"
-> +
-> +struct richace_xattr {
-> +	__le16		e_type;
-> +	__le16		e_flags;
-> +	__le32		e_mask;
-> +	__le32		e_id;
-> +	char		e_who[0];
-> +};
+On Wed, Sep 21, 2011 at 10:58:13AM -0400, J. Bruce Fields wrote:
+> In setlease, we use i_writecount to decide whether we can give out a
+> read lease.
+> 
+> In open, we break leases before incrementing i_writecount.
+> 
+> There is therefore a window between the break lease and the i_writecount
+> increment when setlease could add a new read lease.
+> 
+> This would leave us with a simultaneous write open and read lease, which
+> shouldn't happen.
 
-Does it really make sense to use a string here just to pick between the
-three choices OWNER@, GROUP@, and EVERYONE@?  Why not just another small
-integer?  Is the goal to expand this somehow eventually?
+Al, could you apply this for 3.2, if you don't see any problem?
+
+(Patch 1 of this series only touches locks.c, and I'm queueing up such
+patches through the nfsd tree.  Patches 3-6 I intend to rewrite,
+probably not in time for 3.2 unless I'm very lucky.)
 
 --b.
+
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/namei.c |    5 +----
+>  fs/open.c  |    4 ++++
+>  2 files changed, 5 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/namei.c b/fs/namei.c
+> index 2826db3..6ff59e5 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -2044,10 +2044,7 @@ static int may_open(struct path *path, int acc_mode, int flag)
+>  	if (flag & O_NOATIME && !inode_owner_or_capable(inode))
+>  		return -EPERM;
+>  
+> -	/*
+> -	 * Ensure there are no outstanding leases on the file.
+> -	 */
+> -	return break_lease(inode, flag);
+> +	return 0;
+>  }
+>  
+>  static int handle_truncate(struct file *filp)
+> diff --git a/fs/open.c b/fs/open.c
+> index f711921..22c41b5 100644
+> --- a/fs/open.c
+> +++ b/fs/open.c
+> @@ -685,6 +685,10 @@ static struct file *__dentry_open(struct dentry *dentry, struct vfsmount *mnt,
+>  	if (error)
+>  		goto cleanup_all;
+>  
+> +	error = break_lease(inode, f->f_flags);
+> +	if (error)
+> +		goto cleanup_all;
+> +
+>  	if (!open && f->f_op)
+>  		open = f->f_op->open;
+>  	if (open) {
+> -- 
+> 1.7.4.1
+> 
