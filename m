@@ -1,113 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:43775 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753166Ab1JaVpT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 17:45:19 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Brent Welch <welch@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
-        open-osd <osd-dev@open-osd.org>
-Subject: [PATCH 1/8] pnfs-obj: Remove redundant EOF from objlayout_io_state
-Date: Mon, 31 Oct 2011 14:45:06 -0700
-Message-ID: <1320097506-734-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4EAF146D.5060507@panasas.com>
-References: <4EAF146D.5060507@panasas.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mx2.netapp.com ([216.240.18.37]:12732 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751561Ab1JJVQD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Oct 2011 17:16:03 -0400
+Subject: Re: [PATCH][RFC] nfs: don't redirty inode when ncommit == 0 in
+ nfs_commit_unstable_pages
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, mikem@redhat.com
+Date: Mon, 10 Oct 2011 17:15:42 -0400
+In-Reply-To: <1318278838-26653-1-git-send-email-jlayton@redhat.com>
+References: <1318278838-26653-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1318281342.14423.63.camel@lade.trondhjem.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The EOF calculation was done on .read_pagelist(), cached
-in objlayout_io_state->eof, and set in objlayout_read_done()
-into nfs_read_data->res.eof.
+On Mon, 2011-10-10 at 16:33 -0400, Jeff Layton wrote: 
+> The current test in nfs_commit_unstable_pages does not handle the edge
+> condition properly. When ncommit == 0, then that likely means that the
+> kernel doesn't need to do anything more for the inode. The current test
+> though will return true in that case, and the inode will end up being
+> marked dirty.
+> 
+> Fix this by not re-marking the inode dirty when ncommit == 0.
+> 
+> Mike noticed this problem initially in RHEL5 (2.6.18-based kernel) which
+> has a backported version of 420e3646. The inode cache there was
+> growing very large, but calling sync() would essentially "fix" the
+> problem.
+> 
+> What I'm not clear on is how big a problem this is in mainline kernels
+> as the writeback code there is very different. I think this basically
+> means that the inode will remain dirty until there's a WB_SYNC_ALL
+> flush. Either way, it seems incorrect to mark the inode dirty in this
+> case.
+> 
+> Also, another question I have here -- shouldn't we be holding the i_lock
+> when doing this check?
+> 
+> Reported-by: Mike McLean <mikem@redhat.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfs/write.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index 17e20e4..6395e98 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -1557,7 +1557,7 @@ static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_contr
+>  		/* Don't commit yet if this is a non-blocking flush and there
+>  		 * are a lot of outstanding writes for this mapping.
+>  		 */
+> -		if (nfsi->ncommit <= (nfsi->npages >> 1))
+> +		if (nfsi->ncommit && nfsi->ncommit <= (nfsi->npages >> 1))
+>  			goto out_mark_dirty;
+>  
+>  		/* don't wait for the COMMIT response */
 
-So set it directly into nfs_read_data->res.eof and avoid
-the extra member.
+Umm... The above implementation will actually cause you to call
+nfs_commit_inode() when nfsi->ncommit is zero, which again causes you to
+go through all the hoopla with nfs_commit_set_lock() etc., for a case
+when you know you could just exit...
 
-This is a slight behaviour change because before eof was
-*not* set on an error update at objlayout_read_done(). But
-is that a problem? Is Generic layer so sensitive that it
-will miss the error IO if eof was set? From my testing
-I did not see such a problem.
-
-Benny please review.
-
-Which brings me to a more abstract problem. Why does the
-LAYOUT driver needs to do this eof calculation? .i.e we
-are inspecting generic i_size_read() and if spanned by
-offset + count which is received from generic layer we set
-eof. It looks like all this can/should be done in generic
-layer and not at LD. Where does NFS and files-LD do it?
-It looks like it can be promoted.
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfs/objlayout/objlayout.c |   16 +++++++---------
- fs/nfs/objlayout/objlayout.h |    1 -
- 2 files changed, 7 insertions(+), 10 deletions(-)
-
-diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-index 1d06f8e..1300736 100644
---- a/fs/nfs/objlayout/objlayout.c
-+++ b/fs/nfs/objlayout/objlayout.c
-@@ -287,17 +287,14 @@ static void _rpc_read_complete(struct work_struct *work)
- void
- objlayout_read_done(struct objlayout_io_state *state, ssize_t status, bool sync)
- {
--	int eof = state->eof;
--	struct nfs_read_data *rdata;
-+	struct nfs_read_data *rdata = state->rpcdata;
- 
- 	state->status = status;
--	dprintk("%s: Begin status=%zd eof=%d\n", __func__, status, eof);
--	rdata = state->rpcdata;
-+	dprintk("%s: Begin status=%zd eof=%d\n", __func__,
-+		status, rdata->res.eof);
- 	rdata->task.tk_status = status;
--	if (status >= 0) {
-+	if (status >= 0)
- 		rdata->res.count = status;
--		rdata->res.eof = eof;
--	}
- 	objlayout_iodone(state);
- 	/* must not use state after this point */
- 
-@@ -330,11 +327,14 @@ enum pnfs_try_status
- 			status = 0;
- 			rdata->res.count = 0;
- 			rdata->res.eof = 1;
-+			/*FIXME: do we need to call pnfs_ld_read_done() */
- 			goto out;
- 		}
- 		count = eof - offset;
- 	}
- 
-+	rdata->res.eof = (offset + count) >= eof;
-+
- 	state = objlayout_alloc_io_state(NFS_I(rdata->inode)->layout,
- 					 rdata->args.pages, rdata->args.pgbase,
- 					 offset, count,
-@@ -345,8 +345,6 @@ enum pnfs_try_status
- 		goto out;
- 	}
- 
--	state->eof = state->offset + state->count >= eof;
--
- 	status = objio_read_pagelist(state);
-  out:
- 	dprintk("%s: Return status %Zd\n", __func__, status);
-diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
-index a8244c8..ffb884c 100644
---- a/fs/nfs/objlayout/objlayout.h
-+++ b/fs/nfs/objlayout/objlayout.h
-@@ -86,7 +86,6 @@ struct objlayout_io_state {
- 
- 	void *rpcdata;
- 	int status;             /* res */
--	int eof;                /* res */
- 	int committed;          /* res */
- 
- 	/* Error reporting (layout_return) */
+Cheers
+  Trond
 -- 
-1.7.6.4
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
