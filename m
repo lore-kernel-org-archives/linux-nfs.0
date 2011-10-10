@@ -1,147 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:8518 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753363Ab1JSUuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Oct 2011 16:50:39 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/9] NFS: Remove the unused "lookupfh()" version of nfs4_proc_lookup()
-Date: Wed, 19 Oct 2011 13:50:11 -0700
-Message-Id: <1319057418-9851-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1319057418-9851-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1319057418-9851-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:45103 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752872Ab1JJUeF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Oct 2011 16:34:05 -0400
+Received: by qyk30 with SMTP id 30so2789636qyk.19
+        for <linux-nfs@vger.kernel.org>; Mon, 10 Oct 2011 13:34:04 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, mikem@redhat.com
+Subject: [PATCH][RFC] nfs: don't redirty inode when ncommit == 0 in nfs_commit_unstable_pages
+Date: Mon, 10 Oct 2011 16:33:58 -0400
+Message-Id: <1318278838-26653-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...and also remove the associated nfs_v4_clientops entry.
+The current test in nfs_commit_unstable_pages does not handle the edge
+condition properly. When ncommit == 0, then that likely means that the
+kernel doesn't need to do anything more for the inode. The current test
+though will return true in that case, and the inode will end up being
+marked dirty.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Fix this by not re-marking the inode dirty when ncommit == 0.
+
+Mike noticed this problem initially in RHEL5 (2.6.18-based kernel) which
+has a backported version of 420e3646. The inode cache there was
+growing very large, but calling sync() would essentially "fix" the
+problem.
+
+What I'm not clear on is how big a problem this is in mainline kernels
+as the writeback code there is very different. I think this basically
+means that the inode will remain dirty until there's a WB_SYNC_ALL
+flush. Either way, it seems incorrect to mark the inode dirty in this
+case.
+
+Also, another question I have here -- shouldn't we be holding the i_lock
+when doing this check?
+
+Reported-by: Mike McLean <mikem@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/nfs4proc.c       |   62 +++++++++++++----------------------------------
- include/linux/nfs_xdr.h |    3 --
- 2 files changed, 17 insertions(+), 48 deletions(-)
+ fs/nfs/write.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 0f0b607..b0c01b2 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -73,9 +73,6 @@ static int _nfs4_proc_open(struct nfs4_opendata *data);
- static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
- static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
- static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *);
--static int _nfs4_proc_lookup(struct rpc_clnt *client, struct inode *dir,
--			     const struct qstr *name, struct nfs_fh *fhandle,
--			     struct nfs_fattr *fattr);
- static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
- static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 			    struct nfs_fattr *fattr, struct iattr *sattr,
-@@ -2408,14 +2405,15 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 	return status;
- }
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 17e20e4..6395e98 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1557,7 +1557,7 @@ static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_contr
+ 		/* Don't commit yet if this is a non-blocking flush and there
+ 		 * are a lot of outstanding writes for this mapping.
+ 		 */
+-		if (nfsi->ncommit <= (nfsi->npages >> 1))
++		if (nfsi->ncommit && nfsi->ncommit <= (nfsi->npages >> 1))
+ 			goto out_mark_dirty;
  
--static int _nfs4_proc_lookupfh(struct rpc_clnt *clnt, struct nfs_server *server,
--		const struct nfs_fh *dirfh, const struct qstr *name,
--		struct nfs_fh *fhandle, struct nfs_fattr *fattr)
-+static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
-+		const struct qstr *name, struct nfs_fh *fhandle,
-+		struct nfs_fattr *fattr)
- {
-+	struct nfs_server *server = NFS_SERVER(dir);
- 	int		       status;
- 	struct nfs4_lookup_arg args = {
- 		.bitmask = server->attr_bitmask,
--		.dir_fh = dirfh,
-+		.dir_fh = NFS_FH(dir),
- 		.name = name,
- 	};
- 	struct nfs4_lookup_res res = {
-@@ -2431,40 +2429,8 @@ static int _nfs4_proc_lookupfh(struct rpc_clnt *clnt, struct nfs_server *server,
- 
- 	nfs_fattr_init(fattr);
- 
--	dprintk("NFS call  lookupfh %s\n", name->name);
--	status = nfs4_call_sync(clnt, server, &msg, &args.seq_args, &res.seq_res, 0);
--	dprintk("NFS reply lookupfh: %d\n", status);
--	return status;
--}
--
--static int nfs4_proc_lookupfh(struct nfs_server *server, struct nfs_fh *dirfh,
--			      struct qstr *name, struct nfs_fh *fhandle,
--			      struct nfs_fattr *fattr)
--{
--	struct nfs4_exception exception = { };
--	int err;
--	do {
--		err = _nfs4_proc_lookupfh(server->client, server, dirfh, name, fhandle, fattr);
--		/* FIXME: !!!! */
--		if (err == -NFS4ERR_MOVED) {
--			err = -EREMOTE;
--			break;
--		}
--		err = nfs4_handle_exception(server, err, &exception);
--	} while (exception.retry);
--	return err;
--}
--
--static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
--		const struct qstr *name, struct nfs_fh *fhandle,
--		struct nfs_fattr *fattr)
--{
--	int status;
--	
- 	dprintk("NFS call  lookup %s\n", name->name);
--	status = _nfs4_proc_lookupfh(clnt, NFS_SERVER(dir), NFS_FH(dir), name, fhandle, fattr);
--	if (status == -NFS4ERR_MOVED)
--		status = nfs4_get_referral(dir, name, fattr, fhandle);
-+	status = nfs4_call_sync(clnt, server, &msg, &args.seq_args, &res.seq_res, 0);
- 	dprintk("NFS reply lookup: %d\n", status);
- 	return status;
- }
-@@ -2485,11 +2451,18 @@ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qst
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(dir),
--				_nfs4_proc_lookup(clnt, dir, name, fhandle, fattr),
--				&exception);
--		if (err == -EPERM)
-+		int status;
-+
-+		status = _nfs4_proc_lookup(clnt, dir, name, fhandle, fattr);
-+		switch (status) {
-+		case -NFS4ERR_MOVED:
-+			err = nfs4_get_referral(dir, name, fattr, fhandle);
-+			break;
-+		case -NFS4ERR_WRONGSEC:
- 			nfs_fixup_secinfo_attributes(fattr, fhandle);
-+		}
-+		err = nfs4_handle_exception(NFS_SERVER(dir),
-+				status, &exception);
- 	} while (exception.retry);
- 	return err;
- }
-@@ -6270,7 +6243,6 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.getroot	= nfs4_proc_get_root,
- 	.getattr	= nfs4_proc_getattr,
- 	.setattr	= nfs4_proc_setattr,
--	.lookupfh	= nfs4_proc_lookupfh,
- 	.lookup		= nfs4_proc_lookup,
- 	.access		= nfs4_proc_access,
- 	.readlink	= nfs4_proc_readlink,
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index abd615d..1e31e1c 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1197,9 +1197,6 @@ struct nfs_rpc_ops {
- 
- 	int	(*getroot) (struct nfs_server *, struct nfs_fh *,
- 			    struct nfs_fsinfo *);
--	int	(*lookupfh)(struct nfs_server *, struct nfs_fh *,
--			    struct qstr *, struct nfs_fh *,
--			    struct nfs_fattr *);
- 	int	(*getattr) (struct nfs_server *, struct nfs_fh *,
- 			    struct nfs_fattr *);
- 	int	(*setattr) (struct dentry *, struct nfs_fattr *,
+ 		/* don't wait for the COMMIT response */
 -- 
 1.7.6.4
 
