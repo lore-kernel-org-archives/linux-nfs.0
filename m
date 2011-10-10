@@ -1,149 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42860 "EHLO fieldses.org"
+Received: from mga03.intel.com ([143.182.124.21]:61174 "EHLO mga03.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757822Ab1JEPCi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Oct 2011 11:02:38 -0400
-Date: Wed, 5 Oct 2011 11:02:17 -0400
-To: linux-nfs@vger.kernel.org
-Cc: Pavel Emelyanov <xemul@openvz.org>, "Kirill A. Shutemov" <kas@openvz.org>,
-        jlayton@redhat.com
-Subject: network-namespace-aware nfsd
-Message-ID: <20111005150214.GA18449@fieldses.org>
+	id S1754159Ab1JJO24 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Oct 2011 10:28:56 -0400
+Date: Mon, 10 Oct 2011 22:28:46 +0800
+From: Wu Fengguang <fengguang.wu@intel.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
+        Christoph Hellwig <hch@lst.de>, Dave Chinner <david@fromorbit.com>,
+        Greg Thelen <gthelen@google.com>, Minchan Kim <minchan.kim@gmail.com>,
+        Vivek Goyal <vgoyal@redhat.com>, Andrea Righi <arighi@develer.com>,
+        linux-mm <linux-mm@kvack.org>, LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 00/11] IO-less dirty throttling v12
+Message-ID: <20111010142846.GA21218@localhost>
+References: <20111003134228.090592370@intel.com>
+ <1318248846.14400.21.camel@laptop>
+ <20111010130722.GA11387@localhost>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20111010130722.GA11387@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a draft outline what we'd need to support containerized nfs
-service; please tell me what I've got wrong.
+Hi Trond,
 
-The goal is to give the impression of running multiple virtual nfs
-services, each with its own ip address or addresses.
+> As for the NFS performance, the dd tests show that adding a writeback
+> wait queue to limit the number of NFS PG_writeback pages (patches
+> will follow) is able to gain 48% throughput in itself:
+> 
+>       3.1.0-rc8-ioless6+         3.1.0-rc8-nfs-wq+  
+> ------------------------  ------------------------  
+>                    22.43       +81.8%        40.77  NFS-thresh=100M/nfs-10dd-1M-32p-32768M-100M:10-X
+>                    28.21       +52.6%        43.07  NFS-thresh=100M/nfs-1dd-1M-32p-32768M-100M:10-X
+>                    29.21       +55.4%        45.39  NFS-thresh=100M/nfs-2dd-1M-32p-32768M-100M:10-X
+>                    14.12       +40.4%        19.83  NFS-thresh=10M/nfs-10dd-1M-32p-32768M-10M:10-X
+>                    29.44       +11.4%        32.81  NFS-thresh=10M/nfs-1dd-1M-32p-32768M-10M:10-X
+>                     9.09      +240.9%        30.97  NFS-thresh=10M/nfs-2dd-1M-32p-32768M-10M:10-X
+>                    25.68       +84.6%        47.42  NFS-thresh=1G/nfs-10dd-1M-32p-32768M-1024M:10-X
+>                    41.06        +7.6%        44.20  NFS-thresh=1G/nfs-1dd-1M-32p-32768M-1024M:10-X
+>                    39.13       +25.9%        49.26  NFS-thresh=1G/nfs-2dd-1M-32p-32768M-1024M:10-X
+>                   238.38       +48.4%       353.72  TOTAL
+> 
+> Which will result in 28% overall improvements over the vanilla kernel:
+> 
+>       3.1.0-rc4-vanilla+         3.1.0-rc8-nfs-wq+  
+> ------------------------  ------------------------  
+>                    20.89       +95.2%        40.77  NFS-thresh=100M/nfs-10dd-1M-32p-32768M-100M:10-X
+>                    39.43        +9.2%        43.07  NFS-thresh=100M/nfs-1dd-1M-32p-32768M-100M:10-X
+>                    26.60       +70.6%        45.39  NFS-thresh=100M/nfs-2dd-1M-32p-32768M-100M:10-X
+>                    12.70       +56.1%        19.83  NFS-thresh=10M/nfs-10dd-1M-32p-32768M-10M:10-X
+>                    27.41       +19.7%        32.81  NFS-thresh=10M/nfs-1dd-1M-32p-32768M-10M:10-X
+>                    26.52       +16.8%        30.97  NFS-thresh=10M/nfs-2dd-1M-32p-32768M-10M:10-X
+>                    40.70       +16.5%        47.42  NFS-thresh=1G/nfs-10dd-1M-32p-32768M-1024M:10-X
+>                    45.28        -2.4%        44.20  NFS-thresh=1G/nfs-1dd-1M-32p-32768M-1024M:10-X
+>                    35.74       +37.8%        49.26  NFS-thresh=1G/nfs-2dd-1M-32p-32768M-1024M:10-X
+>                   275.28       +28.5%       353.72  TOTAL
+> 
+> As for the most concerned NFS commits, the wait queue patch increases
+> the (nr_commits / bytes_written) ratio by +74% for the thresh=1G,10dd
+> case, +55% for the thresh=100M,10dd case, and mostly ignorable in the
+> other 1dd, 2dd cases, which looks acceptable.
+> 
+> The other noticeable change of the wait queue is, the RTT time per
 
-A new nfs service will be started by forking off a new network
-namespace, setting up interfaces there, and then starting nfs service
-normally (including starting all the appropriate userland daemons, such
-as rpc.mountd).
+Sorry it's not RTT, but mainly the local queue time of the WRITE RPCs.
 
-This requires no changes to existing userland code.  Instead, the kernel
-side of each userland interface needs to be made aware of the network
-namespace of the userland process it is talking to.
+> write is reduced by 1-2 order(s) in many of the below cases (from
+> dozens of seconds to hundreds of milliseconds).
 
-The kernel handles requests using a pool of threads, with the number of
-threads controlled by writing to the "threads"  file in the "nfsd"
-filesystem.  The files are also used to start the server (and to stop
-it, by writing zero for the number of threads).
+I also measured the stddev of the network bandwidths, and find more
+smooth network transfers in general with the wait queue, which is
+expected.
 
-To conserve memory, I would prefer to have all of the virtual servers
-share the same threads, rather than dedicating a separate set of threads
-to each network namespace.  So:
+thresh=1G
+        vanilla       ioless6       nfs-wq
+1dd     83088173.728  53468627.578  53627922.011
+2dd     52398918.208  43733074.167  53531381.177
+10dd    67792638.857  44734947.283  39681731.234
 
-Minimum functionality
----------------------
+However the major difference should still be that the writeback wait
+queue can significantly reduce the local queue time for the WRITE RPCs.
 
-To get something minimal working, we need the rpc work that's in
-progress.
+The wait queue patch looks reasonable in that it keeps the pages in
+PG_dirty state rather than to prematurely put them to PG_writeback
+state only to queue them up for dozens of seconds before xmit.
 
-In addition, we need the nfsd/threads interface to remember the value
-set for each network namespace.  Writing to it will adjust the number of
-threads, probably to the maximum value across all namespaces.
+It should be safe because that's exactly the old proved behavior
+before the per-bdi writeback patches introduced in 2.6.32. The 2nd
+patch on proportional nfs_congestion_kb is a new change, though.
 
-In addition, when the per-namespace value changes from zero to nonzero
-or vice-versa, we need to trigger, respectively, starting or stopping
-the per-namespace virtual server.  That means setting up or shutting
-down sockets, and initializing or destroying any per-namespace state (as
-required depending on NFS version, see below).
-
-Also, nfsd/pool_threads probably needs similar treatment.
-
-The nfsd/ports interface allows setting up listening sockets by hand.  I
-suspect it needs at most trivial changes.
-
-NFSv4
------
-
-To make NFSv4 work, we need per-network-namespace state that is
-initialized and destroyed on startup and shutdown of a virtual nfs
-server.  Each client therefore needs to be associated with a network
-namespace, so it can be shut down at the right time, and so that we
-consistently handle, for example, a broken NFSv4.0 client that sends the
-same long-form identifier to servers with different IP addresses.
-
-For 4.1 we have the option of sharing state between servers if we'd
-like.  Initially simplest is to advertise the servers as entirely
-distinct, without the ability to share any state.
-
-The directory used for recovery data needs to be per-network-namespace.
-If we replace it by something else, we'll need to make sure it's
-namespace-aware.
-
-NFSv2/v3
---------
-
-For v2/v3 locking to work we also need per-network-namespace lockd and
-statd state.
-
-Note that there is a separate loopback interface per network namespace,
-so the kernel can communicate separately with statd's in different
-namespaces.  (statd communicates with the kernel over the loopback
-interface).
-
-krb5
-----
-
-Different servers likely want different kerberos identities.  To make
-this work we need separate auth.rpcsec.context and auth.rpcsec.init
-caches for each network namespace.
-
-Independent export trees
-------------------------
-
-If we want to allow, for example, different filesystems to be exported
-from different virtual servers, then we need per-namespace nfsd.export,
-expkey, and auth.unix.ip caches.
-
-Caches in general
------------------
-
-To containerize the /proc/net/rpc/* interfaces (as needed for the krb5
-independent export trees), we need the content, channel, and flush files
-to all be network-namespace-aware, so we want entirely separate caches
-for each namespace.
-
-I'm not sure whether that's best done by having lookups done in each
-namespace get entirely different inodes, or whether the underlying
-inodes should be shared and net/sunrpc/cache.c:cache_open() should
-switch caches based on the network namespace of the opener.
-
-Maybe some day
---------------
-
-Not urgent, but possibly should be made namespace-aware some day:
-
-	- leasetime, gracetime: per-netns ideal but not
-	  required?  Probably more useful for gracetime.
-
-	- unlock_ip: should be per-netns, maybe, low priority
-
-	- unlock_fs: should be per-fsns, maybe, ignore for now.
-
-	- nfs4.idtoname, nfs4.nametoid, could be per-netns, or would
-	  they need to be per-uidns?
-
-	- we could allow turning on nfs versions per-netns, but for now
-	  that seems unnecessary.
-
-	- maxblksize: ditto.  Keep it global, or take the maximum across
-	  values given in each netns.
-
-Should be non-issues:
-
-	- export_features, supported_enctypes: global, nothing
-	  to do.
-
-	- filehandle: path->filehandle mapping should already be
-	  per-fs, hopefully no changes required.
-
-	- auth.unix.gid
-		- keep global for now.
+Thanks,
+Fengguang
