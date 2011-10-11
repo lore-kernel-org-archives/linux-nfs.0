@@ -1,108 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:34465 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:47285 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754394Ab1JTLG5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Oct 2011 07:06:57 -0400
-Message-ID: <4EA000C6.1040502@parallels.com>
-Date: Thu, 20 Oct 2011 15:06:46 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [RFC PATCH 0/5] SUNRPC: "RPC pipefs per network namespace"	preparations
-References: <20111017120629.4541.67395.stgit@localhost6.localdomain6>
-In-Reply-To: <20111017120629.4541.67395.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+	id S1750748Ab1JKBOO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Oct 2011 21:14:14 -0400
+Date: Mon, 10 Oct 2011 21:14:04 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, mikem@redhat.com
+Subject: Re: [PATCH][RFC] nfs: don't redirty inode when ncommit == 0 in
+ nfs_commit_unstable_pages
+Message-ID: <20111010211404.52b7bca6@corrin.poochiereds.net>
+In-Reply-To: <1318281342.14423.63.camel@lade.trondhjem.org>
+References: <1318278838-26653-1-git-send-email-jlayton@redhat.com>
+	<1318281342.14423.63.camel@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Guys, please, spend some of your expensive time to review this patch-set briefly.
-This is not for commit, but just an idea representation.
-I really need some opinions about it, since all my further work aroud RPC pipefs 
-depends on it.
-IOW I need to now, does anyone has something against this idea.
-Trond, please, respond, does this idea suits you in general or not?
+On Mon, 10 Oct 2011 17:15:42 -0400
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-17.10.2011 17:10, Stanislav Kinsbursky пишет:
-> Hello to everyone.
-> RPC pipefs file system have to work per network namespace context is required
-> prior to any NFS modifications.
-> This is a way how to do it. I'll really appreciate for any comments.
->
-> There are several statements about how to make RPC pipefs working per network
-> namespace context.
-> Here they are:
-> 1) RPC pipefs should be mounted per network namespace context.
-> 2) RPC pipefs superblock should holds network namespace while active.
-> 3) RPC pipefs lookup and readir should be perfomed in network namespace context
-> it was mounted. IOW, user-space process, working in another network namespace
-> context, should see RPC pipefs dentries from network namespace context this
-> mount-point was created (like it was done for sysfs).
->
-> These statement leads to some restrictions which we must follow during
-> implementation. Here are they:
-> 1) RPC pipefs mount can't be performed in kernel context since new super block
-> will holds networks namespace reference and it's impossible to recognize, when
-> and how we have to release this mount point. IOW rpc_get_mount() and
-> rpc_put_mount() have to be removed.
-> 2) RPC pipefs should provide some new helpers to lookup directory dentry for
-> those modules which creates pipes, because without RPC pipefs mount point
-> general lookup can't be performed.
-> 3) These methods must garantee, that pipefs superblock will be active during
-> pipes creation and destruction.
->
-> So, here is the idea of making RPC pipefs works per network namespace context:
-> 1) RPC pipefs superblock should holds network namespcae context while active.
-> 2) RPC pipefs should send notification events on superblock creation and
-> destruction.
-> 3) RPC pipefs should provide "lookup dentry by name" method for notification
-> subscribers.
-> 4) RPC pipefs should place superblock reference on current network namespace
-> context on creation and remove it on destruction.
-> 5) RPC pipefs should provide safe "lookup dentry by name" method for per-net
-> operations, which garantees, that superblock is active, while
-> per-net-operations are performing.
-> 6) Client and cache directories creation and destruction should be performed
-> also on superblock creation and destruction notification events. Note: generic
-> creation (like now) can fail (if no superblock is not created yet).
-> 7) Pipes creation and destruction should be performed on superblock creation
-> and destruction events. Also pipes operations should be performed during
-> per-net operation and in this case they could fail (due to the same reason as
-> in statement above).
->
-> This patch-set implements first 5 points and thus doesn't affects current RPC
-> pipefs logic.
->
-> The only problem about I'm not sure how to solve properly yet, is auth gss
-> pipes creations operations. Hoping for some help with it.
->
->
-> The following series consists of:
->
-> ---
->
-> Stanislav Kinsbursky (5):
->        SUNRPC: hold current network namespace while pipefs superblock is active
->        SUNRPC: send notification events on pipefs sb creation and destruction
->        SUNRPC: pipefs dentry lookup helper introduced
->        SUNRPC: put pipefs superblock link on network namespace
->        SUNRPC: pipefs per-net operations helper introduced
->
->
->   include/linux/sunrpc/rpc_pipe_fs.h |   16 ++++++
->   net/sunrpc/netns.h                 |    3 +
->   net/sunrpc/rpc_pipe.c              |  103 ++++++++++++++++++++++++++++++++++++
->   net/sunrpc/sunrpc_syms.c           |    1
->   4 files changed, 122 insertions(+), 1 deletions(-)
->
+> On Mon, 2011-10-10 at 16:33 -0400, Jeff Layton wrote: 
+> > The current test in nfs_commit_unstable_pages does not handle the edge
+> > condition properly. When ncommit == 0, then that likely means that the
+> > kernel doesn't need to do anything more for the inode. The current test
+> > though will return true in that case, and the inode will end up being
+> > marked dirty.
+> > 
+> > Fix this by not re-marking the inode dirty when ncommit == 0.
+> > 
+> > Mike noticed this problem initially in RHEL5 (2.6.18-based kernel) which
+> > has a backported version of 420e3646. The inode cache there was
+> > growing very large, but calling sync() would essentially "fix" the
+> > problem.
+> > 
+> > What I'm not clear on is how big a problem this is in mainline kernels
+> > as the writeback code there is very different. I think this basically
+> > means that the inode will remain dirty until there's a WB_SYNC_ALL
+> > flush. Either way, it seems incorrect to mark the inode dirty in this
+> > case.
+> > 
+> > Also, another question I have here -- shouldn't we be holding the i_lock
+> > when doing this check?
+> > 
+> > Reported-by: Mike McLean <mikem@redhat.com>
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  fs/nfs/write.c |    2 +-
+> >  1 files changed, 1 insertions(+), 1 deletions(-)
+> > 
+> > diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> > index 17e20e4..6395e98 100644
+> > --- a/fs/nfs/write.c
+> > +++ b/fs/nfs/write.c
+> > @@ -1557,7 +1557,7 @@ static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_contr
+> >  		/* Don't commit yet if this is a non-blocking flush and there
+> >  		 * are a lot of outstanding writes for this mapping.
+> >  		 */
+> > -		if (nfsi->ncommit <= (nfsi->npages >> 1))
+> > +		if (nfsi->ncommit && nfsi->ncommit <= (nfsi->npages >> 1))
+> >  			goto out_mark_dirty;
+> >  
+> >  		/* don't wait for the COMMIT response */
+> 
+> Umm... The above implementation will actually cause you to call
+> nfs_commit_inode() when nfsi->ncommit is zero, which again causes you to
+> go through all the hoopla with nfs_commit_set_lock() etc., for a case
+> when you know you could just exit...
+> 
 
+Yes, I did that intentionally since I wasn't sure whether just exiting
+here would open a race. I suppose though that as long as we always mark
+the inode dirty after bumping ncommit then there shouldn't be one?
+
+I can see about recoding the patch though to do that more efficiently
+if there's no possibility of a race here. Should we take the i_lock
+here when doing this check though? It seems possible that the fetch of
+npages and ncommit could be out of sync if we don't do that here.
+
+It seems like we need to be very careful if we exit from this function
+w/o marking the inode dirty or doing a commit. We don't want to end up
+with an outstanding commit that never gets done...
 
 -- 
-Best regards,
-Stanislav Kinsbursky
+Jeff Layton <jlayton@redhat.com>
