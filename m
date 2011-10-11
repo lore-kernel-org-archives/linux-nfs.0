@@ -1,48 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from gws07.hcl.com ([203.105.186.23]:40897 "EHLO gws07.hcl.com"
+Received: from mx1.redhat.com ([209.132.183.28]:18590 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753049Ab1JKGZR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Oct 2011 02:25:17 -0400
-From: Pankaj Baranwal <Pankaj.Baranwal@hcl.in>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        Mimi Zohar <zohar@linux.vnet.ibm.com>
-Date: Tue, 11 Oct 2011 11:49:36 +0530
-Subject: Need information about the net ads user command
-Message-ID: <AD32159B1843864D8CB027AD1A54E8373F32FE4099@CHN-HCLT-EVS09.HCLT.CORP.HCL.IN>
-References: <1316617097-21384-1-git-send-email-bfields@redhat.com>
-	<1316617097-21384-3-git-send-email-bfields@redhat.com>
- <20111010215911.GC17936@fieldses.org>
-In-Reply-To: <20111010215911.GC17936@fieldses.org>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+	id S1753991Ab1JKKNM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Oct 2011 06:13:12 -0400
+Date: Tue, 11 Oct 2011 06:12:21 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Pavel Machek <pavel@ucw.cz>
+Cc: trond.myklebust@netapp.com, smfrench@gmail.com, rjw@sisk.pl,
+        linux-pm@lists.linux-foundation.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, john@Calva.COM,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 3/4] sunrpc: make rpc_wait_bit_killable handle freeze
+ events
+Message-ID: <20111011061221.2a4a212f@tlielax.poochiereds.net>
+In-Reply-To: <20111011061923.GC1377@ucw.cz>
+References: <1317210761-11518-1-git-send-email-jlayton@redhat.com>
+	<1317210761-11518-4-git-send-email-jlayton@redhat.com>
+	<20111011061923.GC1377@ucw.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Tue, 11 Oct 2011 08:19:23 +0200
+Pavel Machek <pavel@ucw.cz> wrote:
 
-"net ads user" command doesn't returns users starting with $.
-Is there any another way to search users starting with $.
+> On Wed 2011-09-28 07:52:40, Jeff Layton wrote:
+> > Allow the wait_on_bit_killable sleeps in SUNRPC layer to respect the
+> > freezer. This should allow suspend and hibernate events to occur, even
+> > when there are RPC's pending on the wire.
+> 
+> Will the RPC protocols used handle that correctly? What will happen
+> during resume?
+> 
 
-Thanks in advance for your help.
+That depends on the state of the socket during resume. If the
+suspend/resume is quick enough, then the socket may still be connected,
+or if we're using UDP then we might just get the reply and carry on
+successfully. Otherwise, the call will eventually time out, or will be
+cancelled when the kernel finds that the socket has been closed.
 
-Thanks ,
-Pankaj
+Either way, this should do the right thing.
 
-
-::DISCLAIMER::
------------------------------------------------------------------------------------------------------------------------
-
-The contents of this e-mail and any attachment(s) are confidential and intended for the named recipient(s) only.
-It shall not attach any liability on the originator or HCL or its affiliates. Any views or opinions presented in
-this email are solely those of the author and may not necessarily reflect the opinions of HCL or its affiliates.
-Any form of reproduction, dissemination, copying, disclosure, modification, distribution and / or publication of
-this message without the prior written consent of the author of this e-mail is strictly prohibited. If you have
-received this email in error please delete it and notify the sender immediately. Before opening any mail and
-attachments please check them for viruses and defect.
-
------------------------------------------------------------------------------------------------------------------------
+-- 
+Jeff Layton <jlayton@redhat.com>
