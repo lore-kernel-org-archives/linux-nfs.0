@@ -1,38 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:41331 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751660Ab1J0BhM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Oct 2011 21:37:12 -0400
-Message-ID: <4EA8B5BF.4050009@panasas.com>
-Date: Wed, 26 Oct 2011 18:37:03 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        open-osd <osd-dev@open-osd.org>, NFS list <linux-nfs@vger.kernel.org>
-Subject: [GIT PULL] This patch is also available for pulling
-References: <4EA8B359.9040007@panasas.com>
-In-Reply-To: <4EA8B359.9040007@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mx1.redhat.com ([209.132.183.28]:55127 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754538Ab1JKNOm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Oct 2011 09:14:42 -0400
+Date: Tue, 11 Oct 2011 09:14:04 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Pavel Machek" <pavel@ucw.cz>, <smfrench@gmail.com>, <rjw@sisk.pl>,
+        <linux-pm@lists.linux-foundation.org>, <linux-cifs@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>, <john@Calva.COM>,
+        <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 3/4] sunrpc: make rpc_wait_bit_killable handle freeze
+ events
+Message-ID: <20111011091404.208a03b5@tlielax.poochiereds.net>
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B91E852@SACMVEXC2-PRD.hq.netapp.com>
+References: <1317210761-11518-1-git-send-email-jlayton@redhat.com>
+	<1317210761-11518-4-git-send-email-jlayton@redhat.com>
+	<20111011061923.GC1377@ucw.cz>
+	<20111011061221.2a4a212f@tlielax.poochiereds.net>
+	<2E1EB2CF9ED1CB4AA966F0EB76EAB4430B91E852@SACMVEXC2-PRD.hq.netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following changes since commit 138c4ae9cfda8fdcf9e137457853b09ef8cf8f77:
+On Tue, 11 Oct 2011 05:52:57 -0700
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-  Merge branch 'slab/for-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/penberg/linux (2011-10-26 21:46:18 +0200)
+> > -----Original Message-----
+> > From: Jeff Layton [mailto:jlayton@redhat.com]
+> > Sent: Tuesday, October 11, 2011 6:12 AM
+> > To: Pavel Machek
+> > Cc: Myklebust, Trond; smfrench@gmail.com; rjw@sisk.pl; linux-
+> > pm@lists.linux-foundation.org; linux-cifs@vger.kernel.org; linux-
+> > nfs@vger.kernel.org; john@Calva.COM; linux-kernel@vger.kernel.org
+> > Subject: Re: [PATCH 3/4] sunrpc: make rpc_wait_bit_killable handle
+> freeze
+> > events
+> > 
+> > On Tue, 11 Oct 2011 08:19:23 +0200
+> > Pavel Machek <pavel@ucw.cz> wrote:
+> > 
+> > > On Wed 2011-09-28 07:52:40, Jeff Layton wrote:
+> > > > Allow the wait_on_bit_killable sleeps in SUNRPC layer to respect
+> the
+> > > > freezer. This should allow suspend and hibernate events to occur,
+> > > > even when there are RPC's pending on the wire.
+> > >
+> > > Will the RPC protocols used handle that correctly? What will happen
+> > > during resume?
+> > >
+> > 
+> > That depends on the state of the socket during resume. If the
+> > suspend/resume is quick enough, then the socket may still be
+> connected, or
+> > if we're using UDP then we might just get the reply and carry on
+> successfully.
+> > Otherwise, the call will eventually time out, or will be cancelled
+> when the
+> > kernel finds that the socket has been closed.
+> > 
+> > Either way, this should do the right thing.
+> 
+> Well... The problem when this sort of thing happens is with the replay
+> cache. If the RPC in question was a mkdir, for instance, then replaying
+> the RPC call when you wake up can be problematic because chances are
+> that the server will have forgotten who created the directory, and so
+> will reply with EEXIST instead of OK.
+> However this is a generic problem when the client is unable to talk to
+> the server for a while, and is not particular to suspend.
+> 
 
-are available in the git repository at:
+Yeah, that's always a problem. You can hit the same thing if you just
+unplug the cable from the network interface at an inopportune time.
 
-  git://git.open-osd.org/linux-open-osd.git for-linus
+I think this patch is really the best we can do under those
+circumstances. Eventually we'll all be on 4.1 with sessions and this
+problem will go away, right? ;)
 
-Boaz Harrosh (1):
-      fs/Makefile: Stupid TYPO breakage of exofs inclusion
-
- fs/Makefile |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-
-Again I'm so sorry. I can't understand what happened to me
-
-Boaz
+-- 
+Jeff Layton <jlayton@redhat.com>
