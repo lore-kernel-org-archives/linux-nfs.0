@@ -1,100 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:38925 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752760Ab1JNWe1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Oct 2011 18:34:27 -0400
-Message-ID: <4E98B751.5070006@panasas.com>
-Date: Sat, 15 Oct 2011 00:27:29 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:55524 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755050Ab1JKPrT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Oct 2011 11:47:19 -0400
+From: "Haynes, Tom" <Tom.Haynes@netapp.com>
+To: nfsv4 <nfsv4@ietf.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>
+Subject: Some final BAT notes
+Date: Tue, 11 Oct 2011 15:47:07 +0000
+Message-ID: <CAB9CF2A.918D%tom.haynes@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-To: Michal Marek <mmarek@suse.cz>, Paul Bolle <pebolle@tiscali.nl>
-CC: Randy Dunlap <randy.dunlap@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: Problems with Kconfig select across directories
-References: <4E9848C1.8040306@panasas.com> <4E98B19B.6020107@suse.cz>
-In-Reply-To: <4E98B19B.6020107@suse.cz>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/15/2011 12:03 AM, Michal Marek wrote:
-> On 14.10.2011 16:35, Boaz Harrosh wrote:
->> I have this weird problem with Kconfig.
->>
->> In fs/exofs/Kconfig I have:
->>
->> # Library to be selected by users
->> config ORE
->> 	tristate
->>
->> Then
->> config EXOFS_FS
->> 	tristate "exofs: OSD based file system support"
->> 	depends on SCSI_OSD_ULD
->> 	select ORE
->> 	help ...
->>
->> So far so good. Choosing EXOFS_FS in xmenuconfig works fine as expected.
->> But now I add another user say: (It's more complicated but even below does
->> not work)
->>
->> config NFS_FS
->> 	tristate "NFS client support"
->> 	depends on INET && FILE_LOCKING
->> 	select LOCKD
->> 	select SUNRPC
->> 	select NFS_ACL_SUPPORT if NFS_V3_ACL
->> 	select ORE
->> 	help ...
->>
->> This does not work. The ORE is not compiled and MODPOST complains.
->> (Given EXOFS_FS is not selected since then it will work)
-> 
-> fs/Makefile only visits fs/exofs if CONFIG_EXOFS_FS is set.
-> 
-> Michal
+We should be open for business from 8am to 8pm.
 
-Bingo. Right on the money. With below patch it works. I'll think
-about it some more and submit.
+I'm not sure if there is someone in the lobby before 8am, but I'll be
+there by 8am. I'll have visitor badges every day. Just tell the front desk
+that you are there for the BakeAThon. You can give them my name if needed.
+Since they might think I am in Tulsa, you can ask them to call my cell
+phone. (It is also 918 261 7564.)
 
-Thanks
----
-exofs/ore: Select fs/exofs/ folder in Makefile also for ORE only compilation
+If you are not a NetApp employee, you can park anywhere that has visitor
+signs. You can also park in any non-marked spot. Parking in the general
+vicinity of Building 7 fills up quickly.
 
-If any thing from fs/exofs is set the ORE will be selected. So conditionally
-include fs/exofs in fs/Makefile on ORE set and not EXOFS_FS
+We will be locking the rooms at night, so both laptops and other things
+can be left there.
 
-Boaz
----
-git diff --stat -p -M
- fs/Makefile    |    2 +-
- fs/nfs/Kconfig |    1 +
- 2 files changed, 2 insertions(+), 1 deletions(-)
+We will have three rooms:
 
-diff --git a/fs/Makefile b/fs/Makefile
-index afc1096..d7a88b5 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -120,6 +120,6 @@ obj-$(CONFIG_DEBUG_FS)		+= debugfs/
- obj-$(CONFIG_OCFS2_FS)		+= ocfs2/
- obj-$(CONFIG_BTRFS_FS)		+= btrfs/
- obj-$(CONFIG_GFS2_FS)           += gfs2/
--obj-$(CONFIG_EXOFS_FS)          += exofs/
-+obj-$(CONFIG_ORE)		+= exofs/
- obj-$(CONFIG_CEPH_FS)		+= ceph/
- obj-$(CONFIG_PSTORE)		+= pstore/
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index dbcd821..1c13c34 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -96,6 +96,7 @@ config PNFS_BLOCK
- config PNFS_OBJLAYOUT
- 	tristate
- 	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
-+	select ORE
- 	default m
- 
- config ROOT_NFS
+Quincy 1 - 48
+Quincy 2 - 48
+Pike Place Market - 8
+
+The louder equipment will be going in Quincy 2.
+
+Pike Place Market can be used for small meetings. Reserving it is pretty
+simple, just ask.
+
+Current schedule:
+
+Wednesday: Ganesha 2-3 pm
+Thursday: Ganesha 2-3 pm
+
+Trond also has requested a meeting slot - I'll need to nail down the time
+with him.
+
+If a slot is not reserved, feel free to have an impromptu meeting, use the
+whiteboard, etc.
+
+If a meeting draws more than about 10 people, we can move it to Quincy 2.
+
+Which brings us to people who are attending a meeting, but not testing. If
+the meeting is in Pike Place Market, there is no need to sign the CDA. If
+we overflow into one of the Quincy rooms, then each company present must
+have a signed CDA. 
+
+Again, the CDA can be located at:
+http://www.nfsv4bat.org/Events/2011/October/BAT/NetApp_BAT_2011_CDA.pdf
+
+I'll have some printed out and ready to be signed. :->
+
 
