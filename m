@@ -1,67 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:55524 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:44192 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755050Ab1JKPrT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Oct 2011 11:47:19 -0400
-From: "Haynes, Tom" <Tom.Haynes@netapp.com>
-To: nfsv4 <nfsv4@ietf.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>
-Subject: Some final BAT notes
-Date: Tue, 11 Oct 2011 15:47:07 +0000
-Message-ID: <CAB9CF2A.918D%tom.haynes@netapp.com>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+	id S1754926Ab1JKQlJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Oct 2011 12:41:09 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 4/4] nfsd4: more robust ignoring of WANT bits in OPEN
+Date: Tue, 11 Oct 2011 12:41:03 -0400
+Message-Id: <1318351263-14918-5-git-send-email-bfields@redhat.com>
+In-Reply-To: <1318351263-14918-1-git-send-email-bfields@redhat.com>
+References: <1318351263-14918-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We should be open for business from 8am to 8pm.
+Mask out the WANT bits right at the start instead of on each use.
 
-I'm not sure if there is someone in the lobby before 8am, but I'll be
-there by 8am. I'll have visitor badges every day. Just tell the front desk
-that you are there for the BakeAThon. You can give them my name if needed.
-Since they might think I am in Tulsa, you can ask them to call my cell
-phone. (It is also 918 261 7564.)
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c  |    3 +++
+ fs/nfsd/nfs4state.c |    5 ++---
+ 2 files changed, 5 insertions(+), 3 deletions(-)
 
-If you are not a NetApp employee, you can park anywhere that has visitor
-signs. You can also park in any non-marked spot. Parking in the general
-vicinity of Building 7 fills up quickly.
-
-We will be locking the rooms at night, so both laptops and other things
-can be left there.
-
-We will have three rooms:
-
-Quincy 1 - 48
-Quincy 2 - 48
-Pike Place Market - 8
-
-The louder equipment will be going in Quincy 2.
-
-Pike Place Market can be used for small meetings. Reserving it is pretty
-simple, just ask.
-
-Current schedule:
-
-Wednesday: Ganesha 2-3 pm
-Thursday: Ganesha 2-3 pm
-
-Trond also has requested a meeting slot - I'll need to nail down the time
-with him.
-
-If a slot is not reserved, feel free to have an impromptu meeting, use the
-whiteboard, etc.
-
-If a meeting draws more than about 10 people, we can move it to Quincy 2.
-
-Which brings us to people who are attending a meeting, but not testing. If
-the meeting is in Pike Place Market, there is no need to sign the CDA. If
-we overflow into one of the Quincy rooms, then each company present must
-have a signed CDA. 
-
-Again, the CDA can be located at:
-http://www.nfsv4bat.org/Events/2011/October/BAT/NetApp_BAT_2011_CDA.pdf
-
-I'll have some printed out and ready to be signed. :->
-
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 4e41f65..5b192a2 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -315,6 +315,9 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (open->op_create && open->op_claim_type != NFS4_OPEN_CLAIM_NULL)
+ 		return nfserr_inval;
+ 
++	/* We don't yet support WANT bits: */
++	open->op_share_access &= NFS4_SHARE_ACCESS_MASK;
++
+ 	/*
+ 	 * RFC5661 18.51.3
+ 	 * Before RECLAIM_COMPLETE done, server should deny new lock
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 5f35f35..2042805 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2345,8 +2345,7 @@ static inline __be32 init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_
+ 	stp->st_file = fp;
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = 0;
+-	__set_bit(open->op_share_access & ~NFS4_SHARE_WANT_MASK,
+-		  &stp->st_access_bmap);
++	__set_bit(open->op_share_access, &stp->st_access_bmap);
+ 	__set_bit(open->op_share_deny, &stp->st_deny_bmap);
+ 	stp->st_openstp = NULL;
+ 	return nfs_ok;
+@@ -2690,7 +2689,7 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
+ static __be32
+ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open *open)
+ {
+-	u32 op_share_access = open->op_share_access & ~NFS4_SHARE_WANT_MASK;
++	u32 op_share_access = open->op_share_access;
+ 	bool new_access;
+ 	__be32 status;
+ 
+-- 
+1.7.4.1
 
