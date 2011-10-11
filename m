@@ -1,69 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48081 "EHLO fieldses.org"
+Received: from gws07.hcl.com ([203.105.186.23]:40897 "EHLO gws07.hcl.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753032Ab1J1Jaj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Oct 2011 05:30:39 -0400
-Date: Fri, 28 Oct 2011 05:30:36 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH v3 0/3] SUNRPC: rcbind clients virtualization
-Message-ID: <20111028093036.GA2604@fieldses.org>
-References: <20111027180824.20459.23219.stgit@localhost6.localdomain6>
- <20111027202514.GA31669@fieldses.org>
- <4EAA74DD.3070708@parallels.com>
+	id S1753049Ab1JKGZR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Oct 2011 02:25:17 -0400
+From: Pankaj Baranwal <Pankaj.Baranwal@hcl.in>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        Mimi Zohar <zohar@linux.vnet.ibm.com>
+Date: Tue, 11 Oct 2011 11:49:36 +0530
+Subject: Need information about the net ads user command
+Message-ID: <AD32159B1843864D8CB027AD1A54E8373F32FE4099@CHN-HCLT-EVS09.HCLT.CORP.HCL.IN>
+References: <1316617097-21384-1-git-send-email-bfields@redhat.com>
+	<1316617097-21384-3-git-send-email-bfields@redhat.com>
+ <20111010215911.GC17936@fieldses.org>
+In-Reply-To: <20111010215911.GC17936@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4EAA74DD.3070708@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 28, 2011 at 01:24:45PM +0400, Stanislav Kinsbursky wrote:
-> This patch-set was created before you've sent your NFSd plan and we
-> disacussed Lockd per netns.
-> So, this sentence: "NFSd service will be per netns too from my pow"
-> is obsolete. And Lockd will be one for all.
+Hi,
 
-I believe lockd should be pert-netns--at least that's what the server
-needs.
+"net ads user" command doesn't returns users starting with $.
+Is there any another way to search users starting with $.
 
-(The single lockd thread may handle requests from all netns, but it
-should behave like a different service depending on netns, so its data
-structures, etc. will need to be per-ns.
+Thanks in advance for your help.
 
---b.
+Thanks ,
+Pankaj
 
-> Or you are asking about something else?
-> 
-> >--b.
-> >
-> >>And also we have NFSd file system, which
-> >>is not virtualized yet.
-> >>
-> >>The following series consists of:
-> >>
-> >>---
-> >>
-> >>Stanislav Kinsbursky (3):
-> >>       SUNRPC: move rpcbind internals to sunrpc part of network namespace context
-> >>       SUNRPC: optimize net_ns dereferencing in rpcbind creation calls
-> >>       SUNRPC: optimize net_ns dereferencing in rpcbind registering calls
-> >>
-> >>
-> >>  net/sunrpc/netns.h     |    5 ++
-> >>  net/sunrpc/rpcb_clnt.c |  103 ++++++++++++++++++++++++++----------------------
-> >>  2 files changed, 61 insertions(+), 47 deletions(-)
-> >>
-> >>--
-> >>Signature
-> 
-> 
-> -- 
-> Best regards,
-> Stanislav Kinsbursky
+
+::DISCLAIMER::
+-----------------------------------------------------------------------------------------------------------------------
+
+The contents of this e-mail and any attachment(s) are confidential and intended for the named recipient(s) only.
+It shall not attach any liability on the originator or HCL or its affiliates. Any views or opinions presented in
+this email are solely those of the author and may not necessarily reflect the opinions of HCL or its affiliates.
+Any form of reproduction, dissemination, copying, disclosure, modification, distribution and / or publication of
+this message without the prior written consent of the author of this e-mail is strictly prohibited. If you have
+received this email in error please delete it and notify the sender immediately. Before opening any mail and
+attachments please check them for viruses and defect.
+
+-----------------------------------------------------------------------------------------------------------------------
