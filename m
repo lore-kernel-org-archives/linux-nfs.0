@@ -1,62 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:47242 "EHLO mx2.netapp.com"
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:33596 "EHLO e8.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932516Ab1JXPbo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Oct 2011 11:31:44 -0400
-Subject: Re: NFS4 BAD_STATEID loop (kernel 3.0.4)
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: David Flynn <davidf@rd.bbc.co.uk>
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Date: Mon, 24 Oct 2011 17:31:42 +0200
-In-Reply-To: <20111024145027.GF32587@rd.bbc.co.uk>
-References: <20111024104042.GD32587@rd.bbc.co.uk>
-	 <1319455367.8505.3.camel@lade.trondhjem.org>
-	 <20111024131734.GE32587@rd.bbc.co.uk>
-	 <1319463165.2734.1.camel@lade.trondhjem.org>
-	 <20111024145027.GF32587@rd.bbc.co.uk>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1319470302.2734.4.camel@lade.trondhjem.org>
-Mime-Version: 1.0
+	id S1751643Ab1JLRRw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Oct 2011 13:17:52 -0400
+Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
+	by e8.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p9CH2RTY014203
+	for <linux-nfs@vger.kernel.org>; Wed, 12 Oct 2011 13:02:27 -0400
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p9CHHfGH2326706
+	for <linux-nfs@vger.kernel.org>; Wed, 12 Oct 2011 13:17:41 -0400
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p9CHHS0p027197
+	for <linux-nfs@vger.kernel.org>; Wed, 12 Oct 2011 14:17:28 -0300
+Date: Wed, 12 Oct 2011 10:17:27 -0700
+From: Malahal Naineni <malahal@us.ibm.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Check validity of cl_rpcclient in nfs_server_list_show
+Message-ID: <20111012171727.GA18925@us.ibm.com>
+References: <1315965305-23757-1-git-send-email-malahal@us.ibm.com>
+ <20110919153429.GA16725@us.ibm.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B35626A@SACMVEXC2-PRD.hq.netapp.com>
+ <20110921002714.GA31689@us.ibm.com>
+ <20110927164335.GA19331@us.ibm.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110927164335.GA19331@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2011-10-24 at 14:50 +0000, David Flynn wrote: 
-> No.     Time            Source                Destination           Protocol Size  Info
->      39 15:33:59.077143 172.29.190.28         172.29.120.140        NFS      370   V4 COMPOUND Call (Reply In 40) <EMPTY> PUTFH;WRITE;GETATTR
+Any comments on this patch?
+
+Malahal Naineni [malahal@us.ibm.com] wrote:
+> Malahal Naineni [malahal@us.ibm.com] wrote:
+> > Myklebust, Trond [Trond.Myklebust@netapp.com] wrote:
+> > > Shouldn't we just skip all nfs_client structures that don't have
+> > > cl_cons_state set to NFS_CS_READY? I see no reason to display their
+> > > properties even if they have got far enough as to create an rpc client.
+> > > 
+> > > Cheers
+> > >   Trond
+> > 
+> > Sounds good to me. Here is a tested patch.
 > 
-> Frame 39: 370 bytes on wire (2960 bits), 370 bytes captured (2960 bits)
-> Ethernet II, Src: ChelsioC_07:49:6f (00:07:43:07:49:6f), Dst: All-HSRP-routers_be (00:00:0c:07:ac:be)
-> Internet Protocol, Src: 172.29.190.28 (172.29.190.28), Dst: 172.29.120.140 (172.29.120.140)
-> Transmission Control Protocol, Src Port: omginitialrefs (900), Dst Port: nfs (2049), Seq: 40433, Ack: 7449, Len: 304
-> Remote Procedure Call, Type:Call XID:0x43ce4e16
-> Network File System
->     [Program Version: 4]
->     [V4 Procedure: COMPOUND (1)]
->     Tag: <EMPTY>
->         length: 0
->         contents: <EMPTY>
->     minorversion: 0
->     Operations (count: 3)
->         Opcode: PUTFH (22)
->             filehandle
->                 length: 36
->                 [hash (CRC-32): 0x6e4b15f3]
->                 decode type as: unknown
->                 filehandle: 7df3a75d5e1cd908000ab44c5b000000efc80200000a0300...
->         Opcode: WRITE (38)
->             stateid
-
-Do you have an example of the stateid argument's value? Does it change
-at all between separate WRITE attempts?
-
-Cheers
-  Trond
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+> Any comments on this one?
+> 
+> Thanks, Malahal.
+> 
+> > 
+> > 
+> > As soon as the nfs_client gets created, its cl_rpcclient is set to
+> > ERR_PTR(-EINVAL). The rpc client structure is allocated later. Check
+> > if the client is ready before using the cl_rpcclient pointer.
+> > 
+> > Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
+> > ---
+> >  fs/nfs/client.c |    4 ++++
+> >  1 files changed, 4 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> > index 5833fbb..a54c45e 100644
+> > --- a/fs/nfs/client.c
+> > +++ b/fs/nfs/client.c
+> > @@ -1867,6 +1867,10 @@ static int nfs_server_list_show(struct seq_file *m, void *v)
+> >  	/* display one transport per line on subsequent lines */
+> >  	clp = list_entry(v, struct nfs_client, cl_share_link);
+> > 
+> > +	/* Check if the client is initialized */
+> > +	if (clp->cl_cons_state != NFS_CS_READY)
+> > +		return 0;
+> > +
+> >  	seq_printf(m, "v%u %s %s %3d %s\n",
+> >  		   clp->rpc_ops->version,
+> >  		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_ADDR),
+> > -- 
+> > 1.7.0.4
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
