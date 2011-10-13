@@ -1,49 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp04.au.ibm.com ([202.81.31.146]:41667 "EHLO
-	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751436Ab1JWRoT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Oct 2011 13:44:19 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V8 00/26]  New ACL format for better NFSv4 acl interoperability
-Date: Sun, 23 Oct 2011 23:13:29 +0530
-Message-Id: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:28297 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753572Ab1JMRyb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Oct 2011 13:54:31 -0400
+Subject: Re: [PATCH] nfs-utils: mount: really return from errno test
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4E9718E3.8040805@RedHat.com>
+Date: Thu, 13 Oct 2011 13:54:06 -0400
+Cc: Hamo <hamo.by@gmail.com>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Message-Id: <D7792A21-C227-4A3B-9FBA-E08BF224620C@oracle.com>
+References: <CAO_0yfPgXJJSZNDYXHBSt45J0WQsh5EQVUs0nBN4wb+NoT6hAQ@mail.gmail.com> <40D1A40C-BE0C-4AE0-857D-05531615748E@oracle.com> <4E971329.3000007@RedHat.com> <4E9718E3.8040805@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
 
-The following set of patches implements VFS and ext4 changes needed to implement
-a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
-extended by file masks to fit into the standard POSIX file permission model.
-They are designed to work seamlessly locally as well as across the NFSv4 and
-CIFS/SMB2 network file system protocols.
+On Oct 13, 2011, at 12:59 PM, Steve Dickson wrote:
 
-A user-space utility for displaying and changing richacls is available at [4]
-(a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
+> Looking further into this issue, I noticed all the following 
+> mounts were successful.
+> 
+> # mount -o v3 localhost:/home /mnt/home
+> # mount -o v4 localhost:/home /mnt/home
 
-[4] git://github.com/kvaneesh/richacl-tools.git master
+Does this actually change the NFS version in use for /mnt/home, or does the client recognize that this is the same server and export as an existing mount point, and share the cache and mount options?
 
-To test richacl on ext4 use tune2fs -O richacl to enable richacl feature and mount
-the file system using -o acl mount option.
+If the mount options are the same, this is equivalent to
 
-More details regarding richacl can be found at
-http://acl.bestbits.at/richacl/
+# mount -o v3 localhost:/home /mnt/home
+# mount -o v3 localhost:/home /mnt/home
 
-Changes from v7:
-a) Update patches based on review comments.
-b) Add acked-by:
-c) Change the richacl xattr format based on review feedback.
+And both mount requests should succeed.
 
-git repository With all the patches can be found at
-git://github.com/kvaneesh/linux.git richacl
+> # mount -o v4 [fec0::2:5652:ff:fe20:8459]:/home /mnt/home
+> # mount -o v3 [fec0::2:5652:ff:fe20:8459]:/home /mnt/home
+> 
+> which the mount point, /mnt/home is mounted 4 different times 
+> to the same server.
 
-IMHO the patches are ready to be merged upstream. How do we push these changes
-to Linus tree ? Andrew, Viro, any comment on how we can get this merged upstream ?
+Assuming localhost is fec0::2:5652:ff:fe20:8459, this test allows you to mount the same server by an IPv4 and an IPv6 address onto the same local directory.  Why then does 744657's test case fail?
 
--aneesh
-In-Reply-To: 
+> Is by design or a real problem?
+> steved.
+> 
+> 
+> On 10/13/2011 12:34 PM, Steve Dickson wrote:
+>> Yeah... I believe its this one
+>>   https://bugzilla.redhat.com/show_bug.cgi?id=744657
+>> 
+>> On 10/13/2011 10:53 AM, Chuck Lever wrote:
+>>> What was the presenting problem?  Is there a bugzilla report I can look at?
+>>> 
+>>> On Oct 11, 2011, at 5:44 AM, Hamo wrote:
+>>> 
+>>>> We should only try next address family if we meet ECONNREFUSED or EHOSTUNREACH
+>>>> for v4 or ECONNREFUSED or EOPNOTSUPP or EHOSTUNREACH for v3v2.
+>>>> Before, only a break in swich can not make the program out of for loop.
+>>>> 
+>>>> Signed-off-by: Yang Bai <hamo.by@gmail.com>
+>>>> ---
+>>>> utils/mount/stropts.c |    6 ++++--
+>>>> 1 files changed, 4 insertions(+), 2 deletions(-)
+>>>> 
+>>>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+>>>> index 314a806..4032bf3 100644
+>>>> --- a/utils/mount/stropts.c
+>>>> +++ b/utils/mount/stropts.c
+>>>> @@ -665,9 +665,10 @@ static int nfs_try_mount_v3v2(struct nfsmount_info *mi)
+>>>> 		case EHOSTUNREACH:
+>>>> 			continue;
+>>>> 		default:
+>>>> -			break;
+>>>> +			goto out;
+>>>> 		}
+>>>> 	}
+>>>> +out:
+>>>> 	return ret;
+>>>> }
+>>>> 
+>>>> @@ -751,9 +752,10 @@ static int nfs_try_mount_v4(struct nfsmount_info *mi)
+>>>> 		case EHOSTUNREACH:
+>>>> 			continue;
+>>>> 		default:
+>>>> -			break;
+>>>> +			goto out;
+>>>> 		}
+>>>> 	}
+>>>> +out:
+>>>> 	return ret;
+>>>> }
+>>>> 
+>>>> -- 
+>>>> 1.7.1
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> Please read the FAQ at  http://www.tux.org/lkml/
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
