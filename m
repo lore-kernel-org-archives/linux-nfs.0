@@ -1,84 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:49321 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932183Ab1J2Umh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 16:42:37 -0400
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: NFS4ERR_STALE_CLIENTID loop
-Date: Sat, 29 Oct 2011 13:42:34 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7481@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <20111029195249.GE2011@rd.bbc.co.uk>
-References: <20111024145027.GF32587@rd.bbc.co.uk> <1319470302.2734.4.camel@lade.trondhjem.org> <20111027221742.GI32587@rd.bbc.co.uk> <20111029002500.GA2011@rd.bbc.co.uk> <1319909376.2760.11.camel@lade.trondhjem.org> <20111029181509.GE12122@fieldses.org> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7474@SACMVEXC2-PRD.hq.netapp.com> <20111029184759.GG12122@fieldses.org> <4B27362C-FBC1-4F64-B611-85D5FF6C5359@oracle.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7479@SACMVEXC2-PRD.hq.netapp.com> <20111029195249.GE2011@rd.bbc.co.uk>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "David Flynn" <davidf@rd.bbc.co.uk>
-Cc: "Chuck Lever" <chuck.lever@oracle.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
+Received: from DMZ-MAILSEC-SCANNER-7.MIT.EDU ([18.7.68.36]:57683 "EHLO
+	dmz-mailsec-scanner-7.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752646Ab1JMND0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Oct 2011 09:03:26 -0400
+To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 1/2] VFS: New /proc file /proc/self/mountstats
+References: <20050317162613.756101BB98@citi.umich.edu>
+From: stark@MIT.EDU
+Date: 13 Oct 2011 08:58:20 -0400
+Message-ID: <ycqsjmx9hg3.fsf@multics.mit.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: David Flynn [mailto:davidf@rd.bbc.co.uk]
-> Sent: Saturday, October 29, 2011 9:53 PM
-> To: Myklebust, Trond
-> Cc: Chuck Lever; J. Bruce Fields; David Flynn;
-linux-nfs@vger.kernel.org
-> Subject: Re: NFS4ERR_STALE_CLIENTID loop
-> 
-> * Myklebust, Trond (Trond.Myklebust@netapp.com) wrote:
-> > > -----Original Message-----
-> > > From: Chuck Lever [mailto:chuck.lever@oracle.com] On Oct 29, 2011,
-> > > at 2:47 PM, J. Bruce Fields wrote:
-> > > > Yes, and it's not something I care that strongly about, really,
-my
-> > > > only observation is that this sort of failure (an implementation
-> > > > bug on one side or another resulting in a loop) seems to have
-been
-> > > > common (based on no hard data, just my vague memories of list
-> > > > threads), and the results fairly obnoxious (possibly even for
-> > > > unrelated hosts on the network).
-> > > > So if there's some simple way to fail more gracefully it might
-be
-> > > > helpful.
-> > >
-> > > For what it's worth, I agree that client implementations should
-> > > attempt to behave more gracefully in the face of server problems,
-be
-> > > they the result of bugs or the result of other issues specific to
-> > > that server.  Problems like this make NFSv4 as a protocol look
-bad.
-> >
-> > I can't see what a client can do in this situation except possibly
-> > just give up after a while and throw a SERVER_BROKEN error (which
-> > means data loss). That still won't make NFSv4 look good...
-> 
-> Indeed, it is a quite the dilemma.
-> 
-> I agree that giving and guaranteeing unattended data loss is bad (data
-loss at
-> the behest of an operator is ok, afterall they can always fence a
-broken
-> machine).
-> 
-> Looking at some of the logs again, even going back to the very
-original case, it
-> appears to be about 600us between retries (RTT=400us).  Is there any
-way to
-> make that less aggressive?, eg 1s? -- that'd reduce the impact by
-three
-> orders of magnitude.  What would be the down-side?  How often do you
-> expect to get a BAD_STATEID error?
 
-BAD_STATEID is a different matter, and is one that we should have
-resolved in the NFS client in the upstream kernel. At least on newer
-clients, we should be trying to reopen the file and re-establish all
-locks when we get a BAD_STATEID. Can you please remind us which kernel
-you are using?
+Chuck Lever <cel <at> citi.umich.edu> writes:
 
-That said... Even on new clients, the recovery attempt may fail due to
-the STALE_CLIENTID bug. That will still hit us when we call OPEN in
-order to get a new stateid.
+> Create a new file under /proc/self, called mountstats, where mounted file
+> systems can export information (configuration options, performance counters,
+> and so on). Use a mechanism similar to /proc/mounts and s_ops->show_options.
 
-Cheers
-  Trond
+I'm using this file to dump data into our performance metrics database along
+with all the other counters from snmp and other sources. This lets us
+calculate things like the average number of requests pending, average latency
+per request over time.
+
+But I have a few questions about the meaning of the values and they don't seem
+to be documented outside the comments in the source. 
+
+In particular is it an invariant that execution = rtt + queue? Or is execution
+including some additional overhead other than the server and network
+congestion? Or is there something more subtle going on and these values aren't
+related in the way I'm imagining at all?
+
+And where can I read about the meaning of bad_xids, req_u, and bklog_u? What
+do they mean?
+
+Also, connect_time, idle_time, req_u, and bklog_u are instantaneous samples
+("guages" so to speak), not integrated over time right? So they can't be used
+to calculate any aggregates?
