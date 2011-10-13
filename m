@@ -1,106 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp07.au.ibm.com ([202.81.31.140]:38667 "EHLO
-	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754917Ab1JWRpQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Oct 2011 13:45:16 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V8 16/26] richacl: Update the file masks in chmod()
-Date: Sun, 23 Oct 2011 23:13:45 +0530
-Message-Id: <1319391835-5829-17-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:65051 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756430Ab1JMRT4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Oct 2011 13:19:56 -0400
+Subject: Re: [PATCH] nfs-utils: mount: really return from errno test
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, Hamo <hamo.by@gmail.com>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Date: Thu, 13 Oct 2011 13:19:55 -0400
+In-Reply-To: <4E9718E3.8040805@RedHat.com>
+References: <CAO_0yfPgXJJSZNDYXHBSt45J0WQsh5EQVUs0nBN4wb+NoT6hAQ@mail.gmail.com>
+	 <40D1A40C-BE0C-4AE0-857D-05531615748E@oracle.com>
+	 <4E971329.3000007@RedHat.com> <4E9718E3.8040805@RedHat.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1318526395.4773.20.camel@lade.trondhjem.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+This is by design.
 
-Doing a chmod() sets the file mode, which includes the file permission
-bits.  When a file has a richacl, the permissions that the richacl
-grants need to be limited to what the new file permission bits allow.
+NFSv3 and NFSv4 have no server-side identifiers to inform us that we may
+be talking to the same server, and so we don't worry about doing so.
 
-This is done by setting the file masks in the richacl to what the file
-permission bits map to.  The richacl access check algorithm takes the
-file masks into account, which ensures that the richacl cannot grant too
-many permissions.
+An NFSv4.1 server can tell you that this is the same server replying on
+different IP addresses. We are planning on adding proper support for
+that, but I don't believe we've currently got it right.
 
-It is possible to explicitly add permissions to the file masks which go
-beyond what the file permission bits can grant (like the ACE4_WRITE_ACL
-permission).  The POSIX.1 standard calls this an alternate file access
-control mechanism.  A subsequent chmod() would ensure that those
-permissions are disabled again.
+Cheers
+  Trond
 
-Acked-by: J. Bruce Fields <bfields@redhat.com>
-Acked-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/richacl_base.c       |   40 ++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |    1 +
- 2 files changed, 41 insertions(+), 0 deletions(-)
+On Thu, 2011-10-13 at 12:59 -0400, Steve Dickson wrote: 
+> Looking further into this issue, I noticed all the following 
+> mounts were successful.
+> 
+> # mount -o v3 localhost:/home /mnt/home
+> # mount -o v4 localhost:/home /mnt/home
+> # mount -o v4 [fec0::2:5652:ff:fe20:8459]:/home /mnt/home
+> # mount -o v3 [fec0::2:5652:ff:fe20:8459]:/home /mnt/home
+> 
+> which the mount point, /mnt/home is mounted 4 different times 
+> to the same server. 
+> 
+> Is by design or a real problem?
+> 
+> steved.
+> 
+> 
+> On 10/13/2011 12:34 PM, Steve Dickson wrote:
+> > Yeah... I believe its this one
+> >    https://bugzilla.redhat.com/show_bug.cgi?id=744657
+> > 
+> > On 10/13/2011 10:53 AM, Chuck Lever wrote:
+> >> What was the presenting problem?  Is there a bugzilla report I can look at?
+> >>
+> >> On Oct 11, 2011, at 5:44 AM, Hamo wrote:
+> >>
+> >>> We should only try next address family if we meet ECONNREFUSED or EHOSTUNREACH
+> >>> for v4 or ECONNREFUSED or EOPNOTSUPP or EHOSTUNREACH for v3v2.
+> >>> Before, only a break in swich can not make the program out of for loop.
+> >>>
+> >>> Signed-off-by: Yang Bai <hamo.by@gmail.com>
+> >>> ---
+> >>> utils/mount/stropts.c |    6 ++++--
+> >>> 1 files changed, 4 insertions(+), 2 deletions(-)
+> >>>
+> >>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> >>> index 314a806..4032bf3 100644
+> >>> --- a/utils/mount/stropts.c
+> >>> +++ b/utils/mount/stropts.c
+> >>> @@ -665,9 +665,10 @@ static int nfs_try_mount_v3v2(struct nfsmount_info *mi)
+> >>> 		case EHOSTUNREACH:
+> >>> 			continue;
+> >>> 		default:
+> >>> -			break;
+> >>> +			goto out;
+> >>> 		}
+> >>> 	}
+> >>> +out:
+> >>> 	return ret;
+> >>> }
+> >>>
+> >>> @@ -751,9 +752,10 @@ static int nfs_try_mount_v4(struct nfsmount_info *mi)
+> >>> 		case EHOSTUNREACH:
+> >>> 			continue;
+> >>> 		default:
+> >>> -			break;
+> >>> +			goto out;
+> >>> 		}
+> >>> 	}
+> >>> +out:
+> >>> 	return ret;
+> >>> }
+> >>>
+> >>> -- 
+> >>> 1.7.1
+> >>> --
+> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>> the body of a message to majordomo@vger.kernel.org
+> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >>
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > Please read the FAQ at  http://www.tux.org/lkml/
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index d73f1b0..41ff82d 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -312,3 +312,43 @@ restart:
- 	acl->a_flags &= ~ACL4_MASKED;
- }
- EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
-+
-+/**
-+ * richacl_chmod  -  update the file masks to reflect the new mode
-+ * @mode:	new file permission bits
-+ *
-+ * Return a copy of @acl where the file masks have been replaced by the file
-+ * masks corresponding to the file permission bits in @mode, or returns @acl
-+ * itself if the file masks are already up to date.  Takes over a reference
-+ * to @acl.
-+ */
-+struct richacl *
-+richacl_chmod(struct richacl *acl, mode_t mode)
-+{
-+	unsigned int owner_mask, group_mask, other_mask;
-+	struct richacl *clone;
-+
-+	owner_mask = richacl_mode_to_mask(mode >> 6) |
-+		     ACE4_POSIX_OWNER_ALLOWED;
-+	group_mask = richacl_mode_to_mask(mode >> 3);
-+	other_mask = richacl_mode_to_mask(mode);
-+
-+	if (acl->a_owner_mask == owner_mask &&
-+	    acl->a_group_mask == group_mask &&
-+	    acl->a_other_mask == other_mask &&
-+	    (acl->a_flags & ACL4_MASKED))
-+		return acl;
-+
-+	clone = richacl_clone(acl);
-+	richacl_put(acl);
-+	if (!clone)
-+		return ERR_PTR(-ENOMEM);
-+
-+	clone->a_flags |= ACL4_MASKED;
-+	clone->a_owner_mask = owner_mask;
-+	clone->a_group_mask = group_mask;
-+	clone->a_other_mask = other_mask;
-+
-+	return clone;
-+}
-+EXPORT_SYMBOL_GPL(richacl_chmod);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 14f18b5..a1ff8a3 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -281,5 +281,6 @@ extern int richacl_masks_to_mode(const struct richacl *);
- extern unsigned int richacl_mode_to_mask(mode_t);
- extern unsigned int richacl_want_to_mask(unsigned int);
- extern void richacl_compute_max_masks(struct richacl *);
-+extern struct richacl *richacl_chmod(struct richacl *, mode_t);
- 
- #endif /* __RICHACL_H */
 -- 
-1.7.5.4
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
