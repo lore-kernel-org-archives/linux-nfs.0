@@ -1,126 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:54382 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753691Ab1JFM1H (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Oct 2011 08:27:07 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@tonian.com>, NFS list <linux-nfs@vger.kernel.org>,
-        open-osd <osd-dev@open-osd.org>
-CC: Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH 1/5] SQUASHME: pnfsd-exofs: convert to v3.1 ORE
-Date: Thu, 6 Oct 2011 14:26:58 +0200
-Message-ID: <1317904018-17289-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4E8D9D56.6020803@panasas.com>
-References: <4E8D9D56.6020803@panasas.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mx2.netapp.com ([216.240.18.37]:17125 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754182Ab1JMVOi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Oct 2011 17:14:38 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 3/3] NFSv4.1: rename nfs4_free_slot and nfs4_find_slot
+Date: Thu, 13 Oct 2011 17:14:30 -0400
+Message-Id: <1318540470-15181-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1318540470-15181-1-git-send-email-andros@netapp.com>
+References: <1318540470-15181-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@tonian.com>
+From: Andy Adamson <andros@netapp.com>
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+These functions deal in slotid's, not slots.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/exofs/export.c |   34 +++++++++++++++++++++++-----------
- 1 files changed, 23 insertions(+), 11 deletions(-)
+ fs/nfs/nfs4proc.c |   24 ++++++++++++------------
+ 1 files changed, 12 insertions(+), 12 deletions(-)
 
-diff --git a/fs/exofs/export.c b/fs/exofs/export.c
-index 8281c85..07bc5e2 100644
---- a/fs/exofs/export.c
-+++ b/fs/exofs/export.c
-@@ -73,6 +73,13 @@ err:
- 	return status;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7438632..ad9e1e0 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -427,7 +427,7 @@ nfs4_dynamic_alloc_slot(struct nfs4_slot_table *tbl, u8 slotid)
  }
  
-+static unsigned exofs_layout_od_id(struct ore_layout *layout,
-+				   struct ore_components *comps,
-+				   osd_id obj_no, unsigned layout_index)
-+{
-+	return (layout_index + obj_no * layout->mirrors_p1) % comps->numdevs;
-+}
-+
- static enum nfsstat4 exofs_layout_get(
- 	struct inode *inode,
- 	struct exp_xdr_stream *xdr,
-@@ -81,7 +88,8 @@ static enum nfsstat4 exofs_layout_get(
+ /*
+- * Return the slot associated with the slotid returned by nfs4_find_slot
++ * Return the slot associated with the slotid returned by nfs4_find_slotid
+  * which returns only slotids between 0 and tbl->max_slots.
+  * If the slot is not found, it has not been allocated: the NULL return
+  * puts the request on the slot table waitq and dynamically allocates a
+@@ -517,9 +517,9 @@ void nfs4_reduce_slots_locked(struct nfs4_slot_table *tbl)
+ }
+ 
+ /*
+- * nfs4_free_slot - free a slot and efficiently update slot table.
++ * nfs4_free_slotid - free a slotid and efficiently update slot table.
+  *
+- * freeing a slot is trivially done by clearing its respective bit
++ * freeing a slotid is trivially done by clearing its respective bit
+  * in the bitmap.
+  * If the freed slotid equals highest_used_slotid we want to update it
+  * so that the server would be able to size down the slot table if needed,
+@@ -532,7 +532,7 @@ void nfs4_reduce_slots_locked(struct nfs4_slot_table *tbl)
+  * Must be called while holding tbl->slot_tbl_lock
+  */
+ static void
+-nfs4_free_slot(struct nfs4_slot_table *tbl, u8 free_slotid)
++nfs4_free_slotid(struct nfs4_slot_table *tbl, u8 free_slotid)
  {
- 	struct exofs_i_info *oi = exofs_i(inode);
- 	struct exofs_sb_info *sbi = inode->i_sb->s_fs_info;
--	struct exofs_layout *el = &sbi->layout;
-+	struct ore_layout *el = &sbi->layout;
-+	struct ore_components *ec = &sbi->comps;
- 	struct pnfs_osd_object_cred *creds = NULL;
- 	struct pnfs_osd_layout layout;
- 	__be32 *start;
-@@ -104,7 +112,7 @@ static enum nfsstat4 exofs_layout_get(
- 	/* Fill in a pnfs_osd_layout struct */
- 	layout.olo_map = sbi->data_map;
- 	layout.olo_comps_index = 0;
--	layout.olo_num_comps = el->s_numdevs;
-+	layout.olo_num_comps = ec->numdevs;
- 	layout.olo_comps = creds;
+ 	int slotid = free_slotid;
  
- 	nfserr = pnfs_osd_xdr_encode_layout_hdr(xdr, &layout);
-@@ -112,16 +120,19 @@ static enum nfsstat4 exofs_layout_get(
- 		goto out;
- 
- 	/* Encode layout components */
--	for (i = 0; i < el->s_numdevs; i++) {
-+	for (i = 0; i < ec->numdevs; i++) {
- 		struct pnfs_osd_object_cred cred;
--		osd_id id = exofs_oi_objno(oi);
--		unsigned dev = exofs_layout_od_id(el, id, i);
-+		struct osd_obj_id oid = {
-+			.partition = sbi->one_comp.obj.partition,
-+			.id = exofs_oi_objno(oi)
-+		};
-+		unsigned dev = exofs_layout_od_id(el, ec, oid.id, i);
- 
- 		set_dev_id(&cred.oc_object_id.oid_device_id, args->lg_sbid,
- 			   dev);
--		cred.oc_object_id.oid_partition_id = el->s_pid;
--		cred.oc_object_id.oid_object_id = id;
--		cred.oc_osd_version = osd_dev_is_ver1(el->s_ods[dev]) ?
-+		cred.oc_object_id.oid_partition_id = oid.partition;
-+		cred.oc_object_id.oid_object_id = oid.id;
-+		cred.oc_osd_version = osd_dev_is_ver1(ec->ods[dev]) ?
- 						PNFS_OSD_VERSION_1 :
- 						PNFS_OSD_VERSION_2;
- 		cred.oc_cap_key_sec = PNFS_OSD_CAP_KEY_SEC_NONE;
-@@ -130,7 +141,7 @@ static enum nfsstat4 exofs_layout_get(
- 		cred.oc_cap_key.cred		= NULL;
- 
- 		cred.oc_cap.cred_len	= OSD_CAP_LEN;
--		cred.oc_cap.cred	= oi->i_cred;
-+		exofs_make_credential(cred.oc_cap.cred, &oid);
- 		nfserr = pnfs_osd_xdr_encode_layout_cred(xdr, &cred);
- 		if (unlikely(nfserr))
- 			goto out;
-@@ -277,6 +288,7 @@ int exofs_get_device_info(struct super_block *sb, struct exp_xdr_stream *xdr,
- 			  const struct nfsd4_pnfs_deviceid *devid)
- {
- 	struct exofs_sb_info *sbi = sb->s_fs_info;
-+	struct ore_components *ec = &sbi->comps;
- 	struct pnfs_osd_deviceaddr devaddr;
- 	const struct osd_dev_info *odi;
- 	u64 devno = devid->devid;
-@@ -285,13 +297,13 @@ int exofs_get_device_info(struct super_block *sb, struct exp_xdr_stream *xdr,
- 
- 	memset(&devaddr, 0, sizeof(devaddr));
- 
--	if (unlikely(devno >= sbi->layout.s_numdevs)) {
-+	if (unlikely(devno >= ec->numdevs)) {
- 		EXOFS_DBGMSG("Error: Device((%llx,%llx) does not exist\n",
- 			     devid->sbid, devno);
- 		return -ENODEV;
+@@ -598,7 +598,7 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
  	}
  
--	odi = osduld_device_info(sbi->layout.s_ods[devno]);
-+	odi = osduld_device_info(ec->ods[devno]);
+ 	spin_lock(&tbl->slot_tbl_lock);
+-	nfs4_free_slot(tbl, res->sr_slot->slotid);
++	nfs4_free_slotid(tbl, res->sr_slot->slotid);
+ 	nfs4_put_slot_locked(res->sr_slot);
+ 	nfs4_check_drain_fc_complete(res->sr_session);
+ 	spin_unlock(&tbl->slot_tbl_lock);
+@@ -669,17 +669,17 @@ static int nfs4_sequence_done(struct rpc_task *task,
+ }
  
- 	devaddr.oda_systemid.len = odi->systemid_len;
- 	devaddr.oda_systemid.data = (void *)odi->systemid; /* !const cast */
+ /*
+- * nfs4_find_slot - efficiently look for a free slot
++ * nfs4_find_slotid - efficiently look for a free slotid
+  *
+- * nfs4_find_slot looks for an unset bit in the used_slots bitmap.
+- * If found, we mark the slot as used, update the highest_used_slotid,
++ * nfs4_find_slotid looks for an unset bit in the used_slots bitmap.
++ * If found, we mark the slotid as used, update the highest_used_slotid,
+  * and respectively set up the sequence operation args.
+- * The slot number is returned if found, or NFS4_MAX_SLOT_TABLE otherwise.
++ * The slotid is returned if found, or NFS4_MAX_SLOT_TABLE otherwise.
+  *
+  * Note: must be called with under the slot_tbl_lock.
+  */
+ static u8
+-nfs4_find_slot(struct nfs4_slot_table *tbl)
++nfs4_find_slotid(struct nfs4_slot_table *tbl)
+ {
+ 	int slotid;
+ 	u8 ret_id = NFS4_MAX_SLOT_TABLE;
+@@ -739,7 +739,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ 		return -EAGAIN;
+ 	}
+ 
+-	slotid = nfs4_find_slot(tbl);
++	slotid = nfs4_find_slotid(tbl);
+ 	if (slotid == NFS4_MAX_SLOT_TABLE) {
+ 		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
+ 		spin_unlock(&tbl->slot_tbl_lock);
+@@ -749,7 +749,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ 	slot = nfs4_lookup_slot_locked(tbl, slotid);
+ 	if (slot == NULL) {
+ 		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
+-		nfs4_free_slot(tbl, slotid);
++		nfs4_free_slotid(tbl, slotid);
+ 		spin_unlock(&tbl->slot_tbl_lock);
+ 		nfs4_dynamic_alloc_slot(tbl, slotid);
+ 		dprintk("<-- %s: allocate slotid %u\n", __func__, slotid);
 -- 
-1.7.2.3
+1.7.4.4
 
