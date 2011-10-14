@@ -1,51 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailout0.thls.bbc.co.uk ([132.185.240.35]:53460 "EHLO
-	mailout0.thls.bbc.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750914Ab1J2AZZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Oct 2011 20:25:25 -0400
-Date: Sat, 29 Oct 2011 00:25:00 +0000
-From: David Flynn <davidf@rd.bbc.co.uk>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: David Flynn <davidf@rd.bbc.co.uk>, linux-nfs@vger.kernel.org,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: NFS4ERR_STALE_CLIENTID loop
-Message-ID: <20111029002500.GA2011@rd.bbc.co.uk>
-References: <20111024104042.GD32587@rd.bbc.co.uk>
- <1319455367.8505.3.camel@lade.trondhjem.org>
- <20111024131734.GE32587@rd.bbc.co.uk>
- <1319463165.2734.1.camel@lade.trondhjem.org>
- <20111024145027.GF32587@rd.bbc.co.uk>
- <1319470302.2734.4.camel@lade.trondhjem.org>
- <20111027221742.GI32587@rd.bbc.co.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111027221742.GI32587@rd.bbc.co.uk>
+Received: from smtp-out3.tiscali.nl ([195.241.79.178]:60989 "EHLO
+	smtp-out3.tiscali.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932407Ab1JNVwS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Oct 2011 17:52:18 -0400
+Subject: Re: Problems with Kconfig select across directories
+From: Paul Bolle <pebolle@tiscali.nl>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Michal Marek <mmarek@suse.cz>, Randy Dunlap <randy.dunlap@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+In-Reply-To: <4E9848C1.8040306@panasas.com>
+References: <4E9848C1.8040306@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 14 Oct 2011 23:34:29 +0200
+Message-ID: <1318628069.6132.125.camel@x61.thuisdomein>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* David Flynn (davidf@rd.bbc.co.uk) wrote:
-> * Trond Myklebust (Trond.Myklebust@netapp.com) wrote:
-> > Do you have an example of the stateid argument's value? Does it change
-> > at all between separate WRITE attempts?
+On Fri, 2011-10-14 at 16:35 +0200, Boaz Harrosh wrote:
+> This does not work. The ORE is not compiled and MODPOST complains.
+> (Given EXOFS_FS is not selected since then it will work)
 > 
-> Further to all this, i've just had a similar fault on another machine,
+> What am I doing wrong? Why can't I "select" in fs/nfs/Kconfig
+> an option in fs/exofs/Kconfig? What can I do different?
 
-Using the same kernel, same mountpoint as before, we're currently
-experiencing a loop involving NFS4ERR_STALE_CLIENTID.
-Trace:
-  ftp://ftp.kw.bbc.co.uk/davidf/priv/saesheil.pcap
+We're not given much to go by here. So I'll just mention the first thing
+that I could think of: are you sure all NFS_FS's dependencies are met
+(like NETWORK_FILESYSTEMS)?
 
-Unfortunately, this is resulting in about 40 nodes doing their best to
-kill the poor solaris server.  Generating a combined total of
-250Mbit/sec towards the NFS server (collecting a little under
-200Mbit/sec of replies).
 
-Have we not heard of exponential backoff?
+Paul Bolle
 
-This seems to require major attention, given that this amounted to a
-site wide DoS: going round all the machines and killing the processes
-that were having major problems brought the situation back under
-control.  Frankly i'd rather that you panicked the kernel than this.
-
-Regards,
-..david
