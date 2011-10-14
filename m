@@ -1,66 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:46711 "EHLO
+Received: from natasha.panasas.com ([67.152.220.90]:33206 "EHLO
 	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755839Ab1JTBdg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Oct 2011 21:33:36 -0400
-Message-ID: <4E9F7A63.7050708@panasas.com>
-Date: Wed, 19 Oct 2011 18:33:23 -0700
+	with ESMTP id S1751113Ab1JNRYf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Oct 2011 13:24:35 -0400
+Message-ID: <4E98703E.7040605@panasas.com>
+Date: Fri, 14 Oct 2011 19:24:14 +0200
 From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] rpcdebug: Add missing debug flags
-References: <1319057013-19015-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1319057013-19015-1-git-send-email-steved@redhat.com>
+To: "Welch, Brent" <welch@panasas.com>, open-osd <osd-dev@open-osd.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>
+Subject: [PATCHSET 0/1 0/6] ore: RAID5 Support
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/19/2011 01:43 PM, Steve Dickson wrote:
-> This patch added the following debug flags:
-> 
-> fscache - enable FSCache debugging
-> pnfs - enable general pNFS debugging
-> pnfs_ld - enable file layout pNFS debugging
 
-"Any layout-driver debugging", not only files. We all use the same bit
+I'm proud to present RAID5 support to ORE. Which enables raid5 for both
+exofs and pnfs-objects-layout driver.
 
+The ORE with raid0/1/5 and soon 6 support has become a compact and abstract
+library, that with not a lot of effort, can support not only OSD but any
+type of devices. For example BTRFS, does it have a RAID5 support yet? if
+not it could use ORE. The ORE gets a bunch of pages at the top and produces
+bios for each device at the bottom. The libosd API can be easily abstracted
+and be used for block devices, just the same. The RAID layout supported by
+ORE is very rich, multi layered striping/mirroring/raid. even reacher then
+stacked MD. You can read about this layout here:
+http://git.open-osd.org/gitweb.cgi?p=ietf-rfc5664.git;a=blob_plain;f=draft-ietf-nfsv4-rfc5664bis.html;hb=boaz2
+Start at: 5.3. "Data Mapping Schemes" up to:
+5.4.5. "RAID Usage and Implementation Notes"
+
+There where some problems with the previous patchset here are
+the differences I squashed it to a new patchset at osd/linux-next.
+
+ [PATCH 1/1] SQUASHME: into: ore: Only IO one group at a time (API change)
+
+And without farther ado Here is the RAID5 support. This is highly complicated
+stuff, for humble me at least, and I would appreciate any review and/or comments
+you guys can give it. Thanks in advance. (Pretty Please? :-))
+
+[PATCH 1/6] ore: Make ore_calc_stripe_info EXPORT_SYMBOL
+[PATCH 2/6] ore: RAID5 read
+[PATCH 3/6] ore: RAID5 Write
+[PATCH 4/6] exofs: Support for RAID5 read-4-write interface.
+[PATCH 5/6] pnfs-obj: Support for RAID5 read-4-write interface.
+[PATCH 6/6] ore: Enable RAID5 mounts
+
+A tree with above plus all prerequisites is at:
+$ git clone git://open-osd.org/linux-open-osd linux-next
+[http://git.open-osd.org/gitweb.cgi?p=linux-open-osd.git;a=shortlog;h=refs/heads/merge_and_compile]
+
+The code passes my tests, the highlight of which is git-clone linux and compare to
+and identical clone on ext4. But there must be month of farther testing done on this
+to get it better. For example. Aligned on stripe IO write back should be improved on
+all the way down to the VFS layer.
+
+Thanks
 Boaz
-
-> 
-
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  support/include/nfs/debug.h |    3 +++
->  tools/rpcdebug/rpcdebug.c   |    3 +++
->  2 files changed, 6 insertions(+), 0 deletions(-)
-> 
-> diff --git a/support/include/nfs/debug.h b/support/include/nfs/debug.h
-> index d391e91..dbec5ba 100644
-> --- a/support/include/nfs/debug.h
-> +++ b/support/include/nfs/debug.h
-> @@ -76,6 +76,9 @@ enum {
->  #define NFSDBG_CALLBACK		0x0100
->  #define NFSDBG_CLIENT		0x0200
->  #define NFSDBG_MOUNT		0x0400
-> +#define NFSDBG_FSCACHE		0x0800
-> +#define NFSDBG_PNFS			0x1000
-> +#define NFSDBG_PNFS_LD		0x2000
->  #define NFSDBG_ALL		0xFFFF
->  
->  #endif /* _NFS_DEBUG_H */
-> diff --git a/tools/rpcdebug/rpcdebug.c b/tools/rpcdebug/rpcdebug.c
-> index 275a491..444616d 100644
-> --- a/tools/rpcdebug/rpcdebug.c
-> +++ b/tools/rpcdebug/rpcdebug.c
-> @@ -167,6 +167,9 @@ static struct flagmap {
->  	FLAG(NFS,       CALLBACK),
->  	FLAG(NFS,       CLIENT),
->  	FLAG(NFS,       MOUNT),
-> +	FLAG(NFS,       FSCACHE),
-> +	FLAG(NFS,       PNFS),
-> +	FLAG(NFS,       PNFS_LD),
->  	FLAG(NFS,	ALL),
->  
->  	/* nfsd */
-
