@@ -1,51 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:47579 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751881Ab1JKGSa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Oct 2011 02:18:30 -0400
-Date: Tue, 11 Oct 2011 08:18:19 +0200
-From: Pavel Machek <pavel@ucw.cz>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: trond.myklebust@netapp.com, smfrench@gmail.com, rjw@sisk.pl,
-        linux-pm@lists.linux-foundation.org, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, john@Calva.COM,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 0/4] allow freezing of tasks with netfs calls in flight
-Message-ID: <20111011061819.GA1377@ucw.cz>
-References: <1317210761-11518-1-git-send-email-jlayton@redhat.com>
+Received: from cantor2.suse.de ([195.135.220.15]:60220 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752958Ab1JNWpt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Oct 2011 18:45:49 -0400
+Message-ID: <4E98BB9B.2080203@suse.cz>
+Date: Sat, 15 Oct 2011 00:45:47 +0200
+From: Michal Marek <mmarek@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1317210761-11518-1-git-send-email-jlayton@redhat.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Paul Bolle <pebolle@tiscali.nl>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: Problems with Kconfig select across directories
+References: <4E9848C1.8040306@panasas.com> <4E98B19B.6020107@suse.cz> <4E98B751.5070006@panasas.com>
+In-Reply-To: <4E98B751.5070006@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi!
-
-> We've had a number of reports recently of people with NFS and CIFS
-> mounts that were unable to suspend or hibernate their machines. Here
-> are a couple of Fedora bugs that illustrate the problem:
+On 15.10.2011 00:27, Boaz Harrosh wrote:
+> On 10/15/2011 12:03 AM, Michal Marek wrote:
+>> On 14.10.2011 16:35, Boaz Harrosh wrote:
+>>> This does not work. The ORE is not compiled and MODPOST complains.
+>>> (Given EXOFS_FS is not selected since then it will work)
+>>
+>> fs/Makefile only visits fs/exofs if CONFIG_EXOFS_FS is set.
 > 
->     https://bugzilla.redhat.com/show_bug.cgi?id=712088
->     https://bugzilla.redhat.com/show_bug.cgi?id=717735
+> Bingo. Right on the money. With below patch it works. I'll think
+> about it some more and submit.
 > 
-> When it occurs the problem is pretty clear. We have a task that's
-> sleeping in the kernel in TASK_KILLABLE sleep, generally waiting
-> for a reply to come in. Often though, userspace has already taken
-> down the interface so that reply will never come. The process then
-> fails to freeze and the suspend fails.
+> Thanks
+> ---
+> exofs/ore: Select fs/exofs/ folder in Makefile also for ORE only compilation
+> 
+> If any thing from fs/exofs is set the ORE will be selected. So conditionally
+> include fs/exofs in fs/Makefile on ORE set and not EXOFS_FS
+...
+> --- a/fs/Makefile
+> +++ b/fs/Makefile
+> @@ -120,6 +120,6 @@ obj-$(CONFIG_DEBUG_FS)		+= debugfs/
+>  obj-$(CONFIG_OCFS2_FS)		+= ocfs2/
+>  obj-$(CONFIG_BTRFS_FS)		+= btrfs/
+>  obj-$(CONFIG_GFS2_FS)           += gfs2/
+> -obj-$(CONFIG_EXOFS_FS)          += exofs/
+> +obj-$(CONFIG_ORE)		+= exofs/
 
-Userspace should not take interface down for suspend (*). Why do that?
+Note that changing it to obj-y is also valid. And perhaps more obvious.
 
-
-> This patch fixes this by allowing the TASK_KILLABLE sleeps in NFS and
-> CIFS to be awoken by the freezer and then to try to freeze. If a freeze
-> event does occur, then the code will treat it as if a schedule() has
-> already occured.
-
-Looks like good idea...
-
-(*) unless absolutely neccessary. openvpn?
-
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+Michal
