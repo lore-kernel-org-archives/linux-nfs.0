@@ -1,95 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga03.intel.com ([143.182.124.21]:61174 "EHLO mga03.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754159Ab1JJO24 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Oct 2011 10:28:56 -0400
-Date: Mon, 10 Oct 2011 22:28:46 +0800
-From: Wu Fengguang <fengguang.wu@intel.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-        Christoph Hellwig <hch@lst.de>, Dave Chinner <david@fromorbit.com>,
-        Greg Thelen <gthelen@google.com>, Minchan Kim <minchan.kim@gmail.com>,
-        Vivek Goyal <vgoyal@redhat.com>, Andrea Righi <arighi@develer.com>,
-        linux-mm <linux-mm@kvack.org>, LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 00/11] IO-less dirty throttling v12
-Message-ID: <20111010142846.GA21218@localhost>
-References: <20111003134228.090592370@intel.com>
- <1318248846.14400.21.camel@laptop>
- <20111010130722.GA11387@localhost>
+Received: from natasha.panasas.com ([67.152.220.90]:38925 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752760Ab1JNWe1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Oct 2011 18:34:27 -0400
+Message-ID: <4E98B751.5070006@panasas.com>
+Date: Sat, 15 Oct 2011 00:27:29 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111010130722.GA11387@localhost>
+To: Michal Marek <mmarek@suse.cz>, Paul Bolle <pebolle@tiscali.nl>
+CC: Randy Dunlap <randy.dunlap@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: Problems with Kconfig select across directories
+References: <4E9848C1.8040306@panasas.com> <4E98B19B.6020107@suse.cz>
+In-Reply-To: <4E98B19B.6020107@suse.cz>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
-
-> As for the NFS performance, the dd tests show that adding a writeback
-> wait queue to limit the number of NFS PG_writeback pages (patches
-> will follow) is able to gain 48% throughput in itself:
+On 10/15/2011 12:03 AM, Michal Marek wrote:
+> On 14.10.2011 16:35, Boaz Harrosh wrote:
+>> I have this weird problem with Kconfig.
+>>
+>> In fs/exofs/Kconfig I have:
+>>
+>> # Library to be selected by users
+>> config ORE
+>> 	tristate
+>>
+>> Then
+>> config EXOFS_FS
+>> 	tristate "exofs: OSD based file system support"
+>> 	depends on SCSI_OSD_ULD
+>> 	select ORE
+>> 	help ...
+>>
+>> So far so good. Choosing EXOFS_FS in xmenuconfig works fine as expected.
+>> But now I add another user say: (It's more complicated but even below does
+>> not work)
+>>
+>> config NFS_FS
+>> 	tristate "NFS client support"
+>> 	depends on INET && FILE_LOCKING
+>> 	select LOCKD
+>> 	select SUNRPC
+>> 	select NFS_ACL_SUPPORT if NFS_V3_ACL
+>> 	select ORE
+>> 	help ...
+>>
+>> This does not work. The ORE is not compiled and MODPOST complains.
+>> (Given EXOFS_FS is not selected since then it will work)
 > 
->       3.1.0-rc8-ioless6+         3.1.0-rc8-nfs-wq+  
-> ------------------------  ------------------------  
->                    22.43       +81.8%        40.77  NFS-thresh=100M/nfs-10dd-1M-32p-32768M-100M:10-X
->                    28.21       +52.6%        43.07  NFS-thresh=100M/nfs-1dd-1M-32p-32768M-100M:10-X
->                    29.21       +55.4%        45.39  NFS-thresh=100M/nfs-2dd-1M-32p-32768M-100M:10-X
->                    14.12       +40.4%        19.83  NFS-thresh=10M/nfs-10dd-1M-32p-32768M-10M:10-X
->                    29.44       +11.4%        32.81  NFS-thresh=10M/nfs-1dd-1M-32p-32768M-10M:10-X
->                     9.09      +240.9%        30.97  NFS-thresh=10M/nfs-2dd-1M-32p-32768M-10M:10-X
->                    25.68       +84.6%        47.42  NFS-thresh=1G/nfs-10dd-1M-32p-32768M-1024M:10-X
->                    41.06        +7.6%        44.20  NFS-thresh=1G/nfs-1dd-1M-32p-32768M-1024M:10-X
->                    39.13       +25.9%        49.26  NFS-thresh=1G/nfs-2dd-1M-32p-32768M-1024M:10-X
->                   238.38       +48.4%       353.72  TOTAL
+> fs/Makefile only visits fs/exofs if CONFIG_EXOFS_FS is set.
 > 
-> Which will result in 28% overall improvements over the vanilla kernel:
-> 
->       3.1.0-rc4-vanilla+         3.1.0-rc8-nfs-wq+  
-> ------------------------  ------------------------  
->                    20.89       +95.2%        40.77  NFS-thresh=100M/nfs-10dd-1M-32p-32768M-100M:10-X
->                    39.43        +9.2%        43.07  NFS-thresh=100M/nfs-1dd-1M-32p-32768M-100M:10-X
->                    26.60       +70.6%        45.39  NFS-thresh=100M/nfs-2dd-1M-32p-32768M-100M:10-X
->                    12.70       +56.1%        19.83  NFS-thresh=10M/nfs-10dd-1M-32p-32768M-10M:10-X
->                    27.41       +19.7%        32.81  NFS-thresh=10M/nfs-1dd-1M-32p-32768M-10M:10-X
->                    26.52       +16.8%        30.97  NFS-thresh=10M/nfs-2dd-1M-32p-32768M-10M:10-X
->                    40.70       +16.5%        47.42  NFS-thresh=1G/nfs-10dd-1M-32p-32768M-1024M:10-X
->                    45.28        -2.4%        44.20  NFS-thresh=1G/nfs-1dd-1M-32p-32768M-1024M:10-X
->                    35.74       +37.8%        49.26  NFS-thresh=1G/nfs-2dd-1M-32p-32768M-1024M:10-X
->                   275.28       +28.5%       353.72  TOTAL
-> 
-> As for the most concerned NFS commits, the wait queue patch increases
-> the (nr_commits / bytes_written) ratio by +74% for the thresh=1G,10dd
-> case, +55% for the thresh=100M,10dd case, and mostly ignorable in the
-> other 1dd, 2dd cases, which looks acceptable.
-> 
-> The other noticeable change of the wait queue is, the RTT time per
+> Michal
 
-Sorry it's not RTT, but mainly the local queue time of the WRITE RPCs.
+Bingo. Right on the money. With below patch it works. I'll think
+about it some more and submit.
 
-> write is reduced by 1-2 order(s) in many of the below cases (from
-> dozens of seconds to hundreds of milliseconds).
+Thanks
+---
+exofs/ore: Select fs/exofs/ folder in Makefile also for ORE only compilation
 
-I also measured the stddev of the network bandwidths, and find more
-smooth network transfers in general with the wait queue, which is
-expected.
+If any thing from fs/exofs is set the ORE will be selected. So conditionally
+include fs/exofs in fs/Makefile on ORE set and not EXOFS_FS
 
-thresh=1G
-        vanilla       ioless6       nfs-wq
-1dd     83088173.728  53468627.578  53627922.011
-2dd     52398918.208  43733074.167  53531381.177
-10dd    67792638.857  44734947.283  39681731.234
+Boaz
+---
+git diff --stat -p -M
+ fs/Makefile    |    2 +-
+ fs/nfs/Kconfig |    1 +
+ 2 files changed, 2 insertions(+), 1 deletions(-)
 
-However the major difference should still be that the writeback wait
-queue can significantly reduce the local queue time for the WRITE RPCs.
+diff --git a/fs/Makefile b/fs/Makefile
+index afc1096..d7a88b5 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -120,6 +120,6 @@ obj-$(CONFIG_DEBUG_FS)		+= debugfs/
+ obj-$(CONFIG_OCFS2_FS)		+= ocfs2/
+ obj-$(CONFIG_BTRFS_FS)		+= btrfs/
+ obj-$(CONFIG_GFS2_FS)           += gfs2/
+-obj-$(CONFIG_EXOFS_FS)          += exofs/
++obj-$(CONFIG_ORE)		+= exofs/
+ obj-$(CONFIG_CEPH_FS)		+= ceph/
+ obj-$(CONFIG_PSTORE)		+= pstore/
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index dbcd821..1c13c34 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -96,6 +96,7 @@ config PNFS_BLOCK
+ config PNFS_OBJLAYOUT
+ 	tristate
+ 	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
++	select ORE
+ 	default m
+ 
+ config ROOT_NFS
 
-The wait queue patch looks reasonable in that it keeps the pages in
-PG_dirty state rather than to prematurely put them to PG_writeback
-state only to queue them up for dozens of seconds before xmit.
-
-It should be safe because that's exactly the old proved behavior
-before the per-bdi writeback patches introduced in 2.6.32. The 2nd
-patch on proportional nfs_congestion_kb is a new change, though.
-
-Thanks,
-Fengguang
