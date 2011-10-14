@@ -1,113 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:4393 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755257Ab1JXLWs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Oct 2011 07:22:48 -0400
-Subject: Re: NFS4 BAD_STATEID loop (kernel 3.0)
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: David Flynn <davidf@rd.bbc.co.uk>
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 24 Oct 2011 13:22:47 +0200
-In-Reply-To: <20111024104042.GD32587@rd.bbc.co.uk>
-References: <20111024104042.GD32587@rd.bbc.co.uk>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1319455367.8505.3.camel@lade.trondhjem.org>
-Mime-Version: 1.0
+Received: from natasha.panasas.com ([67.152.220.90]:33270 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753960Ab1JNR0z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Oct 2011 13:26:55 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Brent Welch <welch@panasas.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Subject: [PATCH] SQUASHME: into: ore: Only IO one group at a time (API change)
+Date: Fri, 14 Oct 2011 19:26:40 +0200
+Message-ID: <1318613200-3547-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4E98703E.7040605@panasas.com>
+References: <4E98703E.7040605@panasas.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2011-10-24 at 10:40 +0000, David Flynn wrote: 
-> Dear All,
-> 
-> On a system running kernel 3.0, mounting a Solaris NFS4 export, we
-> observe a continuous 20Mbit/sec exchange between client and server that had
-> been occurring for 10 days.
-<snip> 
-> No.     Time            Source                Destination           Protocol Size  Info
->    9880 11:40:12.833617 172.29.190.21         172.29.120.140        NFS      1122  V4 COMPOUND Call (Reply In 9881) <EMPTY> PUTFH;WRITE;GETATTR
-> 
-> Frame 9880: 1122 bytes on wire (8976 bits), 1122 bytes captured (8976 bits)
->     Arrival Time: Oct 17, 2011 11:40:12.833617000 BST
->     Frame Length: 1122 bytes (8976 bits)
->     Capture Length: 1122 bytes (8976 bits)
-> Ethernet II, Src: ChelsioC_06:68:f9 (00:07:43:06:68:f9), Dst: All-HSRP-routers_be (00:00:0c:07:ac:be)
-> Internet Protocol, Src: 172.29.190.21 (172.29.190.21), Dst: 172.29.120.140 (172.29.120.140)
-> Transmission Control Protocol, Src Port: 816 (816), Dst Port: nfs (2049), Seq: 5199745, Ack: 275801, Len: 1056
-> Remote Procedure Call, Type:Call XID:0x5daa6e93
-> Network File System
->     [Program Version: 4]
->     [V4 Procedure: COMPOUND (1)]
->     Tag: <EMPTY>
->         length: 0
->         contents: <EMPTY>
->     minorversion: 0
->     Operations (count: 3)
->         Opcode: PUTFH (22)
->             filehandle
->                 length: 36
->                 [hash (CRC-32): 0x6e4b15f3]
->                 decode type as: unknown
->                 filehandle: 7df3a75d5e1cd908000ab44c5b000000efc80200000a0300...
->         Opcode: WRITE (38)
->             stateid
->                 seqid: 0x00000000
->                 Data: 4e06f15b800f82e300000000
->             offset: 11392
->             stable: FILE_SYNC4 (2)
->             Write length: 814
->             Data: <DATA>
->                 length: 814
->                 contents: <DATA>
->                 fill bytes: opaque data
->         Opcode: GETATTR (9)
->             GETATTR4args
->                 attr_request
->                     bitmap[0] = 0x00000018
->                         [2 attributes requested]
->                         mand_attr: FATTR4_CHANGE (3)
->                         mand_attr: FATTR4_SIZE (4)
->                     bitmap[1] = 0x00300000
->                         [2 attributes requested]
->                         recc_attr: FATTR4_TIME_METADATA (52)
->                         recc_attr: FATTR4_TIME_MODIFY (53)
-> 
-> No.     Time            Source                Destination           Protocol Size  Info
->    9881 11:40:12.833956 172.29.120.140        172.29.190.21         NFS      122   V4 COMPOUND Reply (Call In 9880) <EMPTY> PUTFH;WRITE
-> 
-> Frame 9881: 122 bytes on wire (976 bits), 122 bytes captured (976 bits)
->     Arrival Time: Oct 17, 2011 11:40:12.833956000 BST
->     [Time delta from previous captured frame: 0.000339000 seconds]
->     Frame Length: 122 bytes (976 bits)
->     Capture Length: 122 bytes (976 bits)
-> Ethernet II, Src: Cisco_1e:f7:80 (00:13:5f:1e:f7:80), Dst: ChelsioC_06:68:f9 (00:07:43:06:68:f9)
-> Internet Protocol, Src: 172.29.120.140 (172.29.120.140), Dst: 172.29.190.21 (172.29.190.21)
-> Transmission Control Protocol, Src Port: nfs (2049), Dst Port: 816 (816), Seq: 275801, Ack: 5200801, Len: 56
-> Remote Procedure Call, Type:Reply XID:0x5daa6e93
-> Network File System
->     [Program Version: 4]
->     [V4 Procedure: COMPOUND (1)]
->     Status: NFS4ERR_BAD_STATEID (10025)
->     Tag: <EMPTY>
->         length: 0
->         contents: <EMPTY>
->     Operations (count: 2)
->         Opcode: PUTFH (22)
->             Status: NFS4_OK (0)
->         Opcode: WRITE (38)
->             Status: NFS4ERR_BAD_STATEID (10025)
+To re submit a page that went through write_cache_pages()
+(Recived on writepage_t) We need to take it out of
+write_back and into set_page_dirty(). Then it will be
+resubmitted again just fine. Checked!
 
-We should in principle be able to recover a BAD_STATEID error by running
-the state recovery thread. It's a shame that the machine was rebooted,
-but does your syslog trace perhaps show any state recovery thread
-errors?
+And one more fix for the ios->numdevs.
 
-Cheers
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+git diff --stat -p -M origin/linux-next 201e3d7b
+ fs/exofs/inode.c |   15 ++++++++++-----
+ fs/exofs/ore.c   |    6 +-----
+ 2 files changed, 11 insertions(+), 10 deletions(-)
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+diff --git a/fs/exofs/inode.c b/fs/exofs/inode.c
+index 69dc236..0c522c6 100644
+--- a/fs/exofs/inode.c
++++ b/fs/exofs/inode.c
+@@ -295,7 +295,7 @@ static int _maybe_not_all_in_one_io(struct ore_io_state *ios,
+ 		for (i = 0; i < pages_less; ++i)
+ 			pcol->pages[i] = *src_page++;
+ 
+-		EXOFS_DBGMSG("Length was adjusted nr_pages=0x%x pages_less=%d "
++		EXOFS_DBGMSG("Length was adjusted nr_pages=0x%x pages_less=0x%x "
+ 			"expected_pages=0x%x next_offset=0x%llx "
+ 			"next_len=0x%lx\n",
+ 			pcol_src->nr_pages, pages_less, pcol->expected_pages,
+@@ -758,14 +758,19 @@ static int exofs_writepages(struct address_space *mapping,
+ 
+ 	if (wbc->sync_mode == WB_SYNC_ALL) {
+ 		return write_exec(&pcol); /* pump the last reminder */
+-	} else {/* not SYNC let the reminder join the next writeout */
++	} else if (pcol.nr_pages) {
++		/* not SYNC let the reminder join the next writeout */
+ 		unsigned i;
+ 
+-		for (i = 0; i < pcol.nr_pages; i++)
+-			unlock_page(pcol.pages[i]);
++		for (i = 0; i < pcol.nr_pages; i++) {
++			struct page *page = pcol.pages[i];
+ 
+-		return 0;
++			end_page_writeback(page);
++			set_page_dirty(page);
++			unlock_page(page);
++		}
+ 	}
++	return 0;
+ }
+ 
+ static int exofs_writepage(struct page *page, struct writeback_control *wbc)
+diff --git a/fs/exofs/ore.c b/fs/exofs/ore.c
+index 0dafd50..3b1cc3a 100644
+--- a/fs/exofs/ore.c
++++ b/fs/exofs/ore.c
+@@ -506,7 +506,6 @@ static int _prepare_for_striping(struct ore_io_state *ios)
+ 	unsigned devs_in_group = ios->layout->group_width * mirrors_p1;
+ 	unsigned dev = si->dev;
+ 	unsigned first_dev = dev - (dev % devs_in_group);
+-	unsigned max_comp = ios->numdevs ? ios->numdevs - mirrors_p1 : 0;
+ 	unsigned cur_pg = ios->pages_consumed;
+ 	u64 length = ios->length;
+ 	int ret = 0;
+@@ -538,9 +537,6 @@ static int _prepare_for_striping(struct ore_io_state *ios)
+ 				per_dev->offset = si->obj_offset - si->unit_off;
+ 				cur_len = stripe_unit;
+ 			}
+-
+-			if (max_comp < comp)
+-				max_comp = comp;
+ 		} else {
+ 			cur_len = stripe_unit;
+ 		}
+@@ -558,7 +554,7 @@ static int _prepare_for_striping(struct ore_io_state *ios)
+ 		length -= cur_len;
+ 	}
+ out:
+-	ios->numdevs = max_comp + mirrors_p1;
++	ios->numdevs = devs_in_group;
+ 	ios->pages_consumed = cur_pg;
+ 	if (unlikely(ret)) {
+ 		if (length == ios->length)
