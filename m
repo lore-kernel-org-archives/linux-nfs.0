@@ -1,64 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e35.co.us.ibm.com ([32.97.110.153]:42505 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753599Ab1JTFU0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Oct 2011 01:20:26 -0400
-Received: from /spool/local
-	by e35.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Wed, 19 Oct 2011 23:20:22 -0600
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: agruen@kernel.org, akpm@linux-foundation.org, viro@zeniv.linux.org.uk,
-        dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V7 08/26] vfs: Add new file and directory create permission flags
-In-Reply-To: <20111019164216.GC30864@fieldses.org>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1318951981-5508-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20111019164216.GC30864@fieldses.org>
-Date: Thu, 20 Oct 2011 10:50:08 +0530
-Message-ID: <87r5285jef.fsf@linux.vnet.ibm.com>
+Received: from natasha.panasas.com ([67.152.220.90]:33490 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932272Ab1JNRgZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Oct 2011 13:36:25 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Brent Welch <welch@panasas.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Subject: [PATCH 5/6] pnfs-obj: Support for RAID5 read-4-write interface.
+Date: Fri, 14 Oct 2011 19:36:16 +0200
+Message-ID: <1318613776-3839-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4E98703E.7040605@panasas.com>
+References: <4E98703E.7040605@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 19 Oct 2011 12:42:16 -0400, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Tue, Oct 18, 2011 at 09:02:43PM +0530, Aneesh Kumar K.V wrote:
-> > From: Andreas Gruenbacher <agruen@kernel.org>
-> > 
-> > Some permission models distinguish between the permission to create a
-> > non-directory and a directory.  Pass this information down to
-> > inode_permission() as mask flags
-> ...
-> > diff --git a/include/linux/fs.h b/include/linux/fs.h
-> > index f3ebf86..60361c6 100644
-> > --- a/include/linux/fs.h
-> > +++ b/include/linux/fs.h
-> > @@ -67,6 +67,8 @@ struct inodes_stat_t {
-> >  #define MAY_CHDIR		0x00000040
-> >  /* called from RCU mode, don't block */
-> >  #define MAY_NOT_BLOCK		0x00000080
-> > +#define MAY_CREATE_FILE		0x00000100
-> > +#define MAY_CREATE_DIR		0x00000200
-> 
-> Hm, are the flags in fs/nfsd/vfs.h going to need fixing up?
-> 
-> Looking at the nfsd code....  No, I guess it's OK, nfsd does
-> 
-> 	err = inode_permission(inode, acc & (MAY_READ|MAY_WRITE|MAY_EXEC));
-> 
+The ore need suplied a r4w_get_page/r4w_put_page API
+from Filesystem so it can get cache pages to read-into when
+writing parial stripes.
 
-nfsd bits need fixing once nfs starts doing richacl permission check.
-The changes I did can be found at
-https://github.com/kvaneesh/linux/commits/richacl-fullset/
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/objlayout/objio_osd.c |   38 ++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 38 insertions(+), 0 deletions(-)
 
-
-> So we can wait to fix up any collisions until we need to pass these
-> extra bits.
-> 
-
-Yes. And that we will do once we get the VFS and local file system
-changes upstream.
-
--aneesh
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 3161da6..c807ab9 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -459,6 +459,43 @@ static void _write_done(struct ore_io_state *ios, void *private)
+ 	objlayout_write_done(&objios->oir, status, objios->sync);
+ }
+ 
++static struct page *__r4w_get_page(void *priv, u64 offset, bool *uptodate)
++{
++	struct objio_state *objios = priv;
++	struct nfs_write_data *wdata = objios->oir.rpcdata;
++	pgoff_t index = offset / PAGE_SIZE;
++	struct page *page = find_get_page(wdata->inode->i_mapping, index);
++
++	if (!page) {
++		page = find_or_create_page(wdata->inode->i_mapping,
++						index, GFP_NOFS);
++		if (unlikely(!page)) {
++			dprintk("%s: grab_cache_page Failed index=0x%lx\n",
++				__func__, index);
++			return NULL;
++		}
++		unlock_page(page);
++	}
++	if (PageDirty(page) || PageWriteback(page))
++		*uptodate = true;
++	else
++		*uptodate = PageUptodate(page);
++	dprintk("%s: index=0x%lx uptodate=%d\n", __func__, index, *uptodate);
++	return page;
++}
++
++static void __r4w_put_page(void *priv, struct page *page)
++{
++	dprintk("%s: index=0x%lx\n", __func__, page->index);
++	page_cache_release(page);
++	return;
++}
++
++static const struct _ore_r4w_op _r4w_op = {
++	.get_page = &__r4w_get_page,
++	.put_page = &__r4w_put_page,
++};
++
+ int objio_write_pagelist(struct nfs_write_data *wdata, int how)
+ {
+ 	struct objio_state *objios;
+@@ -472,6 +509,7 @@ int objio_write_pagelist(struct nfs_write_data *wdata, int how)
+ 		return ret;
+ 
+ 	objios->sync = 0 != (how & FLUSH_SYNC);
++	objios->ios->r4w = &_r4w_op;
+ 
+ 	if (!objios->sync)
+ 		objios->ios->done = _write_done;
+-- 
+1.7.2.3
 
