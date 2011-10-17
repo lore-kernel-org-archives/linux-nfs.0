@@ -1,78 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:15496 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:44755 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932229Ab1J1Kwf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Oct 2011 06:52:35 -0400
-Subject: [PATCH v7 4/7] SUNRPC: setup rpcbind clients if service requires it
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
-Date: Fri, 28 Oct 2011 14:53:18 +0300
-Message-ID: <20111028105307.24628.89889.stgit@localhost6.localdomain6>
-In-Reply-To: <20111028104530.24628.23631.stgit@localhost6.localdomain6>
-References: <20111028104530.24628.23631.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1754477Ab1JQV4X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Oct 2011 17:56:23 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/8] nfsd4: centralize renew_client() calls
+Date: Mon, 17 Oct 2011 17:55:50 -0400
+Message-Id: <1318888557-14719-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1318888557-14719-1-git-send-email-bfields@redhat.com>
+References: <1318888557-14719-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-New function ("svc_uses_rpcbind") will be used to detect, that new service will
-send portmapper register calls. For such services we will create rpcbind
-clients and remove all stale portmap registrations.
-Also, svc_rpcb_cleanup() will be set as sv_shutdown callback for such services
-in case of this field wasn't initialized earlier. This will allow to destroy
-rpcbind clients when no other users of them left.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Note: Currently, any creating service will be detected as portmap user.
-Probably, this is wrong. But now it depends on program versions "vs_hidden"
-flag.
+There doesn't seem to be any harm to renewing the client a bit earlier,
+when it is looked up.  That saves us from having to sprinkle
+renew_client calls over quite so many places.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Also remove a redundant comment and do a little cleanup.
 
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- net/sunrpc/svc.c |   20 ++++++++++++++------
- 1 files changed, 14 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4state.c |   23 ++++++++++-------------
+ 1 files changed, 10 insertions(+), 13 deletions(-)
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index d2d61bf..87a67b2 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -436,10 +436,8 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
- 	serv->sv_pools =
- 		kcalloc(serv->sv_nrpools, sizeof(struct svc_pool),
- 			GFP_KERNEL);
--	if (!serv->sv_pools) {
--		kfree(serv);
--		return NULL;
--	}
-+	if (!serv->sv_pools)
-+		goto err_serv;
- 
- 	for (i = 0; i < serv->sv_nrpools; i++) {
- 		struct svc_pool *pool = &serv->sv_pools[i];
-@@ -454,10 +452,20 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
- 		spin_lock_init(&pool->sp_lock);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 2042805..d90461e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -931,9 +931,6 @@ renew_client_locked(struct nfs4_client *clp)
+ 		return;
  	}
  
--	/* Remove any stale portmap registrations */
--	svc_unregister(serv);
-+	if (svc_uses_rpcbind(serv)) {
-+	       	if (svc_rpcb_setup(serv) < 0)
-+			goto err_rpcb;
-+		if (!serv->sv_shutdown)
-+			serv->sv_shutdown = svc_rpcb_cleanup;
-+	}
+-	/*
+-	* Move client to the end to the LRU list.
+-	*/
+ 	dprintk("renewing client (clientid %08x/%08x)\n", 
+ 			clp->cl_clientid.cl_boot, 
+ 			clp->cl_clientid.cl_id);
+@@ -1220,8 +1217,10 @@ find_confirmed_client(clientid_t *clid)
+ 	unsigned int idhashval = clientid_hashval(clid->cl_id);
  
- 	return serv;
-+
-+err_rpcb:
-+	kfree(serv->sv_pools);
-+err_serv:
-+	kfree(serv);
-+	return NULL;
+ 	list_for_each_entry(clp, &conf_id_hashtbl[idhashval], cl_idhash) {
+-		if (same_clid(&clp->cl_clientid, clid))
++		if (same_clid(&clp->cl_clientid, clid)) {
++			renew_client(clp);
+ 			return clp;
++		}
+ 	}
+ 	return NULL;
+ }
+@@ -2372,11 +2371,15 @@ same_owner_str(struct nfs4_stateowner *sop, struct xdr_netobj *owner,
+ static struct nfs4_openowner *
+ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open)
+ {
+-	struct nfs4_stateowner *so = NULL;
++	struct nfs4_stateowner *so;
++	struct nfs4_openowner *oo;
+ 
+ 	list_for_each_entry(so, &open_ownerstr_hashtbl[hashval], so_strhash) {
+-		if (same_owner_str(so, &open->op_owner, &open->op_clientid))
+-			return container_of(so, struct nfs4_openowner, oo_owner);
++		if (same_owner_str(so, &open->op_owner, &open->op_clientid)) {
++			oo = openowner(so);
++			renew_client(oo->oo_owner.so_client);
++			return oo;
++		}
+ 	}
+ 	return NULL;
+ }
+@@ -2536,7 +2539,6 @@ renew:
+ 		open->op_openowner = oo;
+ 	}
+ 	list_del_init(&oo->oo_close_lru);
+-	renew_client(oo->oo_owner.so_client);
+ 	return nfs_ok;
  }
  
- struct svc_serv *
+@@ -2970,7 +2972,6 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		dprintk("nfsd4_renew: clientid not found!\n");
+ 		goto out;
+ 	}
+-	renew_client(clp);
+ 	status = nfserr_cb_path_down;
+ 	if (!list_empty(&clp->cl_delegations)
+ 			&& clp->cl_cb_state != NFSD4_CB_UP)
+@@ -3275,7 +3276,6 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+ 		status = nfs4_check_delegmode(dp, flags);
+ 		if (status)
+ 			goto out;
+-		renew_client(dp->dl_stid.sc_client);
+ 		if (filpp) {
+ 			*filpp = dp->dl_file->fi_deleg_file;
+ 			BUG_ON(!*filpp);
+@@ -3293,7 +3293,6 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+ 		status = nfs4_check_openmode(stp, flags);
+ 		if (status)
+ 			goto out;
+-		renew_client(stp->st_stateowner->so_client);
+ 		if (filpp) {
+ 			if (flags & RD_STATE)
+ 				*filpp = find_readable_file(stp->st_file);
+@@ -3412,7 +3411,6 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ 		return status;
+ 	*stpp = openlockstateid(s);
+ 	cstate->replay_owner = (*stpp)->st_stateowner;
+-	renew_client((*stpp)->st_stateowner->so_client);
+ 
+ 	return nfs4_seqid_op_checks(cstate, stateid, seqid, *stpp);
+ }
+@@ -3643,7 +3641,6 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	status = check_stateid_generation(stateid, &dp->dl_stid.sc_stateid, nfsd4_has_session(cstate));
+ 	if (status)
+ 		goto out;
+-	renew_client(dp->dl_stid.sc_client);
+ 
+ 	unhash_delegation(dp);
+ out:
+-- 
+1.7.5.4
 
