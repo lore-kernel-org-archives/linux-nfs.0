@@ -1,96 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45514 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757144Ab1JSRgM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Oct 2011 13:36:12 -0400
-Date: Wed, 19 Oct 2011 13:36:11 -0400
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] mount.nfs: mtab corruption when RLIMIT_FSIZE
- causes a partial write
-Message-ID: <20111019173611.GC32028@fieldses.org>
-References: <1319038470-17750-1-git-send-email-steved@redhat.com>
- <20111019123626.7a80dfad@corrin.poochiereds.net>
- <4E9F047B.5000600@RedHat.com>
- <20111019132230.6cd85a0c@corrin.poochiereds.net>
- <4E9F0952.2040607@RedHat.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:56079 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752268Ab1JQB1Q convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 16 Oct 2011 21:27:16 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E9F0952.2040607@RedHat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <4E98B8F2.7090804@panasas.com>
+References: <4E98703E.7040605@panasas.com>
+	<1419910767-1318614648-cardhu_decombobulator_blackberry.rim.net-1274904192-@b18.c3.bise3.blackberry>
+	<4E98B8F2.7090804@panasas.com>
+Date: Sun, 16 Oct 2011 18:27:15 -0700
+Message-ID: <CAFcxaFstfSu4n4eoS3tiwziCEEarxr7UnoVt=Q8wsDiMgiriNA@mail.gmail.com>
+Subject: Re: [PATCHSET 0/1 0/6] ore: RAID5 Support
+From: Benny Halevy <benny@tonian.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: bhalevy@tonian.com, "Welch, Brent" <welch@panasas.com>,
+        open-osd <osd-dev@open-osd.org>, NFS list <linux-nfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 19, 2011 at 01:30:58PM -0400, Steve Dickson wrote:
-> 
-> 
-> On 10/19/2011 01:22 PM, Jeff Layton wrote:
-> > On Wed, 19 Oct 2011 13:10:19 -0400
-> > Steve Dickson <SteveD@redhat.com> wrote:
-> > 
-> >>
-> >>
-> >> On 10/19/2011 12:36 PM, Jeff Layton wrote:
-> >>> On Wed, 19 Oct 2011 11:34:30 -0400
-> >>> Steve Dickson <steved@redhat.com> wrote:
-> >>>
-> >>>> This patch is a following on to commit 7a802337. Using the
-> >>>> tool in https://bugzilla.redhat.com/show_bug.cgi?id=695916
-> >>>> caused the fflush() and fclose() to fail in turn causing
-> >>>> corruption in the mtab.
-> >>>>
-> >>>> The failures were in the internals of both calls. Switch those
-> >>>> calls with the actual system calls eliminated the failures.
-> >>>>
-> >>>> Signed-off-by: Steve Dickson <steved@redhat.com>
-> >>>> ---
-> >>>>  support/nfs/nfs_mntent.c |    4 ++--
-> >>>>  1 files changed, 2 insertions(+), 2 deletions(-)
-> >>>>
-> >>>> diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
-> >>>> index a2118a2..b80f270 100644
-> >>>> --- a/support/nfs/nfs_mntent.c
-> >>>> +++ b/support/nfs/nfs_mntent.c
-> >>>> @@ -117,7 +117,7 @@ void
-> >>>>  nfs_endmntent (mntFILE *mfp) {
-> >>>>  	if (mfp) {
-> >>>>  		if (mfp->mntent_fp)
-> >>>> -			fclose(mfp->mntent_fp);
-> >>>> +			close(fileno(mfp->mntent_fp));
-> >>>>  		if (mfp->mntent_file)
-> >>>>  			free(mfp->mntent_file);
-> >>>>  		free(mfp);
-> >>>> @@ -147,7 +147,7 @@ nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
-> >>>>  	free(m3);
-> >>>>  	free(m4);
-> >>>>  	if (res >= 0) {
-> >>>> -		res = fflush(mfp->mntent_fp);
-> >>>> +		res = fsync(fileno(mfp->mntent_fp));
-> >>>
-> >>> fsync doesn't imply an fflush. With this, I think you may end up
-> >>> without everything being committed to disk if part or all of it is
-> >>> still in the file stream buffer. You probably want to do an fflush()
-> >>> and then an fsync here.
-> >> The problem was with the fflush() call. The call was causing the
-> >> mount to drop core in turn causing mtab corruption. Changing that
-> >> call to a fsync() worked just fine... no corruption... every time! 
-> >>
-> > 
-> > Ahh, then you have another problem here too then. Most likely it was
-> > crashing because it caught a SIGXFSZ. Writing out the mtab should not
-> > be affected by signals.
-> So calling fflush() generates a SIGXFSZ and call fsync() does not... 
+Sure.  Monday it is.
 
-fflush() must hit this because it's calling write() to write out the
-stream buffer....
+Benny
 
-But lock_mtab() should have set SIGXFSZ to be ignored; is that not
-happening?
-
-> I really don't see what the problem is is call simply calling fsync()
-> which clearly works?
-
-We want to make sure the problem's really fixed.
-
---b.
+On Fri, Oct 14, 2011 at 3:34 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+> Thanks Benny.
+>
+> Is it OK if we merge, pnfs tree and open-osd, on Monday in BAT first thing?
+> Tonight it's to late, and tomorrow I'm already flying. So Monday.
+>
+> Have a safe trip
+> Boaz
+>
+> On 10/14/2011 07:50 PM, Benny Halevy wrote:
+>> Awesome!
+>>
+>> Benny
+>> -----Original Message-----
+>> From: Boaz Harrosh <bharrosh@panasas.com>
+>> Sender:       linux-nfs-owner@vger.kernel.org
+>> Date: Fri, 14 Oct 2011 19:24:14
+>> To: Welch, Brent<welch@panasas.com>; open-osd<osd-dev@open-osd.org>; NFS list<linux-nfs@vger.kernel.org>; linux-fsdevel<linux-fsdevel@vger.kernel.org>
+>> Subject: [PATCHSET 0/1 0/6] ore: RAID5 Support
+>>
+>>
+>> I'm proud to present RAID5 support to ORE. Which enables raid5 for both
+>> exofs and pnfs-objects-layout driver.
+>>
+>> The ORE with raid0/1/5 and soon 6 support has become a compact and abstract
+>> library, that with not a lot of effort, can support not only OSD but any
+>> type of devices. For example BTRFS, does it have a RAID5 support yet? if
+>> not it could use ORE. The ORE gets a bunch of pages at the top and produces
+>> bios for each device at the bottom. The libosd API can be easily abstracted
+>> and be used for block devices, just the same. The RAID layout supported by
+>> ORE is very rich, multi layered striping/mirroring/raid. even reacher then
+>> stacked MD. You can read about this layout here:
+>> http://git.open-osd.org/gitweb.cgi?p=ietf-rfc5664.git;a=blob_plain;f=draft-ietf-nfsv4-rfc5664bis.html;hb=boaz2
+>> Start at: 5.3. "Data Mapping Schemes" up to:
+>> 5.4.5. "RAID Usage and Implementation Notes"
+>>
+>> There where some problems with the previous patchset here are
+>> the differences I squashed it to a new patchset at osd/linux-next.
+>>
+>>  [PATCH 1/1] SQUASHME: into: ore: Only IO one group at a time (API change)
+>>
+>> And without farther ado Here is the RAID5 support. This is highly complicated
+>> stuff, for humble me at least, and I would appreciate any review and/or comments
+>> you guys can give it. Thanks in advance. (Pretty Please? :-))
+>>
+>> [PATCH 1/6] ore: Make ore_calc_stripe_info EXPORT_SYMBOL
+>> [PATCH 2/6] ore: RAID5 read
+>> [PATCH 3/6] ore: RAID5 Write
+>> [PATCH 4/6] exofs: Support for RAID5 read-4-write interface.
+>> [PATCH 5/6] pnfs-obj: Support for RAID5 read-4-write interface.
+>> [PATCH 6/6] ore: Enable RAID5 mounts
+>>
+>> A tree with above plus all prerequisites is at:
+>> $ git clone git://open-osd.org/linux-open-osd linux-next
+>> [http://git.open-osd.org/gitweb.cgi?p=linux-open-osd.git;a=shortlog;h=refs/heads/merge_and_compile]
+>>
+>> The code passes my tests, the highlight of which is git-clone linux and compare to
+>> and identical clone on ext4. But there must be month of farther testing done on this
+>> to get it better. For example. Aligned on stripe IO write back should be improved on
+>> all the way down to the VFS layer.
+>>
+>> Thanks
+>> Boaz
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
