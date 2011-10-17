@@ -1,74 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:13197 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:44775 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755659Ab1JSRKV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Oct 2011 13:10:21 -0400
-Message-ID: <4E9F047B.5000600@RedHat.com>
-Date: Wed, 19 Oct 2011 13:10:19 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1754311Ab1JQV7t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Oct 2011 17:59:49 -0400
+Date: Mon, 17 Oct 2011 17:59:49 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: 4.1 client reconnect bug
+Message-ID: <20111017215949.GF13368@fieldses.org>
+References: <20111017210408.GA13368@fieldses.org>
+ <1318888672.2753.43.camel@lade.trondhjem.org>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@poochiereds.net>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] mount.nfs: mtab corruption when RLIMIT_FSIZE causes
- a partial write
-References: <1319038470-17750-1-git-send-email-steved@redhat.com> <20111019123626.7a80dfad@corrin.poochiereds.net>
-In-Reply-To: <20111019123626.7a80dfad@corrin.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1318888672.2753.43.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Oct 17, 2011 at 02:57:52PM -0700, Trond Myklebust wrote:
+> On Mon, 2011-10-17 at 17:04 -0400, J. Bruce Fields wrote: 
+> > Following up on a pub conversation from a couple weeks ago:
+> > 
+> > The client apparently assumes that (in the absence of state protection)
+> > sending a SEQUENCE over a new tcp connection to the server automatically
+> > associates the new tcp connection with both the forechannel and
+> > backchannel of the session.
+> > 
+> > The server currently assumes that the new tcp connection should be
+> > associated only with the forechannel.
+> > 
+> > RFC 5661 sides with the forechannel-only convention:
+> > 
+> > 	- 2.6.10.6.2: "If the client wants to use additional connections
+> > 	  for the backchannel, then it needs to call
+> > 	  BIND_CONN_TO_SESSION on each connection it wants to use with
+> > 	  the session."
+> > 
+> > 	- 2.10.13.1.2: "If the connection that was lost was the last one
+> > 	  associated with the backchannel, and the client wants to
+> > 	  retain the backchannel and/or prevent revocation of recallable
+> > 	  state, the client needs to reconnect, and if it does, it MUST
+> > 	  associate the connection to the session and backchannel via
+> > 	  BIND_CONN_TO_SESSION."
+> > 
+> > 	- 18.34.3: "If, when the client ID was created, the client opted
+> > 	  for SP4_NONE state protection, the client is not required to
+> > 	  use BIND_CONN_TO_SESSION to associate the connection with the
+> > 	  session, unless the client wishes to associate the connection
+> > 	  with the backchannel."
+> > 
+> > That means that currently if the client attempts to reconnect (e.g. to
+> > resend a timed-out rpc), it will see SEQ4_STATUS_CB_PATH_DOWN_SESSION
+> > set on future SEQUENCE replies.
+> 
+> Agreed, however in this case the BIND_CONN_TO_SESSION can be treated as
+> an optimisation. We should fix it soon, but as long as the existing
+> clients handle the path down error correctly (which we do by starting a
+> recovery thread, then resetting the session), then we are able to
+> function.
+> 
+> IOW: This is something that was on our 'B' list of items to complete
+> (i.e. after basic session+pnfs functionality)...
 
+OK, I think that makes sense.
 
-On 10/19/2011 12:36 PM, Jeff Layton wrote:
-> On Wed, 19 Oct 2011 11:34:30 -0400
-> Steve Dickson <steved@redhat.com> wrote:
-> 
->> This patch is a following on to commit 7a802337. Using the
->> tool in https://bugzilla.redhat.com/show_bug.cgi?id=695916
->> caused the fflush() and fclose() to fail in turn causing
->> corruption in the mtab.
->>
->> The failures were in the internals of both calls. Switch those
->> calls with the actual system calls eliminated the failures.
->>
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> ---
->>  support/nfs/nfs_mntent.c |    4 ++--
->>  1 files changed, 2 insertions(+), 2 deletions(-)
->>
->> diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
->> index a2118a2..b80f270 100644
->> --- a/support/nfs/nfs_mntent.c
->> +++ b/support/nfs/nfs_mntent.c
->> @@ -117,7 +117,7 @@ void
->>  nfs_endmntent (mntFILE *mfp) {
->>  	if (mfp) {
->>  		if (mfp->mntent_fp)
->> -			fclose(mfp->mntent_fp);
->> +			close(fileno(mfp->mntent_fp));
->>  		if (mfp->mntent_file)
->>  			free(mfp->mntent_file);
->>  		free(mfp);
->> @@ -147,7 +147,7 @@ nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
->>  	free(m3);
->>  	free(m4);
->>  	if (res >= 0) {
->> -		res = fflush(mfp->mntent_fp);
->> +		res = fsync(fileno(mfp->mntent_fp));
-> 
-> fsync doesn't imply an fflush. With this, I think you may end up
-> without everything being committed to disk if part or all of it is
-> still in the file stream buffer. You probably want to do an fflush()
-> and then an fsync here.
-The problem was with the fflush() call. The call was causing the
-mount to drop core in turn causing mtab corruption. Changing that
-call to a fsync() worked just fine... no corruption... every time! 
-
-steved.
-
-> 
->>  		if (res < 0)
->>  			/* Avoid leaving a corrupt mtab file */
->>  			ftruncate(fileno(mfp->mntent_fp), length);
-> 
-> 
+--b.
