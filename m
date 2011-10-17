@@ -1,109 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:64788 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1755282Ab1JTJkq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Oct 2011 05:40:46 -0400
-Message-ID: <4E9FEDC3.2050200@cn.fujitsu.com>
-Date: Thu, 20 Oct 2011 17:45:39 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:47845 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753002Ab1JQMKz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Oct 2011 08:10:55 -0400
+Subject: [RFC PATCH 0/5] SUNRPC: "RPC pipefs per network namespace"
+	preparations
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
+Date: Mon, 17 Oct 2011 16:10:16 +0300
+Message-ID: <20111017120629.4541.67395.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs41: implement DESTROY_CLIENTID operation
-References: <4E9FE112.3080907@cn.fujitsu.com> <20111020093452.GD5444@fieldses.org>
-In-Reply-To: <20111020093452.GD5444@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello to everyone. 
+RPC pipefs file system have to work per network namespace context is required
+prior to any NFS modifications.
+This is a way how to do it. I'll really appreciate for any comments.
+
+There are several statements about how to make RPC pipefs working per network
+namespace context.
+Here they are:
+1) RPC pipefs should be mounted per network namespace context.
+2) RPC pipefs superblock should holds network namespace while active.
+3) RPC pipefs lookup and readir should be perfomed in network namespace context
+it was mounted. IOW, user-space process, working in another network namespace
+context, should see RPC pipefs dentries from network namespace context this
+mount-point was created (like it was done for sysfs). 
+
+These statement leads to some restrictions which we must follow during
+implementation. Here are they:
+1) RPC pipefs mount can't be performed in kernel context since new super block
+will holds networks namespace reference and it's impossible to recognize, when
+and how we have to release this mount point. IOW rpc_get_mount() and
+rpc_put_mount() have to be removed.
+2) RPC pipefs should provide some new helpers to lookup directory dentry for
+those modules which creates pipes, because without RPC pipefs mount point
+general lookup can't be performed.
+3) These methods must garantee, that pipefs superblock will be active during
+pipes creation and destruction.
+
+So, here is the idea of making RPC pipefs works per network namespace context:
+1) RPC pipefs superblock should holds network namespcae context while active.
+2) RPC pipefs should send notification events on superblock creation and
+destruction.
+3) RPC pipefs should provide "lookup dentry by name" method for notification
+subscribers.
+4) RPC pipefs should place superblock reference on current network namespace
+context on creation and remove it on destruction.
+5) RPC pipefs should provide safe "lookup dentry by name" method for per-net
+operations, which garantees, that superblock is active, while
+per-net-operations are performing.
+6) Client and cache directories creation and destruction should be performed
+also on superblock creation and destruction notification events. Note: generic
+creation (like now) can fail (if no superblock is not created yet).
+7) Pipes creation and destruction should be performed on superblock creation
+and destruction events. Also pipes operations should be performed during
+per-net operation and in this case they could fail (due to the same reason as
+in statement above).
+
+This patch-set implements first 5 points and thus doesn't affects current RPC
+pipefs logic.
+
+The only problem about I'm not sure how to solve properly yet, is auth gss
+pipes creations operations. Hoping for some help with it.
 
 
-J. Bruce Fields:
-> On Thu, Oct 20, 2011 at 04:51:30PM +0800, Mi Jinlong wrote:
->> According to rfc5661 18.50, implement DESTROY_CLIENTID operation.
->>
->> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
->> ---
->>  fs/nfsd/nfs4proc.c  |    2 +-
->>  fs/nfsd/nfs4state.c |   51 +++++++++++++++++++++++++++++++++++++++++++++++++++
->>  fs/nfsd/nfs4xdr.c   |   12 +++++++++++-
->>  fs/nfsd/xdr4.h      |    5 +++++
->>  4 files changed, 68 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->> index e807776..8412a22 100644
->> --- a/fs/nfsd/nfs4proc.c
->> +++ b/fs/nfsd/nfs4proc.c
->> @@ -1433,7 +1433,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
->>  		.op_name = "OP_SEQUENCE",
->>  	},
->>  	[OP_DESTROY_CLIENTID] = {
->> -		.op_func = NULL,
->> +		.op_func = (nfsd4op_func)nfsd4_destroy_clientid,
->>  		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_AS_FIRST_OP,
->>  		.op_name = "OP_DESTROY_CLIENTID",
->>  	},
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 3787ec1..d46cbbe 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -1858,6 +1858,57 @@ out:
->>  	return status;
->>  }
->>  
->> +static inline bool has_resources(struct nfs4_client *clp)
->> +{
->> +	return !list_empty(&clp->cl_openowners)
->> +		|| !list_empty(&clp->cl_delegations)
->> +		|| !list_empty(&clp->cl_sessions)
->> +		|| !list_empty(&clp->cl_callbacks);
-> 
-> I don't think the existance of callbacks should prevent destroying the
-> client.
+The following series consists of:
 
-  It's my fault.
+---
 
-> 
->> +}
->> +
->> +__be32
->> +nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_destroy_clientid *dc)
->> +{
->> +	struct nfs4_client *conf, *unconf, *clp;
->> +	int status = 0;
->> +
->> +	nfs4_lock_state();
->> +	unconf = find_unconfirmed_client(&dc->clientid);
->> +	conf = find_confirmed_client(&dc->clientid);
->> +
->> +	if (conf) {
->> +		clp = conf;
->> +
->> +		if (!is_client_expired(conf) && has_resources(conf)) {
->> +			status = nfserr_clientid_busy;
->> +			goto out;
->> +		}
->> +
->> +		/*
->> +		 * DESTROY_CLIENTID MAY be preceded with a SEQUENCE operation as
->> +		 * long as the client ID derived from the session ID of SEQUENCE
->> +		 * is not the same as the client ID to be destroyed. 
->> +		 * If the client IDs are the same, then the server MUST return
->> +		 * NFS4ERR_CLIENTID_BUSY.
->> +		 */
-> 
-> Let's just replace that comment by:
-> 
-> 		/* rfc 551 18.50.3: */
-> 
-> (I agree that it's useful to have a reference to explain where this
-> requirement came from, but I don't think it's necessary to write out the
-> whole thing, as the behavior is obvious enough from the following code.)
+Stanislav Kinsbursky (5):
+      SUNRPC: hold current network namespace while pipefs superblock is active
+      SUNRPC: send notification events on pipefs sb creation and destruction
+      SUNRPC: pipefs dentry lookup helper introduced
+      SUNRPC: put pipefs superblock link on network namespace
+      SUNRPC: pipefs per-net operations helper introduced
 
-  Yes.
 
-  A new version will be post.
+ include/linux/sunrpc/rpc_pipe_fs.h |   16 ++++++
+ net/sunrpc/netns.h                 |    3 +
+ net/sunrpc/rpc_pipe.c              |  103 ++++++++++++++++++++++++++++++++++++
+ net/sunrpc/sunrpc_syms.c           |    1 
+ 4 files changed, 122 insertions(+), 1 deletions(-)
 
-thanks,
-Mi Jinlong 
-
+-- 
+Signature
