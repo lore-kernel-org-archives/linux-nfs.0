@@ -1,62 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:17601 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933857Ab1J2SvR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 14:51:17 -0400
-Subject: Re: NFS4ERR_STALE_CLIENTID loop
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20111029184759.GG12122@fieldses.org>
-Date: Sat, 29 Oct 2011 14:50:58 -0400
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        David Flynn <davidf@rd.bbc.co.uk>, linux-nfs@vger.kernel.org
-Message-Id: <4B27362C-FBC1-4F64-B611-85D5FF6C5359@oracle.com>
-References: <1319455367.8505.3.camel@lade.trondhjem.org> <20111024131734.GE32587@rd.bbc.co.uk> <1319463165.2734.1.camel@lade.trondhjem.org> <20111024145027.GF32587@rd.bbc.co.uk> <1319470302.2734.4.camel@lade.trondhjem.org> <20111027221742.GI32587@rd.bbc.co.uk> <20111029002500.GA2011@rd.bbc.co.uk> <1319909376.2760.11.camel@lade.trondhjem.org> <20111029181509.GE12122@fieldses.org> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7474@SACMVEXC2-PRD.hq.netapp.com> <20111029184759.GG12122@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from smtp.mail.umich.edu ([141.211.12.86]:37068 "EHLO
+	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753798Ab1JQChA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 16 Oct 2011 22:37:00 -0400
+Date: Sun, 16 Oct 2011 22:36:57 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Silence compiler warning
+Message-ID: <20111017023657.GA19126@umich.edu>
+References: <1318810012-15140-1-git-send-email-rees@umich.edu>
+ <4E9B8B75.4040209@tonian.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <4E9B8B75.4040209@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Benny Halevy wrote:
 
-On Oct 29, 2011, at 2:47 PM, J. Bruce Fields wrote:
+  On 2011-10-16 17:06, Jim Rees wrote:
+  > fs/nfs/callback_proc.c: In function ‘do_callback_layoutrecall’:
+  > fs/nfs/callback_proc.c:115:26: warning: ‘lo’ may be used uninitialized in this function
+  > 
+  > No functional change. If no layout is found, we'll return before  using
+  > "lo".
+  > 
+  > Signed-off-by: Jim Rees <rees@umich.edu>
+  > ---
+  >  fs/nfs/callback_proc.c |    2 +-
+  >  1 files changed, 1 insertions(+), 1 deletions(-)
+  > 
+  > diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+  > index 43926ad..93633f1 100644
+  > --- a/fs/nfs/callback_proc.c
+  > +++ b/fs/nfs/callback_proc.c
+  > @@ -112,7 +112,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+  >  				  struct cb_layoutrecallargs *args)
+  >  {
+  >  	struct nfs_server *server;
+  > -	struct pnfs_layout_hdr *lo;
+  > +	struct pnfs_layout_hdr *lo = NULL;
+  >  	struct inode *ino;
+  >  	bool found = false;
+  >  	u32 rv = NFS4ERR_NOMATCHING_LAYOUT;
+  
+  Hmm, the warning seems bogus since we use lo only iff found==true
+  and it is set iff found==true
+  I wonder why I don't see that warning.
+  What compiler/version are you using?
 
-> On Sat, Oct 29, 2011 at 11:21:13AM -0700, Myklebust, Trond wrote:
->>> From: J. Bruce Fields [mailto:bfields@fieldses.org]
->>> On Sat, Oct 29, 2011 at 07:29:36PM +0200, Trond Myklebust wrote:
->>>> OK. This is the first time I've seen this tcpdump.
->>>> 
->>>> The problem seems like a split-brain issue on the server... On the
->> one
->>>> hand, it is happily telling us that our lease is OK when we RENEW.
->>>> Then when we try to use said lease in an OPEN, it is replying with
->>>> STALE_CLIENTID.
->>>> 
->>>> IOW: This isn't a problem I can fix on the client whether or not I
->> add
->>>> exponential backoff. The problem needs to be addressed on the server
->>>> by the Solaris folks....
->>> 
->>> Is there any simple thing we could do on the client to reduce the
->> impact of
->>> these sorts of loops?
->> 
->> WHY? Those loops aren't supposed to happen if the server works according
->> to spec.
-> 
-> Yes, and it's not something I care that strongly about, really, my only
-> observation is that this sort of failure (an implementation bug on one
-> side or another resulting in a loop) seems to have been common (based on
-> no hard data, just my vague memories of list threads), and the results
-> fairly obnoxious (possibly even for unrelated hosts on the network).
-> So if there's some simple way to fail more gracefully it might be
-> helpful.
+gcc (Ubuntu/Linaro 4.5.2-8ubuntu4) 4.5.2
 
-For what it's worth, I agree that client implementations should attempt to behave more gracefully in the face of server problems, be they the result of bugs or the result of other issues specific to that server.  Problems like this make NFSv4 as a protocol look bad.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+I don't remember seeing this warning before either, but I can't think what I
+might have changed that would make a difference.  I did turn on SMP, which I
+didn't have before (non-SMP kernels don't seem to work on the latest
+Virtualbox).  And yes, the warning is bogus, but should be fixed anyway.
