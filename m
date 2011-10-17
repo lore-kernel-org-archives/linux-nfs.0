@@ -1,212 +1,151 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp07.au.ibm.com ([202.81.31.140]:46819 "EHLO
-	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932936Ab1JRPfL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:35:11 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V7 18/26] richacl: Create-time inheritance
-Date: Tue, 18 Oct 2011 21:02:53 +0530
-Message-Id: <1318951981-5508-19-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from fieldses.org ([174.143.236.118]:44767 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755666Ab1JQV4Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Oct 2011 17:56:24 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 7/8] nfsd4: preallocate open stateid in process_open1()
+Date: Mon, 17 Oct 2011 17:55:56 -0400
+Message-Id: <1318888557-14719-8-git-send-email-bfields@redhat.com>
+In-Reply-To: <1318888557-14719-1-git-send-email-bfields@redhat.com>
+References: <1318888557-14719-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-When a new file is created, it can inherit an acl from its parent
-directory; this is similar to how default acls work in POSIX (draft)
-ACLs.
+As with the nfs4_file, we'd prefer to find out about any failure before
+creating a new file rather than after.
 
-As with POSIX ACLs, if a file inherits an acl from its parent directory,
-the intersection between the create mode and the permissions granted by
-the inherited acl determines the file masks and file permission bits,
-and the umask is ignored.
-
-Acked-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/Makefile             |    2 +-
- fs/richacl_base.c       |   69 +++++++++++++++++++++++++++++++++++++++++++++++
- fs/richacl_inode.c      |   59 ++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |    4 +++
- 4 files changed, 133 insertions(+), 1 deletions(-)
- create mode 100644 fs/richacl_inode.c
+ fs/nfsd/nfs4state.c |   49 ++++++++++++++++++++-----------------------------
+ fs/nfsd/xdr4.h      |    1 +
+ 2 files changed, 21 insertions(+), 29 deletions(-)
 
-diff --git a/fs/Makefile b/fs/Makefile
-index 7612168..1ecf9f2 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -49,7 +49,7 @@ obj-$(CONFIG_GENERIC_ACL)	+= generic_acl.o
- 
- obj-$(CONFIG_FHANDLE)		+= fhandle.o
- obj-$(CONFIG_FS_RICHACL)	+= richacl.o
--richacl-y			:= richacl_base.o
-+richacl-y			:= richacl_base.o richacl_inode.o
- 
- obj-y				+= quota/
- 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index e9c2f30..6c7e839 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -491,3 +491,72 @@ is_everyone:
- 	return denied ? -EACCES : 0;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 1f8c781..3e1d4e0 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -268,6 +268,11 @@ static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct kmem_cac
+ 	return kmem_cache_alloc(slab, GFP_KERNEL);
  }
- EXPORT_SYMBOL_GPL(richacl_permission);
-+
-+/**
-+ * richacl_inherit  -  compute the inherited acl of a new file
-+ * @dir_acl:	acl of the containing directory
-+ * @isdir:	inherit by a directory or non-directory?
-+ *
-+ * A directory can have acl entries which files and/or directories created
-+ * inside the directory will inherit.  This function computes the acl for such
-+ * a new file.  If there is no inheritable acl, it will return %NULL.
-+ */
-+struct richacl *
-+richacl_inherit(const struct richacl *dir_acl, int isdir)
-+{
-+	const struct richace *dir_ace;
-+	struct richacl *acl = NULL;
-+	struct richace *ace;
-+	int count = 0;
-+
-+	if (isdir) {
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!richace_is_inheritable(dir_ace))
-+				continue;
-+			count++;
-+		}
-+		if (!count)
-+			return NULL;
-+		acl = richacl_alloc(count);
-+		if (!acl)
-+			return ERR_PTR(-ENOMEM);
-+		ace = acl->a_entries;
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!richace_is_inheritable(dir_ace))
-+				continue;
-+			memcpy(ace, dir_ace, sizeof(struct richace));
-+			if (dir_ace->e_flags & ACE4_NO_PROPAGATE_INHERIT_ACE)
-+				richace_clear_inheritance_flags(ace);
-+			if ((dir_ace->e_flags & ACE4_FILE_INHERIT_ACE) &&
-+			    !(dir_ace->e_flags & ACE4_DIRECTORY_INHERIT_ACE))
-+				ace->e_flags |= ACE4_INHERIT_ONLY_ACE;
-+			ace++;
-+		}
-+	} else {
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!(dir_ace->e_flags & ACE4_FILE_INHERIT_ACE))
-+				continue;
-+			count++;
-+		}
-+		if (!count)
-+			return NULL;
-+		acl = richacl_alloc(count);
-+		if (!acl)
-+			return ERR_PTR(-ENOMEM);
-+		ace = acl->a_entries;
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!(dir_ace->e_flags & ACE4_FILE_INHERIT_ACE))
-+				continue;
-+			memcpy(ace, dir_ace, sizeof(struct richace));
-+			richace_clear_inheritance_flags(ace);
-+			/*
-+			 * ACE4_DELETE_CHILD is meaningless for
-+			 * non-directories, so clear it.
-+			 */
-+			ace->e_mask &= ~ACE4_DELETE_CHILD;
-+			ace++;
-+		}
-+	}
-+
-+	return acl;
-+}
-diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-new file mode 100644
-index 0000000..f590fb5
---- /dev/null
-+++ b/fs/richacl_inode.c
-@@ -0,0 +1,59 @@
-+/*
-+ * Copyright (C) 2010  Novell, Inc.
-+ * Written by Andreas Gruenbacher <agruen@kernel.org>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of the GNU General Public License as published by the
-+ * Free Software Foundation; either version 2, or (at your option) any
-+ * later version.
-+ *
-+ * This program is distributed in the hope that it will be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ */
-+
-+#include <linux/sched.h>
-+#include <linux/module.h>
-+#include <linux/fs.h>
-+#include <linux/richacl.h>
-+
-+/**
-+ * richacl_inherit_inode  -  compute inherited acl and file mode
-+ * @dir_acl:	acl of the containing directory
-+ * @inode:	inode of the new file (create mode in i_mode)
-+ *
-+ * The file permission bits in inode->i_mode must be set to the create mode.
-+ * If there is an inheritable acl, the maximum permissions that the acl grants
-+ * will be computed and permissions not granted by the acl will be removed from
-+ * inode->i_mode.  If there is no inheritable acl, the umask will be applied
-+ * instead.
-+ */
-+struct richacl *
-+richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
-+{
-+	struct richacl *acl;
-+	mode_t mask;
-+
-+	acl = richacl_inherit(dir_acl, S_ISDIR(inode->i_mode));
-+	if (acl) {
-+
-+		richacl_compute_max_masks(acl);
-+
-+		/*
-+		 * Ensure that the acl will not grant any permissions beyond
-+		 * the create mode.
-+		 */
-+		acl->a_flags |= ACL4_MASKED;
-+		acl->a_owner_mask &= richacl_mode_to_mask(inode->i_mode >> 6) |
-+				     ACE4_POSIX_OWNER_ALLOWED;
-+		acl->a_group_mask &= richacl_mode_to_mask(inode->i_mode >> 3);
-+		acl->a_other_mask &= richacl_mode_to_mask(inode->i_mode);
-+		mask = ~S_IRWXUGO | richacl_masks_to_mode(acl);
-+	} else
-+		mask = ~current_umask();
-+
-+	inode->i_mode &= mask;
-+	return acl;
-+}
-+EXPORT_SYMBOL_GPL(richacl_inherit_inode);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 86f7339..15953ae 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -291,5 +291,9 @@ extern void richacl_compute_max_masks(struct richacl *);
- extern struct richacl *richacl_chmod(struct richacl *, mode_t);
- extern int richacl_permission(struct inode *, const struct richacl *,
- 			      unsigned int);
-+extern struct richacl *richacl_inherit(const struct richacl *, int);
  
-+/* richacl_inode.c */
-+extern struct richacl *richacl_inherit_inode(const struct richacl *,
-+					     struct inode *);
- #endif /* __RICHACL_H */
++static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
++{
++	return openlockstateid(nfs4_alloc_stid(clp, stateid_slab));
++}
++
+ static struct nfs4_delegation *
+ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct svc_fh *current_fh, u32 type)
+ {
+@@ -2511,6 +2516,7 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
+ 	struct nfs4_client *clp = NULL;
+ 	unsigned int strhashval;
+ 	struct nfs4_openowner *oo = NULL;
++	__be32 status;
+ 
+ 	if (STALE_CLIENTID(&open->op_clientid))
+ 		return nfserr_stale_clientid;
+@@ -2538,12 +2544,20 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
+ 		open->op_openowner = NULL;
+ 		goto new_owner;
+ 	}
+-	return nfsd4_check_seqid(cstate, &oo->oo_owner, open->op_seqid);
++	status = nfsd4_check_seqid(cstate, &oo->oo_owner, open->op_seqid);
++	if (status)
++		return status;
++	clp = oo->oo_owner.so_client;
++	goto alloc_stateid;
+ new_owner:
+ 	oo = alloc_init_open_stateowner(strhashval, clp, open);
+ 	if (oo == NULL)
+ 		return nfserr_jukebox;
+ 	open->op_openowner = oo;
++alloc_stateid:
++	open->op_stp = nfs4_alloc_stateid(clp);
++	if (!open->op_stp)
++		return nfserr_jukebox;
+ 	return nfs_ok;
+ }
+ 
+@@ -2616,11 +2630,6 @@ nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_ol_st
+ 	return nfs_ok;
+ }
+ 
+-static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
+-{
+-	return openlockstateid(nfs4_alloc_stid(clp, stateid_slab));
+-}
+-
+ static void nfs4_free_stateid(struct nfs4_ol_stateid *s)
+ {
+ 	kmem_cache_free(stateid_slab, s);
+@@ -2661,28 +2670,6 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
+ 	return nfs_ok;
+ }
+ 
+-static __be32
+-nfs4_new_open(struct svc_rqst *rqstp, struct nfs4_ol_stateid **stpp,
+-		struct nfs4_file *fp, struct svc_fh *cur_fh,
+-		struct nfsd4_open *open)
+-{
+-	struct nfs4_ol_stateid *stp;
+-	struct nfs4_client *cl = open->op_openowner->oo_owner.so_client;
+-	__be32 status;
+-
+-	stp = nfs4_alloc_stateid(cl);
+-	if (stp == NULL)
+-		return nfserr_jukebox;
+-
+-	status = nfs4_get_vfs_file(rqstp, fp, cur_fh, open);
+-	if (status) {
+-		nfs4_free_stateid(stp);
+-		return status;
+-	}
+-	*stpp = stp;
+-	return 0;
+-}
+-
+ static inline __be32
+ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
+ 		struct nfsd4_open *open)
+@@ -2916,9 +2903,11 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 		if (status)
+ 			goto out;
+ 	} else {
+-		status = nfs4_new_open(rqstp, &stp, fp, current_fh, open);
++		status = nfs4_get_vfs_file(rqstp, fp, current_fh, open);
+ 		if (status)
+ 			goto out;
++		stp = open->op_stp;
++		open->op_stp = NULL;
+ 		init_open_stateid(stp, fp, open);
+ 		status = nfsd4_truncate(rqstp, current_fh, open);
+ 		if (status) {
+@@ -2975,6 +2964,8 @@ void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
+ 	}
+ 	if (open->op_file)
+ 		nfsd4_free_file(open->op_file);
++	if (open->op_stp)
++		nfs4_free_stateid(open->op_stp);
+ }
+ 
+ __be32
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 502dd43..ce8c591 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -229,6 +229,7 @@ struct nfsd4_open {
+ 	int		op_truncate;        /* used during processing */
+ 	struct nfs4_openowner *op_openowner; /* used during processing */
+ 	struct nfs4_file *op_file;          /* used during processing */
++	struct nfs4_ol_stateid *op_stp;	    /* used during processing */
+ 	struct nfs4_acl *op_acl;
+ };
+ #define op_iattr	iattr
 -- 
 1.7.5.4
 
