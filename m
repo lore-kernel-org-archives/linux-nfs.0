@@ -1,105 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:19313 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:44759 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751667Ab1JSRWK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Oct 2011 13:22:10 -0400
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p9JHM9FW024960
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 13:22:10 -0400
-Date: Wed, 19 Oct 2011 13:22:30 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] mount.nfs: mtab corruption when RLIMIT_FSIZE causes
- a partial write
-Message-ID: <20111019132230.6cd85a0c@corrin.poochiereds.net>
-In-Reply-To: <4E9F047B.5000600@RedHat.com>
-References: <1319038470-17750-1-git-send-email-steved@redhat.com>
-	<20111019123626.7a80dfad@corrin.poochiereds.net>
-	<4E9F047B.5000600@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1755622Ab1JQV4X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Oct 2011 17:56:23 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 4/8] nfsd4: clean up open owners on OPEN failure
+Date: Mon, 17 Oct 2011 17:55:53 -0400
+Message-Id: <1318888557-14719-5-git-send-email-bfields@redhat.com>
+In-Reply-To: <1318888557-14719-1-git-send-email-bfields@redhat.com>
+References: <1318888557-14719-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 19 Oct 2011 13:10:19 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-> 
-> 
-> On 10/19/2011 12:36 PM, Jeff Layton wrote:
-> > On Wed, 19 Oct 2011 11:34:30 -0400
-> > Steve Dickson <steved@redhat.com> wrote:
-> > 
-> >> This patch is a following on to commit 7a802337. Using the
-> >> tool in https://bugzilla.redhat.com/show_bug.cgi?id=695916
-> >> caused the fflush() and fclose() to fail in turn causing
-> >> corruption in the mtab.
-> >>
-> >> The failures were in the internals of both calls. Switch those
-> >> calls with the actual system calls eliminated the failures.
-> >>
-> >> Signed-off-by: Steve Dickson <steved@redhat.com>
-> >> ---
-> >>  support/nfs/nfs_mntent.c |    4 ++--
-> >>  1 files changed, 2 insertions(+), 2 deletions(-)
-> >>
-> >> diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
-> >> index a2118a2..b80f270 100644
-> >> --- a/support/nfs/nfs_mntent.c
-> >> +++ b/support/nfs/nfs_mntent.c
-> >> @@ -117,7 +117,7 @@ void
-> >>  nfs_endmntent (mntFILE *mfp) {
-> >>  	if (mfp) {
-> >>  		if (mfp->mntent_fp)
-> >> -			fclose(mfp->mntent_fp);
-> >> +			close(fileno(mfp->mntent_fp));
-> >>  		if (mfp->mntent_file)
-> >>  			free(mfp->mntent_file);
-> >>  		free(mfp);
-> >> @@ -147,7 +147,7 @@ nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
-> >>  	free(m3);
-> >>  	free(m4);
-> >>  	if (res >= 0) {
-> >> -		res = fflush(mfp->mntent_fp);
-> >> +		res = fsync(fileno(mfp->mntent_fp));
-> > 
-> > fsync doesn't imply an fflush. With this, I think you may end up
-> > without everything being committed to disk if part or all of it is
-> > still in the file stream buffer. You probably want to do an fflush()
-> > and then an fsync here.
-> The problem was with the fflush() call. The call was causing the
-> mount to drop core in turn causing mtab corruption. Changing that
-> call to a fsync() worked just fine... no corruption... every time! 
-> 
+If process_open1() creates a new open owner, but the open later fails,
+the current code will leave the open owner around.  It won't be on the
+close_lru list, and the client isn't expected to send a CLOSE, so it
+will hang around as long as the client does.
 
-Ahh, then you have another problem here too then. Most likely it was
-crashing because it caught a SIGXFSZ. Writing out the mtab should not
-be affected by signals.
+Similarly, if process_open1() removes an existing open owner from the
+close lru, anticipating that an open owner that previously had no
+associated stateid's now will, but the open subsequently fails, then
+we'll again be left with the same leak.
 
-In the mount.cifs helper, I have it do the following before altering
-the mtab (with appropriate error handling):
+Fix both problems.
 
-        rc = setreuid(geteuid(), -1);
-        rc = sigfillset(&mask);
-        rc = sigprocmask(SIG_SETMASK, &mask, &oldmask);
+Reported-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c  |    1 +
+ fs/nfsd/nfs4state.c |   20 ++++++++++++++++++--
+ fs/nfsd/state.h     |    1 +
+ fs/nfsd/xdr4.h      |    1 +
+ 4 files changed, 21 insertions(+), 2 deletions(-)
 
-
-IOW, set the real uid to the effective UID to ensure that an
-unprivileged user can't signal the process if it was run as a setuid
-root program and the real UID isn't root. It then masks off all
-signals. That leaves SIGKILL by root as a way to interrupt it but
-there's really nothing you can do about that.
-
-> 
-> > 
-> >>  		if (res < 0)
-> >>  			/* Avoid leaving a corrupt mtab file */
-> >>  			ftruncate(fileno(mfp->mntent_fp), length);
-> > 
-> > 
-
-
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 5b192a2..10b50d7 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -409,6 +409,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	 */
+ 	status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
+ out:
++	nfsd4_cleanup_open_state(open, status);
+ 	if (open->op_openowner)
+ 		cstate->replay_owner = &open->op_openowner->oo_owner;
+ 	else
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 62aa91a..2c9a1a2 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2320,7 +2320,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
+ 		return NULL;
+ 	oo->oo_owner.so_is_open_owner = 1;
+ 	oo->oo_owner.so_seqid = open->op_seqid;
+-	oo->oo_flags = 0;
++	oo->oo_flags = NFS4_OO_NEW;
+ 	oo->oo_time = 0;
+ 	oo->oo_last_closed_stid = NULL;
+ 	INIT_LIST_HEAD(&oo->oo_close_lru);
+@@ -2526,7 +2526,6 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
+ 		open->op_openowner = NULL;
+ 		goto new_owner;
+ 	}
+-	list_del_init(&oo->oo_close_lru);
+ 	return nfsd4_check_seqid(cstate, &oo->oo_owner, open->op_seqid);
+ new_owner:
+ 	oo = alloc_init_open_stateowner(strhashval, clp, open);
+@@ -2946,6 +2945,23 @@ out:
+ 	return status;
+ }
+ 
++void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
++{
++	if (open->op_openowner) {
++		struct nfs4_openowner *oo = open->op_openowner;
++
++		if (!list_empty(&oo->oo_owner.so_stateids))
++			list_del_init(&oo->oo_close_lru);
++		if (oo->oo_flags & NFS4_OO_NEW) {
++			if (status) {
++				release_openowner(oo);
++				open->op_openowner = NULL;
++			} else
++				oo->oo_flags &= ~NFS4_OO_NEW;
++		}
++	}
++}
++
+ __be32
+ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	    clientid_t *clid)
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 87eecfd..eab9dae 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -359,6 +359,7 @@ struct nfs4_openowner {
+ 	time_t			oo_time; /* time of placement on so_close_lru */
+ #define NFS4_OO_CONFIRMED   1
+ #define NFS4_OO_PURGE_CLOSE 2
++#define NFS4_OO_NEW         4
+ 	unsigned char		oo_flags;
+ };
+ 
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 4c8a7ec..32e6fd8 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -554,6 +554,7 @@ extern __be32 nfsd4_process_open1(struct nfsd4_compound_state *,
+ 		struct nfsd4_open *open);
+ extern __be32 nfsd4_process_open2(struct svc_rqst *rqstp,
+ 		struct svc_fh *current_fh, struct nfsd4_open *open);
++extern void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status);
+ extern __be32 nfsd4_open_confirm(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *, struct nfsd4_open_confirm *oc);
+ extern __be32 nfsd4_close(struct svc_rqst *rqstp,
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.5.4
+
