@@ -1,76 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:60743 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751126Ab1JYQXH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Oct 2011 12:23:07 -0400
-Message-ID: <4EA6E256.1060803@panasas.com>
-Date: Tue, 25 Oct 2011 09:22:46 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:35595 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751221Ab1JQSt0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Oct 2011 14:49:26 -0400
+Received: by gyb13 with SMTP id 13so3273243gyb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Oct 2011 11:49:25 -0700 (PDT)
+Message-ID: <4E9C78B0.7080909@tonian.com>
+Date: Mon, 17 Oct 2011 11:49:20 -0700
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        open-osd <osd-dev@open-osd.org>, "Welch, Brent" <welch@panasas.com>
-CC: linux-kernel <linux-kernel@vger.kernel.org>
-Subject: [GIT PULL] ore/exofs: Changes for the 3.2 Merge Window (Part 1)
-Content-Type: text/plain; charset="UTF-8"
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Subject: Re: [osd-dev] [PATCHSET 0/5] pnfsd-exofs: Adapt to Latest ore/exofs
+ changes
+References: <4E8D9D56.6020803@panasas.com>
+In-Reply-To: <4E8D9D56.6020803@panasas.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Linus Hi
+Hmm, I get the following compile error.
 
-Please pull the following changes since v3.1-rc6 [b6fd41e2]
+Is there a chance you have some local changes in your tree you haven't committed
+to 6127dbde SQUASHME pnfsd-exofs: Serve out a single group layout at a time
 
-Which are available in the git repository at:
-  git://git.open-osd.org/linux-open-osd.git for-linus
+fs/exofs/export.c: In function ‘exofs_layout_get’:
+fs/exofs/export.c:143:2: warning: passing argument 3 of ‘ore_calc_stripe_info’ makes integer from pointer without a cast [enabled by default]
+include/scsi/osd_ore.h:174:6: note: expected ‘u64’ but argument is of type ‘struct ore_striping_info *’
+fs/exofs/export.c:143:2: error: too few arguments to function ‘ore_calc_stripe_info’
+include/scsi/osd_ore.h:174:6: note: declared here
 
-The biggest highlight of this Merge is support for RAID5 over objects
-with full support for the pnfs-objects-ietf-standard layout. (This is
-a special RAID5 over objects which is equivalent to RAID5 over files
-much more then RAID5 over block devices).
+Since si.length is not in use in exofs_layout_get
+This fix should work, right?
 
-Part 2: Of this merge is dependent on this inclusion and the bits
-in Trond's NFS tree. For the fs/nfs/objlayout and will be pushed
-through Trond, once both hit mainline.
+git diff --stat -p -M
+ fs/exofs/export.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Thanks!
-Boaz Harrosh (19):
-      osd: Kconfig remove wrong FIXME
-      exofs: Rename struct ore_components comps => oc
-      exofs: Remove unused data_map member from exofs_sb_info
-      ore: Make ore_striping_info and ore_calc_stripe_info public
-      ore/exofs: Change the type of the devices array (API change)
-      ore: Only IO one group at a time (API change)
-      ore: cleanup: Embed an ore_striping_info inside ore_io_state
-      ore: Remove check for ios->kern_buff in _prepare_for_striping to later
-      exofs: Support for short read/writes
-      ore: Support for short read/writes
-      ore: Support for partial component table
-      ore/exofs: Define new ore_verify_layout
-      ore/exofs: Change ore_check_io API
-      ore: Make ore_calc_stripe_info EXPORT_SYMBOL
-      fs/Makefile: Always inspect exofs/
-      ore: RAID5 read
-      ore: RAID5 Write
-      exofs: Support for RAID5 read-4-write interface.
-      ore: Enable RAID5 mounts
+diff --git a/fs/exofs/export.c b/fs/exofs/export.c
+index 815e807..8a0e510 100644
+--- a/fs/exofs/export.c
++++ b/fs/exofs/export.c
+@@ -140,7 +140,7 @@ static enum nfsstat4 exofs_layout_get(
+ 	/* Fill in a pnfs_osd_layout struct */
+ 	ore_layout_2_pnfs_layout(&layout, &sbi->layout);
 
-H Hartley Sweeten (2):
-      exofs/ore.c: local functions should be static
-      exofs/super.c: local functions should be static
+-	ore_calc_stripe_info(&sbi->layout, res->lg_seg.offset, &si);
++	ore_calc_stripe_info(&sbi->layout, res->lg_seg.offset, 0, &si);
+ 	layout.olo_comps_index = si.dev;
+ 	layout.olo_num_comps = sbi->layout.group_width * sbi->layout.mirrors_p1;
 
- drivers/scsi/osd/Kconfig |    4 -
- fs/Makefile              |    2 +-
- fs/exofs/Kbuild          |    3 +-
- fs/exofs/Kconfig         |    9 +-
- fs/exofs/exofs.h         |   26 +-
- fs/exofs/inode.c         |  233 +++++++++++++----
- fs/exofs/ore.c           |  656 +++++++++++++++++++++++++++++++++-------------
- fs/exofs/ore_raid.c      |  660 ++++++++++++++++++++++++++++++++++++++++++++++
- fs/exofs/ore_raid.h      |   79 ++++++
- fs/exofs/super.c         |  205 ++++++---------
- include/scsi/osd_ore.h   |   80 ++++++-
- 11 files changed, 1583 insertions(+), 374 deletions(-)
- create mode 100644 fs/exofs/ore_raid.c
- create mode 100644 fs/exofs/ore_raid.h
+
+
+
+On 2011-10-06 05:21, Boaz Harrosh wrote:
+> Benny Hi
+> 
+> I'm sending the changes needed to *pnfsd-exofs* branch which are needed
+> in order to work with latest, for v3.2, ore/exofs changes.
+> 
+> Assuming you have set up:
+>    git remote add loo git://git.open-osd.org/linux-open-osd.git
+> 
+> For your convenience the patches are also available at:
+> 
+>    git cherry-rebase 5d2d53b7..loo/pnfsd-exofs
+> 
+> You will also need to merge or put somewhere all these changes on the
+> linux-open-osd linux-next branch (Actually the ore-devel branch)
+> 
+>    git cherry-rebase loo/linus..loo/ore-devel
+> 
+> Here are the sets of patches in the two groups:
+> 
+> [pnfsd-exofs 5d2d53b7..loo/pnfsd-exofs(6127dbd)]
+> 
+>   This set is based on the base, none SQUASHME, pnfsd-exofs patches
+> 	[5d2d53b7] pnfsd-exofs: layoutreturn pnfs-obj information decoding
+> 
+>   7638472 SQUASHME: pnfsd-exofs: convert to v3.1 ORE			  - Your original conversion
+>   51f3837 SQUASHME: pnfsd-exofs: Convert to ORE 3.1 PART2
+>   590139b SQUASHME: pnfsd-exofs: Fix export of only one group layout
+>   fba7909 SQUASHME: pnfsd-exofs: Type & Name of the devices array changed
+>   6127dbd SQUASHME pnfsd-exofs: Serve out a single group layout at a time 
+> 
+> 
+> 
+> [ore/exofs/pnfs-obj changes for Linux v3.2 merge window]
+> 
+>   My tree is based on v3.1-rc6 but you might want to base them on your pnfs/pnfs-block branch
+>   or have them all in a third branch and merge three branches on the top
+> 
+>   []$ git log --oneline --reverse loo/linus..loo/ore-devel
+> 
+>   a8f8c45 osd: Kconfig remove wrong FIXME
+>   1958c7c2 exofs/ore.c: local functions should be static
+>   de74b05 exofs/super.c: local functions should be static
+>   5bf696d exofs: Rename struct ore_components comps => oc
+>   8d2d83a exofs: Remove unused data_map member from exofs_sb_info
+>   eb507bc ore: Make ore_striping_info and ore_calc_stripe_info public
+>   d866d87 ore/exofs: Change the type of the devices array (API change)
+>   6d52274 ore: Only IO one group at a time (API change)
+>   a723afe ore: cleanup: Embed an ore_striping_info inside ore_io_state
+>   bcad9f7 ore: Remove check for ios->kern_buff in _prepare_for_striping to later
+>   c8dfed0 exofs: Support for short read/writes
+>   b2e3e8d ore: Support for short read/writes
+>   c0ba6d0 ore: Support for partial component table
+>   3c5aedd ore/exofs: Define new ore_verify_layout
+>   f6ee1e2 ore/exofs: Change ore_check_io API
+>   9bb8a8e pnfs-obj: Remove redundant EOF from objlayout_io_state
+>   e4ec2af pnfs-obj: Return PNFS_NOT_ATTEMPTED in case of read/write_pagelist
+>   8b40d31 pnfs-obj: Get rid of objlayout_{alloc,free}_io_state
+>   6b09277 pnfs-obj: Rename objlayout_io_state => objlayout_io_res
+>   739c109 pnfs-obj: move to ore 01: ore_layout & ore_components
+>   23a91ad pnfs-obj: move to ore 02: move to ORE
+>   b82cbb8 pnfs-obj: move to ore 03: Remove old raid engine
+> 	Up to here is the intended patches for Linux v3.2
+>   c0cf571 ore: Make ore_calc_stripe_info EXPORT_SYMBOL
+> 	This patch is intended for the pnfsd-exofs branch after it will be
+> 	rebased on ore/exofs for v3.2 above (As is it will not patch there)
+> 
+> Cheers
+> Boaz
+> _______________________________________________
+> osd-dev mailing list
+> osd-dev@open-osd.org
+> http://mailman.open-osd.org/mailman/listinfo/osd-dev
