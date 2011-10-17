@@ -1,86 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:40626 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:41751 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932323Ab1J2SWD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 14:22:03 -0400
+	id S1751914Ab1JQNjC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Oct 2011 09:39:02 -0400
+Date: Mon, 17 Oct 2011 09:39:01 -0400
+To: Harald Dunkel <harald.dunkel@aixigo.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: nfs3 30% faster than nfs4?
+Message-ID: <20111017133901.GB9809@fieldses.org>
+References: <4E9BDF01.6090106@aixigo.de>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: NFS4ERR_STALE_CLIENTID loop
-Date: Sat, 29 Oct 2011 11:22:01 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7475@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <20111029180227.GC2011@rd.bbc.co.uk>
-References: <20111024104042.GD32587@rd.bbc.co.uk> <1319455367.8505.3.camel@lade.trondhjem.org> <20111024131734.GE32587@rd.bbc.co.uk> <1319463165.2734.1.camel@lade.trondhjem.org> <20111024145027.GF32587@rd.bbc.co.uk> <1319470302.2734.4.camel@lade.trondhjem.org> <20111027221742.GI32587@rd.bbc.co.uk> <20111029002500.GA2011@rd.bbc.co.uk> <1319909376.2760.11.camel@lade.trondhjem.org> <20111029180227.GC2011@rd.bbc.co.uk>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "David Flynn" <davidf@rd.bbc.co.uk>
-Cc: <linux-nfs@vger.kernel.org>, "Chuck Lever" <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E9BDF01.6090106@aixigo.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: David Flynn [mailto:davidf@rd.bbc.co.uk]
-> Sent: Saturday, October 29, 2011 8:02 PM
-> To: Myklebust, Trond
-> Cc: David Flynn; linux-nfs@vger.kernel.org; Chuck Lever
-> Subject: Re: NFS4ERR_STALE_CLIENTID loop
+On Mon, Oct 17, 2011 at 09:53:37AM +0200, Harald Dunkel wrote:
+> Hi folks,
 > 
-> * Trond Myklebust (Trond.Myklebust@netapp.com) wrote:
-> > > Using the same kernel, same mountpoint as before, we're currently
-> > > experiencing a loop involving NFS4ERR_STALE_CLIENTID.
-> ...
-> > The problem seems like a split-brain issue on the server... On the
-one
-> > hand, it is happily telling us that our lease is OK when we RENEW.
-> > Then when we try to use said lease in an OPEN, it is replying with
-> > STALE_CLIENTID.
+> I did a brief test on a local nfs server: Extracting the
+> linux kernel sources on a nfs partition it seems that nfs3
+> is 30% faster than nfs4. For nfs3 I got 5.2MB/sec. Nfs4
+> gave me just 3.8MB/sec. The server was idle except for this
+> test.
 > 
-> Thank you for the quick update, especially at the weekend.  I'm
-wondering if
-> it is possible that the STALE_CLIENTID issue is a by-product of the
-> BAD_STATEID issue from earlier.  We have observed several times the
-> BAD_STATEID loop, but the CLIENTID problem only seemed to occur when
-all
-> 40+ nodes were all showing problems.
+> Client and server were running 2.6.39 from the Debian backports
+> repository. I just changed the mount option on the client to
+> select nfs3 or nfs4.
 > 
-> After killing off sufficient processes, the some of the machines then
-> recovered of their own accord.  So your conclusion that there is a
-server issue
-> sounds reasonable.
-> 
-> On any such possible backoff, the previous case was with quite small
-> requests in quite a tight loop that seemed to cause the server grief.
-> This morning, a machine with a 10GbE interface had a BAD_STATEID issue
-but
-> involving some much larger writes[1], resulting in 1.6Gbit/sec from
-that
-> machine alone.  Thankfully there was only a second machine with 1GbE
-> interfaces bringing the total up to 2.5Gbit/sec.
-> 
-> It is this ability for a group of clients to make matters worse that
-is just as bad
-> as any fault with Solaris.
+> I don't want to complain, but I did not expect this huge loss
+> in performance for moving to nfs4. Any helpful comment would be
+> highly appreciated.
 
-Sure, but gone are the days when NFS had "reference implementations"
-that everyone had to interoperate with. NFSv4 is a fully documented
-protocol which describes how both clients and servers are supposed to
-work. If either the client or server fail to work according to that
-documentation, then bad things will happen.
+It might be worth looking at /proc/self/mountstats and seeing if you can
+figure out where the time's going in the v4 case.  (Probably
+open/close?)
 
-While I could litter the client code with lots of little tricks to be
-"defensive" in the face of buggy servers, that isn't going to solve
-anything: the server will still be buggy, and the client will still be
-faced with a situation that it cannot resolve.
+That workload is unlikely to be bandwidth-limited so total time is
+probably the better number to look at instead of bandwidth.
 
-> (In a similar vein, it can be just as frustrating trying to get a
-client to stop
-> looping like this - it is often impossible to kill the process that
-triggered the
-> problem; for these, we had to resort to deleting the files using NFSv3
-(which
-> was working quite happily))
-
-'kill -9' should in principle work to kill off the process. Was that
-failing to work?
-
-Cheers
-   Trond
+--b.
