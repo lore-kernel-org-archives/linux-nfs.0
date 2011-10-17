@@ -1,58 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:55040 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:39487 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754157Ab1JSPed (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Oct 2011 11:34:33 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p9JFYXxU021082
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 11:34:33 -0400
-Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id p9JFYWDT009555
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 11:34:32 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] mount.nfs: mtab corruption when RLIMIT_FSIZE causes a partial write
-Date: Wed, 19 Oct 2011 11:34:30 -0400
-Message-Id: <1319038470-17750-1-git-send-email-steved@redhat.com>
+	id S1751442Ab1JQMfu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Oct 2011 08:35:50 -0400
+Date: Mon, 17 Oct 2011 08:35:46 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Dan Carpenter <dan.carpenter@oracle.com>
+Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
+        kernel-janitors@vger.kernel.org
+Subject: Re: [patch] nfsd4: typo logical vs bitwise negate
+Message-ID: <20111017123546.GA9809@fieldses.org>
+References: <20111017074117.GA11912@elgon.mountain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111017074117.GA11912@elgon.mountain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch is a following on to commit 7a802337. Using the
-tool in https://bugzilla.redhat.com/show_bug.cgi?id=695916
-caused the fflush() and fclose() to fail in turn causing
-corruption in the mtab.
+On Mon, Oct 17, 2011 at 10:41:17AM +0300, Dan Carpenter wrote:
+> This should be a bitwise negate here.  It silences a Sparse warning:
+> fs/nfsd/nfs4xdr.c:693:16: warning: dubious: x & !y
 
-The failures were in the internals of both calls. Switch those
-calls with the actual system calls eliminated the failures.
+Whoops, thanks for catching that!
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- support/nfs/nfs_mntent.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+Applying for 3.2.--b.
 
-diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
-index a2118a2..b80f270 100644
---- a/support/nfs/nfs_mntent.c
-+++ b/support/nfs/nfs_mntent.c
-@@ -117,7 +117,7 @@ void
- nfs_endmntent (mntFILE *mfp) {
- 	if (mfp) {
- 		if (mfp->mntent_fp)
--			fclose(mfp->mntent_fp);
-+			close(fileno(mfp->mntent_fp));
- 		if (mfp->mntent_file)
- 			free(mfp->mntent_file);
- 		free(mfp);
-@@ -147,7 +147,7 @@ nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
- 	free(m3);
- 	free(m4);
- 	if (res >= 0) {
--		res = fflush(mfp->mntent_fp);
-+		res = fsync(fileno(mfp->mntent_fp));
- 		if (res < 0)
- 			/* Avoid leaving a corrupt mtab file */
- 			ftruncate(fileno(mfp->mntent_fp), length);
--- 
-1.7.6.2
-
+> 
+> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+> 
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 2cab33c..645a0a9 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -690,7 +690,7 @@ static __be32 nfsd4_decode_share_deny(struct nfsd4_compoundargs *argp, u32 *x)
+>  	READ_BUF(4);
+>  	READ32(*x);
+>  	/* Note: unlinke access bits, deny bits may be zero. */
+> -	if (*x & !NFS4_SHARE_DENY_BOTH)
+> +	if (*x & ~NFS4_SHARE_DENY_BOTH)
+>  		return nfserr_bad_xdr;
+>  	return nfs_ok;
+>  xdr_error:
