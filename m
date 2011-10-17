@@ -1,154 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:49906 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1756551Ab1JTJqg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Oct 2011 05:46:36 -0400
-Message-ID: <4E9FEF2B.5080709@cn.fujitsu.com>
-Date: Thu, 20 Oct 2011 17:51:39 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Received: from mx2.netapp.com ([216.240.18.37]:45565 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751159Ab1JQW5Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Oct 2011 18:57:16 -0400
+Message-ID: <4E9CB2CE.8080201@netapp.com>
+Date: Mon, 17 Oct 2011 18:57:18 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2] nfs41: implement DESTROY_CLIENTID operation
-References: <4E9FE112.3080907@cn.fujitsu.com> <20111020093452.GD5444@fieldses.org> <4E9FEDC3.2050200@cn.fujitsu.com>
-In-Reply-To: <4E9FEDC3.2050200@cn.fujitsu.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] NFSD: Added fault injection
+References: <1318009468-19893-1-git-send-email-bjschuma@netapp.com> <20111017221810.GG13368@fieldses.org>
+In-Reply-To: <20111017221810.GG13368@fieldses.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-According to rfc5661 18.50, implement DESTROY_CLIENTID operation.
+On 10/17/2011 06:18 PM, J. Bruce Fields wrote:
+> On Fri, Oct 07, 2011 at 01:44:26PM -0400, bjschuma@netapp.com wrote:
+>> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+>> index 10e6366..52fdd1c 100644
+>> --- a/fs/nfsd/Kconfig
+>> +++ b/fs/nfsd/Kconfig
+>> @@ -80,3 +80,13 @@ config NFSD_V4
+>>  	  available from http://linux-nfs.org/.
+>>  
+>>  	  If unsure, say N.
+>> +
+>> +config NFSD_FAULT_INJECTION
+>> +	bool "NFS server manual fault injection"
+>> +	depends on NFSD_V4 && DEBUG_KERNEL
+>> +	help
+>> +	  This option enables support for manually injectiong faults
+> 						   ^^^^^^^^^^
 
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Good catch, this is a weird cross between "injection" and "injecting"
+> 
+>> diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+>> new file mode 100644
+>> index 0000000..9f6815b
+>> --- /dev/null
+>> +++ b/fs/nfsd/fault_inject.c
+>> @@ -0,0 +1,94 @@
+>> +/*
+>> + * Copyright (c) 2011 Bryan Schumaker <bjschuma@netapp.com>
+>> + *
+>> + * Uses debugfs to create fault injection points for client testing
+>> + */
+>> +
+>> +#include <linux/types.h>
+>> +#include <linux/fs.h>
+>> +#include <linux/debugfs.h>
+>> +#include <linux/module.h>
+>> +
+>> +#include "state.h"
+>> +#include "fault_inject.h"
+>> +
+>> +struct nfsd_fault_inject_op {
+>> +	char *action;
+>> +	char *item;
+>> +	char *file;
+>> +	int file_data;
+>> +	void (*func)(u64);
+>> +};
+>> +
+>> +#define INJECTION_OP(op_action, op_item, op_func)	\
+>> +{							\
+>> +	.action = op_action,				\
+>> +	.item   = op_item,				\
+>> +	.file   = op_action"_"op_item,			\
+>> +	.func   = op_func,				\
+>> +}
+>> +
+>> +static struct nfsd_fault_inject_op inject_ops[] = {
+>> +	INJECTION_OP("forget", "clients",     nfsd_forget_clients),
+>> +	INJECTION_OP("forget", "locks",       nfsd_forget_locks),
+>> +	INJECTION_OP("forget", "openowners",  nfsd_forget_openowners),
+>> +	INJECTION_OP("forget", "delegations", nfsd_forget_delegations),
+>> +	INJECTION_OP("recall", "delegations", nfsd_recall_delegations),
+> 
+> This is a little clever for my taste....  Could we just do
+> 
+> 	static struct nfsd_fault_inject_op inject_ops[] = {
+> 		{
+> 			.file = "forget_client",
+> 			.op = nfsd_forget_clients,
+> 		},
+> 		...
+> 	}
+> 
+> and do away with the separate item and action fields?
+> 
+> I'd rather be sort of obvious and boring even if it's slightly less
+> compact.
+> 
+I was going for compact when I initially wrote this, but I can change it.  I have them as separate fields so I can print out slightly different messages based on what is going on.  Such as:  "NFSD: Server forgetting all clients" or "NFSD: Server recalling at most 4 delegations".
 
----
- fs/nfsd/nfs4proc.c  |    2 +-
- fs/nfsd/nfs4state.c |   44 ++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfs4xdr.c   |   12 +++++++++++-
- fs/nfsd/xdr4.h      |    5 +++++
- 4 files changed, 61 insertions(+), 2 deletions(-)
+>> +};
+>> +
+>> +static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
+>> +static struct dentry *debug_dir;
+>> +
+>> +static int nfsd_inject_set(void *data, u64 val)
+>> +{
+>> +	int i;
+>> +	struct nfsd_fault_inject_op *op;
+>> +
+>> +	for (i = 0; i < NUM_INJECT_OPS; i++) {
+>> +		op = &inject_ops[i];
+>> +		if (&op->file_data == data) {
+> 
+> Huh, OK, so if I understand right, the contents of file_data doesn't
+> matter, you're just using a pointer to that field as a way to identify
+> the op array.
+> 
+> But then couldn't you just pass in a pointer to the op itself:
+> 
+>> +	for (i = 0; i < NUM_INJECT_OPS; i++) {
+>> +		op = &inject_ops[i];
+>> +		debugfs_create_file(op->file, mode, debug_dir, &op->file_data, &fops_nfsd);
+> 
+> like:
+> 
+> 		debugfs_create_file(op->file, mode, debug_dir, op, &fops_nfsd);
+> 
+> and eliminate the file_data field?
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index e807776..8412a22 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1433,7 +1433,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_name = "OP_SEQUENCE",
- 	},
- 	[OP_DESTROY_CLIENTID] = {
--		.op_func = NULL,
-+		.op_func = (nfsd4op_func)nfsd4_destroy_clientid,
- 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_AS_FIRST_OP,
- 		.op_name = "OP_DESTROY_CLIENTID",
- 	},
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3787ec1..d94ad19 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1858,6 +1858,50 @@ out:
- 	return status;
- }
- 
-+static inline bool has_resources(struct nfs4_client *clp)
-+{
-+	return !list_empty(&clp->cl_openowners)
-+		|| !list_empty(&clp->cl_delegations)
-+		|| !list_empty(&clp->cl_sessions);
-+}
-+
-+__be32
-+nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_destroy_clientid *dc)
-+{
-+	struct nfs4_client *conf, *unconf, *clp;
-+	int status = 0;
-+
-+	nfs4_lock_state();
-+	unconf = find_unconfirmed_client(&dc->clientid);
-+	conf = find_confirmed_client(&dc->clientid);
-+
-+	if (conf) {
-+		clp = conf;
-+
-+		if (!is_client_expired(conf) && has_resources(conf)) {
-+			status = nfserr_clientid_busy;
-+			goto out;
-+		}
-+
-+		/* rfc5661 18.50.3 */
-+		if (cstate->session && conf == cstate->session->se_client) {
-+			status = nfserr_clientid_busy;
-+			goto out;
-+		}
-+	} else if (unconf)
-+		clp = unconf;
-+	else {
-+		status = nfserr_stale_clientid;
-+		goto out;
-+	}
-+
-+	expire_client(clp);
-+out:
-+	nfs4_unlock_state();
-+	dprintk("%s return %d\n", __func__, ntohl(status));
-+	return status;
-+}
-+
- __be32
- nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_reclaim_complete *rc)
- {
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index c8bf405..5d9fff5 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1326,6 +1326,16 @@ xdr_error:
- 	goto out;
- }
- 
-+static __be32 nfsd4_decode_destroy_clientid(struct nfsd4_compoundargs *argp, struct nfsd4_destroy_clientid *dc)
-+{
-+	DECODE_HEAD;
-+
-+	READ_BUF(8);
-+	COPYMEM(&dc->clientid, 8);
-+
-+	DECODE_TAIL;
-+}
-+
- static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, struct nfsd4_reclaim_complete *rc)
- {
- 	DECODE_HEAD;
-@@ -1447,7 +1457,7 @@ static nfsd4_dec nfsd41_dec_ops[] = {
- 	[OP_SET_SSV]		= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_TEST_STATEID]	= (nfsd4_dec)nfsd4_decode_test_stateid,
- 	[OP_WANT_DELEGATION]	= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_DESTROY_CLIENTID]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_DESTROY_CLIENTID]	= (nfsd4_dec)nfsd4_decode_destroy_clientid,
- 	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
- };
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index d2a8d044..d67d680 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -405,6 +405,10 @@ struct nfsd4_destroy_session {
- 	struct nfs4_sessionid	sessionid;
- };
- 
-+struct nfsd4_destroy_clientid {
-+	clientid_t clientid;
-+};
-+
- struct nfsd4_reclaim_complete {
- 	u32 rca_one_fs;
- };
-@@ -558,6 +562,7 @@ extern __be32 nfsd4_sequence(struct svc_rqst *,
- extern __be32 nfsd4_destroy_session(struct svc_rqst *,
- 		struct nfsd4_compound_state *,
- 		struct nfsd4_destroy_session *);
-+extern __be32 nfsd4_destroy_clientid(struct svc_rqst *, struct nfsd4_compound_state *, struct nfsd4_destroy_clientid *);
- __be32 nfsd4_reclaim_complete(struct svc_rqst *, struct nfsd4_compound_state *, struct nfsd4_reclaim_complete *);
- extern __be32 nfsd4_process_open1(struct nfsd4_compound_state *,
- 		struct nfsd4_open *open);
--- 
-1.7.6
-
+I've never thought about trying it that way, but it seems fairly straightforward.  I'll try it that way and see if it works!
+> 
+> Patches look OK otherwise on a quick skim, thanks.
+> 
+> --b.
+> 
+> 
+>> +	}
+>> +	return 0;
 
