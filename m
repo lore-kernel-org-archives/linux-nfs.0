@@ -1,165 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:54204 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934340Ab1JaM6O (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 08:58:14 -0400
-Received: by eye27 with SMTP id 27so5242598eye.19
-        for <linux-nfs@vger.kernel.org>; Mon, 31 Oct 2011 05:58:13 -0700 (PDT)
-Message-ID: <4EAE9B60.9040903@tonian.com>
-Date: Mon, 31 Oct 2011 14:58:08 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from fieldses.org ([174.143.236.118]:38905 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754115Ab1JQWSM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Oct 2011 18:18:12 -0400
+Date: Mon, 17 Oct 2011 18:18:11 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: bjschuma@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] NFSD: Added fault injection
+Message-ID: <20111017221810.GG13368@fieldses.org>
+References: <1318009468-19893-1-git-send-email-bjschuma@netapp.com>
 MIME-Version: 1.0
-To: Peng Tao <bergwolf@gmail.com>
-CC: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        Peng Tao <peng_tao@emc.com>
-Subject: Re: [PATCH-RFC] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
-References: <1319426747-2179-1-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1319426747-2179-1-git-send-email-bergwolf@gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1318009468-19893-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-10-24 05:25, Peng Tao wrote:
-> Hi, Trond and Benny,
-> 
-> The patch depends on the pnfs private workqueue for now. So I want to consult
-> you about where to put the work. Is pnfs private workqueue dropped? If yes, where
-> should I put this kind of work?
-
-I'll defer this to Trond.
-I'm OK with having a workqueue for pnfs.
-
-Benny
-
-> 
-> Thanks,
-> Tao
-> 
-> For blocklayout, we want to issue layoutreturn to return layouts when
-> handling CB_RECALL_ANY.
-> 
-> Signed-off-by: Peng Tao <peng_tao@emc.com>
-> ---
->  fs/nfs/callback_proc.c |   55 +++++++++++++++++++++++++++++++++++++++++-------
->  include/linux/nfs4.h   |    3 +-
->  2 files changed, 49 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-> index 43926ad..6bb005c 100644
-> --- a/fs/nfs/callback_proc.c
-> +++ b/fs/nfs/callback_proc.c
-> @@ -160,7 +160,8 @@ static u32 initiate_file_draining(struct nfs_client *clp,
->  }
+On Fri, Oct 07, 2011 at 01:44:26PM -0400, bjschuma@netapp.com wrote:
+> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+> index 10e6366..52fdd1c 100644
+> --- a/fs/nfsd/Kconfig
+> +++ b/fs/nfsd/Kconfig
+> @@ -80,3 +80,13 @@ config NFSD_V4
+>  	  available from http://linux-nfs.org/.
 >  
->  static u32 initiate_bulk_draining(struct nfs_client *clp,
-> -				  struct cb_layoutrecallargs *args)
-> +				  struct cb_layoutrecallargs *args,
-> +				  int sendreturn)
->  {
->  	struct nfs_server *server;
->  	struct pnfs_layout_hdr *lo;
-> @@ -204,12 +205,47 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
->  		list_del_init(&lo->plh_bulk_recall);
->  		spin_unlock(&ino->i_lock);
->  		pnfs_free_lseg_list(&free_me_list);
-> +		if (sendreturn && list_empty(&lo->plh_segs))
-> +			pnfs_return_layout(ino);
->  		put_layout_hdr(lo);
->  		iput(ino);
->  	}
->  	return rv;
->  }
->  
-> +struct recallany_data {
-> +	struct nfs_client *clp;
-> +	struct work_struct ra_work;
+>  	  If unsure, say N.
+> +
+> +config NFSD_FAULT_INJECTION
+> +	bool "NFS server manual fault injection"
+> +	depends on NFSD_V4 && DEBUG_KERNEL
+> +	help
+> +	  This option enables support for manually injectiong faults
+						   ^^^^^^^^^^
+
+> diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+> new file mode 100644
+> index 0000000..9f6815b
+> --- /dev/null
+> +++ b/fs/nfsd/fault_inject.c
+> @@ -0,0 +1,94 @@
+> +/*
+> + * Copyright (c) 2011 Bryan Schumaker <bjschuma@netapp.com>
+> + *
+> + * Uses debugfs to create fault injection points for client testing
+> + */
+> +
+> +#include <linux/types.h>
+> +#include <linux/fs.h>
+> +#include <linux/debugfs.h>
+> +#include <linux/module.h>
+> +
+> +#include "state.h"
+> +#include "fault_inject.h"
+> +
+> +struct nfsd_fault_inject_op {
+> +	char *action;
+> +	char *item;
+> +	char *file;
+> +	int file_data;
+> +	void (*func)(u64);
 > +};
 > +
-> +static void layout_recallany_draining(struct work_struct *work)
-> +{
-> +	struct recallany_data *ra;
-> +	struct cb_layoutrecallargs args;
-> +
-> +	memset(&args, 0, sizeof(args));
-> +	ra = container_of(work, struct recallany_data, ra_work);
-> +	/* Ignore draining error. Per RFC, if layoutreturns are not sent, it is up
-> +	 * to server to handle the situation (e.g., send specific layoutrecalls).
-> +	 */
-> +	initiate_bulk_draining(ra->clp, &args, 1);
-> +	kfree(ra);
+> +#define INJECTION_OP(op_action, op_item, op_func)	\
+> +{							\
+> +	.action = op_action,				\
+> +	.item   = op_item,				\
+> +	.file   = op_action"_"op_item,			\
+> +	.func   = op_func,				\
 > +}
 > +
-> +static u32 init_recallany_draining(struct nfs_client *clp)
-> +{
-> +	struct recallany_data *ra;
+> +static struct nfsd_fault_inject_op inject_ops[] = {
+> +	INJECTION_OP("forget", "clients",     nfsd_forget_clients),
+> +	INJECTION_OP("forget", "locks",       nfsd_forget_locks),
+> +	INJECTION_OP("forget", "openowners",  nfsd_forget_openowners),
+> +	INJECTION_OP("forget", "delegations", nfsd_forget_delegations),
+> +	INJECTION_OP("recall", "delegations", nfsd_recall_delegations),
+
+This is a little clever for my taste....  Could we just do
+
+	static struct nfsd_fault_inject_op inject_ops[] = {
+		{
+			.file = "forget_client",
+			.op = nfsd_forget_clients,
+		},
+		...
+	}
+
+and do away with the separate item and action fields?
+
+I'd rather be sort of obvious and boring even if it's slightly less
+compact.
+
+> +};
 > +
-> +	ra = kmalloc(sizeof(*ra), GFP_NOFS);
-> +	if (ra) {
-> +		ra->clp = clp;
-> +		INIT_WORK(&ra->ra_work, layout_recallany_draining);
-> +		pnfsiod_queue_work(&ra->ra_work);
-> +		return NFS4_OK;
+> +static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
+> +static struct dentry *debug_dir;
+> +
+> +static int nfsd_inject_set(void *data, u64 val)
+> +{
+> +	int i;
+> +	struct nfsd_fault_inject_op *op;
+> +
+> +	for (i = 0; i < NUM_INJECT_OPS; i++) {
+> +		op = &inject_ops[i];
+> +		if (&op->file_data == data) {
+
+Huh, OK, so if I understand right, the contents of file_data doesn't
+matter, you're just using a pointer to that field as a way to identify
+the op array.
+
+But then couldn't you just pass in a pointer to the op itself:
+
+> +	for (i = 0; i < NUM_INJECT_OPS; i++) {
+> +		op = &inject_ops[i];
+> +		debugfs_create_file(op->file, mode, debug_dir, &op->file_data, &fops_nfsd);
+
+like:
+
+		debugfs_create_file(op->file, mode, debug_dir, op, &fops_nfsd);
+
+and eliminate the file_data field?
+
+Patches look OK otherwise on a quick skim, thanks.
+
+--b.
+
+
 > +	}
-> +	return NFS4ERR_DELAY;
-> +}
-> +
->  static u32 do_callback_layoutrecall(struct nfs_client *clp,
->  				    struct cb_layoutrecallargs *args)
->  {
-> @@ -220,8 +256,10 @@ static u32 do_callback_layoutrecall(struct nfs_client *clp,
->  		goto out;
->  	if (args->cbl_recall_type == RETURN_FILE)
->  		res = initiate_file_draining(clp, args);
-> +	if (args->cbl_recall_type == RETURN_ANY)
-> +		res = init_recallany_draining(clp);
->  	else
-> -		res = initiate_bulk_draining(clp, args);
-> +		res = initiate_bulk_draining(clp, args, 0);
->  	clear_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state);
->  out:
->  	dprintk("%s returning %i\n", __func__, res);
-> @@ -245,15 +283,13 @@ __be32 nfs4_callback_layoutrecall(struct cb_layoutrecallargs *args,
->  	return cpu_to_be32(res);
->  }
->  
-> -static void pnfs_recall_all_layouts(struct nfs_client *clp)
-> +static __be32 pnfs_recall_all_layouts(struct nfs_client *clp, uint32_t type)
->  {
->  	struct cb_layoutrecallargs args;
->  
-> -	/* Pretend we got a CB_LAYOUTRECALL(ALL) */
->  	memset(&args, 0, sizeof(args));
-> -	args.cbl_recall_type = RETURN_ALL;
-> -	/* FIXME we ignore errors, what should we do? */
-> -	do_callback_layoutrecall(clp, &args);
-> +	args.cbl_recall_type = type;
-> +	return cpu_to_be32(do_callback_layoutrecall(clp, &args));
->  }
->  
->  __be32 nfs4_callback_devicenotify(struct cb_devicenotifyargs *args,
-> @@ -533,7 +569,10 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
->  		flags |= FMODE_WRITE;
->  	if (test_bit(RCA4_TYPE_MASK_FILE_LAYOUT, (const unsigned long *)
->  		     &args->craa_type_mask))
-> -		pnfs_recall_all_layouts(cps->clp);
-> +		pnfs_recall_all_layouts(cps->clp, RETURN_ALL);
-> +	if (test_bit(RCA4_TYPE_MASK_BLK_LAYOUT, (const unsigned long *)
-> +		     &args->craa_type_mask))
-> +		status = pnfs_recall_all_layouts(cps->clp, RETURN_ANY);
->  	if (flags)
->  		nfs_expire_all_delegation_types(cps->clp, flags);
->  out:
-> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> index 76f99e8..1f71a9e 100644
-> --- a/include/linux/nfs4.h
-> +++ b/include/linux/nfs4.h
-> @@ -597,7 +597,8 @@ enum pnfs_layouttype {
->  enum pnfs_layoutreturn_type {
->  	RETURN_FILE = 1,
->  	RETURN_FSID = 2,
-> -	RETURN_ALL  = 3
-> +	RETURN_ALL  = 3,
-> +	RETURN_ANY  = 4
->  };
->  
->  enum pnfs_iomode {
+> +	return 0;
