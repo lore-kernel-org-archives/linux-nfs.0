@@ -1,165 +1,432 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from g5t0006.atlanta.hp.com ([15.192.0.43]:23602 "EHLO
-	g5t0006.atlanta.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932276Ab1JXQSR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Oct 2011 12:18:17 -0400
-Subject: Re: NFS4 client blocked (kernel 3.0.7)
-From: Dilip Daya <dilip.daya@hp.com>
-Reply-To: dilip.daya@hp.com
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        David Flynn <davidf@rd.bbc.co.uk>
-In-Reply-To: <1319449226.2785.7.camel@lade.trondhjem.org>
-References: <20111022082838.GB32587@rd.bbc.co.uk>
-	 <1319299218.2590.10.camel@pro6455b.example.com>
-	 <1319449226.2785.7.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 24 Oct 2011 12:18:17 -0400
-Message-ID: <1319473097.2525.109.camel@pro6455b.example.com>
-Mime-Version: 1.0
+Received: from e23smtp08.au.ibm.com ([202.81.31.141]:55087 "EHLO
+	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932888Ab1JRPez (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:34:55 -0400
+Received: from /spool/local
+	by au.ibm.com with XMail ESMTP
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Tue, 18 Oct 2011 15:33:37 +1000
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V7 13/26] richacl: In-memory representation and helper functions
+Date: Tue, 18 Oct 2011 21:02:48 +0530
+Message-Id: <1318951981-5508-14-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Embedded comments...below...
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-On Mon, 2011-10-24 at 09:40 +0000, Trond Myklebust wrote:
-> On Sat, 2011-10-22 at 12:00 -0400, Dilip Daya wrote: 
-> > See below...
-> > 
-> > 0n Sat, 2011-10-22 at 08:28 +0000, David Flynn wrote: 
-> > > Dear all,
-> > > 
-> > > When mounting a solaris NFS4 export on a v3.0.4 client, we've experienced
-> > > processes becoming blocked.  Any further attempt to access the mountpoint
-> > > from another process also blocks.  Other mountpoints are unaffected.
-> > > I have not identified a test case to reproduce the behaviour.
-> > > 
-> > > Any thoughts on the matter would be most welcome,
-> > > 
-> > > Kind regards,
-> > > 
-> > > ..david
-> > > 
-> > > from /proc/mounts:
-> > > home:/home/ /home nfs4 rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.29.190.20,minorversion=0,local_lock=none,addr=172.29.120.140 0 0
-> > > 
-> > > [105121.204200] INFO: task bash:4457 blocked for more than 120 seconds.
-> > > [105121.247424] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-> > > [105121.299955] bash            D ffffffff818050a0     0  4457      1 0x00000000
-> > > [105121.347840]  ffff8802954b5c28 0000000000000082 ffff8802954b5db8 0000000000012a40
-> > > [105121.397793]  ffff8802954b5fd8 0000000000012a40 ffff8802954b4000 0000000000012a40
-> > > [105121.441724]  0000000000012a40 0000000000012a40 ffff8802954b5fd8 0000000000012a40
-> > > [105121.441728] Call Trace:
-> > > [105121.441740]  [<ffffffff81110030>] ? __lock_page+0x70/0x70
-> > > [105121.441744]  [<ffffffff8160007c>] io_schedule+0x8c/0xd0
-> > > [105121.441746]  [<ffffffff8111003e>] sleep_on_page+0xe/0x20
-> > > [105121.441749]  [<ffffffff816008ff>] __wait_on_bit+0x5f/0x90
-> > > [105121.441751]  [<ffffffff81110203>] wait_on_page_bit+0x73/0x80
-> > > [105121.441756]  [<ffffffff81085bf0>] ? autoremove_wake_function+0x40/0x40
-> > > [105121.441759]  [<ffffffff8111c5e5>] ? pagevec_lookup_tag+0x25/0x40
-> > > [105121.441761]  [<ffffffff81110436>] filemap_fdatawait_range+0xf6/0x1a0
-> > > [105121.441786]  [<ffffffffa023a7d0>] ? nfs_destroy_directcache+0x20/0x20 [nfs]
-> > > [105121.441789]  [<ffffffff8111bae1>] ? do_writepages+0x21/0x40
-> > > [105121.441791]  [<ffffffff811116bb>] ? __filemap_fdatawrite_range+0x5b/0x60
-> > > [105121.441793]  [<ffffffff8111050b>] filemap_fdatawait+0x2b/0x30
-> > > [105121.441795]  [<ffffffff81112124>] filemap_write_and_wait+0x44/0x60
-> > > [105121.441803]  [<ffffffffa0232805>] nfs_getattr+0x105/0x120 [nfs]
-> > > [105121.441806]  [<ffffffff81605e88>] ? do_page_fault+0x258/0x550
-> > > [105121.441810]  [<ffffffff81175b31>] vfs_getattr+0x51/0x120
-> > > [105121.441812]  [<ffffffff81175c70>] vfs_fstatat+0x70/0x90
-> > > [105121.441814]  [<ffffffff81175ccb>] vfs_stat+0x1b/0x20
-> > > [105121.441816]  [<ffffffff81175f14>] sys_newstat+0x24/0x40
-> > > [105121.441820]  [<ffffffff8101449a>] ? init_fpu+0x4a/0x150
-> > > [105121.441822]  [<ffffffff81602955>] ? page_fault+0x25/0x30
-> > > [105121.441825]  [<ffffffff8160a702>] system_call_fastpath+0x16/0x1b
-> > > [105121.441837] INFO: task bash:5612 blocked for more than 120 seconds.
-> > > [105121.441838] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-> > > [105121.441840] bash            D 0000000000000005     0  5612      1 0x00000000
-> > > [105121.441843]  ffff8801f25d5ca8 0000000000000086 ffff8800163e9b08 0000000000012a40
-> > > [105121.441845]  ffff8801f25d5fd8 0000000000012a40 ffff8801f25d4000 0000000000012a40
-> > > [105121.441848]  0000000000012a40 0000000000012a40 ffff8801f25d5fd8 0000000000012a40
-> > > [105121.441850] Call Trace:
-> > > [105121.441853]  [<ffffffff81110030>] ? __lock_page+0x70/0x70
-> > > [105121.441855]  [<ffffffff8160007c>] io_schedule+0x8c/0xd0
-> > > [105121.441857]  [<ffffffff8111003e>] sleep_on_page+0xe/0x20
-> > > [105121.441859]  [<ffffffff816008ff>] __wait_on_bit+0x5f/0x90
-> > > [105121.441861]  [<ffffffff81110203>] wait_on_page_bit+0x73/0x80
-> > > [105121.441863]  [<ffffffff81085bf0>] ? autoremove_wake_function+0x40/0x40
-> > > [105121.441866]  [<ffffffff8111c5e5>] ? pagevec_lookup_tag+0x25/0x40
-> > > [105121.441868]  [<ffffffff81110436>] filemap_fdatawait_range+0xf6/0x1a0
-> > > [105121.441876]  [<ffffffffa023a7d0>] ? nfs_destroy_directcache+0x20/0x20 [nfs]
-> > > [105121.441878]  [<ffffffff8111bae1>] ? do_writepages+0x21/0x40
-> > > [105121.441880]  [<ffffffff811116bb>] ? __filemap_fdatawrite_range+0x5b/0x60
-> > > [105121.441882]  [<ffffffff81111730>] filemap_write_and_wait_range+0x70/0x80
-> > > [105121.441886]  [<ffffffff8119cc6a>] vfs_fsync_range+0x5a/0x90
-> > > [105121.441888]  [<ffffffff8119cd0c>] vfs_fsync+0x1c/0x20
-> > > [105121.441894]  [<ffffffffa022ec74>] nfs_file_flush+0x54/0x80 [nfs]
-> > > [105121.441898]  [<ffffffff8116ee7f>] filp_close+0x3f/0x90
-> > > [105121.441900]  [<ffffffff8116f8a7>] sys_close+0xb7/0x120
-> > > [105121.441902]  [<ffffffff8160a702>] system_call_fastpath+0x16/0x1b
-> > > --
-> > 
-> > Same issue!
-> > 
-> > In my case I have NFS client & server  both with Linux kernel
-> > v3.0.7-stable.
-> > 
-> > 
-> > Kernel: v3.0.7-stable (amd64)
-> > 
-> > # nfsstat -m
-> > /opt/xorsyst/nfs_test from 192.168.1.53:/opt/xorsyst/nfs_test
-> > Flags:
-> > rw,relatime,vers=4,rsize=32768,wsize=32768,namlen=255,hard,proto=udp,port=0,timeo=600,retrans=6,sec=sys,clientaddr=192.168.1.52,minorversion=0,local_lock=none,addr=192.168.1.53
-> 
-> Sigh... Why are you using udp with timeo!=default? You do realise that
-> unlike tcp, udp is a lossy protocol with no guarantee that messages will
-> actually be delivered to the server?
-> 
-> Trond
+A richacl consists of an NFSv4 acl and an owner, group, and other mask.
+These three masks correspond to the owner, group, and other file
+permission bits, but they contain NFSv4 permissions instead of POSIX
+permissions.
 
-Hi Trond,
+Each entry in the NFSv4 acl applies to the file owner (OWNER@), the
+owning group (GROUP@), literally everyone (EVERYONE@), or to a specific
+uid or gid.
 
-Thank you for your response. I should have provided you additional
-details surrounding this issue:
+As in the standard POSIX file permission model, each process is the
+owner, group, or other file class.  A richacl grants a requested access
+only if the NFSv4 acl in the richacl grants the access (according to the
+NFSv4 permission check algorithm), and the file mask that applies to the
+process includes the requested permissions.
 
-Yes, I truly understand not using UDP, sorry for not providing you
-additional background information earlier:
+Acked-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/Makefile             |    2 +
+ fs/richacl_base.c       |  109 +++++++++++++++++++++
+ include/linux/richacl.h |  245 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 356 insertions(+), 0 deletions(-)
+ create mode 100644 fs/richacl_base.c
+ create mode 100644 include/linux/richacl.h
 
-We use an in-house test-suite-tool much like LTP to test newer kernels
-(v3.0.x kernel) _before_ we release them in production. We run various
-tests for 96 CHO (Continuous-Hours-of-Operation). This issue was
-reported in one such test using:
-
-v3.0.7-stable kernel on both NFS client/server (x86_64) systems:
-
-# nfsstat -m
-/opt/xorsyst/nfs_test from 192.168.1.53:/opt/xorsyst/nfs_test
- Flags:
-rw,relatime,vers=4,rsize=32768,wsize=32768,namlen=255,hard,proto=udp,port=0,timeo=600,retrans=6,sec=sys,clientaddr=192.168.1.52,minorversion=0,local_lock=none,addr=192.168.1.53
-
-...BUT we've had successful completion of 96 CHO using NFS/TCP (rather
-than NFS/UDP) with no issues.  (Not even any task "blocked for 120
-seconds" nor any NFS "server not responding" messages.)
-
-# mount -o rw,sync,proto=tcp,timeo=600,retrans=6 192.168.1.xx:/opt/xorsyst/nfs_test /opt/xorsyst/nfs_test
-
-Note:
-We've had no testing issues (NFS/UDP) with 2.6.32 based kernels which are in production at this time.
-
-Status update:
-At this time I have a system in this state, i.e. 
-- "df" command hangs. Show local filesystems but hangs at showing NFS mounts.
-- Our tests continue now at 48 hours with only one NFS/UDP issue as reported above.
-- I issued "echo 0 >/proc/sys/sunrpc/rpc_debug", unfortunately all the PID involved
-  in the reported backtraces no longer exist and so will have to wait for another occurrence.
-
-=> Is there other data that I should collect?
-=> Any patches patches that I could apply to v3.0.7 and retry my test?
-
-Thanking you in advance.
--DilipD.
-
-
-
+diff --git a/fs/Makefile b/fs/Makefile
+index afc1096..7612168 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -48,6 +48,8 @@ obj-$(CONFIG_NFS_COMMON)	+= nfs_common/
+ obj-$(CONFIG_GENERIC_ACL)	+= generic_acl.o
+ 
+ obj-$(CONFIG_FHANDLE)		+= fhandle.o
++obj-$(CONFIG_FS_RICHACL)	+= richacl.o
++richacl-y			:= richacl_base.o
+ 
+ obj-y				+= quota/
+ 
+diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+new file mode 100644
+index 0000000..3536626
+--- /dev/null
++++ b/fs/richacl_base.c
+@@ -0,0 +1,109 @@
++/*
++ * Copyright (C) 2006, 2010  Novell, Inc.
++ * Written by Andreas Gruenbacher <agruen@kernel.org>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#include <linux/sched.h>
++#include <linux/module.h>
++#include <linux/fs.h>
++#include <linux/richacl.h>
++
++MODULE_LICENSE("GPL");
++
++/*
++ * Special e_who identifiers:  ACEs which have ACE4_SPECIAL_WHO set in
++ * ace->e_flags use these constants in ace->u.e_who.
++ *
++ * For efficiency, we compare pointers instead of comparing strings.
++ */
++const char richace_owner_who[]	  = "OWNER@";
++EXPORT_SYMBOL_GPL(richace_owner_who);
++const char richace_group_who[]	  = "GROUP@";
++EXPORT_SYMBOL_GPL(richace_group_who);
++const char richace_everyone_who[] = "EVERYONE@";
++EXPORT_SYMBOL_GPL(richace_everyone_who);
++
++/**
++ * richacl_alloc  -  allocate a richacl
++ * @count:	number of entries
++ */
++struct richacl *
++richacl_alloc(int count)
++{
++	size_t size = sizeof(struct richacl) + count * sizeof(struct richace);
++	struct richacl *acl = kzalloc(size, GFP_KERNEL);
++
++	if (acl) {
++		atomic_set(&acl->a_refcount, 1);
++		acl->a_count = count;
++	}
++	return acl;
++}
++EXPORT_SYMBOL_GPL(richacl_alloc);
++
++/**
++ * richacl_clone  -  create a copy of a richacl
++ */
++static struct richacl *
++richacl_clone(const struct richacl *acl)
++{
++	int count = acl->a_count;
++	size_t size = sizeof(struct richacl) + count * sizeof(struct richace);
++	struct richacl *dup = kmalloc(size, GFP_KERNEL);
++
++	if (dup) {
++		memcpy(dup, acl, size);
++		atomic_set(&dup->a_refcount, 1);
++	}
++	return dup;
++}
++
++/**
++ * richace_is_same_identifier  -  are both identifiers the same?
++ */
++int
++richace_is_same_identifier(const struct richace *a, const struct richace *b)
++{
++#define WHO_FLAGS (ACE4_SPECIAL_WHO | ACE4_IDENTIFIER_GROUP)
++	if ((a->e_flags & WHO_FLAGS) != (b->e_flags & WHO_FLAGS))
++		return 0;
++	if (a->e_flags & ACE4_SPECIAL_WHO)
++		return a->u.e_who == b->u.e_who;
++	else
++		return a->u.e_id == b->u.e_id;
++#undef WHO_FLAGS
++}
++
++/**
++ * richacl_set_who  -  set a special who value
++ * @ace:	acl entry
++ * @who:	who value to use
++ */
++int
++richace_set_who(struct richace *ace, const char *who)
++{
++	if (!strcmp(who, richace_owner_who))
++		who = richace_owner_who;
++	else if (!strcmp(who, richace_group_who))
++		who = richace_group_who;
++	else if (!strcmp(who, richace_everyone_who))
++		who = richace_everyone_who;
++	else
++		return -EINVAL;
++
++	ace->u.e_who = who;
++	ace->e_flags |= ACE4_SPECIAL_WHO;
++	ace->e_flags &= ~ACE4_IDENTIFIER_GROUP;
++	return 0;
++}
++EXPORT_SYMBOL_GPL(richace_set_who);
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+new file mode 100644
+index 0000000..745cfc1
+--- /dev/null
++++ b/include/linux/richacl.h
+@@ -0,0 +1,245 @@
++/*
++ * Copyright (C) 2006, 2010  Novell, Inc.
++ * Written by Andreas Gruenbacher <agruen@kernel.org>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#ifndef __RICHACL_H
++#define __RICHACL_H
++#include <linux/slab.h>
++
++struct richace {
++	unsigned short	e_type;
++	unsigned short	e_flags;
++	unsigned int	e_mask;
++	union {
++		unsigned int	e_id;
++		const char	*e_who;
++	} u;
++};
++
++struct richacl {
++	atomic_t	a_refcount;
++	unsigned int	a_owner_mask;
++	unsigned int	a_group_mask;
++	unsigned int	a_other_mask;
++	unsigned short	a_count;
++	unsigned short	a_flags;
++	struct richace	a_entries[0];
++};
++
++#define richacl_for_each_entry(_ace, _acl) \
++	for (_ace = _acl->a_entries; \
++	     _ace != _acl->a_entries + _acl->a_count; \
++	     _ace++)
++
++#define richacl_for_each_entry_reverse(_ace, _acl) \
++	for (_ace = _acl->a_entries + _acl->a_count - 1; \
++	     _ace != _acl->a_entries - 1; \
++	     _ace--)
++
++/* Flag values defined by rich-acl */
++#define ACL4_MASKED			0x80
++
++#define ACL4_VALID_FLAGS (			\
++		ACL4_MASKED)
++
++/* e_type values */
++#define ACE4_ACCESS_ALLOWED_ACE_TYPE	0x0000
++#define ACE4_ACCESS_DENIED_ACE_TYPE	0x0001
++/*#define ACE4_SYSTEM_AUDIT_ACE_TYPE	0x0002*/
++/*#define ACE4_SYSTEM_ALARM_ACE_TYPE	0x0003*/
++
++/* e_flags bitflags */
++#define ACE4_FILE_INHERIT_ACE		0x0001
++#define ACE4_DIRECTORY_INHERIT_ACE	0x0002
++#define ACE4_NO_PROPAGATE_INHERIT_ACE	0x0004
++#define ACE4_INHERIT_ONLY_ACE		0x0008
++/*#define ACE4_SUCCESSFUL_ACCESS_ACE_FLAG	0x0010*/
++/*#define ACE4_FAILED_ACCESS_ACE_FLAG	0x0020*/
++#define ACE4_IDENTIFIER_GROUP		0x0040
++/* in-memory representation only */
++#define ACE4_SPECIAL_WHO		0x4000
++
++#define ACE4_VALID_FLAGS (			\
++	ACE4_FILE_INHERIT_ACE |			\
++	ACE4_DIRECTORY_INHERIT_ACE |		\
++	ACE4_NO_PROPAGATE_INHERIT_ACE |		\
++	ACE4_INHERIT_ONLY_ACE |			\
++	ACE4_IDENTIFIER_GROUP)
++
++/* e_mask bitflags */
++#define ACE4_READ_DATA			0x00000001
++#define ACE4_LIST_DIRECTORY		0x00000001
++#define ACE4_WRITE_DATA			0x00000002
++#define ACE4_ADD_FILE			0x00000002
++#define ACE4_APPEND_DATA		0x00000004
++#define ACE4_ADD_SUBDIRECTORY		0x00000004
++#define ACE4_READ_NAMED_ATTRS		0x00000008
++#define ACE4_WRITE_NAMED_ATTRS		0x00000010
++#define ACE4_EXECUTE			0x00000020
++#define ACE4_DELETE_CHILD		0x00000040
++#define ACE4_READ_ATTRIBUTES		0x00000080
++#define ACE4_WRITE_ATTRIBUTES		0x00000100
++#define ACE4_WRITE_RETENTION		0x00000200
++#define ACE4_WRITE_RETENTION_HOLD	0x00000400
++#define ACE4_DELETE			0x00010000
++#define ACE4_READ_ACL			0x00020000
++#define ACE4_WRITE_ACL			0x00040000
++#define ACE4_WRITE_OWNER		0x00080000
++#define ACE4_SYNCHRONIZE		0x00100000
++
++/* Valid ACE4_* flags for directories and non-directories */
++#define ACE4_VALID_MASK (				\
++	ACE4_READ_DATA | ACE4_LIST_DIRECTORY |		\
++	ACE4_WRITE_DATA | ACE4_ADD_FILE |		\
++	ACE4_APPEND_DATA | ACE4_ADD_SUBDIRECTORY |	\
++	ACE4_READ_NAMED_ATTRS |				\
++	ACE4_WRITE_NAMED_ATTRS |			\
++	ACE4_EXECUTE |					\
++	ACE4_DELETE_CHILD |				\
++	ACE4_READ_ATTRIBUTES |				\
++	ACE4_WRITE_ATTRIBUTES |				\
++	ACE4_WRITE_RETENTION |				\
++	ACE4_WRITE_RETENTION_HOLD |			\
++	ACE4_DELETE |					\
++	ACE4_READ_ACL |					\
++	ACE4_WRITE_ACL |				\
++	ACE4_WRITE_OWNER |				\
++	ACE4_SYNCHRONIZE)
++
++/**
++ * richacl_get  -  grab another reference to a richacl handle
++ */
++static inline struct richacl *
++richacl_get(struct richacl *acl)
++{
++	if (acl)
++		atomic_inc(&acl->a_refcount);
++	return acl;
++}
++
++/**
++ * richacl_put  -  free a richacl handle
++ */
++static inline void
++richacl_put(struct richacl *acl)
++{
++	if (acl && atomic_dec_and_test(&acl->a_refcount))
++		kfree(acl);
++}
++
++/*
++ * Special e_who identifiers: we use these pointer values in comparisons
++ * instead of doing a strcmp.
++ */
++extern const char richace_owner_who[];
++extern const char richace_group_who[];
++extern const char richace_everyone_who[];
++
++/**
++ * richace_is_owner  -  check if @ace is an OWNER@ entry
++ */
++static inline int
++richace_is_owner(const struct richace *ace)
++{
++	return (ace->e_flags & ACE4_SPECIAL_WHO) &&
++	       ace->u.e_who == richace_owner_who;
++}
++
++/**
++ * richace_is_group  -  check if @ace is a GROUP@ entry
++ */
++static inline int
++richace_is_group(const struct richace *ace)
++{
++	return (ace->e_flags & ACE4_SPECIAL_WHO) &&
++	       ace->u.e_who == richace_group_who;
++}
++
++/**
++ * richace_is_everyone  -  check if @ace is an EVERYONE@ entry
++ */
++static inline int
++richace_is_everyone(const struct richace *ace)
++{
++	return (ace->e_flags & ACE4_SPECIAL_WHO) &&
++	       ace->u.e_who == richace_everyone_who;
++}
++
++/**
++ * richace_is_unix_id  -  check if @ace applies to a specific uid or gid
++ */
++static inline int
++richace_is_unix_id(const struct richace *ace)
++{
++	return !(ace->e_flags & ACE4_SPECIAL_WHO);
++}
++
++/**
++ * richace_is_inherit_only  -  check if @ace is for inheritance only
++ *
++ * ACEs with the %ACE4_INHERIT_ONLY_ACE flag set have no effect during
++ * permission checking.
++ */
++static inline int
++richace_is_inherit_only(const struct richace *ace)
++{
++	return ace->e_flags & ACE4_INHERIT_ONLY_ACE;
++}
++
++/**
++ * richace_is_inheritable  -  check if @ace is inheritable
++ */
++static inline int
++richace_is_inheritable(const struct richace *ace)
++{
++	return ace->e_flags & (ACE4_FILE_INHERIT_ACE |
++			       ACE4_DIRECTORY_INHERIT_ACE);
++}
++
++/**
++ * richace_clear_inheritance_flags  - clear all inheritance flags in @ace
++ */
++static inline void
++richace_clear_inheritance_flags(struct richace *ace)
++{
++	ace->e_flags &= ~(ACE4_FILE_INHERIT_ACE |
++			  ACE4_DIRECTORY_INHERIT_ACE |
++			  ACE4_NO_PROPAGATE_INHERIT_ACE |
++			  ACE4_INHERIT_ONLY_ACE);
++}
++
++/**
++ * richace_is_allow  -  check if @ace is an %ALLOW type entry
++ */
++static inline int
++richace_is_allow(const struct richace *ace)
++{
++	return ace->e_type == ACE4_ACCESS_ALLOWED_ACE_TYPE;
++}
++
++/**
++ * richace_is_deny  -  check if @ace is a %DENY type entry
++ */
++static inline int
++richace_is_deny(const struct richace *ace)
++{
++	return ace->e_type == ACE4_ACCESS_DENIED_ACE_TYPE;
++}
++
++extern struct richacl *richacl_alloc(int);
++extern int richace_is_same_identifier(const struct richace *,
++				      const struct richace *);
++extern int richace_set_who(struct richace *, const char *);
++
++#endif /* __RICHACL_H */
+-- 
+1.7.5.4
 
