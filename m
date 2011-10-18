@@ -1,194 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp09.au.ibm.com ([202.81.31.142]:50130 "EHLO
-	e23smtp09.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933013Ab1JRPfg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:35:36 -0400
-Received: from /spool/local
-	by au.ibm.com with XMail ESMTP
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Tue, 18 Oct 2011 16:30:50 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V7 23/26] vfs: Add richacl permission check
-Date: Tue, 18 Oct 2011 21:02:58 +0530
-Message-Id: <1318951981-5508-24-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from smtp.mail.umich.edu ([141.211.14.81]:60551 "EHLO
+	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755195Ab1JRNtj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 09:49:39 -0400
+Date: Tue, 18 Oct 2011 09:49:35 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: The patch that wouldn't die
+Message-ID: <20111018134935.GA17831@umich.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Boaz, try to remain calm.
 
-Acked-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/attr.c               |    6 +++-
- fs/namei.c              |   13 ++++++++++-
- fs/richacl_base.c       |   54 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/fs.h      |    2 +-
- include/linux/richacl.h |    2 +
- 5 files changed, 73 insertions(+), 4 deletions(-)
+Trond, please remove this patch from your nfs-for-next branch.  I can send a
+revert patch if you like.
 
-diff --git a/fs/attr.c b/fs/attr.c
-index 00578b9..2b445ba 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -13,6 +13,7 @@
- #include <linux/fsnotify.h>
- #include <linux/fcntl.h>
- #include <linux/security.h>
-+#include <linux/richacl.h>
- 
- static int richacl_change_ok(struct inode *inode, int mask)
- {
-@@ -21,8 +22,9 @@ static int richacl_change_ok(struct inode *inode, int mask)
- 
- 	if (inode->i_op->permission)
- 		return inode->i_op->permission(inode, mask);
--
--	return check_acl(inode, mask);
-+	if (inode->i_op->get_richacl)
-+		return check_richacl(inode, mask);
-+	return -EPERM;
- }
- 
- static bool inode_uid_change_ok(struct inode *inode, uid_t ia_uid)
-diff --git a/fs/namei.c b/fs/namei.c
-index 0c28f95..5d8f21e 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -33,6 +33,7 @@
- #include <linux/device_cgroup.h>
- #include <linux/fs_struct.h>
- #include <linux/posix_acl.h>
-+#include <linux/richacl.h>
- #include <asm/uaccess.h>
- 
- #include "internal.h"
-@@ -174,7 +175,7 @@ void putname(const char *name)
- EXPORT_SYMBOL(putname);
- #endif
- 
--int check_acl(struct inode *inode, int mask)
-+static int check_posix_acl(struct inode *inode, int mask)
- {
- #ifdef CONFIG_FS_POSIX_ACL
- 	struct posix_acl *acl;
-@@ -220,6 +221,16 @@ int check_acl(struct inode *inode, int mask)
- 	return -EAGAIN;
- }
- 
-+static int check_acl(struct inode *inode, int mask)
-+{
-+	if (IS_POSIXACL(inode))
-+		return check_posix_acl(inode, mask);
-+	else if (IS_RICHACL(inode))
-+		return check_richacl(inode, mask);
-+	else
-+		return -EAGAIN;
-+}
-+
- /*
-  * This does the basic permission checking
-  */
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index bde2eea..9a57039 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -622,3 +622,57 @@ richacl_equiv_mode(const struct richacl *acl, mode_t *mode_p)
- 	return 0;
- }
- EXPORT_SYMBOL_GPL(richacl_equiv_mode);
-+
-+int check_richacl(struct inode *inode, int want)
-+{
-+#ifdef CONFIG_FS_RICHACL
-+	struct richacl *acl;
-+	int richacl_mask = richacl_want_to_mask(want);
-+
-+	if (want & MAY_NOT_BLOCK) {
-+		acl = rcu_dereference(inode->i_richacl);
-+		if (!acl)
-+			return -EAGAIN;
-+		/* no ->get_acl() calls in RCU mode... */
-+		if (acl == ACL_NOT_CACHED)
-+			return -ECHILD;
-+		return richacl_permission(inode, acl, richacl_mask);
-+	}
-+	return richacl_check_acl(inode, richacl_mask);
-+#endif
-+	return -EAGAIN;
-+}
-+
-+int richacl_check_acl(struct inode *inode, int richacl_mask)
-+{
-+
-+#ifdef CONFIG_FS_RICHACL
-+	struct richacl *acl;
-+	acl = get_cached_richacl(inode);
-+	/*
-+	 * A filesystem can force a ACL callback by just never filling the
-+	 * ACL cache. But normally you'd fill the cache either at inode
-+	 * instantiation time, or on the first ->get_acl call.
-+	 *
-+	 * If the filesystem doesn't have a get_acl() function at all, we'll
-+	 * just create the negative cache entry.
-+	 */
-+	if (acl == ACL_NOT_CACHED) {
-+		if (inode->i_op->get_acl) {
-+			acl = inode->i_op->get_richacl(inode);
-+			if (IS_ERR(acl))
-+				return PTR_ERR(acl);
-+		} else {
-+			set_cached_richacl(inode, NULL);
-+			return -EAGAIN;
-+		}
-+	}
-+	if (acl) {
-+		int error = richacl_permission(inode, acl, richacl_mask);
-+		richacl_put(acl);
-+		return error;
-+	}
-+#endif
-+	return -EAGAIN;
-+}
-+EXPORT_SYMBOL_GPL(richacl_check_acl);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 771955c..e01bad7 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1624,6 +1624,7 @@ struct inode_operations {
- 	void * (*follow_link) (struct dentry *, struct nameidata *);
- 	int (*permission) (struct inode *, int);
- 	struct posix_acl * (*get_acl)(struct inode *, int);
-+	struct richacl * (*get_richacl)(struct inode *);
- 
- 	int (*readlink) (struct dentry *, char __user *,int);
- 	void (*put_link) (struct dentry *, struct nameidata *, void *);
-@@ -2243,7 +2244,6 @@ extern sector_t bmap(struct inode *, sector_t);
- extern int notify_change(struct dentry *, struct iattr *);
- extern int inode_permission(struct inode *, int);
- extern int generic_permission(struct inode *, int);
--extern int check_acl(struct inode *, int);
- 
- static inline bool execute_ok(struct inode *inode)
- {
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 694b7dc..4af6d22 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -367,6 +367,8 @@ extern int richacl_permission(struct inode *, const struct richacl *,
- 			      unsigned int);
- extern struct richacl *richacl_inherit(const struct richacl *, int);
- extern int richacl_equiv_mode(const struct richacl *, mode_t *);
-+extern int check_richacl(struct inode *, int);
-+extern int richacl_check_acl(struct inode *, int);
- 
- /* richacl_inode.c */
- extern struct richacl *richacl_inherit_inode(const struct richacl *,
--- 
-1.7.5.4
+Uh-oh, I see it's been sent to stable too.
 
+commit f0574a5592deb1f99fa583c525d01e7fa131f430
+Author: Peng Tao <bergwolf@gmail.com>
+Date:   Thu Sep 22 21:50:13 2011 -0400
+
+    pnfsblock: init pg_bsize properly
+    
+    pg_bsize is server->wsize/rsize by default. We would want to use the lseg
+    length.
+    
+    Signed-off-by: Peng Tao <peng_tao@emc.com>
+    Signed-off-by: Jim Rees <rees@umich.edu>
+    Cc: stable@kernel.org [3.0]
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+Explanation follows:
+
+Date: Fri, 23 Sep 2011 08:22:45 -0400
+From: Jim Rees <rees@umich.edu>
+Subject: Re: [PATCH 06/10] pnfsblock: init pg_bsize properly
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+
+Boaz Harrosh wrote:
+
+  On 09/23/2011 04:50 AM, Jim Rees wrote:
+  > From: Peng Tao <bergwolf@gmail.com>
+  >
+  > pg_bsize is server->wsize/rsize by default. We would want to use the lseg
+  > length.
+  >
+  > Signed-off-by: Peng Tao <peng_tao@emc.com>
+  > Signed-off-by: Jim Rees <rees@umich.edu>
+
+  If you want to get lazy about this patch and take the easy way out.
+  The least you can do is supply the same fix to that other place
+  that has the same bug.
+
+  This is not nice. You have identified a deficiency in the generic
+  layer, You know that objects would have the same bug, (because I told you)
+  and you just don't care. I have spent plenty of times slaving over
+  blocks code when changing or fixing generic layer. (And Benny even more
+  then me)
+
+  And when you will actually send a patch that does exactly the same in
+  two places, which access only generic members, you might see that it
+  might be better to fix it in a single place at the generic layer.
+
+  NACK. I'm ok with getting lazy like below, but only if you also
+  add the same code to objio_osd.c
+
+Sorry, I sent the wrong patch.  Trond, please drop this one.
