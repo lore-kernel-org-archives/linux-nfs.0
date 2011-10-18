@@ -1,60 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:35551 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753439Ab1JSUuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Oct 2011 16:50:39 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/9] NFSv4: Translate NFS4ERR_BADNAME into ENOENT when applied to a lookup
-Date: Wed, 19 Oct 2011 13:50:12 -0700
-Message-Id: <1319057418-9851-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1319057418-9851-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1319057418-9851-1-git-send-email-Trond.Myklebust@netapp.com>
- <1319057418-9851-2-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:17561 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750957Ab1JRW7q convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 18:59:46 -0400
+From: <david.noveck@emc.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <matt@linuxbox.com>, <linux-nfs@vger.kernel.org>,
+        <nfs-ganesha-devel@lists.sourceforge.net>, <nfsv4@ietf.org>
+Date: Tue, 18 Oct 2011 18:59:06 -0400
+Subject: RE: [nfsv4] back channel flags, CREATE_SESSION, BIND_CONN_TO_SESSION
+Message-ID: <5DEA8DB993B81040A21CF3CB332489F68611DBDE@MX31A.corp.emc.com>
+References: <1988930626.161.1317955756425.JavaMail.root@thunderbeast.private.linuxbox.com>
+	 <953639179.163.1317956101014.JavaMail.root@thunderbeast.private.linuxbox.com>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B91DDFD@SACMVEXC2-PRD.hq.netapp.com>
+	 <5DEA8DB993B81040A21CF3CB332489F68611DBBF@MX31A.corp.emc.com>
+ <1318977517.3213.25.camel@lade.trondhjem.org>
+In-Reply-To: <1318977517.3213.25.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Both LOOKUP and OPEN operations may return NFS4ERR_BADNAME if we send a
-an invalid name as a filename argument. As far as the application is
-concerned, it just has to know that the file doesn't exist, and so
-ENOENT would be the appropriate reply. We should only return EINVAL
-if the filename is being used to _create_ a new object on the
-remote filesystem.
+I meant CB_RECALL_ANY.  The server can use this to make sure that it is 
+Likely to have an extra recallable object available in hand.  If he indicates
+the desire early, than the interaction is asynchronous, and so the first
+request requesting the layout/delegation get that one and you start another
+asynchronous operation to have another given back.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c |   10 +++++++++-
- 1 files changed, 9 insertions(+), 1 deletions(-)
+In some cases, not having space does not man DELAY but rather not getting the
+delegation you want, with that being provided to the client by CB_RECALL_OBJ_AVAIL.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index b0c01b2..ba0da50 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1593,8 +1593,14 @@ static int _nfs4_proc_open(struct nfs4_opendata *data)
- 	int status;
- 
- 	status = nfs4_run_open_task(data, 0);
--	if (status != 0 || !data->rpc_done)
-+	if (!data->rpc_done)
-+		return status;
-+	if (status != 0) {
-+		if (status == -NFS4ERR_BADNAME &&
-+				!(o_arg->open_flags & O_CREAT))
-+			return -ENOENT;
- 		return status;
-+	}
- 
- 	if (o_arg->open_flags & O_CREAT) {
- 		update_changeattr(dir, &o_res->cinfo);
-@@ -2455,6 +2461,8 @@ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qst
- 
- 		status = _nfs4_proc_lookup(clnt, dir, name, fhandle, fattr);
- 		switch (status) {
-+		case -NFS4ERR_BADNAME:
-+			return -ENOENT;
- 		case -NFS4ERR_MOVED:
- 			err = nfs4_get_referral(dir, name, fattr, fhandle);
- 			break;
+This sort of interaction suggests to me that requests and callbacks may wind up
+being more connected than we have thought before and that we might address this in
+some v4.x for x >= 3.  
+
+
+-----Original Message-----
+From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com] 
+Sent: Tuesday, October 18, 2011 6:39 PM
+To: Noveck, David
+Cc: matt@linuxbox.com; linux-nfs@vger.kernel.org; nfs-ganesha-devel@lists.sourceforge.net; nfsv4@ietf.org
+Subject: Re: [nfsv4] back channel flags, CREATE_SESSION, BIND_CONN_TO_SESSION
+
+On Tue, 2011-10-18 at 17:28 -0400, david.noveck@emc.com wrote: 
+> > I have _always_ argued that callbacks should be the exception and not the rule, 
+> 
+> Sounds right.
+> 
+> > due to the fact that in pretty much all cases the server will have to send 
+> > out a NFS4ERR_DELAY result to whatever RPC call it is that triggered a callback. 
+> 
+> I may disagree depending on what you mean by "petty much" always.
+> 
+> V4.1 does have callbacks that are specified so as to useful asynchronously, and
+> if people take advantage of them, they won't have this NFS4ERR_DELAY problem.
+> 
+> Examples are CB_NOTIFY, CB_RECALL_ANY, CB_PUSH_DELEG.  Over time, future versions may
+> expand this list and make callbacks less exceptional, although not the rule. 
+
+I'm not sure why you included CB_RECALL_ANY in the above list. Did you
+mean CB_RECALLABLE_OBJ_AVAIL?
+
+The main consumer of callbacks in NFSv4.1 is expected by some to be
+layouts, which do not really have an asynchronous mode to notify you
+when a particular layout has been made available.
+Ditto for the NFSv4.0 number 1 consumer: delegations. The new
+CB_PUSH_DELEG operation notifies you that you may now request a
+delegation, but it doesn't help when you are just trying to OPEN a file,
+and the server has to recall a delegation from someone else.
+
+So I still think that NFS4ERR_DELAY will still be needed in order to
+slow things down, unless we're careful about getting into these
+situations where recalls are needed.
+
+> -----Original Message-----
+> From: nfsv4-bounces@ietf.org [mailto:nfsv4-bounces@ietf.org] On Behalf Of Myklebust, Trond
+> Sent: Thursday, October 06, 2011 11:39 PM
+> To: Matt W. Benjamin
+> Cc: linux-nfs; nfs-ganesha-devel; nfsv4
+> Subject: Re: [nfsv4] back channel flags, CREATE_SESSION, BIND_CONN_TO_SESSION
+> 
+> > -----Original Message-----
+> > From: Matt W. Benjamin [mailto:matt@linuxbox.com]
+> > Sent: Thursday, October 06, 2011 10:55 PM
+> > To: Myklebust, Trond
+> > Cc: linux-nfs; nfs-ganesha-devel; nfsv4
+> > Subject: Re: [nfsv4] back channel flags, CREATE_SESSION,
+> > BIND_CONN_TO_SESSION
+> > 
+> > Hi Trond,
+> > 
+> > I appreciate your point of view.  I appreciate Rick's comments.  I hope some
+> > other comments will trickle in.  Do I think you and Rick are saying the same
+> > thing?  Not really.  Do I think you're making sense when you imply I want to
+> > change the standard?  No, I don't follow that.  BIND_CONN_TO_SESSION is in
+> > the published standard.  Can I show a dedicated back channel improves
+> 
+> I never accused you of trying to change the standard. What I said was that you need to convince me that there is a good reason to accept two implementations of the same feature in the client.
+> 
+> > performance?  Not at present.  That's a sensible question.  I think if the
+> > protocol in general is doing what it is intended to do, it should be possible for
+> > some workloads, at some point.  (If callbacks are, somehow generally
+> > detrimental to performance, as you state, I think maybe we have some more
+> > work to do.)  (I note only one more thing--I did raise this topic on list 12
+> > months ago.  Only Bruce commented, at the time.)
+> 
+> Fair enough, but 12 months ago, rfc5661 was in last call status, and we were all trying to move on to final implementations.
+> 
+> I have _always_ argued that callbacks should be the exception and not the rule, due to the fact that in pretty much all cases the server will have to send out a NFS4ERR_DELAY result to whatever RPC call it is that triggered a callback. Nothing new there in NFSv4.1. I'll add that nor has anybody successfully argued that there is any change in NFSv4.1 compared to our existing NFSv4 implementations. NFSv4 delegation callbacks are (measurably) extremely slow, and so I'd expect the exact same behavior for NFSv4.1 layout recalls etc. Nothing has changed in NFSv4 callback technology to warrant an expectation of performance improvements.
+> 
+> IOW: Nobody (including you) has ever convinced me that we need to consider callbacks as a scalability issue. I'd require some pretty firm evidence before I could accept that as a fact. So far, all I have seen is more or less eloquent prose. No hard numbers.
+> 
+> Trond
+> _______________________________________________
+> nfsv4 mailing list
+> nfsv4@ietf.org
+> https://www.ietf.org/mailman/listinfo/nfsv4
+> 
+> _______________________________________________
+> nfsv4 mailing list
+> nfsv4@ietf.org
+> https://www.ietf.org/mailman/listinfo/nfsv4
+
 -- 
-1.7.6.4
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
 
