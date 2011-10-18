@@ -1,36 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:35871 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754997Ab1KVUfk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Nov 2011 15:35:40 -0500
-Subject: Re: [PATCH] nfsd: Fix oops when parsing a 0 length export
-From: Sasha Levin <levinsasha928@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-kernel@vger.kernel.org, Neil Brown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <20111122202817.GD21451@fieldses.org>
-References: <1321611289-21809-1-git-send-email-levinsasha928@gmail.com>
-	 <20111122202817.GD21451@fieldses.org>
-Content-Type: text/plain; charset="us-ascii"
-Date: Tue, 22 Nov 2011 22:33:29 +0200
-Message-ID: <1321994009.3787.19.camel@lappy>
-Mime-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:52390 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932630Ab1KDOWw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Nov 2011 10:22:52 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 2 2/3] NFSv4.1: rename nfs4_free_slot and nfs4_find_slot
+Date: Tue, 18 Oct 2011 02:33:06 -0400
+Message-Id: <1318919587-2642-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1318919587-2642-1-git-send-email-andros@netapp.com>
+References: <1318919587-2642-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2011-11-22 at 15:28 -0500, J. Bruce Fields wrote:
-> On Fri, Nov 18, 2011 at 12:14:49PM +0200, Sasha Levin wrote:
-> > expkey_parse() oopses when handling a 0 length export. This is easily
-> > triggerable from usermode by writing 0 bytes into
-> > '/proc/[proc id]/net/rpc/nfsd.fh/channel'.
-> 
-> Thanks--how did you run across this?
-> 
-> --b.
+From: Andy Adamson <andros@netapp.com>
 
-Tried running a fuzzer on the system.
+These functions deal in slotid's, not slots.
 
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4proc.c |   24 ++++++++++++------------
+ 1 files changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ee04f8f..51c294e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -442,7 +442,7 @@ nfs4_dynamic_alloc_slot(struct nfs4_slot_table *tbl, u8 slotid)
+ }
+ 
+ /*
+- * Return the slot associated with the slotid returned by nfs4_find_slot.
++ * Return the slot associated with the slotid returned by nfs4_find_slotid.
+  * If the slot is not found, it has not been allocated: the NULL return
+  * puts the request on the slot table waitq and dynamically allocates a
+  * new slot.
+@@ -529,9 +529,9 @@ void nfs4_reduce_slots_locked(struct nfs4_slot_table *tbl)
+ }
+ 
+ /*
+- * nfs4_free_slot - free a slot and efficiently update slot table.
++ * nfs4_free_slotid - free a slotid and efficiently update slot table.
+  *
+- * freeing a slot is trivially done by clearing its respective bit
++ * freeing a slotid is trivially done by clearing its respective bit
+  * in the bitmap.
+  * If the freed slotid equals highest_used_slotid we want to update it
+  * so that the server would be able to size down the slot table if needed,
+@@ -544,7 +544,7 @@ void nfs4_reduce_slots_locked(struct nfs4_slot_table *tbl)
+  * Must be called while holding tbl->slot_tbl_lock
+  */
+ static void
+-nfs4_free_slot(struct nfs4_slot_table *tbl, u8 free_slotid)
++nfs4_free_slotid(struct nfs4_slot_table *tbl, u8 free_slotid)
+ {
+ 	int slotid = free_slotid;
+ 
+@@ -610,7 +610,7 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
+ 	}
+ 
+ 	spin_lock(&tbl->slot_tbl_lock);
+-	nfs4_free_slot(tbl, res->sr_slot->slotid);
++	nfs4_free_slotid(tbl, res->sr_slot->slotid);
+ 	nfs4_put_slot_locked(res->sr_slot);
+ 	nfs4_check_drain_fc_complete(res->sr_session);
+ 	spin_unlock(&tbl->slot_tbl_lock);
+@@ -681,17 +681,17 @@ static int nfs4_sequence_done(struct rpc_task *task,
+ }
+ 
+ /*
+- * nfs4_find_slot - efficiently look for a free slot
++ * nfs4_find_slotid - efficiently look for a free slotid
+  *
+- * nfs4_find_slot looks for an unset bit in the used_slots bitmap.
+- * If found, we mark the slot as used, update the highest_used_slotid,
++ * nfs4_find_slotid looks for an unset bit in the used_slots bitmap.
++ * If found, we mark the slotid as used, update the highest_used_slotid,
+  * and respectively set up the sequence operation args.
+- * The slot number is returned if found, or NFS4_MAX_SLOT_TABLE otherwise.
++ * The slotid is returned if found, or NFS4_MAX_SLOT_TABLE otherwise.
+  *
+  * Note: must be called with under the slot_tbl_lock.
+  */
+ static u8
+-nfs4_find_slot(struct nfs4_slot_table *tbl)
++nfs4_find_slotid(struct nfs4_slot_table *tbl)
+ {
+ 	int slotid;
+ 	u8 ret_id = NFS4_MAX_SLOT_TABLE;
+@@ -753,7 +753,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ 		return -EAGAIN;
+ 	}
+ 
+-	slotid = nfs4_find_slot(tbl);
++	slotid = nfs4_find_slotid(tbl);
+ 	if (slotid == NFS4_MAX_SLOT_TABLE) {
+ 		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
+ 		spin_unlock(&tbl->slot_tbl_lock);
+@@ -767,7 +767,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ 			__func__, task->tk_pid);
+ 		rpc_task_set_priority(task, RPC_PRIORITY_PRIVILEGED);
+ 		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
+-		nfs4_free_slot(tbl, slotid);
++		nfs4_free_slotid(tbl, slotid);
+ 		spin_unlock(&tbl->slot_tbl_lock);
+ 		nfs4_dynamic_alloc_slot(tbl, slotid);
+ 		dprintk("<-- %s: allocate slotid %u\n", __func__, slotid);
 -- 
-
-Sasha.
+1.7.5.1
 
