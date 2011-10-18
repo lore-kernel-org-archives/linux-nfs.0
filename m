@@ -1,58 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40535 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752668Ab1JKKKc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Oct 2011 06:10:32 -0400
-Date: Tue, 11 Oct 2011 06:10:00 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Pavel Machek <pavel@ucw.cz>
-Cc: trond.myklebust@netapp.com, smfrench@gmail.com, rjw@sisk.pl,
-        linux-pm@lists.linux-foundation.org, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, john@Calva.COM,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 1/4] freezer: make fake_signal_wake_up wake
- TASK_KILLABLE tasks too
-Message-ID: <20111011061000.3a3a03fe@tlielax.poochiereds.net>
-In-Reply-To: <20111011061847.GB1377@ucw.cz>
-References: <1317210761-11518-1-git-send-email-jlayton@redhat.com>
-	<1317210761-11518-2-git-send-email-jlayton@redhat.com>
-	<20111011061847.GB1377@ucw.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from e23smtp07.au.ibm.com ([202.81.31.140]:46879 "EHLO
+	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933011Ab1JRPfo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:35:44 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V7 26/26] ext4: Add Ext4 compat richacl feature flag
+Date: Tue, 18 Oct 2011 21:03:01 +0530
+Message-Id: <1318951981-5508-27-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 11 Oct 2011 08:18:48 +0200
-Pavel Machek <pavel@ucw.cz> wrote:
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
-> 
-> Hi!
-> 
-> > TASK_KILLABLE is often used to put tasks to sleep for quite some time.
-> > One of the most common uses is to put tasks to sleep while waiting for
-> > replies from a server on a networked filesystem (such as CIFS or NFS).
-> > 
-> > Unfortunately, fake_signal_wake_up does not currently wake up tasks
-> > that are sleeping in TASK_KILLABLE state. This means that even if the
-> > code were in place to allow them to freeze while in this sleep, it
-> > wouldn't work anyway.
-> > 
-> > This patch changes this function to wake tasks in this state as well.
-> > This should be harmless -- if the code doing the sleeping doesn't have
-> > handling to deal with freezer events, it should just go back to sleep.
-> 
-> I'm pretty sure this will break something; but that does not mean it
-> is bad idea, just that it should be merged early and tested a lot.
-> 
+This feature flag can be used to enable richacl on
+the file system. Once enabled the "acl" mount option
+will enable richacl instead of posix acl. The patch also
+removes the richacl mount option.
 
-FWIW, I looked at most of the places in the kernel that do
-TASK_KILLABLE sleeps and they look like they'll handle this correctly.
-The main one I wasn't sure about was mem_cgroup_handle_oom(), but I
-think it'll do the right thing too. I certainly could have missed
-something though...
+Acked-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/ext4.h  |    1 +
+ fs/ext4/super.c |   49 +++++++++++++++++++++++++++++++++++--------------
+ 2 files changed, 36 insertions(+), 14 deletions(-)
 
-In any case, would you mind merging this via the linux-pm tree for 3.2?
-
-Thanks,
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6627cc8..c71d9fe 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1350,6 +1350,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ #define EXT4_FEATURE_COMPAT_EXT_ATTR		0x0008
+ #define EXT4_FEATURE_COMPAT_RESIZE_INODE	0x0010
+ #define EXT4_FEATURE_COMPAT_DIR_INDEX		0x0020
++#define EXT4_FEATURE_COMPAT_RICHACL		0x0200
+ 
+ #define EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
+ #define EXT4_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 99d72cf..4a3f0dd 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1065,10 +1065,12 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 	if (!test_opt(sb, XATTR_USER))
+ 		seq_puts(seq, ",nouser_xattr");
+ #endif
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	if ((sb->s_flags & MS_POSIXACL) && !(def_mount_opts & EXT4_DEFM_ACL))
++#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
++	if ((sb->s_flags & (MS_POSIXACL|MS_RICHACL)) &&
++	    !(def_mount_opts & EXT4_DEFM_ACL))
+ 		seq_puts(seq, ",acl");
+-	if (!(sb->s_flags & MS_POSIXACL) && (def_mount_opts & EXT4_DEFM_ACL))
++	if (!(sb->s_flags & (MS_POSIXACL|MS_RICHACL)) &&
++	    (def_mount_opts & EXT4_DEFM_ACL))
+ 		seq_puts(seq, ",noacl");
+ #endif
+ 	if (sbi->s_commit_interval != JBD2_DEFAULT_MAX_COMMIT_AGE*HZ) {
+@@ -1421,6 +1423,32 @@ static ext4_fsblk_t get_sb_block(void **data)
+ 	return sb_block;
+ }
+ 
++static void enable_acl(struct super_block *sb)
++{
++#if !defined(CONFIG_EXT4_FS_POSIX_ACL) && !defined(CONFIG_EXT4_FS_RICHACL)
++	ext4_msg(sb, KERN_ERR, "acl options not supported");
++	return;
++#endif
++	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_RICHACL)) {
++		sb->s_flags |= MS_RICHACL;
++		sb->s_flags &= ~MS_POSIXACL;
++	} else {
++		sb->s_flags |= MS_POSIXACL;
++		sb->s_flags &= ~MS_RICHACL;
++	}
++	return;
++}
++
++static void disable_acl(struct super_block *sb)
++{
++#if !defined(CONFIG_EXT4_FS_POSIX_ACL) && !defined(CONFIG_EXT4_FS_RICHACL)
++	ext4_msg(sb, KERN_ERR, "acl options not supported");
++	return;
++#endif
++	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
++	return;
++}
++
+ #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
+ static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
+ 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
+@@ -1585,19 +1613,12 @@ static int parse_options(char *options, struct super_block *sb,
+ 			ext4_msg(sb, KERN_ERR, "(no)user_xattr options not supported");
+ 			break;
+ #endif
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+ 		case Opt_acl:
+-			sb->s_flags |= MS_POSIXACL;
++			enable_acl(sb);
+ 			break;
+ 		case Opt_noacl:
+-			sb->s_flags &= ~MS_POSIXACL;
++			disable_acl(sb);
+ 			break;
+-#else
+-		case Opt_acl:
+-		case Opt_noacl:
+-			ext4_msg(sb, KERN_ERR, "(no)acl options not supported");
+-			break;
+-#endif
+ 		case Opt_journal_update:
+ 			/* @@@ FIXME */
+ 			/* Eventually we will want to be able to create
+@@ -3169,8 +3190,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ #ifdef CONFIG_EXT4_FS_XATTR
+ 	set_opt(sb, XATTR_USER);
+ #endif
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	sb->s_flags |= MS_POSIXACL;
++#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
++		enable_acl(sb);
+ #endif
+ 	set_opt(sb, MBLK_IO_SUBMIT);
+ 	if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_DATA)
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.5.4
+
