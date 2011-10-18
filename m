@@ -1,54 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:55941 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753497Ab1KVCHb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Nov 2011 21:07:31 -0500
-From: <tao.peng@emc.com>
-To: <tigran.mkrtchyan@desy.de>, <William.Adamson@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-Date: Mon, 21 Nov 2011 21:07:05 -0500
-Subject: RE: server reboot recovery is broken with 3.1 (3.2?) with nfsv41
- clients
-Message-ID: <F19688880B763E40B28B2B462677FBF805E3A4A802@MX09A.corp.emc.com>
-References: <CAGue13oSMCs=mSMHsX2f_=+Eqc3i3rG8vkq0rSnMTm_sqpwcnw@mail.gmail.com>
-	<081C1E0B-795E-4138-B66A-479F73BB3AC5@netapp.com>
-	<CAGue13pFCq22xUmJny7+7czc8WkPhjos2A+_BombOf3G8icwJA@mail.gmail.com>
- <CAGue13r+vZRkmpiHVPodyoYXt+SVCfDdgHJOF74TmL5=ci=q1w@mail.gmail.com>
-In-Reply-To: <CAGue13r+vZRkmpiHVPodyoYXt+SVCfDdgHJOF74TmL5=ci=q1w@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:52390 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932631Ab1KDOWw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Nov 2011 10:22:52 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@fedora-64.andros.fake>,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 2 3/3] NFSv4.1: fix backchennel bug
+Date: Tue, 18 Oct 2011 02:33:07 -0400
+Message-Id: <1318919587-2642-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1318919587-2642-1-git-send-email-andros@netapp.com>
+References: <1318919587-2642-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
-ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
-QmVoYWxmIE9mIFRpZ3Jhbg0KPiBNa3J0Y2h5YW4NCj4gU2VudDogTW9uZGF5LCBOb3ZlbWJlciAy
-MSwgMjAxMSA1OjUyIFBNDQo+IFRvOiBBZGFtc29uLCBBbmR5DQo+IENjOiBsaW51eC1uZnMNCj4g
-U3ViamVjdDogUmU6IHNlcnZlciByZWJvb3QgcmVjb3ZlcnkgaXMgYnJva2VuIHdpdGggMy4xICgz
-LjI/KSB3aXRoIG5mc3Y0MSBjbGllbnRzDQo+IA0KPiBSSEVMNi4yIGhhcyB0aGUgc2FtZSBpc3N1
-ZS4gSSBqdXN0IHJlYm9vdGVkIHNlcnZlciAobWRzICsgZHMpIGR1cmluZyByZWFkLg0KPiANCj4g
-S2VybmVsIHRocmVhZCBkdW1wIGF0dGFjaGVkLg0KRm9yZ290IGF0dGFjaG1lbnQ/IDopDQoNCj4g
-DQo+IFRpZ3Jhbi4NCj4gDQo+IE9uIEZyaSwgTm92IDE4LCAyMDExIGF0IDU6MDkgUE0sIFRpZ3Jh
-biBNa3J0Y2h5YW4NCj4gPHRpZ3Jhbi5ta3J0Y2h5YW5AZGVzeS5kZT4gd3JvdGU6DQo+ID4gQm90
-aCENCj4gPg0KPiA+IE9uIEZyaSwgTm92IDE4LCAyMDExIGF0IDM6MDggUE0sIEFkYW1zb24sIEFu
-ZHkNCj4gPiA8V2lsbGlhbS5BZGFtc29uQG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+Pg0KPiA+PiBP
-biBOb3YgMTgsIDIwMTEsIGF0IDg6NTcgQU0sIFRpZ3JhbiBNa3J0Y2h5YW4gd3JvdGU6DQo+ID4+
-DQo+ID4+PiBEZWFyIMKgbmZzIGhhY2tlcnMsDQo+ID4+Pg0KPiA+Pj4gaXQgbG9va3MgbGlrZSB3
-aXRoIGtlcm5lbCAzLjEgY2xpZW50IGNhbnQgcmVjb3ZlciBmcm9tIHNlcnZlciByZWJvb3RzLg0K
-PiA+Pj4gVGhlIG5mcyBtb3VudCBoYW5ncyBhbmQgdGhlcmUgYXJlIG5vIHBhY2thZ2VzIHNlbnQg
-ZnJvbSBhIGNsaWVudCB0byB0aGUgc2VydmVyLg0KPiA+Pj4gVGhpcyB3YXMgSU8gd2l0aCBwbmZz
-Lg0KPiA+Pg0KPiA+Pg0KPiA+PiBIaSBUaWdyYW4NCj4gPj4NCj4gPj4gSXMgdGhpcyBhbiBNRFMg
-cmVib290PyBEUyByZWJvb3Q/DQo+ID4+DQo+ID4+IFRoYW5rcw0KPiA+Pg0KPiA+PiAtLT5BbmR5
-DQo+ID4+Pg0KPiA+Pj4gUmVnYXJkcywNCj4gPj4+IMKgIFRpZ3Jhbi4NCj4gPj4+IC0tDQo+ID4+
-PiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3Jp
-YmUgbGludXgtbmZzIiBpbg0KPiA+Pj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9t
-b0B2Z2VyLmtlcm5lbC5vcmcNCj4gPj4+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgwqBodHRwOi8v
-dmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCj4gPj4NCj4gPj4gLS0NCj4gPj4g
-VG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJl
-IGxpbnV4LW5mcyIgaW4NCj4gPj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2
-Z2VyLmtlcm5lbC5vcmcNCj4gPj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCDCoGh0dHA6Ly92Z2Vy
-Lmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KPiA+Pg0KPiA+DQo+IC0tDQo+IFRvIHVu
-c3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51
-eC1uZnMiIGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJu
-ZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcv
-bWFqb3Jkb21vLWluZm8uaHRtbA0KDQo=
+From: Andy Adamson <andros@fedora-64.andros.fake>
+
+Slotid's start from 0 which means we check against
+NFS41_BC_MAX_CALLBACKS - 1.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/callback_proc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 98ff5fc..12bd9d0 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -339,7 +339,7 @@ validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
+ 	dprintk("%s enter. slotid %d seqid %d\n",
+ 		__func__, args->csa_slotid, args->csa_sequenceid);
+ 
+-	if (args->csa_slotid > NFS41_BC_MAX_CALLBACKS)
++	if (args->csa_slotid > NFS41_BC_MAX_CALLBACKS - 1)
+ 		return htonl(NFS4ERR_BADSLOT);
+ 
+ 	slot = nfs4_lookup_slot_locked(tbl, args->csa_slotid);
+-- 
+1.7.5.1
+
