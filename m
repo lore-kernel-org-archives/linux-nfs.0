@@ -1,94 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:41600 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758729Ab1JFR3y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Oct 2011 13:29:54 -0400
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
-Subject: RE: [nfsv4] back channel flags, CREATE_SESSION, BIND_CONN_TO_SESSION
-Date: Thu, 6 Oct 2011 10:29:51 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B830127@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <1744450629.20.1317913875236.JavaMail.root@thunderbeast.private.linuxbox.com>
-References: <832225155.16.1317913647813.JavaMail.root@thunderbeast.private.linuxbox.com> <1744450629.20.1317913875236.JavaMail.root@thunderbeast.private.linuxbox.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Matt W. Benjamin" <matt@linuxbox.com>
-Cc: "nfsv4" <nfsv4@ietf.org>, "linux-nfs" <linux-nfs@vger.kernel.org>,
-        "nfs-ganesha-devel" <nfs-ganesha-devel@lists.sourceforge.net>
+Received: from e23smtp03.au.ibm.com ([202.81.31.145]:45604 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932861Ab1JRPes (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:34:48 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V7 12/26] vfs: Make acl_permission_check() work for richacls
+Date: Tue, 18 Oct 2011 21:02:47 +0530
+Message-Id: <1318951981-5508-13-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBNYXR0IFcuIEJlbmphbWluIFtt
-YWlsdG86bWF0dEBsaW51eGJveC5jb21dDQo+IFNlbnQ6IFRodXJzZGF5LCBPY3RvYmVyIDA2LCAy
-MDExIDExOjExIEFNDQo+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+IENjOiBuZnN2NDsgbGludXgt
-bmZzOyBuZnMtZ2FuZXNoYS1kZXZlbA0KPiBTdWJqZWN0OiBSZTogW25mc3Y0XSBiYWNrIGNoYW5u
-ZWwgZmxhZ3MsIENSRUFURV9TRVNTSU9OLA0KPiBCSU5EX0NPTk5fVE9fU0VTU0lPTg0KPiANCj4g
-SGkgVHJvbmQsDQo+IA0KPiBUaGUgcmF0aW9uYWxlIGZvciBtYWtpbmcgaXQgcG9zc2libGUgdG8g
-YXJyaXZlIGF0IGEgZGVkaWNhdGVkIGJhY2sgY2hhbm5lbCBmb3IgYQ0KPiBzZXNzaW9uIGlzLCBJ
-IHRoaW5rLCBtYWlubHkgdGhhdCBpdCBjYW4geWllbGQgZ3JlYXRlciB0aHJvdWdocHV0LCBhIGJl
-bmVmaXQgd2hpY2gNCj4gZ3Jvd3MgYXMgd29ya2xvYWQgaW5jcmVhc2VzLiAgQ29udmVyc2VseSwg
-Y2hhbm5lbCBuZWdvdGlhdGlvbiBhcHBlYXJzIHRvDQo+IG5vdCBoYXZlIG1hbnkgZG93bnNpZGVz
-Lg0KDQpXaHkgZG8gd2UgbmVlZCBzdWNoIGEgaHVnZSB2b2x1bWUgb2YgY2FsbGJhY2tzPyBUaGV5
-IHNob3VsZCBiZSB0aGUgZXhjZXB0aW9uIHJhdGhlciB0aGFuIHRoZSBydWxlLCBzaW5jZSB0aGVp
-ciBlZmZlY3QgaXMgYWx3YXlzIHRvIHNsb3cgZG93biBwZXJmb3JtYW5jZS4gVGhyb3VnaHB1dCBp
-cyBpbiBhZGRpdGlvbiBsaW1pdGVkIGJ5IHRoZSBudW1iZXIgb2Ygc2Vzc2lvbiBzbG90cyAoY3Vy
-cmVudGx5IDEpLg0KDQo+IE15IHJlYXNvbmluZyB3b3VsZCBiZSBtYWlubHkgdGhhdCB0aGUgZGVk
-aWNhdGVkIGNvbmZpZ3VyYXRpb24gYXBwZWFycyB0bw0KPiBtaW5pbWlzZSB0aGUgdGhyb3VnaHB1
-dCBwb3RlbnRpYWxseSBsb3N0IHRvIGZsb3cgY29udHJvbCBvciBoZWFkLW9mLWxpbmUNCj4gYmxv
-Y2tpbmcsIGluIHBhcnRpY3VsYXIgd2hlbiB0aGUgdGhlIHVuZGVybHlpbmcgdHJhbnNwb3J0IGlz
-IFRDUC4gIEEgc2xpZ2h0bHkNCj4gZGlmZmVyZW50IHdheSB0byBsb29rIGF0IGl0IGlzLCB0aGF0
-IGl0IGVuYWJsZXMgYSBzaW1wbGVyIFJQQyBkaXNwYXRjaGVyIGF0IGJvdGgNCj4gZW5kcG9pbnRz
-LiAgKEkgZG91YnQgdGhlIGxhdHRlciBpcyBtb3JlIHRoYW4gYSBzaG9ydC10ZXJtIGNvbnNpZGVy
-YXRpb24uICBTdGlsbCwNCj4gaGF2aW5nIGFuIGFiaWxpdHkgdG8gd29yayBhcm91bmQgYSBjbGFz
-cyBvZiB0cmFuc3BvcnQvaW50ZXJvcCBwcm9ibGVtcw0KPiB0cmFuc3BhcmVudGx5LCB3aGljaCB0
-aGUgZmFsbGJhY2sgc3RyYXRlZ3kgY291bGQgcGVybWl0LCBtaWdodCBiZSB2aWV3ZWQgYXMgYQ0K
-PiB3aW4uKQ0KDQpGb3Igd2hvbT8gV2UgaGF2ZSBhbHJlYWR5IGltcGxlbWVudGVkIGEgY2FsbGJh
-Y2sgbW9kZWwgdGhhdCBpcyB3b3JraW5nIGZpbmUgZm9yIHVzLiBJIGhhdmUgeWV0IHRvIHNlZSBh
-bnkgZXZpZGVuY2Ugb2YgdGhlIGNhbGxiYWNrIHNjYWxhYmlsaXR5IGJyZWFrZG93biBzY2VuYXJp
-byB0aGF0IHlvdSBjbGFpbSBhcyBhIG1vdGl2YXRpb24uIFdoYXQgSSBoYXZlIChmcmVxdWVudGx5
-KSBzZWVuIGlzIHNjYWxhYmlsaXR5IGlzc3VlcyBkdWUgdG8gY2xpZW50cyBhbmQgc2VydmVycyBy
-dW5uaW5nIG91dCBvZiBmcmVlIFRDUCBwb3J0cy4NCg0KPiBJZiBvbmUgaXMgcGVyc3VhZGVkIG9m
-IHRoZSBwb3RlbnRpYWwgdXRpbGl0eSBvZiBhIGRlZGljYXRlZCBzZXNzaW9uIGJhY2sNCj4gY2hh
-bm5lbCwgaXQgc3RpbGwgbWlnaHQgbm90IGFwcGVhciBjbGVhcmx5IGJldHRlciB0byBoYXZlIHRo
-ZSBjbGllbnQgaW5pdGlhbGx5DQo+IHByb3Bvc2UgYSBtaXhlZCBjaGFubmVsIGFuZCBhc3N1bWUg
-dGhlIHNlcnZlciB3aWxsIG9iamVjdCBpZiBpdCBjYXJlcyAoYXMNCj4gb3Bwb3NlZCB0byBtYWtp
-bmcgYSBkZWRpY2F0ZWQgZm9yZSBjaGFubmVsIGl0cyBpbml0aWFsIHByb3Bvc2FsKS4gIEkgdGhp
-bmsgdGhlDQo+IGZhbGxiYWNrIHN0cmF0ZWd5IGlzIHNsaWdodGx5IGJldHRlci4gIEl0IG9mZmVy
-cyBib3RoIGNsaWVudCBhbmQgc2VydmVyIGlucHV0IGludG8NCj4gdGhlIHRyYW5zcG9ydCBzZXR1
-cCwgYW5kIGl0IGhhcyB0aGUgYmVuZWZpdCBvZiBiZWluZyBjbG9zZXN0IHRvIHdoYXQgNDEgc2Vy
-dmVycw0KPiBjdXJyZW50bHkgZG8gYW5kIHRoZSBMaW51eCBjbGllbnQgY3VycmVudGx5IGRvZXMu
-DQo+DQo+IEFzIHlvdSBjb3JyZWN0bHkgc3RhdGUsIHRoZSBjbGllbnQgY291bGQgcHJvY2VlZCB3
-aXRob3V0IGEgYmFjayBjaGFubmVsIGluIHRoZQ0KPiBwcmVzZW5jZSBvZiBhICJkaXNhZ3JlZWlu
-ZyIgc2VydmVyIGFuZCBzdGlsbCBiZSBjb25mb3JtYW50IHdpdGggUkZDIDU2NjEgKGlmDQo+IHBl
-cmhhcHMgbm90IGluIHNwaXJpdCksIGJ1dCBhY3R1YWxseSwgSSdtIG5vdCBjZXJ0YWluIHRoYXQg
-dGhlIExpbnV4IGNsaWVudCBhY3R1YWxseQ0KPiBkb2VzIHByb2NlZWQgYXMgc3BlY2lmaWVkIGlu
-IHRoaXMgY2FzZSwgYXMgcHJlc2VudGx5IGltcGxlbWVudGVkICgzLjEuMC1yYzgpLS0NCj4gSSB0
-aGluayBpdCBtYXkgaW5jb3JyZWN0bHkgYXNzdW1lIHRoYXQgYSBtaXhlZCBjaGFubmVsIGhhcyBi
-ZWVuIGFncmVlZCBvbi4NCg0KSSBhZ3JlZSB0aGF0IHdlIHNob3VsZCBmaXggdGhhdCBidWcuIEkg
-ZGlzYWdyZWUgdGhhdCB3ZSBuZWVkIGEgc2Vjb25kIGNhbGxiYWNrIG1vZGVsIHRvIGRvIHNvLiBK
-dXN0IHR1cm4gb2ZmIHBORlMgKGFuZCBwb3NzaWJseSBXQU5UcyBpZiB3ZSBldmVyIGltcGxlbWVu
-dCB0aGVtKSwgYW5kIHdlIHNob3VsZCBiZSBmaW5lLg0KDQo+IEJhY2sgY2hhbm5lbCBuZWdvdGlh
-dGlvbiBkb2VzIHdoYXQgaXQgZG9lcywgc2VlbWluZ2x5LCBhdCB2ZXJ5IGxpdHRsZSBjb3N0IGlu
-DQo+IGRldmVsb3BtZW50IChhIGZldyBodW5kcmVkIGxpbmVzLCBtb3N0bHkgc3RydWN0dXJlIGZv
-cm11bGFzKS4NCj4gTWFpbnRlbmFuY2UgY29zdHMgYXJlIHNhaWQgdG8gYmUgcHJvcG9ydGlvbmFs
-IHRvIGNvZGUgc2l6ZSAob3Igc28gSSBoYXZlIHJlYWQsDQo+IGUuZy4sIFBhZ2UtSm9uZXMpLiAg
-SSdtIG5vdCBtYWtpbmcgbGlnaHQgb2YgdGhpcyBwb2ludCwgb2J2aW91c2x5IGV2ZXJ5dGhpbmcg
-aGFzDQo+IGEgY29zdC4NCg0KTXkgb2JqZWN0aW9uIGlzIHRvIHRoZSBsYWNrIG9mIGEgY29uc2Vu
-c3VzIG9uIGEgc2luZ2xlIHN5c3RlbSBmb3IgaW1wbGVtZW50aW5nIGZlYXR1cmVzLiBJJ20gdGly
-ZWQgb2YgYmVpbmcgdG9sZCB0aGF0IHRoZSBzcGVjIGFsbG93cyB5b3UgdG8gZG8gdGhlIHNhbWUg
-dGhpbmcgaW4gMTAgZGlmZmVyZW50IHdheXMsIHdpdGggYW4gZXhwZWN0YXRpb24gdGhhdCB3ZSBz
-aG91bGQgaW1wbGVtZW50IGFsbCAxMCB3YXlzLg0KSWYgd2UgY2FuJ3QgZmluZCBhIHNpbmdsZSBn
-b29kIHdheSBvZiBpbXBsZW1lbnRpbmcgYSBmZWF0dXJlLCB0aGVuIG15IHByZWZlcmVuY2UgaXMg
-dG8gZHJvcCBzdXBwb3J0IGZvciB0aGF0IGZlYXR1cmUgYWx0b2dldGhlciAob3IgdG8gY2hvb3Nl
-IG9uZSBpbXBsZW1lbnRhdGlvbiBhbmQgdG8gc3RpY2sgd2l0aCBpdCkuIE15IGV4cGVjdGF0aW9u
-IGZvciBhIHN0YW5kYXJkIGlzIHRoYXQgaXQgc2hvdWxkIGFpbSB0byBfcmVkdWNlXyB0aGUgbnVt
-YmVyIG9mIGRpZmZlcmVudCBpbXBsZW1lbnRhdGlvbnMgc28gdGhhdCB3ZSBjYW4gY29uY2VudHJh
-dGUgb3VyIGRldmVsb3BtZW50IGFuZCB0ZXN0aW5nIGVmZm9ydHMuIChCVFc6IHBORlMgaXMgZGVm
-aW5pdGVseSBub3QgYmV5b25kIGNyaXRpY2lzbSBpbiB0aGlzIHJlc3BlY3QuKQ0KDQpJT1c6IEkg
-Y2FuIHNlZSB2YWxpZCByZWFzb25zIGZvciB3aHkgd2Ugc2hvdWxkIHRlc3QgdGhlIGNhc2Ugd2hl
-cmUgdGhlIHNlcnZlciByZWZ1c2VzIGEgbWl4ZWQgZm9yZStiYWNrIGNoYW5uZWwsIGJ1dCBJIGRv
-bid0IHNlZSB0aGF0IGFzIGEgcmVhc29uIHRvIGltcGxlbWVudCBhIHNlY29uZCBiYWNrIGNoYW5u
-ZWwgbW9kZWwuIFRoYXQgcmVxdWlyZXMgdXMgdG8gYWRkIGNvZGUgKyB0ZXN0cyAoYW5kIHBlcmZv
-cm0gcmVndWxhciByZWdyZXNzaW9uIHRlc3RzKSBmb3IgdGhhdCBiYWNrIGNoYW5uZWwgbW9kZSwg
-YXMgd2VsbCBhcyBkZWFsaW5nIHdpdGggdGhlIGNhc2Ugd2hlcmUgdGhhdCBtb2RlbCBvZiBvcGVy
-YXRpb24gdG9vIGlzIHJlamVjdGVkIGJ5IHRoZSBzZXJ2ZXIuDQoNClRyb25kDQo=
+From: Andreas Gruenbacher <agruen@kernel.org>
+
+Acked-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/namei.c |   14 ++++++++++++++
+ 1 files changed, 14 insertions(+), 0 deletions(-)
+
+diff --git a/fs/namei.c b/fs/namei.c
+index eb8f918..0c28f95 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -230,6 +230,20 @@ static int acl_permission_check(struct inode *inode, int mask)
+ 	if (current_user_ns() != inode_userns(inode))
+ 		goto other_perms;
+ 
++	if (IS_RICHACL(inode)) {
++		int error = check_acl(inode, mask);
++		if (error != -EAGAIN)
++			return error;
++		if (mask & (MAY_DELETE_SELF | MAY_TAKE_OWNERSHIP |
++			    MAY_CHMOD | MAY_SET_TIMES)) {
++			/*
++			 * The file permission bit cannot grant these
++			 * permissions.
++			 */
++			return -EACCES;
++		}
++	}
++
+ 	if (likely(current_fsuid() == inode->i_uid))
+ 		mode >>= 6;
+ 	else {
+-- 
+1.7.5.4
+
