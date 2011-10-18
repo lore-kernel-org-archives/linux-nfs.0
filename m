@@ -1,58 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qy0-f181.google.com ([209.85.216.181]:39022 "EHLO
-	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933253Ab1JaPQh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 11:16:37 -0400
-Received: by qyk27 with SMTP id 27so6351146qyk.19
-        for <linux-nfs@vger.kernel.org>; Mon, 31 Oct 2011 08:16:36 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond.Myklebust@netapp.com, bhalevy@tonian.com,
-        Peng Tao <peng_tao@emc.com>
-Subject: [PATCH 1/2 RESEND] NFS4: fix cb_recallany decode error
-Date: Mon, 31 Oct 2011 08:15:35 -0700
-Message-Id: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:45345 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932768Ab1JRQIE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Oct 2011 12:08:04 -0400
+Message-ID: <4E9DA462.8020704@RedHat.com>
+Date: Tue, 18 Oct 2011 12:08:02 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Hamo <hamo.by@gmail.com>
+CC: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] nfs-utils: mount: really return from errno test
+References: <CAO_0yfPgXJJSZNDYXHBSt45J0WQsh5EQVUs0nBN4wb+NoT6hAQ@mail.gmail.com>
+In-Reply-To: <CAO_0yfPgXJJSZNDYXHBSt45J0WQsh5EQVUs0nBN4wb+NoT6hAQ@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-craa_type_mask is bitmap4 according to RFC5661. We need to expect a length before
-extracting its value.
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
-Resend this one as it is a dependency for "[PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY".
 
- fs/nfs/callback_xdr.c |   11 ++++++-----
- 1 files changed, 6 insertions(+), 5 deletions(-)
+On 10/11/2011 05:44 AM, Hamo wrote:
+> We should only try next address family if we meet ECONNREFUSED or EHOSTUNREACH
+> for v4 or ECONNREFUSED or EOPNOTSUPP or EHOSTUNREACH for v3v2.
+> Before, only a break in swich can not make the program out of for loop.
+> 
+> Signed-off-by: Yang Bai <hamo.by@gmail.com>
+Committed....
 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 918ad64..ee1a5b3 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -488,17 +488,18 @@ static __be32 decode_recallany_args(struct svc_rqst *rqstp,
- 				      struct xdr_stream *xdr,
- 				      struct cb_recallanyargs *args)
- {
--	__be32 *p;
-+	uint32_t bitmap[2];
-+	__be32 *p, status;
- 
- 	args->craa_addr = svc_addr(rqstp);
- 	p = read_buf(xdr, 4);
- 	if (unlikely(p == NULL))
- 		return htonl(NFS4ERR_BADXDR);
- 	args->craa_objs_to_keep = ntohl(*p++);
--	p = read_buf(xdr, 4);
--	if (unlikely(p == NULL))
--		return htonl(NFS4ERR_BADXDR);
--	args->craa_type_mask = ntohl(*p);
-+	status = decode_bitmap(xdr, bitmap);
-+	if (unlikely(status))
-+		return status;
-+	args->craa_type_mask = bitmap[0];
- 
- 	return 0;
- }
--- 
-1.7.1.262.g5ef3d
+steved.
 
+> ---
+>  utils/mount/stropts.c |    6 ++++--
+>  1 files changed, 4 insertions(+), 2 deletions(-)
+> 
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index 314a806..4032bf3 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -665,9 +665,10 @@ static int nfs_try_mount_v3v2(struct nfsmount_info *mi)
+>  		case EHOSTUNREACH:
+>  			continue;
+>  		default:
+> -			break;
+> +			goto out;
+>  		}
+>  	}
+> +out:
+>  	return ret;
+>  }
+> 
+> @@ -751,9 +752,10 @@ static int nfs_try_mount_v4(struct nfsmount_info *mi)
+>  		case EHOSTUNREACH:
+>  			continue;
+>  		default:
+> -			break;
+> +			goto out;
+>  		}
+>  	}
+> +out:
+>  	return ret;
+>  }
+> 
