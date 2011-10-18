@@ -1,136 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:39635 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754518Ab1JQVho (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Oct 2011 17:37:44 -0400
-Received: by gyb13 with SMTP id 13so3421082gyb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Oct 2011 14:37:44 -0700 (PDT)
-Message-ID: <4E9CA019.1070009@tonian.com>
-Date: Mon, 17 Oct 2011 14:37:29 -0700
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Subject: Re: [osd-dev] [PATCHSET 0/5] pnfsd-exofs: Adapt to Latest ore/exofs
- changes
-References: <4E8D9D56.6020803@panasas.com> <4E9C78B0.7080909@tonian.com>
-In-Reply-To: <4E9C78B0.7080909@tonian.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from e23smtp01.au.ibm.com ([202.81.31.143]:37405 "EHLO
+	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932759Ab1JRPee (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:34:34 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V7 08/26] vfs: Add new file and directory create permission flags
+Date: Tue, 18 Oct 2011 21:02:43 +0530
+Message-Id: <1318951981-5508-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-OK, I pushed this to
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-git://git.linux-nfs.org/projects/bhalevy/linux-pnfs.git
-at tag pnfs-all-3.1-rc9-2011-10-17
+Some permission models distinguish between the permission to create a
+non-directory and a directory.  Pass this information down to
+inode_permission() as mask flags
 
-Benny
+Acked-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/namei.c         |   26 +++++++++++++++-----------
+ include/linux/fs.h |    2 ++
+ 2 files changed, 17 insertions(+), 11 deletions(-)
 
-On 2011-10-17 11:49, Benny Halevy wrote:
-> Hmm, I get the following compile error.
-> 
-> Is there a chance you have some local changes in your tree you haven't committed
-> to 6127dbde SQUASHME pnfsd-exofs: Serve out a single group layout at a time
-> 
-> fs/exofs/export.c: In function ‘exofs_layout_get’:
-> fs/exofs/export.c:143:2: warning: passing argument 3 of ‘ore_calc_stripe_info’ makes integer from pointer without a cast [enabled by default]
-> include/scsi/osd_ore.h:174:6: note: expected ‘u64’ but argument is of type ‘struct ore_striping_info *’
-> fs/exofs/export.c:143:2: error: too few arguments to function ‘ore_calc_stripe_info’
-> include/scsi/osd_ore.h:174:6: note: declared here
-> 
-> Since si.length is not in use in exofs_layout_get
-> This fix should work, right?
-> 
-> git diff --stat -p -M
->  fs/exofs/export.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/exofs/export.c b/fs/exofs/export.c
-> index 815e807..8a0e510 100644
-> --- a/fs/exofs/export.c
-> +++ b/fs/exofs/export.c
-> @@ -140,7 +140,7 @@ static enum nfsstat4 exofs_layout_get(
->  	/* Fill in a pnfs_osd_layout struct */
->  	ore_layout_2_pnfs_layout(&layout, &sbi->layout);
-> 
-> -	ore_calc_stripe_info(&sbi->layout, res->lg_seg.offset, &si);
-> +	ore_calc_stripe_info(&sbi->layout, res->lg_seg.offset, 0, &si);
->  	layout.olo_comps_index = si.dev;
->  	layout.olo_num_comps = sbi->layout.group_width * sbi->layout.mirrors_p1;
-> 
-> 
-> 
-> 
-> On 2011-10-06 05:21, Boaz Harrosh wrote:
->> Benny Hi
->>
->> I'm sending the changes needed to *pnfsd-exofs* branch which are needed
->> in order to work with latest, for v3.2, ore/exofs changes.
->>
->> Assuming you have set up:
->>    git remote add loo git://git.open-osd.org/linux-open-osd.git
->>
->> For your convenience the patches are also available at:
->>
->>    git cherry-rebase 5d2d53b7..loo/pnfsd-exofs
->>
->> You will also need to merge or put somewhere all these changes on the
->> linux-open-osd linux-next branch (Actually the ore-devel branch)
->>
->>    git cherry-rebase loo/linus..loo/ore-devel
->>
->> Here are the sets of patches in the two groups:
->>
->> [pnfsd-exofs 5d2d53b7..loo/pnfsd-exofs(6127dbd)]
->>
->>   This set is based on the base, none SQUASHME, pnfsd-exofs patches
->> 	[5d2d53b7] pnfsd-exofs: layoutreturn pnfs-obj information decoding
->>
->>   7638472 SQUASHME: pnfsd-exofs: convert to v3.1 ORE			  - Your original conversion
->>   51f3837 SQUASHME: pnfsd-exofs: Convert to ORE 3.1 PART2
->>   590139b SQUASHME: pnfsd-exofs: Fix export of only one group layout
->>   fba7909 SQUASHME: pnfsd-exofs: Type & Name of the devices array changed
->>   6127dbd SQUASHME pnfsd-exofs: Serve out a single group layout at a time 
->>
->>
->>
->> [ore/exofs/pnfs-obj changes for Linux v3.2 merge window]
->>
->>   My tree is based on v3.1-rc6 but you might want to base them on your pnfs/pnfs-block branch
->>   or have them all in a third branch and merge three branches on the top
->>
->>   []$ git log --oneline --reverse loo/linus..loo/ore-devel
->>
->>   a8f8c45 osd: Kconfig remove wrong FIXME
->>   1958c7c2 exofs/ore.c: local functions should be static
->>   de74b05 exofs/super.c: local functions should be static
->>   5bf696d exofs: Rename struct ore_components comps => oc
->>   8d2d83a exofs: Remove unused data_map member from exofs_sb_info
->>   eb507bc ore: Make ore_striping_info and ore_calc_stripe_info public
->>   d866d87 ore/exofs: Change the type of the devices array (API change)
->>   6d52274 ore: Only IO one group at a time (API change)
->>   a723afe ore: cleanup: Embed an ore_striping_info inside ore_io_state
->>   bcad9f7 ore: Remove check for ios->kern_buff in _prepare_for_striping to later
->>   c8dfed0 exofs: Support for short read/writes
->>   b2e3e8d ore: Support for short read/writes
->>   c0ba6d0 ore: Support for partial component table
->>   3c5aedd ore/exofs: Define new ore_verify_layout
->>   f6ee1e2 ore/exofs: Change ore_check_io API
->>   9bb8a8e pnfs-obj: Remove redundant EOF from objlayout_io_state
->>   e4ec2af pnfs-obj: Return PNFS_NOT_ATTEMPTED in case of read/write_pagelist
->>   8b40d31 pnfs-obj: Get rid of objlayout_{alloc,free}_io_state
->>   6b09277 pnfs-obj: Rename objlayout_io_state => objlayout_io_res
->>   739c109 pnfs-obj: move to ore 01: ore_layout & ore_components
->>   23a91ad pnfs-obj: move to ore 02: move to ORE
->>   b82cbb8 pnfs-obj: move to ore 03: Remove old raid engine
->> 	Up to here is the intended patches for Linux v3.2
->>   c0cf571 ore: Make ore_calc_stripe_info EXPORT_SYMBOL
->> 	This patch is intended for the pnfsd-exofs branch after it will be
->> 	rebased on ore/exofs for v3.2 above (As is it will not patch there)
->>
->> Cheers
->> Boaz
->> _______________________________________________
->> osd-dev mailing list
->> osd-dev@open-osd.org
->> http://mailman.open-osd.org/mailman/listinfo/osd-dev
+diff --git a/fs/namei.c b/fs/namei.c
+index cf8b2f0..f6184b8 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -336,7 +336,8 @@ static inline int do_inode_permission(struct inode *inode, int mask)
+  * for filesystem access without changing the "normal" uids which
+  * are used for other things.
+  *
+- * When checking for MAY_APPEND, MAY_WRITE must also be set in @mask.
++ * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
++ * MAY_WRITE must also be set in @mask.
+  */
+ int inode_permission(struct inode *inode, int mask)
+ {
+@@ -1914,13 +1915,15 @@ static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
+  *  3. We should have write and exec permissions on dir
+  *  4. We can't do it if dir is immutable (done in permission())
+  */
+-static inline int may_create(struct inode *dir, struct dentry *child)
++static inline int may_create(struct inode *dir, struct dentry *child, int isdir)
+ {
++	int mask = isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
++
+ 	if (child->d_inode)
+ 		return -EEXIST;
+ 	if (IS_DEADDIR(dir))
+ 		return -ENOENT;
+-	return inode_permission(dir, MAY_WRITE | MAY_EXEC);
++	return inode_permission(dir, MAY_WRITE | MAY_EXEC | mask);
+ }
+ 
+ /*
+@@ -1968,7 +1971,7 @@ void unlock_rename(struct dentry *p1, struct dentry *p2)
+ int vfs_create(struct inode *dir, struct dentry *dentry, int mode,
+ 		struct nameidata *nd)
+ {
+-	int error = may_create(dir, dentry);
++	int error = may_create(dir, dentry, 0);
+ 
+ 	if (error)
+ 		return error;
+@@ -2427,7 +2430,7 @@ EXPORT_SYMBOL(user_path_create);
+ 
+ int vfs_mknod(struct inode *dir, struct dentry *dentry, int mode, dev_t dev)
+ {
+-	int error = may_create(dir, dentry);
++	int error = may_create(dir, dentry, 0);
+ 
+ 	if (error)
+ 		return error;
+@@ -2524,7 +2527,7 @@ SYSCALL_DEFINE3(mknod, const char __user *, filename, int, mode, unsigned, dev)
+ 
+ int vfs_mkdir(struct inode *dir, struct dentry *dentry, int mode)
+ {
+-	int error = may_create(dir, dentry);
++	int error = may_create(dir, dentry, 1);
+ 
+ 	if (error)
+ 		return error;
+@@ -2806,7 +2809,7 @@ SYSCALL_DEFINE1(unlink, const char __user *, pathname)
+ 
+ int vfs_symlink(struct inode *dir, struct dentry *dentry, const char *oldname)
+ {
+-	int error = may_create(dir, dentry);
++	int error = may_create(dir, dentry, 0);
+ 
+ 	if (error)
+ 		return error;
+@@ -2872,7 +2875,10 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
+ 	if (!inode)
+ 		return -ENOENT;
+ 
+-	error = may_create(dir, new_dentry);
++	if (S_ISDIR(inode->i_mode))
++		return -EPERM;
++
++	error = may_create(dir, new_dentry, 0);
+ 	if (error)
+ 		return error;
+ 
+@@ -2886,8 +2892,6 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
+ 		return -EPERM;
+ 	if (!dir->i_op->link)
+ 		return -EPERM;
+-	if (S_ISDIR(inode->i_mode))
+-		return -EPERM;
+ 
+ 	error = security_inode_link(old_dentry, dir, new_dentry);
+ 	if (error)
+@@ -3097,7 +3101,7 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		return error;
+ 
+ 	if (!new_dentry->d_inode)
+-		error = may_create(new_dir, new_dentry);
++		error = may_create(new_dir, new_dentry, is_dir);
+ 	else
+ 		error = may_delete(new_dir, new_dentry, is_dir);
+ 	if (error)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index f3ebf86..60361c6 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -67,6 +67,8 @@ struct inodes_stat_t {
+ #define MAY_CHDIR		0x00000040
+ /* called from RCU mode, don't block */
+ #define MAY_NOT_BLOCK		0x00000080
++#define MAY_CREATE_FILE		0x00000100
++#define MAY_CREATE_DIR		0x00000200
+ 
+ /*
+  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
+-- 
+1.7.5.4
+
