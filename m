@@ -1,133 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp07.au.ibm.com ([202.81.31.140]:46879 "EHLO
+Received: from e23smtp07.au.ibm.com ([202.81.31.140]:46827 "EHLO
 	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933011Ab1JRPfo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:35:44 -0400
+	with ESMTP id S932930Ab1JRPfQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:35:16 -0400
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
         viro@zeniv.linux.org.uk, dhowells@redhat.com
 Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V7 26/26] ext4: Add Ext4 compat richacl feature flag
-Date: Tue, 18 Oct 2011 21:03:01 +0530
-Message-Id: <1318951981-5508-27-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V7 19/26] richacl: Check if an acl is equivalent to a file mode
+Date: Tue, 18 Oct 2011 21:02:54 +0530
+Message-Id: <1318951981-5508-20-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-This feature flag can be used to enable richacl on
-the file system. Once enabled the "acl" mount option
-will enable richacl instead of posix acl. The patch also
-removes the richacl mount option.
+This function is used to avoid storing richacls on disk if the acl can
+be computed from the file permission bits.
 
 Acked-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext4/ext4.h  |    1 +
- fs/ext4/super.c |   49 +++++++++++++++++++++++++++++++++++--------------
- 2 files changed, 36 insertions(+), 14 deletions(-)
+ fs/richacl_base.c       |   54 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |    1 +
+ 2 files changed, 55 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6627cc8..c71d9fe 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1350,6 +1350,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- #define EXT4_FEATURE_COMPAT_EXT_ATTR		0x0008
- #define EXT4_FEATURE_COMPAT_RESIZE_INODE	0x0010
- #define EXT4_FEATURE_COMPAT_DIR_INDEX		0x0020
-+#define EXT4_FEATURE_COMPAT_RICHACL		0x0200
+diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+index 6c7e839..3a9842e 100644
+--- a/fs/richacl_base.c
++++ b/fs/richacl_base.c
+@@ -560,3 +560,57 @@ richacl_inherit(const struct richacl *dir_acl, int isdir)
  
- #define EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
- #define EXT4_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 99d72cf..4a3f0dd 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1065,10 +1065,12 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 	if (!test_opt(sb, XATTR_USER))
- 		seq_puts(seq, ",nouser_xattr");
- #endif
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
--	if ((sb->s_flags & MS_POSIXACL) && !(def_mount_opts & EXT4_DEFM_ACL))
-+#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
-+	if ((sb->s_flags & (MS_POSIXACL|MS_RICHACL)) &&
-+	    !(def_mount_opts & EXT4_DEFM_ACL))
- 		seq_puts(seq, ",acl");
--	if (!(sb->s_flags & MS_POSIXACL) && (def_mount_opts & EXT4_DEFM_ACL))
-+	if (!(sb->s_flags & (MS_POSIXACL|MS_RICHACL)) &&
-+	    (def_mount_opts & EXT4_DEFM_ACL))
- 		seq_puts(seq, ",noacl");
- #endif
- 	if (sbi->s_commit_interval != JBD2_DEFAULT_MAX_COMMIT_AGE*HZ) {
-@@ -1421,6 +1423,32 @@ static ext4_fsblk_t get_sb_block(void **data)
- 	return sb_block;
+ 	return acl;
  }
++
++/**
++ * richacl_equiv_mode  -  check if @acl is equivalent to file permission bits
++ * @mode_p:	the file mode (including the file type)
++ *
++ * If @acl can be fully represented by file permission bits, this function
++ * returns 0, and the file permission bits in @mode_p are set to the equivalent
++ * of @acl.
++ *
++ * This function is used to avoid storing richacls on disk if the acl can be
++ * computed from the file permission bits.  It allows user-space to make sure
++ * that a file has no explicit richacl set.
++ */
++int
++richacl_equiv_mode(const struct richacl *acl, mode_t *mode_p)
++{
++	const struct richace *ace = acl->a_entries;
++	unsigned int x;
++	mode_t mode;
++
++	if (acl->a_count != 1 ||
++	    acl->a_flags != ACL4_MASKED ||
++	    !richace_is_everyone(ace) ||
++	    !richace_is_allow(ace) ||
++	    ace->e_flags & ~ACE4_SPECIAL_WHO)
++		return -1;
++
++	/*
++	 * Figure out the permissions we care about: ACE4_DELETE_CHILD is
++	 * meaningless for non-directories, so we ignore it.
++	 */
++	x = ~ACE4_POSIX_ALWAYS_ALLOWED;
++	if (!S_ISDIR(*mode_p))
++		x &= ~ACE4_DELETE_CHILD;
++
++	mode = richacl_masks_to_mode(acl);
++	if ((acl->a_group_mask & x) != (richacl_mode_to_mask(mode >> 3) & x) ||
++	    (acl->a_other_mask & x) != (richacl_mode_to_mask(mode) & x))
++		return -1;
++
++	/*
++	 * Ignore permissions which the owner is always allowed.
++	 */
++	x &= ~ACE4_POSIX_OWNER_ALLOWED;
++	if ((acl->a_owner_mask & x) != (richacl_mode_to_mask(mode >> 6) & x))
++		return -1;
++
++	if ((ace->e_mask & x) != (ACE4_POSIX_MODE_ALL & x))
++		return -1;
++
++	*mode_p = (*mode_p & ~S_IRWXUGO) | mode;
++	return 0;
++}
++EXPORT_SYMBOL_GPL(richacl_equiv_mode);
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index 15953ae..4eeb22f 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -292,6 +292,7 @@ extern struct richacl *richacl_chmod(struct richacl *, mode_t);
+ extern int richacl_permission(struct inode *, const struct richacl *,
+ 			      unsigned int);
+ extern struct richacl *richacl_inherit(const struct richacl *, int);
++extern int richacl_equiv_mode(const struct richacl *, mode_t *);
  
-+static void enable_acl(struct super_block *sb)
-+{
-+#if !defined(CONFIG_EXT4_FS_POSIX_ACL) && !defined(CONFIG_EXT4_FS_RICHACL)
-+	ext4_msg(sb, KERN_ERR, "acl options not supported");
-+	return;
-+#endif
-+	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_RICHACL)) {
-+		sb->s_flags |= MS_RICHACL;
-+		sb->s_flags &= ~MS_POSIXACL;
-+	} else {
-+		sb->s_flags |= MS_POSIXACL;
-+		sb->s_flags &= ~MS_RICHACL;
-+	}
-+	return;
-+}
-+
-+static void disable_acl(struct super_block *sb)
-+{
-+#if !defined(CONFIG_EXT4_FS_POSIX_ACL) && !defined(CONFIG_EXT4_FS_RICHACL)
-+	ext4_msg(sb, KERN_ERR, "acl options not supported");
-+	return;
-+#endif
-+	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
-+	return;
-+}
-+
- #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
- static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
- 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
-@@ -1585,19 +1613,12 @@ static int parse_options(char *options, struct super_block *sb,
- 			ext4_msg(sb, KERN_ERR, "(no)user_xattr options not supported");
- 			break;
- #endif
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
- 		case Opt_acl:
--			sb->s_flags |= MS_POSIXACL;
-+			enable_acl(sb);
- 			break;
- 		case Opt_noacl:
--			sb->s_flags &= ~MS_POSIXACL;
-+			disable_acl(sb);
- 			break;
--#else
--		case Opt_acl:
--		case Opt_noacl:
--			ext4_msg(sb, KERN_ERR, "(no)acl options not supported");
--			break;
--#endif
- 		case Opt_journal_update:
- 			/* @@@ FIXME */
- 			/* Eventually we will want to be able to create
-@@ -3169,8 +3190,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- #ifdef CONFIG_EXT4_FS_XATTR
- 	set_opt(sb, XATTR_USER);
- #endif
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
--	sb->s_flags |= MS_POSIXACL;
-+#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
-+		enable_acl(sb);
- #endif
- 	set_opt(sb, MBLK_IO_SUBMIT);
- 	if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_DATA)
+ /* richacl_inode.c */
+ extern struct richacl *richacl_inherit_inode(const struct richacl *,
 -- 
 1.7.5.4
 
