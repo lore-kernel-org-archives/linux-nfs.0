@@ -1,41 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:44985 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755320Ab1JTCNd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Oct 2011 22:13:33 -0400
-Received: by ggnb1 with SMTP id b1so2306912ggn.19
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 19:13:32 -0700 (PDT)
-From: Benny Halevy <benny@tonian.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH 6/7] nfsd4: typo logical vs bitwise negate for want_mask
-Date: Wed, 19 Oct 2011 19:13:29 -0700
-Message-Id: <1319076809-13512-1-git-send-email-benny@tonian.com>
-In-Reply-To: <4E9F82FC.2000904@tonian.com>
-References: <4E9F82FC.2000904@tonian.com>
+Received: from e23smtp07.au.ibm.com ([202.81.31.140]:46740 "EHLO
+	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932579Ab1JRPe0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:34:26 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V7 06/26] vfs: Add IS_RICHACL() test for richacl support
+Date: Tue, 18 Oct 2011 21:02:41 +0530
+Message-Id: <1318951981-5508-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@tonian.com>
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+Introduce a new MS_RICHACL super-block flag and a new IS_RICHACL() test
+which file systems like nfs can use.  IS_ACL() is true if IS_POSIXACL()
+or IS_RICHACL() is true.
+
+Acked-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/nfsd/nfs4xdr.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ include/linux/fs.h |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 1a419c0..1a5cb7e 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -671,7 +671,7 @@ static __be32 nfsd4_decode_share_access(struct nfsd4_compoundargs *argp, u32 *x)
- 	default:
- 		return nfserr_bad_xdr;
- 	}
--	w &= !NFS4_SHARE_WANT_MASK;
-+	w &= ~NFS4_SHARE_WANT_MASK;
- 	if (!w)
- 		return nfs_ok;
- 	switch (w) {
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 1994b84..7b4bfe6 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -210,6 +210,7 @@ struct inodes_stat_t {
+ #define MS_KERNMOUNT	(1<<22) /* this is a kern_mount call */
+ #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
+ #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
++#define MS_RICHACL	(1<<25) /* Supports richacls */
+ #define MS_NOSEC	(1<<28)
+ #define MS_BORN		(1<<29)
+ #define MS_ACTIVE	(1<<30)
+@@ -270,6 +271,7 @@ struct inodes_stat_t {
+ #define IS_APPEND(inode)	((inode)->i_flags & S_APPEND)
+ #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
+ #define IS_POSIXACL(inode)	__IS_FLG(inode, MS_POSIXACL)
++#define IS_RICHACL(inode)	__IS_FLG(inode, MS_RICHACL)
+ 
+ #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
+ #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
+@@ -283,7 +285,7 @@ struct inodes_stat_t {
+  * IS_ACL() tells the VFS to not apply the umask
+  * and use check_acl for acl permission checks when defined.
+  */
+-#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL)
++#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL | MS_RICHACL)
+ 
+ /* the read-only stuff doesn't really belong here, but any other place is
+    probably as bad and I don't want to create yet another include file. */
 -- 
-1.7.6
+1.7.5.4
 
