@@ -1,67 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58846 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:26262 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932982Ab1JYMeu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Oct 2011 08:34:50 -0400
-Received: from bfields by fieldses.org with local (Exim 4.72)
-	(envelope-from <bfields@fieldses.org>)
-	id 1RIgDR-00048c-Ig
-	for linux-nfs@vger.kernel.org; Tue, 25 Oct 2011 08:34:49 -0400
-Date: Tue, 25 Oct 2011 08:34:49 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: linux-nfs@vger.kernel.org
-Subject: Re: nfsd (and lock) changes for 3.2
-Message-ID: <20111025123449.GB15662@fieldses.org>
-References: <20111025121924.GA15662@fieldses.org>
+	id S1757126Ab1JRJuq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Oct 2011 05:50:46 -0400
+Message-ID: <4E9D4BF1.9070401@parallels.com>
+Date: Tue, 18 Oct 2011 13:50:41 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111025121924.GA15662@fieldses.org>
+To: Jim Rees <rees@umich.edu>
+CC: Benny Halevy <bhalevy@tonian.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Silence compiler warning
+References: <1318810012-15140-1-git-send-email-rees@umich.edu>
+In-Reply-To: <1318810012-15140-1-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 25, 2011 at 08:19:24AM -0400, bfields wrote:
-> 	- Progress on the basic 4.1 todo's.  Thanks in particular to Mi
-> 	  Jinlong for (among other things) implementing the somewhat
-> 	  tricky DRC limit checking.
-> 
-> 	  The 4.1 code is getting closer--it *might* be possible to
-> 	  finish basic 4.1 early as 3.3, at which point we could start
-> 	  on optional features (like pNFS).  But that will depend on
-> 	  people sending patches (and pynfs tests) for the remaining 4.1
-> 	  todo's.
+I have this warning also:
+fs/nfs/callback_proc.c:116: warning: ‘ino’ may be used uninitialized in this 
+function
 
-I've been keeping the todo list up to date here:
+17.10.2011 04:06, Jim Rees пишет:
+> fs/nfs/callback_proc.c: In function ‘do_callback_layoutrecall’:
+> fs/nfs/callback_proc.c:115:26: warning: ‘lo’ may be used uninitialized in this function
+>
+> No functional change. If no layout is found, we'll return before  using
+> "lo".
+>
+> Signed-off-by: Jim Rees<rees@umich.edu>
+> ---
+>   fs/nfs/callback_proc.c |    2 +-
+>   1 files changed, 1 insertions(+), 1 deletions(-)
+>
+> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+> index 43926ad..93633f1 100644
+> --- a/fs/nfs/callback_proc.c
+> +++ b/fs/nfs/callback_proc.c
+> @@ -112,7 +112,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+>   				  struct cb_layoutrecallargs *args)
+>   {
+>   	struct nfs_server *server;
+> -	struct pnfs_layout_hdr *lo;
+> +	struct pnfs_layout_hdr *lo = NULL;
+>   	struct inode *ino;
+>   	bool found = false;
+>   	u32 rv = NFS4ERR_NOMATCHING_LAYOUT;
 
-	http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues
 
-Some of them I think are relatively straightforward--probably anyone
-with a little time could dive into them:
-
-	- SEQ4_STATUS_RECALLABLE_STATE_REVOKED
-
-	- backchannel attribute negotiation
-
-	- ACL retention bits
-
-	- Clarify RDMA non-support
-
-Slightly trickier or open-ended; we may need to talk over design first
-before diving in:
-
-	- Make DESTROY_SESSION wait on in-progress requests
-
-	- current stateid
-
-	- Check 4.0/4.1 interactions
-
-	- Callback failure handling
-
-	- GSS
-
-The GSS piece is probably the one I'm most worried about.  What we have
-seems sufficient for current clients, but I know it's incomplete, and
-I'm not entirely clear how much work it is to implement the minimum
-required to ensure that future kerberos-using clients won't break
-unexpectedly on upgrade to 4.1.
-
---b.
+-- 
+Best regards,
+Stanislav Kinsbursky
