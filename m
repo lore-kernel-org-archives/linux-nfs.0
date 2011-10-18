@@ -1,20 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp08.au.ibm.com ([202.81.31.141]:55061 "EHLO
-	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932816Ab1JRPek (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:34:40 -0400
-Received: from /spool/local
-	by au.ibm.com with XMail ESMTP
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Tue, 18 Oct 2011 15:33:23 +1000
+Received: from e23smtp07.au.ibm.com ([202.81.31.140]:46819 "EHLO
+	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932936Ab1JRPfL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:35:11 -0400
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
         viro@zeniv.linux.org.uk, dhowells@redhat.com
 Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V7 09/26] vfs: Add delete child and delete self permission flags
-Date: Tue, 18 Oct 2011 21:02:44 +0530
-Message-Id: <1318951981-5508-10-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V7 18/26] richacl: Create-time inheritance
+Date: Tue, 18 Oct 2011 21:02:53 +0530
+Message-Id: <1318951981-5508-19-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -22,146 +18,195 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andreas Gruenbacher <agruen@kernel.org>
 
-Normally, deleting a file requires write access to the parent directory.
-Some permission models use a different permission on the parent
-directory to indicate delete access.  In addition, a process can have
-per-file delete access even without delete access on the parent
-directory.
+When a new file is created, it can inherit an acl from its parent
+directory; this is similar to how default acls work in POSIX (draft)
+ACLs.
 
-Introduce two new inode_permission() mask flags and use them in
-may_delete()
+As with POSIX ACLs, if a file inherits an acl from its parent directory,
+the intersection between the create mode and the permissions granted by
+the inherited acl determines the file masks and file permission bits,
+and the umask is ignored.
 
 Acked-by: David Howells <dhowells@redhat.com>
 Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/namei.c         |   42 ++++++++++++++++++++++++++++--------------
- include/linux/fs.h |    2 ++
- 2 files changed, 30 insertions(+), 14 deletions(-)
+ fs/Makefile             |    2 +-
+ fs/richacl_base.c       |   69 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/richacl_inode.c      |   59 ++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |    4 +++
+ 4 files changed, 133 insertions(+), 1 deletions(-)
+ create mode 100644 fs/richacl_inode.c
 
-diff --git a/fs/namei.c b/fs/namei.c
-index f6184b8..7bf42e8 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -337,7 +337,7 @@ static inline int do_inode_permission(struct inode *inode, int mask)
-  * are used for other things.
-  *
-  * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
-- * MAY_WRITE must also be set in @mask.
-+ * MAY_DELETE_CHILD, MAY_DELETE_SELF, MAY_WRITE must also be set in @mask.
-  */
- int inode_permission(struct inode *inode, int mask)
- {
-@@ -1853,7 +1853,7 @@ static inline int check_sticky(struct inode *dir, struct inode *inode)
- 		return 0;
+diff --git a/fs/Makefile b/fs/Makefile
+index 7612168..1ecf9f2 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -49,7 +49,7 @@ obj-$(CONFIG_GENERIC_ACL)	+= generic_acl.o
  
- other_userns:
--	return !ns_capable(inode_userns(inode), CAP_FOWNER);
-+	return 1;
+ obj-$(CONFIG_FHANDLE)		+= fhandle.o
+ obj-$(CONFIG_FS_RICHACL)	+= richacl.o
+-richacl-y			:= richacl_base.o
++richacl-y			:= richacl_base.o richacl_inode.o
+ 
+ obj-y				+= quota/
+ 
+diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+index e9c2f30..6c7e839 100644
+--- a/fs/richacl_base.c
++++ b/fs/richacl_base.c
+@@ -491,3 +491,72 @@ is_everyone:
+ 	return denied ? -EACCES : 0;
  }
- 
- /*
-@@ -1875,30 +1875,44 @@ other_userns:
-  * 10. We don't allow removal of NFS sillyrenamed files; it's handled by
-  *     nfs_async_unlink().
-  */
--static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
-+static int may_delete(struct inode *dir, struct dentry *victim,
-+		      int isdir, int replace)
- {
--	int error;
-+	struct inode *inode = victim->d_inode;
-+	int mask, replace_mask = 0, error, is_sticky;
+ EXPORT_SYMBOL_GPL(richacl_permission);
 +
++/**
++ * richacl_inherit  -  compute the inherited acl of a new file
++ * @dir_acl:	acl of the containing directory
++ * @isdir:	inherit by a directory or non-directory?
++ *
++ * A directory can have acl entries which files and/or directories created
++ * inside the directory will inherit.  This function computes the acl for such
++ * a new file.  If there is no inheritable acl, it will return %NULL.
++ */
++struct richacl *
++richacl_inherit(const struct richacl *dir_acl, int isdir)
++{
++	const struct richace *dir_ace;
++	struct richacl *acl = NULL;
++	struct richace *ace;
++	int count = 0;
++
++	if (isdir) {
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!richace_is_inheritable(dir_ace))
++				continue;
++			count++;
++		}
++		if (!count)
++			return NULL;
++		acl = richacl_alloc(count);
++		if (!acl)
++			return ERR_PTR(-ENOMEM);
++		ace = acl->a_entries;
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!richace_is_inheritable(dir_ace))
++				continue;
++			memcpy(ace, dir_ace, sizeof(struct richace));
++			if (dir_ace->e_flags & ACE4_NO_PROPAGATE_INHERIT_ACE)
++				richace_clear_inheritance_flags(ace);
++			if ((dir_ace->e_flags & ACE4_FILE_INHERIT_ACE) &&
++			    !(dir_ace->e_flags & ACE4_DIRECTORY_INHERIT_ACE))
++				ace->e_flags |= ACE4_INHERIT_ONLY_ACE;
++			ace++;
++		}
++	} else {
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!(dir_ace->e_flags & ACE4_FILE_INHERIT_ACE))
++				continue;
++			count++;
++		}
++		if (!count)
++			return NULL;
++		acl = richacl_alloc(count);
++		if (!acl)
++			return ERR_PTR(-ENOMEM);
++		ace = acl->a_entries;
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!(dir_ace->e_flags & ACE4_FILE_INHERIT_ACE))
++				continue;
++			memcpy(ace, dir_ace, sizeof(struct richace));
++			richace_clear_inheritance_flags(ace);
++			/*
++			 * ACE4_DELETE_CHILD is meaningless for
++			 * non-directories, so clear it.
++			 */
++			ace->e_mask &= ~ACE4_DELETE_CHILD;
++			ace++;
++		}
++	}
++
++	return acl;
++}
+diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
+new file mode 100644
+index 0000000..f590fb5
+--- /dev/null
++++ b/fs/richacl_inode.c
+@@ -0,0 +1,59 @@
++/*
++ * Copyright (C) 2010  Novell, Inc.
++ * Written by Andreas Gruenbacher <agruen@kernel.org>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#include <linux/sched.h>
++#include <linux/module.h>
++#include <linux/fs.h>
++#include <linux/richacl.h>
++
++/**
++ * richacl_inherit_inode  -  compute inherited acl and file mode
++ * @dir_acl:	acl of the containing directory
++ * @inode:	inode of the new file (create mode in i_mode)
++ *
++ * The file permission bits in inode->i_mode must be set to the create mode.
++ * If there is an inheritable acl, the maximum permissions that the acl grants
++ * will be computed and permissions not granted by the acl will be removed from
++ * inode->i_mode.  If there is no inheritable acl, the umask will be applied
++ * instead.
++ */
++struct richacl *
++richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
++{
++	struct richacl *acl;
++	mode_t mask;
++
++	acl = richacl_inherit(dir_acl, S_ISDIR(inode->i_mode));
++	if (acl) {
++
++		richacl_compute_max_masks(acl);
++
++		/*
++		 * Ensure that the acl will not grant any permissions beyond
++		 * the create mode.
++		 */
++		acl->a_flags |= ACL4_MASKED;
++		acl->a_owner_mask &= richacl_mode_to_mask(inode->i_mode >> 6) |
++				     ACE4_POSIX_OWNER_ALLOWED;
++		acl->a_group_mask &= richacl_mode_to_mask(inode->i_mode >> 3);
++		acl->a_other_mask &= richacl_mode_to_mask(inode->i_mode);
++		mask = ~S_IRWXUGO | richacl_masks_to_mode(acl);
++	} else
++		mask = ~current_umask();
++
++	inode->i_mode &= mask;
++	return acl;
++}
++EXPORT_SYMBOL_GPL(richacl_inherit_inode);
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index 86f7339..15953ae 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -291,5 +291,9 @@ extern void richacl_compute_max_masks(struct richacl *);
+ extern struct richacl *richacl_chmod(struct richacl *, mode_t);
+ extern int richacl_permission(struct inode *, const struct richacl *,
+ 			      unsigned int);
++extern struct richacl *richacl_inherit(const struct richacl *, int);
  
--	if (!victim->d_inode)
-+	if (!inode)
- 		return -ENOENT;
- 
- 	BUG_ON(victim->d_parent->d_inode != dir);
- 	audit_inode_child(victim, dir);
- 
--	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
-+	mask = MAY_WRITE | MAY_EXEC | MAY_DELETE_CHILD;
-+	if (replace)
-+		replace_mask = S_ISDIR(inode->i_mode) ?
-+				MAY_CREATE_DIR : MAY_CREATE_FILE;
-+	is_sticky = check_sticky(dir, inode);
-+	error = inode_permission(dir, mask | replace_mask);
-+	if ((error || is_sticky) && IS_RICHACL(inode) &&
-+	    (inode_permission(dir, MAY_EXEC | replace_mask) == 0) &&
-+	    (inode_permission(inode, MAY_DELETE_SELF) == 0))
-+		error = 0;
-+	else if (!error && is_sticky &&
-+		 !ns_capable(inode_userns(inode), CAP_FOWNER))
-+		error = -EPERM;
- 	if (error)
- 		return error;
- 	if (IS_APPEND(dir))
- 		return -EPERM;
--	if (check_sticky(dir, victim->d_inode)||IS_APPEND(victim->d_inode)||
--	    IS_IMMUTABLE(victim->d_inode) || IS_SWAPFILE(victim->d_inode))
-+	if (IS_APPEND(inode) || IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
- 		return -EPERM;
- 	if (isdir) {
--		if (!S_ISDIR(victim->d_inode->i_mode))
-+		if (!S_ISDIR(inode->i_mode))
- 			return -ENOTDIR;
- 		if (IS_ROOT(victim))
- 			return -EBUSY;
--	} else if (S_ISDIR(victim->d_inode->i_mode))
-+	} else if (S_ISDIR(inode->i_mode))
- 		return -EISDIR;
- 	if (IS_DEADDIR(dir))
- 		return -ENOENT;
-@@ -2605,7 +2619,7 @@ void dentry_unhash(struct dentry *dentry)
- 
- int vfs_rmdir(struct inode *dir, struct dentry *dentry)
- {
--	int error = may_delete(dir, dentry, 1);
-+	int error = may_delete(dir, dentry, 1, 0);
- 
- 	if (error)
- 		return error;
-@@ -2700,7 +2714,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
- 
- int vfs_unlink(struct inode *dir, struct dentry *dentry)
- {
--	int error = may_delete(dir, dentry, 0);
-+	int error = may_delete(dir, dentry, 0, 0);
- 
- 	if (error)
- 		return error;
-@@ -3096,14 +3110,14 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	if (old_dentry->d_inode == new_dentry->d_inode)
-  		return 0;
-  
--	error = may_delete(old_dir, old_dentry, is_dir);
-+	error = may_delete(old_dir, old_dentry, is_dir, 0);
- 	if (error)
- 		return error;
- 
- 	if (!new_dentry->d_inode)
- 		error = may_create(new_dir, new_dentry, is_dir);
- 	else
--		error = may_delete(new_dir, new_dentry, is_dir);
-+		error = may_delete(new_dir, new_dentry, is_dir, 1);
- 	if (error)
- 		return error;
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 60361c6..ccece40 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -69,6 +69,8 @@ struct inodes_stat_t {
- #define MAY_NOT_BLOCK		0x00000080
- #define MAY_CREATE_FILE		0x00000100
- #define MAY_CREATE_DIR		0x00000200
-+#define MAY_DELETE_CHILD	0x00000400
-+#define MAY_DELETE_SELF		0x00000800
- 
- /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
++/* richacl_inode.c */
++extern struct richacl *richacl_inherit_inode(const struct richacl *,
++					     struct inode *);
+ #endif /* __RICHACL_H */
 -- 
 1.7.5.4
 
