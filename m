@@ -1,75 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:39766 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751563Ab1JFMwt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Oct 2011 08:52:49 -0400
-Received: by wyg34 with SMTP id 34so2768338wyg.19
-        for <linux-nfs@vger.kernel.org>; Thu, 06 Oct 2011 05:52:47 -0700 (PDT)
-Message-ID: <4E8DA49A.6@tonian.com>
-Date: Thu, 06 Oct 2011 14:52:42 +0200
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: Jim Rees <rees@umich.edu>
-CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: Re: Block layout status
-References: <20110929165253.GC3724@umich.edu>
-In-Reply-To: <20110929165253.GC3724@umich.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:28451 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751474Ab1JRSlR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 14:41:17 -0400
+Subject: Re: [PATCH -V7 25/26] ext4: Implement rich acl for ext4
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+From: Andreas Dilger <adilger@dilger.ca>
+In-Reply-To: <1318951981-5508-26-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Date: Tue, 18 Oct 2011 12:41:15 -0600
+Cc: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Message-Id: <BCAE5666-30A1-484A-9808-B52E5B422A3F@dilger.ca>
+References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1318951981-5508-26-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-09-29 19:52, Jim Rees wrote:
-> Since the call doesn't seem to be happening, here's my status.
+On 2011-10-18, at 9:33 AM, Aneesh Kumar K.V wrote:
+> From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 > 
-> On 16 Sep I sent these bug fixes to Trond for 3.1:
-> 
-> Jim Rees (2):
->   pnfsblock: fix size of upcall message     
->   pnfsblock: fix return code confusion          
-> Peng Tao (3):
->   pnfsblock: fix NULL pointer dereference                
->   pnfsblock: fix writeback deadlock   
->   pnfsblock: add missing rpc_put_mount and path_put
-> 
-> These are the ones I think are important enough, and low enough risk to
-> anyone else, that they should be considered for 3.1 even though it's late in
-> the release cycle.  They have not shown up upstream.  Trond?
-> 
-> On 22 Sep I sent these to Trond for 3.2.  I believe these are all in Benny's
-> tree now (sorry about that, Benny):
-> 
-> Jim Rees (2):
->   pnfsblock: fix return code confusion
->   pnfsblock: fix size of upcall message
-> Peng Tao (8):
->   SUNRPC/NFS: make rpc pipe upcall generic
->   pnfsblock: add missing rpc_put_mount and path_put
->   pnfs: make _set_lo_fail generic
-> - pnfsblock: init pg_bsize properly
->   pnfs: recoalesce when ld write pagelist fails
->   pnfs: recoalesce when ld read pagelist fails
->   pnfsblock: fix NULL pointer dereference
->   pnfsblock: fix writeback deadlock
-> 
-> This includes all the bug fixes for 3.1 plus some others that are less
-> important or higher risk.  Notice that "init pg_bsize properly" is wrong and
-> should not be used.  Benny, you may want to remove this from your tree, or I
-> can send a revert patch.
+> Support the richacl permission model in ext4.  The richacls are stored
+> in "system.richacl" xattrs.This need to be enabled by tune2fs or during
+> mkfs.ext4
 
-Done.  Released under pnfs-all-3.1-rc8-2011-10-06
+It isn't clear from your commit comment or the code what needs to be enabled by tune2fs or mkfs.ext4.  Please list the specific ext4 feature
+that needs to be enabled.
 
-Thanks,
-
-Benny
-
+> +#ifdef CONFIG_EXT4_FS_RICHACL
+> +#define EXT4_IS_RICHACL(inode) IS_RICHACL(inode)
 > 
-> Missing from these is one more, "nfs4: serialize layoutcommit" that's
-> important but I somehow missed it.
-> 
-> The recent automount changes really screwed us up but I just built a kernel
-> from Linus's latest, which includes the patches from Trond, and it passes
-> all tests so I think we're still ok for 3.1.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+> +#else  /* CONFIG_FS_EXT4_RICHACL */
+> +
+> +#define EXT4_IS_RICHACL(inode) (0)
+
+It is a bit confusing that you are using both EXT4_IS_RICHACL() and
+IS_RICHACL() in this code.  Initially I thought EXT4_IS_RICHACL() was
+checking an ext4-specific inode flag, but it seems that it is instead
+conditional upon the configure flags.
+
+It looks like it should be possible to use EXT4_IS_RICHACL() in all
+of the code, since the richacl-specific code will not be compiled
+anyway.
+
+Cheers, Andreas
+
+
+
+
+
