@@ -1,59 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:32940 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751039Ab1J2FZs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 01:25:48 -0400
-Message-ID: <4EAB8E4D.5050001@panasas.com>
-Date: Fri, 28 Oct 2011 22:25:33 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Benny Halevy <bhalevy@tonian.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, Benny Halevy <benny@tonian.com>,
-        <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC] nfsd4: DEBUG: XDR_ERROR()
-References: <1319741351-3794-1-git-send-email-benny@tonian.com> <20111028113443.GA3445@fieldses.org> <4EAA9B73.2030306@tonian.com>
-In-Reply-To: <4EAA9B73.2030306@tonian.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from e23smtp08.au.ibm.com ([202.81.31.141]:55114 "EHLO
+	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932931Ab1JRPfH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:35:07 -0400
+Received: from /spool/local
+	by au.ibm.com with XMail ESMTP
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Tue, 18 Oct 2011 15:33:50 +1000
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V7 16/26] richacl: Update the file masks in chmod()
+Date: Tue, 18 Oct 2011 21:02:51 +0530
+Message-Id: <1318951981-5508-17-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/28/2011 05:09 AM, Benny Halevy wrote:
-> 
-> I agree with all of the above but its a project larger than I can
-> chew right now.  This patch just improves the existing mechanism, for
-> development use, to help catch parser bugs rather than actual xdr errors.
-> 
-<>
+From: Andreas Gruenbacher <agruen@kernel.org>
 
->>>  
->>> +#define XDR_ERROR()	do {			\
->>> +	dprintk("NFSD: xdr error (%s:%d)\n",	\
->>> +			__FILE__, __LINE__);	\
->>> +	goto xdr_error;				\
->>> +} while (0)
->>> +
+Doing a chmod() sets the file mode, which includes the file permission
+bits.  When a file has a richacl, the permissions that the richacl
+grants need to be limited to what the new file permission bits allow.
 
-What about a compromise:
+This is done by setting the file masks in the richacl to what the file
+permission bits map to.  The richacl access check algorithm takes the
+file masks into account, which ensures that the richacl cannot grant too
+many permissions.
 
-+#define GOTO_XDR_ERROR()	do {			\
-+	dprintk("NFSD: xdr error (%s:%d)\n",	\
-+			__FILE__, __LINE__);	\
-+	goto xdr_error;				\
-+} while (0)
+It is possible to explicitly add permissions to the file masks which go
+beyond what the file permission bits can grant (like the ACE4_WRITE_ACL
+permission).  The POSIX.1 standard calls this an alternate file access
+control mechanism.  A subsequent chmod() would ensure that those
+permissions are disabled again.
 
-or even:
+Acked-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/richacl_base.c       |   40 ++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |    1 +
+ 2 files changed, 41 insertions(+), 0 deletions(-)
 
-+#define XDR_ERROR_GOTO(xdr_error)	do {	\
-+	dprintk("NFSD: xdr error (%s:%d)\n",	\
-+			__FILE__, __LINE__);	\
-+	goto xdr_error;				\
-+} while (0)
+diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+index a0197ed..a5f215e 100644
+--- a/fs/richacl_base.c
++++ b/fs/richacl_base.c
+@@ -352,3 +352,43 @@ restart:
+ 	acl->a_flags &= ~ACL4_MASKED;
+ }
+ EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
++
++/**
++ * richacl_chmod  -  update the file masks to reflect the new mode
++ * @mode:	new file permission bits
++ *
++ * Return a copy of @acl where the file masks have been replaced by the file
++ * masks corresponding to the file permission bits in @mode, or returns @acl
++ * itself if the file masks are already up to date.  Takes over a reference
++ * to @acl.
++ */
++struct richacl *
++richacl_chmod(struct richacl *acl, mode_t mode)
++{
++	unsigned int owner_mask, group_mask, other_mask;
++	struct richacl *clone;
++
++	owner_mask = richacl_mode_to_mask(mode >> 6) |
++		     ACE4_POSIX_OWNER_ALLOWED;
++	group_mask = richacl_mode_to_mask(mode >> 3);
++	other_mask = richacl_mode_to_mask(mode);
++
++	if (acl->a_owner_mask == owner_mask &&
++	    acl->a_group_mask == group_mask &&
++	    acl->a_other_mask == other_mask &&
++	    (acl->a_flags & ACL4_MASKED))
++		return acl;
++
++	clone = richacl_clone(acl);
++	richacl_put(acl);
++	if (!clone)
++		return ERR_PTR(-ENOMEM);
++
++	clone->a_flags |= ACL4_MASKED;
++	clone->a_owner_mask = owner_mask;
++	clone->a_group_mask = group_mask;
++	clone->a_other_mask = other_mask;
++
++	return clone;
++}
++EXPORT_SYMBOL_GPL(richacl_chmod);
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index ded57e9..be7db1f 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -288,5 +288,6 @@ extern int richacl_masks_to_mode(const struct richacl *);
+ extern unsigned int richacl_mode_to_mask(mode_t);
+ extern unsigned int richacl_want_to_mask(unsigned int);
+ extern void richacl_compute_max_masks(struct richacl *);
++extern struct richacl *richacl_chmod(struct richacl *, mode_t);
+ 
+ #endif /* __RICHACL_H */
+-- 
+1.7.5.4
 
-and XDR_ERROR_GOTO(xdr_error) every where.
-
-So the patch below stays exactly the same size
-but the goto is not masked out, and no one can
-complain about things happening hidden underground.
-
-Just My $0.017
-Boaz
