@@ -1,187 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:36457 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:46689 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934481Ab1JER1M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Oct 2011 13:27:12 -0400
-Message-ID: <4E8C9363.9030303@parallels.com>
-Date: Wed, 05 Oct 2011 21:26:59 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+	id S1751573Ab1JSRcq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Oct 2011 13:32:46 -0400
+Message-ID: <4E9F09B9.4010202@RedHat.com>
+Date: Wed, 19 Oct 2011 13:32:41 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>,
-        "Kirill A. Shutemov" <kas@openvz.org>,
-        "jlayton@redhat.com" <jlayton@redhat.com>
-Subject: Re: network-namespace-aware nfsd
-References: <20111005150214.GA18449@fieldses.org>
-In-Reply-To: <20111005150214.GA18449@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+CC: Jeff Layton <jlayton@poochiereds.net>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] mount.nfs: mtab corruption when RLIMIT_FSIZE causes
+ a partial write
+References: <1319038470-17750-1-git-send-email-steved@redhat.com> <20111019123626.7a80dfad@corrin.poochiereds.net> <4E9F047B.5000600@RedHat.com> <20111019172855.GB32028@fieldses.org>
+In-Reply-To: <20111019172855.GB32028@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-05.10.2011 19:02, J. Bruce Fields пишет:
-> This is a draft outline what we'd need to support containerized nfs
-> service; please tell me what I've got wrong.
->
-> The goal is to give the impression of running multiple virtual nfs
-> services, each with its own ip address or addresses.
->
-> A new nfs service will be started by forking off a new network
-> namespace, setting up interfaces there, and then starting nfs service
-> normally (including starting all the appropriate userland daemons, such
-> as rpc.mountd).
->
-
-Hello, Bruce.
-What do you mean by "nfs service will be started by forking off a new network 
-namespace"?
-Does it means, that each nfs service start will create new network namespace?
-If so, what about if some process in freshly create namespace will start nfs 
-service?
-
-> This requires no changes to existing userland code.  Instead, the kernel
-> side of each userland interface needs to be made aware of the network
-> namespace of the userland process it is talking to.
->
-> The kernel handles requests using a pool of threads, with the number of
-> threads controlled by writing to the "threads"  file in the "nfsd"
-> filesystem.  The files are also used to start the server (and to stop
-> it, by writing zero for the number of threads).
->
-> To conserve memory, I would prefer to have all of the virtual servers
-> share the same threads, rather than dedicating a separate set of threads
-> to each network namespace.  So:
->
-> Minimum functionality
-> ---------------------
->
-> To get something minimal working, we need the rpc work that's in
-> progress.
->
-> In addition, we need the nfsd/threads interface to remember the value
-> set for each network namespace.  Writing to it will adjust the number of
-> threads, probably to the maximum value across all namespaces.
->
-> In addition, when the per-namespace value changes from zero to nonzero
-> or vice-versa, we need to trigger, respectively, starting or stopping
-> the per-namespace virtual server.  That means setting up or shutting
-> down sockets, and initializing or destroying any per-namespace state (as
-> required depending on NFS version, see below).
->
-> Also, nfsd/pool_threads probably needs similar treatment.
->
-> The nfsd/ports interface allows setting up listening sockets by hand.  I
-> suspect it needs at most trivial changes.
->
-
-If I understood you right, you want to share nfsd threads between environments 
-and any of this threads can handle requests for different environments.
-Am I right?
-If not - then what the difference with separated nfs servers?
-If yes, then will not we get problems with handling requests to container files 
-with changed root?
-
-And what about versions file? If we will share all kernel threads, doesn't it 
-means, that we can't tune supported versions per network namespace?
-
-> NFSv4
-> -----
->
-> To make NFSv4 work, we need per-network-namespace state that is
-> initialized and destroyed on startup and shutdown of a virtual nfs
-> server.  Each client therefore needs to be associated with a network
-> namespace, so it can be shut down at the right time, and so that we
-> consistently handle, for example, a broken NFSv4.0 client that sends the
-> same long-form identifier to servers with different IP addresses.
->
-> For 4.1 we have the option of sharing state between servers if we'd
-> like.  Initially simplest is to advertise the servers as entirely
-> distinct, without the ability to share any state.
->
-> The directory used for recovery data needs to be per-network-namespace.
-> If we replace it by something else, we'll need to make sure it's
-> namespace-aware.
->
-> NFSv2/v3
-> --------
->
-> For v2/v3 locking to work we also need per-network-namespace lockd and
-> statd state.
->
-
-What do you think about lockd kernel thread?
-I mean, do you want to share one thread for all network namespaces or create one 
-thread per network namespace?
-
-> Note that there is a separate loopback interface per network namespace,
-> so the kernel can communicate separately with statd's in different
-> namespaces.  (statd communicates with the kernel over the loopback
-> interface).
->
-> krb5
-> ----
->
-> Different servers likely want different kerberos identities.  To make
-> this work we need separate auth.rpcsec.context and auth.rpcsec.init
-> caches for each network namespace.
->
-> Independent export trees
-> ------------------------
->
-> If we want to allow, for example, different filesystems to be exported
-> from different virtual servers, then we need per-namespace nfsd.export,
-> expkey, and auth.unix.ip caches.
->
-> Caches in general
-> -----------------
->
-> To containerize the /proc/net/rpc/* interfaces (as needed for the krb5
-> independent export trees), we need the content, channel, and flush files
-> to all be network-namespace-aware, so we want entirely separate caches
-> for each namespace.
->
-> I'm not sure whether that's best done by having lookups done in each
-> namespace get entirely different inodes, or whether the underlying
-> inodes should be shared and net/sunrpc/cache.c:cache_open() should
-> switch caches based on the network namespace of the opener.
->
-> Maybe some day
-> --------------
->
-> Not urgent, but possibly should be made namespace-aware some day:
->
-> 	- leasetime, gracetime: per-netns ideal but not
-> 	  required?  Probably more useful for gracetime.
->
-> 	- unlock_ip: should be per-netns, maybe, low priority
->
-> 	- unlock_fs: should be per-fsns, maybe, ignore for now.
->
-> 	- nfs4.idtoname, nfs4.nametoid, could be per-netns, or would
-> 	  they need to be per-uidns?
->
-> 	- we could allow turning on nfs versions per-netns, but for now
-> 	  that seems unnecessary.
->
-> 	- maxblksize: ditto.  Keep it global, or take the maximum across
-> 	  values given in each netns.
->
-> Should be non-issues:
->
-> 	- export_features, supported_enctypes: global, nothing
-> 	  to do.
->
-> 	- filehandle: path->filehandle mapping should already be
-> 	  per-fs, hopefully no changes required.
->
-> 	- auth.unix.gid
-> 		- keep global for now.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
--- 
-Best regards,
-Stanislav Kinsbursky
+On 10/19/2011 01:28 PM, J. Bruce Fields wrote:
+> On Wed, Oct 19, 2011 at 01:10:19PM -0400, Steve Dickson wrote:
+>>
+>>
+>> On 10/19/2011 12:36 PM, Jeff Layton wrote:
+>>> On Wed, 19 Oct 2011 11:34:30 -0400
+>>> Steve Dickson <steved@redhat.com> wrote:
+>>>
+>>>> This patch is a following on to commit 7a802337. Using the
+>>>> tool in https://bugzilla.redhat.com/show_bug.cgi?id=695916
+>>>> caused the fflush() and fclose() to fail in turn causing
+>>>> corruption in the mtab.
+>>>>
+>>>> The failures were in the internals of both calls. Switch those
+>>>> calls with the actual system calls eliminated the failures.
+>>>>
+>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>>>> ---
+>>>>  support/nfs/nfs_mntent.c |    4 ++--
+>>>>  1 files changed, 2 insertions(+), 2 deletions(-)
+>>>>
+>>>> diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
+>>>> index a2118a2..b80f270 100644
+>>>> --- a/support/nfs/nfs_mntent.c
+>>>> +++ b/support/nfs/nfs_mntent.c
+>>>> @@ -117,7 +117,7 @@ void
+>>>>  nfs_endmntent (mntFILE *mfp) {
+>>>>  	if (mfp) {
+>>>>  		if (mfp->mntent_fp)
+>>>> -			fclose(mfp->mntent_fp);
+>>>> +			close(fileno(mfp->mntent_fp));
+>>>>  		if (mfp->mntent_file)
+>>>>  			free(mfp->mntent_file);
+>>>>  		free(mfp);
+>>>> @@ -147,7 +147,7 @@ nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
+>>>>  	free(m3);
+>>>>  	free(m4);
+>>>>  	if (res >= 0) {
+>>>> -		res = fflush(mfp->mntent_fp);
+>>>> +		res = fsync(fileno(mfp->mntent_fp));
+>>>
+>>> fsync doesn't imply an fflush. With this, I think you may end up
+>>> without everything being committed to disk if part or all of it is
+>>> still in the file stream buffer. You probably want to do an fflush()
+>>> and then an fsync here.
+>> The problem was with the fflush() call. The call was causing the
+>> mount to drop core in turn causing mtab corruption. Changing that
+>> call to a fsync() worked just fine... no corruption... every time! 
+> 
+> Looking at man setrlimit....  If you're worried about RLIMIT_FSIZE, then
+> I guess you need to handle SIGXFSZ and EFBIG returns from write().
+> 
+> It looks like lock_mtab() already sets SIGXFSZ to be ignored.  Is a libc
+> bug crashing fflush on EFBIG?  Or maybe the ftruncate is a problem?
+> Maybe you just want to do away with stream IO completely?
+Calling fsync() clearly works. So why are looking for alternative
+solutions??
+
+steved.
+ 
