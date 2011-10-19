@@ -1,66 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36972 "EHLO mx2.netapp.com"
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:34760 "EHLO e8.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751757Ab1JKMxL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Oct 2011 08:53:11 -0400
+	id S1751315Ab1JSFpN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Oct 2011 01:45:13 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Andreas Dilger <adilger@dilger.ca>
+Cc: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V7 25/26] ext4: Implement rich acl for ext4
+In-Reply-To: <BCAE5666-30A1-484A-9808-B52E5B422A3F@dilger.ca>
+References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1318951981-5508-26-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <BCAE5666-30A1-484A-9808-B52E5B422A3F@dilger.ca>
+Date: Wed, 19 Oct 2011 11:13:40 +0530
+Message-ID: <8739ep7cz7.fsf@linux.vnet.ibm.com>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: [PATCH 3/4] sunrpc: make rpc_wait_bit_killable handle freeze events
-Date: Tue, 11 Oct 2011 05:52:57 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B91E852@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <20111011061221.2a4a212f@tlielax.poochiereds.net>
-References: <1317210761-11518-1-git-send-email-jlayton@redhat.com><1317210761-11518-4-git-send-email-jlayton@redhat.com><20111011061923.GC1377@ucw.cz> <20111011061221.2a4a212f@tlielax.poochiereds.net>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Jeff Layton" <jlayton@redhat.com>, "Pavel Machek" <pavel@ucw.cz>
-Cc: <smfrench@gmail.com>, <rjw@sisk.pl>, <linux-pm@lists.linux-foundation.org>,
-        <linux-cifs@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <john@Calva.COM>, <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Jeff Layton [mailto:jlayton@redhat.com]
-> Sent: Tuesday, October 11, 2011 6:12 AM
-> To: Pavel Machek
-> Cc: Myklebust, Trond; smfrench@gmail.com; rjw@sisk.pl; linux-
-> pm@lists.linux-foundation.org; linux-cifs@vger.kernel.org; linux-
-> nfs@vger.kernel.org; john@Calva.COM; linux-kernel@vger.kernel.org
-> Subject: Re: [PATCH 3/4] sunrpc: make rpc_wait_bit_killable handle
-freeze
-> events
+On Tue, 18 Oct 2011 12:41:15 -0600, Andreas Dilger <adilger@dilger.ca> wrote:
+> On 2011-10-18, at 9:33 AM, Aneesh Kumar K.V wrote:
+> > From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+> > 
+> > Support the richacl permission model in ext4.  The richacls are stored
+> > in "system.richacl" xattrs.This need to be enabled by tune2fs or during
+> > mkfs.ext4
 > 
-> On Tue, 11 Oct 2011 08:19:23 +0200
-> Pavel Machek <pavel@ucw.cz> wrote:
-> 
-> > On Wed 2011-09-28 07:52:40, Jeff Layton wrote:
-> > > Allow the wait_on_bit_killable sleeps in SUNRPC layer to respect
-the
-> > > freezer. This should allow suspend and hibernate events to occur,
-> > > even when there are RPC's pending on the wire.
-> >
-> > Will the RPC protocols used handle that correctly? What will happen
-> > during resume?
-> >
-> 
-> That depends on the state of the socket during resume. If the
-> suspend/resume is quick enough, then the socket may still be
-connected, or
-> if we're using UDP then we might just get the reply and carry on
-successfully.
-> Otherwise, the call will eventually time out, or will be cancelled
-when the
-> kernel finds that the socket has been closed.
-> 
-> Either way, this should do the right thing.
+> It isn't clear from your commit comment or the code what needs to be enabled by tune2fs or mkfs.ext4.  Please list the specific ext4 feature
+> that needs to be enabled.
 
-Well... The problem when this sort of thing happens is with the replay
-cache. If the RPC in question was a mkdir, for instance, then replaying
-the RPC call when you wake up can be problematic because chances are
-that the server will have forgotten who created the directory, and so
-will reply with EEXIST instead of OK.
-However this is a generic problem when the client is unable to talk to
-the server for a while, and is not particular to suspend.
 
-Cheers
-  Trond
+The last patch explains the feature flag details 
+http://article.gmane.org/gmane.linux.kernel/1204873
+
+I am adding a new compat feature flag to indicate richacl is
+enabled.
+
+> 
+> > +#ifdef CONFIG_EXT4_FS_RICHACL
+> > +#define EXT4_IS_RICHACL(inode) IS_RICHACL(inode)
+> > 
+> 
+> > +#else  /* CONFIG_FS_EXT4_RICHACL */
+> > +
+> > +#define EXT4_IS_RICHACL(inode) (0)
+> 
+> It is a bit confusing that you are using both EXT4_IS_RICHACL() and
+> IS_RICHACL() in this code.  Initially I thought EXT4_IS_RICHACL() was
+> checking an ext4-specific inode flag, but it seems that it is instead
+> conditional upon the configure flags.
+> 
+
+The reason is to not do the superblock flag check when EXT4_FS_RICHACL is not
+enabled.
+
+
+> It looks like it should be possible to use EXT4_IS_RICHACL() in all
+> of the code, since the richacl-specific code will not be compiled
+> anyway.
+> 
+
+The reasoning is, all richacl specific code do check for whether
+MS_RICHACL is enabled or not and the common file system code does
+something similar to EXT4_IS_RICHACL() that is (0) when the file
+system is not compiled with richacl option.
+
+-aneesh
