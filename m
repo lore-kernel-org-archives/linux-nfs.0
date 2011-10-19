@@ -1,50 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48240 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:13197 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751556Ab1JSQnQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Oct 2011 12:43:16 -0400
-Date: Wed, 19 Oct 2011 12:42:16 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: agruen@kernel.org, akpm@linux-foundation.org, viro@zeniv.linux.org.uk,
-        dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V7 08/26] vfs: Add new file and directory create
- permission flags
-Message-ID: <20111019164216.GC30864@fieldses.org>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1318951981-5508-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	id S1755659Ab1JSRKV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Oct 2011 13:10:21 -0400
+Message-ID: <4E9F047B.5000600@RedHat.com>
+Date: Wed, 19 Oct 2011 13:10:19 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1318951981-5508-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+To: Jeff Layton <jlayton@poochiereds.net>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] mount.nfs: mtab corruption when RLIMIT_FSIZE causes
+ a partial write
+References: <1319038470-17750-1-git-send-email-steved@redhat.com> <20111019123626.7a80dfad@corrin.poochiereds.net>
+In-Reply-To: <20111019123626.7a80dfad@corrin.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 18, 2011 at 09:02:43PM +0530, Aneesh Kumar K.V wrote:
-> From: Andreas Gruenbacher <agruen@kernel.org>
+
+
+On 10/19/2011 12:36 PM, Jeff Layton wrote:
+> On Wed, 19 Oct 2011 11:34:30 -0400
+> Steve Dickson <steved@redhat.com> wrote:
 > 
-> Some permission models distinguish between the permission to create a
-> non-directory and a directory.  Pass this information down to
-> inode_permission() as mask flags
-...
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index f3ebf86..60361c6 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -67,6 +67,8 @@ struct inodes_stat_t {
->  #define MAY_CHDIR		0x00000040
->  /* called from RCU mode, don't block */
->  #define MAY_NOT_BLOCK		0x00000080
-> +#define MAY_CREATE_FILE		0x00000100
-> +#define MAY_CREATE_DIR		0x00000200
+>> This patch is a following on to commit 7a802337. Using the
+>> tool in https://bugzilla.redhat.com/show_bug.cgi?id=695916
+>> caused the fflush() and fclose() to fail in turn causing
+>> corruption in the mtab.
+>>
+>> The failures were in the internals of both calls. Switch those
+>> calls with the actual system calls eliminated the failures.
+>>
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> ---
+>>  support/nfs/nfs_mntent.c |    4 ++--
+>>  1 files changed, 2 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
+>> index a2118a2..b80f270 100644
+>> --- a/support/nfs/nfs_mntent.c
+>> +++ b/support/nfs/nfs_mntent.c
+>> @@ -117,7 +117,7 @@ void
+>>  nfs_endmntent (mntFILE *mfp) {
+>>  	if (mfp) {
+>>  		if (mfp->mntent_fp)
+>> -			fclose(mfp->mntent_fp);
+>> +			close(fileno(mfp->mntent_fp));
+>>  		if (mfp->mntent_file)
+>>  			free(mfp->mntent_file);
+>>  		free(mfp);
+>> @@ -147,7 +147,7 @@ nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
+>>  	free(m3);
+>>  	free(m4);
+>>  	if (res >= 0) {
+>> -		res = fflush(mfp->mntent_fp);
+>> +		res = fsync(fileno(mfp->mntent_fp));
+> 
+> fsync doesn't imply an fflush. With this, I think you may end up
+> without everything being committed to disk if part or all of it is
+> still in the file stream buffer. You probably want to do an fflush()
+> and then an fsync here.
+The problem was with the fflush() call. The call was causing the
+mount to drop core in turn causing mtab corruption. Changing that
+call to a fsync() worked just fine... no corruption... every time! 
 
-Hm, are the flags in fs/nfsd/vfs.h going to need fixing up?
+steved.
 
-Looking at the nfsd code....  No, I guess it's OK, nfsd does
-
-	err = inode_permission(inode, acc & (MAY_READ|MAY_WRITE|MAY_EXEC));
-
-So we can wait to fix up any collisions until we need to pass these
-extra bits.
-
---b.
+> 
+>>  		if (res < 0)
+>>  			/* Avoid leaving a corrupt mtab file */
+>>  			ftruncate(fileno(mfp->mntent_fp), length);
+> 
+> 
