@@ -1,59 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:16515 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:35542 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750759Ab1JUSZr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Oct 2011 14:25:47 -0400
-Message-ID: <4EA1B919.5060801@netapp.com>
-Date: Fri, 21 Oct 2011 14:25:29 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S932072Ab1JSWV7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Oct 2011 18:21:59 -0400
+Date: Wed, 19 Oct 2011 18:21:51 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: agruen@kernel.org, akpm@linux-foundation.org, viro@zeniv.linux.org.uk,
+        dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V7 00/26]  New ACL format for better NFSv4 acl
+ interoperability
+Message-ID: <20111019222151.GC1874@fieldses.org>
+References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: fix for open leaks, for 3.2
-References: <1318888557-14719-1-git-send-email-bfields@redhat.com> <20111017215741.GE13368@fieldses.org> <4E9CA591.8050708@netapp.com>
-In-Reply-To: <4E9CA591.8050708@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/17/2011 06:00 PM, Bryan Schumaker wrote:
-> On 10/17/2011 05:57 PM, J. Bruce Fields wrote:
->> On Mon, Oct 17, 2011 at 05:55:49PM -0400, J. Bruce Fields wrote:
->>> Bryan Schumaker noticed that we have a longstanding leak of an open
->>> owner each time the first open with a new open owner fails.
->>>
->>> The following patches fix that, along with a few other less likely leaks
->>> that occur if a memory allocation fails after a file is created.
->>
->> By the way, Bryan, I didn't try to write a real test case for that
->> leak--would it be easy for you to rerun the test you were running before
->> and verify whether it's gone?
+On Tue, Oct 18, 2011 at 09:02:35PM +0530, Aneesh Kumar K.V wrote:
+> Hi,
 > 
-> Sure, no problem.  I'll let you know what I find.
+> The following set of patches implements VFS and ext4 changes needed to implement
+> a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
+> extended by file masks to fit into the standard POSIX file permission model.
+> They are designed to work seamlessly locally as well as across the NFSv4 and
+> CIFS/SMB2 network file system protocols.
 
-Looks like these patches worked.  I never deleted more than one client structure during my test.
+Except for two questions in replies to individual patches, these look
+good to me.
 
-- Bryan
+--b.
+
 > 
-> - Bryan
->>
->> --b.
->>
->>>
->>> I intend to commit these to for-3.2.  Any review welcomed.
->>>
->>> --b.
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> A user-space utility for displaying and changing richacls is available at [4]
+> (a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+> [4] git://github.com/kvaneesh/richacl-tools.git master
+> 
+> To test richacl on ext4 use tune2fs -O richacl to enable richacl feature and mount
+> the file system using -o acl mount option.
+> 
+> More details regarding richacl can be found at
+> http://acl.bestbits.at/richacl/
+> 
+> Changes from v6:
+> a) Update patches based on review comments.
+> b) Add Acked-by:
+> c) rebase to 3.1-rc10
+> 
+> git repository With all the patches can be found at
+> git://github.com/kvaneesh/linux.git richacl
+> 
+> IMHO the patches are ready to be merged upstream. How do we push these changes
+> to Linus tree ? Andrew, Viro, any comment on how we can get this merged upstream ?
+> 
+> -aneesh
+> 
+> 
