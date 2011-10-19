@@ -1,40 +1,150 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:57756 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753503Ab1JTQP1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Oct 2011 12:15:27 -0400
-Message-ID: <4EA04903.1030300@panasas.com>
-Date: Thu, 20 Oct 2011 09:14:59 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: Benny Halevy <bhalevy@tonian.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Benny Halevy <benny@tonian.com>, <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 6/7] nfsd4: typo logical vs bitwise negate for want_mask
-References: <956652236-1319113365-cardhu_decombobulator_blackberry.rim.net-813536196-@b18.c3.bise3.blackberry> <20111020122601.GK28630@pad.fieldses.org>
-In-Reply-To: <20111020122601.GK28630@pad.fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-qy0-f181.google.com ([209.85.216.181]:57299 "EHLO
+	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751544Ab1JSPqA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Oct 2011 11:46:00 -0400
+Received: by qyk27 with SMTP id 27so1825011qyk.19
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 08:46:00 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs: when attempting to open a directory, fall back on normal lookup (try #2)
+Date: Wed, 19 Oct 2011 11:45:54 -0400
+Message-Id: <1319039154-6694-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1316695057-11610-1-git-send-email-jlayton@redhat.com>
+References: <1316695057-11610-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/20/2011 05:26 AM, J. Bruce Fields wrote:
-> On Thu, Oct 20, 2011 at 12:22:41PM +0000, Benny Halevy wrote:
->> The other patch was for the deny bits this is for the want mask...
->> Similar bug, different place :)
-> 
-> Oog, sorry!  OK, applying.
-> 
-> (And in fact I made the same ! for ~ mistake in one other place in the
-> last week that got caught by regression testing before I posted it.  I
-> need to teach my editor to highlight !'s in blinking red, or
-> something....)
-> 
+commit d953126 changed how nfs_atomic_lookup handles an -EISDIR return
+from an OPEN call. Prior to that patch, that caused the client to fall
+back to doing a normal lookup. When that patch went in, the code began
+returning that error to userspace. The d_revalidate codepath however
+never had the corresponding change, so it was still possible to end up
+with a NULL ctx->state pointer after that.
 
-That's easy. Imagine your 8th grade teacher's face on the "!" key. The
-habit will go away fast.
+That patch caused a regression. When we attempt to open a directory that
+does not have a cached dentry, that open now errors out with EISDIR. If
+you attempt the same open with a cached dentry, it will succeed.
 
-> --b.
-> 
+Fix this by reverting the change in nfs_atomic_lookup and allowing
+attempts to open directories to fall back to a normal lookup
 
-Boaz
+Also, add a NFSv4-specific f_ops->open routine that just returns
+-ENOTDIR.  This should never be called if things are working properly.
+If it ever is, we can use the WARN() in that function to recognize it
+and perhaps troubleshoot it.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/dir.c           |    2 +-
+ fs/nfs/file.c          |   31 +++++++++++++++++++++++++++++++
+ fs/nfs/inode.c         |    5 ++++-
+ include/linux/nfs_fs.h |    1 +
+ 4 files changed, 37 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index b238d95..ac28990 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1468,12 +1468,12 @@ static struct dentry *nfs_atomic_lookup(struct inode *dir, struct dentry *dentry
+ 				res = NULL;
+ 				goto out;
+ 			/* This turned out not to be a regular file */
++			case -EISDIR:
+ 			case -ENOTDIR:
+ 				goto no_open;
+ 			case -ELOOP:
+ 				if (!(nd->intent.open.flags & O_NOFOLLOW))
+ 					goto no_open;
+-			/* case -EISDIR: */
+ 			/* case -EINVAL: */
+ 			default:
+ 				res = ERR_CAST(inode);
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 28b8c3f..9a5cab5 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -41,6 +41,7 @@
+ #define NFSDBG_FACILITY		NFSDBG_FILE
+ 
+ static int nfs_file_open(struct inode *, struct file *);
++static int nfs4_file_open(struct inode *, struct file *);
+ static int nfs_file_release(struct inode *, struct file *);
+ static loff_t nfs_file_llseek(struct file *file, loff_t offset, int origin);
+ static int  nfs_file_mmap(struct file *, struct vm_area_struct *);
+@@ -63,6 +64,25 @@ static int nfs_setlease(struct file *file, long arg, struct file_lock **fl);
+ 
+ static const struct vm_operations_struct nfs_file_vm_ops;
+ 
++const struct file_operations nfs4_file_operations = {
++	.llseek		= nfs_file_llseek,
++	.read		= do_sync_read,
++	.write		= do_sync_write,
++	.aio_read	= nfs_file_read,
++	.aio_write	= nfs_file_write,
++	.mmap		= nfs_file_mmap,
++	.open		= nfs4_file_open,
++	.flush		= nfs_file_flush,
++	.release	= nfs_file_release,
++	.fsync		= nfs_file_fsync,
++	.lock		= nfs_lock,
++	.flock		= nfs_flock,
++	.splice_read	= nfs_file_splice_read,
++	.splice_write	= nfs_file_splice_write,
++	.check_flags	= nfs_check_flags,
++	.setlease	= nfs_setlease,
++};
++
+ const struct file_operations nfs_file_operations = {
+ 	.llseek		= nfs_file_llseek,
+ 	.read		= do_sync_read,
+@@ -135,6 +155,17 @@ nfs_file_open(struct inode *inode, struct file *filp)
+ }
+ 
+ static int
++nfs4_file_open(struct inode *inode, struct file *filp)
++{
++	/*
++	 * NFSv4 opens are handled in d_lookup and d_revalidate. If we get to
++	 * this point, then something is very wrong
++	 */
++	dprintk("NFS: %s called! inode=%p filp=%p\n", __func__, inode, filp);
++	return -ENOTDIR;
++}
++
++static int
+ nfs_file_release(struct inode *inode, struct file *filp)
+ {
+ 	struct dentry *dentry = filp->f_path.dentry;
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index b7c4301..3389f46 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -293,7 +293,10 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 		 */
+ 		inode->i_op = NFS_SB(sb)->nfs_client->rpc_ops->file_inode_ops;
+ 		if (S_ISREG(inode->i_mode)) {
+-			inode->i_fop = &nfs_file_operations;
++			if (NFS_SB(sb)->nfs_client->rpc_ops->version == 4)
++				inode->i_fop = &nfs4_file_operations;
++			else
++				inode->i_fop = &nfs_file_operations;
+ 			inode->i_data.a_ops = &nfs_file_aops;
+ 			inode->i_data.backing_dev_info = &NFS_SB(sb)->backing_dev_info;
+ 		} else if (S_ISDIR(inode->i_mode)) {
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index eaac770..81072b0 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -410,6 +410,7 @@ extern const struct inode_operations nfs_file_inode_operations;
+ extern const struct inode_operations nfs3_file_inode_operations;
+ #endif /* CONFIG_NFS_V3 */
+ extern const struct file_operations nfs_file_operations;
++extern const struct file_operations nfs4_file_operations;
+ extern const struct address_space_operations nfs_file_aops;
+ extern const struct address_space_operations nfs_dir_aops;
+ 
+-- 
+1.7.6.4
+
