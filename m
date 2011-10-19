@@ -1,46 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:62181 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750918Ab1JYQR4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Oct 2011 12:17:56 -0400
-Received: by mail-yw0-f46.google.com with SMTP id 3so650637ywm.19
-        for <linux-nfs@vger.kernel.org>; Tue, 25 Oct 2011 09:17:56 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/3] NFS: Clean up nfs4_xdr_dec_secinfo()
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 25 Oct 2011 12:17:53 -0400
-Message-ID: <20111025161753.5996.83383.stgit@seurat.1015granger.net>
-In-Reply-To: <20111025161631.5996.30680.stgit@seurat.1015granger.net>
-References: <20111025161631.5996.30680.stgit@seurat.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:48240 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751556Ab1JSQnQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Oct 2011 12:43:16 -0400
+Date: Wed, 19 Oct 2011 12:42:16 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: agruen@kernel.org, akpm@linux-foundation.org, viro@zeniv.linux.org.uk,
+        dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V7 08/26] vfs: Add new file and directory create
+ permission flags
+Message-ID: <20111019164216.GC30864@fieldses.org>
+References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1318951981-5508-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1318951981-5508-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Remove superfluous logic at the tail of
-nfs4_xdr_dec_secinfo() .
+On Tue, Oct 18, 2011 at 09:02:43PM +0530, Aneesh Kumar K.V wrote:
+> From: Andreas Gruenbacher <agruen@kernel.org>
+> 
+> Some permission models distinguish between the permission to create a
+> non-directory and a directory.  Pass this information down to
+> inode_permission() as mask flags
+...
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index f3ebf86..60361c6 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -67,6 +67,8 @@ struct inodes_stat_t {
+>  #define MAY_CHDIR		0x00000040
+>  /* called from RCU mode, don't block */
+>  #define MAY_NOT_BLOCK		0x00000080
+> +#define MAY_CREATE_FILE		0x00000100
+> +#define MAY_CREATE_DIR		0x00000200
 
-Introduced by commit 5a5ea0d4 "NFS: Add secinfo procedure" (March 24,
-2011).
+Hm, are the flags in fs/nfsd/vfs.h going to need fixing up?
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Looking at the nfsd code....  No, I guess it's OK, nfsd does
 
- fs/nfs/nfs4xdr.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+	err = inode_permission(inode, acc & (MAY_READ|MAY_WRITE|MAY_EXEC));
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 1dce12f..e6161b2 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -6602,8 +6602,6 @@ static int nfs4_xdr_dec_secinfo(struct rpc_rqst *rqstp,
- 	if (status)
- 		goto out;
- 	status = decode_secinfo(xdr, res);
--	if (status)
--		goto out;
- out:
- 	return status;
- }
+So we can wait to fix up any collisions until we need to pass these
+extra bits.
 
+--b.
