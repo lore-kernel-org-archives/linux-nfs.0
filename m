@@ -1,108 +1,238 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp07.au.ibm.com ([202.81.31.140]:46827 "EHLO
-	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932930Ab1JRPfQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:35:16 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V7 19/26] richacl: Check if an acl is equivalent to a file mode
-Date: Tue, 18 Oct 2011 21:02:54 +0530
-Message-Id: <1318951981-5508-20-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:8518 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753534Ab1JSUuk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Oct 2011 16:50:40 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 6/9] NFS: Get rid of nfs_restart_rpc()
+Date: Wed, 19 Oct 2011 13:50:15 -0700
+Message-Id: <1319057418-9851-6-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1319057418-9851-5-git-send-email-Trond.Myklebust@netapp.com>
+References: <1319057418-9851-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1319057418-9851-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1319057418-9851-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1319057418-9851-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1319057418-9851-5-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+It can trivially be replaced with rpc_restart_call_prepare.
 
-This function is used to avoid storing richacls on disk if the acl can
-be computed from the file permission bits.
-
-Acked-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/richacl_base.c       |   54 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |    1 +
- 2 files changed, 55 insertions(+), 0 deletions(-)
+ fs/nfs/internal.h       |   10 ----------
+ fs/nfs/nfs4filelayout.c |   12 ++++--------
+ fs/nfs/nfs4proc.c       |   17 ++++++++---------
+ fs/nfs/read.c           |    2 +-
+ fs/nfs/unlink.c         |    4 ++--
+ fs/nfs/write.c          |    2 +-
+ net/sunrpc/clnt.c       |    4 +++-
+ 7 files changed, 19 insertions(+), 32 deletions(-)
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 6c7e839..3a9842e 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -560,3 +560,57 @@ richacl_inherit(const struct richacl *dir_acl, int isdir)
- 
- 	return acl;
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index ab12913..c1a1bd8 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -457,13 +457,3 @@ unsigned int nfs_page_array_len(unsigned int base, size_t len)
+ 		PAGE_SIZE - 1) >> PAGE_SHIFT;
  }
-+
-+/**
-+ * richacl_equiv_mode  -  check if @acl is equivalent to file permission bits
-+ * @mode_p:	the file mode (including the file type)
-+ *
-+ * If @acl can be fully represented by file permission bits, this function
-+ * returns 0, and the file permission bits in @mode_p are set to the equivalent
-+ * of @acl.
-+ *
-+ * This function is used to avoid storing richacls on disk if the acl can be
-+ * computed from the file permission bits.  It allows user-space to make sure
-+ * that a file has no explicit richacl set.
-+ */
-+int
-+richacl_equiv_mode(const struct richacl *acl, mode_t *mode_p)
-+{
-+	const struct richace *ace = acl->a_entries;
-+	unsigned int x;
-+	mode_t mode;
-+
-+	if (acl->a_count != 1 ||
-+	    acl->a_flags != ACL4_MASKED ||
-+	    !richace_is_everyone(ace) ||
-+	    !richace_is_allow(ace) ||
-+	    ace->e_flags & ~ACE4_SPECIAL_WHO)
-+		return -1;
-+
-+	/*
-+	 * Figure out the permissions we care about: ACE4_DELETE_CHILD is
-+	 * meaningless for non-directories, so we ignore it.
-+	 */
-+	x = ~ACE4_POSIX_ALWAYS_ALLOWED;
-+	if (!S_ISDIR(*mode_p))
-+		x &= ~ACE4_DELETE_CHILD;
-+
-+	mode = richacl_masks_to_mode(acl);
-+	if ((acl->a_group_mask & x) != (richacl_mode_to_mask(mode >> 3) & x) ||
-+	    (acl->a_other_mask & x) != (richacl_mode_to_mask(mode) & x))
-+		return -1;
-+
-+	/*
-+	 * Ignore permissions which the owner is always allowed.
-+	 */
-+	x &= ~ACE4_POSIX_OWNER_ALLOWED;
-+	if ((acl->a_owner_mask & x) != (richacl_mode_to_mask(mode >> 6) & x))
-+		return -1;
-+
-+	if ((ace->e_mask & x) != (ACE4_POSIX_MODE_ALL & x))
-+		return -1;
-+
-+	*mode_p = (*mode_p & ~S_IRWXUGO) | mode;
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(richacl_equiv_mode);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 15953ae..4eeb22f 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -292,6 +292,7 @@ extern struct richacl *richacl_chmod(struct richacl *, mode_t);
- extern int richacl_permission(struct inode *, const struct richacl *,
- 			      unsigned int);
- extern struct richacl *richacl_inherit(const struct richacl *, int);
-+extern int richacl_equiv_mode(const struct richacl *, mode_t *);
  
- /* richacl_inode.c */
- extern struct richacl *richacl_inherit_inode(const struct richacl *,
+-/*
+- * Helper for restarting RPC calls in the possible presence of NFSv4.1
+- * sessions.
+- */
+-static inline int nfs_restart_rpc(struct rpc_task *task, const struct nfs_client *clp)
+-{
+-	if (nfs4_has_session(clp))
+-		return rpc_restart_call_prepare(task);
+-	return rpc_restart_call(task);
+-}
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 4c78c62..dc52597 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -122,7 +122,6 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ static int filelayout_read_done_cb(struct rpc_task *task,
+ 				struct nfs_read_data *data)
+ {
+-	struct nfs_client *clp = data->ds_clp;
+ 	int reset = 0;
+ 
+ 	dprintk("%s DS read\n", __func__);
+@@ -134,9 +133,8 @@ static int filelayout_read_done_cb(struct rpc_task *task,
+ 		if (reset) {
+ 			pnfs_set_lo_fail(data->lseg);
+ 			nfs4_reset_read(task, data);
+-			clp = NFS_SERVER(data->inode)->nfs_client;
+ 		}
+-		nfs_restart_rpc(task, clp);
++		rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+ 	}
+ 
+@@ -210,10 +208,8 @@ static int filelayout_write_done_cb(struct rpc_task *task,
+ 		if (reset) {
+ 			pnfs_set_lo_fail(data->lseg);
+ 			nfs4_reset_write(task, data);
+-			clp = NFS_SERVER(data->inode)->nfs_client;
+-		} else
+-			clp = data->ds_clp;
+-		nfs_restart_rpc(task, clp);
++		}
++		rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+ 	}
+ 
+@@ -245,7 +241,7 @@ static int filelayout_commit_done_cb(struct rpc_task *task,
+ 			prepare_to_resend_writes(data);
+ 			pnfs_set_lo_fail(data->lseg);
+ 		} else
+-			nfs_restart_rpc(task, data->ds_clp);
++			rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+ 	}
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ba0da50..d2ae413 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3191,7 +3191,7 @@ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
+ 	struct nfs_server *server = NFS_SERVER(data->inode);
+ 
+ 	if (nfs4_async_handle_error(task, server, data->args.context->state) == -EAGAIN) {
+-		nfs_restart_rpc(task, server->nfs_client);
++		rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+ 	}
+ 
+@@ -3241,7 +3241,7 @@ static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data
+ 	struct inode *inode = data->inode;
+ 	
+ 	if (nfs4_async_handle_error(task, NFS_SERVER(inode), data->args.context->state) == -EAGAIN) {
+-		nfs_restart_rpc(task, NFS_SERVER(inode)->nfs_client);
++		rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+ 	}
+ 	if (task->tk_status >= 0) {
+@@ -3298,7 +3298,7 @@ static int nfs4_commit_done_cb(struct rpc_task *task, struct nfs_write_data *dat
+ 	struct inode *inode = data->inode;
+ 
+ 	if (nfs4_async_handle_error(task, NFS_SERVER(inode), NULL) == -EAGAIN) {
+-		nfs_restart_rpc(task, NFS_SERVER(inode)->nfs_client);
++		rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+ 	}
+ 	nfs_refresh_inode(inode, data->res.fattr);
+@@ -3838,7 +3838,7 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
+ 	default:
+ 		if (nfs4_async_handle_error(task, data->res.server, NULL) ==
+ 				-EAGAIN) {
+-			nfs_restart_rpc(task, data->res.server->nfs_client);
++			rpc_restart_call_prepare(task);
+ 			return;
+ 		}
+ 	}
+@@ -4092,8 +4092,7 @@ static void nfs4_locku_done(struct rpc_task *task, void *data)
+ 			break;
+ 		default:
+ 			if (nfs4_async_handle_error(task, calldata->server, NULL) == -EAGAIN)
+-				nfs_restart_rpc(task,
+-						 calldata->server->nfs_client);
++				rpc_restart_call_prepare(task);
+ 	}
+ }
+ 
+@@ -4926,7 +4925,7 @@ static void nfs4_get_lease_time_done(struct rpc_task *task, void *calldata)
+ 		task->tk_status = 0;
+ 		/* fall through */
+ 	case -NFS4ERR_RETRY_UNCACHED_REP:
+-		nfs_restart_rpc(task, data->clp);
++		rpc_restart_call_prepare(task);
+ 		return;
+ 	}
+ 	dprintk("<-- %s\n", __func__);
+@@ -5767,7 +5766,7 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
+ 
+ 	server = NFS_SERVER(lrp->args.inode);
+ 	if (nfs4_async_handle_error(task, server, NULL) == -EAGAIN) {
+-		nfs_restart_rpc(task, lrp->clp);
++		rpc_restart_call_prepare(task);
+ 		return;
+ 	}
+ 	spin_lock(&lo->plh_inode->i_lock);
+@@ -5938,7 +5937,7 @@ nfs4_layoutcommit_done(struct rpc_task *task, void *calldata)
+ 	}
+ 
+ 	if (nfs4_async_handle_error(task, server, NULL) == -EAGAIN) {
+-		nfs_restart_rpc(task, server->nfs_client);
++		rpc_restart_call_prepare(task);
+ 		return;
+ 	}
+ 
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index bfc20b1..e866a7e 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -435,7 +435,7 @@ static void nfs_readpage_retry(struct rpc_task *task, struct nfs_read_data *data
+ 	argp->offset += resp->count;
+ 	argp->pgbase += resp->count;
+ 	argp->count -= resp->count;
+-	nfs_restart_rpc(task, NFS_SERVER(data->inode)->nfs_client);
++	rpc_restart_call_prepare(task);
+ }
+ 
+ /*
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index b2fbbde..4f9319a 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -87,7 +87,7 @@ static void nfs_async_unlink_done(struct rpc_task *task, void *calldata)
+ 	struct inode *dir = data->dir;
+ 
+ 	if (!NFS_PROTO(dir)->unlink_done(task, dir))
+-		nfs_restart_rpc(task, NFS_SERVER(dir)->nfs_client);
++		rpc_restart_call_prepare(task);
+ }
+ 
+ /**
+@@ -369,7 +369,7 @@ static void nfs_async_rename_done(struct rpc_task *task, void *calldata)
+ 	struct dentry *new_dentry = data->new_dentry;
+ 
+ 	if (!NFS_PROTO(old_dir)->rename_done(task, old_dir, new_dir)) {
+-		nfs_restart_rpc(task, NFS_SERVER(old_dir)->nfs_client);
++		rpc_restart_call_prepare(task);
+ 		return;
+ 	}
+ 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 2084a64..ad90b0c9 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1305,7 +1305,7 @@ void nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
+ 				 */
+ 				argp->stable = NFS_FILE_SYNC;
+ 			}
+-			nfs_restart_rpc(task, server->nfs_client);
++			rpc_restart_call_prepare(task);
+ 			return;
+ 		}
+ 		if (time_before(complain, jiffies)) {
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index c5347d2..f0268ea 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -850,7 +850,9 @@ rpc_restart_call_prepare(struct rpc_task *task)
+ {
+ 	if (RPC_ASSASSINATED(task))
+ 		return 0;
+-	task->tk_action = rpc_prepare_task;
++	task->tk_action = call_start;
++	if (task->tk_ops->rpc_call_prepare != NULL)
++		task->tk_action = rpc_prepare_task;
+ 	return 1;
+ }
+ EXPORT_SYMBOL_GPL(rpc_restart_call_prepare);
 -- 
-1.7.5.4
+1.7.6.4
 
