@@ -1,213 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga14.intel.com ([143.182.124.37]:32116 "EHLO mga14.intel.com"
+Received: from mx1.redhat.com ([209.132.183.28]:17588 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753031Ab1JJNMB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Oct 2011 09:12:01 -0400
-Date: Mon, 10 Oct 2011 21:11:54 +0800
-From: Wu Fengguang <fengguang.wu@intel.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-        Christoph Hellwig <hch@lst.de>, Dave Chinner <david@fromorbit.com>,
-        Greg Thelen <gthelen@google.com>, Minchan Kim <minchan.kim@gmail.com>,
-        Vivek Goyal <vgoyal@redhat.com>, Andrea Righi <arighi@develer.com>,
-        linux-mm <linux-mm@kvack.org>, LKML <linux-kernel@vger.kernel.org>
-Subject: [RFC][PATCH 2/2] nfs: scale writeback threshold proportional to
- dirty threshold
-Message-ID: <20111010131154.GB16847@localhost>
-References: <20111003134228.090592370@intel.com>
- <1318248846.14400.21.camel@laptop>
- <20111010130722.GA11387@localhost>
- <20111010131051.GA16847@localhost>
+	id S1750855Ab1JSSA6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Oct 2011 14:00:58 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p9JI0wOB024277
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 14:00:58 -0400
+Message-ID: <4E9F1059.3040108@RedHat.com>
+Date: Wed, 19 Oct 2011 14:00:57 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111010131051.GA16847@localhost>
+To: Jeff Layton <jlayton@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] mount.nfs: mtab corruption when RLIMIT_FSIZE causes
+ a partial write
+References: <1319038470-17750-1-git-send-email-steved@redhat.com>	<20111019123626.7a80dfad@corrin.poochiereds.net>	<4E9F047B.5000600@RedHat.com>	<20111019132230.6cd85a0c@corrin.poochiereds.net>	<4E9F0952.2040607@RedHat.com> <20111019134020.52983723@corrin.poochiereds.net>
+In-Reply-To: <20111019134020.52983723@corrin.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs_congestion_kb is to control the max allowed writeback and in-commit
-pages. It's not reasonable for them to outnumber dirty and to-commit
-pages. So each of them should not take more than 1/4 dirty threshold.
 
-Considering that nfs_init_writepagecache() is called on fresh boot,
-at the time dirty_thresh is much higher than the real dirty limit after
-lots of user space memory consumptions, use 1/8 instead.
 
-We might update nfs_congestion_kb when global dirty limit is changed
-at runtime, but whatever, do it simple first.
+On 10/19/2011 01:40 PM, Jeff Layton wrote:
+> On Wed, 19 Oct 2011 13:30:58 -0400
+> Steve Dickson <SteveD@redhat.com> wrote:
+> 
+>>
+>>
+>> On 10/19/2011 01:22 PM, Jeff Layton wrote:
+>>> On Wed, 19 Oct 2011 13:10:19 -0400
+>>> Steve Dickson <SteveD@redhat.com> wrote:
+>>>
+>>>>
+>>>>
+>>>> On 10/19/2011 12:36 PM, Jeff Layton wrote:
+>>>>> On Wed, 19 Oct 2011 11:34:30 -0400
+>>>>> Steve Dickson <steved@redhat.com> wrote:
+>>>>>
+>>>>>> This patch is a following on to commit 7a802337. Using the
+>>>>>> tool in https://bugzilla.redhat.com/show_bug.cgi?id=695916
+>>>>>> caused the fflush() and fclose() to fail in turn causing
+>>>>>> corruption in the mtab.
+>>>>>>
+>>>>>> The failures were in the internals of both calls. Switch those
+>>>>>> calls with the actual system calls eliminated the failures.
+>>>>>>
+>>>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>>>>>> ---
+>>>>>>  support/nfs/nfs_mntent.c |    4 ++--
+>>>>>>  1 files changed, 2 insertions(+), 2 deletions(-)
+>>>>>>
+>>>>>> diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
+>>>>>> index a2118a2..b80f270 100644
+>>>>>> --- a/support/nfs/nfs_mntent.c
+>>>>>> +++ b/support/nfs/nfs_mntent.c
+>>>>>> @@ -117,7 +117,7 @@ void
+>>>>>>  nfs_endmntent (mntFILE *mfp) {
+>>>>>>  	if (mfp) {
+>>>>>>  		if (mfp->mntent_fp)
+>>>>>> -			fclose(mfp->mntent_fp);
+>>>>>> +			close(fileno(mfp->mntent_fp));
+>>>>>>  		if (mfp->mntent_file)
+>>>>>>  			free(mfp->mntent_file);
+>>>>>>  		free(mfp);
+>>>>>> @@ -147,7 +147,7 @@ nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
+>>>>>>  	free(m3);
+>>>>>>  	free(m4);
+>>>>>>  	if (res >= 0) {
+>>>>>> -		res = fflush(mfp->mntent_fp);
+>>>>>> +		res = fsync(fileno(mfp->mntent_fp));
+>>>>>
+>>>>> fsync doesn't imply an fflush. With this, I think you may end up
+>>>>> without everything being committed to disk if part or all of it is
+>>>>> still in the file stream buffer. You probably want to do an fflush()
+>>>>> and then an fsync here.
+>>>> The problem was with the fflush() call. The call was causing the
+>>>> mount to drop core in turn causing mtab corruption. Changing that
+>>>> call to a fsync() worked just fine... no corruption... every time! 
+>>>>
+>>>
+>>> Ahh, then you have another problem here too then. Most likely it was
+>>> crashing because it caught a SIGXFSZ. Writing out the mtab should not
+>>> be affected by signals.
+>> So calling fflush() generates a SIGXFSZ and call fsync() does not... 
+>> I really don't see what the problem is is call simply calling fsync()
+>> which clearly works?
+>>
+> 
+> Because they do different things. fflush() flushes out the (userspace)
+> stream buffer to the kernel's pagecache. fsync() forces the pagecache
+> to be written out and committed to disk.
+Believe I understand the code......
 
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>
-Signed-off-by: Wu Fengguang <fengguang.wu@intel.com>
----
- fs/nfs/write.c      |   52 ++++++++++++++++++++++++++++--------------
- mm/page-writeback.c |    6 ++++
- 2 files changed, 41 insertions(+), 17 deletions(-)
+> 
+> If you call fsync() while the data is still in the userspace buffer
+> then it doesn't really do you any good. The data you wrote via fwrite()
+> won't be committed to disk.
+> 
 
---- linux-next.orig/fs/nfs/write.c	2011-10-09 21:36:22.000000000 +0800
-+++ linux-next/fs/nfs/write.c	2011-10-10 21:05:07.000000000 +0800
-@@ -1775,61 +1775,79 @@ int nfs_migrate_page(struct address_spac
- 	set_page_private(newpage, (unsigned long)req);
- 	ClearPagePrivate(page);
- 	set_page_private(page, 0);
- 	spin_unlock(&mapping->host->i_lock);
- 	page_cache_release(page);
- out_unlock:
- 	nfs_clear_page_tag_locked(req);
- out:
- 	return ret;
- }
- #endif
- 
--int __init nfs_init_writepagecache(void)
-+void nfs_update_congestion_thresh(void)
- {
--	nfs_wdata_cachep = kmem_cache_create("nfs_write_data",
--					     sizeof(struct nfs_write_data),
--					     0, SLAB_HWCACHE_ALIGN,
--					     NULL);
--	if (nfs_wdata_cachep == NULL)
--		return -ENOMEM;
--
--	nfs_wdata_mempool = mempool_create_slab_pool(MIN_POOL_WRITE,
--						     nfs_wdata_cachep);
--	if (nfs_wdata_mempool == NULL)
--		return -ENOMEM;
--
--	nfs_commit_mempool = mempool_create_slab_pool(MIN_POOL_COMMIT,
--						      nfs_wdata_cachep);
--	if (nfs_commit_mempool == NULL)
--		return -ENOMEM;
-+	unsigned long background_thresh;
-+	unsigned long dirty_thresh;
- 
- 	/*
- 	 * NFS congestion size, scale with available memory.
- 	 *
- 	 *  64MB:    8192k
- 	 * 128MB:   11585k
- 	 * 256MB:   16384k
- 	 * 512MB:   23170k
- 	 *   1GB:   32768k
- 	 *   2GB:   46340k
- 	 *   4GB:   65536k
- 	 *   8GB:   92681k
- 	 *  16GB:  131072k
- 	 *
- 	 * This allows larger machines to have larger/more transfers.
- 	 * Limit the default to 256M
- 	 */
- 	nfs_congestion_kb = (16*int_sqrt(totalram_pages)) << (PAGE_SHIFT-10);
- 	if (nfs_congestion_kb > 256*1024)
- 		nfs_congestion_kb = 256*1024;
- 
-+	/*
-+	 * Limit to 1/8 dirty threshold, so that writeback+in_commit pages
-+	 * won't overnumber dirty+to_commit pages.
-+	 */
-+	global_dirty_limits(&background_thresh, &dirty_thresh);
-+	dirty_thresh <<= PAGE_SHIFT - 10;
-+
-+	if (nfs_congestion_kb > dirty_thresh / 8)
-+		nfs_congestion_kb = dirty_thresh / 8;
-+}
-+
-+int __init nfs_init_writepagecache(void)
-+{
-+	nfs_wdata_cachep = kmem_cache_create("nfs_write_data",
-+					     sizeof(struct nfs_write_data),
-+					     0, SLAB_HWCACHE_ALIGN,
-+					     NULL);
-+	if (nfs_wdata_cachep == NULL)
-+		return -ENOMEM;
-+
-+	nfs_wdata_mempool = mempool_create_slab_pool(MIN_POOL_WRITE,
-+						     nfs_wdata_cachep);
-+	if (nfs_wdata_mempool == NULL)
-+		return -ENOMEM;
-+
-+	nfs_commit_mempool = mempool_create_slab_pool(MIN_POOL_COMMIT,
-+						      nfs_wdata_cachep);
-+	if (nfs_commit_mempool == NULL)
-+		return -ENOMEM;
-+
-+	nfs_update_congestion_thresh();
-+
- 	return 0;
- }
- 
- void nfs_destroy_writepagecache(void)
- {
- 	mempool_destroy(nfs_commit_mempool);
- 	mempool_destroy(nfs_wdata_mempool);
- 	kmem_cache_destroy(nfs_wdata_cachep);
- }
- 
---- linux-next.orig/mm/page-writeback.c	2011-10-09 21:36:06.000000000 +0800
-+++ linux-next/mm/page-writeback.c	2011-10-10 21:05:07.000000000 +0800
-@@ -138,34 +138,39 @@ static struct prop_descriptor vm_dirties
- static int calc_period_shift(void)
- {
- 	unsigned long dirty_total;
- 
- 	if (vm_dirty_bytes)
- 		dirty_total = vm_dirty_bytes / PAGE_SIZE;
- 	else
- 		dirty_total = (vm_dirty_ratio * determine_dirtyable_memory()) /
- 				100;
- 	return 2 + ilog2(dirty_total - 1);
- }
- 
-+void __weak nfs_update_congestion_thresh(void)
-+{
-+}
-+
- /*
-  * update the period when the dirty threshold changes.
-  */
- static void update_completion_period(void)
- {
- 	int shift = calc_period_shift();
- 	prop_change_shift(&vm_completions, shift);
- 	prop_change_shift(&vm_dirties, shift);
- 
- 	writeback_set_ratelimit();
-+	nfs_update_congestion_thresh();
- }
- 
- int dirty_background_ratio_handler(struct ctl_table *table, int write,
- 		void __user *buffer, size_t *lenp,
- 		loff_t *ppos)
- {
- 	int ret;
- 
- 	ret = proc_dointvec_minmax(table, write, buffer, lenp, ppos);
- 	if (ret == 0 && write)
- 		dirty_background_bytes = 0;
- 	return ret;
-@@ -438,24 +443,25 @@ unsigned long bdi_dirty_limit(struct bac
- 	bdi_writeout_fraction(bdi, &numerator, &denominator);
- 
- 	bdi_dirty = (dirty * (100 - bdi_min_ratio)) / 100;
- 	bdi_dirty *= numerator;
- 	do_div(bdi_dirty, denominator);
- 
- 	bdi_dirty += (dirty * bdi->min_ratio) / 100;
- 	if (bdi_dirty > (dirty * bdi->max_ratio) / 100)
- 		bdi_dirty = dirty * bdi->max_ratio / 100;
- 
- 	return bdi_dirty;
- }
-+EXPORT_SYMBOL_GPL(global_dirty_limits);
- 
- /*
-  * Dirty position control.
-  *
-  * (o) global/bdi setpoints
-  *
-  * We want the dirty pages be balanced around the global/bdi setpoints.
-  * When the number of dirty pages is higher/lower than the setpoint, the
-  * dirty position control ratio (and hence task dirty ratelimit) will be
-  * decreased/increased to bring the dirty pages back to the setpoint.
-  *
-  *     pos_ratio = 1 << RATELIMIT_CALC_SHIFT
+So I'm thinking the reason the data makes it the disk is its
+already in the pagecache when the fsync() is called... but to 
+agree with Bruce, the might just be luck...
+
+steved.
