@@ -1,47 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:62920 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755207Ab1JRNHm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 09:07:42 -0400
-Received: by ywf7 with SMTP id 7so539702ywf.19
-        for <linux-nfs@vger.kernel.org>; Tue, 18 Oct 2011 06:07:42 -0700 (PDT)
-Message-ID: <1996389420-1318943258-cardhu_decombobulator_blackberry.rim.net-15544535-@b18.c3.bise3.blackberry>
-Reply-To: bhalevy@tonian.com
-Subject: Re: [PATCH] Silence compiler warning
-To: "Stanislav Kinsbursky" <skinsbursky@parallels.com>,
-        "Jim Rees" <rees@umich.edu>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-From: "Benny Halevy" <bhalevy@tonian.com>
-Date: Tue, 18 Oct 2011 13:07:37 +0000
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from lo.gmane.org ([80.91.229.12]:40709 "EHLO lo.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754109Ab1JSPPO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Oct 2011 11:15:14 -0400
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1RGXrK-0004Qy-9b
+	for linux-nfs@vger.kernel.org; Wed, 19 Oct 2011 17:15:10 +0200
+Received: from ebox.rath.org ([173.255.235.238])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 17:15:10 +0200
+Received: from Nikolaus by ebox.rath.org with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 17:15:10 +0200
+To: linux-nfs@vger.kernel.org
+From: Nikolaus Rath <Nikolaus@rath.org>
+Subject: Does NFS4 need st_gen?
+Date: Wed, 19 Oct 2011 10:17:43 -0400
+Message-ID: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T2suIEkgY29tbWl0dGVkIHRoZSBjbGVhbnVwIHBhdGNoIEkgc2VudCBvbiB0aGlzIHRocmVhZCBh
-bmQgcHVzaGVkIGl0IG91dCB5ZXN0ZXJkYXkuDQpUaGlzIHdhcm5pbmcgc2hvdWxkIG5vdyBiZSBn
-b25lLg0KQmVubnkNCi0tLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLS0NCkZyb206IFN0YW5pc2xh
-diBLaW5zYnVyc2t5DQpUbzogSmltIFJlZXMNCkNjOiBCZW5ueSBIYWxldnkNCkNjOiBsaW51eC1u
-ZnNAdmdlci5rZXJuZWwub3JnDQpTdWJqZWN0OiBSZTogW1BBVENIXSBTaWxlbmNlIGNvbXBpbGVy
-IHdhcm5pbmcNClNlbnQ6IE9jdCAxOCwgMjAxMSAwMjo1MA0KDQpJIGhhdmUgdGhpcyB3YXJuaW5n
-IGFsc286DQpmcy9uZnMvY2FsbGJhY2tfcHJvYy5jOjExNjogd2FybmluZzog4oCYaW5v4oCZIG1h
-eSBiZSB1c2VkIHVuaW5pdGlhbGl6ZWQgaW4gdGhpcyANCmZ1bmN0aW9uDQoNCjE3LjEwLjIwMTEg
-MDQ6MDYsIEppbSBSZWVzINC/0LjRiNC10YI6DQo+IGZzL25mcy9jYWxsYmFja19wcm9jLmM6IElu
-IGZ1bmN0aW9uIOKAmGRvX2NhbGxiYWNrX2xheW91dHJlY2FsbOKAmToNCj4gZnMvbmZzL2NhbGxi
-YWNrX3Byb2MuYzoxMTU6MjY6IHdhcm5pbmc6IOKAmGxv4oCZIG1heSBiZSB1c2VkIHVuaW5pdGlh
-bGl6ZWQgaW4gdGhpcyBmdW5jdGlvbg0KPg0KPiBObyBmdW5jdGlvbmFsIGNoYW5nZS4gSWYgbm8g
-bGF5b3V0IGlzIGZvdW5kLCB3ZSdsbCByZXR1cm4gYmVmb3JlICB1c2luZw0KPiAibG8iLg0KPg0K
-PiBTaWduZWQtb2ZmLWJ5OiBKaW0gUmVlczxyZWVzQHVtaWNoLmVkdT4NCj4gLS0tDQo+ICAgZnMv
-bmZzL2NhbGxiYWNrX3Byb2MuYyB8ICAgIDIgKy0NCj4gICAxIGZpbGVzIGNoYW5nZWQsIDEgaW5z
-ZXJ0aW9ucygrKSwgMSBkZWxldGlvbnMoLSkNCj4NCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9jYWxs
-YmFja19wcm9jLmMgYi9mcy9uZnMvY2FsbGJhY2tfcHJvYy5jDQo+IGluZGV4IDQzOTI2YWQuLjkz
-NjMzZjEgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9jYWxsYmFja19wcm9jLmMNCj4gKysrIGIvZnMv
-bmZzL2NhbGxiYWNrX3Byb2MuYw0KPiBAQCAtMTEyLDcgKzExMiw3IEBAIHN0YXRpYyB1MzIgaW5p
-dGlhdGVfZmlsZV9kcmFpbmluZyhzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwLA0KPiAgIAkJCQkgIHN0
-cnVjdCBjYl9sYXlvdXRyZWNhbGxhcmdzICphcmdzKQ0KPiAgIHsNCj4gICAJc3RydWN0IG5mc19z
-ZXJ2ZXIgKnNlcnZlcjsNCj4gLQlzdHJ1Y3QgcG5mc19sYXlvdXRfaGRyICpsbzsNCj4gKwlzdHJ1
-Y3QgcG5mc19sYXlvdXRfaGRyICpsbyA9IE5VTEw7DQo+ICAgCXN0cnVjdCBpbm9kZSAqaW5vOw0K
-PiAgIAlib29sIGZvdW5kID0gZmFsc2U7DQo+ICAgCXUzMiBydiA9IE5GUzRFUlJfTk9NQVRDSElO
-R19MQVlPVVQ7DQoNCg0KLS0gDQpCZXN0IHJlZ2FyZHMsDQpTdGFuaXNsYXYgS2luc2J1cnNreQ0K
-DQo=
+Hello,
+
+Does NFS4 still depend on inode generation numbers? I understand that
+earlier NFS versions used file handles based on inode and generation
+number, but it seems to me that this shouldn't be required anymore with
+the (stateful) NFS4.
+
+Best,
+
+   -Nikolaus
+
+-- 
+ »Time flies like an arrow, fruit flies like a Banana.«
+
+  PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6  02CF A9AD B7F8 AE4E 425C
 
