@@ -1,74 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:21224 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:8518 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752267Ab1JUQBL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Oct 2011 12:01:11 -0400
-Subject: Re: Does NFS4 need st_gen?
+	id S1753361Ab1JSUuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Oct 2011 16:50:39 -0400
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Nikolaus Rath <Nikolaus@rath.org>
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 21 Oct 2011 12:00:54 -0400
-In-Reply-To: <87vcrisb5y.fsf@inspiron.ap.columbia.edu>
-References: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu>
-	 <20111019171551.GA32028@fieldses.org>
-	 <87d3dsdcf4.fsf@inspiron.ap.columbia.edu>
-	 <20111020120207.GL5444@fieldses.org>
-	 <877h3za89w.fsf@inspiron.ap.columbia.edu>
-	 <20111020195731.GC9987@fieldses.org>
-	 <871uu79z7m.fsf@inspiron.ap.columbia.edu>
-	 <1319155647.2768.4.camel@lade.trondhjem.org>
-	 <87vcrisb5y.fsf@inspiron.ap.columbia.edu>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1319212854.4537.9.camel@lade.trondhjem.org>
-Mime-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 4/9] NFS: Get rid of the unused nfs_read_data->flags field
+Date: Wed, 19 Oct 2011 13:50:13 -0700
+Message-Id: <1319057418-9851-4-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1319057418-9851-3-git-send-email-Trond.Myklebust@netapp.com>
+References: <1319057418-9851-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1319057418-9851-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1319057418-9851-3-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2011-10-21 at 09:54 -0400, Nikolaus Rath wrote: 
-> Trond Myklebust <Trond.Myklebust@netapp.com> writes:
-> > On Thu, 2011-10-20 at 16:37 -0400, Nikolaus Rath wrote: 
-> >> "J. Bruce Fields" <bfields@fieldses.org> writes:
-> >> > On Thu, Oct 20, 2011 at 01:21:31PM -0400, Nikolaus Rath wrote:
-> >> >> I'm working on a FUSE file system that stores file system metadata in an
-> >> >> SQL database (http://code.google.com/p/s3ql/). Not having to keep track
-> >> >> of inode generation numbers would keep the code much simpler, because I
-> >> >> want to delete inode-rows from the SQL table when the last reference to
-> >> >> the inode is deleted (so I can't keep track of the generation no).
-> >> >
-> >> > You can use current time, or a counter, or something, as the generation
-> >> > number.
-> >> 
-> >> With current time I'm screwed if the system clock doesn't have
-> >> sufficiently fine granularity. With a counter, I either have to remember
-> >> counter values per-inode even after the inode is deleted, or the global
-> >> counter will overflow at some point (in which case I may just as well
-> >> require unique inodes in the first place).
-> >
-> > The filehandle is between 32 (NFSv2) and 128(NFSv4) bytes long. How long
-> > do you expect it to take you to create+destroy between 2^256 and 2^1024
-> > inodes? I'm guessing that we'll all be long dead and the universe will
-> > have undergone heat death before that happens...
-> 
-> Please stop assuming that I'm stupid or haven't thought about the
-> problem at all. The bottleneck is not the length of the NFS file handle,
-> but the length of the inode and generation number (both of which are
-> restricted to 32bit by FUSE) together with the requirement that not only
-> both of them together need to be unique forever, but the inode also
-> needs to be unique at any given instant (so they cannot be trivially
-> combined to form a 64bit value).
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ include/linux/nfs_xdr.h |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
 
-No. The point is you don't need a generation number if you don't want to
-implement one...
-
-You can use any unique identifier + the inode number, and the unique
-identifier is only limited by the size of the filehandle.
-
-Trond
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 1e31e1c..c1cceb8 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1133,7 +1133,6 @@ struct nfs_page;
+ #define NFS_PAGEVEC_SIZE	(8U)
+ 
+ struct nfs_read_data {
+-	int			flags;
+ 	struct rpc_task		task;
+ 	struct inode		*inode;
+ 	struct rpc_cred		*cred;
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.6.4
 
