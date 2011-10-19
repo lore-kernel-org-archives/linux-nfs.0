@@ -1,75 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.14.81]:60551 "EHLO
-	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755195Ab1JRNtj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 09:49:39 -0400
-Date: Tue, 18 Oct 2011 09:49:35 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: The patch that wouldn't die
-Message-ID: <20111018134935.GA17831@umich.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mx2.netapp.com ([216.240.18.37]:35551 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753595Ab1JSUuk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Oct 2011 16:50:40 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 7/9] NFS: Get rid of unnecessary calls to ClearPageError() in read code
+Date: Wed, 19 Oct 2011 13:50:16 -0700
+Message-Id: <1319057418-9851-7-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1319057418-9851-6-git-send-email-Trond.Myklebust@netapp.com>
+References: <1319057418-9851-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1319057418-9851-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1319057418-9851-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1319057418-9851-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1319057418-9851-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1319057418-9851-6-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Boaz, try to remain calm.
+The generic file read code does that for us anyway.
 
-Trond, please remove this patch from your nfs-for-next branch.  I can send a
-revert patch if you like.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/read.c  |    2 --
+ fs/nfs/write.c |    1 -
+ 2 files changed, 0 insertions(+), 3 deletions(-)
 
-Uh-oh, I see it's been sent to stable too.
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index e866a7e..09829d96 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -322,7 +322,6 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc, struct list_head
+ 		offset += len;
+ 	} while(nbytes != 0);
+ 	atomic_set(&req->wb_complete, requests);
+-	ClearPageError(page);
+ 	desc->pg_rpc_callops = &nfs_read_partial_ops;
+ 	return ret;
+ out_bad:
+@@ -357,7 +356,6 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc, struct list_head *
+ 		req = nfs_list_entry(head->next);
+ 		nfs_list_remove_request(req);
+ 		nfs_list_add_request(req, &data->pages);
+-		ClearPageError(req->wb_page);
+ 		*pages++ = req->wb_page;
+ 	}
+ 	req = nfs_list_entry(data->pages.next);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index ad90b0c9..2219c88 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1011,7 +1011,6 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc, struct list_head *r
+ 		req = nfs_list_entry(head->next);
+ 		nfs_list_remove_request(req);
+ 		nfs_list_add_request(req, &data->pages);
+-		ClearPageError(req->wb_page);
+ 		*pages++ = req->wb_page;
+ 	}
+ 	req = nfs_list_entry(data->pages.next);
+-- 
+1.7.6.4
 
-commit f0574a5592deb1f99fa583c525d01e7fa131f430
-Author: Peng Tao <bergwolf@gmail.com>
-Date:   Thu Sep 22 21:50:13 2011 -0400
-
-    pnfsblock: init pg_bsize properly
-    
-    pg_bsize is server->wsize/rsize by default. We would want to use the lseg
-    length.
-    
-    Signed-off-by: Peng Tao <peng_tao@emc.com>
-    Signed-off-by: Jim Rees <rees@umich.edu>
-    Cc: stable@kernel.org [3.0]
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-Explanation follows:
-
-Date: Fri, 23 Sep 2011 08:22:45 -0400
-From: Jim Rees <rees@umich.edu>
-Subject: Re: [PATCH 06/10] pnfsblock: init pg_bsize properly
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-
-Boaz Harrosh wrote:
-
-  On 09/23/2011 04:50 AM, Jim Rees wrote:
-  > From: Peng Tao <bergwolf@gmail.com>
-  >
-  > pg_bsize is server->wsize/rsize by default. We would want to use the lseg
-  > length.
-  >
-  > Signed-off-by: Peng Tao <peng_tao@emc.com>
-  > Signed-off-by: Jim Rees <rees@umich.edu>
-
-  If you want to get lazy about this patch and take the easy way out.
-  The least you can do is supply the same fix to that other place
-  that has the same bug.
-
-  This is not nice. You have identified a deficiency in the generic
-  layer, You know that objects would have the same bug, (because I told you)
-  and you just don't care. I have spent plenty of times slaving over
-  blocks code when changing or fixing generic layer. (And Benny even more
-  then me)
-
-  And when you will actually send a patch that does exactly the same in
-  two places, which access only generic members, you might see that it
-  might be better to fix it in a single place at the generic layer.
-
-  NACK. I'm ok with getting lazy like below, but only if you also
-  add the same code to objio_osd.c
-
-Sorry, I sent the wrong patch.  Trond, please drop this one.
